@@ -6,10 +6,25 @@ import (
 	"encoding/json"
 	)
 
+// CONSTANTS
+const (
+	ERROR = -(1 + iota)
+	SET 
+	DELETE
+)
+
 type Store struct {
 	Nodes map[string]string  `json:"nodes"`
 }
 
+// global store
+var s *Store
+
+func init() {
+	s = createStore()
+}
+
+// make a new stroe
 func createStore() *Store{
 	s := new(Store)
 	s.Nodes = make(map[string]string)
@@ -25,14 +40,14 @@ func (s *Store) Set(key string, value string) (string, bool) {
 
 	if ok {
 		s.Nodes[key] = value
+		w.notify(SET, key, oldValue, value)
 		return oldValue, true
 
 	} else {
-
 		s.Nodes[key] = value
+		w.notify(SET, key, "", value)
 		return "", false
 	}
-
 }
 
 // get the value of the key
@@ -56,6 +71,9 @@ func (s *Store) Delete(key string) (string, error) {
 
 	if ok {
 		delete(s.Nodes, key)
+
+		w.notify(DELETE, key, oldValue, "")
+
 		return oldValue, nil
 	} else {
 		return "", errors.New("Key does not exist")

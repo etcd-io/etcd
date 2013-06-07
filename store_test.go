@@ -5,18 +5,17 @@ import (
 )
 
 func TestStoreGet(t *testing.T) {
-	store := createStore()
 
-	store.Set("foo", "bar")
+	s.Set("foo", "bar")
 
-	value, err := store.Get("foo")
+	value, err := s.Get("foo")
 
 	if err!= nil || value != "bar" {
 		t.Fatalf("Cannot get stored value")
 	}
 
-	store.Delete("foo")
-	value, err = store.Get("foo")
+	s.Delete("foo")
+	value, err = s.Get("foo")
 
 	if err == nil{
 		t.Fatalf("Got deleted value")
@@ -24,11 +23,10 @@ func TestStoreGet(t *testing.T) {
 }
 
 func TestSaveAndRecovery(t *testing.T) {
-	store := createStore()
 
-	store.Set("foo", "bar")
+	s.Set("foo", "bar")
 
-	state, err := store.Save()
+	state, err := s.Save()
 
 	if err != nil {
 		t.Fatalf("Cannot Save")

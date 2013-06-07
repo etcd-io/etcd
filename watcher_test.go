@@ -6,12 +6,12 @@ import (
 )
 
 func TestWatch(t *testing.T) {
-	watcher := createWatcher()
+	// watcher := createWatcher()
 	c := make(chan Notification)
 	d := make(chan Notification)
-	watcher.add("/", c, say)
-	watcher.add("/prefix/", d, say)
-	watcher.notify(0, "/prefix/hihihi", "1", "1")
+	w.add("/", c, say)
+	w.add("/prefix/", d, say)
+	s.Set("/prefix/foo", "bar")
 }
 
 func say(c chan Notification) {

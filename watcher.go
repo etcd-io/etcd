@@ -6,7 +6,6 @@ import (
 	"fmt"
 	)
 
-// CONSTANTS
 
 type Watcher struct {
 	chanMap map[string][]chan Notification
@@ -19,12 +18,22 @@ type Notification struct {
 	newValue string
 }
 
+// global watcher
+var w *Watcher
+
+// init the global watcher
+func init() {
+	w = createWatcher()
+}
+
+// create a new watcher
 func createWatcher() *Watcher {
 	w := new(Watcher)
 	w.chanMap = make(map[string][]chan Notification)
 	return w
 }
 
+// register a function with channel and prefix to the watcher
 func (w *Watcher) add(prefix string, c chan Notification, f func(chan Notification)) error {
 
 	prefix = path.Clean(prefix)
@@ -44,6 +53,7 @@ func (w *Watcher) add(prefix string, c chan Notification, f func(chan Notificati
 	return nil
 }
 
+// notify the watcher a action happened
 func (w *Watcher) notify(action int, key string, oldValue string, newValue string) error {
 	key = path.Clean(key)
 
