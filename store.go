@@ -26,14 +26,16 @@ func (s *Store) Set(key string, value string) (string, bool) {
 	if ok {
 		s.Nodes[key] = value
 		return oldValue, true
+
 	} else {
+
 		s.Nodes[key] = value
 		return "", false
 	}
 
 }
 
-// get the node of the key
+// get the value of the key
 func (s *Store) Get(key string) (string, error) {
 	key = path.Clean(key)
 
@@ -60,6 +62,7 @@ func (s *Store) Delete(key string) (string, error) {
 	}
 }
 
+// save the current state of the storage system
 func (s *Store) Save() ([]byte, error) {
 	b, err := json.Marshal(s)
 	if err != nil {
@@ -68,6 +71,7 @@ func (s *Store) Save() ([]byte, error) {
 	return b, nil
 }
 
+// recovery the state of the stroage system from a previous state
 func (s *Store) Recovery(state []byte) error {
 	err := json.Unmarshal(state, s)
 	return err
