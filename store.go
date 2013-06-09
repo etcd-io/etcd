@@ -1,9 +1,9 @@
-package raftd
+package main
 
 import (
 	"path"
-	"errors"
 	"encoding/json"
+	"fmt"
 	)
 
 // CONSTANTS
@@ -16,6 +16,12 @@ const (
 type Store struct {
 	Nodes map[string]string  `json:"nodes"`
 }
+
+type Response struct {
+	OldValue string `json:oldvalue`
+	Exist 	 bool `json:exist`
+}
+
 
 // global store
 var s *Store
@@ -32,8 +38,8 @@ func createStore() *Store{
 }
 
 // set the key to value, return the old value if the key exists 
-func (s *Store) Set(key string, value string) (string, bool) {
-
+func (s *Store) Set(key string, value string) Response {
+	fmt.Println("Store SET")
 	key = path.Clean(key)
 
 	oldValue, ok := s.Nodes[key]
@@ -41,30 +47,31 @@ func (s *Store) Set(key string, value string) (string, bool) {
 	if ok {
 		s.Nodes[key] = value
 		w.notify(SET, key, oldValue, value)
-		return oldValue, true
+		return Response{oldValue, true}
 
 	} else {
 		s.Nodes[key] = value
 		w.notify(SET, key, "", value)
-		return "", false
+		return Response{"", false}
 	}
 }
 
 // get the value of the key
-func (s *Store) Get(key string) (string, error) {
+func (s *Store) Get(key string) Response {
+	fmt.Println("Stroe Get")
 	key = path.Clean(key)
 
 	value, ok := s.Nodes[key]
 
 	if ok {
-		return value, nil
+		return Response{value, true}
 	} else {
-		return "", errors.New("Key does not exist")
+		return Response{"", false}
 	}
 }
 
 // delete the key, return the old value if the key exists
-func (s *Store) Delete(key string) (string, error) {
+func (s *Store) Delete(key string) Response {
 	key = path.Clean(key)
 
 	oldValue, ok := s.Nodes[key]
@@ -74,9 +81,9 @@ func (s *Store) Delete(key string) (string, error) {
 
 		w.notify(DELETE, key, oldValue, "")
 
-		return oldValue, nil
+		return Response{oldValue, true}
 	} else {
-		return "", errors.New("Key does not exist")
+		return Response{"", false}
 	}
 }
 

@@ -1,4 +1,4 @@
-package raftd
+package main
 
 import (
 	"testing"
