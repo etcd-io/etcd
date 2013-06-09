@@ -130,7 +130,7 @@ func main() {
     // external commands
     r.HandleFunc("/set/{key}", SetHttpHandler).Methods("POST")
     r.HandleFunc("/get/{key}", GetHttpHandler).Methods("GET")
-    //r.HandleFunc("/delete/{key}", DeleteHttpHandler).Methods("GET")
+    r.HandleFunc("/delete/{key}", DeleteHttpHandler).Methods("GET")
 
     http.Handle("/", r)
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", info.Port), nil))

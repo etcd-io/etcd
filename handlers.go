@@ -118,6 +118,18 @@ func GetHttpHandler(w http.ResponseWriter, req *http.Request) {
 
 }
 
+func DeleteHttpHandler(w http.ResponseWriter, req *http.Request) {
+	vars := mux.Vars(req)
+
+	debug("[recv] GET http://%v/delete/%s", server.Name(), vars["key"])
+
+	command := &DeleteCommand{}
+	command.Key = vars["key"]
+
+	Dispatch(server, command, w)
+
+}
+
 
 func Dispatch(server *raft.Server, command Command, w http.ResponseWriter) {
 	var body []byte
