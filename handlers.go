@@ -132,6 +132,18 @@ func DeleteHttpHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 
+func WatchHttpHandler(w http.ResponseWriter, req *http.Request) {
+	vars := mux.Vars(req)
+
+	debug("[recv] GET http://%v/watch/%s", server.Name(), vars["key"])
+
+	command := &WatchCommand{}
+	command.Key = vars["key"]
+
+	Dispatch(server, command, w)
+
+}
+
 func Dispatch(server *raft.Server, command Command, w http.ResponseWriter) {
 	var body []byte
 	var err error
@@ -142,15 +154,29 @@ func Dispatch(server *raft.Server, command Command, w http.ResponseWriter) {
 	for {
 		// i am the leader, i will take care of the command
 		if server.State() == "leader" {
-			fmt.Println("i am leader ", server.Name())
-			if body, err = server.Do(command); err != nil {
-				warn("raftd: Unable to write file: %v", err)
-				w.WriteHeader(http.StatusInternalServerError)
-			} else {
+			if command.Sensitive() {
+				if body, err = server.Do(command); err != nil {
+					warn("raftd: Unable to write file: %v", err)
+					w.WriteHeader(http.StatusInternalServerError)
+					return
+				} else {
 				// good to go
-				w.WriteHeader(http.StatusOK)
-				w.Write(body)
-				return
+					w.WriteHeader(http.StatusOK)
+					w.Write(body)
+					return
+				}
+			} else {
+				fmt.Println("non-sensitive")
+				if body, err = command.Apply(server); err != nil {
+					warn("raftd: Unable to write file: %v", err)
+					w.WriteHeader(http.StatusInternalServerError)
+					return
+				} else {
+				// good to go
+					w.WriteHeader(http.StatusOK)
+					w.Write(body)
+					return
+				}
 			}
 
 		// redirect the command to the current leader

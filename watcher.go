@@ -8,14 +8,7 @@ import (
 
 
 type Watcher struct {
-	chanMap map[string][]chan Notification
-}
-
-type Notification struct {
-	action int 
-	key	string
-	oldValue string
-	newValue string
+	chanMap map[string][]chan Response
 }
 
 // global watcher
@@ -29,19 +22,19 @@ func init() {
 // create a new watcher
 func createWatcher() *Watcher {
 	w := new(Watcher)
-	w.chanMap = make(map[string][]chan Notification)
+	w.chanMap = make(map[string][]chan Response)
 	return w
 }
 
 // register a function with channel and prefix to the watcher
-func (w *Watcher) add(prefix string, c chan Notification, f func(chan Notification)) error {
+func (w *Watcher) add(prefix string, c chan Response) error {
 
-	prefix = path.Clean(prefix)
+	prefix = "/" + path.Clean(prefix)
 	fmt.Println("Add ", prefix)
 
 	_, ok := w.chanMap[prefix]
 	if !ok {
-		w.chanMap[prefix] = make([]chan Notification, 0)
+		w.chanMap[prefix] = make([]chan Response, 0)
 		w.chanMap[prefix] = append(w.chanMap[prefix], c)
 	} else {
 		w.chanMap[prefix] = append(w.chanMap[prefix], c)
@@ -49,14 +42,13 @@ func (w *Watcher) add(prefix string, c chan Notification, f func(chan Notificati
 
 	fmt.Println(len(w.chanMap[prefix]), "@", prefix)
 
-	go f(c)
 	return nil
 }
 
 // notify the watcher a action happened
-func (w *Watcher) notify(action int, key string, oldValue string, newValue string) error {
+func (w *Watcher) notify(action int, key string, oldValue string, newValue string, exist bool) error {
 	key = path.Clean(key)
-
+	fmt.Println("notify")
 	segments := strings.Split(key, "/")
 
 	currPath := "/"
@@ -73,7 +65,7 @@ func (w *Watcher) notify(action int, key string, oldValue string, newValue strin
 		if ok {
 			fmt.Println("found ", currPath)
 
-			n := Notification {action, key, oldValue, newValue}
+			n := Response {action, key, oldValue, newValue, exist}
 			// notify all the watchers
 			for _, c := range chans {
 				c <- n

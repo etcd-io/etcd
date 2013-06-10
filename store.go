@@ -3,13 +3,14 @@ package main
 import (
 	"path"
 	"encoding/json"
-	"fmt"
+	//"fmt"
 	)
 
 // CONSTANTS
 const (
-	ERROR = -(1 + iota)
+	ERROR = -1 + iota
 	SET 
+	GET
 	DELETE
 )
 
@@ -18,7 +19,10 @@ type Store struct {
 }
 
 type Response struct {
-	OldValue string `json:oldvalue`
+	Action	 int    `json:action`
+	Key      string `json:key`
+	OldValue string `json:oldValue`
+	NewValue string `json:newValue`
 	Exist 	 bool `json:exist`
 }
 
@@ -39,34 +43,32 @@ func createStore() *Store{
 
 // set the key to value, return the old value if the key exists 
 func (s *Store) Set(key string, value string) Response {
-	fmt.Println("Store SET")
 	key = path.Clean(key)
 
 	oldValue, ok := s.Nodes[key]
 
 	if ok {
 		s.Nodes[key] = value
-		w.notify(SET, key, oldValue, value)
-		return Response{oldValue, true}
+		w.notify(SET, key, oldValue, value, true)
+		return Response{SET, key, oldValue, value, true}
 
 	} else {
 		s.Nodes[key] = value
-		w.notify(SET, key, "", value)
-		return Response{"", false}
+		w.notify(SET, key, "", value, false)
+		return Response{SET, key, "", value, false}
 	}
 }
 
 // get the value of the key
 func (s *Store) Get(key string) Response {
-	fmt.Println("Stroe Get")
 	key = path.Clean(key)
 
 	value, ok := s.Nodes[key]
 
 	if ok {
-		return Response{value, true}
+		return Response{GET, key, value, value, true}
 	} else {
-		return Response{"", false}
+		return Response{GET, key, "", value, false}
 	}
 }
 
@@ -79,11 +81,11 @@ func (s *Store) Delete(key string) Response {
 	if ok {
 		delete(s.Nodes, key)
 
-		w.notify(DELETE, key, oldValue, "")
+		w.notify(DELETE, key, oldValue, "", true)
 
-		return Response{oldValue, true}
+		return Response{DELETE, key, oldValue, "", true}
 	} else {
-		return Response{"", false}
+		return Response{DELETE, key, "", "", false}
 	}
 }
 

@@ -19,6 +19,7 @@ type Command interface {
 	Type() string
 	GetValue() string
 	GetKey() string
+	Sensitive() bool
 }
 
 // Set command
@@ -38,20 +39,24 @@ func (c *SetCommand) Apply(server *raft.Server) ([]byte, error) {
 	return json.Marshal(res)
 }
 
-func (c *SetCommand) GeneratePath() string{
+func (c *SetCommand) GeneratePath() string {
 	return "/set/" + c.Key
 }
 
-func (c *SetCommand) Type() string{
+func (c *SetCommand) Type() string {
 	return "POST"
 }
 
-func (c *SetCommand) GetValue() string{
+func (c *SetCommand) GetValue() string {
 	return c.Value
 }
 
-func (c *SetCommand) GetKey() string{
+func (c *SetCommand) GetKey() string {
 	return c.Key
+}
+
+func (c *SetCommand) Sensitive() bool {
+	return true
 }
 
 
@@ -87,6 +92,9 @@ func (c *GetCommand) GetKey() string{
 	return c.Key
 }
 
+func (c *GetCommand) Sensitive() bool {
+	return false
+}
 
 // Delete command
 type DeleteCommand struct {
@@ -98,7 +106,7 @@ func (c *DeleteCommand) CommandName() string {
 	return "delete"
 }
 
-// Set the value of key to value
+// Delete the key 
 func (c *DeleteCommand) Apply(server *raft.Server) ([]byte, error){
 	res := s.Delete(c.Key)
 	return json.Marshal(res)
@@ -120,7 +128,52 @@ func (c *DeleteCommand) GetKey() string{
 	return c.Key
 }
 
-// joinCommand
+func (c *DeleteCommand) Sensitive() bool {
+	return true
+}
+
+
+// Watch command
+type WatchCommand struct {
+	Key string `json:"key"`
+}
+
+//The name of the command in the log
+func (c *WatchCommand) CommandName() string {
+	return "watch"
+}
+
+func (c *WatchCommand) Apply(server *raft.Server) ([]byte, error){
+	ch := make(chan Response)
+
+	w.add(c.Key, ch)	
+
+	res := <- ch
+
+	return json.Marshal(res)
+}
+
+func (c *WatchCommand) GeneratePath() string{
+	return "/watch/" + c.Key
+}
+
+func (c *WatchCommand) Type() string{
+	return "GET"
+}
+
+func (c *WatchCommand) GetValue() string{
+	return ""
+}
+
+func (c *WatchCommand) GetKey() string{
+	return c.Key
+}
+
+func (c *WatchCommand) Sensitive() bool {
+	return false
+}
+
+// JoinCommand
 type JoinCommand struct {
 	Name string `json:"name"`
 }
