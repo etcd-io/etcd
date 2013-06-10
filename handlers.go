@@ -25,7 +25,7 @@ func GetLogHttpHandler(w http.ResponseWriter, req *http.Request) {
 
 func JoinHttpHandler(w http.ResponseWriter, req *http.Request) {
 	debug("[recv] POST http://%v/join", server.Name())
-	command := &joinCommand{}
+	command := &JoinCommand{}
 	if err := decodeJsonRequest(req, command); err == nil {
 		if _, err= server.Do(command); err != nil {
 			warn("raftd: Unable to join: %v", err)
@@ -58,6 +58,7 @@ func AppendEntriesHttpHandler(w http.ResponseWriter, req *http.Request) {
 	err := decodeJsonRequest(req, aereq)
 	if err == nil {
 		debug("[recv] POST http://%s/log/append [%d]", server.Name(), len(aereq.Entries))
+		debug("My role is %s", server.State())
 		if resp, _ := server.AppendEntries(aereq); resp != nil {
 			w.WriteHeader(http.StatusOK)
 			json.NewEncoder(w).Encode(resp)
@@ -134,10 +135,14 @@ func DeleteHttpHandler(w http.ResponseWriter, req *http.Request) {
 func Dispatch(server *raft.Server, command Command, w http.ResponseWriter) {
 	var body []byte
 	var err error
+
+
+	fmt.Println("dispatch")
 	// unlikely to fail twice
 	for {
 		// i am the leader, i will take care of the command
 		if server.State() == "leader" {
+			fmt.Println("i am leader ", server.Name())
 			if body, err = server.Do(command); err != nil {
 				warn("raftd: Unable to write file: %v", err)
 				w.WriteHeader(http.StatusInternalServerError)
@@ -157,6 +162,8 @@ func Dispatch(server *raft.Server, command Command, w http.ResponseWriter) {
 				continue
 			} 
 
+			fmt.Println("forward to ", leaderName)
+
 			path := command.GeneratePath()
 
 			if command.Type() == "POST" {
@@ -167,7 +174,8 @@ func Dispatch(server *raft.Server, command Command, w http.ResponseWriter) {
 				reps, _ := http.Post(fmt.Sprintf("http://%v/%s", 
 					leaderName, command.GeneratePath()), "application/json", reader)
 
-				reps.Body.Read(body)
+				body, _ := ioutil.ReadAll(reps.Body)
+				fmt.Println(body)
 				// good to go
 				w.WriteHeader(http.StatusOK)
 
@@ -179,7 +187,8 @@ func Dispatch(server *raft.Server, command Command, w http.ResponseWriter) {
 				reps, _ := http.Get(fmt.Sprintf("http://%v/%s", 
 					leaderName, command.GeneratePath()))
 				// good to go
-				reps.Body.Read(body)
+				body, _ := ioutil.ReadAll(reps.Body)
+				fmt.Println(body)
 
 				w.WriteHeader(http.StatusOK)
 				

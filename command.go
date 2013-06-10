@@ -121,15 +121,15 @@ func (c *DeleteCommand) GetKey() string{
 }
 
 // joinCommand
-type joinCommand struct {
+type JoinCommand struct {
 	Name string `json:"name"`
 }
 
-func (c *joinCommand) CommandName() string {
+func (c *JoinCommand) CommandName() string {
 	return "join"
 }
 
-func (c *joinCommand) Apply(server *raft.Server) ([]byte, error) {
+func (c *JoinCommand) Apply(server *raft.Server) ([]byte, error) {
 	err := server.AddPeer(c.Name)
 	return nil, err
 }
