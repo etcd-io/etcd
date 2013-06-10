@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"encoding/json"
 	"fmt"
-	"github.com/gorilla/mux"
 	"io/ioutil"
 	"bytes"
 	)
@@ -88,9 +87,9 @@ func SnapshotHttpHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 func SetHttpHandler(w http.ResponseWriter, req *http.Request) {
-	vars := mux.Vars(req)
+	key := req.URL.Path[len("/set/"):]
 
-	debug("[recv] POST http://%v/set/%s", server.Name(), vars["key"])
+	debug("[recv] POST http://%v/set/%s", server.Name(), key)
 
 	content, err := ioutil.ReadAll(req.Body)
 	if err != nil {
@@ -100,7 +99,7 @@ func SetHttpHandler(w http.ResponseWriter, req *http.Request) {
 	}
 
 	command := &SetCommand{}
-	command.Key = vars["key"]
+	command.Key = key
 	command.Value = string(content)
 
 	Dispatch(server, command, w)
@@ -108,24 +107,24 @@ func SetHttpHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 func GetHttpHandler(w http.ResponseWriter, req *http.Request) {
-	vars := mux.Vars(req)
+	key := req.URL.Path[len("/get/"):]
 
-	debug("[recv] GET http://%v/get/%s", server.Name(), vars["key"])
+	debug("[recv] GET http://%v/get/%s", server.Name(), key)
 
 	command := &GetCommand{}
-	command.Key = vars["key"]
+	command.Key = key
 
 	Dispatch(server, command, w)
 
 }
 
 func DeleteHttpHandler(w http.ResponseWriter, req *http.Request) {
-	vars := mux.Vars(req)
+	key := req.URL.Path[len("/delete/"):]
 
-	debug("[recv] GET http://%v/delete/%s", server.Name(), vars["key"])
+	debug("[recv] GET http://%v/delete/%s", server.Name(), key)
 
 	command := &DeleteCommand{}
-	command.Key = vars["key"]
+	command.Key = key
 
 	Dispatch(server, command, w)
 
@@ -133,12 +132,12 @@ func DeleteHttpHandler(w http.ResponseWriter, req *http.Request) {
 
 
 func WatchHttpHandler(w http.ResponseWriter, req *http.Request) {
-	vars := mux.Vars(req)
+	key := req.URL.Path[len("/watch/"):]
 
-	debug("[recv] GET http://%v/watch/%s", server.Name(), vars["key"])
+	debug("[recv] GET http://%v/watch/%s", server.Name(), key)
 
 	command := &WatchCommand{}
-	command.Key = vars["key"]
+	command.Key = key
 
 	Dispatch(server, command, w)
 

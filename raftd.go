@@ -6,7 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/benbjohnson/go-raft"
-	"github.com/gorilla/mux"
+	//"github.com/gorilla/mux"
 	"log"
 	"io"
 	"io/ioutil"
@@ -125,22 +125,25 @@ func main() {
 	//go server.Snapshot()
 	
 	// Create HTTP interface.
-    r := mux.NewRouter()
+    //r := mux.NewRouter()
 
     // internal commands
-    r.HandleFunc("/join", JoinHttpHandler).Methods("POST")
-    r.HandleFunc("/vote", VoteHttpHandler).Methods("POST")
-    r.HandleFunc("/log", GetLogHttpHandler).Methods("GET")
-    r.HandleFunc("/log/append", AppendEntriesHttpHandler).Methods("POST")
-    r.HandleFunc("/snapshot", SnapshotHttpHandler).Methods("POST")
+    http.HandleFunc("/join", JoinHttpHandler)
+    http.HandleFunc("/vote", VoteHttpHandler)
+    http.HandleFunc("/log", GetLogHttpHandler)
+    http.HandleFunc("/log/append", AppendEntriesHttpHandler)
+    http.HandleFunc("/snapshot", SnapshotHttpHandler)
 
     // external commands
-    r.HandleFunc("/set/{key}", SetHttpHandler).Methods("POST")
-    r.HandleFunc("/get/{key}", GetHttpHandler).Methods("GET")
-    r.HandleFunc("/delete/{key}", DeleteHttpHandler).Methods("GET")
-    r.HandleFunc("/watch/{key}", WatchHttpHandler).Methods("GET")
+    http.HandleFunc("/set/", SetHttpHandler)
+    //r.HandleFunc("/get/{key}", GetHttpHandler).Methods("GET")
+    http.HandleFunc("/delete/", DeleteHttpHandler)
+    http.HandleFunc("/watch/", WatchHttpHandler)
 
-    http.Handle("/", r)
+    //http.Handle("/", r)
+
+    http.HandleFunc("/get/", GetHttpHandler)
+
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", info.Port), nil))
 }
 
