@@ -109,23 +109,31 @@ func main() {
 		fmt.Println("3 join as ", server.State(), " term ",  server.Term())
 		if leaderHost == "" {
 			fmt.Println("init")
-			server.SetElectionTimeout(1 * time.Second)
+			server.SetElectionTimeout(10 * time.Second)
 			server.SetHeartbeatTimeout(1 * time.Second)
 			server.StartLeader()
+			// join self 
+
+			command := &JoinCommand{}
+			command.Name = server.Name()
+
+			server.Do(command)
 		} else {
-			server.SetElectionTimeout(1 * time.Second)
+			server.SetElectionTimeout(10 * time.Second)
 			server.SetHeartbeatTimeout(1 * time.Second)
 			server.StartFollower()
 			fmt.Println("4 join as ", server.State(), " term ",  server.Term())
 			Join(server, leaderHost)
 			fmt.Println("success join")
 		}
+	} else {
+		server.SetElectionTimeout(10 * time.Second)
+		server.SetHeartbeatTimeout(1 * time.Second)
+		server.StartFollower()
 	}
+
 	// open snapshot
 	//go server.Snapshot()
-	
-	// Create HTTP interface.
-    //r := mux.NewRouter()
 
     // internal commands
     http.HandleFunc("/join", JoinHttpHandler)
@@ -136,13 +144,9 @@ func main() {
 
     // external commands
     http.HandleFunc("/set/", SetHttpHandler)
-    //r.HandleFunc("/get/{key}", GetHttpHandler).Methods("GET")
+    http.HandleFunc("/get/", GetHttpHandler)
     http.HandleFunc("/delete/", DeleteHttpHandler)
     http.HandleFunc("/watch/", WatchHttpHandler)
-
-    //http.Handle("/", r)
-
-    http.HandleFunc("/get/", GetHttpHandler)
 
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", info.Port), nil))
 }
