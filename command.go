@@ -40,7 +40,7 @@ func (c *SetCommand) Apply(server *raft.Server) ([]byte, error) {
 }
 
 func (c *SetCommand) GeneratePath() string {
-	return "/set/" + c.Key
+	return "set/" + c.Key
 }
 
 func (c *SetCommand) Type() string {
@@ -77,7 +77,7 @@ func (c *GetCommand) Apply(server *raft.Server) ([]byte, error){
 }
 
 func (c *GetCommand) GeneratePath() string{
-	return "/get/" + c.Key
+	return "get/" + c.Key
 }
 
 func (c *GetCommand) Type() string{
@@ -113,7 +113,7 @@ func (c *DeleteCommand) Apply(server *raft.Server) ([]byte, error){
 }
 
 func (c *DeleteCommand) GeneratePath() string{
-	return "/delete/" + c.Key
+	return "delete/" + c.Key
 }
 
 func (c *DeleteCommand) Type() string{
@@ -154,7 +154,7 @@ func (c *WatchCommand) Apply(server *raft.Server) ([]byte, error){
 }
 
 func (c *WatchCommand) GeneratePath() string{
-	return "/watch/" + c.Key
+	return "watch/" + c.Key
 }
 
 func (c *WatchCommand) Type() string{

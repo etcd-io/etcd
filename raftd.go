@@ -6,7 +6,6 @@ import (
 	"flag"
 	"fmt"
 	"github.com/benbjohnson/go-raft"
-	//"github.com/gorilla/mux"
 	"log"
 	"io"
 	"io/ioutil"
@@ -112,8 +111,8 @@ func main() {
 			server.SetElectionTimeout(10 * time.Second)
 			server.SetHeartbeatTimeout(1 * time.Second)
 			server.StartLeader()
-			// join self 
 
+			// join self 
 			command := &JoinCommand{}
 			command.Name = server.Name()
 
