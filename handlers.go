@@ -188,7 +188,8 @@ func Dispatch(server *raft.Server, command Command, w http.ResponseWriter) {
 
 			if leaderName =="" {
 				// no luckey, during the voting process
-				continue
+				w.WriteHeader(http.StatusInternalServerError)
+				return
 			} 
 
 			fmt.Println("forward to ", leaderName)

@@ -91,11 +91,13 @@ func main() {
 	t := transHandler{}
 
 	// Setup new raft server.
-	server, err = raft.NewServer(name, path, t, nil)
+	server, err = raft.NewServer(name, path, t, s, nil)
 	//server.DoHandler = DoHandler;
 	if err != nil {
 		fatal("%v", err)
 	}
+
+	server.LoadSnapshot()
 	server.Initialize()
 	fmt.Println("1 join as ", server.State(), " term ",  server.Term())
 	// Join to another server if we don't have a log.
@@ -108,29 +110,38 @@ func main() {
 		fmt.Println("3 join as ", server.State(), " term ",  server.Term())
 		if leaderHost == "" {
 			fmt.Println("init")
-			server.SetElectionTimeout(10 * time.Second)
+			//server.SetElectionTimeout(300 * time.Millisecond)
+			//server.SetHeartbeatTimeout(100 * time.Millisecond)
+			server.SetElectionTimeout(3 * time.Second)
 			server.SetHeartbeatTimeout(1 * time.Second)
+			server.StartHeartbeatTimeout()
 			server.StartLeader()
-
 			// join self 
 			command := &JoinCommand{}
 			command.Name = server.Name()
 
 			server.Do(command)
 		} else {
-			server.SetElectionTimeout(10 * time.Second)
+			//server.SetElectionTimeout(300 * time.Millisecond)
+			//server.SetHeartbeatTimeout(100 * time.Millisecond)
+			server.SetElectionTimeout(3 * time.Second)
 			server.SetHeartbeatTimeout(1 * time.Second)
+			server.StartElectionTimeout()
 			server.StartFollower()
+
 			fmt.Println("4 join as ", server.State(), " term ",  server.Term())
 			Join(server, leaderHost)
 			fmt.Println("success join")
 		}
 	} else {
-		server.SetElectionTimeout(10 * time.Second)
+		//server.SetElectionTimeout(300 * time.Millisecond)
+		//server.SetHeartbeatTimeout(100 * time.Millisecond)
+		server.SetElectionTimeout(3 * time.Second)
 		server.SetHeartbeatTimeout(1 * time.Second)
+		server.StartElectionTimeout()
 		server.StartFollower()
 	}
-
+	go server.Snapshot()
 	// open snapshot
 	//go server.Snapshot()
 
