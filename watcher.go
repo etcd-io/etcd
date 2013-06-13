@@ -3,7 +3,6 @@ package main
 import (
 	"path"
 	"strings"
-	"fmt"
 	)
 
 
@@ -30,7 +29,7 @@ func createWatcher() *Watcher {
 func (w *Watcher) add(prefix string, c chan Response) error {
 
 	prefix = "/" + path.Clean(prefix)
-	fmt.Println("Add ", prefix)
+	debug("Add a watche at ", prefix)
 
 	_, ok := w.chanMap[prefix]
 	if !ok {
@@ -40,15 +39,12 @@ func (w *Watcher) add(prefix string, c chan Response) error {
 		w.chanMap[prefix] = append(w.chanMap[prefix], c)
 	}
 
-	fmt.Println(len(w.chanMap[prefix]), "@", prefix)
-
 	return nil
 }
 
 // notify the watcher a action happened
 func (w *Watcher) notify(action int, key string, oldValue string, newValue string, exist bool) error {
 	key = path.Clean(key)
-	fmt.Println("notify")
 	segments := strings.Split(key, "/")
 
 	currPath := "/"
@@ -58,19 +54,18 @@ func (w *Watcher) notify(action int, key string, oldValue string, newValue strin
 
 		currPath := path.Join(currPath, segment)
 
-		fmt.Println(currPath)
-
 		chans, ok := w.chanMap[currPath]
 
 		if ok {
-			fmt.Println("found ", currPath)
+			debug("Notify at ", currPath)
 
 			n := Response {action, key, oldValue, newValue, exist}
+
 			// notify all the watchers
 			for _, c := range chans {
 				c <- n
 			}
-
+			
 			// we have notified all the watchers at this path
 			// delete the map
 			delete(w.chanMap, currPath)

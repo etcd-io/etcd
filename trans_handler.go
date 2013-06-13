@@ -64,6 +64,5 @@ func (t transHandler) SendSnapshotRequest(server *raft.Server, peer *raft.Peer, 
 			return aersp, nil
 		}
 	}
-	fmt.Println("error send snapshot")
 	return aersp, fmt.Errorf("raftd: Unable to send snapshot: %v", err)
 }

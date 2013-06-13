@@ -9,12 +9,12 @@ import (
 	"bytes"
 	)
 
+
 //--------------------------------------
 // HTTP Handlers
 //--------------------------------------
 
-
-
+// Get all the current logs
 func GetLogHttpHandler(w http.ResponseWriter, req *http.Request) {
 	debug("[recv] GET http://%v/log", server.Name())
 	w.Header().Set("Content-Type", "application/json")
@@ -33,6 +33,7 @@ func VoteHttpHandler(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 	}
+	warn("[vote] ERROR: %v", err)
 	w.WriteHeader(http.StatusInternalServerError)
 }
 
@@ -41,19 +42,16 @@ func AppendEntriesHttpHandler(w http.ResponseWriter, req *http.Request) {
 	err := decodeJsonRequest(req, aereq)
 	if err == nil {
 		debug("[recv] POST http://%s/log/append [%d]", server.Name(), len(aereq.Entries))
-		debug("My role is %s", server.State())
 		if resp, _ := server.AppendEntries(aereq); resp != nil {
-			debug("write back success")
 			w.WriteHeader(http.StatusOK)
 			json.NewEncoder(w).Encode(resp)
 			if !resp.Success {
-				fmt.Println("append error")
+				debug("[Append Entry] Step back")
 			}
 			return
 		}
 	}
 	warn("[append] ERROR: %v", err)
-	debug("write back")
 	w.WriteHeader(http.StatusInternalServerError)
 }
 
@@ -96,6 +94,7 @@ func SetHttpHandler(w http.ResponseWriter, req *http.Request) {
 	debug("[recv] POST http://%v/set/%s", server.Name(), key)
 
 	content, err := ioutil.ReadAll(req.Body)
+
 	if err != nil {
 		warn("raftd: Unable to read: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -107,7 +106,6 @@ func SetHttpHandler(w http.ResponseWriter, req *http.Request) {
 	command.Value = string(content)
 
 	Dispatch(server, command, w)
-
 }
 
 func GetHttpHandler(w http.ResponseWriter, req *http.Request) {
@@ -131,7 +129,6 @@ func DeleteHttpHandler(w http.ResponseWriter, req *http.Request) {
 	command.Key = key
 
 	Dispatch(server, command, w)
-
 }
 
 
@@ -151,91 +148,94 @@ func Dispatch(server *raft.Server, command Command, w http.ResponseWriter) {
 	var body []byte
 	var err error
 
+	debug("Dispatch command")
 
-	fmt.Println("dispatch")
-	// unlikely to fail twice
-	for {
-		// i am the leader, i will take care of the command
-		if server.State() == "leader" {
-			if command.Sensitive() {
-				if body, err = server.Do(command); err != nil {
-					warn("raftd: Unable to write file: %v", err)
-					w.WriteHeader(http.StatusInternalServerError)
-					return
-				} else {
-				// good to go
-					w.WriteHeader(http.StatusOK)
-					w.Write(body)
-					return
-				}
-			} else {
-				fmt.Println("non-sensitive")
-				if body, err = command.Apply(server); err != nil {
-					warn("raftd: Unable to write file: %v", err)
-					w.WriteHeader(http.StatusInternalServerError)
-					return
-				} else {
-				// good to go
-					w.WriteHeader(http.StatusOK)
-					w.Write(body)
-					return
-				}
-			}
-
-		// redirect the command to the current leader
-		} else {
-			leaderName := server.Leader()
-
-			if leaderName =="" {
-				// no luckey, during the voting process
+	// i am the leader, i will take care of the command
+	if server.State() == "leader" {
+		// if the command will change the state of the state machine
+		// the command need to append to the log entry
+		if command.Sensitive() {
+			if body, err = server.Do(command); err != nil {
+				warn("raftd: Unable to write file: %v", err)
 				w.WriteHeader(http.StatusInternalServerError)
 				return
-			} 
-
-			fmt.Println("forward to ", leaderName)
-
-			path := command.GeneratePath()
-
-			if command.Type() == "POST" {
-				debug("[send] POST http://%v/%s", leaderName, path)
-
-				reader := bytes.NewReader([]byte(command.GetValue()))
-
-				reps, _ := http.Post(fmt.Sprintf("http://%v/%s", 
-					leaderName, command.GeneratePath()), "application/json", reader)
-
-				body, _ := ioutil.ReadAll(reps.Body)
-				fmt.Println(body)
+			} else {
 				// good to go
 				w.WriteHeader(http.StatusOK)
-
 				w.Write(body)
+				return
+			}
+		// for non-sentitive command, directly apply it 
+		} else {
+			if body, err = command.Apply(server); err != nil {
+				warn("raftd: Unable to write file: %v", err)
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			} else {
+				w.WriteHeader(http.StatusOK)
+				w.Write(body)
+				return
+			}
+		}
+
+	// redirect the command to the current leader
+	} else {
+		leaderName := server.Leader()
+
+		if leaderName =="" {
+			// no luckey, during the voting process
+			// the client need to catch the error and try again
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		} 
+
+		debug("forward command to %s", leaderName)
+
+		path := command.GeneratePath()
+
+		if command.Type() == "POST" {
+			debug("[send] POST http://%v/%s", leaderName, path)
+
+			reader := bytes.NewReader([]byte(command.GetValue()))
+
+			reps, _ := http.Post(fmt.Sprintf("http://%v/%s", 
+				leaderName, command.GeneratePath()), "application/json", reader)
+
+			if reps == nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				return 
+			}
+
+			// forwarding
+			w.WriteHeader(reps.StatusCode)
+
+			body, _ := ioutil.ReadAll(reps.Body)
+
+			w.Write(body)
+			return 
 
 			} else if command.Type() == "GET" {
 				debug("[send] GET http://%v/%s", leaderName, path)
 
 				reps, _ := http.Get(fmt.Sprintf("http://%v/%s", 
 					leaderName, command.GeneratePath()))
-				// good to go
-				body, _ := ioutil.ReadAll(reps.Body)
-				fmt.Println(body)
 
-				w.WriteHeader(http.StatusOK)
-				
+
+				if reps == nil {
+					w.WriteHeader(http.StatusInternalServerError)
+					return 
+				}
+
+				// forwarding
+				body, _ := ioutil.ReadAll(reps.Body)
+
+				w.WriteHeader(reps.StatusCode)
+
 				w.Write(body)
 
 			} else {
-				//unsupported type
-			}
-
-			if err != nil {
-				// should check other errors
-				continue
-			} else {
-				//good to go
-				return
+			//unsupported type
 			}
 
 		}
-	}
 }

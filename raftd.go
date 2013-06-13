@@ -13,6 +13,7 @@ import (
 	"strings"
 	"os"
 	"time"
+	"strconv"
 )
 
 //------------------------------------------------------------------------------
@@ -22,11 +23,21 @@ import (
 //------------------------------------------------------------------------------
 
 var verbose bool
+var leaderHost string
+var address string
 
 func init() {
 	flag.BoolVar(&verbose, "v", false, "verbose logging")
-	flag.BoolVar(&verbose, "verbose", false, "verbose logging")
+	flag.StringVar(&leaderHost, "c", "", "join to a existing cluster")
+	flag.StringVar(&address, "a", "", "the address of the local machine")
 }
+
+const (
+	ELECTIONTIMTOUT = 3 * time.Second
+	HEARTBEATTIMEOUT = 1 * time.Second
+)
+
+
 
 //------------------------------------------------------------------------------
 //
@@ -62,9 +73,6 @@ func main() {
 	var err error
 	logger = log.New(os.Stdout, "", log.LstdFlags)
 	flag.Parse()
-	if verbose {
-		fmt.Println("Verbose logging enabled.\n")
-	}
 
 	// Setup commands.
 	raft.RegisterCommand(&JoinCommand{})
@@ -85,65 +93,54 @@ func main() {
 
 	// Read server info from file or grab it from user.
 	var info *Info = getInfo(path)
+
 	name := fmt.Sprintf("%s:%d", info.Host, info.Port)
+
 	fmt.Printf("Name: %s\n\n", name)
 	
 	t := transHandler{}
 
 	// Setup new raft server.
 	server, err = raft.NewServer(name, path, t, s, nil)
-	//server.DoHandler = DoHandler;
 	if err != nil {
 		fatal("%v", err)
 	}
 
 	server.LoadSnapshot()
 	server.Initialize()
-	fmt.Println("1 join as ", server.State(), " term ",  server.Term())
-	// Join to another server if we don't have a log.
+	server.SetElectionTimeout(ELECTIONTIMTOUT)
+	server.SetHeartbeatTimeout(HEARTBEATTIMEOUT)
+
 	if server.IsLogEmpty() {
-		var leaderHost string
-		fmt.Println("2 join as ", server.State(), " term ",  server.Term())
-		fmt.Println("This server has no log. Please enter a server in the cluster to join\nto or hit enter to initialize a cluster.");
-		fmt.Printf("Join to (host:port)> ");
-		fmt.Scanf("%s", &leaderHost)
-		fmt.Println("3 join as ", server.State(), " term ",  server.Term())
+
+		// start as a leader in a new cluster
 		if leaderHost == "" {
-			fmt.Println("init")
-			//server.SetElectionTimeout(300 * time.Millisecond)
-			//server.SetHeartbeatTimeout(100 * time.Millisecond)
-			server.SetElectionTimeout(3 * time.Second)
-			server.SetHeartbeatTimeout(1 * time.Second)
 			server.StartHeartbeatTimeout()
 			server.StartLeader()
-			// join self 
+
+			// join self as a peer
 			command := &JoinCommand{}
 			command.Name = server.Name()
-
 			server.Do(command)
+
+		// start as a fellower in a existing cluster
 		} else {
-			//server.SetElectionTimeout(300 * time.Millisecond)
-			//server.SetHeartbeatTimeout(100 * time.Millisecond)
-			server.SetElectionTimeout(3 * time.Second)
-			server.SetHeartbeatTimeout(1 * time.Second)
 			server.StartElectionTimeout()
 			server.StartFollower()
 
-			fmt.Println("4 join as ", server.State(), " term ",  server.Term())
 			Join(server, leaderHost)
 			fmt.Println("success join")
 		}
+
+	// rejoin the previous cluster
 	} else {
-		//server.SetElectionTimeout(300 * time.Millisecond)
-		//server.SetHeartbeatTimeout(100 * time.Millisecond)
-		server.SetElectionTimeout(3 * time.Second)
-		server.SetHeartbeatTimeout(1 * time.Second)
 		server.StartElectionTimeout()
 		server.StartFollower()
 	}
+
+	// open the snapshot
 	go server.Snapshot()
-	// open snapshot
-	//go server.Snapshot()
+	
 
     // internal commands
     http.HandleFunc("/join", JoinHttpHandler)
@@ -158,6 +155,7 @@ func main() {
     http.HandleFunc("/delete/", DeleteHttpHandler)
     http.HandleFunc("/watch/", WatchHttpHandler)
 
+    // listen on http port
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", info.Port), nil))
 }
 
@@ -186,17 +184,24 @@ func getInfo(path string) *Info {
 	
 	// Otherwise ask user for info and write it to file.
 	} else {
-		fmt.Printf("Enter hostname: [localhost] ");
-		fmt.Scanf("%s", &info.Host)
-		info.Host = strings.TrimSpace(info.Host)
-		if info.Host == "" {
-			info.Host = "localhost"
+		
+		if address == "" {
+			fatal("Please give the address of the local machine")
 		}
 
-		fmt.Printf("Enter port: [4001] ");
-		fmt.Scanf("%d", &info.Port)
-		if info.Port == 0 {
-			info.Port = 4001
+		input := strings.Split(address, ":")
+
+		if len(input) != 2 {
+			fatal("Wrong address %s", address)
+		}
+
+		info.Host = input[0]
+		info.Host = strings.TrimSpace(info.Host)
+		
+		info.Port, err = strconv.Atoi(input[1])
+		
+		if err != nil {
+			fatal("Wrong port %s", address)
 		}
 
 		// Write to file.
@@ -218,6 +223,7 @@ func getInfo(path string) *Info {
 // Send join requests to the leader.
 func Join(s *raft.Server, serverName string) error {
 	var b bytes.Buffer
+	
 	command := &JoinCommand{}
 	command.Name = s.Name()
 

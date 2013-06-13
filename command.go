@@ -10,16 +10,15 @@ import (
 	"encoding/json"
 	)
 
-
 // A command represents an action to be taken on the replicated state machine.
 type Command interface {
 	CommandName() string
 	Apply(server *raft.Server) ([]byte, error)
-	GeneratePath() string
-	Type() string
+	GeneratePath() string // Gererate a path for http request
+	Type() string // http request type
 	GetValue() string
 	GetKey() string
-	Sensitive() bool
+	Sensitive() bool // Sensitive to the stateMachine
 }
 
 // Set command
@@ -39,10 +38,12 @@ func (c *SetCommand) Apply(server *raft.Server) ([]byte, error) {
 	return json.Marshal(res)
 }
 
+// Get the path for http request
 func (c *SetCommand) GeneratePath() string {
 	return "set/" + c.Key
 }
 
+// Get the type for http request
 func (c *SetCommand) Type() string {
 	return "POST"
 }
@@ -96,6 +97,7 @@ func (c *GetCommand) Sensitive() bool {
 	return false
 }
 
+
 // Delete command
 type DeleteCommand struct {
 	Key string `json:"key"`
@@ -146,8 +148,10 @@ func (c *WatchCommand) CommandName() string {
 func (c *WatchCommand) Apply(server *raft.Server) ([]byte, error){
 	ch := make(chan Response)
 
+	// add to the watchers list
 	w.add(c.Key, ch)	
 
+	// wait for the notification for any changing
 	res := <- ch
 
 	return json.Marshal(res)
@@ -173,6 +177,7 @@ func (c *WatchCommand) Sensitive() bool {
 	return false
 }
 
+
 // JoinCommand
 type JoinCommand struct {
 	Name string `json:"name"`
@@ -184,5 +189,6 @@ func (c *JoinCommand) CommandName() string {
 
 func (c *JoinCommand) Apply(server *raft.Server) ([]byte, error) {
 	err := server.AddPeer(c.Name)
+	// no result will be returned
 	return nil, err
 }
