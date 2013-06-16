@@ -3,6 +3,8 @@ package main
 import (
 	"path"
 	"strings"
+	//"fmt"
+	"time"
 	)
 
 
@@ -46,20 +48,18 @@ func (w *Watcher) add(prefix string, c chan Response) error {
 func (w *Watcher) notify(action int, key string, oldValue string, newValue string, exist bool) error {
 	key = path.Clean(key)
 	segments := strings.Split(key, "/")
-
 	currPath := "/"
 
 	// walk through all the pathes
 	for _, segment := range segments {
-
-		currPath := path.Join(currPath, segment)
+		currPath = path.Join(currPath, segment)
 
 		chans, ok := w.chanMap[currPath]
 
 		if ok {
-			debug("Notify at ", currPath)
+			debug("Notify at %s", currPath)
 
-			n := Response {action, key, oldValue, newValue, exist}
+			n := Response {action, key, oldValue, newValue, exist, time.Unix(0, 0)}
 
 			// notify all the watchers
 			for _, c := range chans {

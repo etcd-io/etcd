@@ -3,23 +3,24 @@ package main
 import (
 	"testing"
 	"fmt"
+	"time"
 )
 
 func TestWatch(t *testing.T) {
 	// watcher := createWatcher()
-	c := make(chan Notification)
-	d := make(chan Notification)
+	c := make(chan Response)
+	d := make(chan Response)
 	w.add("/", c)
 	go say(c)
 	w.add("/prefix/", d)
 	go say(d)
-	s.Set("/prefix/foo", "bar")
+	s.Set("/prefix/foo", "bar", time.Unix(0, 0))
 }
 
-func say(c chan Notification) {
+func say(c chan Response) {
 	result := <-c
 
-	if result.action != -1 {
+	if result.Action != -1 {
 		fmt.Println("yes")
 	} else {
 		fmt.Println("no")

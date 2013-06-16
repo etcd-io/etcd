@@ -8,6 +8,7 @@ package main
 import (
 	"github.com/benbjohnson/go-raft"
 	"encoding/json"
+	"time"
 	)
 
 // A command represents an action to be taken on the replicated state machine.
@@ -34,7 +35,7 @@ func (c *SetCommand) CommandName() string {
 
 // Set the value of key to value
 func (c *SetCommand) Apply(server *raft.Server) ([]byte, error) {
-	res := s.Set(c.Key, c.Value)
+	res := s.Set(c.Key, c.Value, time.Unix(0, 0))
 	return json.Marshal(res)
 }
 
