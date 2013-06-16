@@ -26,6 +26,7 @@ type Command interface {
 type SetCommand struct {
 	Key string `json:"key"`
 	Value string `json:"value"`
+	ExpireTime time.Time `json:"expireTime"`
 }
 
 // The name of the command in the log
@@ -35,7 +36,7 @@ func (c *SetCommand) CommandName() string {
 
 // Set the value of key to value
 func (c *SetCommand) Apply(server *raft.Server) ([]byte, error) {
-	res := s.Set(c.Key, c.Value, time.Unix(0, 0))
+	res := s.Set(c.Key, c.Value, c.ExpireTime)
 	return json.Marshal(res)
 }
 

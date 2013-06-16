@@ -7,6 +7,9 @@ import (
 	"fmt"
 	"io/ioutil"
 	"bytes"
+	"time"
+	"strings"
+	"strconv"
 	)
 
 
@@ -103,7 +106,21 @@ func SetHttpHandler(w http.ResponseWriter, req *http.Request) {
 
 	command := &SetCommand{}
 	command.Key = key
-	command.Value = string(content)
+	values := strings.Split(string(content), " ")
+
+	command.Value = values[0]
+
+	if len(values) == 2 {
+		duration, err := strconv.Atoi(values[1])
+		if err != nil {
+			warn("raftd: Bad duration: %v", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return 
+		}
+		command.ExpireTime = time.Now().Add(time.Second * (time.Duration)(duration))
+	} else {
+		command.ExpireTime = time.Unix(0,0)
+	}
 
 	Dispatch(server, command, w)
 }

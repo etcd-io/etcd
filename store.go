@@ -82,7 +82,7 @@ func (s *Store) Set(key string, value string, expireTime time.Time) Response {
 			}
 		}
 
-		return Response{SET, key, node.Value, value, true, time.Unix(0, 0)}
+		return Response{SET, key, node.Value, value, true, expireTime}
 
 	} else {
 		update := make(chan time.Time)
