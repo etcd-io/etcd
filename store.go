@@ -20,9 +20,9 @@ type Store struct {
 }
 
 type Node struct {
-	Value string
-	ExpireTime time.Time
-	update chan time.Time
+	Value string	`json:"value"`
+	ExpireTime time.Time `json:"expireTime"`
+	update chan time.Time `json:"-"`
 }
 
 type Response struct {
@@ -151,6 +151,7 @@ func (s *Store) Delete(key string) Response {
 func (s *Store) Save() ([]byte, error) {
 	b, err := json.Marshal(s)
 	if err != nil {
+		fmt.Println(err)
 		return nil, err
 	}
 	return b, nil
@@ -159,5 +160,26 @@ func (s *Store) Save() ([]byte, error) {
 // recovery the state of the stroage system from a previous state
 func (s *Store) Recovery(state []byte) error {
 	err := json.Unmarshal(state, s)
+	s.clean()
 	return err
 }
+
+// clean all expired keys
+func (s *Store) clean() {
+	for key, node := range s.Nodes{
+		// stable node
+		if node.ExpireTime.Equal(time.Unix(0,0)) {
+			continue
+		} else {
+			if node.ExpireTime.Sub(time.Now()) >= time.Second {
+				node.update = make(chan time.Time)
+				go s.expire(key, node.update, node.ExpireTime)
+			} else {
+				// we should delete this node
+				delete(s.Nodes, key)
+			}
+		}
+
+	}
+}
+

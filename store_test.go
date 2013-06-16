@@ -27,7 +27,7 @@ func TestStoreGet(t *testing.T) {
 func TestSaveAndRecovery(t *testing.T) {
 
 	s.Set("foo", "bar", time.Unix(0, 0))
-
+	s.Set("foo2", "bar2", time.Now().Add(time.Second * 5))
 	state, err := s.Save()
 
 	if err != nil {
@@ -35,6 +35,10 @@ func TestSaveAndRecovery(t *testing.T) {
 	}
 
 	newStore := createStore()
+
+	// wait for foo2 expires
+	time.Sleep(time.Second * 6)
+
 	newStore.Recovery(state)
 
 	res := newStore.Get("foo")
@@ -42,6 +46,14 @@ func TestSaveAndRecovery(t *testing.T) {
 	if res.OldValue != "bar" {
 		t.Fatalf("Cannot recovery")
 	}
+
+	res = newStore.Get("foo2")
+
+	if res.Exist {
+		t.Fatalf("Get expired value")
+	}
+
+
 	s.Delete("foo")
 
 }
