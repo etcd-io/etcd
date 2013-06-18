@@ -38,8 +38,6 @@ func handler(w http.ResponseWriter, r *http.Request) {
         }
     }
 
-    time.Sleep(10 * time.Second)
-
 }
 
 var mainTempl = template.Must(template.ParseFiles("home.html"))

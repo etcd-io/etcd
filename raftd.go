@@ -28,6 +28,9 @@ var verbose bool
 var leaderHost string
 var address string
 var webPort int
+var cert string
+var key string
+var CAFile string
 
 func init() {
 	flag.BoolVar(&verbose, "v", false, "verbose logging")
@@ -62,6 +65,8 @@ type Info struct {
 
 var server *raft.Server
 var logger *log.Logger
+
+var storeMsg chan string
 
 //------------------------------------------------------------------------------
 //
@@ -106,7 +111,9 @@ func main() {
 
 	// Setup new raft server.
 	s := store.GetStore()
+
 	server, err = raft.NewServer(name, path, t, s, nil)
+
 	if err != nil {
 		fatal("%v", err)
 	}
@@ -168,9 +175,10 @@ func main() {
 
     if webPort != -1 {
     	// start web
-    	
+    	s.SetMessager(&storeMsg)
+    	go webHelper()
     	go web.Start(server, webPort)
-    }
+    } 
 
     // listen on http port
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", info.Port), nil))
@@ -254,6 +262,16 @@ func Join(s *raft.Server, serverName string) error {
 		}
 	}
 	return fmt.Errorf("raftd: Unable to join: %v", err)
+}
+//--------------------------------------
+// Web Helper
+//--------------------------------------
+
+func webHelper() {
+	storeMsg = make(chan string)
+	for {
+		web.Hub().Send(<-storeMsg)
+	}
 }
 
 

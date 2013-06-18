@@ -10,7 +10,6 @@ import (
 	"encoding/json"
 	"time"
 	"github.com/xiangli-cmu/raft-etcd/store"
-	"github.com/xiangli-cmu/raft-etcd/web"
 	)
 
 // A command represents an action to be taken on the replicated state machine.
@@ -38,12 +37,7 @@ func (c *SetCommand) CommandName() string {
 
 // Set the value of key to value
 func (c *SetCommand) Apply(server *raft.Server) ([]byte, error) {
-	res := store.Set(c.Key, c.Value, c.ExpireTime)
-	msg, err := json.Marshal(res)
-	if err == nil && web.HubOpen(){
-		web.Hub().Send(string(msg))
-	}
-	return msg, err
+	return store.Set(c.Key, c.Value, c.ExpireTime)
 }
 
 // Get the path for http request
@@ -118,15 +112,7 @@ func (c *DeleteCommand) CommandName() string {
 
 // Delete the key 
 func (c *DeleteCommand) Apply(server *raft.Server) ([]byte, error){
-	res := store.Delete(c.Key)
-
-	msg, err := json.Marshal(res)
-
-	if err == nil && web.HubOpen(){
-		web.Hub().Send(string(msg))
-	}
-	
-	return msg, err
+	return store.Delete(c.Key)
 }
 
 func (c *DeleteCommand) GeneratePath() string{

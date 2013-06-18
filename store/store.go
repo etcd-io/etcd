@@ -17,6 +17,7 @@ const (
 
 type Store struct {
 	Nodes map[string]Node  `json:"nodes"`
+	messager *chan string
 }
 
 type Node struct {
@@ -40,6 +41,7 @@ var s *Store
 
 func init() {
 	s = createStore()
+	s.messager = nil
 }
 
 // make a new stroe
@@ -53,8 +55,12 @@ func GetStore() *Store {
 	return s
 }
 
+func (s *Store)SetMessager(messager *chan string) {
+	s.messager = messager
+}	
+
 // set the key to value, return the old value if the key exists 
-func Set(key string, value string, expireTime time.Time) Response {
+func Set(key string, value string, expireTime time.Time) ([]byte, error) {
 
 	key = path.Clean(key)
 
@@ -75,12 +81,12 @@ func Set(key string, value string, expireTime time.Time) Response {
 		//update := make(chan time.Time)
 		//s.Nodes[key] = Node{value, expireTime, update}
 
-		node.ExpireTime = expireTime
-		node.Value = value
-		notify(SET, key, node.Value, value, true)
+		
+		
 		// if node is not permanent before 
 		// update its expireTime
 		if !node.ExpireTime.Equal(time.Unix(0,0)) {
+
 				node.update <- expireTime
 
 		} else {
@@ -94,21 +100,44 @@ func Set(key string, value string, expireTime time.Time) Response {
 			}
 		}
 
-		return Response{SET, key, node.Value, value, true, expireTime}
+		node.ExpireTime = expireTime
+
+		node.Value = value
+		notify(SET, key, node.Value, value, true)
+		
+		msg, err := json.Marshal(Response{SET, key, node.Value, value, true, expireTime})
+
+		// notify the web interface
+		if (s.messager != nil && err == nil) {
+
+			*s.messager <- string(msg)
+		} 
+
+		return msg, err
 
 	} else {
 
+		// add new node
 		update := make(chan time.Time)
 
 		s.Nodes[key] = Node{value, expireTime, update}
 
+		// nofity the watcher
 		notify(SET, key, "", value, false)
 
 		if isExpire {
 			go expire(key, update, expireTime)
 		}
-		
-		return Response{SET, key, "", value, false, time.Unix(0, 0)}
+
+		msg, err := json.Marshal(Response{SET, key, "", value, false, expireTime})
+
+		// notify the web interface
+		if (s.messager != nil && err == nil) {
+
+			*s.messager <- string(msg)
+		} 
+
+		return msg, err
 	}
 }
 
@@ -148,7 +177,7 @@ func Get(key string) Response {
 }
 
 // delete the key, return the old value if the key exists
-func Delete(key string) Response {
+func Delete(key string) ([]byte, error) {
 	key = path.Clean(key)
 
 	node, ok := s.Nodes[key]
@@ -158,9 +187,20 @@ func Delete(key string) Response {
 
 		notify(DELETE, key, node.Value, "", true)
 
-		return Response{DELETE, key, node.Value, "", true, node.ExpireTime}
+		msg, err := json.Marshal(Response{DELETE, key, node.Value, "", true, node.ExpireTime})
+
+		// notify the web interface
+		if (s.messager != nil && err == nil) {
+
+			*s.messager <- string(msg)
+		} 
+
+		return msg, err
+
 	} else {
-		return Response{DELETE, key, "", "", false, time.Unix(0, 0)}
+		// no notify to the watcher and web interface
+
+		return json.Marshal(Response{DELETE, key, "", "", false, time.Unix(0, 0)})
 	}
 }
 
