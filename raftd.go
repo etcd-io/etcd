@@ -14,6 +14,8 @@ import (
 	"os"
 	"time"
 	"strconv"
+	"github.com/xiangli-cmu/raft-etcd/web"
+	"github.com/xiangli-cmu/raft-etcd/store"
 )
 
 //------------------------------------------------------------------------------
@@ -25,11 +27,13 @@ import (
 var verbose bool
 var leaderHost string
 var address string
+var webPort int
 
 func init() {
 	flag.BoolVar(&verbose, "v", false, "verbose logging")
 	flag.StringVar(&leaderHost, "c", "", "join to a existing cluster")
 	flag.StringVar(&address, "a", "", "the address of the local machine")
+	flag.IntVar(&webPort, "w", -1, "the port of web interface")
 }
 
 const (
@@ -101,15 +105,19 @@ func main() {
 	t := transHandler{}
 
 	// Setup new raft server.
+	s := store.GetStore()
 	server, err = raft.NewServer(name, path, t, s, nil)
 	if err != nil {
 		fatal("%v", err)
 	}
 
 	server.LoadSnapshot()
+	debug("%s finished load snapshot", server.Name())
 	server.Initialize()
+	debug("%s finished init", server.Name())
 	server.SetElectionTimeout(ELECTIONTIMTOUT)
 	server.SetHeartbeatTimeout(HEARTBEATTIMEOUT)
+	debug("%s finished set timeout", server.Name())
 
 	if server.IsLogEmpty() {
 
@@ -122,6 +130,7 @@ func main() {
 			command := &JoinCommand{}
 			command.Name = server.Name()
 			server.Do(command)
+			debug("%s start as a leader", server.Name())
 
 		// start as a fellower in a existing cluster
 		} else {
@@ -136,6 +145,7 @@ func main() {
 	} else {
 		server.StartElectionTimeout()
 		server.StartFollower()
+		debug("%s start as a follower", server.Name())
 	}
 
 	// open the snapshot
@@ -154,6 +164,13 @@ func main() {
     http.HandleFunc("/get/", GetHttpHandler)
     http.HandleFunc("/delete/", DeleteHttpHandler)
     http.HandleFunc("/watch/", WatchHttpHandler)
+
+
+    if webPort != -1 {
+    	// start web
+    	
+    	go web.Start(server, webPort)
+    }
 
     // listen on http port
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", info.Port), nil))

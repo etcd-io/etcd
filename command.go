@@ -9,6 +9,8 @@ import (
 	"github.com/benbjohnson/go-raft"
 	"encoding/json"
 	"time"
+	"github.com/xiangli-cmu/raft-etcd/store"
+	"github.com/xiangli-cmu/raft-etcd/web"
 	)
 
 // A command represents an action to be taken on the replicated state machine.
@@ -36,8 +38,12 @@ func (c *SetCommand) CommandName() string {
 
 // Set the value of key to value
 func (c *SetCommand) Apply(server *raft.Server) ([]byte, error) {
-	res := s.Set(c.Key, c.Value, c.ExpireTime)
-	return json.Marshal(res)
+	res := store.Set(c.Key, c.Value, c.ExpireTime)
+	msg, err := json.Marshal(res)
+	if err == nil && web.HubOpen(){
+		web.Hub().Send(string(msg))
+	}
+	return msg, err
 }
 
 // Get the path for http request
@@ -75,7 +81,7 @@ func (c *GetCommand) CommandName() string {
 
 // Set the value of key to value
 func (c *GetCommand) Apply(server *raft.Server) ([]byte, error){
-	res := s.Get(c.Key)
+	res := store.Get(c.Key)
 	return json.Marshal(res)
 }
 
@@ -112,8 +118,15 @@ func (c *DeleteCommand) CommandName() string {
 
 // Delete the key 
 func (c *DeleteCommand) Apply(server *raft.Server) ([]byte, error){
-	res := s.Delete(c.Key)
-	return json.Marshal(res)
+	res := store.Delete(c.Key)
+
+	msg, err := json.Marshal(res)
+
+	if err == nil && web.HubOpen(){
+		web.Hub().Send(string(msg))
+	}
+	
+	return msg, err
 }
 
 func (c *DeleteCommand) GeneratePath() string{
@@ -148,10 +161,10 @@ func (c *WatchCommand) CommandName() string {
 }
 
 func (c *WatchCommand) Apply(server *raft.Server) ([]byte, error){
-	ch := make(chan Response)
+	ch := make(chan store.Response)
 
 	// add to the watchers list
-	w.add(c.Key, ch)	
+	store.AddWatcher(c.Key, ch)	
 
 	// wait for the notification for any changing
 	res := <- ch
