@@ -215,7 +215,10 @@ func Dispatch(server *raft.Server, command Command, w http.ResponseWriter) {
 
 			reader := bytes.NewReader([]byte(command.GetValue()))
 
-			reps, _ := http.Post(fmt.Sprintf("http://%v/%s", 
+			// t must be ok
+			t,_ := server.Transporter().(transHandler)
+
+			reps, _ := t.client.Post(fmt.Sprintf("http://%v/%s", 
 				leaderName, command.GeneratePath()), "application/json", reader)
 
 			if reps == nil {

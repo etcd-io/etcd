@@ -78,10 +78,6 @@ func Set(key string, value string, expireTime time.Time) ([]byte, error) {
 	node, ok := s.Nodes[key]
 
 	if ok {
-		//update := make(chan time.Time)
-		//s.Nodes[key] = Node{value, expireTime, update}
-
-		
 		
 		// if node is not permanent before 
 		// update its expireTime

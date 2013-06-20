@@ -11,6 +11,7 @@ import(
 
 type transHandler struct {
 	name string
+	client *http.Client
 }
 
 // Sends AppendEntries RPCs to a peer when the server is the leader.
@@ -18,8 +19,18 @@ func (t transHandler) SendAppendEntriesRequest(server *raft.Server, peer *raft.P
 	var aersp *raft.AppendEntriesResponse
 	var b bytes.Buffer
 	json.NewEncoder(&b).Encode(req)
-	debug("[send] POST http://%s/log/append [%d]", peer.Name(), len(req.Entries))
-	resp, err := http.Post(fmt.Sprintf("http://%s/log/append", peer.Name()), "application/json", &b)
+	
+
+	var resp *http.Response
+	var err error
+
+	if t.client != nil {
+		debug("[send] POST https://%s/log/append [%d]", peer.Name(), len(req.Entries))
+		resp, err = http.Post(fmt.Sprintf("https://%s/log/append", peer.Name()), "application/json", &b)
+	} else {
+		debug("[send] POST http://%s/log/append [%d]", peer.Name(), len(req.Entries))
+		resp, err = t.client.Post(fmt.Sprintf("http://%s/log/append", peer.Name()), "application/json", &b)
+	}
 	if resp != nil {
 		defer resp.Body.Close()
 		aersp = &raft.AppendEntriesResponse{}
@@ -36,8 +47,18 @@ func (t transHandler) SendVoteRequest(server *raft.Server, peer *raft.Peer, req 
 	var rvrsp *raft.RequestVoteResponse
 	var b bytes.Buffer
 	json.NewEncoder(&b).Encode(req)
-	debug("[send] POST http://%s/vote", peer.Name())
-	resp, err := http.Post(fmt.Sprintf("http://%s/vote", peer.Name()), "application/json", &b)
+
+	var resp *http.Response
+	var err error
+
+	if t.client != nil {
+		debug("[send] POST https://%s/vote", peer.Name())
+		resp, err = t.client.Post(fmt.Sprintf("https://%s/vote", peer.Name()), "application/json", &b)
+	} else {
+		debug("[send] POST http://%s/vote", peer.Name())
+		resp, err = http.Post(fmt.Sprintf("http://%s/vote", peer.Name()), "application/json", &b)
+	}
+
 	if resp != nil {
 		defer resp.Body.Close()
 		rvrsp := &raft.RequestVoteResponse{}
@@ -54,8 +75,17 @@ func (t transHandler) SendSnapshotRequest(server *raft.Server, peer *raft.Peer, 
 	var aersp *raft.SnapshotResponse
 	var b bytes.Buffer
 	json.NewEncoder(&b).Encode(req)
-	debug("[send] POST http://%s/snapshot [%d %d]", peer.Name(), req.LastTerm, req.LastIndex)
-	resp, err := http.Post(fmt.Sprintf("http://%s/snapshot", peer.Name()), "application/json", &b)
+
+	var resp *http.Response
+	var err error
+
+	if t.client != nil {
+		debug("[send] POST https://%s/snapshot [%d %d]", peer.Name(), req.LastTerm, req.LastIndex)
+		resp, err = t.client.Post(fmt.Sprintf("https://%s/snapshot", peer.Name()), "application/json", &b)
+	} else {
+		debug("[send] POST http://%s/snapshot [%d %d]", peer.Name(), req.LastTerm, req.LastIndex)
+		resp, err = http.Post(fmt.Sprintf("http://%s/snapshot", peer.Name()), "application/json", &b)
+	}
 	if resp != nil {
 		defer resp.Body.Close()
 		aersp = &raft.SnapshotResponse{}
