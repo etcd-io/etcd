@@ -4,9 +4,9 @@ import (
 	"github.com/benbjohnson/go-raft"
 	"net/http"
 	"encoding/json"
-	"fmt"
+	//"fmt"
 	"io/ioutil"
-	"bytes"
+	//"bytes"
 	"time"
 	"strings"
 	"strconv"
@@ -75,26 +75,21 @@ func SnapshotHttpHandler(w http.ResponseWriter, req *http.Request) {
 
 
 func JoinHttpHandler(w http.ResponseWriter, req *http.Request) {
-	debug("[recv] POST http://%v/join", server.Name())
+	
 	command := &JoinCommand{}
+
 	if err := decodeJsonRequest(req, command); err == nil {
-		if _, err= server.Do(command); err != nil {
-			warn("raftd: Unable to join: %v", err)
-			w.WriteHeader(http.StatusInternalServerError)
-		} else {
-			w.WriteHeader(http.StatusOK)
-		}
+		debug("Receive Join Request from %s", command.Name)
+		excute(command, &w)
 	} else {
-		warn("[join] ERROR: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 }
 
 
 func SetHttpHandler(w http.ResponseWriter, req *http.Request) {
 	key := req.URL.Path[len("/set/"):]
-
-	debug("[recv] POST http://%v/set/%s", server.Name(), key)
 
 	content, err := ioutil.ReadAll(req.Body)
 
@@ -103,6 +98,8 @@ func SetHttpHandler(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return 
 	}
+
+	debug("[recv] POST http://%v/set/%s [%s]", server.Name(), key, content)
 
 	command := &SetCommand{}
 	command.Key = key
@@ -122,18 +119,7 @@ func SetHttpHandler(w http.ResponseWriter, req *http.Request) {
 		command.ExpireTime = time.Unix(0,0)
 	}
 
-	Dispatch(server, command, w)
-}
-
-func GetHttpHandler(w http.ResponseWriter, req *http.Request) {
-	key := req.URL.Path[len("/get/"):]
-
-	debug("[recv] GET http://%v/get/%s", server.Name(), key)
-
-	command := &GetCommand{}
-	command.Key = key
-
-	Dispatch(server, command, w)
+	excute(command, &w)
 
 }
 
@@ -145,9 +131,57 @@ func DeleteHttpHandler(w http.ResponseWriter, req *http.Request) {
 	command := &DeleteCommand{}
 	command.Key = key
 
-	Dispatch(server, command, w)
+	excute(command, &w)
 }
 
+
+func excute(c Command, w *http.ResponseWriter) {
+	if server.State() == "leader" {
+		if body, err := server.Do(c); err != nil {
+			warn("raftd: Unable to write file: %v", err)
+			(*w).WriteHeader(http.StatusInternalServerError)
+			return
+		} else {
+			(*w).WriteHeader(http.StatusOK)
+			(*w).Write(body)
+			return
+		}
+	} else {
+		// tell the client where is the leader
+		(*w).WriteHeader(http.StatusTemporaryRedirect)
+		(*w).Write([]byte(server.Leader()))
+		return
+	}
+	
+	(*w).WriteHeader(http.StatusInternalServerError)
+
+	return
+} 
+
+func MasterHttpHandler(w http.ResponseWriter, req *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(server.Leader()))
+}
+
+func GetHttpHandler(w http.ResponseWriter, req *http.Request) {
+	key := req.URL.Path[len("/get/"):]
+
+	debug("[recv] GET http://%v/get/%s", server.Name(), key)
+
+	command := &GetCommand{}
+	command.Key = key
+
+	if body, err := command.Apply(server); err != nil {
+		warn("raftd: Unable to write file: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	} else {
+		w.WriteHeader(http.StatusOK)
+		w.Write(body)
+		return
+	}
+
+}
 
 func WatchHttpHandler(w http.ResponseWriter, req *http.Request) {
 	key := req.URL.Path[len("/watch/"):]
@@ -157,105 +191,19 @@ func WatchHttpHandler(w http.ResponseWriter, req *http.Request) {
 	command := &WatchCommand{}
 	command.Key = key
 
-	Dispatch(server, command, w)
-
-}
-
-func Dispatch(server *raft.Server, command Command, w http.ResponseWriter) {
-	var body []byte
-	var err error
-
-	debug("Dispatch command")
-
-	// i am the leader, i will take care of the command
-	if server.State() == "leader" {
-		// if the command will change the state of the state machine
-		// the command need to append to the log entry
-		if command.Sensitive() {
-			if body, err = server.Do(command); err != nil {
-				warn("raftd: Unable to write file: %v", err)
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			} else {
-				// good to go
-				w.WriteHeader(http.StatusOK)
-				w.Write(body)
-				return
-			}
-		// for non-sentitive command, directly apply it 
-		} else {
-			if body, err = command.Apply(server); err != nil {
-				warn("raftd: Unable to write file: %v", err)
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			} else {
-				w.WriteHeader(http.StatusOK)
-				w.Write(body)
-				return
-			}
-		}
-
-	// redirect the command to the current leader
+	if body, err := command.Apply(server); err != nil {
+		warn("raftd: Unable to write file: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	} else {
-		leaderName := server.Leader()
+		w.WriteHeader(http.StatusOK)
+		w.Write(body)
+		return
+	}
 
-		if leaderName =="" {
-			// no luckey, during the voting process
-			// the client need to catch the error and try again
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		} 
-
-		debug("forward command to %s", leaderName)
-
-		path := command.GeneratePath()
-
-		if command.Type() == "POST" {
-			debug("[send] POST http://%v/%s", leaderName, path)
-
-			reader := bytes.NewReader([]byte(command.GetValue()))
-
-			// t must be ok
-			t,_ := server.Transporter().(transHandler)
-
-			reps, _ := t.client.Post(fmt.Sprintf("http://%v/%s", 
-				leaderName, command.GeneratePath()), "application/json", reader)
-
-			if reps == nil {
-				w.WriteHeader(http.StatusInternalServerError)
-				return 
-			}
-
-			// forwarding
-			w.WriteHeader(reps.StatusCode)
-
-			body, _ := ioutil.ReadAll(reps.Body)
-
-			w.Write(body)
-			return 
-
-			} else if command.Type() == "GET" {
-				debug("[send] GET http://%v/%s", leaderName, path)
-
-				reps, _ := http.Get(fmt.Sprintf("http://%v/%s", 
-					leaderName, command.GeneratePath()))
-
-
-				if reps == nil {
-					w.WriteHeader(http.StatusInternalServerError)
-					return 
-				}
-
-				// forwarding
-				body, _ := ioutil.ReadAll(reps.Body)
-
-				w.WriteHeader(reps.StatusCode)
-
-				w.Write(body)
-
-			} else {
-			//unsupported type
-			}
-
-		}
 }
+
+
+
+
+

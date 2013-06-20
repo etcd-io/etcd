@@ -20,17 +20,8 @@ func (t transHandler) SendAppendEntriesRequest(server *raft.Server, peer *raft.P
 	var b bytes.Buffer
 	json.NewEncoder(&b).Encode(req)
 	
+	resp, err := Post(&t, fmt.Sprintf("%s/log/append", peer.Name()), &b)
 
-	var resp *http.Response
-	var err error
-
-	if t.client != nil {
-		debug("[send] POST https://%s/log/append [%d]", peer.Name(), len(req.Entries))
-		resp, err = http.Post(fmt.Sprintf("https://%s/log/append", peer.Name()), "application/json", &b)
-	} else {
-		debug("[send] POST http://%s/log/append [%d]", peer.Name(), len(req.Entries))
-		resp, err = t.client.Post(fmt.Sprintf("http://%s/log/append", peer.Name()), "application/json", &b)
-	}
 	if resp != nil {
 		defer resp.Body.Close()
 		aersp = &raft.AppendEntriesResponse{}
@@ -48,16 +39,7 @@ func (t transHandler) SendVoteRequest(server *raft.Server, peer *raft.Peer, req 
 	var b bytes.Buffer
 	json.NewEncoder(&b).Encode(req)
 
-	var resp *http.Response
-	var err error
-
-	if t.client != nil {
-		debug("[send] POST https://%s/vote", peer.Name())
-		resp, err = t.client.Post(fmt.Sprintf("https://%s/vote", peer.Name()), "application/json", &b)
-	} else {
-		debug("[send] POST http://%s/vote", peer.Name())
-		resp, err = http.Post(fmt.Sprintf("http://%s/vote", peer.Name()), "application/json", &b)
-	}
+	resp, err := Post(&t, fmt.Sprintf("%s/vote", peer.Name()), &b)
 
 	if resp != nil {
 		defer resp.Body.Close()
@@ -76,16 +58,10 @@ func (t transHandler) SendSnapshotRequest(server *raft.Server, peer *raft.Peer, 
 	var b bytes.Buffer
 	json.NewEncoder(&b).Encode(req)
 
-	var resp *http.Response
-	var err error
+	debug("[send] POST %s/snapshot [%d %d]", peer.Name(), req.LastTerm, req.LastIndex)
 
-	if t.client != nil {
-		debug("[send] POST https://%s/snapshot [%d %d]", peer.Name(), req.LastTerm, req.LastIndex)
-		resp, err = t.client.Post(fmt.Sprintf("https://%s/snapshot", peer.Name()), "application/json", &b)
-	} else {
-		debug("[send] POST http://%s/snapshot [%d %d]", peer.Name(), req.LastTerm, req.LastIndex)
-		resp, err = http.Post(fmt.Sprintf("http://%s/snapshot", peer.Name()), "application/json", &b)
-	}
+	resp, err := Post(&t, fmt.Sprintf("%s/snapshot", peer.Name()), &b)
+
 	if resp != nil {
 		defer resp.Body.Close()
 		aersp = &raft.SnapshotResponse{}

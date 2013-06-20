@@ -27,6 +27,7 @@ import (
 //
 //------------------------------------------------------------------------------
 
+
 var verbose bool
 var leaderHost string
 var address string
@@ -44,13 +45,17 @@ func init() {
 	flag.StringVar(&certFile, "cert", "", "the cert file of the server")
 	flag.StringVar(&keyFile, "key", "", "the key file of the server")
 }
+// CONSTANTS
+const (	
+	HTTP = iota
+	HTTPS
+	HTTPSANDVERIFY
+)
 
 const (
 	ELECTIONTIMTOUT = 3 * time.Second
 	HEARTBEATTIMEOUT = 1 * time.Second
 )
-
-
 
 //------------------------------------------------------------------------------
 //
@@ -73,13 +78,6 @@ var server *raft.Server
 var logger *log.Logger
 
 var storeMsg chan string
-
-// CONSTANTS
-const (	
-	HTTP = iota
-	HTTPS
-	HTTPSANDVERIFY
-)
 
 
 //------------------------------------------------------------------------------
@@ -247,6 +245,7 @@ func startTransport(port int, st int) {
     http.HandleFunc("/get/", GetHttpHandler)
     http.HandleFunc("/delete/", DeleteHttpHandler)
     http.HandleFunc("/watch/", WatchHttpHandler)
+    http.HandleFunc("/master", MasterHttpHandler)
 
     switch st {
 
@@ -375,26 +374,30 @@ func Join(s *raft.Server, serverName string) error {
 	json.NewEncoder(&b).Encode(command)
 	
 
-	var resp *http.Response
-	var err error
-
 	// t must be ok
 	t,_ := server.Transporter().(transHandler)
-	if t.client != nil {
-		debug("[send] POST https://%v/join", "localhost:4001")
-		resp, err = t.client.Post(fmt.Sprintf("https://%s/join", serverName), "application/json", &b)
-	} else {
-		debug("[send] POST http://%v/join", "localhost:4001")
-		resp, err = http.Post(fmt.Sprintf("https://%s/join", serverName), "application/json", &b)
-	}
+	debug("Send Join Request to %s", serverName)
+	resp, err := Post(&t, fmt.Sprintf("%s/join", serverName), &b)
 
-	if resp != nil {
-		resp.Body.Close()
-		if resp.StatusCode == http.StatusOK {
-			return nil
+	for {
+		if resp != nil {
+			defer resp.Body.Close()
+			if resp.StatusCode == http.StatusOK {
+				return nil
+			}
+			if resp.StatusCode == http.StatusTemporaryRedirect {
+				address, err := ioutil.ReadAll(resp.Body)
+				if err != nil {
+					warn("Cannot Read Leader info: %v", err)
+				}
+				debug("Leader is %s", address)
+				debug("Send Join Request to %s", address)
+				json.NewEncoder(&b).Encode(command)
+				resp, err = Post(&t, fmt.Sprintf("%s/join", address), &b)
+			}
 		}
 	}
-	return fmt.Errorf("raftd: Unable to join: %v", err)
+	return fmt.Errorf("Unable to join: %v", err)
 }
 //--------------------------------------
 // Web Helper
@@ -431,6 +434,27 @@ func encodeJsonResponse(w http.ResponseWriter, status int, data interface{}) {
 	}
 }
 
+func Post(t *transHandler, path string, body io.Reader) (*http.Response, error){
+
+	if t.client != nil {
+		resp, err := t.client.Post("https://" + path, "application/json", body)
+		return resp, err
+	} else {
+		resp, err := http.Post("http://" + path, "application/json", body)
+		return resp, err
+	}
+}
+
+func Get(t *transHandler, path string) (*http.Response, error) {
+	if t.client != nil {
+		resp, err := t.client.Get("https://" + path)
+		return resp, err
+	} else {
+		resp, err := http.Get("http://" + path)
+		return resp, err
+	}
+}
+
 //--------------------------------------
 // Log
 //--------------------------------------
@@ -446,7 +470,7 @@ func info(msg string, v ...interface{}) {
 }
 
 func warn(msg string, v ...interface{}) {
-	logger.Printf("WARN  " + msg + "\n", v...)
+	logger.Printf("Alpaca Server: WARN  " + msg + "\n", v...)
 }
 
 func fatal(msg string, v ...interface{}) {

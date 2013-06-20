@@ -4,7 +4,6 @@ import (
 	"path"
 	"strings"
 	//"fmt"
-	"time"
 	)
 
 
@@ -49,9 +48,10 @@ func AddWatcher(prefix string, c chan Response) error {
 }
 
 // notify the watcher a action happened
-func notify(action int, key string, oldValue string, newValue string, exist bool) error {
-	key = path.Clean(key)
-	segments := strings.Split(key, "/")
+func notify(resp Response) error {
+	resp.Key = path.Clean(resp.Key)
+
+	segments := strings.Split(resp.Key, "/")
 	currPath := "/"
 
 	// walk through all the pathes
@@ -62,11 +62,9 @@ func notify(action int, key string, oldValue string, newValue string, exist bool
 
 		if ok {
 
-			n := Response {action, key, oldValue, newValue, exist, time.Unix(0, 0)}
-
 			// notify all the watchers
 			for _, c := range chans {
-				c <- n
+				c <- resp
 			}
 			
 			// we have notified all the watchers at this path
