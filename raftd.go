@@ -2,23 +2,23 @@ package main
 
 import (
 	"bytes"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
 	"flag"
 	"fmt"
 	"github.com/benbjohnson/go-raft"
-	"log"
+	"github.com/xiangli-cmu/raft-etcd/store"
+	"github.com/xiangli-cmu/raft-etcd/web"
 	"io"
 	"io/ioutil"
+	"log"
 	"net/http"
-	"strings"
 	"os"
-	"time"
 	"strconv"
-	"crypto/tls"
-	"crypto/x509"
-	"github.com/xiangli-cmu/raft-etcd/web"
-	"github.com/xiangli-cmu/raft-etcd/store"
+	"strings"
+	"time"
 )
 
 //------------------------------------------------------------------------------
@@ -26,7 +26,6 @@ import (
 // Initialization
 //
 //------------------------------------------------------------------------------
-
 
 var verbose bool
 var leaderHost string
@@ -45,15 +44,16 @@ func init() {
 	flag.StringVar(&certFile, "cert", "", "the cert file of the server")
 	flag.StringVar(&keyFile, "key", "", "the key file of the server")
 }
+
 // CONSTANTS
-const (	
+const (
 	HTTP = iota
 	HTTPS
 	HTTPSANDVERIFY
 )
 
 const (
-	ELECTIONTIMTOUT = 3 * time.Second
+	ELECTIONTIMTOUT  = 3 * time.Second
 	HEARTBEATTIMEOUT = 1 * time.Second
 )
 
@@ -65,7 +65,7 @@ const (
 
 type Info struct {
 	Host string `json:"host"`
-	Port int `json:"port"`
+	Port int    `json:"port"`
 }
 
 //------------------------------------------------------------------------------
@@ -78,7 +78,6 @@ var server *raft.Server
 var logger *log.Logger
 
 var storeMsg chan string
-
 
 //------------------------------------------------------------------------------
 //
@@ -100,7 +99,7 @@ func main() {
 	raft.RegisterCommand(&SetCommand{})
 	raft.RegisterCommand(&GetCommand{})
 	raft.RegisterCommand(&DeleteCommand{})
-	
+
 	// Use the present working directory if a directory was not passed in.
 	var path string
 	if flag.NArg() == 0 {
@@ -118,7 +117,7 @@ func main() {
 	name := fmt.Sprintf("%s:%d", info.Host, info.Port)
 
 	fmt.Printf("Name: %s\n\n", name)
-	
+
 	// secrity type
 	st := securityType()
 
@@ -126,7 +125,7 @@ func main() {
 		panic("ERROR type")
 	}
 
-    t := createTranHandler(st)
+	t := createTranHandler(st)
 
 	// Setup new raft server.
 	s := store.GetStore()
@@ -159,7 +158,7 @@ func main() {
 			server.Do(command)
 			debug("%s start as a leader", server.Name())
 
-		// start as a fellower in a existing cluster
+			// start as a fellower in a existing cluster
 		} else {
 			server.StartElectionTimeout()
 			server.StartFollower()
@@ -171,7 +170,7 @@ func main() {
 			fmt.Println("success join")
 		}
 
-	// rejoin the previous cluster
+		// rejoin the previous cluster
 	} else {
 		server.StartElectionTimeout()
 		server.StartFollower()
@@ -181,15 +180,14 @@ func main() {
 	// open the snapshot
 	go server.Snapshot()
 
+	if webPort != -1 {
+		// start web
+		s.SetMessager(&storeMsg)
+		go webHelper()
+		go web.Start(server, webPort)
+	}
 
-    if webPort != -1 {
-    	// start web
-    	s.SetMessager(&storeMsg)
-    	go webHelper()
-    	go web.Start(server, webPort)
-    } 
-
-    startTransport(info.Port, st)
+	startTransport(info.Port, st)
 
 }
 
@@ -216,12 +214,12 @@ func createTranHandler(st int) transHandler {
 		}
 
 		tr := &http.Transport{
-			TLSClientConfig:   &tls.Config{
-				Certificates: []tls.Certificate{tlsCert},
+			TLSClientConfig: &tls.Config{
+				Certificates:       []tls.Certificate{tlsCert},
 				InsecureSkipVerify: true,
-				},
-				DisableCompression: true,
-			}
+			},
+			DisableCompression: true,
+		}
 
 		t.client = &http.Client{Transport: tr}
 		return t
@@ -231,35 +229,34 @@ func createTranHandler(st int) transHandler {
 	return transHandler{}
 }
 
-func startTransport(port int, st int) {	
+func startTransport(port int, st int) {
 
 	// internal commands
-    http.HandleFunc("/join", JoinHttpHandler)
-    http.HandleFunc("/vote", VoteHttpHandler)
-    http.HandleFunc("/log", GetLogHttpHandler)
-    http.HandleFunc("/log/append", AppendEntriesHttpHandler)
-    http.HandleFunc("/snapshot", SnapshotHttpHandler)
+	http.HandleFunc("/join", JoinHttpHandler)
+	http.HandleFunc("/vote", VoteHttpHandler)
+	http.HandleFunc("/log", GetLogHttpHandler)
+	http.HandleFunc("/log/append", AppendEntriesHttpHandler)
+	http.HandleFunc("/snapshot", SnapshotHttpHandler)
 
-    // external commands
-    http.HandleFunc("/set/", SetHttpHandler)
-    http.HandleFunc("/get/", GetHttpHandler)
-    http.HandleFunc("/delete/", DeleteHttpHandler)
-    http.HandleFunc("/watch/", WatchHttpHandler)
-    http.HandleFunc("/master", MasterHttpHandler)
+	// external commands
+	http.HandleFunc("/set/", SetHttpHandler)
+	http.HandleFunc("/get/", GetHttpHandler)
+	http.HandleFunc("/delete/", DeleteHttpHandler)
+	http.HandleFunc("/watch/", WatchHttpHandler)
+	http.HandleFunc("/master", MasterHttpHandler)
 
-    switch st {
+	switch st {
 
-    case HTTP:
-    	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), nil))
+	case HTTP:
+		log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), nil))
 
-    case HTTPS:
-    	http.ListenAndServeTLS(fmt.Sprintf(":%d", port), certFile, keyFile, nil)
+	case HTTPS:
+		http.ListenAndServeTLS(fmt.Sprintf(":%d", port), certFile, keyFile, nil)
 
-    case HTTPSANDVERIFY:
-    	pemByte, _ := ioutil.ReadFile(CAFile)
+	case HTTPSANDVERIFY:
+		pemByte, _ := ioutil.ReadFile(CAFile)
 
 		block, pemByte := pem.Decode(pemByte)
-
 
 		cert, err := x509.ParseCertificate(block.Bytes)
 
@@ -274,16 +271,16 @@ func startTransport(port int, st int) {
 		server := &http.Server{
 			TLSConfig: &tls.Config{
 				ClientAuth: tls.RequireAndVerifyClientCert,
-				ClientCAs: certPool,
-				},
-			Addr:fmt.Sprintf(":%d", port),
+				ClientCAs:  certPool,
+			},
+			Addr: fmt.Sprintf(":%d", port),
 		}
 		err = server.ListenAndServeTLS(certFile, keyFile)
 
 		if err != nil {
 			log.Fatal(err)
 		}
-    }
+	}
 
 }
 
@@ -291,8 +288,8 @@ func startTransport(port int, st int) {
 // Config
 //--------------------------------------
 
-func securityType() int{
-	if keyFile == "" && certFile == "" && CAFile == ""{
+func securityType() int {
+	if keyFile == "" && certFile == "" && CAFile == "" {
 
 		return HTTP
 
@@ -310,7 +307,6 @@ func securityType() int{
 	return -1
 }
 
-
 func getInfo(path string) *Info {
 	info := &Info{}
 
@@ -325,10 +321,10 @@ func getInfo(path string) *Info {
 			}
 		}
 		file.Close()
-	
-	// Otherwise ask user for info and write it to file.
+
+		// Otherwise ask user for info and write it to file.
 	} else {
-		
+
 		if address == "" {
 			fatal("Please give the address of the local machine")
 		}
@@ -341,9 +337,9 @@ func getInfo(path string) *Info {
 
 		info.Host = input[0]
 		info.Host = strings.TrimSpace(info.Host)
-		
+
 		info.Port, err = strconv.Atoi(input[1])
-		
+
 		if err != nil {
 			fatal("Wrong port %s", address)
 		}
@@ -355,10 +351,9 @@ func getInfo(path string) *Info {
 			fatal("Unable to write info to file: %v", err)
 		}
 	}
-	
+
 	return info
 }
-
 
 //--------------------------------------
 // Handlers
@@ -367,15 +362,14 @@ func getInfo(path string) *Info {
 // Send join requests to the leader.
 func Join(s *raft.Server, serverName string) error {
 	var b bytes.Buffer
-	
+
 	command := &JoinCommand{}
 	command.Name = s.Name()
 
 	json.NewEncoder(&b).Encode(command)
-	
 
 	// t must be ok
-	t,_ := server.Transporter().(transHandler)
+	t, _ := server.Transporter().(transHandler)
 	debug("Send Join Request to %s", serverName)
 	resp, err := Post(&t, fmt.Sprintf("%s/join", serverName), &b)
 
@@ -399,6 +393,7 @@ func Join(s *raft.Server, serverName string) error {
 	}
 	return fmt.Errorf("Unable to join: %v", err)
 }
+
 //--------------------------------------
 // Web Helper
 //--------------------------------------
@@ -409,7 +404,6 @@ func webHelper() {
 		web.Hub().Send(<-storeMsg)
 	}
 }
-
 
 //--------------------------------------
 // HTTP Utilities
@@ -434,13 +428,13 @@ func encodeJsonResponse(w http.ResponseWriter, status int, data interface{}) {
 	}
 }
 
-func Post(t *transHandler, path string, body io.Reader) (*http.Response, error){
+func Post(t *transHandler, path string, body io.Reader) (*http.Response, error) {
 
 	if t.client != nil {
-		resp, err := t.client.Post("https://" + path, "application/json", body)
+		resp, err := t.client.Post("https://"+path, "application/json", body)
 		return resp, err
 	} else {
-		resp, err := http.Post("http://" + path, "application/json", body)
+		resp, err := http.Post("http://"+path, "application/json", body)
 		return resp, err
 	}
 }
@@ -461,22 +455,19 @@ func Get(t *transHandler, path string) (*http.Response, error) {
 
 func debug(msg string, v ...interface{}) {
 	if verbose {
-		logger.Printf("DEBUG " + msg + "\n", v...)
+		logger.Printf("DEBUG "+msg+"\n", v...)
 	}
 }
 
 func info(msg string, v ...interface{}) {
-	logger.Printf("INFO  " + msg + "\n", v...)
+	logger.Printf("INFO  "+msg+"\n", v...)
 }
 
 func warn(msg string, v ...interface{}) {
-	logger.Printf("Alpaca Server: WARN  " + msg + "\n", v...)
+	logger.Printf("Alpaca Server: WARN  "+msg+"\n", v...)
 }
 
 func fatal(msg string, v ...interface{}) {
-	logger.Printf("FATAL " + msg + "\n", v...)
+	logger.Printf("FATAL "+msg+"\n", v...)
 	os.Exit(1)
 }
-
-
-

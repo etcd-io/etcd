@@ -3,9 +3,9 @@ package store
 import (
 	"path"
 	"strings"
-	//"fmt"
-	)
 
+//"fmt"
+)
 
 type Watchers struct {
 	chanMap map[string][]chan Response
@@ -13,7 +13,6 @@ type Watchers struct {
 
 // global watcher
 var w *Watchers
-
 
 // init the global watcher
 func init() {
@@ -66,7 +65,7 @@ func notify(resp Response) error {
 			for _, c := range chans {
 				c <- resp
 			}
-			
+
 			// we have notified all the watchers at this path
 			// delete the map
 			delete(w.chanMap, currPath)

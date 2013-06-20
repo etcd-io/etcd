@@ -1,11 +1,11 @@
 package store
 
 import (
-	"path"
 	"encoding/json"
-	"time"
 	"fmt"
-	)
+	"path"
+	"time"
+)
 
 // global store
 var s *Store
@@ -13,26 +13,24 @@ var s *Store
 // CONSTANTS
 const (
 	ERROR = -1 + iota
-	SET 
+	SET
 	DELETE
 	GET
 )
 
-
-var PERMANENT = time.Unix(0,0)
+var PERMANENT = time.Unix(0, 0)
 
 type Store struct {
 	// use the build-in hash map as the key-value store structure
-	Nodes map[string]Node  `json:"nodes"`
+	Nodes map[string]Node `json:"nodes"`
 
 	// the string channel to send messages to the outside world
 	// now we use it to send changes to the hub of the web service
 	messager *chan string
 }
 
-
 type Node struct {
-	Value string	`json:"value"`
+	Value string `json:"value"`
 
 	// if the node is a permanent one the ExprieTime will be Unix(0,0)
 	// Otherwise after the expireTime, the node will be deleted
@@ -43,14 +41,14 @@ type Node struct {
 }
 
 type Response struct {
-	Action	 int    `json:"action"`
+	Action   int    `json:"action"`
 	Key      string `json:"key"`
 	OldValue string `json:"oldValue"`
 	NewValue string `json:"newValue"`
 
 	// if the key existed before the action, this field should be true
 	// if the key did not exist before the action, this field should be false
-	Exist 	 bool `json:"exist"`
+	Exist bool `json:"exist"`
 
 	Expiration time.Time `json:"expiration"`
 }
@@ -61,7 +59,7 @@ func init() {
 }
 
 // make a new stroe
-func createStore() *Store{
+func createStore() *Store {
 	s := new(Store)
 	s.Nodes = make(map[string]Node)
 	return s
@@ -73,11 +71,11 @@ func GetStore() *Store {
 }
 
 // set the messager of the store
-func (s *Store)SetMessager(messager *chan string) {
+func (s *Store) SetMessager(messager *chan string) {
 	s.messager = messager
-}	
+}
 
-// set the key to value, return the old value if the key exists 
+// set the key to value, return the old value if the key exists
 func Set(key string, value string, expireTime time.Time) ([]byte, error) {
 
 	key = path.Clean(key)
@@ -97,11 +95,11 @@ func Set(key string, value string, expireTime time.Time) ([]byte, error) {
 	node, ok := s.Nodes[key]
 
 	if ok {
-		// if node is not permanent before 
+		// if node is not permanent before
 		// update its expireTime
 		if !node.ExpireTime.Equal(PERMANENT) {
 
-				node.update <- expireTime
+			node.update <- expireTime
 
 		} else {
 			// if we want the permanent node to have expire time
@@ -115,7 +113,7 @@ func Set(key string, value string, expireTime time.Time) ([]byte, error) {
 		// update the information of the node
 		node.ExpireTime = expireTime
 		node.Value = value
-		
+
 		resp := Response{SET, key, node.Value, value, true, expireTime}
 
 		msg, err := json.Marshal(resp)
@@ -123,14 +121,14 @@ func Set(key string, value string, expireTime time.Time) ([]byte, error) {
 		notify(resp)
 
 		// send to the messager
-		if (s.messager != nil && err == nil) {
+		if s.messager != nil && err == nil {
 
 			*s.messager <- string(msg)
-		} 
+		}
 
 		return msg, err
 
-	// add new node
+		// add new node
 	} else {
 
 		update := make(chan time.Time)
@@ -149,10 +147,10 @@ func Set(key string, value string, expireTime time.Time) ([]byte, error) {
 		notify(resp)
 
 		// notify the web interface
-		if (s.messager != nil && err == nil) {
+		if s.messager != nil && err == nil {
 
 			*s.messager <- string(msg)
-		} 
+		}
 
 		return msg, err
 	}
@@ -180,10 +178,10 @@ func expire(key string, update chan time.Time, expireTime time.Time) {
 				notify(resp)
 
 				// notify the messager
-				if (s.messager != nil && err == nil) {
+				if s.messager != nil && err == nil {
 
 					*s.messager <- string(msg)
-				} 
+				}
 
 				return
 
@@ -191,7 +189,7 @@ func expire(key string, update chan time.Time, expireTime time.Time) {
 
 		case updateTime := <-update:
 			//update duration
-			// if the node become a permanent one, the go routine is 
+			// if the node become a permanent one, the go routine is
 			// not needed
 			if updateTime.Equal(PERMANENT) {
 				return
@@ -242,10 +240,10 @@ func Delete(key string) ([]byte, error) {
 		notify(resp)
 
 		// notify the messager
-		if (s.messager != nil && err == nil) {
+		if s.messager != nil && err == nil {
 
 			*s.messager <- string(msg)
-		} 
+		}
 
 		return msg, err
 
@@ -256,7 +254,7 @@ func Delete(key string) ([]byte, error) {
 }
 
 // save the current state of the storage system
-func (s *Store)Save() ([]byte, error) {
+func (s *Store) Save() ([]byte, error) {
 	b, err := json.Marshal(s)
 	if err != nil {
 		fmt.Println(err)
@@ -266,7 +264,7 @@ func (s *Store)Save() ([]byte, error) {
 }
 
 // recovery the state of the stroage system from a previous state
-func (s *Store)Recovery(state []byte) error {
+func (s *Store) Recovery(state []byte) error {
 	err := json.Unmarshal(state, s)
 
 	// clean the expired nodes
@@ -277,7 +275,7 @@ func (s *Store)Recovery(state []byte) error {
 
 // clean all expired keys
 func clean() {
-	for key, node := range s.Nodes{
+	for key, node := range s.Nodes {
 
 		if node.ExpireTime.Equal(PERMANENT) {
 			continue

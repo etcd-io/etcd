@@ -1,17 +1,16 @@
 package main
 
 import (
+	"encoding/json"
 	"github.com/benbjohnson/go-raft"
 	"net/http"
-	"encoding/json"
 	//"fmt"
 	"io/ioutil"
 	//"bytes"
-	"time"
-	"strings"
 	"strconv"
-	)
-
+	"strings"
+	"time"
+)
 
 //--------------------------------------
 // HTTP Handlers
@@ -73,9 +72,8 @@ func SnapshotHttpHandler(w http.ResponseWriter, req *http.Request) {
 	w.WriteHeader(http.StatusInternalServerError)
 }
 
-
 func JoinHttpHandler(w http.ResponseWriter, req *http.Request) {
-	
+
 	command := &JoinCommand{}
 
 	if err := decodeJsonRequest(req, command); err == nil {
@@ -87,7 +85,6 @@ func JoinHttpHandler(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-
 func SetHttpHandler(w http.ResponseWriter, req *http.Request) {
 	key := req.URL.Path[len("/set/"):]
 
@@ -96,7 +93,7 @@ func SetHttpHandler(w http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		warn("raftd: Unable to read: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
-		return 
+		return
 	}
 
 	debug("[recv] POST http://%v/set/%s [%s]", server.Name(), key, content)
@@ -112,11 +109,11 @@ func SetHttpHandler(w http.ResponseWriter, req *http.Request) {
 		if err != nil {
 			warn("raftd: Bad duration: %v", err)
 			w.WriteHeader(http.StatusInternalServerError)
-			return 
+			return
 		}
 		command.ExpireTime = time.Now().Add(time.Second * (time.Duration)(duration))
 	} else {
-		command.ExpireTime = time.Unix(0,0)
+		command.ExpireTime = time.Unix(0, 0)
 	}
 
 	excute(command, &w)
@@ -133,7 +130,6 @@ func DeleteHttpHandler(w http.ResponseWriter, req *http.Request) {
 
 	excute(command, &w)
 }
-
 
 func excute(c Command, w *http.ResponseWriter) {
 	if server.State() == "leader" {
@@ -152,11 +148,11 @@ func excute(c Command, w *http.ResponseWriter) {
 		(*w).Write([]byte(server.Leader()))
 		return
 	}
-	
+
 	(*w).WriteHeader(http.StatusInternalServerError)
 
 	return
-} 
+}
 
 func MasterHttpHandler(w http.ResponseWriter, req *http.Request) {
 	w.WriteHeader(http.StatusOK)
@@ -202,8 +198,3 @@ func WatchHttpHandler(w http.ResponseWriter, req *http.Request) {
 	}
 
 }
-
-
-
-
-

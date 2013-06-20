@@ -1,9 +1,9 @@
 package store
 
 import (
+	"fmt"
 	"testing"
 	"time"
-	"fmt"
 )
 
 func TestStoreGet(t *testing.T) {
@@ -53,7 +53,6 @@ func TestStoreGet(t *testing.T) {
 // 		t.Fatalf("Get expired value")
 // 	}
 
-
 // 	s.Delete("foo")
 
 // }
@@ -63,8 +62,8 @@ func TestExpire(t *testing.T) {
 	fmt.Println("TEST EXPIRE")
 
 	// test expire
-	Set("foo", "bar", time.Now().Add(time.Second * 1))
-	time.Sleep(2*time.Second)
+	Set("foo", "bar", time.Now().Add(time.Second*1))
+	time.Sleep(2 * time.Second)
 
 	res := Get("foo")
 
@@ -73,7 +72,7 @@ func TestExpire(t *testing.T) {
 	}
 
 	//test change expire time
-	Set("foo", "bar", time.Now().Add(time.Second * 10))
+	Set("foo", "bar", time.Now().Add(time.Second*10))
 
 	res = Get("foo")
 
@@ -81,7 +80,7 @@ func TestExpire(t *testing.T) {
 		t.Fatalf("Cannot get Value")
 	}
 
-	Set("foo", "barbar", time.Now().Add(time.Second * 1))
+	Set("foo", "barbar", time.Now().Add(time.Second*1))
 
 	time.Sleep(2 * time.Second)
 
@@ -91,13 +90,12 @@ func TestExpire(t *testing.T) {
 		t.Fatalf("Got expired value")
 	}
 
-
 	// test change expire to stable
-	Set("foo", "bar", time.Now().Add(time.Second * 1))
+	Set("foo", "bar", time.Now().Add(time.Second*1))
 
-	Set("foo", "bar", time.Unix(0,0))
+	Set("foo", "bar", time.Unix(0, 0))
 
-	time.Sleep(2*time.Second)
+	time.Sleep(2 * time.Second)
 
 	res = s.Get("foo")
 
@@ -105,22 +103,21 @@ func TestExpire(t *testing.T) {
 		t.Fatalf("Cannot get Value")
 	}
 
-	// test stable to expire 
-	s.Set("foo", "bar", time.Now().Add(time.Second * 1))
-	time.Sleep(2*time.Second)
+	// test stable to expire
+	s.Set("foo", "bar", time.Now().Add(time.Second*1))
+	time.Sleep(2 * time.Second)
 	res = s.Get("foo")
 
 	if res.Exist {
 		t.Fatalf("Got expired value")
 	}
 
-	// test set older node 
-	s.Set("foo", "bar", time.Now().Add(-time.Second * 1))
+	// test set older node
+	s.Set("foo", "bar", time.Now().Add(-time.Second*1))
 	res = s.Get("foo")
 
 	if res.Exist {
 		t.Fatalf("Got expired value")
 	}
-
 
 }

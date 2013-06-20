@@ -1,4 +1,5 @@
 package main
+
 //------------------------------------------------------------------------------
 //
 // Commands
@@ -6,11 +7,11 @@ package main
 //------------------------------------------------------------------------------
 
 import (
+	"encoding/json"
 	"github.com/benbjohnson/go-raft"
 	"github.com/xiangli-cmu/raft-etcd/store"
-	"encoding/json"
 	"time"
-	)
+)
 
 // A command represents an action to be taken on the replicated state machine.
 type Command interface {
@@ -20,8 +21,8 @@ type Command interface {
 
 // Set command
 type SetCommand struct {
-	Key string `json:"key"`
-	Value string `json:"value"`
+	Key        string    `json:"key"`
+	Value      string    `json:"value"`
 	ExpireTime time.Time `json:"expireTime"`
 }
 
@@ -40,7 +41,6 @@ func (c *SetCommand) GeneratePath() string {
 	return "set/" + c.Key
 }
 
-
 // Get command
 type GetCommand struct {
 	Key string `json:"key"`
@@ -52,12 +52,12 @@ func (c *GetCommand) CommandName() string {
 }
 
 // Set the value of key to value
-func (c *GetCommand) Apply(server *raft.Server) ([]byte, error){
+func (c *GetCommand) Apply(server *raft.Server) ([]byte, error) {
 	res := store.Get(c.Key)
 	return json.Marshal(res)
 }
 
-func (c *GetCommand) GeneratePath() string{
+func (c *GetCommand) GeneratePath() string {
 	return "get/" + c.Key
 }
 
@@ -71,8 +71,8 @@ func (c *DeleteCommand) CommandName() string {
 	return "delete"
 }
 
-// Delete the key 
-func (c *DeleteCommand) Apply(server *raft.Server) ([]byte, error){
+// Delete the key
+func (c *DeleteCommand) Apply(server *raft.Server) ([]byte, error) {
 	return store.Delete(c.Key)
 }
 
@@ -86,14 +86,14 @@ func (c *WatchCommand) CommandName() string {
 	return "watch"
 }
 
-func (c *WatchCommand) Apply(server *raft.Server) ([]byte, error){
+func (c *WatchCommand) Apply(server *raft.Server) ([]byte, error) {
 	ch := make(chan store.Response)
 
 	// add to the watchers list
-	store.AddWatcher(c.Key, ch)	
+	store.AddWatcher(c.Key, ch)
 
 	// wait for the notification for any changing
-	res := <- ch
+	res := <-ch
 
 	return json.Marshal(res)
 }
@@ -112,6 +112,3 @@ func (c *JoinCommand) Apply(server *raft.Server) ([]byte, error) {
 	// no result will be returned
 	return nil, err
 }
-
-
-

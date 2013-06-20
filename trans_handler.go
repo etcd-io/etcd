@@ -1,16 +1,16 @@
 package main
 
-import(
-	"encoding/json"
-	"github.com/benbjohnson/go-raft"
+import (
 	"bytes"
-	"net/http"
+	"encoding/json"
 	"fmt"
+	"github.com/benbjohnson/go-raft"
 	"io"
+	"net/http"
 )
 
 type transHandler struct {
-	name string
+	name   string
 	client *http.Client
 }
 
@@ -19,7 +19,9 @@ func (t transHandler) SendAppendEntriesRequest(server *raft.Server, peer *raft.P
 	var aersp *raft.AppendEntriesResponse
 	var b bytes.Buffer
 	json.NewEncoder(&b).Encode(req)
-	
+
+	debug("Send LogEntries to %s ", peer.Name())
+
 	resp, err := Post(&t, fmt.Sprintf("%s/log/append", peer.Name()), &b)
 
 	if resp != nil {
@@ -28,7 +30,7 @@ func (t transHandler) SendAppendEntriesRequest(server *raft.Server, peer *raft.P
 		if err = json.NewDecoder(resp.Body).Decode(&aersp); err == nil || err == io.EOF {
 			return aersp, nil
 		}
-		
+
 	}
 	return aersp, fmt.Errorf("raftd: Unable to append entries: %v", err)
 }
@@ -39,6 +41,8 @@ func (t transHandler) SendVoteRequest(server *raft.Server, peer *raft.Peer, req 
 	var b bytes.Buffer
 	json.NewEncoder(&b).Encode(req)
 
+	debug("Send Vote to %s", peer.Name())
+
 	resp, err := Post(&t, fmt.Sprintf("%s/vote", peer.Name()), &b)
 
 	if resp != nil {
@@ -47,9 +51,9 @@ func (t transHandler) SendVoteRequest(server *raft.Server, peer *raft.Peer, req 
 		if err = json.NewDecoder(resp.Body).Decode(&rvrsp); err == nil || err == io.EOF {
 			return rvrsp, nil
 		}
-		
+
 	}
-	return rvrsp, fmt.Errorf("raftd: Unable to request vote: %v", err)
+	return rvrsp, fmt.Errorf("Unable to request vote: %v", err)
 }
 
 // Sends SnapshotRequest RPCs to a peer when the server is the candidate.
@@ -58,7 +62,8 @@ func (t transHandler) SendSnapshotRequest(server *raft.Server, peer *raft.Peer, 
 	var b bytes.Buffer
 	json.NewEncoder(&b).Encode(req)
 
-	debug("[send] POST %s/snapshot [%d %d]", peer.Name(), req.LastTerm, req.LastIndex)
+	debug("Send Snapshot to %s [Last Term: %d, LastIndex %d]", peer.Name(),
+		req.LastTerm, req.LastIndex)
 
 	resp, err := Post(&t, fmt.Sprintf("%s/snapshot", peer.Name()), &b)
 
@@ -70,5 +75,5 @@ func (t transHandler) SendSnapshotRequest(server *raft.Server, peer *raft.Peer, 
 			return aersp, nil
 		}
 	}
-	return aersp, fmt.Errorf("raftd: Unable to send snapshot: %v", err)
+	return aersp, fmt.Errorf("Unable to send snapshot: %v", err)
 }
