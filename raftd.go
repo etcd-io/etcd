@@ -379,7 +379,7 @@ func Join(s *raft.Server, serverName string) error {
 			if resp.StatusCode == http.StatusOK {
 				return nil
 			}
-			if resp.StatusCode == http.StatusTemporaryRedirect {
+			if resp.StatusCode == http.StatusServiceUnavailable {
 				address, err := ioutil.ReadAll(resp.Body)
 				if err != nil {
 					warn("Cannot Read Leader info: %v", err)

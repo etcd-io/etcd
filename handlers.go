@@ -144,7 +144,8 @@ func excute(c Command, w *http.ResponseWriter) {
 		}
 	} else {
 		// tell the client where is the leader
-		(*w).WriteHeader(http.StatusTemporaryRedirect)
+		debug("Redirect to the leader %s",  server.Leader())
+		(*w).WriteHeader(http.StatusServiceUnavailable)
 		(*w).Write([]byte(server.Leader()))
 		return
 	}
