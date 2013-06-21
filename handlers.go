@@ -100,7 +100,7 @@ func SetHttpHandler(w http.ResponseWriter, req *http.Request) {
 
 	command := &SetCommand{}
 	command.Key = key
-	values := strings.Split(string(content), " ")
+	values := strings.Split(string(content), ",")
 
 	command.Value = values[0]
 

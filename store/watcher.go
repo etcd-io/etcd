@@ -3,44 +3,60 @@ package store
 import (
 	"path"
 	"strings"
-
-//"fmt"
 )
 
-type Watchers struct {
-	chanMap map[string][]chan Response
+const (
+	SHORT = iota
+	LONG
+)
+
+type WatcherHub struct {
+	watchers map[string][]Watcher
+}
+
+type Watcher struct {
+	c chan Response 
+	wType int
 }
 
 // global watcher
-var w *Watchers
+var w *WatcherHub
 
 // init the global watcher
 func init() {
-	w = createWatcher()
+	w = createWatcherHub()
 }
 
 // create a new watcher
-func createWatcher() *Watchers {
-	w := new(Watchers)
-	w.chanMap = make(map[string][]chan Response)
+func createWatcherHub() *WatcherHub {
+	w := new(WatcherHub)
+	w.watchers = make(map[string][]Watcher)
 	return w
 }
 
-func Watcher() *Watchers {
+func GetWatcherHub() *WatcherHub {
 	return w
 }
 
 // register a function with channel and prefix to the watcher
-func AddWatcher(prefix string, c chan Response) error {
+func AddWatcher(prefix string, c chan Response, wType int) error {
 
 	prefix = "/" + path.Clean(prefix)
 
-	_, ok := w.chanMap[prefix]
+	_, ok := w.watchers[prefix]
+
 	if !ok {
-		w.chanMap[prefix] = make([]chan Response, 0)
-		w.chanMap[prefix] = append(w.chanMap[prefix], c)
+		
+		w.watchers[prefix] = make([]Watcher, 0)
+
+		watcher := Watcher{c, wType}
+
+		w.watchers[prefix] = append(w.watchers[prefix], watcher)
 	} else {
-		w.chanMap[prefix] = append(w.chanMap[prefix], c)
+
+		watcher := Watcher{c, wType}
+
+		w.watchers[prefix] = append(w.watchers[prefix], watcher)
 	}
 
 	return nil
@@ -57,18 +73,26 @@ func notify(resp Response) error {
 	for _, segment := range segments {
 		currPath = path.Join(currPath, segment)
 
-		chans, ok := w.chanMap[currPath]
+		watchers, ok := w.watchers[currPath]
 
 		if ok {
 
+			newWatchers := make([]Watcher, 0)
 			// notify all the watchers
-			for _, c := range chans {
-				c <- resp
+			for _, watcher := range watchers {
+				 watcher.c <- resp
+				 if watcher.wType == LONG {
+				 	newWatchers = append(newWatchers, watcher)
+				 }
 			}
 
-			// we have notified all the watchers at this path
-			// delete the map
-			delete(w.chanMap, currPath)
+			if len(newWatchers) == 0 {
+				// we have notified all the watchers at this path
+				// delete the map
+				delete(w.watchers, currPath)
+			} else {
+				w.watchers[currPath] = newWatchers
+			}
 		}
 
 	}

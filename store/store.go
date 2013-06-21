@@ -109,10 +109,9 @@ func Set(key string, value string, expireTime time.Time) ([]byte, error) {
 				go expire(key, node.update, expireTime)
 			}
 		}
-
+		
 		// update the information of the node
-		node.ExpireTime = expireTime
-		node.Value = value
+		s.Nodes[key] = Node{value, expireTime, node.update}
 
 		resp := Response{SET, key, node.Value, value, true, expireTime}
 
@@ -192,6 +191,7 @@ func expire(key string, update chan time.Time, expireTime time.Time) {
 			// if the node become a permanent one, the go routine is
 			// not needed
 			if updateTime.Equal(PERMANENT) {
+				fmt.Println("permanent")
 				return
 			}
 			// update duration
