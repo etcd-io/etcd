@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/benbjohnson/go-raft"
+	"github.com/xiangli-cmu/go-raft"
 	"io"
 	"net/http"
 )

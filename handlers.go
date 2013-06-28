@@ -2,7 +2,7 @@ package main
 
 import (
 	"encoding/json"
-	"github.com/benbjohnson/go-raft"
+	"github.com/xiangli-cmu/go-raft"
 	"net/http"
 	//"fmt"
 	"io/ioutil"
@@ -134,11 +134,21 @@ func DeleteHttpHandler(w http.ResponseWriter, req *http.Request) {
 func excute(c Command, w *http.ResponseWriter) {
 	if server.State() == "leader" {
 		if body, err := server.Do(c); err != nil {
-			warn("raftd: Unable to write file: %v", err)
+			warn("Commit failed %v", err)
 			(*w).WriteHeader(http.StatusInternalServerError)
 			return
 		} else {
 			(*w).WriteHeader(http.StatusOK)
+
+			if body == nil {
+				return 
+			}
+
+			body, ok := body.([]byte)
+			if !ok {
+				panic ("wrong type")
+			}
+
 			(*w).Write(body)
 			return
 		}
@@ -174,6 +184,12 @@ func GetHttpHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	} else {
 		w.WriteHeader(http.StatusOK)
+
+		body, ok := body.([]byte)
+		if !ok {
+			panic ("wrong type")
+		}
+
 		w.Write(body)
 		return
 	}
@@ -194,6 +210,12 @@ func WatchHttpHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	} else {
 		w.WriteHeader(http.StatusOK)
+
+		body, ok := body.([]byte)
+		if !ok {
+			panic ("wrong type")
+		}
+		
 		w.Write(body)
 		return
 	}

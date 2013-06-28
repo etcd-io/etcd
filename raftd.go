@@ -8,7 +8,7 @@ import (
 	"encoding/pem"
 	"flag"
 	"fmt"
-	"github.com/benbjohnson/go-raft"
+	"github.com/xiangli-cmu/go-raft"
 	"github.com/xiangli-cmu/raft-etcd/store"
 	"github.com/xiangli-cmu/raft-etcd/web"
 	"io"
@@ -53,8 +53,8 @@ const (
 )
 
 const (
-	ELECTIONTIMTOUT  = 3 * time.Second
-	HEARTBEATTIMEOUT = 1 * time.Second
+	ELECTIONTIMTOUT  = 200 * time.Millisecond
+	HEARTBEATTIMEOUT = 50 * time.Millisecond
 )
 
 //------------------------------------------------------------------------------
@@ -149,7 +149,6 @@ func main() {
 
 		// start as a leader in a new cluster
 		if leaderHost == "" {
-			server.StartHeartbeatTimeout()
 			server.StartLeader()
 
 			// join self as a peer
@@ -160,7 +159,6 @@ func main() {
 
 			// start as a fellower in a existing cluster
 		} else {
-			server.StartElectionTimeout()
 			server.StartFollower()
 
 			err := Join(server, leaderHost)
@@ -172,7 +170,6 @@ func main() {
 
 		// rejoin the previous cluster
 	} else {
-		server.StartElectionTimeout()
 		server.StartFollower()
 		debug("%s start as a follower", server.Name())
 	}
@@ -248,6 +245,7 @@ func startTransport(port int, st int) {
 	switch st {
 
 	case HTTP:
+		debug("%s listen on http", server.Name())
 		log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), nil))
 
 	case HTTPS:

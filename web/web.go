@@ -3,7 +3,7 @@ package web
 import (
 	"code.google.com/p/go.net/websocket"
 	"fmt"
-	"github.com/benbjohnson/go-raft"
+	"github.com/xiangli-cmu/go-raft"
 	"github.com/xiangli-cmu/raft-etcd/store"
 	"html/template"
 	"net/http"
