@@ -34,6 +34,8 @@ var webPort int
 var certFile string
 var keyFile string
 var CAFile string
+var dirPath string
+
 
 func init() {
 	flag.BoolVar(&verbose, "v", false, "verbose logging")
@@ -43,6 +45,7 @@ func init() {
 	flag.StringVar(&CAFile, "CAFile", "", "the path of the CAFile")
 	flag.StringVar(&certFile, "cert", "", "the cert file of the server")
 	flag.StringVar(&keyFile, "key", "", "the key file of the server")
+	flag.StringVar(&dirPath, "d", "./", "the directory to store log and snapshot")
 }
 
 // CONSTANTS
@@ -100,19 +103,12 @@ func main() {
 	raft.RegisterCommand(&GetCommand{})
 	raft.RegisterCommand(&DeleteCommand{})
 
-	// Use the present working directory if a directory was not passed in.
-	var path string
-	if flag.NArg() == 0 {
-		path, _ = os.Getwd()
-	} else {
-		path = flag.Arg(0)
-		if err := os.MkdirAll(path, 0744); err != nil {
-			fatal("Unable to create path: %v", err)
-		}
+	if err := os.MkdirAll(dirPath, 0744); err != nil {
+		fatal("Unable to create path: %v", err)
 	}
 
 	// Read server info from file or grab it from user.
-	var info *Info = getInfo(path)
+	var info *Info = getInfo(dirPath)
 
 	name := fmt.Sprintf("%s:%d", info.Host, info.Port)
 
@@ -131,7 +127,7 @@ func main() {
 	s := store.GetStore()
 
 	// create raft server
-	server, err = raft.NewServer(name, path, t, s, nil)
+	server, err = raft.NewServer(name, dirPath, t, s, nil)
 
 	if err != nil {
 		fatal("%v", err)
