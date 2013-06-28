@@ -68,7 +68,7 @@ func init() {
 
 	flag.StringVar(&dirPath, "d", "./", "the directory to store log and snapshot")
 
-	flag.BoolVar(&ignore, "i", false , "ignore the old configuration, create a new node")
+	flag.BoolVar(&ignore, "i", false, "ignore the old configuration, create a new node")
 }
 
 // CONSTANTS
@@ -95,11 +95,10 @@ const (
 //------------------------------------------------------------------------------
 
 type Info struct {
-	Address string `json:"address"`
+	Address    string `json:"address"`
 	ServerPort int    `json:"serverPort"`
-	ClientPort int 	`json:"clientPort"`
-	WebPort int `json:"webPort"`
-
+	ClientPort int    `json:"clientPort"`
+	WebPort    int    `json:"webPort"`
 }
 
 //------------------------------------------------------------------------------
@@ -109,6 +108,7 @@ type Info struct {
 //------------------------------------------------------------------------------
 
 var server *raft.Server
+var serverTransHandler transHandler
 var logger *log.Logger
 
 var storeMsg chan string
@@ -152,13 +152,13 @@ func main() {
 		panic("ERROR type")
 	}
 
-	t := createTranHandler(st)
+	serverTransHandler = createTranHandler(st)
 
 	// Setup new raft server.
 	s := store.GetStore()
 
 	// create raft server
-	server, err = raft.NewServer(name, dirPath, t, s, nil)
+	server, err = raft.NewServer(name, dirPath, serverTransHandler, s, nil)
 
 	if err != nil {
 		fatal("%v", err)
@@ -262,7 +262,7 @@ func startServTransport(port int, st int) {
 	http.HandleFunc("/log", GetLogHttpHandler)
 	http.HandleFunc("/log/append", AppendEntriesHttpHandler)
 	http.HandleFunc("/snapshot", SnapshotHttpHandler)
-
+	http.HandleFunc("/client", clientHttpHandler)
 
 	switch st {
 
@@ -351,14 +351,13 @@ func startClientTransport(port int, st int) {
 	}
 }
 
-
 //--------------------------------------
 // Config
 //--------------------------------------
 
 func securityType(source int) int {
 
-	var keyFile, certFile, CAFile string 
+	var keyFile, certFile, CAFile string
 
 	switch source {
 	case SERVER:
@@ -480,4 +479,3 @@ func Join(s *raft.Server, serverName string) error {
 	}
 	return fmt.Errorf("Unable to join: %v", err)
 }
-

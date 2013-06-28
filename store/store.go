@@ -109,7 +109,7 @@ func Set(key string, value string, expireTime time.Time) ([]byte, error) {
 				go expire(key, node.update, expireTime)
 			}
 		}
-		
+
 		// update the information of the node
 		s.Nodes[key] = Node{value, expireTime, node.update}
 

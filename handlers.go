@@ -13,7 +13,7 @@ import (
 )
 
 //--------------------------------------
-// HTTP Handlers
+// Internal HTTP Handlers via server port
 //--------------------------------------
 
 // Get all the current logs
@@ -72,6 +72,13 @@ func SnapshotHttpHandler(w http.ResponseWriter, req *http.Request) {
 	w.WriteHeader(http.StatusInternalServerError)
 }
 
+func clientHttpHandler(w http.ResponseWriter, req *http.Request) {
+	debug("[recv] Get http://%v/client/ ", server.Name())
+	w.WriteHeader(http.StatusOK)
+	client := address + ":" + strconv.Itoa(clientPort)
+	w.Write([]byte(client))
+}
+
 func JoinHttpHandler(w http.ResponseWriter, req *http.Request) {
 
 	command := &JoinCommand{}
@@ -85,6 +92,9 @@ func JoinHttpHandler(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
+//--------------------------------------
+// external HTTP Handlers via client port
+//--------------------------------------
 func SetHttpHandler(w http.ResponseWriter, req *http.Request) {
 	key := req.URL.Path[len("/set/"):]
 
@@ -141,12 +151,12 @@ func excute(c Command, w *http.ResponseWriter, req *http.Request) {
 			(*w).WriteHeader(http.StatusOK)
 
 			if body == nil {
-				return 
+				return
 			}
 
 			body, ok := body.([]byte)
 			if !ok {
-				panic ("wrong type")
+				panic("wrong type")
 			}
 
 			(*w).Write(body)
@@ -154,19 +164,19 @@ func excute(c Command, w *http.ResponseWriter, req *http.Request) {
 		}
 	} else {
 		// tell the client where is the leader
-		debug("Redirect to the leader %s",  server.Leader())
+		debug("Redirect to the leader %s", server.Leader())
 
-    	path := req.URL.Path
+		path := req.URL.Path
 
-    	var scheme string
+		var scheme string
 
-    	if scheme = req.URL.Scheme; scheme == "" {
-    		scheme = "http://"
-    	}
+		if scheme = req.URL.Scheme; scheme == "" {
+			scheme = "http://"
+		}
 
-    	url := scheme + server.Leader() + path
+		url := scheme + leaderClient() + path
 
-    	debug("redirect to ", url)
+		debug("redirect to ", url)
 		http.Redirect(*w, req, url, http.StatusTemporaryRedirect)
 		return
 	}
@@ -198,7 +208,7 @@ func GetHttpHandler(w http.ResponseWriter, req *http.Request) {
 
 		body, ok := body.([]byte)
 		if !ok {
-			panic ("wrong type")
+			panic("wrong type")
 		}
 
 		w.Write(body)
@@ -224,9 +234,9 @@ func WatchHttpHandler(w http.ResponseWriter, req *http.Request) {
 
 		body, ok := body.([]byte)
 		if !ok {
-			panic ("wrong type")
+			panic("wrong type")
 		}
-		
+
 		w.Write(body)
 		return
 	}

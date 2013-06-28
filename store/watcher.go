@@ -15,7 +15,7 @@ type WatcherHub struct {
 }
 
 type Watcher struct {
-	c chan Response 
+	c     chan Response
 	wType int
 }
 
@@ -46,7 +46,7 @@ func AddWatcher(prefix string, c chan Response, wType int) error {
 	_, ok := w.watchers[prefix]
 
 	if !ok {
-		
+
 		w.watchers[prefix] = make([]Watcher, 0)
 
 		watcher := Watcher{c, wType}
@@ -80,10 +80,10 @@ func notify(resp Response) error {
 			newWatchers := make([]Watcher, 0)
 			// notify all the watchers
 			for _, watcher := range watchers {
-				 watcher.c <- resp
-				 if watcher.wType == LONG {
-				 	newWatchers = append(newWatchers, watcher)
-				 }
+				watcher.c <- resp
+				if watcher.wType == LONG {
+					newWatchers = append(newWatchers, watcher)
+				}
 			}
 
 			if len(newWatchers) == 0 {

@@ -1,13 +1,15 @@
 package main
 
 import (
-	"net/http"
-	"io"
-	"fmt"
 	"encoding/json"
+	"fmt"
 	"github.com/xiangli-cmu/raft-etcd/web"
+	"io"
+	"io/ioutil"
+	"net/http"
 	"os"
 )
+
 //--------------------------------------
 // Web Helper
 //--------------------------------------
@@ -61,6 +63,17 @@ func Get(t *transHandler, path string) (*http.Response, error) {
 		resp, err := http.Get("http://" + path)
 		return resp, err
 	}
+}
+
+func leaderClient() string {
+	resp, _ := Get(&serverTransHandler, server.Leader()+"/client")
+	if resp != nil {
+		defer resp.Body.Close()
+		body, _ := ioutil.ReadAll(resp.Body)
+
+		return string(body)
+	}
+	return ""
 }
 
 //--------------------------------------

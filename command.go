@@ -16,7 +16,7 @@ import (
 // A command represents an action to be taken on the replicated state machine.
 type Command interface {
 	CommandName() string
-	Apply(server *raft.Server) (interface {}, error)
+	Apply(server *raft.Server) (interface{}, error)
 }
 
 // Set command
@@ -32,7 +32,7 @@ func (c *SetCommand) CommandName() string {
 }
 
 // Set the value of key to value
-func (c *SetCommand) Apply(server *raft.Server) (interface {}, error) {
+func (c *SetCommand) Apply(server *raft.Server) (interface{}, error) {
 	return store.Set(c.Key, c.Value, c.ExpireTime)
 }
 
@@ -52,7 +52,7 @@ func (c *GetCommand) CommandName() string {
 }
 
 // Set the value of key to value
-func (c *GetCommand) Apply(server *raft.Server) (interface {}, error) {
+func (c *GetCommand) Apply(server *raft.Server) (interface{}, error) {
 	res := store.Get(c.Key)
 	return json.Marshal(res)
 }
@@ -72,7 +72,7 @@ func (c *DeleteCommand) CommandName() string {
 }
 
 // Delete the key
-func (c *DeleteCommand) Apply(server *raft.Server) (interface {}, error) {
+func (c *DeleteCommand) Apply(server *raft.Server) (interface{}, error) {
 	return store.Delete(c.Key)
 }
 
@@ -86,7 +86,7 @@ func (c *WatchCommand) CommandName() string {
 	return "watch"
 }
 
-func (c *WatchCommand) Apply(server *raft.Server) (interface {}, error) {
+func (c *WatchCommand) Apply(server *raft.Server) (interface{}, error) {
 	ch := make(chan store.Response)
 
 	// add to the watchers list
@@ -107,7 +107,7 @@ func (c *JoinCommand) CommandName() string {
 	return "join"
 }
 
-func (c *JoinCommand) Apply(server *raft.Server) (interface {}, error) {
+func (c *JoinCommand) Apply(server *raft.Server) (interface{}, error) {
 	err := server.AddPeer(c.Name)
 	// no result will be returned
 	return nil, err
