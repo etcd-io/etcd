@@ -11,12 +11,12 @@ import (
 	"github.com/xiangli-cmu/go-raft"
 	"github.com/xiangli-cmu/raft-etcd/store"
 	"github.com/xiangli-cmu/raft-etcd/web"
-	"io"
+	//"io"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
-	"strconv"
+	//"strconv"
 	"strings"
 	"time"
 )
@@ -28,23 +28,35 @@ import (
 //------------------------------------------------------------------------------
 
 var verbose bool
-var leaderHost string
+
+var cluster string
+
 var address string
+var clientPort int
+var serverPort int
 var webPort int
+
 var certFile string
 var keyFile string
 var CAFile string
+
 var dirPath string
 
 
 func init() {
 	flag.BoolVar(&verbose, "v", false, "verbose logging")
-	flag.StringVar(&leaderHost, "c", "", "join to a existing cluster")
-	flag.StringVar(&address, "a", "", "the address of the local machine")
+
+	flag.StringVar(&cluster, "C", "", "join to a existing cluster")
+
+	flag.StringVar(&address, "a", "", "the ip address of the machine")
+	flag.IntVar(&clientPort, "c", 4001, "the port of client")
+	flag.IntVar(&serverPort, "s", 7001, "the port of server")
 	flag.IntVar(&webPort, "w", -1, "the port of web interface")
+
 	flag.StringVar(&CAFile, "CAFile", "", "the path of the CAFile")
 	flag.StringVar(&certFile, "cert", "", "the cert file of the server")
 	flag.StringVar(&keyFile, "key", "", "the key file of the server")
+
 	flag.StringVar(&dirPath, "d", "./", "the directory to store log and snapshot")
 }
 
@@ -67,8 +79,11 @@ const (
 //------------------------------------------------------------------------------
 
 type Info struct {
-	Host string `json:"host"`
-	Port int    `json:"port"`
+	Address string `json:"address"`
+	ServerPort int    `json:"serverPort"`
+	ClientPort int 	`json:"clientPort"`
+	WebPort int `json:"webPort"`
+
 }
 
 //------------------------------------------------------------------------------
@@ -110,9 +125,9 @@ func main() {
 	// Read server info from file or grab it from user.
 	var info *Info = getInfo(dirPath)
 
-	name := fmt.Sprintf("%s:%d", info.Host, info.Port)
+	name := fmt.Sprintf("%s:%d", info.Address, info.ServerPort)
 
-	fmt.Printf("Name: %s\n\n", name)
+	fmt.Printf("ServerName: %s\n\n", name)
 
 	// secrity type
 	st := securityType()
@@ -144,7 +159,7 @@ func main() {
 	if server.IsLogEmpty() {
 
 		// start as a leader in a new cluster
-		if leaderHost == "" {
+		if cluster == "" {
 			server.StartLeader()
 
 			// join self as a peer
@@ -157,7 +172,7 @@ func main() {
 		} else {
 			server.StartFollower()
 
-			err := Join(server, leaderHost)
+			err := Join(server, cluster)
 			if err != nil {
 				panic(err)
 			}
@@ -180,7 +195,8 @@ func main() {
 		go web.Start(server, webPort)
 	}
 
-	startTransport(info.Port, st)
+	go startServTransport(info.ServerPort, st)
+	startClientTransport(info.ClientPort, st)
 
 }
 
@@ -222,7 +238,7 @@ func createTranHandler(st int) transHandler {
 	return transHandler{}
 }
 
-func startTransport(port int, st int) {
+func startServTransport(port int, st int) {
 
 	// internal commands
 	http.HandleFunc("/join", JoinHttpHandler)
@@ -231,6 +247,48 @@ func startTransport(port int, st int) {
 	http.HandleFunc("/log/append", AppendEntriesHttpHandler)
 	http.HandleFunc("/snapshot", SnapshotHttpHandler)
 
+
+	switch st {
+
+	case HTTP:
+		debug("%s listen on http", server.Name())
+		log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), nil))
+
+	case HTTPS:
+		http.ListenAndServeTLS(fmt.Sprintf(":%d", port), certFile, keyFile, nil)
+
+	case HTTPSANDVERIFY:
+		pemByte, _ := ioutil.ReadFile(CAFile)
+
+		block, pemByte := pem.Decode(pemByte)
+
+		cert, err := x509.ParseCertificate(block.Bytes)
+
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		certPool := x509.NewCertPool()
+
+		certPool.AddCert(cert)
+
+		server := &http.Server{
+			TLSConfig: &tls.Config{
+				ClientAuth: tls.RequireAndVerifyClientCert,
+				ClientCAs:  certPool,
+			},
+			Addr: fmt.Sprintf(":%d", port),
+		}
+		err = server.ListenAndServeTLS(certFile, keyFile)
+
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
+}
+
+func startClientTransport(port int, st int) {
 	// external commands
 	http.HandleFunc("/set/", SetHttpHandler)
 	http.HandleFunc("/get/", GetHttpHandler)
@@ -275,8 +333,8 @@ func startTransport(port int, st int) {
 			log.Fatal(err)
 		}
 	}
-
 }
+
 
 //--------------------------------------
 // Config
@@ -323,20 +381,13 @@ func getInfo(path string) *Info {
 			fatal("Please give the address of the local machine")
 		}
 
-		input := strings.Split(address, ":")
+		info.Address = address
+		info.Address = strings.TrimSpace(info.Address)
+		fmt.Println("address ", info.Address)
 
-		if len(input) != 2 {
-			fatal("Wrong address %s", address)
-		}
-
-		info.Host = input[0]
-		info.Host = strings.TrimSpace(info.Host)
-
-		info.Port, err = strconv.Atoi(input[1])
-
-		if err != nil {
-			fatal("Wrong port %s", address)
-		}
+		info.ServerPort = serverPort
+		info.ClientPort = clientPort
+		info.WebPort = webPort
 
 		// Write to file.
 		content, _ := json.Marshal(info)
@@ -388,80 +439,3 @@ func Join(s *raft.Server, serverName string) error {
 	return fmt.Errorf("Unable to join: %v", err)
 }
 
-//--------------------------------------
-// Web Helper
-//--------------------------------------
-
-func webHelper() {
-	storeMsg = make(chan string)
-	for {
-		web.Hub().Send(<-storeMsg)
-	}
-}
-
-//--------------------------------------
-// HTTP Utilities
-//--------------------------------------
-
-func decodeJsonRequest(req *http.Request, data interface{}) error {
-	decoder := json.NewDecoder(req.Body)
-	if err := decoder.Decode(&data); err != nil && err != io.EOF {
-		logger.Println("Malformed json request: %v", err)
-		return fmt.Errorf("Malformed json request: %v", err)
-	}
-	return nil
-}
-
-func encodeJsonResponse(w http.ResponseWriter, status int, data interface{}) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-
-	if data != nil {
-		encoder := json.NewEncoder(w)
-		encoder.Encode(data)
-	}
-}
-
-func Post(t *transHandler, path string, body io.Reader) (*http.Response, error) {
-
-	if t.client != nil {
-		resp, err := t.client.Post("https://"+path, "application/json", body)
-		return resp, err
-	} else {
-		resp, err := http.Post("http://"+path, "application/json", body)
-		return resp, err
-	}
-}
-
-func Get(t *transHandler, path string) (*http.Response, error) {
-	if t.client != nil {
-		resp, err := t.client.Get("https://" + path)
-		return resp, err
-	} else {
-		resp, err := http.Get("http://" + path)
-		return resp, err
-	}
-}
-
-//--------------------------------------
-// Log
-//--------------------------------------
-
-func debug(msg string, v ...interface{}) {
-	if verbose {
-		logger.Printf("DEBUG "+msg+"\n", v...)
-	}
-}
-
-func info(msg string, v ...interface{}) {
-	logger.Printf("INFO  "+msg+"\n", v...)
-}
-
-func warn(msg string, v ...interface{}) {
-	logger.Printf("Alpaca Server: WARN  "+msg+"\n", v...)
-}
-
-func fatal(msg string, v ...interface{}) {
-	logger.Printf("FATAL "+msg+"\n", v...)
-	os.Exit(1)
-}

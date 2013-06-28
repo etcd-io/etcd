@@ -11,6 +11,7 @@ import (
 )
 
 var s *raft.Server
+var mainTempl *template.Template
 
 type MainPage struct {
 	Leader  string
@@ -39,8 +40,6 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 }
 
-var mainTempl = template.Must(template.ParseFiles("home.html"))
-
 func mainHandler(c http.ResponseWriter, req *http.Request) {
 
 	p := &MainPage{Leader: s.Leader(),
@@ -50,6 +49,7 @@ func mainHandler(c http.ResponseWriter, req *http.Request) {
 }
 
 func Start(server *raft.Server, port int) {
+	mainTempl = template.Must(template.ParseFiles("home.html"))
 	s = server
 
 	go h.run()
