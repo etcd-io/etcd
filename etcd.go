@@ -46,6 +46,7 @@ var clientCAFile string
 
 var dirPath string
 
+var ignore bool
 
 func init() {
 	flag.BoolVar(&verbose, "v", false, "verbose logging")
@@ -66,6 +67,8 @@ func init() {
 	flag.StringVar(&clientKeyFile, "clientKey", "", "the key file of the client")
 
 	flag.StringVar(&dirPath, "d", "./", "the directory to store log and snapshot")
+
+	flag.BoolVar(&ignore, "i", false , "ignore the old configuration, create a new node")
 }
 
 // CONSTANTS
@@ -392,6 +395,17 @@ func getInfo(path string) *Info {
 
 	// Read in the server info if available.
 	infoPath := fmt.Sprintf("%s/info", path)
+
+	// delete the old configuration if exist
+	if ignore {
+		logPath := fmt.Sprintf("%s/log", path)
+		snapshotPath := fmt.Sprintf("%s/snapshotPath", path)
+		os.Remove(infoPath)
+		os.Remove(logPath)
+		os.RemoveAll(snapshotPath)
+
+	}
+
 	if file, err := os.Open(infoPath); err == nil {
 		if content, err := ioutil.ReadAll(file); err != nil {
 			fatal("Unable to read info: %v", err)
