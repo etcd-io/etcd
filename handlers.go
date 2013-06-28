@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"github.com/xiangli-cmu/go-raft"
 	"net/http"
-	"fmt"
+	//"fmt"
 	"io/ioutil"
 	//"bytes"
 	"strconv"
@@ -157,8 +157,15 @@ func excute(c Command, w *http.ResponseWriter, req *http.Request) {
 		debug("Redirect to the leader %s",  server.Leader())
 
     	path := req.URL.Path
-    	url := "http://" + server.Leader() + path
-    	
+
+    	var scheme string
+
+    	if scheme = req.URL.Scheme; scheme == "" {
+    		scheme = "http://"
+    	}
+
+    	url := scheme + server.Leader() + path
+
     	debug("redirect to ", url)
 		http.Redirect(*w, req, url, http.StatusTemporaryRedirect)
 		return
