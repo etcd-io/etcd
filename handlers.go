@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"github.com/xiangli-cmu/go-raft"
 	"net/http"
-	//"fmt"
+	"fmt"
 	"io/ioutil"
 	//"bytes"
 	"strconv"
@@ -78,7 +78,7 @@ func JoinHttpHandler(w http.ResponseWriter, req *http.Request) {
 
 	if err := decodeJsonRequest(req, command); err == nil {
 		debug("Receive Join Request from %s", command.Name)
-		excute(command, &w)
+		excute(command, &w, req)
 	} else {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -116,7 +116,7 @@ func SetHttpHandler(w http.ResponseWriter, req *http.Request) {
 		command.ExpireTime = time.Unix(0, 0)
 	}
 
-	excute(command, &w)
+	excute(command, &w, req)
 
 }
 
@@ -128,10 +128,10 @@ func DeleteHttpHandler(w http.ResponseWriter, req *http.Request) {
 	command := &DeleteCommand{}
 	command.Key = key
 
-	excute(command, &w)
+	excute(command, &w, req)
 }
 
-func excute(c Command, w *http.ResponseWriter) {
+func excute(c Command, w *http.ResponseWriter, req *http.Request) {
 	if server.State() == "leader" {
 		if body, err := server.Do(c); err != nil {
 			warn("Commit failed %v", err)
@@ -155,8 +155,12 @@ func excute(c Command, w *http.ResponseWriter) {
 	} else {
 		// tell the client where is the leader
 		debug("Redirect to the leader %s",  server.Leader())
-		(*w).WriteHeader(http.StatusServiceUnavailable)
-		(*w).Write([]byte(server.Leader()))
+
+    	path := req.URL.Path
+    	url := "http://" + server.Leader() + path
+    	
+    	debug("redirect to ", url)
+		http.Redirect(*w, req, url, http.StatusTemporaryRedirect)
 		return
 	}
 
