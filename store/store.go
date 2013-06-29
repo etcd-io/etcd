@@ -27,6 +27,9 @@ type Store struct {
 	// the string channel to send messages to the outside world
 	// now we use it to send changes to the hub of the web service
 	messager *chan string
+
+	// current Index
+	index uint64
 }
 
 type Node struct {
@@ -79,6 +82,9 @@ func (s *Store) SetMessager(messager *chan string) {
 
 // set the key to value, return the old value if the key exists
 func Set(key string, value string, expireTime time.Time, index uint64) ([]byte, error) {
+
+	//update index
+	s.index = index
 
 	key = path.Clean(key)
 
@@ -172,7 +178,7 @@ func expire(key string, update chan time.Time, expireTime time.Time) {
 
 				delete(s.Nodes, key)
 
-				resp := Response{DELETE, key, node.Value, "", true, node.ExpireTime, 0}
+				resp := Response{DELETE, key, node.Value, "", true, node.ExpireTime, s.index}
 
 				msg, err := json.Marshal(resp)
 
@@ -209,14 +215,17 @@ func Get(key string) Response {
 	node, ok := s.Nodes[key]
 
 	if ok {
-		return Response{GET, key, node.Value, node.Value, true, node.ExpireTime, 0}
+		return Response{GET, key, node.Value, node.Value, true, node.ExpireTime, s.index}
 	} else {
-		return Response{GET, key, "", "", false, time.Unix(0, 0), 0}
+		return Response{GET, key, "", "", false, time.Unix(0, 0), s.index}
 	}
 }
 
 // delete the key
 func Delete(key string, index uint64) ([]byte, error) {
+	//update index
+	s.index = index
+
 	key = path.Clean(key)
 
 	node, ok := s.Nodes[key]
