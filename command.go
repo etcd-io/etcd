@@ -33,7 +33,7 @@ func (c *SetCommand) CommandName() string {
 
 // Set the value of key to value
 func (c *SetCommand) Apply(server *raft.Server) (interface{}, error) {
-	return store.Set(c.Key, c.Value, c.ExpireTime)
+	return store.Set(c.Key, c.Value, c.ExpireTime, server.CommittedIndex())
 }
 
 // Get the path for http request
@@ -73,7 +73,7 @@ func (c *DeleteCommand) CommandName() string {
 
 // Delete the key
 func (c *DeleteCommand) Apply(server *raft.Server) (interface{}, error) {
-	return store.Delete(c.Key)
+	return store.Delete(c.Key, server.CommittedIndex())
 }
 
 // Watch command
