@@ -28,8 +28,14 @@ type Store struct {
 	// now we use it to send changes to the hub of the web service
 	messager *chan string
 
+	// previous responses
+	Responses []Response
+
+	// at some point, we may need to compact the Response
+	ResponseStartIndex uint64
+
 	// current Index
-	index uint64
+	Index uint64
 }
 
 type Node struct {
@@ -70,6 +76,8 @@ func init() {
 func createStore() *Store {
 	s := new(Store)
 	s.Nodes = make(map[string]Node)
+	s.Responses = make([]Response, 0)
+	s.ResponseStartIndex = 0
 	return s
 }
 
@@ -87,7 +95,9 @@ func (s *Store) SetMessager(messager *chan string) {
 func Set(key string, value string, expireTime time.Time, index uint64) ([]byte, error) {
 
 	//update index
-	s.index = index
+	s.Index = index
+	
+	key = "/" + key
 
 	key = path.Clean(key)
 
@@ -112,8 +122,6 @@ func Set(key string, value string, expireTime time.Time, index uint64) ([]byte, 
 
 	// get the node
 	node, ok := s.Nodes[key]
-
-	
 
 	if ok {
 		// if node is not permanent before
@@ -147,6 +155,8 @@ func Set(key string, value string, expireTime time.Time, index uint64) ([]byte, 
 			*s.messager <- string(msg)
 		}
 
+		s.Responses = append(s.Responses, resp)
+
 		return msg, err
 
 	// add new node
@@ -172,7 +182,9 @@ func Set(key string, value string, expireTime time.Time, index uint64) ([]byte, 
 
 			*s.messager <- string(msg)
 		}
-
+		
+		s.Responses = append(s.Responses, resp)
+		fmt.Println(len(s.Responses), " ")
 		return msg, err
 	}
 }
@@ -192,7 +204,7 @@ func expire(key string, update chan time.Time, expireTime time.Time) {
 
 				delete(s.Nodes, key)
 
-				resp := Response{DELETE, key, node.Value, "", true, node.ExpireTime, 0, s.index}
+				resp := Response{DELETE, key, node.Value, "", true, node.ExpireTime, 0, s.Index}
 
 				msg, err := json.Marshal(resp)
 
@@ -241,16 +253,17 @@ func Get(key string) Response {
 			TTL = -1
 		}
 
-		return Response{GET, key, node.Value, node.Value, true, node.ExpireTime, TTL, s.index}
+		return Response{GET, key, node.Value, node.Value, true, node.ExpireTime, TTL, s.Index}
 	} else {
-		return Response{GET, key, "", "", false, time.Unix(0, 0), 0, s.index}
+
+		return Response{GET, key, "", "", false, time.Unix(0, 0), 0, s.Index}
 	}
 }
 
 // delete the key
 func Delete(key string, index uint64) ([]byte, error) {
 	//update index
-	s.index = index
+	s.Index = index
 
 	key = path.Clean(key)
 
@@ -282,11 +295,15 @@ func Delete(key string, index uint64) ([]byte, error) {
 			*s.messager <- string(msg)
 		}
 
+		s.Responses = append(s.Responses, resp)
 		return msg, err
 
 	} else {
 
-		return json.Marshal(Response{DELETE, key, "", "", false, time.Unix(0, 0), 0, index})
+		resp := Response{DELETE, key, "", "", false, time.Unix(0, 0), 0, index}
+		s.Responses = append(s.Responses, resp)
+
+		return json.Marshal(resp)
 	}
 }
 

@@ -87,10 +87,10 @@ func (c *WatchCommand) CommandName() string {
 }
 
 func (c *WatchCommand) Apply(server *raft.Server) (interface{}, error) {
-	ch := make(chan store.Response)
+	ch := make(chan store.Response, 1)
 
 	// add to the watchers list
-	store.AddWatcher(c.Key, ch, 0)
+	store.AddWatcher(c.Key, ch, 1)
 
 	// wait for the notification for any changing
 	res := <-ch
