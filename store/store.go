@@ -29,7 +29,7 @@ type Store struct {
 	messager *chan string
 
 	// previous responses
-	Responses []Response
+	Responses [1024]Response
 
 	// at some point, we may need to compact the Response
 	ResponseStartIndex uint64
@@ -70,13 +70,13 @@ type Response struct {
 func init() {
 	s = createStore()
 	s.messager = nil
+	s.ResponseStartIndex = 0
 }
 
 // make a new stroe
 func createStore() *Store {
 	s := new(Store)
 	s.Nodes = make(map[string]Node)
-	s.Responses = make([]Response, 0)
 	s.ResponseStartIndex = 0
 	return s
 }
@@ -155,7 +155,7 @@ func Set(key string, value string, expireTime time.Time, index uint64) ([]byte, 
 			*s.messager <- string(msg)
 		}
 
-		s.Responses = append(s.Responses, resp)
+		s.Responses[index - s.ResponseStartIndex] = resp
 
 		return msg, err
 
@@ -183,8 +183,9 @@ func Set(key string, value string, expireTime time.Time, index uint64) ([]byte, 
 			*s.messager <- string(msg)
 		}
 		
-		s.Responses = append(s.Responses, resp)
-		fmt.Println(len(s.Responses), " ")
+		s.Responses[index - s.ResponseStartIndex] = resp
+		
+		fmt.Println(index - s.ResponseStartIndex)
 		return msg, err
 	}
 }
@@ -295,13 +296,13 @@ func Delete(key string, index uint64) ([]byte, error) {
 			*s.messager <- string(msg)
 		}
 
-		s.Responses = append(s.Responses, resp)
+		s.Responses[index - s.ResponseStartIndex] = resp
 		return msg, err
 
 	} else {
 
 		resp := Response{DELETE, key, "", "", false, time.Unix(0, 0), 0, index}
-		s.Responses = append(s.Responses, resp)
+		s.Responses[index - s.ResponseStartIndex] = resp
 
 		return json.Marshal(resp)
 	}

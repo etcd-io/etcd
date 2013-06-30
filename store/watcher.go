@@ -39,8 +39,7 @@ func AddWatcher(prefix string, c chan Response, sinceIndex uint64) error {
 	prefix = "/" + path.Clean(prefix)
 
 	if sinceIndex != 0 && sinceIndex >= s.ResponseStartIndex {
-
-		for i := sinceIndex; i < s.Index; i++ {
+		for i := sinceIndex; i <= s.Index; i++ {
 			if check(prefix, i) {
 				c <- s.Responses[i]
 				return nil
@@ -77,9 +76,7 @@ func check(prefix string, index uint64) bool {
 	}
 
 	path := s.Responses[index].Key
-	fmt.Println("checking ", path, " ", prefix)
 	if strings.HasPrefix(path, prefix) {
-		fmt.Println("checking found")
 		prefixLen := len(prefix)
 		if len(path) == prefixLen || path[prefixLen] == '/' {
 			return true
