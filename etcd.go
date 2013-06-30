@@ -48,6 +48,8 @@ var dirPath string
 
 var ignore bool
 
+var responseBufferSize int
+
 func init() {
 	flag.BoolVar(&verbose, "v", false, "verbose logging")
 

@@ -2,8 +2,8 @@ package store
 
 import (
 	"path"
+	"strconv"
 	"strings"
-	"fmt"
 )
 
 type WatcherHub struct {
@@ -41,7 +41,7 @@ func AddWatcher(prefix string, c chan Response, sinceIndex uint64) error {
 	if sinceIndex != 0 && sinceIndex >= s.ResponseStartIndex {
 		for i := sinceIndex; i <= s.Index; i++ {
 			if check(prefix, i) {
-				c <- s.Responses[i]
+				c <- s.ResponseMap[strconv.FormatUint(i, 10)]
 				return nil
 			}
 		}
@@ -66,22 +66,23 @@ func AddWatcher(prefix string, c chan Response, sinceIndex uint64) error {
 	return nil
 }
 
-// check if the response has what we are waching
+// check if the response has what we are watching
 func check(prefix string, index uint64) bool {
 
-	index = index - s.ResponseStartIndex
+	resp, ok := s.ResponseMap[strconv.FormatUint(index, 10)]
 
-	if index < 0 {
+	if !ok {
+		// not storage system command
 		return false
-	}
+	} else {
+		path := resp.Key
+		if strings.HasPrefix(path, prefix) {
+			prefixLen := len(prefix)
+			if len(path) == prefixLen || path[prefixLen] == '/' {
+				return true
+			}
 
-	path := s.Responses[index].Key
-	if strings.HasPrefix(path, prefix) {
-		prefixLen := len(prefix)
-		if len(path) == prefixLen || path[prefixLen] == '/' {
-			return true
 		}
-
 	}
 
 	return false

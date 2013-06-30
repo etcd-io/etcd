@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"path"
 	"time"
+	"strconv"
 )
 
 // global store
@@ -28,8 +29,13 @@ type Store struct {
 	// now we use it to send changes to the hub of the web service
 	messager *chan string
 
-	// previous responses
-	Responses [1024]Response
+	// 
+	ResponseMap map[string]Response
+
+	//
+	ResponseMaxSize int
+
+	ResponseCurrSize uint
 
 	// at some point, we may need to compact the Response
 	ResponseStartIndex uint64
@@ -71,12 +77,15 @@ func init() {
 	s = createStore()
 	s.messager = nil
 	s.ResponseStartIndex = 0
+	s.ResponseMaxSize = 1024
+	s.ResponseCurrSize = 0
 }
 
 // make a new stroe
 func createStore() *Store {
 	s := new(Store)
 	s.Nodes = make(map[string]Node)
+	s.ResponseMap = make(map[string]Response)
 	s.ResponseStartIndex = 0
 	return s
 }
@@ -155,7 +164,7 @@ func Set(key string, value string, expireTime time.Time, index uint64) ([]byte, 
 			*s.messager <- string(msg)
 		}
 
-		s.Responses[index - s.ResponseStartIndex] = resp
+		updateMap(index, &resp)
 
 		return msg, err
 
@@ -182,10 +191,8 @@ func Set(key string, value string, expireTime time.Time, index uint64) ([]byte, 
 
 			*s.messager <- string(msg)
 		}
-		
-		s.Responses[index - s.ResponseStartIndex] = resp
-		
-		fmt.Println(index - s.ResponseStartIndex)
+
+		updateMap(index, &resp)
 		return msg, err
 	}
 }
@@ -234,6 +241,30 @@ func expire(key string, update chan time.Time, expireTime time.Time) {
 		}
 	}
 }
+
+func updateMap(index uint64, resp *Response) {
+
+	if s.ResponseMaxSize == 0 {
+		return
+	}
+
+	strIndex := strconv.FormatUint(index, 10)
+	s.ResponseMap[strIndex] = *resp
+
+	// unlimited
+	if s.ResponseMaxSize < 0{
+		s.ResponseCurrSize++
+		return
+	}
+
+	if s.ResponseCurrSize == uint(s.ResponseMaxSize) {
+		s.ResponseStartIndex++
+		delete(s.ResponseMap, strconv.FormatUint(s.ResponseStartIndex, 10))
+	} else {
+		s.ResponseCurrSize++
+	}
+}
+
 
 // get the value of the key
 func Get(key string) Response {
@@ -296,13 +327,14 @@ func Delete(key string, index uint64) ([]byte, error) {
 			*s.messager <- string(msg)
 		}
 
-		s.Responses[index - s.ResponseStartIndex] = resp
+		updateMap(index, &resp)
 		return msg, err
 
 	} else {
 
 		resp := Response{DELETE, key, "", "", false, time.Unix(0, 0), 0, index}
-		s.Responses[index - s.ResponseStartIndex] = resp
+
+		updateMap(index, &resp)
 
 		return json.Marshal(resp)
 	}
