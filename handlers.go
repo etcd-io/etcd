@@ -220,10 +220,27 @@ func GetHttpHandler(w http.ResponseWriter, req *http.Request) {
 func WatchHttpHandler(w http.ResponseWriter, req *http.Request) {
 	key := req.URL.Path[len("/watch/"):]
 
-	debug("[recv] GET http://%v/watch/%s", server.Name(), key)
-
 	command := &WatchCommand{}
 	command.Key = key
+
+	if req.Method == "GET" {
+		debug("[recv] GET http://%v/watch/%s", server.Name(), key)
+		command.SinceIndex = 0
+
+	} else if req.Method == "POST" {
+		debug("[recv] POST http://%v/watch/%s", server.Name(), key)
+		content, err := ioutil.ReadAll(req.Body)
+
+		sinceIndex, err := strconv.ParseUint(string(content), 10, 64)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+		}
+		command.SinceIndex = sinceIndex
+
+	} else {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
 
 	if body, err := command.Apply(server); err != nil {
 		warn("raftd: Unable to write file: %v", err)

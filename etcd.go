@@ -48,7 +48,7 @@ var dirPath string
 
 var ignore bool
 
-var responseBufferSize int
+var maxSize int
 
 func init() {
 	flag.BoolVar(&verbose, "v", false, "verbose logging")
@@ -71,6 +71,8 @@ func init() {
 	flag.StringVar(&dirPath, "d", "./", "the directory to store log and snapshot")
 
 	flag.BoolVar(&ignore, "i", false, "ignore the old configuration, create a new node")
+
+	flag.IntVar(&maxSize, "m", 1024, "the max size of result buffer")
 }
 
 // CONSTANTS
@@ -157,7 +159,7 @@ func main() {
 	serverTransHandler = createTranHandler(st)
 
 	// Setup new raft server.
-	s := store.GetStore()
+	s := store.CreateStore(maxSize)
 
 	// create raft server
 	server, err = raft.NewServer(name, dirPath, serverTransHandler, s, nil)

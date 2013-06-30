@@ -78,7 +78,8 @@ func (c *DeleteCommand) Apply(server *raft.Server) (interface{}, error) {
 
 // Watch command
 type WatchCommand struct {
-	Key string `json:"key"`
+	Key        string `json:"key"`
+	SinceIndex uint64 `json:"sinceIndex"`
 }
 
 //The name of the command in the log
@@ -90,7 +91,7 @@ func (c *WatchCommand) Apply(server *raft.Server) (interface{}, error) {
 	ch := make(chan store.Response, 1)
 
 	// add to the watchers list
-	store.AddWatcher(c.Key, ch, 1)
+	store.AddWatcher(c.Key, ch, c.SinceIndex)
 
 	// wait for the notification for any changing
 	res := <-ch

@@ -73,20 +73,15 @@ type Response struct {
 	Index uint64 `json:"index"`
 }
 
-func init() {
-	s = createStore()
-	s.messager = nil
-	s.ResponseStartIndex = 0
-	s.ResponseMaxSize = 1024
-	s.ResponseCurrSize = 0
-}
-
 // make a new stroe
-func createStore() *Store {
-	s := new(Store)
+func CreateStore(max int) *Store {
+	s = new(Store)
+	s.messager = nil
 	s.Nodes = make(map[string]Node)
 	s.ResponseMap = make(map[string]Response)
 	s.ResponseStartIndex = 0
+	s.ResponseMaxSize = max
+	s.ResponseCurrSize = 0
 	return s
 }
 
