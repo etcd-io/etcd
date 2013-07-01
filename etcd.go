@@ -168,8 +168,14 @@ func main() {
 		fatal("%v", err)
 	}
 
-	server.LoadSnapshot()
-	debug("%s finished load snapshot", server.Name())
+	err = server.LoadSnapshot()
+
+	if err == nil {
+		debug("%s finished load snapshot", server.Name())
+	} else {
+		fmt.Println(err)
+		debug("%s bad snapshot", server.Name())
+	}
 	server.Initialize()
 	debug("%s finished init", server.Name())
 	server.SetElectionTimeout(ELECTIONTIMTOUT)
