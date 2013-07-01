@@ -59,7 +59,7 @@ type Response struct {
 	Action   int    `json:"action"`
 	Key      string `json:"key"`
 	PrevValue string `json:"prevValue"`
-	Value string `json:"Value"`
+	Value string `json:"value"`
 
 	// if the key existed before the action, this field should be true
 	// if the key did not exist before the action, this field should be false
@@ -263,6 +263,8 @@ func updateMap(index uint64, resp *Response) {
 
 // get the value of the key
 func Get(key string) Response {
+	key = "/" + key
+	
 	key = path.Clean(key)
 
 	node, ok := s.Nodes[key]
@@ -290,6 +292,8 @@ func Get(key string) Response {
 // delete the key
 func Delete(key string, index uint64) ([]byte, error) {
 	//update index
+	key = "/" + key
+
 	s.Index = index
 
 	key = path.Clean(key)

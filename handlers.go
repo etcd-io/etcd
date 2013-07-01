@@ -8,7 +8,7 @@ import (
 	"io/ioutil"
 	//"bytes"
 	"strconv"
-	"strings"
+	//"strings"
 	"time"
 )
 
@@ -95,30 +95,38 @@ func JoinHttpHandler(w http.ResponseWriter, req *http.Request) {
 //--------------------------------------
 // external HTTP Handlers via client port
 //--------------------------------------
-func SetHttpHandler(w http.ResponseWriter, req *http.Request) {
-	key := req.URL.Path[len("/set/"):]
 
-	content, err := ioutil.ReadAll(req.Body)
+func Multiplexer(w http.ResponseWriter, req *http.Request) {
 
-	if err != nil {
-		warn("raftd: Unable to read: %v", err)
-		w.WriteHeader(http.StatusInternalServerError)
+	if req.Method == "GET" {
+		GetHttpHandler(&w, req)
+	} else if req.Method == "POST" {
+		SetHttpHandler(&w, req)
+	} else if req.Method == "DELETE" {
+		DeleteHttpHandler(&w, req)
+	} else {
+		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
+}
 
-	debug("[recv] POST http://%v/set/%s [%s]", server.Name(), key, content)
+func SetHttpHandler(w *http.ResponseWriter, req *http.Request) {
+	key := req.URL.Path[len("/v1/keys/"):]
+
+	debug("[recv] POST http://%v/v1/keys/%s", server.Name(), key)
 
 	command := &SetCommand{}
 	command.Key = key
-	values := strings.Split(string(content), ",")
 
-	command.Value = values[0]
+	command.Value = req.FormValue("value")
+	strDuration := req.FormValue("ttl")
 
-	if len(values) == 2 {
-		duration, err := strconv.Atoi(values[1])
+	if strDuration != "" {
+		duration, err := strconv.Atoi(strDuration)
+
 		if err != nil {
 			warn("raftd: Bad duration: %v", err)
-			w.WriteHeader(http.StatusInternalServerError)
+			(*w).WriteHeader(http.StatusInternalServerError)
 			return
 		}
 		command.ExpireTime = time.Now().Add(time.Second * (time.Duration)(duration))
@@ -126,19 +134,19 @@ func SetHttpHandler(w http.ResponseWriter, req *http.Request) {
 		command.ExpireTime = time.Unix(0, 0)
 	}
 
-	excute(command, &w, req)
+	excute(command, w, req)
 
 }
 
-func DeleteHttpHandler(w http.ResponseWriter, req *http.Request) {
-	key := req.URL.Path[len("/delete/"):]
+func DeleteHttpHandler(w *http.ResponseWriter, req *http.Request) {
+	key := req.URL.Path[len("/v1/keys/"):]
 
-	debug("[recv] GET http://%v/delete/%s", server.Name(), key)
+	debug("[recv] DELETE http://%v/v1/keys/%s", server.Name(), key)
 
 	command := &DeleteCommand{}
 	command.Key = key
 
-	excute(command, &w, req)
+	excute(command, w, req)
 }
 
 func excute(c Command, w *http.ResponseWriter, req *http.Request) {
@@ -197,34 +205,34 @@ func MasterHttpHandler(w http.ResponseWriter, req *http.Request) {
 	w.Write([]byte(server.Leader()))
 }
 
-func GetHttpHandler(w http.ResponseWriter, req *http.Request) {
-	key := req.URL.Path[len("/get/"):]
+func GetHttpHandler(w *http.ResponseWriter, req *http.Request) {
+	key := req.URL.Path[len("/v1/keys/"):]
 
-	debug("[recv] GET http://%v/get/%s", server.Name(), key)
+	debug("[recv] GET http://%v/v1/keys/%s", server.Name(), key)
 
 	command := &GetCommand{}
 	command.Key = key
 
 	if body, err := command.Apply(server); err != nil {
 		warn("raftd: Unable to write file: %v", err)
-		w.WriteHeader(http.StatusInternalServerError)
+		(*w).WriteHeader(http.StatusInternalServerError)
 		return
 	} else {
-		w.WriteHeader(http.StatusOK)
+		(*w).WriteHeader(http.StatusOK)
 
 		body, ok := body.([]byte)
 		if !ok {
 			panic("wrong type")
 		}
 
-		w.Write(body)
+		(*w).Write(body)
 		return
 	}
 
 }
 
 func WatchHttpHandler(w http.ResponseWriter, req *http.Request) {
-	key := req.URL.Path[len("/watch/"):]
+	key := req.URL.Path[len("/v1/watch/"):]
 
 	command := &WatchCommand{}
 	command.Key = key

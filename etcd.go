@@ -53,18 +53,18 @@ var maxSize int
 func init() {
 	flag.BoolVar(&verbose, "v", false, "verbose logging")
 
-	flag.StringVar(&cluster, "C", "", "join to a existing cluster")
+	flag.StringVar(&cluster, "C", "", "the ip address and port of a existing cluster")
 
-	flag.StringVar(&address, "a", "", "the ip address of the machine")
-	flag.IntVar(&clientPort, "c", 4001, "the port of client")
-	flag.IntVar(&serverPort, "s", 7001, "the port of server")
+	flag.StringVar(&address, "a", "", "the ip address of the local machine")
+	flag.IntVar(&clientPort, "c", 4001, "the port to communicate with clients")
+	flag.IntVar(&serverPort, "s", 7001, "the port to communicate with servers")
 	flag.IntVar(&webPort, "w", -1, "the port of web interface")
 
 	flag.StringVar(&serverCAFile, "serverCAFile", "", "the path of the CAFile")
 	flag.StringVar(&serverCertFile, "serverCert", "", "the cert file of the server")
 	flag.StringVar(&serverKeyFile, "serverKey", "", "the key file of the server")
 
-	flag.StringVar(&clientCAFile, "clientCAFile", "", "the path of the CAFile")
+	flag.StringVar(&clientCAFile, "clientCAFile", "", "the path of the client CAFile")
 	flag.StringVar(&clientCertFile, "clientCert", "", "the cert file of the client")
 	flag.StringVar(&clientKeyFile, "clientKey", "", "the key file of the client")
 
@@ -316,10 +316,8 @@ func startServTransport(port int, st int) {
 
 func startClientTransport(port int, st int) {
 	// external commands
-	http.HandleFunc("/set/", SetHttpHandler)
-	http.HandleFunc("/get/", GetHttpHandler)
-	http.HandleFunc("/delete/", DeleteHttpHandler)
-	http.HandleFunc("/watch/", WatchHttpHandler)
+	http.HandleFunc("/v1/keys/", Multiplexer)
+	http.HandleFunc("/v1/watch/", WatchHttpHandler)
 	http.HandleFunc("/master", MasterHttpHandler)
 
 	switch st {
