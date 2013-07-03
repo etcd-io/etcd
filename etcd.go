@@ -212,7 +212,7 @@ func main() {
 	}
 
 	// open the snapshot
-	go server.Snapshot()
+	//go server.Snapshot()
 
 	if webPort != -1 {
 		// start web
