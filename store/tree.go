@@ -3,7 +3,6 @@ package store
 import (
 	"path"
 	"strings"
-	"fmt"
 	)
 
 type tree struct {
@@ -142,17 +141,18 @@ func (s *tree) delete(key string) bool {
 	return false
 }
 
-func (t *tree) traverse() {
-	dfs(t.Root)
+func (t *tree) traverse(f func(*treeNode)) {
+	dfs(t.Root, f)
 }
 
-func dfs(t *treeNode) {
+func dfs(t *treeNode, f func(*treeNode)) {
 	if len(t.NodeMap) == 0{
-		fmt.Println(t.Value.Value)
+		f(t)
 	} else {
 		for _, _treeNode := range t.NodeMap {
-			dfs(_treeNode)
+			dfs(_treeNode, f)
 		}
 	}
 }
+
 

@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	"strconv"
 	"time"
+	"fmt"
 )
 
 func TestStoreGet(t *testing.T) {
@@ -79,11 +80,12 @@ func TestStoreGet(t *testing.T) {
 		}
 
 	}
-
-	ts.traverse()
-
+	ts.traverse(f)
 }
 
+func f (t *treeNode) {
+	fmt.Println(t.Value.Value)
+}
 
 func CreateTestNode(value string) Node{
 	return Node{value, time.Unix(0,0), nil}
