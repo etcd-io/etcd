@@ -4,27 +4,28 @@ import (
 	"testing"
 	"math/rand"
 	"strconv"
+	"time"
 )
 
 func TestStoreGet(t *testing.T) {
 
 	ts := &tree{ 
 		&treeNode{
-			"/", 
+			CreateTestNode("/"), 
 			true, 
 			make(map[string]*treeNode),
 		},
 	} 
 
 	// create key
-	ts.set("/foo", "bar")
+	ts.set("/foo", CreateTestNode("bar"))
 	// change value
-	ts.set("/foo", "barbar")
+	ts.set("/foo", CreateTestNode("barbar"))
 	// create key
-	ts.set("/hello/foo", "barbarbar")
-	treeNode := ts.get("/foo")
+	ts.set("/hello/foo", CreateTestNode("barbarbar"))
+	treeNode, ok := ts.get("/foo")
 
-	if treeNode == nil {
+	if !ok {
 		t.Fatalf("Expect to get node, but not")
 	}
 	if treeNode.Value != "barbar" {
@@ -32,8 +33,8 @@ func TestStoreGet(t *testing.T) {
 	}
 
 	// create key
-	treeNode = ts.get("/hello/foo")
-	if treeNode == nil {
+	treeNode, ok = ts.get("/hello/foo")
+	if !ok {
 		t.Fatalf("Expect to get node, but not")
 	}
 	if treeNode.Value != "barbarbar" {
@@ -41,36 +42,36 @@ func TestStoreGet(t *testing.T) {
 	}
 
 	// create a key under other key
-	_, err := ts.set("/foo/foo", "bar")
-	if err == nil {
+	ok = ts.set("/foo/foo", CreateTestNode("bar"))
+	if ok {
 		t.Fatalf("shoud not add key under a exisiting key")
 	}
 
 	// delete a key
-	oldValue := ts.delete("/foo") 
-	if oldValue != "barbar" {
-		t.Fatalf("Expect Oldvalue bar, but got %s", oldValue)
+	ok = ts.delete("/foo") 
+	if !ok {
+		t.Fatalf("cannot delete key")
 	}
 
 	// delete a directory
-	oldValue = ts.delete("/hello") 
-	if oldValue != "" {
-		t.Fatalf("Expect cannot delet /hello, but deleted! %s", oldValue)
+	ok = ts.delete("/hello") 
+	if ok {
+		t.Fatalf("Expect cannot delet /hello, but deleted! ")
 	}
 
 
 	// speed test
-	for i:=0; i < 10000; i++ {
+	for i:=0; i < 100; i++ {
 		key := "/"
 		depth := rand.Intn(10)
 		for j := 0; j < depth; j++ {
 			key += "/" + strconv.Itoa(rand.Int())
 		}
 		value := strconv.Itoa(rand.Int())
-		ts.set(key, value)
-		treeNode := ts.get(key)
+		ts.set(key, CreateTestNode(value))
+		treeNode, ok := ts.get(key)
 
-		if treeNode == nil {
+		if !ok {
 			t.Fatalf("Expect to get node, but not")
 		}
 		if treeNode.Value != value {
@@ -79,4 +80,11 @@ func TestStoreGet(t *testing.T) {
 
 	}
 
+	ts.traverse()
+
+}
+
+
+func CreateTestNode(value string) Node{
+	return Node{value, time.Unix(0,0), nil}
 }
