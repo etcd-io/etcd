@@ -8,7 +8,7 @@ import (
 
 func TestStoreGet(t *testing.T) {
 
-	ts := &treeStore{ 
+	ts := &tree{ 
 		&treeNode{
 			"/", 
 			true, 

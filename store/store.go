@@ -22,9 +22,11 @@ const (
 var PERMANENT = time.Unix(0, 0)
 
 type Store struct {
-	// use the build-in hash map as the key-value store structure
-	Nodes map[string]Node `json:"nodes"`
+	// // use the build-in hash map as the key-value store structure
+	// Nodes map[string]Node `json:"nodes"`
 
+	// use treeMap as the key-value stroe structure
+	Tree *tree
 	// the string channel to send messages to the outside world
 	// now we use it to send changes to the hub of the web service
 	messager *chan string
@@ -77,11 +79,23 @@ type Response struct {
 func CreateStore(max int) *Store {
 	s = new(Store)
 	s.messager = nil
-	s.Nodes = make(map[string]Node)
 	s.ResponseMap = make(map[string]Response)
 	s.ResponseStartIndex = 0
 	s.ResponseMaxSize = max
 	s.ResponseCurrSize = 0
+
+	s.Tree = &tree{ 
+		&treeNode{ 
+			Node {
+				"/",
+				time.Unix(0,0),
+				nil,
+			},
+			true, 
+			make(map[string]*treeNode),
+		},
+	} 
+
 	return s
 }
 
@@ -125,7 +139,7 @@ func Set(key string, value string, expireTime time.Time, index uint64) ([]byte, 
 	}
 
 	// get the node
-	node, ok := s.Nodes[key]
+	node, ok := s.Tree.get(key)
 
 	if ok {
 		// if node is not permanent before
@@ -145,7 +159,7 @@ func Set(key string, value string, expireTime time.Time, index uint64) ([]byte, 
 		}
 
 		// update the information of the node
-		s.Nodes[key] = Node{value, expireTime, node.update}
+		s.Tree.set(key, Node{value, expireTime, node.update})
 
 		resp := Response{SET, key, node.Value, value, true, expireTime, TTL, index}
 
@@ -168,7 +182,7 @@ func Set(key string, value string, expireTime time.Time, index uint64) ([]byte, 
 
 		update := make(chan time.Time)
 
-		s.Nodes[key] = Node{value, expireTime, update}
+		s.Tree.set(key, Node{value, expireTime, update})
 
 		if isExpire {
 			go expire(key, update, expireTime)
@@ -200,12 +214,12 @@ func expire(key string, update chan time.Time, expireTime time.Time) {
 		select {
 		// timeout delete the node
 		case <-time.After(duration):
-			node, ok := s.Nodes[key]
+			node, ok := s.Tree.get(key)
 			if !ok {
 				return
 			} else {
 
-				delete(s.Nodes, key)
+				s.Tree.delete(key)
 
 				resp := Response{DELETE, key, node.Value, "", true, node.ExpireTime, 0, s.Index}
 
@@ -267,7 +281,7 @@ func Get(key string) Response {
 	
 	key = path.Clean(key)
 
-	node, ok := s.Nodes[key]
+	node, ok := s.Tree.get(key)
 
 	if ok {
 		var TTL int64
@@ -298,19 +312,19 @@ func Delete(key string, index uint64) ([]byte, error) {
 
 	key = path.Clean(key)
 
-	node, ok := s.Nodes[key]
+	node, ok := s.Tree.get(key)
 
 	if ok {
 
 		if node.ExpireTime.Equal(PERMANENT) {
 
-			delete(s.Nodes, key)
+			s.Tree.delete(key)
 
 		} else {
 
 			// kill the expire go routine
 			node.update <- PERMANENT
-			delete(s.Nodes, key)
+			s.Tree.delete(key)
 
 		}
 
@@ -361,21 +375,21 @@ func (s *Store) Recovery(state []byte) error {
 
 // clean all expired keys
 func clean() {
-	for key, node := range s.Nodes {
+	// for key, node := range s.Nodes {
 
-		if node.ExpireTime.Equal(PERMANENT) {
-			continue
-		} else {
+	// 	if node.ExpireTime.Equal(PERMANENT) {
+	// 		continue
+	// 	} else {
 
-			if node.ExpireTime.Sub(time.Now()) >= time.Second {
-				node.update = make(chan time.Time)
-				go expire(key, node.update, node.ExpireTime)
+	// 		if node.ExpireTime.Sub(time.Now()) >= time.Second {
+	// 			node.update = make(chan time.Time)
+	// 			go expire(key, node.update, node.ExpireTime)
 
-			} else {
-				// we should delete this node
-				delete(s.Nodes, key)
-			}
-		}
+	// 		} else {
+	// 			// we should delete this node
+	// 			delete(s.Nodes, key)
+	// 		}
+	// 	}
 
-	}
+	// }
 }
