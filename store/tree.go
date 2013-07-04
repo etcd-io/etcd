@@ -3,6 +3,7 @@ package store
 import (
 	"path"
 	"strings"
+	"sort"
 	)
 
 type tree struct {
@@ -18,6 +19,19 @@ type treeNode struct {
 	NodeMap map[string]*treeNode
 
 }
+
+type tnWithKey struct{
+	key string
+	tn  *treeNode
+}
+
+type tnWithKeySlice []tnWithKey
+
+func (s tnWithKeySlice) Len() int           { return len(s) }
+func (s tnWithKeySlice) Less(i, j int) bool { return s[i].key < s[j].key }
+func (s tnWithKeySlice) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
+
+
 
 var emptyNode = Node{".", PERMANENT, nil}
 
@@ -141,16 +155,52 @@ func (s *tree) delete(key string) bool {
 	return false
 }
 
-func (t *tree) traverse(f func(*treeNode)) {
-	dfs(t.Root, f)
+func (t *tree) traverse(f func(string, *Node), sort bool) {
+	if sort {
+		sortDfs("", t.Root, f)
+	} else {
+		dfs("", t.Root, f)	
+	}
 }
 
-func dfs(t *treeNode, f func(*treeNode)) {
+func dfs(key string, t *treeNode, f func(string, *Node)) {
+	// base case
 	if len(t.NodeMap) == 0{
-		f(t)
+		f(key, &t.Value)
+
+	// recursion
 	} else {
-		for _, _treeNode := range t.NodeMap {
-			dfs(_treeNode, f)
+		for nodeKey, _treeNode := range t.NodeMap {
+			newKey := key + "/" + nodeKey
+			dfs(newKey, _treeNode, f)
+		}
+	}
+}
+
+func sortDfs(key string, t *treeNode, f func(string, *Node)) {
+	// base case
+	if len(t.NodeMap) == 0{
+		f(key, &t.Value)
+
+	// recursion
+	} else {
+
+		s := make(tnWithKeySlice, len(t.NodeMap))
+		i := 0
+
+		// copy
+		for nodeKey, _treeNode := range t.NodeMap {
+			newKey := key + "/" + nodeKey
+			s[i] = tnWithKey{newKey, _treeNode}
+			i++
+		}
+
+		// sort
+		sort.Sort(s)
+
+		// traverse
+		for i = 0; i < len(t.NodeMap); i++ {
+			sortDfs(s[i].key, s[i].tn, f)
 		}
 	}
 }
