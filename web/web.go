@@ -4,10 +4,10 @@ import (
 	"code.google.com/p/go.net/websocket"
 	"fmt"
 	"github.com/xiangli-cmu/go-raft"
-	"github.com/xiangli-cmu/raft-etcd/store"
+	//"github.com/xiangli-cmu/raft-etcd/store"
 	"html/template"
 	"net/http"
-	"time"
+	//"time"
 )
 
 var s *raft.Server
@@ -28,15 +28,15 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Fprintf(w, "Data\n")
 
-	s := store.GetStore()
+	//s := store.GetStore()
 
-	for key, node := range s.Nodes {
-		if node.ExpireTime.Equal(time.Unix(0, 0)) {
-			fmt.Fprintf(w, "%s %s\n", key, node.Value)
-		} else {
-			fmt.Fprintf(w, "%s %s %s\n", key, node.Value, node.ExpireTime)
-		}
-	}
+	// for key, node := range s.Nodes {
+	// 	if node.ExpireTime.Equal(time.Unix(0, 0)) {
+	// 		fmt.Fprintf(w, "%s %s\n", key, node.Value)
+	// 	} else {
+	// 		fmt.Fprintf(w, "%s %s %s\n", key, node.Value, node.ExpireTime)
+	// 	}
+	// }
 
 }
 
