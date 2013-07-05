@@ -61,6 +61,21 @@ func (c *GetCommand) GeneratePath() string {
 	return "get/" + c.Key
 }
 
+// List command
+type ListCommand struct {
+	Prefix string `json:"prefix"`
+}
+
+// The name of the command in the log
+func (c *ListCommand) CommandName() string {
+	return "list"
+}
+
+// Set the value of key to value
+func (c *ListCommand) Apply(server *raft.Server) (interface{}, error) {
+	return store.List(c.Prefix)
+}
+
 // Delete command
 type DeleteCommand struct {
 	Key string `json:"key"`

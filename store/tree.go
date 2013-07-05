@@ -36,7 +36,7 @@ func (s tnWithKeySlice) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
 var emptyNode = Node{".", PERMANENT, nil}
 
 // set the key to value, return the old value if the key exists 
-func (s *tree) set(key string, value Node) bool {
+func (t *tree) set(key string, value Node) bool {
 	key = "/" + key
 	key = path.Clean(key)
 
@@ -45,7 +45,7 @@ func (s *tree) set(key string, value Node) bool {
 
 	//fmt.Println("TreeStore: Nodes ", nodes, " length: ", len(nodes))
 
-	nodeMap := s.Root.NodeMap
+	nodeMap := t.Root.NodeMap
 
 	i := 0
 	newDir := false
@@ -94,8 +94,8 @@ func (s *tree) set(key string, value Node) bool {
 
 }
 
-// get the node of the key
-func (s *tree) get(key string) (Node, bool) {
+// use internally to get the internal tree node 
+func (t *tree)internalGet(key string) (*treeNode, bool) {
 	key = "/" + key
 	key = path.Clean(key)
 
@@ -104,29 +104,67 @@ func (s *tree) get(key string) (Node, bool) {
 
 	//fmt.Println("TreeStore: Nodes ", nodes, " length: ", len(nodes))
 
-	nodeMap := s.Root.NodeMap
+	nodeMap := t.Root.NodeMap
 		
 	var i int
 
 	for i = 0; i < len(nodes) - 1; i++ {
 		node, ok := nodeMap[nodes[i]]
 		if !ok || !node.Dir {
-			return emptyNode, false
+			return nil, false
 		}
 		nodeMap = node.NodeMap
 	}
 
 	treeNode, ok := nodeMap[nodes[i]]
 	if ok {
+		return treeNode, ok
+	} else {
+		return nil, ok
+	}
+} 
+
+// get the node of the key
+func (t *tree) get(key string) (Node, bool) {
+	treeNode, ok := t.internalGet(key)
+
+	if ok {
 		return treeNode.Value, ok
 	} else {
 		return emptyNode, ok
 	}
+}
 
+// return the nodes under the directory
+func (t *tree) list(prefix string) ([]Node, []string, []string, bool) {
+	treeNode, ok := t.internalGet(prefix)
+
+	if !ok {
+		return nil, nil, nil, ok
+	} else {
+		length := len(treeNode.NodeMap)
+		nodes := make([]Node, length)
+		keys := make([]string, length)
+		dirs := make([]string, length)
+		i := 0
+
+		for key, node := range treeNode.NodeMap {
+			nodes[i] = node.Value
+			keys[i] = key
+			if node.Dir {
+				dirs[i] = "d"
+			} else {
+				dirs[i] = "f"
+			}
+			i++
+		}
+
+		return nodes, keys, dirs, ok
+	}
 }
 
 // delete the key, return the old value if the key exists
-func (s *tree) delete(key string) bool {
+func (t *tree) delete(key string) bool {
 	key = "/" + key
 	key = path.Clean(key)
 
@@ -135,7 +173,7 @@ func (s *tree) delete(key string) bool {
 
 	//fmt.Println("TreeStore: Nodes ", nodes, " length: ", len(nodes))
 
-	nodeMap := s.Root.NodeMap
+	nodeMap := t.Root.NodeMap
 		
 	var i int
 

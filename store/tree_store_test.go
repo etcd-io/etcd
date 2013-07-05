@@ -61,6 +61,22 @@ func TestStoreGet(t *testing.T) {
 	}
 
 
+	// test list
+	ts.set("/hello/fooo", CreateTestNode("barbarbar"))
+	ts.set("/hello/foooo/foo", CreateTestNode("barbarbar"))
+
+	nodes, keys, dirs, ok := ts.list("/hello")
+
+	if !ok {
+		t.Fatalf("cannot list!")
+	} else {
+		length := len(nodes)
+
+		for i := 0; i < length; i++ {
+			fmt.Println(keys[i] , "=", nodes[i].Value, "[", dirs[i], "]")
+		} 
+	}
+
 	// speed test
 	for i:=0; i < 100; i++ {
 		key := "/"

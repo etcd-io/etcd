@@ -231,6 +231,32 @@ func GetHttpHandler(w *http.ResponseWriter, req *http.Request) {
 
 }
 
+func ListHttpHandler(w http.ResponseWriter, req *http.Request) {
+	prefix := req.URL.Path[len("/v1/list/"):]
+
+	debug("[recv] GET http://%v/v1/list/%s", server.Name(), prefix)
+
+	command := &ListCommand{}
+	command.Prefix = prefix
+
+	if body, err := command.Apply(server); err != nil {
+		warn("raftd: Unable to write file: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	} else {
+		w.WriteHeader(http.StatusOK)
+
+		body, ok := body.([]byte)
+		if !ok {
+			panic("wrong type")
+		}
+
+		w.Write(body)
+		return
+	}
+
+}
+
 func WatchHttpHandler(w http.ResponseWriter, req *http.Request) {
 	key := req.URL.Path[len("/v1/watch/"):]
 

@@ -70,9 +70,15 @@ type Response struct {
 	Expiration time.Time `json:"expiration"`
 
 	// countdown until expiration in seconds
-	TTL int64 `json:"TTL"`
+	TTL int64 `json:"ttl"`
 
 	Index uint64 `json:"index"`
+}
+
+type ListNode struct {
+	Key 	string
+	Value   string
+	Type    string
 }
 
 // make a new stroe
@@ -301,6 +307,22 @@ func Get(key string) Response {
 
 		return Response{GET, key, "", "", false, time.Unix(0, 0), 0, s.Index}
 	}
+}
+
+// // List all the item in the prefix
+func List(prefix string) ([]byte, error) {
+	nodes, keys, dirs, ok := s.Tree.list(prefix)
+
+	var ln []ListNode
+
+	if ok {
+		ln = make([]ListNode, len(nodes))
+		for i := 0; i < len(nodes); i++ {
+			ln[i] = ListNode{keys[i], nodes[i].Value, dirs[i]}
+		}
+	}
+
+	return json.Marshal(ln)
 }
 
 // delete the key

@@ -318,6 +318,7 @@ func startClientTransport(port int, st int) {
 	// external commands
 	http.HandleFunc("/v1/keys/", Multiplexer)
 	http.HandleFunc("/v1/watch/", WatchHttpHandler)
+	http.HandleFunc("/v1/list/", ListHttpHandler)
 	http.HandleFunc("/master", MasterHttpHandler)
 
 	switch st {
