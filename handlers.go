@@ -191,7 +191,8 @@ func excute(c Command, w *http.ResponseWriter, req *http.Request) {
 		url := scheme + leaderClient() + path
 
 		debug("redirect to %s", url)
-		http.Redirect(*w, req, url, http.StatusFound)
+		
+		http.Redirect(*w, req, url, http.StatusTemporaryRedirect)
 		return
 	}
 
