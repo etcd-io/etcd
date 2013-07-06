@@ -4,11 +4,7 @@ import (
 	"encoding/json"
 	"github.com/xiangli-cmu/go-raft"
 	"net/http"
-	//"fmt"
-	"io/ioutil"
-	//"bytes"
 	"strconv"
-	//"strings"
 	"time"
 )
 
@@ -270,7 +266,7 @@ func WatchHttpHandler(w http.ResponseWriter, req *http.Request) {
 
 	} else if req.Method == "POST" {
 		debug("[recv] POST http://%v/watch/%s", server.Name(), key)
-		content, err := ioutil.ReadAll(req.Body)
+		content := req.FormValue("index")
 
 		sinceIndex, err := strconv.ParseUint(string(content), 10, 64)
 		if err != nil {
