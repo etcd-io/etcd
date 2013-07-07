@@ -187,11 +187,18 @@ func main() {
 		// start as a leader in a new cluster
 		if cluster == "" {
 			server.StartLeader()
+			
+			time.Sleep(time.Millisecond * 20)
 
 			// join self as a peer
-			command := &JoinCommand{}
-			command.Name = server.Name()
-			server.Do(command)
+			for {
+				command := &JoinCommand{}
+				command.Name = server.Name()
+				_, err := server.Do(command)
+				if err == nil {
+					break
+				}
+			}
 			debug("%s start as a leader", server.Name())
 
 			// start as a fellower in a existing cluster
