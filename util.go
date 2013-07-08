@@ -3,7 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/xiangli-cmu/raft-etcd/web"
+	"github.com/coreos/etcd/web"
 	"io"
 	"io/ioutil"
 	"net/http"

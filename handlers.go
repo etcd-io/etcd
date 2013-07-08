@@ -2,7 +2,7 @@ package main
 
 import (
 	"encoding/json"
-	"github.com/xiangli-cmu/go-raft"
+	"github.com/coreos/go-raft"
 	"net/http"
 	"strconv"
 	"time"
@@ -25,7 +25,7 @@ func VoteHttpHandler(w http.ResponseWriter, req *http.Request) {
 	err := decodeJsonRequest(req, rvreq)
 	if err == nil {
 		debug("[recv] POST http://%v/vote [%s]", server.Name(), rvreq.CandidateName)
-		if resp, _ := server.RequestVote(rvreq); resp != nil {
+		if resp := server.RequestVote(rvreq); resp != nil {
 			w.WriteHeader(http.StatusOK)
 			json.NewEncoder(w).Encode(resp)
 			return
@@ -40,7 +40,7 @@ func AppendEntriesHttpHandler(w http.ResponseWriter, req *http.Request) {
 	err := decodeJsonRequest(req, aereq)
 	if err == nil {
 		debug("[recv] POST http://%s/log/append [%d]", server.Name(), len(aereq.Entries))
-		if resp, _ := server.AppendEntries(aereq); resp != nil {
+		if resp := server.AppendEntries(aereq); resp != nil {
 			w.WriteHeader(http.StatusOK)
 			json.NewEncoder(w).Encode(resp)
 			if !resp.Success {
@@ -187,7 +187,7 @@ func excute(c Command, w *http.ResponseWriter, req *http.Request) {
 		url := scheme + leaderClient() + path
 
 		debug("redirect to %s", url)
-		
+
 		http.Redirect(*w, req, url, http.StatusTemporaryRedirect)
 		return
 	}
