@@ -137,6 +137,9 @@ func main() {
 	raft.RegisterCommand(&SetCommand{})
 	raft.RegisterCommand(&GetCommand{})
 	raft.RegisterCommand(&DeleteCommand{})
+	raft.RegisterCommand(&WatchCommand{})
+	raft.RegisterCommand(&ListCommand{})
+	raft.RegisterCommand(&TestAndSetCommand{})
 
 	if err := os.MkdirAll(dirPath, 0744); err != nil {
 		fatal("Unable to create path: %v", err)
