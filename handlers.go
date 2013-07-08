@@ -134,6 +134,35 @@ func SetHttpHandler(w *http.ResponseWriter, req *http.Request) {
 
 }
 
+func TestAndSetHttpHandler(w http.ResponseWriter, req *http.Request) {
+	key := req.URL.Path[len("/v1/testAndSet/"):]
+
+	debug("[recv] POST http://%v/v1/testAndSet/%s", server.Name(), key)
+
+	command := &TestAndSetCommand{}
+	command.Key = key
+
+	command.PrevValue = req.FormValue("prevValue")
+	command.Value = req.FormValue("value")
+	strDuration := req.FormValue("ttl")
+
+	if strDuration != "" {
+		duration, err := strconv.Atoi(strDuration)
+
+		if err != nil {
+			warn("raftd: Bad duration: %v", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		command.ExpireTime = time.Now().Add(time.Second * (time.Duration)(duration))
+	} else {
+		command.ExpireTime = time.Unix(0, 0)
+	}
+
+	excute(command, &w, req)
+
+}
+
 func DeleteHttpHandler(w *http.ResponseWriter, req *http.Request) {
 	key := req.URL.Path[len("/v1/keys/"):]
 
