@@ -8,9 +8,9 @@ import (
 	"encoding/pem"
 	"flag"
 	"fmt"
-	"github.com/xiangli-cmu/go-raft"
-	"github.com/xiangli-cmu/raft-etcd/store"
-	"github.com/xiangli-cmu/raft-etcd/web"
+	"github.com/coreos/etcd/store"
+	"github.com/coreos/etcd/web"
+	"github.com/coreos/go-raft"
 	//"io"
 	"io/ioutil"
 	"log"
@@ -187,7 +187,7 @@ func main() {
 		// start as a leader in a new cluster
 		if cluster == "" {
 			server.StartLeader()
-			
+
 			time.Sleep(time.Millisecond * 20)
 
 			// join self as a peer
