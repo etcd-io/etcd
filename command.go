@@ -36,9 +36,22 @@ func (c *SetCommand) Apply(server *raft.Server) (interface{}, error) {
 	return store.Set(c.Key, c.Value, c.ExpireTime, server.CommitIndex())
 }
 
-// Get the path for http request
-func (c *SetCommand) GeneratePath() string {
-	return "set/" + c.Key
+// TestAndSet command
+type TestAndSetCommand struct {
+	Key        string    `json:"key"`
+	Value      string    `json:"value"`
+	PrevValue  string    `json: prevValue`
+	ExpireTime time.Time `json:"expireTime"`
+}
+
+// The name of the command in the log
+func (c *TestAndSetCommand) CommandName() string {
+	return "testAndSet"
+}
+
+// Set the value of key to value
+func (c *TestAndSetCommand) Apply(server *raft.Server) (interface{}, error) {
+	return store.TestAndSet(c.Key, c.PrevValue, c.Value, c.ExpireTime, server.CommitIndex())
 }
 
 // Get command
@@ -55,10 +68,6 @@ func (c *GetCommand) CommandName() string {
 func (c *GetCommand) Apply(server *raft.Server) (interface{}, error) {
 	res := store.Get(c.Key)
 	return json.Marshal(res)
-}
-
-func (c *GetCommand) GeneratePath() string {
-	return "get/" + c.Key
 }
 
 // List command
