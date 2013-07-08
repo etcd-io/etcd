@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/xiangli-cmu/go-raft"
+	"github.com/coreos/go-raft"
 	"io"
 	"net/http"
 )
@@ -15,49 +15,49 @@ type transHandler struct {
 }
 
 // Sends AppendEntries RPCs to a peer when the server is the leader.
-func (t transHandler) SendAppendEntriesRequest(server *raft.Server, peer *raft.Peer, req *raft.AppendEntriesRequest) (*raft.AppendEntriesResponse, error) {
+func (t transHandler) SendAppendEntriesRequest(server *raft.Server, peer *raft.Peer, req *raft.AppendEntriesRequest) *raft.AppendEntriesResponse {
 	var aersp *raft.AppendEntriesResponse
 	var b bytes.Buffer
 	json.NewEncoder(&b).Encode(req)
 
 	debug("Send LogEntries to %s ", peer.Name())
 
-	resp, err := Post(&t, fmt.Sprintf("%s/log/append", peer.Name()), &b)
+	resp, _ := Post(&t, fmt.Sprintf("%s/log/append", peer.Name()), &b)
 
 	if resp != nil {
 		defer resp.Body.Close()
 		aersp = &raft.AppendEntriesResponse{}
-		if err = json.NewDecoder(resp.Body).Decode(&aersp); err == nil || err == io.EOF {
-			return aersp, nil
+		if err := json.NewDecoder(resp.Body).Decode(&aersp); err == nil || err == io.EOF {
+			return aersp
 		}
 
 	}
-	return aersp, fmt.Errorf("raftd: Unable to append entries: %v", err)
+	return aersp
 }
 
 // Sends RequestVote RPCs to a peer when the server is the candidate.
-func (t transHandler) SendVoteRequest(server *raft.Server, peer *raft.Peer, req *raft.RequestVoteRequest) (*raft.RequestVoteResponse, error) {
+func (t transHandler) SendVoteRequest(server *raft.Server, peer *raft.Peer, req *raft.RequestVoteRequest) *raft.RequestVoteResponse {
 	var rvrsp *raft.RequestVoteResponse
 	var b bytes.Buffer
 	json.NewEncoder(&b).Encode(req)
 
 	debug("Send Vote to %s", peer.Name())
 
-	resp, err := Post(&t, fmt.Sprintf("%s/vote", peer.Name()), &b)
+	resp, _ := Post(&t, fmt.Sprintf("%s/vote", peer.Name()), &b)
 
 	if resp != nil {
 		defer resp.Body.Close()
 		rvrsp := &raft.RequestVoteResponse{}
-		if err = json.NewDecoder(resp.Body).Decode(&rvrsp); err == nil || err == io.EOF {
-			return rvrsp, nil
+		if err := json.NewDecoder(resp.Body).Decode(&rvrsp); err == nil || err == io.EOF {
+			return rvrsp
 		}
 
 	}
-	return rvrsp, fmt.Errorf("Unable to request vote: %v", err)
+	return rvrsp
 }
 
 // Sends SnapshotRequest RPCs to a peer when the server is the candidate.
-func (t transHandler) SendSnapshotRequest(server *raft.Server, peer *raft.Peer, req *raft.SnapshotRequest) (*raft.SnapshotResponse, error) {
+func (t transHandler) SendSnapshotRequest(server *raft.Server, peer *raft.Peer, req *raft.SnapshotRequest) *raft.SnapshotResponse {
 	var aersp *raft.SnapshotResponse
 	var b bytes.Buffer
 	json.NewEncoder(&b).Encode(req)
@@ -72,8 +72,8 @@ func (t transHandler) SendSnapshotRequest(server *raft.Server, peer *raft.Peer, 
 		aersp = &raft.SnapshotResponse{}
 		if err = json.NewDecoder(resp.Body).Decode(&aersp); err == nil || err == io.EOF {
 
-			return aersp, nil
+			return aersp
 		}
 	}
-	return aersp, fmt.Errorf("Unable to send snapshot: %v", err)
+	return aersp
 }
