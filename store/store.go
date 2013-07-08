@@ -212,75 +212,6 @@ func Set(key string, value string, expireTime time.Time, index uint64) ([]byte, 
 	}
 }
 
-// should be used as a go routine to delete the key when it expires
-func expire(key string, update chan time.Time, expireTime time.Time) {
-	duration := expireTime.Sub(time.Now())
-
-	for {
-		select {
-		// timeout delete the node
-		case <-time.After(duration):
-			node, ok := s.Tree.get(key)
-			if !ok {
-				return
-			} else {
-
-				s.Tree.delete(key)
-
-				resp := Response{DELETE, key, node.Value, "", true, node.ExpireTime, 0, s.Index}
-
-				msg, err := json.Marshal(resp)
-
-				notify(resp)
-
-				// notify the messager
-				if s.messager != nil && err == nil {
-
-					*s.messager <- string(msg)
-				}
-
-				return
-
-			}
-
-		case updateTime := <-update:
-			//update duration
-			// if the node become a permanent one, the go routine is
-			// not needed
-			if updateTime.Equal(PERMANENT) {
-				fmt.Println("permanent")
-				return
-			}
-			// update duration
-			duration = updateTime.Sub(time.Now())
-		}
-	}
-}
-
-func updateMap(index uint64, resp *Response) {
-
-	if s.ResponseMaxSize == 0 {
-		return
-	}
-
-	strIndex := strconv.FormatUint(index, 10)
-	s.ResponseMap[strIndex] = *resp
-
-	// unlimited
-	if s.ResponseMaxSize < 0{
-		s.ResponseCurrSize++
-		return
-	}
-
-	if s.ResponseCurrSize == uint(s.ResponseMaxSize) {
-		s.ResponseStartIndex++
-		delete(s.ResponseMap, strconv.FormatUint(s.ResponseStartIndex, 10))
-	} else {
-		s.ResponseCurrSize++
-	}
-}
-
-
 // get the value of the key
 func Get(key string) Response {
 	key = "/" + key
@@ -374,6 +305,86 @@ func Delete(key string, index uint64) ([]byte, error) {
 		return json.Marshal(resp)
 	}
 }
+
+// set the value of the key to the value if the given prevValue is equal to the value of the key
+func TestAndSet(key string, prevValue string, value string, expireTime time.Time, index uint64) ([]byte, error) {
+	resp := Get(key)
+
+	if resp.PrevValue == prevValue {
+		return Set(key, value, expireTime, index)
+	} else {
+		return json.Marshal(resp)
+	}
+}
+
+// should be used as a go routine to delete the key when it expires
+func expire(key string, update chan time.Time, expireTime time.Time) {
+	duration := expireTime.Sub(time.Now())
+
+	for {
+		select {
+		// timeout delete the node
+		case <-time.After(duration):
+			node, ok := s.Tree.get(key)
+			if !ok {
+				return
+			} else {
+
+				s.Tree.delete(key)
+
+				resp := Response{DELETE, key, node.Value, "", true, node.ExpireTime, 0, s.Index}
+
+				msg, err := json.Marshal(resp)
+
+				notify(resp)
+
+				// notify the messager
+				if s.messager != nil && err == nil {
+
+					*s.messager <- string(msg)
+				}
+
+				return
+
+			}
+
+		case updateTime := <-update:
+			//update duration
+			// if the node become a permanent one, the go routine is
+			// not needed
+			if updateTime.Equal(PERMANENT) {
+				fmt.Println("permanent")
+				return
+			}
+			// update duration
+			duration = updateTime.Sub(time.Now())
+		}
+	}
+}
+
+func updateMap(index uint64, resp *Response) {
+
+	if s.ResponseMaxSize == 0 {
+		return
+	}
+
+	strIndex := strconv.FormatUint(index, 10)
+	s.ResponseMap[strIndex] = *resp
+
+	// unlimited
+	if s.ResponseMaxSize < 0{
+		s.ResponseCurrSize++
+		return
+	}
+
+	if s.ResponseCurrSize == uint(s.ResponseMaxSize) {
+		s.ResponseStartIndex++
+		delete(s.ResponseMap, strconv.FormatUint(s.ResponseStartIndex, 10))
+	} else {
+		s.ResponseCurrSize++
+	}
+}
+
 
 // save the current state of the storage system
 func (s *Store) Save() ([]byte, error) {
