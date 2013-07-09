@@ -4,15 +4,15 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"github.com/coreos/go-raft"
 	"io"
+	"io/ioutil"
 	"net/http"
 )
 
 // Transporter layer for communication between raft nodes
 type transporter struct {
-	name   string
+	name string
 	// If https is used for server internal communcation,
 	// we will have a http client. Or it will be nil.
 	client *http.Client
@@ -84,7 +84,7 @@ func (t transporter) SendSnapshotRequest(server *raft.Server, peer *raft.Peer, r
 
 // Get the the client address of the leader in the cluster
 func (t transporter) GetLeaderClientAddress() string {
-	resp, _ := t.Get(raftServer.Leader()+"/client")
+	resp, _ := t.Get(raftServer.Leader() + "/client")
 	if resp != nil {
 		body, _ := ioutil.ReadAll(resp.Body)
 		resp.Body.Close()
@@ -104,7 +104,6 @@ func (t transporter) Post(path string, body io.Reader) (*http.Response, error) {
 		return resp, err
 	}
 }
-
 
 // Send server side GET request
 func (t transporter) Get(path string) (*http.Response, error) {

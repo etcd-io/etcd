@@ -38,7 +38,7 @@ func VoteHttpHandler(w http.ResponseWriter, req *http.Request) {
 func AppendEntriesHttpHandler(w http.ResponseWriter, req *http.Request) {
 	aereq := &raft.AppendEntriesRequest{}
 	err := decodeJsonRequest(req, aereq)
-	
+
 	if err == nil {
 		debug("[recv] POST http://%s/log/append [%d]", raftServer.Name(), len(aereq.Entries))
 		if resp := raftServer.AppendEntries(aereq); resp != nil {
@@ -77,7 +77,7 @@ func clientHttpHandler(w http.ResponseWriter, req *http.Request) {
 	w.Write([]byte(client))
 }
 
-// 
+//
 func JoinHttpHandler(w http.ResponseWriter, req *http.Request) {
 
 	command := &JoinCommand{}

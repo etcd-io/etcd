@@ -176,7 +176,7 @@ func main() {
 		fmt.Println(err)
 		debug("%s bad snapshot", raftServer.Name())
 	}
-	
+
 	raftServer.Initialize()
 	debug("%s finished init", raftServer.Name())
 	raftServer.SetElectionTimeout(ELECTIONTIMTOUT)
@@ -233,8 +233,6 @@ func main() {
 	startClientTransport(info.ClientPort, securityType(CLIENT))
 
 }
-
-
 
 func createTransporter(st int) transporter {
 	t := transporter{}
