@@ -5,43 +5,44 @@ import (
 	"strconv"
 	"strings"
 )
+//------------------------------------------------------------------------------
+//
+// Typedefs
+//
+//------------------------------------------------------------------------------
 
+// WatcherHub is where the client register its watcher
 type WatcherHub struct {
-	watchers map[string][]Watcher
+	watchers map[string][]*Watcher
 }
 
+// Currently watcher only contains a response channel
 type Watcher struct {
-	c     chan Response
+	C     chan Response
 }
 
-// global watcher
-var w *WatcherHub
-
-// init the global watcher
-func init() {
-	w = createWatcherHub()
-}
-
-// create a new watcher
+// Create a new watcherHub
 func createWatcherHub() *WatcherHub {
 	w := new(WatcherHub)
-	w.watchers = make(map[string][]Watcher)
+	w.watchers = make(map[string][]*Watcher)
 	return w
 }
 
-func GetWatcherHub() *WatcherHub {
-	return w
+// Create a new watcher
+func CreateWatcher() *Watcher {
+	return &Watcher{C: make(chan Response, 1)}
 }
 
-// register a function with channel and prefix to the watcher
-func AddWatcher(prefix string, c chan Response, sinceIndex uint64) error {
+// Add a watcher to the watcherHub
+func (w *WatcherHub) addWatcher(prefix string, watcher *Watcher, sinceIndex uint64, 
+	responseStartIndex uint64, currentIndex uint64, resMap *map[string]Response) error {
 
-	prefix = "/" + path.Clean(prefix)
+	prefix = path.Clean("/" + prefix)
 
-	if sinceIndex != 0 && sinceIndex >= s.ResponseStartIndex {
-		for i := sinceIndex; i <= s.Index; i++ {
-			if check(prefix, i) {
-				c <- s.ResponseMap[strconv.FormatUint(i, 10)]
+	if sinceIndex != 0 && sinceIndex >= responseStartIndex {
+		for i := sinceIndex; i <= currentIndex; i++ {
+			if checkResponse(prefix, i, resMap) {
+				watcher.C <- (*resMap)[strconv.FormatUint(i, 10)]
 				return nil
 			}
 		}
@@ -51,14 +52,10 @@ func AddWatcher(prefix string, c chan Response, sinceIndex uint64) error {
 
 	if !ok {
 
-		w.watchers[prefix] = make([]Watcher, 0)
-
-		watcher := Watcher{c}
+		w.watchers[prefix] = make([]*Watcher, 0)
 
 		w.watchers[prefix] = append(w.watchers[prefix], watcher)
 	} else {
-
-		watcher := Watcher{c}
 
 		w.watchers[prefix] = append(w.watchers[prefix], watcher)
 	}
@@ -66,10 +63,10 @@ func AddWatcher(prefix string, c chan Response, sinceIndex uint64) error {
 	return nil
 }
 
-// check if the response has what we are watching
-func check(prefix string, index uint64) bool {
+// Check if the response has what we are watching
+func checkResponse(prefix string, index uint64, resMap *map[string]Response) bool {
 
-	resp, ok := s.ResponseMap[strconv.FormatUint(index, 10)]
+	resp, ok := (*resMap)[strconv.FormatUint(index, 10)]
 
 	if !ok {
 		// not storage system command
@@ -89,8 +86,8 @@ func check(prefix string, index uint64) bool {
 }
 
 
-// notify the watcher a action happened
-func notify(resp Response) error {
+// Notify the watcher a action happened
+func (w *WatcherHub) notify(resp Response) error {
 	resp.Key = path.Clean(resp.Key)
 
 	segments := strings.Split(resp.Key, "/")
@@ -104,10 +101,10 @@ func notify(resp Response) error {
 
 		if ok {
 
-			newWatchers := make([]Watcher, 0)
+			newWatchers := make([]*Watcher, 0)
 			// notify all the watchers
 			for _, watcher := range watchers {
-				watcher.c <- resp
+				watcher.C <- resp
 			}
 
 			if len(newWatchers) == 0 {
