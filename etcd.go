@@ -111,8 +111,8 @@ type Info struct {
 //
 //------------------------------------------------------------------------------
 
-var server *raft.Server
-var serverTransHandler transHandler
+var raftServer *raft.Server
+var raftTransporter transporter
 var etcdStore *store.Store
 
 //------------------------------------------------------------------------------
@@ -156,66 +156,67 @@ func main() {
 		panic("ERROR type")
 	}
 
-	serverTransHandler = createTranHandler(st)
+	raftTransporter = createTransporter(st)
 
 	// Setup new raft server.
 	etcdStore = store.CreateStore(maxSize)
 
 	// create raft server
-	server, err = raft.NewServer(name, dirPath, serverTransHandler, etcdStore, nil)
+	raftServer, err = raft.NewServer(name, dirPath, raftTransporter, etcdStore, nil)
 
 	if err != nil {
 		fatal("%v", err)
 	}
 
-	err = server.LoadSnapshot()
+	err = raftServer.LoadSnapshot()
 
 	if err == nil {
-		debug("%s finished load snapshot", server.Name())
+		debug("%s finished load snapshot", raftServer.Name())
 	} else {
 		fmt.Println(err)
-		debug("%s bad snapshot", server.Name())
+		debug("%s bad snapshot", raftServer.Name())
 	}
-	server.Initialize()
-	debug("%s finished init", server.Name())
-	server.SetElectionTimeout(ELECTIONTIMTOUT)
-	server.SetHeartbeatTimeout(HEARTBEATTIMEOUT)
-	debug("%s finished set timeout", server.Name())
 
-	if server.IsLogEmpty() {
+	raftServer.Initialize()
+	debug("%s finished init", raftServer.Name())
+	raftServer.SetElectionTimeout(ELECTIONTIMTOUT)
+	raftServer.SetHeartbeatTimeout(HEARTBEATTIMEOUT)
+	debug("%s finished set timeout", raftServer.Name())
+
+	if raftServer.IsLogEmpty() {
 
 		// start as a leader in a new cluster
 		if cluster == "" {
-			server.StartLeader()
+			raftServer.StartLeader()
 
 			time.Sleep(time.Millisecond * 20)
 
-			// join self as a peer
+			// leader need to join self as a peer
 			for {
 				command := &JoinCommand{}
-				command.Name = server.Name()
-				_, err := server.Do(command)
+				command.Name = raftServer.Name()
+				_, err := raftServer.Do(command)
 				if err == nil {
 					break
 				}
 			}
-			debug("%s start as a leader", server.Name())
+			debug("%s start as a leader", raftServer.Name())
 
-			// start as a fellower in a existing cluster
+			// start as a follower in a existing cluster
 		} else {
-			server.StartFollower()
+			raftServer.StartFollower()
 
-			err := Join(server, cluster)
+			err := Join(raftServer, cluster)
 			if err != nil {
 				panic(err)
 			}
-			fmt.Println("success join")
+			debug("%s success join to the cluster", raftServer.Name())
 		}
 
-		// rejoin the previous cluster
 	} else {
-		server.StartFollower()
-		debug("%s start as a follower", server.Name())
+		// rejoin the previous cluster
+		raftServer.StartFollower()
+		debug("%s restart as a follower", raftServer.Name())
 	}
 
 	// open the snapshot
@@ -225,7 +226,7 @@ func main() {
 		// start web
 		etcdStore.SetMessager(&storeMsg)
 		go webHelper()
-		go web.Start(server, webPort)
+		go web.Start(raftServer, webPort)
 	}
 
 	go startServTransport(info.ServerPort, st)
@@ -233,12 +234,11 @@ func main() {
 
 }
 
-func createTranHandler(st int) transHandler {
-	t := transHandler{}
+func createTransporter(st int) transporter {
+	t := transporter{}
 
 	switch st {
 	case HTTP:
-		t := transHandler{}
 		t.client = nil
 		return t
 
@@ -264,7 +264,7 @@ func createTranHandler(st int) transHandler {
 	}
 
 	// for complier
-	return transHandler{}
+	return transporter{}
 }
 
 func startServTransport(port int, st int) {
@@ -280,11 +280,12 @@ func startServTransport(port int, st int) {
 	switch st {
 
 	case HTTP:
-		debug("raft server [%s] listen on http", server.Name())
+		debug("raft server [%s] listen on http port %v", address, port)
 		log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), nil))
 
 	case HTTPS:
-		http.ListenAndServeTLS(fmt.Sprintf(":%d", port), serverCertFile, serverKeyFile, nil)
+		debug("raft server [%s] listen on https port %v", address, port)
+		log.Fatal(http.ListenAndServeTLS(fmt.Sprintf(":%d", port), serverCertFile, serverKeyFile, nil))
 
 	case HTTPSANDVERIFY:
 		pemByte, _ := ioutil.ReadFile(serverCAFile)
@@ -328,7 +329,7 @@ func startClientTransport(port int, st int) {
 	switch st {
 
 	case HTTP:
-		debug("etcd [%s] listen on http", server.Name())
+		debug("etcd [%s] listen on http port %v", address, clientPort)
 		log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), nil))
 
 	case HTTPS:
@@ -468,9 +469,9 @@ func Join(s *raft.Server, serverName string) error {
 	json.NewEncoder(&b).Encode(command)
 
 	// t must be ok
-	t, _ := server.Transporter().(transHandler)
+	t, _ := raftServer.Transporter().(transporter)
 	debug("Send Join Request to %s", serverName)
-	resp, err := Post(&t, fmt.Sprintf("%s/join", serverName), &b)
+	resp, err := t.Post(fmt.Sprintf("%s/join", serverName), &b)
 
 	for {
 		if resp != nil {
@@ -486,7 +487,7 @@ func Join(s *raft.Server, serverName string) error {
 				debug("Leader is %s", address)
 				debug("Send Join Request to %s", address)
 				json.NewEncoder(&b).Encode(command)
-				resp, err = Post(&t, fmt.Sprintf("%s/join", address), &b)
+				resp, err = t.Post(fmt.Sprintf("%s/join", address), &b)
 			}
 		}
 	}
