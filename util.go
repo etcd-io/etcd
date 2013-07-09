@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/coreos/etcd/web"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -46,37 +45,6 @@ func encodeJsonResponse(w http.ResponseWriter, status int, data interface{}) {
 		encoder := json.NewEncoder(w)
 		encoder.Encode(data)
 	}
-}
-
-func Post(t *transHandler, path string, body io.Reader) (*http.Response, error) {
-
-	if t.client != nil {
-		resp, err := t.client.Post("https://"+path, "application/json", body)
-		return resp, err
-	} else {
-		resp, err := http.Post("http://"+path, "application/json", body)
-		return resp, err
-	}
-}
-
-func Get(t *transHandler, path string) (*http.Response, error) {
-	if t.client != nil {
-		resp, err := t.client.Get("https://" + path)
-		return resp, err
-	} else {
-		resp, err := http.Get("http://" + path)
-		return resp, err
-	}
-}
-
-func leaderClient() string {
-	resp, _ := Get(&serverTransHandler, server.Leader()+"/client")
-	if resp != nil {
-		body, _ := ioutil.ReadAll(resp.Body)
-		resp.Body.Close()
-		return string(body)
-	}
-	return ""
 }
 
 //--------------------------------------
