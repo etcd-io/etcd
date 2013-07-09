@@ -233,10 +233,6 @@ func main() {
 
 }
 
-func usage() {
-	fatal("usage: raftd [PATH]")
-}
-
 func createTranHandler(st int) transHandler {
 	t := transHandler{}
 
