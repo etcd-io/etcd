@@ -38,6 +38,7 @@ func VoteHttpHandler(w http.ResponseWriter, req *http.Request) {
 func AppendEntriesHttpHandler(w http.ResponseWriter, req *http.Request) {
 	aereq := &raft.AppendEntriesRequest{}
 	err := decodeJsonRequest(req, aereq)
+	
 	if err == nil {
 		debug("[recv] POST http://%s/log/append [%d]", server.Name(), len(aereq.Entries))
 		if resp := server.AppendEntries(aereq); resp != nil {
@@ -121,7 +122,7 @@ func SetHttpHandler(w *http.ResponseWriter, req *http.Request) {
 		duration, err := strconv.Atoi(strDuration)
 
 		if err != nil {
-			warn("raftd: Bad duration: %v", err)
+			warn("Bad duration: %v", err)
 			(*w).WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -150,7 +151,7 @@ func TestAndSetHttpHandler(w http.ResponseWriter, req *http.Request) {
 		duration, err := strconv.Atoi(strDuration)
 
 		if err != nil {
-			warn("raftd: Bad duration: %v", err)
+			warn("Bad duration: %v", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -266,7 +267,7 @@ func ListHttpHandler(w http.ResponseWriter, req *http.Request) {
 	command.Prefix = prefix
 
 	if body, err := command.Apply(server); err != nil {
-		warn("raftd: Unable to write file: %v", err)
+		warn("Unable to write file: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	} else {
@@ -309,7 +310,7 @@ func WatchHttpHandler(w http.ResponseWriter, req *http.Request) {
 	}
 
 	if body, err := command.Apply(server); err != nil {
-		warn("raftd: Unable to write file: %v", err)
+		warn("Unable to write file: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	} else {

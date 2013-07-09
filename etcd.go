@@ -113,9 +113,7 @@ type Info struct {
 
 var server *raft.Server
 var serverTransHandler transHandler
-var logger *log.Logger
-
-var storeMsg chan string
+var etcdStore *store.Store
 
 //------------------------------------------------------------------------------
 //
@@ -129,7 +127,6 @@ var storeMsg chan string
 
 func main() {
 	var err error
-	logger = log.New(os.Stdout, "", log.LstdFlags)
 	flag.Parse()
 
 	// Setup commands.
@@ -162,10 +159,10 @@ func main() {
 	serverTransHandler = createTranHandler(st)
 
 	// Setup new raft server.
-	s := store.CreateStore(maxSize)
+	etcdStore = store.CreateStore(maxSize)
 
 	// create raft server
-	server, err = raft.NewServer(name, dirPath, serverTransHandler, s, nil)
+	server, err = raft.NewServer(name, dirPath, serverTransHandler, etcdStore, nil)
 
 	if err != nil {
 		fatal("%v", err)
@@ -226,7 +223,7 @@ func main() {
 
 	if webPort != -1 {
 		// start web
-		s.SetMessager(&storeMsg)
+		etcdStore.SetMessager(&storeMsg)
 		go webHelper()
 		go web.Start(server, webPort)
 	}

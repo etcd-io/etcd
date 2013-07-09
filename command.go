@@ -33,7 +33,7 @@ func (c *SetCommand) CommandName() string {
 
 // Set the value of key to value
 func (c *SetCommand) Apply(server *raft.Server) (interface{}, error) {
-	return store.Set(c.Key, c.Value, c.ExpireTime, server.CommitIndex())
+	return etcdStore.Set(c.Key, c.Value, c.ExpireTime, server.CommitIndex())
 }
 
 // TestAndSet command
@@ -51,7 +51,7 @@ func (c *TestAndSetCommand) CommandName() string {
 
 // Set the value of key to value
 func (c *TestAndSetCommand) Apply(server *raft.Server) (interface{}, error) {
-	return store.TestAndSet(c.Key, c.PrevValue, c.Value, c.ExpireTime, server.CommitIndex())
+	return etcdStore.TestAndSet(c.Key, c.PrevValue, c.Value, c.ExpireTime, server.CommitIndex())
 }
 
 // Get command
@@ -66,7 +66,7 @@ func (c *GetCommand) CommandName() string {
 
 // Set the value of key to value
 func (c *GetCommand) Apply(server *raft.Server) (interface{}, error) {
-	res := store.Get(c.Key)
+	res := etcdStore.Get(c.Key)
 	return json.Marshal(res)
 }
 
@@ -82,7 +82,7 @@ func (c *ListCommand) CommandName() string {
 
 // Set the value of key to value
 func (c *ListCommand) Apply(server *raft.Server) (interface{}, error) {
-	return store.List(c.Prefix)
+	return etcdStore.List(c.Prefix)
 }
 
 // Delete command
@@ -97,7 +97,7 @@ func (c *DeleteCommand) CommandName() string {
 
 // Delete the key
 func (c *DeleteCommand) Apply(server *raft.Server) (interface{}, error) {
-	return store.Delete(c.Key, server.CommitIndex())
+	return etcdStore.Delete(c.Key, server.CommitIndex())
 }
 
 // Watch command
@@ -112,13 +112,13 @@ func (c *WatchCommand) CommandName() string {
 }
 
 func (c *WatchCommand) Apply(server *raft.Server) (interface{}, error) {
-	ch := make(chan store.Response, 1)
+	watcher := store.CreateWatcher()
 
 	// add to the watchers list
-	store.AddWatcher(c.Key, ch, c.SinceIndex)
+	etcdStore.AddWatcher(c.Key, watcher, c.SinceIndex)
 
 	// wait for the notification for any changing
-	res := <-ch
+	res := <-watcher.C
 
 	return json.Marshal(res)
 }
