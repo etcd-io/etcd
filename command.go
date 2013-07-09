@@ -1,11 +1,5 @@
 package main
 
-//------------------------------------------------------------------------------
-//
-// Commands
-//
-//------------------------------------------------------------------------------
-
 import (
 	"encoding/json"
 	"github.com/coreos/etcd/store"
@@ -26,12 +20,12 @@ type SetCommand struct {
 	ExpireTime time.Time `json:"expireTime"`
 }
 
-// The name of the command in the log
+// The name of the set command in the log
 func (c *SetCommand) CommandName() string {
 	return "set"
 }
 
-// Set the value of key to value
+// Set the key-value pair
 func (c *SetCommand) Apply(server *raft.Server) (interface{}, error) {
 	return etcdStore.Set(c.Key, c.Value, c.ExpireTime, server.CommitIndex())
 }
@@ -44,12 +38,12 @@ type TestAndSetCommand struct {
 	ExpireTime time.Time `json:"expireTime"`
 }
 
-// The name of the command in the log
+// The name of the testAndSet command in the log
 func (c *TestAndSetCommand) CommandName() string {
 	return "testAndSet"
 }
 
-// Set the value of key to value
+// Set the key-value pair if the current value of the key equals to the given prevValue
 func (c *TestAndSetCommand) Apply(server *raft.Server) (interface{}, error) {
 	return etcdStore.TestAndSet(c.Key, c.PrevValue, c.Value, c.ExpireTime, server.CommitIndex())
 }
@@ -59,12 +53,12 @@ type GetCommand struct {
 	Key string `json:"key"`
 }
 
-// The name of the command in the log
+// The name of the get command in the log
 func (c *GetCommand) CommandName() string {
 	return "get"
 }
 
-// Set the value of key to value
+// Get the value of key
 func (c *GetCommand) Apply(server *raft.Server) (interface{}, error) {
 	res := etcdStore.Get(c.Key)
 	return json.Marshal(res)
@@ -75,12 +69,12 @@ type ListCommand struct {
 	Prefix string `json:"prefix"`
 }
 
-// The name of the command in the log
+// The name of the list command in the log
 func (c *ListCommand) CommandName() string {
 	return "list"
 }
 
-// Set the value of key to value
+// List all the keys have the given prefix path
 func (c *ListCommand) Apply(server *raft.Server) (interface{}, error) {
 	return etcdStore.List(c.Prefix)
 }
@@ -90,7 +84,7 @@ type DeleteCommand struct {
 	Key string `json:"key"`
 }
 
-// The name of the command in the log
+// The name of the delete command in the log
 func (c *DeleteCommand) CommandName() string {
 	return "delete"
 }
@@ -106,12 +100,13 @@ type WatchCommand struct {
 	SinceIndex uint64 `json:"sinceIndex"`
 }
 
-//The name of the command in the log
+// The name of the watch command in the log
 func (c *WatchCommand) CommandName() string {
 	return "watch"
 }
 
 func (c *WatchCommand) Apply(server *raft.Server) (interface{}, error) {
+	// create a new watcher
 	watcher := store.CreateWatcher()
 
 	// add to the watchers list
@@ -128,10 +123,12 @@ type JoinCommand struct {
 	Name string `json:"name"`
 }
 
+// The name of the join command in the log
 func (c *JoinCommand) CommandName() string {
 	return "join"
 }
 
+// Join a server to the cluster
 func (c *JoinCommand) Apply(server *raft.Server) (interface{}, error) {
 	err := server.AddPeer(c.Name)
 	// no result will be returned
