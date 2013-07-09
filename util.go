@@ -6,6 +6,7 @@ import (
 	"github.com/coreos/etcd/web"
 	"io"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"os"
 )
@@ -13,10 +14,13 @@ import (
 //--------------------------------------
 // Web Helper
 //--------------------------------------
+var storeMsg chan string
 
+// Help to send msg from stroe to webHub
 func webHelper() {
 	storeMsg = make(chan string)
 	for {
+		// transfere the new msg to webHub
 		web.Hub().Send(<-storeMsg)
 	}
 }
@@ -28,7 +32,7 @@ func webHelper() {
 func decodeJsonRequest(req *http.Request, data interface{}) error {
 	decoder := json.NewDecoder(req.Body)
 	if err := decoder.Decode(&data); err != nil && err != io.EOF {
-		logger.Println("Malformed json request: %v", err)
+		warn("Malformed json request: %v", err)
 		return fmt.Errorf("Malformed json request: %v", err)
 	}
 	return nil
@@ -79,6 +83,12 @@ func leaderClient() string {
 // Log
 //--------------------------------------
 
+var logger *log.Logger
+
+func init() {
+	logger = log.New(os.Stdout, "[etcd] ", log.Lmicroseconds)
+}
+
 func debug(msg string, v ...interface{}) {
 	if verbose {
 		logger.Printf("DEBUG "+msg+"\n", v...)
@@ -90,7 +100,7 @@ func info(msg string, v ...interface{}) {
 }
 
 func warn(msg string, v ...interface{}) {
-	logger.Printf("Alpaca Server: WARN  "+msg+"\n", v...)
+	logger.Printf("WARN  "+msg+"\n", v...)
 }
 
 func fatal(msg string, v ...interface{}) {
