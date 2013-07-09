@@ -55,7 +55,7 @@ func init() {
 
 	flag.StringVar(&cluster, "C", "", "the ip address and port of a existing cluster")
 
-	flag.StringVar(&address, "a", "", "the ip address of the local machine")
+	flag.StringVar(&address, "a", "0.0.0.0", "the ip address of the local machine")
 	flag.IntVar(&clientPort, "c", 4001, "the port to communicate with clients")
 	flag.IntVar(&serverPort, "s", 7001, "the port to communicate with servers")
 	flag.IntVar(&webPort, "w", -1, "the port of web interface")
@@ -68,7 +68,7 @@ func init() {
 	flag.StringVar(&clientCertFile, "clientCert", "", "the cert file of the client")
 	flag.StringVar(&clientKeyFile, "clientKey", "", "the key file of the client")
 
-	flag.StringVar(&dirPath, "d", "./", "the directory to store log and snapshot")
+	flag.StringVar(&dirPath, "d", "/tmp/", "the directory to store log and snapshot")
 
 	flag.BoolVar(&ignore, "i", false, "ignore the old configuration, create a new node")
 
@@ -234,9 +234,7 @@ func main() {
 
 }
 
-func usage() {
-	fatal("usage: raftd [PATH]")
-}
+
 
 func createTransporter(st int) transporter {
 	t := transporter{}
