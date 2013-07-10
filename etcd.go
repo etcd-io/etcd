@@ -172,6 +172,7 @@ func main() {
 
 // Start the raft server
 func startRaft(securityType int) {
+	var err error
 
 	raftName := fmt.Sprintf("%s:%d", info.Address, info.ServerPort)
 
@@ -179,7 +180,7 @@ func startRaft(securityType int) {
 	raftTransporter = createTransporter(securityType)
 
 	// Create raft server
-	raftServer, err := raft.NewServer(raftName, dirPath, raftTransporter, etcdStore, nil)
+	raftServer, err = raft.NewServer(raftName, dirPath, raftTransporter, etcdStore, nil)
 
 	if err != nil {
 		fmt.Println(err)
