@@ -1,0 +1,18 @@
+#!/bin/sh
+
+ETCD_PACKAGE=github.com/coreos/etcd
+GOPATH=${PWD}
+SRC_DIR=$GOPATH/src
+ETCD_DIR=$SRC_DIR/$ETCD_PACKAGE
+
+ETCD_BASE=$(dirname ${ETCD_DIR})
+if [ ! -d ${ETCD_BASE} ]; then
+	mkdir -p ${ETCD_BASE}
+fi
+
+if [ ! -h ${ETCD_DIR} ]; then
+	ln -s ../../../ ${ETCD_DIR}
+fi
+
+go get -d ./...
+go build ${ETCD_PACKAGE}
