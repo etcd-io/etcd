@@ -6,7 +6,6 @@ import (
 	"github.com/coreos/go-raft"
 	"html/template"
 	"net/http"
-	//"time"
 )
 
 var s *raft.Server
@@ -26,14 +25,13 @@ func mainHandler(c http.ResponseWriter, req *http.Request) {
 }
 
 func Start(server *raft.Server, port int) {
-	mainTempl = template.Must(template.ParseFiles("home.html"))
+	mainTempl = template.Must(template.ParseFiles("web/index.html"))
 	s = server
 
 	go h.run()
 	http.HandleFunc("/", mainHandler)
 	http.Handle("/ws", websocket.Handler(wsHandler))
 
-	//http.HandleFunc("/", handler)
 	fmt.Println("web listening at port ", port)
 	http.ListenAndServe(fmt.Sprintf(":%v", port), nil)
 }
