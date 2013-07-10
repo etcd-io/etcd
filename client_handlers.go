@@ -26,7 +26,7 @@ func Multiplexer(w http.ResponseWriter, req *http.Request) {
 }
 
 //--------------------------------------
-// State sensitive handlers 
+// State sensitive handlers
 // Set/Delte will dispatch to leader
 //--------------------------------------
 
@@ -76,7 +76,7 @@ func TestAndSetHttpHandler(w http.ResponseWriter, req *http.Request) {
 		warn("The given duration is not a number: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 	}
-	
+
 	dispatch(command, &w, req)
 
 }
@@ -146,7 +146,7 @@ func dispatch(c Command, w *http.ResponseWriter, req *http.Request) {
 }
 
 //--------------------------------------
-// State non-sensitive handlers 
+// State non-sensitive handlers
 // will not dispatch to leader
 // TODO: add sensitive version for these
 // command?
@@ -259,12 +259,12 @@ func WatchHttpHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 // Convert string duration to time format
-func durationToExpireTime(strDuration string) (time.Time, error){
+func durationToExpireTime(strDuration string) (time.Time, error) {
 	if strDuration != "" {
 		duration, err := strconv.Atoi(strDuration)
 
 		if err != nil {
-			return time.Unix(0, 0),err
+			return time.Unix(0, 0), err
 		}
 		return time.Now().Add(time.Second * (time.Duration)(duration)), nil
 	} else {

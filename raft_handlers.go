@@ -1,10 +1,10 @@
 package main
 
 import (
-	"net/http"
-	"strconv"
 	"encoding/json"
 	"github.com/coreos/go-raft"
+	"net/http"
+	"strconv"
 )
 
 //-------------------------------------------------------------
@@ -18,7 +18,6 @@ func GetLogHttpHandler(w http.ResponseWriter, req *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(raftServer.LogEntries())
 }
-
 
 // Response to vote request
 func VoteHttpHandler(w http.ResponseWriter, req *http.Request) {

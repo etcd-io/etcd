@@ -147,7 +147,6 @@ func main() {
 		fatal("Please specify cert and key file or cert and key file and CAFile or none of the three")
 	}
 
-
 	// Create transporter for raft
 	raftTransporter = createTransporter(st)
 
@@ -228,7 +227,7 @@ func main() {
 }
 
 // Create transporter using by raft server
-// Create http or https transporter based on 
+// Create http or https transporter based on
 // wether the user give the server cert and key
 func createTransporter(st int) transporter {
 	t := transporter{}
@@ -306,10 +305,10 @@ func startRaftTransport(port int, st int) {
 // Start to listen and response client command
 func startClientTransport(port int, st int) {
 	// external commands
-	http.HandleFunc("/" + version + "/keys/", Multiplexer)
-	http.HandleFunc("/" + version + "/watch/", WatchHttpHandler)
-	http.HandleFunc("/" + version + "/list/", ListHttpHandler)
-	http.HandleFunc("/" + version + "/testAndSet/", TestAndSetHttpHandler)
+	http.HandleFunc("/"+version+"/keys/", Multiplexer)
+	http.HandleFunc("/"+version+"/watch/", WatchHttpHandler)
+	http.HandleFunc("/"+version+"/list/", ListHttpHandler)
+	http.HandleFunc("/"+version+"/testAndSet/", TestAndSetHttpHandler)
 	http.HandleFunc("/leader", LeaderHttpHandler)
 
 	switch st {
@@ -363,7 +362,7 @@ func securityType(source int) int {
 	}
 
 	// If the user do not specify key file, cert file and
-	// CA file, the type will be HTTP  
+	// CA file, the type will be HTTP
 	if keyFile == "" && certFile == "" && CAFile == "" {
 
 		return HTTP
@@ -372,12 +371,12 @@ func securityType(source int) int {
 
 	if keyFile != "" && certFile != "" {
 		if CAFile != "" {
-			// If the user specify all the three file, the type 
+			// If the user specify all the three file, the type
 			// will be HTTPS with client cert auth
 			return HTTPSANDVERIFY
 		}
 		// If the user specify key file and cert file but not
-		// CA file, the type will be HTTPS without client cert 
+		// CA file, the type will be HTTPS without client cert
 		// auth
 		return HTTPS
 	}
