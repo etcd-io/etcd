@@ -11,12 +11,10 @@ import (
 	"github.com/coreos/etcd/store"
 	"github.com/coreos/etcd/web"
 	"github.com/coreos/go-raft"
-	//"io"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
-	//"strconv"
 	"strings"
 	"time"
 )
@@ -130,58 +128,52 @@ func main() {
 	flag.Parse()
 
 	// Setup commands.
-	raft.RegisterCommand(&JoinCommand{})
-	raft.RegisterCommand(&SetCommand{})
-	raft.RegisterCommand(&GetCommand{})
-	raft.RegisterCommand(&DeleteCommand{})
-	raft.RegisterCommand(&WatchCommand{})
-	raft.RegisterCommand(&ListCommand{})
-	raft.RegisterCommand(&TestAndSetCommand{})
+	registerCommands()
 
+	// Read server info from file or grab it from user.
 	if err := os.MkdirAll(dirPath, 0744); err != nil {
 		fatal("Unable to create path: %v", err)
 	}
-
-	// Read server info from file or grab it from user.
 	var info *Info = getInfo(dirPath)
 
 	name := fmt.Sprintf("%s:%d", info.Address, info.ServerPort)
 
-	fmt.Printf("ServerName: %s\n\n", name)
-
 	// secrity type
 	st := securityType(SERVER)
 
-	if st == -1 {
-		panic("ERROR type")
+	clientSt := securityType(CLIENT)
+
+	if st == -1 || clientSt == -1 {
+		fatal("Please specify cert and key file or cert and key file and CAFile or none of the three")
 	}
 
+
+	// Create transporter for raft
 	raftTransporter = createTransporter(st)
 
-	// Setup new raft server.
+	// Create etcd key-value store
 	etcdStore = store.CreateStore(maxSize)
 
-	// create raft server
+	// Create raft server
 	raftServer, err = raft.NewServer(name, dirPath, raftTransporter, etcdStore, nil)
 
 	if err != nil {
-		fatal("%v", err)
-	}
-
-	err = raftServer.LoadSnapshot()
-
-	if err == nil {
-		debug("%s finished load snapshot", raftServer.Name())
-	} else {
 		fmt.Println(err)
-		debug("%s bad snapshot", raftServer.Name())
+		os.Exit(1)
 	}
+
+	// LoadSnapshot
+	// err = raftServer.LoadSnapshot()
+
+	// if err == nil {
+	// 	debug("%s finished load snapshot", raftServer.Name())
+	// } else {
+	// 	debug(err)
+	// }
 
 	raftServer.Initialize()
-	debug("%s finished init", raftServer.Name())
 	raftServer.SetElectionTimeout(ELECTIONTIMTOUT)
 	raftServer.SetHeartbeatTimeout(HEARTBEATTIMEOUT)
-	debug("%s finished set timeout", raftServer.Name())
 
 	if raftServer.IsLogEmpty() {
 
@@ -206,9 +198,9 @@ func main() {
 		} else {
 			raftServer.StartFollower()
 
-			err := Join(raftServer, cluster)
+			err := joinCluster(raftServer, cluster)
 			if err != nil {
-				panic(err)
+				fatal(fmt.Sprintln(err))
 			}
 			debug("%s success join to the cluster", raftServer.Name())
 		}
@@ -220,7 +212,7 @@ func main() {
 	}
 
 	// open the snapshot
-	//go server.Snapshot()
+	// go server.Snapshot()
 
 	if webPort != -1 {
 		// start web
@@ -229,11 +221,15 @@ func main() {
 		go web.Start(raftServer, webPort)
 	}
 
-	go startServTransport(info.ServerPort, st)
-	startClientTransport(info.ClientPort, securityType(CLIENT))
+	go startRaftTransport(info.ServerPort, st)
+
+	startClientTransport(info.ClientPort, clientSt)
 
 }
 
+// Create transporter using by raft server
+// Create http or https transporter based on 
+// wether the user give the server cert and key
 func createTransporter(st int) transporter {
 	t := transporter{}
 
@@ -248,7 +244,7 @@ func createTransporter(st int) transporter {
 		tlsCert, err := tls.LoadX509KeyPair(serverCertFile, serverKeyFile)
 
 		if err != nil {
-			panic(err)
+			fatal(fmt.Sprintln(err))
 		}
 
 		tr := &http.Transport{
@@ -267,7 +263,8 @@ func createTransporter(st int) transporter {
 	return transporter{}
 }
 
-func startServTransport(port int, st int) {
+// Start to listen and response raft command
+func startRaftTransport(port int, st int) {
 
 	// internal commands
 	http.HandleFunc("/join", JoinHttpHandler)
@@ -275,41 +272,29 @@ func startServTransport(port int, st int) {
 	http.HandleFunc("/log", GetLogHttpHandler)
 	http.HandleFunc("/log/append", AppendEntriesHttpHandler)
 	http.HandleFunc("/snapshot", SnapshotHttpHandler)
-	http.HandleFunc("/client", clientHttpHandler)
+	http.HandleFunc("/client", ClientHttpHandler)
 
 	switch st {
 
 	case HTTP:
-		debug("raft server [%s] listen on http port %v", address, port)
+		fmt.Println("raft server [%s] listen on http port %v", address, port)
 		log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), nil))
 
 	case HTTPS:
-		debug("raft server [%s] listen on https port %v", address, port)
+		fmt.Println("raft server [%s] listen on https port %v", address, port)
 		log.Fatal(http.ListenAndServeTLS(fmt.Sprintf(":%d", port), serverCertFile, serverKeyFile, nil))
 
 	case HTTPSANDVERIFY:
-		pemByte, _ := ioutil.ReadFile(serverCAFile)
-
-		block, pemByte := pem.Decode(pemByte)
-
-		cert, err := x509.ParseCertificate(block.Bytes)
-
-		if err != nil {
-			fmt.Println(err)
-		}
-
-		certPool := x509.NewCertPool()
-
-		certPool.AddCert(cert)
 
 		server := &http.Server{
 			TLSConfig: &tls.Config{
 				ClientAuth: tls.RequireAndVerifyClientCert,
-				ClientCAs:  certPool,
+				ClientCAs:  createCertPool(serverCAFile),
 			},
 			Addr: fmt.Sprintf(":%d", port),
 		}
-		err = server.ListenAndServeTLS(serverCertFile, serverKeyFile)
+		fmt.Println("raft server [%s] listen on https port %v", address, port)
+		err := server.ListenAndServeTLS(serverCertFile, serverKeyFile)
 
 		if err != nil {
 			log.Fatal(err)
@@ -318,49 +303,40 @@ func startServTransport(port int, st int) {
 
 }
 
+// Start to listen and response client command
 func startClientTransport(port int, st int) {
 	// external commands
-	http.HandleFunc("/v1/keys/", Multiplexer)
-	http.HandleFunc("/v1/watch/", WatchHttpHandler)
-	http.HandleFunc("/v1/list/", ListHttpHandler)
-	http.HandleFunc("/v1/testAndSet/", TestAndSetHttpHandler)
-	http.HandleFunc("/master", MasterHttpHandler)
+	http.HandleFunc("/" + version + "/keys/", Multiplexer)
+	http.HandleFunc("/" + version + "/watch/", WatchHttpHandler)
+	http.HandleFunc("/" + version + "/list/", ListHttpHandler)
+	http.HandleFunc("/" + version + "/testAndSet/", TestAndSetHttpHandler)
+	http.HandleFunc("/leader", LeaderHttpHandler)
 
 	switch st {
 
 	case HTTP:
-		debug("etcd [%s] listen on http port %v", address, clientPort)
+		fmt.Println("etcd [%s] listen on http port %v", address, clientPort)
 		log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), nil))
 
 	case HTTPS:
+		fmt.Println("etcd [%s] listen on https port %v", address, clientPort)
 		http.ListenAndServeTLS(fmt.Sprintf(":%d", port), clientCertFile, clientKeyFile, nil)
 
 	case HTTPSANDVERIFY:
-		pemByte, _ := ioutil.ReadFile(clientCAFile)
-
-		block, pemByte := pem.Decode(pemByte)
-
-		cert, err := x509.ParseCertificate(block.Bytes)
-
-		if err != nil {
-			fmt.Println(err)
-		}
-
-		certPool := x509.NewCertPool()
-
-		certPool.AddCert(cert)
 
 		server := &http.Server{
 			TLSConfig: &tls.Config{
 				ClientAuth: tls.RequireAndVerifyClientCert,
-				ClientCAs:  certPool,
+				ClientCAs:  createCertPool(clientCAFile),
 			},
 			Addr: fmt.Sprintf(":%d", port),
 		}
-		err = server.ListenAndServeTLS(clientCertFile, clientKeyFile)
+		fmt.Println("etcd [%s] listen on https port %v", address, clientPort)
+		err := server.ListenAndServeTLS(clientCertFile, clientKeyFile)
 
 		if err != nil {
 			log.Fatal(err)
+			os.Exit(1)
 		}
 	}
 }
@@ -374,6 +350,7 @@ func securityType(source int) int {
 	var keyFile, certFile, CAFile string
 
 	switch source {
+
 	case SERVER:
 		keyFile = serverKeyFile
 		certFile = serverCertFile
@@ -385,6 +362,8 @@ func securityType(source int) int {
 		CAFile = clientCAFile
 	}
 
+	// If the user do not specify key file, cert file and
+	// CA file, the type will be HTTP  
 	if keyFile == "" && certFile == "" && CAFile == "" {
 
 		return HTTP
@@ -392,14 +371,18 @@ func securityType(source int) int {
 	}
 
 	if keyFile != "" && certFile != "" {
-
 		if CAFile != "" {
+			// If the user specify all the three file, the type 
+			// will be HTTPS with client cert auth
 			return HTTPSANDVERIFY
 		}
-
+		// If the user specify key file and cert file but not
+		// CA file, the type will be HTTPS without client cert 
+		// auth
 		return HTTPS
 	}
 
+	// bad specification
 	return -1
 }
 
@@ -455,12 +438,27 @@ func getInfo(path string) *Info {
 	return info
 }
 
-//--------------------------------------
-// Handlers
-//--------------------------------------
+func createCertPool(CAFile string) *x509.CertPool {
+	pemByte, _ := ioutil.ReadFile(CAFile)
+
+	block, pemByte := pem.Decode(pemByte)
+
+	cert, err := x509.ParseCertificate(block.Bytes)
+
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	certPool := x509.NewCertPool()
+
+	certPool.AddCert(cert)
+
+	return certPool
+}
 
 // Send join requests to the leader.
-func Join(s *raft.Server, serverName string) error {
+func joinCluster(s *raft.Server, serverName string) error {
 	var b bytes.Buffer
 
 	command := &JoinCommand{}
@@ -492,4 +490,15 @@ func Join(s *raft.Server, serverName string) error {
 		}
 	}
 	return fmt.Errorf("Unable to join: %v", err)
+}
+
+// register commands to raft server
+func registerCommands() {
+	raft.RegisterCommand(&JoinCommand{})
+	raft.RegisterCommand(&SetCommand{})
+	raft.RegisterCommand(&GetCommand{})
+	raft.RegisterCommand(&DeleteCommand{})
+	raft.RegisterCommand(&WatchCommand{})
+	raft.RegisterCommand(&ListCommand{})
+	raft.RegisterCommand(&TestAndSetCommand{})
 }

@@ -1,101 +1,16 @@
 package main
 
 import (
-	"encoding/json"
-	"github.com/coreos/go-raft"
 	"net/http"
 	"strconv"
 	"time"
 )
 
-//--------------------------------------
-// Internal HTTP Handlers via server port
-//--------------------------------------
+//-------------------------------------------------------------------
+// Handlers to handle etcd-store related request via raft client port
+//-------------------------------------------------------------------
 
-// Get all the current logs
-func GetLogHttpHandler(w http.ResponseWriter, req *http.Request) {
-	debug("[recv] GET http://%v/log", raftServer.Name())
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(raftServer.LogEntries())
-}
-
-func VoteHttpHandler(w http.ResponseWriter, req *http.Request) {
-	rvreq := &raft.RequestVoteRequest{}
-	err := decodeJsonRequest(req, rvreq)
-	if err == nil {
-		debug("[recv] POST http://%v/vote [%s]", raftServer.Name(), rvreq.CandidateName)
-		if resp := raftServer.RequestVote(rvreq); resp != nil {
-			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(resp)
-			return
-		}
-	}
-	warn("[vote] ERROR: %v", err)
-	w.WriteHeader(http.StatusInternalServerError)
-}
-
-func AppendEntriesHttpHandler(w http.ResponseWriter, req *http.Request) {
-	aereq := &raft.AppendEntriesRequest{}
-	err := decodeJsonRequest(req, aereq)
-
-	if err == nil {
-		debug("[recv] POST http://%s/log/append [%d]", raftServer.Name(), len(aereq.Entries))
-		if resp := raftServer.AppendEntries(aereq); resp != nil {
-			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(resp)
-			if !resp.Success {
-				debug("[Append Entry] Step back")
-			}
-			return
-		}
-	}
-	warn("[Append Entry] ERROR: %v", err)
-	w.WriteHeader(http.StatusInternalServerError)
-}
-
-func SnapshotHttpHandler(w http.ResponseWriter, req *http.Request) {
-	aereq := &raft.SnapshotRequest{}
-	err := decodeJsonRequest(req, aereq)
-	if err == nil {
-		debug("[recv] POST http://%s/snapshot/ ", raftServer.Name())
-		if resp, _ := raftServer.SnapshotRecovery(aereq); resp != nil {
-			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(resp)
-			return
-		}
-	}
-	warn("[Snapshot] ERROR: %v", err)
-	w.WriteHeader(http.StatusInternalServerError)
-}
-
-// Get the port that listening for client connecting of the server
-func clientHttpHandler(w http.ResponseWriter, req *http.Request) {
-	debug("[recv] Get http://%v/client/ ", raftServer.Name())
-	w.WriteHeader(http.StatusOK)
-	client := address + ":" + strconv.Itoa(clientPort)
-	w.Write([]byte(client))
-}
-
-//
-func JoinHttpHandler(w http.ResponseWriter, req *http.Request) {
-
-	command := &JoinCommand{}
-
-	if err := decodeJsonRequest(req, command); err == nil {
-		debug("Receive Join Request from %s", command.Name)
-		excute(command, &w, req)
-	} else {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-}
-
-//--------------------------------------
-// external HTTP Handlers via client port
-//--------------------------------------
-
-// Dispatch GET/POST/DELETE request to corresponding handlers
+// Multiplex GET/POST/DELETE request to corresponding handlers
 func Multiplexer(w http.ResponseWriter, req *http.Request) {
 
 	if req.Method == "GET" {
@@ -110,6 +25,11 @@ func Multiplexer(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
+//--------------------------------------
+// State sensitive handlers 
+// Set/Delte will dispatch to leader
+//--------------------------------------
+
 // Set Command Handler
 func SetHttpHandler(w *http.ResponseWriter, req *http.Request) {
 	key := req.URL.Path[len("/v1/keys/"):]
@@ -122,23 +42,20 @@ func SetHttpHandler(w *http.ResponseWriter, req *http.Request) {
 	command.Value = req.FormValue("value")
 	strDuration := req.FormValue("ttl")
 
-	if strDuration != "" {
-		duration, err := strconv.Atoi(strDuration)
+	var err error
 
-		if err != nil {
-			warn("Bad duration: %v", err)
-			(*w).WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		command.ExpireTime = time.Now().Add(time.Second * (time.Duration)(duration))
-	} else {
-		command.ExpireTime = time.Unix(0, 0)
+	command.ExpireTime, err = durationToExpireTime(strDuration)
+
+	if err != nil {
+		warn("The given duration is not a number: %v", err)
+		(*w).WriteHeader(http.StatusInternalServerError)
 	}
 
-	excute(command, w, req)
+	dispatch(command, w, req)
 
 }
 
+// TestAndSet handler
 func TestAndSetHttpHandler(w http.ResponseWriter, req *http.Request) {
 	key := req.URL.Path[len("/v1/testAndSet/"):]
 
@@ -151,23 +68,20 @@ func TestAndSetHttpHandler(w http.ResponseWriter, req *http.Request) {
 	command.Value = req.FormValue("value")
 	strDuration := req.FormValue("ttl")
 
-	if strDuration != "" {
-		duration, err := strconv.Atoi(strDuration)
+	var err error
 
-		if err != nil {
-			warn("Bad duration: %v", err)
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		command.ExpireTime = time.Now().Add(time.Second * (time.Duration)(duration))
-	} else {
-		command.ExpireTime = time.Unix(0, 0)
+	command.ExpireTime, err = durationToExpireTime(strDuration)
+
+	if err != nil {
+		warn("The given duration is not a number: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
 	}
-
-	excute(command, &w, req)
+	
+	dispatch(command, &w, req)
 
 }
 
+// Delete Handler
 func DeleteHttpHandler(w *http.ResponseWriter, req *http.Request) {
 	key := req.URL.Path[len("/v1/keys/"):]
 
@@ -176,10 +90,11 @@ func DeleteHttpHandler(w *http.ResponseWriter, req *http.Request) {
 	command := &DeleteCommand{}
 	command.Key = key
 
-	excute(command, w, req)
+	dispatch(command, w, req)
 }
 
-func excute(c Command, w *http.ResponseWriter, req *http.Request) {
+// Dispatch the command to leader
+func dispatch(c Command, w *http.ResponseWriter, req *http.Request) {
 	if raftServer.State() == "leader" {
 		if body, err := raftServer.Do(c); err != nil {
 			warn("Commit failed %v", err)
@@ -208,7 +123,6 @@ func excute(c Command, w *http.ResponseWriter, req *http.Request) {
 		}
 
 		// tell the client where is the leader
-		debug("Redirect to the leader %s", raftServer.Leader())
 
 		path := req.URL.Path
 
@@ -220,7 +134,7 @@ func excute(c Command, w *http.ResponseWriter, req *http.Request) {
 
 		url := scheme + raftTransporter.GetLeaderClientAddress() + path
 
-		debug("redirect to %s", url)
+		debug("Redirect to %s", url)
 
 		http.Redirect(*w, req, url, http.StatusTemporaryRedirect)
 		return
@@ -231,11 +145,20 @@ func excute(c Command, w *http.ResponseWriter, req *http.Request) {
 	return
 }
 
-func MasterHttpHandler(w http.ResponseWriter, req *http.Request) {
+//--------------------------------------
+// State non-sensitive handlers 
+// will not dispatch to leader
+// TODO: add sensitive version for these
+// command?
+//--------------------------------------
+
+// Handler to return the current leader name
+func LeaderHttpHandler(w http.ResponseWriter, req *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(raftServer.Leader()))
 }
 
+// Get Handler
 func GetHttpHandler(w *http.ResponseWriter, req *http.Request) {
 	key := req.URL.Path[len("/v1/keys/"):]
 
@@ -262,6 +185,7 @@ func GetHttpHandler(w *http.ResponseWriter, req *http.Request) {
 
 }
 
+// List Handler
 func ListHttpHandler(w http.ResponseWriter, req *http.Request) {
 	prefix := req.URL.Path[len("/v1/list/"):]
 
@@ -288,6 +212,7 @@ func ListHttpHandler(w http.ResponseWriter, req *http.Request) {
 
 }
 
+// Watch handler
 func WatchHttpHandler(w http.ResponseWriter, req *http.Request) {
 	key := req.URL.Path[len("/v1/watch/"):]
 
@@ -299,6 +224,8 @@ func WatchHttpHandler(w http.ResponseWriter, req *http.Request) {
 		command.SinceIndex = 0
 
 	} else if req.Method == "POST" {
+		// watch from a specific index
+
 		debug("[recv] POST http://%v/watch/%s", raftServer.Name(), key)
 		content := req.FormValue("index")
 
@@ -314,7 +241,7 @@ func WatchHttpHandler(w http.ResponseWriter, req *http.Request) {
 	}
 
 	if body, err := command.Apply(raftServer); err != nil {
-		warn("Unable to write file: %v", err)
+		warn("Unable to do watch command: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	} else {
@@ -329,4 +256,18 @@ func WatchHttpHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+}
+
+// Convert string duration to time format
+func durationToExpireTime(strDuration string) (time.Time, error){
+	if strDuration != "" {
+		duration, err := strconv.Atoi(strDuration)
+
+		if err != nil {
+			return time.Unix(0, 0),err
+		}
+		return time.Now().Add(time.Second * (time.Duration)(duration)), nil
+	} else {
+		return time.Unix(0, 0), nil
+	}
 }
