@@ -14,18 +14,18 @@ import (
 
 // Get all the current logs
 func GetLogHttpHandler(w http.ResponseWriter, req *http.Request) {
-	debug("[recv] GET http://%v/log", server.Name())
+	debug("[recv] GET http://%v/log", raftServer.Name())
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(server.LogEntries())
+	json.NewEncoder(w).Encode(raftServer.LogEntries())
 }
 
 func VoteHttpHandler(w http.ResponseWriter, req *http.Request) {
 	rvreq := &raft.RequestVoteRequest{}
 	err := decodeJsonRequest(req, rvreq)
 	if err == nil {
-		debug("[recv] POST http://%v/vote [%s]", server.Name(), rvreq.CandidateName)
-		if resp := server.RequestVote(rvreq); resp != nil {
+		debug("[recv] POST http://%v/vote [%s]", raftServer.Name(), rvreq.CandidateName)
+		if resp := raftServer.RequestVote(rvreq); resp != nil {
 			w.WriteHeader(http.StatusOK)
 			json.NewEncoder(w).Encode(resp)
 			return
@@ -38,10 +38,10 @@ func VoteHttpHandler(w http.ResponseWriter, req *http.Request) {
 func AppendEntriesHttpHandler(w http.ResponseWriter, req *http.Request) {
 	aereq := &raft.AppendEntriesRequest{}
 	err := decodeJsonRequest(req, aereq)
-	
+
 	if err == nil {
-		debug("[recv] POST http://%s/log/append [%d]", server.Name(), len(aereq.Entries))
-		if resp := server.AppendEntries(aereq); resp != nil {
+		debug("[recv] POST http://%s/log/append [%d]", raftServer.Name(), len(aereq.Entries))
+		if resp := raftServer.AppendEntries(aereq); resp != nil {
 			w.WriteHeader(http.StatusOK)
 			json.NewEncoder(w).Encode(resp)
 			if !resp.Success {
@@ -50,7 +50,7 @@ func AppendEntriesHttpHandler(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 	}
-	warn("[append] ERROR: %v", err)
+	warn("[Append Entry] ERROR: %v", err)
 	w.WriteHeader(http.StatusInternalServerError)
 }
 
@@ -58,24 +58,26 @@ func SnapshotHttpHandler(w http.ResponseWriter, req *http.Request) {
 	aereq := &raft.SnapshotRequest{}
 	err := decodeJsonRequest(req, aereq)
 	if err == nil {
-		debug("[recv] POST http://%s/snapshot/ ", server.Name())
-		if resp, _ := server.SnapshotRecovery(aereq); resp != nil {
+		debug("[recv] POST http://%s/snapshot/ ", raftServer.Name())
+		if resp, _ := raftServer.SnapshotRecovery(aereq); resp != nil {
 			w.WriteHeader(http.StatusOK)
 			json.NewEncoder(w).Encode(resp)
 			return
 		}
 	}
-	warn("[snapshot] ERROR: %v", err)
+	warn("[Snapshot] ERROR: %v", err)
 	w.WriteHeader(http.StatusInternalServerError)
 }
 
+// Get the port that listening for client connecting of the server
 func clientHttpHandler(w http.ResponseWriter, req *http.Request) {
-	debug("[recv] Get http://%v/client/ ", server.Name())
+	debug("[recv] Get http://%v/client/ ", raftServer.Name())
 	w.WriteHeader(http.StatusOK)
 	client := address + ":" + strconv.Itoa(clientPort)
 	w.Write([]byte(client))
 }
 
+//
 func JoinHttpHandler(w http.ResponseWriter, req *http.Request) {
 
 	command := &JoinCommand{}
@@ -93,6 +95,7 @@ func JoinHttpHandler(w http.ResponseWriter, req *http.Request) {
 // external HTTP Handlers via client port
 //--------------------------------------
 
+// Dispatch GET/POST/DELETE request to corresponding handlers
 func Multiplexer(w http.ResponseWriter, req *http.Request) {
 
 	if req.Method == "GET" {
@@ -107,10 +110,11 @@ func Multiplexer(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
+// Set Command Handler
 func SetHttpHandler(w *http.ResponseWriter, req *http.Request) {
 	key := req.URL.Path[len("/v1/keys/"):]
 
-	debug("[recv] POST http://%v/v1/keys/%s", server.Name(), key)
+	debug("[recv] POST http://%v/v1/keys/%s", raftServer.Name(), key)
 
 	command := &SetCommand{}
 	command.Key = key
@@ -138,7 +142,7 @@ func SetHttpHandler(w *http.ResponseWriter, req *http.Request) {
 func TestAndSetHttpHandler(w http.ResponseWriter, req *http.Request) {
 	key := req.URL.Path[len("/v1/testAndSet/"):]
 
-	debug("[recv] POST http://%v/v1/testAndSet/%s", server.Name(), key)
+	debug("[recv] POST http://%v/v1/testAndSet/%s", raftServer.Name(), key)
 
 	command := &TestAndSetCommand{}
 	command.Key = key
@@ -167,7 +171,7 @@ func TestAndSetHttpHandler(w http.ResponseWriter, req *http.Request) {
 func DeleteHttpHandler(w *http.ResponseWriter, req *http.Request) {
 	key := req.URL.Path[len("/v1/keys/"):]
 
-	debug("[recv] DELETE http://%v/v1/keys/%s", server.Name(), key)
+	debug("[recv] DELETE http://%v/v1/keys/%s", raftServer.Name(), key)
 
 	command := &DeleteCommand{}
 	command.Key = key
@@ -176,8 +180,8 @@ func DeleteHttpHandler(w *http.ResponseWriter, req *http.Request) {
 }
 
 func excute(c Command, w *http.ResponseWriter, req *http.Request) {
-	if server.State() == "leader" {
-		if body, err := server.Do(c); err != nil {
+	if raftServer.State() == "leader" {
+		if body, err := raftServer.Do(c); err != nil {
 			warn("Commit failed %v", err)
 			(*w).WriteHeader(http.StatusInternalServerError)
 			return
@@ -198,13 +202,13 @@ func excute(c Command, w *http.ResponseWriter, req *http.Request) {
 		}
 	} else {
 		// current no leader
-		if server.Leader() == "" {
+		if raftServer.Leader() == "" {
 			(*w).WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
 		// tell the client where is the leader
-		debug("Redirect to the leader %s", server.Leader())
+		debug("Redirect to the leader %s", raftServer.Leader())
 
 		path := req.URL.Path
 
@@ -214,7 +218,7 @@ func excute(c Command, w *http.ResponseWriter, req *http.Request) {
 			scheme = "http://"
 		}
 
-		url := scheme + leaderClient() + path
+		url := scheme + raftTransporter.GetLeaderClientAddress() + path
 
 		debug("redirect to %s", url)
 
@@ -229,18 +233,18 @@ func excute(c Command, w *http.ResponseWriter, req *http.Request) {
 
 func MasterHttpHandler(w http.ResponseWriter, req *http.Request) {
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(server.Leader()))
+	w.Write([]byte(raftServer.Leader()))
 }
 
 func GetHttpHandler(w *http.ResponseWriter, req *http.Request) {
 	key := req.URL.Path[len("/v1/keys/"):]
 
-	debug("[recv] GET http://%v/v1/keys/%s", server.Name(), key)
+	debug("[recv] GET http://%v/v1/keys/%s", raftServer.Name(), key)
 
 	command := &GetCommand{}
 	command.Key = key
 
-	if body, err := command.Apply(server); err != nil {
+	if body, err := command.Apply(raftServer); err != nil {
 		warn("raftd: Unable to write file: %v", err)
 		(*w).WriteHeader(http.StatusInternalServerError)
 		return
@@ -261,12 +265,12 @@ func GetHttpHandler(w *http.ResponseWriter, req *http.Request) {
 func ListHttpHandler(w http.ResponseWriter, req *http.Request) {
 	prefix := req.URL.Path[len("/v1/list/"):]
 
-	debug("[recv] GET http://%v/v1/list/%s", server.Name(), prefix)
+	debug("[recv] GET http://%v/v1/list/%s", raftServer.Name(), prefix)
 
 	command := &ListCommand{}
 	command.Prefix = prefix
 
-	if body, err := command.Apply(server); err != nil {
+	if body, err := command.Apply(raftServer); err != nil {
 		warn("Unable to write file: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -291,11 +295,11 @@ func WatchHttpHandler(w http.ResponseWriter, req *http.Request) {
 	command.Key = key
 
 	if req.Method == "GET" {
-		debug("[recv] GET http://%v/watch/%s", server.Name(), key)
+		debug("[recv] GET http://%v/watch/%s", raftServer.Name(), key)
 		command.SinceIndex = 0
 
 	} else if req.Method == "POST" {
-		debug("[recv] POST http://%v/watch/%s", server.Name(), key)
+		debug("[recv] POST http://%v/watch/%s", raftServer.Name(), key)
 		content := req.FormValue("index")
 
 		sinceIndex, err := strconv.ParseUint(string(content), 10, 64)
@@ -309,7 +313,7 @@ func WatchHttpHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if body, err := command.Apply(server); err != nil {
+	if body, err := command.Apply(raftServer); err != nil {
 		warn("Unable to write file: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
