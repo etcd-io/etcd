@@ -501,6 +501,9 @@ func joinCluster(s *raft.Server, serverName string) error {
 	resp, err := t.Post(fmt.Sprintf("%s/join", serverName), &b)
 
 	for {
+		if err != nil {
+			return fmt.Errorf("Unable to join: %v", err)
+		}
 		if resp != nil {
 			defer resp.Body.Close()
 			if resp.StatusCode == http.StatusOK {
