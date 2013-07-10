@@ -1,5 +1,7 @@
 #!/bin/sh
 
+# this file is copied from doozerd. 
+
 set -e
 
 munge() {
