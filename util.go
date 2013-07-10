@@ -63,10 +63,6 @@ func debug(msg string, v ...interface{}) {
 	}
 }
 
-func info(msg string, v ...interface{}) {
-	logger.Printf("INFO  "+msg+"\n", v...)
-}
-
 func warn(msg string, v ...interface{}) {
 	logger.Printf("WARN  "+msg+"\n", v...)
 }

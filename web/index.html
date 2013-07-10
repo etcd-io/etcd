@@ -1,0 +1,70 @@
+<html>
+<head>
+<title>etcd Web Interface</title>
+<script type="text/javascript" src="//ajax.googleapis.com/ajax/libs/jquery/1.10.1/jquery.min.js"></script>
+<script type="text/javascript">
+    $(function() {
+
+    var conn;
+    var content = $("#content");
+
+    function update(response) {
+        // if set
+        if (response.action == "SET") {
+
+            if (response.expiration > "1970") {
+                t = response.key + "=" + response.value
+                        + "  " + response.expiration
+            } else {
+                t = response.key + "=" + response.value
+            }
+
+            id = response.key.replace(new RegExp("/", 'g'), "\\/");
+
+            if ($("#store_" + id).length == 0) {
+                if (response.expiration > "1970") {
+                    t = response.key + "=" + response.value
+                        + "  " + response.expiration
+                } else {
+                    t = response.key + "=" + response.value
+                }
+
+                var e = $('<div id="store_' + response.key + '"/>')
+                    .text(t)
+                e.appendTo(content)
+            }
+            else {
+
+                $("#store_" + id)
+                    .text(t)
+            }
+        }
+        // if delete
+        else if (response.action == "DELETE") {
+            id = response.key.replace(new RegExp("/", 'g'), "\\/");
+
+            $("#store_" + id).remove()
+        }
+    }
+
+
+    if (window["WebSocket"]) {
+        conn = new WebSocket("ws://{{.Address}}/ws");
+        conn.onclose = function(evt) {
+
+        }
+        conn.onmessage = function(evt) {
+            var response = JSON.parse(evt.data)
+            update(response)
+        }
+    } else {
+        appendLog($("<div><b>Your browser does not support WebSockets.</b></div>"))
+    }
+    });
+</script>
+</head>
+<body>
+    <div id="leader">Leader: {{.Leader}}</div>
+    <div id="content"></div>
+</body>
+</html>

@@ -11,12 +11,10 @@ import (
 	"github.com/coreos/etcd/store"
 	"github.com/coreos/etcd/web"
 	"github.com/coreos/go-raft"
-	//"io"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
-	//"strconv"
 	"strings"
 	"time"
 )
@@ -103,6 +101,14 @@ type Info struct {
 	ServerPort int    `json:"serverPort"`
 	ClientPort int    `json:"clientPort"`
 	WebPort    int    `json:"webPort"`
+
+	ServerCertFile string `json:"serverCertFile"`
+	ServerKeyFile  string `json:"serverKeyFile"`
+	ServerCAFile   string `json:"serverCAFile"`
+
+	ClientCertFile string `json:"clientCertFile"`
+	ClientKeyFile  string `json:"clientKeyFile"`
+	ClientCAFile   string `json:"clientCAFile"`
 }
 
 //------------------------------------------------------------------------------
@@ -114,6 +120,7 @@ type Info struct {
 var raftServer *raft.Server
 var raftTransporter transporter
 var etcdStore *store.Store
+var info *Info
 
 //------------------------------------------------------------------------------
 //
@@ -126,62 +133,72 @@ var etcdStore *store.Store
 //--------------------------------------
 
 func main() {
-	var err error
 	flag.Parse()
 
 	// Setup commands.
-	raft.RegisterCommand(&JoinCommand{})
-	raft.RegisterCommand(&SetCommand{})
-	raft.RegisterCommand(&GetCommand{})
-	raft.RegisterCommand(&DeleteCommand{})
-	raft.RegisterCommand(&WatchCommand{})
-	raft.RegisterCommand(&ListCommand{})
-	raft.RegisterCommand(&TestAndSetCommand{})
+	registerCommands()
 
+	// Read server info from file or grab it from user.
 	if err := os.MkdirAll(dirPath, 0744); err != nil {
 		fatal("Unable to create path: %v", err)
 	}
 
-	// Read server info from file or grab it from user.
-	var info *Info = getInfo(dirPath)
-
-	name := fmt.Sprintf("%s:%d", info.Address, info.ServerPort)
-
-	fmt.Printf("ServerName: %s\n\n", name)
+	info = getInfo(dirPath)
 
 	// secrity type
 	st := securityType(SERVER)
 
-	if st == -1 {
-		panic("ERROR type")
+	clientSt := securityType(CLIENT)
+
+	if st == -1 || clientSt == -1 {
+		fatal("Please specify cert and key file or cert and key file and CAFile or none of the three")
 	}
 
-	raftTransporter = createTransporter(st)
-
-	// Setup new raft server.
+	// Create etcd key-value store
 	etcdStore = store.CreateStore(maxSize)
 
-	// create raft server
-	raftServer, err = raft.NewServer(name, dirPath, raftTransporter, etcdStore, nil)
+	startRaft(st)
+
+	if webPort != -1 {
+		// start web
+		etcdStore.SetMessager(&storeMsg)
+		go webHelper()
+		go web.Start(raftServer, webPort)
+	}
+
+	startClientTransport(info.ClientPort, clientSt)
+
+}
+
+// Start the raft server
+func startRaft(securityType int) {
+	var err error
+
+	raftName := fmt.Sprintf("%s:%d", info.Address, info.ServerPort)
+
+	// Create transporter for raft
+	raftTransporter = createTransporter(securityType)
+
+	// Create raft server
+	raftServer, err = raft.NewServer(raftName, dirPath, raftTransporter, etcdStore, nil)
 
 	if err != nil {
-		fatal("%v", err)
-	}
-
-	err = raftServer.LoadSnapshot()
-
-	if err == nil {
-		debug("%s finished load snapshot", raftServer.Name())
-	} else {
 		fmt.Println(err)
-		debug("%s bad snapshot", raftServer.Name())
+		os.Exit(1)
 	}
+
+	// LoadSnapshot
+	// err = raftServer.LoadSnapshot()
+
+	// if err == nil {
+	// 	debug("%s finished load snapshot", raftServer.Name())
+	// } else {
+	// 	debug(err)
+	// }
 
 	raftServer.Initialize()
-	debug("%s finished init", raftServer.Name())
 	raftServer.SetElectionTimeout(ELECTIONTIMTOUT)
 	raftServer.SetHeartbeatTimeout(HEARTBEATTIMEOUT)
-	debug("%s finished set timeout", raftServer.Name())
 
 	if raftServer.IsLogEmpty() {
 
@@ -206,9 +223,9 @@ func main() {
 		} else {
 			raftServer.StartFollower()
 
-			err := Join(raftServer, cluster)
+			err := joinCluster(raftServer, cluster)
 			if err != nil {
-				panic(err)
+				fatal(fmt.Sprintln(err))
 			}
 			debug("%s success join to the cluster", raftServer.Name())
 		}
@@ -220,20 +237,16 @@ func main() {
 	}
 
 	// open the snapshot
-	//go server.Snapshot()
+	// go server.Snapshot()
 
-	if webPort != -1 {
-		// start web
-		etcdStore.SetMessager(&storeMsg)
-		go webHelper()
-		go web.Start(raftServer, webPort)
-	}
-
-	go startServTransport(info.ServerPort, st)
-	startClientTransport(info.ClientPort, securityType(CLIENT))
+	// start to response to raft requests
+	go startRaftTransport(info.ServerPort, securityType)
 
 }
 
+// Create transporter using by raft server
+// Create http or https transporter based on
+// wether the user give the server cert and key
 func createTransporter(st int) transporter {
 	t := transporter{}
 
@@ -248,7 +261,7 @@ func createTransporter(st int) transporter {
 		tlsCert, err := tls.LoadX509KeyPair(serverCertFile, serverKeyFile)
 
 		if err != nil {
-			panic(err)
+			fatal(fmt.Sprintln(err))
 		}
 
 		tr := &http.Transport{
@@ -267,7 +280,8 @@ func createTransporter(st int) transporter {
 	return transporter{}
 }
 
-func startServTransport(port int, st int) {
+// Start to listen and response raft command
+func startRaftTransport(port int, st int) {
 
 	// internal commands
 	http.HandleFunc("/join", JoinHttpHandler)
@@ -275,41 +289,29 @@ func startServTransport(port int, st int) {
 	http.HandleFunc("/log", GetLogHttpHandler)
 	http.HandleFunc("/log/append", AppendEntriesHttpHandler)
 	http.HandleFunc("/snapshot", SnapshotHttpHandler)
-	http.HandleFunc("/client", clientHttpHandler)
+	http.HandleFunc("/client", ClientHttpHandler)
 
 	switch st {
 
 	case HTTP:
-		debug("raft server [%s] listen on http port %v", address, port)
+		fmt.Printf("raft server [%s] listen on http port %v\n", address, port)
 		log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), nil))
 
 	case HTTPS:
-		debug("raft server [%s] listen on https port %v", address, port)
+		fmt.Printf("raft server [%s] listen on https port %v\n", address, port)
 		log.Fatal(http.ListenAndServeTLS(fmt.Sprintf(":%d", port), serverCertFile, serverKeyFile, nil))
 
 	case HTTPSANDVERIFY:
-		pemByte, _ := ioutil.ReadFile(serverCAFile)
-
-		block, pemByte := pem.Decode(pemByte)
-
-		cert, err := x509.ParseCertificate(block.Bytes)
-
-		if err != nil {
-			fmt.Println(err)
-		}
-
-		certPool := x509.NewCertPool()
-
-		certPool.AddCert(cert)
 
 		server := &http.Server{
 			TLSConfig: &tls.Config{
 				ClientAuth: tls.RequireAndVerifyClientCert,
-				ClientCAs:  certPool,
+				ClientCAs:  createCertPool(serverCAFile),
 			},
 			Addr: fmt.Sprintf(":%d", port),
 		}
-		err = server.ListenAndServeTLS(serverCertFile, serverKeyFile)
+		fmt.Printf("raft server [%s] listen on https port %v\n", address, port)
+		err := server.ListenAndServeTLS(serverCertFile, serverKeyFile)
 
 		if err != nil {
 			log.Fatal(err)
@@ -318,49 +320,40 @@ func startServTransport(port int, st int) {
 
 }
 
+// Start to listen and response client command
 func startClientTransport(port int, st int) {
 	// external commands
-	http.HandleFunc("/v1/keys/", Multiplexer)
-	http.HandleFunc("/v1/watch/", WatchHttpHandler)
-	http.HandleFunc("/v1/list/", ListHttpHandler)
-	http.HandleFunc("/v1/testAndSet/", TestAndSetHttpHandler)
-	http.HandleFunc("/master", MasterHttpHandler)
+	http.HandleFunc("/"+version+"/keys/", Multiplexer)
+	http.HandleFunc("/"+version+"/watch/", WatchHttpHandler)
+	http.HandleFunc("/"+version+"/list/", ListHttpHandler)
+	http.HandleFunc("/"+version+"/testAndSet/", TestAndSetHttpHandler)
+	http.HandleFunc("/leader", LeaderHttpHandler)
 
 	switch st {
 
 	case HTTP:
-		debug("etcd [%s] listen on http port %v", address, clientPort)
+		fmt.Printf("etcd [%s] listen on http port %v\n", address, clientPort)
 		log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), nil))
 
 	case HTTPS:
+		fmt.Printf("etcd [%s] listen on https port %v\n", address, clientPort)
 		http.ListenAndServeTLS(fmt.Sprintf(":%d", port), clientCertFile, clientKeyFile, nil)
 
 	case HTTPSANDVERIFY:
-		pemByte, _ := ioutil.ReadFile(clientCAFile)
-
-		block, pemByte := pem.Decode(pemByte)
-
-		cert, err := x509.ParseCertificate(block.Bytes)
-
-		if err != nil {
-			fmt.Println(err)
-		}
-
-		certPool := x509.NewCertPool()
-
-		certPool.AddCert(cert)
 
 		server := &http.Server{
 			TLSConfig: &tls.Config{
 				ClientAuth: tls.RequireAndVerifyClientCert,
-				ClientCAs:  certPool,
+				ClientCAs:  createCertPool(clientCAFile),
 			},
 			Addr: fmt.Sprintf(":%d", port),
 		}
-		err = server.ListenAndServeTLS(clientCertFile, clientKeyFile)
+		fmt.Printf("etcd [%s] listen on https port %v\n", address, clientPort)
+		err := server.ListenAndServeTLS(clientCertFile, clientKeyFile)
 
 		if err != nil {
 			log.Fatal(err)
+			os.Exit(1)
 		}
 	}
 }
@@ -369,22 +362,26 @@ func startClientTransport(port int, st int) {
 // Config
 //--------------------------------------
 
+// Get the security type
 func securityType(source int) int {
 
 	var keyFile, certFile, CAFile string
 
 	switch source {
+
 	case SERVER:
-		keyFile = serverKeyFile
-		certFile = serverCertFile
-		CAFile = serverCAFile
+		keyFile = info.ServerKeyFile
+		certFile = info.ServerCertFile
+		CAFile = info.ServerCAFile
 
 	case CLIENT:
-		keyFile = clientKeyFile
-		certFile = clientCertFile
-		CAFile = clientCAFile
+		keyFile = info.ClientKeyFile
+		certFile = info.ClientCertFile
+		CAFile = info.ClientCAFile
 	}
 
+	// If the user do not specify key file, cert file and
+	// CA file, the type will be HTTP
 	if keyFile == "" && certFile == "" && CAFile == "" {
 
 		return HTTP
@@ -392,24 +389,30 @@ func securityType(source int) int {
 	}
 
 	if keyFile != "" && certFile != "" {
-
 		if CAFile != "" {
+			// If the user specify all the three file, the type
+			// will be HTTPS with client cert auth
 			return HTTPSANDVERIFY
 		}
-
+		// If the user specify key file and cert file but not
+		// CA file, the type will be HTTPS without client cert
+		// auth
 		return HTTPS
 	}
 
+	// bad specification
 	return -1
 }
 
+// Get the server info from previous conf file
+// or from the user
 func getInfo(path string) *Info {
 	info := &Info{}
 
 	// Read in the server info if available.
 	infoPath := fmt.Sprintf("%s/info", path)
 
-	// delete the old configuration if exist
+	// Delete the old configuration if exist
 	if ignore {
 		logPath := fmt.Sprintf("%s/log", path)
 		snapshotPath := fmt.Sprintf("%s/snapshotPath", path)
@@ -429,8 +432,8 @@ func getInfo(path string) *Info {
 		}
 		file.Close()
 
-		// Otherwise ask user for info and write it to file.
 	} else {
+		// Otherwise ask user for info and write it to file.
 
 		if address == "" {
 			fatal("Please give the address of the local machine")
@@ -444,6 +447,14 @@ func getInfo(path string) *Info {
 		info.ClientPort = clientPort
 		info.WebPort = webPort
 
+		info.ClientCAFile = clientCAFile
+		info.ClientCertFile = clientCertFile
+		info.ClientKeyFile = clientKeyFile
+
+		info.ServerCAFile = serverCAFile
+		info.ServerKeyFile = serverKeyFile
+		info.ServerCertFile = serverCertFile
+
 		// Write to file.
 		content, _ := json.Marshal(info)
 		content = []byte(string(content) + "\n")
@@ -455,12 +466,28 @@ func getInfo(path string) *Info {
 	return info
 }
 
-//--------------------------------------
-// Handlers
-//--------------------------------------
+// Create client auth certpool
+func createCertPool(CAFile string) *x509.CertPool {
+	pemByte, _ := ioutil.ReadFile(CAFile)
+
+	block, pemByte := pem.Decode(pemByte)
+
+	cert, err := x509.ParseCertificate(block.Bytes)
+
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	certPool := x509.NewCertPool()
+
+	certPool.AddCert(cert)
+
+	return certPool
+}
 
 // Send join requests to the leader.
-func Join(s *raft.Server, serverName string) error {
+func joinCluster(s *raft.Server, serverName string) error {
 	var b bytes.Buffer
 
 	command := &JoinCommand{}
@@ -492,4 +519,15 @@ func Join(s *raft.Server, serverName string) error {
 		}
 	}
 	return fmt.Errorf("Unable to join: %v", err)
+}
+
+// Register commands to raft server
+func registerCommands() {
+	raft.RegisterCommand(&JoinCommand{})
+	raft.RegisterCommand(&SetCommand{})
+	raft.RegisterCommand(&GetCommand{})
+	raft.RegisterCommand(&DeleteCommand{})
+	raft.RegisterCommand(&WatchCommand{})
+	raft.RegisterCommand(&ListCommand{})
+	raft.RegisterCommand(&TestAndSetCommand{})
 }
