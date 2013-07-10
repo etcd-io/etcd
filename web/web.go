@@ -25,7 +25,7 @@ func mainHandler(c http.ResponseWriter, req *http.Request) {
 }
 
 func Start(server *raft.Server, port int) {
-	mainTempl = template.Must(template.ParseFiles("web/index.html"))
+	mainTempl = template.Must(template.New("index.html").Parse(index_html))
 	s = server
 
 	go h.run()
