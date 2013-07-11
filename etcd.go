@@ -13,6 +13,7 @@ import (
 	"github.com/coreos/go-raft"
 	"io/ioutil"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"strings"
@@ -89,6 +90,7 @@ const (
 const (
 	ELECTIONTIMTOUT  = 200 * time.Millisecond
 	HEARTBEATTIMEOUT = 50 * time.Millisecond
+	HTTPTIMEOUT      = time.Second
 )
 
 //------------------------------------------------------------------------------
@@ -263,12 +265,22 @@ func createTransporter(st int) transporter {
 
 	switch st {
 	case HTTP:
-		t.client = nil
+		t.https = false
+
+		tr := &http.Transport{
+			Dial: dialTimeout,
+		}
+
+		t.client = &http.Client{
+			Transport: tr,
+		}
 		return t
 
 	case HTTPS:
 		fallthrough
 	case HTTPSANDVERIFY:
+		t.https = true
+
 		tlsCert, err := tls.LoadX509KeyPair(serverCertFile, serverKeyFile)
 
 		if err != nil {
@@ -280,6 +292,7 @@ func createTransporter(st int) transporter {
 				Certificates:       []tls.Certificate{tlsCert},
 				InsecureSkipVerify: true,
 			},
+			Dial:               dialTimeout,
 			DisableCompression: true,
 		}
 
@@ -289,6 +302,11 @@ func createTransporter(st int) transporter {
 
 	// for complier
 	return transporter{}
+}
+
+// Dial with timeout
+func dialTimeout(network, addr string) (net.Conn, error) {
+	return net.DialTimeout(network, addr, HTTPTIMEOUT)
 }
 
 // Start to listen and response raft command
