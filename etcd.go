@@ -228,7 +228,7 @@ func startRaft(securityType int) {
 
 			for _, machine := range cluster {
 
-				err := joinCluster(raftServer, machine)
+				err = joinCluster(raftServer, machine)
 				if err != nil {
 					debug("cannot join to cluster via machine %s", machine)
 				} else {
