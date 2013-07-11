@@ -206,7 +206,7 @@ func startRaft(securityType int) {
 	if raftServer.IsLogEmpty() {
 
 		// start as a leader in a new cluster
-		if len(cluster) == 0 {
+		if len(cluster) == 1 && cluster[0] == "" {
 			raftServer.StartLeader()
 
 			time.Sleep(time.Millisecond * 20)
@@ -518,10 +518,7 @@ func joinCluster(s *raft.Server, serverName string) error {
 
 	resp, err := t.Post(fmt.Sprintf("%s/join", serverName), &b)
 
-	debug("Finish Join Request to %s", serverName)
-
 	for {
-		fmt.Println(err, resp)
 		if err != nil {
 			return fmt.Errorf("Unable to join: %v", err)
 		}
@@ -530,14 +527,14 @@ func joinCluster(s *raft.Server, serverName string) error {
 			if resp.StatusCode == http.StatusOK {
 				return nil
 			}
-
 			if resp.StatusCode == http.StatusTemporaryRedirect {
-				fmt.Println("redirect")
 				address = resp.Header.Get("Location")
 				debug("Leader is %s", address)
 				debug("Send Join Request to %s", address)
 				json.NewEncoder(&b).Encode(command)
 				resp, err = t.Post(fmt.Sprintf("%s/join", address), &b)
+			} else {
+				return fmt.Errorf("Unable to join")
 			}
 		}
 
