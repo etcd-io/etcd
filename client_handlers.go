@@ -51,7 +51,7 @@ func SetHttpHandler(w *http.ResponseWriter, req *http.Request) {
 		(*w).WriteHeader(http.StatusInternalServerError)
 	}
 
-	dispatch(command, w, req)
+	dispatch(command, w, req, true)
 
 }
 
@@ -77,7 +77,7 @@ func TestAndSetHttpHandler(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 	}
 
-	dispatch(command, &w, req)
+	dispatch(command, &w, req, true)
 
 }
 
@@ -90,11 +90,11 @@ func DeleteHttpHandler(w *http.ResponseWriter, req *http.Request) {
 	command := &DeleteCommand{}
 	command.Key = key
 
-	dispatch(command, w, req)
+	dispatch(command, w, req, true)
 }
 
 // Dispatch the command to leader
-func dispatch(c Command, w *http.ResponseWriter, req *http.Request) {
+func dispatch(c Command, w *http.ResponseWriter, req *http.Request, client bool) {
 	if raftServer.State() == "leader" {
 		if body, err := raftServer.Do(c); err != nil {
 			warn("Commit failed %v", err)
@@ -132,7 +132,13 @@ func dispatch(c Command, w *http.ResponseWriter, req *http.Request) {
 			scheme = "http://"
 		}
 
-		url := scheme + raftTransporter.GetLeaderClientAddress() + path
+		var url string
+
+		if client {
+			url = scheme + raftTransporter.GetLeaderClientAddress() + path
+		} else {
+			url = scheme + raftServer.Leader() + path
+		}
 
 		debug("Redirect to %s", url)
 
