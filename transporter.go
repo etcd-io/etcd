@@ -26,7 +26,11 @@ func (t transporter) SendAppendEntriesRequest(server *raft.Server, peer *raft.Pe
 
 	debug("Send LogEntries to %s ", peer.Name())
 
-	resp, _ := t.Post(fmt.Sprintf("%s/log/append", peer.Name()), &b)
+	resp, err := t.Post(fmt.Sprintf("%s/log/append", peer.Name()), &b)
+
+	if err != nil {
+		debug("Cannot send AppendEntriesRequest to %s : %s", peer.Name(), err)
+	}
 
 	if resp != nil {
 		defer resp.Body.Close()
@@ -47,7 +51,11 @@ func (t transporter) SendVoteRequest(server *raft.Server, peer *raft.Peer, req *
 
 	debug("Send Vote to %s", peer.Name())
 
-	resp, _ := t.Post(fmt.Sprintf("%s/vote", peer.Name()), &b)
+	resp, err := t.Post(fmt.Sprintf("%s/vote", peer.Name()), &b)
+
+	if err != nil {
+		debug("Cannot send VoteRequest to %s : %s", peer.Name(), err)
+	}
 
 	if resp != nil {
 		defer resp.Body.Close()
