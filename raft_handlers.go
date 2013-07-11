@@ -86,7 +86,7 @@ func JoinHttpHandler(w http.ResponseWriter, req *http.Request) {
 
 	if err := decodeJsonRequest(req, command); err == nil {
 		debug("Receive Join Request from %s", command.Name)
-		dispatch(command, &w, req)
+		dispatch(command, &w, req, false)
 	} else {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
