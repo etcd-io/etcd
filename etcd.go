@@ -27,7 +27,8 @@ import (
 
 var verbose bool
 
-var cluster string
+var machines string
+var cluster []string
 
 var address string
 var clientPort int
@@ -51,7 +52,7 @@ var maxSize int
 func init() {
 	flag.BoolVar(&verbose, "v", false, "verbose logging")
 
-	flag.StringVar(&cluster, "C", "", "the ip address and port of a existing cluster")
+	flag.StringVar(&machines, "C", "", "the ip address and port of a existing machines in cluster, sepearate by comma")
 
 	flag.StringVar(&address, "a", "0.0.0.0", "the ip address of the local machine")
 	flag.IntVar(&clientPort, "c", 4001, "the port to communicate with clients")
@@ -135,6 +136,8 @@ var info *Info
 func main() {
 	flag.Parse()
 
+	cluster = strings.Split(machines, ",")
+
 	// Setup commands.
 	registerCommands()
 
@@ -203,7 +206,7 @@ func startRaft(securityType int) {
 	if raftServer.IsLogEmpty() {
 
 		// start as a leader in a new cluster
-		if cluster == "" {
+		if len(cluster) == 0 {
 			raftServer.StartLeader()
 
 			time.Sleep(time.Millisecond * 20)
@@ -223,9 +226,17 @@ func startRaft(securityType int) {
 		} else {
 			raftServer.StartFollower()
 
-			err := joinCluster(raftServer, cluster)
+			for _, machine := range cluster {
+
+				err := joinCluster(raftServer, machine)
+				if err != nil {
+					debug("cannot join to cluster via machine %s", machine)
+				} else {
+					break
+				}
+			}
 			if err != nil {
-				fatal(fmt.Sprintln(err))
+				fatal("cannot join to cluster via all given machines!")
 			}
 			debug("%s success join to the cluster", raftServer.Name())
 		}
