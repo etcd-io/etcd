@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/coreos/etcd/store"
 	"net/http"
 	"strconv"
 	"time"
@@ -40,6 +41,14 @@ func SetHttpHandler(w *http.ResponseWriter, req *http.Request) {
 	command.Key = key
 
 	command.Value = req.FormValue("value")
+
+	if len(command.Value) == 0 {
+		(*w).WriteHeader(http.StatusBadRequest)
+
+		(*w).Write(newJsonError(200, "Set"))
+		return
+	}
+
 	strDuration := req.FormValue("ttl")
 
 	var err error
@@ -47,8 +56,10 @@ func SetHttpHandler(w *http.ResponseWriter, req *http.Request) {
 	command.ExpireTime, err = durationToExpireTime(strDuration)
 
 	if err != nil {
-		warn("The given duration is not a number: %v", err)
-		(*w).WriteHeader(http.StatusInternalServerError)
+
+		(*w).WriteHeader(http.StatusBadRequest)
+
+		(*w).Write(newJsonError(202, "Set"))
 	}
 
 	dispatch(command, w, req, true)
@@ -66,6 +77,22 @@ func TestAndSetHttpHandler(w http.ResponseWriter, req *http.Request) {
 
 	command.PrevValue = req.FormValue("prevValue")
 	command.Value = req.FormValue("value")
+
+	if len(command.Value) == 0 {
+		w.WriteHeader(http.StatusBadRequest)
+
+		w.Write(newJsonError(200, "TestAndSet"))
+
+		return
+	}
+
+	if len(command.PrevValue) == 0 {
+		w.WriteHeader(http.StatusBadRequest)
+
+		w.Write(newJsonError(201, "TestAndSet"))
+		return
+	}
+
 	strDuration := req.FormValue("ttl")
 
 	var err error
@@ -73,8 +100,9 @@ func TestAndSetHttpHandler(w http.ResponseWriter, req *http.Request) {
 	command.ExpireTime, err = durationToExpireTime(strDuration)
 
 	if err != nil {
-		warn("The given duration is not a number: %v", err)
-		w.WriteHeader(http.StatusInternalServerError)
+		w.WriteHeader(http.StatusBadRequest)
+
+		w.Write(newJsonError(202, "TestAndSet"))
 	}
 
 	dispatch(command, &w, req, true)
@@ -97,28 +125,39 @@ func DeleteHttpHandler(w *http.ResponseWriter, req *http.Request) {
 func dispatch(c Command, w *http.ResponseWriter, req *http.Request, client bool) {
 	if raftServer.State() == "leader" {
 		if body, err := raftServer.Do(c); err != nil {
-			warn("Commit failed %v", err)
-			(*w).WriteHeader(http.StatusInternalServerError)
-			return
-		} else {
-			(*w).WriteHeader(http.StatusOK)
-
-			if body == nil {
+			if _, ok := err.(store.NotFoundError); ok {
+				http.NotFound((*w), req)
 				return
 			}
+
+			if _, ok := err.(store.TestFail); ok {
+				(*w).WriteHeader(http.StatusBadRequest)
+				(*w).Write(newJsonError(101, err.Error()))
+				return
+			}
+			(*w).WriteHeader(http.StatusInternalServerError)
+			(*w).Write(newJsonError(300, "No Leader"))
+			return
+		} else {
 
 			body, ok := body.([]byte)
 			if !ok {
 				panic("wrong type")
 			}
 
-			(*w).Write(body)
+			if body == nil {
+				http.NotFound((*w), req)
+			} else {
+				(*w).WriteHeader(http.StatusOK)
+				(*w).Write(body)
+			}
 			return
 		}
 	} else {
 		// current no leader
 		if raftServer.Leader() == "" {
 			(*w).WriteHeader(http.StatusInternalServerError)
+			(*w).Write(newJsonError(300, ""))
 			return
 		}
 
@@ -145,9 +184,8 @@ func dispatch(c Command, w *http.ResponseWriter, req *http.Request, client bool)
 		http.Redirect(*w, req, url, http.StatusTemporaryRedirect)
 		return
 	}
-
 	(*w).WriteHeader(http.StatusInternalServerError)
-
+	(*w).Write(newJsonError(300, ""))
 	return
 }
 
@@ -174,18 +212,24 @@ func GetHttpHandler(w *http.ResponseWriter, req *http.Request) {
 	command.Key = key
 
 	if body, err := command.Apply(raftServer); err != nil {
-		warn("raftd: Unable to write file: %v", err)
+
+		if _, ok := err.(store.NotFoundError); ok {
+			http.NotFound((*w), req)
+			return
+		}
+
 		(*w).WriteHeader(http.StatusInternalServerError)
+		(*w).Write(newJsonError(300, ""))
 		return
 	} else {
-		(*w).WriteHeader(http.StatusOK)
-
 		body, ok := body.([]byte)
 		if !ok {
 			panic("wrong type")
 		}
 
+		(*w).WriteHeader(http.StatusOK)
 		(*w).Write(body)
+
 		return
 	}
 
@@ -201,8 +245,12 @@ func ListHttpHandler(w http.ResponseWriter, req *http.Request) {
 	command.Prefix = prefix
 
 	if body, err := command.Apply(raftServer); err != nil {
-		warn("Unable to write file: %v", err)
+		if _, ok := err.(store.NotFoundError); ok {
+			http.NotFound(w, req)
+			return
+		}
 		w.WriteHeader(http.StatusInternalServerError)
+		w.Write(newJsonError(300, ""))
 		return
 	} else {
 		w.WriteHeader(http.StatusOK)
@@ -238,6 +286,7 @@ func WatchHttpHandler(w http.ResponseWriter, req *http.Request) {
 		sinceIndex, err := strconv.ParseUint(string(content), 10, 64)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
+			w.Write(newJsonError(203, "Watch From Index"))
 		}
 		command.SinceIndex = sinceIndex
 
