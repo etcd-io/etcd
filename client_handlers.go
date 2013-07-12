@@ -45,7 +45,7 @@ func SetHttpHandler(w *http.ResponseWriter, req *http.Request) {
 	if len(command.Value) == 0 {
 		(*w).WriteHeader(http.StatusBadRequest)
 
-		(*w).Write(newJsonError(200, ""))
+		(*w).Write(newJsonError(200, "Set"))
 		return
 	}
 
@@ -59,7 +59,7 @@ func SetHttpHandler(w *http.ResponseWriter, req *http.Request) {
 
 		(*w).WriteHeader(http.StatusBadRequest)
 
-		(*w).Write(newJsonError(202, ""))
+		(*w).Write(newJsonError(202, "Set"))
 	}
 
 	dispatch(command, w, req, true)
@@ -136,7 +136,7 @@ func dispatch(c Command, w *http.ResponseWriter, req *http.Request, client bool)
 				return
 			}
 			(*w).WriteHeader(http.StatusInternalServerError)
-			(*w).Write(newJsonError(300, ""))
+			(*w).Write(newJsonError(300, "No Leader"))
 			return
 		} else {
 
