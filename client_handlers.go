@@ -44,7 +44,8 @@ func SetHttpHandler(w *http.ResponseWriter, req *http.Request) {
 
 	if len(command.Value) == 0 {
 		(*w).WriteHeader(http.StatusBadRequest)
-		(*w).Write([]byte("Set: Value Required\n"))
+
+		(*w).Write(newJsonError("400", "Value is Required"))
 		return
 	}
 
@@ -55,8 +56,10 @@ func SetHttpHandler(w *http.ResponseWriter, req *http.Request) {
 	command.ExpireTime, err = durationToExpireTime(strDuration)
 
 	if err != nil {
-		warn("The given duration is not a number: %v", err)
-		(*w).WriteHeader(http.StatusInternalServerError)
+
+		(*w).WriteHeader(http.StatusBadRequest)
+
+		(*w).Write(newJsonError("400", "The given TTL is not a number"))
 	}
 
 	dispatch(command, w, req, true)
@@ -76,14 +79,17 @@ func TestAndSetHttpHandler(w http.ResponseWriter, req *http.Request) {
 	command.Value = req.FormValue("value")
 
 	if len(command.Value) == 0 {
-		(w).WriteHeader(http.StatusBadRequest)
-		(w).Write([]byte("TestAndSet: Value Required\n"))
+		w.WriteHeader(http.StatusBadRequest)
+
+		w.Write(newJsonError("400", "TestAndSet: Value Required"))
+
 		return
 	}
 
 	if len(command.PrevValue) == 0 {
-		(w).WriteHeader(http.StatusBadRequest)
-		(w).Write([]byte("TestAndSet: PrevValue Required\n"))
+		w.WriteHeader(http.StatusBadRequest)
+
+		w.Write(newJsonError("400", "TestAndSet: PrevValue Required"))
 		return
 	}
 
@@ -94,8 +100,9 @@ func TestAndSetHttpHandler(w http.ResponseWriter, req *http.Request) {
 	command.ExpireTime, err = durationToExpireTime(strDuration)
 
 	if err != nil {
-		warn("The given duration is not a number: %v", err)
-		w.WriteHeader(http.StatusInternalServerError)
+		w.WriteHeader(http.StatusBadRequest)
+
+		w.Write(newJsonError("400", "The given TTL is not a number"))
 	}
 
 	dispatch(command, &w, req, true)
@@ -125,10 +132,11 @@ func dispatch(c Command, w *http.ResponseWriter, req *http.Request, client bool)
 
 			if _, ok := err.(store.TestFail); ok {
 				(*w).WriteHeader(http.StatusBadRequest)
-				(*w).Write([]byte(err.Error() + "\n"))
+				(*w).Write(newJsonError("400", err.Error()))
 				return
 			}
 			(*w).WriteHeader(http.StatusInternalServerError)
+			(*w).Write(newJsonError("500", "Internal Error"))
 			return
 		} else {
 
@@ -149,6 +157,7 @@ func dispatch(c Command, w *http.ResponseWriter, req *http.Request, client bool)
 		// current no leader
 		if raftServer.Leader() == "" {
 			(*w).WriteHeader(http.StatusInternalServerError)
+			(*w).Write(newJsonError("500", "During Leader Election Period"))
 			return
 		}
 
@@ -175,9 +184,8 @@ func dispatch(c Command, w *http.ResponseWriter, req *http.Request, client bool)
 		http.Redirect(*w, req, url, http.StatusTemporaryRedirect)
 		return
 	}
-
 	(*w).WriteHeader(http.StatusInternalServerError)
-
+	(*w).Write(newJsonError("500", "Internal Error"))
 	return
 }
 
@@ -211,6 +219,7 @@ func GetHttpHandler(w *http.ResponseWriter, req *http.Request) {
 		}
 
 		(*w).WriteHeader(http.StatusInternalServerError)
+		(*w).Write(newJsonError("500", "Internal Error"))
 		return
 	} else {
 		body, ok := body.([]byte)
@@ -241,6 +250,7 @@ func ListHttpHandler(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 		w.WriteHeader(http.StatusInternalServerError)
+		w.Write(newJsonError("500", "Internal Error"))
 		return
 	} else {
 		w.WriteHeader(http.StatusOK)
@@ -276,7 +286,7 @@ func WatchHttpHandler(w http.ResponseWriter, req *http.Request) {
 		sinceIndex, err := strconv.ParseUint(string(content), 10, 64)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
-			(w).Write([]byte("Watch From Index: Vaild Index Required\n"))
+			w.Write(newJsonError("400", "Watch From Index: Vaild Index Required"))
 		}
 		command.SinceIndex = sinceIndex
 
