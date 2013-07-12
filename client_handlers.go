@@ -235,37 +235,6 @@ func GetHttpHandler(w *http.ResponseWriter, req *http.Request) {
 
 }
 
-// List Handler
-func ListHttpHandler(w http.ResponseWriter, req *http.Request) {
-	prefix := req.URL.Path[len("/v1/list/"):]
-
-	debug("[recv] GET http://%v/v1/list/%s", raftServer.Name(), prefix)
-
-	command := &ListCommand{}
-	command.Prefix = prefix
-
-	if body, err := command.Apply(raftServer); err != nil {
-		if _, ok := err.(store.NotFoundError); ok {
-			http.NotFound(w, req)
-			return
-		}
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write(newJsonError(300, ""))
-		return
-	} else {
-		w.WriteHeader(http.StatusOK)
-
-		body, ok := body.([]byte)
-		if !ok {
-			panic("wrong type")
-		}
-
-		w.Write(body)
-		return
-	}
-
-}
-
 // Watch handler
 func WatchHttpHandler(w http.ResponseWriter, req *http.Request) {
 	key := req.URL.Path[len("/v1/watch/"):]
