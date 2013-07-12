@@ -268,7 +268,7 @@ func createTransporter(st int) transporter {
 
 	switch st {
 	case HTTP:
-		t.https = false
+		t.scheme = "http://"
 
 		tr := &http.Transport{
 			Dial: dialTimeout,
@@ -282,7 +282,7 @@ func createTransporter(st int) transporter {
 	case HTTPS:
 		fallthrough
 	case HTTPSANDVERIFY:
-		t.https = true
+		t.scheme = "https://"
 
 		tlsCert, err := tls.LoadX509KeyPair(serverCertFile, serverKeyFile)
 

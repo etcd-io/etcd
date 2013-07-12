@@ -13,8 +13,8 @@ import (
 // Transporter layer for communication between raft nodes
 type transporter struct {
 	client *http.Client
-	// https
-	https bool
+	// scheme
+	scheme string
 }
 
 // Sends AppendEntries RPCs to a peer when the server is the leader.
@@ -102,23 +102,12 @@ func (t transporter) GetLeaderClientAddress() string {
 
 // Send server side POST request
 func (t transporter) Post(path string, body io.Reader) (*http.Response, error) {
-
-	if t.https {
-		resp, err := t.client.Post("https://"+path, "application/json", body)
+		resp, err := t.client.Post(t.scheme + path, "application/json", body)
 		return resp, err
-	} else {
-		resp, err := t.client.Post("http://"+path, "application/json", body)
-		return resp, err
-	}
 }
 
 // Send server side GET request
 func (t transporter) Get(path string) (*http.Response, error) {
-	if t.https {
-		resp, err := t.client.Get("https://" + path)
+		resp, err := t.client.Get(t.scheme + path)
 		return resp, err
-	} else {
-		resp, err := t.client.Get("http://" + path)
-		return resp, err
-	}
 }
