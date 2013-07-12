@@ -358,7 +358,6 @@ func startClientTransport(port int, st int) {
 	// external commands
 	http.HandleFunc("/"+version+"/keys/", Multiplexer)
 	http.HandleFunc("/"+version+"/watch/", WatchHttpHandler)
-	http.HandleFunc("/"+version+"/list/", ListHttpHandler)
 	http.HandleFunc("/"+version+"/testAndSet/", TestAndSetHttpHandler)
 	http.HandleFunc("/leader", LeaderHttpHandler)
 
@@ -571,6 +570,6 @@ func registerCommands() {
 	raft.RegisterCommand(&GetCommand{})
 	raft.RegisterCommand(&DeleteCommand{})
 	raft.RegisterCommand(&WatchCommand{})
-	raft.RegisterCommand(&ListCommand{})
+	//raft.RegisterCommand(&ListCommand{})
 	raft.RegisterCommand(&TestAndSetCommand{})
 }
