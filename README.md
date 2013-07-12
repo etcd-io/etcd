@@ -12,11 +12,9 @@ etcd
 
 This will bring up a node, which will be listening on internal port 7001 (for server communication) and external port 4001 (for client communication)
 
-Setting and Retrieving Values
+#### Setting the value to a key
 
 Let’s set the first key-value pair to the node. In this case our key is “/message” and our value is “Hello world”.
-
-#### Setting the value to a key
 
 ```sh
 curl http://127.0.0.1:4001/v1/keys/message -d value="Hello world"
