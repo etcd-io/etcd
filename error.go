@@ -11,8 +11,8 @@ type jsonError struct {
 
 func newJsonError(statusCode string, message string) []byte {
 	b, _ := json.Marshal(jsonError{
-		StatusCode: "400",
-		Message:    "Set: Value Required",
+		StatusCode: statusCode,
+		Message:    message,
 	})
 	return b
 }
