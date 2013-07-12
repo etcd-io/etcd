@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/coreos/etcd/store"
 	"net/http"
 	"strconv"
 	"time"
@@ -40,6 +41,13 @@ func SetHttpHandler(w *http.ResponseWriter, req *http.Request) {
 	command.Key = key
 
 	command.Value = req.FormValue("value")
+
+	if len(command.Value) == 0 {
+		(*w).WriteHeader(http.StatusBadRequest)
+		(*w).Write([]byte("Set: Value Required\n"))
+		return
+	}
+
 	strDuration := req.FormValue("ttl")
 
 	var err error
@@ -66,6 +74,19 @@ func TestAndSetHttpHandler(w http.ResponseWriter, req *http.Request) {
 
 	command.PrevValue = req.FormValue("prevValue")
 	command.Value = req.FormValue("value")
+
+	if len(command.Value) == 0 {
+		(w).WriteHeader(http.StatusBadRequest)
+		(w).Write([]byte("TestAndSet: Value Required\n"))
+		return
+	}
+
+	if len(command.PrevValue) == 0 {
+		(w).WriteHeader(http.StatusBadRequest)
+		(w).Write([]byte("TestAndSet: PrevValue Required\n"))
+		return
+	}
+
 	strDuration := req.FormValue("ttl")
 
 	var err error
@@ -97,22 +118,31 @@ func DeleteHttpHandler(w *http.ResponseWriter, req *http.Request) {
 func dispatch(c Command, w *http.ResponseWriter, req *http.Request, client bool) {
 	if raftServer.State() == "leader" {
 		if body, err := raftServer.Do(c); err != nil {
-			warn("Commit failed %v", err)
+			if _, ok := err.(store.NotFoundError); ok {
+				http.NotFound((*w), req)
+				return
+			}
+
+			if _, ok := err.(store.TestFail); ok {
+				(*w).WriteHeader(http.StatusBadRequest)
+				(*w).Write([]byte(err.Error() + "\n"))
+				return
+			}
 			(*w).WriteHeader(http.StatusInternalServerError)
 			return
 		} else {
-			(*w).WriteHeader(http.StatusOK)
-
-			if body == nil {
-				return
-			}
 
 			body, ok := body.([]byte)
 			if !ok {
 				panic("wrong type")
 			}
 
-			(*w).Write(body)
+			if body == nil {
+				http.NotFound((*w), req)
+			} else {
+				(*w).WriteHeader(http.StatusOK)
+				(*w).Write(body)
+			}
 			return
 		}
 	} else {
@@ -174,18 +204,23 @@ func GetHttpHandler(w *http.ResponseWriter, req *http.Request) {
 	command.Key = key
 
 	if body, err := command.Apply(raftServer); err != nil {
-		warn("raftd: Unable to write file: %v", err)
+
+		if _, ok := err.(store.NotFoundError); ok {
+			http.NotFound((*w), req)
+			return
+		}
+
 		(*w).WriteHeader(http.StatusInternalServerError)
 		return
 	} else {
-		(*w).WriteHeader(http.StatusOK)
-
 		body, ok := body.([]byte)
 		if !ok {
 			panic("wrong type")
 		}
 
+		(*w).WriteHeader(http.StatusOK)
 		(*w).Write(body)
+
 		return
 	}
 
@@ -201,7 +236,10 @@ func ListHttpHandler(w http.ResponseWriter, req *http.Request) {
 	command.Prefix = prefix
 
 	if body, err := command.Apply(raftServer); err != nil {
-		warn("Unable to write file: %v", err)
+		if _, ok := err.(store.NotFoundError); ok {
+			http.NotFound(w, req)
+			return
+		}
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	} else {
@@ -238,6 +276,7 @@ func WatchHttpHandler(w http.ResponseWriter, req *http.Request) {
 		sinceIndex, err := strconv.ParseUint(string(content), 10, 64)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
+			(w).Write([]byte("Watch From Index: Vaild Index Required\n"))
 		}
 		command.SinceIndex = sinceIndex
 
