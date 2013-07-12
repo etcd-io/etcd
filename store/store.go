@@ -376,7 +376,7 @@ func (s *Store) TestAndSet(key string, prevValue string, value string, expireTim
 	} else {
 
 		// If fails, return err
-		err := TestFail(fmt.Sprintf("%s==%s", resp.Value, prevValue))
+		err := TestFail(fmt.Sprintf("TestAndSet: %s!=%s", resp.Value, prevValue))
 		return nil, err
 	}
 
