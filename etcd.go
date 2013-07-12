@@ -29,6 +29,8 @@ import (
 var verbose bool
 
 var machines string
+var machinesFile string
+
 var cluster []string
 
 var address string
@@ -53,7 +55,8 @@ var maxSize int
 func init() {
 	flag.BoolVar(&verbose, "v", false, "verbose logging")
 
-	flag.StringVar(&machines, "C", "", "the ip address and port of a existing machines in cluster, sepearate by comma")
+	flag.StringVar(&machines, "C", "", "the ip address and port of a existing machines in the cluster, sepearate by comma")
+	flag.StringVar(&machinesFile, "CF", "", "the file contains a list of existing machines in the cluster, seperate by comma")
 
 	flag.StringVar(&address, "a", "0.0.0.0", "the ip address of the local machine")
 	flag.IntVar(&clientPort, "c", 4001, "the port to communicate with clients")
@@ -142,14 +145,22 @@ var info *Info
 func main() {
 	flag.Parse()
 
-	cluster = strings.Split(machines, ",")
+	if machines != "" {
+		cluster = strings.Split(machines, ",")
+	} else if machinesFile != "" {
+		b, err := ioutil.ReadFile(machinesFile)
+		if err != nil {
+			fatal("Unable to read the given machines file: %s", err)
+		}
+		cluster = strings.Split(string(b), ",")
+	}
 
 	// Setup commands.
 	registerCommands()
 
 	// Read server info from file or grab it from user.
 	if err := os.MkdirAll(dirPath, 0744); err != nil {
-		fatal("Unable to create path: %v", err)
+		fatal("Unable to create path: %s", err)
 	}
 
 	info = getInfo(dirPath)
