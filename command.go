@@ -64,21 +64,6 @@ func (c *GetCommand) Apply(server *raft.Server) (interface{}, error) {
 	return etcdStore.Get(c.Key)
 }
 
-// List command
-// type ListCommand struct {
-// 	Prefix string `json:"prefix"`
-// }
-
-// // The name of the list command in the log
-// func (c *ListCommand) CommandName() string {
-// 	return "list"
-// }
-
-// // List all the keys have the given prefix path
-// func (c *ListCommand) Apply(server *raft.Server) (interface{}, error) {
-// 	return etcdStore.Get(c.Prefix)
-// }
-
 // Delete command
 type DeleteCommand struct {
 	Key string `json:"key"`
