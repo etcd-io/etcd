@@ -6,7 +6,10 @@ etcd
 
 ### Setting up a node
 
+```sh
 ./etcd 
+```
+
 This will bring up a node, which will be listening on internal port 7001 (for server communication) and external port 4001 (for client communication)
 
 Setting and Retrieving Values
@@ -96,7 +99,9 @@ curl http://127.0.0.1:4001/v1/keys/foo
 ```
 You can expect the ttl is counting down and after 5 seconds you should see this,
 
+```html
 404 page not found
+```
 
 which indicates the key has expired and was deleted. 
 
@@ -155,8 +160,9 @@ curl http://127.0.0.1:4001/v1/testAndSet/testAndSet -d prevValue=two -d value=th
 This will try to test if the previous of the key is two, it is change it to three.
 
 The response should be 
-status code 400
+```html
 Test one==two fails
+```
 
 which means testAndSet fails. 
 
