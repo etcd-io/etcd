@@ -102,12 +102,12 @@ func (t transporter) GetLeaderClientAddress() string {
 
 // Send server side POST request
 func (t transporter) Post(path string, body io.Reader) (*http.Response, error) {
-		resp, err := t.client.Post(t.scheme + path, "application/json", body)
-		return resp, err
+	resp, err := t.client.Post(t.scheme+path, "application/json", body)
+	return resp, err
 }
 
 // Send server side GET request
 func (t transporter) Get(path string) (*http.Response, error) {
-		resp, err := t.client.Get(t.scheme + path)
-		return resp, err
+	resp, err := t.client.Get(t.scheme + path)
+	return resp, err
 }

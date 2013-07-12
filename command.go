@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	//"errors"
 	"github.com/coreos/etcd/store"
 	"github.com/coreos/go-raft"
 	"time"
@@ -60,8 +61,7 @@ func (c *GetCommand) CommandName() string {
 
 // Get the value of key
 func (c *GetCommand) Apply(server *raft.Server) (interface{}, error) {
-	res := etcdStore.Get(c.Key)
-	return json.Marshal(res)
+	return etcdStore.Get(c.Key)
 }
 
 // List command
