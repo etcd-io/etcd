@@ -242,6 +242,7 @@ func (s *Store) Set(key string, value string, expireTime time.Time, index uint64
 		s.addToResponseMap(index, &resp)
 		return msg, err
 	}
+
 }
 
 // Get the value of the key and return the raw response
@@ -351,12 +352,13 @@ func (s *Store) Delete(key string, index uint64) ([]byte, error) {
 
 			s.Tree.delete(key)
 
+
 		} else {
 			resp.Expiration = &node.ExpireTime
 			// Kill the expire go routine
 			node.update <- PERMANENT
 			s.Tree.delete(key)
-
+			
 		}
 
 		msg, err := json.Marshal(resp)

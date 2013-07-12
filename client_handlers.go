@@ -135,6 +135,12 @@ func dispatch(c Command, w *http.ResponseWriter, req *http.Request, client bool)
 				(*w).Write(newJsonError(101, err.Error()))
 				return
 			}
+
+			if _, ok := err.(store.NotFile); ok {
+				(*w).WriteHeader(http.StatusBadRequest)
+				(*w).Write(newJsonError(102, err.Error()))
+				return
+			}
 			(*w).WriteHeader(http.StatusInternalServerError)
 			(*w).Write(newJsonError(300, "No Leader"))
 			return

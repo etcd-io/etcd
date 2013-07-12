@@ -12,6 +12,7 @@ func init() {
 	// command related errors
 	errors[100] = "Key Not Found"
 	errors[101] = "The given PrevValue is not equal to the value of the key"
+	errors[102] = "Not A File"
 	// Post form related errors
 	errors[200] = "Value is Required in POST form"
 	errors[201] = "PrevValue is Required in POST form"

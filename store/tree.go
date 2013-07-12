@@ -104,6 +104,9 @@ func (t *tree) set(key string, value Node) bool {
 		nodeMap[nodesName[i]] = tn
 	
 	} else {
+		if tn.Dir {
+			return false
+		}
 		// we change the value of a old Treenode
 		tn.InternalNode = value
 	}
