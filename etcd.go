@@ -90,9 +90,9 @@ const (
 const (
 	ELECTIONTIMTOUT  = 200 * time.Millisecond
 	HEARTBEATTIMEOUT = 50 * time.Millisecond
-	
+
 	// Timeout for internal raft http connection
-	// The original timeout for http is 45 seconds 
+	// The original timeout for http is 45 seconds
 	// which is too long for our usage.
 	HTTPTIMEOUT = time.Second
 )
