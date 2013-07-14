@@ -64,21 +64,6 @@ func (c *GetCommand) Apply(server *raft.Server) (interface{}, error) {
 	return etcdStore.Get(c.Key)
 }
 
-// List command
-type ListCommand struct {
-	Prefix string `json:"prefix"`
-}
-
-// The name of the list command in the log
-func (c *ListCommand) CommandName() string {
-	return "list"
-}
-
-// List all the keys have the given prefix path
-func (c *ListCommand) Apply(server *raft.Server) (interface{}, error) {
-	return etcdStore.List(c.Prefix)
-}
-
 // Delete command
 type DeleteCommand struct {
 	Key string `json:"key"`
@@ -120,7 +105,10 @@ func (c *WatchCommand) Apply(server *raft.Server) (interface{}, error) {
 
 // JoinCommand
 type JoinCommand struct {
-	Name string `json:"name"`
+	Name       string `json:"name"`
+	Hostname   string `json:"hostName"`
+	RaftPort   int    `json:"raftPort"`
+	ClientPort int    `json:"clientPort"`
 }
 
 // The name of the join command in the log
@@ -129,8 +117,9 @@ func (c *JoinCommand) CommandName() string {
 }
 
 // Join a server to the cluster
-func (c *JoinCommand) Apply(server *raft.Server) (interface{}, error) {
-	err := server.AddPeer(c.Name)
-	// no result will be returned
-	return nil, err
+func (c *JoinCommand) Apply(raftServer *raft.Server) (interface{}, error) {
+	err := raftServer.AddPeer(c.Name)
+	addMachine(c.Name, c.Hostname, c.RaftPort, c.ClientPort)
+
+	return []byte("join success"), err
 }

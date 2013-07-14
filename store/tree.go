@@ -104,6 +104,9 @@ func (t *tree) set(key string, value Node) bool {
 		nodeMap[nodesName[i]] = tn
 	
 	} else {
+		if tn.Dir {
+			return false
+		}
 		// we change the value of a old Treenode
 		tn.InternalNode = value
 	}
@@ -140,32 +143,40 @@ func (t *tree) get(key string) (Node, bool) {
 	tn, ok := t.internalGet(key)
 
 	if ok {
+		if tn.Dir {
+			return emptyNode, false
+		}
 		return tn.InternalNode, ok
 	} else {
 		return emptyNode, ok
 	}
 }
 
-// return the nodes information under the directory
-func (t *tree) list(directory string) ([]Node, []string, []string, bool) {
+// get the internalNode of the key
+func (t *tree) list(directory string) ([]Node, []string, []bool, bool) {
 	treeNode, ok := t.internalGet(directory)
 
 	if !ok {
 		return nil, nil, nil, ok
 	} else {
+		if !treeNode.Dir {
+			nodes := make([]Node, 1)
+			nodes[0] = treeNode.InternalNode
+			return nodes, make([]string, 1), make([]bool, 1), true
+		} 
 		length := len(treeNode.NodeMap)
 		nodes := make([]Node, length)
 		keys := make([]string, length)
-		dirs := make([]string, length)
+		dirs := make([]bool, length)
 		i := 0
 
 		for key, node := range treeNode.NodeMap {
 			nodes[i] = node.InternalNode
 			keys[i] = key
 			if node.Dir {
-				dirs[i] = "d"
+				dirs[i] = true
 			} else {
-				dirs[i] = "f"
+				dirs[i] = false
 			}
 			i++
 		}

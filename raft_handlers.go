@@ -75,7 +75,7 @@ func SnapshotHttpHandler(w http.ResponseWriter, req *http.Request) {
 func ClientHttpHandler(w http.ResponseWriter, req *http.Request) {
 	debug("[recv] Get http://%v/client/ ", raftServer.Name())
 	w.WriteHeader(http.StatusOK)
-	client := address + ":" + strconv.Itoa(clientPort)
+	client := hostname + ":" + strconv.Itoa(clientPort)
 	w.Write([]byte(client))
 }
 
