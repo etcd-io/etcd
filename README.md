@@ -250,7 +250,7 @@ curl http://127.0.0.1:4001/machines
 We should see there are three nodes in the cluster
 
 ```
-0.0.0.0:7001,0.0.0.0:7002,0.0.0.0:7003
+0.0.0.0:4001,0.0.0.0:4002,0.0.0.0:4003
 ```
 
 Also try to get the current leader in the cluster
