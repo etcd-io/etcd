@@ -64,11 +64,12 @@ type Node struct {
 type Response struct {
 	Action    string `json:"action"`
 	Key       string `json:"key"`
+	Dir       bool   `json:"dir,omitempty"`
 	PrevValue string `json:"prevValue,omitempty"`
 	Value     string `json:"value,omitempty"`
 
-	// If the key existed before the action, this field should be true
-	// If the key did not exist before the action, this field should be false
+	// If the key did not exist before the action, 
+	// this field should be set to true
 	NewKey    bool `json:"newKey,omitempty"`
 
 	Expiration *time.Time `json:"expiration,omitempty"`
@@ -241,19 +242,8 @@ func (s *Store) Set(key string, value string, expireTime time.Time, index uint64
 		s.addToResponseMap(index, &resp)
 		return msg, err
 	}
+
 }
-
-// Get the value of the key
-func (s *Store) Get(key string) ([]byte, error) {
-	resp := s.internalGet(key)
-
-	if resp != nil {
-		return json.Marshal(resp)
-	} else {
-		err := NotFoundError(key)
-		return nil, err
-	}
-}	
 
 // Get the value of the key and return the raw response
 func (s *Store) internalGet(key string) *Response {
@@ -291,21 +281,51 @@ func (s *Store) internalGet(key string) *Response {
 }
 
 
-// List all the item in the prefix
-func (s *Store) List(prefix string) ([]byte, error) {
+// Get all the items under key
+// If key is a file return the file
+// If key is a directory reuturn an array of files
+func (s *Store) Get(key string) ([]byte, error) {
 
-	nodes, keys, dirs, ok := s.Tree.list(prefix)
+	key = path.Clean("/" + key)
 
-	var ln []ListNode
+	nodes, keys, dirs, ok := s.Tree.list(key)
 
 	if ok {
-		ln = make([]ListNode, len(nodes))
+		resps := make([]Response, len(nodes))
 		for i := 0; i < len(nodes); i++ {
-			ln[i] = ListNode{keys[i], nodes[i].Value, dirs[i]}
+
+			var TTL int64
+			var isExpire bool = false
+
+			isExpire = !nodes[i].ExpireTime.Equal(PERMANENT)
+
+			resps[i] = Response{
+				Action: "GET", 
+				Index: s.Index,
+				Key: path.Join(key, keys[i]),
+			}
+
+			if !dirs[i] {
+				resps[i].Value = nodes[i].Value
+			} else {
+				resps[i].Dir = true
+			}
+
+			// Update ttl
+			if isExpire {
+				TTL = int64(nodes[i].ExpireTime.Sub(time.Now()) / time.Second)
+				resps[i].Expiration = &nodes[i].ExpireTime 
+				resps[i].TTL = TTL 
+			} 
+
 		}
+		if len(resps) == 1 {
+			return json.Marshal(resps[0])
+		}
+		return json.Marshal(resps)
 	}
 
-	err := NotFoundError(prefix)
+	err := NotFoundError(key)
 	return nil, err
 }
 
@@ -332,12 +352,13 @@ func (s *Store) Delete(key string, index uint64) ([]byte, error) {
 
 			s.Tree.delete(key)
 
+
 		} else {
 			resp.Expiration = &node.ExpireTime
 			// Kill the expire go routine
 			node.update <- PERMANENT
 			s.Tree.delete(key)
-
+			
 		}
 
 		msg, err := json.Marshal(resp)

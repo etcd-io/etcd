@@ -205,19 +205,19 @@ We already have `/foo/foo=barbar`
 We create another one `/foo/foo_dir/foo=barbarbar`
 
 ```sh
-http://127.0.0.1:4001/v1/keys/foo/foo_dir/bar -d value=barbarbar
+curl http://127.0.0.1:4001/v1/keys/foo/foo_dir/bar -d value=barbarbar
 ```
 
 Let us list them next.
 
 ```sh
-curl http://127.0.0.1:4001/v1/list/foo/
+curl http://127.0.0.1:4001/v1/get/foo/
 ```
 
-We should see the response as
+We should see the response as an array of items
 
 ```json
-{"Key":"foo","Value":"barbar","Type":"f"} {"Key":"foo_dir","Value":".","Type":"d"}
+[{"action":"GET","key":"/foo/foo","value":"barbar","index":10},{"action":"GET","key":"/foo/foo_dir","dir":true,"index":10}]
 ```
 
 which meas `foo=barbar` is a key-value pair under `/foo` and `foo_dir` is a directory.
@@ -241,6 +241,29 @@ Let the join two more nodes to this cluster using the -C argument:
 ./etcd -c 4003 -s 7003 -C 127.0.0.1:7001 -d nod/node3
 ```
 
+Get the machines in the cluster
+
+```sh
+curl http://127.0.0.1:4001/machines
+```
+
+We should see there are three nodes in the cluster
+
+```
+0.0.0.0:7001,0.0.0.0:7002,0.0.0.0:7003
+```
+
+Also try to get the current leader in the cluster
+
+```
+curl http://127.0.0.1:4001/leader
+```
+The first server we set up should be the leader, if it has not dead during these commands.
+
+```
+0.0.0.0:7001
+```
+
 Now we can do normal SET and GET operations on keys as we explored earlier.
 
 ```sh
@@ -257,6 +280,16 @@ Let's kill the leader of the cluster and get the value from the other machine:
 
 ```sh
 curl http://127.0.0.1:4002/v1/keys/foo
+```
+
+A new leader should have been elected.
+
+```
+curl http://127.0.0.1:4001/leader
+```
+
+```
+0.0.0.0:7002 or 0.0.0.0:7003
 ```
 
 You should be able to see this:

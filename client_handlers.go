@@ -135,19 +135,24 @@ func dispatch(c Command, w *http.ResponseWriter, req *http.Request, client bool)
 				(*w).Write(newJsonError(101, err.Error()))
 				return
 			}
+
+			if _, ok := err.(store.NotFile); ok {
+				(*w).WriteHeader(http.StatusBadRequest)
+				(*w).Write(newJsonError(102, err.Error()))
+				return
+			}
 			(*w).WriteHeader(http.StatusInternalServerError)
 			(*w).Write(newJsonError(300, "No Leader"))
 			return
 		} else {
 
-			body, ok := body.([]byte)
-			if !ok {
-				panic("wrong type")
-			}
-
 			if body == nil {
 				http.NotFound((*w), req)
 			} else {
+				body, ok := body.([]byte)
+				if !ok {
+					panic("wrong type")
+				}
 				(*w).WriteHeader(http.StatusOK)
 				(*w).Write(body)
 			}
@@ -174,7 +179,8 @@ func dispatch(c Command, w *http.ResponseWriter, req *http.Request, client bool)
 		var url string
 
 		if client {
-			url = scheme + raftTransporter.GetLeaderClientAddress() + path
+			clientAddr, _ := getClientAddr(raftServer.Leader())
+			url = scheme + clientAddr + path
 		} else {
 			url = scheme + raftServer.Leader() + path
 		}
@@ -198,8 +204,40 @@ func dispatch(c Command, w *http.ResponseWriter, req *http.Request, client bool)
 
 // Handler to return the current leader name
 func LeaderHttpHandler(w http.ResponseWriter, req *http.Request) {
+	leader := raftServer.Leader()
+
+	if leader != "" {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(raftServer.Leader()))
+	} else {
+
+		// not likely, but it may happen
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write(newJsonError(301, ""))
+	}
+}
+
+// Handler to return all the known machines in the current cluster
+func MachinesHttpHandler(w http.ResponseWriter, req *http.Request) {
+	peers := raftServer.Peers()
+
+	// Add itself to the machine list first
+	// Since peer map does not contain the server itself
+	machines, _ := getClientAddr(raftServer.Name())
+
+	// Add all peers to the list and sepearte by comma
+	// We do not use json here since we accept machines list
+	// in the command line seperate by comma.
+
+	for peerName, _ := range peers {
+		if addr, ok := getClientAddr(peerName); ok {
+			machines = machines + "," + addr
+		}
+	}
+
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(raftServer.Leader()))
+	w.Write([]byte(machines))
+
 }
 
 // Get Handler
@@ -230,37 +268,6 @@ func GetHttpHandler(w *http.ResponseWriter, req *http.Request) {
 		(*w).WriteHeader(http.StatusOK)
 		(*w).Write(body)
 
-		return
-	}
-
-}
-
-// List Handler
-func ListHttpHandler(w http.ResponseWriter, req *http.Request) {
-	prefix := req.URL.Path[len("/v1/list/"):]
-
-	debug("[recv] GET http://%v/v1/list/%s", raftServer.Name(), prefix)
-
-	command := &ListCommand{}
-	command.Prefix = prefix
-
-	if body, err := command.Apply(raftServer); err != nil {
-		if _, ok := err.(store.NotFoundError); ok {
-			http.NotFound(w, req)
-			return
-		}
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write(newJsonError(300, ""))
-		return
-	} else {
-		w.WriteHeader(http.StatusOK)
-
-		body, ok := body.([]byte)
-		if !ok {
-			panic("wrong type")
-		}
-
-		w.Write(body)
 		return
 	}
 
