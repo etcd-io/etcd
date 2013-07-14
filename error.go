@@ -20,7 +20,7 @@ func init() {
 	errors[203] = "The given index in POST form is not a number"
 	// raft related errors
 	errors[300] = "Raft Internal Error"
-	errors[301] = "Durning Leader Election"
+	errors[301] = "During Leader Election"
 }
 
 type jsonError struct {
