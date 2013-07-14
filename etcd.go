@@ -223,7 +223,7 @@ func startRaft(securityType int) {
 	if raftServer.IsLogEmpty() {
 
 		// start as a leader in a new cluster
-		if len(cluster) == 1 && cluster[0] == "" {
+		if len(cluster) == 0 {
 			raftServer.StartLeader()
 
 			time.Sleep(time.Millisecond * 20)
