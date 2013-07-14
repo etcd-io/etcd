@@ -97,7 +97,7 @@ const (
 	// Timeout for internal raft http connection
 	// The original timeout for http is 45 seconds
 	// which is too long for our usage.
-	HTTPTIMEOUT = time.Second
+	HTTPTIMEOUT = 10 * time.Second
 )
 
 //------------------------------------------------------------------------------
@@ -371,6 +371,7 @@ func startClientTransport(port int, st int) {
 	http.HandleFunc("/"+version+"/watch/", WatchHttpHandler)
 	http.HandleFunc("/"+version+"/testAndSet/", TestAndSetHttpHandler)
 	http.HandleFunc("/leader", LeaderHttpHandler)
+	http.HandleFunc("/machines", MachinesHttpHandler)
 
 	switch st {
 
