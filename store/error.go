@@ -17,3 +17,9 @@ type TestFail string
 func (e TestFail) Error() string {
 	return string(e)
 }
+
+type Keyword string
+
+func (e Keyword) Error() string {
+	return string(e)
+}
