@@ -105,7 +105,10 @@ func (c *WatchCommand) Apply(server *raft.Server) (interface{}, error) {
 
 // JoinCommand
 type JoinCommand struct {
-	Name string `json:"name"`
+	Name       string `json:"name"`
+	Hostname   string `json:"hostName"`
+	RaftPort   int    `json:"raftPort"`
+	ClientPort int    `json:"clientPort"`
 }
 
 // The name of the join command in the log
@@ -114,8 +117,9 @@ func (c *JoinCommand) CommandName() string {
 }
 
 // Join a server to the cluster
-func (c *JoinCommand) Apply(server *raft.Server) (interface{}, error) {
-	err := server.AddPeer(c.Name)
+func (c *JoinCommand) Apply(raftServer *raft.Server) (interface{}, error) {
+	err := raftServer.AddPeer(c.Name)
+	addMachine(c.Name, c.Hostname, c.RaftPort, c.ClientPort)
 
 	return []byte("join success"), err
 }

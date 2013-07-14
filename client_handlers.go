@@ -179,7 +179,8 @@ func dispatch(c Command, w *http.ResponseWriter, req *http.Request, client bool)
 		var url string
 
 		if client {
-			url = scheme + raftTransporter.GetLeaderClientAddress() + path
+			clientAddr, _ := getClientAddr(raftServer.Leader())
+			url = scheme + clientAddr + path
 		} else {
 			url = scheme + raftServer.Leader() + path
 		}
@@ -222,14 +223,16 @@ func MachinesHttpHandler(w http.ResponseWriter, req *http.Request) {
 
 	// Add itself to the machine list first
 	// Since peer map does not contain the server itself
-	machines := raftServer.Name()
+	machines, _ := getClientAddr(raftServer.Name())
 
 	// Add all peers to the list and sepearte by comma
 	// We do not use json here since we accept machines list
 	// in the command line seperate by comma.
 
 	for peerName, _ := range peers {
-		machines = machines + "," + peerName
+		if addr, ok := getClientAddr(peerName); ok {
+			machines = machines + "," + addr
+		}
 	}
 
 	w.WriteHeader(http.StatusOK)

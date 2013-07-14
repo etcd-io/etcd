@@ -33,9 +33,9 @@ var machinesFile string
 
 var cluster []string
 
-var address string
+var hostname string
 var clientPort int
-var serverPort int
+var raftPort int
 var webPort int
 
 var serverCertFile string
@@ -58,9 +58,9 @@ func init() {
 	flag.StringVar(&machines, "C", "", "the ip address and port of a existing machines in the cluster, sepearate by comma")
 	flag.StringVar(&machinesFile, "CF", "", "the file contains a list of existing machines in the cluster, seperate by comma")
 
-	flag.StringVar(&address, "a", "0.0.0.0", "the ip address of the local machine")
+	flag.StringVar(&hostname, "h", "0.0.0.0", "the hostname of the local machine")
 	flag.IntVar(&clientPort, "c", 4001, "the port to communicate with clients")
-	flag.IntVar(&serverPort, "s", 7001, "the port to communicate with servers")
+	flag.IntVar(&raftPort, "s", 7001, "the port to communicate with servers")
 	flag.IntVar(&webPort, "w", -1, "the port of web interface")
 
 	flag.StringVar(&serverCAFile, "serverCAFile", "", "the path of the CAFile")
@@ -107,8 +107,8 @@ const (
 //------------------------------------------------------------------------------
 
 type Info struct {
-	Address    string `json:"address"`
-	ServerPort int    `json:"serverPort"`
+	Hostname   string `json:"hostname"`
+	RaftPort   int    `json:"raftPort"`
 	ClientPort int    `json:"clientPort"`
 	WebPort    int    `json:"webPort"`
 
@@ -194,7 +194,7 @@ func main() {
 func startRaft(securityType int) {
 	var err error
 
-	raftName := fmt.Sprintf("%s:%d", info.Address, info.ServerPort)
+	raftName := fmt.Sprintf("%s:%d", info.Hostname, info.RaftPort)
 
 	// Create transporter for raft
 	raftTransporter = createTransporter(securityType)
@@ -232,6 +232,9 @@ func startRaft(securityType int) {
 			for {
 				command := &JoinCommand{}
 				command.Name = raftServer.Name()
+				command.Hostname = hostname
+				command.RaftPort = raftPort
+				command.ClientPort = clientPort
 				_, err := raftServer.Do(command)
 				if err == nil {
 					break
@@ -268,7 +271,7 @@ func startRaft(securityType int) {
 	// go server.Snapshot()
 
 	// start to response to raft requests
-	go startRaftTransport(info.ServerPort, securityType)
+	go startRaftTransport(info.RaftPort, securityType)
 
 }
 
@@ -338,11 +341,11 @@ func startRaftTransport(port int, st int) {
 	switch st {
 
 	case HTTP:
-		fmt.Printf("raft server [%s] listen on http port %v\n", address, port)
+		fmt.Printf("raft server [%s] listen on http port %v\n", hostname, port)
 		log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), nil))
 
 	case HTTPS:
-		fmt.Printf("raft server [%s] listen on https port %v\n", address, port)
+		fmt.Printf("raft server [%s] listen on https port %v\n", hostname, port)
 		log.Fatal(http.ListenAndServeTLS(fmt.Sprintf(":%d", port), serverCertFile, serverKeyFile, nil))
 
 	case HTTPSANDVERIFY:
@@ -354,7 +357,7 @@ func startRaftTransport(port int, st int) {
 			},
 			Addr: fmt.Sprintf(":%d", port),
 		}
-		fmt.Printf("raft server [%s] listen on https port %v\n", address, port)
+		fmt.Printf("raft server [%s] listen on https port %v\n", hostname, port)
 		err := server.ListenAndServeTLS(serverCertFile, serverKeyFile)
 
 		if err != nil {
@@ -376,11 +379,11 @@ func startClientTransport(port int, st int) {
 	switch st {
 
 	case HTTP:
-		fmt.Printf("etcd [%s] listen on http port %v\n", address, clientPort)
+		fmt.Printf("etcd [%s] listen on http port %v\n", hostname, clientPort)
 		log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), nil))
 
 	case HTTPS:
-		fmt.Printf("etcd [%s] listen on https port %v\n", address, clientPort)
+		fmt.Printf("etcd [%s] listen on https port %v\n", hostname, clientPort)
 		http.ListenAndServeTLS(fmt.Sprintf(":%d", port), clientCertFile, clientKeyFile, nil)
 
 	case HTTPSANDVERIFY:
@@ -392,7 +395,7 @@ func startClientTransport(port int, st int) {
 			},
 			Addr: fmt.Sprintf(":%d", port),
 		}
-		fmt.Printf("etcd [%s] listen on https port %v\n", address, clientPort)
+		fmt.Printf("etcd [%s] listen on https port %v\n", hostname, clientPort)
 		err := server.ListenAndServeTLS(clientCertFile, clientKeyFile)
 
 		if err != nil {
@@ -480,15 +483,15 @@ func getInfo(path string) *Info {
 	} else {
 		// Otherwise ask user for info and write it to file.
 
-		if address == "" {
+		if hostname == "" {
 			fatal("Please give the address of the local machine")
 		}
 
-		info.Address = address
-		info.Address = strings.TrimSpace(info.Address)
-		fmt.Println("address ", info.Address)
+		info.Hostname = hostname
+		info.Hostname = strings.TrimSpace(info.Hostname)
+		fmt.Println("address ", info.Hostname)
 
-		info.ServerPort = serverPort
+		info.RaftPort = raftPort
 		info.ClientPort = clientPort
 		info.WebPort = webPort
 
@@ -537,6 +540,9 @@ func joinCluster(s *raft.Server, serverName string) error {
 
 	command := &JoinCommand{}
 	command.Name = s.Name()
+	command.Hostname = info.Hostname
+	command.RaftPort = info.RaftPort
+	command.ClientPort = info.ClientPort
 
 	json.NewEncoder(&b).Encode(command)
 
@@ -561,7 +567,7 @@ func joinCluster(s *raft.Server, serverName string) error {
 				return nil
 			}
 			if resp.StatusCode == http.StatusTemporaryRedirect {
-				address = resp.Header.Get("Location")
+				address := resp.Header.Get("Location")
 				debug("Leader is %s", address)
 				debug("Send Join Request to %s", address)
 				json.NewEncoder(&b).Encode(command)
