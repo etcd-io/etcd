@@ -205,19 +205,19 @@ We already have `/foo/foo=barbar`
 We create another one `/foo/foo_dir/foo=barbarbar`
 
 ```sh
-http://127.0.0.1:4001/v1/keys/foo/foo_dir/bar -d value=barbarbar
+curl http://127.0.0.1:4001/v1/keys/foo/foo_dir/bar -d value=barbarbar
 ```
 
 Let us list them next.
 
 ```sh
-curl http://127.0.0.1:4001/v1/list/foo/
+curl http://127.0.0.1:4001/v1/get/foo/
 ```
 
-We should see the response as
+We should see the response as an array of items
 
 ```json
-{"Key":"foo","Value":"barbar","Type":"f"} {"Key":"foo_dir","Value":".","Type":"d"}
+[{"action":"GET","key":"/foo/foo","value":"barbar","index":10},{"action":"GET","key":"/foo/foo_dir","dir":true,"index":10}]
 ```
 
 which meas `foo=barbar` is a key-value pair under `/foo` and `foo_dir` is a directory.
