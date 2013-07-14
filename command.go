@@ -116,6 +116,6 @@ func (c *JoinCommand) CommandName() string {
 // Join a server to the cluster
 func (c *JoinCommand) Apply(server *raft.Server) (interface{}, error) {
 	err := server.AddPeer(c.Name)
-	// no result will be returned
-	return nil, err
+
+	return []byte("join success"), err
 }
