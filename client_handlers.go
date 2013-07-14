@@ -37,23 +37,20 @@ func SetHttpHandler(w *http.ResponseWriter, req *http.Request) {
 
 	debug("[recv] POST http://%v/v1/keys/%s", raftServer.Name(), key)
 
-	command := &SetCommand{}
-	command.Key = key
+	value := req.FormValue("value")
 
-	command.Value = req.FormValue("value")
-
-	if len(command.Value) == 0 {
+	if len(value) == 0 {
 		(*w).WriteHeader(http.StatusBadRequest)
 
 		(*w).Write(newJsonError(200, "Set"))
 		return
 	}
 
+	prevValue := req.FormValue("prevValue")
+
 	strDuration := req.FormValue("ttl")
 
-	var err error
-
-	command.ExpireTime, err = durationToExpireTime(strDuration)
+	expireTime, err := durationToExpireTime(strDuration)
 
 	if err != nil {
 
@@ -62,50 +59,21 @@ func SetHttpHandler(w *http.ResponseWriter, req *http.Request) {
 		(*w).Write(newJsonError(202, "Set"))
 	}
 
-	dispatch(command, w, req, true)
+	if len(prevValue) != 0 {
+		command := &TestAndSetCommand{}
+		command.Key = key
+		command.Value = value
+		command.PrevValue = prevValue
+		command.ExpireTime = expireTime
+		dispatch(command, w, req, true)
 
-}
-
-// TestAndSet handler
-func TestAndSetHttpHandler(w http.ResponseWriter, req *http.Request) {
-	key := req.URL.Path[len("/v1/testAndSet/"):]
-
-	debug("[recv] POST http://%v/v1/testAndSet/%s", raftServer.Name(), key)
-
-	command := &TestAndSetCommand{}
-	command.Key = key
-
-	command.PrevValue = req.FormValue("prevValue")
-	command.Value = req.FormValue("value")
-
-	if len(command.Value) == 0 {
-		w.WriteHeader(http.StatusBadRequest)
-
-		w.Write(newJsonError(200, "TestAndSet"))
-
-		return
+	} else {
+		command := &SetCommand{}
+		command.Key = key
+		command.Value = value
+		command.ExpireTime = expireTime
+		dispatch(command, w, req, true)
 	}
-
-	if len(command.PrevValue) == 0 {
-		w.WriteHeader(http.StatusBadRequest)
-
-		w.Write(newJsonError(201, "TestAndSet"))
-		return
-	}
-
-	strDuration := req.FormValue("ttl")
-
-	var err error
-
-	command.ExpireTime, err = durationToExpireTime(strDuration)
-
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-
-		w.Write(newJsonError(202, "TestAndSet"))
-	}
-
-	dispatch(command, &w, req, true)
 
 }
 

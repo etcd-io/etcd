@@ -166,15 +166,16 @@ curl http://127.0.0.1:4001/v1/keys/testAndSet -d value=one
 ```
 
 Let's try an invaild `TestAndSet` command.
+We can give another parameter prevValue to set command to make it a TestAndSet command.
 
 ```sh
-curl http://127.0.0.1:4001/v1/testAndSet/testAndSet -d prevValue=two -d value=three
+curl http://127.0.0.1:4001/v1/keys/testAndSet -d prevValue=two -d value=three
 ```
 
 This will try to test if the previous of the key is two, it is change it to three.
 
-```html
-Test one==two fails
+```json
+{"errorCode":101,"message":"The given PrevValue is not equal to the value of the key","cause":"TestAndSet: one!=two"}
 ```
 
 which means `testAndSet` failed.
@@ -182,7 +183,7 @@ which means `testAndSet` failed.
 Let us try a vaild one.
 
 ```sh
-curl http://127.0.0.1:4001/v1/testAndSet/testAndSet -d prevValue=one -d value=two
+curl http://127.0.0.1:4001/v1/keys/testAndSet -d prevValue=one -d value=two
 ```
 
 The response should be
