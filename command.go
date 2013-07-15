@@ -107,8 +107,8 @@ func (c *WatchCommand) Apply(server *raft.Server) (interface{}, error) {
 type JoinCommand struct {
 	Name       string `json:"name"`
 	Hostname   string `json:"hostName"`
-	RaftPort   int    `json:"raftPort"`
-	ClientPort int    `json:"clientPort"`
+	RaftPort   uint16 `json:"raftPort"`
+	ClientPort uint16 `json:"clientPort"`
 }
 
 // The name of the join command in the log

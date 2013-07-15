@@ -6,13 +6,13 @@ import (
 
 type machine struct {
 	hostname   string
-	raftPort   int
-	clientPort int
+	raftPort   uint16
+	clientPort uint16
 }
 
 var machinesMap = map[string]machine{}
 
-func addMachine(name string, hostname string, raftPort int, clientPort int) {
+func addMachine(name string, hostname string, raftPort uint16, clientPort uint16) {
 
 	machinesMap[name] = machine{hostname, raftPort, clientPort}
 
