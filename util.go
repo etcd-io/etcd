@@ -15,11 +15,11 @@ import (
 //--------------------------------------
 var storeMsg chan string
 
-// Help to send msg from stroe to webHub
+// Help to send msg from store to webHub
 func webHelper() {
 	storeMsg = make(chan string)
 	for {
-		// transfere the new msg to webHub
+		// transfer the new msg to webHub
 		web.Hub().Send(<-storeMsg)
 	}
 }

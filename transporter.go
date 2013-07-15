@@ -89,7 +89,7 @@ func (t transporter) SendSnapshotRequest(server *raft.Server, peer *raft.Peer, r
 	return aersp
 }
 
-// Get the the client address of the leader in the cluster
+// Get the client address of the leader in the cluster
 func (t transporter) GetLeaderClientAddress() string {
 	resp, _ := t.Get(raftServer.Leader() + "/client")
 	if resp != nil {
