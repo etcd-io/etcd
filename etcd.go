@@ -34,9 +34,9 @@ var machinesFile string
 var cluster []string
 
 var hostname string
-var clientPort int
-var raftPort int
-var webPort int
+var clientPort uint16
+var raftPort uint16
+var webPort uint16
 
 var serverCertFile string
 var serverKeyFile string
@@ -108,9 +108,9 @@ const (
 
 type Info struct {
 	Hostname   string `json:"hostname"`
-	RaftPort   int    `json:"raftPort"`
-	ClientPort int    `json:"clientPort"`
-	WebPort    int    `json:"webPort"`
+	RaftPort   uint16 `json:"raftPort"`
+	ClientPort uint16 `json:"clientPort"`
+	WebPort    uint16 `json:"webPort"`
 
 	ServerCertFile string `json:"serverCertFile"`
 	ServerKeyFile  string `json:"serverKeyFile"`
@@ -328,7 +328,7 @@ func dialTimeout(network, addr string) (net.Conn, error) {
 }
 
 // Start to listen and response raft command
-func startRaftTransport(port int, st int) {
+func startRaftTransport(port uint16, st int) {
 
 	// internal commands
 	http.HandleFunc("/join", JoinHttpHandler)
@@ -368,7 +368,7 @@ func startRaftTransport(port int, st int) {
 }
 
 // Start to listen and response client command
-func startClientTransport(port int, st int) {
+func startClientTransport(port uint16, st int) {
 	// external commands
 	http.HandleFunc("/"+version+"/keys/", Multiplexer)
 	http.HandleFunc("/"+version+"/watch/", WatchHttpHandler)
