@@ -165,7 +165,7 @@ func main() {
 
 	info = getInfo(dirPath)
 
-	// secrity type
+	// security type
 	st := securityType(SERVER)
 
 	clientSt := securityType(CLIENT)
@@ -277,7 +277,7 @@ func startRaft(securityType int) {
 
 // Create transporter using by raft server
 // Create http or https transporter based on
-// wether the user give the server cert and key
+// whether the user give the server cert and key
 func createTransporter(st int) transporter {
 	t := transporter{}
 
