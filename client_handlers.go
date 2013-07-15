@@ -28,7 +28,7 @@ func Multiplexer(w http.ResponseWriter, req *http.Request) {
 
 //--------------------------------------
 // State sensitive handlers
-// Set/Delte will dispatch to leader
+// Set/Delete will dispatch to leader
 //--------------------------------------
 
 // Set Command Handler
@@ -193,9 +193,9 @@ func MachinesHttpHandler(w http.ResponseWriter, req *http.Request) {
 	// Since peer map does not contain the server itself
 	machines, _ := getClientAddr(raftServer.Name())
 
-	// Add all peers to the list and sepearte by comma
+	// Add all peers to the list and separate by comma
 	// We do not use json here since we accept machines list
-	// in the command line seperate by comma.
+	// in the command line separate by comma.
 
 	for peerName, _ := range peers {
 		if addr, ok := getClientAddr(peerName); ok {
