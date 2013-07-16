@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 )
+
 //------------------------------------------------------------------------------
 //
 // Typedefs
@@ -18,7 +19,7 @@ type WatcherHub struct {
 
 // Currently watcher only contains a response channel
 type Watcher struct {
-	C     chan Response
+	C chan Response
 }
 
 // Create a new watcherHub
@@ -84,7 +85,6 @@ func checkResponse(prefix string, index uint64, resMap *map[string]Response) boo
 
 	return false
 }
-
 
 // Notify the watcher a action happened
 func (w *WatcherHub) notify(resp Response) error {

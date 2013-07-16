@@ -70,7 +70,7 @@ type Response struct {
 
 	// If the key did not exist before the action,
 	// this field should be set to true
-	NewKey    bool `json:"newKey,omitempty"`
+	NewKey bool `json:"newKey,omitempty"`
 
 	Expiration *time.Time `json:"expiration,omitempty"`
 
@@ -146,9 +146,9 @@ func (s *Store) Set(key string, value string, expireTime time.Time, index uint64
 	// base response
 	resp := Response{
 		Action: "SET",
-		Key: key,
-		Value: value,
-		Index: index,
+		Key:    key,
+		Value:  value,
+		Index:  index,
 	}
 
 	// When the slow follower receive the set command
@@ -260,9 +260,9 @@ func (s *Store) internalGet(key string) *Response {
 
 		resp := &Response{
 			Action: "GET",
-			Key: key,
-			Value: node.Value,
-			Index: s.Index,
+			Key:    key,
+			Value:  node.Value,
+			Index:  s.Index,
 		}
 
 		// Update ttl
@@ -279,7 +279,6 @@ func (s *Store) internalGet(key string) *Response {
 		return nil
 	}
 }
-
 
 // Get all the items under key
 // If key is a file return the file
@@ -301,8 +300,8 @@ func (s *Store) Get(key string) ([]byte, error) {
 
 			resps[i] = Response{
 				Action: "GET",
-				Index: s.Index,
-				Key: path.Join(key, keys[i]),
+				Index:  s.Index,
+				Key:    path.Join(key, keys[i]),
 			}
 
 			if !dirs[i] {
@@ -342,16 +341,15 @@ func (s *Store) Delete(key string, index uint64) ([]byte, error) {
 	if ok {
 
 		resp := Response{
-			Action: "DELETE",
-			Key: key,
+			Action:    "DELETE",
+			Key:       key,
 			PrevValue: node.Value,
-			Index: index,
+			Index:     index,
 		}
 
 		if node.ExpireTime.Equal(PERMANENT) {
 
 			s.Tree.delete(key)
-
 
 		} else {
 			resp.Expiration = &node.ExpireTime
@@ -432,11 +430,11 @@ func (s *Store) monitorExpiration(key string, update chan time.Time, expireTime 
 				s.Tree.delete(key)
 
 				resp := Response{
-					Action: "DELETE",
-					Key: key,
-					PrevValue: node.Value,
+					Action:     "DELETE",
+					Key:        key,
+					PrevValue:  node.Value,
 					Expiration: &node.ExpireTime,
-					Index: s.Index,
+					Index:      s.Index,
 				}
 
 				msg, err := json.Marshal(resp)

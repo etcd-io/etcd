@@ -2,9 +2,9 @@ package store
 
 import (
 	"path"
-	"strings"
 	"sort"
-	)
+	"strings"
+)
 
 //------------------------------------------------------------------------------
 //
@@ -21,12 +21,12 @@ type tree struct {
 // A treeNode wraps a Node. It has a hashmap to keep records of its children treeNodes.
 type treeNode struct {
 	InternalNode Node
-	Dir bool
-	NodeMap map[string]*treeNode
+	Dir          bool
+	NodeMap      map[string]*treeNode
 }
 
 // TreeNode with its key. We use it when we need to sort the treeNodes.
-type tnWithKey struct{
+type tnWithKey struct {
 	key string
 	tn  *treeNode
 }
@@ -63,7 +63,7 @@ func (t *tree) set(key string, value Node) bool {
 	newDir := false
 
 	// go through all the path
-	for i = 0; i < len(nodesName) - 1; i++ {
+	for i = 0; i < len(nodesName)-1; i++ {
 
 		// if we meet a new directory, all the directory after it must be new
 		if newDir {
@@ -115,14 +115,14 @@ func (t *tree) set(key string, value Node) bool {
 }
 
 // Get the tree node of the key
-func (t *tree)internalGet(key string) (*treeNode, bool) {
+func (t *tree) internalGet(key string) (*treeNode, bool) {
 	nodesName := split(key)
 
 	nodeMap := t.Root.NodeMap
 
 	var i int
 
-	for i = 0; i < len(nodesName) - 1; i++ {
+	for i = 0; i < len(nodesName)-1; i++ {
 		node, ok := nodeMap[nodesName[i]]
 		if !ok || !node.Dir {
 			return nil, false
@@ -193,7 +193,7 @@ func (t *tree) delete(key string) bool {
 
 	var i int
 
-	for i = 0; i < len(nodesName) - 1; i++ {
+	for i = 0; i < len(nodesName)-1; i++ {
 		node, ok := nodeMap[nodesName[i]]
 		if !ok || !node.Dir {
 			return false
@@ -202,7 +202,7 @@ func (t *tree) delete(key string) bool {
 	}
 
 	node, ok := nodeMap[nodesName[i]]
-	if ok && !node.Dir{
+	if ok && !node.Dir {
 		delete(nodeMap, nodesName[i])
 		return true
 	}
@@ -223,10 +223,10 @@ func (t *tree) traverse(f func(string, *Node), sort bool) {
 func dfs(key string, t *treeNode, f func(string, *Node)) {
 
 	// base case
-	if len(t.NodeMap) == 0{
+	if len(t.NodeMap) == 0 {
 		f(key, &t.InternalNode)
 
-	// recursion
+		// recursion
 	} else {
 		for tnKey, tn := range t.NodeMap {
 			tnKey := key + "/" + tnKey
@@ -239,10 +239,10 @@ func dfs(key string, t *treeNode, f func(string, *Node)) {
 // apply the func f to each internal node
 func sortDfs(key string, t *treeNode, f func(string, *Node)) {
 	// base case
-	if len(t.NodeMap) == 0{
+	if len(t.NodeMap) == 0 {
 		f(key, &t.InternalNode)
 
-	// recursion
+		// recursion
 	} else {
 
 		s := make(tnWithKeySlice, len(t.NodeMap))

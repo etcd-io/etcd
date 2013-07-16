@@ -1,11 +1,11 @@
 package store
 
 import (
-	"testing"
+	"fmt"
 	"math/rand"
 	"strconv"
+	"testing"
 	"time"
-	"fmt"
 )
 
 func TestStoreGet(t *testing.T) {
@@ -60,7 +60,6 @@ func TestStoreGet(t *testing.T) {
 		t.Fatalf("Expect cannot delet /hello, but deleted! ")
 	}
 
-
 	// test list
 	ts.set("/hello/fooo", CreateTestNode("barbarbar"))
 	ts.set("/hello/foooo/foo", CreateTestNode("barbarbar"))
@@ -73,12 +72,12 @@ func TestStoreGet(t *testing.T) {
 		length := len(nodes)
 
 		for i := 0; i < length; i++ {
-			fmt.Println(keys[i] , "=", nodes[i].Value, "[", dirs[i], "]")
+			fmt.Println(keys[i], "=", nodes[i].Value, "[", dirs[i], "]")
 		}
 	}
 
 	// speed test
-	for i:=0; i < 100; i++ {
+	for i := 0; i < 100; i++ {
 		key := "/"
 		depth := rand.Intn(10)
 		for j := 0; j < depth; j++ {
@@ -100,10 +99,10 @@ func TestStoreGet(t *testing.T) {
 	ts.traverse(f, true)
 }
 
-func f (key string, n *Node) {
+func f(key string, n *Node) {
 	fmt.Println(key, "=", n.Value)
 }
 
-func CreateTestNode(value string) Node{
-	return Node{value, time.Unix(0,0), nil}
+func CreateTestNode(value string) Node {
+	return Node{value, time.Unix(0, 0), nil}
 }
