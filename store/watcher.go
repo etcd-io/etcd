@@ -34,7 +34,7 @@ func CreateWatcher() *Watcher {
 }
 
 // Add a watcher to the watcherHub
-func (w *WatcherHub) addWatcher(prefix string, watcher *Watcher, sinceIndex uint64, 
+func (w *WatcherHub) addWatcher(prefix string, watcher *Watcher, sinceIndex uint64,
 	responseStartIndex uint64, currentIndex uint64, resMap *map[string]Response) error {
 
 	prefix = path.Clean("/" + prefix)

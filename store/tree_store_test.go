@@ -10,13 +10,13 @@ import (
 
 func TestStoreGet(t *testing.T) {
 
-	ts := &tree{ 
+	ts := &tree{
 		&treeNode{
-			CreateTestNode("/"), 
-			true, 
+			CreateTestNode("/"),
+			true,
 			make(map[string]*treeNode),
 		},
-	} 
+	}
 
 	// create key
 	ts.set("/foo", CreateTestNode("bar"))
@@ -49,13 +49,13 @@ func TestStoreGet(t *testing.T) {
 	}
 
 	// delete a key
-	ok = ts.delete("/foo") 
+	ok = ts.delete("/foo")
 	if !ok {
 		t.Fatalf("cannot delete key")
 	}
 
 	// delete a directory
-	ok = ts.delete("/hello") 
+	ok = ts.delete("/hello")
 	if ok {
 		t.Fatalf("Expect cannot delet /hello, but deleted! ")
 	}
@@ -74,7 +74,7 @@ func TestStoreGet(t *testing.T) {
 
 		for i := 0; i < length; i++ {
 			fmt.Println(keys[i] , "=", nodes[i].Value, "[", dirs[i], "]")
-		} 
+		}
 	}
 
 	// speed test

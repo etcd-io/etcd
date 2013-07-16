@@ -68,7 +68,7 @@ type Response struct {
 	PrevValue string `json:"prevValue,omitempty"`
 	Value     string `json:"value,omitempty"`
 
-	// If the key did not exist before the action, 
+	// If the key did not exist before the action,
 	// this field should be set to true
 	NewKey    bool `json:"newKey,omitempty"`
 
@@ -145,9 +145,9 @@ func (s *Store) Set(key string, value string, expireTime time.Time, index uint64
 
 	// base response
 	resp := Response{
-		Action: "SET", 
-		Key: key, 
-		Value: value, 
+		Action: "SET",
+		Key: key,
+		Value: value,
 		Index: index,
 	}
 
@@ -164,8 +164,8 @@ func (s *Store) Set(key string, value string, expireTime time.Time, index uint64
 	if isExpire {
 		TTL = int64(expireTime.Sub(time.Now()) / time.Second)
 		resp.Expiration = &expireTime
-		resp.TTL = TTL 
-	} 
+		resp.TTL = TTL
+	}
 
 	// Get the node
 	node, ok := s.Tree.get(key)
@@ -259,18 +259,18 @@ func (s *Store) internalGet(key string) *Response {
 		isExpire = !node.ExpireTime.Equal(PERMANENT)
 
 		resp := &Response{
-			Action: "GET", 
-			Key: key, 
-			Value: node.Value, 
+			Action: "GET",
+			Key: key,
+			Value: node.Value,
 			Index: s.Index,
 		}
 
 		// Update ttl
 		if isExpire {
 			TTL = int64(node.ExpireTime.Sub(time.Now()) / time.Second)
-			resp.Expiration = &node.ExpireTime 
-			resp.TTL = TTL 
-		} 
+			resp.Expiration = &node.ExpireTime
+			resp.TTL = TTL
+		}
 
 		return resp
 
@@ -300,7 +300,7 @@ func (s *Store) Get(key string) ([]byte, error) {
 			isExpire = !nodes[i].ExpireTime.Equal(PERMANENT)
 
 			resps[i] = Response{
-				Action: "GET", 
+				Action: "GET",
 				Index: s.Index,
 				Key: path.Join(key, keys[i]),
 			}
@@ -314,9 +314,9 @@ func (s *Store) Get(key string) ([]byte, error) {
 			// Update ttl
 			if isExpire {
 				TTL = int64(nodes[i].ExpireTime.Sub(time.Now()) / time.Second)
-				resps[i].Expiration = &nodes[i].ExpireTime 
-				resps[i].TTL = TTL 
-			} 
+				resps[i].Expiration = &nodes[i].ExpireTime
+				resps[i].TTL = TTL
+			}
 
 		}
 		if len(resps) == 1 {
@@ -342,9 +342,9 @@ func (s *Store) Delete(key string, index uint64) ([]byte, error) {
 	if ok {
 
 		resp := Response{
-			Action: "DELETE", 
-			Key: key, 
-			PrevValue: node.Value,   
+			Action: "DELETE",
+			Key: key,
+			PrevValue: node.Value,
 			Index: index,
 		}
 
@@ -358,7 +358,7 @@ func (s *Store) Delete(key string, index uint64) ([]byte, error) {
 			// Kill the expire go routine
 			node.update <- PERMANENT
 			s.Tree.delete(key)
-			
+
 		}
 
 		msg, err := json.Marshal(resp)
@@ -387,7 +387,7 @@ func (s *Store) TestAndSet(key string, prevValue string, value string, expireTim
 
 	if resp == nil {
 		err := NotFoundError(key)
-		return nil, err 
+		return nil, err
 	}
 
 	if resp.Value == prevValue {
@@ -432,10 +432,10 @@ func (s *Store) monitorExpiration(key string, update chan time.Time, expireTime 
 				s.Tree.delete(key)
 
 				resp := Response{
-					Action: "DELETE", 
-					Key: key, 
-					PrevValue: node.Value, 
-					Expiration: &node.ExpireTime,  
+					Action: "DELETE",
+					Key: key,
+					PrevValue: node.Value,
+					Expiration: &node.ExpireTime,
 					Index: s.Index,
 				}
 

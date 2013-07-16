@@ -12,7 +12,7 @@ import (
 //
 //------------------------------------------------------------------------------
 
-// A file system like tree structure. Each non-leaf node of the tree has a hashmap to 
+// A file system like tree structure. Each non-leaf node of the tree has a hashmap to
 // store its children nodes. Leaf nodes has no hashmap (a nil pointer)
 type tree struct {
 	Root *treeNode
@@ -21,7 +21,7 @@ type tree struct {
 // A treeNode wraps a Node. It has a hashmap to keep records of its children treeNodes.
 type treeNode struct {
 	InternalNode Node
-	Dir bool 
+	Dir bool
 	NodeMap map[string]*treeNode
 }
 
@@ -75,7 +75,7 @@ func (t *tree) set(key string, value Node) bool {
 
 		// get the node from the nodeMap of the current level
 		tn, ok := nodeMap[nodesName[i]]
-	
+
 		if !ok {
 			// add a new directory and set newDir to true
 			newDir = true
@@ -85,7 +85,7 @@ func (t *tree) set(key string, value Node) bool {
 
 		} else if ok && !tn.Dir {
 
-			// if we meet a non-directory node, we cannot set the key 
+			// if we meet a non-directory node, we cannot set the key
 			return false
 		} else {
 
@@ -102,7 +102,7 @@ func (t *tree) set(key string, value Node) bool {
 		// we add a new treeNode
 		tn := &treeNode{value, false, nil}
 		nodeMap[nodesName[i]] = tn
-	
+
 	} else {
 		if tn.Dir {
 			return false
@@ -114,12 +114,12 @@ func (t *tree) set(key string, value Node) bool {
 
 }
 
-// Get the tree node of the key 
+// Get the tree node of the key
 func (t *tree)internalGet(key string) (*treeNode, bool) {
 	nodesName := split(key)
 
 	nodeMap := t.Root.NodeMap
-		
+
 	var i int
 
 	for i = 0; i < len(nodesName) - 1; i++ {
@@ -136,7 +136,7 @@ func (t *tree)internalGet(key string) (*treeNode, bool) {
 	} else {
 		return nil, ok
 	}
-} 
+}
 
 // get the internalNode of the key
 func (t *tree) get(key string) (Node, bool) {
@@ -163,7 +163,7 @@ func (t *tree) list(directory string) ([]Node, []string, []bool, bool) {
 			nodes := make([]Node, 1)
 			nodes[0] = treeNode.InternalNode
 			return nodes, make([]string, 1), make([]bool, 1), true
-		} 
+		}
 		length := len(treeNode.NodeMap)
 		nodes := make([]Node, length)
 		keys := make([]string, length)
@@ -190,7 +190,7 @@ func (t *tree) delete(key string) bool {
 	nodesName := split(key)
 
 	nodeMap := t.Root.NodeMap
-		
+
 	var i int
 
 	for i = 0; i < len(nodesName) - 1; i++ {
@@ -214,11 +214,11 @@ func (t *tree) traverse(f func(string, *Node), sort bool) {
 	if sort {
 		sortDfs("", t.Root, f)
 	} else {
-		dfs("", t.Root, f)	
+		dfs("", t.Root, f)
 	}
 }
 
-// deep first search to traverse the tree 
+// deep first search to traverse the tree
 // apply the func f to each internal node
 func dfs(key string, t *treeNode, f func(string, *Node)) {
 
