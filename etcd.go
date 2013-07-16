@@ -292,7 +292,6 @@ func createTransporter(st int) transporter {
 		t.client = &http.Client{
 			Transport: tr,
 		}
-		return t
 
 	case HTTPS:
 		fallthrough
@@ -315,11 +314,9 @@ func createTransporter(st int) transporter {
 		}
 
 		t.client = &http.Client{Transport: tr}
-		return t
 	}
 
-	// for complier
-	return transporter{}
+	return t
 }
 
 // Dial with timeout
