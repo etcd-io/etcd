@@ -1,25 +1,33 @@
 package store
 
 import (
+	"encoding/json"
 	"fmt"
 	"testing"
 	"time"
 )
 
-func TestStoreGet(t *testing.T) {
+func TestStoreGetDelete(t *testing.T) {
 
-	Set("foo", "bar", time.Unix(0, 0))
+	s := CreateStore(100)
+	s.Set("foo", "bar", time.Unix(0, 0), 9)
+	res, err := s.Get("foo")
 
-	res := Get("foo")
+	if err != nil {
+		t.Fatalf("Unknown error")
+	}
 
-	if res.NewValue != "bar" {
+	var result Response
+	json.Unmarshal(res, &result)
+
+	if result.Value != "bar" {
 		t.Fatalf("Cannot get stored value")
 	}
 
-	Delete("foo")
-	res = Get("foo")
+	s.Delete("foo", 0)
+	_, err = s.Get("foo")
 
-	if res.Exist {
+	if err == nil {
 		t.Fatalf("Got deleted value")
 	}
 }
@@ -62,61 +70,62 @@ func TestExpire(t *testing.T) {
 	fmt.Println("TEST EXPIRE")
 
 	// test expire
-	Set("foo", "bar", time.Now().Add(time.Second*1))
+	s := CreateStore(100)
+	s.Set("foo", "bar", time.Now().Add(time.Second*1), 0)
 	time.Sleep(2 * time.Second)
 
-	res := Get("foo")
+	_, err := s.Get("foo")
 
-	if res.Exist {
+	if err == nil {
 		t.Fatalf("Got expired value")
 	}
 
 	//test change expire time
-	Set("foo", "bar", time.Now().Add(time.Second*10))
+	s.Set("foo", "bar", time.Now().Add(time.Second*10), 0)
 
-	res = Get("foo")
+	_, err = s.Get("foo")
 
-	if !res.Exist {
+	if err != nil {
 		t.Fatalf("Cannot get Value")
 	}
 
-	Set("foo", "barbar", time.Now().Add(time.Second*1))
+	s.Set("foo", "barbar", time.Now().Add(time.Second*1), 0)
 
 	time.Sleep(2 * time.Second)
 
-	res = Get("foo")
+	_, err = s.Get("foo")
 
-	if res.Exist {
+	if err == nil {
 		t.Fatalf("Got expired value")
 	}
 
 	// test change expire to stable
-	Set("foo", "bar", time.Now().Add(time.Second*1))
+	s.Set("foo", "bar", time.Now().Add(time.Second*1), 0)
 
-	Set("foo", "bar", time.Unix(0, 0))
+	s.Set("foo", "bar", time.Unix(0, 0), 0)
 
 	time.Sleep(2 * time.Second)
 
-	res = s.Get("foo")
+	_, err = s.Get("foo")
 
-	if !res.Exist {
+	if err != nil {
 		t.Fatalf("Cannot get Value")
 	}
 
 	// test stable to expire
-	s.Set("foo", "bar", time.Now().Add(time.Second*1))
+	s.Set("foo", "bar", time.Now().Add(time.Second*1), 0)
 	time.Sleep(2 * time.Second)
-	res = s.Get("foo")
+	_, err = s.Get("foo")
 
-	if res.Exist {
+	if err == nil {
 		t.Fatalf("Got expired value")
 	}
 
 	// test set older node
-	s.Set("foo", "bar", time.Now().Add(-time.Second*1))
-	res = s.Get("foo")
+	s.Set("foo", "bar", time.Now().Add(-time.Second*1), 0)
+	_, err = s.Get("foo")
 
-	if res.Exist {
+	if err == nil {
 		t.Fatalf("Got expired value")
 	}
 
