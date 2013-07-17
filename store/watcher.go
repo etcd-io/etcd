@@ -30,7 +30,7 @@ func createWatcherHub() *WatcherHub {
 }
 
 // Create a new watcher
-func CreateWatcher() *Watcher {
+func createWatcher() *Watcher {
 	return &Watcher{C: make(chan Response, 1)}
 }
 

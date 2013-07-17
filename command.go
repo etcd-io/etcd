@@ -92,7 +92,7 @@ func (c *WatchCommand) CommandName() string {
 
 func (c *WatchCommand) Apply(server *raft.Server) (interface{}, error) {
 	// create a new watcher
-	watcher := store.CreateWatcher()
+	watcher := store.createWatcher()
 
 	// add to the watchers list
 	etcdStore.AddWatcher(c.Key, watcher, c.SinceIndex)
