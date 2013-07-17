@@ -10,7 +10,7 @@ import (
 func TestStoreGetDelete(t *testing.T) {
 
 	s := CreateStore(100)
-	s.Set("foo", "bar", time.Unix(0, 0), 9)
+	s.Set("foo", "bar", time.Unix(0, 0), 1)
 	res, err := s.Get("foo")
 
 	if err != nil {
@@ -24,7 +24,7 @@ func TestStoreGetDelete(t *testing.T) {
 		t.Fatalf("Cannot get stored value")
 	}
 
-	s.Delete("foo", 0)
+	s.Delete("foo", 2)
 	_, err = s.Get("foo")
 
 	if err == nil {
@@ -32,38 +32,42 @@ func TestStoreGetDelete(t *testing.T) {
 	}
 }
 
-// func TestSaveAndRecovery(t *testing.T) {
+func TestSaveAndRecovery(t *testing.T) {
 
-// 	Set("foo", "bar", time.Unix(0, 0))
-// 	Set("foo2", "bar2", time.Now().Add(time.Second * 5))
-// 	state, err := s.Save()
+	s := CreateStore(100)
+	s.Set("foo", "bar", time.Unix(0, 0), 1)
+	s.Set("foo2", "bar2", time.Now().Add(time.Second * 5), 2)
+	state, err := s.Save()
 
-// 	if err != nil {
-// 		t.Fatalf("Cannot Save")
-// 	}
+	if err != nil {
+		t.Fatalf("Cannot Save %s", err)
+	}
 
-// 	newStore := createStore()
+	newStore := CreateStore(100)
 
-// 	// wait for foo2 expires
-// 	time.Sleep(time.Second * 6)
+	// wait for foo2 expires
+	time.Sleep(time.Second * 6)
 
-// 	newStore.Recovery(state)
+	newStore.Recovery(state)
 
-// 	res := newStore.Get("foo")
+	res, err := newStore.Get("foo")
 
-// 	if res.OldValue != "bar" {
-// 		t.Fatalf("Cannot recovery")
-// 	}
+	var result Response
+	json.Unmarshal(res, &result)
 
-// 	res = newStore.Get("foo2")
+	if result.Value != "bar" {
+		t.Fatalf("Recovery Fail")
+	}
 
-// 	if res.Exist {
-// 		t.Fatalf("Get expired value")
-// 	}
+	res, err = newStore.Get("foo2")
 
-// 	s.Delete("foo")
+	if err == nil {
+		t.Fatalf("Get expired value")
+	}
 
-// }
+	s.Delete("foo", 3)
+
+}
 
 func TestExpire(t *testing.T) {
 	fmt.Println(time.Now())
@@ -81,7 +85,7 @@ func TestExpire(t *testing.T) {
 	}
 
 	//test change expire time
-	s.Set("foo", "bar", time.Now().Add(time.Second*10), 0)
+	s.Set("foo", "bar", time.Now().Add(time.Second*10), 1)
 
 	_, err = s.Get("foo")
 
@@ -89,7 +93,7 @@ func TestExpire(t *testing.T) {
 		t.Fatalf("Cannot get Value")
 	}
 
-	s.Set("foo", "barbar", time.Now().Add(time.Second*1), 0)
+	s.Set("foo", "barbar", time.Now().Add(time.Second*1), 2)
 
 	time.Sleep(2 * time.Second)
 
@@ -100,9 +104,9 @@ func TestExpire(t *testing.T) {
 	}
 
 	// test change expire to stable
-	s.Set("foo", "bar", time.Now().Add(time.Second*1), 0)
+	s.Set("foo", "bar", time.Now().Add(time.Second*1), 3)
 
-	s.Set("foo", "bar", time.Unix(0, 0), 0)
+	s.Set("foo", "bar", time.Unix(0, 0), 4)
 
 	time.Sleep(2 * time.Second)
 
@@ -113,7 +117,7 @@ func TestExpire(t *testing.T) {
 	}
 
 	// test stable to expire
-	s.Set("foo", "bar", time.Now().Add(time.Second*1), 0)
+	s.Set("foo", "bar", time.Now().Add(time.Second*1), 5)
 	time.Sleep(2 * time.Second)
 	_, err = s.Get("foo")
 
@@ -122,7 +126,7 @@ func TestExpire(t *testing.T) {
 	}
 
 	// test set older node
-	s.Set("foo", "bar", time.Now().Add(-time.Second*1), 0)
+	s.Set("foo", "bar", time.Now().Add(-time.Second*1), 6)
 	_, err = s.Get("foo")
 
 	if err == nil {
