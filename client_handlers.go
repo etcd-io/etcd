@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/coreos/etcd/store"
 	"net/http"
 	"strconv"
@@ -110,11 +111,12 @@ func dispatch(c Command, w *http.ResponseWriter, req *http.Request, client bool)
 				return
 			}
 			(*w).WriteHeader(http.StatusInternalServerError)
-			(*w).Write(newJsonError(300, "No Leader"))
+			(*w).Write(newJsonError(300, err.Error()))
 			return
 		} else {
 
 			if body == nil {
+				fmt.Println("empty but not err!")
 				http.NotFound((*w), req)
 			} else {
 				body, ok := body.([]byte)

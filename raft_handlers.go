@@ -61,7 +61,23 @@ func SnapshotHttpHandler(w http.ResponseWriter, req *http.Request) {
 	err := decodeJsonRequest(req, aereq)
 	if err == nil {
 		debug("[recv] POST http://%s/snapshot/ ", raftServer.Name())
-		if resp, _ := raftServer.SnapshotRecovery(aereq); resp != nil {
+		if resp := raftServer.SnapshotRequest(aereq); resp != nil {
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(resp)
+			return
+		}
+	}
+	warn("[Snapshot] ERROR: %v", err)
+	w.WriteHeader(http.StatusInternalServerError)
+}
+
+// Response to recover from snapshot request
+func SnapshotRecoveryHttpHandler(w http.ResponseWriter, req *http.Request) {
+	aereq := &raft.SnapshotRecoveryRequest{}
+	err := decodeJsonRequest(req, aereq)
+	if err == nil {
+		debug("[recv] POST http://%s/snapshotRecovery/ ", raftServer.Name())
+		if resp := raftServer.SnapshotRecoveryRequest(aereq); resp != nil {
 			w.WriteHeader(http.StatusOK)
 			json.NewEncoder(w).Encode(resp)
 			return
