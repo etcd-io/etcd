@@ -61,7 +61,7 @@ func SnapshotHttpHandler(w http.ResponseWriter, req *http.Request) {
 	err := decodeJsonRequest(req, aereq)
 	if err == nil {
 		debug("[recv] POST http://%s/snapshot/ ", raftServer.Name())
-		if resp := raftServer.SnapshotRequest(aereq); resp != nil {
+		if resp := raftServer.RequestSnapshot(aereq); resp != nil {
 			w.WriteHeader(http.StatusOK)
 			json.NewEncoder(w).Encode(resp)
 			return
