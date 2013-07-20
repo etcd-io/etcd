@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"github.com/coreos/etcd/store"
 	"net/http"
 	"strconv"
@@ -116,10 +115,10 @@ func dispatch(c Command, w *http.ResponseWriter, req *http.Request, client bool)
 		} else {
 
 			if body == nil {
-				fmt.Println("empty but not err!")
 				http.NotFound((*w), req)
 			} else {
 				body, ok := body.([]byte)
+				// this should not happen
 				if !ok {
 					panic("wrong type")
 				}

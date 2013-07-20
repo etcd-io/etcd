@@ -104,7 +104,6 @@ func (t transporter) SendSnapshotRecoveryRequest(server *raft.Server, peer *raft
 		defer resp.Body.Close()
 		aersp = &raft.SnapshotRecoveryResponse{}
 		if err = json.NewDecoder(resp.Body).Decode(&aersp); err == nil || err == io.EOF {
-
 			return aersp
 		}
 	}
