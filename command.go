@@ -120,6 +120,5 @@ func (c *JoinCommand) CommandName() string {
 func (c *JoinCommand) Apply(raftServer *raft.Server) (interface{}, error) {
 	err := raftServer.AddPeer(c.Name)
 	addMachine(c.Name, c.Hostname, c.RaftPort, c.ClientPort)
-
 	return []byte("join success"), err
 }

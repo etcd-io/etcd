@@ -89,6 +89,27 @@ func (t transporter) SendSnapshotRequest(server *raft.Server, peer *raft.Peer, r
 	return aersp
 }
 
+// Sends SnapshotRecoveryRequest RPCs to a peer when the server is the candidate.
+func (t transporter) SendSnapshotRecoveryRequest(server *raft.Server, peer *raft.Peer, req *raft.SnapshotRecoveryRequest) *raft.SnapshotRecoveryResponse {
+	var aersp *raft.SnapshotRecoveryResponse
+	var b bytes.Buffer
+	json.NewEncoder(&b).Encode(req)
+
+	debug("Send SnapshotRecovery to %s [Last Term: %d, LastIndex %d]", peer.Name(),
+		req.LastTerm, req.LastIndex)
+
+	resp, err := t.Post(fmt.Sprintf("%s/snapshotRecovery", peer.Name()), &b)
+
+	if resp != nil {
+		defer resp.Body.Close()
+		aersp = &raft.SnapshotRecoveryResponse{}
+		if err = json.NewDecoder(resp.Body).Decode(&aersp); err == nil || err == io.EOF {
+			return aersp
+		}
+	}
+	return aersp
+}
+
 // Get the client address of the leader in the cluster
 func (t transporter) GetLeaderClientAddress() string {
 	resp, _ := t.Get(raftServer.Leader() + "/client")

@@ -52,6 +52,8 @@ var ignore bool
 
 var maxSize int
 
+var snapshot bool
+
 func init() {
 	flag.BoolVar(&verbose, "v", false, "verbose logging")
 
@@ -74,6 +76,8 @@ func init() {
 	flag.StringVar(&dirPath, "d", "/tmp/", "the directory to store log and snapshot")
 
 	flag.BoolVar(&ignore, "i", false, "ignore the old configuration, create a new node")
+
+	flag.BoolVar(&snapshot, "snapshot", false, "open or close snapshot")
 
 	flag.IntVar(&maxSize, "m", 1024, "the max size of result buffer")
 }
@@ -207,13 +211,15 @@ func startRaft(securityType int) {
 	}
 
 	// LoadSnapshot
-	// err = raftServer.LoadSnapshot()
+	if snapshot {
+		err = raftServer.LoadSnapshot()
 
-	// if err == nil {
-	// 	debug("%s finished load snapshot", raftServer.Name())
-	// } else {
-	// 	debug(err)
-	// }
+		if err == nil {
+			debug("%s finished load snapshot", raftServer.Name())
+		} else {
+			debug(err.Error())
+		}
+	}
 
 	raftServer.Initialize()
 	raftServer.SetElectionTimeout(ELECTIONTIMTOUT)
@@ -249,7 +255,7 @@ func startRaft(securityType int) {
 
 				err = joinCluster(raftServer, machine)
 				if err != nil {
-					debug("cannot join to cluster via machine %s", machine)
+					debug("cannot join to cluster via machine %s %s", machine, err)
 				} else {
 					break
 				}
@@ -267,7 +273,9 @@ func startRaft(securityType int) {
 	}
 
 	// open the snapshot
-	// go server.Snapshot()
+	if snapshot {
+		go raftServer.Snapshot()
+	}
 
 	// start to response to raft requests
 	go startRaftTransport(info.RaftPort, securityType)
@@ -332,6 +340,7 @@ func startRaftTransport(port int, st int) {
 	http.HandleFunc("/log", GetLogHttpHandler)
 	http.HandleFunc("/log/append", AppendEntriesHttpHandler)
 	http.HandleFunc("/snapshot", SnapshotHttpHandler)
+	http.HandleFunc("/snapshotRecovery", SnapshotRecoveryHttpHandler)
 	http.HandleFunc("/client", ClientHttpHandler)
 
 	switch st {
