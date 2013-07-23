@@ -7,7 +7,7 @@ A highly-available key value store for shared configuration and service discover
 * Fast: benchmarked 1000s of writes/s per instance
 * Reliable: Properly distributed using Raft
 
-Etcd is written in go and uses the [raft][raft] paxos implementation for high availability. 
+Etcd is written in go and uses the [raft][raft] consensus algorithm to manage a highly availably replicated log. 
 
 See [go-etcd][go-etcd] for a native go client. Or feel free to just use curl, as in the examples below. 
 
@@ -237,6 +237,93 @@ We should see the response as an array of items
 
 which meas `foo=barbar` is a key-value pair under `/foo` and `foo_dir` is a directory.
 
+#### Using HTTPS between server and client
+Etcd supports SSL/TLS and client cert authentication for clients to server, as well as server to server communication
+
+Before that we need to have a CA cert```clientCA.crt``` and signed key pair ```client.crt, client.key``` .
+
+This site has a good reference for how to generate self-signed key pairs
+```url
+http://www.g-loaded.eu/2005/11/10/be-your-own-ca/
+```
+
+```sh
+./etcd -clientCert client.crt -clientKey client.key -i
+```
+
+```-i``` is to ignore the previously created default configuration file.
+```-clientCert``` and ```-clientKey``` are the key and cert for transport layer security between client and server
+
+```sh
+curl https://127.0.0.1:4001/v1/keys/foo -d value=bar -v -k
+```
+
+or 
+
+```sh
+curl https://127.0.0.1:4001/v1/keys/foo -d value=bar -v -cacert clientCA.crt
+```
+
+You should be able to see the handshake succeed.
+```
+...
+SSLv3, TLS handshake, Finished (20):
+...
+```
+And also the response from the etcd server.
+```json
+{"action":"SET","key":"/foo","value":"bar","newKey":true,"index":3}
+```
+
+We also can do authentication using CA cert. The clients will also need to provide their cert to the server. The server will check whether the cert is signed by the CA and decide whether to serve the request.
+
+```sh
+./etcd -clientCert client.crt -clientKey client.key -clientCAFile clientCA.crt -i
+```
+
+```-clientCAFile``` is the path to the CA cert.
+
+Try the same request to this server.
+```sh
+curl https://127.0.0.1:4001/v1/keys/foo -d value=bar -v -k
+```
+or 
+
+```sh
+curl https://127.0.0.1:4001/v1/keys/foo -d value=bar -v -cacert clientCA.crt
+```
+
+The request should be rejected by the server.
+```
+...
+routines:SSL3_READ_BYTES:sslv3 alert bad certificate
+...
+```
+
+We need to give the CA signed cert to the server. 
+```sh
+curl https://127.0.0.1:4001/v1/keys/foo -d value=bar -v --key myclient.key --cert myclient.crt -k
+```
+
+or
+
+```sh
+curl https://127.0.0.1:4001/v1/keys/foo -d value=bar -v --key myclient.key --cert myclient.crt -cacert clientCA.crt
+```
+
+You should able to see
+```
+...
+SSLv3, TLS handshake, CERT verify (15):
+...
+TLS handshake, Finished (20)
+```
+
+And also the response from the server
+```json
+{"action":"SET","key":"/foo","value":"bar","newKey":true,"index":3}
+```
+
 ### Setting up a cluster of three machines
 
 Next let's explore the use of etcd clustering. We use go-raft as the underlying distributed protocol which provides consistency and persistence of the data across all of the etcd instances.
@@ -328,3 +415,8 @@ curl http://127.0.0.1:4002/v1/keys/foo
 ```json
 {"action":"GET","key":"/foo","value":"bar","index":5}
 ```
+
+#### Using HTTPS between servers
+In the previous example we showed how to use SSL client certs for client to server communication. Etcd can also do internal server to server communication using SSL client certs. To do this just change the ```-client*``` flags to ```-server*```.
+If you are using SSL for server to server communication, you must use it on all instances of etcd.
+
