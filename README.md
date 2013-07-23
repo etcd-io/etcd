@@ -1,5 +1,19 @@
 # etcd
 
+A highly-available key value store for shared configuration and service discovery. etcd is inspired by zookeeper and doozer, with a focus on:
+
+* Simple: curl'able user facing API (HTTP+JSON)
+* Secure: optional SSL client cert authentication
+* Fast: benchmarked 1000s of writes/s per instance
+* Reliable: Properly distributed using Raft
+
+Etcd is written in go and uses the [raft][raft] paxos implementation for high availability. 
+
+See [go-etcd][go-etcd] for a native go client. Or feel free to just use curl, as in the examples below. 
+
+[raft]: https://github.com/coreos/go-raft
+[go-etcd]: https://github.com/coreos/go-etcd
+
 ## Getting Started
 
 ### Building
@@ -86,7 +100,7 @@ curl http://127.0.0.1:4001/v1/keys/message -X DELETE
 {"action":"DELETE","key":"/message","prevValue":"Hello etcd","index":5}
 ```
 
-#### Using time to live key
+#### Using a TTL on a key
 
 Keys in etcd can be set to expire after a specified number of seconds. That is done by setting a TTL (time to live) on the key when you POST:
 
@@ -110,7 +124,7 @@ Now you can try to get the key by sending:
 curl http://127.0.0.1:4001/v1/keys/foo
 ```
 
-If the TTL has passed then you will 
+If the TTL has expired, the key will be deleted, and you will be returned a 404.
 
 ```html
 404 page not found
