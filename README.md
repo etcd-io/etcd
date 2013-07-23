@@ -100,7 +100,7 @@ curl http://127.0.0.1:4001/v1/keys/message -X DELETE
 {"action":"DELETE","key":"/message","prevValue":"Hello etcd","index":5}
 ```
 
-#### Using time to live key
+#### Using a TTL on a key
 
 Keys in etcd can be set to expire after a specified number of seconds. That is done by setting a TTL (time to live) on the key when you POST:
 
@@ -124,7 +124,7 @@ Now you can try to get the key by sending:
 curl http://127.0.0.1:4001/v1/keys/foo
 ```
 
-If the TTL has passed then you will 
+If the TTL has expired, the key will be deleted, and you will be returned a 404.
 
 ```html
 404 page not found
