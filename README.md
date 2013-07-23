@@ -7,8 +7,7 @@ A highly-available key value store for shared configuration and service discover
 * Fast: benchmarked 1000s of writes/s per instance
 * Reliable: Properly distributed using Raft
 
-Etcd is written in go and uses the [raft][raft] consensus algorithm to a manage replicated
-log for high availability. 
+Etcd is written in go and uses the [raft][raft] consensus algorithm to manage a highly availably replicated log. 
 
 See [go-etcd][go-etcd] for a native go client. Or feel free to just use curl, as in the examples below. 
 
