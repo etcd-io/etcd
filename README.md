@@ -241,14 +241,28 @@ which meas `foo=barbar` is a key-value pair under `/foo` and `foo_dir` is a dire
 #### Using Https between server and client
 Etcd supports SSL/TLS and client cert authentication for clients to server, as well as server to server communication
 
+Before that we need to have a CA cert```clientCA.crt``` and signed key pair ```client.crt, client.key``` .
+
+This site has a good reference for how to generate self-signed key pairs
+```url
+http://www.g-loaded.eu/2005/11/10/be-your-own-ca/
+```
+
 ```sh
 ./etcd -clientCert client.crt -clientKey client.key -i
 ```
+
 ```-i``` is to ignore the previously created default configuration file.
 ```-clientCert``` and ```-clientKey``` are the key and cert for transport layer security between client and server
 
 ```sh
-curl https://127.0.0.1:4001/v1/keys/foo -d value=bar -v
+curl https://127.0.0.1:4001/v1/keys/foo -d value=bar -v -k
+```
+
+or 
+
+```sh
+curl https://127.0.0.1:4001/v1/keys/foo -d value=bar -v -cacert clientCA.crt
 ```
 
 You should be able to see the handshake succeed.
@@ -272,7 +286,12 @@ We also can do authentication using CA cert. The clients will also need to provi
 
 Try the same request to this server.
 ```sh
-curl https://127.0.0.1:4001/v1/keys/foo -d value=bar -v
+curl https://127.0.0.1:4001/v1/keys/foo -d value=bar -v -k
+```
+or 
+
+```sh
+curl https://127.0.0.1:4001/v1/keys/foo -d value=bar -v -cacert clientCA.crt
 ```
 
 The request should be rejected by the server.
@@ -284,7 +303,13 @@ routines:SSL3_READ_BYTES:sslv3 alert bad certificate
 
 We need to give the CA signed cert to the server. 
 ```sh
-curl https://127.0.0.1:4001/v1/keys/foo -d value=bar -v --key myclient.key --cert myclient.crt
+curl https://127.0.0.1:4001/v1/keys/foo -d value=bar -v --key myclient.key --cert myclient.crt -k
+```
+
+or
+
+```sh
+curl https://127.0.0.1:4001/v1/keys/foo -d value=bar -v --key myclient.key --cert myclient.crt -cacert clientCA.crt
 ```
 
 You should able to see
@@ -298,11 +323,6 @@ TLS handshake, Finished (20)
 And also the response from the server
 ```json
 {"action":"SET","key":"/foo","value":"bar","newKey":true,"index":3}
-```
-
-This site has a good reference for how to generate self-signed key pairs
-```url
-http://www.g-loaded.eu/2005/11/10/be-your-own-ca/
 ```
 
 ### Setting up a cluster of three machines
@@ -399,5 +419,5 @@ curl http://127.0.0.1:4002/v1/keys/foo
 
 #### Using Https between server and client
 In the previous example we showed how to use SSL client certs for client to server communication. Etcd can also do internal server to server communication using SSL client certs. To do this just change the ```-client*``` flags to ```-server*```.
-We require all the server using http or https. There should not be a mix.
+If you are using SSL for server to server communication, you must use it on all instances of etcd.
 
