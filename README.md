@@ -239,7 +239,7 @@ We should see the response as an array of items
 which meas `foo=barbar` is a key-value pair under `/foo` and `foo_dir` is a directory.
 
 #### Using Https between server and client
-Kill the previous etcd server.
+Etcd supports SSL/TLS and client cert authentication for clients to server, as well as server to server communication
 
 ```sh
 ./etcd -clientCert client.crt -clientKey client.key -i
@@ -300,7 +300,7 @@ And also the response from the server
 {"action":"SET","key":"/foo","value":"bar","newKey":true,"index":3}
 ```
 
-Here is a good page to show you how to create a self-signed CA and generate cert and key.
+This site has a good reference for how to generate self-signed key pairs
 ```url
 http://www.g-loaded.eu/2005/11/10/be-your-own-ca/
 ```
@@ -398,7 +398,6 @@ curl http://127.0.0.1:4002/v1/keys/foo
 ```
 
 #### Using Https between server and client
-We have gave an example to show how to use tls between client and server.
-The way same here, except that you need to change ```-client*``` to ```-server*```.
+In the previous example we showed how to use SSL client certs for client to server communication. Etcd can also do internal server to server communication using SSL client certs. To do this just change the ```-client*``` flags to ```-server*```.
 We require all the server using http or https. There should not be a mix.
 
