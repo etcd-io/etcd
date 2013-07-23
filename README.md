@@ -7,7 +7,7 @@ A highly-available key value store for shared configuration and service discover
 * Fast: benchmarked 1000s of writes/s per instance
 * Reliable: Properly distributed using Raft
 
-Etcd is written in go and uses the [raft][raft] consensus algorithm to manage replicated
+Etcd is written in go and uses the [raft][raft] consensus algorithm to a manage replicated
 log for high availability. 
 
 See [go-etcd][go-etcd] for a native go client. Or feel free to just use curl, as in the examples below. 
@@ -238,7 +238,7 @@ We should see the response as an array of items
 
 which meas `foo=barbar` is a key-value pair under `/foo` and `foo_dir` is a directory.
 
-#### Using Https between server and client
+#### Using HTTPS between server and client
 Etcd supports SSL/TLS and client cert authentication for clients to server, as well as server to server communication
 
 Before that we need to have a CA cert```clientCA.crt``` and signed key pair ```client.crt, client.key``` .
