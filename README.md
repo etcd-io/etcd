@@ -5,7 +5,7 @@ A highly-available key value store for shared configuration and service discover
 * Simple: curl'able user facing API (HTTP+JSON)
 * Secure: optional SSL client cert authentication
 * Fast: benchmarked 1000s of writes/s per instance
-* Reliable: Properly distributed using paxos
+* Reliable: Properly distributed using Raft
 
 Etcd is written in go and uses the [raft][raft] paxos implementation for high availability. 
 
