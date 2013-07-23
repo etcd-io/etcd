@@ -248,7 +248,7 @@ Etcd supports SSL/TLS and client cert authentication for clients to server, as w
 ```-clientCert``` and ```-clientKey``` are the key and cert for transport layer security between client and server
 
 ```sh
-curl https://127.0.0.1:4001/v1/keys/foo -d value=bar -k -v
+curl https://127.0.0.1:4001/v1/keys/foo -d value=bar -v
 ```
 
 You should be able to see the handshake succeed.
@@ -272,7 +272,7 @@ We also can do authentication using CA cert. The clients will also need to provi
 
 Try the same request to this server.
 ```sh
-curl https://127.0.0.1:4001/v1/keys/foo -d value=bar -k -v
+curl https://127.0.0.1:4001/v1/keys/foo -d value=bar -v
 ```
 
 The request should be rejected by the server.
@@ -284,7 +284,7 @@ routines:SSL3_READ_BYTES:sslv3 alert bad certificate
 
 We need to give the CA signed cert to the server. 
 ```sh
-curl https://127.0.0.1:4001/v1/keys/foo -d value=bar -k -v --key myclient.key --cert myclient.crt
+curl https://127.0.0.1:4001/v1/keys/foo -d value=bar -v --key myclient.key --cert myclient.crt
 ```
 
 You should able to see
