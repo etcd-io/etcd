@@ -417,7 +417,7 @@ curl http://127.0.0.1:4002/v1/keys/foo
 {"action":"GET","key":"/foo","value":"bar","index":5}
 ```
 
-#### Using Https between server and client
+#### Using HTTPS between servers
 In the previous example we showed how to use SSL client certs for client to server communication. Etcd can also do internal server to server communication using SSL client certs. To do this just change the ```-client*``` flags to ```-server*```.
 If you are using SSL for server to server communication, you must use it on all instances of etcd.
 
