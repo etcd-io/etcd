@@ -223,6 +223,73 @@ We should see the response as an array of items
 
 which meas `foo=barbar` is a key-value pair under `/foo` and `foo_dir` is a directory.
 
+#### Using Https between server and client
+Kill the previous etcd server.
+
+```sh
+./etcd -clientCert client.crt -clientKey client.key -i
+```
+```-i``` is to ignore the previously created default configuration file.
+```-clientCert``` and ```-clientKey``` are the key and cert for transport layer security between client and server
+
+```sh
+curl https://127.0.0.1:4001/v1/keys/foo -d value=bar -k -v
+```
+
+You should be able to see the handshake succeed.
+```
+...
+SSLv3, TLS handshake, Finished (20):
+...
+```
+And also the response from the etcd server.
+```json
+{"action":"SET","key":"/foo","value":"bar","newKey":true,"index":3}
+```
+
+We also can do authentication using CA cert. The clients will also need to provide their cert to the server. The server will check whether the cert is signed by the CA and decide whether to serve the request.
+
+```sh
+./etcd -clientCert client.crt -clientKey client.key -clientCAFile clientCA.crt -i
+```
+
+```-clientCAFile``` is the path to the CA cert.
+
+Try the same request to this server.
+```sh
+curl https://127.0.0.1:4001/v1/keys/foo -d value=bar -k -v
+```
+
+The request should be rejected by the server.
+```
+...
+routines:SSL3_READ_BYTES:sslv3 alert bad certificate
+...
+```
+
+We need to give the CA signed cert to the server. 
+```sh
+curl https://127.0.0.1:4001/v1/keys/foo -d value=bar -k -v --key myclient.key --cert myclient.crt
+```
+
+You should able to see
+```
+...
+SSLv3, TLS handshake, CERT verify (15):
+...
+TLS handshake, Finished (20)
+```
+
+And also the response from the server
+```json
+{"action":"SET","key":"/foo","value":"bar","newKey":true,"index":3}
+```
+
+Here is a good page to show you how to create a self-signed CA and generate cert and key.
+```url
+http://www.g-loaded.eu/2005/11/10/be-your-own-ca/
+```
+
 ### Setting up a cluster of three machines
 
 Next let's explore the use of etcd clustering. We use go-raft as the underlying distributed protocol which provides consistency and persistence of the data across all of the etcd instances.
@@ -314,3 +381,9 @@ curl http://127.0.0.1:4002/v1/keys/foo
 ```json
 {"action":"GET","key":"/foo","value":"bar","index":5}
 ```
+
+#### Using Https between server and client
+We have gave an example to show how to use tls between client and server.
+The way same here, except that you need to change ```-client*``` to ```-server*```.
+We require all the server using http or https. There should not be a mix.
+
