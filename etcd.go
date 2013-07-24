@@ -252,7 +252,9 @@ func startRaft(securityType int) {
 			raftServer.StartFollower()
 
 			for _, machine := range cluster {
-
+				if len(machine) == 0 {
+					continue
+				}
 				err = joinCluster(raftServer, machine)
 				if err != nil {
 					debug("cannot join to cluster via machine %s %s", machine, err)
