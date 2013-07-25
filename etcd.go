@@ -54,7 +54,7 @@ var maxSize int
 
 var snapshot bool
 
-var retryTime int
+var retryTimes int
 
 func init() {
 	flag.BoolVar(&verbose, "v", false, "verbose logging")
@@ -83,7 +83,7 @@ func init() {
 
 	flag.IntVar(&maxSize, "m", 1024, "the max size of result buffer")
 
-	flag.IntVar(&retryTime, "r", 3, "the max retry number when try to join a cluster")
+	flag.IntVar(&retryTimes, "r", 3, "the max retry number when try to join a cluster")
 }
 
 // CONSTANTS
@@ -105,7 +105,8 @@ const (
 	// Timeout for internal raft http connection
 	// The original timeout for http is 45 seconds
 	// which is too long for our usage.
-	HTTPTIMEOUT = 10 * time.Second
+	HTTPTIMEOUT   = 10 * time.Second
+	RETRYINTERVAL = 10
 )
 
 //------------------------------------------------------------------------------
@@ -260,7 +261,7 @@ func startRaft(securityType int) {
 
 			time.Sleep(time.Millisecond * 20)
 
-			for i := 0; i < retryTime; i++ {
+			for i := 0; i < retryTimes; i++ {
 
 				success := false
 				for _, machine := range cluster {
@@ -280,8 +281,8 @@ func startRaft(securityType int) {
 					break
 				}
 
-				warn("cannot join to cluster via all given machines, retry after 10 seconds")
-				time.Sleep(time.Second * 10)
+				warn("cannot join to cluster via all given machines, retry in %d seconds", RETRYINTERVAL)
+				time.Sleep(time.Second * RETRYINTERVAL)
 			}
 			if err != nil {
 				fatal("cannot join to cluster via all given machines after retry!")
