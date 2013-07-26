@@ -23,7 +23,7 @@ type SetCommand struct {
 
 // The name of the set command in the log
 func (c *SetCommand) CommandName() string {
-	return "set"
+	return "etcd:set"
 }
 
 // Set the key-value pair
@@ -56,7 +56,7 @@ type GetCommand struct {
 
 // The name of the get command in the log
 func (c *GetCommand) CommandName() string {
-	return "get"
+	return "etcd:get"
 }
 
 // Get the value of key
@@ -71,7 +71,7 @@ type DeleteCommand struct {
 
 // The name of the delete command in the log
 func (c *DeleteCommand) CommandName() string {
-	return "delete"
+	return "etcd:delete"
 }
 
 // Delete the key
@@ -87,7 +87,7 @@ type WatchCommand struct {
 
 // The name of the watch command in the log
 func (c *WatchCommand) CommandName() string {
-	return "watch"
+	return "etcd:watch"
 }
 
 func (c *WatchCommand) Apply(server *raft.Server) (interface{}, error) {
@@ -113,7 +113,7 @@ type JoinCommand struct {
 
 // The name of the join command in the log
 func (c *JoinCommand) CommandName() string {
-	return "join"
+	return "etcd:join"
 }
 
 // Join a server to the cluster
@@ -121,4 +121,8 @@ func (c *JoinCommand) Apply(raftServer *raft.Server) (interface{}, error) {
 	err := raftServer.AddPeer(c.Name)
 	addMachine(c.Name, c.Hostname, c.RaftPort, c.ClientPort)
 	return []byte("join success"), err
+}
+
+func (c *JoinCommand) NodeName() string {
+	return c.Name
 }
