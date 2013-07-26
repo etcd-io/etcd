@@ -83,7 +83,7 @@ func init() {
 
 	flag.IntVar(&maxSize, "m", 1024, "the max size of result buffer")
 
-	flag.IntVar(&retryTimes, "r", 3, "the max retry number when try to join a cluster")
+	flag.IntVar(&retryTimes, "r", 3, "the max retry attempts when trying to join a cluster")
 }
 
 // CONSTANTS
@@ -281,11 +281,11 @@ func startRaft(securityType int) {
 					break
 				}
 
-				warn("cannot join to cluster via all given machines, retry in %d seconds", RETRYINTERVAL)
+				warn("cannot join to cluster via given machines, retry in %d seconds", RETRYINTERVAL)
 				time.Sleep(time.Second * RETRYINTERVAL)
 			}
 			if err != nil {
-				fatal("cannot join to cluster via all given machines after retry!")
+				fatal("Cannot join the cluster via given machines after %x retries", retryTimes)
 			}
 			debug("%s success join to the cluster", raftServer.Name())
 		}
