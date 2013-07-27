@@ -240,7 +240,7 @@ which meas `foo=barbar` is a key-value pair under `/foo` and `foo_dir` is a dire
 #### Using HTTPS between server and client
 Etcd supports SSL/TLS and client cert authentication for clients to server, as well as server to server communication
 
-Before that we need to have a CA cert```clientCA.crt``` and signed key pair ```client.crt, client.key``` .
+Before that we need to have a CA cert`clientCA.crt` and signed key pair `client.crt`, `client.key` .
 
 This site has a good reference for how to generate self-signed key pairs
 ```url
@@ -251,8 +251,8 @@ http://www.g-loaded.eu/2005/11/10/be-your-own-ca/
 ./etcd -clientCert client.crt -clientKey client.key -i
 ```
 
-```-i``` is to ignore the previously created default configuration file.
-```-clientCert``` and ```-clientKey``` are the key and cert for transport layer security between client and server
+`-i` is to ignore the previously created default configuration file.
+`-clientCert` and `-clientKey` are the key and cert for transport layer security between client and server
 
 ```sh
 curl https://127.0.0.1:4001/v1/keys/foo -d value=bar -v -k
@@ -369,9 +369,13 @@ The first server we set up should be the leader, if it has not dead during these
 Now we can do normal SET and GET operations on keys as we explored earlier.
 
 ```sh
-curl http://127.0.0.1:4001/v1/keys/foo -d value=bar
+curl http://127.0.0.1:4001/v1/keys/foo -d value=bar -L
 ```
+When the client sends a sensitive command (`set`, `delete`, `testAndset` ) to the server, the command needs to be redirect to the leader of the cluster.
 
+So we add the ` -L ` flag to make curl follow location hints in http location header when there is a redirection http response.
+
+The response should be 
 ```json
 {"action":"SET","key":"/foo","value":"bar","newKey":true,"index":5}
 ```
