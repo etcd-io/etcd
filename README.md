@@ -240,7 +240,7 @@ which meas `foo=barbar` is a key-value pair under `/foo` and `foo_dir` is a dire
 #### Using HTTPS between server and client
 Etcd supports SSL/TLS and client cert authentication for clients to server, as well as server to server communication
 
-Before that we need to have a CA cert`clientCA.crt` and signed key pair `client.crt, client.key` .
+Before that we need to have a CA cert`clientCA.crt` and signed key pair `client.crt`, `client.key` .
 
 This site has a good reference for how to generate self-signed key pairs
 ```url
@@ -373,7 +373,7 @@ curl http://127.0.0.1:4001/v1/keys/foo -d value=bar -L
 ```
 When the client sends a sensitive command (`set`, `delete`, `testAndset` ) to the server, the command needs to be redirect to the leader of the cluster.
 
-So we add the ``` -L ``` flag to make curl follow location hints in http location header when there is a redirection http response.
+So we add the ` -L ` flag to make curl follow location hints in http location header when there is a redirection http response.
 
 The response should be 
 ```json
