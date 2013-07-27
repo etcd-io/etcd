@@ -369,9 +369,13 @@ The first server we set up should be the leader, if it has not dead during these
 Now we can do normal SET and GET operations on keys as we explored earlier.
 
 ```sh
-curl http://127.0.0.1:4001/v1/keys/foo -d value=bar
+curl http://127.0.0.1:4001/v1/keys/foo -d value=bar -L
 ```
+When the client sends a sensitive command (```set```, ```delete```, ```testAndset``` ) to the server, the command needs to be redirect to the leader of the cluster.
 
+So we add the ``` -L ``` flag to make curl follow location hints in http location header when there is a redirection http response.
+
+The response should be 
 ```json
 {"action":"SET","key":"/foo","value":"bar","newKey":true,"index":5}
 ```
