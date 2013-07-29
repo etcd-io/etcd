@@ -27,6 +27,7 @@ import (
 //------------------------------------------------------------------------------
 
 var verbose bool
+var veryVerbose bool
 
 var machines string
 var machinesFile string
@@ -58,6 +59,7 @@ var retryTimes int
 
 func init() {
 	flag.BoolVar(&verbose, "v", false, "verbose logging")
+	flag.BoolVar(&veryVerbose, "vv", false, "very verbose logging")
 
 	flag.StringVar(&machines, "C", "", "the ip address and port of a existing machines in the cluster, sepearate by comma")
 	flag.StringVar(&machinesFile, "CF", "", "the file contains a list of existing machines in the cluster, seperate by comma")
@@ -153,6 +155,11 @@ var info *Info
 
 func main() {
 	flag.Parse()
+
+	if veryVerbose {
+		verbose = true
+		raft.SetLogLevel(raft.Debug)
+	}
 
 	if machines != "" {
 		cluster = strings.Split(machines, ",")
