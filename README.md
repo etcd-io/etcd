@@ -43,7 +43,7 @@ This will bring up a node, which will be listening on internal port 7001 (for se
 Let’s set the first key-value pair to the node. In this case the key is `/message` and the value is `Hello world`.
 
 ```sh
-curl http://127.0.0.1:4001/v1/keys/message -d value="Hello world"
+curl -L http://127.0.0.1:4001/v1/keys/message -d value="Hello world"
 ```
 
 ```json
@@ -68,7 +68,7 @@ Notice we use a file system like structure to represent the key-value pairs. So 
 Get the value that we just set in `/message` by issuing a GET:
 
 ```sh
-curl http://127.0.0.1:4001/v1/keys/message
+curl -L http://127.0.0.1:4001/v1/keys/message
 ```
 
 ```json
@@ -79,7 +79,7 @@ curl http://127.0.0.1:4001/v1/keys/message
 Change the value of `/message` from `Hello world` to `Hello etcd` with another POST to the key:
 
 ```sh
-curl http://127.0.0.1:4001/v1/keys/message -d value="Hello etcd"
+curl -L http://127.0.0.1:4001/v1/keys/message -d value="Hello etcd"
 ```
 
 ```json
@@ -93,7 +93,7 @@ Notice that the `prevValue` is set to `Hello world`.
 Remove the `/message` key with a DELETE:
 
 ```sh
-curl http://127.0.0.1:4001/v1/keys/message -X DELETE
+curl -L http://127.0.0.1:4001/v1/keys/message -X DELETE
 ```
 
 ```json
@@ -105,7 +105,7 @@ curl http://127.0.0.1:4001/v1/keys/message -X DELETE
 Keys in etcd can be set to expire after a specified number of seconds. That is done by setting a TTL (time to live) on the key when you POST:
 
 ```sh
-curl http://127.0.0.1:4001/v1/keys/foo -d value=bar -d ttl=5
+curl -L http://127.0.0.1:4001/v1/keys/foo -d value=bar -d ttl=5
 ```
 
 ```json
@@ -121,7 +121,7 @@ Note the last two new fields in response:
 Now you can try to get the key by sending:
 
 ```sh
-curl http://127.0.0.1:4001/v1/keys/foo
+curl -L http://127.0.0.1:4001/v1/keys/foo
 ```
 
 If the TTL has expired, the key will be deleted, and you will be returned a 404.
@@ -138,7 +138,7 @@ We can watch a path prefix and get notifications if any key change under that pr
 In one terminal, we send a watch request:
 
 ```sh
-curl http://127.0.0.1:4001/v1/watch/foo
+curl -L http://127.0.0.1:4001/v1/watch/foo
 ```
 
 Now, we are watching at the path prefix `/foo` and wait for any changes under this path.
@@ -146,7 +146,7 @@ Now, we are watching at the path prefix `/foo` and wait for any changes under th
 In another terminal, we set a key `/foo/foo` to `barbar` to see what will happen:
 
 ```sh
-curl http://127.0.0.1:4001/v1/keys/foo/foo -d value=barbar
+curl -L http://127.0.0.1:4001/v1/keys/foo/foo -d value=barbar
 ```
 
 The first terminal should get the notification and return with the same response as the set request.
@@ -160,7 +160,7 @@ However, the watch command can do more than this. Using the the index we can wat
 Let's try to watch for the set command of index 6 again:
 
 ```sh
-curl http://127.0.0.1:4001/v1/watch/foo -d index=7
+curl -L http://127.0.0.1:4001/v1/watch/foo -d index=7
 ```
 
 The watch command returns immediately with the same response as previous.
@@ -176,14 +176,14 @@ The basic logic is to test whether the given previous value is equal to the valu
 Here is a simple example. Let's create a key-value pair first: `testAndSet=one`.
 
 ```sh
-curl http://127.0.0.1:4001/v1/keys/testAndSet -d value=one
+curl -L http://127.0.0.1:4001/v1/keys/testAndSet -d value=one
 ```
 
 Let's try an invaild `TestAndSet` command.
 We can give another parameter prevValue to set command to make it a TestAndSet command.
 
 ```sh
-curl http://127.0.0.1:4001/v1/keys/testAndSet -d prevValue=two -d value=three
+curl -L http://127.0.0.1:4001/v1/keys/testAndSet -d prevValue=two -d value=three
 ```
 
 This will try to test if the previous of the key is two, it is change it to three.
@@ -197,7 +197,7 @@ which means `testAndSet` failed.
 Let us try a vaild one.
 
 ```sh
-curl http://127.0.0.1:4001/v1/keys/testAndSet -d prevValue=one -d value=two
+curl -L http://127.0.0.1:4001/v1/keys/testAndSet -d prevValue=one -d value=two
 ```
 
 The response should be
@@ -220,13 +220,13 @@ We already have `/foo/foo=barbar`
 We create another one `/foo/foo_dir/foo=barbarbar`
 
 ```sh
-curl http://127.0.0.1:4001/v1/keys/foo/foo_dir/bar -d value=barbarbar
+curl -L http://127.0.0.1:4001/v1/keys/foo/foo_dir/bar -d value=barbarbar
 ```
 
 Let us list them next.
 
 ```sh
-curl http://127.0.0.1:4001/v1/get/foo/
+curl -L http://127.0.0.1:4001/v1/get/foo/
 ```
 
 We should see the response as an array of items
@@ -255,13 +255,13 @@ http://www.g-loaded.eu/2005/11/10/be-your-own-ca/
 `-clientCert` and `-clientKey` are the key and cert for transport layer security between client and server
 
 ```sh
-curl https://127.0.0.1:4001/v1/keys/foo -d value=bar -v -k
+curl -L https://127.0.0.1:4001/v1/keys/foo -d value=bar -v -k
 ```
 
 or 
 
 ```sh
-curl https://127.0.0.1:4001/v1/keys/foo -d value=bar -v -cacert clientCA.crt
+curl -L https://127.0.0.1:4001/v1/keys/foo -d value=bar -v -cacert clientCA.crt
 ```
 
 You should be able to see the handshake succeed.
@@ -285,12 +285,12 @@ We also can do authentication using CA cert. The clients will also need to provi
 
 Try the same request to this server.
 ```sh
-curl https://127.0.0.1:4001/v1/keys/foo -d value=bar -v -k
+curl -L https://127.0.0.1:4001/v1/keys/foo -d value=bar -v -k
 ```
 or 
 
 ```sh
-curl https://127.0.0.1:4001/v1/keys/foo -d value=bar -v -cacert clientCA.crt
+curl -L https://127.0.0.1:4001/v1/keys/foo -d value=bar -v -cacert clientCA.crt
 ```
 
 The request should be rejected by the server.
@@ -302,13 +302,13 @@ routines:SSL3_READ_BYTES:sslv3 alert bad certificate
 
 We need to give the CA signed cert to the server. 
 ```sh
-curl https://127.0.0.1:4001/v1/keys/foo -d value=bar -v --key myclient.key --cert myclient.crt -k
+curl -L https://127.0.0.1:4001/v1/keys/foo -d value=bar -v --key myclient.key --cert myclient.crt -k
 ```
 
 or
 
 ```sh
-curl https://127.0.0.1:4001/v1/keys/foo -d value=bar -v --key myclient.key --cert myclient.crt -cacert clientCA.crt
+curl -L https://127.0.0.1:4001/v1/keys/foo -d value=bar -v --key myclient.key --cert myclient.crt -cacert clientCA.crt
 ```
 
 You should able to see
@@ -346,7 +346,7 @@ Let the join two more nodes to this cluster using the -C argument:
 Get the machines in the cluster
 
 ```sh
-curl http://127.0.0.1:4001/machines
+curl -L http://127.0.0.1:4001/machines
 ```
 
 We should see there are three nodes in the cluster
@@ -358,7 +358,7 @@ We should see there are three nodes in the cluster
 Also try to get the current leader in the cluster
 
 ```
-curl http://127.0.0.1:4001/leader
+curl -L http://127.0.0.1:4001/leader
 ```
 The first server we set up should be the leader, if it has not dead during these commands.
 
@@ -369,8 +369,9 @@ The first server we set up should be the leader, if it has not dead during these
 Now we can do normal SET and GET operations on keys as we explored earlier.
 
 ```sh
-curl http://127.0.0.1:4001/v1/keys/foo -d value=bar -L
+curl -L http://127.0.0.1:4001/v1/keys/foo -d value=bar
 ```
+
 When the client sends a sensitive command (`set`, `delete`, `testAndset` ) to the server, the command needs to be redirect to the leader of the cluster.
 
 So we add the ` -L ` flag to make curl follow location hints in http location header when there is a redirection http response.
@@ -385,13 +386,13 @@ The response should be
 Let's kill the leader of the cluster and get the value from the other machine:
 
 ```sh
-curl http://127.0.0.1:4002/v1/keys/foo
+curl -L http://127.0.0.1:4002/v1/keys/foo
 ```
 
 A new leader should have been elected.
 
 ```
-curl http://127.0.0.1:4001/leader
+curl -L http://127.0.0.1:4001/leader
 ```
 
 ```
@@ -413,7 +414,7 @@ OK. Next let us kill all the nodes to test persistence. And restart all the node
 Your request for the `foo` key will return the correct value:
 
 ```sh
-curl http://127.0.0.1:4002/v1/keys/foo
+curl -L http://127.0.0.1:4002/v1/keys/foo
 ```
 
 ```json
