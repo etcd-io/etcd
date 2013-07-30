@@ -5,7 +5,7 @@ import (
 	"github.com/coreos/go-etcd/etcd"
 	"math/rand"
 	"os"
-	"strconv"
+	//"strconv"
 	"testing"
 	"time"
 )
@@ -190,81 +190,4 @@ func TestMultiNodeRecovery(t *testing.T) {
 	fmt.Println("stop")
 	stop <- true
 	<-stop
-}
-
-// Sending set commands
-func set(stop chan bool) {
-
-	stopSet := false
-	i := 0
-
-	for {
-		key := fmt.Sprintf("%s_%v", "foo", i)
-
-		result, err := etcd.Set(key, "bar", 0)
-
-		if err != nil || result.Key != "/"+key || result.Value != "bar" {
-			select {
-			case <-stop:
-				stopSet = true
-
-			default:
-				fmt.Println("Set failed!")
-				return
-			}
-		}
-
-		select {
-		case <-stop:
-			stopSet = true
-
-		default:
-		}
-
-		if stopSet {
-			break
-		}
-
-		i++
-	}
-	fmt.Println("set stop")
-	stop <- true
-}
-
-// Create a cluster of etcd nodes
-func createCluster(size int, procAttr *os.ProcAttr) ([][]string, []*os.Process, error) {
-	argGroup := make([][]string, size)
-	for i := 0; i < size; i++ {
-		if i == 0 {
-			argGroup[i] = []string{"etcd", "-d=/tmp/node1"}
-		} else {
-			strI := strconv.Itoa(i + 1)
-			argGroup[i] = []string{"etcd", "-c=400" + strI, "-s=700" + strI, "-d=/tmp/node" + strI, "-C=127.0.0.1:7001"}
-		}
-	}
-
-	etcds := make([]*os.Process, size)
-
-	for i, _ := range etcds {
-		var err error
-		etcds[i], err = os.StartProcess("etcd", append(argGroup[i], "-i"), procAttr)
-		if err != nil {
-			return nil, nil, err
-		}
-	}
-
-	return argGroup, etcds, nil
-}
-
-// Destroy all the nodes in the cluster
-func destroyCluster(etcds []*os.Process) error {
-	for i, etcd := range etcds {
-		err := etcd.Kill()
-		fmt.Println("kill ", i)
-		if err != nil {
-			panic(err.Error())
-		}
-		etcd.Release()
-	}
-	return nil
 }
