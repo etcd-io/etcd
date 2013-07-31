@@ -33,8 +33,6 @@ func set(stop chan bool) {
 				stopSet = true
 
 			default:
-				fmt.Println("Set failed!")
-				return
 			}
 		}
 
