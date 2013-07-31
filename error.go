@@ -21,6 +21,9 @@ func init() {
 	// raft related errors
 	errors[300] = "Raft Internal Error"
 	errors[301] = "During Leader Election"
+
+	// keyword
+	errors[400] = "The prefix of the given key is a keyword in etcd"
 }
 
 type jsonError struct {
