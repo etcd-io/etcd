@@ -36,7 +36,7 @@ func TestSaveAndRecovery(t *testing.T) {
 
 	s := CreateStore(100)
 	s.Set("foo", "bar", time.Unix(0, 0), 1)
-	s.Set("foo2", "bar2", time.Now().Add(time.Second * 5), 2)
+	s.Set("foo2", "bar2", time.Now().Add(time.Second*5), 2)
 	state, err := s.Save()
 
 	if err != nil {
