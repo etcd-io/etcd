@@ -13,6 +13,8 @@ func init() {
 	errors[100] = "Key Not Found"
 	errors[101] = "The given PrevValue is not equal to the value of the key"
 	errors[102] = "Not A File"
+	errors[103] = "Reach the max number of machines in the cluster"
+
 	// Post form related errors
 	errors[200] = "Value is Required in POST form"
 	errors[201] = "PrevValue is Required in POST form"
@@ -24,6 +26,7 @@ func init() {
 
 	// keyword
 	errors[400] = "The prefix of the given key is a keyword in etcd"
+
 }
 
 type jsonError struct {

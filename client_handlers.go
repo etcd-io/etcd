@@ -118,6 +118,11 @@ func dispatch(c Command, w *http.ResponseWriter, req *http.Request, client bool)
 				(*w).Write(newJsonError(102, err.Error()))
 				return
 			}
+			if err.Error() == errors[103] {
+				(*w).WriteHeader(http.StatusBadRequest)
+				(*w).Write(newJsonError(103, ""))
+				return
+			}
 			(*w).WriteHeader(http.StatusInternalServerError)
 			(*w).Write(newJsonError(300, err.Error()))
 			return

@@ -57,6 +57,8 @@ var snapshot bool
 
 var retryTimes int
 
+var maxClusterSize int
+
 func init() {
 	flag.BoolVar(&verbose, "v", false, "verbose logging")
 	flag.BoolVar(&veryVerbose, "vv", false, "very verbose logging")
@@ -86,6 +88,8 @@ func init() {
 	flag.IntVar(&maxSize, "m", 1024, "the max size of result buffer")
 
 	flag.IntVar(&retryTimes, "r", 3, "the max retry attempts when trying to join a cluster")
+
+	flag.IntVar(&maxClusterSize, "maxsize", 9, "the max size of the cluster")
 }
 
 // CONSTANTS
@@ -276,6 +280,10 @@ func startRaft(securityType int) {
 					}
 					err = joinCluster(raftServer, machine)
 					if err != nil {
+						if err.Error() == errors[103] {
+							fmt.Println(err)
+							os.Exit(1)
+						}
 						debug("cannot join to cluster via machine %s %s", machine, err)
 					} else {
 						success = true
@@ -602,6 +610,9 @@ func joinCluster(s *raft.Server, serverName string) error {
 				debug("Send Join Request to %s", address)
 				json.NewEncoder(&b).Encode(command)
 				resp, err = t.Post(fmt.Sprintf("%s/join", address), &b)
+			} else if resp.StatusCode == http.StatusBadRequest {
+				debug("Reach max number machines in the cluster")
+				return fmt.Errorf(errors[103])
 			} else {
 				return fmt.Errorf("Unable to join")
 			}
