@@ -55,8 +55,8 @@ func TestKillLeader(t *testing.T) {
 		totalTime += take
 		avgTime := totalTime / (time.Duration)(i+1)
 
-		fmt.Println("Leader election time is ", take, "with election timeout", ELECTIONTIMTOUT)
-		fmt.Println("Leader election time average is", avgTime, "with election timeout", ELECTIONTIMTOUT)
+		fmt.Println("Leader election time is ", take, "with election timeout", ELECTIONTIMEOUT)
+		fmt.Println("Leader election time average is", avgTime, "with election timeout", ELECTIONTIMEOUT)
 		etcds[num], err = os.StartProcess("etcd", argGroup[num], procAttr)
 	}
 }
