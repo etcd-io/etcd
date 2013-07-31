@@ -4,4 +4,5 @@ package store
 var keywords = map[string]bool{
 	"/acoounts":       true,
 	"/ephemeralNodes": true,
+	"/machines":	   true,
 }
