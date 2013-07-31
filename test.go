@@ -11,9 +11,10 @@ import (
 	"time"
 )
 
-var client = http.Client{Transport: &http.Transport{
-	Dial: dialTimeoutFast,
-},
+var client = http.Client{
+	Transport: &http.Transport{
+		Dial: dialTimeoutFast,
+	},
 }
 
 // Sending set commands
@@ -95,12 +96,15 @@ func destroyCluster(etcds []*os.Process) error {
 func leaderMonitor(size int, allowDeadNum int, leaderChan chan string) {
 	leaderMap := make(map[int]string)
 	baseAddrFormat := "http://0.0.0.0:400%d/leader"
+
 	for {
 		knownLeader := "unknown"
 		dead := 0
 		var i int
+
 		for i = 0; i < size; i++ {
 			leader, err := getLeader(fmt.Sprintf(baseAddrFormat, i+1))
+
 			if err == nil {
 				leaderMap[i] = leader
 
@@ -110,14 +114,18 @@ func leaderMonitor(size int, allowDeadNum int, leaderChan chan string) {
 					if leader != knownLeader {
 						break
 					}
+
 				}
+
 			} else {
 				dead++
 				if dead > allowDeadNum {
 					break
 				}
 			}
+
 		}
+
 		if i == size {
 			select {
 			case <-leaderChan:
@@ -127,8 +135,10 @@ func leaderMonitor(size int, allowDeadNum int, leaderChan chan string) {
 			}
 
 		}
+
 		time.Sleep(time.Millisecond * 10)
 	}
+
 }
 
 func getLeader(addr string) (string, error) {
