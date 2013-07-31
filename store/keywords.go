@@ -13,7 +13,7 @@ var keywords = map[string]bool{
 	"/machines":       true,
 }
 
-// CheckKeyWord will check if the key contains the keyword.
+// CheckKeyword will check if the key contains the keyword.
 // For now, we only check for prefix.
 func CheckKeyword(key string) bool {
 	key = path.Clean("/" + key)
