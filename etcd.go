@@ -101,7 +101,7 @@ const (
 )
 
 const (
-	ELECTIONTIMTOUT  = 200 * time.Millisecond
+	ELECTIONTIMEOUT  = 200 * time.Millisecond
 	HEARTBEATTIMEOUT = 50 * time.Millisecond
 
 	// Timeout for internal raft http connection
@@ -233,7 +233,7 @@ func startRaft(securityType int) {
 		}
 	}
 
-	raftServer.SetElectionTimeout(ELECTIONTIMTOUT)
+	raftServer.SetElectionTimeout(ELECTIONTIMEOUT)
 	raftServer.SetHeartbeatTimeout(HEARTBEATTIMEOUT)
 
 	raftServer.Start()
