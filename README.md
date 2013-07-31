@@ -226,7 +226,7 @@ curl -L http://127.0.0.1:4001/v1/keys/foo/foo_dir/bar -d value=barbarbar
 Let us list them next.
 
 ```sh
-curl -L http://127.0.0.1:4001/v1/get/foo/
+curl -L http://127.0.0.1:4001/v1/keys/foo/
 ```
 
 We should see the response as an array of items
