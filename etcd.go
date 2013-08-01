@@ -12,7 +12,6 @@ import (
 	"github.com/coreos/etcd/web"
 	"github.com/coreos/go-raft"
 	"io/ioutil"
-	"log"
 	"net"
 	"net/http"
 	"os"
@@ -169,7 +168,7 @@ func main() {
 	if cpuprofile != "" {
 		f, err := os.Create(cpuprofile)
 		if err != nil {
-			log.Fatal(err)
+			fatal(err)
 		}
 		pprof.StartCPUProfile(f)
 		defer pprof.StopCPUProfile()
@@ -196,7 +195,7 @@ func main() {
 	} else if machinesFile != "" {
 		b, err := ioutil.ReadFile(machinesFile)
 		if err != nil {
-			fatal("Unable to read the given machines file: %s", err)
+			fatalf("Unable to read the given machines file: %s", err)
 		}
 		cluster = strings.Split(string(b), ",")
 	}
@@ -206,7 +205,7 @@ func main() {
 
 	// Read server info from file or grab it from user.
 	if err := os.MkdirAll(dirPath, 0744); err != nil {
-		fatal("Unable to create path: %s", err)
+		fatalf("Unable to create path: %s", err)
 	}
 
 	info = getInfo(dirPath)
@@ -249,7 +248,7 @@ func startRaft(securityType int) {
 	raftServer, err = raft.NewServer(raftName, dirPath, raftTransporter, etcdStore, nil)
 
 	if err != nil {
-		fatal(fmt.Sprintln(err))
+		fatal(err)
 	}
 
 	// LoadSnapshot
@@ -257,9 +256,9 @@ func startRaft(securityType int) {
 		err = raftServer.LoadSnapshot()
 
 		if err == nil {
-			debug("%s finished load snapshot", raftServer.Name())
+			debugf("%s finished load snapshot", raftServer.Name())
 		} else {
-			debug(err.Error())
+			debug(err)
 		}
 	}
 
@@ -290,7 +289,7 @@ func startRaft(securityType int) {
 					break
 				}
 			}
-			debug("%s start as a leader", raftServer.Name())
+			debugf("%s start as a leader", raftServer.Name())
 
 			// start as a follower in a existing cluster
 		} else {
@@ -310,7 +309,7 @@ func startRaft(securityType int) {
 							fmt.Println(err)
 							os.Exit(1)
 						}
-						debug("cannot join to cluster via machine %s %s", machine, err)
+						debugf("cannot join to cluster via machine %s %s", machine, err)
 					} else {
 						success = true
 						break
@@ -321,18 +320,18 @@ func startRaft(securityType int) {
 					break
 				}
 
-				warn("cannot join to cluster via given machines, retry in %d seconds", RETRYINTERVAL)
+				warnf("cannot join to cluster via given machines, retry in %d seconds", RETRYINTERVAL)
 				time.Sleep(time.Second * RETRYINTERVAL)
 			}
 			if err != nil {
-				fatal("Cannot join the cluster via given machines after %x retries", retryTimes)
+				fatalf("Cannot join the cluster via given machines after %x retries", retryTimes)
 			}
-			debug("%s success join to the cluster", raftServer.Name())
+			debugf("%s success join to the cluster", raftServer.Name())
 		}
 
 	} else {
 		// rejoin the previous cluster
-		debug("%s restart as a follower", raftServer.Name())
+		debugf("%s restart as a follower", raftServer.Name())
 	}
 
 	// open the snapshot
@@ -368,7 +367,7 @@ func createTransporter(st int) transporter {
 		tlsCert, err := tls.LoadX509KeyPair(serverCertFile, serverKeyFile)
 
 		if err != nil {
-			fatal(fmt.Sprintln(err))
+			fatal(err)
 		}
 
 		tr := &http.Transport{
@@ -407,11 +406,11 @@ func startRaftTransport(port int, st int) {
 
 	case HTTP:
 		fmt.Printf("raft server [%s] listen on http port %v\n", hostname, port)
-		log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), nil))
+		fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), nil))
 
 	case HTTPS:
 		fmt.Printf("raft server [%s] listen on https port %v\n", hostname, port)
-		log.Fatal(http.ListenAndServeTLS(fmt.Sprintf(":%d", port), serverCertFile, serverKeyFile, nil))
+		fatal(http.ListenAndServeTLS(fmt.Sprintf(":%d", port), serverCertFile, serverKeyFile, nil))
 
 	case HTTPSANDVERIFY:
 
@@ -423,7 +422,7 @@ func startRaftTransport(port int, st int) {
 			Addr: fmt.Sprintf(":%d", port),
 		}
 		fmt.Printf("raft server [%s] listen on https port %v\n", hostname, port)
-		log.Fatal(server.ListenAndServeTLS(serverCertFile, serverKeyFile), nil)
+		fatal(server.ListenAndServeTLS(serverCertFile, serverKeyFile))
 	}
 
 }
@@ -440,7 +439,7 @@ func startClientTransport(port int, st int) {
 
 	case HTTP:
 		fmt.Printf("etcd [%s] listen on http port %v\n", hostname, clientPort)
-		log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), nil))
+		fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), nil))
 
 	case HTTPS:
 		fmt.Printf("etcd [%s] listen on https port %v\n", hostname, clientPort)
@@ -456,7 +455,7 @@ func startClientTransport(port int, st int) {
 			Addr: fmt.Sprintf(":%d", port),
 		}
 		fmt.Printf("etcd [%s] listen on https port %v\n", hostname, clientPort)
-		log.Fatal(server.ListenAndServeTLS(clientCertFile, clientKeyFile), nil)
+		fatal(server.ListenAndServeTLS(clientCertFile, clientKeyFile))
 	}
 }
 
@@ -529,10 +528,10 @@ func getInfo(path string) *Info {
 
 	if file, err := os.Open(infoPath); err == nil {
 		if content, err := ioutil.ReadAll(file); err != nil {
-			fatal("Unable to read info: %v", err)
+			fatalf("Unable to read info: %v", err)
 		} else {
 			if err = json.Unmarshal(content, &info); err != nil {
-				fatal("Unable to parse info: %v", err)
+				fatalf("Unable to parse info: %v", err)
 			}
 		}
 		file.Close()
@@ -564,7 +563,7 @@ func getInfo(path string) *Info {
 		content, _ := json.Marshal(info)
 		content = []byte(string(content) + "\n")
 		if err := ioutil.WriteFile(infoPath, content, 0644); err != nil {
-			fatal("Unable to write info to file: %v", err)
+			fatalf("Unable to write info to file: %v", err)
 		}
 	}
 
@@ -580,7 +579,7 @@ func createCertPool(CAFile string) *x509.CertPool {
 	cert, err := x509.ParseCertificate(block.Bytes)
 
 	if err != nil {
-		fatal(fmt.Sprintln(err))
+		fatal(err)
 	}
 
 	certPool := x509.NewCertPool()
@@ -609,7 +608,7 @@ func joinCluster(s *raft.Server, serverName string) error {
 		panic("wrong type")
 	}
 
-	debug("Send Join Request to %s", serverName)
+	debugf("Send Join Request to %s", serverName)
 
 	resp, err := t.Post(fmt.Sprintf("%s/join", serverName), &b)
 
@@ -624,8 +623,8 @@ func joinCluster(s *raft.Server, serverName string) error {
 			}
 			if resp.StatusCode == http.StatusTemporaryRedirect {
 				address := resp.Header.Get("Location")
-				debug("Leader is %s", address)
-				debug("Send Join Request to %s", address)
+				debugf("Leader is %s", address)
+				debugf("Send Join Request to %s", address)
 				json.NewEncoder(&b).Encode(command)
 				resp, err = t.Post(fmt.Sprintf("%s/join", address), &b)
 			} else if resp.StatusCode == http.StatusBadRequest {
