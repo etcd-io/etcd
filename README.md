@@ -355,7 +355,7 @@ We should see there are three nodes in the cluster
 0.0.0.0:4001,0.0.0.0:4002,0.0.0.0:4003
 ```
 
-You can get the machinse in another way
+Machine list is also available via this API
 
 ```sh 
 curl -L http://127.0.0.1:4001/v1/keys/machines
