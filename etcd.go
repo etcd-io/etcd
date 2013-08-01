@@ -16,6 +16,8 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/signal"
+	"runtime/pprof"
 	"strings"
 	"time"
 )
@@ -59,6 +61,8 @@ var retryTimes int
 
 var maxClusterSize int
 
+var cpuprofile string
+
 func init() {
 	flag.BoolVar(&verbose, "v", false, "verbose logging")
 	flag.BoolVar(&veryVerbose, "vv", false, "very verbose logging")
@@ -90,6 +94,8 @@ func init() {
 	flag.IntVar(&retryTimes, "r", 3, "the max retry attempts when trying to join a cluster")
 
 	flag.IntVar(&maxClusterSize, "maxsize", 9, "the max size of the cluster")
+
+	flag.StringVar(&cpuprofile, "cpuprofile", "", "write cpu profile to file")
 }
 
 // CONSTANTS
@@ -159,6 +165,26 @@ var info *Info
 
 func main() {
 	flag.Parse()
+
+	if cpuprofile != "" {
+		f, err := os.Create(cpuprofile)
+		if err != nil {
+			log.Fatal(err)
+		}
+		pprof.StartCPUProfile(f)
+		defer pprof.StopCPUProfile()
+
+		c := make(chan os.Signal, 1)
+		signal.Notify(c, os.Interrupt)
+		go func() {
+			for sig := range c {
+				log.Printf("captured %v, stopping profiler and exiting..", sig)
+				pprof.StopCPUProfile()
+				os.Exit(1)
+			}
+		}()
+
+	}
 
 	if veryVerbose {
 		verbose = true
