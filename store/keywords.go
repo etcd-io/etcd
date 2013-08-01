@@ -8,9 +8,8 @@ import (
 // keywords for internal useage
 // Key for string keyword; Value for only checking prefix
 var keywords = map[string]bool{
-	"/acoounts":       true,
+	"/_etcd":       true,
 	"/ephemeralNodes": true,
-	"/machines":       true,
 }
 
 // CheckKeyword will check if the key contains the keyword.
