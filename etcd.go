@@ -178,7 +178,7 @@ func main() {
 		signal.Notify(c, os.Interrupt)
 		go func() {
 			for sig := range c {
-				log.Printf("captured %v, stopping profiler and exiting..", sig)
+				fmt.Printf("captured %v, stopping profiler and exiting..", sig)
 				pprof.StopCPUProfile()
 				os.Exit(1)
 			}

@@ -103,7 +103,8 @@ func dispatch(c Command, w *http.ResponseWriter, req *http.Request, client bool)
 	if raftServer.State() == "leader" {
 		if body, err := raftServer.Do(c); err != nil {
 			if _, ok := err.(store.NotFoundError); ok {
-				http.NotFound((*w), req)
+				(*w).WriteHeader(http.StatusNotFound)
+				(*w).Write(newJsonError(100, err.Error()))
 				return
 			}
 
@@ -129,7 +130,8 @@ func dispatch(c Command, w *http.ResponseWriter, req *http.Request, client bool)
 		} else {
 
 			if body == nil {
-				http.NotFound((*w), req)
+				(*w).WriteHeader(http.StatusNotFound)
+				(*w).Write(newJsonError(100, err.Error()))
 			} else {
 				body, ok := body.([]byte)
 				// this should not happen
@@ -235,7 +237,8 @@ func GetHttpHandler(w *http.ResponseWriter, req *http.Request) {
 	if body, err := command.Apply(raftServer); err != nil {
 
 		if _, ok := err.(store.NotFoundError); ok {
-			http.NotFound((*w), req)
+			(*w).WriteHeader(http.StatusNotFound)
+			(*w).Write(newJsonError(100, err.Error()))
 			return
 		}
 
