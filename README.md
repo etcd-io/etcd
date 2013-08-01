@@ -355,6 +355,18 @@ We should see there are three nodes in the cluster
 0.0.0.0:4001,0.0.0.0:4002,0.0.0.0:4003
 ```
 
+Machine list is also available via this API
+
+```sh 
+curl -L http://127.0.0.1:4001/v1/keys/_etcd/machines
+```
+
+```json
+[{"action":"GET","key":"/machines/node1","value":"0.0.0.0,7001,4001","index":4},{"action":"GET","key":"/machines/node3","value":"0.0.0.0,7002,4002","index":4},{"action":"GET","key":"/machines/node4","value":"0.0.0.0,7003,4003","index":4}]
+```
+
+The key of the machine is based on the ```commit index``` when it was added. The value of the machine is ```hostname```, ```raft port``` and ```client port```.
+
 Also try to get the current leader in the cluster
 
 ```

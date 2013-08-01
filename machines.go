@@ -28,3 +28,8 @@ func getClientAddr(name string) (string, bool) {
 
 	return addr, true
 }
+
+// machineNum returns the number of machines in the cluster
+func machineNum() int {
+	return len(machinesMap)
+}
