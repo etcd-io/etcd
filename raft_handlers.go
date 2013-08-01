@@ -13,7 +13,7 @@ import (
 
 // Get all the current logs
 func GetLogHttpHandler(w http.ResponseWriter, req *http.Request) {
-	debug("[recv] GET %s/log", raftTransporter.scheme+raftServer.Name())
+	debugf("[recv] GET %s/log", raftTransporter.scheme+raftServer.Name())
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(raftServer.LogEntries())
@@ -24,14 +24,14 @@ func VoteHttpHandler(w http.ResponseWriter, req *http.Request) {
 	rvreq := &raft.RequestVoteRequest{}
 	err := decodeJsonRequest(req, rvreq)
 	if err == nil {
-		debug("[recv] POST %s/vote [%s]", raftTransporter.scheme+raftServer.Name(), rvreq.CandidateName)
+		debugf("[recv] POST %s/vote [%s]", raftTransporter.scheme+raftServer.Name(), rvreq.CandidateName)
 		if resp := raftServer.RequestVote(rvreq); resp != nil {
 			w.WriteHeader(http.StatusOK)
 			json.NewEncoder(w).Encode(resp)
 			return
 		}
 	}
-	warn("[vote] ERROR: %v", err)
+	warnf("[vote] ERROR: %v", err)
 	w.WriteHeader(http.StatusInternalServerError)
 }
 
@@ -41,17 +41,17 @@ func AppendEntriesHttpHandler(w http.ResponseWriter, req *http.Request) {
 	err := decodeJsonRequest(req, aereq)
 
 	if err == nil {
-		debug("[recv] POST %s/log/append [%d]", raftTransporter.scheme+raftServer.Name(), len(aereq.Entries))
+		debugf("[recv] POST %s/log/append [%d]", raftTransporter.scheme+raftServer.Name(), len(aereq.Entries))
 		if resp := raftServer.AppendEntries(aereq); resp != nil {
 			w.WriteHeader(http.StatusOK)
 			json.NewEncoder(w).Encode(resp)
 			if !resp.Success {
-				debug("[Append Entry] Step back")
+				debugf("[Append Entry] Step back")
 			}
 			return
 		}
 	}
-	warn("[Append Entry] ERROR: %v", err)
+	warnf("[Append Entry] ERROR: %v", err)
 	w.WriteHeader(http.StatusInternalServerError)
 }
 
@@ -60,14 +60,14 @@ func SnapshotHttpHandler(w http.ResponseWriter, req *http.Request) {
 	aereq := &raft.SnapshotRequest{}
 	err := decodeJsonRequest(req, aereq)
 	if err == nil {
-		debug("[recv] POST %s/snapshot/ ", raftTransporter.scheme+raftServer.Name())
+		debugf("[recv] POST %s/snapshot/ ", raftTransporter.scheme+raftServer.Name())
 		if resp := raftServer.RequestSnapshot(aereq); resp != nil {
 			w.WriteHeader(http.StatusOK)
 			json.NewEncoder(w).Encode(resp)
 			return
 		}
 	}
-	warn("[Snapshot] ERROR: %v", err)
+	warnf("[Snapshot] ERROR: %v", err)
 	w.WriteHeader(http.StatusInternalServerError)
 }
 
@@ -76,20 +76,20 @@ func SnapshotRecoveryHttpHandler(w http.ResponseWriter, req *http.Request) {
 	aereq := &raft.SnapshotRecoveryRequest{}
 	err := decodeJsonRequest(req, aereq)
 	if err == nil {
-		debug("[recv] POST %s/snapshotRecovery/ ", raftTransporter.scheme+raftServer.Name())
+		debugf("[recv] POST %s/snapshotRecovery/ ", raftTransporter.scheme+raftServer.Name())
 		if resp := raftServer.SnapshotRecoveryRequest(aereq); resp != nil {
 			w.WriteHeader(http.StatusOK)
 			json.NewEncoder(w).Encode(resp)
 			return
 		}
 	}
-	warn("[Snapshot] ERROR: %v", err)
+	warnf("[Snapshot] ERROR: %v", err)
 	w.WriteHeader(http.StatusInternalServerError)
 }
 
 // Get the port that listening for client connecting of the server
 func ClientHttpHandler(w http.ResponseWriter, req *http.Request) {
-	debug("[recv] Get %s/client/ ", raftTransporter.scheme+raftServer.Name())
+	debugf("[recv] Get %s/client/ ", raftTransporter.scheme+raftServer.Name())
 	w.WriteHeader(http.StatusOK)
 	client := hostname + ":" + strconv.Itoa(clientPort)
 	w.Write([]byte(client))
@@ -101,7 +101,7 @@ func JoinHttpHandler(w http.ResponseWriter, req *http.Request) {
 	command := &JoinCommand{}
 
 	if err := decodeJsonRequest(req, command); err == nil {
-		debug("Receive Join Request from %s", command.Name)
+		debugf("Receive Join Request from %s", command.Name)
 		dispatch(command, &w, req, false)
 	} else {
 		w.WriteHeader(http.StatusInternalServerError)
