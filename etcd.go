@@ -16,6 +16,8 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/signal"
+	"runtime/pprof"
 	"strings"
 	"time"
 )
@@ -57,6 +59,10 @@ var snapshot bool
 
 var retryTimes int
 
+var maxClusterSize int
+
+var cpuprofile string
+
 func init() {
 	flag.BoolVar(&verbose, "v", false, "verbose logging")
 	flag.BoolVar(&veryVerbose, "vv", false, "very verbose logging")
@@ -86,6 +92,10 @@ func init() {
 	flag.IntVar(&maxSize, "m", 1024, "the max size of result buffer")
 
 	flag.IntVar(&retryTimes, "r", 3, "the max retry attempts when trying to join a cluster")
+
+	flag.IntVar(&maxClusterSize, "maxsize", 9, "the max size of the cluster")
+
+	flag.StringVar(&cpuprofile, "cpuprofile", "", "write cpu profile to file")
 }
 
 // CONSTANTS
@@ -155,6 +165,26 @@ var info *Info
 
 func main() {
 	flag.Parse()
+
+	if cpuprofile != "" {
+		f, err := os.Create(cpuprofile)
+		if err != nil {
+			log.Fatal(err)
+		}
+		pprof.StartCPUProfile(f)
+		defer pprof.StopCPUProfile()
+
+		c := make(chan os.Signal, 1)
+		signal.Notify(c, os.Interrupt)
+		go func() {
+			for sig := range c {
+				fmt.Printf("captured %v, stopping profiler and exiting..", sig)
+				pprof.StopCPUProfile()
+				os.Exit(1)
+			}
+		}()
+
+	}
 
 	if veryVerbose {
 		verbose = true
@@ -276,6 +306,10 @@ func startRaft(securityType int) {
 					}
 					err = joinCluster(raftServer, machine)
 					if err != nil {
+						if err.Error() == errors[103] {
+							fmt.Println(err)
+							os.Exit(1)
+						}
 						debug("cannot join to cluster via machine %s %s", machine, err)
 					} else {
 						success = true
@@ -602,6 +636,9 @@ func joinCluster(s *raft.Server, serverName string) error {
 				debug("Send Join Request to %s", address)
 				json.NewEncoder(&b).Encode(command)
 				resp, err = t.Post(fmt.Sprintf("%s/join", address), &b)
+			} else if resp.StatusCode == http.StatusBadRequest {
+				debug("Reach max number machines in the cluster")
+				return fmt.Errorf(errors[103])
 			} else {
 				return fmt.Errorf("Unable to join")
 			}

@@ -35,6 +35,14 @@ func Multiplexer(w http.ResponseWriter, req *http.Request) {
 func SetHttpHandler(w *http.ResponseWriter, req *http.Request) {
 	key := req.URL.Path[len("/v1/keys/"):]
 
+	if store.CheckKeyword(key) {
+
+		(*w).WriteHeader(http.StatusBadRequest)
+
+		(*w).Write(newJsonError(400, "Set"))
+		return
+	}
+
 	debug("[recv] POST http://%v/v1/keys/%s", raftServer.Name(), key)
 
 	value := req.FormValue("value")
@@ -57,6 +65,7 @@ func SetHttpHandler(w *http.ResponseWriter, req *http.Request) {
 		(*w).WriteHeader(http.StatusBadRequest)
 
 		(*w).Write(newJsonError(202, "Set"))
+		return
 	}
 
 	if len(prevValue) != 0 {
@@ -94,7 +103,8 @@ func dispatch(c Command, w *http.ResponseWriter, req *http.Request, client bool)
 	if raftServer.State() == "leader" {
 		if body, err := raftServer.Do(c); err != nil {
 			if _, ok := err.(store.NotFoundError); ok {
-				http.NotFound((*w), req)
+				(*w).WriteHeader(http.StatusNotFound)
+				(*w).Write(newJsonError(100, err.Error()))
 				return
 			}
 
@@ -109,13 +119,19 @@ func dispatch(c Command, w *http.ResponseWriter, req *http.Request, client bool)
 				(*w).Write(newJsonError(102, err.Error()))
 				return
 			}
+			if err.Error() == errors[103] {
+				(*w).WriteHeader(http.StatusBadRequest)
+				(*w).Write(newJsonError(103, ""))
+				return
+			}
 			(*w).WriteHeader(http.StatusInternalServerError)
 			(*w).Write(newJsonError(300, err.Error()))
 			return
 		} else {
 
 			if body == nil {
-				http.NotFound((*w), req)
+				(*w).WriteHeader(http.StatusNotFound)
+				(*w).Write(newJsonError(100, err.Error()))
 			} else {
 				body, ok := body.([]byte)
 				// this should not happen
@@ -221,13 +237,14 @@ func GetHttpHandler(w *http.ResponseWriter, req *http.Request) {
 	if body, err := command.Apply(raftServer); err != nil {
 
 		if _, ok := err.(store.NotFoundError); ok {
-			http.NotFound((*w), req)
+			(*w).WriteHeader(http.StatusNotFound)
+			(*w).Write(newJsonError(100, err.Error()))
 			return
 		}
 
 		(*w).WriteHeader(http.StatusInternalServerError)
 		(*w).Write(newJsonError(300, ""))
-		return
+
 	} else {
 		body, ok := body.([]byte)
 		if !ok {
@@ -237,7 +254,6 @@ func GetHttpHandler(w *http.ResponseWriter, req *http.Request) {
 		(*w).WriteHeader(http.StatusOK)
 		(*w).Write(body)
 
-		return
 	}
 
 }
@@ -274,7 +290,6 @@ func WatchHttpHandler(w http.ResponseWriter, req *http.Request) {
 	if body, err := command.Apply(raftServer); err != nil {
 		warn("Unable to do watch command: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
-		return
 	} else {
 		w.WriteHeader(http.StatusOK)
 
@@ -284,7 +299,6 @@ func WatchHttpHandler(w http.ResponseWriter, req *http.Request) {
 		}
 
 		w.Write(body)
-		return
 	}
 
 }
