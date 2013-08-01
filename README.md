@@ -339,8 +339,8 @@ We use -s to specify server port and -c to specify client port and -d to specify
 Let the join two more nodes to this cluster using the -C argument:
 
 ```sh
-./etcd -c 4002 -s 7002 -C 127.0.0.1:7001 -d nod/node2
-./etcd -c 4003 -s 7003 -C 127.0.0.1:7001 -d nod/node3
+./etcd -c 4002 -s 7002 -C 127.0.0.1:7001 -d nodes/node2
+./etcd -c 4003 -s 7003 -C 127.0.0.1:7001 -d nodes/node3
 ```
 
 Get the machines in the cluster
