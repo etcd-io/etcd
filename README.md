@@ -358,7 +358,7 @@ We should see there are three nodes in the cluster
 Machine list is also available via this API
 
 ```sh 
-curl -L http://127.0.0.1:4001/v1/keys/machines
+curl -L http://127.0.0.1:4001/v1/keys/_etcd/machines
 ```
 
 ```json
