@@ -31,7 +31,7 @@ func webHelper() {
 func decodeJsonRequest(req *http.Request, data interface{}) error {
 	decoder := json.NewDecoder(req.Body)
 	if err := decoder.Decode(&data); err != nil && err != io.EOF {
-		warn("Malformed json request: %v", err)
+		warnf("Malformed json request: %v", err)
 		return fmt.Errorf("Malformed json request: %v", err)
 	}
 	return nil
@@ -57,17 +57,32 @@ func init() {
 	logger = log.New(os.Stdout, "[etcd] ", log.Lmicroseconds)
 }
 
-func debug(msg string, v ...interface{}) {
+func debugf(msg string, v ...interface{}) {
 	if verbose {
 		logger.Printf("DEBUG "+msg+"\n", v...)
 	}
 }
 
-func warn(msg string, v ...interface{}) {
+func debug(v ...interface{}) {
+	if verbose {
+		logger.Println("DEBUG " + fmt.Sprint(v...))
+	}
+}
+
+func warnf(msg string, v ...interface{}) {
 	logger.Printf("WARN  "+msg+"\n", v...)
 }
 
-func fatal(msg string, v ...interface{}) {
+func warn(v ...interface{}) {
+	logger.Println("WARN " + fmt.Sprint(v...))
+}
+
+func fatalf(msg string, v ...interface{}) {
 	logger.Printf("FATAL "+msg+"\n", v...)
+	os.Exit(1)
+}
+
+func fatal(v ...interface{}) {
+	logger.Println("FATAL " + fmt.Sprint(v...))
 	os.Exit(1)
 }
