@@ -23,12 +23,12 @@ func (t transporter) SendAppendEntriesRequest(server *raft.Server, peer *raft.Pe
 	var b bytes.Buffer
 	json.NewEncoder(&b).Encode(req)
 
-	debug("Send LogEntries to %s ", peer.Name())
+	debugf("Send LogEntries to %s ", peer.Name())
 
 	resp, err := t.Post(fmt.Sprintf("%s/log/append", peer.Name()), &b)
 
 	if err != nil {
-		debug("Cannot send AppendEntriesRequest to %s : %s", peer.Name(), err)
+		debugf("Cannot send AppendEntriesRequest to %s : %s", peer.Name(), err)
 	}
 
 	if resp != nil {
@@ -48,12 +48,12 @@ func (t transporter) SendVoteRequest(server *raft.Server, peer *raft.Peer, req *
 	var b bytes.Buffer
 	json.NewEncoder(&b).Encode(req)
 
-	debug("Send Vote to %s", peer.Name())
+	debugf("Send Vote to %s", peer.Name())
 
 	resp, err := t.Post(fmt.Sprintf("%s/vote", peer.Name()), &b)
 
 	if err != nil {
-		debug("Cannot send VoteRequest to %s : %s", peer.Name(), err)
+		debugf("Cannot send VoteRequest to %s : %s", peer.Name(), err)
 	}
 
 	if resp != nil {
@@ -73,7 +73,7 @@ func (t transporter) SendSnapshotRequest(server *raft.Server, peer *raft.Peer, r
 	var b bytes.Buffer
 	json.NewEncoder(&b).Encode(req)
 
-	debug("Send Snapshot to %s [Last Term: %d, LastIndex %d]", peer.Name(),
+	debugf("Send Snapshot to %s [Last Term: %d, LastIndex %d]", peer.Name(),
 		req.LastTerm, req.LastIndex)
 
 	resp, err := t.Post(fmt.Sprintf("%s/snapshot", peer.Name()), &b)
@@ -95,7 +95,7 @@ func (t transporter) SendSnapshotRecoveryRequest(server *raft.Server, peer *raft
 	var b bytes.Buffer
 	json.NewEncoder(&b).Encode(req)
 
-	debug("Send SnapshotRecovery to %s [Last Term: %d, LastIndex %d]", peer.Name(),
+	debugf("Send SnapshotRecovery to %s [Last Term: %d, LastIndex %d]", peer.Name(),
 		req.LastTerm, req.LastIndex)
 
 	resp, err := t.Post(fmt.Sprintf("%s/snapshotRecovery", peer.Name()), &b)

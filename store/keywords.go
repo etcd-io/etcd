@@ -8,7 +8,7 @@ import (
 // keywords for internal useage
 // Key for string keyword; Value for only checking prefix
 var keywords = map[string]bool{
-	"/_etcd":       true,
+	"/_etcd":          true,
 	"/ephemeralNodes": true,
 }
 

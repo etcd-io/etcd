@@ -43,7 +43,7 @@ func SetHttpHandler(w *http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	debug("[recv] POST http://%v/v1/keys/%s", raftServer.Name(), key)
+	debugf("[recv] POST http://%v/v1/keys/%s", raftServer.Name(), key)
 
 	value := req.FormValue("value")
 
@@ -90,7 +90,7 @@ func SetHttpHandler(w *http.ResponseWriter, req *http.Request) {
 func DeleteHttpHandler(w *http.ResponseWriter, req *http.Request) {
 	key := req.URL.Path[len("/v1/keys/"):]
 
-	debug("[recv] DELETE http://%v/v1/keys/%s", raftServer.Name(), key)
+	debugf("[recv] DELETE http://%v/v1/keys/%s", raftServer.Name(), key)
 
 	command := &DeleteCommand{}
 	command.Key = key
@@ -170,7 +170,7 @@ func dispatch(c Command, w *http.ResponseWriter, req *http.Request, client bool)
 			url = scheme + raftServer.Leader() + path
 		}
 
-		debug("Redirect to %s", url)
+		debugf("Redirect to %s", url)
 
 		http.Redirect(*w, req, url, http.StatusTemporaryRedirect)
 		return
@@ -229,7 +229,7 @@ func MachinesHttpHandler(w http.ResponseWriter, req *http.Request) {
 func GetHttpHandler(w *http.ResponseWriter, req *http.Request) {
 	key := req.URL.Path[len("/v1/keys/"):]
 
-	debug("[recv] GET http://%v/v1/keys/%s", raftServer.Name(), key)
+	debugf("[recv] GET http://%v/v1/keys/%s", raftServer.Name(), key)
 
 	command := &GetCommand{}
 	command.Key = key
@@ -266,13 +266,13 @@ func WatchHttpHandler(w http.ResponseWriter, req *http.Request) {
 	command.Key = key
 
 	if req.Method == "GET" {
-		debug("[recv] GET http://%v/watch/%s", raftServer.Name(), key)
+		debugf("[recv] GET http://%v/watch/%s", raftServer.Name(), key)
 		command.SinceIndex = 0
 
 	} else if req.Method == "POST" {
 		// watch from a specific index
 
-		debug("[recv] POST http://%v/watch/%s", raftServer.Name(), key)
+		debugf("[recv] POST http://%v/watch/%s", raftServer.Name(), key)
 		content := req.FormValue("index")
 
 		sinceIndex, err := strconv.ParseUint(string(content), 10, 64)
@@ -288,7 +288,7 @@ func WatchHttpHandler(w http.ResponseWriter, req *http.Request) {
 	}
 
 	if body, err := command.Apply(raftServer); err != nil {
-		warn("Unable to do watch command: %v", err)
+		warnf("Unable to do watch command: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 	} else {
 		w.WriteHeader(http.StatusOK)
