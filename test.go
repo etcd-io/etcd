@@ -22,11 +22,11 @@ func set(stop chan bool) {
 
 	stopSet := false
 	i := 0
-
+	c := etcd.CreateClient()
 	for {
 		key := fmt.Sprintf("%s_%v", "foo", i)
 
-		result, err := etcd.Set(key, "bar", 0)
+		result, err := c.Set(key, "bar", 0)
 
 		if err != nil || result.Key != "/"+key || result.Value != "bar" {
 			select {
