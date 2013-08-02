@@ -555,4 +555,3 @@ func (s *Store) checkNode(key string, node *Node) {
 		}
 	}
 }
-
