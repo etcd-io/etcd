@@ -42,6 +42,9 @@ type Store struct {
 
 	// Current index of the raft machine
 	Index uint64
+
+	// Basic statistics information of etcd storage
+	BasicStats EtcdStats
 }
 
 // A Node represents a Value in the Key-Value pair in the store
@@ -138,6 +141,9 @@ func (s *Store) Set(key string, value string, expireTime time.Time, index uint64
 
 	//Update index
 	s.Index = index
+
+	//Update stats
+	s.BasicStats.Sets++
 
 	key = path.Clean("/" + key)
 
@@ -285,6 +291,9 @@ func (s *Store) internalGet(key string) *Response {
 // If key is a directory reuturn an array of files
 func (s *Store) Get(key string) ([]byte, error) {
 
+	//Update stats
+	s.BasicStats.Gets++
+
 	key = path.Clean("/" + key)
 
 	nodes, keys, dirs, ok := s.Tree.list(key)
@@ -330,6 +339,9 @@ func (s *Store) Get(key string) ([]byte, error) {
 
 // Delete the key
 func (s *Store) Delete(key string, index uint64) ([]byte, error) {
+
+	//Update stats
+	s.BasicStats.Deletes++
 
 	key = path.Clean("/" + key)
 
@@ -381,6 +393,9 @@ func (s *Store) Delete(key string, index uint64) ([]byte, error) {
 
 // Set the value of the key to the value if the given prevValue is equal to the value of the key
 func (s *Store) TestAndSet(key string, prevValue string, value string, expireTime time.Time, index uint64) ([]byte, error) {
+	//Update stats
+	s.BasicStats.TestAndSets++
+
 	resp := s.internalGet(key)
 
 	if resp == nil {
@@ -540,3 +555,4 @@ func (s *Store) checkNode(key string, node *Node) {
 		}
 	}
 }
+

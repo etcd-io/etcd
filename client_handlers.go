@@ -225,6 +225,18 @@ func MachinesHttpHandler(w http.ResponseWriter, req *http.Request) {
 
 }
 
+// Handler to return the current version of etcd
+func VersionHttpHandler(w http.ResponseWriter, req *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(releaseVersion))
+}
+
+// Handler to return the basic stats of etcd
+func StatsHttpHandler(w http.ResponseWriter, req *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	w.Write(etcdStore.Stats())
+}
+
 // Get Handler
 func GetHttpHandler(w *http.ResponseWriter, req *http.Request) {
 	key := req.URL.Path[len("/v1/keys/"):]
