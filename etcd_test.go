@@ -25,9 +25,11 @@ func TestSingleNode(t *testing.T) {
 
 	time.Sleep(time.Second)
 
-	etcd.SyncCluster()
+	c := etcd.NewClient()
+
+	c.SyncCluster()
 	// Test Set
-	result, err := etcd.Set("foo", "bar", 100)
+	result, err := c.Set("foo", "bar", 100)
 
 	if err != nil || result.Key != "/foo" || result.Value != "bar" || result.TTL != 99 {
 		if err != nil {
@@ -39,7 +41,7 @@ func TestSingleNode(t *testing.T) {
 
 	time.Sleep(time.Second)
 
-	result, err = etcd.Set("foo", "bar", 100)
+	result, err = c.Set("foo", "bar", 100)
 
 	if err != nil || result.Key != "/foo" || result.Value != "bar" || result.PrevValue != "bar" || result.TTL != 99 {
 		if err != nil {
@@ -64,9 +66,11 @@ func TestSingleNodeRecovery(t *testing.T) {
 
 	time.Sleep(time.Second)
 
-	etcd.SyncCluster()
+	c := etcd.NewClient()
+
+	c.SyncCluster()
 	// Test Set
-	result, err := etcd.Set("foo", "bar", 100)
+	result, err := c.Set("foo", "bar", 100)
 
 	if err != nil || result.Key != "/foo" || result.Value != "bar" || result.TTL != 99 {
 		if err != nil {
@@ -89,7 +93,7 @@ func TestSingleNodeRecovery(t *testing.T) {
 
 	time.Sleep(time.Second)
 
-	results, err := etcd.Get("foo")
+	results, err := c.Get("foo")
 	if err != nil {
 		t.Fatal("get fail: " + err.Error())
 		return
@@ -122,10 +126,12 @@ func TestSimpleMultiNode(t *testing.T) {
 
 	time.Sleep(time.Second)
 
-	etcd.SyncCluster()
+	c := etcd.NewClient()
+
+	c.SyncCluster()
 
 	// Test Set
-	result, err := etcd.Set("foo", "bar", 100)
+	result, err := c.Set("foo", "bar", 100)
 
 	if err != nil || result.Key != "/foo" || result.Value != "bar" || result.TTL != 99 {
 		if err != nil {
@@ -137,7 +143,7 @@ func TestSimpleMultiNode(t *testing.T) {
 
 	time.Sleep(time.Second)
 
-	result, err = etcd.Set("foo", "bar", 100)
+	result, err = c.Set("foo", "bar", 100)
 
 	if err != nil || result.Key != "/foo" || result.Value != "bar" || result.PrevValue != "bar" || result.TTL != 99 {
 		if err != nil {
@@ -165,7 +171,9 @@ func TestMultiNodeRecovery(t *testing.T) {
 
 	time.Sleep(2 * time.Second)
 
-	etcd.SyncCluster()
+	c := etcd.NewClient()
+
+	c.SyncCluster()
 
 	stop := make(chan bool)
 	// Test Set
