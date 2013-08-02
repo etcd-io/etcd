@@ -25,7 +25,7 @@ func TestSingleNode(t *testing.T) {
 
 	time.Sleep(time.Second)
 
-	c := etcd.CreateClient()
+	c := etcd.NewClient()
 
 	c.SyncCluster()
 	// Test Set
@@ -66,7 +66,7 @@ func TestSingleNodeRecovery(t *testing.T) {
 
 	time.Sleep(time.Second)
 
-	c := etcd.CreateClient()
+	c := etcd.NewClient()
 
 	c.SyncCluster()
 	// Test Set
@@ -126,7 +126,7 @@ func TestSimpleMultiNode(t *testing.T) {
 
 	time.Sleep(time.Second)
 
-	c := etcd.CreateClient()
+	c := etcd.NewClient()
 
 	c.SyncCluster()
 
@@ -171,7 +171,7 @@ func TestMultiNodeRecovery(t *testing.T) {
 
 	time.Sleep(2 * time.Second)
 
-	c := etcd.CreateClient()
+	c := etcd.NewClient()
 
 	c.SyncCluster()
 
