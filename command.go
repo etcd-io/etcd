@@ -129,12 +129,8 @@ func (c *JoinCommand) Apply(raftServer *raft.Server) (interface{}, error) {
 	// add peer in raft
 	err := raftServer.AddPeer(c.Name)
 
-	// add machine in etcd
-	addMachine(c.Name, c.Hostname, c.RaftPort, c.ClientPort)
-
 	// add machine in etcd storage
-	nodeName := fmt.Sprintf("%s%d", "node", raftServer.CommitIndex())
-	key := path.Join("_etcd/machines", nodeName)
+	key := path.Join("_etcd/machines", c.Name)
 	value := fmt.Sprintf("%s,%d,%d", c.Hostname, c.RaftPort, c.ClientPort)
 	etcdStore.Set(key, value, time.Unix(0, 0), raftServer.CommitIndex())
 
