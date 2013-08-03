@@ -290,7 +290,20 @@ func (s *Store) internalGet(key string) *Response {
 // If key is a file return the file
 // If key is a directory reuturn an array of files
 func (s *Store) Get(key string) ([]byte, error) {
+	resps, err := s.RawGet(key)
 
+	if err != nil {
+		return nil, err
+	}
+
+	if len(resps) == 1 {
+		return json.Marshal(resps[0])
+	}
+
+	return json.Marshal(resps)
+}
+
+func (s *Store) RawGet(key string) ([]*Response, error) {
 	//Update stats
 	s.BasicStats.Gets++
 
@@ -299,7 +312,7 @@ func (s *Store) Get(key string) ([]byte, error) {
 	nodes, keys, dirs, ok := s.Tree.list(key)
 
 	if ok {
-		resps := make([]Response, len(nodes))
+		resps := make([]*Response, len(nodes))
 		for i := 0; i < len(nodes); i++ {
 
 			var TTL int64
@@ -307,7 +320,7 @@ func (s *Store) Get(key string) ([]byte, error) {
 
 			isExpire = !nodes[i].ExpireTime.Equal(PERMANENT)
 
-			resps[i] = Response{
+			resps[i] = &Response{
 				Action: "GET",
 				Index:  s.Index,
 				Key:    path.Join(key, keys[i]),
@@ -327,10 +340,8 @@ func (s *Store) Get(key string) ([]byte, error) {
 			}
 
 		}
-		if len(resps) == 1 {
-			return json.Marshal(resps[0])
-		}
-		return json.Marshal(resps)
+
+		return resps, nil
 	}
 
 	err := NotFoundError(key)
