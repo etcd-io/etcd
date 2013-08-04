@@ -20,7 +20,7 @@ func init() {
 	errors[201] = "PrevValue is Required in POST form"
 	errors[202] = "The given TTL in POST form is not a number"
 	errors[203] = "The given index in POST form is not a number"
-	
+
 	// raft related errors
 	errors[300] = "Raft Internal Error"
 	errors[301] = "During Leader Election"
