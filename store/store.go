@@ -304,7 +304,7 @@ func (s *Store) Get(key string) ([]byte, error) {
 }
 
 func (s *Store) RawGet(key string) ([]*Response, error) {
-	//Update stats
+	// Update stats
 	s.BasicStats.Gets++
 
 	key = path.Clean("/" + key)
@@ -351,12 +351,12 @@ func (s *Store) RawGet(key string) ([]*Response, error) {
 // Delete the key
 func (s *Store) Delete(key string, index uint64) ([]byte, error) {
 
-	//Update stats
+	// Update stats
 	s.BasicStats.Deletes++
 
 	key = path.Clean("/" + key)
 
-	//Update index
+	// Update index
 	s.Index = index
 
 	node, ok := s.Tree.get(key)
@@ -404,7 +404,7 @@ func (s *Store) Delete(key string, index uint64) ([]byte, error) {
 
 // Set the value of the key to the value if the given prevValue is equal to the value of the key
 func (s *Store) TestAndSet(key string, prevValue string, value string, expireTime time.Time, index uint64) ([]byte, error) {
-	//Update stats
+	// Update stats
 	s.BasicStats.TestAndSets++
 
 	resp := s.internalGet(key)
