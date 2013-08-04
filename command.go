@@ -101,6 +101,10 @@ func (c *WatchCommand) Apply(server *raft.Server) (interface{}, error) {
 	// wait for the notification for any changing
 	res := <-watcher.C
 
+	if res == nil {
+		return nil, fmt.Errorf("watcher is cleared")
+	}
+
 	return json.Marshal(res)
 }
 

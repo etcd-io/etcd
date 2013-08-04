@@ -19,7 +19,7 @@ type WatcherHub struct {
 
 // Currently watcher only contains a response channel
 type Watcher struct {
-	C chan Response
+	C chan *Response
 }
 
 // Create a new watcherHub
@@ -31,12 +31,12 @@ func createWatcherHub() *WatcherHub {
 
 // Create a new watcher
 func CreateWatcher() *Watcher {
-	return &Watcher{C: make(chan Response, 1)}
+	return &Watcher{C: make(chan *Response, 1)}
 }
 
 // Add a watcher to the watcherHub
 func (w *WatcherHub) addWatcher(prefix string, watcher *Watcher, sinceIndex uint64,
-	responseStartIndex uint64, currentIndex uint64, resMap *map[string]Response) error {
+	responseStartIndex uint64, currentIndex uint64, resMap *map[string]*Response) error {
 
 	prefix = path.Clean("/" + prefix)
 
@@ -65,7 +65,7 @@ func (w *WatcherHub) addWatcher(prefix string, watcher *Watcher, sinceIndex uint
 }
 
 // Check if the response has what we are watching
-func checkResponse(prefix string, index uint64, resMap *map[string]Response) bool {
+func checkResponse(prefix string, index uint64, resMap *map[string]*Response) bool {
 
 	resp, ok := (*resMap)[strconv.FormatUint(index, 10)]
 
@@ -104,7 +104,7 @@ func (w *WatcherHub) notify(resp Response) error {
 			newWatchers := make([]*Watcher, 0)
 			// notify all the watchers
 			for _, watcher := range watchers {
-				watcher.C <- resp
+				watcher.C <- &resp
 			}
 
 			if len(newWatchers) == 0 {
@@ -119,4 +119,15 @@ func (w *WatcherHub) notify(resp Response) error {
 	}
 
 	return nil
+}
+
+// stopWatchers stops all the watchers
+// This function is used when the etcd recovery from a snapshot at runtime
+func (w *WatcherHub) stopWatchers() {
+	for _, subWatchers := range w.watchers{
+		for _, watcher := range subWatchers{
+			watcher.C <- nil
+		}
+	}
+	w.watchers = nil
 }

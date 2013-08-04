@@ -300,8 +300,8 @@ func WatchHttpHandler(w http.ResponseWriter, req *http.Request) {
 	}
 
 	if body, err := command.Apply(raftServer); err != nil {
-		warnf("Unable to do watch command: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
+		w.Write(newJsonError(500, key))
 	} else {
 		w.WriteHeader(http.StatusOK)
 
