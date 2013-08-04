@@ -18,7 +18,7 @@ See [go-etcd][go-etcd] for a native go client. Or feel free to just use curl, as
 
 ### Building
 
-etcd is installed like any other Go binary. The steps below will put everything into a directory called etcd.
+etcd is installed like any other Go (golang >= 1.1) binary. The steps below will put everything into a directory called etcd.
 
 ```
 mkdir etcd
