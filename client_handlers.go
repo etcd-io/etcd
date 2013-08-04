@@ -33,7 +33,7 @@ func Multiplexer(w http.ResponseWriter, req *http.Request) {
 
 // Set Command Handler
 func SetHttpHandler(w *http.ResponseWriter, req *http.Request) {
-	key := req.URL.Path[len("/v1/keys/"):]
+	key := req.URL.Path[len("/"+version+"/keys/"):]
 
 	if store.CheckKeyword(key) {
 
@@ -43,7 +43,7 @@ func SetHttpHandler(w *http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	debugf("[recv] POST http://%v/v1/keys/%s", raftServer.Name(), key)
+	debugf("[recv] POST http://%v/%v/keys/%s", raftServer.Name(), version, key)
 
 	value := req.FormValue("value")
 
@@ -88,9 +88,9 @@ func SetHttpHandler(w *http.ResponseWriter, req *http.Request) {
 
 // Delete Handler
 func DeleteHttpHandler(w *http.ResponseWriter, req *http.Request) {
-	key := req.URL.Path[len("/v1/keys/"):]
+	key := req.URL.Path[len("/"+version+"/keys/"):]
 
-	debugf("[recv] DELETE http://%v/v1/keys/%s", raftServer.Name(), key)
+	debugf("[recv] DELETE http://%v/%v/keys/%s", raftServer.Name(), version, key)
 
 	command := &DeleteCommand{}
 	command.Key = key
@@ -239,9 +239,9 @@ func StatsHttpHandler(w http.ResponseWriter, req *http.Request) {
 
 // Get Handler
 func GetHttpHandler(w *http.ResponseWriter, req *http.Request) {
-	key := req.URL.Path[len("/v1/keys/"):]
+	key := req.URL.Path[len("/"+version+"/keys/"):]
 
-	debugf("[recv] GET http://%v/v1/keys/%s", raftServer.Name(), key)
+	debugf("[recv] GET http://%v/%v/keys/%s", raftServer.Name(), version, key)
 
 	command := &GetCommand{}
 	command.Key = key
@@ -272,7 +272,7 @@ func GetHttpHandler(w *http.ResponseWriter, req *http.Request) {
 
 // Watch handler
 func WatchHttpHandler(w http.ResponseWriter, req *http.Request) {
-	key := req.URL.Path[len("/v1/watch/"):]
+	key := req.URL.Path[len("/"+version+"/watch/"):]
 
 	command := &WatchCommand{}
 	command.Key = key
