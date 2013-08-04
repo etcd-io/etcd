@@ -131,7 +131,7 @@ func dispatch(c Command, w *http.ResponseWriter, req *http.Request, client bool)
 
 			if body == nil {
 				(*w).WriteHeader(http.StatusNotFound)
-				(*w).Write(newJsonError(100, ""))
+				(*w).Write(newJsonError(300, "Empty result from raft"))
 			} else {
 				body, ok := body.([]byte)
 				// this should not happen
