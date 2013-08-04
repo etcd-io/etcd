@@ -131,7 +131,7 @@ func dispatch(c Command, w *http.ResponseWriter, req *http.Request, client bool)
 
 			if body == nil {
 				(*w).WriteHeader(http.StatusNotFound)
-				(*w).Write(newJsonError(100, err.Error()))
+				(*w).Write(newJsonError(300, "Empty result from raft"))
 			} else {
 				body, ok := body.([]byte)
 				// this should not happen
@@ -223,6 +223,18 @@ func MachinesHttpHandler(w http.ResponseWriter, req *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(machines))
 
+}
+
+// Handler to return the current version of etcd
+func VersionHttpHandler(w http.ResponseWriter, req *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(releaseVersion))
+}
+
+// Handler to return the basic stats of etcd
+func StatsHttpHandler(w http.ResponseWriter, req *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	w.Write(etcdStore.Stats())
 }
 
 // Get Handler

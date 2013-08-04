@@ -42,6 +42,9 @@ type Store struct {
 
 	// Current index of the raft machine
 	Index uint64
+
+	// Basic statistics information of etcd storage
+	BasicStats EtcdStats
 }
 
 // A Node represents a Value in the Key-Value pair in the store
@@ -138,6 +141,9 @@ func (s *Store) Set(key string, value string, expireTime time.Time, index uint64
 
 	//Update index
 	s.Index = index
+
+	//Update stats
+	s.BasicStats.Sets++
 
 	key = path.Clean("/" + key)
 
@@ -284,13 +290,29 @@ func (s *Store) internalGet(key string) *Response {
 // If key is a file return the file
 // If key is a directory reuturn an array of files
 func (s *Store) Get(key string) ([]byte, error) {
+	resps, err := s.RawGet(key)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if len(resps) == 1 {
+		return json.Marshal(resps[0])
+	}
+
+	return json.Marshal(resps)
+}
+
+func (s *Store) RawGet(key string) ([]*Response, error) {
+	// Update stats
+	s.BasicStats.Gets++
 
 	key = path.Clean("/" + key)
 
 	nodes, keys, dirs, ok := s.Tree.list(key)
 
 	if ok {
-		resps := make([]Response, len(nodes))
+		resps := make([]*Response, len(nodes))
 		for i := 0; i < len(nodes); i++ {
 
 			var TTL int64
@@ -298,7 +320,7 @@ func (s *Store) Get(key string) ([]byte, error) {
 
 			isExpire = !nodes[i].ExpireTime.Equal(PERMANENT)
 
-			resps[i] = Response{
+			resps[i] = &Response{
 				Action: "GET",
 				Index:  s.Index,
 				Key:    path.Join(key, keys[i]),
@@ -318,10 +340,8 @@ func (s *Store) Get(key string) ([]byte, error) {
 			}
 
 		}
-		if len(resps) == 1 {
-			return json.Marshal(resps[0])
-		}
-		return json.Marshal(resps)
+
+		return resps, nil
 	}
 
 	err := NotFoundError(key)
@@ -331,9 +351,12 @@ func (s *Store) Get(key string) ([]byte, error) {
 // Delete the key
 func (s *Store) Delete(key string, index uint64) ([]byte, error) {
 
+	// Update stats
+	s.BasicStats.Deletes++
+
 	key = path.Clean("/" + key)
 
-	//Update index
+	// Update index
 	s.Index = index
 
 	node, ok := s.Tree.get(key)
@@ -381,6 +404,9 @@ func (s *Store) Delete(key string, index uint64) ([]byte, error) {
 
 // Set the value of the key to the value if the given prevValue is equal to the value of the key
 func (s *Store) TestAndSet(key string, prevValue string, value string, expireTime time.Time, index uint64) ([]byte, error) {
+	// Update stats
+	s.BasicStats.TestAndSets++
+
 	resp := s.internalGet(key)
 
 	if resp == nil {
