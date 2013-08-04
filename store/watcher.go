@@ -124,8 +124,8 @@ func (w *WatcherHub) notify(resp Response) error {
 // stopWatchers stops all the watchers
 // This function is used when the etcd recovery from a snapshot at runtime
 func (w *WatcherHub) stopWatchers() {
-	for _, subWatchers := range w.watchers{
-		for _, watcher := range subWatchers{
+	for _, subWatchers := range w.watchers {
+		for _, watcher := range subWatchers {
 			watcher.C <- nil
 		}
 	}
