@@ -2,34 +2,26 @@ package main
 
 import (
 	"fmt"
+	"path"
+	"strings"
 )
 
-type machine struct {
-	hostname   string
-	raftPort   int
-	clientPort int
-}
-
-var machinesMap = map[string]machine{}
-
-func addMachine(name string, hostname string, raftPort int, clientPort int) {
-
-	machinesMap[name] = machine{hostname, raftPort, clientPort}
-
-}
-
 func getClientAddr(name string) (string, bool) {
-	machine, ok := machinesMap[name]
-	if !ok {
-		return "", false
-	}
+	response, _ := etcdStore.RawGet(path.Join("_etcd/machines", name))
 
-	addr := fmt.Sprintf("%s:%v", machine.hostname, machine.clientPort)
+	values := strings.Split(response[0].Value, ",")
+
+	hostname := values[0]
+	clientPort := values[2]
+
+	addr := fmt.Sprintf("%s:%s", hostname, clientPort)
 
 	return addr, true
 }
 
 // machineNum returns the number of machines in the cluster
 func machineNum() int {
-	return len(machinesMap)
+	response, _ := etcdStore.RawGet("_etcd/machines")
+
+	return len(response)
 }
