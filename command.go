@@ -120,6 +120,13 @@ func (c *JoinCommand) CommandName() string {
 // Join a server to the cluster
 func (c *JoinCommand) Apply(raftServer *raft.Server) (interface{}, error) {
 
+	// check if the join command is from a previous machine, who lost all its previous log.
+	response, _ := etcdStore.RawGet(path.Join("_etcd/machines", c.Name))
+
+	if response != nil {
+		return []byte("join success"), nil
+	}
+
 	// check machine number in the cluster
 	num := machineNum()
 	if num == maxClusterSize {
