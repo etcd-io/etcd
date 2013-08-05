@@ -29,7 +29,7 @@ type Store struct {
 	messager *chan string
 
 	// A map to keep the recent response to the clients
-	ResponseMap map[string]Response
+	ResponseMap map[string]*Response
 
 	// The max number of the recent responses we can record
 	ResponseMaxSize int
@@ -109,7 +109,7 @@ func CreateStore(max int) *Store {
 
 	s.messager = nil
 
-	s.ResponseMap = make(map[string]Response)
+	s.ResponseMap = make(map[string]*Response)
 	s.ResponseStartIndex = 0
 	s.ResponseMaxSize = max
 	s.ResponseCurrSize = 0
@@ -126,7 +126,7 @@ func CreateStore(max int) *Store {
 		},
 	}
 
-	s.watcher = createWatcherHub()
+	s.watcher = newWatcherHub()
 
 	return s
 }
@@ -502,7 +502,7 @@ func (s *Store) addToResponseMap(index uint64, resp *Response) {
 	}
 
 	strIndex := strconv.FormatUint(index, 10)
-	s.ResponseMap[strIndex] = *resp
+	s.ResponseMap[strIndex] = resp
 
 	// unlimited
 	if s.ResponseMaxSize < 0 {
@@ -532,6 +532,11 @@ func (s *Store) Save() ([]byte, error) {
 
 // Recovery the state of the stroage system from a previous state
 func (s *Store) Recovery(state []byte) error {
+
+	// we need to stop all the current watchers
+	// recovery will clear watcherHub
+	s.watcher.stopWatchers()
+
 	err := json.Unmarshal(state, s)
 
 	// The only thing need to change after the recovery is the

@@ -5,30 +5,30 @@ import (
 )
 
 func TestKeywords(t *testing.T) {
-	keyword := CheckKeyword("machines")
+	keyword := CheckKeyword("_etcd")
 	if !keyword {
 		t.Fatal("machines should be keyword")
 	}
 
-	keyword = CheckKeyword("/machines")
+	keyword = CheckKeyword("/_etcd")
 
 	if !keyword {
 		t.Fatal("/machines should be keyword")
 	}
 
-	keyword = CheckKeyword("/machines/")
+	keyword = CheckKeyword("/_etcd/")
 
 	if !keyword {
 		t.Fatal("/machines/ contains keyword prefix")
 	}
 
-	keyword = CheckKeyword("/machines/node1")
+	keyword = CheckKeyword("/_etcd/node1")
 
 	if !keyword {
 		t.Fatal("/machines/* contains keyword prefix")
 	}
 
-	keyword = CheckKeyword("/nokeyword/machines/node1")
+	keyword = CheckKeyword("/nokeyword/_etcd/node1")
 
 	if keyword {
 		t.Fatal("this does not contain keyword prefix")

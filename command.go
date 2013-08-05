@@ -93,13 +93,17 @@ func (c *WatchCommand) CommandName() string {
 
 func (c *WatchCommand) Apply(server *raft.Server) (interface{}, error) {
 	// create a new watcher
-	watcher := store.CreateWatcher()
+	watcher := store.NewWatcher()
 
 	// add to the watchers list
 	etcdStore.AddWatcher(c.Key, watcher, c.SinceIndex)
 
 	// wait for the notification for any changing
 	res := <-watcher.C
+
+	if res == nil {
+		return nil, fmt.Errorf("watcher is cleared")
+	}
 
 	return json.Marshal(res)
 }
