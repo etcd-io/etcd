@@ -317,16 +317,23 @@ func (s *Store) RawGet(key string) ([]*Response, error) {
 
 			var TTL int64
 			var isExpire bool = false
+			var thisKey string
 
 			isExpire = !nodes[i].ExpireTime.Equal(PERMANENT)
+
+			if keys != nil {
+				thisKey = path.Join(key, keys[i])
+			} else {
+				thisKey = key
+			}
 
 			resps[i] = &Response{
 				Action: "GET",
 				Index:  s.Index,
-				Key:    path.Join(key, keys[i]),
+				Key:    thisKey,
 			}
 
-			if !dirs[i] {
+			if dirs == nil || !dirs[i] {
 				resps[i].Value = nodes[i].Value
 			} else {
 				resps[i].Dir = true

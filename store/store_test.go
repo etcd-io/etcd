@@ -2,7 +2,6 @@ package store
 
 import (
 	"encoding/json"
-	"fmt"
 	"testing"
 	"time"
 )
@@ -70,9 +69,6 @@ func TestSaveAndRecovery(t *testing.T) {
 }
 
 func TestExpire(t *testing.T) {
-	fmt.Println(time.Now())
-	fmt.Println("TEST EXPIRE")
-
 	// test expire
 	s := CreateStore(100)
 	s.Set("foo", "bar", time.Now().Add(time.Second*1), 0)
@@ -133,4 +129,80 @@ func TestExpire(t *testing.T) {
 		t.Fatalf("Got expired value")
 	}
 
+}
+
+func BenchmarkSet(b *testing.B) {
+	s := CreateStore(100)
+
+	keys := GenKeys(10000, 5)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+
+		for i, key := range keys {
+			s.Set(key, "barbarbarbarbar", time.Unix(0, 0), uint64(i))
+		}
+
+		s = CreateStore(100)
+	}
+}
+
+func BenchmarkGet(b *testing.B) {
+	s := CreateStore(100)
+
+	keys := GenKeys(100, 5)
+
+	for i, key := range keys {
+		s.Set(key, "barbarbarbarbar", time.Unix(0, 0), uint64(i))
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+
+		for _, key := range keys {
+			s.Get(key)
+		}
+
+	}
+}
+
+func BenchmarkSetAndGet(b *testing.B) {
+
+}
+
+func BenchmarkSnapshotSave(b *testing.B) {
+	s := CreateStore(100)
+
+	keys := GenKeys(10000, 5)
+
+	for i, key := range keys {
+		s.Set(key, "barbarbarbarbar", time.Unix(0, 0), uint64(i))
+	}
+
+	var state []byte
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		state, _ = s.Save()
+	}
+	b.SetBytes(int64(len(state)))
+}
+
+func BenchmarkSnapshotRecovery(b *testing.B) {
+	s := CreateStore(100)
+
+	keys := GenKeys(10000, 5)
+
+	for i, key := range keys {
+		s.Set(key, "barbarbarbarbar", time.Unix(0, 0), uint64(i))
+	}
+
+	state, _ := s.Save()
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		newStore := CreateStore(100)
+		newStore.Recovery(state)
+	}
+	b.SetBytes(int64(len(state)))
 }

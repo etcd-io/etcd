@@ -76,20 +76,15 @@ func TestStoreGet(t *testing.T) {
 		}
 	}
 
-	// speed test
+	keys = GenKeys(100, 10)
+
 	for i := 0; i < 100; i++ {
-		key := "/"
-		depth := rand.Intn(10)
-		for j := 0; j < depth; j++ {
-			key += "/" + strconv.Itoa(rand.Int()%10)
-		}
 		value := strconv.Itoa(rand.Int())
-		ts.set(key, CreateTestNode(value))
-		treeNode, ok := ts.get(key)
+		ts.set(keys[i], CreateTestNode(value))
+		treeNode, ok := ts.get(keys[i])
 
 		if !ok {
 			continue
-			//t.Fatalf("Expect to get node, but not")
 		}
 		if treeNode.Value != value {
 			t.Fatalf("Expect value %s, but got %s", value, treeNode.Value)
@@ -97,6 +92,78 @@ func TestStoreGet(t *testing.T) {
 
 	}
 	ts.traverse(f, true)
+}
+
+func BenchmarkTreeStoreSet(b *testing.B) {
+
+	keys := GenKeys(10000, 10)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+
+		ts := &tree{
+			&treeNode{
+				CreateTestNode("/"),
+				true,
+				make(map[string]*treeNode),
+			},
+		}
+
+		for _, key := range keys {
+			value := strconv.Itoa(rand.Int())
+			ts.set(key, CreateTestNode(value))
+		}
+	}
+}
+
+func BenchmarkTreeStoreGet(b *testing.B) {
+
+	keys := GenKeys(10000, 10)
+
+	ts := &tree{
+		&treeNode{
+			CreateTestNode("/"),
+			true,
+			make(map[string]*treeNode),
+		},
+	}
+
+	for _, key := range keys {
+		value := strconv.Itoa(rand.Int())
+		ts.set(key, CreateTestNode(value))
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		for _, key := range keys {
+			ts.get(key)
+		}
+	}
+}
+
+func BenchmarkTreeStoreList(b *testing.B) {
+
+	keys := GenKeys(10000, 10)
+
+	ts := &tree{
+		&treeNode{
+			CreateTestNode("/"),
+			true,
+			make(map[string]*treeNode),
+		},
+	}
+
+	for _, key := range keys {
+		value := strconv.Itoa(rand.Int())
+		ts.set(key, CreateTestNode(value))
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		for _, key := range keys {
+			ts.list(key)
+		}
+	}
 }
 
 func f(key string, n *Node) {

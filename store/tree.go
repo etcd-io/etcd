@@ -167,7 +167,7 @@ func (t *tree) list(directory string) ([]Node, []string, []bool, bool) {
 		if !treeNode.Dir {
 			nodes := make([]Node, 1)
 			nodes[0] = treeNode.InternalNode
-			return nodes, make([]string, 1), make([]bool, 1), true
+			return nodes, nil, nil, true
 		}
 		length := len(treeNode.NodeMap)
 		nodes := make([]Node, length)

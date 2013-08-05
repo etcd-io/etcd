@@ -1,8 +1,6 @@
 package store
 
 import (
-	"math/rand"
-	"strconv"
 	"testing"
 	"time"
 )
@@ -62,16 +60,7 @@ func TestWatch(t *testing.T) {
 func BenchmarkWatch(b *testing.B) {
 	s := CreateStore(100)
 
-	key := make([]string, 10000)
-	for i := 0; i < 10000; i++ {
-
-		key[i] = "/foo/"
-		depth := rand.Intn(10)
-
-		for j := 0; j < depth; j++ {
-			key[i] += "/" + strconv.Itoa(rand.Int()%10)
-		}
-	}
+	keys := GenKeys(10000, 10)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -80,7 +69,7 @@ func BenchmarkWatch(b *testing.B) {
 			// create a new watcher
 			watchers[i] = NewWatcher()
 			// add to the watchers list
-			s.AddWatcher(key[i], watchers[i], 0)
+			s.AddWatcher(keys[i], watchers[i], 0)
 		}
 
 		s.watcher.stopWatchers()
