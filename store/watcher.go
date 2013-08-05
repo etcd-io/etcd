@@ -23,14 +23,14 @@ type Watcher struct {
 }
 
 // Create a new watcherHub
-func createWatcherHub() *WatcherHub {
+func newWatcherHub() *WatcherHub {
 	w := new(WatcherHub)
 	w.watchers = make(map[string][]*Watcher)
 	return w
 }
 
 // Create a new watcher
-func CreateWatcher() *Watcher {
+func NewWatcher() *Watcher {
 	return &Watcher{C: make(chan *Response, 1)}
 }
 

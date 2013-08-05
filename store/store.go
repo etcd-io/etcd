@@ -126,7 +126,7 @@ func CreateStore(max int) *Store {
 		},
 	}
 
-	s.watcher = createWatcherHub()
+	s.watcher = newWatcherHub()
 
 	return s
 }
