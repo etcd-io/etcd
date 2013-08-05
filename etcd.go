@@ -520,7 +520,7 @@ func getInfo(path string) *Info {
 
 		logPath := fmt.Sprintf("%s/log", path)
 		confPath := fmt.Sprintf("%s/conf", path)
-		snapshotPath := fmt.Sprintf("%s/snapshotPath", path)
+		snapshotPath := fmt.Sprintf("%s/snapshot", path)
 		os.Remove(infoPath)
 		os.Remove(logPath)
 		os.Remove(confPath)
