@@ -230,10 +230,10 @@ func (t *tree) clone() *tree {
 			"/",
 			time.Unix(0, 0),
 			nil,
-			},
+		},
 		true,
 		make(map[string]*treeNode),
-		}
+	}
 	recursiveClone(t.Root, newTree.Root)
 	return newTree
 }
@@ -316,4 +316,3 @@ func split(key string) []string {
 	nodesName = nodesName[1:]
 	return nodesName
 }
-

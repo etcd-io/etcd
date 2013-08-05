@@ -103,16 +103,16 @@ func TestTreeClone(t *testing.T) {
 			NewTestNode("/"),
 			true,
 			make(map[string]*treeNode),
-			},
-		}
+		},
+	}
 
 	backTs := &tree{
 		&treeNode{
 			NewTestNode("/"),
 			true,
 			make(map[string]*treeNode),
-			},
-		}
+		},
+	}
 
 	// generate the first tree
 	for _, key := range keys {
@@ -206,11 +206,10 @@ func BenchmarkTreeStoreCopy(b *testing.B) {
 	}
 }
 
-
 func BenchmarkMakeSlice(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
-		for i:=0; i < 100000; i++ {
+		for i := 0; i < 100000; i++ {
 			_ = make([]Node, 1)
 		}
 	}

@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"path"
 	"strconv"
-	"time"
 	"sync"
+	"time"
 )
 
 //------------------------------------------------------------------------------
@@ -21,7 +21,7 @@ type Store struct {
 	// key-value store structure
 	Tree *tree
 
-	mutex       sync.Mutex
+	mutex sync.Mutex
 
 	// WatcherHub is where we register all the clients
 	// who issue a watch request
@@ -350,7 +350,6 @@ func (s *Store) RawGet(key string) ([]*Response, error) {
 			return resps, nil
 		}
 
-
 		nodes, _ := nodes.([]*Node)
 
 		resps := make([]*Response, len(nodes))
@@ -573,12 +572,12 @@ func (s *Store) addToResponseMap(index uint64, resp *Response) {
 }
 
 func (s *Store) clone() *Store {
-	newStore := & Store{
-		ResponseMaxSize: s.ResponseMaxSize,
-		ResponseCurrSize: s.ResponseCurrSize,
-		ResponseStartIndex: s.ResponseStartIndex, 
-		Index:	s.Index,
-		BasicStats: s.BasicStats,
+	newStore := &Store{
+		ResponseMaxSize:    s.ResponseMaxSize,
+		ResponseCurrSize:   s.ResponseCurrSize,
+		ResponseStartIndex: s.ResponseStartIndex,
+		Index:              s.Index,
+		BasicStats:         s.BasicStats,
 	}
 
 	newStore.Tree = s.Tree.clone()
