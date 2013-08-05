@@ -4,6 +4,7 @@ import (
 	"path"
 	"sort"
 	"strings"
+	"time"
 )
 
 //------------------------------------------------------------------------------
@@ -158,25 +159,23 @@ func (t *tree) get(key string) (Node, bool) {
 }
 
 // get the internalNode of the key
-func (t *tree) list(directory string) ([]Node, []string, []bool, bool) {
+func (t *tree) list(directory string) (interface{}, []string, []bool, bool) {
 	treeNode, ok := t.internalGet(directory)
 
 	if !ok {
 		return nil, nil, nil, ok
 	} else {
 		if !treeNode.Dir {
-			nodes := make([]Node, 1)
-			nodes[0] = treeNode.InternalNode
-			return nodes, nil, nil, true
+			return &treeNode.InternalNode, nil, nil, true
 		}
 		length := len(treeNode.NodeMap)
-		nodes := make([]Node, length)
+		nodes := make([]*Node, length)
 		keys := make([]string, length)
 		dirs := make([]bool, length)
 		i := 0
 
 		for key, node := range treeNode.NodeMap {
-			nodes[i] = node.InternalNode
+			nodes[i] = &node.InternalNode
 			keys[i] = key
 			if node.Dir {
 				dirs[i] = true
@@ -220,6 +219,42 @@ func (t *tree) traverse(f func(string, *Node), sort bool) {
 		sortDfs("", t.Root, f)
 	} else {
 		dfs("", t.Root, f)
+	}
+}
+
+// clone() will return a deep cloned tree
+func (t *tree) clone() *tree {
+	newTree := new(tree)
+	newTree.Root = &treeNode{
+		Node{
+			"/",
+			time.Unix(0, 0),
+			nil,
+			},
+		true,
+		make(map[string]*treeNode),
+		}
+	recursiveClone(t.Root, newTree.Root)
+	return newTree
+}
+
+// recursiveClone is a helper function for clone()
+func recursiveClone(tnSrc *treeNode, tnDes *treeNode) {
+	if !tnSrc.Dir {
+		tnDes.InternalNode = tnSrc.InternalNode
+		return
+
+	} else {
+		tnDes.InternalNode = tnSrc.InternalNode
+		tnDes.Dir = true
+		tnDes.NodeMap = make(map[string]*treeNode)
+
+		for key, tn := range tnSrc.NodeMap {
+			newTn := new(treeNode)
+			recursiveClone(tn, newTn)
+			tnDes.NodeMap[key] = newTn
+		}
+
 	}
 }
 
@@ -281,3 +316,4 @@ func split(key string) []string {
 	nodesName = nodesName[1:]
 	return nodesName
 }
+

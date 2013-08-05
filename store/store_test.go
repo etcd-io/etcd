@@ -131,7 +131,7 @@ func TestExpire(t *testing.T) {
 
 }
 
-func BenchmarkSet(b *testing.B) {
+func BenchmarkStoreSet(b *testing.B) {
 	s := CreateStore(100)
 
 	keys := GenKeys(10000, 5)
@@ -147,7 +147,7 @@ func BenchmarkSet(b *testing.B) {
 	}
 }
 
-func BenchmarkGet(b *testing.B) {
+func BenchmarkStoreGet(b *testing.B) {
 	s := CreateStore(100)
 
 	keys := GenKeys(100, 5)
@@ -166,11 +166,25 @@ func BenchmarkGet(b *testing.B) {
 	}
 }
 
-func BenchmarkSetAndGet(b *testing.B) {
+func BenchmarkStoreSnapshotCopy(b *testing.B) {
+	s := CreateStore(100)
 
+	keys := GenKeys(10000, 5)
+
+	for i, key := range keys {
+		s.Set(key, "barbarbarbarbar", time.Unix(0, 0), uint64(i))
+	}
+
+	var state []byte
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		s.clone()
+	}
+	b.SetBytes(int64(len(state)))
 }
 
-func BenchmarkSnapshotSave(b *testing.B) {
+func BenchmarkSnapshotSaveJson(b *testing.B) {
 	s := CreateStore(100)
 
 	keys := GenKeys(10000, 5)
