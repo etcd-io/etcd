@@ -1,0 +1,8 @@
+package protobuf;
+
+message ProtoAppendEntriesResponse {
+	required uint64 Term=1;
+	required uint64 Index=2;
+	required uint64 CommitIndex=3;
+	required bool   Success=4;
+}
