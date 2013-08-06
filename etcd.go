@@ -625,10 +625,9 @@ func joinCluster(s *raft.Server, serverName string) error {
 			}
 			if resp.StatusCode == http.StatusTemporaryRedirect {
 				address := resp.Header.Get("Location")
-				debugf("Leader is %s", address)
 				debugf("Send Join Request to %s", address)
 				json.NewEncoder(&b).Encode(command)
-				resp, err = t.Post(fmt.Sprintf("%s/join", address), &b)
+				resp, err = t.Post(address, &b)
 			} else if resp.StatusCode == http.StatusBadRequest {
 				debug("Reach max number machines in the cluster")
 				return fmt.Errorf(errors[103])
