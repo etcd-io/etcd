@@ -627,7 +627,12 @@ func joinCluster(s *raft.Server, serverName string) error {
 				address := resp.Header.Get("Location")
 				debugf("Send Join Request to %s", address)
 				json.NewEncoder(&b).Encode(command)
-				resp, err = t.Post(address, &b)
+				segs := strings.Split(address, "://")
+				if len(segs) != 2 {
+					return fmt.Errorf("Unable to join: wrong redirection info")
+				}
+				path := segs[1]
+				resp, err = t.Post(path, &b)
 			} else if resp.StatusCode == http.StatusBadRequest {
 				debug("Reach max number machines in the cluster")
 				return fmt.Errorf(errors[103])
