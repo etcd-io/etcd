@@ -1,0 +1,6 @@
+package protobuf;
+
+message ProtoRequestVoteResponse {
+	required uint64 Term=1;
+	required bool VoteGranted=2;
+}
