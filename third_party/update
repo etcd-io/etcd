@@ -1,0 +1,42 @@
+#!/bin/sh
+
+packages="
+	github.com/coreos/go-raft
+	github.com/ccding/go-logging
+	bitbucket.org/kardianos/osext
+	code.google.com/p/go.net
+	code.google.com/p/goprotobuf
+"
+
+export GOPATH=${PWD}
+
+for p in $packages; do
+	# this is the target directory
+	mkdir -p $p
+
+	# This will checkout the project into src
+	go get -u -d $p
+
+	# The go get path
+	gp=src/$p
+
+	HEAD=
+	if [ -d $gp/.git ]; then
+		# Grab the head if it is git
+		HEAD=$(git --git-dir=$gp/.git rev-parse HEAD)
+	fi
+
+	# Grab the head if it is mercurial
+	if [ -d $gp/.hg ]; then
+		cd $gp
+		HEAD=$(hg id -i)
+		cd -
+	fi
+
+	# Copy the code into the final directory
+	rsync -a -z -r --exclude '.git/' --exclude '.hg/' src/$p/ $p
+
+	git add $p
+
+	git commit -m "bump($p): $HEAD"
+done
