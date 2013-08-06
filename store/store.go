@@ -322,7 +322,7 @@ func (s *Store) RawGet(key string) ([]*Response, error) {
 
 	key = path.Clean("/" + key)
 
-	nodes, keys, dirs, ok := s.Tree.list(key)
+	nodes, keys, ok := s.Tree.list(key)
 
 	if ok {
 
@@ -366,7 +366,7 @@ func (s *Store) RawGet(key string) ([]*Response, error) {
 				Key:    path.Join(key, keys[i]),
 			}
 
-			if !dirs[i] {
+			if len(nodes[i].Value) != 0 {
 				resps[i].Value = nodes[i].Value
 			} else {
 				resps[i].Dir = true
@@ -592,6 +592,8 @@ func (s *Store) clone() *Store {
 
 // Save the current state of the storage system
 func (s *Store) Save() ([]byte, error) {
+	// first we clone the store
+	// json is very slow, we cannot hold the lock for such a long time
 	s.mutex.Lock()
 	cloneStore := s.clone()
 	s.mutex.Unlock()

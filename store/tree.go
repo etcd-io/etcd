@@ -42,7 +42,7 @@ func (s tnWithKeySlice) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
 // CONSTANT VARIABLE
 
 // Represent an empty node
-var emptyNode = Node{".", PERMANENT, nil}
+var emptyNode = Node{"", PERMANENT, nil}
 
 //------------------------------------------------------------------------------
 //
@@ -159,33 +159,28 @@ func (t *tree) get(key string) (Node, bool) {
 }
 
 // get the internalNode of the key
-func (t *tree) list(directory string) (interface{}, []string, []bool, bool) {
+func (t *tree) list(directory string) (interface{}, []string, bool) {
 	treeNode, ok := t.internalGet(directory)
 
 	if !ok {
-		return nil, nil, nil, ok
+		return nil, nil, ok
+
 	} else {
 		if !treeNode.Dir {
-			return &treeNode.InternalNode, nil, nil, true
+			return &treeNode.InternalNode, nil, ok
 		}
 		length := len(treeNode.NodeMap)
 		nodes := make([]*Node, length)
 		keys := make([]string, length)
-		dirs := make([]bool, length)
-		i := 0
 
+		i := 0
 		for key, node := range treeNode.NodeMap {
 			nodes[i] = &node.InternalNode
 			keys[i] = key
-			if node.Dir {
-				dirs[i] = true
-			} else {
-				dirs[i] = false
-			}
 			i++
 		}
 
-		return nodes, keys, dirs, ok
+		return nodes, keys, ok
 	}
 }
 
