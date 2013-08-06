@@ -1,7 +1,0 @@
-package protobuf;
-
-message ProtoSnapshotRequest {
-	required string LeaderName=1;
-	required uint64 LastIndex=2; 
-	required uint64 LastTerm=3;
-}

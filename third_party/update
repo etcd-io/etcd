@@ -3,7 +3,6 @@
 packages="
 	github.com/coreos/go-raft
 	github.com/coreos/go-etcd
-	github.com/benbjohnson/go-raft
 	github.com/ccding/go-logging
 	github.com/ccding/go-config-reader
 	bitbucket.org/kardianos/osext
