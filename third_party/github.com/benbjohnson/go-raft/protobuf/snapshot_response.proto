@@ -1,5 +1,0 @@
-package protobuf;
-
-message ProtoSnapshotResponse {
-	required bool Success=1;
-}

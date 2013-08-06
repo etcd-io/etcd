@@ -242,7 +242,7 @@ func (s *Server) LastCommandName() string {
 func (s *Server) GetState() string {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
-	return fmt.Sprintf("Name: %s, State: %s, Term: %v, Index: %v ", s.name, s.state, s.currentTerm, s.log.commitIndex)
+	return fmt.Sprintf("Name: %s, State: %s, Term: %v, CommitedIndex: %v ", s.name, s.state, s.currentTerm, s.log.commitIndex)
 }
 
 // Check if the server is promotable
@@ -361,6 +361,8 @@ func (s *Server) Start() error {
 		s.debugln("start from previous saved state")
 	}
 
+	debugln(s.GetState())
+
 	go s.loop()
 
 	return nil
@@ -385,6 +387,8 @@ func (s *Server) readConf() error {
 		return err
 	}
 
+	peerNames := make([]string, 0)
+
 	for {
 		var peerName string
 		_, err = fmt.Fscanf(s.confFile, "%s\n", &peerName)
@@ -392,16 +396,20 @@ func (s *Server) readConf() error {
 		if err != nil {
 			if err == io.EOF {
 				s.debugln("server.peer.conf: finish")
-				return nil
+				break
 			}
 			return err
 		}
 		s.debugln("server.peer.conf.read: ", peerName)
 
-		peer := newPeer(s, peerName, s.heartbeatTimeout)
+		peerNames = append(peerNames, peerName)
+	}
 
-		s.peers[peer.name] = peer
+	s.confFile.Truncate(0)
+	s.confFile.Seek(0, os.SEEK_SET)
 
+	for _, peerName := range peerNames {
+		s.AddPeer(peerName)
 	}
 
 	return nil
@@ -961,10 +969,13 @@ func (s *Server) AddPeer(name string) error {
 
 	// Only add the peer if it doesn't have the same name.
 	if s.name != name {
-		_, err := fmt.Fprintln(s.confFile, name)
-		s.debugln("server.peer.conf.write: ", name)
-		if err != nil {
-			return err
+		// when loading snapshot s.confFile should be nil
+		if s.confFile != nil {
+			_, err := fmt.Fprintln(s.confFile, name)
+			s.debugln("server.peer.conf.write: ", name)
+			if err != nil {
+				return err
+			}
 		}
 		peer := newPeer(s, name, s.heartbeatTimeout)
 		if s.State() == Leader {
@@ -1019,7 +1030,6 @@ func (s *Server) Snapshot() {
 	for {
 		// TODO: change this... to something reasonable
 		time.Sleep(1 * time.Second)
-
 		s.takeSnapshot()
 	}
 }
@@ -1033,7 +1043,7 @@ func (s *Server) takeSnapshot() error {
 
 	lastIndex, lastTerm := s.log.commitInfo()
 
-	if lastIndex == 0 || lastTerm == 0 {
+	if lastIndex == 0 {
 		return errors.New("No logs")
 	}
 
