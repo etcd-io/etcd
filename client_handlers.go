@@ -14,13 +14,14 @@ import (
 // Multiplex GET/POST/DELETE request to corresponding handlers
 func Multiplexer(w http.ResponseWriter, req *http.Request) {
 
-	if req.Method == "GET" {
+	switch req.Method {
+	case "GET":
 		GetHttpHandler(&w, req)
-	} else if req.Method == "POST" {
+	case "POST":
 		SetHttpHandler(&w, req)
-	} else if req.Method == "DELETE" {
+	case "DELETE":
 		DeleteHttpHandler(&w, req)
-	} else {
+	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
