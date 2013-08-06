@@ -2,7 +2,10 @@
 
 packages="
 	github.com/coreos/go-raft
+	github.com/coreos/go-etcd
+	github.com/benbjohnson/go-raft
 	github.com/ccding/go-logging
+	github.com/ccding/go-config-reader
 	bitbucket.org/kardianos/osext
 	code.google.com/p/go.net
 	code.google.com/p/goprotobuf
@@ -20,6 +23,7 @@ for p in $packages; do
 	# The go get path
 	gp=src/$p
 
+	# Attempt to find the commit hash of the repo
 	HEAD=
 	if [ -d $gp/.git ]; then
 		# Grab the head if it is git
@@ -36,7 +40,7 @@ for p in $packages; do
 	# Copy the code into the final directory
 	rsync -a -z -r --exclude '.git/' --exclude '.hg/' src/$p/ $p
 
+	# Make a nice commit about what everything bumped to
 	git add $p
-
 	git commit -m "bump($p): $HEAD"
 done
