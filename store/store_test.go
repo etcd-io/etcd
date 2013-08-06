@@ -150,7 +150,7 @@ func BenchmarkStoreSet(b *testing.B) {
 func BenchmarkStoreGet(b *testing.B) {
 	s := CreateStore(100)
 
-	keys := GenKeys(100, 5)
+	keys := GenKeys(10000, 5)
 
 	for i, key := range keys {
 		s.Set(key, "barbarbarbarbar", time.Unix(0, 0), uint64(i))
