@@ -315,6 +315,20 @@ func WatchHttpHandler(w http.ResponseWriter, req *http.Request) {
 
 }
 
+// TestHandler
+func TestHttpHandler(w http.ResponseWriter, req *http.Request) {
+	testType := req.URL.Path[len("/test/"):]
+
+	if testType == "speed" {
+		directSet()
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("speed test success"))
+		return
+	}
+
+	w.WriteHeader(http.StatusBadRequest)
+}
+
 // Convert string duration to time format
 func durationToExpireTime(strDuration string) (time.Time, error) {
 	if strDuration != "" {

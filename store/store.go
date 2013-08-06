@@ -21,6 +21,12 @@ type Store struct {
 	// key-value store structure
 	Tree *tree
 
+	// This mutex protects everything except add watcher member.
+	// Add watch member does not depend on the current state of the store.
+	// And watch will return when other protected function is called and reach
+	// the watching condition.
+	// It is needed so that clone() can atomically replicate the Store
+	// and do the log snapshot in a go routine.
 	mutex sync.Mutex
 
 	// WatcherHub is where we register all the clients

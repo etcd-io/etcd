@@ -1,7 +1,7 @@
 package store
 
 import (
-	//"fmt"
+	"fmt"
 	"math/rand"
 	"strconv"
 	"testing"
@@ -64,20 +64,20 @@ func TestStoreGet(t *testing.T) {
 	ts.set("/hello/fooo", NewTestNode("barbarbar"))
 	ts.set("/hello/foooo/foo", NewTestNode("barbarbar"))
 
-	//nodes, keys, ok := ts.list("/hello")
+	nodes, keys, ok := ts.list("/hello")
 
-	// if !ok {
-	// 	t.Fatalf("cannot list!")
-	// } else {
-	// 	nodes, _ := nodes.([]*Node)
-	// 	length := len(nodes)
+	if !ok {
+		t.Fatalf("cannot list!")
+	} else {
+		nodes, _ := nodes.([]*Node)
+		length := len(nodes)
 
-	// 	for i := 0; i < length; i++ {
-	// 		fmt.Println(keys[i], "=", nodes[i].Value)
-	// 	}
-	// }
+		for i := 0; i < length; i++ {
+			fmt.Println(keys[i], "=", nodes[i].Value)
+		}
+	}
 
-	keys := GenKeys(100, 10)
+	keys = GenKeys(100, 10)
 
 	for i := 0; i < 100; i++ {
 		value := strconv.Itoa(rand.Int())
