@@ -14,13 +14,14 @@ import (
 // Multiplex GET/POST/DELETE request to corresponding handlers
 func Multiplexer(w http.ResponseWriter, req *http.Request) {
 
-	if req.Method == "GET" {
+	switch req.Method {
+	case "GET":
 		GetHttpHandler(&w, req)
-	} else if req.Method == "POST" {
+	case "POST":
 		SetHttpHandler(&w, req)
-	} else if req.Method == "DELETE" {
+	case "DELETE":
 		DeleteHttpHandler(&w, req)
-	} else {
+	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
@@ -69,18 +70,22 @@ func SetHttpHandler(w *http.ResponseWriter, req *http.Request) {
 	}
 
 	if len(prevValue) != 0 {
-		command := &TestAndSetCommand{}
-		command.Key = key
-		command.Value = value
-		command.PrevValue = prevValue
-		command.ExpireTime = expireTime
+		command := &TestAndSetCommand{
+			Key: key,
+			Value: value,
+			PrevValue: prevValue,
+			ExpireTime: expireTime,
+		}
+
 		dispatch(command, w, req, true)
 
 	} else {
-		command := &SetCommand{}
-		command.Key = key
-		command.Value = value
-		command.ExpireTime = expireTime
+		command := &SetCommand{
+			Key: key,
+			Value: value,
+			ExpireTime: expireTime,
+		}
+
 		dispatch(command, w, req, true)
 	}
 
@@ -92,8 +97,9 @@ func DeleteHttpHandler(w *http.ResponseWriter, req *http.Request) {
 
 	debugf("[recv] DELETE http://%v/v1/keys/%s", raftServer.Name(), key)
 
-	command := &DeleteCommand{}
-	command.Key = key
+	command := &DeleteCommand{
+		Key: key,
+	}
 
 	dispatch(command, w, req, true)
 }
@@ -243,8 +249,9 @@ func GetHttpHandler(w *http.ResponseWriter, req *http.Request) {
 
 	debugf("[recv] GET http://%v/v1/keys/%s", raftServer.Name(), key)
 
-	command := &GetCommand{}
-	command.Key = key
+	command := &GetCommand{
+		Key: key,
+	}
 
 	if body, err := command.Apply(raftServer); err != nil {
 
@@ -274,8 +281,9 @@ func GetHttpHandler(w *http.ResponseWriter, req *http.Request) {
 func WatchHttpHandler(w http.ResponseWriter, req *http.Request) {
 	key := req.URL.Path[len("/v1/watch/"):]
 
-	command := &WatchCommand{}
-	command.Key = key
+	command := &WatchCommand{
+		Key: key,
+	}
 
 	if req.Method == "GET" {
 		debugf("[recv] GET http://%v/watch/%s", raftServer.Name(), key)
