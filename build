@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 ETCD_PACKAGE=github.com/coreos/etcd
 export GOPATH=${PWD}
@@ -14,5 +14,11 @@ if [ ! -h ${ETCD_DIR} ]; then
 	ln -s ../../../ ${ETCD_DIR}
 fi
 
-go get -d ./...
+for i in third_party/*; do
+	if [ $i = "third_party/src" ]; then
+		continue
+	fi
+	cp -R $i src/
+done
+
 go build ${ETCD_PACKAGE}

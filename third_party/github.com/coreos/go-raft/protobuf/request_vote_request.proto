@@ -1,0 +1,8 @@
+package protobuf;
+
+message ProtoRequestVoteRequest {
+	required uint64 Term=1;
+	required uint64 LastLogIndex=2;
+	required uint64 LastLogTerm=3;
+	required string CandidateName=4;
+}
