@@ -1,7 +1,7 @@
 all: test
 
 coverage:
-	gocov test github.com/benbjohnson/go-raft | gocov-html > coverage.html
+	gocov test github.com/coreos/go-raft | gocov-html > coverage.html
 	open coverage.html
 
 dependencies:

@@ -2,7 +2,7 @@ package raft
 
 import (
 	"code.google.com/p/goprotobuf/proto"
-	"github.com/benbjohnson/go-raft/protobuf"
+	"github.com/coreos/go-raft/protobuf"
 	"io"
 	"io/ioutil"
 )
