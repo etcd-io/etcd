@@ -1,10 +1,10 @@
 package main
 
 import (
+	"fmt"
 	"github.com/coreos/etcd/store"
 	"net/http"
 	"strconv"
-	"fmt"
 	"time"
 )
 
@@ -72,9 +72,9 @@ func SetHttpHandler(w *http.ResponseWriter, req *http.Request) {
 
 	if len(prevValue) != 0 {
 		command := &TestAndSetCommand{
-			Key: key,
-			Value: value,
-			PrevValue: prevValue,
+			Key:        key,
+			Value:      value,
+			PrevValue:  prevValue,
 			ExpireTime: expireTime,
 		}
 
@@ -82,8 +82,8 @@ func SetHttpHandler(w *http.ResponseWriter, req *http.Request) {
 
 	} else {
 		command := &SetCommand{
-			Key: key,
-			Value: value,
+			Key:        key,
+			Value:      value,
 			ExpireTime: expireTime,
 		}
 
