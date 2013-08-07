@@ -72,7 +72,7 @@ func init() {
 	flag.StringVar(&hostname, "h", "0.0.0.0", "the hostname of the local machine")
 	flag.IntVar(&clientPort, "c", 4001, "the port to communicate with clients")
 	flag.IntVar(&raftPort, "s", 7001, "the port to communicate with servers")
-	flag.IntVar(&webPort, "w", -1, "the port of web interface (-1 means do not start web inteface)")
+	flag.IntVar(&webPort, "w", -1, "the port of web interface (-1 means do not start web interface)")
 
 	flag.StringVar(&serverCAFile, "serverCAFile", "", "the path of the CAFile")
 	flag.StringVar(&serverCertFile, "serverCert", "", "the cert file of the server")
