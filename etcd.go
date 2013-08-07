@@ -226,7 +226,7 @@ func main() {
 
 	if webPort != -1 {
 		// start web
-		etcdStore.SetMessager(&storeMsg)
+		etcdStore.SetMessager(storeMsg)
 		go webHelper()
 		go web.Start(raftServer, webPort)
 	}

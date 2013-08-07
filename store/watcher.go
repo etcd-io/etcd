@@ -36,14 +36,14 @@ func NewWatcher() *Watcher {
 
 // Add a watcher to the watcherHub
 func (w *WatcherHub) addWatcher(prefix string, watcher *Watcher, sinceIndex uint64,
-	responseStartIndex uint64, currentIndex uint64, resMap *map[string]*Response) error {
+	responseStartIndex uint64, currentIndex uint64, resMap map[string]*Response) error {
 
 	prefix = path.Clean("/" + prefix)
 
 	if sinceIndex != 0 && sinceIndex >= responseStartIndex {
 		for i := sinceIndex; i <= currentIndex; i++ {
 			if checkResponse(prefix, i, resMap) {
-				watcher.C <- (*resMap)[strconv.FormatUint(i, 10)]
+				watcher.C <- resMap[strconv.FormatUint(i, 10)]
 				return nil
 			}
 		}
@@ -52,22 +52,18 @@ func (w *WatcherHub) addWatcher(prefix string, watcher *Watcher, sinceIndex uint
 	_, ok := w.watchers[prefix]
 
 	if !ok {
-
 		w.watchers[prefix] = make([]*Watcher, 0)
-
-		w.watchers[prefix] = append(w.watchers[prefix], watcher)
-	} else {
-
-		w.watchers[prefix] = append(w.watchers[prefix], watcher)
 	}
+
+	w.watchers[prefix] = append(w.watchers[prefix], watcher)
 
 	return nil
 }
 
 // Check if the response has what we are watching
-func checkResponse(prefix string, index uint64, resMap *map[string]*Response) bool {
+func checkResponse(prefix string, index uint64, resMap map[string]*Response) bool {
 
-	resp, ok := (*resMap)[strconv.FormatUint(index, 10)]
+	resp, ok := resMap[strconv.FormatUint(index, 10)]
 
 	if !ok {
 		// not storage system command
