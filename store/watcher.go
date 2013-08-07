@@ -52,14 +52,10 @@ func (w *WatcherHub) addWatcher(prefix string, watcher *Watcher, sinceIndex uint
 	_, ok := w.watchers[prefix]
 
 	if !ok {
-
 		w.watchers[prefix] = make([]*Watcher, 0)
-
-		w.watchers[prefix] = append(w.watchers[prefix], watcher)
-	} else {
-
-		w.watchers[prefix] = append(w.watchers[prefix], watcher)
 	}
+
+	w.watchers[prefix] = append(w.watchers[prefix], watcher)
 
 	return nil
 }
