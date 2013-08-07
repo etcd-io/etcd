@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"math/rand"
+	"net/http"
 	"os"
 	"strconv"
 	"strings"
@@ -117,5 +118,24 @@ func TestKillRandom(t *testing.T) {
 	}
 
 	<-leaderChan
+
+}
+
+func BenchmarkEtcdDirectCall(b *testing.B) {
+	procAttr := new(os.ProcAttr)
+	procAttr.Files = []*os.File{nil, os.Stdout, os.Stderr}
+
+	clusterSize := 3
+	_, etcds, _ := createCluster(clusterSize, procAttr)
+
+	defer destroyCluster(etcds)
+
+	time.Sleep(time.Second)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		resp, _ := http.Get("http://0.0.0.0:4001/test/speed")
+		resp.Body.Close()
+	}
 
 }

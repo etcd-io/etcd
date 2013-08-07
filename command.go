@@ -102,7 +102,7 @@ func (c *WatchCommand) Apply(server *raft.Server) (interface{}, error) {
 	res := <-watcher.C
 
 	if res == nil {
-		return nil, fmt.Errorf("watcher is cleared")
+		return nil, fmt.Errorf("Clearing watch")
 	}
 
 	return json.Marshal(res)
