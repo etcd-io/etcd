@@ -190,7 +190,7 @@ func (s *Store) Set(key string, value string, expireTime time.Time, index uint64
 		} else {
 
 			// If we want the permanent node to have expire time
-			// We need to create create a go routine with a channel
+			// We need to create a go routine with a channel
 			if isExpire {
 				node.update = make(chan time.Time)
 				go s.monitorExpiration(key, node.update, expireTime)
