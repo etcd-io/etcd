@@ -66,9 +66,10 @@ message Request {
     optional int32 group_field = 9;
   }
 
-  // This foreign message type is in imp2.proto,
+  // These foreign types are in imp2.proto,
   // which is publicly imported by imp.proto.
 //  optional imp.PubliclyImportedMessage pub = 10;
+//  optional imp.PubliclyImportedEnum pub_enum = 13 [default=HAIR];
 
 
   optional int32 reset = 12;

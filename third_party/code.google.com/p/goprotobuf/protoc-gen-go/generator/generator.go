@@ -377,12 +377,17 @@ func (es enumSymbol) GenerateAlias(g *Generator, pkg string) {
 }
 
 type constOrVarSymbol struct {
-	sym string
-	typ string // either "const" or "var"
+	sym  string
+	typ  string // either "const" or "var"
+	cast string // if non-empty, a type cast is required (used for enums)
 }
 
 func (cs constOrVarSymbol) GenerateAlias(g *Generator, pkg string) {
-	g.P(cs.typ, " ", cs.sym, " = ", pkg, ".", cs.sym)
+	v := pkg + "." + cs.sym
+	if cs.cast != "" {
+		v = cs.cast + "(" + v + ")"
+	}
+	g.P(cs.typ, " ", cs.sym, " = ", v)
 }
 
 // Object is an interface abstracting the abilities shared by enums, messages, extensions and imported objects.
@@ -1157,7 +1162,7 @@ func (g *Generator) generateEnum(enum *EnumDescriptor) {
 
 		name := ccPrefix + *e.Name
 		g.P(name, " ", ccTypeName, " = ", e.Number)
-		g.file.addExport(enum, constOrVarSymbol{name, "const"})
+		g.file.addExport(enum, constOrVarSymbol{name, "const", ccTypeName})
 	}
 	g.Out()
 	g.P(")")
@@ -1255,9 +1260,18 @@ func (g *Generator) goTag(field *descriptor.FieldDescriptorProto, wiretype strin
 		case descriptor.FieldDescriptorProto_TYPE_ENUM:
 			// For enums we need to provide the integer constant.
 			obj := g.ObjectNamed(field.GetTypeName())
+			if id, ok := obj.(*ImportedDescriptor); ok {
+				// It is an enum that was publicly imported.
+				// We need the underlying type.
+				obj = id.o
+			}
 			enum, ok := obj.(*EnumDescriptor)
 			if !ok {
-				g.Fail("enum type inconsistent for", CamelCaseSlice(obj.TypeName()))
+				log.Printf("obj is a %T", obj)
+				if id, ok := obj.(*ImportedDescriptor); ok {
+					log.Printf("id.o is a %T", id.o)
+				}
+				g.Fail("unknown enum type", CamelCaseSlice(obj.TypeName()))
 			}
 			defaultValue = enum.integerValueAsString(defaultValue)
 		}
@@ -1268,6 +1282,9 @@ func (g *Generator) goTag(field *descriptor.FieldDescriptorProto, wiretype strin
 		// We avoid using obj.PackageName(), because we want to use the
 		// original (proto-world) package name.
 		obj := g.ObjectNamed(field.GetTypeName())
+		if id, ok := obj.(*ImportedDescriptor); ok {
+			obj = id.o
+		}
 		enum = ",enum="
 		if pkg := obj.File().GetPackage(); pkg != "" {
 			enum += pkg + "."
@@ -1541,15 +1558,21 @@ func (g *Generator) generateMessage(message *Descriptor) {
 		case *field.Type == descriptor.FieldDescriptorProto_TYPE_ENUM:
 			// Must be an enum.  Need to construct the prefixed name.
 			obj := g.ObjectNamed(field.GetTypeName())
-			enum, ok := obj.(*EnumDescriptor)
-			if !ok {
-				log.Print("don't know how to generate constant for", fieldname)
+			var enum *EnumDescriptor
+			if id, ok := obj.(*ImportedDescriptor); ok {
+				// The enum type has been publicly imported.
+				enum, _ = id.o.(*EnumDescriptor)
+			} else {
+				enum, _ = obj.(*EnumDescriptor)
+			}
+			if enum == nil {
+				log.Printf("don't know how to generate constant for %s", fieldname)
 				continue
 			}
-			def = g.DefaultPackageName(enum) + enum.prefix() + def
+			def = g.DefaultPackageName(obj) + enum.prefix() + def
 		}
 		g.P(kind, fieldname, " ", typename, " = ", def)
-		g.file.addExport(message, constOrVarSymbol{fieldname, kind})
+		g.file.addExport(message, constOrVarSymbol{fieldname, kind, ""})
 	}
 	g.P()
 
@@ -1701,7 +1724,7 @@ func (g *Generator) generateExtension(ext *ExtensionDescriptor) {
 	g.P("}")
 	g.P()
 
-	g.file.addExport(ext, constOrVarSymbol{ccTypeName, "var"})
+	g.file.addExport(ext, constOrVarSymbol{ccTypeName, "var", ""})
 }
 
 func (g *Generator) generateInitFunction() {
