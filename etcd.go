@@ -542,13 +542,15 @@ func getInfo(path string) *Info {
 	} else {
 		// Otherwise ask user for info and write it to file.
 
+		hostname = strings.TrimSpace(hostname)
+
 		if hostname == "" {
 			fatal("Please give the address of the local machine")
 		}
 
+		fmt.Println("address ", hostname)
+
 		info.Hostname = hostname
-		info.Hostname = strings.TrimSpace(info.Hostname)
-		fmt.Println("address ", info.Hostname)
 
 		info.RaftPort = raftPort
 		info.ClientPort = clientPort
