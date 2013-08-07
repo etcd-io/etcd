@@ -429,7 +429,7 @@ func (s *Store) TestAndSet(key string, prevValue string, value string, expireTim
 // The watchHub will send response to the channel when any key under the prefix
 // changes [since the sinceIndex if given]
 func (s *Store) AddWatcher(prefix string, watcher *Watcher, sinceIndex uint64) error {
-	return s.watcher.addWatcher(prefix, watcher, sinceIndex, s.ResponseStartIndex, s.Index, &s.ResponseMap)
+	return s.watcher.addWatcher(prefix, watcher, sinceIndex, s.ResponseStartIndex, s.Index, s.ResponseMap)
 }
 
 // This function should be created as a go routine to delete the key-value pair
