@@ -5,7 +5,7 @@ import (
 	"code.google.com/p/goprotobuf/proto"
 	"errors"
 	"fmt"
-	"github.com/benbjohnson/go-raft/protobuf"
+	"github.com/coreos/go-raft/protobuf"
 	"io"
 	"os"
 	"sync"
@@ -141,9 +141,6 @@ func (l *Log) currentTerm() uint64 {
 // Opens the log file and reads existing entries. The log can remain open and
 // continue to append entries to the end of the log.
 func (l *Log) open(path string) error {
-	l.mutex.Lock()
-	defer l.mutex.Unlock()
-
 	// Read all the entries from the log if one exists.
 	var readBytes int64
 
@@ -168,7 +165,6 @@ func (l *Log) open(path string) error {
 
 	// Read the file and decode entries.
 	for {
-
 		// Instantiate log entry and decode into it.
 		entry, _ := newLogEntry(l, 0, 0, nil)
 		entry.Position, _ = l.file.Seek(0, os.SEEK_CUR)
@@ -192,6 +188,9 @@ func (l *Log) open(path string) error {
 		readBytes += int64(n)
 	}
 	l.results = make([]*logResult, len(l.entries))
+
+	l.compact(l.startIndex, l.startTerm)
+
 	debugln("open.log.recovery number of log ", len(l.entries))
 	return nil
 }
@@ -282,9 +281,9 @@ func (l *Log) getEntryResult(entry *LogEntry, clear bool) (interface{}, error) {
 	if entry == nil {
 		panic("raft: Log entry required for error retrieval")
 	}
-
+	debugln("getEntryResult.result index: ", entry.Index-l.startIndex-1)
 	// If a result exists for the entry then return it with its error.
-	if entry.Index > l.startIndex && entry.Index <= uint64(len(l.results)) {
+	if entry.Index > l.startIndex && entry.Index <= l.startIndex+uint64(len(l.results)) {
 		if result := l.results[entry.Index-l.startIndex-1]; result != nil {
 
 			// keep the records before remove it
@@ -310,8 +309,7 @@ func (l *Log) getEntryResult(entry *LogEntry, clear bool) (interface{}, error) {
 func (l *Log) commitInfo() (index uint64, term uint64) {
 	l.mutex.RLock()
 	defer l.mutex.RUnlock()
-
-	// If we don't have any entries then just return zeros.
+	// If we don't have any committed entries then just return zeros.
 	if l.commitIndex == 0 {
 		return 0, 0
 	}
@@ -322,6 +320,7 @@ func (l *Log) commitInfo() (index uint64, term uint64) {
 	}
 
 	// Return the last index & term from the last committed entry.
+	debugln("commitInfo.get.[", l.commitIndex, "/", l.startIndex, "]")
 	entry := l.entries[l.commitIndex-1-l.startIndex]
 	return entry.Index, entry.Term
 }
@@ -395,6 +394,7 @@ func (l *Log) setCommitIndex(index uint64) error {
 
 		// Apply the changes to the state machine and store the error code.
 		returnValue, err := l.ApplyFunc(command)
+		debugln("setCommitIndex.set.result index: ", entryIndex)
 		l.results[entryIndex] = &logResult{returnValue: returnValue, err: err}
 	}
 	return nil
@@ -555,22 +555,27 @@ func (l *Log) writeEntry(entry *LogEntry, w io.Writer) (int64, error) {
 // Log compaction
 //--------------------------------------
 
-// compaction the log before index
+// compact the log before index (including index)
 func (l *Log) compact(index uint64, term uint64) error {
 	var entries []*LogEntry
+	var results []*logResult
 
 	l.mutex.Lock()
 	defer l.mutex.Unlock()
 
+	if index == 0 {
+		return nil
+	}
 	// nothing to compaction
 	// the index may be greater than the current index if
 	// we just recovery from on snapshot
 	if index >= l.internalCurrentIndex() {
 		entries = make([]*LogEntry, 0)
+		results = make([]*logResult, 0)
 	} else {
-
 		// get all log entries after index
 		entries = l.entries[index-l.startIndex:]
+		results = l.results[index-l.startIndex:]
 	}
 
 	// create a new log file and add all the entries
@@ -604,6 +609,7 @@ func (l *Log) compact(index uint64, term uint64) error {
 
 	// compaction the in memory log
 	l.entries = entries
+	l.results = results
 	l.startIndex = index
 	l.startTerm = term
 	return nil

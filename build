@@ -21,4 +21,5 @@ for i in third_party/*; do
 	cp -R $i src/
 done
 
+./scripts/release-version > release_version.go
 go build ${ETCD_PACKAGE}

@@ -1,5 +1,7 @@
 # etcd
 
+[![Build Status](https://travis-ci.org/coreos/etcd.png)](https://travis-ci.org/coreos/etcd)
+
 A highly-available key value store for shared configuration and service discovery. etcd is inspired by zookeeper and doozer, with a focus on:
 
 * Simple: curl'able user facing API (HTTP+JSON)
@@ -18,14 +20,10 @@ See [go-etcd][go-etcd] for a native go client. Or feel free to just use curl, as
 
 ### Building
 
-etcd is installed like any other Go (golang >= 1.1) binary. The steps below will put everything into a directory called etcd.
+To build etcd run the build script. This will generate a binary in the base directory called `./etcd`.
 
 ```
-mkdir etcd
-cd etcd
-export GOPATH=`pwd`
-go get github.com/coreos/etcd
-go install github.com/coreos/etcd
+./build
 ```
 
 ### Running a single node
@@ -33,7 +31,7 @@ go install github.com/coreos/etcd
 These examples will use a single node cluster to show you the basics of the etcd REST API. Lets start etcd:
 
 ```sh
-./bin/etcd
+./etcd
 ```
 
 This will bring up a node, which will be listening on internal port 7001 (for server communication) and external port 4001 (for client communication)

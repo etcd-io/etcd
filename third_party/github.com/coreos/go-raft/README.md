@@ -1,4 +1,5 @@
-[![Stories in Ready](http://badge.waffle.io/benbjohnson/go-raft.png)](http://waffle.io/benbjohnson/go-raft)  
+[![Build Status](https://travis-ci.org/benbjohnson/go-raft.png?branch=master)](https://travis-ci.org/benbjohnson/go-raft)
+
 go-raft
 =======
 

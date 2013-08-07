@@ -18,9 +18,12 @@ package config
 
 import (
 	"bufio"
+	"errors"
 	"os"
 	"strings"
 )
+
+var commentPrefix = []string{"//", "#", ";"}
 
 func Read(filename string) (map[string]string, error) {
 	var res = map[string]string{}
@@ -30,11 +33,19 @@ func Read(filename string) (map[string]string, error) {
 	}
 	scanner := bufio.NewScanner(in)
 	line := ""
+	section := ""
 	for scanner.Scan() {
-		if strings.HasPrefix(scanner.Text(), "//") {
+		if scanner.Text() == "" {
 			continue
 		}
-		if strings.HasPrefix(scanner.Text(), "#") {
+		if line == "" {
+			sec := checkSection(scanner.Text())
+			if sec != "" {
+				section = sec + "."
+				continue
+			}
+		}
+		if checkComment(scanner.Text()) {
 			continue
 		}
 		line += scanner.Text()
@@ -42,13 +53,47 @@ func Read(filename string) (map[string]string, error) {
 			line = line[:len(line)-1]
 			continue
 		}
-		sp := strings.SplitN(line, "=", 2)
-		if len(sp) != 2 {
-			continue
+		key, value, err := checkLine(line)
+		if err != nil {
+			return res, errors.New("WRONG: " + line)
 		}
-		res[strings.TrimSpace(sp[0])] = strings.TrimSpace(sp[1])
+		res[section+key] = value
 		line = ""
 	}
 	in.Close()
 	return res, nil
+}
+
+func checkSection(line string) string {
+	line = strings.TrimSpace(line)
+	lineLen := len(line)
+	if lineLen < 2 {
+		return ""
+	}
+	if line[0] == '[' && line[lineLen-1] == ']' {
+		return line[1 : lineLen-1]
+	}
+	return ""
+}
+
+func checkLine(line string) (string, string, error) {
+	key := ""
+	value := ""
+	sp := strings.SplitN(line, "=", 2)
+	if len(sp) != 2 {
+		return key, value, errors.New("WRONG: " + line)
+	}
+	key = strings.TrimSpace(sp[0])
+	value = strings.TrimSpace(sp[1])
+	return key, value, nil
+}
+
+func checkComment(line string) bool {
+	line = strings.TrimSpace(line)
+	for p := range commentPrefix {
+		if strings.HasPrefix(line, commentPrefix[p]) {
+			return true
+		}
+	}
+	return false
 }
