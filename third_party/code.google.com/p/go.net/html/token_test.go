@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"io"
 	"io/ioutil"
+	"reflect"
 	"runtime"
 	"strings"
 	"testing"
@@ -529,6 +530,85 @@ func TestConvertNewlines(t *testing.T) {
 			t.Errorf("input %q: got %q, want %q", in, got, want)
 		}
 	}
+}
+
+func TestReaderEdgeCases(t *testing.T) {
+	const s = "<p>An io.Reader can return (0, nil) or (n, io.EOF).</p>"
+	testCases := []io.Reader{
+		&zeroOneByteReader{s: s},
+		&eofStringsReader{s: s},
+		&stuckReader{},
+	}
+	for i, tc := range testCases {
+		got := []TokenType{}
+		z := NewTokenizer(tc)
+		for {
+			tt := z.Next()
+			if tt == ErrorToken {
+				break
+			}
+			got = append(got, tt)
+		}
+		if err := z.Err(); err != nil && err != io.EOF {
+			if err != io.ErrNoProgress {
+				t.Errorf("i=%d: %v", i, err)
+			}
+			continue
+		}
+		want := []TokenType{
+			StartTagToken,
+			TextToken,
+			EndTagToken,
+		}
+		if !reflect.DeepEqual(got, want) {
+			t.Errorf("i=%d: got %v, want %v", i, got, want)
+			continue
+		}
+	}
+}
+
+// zeroOneByteReader is like a strings.Reader that alternates between
+// returning 0 bytes and 1 byte at a time.
+type zeroOneByteReader struct {
+	s string
+	n int
+}
+
+func (r *zeroOneByteReader) Read(p []byte) (int, error) {
+	if len(p) == 0 {
+		return 0, nil
+	}
+	if len(r.s) == 0 {
+		return 0, io.EOF
+	}
+	r.n++
+	if r.n%2 != 0 {
+		return 0, nil
+	}
+	p[0], r.s = r.s[0], r.s[1:]
+	return 1, nil
+}
+
+// eofStringsReader is like a strings.Reader but can return an (n, err) where
+// n > 0 && err != nil.
+type eofStringsReader struct {
+	s string
+}
+
+func (r *eofStringsReader) Read(p []byte) (int, error) {
+	n := copy(p, r.s)
+	r.s = r.s[n:]
+	if r.s != "" {
+		return n, nil
+	}
+	return n, io.EOF
+}
+
+// stuckReader is an io.Reader that always returns no data and no error.
+type stuckReader struct{}
+
+func (*stuckReader) Read(p []byte) (int, error) {
+	return 0, nil
 }
 
 const (
