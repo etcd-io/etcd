@@ -72,7 +72,7 @@ func init() {
 	flag.StringVar(&hostname, "h", "0.0.0.0", "the hostname of the local machine")
 	flag.IntVar(&clientPort, "c", 4001, "the port to communicate with clients")
 	flag.IntVar(&raftPort, "s", 7001, "the port to communicate with servers")
-	flag.IntVar(&webPort, "w", -1, "the port of web interface")
+	flag.IntVar(&webPort, "w", -1, "the port of web interface (-1 means do not start web interface)")
 
 	flag.StringVar(&serverCAFile, "serverCAFile", "", "the path of the CAFile")
 	flag.StringVar(&serverCertFile, "serverCert", "", "the cert file of the server")
@@ -279,11 +279,12 @@ func startRaft(securityType int) {
 
 			// leader need to join self as a peer
 			for {
-				command := &JoinCommand{}
-				command.Name = raftServer.Name()
-				command.Hostname = hostname
-				command.RaftPort = raftPort
-				command.ClientPort = clientPort
+				command := &JoinCommand{
+					Name:       raftServer.Name(),
+					Hostname:   hostname,
+					RaftPort:   raftPort,
+					ClientPort: clientPort,
+				}
 				_, err := raftServer.Do(command)
 				if err == nil {
 					break
@@ -510,7 +511,6 @@ func securityType(source int) int {
 // Get the server info from previous conf file
 // or from the user
 func getInfo(path string) *Info {
-	info := &Info{}
 
 	// Read in the server info if available.
 	infoPath := fmt.Sprintf("%s/info", path)
@@ -529,6 +529,7 @@ func getInfo(path string) *Info {
 	}
 
 	if file, err := os.Open(infoPath); err == nil {
+		info := &Info{}
 		if content, err := ioutil.ReadAll(file); err != nil {
 			fatalf("Unable to read info: %v", err)
 		} else {
@@ -537,29 +538,32 @@ func getInfo(path string) *Info {
 			}
 		}
 		file.Close()
-
+		return info
 	} else {
 		// Otherwise ask user for info and write it to file.
+
+		hostname = strings.TrimSpace(hostname)
 
 		if hostname == "" {
 			fatal("Please give the address of the local machine")
 		}
 
-		info.Hostname = hostname
-		info.Hostname = strings.TrimSpace(info.Hostname)
-		fmt.Println("address ", info.Hostname)
+		fmt.Println("address ", hostname)
+		info := &Info{
+			Hostname: hostname,
 
-		info.RaftPort = raftPort
-		info.ClientPort = clientPort
-		info.WebPort = webPort
+			RaftPort: raftPort,
+			ClientPort: clientPort,
+			WebPort:    webPort,
 
-		info.ClientCAFile = clientCAFile
-		info.ClientCertFile = clientCertFile
-		info.ClientKeyFile = clientKeyFile
+			ClientCAFile:   clientCAFile,
+			ClientCertFile: clientCertFile,
+			ClientKeyFile:  clientKeyFile,
 
-		info.ServerCAFile = serverCAFile
-		info.ServerKeyFile = serverKeyFile
-		info.ServerCertFile = serverCertFile
+			ServerCAFile:   serverCAFile,
+			ServerKeyFile:  serverKeyFile,
+			ServerCertFile: serverCertFile,
+		}
 
 		// Write to file.
 		content, _ := json.Marshal(info)
@@ -567,9 +571,8 @@ func getInfo(path string) *Info {
 		if err := ioutil.WriteFile(infoPath, content, 0644); err != nil {
 			fatalf("Unable to write info to file: %v", err)
 		}
+		return info
 	}
-
-	return info
 }
 
 // Create client auth certpool
@@ -595,11 +598,12 @@ func createCertPool(CAFile string) *x509.CertPool {
 func joinCluster(s *raft.Server, serverName string) error {
 	var b bytes.Buffer
 
-	command := &JoinCommand{}
-	command.Name = s.Name()
-	command.Hostname = info.Hostname
-	command.RaftPort = info.RaftPort
-	command.ClientPort = info.ClientPort
+	command := &JoinCommand{
+		Name:       s.Name(),
+		Hostname:   info.Hostname,
+		RaftPort:   info.RaftPort,
+		ClientPort: info.ClientPort,
+	}
 
 	json.NewEncoder(&b).Encode(command)
 
