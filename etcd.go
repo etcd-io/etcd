@@ -554,14 +554,14 @@ func getInfo(path string) *Info {
 
 			RaftPort: raftPort,
 			ClientPort: clientPort,
-			WebPort: webPort,
+			WebPort:    webPort,
 
-			ClientCAFile: clientCAFile,
+			ClientCAFile:   clientCAFile,
 			ClientCertFile: clientCertFile,
-			ClientKeyFile: clientKeyFile,
+			ClientKeyFile:  clientKeyFile,
 
-			ServerCAFile: serverCAFile,
-			ServerKeyFile: serverKeyFile,
+			ServerCAFile:   serverCAFile,
+			ServerKeyFile:  serverKeyFile,
 			ServerCertFile: serverCertFile,
 		}
 
@@ -599,10 +599,10 @@ func joinCluster(s *raft.Server, serverName string) error {
 	var b bytes.Buffer
 
 	command := &JoinCommand{
-		Name : s.Name(),
-		Hostname : info.Hostname,
-		RaftPort : info.RaftPort,
-		ClientPort : info.ClientPort,
+		Name:       s.Name(),
+		Hostname:   info.Hostname,
+		RaftPort:   info.RaftPort,
+		ClientPort: info.ClientPort,
 	}
 
 	json.NewEncoder(&b).Encode(command)
