@@ -74,6 +74,9 @@ func createCluster(size int, procAttr *os.ProcAttr) ([][]string, []*os.Process, 
 		if err != nil {
 			return nil, nil, err
 		}
+		// we only add machine one to the cluster list
+		// thus we need to make sure other node start after the first one has done set up
+		time.Sleep(time.Millisecond * 200)
 	}
 
 	return argGroup, etcds, nil
