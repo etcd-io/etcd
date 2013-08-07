@@ -14,8 +14,10 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
+	"path"
 	"runtime/pprof"
 	"strings"
 	"time"
@@ -267,9 +269,6 @@ func startRaft(securityType int) {
 
 	raftServer.Start()
 
-	// start to response to raft requests
-	go startRaftTransport(info.RaftPort, securityType)
-
 	if raftServer.IsLogEmpty() {
 
 		// start as a leader in a new cluster
@@ -339,6 +338,9 @@ func startRaft(securityType int) {
 	if snapshot {
 		go raftServer.Snapshot()
 	}
+
+	// start to response to raft requests
+	go startRaftTransport(info.RaftPort, securityType)
 
 }
 
@@ -437,6 +439,7 @@ func startClientTransport(port int, st int) {
 	http.HandleFunc("/machines", MachinesHttpHandler)
 	http.HandleFunc("/", VersionHttpHandler)
 	http.HandleFunc("/stats", StatsHttpHandler)
+	http.HandleFunc("/test/", TestHttpHandler)
 
 	switch st {
 
@@ -628,11 +631,19 @@ func joinCluster(s *raft.Server, serverName string) error {
 				return nil
 			}
 			if resp.StatusCode == http.StatusTemporaryRedirect {
+
 				address := resp.Header.Get("Location")
-				debugf("Leader is %s", address)
 				debugf("Send Join Request to %s", address)
+				u, err := url.Parse(address)
+
+				if err != nil {
+					return fmt.Errorf("Unable to join: %s", err.Error())
+				}
+
 				json.NewEncoder(&b).Encode(command)
-				resp, err = t.Post(fmt.Sprintf("%s/join", address), &b)
+
+				resp, err = t.Post(path.Join(u.Host, u.Path), &b)
+
 			} else if resp.StatusCode == http.StatusBadRequest {
 				debug("Reach max number machines in the cluster")
 				return fmt.Errorf(errors[103])

@@ -12,18 +12,18 @@ func TestStoreGet(t *testing.T) {
 
 	ts := &tree{
 		&treeNode{
-			CreateTestNode("/"),
+			NewTestNode("/"),
 			true,
 			make(map[string]*treeNode),
 		},
 	}
 
 	// create key
-	ts.set("/foo", CreateTestNode("bar"))
+	ts.set("/foo", NewTestNode("bar"))
 	// change value
-	ts.set("/foo", CreateTestNode("barbar"))
+	ts.set("/foo", NewTestNode("barbar"))
 	// create key
-	ts.set("/hello/foo", CreateTestNode("barbarbar"))
+	ts.set("/hello/foo", NewTestNode("barbarbar"))
 	treeNode, ok := ts.get("/foo")
 
 	if !ok {
@@ -43,7 +43,7 @@ func TestStoreGet(t *testing.T) {
 	}
 
 	// create a key under other key
-	ok = ts.set("/foo/foo", CreateTestNode("bar"))
+	ok = ts.set("/foo/foo", NewTestNode("bar"))
 	if ok {
 		t.Fatalf("shoud not add key under a exisiting key")
 	}
@@ -61,35 +61,31 @@ func TestStoreGet(t *testing.T) {
 	}
 
 	// test list
-	ts.set("/hello/fooo", CreateTestNode("barbarbar"))
-	ts.set("/hello/foooo/foo", CreateTestNode("barbarbar"))
+	ts.set("/hello/fooo", NewTestNode("barbarbar"))
+	ts.set("/hello/foooo/foo", NewTestNode("barbarbar"))
 
-	nodes, keys, dirs, ok := ts.list("/hello")
+	nodes, keys, ok := ts.list("/hello")
 
 	if !ok {
 		t.Fatalf("cannot list!")
 	} else {
+		nodes, _ := nodes.([]*Node)
 		length := len(nodes)
 
 		for i := 0; i < length; i++ {
-			fmt.Println(keys[i], "=", nodes[i].Value, "[", dirs[i], "]")
+			fmt.Println(keys[i], "=", nodes[i].Value)
 		}
 	}
 
-	// speed test
+	keys = GenKeys(100, 10)
+
 	for i := 0; i < 100; i++ {
-		key := "/"
-		depth := rand.Intn(10)
-		for j := 0; j < depth; j++ {
-			key += "/" + strconv.Itoa(rand.Int()%10)
-		}
 		value := strconv.Itoa(rand.Int())
-		ts.set(key, CreateTestNode(value))
-		treeNode, ok := ts.get(key)
+		ts.set(keys[i], NewTestNode(value))
+		treeNode, ok := ts.get(keys[i])
 
 		if !ok {
 			continue
-			//t.Fatalf("Expect to get node, but not")
 		}
 		if treeNode.Value != value {
 			t.Fatalf("Expect value %s, but got %s", value, treeNode.Value)
@@ -99,10 +95,153 @@ func TestStoreGet(t *testing.T) {
 	ts.traverse(f, true)
 }
 
-func f(key string, n *Node) {
-	fmt.Println(key, "=", n.Value)
+func TestTreeClone(t *testing.T) {
+	keys := GenKeys(10000, 10)
+
+	ts := &tree{
+		&treeNode{
+			NewTestNode("/"),
+			true,
+			make(map[string]*treeNode),
+		},
+	}
+
+	backTs := &tree{
+		&treeNode{
+			NewTestNode("/"),
+			true,
+			make(map[string]*treeNode),
+		},
+	}
+
+	// generate the first tree
+	for _, key := range keys {
+		value := strconv.Itoa(rand.Int())
+		ts.set(key, NewTestNode(value))
+		backTs.set(key, NewTestNode(value))
+	}
+
+	copyTs := ts.clone()
+
+	// test if they are identical
+	copyTs.traverse(ts.contain, false)
+
+	// remove all the keys from first tree
+	for _, key := range keys {
+		ts.delete(key)
+	}
+
+	// test if they are identical
+	// make sure changes in the first tree will affect the copy one
+	copyTs.traverse(backTs.contain, false)
+
 }
 
-func CreateTestNode(value string) Node {
+func BenchmarkTreeStoreSet(b *testing.B) {
+
+	keys := GenKeys(10000, 10)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+
+		ts := &tree{
+			&treeNode{
+				NewTestNode("/"),
+				true,
+				make(map[string]*treeNode),
+			},
+		}
+
+		for _, key := range keys {
+			value := strconv.Itoa(rand.Int())
+			ts.set(key, NewTestNode(value))
+		}
+	}
+}
+
+func BenchmarkTreeStoreGet(b *testing.B) {
+
+	keys := GenKeys(10000, 10)
+
+	ts := &tree{
+		&treeNode{
+			NewTestNode("/"),
+			true,
+			make(map[string]*treeNode),
+		},
+	}
+
+	for _, key := range keys {
+		value := strconv.Itoa(rand.Int())
+		ts.set(key, NewTestNode(value))
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		for _, key := range keys {
+			ts.get(key)
+		}
+	}
+}
+
+func BenchmarkTreeStoreCopy(b *testing.B) {
+	keys := GenKeys(10000, 10)
+
+	ts := &tree{
+		&treeNode{
+			NewTestNode("/"),
+			true,
+			make(map[string]*treeNode),
+		},
+	}
+
+	for _, key := range keys {
+		value := strconv.Itoa(rand.Int())
+		ts.set(key, NewTestNode(value))
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		ts.clone()
+	}
+}
+
+func BenchmarkTreeStoreList(b *testing.B) {
+
+	keys := GenKeys(10000, 10)
+
+	ts := &tree{
+		&treeNode{
+			NewTestNode("/"),
+			true,
+			make(map[string]*treeNode),
+		},
+	}
+
+	for _, key := range keys {
+		value := strconv.Itoa(rand.Int())
+		ts.set(key, NewTestNode(value))
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		for _, key := range keys {
+			ts.list(key)
+		}
+	}
+}
+
+func (t *tree) contain(key string, node *Node) {
+	_, ok := t.get(key)
+	if !ok {
+		panic("tree do not contain the given key")
+	}
+}
+
+func f(key string, n *Node) {
+	return
+}
+
+func NewTestNode(value string) Node {
 	return Node{value, time.Unix(0, 0), nil}
 }
