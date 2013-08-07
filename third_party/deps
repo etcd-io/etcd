@@ -1,0 +1,9 @@
+packages="
+	github.com/coreos/go-raft
+	github.com/coreos/go-etcd
+	github.com/ccding/go-logging
+	github.com/ccding/go-config-reader
+	bitbucket.org/kardianos/osext
+	code.google.com/p/go.net
+	code.google.com/p/goprotobuf
+"
