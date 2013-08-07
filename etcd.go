@@ -598,11 +598,12 @@ func createCertPool(CAFile string) *x509.CertPool {
 func joinCluster(s *raft.Server, serverName string) error {
 	var b bytes.Buffer
 
-	command := &JoinCommand{}
-	command.Name = s.Name()
-	command.Hostname = info.Hostname
-	command.RaftPort = info.RaftPort
-	command.ClientPort = info.ClientPort
+	command := &JoinCommand{
+		Name : s.Name(),
+		Hostname : info.Hostname,
+		RaftPort : info.RaftPort,
+		ClientPort : info.ClientPort,
+	}
 
 	json.NewEncoder(&b).Encode(command)
 
