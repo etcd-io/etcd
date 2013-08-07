@@ -511,7 +511,6 @@ func securityType(source int) int {
 // Get the server info from previous conf file
 // or from the user
 func getInfo(path string) *Info {
-	info := &Info{}
 
 	// Read in the server info if available.
 	infoPath := fmt.Sprintf("%s/info", path)
@@ -530,6 +529,7 @@ func getInfo(path string) *Info {
 	}
 
 	if file, err := os.Open(infoPath); err == nil {
+		info := &Info{}
 		if content, err := ioutil.ReadAll(file); err != nil {
 			fatalf("Unable to read info: %v", err)
 		} else {
@@ -538,7 +538,7 @@ func getInfo(path string) *Info {
 			}
 		}
 		file.Close()
-
+		return info
 	} else {
 		// Otherwise ask user for info and write it to file.
 
@@ -549,20 +549,21 @@ func getInfo(path string) *Info {
 		}
 
 		fmt.Println("address ", hostname)
+		info := &Info{
+			Hostname: hostname,
 
-		info.Hostname = hostname
+			RaftPort: raftPort,
+			ClientPort: clientPort,
+			WebPort: webPort,
 
-		info.RaftPort = raftPort
-		info.ClientPort = clientPort
-		info.WebPort = webPort
+			ClientCAFile: clientCAFile,
+			ClientCertFile: clientCertFile,
+			ClientKeyFile: clientKeyFile,
 
-		info.ClientCAFile = clientCAFile
-		info.ClientCertFile = clientCertFile
-		info.ClientKeyFile = clientKeyFile
-
-		info.ServerCAFile = serverCAFile
-		info.ServerKeyFile = serverKeyFile
-		info.ServerCertFile = serverCertFile
+			ServerCAFile: serverCAFile,
+			ServerKeyFile: serverKeyFile,
+			ServerCertFile: serverCertFile,
+		}
 
 		// Write to file.
 		content, _ := json.Marshal(info)
@@ -570,9 +571,8 @@ func getInfo(path string) *Info {
 		if err := ioutil.WriteFile(infoPath, content, 0644); err != nil {
 			fatalf("Unable to write info to file: %v", err)
 		}
+		return info
 	}
-
-	return info
 }
 
 // Create client auth certpool
