@@ -25,4 +25,6 @@ func main() {
 	res, err := config.Read("example.conf")
 	fmt.Println(err)
 	fmt.Println(res)
+	fmt.Println(res["test.a"])
+	fmt.Println(res["dd"])
 }
