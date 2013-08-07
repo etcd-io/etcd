@@ -279,11 +279,12 @@ func startRaft(securityType int) {
 
 			// leader need to join self as a peer
 			for {
-				command := &JoinCommand{}
-				command.Name = raftServer.Name()
-				command.Hostname = hostname
-				command.RaftPort = raftPort
-				command.ClientPort = clientPort
+				command := &JoinCommand{
+					Name : raftServer.Name(),
+					Hostname : hostname,
+					RaftPort : raftPort,
+					ClientPort : clientPort,
+				}
 				_, err := raftServer.Do(command)
 				if err == nil {
 					break
