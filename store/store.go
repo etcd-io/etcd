@@ -27,7 +27,7 @@ type Store struct {
 
 	// The string channel to send messages to the outside world
 	// Now we use it to send changes to the hub of the web service
-	messager *chan string
+	messager chan<- string
 
 	// A map to keep the recent response to the clients
 	ResponseMap map[string]*Response
@@ -133,7 +133,7 @@ func CreateStore(max int) *Store {
 }
 
 // Set the messager of the store
-func (s *Store) SetMessager(messager *chan string) {
+func (s *Store) SetMessager(messager chan<- string) {
 	s.messager = messager
 }
 
@@ -209,8 +209,7 @@ func (s *Store) Set(key string, value string, expireTime time.Time, index uint64
 
 		// Send to the messager
 		if s.messager != nil && err == nil {
-
-			*s.messager <- string(msg)
+			s.messager <- string(msg)
 		}
 
 		s.addToResponseMap(index, &resp)
@@ -242,8 +241,7 @@ func (s *Store) Set(key string, value string, expireTime time.Time, index uint64
 
 		// Send to the messager
 		if s.messager != nil && err == nil {
-
-			*s.messager <- string(msg)
+			s.messager <- string(msg)
 		}
 
 		s.addToResponseMap(index, &resp)
@@ -389,8 +387,7 @@ func (s *Store) Delete(key string, index uint64) ([]byte, error) {
 
 		// notify the messager
 		if s.messager != nil && err == nil {
-
-			*s.messager <- string(msg)
+			s.messager <- string(msg)
 		}
 
 		s.addToResponseMap(index, &resp)
@@ -470,8 +467,7 @@ func (s *Store) monitorExpiration(key string, update chan time.Time, expireTime 
 
 				// notify the messager
 				if s.messager != nil && err == nil {
-
-					*s.messager <- string(msg)
+					s.messager <- string(msg)
 				}
 
 				return
