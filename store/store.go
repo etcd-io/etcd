@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"path"
 	"strconv"
+	"sync/atomic"
 	"time"
 )
 
@@ -103,7 +104,7 @@ var PERMANENT = time.Unix(0, 0)
 //------------------------------------------------------------------------------
 
 // Create a new stroe
-// Arguement max is the max number of response we want to record
+// Argument max is the max number of response we want to record
 func CreateStore(max int) *Store {
 	s := new(Store)
 
@@ -143,7 +144,7 @@ func (s *Store) Set(key string, value string, expireTime time.Time, index uint64
 	s.Index = index
 
 	//Update stats
-	s.BasicStats.Sets++
+	atomic.AddUint64(&s.BasicStats.Sets, 1)
 
 	key = path.Clean("/" + key)
 
@@ -305,7 +306,7 @@ func (s *Store) Get(key string) ([]byte, error) {
 
 func (s *Store) RawGet(key string) ([]*Response, error) {
 	// Update stats
-	s.BasicStats.Gets++
+	atomic.AddUint64(&s.BasicStats.Gets, 1)
 
 	key = path.Clean("/" + key)
 
@@ -352,7 +353,7 @@ func (s *Store) RawGet(key string) ([]*Response, error) {
 func (s *Store) Delete(key string, index uint64) ([]byte, error) {
 
 	// Update stats
-	s.BasicStats.Deletes++
+	atomic.AddUint64(&s.BasicStats.Deletes, 1)
 
 	key = path.Clean("/" + key)
 
@@ -405,7 +406,7 @@ func (s *Store) Delete(key string, index uint64) ([]byte, error) {
 // Set the value of the key to the value if the given prevValue is equal to the value of the key
 func (s *Store) TestAndSet(key string, prevValue string, value string, expireTime time.Time, index uint64) ([]byte, error) {
 	// Update stats
-	s.BasicStats.TestAndSets++
+	atomic.AddUint64(&s.BasicStats.TestAndSets, 1)
 
 	resp := s.internalGet(key)
 
