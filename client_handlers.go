@@ -4,6 +4,7 @@ import (
 	"github.com/coreos/etcd/store"
 	"net/http"
 	"strconv"
+	"fmt"
 	"time"
 )
 
@@ -234,7 +235,7 @@ func MachinesHttpHandler(w http.ResponseWriter, req *http.Request) {
 // Handler to return the current version of etcd
 func VersionHttpHandler(w http.ResponseWriter, req *http.Request) {
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(releaseVersion))
+	w.Write([]byte(fmt.Sprintf("etcd %s", releaseVersion)))
 }
 
 // Handler to return the basic stats of etcd
