@@ -11,14 +11,14 @@ var count = 0
 func main() {
 	ch := make(chan bool, 10)
 	// set up a lock
-	for i:=0; i < 1000; i++ {
-		go t(i, ch, etcd.CreateClient())
+	for i:=0; i < 100; i++ {
+		go t(i, ch, etcd.NewClient())
 	}
 	start := time.Now()
-	for i:=0; i< 1000; i++ {
+	for i:=0; i< 100; i++ {
 		<-ch
 	}
-	fmt.Println(time.Now().Sub(start), ": ", 1000 * 50, "commands")
+	fmt.Println(time.Now().Sub(start), ": ", 100 * 50, "commands")
 }
 
 func t(num int, ch chan bool, c *etcd.Client) {
