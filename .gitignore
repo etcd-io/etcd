@@ -1,3 +1,4 @@
-src
-etcd
+src/
+pkg/
+./etcd
 release_version.go

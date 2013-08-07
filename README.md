@@ -1,5 +1,7 @@
 # etcd
 
+[![Build Status](https://travis-ci.org/coreos/etcd.png)](https://travis-ci.org/coreos/etcd)
+
 A highly-available key value store for shared configuration and service discovery. etcd is inspired by zookeeper and doozer, with a focus on:
 
 * Simple: curl'able user facing API (HTTP+JSON)
