@@ -54,7 +54,7 @@ func TestWatch(t *testing.T) {
 	}
 }
 
-// BenchmarkWatch creates 10K watchers watch at /foo/[paht] each time.
+// BenchmarkWatch creates 10K watchers watch at /foo/[path] each time.
 // Path is randomly chosen with max depth 10.
 // It should take less than 15ms to wake up 10K watchers.
 func BenchmarkWatch(b *testing.B) {
