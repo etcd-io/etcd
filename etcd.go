@@ -40,7 +40,7 @@ var cluster []string
 var argInfo Info
 var dirPath string
 
-var ignore bool
+var force bool
 
 var maxSize int
 
@@ -74,7 +74,7 @@ func init() {
 
 	flag.StringVar(&dirPath, "d", ".", "the directory to store log and snapshot")
 
-	flag.BoolVar(&ignore, "i", false, "ignore the old configuration, create a new node")
+	flag.BoolVar(&force, "f", false, "force new node configuration if existing is found (WARNING: data loss!)")
 
 	flag.BoolVar(&snapshot, "snapshot", false, "open or close snapshot")
 
@@ -531,8 +531,7 @@ func getInfo(path string) *Info {
 	infoPath := fmt.Sprintf("%s/info", path)
 
 	// Delete the old configuration if exist
-	if ignore {
-
+	if force {
 		logPath := fmt.Sprintf("%s/log", path)
 		confPath := fmt.Sprintf("%s/conf", path)
 		snapshotPath := fmt.Sprintf("%s/snapshot", path)
@@ -540,7 +539,6 @@ func getInfo(path string) *Info {
 		os.Remove(logPath)
 		os.Remove(confPath)
 		os.RemoveAll(snapshotPath)
-
 	}
 
 	info := parseInfo(infoPath)
