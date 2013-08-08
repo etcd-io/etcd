@@ -557,7 +557,7 @@ func getInfo(path string) *Info {
 	info = &argInfo
 
 	// Write to file.
-	content, _ := json.Marshal(info)
+	content, _ := json.MarshalIndent(info, "", " ")
 	content = []byte(string(content) + "\n")
 	if err := ioutil.WriteFile(infoPath, content, 0644); err != nil {
 		fatalf("Unable to write info to file: %v", err)
