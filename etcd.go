@@ -444,11 +444,11 @@ func startClientTransport(port int, st int) {
 	switch st {
 
 	case HTTP:
-		fmt.Printf("etcd [%s] listen on http port %v\n", hostname, clientPort)
+		fmt.Printf("etcd [%s] listen on http port %v\n", hostname, port)
 		fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), nil))
 
 	case HTTPS:
-		fmt.Printf("etcd [%s] listen on https port %v\n", hostname, clientPort)
+		fmt.Printf("etcd [%s] listen on https port %v\n", hostname, port)
 		http.ListenAndServeTLS(fmt.Sprintf(":%d", port), clientCertFile, clientKeyFile, nil)
 
 	case HTTPSANDVERIFY:
@@ -460,7 +460,7 @@ func startClientTransport(port int, st int) {
 			},
 			Addr: fmt.Sprintf(":%d", port),
 		}
-		fmt.Printf("etcd [%s] listen on https port %v\n", hostname, clientPort)
+		fmt.Printf("etcd [%s] listen on https port %v\n", hostname, port)
 		fatal(server.ListenAndServeTLS(clientCertFile, clientKeyFile))
 	}
 }
