@@ -528,6 +528,9 @@ func getInfo(path string) *Info {
 				fatalf("Unable to parse info: %v", err)
 			}
 		}
+
+		fmt.Printf("Found node configuration in '%s". Ignoring flags.\n", infoPath)
+
 		file.Close()
 		return info
 	} else {
