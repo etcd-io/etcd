@@ -499,6 +499,30 @@ func securityType(source int) int {
 	return -1
 }
 
+func parseInfo(path string) *Info {
+	file, err := os.Open(path)
+
+	if err != nil {
+		return nil
+	}
+
+	info := &Info{}
+	defer file.Close()
+
+	content, err := ioutil.ReadAll(file)
+	if err != nil {
+		fatalf("Unable to read info: %v", err)
+		return nil
+	}
+
+	if err = json.Unmarshal(content, &info); err != nil {
+		fatalf("Unable to parse info: %v", err)
+		return nil
+	}
+
+	return info
+}
+
 // Get the server info from previous conf file
 // or from the user
 func getInfo(path string) *Info {
@@ -519,40 +543,31 @@ func getInfo(path string) *Info {
 
 	}
 
-	if file, err := os.Open(infoPath); err == nil {
-		info := &Info{}
-		if content, err := ioutil.ReadAll(file); err != nil {
-			fatalf("Unable to read info: %v", err)
-		} else {
-			if err = json.Unmarshal(content, &info); err != nil {
-				fatalf("Unable to parse info: %v", err)
-			}
-		}
-
-		fmt.Printf("Found node configuration in '%s". Ignoring flags.\n", infoPath)
-
-		file.Close()
-		return info
-	} else {
-		// Otherwise ask user for info and write it to file.
-
-		argInfo.Hostname = strings.TrimSpace(argInfo.Hostname)
-
-		if argInfo.Hostname == "" {
-			fatal("Please give the address of the local machine")
-		}
-
-		fmt.Println("address ", argInfo.Hostname)
-		info := &argInfo
-
-		// Write to file.
-		content, _ := json.Marshal(info)
-		content = []byte(string(content) + "\n")
-		if err := ioutil.WriteFile(infoPath, content, 0644); err != nil {
-			fatalf("Unable to write info to file: %v", err)
-		}
+	info := parseInfo(infoPath)
+	if info != nil {
+		fmt.Printf("Found node configuration in '%s'. Ignoring flags.\n", infoPath)
 		return info
 	}
+
+	// Otherwise ask user for info and write it to file.
+	argInfo.Hostname = strings.TrimSpace(argInfo.Hostname)
+
+	if argInfo.Hostname == "" {
+		fatal("Please give the address of the local machine")
+	}
+
+	info = &argInfo
+
+	// Write to file.
+	content, _ := json.Marshal(info)
+	content = []byte(string(content) + "\n")
+	if err := ioutil.WriteFile(infoPath, content, 0644); err != nil {
+		fatalf("Unable to write info to file: %v", err)
+	}
+
+	fmt.Printf("Wrote node configuration to '%s'.\n", infoPath)
+
+	return info
 }
 
 // Create client auth certpool
