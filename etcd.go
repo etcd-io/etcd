@@ -72,7 +72,7 @@ func init() {
 	flag.StringVar(&argInfo.ClientCertFile, "clientCert", "", "the cert file of the client")
 	flag.StringVar(&argInfo.ClientKeyFile, "clientKey", "", "the key file of the client")
 
-	flag.StringVar(&dirPath, "d", "/tmp/", "the directory to store log and snapshot")
+	flag.StringVar(&dirPath, "d", ".", "the directory to store log and snapshot")
 
 	flag.BoolVar(&ignore, "i", false, "ignore the old configuration, create a new node")
 
