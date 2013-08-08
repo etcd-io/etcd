@@ -14,12 +14,12 @@ func main() {
 
 	ch := make(chan bool, 10)
 	// set up a lock
-	c := etcd.CreateClient()
+	c := etcd.NewClient()
 	c.Set("lock", "unlock", 0)
 
 
 	for i := 0; i < 10; i++ {
-		go t(i, ch, etcd.CreateClient())
+		go t(i, ch, etcd.NewClient())
 	}
 
 	for i := 0; i < 10; i++ {

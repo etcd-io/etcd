@@ -246,10 +246,10 @@ http://www.g-loaded.eu/2005/11/10/be-your-own-ca/
 ```
 
 ```sh
-./etcd -clientCert client.crt -clientKey client.key -i
+./etcd -clientCert client.crt -clientKey client.key -f
 ```
 
-`-i` is to ignore the previously created default configuration file.
+`-f` forces new node configuration if existing configuration is found (WARNING: data loss!)
 `-clientCert` and `-clientKey` are the key and cert for transport layer security between client and server
 
 ```sh
@@ -276,7 +276,7 @@ And also the response from the etcd server.
 We also can do authentication using CA cert. The clients will also need to provide their cert to the server. The server will check whether the cert is signed by the CA and decide whether to serve the request.
 
 ```sh
-./etcd -clientCert client.crt -clientKey client.key -clientCAFile clientCA.crt -i
+./etcd -clientCert client.crt -clientKey client.key -clientCAFile clientCA.crt -f
 ```
 
 ```-clientCAFile``` is the path to the CA cert.
