@@ -37,19 +37,7 @@ var machinesFile string
 
 var cluster []string
 
-var hostname string
-var clientPort int
-var raftPort int
-var webPort int
-
-var serverCertFile string
-var serverKeyFile string
-var serverCAFile string
-
-var clientCertFile string
-var clientKeyFile string
-var clientCAFile string
-
+var argInfo Info
 var dirPath string
 
 var ignore bool
@@ -71,18 +59,18 @@ func init() {
 	flag.StringVar(&machines, "C", "", "the ip address and port of a existing machines in the cluster, sepearate by comma")
 	flag.StringVar(&machinesFile, "CF", "", "the file contains a list of existing machines in the cluster, seperate by comma")
 
-	flag.StringVar(&hostname, "h", "0.0.0.0", "the hostname of the local machine")
-	flag.IntVar(&clientPort, "c", 4001, "the port to communicate with clients")
-	flag.IntVar(&raftPort, "s", 7001, "the port to communicate with servers")
-	flag.IntVar(&webPort, "w", -1, "the port of web interface (-1 means do not start web interface)")
+	flag.StringVar(&argInfo.Hostname, "h", "0.0.0.0", "the hostname of the local machine")
+	flag.IntVar(&argInfo.ClientPort, "c", 4001, "the port to communicate with clients")
+	flag.IntVar(&argInfo.RaftPort, "s", 7001, "the port to communicate with servers")
+	flag.IntVar(&argInfo.WebPort, "w", -1, "the port of web interface (-1 means do not start web interface)")
 
-	flag.StringVar(&serverCAFile, "serverCAFile", "", "the path of the CAFile")
-	flag.StringVar(&serverCertFile, "serverCert", "", "the cert file of the server")
-	flag.StringVar(&serverKeyFile, "serverKey", "", "the key file of the server")
+	flag.StringVar(&argInfo.ServerCAFile, "serverCAFile", "", "the path of the CAFile")
+	flag.StringVar(&argInfo.ServerCertFile, "serverCert", "", "the cert file of the server")
+	flag.StringVar(&argInfo.ServerKeyFile, "serverKey", "", "the key file of the server")
 
-	flag.StringVar(&clientCAFile, "clientCAFile", "", "the path of the client CAFile")
-	flag.StringVar(&clientCertFile, "clientCert", "", "the cert file of the client")
-	flag.StringVar(&clientKeyFile, "clientKey", "", "the key file of the client")
+	flag.StringVar(&argInfo.ClientCAFile, "clientCAFile", "", "the path of the client CAFile")
+	flag.StringVar(&argInfo.ClientCertFile, "clientCert", "", "the cert file of the client")
+	flag.StringVar(&argInfo.ClientKeyFile, "clientKey", "", "the key file of the client")
 
 	flag.StringVar(&dirPath, "d", "/tmp/", "the directory to store log and snapshot")
 
@@ -226,11 +214,11 @@ func main() {
 
 	startRaft(st)
 
-	if webPort != -1 {
+	if argInfo.WebPort != -1 {
 		// start web
 		etcdStore.SetMessager(&storeMsg)
 		go webHelper()
-		go web.Start(raftServer, webPort)
+		go web.Start(raftServer, argInfo.WebPort)
 	}
 
 	startClientTransport(info.ClientPort, clientSt)
@@ -280,9 +268,9 @@ func startRaft(securityType int) {
 			for {
 				command := &JoinCommand{
 					Name:       raftServer.Name(),
-					Hostname:   hostname,
-					RaftPort:   raftPort,
-					ClientPort: clientPort,
+					Hostname:   argInfo.Hostname,
+					RaftPort:   argInfo.RaftPort,
+					ClientPort: argInfo.ClientPort,
 				}
 				_, err := raftServer.Do(command)
 				if err == nil {
@@ -367,7 +355,7 @@ func createTransporter(st int) transporter {
 	case HTTPSANDVERIFY:
 		t.scheme = "https://"
 
-		tlsCert, err := tls.LoadX509KeyPair(serverCertFile, serverKeyFile)
+		tlsCert, err := tls.LoadX509KeyPair(argInfo.ServerCertFile, argInfo.ServerKeyFile)
 
 		if err != nil {
 			fatal(err)
@@ -408,24 +396,24 @@ func startRaftTransport(port int, st int) {
 	switch st {
 
 	case HTTP:
-		fmt.Printf("raft server [%s] listen on http port %v\n", hostname, port)
+		fmt.Printf("raft server [%s] listen on http port %v\n", argInfo.Hostname, port)
 		fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), nil))
 
 	case HTTPS:
-		fmt.Printf("raft server [%s] listen on https port %v\n", hostname, port)
-		fatal(http.ListenAndServeTLS(fmt.Sprintf(":%d", port), serverCertFile, serverKeyFile, nil))
+		fmt.Printf("raft server [%s] listen on https port %v\n", argInfo.Hostname, port)
+		fatal(http.ListenAndServeTLS(fmt.Sprintf(":%d", port), argInfo.ServerCertFile, argInfo.ServerKeyFile, nil))
 
 	case HTTPSANDVERIFY:
 
 		server := &http.Server{
 			TLSConfig: &tls.Config{
 				ClientAuth: tls.RequireAndVerifyClientCert,
-				ClientCAs:  createCertPool(serverCAFile),
+				ClientCAs:  createCertPool(argInfo.ServerCAFile),
 			},
 			Addr: fmt.Sprintf(":%d", port),
 		}
-		fmt.Printf("raft server [%s] listen on https port %v\n", hostname, port)
-		fatal(server.ListenAndServeTLS(serverCertFile, serverKeyFile))
+		fmt.Printf("raft server [%s] listen on https port %v\n", argInfo.Hostname, port)
+		fatal(server.ListenAndServeTLS(argInfo.ServerCertFile, argInfo.ServerKeyFile))
 	}
 
 }
@@ -444,24 +432,24 @@ func startClientTransport(port int, st int) {
 	switch st {
 
 	case HTTP:
-		fmt.Printf("etcd [%s] listen on http port %v\n", hostname, port)
+		fmt.Printf("etcd [%s] listen on http port %v\n", argInfo.Hostname, port)
 		fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), nil))
 
 	case HTTPS:
-		fmt.Printf("etcd [%s] listen on https port %v\n", hostname, port)
-		http.ListenAndServeTLS(fmt.Sprintf(":%d", port), clientCertFile, clientKeyFile, nil)
+		fmt.Printf("etcd [%s] listen on https port %v\n", argInfo.Hostname, port)
+		http.ListenAndServeTLS(fmt.Sprintf(":%d", port), argInfo.ClientCertFile, argInfo.ClientKeyFile, nil)
 
 	case HTTPSANDVERIFY:
 
 		server := &http.Server{
 			TLSConfig: &tls.Config{
 				ClientAuth: tls.RequireAndVerifyClientCert,
-				ClientCAs:  createCertPool(clientCAFile),
+				ClientCAs:  createCertPool(argInfo.ClientCAFile),
 			},
 			Addr: fmt.Sprintf(":%d", port),
 		}
-		fmt.Printf("etcd [%s] listen on https port %v\n", hostname, port)
-		fatal(server.ListenAndServeTLS(clientCertFile, clientKeyFile))
+		fmt.Printf("etcd [%s] listen on https port %v\n", argInfo.Hostname, port)
+		fatal(server.ListenAndServeTLS(argInfo.ClientCertFile, argInfo.ClientKeyFile))
 	}
 }
 
@@ -545,28 +533,14 @@ func getInfo(path string) *Info {
 	} else {
 		// Otherwise ask user for info and write it to file.
 
-		hostname = strings.TrimSpace(hostname)
+		argInfo.Hostname = strings.TrimSpace(argInfo.Hostname)
 
-		if hostname == "" {
+		if argInfo.Hostname == "" {
 			fatal("Please give the address of the local machine")
 		}
 
-		fmt.Println("address ", hostname)
-		info := &Info{
-			Hostname: hostname,
-
-			RaftPort: raftPort,
-			ClientPort: clientPort,
-			WebPort:    webPort,
-
-			ClientCAFile:   clientCAFile,
-			ClientCertFile: clientCertFile,
-			ClientKeyFile:  clientKeyFile,
-
-			ServerCAFile:   serverCAFile,
-			ServerKeyFile:  serverKeyFile,
-			ServerCertFile: serverCertFile,
-		}
+		fmt.Println("address ", argInfo.Hostname)
+		info := &argInfo
 
 		// Write to file.
 		content, _ := json.Marshal(info)
