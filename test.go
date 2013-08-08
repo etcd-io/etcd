@@ -59,10 +59,10 @@ func createCluster(size int, procAttr *os.ProcAttr) ([][]string, []*os.Process, 
 	argGroup := make([][]string, size)
 	for i := 0; i < size; i++ {
 		if i == 0 {
-			argGroup[i] = []string{"etcd", "-d=/tmp/node1"}
+			argGroup[i] = []string{"etcd", "-h=127.0.0.1", "-d=/tmp/node1"}
 		} else {
 			strI := strconv.Itoa(i + 1)
-			argGroup[i] = []string{"etcd", "-c=400" + strI, "-s=700" + strI, "-d=/tmp/node" + strI, "-C=127.0.0.1:7001"}
+			argGroup[i] = []string{"etcd", "-h=127.0.0.1", "-c=400" + strI, "-s=700" + strI, "-d=/tmp/node" + strI, "-C=127.0.0.1:7001"}
 		}
 	}
 

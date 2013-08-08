@@ -14,7 +14,7 @@ import (
 func TestSingleNode(t *testing.T) {
 	procAttr := new(os.ProcAttr)
 	procAttr.Files = []*os.File{nil, os.Stdout, os.Stderr}
-	args := []string{"etcd", "-f", "-d=/tmp/node1"}
+	args := []string{"etcd", "-h=127.0.0.1", "-f", "-d=/tmp/node1"}
 
 	process, err := os.StartProcess("etcd", args, procAttr)
 	if err != nil {
@@ -56,7 +56,7 @@ func TestSingleNode(t *testing.T) {
 func TestSingleNodeRecovery(t *testing.T) {
 	procAttr := new(os.ProcAttr)
 	procAttr.Files = []*os.File{nil, os.Stdout, os.Stderr}
-	args := []string{"etcd", "-d=/tmp/node1"}
+	args := []string{"etcd", "-h=127.0.0.1", "-d=/tmp/node1"}
 
 	process, err := os.StartProcess("etcd", append(args, "-f"), procAttr)
 	if err != nil {

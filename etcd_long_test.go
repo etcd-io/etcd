@@ -34,7 +34,7 @@ func TestKillLeader(t *testing.T) {
 
 	var totalTime time.Duration
 
-	leader := "0.0.0.0:7001"
+	leader := "127.0.0.1:7001"
 
 	for i := 0; i < 10; i++ {
 		port, _ := strconv.Atoi(strings.Split(leader, ":")[1])
@@ -134,7 +134,7 @@ func BenchmarkEtcdDirectCall(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		resp, _ := http.Get("http://0.0.0.0:4001/test/speed")
+		resp, _ := http.Get("http://127.0.0.1:4001/test/speed")
 		resp.Body.Close()
 	}
 
