@@ -221,7 +221,7 @@ func main() {
 		go web.Start(raftServer, argInfo.WebPort)
 	}
 
-	startClientTransport(info.ClientPort, clientSt)
+	startClientTransport(*info, clientSt)
 
 }
 
@@ -328,7 +328,7 @@ func startRaft(securityType int) {
 	}
 
 	// start to response to raft requests
-	go startRaftTransport(info.RaftPort, securityType)
+	go startRaftTransport(*info, securityType)
 
 }
 
@@ -382,7 +382,7 @@ func dialTimeout(network, addr string) (net.Conn, error) {
 }
 
 // Start to listen and response raft command
-func startRaftTransport(port int, st int) {
+func startRaftTransport(info Info, st int) {
 
 	// internal commands
 	http.HandleFunc("/join", JoinHttpHandler)
@@ -396,30 +396,30 @@ func startRaftTransport(port int, st int) {
 	switch st {
 
 	case HTTP:
-		fmt.Printf("raft server [%s] listen on http port %v\n", argInfo.Hostname, port)
-		fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), nil))
+		fmt.Printf("raft server [%s] listen on http port %v\n", info.Hostname, info.RaftPort)
+		fatal(http.ListenAndServe(fmt.Sprintf(":%d", info.RaftPort), nil))
 
 	case HTTPS:
-		fmt.Printf("raft server [%s] listen on https port %v\n", argInfo.Hostname, port)
-		fatal(http.ListenAndServeTLS(fmt.Sprintf(":%d", port), argInfo.ServerCertFile, argInfo.ServerKeyFile, nil))
+		fmt.Printf("raft server [%s] listen on https port %v\n", info.Hostname, info.RaftPort)
+		fatal(http.ListenAndServeTLS(fmt.Sprintf(":%d", info.RaftPort), info.ServerCertFile, argInfo.ServerKeyFile, nil))
 
 	case HTTPSANDVERIFY:
 
 		server := &http.Server{
 			TLSConfig: &tls.Config{
 				ClientAuth: tls.RequireAndVerifyClientCert,
-				ClientCAs:  createCertPool(argInfo.ServerCAFile),
+				ClientCAs:  createCertPool(info.ServerCAFile),
 			},
-			Addr: fmt.Sprintf(":%d", port),
+			Addr: fmt.Sprintf(":%d", info.RaftPort),
 		}
-		fmt.Printf("raft server [%s] listen on https port %v\n", argInfo.Hostname, port)
-		fatal(server.ListenAndServeTLS(argInfo.ServerCertFile, argInfo.ServerKeyFile))
+		fmt.Printf("raft server [%s] listen on https port %v\n", info.Hostname, info.RaftPort)
+		fatal(server.ListenAndServeTLS(info.ServerCertFile, argInfo.ServerKeyFile))
 	}
 
 }
 
 // Start to listen and response client command
-func startClientTransport(port int, st int) {
+func startClientTransport(info Info, st int) {
 	// external commands
 	http.HandleFunc("/"+version+"/keys/", Multiplexer)
 	http.HandleFunc("/"+version+"/watch/", WatchHttpHandler)
@@ -432,24 +432,24 @@ func startClientTransport(port int, st int) {
 	switch st {
 
 	case HTTP:
-		fmt.Printf("etcd [%s] listen on http port %v\n", argInfo.Hostname, port)
-		fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), nil))
+		fmt.Printf("etcd [%s] listen on http port %v\n", info.Hostname, info.ClientPort)
+		fatal(http.ListenAndServe(fmt.Sprintf(":%d", info.ClientPort), nil))
 
 	case HTTPS:
-		fmt.Printf("etcd [%s] listen on https port %v\n", argInfo.Hostname, port)
-		http.ListenAndServeTLS(fmt.Sprintf(":%d", port), argInfo.ClientCertFile, argInfo.ClientKeyFile, nil)
+		fmt.Printf("etcd [%s] listen on https port %v\n", info.Hostname, info.ClientPort)
+		http.ListenAndServeTLS(fmt.Sprintf(":%d", info.ClientPort), info.ClientCertFile, info.ClientKeyFile, nil)
 
 	case HTTPSANDVERIFY:
 
 		server := &http.Server{
 			TLSConfig: &tls.Config{
 				ClientAuth: tls.RequireAndVerifyClientCert,
-				ClientCAs:  createCertPool(argInfo.ClientCAFile),
+				ClientCAs:  createCertPool(info.ClientCAFile),
 			},
-			Addr: fmt.Sprintf(":%d", port),
+			Addr: fmt.Sprintf(":%d", info.ClientPort),
 		}
-		fmt.Printf("etcd [%s] listen on https port %v\n", argInfo.Hostname, port)
-		fatal(server.ListenAndServeTLS(argInfo.ClientCertFile, argInfo.ClientKeyFile))
+		fmt.Printf("etcd [%s] listen on https port %v\n", info.Hostname, info.ClientPort)
+		fatal(server.ListenAndServeTLS(info.ClientCertFile, info.ClientKeyFile))
 	}
 }
 
