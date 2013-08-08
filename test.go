@@ -70,7 +70,7 @@ func createCluster(size int, procAttr *os.ProcAttr) ([][]string, []*os.Process, 
 
 	for i, _ := range etcds {
 		var err error
-		etcds[i], err = os.StartProcess("etcd", append(argGroup[i], "-i"), procAttr)
+		etcds[i], err = os.StartProcess("etcd", append(argGroup[i], "-f"), procAttr)
 		if err != nil {
 			return nil, nil, err
 		}

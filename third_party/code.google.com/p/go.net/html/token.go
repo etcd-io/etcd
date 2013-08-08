@@ -133,6 +133,11 @@ type Tokenizer struct {
 	// subsequent Next calls would return an ErrorToken.
 	// err is never reset. Once it becomes non-nil, it stays non-nil.
 	err error
+	// readErr is the error returned by the io.Reader r. It is separate from
+	// err because it is valid for an io.Reader to return (n int, err1 error)
+	// such that n > 0 && err1 != nil, and callers should always process the
+	// n > 0 bytes before considering the error err1.
+	readErr error
 	// buf[raw.start:raw.end] holds the raw bytes of the current token.
 	// buf[raw.end:] is buffered input that will yield future tokens.
 	raw span
@@ -222,7 +227,12 @@ func (z *Tokenizer) Err() error {
 // Pre-condition: z.err == nil.
 func (z *Tokenizer) readByte() byte {
 	if z.raw.end >= len(z.buf) {
-		// Our buffer is exhausted and we have to read from z.r.
+		// Our buffer is exhausted and we have to read from z.r. Check if the
+		// previous read resulted in an error.
+		if z.readErr != nil {
+			z.err = z.readErr
+			return 0
+		}
 		// We copy z.buf[z.raw.start:z.raw.end] to the beginning of z.buf. If the length
 		// z.raw.end - z.raw.start is more than half the capacity of z.buf, then we
 		// allocate a new buffer before the copy.
@@ -253,9 +263,10 @@ func (z *Tokenizer) readByte() byte {
 		z.raw.start, z.raw.end, z.buf = 0, d, buf1[:d]
 		// Now that we have copied the live bytes to the start of the buffer,
 		// we read from z.r into the remainder.
-		n, err := z.r.Read(buf1[d:cap(buf1)])
-		if err != nil {
-			z.err = err
+		var n int
+		n, z.readErr = readAtLeastOneByte(z.r, buf1[d:cap(buf1)])
+		if n == 0 {
+			z.err = z.readErr
 			return 0
 		}
 		z.buf = buf1[:d+n]
@@ -263,6 +274,19 @@ func (z *Tokenizer) readByte() byte {
 	x := z.buf[z.raw.end]
 	z.raw.end++
 	return x
+}
+
+// readAtLeastOneByte wraps an io.Reader so that reading cannot return (0, nil).
+// It returns io.ErrNoProgress if the underlying r.Read method returns (0, nil)
+// too many times in succession.
+func readAtLeastOneByte(r io.Reader, b []byte) (int, error) {
+	for i := 0; i < 100; i++ {
+		n, err := r.Read(b)
+		if n != 0 || err != nil {
+			return n, err
+		}
+	}
+	return 0, io.ErrNoProgress
 }
 
 // skipWhiteSpace skips past any white space.
