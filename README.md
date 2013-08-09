@@ -126,8 +126,8 @@ curl -L http://127.0.0.1:4001/v1/keys/foo
 
 If the TTL has expired, the key will be deleted, and you will be returned a 404.
 
-```html
-404 page not found
+```json
+{"errorCode":100,"message":"Key Not Found","cause":"/foo"}
 ```
 
 ### Watching a prefix
@@ -166,9 +166,7 @@ The watch command returns immediately with the same response as previous.
 
 ### Atomic Test and Set
 
-`TestAndSet` is the most basic operation to build distributed lock service.
-
-The basic logic is to test whether the given previous value is equal to the value of the key, if equal etcd will change the value of the key to the given value.
+Etcd can be used as a centralized coordination service in a cluster and `TestAndSet` is the most basic operation to build distributed lock service. This command will set the value only if the client provided `prevValue` is equal the current key value.
 
 Here is a simple example. Let's create a key-value pair first: `testAndSet=one`.
 
@@ -219,7 +217,7 @@ We create another one `/foo/foo_dir/foo=barbarbar`
 curl -L http://127.0.0.1:4001/v1/keys/foo/foo_dir/bar -d value=barbarbar
 ```
 
-Let us list them next.
+Now list the keys under `/foo`
 
 ```sh
 curl -L http://127.0.0.1:4001/v1/keys/foo/
@@ -239,12 +237,13 @@ which meas `foo=barbar` is a key-value pair under `/foo` and `foo_dir` is a dire
 
 Etcd supports SSL/TLS and client cert authentication for clients to server, as well as server to server communication
 
-Before that we need to have a CA cert`clientCA.crt` and signed key pair `client.crt`, `client.key` .
+First, you need to have a CA cert `clientCA.crt` and signed key pair `client.crt`, `client.key`. This site has a good reference for how to generate self-signed key pairs:
 
-This site has a good reference for how to generate self-signed key pairs
 ```url
 http://www.g-loaded.eu/2005/11/10/be-your-own-ca/
 ```
+
+Next, lets configure etcd to use this keypair:
 
 ```sh
 ./etcd -clientCert client.crt -clientKey client.key -f
@@ -253,23 +252,22 @@ http://www.g-loaded.eu/2005/11/10/be-your-own-ca/
 `-f` forces new node configuration if existing configuration is found (WARNING: data loss!)
 `-clientCert` and `-clientKey` are the key and cert for transport layer security between client and server
 
-```sh
-curl -L https://127.0.0.1:4001/v1/keys/foo -d value=bar -v -k
-```
-
-or 
+You can now test the configuration using https:
 
 ```sh
 curl -L https://127.0.0.1:4001/v1/keys/foo -d value=bar -v -cacert clientCA.crt
 ```
 
 You should be able to see the handshake succeed.
+
 ```
 ...
 SSLv3, TLS handshake, Finished (20):
 ...
 ```
+
 And also the response from the etcd server.
+
 ```json
 {"action":"SET","key":"/foo","value":"bar","newKey":true,"index":3}
 ```
@@ -284,29 +282,21 @@ We can also do authentication using CA certs. The clients will provide their cer
 
 ```-clientCAFile``` is the path to the CA cert.
 
-Try the same request to this server.
-```sh
-curl -L https://127.0.0.1:4001/v1/keys/foo -d value=bar -v -k
-```
-or 
+Try the same request to this server:
 
 ```sh
 curl -L https://127.0.0.1:4001/v1/keys/foo -d value=bar -v -cacert clientCA.crt
 ```
 
 The request should be rejected by the server.
+
 ```
 ...
 routines:SSL3_READ_BYTES:sslv3 alert bad certificate
 ...
 ```
 
-We need to give the CA signed cert to the server. 
-```sh
-curl -L https://127.0.0.1:4001/v1/keys/foo -d value=bar -v --key myclient.key --cert myclient.crt -k
-```
-
-or
+We need to give the CA signed cert to the server.
 
 ```sh
 curl -L https://127.0.0.1:4001/v1/keys/foo -d value=bar -v --key myclient.key --cert myclient.crt -cacert clientCA.crt
@@ -320,7 +310,8 @@ SSLv3, TLS handshake, CERT verify (15):
 TLS handshake, Finished (20)
 ```
 
-And also the response from the server
+And also the response from the server:
+
 ```json
 {"action":"SET","key":"/foo","value":"bar","newKey":true,"index":3}
 ```
@@ -346,7 +337,7 @@ Let the join two more nodes to this cluster using the -C argument:
 ./etcd -c 4003 -s 7003 -C 127.0.0.1:7001 -d nodes/node3
 ```
 
-Get the machines in the cluster
+Get the machines in the cluster:
 
 ```sh
 curl -L http://127.0.0.1:4001/machines
@@ -358,9 +349,9 @@ We should see there are three nodes in the cluster
 0.0.0.0:4001,0.0.0.0:4002,0.0.0.0:4003
 ```
 
-Machine list is also available via this API
+The machine list is also available via this API:
 
-```sh 
+```sh
 curl -L http://127.0.0.1:4001/v1/keys/_etcd/machines
 ```
 
@@ -415,7 +406,7 @@ You should be able to see this:
 {"action":"GET","key":"/foo","value":"bar","index":5}
 ```
 
-It succeed!
+It succeeded!
 
 ### Testing Persistence
 
@@ -434,5 +425,5 @@ curl -L http://127.0.0.1:4002/v1/keys/foo
 ### Using HTTPS between servers
 
 In the previous example we showed how to use SSL client certs for client to server communication. Etcd can also do internal server to server communication using SSL client certs. To do this just change the ```-client*``` flags to ```-server*```.
-If you are using SSL for server to server communication, you must use it on all instances of etcd.
 
+If you are using SSL for server to server communication, you must use it on all instances of etcd.
