@@ -9,9 +9,9 @@ A highly-available key value store for shared configuration and service discover
 * Fast: benchmarked 1000s of writes/s per instance
 * Reliable: Properly distributed using Raft
 
-Etcd is written in go and uses the [raft][raft] consensus algorithm to manage a highly availably replicated log. 
+Etcd is written in Go and uses the [raft][raft] consensus algorithm to manage a highly availably replicated log.
 
-See [go-etcd][go-etcd] for a native go client. Or feel free to just use curl, as in the examples below. 
+See [go-etcd][go-etcd] for a native Go client. Or feel free to just use curl, as in the examples below.
 
 [raft]: https://github.com/coreos/go-raft
 [go-etcd]: https://github.com/coreos/go-etcd
@@ -31,12 +31,14 @@ To build etcd run the build script. This will generate a binary in the base dire
 These examples will use a single node cluster to show you the basics of the etcd REST API. Lets start etcd:
 
 ```sh
-./etcd
+./etcd -d node0
 ```
 
-This will bring up a node, which will be listening on internal port 7001 (for server communication) and external port 4001 (for client communication)
+This will bring up an etcd node listening on port 4001 for client communication and on port 7001 for server-to-server communication. The `-d node0` argument tells etcd to write node configuration, logs and snapshots to the `./node0/` directory.
 
-#### Setting the value to a key
+## Usage
+
+### Setting the value to a key
 
 Let’s set the first key-value pair to the node. In this case the key is `/message` and the value is `Hello world`.
 
@@ -51,7 +53,7 @@ curl -L http://127.0.0.1:4001/v1/keys/message -d value="Hello world"
 This response contains five fields. We will introduce three more fields as we try more commands.
 
 1. The action of the request; we set the value via a POST request, thus the action is `SET`.
- 
+
 2. The key of the request; we set `/message` to `Hello world!`, so the key field is `/message`.
 Notice we use a file system like structure to represent the key-value pairs. So each key starts with `/`.
 
@@ -59,9 +61,9 @@ Notice we use a file system like structure to represent the key-value pairs. So 
 
 4. If we set a new key; `/message` did not exist before, so this is a new key.
 
-5. Index field is the unique request index of the set request. Each sensitive request we send to the server will have a unique request index. The current sensitive request are `SET`, `DELETE` and `TESTANDSET`. All of these request will change the state of the key-value store system, thus they are sensitive. `GET`, `LIST` and `WATCH` are non-sensitive commands. Those commands will not change the state of the key-value store system. You may notice that in this example the index is 3, although it is the first request you sent to the server. This is because there are some internal commands that also change the state of the server, we also need to assign them command indexes(Command used to add a server and sync the servers).
+5. Index is the unique internal log index of the set request. Requests that change the log index include `SET`, `DELETE` and `TESTANDSET`. The `GET`, `LIST` and `WATCH` commands do not change state in the store and so they do not change the index. You may notice that in this example the index is 3, although it is the first request you sent to the server. This is because there are internal commands that also change the state like adding and syncing servers.
 
-#### Getting the value of a key
+### Get the value of a key
 
 Get the value that we just set in `/message` by issuing a GET:
 
@@ -72,7 +74,7 @@ curl -L http://127.0.0.1:4001/v1/keys/message
 ```json
 {"action":"GET","key":"/message","value":"Hello world","index":3}
 ```
-#### Changing the value of a key
+### Change the value of a key
 
 Change the value of `/message` from `Hello world` to `Hello etcd` with another POST to the key:
 
@@ -86,7 +88,7 @@ curl -L http://127.0.0.1:4001/v1/keys/message -d value="Hello etcd"
 
 Notice that the `prevValue` is set to `Hello world`.
 
-#### Deleting a key
+### Delete a key
 
 Remove the `/message` key with a DELETE:
 
@@ -98,7 +100,7 @@ curl -L http://127.0.0.1:4001/v1/keys/message -X DELETE
 {"action":"DELETE","key":"/message","prevValue":"Hello etcd","index":5}
 ```
 
-#### Using a TTL on a key
+### Using key TTL
 
 Keys in etcd can be set to expire after a specified number of seconds. That is done by setting a TTL (time to live) on the key when you POST:
 
@@ -124,12 +126,11 @@ curl -L http://127.0.0.1:4001/v1/keys/foo
 
 If the TTL has expired, the key will be deleted, and you will be returned a 404.
 
-```html
-404 page not found
+```json
+{"errorCode":100,"message":"Key Not Found","cause":"/foo"}
 ```
 
-
-#### Watching a prefix
+### Watching a prefix
 
 We can watch a path prefix and get notifications if any key change under that prefix.
 
@@ -163,13 +164,9 @@ curl -L http://127.0.0.1:4001/v1/watch/foo -d index=7
 
 The watch command returns immediately with the same response as previous.
 
-#### Atomic Test and Set
+### Atomic Test and Set
 
-Etcd servers will process all the command in sequence atomically. Thus it can be used as a centralized coordination service in a cluster.
-
-`TestAndSet` is the most basic operation to build distributed lock service.
-
-The basic logic is to test whether the given previous value is equal to the value of the key, if equal etcd will change the value of the key to the given value.
+Etcd can be used as a centralized coordination service in a cluster and `TestAndSet` is the most basic operation to build distributed lock service. This command will set the value only if the client provided `prevValue` is equal the current key value.
 
 Here is a simple example. Let's create a key-value pair first: `testAndSet=one`.
 
@@ -206,8 +203,7 @@ The response should be
 
 We successfully changed the value from “one” to “two”, since we give the correct previous value.
 
-
-#### Listing directory
+### Listing a directory
 
 Last we provide a simple List command to list all the keys under a prefix path.
 
@@ -221,7 +217,7 @@ We create another one `/foo/foo_dir/foo=barbarbar`
 curl -L http://127.0.0.1:4001/v1/keys/foo/foo_dir/bar -d value=barbarbar
 ```
 
-Let us list them next.
+Now list the keys under `/foo`
 
 ```sh
 curl -L http://127.0.0.1:4001/v1/keys/foo/
@@ -235,15 +231,19 @@ We should see the response as an array of items
 
 which meas `foo=barbar` is a key-value pair under `/foo` and `foo_dir` is a directory.
 
-#### Using HTTPS between server and client
+## Advanced Usage
+
+### Transport security with HTTPS
+
 Etcd supports SSL/TLS and client cert authentication for clients to server, as well as server to server communication
 
-Before that we need to have a CA cert`clientCA.crt` and signed key pair `client.crt`, `client.key` .
+First, you need to have a CA cert `clientCA.crt` and signed key pair `client.crt`, `client.key`. This site has a good reference for how to generate self-signed key pairs:
 
-This site has a good reference for how to generate self-signed key pairs
 ```url
 http://www.g-loaded.eu/2005/11/10/be-your-own-ca/
 ```
+
+Next, lets configure etcd to use this keypair:
 
 ```sh
 ./etcd -clientCert client.crt -clientKey client.key -f
@@ -252,28 +252,29 @@ http://www.g-loaded.eu/2005/11/10/be-your-own-ca/
 `-f` forces new node configuration if existing configuration is found (WARNING: data loss!)
 `-clientCert` and `-clientKey` are the key and cert for transport layer security between client and server
 
-```sh
-curl -L https://127.0.0.1:4001/v1/keys/foo -d value=bar -v -k
-```
-
-or 
+You can now test the configuration using https:
 
 ```sh
 curl -L https://127.0.0.1:4001/v1/keys/foo -d value=bar -v -cacert clientCA.crt
 ```
 
 You should be able to see the handshake succeed.
+
 ```
 ...
 SSLv3, TLS handshake, Finished (20):
 ...
 ```
+
 And also the response from the etcd server.
+
 ```json
 {"action":"SET","key":"/foo","value":"bar","newKey":true,"index":3}
 ```
 
-We also can do authentication using CA cert. The clients will also need to provide their cert to the server. The server will check whether the cert is signed by the CA and decide whether to serve the request.
+### Authentication with HTTPS client certificates
+
+We can also do authentication using CA certs. The clients will provide their cert to the server and the server will check whether the cert is signed by the CA and decide whether to serve the request.
 
 ```sh
 ./etcd -clientCert client.crt -clientKey client.key -clientCAFile clientCA.crt -f
@@ -281,29 +282,21 @@ We also can do authentication using CA cert. The clients will also need to provi
 
 ```-clientCAFile``` is the path to the CA cert.
 
-Try the same request to this server.
-```sh
-curl -L https://127.0.0.1:4001/v1/keys/foo -d value=bar -v -k
-```
-or 
+Try the same request to this server:
 
 ```sh
 curl -L https://127.0.0.1:4001/v1/keys/foo -d value=bar -v -cacert clientCA.crt
 ```
 
 The request should be rejected by the server.
+
 ```
 ...
 routines:SSL3_READ_BYTES:sslv3 alert bad certificate
 ...
 ```
 
-We need to give the CA signed cert to the server. 
-```sh
-curl -L https://127.0.0.1:4001/v1/keys/foo -d value=bar -v --key myclient.key --cert myclient.crt -k
-```
-
-or
+We need to give the CA signed cert to the server.
 
 ```sh
 curl -L https://127.0.0.1:4001/v1/keys/foo -d value=bar -v --key myclient.key --cert myclient.crt -cacert clientCA.crt
@@ -317,14 +310,17 @@ SSLv3, TLS handshake, CERT verify (15):
 TLS handshake, Finished (20)
 ```
 
-And also the response from the server
+And also the response from the server:
+
 ```json
 {"action":"SET","key":"/foo","value":"bar","newKey":true,"index":3}
 ```
 
-### Setting up a cluster of three machines
+## Clustering
 
-Next let's explore the use of etcd clustering. We use go-raft as the underlying distributed protocol which provides consistency and persistence of the data across all of the etcd instances.
+### Example cluster of three machines
+
+Let's explore the use of etcd clustering. We use go-raft as the underlying distributed protocol which provides consistency and persistence of the data across all of the etcd instances.
 
 Let start by creating 3 new etcd instances.
 
@@ -341,7 +337,7 @@ Let the join two more nodes to this cluster using the -C argument:
 ./etcd -c 4003 -s 7003 -C 127.0.0.1:7001 -d nodes/node3
 ```
 
-Get the machines in the cluster
+Get the machines in the cluster:
 
 ```sh
 curl -L http://127.0.0.1:4001/machines
@@ -353,9 +349,9 @@ We should see there are three nodes in the cluster
 0.0.0.0:4001,0.0.0.0:4002,0.0.0.0:4003
 ```
 
-Machine list is also available via this API
+The machine list is also available via this API:
 
-```sh 
+```sh
 curl -L http://127.0.0.1:4001/v1/keys/_etcd/machines
 ```
 
@@ -382,16 +378,11 @@ Now we can do normal SET and GET operations on keys as we explored earlier.
 curl -L http://127.0.0.1:4001/v1/keys/foo -d value=bar
 ```
 
-When the client sends a sensitive command (`set`, `delete`, `testAndset` ) to the server, the command needs to be redirect to the leader of the cluster.
-
-So we add the ` -L ` flag to make curl follow location hints in http location header when there is a redirection http response.
-
-The response should be 
 ```json
 {"action":"SET","key":"/foo","value":"bar","newKey":true,"index":5}
 ```
 
-#### Killing Nodes in the Cluster
+### Killing Nodes in the Cluster
 
 Let's kill the leader of the cluster and get the value from the other machine:
 
@@ -415,9 +406,9 @@ You should be able to see this:
 {"action":"GET","key":"/foo","value":"bar","index":5}
 ```
 
-It succeed!
+It succeeded!
 
-#### Testing Persistence
+### Testing Persistence
 
 OK. Next let us kill all the nodes to test persistence. And restart all the nodes use the same command as before.
 
@@ -431,7 +422,28 @@ curl -L http://127.0.0.1:4002/v1/keys/foo
 {"action":"GET","key":"/foo","value":"bar","index":5}
 ```
 
-#### Using HTTPS between servers
+### Using HTTPS between servers
+
 In the previous example we showed how to use SSL client certs for client to server communication. Etcd can also do internal server to server communication using SSL client certs. To do this just change the ```-client*``` flags to ```-server*```.
+
 If you are using SSL for server to server communication, you must use it on all instances of etcd.
 
+## Libraries and Tools
+
+**Tools**
+
+- [etcdctl](https://github.com/coreos/etcdctl) - A command line client for etcd
+
+**Go libraries**
+
+- [go-etcd](https://github.com/coreos/go-etcd)
+
+**Ruby libraries**
+
+- [iconara/etcd-rb](https://github.com/iconara/etcd-rb)
+- [jpfuentes2/etcd-ruby](https://github.com/jpfuentes2/etcd-ruby)
+- [ranjib/etcd-ruby](https://github.com/ranjib/etcd-ruby)
+
+**Chef Cookbook**
+
+- [spheromak/etcd-cookbook](https://github.com/spheromak/etcd-cookbook)
