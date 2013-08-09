@@ -427,3 +427,23 @@ curl -L http://127.0.0.1:4002/v1/keys/foo
 In the previous example we showed how to use SSL client certs for client to server communication. Etcd can also do internal server to server communication using SSL client certs. To do this just change the ```-client*``` flags to ```-server*```.
 
 If you are using SSL for server to server communication, you must use it on all instances of etcd.
+
+## Libraries and Tools
+
+**Tools**
+
+- [etcdctl](https://github.com/coreos/etcdctl) - A command line client for etcd
+
+**Go libraries**
+
+- [go-etcd](https://github.com/coreos/go-etcd)
+
+**Ruby libraries**
+
+- [iconara/etcd-rb](https://github.com/iconara/etcd-rb)
+- [jpfuentes2/etcd-ruby](https://github.com/jpfuentes2/etcd-ruby)
+- [ranjib/etcd-ruby](https://github.com/ranjib/etcd-ruby)
+
+**Chef Cookbook**
+
+- [spheromak/etcd-cookbook](https://github.com/spheromak/etcd-cookbook)
