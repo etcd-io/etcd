@@ -50,46 +50,30 @@ func (c *Client) watchOnce(key string, sinceIndex uint64, stop chan bool) (*stor
 	var resp *http.Response
 	var err error
 
-	if sinceIndex == 0 {
-		// Get request if no index is given
-		resp, err = c.sendRequest("GET", path.Join("watch", key), "")
-
-		if err != nil {
-			return nil, err
-		}
-
-	} else {
-
-		// Post
-		v := url.Values{}
-		v.Set("index", fmt.Sprintf("%v", sinceIndex))
-
+	if stop != nil {
 		ch := make(chan respAndErr)
 
-		if stop != nil {
-			go func() {
-				resp, err = c.sendRequest("POST", path.Join("watch", key), v.Encode())
+		go func() {
+			resp, err = c.sendWatchRequest(key, sinceIndex)
 
-				ch <- respAndErr{resp, err}
-			}()
+			ch <- respAndErr{resp, err}
+		}()
 
-			// select at stop or continue to receive
-			select {
+		// select at stop or continue to receive
+		select {
 
-			case res := <-ch:
-				resp, err = res.resp, res.err
+		case res := <-ch:
+			resp, err = res.resp, res.err
 
-			case <-stop:
-				resp, err = nil, errors.New("User stoped watch")
-			}
-		} else {
-			resp, err = c.sendRequest("POST", path.Join("watch", key), v.Encode())
+		case <-stop:
+			resp, err = nil, errors.New("User stoped watch")
 		}
+	} else {
+		resp, err = c.sendWatchRequest(key, sinceIndex)
+	}
 
-		if err != nil {
-			return nil, err
-		}
-
+	if err != nil {
+		return nil, err
 	}
 
 	b, err := ioutil.ReadAll(resp.Body)
@@ -114,4 +98,17 @@ func (c *Client) watchOnce(key string, sinceIndex uint64, stop chan bool) (*stor
 	}
 
 	return &result, nil
+}
+
+func (c *Client) sendWatchRequest(key string, sinceIndex uint64) (*http.Response, error) {
+	if sinceIndex == 0 {
+		resp, err := c.sendRequest("GET", path.Join("watch", key), "")
+		return resp, err
+	} else {
+		v := url.Values{}
+		v.Set("index", fmt.Sprintf("%v", sinceIndex))
+		resp, err := c.sendRequest("POST", path.Join("watch", key), v.Encode())
+		return resp, err
+	}
+
 }

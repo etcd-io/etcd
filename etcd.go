@@ -37,22 +37,10 @@ var machinesFile string
 
 var cluster []string
 
-var hostname string
-var clientPort int
-var raftPort int
-var webPort int
-
-var serverCertFile string
-var serverKeyFile string
-var serverCAFile string
-
-var clientCertFile string
-var clientKeyFile string
-var clientCAFile string
-
+var argInfo Info
 var dirPath string
 
-var ignore bool
+var force bool
 
 var maxSize int
 
@@ -71,22 +59,22 @@ func init() {
 	flag.StringVar(&machines, "C", "", "the ip address and port of a existing machines in the cluster, sepearate by comma")
 	flag.StringVar(&machinesFile, "CF", "", "the file contains a list of existing machines in the cluster, seperate by comma")
 
-	flag.StringVar(&hostname, "h", "0.0.0.0", "the hostname of the local machine")
-	flag.IntVar(&clientPort, "c", 4001, "the port to communicate with clients")
-	flag.IntVar(&raftPort, "s", 7001, "the port to communicate with servers")
-	flag.IntVar(&webPort, "w", -1, "the port of web interface (-1 means do not start web interface)")
+	flag.StringVar(&argInfo.Hostname, "h", "0.0.0.0", "the hostname of the local machine")
+	flag.IntVar(&argInfo.ClientPort, "c", 4001, "the port to communicate with clients")
+	flag.IntVar(&argInfo.RaftPort, "s", 7001, "the port to communicate with servers")
+	flag.IntVar(&argInfo.WebPort, "w", -1, "the port of web interface (-1 means do not start web interface)")
 
-	flag.StringVar(&serverCAFile, "serverCAFile", "", "the path of the CAFile")
-	flag.StringVar(&serverCertFile, "serverCert", "", "the cert file of the server")
-	flag.StringVar(&serverKeyFile, "serverKey", "", "the key file of the server")
+	flag.StringVar(&argInfo.ServerCAFile, "serverCAFile", "", "the path of the CAFile")
+	flag.StringVar(&argInfo.ServerCertFile, "serverCert", "", "the cert file of the server")
+	flag.StringVar(&argInfo.ServerKeyFile, "serverKey", "", "the key file of the server")
 
-	flag.StringVar(&clientCAFile, "clientCAFile", "", "the path of the client CAFile")
-	flag.StringVar(&clientCertFile, "clientCert", "", "the cert file of the client")
-	flag.StringVar(&clientKeyFile, "clientKey", "", "the key file of the client")
+	flag.StringVar(&argInfo.ClientCAFile, "clientCAFile", "", "the path of the client CAFile")
+	flag.StringVar(&argInfo.ClientCertFile, "clientCert", "", "the cert file of the client")
+	flag.StringVar(&argInfo.ClientKeyFile, "clientKey", "", "the key file of the client")
 
-	flag.StringVar(&dirPath, "d", "/tmp/", "the directory to store log and snapshot")
+	flag.StringVar(&dirPath, "d", ".", "the directory to store log and snapshot")
 
-	flag.BoolVar(&ignore, "i", false, "ignore the old configuration, create a new node")
+	flag.BoolVar(&force, "f", false, "force new node configuration if existing is found (WARNING: data loss!)")
 
 	flag.BoolVar(&snapshot, "snapshot", false, "open or close snapshot")
 
@@ -226,14 +214,14 @@ func main() {
 
 	startRaft(st)
 
-	if webPort != -1 {
+	if argInfo.WebPort != -1 {
 		// start web
-		etcdStore.SetMessager(&storeMsg)
+		etcdStore.SetMessager(storeMsg)
 		go webHelper()
-		go web.Start(raftServer, webPort)
+		go web.Start(raftServer, argInfo.WebPort)
 	}
 
-	startClientTransport(info.ClientPort, clientSt)
+	startClientTransport(*info, clientSt)
 
 }
 
@@ -280,9 +268,9 @@ func startRaft(securityType int) {
 			for {
 				command := &JoinCommand{
 					Name:       raftServer.Name(),
-					Hostname:   hostname,
-					RaftPort:   raftPort,
-					ClientPort: clientPort,
+					Hostname:   argInfo.Hostname,
+					RaftPort:   argInfo.RaftPort,
+					ClientPort: argInfo.ClientPort,
 				}
 				_, err := raftServer.Do(command)
 				if err == nil {
@@ -340,7 +328,7 @@ func startRaft(securityType int) {
 	}
 
 	// start to response to raft requests
-	go startRaftTransport(info.RaftPort, securityType)
+	go startRaftTransport(*info, securityType)
 
 }
 
@@ -367,7 +355,7 @@ func createTransporter(st int) transporter {
 	case HTTPSANDVERIFY:
 		t.scheme = "https://"
 
-		tlsCert, err := tls.LoadX509KeyPair(serverCertFile, serverKeyFile)
+		tlsCert, err := tls.LoadX509KeyPair(argInfo.ServerCertFile, argInfo.ServerKeyFile)
 
 		if err != nil {
 			fatal(err)
@@ -394,7 +382,7 @@ func dialTimeout(network, addr string) (net.Conn, error) {
 }
 
 // Start to listen and response raft command
-func startRaftTransport(port int, st int) {
+func startRaftTransport(info Info, st int) {
 
 	// internal commands
 	http.HandleFunc("/join", JoinHttpHandler)
@@ -408,30 +396,30 @@ func startRaftTransport(port int, st int) {
 	switch st {
 
 	case HTTP:
-		fmt.Printf("raft server [%s] listen on http port %v\n", hostname, port)
-		fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), nil))
+		fmt.Printf("raft server [%s] listen on http port %v\n", info.Hostname, info.RaftPort)
+		fatal(http.ListenAndServe(fmt.Sprintf(":%d", info.RaftPort), nil))
 
 	case HTTPS:
-		fmt.Printf("raft server [%s] listen on https port %v\n", hostname, port)
-		fatal(http.ListenAndServeTLS(fmt.Sprintf(":%d", port), serverCertFile, serverKeyFile, nil))
+		fmt.Printf("raft server [%s] listen on https port %v\n", info.Hostname, info.RaftPort)
+		fatal(http.ListenAndServeTLS(fmt.Sprintf(":%d", info.RaftPort), info.ServerCertFile, argInfo.ServerKeyFile, nil))
 
 	case HTTPSANDVERIFY:
 
 		server := &http.Server{
 			TLSConfig: &tls.Config{
 				ClientAuth: tls.RequireAndVerifyClientCert,
-				ClientCAs:  createCertPool(serverCAFile),
+				ClientCAs:  createCertPool(info.ServerCAFile),
 			},
-			Addr: fmt.Sprintf(":%d", port),
+			Addr: fmt.Sprintf(":%d", info.RaftPort),
 		}
-		fmt.Printf("raft server [%s] listen on https port %v\n", hostname, port)
-		fatal(server.ListenAndServeTLS(serverCertFile, serverKeyFile))
+		fmt.Printf("raft server [%s] listen on https port %v\n", info.Hostname, info.RaftPort)
+		fatal(server.ListenAndServeTLS(info.ServerCertFile, argInfo.ServerKeyFile))
 	}
 
 }
 
 // Start to listen and response client command
-func startClientTransport(port int, st int) {
+func startClientTransport(info Info, st int) {
 	// external commands
 	http.HandleFunc("/"+version+"/keys/", Multiplexer)
 	http.HandleFunc("/"+version+"/watch/", WatchHttpHandler)
@@ -444,24 +432,24 @@ func startClientTransport(port int, st int) {
 	switch st {
 
 	case HTTP:
-		fmt.Printf("etcd [%s] listen on http port %v\n", hostname, clientPort)
-		fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), nil))
+		fmt.Printf("etcd [%s] listen on http port %v\n", info.Hostname, info.ClientPort)
+		fatal(http.ListenAndServe(fmt.Sprintf(":%d", info.ClientPort), nil))
 
 	case HTTPS:
-		fmt.Printf("etcd [%s] listen on https port %v\n", hostname, clientPort)
-		http.ListenAndServeTLS(fmt.Sprintf(":%d", port), clientCertFile, clientKeyFile, nil)
+		fmt.Printf("etcd [%s] listen on https port %v\n", info.Hostname, info.ClientPort)
+		http.ListenAndServeTLS(fmt.Sprintf(":%d", info.ClientPort), info.ClientCertFile, info.ClientKeyFile, nil)
 
 	case HTTPSANDVERIFY:
 
 		server := &http.Server{
 			TLSConfig: &tls.Config{
 				ClientAuth: tls.RequireAndVerifyClientCert,
-				ClientCAs:  createCertPool(clientCAFile),
+				ClientCAs:  createCertPool(info.ClientCAFile),
 			},
-			Addr: fmt.Sprintf(":%d", port),
+			Addr: fmt.Sprintf(":%d", info.ClientPort),
 		}
-		fmt.Printf("etcd [%s] listen on https port %v\n", hostname, clientPort)
-		fatal(server.ListenAndServeTLS(clientCertFile, clientKeyFile))
+		fmt.Printf("etcd [%s] listen on https port %v\n", info.Hostname, info.ClientPort)
+		fatal(server.ListenAndServeTLS(info.ClientCertFile, info.ClientKeyFile))
 	}
 }
 
@@ -511,6 +499,30 @@ func securityType(source int) int {
 	return -1
 }
 
+func parseInfo(path string) *Info {
+	file, err := os.Open(path)
+
+	if err != nil {
+		return nil
+	}
+
+	info := &Info{}
+	defer file.Close()
+
+	content, err := ioutil.ReadAll(file)
+	if err != nil {
+		fatalf("Unable to read info: %v", err)
+		return nil
+	}
+
+	if err = json.Unmarshal(content, &info); err != nil {
+		fatalf("Unable to parse info: %v", err)
+		return nil
+	}
+
+	return info
+}
+
 // Get the server info from previous conf file
 // or from the user
 func getInfo(path string) *Info {
@@ -519,8 +531,7 @@ func getInfo(path string) *Info {
 	infoPath := fmt.Sprintf("%s/info", path)
 
 	// Delete the old configuration if exist
-	if ignore {
-
+	if force {
 		logPath := fmt.Sprintf("%s/log", path)
 		confPath := fmt.Sprintf("%s/conf", path)
 		snapshotPath := fmt.Sprintf("%s/snapshot", path)
@@ -528,54 +539,33 @@ func getInfo(path string) *Info {
 		os.Remove(logPath)
 		os.Remove(confPath)
 		os.RemoveAll(snapshotPath)
-
 	}
 
-	if file, err := os.Open(infoPath); err == nil {
-		info := &Info{}
-		if content, err := ioutil.ReadAll(file); err != nil {
-			fatalf("Unable to read info: %v", err)
-		} else {
-			if err = json.Unmarshal(content, &info); err != nil {
-				fatalf("Unable to parse info: %v", err)
-			}
-		}
-		file.Close()
-		return info
-	} else {
-		// Otherwise ask user for info and write it to file.
-
-		hostname = strings.TrimSpace(hostname)
-
-		if hostname == "" {
-			fatal("Please give the address of the local machine")
-		}
-
-		fmt.Println("address ", hostname)
-		info := &Info{
-			Hostname: hostname,
-
-			RaftPort:   raftPort,
-			ClientPort: clientPort,
-			WebPort:    webPort,
-
-			ClientCAFile:   clientCAFile,
-			ClientCertFile: clientCertFile,
-			ClientKeyFile:  clientKeyFile,
-
-			ServerCAFile:   serverCAFile,
-			ServerKeyFile:  serverKeyFile,
-			ServerCertFile: serverCertFile,
-		}
-
-		// Write to file.
-		content, _ := json.Marshal(info)
-		content = []byte(string(content) + "\n")
-		if err := ioutil.WriteFile(infoPath, content, 0644); err != nil {
-			fatalf("Unable to write info to file: %v", err)
-		}
+	info := parseInfo(infoPath)
+	if info != nil {
+		fmt.Printf("Found node configuration in '%s'. Ignoring flags.\n", infoPath)
 		return info
 	}
+
+	// Otherwise ask user for info and write it to file.
+	argInfo.Hostname = strings.TrimSpace(argInfo.Hostname)
+
+	if argInfo.Hostname == "" {
+		fatal("Please give the address of the local machine")
+	}
+
+	info = &argInfo
+
+	// Write to file.
+	content, _ := json.MarshalIndent(info, "", " ")
+	content = []byte(string(content) + "\n")
+	if err := ioutil.WriteFile(infoPath, content, 0644); err != nil {
+		fatalf("Unable to write info to file: %v", err)
+	}
+
+	fmt.Printf("Wrote node configuration to '%s'.\n", infoPath)
+
+	return info
 }
 
 // Create client auth certpool

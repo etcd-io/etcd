@@ -35,7 +35,7 @@ type Store struct {
 
 	// The string channel to send messages to the outside world
 	// Now we use it to send changes to the hub of the web service
-	messager *chan string
+	messager chan<- string
 
 	// A map to keep the recent response to the clients
 	ResponseMap map[string]*Response
@@ -141,7 +141,7 @@ func CreateStore(max int) *Store {
 }
 
 // Set the messager of the store
-func (s *Store) SetMessager(messager *chan string) {
+func (s *Store) SetMessager(messager chan<- string) {
 	s.messager = messager
 }
 
@@ -205,7 +205,7 @@ func (s *Store) internalSet(key string, value string, expireTime time.Time, inde
 		} else {
 
 			// If we want the permanent node to have expire time
-			// We need to create create a go routine with a channel
+			// We need to create a go routine with a channel
 			if isExpire {
 				node.update = make(chan time.Time)
 				go s.monitorExpiration(key, node.update, expireTime)
@@ -224,8 +224,7 @@ func (s *Store) internalSet(key string, value string, expireTime time.Time, inde
 
 		// Send to the messager
 		if s.messager != nil && err == nil {
-
-			*s.messager <- string(msg)
+			s.messager <- string(msg)
 		}
 
 		s.addToResponseMap(index, &resp)
@@ -257,8 +256,7 @@ func (s *Store) internalSet(key string, value string, expireTime time.Time, inde
 
 		// Send to the messager
 		if s.messager != nil && err == nil {
-
-			*s.messager <- string(msg)
+			s.messager <- string(msg)
 		}
 
 		s.addToResponseMap(index, &resp)
@@ -440,8 +438,7 @@ func (s *Store) internalDelete(key string, index uint64) ([]byte, error) {
 
 		// notify the messager
 		if s.messager != nil && err == nil {
-
-			*s.messager <- string(msg)
+			s.messager <- string(msg)
 		}
 
 		s.addToResponseMap(index, &resp)
@@ -486,7 +483,7 @@ func (s *Store) TestAndSet(key string, prevValue string, value string, expireTim
 // The watchHub will send response to the channel when any key under the prefix
 // changes [since the sinceIndex if given]
 func (s *Store) AddWatcher(prefix string, watcher *Watcher, sinceIndex uint64) error {
-	return s.watcher.addWatcher(prefix, watcher, sinceIndex, s.ResponseStartIndex, s.Index, &s.ResponseMap)
+	return s.watcher.addWatcher(prefix, watcher, sinceIndex, s.ResponseStartIndex, s.Index, s.ResponseMap)
 }
 
 // This function should be created as a go routine to delete the key-value pair
@@ -526,8 +523,7 @@ func (s *Store) monitorExpiration(key string, update chan time.Time, expireTime 
 
 				// notify the messager
 				if s.messager != nil && err == nil {
-
-					*s.messager <- string(msg)
+					s.messager <- string(msg)
 				}
 
 				return

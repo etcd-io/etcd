@@ -59,10 +59,10 @@ func createCluster(size int, procAttr *os.ProcAttr) ([][]string, []*os.Process, 
 	argGroup := make([][]string, size)
 	for i := 0; i < size; i++ {
 		if i == 0 {
-			argGroup[i] = []string{"etcd", "-d=/tmp/node1"}
+			argGroup[i] = []string{"etcd", "-h=127.0.0.1", "-d=/tmp/node1"}
 		} else {
 			strI := strconv.Itoa(i + 1)
-			argGroup[i] = []string{"etcd", "-c=400" + strI, "-s=700" + strI, "-d=/tmp/node" + strI, "-C=127.0.0.1:7001"}
+			argGroup[i] = []string{"etcd", "-h=127.0.0.1", "-c=400" + strI, "-s=700" + strI, "-d=/tmp/node" + strI, "-C=127.0.0.1:7001"}
 		}
 	}
 
@@ -70,13 +70,18 @@ func createCluster(size int, procAttr *os.ProcAttr) ([][]string, []*os.Process, 
 
 	for i, _ := range etcds {
 		var err error
-		etcds[i], err = os.StartProcess("etcd", append(argGroup[i], "-i"), procAttr)
+		etcds[i], err = os.StartProcess("etcd", append(argGroup[i], "-f"), procAttr)
 		if err != nil {
 			return nil, nil, err
 		}
-		// we only add machine one to the cluster list
-		// thus we need to make sure other node start after the first one has done set up
-		time.Sleep(time.Millisecond * 200)
+		
+		// TODOBP: Change this sleep to wait until the master is up.
+		// The problem is that if the master isn't up then the children
+		// have to retry. This retry can take upwards of 15 seconds
+		// which slows tests way down and some of them fail.
+		if i == 0 {
+			time.Sleep(time.Second)
+		}
 	}
 
 	return argGroup, etcds, nil

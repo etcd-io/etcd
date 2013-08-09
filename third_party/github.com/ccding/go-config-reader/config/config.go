@@ -31,6 +31,7 @@ func Read(filename string) (map[string]string, error) {
 	if err != nil {
 		return res, err
 	}
+	defer in.Close()
 	scanner := bufio.NewScanner(in)
 	line := ""
 	section := ""
@@ -60,7 +61,6 @@ func Read(filename string) (map[string]string, error) {
 		res[section+key] = value
 		line = ""
 	}
-	in.Close()
 	return res, nil
 }
 

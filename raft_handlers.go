@@ -91,7 +91,7 @@ func SnapshotRecoveryHttpHandler(w http.ResponseWriter, req *http.Request) {
 func ClientHttpHandler(w http.ResponseWriter, req *http.Request) {
 	debugf("[recv] Get %s/client/ ", raftTransporter.scheme+raftServer.Name())
 	w.WriteHeader(http.StatusOK)
-	client := hostname + ":" + strconv.Itoa(clientPort)
+	client := argInfo.Hostname + ":" + strconv.Itoa(argInfo.ClientPort)
 	w.Write([]byte(client))
 }
 
