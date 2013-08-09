@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"github.com/coreos/go-raft"
 	"net/http"
-	"strconv"
 )
 
 //-------------------------------------------------------------
@@ -91,13 +90,26 @@ func SnapshotRecoveryHttpHandler(w http.ResponseWriter, req *http.Request) {
 func ClientHttpHandler(w http.ResponseWriter, req *http.Request) {
 	debugf("[recv] Get %s/client/ ", raftTransporter.scheme+raftServer.Name())
 	w.WriteHeader(http.StatusOK)
-	client := argInfo.Hostname + ":" + strconv.Itoa(argInfo.ClientPort)
+	client := argInfo.ClientURL
 	w.Write([]byte(client))
 }
 
 // Response to the join request
 func JoinHttpHandler(w http.ResponseWriter, req *http.Request) {
 
+	command := &JoinCommand{}
+
+	if err := decodeJsonRequest(req, command); err == nil {
+		debugf("Receive Join Request from %s", command.Name)
+		dispatch(command, &w, req, false)
+	} else {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+}
+
+// Response to the join request
+func NameHttpHandler(w http.ResponseWriter, req *http.Request) {
 	command := &JoinCommand{}
 
 	if err := decodeJsonRequest(req, command); err == nil {

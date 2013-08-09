@@ -24,7 +24,8 @@ func mainHandler(c http.ResponseWriter, req *http.Request) {
 	mainTempl.Execute(c, p)
 }
 
-func Start(server *raft.Server, port int) {
+func Start(server *raft.Server, webURL string) {
+	port := "4002"
 	mainTempl = template.Must(template.New("index.html").Parse(index_html))
 	s = server
 

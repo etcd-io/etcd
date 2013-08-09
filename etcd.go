@@ -56,13 +56,14 @@ func init() {
 	flag.BoolVar(&verbose, "v", false, "verbose logging")
 	flag.BoolVar(&veryVerbose, "vv", false, "very verbose logging")
 
+
 	flag.StringVar(&machines, "C", "", "the ip address and port of a existing machines in the cluster, sepearate by comma")
 	flag.StringVar(&machinesFile, "CF", "", "the file contains a list of existing machines in the cluster, seperate by comma")
 
-	flag.StringVar(&argInfo.Hostname, "h", "0.0.0.0", "the hostname of the local machine")
-	flag.IntVar(&argInfo.ClientPort, "c", 4001, "the port to communicate with clients")
-	flag.IntVar(&argInfo.RaftPort, "s", 7001, "the port to communicate with servers")
-	flag.IntVar(&argInfo.WebPort, "w", -1, "the port of web interface (-1 means do not start web interface)")
+	flag.StringVar(&argInfo.Name, "n", "", "the node name (required)")
+	flag.StringVar(&argInfo.ClientURL, "c", "127.0.0.1:4001", "the port to communicate with clients")
+	flag.StringVar(&argInfo.RaftURL, "s", "127.0.0.1:7001", "the port to communicate with servers")
+	flag.StringVar(&argInfo.WebURL, "w", "", "the port of web interface")
 
 	flag.StringVar(&argInfo.ServerCAFile, "serverCAFile", "", "the path of the CAFile")
 	flag.StringVar(&argInfo.ServerCertFile, "serverCert", "", "the cert file of the server")
@@ -111,10 +112,11 @@ const (
 //------------------------------------------------------------------------------
 
 type Info struct {
-	Hostname   string `json:"hostname"`
-	RaftPort   int    `json:"raftPort"`
-	ClientPort int    `json:"clientPort"`
-	WebPort    int    `json:"webPort"`
+	Name       string `json:"name"`
+
+	RaftURL    string `json:"raftURL"`
+	ClientURL  string `json:"clientURL"`
+	WebURL     string `json:"webURL"`
 
 	ServerCertFile string `json:"serverCertFile"`
 	ServerKeyFile  string `json:"serverKeyFile"`
@@ -141,6 +143,21 @@ var info *Info
 // Functions
 //
 //------------------------------------------------------------------------------
+
+// Check a URL and clean it up if the user forgot the schema
+func checkURL(u string, defaultSchema string) string {
+	p, err := url.Parse(u)
+
+	if err != nil {
+		panic(err)
+	}
+
+	if len(p.Host) == 0 && len(defaultSchema) != 0 {
+		return checkURL(fmt.Sprintf("%s://%s", defaultSchema, u), "")
+	}
+
+	return p.String()
+}
 
 //--------------------------------------
 // Main
@@ -184,6 +201,16 @@ func main() {
 		cluster = strings.Split(string(b), ",")
 	}
 
+	// Otherwise ask user for info and write it to file.
+	argInfo.Name = strings.TrimSpace(argInfo.Name)
+
+	if argInfo.Name == "" {
+		fatal("Please give the name of the server")
+	}
+
+	argInfo.RaftURL = checkURL(argInfo.RaftURL, "http")
+	argInfo.ClientURL = checkURL(argInfo.ClientURL, "http")
+
 	// Setup commands.
 	registerCommands()
 
@@ -209,11 +236,11 @@ func main() {
 
 	startRaft(raftTlsConfs)
 
-	if argInfo.WebPort != -1 {
+	if argInfo.WebURL != "" {
 		// start web
 		etcdStore.SetMessager(storeMsg)
 		go webHelper()
-		go web.Start(raftServer, argInfo.WebPort)
+		go web.Start(raftServer, argInfo.WebURL)
 	}
 
 	startEtcdTransport(*info, etcdTlsConfs[0])
@@ -224,7 +251,7 @@ func main() {
 func startRaft(tlsConfs []*tls.Config) {
 	var err error
 
-	raftName := fmt.Sprintf("%s:%d", info.Hostname, info.RaftPort)
+	raftName := info.Name
 
 	// Create transporter for raft
 	raftTransporter = newTransporter(tlsConfs[1])
@@ -262,10 +289,9 @@ func startRaft(tlsConfs []*tls.Config) {
 			// leader need to join self as a peer
 			for {
 				command := &JoinCommand{
-					Name:       raftServer.Name(),
-					Hostname:   argInfo.Hostname,
-					RaftPort:   argInfo.RaftPort,
-					ClientPort: argInfo.ClientPort,
+					Name:      raftServer.Name(),
+					RaftURL:   argInfo.RaftURL,
+					ClientURL: argInfo.ClientURL,
 				}
 				_, err := raftServer.Do(command)
 				if err == nil {
@@ -333,6 +359,8 @@ func startRaft(tlsConfs []*tls.Config) {
 func newTransporter(tlsConf *tls.Config) transporter {
 	t := transporter{}
 
+	t.names = make(map[string]*JoinCommand)
+
 	if tlsConf == nil {
 		t.scheme = "http://"
 
@@ -366,6 +394,7 @@ func dialTimeout(network, addr string) (net.Conn, error) {
 func startRaftTransport(info Info, tlsConf *tls.Config) {
 
 	// internal commands
+	http.HandleFunc("/name", NameHttpHandler)
 	http.HandleFunc("/join", JoinHttpHandler)
 	http.HandleFunc("/vote", VoteHttpHandler)
 	http.HandleFunc("/log", GetLogHttpHandler)
@@ -374,16 +403,16 @@ func startRaftTransport(info Info, tlsConf *tls.Config) {
 	http.HandleFunc("/snapshotRecovery", SnapshotRecoveryHttpHandler)
 	http.HandleFunc("/client", ClientHttpHandler)
 
-	if tlsConf == nil {
-		fmt.Printf("raft server [%s] listen on http port %v\n", info.Hostname, info.RaftPort)
-		fatal(http.ListenAndServe(fmt.Sprintf(":%d", info.RaftPort), nil))
+	u, _ := url.Parse(info.RaftURL)
+	fmt.Printf("raft server [%s] listening on %s\n", info.Name, u)
 
+	if tlsConf == nil {
+		http.ListenAndServe(u.Host, nil)
 	} else {
 		server := &http.Server{
 			TLSConfig: tlsConf,
-			Addr:      fmt.Sprintf(":%d", info.RaftPort),
+			Addr:      u.Host,
 		}
-		fmt.Printf("raft server [%s] listen on https port %v\n", info.Hostname, info.RaftPort)
 		fatal(server.ListenAndServeTLS(info.ServerCertFile, argInfo.ServerKeyFile))
 	}
 
@@ -400,15 +429,16 @@ func startEtcdTransport(info Info, tlsConf *tls.Config) {
 	http.HandleFunc("/stats", StatsHttpHandler)
 	http.HandleFunc("/test/", TestHttpHandler)
 
+	u, _ := url.Parse(info.ClientURL)
+	fmt.Printf("raft server [%s] listening on %s\n", info.Name, u)
+
 	if tlsConf == nil {
-		fmt.Printf("etcd [%s] listen on http port %v\n", info.Hostname, info.ClientPort)
-		fatal(http.ListenAndServe(fmt.Sprintf(":%d", info.ClientPort), nil))
+		fatal(http.ListenAndServe(u.Host, nil))
 	} else {
 		server := &http.Server{
 			TLSConfig: tlsConf,
-			Addr:      fmt.Sprintf(":%d", info.ClientPort),
+			Addr:      u.Host,
 		}
-		fmt.Printf("etcd [%s] listen on https port %v\n", info.Hostname, info.ClientPort)
 		fatal(server.ListenAndServeTLS(info.ClientCertFile, info.ClientKeyFile))
 	}
 }
@@ -518,13 +548,6 @@ func getInfo(path string) *Info {
 		return info
 	}
 
-	// Otherwise ask user for info and write it to file.
-	argInfo.Hostname = strings.TrimSpace(argInfo.Hostname)
-
-	if argInfo.Hostname == "" {
-		fatal("Please give the address of the local machine")
-	}
-
 	info = &argInfo
 
 	// Write to file.
@@ -567,9 +590,8 @@ func joinCluster(s *raft.Server, serverName string) error {
 
 	command := &JoinCommand{
 		Name:       s.Name(),
-		Hostname:   info.Hostname,
-		RaftPort:   info.RaftPort,
-		ClientPort: info.ClientPort,
+		RaftURL:   info.RaftURL,
+		ClientURL: info.ClientURL,
 	}
 
 	json.NewEncoder(&b).Encode(command)
