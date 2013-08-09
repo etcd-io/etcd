@@ -31,10 +31,10 @@ To build etcd run the build script. This will generate a binary in the base dire
 These examples will use a single node cluster to show you the basics of the etcd REST API. Lets start etcd:
 
 ```sh
-./etcd
+./etcd -d node0
 ```
 
-This will bring up a node, which will be listening on internal port 7001 (for server communication) and external port 4001 (for client communication)
+This will bring up an etcd node listening on port 4001 for client communication and on port 7001 for server-to-server communication. The `-d node0` argument tells etcd to write node configuration, logs and snapshots to the `./node0/` directory.
 
 #### Setting the value to a key
 
@@ -51,7 +51,7 @@ curl -L http://127.0.0.1:4001/v1/keys/message -d value="Hello world"
 This response contains five fields. We will introduce three more fields as we try more commands.
 
 1. The action of the request; we set the value via a POST request, thus the action is `SET`.
- 
+
 2. The key of the request; we set `/message` to `Hello world!`, so the key field is `/message`.
 Notice we use a file system like structure to represent the key-value pairs. So each key starts with `/`.
 
