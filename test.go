@@ -74,7 +74,7 @@ func createCluster(size int, procAttr *os.ProcAttr) ([][]string, []*os.Process, 
 		if err != nil {
 			return nil, nil, err
 		}
-		
+
 		// TODOBP: Change this sleep to wait until the master is up.
 		// The problem is that if the master isn't up then the children
 		// have to retry. This retry can take upwards of 15 seconds
