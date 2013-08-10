@@ -237,6 +237,7 @@ func main() {
 
 	if argInfo.WebURL != "" {
 		// start web
+		argInfo.WebURL = checkURL(argInfo.WebURL, "http")
 		etcdStore.SetMessager(storeMsg)
 		go webHelper()
 		go web.Start(raftServer, argInfo.WebURL)
