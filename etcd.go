@@ -204,7 +204,7 @@ func main() {
 	argInfo.Name = strings.TrimSpace(argInfo.Name)
 
 	if argInfo.Name == "" {
-		fatal("Please give the name of the server")
+		fatal("ERROR: server name required. e.g. '-n=server_name'")
 	}
 
 	argInfo.RaftURL = checkURL(argInfo.RaftURL, "http")
