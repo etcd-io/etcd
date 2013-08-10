@@ -1,20 +1,20 @@
 package main
 
 import (
-	"fmt"
 	"path"
-	"strings"
+	"net/url"
 )
 
 func getClientAddr(name string) (string, bool) {
 	response, _ := etcdStore.RawGet(path.Join("_etcd/machines", name))
 
-	values := strings.Split(response[0].Value, ",")
+	m, err := url.ParseQuery(response[0].Value)
 
-	hostname := values[0]
-	clientPort := values[2]
+	if err != nil {
+		panic("Failed to parse machines entry")
+	}
 
-	addr := fmt.Sprintf("%s:%s", hostname, clientPort)
+	addr := m["client"][0]
 
 	return addr, true
 }

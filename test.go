@@ -9,6 +9,7 @@ import (
 	"os"
 	"strconv"
 	"time"
+	"net/url"
 )
 
 var client = http.Client{
@@ -59,10 +60,10 @@ func createCluster(size int, procAttr *os.ProcAttr) ([][]string, []*os.Process, 
 	argGroup := make([][]string, size)
 	for i := 0; i < size; i++ {
 		if i == 0 {
-			argGroup[i] = []string{"etcd", "-h=127.0.0.1", "-d=/tmp/node1"}
+			argGroup[i] = []string{"etcd", "-d=/tmp/node1", "-n=node1", "-vv"}
 		} else {
 			strI := strconv.Itoa(i + 1)
-			argGroup[i] = []string{"etcd", "-h=127.0.0.1", "-c=400" + strI, "-s=700" + strI, "-d=/tmp/node" + strI, "-C=127.0.0.1:7001"}
+			argGroup[i] = []string{"etcd", "-n=node" + strI, "-c=127.0.0.1:400" + strI, "-s=127.0.0.1:700" + strI, "-d=/tmp/node" + strI, "-C=http://127.0.0.1:7001"}
 		}
 	}
 
@@ -103,7 +104,7 @@ func destroyCluster(etcds []*os.Process) error {
 //
 func leaderMonitor(size int, allowDeadNum int, leaderChan chan string) {
 	leaderMap := make(map[int]string)
-	baseAddrFormat := "http://0.0.0.0:400%d/leader"
+	baseAddrFormat := "http://0.0.0.0:400%d"
 
 	for {
 		knownLeader := "unknown"
@@ -151,7 +152,7 @@ func leaderMonitor(size int, allowDeadNum int, leaderChan chan string) {
 
 func getLeader(addr string) (string, error) {
 
-	resp, err := client.Get(addr)
+	resp, err := client.Get(addr + "/leader")
 
 	if err != nil {
 		return "", err
@@ -163,14 +164,31 @@ func getLeader(addr string) (string, error) {
 	}
 
 	b, err := ioutil.ReadAll(resp.Body)
-
 	resp.Body.Close()
+
+	c := etcd.NewClient()
+	path := "/_etcd/machines/" + string(b)
+	fmt.Println(path)
+	fmt.Println(addr)
+	response, err := c.GetFrom(path, addr)
+	fmt.Println(response)
+	if err != nil {
+		return "", err
+	}
+
+	m, err := url.ParseQuery(response[0].Value)
+
+	if err != nil {
+		panic("Failed to parse machines entry")
+	}
+
+	addr = m["server"][0]
 
 	if err != nil {
 		return "", err
 	}
 
-	return string(b), nil
+	return addr, nil
 
 }
 

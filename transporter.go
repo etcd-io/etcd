@@ -15,6 +15,19 @@ type transporter struct {
 	client *http.Client
 	// scheme
 	scheme string
+	names map[string]*JoinCommand
+}
+
+func (t transporter) NameToRaftURL(name string) string {
+	return t.names[name].RaftURL
+}
+
+func (t transporter) NameToClientURL(name string) string {
+	return t.names[name].ClientURL
+}
+
+func (t transporter) AddPeer(jc *JoinCommand) {
+	t.names[jc.Name] = jc
 }
 
 // Sends AppendEntries RPCs to a peer when the server is the leader.
@@ -23,12 +36,13 @@ func (t transporter) SendAppendEntriesRequest(server *raft.Server, peer *raft.Pe
 	var b bytes.Buffer
 	json.NewEncoder(&b).Encode(req)
 
-	debugf("Send LogEntries to %s ", peer.Name())
+	u := t.NameToRaftURL(peer.Name())
+	debugf("Send LogEntries to %s ", u)
 
-	resp, err := t.Post(fmt.Sprintf("%s/log/append", peer.Name()), &b)
+	resp, err := t.Post(fmt.Sprintf("%s/log/append", u), &b)
 
 	if err != nil {
-		debugf("Cannot send AppendEntriesRequest to %s : %s", peer.Name(), err)
+		debugf("Cannot send AppendEntriesRequest to %s: %s", u, err)
 	}
 
 	if resp != nil {
@@ -48,12 +62,13 @@ func (t transporter) SendVoteRequest(server *raft.Server, peer *raft.Peer, req *
 	var b bytes.Buffer
 	json.NewEncoder(&b).Encode(req)
 
-	debugf("Send Vote to %s", peer.Name())
+	u := t.NameToRaftURL(peer.Name())
+	debugf("Send Vote to %s", u)
 
-	resp, err := t.Post(fmt.Sprintf("%s/vote", peer.Name()), &b)
+	resp, err := t.Post(fmt.Sprintf("%s/vote", u), &b)
 
 	if err != nil {
-		debugf("Cannot send VoteRequest to %s : %s", peer.Name(), err)
+		debugf("Cannot send VoteRequest to %s : %s", u, err)
 	}
 
 	if resp != nil {
@@ -73,10 +88,11 @@ func (t transporter) SendSnapshotRequest(server *raft.Server, peer *raft.Peer, r
 	var b bytes.Buffer
 	json.NewEncoder(&b).Encode(req)
 
-	debugf("Send Snapshot to %s [Last Term: %d, LastIndex %d]", peer.Name(),
+	u := t.NameToRaftURL(peer.Name())
+	debugf("Send Snapshot to %s [Last Term: %d, LastIndex %d]", u,
 		req.LastTerm, req.LastIndex)
 
-	resp, err := t.Post(fmt.Sprintf("%s/snapshot", peer.Name()), &b)
+	resp, err := t.Post(fmt.Sprintf("%s/snapshot", u), &b)
 
 	if resp != nil {
 		defer resp.Body.Close()
@@ -95,10 +111,11 @@ func (t transporter) SendSnapshotRecoveryRequest(server *raft.Server, peer *raft
 	var b bytes.Buffer
 	json.NewEncoder(&b).Encode(req)
 
-	debugf("Send SnapshotRecovery to %s [Last Term: %d, LastIndex %d]", peer.Name(),
+	u := t.NameToRaftURL(peer.Name())
+	debugf("Send SnapshotRecovery to %s [Last Term: %d, LastIndex %d]", u,
 		req.LastTerm, req.LastIndex)
 
-	resp, err := t.Post(fmt.Sprintf("%s/snapshotRecovery", peer.Name()), &b)
+	resp, err := t.Post(fmt.Sprintf("%s/snapshotRecovery", u), &b)
 
 	if resp != nil {
 		defer resp.Body.Close()
@@ -123,12 +140,12 @@ func (t transporter) GetLeaderClientAddress() string {
 
 // Send server side POST request
 func (t transporter) Post(path string, body io.Reader) (*http.Response, error) {
-	resp, err := t.client.Post(t.scheme+path, "application/json", body)
+	resp, err := t.client.Post(path, "application/json", body)
 	return resp, err
 }
 
 // Send server side GET request
 func (t transporter) Get(path string) (*http.Response, error) {
-	resp, err := t.client.Get(t.scheme + path)
+	resp, err := t.client.Get(path)
 	return resp, err
 }

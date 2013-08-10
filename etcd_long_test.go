@@ -36,7 +36,7 @@ func TestKillLeader(t *testing.T) {
 
 	leader := "127.0.0.1:7001"
 
-	for i := 0; i < 10; i++ {
+	for i := 0; i < clusterSize; i++ {
 		port, _ := strconv.Atoi(strings.Split(leader, ":")[1])
 		num := port - 7001
 		fmt.Println("kill server ", num)

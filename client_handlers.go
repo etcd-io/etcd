@@ -45,7 +45,7 @@ func SetHttpHandler(w *http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	debugf("[recv] POST http://%v/v1/keys/%s", raftServer.Name(), key)
+	debugf("[recv] POST %v/v1/keys/%s", raftServer.Name(), key)
 
 	value := req.FormValue("value")
 
@@ -96,7 +96,7 @@ func SetHttpHandler(w *http.ResponseWriter, req *http.Request) {
 func DeleteHttpHandler(w *http.ResponseWriter, req *http.Request) {
 	key := req.URL.Path[len("/v1/keys/"):]
 
-	debugf("[recv] DELETE http://%v/v1/keys/%s", raftServer.Name(), key)
+	debugf("[recv] DELETE %v/v1/keys/%s", raftServer.Name(), key)
 
 	command := &DeleteCommand{
 		Key: key,
@@ -172,9 +172,9 @@ func dispatch(c Command, w *http.ResponseWriter, req *http.Request, client bool)
 
 		if client {
 			clientAddr, _ := getClientAddr(raftServer.Leader())
-			url = scheme + clientAddr + path
+			url = clientAddr + path
 		} else {
-			url = scheme + raftServer.Leader() + path
+			url = raftServer.Leader() + path
 		}
 
 		debugf("Redirect to %s", url)
