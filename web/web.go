@@ -6,6 +6,7 @@ import (
 	"github.com/coreos/go-raft"
 	"html/template"
 	"net/http"
+	"net/url"
 )
 
 var s *raft.Server
@@ -24,7 +25,9 @@ func mainHandler(c http.ResponseWriter, req *http.Request) {
 	mainTempl.Execute(c, p)
 }
 
-func Start(server *raft.Server, port int) {
+func Start(server *raft.Server, webURL string) {
+	u, _ := url.Parse(webURL)
+
 	mainTempl = template.Must(template.New("index.html").Parse(index_html))
 	s = server
 
@@ -32,6 +35,6 @@ func Start(server *raft.Server, port int) {
 	http.HandleFunc("/", mainHandler)
 	http.Handle("/ws", websocket.Handler(wsHandler))
 
-	fmt.Println("web listening at port ", port)
-	http.ListenAndServe(fmt.Sprintf(":%v", port), nil)
+	fmt.Printf("etcd web server listening on %s\n", u)
+	http.ListenAndServe(u.Host, nil)
 }

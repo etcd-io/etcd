@@ -1,15 +1,15 @@
 package main
 
 import (
+	"fmt"
 	"github.com/coreos/etcd/store"
 	"net/http"
 	"strconv"
-	"fmt"
 	"time"
 )
 
 //-------------------------------------------------------------------
-// Handlers to handle etcd-store related request via raft client port
+// Handlers to handle etcd-store related request via etcd url
 //-------------------------------------------------------------------
 
 // Multiplex GET/POST/DELETE request to corresponding handlers
@@ -45,7 +45,7 @@ func SetHttpHandler(w *http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	debugf("[recv] POST http://%v/v1/keys/%s", raftServer.Name(), key)
+	debugf("[recv] POST %v/v1/keys/%s", raftServer.Name(), key)
 
 	value := req.FormValue("value")
 
@@ -72,9 +72,9 @@ func SetHttpHandler(w *http.ResponseWriter, req *http.Request) {
 
 	if len(prevValue) != 0 {
 		command := &TestAndSetCommand{
-			Key: key,
-			Value: value,
-			PrevValue: prevValue,
+			Key:        key,
+			Value:      value,
+			PrevValue:  prevValue,
 			ExpireTime: expireTime,
 		}
 
@@ -82,8 +82,8 @@ func SetHttpHandler(w *http.ResponseWriter, req *http.Request) {
 
 	} else {
 		command := &SetCommand{
-			Key: key,
-			Value: value,
+			Key:        key,
+			Value:      value,
 			ExpireTime: expireTime,
 		}
 
@@ -96,7 +96,7 @@ func SetHttpHandler(w *http.ResponseWriter, req *http.Request) {
 func DeleteHttpHandler(w *http.ResponseWriter, req *http.Request) {
 	key := req.URL.Path[len("/v1/keys/"):]
 
-	debugf("[recv] DELETE http://%v/v1/keys/%s", raftServer.Name(), key)
+	debugf("[recv] DELETE %v/v1/keys/%s", raftServer.Name(), key)
 
 	command := &DeleteCommand{
 		Key: key,
@@ -171,10 +171,10 @@ func dispatch(c Command, w *http.ResponseWriter, req *http.Request, client bool)
 		var url string
 
 		if client {
-			clientAddr, _ := getClientAddr(raftServer.Leader())
-			url = scheme + clientAddr + path
+			clientAddr, _ := getEtcdURL(raftServer.Leader())
+			url = clientAddr + path
 		} else {
-			url = scheme + raftServer.Leader() + path
+			url = raftServer.Leader() + path
 		}
 
 		debugf("Redirect to %s", url)
@@ -194,13 +194,14 @@ func dispatch(c Command, w *http.ResponseWriter, req *http.Request, client bool)
 // command?
 //--------------------------------------
 
-// Handler to return the current leader name
+// Handler to return the current leader's raft address
 func LeaderHttpHandler(w http.ResponseWriter, req *http.Request) {
 	leader := raftServer.Leader()
 
 	if leader != "" {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(raftServer.Leader()))
+		raftURL, _ := nameToRaftURL(leader)
+		w.Write([]byte(raftURL))
 	} else {
 
 		// not likely, but it may happen
@@ -215,14 +216,14 @@ func MachinesHttpHandler(w http.ResponseWriter, req *http.Request) {
 
 	// Add itself to the machine list first
 	// Since peer map does not contain the server itself
-	machines, _ := getClientAddr(raftServer.Name())
+	machines, _ := getEtcdURL(raftServer.Name())
 
 	// Add all peers to the list and separate by comma
 	// We do not use json here since we accept machines list
 	// in the command line separate by comma.
 
 	for peerName, _ := range peers {
-		if addr, ok := getClientAddr(peerName); ok {
+		if addr, ok := getEtcdURL(peerName); ok {
 			machines = machines + "," + addr
 		}
 	}
