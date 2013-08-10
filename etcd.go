@@ -204,7 +204,7 @@ func main() {
 	argInfo.Name = strings.TrimSpace(argInfo.Name)
 
 	if argInfo.Name == "" {
-		fatal("Please give the name of the server")
+		fatal("ERROR: server name required. e.g. '-n=server_name'")
 	}
 
 	argInfo.RaftURL = checkURL(argInfo.RaftURL, "http")
@@ -237,6 +237,7 @@ func main() {
 
 	if argInfo.WebURL != "" {
 		// start web
+		argInfo.WebURL = checkURL(argInfo.WebURL, "http")
 		etcdStore.SetMessager(storeMsg)
 		go webHelper()
 		go web.Start(raftServer, argInfo.WebURL)
@@ -389,27 +390,30 @@ func dialTimeout(network, addr string) (net.Conn, error) {
 
 // Start to listen and response raft command
 func startRaftTransport(info Info, tlsConf *tls.Config) {
-
-	// internal commands
-	http.HandleFunc("/name", NameHttpHandler)
-	http.HandleFunc("/join", JoinHttpHandler)
-	http.HandleFunc("/vote", VoteHttpHandler)
-	http.HandleFunc("/log", GetLogHttpHandler)
-	http.HandleFunc("/log/append", AppendEntriesHttpHandler)
-	http.HandleFunc("/snapshot", SnapshotHttpHandler)
-	http.HandleFunc("/snapshotRecovery", SnapshotRecoveryHttpHandler)
-	http.HandleFunc("/etcdURL", EtcdURLHttpHandler)
-
 	u, _ := url.Parse(info.RaftURL)
 	fmt.Printf("raft server [%s] listening on %s\n", info.Name, u)
 
+	raftMux := http.NewServeMux()
+
+	server := &http.Server{
+		Handler:   raftMux,
+		TLSConfig: tlsConf,
+		Addr:      u.Host,
+	}
+
+	// internal commands
+	raftMux.HandleFunc("/name", NameHttpHandler)
+	raftMux.HandleFunc("/join", JoinHttpHandler)
+	raftMux.HandleFunc("/vote", VoteHttpHandler)
+	raftMux.HandleFunc("/log", GetLogHttpHandler)
+	raftMux.HandleFunc("/log/append", AppendEntriesHttpHandler)
+	raftMux.HandleFunc("/snapshot", SnapshotHttpHandler)
+	raftMux.HandleFunc("/snapshotRecovery", SnapshotRecoveryHttpHandler)
+	raftMux.HandleFunc("/etcdURL", EtcdURLHttpHandler)
+
 	if tlsConf == nil {
-		http.ListenAndServe(u.Host, nil)
+		fatal(server.ListenAndServe())
 	} else {
-		server := &http.Server{
-			TLSConfig: tlsConf,
-			Addr:      u.Host,
-		}
 		fatal(server.ListenAndServeTLS(info.ServerCertFile, argInfo.ServerKeyFile))
 	}
 
@@ -417,25 +421,29 @@ func startRaftTransport(info Info, tlsConf *tls.Config) {
 
 // Start to listen and response client command
 func startEtcdTransport(info Info, tlsConf *tls.Config) {
-	// external commands
-	http.HandleFunc("/"+version+"/keys/", Multiplexer)
-	http.HandleFunc("/"+version+"/watch/", WatchHttpHandler)
-	http.HandleFunc("/leader", LeaderHttpHandler)
-	http.HandleFunc("/machines", MachinesHttpHandler)
-	http.HandleFunc("/", VersionHttpHandler)
-	http.HandleFunc("/stats", StatsHttpHandler)
-	http.HandleFunc("/test/", TestHttpHandler)
-
 	u, _ := url.Parse(info.EtcdURL)
 	fmt.Printf("etcd server [%s] listening on %s\n", info.Name, u)
 
+	etcdMux := http.NewServeMux()
+
+	server := &http.Server{
+		Handler:   etcdMux,
+		TLSConfig: tlsConf,
+		Addr:      u.Host,
+	}
+
+	// external commands
+	etcdMux.HandleFunc("/"+version+"/keys/", Multiplexer)
+	etcdMux.HandleFunc("/"+version+"/watch/", WatchHttpHandler)
+	etcdMux.HandleFunc("/leader", LeaderHttpHandler)
+	etcdMux.HandleFunc("/machines", MachinesHttpHandler)
+	etcdMux.HandleFunc("/", VersionHttpHandler)
+	etcdMux.HandleFunc("/stats", StatsHttpHandler)
+	etcdMux.HandleFunc("/test/", TestHttpHandler)
+
 	if tlsConf == nil {
-		fatal(http.ListenAndServe(u.Host, nil))
+		fatal(server.ListenAndServe())
 	} else {
-		server := &http.Server{
-			TLSConfig: tlsConf,
-			Addr:      u.Host,
-		}
 		fatal(server.ListenAndServeTLS(info.ClientCertFile, info.ClientKeyFile))
 	}
 }

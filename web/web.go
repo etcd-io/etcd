@@ -25,16 +25,25 @@ func mainHandler(c http.ResponseWriter, req *http.Request) {
 	mainTempl.Execute(c, p)
 }
 
-func Start(server *raft.Server, webURL string) {
+func Start(raftServer *raft.Server, webURL string) {
 	u, _ := url.Parse(webURL)
 
+	webMux := http.NewServeMux()
+
+	server := &http.Server{
+		Handler:   webMux,
+		Addr:      u.Host,
+	}
+
+	s = raftServer
+
 	mainTempl = template.Must(template.New("index.html").Parse(index_html))
-	s = server
 
 	go h.run()
-	http.HandleFunc("/", mainHandler)
-	http.Handle("/ws", websocket.Handler(wsHandler))
+	webMux.HandleFunc("/", mainHandler)
+	webMux.Handle("/ws", websocket.Handler(wsHandler))
 
 	fmt.Printf("etcd web server listening on %s\n", u)
-	http.ListenAndServe(u.Host, nil)
+
+	server.ListenAndServe()
 }
