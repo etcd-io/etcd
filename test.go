@@ -9,7 +9,6 @@ import (
 	"os"
 	"strconv"
 	"time"
-	//"net/url"
 )
 
 var client = http.Client{

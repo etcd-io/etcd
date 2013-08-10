@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/coreos/go-raft"
 	"io"
-	"io/ioutil"
 	"net/http"
 )
 
@@ -112,20 +111,6 @@ func (t transporter) SendSnapshotRecoveryRequest(server *raft.Server, peer *raft
 		}
 	}
 	return aersp
-}
-
-// Get the client address of the leader in the cluster
-func (t transporter) GetLeaderClientAddress() string {
-
-	u, _ := nameToRaftURL(raftServer.Leader())
-
-	resp, _ := t.Get(fmt.Sprintf("%s/client", u))
-	if resp != nil {
-		body, _ := ioutil.ReadAll(resp.Body)
-		resp.Body.Close()
-		return string(body)
-	}
-	return ""
 }
 
 // Send server side POST request

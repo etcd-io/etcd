@@ -86,12 +86,11 @@ func SnapshotRecoveryHttpHandler(w http.ResponseWriter, req *http.Request) {
 	w.WriteHeader(http.StatusInternalServerError)
 }
 
-// Get the port that listening for client connecting of the server
-func ClientHttpHandler(w http.ResponseWriter, req *http.Request) {
-	debugf("[recv] Get %s/client/ ", raftTransporter.scheme+raftServer.Name())
+// Get the port that listening for etcd connecting of the server
+func EtcdURLHttpHandler(w http.ResponseWriter, req *http.Request) {
+	debugf("[recv] Get %s/etcdURL/ ", raftTransporter.scheme+raftServer.Name())
 	w.WriteHeader(http.StatusOK)
-	client := argInfo.ClientURL
-	w.Write([]byte(client))
+	w.Write([]byte(argInfo.EtcdURL))
 }
 
 // Response to the join request

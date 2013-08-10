@@ -9,7 +9,7 @@ import (
 )
 
 //-------------------------------------------------------------------
-// Handlers to handle etcd-store related request via raft client port
+// Handlers to handle etcd-store related request via etcd url
 //-------------------------------------------------------------------
 
 // Multiplex GET/POST/DELETE request to corresponding handlers
@@ -171,7 +171,7 @@ func dispatch(c Command, w *http.ResponseWriter, req *http.Request, client bool)
 		var url string
 
 		if client {
-			clientAddr, _ := getClientAddr(raftServer.Leader())
+			clientAddr, _ := getEtcdURL(raftServer.Leader())
 			url = clientAddr + path
 		} else {
 			url = raftServer.Leader() + path
@@ -216,14 +216,14 @@ func MachinesHttpHandler(w http.ResponseWriter, req *http.Request) {
 
 	// Add itself to the machine list first
 	// Since peer map does not contain the server itself
-	machines, _ := getClientAddr(raftServer.Name())
+	machines, _ := getEtcdURL(raftServer.Name())
 
 	// Add all peers to the list and separate by comma
 	// We do not use json here since we accept machines list
 	// in the command line separate by comma.
 
 	for peerName, _ := range peers {
-		if addr, ok := getClientAddr(peerName); ok {
+		if addr, ok := getEtcdURL(peerName); ok {
 			machines = machines + "," + addr
 		}
 	}

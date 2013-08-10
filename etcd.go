@@ -60,7 +60,7 @@ func init() {
 	flag.StringVar(&machinesFile, "CF", "", "the file contains a list of existing machines in the cluster, seperate by comma")
 
 	flag.StringVar(&argInfo.Name, "n", "", "the node name (required)")
-	flag.StringVar(&argInfo.ClientURL, "c", "127.0.0.1:4001", "the port to communicate with clients")
+	flag.StringVar(&argInfo.EtcdURL, "c", "127.0.0.1:4001", "the port to communicate with clients")
 	flag.StringVar(&argInfo.RaftURL, "s", "127.0.0.1:7001", "the port to communicate with servers")
 	flag.StringVar(&argInfo.WebURL, "w", "", "the port of web interface")
 
@@ -113,9 +113,9 @@ const (
 type Info struct {
 	Name string `json:"name"`
 
-	RaftURL   string `json:"raftURL"`
-	ClientURL string `json:"clientURL"`
-	WebURL    string `json:"webURL"`
+	RaftURL string `json:"raftURL"`
+	EtcdURL string `json:"etcdURL"`
+	WebURL  string `json:"webURL"`
 
 	ServerCertFile string `json:"serverCertFile"`
 	ServerKeyFile  string `json:"serverKeyFile"`
@@ -208,7 +208,7 @@ func main() {
 	}
 
 	argInfo.RaftURL = checkURL(argInfo.RaftURL, "http")
-	argInfo.ClientURL = checkURL(argInfo.ClientURL, "http")
+	argInfo.EtcdURL = checkURL(argInfo.EtcdURL, "http")
 
 	// Setup commands.
 	registerCommands()
@@ -290,7 +290,7 @@ func startRaft(tlsConfs []*tls.Config) {
 				command := &JoinCommand{
 					Name:    raftServer.Name(),
 					RaftURL: argInfo.RaftURL,
-					EtcdURL: argInfo.ClientURL,
+					EtcdURL: argInfo.EtcdURL,
 				}
 				_, err := raftServer.Do(command)
 				if err == nil {
@@ -398,7 +398,7 @@ func startRaftTransport(info Info, tlsConf *tls.Config) {
 	http.HandleFunc("/log/append", AppendEntriesHttpHandler)
 	http.HandleFunc("/snapshot", SnapshotHttpHandler)
 	http.HandleFunc("/snapshotRecovery", SnapshotRecoveryHttpHandler)
-	http.HandleFunc("/client", ClientHttpHandler)
+	http.HandleFunc("/etcdURL", EtcdURLHttpHandler)
 
 	u, _ := url.Parse(info.RaftURL)
 	fmt.Printf("raft server [%s] listening on %s\n", info.Name, u)
@@ -426,8 +426,8 @@ func startEtcdTransport(info Info, tlsConf *tls.Config) {
 	http.HandleFunc("/stats", StatsHttpHandler)
 	http.HandleFunc("/test/", TestHttpHandler)
 
-	u, _ := url.Parse(info.ClientURL)
-	fmt.Printf("raft server [%s] listening on %s\n", info.Name, u)
+	u, _ := url.Parse(info.EtcdURL)
+	fmt.Printf("etcd server [%s] listening on %s\n", info.Name, u)
 
 	if tlsConf == nil {
 		fatal(http.ListenAndServe(u.Host, nil))
@@ -588,7 +588,7 @@ func joinCluster(s *raft.Server, serverName string) error {
 	command := &JoinCommand{
 		Name:    s.Name(),
 		RaftURL: info.RaftURL,
-		EtcdURL: info.ClientURL,
+		EtcdURL: info.EtcdURL,
 	}
 
 	json.NewEncoder(&b).Encode(command)

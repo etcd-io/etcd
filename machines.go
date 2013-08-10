@@ -5,7 +5,7 @@ import (
 	"path"
 )
 
-func getClientAddr(name string) (string, bool) {
+func getEtcdURL(name string) (string, bool) {
 	resps, _ := etcdStore.RawGet(path.Join("_etcd/machines", name))
 
 	m, err := url.ParseQuery(resps[0].Value)
