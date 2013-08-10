@@ -108,15 +108,9 @@ func JoinHttpHandler(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-// Response to the join request
+// Response to the name request
 func NameHttpHandler(w http.ResponseWriter, req *http.Request) {
-	command := &JoinCommand{}
-
-	if err := decodeJsonRequest(req, command); err == nil {
-		debugf("Receive Join Request from %s", command.Name)
-		dispatch(command, &w, req, false)
-	} else {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
+	debugf("[recv] Get %s/name/ ", raftTransporter.scheme+raftServer.Name())
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(raftServer.Name()))
 }

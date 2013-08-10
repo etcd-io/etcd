@@ -194,13 +194,14 @@ func dispatch(c Command, w *http.ResponseWriter, req *http.Request, client bool)
 // command?
 //--------------------------------------
 
-// Handler to return the current leader name
+// Handler to return the current leader's raft address
 func LeaderHttpHandler(w http.ResponseWriter, req *http.Request) {
 	leader := raftServer.Leader()
 
 	if leader != "" {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(raftServer.Leader()))
+		raftURL, _ := nameToRaftURL(leader)
+		w.Write([]byte(raftURL))
 	} else {
 
 		// not likely, but it may happen

@@ -15,19 +15,6 @@ type transporter struct {
 	client *http.Client
 	// scheme
 	scheme string
-	names map[string]*JoinCommand
-}
-
-func (t transporter) NameToRaftURL(name string) string {
-	return t.names[name].RaftURL
-}
-
-func (t transporter) NameToClientURL(name string) string {
-	return t.names[name].ClientURL
-}
-
-func (t transporter) AddPeer(jc *JoinCommand) {
-	t.names[jc.Name] = jc
 }
 
 // Sends AppendEntries RPCs to a peer when the server is the leader.
@@ -36,7 +23,7 @@ func (t transporter) SendAppendEntriesRequest(server *raft.Server, peer *raft.Pe
 	var b bytes.Buffer
 	json.NewEncoder(&b).Encode(req)
 
-	u := t.NameToRaftURL(peer.Name())
+	u, _ := nameToRaftURL(peer.Name())
 	debugf("Send LogEntries to %s ", u)
 
 	resp, err := t.Post(fmt.Sprintf("%s/log/append", u), &b)
@@ -62,7 +49,7 @@ func (t transporter) SendVoteRequest(server *raft.Server, peer *raft.Peer, req *
 	var b bytes.Buffer
 	json.NewEncoder(&b).Encode(req)
 
-	u := t.NameToRaftURL(peer.Name())
+	u, _ := nameToRaftURL(peer.Name())
 	debugf("Send Vote to %s", u)
 
 	resp, err := t.Post(fmt.Sprintf("%s/vote", u), &b)
@@ -88,7 +75,7 @@ func (t transporter) SendSnapshotRequest(server *raft.Server, peer *raft.Peer, r
 	var b bytes.Buffer
 	json.NewEncoder(&b).Encode(req)
 
-	u := t.NameToRaftURL(peer.Name())
+	u, _ := nameToRaftURL(peer.Name())
 	debugf("Send Snapshot to %s [Last Term: %d, LastIndex %d]", u,
 		req.LastTerm, req.LastIndex)
 
@@ -111,7 +98,7 @@ func (t transporter) SendSnapshotRecoveryRequest(server *raft.Server, peer *raft
 	var b bytes.Buffer
 	json.NewEncoder(&b).Encode(req)
 
-	u := t.NameToRaftURL(peer.Name())
+	u, _ := nameToRaftURL(peer.Name())
 	debugf("Send SnapshotRecovery to %s [Last Term: %d, LastIndex %d]", u,
 		req.LastTerm, req.LastIndex)
 
@@ -129,7 +116,10 @@ func (t transporter) SendSnapshotRecoveryRequest(server *raft.Server, peer *raft
 
 // Get the client address of the leader in the cluster
 func (t transporter) GetLeaderClientAddress() string {
-	resp, _ := t.Get(raftServer.Leader() + "/client")
+
+	u, _ := nameToRaftURL(raftServer.Leader())
+
+	resp, _ := t.Get(fmt.Sprintf("%s/client", u))
 	if resp != nil {
 		body, _ := ioutil.ReadAll(resp.Body)
 		resp.Body.Close()

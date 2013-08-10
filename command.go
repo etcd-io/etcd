@@ -110,9 +110,9 @@ func (c *WatchCommand) Apply(server *raft.Server) (interface{}, error) {
 
 // JoinCommand
 type JoinCommand struct {
-	Name       string `json:"name"`
-	RaftURL    string `json:"raftURL"`
-	ClientURL  string `json:"clientURL"`
+	Name    string `json:"name"`
+	RaftURL string `json:"raftURL"`
+	EtcdURL string `json:"etcdURL"`
 }
 
 // The name of the join command in the log
@@ -136,14 +136,14 @@ func (c *JoinCommand) Apply(raftServer *raft.Server) (interface{}, error) {
 		return []byte("join fail"), fmt.Errorf(errors[103])
 	}
 
-	raftTransporter.AddPeer(c)
+	addNameToURL(c.Name, c.RaftURL, c.EtcdURL)
 
 	// add peer in raft
 	err := raftServer.AddPeer(c.Name)
 
 	// add machine in etcd storage
 	key := path.Join("_etcd/machines", c.Name)
-	value := fmt.Sprintf("server=%s&client=%s", c.RaftURL, c.ClientURL)
+	value := fmt.Sprintf("raft=%s&etcd=%s", c.RaftURL, c.EtcdURL)
 	etcdStore.Set(key, value, time.Unix(0, 0), raftServer.CommitIndex())
 
 	return []byte("join success"), err

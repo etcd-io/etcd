@@ -9,7 +9,7 @@ import (
 	"os"
 	"strconv"
 	"time"
-	"net/url"
+	//"net/url"
 )
 
 var client = http.Client{
@@ -60,7 +60,7 @@ func createCluster(size int, procAttr *os.ProcAttr) ([][]string, []*os.Process, 
 	argGroup := make([][]string, size)
 	for i := 0; i < size; i++ {
 		if i == 0 {
-			argGroup[i] = []string{"etcd", "-d=/tmp/node1", "-n=node1", "-vv"}
+			argGroup[i] = []string{"etcd", "-d=/tmp/node1", "-n=node1"}
 		} else {
 			strI := strconv.Itoa(i + 1)
 			argGroup[i] = []string{"etcd", "-n=node" + strI, "-c=127.0.0.1:400" + strI, "-s=127.0.0.1:700" + strI, "-d=/tmp/node" + strI, "-C=http://127.0.0.1:7001"}
@@ -75,7 +75,7 @@ func createCluster(size int, procAttr *os.ProcAttr) ([][]string, []*os.Process, 
 		if err != nil {
 			return nil, nil, err
 		}
-		
+
 		// TODOBP: Change this sleep to wait until the master is up.
 		// The problem is that if the master isn't up then the children
 		// have to retry. This retry can take upwards of 15 seconds
@@ -164,31 +164,14 @@ func getLeader(addr string) (string, error) {
 	}
 
 	b, err := ioutil.ReadAll(resp.Body)
+
 	resp.Body.Close()
 
-	c := etcd.NewClient()
-	path := "/_etcd/machines/" + string(b)
-	fmt.Println(path)
-	fmt.Println(addr)
-	response, err := c.GetFrom(path, addr)
-	fmt.Println(response)
 	if err != nil {
 		return "", err
 	}
 
-	m, err := url.ParseQuery(response[0].Value)
-
-	if err != nil {
-		panic("Failed to parse machines entry")
-	}
-
-	addr = m["server"][0]
-
-	if err != nil {
-		return "", err
-	}
-
-	return addr, nil
+	return string(b), nil
 
 }
 

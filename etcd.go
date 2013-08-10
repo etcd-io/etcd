@@ -56,7 +56,6 @@ func init() {
 	flag.BoolVar(&verbose, "v", false, "verbose logging")
 	flag.BoolVar(&veryVerbose, "vv", false, "very verbose logging")
 
-
 	flag.StringVar(&machines, "C", "", "the ip address and port of a existing machines in the cluster, sepearate by comma")
 	flag.StringVar(&machinesFile, "CF", "", "the file contains a list of existing machines in the cluster, seperate by comma")
 
@@ -112,11 +111,11 @@ const (
 //------------------------------------------------------------------------------
 
 type Info struct {
-	Name       string `json:"name"`
+	Name string `json:"name"`
 
-	RaftURL    string `json:"raftURL"`
-	ClientURL  string `json:"clientURL"`
-	WebURL     string `json:"webURL"`
+	RaftURL   string `json:"raftURL"`
+	ClientURL string `json:"clientURL"`
+	WebURL    string `json:"webURL"`
 
 	ServerCertFile string `json:"serverCertFile"`
 	ServerKeyFile  string `json:"serverKeyFile"`
@@ -289,9 +288,9 @@ func startRaft(tlsConfs []*tls.Config) {
 			// leader need to join self as a peer
 			for {
 				command := &JoinCommand{
-					Name:      raftServer.Name(),
-					RaftURL:   argInfo.RaftURL,
-					ClientURL: argInfo.ClientURL,
+					Name:    raftServer.Name(),
+					RaftURL: argInfo.RaftURL,
+					EtcdURL: argInfo.ClientURL,
 				}
 				_, err := raftServer.Do(command)
 				if err == nil {
@@ -358,8 +357,6 @@ func startRaft(tlsConfs []*tls.Config) {
 // whether the user give the server cert and key
 func newTransporter(tlsConf *tls.Config) transporter {
 	t := transporter{}
-
-	t.names = make(map[string]*JoinCommand)
 
 	if tlsConf == nil {
 		t.scheme = "http://"
@@ -589,9 +586,9 @@ func joinCluster(s *raft.Server, serverName string) error {
 	var b bytes.Buffer
 
 	command := &JoinCommand{
-		Name:       s.Name(),
-		RaftURL:   info.RaftURL,
-		ClientURL: info.ClientURL,
+		Name:    s.Name(),
+		RaftURL: info.RaftURL,
+		EtcdURL: info.ClientURL,
 	}
 
 	json.NewEncoder(&b).Encode(command)
