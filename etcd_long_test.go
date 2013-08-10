@@ -34,10 +34,11 @@ func TestKillLeader(t *testing.T) {
 
 	var totalTime time.Duration
 
-	leader := "127.0.0.1:7001"
+	leader := "http://127.0.0.1:7001"
 
-	for i := 0; i < 10; i++ {
-		port, _ := strconv.Atoi(strings.Split(leader, ":")[1])
+	for i := 0; i < clusterSize; i++ {
+		fmt.Println("leader is ", leader)
+		port, _ := strconv.Atoi(strings.Split(leader, ":")[2])
 		num := port - 7001
 		fmt.Println("kill server ", num)
 		etcds[num].Kill()

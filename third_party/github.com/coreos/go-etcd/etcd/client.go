@@ -139,7 +139,6 @@ func (c *Client) internalSyncCluster(machines []string) bool {
 // serverName should contain both hostName and port
 func (c *Client) createHttpPath(serverName string, _path string) string {
 	httpPath := path.Join(serverName, _path)
-	httpPath = c.config.Scheme + "://" + httpPath
 	return httpPath
 }
 
