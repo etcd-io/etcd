@@ -39,6 +39,7 @@ func (t transporter) SendAppendEntriesRequest(server *raft.Server, peer *raft.Pe
 		}
 
 	}
+
 	return aersp
 }
 
@@ -88,6 +89,7 @@ func (t transporter) SendSnapshotRequest(server *raft.Server, peer *raft.Peer, r
 			return aersp
 		}
 	}
+
 	return aersp
 }
 
@@ -110,6 +112,7 @@ func (t transporter) SendSnapshotRecoveryRequest(server *raft.Server, peer *raft
 			return aersp
 		}
 	}
+
 	return aersp
 }
 
