@@ -104,9 +104,9 @@ const (
 //------------------------------------------------------------------------------
 
 type TLSInfo struct {
-	CertFile string `json:"serverCertFile"`
-	KeyFile  string `json:"serverKeyFile"`
-	CAFile   string `json:"serverCAFile"`
+	CertFile string `json:"CertFile"`
+	KeyFile  string `json:"KeyFile"`
+	CAFile   string `json:"CAFile"`
 }
 
 type Info struct {
@@ -117,7 +117,7 @@ type Info struct {
 	WebURL  string `json:"webURL"`
 
 	RaftTLS TLSInfo `json:"raftTLS"`
-	EtcdTLS TLSInfo `json:"raftTLS"`
+	EtcdTLS TLSInfo `json:"etcdTLS"`
 }
 
 //------------------------------------------------------------------------------
