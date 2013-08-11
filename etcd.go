@@ -87,14 +87,14 @@ func init() {
 }
 
 const (
-	ELECTIONTIMEOUT  = 200 * time.Millisecond
-	HEARTBEATTIMEOUT = 50 * time.Millisecond
+	ElectionTimeout  = 200 * time.Millisecond
+	HeartbeatTimeout = 50 * time.Millisecond
 
 	// Timeout for internal raft http connection
 	// The original timeout for http is 45 seconds
 	// which is too long for our usage.
-	HTTPTIMEOUT   = 10 * time.Second
-	RETRYINTERVAL = 10
+	HTTPTimeout   = 10 * time.Second
+	RetryInterval = 10
 )
 
 //------------------------------------------------------------------------------
@@ -118,6 +118,12 @@ type Info struct {
 
 	RaftTLS TLSInfo `json:"raftTLS"`
 	EtcdTLS TLSInfo `json:"etcdTLS"`
+}
+
+type TLSConfig struct {
+	Scheme string
+	Server tls.Config
+	Client tls.Config
 }
 
 //------------------------------------------------------------------------------
@@ -276,8 +282,8 @@ func startRaft(tlsConfig TLSConfig) {
 		}
 	}
 
-	raftServer.SetElectionTimeout(ELECTIONTIMEOUT)
-	raftServer.SetHeartbeatTimeout(HEARTBEATTIMEOUT)
+	raftServer.SetElectionTimeout(ElectionTimeout)
+	raftServer.SetHeartbeatTimeout(HeartbeatTimeout)
 
 	raftServer.Start()
 
@@ -331,8 +337,8 @@ func startRaft(tlsConfig TLSConfig) {
 					break
 				}
 
-				warnf("cannot join to cluster via given machines, retry in %d seconds", RETRYINTERVAL)
-				time.Sleep(time.Second * RETRYINTERVAL)
+				warnf("cannot join to cluster via given machines, retry in %d seconds", RetryInterval)
+				time.Sleep(time.Second * RetryInterval)
 			}
 			if err != nil {
 				fatalf("Cannot join the cluster via given machines after %x retries", retryTimes)
@@ -379,7 +385,7 @@ func newTransporter(scheme string, tlsConf tls.Config) transporter {
 
 // Dial with timeout
 func dialTimeout(network, addr string) (net.Conn, error) {
-	return net.DialTimeout(network, addr, HTTPTIMEOUT)
+	return net.DialTimeout(network, addr, HTTPTimeout)
 }
 
 // Start to listen and response raft command
@@ -445,12 +451,6 @@ func startEtcdTransport(info Info, scheme string, tlsConf tls.Config) {
 //--------------------------------------
 // Config
 //--------------------------------------
-
-type TLSConfig struct {
-	Scheme string
-	Server tls.Config
-	Client tls.Config
-}
 
 func tlsConfigFromInfo(info TLSInfo) (t TLSConfig, ok bool) {
 	var keyFile, certFile, CAFile string
@@ -550,7 +550,11 @@ func getInfo(path string) *Info {
 	return info
 }
 
-// Create client auth certpool
+// newCertPool creates x509 certPool and corresponding Auth Type.
+// If the given CAfile is valid, add the cert into the pool and verify the clients'
+// certs against the cert in the pool.
+// If the given CAfile is empty, do not verify the clients' cert.
+// If the given CAfile is not valid, fatal.
 func newCertPool(CAFile string) (tls.ClientAuthType, *x509.CertPool) {
 	if CAFile == "" {
 		return tls.NoClientCert, nil
