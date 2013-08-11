@@ -18,11 +18,16 @@ See [go-etcd][go-etcd] for a native Go client. Or feel free to just use curl, as
 
 ## Getting Started
 
-### Building
+### Getting etcd
 
-To build etcd run the build script. This will generate a binary in the base directory called `./etcd`.
+The latest release is available as a binary at [Github][github-release].
 
-```
+[github-release]: https://github.com/coreos/etcd/releases/
+
+You can also buildi etcd from source:
+
+```sh
+git clone https://github.com/coreos/etcd
 ./build
 ```
 
