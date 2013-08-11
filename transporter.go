@@ -39,6 +39,7 @@ func (t transporter) SendAppendEntriesRequest(server *raft.Server, peer *raft.Pe
 		}
 
 	}
+
 	return aersp
 }
 
@@ -80,6 +81,10 @@ func (t transporter) SendSnapshotRequest(server *raft.Server, peer *raft.Peer, r
 
 	resp, err := t.Post(fmt.Sprintf("%s/snapshot", u), &b)
 
+	if err != nil {
+		debugf("Cannot send SendSnapshotRequest to %s : %s", u, err)
+	}
+
 	if resp != nil {
 		defer resp.Body.Close()
 		aersp = &raft.SnapshotResponse{}
@@ -88,6 +93,7 @@ func (t transporter) SendSnapshotRequest(server *raft.Server, peer *raft.Peer, r
 			return aersp
 		}
 	}
+
 	return aersp
 }
 
@@ -103,6 +109,10 @@ func (t transporter) SendSnapshotRecoveryRequest(server *raft.Server, peer *raft
 
 	resp, err := t.Post(fmt.Sprintf("%s/snapshotRecovery", u), &b)
 
+	if err != nil {
+		debugf("Cannot send SendSnapshotRecoveryRequest to %s : %s", u, err)
+	}
+
 	if resp != nil {
 		defer resp.Body.Close()
 		aersp = &raft.SnapshotRecoveryResponse{}
@@ -110,6 +120,7 @@ func (t transporter) SendSnapshotRecoveryRequest(server *raft.Server, peer *raft
 			return aersp
 		}
 	}
+
 	return aersp
 }
 
