@@ -62,7 +62,7 @@ func createCluster(size int, procAttr *os.ProcAttr) ([][]string, []*os.Process, 
 			argGroup[i] = []string{"etcd", "-d=/tmp/node1", "-n=node1"}
 		} else {
 			strI := strconv.Itoa(i + 1)
-			argGroup[i] = []string{"etcd", "-n=node" + strI, "-c=127.0.0.1:400" + strI, "-s=127.0.0.1:700" + strI, "-d=/tmp/node" + strI, "-C=http://127.0.0.1:7001"}
+			argGroup[i] = []string{"etcd", "-n=node" + strI, "-c=127.0.0.1:400" + strI, "-s=127.0.0.1:700" + strI, "-d=/tmp/node" + strI, "-C=127.0.0.1:7001"}
 		}
 	}
 
