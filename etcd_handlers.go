@@ -106,7 +106,7 @@ func DeleteHttpHandler(w *http.ResponseWriter, req *http.Request) {
 }
 
 // Dispatch the command to leader
-func dispatch(c Command, w *http.ResponseWriter, req *http.Request, client bool) {
+func dispatch(c Command, w *http.ResponseWriter, req *http.Request, etcd bool) {
 	if raftServer.State() == "leader" {
 		if body, err := raftServer.Do(c); err != nil {
 			if _, ok := err.(store.NotFoundError); ok {
@@ -170,11 +170,12 @@ func dispatch(c Command, w *http.ResponseWriter, req *http.Request, client bool)
 
 		var url string
 
-		if client {
-			clientAddr, _ := getEtcdURL(raftServer.Leader())
-			url = clientAddr + path
+		if etcd {
+			etcdAddr, _ := nameToEtcdURL(raftServer.Leader())
+			url = etcdAddr + path
 		} else {
-			url = raftServer.Leader() + path
+			raftAddr, _ := nameToRaftURL(raftServer.Leader())
+			url = raftAddr + path
 		}
 
 		debugf("Redirect to %s", url)

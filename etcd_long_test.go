@@ -18,7 +18,7 @@ func TestKillLeader(t *testing.T) {
 	procAttr.Files = []*os.File{nil, os.Stdout, os.Stderr}
 
 	clusterSize := 5
-	argGroup, etcds, err := createCluster(clusterSize, procAttr)
+	argGroup, etcds, err := createCluster(clusterSize, procAttr, false)
 
 	if err != nil {
 		t.Fatal("cannot create cluster")
@@ -70,7 +70,7 @@ func TestKillRandom(t *testing.T) {
 	procAttr.Files = []*os.File{nil, os.Stdout, os.Stderr}
 
 	clusterSize := 9
-	argGroup, etcds, err := createCluster(clusterSize, procAttr)
+	argGroup, etcds, err := createCluster(clusterSize, procAttr, false)
 
 	if err != nil {
 		t.Fatal("cannot create cluster")
@@ -122,12 +122,12 @@ func TestKillRandom(t *testing.T) {
 
 }
 
-func BenchmarkEtcdDirectCall(b *testing.B) {
+func templateBenchmarkEtcdDirectCall(b *testing.B, tls bool) {
 	procAttr := new(os.ProcAttr)
 	procAttr.Files = []*os.File{nil, os.Stdout, os.Stderr}
 
 	clusterSize := 3
-	_, etcds, _ := createCluster(clusterSize, procAttr)
+	_, etcds, _ := createCluster(clusterSize, procAttr, tls)
 
 	defer destroyCluster(etcds)
 
@@ -139,4 +139,12 @@ func BenchmarkEtcdDirectCall(b *testing.B) {
 		resp.Body.Close()
 	}
 
+}
+
+func BenchmarkEtcdDirectCall(b *testing.B) {
+	templateBenchmarkEtcdDirectCall(b, false)
+}
+
+func BenchmarkEtcdDirectCallTls(b *testing.B) {
+	templateBenchmarkEtcdDirectCall(b, true)
 }

@@ -9,8 +9,8 @@ import (
 	"net/url"
 )
 
-var s *raft.Server
 var mainTempl *template.Template
+var mainPage *MainPage
 
 type MainPage struct {
 	Leader  string
@@ -18,23 +18,33 @@ type MainPage struct {
 }
 
 func mainHandler(c http.ResponseWriter, req *http.Request) {
-
-	p := &MainPage{Leader: s.Leader(),
-		Address: s.Name()}
+	p := mainPage
 
 	mainTempl.Execute(c, p)
 }
 
-func Start(server *raft.Server, webURL string) {
+func Start(raftServer *raft.Server, webURL string) {
 	u, _ := url.Parse(webURL)
 
+	webMux := http.NewServeMux()
+
+	server := &http.Server{
+		Handler:   webMux,
+		Addr:      u.Host,
+	}
+
+	mainPage = &MainPage{
+		Leader: raftServer.Leader(),
+		Address: u.Host,
+	}
+
 	mainTempl = template.Must(template.New("index.html").Parse(index_html))
-	s = server
 
 	go h.run()
-	http.HandleFunc("/", mainHandler)
-	http.Handle("/ws", websocket.Handler(wsHandler))
+	webMux.HandleFunc("/", mainHandler)
+	webMux.Handle("/ws", websocket.Handler(wsHandler))
 
-	fmt.Printf("etcd web server listening on %s\n", u)
-	http.ListenAndServe(u.Host, nil)
+	fmt.Printf("etcd web server [%s] listening on %s\n", raftServer.Name(), u)
+
+	server.ListenAndServe()
 }
