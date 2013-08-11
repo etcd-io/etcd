@@ -142,17 +142,26 @@ var info *Info
 //
 //------------------------------------------------------------------------------
 
-// Check a URL and clean it up if the user forgot the schema
-func checkURL(u string, defaultSchema string) string {
-	p, err := url.Parse(u)
+// sanitizeURL will cleanup a host string in the format hostname:port and
+// attach a schema.
+func sanitizeURL(host string, defaultScheme string) string {
+	// Blank URLs are fine input, just return it
+	if len(host) == 0 {
+		return host
+	}
 
+	p, err := url.Parse(host)
 	if err != nil {
-		panic(err)
+		fatal(err)
 	}
 
-	if len(p.Host) == 0 && len(defaultSchema) != 0 {
-		return checkURL(fmt.Sprintf("%s://%s", defaultSchema, u), "")
+	// Make sure the host is in Host:Port format
+	_, _, err = net.SplitHostPort(host)
+	if err != nil {
+		fatal(err)
 	}
+
+	p = &url.URL{Host: host, Scheme: defaultScheme}
 
 	return p.String()
 }
@@ -226,8 +235,9 @@ func main() {
 		fatal("ERROR: server name required. e.g. '-n=server_name'")
 	}
 
-	argInfo.RaftURL = checkURL(argInfo.RaftURL, raftDefaultScheme)
-	argInfo.EtcdURL = checkURL(argInfo.EtcdURL, etcdDefaultScheme)
+	argInfo.RaftURL = sanitizeURL(argInfo.RaftURL, raftTlsConfig.Scheme)
+	argInfo.EtcdURL = sanitizeURL(argInfo.EtcdURL, etcdTlsConfig.Scheme)
+	argInfo.WebURL = sanitizeURL(argInfo.WebURL, "http")
 
 	// Setup commands.
 	registerCommands()
