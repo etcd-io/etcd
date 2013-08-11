@@ -234,6 +234,7 @@ func main() {
 
 	// Create etcd key-value store
 	etcdStore = store.CreateStore(maxSize)
+	snapConf = newSnapshotConf()
 
 	startRaft(raftTLSConfig)
 
@@ -346,7 +347,7 @@ func startRaft(tlsConfig TLSConfig) {
 
 	// open the snapshot
 	if snapshot {
-		go raftServer.Snapshot()
+		go monitorSnapshot()
 	}
 
 	// start to response to raft requests
