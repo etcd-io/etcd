@@ -55,14 +55,31 @@ func set(stop chan bool) {
 }
 
 // Create a cluster of etcd nodes
-func createCluster(size int, procAttr *os.ProcAttr) ([][]string, []*os.Process, error) {
+func createCluster(size int, procAttr *os.ProcAttr, ssl bool) ([][]string, []*os.Process, error) {
 	argGroup := make([][]string, size)
+
+	sslServer1 := []string{"-serverCAFile=./fixtures/ca/ca.crt",
+		"-serverCert=./fixtures/ca/server.crt",
+		"-serverKey=./fixtures/ca/server.key.insecure",
+	}
+
+	sslServer2 := []string{"-serverCAFile=./fixtures/ca/ca.crt",
+		"-serverCert=./fixtures/ca/server2.crt",
+		"-serverKey=./fixtures/ca/server2.key.insecure",
+	}
+
 	for i := 0; i < size; i++ {
 		if i == 0 {
-			argGroup[i] = []string{"etcd", "-d=/tmp/node1", "-n=node1"}
+			argGroup[i] = []string{"etcd", "-d=/tmp/node1", "-n=node1", "-vv"}
+			if ssl {
+				argGroup[i] = append(argGroup[i], sslServer1...)
+			}
 		} else {
 			strI := strconv.Itoa(i + 1)
 			argGroup[i] = []string{"etcd", "-n=node" + strI, "-c=127.0.0.1:400" + strI, "-s=127.0.0.1:700" + strI, "-d=/tmp/node" + strI, "-C=127.0.0.1:7001"}
+			if ssl {
+				argGroup[i] = append(argGroup[i], sslServer2...)
+			}
 		}
 	}
 
