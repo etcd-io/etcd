@@ -12,7 +12,8 @@ import (
 
 // Get all the current logs
 func GetLogHttpHandler(w http.ResponseWriter, req *http.Request) {
-	debugf("[recv] GET %s/log", raftTransporter.scheme+raftServer.Name())
+	u, _ := nameToRaftURL(raftServer.Name())
+	debugf("[recv] GET %s/log", u)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(raftServer.LogEntries())
@@ -23,7 +24,8 @@ func VoteHttpHandler(w http.ResponseWriter, req *http.Request) {
 	rvreq := &raft.RequestVoteRequest{}
 	err := decodeJsonRequest(req, rvreq)
 	if err == nil {
-		debugf("[recv] POST %s/vote [%s]", raftTransporter.scheme+raftServer.Name(), rvreq.CandidateName)
+		u, _ := nameToRaftURL(raftServer.Name())
+		debugf("[recv] POST %s/vote [%s]", u, rvreq.CandidateName)
 		if resp := raftServer.RequestVote(rvreq); resp != nil {
 			w.WriteHeader(http.StatusOK)
 			json.NewEncoder(w).Encode(resp)
@@ -40,7 +42,8 @@ func AppendEntriesHttpHandler(w http.ResponseWriter, req *http.Request) {
 	err := decodeJsonRequest(req, aereq)
 
 	if err == nil {
-		debugf("[recv] POST %s/log/append [%d]", raftTransporter.scheme+raftServer.Name(), len(aereq.Entries))
+		u, _ := nameToRaftURL(raftServer.Name())
+		debugf("[recv] POST %s/log/append [%d]", u, len(aereq.Entries))
 		if resp := raftServer.AppendEntries(aereq); resp != nil {
 			w.WriteHeader(http.StatusOK)
 			json.NewEncoder(w).Encode(resp)
@@ -59,7 +62,8 @@ func SnapshotHttpHandler(w http.ResponseWriter, req *http.Request) {
 	aereq := &raft.SnapshotRequest{}
 	err := decodeJsonRequest(req, aereq)
 	if err == nil {
-		debugf("[recv] POST %s/snapshot/ ", raftTransporter.scheme+raftServer.Name())
+		u, _ := nameToRaftURL(raftServer.Name())
+		debugf("[recv] POST %s/snapshot/ ", u)
 		if resp := raftServer.RequestSnapshot(aereq); resp != nil {
 			w.WriteHeader(http.StatusOK)
 			json.NewEncoder(w).Encode(resp)
@@ -75,7 +79,8 @@ func SnapshotRecoveryHttpHandler(w http.ResponseWriter, req *http.Request) {
 	aereq := &raft.SnapshotRecoveryRequest{}
 	err := decodeJsonRequest(req, aereq)
 	if err == nil {
-		debugf("[recv] POST %s/snapshotRecovery/ ", raftTransporter.scheme+raftServer.Name())
+		u, _ := nameToRaftURL(raftServer.Name())
+		debugf("[recv] POST %s/snapshotRecovery/ ", u)
 		if resp := raftServer.SnapshotRecoveryRequest(aereq); resp != nil {
 			w.WriteHeader(http.StatusOK)
 			json.NewEncoder(w).Encode(resp)
@@ -88,7 +93,8 @@ func SnapshotRecoveryHttpHandler(w http.ResponseWriter, req *http.Request) {
 
 // Get the port that listening for etcd connecting of the server
 func EtcdURLHttpHandler(w http.ResponseWriter, req *http.Request) {
-	debugf("[recv] Get %s/etcdURL/ ", raftTransporter.scheme+raftServer.Name())
+	u, _ := nameToRaftURL(raftServer.Name())
+	debugf("[recv] Get %s/etcdURL/ ", u)
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(argInfo.EtcdURL))
 }
@@ -109,7 +115,9 @@ func JoinHttpHandler(w http.ResponseWriter, req *http.Request) {
 
 // Response to the name request
 func NameHttpHandler(w http.ResponseWriter, req *http.Request) {
-	debugf("[recv] Get %s/name/ ", raftTransporter.scheme+raftServer.Name())
+	u, _ := nameToRaftURL(raftServer.Name())
+
+	debugf("[recv] Get %s/name/ ", u)
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(raftServer.Name()))
 }

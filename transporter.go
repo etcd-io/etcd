@@ -12,8 +12,6 @@ import (
 // Transporter layer for communication between raft nodes
 type transporter struct {
 	client *http.Client
-	// scheme
-	scheme string
 }
 
 // Sends AppendEntries RPCs to a peer when the server is the leader.

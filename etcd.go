@@ -320,7 +320,7 @@ func startRaft(tlsConfig TLSConfig) {
 					if len(machine) == 0 {
 						continue
 					}
-					err = joinCluster(raftServer, machine)
+					err = joinCluster(raftServer, machine, tlsConfig.Scheme)
 					if err != nil {
 						if err.Error() == errors[103] {
 							fmt.Println(err)
@@ -366,8 +366,6 @@ func startRaft(tlsConfig TLSConfig) {
 // whether the user give the server cert and key
 func newTransporter(scheme string, tlsConf tls.Config) transporter {
 	t := transporter{}
-
-	t.scheme = scheme
 
 	tr := &http.Transport{
 		Dial: dialTimeout,
@@ -577,7 +575,7 @@ func newCertPool(CAFile string) (tls.ClientAuthType, *x509.CertPool) {
 }
 
 // Send join requests to the leader.
-func joinCluster(s *raft.Server, raftURL string) error {
+func joinCluster(s *raft.Server, raftURL string, scheme string) error {
 	var b bytes.Buffer
 
 	command := &JoinCommand{
@@ -595,7 +593,7 @@ func joinCluster(s *raft.Server, raftURL string) error {
 		panic("wrong type")
 	}
 
-	joinURL := url.URL{Host: raftURL, Scheme: raftTransporter.scheme, Path: "/join"}
+	joinURL := url.URL{Host: raftURL, Scheme: scheme, Path: "/join"}
 
 	debugf("Send Join Request to %s", raftURL)
 
