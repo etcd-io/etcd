@@ -110,13 +110,13 @@ func TestSingleNodeRecovery(t *testing.T) {
 }
 
 // Create a three nodes and try to set value
-func TestSimpleMultiNode(t *testing.T) {
+func templateTestSimpleMultiNode(t *testing.T, tls bool) {
 	procAttr := new(os.ProcAttr)
 	procAttr.Files = []*os.File{nil, os.Stdout, os.Stderr}
 
 	clusterSize := 3
 
-	_, etcds, err := createCluster(clusterSize, procAttr)
+	_, etcds, err := createCluster(clusterSize, procAttr, tls)
 
 	if err != nil {
 		t.Fatal("cannot create cluster")
@@ -154,6 +154,14 @@ func TestSimpleMultiNode(t *testing.T) {
 
 }
 
+func TestSimpleMultiNode(t *testing.T) {
+	templateTestSimpleMultiNode(t, false)
+}
+
+func TestSimpleMultiNodeTls(t *testing.T) {
+	templateTestSimpleMultiNode(t, true)
+}
+
 // Create a five nodes
 // Randomly kill one of the node and keep on sending set command to the cluster
 func TestMultiNodeRecovery(t *testing.T) {
@@ -161,7 +169,7 @@ func TestMultiNodeRecovery(t *testing.T) {
 	procAttr.Files = []*os.File{nil, os.Stdout, os.Stderr}
 
 	clusterSize := 5
-	argGroup, etcds, err := createCluster(clusterSize, procAttr)
+	argGroup, etcds, err := createCluster(clusterSize, procAttr, false)
 
 	if err != nil {
 		t.Fatal("cannot create cluster")

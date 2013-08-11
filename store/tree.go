@@ -124,6 +124,11 @@ func (t *tree) set(key string, value Node) bool {
 func (t *tree) internalGet(key string) (*treeNode, bool) {
 	nodesName := split(key)
 
+	// should be able to get root
+	if len(nodesName) == 1 && nodesName[0] == "" {
+		return t.Root, true
+	}
+
 	nodeMap := t.Root.NodeMap
 
 	var i int
