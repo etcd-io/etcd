@@ -243,10 +243,12 @@ First, you need to have a CA cert `clientCA.crt` and signed key pair `client.crt
 http://www.g-loaded.eu/2005/11/10/be-your-own-ca/
 ```
 
+For testing you can use the certificates in the `fixtures/ca` directory.
+
 Next, lets configure etcd to use this keypair:
 
 ```sh
-./etcd -clientCert client.crt -clientKey client.key -f
+./etcd -n node0 -d node0 -clientCert=./fixtures/ca/server.crt -clientKey=./fixtures/ca/server.key.insecure -f
 ```
 
 `-f` forces new node configuration if existing configuration is found (WARNING: data loss!)
@@ -255,7 +257,7 @@ Next, lets configure etcd to use this keypair:
 You can now test the configuration using https:
 
 ```sh
-curl -L https://127.0.0.1:4001/v1/keys/foo -d value=bar -v -cacert clientCA.crt
+curl --cacert fixtures/ca/ca.crt https://127.0.0.1:4001/v1/keys/foo -F value=bar
 ```
 
 You should be able to see the handshake succeed.
@@ -277,7 +279,7 @@ And also the response from the etcd server.
 We can also do authentication using CA certs. The clients will provide their cert to the server and the server will check whether the cert is signed by the CA and decide whether to serve the request.
 
 ```sh
-./etcd -clientCert client.crt -clientKey client.key -clientCAFile clientCA.crt -f
+./etcd -n node0 -d node0 -clientCAFile=./fixtures/ca/ca.crt -clientCert=./fixtures/ca/server.crt -clientKey=./fixtures/ca/server.key.insecure -f
 ```
 
 ```-clientCAFile``` is the path to the CA cert.
@@ -285,7 +287,7 @@ We can also do authentication using CA certs. The clients will provide their cer
 Try the same request to this server:
 
 ```sh
-curl -L https://127.0.0.1:4001/v1/keys/foo -d value=bar -v -cacert clientCA.crt
+curl --cacert fixtures/ca/ca.crt https://127.0.0.1:4001/v1/keys/foo -F value=bar
 ```
 
 The request should be rejected by the server.
