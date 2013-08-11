@@ -141,6 +141,10 @@ unstructuredName		= An optional company name
 
 [ usr_cert ]
 
+# This is required for TSA certificates.
+# This is required for client Auth and server Auth
+extendedKeyUsage = critical,timeStamping,serverAuth,clientAuth
+
 # These extensions are added when 'ca' signs a request.
 
 # This goes against PKIX guidelines but some CAs do it and some software
@@ -190,16 +194,13 @@ authorityKeyIdentifier=keyid,issuer
 #nsCaPolicyUrl
 #nsSslServerName
 
-# This is required for TSA certificates.
-# This is required for client Auth and server Auth
-# extendedKeyUsage = critical,timeStamping,serverauth,clientauth
-
 [ v3_req ]
 
 # Extensions to add to a certificate request
 
 basicConstraints = CA:FALSE
 keyUsage = nonRepudiation, digitalSignature, keyEncipherment
+extendedKeyUsage = critical,timeStamping,serverAuth,clientAuth
 subjectAltName = @alt_names
 
 [ v3_ca ]
