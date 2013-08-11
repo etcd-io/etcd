@@ -191,7 +191,8 @@ authorityKeyIdentifier=keyid,issuer
 #nsSslServerName
 
 # This is required for TSA certificates.
-# extendedKeyUsage = critical,timeStamping
+# This is required for client Auth and server Auth
+# extendedKeyUsage = critical,timeStamping,serverauth,clientauth
 
 [ v3_req ]
 
