@@ -572,7 +572,7 @@ func newCertPool(CAFile string) (tls.ClientAuthType, *x509.CertPool) {
 }
 
 // Send join requests to the leader.
-func joinCluster(s *raft.Server, serverName string) error {
+func joinCluster(s *raft.Server, raftURL string) error {
 	var b bytes.Buffer
 
 	command := &JoinCommand{
@@ -590,9 +590,10 @@ func joinCluster(s *raft.Server, serverName string) error {
 		panic("wrong type")
 	}
 
-	debugf("Send Join Request to %s", serverName)
+	joinURL := url.URL{Host: raftURL, Scheme: raftTransporter.scheme, Path: "/join"}
 
-	joinURL := url.URL{Host: serverName, Scheme: raftTransporter.scheme, Path: "/join"}
+	debugf("Send Join Request to %s", raftURL)
+	
 	resp, err := t.Post(joinURL.String(), &b)
 
 	for {
