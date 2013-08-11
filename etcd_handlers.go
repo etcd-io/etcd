@@ -218,14 +218,14 @@ func MachinesHttpHandler(w http.ResponseWriter, req *http.Request) {
 
 	// Add itself to the machine list first
 	// Since peer map does not contain the server itself
-	machines, _ := getEtcdURL(raftServer.Name())
+	machines, _ := nameToEtcdURL(raftServer.Name())
 
 	// Add all peers to the list and separate by comma
 	// We do not use json here since we accept machines list
 	// in the command line separate by comma.
 
 	for peerName, _ := range peers {
-		if addr, ok := getEtcdURL(peerName); ok {
+		if addr, ok := nameToEtcdURL(peerName); ok {
 			machines = machines + "," + addr
 		}
 	}
