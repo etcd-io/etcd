@@ -449,3 +449,21 @@ If you are using SSL for server to server communication, you must use it on all 
 **Chef Cookbook**
 
 - [spheromak/etcd-cookbook](https://github.com/spheromak/etcd-cookbook)
+
+## Project Details
+
+### Versioning
+
+etcd uses [semantic versioning][semver].
+When we release v1.0.0 of etcd we will promise not to break the "v1" REST API.
+New minor versions may add additional features to the API however.
+
+You can get the version of etcd by requesting the root path of etcd:
+
+```sh
+curl -L http://127.0.0.1:4001
+```
+
+During the v0 series of releases we may break the API as we fix bugs and get feedback.
+
+[semver]: http://semver.org/
