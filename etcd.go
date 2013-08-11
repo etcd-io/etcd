@@ -17,7 +17,6 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
-	"path"
 	"runtime/pprof"
 	"strings"
 	"time"
@@ -624,15 +623,10 @@ func joinCluster(s *raft.Server, serverName string) error {
 
 				address := resp.Header.Get("Location")
 				debugf("Send Join Request to %s", address)
-				u, err := url.Parse(address)
-
-				if err != nil {
-					return fmt.Errorf("Unable to join: %s", err.Error())
-				}
 
 				json.NewEncoder(&b).Encode(command)
 
-				resp, err = t.Post(path.Join(u.Host, u.Path), &b)
+				resp, err = t.Post(address, &b)
 
 			} else if resp.StatusCode == http.StatusBadRequest {
 				debug("Reach max number machines in the cluster")
