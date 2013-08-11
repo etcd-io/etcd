@@ -474,7 +474,7 @@ func tlsConfigFromInfo(info TLSInfo) (t TLSConfig, ok bool) {
 	}
 
 	tlsCert, err = tls.LoadX509KeyPair(certFile, keyFile)
-	if err == nil {
+	if err != nil {
 		fatal(err)
 	}
 
