@@ -479,10 +479,10 @@ func tlsConfigFromInfo(info TLSInfo) (t TLSConfig, ok bool) {
 	}
 
 	t.Scheme = "https"
-	t.Server.Certificates = []tls.Certificate{tlsCert}
-	t.Server.InsecureSkipVerify = true
+	t.Server.ClientAuth, t.Server.ClientCAs = newCertPool(CAFile)
 
-	t.Client.ClientAuth, t.Client.ClientCAs = newCertPool(CAFile)
+	t.Client.Certificates = []tls.Certificate{tlsCert}
+	t.Client.InsecureSkipVerify = true
 
 	return t, true
 }
