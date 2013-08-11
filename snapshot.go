@@ -1,25 +1,25 @@
 package main
 
 import (
-	"time"
 	"fmt"
+	"time"
 )
 
 type snapshotConf struct {
-	// basic 
+	// basic
 	checkingInterval time.Duration
-	lastWrites uint64
-	writesThr uint64
+	lastWrites       uint64
+	writesThr        uint64
 }
 
 var snapConf *snapshotConf
 
 func newSnapshotConf() *snapshotConf {
-	return &snapshotConf {time.Second*3, etcdStore.TotalWrites(), 20*1000}
+	return &snapshotConf{time.Second * 3, etcdStore.TotalWrites(), 20 * 1000}
 }
 
 func monitorSnapshot() {
-	for {	
+	for {
 		time.Sleep(snapConf.checkingInterval)
 		currentWrites := etcdStore.TotalWrites() - snapConf.lastWrites
 

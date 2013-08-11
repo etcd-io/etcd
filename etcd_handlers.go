@@ -109,7 +109,7 @@ func DeleteHttpHandler(w *http.ResponseWriter, req *http.Request) {
 func dispatch(c Command, w *http.ResponseWriter, req *http.Request, etcd bool) {
 	if raftServer.State() == "leader" {
 		if body, err := raftServer.Do(c); err != nil {
-			
+
 			if _, ok := err.(store.NotFoundError); ok {
 				(*w).WriteHeader(http.StatusNotFound)
 				(*w).Write(newJsonError(100, err.Error()))

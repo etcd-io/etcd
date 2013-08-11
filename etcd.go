@@ -364,7 +364,7 @@ func newTransporter(scheme string, tlsConf tls.Config) transporter {
 	t.scheme = scheme
 
 	tr := &http.Transport{
-		Dial:               dialTimeout,
+		Dial: dialTimeout,
 	}
 
 	if scheme == "https" {
@@ -594,7 +594,7 @@ func joinCluster(s *raft.Server, raftURL string) error {
 	joinURL := url.URL{Host: raftURL, Scheme: raftTransporter.scheme, Path: "/join"}
 
 	debugf("Send Join Request to %s", raftURL)
-	
+
 	resp, err := t.Post(joinURL.String(), &b)
 
 	for {
