@@ -481,8 +481,10 @@ func tlsConfigFromInfo(info TLSInfo) (t TLSConfig, ok bool) {
 	t.Scheme = "https"
 	t.Server.ClientAuth, t.Server.ClientCAs = newCertPool(CAFile)
 
+	// The client should trust the RootCA that the Server uses since
+	// everyone is a peer in the network.
 	t.Client.Certificates = []tls.Certificate{tlsCert}
-	t.Client.InsecureSkipVerify = true
+	t.Client.RootCAs = t.Server.ClientCAs
 
 	return t, true
 }
