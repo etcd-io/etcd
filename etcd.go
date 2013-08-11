@@ -58,7 +58,7 @@ func init() {
 	flag.StringVar(&machines, "C", "", "the ip address and port of a existing machines in the cluster, sepearate by comma")
 	flag.StringVar(&machinesFile, "CF", "", "the file contains a list of existing machines in the cluster, seperate by comma")
 
-	flag.StringVar(&argInfo.Name, "n", "", "the node name (required)")
+	flag.StringVar(&argInfo.Name, "n", "default-name", "the node name (required)")
 	flag.StringVar(&argInfo.EtcdURL, "c", "127.0.0.1:4001", "the hostname:port for etcd client communication")
 	flag.StringVar(&argInfo.RaftURL, "s", "127.0.0.1:7001", "the hostname:port for raft server communication")
 	flag.StringVar(&argInfo.WebURL, "w", "", "the hostname:port of web interface")
