@@ -18,6 +18,7 @@ var storeMsg chan string
 // Help to send msg from store to webHub
 func webHelper() {
 	storeMsg = make(chan string)
+	etcdStore.SetMessager(storeMsg)
 	for {
 		// transfer the new msg to webHub
 		web.Hub().Send(<-storeMsg)

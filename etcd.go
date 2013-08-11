@@ -17,7 +17,6 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
-	"path"
 	"runtime/pprof"
 	"strings"
 	"time"
@@ -60,9 +59,9 @@ func init() {
 	flag.StringVar(&machinesFile, "CF", "", "the file contains a list of existing machines in the cluster, seperate by comma")
 
 	flag.StringVar(&argInfo.Name, "n", "", "the node name (required)")
-	flag.StringVar(&argInfo.EtcdURL, "c", "127.0.0.1:4001", "the port to communicate with clients")
-	flag.StringVar(&argInfo.RaftURL, "s", "127.0.0.1:7001", "the port to communicate with servers")
-	flag.StringVar(&argInfo.WebURL, "w", "", "the port of web interface")
+	flag.StringVar(&argInfo.EtcdURL, "c", "127.0.0.1:4001", "the hostname:port for etcd client communication")
+	flag.StringVar(&argInfo.RaftURL, "s", "127.0.0.1:7001", "the hostname:port for raft server communication")
+	flag.StringVar(&argInfo.WebURL, "w", "", "the hostname:port of web interface")
 
 	flag.StringVar(&argInfo.ServerCAFile, "serverCAFile", "", "the path of the CAFile")
 	flag.StringVar(&argInfo.ServerCertFile, "serverCert", "", "the cert file of the server")
@@ -200,15 +199,35 @@ func main() {
 		cluster = strings.Split(string(b), ",")
 	}
 
+	raftTlsConfs, ok := tlsConf(RaftServer)
+	if !ok {
+		fatal("Please specify cert and key file or cert and key file and CAFile or none of the three")
+	}
+
+	raftDefaultScheme := "http"
+	if raftTlsConfs[0] != nil {
+		raftDefaultScheme = "https"
+	}
+
+	etcdTlsConfs, ok := tlsConf(EtcdServer)
+	if !ok {
+		fatal("Please specify cert and key file or cert and key file and CAFile or none of the three")
+	}
+
+	etcdDefaultScheme := "http"
+	if etcdTlsConfs[0] != nil {
+		raftDefaultScheme = "https"
+	}
+
 	// Otherwise ask user for info and write it to file.
 	argInfo.Name = strings.TrimSpace(argInfo.Name)
 
 	if argInfo.Name == "" {
-		fatal("Please give the name of the server")
+		fatal("ERROR: server name required. e.g. '-n=server_name'")
 	}
 
-	argInfo.RaftURL = checkURL(argInfo.RaftURL, "http")
-	argInfo.EtcdURL = checkURL(argInfo.EtcdURL, "http")
+	argInfo.RaftURL = checkURL(argInfo.RaftURL, raftDefaultScheme)
+	argInfo.EtcdURL = checkURL(argInfo.EtcdURL, etcdDefaultScheme)
 
 	// Setup commands.
 	registerCommands()
@@ -220,16 +239,6 @@ func main() {
 
 	info = getInfo(dirPath)
 
-	raftTlsConfs, ok := tlsConf(RaftServer)
-	if !ok {
-		fatal("Please specify cert and key file or cert and key file and CAFile or none of the three")
-	}
-
-	etcdTlsConfs, ok := tlsConf(EtcdServer)
-	if !ok {
-		fatal("Please specify cert and key file or cert and key file and CAFile or none of the three")
-	}
-
 	// Create etcd key-value store
 	etcdStore = store.CreateStore(maxSize)
 
@@ -237,7 +246,7 @@ func main() {
 
 	if argInfo.WebURL != "" {
 		// start web
-		etcdStore.SetMessager(storeMsg)
+		argInfo.WebURL = checkURL(argInfo.WebURL, "http")
 		go webHelper()
 		go web.Start(raftServer, argInfo.WebURL)
 	}
@@ -389,27 +398,30 @@ func dialTimeout(network, addr string) (net.Conn, error) {
 
 // Start to listen and response raft command
 func startRaftTransport(info Info, tlsConf *tls.Config) {
-
-	// internal commands
-	http.HandleFunc("/name", NameHttpHandler)
-	http.HandleFunc("/join", JoinHttpHandler)
-	http.HandleFunc("/vote", VoteHttpHandler)
-	http.HandleFunc("/log", GetLogHttpHandler)
-	http.HandleFunc("/log/append", AppendEntriesHttpHandler)
-	http.HandleFunc("/snapshot", SnapshotHttpHandler)
-	http.HandleFunc("/snapshotRecovery", SnapshotRecoveryHttpHandler)
-	http.HandleFunc("/etcdURL", EtcdURLHttpHandler)
-
 	u, _ := url.Parse(info.RaftURL)
 	fmt.Printf("raft server [%s] listening on %s\n", info.Name, u)
 
+	raftMux := http.NewServeMux()
+
+	server := &http.Server{
+		Handler:   raftMux,
+		TLSConfig: tlsConf,
+		Addr:      u.Host,
+	}
+
+	// internal commands
+	raftMux.HandleFunc("/name", NameHttpHandler)
+	raftMux.HandleFunc("/join", JoinHttpHandler)
+	raftMux.HandleFunc("/vote", VoteHttpHandler)
+	raftMux.HandleFunc("/log", GetLogHttpHandler)
+	raftMux.HandleFunc("/log/append", AppendEntriesHttpHandler)
+	raftMux.HandleFunc("/snapshot", SnapshotHttpHandler)
+	raftMux.HandleFunc("/snapshotRecovery", SnapshotRecoveryHttpHandler)
+	raftMux.HandleFunc("/etcdURL", EtcdURLHttpHandler)
+
 	if tlsConf == nil {
-		http.ListenAndServe(u.Host, nil)
+		fatal(server.ListenAndServe())
 	} else {
-		server := &http.Server{
-			TLSConfig: tlsConf,
-			Addr:      u.Host,
-		}
 		fatal(server.ListenAndServeTLS(info.ServerCertFile, argInfo.ServerKeyFile))
 	}
 
@@ -417,25 +429,29 @@ func startRaftTransport(info Info, tlsConf *tls.Config) {
 
 // Start to listen and response client command
 func startEtcdTransport(info Info, tlsConf *tls.Config) {
-	// external commands
-	http.HandleFunc("/"+version+"/keys/", Multiplexer)
-	http.HandleFunc("/"+version+"/watch/", WatchHttpHandler)
-	http.HandleFunc("/leader", LeaderHttpHandler)
-	http.HandleFunc("/machines", MachinesHttpHandler)
-	http.HandleFunc("/", VersionHttpHandler)
-	http.HandleFunc("/stats", StatsHttpHandler)
-	http.HandleFunc("/test/", TestHttpHandler)
-
 	u, _ := url.Parse(info.EtcdURL)
 	fmt.Printf("etcd server [%s] listening on %s\n", info.Name, u)
 
+	etcdMux := http.NewServeMux()
+
+	server := &http.Server{
+		Handler:   etcdMux,
+		TLSConfig: tlsConf,
+		Addr:      u.Host,
+	}
+
+	// external commands
+	etcdMux.HandleFunc("/"+version+"/keys/", Multiplexer)
+	etcdMux.HandleFunc("/"+version+"/watch/", WatchHttpHandler)
+	etcdMux.HandleFunc("/leader", LeaderHttpHandler)
+	etcdMux.HandleFunc("/machines", MachinesHttpHandler)
+	etcdMux.HandleFunc("/", VersionHttpHandler)
+	etcdMux.HandleFunc("/stats", StatsHttpHandler)
+	etcdMux.HandleFunc("/test/", TestHttpHandler)
+
 	if tlsConf == nil {
-		fatal(http.ListenAndServe(u.Host, nil))
+		fatal(server.ListenAndServe())
 	} else {
-		server := &http.Server{
-			TLSConfig: tlsConf,
-			Addr:      u.Host,
-		}
 		fatal(server.ListenAndServeTLS(info.ClientCertFile, info.ClientKeyFile))
 	}
 }
@@ -617,15 +633,10 @@ func joinCluster(s *raft.Server, serverName string) error {
 
 				address := resp.Header.Get("Location")
 				debugf("Send Join Request to %s", address)
-				u, err := url.Parse(address)
-
-				if err != nil {
-					return fmt.Errorf("Unable to join: %s", err.Error())
-				}
 
 				json.NewEncoder(&b).Encode(command)
 
-				resp, err = t.Post(path.Join(u.Host, u.Path), &b)
+				resp, err = t.Post(address, &b)
 
 			} else if resp.StatusCode == http.StatusBadRequest {
 				debug("Reach max number machines in the cluster")
