@@ -199,6 +199,26 @@ func main() {
 		cluster = strings.Split(string(b), ",")
 	}
 
+	raftTlsConfs, ok := tlsConf(RaftServer)
+	if !ok {
+		fatal("Please specify cert and key file or cert and key file and CAFile or none of the three")
+	}
+
+	raftDefaultScheme := "http"
+	if raftTlsConfs[0] != nil {
+		raftDefaultScheme = "https"
+	}
+
+	etcdTlsConfs, ok := tlsConf(EtcdServer)
+	if !ok {
+		fatal("Please specify cert and key file or cert and key file and CAFile or none of the three")
+	}
+
+	etcdDefaultScheme := "http"
+	if etcdTlsConfs[0] != nil {
+		raftDefaultScheme = "https"
+	}
+
 	// Otherwise ask user for info and write it to file.
 	argInfo.Name = strings.TrimSpace(argInfo.Name)
 
@@ -206,8 +226,8 @@ func main() {
 		fatal("ERROR: server name required. e.g. '-n=server_name'")
 	}
 
-	argInfo.RaftURL = checkURL(argInfo.RaftURL, "http")
-	argInfo.EtcdURL = checkURL(argInfo.EtcdURL, "http")
+	argInfo.RaftURL = checkURL(argInfo.RaftURL, raftDefaultScheme)
+	argInfo.EtcdURL = checkURL(argInfo.EtcdURL, etcdDefaultScheme)
 
 	// Setup commands.
 	registerCommands()
@@ -218,16 +238,6 @@ func main() {
 	}
 
 	info = getInfo(dirPath)
-
-	raftTlsConfs, ok := tlsConf(RaftServer)
-	if !ok {
-		fatal("Please specify cert and key file or cert and key file and CAFile or none of the three")
-	}
-
-	etcdTlsConfs, ok := tlsConf(EtcdServer)
-	if !ok {
-		fatal("Please specify cert and key file or cert and key file and CAFile or none of the three")
-	}
 
 	// Create etcd key-value store
 	etcdStore = store.CreateStore(maxSize)
