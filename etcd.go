@@ -592,7 +592,8 @@ func joinCluster(s *raft.Server, serverName string) error {
 
 	debugf("Send Join Request to %s", serverName)
 
-	resp, err := t.Post(fmt.Sprintf("%s/join", serverName), &b)
+	joinURL := url.URL{Host: serverName, Scheme: raftTransporter.scheme, Path: "/join"}
+	resp, err := t.Post(joinURL.String(), &b)
 
 	for {
 		if err != nil {
