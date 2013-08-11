@@ -81,6 +81,10 @@ func (t transporter) SendSnapshotRequest(server *raft.Server, peer *raft.Peer, r
 
 	resp, err := t.Post(fmt.Sprintf("%s/snapshot", u), &b)
 
+	if err != nil {
+		debugf("Cannot send SendSnapshotRequest to %s : %s", u, err)
+	}
+
 	if resp != nil {
 		defer resp.Body.Close()
 		aersp = &raft.SnapshotResponse{}
@@ -104,6 +108,10 @@ func (t transporter) SendSnapshotRecoveryRequest(server *raft.Server, peer *raft
 		req.LastTerm, req.LastIndex)
 
 	resp, err := t.Post(fmt.Sprintf("%s/snapshotRecovery", u), &b)
+
+	if err != nil {
+		debugf("Cannot send SendSnapshotRecoveryRequest to %s : %s", u, err)
+	}
 
 	if resp != nil {
 		defer resp.Body.Close()
