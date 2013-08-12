@@ -11,10 +11,10 @@ A highly-available key value store for shared configuration and service discover
 
 Etcd is written in Go and uses the [raft][raft] consensus algorithm to manage a highly-available replicated log.
 
-See [go-etcd][go-etcd] for a native Go client. Or feel free to just use curl, as in the examples below.
+See [etcdctl][etcdctl] for a simple command line client. Or feel free to just use curl, as in the examples below.
 
 [raft]: https://github.com/coreos/go-raft
-[go-etcd]: https://github.com/coreos/go-etcd
+[etcdctl]: http://coreos.com/docs/etcdctl/
 
 ## Getting Started
 
