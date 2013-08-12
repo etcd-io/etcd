@@ -452,6 +452,10 @@ If you are using SSL for server to server communication, you must use it on all 
 
 - [spheromak/etcd-cookbook](https://github.com/spheromak/etcd-cookbook)
 
+**Projects using etcd**
+
+- [calavera/active-proxy](https://github.com/calavera/active-proxy)
+
 ## Project Details
 
 ### Versioning
