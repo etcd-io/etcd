@@ -5,7 +5,6 @@ import (
 	"github.com/coreos/etcd/store"
 	"net/http"
 	"strconv"
-	"time"
 )
 
 //-------------------------------------------------------------------
@@ -45,7 +44,7 @@ func SetHttpHandler(w *http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	debugf("[recv] POST %v/v1/keys/%s", raftServer.Name(), key)
+	debugf("[recv] POST %v/v1/keys/%s", info.EtcdURL, key)
 
 	value := req.FormValue("value")
 
@@ -96,7 +95,7 @@ func SetHttpHandler(w *http.ResponseWriter, req *http.Request) {
 func DeleteHttpHandler(w *http.ResponseWriter, req *http.Request) {
 	key := req.URL.Path[len("/v1/keys/"):]
 
-	debugf("[recv] DELETE %v/v1/keys/%s", raftServer.Name(), key)
+	debugf("[recv] DELETE %v/v1/keys/%s", info.EtcdURL, key)
 
 	command := &DeleteCommand{
 		Key: key,
@@ -251,7 +250,7 @@ func StatsHttpHandler(w http.ResponseWriter, req *http.Request) {
 func GetHttpHandler(w *http.ResponseWriter, req *http.Request) {
 	key := req.URL.Path[len("/v1/keys/"):]
 
-	debugf("[recv] GET http://%v/v1/keys/%s", raftServer.Name(), key)
+	debugf("[recv] GET %s/v1/keys/%s", info.EtcdURL, key)
 
 	command := &GetCommand{
 		Key: key,
@@ -290,13 +289,13 @@ func WatchHttpHandler(w http.ResponseWriter, req *http.Request) {
 	}
 
 	if req.Method == "GET" {
-		debugf("[recv] GET http://%v/watch/%s", raftServer.Name(), key)
+		debugf("[recv] GET %s/watch/%s", info.EtcdURL, key)
 		command.SinceIndex = 0
 
 	} else if req.Method == "POST" {
 		// watch from a specific index
 
-		debugf("[recv] POST http://%v/watch/%s", raftServer.Name(), key)
+		debugf("[recv] POST %s/watch/%s", info.EtcdURL, key)
 		content := req.FormValue("index")
 
 		sinceIndex, err := strconv.ParseUint(string(content), 10, 64)
@@ -339,18 +338,4 @@ func TestHttpHandler(w http.ResponseWriter, req *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusBadRequest)
-}
-
-// Convert string duration to time format
-func durationToExpireTime(strDuration string) (time.Time, error) {
-	if strDuration != "" {
-		duration, err := strconv.Atoi(strDuration)
-
-		if err != nil {
-			return time.Unix(0, 0), err
-		}
-		return time.Now().Add(time.Second * (time.Duration)(duration)), nil
-	} else {
-		return time.Unix(0, 0), nil
-	}
 }
