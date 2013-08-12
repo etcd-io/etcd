@@ -25,6 +25,7 @@ func durationToExpireTime(strDuration string) (time.Time, error) {
 			return time.Unix(0, 0), err
 		}
 		return time.Now().Add(time.Second * (time.Duration)(duration)), nil
+
 	} else {
 		return time.Unix(0, 0), nil
 	}
