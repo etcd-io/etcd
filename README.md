@@ -444,6 +444,10 @@ If you are using SSL for server to server communication, you must use it on all 
 
 - [go-etcd](https://github.com/coreos/go-etcd)
 
+**Node libraries**
+
+- [stianeikeland/node-etcd](https://github.com/stianeikeland/node-etcd)
+
 **Ruby libraries**
 
 - [iconara/etcd-rb](https://github.com/iconara/etcd-rb)
