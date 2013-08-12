@@ -24,7 +24,7 @@ The latest release is available as a binary at [Github][github-release].
 
 [github-release]: https://github.com/coreos/etcd/releases/
 
-You can also buildi etcd from source:
+You can also build etcd from source:
 
 ```sh
 git clone https://github.com/coreos/etcd
