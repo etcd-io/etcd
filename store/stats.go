@@ -18,8 +18,16 @@ type EtcdStats struct {
 	TestAndSets uint64 `json:"testAndSets"`
 }
 
-// Stats returns the basic statistics information of etcd storage
+// Stats returns the basic statistics information of etcd storage since its recent start
 func (s *Store) Stats() []byte {
 	b, _ := json.Marshal(s.BasicStats)
 	return b
+}
+
+// TotalWrites returns the total write operations
+// It helps with snapshot
+func (s *Store) TotalWrites() uint64 {
+	bs := s.BasicStats
+
+	return bs.Deletes + bs.Sets + bs.TestAndSets
 }

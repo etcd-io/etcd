@@ -70,7 +70,7 @@ func createCluster(size int, procAttr *os.ProcAttr, ssl bool) ([][]string, []*os
 
 	for i := 0; i < size; i++ {
 		if i == 0 {
-			argGroup[i] = []string{"etcd", "-d=/tmp/node1", "-n=node1", "-vv"}
+			argGroup[i] = []string{"etcd", "-d=/tmp/node1", "-n=node1"}
 			if ssl {
 				argGroup[i] = append(argGroup[i], sslServer1...)
 			}
