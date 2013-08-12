@@ -313,7 +313,12 @@ func (s *Store) Get(key string) ([]byte, error) {
 		return nil, err
 	}
 
-	if len(resps) == 1 {
+	key = path.Clean("/" + key)
+
+	// If the number of resps == 1 and the response key
+	// is the key we query, a signal key-value should
+	// be returned
+	if len(resps) == 1 && resps[0].Key == key {
 		return json.Marshal(resps[0])
 	}
 
