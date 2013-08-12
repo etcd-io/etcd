@@ -36,10 +36,12 @@ git clone https://github.com/coreos/etcd
 These examples will use a single node cluster to show you the basics of the etcd REST API. Lets start etcd:
 
 ```sh
-./etcd -d node0
+./etcd -d node0 -n node0
 ```
 
-This will bring up an etcd node listening on port 4001 for client communication and on port 7001 for server-to-server communication. The `-d node0` argument tells etcd to write node configuration, logs and snapshots to the `./node0/` directory.
+This will bring up an etcd node listening on port 4001 for client communication and on port 7001 for server-to-server communication.
+The `-d node0` argument tells etcd to write node configuration, logs and snapshots to the `./node0/` directory.
+The `-n node0` tells the rest of the cluster that this node is named node0.
 
 ## Usage
 
@@ -331,14 +333,14 @@ Let start by creating 3 new etcd instances.
 We use -s to specify server port and -c to specify client port and -d to specify the directory to store the log and info of the node in the cluster
 
 ```sh
-./etcd -s 7001 -c 4001 -d nodes/node1
+./etcd -s 7001 -c 4001 -d nodes/node1 -n node1
 ```
 
 Let the join two more nodes to this cluster using the -C argument:
 
 ```sh
-./etcd -c 4002 -s 7002 -C 127.0.0.1:7001 -d nodes/node2
-./etcd -c 4003 -s 7003 -C 127.0.0.1:7001 -d nodes/node3
+./etcd -c 4002 -s 7002 -C 127.0.0.1:7001 -d nodes/node2 -n node2
+./etcd -c 4003 -s 7003 -C 127.0.0.1:7001 -d nodes/node3 -n node3
 ```
 
 Get the machines in the cluster:
