@@ -243,10 +243,7 @@ which meas `foo=barbar` is a key-value pair under `/foo` and `foo_dir` is a dire
 Etcd supports SSL/TLS and client cert authentication for clients to server, as well as server to server communication
 
 First, you need to have a CA cert `clientCA.crt` and signed key pair `client.crt`, `client.key`. This site has a good reference for how to generate self-signed key pairs:
-
-```url
 http://www.g-loaded.eu/2005/11/10/be-your-own-ca/
-```
 
 For testing you can use the certificates in the `fixtures/ca` directory.
 
