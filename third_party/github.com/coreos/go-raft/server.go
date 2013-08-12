@@ -1025,16 +1025,7 @@ func (s *Server) RemovePeer(name string) error {
 // Log compaction
 //--------------------------------------
 
-// The background snapshot function
-func (s *Server) Snapshot() {
-	for {
-		// TODO: change this... to something reasonable
-		time.Sleep(1 * time.Second)
-		s.takeSnapshot()
-	}
-}
-
-func (s *Server) takeSnapshot() error {
+func (s *Server) TakeSnapshot() error {
 	//TODO put a snapshot mutex
 	s.debugln("take Snapshot")
 	if s.currentSnapshot != nil {

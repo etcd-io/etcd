@@ -3,9 +3,9 @@ package main
 import (
 	"fmt"
 	"github.com/coreos/etcd/store"
+	"github.com/coreos/go-raft"
 	"net/http"
 	"strconv"
-	"time"
 )
 
 //-------------------------------------------------------------------
@@ -45,7 +45,7 @@ func SetHttpHandler(w *http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	debugf("[recv] POST %v/v1/keys/%s", raftServer.Name(), key)
+	debugf("[recv] POST %v/v1/keys/%s [%s]", info.EtcdURL, key, req.RemoteAddr)
 
 	value := req.FormValue("value")
 
@@ -96,7 +96,7 @@ func SetHttpHandler(w *http.ResponseWriter, req *http.Request) {
 func DeleteHttpHandler(w *http.ResponseWriter, req *http.Request) {
 	key := req.URL.Path[len("/v1/keys/"):]
 
-	debugf("[recv] DELETE %v/v1/keys/%s", raftServer.Name(), key)
+	debugf("[recv] DELETE %v/v1/keys/%s [%s]", info.EtcdURL, key, req.RemoteAddr)
 
 	command := &DeleteCommand{
 		Key: key,
@@ -107,8 +107,9 @@ func DeleteHttpHandler(w *http.ResponseWriter, req *http.Request) {
 
 // Dispatch the command to leader
 func dispatch(c Command, w *http.ResponseWriter, req *http.Request, etcd bool) {
-	if raftServer.State() == "leader" {
+	if raftServer.State() == raft.Leader {
 		if body, err := raftServer.Do(c); err != nil {
+
 			if _, ok := err.(store.NotFoundError); ok {
 				(*w).WriteHeader(http.StatusNotFound)
 				(*w).Write(newJsonError(100, err.Error()))
@@ -162,12 +163,6 @@ func dispatch(c Command, w *http.ResponseWriter, req *http.Request, etcd bool) {
 
 		path := req.URL.Path
 
-		var scheme string
-
-		if scheme = req.URL.Scheme; scheme == "" {
-			scheme = "http://"
-		}
-
 		var url string
 
 		if etcd {
@@ -217,14 +212,14 @@ func MachinesHttpHandler(w http.ResponseWriter, req *http.Request) {
 
 	// Add itself to the machine list first
 	// Since peer map does not contain the server itself
-	machines, _ := getEtcdURL(raftServer.Name())
+	machines := info.EtcdURL
 
 	// Add all peers to the list and separate by comma
 	// We do not use json here since we accept machines list
 	// in the command line separate by comma.
 
 	for peerName, _ := range peers {
-		if addr, ok := getEtcdURL(peerName); ok {
+		if addr, ok := nameToEtcdURL(peerName); ok {
 			machines = machines + "," + addr
 		}
 	}
@@ -250,7 +245,7 @@ func StatsHttpHandler(w http.ResponseWriter, req *http.Request) {
 func GetHttpHandler(w *http.ResponseWriter, req *http.Request) {
 	key := req.URL.Path[len("/v1/keys/"):]
 
-	debugf("[recv] GET http://%v/v1/keys/%s", raftServer.Name(), key)
+	debugf("[recv] GET %s/v1/keys/%s [%s]", info.EtcdURL, key, req.RemoteAddr)
 
 	command := &GetCommand{
 		Key: key,
@@ -289,13 +284,13 @@ func WatchHttpHandler(w http.ResponseWriter, req *http.Request) {
 	}
 
 	if req.Method == "GET" {
-		debugf("[recv] GET http://%v/watch/%s", raftServer.Name(), key)
+		debugf("[recv] GET %s/watch/%s [%s]", info.EtcdURL, key, req.RemoteAddr)
 		command.SinceIndex = 0
 
 	} else if req.Method == "POST" {
 		// watch from a specific index
 
-		debugf("[recv] POST http://%v/watch/%s", raftServer.Name(), key)
+		debugf("[recv] POST %s/watch/%s [%s]", info.EtcdURL, key, req.RemoteAddr)
 		content := req.FormValue("index")
 
 		sinceIndex, err := strconv.ParseUint(string(content), 10, 64)
@@ -338,18 +333,4 @@ func TestHttpHandler(w http.ResponseWriter, req *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusBadRequest)
-}
-
-// Convert string duration to time format
-func durationToExpireTime(strDuration string) (time.Time, error) {
-	if strDuration != "" {
-		duration, err := strconv.Atoi(strDuration)
-
-		if err != nil {
-			return time.Unix(0, 0), err
-		}
-		return time.Now().Add(time.Second * (time.Duration)(duration)), nil
-	} else {
-		return time.Unix(0, 0), nil
-	}
 }

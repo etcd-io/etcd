@@ -8,7 +8,28 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
+	"time"
 )
+
+//--------------------------------------
+// etcd http Helper
+//--------------------------------------
+
+// Convert string duration to time format
+func durationToExpireTime(strDuration string) (time.Time, error) {
+	if strDuration != "" {
+		duration, err := strconv.Atoi(strDuration)
+
+		if err != nil {
+			return time.Unix(0, 0), err
+		}
+		return time.Now().Add(time.Second * (time.Duration)(duration)), nil
+
+	} else {
+		return time.Unix(0, 0), nil
+	}
+}
 
 //--------------------------------------
 // Web Helper

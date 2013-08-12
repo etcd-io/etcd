@@ -87,14 +87,14 @@ func init() {
 }
 
 const (
-	ELECTIONTIMEOUT  = 200 * time.Millisecond
-	HEARTBEATTIMEOUT = 50 * time.Millisecond
+	ElectionTimeout  = 200 * time.Millisecond
+	HeartbeatTimeout = 50 * time.Millisecond
 
 	// Timeout for internal raft http connection
 	// The original timeout for http is 45 seconds
 	// which is too long for our usage.
-	HTTPTIMEOUT   = 10 * time.Second
-	RETRYINTERVAL = 10
+	HTTPTimeout   = 10 * time.Second
+	RetryInterval = 10
 )
 
 //------------------------------------------------------------------------------
@@ -118,6 +118,12 @@ type Info struct {
 
 	RaftTLS TLSInfo `json:"raftTLS"`
 	EtcdTLS TLSInfo `json:"etcdTLS"`
+}
+
+type TLSConfig struct {
+	Scheme string
+	Server tls.Config
+	Client tls.Config
 }
 
 //------------------------------------------------------------------------------
@@ -234,6 +240,7 @@ func main() {
 
 	// Create etcd key-value store
 	etcdStore = store.CreateStore(maxSize)
+	snapConf = newSnapshotConf()
 
 	startRaft(raftTLSConfig)
 
@@ -275,8 +282,8 @@ func startRaft(tlsConfig TLSConfig) {
 		}
 	}
 
-	raftServer.SetElectionTimeout(ELECTIONTIMEOUT)
-	raftServer.SetHeartbeatTimeout(HEARTBEATTIMEOUT)
+	raftServer.SetElectionTimeout(ElectionTimeout)
+	raftServer.SetHeartbeatTimeout(HeartbeatTimeout)
 
 	raftServer.Start()
 
@@ -313,7 +320,7 @@ func startRaft(tlsConfig TLSConfig) {
 					if len(machine) == 0 {
 						continue
 					}
-					err = joinCluster(raftServer, machine)
+					err = joinCluster(raftServer, machine, tlsConfig.Scheme)
 					if err != nil {
 						if err.Error() == errors[103] {
 							fmt.Println(err)
@@ -330,8 +337,8 @@ func startRaft(tlsConfig TLSConfig) {
 					break
 				}
 
-				warnf("cannot join to cluster via given machines, retry in %d seconds", RETRYINTERVAL)
-				time.Sleep(time.Second * RETRYINTERVAL)
+				warnf("cannot join to cluster via given machines, retry in %d seconds", RetryInterval)
+				time.Sleep(time.Second * RetryInterval)
 			}
 			if err != nil {
 				fatalf("Cannot join the cluster via given machines after %x retries", retryTimes)
@@ -346,7 +353,7 @@ func startRaft(tlsConfig TLSConfig) {
 
 	// open the snapshot
 	if snapshot {
-		go raftServer.Snapshot()
+		go monitorSnapshot()
 	}
 
 	// start to response to raft requests
@@ -360,10 +367,8 @@ func startRaft(tlsConfig TLSConfig) {
 func newTransporter(scheme string, tlsConf tls.Config) transporter {
 	t := transporter{}
 
-	t.scheme = scheme
-
 	tr := &http.Transport{
-		Dial:               dialTimeout,
+		Dial: dialTimeout,
 	}
 
 	if scheme == "https" {
@@ -378,7 +383,7 @@ func newTransporter(scheme string, tlsConf tls.Config) transporter {
 
 // Dial with timeout
 func dialTimeout(network, addr string) (net.Conn, error) {
-	return net.DialTimeout(network, addr, HTTPTIMEOUT)
+	return net.DialTimeout(network, addr, HTTPTimeout)
 }
 
 // Start to listen and response raft command
@@ -444,12 +449,6 @@ func startEtcdTransport(info Info, scheme string, tlsConf tls.Config) {
 //--------------------------------------
 // Config
 //--------------------------------------
-
-type TLSConfig struct {
-	Scheme string
-	Server tls.Config
-	Client tls.Config
-}
 
 func tlsConfigFromInfo(info TLSInfo) (t TLSConfig, ok bool) {
 	var keyFile, certFile, CAFile string
@@ -551,7 +550,11 @@ func getInfo(path string) *Info {
 	return info
 }
 
-// Create client auth certpool
+// newCertPool creates x509 certPool and corresponding Auth Type.
+// If the given CAfile is valid, add the cert into the pool and verify the clients'
+// certs against the cert in the pool.
+// If the given CAfile is empty, do not verify the clients' cert.
+// If the given CAfile is not valid, fatal.
 func newCertPool(CAFile string) (tls.ClientAuthType, *x509.CertPool) {
 	if CAFile == "" {
 		return tls.NoClientCert, nil
@@ -574,7 +577,7 @@ func newCertPool(CAFile string) (tls.ClientAuthType, *x509.CertPool) {
 }
 
 // Send join requests to the leader.
-func joinCluster(s *raft.Server, raftURL string) error {
+func joinCluster(s *raft.Server, raftURL string, scheme string) error {
 	var b bytes.Buffer
 
 	command := &JoinCommand{
@@ -592,10 +595,10 @@ func joinCluster(s *raft.Server, raftURL string) error {
 		panic("wrong type")
 	}
 
-	joinURL := url.URL{Host: raftURL, Scheme: raftTransporter.scheme, Path: "/join"}
+	joinURL := url.URL{Host: raftURL, Scheme: scheme, Path: "/join"}
 
 	debugf("Send Join Request to %s", raftURL)
-	
+
 	resp, err := t.Post(joinURL.String(), &b)
 
 	for {
