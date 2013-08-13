@@ -265,22 +265,13 @@ func startEtcdTransport(info Info, scheme string, tlsConf tls.Config) {
 	}
 	infof("etcd server [%s:%s]", info.Name, u)
 
-	etcdMux := http.NewServeMux()
-
-	server := &http.Server{
-		Handler:   etcdMux,
-		TLSConfig: &tlsConf,
-		Addr:      u.Host,
+	server := &Etcd{
+		Server: http.Server{
+			Handler:   NewEtcdMuxer(),
+			TLSConfig: &tlsConf,
+			Addr:      u.Host,
+		},
 	}
-
-	// external commands
-	etcdMux.HandleFunc("/"+version+"/keys/", Multiplexer)
-	etcdMux.HandleFunc("/"+version+"/watch/", WatchHttpHandler)
-	etcdMux.HandleFunc("/leader", LeaderHttpHandler)
-	etcdMux.HandleFunc("/machines", MachinesHttpHandler)
-	etcdMux.HandleFunc("/", VersionHttpHandler)
-	etcdMux.HandleFunc("/stats", StatsHttpHandler)
-	etcdMux.HandleFunc("/test/", TestHttpHandler)
 
 	if scheme == "http" {
 		fatal(server.ListenAndServe())
