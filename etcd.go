@@ -250,13 +250,6 @@ func dialTimeout(network, addr string) (net.Conn, error) {
 	return net.DialTimeout(network, addr, HTTPTimeout)
 }
 
-type Etcd struct {
-	http.Server
-	url    string
-	scheme string
-	tls    TLSConfig
-}
-
 // Start to listen and response client command
 func startEtcdTransport(info Info, scheme string, tlsConf tls.Config) {
 	u, err := url.Parse(info.EtcdURL)
@@ -265,13 +258,11 @@ func startEtcdTransport(info Info, scheme string, tlsConf tls.Config) {
 	}
 	infof("etcd server [%s:%s]", info.Name, u)
 
-	server := &Etcd{
-		Server: http.Server{
-			Handler:   NewEtcdMuxer(),
-			TLSConfig: &tlsConf,
-			Addr:      u.Host,
-		},
-	}
+	server := http.Server{
+				Handler:   NewEtcdMuxer(),
+				TLSConfig: &tlsConf,
+				Addr:      u.Host,
+			}
 
 	if scheme == "http" {
 		fatal(server.ListenAndServe())
