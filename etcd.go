@@ -2,8 +2,6 @@ package main
 
 import (
 	"crypto/tls"
-	"crypto/x509"
-	"encoding/pem"
 	"flag"
 	"github.com/coreos/etcd/store"
 	"github.com/coreos/etcd/web"
@@ -242,70 +240,4 @@ func startEtcdTransport(info Info, scheme string, tlsConf tls.Config) {
 	} else {
 		fatal(server.ListenAndServeTLS(info.EtcdTLS.CertFile, info.EtcdTLS.KeyFile))
 	}
-}
-
-//--------------------------------------
-// Config
-//--------------------------------------
-
-func tlsConfigFromInfo(info TLSInfo) (t TLSConfig, ok bool) {
-	var keyFile, certFile, CAFile string
-	var tlsCert tls.Certificate
-	var err error
-
-	t.Scheme = "http"
-
-	keyFile = info.KeyFile
-	certFile = info.CertFile
-	CAFile = info.CAFile
-
-	// If the user do not specify key file, cert file and
-	// CA file, the type will be HTTP
-	if keyFile == "" && certFile == "" && CAFile == "" {
-		return t, true
-	}
-
-	// both the key and cert must be present
-	if keyFile == "" || certFile == "" {
-		return t, false
-	}
-
-	tlsCert, err = tls.LoadX509KeyPair(certFile, keyFile)
-	if err != nil {
-		fatal(err)
-	}
-
-	t.Scheme = "https"
-	t.Server.ClientAuth, t.Server.ClientCAs = newCertPool(CAFile)
-
-	// The client should trust the RootCA that the Server uses since
-	// everyone is a peer in the network.
-	t.Client.Certificates = []tls.Certificate{tlsCert}
-	t.Client.RootCAs = t.Server.ClientCAs
-
-	return t, true
-}
-
-// newCertPool creates x509 certPool and corresponding Auth Type.
-// If the given CAfile is valid, add the cert into the pool and verify the clients'
-// certs against the cert in the pool.
-// If the given CAfile is empty, do not verify the clients' cert.
-// If the given CAfile is not valid, fatal.
-func newCertPool(CAFile string) (tls.ClientAuthType, *x509.CertPool) {
-	if CAFile == "" {
-		return tls.NoClientCert, nil
-	}
-	pemByte, err := ioutil.ReadFile(CAFile)
-	check(err)
-
-	block, pemByte := pem.Decode(pemByte)
-
-	cert, err := x509.ParseCertificate(block.Bytes)
-	check(err)
-
-	certPool := x509.NewCertPool()
-
-	certPool.AddCert(cert)
-
-	return tls.RequireAndVerifyClientCert, certPool
 }
