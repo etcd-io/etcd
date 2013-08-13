@@ -259,10 +259,10 @@ func startEtcdTransport(info Info, scheme string, tlsConf tls.Config) {
 	infof("etcd server [%s:%s]", info.Name, u)
 
 	server := http.Server{
-				Handler:   NewEtcdMuxer(),
-				TLSConfig: &tlsConf,
-				Addr:      u.Host,
-			}
+		Handler:   NewEtcdMuxer(),
+		TLSConfig: &tlsConf,
+		Addr:      u.Host,
+	}
 
 	if scheme == "http" {
 		fatal(server.ListenAndServe())

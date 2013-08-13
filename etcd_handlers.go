@@ -165,7 +165,7 @@ func dispatch(c Command, w *http.ResponseWriter, req *http.Request, etcd bool) {
 			return
 		}
 	} else {
-		leader := raftServer.Leader() 
+		leader := raftServer.Leader()
 		// current no leader
 		if leader == "" {
 			(*w).WriteHeader(http.StatusInternalServerError)
