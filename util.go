@@ -95,6 +95,12 @@ func sanitizeURL(host string, defaultScheme string) string {
 	return p.String()
 }
 
+func check(err error) {
+	if err != nil {
+		fatal(err)
+	}
+}
+
 //--------------------------------------
 // Log
 //--------------------------------------
