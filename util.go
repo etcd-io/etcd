@@ -105,6 +105,10 @@ func init() {
 	logger = log.New(os.Stdout, "[etcd] ", log.Lmicroseconds)
 }
 
+func infof(msg string, v ...interface{}) {
+	logger.Printf("INFO "+msg+"\n", v...)
+}
+
 func debugf(msg string, v ...interface{}) {
 	if verbose {
 		logger.Printf("DEBUG "+msg+"\n", v...)

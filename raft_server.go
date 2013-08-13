@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"os"
 	"time"
 
 	"github.com/coreos/go-raft"
@@ -88,8 +87,7 @@ func startRaft(tlsConfig TLSConfig) {
 					err = joinCluster(raftServer, machine, tlsConfig.Scheme)
 					if err != nil {
 						if err.Error() == errors[103] {
-							fmt.Println(err)
-							os.Exit(1)
+							fatal(err)
 						}
 						debugf("cannot join to cluster via machine %s %s", machine, err)
 					} else {
@@ -129,7 +127,7 @@ func startRaft(tlsConfig TLSConfig) {
 // Start to listen and response raft command
 func startRaftTransport(info Info, scheme string, tlsConf tls.Config) {
 	u, _ := url.Parse(info.RaftURL)
-	fmt.Printf("raft server [%s] listening on %s\n", info.Name, u)
+	infof("raft server [%s:%s]", info.Name, u)
 
 	raftMux := http.NewServeMux()
 

@@ -5,7 +5,6 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"flag"
-	"fmt"
 	"github.com/coreos/etcd/store"
 	"github.com/coreos/etcd/web"
 
@@ -158,7 +157,7 @@ func main() {
 		signal.Notify(c, os.Interrupt)
 		go func() {
 			for sig := range c {
-				fmt.Printf("captured %v, stopping profiler and exiting..", sig)
+				infof("captured %v, stopping profiler and exiting..", sig)
 				pprof.StopCPUProfile()
 				os.Exit(1)
 			}
@@ -254,7 +253,7 @@ func dialTimeout(network, addr string) (net.Conn, error) {
 // Start to listen and response client command
 func startEtcdTransport(info Info, scheme string, tlsConf tls.Config) {
 	u, _ := url.Parse(info.EtcdURL)
-	fmt.Printf("etcd server [%s] listening on %s\n", info.Name, u)
+	infof("etcd server [%s:%s]", info.Name, u)
 
 	etcdMux := http.NewServeMux()
 
