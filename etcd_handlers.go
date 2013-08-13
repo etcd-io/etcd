@@ -12,6 +12,19 @@ import (
 // Handlers to handle etcd-store related request via etcd url
 //-------------------------------------------------------------------
 
+func NewEtcdMuxer() *http.ServeMux {
+	// external commands
+	etcdMux := http.NewServeMux()
+	etcdMux.HandleFunc("/"+version+"/keys/", Multiplexer)
+	etcdMux.HandleFunc("/"+version+"/watch/", WatchHttpHandler)
+	etcdMux.HandleFunc("/leader", LeaderHttpHandler)
+	etcdMux.HandleFunc("/machines", MachinesHttpHandler)
+	etcdMux.HandleFunc("/", VersionHttpHandler)
+	etcdMux.HandleFunc("/stats", StatsHttpHandler)
+	etcdMux.HandleFunc("/test/", TestHttpHandler)
+	return etcdMux
+}
+
 // Multiplex GET/POST/DELETE request to corresponding handlers
 func Multiplexer(w http.ResponseWriter, req *http.Request) {
 
