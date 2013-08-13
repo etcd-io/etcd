@@ -24,11 +24,21 @@ The latest release is available as a binary at [Github][github-release].
 
 [github-release]: https://github.com/coreos/etcd/releases/
 
-You can also build etcd from source:
+### Building
+
+You can build etcd from source:
 
 ```sh
 git clone https://github.com/coreos/etcd
 ./build
+```
+
+This will generate a binary in the base directory called `./etcd`.
+
+_NOTE_: you need go 1.1+. Please check your installation with
+
+```
+go version
 ```
 
 ### Running a single node
