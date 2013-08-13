@@ -165,8 +165,9 @@ func dispatch(c Command, w *http.ResponseWriter, req *http.Request, etcd bool) {
 			return
 		}
 	} else {
+		leader := raftServer.Leader()
 		// current no leader
-		if raftServer.Leader() == "" {
+		if leader == "" {
 			(*w).WriteHeader(http.StatusInternalServerError)
 			(*w).Write(newJsonError(300, ""))
 			return
@@ -179,10 +180,10 @@ func dispatch(c Command, w *http.ResponseWriter, req *http.Request, etcd bool) {
 		var url string
 
 		if etcd {
-			etcdAddr, _ := nameToEtcdURL(raftServer.Leader())
+			etcdAddr, _ := nameToEtcdURL(leader)
 			url = etcdAddr + path
 		} else {
-			raftAddr, _ := nameToRaftURL(raftServer.Leader())
+			raftAddr, _ := nameToRaftURL(leader)
 			url = raftAddr + path
 		}
 

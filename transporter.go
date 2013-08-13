@@ -2,16 +2,43 @@ package main
 
 import (
 	"bytes"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"github.com/coreos/go-raft"
 	"io"
+	"net"
 	"net/http"
 )
 
 // Transporter layer for communication between raft nodes
 type transporter struct {
 	client *http.Client
+}
+
+// Create transporter using by raft server
+// Create http or https transporter based on
+// whether the user give the server cert and key
+func newTransporter(scheme string, tlsConf tls.Config) transporter {
+	t := transporter{}
+
+	tr := &http.Transport{
+		Dial: dialTimeout,
+	}
+
+	if scheme == "https" {
+		tr.TLSClientConfig = &tlsConf
+		tr.DisableCompression = true
+	}
+
+	t.client = &http.Client{Transport: tr}
+
+	return t
+}
+
+// Dial with timeout
+func dialTimeout(network, addr string) (net.Conn, error) {
+	return net.DialTimeout(network, addr, HTTPTimeout)
 }
 
 // Sends AppendEntries RPCs to a peer when the server is the leader.
