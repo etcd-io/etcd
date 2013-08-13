@@ -141,30 +141,6 @@ var info *Info
 //
 //------------------------------------------------------------------------------
 
-// sanitizeURL will cleanup a host string in the format hostname:port and
-// attach a schema.
-func sanitizeURL(host string, defaultScheme string) string {
-	// Blank URLs are fine input, just return it
-	if len(host) == 0 {
-		return host
-	}
-
-	p, err := url.Parse(host)
-	if err != nil {
-		fatal(err)
-	}
-
-	// Make sure the host is in Host:Port format
-	_, _, err = net.SplitHostPort(host)
-	if err != nil {
-		fatal(err)
-	}
-
-	p = &url.URL{Host: host, Scheme: defaultScheme}
-
-	return p.String()
-}
-
 //--------------------------------------
 // Main
 //--------------------------------------
