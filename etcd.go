@@ -177,18 +177,10 @@ func main() {
 		cluster = strings.Split(string(b), ",")
 	}
 
-	raftTLSConfig, ok := tlsConfigFromInfo(argInfo.RaftTLS)
-	if !ok {
-		fatal("Please specify cert and key file or cert and key file and CAFile or none of the three")
-	}
-
 	argInfo.Name = strings.TrimSpace(argInfo.Name)
 	if argInfo.Name == "" {
 		fatal("ERROR: server name required. e.g. '-n=server_name'")
 	}
-
-	argInfo.RaftURL = sanitizeURL(argInfo.RaftURL, raftTLSConfig.Scheme)
-	argInfo.WebURL = sanitizeURL(argInfo.WebURL, "http")
 
 	// Setup commands.
 	registerCommands()
@@ -204,8 +196,10 @@ func main() {
 	etcdStore = store.CreateStore(maxSize)
 	snapConf = newSnapshotConf()
 
-	startRaft(raftTLSConfig)
+	startRaft(argInfo.Name, argInfo.RaftURL, argInfo.RaftTLS.CertFile, argInfo.RaftTLS.KeyFile, argInfo.RaftTLS.CAFile)
 
+	// start web server
+	argInfo.WebURL = sanitizeURL(argInfo.WebURL, "http")
 	if argInfo.WebURL != "" {
 		// start web
 		argInfo.WebURL = sanitizeURL(argInfo.WebURL, "http")

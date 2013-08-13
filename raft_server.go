@@ -16,20 +16,27 @@ var raftTransporter transporter
 var raftServer *raft.Server
 
 // Start the raft server
-func startRaft(tlsConfig TLSConfig) {
+func startRaft(name, urlstr, certFile, keyFile, CAFile  string) {
+
+	tlsConfig, ok := tlsConfigFromFile(certFile, keyFile, CAFile)
+
+	if !ok {
+		fatal("Please specify cert and key file or cert and key file and CAFile or none of the three")
+	}
+
+	urlstr = sanitizeURL(urlstr, tlsConfig.Scheme)
+
 	if veryVerbose {
 		raft.SetLogLevel(raft.Debug)
 	}
 
 	var err error
 
-	raftName := info.Name
-
 	// Create transporter for raft
 	raftTransporter = newTransporter(tlsConfig.Scheme, tlsConfig.Client)
 
 	// Create raft server
-	raftServer, err = raft.NewServer(raftName, dirPath, raftTransporter, etcdStore, nil)
+	raftServer, err = raft.NewServer(name, dirPath, raftTransporter, etcdStore, nil)
 	check(err)
 
 
