@@ -6,7 +6,9 @@ import (
 	"github.com/coreos/etcd/web"
 	"io"
 	"log"
+	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"strconv"
 	"time"
@@ -69,6 +71,36 @@ func encodeJsonResponse(w http.ResponseWriter, status int, data interface{}) {
 	}
 }
 
+// sanitizeURL will cleanup a host string in the format hostname:port and
+// attach a schema.
+func sanitizeURL(host string, defaultScheme string) string {
+	// Blank URLs are fine input, just return it
+	if len(host) == 0 {
+		return host
+	}
+
+	p, err := url.Parse(host)
+	if err != nil {
+		fatal(err)
+	}
+
+	// Make sure the host is in Host:Port format
+	_, _, err = net.SplitHostPort(host)
+	if err != nil {
+		fatal(err)
+	}
+
+	p = &url.URL{Host: host, Scheme: defaultScheme}
+
+	return p.String()
+}
+
+func check(err error) {
+	if err != nil {
+		fatal(err)
+	}
+}
+
 //--------------------------------------
 // Log
 //--------------------------------------
@@ -77,6 +109,10 @@ var logger *log.Logger
 
 func init() {
 	logger = log.New(os.Stdout, "[etcd] ", log.Lmicroseconds)
+}
+
+func infof(msg string, v ...interface{}) {
+	logger.Printf("INFO "+msg+"\n", v...)
 }
 
 func debugf(msg string, v ...interface{}) {
