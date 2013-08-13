@@ -7,9 +7,7 @@ import (
 	"flag"
 	"github.com/coreos/etcd/store"
 	"github.com/coreos/etcd/web"
-
 	"io/ioutil"
-	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -223,31 +221,6 @@ func main() {
 
 	startEtcdTransport(*info, etcdTLSConfig.Scheme, etcdTLSConfig.Server)
 
-}
-
-// Create transporter using by raft server
-// Create http or https transporter based on
-// whether the user give the server cert and key
-func newTransporter(scheme string, tlsConf tls.Config) transporter {
-	t := transporter{}
-
-	tr := &http.Transport{
-		Dial: dialTimeout,
-	}
-
-	if scheme == "https" {
-		tr.TLSClientConfig = &tlsConf
-		tr.DisableCompression = true
-	}
-
-	t.client = &http.Client{Transport: tr}
-
-	return t
-}
-
-// Dial with timeout
-func dialTimeout(network, addr string) (net.Conn, error) {
-	return net.DialTimeout(network, addr, HTTPTimeout)
 }
 
 // Start to listen and response client command
