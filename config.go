@@ -76,16 +76,16 @@ func getInfo(path string) *Info {
 	return info
 }
 
+
 func tlsConfigFromInfo(info TLSInfo) (t TLSConfig, ok bool) {
-	var keyFile, certFile, CAFile string
+	return tlsConfigFromFile(info.KeyFile, info.CertFile, info.CAFile)
+}
+
+func tlsConfigFromFile(keyFile, certFile, CAFile string) (t TLSConfig, ok bool) {
 	var tlsCert tls.Certificate
 	var err error
 
 	t.Scheme = "http"
-
-	keyFile = info.KeyFile
-	certFile = info.CertFile
-	CAFile = info.CAFile
 
 	// If the user do not specify key file, cert file and
 	// CA file, the type will be HTTP

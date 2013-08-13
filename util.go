@@ -85,6 +85,12 @@ func sanitizeURL(host string, defaultScheme string) string {
 	}
 
 	// Make sure the host is in Host:Port format
+	if p.Scheme == "" {
+		host = p.Path
+	} else {
+		host = p.Host
+	}
+
 	_, _, err = net.SplitHostPort(host)
 	if err != nil {
 		fatal(err)
