@@ -12,6 +12,19 @@ import (
 // Handlers to handle etcd-store related request via etcd url
 //-------------------------------------------------------------------
 
+func NewEtcdMuxer() *http.ServeMux {
+	// external commands
+	etcdMux := http.NewServeMux()
+	etcdMux.HandleFunc("/"+version+"/keys/", Multiplexer)
+	etcdMux.HandleFunc("/"+version+"/watch/", WatchHttpHandler)
+	etcdMux.HandleFunc("/leader", LeaderHttpHandler)
+	etcdMux.HandleFunc("/machines", MachinesHttpHandler)
+	etcdMux.HandleFunc("/", VersionHttpHandler)
+	etcdMux.HandleFunc("/stats", StatsHttpHandler)
+	etcdMux.HandleFunc("/test/", TestHttpHandler)
+	return etcdMux
+}
+
 // Multiplex GET/POST/DELETE request to corresponding handlers
 func Multiplexer(w http.ResponseWriter, req *http.Request) {
 
@@ -152,8 +165,9 @@ func dispatch(c Command, w *http.ResponseWriter, req *http.Request, etcd bool) {
 			return
 		}
 	} else {
+		leader := raftServer.Leader()
 		// current no leader
-		if raftServer.Leader() == "" {
+		if leader == "" {
 			(*w).WriteHeader(http.StatusInternalServerError)
 			(*w).Write(newJsonError(300, ""))
 			return
@@ -166,10 +180,10 @@ func dispatch(c Command, w *http.ResponseWriter, req *http.Request, etcd bool) {
 		var url string
 
 		if etcd {
-			etcdAddr, _ := nameToEtcdURL(raftServer.Leader())
+			etcdAddr, _ := nameToEtcdURL(leader)
 			url = etcdAddr + path
 		} else {
-			raftAddr, _ := nameToRaftURL(raftServer.Leader())
+			raftAddr, _ := nameToRaftURL(leader)
 			url = raftAddr + path
 		}
 
