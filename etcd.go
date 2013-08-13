@@ -5,6 +5,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"flag"
+	"fmt"
 	"github.com/coreos/etcd/store"
 	"github.com/coreos/etcd/web"
 
@@ -184,18 +185,12 @@ func main() {
 		fatal("Please specify cert and key file or cert and key file and CAFile or none of the three")
 	}
 
-	etcdTLSConfig, ok := tlsConfigFromInfo(argInfo.EtcdTLS)
-	if !ok {
-		fatal("Please specify cert and key file or cert and key file and CAFile or none of the three")
-	}
-
 	argInfo.Name = strings.TrimSpace(argInfo.Name)
 	if argInfo.Name == "" {
 		fatal("ERROR: server name required. e.g. '-n=server_name'")
 	}
 
 	argInfo.RaftURL = sanitizeURL(argInfo.RaftURL, raftTLSConfig.Scheme)
-	argInfo.EtcdURL = sanitizeURL(argInfo.EtcdURL, etcdTLSConfig.Scheme)
 	argInfo.WebURL = sanitizeURL(argInfo.WebURL, "http")
 
 	// Setup commands.
@@ -221,7 +216,16 @@ func main() {
 		go web.Start(raftServer, argInfo.WebURL)
 	}
 
-	startEtcdTransport(*info, etcdTLSConfig.Scheme, etcdTLSConfig.Server)
+	// start Etcd http server
+	etcd, err := NewServer(info.Name, info.EtcdURL, info.EtcdTLS.CertFile, info.EtcdTLS.KeyFile, info.EtcdTLS.CAFile)
+	check(err)
+	infof("etcd server [%s:%s]", etcd.Name, etcd.Url)
+
+	if etcd.Scheme == "http" {
+		fatal(etcd.ListenAndServe())
+	} else {
+		fatal(etcd.ListenAndServeTLS(info.EtcdTLS.CertFile, info.EtcdTLS.KeyFile))
+	}
 
 }
 
@@ -252,32 +256,34 @@ func dialTimeout(network, addr string) (net.Conn, error) {
 
 type Etcd struct {
 	http.Server
-	url    string
-	scheme string
-	tls    TLSConfig
+	Name   string
+	Url    *url.URL
+	Scheme string
 }
 
 // Start to listen and response client command
-func startEtcdTransport(info Info, scheme string, tlsConf tls.Config) {
-	u, err := url.Parse(info.EtcdURL)
-	if err != nil {
-		fatalf("invalid url '%s': %s", info.EtcdURL, err)
-	}
-	infof("etcd server [%s:%s]", info.Name, u)
+func NewServer(name, urlstr, certFile, keyFile, CAFile string) (*Etcd, error) {
 
-	server := &Etcd{
+	tlsConfig, ok := tlsConfigFromFile(certFile, keyFile, CAFile)
+	if !ok {
+		return nil, fmt.Errorf("Please specify cert and key file or cert and key file and CAFile or none of the three")
+	}
+
+	u, err := url.Parse(sanitizeURL(urlstr, tlsConfig.Scheme))
+	if err != nil {
+		return nil, fmt.Errorf("invalid url '%s': %s", u, err)
+	}
+
+	return &Etcd{
 		Server: http.Server{
 			Handler:   NewEtcdMuxer(),
-			TLSConfig: &tlsConf,
+			TLSConfig: &tlsConfig.Server,
 			Addr:      u.Host,
 		},
-	}
-
-	if scheme == "http" {
-		fatal(server.ListenAndServe())
-	} else {
-		fatal(server.ListenAndServeTLS(info.EtcdTLS.CertFile, info.EtcdTLS.KeyFile))
-	}
+		Name:   name,
+		Url:    u,
+		Scheme: tlsConfig.Scheme,
+	}, nil
 }
 
 //--------------------------------------
@@ -285,15 +291,14 @@ func startEtcdTransport(info Info, scheme string, tlsConf tls.Config) {
 //--------------------------------------
 
 func tlsConfigFromInfo(info TLSInfo) (t TLSConfig, ok bool) {
-	var keyFile, certFile, CAFile string
+	return tlsConfigFromFile(info.KeyFile, info.CertFile, info.CAFile)
+}
+
+func tlsConfigFromFile(keyFile, certFile, CAFile string) (t TLSConfig, ok bool) {
 	var tlsCert tls.Certificate
 	var err error
 
 	t.Scheme = "http"
-
-	keyFile = info.KeyFile
-	certFile = info.CertFile
-	CAFile = info.CAFile
 
 	// If the user do not specify key file, cert file and
 	// CA file, the type will be HTTP
