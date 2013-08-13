@@ -340,15 +340,13 @@ func newCertPool(CAFile string) (tls.ClientAuthType, *x509.CertPool) {
 	if CAFile == "" {
 		return tls.NoClientCert, nil
 	}
-	pemByte, _ := ioutil.ReadFile(CAFile)
+	pemByte, err := ioutil.ReadFile(CAFile)
+	check(err)
 
 	block, pemByte := pem.Decode(pemByte)
 
 	cert, err := x509.ParseCertificate(block.Bytes)
-
-	if err != nil {
-		fatal(err)
-	}
+	check(err)
 
 	certPool := x509.NewCertPool()
 
