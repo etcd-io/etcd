@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -52,7 +51,7 @@ func getInfo(path string) *Info {
 
 	info := parseInfo(infoPath)
 	if info != nil {
-		fmt.Printf("Found node configuration in '%s'. Ignoring flags.\n", infoPath)
+		infof("Found node configuration in '%s'. Ignoring flags", infoPath)
 		return info
 	}
 
@@ -65,7 +64,7 @@ func getInfo(path string) *Info {
 		fatalf("Unable to write info to file: %v", err)
 	}
 
-	fmt.Printf("Wrote node configuration to '%s'.\n", infoPath)
+	infof("Wrote node configuration to '%s'", infoPath)
 
 	return info
 }
