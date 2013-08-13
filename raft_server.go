@@ -30,10 +30,8 @@ func startRaft(tlsConfig TLSConfig) {
 
 	// Create raft server
 	raftServer, err = raft.NewServer(raftName, dirPath, raftTransporter, etcdStore, nil)
+	check(err)
 
-	if err != nil {
-		fatal(err)
-	}
 
 	// LoadSnapshot
 	if snapshot {
