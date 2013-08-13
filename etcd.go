@@ -217,7 +217,7 @@ func main() {
 	}
 
 	// start Etcd http server
-	etcd, err := NewServer(info.Name, info.EtcdURL, info.EtcdTLS.CertFile, info.EtcdTLS.KeyFile, info.EtcdTLS.CAFile)
+	etcd, err := NewEtcd(info.Name, info.EtcdURL, info.EtcdTLS.CertFile, info.EtcdTLS.KeyFile, info.EtcdTLS.CAFile)
 	check(err)
 	infof("etcd server [%s:%s]", etcd.Name, etcd.Url)
 
@@ -261,8 +261,8 @@ type Etcd struct {
 	Scheme string
 }
 
-// Start to listen and response client command
-func NewServer(name, urlstr, certFile, keyFile, CAFile string) (*Etcd, error) {
+// New Etcd initializes etcd variables
+func NewEtcd(name, urlstr, certFile, keyFile, CAFile string) (*Etcd, error) {
 
 	tlsConfig, ok := tlsConfigFromFile(certFile, keyFile, CAFile)
 	if !ok {
