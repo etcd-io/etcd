@@ -1,6 +1,7 @@
 package main
 
 import (
+	"path/filepath"
 	"bytes"
 	"crypto/tls"
 	"crypto/x509"
@@ -517,13 +518,13 @@ func parseInfo(path string) *Info {
 func getInfo(path string) *Info {
 
 	// Read in the server info if available.
-	infoPath := fmt.Sprintf("%s/info", path)
+	infoPath := filepath.Join(path, "info")
 
 	// Delete the old configuration if exist
 	if force {
-		logPath := fmt.Sprintf("%s/log", path)
-		confPath := fmt.Sprintf("%s/conf", path)
-		snapshotPath := fmt.Sprintf("%s/snapshot", path)
+		logPath := filepath.Join(path, "log")
+		confPath := filepath.Join(path, "conf")
+		snapshotPath := filepath.Join(path, "snapshot")
 		os.Remove(infoPath)
 		os.Remove(logPath)
 		os.Remove(confPath)
