@@ -14,24 +14,18 @@ func getMachines() []string {
 
 	machines := make([]string, len(peers)+1)
 
-	leader, _ := nameToEtcdURL(raftServer.Leader())
+	leader, ok := nameToEtcdURL(raftServer.Leader())
+	self := info.EtcdURL
+	i := 1
 
-	i := 0
-
-	if leader != "" {
-
-		// Add leader at the first of the machines list
-		// Add server itself to the machine list
-		// Since peer map does not contain the server itself
-		if leader == info.EtcdURL {
-			machines[i] = info.EtcdURL
-			i++
-		} else {
-			machines[i] = leader
-			i++
-			machines[i] = info.EtcdURL
-			i++
+	if ok {
+		machines[0] = leader
+		if leader != self {
+			machines[1] = self
+			i = 2
 		}
+	} else {
+		machines[0] = self
 	}
 
 	// Add all peers to the slice
