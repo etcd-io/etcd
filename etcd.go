@@ -4,13 +4,11 @@ import (
 	"crypto/tls"
 	"flag"
 	"github.com/coreos/etcd/store"
-	"github.com/coreos/etcd/web"
+	"github.com/coreos/go-raft"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
-	"os/signal"
-	"runtime/pprof"
 	"strings"
 	"time"
 )
@@ -142,27 +140,12 @@ func main() {
 	flag.Parse()
 
 	if cpuprofile != "" {
-		f, err := os.Create(cpuprofile)
-		if err != nil {
-			fatal(err)
-		}
-		pprof.StartCPUProfile(f)
-		defer pprof.StopCPUProfile()
-
-		c := make(chan os.Signal, 1)
-		signal.Notify(c, os.Interrupt)
-		go func() {
-			for sig := range c {
-				infof("captured %v, stopping profiler and exiting..", sig)
-				pprof.StopCPUProfile()
-				os.Exit(1)
-			}
-		}()
-
+		runCPUProfile()
 	}
 
 	if veryVerbose {
 		verbose = true
+		raft.SetLogLevel(raft.Debug)
 	}
 
 	if machines != "" {
@@ -175,6 +158,7 @@ func main() {
 		cluster = strings.Split(string(b), ",")
 	}
 
+	// Check TLS arguments
 	raftTLSConfig, ok := tlsConfigFromInfo(argInfo.RaftTLS)
 	if !ok {
 		fatal("Please specify cert and key file or cert and key file and CAFile or none of the three")
@@ -190,12 +174,10 @@ func main() {
 		fatal("ERROR: server name required. e.g. '-n=server_name'")
 	}
 
+	// Check host name arguments
 	argInfo.RaftURL = sanitizeURL(argInfo.RaftURL, raftTLSConfig.Scheme)
 	argInfo.EtcdURL = sanitizeURL(argInfo.EtcdURL, etcdTLSConfig.Scheme)
 	argInfo.WebURL = sanitizeURL(argInfo.WebURL, "http")
-
-	// Setup commands.
-	registerCommands()
 
 	// Read server info from file or grab it from user.
 	if err := os.MkdirAll(dirPath, 0744); err != nil {
@@ -208,21 +190,16 @@ func main() {
 	etcdStore = store.CreateStore(maxSize)
 	snapConf = newSnapshotConf()
 
+	startWebInterface()
+
 	startRaft(raftTLSConfig)
 
-	if argInfo.WebURL != "" {
-		// start web
-		argInfo.WebURL = sanitizeURL(argInfo.WebURL, "http")
-		go webHelper()
-		go web.Start(raftServer, argInfo.WebURL)
-	}
-
-	startEtcdTransport(*info, etcdTLSConfig.Scheme, etcdTLSConfig.Server)
+	startEtcd(etcdTLSConfig)
 
 }
 
-// Start to listen and response client command
-func startEtcdTransport(info Info, scheme string, tlsConf tls.Config) {
+// Start to listen and response etcd client command
+func startEtcd(tlsConf TLSConfig) {
 	u, err := url.Parse(info.EtcdURL)
 	if err != nil {
 		fatalf("invalid url '%s': %s", info.EtcdURL, err)
@@ -231,11 +208,11 @@ func startEtcdTransport(info Info, scheme string, tlsConf tls.Config) {
 
 	server := http.Server{
 		Handler:   NewEtcdMuxer(),
-		TLSConfig: &tlsConf,
+		TLSConfig: &tlsConf.Server,
 		Addr:      u.Host,
 	}
 
-	if scheme == "http" {
+	if tlsConf.Scheme == "http" {
 		fatal(server.ListenAndServe())
 	} else {
 		fatal(server.ListenAndServeTLS(info.EtcdTLS.CertFile, info.EtcdTLS.KeyFile))
