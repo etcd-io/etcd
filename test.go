@@ -118,7 +118,7 @@ func destroyCluster(etcds []*os.Process) error {
 }
 
 //
-func leaderMonitor(size int, allowDeadNum int, leaderChan chan string) {
+func monitor(size int, allowDeadNum int, leaderChan chan string, all chan bool, stop chan bool) {
 	leaderMap := make(map[int]string)
 	baseAddrFormat := "http://0.0.0.0:400%d"
 
@@ -131,6 +131,7 @@ func leaderMonitor(size int, allowDeadNum int, leaderChan chan string) {
 			leader, err := getLeader(fmt.Sprintf(baseAddrFormat, i+1))
 
 			if err == nil {
+				//fmt.Printf("leader:[%d]->%s\n", i, leader)
 				leaderMap[i] = leader
 
 				if knownLeader == "unknown" {
@@ -143,6 +144,7 @@ func leaderMonitor(size int, allowDeadNum int, leaderChan chan string) {
 				}
 
 			} else {
+				//fmt.Printf("dead: [%d]\n", i)
 				dead++
 				if dead > allowDeadNum {
 					break
@@ -152,13 +154,24 @@ func leaderMonitor(size int, allowDeadNum int, leaderChan chan string) {
 		}
 
 		if i == size {
+			//fmt.Println("leader found")
 			select {
+			case <- stop:
+				return
 			case <-leaderChan:
 				leaderChan <- knownLeader
 			default:
 				leaderChan <- knownLeader
 			}
 
+		}
+		if dead == 0 {
+			select {
+			case <-all:
+				all <- true
+			default:
+				all <- true
+			}
 		}
 
 		time.Sleep(time.Millisecond * 10)

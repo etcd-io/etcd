@@ -6,6 +6,7 @@ import (
 	"github.com/coreos/go-raft"
 	"net/http"
 	"strconv"
+	"strings"
 )
 
 //-------------------------------------------------------------------
@@ -120,6 +121,7 @@ func DeleteHttpHandler(w *http.ResponseWriter, req *http.Request) {
 
 // Dispatch the command to leader
 func dispatch(c Command, w *http.ResponseWriter, req *http.Request, etcd bool) {
+
 	if raftServer.State() == raft.Leader {
 		if body, err := raftServer.Do(c); err != nil {
 
@@ -181,6 +183,9 @@ func dispatch(c Command, w *http.ResponseWriter, req *http.Request, etcd bool) {
 
 		if etcd {
 			etcdAddr, _ := nameToEtcdURL(leader)
+			if etcdAddr == "" {
+				panic(leader)
+			}
 			url = etcdAddr + path
 		} else {
 			raftAddr, _ := nameToRaftURL(leader)
@@ -222,25 +227,10 @@ func LeaderHttpHandler(w http.ResponseWriter, req *http.Request) {
 
 // Handler to return all the known machines in the current cluster
 func MachinesHttpHandler(w http.ResponseWriter, req *http.Request) {
-	peers := raftServer.Peers()
-
-	// Add itself to the machine list first
-	// Since peer map does not contain the server itself
-	machines := info.EtcdURL
-
-	// Add all peers to the list and separate by comma
-	// We do not use json here since we accept machines list
-	// in the command line separate by comma.
-
-	for peerName, _ := range peers {
-		if addr, ok := nameToEtcdURL(peerName); ok {
-			machines = machines + "," + addr
-		}
-	}
+	machines := getMachines()
 
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(machines))
-
+	w.Write([]byte(strings.Join(machines, ", ")))
 }
 
 // Handler to return the current version of etcd
