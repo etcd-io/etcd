@@ -54,7 +54,10 @@ func readInfo(path string) *Info {
 	file, err := os.Open(path)
 
 	if err != nil {
-		return nil
+		if err == os.ErrNotExist {
+			return nil
+		}
+		fatal(err)
 	}
 	defer file.Close()
 
