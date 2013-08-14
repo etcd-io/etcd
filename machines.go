@@ -10,11 +10,11 @@ func machineNum() int {
 // getMachines gets the current machines in the cluster
 func getMachines() []string {
 
-	peers := r.server.Peers()
+	peers := r.Peers()
 
 	machines := make([]string, len(peers)+1)
 
-	leader, ok := nameToEtcdURL(r.server.Leader())
+	leader, ok := nameToEtcdURL(r.Leader())
 	self := e.url
 	i := 1
 

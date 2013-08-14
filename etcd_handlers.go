@@ -122,8 +122,8 @@ func DeleteHttpHandler(w *http.ResponseWriter, req *http.Request) {
 // Dispatch the command to leader
 func dispatch(c Command, w *http.ResponseWriter, req *http.Request, etcd bool) {
 
-	if r.server.State() == raft.Leader {
-		if body, err := r.server.Do(c); err != nil {
+	if r.State() == raft.Leader {
+		if body, err := r.Do(c); err != nil {
 
 			if _, ok := err.(store.NotFoundError); ok {
 				(*w).WriteHeader(http.StatusNotFound)
@@ -167,7 +167,7 @@ func dispatch(c Command, w *http.ResponseWriter, req *http.Request, etcd bool) {
 			return
 		}
 	} else {
-		leader := r.server.Leader()
+		leader := r.Leader()
 		// current no leader
 		if leader == "" {
 			(*w).WriteHeader(http.StatusInternalServerError)
@@ -211,7 +211,7 @@ func dispatch(c Command, w *http.ResponseWriter, req *http.Request, etcd bool) {
 
 // Handler to return the current leader's raft address
 func LeaderHttpHandler(w http.ResponseWriter, req *http.Request) {
-	leader := r.server.Leader()
+	leader := r.Leader()
 
 	if leader != "" {
 		w.WriteHeader(http.StatusOK)
@@ -256,7 +256,7 @@ func GetHttpHandler(w *http.ResponseWriter, req *http.Request) {
 		Key: key,
 	}
 
-	if body, err := command.Apply(r.server); err != nil {
+	if body, err := command.Apply(r.Server); err != nil {
 
 		if _, ok := err.(store.NotFoundError); ok {
 			(*w).WriteHeader(http.StatusNotFound)
@@ -310,7 +310,7 @@ func WatchHttpHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if body, err := command.Apply(r.server); err != nil {
+	if body, err := command.Apply(r.Server); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write(newJsonError(500, key))
 	} else {
