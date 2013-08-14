@@ -121,6 +121,14 @@ type JoinCommand struct {
 	EtcdURL string `json:"etcdURL"`
 }
 
+func newJoinCommand() *JoinCommand {
+	return &JoinCommand{
+		Name:    r.name,
+		RaftURL: r.url,
+		EtcdURL: e.url,
+	}
+}
+
 // The name of the join command in the log
 func (c *JoinCommand) CommandName() string {
 	return commandName("join")

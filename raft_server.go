@@ -74,12 +74,7 @@ func (r *raftServer) start() {
 
 			// leader need to join self as a peer
 			for {
-				command := &JoinCommand{
-					Name:    r.name,
-					RaftURL: r.url,
-					EtcdURL: e.url,
-				}
-				_, err := server.Do(command)
+				_, err := server.Do(newJoinCommand())
 				if err == nil {
 					break
 				}
@@ -173,13 +168,7 @@ func (r *raftServer) startTransport(scheme string, tlsConf tls.Config) {
 func joinCluster(s *raft.Server, raftURL string, scheme string) error {
 	var b bytes.Buffer
 
-	command := &JoinCommand{
-		Name:    s.Name(),
-		RaftURL: r.url,
-		EtcdURL: e.url,
-	}
-
-	json.NewEncoder(&b).Encode(command)
+	json.NewEncoder(&b).Encode(newJoinCommand())
 
 	// t must be ok
 	t, ok := r.server.Transporter().(transporter)
@@ -208,7 +197,7 @@ func joinCluster(s *raft.Server, raftURL string, scheme string) error {
 				address := resp.Header.Get("Location")
 				debugf("Send Join Request to %s", address)
 
-				json.NewEncoder(&b).Encode(command)
+				json.NewEncoder(&b).Encode(newJoinCommand())
 
 				resp, err = t.Post(address, &b)
 
