@@ -19,28 +19,30 @@ import (
 //
 //------------------------------------------------------------------------------
 
-var verbose bool
-var veryVerbose bool
+var (
+	verbose     bool
+	veryVerbose bool
 
-var machines string
-var machinesFile string
+	machines     string
+	machinesFile string
 
-var cluster []string
+	cluster []string
 
-var argInfo Info
-var dirPath string
+	argInfo Info
+	dirPath string
 
-var force bool
+	force bool
 
-var maxSize int
+	maxSize int
 
-var snapshot bool
+	snapshot bool
 
-var retryTimes int
+	retryTimes int
 
-var maxClusterSize int
+	maxClusterSize int
 
-var cpuprofile string
+	cpuprofile string
+)
 
 func init() {
 	flag.BoolVar(&verbose, "v", false, "verbose logging")
