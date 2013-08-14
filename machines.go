@@ -16,7 +16,7 @@ func getMachines() []string {
 
 	leader, _ := nameToEtcdURL(raftServer.Leader())
 
- 	i := 0
+	i := 0
 
 	if leader != "" {
 
@@ -30,7 +30,7 @@ func getMachines() []string {
 			machines[i] = leader
 			i++
 			machines[i] = info.EtcdURL
-			i++ 
+			i++
 		}
 	}
 

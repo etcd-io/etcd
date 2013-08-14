@@ -63,7 +63,7 @@ func TestKillLeader(t *testing.T) {
 		fmt.Println("Leader election time average is", avgTime, "with election timeout", ElectionTimeout)
 		etcds[num], err = os.StartProcess("etcd", argGroup[num], procAttr)
 	}
-	stop<-true
+	stop <- true
 }
 
 // TestKillRandom kills random machines in the cluster and
@@ -86,7 +86,6 @@ func TestKillRandom(t *testing.T) {
 	all := make(chan bool, 1)
 
 	time.Sleep(3 * time.Second)
-
 
 	go monitor(clusterSize, 4, leaderChan, all, stop)
 
@@ -127,7 +126,7 @@ func TestKillRandom(t *testing.T) {
 		<-all
 	}
 
-	stop<-true
+	stop <- true
 }
 
 func templateBenchmarkEtcdDirectCall(b *testing.B, tls bool) {
