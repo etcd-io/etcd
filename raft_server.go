@@ -12,23 +12,21 @@ import (
 	"github.com/coreos/go-raft"
 )
 
-var raftTransporter transporter
 var raftServer *raft.Server
 
 // Start the raft server
 func startRaft(tlsConfig TLSConfig) {
-	if veryVerbose {
-		raft.SetLogLevel(raft.Debug)
-	}
-
-	var err error
 
 	raftName := info.Name
 
+	// Setup commands.
+	registerCommands()
+
 	// Create transporter for raft
-	raftTransporter = newTransporter(tlsConfig.Scheme, tlsConfig.Client)
+	raftTransporter := newTransporter(tlsConfig.Scheme, tlsConfig.Client)
 
 	// Create raft server
+	var err error
 	raftServer, err = raft.NewServer(raftName, dirPath, raftTransporter, etcdStore, nil)
 
 	if err != nil {

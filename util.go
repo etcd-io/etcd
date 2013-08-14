@@ -10,6 +10,8 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/signal"
+	"runtime/pprof"
 	"strconv"
 	"time"
 )
@@ -45,6 +47,15 @@ func webHelper() {
 	for {
 		// transfer the new msg to webHub
 		web.Hub().Send(<-storeMsg)
+	}
+}
+
+// startWebInterface starts web interface if webURL is not empty
+func startWebInterface() {
+	if argInfo.WebURL != "" {
+		// start web
+		go webHelper()
+		go web.Start(raftServer, argInfo.WebURL)
 	}
 }
 
@@ -143,4 +154,26 @@ func fatalf(msg string, v ...interface{}) {
 func fatal(v ...interface{}) {
 	logger.Println("FATAL " + fmt.Sprint(v...))
 	os.Exit(1)
+}
+
+//--------------------------------------
+// CPU profile
+//--------------------------------------
+func runCPUProfile() {
+
+	f, err := os.Create(cpuprofile)
+	if err != nil {
+		fatal(err)
+	}
+	pprof.StartCPUProfile(f)
+
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	go func() {
+		for sig := range c {
+			infof("captured %v, stopping profiler and exiting..", sig)
+			pprof.StopCPUProfile()
+			os.Exit(1)
+		}
+	}()
 }
