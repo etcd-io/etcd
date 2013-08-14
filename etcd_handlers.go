@@ -237,6 +237,7 @@ func MachinesHttpHandler(w http.ResponseWriter, req *http.Request) {
 func VersionHttpHandler(w http.ResponseWriter, req *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(fmt.Sprintf("etcd %s", releaseVersion)))
+	w.Write([]byte(fmt.Sprintf("etcd API %s", version)))
 }
 
 // Handler to return the basic stats of etcd
