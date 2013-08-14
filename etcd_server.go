@@ -6,6 +6,7 @@ import (
 )
 
 type etcdServer struct {
+	http.Server
 	name    string
 	url     string
 	tlsConf *TLSConfig
@@ -14,32 +15,34 @@ type etcdServer struct {
 
 var e *etcdServer
 
-func newEtcdServer(name string, url string, tlsConf *TLSConfig, tlsInfo *TLSInfo) *etcdServer {
+func newEtcdServer(name string, urlStr string, tlsConf *TLSConfig, tlsInfo *TLSInfo) *etcdServer {
+	u, err := url.Parse(urlStr)
+
+	if err != nil {
+		fatalf("invalid url '%s': %s", e.url, err)
+	}
+
 	return &etcdServer{
+		Server: http.Server{
+			Handler:   NewEtcdMuxer(),
+			TLSConfig: &tlsConf.Server,
+			Addr:      u.Host,
+		},
 		name:    name,
-		url:     url,
+		url:     urlStr,
 		tlsConf: tlsConf,
 		tlsInfo: tlsInfo,
 	}
 }
 
 // Start to listen and response etcd client command
-func (e *etcdServer) start() {
-	u, err := url.Parse(e.url)
-	if err != nil {
-		fatalf("invalid url '%s': %s", e.url, err)
-	}
-	infof("etcd server [%s:%s]", e.name, u)
+func (e *etcdServer) run() {
 
-	server := http.Server{
-		Handler:   NewEtcdMuxer(),
-		TLSConfig: &e.tlsConf.Server,
-		Addr:      u.Host,
-	}
+	infof("etcd server [%s:%s]", e.name, e.url)
 
 	if e.tlsConf.Scheme == "http" {
-		fatal(server.ListenAndServe())
+		fatal(e.ListenAndServe())
 	} else {
-		fatal(server.ListenAndServeTLS(e.tlsInfo.CertFile, e.tlsInfo.KeyFile))
+		fatal(e.ListenAndServeTLS(e.tlsInfo.CertFile, e.tlsInfo.KeyFile))
 	}
 }

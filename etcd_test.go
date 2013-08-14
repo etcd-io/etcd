@@ -291,7 +291,7 @@ func TestKillRandom(t *testing.T) {
 
 	toKill := make(map[int]bool)
 
-	for i := 0; i < 200; i++ {
+	for i := 0; i < 20; i++ {
 		fmt.Printf("TestKillRandom Round[%d/200]\n", i)
 
 		j := 0

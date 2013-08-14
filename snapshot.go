@@ -29,7 +29,7 @@ func monitorSnapshot() {
 		currentWrites := etcdStore.TotalWrites() - snapConf.lastWrites
 
 		if currentWrites > snapConf.writesThr {
-			r.server.TakeSnapshot()
+			r.TakeSnapshot()
 			snapConf.lastWrites = etcdStore.TotalWrites()
 		}
 	}

@@ -15,7 +15,7 @@ func GetLogHttpHandler(w http.ResponseWriter, req *http.Request) {
 	debugf("[recv] GET %s/log", r.url)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(r.server.LogEntries())
+	json.NewEncoder(w).Encode(r.LogEntries())
 }
 
 // Response to vote request
@@ -24,7 +24,7 @@ func VoteHttpHandler(w http.ResponseWriter, req *http.Request) {
 	err := decodeJsonRequest(req, rvreq)
 	if err == nil {
 		debugf("[recv] POST %s/vote [%s]", r.url, rvreq.CandidateName)
-		if resp := r.server.RequestVote(rvreq); resp != nil {
+		if resp := r.RequestVote(rvreq); resp != nil {
 			w.WriteHeader(http.StatusOK)
 			json.NewEncoder(w).Encode(resp)
 			return
@@ -41,7 +41,7 @@ func AppendEntriesHttpHandler(w http.ResponseWriter, req *http.Request) {
 
 	if err == nil {
 		debugf("[recv] POST %s/log/append [%d]", r.url, len(aereq.Entries))
-		if resp := r.server.AppendEntries(aereq); resp != nil {
+		if resp := r.AppendEntries(aereq); resp != nil {
 			w.WriteHeader(http.StatusOK)
 			json.NewEncoder(w).Encode(resp)
 			if !resp.Success {
@@ -60,7 +60,7 @@ func SnapshotHttpHandler(w http.ResponseWriter, req *http.Request) {
 	err := decodeJsonRequest(req, aereq)
 	if err == nil {
 		debugf("[recv] POST %s/snapshot/ ", r.url)
-		if resp := r.server.RequestSnapshot(aereq); resp != nil {
+		if resp := r.RequestSnapshot(aereq); resp != nil {
 			w.WriteHeader(http.StatusOK)
 			json.NewEncoder(w).Encode(resp)
 			return
@@ -76,7 +76,7 @@ func SnapshotRecoveryHttpHandler(w http.ResponseWriter, req *http.Request) {
 	err := decodeJsonRequest(req, aereq)
 	if err == nil {
 		debugf("[recv] POST %s/snapshotRecovery/ ", r.url)
-		if resp := r.server.SnapshotRecoveryRequest(aereq); resp != nil {
+		if resp := r.SnapshotRecoveryRequest(aereq); resp != nil {
 			w.WriteHeader(http.StatusOK)
 			json.NewEncoder(w).Encode(resp)
 			return
@@ -111,5 +111,5 @@ func JoinHttpHandler(w http.ResponseWriter, req *http.Request) {
 func NameHttpHandler(w http.ResponseWriter, req *http.Request) {
 	debugf("[recv] Get %s/name/ ", r.url)
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(r.server.Name()))
+	w.Write([]byte(r.name))
 }

@@ -13,17 +13,27 @@ import (
 )
 
 type raftServer struct {
+	*raft.Server
 	name    string
 	url     string
 	tlsConf *TLSConfig
 	tlsInfo *TLSInfo
-	server  *raft.Server
 }
 
 var r *raftServer
 
 func newRaftServer(name string, url string, tlsConf *TLSConfig, tlsInfo *TLSInfo) *raftServer {
+
+	// Create transporter for raft
+	raftTransporter := newTransporter(tlsConf.Scheme, tlsConf.Client)
+
+	// Create raft server
+	server, err := raft.NewServer(name, dirPath, raftTransporter, etcdStore, nil)
+
+	check(err)
+
 	return &raftServer{
+		Server:  server,
 		name:    name,
 		url:     url,
 		tlsConf: tlsConf,
@@ -32,26 +42,14 @@ func newRaftServer(name string, url string, tlsConf *TLSConfig, tlsInfo *TLSInfo
 }
 
 // Start the raft server
-func (r *raftServer) start() {
+func (r *raftServer) run() {
 
 	// Setup commands.
 	registerCommands()
 
-	// Create transporter for raft
-	raftTransporter := newTransporter(r.tlsConf.Scheme, r.tlsConf.Client)
-
-	// Create raft server
-	server, err := raft.NewServer(r.name, dirPath, raftTransporter, etcdStore, nil)
-
-	if err != nil {
-		fatal(err)
-	}
-
-	r.server = server
-
 	// LoadSnapshot
 	if snapshot {
-		err = server.LoadSnapshot()
+		err := r.LoadSnapshot()
 
 		if err == nil {
 			debugf("%s finished load snapshot", r.name)
@@ -60,12 +58,12 @@ func (r *raftServer) start() {
 		}
 	}
 
-	server.SetElectionTimeout(ElectionTimeout)
-	server.SetHeartbeatTimeout(HeartbeatTimeout)
+	r.SetElectionTimeout(ElectionTimeout)
+	r.SetHeartbeatTimeout(HeartbeatTimeout)
 
-	server.Start()
+	r.Start()
 
-	if server.IsLogEmpty() {
+	if r.IsLogEmpty() {
 
 		// start as a leader in a new cluster
 		if len(cluster) == 0 {
@@ -74,7 +72,7 @@ func (r *raftServer) start() {
 
 			// leader need to join self as a peer
 			for {
-				_, err := server.Do(newJoinCommand())
+				_, err := r.Do(newJoinCommand())
 				if err == nil {
 					break
 				}
@@ -86,6 +84,8 @@ func (r *raftServer) start() {
 
 			time.Sleep(time.Millisecond * 20)
 
+			var err error
+
 			for i := 0; i < retryTimes; i++ {
 
 				success := false
@@ -93,7 +93,7 @@ func (r *raftServer) start() {
 					if len(machine) == 0 {
 						continue
 					}
-					err = joinCluster(server, machine, r.tlsConf.Scheme)
+					err = joinCluster(r.Server, machine, r.tlsConf.Scheme)
 					if err != nil {
 						if err.Error() == errors[103] {
 							fatal(err)
@@ -171,7 +171,7 @@ func joinCluster(s *raft.Server, raftURL string, scheme string) error {
 	json.NewEncoder(&b).Encode(newJoinCommand())
 
 	// t must be ok
-	t, ok := r.server.Transporter().(transporter)
+	t, ok := r.Transporter().(transporter)
 
 	if !ok {
 		panic("wrong type")
