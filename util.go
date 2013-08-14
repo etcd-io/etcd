@@ -177,3 +177,28 @@ func runCPUProfile() {
 		}
 	}()
 }
+
+//--------------------------------------
+// Testing
+//--------------------------------------
+func directSet() {
+	c := make(chan bool, 1000)
+	for i := 0; i < 1000; i++ {
+		go send(c)
+	}
+
+	for i := 0; i < 1000; i++ {
+		<-c
+	}
+}
+
+func send(c chan bool) {
+	for i := 0; i < 10; i++ {
+		command := &SetCommand{}
+		command.Key = "foo"
+		command.Value = "bar"
+		command.ExpireTime = time.Unix(0, 0)
+		raftServer.Do(command)
+	}
+	c <- true
+}
