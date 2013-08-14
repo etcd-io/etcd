@@ -20,7 +20,7 @@ func NewEtcdMuxer() *http.ServeMux {
 	etcdMux.HandleFunc("/"+version+"/watch/", WatchHttpHandler)
 	etcdMux.HandleFunc("/leader", LeaderHttpHandler)
 	etcdMux.HandleFunc("/machines", MachinesHttpHandler)
-	etcdMux.HandleFunc("/", VersionHttpHandler)
+	etcdMux.HandleFunc("/version", VersionHttpHandler)
 	etcdMux.HandleFunc("/stats", StatsHttpHandler)
 	etcdMux.HandleFunc("/test/", TestHttpHandler)
 	return etcdMux
