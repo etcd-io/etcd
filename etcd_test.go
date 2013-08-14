@@ -34,7 +34,7 @@ func TestSingleNode(t *testing.T) {
 	// Test Set
 	result, err := c.Set("foo", "bar", 100)
 
-	if err != nil || result.Key != "/foo" || result.Value != "bar" || result.TTL != 99 {
+	if err != nil || result.Key != "/foo" || result.Value != "bar" || result.TTL < 95 {
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -75,7 +75,7 @@ func TestSingleNodeRecovery(t *testing.T) {
 	// Test Set
 	result, err := c.Set("foo", "bar", 100)
 
-	if err != nil || result.Key != "/foo" || result.Value != "bar" || result.TTL != 99 {
+	if err != nil || result.Key != "/foo" || result.Value != "bar" || result.TTL < 95 {
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -136,7 +136,7 @@ func templateTestSimpleMultiNode(t *testing.T, tls bool) {
 	// Test Set
 	result, err := c.Set("foo", "bar", 100)
 
-	if err != nil || result.Key != "/foo" || result.Value != "bar" || result.TTL != 99 {
+	if err != nil || result.Key != "/foo" || result.Value != "bar" || result.TTL < 95 {
 		if err != nil {
 			t.Fatal(err)
 		}
