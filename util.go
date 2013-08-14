@@ -55,7 +55,7 @@ func startWebInterface() {
 	if argInfo.WebURL != "" {
 		// start web
 		go webHelper()
-		go web.Start(raftServer, argInfo.WebURL)
+		go web.Start(r.server, argInfo.WebURL)
 	}
 }
 
@@ -198,7 +198,7 @@ func send(c chan bool) {
 		command.Key = "foo"
 		command.Value = "bar"
 		command.ExpireTime = time.Unix(0, 0)
-		raftServer.Do(command)
+		r.server.Do(command)
 	}
 	c <- true
 }
