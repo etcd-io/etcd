@@ -10,12 +10,12 @@ func machineNum() int {
 // getMachines gets the current machines in the cluster
 func getMachines() []string {
 
-	peers := raftServer.Peers()
+	peers := r.server.Peers()
 
 	machines := make([]string, len(peers)+1)
 
-	leader, ok := nameToEtcdURL(raftServer.Leader())
-	self := info.EtcdURL
+	leader, ok := nameToEtcdURL(r.server.Leader())
+	self := e.url
 	i := 1
 
 	if ok {

@@ -6,8 +6,6 @@ import (
 	"github.com/coreos/etcd/store"
 	"github.com/coreos/go-raft"
 	"io/ioutil"
-	"net/http"
-	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -119,6 +117,9 @@ type TLSConfig struct {
 	Client tls.Config
 }
 
+type EtcdServer struct {
+}
+
 //------------------------------------------------------------------------------
 //
 // Variables
@@ -126,7 +127,6 @@ type TLSConfig struct {
 //------------------------------------------------------------------------------
 
 var etcdStore *store.Store
-var info *Info
 
 //------------------------------------------------------------------------------
 //
@@ -186,37 +186,18 @@ func main() {
 		fatalf("Unable to create path: %s", err)
 	}
 
-	info = getInfo(dirPath)
+	info := getInfo(dirPath)
 
 	// Create etcd key-value store
 	etcdStore = store.CreateStore(maxSize)
 	snapConf = newSnapshotConf()
 
+	// Create etcd and raft server
+	e = newEtcdServer(info.Name, info.EtcdURL, &etcdTLSConfig, &info.EtcdTLS)
+	r = newRaftServer(info.Name, info.RaftURL, &raftTLSConfig, &info.RaftTLS)
+
 	startWebInterface()
+	r.start()
+	e.start()
 
-	startRaft(raftTLSConfig)
-
-	startEtcd(etcdTLSConfig)
-
-}
-
-// Start to listen and response etcd client command
-func startEtcd(tlsConf TLSConfig) {
-	u, err := url.Parse(info.EtcdURL)
-	if err != nil {
-		fatalf("invalid url '%s': %s", info.EtcdURL, err)
-	}
-	infof("etcd server [%s:%s]", info.Name, u)
-
-	server := http.Server{
-		Handler:   NewEtcdMuxer(),
-		TLSConfig: &tlsConf.Server,
-		Addr:      u.Host,
-	}
-
-	if tlsConf.Scheme == "http" {
-		fatal(server.ListenAndServe())
-	} else {
-		fatal(server.ListenAndServeTLS(info.EtcdTLS.CertFile, info.EtcdTLS.KeyFile))
-	}
 }
