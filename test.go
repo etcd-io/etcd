@@ -50,7 +50,6 @@ func set(stop chan bool) {
 
 		i++
 	}
-	fmt.Println("set stop")
 	stop <- true
 }
 
@@ -106,9 +105,8 @@ func createCluster(size int, procAttr *os.ProcAttr, ssl bool) ([][]string, []*os
 
 // Destroy all the nodes in the cluster
 func destroyCluster(etcds []*os.Process) error {
-	for i, etcd := range etcds {
+	for _, etcd := range etcds {
 		err := etcd.Kill()
-		fmt.Println("kill ", i)
 		if err != nil {
 			panic(err.Error())
 		}
@@ -131,7 +129,6 @@ func monitor(size int, allowDeadNum int, leaderChan chan string, all chan bool, 
 			leader, err := getLeader(fmt.Sprintf(baseAddrFormat, i+1))
 
 			if err == nil {
-				//fmt.Printf("leader:[%d]->%s\n", i, leader)
 				leaderMap[i] = leader
 
 				if knownLeader == "unknown" {
@@ -144,7 +141,6 @@ func monitor(size int, allowDeadNum int, leaderChan chan string, all chan bool, 
 				}
 
 			} else {
-				//fmt.Printf("dead: [%d]\n", i)
 				dead++
 				if dead > allowDeadNum {
 					break
@@ -154,9 +150,8 @@ func monitor(size int, allowDeadNum int, leaderChan chan string, all chan bool, 
 		}
 
 		if i == size {
-			//fmt.Println("leader found")
 			select {
-			case <- stop:
+			case <-stop:
 				return
 			case <-leaderChan:
 				leaderChan <- knownLeader
