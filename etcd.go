@@ -117,9 +117,6 @@ type TLSConfig struct {
 	Client tls.Config
 }
 
-type EtcdServer struct {
-}
-
 //------------------------------------------------------------------------------
 //
 // Variables
