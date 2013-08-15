@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"github.com/coreos/go-raft"
+	"io"
 	"net/http"
 )
 
@@ -90,7 +91,7 @@ func SnapshotRecoveryHttpHandler(w http.ResponseWriter, req *http.Request) {
 func EtcdURLHttpHandler(w http.ResponseWriter, req *http.Request) {
 	debugf("[recv] Get %s/etcdURL/ ", r.url)
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(argInfo.EtcdURL))
+	io.WriteString(w, argInfo.EtcdURL)
 }
 
 // Response to the join request
@@ -111,5 +112,5 @@ func JoinHttpHandler(w http.ResponseWriter, req *http.Request) {
 func NameHttpHandler(w http.ResponseWriter, req *http.Request) {
 	debugf("[recv] Get %s/name/ ", r.url)
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(r.name))
+	io.WriteString(w, r.name)
 }

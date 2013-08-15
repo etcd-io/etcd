@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"github.com/coreos/etcd/web"
@@ -132,6 +133,12 @@ func serve500(w http.ResponseWriter, err error) {
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	io.WriteString(w, "Internal Server Error: "+err.Error())
 	warn("%v", err)
+}
+
+func toJson(value interface{}) *bytes.Buffer {
+	b := new(bytes.Buffer)
+	json.NewEncoder(b).Encode(value)
+	return b
 }
 
 //--------------------------------------

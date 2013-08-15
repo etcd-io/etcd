@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/coreos/etcd/store"
 	"github.com/coreos/go-raft"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -211,7 +212,7 @@ func LeaderHttpHandler(w http.ResponseWriter, req *http.Request) {
 	if leader != "" {
 		w.WriteHeader(http.StatusOK)
 		raftURL, _ := nameToRaftURL(leader)
-		w.Write([]byte(raftURL))
+		io.WriteString(w, raftURL)
 	} else {
 
 		// not likely, but it may happen
@@ -225,14 +226,14 @@ func MachinesHttpHandler(w http.ResponseWriter, req *http.Request) {
 	machines := getMachines()
 
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(strings.Join(machines, ", ")))
+	io.WriteString(w, strings.Join(machines, ", "))
 }
 
 // Handler to return the current version of etcd
 func VersionHttpHandler(w http.ResponseWriter, req *http.Request) {
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(fmt.Sprintf("etcd %s", releaseVersion)))
-	w.Write([]byte(fmt.Sprintf("etcd API %s", version)))
+	io.WriteString(w, fmt.Sprintf("etcd %s", releaseVersion))
+	io.WriteString(w, fmt.Sprintf("etcd API %s", version))
 }
 
 // Handler to return the basic stats of etcd
@@ -328,7 +329,7 @@ func TestHttpHandler(w http.ResponseWriter, req *http.Request) {
 	if testType == "speed" {
 		directSet()
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("speed test success"))
+		io.WriteString(w,"speed test success")
 		return
 	}
 
