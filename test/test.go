@@ -96,7 +96,7 @@ func CreateCluster(size int, procAttr *os.ProcAttr, ssl bool) ([][]string, []*os
 		// have to retry. This retry can take upwards of 15 seconds
 		// which slows tests way down and some of them fail.
 		if i == 0 {
-			time.Sleep(time.Second)
+			time.Sleep(time.Second * 2)
 		}
 	}
 

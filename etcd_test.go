@@ -292,7 +292,7 @@ func TestKillRandom(t *testing.T) {
 	toKill := make(map[int]bool)
 
 	for i := 0; i < 20; i++ {
-		fmt.Printf("TestKillRandom Round[%d/200]\n", i)
+		fmt.Printf("TestKillRandom Round[%d/20]\n", i)
 
 		j := 0
 		for {
@@ -310,8 +310,11 @@ func TestKillRandom(t *testing.T) {
 		}
 
 		for num, _ := range toKill {
-			etcds[num].Kill()
-			etcds[num].Release()
+			err := etcds[num].Kill()
+			if err != nil {
+				panic(err)
+			}
+			etcds[num].Wait()
 		}
 
 		time.Sleep(ElectionTimeout)
