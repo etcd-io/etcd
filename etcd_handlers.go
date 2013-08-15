@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-type HttpHandler func(w http.ResponseWriter, r *http.Request)
+type HttpHandler func(w ResponseWriter, r *http.Request)
 
 // errorHandler wraps the argument handler with an error-catcher that
 // returns a 500 HTTP error if the request fails (calls check with err non-nil).
@@ -21,11 +21,17 @@ func errorHandler(fn HttpHandler) http.HandlerFunc {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 			}
 		}()
-		fn(&EtcdResponse{w: w, e: nil, n: 0}, r)
+		fn(&DefaultEtcdResponseWriter{w: w, e: nil, n: 0}, r)
 	}
 }
 
-type EtcdResponse struct {
+type ResponseWriter interface {
+	http.ResponseWriter
+	WriteError(status int, msg string)
+	WriteString(string)
+}
+
+type DefaultEtcdResponseWriter struct {
 	// Underlyng system
 	w http.ResponseWriter
 	// Last Error
@@ -34,24 +40,34 @@ type EtcdResponse struct {
 	n int
 }
 
-func (r *EtcdResponse) Header() http.Header {
+func (r *DefaultEtcdResponseWriter) Header() http.Header {
 	return r.Header()
 }
 
-func (r *EtcdResponse) WriteHeader(code int) {
+func (r *DefaultEtcdResponseWriter) WriteHeader(code int) {
 	if r.e != nil {
 		return
 	}
 	r.WriteHeader(code)
 }
 
-func (r *EtcdResponse) Write(data []byte) (int, error) {
+func (r *DefaultEtcdResponseWriter) Write(data []byte) (int, error) {
 	if r.e != nil {
 		return -1, r.e
 	}
 	r.n, r.e = r.w.Write(data)
-
 	return r.n, r.e
+}
+
+func (r *DefaultEtcdResponseWriter) WriteError(code int, msg string) {
+	
+}
+
+func (r *DefaultEtcdResponseWriter) WriteString(msg string) {
+	if r.e != nil {
+		return 
+	}
+	r.n, r.e = io.WriteString(r.w, msg)
 }
 
 //-------------------------------------------------------------------
@@ -72,7 +88,7 @@ func NewEtcdMuxer() *http.ServeMux {
 }
 
 // Multiplex GET/POST/DELETE request to corresponding handlers
-func Multiplexer(w http.ResponseWriter, req *http.Request) {
+func Multiplexer(w ResponseWriter, req *http.Request) {
 
 	switch req.Method {
 	case "GET":
@@ -93,7 +109,7 @@ func Multiplexer(w http.ResponseWriter, req *http.Request) {
 //--------------------------------------
 
 // Set Command Handler
-func SetHttpHandler(w http.ResponseWriter, req *http.Request) {
+func SetHttpHandler(w ResponseWriter, req *http.Request) {
 	key := req.URL.Path[len("/v1/keys/"):]
 
 	if store.CheckKeyword(key) {
@@ -147,7 +163,7 @@ func SetHttpHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 // Delete Handler
-func DeleteHttpHandler(w http.ResponseWriter, req *http.Request) {
+func DeleteHttpHandler(w ResponseWriter, req *http.Request) {
 	key := req.URL.Path[len("/v1/keys/"):]
 
 	debugf("[recv] DELETE %v/v1/keys/%s [%s]", e.url, key, req.RemoteAddr)
@@ -160,7 +176,7 @@ func DeleteHttpHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 // Dispatch the command to leader
-func dispatch(c Command, w http.ResponseWriter, req *http.Request, etcd bool) {
+func dispatch(c Command, w ResponseWriter, req *http.Request, etcd bool) {
 
 	if r.State() == raft.Leader {
 		if body, err := r.Do(c); err != nil {
@@ -250,7 +266,7 @@ func dispatch(c Command, w http.ResponseWriter, req *http.Request, etcd bool) {
 //--------------------------------------
 
 // Handler to return the current leader's raft address
-func LeaderHttpHandler(w http.ResponseWriter, req *http.Request) {
+func LeaderHttpHandler(w ResponseWriter, req *http.Request) {
 	leader := r.Leader()
 
 	if leader != "" {
@@ -266,7 +282,7 @@ func LeaderHttpHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 // Handler to return all the known machines in the current cluster
-func MachinesHttpHandler(w http.ResponseWriter, req *http.Request) {
+func MachinesHttpHandler(w ResponseWriter, req *http.Request) {
 	machines := getMachines()
 
 	w.WriteHeader(http.StatusOK)
@@ -274,20 +290,20 @@ func MachinesHttpHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 // Handler to return the current version of etcd
-func VersionHttpHandler(w http.ResponseWriter, req *http.Request) {
+func VersionHttpHandler(w ResponseWriter, req *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	io.WriteString(w, fmt.Sprintf("etcd %s", releaseVersion))
 	io.WriteString(w, fmt.Sprintf("etcd API %s", version))
 }
 
 // Handler to return the basic stats of etcd
-func StatsHttpHandler(w http.ResponseWriter, req *http.Request) {
+func StatsHttpHandler(w ResponseWriter, req *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Write(etcdStore.Stats())
 }
 
 // Get Handler
-func GetHttpHandler(w http.ResponseWriter, req *http.Request) {
+func GetHttpHandler(w ResponseWriter, req *http.Request) {
 	key := req.URL.Path[len("/v1/keys/"):]
 
 	debugf("[recv] GET %s/v1/keys/%s [%s]", e.url, key, req.RemoteAddr)
@@ -321,7 +337,7 @@ func GetHttpHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 // Watch handler
-func WatchHttpHandler(w http.ResponseWriter, req *http.Request) {
+func WatchHttpHandler(w ResponseWriter, req *http.Request) {
 	key := req.URL.Path[len("/v1/watch/"):]
 
 	command := &WatchCommand{
@@ -367,7 +383,7 @@ func WatchHttpHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 // TestHandler
-func TestHttpHandler(w http.ResponseWriter, req *http.Request) {
+func TestHttpHandler(w ResponseWriter, req *http.Request) {
 	testType := req.URL.Path[len("/test/"):]
 
 	if testType == "speed" {

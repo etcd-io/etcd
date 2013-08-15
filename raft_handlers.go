@@ -12,7 +12,7 @@ import (
 //-------------------------------------------------------------
 
 // Get all the current logs
-func GetLogHttpHandler(w http.ResponseWriter, req *http.Request) {
+func GetLogHttpHandler(w ResponseWriter, req *http.Request) {
 	debugf("[recv] GET %s/log", r.url)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
@@ -20,7 +20,7 @@ func GetLogHttpHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 // Response to vote request
-func VoteHttpHandler(w http.ResponseWriter, req *http.Request) {
+func VoteHttpHandler(w ResponseWriter, req *http.Request) {
 	rvreq := &raft.RequestVoteRequest{}
 	err := decodeJsonRequest(req, rvreq)
 	if err == nil {
@@ -36,7 +36,7 @@ func VoteHttpHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 // Response to append entries request
-func AppendEntriesHttpHandler(w http.ResponseWriter, req *http.Request) {
+func AppendEntriesHttpHandler(w ResponseWriter, req *http.Request) {
 	aereq := &raft.AppendEntriesRequest{}
 	err := decodeJsonRequest(req, aereq)
 
@@ -56,7 +56,7 @@ func AppendEntriesHttpHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 // Response to recover from snapshot request
-func SnapshotHttpHandler(w http.ResponseWriter, req *http.Request) {
+func SnapshotHttpHandler(w ResponseWriter, req *http.Request) {
 	aereq := &raft.SnapshotRequest{}
 	err := decodeJsonRequest(req, aereq)
 	if err == nil {
@@ -72,7 +72,7 @@ func SnapshotHttpHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 // Response to recover from snapshot request
-func SnapshotRecoveryHttpHandler(w http.ResponseWriter, req *http.Request) {
+func SnapshotRecoveryHttpHandler(w ResponseWriter, req *http.Request) {
 	aereq := &raft.SnapshotRecoveryRequest{}
 	err := decodeJsonRequest(req, aereq)
 	if err == nil {
@@ -88,14 +88,14 @@ func SnapshotRecoveryHttpHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 // Get the port that listening for etcd connecting of the server
-func EtcdURLHttpHandler(w http.ResponseWriter, req *http.Request) {
+func EtcdURLHttpHandler(w ResponseWriter, req *http.Request) {
 	debugf("[recv] Get %s/etcdURL/ ", r.url)
 	w.WriteHeader(http.StatusOK)
 	io.WriteString(w, argInfo.EtcdURL)
 }
 
 // Response to the join request
-func JoinHttpHandler(w http.ResponseWriter, req *http.Request) {
+func JoinHttpHandler(w ResponseWriter, req *http.Request) {
 
 	command := &JoinCommand{}
 
@@ -109,7 +109,7 @@ func JoinHttpHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 // Response to the name request
-func NameHttpHandler(w http.ResponseWriter, req *http.Request) {
+func NameHttpHandler(w ResponseWriter, req *http.Request) {
 	debugf("[recv] Get %s/name/ ", r.url)
 	w.WriteHeader(http.StatusOK)
 	io.WriteString(w, r.name)
