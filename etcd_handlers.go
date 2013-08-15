@@ -31,11 +31,11 @@ func Multiplexer(w http.ResponseWriter, req *http.Request) {
 
 	switch req.Method {
 	case "GET":
-		GetHttpHandler(&w, req)
+		GetHttpHandler(w, req)
 	case "POST":
-		SetHttpHandler(&w, req)
+		SetHttpHandler(w, req)
 	case "DELETE":
-		DeleteHttpHandler(&w, req)
+		DeleteHttpHandler(w, req)
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
@@ -48,14 +48,12 @@ func Multiplexer(w http.ResponseWriter, req *http.Request) {
 //--------------------------------------
 
 // Set Command Handler
-func SetHttpHandler(w *http.ResponseWriter, req *http.Request) {
+func SetHttpHandler(w http.ResponseWriter, req *http.Request) {
 	key := req.URL.Path[len("/v1/keys/"):]
 
 	if store.CheckKeyword(key) {
-
-		(*w).WriteHeader(http.StatusBadRequest)
-
-		(*w).Write(newJsonError(400, "Set"))
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write(newJsonError(400, "Set"))
 		return
 	}
 
@@ -64,9 +62,8 @@ func SetHttpHandler(w *http.ResponseWriter, req *http.Request) {
 	value := req.FormValue("value")
 
 	if len(value) == 0 {
-		(*w).WriteHeader(http.StatusBadRequest)
-
-		(*w).Write(newJsonError(200, "Set"))
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write(newJsonError(200, "Set"))
 		return
 	}
 
@@ -77,10 +74,8 @@ func SetHttpHandler(w *http.ResponseWriter, req *http.Request) {
 	expireTime, err := durationToExpireTime(strDuration)
 
 	if err != nil {
-
-		(*w).WriteHeader(http.StatusBadRequest)
-
-		(*w).Write(newJsonError(202, "Set"))
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write(newJsonError(202, "Set"))
 		return
 	}
 
@@ -107,7 +102,7 @@ func SetHttpHandler(w *http.ResponseWriter, req *http.Request) {
 }
 
 // Delete Handler
-func DeleteHttpHandler(w *http.ResponseWriter, req *http.Request) {
+func DeleteHttpHandler(w http.ResponseWriter, req *http.Request) {
 	key := req.URL.Path[len("/v1/keys/"):]
 
 	debugf("[recv] DELETE %v/v1/keys/%s [%s]", e.url, key, req.RemoteAddr)
@@ -120,49 +115,49 @@ func DeleteHttpHandler(w *http.ResponseWriter, req *http.Request) {
 }
 
 // Dispatch the command to leader
-func dispatch(c Command, w *http.ResponseWriter, req *http.Request, etcd bool) {
+func dispatch(c Command, w http.ResponseWriter, req *http.Request, etcd bool) {
 
 	if r.State() == raft.Leader {
 		if body, err := r.Do(c); err != nil {
 
 			if _, ok := err.(store.NotFoundError); ok {
-				(*w).WriteHeader(http.StatusNotFound)
-				(*w).Write(newJsonError(100, err.Error()))
+				w.WriteHeader(http.StatusNotFound)
+				w.Write(newJsonError(100, err.Error()))
 				return
 			}
 
 			if _, ok := err.(store.TestFail); ok {
-				(*w).WriteHeader(http.StatusBadRequest)
-				(*w).Write(newJsonError(101, err.Error()))
+				w.WriteHeader(http.StatusBadRequest)
+				w.Write(newJsonError(101, err.Error()))
 				return
 			}
 
 			if _, ok := err.(store.NotFile); ok {
-				(*w).WriteHeader(http.StatusBadRequest)
-				(*w).Write(newJsonError(102, err.Error()))
+				w.WriteHeader(http.StatusBadRequest)
+				w.Write(newJsonError(102, err.Error()))
 				return
 			}
 			if err.Error() == errors[103] {
-				(*w).WriteHeader(http.StatusBadRequest)
-				(*w).Write(newJsonError(103, ""))
+				w.WriteHeader(http.StatusBadRequest)
+				w.Write(newJsonError(103, ""))
 				return
 			}
-			(*w).WriteHeader(http.StatusInternalServerError)
-			(*w).Write(newJsonError(300, err.Error()))
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write(newJsonError(300, err.Error()))
 			return
 		} else {
 
 			if body == nil {
-				(*w).WriteHeader(http.StatusNotFound)
-				(*w).Write(newJsonError(300, "Empty result from raft"))
+				w.WriteHeader(http.StatusNotFound)
+				w.Write(newJsonError(300, "Empty result from raft"))
 			} else {
 				body, ok := body.([]byte)
 				// this should not happen
 				if !ok {
 					panic("wrong type")
 				}
-				(*w).WriteHeader(http.StatusOK)
-				(*w).Write(body)
+				w.WriteHeader(http.StatusOK)
+				w.Write(body)
 			}
 			return
 		}
@@ -170,8 +165,8 @@ func dispatch(c Command, w *http.ResponseWriter, req *http.Request, etcd bool) {
 		leader := r.Leader()
 		// current no leader
 		if leader == "" {
-			(*w).WriteHeader(http.StatusInternalServerError)
-			(*w).Write(newJsonError(300, ""))
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write(newJsonError(300, ""))
 			return
 		}
 
@@ -194,11 +189,11 @@ func dispatch(c Command, w *http.ResponseWriter, req *http.Request, etcd bool) {
 
 		debugf("Redirect to %s", url)
 
-		http.Redirect(*w, req, url, http.StatusTemporaryRedirect)
+		http.Redirect(w, req, url, http.StatusTemporaryRedirect)
 		return
 	}
-	(*w).WriteHeader(http.StatusInternalServerError)
-	(*w).Write(newJsonError(300, ""))
+	w.WriteHeader(http.StatusInternalServerError)
+	w.Write(newJsonError(300, ""))
 	return
 }
 
@@ -247,7 +242,7 @@ func StatsHttpHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 // Get Handler
-func GetHttpHandler(w *http.ResponseWriter, req *http.Request) {
+func GetHttpHandler(w http.ResponseWriter, req *http.Request) {
 	key := req.URL.Path[len("/v1/keys/"):]
 
 	debugf("[recv] GET %s/v1/keys/%s [%s]", e.url, key, req.RemoteAddr)
@@ -259,13 +254,13 @@ func GetHttpHandler(w *http.ResponseWriter, req *http.Request) {
 	if body, err := command.Apply(r.Server); err != nil {
 
 		if _, ok := err.(store.NotFoundError); ok {
-			(*w).WriteHeader(http.StatusNotFound)
-			(*w).Write(newJsonError(100, err.Error()))
+			w.WriteHeader(http.StatusNotFound)
+			w.Write(newJsonError(100, err.Error()))
 			return
 		}
 
-		(*w).WriteHeader(http.StatusInternalServerError)
-		(*w).Write(newJsonError(300, ""))
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write(newJsonError(300, ""))
 
 	} else {
 		body, ok := body.([]byte)
@@ -273,8 +268,8 @@ func GetHttpHandler(w *http.ResponseWriter, req *http.Request) {
 			panic("wrong type")
 		}
 
-		(*w).WriteHeader(http.StatusOK)
-		(*w).Write(body)
+		w.WriteHeader(http.StatusOK)
+		w.Write(body)
 
 	}
 
