@@ -197,7 +197,7 @@ func main() {
 	r = newRaftServer(info.Name, info.RaftURL, &raftTLSConfig, &info.RaftTLS)
 
 	startWebInterface()
-	r.run()
-	e.run()
+	r.ListenAndServe()
+	e.ListenAndServe()
 
 }

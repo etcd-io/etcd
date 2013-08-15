@@ -36,13 +36,13 @@ func newEtcdServer(name string, urlStr string, tlsConf *TLSConfig, tlsInfo *TLSI
 }
 
 // Start to listen and response etcd client command
-func (e *etcdServer) run() {
+func (e *etcdServer) ListenAndServe() {
 
 	infof("etcd server [%s:%s]", e.name, e.url)
 
 	if e.tlsConf.Scheme == "http" {
-		fatal(e.ListenAndServe())
+		fatal(e.Server.ListenAndServe())
 	} else {
-		fatal(e.ListenAndServeTLS(e.tlsInfo.CertFile, e.tlsInfo.KeyFile))
+		fatal(e.Server.ListenAndServeTLS(e.tlsInfo.CertFile, e.tlsInfo.KeyFile))
 	}
 }

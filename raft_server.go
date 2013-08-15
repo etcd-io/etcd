@@ -42,7 +42,7 @@ func newRaftServer(name string, url string, tlsConf *TLSConfig, tlsInfo *TLSInfo
 }
 
 // Start the raft server
-func (r *raftServer) run() {
+func (r *raftServer) ListenAndServe() {
 
 	// Setup commands.
 	registerCommands()
