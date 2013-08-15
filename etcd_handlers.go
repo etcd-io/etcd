@@ -10,6 +10,50 @@ import (
 	"strings"
 )
 
+type HttpHandler func(w http.ResponseWriter, r *http.Request)
+
+// errorHandler wraps the argument handler with an error-catcher that
+// returns a 500 HTTP error if the request fails (calls check with err non-nil).
+func errorHandler(fn HttpHandler) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if err, ok := recover().(error); ok {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+		}()
+		fn(&EtcdResponse{w: w, e: nil, n: 0}, r)
+	}
+}
+
+type EtcdResponse struct {
+	// Underlyng system
+	w http.ResponseWriter
+	// Last Error
+	e error
+	// how much data was written
+	n int
+}
+
+func (r *EtcdResponse) Header() http.Header {
+	return r.Header()
+}
+
+func (r *EtcdResponse) WriteHeader(code int) {
+	if r.e != nil {
+		return
+	}
+	r.WriteHeader(code)
+}
+
+func (r *EtcdResponse) Write(data []byte) (int, error) {
+	if r.e != nil {
+		return -1, r.e
+	}
+	r.n, r.e = r.w.Write(data)
+
+	return r.n, r.e
+}
+
 //-------------------------------------------------------------------
 // Handlers to handle etcd-store related request via etcd url
 //-------------------------------------------------------------------
@@ -329,7 +373,7 @@ func TestHttpHandler(w http.ResponseWriter, req *http.Request) {
 	if testType == "speed" {
 		directSet()
 		w.WriteHeader(http.StatusOK)
-		io.WriteString(w,"speed test success")
+		io.WriteString(w, "speed test success")
 		return
 	}
 
