@@ -16,13 +16,13 @@ import (
 func NewEtcdMuxer() *http.ServeMux {
 	// external commands
 	etcdMux := http.NewServeMux()
-	etcdMux.HandleFunc("/"+version+"/keys/", Multiplexer)
-	etcdMux.HandleFunc("/"+version+"/watch/", WatchHttpHandler)
-	etcdMux.HandleFunc("/leader", LeaderHttpHandler)
-	etcdMux.HandleFunc("/machines", MachinesHttpHandler)
-	etcdMux.HandleFunc("/version", VersionHttpHandler)
-	etcdMux.HandleFunc("/stats", StatsHttpHandler)
-	etcdMux.HandleFunc("/test/", TestHttpHandler)
+	etcdMux.HandleFunc("/"+version+"/keys/", errorHandler(Multiplexer))
+	etcdMux.HandleFunc("/"+version+"/watch/", errorHandler(WatchHttpHandler))
+	etcdMux.HandleFunc("/leader", errorHandler(LeaderHttpHandler))
+	etcdMux.HandleFunc("/machines", errorHandler(MachinesHttpHandler))
+	etcdMux.HandleFunc("/version", errorHandler(VersionHttpHandler))
+	etcdMux.HandleFunc("/stats", errorHandler(StatsHttpHandler))
+	etcdMux.HandleFunc("/test/", errorHandler(TestHttpHandler))
 	return etcdMux
 }
 

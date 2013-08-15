@@ -112,6 +112,28 @@ func check(err error) {
 	}
 }
 
+type HttpHandler func(w http.ResponseWriter, r *http.Request)
+
+// errorHandler wraps the argument handler with an error-catcher that
+// returns a 500 HTTP error if the request fails (calls check with err non-nil).
+func errorHandler(fn HttpHandler) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if err, ok := recover().(error); ok {
+				serve500(w, err)
+			}
+		}()
+		fn(w, r)
+	}
+}
+
+func serve500(w http.ResponseWriter, err error) {
+	w.WriteHeader(http.StatusInternalServerError)
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	io.WriteString(w, "Internal Server Error: "+err.Error())
+	warn("%v", err)
+}
+
 //--------------------------------------
 // Log
 //--------------------------------------
