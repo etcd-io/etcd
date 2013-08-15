@@ -82,10 +82,6 @@ func (r *DefaultEtcdResponseWriter) WriteText(statusCode int, data interface{}) 
 		return
 	}
 
-	if r.e != nil {
-		return
-	}
-
 	r.n, r.e = r.w.Write(body)
 }
 
