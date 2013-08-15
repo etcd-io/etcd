@@ -35,6 +35,8 @@ type ResponseWriter interface {
 	http.ResponseWriter
 	WriteError(status, errorcode int, msg string)
 	WriteString(string)
+	WriteJson(int, interface{})
+	WriteText(int, interface{})
 }
 
 type DefaultEtcdResponseWriter struct {
@@ -65,7 +67,29 @@ func (r *DefaultEtcdResponseWriter) Write(data []byte) (int, error) {
 	return r.n, r.e
 }
 
-func (r *DefaultEtcdResponseWriter) WriteError(statusCode , errorCode int, cause string) {
+func (r *DefaultEtcdResponseWriter) WriteText(statusCode int, data interface{}) {
+	if r.e != nil {
+		return
+	}
+
+	r.Header().Set("Content-Type", "text/plain")
+	r.WriteHeader(statusCode)
+
+	body, ok := data.([]byte)
+	// this should not happen
+	if !ok {
+		r.e = fmt.Errorf("Wrong type to WriteText: %s ", data)
+		return
+	}
+
+	if r.e != nil {
+		return
+	}
+
+	r.n, r.e = r.w.Write(body)
+}
+
+func (r *DefaultEtcdResponseWriter) WriteJson(statusCode int, data interface{}) {
 	if r.e != nil {
 		return
 	}
@@ -74,15 +98,23 @@ func (r *DefaultEtcdResponseWriter) WriteError(statusCode , errorCode int, cause
 	r.Header().Set("Content-Type", "application/json")
 	r.WriteHeader(statusCode)
 
-	r.e = json.NewEncoder(r.w).Encode(jsonError{
+	r.e = json.NewEncoder(r.w).Encode(data)
+	if r.e != nil {
+		return
+	}
+
+	r.n, r.e = r.w.Write(b)
+	if r.e != nil {
+		return
+	}
+}
+
+func (r *DefaultEtcdResponseWriter) WriteError(statusCode, errorCode int, cause string) {
+	r.WriteJson(statusCode, jsonError{
 		ErrorCode: errorCode,
 		Message:   errors[errorCode],
 		Cause:     cause,
 	})
-	if r.e != nil {
-		return
-	}
-	r.n, r.e = r.w.Write(b)
 }
 
 func (r *DefaultEtcdResponseWriter) WriteString(msg string) {
@@ -144,8 +176,7 @@ func SetHttpHandler(w ResponseWriter, req *http.Request) {
 	value := req.FormValue("value")
 
 	if len(value) == 0 {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write(newJsonError(200, "Set"))
+		w.WriteError(http.StatusBadRequest, 200, "Set")
 		return
 	}
 
@@ -156,8 +187,7 @@ func SetHttpHandler(w ResponseWriter, req *http.Request) {
 	expireTime, err := durationToExpireTime(strDuration)
 
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write(newJsonError(202, "Set"))
+		w.WriteError(http.StatusBadRequest, 202, "Set")
 		return
 	}
 
@@ -209,29 +239,23 @@ func dispatch(c Command, w ResponseWriter, req *http.Request, etcd bool) {
 			}
 
 			if _, ok := err.(store.TestFail); ok {
-				w.WriteHeader(http.StatusBadRequest)
-				w.Write(newJsonError(101, err.Error()))
+				w.WriteError(http.StatusBadRequest, 101, err.Error())
 				return
 			}
 
 			if _, ok := err.(store.NotFile); ok {
-				w.WriteHeader(http.StatusBadRequest)
-				w.Write(newJsonError(102, err.Error()))
+				w.WriteError(http.StatusBadRequest, 102, err.Error())
 				return
 			}
 			if err.Error() == errors[103] {
-				w.WriteHeader(http.StatusBadRequest)
-				w.Write(newJsonError(103, ""))
+				w.WriteError(http.StatusBadRequest, 103, "")
 				return
 			}
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write(newJsonError(300, err.Error()))
+			w.WriteError(http.StatusInternalServerError, 300, err.Error())
 			return
 		} else {
-
 			if body == nil {
-				w.WriteHeader(http.StatusNotFound)
-				w.Write(newJsonError(300, "Empty result from raft"))
+				w.WriteError(http.StatusNotFound, 300, "Empty result from raft")
 			} else {
 				body, ok := body.([]byte)
 				// this should not happen
@@ -247,8 +271,7 @@ func dispatch(c Command, w ResponseWriter, req *http.Request, etcd bool) {
 		leader := r.Leader()
 		// current no leader
 		if leader == "" {
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write(newJsonError(300, ""))
+			w.WriteError(http.StatusInternalServerError, 300, "")
 			return
 		}
 
@@ -274,8 +297,7 @@ func dispatch(c Command, w ResponseWriter, req *http.Request, etcd bool) {
 		http.Redirect(w, req, url, http.StatusTemporaryRedirect)
 		return
 	}
-	w.WriteHeader(http.StatusInternalServerError)
-	w.Write(newJsonError(300, ""))
+	w.WriteError(http.StatusInternalServerError, 300, "")
 	return
 }
 
@@ -293,12 +315,11 @@ func LeaderHttpHandler(w ResponseWriter, req *http.Request) {
 	if leader != "" {
 		w.WriteHeader(http.StatusOK)
 		raftURL, _ := nameToRaftURL(leader)
-		io.WriteString(w, raftURL)
+		w.WriteString(raftURL)
 	} else {
 
 		// not likely, but it may happen
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write(newJsonError(301, ""))
+		w.WriteError(http.StatusInternalServerError, 301, "")
 	}
 }
 
@@ -313,8 +334,8 @@ func MachinesHttpHandler(w ResponseWriter, req *http.Request) {
 // Handler to return the current version of etcd
 func VersionHttpHandler(w ResponseWriter, req *http.Request) {
 	w.WriteHeader(http.StatusOK)
-	io.WriteString(w, fmt.Sprintf("etcd %s", releaseVersion))
-	io.WriteString(w, fmt.Sprintf("etcd API %s", version))
+	w.WriteString(fmt.Sprintf("etcd %s", releaseVersion))
+	w.WriteString(fmt.Sprintf("etcd API %s", version))
 }
 
 // Handler to return the basic stats of etcd
@@ -336,13 +357,11 @@ func GetHttpHandler(w ResponseWriter, req *http.Request) {
 	if body, err := command.Apply(r.Server); err != nil {
 
 		if _, ok := err.(store.NotFoundError); ok {
-			w.WriteHeader(http.StatusNotFound)
-			w.Write(newJsonError(100, err.Error()))
+			w.WriteError(http.StatusNotFound, 100, err.Error())
 			return
 		}
 
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write(newJsonError(300, ""))
+		w.WriteError(http.StatusInternalServerError, 300, "")
 
 	} else {
 		body, ok := body.([]byte)
@@ -377,8 +396,7 @@ func WatchHttpHandler(w ResponseWriter, req *http.Request) {
 
 		sinceIndex, err := strconv.ParseUint(string(content), 10, 64)
 		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write(newJsonError(203, "Watch From Index"))
+			w.WriteError(http.StatusBadRequest, 203, "Watch From Index")
 		}
 		command.SinceIndex = sinceIndex
 
@@ -388,8 +406,7 @@ func WatchHttpHandler(w ResponseWriter, req *http.Request) {
 	}
 
 	if body, err := command.Apply(r.Server); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write(newJsonError(500, key))
+		w.WriteError(http.StatusInternalServerError, 500, key)
 	} else {
 		w.WriteHeader(http.StatusOK)
 
