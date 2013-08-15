@@ -343,14 +343,14 @@ Let start by creating 3 new etcd instances.
 We use -s to specify server port and -c to specify client port and -d to specify the directory to store the log and info of the node in the cluster
 
 ```sh
-./etcd -s 7001 -c 4001 -d nodes/node1 -n node1
+./etcd -s 127.0.0.1:7001 -c 127.0.0.1:4001 -d nodes/node1 -n node1
 ```
 
 Let the join two more nodes to this cluster using the -C argument:
 
 ```sh
-./etcd -c 4002 -s 7002 -C 127.0.0.1:7001 -d nodes/node2 -n node2
-./etcd -c 4003 -s 7003 -C 127.0.0.1:7001 -d nodes/node3 -n node3
+./etcd -c 127.0.0.1:4002 -s 127.0.0.1:7002 -C 127.0.0.1:7001 -d nodes/node2 -n node2
+./etcd -c 127.0.0.1:4003 -s 127.0.0.1:7003 -C 127.0.0.1:7001 -d nodes/node3 -n node3
 ```
 
 Get the machines in the cluster:

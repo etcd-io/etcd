@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"github.com/coreos/etcd/web"
@@ -110,6 +111,12 @@ func check(err error) {
 	if err != nil {
 		fatal(err)
 	}
+}
+
+func toJson(value interface{}) *bytes.Buffer {
+	b := new(bytes.Buffer)
+	json.NewEncoder(b).Encode(value)
+	return b
 }
 
 //--------------------------------------

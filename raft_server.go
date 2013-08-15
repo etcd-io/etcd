@@ -42,7 +42,7 @@ func newRaftServer(name string, url string, tlsConf *TLSConfig, tlsInfo *TLSInfo
 }
 
 // Start the raft server
-func (r *raftServer) run() {
+func (r *raftServer) ListenAndServe() {
 
 	// Setup commands.
 	registerCommands()
@@ -147,14 +147,14 @@ func (r *raftServer) startTransport(scheme string, tlsConf tls.Config) {
 	}
 
 	// internal commands
-	raftMux.HandleFunc("/name", NameHttpHandler)
-	raftMux.HandleFunc("/join", JoinHttpHandler)
-	raftMux.HandleFunc("/vote", VoteHttpHandler)
-	raftMux.HandleFunc("/log", GetLogHttpHandler)
-	raftMux.HandleFunc("/log/append", AppendEntriesHttpHandler)
-	raftMux.HandleFunc("/snapshot", SnapshotHttpHandler)
-	raftMux.HandleFunc("/snapshotRecovery", SnapshotRecoveryHttpHandler)
-	raftMux.HandleFunc("/etcdURL", EtcdURLHttpHandler)
+	raftMux.HandleFunc("/name", errorHandler(NameHttpHandler))
+	raftMux.HandleFunc("/join", errorHandler(JoinHttpHandler))
+	raftMux.HandleFunc("/vote", errorHandler(VoteHttpHandler))
+	raftMux.HandleFunc("/log", errorHandler(GetLogHttpHandler))
+	raftMux.HandleFunc("/log/append", errorHandler(AppendEntriesHttpHandler))
+	raftMux.HandleFunc("/snapshot", errorHandler(SnapshotHttpHandler))
+	raftMux.HandleFunc("/snapshotRecovery", errorHandler(SnapshotRecoveryHttpHandler))
+	raftMux.HandleFunc("/etcdURL", errorHandler(EtcdURLHttpHandler))
 
 	if scheme == "http" {
 		fatal(server.ListenAndServe())
