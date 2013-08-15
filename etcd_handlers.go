@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/coreos/etcd/store"
 	"github.com/coreos/go-raft"
@@ -21,13 +22,18 @@ func errorHandler(fn HttpHandler) http.HandlerFunc {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 			}
 		}()
-		fn(&DefaultEtcdResponseWriter{w: w, e: nil, n: 0}, r)
+		ew := &DefaultEtcdResponseWriter{w: w, e: nil, n: 0}
+		fn(ew, r)
+		if ew.e != nil {
+			warn(ew.e)
+			http.Error(w, ew.e.Error(), http.StatusInternalServerError)
+		}
 	}
 }
 
 type ResponseWriter interface {
 	http.ResponseWriter
-	WriteError(status int, msg string)
+	WriteError(status, errorcode int, msg string)
 	WriteString(string)
 }
 
@@ -41,14 +47,14 @@ type DefaultEtcdResponseWriter struct {
 }
 
 func (r *DefaultEtcdResponseWriter) Header() http.Header {
-	return r.Header()
+	return r.w.Header()
 }
 
 func (r *DefaultEtcdResponseWriter) WriteHeader(code int) {
 	if r.e != nil {
 		return
 	}
-	r.WriteHeader(code)
+	r.w.WriteHeader(code)
 }
 
 func (r *DefaultEtcdResponseWriter) Write(data []byte) (int, error) {
@@ -59,13 +65,29 @@ func (r *DefaultEtcdResponseWriter) Write(data []byte) (int, error) {
 	return r.n, r.e
 }
 
-func (r *DefaultEtcdResponseWriter) WriteError(code int, msg string) {
-	
+func (r *DefaultEtcdResponseWriter) WriteError(statusCode , errorCode int, cause string) {
+	if r.e != nil {
+		return
+	}
+	var b []byte
+
+	r.Header().Set("Content-Type", "application/json")
+	r.WriteHeader(statusCode)
+
+	r.e = json.NewEncoder(r.w).Encode(jsonError{
+		ErrorCode: errorCode,
+		Message:   errors[errorCode],
+		Cause:     cause,
+	})
+	if r.e != nil {
+		return
+	}
+	r.n, r.e = r.w.Write(b)
 }
 
 func (r *DefaultEtcdResponseWriter) WriteString(msg string) {
 	if r.e != nil {
-		return 
+		return
 	}
 	r.n, r.e = io.WriteString(r.w, msg)
 }
@@ -113,8 +135,7 @@ func SetHttpHandler(w ResponseWriter, req *http.Request) {
 	key := req.URL.Path[len("/v1/keys/"):]
 
 	if store.CheckKeyword(key) {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write(newJsonError(400, "Set"))
+		w.WriteError(http.StatusBadRequest, 400, "Set")
 		return
 	}
 
