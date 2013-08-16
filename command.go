@@ -9,6 +9,12 @@ import (
 	"time"
 )
 
+const commandPrefix = "etcd:"
+
+func commandName(name string) string {
+	return commandPrefix + name
+}
+
 // A command represents an action to be taken on the replicated state machine.
 type Command interface {
 	CommandName() string
@@ -24,7 +30,7 @@ type SetCommand struct {
 
 // The name of the set command in the log
 func (c *SetCommand) CommandName() string {
-	return "etcd:set"
+	return commandName("set")
 }
 
 // Set the key-value pair
@@ -42,7 +48,7 @@ type TestAndSetCommand struct {
 
 // The name of the testAndSet command in the log
 func (c *TestAndSetCommand) CommandName() string {
-	return "testAndSet"
+	return commandName("testAndSet")
 }
 
 // Set the key-value pair if the current value of the key equals to the given prevValue
@@ -57,7 +63,7 @@ type GetCommand struct {
 
 // The name of the get command in the log
 func (c *GetCommand) CommandName() string {
-	return "etcd:get"
+	return commandName("get")
 }
 
 // Get the value of key
@@ -72,7 +78,7 @@ type DeleteCommand struct {
 
 // The name of the delete command in the log
 func (c *DeleteCommand) CommandName() string {
-	return "etcd:delete"
+	return commandName("delete")
 }
 
 // Delete the key
@@ -88,7 +94,7 @@ type WatchCommand struct {
 
 // The name of the watch command in the log
 func (c *WatchCommand) CommandName() string {
-	return "etcd:watch"
+	return commandName("watch")
 }
 
 func (c *WatchCommand) Apply(server *raft.Server) (interface{}, error) {
@@ -117,7 +123,7 @@ type JoinCommand struct {
 
 // The name of the join command in the log
 func (c *JoinCommand) CommandName() string {
-	return "etcd:join"
+	return commandName("join")
 }
 
 // Join a server to the cluster
