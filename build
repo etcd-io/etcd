@@ -22,4 +22,8 @@ for i in third_party/*; do
 done
 
 ./scripts/release-version > release_version.go
-go build ${ETCD_PACKAGE}
+output=`go build ${ETCD_PACKAGE} 2>&1 | tail -n1 | awk '{print ($NF)}'`
+
+if [ "$output" = "NO" ]; then
+	echo "Please upgrade your golang version. 1.1+ is required"
+fi
