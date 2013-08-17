@@ -12,46 +12,58 @@ import (
 	"github.com/coreos/go-raft"
 )
 
-var raftTransporter transporter
-var raftServer *raft.Server
+type raftServer struct {
+	*raft.Server
+	name    string
+	url     string
+	tlsConf *TLSConfig
+	tlsInfo *TLSInfo
+}
 
-// Start the raft server
-func startRaft(tlsConfig TLSConfig) {
-	if veryVerbose {
-		raft.SetLogLevel(raft.Debug)
-	}
+var r *raftServer
 
-	var err error
-
-	raftName := info.Name
+func newRaftServer(name string, url string, tlsConf *TLSConfig, tlsInfo *TLSInfo) *raftServer {
 
 	// Create transporter for raft
-	raftTransporter = newTransporter(tlsConfig.Scheme, tlsConfig.Client)
+	raftTransporter := newTransporter(tlsConf.Scheme, tlsConf.Client)
 
 	// Create raft server
-	raftServer, err = raft.NewServer(raftName, dirPath, raftTransporter, etcdStore, nil)
+	server, err := raft.NewServer(name, dirPath, raftTransporter, etcdStore, nil)
 
-	if err != nil {
-		fatal(err)
+	check(err)
+
+	return &raftServer{
+		Server:  server,
+		name:    name,
+		url:     url,
+		tlsConf: tlsConf,
+		tlsInfo: tlsInfo,
 	}
+}
+
+// Start the raft server
+func (r *raftServer) ListenAndServe() {
+
+	// Setup commands.
+	registerCommands()
 
 	// LoadSnapshot
 	if snapshot {
-		err = raftServer.LoadSnapshot()
+		err := r.LoadSnapshot()
 
 		if err == nil {
-			debugf("%s finished load snapshot", raftServer.Name())
+			debugf("%s finished load snapshot", r.name)
 		} else {
 			debug(err)
 		}
 	}
 
-	raftServer.SetElectionTimeout(ElectionTimeout)
-	raftServer.SetHeartbeatTimeout(HeartbeatTimeout)
+	r.SetElectionTimeout(ElectionTimeout)
+	r.SetHeartbeatTimeout(HeartbeatTimeout)
 
-	raftServer.Start()
+	r.Start()
 
-	if raftServer.IsLogEmpty() {
+	if r.IsLogEmpty() {
 
 		// start as a leader in a new cluster
 		if len(cluster) == 0 {
@@ -60,22 +72,19 @@ func startRaft(tlsConfig TLSConfig) {
 
 			// leader need to join self as a peer
 			for {
-				command := &JoinCommand{
-					Name:    raftServer.Name(),
-					RaftURL: argInfo.RaftURL,
-					EtcdURL: argInfo.EtcdURL,
-				}
-				_, err := raftServer.Do(command)
+				_, err := r.Do(newJoinCommand())
 				if err == nil {
 					break
 				}
 			}
-			debugf("%s start as a leader", raftServer.Name())
+			debugf("%s start as a leader", r.name)
 
 			// start as a follower in a existing cluster
 		} else {
 
 			time.Sleep(time.Millisecond * 20)
+
+			var err error
 
 			for i := 0; i < retryTimes; i++ {
 
@@ -84,7 +93,7 @@ func startRaft(tlsConfig TLSConfig) {
 					if len(machine) == 0 {
 						continue
 					}
-					err = joinCluster(raftServer, machine, tlsConfig.Scheme)
+					err = joinCluster(r.Server, machine, r.tlsConf.Scheme)
 					if err != nil {
 						if err.Error() == errors[103] {
 							fatal(err)
@@ -106,12 +115,12 @@ func startRaft(tlsConfig TLSConfig) {
 			if err != nil {
 				fatalf("Cannot join the cluster via given machines after %x retries", retryTimes)
 			}
-			debugf("%s success join to the cluster", raftServer.Name())
+			debugf("%s success join to the cluster", r.name)
 		}
 
 	} else {
 		// rejoin the previous cluster
-		debugf("%s restart as a follower", raftServer.Name())
+		debugf("%s restart as a follower", r.name)
 	}
 
 	// open the snapshot
@@ -120,14 +129,14 @@ func startRaft(tlsConfig TLSConfig) {
 	}
 
 	// start to response to raft requests
-	go startRaftTransport(*info, tlsConfig.Scheme, tlsConfig.Server)
+	go r.startTransport(r.tlsConf.Scheme, r.tlsConf.Server)
 
 }
 
 // Start to listen and response raft command
-func startRaftTransport(info Info, scheme string, tlsConf tls.Config) {
-	u, _ := url.Parse(info.RaftURL)
-	infof("raft server [%s:%s]", info.Name, u)
+func (r *raftServer) startTransport(scheme string, tlsConf tls.Config) {
+	u, _ := url.Parse(r.url)
+	infof("raft server [%s:%s]", r.name, u)
 
 	raftMux := http.NewServeMux()
 
@@ -150,7 +159,7 @@ func startRaftTransport(info Info, scheme string, tlsConf tls.Config) {
 	if scheme == "http" {
 		fatal(server.ListenAndServe())
 	} else {
-		fatal(server.ListenAndServeTLS(info.RaftTLS.CertFile, info.RaftTLS.KeyFile))
+		fatal(server.ListenAndServeTLS(r.tlsInfo.CertFile, r.tlsInfo.KeyFile))
 	}
 
 }
@@ -159,16 +168,10 @@ func startRaftTransport(info Info, scheme string, tlsConf tls.Config) {
 func joinCluster(s *raft.Server, raftURL string, scheme string) error {
 	var b bytes.Buffer
 
-	command := &JoinCommand{
-		Name:    s.Name(),
-		RaftURL: info.RaftURL,
-		EtcdURL: info.EtcdURL,
-	}
-
-	json.NewEncoder(&b).Encode(command)
+	json.NewEncoder(&b).Encode(newJoinCommand())
 
 	// t must be ok
-	t, ok := raftServer.Transporter().(transporter)
+	t, ok := r.Transporter().(transporter)
 
 	if !ok {
 		panic("wrong type")
@@ -194,7 +197,7 @@ func joinCluster(s *raft.Server, raftURL string, scheme string) error {
 				address := resp.Header.Get("Location")
 				debugf("Send Join Request to %s", address)
 
-				json.NewEncoder(&b).Encode(command)
+				json.NewEncoder(&b).Encode(newJoinCommand())
 
 				resp, err = t.Post(address, &b)
 
