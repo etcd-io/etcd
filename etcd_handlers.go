@@ -6,6 +6,7 @@ import (
 	"github.com/coreos/go-raft"
 	"net/http"
 	"strconv"
+	"strings"
 )
 
 //-------------------------------------------------------------------
@@ -19,7 +20,7 @@ func NewEtcdMuxer() *http.ServeMux {
 	etcdMux.HandleFunc("/"+version+"/watch/", WatchHttpHandler)
 	etcdMux.HandleFunc("/leader", LeaderHttpHandler)
 	etcdMux.HandleFunc("/machines", MachinesHttpHandler)
-	etcdMux.HandleFunc("/", VersionHttpHandler)
+	etcdMux.HandleFunc("/version", VersionHttpHandler)
 	etcdMux.HandleFunc("/stats", StatsHttpHandler)
 	etcdMux.HandleFunc("/test/", TestHttpHandler)
 	return etcdMux
@@ -58,7 +59,7 @@ func SetHttpHandler(w *http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	debugf("[recv] POST %v/v1/keys/%s [%s]", info.EtcdURL, key, req.RemoteAddr)
+	debugf("[recv] POST %v/v1/keys/%s [%s]", e.url, key, req.RemoteAddr)
 
 	value := req.FormValue("value")
 
@@ -109,7 +110,7 @@ func SetHttpHandler(w *http.ResponseWriter, req *http.Request) {
 func DeleteHttpHandler(w *http.ResponseWriter, req *http.Request) {
 	key := req.URL.Path[len("/v1/keys/"):]
 
-	debugf("[recv] DELETE %v/v1/keys/%s [%s]", info.EtcdURL, key, req.RemoteAddr)
+	debugf("[recv] DELETE %v/v1/keys/%s [%s]", e.url, key, req.RemoteAddr)
 
 	command := &DeleteCommand{
 		Key: key,
@@ -120,8 +121,9 @@ func DeleteHttpHandler(w *http.ResponseWriter, req *http.Request) {
 
 // Dispatch the command to leader
 func dispatch(c Command, w *http.ResponseWriter, req *http.Request, etcd bool) {
-	if raftServer.State() == raft.Leader {
-		if body, err := raftServer.Do(c); err != nil {
+
+	if r.State() == raft.Leader {
+		if body, err := r.Do(c); err != nil {
 
 			if _, ok := err.(store.NotFoundError); ok {
 				(*w).WriteHeader(http.StatusNotFound)
@@ -165,7 +167,7 @@ func dispatch(c Command, w *http.ResponseWriter, req *http.Request, etcd bool) {
 			return
 		}
 	} else {
-		leader := raftServer.Leader()
+		leader := r.Leader()
 		// current no leader
 		if leader == "" {
 			(*w).WriteHeader(http.StatusInternalServerError)
@@ -181,6 +183,9 @@ func dispatch(c Command, w *http.ResponseWriter, req *http.Request, etcd bool) {
 
 		if etcd {
 			etcdAddr, _ := nameToEtcdURL(leader)
+			if etcdAddr == "" {
+				panic(leader)
+			}
 			url = etcdAddr + path
 		} else {
 			raftAddr, _ := nameToRaftURL(leader)
@@ -206,7 +211,7 @@ func dispatch(c Command, w *http.ResponseWriter, req *http.Request, etcd bool) {
 
 // Handler to return the current leader's raft address
 func LeaderHttpHandler(w http.ResponseWriter, req *http.Request) {
-	leader := raftServer.Leader()
+	leader := r.Leader()
 
 	if leader != "" {
 		w.WriteHeader(http.StatusOK)
@@ -222,31 +227,17 @@ func LeaderHttpHandler(w http.ResponseWriter, req *http.Request) {
 
 // Handler to return all the known machines in the current cluster
 func MachinesHttpHandler(w http.ResponseWriter, req *http.Request) {
-	peers := raftServer.Peers()
-
-	// Add itself to the machine list first
-	// Since peer map does not contain the server itself
-	machines := info.EtcdURL
-
-	// Add all peers to the list and separate by comma
-	// We do not use json here since we accept machines list
-	// in the command line separate by comma.
-
-	for peerName, _ := range peers {
-		if addr, ok := nameToEtcdURL(peerName); ok {
-			machines = machines + "," + addr
-		}
-	}
+	machines := getMachines()
 
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(machines))
-
+	w.Write([]byte(strings.Join(machines, ", ")))
 }
 
 // Handler to return the current version of etcd
 func VersionHttpHandler(w http.ResponseWriter, req *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(fmt.Sprintf("etcd %s", releaseVersion)))
+	w.Write([]byte(fmt.Sprintf("etcd API %s", version)))
 }
 
 // Handler to return the basic stats of etcd
@@ -259,13 +250,13 @@ func StatsHttpHandler(w http.ResponseWriter, req *http.Request) {
 func GetHttpHandler(w *http.ResponseWriter, req *http.Request) {
 	key := req.URL.Path[len("/v1/keys/"):]
 
-	debugf("[recv] GET %s/v1/keys/%s [%s]", info.EtcdURL, key, req.RemoteAddr)
+	debugf("[recv] GET %s/v1/keys/%s [%s]", e.url, key, req.RemoteAddr)
 
 	command := &GetCommand{
 		Key: key,
 	}
 
-	if body, err := command.Apply(raftServer); err != nil {
+	if body, err := command.Apply(r.Server); err != nil {
 
 		if _, ok := err.(store.NotFoundError); ok {
 			(*w).WriteHeader(http.StatusNotFound)
@@ -298,13 +289,13 @@ func WatchHttpHandler(w http.ResponseWriter, req *http.Request) {
 	}
 
 	if req.Method == "GET" {
-		debugf("[recv] GET %s/watch/%s [%s]", info.EtcdURL, key, req.RemoteAddr)
+		debugf("[recv] GET %s/watch/%s [%s]", e.url, key, req.RemoteAddr)
 		command.SinceIndex = 0
 
 	} else if req.Method == "POST" {
 		// watch from a specific index
 
-		debugf("[recv] POST %s/watch/%s [%s]", info.EtcdURL, key, req.RemoteAddr)
+		debugf("[recv] POST %s/watch/%s [%s]", e.url, key, req.RemoteAddr)
 		content := req.FormValue("index")
 
 		sinceIndex, err := strconv.ParseUint(string(content), 10, 64)
@@ -319,7 +310,7 @@ func WatchHttpHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if body, err := command.Apply(raftServer); err != nil {
+	if body, err := command.Apply(r.Server); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write(newJsonError(500, key))
 	} else {

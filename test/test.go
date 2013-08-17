@@ -1,4 +1,4 @@
-package main
+package test
 
 import (
 	"fmt"
@@ -18,7 +18,7 @@ var client = http.Client{
 }
 
 // Sending set commands
-func set(stop chan bool) {
+func Set(stop chan bool) {
 
 	stopSet := false
 	i := 0
@@ -50,12 +50,11 @@ func set(stop chan bool) {
 
 		i++
 	}
-	fmt.Println("set stop")
 	stop <- true
 }
 
 // Create a cluster of etcd nodes
-func createCluster(size int, procAttr *os.ProcAttr, ssl bool) ([][]string, []*os.Process, error) {
+func CreateCluster(size int, procAttr *os.ProcAttr, ssl bool) ([][]string, []*os.Process, error) {
 	argGroup := make([][]string, size)
 
 	sslServer1 := []string{"-serverCAFile=./fixtures/ca/ca.crt",
@@ -97,7 +96,7 @@ func createCluster(size int, procAttr *os.ProcAttr, ssl bool) ([][]string, []*os
 		// have to retry. This retry can take upwards of 15 seconds
 		// which slows tests way down and some of them fail.
 		if i == 0 {
-			time.Sleep(time.Second)
+			time.Sleep(time.Second * 2)
 		}
 	}
 
@@ -105,10 +104,9 @@ func createCluster(size int, procAttr *os.ProcAttr, ssl bool) ([][]string, []*os
 }
 
 // Destroy all the nodes in the cluster
-func destroyCluster(etcds []*os.Process) error {
-	for i, etcd := range etcds {
+func DestroyCluster(etcds []*os.Process) error {
+	for _, etcd := range etcds {
 		err := etcd.Kill()
-		fmt.Println("kill ", i)
 		if err != nil {
 			panic(err.Error())
 		}
@@ -118,7 +116,7 @@ func destroyCluster(etcds []*os.Process) error {
 }
 
 //
-func leaderMonitor(size int, allowDeadNum int, leaderChan chan string) {
+func Monitor(size int, allowDeadNum int, leaderChan chan string, all chan bool, stop chan bool) {
 	leaderMap := make(map[int]string)
 	baseAddrFormat := "http://0.0.0.0:400%d"
 
@@ -153,12 +151,22 @@ func leaderMonitor(size int, allowDeadNum int, leaderChan chan string) {
 
 		if i == size {
 			select {
+			case <-stop:
+				return
 			case <-leaderChan:
 				leaderChan <- knownLeader
 			default:
 				leaderChan <- knownLeader
 			}
 
+		}
+		if dead == 0 {
+			select {
+			case <-all:
+				all <- true
+			default:
+				all <- true
+			}
 		}
 
 		time.Sleep(time.Millisecond * 10)
@@ -189,28 +197,6 @@ func getLeader(addr string) (string, error) {
 
 	return string(b), nil
 
-}
-
-func directSet() {
-	c := make(chan bool, 1000)
-	for i := 0; i < 1000; i++ {
-		go send(c)
-	}
-
-	for i := 0; i < 1000; i++ {
-		<-c
-	}
-}
-
-func send(c chan bool) {
-	for i := 0; i < 10; i++ {
-		command := &SetCommand{}
-		command.Key = "foo"
-		command.Value = "bar"
-		command.ExpireTime = time.Unix(0, 0)
-		raftServer.Do(command)
-	}
-	c <- true
 }
 
 // Dial with timeout
