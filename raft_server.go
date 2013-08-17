@@ -52,63 +52,13 @@ func startRaft(tlsConfig TLSConfig) {
 	raftServer.Start()
 
 	if raftServer.IsLogEmpty() {
-
-		// start as a leader in a new cluster
+		// TODO(XiangLi): What is this sleep for? Please document.
+		time.Sleep(time.Millisecond * 20)
 		if len(cluster) == 0 {
-
-			time.Sleep(time.Millisecond * 20)
-
-			// leader need to join self as a peer
-			for {
-				command := &JoinCommand{
-					Name:    raftServer.Name(),
-					RaftURL: argInfo.RaftURL,
-					EtcdURL: argInfo.EtcdURL,
-				}
-				_, err := raftServer.Do(command)
-				if err == nil {
-					break
-				}
-			}
-			debugf("%s start as a leader", raftServer.Name())
-
-			// start as a follower in a existing cluster
+			startAsLeader()
 		} else {
-
-			time.Sleep(time.Millisecond * 20)
-
-			for i := 0; i < retryTimes; i++ {
-
-				success := false
-				for _, machine := range cluster {
-					if len(machine) == 0 {
-						continue
-					}
-					err = joinCluster(raftServer, machine, tlsConfig.Scheme)
-					if err != nil {
-						if err.Error() == errors[103] {
-							fatal(err)
-						}
-						debugf("cannot join to cluster via machine %s %s", machine, err)
-					} else {
-						success = true
-						break
-					}
-				}
-
-				if success {
-					break
-				}
-
-				warnf("cannot join to cluster via given machines, retry in %d seconds", RetryInterval)
-				time.Sleep(time.Second * RetryInterval)
-			}
-			if err != nil {
-				fatalf("Cannot join the cluster via given machines after %x retries", retryTimes)
-			}
-			debugf("%s success join to the cluster", raftServer.Name())
+			startAsFollower(tlsConfig)
 		}
-
 	} else {
 		// rejoin the previous cluster
 		debugf("%s restart as a follower", raftServer.Name())
@@ -122,6 +72,65 @@ func startRaft(tlsConfig TLSConfig) {
 	// start to response to raft requests
 	go startRaftTransport(*info, tlsConfig.Scheme, tlsConfig.Server)
 
+}
+
+// startAsLeader starts this machines as a leader in a new cluster.
+func startAsLeader() {
+	// leader needs to join to itself as a peer
+	for {
+		command := &JoinCommand{
+			Name:    raftServer.Name(),
+			RaftURL: argInfo.RaftURL,
+			EtcdURL: argInfo.EtcdURL,
+		}
+		_, err := raftServer.Do(command)
+		if err == nil {
+			break
+		}
+	}
+
+	debugf("%s start as a leader", raftServer.Name())
+	return
+}
+
+// startAsFollower starts this machine as a follower in a existing cluster.
+func startAsFollower(tlsConfig TLSConfig) {
+	var err error
+	for i := 0; i < retryTimes; i++ {
+		success := false
+		for _, machine := range cluster {
+			if len(machine) == 0 {
+				continue
+			}
+
+			err = joinCluster(raftServer, machine, tlsConfig.Scheme)
+
+			if err != nil {
+				if err.Error() == errors[103] {
+					fatal(err)
+				}
+				debugf("cannot join to cluster via machine %s %s", machine, err)
+			} else {
+				success = true
+				break
+			}
+		}
+
+		if success {
+			break
+		}
+
+		warnf("cannot join to cluster via given machines, retry in %d seconds", RetryInterval)
+		time.Sleep(time.Second * RetryInterval)
+	}
+
+	if err != nil {
+		fatalf("Cannot join the cluster via given machines after %x retries", retryTimes)
+	}
+
+	debugf("%s success join to the cluster", raftServer.Name())
+
+	return
 }
 
 // Start to listen and response raft command
