@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"github.com/coreos/etcd/web"
@@ -10,6 +11,8 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/signal"
+	"runtime/pprof"
 	"strconv"
 	"time"
 )
@@ -45,6 +48,15 @@ func webHelper() {
 	for {
 		// transfer the new msg to webHub
 		web.Hub().Send(<-storeMsg)
+	}
+}
+
+// startWebInterface starts web interface if webURL is not empty
+func startWebInterface() {
+	if argInfo.WebURL != "" {
+		// start web
+		go webHelper()
+		go web.Start(r.Server, argInfo.WebURL)
 	}
 }
 
@@ -101,6 +113,12 @@ func check(err error) {
 	}
 }
 
+func toJson(value interface{}) *bytes.Buffer {
+	b := new(bytes.Buffer)
+	json.NewEncoder(b).Encode(value)
+	return b
+}
+
 //--------------------------------------
 // Log
 //--------------------------------------
@@ -143,4 +161,51 @@ func fatalf(msg string, v ...interface{}) {
 func fatal(v ...interface{}) {
 	logger.Println("FATAL " + fmt.Sprint(v...))
 	os.Exit(1)
+}
+
+//--------------------------------------
+// CPU profile
+//--------------------------------------
+func runCPUProfile() {
+
+	f, err := os.Create(cpuprofile)
+	if err != nil {
+		fatal(err)
+	}
+	pprof.StartCPUProfile(f)
+
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	go func() {
+		for sig := range c {
+			infof("captured %v, stopping profiler and exiting..", sig)
+			pprof.StopCPUProfile()
+			os.Exit(1)
+		}
+	}()
+}
+
+//--------------------------------------
+// Testing
+//--------------------------------------
+func directSet() {
+	c := make(chan bool, 1000)
+	for i := 0; i < 1000; i++ {
+		go send(c)
+	}
+
+	for i := 0; i < 1000; i++ {
+		<-c
+	}
+}
+
+func send(c chan bool) {
+	for i := 0; i < 10; i++ {
+		command := &SetCommand{}
+		command.Key = "foo"
+		command.Value = "bar"
+		command.ExpireTime = time.Unix(0, 0)
+		r.Do(command)
+	}
+	c <- true
 }

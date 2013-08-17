@@ -4,13 +4,9 @@ import (
 	"crypto/tls"
 	"flag"
 	"github.com/coreos/etcd/store"
-	"github.com/coreos/etcd/web"
+	"github.com/coreos/go-raft"
 	"io/ioutil"
-	"net/http"
-	"net/url"
 	"os"
-	"os/signal"
-	"runtime/pprof"
 	"strings"
 	"time"
 )
@@ -21,28 +17,30 @@ import (
 //
 //------------------------------------------------------------------------------
 
-var verbose bool
-var veryVerbose bool
+var (
+	verbose     bool
+	veryVerbose bool
 
-var machines string
-var machinesFile string
+	machines     string
+	machinesFile string
 
-var cluster []string
+	cluster []string
 
-var argInfo Info
-var dirPath string
+	argInfo Info
+	dirPath string
 
-var force bool
+	force bool
 
-var maxSize int
+	maxSize int
 
-var snapshot bool
+	snapshot bool
 
-var retryTimes int
+	retryTimes int
 
-var maxClusterSize int
+	maxClusterSize int
 
-var cpuprofile string
+	cpuprofile string
+)
 
 func init() {
 	flag.BoolVar(&verbose, "v", false, "verbose logging")
@@ -126,7 +124,6 @@ type TLSConfig struct {
 //------------------------------------------------------------------------------
 
 var etcdStore *store.Store
-var info *Info
 
 //------------------------------------------------------------------------------
 //
@@ -142,27 +139,12 @@ func main() {
 	flag.Parse()
 
 	if cpuprofile != "" {
-		f, err := os.Create(cpuprofile)
-		if err != nil {
-			fatal(err)
-		}
-		pprof.StartCPUProfile(f)
-		defer pprof.StopCPUProfile()
-
-		c := make(chan os.Signal, 1)
-		signal.Notify(c, os.Interrupt)
-		go func() {
-			for sig := range c {
-				infof("captured %v, stopping profiler and exiting..", sig)
-				pprof.StopCPUProfile()
-				os.Exit(1)
-			}
-		}()
-
+		runCPUProfile()
 	}
 
 	if veryVerbose {
 		verbose = true
+		raft.SetLogLevel(raft.Debug)
 	}
 
 	if machines != "" {
@@ -175,6 +157,7 @@ func main() {
 		cluster = strings.Split(string(b), ",")
 	}
 
+	// Check TLS arguments
 	raftTLSConfig, ok := tlsConfigFromInfo(argInfo.RaftTLS)
 	if !ok {
 		fatal("Please specify cert and key file or cert and key file and CAFile or none of the three")
@@ -190,54 +173,28 @@ func main() {
 		fatal("ERROR: server name required. e.g. '-n=server_name'")
 	}
 
+	// Check host name arguments
 	argInfo.RaftURL = sanitizeURL(argInfo.RaftURL, raftTLSConfig.Scheme)
 	argInfo.EtcdURL = sanitizeURL(argInfo.EtcdURL, etcdTLSConfig.Scheme)
 	argInfo.WebURL = sanitizeURL(argInfo.WebURL, "http")
-
-	// Setup commands.
-	registerCommands()
 
 	// Read server info from file or grab it from user.
 	if err := os.MkdirAll(dirPath, 0744); err != nil {
 		fatalf("Unable to create path: %s", err)
 	}
 
-	info = getInfo(dirPath)
+	info := getInfo(dirPath)
 
 	// Create etcd key-value store
 	etcdStore = store.CreateStore(maxSize)
 	snapConf = newSnapshotConf()
 
-	startRaft(raftTLSConfig)
+	// Create etcd and raft server
+	e = newEtcdServer(info.Name, info.EtcdURL, &etcdTLSConfig, &info.EtcdTLS)
+	r = newRaftServer(info.Name, info.RaftURL, &raftTLSConfig, &info.RaftTLS)
 
-	if argInfo.WebURL != "" {
-		// start web
-		argInfo.WebURL = sanitizeURL(argInfo.WebURL, "http")
-		go webHelper()
-		go web.Start(raftServer, argInfo.WebURL)
-	}
+	startWebInterface()
+	r.ListenAndServe()
+	e.ListenAndServe()
 
-	startEtcdTransport(*info, etcdTLSConfig.Scheme, etcdTLSConfig.Server)
-
-}
-
-// Start to listen and response client command
-func startEtcdTransport(info Info, scheme string, tlsConf tls.Config) {
-	u, err := url.Parse(info.EtcdURL)
-	if err != nil {
-		fatalf("invalid url '%s': %s", info.EtcdURL, err)
-	}
-	infof("etcd server [%s:%s]", info.Name, u)
-
-	server := http.Server{
-		Handler:   NewEtcdMuxer(),
-		TLSConfig: &tlsConf,
-		Addr:      u.Host,
-	}
-
-	if scheme == "http" {
-		fatal(server.ListenAndServe())
-	} else {
-		fatal(server.ListenAndServeTLS(info.EtcdTLS.CertFile, info.EtcdTLS.KeyFile))
-	}
 }

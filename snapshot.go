@@ -29,7 +29,7 @@ func monitorSnapshot() {
 		currentWrites := etcdStore.TotalWrites() - snapConf.lastWrites
 
 		if currentWrites > snapConf.writesThr {
-			raftServer.TakeSnapshot()
+			r.TakeSnapshot()
 			snapConf.lastWrites = etcdStore.TotalWrites()
 		}
 	}

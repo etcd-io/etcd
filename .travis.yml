@@ -5,4 +5,4 @@ install:
  - echo "Skip install"
 
 script:
- - ./test
+ - ./test.sh
