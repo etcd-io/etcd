@@ -33,17 +33,21 @@ func init() {
 
 }
 
-type jsonError struct {
+type etcdError struct {
 	ErrorCode int    `json:"errorCode"`
 	Message   string `json:"message"`
 	Cause     string `json:"cause,omitempty"`
 }
 
-func newJsonError(errorCode int, cause string) []byte {
-	b, _ := json.Marshal(jsonError{
+func newEtcdError(errorCode int, cause string) *etcdError {
+	return &etcdError{
 		ErrorCode: errorCode,
 		Message:   errors[errorCode],
 		Cause:     cause,
-	})
+	}
+}
+
+func (e *etcdError) toJson() []byte {
+	b, _ := json.Marshal(e)
 	return b
 }
