@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/store"
 	"github.com/coreos/go-raft"
 	"net/http"
@@ -16,29 +17,42 @@ import (
 func NewEtcdMuxer() *http.ServeMux {
 	// external commands
 	etcdMux := http.NewServeMux()
-	etcdMux.HandleFunc("/"+version+"/keys/", Multiplexer)
-	etcdMux.HandleFunc("/"+version+"/watch/", WatchHttpHandler)
-	etcdMux.HandleFunc("/leader", LeaderHttpHandler)
-	etcdMux.HandleFunc("/machines", MachinesHttpHandler)
-	etcdMux.HandleFunc("/version", VersionHttpHandler)
-	etcdMux.HandleFunc("/stats", StatsHttpHandler)
+	etcdMux.Handle("/"+version+"/keys/", errorHandler(Multiplexer))
+	etcdMux.Handle("/"+version+"/watch/", errorHandler(WatchHttpHandler))
+	etcdMux.Handle("/"+version+"/leader", errorHandler(LeaderHttpHandler))
+	etcdMux.Handle("/"+version+"/machines", errorHandler(MachinesHttpHandler))
+	etcdMux.Handle("/"+version+"/stats", errorHandler(StatsHttpHandler))
+	etcdMux.Handle("/version", errorHandler(VersionHttpHandler))
 	etcdMux.HandleFunc("/test/", TestHttpHandler)
 	return etcdMux
 }
 
+type errorHandler func(http.ResponseWriter, *http.Request) error
+
+func (fn errorHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if e := fn(w, r); e != nil {
+		if etcdErr, ok := e.(etcdErr.Error); ok {
+			debug("Return error: ", etcdErr.Error())
+			etcdErr.Write(w)
+		} else {
+			http.Error(w, e.Error(), http.StatusInternalServerError)
+		}
+	}
+}
+
 // Multiplex GET/POST/DELETE request to corresponding handlers
-func Multiplexer(w http.ResponseWriter, req *http.Request) {
+func Multiplexer(w http.ResponseWriter, req *http.Request) error {
 
 	switch req.Method {
 	case "GET":
-		GetHttpHandler(&w, req)
+		return GetHttpHandler(w, req)
 	case "POST":
-		SetHttpHandler(&w, req)
+		return SetHttpHandler(w, req)
 	case "DELETE":
-		DeleteHttpHandler(&w, req)
+		return DeleteHttpHandler(w, req)
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
-		return
+		return nil
 	}
 }
 
@@ -48,15 +62,11 @@ func Multiplexer(w http.ResponseWriter, req *http.Request) {
 //--------------------------------------
 
 // Set Command Handler
-func SetHttpHandler(w *http.ResponseWriter, req *http.Request) {
+func SetHttpHandler(w http.ResponseWriter, req *http.Request) error {
 	key := req.URL.Path[len("/v1/keys/"):]
 
 	if store.CheckKeyword(key) {
-
-		(*w).WriteHeader(http.StatusBadRequest)
-
-		(*w).Write(newJsonError(400, "Set"))
-		return
+		return etcdErr.NewError(400, "Set")
 	}
 
 	debugf("[recv] POST %v/v1/keys/%s [%s]", e.url, key, req.RemoteAddr)
@@ -64,10 +74,7 @@ func SetHttpHandler(w *http.ResponseWriter, req *http.Request) {
 	value := req.FormValue("value")
 
 	if len(value) == 0 {
-		(*w).WriteHeader(http.StatusBadRequest)
-
-		(*w).Write(newJsonError(200, "Set"))
-		return
+		return etcdErr.NewError(200, "Set")
 	}
 
 	prevValue := req.FormValue("prevValue")
@@ -77,11 +84,7 @@ func SetHttpHandler(w *http.ResponseWriter, req *http.Request) {
 	expireTime, err := durationToExpireTime(strDuration)
 
 	if err != nil {
-
-		(*w).WriteHeader(http.StatusBadRequest)
-
-		(*w).Write(newJsonError(202, "Set"))
-		return
+		return etcdErr.NewError(202, "Set")
 	}
 
 	if len(prevValue) != 0 {
@@ -92,7 +95,7 @@ func SetHttpHandler(w *http.ResponseWriter, req *http.Request) {
 			ExpireTime: expireTime,
 		}
 
-		dispatch(command, w, req, true)
+		return dispatch(command, w, req, true)
 
 	} else {
 		command := &SetCommand{
@@ -101,13 +104,12 @@ func SetHttpHandler(w *http.ResponseWriter, req *http.Request) {
 			ExpireTime: expireTime,
 		}
 
-		dispatch(command, w, req, true)
+		return dispatch(command, w, req, true)
 	}
-
 }
 
 // Delete Handler
-func DeleteHttpHandler(w *http.ResponseWriter, req *http.Request) {
+func DeleteHttpHandler(w http.ResponseWriter, req *http.Request) error {
 	key := req.URL.Path[len("/v1/keys/"):]
 
 	debugf("[recv] DELETE %v/v1/keys/%s [%s]", e.url, key, req.RemoteAddr)
@@ -116,76 +118,40 @@ func DeleteHttpHandler(w *http.ResponseWriter, req *http.Request) {
 		Key: key,
 	}
 
-	dispatch(command, w, req, true)
+	return dispatch(command, w, req, true)
 }
 
 // Dispatch the command to leader
-func dispatch(c Command, w *http.ResponseWriter, req *http.Request, etcd bool) {
+func dispatch(c Command, w http.ResponseWriter, req *http.Request, etcd bool) error {
 
 	if r.State() == raft.Leader {
 		if body, err := r.Do(c); err != nil {
-
-			if _, ok := err.(store.NotFoundError); ok {
-				(*w).WriteHeader(http.StatusNotFound)
-				(*w).Write(newJsonError(100, err.Error()))
-				return
-			}
-
-			if _, ok := err.(store.TestFail); ok {
-				(*w).WriteHeader(http.StatusBadRequest)
-				(*w).Write(newJsonError(101, err.Error()))
-				return
-			}
-
-			if _, ok := err.(store.NotFile); ok {
-				(*w).WriteHeader(http.StatusBadRequest)
-				(*w).Write(newJsonError(102, err.Error()))
-				return
-			}
-			if err.Error() == errors[103] {
-				(*w).WriteHeader(http.StatusBadRequest)
-				(*w).Write(newJsonError(103, ""))
-				return
-			}
-			(*w).WriteHeader(http.StatusInternalServerError)
-			(*w).Write(newJsonError(300, err.Error()))
-			return
+			return err
 		} else {
-
 			if body == nil {
-				(*w).WriteHeader(http.StatusNotFound)
-				(*w).Write(newJsonError(300, "Empty result from raft"))
+				return etcdErr.NewError(300, "Empty result from raft")
 			} else {
-				body, ok := body.([]byte)
-				// this should not happen
-				if !ok {
-					panic("wrong type")
-				}
-				(*w).WriteHeader(http.StatusOK)
-				(*w).Write(body)
+				body, _ := body.([]byte)
+				w.WriteHeader(http.StatusOK)
+				w.Write(body)
+				return nil
 			}
-			return
 		}
+
 	} else {
 		leader := r.Leader()
 		// current no leader
 		if leader == "" {
-			(*w).WriteHeader(http.StatusInternalServerError)
-			(*w).Write(newJsonError(300, ""))
-			return
+			return etcdErr.NewError(300, "")
 		}
 
 		// tell the client where is the leader
-
 		path := req.URL.Path
 
 		var url string
 
 		if etcd {
 			etcdAddr, _ := nameToEtcdURL(leader)
-			if etcdAddr == "" {
-				panic(leader)
-			}
 			url = etcdAddr + path
 		} else {
 			raftAddr, _ := nameToRaftURL(leader)
@@ -194,12 +160,10 @@ func dispatch(c Command, w *http.ResponseWriter, req *http.Request, etcd bool) {
 
 		debugf("Redirect to %s", url)
 
-		http.Redirect(*w, req, url, http.StatusTemporaryRedirect)
-		return
+		http.Redirect(w, req, url, http.StatusTemporaryRedirect)
+		return nil
 	}
-	(*w).WriteHeader(http.StatusInternalServerError)
-	(*w).Write(newJsonError(300, ""))
-	return
+	return etcdErr.NewError(300, "")
 }
 
 //--------------------------------------
@@ -210,44 +174,44 @@ func dispatch(c Command, w *http.ResponseWriter, req *http.Request, etcd bool) {
 //--------------------------------------
 
 // Handler to return the current leader's raft address
-func LeaderHttpHandler(w http.ResponseWriter, req *http.Request) {
+func LeaderHttpHandler(w http.ResponseWriter, req *http.Request) error {
 	leader := r.Leader()
 
 	if leader != "" {
 		w.WriteHeader(http.StatusOK)
 		raftURL, _ := nameToRaftURL(leader)
 		w.Write([]byte(raftURL))
+		return nil
 	} else {
-
-		// not likely, but it may happen
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write(newJsonError(301, ""))
+		return etcdErr.NewError(301, "")
 	}
 }
 
 // Handler to return all the known machines in the current cluster
-func MachinesHttpHandler(w http.ResponseWriter, req *http.Request) {
+func MachinesHttpHandler(w http.ResponseWriter, req *http.Request) error {
 	machines := getMachines()
 
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(strings.Join(machines, ", ")))
+	return nil
 }
 
 // Handler to return the current version of etcd
-func VersionHttpHandler(w http.ResponseWriter, req *http.Request) {
+func VersionHttpHandler(w http.ResponseWriter, req *http.Request) error {
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(fmt.Sprintf("etcd %s", releaseVersion)))
-	w.Write([]byte(fmt.Sprintf("etcd API %s", version)))
+	fmt.Fprintf(w, "etcd %s", releaseVersion)
+	return nil
 }
 
 // Handler to return the basic stats of etcd
-func StatsHttpHandler(w http.ResponseWriter, req *http.Request) {
+func StatsHttpHandler(w http.ResponseWriter, req *http.Request) error {
 	w.WriteHeader(http.StatusOK)
 	w.Write(etcdStore.Stats())
+	return nil
 }
 
 // Get Handler
-func GetHttpHandler(w *http.ResponseWriter, req *http.Request) {
+func GetHttpHandler(w http.ResponseWriter, req *http.Request) error {
 	key := req.URL.Path[len("/v1/keys/"):]
 
 	debugf("[recv] GET %s/v1/keys/%s [%s]", e.url, key, req.RemoteAddr)
@@ -257,31 +221,19 @@ func GetHttpHandler(w *http.ResponseWriter, req *http.Request) {
 	}
 
 	if body, err := command.Apply(r.Server); err != nil {
-
-		if _, ok := err.(store.NotFoundError); ok {
-			(*w).WriteHeader(http.StatusNotFound)
-			(*w).Write(newJsonError(100, err.Error()))
-			return
-		}
-
-		(*w).WriteHeader(http.StatusInternalServerError)
-		(*w).Write(newJsonError(300, ""))
-
+		return err
 	} else {
-		body, ok := body.([]byte)
-		if !ok {
-			panic("wrong type")
-		}
+		body, _ := body.([]byte)
+		w.WriteHeader(http.StatusOK)
+		w.Write(body)
 
-		(*w).WriteHeader(http.StatusOK)
-		(*w).Write(body)
-
+		return nil
 	}
 
 }
 
 // Watch handler
-func WatchHttpHandler(w http.ResponseWriter, req *http.Request) {
+func WatchHttpHandler(w http.ResponseWriter, req *http.Request) error {
 	key := req.URL.Path[len("/v1/watch/"):]
 
 	command := &WatchCommand{
@@ -300,28 +252,23 @@ func WatchHttpHandler(w http.ResponseWriter, req *http.Request) {
 
 		sinceIndex, err := strconv.ParseUint(string(content), 10, 64)
 		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write(newJsonError(203, "Watch From Index"))
+			return etcdErr.NewError(203, "Watch From Index")
 		}
 		command.SinceIndex = sinceIndex
 
 	} else {
 		w.WriteHeader(http.StatusMethodNotAllowed)
-		return
+		return nil
 	}
 
 	if body, err := command.Apply(r.Server); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write(newJsonError(500, key))
+		return etcdErr.NewError(500, key)
 	} else {
 		w.WriteHeader(http.StatusOK)
 
-		body, ok := body.([]byte)
-		if !ok {
-			panic("wrong type")
-		}
-
+		body, _ := body.([]byte)
 		w.Write(body)
+		return nil
 	}
 
 }
