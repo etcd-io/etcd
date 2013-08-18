@@ -94,16 +94,16 @@ func EtcdURLHttpHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 // Response to the join request
-func JoinHttpHandler(w http.ResponseWriter, req *http.Request) {
+func JoinHttpHandler(w http.ResponseWriter, req *http.Request) error {
 
 	command := &JoinCommand{}
 
 	if err := decodeJsonRequest(req, command); err == nil {
 		debugf("Receive Join Request from %s", command.Name)
-		dispatch(command, w, req, false)
+		return dispatch(command, w, req, false)
 	} else {
 		w.WriteHeader(http.StatusInternalServerError)
-		return
+		return nil
 	}
 }
 

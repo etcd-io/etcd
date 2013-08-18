@@ -1,10 +1,13 @@
-package main
+package error
 
 import (
 	"encoding/json"
+	"net/http"
 )
 
 var errors map[int]string
+
+const ()
 
 func init() {
 	errors = make(map[int]string)
@@ -33,21 +36,39 @@ func init() {
 
 }
 
-type etcdError struct {
+type Error struct {
 	ErrorCode int    `json:"errorCode"`
 	Message   string `json:"message"`
 	Cause     string `json:"cause,omitempty"`
 }
 
-func newEtcdError(errorCode int, cause string) *etcdError {
-	return &etcdError{
+func NewError(errorCode int, cause string) Error {
+	return Error{
 		ErrorCode: errorCode,
 		Message:   errors[errorCode],
 		Cause:     cause,
 	}
 }
 
-func (e *etcdError) toJson() []byte {
+func Message(code int) string {
+	return errors[code]
+}
+
+// Only for error interface
+func (e Error) Error() string {
+	return e.Message
+}
+
+func (e Error) toJsonString() string {
 	b, _ := json.Marshal(e)
-	return b
+	return string(b)
+}
+
+func (e Error) Write(w http.ResponseWriter) {
+	// 3xx is reft internal error
+	if e.ErrorCode/100 == 3 {
+		http.Error(w, e.toJsonString(), http.StatusInternalServerError)
+	} else {
+		http.Error(w, e.toJsonString(), http.StatusBadRequest)
+	}
 }

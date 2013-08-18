@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/store"
 	"github.com/coreos/go-raft"
 	"path"
@@ -147,7 +148,8 @@ func (c *JoinCommand) Apply(raftServer *raft.Server) (interface{}, error) {
 	// check machine number in the cluster
 	num := machineNum()
 	if num == maxClusterSize {
-		return []byte("join fail"), fmt.Errorf(errors[103])
+		debug("Reject join request from ", c.Name)
+		return []byte("join fail"), etcdErr.NewError(103, "")
 	}
 
 	addNameToURL(c.Name, c.RaftURL, c.EtcdURL)
