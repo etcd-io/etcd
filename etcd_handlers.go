@@ -31,7 +31,6 @@ type errorHandler func(http.ResponseWriter, *http.Request) error
 
 func (fn errorHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if e := fn(w, r); e != nil {
-		fmt.Println(e)
 		if etcdErr, ok := e.(etcdErr.Error); ok {
 			debug("Return error: ", etcdErr.Error())
 			etcdErr.Write(w)
