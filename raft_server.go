@@ -67,55 +67,10 @@ func (r *raftServer) ListenAndServe() {
 
 		// start as a leader in a new cluster
 		if len(cluster) == 0 {
+			startAsLeader()
 
-			time.Sleep(time.Millisecond * 20)
-
-			// leader need to join self as a peer
-			for {
-				_, err := r.Do(newJoinCommand())
-				if err == nil {
-					break
-				}
-			}
-			debugf("%s start as a leader", r.name)
-
-			// start as a follower in a existing cluster
 		} else {
-
-			time.Sleep(time.Millisecond * 20)
-
-			var err error
-
-			for i := 0; i < retryTimes; i++ {
-
-				success := false
-				for _, machine := range cluster {
-					if len(machine) == 0 {
-						continue
-					}
-					err = joinCluster(r.Server, machine, r.tlsConf.Scheme)
-					if err != nil {
-						if _, ok := err.(etcdErr.Error); ok {
-							fatal(err)
-						}
-						debugf("cannot join to cluster via machine %s %s", machine, err)
-					} else {
-						success = true
-						break
-					}
-				}
-
-				if success {
-					break
-				}
-
-				warnf("cannot join to cluster via given machines, retry in %d seconds", RetryInterval)
-				time.Sleep(time.Second * RetryInterval)
-			}
-			if err != nil {
-				fatalf("Cannot join the cluster via given machines after %x retries", retryTimes)
-			}
-			debugf("%s success join to the cluster", r.name)
+			startAsFollower()
 		}
 
 	} else {
@@ -131,6 +86,47 @@ func (r *raftServer) ListenAndServe() {
 	// start to response to raft requests
 	go r.startTransport(r.tlsConf.Scheme, r.tlsConf.Server)
 
+}
+
+func startAsLeader() {
+	// leader need to join self as a peer
+	for {
+		_, err := r.Do(newJoinCommand())
+		if err == nil {
+			break
+		}
+	}
+	debugf("%s start as a leader", r.name)
+}
+
+func startAsFollower() {
+	// start as a follower in a existing cluster
+	for i := 0; i < retryTimes; i++ {
+
+		for _, machine := range cluster {
+
+			if len(machine) == 0 {
+				continue
+			}
+
+			err := joinCluster(r.Server, machine, r.tlsConf.Scheme)
+			if err == nil {
+				debugf("%s success join to the cluster via machine %s", r.name, machine)
+				return
+
+			} else {
+				if _, ok := err.(etcdErr.Error); ok {
+					fatal(err)
+				}
+				debugf("cannot join to cluster via machine %s %s", machine, err)
+			}
+		}
+
+		warnf("cannot join to cluster via given machines, retry in %d seconds", RetryInterval)
+		time.Sleep(time.Second * RetryInterval)
+	}
+
+	fatalf("Cannot join the cluster via given machines after %x retries", retryTimes)
 }
 
 // Start to listen and response raft command
