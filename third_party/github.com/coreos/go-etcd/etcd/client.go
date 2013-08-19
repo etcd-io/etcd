@@ -170,7 +170,13 @@ func (c *Client) getHttpPath(s ...string) string {
 
 func (c *Client) updateLeader(httpPath string) {
 	u, _ := url.Parse(httpPath)
-	leader := u.Host
+
+	var leader string
+	if u.Scheme == "" {
+		leader = "http://" + u.Host
+	} else {
+		leader = u.Scheme + "://" + u.Host
+	}
 
 	logger.Debugf("update.leader[%s,%s]", c.cluster.Leader, leader)
 	c.cluster.Leader = leader
