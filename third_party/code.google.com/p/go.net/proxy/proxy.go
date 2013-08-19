@@ -24,7 +24,7 @@ type Auth struct {
 	User, Password string
 }
 
-// DefaultDialer returns the dialer specified by the proxy related variables in
+// FromEnvironment returns the dialer specified by the proxy related variables in
 // the environment.
 func FromEnvironment() Dialer {
 	allProxy := os.Getenv("all_proxy")
