@@ -164,10 +164,10 @@ func TestServerPromote(t *testing.T) {
 	lookup := map[string]*Server{}
 	transporter := &testTransporter{}
 	transporter.sendVoteRequestFunc = func(server *Server, peer *Peer, req *RequestVoteRequest) *RequestVoteResponse {
-		return lookup[peer.Name()].RequestVote(req)
+		return lookup[peer.Name].RequestVote(req)
 	}
 	transporter.sendAppendEntriesRequestFunc = func(server *Server, peer *Peer, req *AppendEntriesRequest) *AppendEntriesResponse {
-		return lookup[peer.Name()].AppendEntries(req)
+		return lookup[peer.Name].AppendEntries(req)
 	}
 	servers := newTestCluster([]string{"1", "2", "3"}, transporter, lookup)
 
@@ -317,6 +317,124 @@ func TestServerDenyCommandExecutionWhenFollower(t *testing.T) {
 }
 
 //--------------------------------------
+// Recovery
+//--------------------------------------
+
+// Ensure that a follower cannot execute a command.
+func TestServerRecoverFromPreviousLogAndConf(t *testing.T) {
+	// Initialize the servers.
+	var mutex sync.RWMutex
+	servers := map[string]*Server{}
+
+	transporter := &testTransporter{}
+	transporter.sendVoteRequestFunc = func(server *Server, peer *Peer, req *RequestVoteRequest) *RequestVoteResponse {
+		mutex.RLock()
+		s := servers[peer.Name]
+		mutex.RUnlock()
+		return s.RequestVote(req)
+	}
+	transporter.sendAppendEntriesRequestFunc = func(server *Server, peer *Peer, req *AppendEntriesRequest) *AppendEntriesResponse {
+		mutex.RLock()
+		s := servers[peer.Name]
+		mutex.RUnlock()
+		return s.AppendEntries(req)
+	}
+
+	disTransporter := &testTransporter{}
+	disTransporter.sendVoteRequestFunc = func(server *Server, peer *Peer, req *RequestVoteRequest) *RequestVoteResponse {
+		return nil
+	}
+	disTransporter.sendAppendEntriesRequestFunc = func(server *Server, peer *Peer, req *AppendEntriesRequest) *AppendEntriesResponse {
+		return nil
+	}
+
+	var names []string
+	var paths = make(map[string]string)
+
+	n := 5
+
+	// add n servers
+	for i := 1; i <= n; i++ {
+		names = append(names, strconv.Itoa(i))
+	}
+
+	var leader *Server
+	for _, name := range names {
+		server := newTestServer(name, transporter)
+
+		servers[name] = server
+		paths[name] = server.Path()
+
+		if name == "1" {
+			leader = server
+			server.SetHeartbeatTimeout(testHeartbeatTimeout)
+			server.Start()
+			time.Sleep(testHeartbeatTimeout)
+		} else {
+			server.SetElectionTimeout(testElectionTimeout)
+			server.SetHeartbeatTimeout(testHeartbeatTimeout)
+			server.Start()
+			time.Sleep(testHeartbeatTimeout)
+		}
+		if _, err := leader.Do(&DefaultJoinCommand{Name: name}); err != nil {
+			t.Fatalf("Unable to join server[%s]: %v", name, err)
+		}
+
+	}
+
+	// commit some commands
+	for i := 0; i < 10; i++ {
+		if _, err := leader.Do(&testCommand2{X: 1}); err != nil {
+			t.Fatalf("cannot commit command:", err.Error())
+		}
+	}
+
+	time.Sleep(2 * testHeartbeatTimeout)
+
+	for _, name := range names {
+		server := servers[name]
+		if server.CommitIndex() != 16 {
+			t.Fatalf("%s commitIndex is invalid [%d/%d]", name, server.CommitIndex(), 16)
+		}
+		server.Stop()
+	}
+
+	for _, name := range names {
+		// with old path and disable transportation
+		server := newTestServerWithPath(name, disTransporter, paths[name])
+		servers[name] = server
+
+		server.Start()
+
+		// should only commit to the last join command
+		if server.CommitIndex() != 6 {
+			t.Fatalf("%s recover phase 1 commitIndex is invalid [%d/%d]", name, server.CommitIndex(), 6)
+		}
+
+		// peer conf should be recovered
+		if len(server.Peers()) != 4 {
+			t.Fatalf("%s recover phase 1 peer failed! [%d/%d]", name, len(server.Peers()), 4)
+		}
+	}
+
+	// let nodes talk to each other
+	for _, name := range names {
+		servers[name].SetTransporter(transporter)
+	}
+
+	time.Sleep(2 * testElectionTimeout)
+
+	// should commit to the previous index + 1(nop command when new leader elected)
+	for _, name := range names {
+		server := servers[name]
+		if server.CommitIndex() != 17 {
+			t.Fatalf("%s commitIndex is invalid [%d/%d]", name, server.CommitIndex(), 16)
+		}
+		server.Stop()
+	}
+}
+
+//--------------------------------------
 // Membership
 //--------------------------------------
 
@@ -357,13 +475,13 @@ func TestServerMultiNode(t *testing.T) {
 	transporter := &testTransporter{}
 	transporter.sendVoteRequestFunc = func(server *Server, peer *Peer, req *RequestVoteRequest) *RequestVoteResponse {
 		mutex.RLock()
-		s := servers[peer.name]
+		s := servers[peer.Name]
 		mutex.RUnlock()
 		return s.RequestVote(req)
 	}
 	transporter.sendAppendEntriesRequestFunc = func(server *Server, peer *Peer, req *AppendEntriesRequest) *AppendEntriesResponse {
 		mutex.RLock()
-		s := servers[peer.name]
+		s := servers[peer.Name]
 		mutex.RUnlock()
 		return s.AppendEntries(req)
 	}

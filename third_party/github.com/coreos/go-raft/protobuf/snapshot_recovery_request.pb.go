@@ -14,12 +14,12 @@ var _ = &json.SyntaxError{}
 var _ = math.Inf
 
 type ProtoSnapshotRecoveryRequest struct {
-	LeaderName       *string  `protobuf:"bytes,1,req" json:"LeaderName,omitempty"`
-	LastIndex        *uint64  `protobuf:"varint,2,req" json:"LastIndex,omitempty"`
-	LastTerm         *uint64  `protobuf:"varint,3,req" json:"LastTerm,omitempty"`
-	Peers            []string `protobuf:"bytes,4,rep" json:"Peers,omitempty"`
-	State            []byte   `protobuf:"bytes,5,req" json:"State,omitempty"`
-	XXX_unrecognized []byte   `json:"-"`
+	LeaderName       *string                                   `protobuf:"bytes,1,req" json:"LeaderName,omitempty"`
+	LastIndex        *uint64                                   `protobuf:"varint,2,req" json:"LastIndex,omitempty"`
+	LastTerm         *uint64                                   `protobuf:"varint,3,req" json:"LastTerm,omitempty"`
+	Peers            []*ProtoSnapshotRecoveryRequest_ProtoPeer `protobuf:"bytes,4,rep" json:"Peers,omitempty"`
+	State            []byte                                    `protobuf:"bytes,5,req" json:"State,omitempty"`
+	XXX_unrecognized []byte                                    `json:"-"`
 }
 
 func (m *ProtoSnapshotRecoveryRequest) Reset()         { *m = ProtoSnapshotRecoveryRequest{} }
@@ -47,7 +47,7 @@ func (m *ProtoSnapshotRecoveryRequest) GetLastTerm() uint64 {
 	return 0
 }
 
-func (m *ProtoSnapshotRecoveryRequest) GetPeers() []string {
+func (m *ProtoSnapshotRecoveryRequest) GetPeers() []*ProtoSnapshotRecoveryRequest_ProtoPeer {
 	if m != nil {
 		return m.Peers
 	}
@@ -59,6 +59,32 @@ func (m *ProtoSnapshotRecoveryRequest) GetState() []byte {
 		return m.State
 	}
 	return nil
+}
+
+type ProtoSnapshotRecoveryRequest_ProtoPeer struct {
+	Name             *string `protobuf:"bytes,1,req" json:"Name,omitempty"`
+	ConnectionString *string `protobuf:"bytes,2,req" json:"ConnectionString,omitempty"`
+	XXX_unrecognized []byte  `json:"-"`
+}
+
+func (m *ProtoSnapshotRecoveryRequest_ProtoPeer) Reset() {
+	*m = ProtoSnapshotRecoveryRequest_ProtoPeer{}
+}
+func (m *ProtoSnapshotRecoveryRequest_ProtoPeer) String() string { return proto.CompactTextString(m) }
+func (*ProtoSnapshotRecoveryRequest_ProtoPeer) ProtoMessage()    {}
+
+func (m *ProtoSnapshotRecoveryRequest_ProtoPeer) GetName() string {
+	if m != nil && m.Name != nil {
+		return *m.Name
+	}
+	return ""
+}
+
+func (m *ProtoSnapshotRecoveryRequest_ProtoPeer) GetConnectionString() string {
+	if m != nil && m.ConnectionString != nil {
+		return *m.ConnectionString
+	}
+	return ""
 }
 
 func init() {

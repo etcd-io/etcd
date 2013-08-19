@@ -12,7 +12,7 @@ type SnapshotRecoveryRequest struct {
 	LeaderName string
 	LastIndex  uint64
 	LastTerm   uint64
-	Peers      []string
+	Peers      []*Peer
 	State      []byte
 }
 
@@ -36,11 +36,21 @@ func newSnapshotRecoveryRequest(leaderName string, snapshot *Snapshot) *Snapshot
 // Encodes the SnapshotRecoveryRequest to a buffer. Returns the number of bytes
 // written and any error that may have occurred.
 func (req *SnapshotRecoveryRequest) encode(w io.Writer) (int, error) {
+
+	protoPeers := make([]*protobuf.ProtoSnapshotRecoveryRequest_ProtoPeer, len(req.Peers))
+
+	for i, peer := range req.Peers {
+		protoPeers[i] = &protobuf.ProtoSnapshotRecoveryRequest_ProtoPeer{
+			Name:             proto.String(peer.Name),
+			ConnectionString: proto.String(peer.ConnectionString),
+		}
+	}
+
 	pb := &protobuf.ProtoSnapshotRecoveryRequest{
 		LeaderName: proto.String(req.LeaderName),
 		LastIndex:  proto.Uint64(req.LastIndex),
 		LastTerm:   proto.Uint64(req.LastTerm),
-		Peers:      req.Peers,
+		Peers:      protoPeers,
 		State:      req.State,
 	}
 	p, err := proto.Marshal(pb)
@@ -62,7 +72,7 @@ func (req *SnapshotRecoveryRequest) decode(r io.Reader) (int, error) {
 
 	totalBytes := len(data)
 
-	pb := &protobuf.ProtoSnapshotRequest{}
+	pb := &protobuf.ProtoSnapshotRecoveryRequest{}
 	if err = proto.Unmarshal(data, pb); err != nil {
 		return -1, err
 	}
@@ -70,8 +80,16 @@ func (req *SnapshotRecoveryRequest) decode(r io.Reader) (int, error) {
 	req.LeaderName = pb.GetLeaderName()
 	req.LastIndex = pb.GetLastIndex()
 	req.LastTerm = pb.GetLastTerm()
-	req.Peers = req.Peers
 	req.State = req.State
+
+	req.Peers = make([]*Peer, len(pb.Peers))
+
+	for i, peer := range pb.Peers {
+		req.Peers[i] = &Peer{
+			Name:             peer.GetName(),
+			ConnectionString: peer.GetConnectionString(),
+		}
+	}
 
 	return totalBytes, nil
 }

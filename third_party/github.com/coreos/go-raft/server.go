@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"hash/crc32"
-	"io"
 	"io/ioutil"
 	"os"
 	"path"
@@ -81,8 +80,6 @@ type Server struct {
 	lastSnapshot            *Snapshot
 	stateMachine            StateMachine
 	maxLogEntriesPerRequest uint64
-
-	confFile *os.File
 }
 
 // An event to be processed by the server's event loop.
@@ -272,11 +269,15 @@ func (s *Server) QuorumSize() int {
 
 // Retrieves the election timeout.
 func (s *Server) ElectionTimeout() time.Duration {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
 	return s.electionTimeout
 }
 
 // Sets the election timeout.
 func (s *Server) SetElectionTimeout(duration time.Duration) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 	s.electionTimeout = duration
 }
 
@@ -286,6 +287,8 @@ func (s *Server) SetElectionTimeout(duration time.Duration) {
 
 // Retrieves the heartbeat timeout.
 func (s *Server) HeartbeatTimeout() time.Duration {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
 	return s.heartbeatTimeout
 }
 
@@ -332,14 +335,14 @@ func (s *Server) Start() error {
 	// Create snapshot directory if not exist
 	os.Mkdir(path.Join(s.path, "snapshot"), 0700)
 
-	// Initialize the log and load it up.
-	if err := s.log.open(s.LogPath()); err != nil {
-		s.debugln("raft: Log error: ", err)
+	if err := s.readConf(); err != nil {
+		s.debugln("raft: Conf file error: ", err)
 		return fmt.Errorf("raft: Initialization error: %s", err)
 	}
 
-	if err := s.readConf(); err != nil {
-		s.debugln("raft: Conf file error: ", err)
+	// Initialize the log and load it up.
+	if err := s.log.open(s.LogPath()); err != nil {
+		s.debugln("raft: Log error: ", err)
 		return fmt.Errorf("raft: Initialization error: %s", err)
 	}
 
@@ -368,59 +371,12 @@ func (s *Server) Start() error {
 	return nil
 }
 
-// Read the configuration for the server.
-func (s *Server) readConf() error {
-	var err error
-	confPath := path.Join(s.path, "conf")
-	s.debugln("readConf.open ", confPath)
-	// open conf file
-	s.confFile, err = os.OpenFile(confPath, os.O_RDWR, 0600)
-
-	if err != nil {
-		if os.IsNotExist(err) {
-			s.confFile, err = os.OpenFile(confPath, os.O_WRONLY|os.O_CREATE, 0600)
-			debugln("readConf.create ", confPath)
-			if err != nil {
-				return err
-			}
-		}
-		return err
-	}
-
-	peerNames := make([]string, 0)
-
-	for {
-		var peerName string
-		_, err = fmt.Fscanf(s.confFile, "%s\n", &peerName)
-
-		if err != nil {
-			if err == io.EOF {
-				s.debugln("server.peer.conf: finish")
-				break
-			}
-			return err
-		}
-		s.debugln("server.peer.conf.read: ", peerName)
-
-		peerNames = append(peerNames, peerName)
-	}
-
-	s.confFile.Truncate(0)
-	s.confFile.Seek(0, os.SEEK_SET)
-
-	for _, peerName := range peerNames {
-		s.AddPeer(peerName)
-	}
-
-	return nil
-}
-
 // Shuts down the server.
 func (s *Server) Stop() {
 	s.send(&stopValue)
 	s.mutex.Lock()
+	defer s.mutex.Unlock()
 	s.log.close()
-	s.mutex.Unlock()
 }
 
 // Checks if the server is currently running.
@@ -532,24 +488,27 @@ func (s *Server) followerLoop() {
 		case e := <-s.c:
 			if e.target == &stopValue {
 				s.setState(Stopped)
-			} else if command, ok := e.target.(JoinCommand); ok {
-				//If no log entries exist and a self-join command is issued
-				//then immediately become leader and commit entry.
-				if s.log.currentIndex() == 0 && command.NodeName() == s.Name() {
-					s.debugln("selfjoin and promote to leader")
-					s.setState(Leader)
-					s.processCommand(command, e)
-				} else {
+			} else {
+				switch req := e.target.(type) {
+				case JoinCommand:
+					//If no log entries exist and a self-join command is issued
+					//then immediately become leader and commit entry.
+					if s.log.currentIndex() == 0 && req.NodeName() == s.Name() {
+						s.debugln("selfjoin and promote to leader")
+						s.setState(Leader)
+						s.processCommand(req, e)
+					} else {
+						err = NotLeaderError
+					}
+				case *AppendEntriesRequest:
+					e.returnValue, update = s.processAppendEntriesRequest(req)
+				case *RequestVoteRequest:
+					e.returnValue, update = s.processRequestVoteRequest(req)
+				case *SnapshotRequest:
+					e.returnValue = s.processSnapshotRequest(req)
+				default:
 					err = NotLeaderError
 				}
-			} else if req, ok := e.target.(*AppendEntriesRequest); ok {
-				e.returnValue, update = s.processAppendEntriesRequest(req)
-			} else if req, ok := e.target.(*RequestVoteRequest); ok {
-				e.returnValue, update = s.processRequestVoteRequest(req)
-			} else if req, ok := e.target.(*SnapshotRequest); ok {
-				e.returnValue = s.processSnapshotRequest(req)
-			} else {
-				err = NotLeaderError
 			}
 
 			// Callback to event.
@@ -629,14 +588,16 @@ func (s *Server) candidateLoop() {
 				var err error
 				if e.target == &stopValue {
 					s.setState(Stopped)
-				} else if _, ok := e.target.(Command); ok {
-					err = NotLeaderError
-				} else if req, ok := e.target.(*AppendEntriesRequest); ok {
-					e.returnValue, _ = s.processAppendEntriesRequest(req)
-				} else if req, ok := e.target.(*RequestVoteRequest); ok {
-					e.returnValue, _ = s.processRequestVoteRequest(req)
+				} else {
+					switch req := e.target.(type) {
+					case Command:
+						err = NotLeaderError
+					case *AppendEntriesRequest:
+						e.returnValue, _ = s.processAppendEntriesRequest(req)
+					case *RequestVoteRequest:
+						e.returnValue, _ = s.processRequestVoteRequest(req)
+					}
 				}
-
 				// Callback to event.
 				e.c <- err
 
@@ -660,7 +621,7 @@ func (s *Server) candidateLoop() {
 	}
 }
 
-// The event loop that is run when the server is in a Candidate state.
+// The event loop that is run when the server is in a Leader state.
 func (s *Server) leaderLoop() {
 	s.setState(Leader)
 	s.syncedPeer = make(map[string]bool)
@@ -682,15 +643,18 @@ func (s *Server) leaderLoop() {
 		case e := <-s.c:
 			if e.target == &stopValue {
 				s.setState(Stopped)
-			} else if command, ok := e.target.(Command); ok {
-				s.processCommand(command, e)
-				continue
-			} else if req, ok := e.target.(*AppendEntriesRequest); ok {
-				e.returnValue, _ = s.processAppendEntriesRequest(req)
-			} else if resp, ok := e.target.(*AppendEntriesResponse); ok {
-				s.processAppendEntriesResponse(resp)
-			} else if req, ok := e.target.(*RequestVoteRequest); ok {
-				e.returnValue, _ = s.processRequestVoteRequest(req)
+			} else {
+				switch req := e.target.(type) {
+				case Command:
+					s.processCommand(req, e)
+					continue
+				case *AppendEntriesRequest:
+					e.returnValue, _ = s.processAppendEntriesRequest(req)
+				case *AppendEntriesResponse:
+					s.processAppendEntriesResponse(req)
+				case *RequestVoteRequest:
+					e.returnValue, _ = s.processRequestVoteRequest(req)
+				}
 			}
 
 			// Callback to event.
@@ -705,7 +669,7 @@ func (s *Server) leaderLoop() {
 
 	// Stop all peers.
 	for _, peer := range s.peers {
-		peer.stopHeartbeat()
+		peer.stopHeartbeat(false)
 	}
 	s.syncedPeer = nil
 }
@@ -720,16 +684,18 @@ func (s *Server) snapshotLoop() {
 
 		if e.target == &stopValue {
 			s.setState(Stopped)
-		} else if _, ok := e.target.(Command); ok {
-			err = NotLeaderError
-		} else if req, ok := e.target.(*AppendEntriesRequest); ok {
-			e.returnValue, _ = s.processAppendEntriesRequest(req)
-		} else if req, ok := e.target.(*RequestVoteRequest); ok {
-			e.returnValue, _ = s.processRequestVoteRequest(req)
-		} else if req, ok := e.target.(*SnapshotRecoveryRequest); ok {
-			e.returnValue = s.processSnapshotRecoveryRequest(req)
+		} else {
+			switch req := e.target.(type) {
+			case Command:
+				err = NotLeaderError
+			case *AppendEntriesRequest:
+				e.returnValue, _ = s.processAppendEntriesRequest(req)
+			case *RequestVoteRequest:
+				e.returnValue, _ = s.processRequestVoteRequest(req)
+			case *SnapshotRecoveryRequest:
+				e.returnValue = s.processSnapshotRecoveryRequest(req)
+			}
 		}
-
 		// Callback to event.
 		e.c <- err
 
@@ -959,30 +925,28 @@ func (s *Server) processRequestVoteRequest(req *RequestVoteRequest) (*RequestVot
 //--------------------------------------
 
 // Adds a peer to the server.
-func (s *Server) AddPeer(name string) error {
+func (s *Server) AddPeer(name string, connectiongString string) error {
 	s.debugln("server.peer.add: ", name, len(s.peers))
-
+	defer s.writeConf()
 	// Do not allow peers to be added twice.
 	if s.peers[name] != nil {
 		return nil
 	}
 
-	// Only add the peer if it doesn't have the same name.
-	if s.name != name {
-		// when loading snapshot s.confFile should be nil
-		if s.confFile != nil {
-			_, err := fmt.Fprintln(s.confFile, name)
-			s.debugln("server.peer.conf.write: ", name)
-			if err != nil {
-				return err
-			}
-		}
-		peer := newPeer(s, name, s.heartbeatTimeout)
-		if s.State() == Leader {
-			peer.startHeartbeat()
-		}
-		s.peers[peer.name] = peer
+	// Skip the Peer if it has the same name as the Server
+	if s.name == name {
+		return nil
 	}
+
+	peer := newPeer(s, name, connectiongString, s.heartbeatTimeout)
+
+	if s.State() == Leader {
+		peer.startHeartbeat()
+	}
+
+	s.peers[peer.Name] = peer
+
+	s.debugln("server.peer.conf.write: ", name)
 
 	return nil
 }
@@ -991,8 +955,12 @@ func (s *Server) AddPeer(name string) error {
 func (s *Server) RemovePeer(name string) error {
 	s.debugln("server.peer.remove: ", name, len(s.peers))
 
-	// Ignore removal of the server itself.
-	if s.name == name {
+	defer s.writeConf()
+
+	if name == s.Name() {
+		// when the removed node restart, it should be able
+		// to know it has been removed before. So we need
+		// to update knownCommitIndex
 		return nil
 	}
 	// Return error if peer doesn't exist.
@@ -1001,22 +969,12 @@ func (s *Server) RemovePeer(name string) error {
 		return fmt.Errorf("raft: Peer not found: %s", name)
 	}
 
-	// TODO: Flush entries to the peer first.
-
 	// Stop peer and remove it.
-	peer.stopHeartbeat()
+	if s.State() == Leader {
+		peer.stopHeartbeat(true)
+	}
 
 	delete(s.peers, name)
-
-	s.confFile.Truncate(0)
-	s.confFile.Seek(0, os.SEEK_SET)
-
-	for peer := range s.peers {
-		_, err := fmt.Fprintln(s.confFile, peer)
-		if err != nil {
-			return err
-		}
-	}
 
 	return nil
 }
@@ -1054,14 +1012,13 @@ func (s *Server) TakeSnapshot() error {
 		state = []byte{0}
 	}
 
-	var peerNames []string
+	var peers []*Peer
 
 	for _, peer := range s.peers {
-		peerNames = append(peerNames, peer.Name())
+		peers = append(peers, peer.clone())
 	}
-	peerNames = append(peerNames, s.Name())
 
-	s.currentSnapshot = &Snapshot{lastIndex, lastTerm, peerNames, state, path}
+	s.currentSnapshot = &Snapshot{lastIndex, lastTerm, peers, state, path}
 
 	s.saveSnapshot()
 
@@ -1144,8 +1101,8 @@ func (s *Server) processSnapshotRecoveryRequest(req *SnapshotRecoveryRequest) *S
 	s.peers = make(map[string]*Peer)
 
 	// recovery the cluster configuration
-	for _, peerName := range req.Peers {
-		s.AddPeer(peerName)
+	for _, peer := range req.Peers {
+		s.AddPeer(peer.Name, peer.ConnectionString)
 	}
 
 	//update term and index
@@ -1237,8 +1194,8 @@ func (s *Server) LoadSnapshot() error {
 		return err
 	}
 
-	for _, peerName := range s.lastSnapshot.Peers {
-		s.AddPeer(peerName)
+	for _, peer := range s.lastSnapshot.Peers {
+		s.AddPeer(peer.Name, peer.ConnectionString)
 	}
 
 	s.log.startTerm = s.lastSnapshot.LastTerm
@@ -1246,6 +1203,62 @@ func (s *Server) LoadSnapshot() error {
 	s.log.updateCommitIndex(s.lastSnapshot.LastIndex)
 
 	return err
+}
+
+//--------------------------------------
+// Config File
+//--------------------------------------
+
+func (s *Server) writeConf() {
+
+	peers := make([]*Peer, len(s.peers))
+
+	i := 0
+	for _, peer := range s.peers {
+		peers[i] = peer.clone()
+		i++
+	}
+
+	r := &Config{
+		CommitIndex: s.log.commitIndex,
+		Peers:       peers,
+	}
+
+	b, _ := json.Marshal(r)
+
+	confPath := path.Join(s.path, "conf")
+	tmpConfPath := path.Join(s.path, "conf.tmp")
+
+	err := ioutil.WriteFile(tmpConfPath, b, 0600)
+
+	if err != nil {
+		panic(err)
+	}
+
+	os.Rename(tmpConfPath, confPath)
+}
+
+// Read the configuration for the server.
+func (s *Server) readConf() error {
+	confPath := path.Join(s.path, "conf")
+	s.debugln("readConf.open ", confPath)
+
+	// open conf file
+	b, err := ioutil.ReadFile(confPath)
+
+	if err != nil {
+		return nil
+	}
+
+	conf := &Config{}
+
+	if err = json.Unmarshal(b, conf); err != nil {
+		return err
+	}
+
+	s.log.commitIndex = conf.CommitIndex
+
+	return nil
 }
 
 //--------------------------------------
