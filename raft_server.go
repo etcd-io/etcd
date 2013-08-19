@@ -16,13 +16,12 @@ import (
 
 type raftServer struct {
 	*raft.Server
-	version     string
-	joinIndex   uint64
-	pendingJoin bool
-	name        string
-	url         string
-	tlsConf     *TLSConfig
-	tlsInfo     *TLSInfo
+	version   string
+	joinIndex uint64
+	name      string
+	url       string
+	tlsConf   *TLSConfig
+	tlsInfo   *TLSInfo
 }
 
 var r *raftServer
@@ -81,22 +80,20 @@ func (r *raftServer) ListenAndServe() {
 
 	} else {
 
-		if r.pendingJoin {
-			cluster = getMachines(nameToRaftURL)
-			for i := 0; i < len(cluster); i++ {
-				u, err := url.Parse(cluster[i])
-				if err != nil {
-					debug("rejoin cannot parse url: ", err)
-				}
-				cluster[i] = u.Host
+		// rejoin the previous cluster
+		cluster = getMachines(nameToRaftURL)
+		for i := 0; i < len(cluster); i++ {
+			u, err := url.Parse(cluster[i])
+			if err != nil {
+				debug("rejoin cannot parse url: ", err)
 			}
-			ok := joinCluster(cluster)
-			if !ok {
-				fatal("cannot rejoin to the cluster")
-			}
+			cluster[i] = u.Host
+		}
+		ok := joinCluster(cluster)
+		if !ok {
+			fatal("cannot rejoin to the cluster")
 		}
 
-		// rejoin the previous cluster
 		debugf("%s restart as a follower", r.name)
 	}
 

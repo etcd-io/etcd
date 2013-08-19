@@ -142,10 +142,6 @@ func (c *JoinCommand) CommandName() string {
 // Join a server to the cluster
 func (c *JoinCommand) Apply(raftServer *raft.Server) (interface{}, error) {
 
-	if c.Name == r.Name() {
-		r.pendingJoin = false
-	}
-
 	// check if the join command is from a previous machine, who lost all its previous log.
 	response, _ := etcdStore.RawGet(path.Join("_etcd/machines", c.Name))
 
@@ -220,18 +216,8 @@ func (c *RemoveCommand) Apply(raftServer *raft.Server) (interface{}, error) {
 			debugf("server [%s] is removed", raftServer.Name())
 			os.Exit(0)
 		} else {
-			// the node is replaying previous logs and there is a join command
-			// afterwards, we should not exit
-
-			if r.joinIndex == 0 {
-				// if the node has not sent a join command in this start
-				// it will need to send a join command after replay the logs
-				r.pendingJoin = true
-			} else {
-				// else ignore remove
-				debugf("ignore previous remove command.")
-			}
-
+			// else ignore remove
+			debugf("ignore previous remove command.")
 		}
 	}
 
