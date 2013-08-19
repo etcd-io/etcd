@@ -36,6 +36,8 @@ func newRaftServer(name string, url string, tlsConf *TLSConfig, tlsInfo *TLSInfo
 
 	return &raftServer{
 		Server:  server,
+		// TODO: This will be the internal protocol version but tie it
+		// to the release tag for now.
 		version: releaseVersion,
 		name:    name,
 		url:     url,
