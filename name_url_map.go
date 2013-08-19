@@ -7,7 +7,7 @@ import (
 
 // we map node name to url
 type nodeInfo struct {
-	version string
+	raftVersion string
 	raftURL string
 	etcdURL string
 }
@@ -42,7 +42,7 @@ func nameToRaftURL(name string) (string, bool) {
 // addNameToURL add a name that maps to raftURL and etcdURL
 func addNameToURL(name string, version string, raftURL string, etcdURL string) {
 	namesMap[name] = &nodeInfo{
-		version: version,
+		raftVersion: raftVersion,
 		raftURL: raftURL,
 		etcdURL: etcdURL,
 	}
