@@ -123,12 +123,19 @@ func (c *Client) internalSyncCluster(machines []string) bool {
 			continue
 		} else {
 			b, err := ioutil.ReadAll(resp.Body)
+			resp.Body.Close()
 			if err != nil {
 				// try another machine in the cluster
 				continue
 			}
 			// update Machines List
 			c.cluster.Machines = strings.Split(string(b), ",")
+
+			// update leader
+			// the first one in the machine list is the leader
+			logger.Debugf("update.leader[%s,%s]", c.cluster.Leader, c.cluster.Machines[0])
+			c.cluster.Leader = c.cluster.Machines[0]
+
 			logger.Debug("sync.machines ", c.cluster.Machines)
 			return true
 		}
@@ -139,6 +146,7 @@ func (c *Client) internalSyncCluster(machines []string) bool {
 // serverName should contain both hostName and port
 func (c *Client) createHttpPath(serverName string, _path string) string {
 	httpPath := path.Join(serverName, _path)
+	httpPath = c.config.Scheme + "://" + httpPath
 	return httpPath
 }
 
