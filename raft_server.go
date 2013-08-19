@@ -164,7 +164,10 @@ func (r *raftServer) startTransport(scheme string, tlsConf tls.Config) {
 
 }
 
-func getLeaderVersion(t transporter, versionURL url.URL) (string, error) {
+// getVersion fetches the raft version of a peer. This works for now but we
+// will need to do something more sophisticated later when we allow mixed
+// version clusters.
+func getVersion(t transporter, versionURL url.URL) (string, error) {
 	resp, err := t.Get(versionURL.String())
 
 	if err != nil {
@@ -186,7 +189,7 @@ func joinCluster(s *raft.Server, raftURL string, scheme string) error {
 
 	// Our version must match the leaders version
 	versionURL := url.URL{Host: raftURL, Scheme: scheme, Path: "/version"}
-	version, err := getLeaderVersion(t, versionURL)
+	version, err := getVersion(t, versionURL)
 	if err != nil {
 		return fmt.Errorf("Unable to join: %v", err)
 	}
