@@ -78,7 +78,7 @@ func TestInternalVersionFail(t *testing.T) {
 
 	procAttr := new(os.ProcAttr)
 	procAttr.Files = []*os.File{nil, os.Stdout, os.Stderr}
-	args := []string{"etcd", "-n=node1", "-f", "-d=/tmp/node1", "-vv", "-C="+fakeURL.Host}
+	args := []string{"etcd", "-n=node1", "-f", "-d=/tmp/node1", "-vv", "-C=" + fakeURL.Host}
 
 	process, err := os.StartProcess("etcd", args, procAttr)
 	if err != nil {
@@ -101,7 +101,6 @@ func TestInternalVersionFail(t *testing.T) {
 		return
 	}
 }
-
 
 // This test creates a single node and then set a value to it.
 // Then this test kills the node and restart it and tries to get the value again.
@@ -215,8 +214,72 @@ func TestSimpleMultiNodeTls(t *testing.T) {
 }
 
 // Create a five nodes
+// Kill all the nodes and restart
+func TestMultiNodeKillAllAndRecovery(t *testing.T) {
+	procAttr := new(os.ProcAttr)
+	procAttr.Files = []*os.File{nil, os.Stdout, os.Stderr}
+
+	clusterSize := 5
+	argGroup, etcds, err := test.CreateCluster(clusterSize, procAttr, false)
+
+	if err != nil {
+		t.Fatal("cannot create cluster")
+	}
+
+	c := etcd.NewClient()
+
+	c.SyncCluster()
+
+	time.Sleep(time.Second)
+
+	// send 10 commands
+	for i := 0; i < 10; i++ {
+		// Test Set
+		_, err := c.Set("foo", "bar", 0)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	time.Sleep(time.Second)
+
+	// kill all
+	test.DestroyCluster(etcds)
+
+	time.Sleep(time.Second)
+
+	stop := make(chan bool)
+	leaderChan := make(chan string, 1)
+	all := make(chan bool, 1)
+
+	time.Sleep(time.Second)
+
+	for i := 0; i < clusterSize; i++ {
+		etcds[i], err = os.StartProcess("etcd", argGroup[i], procAttr)
+	}
+
+	go test.Monitor(clusterSize, 1, leaderChan, all, stop)
+
+	<-all
+	<-leaderChan
+
+	result, err := c.Set("foo", "bar", 0)
+
+	if err != nil {
+		panic(err)
+	}
+
+	if result.Index != 18 {
+		t.Fatalf("recovery failed! [%d/18]", result.Index)
+	}
+
+	// kill all
+	test.DestroyCluster(etcds)
+}
+
+// Create a five nodes
 // Randomly kill one of the node and keep on sending set command to the cluster
-func TestMultiNodeRecovery(t *testing.T) {
+func TestMultiNodeKillOne(t *testing.T) {
 	procAttr := new(os.ProcAttr)
 	procAttr.Files = []*os.File{nil, os.Stdout, os.Stderr}
 

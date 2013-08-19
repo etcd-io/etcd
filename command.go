@@ -118,17 +118,17 @@ func (c *WatchCommand) Apply(server *raft.Server) (interface{}, error) {
 // JoinCommand
 type JoinCommand struct {
 	RaftVersion string `json:"raftVersion"`
-	Name    string `json:"name"`
-	RaftURL string `json:"raftURL"`
-	EtcdURL string `json:"etcdURL"`
+	Name        string `json:"name"`
+	RaftURL     string `json:"raftURL"`
+	EtcdURL     string `json:"etcdURL"`
 }
 
 func newJoinCommand() *JoinCommand {
 	return &JoinCommand{
 		RaftVersion: r.version,
-		Name:    r.name,
-		RaftURL: r.url,
-		EtcdURL: e.url,
+		Name:        r.name,
+		RaftURL:     r.url,
+		EtcdURL:     e.url,
 	}
 }
 
