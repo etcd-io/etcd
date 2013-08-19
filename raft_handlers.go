@@ -113,3 +113,10 @@ func NameHttpHandler(w http.ResponseWriter, req *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(r.name))
 }
+
+// Response to the name request
+func RaftVersionHttpHandler(w http.ResponseWriter, req *http.Request) {
+	debugf("[recv] Get %s/version/ ", r.url)
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(r.version))
+}
