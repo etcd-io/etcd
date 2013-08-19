@@ -474,6 +474,7 @@ If you are using SSL for server to server communication, you must use it on all 
 - [gleicon/goreman](https://github.com/gleicon/goreman/tree/etcd) - Branch of the Go Foreman clone with etcd support
 - [garethr/hiera-etcd](https://github.com/garethr/hiera-etcd) - Puppet hiera backend using etcd
 - [mattn/etcd-vim](https://github.com/mattn/etcd-vim) - SET and GET keys from inside vim
+- [mattn/etcdenv](https://github.com/mattn/etcdenv) - "env" shebang with etcd integration
 
 ## Project Details
 
