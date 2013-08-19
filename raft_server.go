@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/tls"
 	"encoding/json"
+	"io/ioutil"
 	"fmt"
 	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/go-raft"
@@ -163,14 +164,40 @@ func (r *raftServer) startTransport(scheme string, tlsConf tls.Config) {
 
 }
 
+func getLeaderVersion(t transporter, versionURL url.URL) (string, error) {
+	resp, err := t.Get(versionURL.String())
+
+	if err != nil {
+		return "", err
+	}
+
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+
+	return string(body), nil
+}
+
 // Send join requests to the leader.
 func joinCluster(s *raft.Server, raftURL string, scheme string) error {
 	var b bytes.Buffer
 
-	json.NewEncoder(&b).Encode(newJoinCommand())
-
 	// t must be ok
 	t, _ := r.Transporter().(transporter)
+
+	// Our version must match the leaders version
+	versionURL := url.URL{Host: raftURL, Scheme: scheme, Path: "/version"}
+	version, err := getLeaderVersion(t, versionURL)
+	if err != nil {
+		return fmt.Errorf("Unable to join: %v", err)
+	}
+
+	// TODO: versioning of the internal protocol. See:
+	// Documentation/internatl-protocol-versioning.md
+	if version != r.version {
+		return fmt.Errorf("Unable to join: internal version mismatch, entire cluster must be running identical versions of etcd")
+	}
+
+	json.NewEncoder(&b).Encode(newJoinCommand())
 
 	joinURL := url.URL{Host: raftURL, Scheme: scheme, Path: "/join"}
 
