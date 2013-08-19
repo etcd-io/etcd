@@ -9,7 +9,8 @@ type JoinCommand interface {
 
 // Join command
 type DefaultJoinCommand struct {
-	Name string `json:"name"`
+	Name             string `json:"name"`
+	ConnectionString string `json:"connectionString"`
 }
 
 // The name of the Join command in the log
@@ -18,7 +19,7 @@ func (c *DefaultJoinCommand) CommandName() string {
 }
 
 func (c *DefaultJoinCommand) Apply(server *Server) (interface{}, error) {
-	err := server.AddPeer(c.Name)
+	err := server.AddPeer(c.Name, c.ConnectionString)
 
 	return []byte("join"), err
 }
