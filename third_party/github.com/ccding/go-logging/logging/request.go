@@ -13,7 +13,7 @@
 // limitations under the License.
 //
 // author: Cong Ding <dinggnu@gmail.com>
-//
+
 package logging
 
 // request struct stores the logger request

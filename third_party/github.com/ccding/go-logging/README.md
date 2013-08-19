@@ -5,14 +5,6 @@ go-logging is a high-performance logging library for golang.
   low delay of about 800 nano-seconds.
 
 ## Getting Started
-The stable version is under the `stable` branch, which does never revert and
-is fully tested. The tags in `stable` branch indicate the version numbers.
-
-However, `master` branch is unstable version, and `dev` branch is development
-branch. `master` branch merges `dev` branch periodically.
-
-Btw, all the pull request should be sent to the `dev` branch.
-
 ### Installation
 The step below will download the library source code to
 `${GOPATH}/src/github.com/ccding/go-logging`.
@@ -46,7 +38,6 @@ import (
 
 func main() {
 	logger, _ := logging.SimpleLogger("main")
-	logger.SetLevel(logging.DEBUG)
 	logger.Error("this is a test from error")
 	logger.Destroy()
 }
