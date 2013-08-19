@@ -189,7 +189,7 @@ func LeaderHttpHandler(w http.ResponseWriter, req *http.Request) error {
 
 // Handler to return all the known machines in the current cluster
 func MachinesHttpHandler(w http.ResponseWriter, req *http.Request) error {
-	machines := getMachines(true)
+	machines := getMachines(nameToEtcdURL)
 
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(strings.Join(machines, ", ")))

@@ -212,7 +212,7 @@ func (c *RemoveCommand) Apply(raftServer *raft.Server) (interface{}, error) {
 	if c.Name == raftServer.Name() {
 		// the removed node is this node
 
-		// if the node is not replying the previous logs
+		// if the node is not replaying the previous logs
 		// and the node has sent out a join request in this
 		// start. It is sure that this node received a new remove
 		// command and need to be removed
@@ -220,7 +220,7 @@ func (c *RemoveCommand) Apply(raftServer *raft.Server) (interface{}, error) {
 			debugf("server [%s] is removed", raftServer.Name())
 			os.Exit(0)
 		} else {
-			// the node is replying previous logs and there is a join command
+			// the node is replaying previous logs and there is a join command
 			// afterwards, we should not exit
 
 			if r.joinIndex == 0 {

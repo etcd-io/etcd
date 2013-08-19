@@ -8,22 +8,14 @@ func machineNum() int {
 }
 
 // getMachines gets the current machines in the cluster
-func getMachines(etcd bool) []string {
+func getMachines(toURL func(string) (string, bool)) []string {
 
 	peers := r.Peers()
 
 	machines := make([]string, len(peers)+1)
 
-	var toURL func(string) (string, bool)
-
-	if etcd {
-		toURL = nameToEtcdURL
-	} else {
-		toURL = nameToRaftURL
-	}
-
 	leader, ok := toURL(r.Leader())
-	self := e.url
+	self, _ := toURL(r.Name())
 	i := 1
 
 	if ok {

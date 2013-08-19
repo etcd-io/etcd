@@ -82,7 +82,7 @@ func (r *raftServer) ListenAndServe() {
 	} else {
 
 		if r.pendingJoin {
-			cluster = getMachines(false)
+			cluster = getMachines(nameToRaftURL)
 			for i := 0; i < len(cluster); i++ {
 				u, err := url.Parse(cluster[i])
 				if err != nil {
