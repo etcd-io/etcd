@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"crypto/tls"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	etcdErr "github.com/coreos/etcd/error"
@@ -15,11 +16,13 @@ import (
 
 type raftServer struct {
 	*raft.Server
-	version string
-	name    string
-	url     string
-	tlsConf *TLSConfig
-	tlsInfo *TLSInfo
+	version     string
+	joinIndex   uint64
+	pendingJoin bool
+	name        string
+	url         string
+	tlsConf     *TLSConfig
+	tlsInfo     *TLSInfo
 }
 
 var r *raftServer
@@ -77,6 +80,22 @@ func (r *raftServer) ListenAndServe() {
 		}
 
 	} else {
+
+		if r.pendingJoin {
+			cluster = getMachines(false)
+			for i := 0; i < len(cluster); i++ {
+				u, err := url.Parse(cluster[i])
+				if err != nil {
+					debug("rejoin cannot parse url: ", err)
+				}
+				cluster[i] = u.Host
+			}
+			ok := joinCluster(cluster)
+			if !ok {
+				fatal("cannot rejoin to the cluster")
+			}
+		}
+
 		// rejoin the previous cluster
 		debugf("%s restart as a follower", r.name)
 	}
@@ -105,26 +124,10 @@ func startAsLeader() {
 func startAsFollower() {
 	// start as a follower in a existing cluster
 	for i := 0; i < retryTimes; i++ {
-
-		for _, machine := range cluster {
-
-			if len(machine) == 0 {
-				continue
-			}
-
-			err := joinCluster(r.Server, machine, r.tlsConf.Scheme)
-			if err == nil {
-				debugf("%s success join to the cluster via machine %s", r.name, machine)
-				return
-
-			} else {
-				if _, ok := err.(etcdErr.Error); ok {
-					fatal(err)
-				}
-				debugf("cannot join to cluster via machine %s %s", machine, err)
-			}
+		ok := joinCluster(cluster)
+		if ok {
+			return
 		}
-
 		warnf("cannot join to cluster via given machines, retry in %d seconds", RetryInterval)
 		time.Sleep(time.Second * RetryInterval)
 	}
@@ -149,6 +152,7 @@ func (r *raftServer) startTransport(scheme string, tlsConf tls.Config) {
 	raftMux.HandleFunc("/name", NameHttpHandler)
 	raftMux.HandleFunc("/version", RaftVersionHttpHandler)
 	raftMux.Handle("/join", errorHandler(JoinHttpHandler))
+	raftMux.HandleFunc("/remove/", RemoveHttpHandler)
 	raftMux.HandleFunc("/vote", VoteHttpHandler)
 	raftMux.HandleFunc("/log", GetLogHttpHandler)
 	raftMux.HandleFunc("/log/append", AppendEntriesHttpHandler)
@@ -180,15 +184,37 @@ func getVersion(t transporter, versionURL url.URL) (string, error) {
 	return string(body), nil
 }
 
-// Send join requests to the leader.
-func joinCluster(s *raft.Server, raftURL string, scheme string) error {
+func joinCluster(cluster []string) bool {
+	for _, machine := range cluster {
+
+		if len(machine) == 0 {
+			continue
+		}
+
+		err := joinByMachine(r.Server, machine, r.tlsConf.Scheme)
+		if err == nil {
+			debugf("%s success join to the cluster via machine %s", r.name, machine)
+			return true
+
+		} else {
+			if _, ok := err.(etcdErr.Error); ok {
+				fatal(err)
+			}
+			debugf("cannot join to cluster via machine %s %s", machine, err)
+		}
+	}
+	return false
+}
+
+// Send join requests to machine.
+func joinByMachine(s *raft.Server, machine string, scheme string) error {
 	var b bytes.Buffer
 
 	// t must be ok
 	t, _ := r.Transporter().(transporter)
 
 	// Our version must match the leaders version
-	versionURL := url.URL{Host: raftURL, Scheme: scheme, Path: "/version"}
+	versionURL := url.URL{Host: machine, Scheme: scheme, Path: "/version"}
 	version, err := getVersion(t, versionURL)
 	if err != nil {
 		return fmt.Errorf("Unable to join: %v", err)
@@ -202,9 +228,9 @@ func joinCluster(s *raft.Server, raftURL string, scheme string) error {
 
 	json.NewEncoder(&b).Encode(newJoinCommand())
 
-	joinURL := url.URL{Host: raftURL, Scheme: scheme, Path: "/join"}
+	joinURL := url.URL{Host: machine, Scheme: scheme, Path: "/join"}
 
-	debugf("Send Join Request to %s", raftURL)
+	debugf("Send Join Request to %s", joinURL.String())
 
 	resp, err := t.Post(joinURL.String(), &b)
 
@@ -215,6 +241,8 @@ func joinCluster(s *raft.Server, raftURL string, scheme string) error {
 		if resp != nil {
 			defer resp.Body.Close()
 			if resp.StatusCode == http.StatusOK {
+				b, _ := ioutil.ReadAll(resp.Body)
+				r.joinIndex, _ = binary.Uvarint(b)
 				return nil
 			}
 			if resp.StatusCode == http.StatusTemporaryRedirect {
@@ -244,6 +272,7 @@ func joinCluster(s *raft.Server, raftURL string, scheme string) error {
 // Register commands to raft server
 func registerCommands() {
 	raft.RegisterCommand(&JoinCommand{})
+	raft.RegisterCommand(&RemoveCommand{})
 	raft.RegisterCommand(&SetCommand{})
 	raft.RegisterCommand(&GetCommand{})
 	raft.RegisterCommand(&DeleteCommand{})
