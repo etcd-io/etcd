@@ -176,7 +176,7 @@ func Monitor(size int, allowDeadNum int, leaderChan chan string, all chan bool, 
 
 func getLeader(addr string) (string, error) {
 
-	resp, err := client.Get(addr + "/leader")
+	resp, err := client.Get(addr + "/v1/leader")
 
 	if err != nil {
 		return "", err

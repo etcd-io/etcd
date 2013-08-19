@@ -116,7 +116,7 @@ func (c *Client) SyncCluster() bool {
 // sync cluster information by providing machine list
 func (c *Client) internalSyncCluster(machines []string) bool {
 	for _, machine := range machines {
-		httpPath := c.createHttpPath(machine, "machines")
+		httpPath := c.createHttpPath(machine, "v1/machines")
 		resp, err := c.httpClient.Get(httpPath)
 		if err != nil {
 			// try another machine in the cluster

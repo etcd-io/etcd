@@ -3,6 +3,7 @@ package store
 import (
 	"encoding/json"
 	"fmt"
+	etcdErr "github.com/coreos/etcd/error"
 	"path"
 	"strconv"
 	"sync"
@@ -239,8 +240,7 @@ func (s *Store) internalSet(key string, value string, expireTime time.Time, inde
 		ok := s.Tree.set(key, Node{value, expireTime, update})
 
 		if !ok {
-			err := NotFile(key)
-			return nil, err
+			return nil, etcdErr.NewError(102, "set: "+key)
 		}
 
 		if isExpire {
@@ -393,8 +393,7 @@ func (s *Store) RawGet(key string) ([]*Response, error) {
 		return resps, nil
 	}
 
-	err := NotFoundError(key)
-	return nil, err
+	return nil, etcdErr.NewError(100, "get: "+key)
 }
 
 func (s *Store) Delete(key string, index uint64) ([]byte, error) {
@@ -451,8 +450,7 @@ func (s *Store) internalDelete(key string, index uint64) ([]byte, error) {
 		return msg, err
 
 	} else {
-		err := NotFoundError(key)
-		return nil, err
+		return nil, etcdErr.NewError(100, "delete: "+key)
 	}
 }
 
@@ -467,8 +465,7 @@ func (s *Store) TestAndSet(key string, prevValue string, value string, expireTim
 	resp := s.internalGet(key)
 
 	if resp == nil {
-		err := NotFoundError(key)
-		return nil, err
+		return nil, etcdErr.NewError(100, "testandset: "+key)
 	}
 
 	if resp.Value == prevValue {
@@ -478,8 +475,8 @@ func (s *Store) TestAndSet(key string, prevValue string, value string, expireTim
 	} else {
 
 		// If fails, return err
-		err := TestFail(fmt.Sprintf("TestAndSet: %s!=%s", resp.Value, prevValue))
-		return nil, err
+		return nil, etcdErr.NewError(101, fmt.Sprintf("TestAndSet: %s!=%s",
+			resp.Value, prevValue))
 	}
 
 }

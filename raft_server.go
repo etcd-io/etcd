@@ -5,11 +5,11 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	etcdErr "github.com/coreos/etcd/error"
+	"github.com/coreos/go-raft"
 	"net/http"
 	"net/url"
 	"time"
-
-	"github.com/coreos/go-raft"
 )
 
 type raftServer struct {
@@ -67,55 +67,10 @@ func (r *raftServer) ListenAndServe() {
 
 		// start as a leader in a new cluster
 		if len(cluster) == 0 {
+			startAsLeader()
 
-			time.Sleep(time.Millisecond * 20)
-
-			// leader need to join self as a peer
-			for {
-				_, err := r.Do(newJoinCommand())
-				if err == nil {
-					break
-				}
-			}
-			debugf("%s start as a leader", r.name)
-
-			// start as a follower in a existing cluster
 		} else {
-
-			time.Sleep(time.Millisecond * 20)
-
-			var err error
-
-			for i := 0; i < retryTimes; i++ {
-
-				success := false
-				for _, machine := range cluster {
-					if len(machine) == 0 {
-						continue
-					}
-					err = joinCluster(r.Server, machine, r.tlsConf.Scheme)
-					if err != nil {
-						if err.Error() == errors[103] {
-							fatal(err)
-						}
-						debugf("cannot join to cluster via machine %s %s", machine, err)
-					} else {
-						success = true
-						break
-					}
-				}
-
-				if success {
-					break
-				}
-
-				warnf("cannot join to cluster via given machines, retry in %d seconds", RetryInterval)
-				time.Sleep(time.Second * RetryInterval)
-			}
-			if err != nil {
-				fatalf("Cannot join the cluster via given machines after %x retries", retryTimes)
-			}
-			debugf("%s success join to the cluster", r.name)
+			startAsFollower()
 		}
 
 	} else {
@@ -133,6 +88,47 @@ func (r *raftServer) ListenAndServe() {
 
 }
 
+func startAsLeader() {
+	// leader need to join self as a peer
+	for {
+		_, err := r.Do(newJoinCommand())
+		if err == nil {
+			break
+		}
+	}
+	debugf("%s start as a leader", r.name)
+}
+
+func startAsFollower() {
+	// start as a follower in a existing cluster
+	for i := 0; i < retryTimes; i++ {
+
+		for _, machine := range cluster {
+
+			if len(machine) == 0 {
+				continue
+			}
+
+			err := joinCluster(r.Server, machine, r.tlsConf.Scheme)
+			if err == nil {
+				debugf("%s success join to the cluster via machine %s", r.name, machine)
+				return
+
+			} else {
+				if _, ok := err.(etcdErr.Error); ok {
+					fatal(err)
+				}
+				debugf("cannot join to cluster via machine %s %s", machine, err)
+			}
+		}
+
+		warnf("cannot join to cluster via given machines, retry in %d seconds", RetryInterval)
+		time.Sleep(time.Second * RetryInterval)
+	}
+
+	fatalf("Cannot join the cluster via given machines after %x retries", retryTimes)
+}
+
 // Start to listen and response raft command
 func (r *raftServer) startTransport(scheme string, tlsConf tls.Config) {
 	u, _ := url.Parse(r.url)
@@ -148,7 +144,7 @@ func (r *raftServer) startTransport(scheme string, tlsConf tls.Config) {
 
 	// internal commands
 	raftMux.HandleFunc("/name", NameHttpHandler)
-	raftMux.HandleFunc("/join", JoinHttpHandler)
+	raftMux.Handle("/join", errorHandler(JoinHttpHandler))
 	raftMux.HandleFunc("/vote", VoteHttpHandler)
 	raftMux.HandleFunc("/log", GetLogHttpHandler)
 	raftMux.HandleFunc("/log/append", AppendEntriesHttpHandler)
@@ -171,11 +167,7 @@ func joinCluster(s *raft.Server, raftURL string, scheme string) error {
 	json.NewEncoder(&b).Encode(newJoinCommand())
 
 	// t must be ok
-	t, ok := r.Transporter().(transporter)
-
-	if !ok {
-		panic("wrong type")
-	}
+	t, _ := r.Transporter().(transporter)
 
 	joinURL := url.URL{Host: raftURL, Scheme: scheme, Path: "/join"}
 
@@ -203,7 +195,10 @@ func joinCluster(s *raft.Server, raftURL string, scheme string) error {
 
 			} else if resp.StatusCode == http.StatusBadRequest {
 				debug("Reach max number machines in the cluster")
-				return fmt.Errorf(errors[103])
+				decoder := json.NewDecoder(resp.Body)
+				err := &etcdErr.Error{}
+				decoder.Decode(err)
+				return *err
 			} else {
 				return fmt.Errorf("Unable to join")
 			}

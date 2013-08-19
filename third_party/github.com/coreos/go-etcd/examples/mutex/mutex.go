@@ -17,7 +17,6 @@ func main() {
 	c := etcd.NewClient()
 	c.Set("lock", "unlock", 0)
 
-
 	for i := 0; i < 10; i++ {
 		go t(i, ch, etcd.NewClient())
 	}

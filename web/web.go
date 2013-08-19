@@ -29,12 +29,12 @@ func Start(raftServer *raft.Server, webURL string) {
 	webMux := http.NewServeMux()
 
 	server := &http.Server{
-		Handler:   webMux,
-		Addr:      u.Host,
+		Handler: webMux,
+		Addr:    u.Host,
 	}
 
 	mainPage = &MainPage{
-		Leader: raftServer.Leader(),
+		Leader:  raftServer.Leader(),
 		Address: u.Host,
 	}
 
