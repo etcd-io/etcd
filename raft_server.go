@@ -14,6 +14,7 @@ import (
 
 type raftServer struct {
 	*raft.Server
+	version string
 	name    string
 	url     string
 	tlsConf *TLSConfig
@@ -34,6 +35,7 @@ func newRaftServer(name string, url string, tlsConf *TLSConfig, tlsInfo *TLSInfo
 
 	return &raftServer{
 		Server:  server,
+		version: releaseVersion,
 		name:    name,
 		url:     url,
 		tlsConf: tlsConf,
@@ -144,6 +146,7 @@ func (r *raftServer) startTransport(scheme string, tlsConf tls.Config) {
 
 	// internal commands
 	raftMux.HandleFunc("/name", NameHttpHandler)
+	raftMux.HandleFunc("/version", RaftVersionHttpHandler)
 	raftMux.Handle("/join", errorHandler(JoinHttpHandler))
 	raftMux.HandleFunc("/vote", VoteHttpHandler)
 	raftMux.HandleFunc("/log", GetLogHttpHandler)
