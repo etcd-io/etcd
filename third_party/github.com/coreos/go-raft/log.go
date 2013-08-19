@@ -183,6 +183,15 @@ func (l *Log) open(path string) error {
 
 		// Append entry.
 		l.entries = append(l.entries, entry)
+
+		if entry.Index <= l.commitIndex {
+			command, err := newCommand(entry.CommandName, entry.Command)
+			if err != nil {
+				continue
+			}
+			l.ApplyFunc(command)
+		}
+
 		debugln("open.log.append log index ", entry.Index)
 
 		readBytes += int64(n)

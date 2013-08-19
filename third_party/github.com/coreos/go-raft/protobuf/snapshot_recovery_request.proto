@@ -3,7 +3,13 @@ package protobuf;
 message ProtoSnapshotRecoveryRequest {
 	required string  LeaderName=1;
 	required uint64  LastIndex=2;
-	required uint64  LastTerm=3;      
-	repeated string  Peers=4;      
+	required uint64  LastTerm=3;   
+
+	message ProtoPeer {
+		required string Name=1;
+		required string ConnectionString=2;
+	}  
+	repeated ProtoPeer  Peers=4;  
+
 	required bytes   State=5;
 }

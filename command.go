@@ -155,7 +155,7 @@ func (c *JoinCommand) Apply(raftServer *raft.Server) (interface{}, error) {
 	addNameToURL(c.Name, c.RaftURL, c.EtcdURL)
 
 	// add peer in raft
-	err := raftServer.AddPeer(c.Name)
+	err := raftServer.AddPeer(c.Name, "")
 
 	// add machine in etcd storage
 	key := path.Join("_etcd/machines", c.Name)

@@ -94,7 +94,7 @@ func (t *HTTPTransporter) SendAppendEntriesRequest(server *Server, peer *Peer, r
 		return nil
 	}
 
-	url := fmt.Sprintf("http://%s%s", peer.Name(), t.AppendEntriesPath())
+	url := fmt.Sprintf("http://%s%s", peer.Name, t.AppendEntriesPath())
 	traceln(server.Name(), "POST", url)
 
 	client := &http.Client{Transport: &http.Transport{DisableKeepAlives: t.DisableKeepAlives}}
@@ -122,7 +122,7 @@ func (t *HTTPTransporter) SendVoteRequest(server *Server, peer *Peer, req *Reque
 		return nil
 	}
 
-	url := fmt.Sprintf("http://%s%s", peer.Name(), t.RequestVotePath())
+	url := fmt.Sprintf("http://%s%s", peer.Name, t.RequestVotePath())
 	traceln(server.Name(), "POST", url)
 
 	client := &http.Client{Transport: &http.Transport{DisableKeepAlives: t.DisableKeepAlives}}

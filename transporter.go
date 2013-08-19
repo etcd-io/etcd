@@ -47,7 +47,7 @@ func (t transporter) SendAppendEntriesRequest(server *raft.Server, peer *raft.Pe
 	var b bytes.Buffer
 	json.NewEncoder(&b).Encode(req)
 
-	u, _ := nameToRaftURL(peer.Name())
+	u, _ := nameToRaftURL(peer.Name)
 	debugf("Send LogEntries to %s ", u)
 
 	resp, err := t.Post(fmt.Sprintf("%s/log/append", u), &b)
@@ -74,7 +74,7 @@ func (t transporter) SendVoteRequest(server *raft.Server, peer *raft.Peer, req *
 	var b bytes.Buffer
 	json.NewEncoder(&b).Encode(req)
 
-	u, _ := nameToRaftURL(peer.Name())
+	u, _ := nameToRaftURL(peer.Name)
 	debugf("Send Vote to %s", u)
 
 	resp, err := t.Post(fmt.Sprintf("%s/vote", u), &b)
@@ -100,7 +100,7 @@ func (t transporter) SendSnapshotRequest(server *raft.Server, peer *raft.Peer, r
 	var b bytes.Buffer
 	json.NewEncoder(&b).Encode(req)
 
-	u, _ := nameToRaftURL(peer.Name())
+	u, _ := nameToRaftURL(peer.Name)
 	debugf("Send Snapshot to %s [Last Term: %d, LastIndex %d]", u,
 		req.LastTerm, req.LastIndex)
 
@@ -128,7 +128,7 @@ func (t transporter) SendSnapshotRecoveryRequest(server *raft.Server, peer *raft
 	var b bytes.Buffer
 	json.NewEncoder(&b).Encode(req)
 
-	u, _ := nameToRaftURL(peer.Name())
+	u, _ := nameToRaftURL(peer.Name)
 	debugf("Send SnapshotRecovery to %s [Last Term: %d, LastIndex %d]", u,
 		req.LastTerm, req.LastIndex)
 

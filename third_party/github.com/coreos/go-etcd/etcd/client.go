@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
+	"net/url"
 	"path"
 	"strings"
 	"time"
@@ -39,10 +40,10 @@ func NewClient() *Client {
 
 	// default leader and machines
 	cluster := Cluster{
-		Leader:   "0.0.0.0:4001",
+		Leader:   "http://0.0.0.0:4001",
 		Machines: make([]string, 1),
 	}
-	cluster.Machines[0] = "0.0.0.0:4001"
+	cluster.Machines[0] = "http://0.0.0.0:4001"
 
 	config := Config{
 		// default use http
@@ -123,12 +124,19 @@ func (c *Client) internalSyncCluster(machines []string) bool {
 			continue
 		} else {
 			b, err := ioutil.ReadAll(resp.Body)
+			resp.Body.Close()
 			if err != nil {
 				// try another machine in the cluster
 				continue
 			}
 			// update Machines List
 			c.cluster.Machines = strings.Split(string(b), ",")
+
+			// update leader
+			// the first one in the machine list is the leader
+			logger.Debugf("update.leader[%s,%s]", c.cluster.Leader, c.cluster.Machines[0])
+			c.cluster.Leader = c.cluster.Machines[0]
+
 			logger.Debug("sync.machines ", c.cluster.Machines)
 			return true
 		}
@@ -138,8 +146,9 @@ func (c *Client) internalSyncCluster(machines []string) bool {
 
 // serverName should contain both hostName and port
 func (c *Client) createHttpPath(serverName string, _path string) string {
-	httpPath := path.Join(serverName, _path)
-	return httpPath
+	u, _ := url.Parse(serverName)
+	u.Path = path.Join(u.Path, "/", _path)
+	return u.String()
 }
 
 // Dial with timeout.
@@ -148,22 +157,21 @@ func dialTimeout(network, addr string) (net.Conn, error) {
 }
 
 func (c *Client) getHttpPath(s ...string) string {
-	httpPath := path.Join(c.cluster.Leader, version)
+	u, _ := url.Parse(c.cluster.Leader)
+
+	u.Path = path.Join(u.Path, "/", version)
 
 	for _, seg := range s {
-		httpPath = path.Join(httpPath, seg)
+		u.Path = path.Join(u.Path, seg)
 	}
 
-	httpPath = c.config.Scheme + "://" + httpPath
-	return httpPath
+	return u.String()
 }
 
 func (c *Client) updateLeader(httpPath string) {
-	// httpPath http://127.0.0.1:4001/v1...
-	leader := strings.Split(httpPath, "://")[1]
-	// we want to have 127.0.0.1:4001
+	u, _ := url.Parse(httpPath)
+	leader := u.Host
 
-	leader = strings.Split(leader, "/")[0]
 	logger.Debugf("update.leader[%s,%s]", c.cluster.Leader, leader)
 	c.cluster.Leader = leader
 }
@@ -180,6 +188,7 @@ func (c *Client) sendRequest(method string, _path string, body string) (*http.Re
 	for {
 
 		httpPath := c.getHttpPath(_path)
+
 		logger.Debug("send.request.to ", httpPath)
 		if body == "" {
 

@@ -13,7 +13,7 @@
 // limitations under the License.
 //
 // author: Cong Ding <dinggnu@gmail.com>
-//
+
 // This file defines GetGoId function, which is used to get the id of the
 // current goroutine. More details about this function are availeble in the
 // runtime.c file of golang source code.
