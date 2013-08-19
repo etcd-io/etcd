@@ -470,7 +470,10 @@ If you are using SSL for server to server communication, you must use it on all 
 
 **Projects using etcd**
 
-- [calavera/active-proxy](https://github.com/calavera/active-proxy)
+- [calavera/active-proxy](https://github.com/calavera/active-proxy) - HTTP Proxy configured with etcd
+- [gleicon/goreman](https://github.com/gleicon/goreman/tree/etcd) - Branch of the Go Foreman clone with etcd support
+- [garethr/hiera-etcd](https://github.com/garethr/hiera-etcd) - Puppet hiera backend using etcd
+- [mattn/etcd-vim](https://github.com/mattn/etcd-vim) - SET and GET keys from inside vim
 
 ## Project Details
 
