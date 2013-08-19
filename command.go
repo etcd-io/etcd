@@ -187,7 +187,7 @@ type RemoveCommand struct {
 
 // The name of the remove command in the log
 func (c *RemoveCommand) CommandName() string {
-	return "etcd:remove"
+	return commandName("remove")
 }
 
 // Remove a server from the cluster
@@ -225,7 +225,7 @@ func (c *RemoveCommand) Apply(raftServer *raft.Server) (interface{}, error) {
 
 			if r.joinIndex == 0 {
 				// if the node has not sent a join command in this start
-				// it will need to send a join command after reply the logs
+				// it will need to send a join command after replay the logs
 				r.pendingJoin = true
 			} else {
 				// else ignore remove
