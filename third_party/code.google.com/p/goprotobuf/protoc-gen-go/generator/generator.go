@@ -1781,7 +1781,7 @@ func isASCIIDigit(c byte) bool {
 // but it's so remote we're prepared to pretend it's nonexistent - since the
 // C++ generator lowercases names, it's extremely unlikely to have two fields
 // with different capitalizations.
-// In short, _my_field_name_2 becomes XMyFieldName2.
+// In short, _my_field_name_2 becomes XMyFieldName_2.
 func CamelCase(s string) string {
 	if s == "" {
 		return ""
