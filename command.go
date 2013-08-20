@@ -171,7 +171,7 @@ func (c *JoinCommand) Apply(raftServer *raft.Server) (interface{}, error) {
 	etcdStore.Set(key, value, time.Unix(0, 0), raftServer.CommitIndex())
 
 	if c.Name != r.Name() {
-		r.peersStats[c.Name] = &peerStats{MinLatency: 1 << 63}
+		r.peersStats[c.Name] = &raftPeerStats{MinLatency: 1 << 63}
 	}
 
 	return b, err

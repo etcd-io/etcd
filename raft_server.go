@@ -17,13 +17,14 @@ import (
 
 type raftServer struct {
 	*raft.Server
-	version    string
-	joinIndex  uint64
-	name       string
-	url        string
-	tlsConf    *TLSConfig
-	tlsInfo    *TLSInfo
-	peersStats map[string]*peerStats
+	version     string
+	joinIndex   uint64
+	name        string
+	url         string
+	tlsConf     *TLSConfig
+	tlsInfo     *TLSInfo
+	peersStats  map[string]*raftPeerStats
+	serverStats *raftServerStats
 }
 
 var r *raftServer
@@ -39,13 +40,14 @@ func newRaftServer(name string, url string, tlsConf *TLSConfig, tlsInfo *TLSInfo
 	check(err)
 
 	return &raftServer{
-		Server:     server,
-		version:    raftVersion,
-		name:       name,
-		url:        url,
-		tlsConf:    tlsConf,
-		tlsInfo:    tlsInfo,
-		peersStats: make(map[string]*peerStats),
+		Server:      server,
+		version:     raftVersion,
+		name:        name,
+		url:         url,
+		tlsConf:     tlsConf,
+		tlsInfo:     tlsInfo,
+		peersStats:  make(map[string]*raftPeerStats),
+		serverStats: &raftServerStats{},
 	}
 }
 
@@ -270,7 +272,12 @@ func joinByMachine(s *raft.Server, machine string, scheme string) error {
 }
 
 func (r *raftServer) Stats() []byte {
-	b, _ := json.Marshal(r.peersStats)
+	sBytes, _ := json.Marshal(r.serverStats)
+
+	pBytes, _ := json.Marshal(r.peersStats)
+
+	b := append(sBytes, pBytes...)
+
 	return b
 }
 

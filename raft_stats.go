@@ -3,9 +3,41 @@ package main
 import (
 	"math"
 	"time"
+
+	"github.com/coreos/go-raft"
 )
 
-type peerStats struct {
+type raftServerStats struct {
+	State                string
+	StartTime            time.Time
+	Leader               string
+	leaderStartTime      time.Time
+	LeaderUptime         time.Duration
+	RecvAppendRequestCnt uint64
+	SendAppendRequestCnt uint64
+}
+
+func (ss *raftServerStats) RecvAppendReq(leaderName string) {
+	ss.State = raft.Follower
+	if leaderName != ss.Leader {
+		ss.Leader = leaderName
+		ss.leaderStartTime = time.Now()
+	}
+
+	ss.RecvAppendRequestCnt++
+}
+
+func (ss *raftServerStats) SendAppendReq() {
+	if ss.State != raft.Leader {
+		ss.State = raft.Leader
+		ss.Leader = r.Name()
+		ss.leaderStartTime = time.Now()
+	}
+
+	ss.SendAppendRequestCnt++
+}
+
+type raftPeerStats struct {
 	Latency          float64 `json:"latency"`
 	AvgLatency       float64 `json:"averageLatency"`
 	avgLatencySquare float64
@@ -16,11 +48,11 @@ type peerStats struct {
 	SuccCnt          uint64  `json:"successCount"`
 }
 
-func (ps *peerStats) Fail() {
+func (ps *raftPeerStats) Fail() {
 	ps.FailCnt++
 }
 
-func (ps *peerStats) Succ(d time.Duration) {
+func (ps *raftPeerStats) Succ(d time.Duration) {
 
 	total := float64(ps.SuccCnt) * ps.AvgLatency
 	totalSquare := float64(ps.SuccCnt) * ps.avgLatencySquare

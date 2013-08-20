@@ -47,6 +47,9 @@ func dialTimeout(network, addr string) (net.Conn, error) {
 func (t transporter) SendAppendEntriesRequest(server *raft.Server, peer *raft.Peer, req *raft.AppendEntriesRequest) *raft.AppendEntriesResponse {
 	var aersp *raft.AppendEntriesResponse
 	var b bytes.Buffer
+
+	r.serverStats.SendAppendReq()
+
 	json.NewEncoder(&b).Encode(req)
 
 	u, _ := nameToRaftURL(peer.Name)
