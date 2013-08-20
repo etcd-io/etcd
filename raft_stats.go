@@ -1,20 +1,27 @@
 package main
 
 import (
+	"container/list"
 	"math"
 	"time"
 
 	"github.com/coreos/go-raft"
 )
 
+type runtimeStats struct {
+}
+
 type raftServerStats struct {
-	State                string
-	StartTime            time.Time
-	Leader               string
-	leaderStartTime      time.Time
-	LeaderUptime         time.Duration
-	RecvAppendRequestCnt uint64
-	SendAppendRequestCnt uint64
+	State                 string
+	StartTime             time.Time
+	Leader                string
+	leaderStartTime       time.Time
+	LeaderUptime          string
+	RecvAppendRequestCnt  uint64
+	SendAppendRequestCnt  uint64
+	SendAppendReqeustRate uint64
+	sendRateQueue         *list.List
+	SendingRate           float64
 }
 
 func (ss *raftServerStats) RecvAppendReq(leaderName string) {
@@ -28,10 +35,18 @@ func (ss *raftServerStats) RecvAppendReq(leaderName string) {
 }
 
 func (ss *raftServerStats) SendAppendReq() {
+	now := time.Now()
 	if ss.State != raft.Leader {
 		ss.State = raft.Leader
 		ss.Leader = r.Name()
-		ss.leaderStartTime = time.Now()
+		ss.leaderStartTime = now
+	}
+
+	if ss.sendRateQueue.Len() < 200 {
+		ss.sendRateQueue.PushBack(now)
+	} else {
+		ss.sendRateQueue.PushBack(now)
+		ss.sendRateQueue.Remove(ss.sendRateQueue.Front())
 	}
 
 	ss.SendAppendRequestCnt++

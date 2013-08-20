@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"container/list"
 	"crypto/tls"
 	"encoding/binary"
 	"encoding/json"
@@ -40,14 +41,17 @@ func newRaftServer(name string, url string, tlsConf *TLSConfig, tlsInfo *TLSInfo
 	check(err)
 
 	return &raftServer{
-		Server:      server,
-		version:     raftVersion,
-		name:        name,
-		url:         url,
-		tlsConf:     tlsConf,
-		tlsInfo:     tlsInfo,
-		peersStats:  make(map[string]*raftPeerStats),
-		serverStats: &raftServerStats{},
+		Server:     server,
+		version:    raftVersion,
+		name:       name,
+		url:        url,
+		tlsConf:    tlsConf,
+		tlsInfo:    tlsInfo,
+		peersStats: make(map[string]*raftPeerStats),
+		serverStats: &raftServerStats{
+			StartTime:     time.Now(),
+			sendRateQueue: list.New(),
+		},
 	}
 }
 
@@ -272,6 +276,18 @@ func joinByMachine(s *raft.Server, machine string, scheme string) error {
 }
 
 func (r *raftServer) Stats() []byte {
+
+	r.serverStats.LeaderUptime = time.Now().Sub(r.serverStats.leaderStartTime).String()
+
+	queue := r.serverStats.sendRateQueue
+
+	frontValue, _ := queue.Front().Value.(time.Time)
+	backValue, _ := queue.Back().Value.(time.Time)
+
+	sampleDuration := backValue.Sub(frontValue)
+
+	r.serverStats.SendingRate = float64(queue.Len()) / float64(sampleDuration) * float64(time.Second)
+
 	sBytes, _ := json.Marshal(r.serverStats)
 
 	pBytes, _ := json.Marshal(r.peersStats)
