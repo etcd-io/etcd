@@ -1,11 +1,13 @@
 package main
 
 import (
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/store"
 	"github.com/coreos/go-raft"
+	"os"
 	"path"
 	"time"
 )
@@ -143,15 +145,18 @@ func (c *JoinCommand) Apply(raftServer *raft.Server) (interface{}, error) {
 	// check if the join command is from a previous machine, who lost all its previous log.
 	response, _ := etcdStore.RawGet(path.Join("_etcd/machines", c.Name))
 
+	b := make([]byte, 8)
+	binary.PutUvarint(b, raftServer.CommitIndex())
+
 	if response != nil {
-		return []byte("join success"), nil
+		return b, nil
 	}
 
 	// check machine number in the cluster
 	num := machineNum()
 	if num == maxClusterSize {
 		debug("Reject join request from ", c.Name)
-		return []byte("join fail"), etcdErr.NewError(103, "")
+		return []byte{0}, etcdErr.NewError(103, "")
 	}
 
 	addNameToURL(c.Name, c.RaftVersion, c.RaftURL, c.EtcdURL)
@@ -164,9 +169,60 @@ func (c *JoinCommand) Apply(raftServer *raft.Server) (interface{}, error) {
 	value := fmt.Sprintf("raft=%s&etcd=%s&raftVersion=%s", c.RaftURL, c.EtcdURL, c.RaftVersion)
 	etcdStore.Set(key, value, time.Unix(0, 0), raftServer.CommitIndex())
 
-	return []byte("join success"), err
+	return b, err
 }
 
 func (c *JoinCommand) NodeName() string {
 	return c.Name
+}
+
+// RemoveCommand
+type RemoveCommand struct {
+	Name string `json:"name"`
+}
+
+// The name of the remove command in the log
+func (c *RemoveCommand) CommandName() string {
+	return commandName("remove")
+}
+
+// Remove a server from the cluster
+func (c *RemoveCommand) Apply(raftServer *raft.Server) (interface{}, error) {
+
+	// remove machine in etcd storage
+	key := path.Join("_etcd/machines", c.Name)
+
+	_, err := etcdStore.Delete(key, raftServer.CommitIndex())
+
+	if err != nil {
+		return []byte{0}, err
+	}
+
+	// remove peer in raft
+	err = raftServer.RemovePeer(c.Name)
+
+	if err != nil {
+		return []byte{0}, err
+	}
+
+	if c.Name == raftServer.Name() {
+		// the removed node is this node
+
+		// if the node is not replaying the previous logs
+		// and the node has sent out a join request in this
+		// start. It is sure that this node received a new remove
+		// command and need to be removed
+		if raftServer.CommitIndex() > r.joinIndex && r.joinIndex != 0 {
+			debugf("server [%s] is removed", raftServer.Name())
+			os.Exit(0)
+		} else {
+			// else ignore remove
+			debugf("ignore previous remove command.")
+		}
+	}
+
+	b := make([]byte, 8)
+	binary.PutUvarint(b, raftServer.CommitIndex())
+
+	return b, err
 }

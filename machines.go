@@ -8,14 +8,14 @@ func machineNum() int {
 }
 
 // getMachines gets the current machines in the cluster
-func getMachines() []string {
+func getMachines(toURL func(string) (string, bool)) []string {
 
 	peers := r.Peers()
 
 	machines := make([]string, len(peers)+1)
 
-	leader, ok := nameToEtcdURL(r.Leader())
-	self := e.url
+	leader, ok := toURL(r.Leader())
+	self, _ := toURL(r.Name())
 	i := 1
 
 	if ok {
@@ -30,7 +30,7 @@ func getMachines() []string {
 
 	// Add all peers to the slice
 	for peerName, _ := range peers {
-		if machine, ok := nameToEtcdURL(peerName); ok {
+		if machine, ok := toURL(peerName); ok {
 			// do not add leader twice
 			if machine != leader {
 				machines[i] = machine

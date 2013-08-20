@@ -107,6 +107,24 @@ func JoinHttpHandler(w http.ResponseWriter, req *http.Request) error {
 	}
 }
 
+// Response to remove request
+func RemoveHttpHandler(w http.ResponseWriter, req *http.Request) {
+	if req.Method != "DELETE" {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	nodeName := req.URL.Path[len("/remove/"):]
+	command := &RemoveCommand{
+		Name: nodeName,
+	}
+
+	debugf("[recv] Remove Request [%s]", command.Name)
+
+	dispatch(command, w, req, false)
+
+}
+
 // Response to the name request
 func NameHttpHandler(w http.ResponseWriter, req *http.Request) {
 	debugf("[recv] Get %s/name/ ", r.url)
