@@ -195,7 +195,7 @@ func (c *RemoveCommand) Apply(raftServer *raft.Server) (interface{}, error) {
 	key := path.Join("_etcd/machines", c.Name)
 
 	_, err := etcdStore.Delete(key, raftServer.CommitIndex())
-	r.peersStats[c.Name] = nil
+	delete(r.peersStats, c.Name)
 
 	if err != nil {
 		return []byte{0}, err

@@ -1,7 +1,7 @@
 package main
 
 import (
-	"encoding/json"
+	"time"
 )
 
 type peerStats struct {
@@ -11,7 +11,13 @@ type peerStats struct {
 	SuccCnt    uint64  `json:"successCount"`
 }
 
-func (r *raftServer) Stats() []byte {
-	b, _ := json.Marshal(r.peersStats)
-	return b
+func (ps *peerStats) Fail() {
+	ps.FailCnt++
+}
+
+func (ps *peerStats) Succ(d time.Duration) {
+	total := float64(ps.SuccCnt) * ps.AvgLatency
+	ps.SuccCnt++
+	ps.Latency = float64(d) / (1000000.0)
+	ps.AvgLatency = (total + ps.Latency) / float64(ps.SuccCnt)
 }

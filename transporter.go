@@ -52,7 +52,7 @@ func (t transporter) SendAppendEntriesRequest(server *raft.Server, peer *raft.Pe
 	u, _ := nameToRaftURL(peer.Name)
 	debugf("Send LogEntries to %s ", u)
 
-	thisPeerStats := r.peersStats[peer.Name]
+	thisPeerStats, ok := r.peersStats[peer.Name]
 
 	start := time.Now()
 
@@ -62,12 +62,13 @@ func (t transporter) SendAppendEntriesRequest(server *raft.Server, peer *raft.Pe
 
 	if err != nil {
 		debugf("Cannot send AppendEntriesRequest to %s: %s", u, err)
-		thisPeerStats.FailCnt++
+		if ok {
+			thisPeerStats.Fail()
+		}
 	} else {
-		total := float64(thisPeerStats.SuccCnt) * thisPeerStats.AvgLatency
-		thisPeerStats.SuccCnt++
-		thisPeerStats.Latency = float64(end.Sub(start)) / (1000000.0)
-		thisPeerStats.AvgLatency = (total + thisPeerStats.Latency) / float64(thisPeerStats.SuccCnt)
+		if ok {
+			thisPeerStats.Succ(end.Sub(start))
+		}
 	}
 
 	r.peersStats[peer.Name] = thisPeerStats

@@ -269,6 +269,11 @@ func joinByMachine(s *raft.Server, machine string, scheme string) error {
 	return fmt.Errorf("Unable to join: %v", err)
 }
 
+func (r *raftServer) Stats() []byte {
+	b, _ := json.Marshal(r.peersStats)
+	return b
+}
+
 // Register commands to raft server
 func registerCommands() {
 	raft.RegisterCommand(&JoinCommand{})
