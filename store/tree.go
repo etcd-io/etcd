@@ -155,7 +155,9 @@ func (t *tree) get(key string) (Node, bool) {
 
 	if ok {
 		if tn.Dir {
-			return emptyNode, false
+			// Unsure of this change! See if other places use the ok value of
+			// this method call, e.g. the "GET <directory key>" command
+			return emptyNode, ok
 		}
 		return tn.InternalNode, ok
 	} else {
@@ -197,6 +199,7 @@ func (t *tree) delete(key string) bool {
 
 	var i int
 
+	// Loop through all preceeding directories
 	for i = 0; i < len(nodesName)-1; i++ {
 		node, ok := nodeMap[nodesName[i]]
 		if !ok || !node.Dir {
@@ -205,8 +208,9 @@ func (t *tree) delete(key string) bool {
 		nodeMap = node.NodeMap
 	}
 
-	node, ok := nodeMap[nodesName[i]]
-	if ok && !node.Dir {
+	_, ok := nodeMap[nodesName[i]]
+	// Skip the !node.Dir check
+	if ok {
 		delete(nodeMap, nodesName[i])
 		return true
 	}
