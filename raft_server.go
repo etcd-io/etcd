@@ -94,7 +94,7 @@ func (r *raftServer) ListenAndServe() {
 		}
 		ok := joinCluster(cluster)
 		if !ok {
-			warn("the whole cluster dies! restart the cluster")
+			warn("the entire cluster is down! this machine will restart the cluster.")
 		}
 
 		debugf("%s restart as a follower", r.name)
