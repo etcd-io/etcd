@@ -62,9 +62,12 @@ func (t transporter) SendAppendEntriesRequest(server *raft.Server, peer *raft.Pe
 
 	if err != nil {
 		debugf("Cannot send AppendEntriesRequest to %s: %s", u, err)
-		thisPeerStats.Failcnt++
+		thisPeerStats.FailCnt++
 	} else {
+		total := float64(thisPeerStats.SuccCnt) * thisPeerStats.AvgLatency
+		thisPeerStats.SuccCnt++
 		thisPeerStats.Latency = float64(end.Sub(start)) / (1000000.0)
+		thisPeerStats.AvgLatency = (total + thisPeerStats.Latency) / float64(thisPeerStats.SuccCnt)
 	}
 
 	r.peersStats[peer.Name] = thisPeerStats
