@@ -8,7 +8,16 @@ import (
 	"github.com/coreos/go-raft"
 )
 
+const (
+	queueCapacity = 200
+)
+
 type runtimeStats struct {
+}
+
+type packageStats struct {
+	sendingTime time.Time
+	size        uint64
 }
 
 type raftServerStats struct {
@@ -21,6 +30,7 @@ type raftServerStats struct {
 	SendAppendRequestCnt  uint64
 	SendAppendReqeustRate uint64
 	sendRateQueue         *list.List
+	recvRateQueue         *list.List
 	SendingRate           float64
 }
 
@@ -89,4 +99,39 @@ func (ps *raftPeerStats) Succ(d time.Duration) {
 
 	// sdv = sqrt(avg(x^2) - avg(x)^2)
 	ps.SdvLatency = math.Sqrt(ps.avgLatencySquare - ps.AvgLatency*ps.AvgLatency)
+}
+
+type statsQueue struct {
+	items [queueCapacity]*packageStats
+	size  int
+	front int
+	back  int
+}
+
+func (q *statsQueue) Len() int {
+	return q.size
+}
+
+func (q *statsQueue) Front() *packageStats {
+	if q.size != 0 {
+		return q.items[q.front]
+	}
+	return nil
+}
+
+func (q *statsQueue) Back() *packageStats {
+	if q.size != 0 {
+		return q.items[q.back]
+	}
+	return nil
+}
+
+func (q *statsQueue) Insert(p *packageStats) {
+	q.back = (q.back + 1) % queueCapacity
+	q.items[q.back] = p
+	if q.size == queueCapacity {
+		q.front = (q.back + 1) % queueCapacity
+	} else {
+		q.size++
+	}
 }
