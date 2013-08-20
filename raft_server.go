@@ -6,22 +6,24 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
-	etcdErr "github.com/coreos/etcd/error"
-	"github.com/coreos/go-raft"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"time"
+
+	etcdErr "github.com/coreos/etcd/error"
+	"github.com/coreos/go-raft"
 )
 
 type raftServer struct {
 	*raft.Server
-	version   string
-	joinIndex uint64
-	name      string
-	url       string
-	tlsConf   *TLSConfig
-	tlsInfo   *TLSInfo
+	version    string
+	joinIndex  uint64
+	name       string
+	url        string
+	tlsConf    *TLSConfig
+	tlsInfo    *TLSInfo
+	peersStats map[string]*peerStats
 }
 
 var r *raftServer
@@ -37,12 +39,13 @@ func newRaftServer(name string, url string, tlsConf *TLSConfig, tlsInfo *TLSInfo
 	check(err)
 
 	return &raftServer{
-		Server:  server,
-		version: raftVersion,
-		name:    name,
-		url:     url,
-		tlsConf: tlsConf,
-		tlsInfo: tlsInfo,
+		Server:     server,
+		version:    raftVersion,
+		name:       name,
+		url:        url,
+		tlsConf:    tlsConf,
+		tlsInfo:    tlsInfo,
+		peersStats: make(map[string]*peerStats),
 	}
 }
 

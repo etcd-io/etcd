@@ -2,12 +2,13 @@ package main
 
 import (
 	"fmt"
-	etcdErr "github.com/coreos/etcd/error"
-	"github.com/coreos/etcd/store"
-	"github.com/coreos/go-raft"
 	"net/http"
 	"strconv"
 	"strings"
+
+	etcdErr "github.com/coreos/etcd/error"
+	"github.com/coreos/etcd/store"
+	"github.com/coreos/go-raft"
 )
 
 //-------------------------------------------------------------------
@@ -207,6 +208,7 @@ func VersionHttpHandler(w http.ResponseWriter, req *http.Request) error {
 func StatsHttpHandler(w http.ResponseWriter, req *http.Request) error {
 	w.WriteHeader(http.StatusOK)
 	w.Write(etcdStore.Stats())
+	w.Write(r.Stats())
 	return nil
 }
 

@@ -3,11 +3,12 @@ package store
 import (
 	"encoding/json"
 	"fmt"
-	etcdErr "github.com/coreos/etcd/error"
 	"path"
 	"strconv"
 	"sync"
 	"time"
+
+	etcdErr "github.com/coreos/etcd/error"
 )
 
 //------------------------------------------------------------------------------

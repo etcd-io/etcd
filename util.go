@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/coreos/etcd/web"
 	"io"
 	"log"
 	"net"
@@ -14,6 +13,8 @@ import (
 	"runtime/pprof"
 	"strconv"
 	"time"
+
+	"github.com/coreos/etcd/web"
 )
 
 //--------------------------------------

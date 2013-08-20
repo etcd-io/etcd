@@ -3,12 +3,13 @@ package main
 import (
 	"crypto/tls"
 	"flag"
-	"github.com/coreos/etcd/store"
-	"github.com/coreos/go-raft"
 	"io/ioutil"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/coreos/etcd/store"
+	"github.com/coreos/go-raft"
 )
 
 //------------------------------------------------------------------------------
