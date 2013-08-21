@@ -43,7 +43,7 @@ func AppendEntriesHttpHandler(w http.ResponseWriter, req *http.Request) {
 	if err == nil {
 		debugf("[recv] POST %s/log/append [%d]", r.url, len(aereq.Entries))
 
-		r.serverStats.RecvAppendReq(aereq.LeaderName)
+		r.serverStats.RecvAppendReq(aereq.LeaderName, int(req.ContentLength))
 
 		if resp := r.AppendEntries(aereq); resp != nil {
 			w.WriteHeader(http.StatusOK)

@@ -52,6 +52,9 @@ func newRaftServer(name string, url string, tlsConf *TLSConfig, tlsInfo *TLSInfo
 			sendRateQueue: &statsQueue{
 				back: -1,
 			},
+			recvRateQueue: &statsQueue{
+				back: -1,
+			},
 		},
 	}
 }
@@ -282,13 +285,11 @@ func (r *raftServer) Stats() []byte {
 
 	queue := r.serverStats.sendRateQueue
 
-	front, back := queue.FrontAndBack()
+	r.serverStats.SendingPkgRate, r.serverStats.SendingBandwidthRate = queue.Rate()
 
-	sampleDuration := back.Time().Sub(front.Time())
+	queue = r.serverStats.recvRateQueue
 
-	r.serverStats.SendingPkgRate = float64(queue.Len()) / float64(sampleDuration) * float64(time.Second)
-
-	r.serverStats.SendingBandwidthRate = float64(queue.Size()) / float64(sampleDuration) * float64(time.Second)
+	r.serverStats.RecvingPkgRate, r.serverStats.RecvingBandwidthRate = queue.Rate()
 
 	sBytes, err := json.Marshal(r.serverStats)
 

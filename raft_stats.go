@@ -1,7 +1,6 @@
 package main
 
 import (
-	"container/list"
 	"fmt"
 	"math"
 	"sync"
@@ -43,18 +42,21 @@ type raftServerStats struct {
 	SendAppendRequestCnt  uint64
 	SendAppendReqeustRate uint64
 	sendRateQueue         *statsQueue
-	recvRateQueue         *list.List
+	recvRateQueue         *statsQueue
 	SendingPkgRate        float64
 	SendingBandwidthRate  float64
+	RecvingPkgRate        float64
+	RecvingBandwidthRate  float64
 }
 
-func (ss *raftServerStats) RecvAppendReq(leaderName string) {
+func (ss *raftServerStats) RecvAppendReq(leaderName string, pkgSize int) {
 	ss.State = raft.Follower
 	if leaderName != ss.Leader {
 		ss.Leader = leaderName
 		ss.leaderStartTime = time.Now()
 	}
 
+	ss.recvRateQueue.Insert(NewPackageStats(time.Now(), pkgSize))
 	ss.RecvAppendRequestCnt++
 }
 
@@ -129,7 +131,7 @@ func (q *statsQueue) Size() int {
 
 // FrontAndBack gets the front and back elements in the queue
 // We must grab front and back together with the protection of the lock
-func (q *statsQueue) FrontAndBack() (*packageStats, *packageStats) {
+func (q *statsQueue) frontAndBack() (*packageStats, *packageStats) {
 	q.rwl.RLock()
 	defer q.rwl.RUnlock()
 	if q.size != 0 {
@@ -154,4 +156,20 @@ func (q *statsQueue) Insert(p *packageStats) {
 	q.totalPkgSize += q.items[q.back].size
 
 	fmt.Println(q.front, q.back, q.size)
+}
+
+func (q *statsQueue) Rate() (float64, float64) {
+	front, back := q.frontAndBack()
+
+	if front == nil || back == nil {
+		return 0, 0
+	}
+
+	sampleDuration := back.Time().Sub(front.Time())
+
+	pr := float64(q.Len()) / float64(sampleDuration) * float64(time.Second)
+
+	br := float64(q.Size()) / float64(sampleDuration) * float64(time.Second)
+
+	return pr, br
 }
