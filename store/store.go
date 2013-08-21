@@ -402,39 +402,44 @@ func (s *Store) Delete(key string, index uint64) ([]byte, error) {
 	return s.internalDelete(key, index)
 }
 
-// Delete the key
 func (s *Store) internalDelete(key string, index uint64) ([]byte, error) {
 
-	// Update stats
-	s.BasicStats.Deletes++
+	cancelExpiration := func(node *Node) {
+		if !node.ExpireTime.Equal(PERMANENT) {
+			// kill the expire go routine
+			node.update <- PERMANENT
+		}
+	}
 
 	key = path.Clean("/" + key)
-
-	// Update index
 	s.Index = index
 
-	node, ok := s.Tree.get(key)
+	nodes, _, ok := s.Tree.list(key)
 
 	if ok {
 
 		resp := Response{
 			Action:    "DELETE",
 			Key:       key,
-			PrevValue: node.Value,
 			Index:     index,
 		}
 
-		if node.ExpireTime.Equal(PERMANENT) {
-
-			s.Tree.delete(key)
-
+		node, ok := nodes.(*Node)
+		if ok {
+			cancelExpiration(node)
+			resp.PrevValue = node.Value
 		} else {
-			resp.Expiration = &node.ExpireTime
-			// Kill the expire go routine
-			node.update <- PERMANENT
-			s.Tree.delete(key)
+			nodes, _ := nodes.([]*Node)
+			for i := 0; i < len(nodes); i++ {
+				cancelExpiration(nodes[i])
+			}
+
+			// FIXME: unsure what to do with the prevValue, send along a
+			// serialized version of all child keys, or just ignore?
 
 		}
+
+		s.Tree.delete(key)
 
 		msg, err := json.Marshal(resp)
 
@@ -448,7 +453,6 @@ func (s *Store) internalDelete(key string, index uint64) ([]byte, error) {
 		s.addToResponseMap(index, &resp)
 
 		return msg, err
-
 	} else {
 		return nil, etcdErr.NewError(100, "delete: "+key)
 	}

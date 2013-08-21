@@ -55,9 +55,14 @@ func TestStoreGet(t *testing.T) {
 	}
 
 	// delete a directory
-	ok = ts.delete("/hello")
+	ts.set("/nested/directory/file", NewTestNode("contents"))
+	ok = ts.delete("/nested")
+	if !ok {
+		t.Fatalf("Couldn't delete a directory")
+	}
+	_, _, ok = ts.list("/nested")
 	if ok {
-		t.Fatalf("Expect cannot delet /hello, but deleted! ")
+		t.Fatal("Expected directory to be gone")
 	}
 
 	// test list
