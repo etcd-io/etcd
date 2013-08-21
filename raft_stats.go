@@ -2,7 +2,9 @@ package main
 
 import (
 	"container/list"
+	"fmt"
 	"math"
+	"sync"
 	"time"
 
 	"github.com/coreos/go-raft"
@@ -17,7 +19,18 @@ type runtimeStats struct {
 
 type packageStats struct {
 	sendingTime time.Time
-	size        uint64
+	size        int
+}
+
+func NewPackageStats(now time.Time, size int) *packageStats {
+	return &packageStats{
+		sendingTime: now,
+		size:        size,
+	}
+}
+
+func (ps *packageStats) Time() time.Time {
+	return ps.sendingTime
 }
 
 type raftServerStats struct {
@@ -29,9 +42,10 @@ type raftServerStats struct {
 	RecvAppendRequestCnt  uint64
 	SendAppendRequestCnt  uint64
 	SendAppendReqeustRate uint64
-	sendRateQueue         *list.List
+	sendRateQueue         *statsQueue
 	recvRateQueue         *list.List
-	SendingRate           float64
+	SendingPkgRate        float64
+	SendingBandwidthRate  float64
 }
 
 func (ss *raftServerStats) RecvAppendReq(leaderName string) {
@@ -44,7 +58,7 @@ func (ss *raftServerStats) RecvAppendReq(leaderName string) {
 	ss.RecvAppendRequestCnt++
 }
 
-func (ss *raftServerStats) SendAppendReq() {
+func (ss *raftServerStats) SendAppendReq(pkgSize int) {
 	now := time.Now()
 	if ss.State != raft.Leader {
 		ss.State = raft.Leader
@@ -52,12 +66,7 @@ func (ss *raftServerStats) SendAppendReq() {
 		ss.leaderStartTime = now
 	}
 
-	if ss.sendRateQueue.Len() < 200 {
-		ss.sendRateQueue.PushBack(now)
-	} else {
-		ss.sendRateQueue.PushBack(now)
-		ss.sendRateQueue.Remove(ss.sendRateQueue.Front())
-	}
+	ss.sendRateQueue.Insert(NewPackageStats(time.Now(), pkgSize))
 
 	ss.SendAppendRequestCnt++
 }
@@ -102,36 +111,47 @@ func (ps *raftPeerStats) Succ(d time.Duration) {
 }
 
 type statsQueue struct {
-	items [queueCapacity]*packageStats
-	size  int
-	front int
-	back  int
+	items        [queueCapacity]*packageStats
+	size         int
+	front        int
+	back         int
+	totalPkgSize int
+	rwl          sync.RWMutex
 }
 
 func (q *statsQueue) Len() int {
 	return q.size
 }
 
-func (q *statsQueue) Front() *packageStats {
-	if q.size != 0 {
-		return q.items[q.front]
-	}
-	return nil
+func (q *statsQueue) Size() int {
+	return q.totalPkgSize
 }
 
-func (q *statsQueue) Back() *packageStats {
+// FrontAndBack gets the front and back elements in the queue
+// We must grab front and back together with the protection of the lock
+func (q *statsQueue) FrontAndBack() (*packageStats, *packageStats) {
+	q.rwl.RLock()
+	defer q.rwl.RUnlock()
 	if q.size != 0 {
-		return q.items[q.back]
+		return q.items[q.front], q.items[q.back]
 	}
-	return nil
+	return nil, nil
 }
 
 func (q *statsQueue) Insert(p *packageStats) {
-	q.back = (q.back + 1) % queueCapacity
-	q.items[q.back] = p
-	if q.size == queueCapacity {
-		q.front = (q.back + 1) % queueCapacity
+	q.rwl.Lock()
+	defer q.rwl.Unlock()
+
+	if q.size == queueCapacity { //dequeue
+		q.totalPkgSize -= q.items[q.front].size
+		q.front = (q.back + 2) % queueCapacity
 	} else {
 		q.size++
 	}
+
+	q.back = (q.back + 1) % queueCapacity
+	q.items[q.back] = p
+	q.totalPkgSize += q.items[q.back].size
+
+	fmt.Println(q.front, q.back, q.size)
 }

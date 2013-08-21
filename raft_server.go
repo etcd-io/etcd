@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"container/list"
 	"crypto/tls"
 	"encoding/binary"
 	"encoding/json"
@@ -49,8 +48,10 @@ func newRaftServer(name string, url string, tlsConf *TLSConfig, tlsInfo *TLSInfo
 		tlsInfo:    tlsInfo,
 		peersStats: make(map[string]*raftPeerStats),
 		serverStats: &raftServerStats{
-			StartTime:     time.Now(),
-			sendRateQueue: list.New(),
+			StartTime: time.Now(),
+			sendRateQueue: &statsQueue{
+				back: -1,
+			},
 		},
 	}
 }
@@ -281,14 +282,19 @@ func (r *raftServer) Stats() []byte {
 
 	queue := r.serverStats.sendRateQueue
 
-	frontValue, _ := queue.Front().Value.(time.Time)
-	backValue, _ := queue.Back().Value.(time.Time)
+	front, back := queue.FrontAndBack()
 
-	sampleDuration := backValue.Sub(frontValue)
+	sampleDuration := back.Time().Sub(front.Time())
 
-	r.serverStats.SendingRate = float64(queue.Len()) / float64(sampleDuration) * float64(time.Second)
+	r.serverStats.SendingPkgRate = float64(queue.Len()) / float64(sampleDuration) * float64(time.Second)
 
-	sBytes, _ := json.Marshal(r.serverStats)
+	r.serverStats.SendingBandwidthRate = float64(queue.Size()) / float64(sampleDuration) * float64(time.Second)
+
+	sBytes, err := json.Marshal(r.serverStats)
+
+	if err != nil {
+		warn(err)
+	}
 
 	pBytes, _ := json.Marshal(r.peersStats)
 

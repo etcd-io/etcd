@@ -48,11 +48,14 @@ func (t transporter) SendAppendEntriesRequest(server *raft.Server, peer *raft.Pe
 	var aersp *raft.AppendEntriesResponse
 	var b bytes.Buffer
 
-	r.serverStats.SendAppendReq()
-
 	json.NewEncoder(&b).Encode(req)
 
+	size := b.Len()
+
+	r.serverStats.SendAppendReq(size)
+
 	u, _ := nameToRaftURL(peer.Name)
+
 	debugf("Send LogEntries to %s ", u)
 
 	thisPeerStats, ok := r.peersStats[peer.Name]
