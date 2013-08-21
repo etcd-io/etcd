@@ -141,7 +141,7 @@ Now you can try to get the key by sending:
 curl -L http://127.0.0.1:4001/v1/keys/foo
 ```
 
-If the TTL has expired, the key will be deleted, and you will be returned a 404.
+If the TTL has expired, the key will be deleted, and you will be returned a 100.
 
 ```json
 {"errorCode":100,"message":"Key Not Found","cause":"/foo"}
