@@ -465,12 +465,16 @@ func (s *Store) TestAndSet(key string, prevValue string, value string, expireTim
 	resp := s.internalGet(key)
 
 	if resp == nil {
-		return nil, etcdErr.NewError(100, "testandset: "+key)
+		if prevValue != "" {
+			errmsg := fmt.Sprintf("TestAndSet: key not found and previousValue is not empty %s:%s ", key, prevValue)
+			return nil, etcdErr.NewError(100, errmsg)
+		}
+		return s.internalSet(key, value, expireTime, index)
 	}
 
 	if resp.Value == prevValue {
 
-		// If test success, do set
+		// If test succeed, do set
 		return s.internalSet(key, value, expireTime, index)
 	} else {
 
