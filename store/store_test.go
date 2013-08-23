@@ -31,6 +31,42 @@ func TestStoreGetDelete(t *testing.T) {
 	}
 }
 
+func TestTestAndSet(t *testing.T) {
+	s := CreateStore(100)
+	s.Set("foo", "bar", time.Unix(0, 0), 1)
+
+	_, err := s.TestAndSet("foo", "barbar", "barbar", time.Unix(0, 0), 2)
+
+	if err == nil {
+		t.Fatalf("test bar == barbar should fail")
+	}
+
+	_, err = s.TestAndSet("foo", "bar", "barbar", time.Unix(0, 0), 3)
+
+	if err != nil {
+		t.Fatalf("test bar == bar should succeed")
+	}
+
+	_, err = s.TestAndSet("foo", "", "barbar", time.Unix(0, 0), 4)
+
+	if err == nil {
+		t.Fatalf("test empty == bar should fail")
+	}
+
+	_, err = s.TestAndSet("fooo", "bar", "barbar", time.Unix(0, 0), 5)
+
+	if err == nil {
+		t.Fatalf("test bar == non-existing key should fail")
+	}
+
+	_, err = s.TestAndSet("fooo", "", "bar", time.Unix(0, 0), 6)
+
+	if err != nil {
+		t.Fatalf("test empty == non-existing key should succeed")
+	}
+
+}
+
 func TestSaveAndRecovery(t *testing.T) {
 
 	s := CreateStore(100)

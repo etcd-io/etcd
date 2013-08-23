@@ -30,6 +30,7 @@ You can build etcd from source:
 
 ```sh
 git clone https://github.com/coreos/etcd
+cd etcd
 ./build
 ```
 
@@ -141,7 +142,7 @@ Now you can try to get the key by sending:
 curl -L http://127.0.0.1:4001/v1/keys/foo
 ```
 
-If the TTL has expired, the key will be deleted, and you will be returned a 404.
+If the TTL has expired, the key will be deleted, and you will be returned a 100.
 
 ```json
 {"errorCode":100,"message":"Key Not Found","cause":"/foo"}
@@ -356,7 +357,7 @@ Let the join two more nodes to this cluster using the -C argument:
 Get the machines in the cluster:
 
 ```sh
-curl -L http://127.0.0.1:4001/machines
+curl -L http://127.0.0.1:4001/v1/machines
 ```
 
 We should see there are three nodes in the cluster
@@ -380,7 +381,7 @@ The key of the machine is based on the ```commit index``` when it was added. The
 Also try to get the current leader in the cluster
 
 ```
-curl -L http://127.0.0.1:4001/leader
+curl -L http://127.0.0.1:4001/v1/leader
 ```
 The first server we set up should be the leader, if it has not dead during these commands.
 
@@ -409,7 +410,7 @@ curl -L http://127.0.0.1:4002/v1/keys/foo
 A new leader should have been elected.
 
 ```
-curl -L http://127.0.0.1:4001/leader
+curl -L http://127.0.0.1:4001/v1/leader
 ```
 
 ```

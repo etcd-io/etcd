@@ -49,6 +49,8 @@ func Multiplexer(w http.ResponseWriter, req *http.Request) error {
 		return GetHttpHandler(w, req)
 	case "POST":
 		return SetHttpHandler(w, req)
+	case "PUT":
+		return SetHttpHandler(w, req)
 	case "DELETE":
 		return DeleteHttpHandler(w, req)
 	default:

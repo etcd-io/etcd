@@ -326,6 +326,62 @@ func (s *Store) Get(key string) ([]byte, error) {
 	return json.Marshal(resps)
 }
 
+func (s *Store) rawGetNode(key string, node *Node) ([]*Response, error) {
+	resps := make([]*Response, 1)
+
+	isExpire := !node.ExpireTime.Equal(PERMANENT)
+
+	resps[0] = &Response{
+		Action: "GET",
+		Index:  s.Index,
+		Key:    key,
+		Value:  node.Value,
+	}
+
+	// Update ttl
+	if isExpire {
+		TTL := int64(node.ExpireTime.Sub(time.Now()) / time.Second)
+		resps[0].Expiration = &node.ExpireTime
+		resps[0].TTL = TTL
+	}
+
+	return resps, nil
+}
+
+func (s *Store) rawGetNodeList(key string, keys []string, nodes []*Node) ([]*Response, error) {
+	resps := make([]*Response, len(nodes))
+
+	// TODO: check if nodes and keys are the same length
+	for i := 0; i < len(nodes); i++ {
+		var TTL int64
+		var isExpire bool = false
+
+		isExpire = !nodes[i].ExpireTime.Equal(PERMANENT)
+
+		resps[i] = &Response{
+			Action: "GET",
+			Index:  s.Index,
+			Key:    path.Join(key, keys[i]),
+		}
+
+		if len(nodes[i].Value) != 0 {
+			resps[i].Value = nodes[i].Value
+		} else {
+			resps[i].Dir = true
+		}
+
+		// Update ttl
+		if isExpire {
+			TTL = int64(nodes[i].ExpireTime.Sub(time.Now()) / time.Second)
+			resps[i].Expiration = &nodes[i].ExpireTime
+			resps[i].TTL = TTL
+		}
+
+	}
+
+	return resps, nil
+}
+
 func (s *Store) RawGet(key string) ([]*Response, error) {
 	// Update stats
 	s.BasicStats.Gets++
@@ -333,68 +389,18 @@ func (s *Store) RawGet(key string) ([]*Response, error) {
 	key = path.Clean("/" + key)
 
 	nodes, keys, ok := s.Tree.list(key)
-
-	if ok {
-
-		node, ok := nodes.(*Node)
-
-		if ok {
-			resps := make([]*Response, 1)
-
-			isExpire := !node.ExpireTime.Equal(PERMANENT)
-
-			resps[0] = &Response{
-				Action: "GET",
-				Index:  s.Index,
-				Key:    key,
-				Value:  node.Value,
-			}
-
-			// Update ttl
-			if isExpire {
-				TTL := int64(node.ExpireTime.Sub(time.Now()) / time.Second)
-				resps[0].Expiration = &node.ExpireTime
-				resps[0].TTL = TTL
-			}
-
-			return resps, nil
-		}
-
-		nodes, _ := nodes.([]*Node)
-
-		resps := make([]*Response, len(nodes))
-		for i := 0; i < len(nodes); i++ {
-
-			var TTL int64
-			var isExpire bool = false
-
-			isExpire = !nodes[i].ExpireTime.Equal(PERMANENT)
-
-			resps[i] = &Response{
-				Action: "GET",
-				Index:  s.Index,
-				Key:    path.Join(key, keys[i]),
-			}
-
-			if len(nodes[i].Value) != 0 {
-				resps[i].Value = nodes[i].Value
-			} else {
-				resps[i].Dir = true
-			}
-
-			// Update ttl
-			if isExpire {
-				TTL = int64(nodes[i].ExpireTime.Sub(time.Now()) / time.Second)
-				resps[i].Expiration = &nodes[i].ExpireTime
-				resps[i].TTL = TTL
-			}
-
-		}
-
-		return resps, nil
+	if !ok {
+		return nil, etcdErr.NewError(100, "get: "+key)
 	}
 
-	return nil, etcdErr.NewError(100, "get: "+key)
+	switch node := nodes.(type) {
+	case *Node:
+		return s.rawGetNode(key, node)
+	case []*Node:
+		return s.rawGetNodeList(key, keys, node)
+	default:
+		panic("invalid cast ")
+	}
 }
 
 func (s *Store) Delete(key string, index uint64) ([]byte, error) {
@@ -416,43 +422,41 @@ func (s *Store) internalDelete(key string, index uint64) ([]byte, error) {
 
 	node, ok := s.Tree.get(key)
 
-	if ok {
-
-		resp := Response{
-			Action:    "DELETE",
-			Key:       key,
-			PrevValue: node.Value,
-			Index:     index,
-		}
-
-		if node.ExpireTime.Equal(PERMANENT) {
-
-			s.Tree.delete(key)
-
-		} else {
-			resp.Expiration = &node.ExpireTime
-			// Kill the expire go routine
-			node.update <- PERMANENT
-			s.Tree.delete(key)
-
-		}
-
-		msg, err := json.Marshal(resp)
-
-		s.watcher.notify(resp)
-
-		// notify the messager
-		if s.messager != nil && err == nil {
-			s.messager <- string(msg)
-		}
-
-		s.addToResponseMap(index, &resp)
-
-		return msg, err
-
-	} else {
+	if !ok {
 		return nil, etcdErr.NewError(100, "delete: "+key)
 	}
+
+	resp := Response{
+		Action:    "DELETE",
+		Key:       key,
+		PrevValue: node.Value,
+		Index:     index,
+	}
+
+	if node.ExpireTime.Equal(PERMANENT) {
+
+		s.Tree.delete(key)
+
+	} else {
+		resp.Expiration = &node.ExpireTime
+		// Kill the expire go routine
+		node.update <- PERMANENT
+		s.Tree.delete(key)
+
+	}
+
+	msg, err := json.Marshal(resp)
+
+	s.watcher.notify(resp)
+
+	// notify the messager
+	if s.messager != nil && err == nil {
+		s.messager <- string(msg)
+	}
+
+	s.addToResponseMap(index, &resp)
+
+	return msg, err
 }
 
 // Set the value of the key to the value if the given prevValue is equal to the value of the key
@@ -466,12 +470,16 @@ func (s *Store) TestAndSet(key string, prevValue string, value string, expireTim
 	resp := s.internalGet(key)
 
 	if resp == nil {
-		return nil, etcdErr.NewError(100, "testandset: "+key)
+		if prevValue != "" {
+			errmsg := fmt.Sprintf("TestAndSet: key not found and previousValue is not empty %s:%s ", key, prevValue)
+			return nil, etcdErr.NewError(100, errmsg)
+		}
+		return s.internalSet(key, value, expireTime, index)
 	}
 
 	if resp.Value == prevValue {
 
-		// If test success, do set
+		// If test succeed, do set
 		return s.internalSet(key, value, expireTime, index)
 	} else {
 
