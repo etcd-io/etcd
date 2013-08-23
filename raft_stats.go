@@ -33,20 +33,22 @@ func (ps *packageStats) Time() time.Time {
 }
 
 type raftServerStats struct {
-	State                 string
-	StartTime             time.Time
-	Leader                string
-	leaderStartTime       time.Time
-	LeaderUptime          string
-	RecvAppendRequestCnt  uint64
-	SendAppendRequestCnt  uint64
-	SendAppendReqeustRate uint64
-	sendRateQueue         *statsQueue
-	recvRateQueue         *statsQueue
-	SendingPkgRate        float64
-	SendingBandwidthRate  float64
-	RecvingPkgRate        float64
-	RecvingBandwidthRate  float64
+	State        string    `json:"state"`
+	StartTime    time.Time `json:"startTime"`
+	Leader       string    `json:"leader"`
+	LeaderUptime string    `json:"leaderUptime"`
+
+	RecvAppendRequestCnt uint64  `json:"recvAppendRequestCnt"`
+	RecvingPkgRate       float64 `json:"recvPkgRate"`
+	RecvingBandwidthRate float64 `json:"recvBandwidthRate"`
+
+	SendAppendRequestCnt uint64  `json:"sendAppendRequestCnt"`
+	SendingPkgRate       float64 `json:"sendPkgRate"`
+	SendingBandwidthRate float64 `json:"sendBandwidthRate"`
+
+	leaderStartTime time.Time
+	sendRateQueue   *statsQueue
+	recvRateQueue   *statsQueue
 }
 
 func (ss *raftServerStats) RecvAppendReq(leaderName string, pkgSize int) {
@@ -144,14 +146,15 @@ func (q *statsQueue) Insert(p *packageStats) {
 	q.rwl.Lock()
 	defer q.rwl.Unlock()
 
+	q.back = (q.back + 1) % queueCapacity
+
 	if q.size == queueCapacity { //dequeue
 		q.totalPkgSize -= q.items[q.front].size
-		q.front = (q.back + 2) % queueCapacity
+		q.front = (q.back + 1) % queueCapacity
 	} else {
 		q.size++
 	}
 
-	q.back = (q.back + 1) % queueCapacity
 	q.items[q.back] = p
 	q.totalPkgSize += q.items[q.back].size
 
@@ -165,6 +168,11 @@ func (q *statsQueue) Rate() (float64, float64) {
 		return 0, 0
 	}
 
+	if time.Now.Sub(back.Time()) > time.Second {
+		q.Clear()
+		return 0, 0
+	}
+
 	sampleDuration := back.Time().Sub(front.Time())
 
 	pr := float64(q.Len()) / float64(sampleDuration) * float64(time.Second)
@@ -172,4 +180,13 @@ func (q *statsQueue) Rate() (float64, float64) {
 	br := float64(q.Size()) / float64(sampleDuration) * float64(time.Second)
 
 	return pr, br
+}
+
+func (q *statsQueue) Clear() {
+	q.rwl.Lock()
+	defer q.rwl.Unlock()
+	q.back = -1
+	q.front = 0
+	q.size = 0
+	q.totalPkgSize = 0
 }
