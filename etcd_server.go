@@ -2,7 +2,6 @@ package main
 
 import (
 	"net/http"
-	"net/url"
 )
 
 type etcdServer struct {
@@ -15,18 +14,12 @@ type etcdServer struct {
 
 var e *etcdServer
 
-func newEtcdServer(name string, urlStr string, tlsConf *TLSConfig, tlsInfo *TLSInfo) *etcdServer {
-	u, err := url.Parse(urlStr)
-
-	if err != nil {
-		fatalf("invalid url '%s': %s", e.url, err)
-	}
-
+func newEtcdServer(name string, urlStr string, listenHost string, tlsConf *TLSConfig, tlsInfo *TLSInfo) *etcdServer {
 	return &etcdServer{
 		Server: http.Server{
 			Handler:   NewEtcdMuxer(),
 			TLSConfig: &tlsConf.Server,
-			Addr:      u.Host,
+			Addr:      listenHost,
 		},
 		name:    name,
 		url:     urlStr,
