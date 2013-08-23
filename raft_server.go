@@ -20,13 +20,14 @@ type raftServer struct {
 	joinIndex uint64
 	name      string
 	url       string
+	listenHost string
 	tlsConf   *TLSConfig
 	tlsInfo   *TLSInfo
 }
 
 var r *raftServer
 
-func newRaftServer(name string, url string, tlsConf *TLSConfig, tlsInfo *TLSInfo) *raftServer {
+func newRaftServer(name string, url string, listenHost string, tlsConf *TLSConfig, tlsInfo *TLSInfo) *raftServer {
 
 	// Create transporter for raft
 	raftTransporter := newTransporter(tlsConf.Scheme, tlsConf.Client)
@@ -41,6 +42,7 @@ func newRaftServer(name string, url string, tlsConf *TLSConfig, tlsInfo *TLSInfo
 		version: raftVersion,
 		name:    name,
 		url:     url,
+		listenHost: listenHost,
 		tlsConf: tlsConf,
 		tlsInfo: tlsInfo,
 	}
@@ -134,15 +136,14 @@ func startAsFollower() {
 
 // Start to listen and response raft command
 func (r *raftServer) startTransport(scheme string, tlsConf tls.Config) {
-	u, _ := url.Parse(r.url)
-	infof("raft server [%s:%s]", r.name, u)
+	infof("raft server [%s:%s]", r.name, r.listenHost)
 
 	raftMux := http.NewServeMux()
 
 	server := &http.Server{
 		Handler:   raftMux,
 		TLSConfig: &tlsConf,
-		Addr:      u.Host,
+		Addr:      r.listenHost,
 	}
 
 	// internal commands

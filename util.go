@@ -106,6 +106,22 @@ func sanitizeURL(host string, defaultScheme string) string {
 	return p.String()
 }
 
+// sanitizeListenHost cleans up the ListenHost parameter and appends a port
+// if necessary based on the advertised port.
+func sanitizeListenHost(listen string, advertised string) string {
+	aurl, err := url.Parse(advertised)
+	if err != nil {
+		fatal(err)
+	}
+
+	_, aport, err := net.SplitHostPort(aurl.Host)
+	if err != nil {
+		fatal(err)
+	}
+
+	return net.JoinHostPort(listen, aport)
+}
+
 func check(err error) {
 	if err != nil {
 		fatal(err)

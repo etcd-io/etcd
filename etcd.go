@@ -50,8 +50,10 @@ func init() {
 	flag.StringVar(&machinesFile, "CF", "", "the file contains a list of existing machines in the cluster, seperate by comma")
 
 	flag.StringVar(&argInfo.Name, "n", "default-name", "the node name (required)")
-	flag.StringVar(&argInfo.EtcdURL, "c", "127.0.0.1:4001", "the hostname:port for etcd client communication")
-	flag.StringVar(&argInfo.RaftURL, "s", "127.0.0.1:7001", "the hostname:port for raft server communication")
+	flag.StringVar(&argInfo.EtcdURL, "c", "127.0.0.1:4001", "the advertised public hostname:port for etcd client communication")
+	flag.StringVar(&argInfo.RaftURL, "s", "127.0.0.1:7001", "the advertised public hostname:port for raft server communication")
+	flag.StringVar(&argInfo.EtcdListenHost, "cl", "127.0.0.1", "the listening hostname for etcd client communication")
+	flag.StringVar(&argInfo.RaftListenHost, "sl", "127.0.0.1", "the listening hostname for raft server communication")
 	flag.StringVar(&argInfo.WebURL, "w", "", "the hostname:port of web interface")
 
 	flag.StringVar(&argInfo.RaftTLS.CAFile, "serverCAFile", "", "the path of the CAFile")
@@ -106,6 +108,9 @@ type Info struct {
 	RaftURL string `json:"raftURL"`
 	EtcdURL string `json:"etcdURL"`
 	WebURL  string `json:"webURL"`
+
+	RaftListenHost string `json:"raftListenHost"`
+	EtcdListenHost string `json:"etcdListenHost"`
 
 	RaftTLS TLSInfo `json:"raftTLS"`
 	EtcdTLS TLSInfo `json:"etcdTLS"`
@@ -178,6 +183,9 @@ func main() {
 	argInfo.EtcdURL = sanitizeURL(argInfo.EtcdURL, etcdTLSConfig.Scheme)
 	argInfo.WebURL = sanitizeURL(argInfo.WebURL, "http")
 
+	argInfo.RaftListenHost = sanitizeListenHost(argInfo.RaftListenHost, argInfo.RaftURL)
+	argInfo.EtcdListenHost = sanitizeListenHost(argInfo.EtcdListenHost, argInfo.EtcdURL)
+
 	// Read server info from file or grab it from user.
 	if err := os.MkdirAll(dirPath, 0744); err != nil {
 		fatalf("Unable to create path: %s", err)
@@ -190,8 +198,8 @@ func main() {
 	snapConf = newSnapshotConf()
 
 	// Create etcd and raft server
-	e = newEtcdServer(info.Name, info.EtcdURL, &etcdTLSConfig, &info.EtcdTLS)
-	r = newRaftServer(info.Name, info.RaftURL, &raftTLSConfig, &info.RaftTLS)
+	e = newEtcdServer(info.Name, info.EtcdURL, info.EtcdListenHost, &etcdTLSConfig, &info.EtcdTLS)
+	r = newRaftServer(info.Name, info.RaftURL, info.RaftListenHost, &raftTLSConfig, &info.RaftTLS)
 
 	startWebInterface()
 	r.ListenAndServe()
