@@ -1,5 +1,5 @@
 # etcd
-README version 0.1
+README version 0.1.0
 
 [![Build Status](https://travis-ci.org/coreos/etcd.png)](https://travis-ci.org/coreos/etcd)
 
