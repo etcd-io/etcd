@@ -347,6 +347,9 @@ We use -s to specify server port and -c to specify client port and -d to specify
 ./etcd -s 127.0.0.1:7001 -c 127.0.0.1:4001 -d nodes/node1 -n node1
 ```
 
+**Note:** If you want to run etcd on external IP address and still have access locally you need to add `-cl 0.0.0.0` so that it will listen on both external and localhost addresses.
+A similar argument `-sl` is used to setup the listening address for the server port.
+
 Let the join two more nodes to this cluster using the -C argument:
 
 ```sh
