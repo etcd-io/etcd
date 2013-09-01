@@ -52,8 +52,8 @@ func init() {
 	flag.StringVar(&argInfo.Name, "n", "default-name", "the node name (required)")
 	flag.StringVar(&argInfo.EtcdURL, "c", "127.0.0.1:4001", "the advertised public hostname:port for etcd client communication")
 	flag.StringVar(&argInfo.RaftURL, "s", "127.0.0.1:7001", "the advertised public hostname:port for raft server communication")
-	flag.StringVar(&argInfo.EtcdListenHost, "cl", "127.0.0.1", "the listening hostname for etcd client communication")
-	flag.StringVar(&argInfo.RaftListenHost, "sl", "127.0.0.1", "the listening hostname for raft server communication")
+	flag.StringVar(&argInfo.EtcdListenHost, "cl", "", "the listening hostname for etcd client communication (defaults to advertised ip)")
+	flag.StringVar(&argInfo.RaftListenHost, "sl", "", "the listening hostname for raft server communication (defaults to advertised ip)")
 	flag.StringVar(&argInfo.WebURL, "w", "", "the hostname:port of web interface")
 
 	flag.StringVar(&argInfo.RaftTLS.CAFile, "serverCAFile", "", "the path of the CAFile")
