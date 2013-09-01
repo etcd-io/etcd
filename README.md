@@ -363,7 +363,7 @@ curl -L http://127.0.0.1:4001/v1/machines
 We should see there are three nodes in the cluster
 
 ```
-http://0.0.0.0:4001, http://0.0.0.0:4002, http://0.0.0.0:4003
+http://127.0.0.1:4001, http://127.0.0.1:4002, http://127.0.0.1:4003
 ```
 
 The machine list is also available via this API:
@@ -373,7 +373,7 @@ curl -L http://127.0.0.1:4001/v1/keys/_etcd/machines
 ```
 
 ```json
-[{"action":"GET","key":"/_etcd/machines/node1","value":"raft=http://0.0.0.0:7001&etcd=http://0.0.0.0:4001","index":4},{"action":"GET","key":"/_etcd/machines/node2","value":"raft=http://0.0.0.0:7002&etcd=http://0.0.0.0:4002","index":4},{"action":"GET","key":"/_etcd/machines/node3","value":"raft=http://0.0.0.0:7003&etcd=http://0.0.0.0:4003","index":4}]
+[{"action":"GET","key":"/_etcd/machines/node1","value":"raft=http://127.0.0.1:7001&etcd=http://127.0.0.1:4001","index":4},{"action":"GET","key":"/_etcd/machines/node2","value":"raft=http://127.0.0.1:7002&etcd=http://127.0.0.1:4002","index":4},{"action":"GET","key":"/_etcd/machines/node3","value":"raft=http://127.0.0.1:7003&etcd=http://127.0.0.1:4003","index":4}]
 ```
 
 The key of the machine is based on the ```commit index``` when it was added. The value of the machine is ```hostname```, ```raft port``` and ```client port```.
@@ -386,7 +386,7 @@ curl -L http://127.0.0.1:4001/v1/leader
 The first server we set up should be the leader, if it has not dead during these commands.
 
 ```
-http://0.0.0.0:7001
+http://127.0.0.1:7001
 ```
 
 Now we can do normal SET and GET operations on keys as we explored earlier.
@@ -414,13 +414,13 @@ curl -L http://127.0.0.1:4001/v1/leader
 ```
 
 ```
-http://0.0.0.0:7002
+http://127.0.0.1:7002
 ```
 
 or
 
 ```
-http://0.0.0.0:7003
+http://127.0.0.1:7003
 ```
 
 You should be able to see this:
