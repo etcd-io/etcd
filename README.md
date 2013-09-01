@@ -272,7 +272,8 @@ Next, lets configure etcd to use this keypair:
 You can now test the configuration using https:
 
 ```sh
-curl --cacert fixtures/ca/ca.crt https://127.0.0.1:4001/v1/keys/foo -F value=bar
+curl --cacert fixtures/ca/ca.crt https://127.0.0.1:4001/v1/keys/foo -d
+value=bar -v
 ```
 
 You should be able to see the handshake succeed.
