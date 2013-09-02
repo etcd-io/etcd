@@ -16,13 +16,13 @@ import (
 
 type raftServer struct {
 	*raft.Server
-	version   string
-	joinIndex uint64
-	name      string
-	url       string
+	version    string
+	joinIndex  uint64
+	name       string
+	url        string
 	listenHost string
-	tlsConf   *TLSConfig
-	tlsInfo   *TLSInfo
+	tlsConf    *TLSConfig
+	tlsInfo    *TLSInfo
 }
 
 var r *raftServer
@@ -30,7 +30,7 @@ var r *raftServer
 func newRaftServer(name string, url string, listenHost string, tlsConf *TLSConfig, tlsInfo *TLSInfo) *raftServer {
 
 	// Create transporter for raft
-	raftTransporter := newTransporter(tlsConf.Scheme, tlsConf.Client)
+	raftTransporter := newTransporter(tlsConf.Scheme, tlsConf.Client, raft.DefaultHeartbeatTimeout)
 
 	// Create raft server
 	server, err := raft.NewServer(name, dirPath, raftTransporter, etcdStore, nil)
@@ -38,13 +38,13 @@ func newRaftServer(name string, url string, listenHost string, tlsConf *TLSConfi
 	check(err)
 
 	return &raftServer{
-		Server:  server,
-		version: raftVersion,
-		name:    name,
-		url:     url,
+		Server:     server,
+		version:    raftVersion,
+		name:       name,
+		url:        url,
 		listenHost: listenHost,
-		tlsConf: tlsConf,
-		tlsInfo: tlsInfo,
+		tlsConf:    tlsConf,
+		tlsInfo:    tlsInfo,
 	}
 }
 

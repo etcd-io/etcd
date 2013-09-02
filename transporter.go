@@ -9,17 +9,19 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"time"
 )
 
 // Transporter layer for communication between raft nodes
 type transporter struct {
-	client *http.Client
+	client  *http.Client
+	timeout time.Duration
 }
 
 // Create transporter using by raft server
 // Create http or https transporter based on
 // whether the user give the server cert and key
-func newTransporter(scheme string, tlsConf tls.Config) transporter {
+func newTransporter(scheme string, tlsConf tls.Config, timeout time.Duration) transporter {
 	t := transporter{}
 
 	tr := &http.Transport{
@@ -32,6 +34,7 @@ func newTransporter(scheme string, tlsConf tls.Config) transporter {
 	}
 
 	t.client = &http.Client{Transport: tr}
+	t.timeout = timeout
 
 	return t
 }
@@ -151,10 +154,58 @@ func (t transporter) SendSnapshotRecoveryRequest(server *raft.Server, peer *raft
 
 // Send server side POST request
 func (t transporter) Post(path string, body io.Reader) (*http.Response, error) {
-	return t.client.Post(path, "application/json", body)
+
+	postChan := make(chan interface{}, 1)
+
+	go func() {
+		resp, err := t.client.Post(path, "application/json", body)
+		if err == nil {
+			postChan <- resp
+		} else {
+			postChan <- err
+		}
+	}()
+
+	return t.waitResponse(postChan)
+
 }
 
 // Send server side GET request
 func (t transporter) Get(path string) (*http.Response, error) {
-	return t.client.Get(path)
+
+	getChan := make(chan interface{}, 1)
+
+	go func() {
+		resp, err := t.client.Get(path)
+		if err == nil {
+			getChan <- resp
+		} else {
+			getChan <- err
+		}
+	}()
+
+	return t.waitResponse(getChan)
+}
+
+func (t transporter) waitResponse(responseChan chan interface{}) (*http.Response, error) {
+
+	timeoutChan := time.After(t.timeout)
+
+	select {
+	case <-timeoutChan:
+		return nil, fmt.Errorf("Wait Response Timeout: %v", t.timeout)
+
+	case r := <-responseChan:
+		switch r := r.(type) {
+		case error:
+			return nil, r
+
+		case *http.Response:
+			return r, nil
+
+		}
+	}
+
+	// for complier
+	return nil, nil
 }
