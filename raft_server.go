@@ -30,7 +30,7 @@ var r *raftServer
 func newRaftServer(name string, url string, listenHost string, tlsConf *TLSConfig, tlsInfo *TLSInfo) *raftServer {
 
 	// Create transporter for raft
-	raftTransporter := newTransporter(tlsConf.Scheme, tlsConf.Client, raft.DefaultElectionTimeout)
+	raftTransporter := newTransporter(tlsConf.Scheme, tlsConf.Client, ElectionTimeout)
 	
 	// Create raft server
 	server, err := raft.NewServer(name, dirPath, raftTransporter, etcdStore, nil)
@@ -169,7 +169,7 @@ func (r *raftServer) startTransport(scheme string, tlsConf tls.Config) {
 // getVersion fetches the raft version of a peer. This works for now but we
 // will need to do something more sophisticated later when we allow mixed
 // version clusters.
-func getVersion(t transporter, versionURL url.URL) (string, error) {
+func getVersion(t *transporter, versionURL url.URL) (string, error) {
 	resp, err := t.Get(versionURL.String())
 
 	if err != nil {
@@ -198,6 +198,7 @@ func joinCluster(cluster []string) bool {
 			if _, ok := err.(etcdErr.Error); ok {
 				fatal(err)
 			}
+			
 			debugf("cannot join to cluster via machine %s %s", machine, err)
 		}
 	}
@@ -209,7 +210,7 @@ func joinByMachine(s *raft.Server, machine string, scheme string) error {
 	var b bytes.Buffer
 
 	// t must be ok
-	t, _ := r.Transporter().(transporter)
+	t, _ := r.Transporter().(*transporter)
 
 	// Our version must match the leaders version
 	versionURL := url.URL{Host: machine, Scheme: scheme, Path: "/version"}
