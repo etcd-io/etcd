@@ -30,7 +30,7 @@ var r *raftServer
 func newRaftServer(name string, url string, listenHost string, tlsConf *TLSConfig, tlsInfo *TLSInfo) *raftServer {
 
 	// Create transporter for raft
-	raftTransporter := newTransporter(tlsConf.Scheme, tlsConf.Client, raft.DefaultHeartbeatTimeout)
+	raftTransporter := newTransporter(tlsConf.Scheme, tlsConf.Client, raft.electionTimeout)
 
 	// Create raft server
 	server, err := raft.NewServer(name, dirPath, raftTransporter, etcdStore, nil)
