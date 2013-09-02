@@ -114,9 +114,14 @@ func sanitizeListenHost(listen string, advertised string) string {
 		fatal(err)
 	}
 
-	_, aport, err := net.SplitHostPort(aurl.Host)
+	ahost, aport, err := net.SplitHostPort(aurl.Host)
 	if err != nil {
 		fatal(err)
+	}
+
+	// If the listen host isn't set use the advertised host
+	if listen == "" {
+		listen = ahost
 	}
 
 	return net.JoinHostPort(listen, aport)
