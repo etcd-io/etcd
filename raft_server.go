@@ -31,7 +31,7 @@ func newRaftServer(name string, url string, listenHost string, tlsConf *TLSConfi
 
 	// Create transporter for raft
 	raftTransporter := newTransporter(tlsConf.Scheme, tlsConf.Client, ElectionTimeout)
-	
+
 	// Create raft server
 	server, err := raft.NewServer(name, dirPath, raftTransporter, etcdStore, nil)
 
@@ -198,7 +198,7 @@ func joinCluster(cluster []string) bool {
 			if _, ok := err.(etcdErr.Error); ok {
 				fatal(err)
 			}
-			
+
 			debugf("cannot join to cluster via machine %s %s", machine, err)
 		}
 	}

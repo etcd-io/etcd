@@ -15,7 +15,7 @@ func TestTransporterTimeout(t *testing.T) {
 	ts.Get("http://google.com")
 	_, err := ts.Get("http://google.com:9999") // it doesn't exisit
 	if err == nil || err.Error() != "Wait Response Timeout: 1s" {
-		t.Fatal("timeout error: ", err.Error( ))
+		t.Fatal("timeout error: ", err.Error())
 	}
 
 	_, err = ts.Post("http://google.com:9999", nil) // it doesn't exisit

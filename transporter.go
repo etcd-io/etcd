@@ -21,7 +21,7 @@ type transporter struct {
 // response struct
 type transporterResponse struct {
 	resp *http.Response
-	err error
+	err  error
 }
 
 // Create transporter using by raft server
@@ -162,11 +162,11 @@ func (t *transporter) SendSnapshotRecoveryRequest(server *raft.Server, peer *raf
 func (t *transporter) Post(path string, body io.Reader) (*http.Response, error) {
 
 	c := make(chan *transporterResponse, 1)
-	
+
 	go func() {
 		tr := new(transporterResponse)
 		tr.resp, tr.err = t.client.Post(path, "application/json", body)
-		c <-tr
+		c <- tr
 	}()
 
 	return t.waitResponse(c)
@@ -177,11 +177,11 @@ func (t *transporter) Post(path string, body io.Reader) (*http.Response, error) 
 func (t *transporter) Get(path string) (*http.Response, error) {
 
 	c := make(chan *transporterResponse, 1)
-	
+
 	go func() {
 		tr := new(transporterResponse)
 		tr.resp, tr.err = t.client.Get(path)
-		c <-tr
+		c <- tr
 	}()
 
 	return t.waitResponse(c)
@@ -195,7 +195,7 @@ func (t *transporter) waitResponse(responseChan chan *transporterResponse) (*htt
 	case <-timeoutChan:
 		return nil, fmt.Errorf("Wait Response Timeout: %v", t.timeout)
 
-	case r:= <-responseChan:
+	case r := <-responseChan:
 		return r.resp, r.err
 	}
 
