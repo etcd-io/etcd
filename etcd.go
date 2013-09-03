@@ -3,9 +3,11 @@ package main
 import (
 	"crypto/tls"
 	"flag"
+	"fmt"
 	"github.com/coreos/etcd/store"
 	"github.com/coreos/go-raft"
 	"io/ioutil"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -40,6 +42,9 @@ var (
 	maxClusterSize int
 
 	cpuprofile string
+
+	cors     string
+	corsList map[string]bool
 )
 
 func init() {
@@ -77,6 +82,8 @@ func init() {
 	flag.IntVar(&maxClusterSize, "maxsize", 9, "the max size of the cluster")
 
 	flag.StringVar(&cpuprofile, "cpuprofile", "", "write cpu profile to file")
+
+	flag.StringVar(&cors, "cors", "", "whitelist origins for cross-origin resource sharing (e.g. '*' or 'http://localhost:8001,etc')")
 }
 
 const (
@@ -152,6 +159,8 @@ func main() {
 		raft.SetLogLevel(raft.Debug)
 	}
 
+	parseCorsFlag()
+
 	if machines != "" {
 		cluster = strings.Split(machines, ",")
 	} else if machinesFile != "" {
@@ -205,4 +214,22 @@ func main() {
 	r.ListenAndServe()
 	e.ListenAndServe()
 
+}
+
+// parseCorsFlag gathers up the cors whitelist and puts it into the corsList.
+func parseCorsFlag() {
+	if cors != "" {
+		corsList = make(map[string]bool)
+		list := strings.Split(cors, ",")
+		for _, v := range list {
+			fmt.Println(v)
+			if v != "*" {
+				_, err := url.Parse(v)
+				if err != nil {
+					panic(fmt.Sprintf("bad cors url: %s", err))
+				}
+			}
+			corsList[v] = true
+		}
+	}
 }
