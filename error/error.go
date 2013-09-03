@@ -17,6 +17,8 @@ func init() {
 	errors[101] = "The given PrevValue is not equal to the value of the key"
 	errors[102] = "Not A File"
 	errors[103] = "Reached the max number of machines in the cluster"
+	errors[104] = "Not A Directory"
+	errors[105] = "Already exists"
 
 	// Post form related errors
 	errors[200] = "Value is Required in POST form"
