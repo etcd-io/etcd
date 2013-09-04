@@ -261,3 +261,18 @@ func (n *Node) IsHidden() bool {
 
 	return false
 }
+
+func (n *Node) Pair() KeyValuePair {
+
+	if n.IsDir() {
+		return KeyValuePair{
+			Key: n.Path,
+			Dir: true,
+		}
+	}
+
+	return KeyValuePair{
+		Key:   n.Path,
+		Value: n.Value,
+	}
+}

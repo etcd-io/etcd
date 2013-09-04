@@ -1,7 +1,6 @@
 package fileSystem
 
 import (
-	"fmt"
 	"path/filepath"
 	"strings"
 	"time"
@@ -40,23 +39,13 @@ func (fs *FileSystem) Get(path string, recusive bool, index uint64, term uint64)
 
 		i := 0
 
-		for _, subN := range n.Children {
+		for _, child := range n.Children {
 
-			if subN.IsHidden() { // get will not list hidden node
+			if child.IsHidden() { // get will not list hidden node
 				continue
 			}
 
-			if subN.IsDir() {
-				e.KVPairs[i] = KeyValuePair{
-					Key: subN.Path,
-					Dir: true,
-				}
-			} else {
-				e.KVPairs[i] = KeyValuePair{
-					Key:   subN.Path,
-					Value: subN.Value,
-				}
-			}
+			e.KVPairs[i] = child.Pair()
 
 			i++
 		}
@@ -174,7 +163,6 @@ func (fs *FileSystem) walk(path string, walkFunc func(prev *Node, component stri
 
 // InternalGet function get the node of the given path.
 func (fs *FileSystem) InternalGet(path string, index uint64, term uint64) (*Node, error) {
-	fmt.Println("GET: ", path)
 	path = filepath.Clean("/" + path)
 
 	// update file system known index and term
