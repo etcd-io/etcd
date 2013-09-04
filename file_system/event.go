@@ -20,7 +20,7 @@ type Event struct {
 	Dir        bool           `json:"dir,omitempty"`
 	PrevValue  string         `json:"prevValue,omitempty"`
 	Value      string         `json:"value,omitempty"`
-	Pairs      []KeyValuePair `json:"kvs,omitempty"`
+	KVPairs    []KeyValuePair `json:"kvs,omitempty"`
 	Expiration *time.Time     `json:"expiration,omitempty"`
 	TTL        int64          `json:"ttl,omitempty"` // Time to live in second
 	// The command index of the raft machine when the command is executed
@@ -30,10 +30,10 @@ type Event struct {
 
 // When user list a directory, we add all the node into key-value pair slice
 type KeyValuePair struct {
-	Key   string         `json:"key, omitempty"`
-	Value string         `json:"value,omitempty"`
-	Dir   bool           `json:"dir,omitempty"`
-	Pairs []KeyValuePair `json:"kvs,omitempty"`
+	Key     string         `json:"key, omitempty"`
+	Value   string         `json:"value,omitempty"`
+	Dir     bool           `json:"dir,omitempty"`
+	KVPairs []KeyValuePair `json:"kvs,omitempty"`
 }
 
 func newEvent(action string, key string, index uint64, term uint64) *Event {

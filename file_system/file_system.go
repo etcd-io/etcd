@@ -36,7 +36,7 @@ func (fs *FileSystem) Get(path string, recusive bool, index uint64, term uint64)
 	e := newEvent(Get, path, index, term)
 
 	if n.IsDir() { // node is dir
-		e.Pairs = make([]KeyValuePair, len(n.Children))
+		e.KVPairs = make([]KeyValuePair, len(n.Children))
 
 		i := 0
 
@@ -47,12 +47,12 @@ func (fs *FileSystem) Get(path string, recusive bool, index uint64, term uint64)
 			}
 
 			if subN.IsDir() {
-				e.Pairs[i] = KeyValuePair{
+				e.KVPairs[i] = KeyValuePair{
 					Key: subN.Path,
 					Dir: true,
 				}
 			} else {
-				e.Pairs[i] = KeyValuePair{
+				e.KVPairs[i] = KeyValuePair{
 					Key:   subN.Path,
 					Value: subN.Value,
 				}
@@ -60,6 +60,9 @@ func (fs *FileSystem) Get(path string, recusive bool, index uint64, term uint64)
 
 			i++
 		}
+
+		// eliminate hidden nodes
+		e.KVPairs = e.KVPairs[:i]
 
 	} else { // node is file
 		e.Value = n.Value
@@ -83,7 +86,7 @@ func (fs *FileSystem) Set(path string, value string, expireTime time.Time, index
 		return nil, err
 	}
 
-	f := newFile(name, value, fs.Index, fs.Term, d, "", expireTime)
+	f := newFile(path, value, fs.Index, fs.Term, d, "", expireTime)
 	e := newEvent(Set, path, fs.Index, fs.Term)
 	e.Value = f.Value
 
