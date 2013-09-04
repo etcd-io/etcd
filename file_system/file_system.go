@@ -42,6 +42,10 @@ func (fs *FileSystem) Get(path string, recusive bool, index uint64, term uint64)
 
 		for _, subN := range n.Children {
 
+			if subN.IsHidden() { // get will not list hidden node
+				continue
+			}
+
 			if subN.IsDir() {
 				e.Pairs[i] = KeyValuePair{
 					Key: subN.Path,
@@ -53,6 +57,7 @@ func (fs *FileSystem) Get(path string, recusive bool, index uint64, term uint64)
 					Value: subN.Value,
 				}
 			}
+
 			i++
 		}
 
@@ -63,7 +68,7 @@ func (fs *FileSystem) Get(path string, recusive bool, index uint64, term uint64)
 	return e, nil
 }
 
-func (fs *FileSystem) Set(path string, value string, expireTime time.Time, index uint64, term uint64) error {
+func (fs *FileSystem) Set(path string, value string, expireTime time.Time, index uint64, term uint64) (*Event, error) {
 	path = filepath.Clean("/" + path)
 
 	// update file system known index and term
@@ -75,7 +80,7 @@ func (fs *FileSystem) Set(path string, value string, expireTime time.Time, index
 	d, err := fs.walk(dir, fs.checkDir)
 
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	f := newFile(name, value, fs.Index, fs.Term, d, "", expireTime)
@@ -91,13 +96,13 @@ func (fs *FileSystem) Set(path string, value string, expireTime time.Time, index
 			e.PrevValue = oldFile.Value
 		}
 	} else {
-		return err
+		return nil, err
 	}
 
 	err = d.Add(f)
 
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Node with TTL
@@ -107,10 +112,10 @@ func (fs *FileSystem) Set(path string, value string, expireTime time.Time, index
 		e.TTL = int64(expireTime.Sub(time.Now()) / time.Second)
 	}
 
-	return nil
+	return e, nil
 }
 
-func (fs *FileSystem) TestAndSet() {
+func (fs *FileSystem) TestAndSet(path string, recurisive bool, index uint64, term uint64) {
 
 }
 
@@ -118,14 +123,28 @@ func (fs *FileSystem) TestIndexAndSet() {
 
 }
 
-func (fs *FileSystem) Delete(path string, recurisive bool, index uint64, term uint64) error {
+func (fs *FileSystem) Delete(path string, recurisive bool, index uint64, term uint64) (*Event, error) {
 	n, err := fs.InternalGet(path, index, term)
 
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return n.Remove(recurisive)
+	err = n.Remove(recurisive)
+
+	if err != nil {
+		return nil, err
+	}
+
+	e := newEvent(Delete, path, index, term)
+
+	if n.IsDir() {
+		e.Dir = true
+	} else {
+		e.PrevValue = n.Value
+	}
+
+	return e, nil
 }
 
 // walk function walks all the path and apply the walkFunc on each directory

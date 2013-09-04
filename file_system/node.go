@@ -245,3 +245,19 @@ func (n *Node) Expire() {
 		}
 	}
 }
+
+// IsHidden function checks if the node is a hidden node. A hidden node
+// will begin with '_'
+
+// A hidden node will not be shown via get command under a directory
+// For example if we have /foo/_hidden and /foo/notHidden, get "/foo"
+// will only return /foo/notHidden
+func (n *Node) IsHidden() bool {
+	_, name := filepath.Split(n.Path)
+
+	if name[0] == '_' { //hidden
+		return true
+	}
+
+	return false
+}
