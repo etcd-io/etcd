@@ -68,10 +68,12 @@ func (n *Node) Remove(recursive bool) error {
 		return nil
 	}
 
-	if !n.IsDir() { // key-value pair
+	if !n.IsDir() { // file node: key-value pair
 		_, name := filepath.Split(n.Path)
 
 		if n.Parent.Children[name] == n {
+			// This is the only pointer to Node object
+			// Handled by garbage collector
 			delete(n.Parent.Children, name)
 			n.removeChan <- true
 			n.status = removed
@@ -84,8 +86,8 @@ func (n *Node) Remove(recursive bool) error {
 		return etcdErr.NewError(102, "")
 	}
 
-	for _, n := range n.Children { // delete all children
-		n.Remove(true)
+	for _, child := range n.Children { // delete all children
+		child.Remove(true)
 	}
 
 	// delete self
@@ -125,7 +127,7 @@ func (n *Node) Write(value string) error {
 // If the receiver node is not a directory, a "Not A Directory" error will be returned.
 func (n *Node) List() ([]*Node, error) {
 	n.mu.Lock()
-	n.mu.Unlock()
+	defer n.mu.Unlock()
 	if !n.IsDir() {
 		return nil, etcdErr.NewError(104, "")
 	}
@@ -143,7 +145,7 @@ func (n *Node) List() ([]*Node, error) {
 
 func (n *Node) GetFile(name string) (*Node, error) {
 	n.mu.Lock()
-	n.mu.Unlock()
+	defer n.mu.Unlock()
 
 	if !n.IsDir() {
 		return nil, etcdErr.NewError(104, n.Path)
@@ -169,7 +171,7 @@ func (n *Node) GetFile(name string) (*Node, error) {
 // error will be returned
 func (n *Node) Add(child *Node) error {
 	n.mu.Lock()
-	n.mu.Unlock()
+	defer n.mu.Unlock()
 	if n.status == removed {
 		return etcdErr.NewError(100, "")
 	}
@@ -197,7 +199,7 @@ func (n *Node) Add(child *Node) error {
 // If the node is a key-value pair, it will clone the pair.
 func (n *Node) Clone() *Node {
 	n.mu.Lock()
-	n.mu.Unlock()
+	defer n.mu.Unlock()
 	if !n.IsDir() {
 		return newFile(n.Path, n.Value, n.CreateIndex, n.CreateTerm, n.Parent, n.ACL, n.ExpireTime)
 	}
