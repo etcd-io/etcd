@@ -68,12 +68,12 @@ func (n *Node) Remove(recursive bool) error {
 		return nil
 	}
 
-        if !n.IsDir() { // file node: key-value pair
+	if !n.IsDir() { // file node: key-value pair
 		_, name := filepath.Split(n.Path)
 
 		if n.Parent.Children[name] == n {
-                        // This is the only pointer to Node object
-                        // Handled by garbage collector
+			// This is the only pointer to Node object
+			// Handled by garbage collector
 			delete(n.Parent.Children, name)
 			n.removeChan <- true
 			n.status = removed
