@@ -25,29 +25,42 @@ func New() *FileSystem {
 
 }
 
-func (fs *FileSystem) InternalGet(path string, index uint64, term uint64) (*Node, error) {
-	fmt.Println("GET: ", path)
-	path = filepath.Clean("/" + path)
-
-	// update file system known index and term
-	fs.Index, fs.Term = index, term
-
-	walkFunc := func(parent *Node, dirName string) (*Node, error) {
-		child, ok := parent.Children[dirName]
-		if ok {
-			return child, nil
-		}
-
-		return nil, etcdErr.NewError(100, "get")
-	}
-
-	f, err := fs.walk(path, walkFunc)
+func (fs *FileSystem) Get(path string, recusive bool, index uint64, term uint64) (*Event, error) {
+	// TODO: add recursive get
+	n, err := fs.InternalGet(path, index, term)
 
 	if err != nil {
 		return nil, err
 	}
 
-	return f, nil
+	e := newEvent(Get, path, index, term)
+
+	if n.IsDir() { // node is dir
+		e.Pairs = make([]KeyValuePair, len(n.Children))
+
+		i := 0
+
+		for _, subN := range n.Children {
+
+			if subN.IsDir() {
+				e.Pairs[i] = KeyValuePair{
+					Key: subN.Path,
+					Dir: true,
+				}
+			} else {
+				e.Pairs[i] = KeyValuePair{
+					Key:   subN.Path,
+					Value: subN.Value,
+				}
+			}
+			i++
+		}
+
+	} else { // node is file
+		e.Value = n.Value
+	}
+
+	return e, nil
 }
 
 func (fs *FileSystem) Set(path string, value string, expireTime time.Time, index uint64, term uint64) error {
@@ -66,17 +79,35 @@ func (fs *FileSystem) Set(path string, value string, expireTime time.Time, index
 	}
 
 	f := newFile(name, value, fs.Index, fs.Term, d, "", expireTime)
+	e := newEvent(Set, path, fs.Index, fs.Term)
+	e.Value = f.Value
+
+	// remove previous file if exist
+	oldFile, err := d.GetFile(name)
+
+	if err == nil {
+		if oldFile != nil {
+			oldFile.Remove(false)
+			e.PrevValue = oldFile.Value
+		}
+	} else {
+		return err
+	}
 
 	err = d.Add(f)
 
-	if err == nil {
-		if expireTime != Permanent {
-			go f.Expire()
-		}
+	if err != nil {
+		return err
 	}
 
-	return err
+	// Node with TTL
+	if expireTime != Permanent {
+		go f.Expire()
+		e.Expiration = &f.ExpireTime
+		e.TTL = int64(expireTime.Sub(time.Now()) / time.Second)
+	}
 
+	return nil
 }
 
 func (fs *FileSystem) TestAndSet() {
@@ -117,6 +148,32 @@ func (fs *FileSystem) walk(path string, walkFunc func(prev *Node, component stri
 	}
 
 	return curr, nil
+}
+
+// InternalGet function get the node of the given path.
+func (fs *FileSystem) InternalGet(path string, index uint64, term uint64) (*Node, error) {
+	fmt.Println("GET: ", path)
+	path = filepath.Clean("/" + path)
+
+	// update file system known index and term
+	fs.Index, fs.Term = index, term
+
+	walkFunc := func(parent *Node, dirName string) (*Node, error) {
+		child, ok := parent.Children[dirName]
+		if ok {
+			return child, nil
+		}
+
+		return nil, etcdErr.NewError(100, "get")
+	}
+
+	f, err := fs.walk(path, walkFunc)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return f, nil
 }
 
 // checkDir function will check whether the component is a directory under parent node.

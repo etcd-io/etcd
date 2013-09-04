@@ -141,6 +141,28 @@ func (n *Node) List() ([]*Node, error) {
 	return nodes, nil
 }
 
+func (n *Node) GetFile(name string) (*Node, error) {
+	n.mu.Lock()
+	n.mu.Unlock()
+
+	if !n.IsDir() {
+		return nil, etcdErr.NewError(104, n.Path)
+	}
+
+	f, ok := n.Children[name]
+
+	if ok {
+		if !f.IsDir() {
+			return f, nil
+		} else {
+			return nil, etcdErr.NewError(102, f.Path)
+		}
+	}
+
+	return nil, nil
+
+}
+
 // Add function adds a node to the receiver node.
 // If the receiver is not a directory, a "Not A Directory" error will be returned.
 // If there is a existing node with the same name under the directory, a "Already Exist"
