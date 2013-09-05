@@ -189,6 +189,15 @@ func TestTestAndSet(t *testing.T) {
 		t.Fatalf("[%v/%v] [%v/%v]", e.PrevValue, "car", e.Value, "bar")
 	}
 
+	// test on empty previous value
+	e, err = fs.TestAndSet("/fooDir/foo", "", 0, "bar", Permanent, 4, 1)
+	if err != nil {
+		t.Fatal("test on empty node should be succeeded")
+	}
+
+	if e.Key != "/fooDir/foo" || e.PrevValue != "" || e.Value != "bar" {
+		t.Fatalf("[%v/%v] [%v/%v] [%v/%v]", e.Key, "/fooDir/foo", e.PrevValue, "", e.Value, "bar")
+	}
 }
 
 func setAndGet(fs *FileSystem, path string, t *testing.T) {
