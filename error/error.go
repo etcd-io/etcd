@@ -14,7 +14,7 @@ func init() {
 
 	// command related errors
 	errors[100] = "Key Not Found"
-	errors[101] = "The given PrevValue is not equal to the value of the key"
+	errors[101] = "Test Failed"
 	errors[102] = "Not A File"
 	errors[103] = "Reached the max number of machines in the cluster"
 	errors[104] = "Not A Directory"

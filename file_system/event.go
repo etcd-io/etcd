@@ -7,11 +7,10 @@ import (
 )
 
 const (
-	Get         = "get"
-	Set         = "set"
-	Delete      = "delete"
-	TestAndSet  = "testAndSet"
-	TestIAndSet = "testiAndSet"
+	Get        = "get"
+	Set        = "set"
+	Delete     = "delete"
+	TestAndSet = "testAndSet"
 )
 
 type Event struct {

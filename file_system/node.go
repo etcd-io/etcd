@@ -19,29 +19,33 @@ const (
 )
 
 type Node struct {
-	Path        string
-	CreateIndex uint64
-	CreateTerm  uint64
-	Parent      *Node
-	ExpireTime  time.Time
-	ACL         string
-	Value       string           // for key-value pair
-	Children    map[string]*Node // for directory
-	status      int
-	mu          sync.Mutex
-	stopExpire  chan bool // stop expire routine channel
+	Path          string
+	CreateIndex   uint64
+	CreateTerm    uint64
+	ModifiedIndex uint64
+	ModifiedTerm  uint64
+	Parent        *Node
+	ExpireTime    time.Time
+	ACL           string
+	Value         string           // for key-value pair
+	Children      map[string]*Node // for directory
+	status        int
+	mu            sync.Mutex
+	stopExpire    chan bool // stop expire routine channel
 }
 
 func newFile(keyPath string, value string, createIndex uint64, createTerm uint64, parent *Node, ACL string, expireTime time.Time) *Node {
 	return &Node{
-		Path:        keyPath,
-		CreateIndex: createIndex,
-		CreateTerm:  createTerm,
-		Parent:      parent,
-		ACL:         ACL,
-		stopExpire:  make(chan bool, 1),
-		ExpireTime:  expireTime,
-		Value:       value,
+		Path:          keyPath,
+		CreateIndex:   createIndex,
+		CreateTerm:    createTerm,
+		ModifiedIndex: createIndex,
+		ModifiedTerm:  createTerm,
+		Parent:        parent,
+		ACL:           ACL,
+		stopExpire:    make(chan bool, 1),
+		ExpireTime:    expireTime,
+		Value:         value,
 	}
 }
 
@@ -113,12 +117,14 @@ func (n *Node) Read() (string, error) {
 
 // Set function set the value of the node to the given value.
 // If the receiver node is a directory, a "Not A File" error will be returned.
-func (n *Node) Write(value string) error {
+func (n *Node) Write(value string, index uint64, term uint64) error {
 	if n.IsDir() {
 		return etcdErr.NewError(102, "")
 	}
 
 	n.Value = value
+	n.ModifiedIndex = index
+	n.ModifiedTerm = term
 
 	return nil
 }

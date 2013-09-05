@@ -157,6 +157,40 @@ func TestExpire(t *testing.T) {
 
 }
 
+func TestTestAndSet(t *testing.T) {
+	fs := New()
+	fs.Set("/foo", "bar", Permanent, 1, 1)
+
+	// test on wrong previous value
+	_, err := fs.TestAndSet("/foo", "barbar", 0, "car", Permanent, 2, 1)
+	if err == nil {
+		t.Fatal("test and set should fail barbar != bar")
+	}
+
+	// test on value
+	e, err := fs.TestAndSet("/foo", "bar", 0, "car", Permanent, 3, 1)
+
+	if err != nil {
+		t.Fatal("test and set should succeed bar == bar")
+	}
+
+	if e.PrevValue != "bar" || e.Value != "car" {
+		t.Fatalf("[%v/%v] [%v/%v]", e.PrevValue, "bar", e.Value, "car")
+	}
+
+	// test on index
+	e, err = fs.TestAndSet("/foo", "", 3, "bar", Permanent, 4, 1)
+
+	if err != nil {
+		t.Fatal("test and set should succeed index 3 == 3")
+	}
+
+	if e.PrevValue != "car" || e.Value != "bar" {
+		t.Fatalf("[%v/%v] [%v/%v]", e.PrevValue, "car", e.Value, "bar")
+	}
+
+}
+
 func setAndGet(fs *FileSystem, path string, t *testing.T) {
 	_, err := fs.Set(path, "bar", Permanent, 1, 1)
 
