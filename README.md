@@ -469,6 +469,10 @@ If you are using SSL for server to server communication, you must use it on all 
 
 - [justinsb/jetcd](https://github.com/justinsb/jetcd)
 
+**Python libraries**
+
+- [transitorykris/etcd-py](https://github.com/transitorykris/etcd-py)
+
 **Node libraries**
 
 - [stianeikeland/node-etcd](https://github.com/stianeikeland/node-etcd)
