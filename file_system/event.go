@@ -53,17 +53,15 @@ type eventQueue struct {
 	capacity int
 }
 
-func (eq *eventQueue) insert(e *Event) bool {
+func (eq *eventQueue) insert(e *Event) {
 
 	eq.back = (eq.back + 1) % eq.capacity
 	eq.events[eq.back] = e
 
 	if eq.size == eq.capacity { //dequeue
 		eq.front = (eq.back + 1) % eq.capacity
-		return true
 	} else {
 		eq.size++
-		return false
 	}
 
 }
@@ -89,11 +87,9 @@ func (eh *EventHistory) addEvent(e *Event) {
 	eh.rwl.Lock()
 	defer eh.rwl.Unlock()
 
-	if eh.Queue.insert(e) {
-		eh.StartIndex++
-	} else {
-		eh.StartIndex = eh.Queue.events[eh.Queue.front].Index
-	}
+	eh.Queue.insert(e)
+
+	eh.StartIndex = eh.Queue.events[eh.Queue.front].Index
 }
 
 func (eh *EventHistory) scan(prefix string, index uint64) (*Event, error) {
