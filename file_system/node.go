@@ -29,7 +29,7 @@ type Node struct {
 	Children    map[string]*Node // for directory
 	status      int
 	mu          sync.Mutex
-	removeChan  chan bool // remove channel
+	stopExpire  chan bool // stop expire routine channel
 }
 
 func newFile(key_path string, value string, createIndex uint64, createTerm uint64, parent *Node, ACL string, expireTime time.Time) *Node {
@@ -39,7 +39,7 @@ func newFile(key_path string, value string, createIndex uint64, createTerm uint6
 		CreateTerm:  createTerm,
 		Parent:      parent,
 		ACL:         ACL,
-		removeChan:  make(chan bool, 1),
+		stopExpire:  make(chan bool, 1),
 		ExpireTime:  expireTime,
 		Value:       value,
 	}
@@ -52,7 +52,7 @@ func newDir(key_path string, createIndex uint64, createTerm uint64, parent *Node
 		CreateTerm:  createTerm,
 		Parent:      parent,
 		ACL:         ACL,
-		removeChan:  make(chan bool, 1),
+		stopExpire:  make(chan bool, 1),
 		Children:    make(map[string]*Node),
 	}
 }
@@ -75,7 +75,7 @@ func (n *Node) Remove(recursive bool) error {
 			// This is the only pointer to Node object
 			// Handled by garbage collector
 			delete(n.Parent.Children, name)
-			n.removeChan <- true
+			n.stopExpire <- true
 			n.status = removed
 		}
 
@@ -94,7 +94,7 @@ func (n *Node) Remove(recursive bool) error {
 	_, name := path.Split(n.Path)
 	if n.Parent.Children[name] == n {
 		delete(n.Parent.Children, name)
-		n.removeChan <- true
+		n.stopExpire <- true
 		n.status = removed
 	}
 
@@ -226,25 +226,23 @@ func (n *Node) IsDir() bool {
 }
 
 func (n *Node) Expire() {
-	for {
-		duration := n.ExpireTime.Sub(time.Now())
-		if duration <= 0 {
-			n.Remove(true)
-			return
-		}
+	duration := n.ExpireTime.Sub(time.Now())
+	if duration <= 0 {
+		n.Remove(true)
+		return
+	}
 
-		select {
-		// if timeout, delete the node
-		case <-time.After(duration):
-			n.Remove(true)
-			return
+	select {
+	// if timeout, delete the node
+	case <-time.After(duration):
+		n.Remove(true)
+		return
 
-		// if removed, return
-		case <-n.removeChan:
-			fmt.Println("node removed")
-			return
+	// if stopped, return
+	case <-n.stopExpire:
+		fmt.Println("expire stopped")
+		return
 
-		}
 	}
 }
 

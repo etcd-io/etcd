@@ -12,6 +12,32 @@ func TestSetAndGet(t *testing.T) {
 	setAndGet(fs, "/foo/foo/bar", t)
 }
 
+func TestUpdateFile(t *testing.T) {
+	fs := New()
+
+	_, err := fs.Set("/foo/bar", "bar", Permanent, 1, 1)
+
+	if err != nil {
+		t.Fatalf("cannot set %s=bar [%s]", "/foo/bar", err.Error())
+	}
+
+	_, err = fs.Set("/foo/bar", "barbar", Permanent, 2, 1)
+
+	if err != nil {
+		t.Fatalf("cannot set %s=barbar [%s]", "/foo/bar", err.Error())
+	}
+
+	e, err := fs.Get("/foo/bar", false, 2, 1)
+
+	if err != nil {
+		t.Fatalf("cannot get %s [%s]", "/foo/bar", err.Error())
+	}
+
+	if e.Value != "barbar" {
+		t.Fatalf("expect value of %s is barbar [%s]", "/foo/bar", e.Value)
+	}
+}
+
 func TestListDirectory(t *testing.T) {
 	fs := New()
 

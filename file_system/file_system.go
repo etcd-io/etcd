@@ -75,23 +75,31 @@ func (fs *FileSystem) Set(key_path string, value string, expireTime time.Time, i
 		return nil, err
 	}
 
-	f := newFile(key_path, value, fs.Index, fs.Term, d, "", expireTime)
 	e := newEvent(Set, key_path, fs.Index, fs.Term)
-	e.Value = f.Value
+	e.Value = value
 
-	// remove previous file if exist
-	oldFile, err := d.GetFile(name)
+	f, err := d.GetFile(name)
 
 	if err == nil {
-		if oldFile != nil {
-			oldFile.Remove(false)
-			e.PrevValue = oldFile.Value
-		}
-	} else {
-		return nil, err
-	}
 
-	err = d.Add(f)
+		if f != nil { // update previous file if exist
+			e.PrevValue = f.Value
+			f.Write(e.Value)
+
+			// if the previous ExpireTime is not Permanent and expireTime is given
+			// we stop the previous expire routine
+			if f.ExpireTime != Permanent && expireTime != Permanent {
+				f.stopExpire <- true
+			}
+		} else { // create new file
+
+			f = newFile(key_path, value, fs.Index, fs.Term, d, "", expireTime)
+
+			err = d.Add(f)
+
+		}
+
+	}
 
 	if err != nil {
 		return nil, err
