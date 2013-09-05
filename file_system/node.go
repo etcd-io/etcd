@@ -2,7 +2,7 @@ package fileSystem
 
 import (
 	"fmt"
-	"path/filepath"
+	"path"
 	"sync"
 	"time"
 
@@ -32,9 +32,9 @@ type Node struct {
 	removeChan  chan bool // remove channel
 }
 
-func newFile(path string, value string, createIndex uint64, createTerm uint64, parent *Node, ACL string, expireTime time.Time) *Node {
+func newFile(key_path string, value string, createIndex uint64, createTerm uint64, parent *Node, ACL string, expireTime time.Time) *Node {
 	return &Node{
-		Path:        path,
+		Path:        key_path,
 		CreateIndex: createIndex,
 		CreateTerm:  createTerm,
 		Parent:      parent,
@@ -45,9 +45,9 @@ func newFile(path string, value string, createIndex uint64, createTerm uint64, p
 	}
 }
 
-func newDir(path string, createIndex uint64, createTerm uint64, parent *Node, ACL string) *Node {
+func newDir(key_path string, createIndex uint64, createTerm uint64, parent *Node, ACL string) *Node {
 	return &Node{
-		Path:        path,
+		Path:        key_path,
 		CreateIndex: createIndex,
 		CreateTerm:  createTerm,
 		Parent:      parent,
@@ -69,7 +69,7 @@ func (n *Node) Remove(recursive bool) error {
 	}
 
 	if !n.IsDir() { // file node: key-value pair
-		_, name := filepath.Split(n.Path)
+		_, name := path.Split(n.Path)
 
 		if n.Parent.Children[name] == n {
 			// This is the only pointer to Node object
@@ -91,7 +91,7 @@ func (n *Node) Remove(recursive bool) error {
 	}
 
 	// delete self
-	_, name := filepath.Split(n.Path)
+	_, name := path.Split(n.Path)
 	if n.Parent.Children[name] == n {
 		delete(n.Parent.Children, name)
 		n.removeChan <- true
@@ -180,7 +180,7 @@ func (n *Node) Add(child *Node) error {
 		return etcdErr.NewError(104, "")
 	}
 
-	_, name := filepath.Split(child.Path)
+	_, name := path.Split(child.Path)
 
 	_, ok := n.Children[name]
 
@@ -255,7 +255,7 @@ func (n *Node) Expire() {
 // For example if we have /foo/_hidden and /foo/notHidden, get "/foo"
 // will only return /foo/notHidden
 func (n *Node) IsHidden() bool {
-	_, name := filepath.Split(n.Path)
+	_, name := path.Split(n.Path)
 
 	if name[0] == '_' { //hidden
 		return true

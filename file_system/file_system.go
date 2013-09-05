@@ -1,7 +1,7 @@
 package fileSystem
 
 import (
-	"path/filepath"
+	"path"
 	"strings"
 	"time"
 
@@ -24,15 +24,15 @@ func New() *FileSystem {
 
 }
 
-func (fs *FileSystem) Get(path string, recusive bool, index uint64, term uint64) (*Event, error) {
+func (fs *FileSystem) Get(key_path string, recusive bool, index uint64, term uint64) (*Event, error) {
 	// TODO: add recursive get
-	n, err := fs.InternalGet(path, index, term)
+	n, err := fs.InternalGet(key_path, index, term)
 
 	if err != nil {
 		return nil, err
 	}
 
-	e := newEvent(Get, path, index, term)
+	e := newEvent(Get, key_path, index, term)
 
 	if n.IsDir() { // node is dir
 		e.KVPairs = make([]KeyValuePair, len(n.Children))
@@ -60,23 +60,23 @@ func (fs *FileSystem) Get(path string, recusive bool, index uint64, term uint64)
 	return e, nil
 }
 
-func (fs *FileSystem) Set(path string, value string, expireTime time.Time, index uint64, term uint64) (*Event, error) {
-	path = filepath.Clean("/" + path)
+func (fs *FileSystem) Set(key_path string, value string, expireTime time.Time, index uint64, term uint64) (*Event, error) {
+	key_path = path.Clean("/" + key_path)
 
 	// update file system known index and term
 	fs.Index, fs.Term = index, term
 
-	dir, name := filepath.Split(path)
+	dir, name := path.Split(key_path)
 
-	// walk through the path and get the last directory node
+	// walk through the key_path and get the last directory node
 	d, err := fs.walk(dir, fs.checkDir)
 
 	if err != nil {
 		return nil, err
 	}
 
-	f := newFile(path, value, fs.Index, fs.Term, d, "", expireTime)
-	e := newEvent(Set, path, fs.Index, fs.Term)
+	f := newFile(key_path, value, fs.Index, fs.Term, d, "", expireTime)
+	e := newEvent(Set, key_path, fs.Index, fs.Term)
 	e.Value = f.Value
 
 	// remove previous file if exist
@@ -107,7 +107,7 @@ func (fs *FileSystem) Set(path string, value string, expireTime time.Time, index
 	return e, nil
 }
 
-func (fs *FileSystem) TestAndSet(path string, recurisive bool, index uint64, term uint64) {
+func (fs *FileSystem) TestAndSet(key_path string, recurisive bool, index uint64, term uint64) {
 
 }
 
@@ -115,8 +115,8 @@ func (fs *FileSystem) TestIndexAndSet() {
 
 }
 
-func (fs *FileSystem) Delete(path string, recurisive bool, index uint64, term uint64) (*Event, error) {
-	n, err := fs.InternalGet(path, index, term)
+func (fs *FileSystem) Delete(key_path string, recurisive bool, index uint64, term uint64) (*Event, error) {
+	n, err := fs.InternalGet(key_path, index, term)
 
 	if err != nil {
 		return nil, err
@@ -128,7 +128,7 @@ func (fs *FileSystem) Delete(path string, recurisive bool, index uint64, term ui
 		return nil, err
 	}
 
-	e := newEvent(Delete, path, index, term)
+	e := newEvent(Delete, key_path, index, term)
 
 	if n.IsDir() {
 		e.Dir = true
@@ -139,9 +139,9 @@ func (fs *FileSystem) Delete(path string, recurisive bool, index uint64, term ui
 	return e, nil
 }
 
-// walk function walks all the path and apply the walkFunc on each directory
-func (fs *FileSystem) walk(path string, walkFunc func(prev *Node, component string) (*Node, error)) (*Node, error) {
-	components := strings.Split(path, "/")
+// walk function walks all the key_path and apply the walkFunc on each directory
+func (fs *FileSystem) walk(key_path string, walkFunc func(prev *Node, component string) (*Node, error)) (*Node, error) {
+	components := strings.Split(key_path, "/")
 
 	curr := fs.Root
 
@@ -161,9 +161,9 @@ func (fs *FileSystem) walk(path string, walkFunc func(prev *Node, component stri
 	return curr, nil
 }
 
-// InternalGet function get the node of the given path.
-func (fs *FileSystem) InternalGet(path string, index uint64, term uint64) (*Node, error) {
-	path = filepath.Clean("/" + path)
+// InternalGet function get the node of the given key_path.
+func (fs *FileSystem) InternalGet(key_path string, index uint64, term uint64) (*Node, error) {
+	key_path = path.Clean("/" + key_path)
 
 	// update file system known index and term
 	fs.Index, fs.Term = index, term
@@ -177,7 +177,7 @@ func (fs *FileSystem) InternalGet(path string, index uint64, term uint64) (*Node
 		return nil, etcdErr.NewError(100, "get")
 	}
 
-	f, err := fs.walk(path, walkFunc)
+	f, err := fs.walk(key_path, walkFunc)
 
 	if err != nil {
 		return nil, err
@@ -198,7 +198,7 @@ func (fs *FileSystem) checkDir(parent *Node, dirName string) (*Node, error) {
 		return subDir, nil
 	}
 
-	n := newDir(filepath.Join(parent.Path, dirName), fs.Index, fs.Term, parent, parent.ACL)
+	n := newDir(path.Join(parent.Path, dirName), fs.Index, fs.Term, parent, parent.ACL)
 
 	parent.Children[dirName] = n
 
