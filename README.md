@@ -465,6 +465,10 @@ If you are using SSL for server to server communication, you must use it on all 
 
 - [go-etcd](https://github.com/coreos/go-etcd)
 
+**Java libraries**
+
+- [justinsb/jetcd](https://github.com/justinsb/jetcd)
+
 **Node libraries**
 
 - [stianeikeland/node-etcd](https://github.com/stianeikeland/node-etcd)
