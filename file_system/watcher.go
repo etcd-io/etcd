@@ -2,7 +2,7 @@ package fileSystem
 
 import (
 	"container/list"
-	"path/filepath"
+	"path"
 	"strings"
 )
 
@@ -53,7 +53,7 @@ func (wh *watcherHub) notify(e *Event) {
 
 	// walk through all the paths
 	for _, segment := range segments {
-		currPath = filepath.Join(currPath, segment)
+		currPath = path.Join(currPath, segment)
 
 		l, ok := wh.watchers[currPath]
 
