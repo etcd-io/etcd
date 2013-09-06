@@ -49,7 +49,7 @@ func TestListDirectory(t *testing.T) {
 	// set key-value /foo/fooDir/foo=bar
 	fs.Set("/foo/fooDir/foo", "bar", Permanent, 2, 1)
 
-	e, err := fs.Get("/foo", false, 2, 1)
+	e, err := fs.Get("/foo", true, 2, 1)
 
 	if err != nil {
 		t.Fatalf("%v", err)
@@ -67,6 +67,9 @@ func TestListDirectory(t *testing.T) {
 		t.Fatalf("wrong kv [/foo/fooDir/ / %s] -> [true / %v]", e.KVPairs[1].Key, e.KVPairs[1].Dir)
 	}
 
+	if e.KVPairs[1].KVPairs[0].Key != "/foo/fooDir/foo" || e.KVPairs[1].KVPairs[0].Value != "bar" {
+		t.Fatalf("wrong kv [/foo/fooDir/foo / %s] -> [bar / %v]", e.KVPairs[1].KVPairs[0].Key, e.KVPairs[1].KVPairs[0].Value)
+	}
 	// test hidden node
 
 	// create dir /foo/_hidden

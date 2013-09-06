@@ -36,17 +36,21 @@ func (fs *FileSystem) Get(keyPath string, recusive bool, index uint64, term uint
 	e := newEvent(Get, keyPath, index, term)
 
 	if n.IsDir() { // node is dir
-		e.KVPairs = make([]KeyValuePair, len(n.Children))
 
+		children, _ := n.List()
+		e.KVPairs = make([]KeyValuePair, len(children))
+
+		// we do not use the index in the children slice directly
+		// we need to skip the hidden one
 		i := 0
 
-		for _, child := range n.Children {
+		for _, child := range children {
 
 			if child.IsHidden() { // get will not list hidden node
 				continue
 			}
 
-			e.KVPairs[i] = child.Pair()
+			e.KVPairs[i] = child.Pair(recusive)
 
 			i++
 		}

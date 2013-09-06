@@ -268,13 +268,39 @@ func (n *Node) IsHidden() bool {
 	return false
 }
 
-func (n *Node) Pair() KeyValuePair {
+func (n *Node) Pair(recurisive bool) KeyValuePair {
 
 	if n.IsDir() {
-		return KeyValuePair{
+		pair := KeyValuePair{
 			Key: n.Path,
 			Dir: true,
 		}
+		if !recurisive {
+			return pair
+		}
+
+		children, _ := n.List()
+		pair.KVPairs = make([]KeyValuePair, len(children))
+
+		// we do not use the index in the children slice directly
+		// we need to skip the hidden one
+		i := 0
+
+		for _, child := range children {
+
+			if child.IsHidden() { // get will not list hidden node
+				continue
+			}
+
+			pair.KVPairs[i] = child.Pair(recurisive)
+
+			i++
+		}
+
+		// eliminate hidden nodes
+		pair.KVPairs = pair.KVPairs[:i]
+
+		return pair
 	}
 
 	return KeyValuePair{
