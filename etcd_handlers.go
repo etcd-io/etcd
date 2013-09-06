@@ -92,15 +92,15 @@ func SetHttpHandler(w http.ResponseWriter, req *http.Request) error {
 
 	debugf("[recv] POST %v/v1/keys/%s [%s]", e.url, key, req.RemoteAddr)
 
-	value := req.FormValue("value")
+	req.ParseForm()
+
+	value := req.Form.Get("value")
 
 	if len(value) == 0 {
 		return etcdErr.NewError(200, "Set")
 	}
 
-	prevValue := req.FormValue("prevValue")
-
-	strDuration := req.FormValue("ttl")
+	strDuration := req.Form.Get("ttl")
 
 	expireTime, err := durationToExpireTime(strDuration)
 
@@ -108,11 +108,11 @@ func SetHttpHandler(w http.ResponseWriter, req *http.Request) error {
 		return etcdErr.NewError(202, "Set")
 	}
 
-	if len(prevValue) != 0 {
+	if prevValueArr, ok := req.Form["prevValue"]; ok && len(prevValueArr) > 0 {
 		command := &TestAndSetCommand{
 			Key:        key,
 			Value:      value,
-			PrevValue:  prevValue,
+			PrevValue:  prevValueArr[0],
 			ExpireTime: expireTime,
 		}
 
