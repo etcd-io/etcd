@@ -26,7 +26,6 @@ func New() *FileSystem {
 }
 
 func (fs *FileSystem) Get(nodePath string, recusive bool, index uint64, term uint64) (*Event, error) {
-	// TODO: add recursive get
 	n, err := fs.InternalGet(nodePath, index, term)
 
 	if err != nil {
