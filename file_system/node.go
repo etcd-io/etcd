@@ -34,9 +34,9 @@ type Node struct {
 	stopExpire    chan bool // stop expire routine channel
 }
 
-func newFile(keyPath string, value string, createIndex uint64, createTerm uint64, parent *Node, ACL string, expireTime time.Time) *Node {
+func newFile(nodePath string, value string, createIndex uint64, createTerm uint64, parent *Node, ACL string, expireTime time.Time) *Node {
 	return &Node{
-		Path:          keyPath,
+		Path:          nodePath,
 		CreateIndex:   createIndex,
 		CreateTerm:    createTerm,
 		ModifiedIndex: createIndex,
@@ -49,9 +49,9 @@ func newFile(keyPath string, value string, createIndex uint64, createTerm uint64
 	}
 }
 
-func newDir(keyPath string, createIndex uint64, createTerm uint64, parent *Node, ACL string, expireTime time.Time) *Node {
+func newDir(nodePath string, createIndex uint64, createTerm uint64, parent *Node, ACL string, expireTime time.Time) *Node {
 	return &Node{
-		Path:        keyPath,
+		Path:        nodePath,
 		CreateIndex: createIndex,
 		CreateTerm:  createTerm,
 		Parent:      parent,

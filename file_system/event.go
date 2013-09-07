@@ -8,7 +8,8 @@ import (
 
 const (
 	Get        = "get"
-	Set        = "set"
+	Create     = "create"
+	Update     = "update"
 	Delete     = "delete"
 	TestAndSet = "testAndSet"
 )
