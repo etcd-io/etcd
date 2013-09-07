@@ -468,6 +468,8 @@ If you are using SSL for server to server communication, you must use it on all 
 **Java libraries**
 
 - [justinsb/jetcd](https://github.com/justinsb/jetcd)
+- [diwakergupta/jetcd](https://github.com/diwakergupta/jetcd)
+
 
 **Python libraries**
 
