@@ -6,7 +6,7 @@ import (
 
 func TestWatch(t *testing.T) {
 	wh := newWatchHub(100)
-	err, c := wh.watch("/foo", true, 0)
+	c, err := wh.watch("/foo", true, 0)
 
 	if err != nil {
 		t.Fatal("%v", err)
@@ -29,7 +29,7 @@ func TestWatch(t *testing.T) {
 		t.Fatal("recv != send")
 	}
 
-	_, c = wh.watch("/foo", false, 0)
+	c, _ = wh.watch("/foo", false, 0)
 
 	e = newEvent(Set, "/foo/bar", 1, 0)
 

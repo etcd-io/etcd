@@ -230,6 +230,29 @@ func TestTestAndSet(t *testing.T) {
 	}
 }
 
+func TestWatchRemove(t *testing.T) {
+	fs := New()
+	fs.Create("/foo/foo/foo", "bar", Permanent, 1, 1)
+
+	// watch at a deeper path
+	c, _ := fs.WatcherHub.watch("/foo/foo/foo", false, 0)
+	fs.Delete("/foo", true, 2, 1)
+	e := <-c
+	if e.Key != "/foo" {
+		t.Fatal("watch for delete fails")
+	}
+
+	fs.Create("/foo/foo/foo", "bar", Permanent, 3, 1)
+	// watch at a prefix
+	c, _ = fs.WatcherHub.watch("/foo", true, 0)
+	fs.Delete("/foo/foo/foo", false, 4, 1)
+	e = <-c
+	if e.Key != "/foo/foo/foo" {
+		t.Fatal("watch for delete fails")
+	}
+
+}
+
 func createAndGet(fs *FileSystem, path string, t *testing.T) {
 	_, err := fs.Create(path, "bar", Permanent, 1, 1)
 

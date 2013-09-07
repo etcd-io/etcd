@@ -198,12 +198,6 @@ func (fs *FileSystem) Delete(keyPath string, recurisive bool, index uint64, term
 		return nil, err
 	}
 
-	err = n.Remove(recurisive)
-
-	if err != nil {
-		return nil, err
-	}
-
 	e := newEvent(Delete, keyPath, index, term)
 
 	if n.IsDir() {
@@ -211,6 +205,18 @@ func (fs *FileSystem) Delete(keyPath string, recurisive bool, index uint64, term
 	} else {
 		e.PrevValue = n.Value
 	}
+
+	callback := func(path string) {
+		fs.WatcherHub.notifyWithPath(e, path, true)
+	}
+
+	err = n.Remove(recurisive, callback)
+
+	if err != nil {
+		return nil, err
+	}
+
+	fs.WatcherHub.notify(e)
 
 	return e, nil
 }
