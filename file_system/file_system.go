@@ -65,6 +65,52 @@ func (fs *FileSystem) Get(keyPath string, recusive bool, index uint64, term uint
 	return e, nil
 }
 
+func (fs *FileSystem) Create(keyPath string, value string, expireTime time.Time, index uint64, term uint64) (*Event, error) {
+	keyPath = path.Clean("/" + keyPath)
+
+	// make sure we can create the node
+	_, err := fs.InternalGet(keyPath, index, term)
+
+	if err == nil { // key already exists
+		return nil, etcdErr.NewError(105, keyPath)
+	}
+
+	etcdError, _ := err.(etcdErr.Error)
+
+	if etcdError.ErrorCode == 104 { // we cannot create the key due to meet a file while walking
+		return nil, err
+	}
+
+	dir, _ := path.Split(keyPath)
+
+	// walk through the keyPath, create dirs and get the last directory node
+	d, err := fs.walk(dir, fs.checkDir)
+
+	if err != nil {
+		return nil, err
+	}
+
+	e := newEvent(Set, keyPath, fs.Index, fs.Term)
+	e.Value = value
+
+	f := newFile(keyPath, value, fs.Index, fs.Term, d, "", expireTime)
+
+	err = d.Add(f)
+
+	if err != nil {
+		return nil, err
+	}
+
+	// Node with TTL
+	if expireTime != Permanent {
+		go f.Expire()
+		e.Expiration = &f.ExpireTime
+		e.TTL = int64(expireTime.Sub(time.Now()) / time.Second)
+	}
+
+	return e, nil
+}
+
 func (fs *FileSystem) Update(keyPath string, value string, expireTime time.Time, index uint64, term uint64) (*Event, error) {
 	n, err := fs.InternalGet(keyPath, index, term)
 
@@ -103,52 +149,6 @@ func (fs *FileSystem) Update(keyPath string, value string, expireTime time.Time,
 	if expireTime != Permanent {
 		go n.Expire()
 		e.Expiration = &n.ExpireTime
-		e.TTL = int64(expireTime.Sub(time.Now()) / time.Second)
-	}
-
-	return e, nil
-}
-
-func (fs *FileSystem) Create(keyPath string, value string, expireTime time.Time, create bool, index uint64, term uint64) (*Event, error) {
-	keyPath = path.Clean("/" + keyPath)
-
-	// make sure we can create the node
-	_, err := fs.InternalGet(keyPath, index, term)
-
-	if err != nil { // key already exists
-		return nil, etcdErr.NewError(105, keyPath)
-	}
-
-	etcdError, _ := err.(etcdErr.Error)
-
-	if etcdError.ErrorCode == 104 { // we cannot create the key due to meet a file while walking
-		return nil, err
-	}
-
-	dir, _ := path.Split(keyPath)
-
-	// walk through the keyPath, create dirs and get the last directory node
-	d, err := fs.walk(dir, fs.checkDir)
-
-	if err != nil {
-		return nil, err
-	}
-
-	e := newEvent(Set, keyPath, fs.Index, fs.Term)
-	e.Value = value
-
-	f := newFile(keyPath, value, fs.Index, fs.Term, d, "", expireTime)
-
-	err = d.Add(f)
-
-	if err != nil {
-		return nil, err
-	}
-
-	// Node with TTL
-	if expireTime != Permanent {
-		go f.Expire()
-		e.Expiration = &f.ExpireTime
 		e.TTL = int64(expireTime.Sub(time.Now()) / time.Second)
 	}
 
