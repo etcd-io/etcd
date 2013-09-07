@@ -497,6 +497,19 @@ If you are using SSL for server to server communication, you must use it on all 
 - [mattn/etcd-vim](https://github.com/mattn/etcd-vim) - SET and GET keys from inside vim
 - [mattn/etcdenv](https://github.com/mattn/etcdenv) - "env" shebang with etcd integration
 
+## FAQ
+
+### What size cluster should I use?
+
+Every command the client sends to the master is broadcast it to all of the followers.
+But, the command is not be committed until the majority of the cluster machines receive that command.
+
+Because of this majority voting property the ideal cluster should be kept small to keep speed up and be made up of an odd number of machines.
+
+Odd numbers are good because if you have 8 machines the majority will be 5 and if you have 9 machines the majority with be 5.
+The result is that an 8 machine cluster can tolerate 3 machine failures and a 9 machine cluster can tolerate 4 nodes failures.
+And in the best case when all 9 machines are responding the cluster will perform at the speed of the fastest 5 nodes.
+
 ## Project Details
 
 ### Versioning
