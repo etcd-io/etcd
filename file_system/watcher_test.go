@@ -6,7 +6,7 @@ import (
 
 func TestWatch(t *testing.T) {
 	wh := newWatchHub(100)
-	err, c := wh.watch("/foo", 0)
+	err, c := wh.watch("/foo", true, 0)
 
 	if err != nil {
 		t.Fatal("%v", err)
@@ -28,4 +28,28 @@ func TestWatch(t *testing.T) {
 	if e != re {
 		t.Fatal("recv != send")
 	}
+
+	_, c = wh.watch("/foo", false, 0)
+
+	e = newEvent(Set, "/foo/bar", 1, 0)
+
+	wh.notify(e)
+
+	select {
+	case <-c:
+		t.Fatal("should not receive from channel if not recursive")
+	default:
+		// do nothing
+	}
+
+	e = newEvent(Set, "/foo", 1, 0)
+
+	wh.notify(e)
+
+	re = <-c
+
+	if e != re {
+		t.Fatal("recv != send")
+	}
+
 }
