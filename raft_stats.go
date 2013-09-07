@@ -168,7 +168,7 @@ func (q *statsQueue) Rate() (float64, float64) {
 		return 0, 0
 	}
 
-	if time.Now.Sub(back.Time()) > time.Second {
+	if time.Now().Sub(back.Time()) > time.Second {
 		q.Clear()
 		return 0, 0
 	}

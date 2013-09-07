@@ -1,4 +1,5 @@
 # etcd
+README version 0.1.0
 
 [![Build Status](https://travis-ci.org/coreos/etcd.png)](https://travis-ci.org/coreos/etcd)
 
@@ -272,7 +273,7 @@ Next, lets configure etcd to use this keypair:
 You can now test the configuration using https:
 
 ```sh
-curl --cacert fixtures/ca/ca.crt https://127.0.0.1:4001/v1/keys/foo -F value=bar
+curl --cacert fixtures/ca/ca.crt https://127.0.0.1:4001/v1/keys/foo -d value=bar -v
 ```
 
 You should be able to see the handshake succeed.
@@ -302,7 +303,7 @@ We can also do authentication using CA certs. The clients will provide their cer
 Try the same request to this server:
 
 ```sh
-curl --cacert fixtures/ca/ca.crt https://127.0.0.1:4001/v1/keys/foo -F value=bar
+curl --cacert fixtures/ca/ca.crt https://127.0.0.1:4001/v1/keys/foo -d value=bar -v
 ```
 
 The request should be rejected by the server.
@@ -347,6 +348,9 @@ We use -s to specify server port and -c to specify client port and -d to specify
 ./etcd -s 127.0.0.1:7001 -c 127.0.0.1:4001 -d nodes/node1 -n node1
 ```
 
+**Note:** If you want to run etcd on external IP address and still have access locally you need to add `-cl 0.0.0.0` so that it will listen on both external and localhost addresses.
+A similar argument `-sl` is used to setup the listening address for the server port.
+
 Let the join two more nodes to this cluster using the -C argument:
 
 ```sh
@@ -363,7 +367,7 @@ curl -L http://127.0.0.1:4001/v1/machines
 We should see there are three nodes in the cluster
 
 ```
-0.0.0.0:4001,0.0.0.0:4002,0.0.0.0:4003
+http://127.0.0.1:4001, http://127.0.0.1:4002, http://127.0.0.1:4003
 ```
 
 The machine list is also available via this API:
@@ -373,7 +377,7 @@ curl -L http://127.0.0.1:4001/v1/keys/_etcd/machines
 ```
 
 ```json
-[{"action":"GET","key":"/machines/node1","value":"0.0.0.0,7001,4001","index":4},{"action":"GET","key":"/machines/node3","value":"0.0.0.0,7002,4002","index":4},{"action":"GET","key":"/machines/node4","value":"0.0.0.0,7003,4003","index":4}]
+[{"action":"GET","key":"/_etcd/machines/node1","value":"raft=http://127.0.0.1:7001&etcd=http://127.0.0.1:4001","index":4},{"action":"GET","key":"/_etcd/machines/node2","value":"raft=http://127.0.0.1:7002&etcd=http://127.0.0.1:4002","index":4},{"action":"GET","key":"/_etcd/machines/node3","value":"raft=http://127.0.0.1:7003&etcd=http://127.0.0.1:4003","index":4}]
 ```
 
 The key of the machine is based on the ```commit index``` when it was added. The value of the machine is ```hostname```, ```raft port``` and ```client port```.
@@ -386,7 +390,7 @@ curl -L http://127.0.0.1:4001/v1/leader
 The first server we set up should be the leader, if it has not dead during these commands.
 
 ```
-0.0.0.0:7001
+http://127.0.0.1:7001
 ```
 
 Now we can do normal SET and GET operations on keys as we explored earlier.
@@ -414,7 +418,13 @@ curl -L http://127.0.0.1:4001/v1/leader
 ```
 
 ```
-0.0.0.0:7002 or 0.0.0.0:7003
+http://127.0.0.1:7002
+```
+
+or
+
+```
+http://127.0.0.1:7003
 ```
 
 You should be able to see this:
@@ -454,6 +464,16 @@ If you are using SSL for server to server communication, you must use it on all 
 **Go libraries**
 
 - [go-etcd](https://github.com/coreos/go-etcd)
+
+**Java libraries**
+
+- [justinsb/jetcd](https://github.com/justinsb/jetcd)
+- [diwakergupta/jetcd](https://github.com/diwakergupta/jetcd)
+
+
+**Python libraries**
+
+- [transitorykris/etcd-py](https://github.com/transitorykris/etcd-py)
 
 **Node libraries**
 
