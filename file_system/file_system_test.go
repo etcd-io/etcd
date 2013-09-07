@@ -5,26 +5,63 @@ import (
 	"time"
 )
 
-func TestSetAndGet(t *testing.T) {
+func TestCreateAndGet(t *testing.T) {
 	fs := New()
-	setAndGet(fs, "/foobar", t)
-	setAndGet(fs, "/foo/bar", t)
-	setAndGet(fs, "/foo/foo/bar", t)
+
+	// this should create successfully
+	createAndGet(fs, "/foobar", t)
+	createAndGet(fs, "/foo/bar", t)
+	createAndGet(fs, "/foo/foo/bar", t)
+
+	// already exist, create should fail
+	_, err := fs.Create("/foobar", "bar", Permanent, 1, 1)
+
+	if err == nil {
+		t.Fatal("Create should fail")
+	}
+
+	// meet file, create should fail
+	_, err = fs.Create("/foo/bar/bar", "bar", Permanent, 2, 1)
+
+	if err == nil {
+		t.Fatal("Create should fail")
+	}
+
+	// create a directory
+	_, err = fs.Create("/fooDir", "", Permanent, 3, 1)
+
+	if err != nil {
+		t.Fatal("Cannot create /fooDir")
+	}
+
+	e, err := fs.Get("/fooDir", false, 3, 1)
+
+	if err != nil || e.Dir != true {
+		t.Fatal("Cannot create /fooDir ")
+	}
+
+	// create a file under directory
+	_, err = fs.Create("/fooDir/bar", "bar", Permanent, 4, 1)
+
+	if err != nil {
+		t.Fatal("Cannot create /fooDir/bar = bar")
+	}
+
 }
 
 func TestUpdateFile(t *testing.T) {
 	fs := New()
 
-	_, err := fs.Set("/foo/bar", "bar", Permanent, 1, 1)
+	_, err := fs.Create("/foo/bar", "bar", Permanent, 1, 1)
 
 	if err != nil {
-		t.Fatalf("cannot set %s=bar [%s]", "/foo/bar", err.Error())
+		t.Fatalf("cannot update %s=bar [%s]", "/foo/bar", err.Error())
 	}
 
-	_, err = fs.Set("/foo/bar", "barbar", Permanent, 2, 1)
+	_, err = fs.Update("/foo/bar", "barbar", Permanent, 2, 1)
 
 	if err != nil {
-		t.Fatalf("cannot set %s=barbar [%s]", "/foo/bar", err.Error())
+		t.Fatalf("cannot update %s=barbar [%s]", "/foo/bar", err.Error())
 	}
 
 	e, err := fs.Get("/foo/bar", false, 2, 1)
@@ -43,11 +80,11 @@ func TestListDirectory(t *testing.T) {
 
 	// create dir /foo
 	// set key-value /foo/foo=bar
-	fs.Set("/foo/foo", "bar", Permanent, 1, 1)
+	fs.Create("/foo/foo", "bar", Permanent, 1, 1)
 
 	// create dir /foo/fooDir
 	// set key-value /foo/fooDir/foo=bar
-	fs.Set("/foo/fooDir/foo", "bar", Permanent, 2, 1)
+	fs.Create("/foo/fooDir/foo", "bar", Permanent, 2, 1)
 
 	e, err := fs.Get("/foo", true, 2, 1)
 
@@ -74,7 +111,7 @@ func TestListDirectory(t *testing.T) {
 
 	// create dir /foo/_hidden
 	// set key-value /foo/_hidden/foo -> bar
-	fs.Set("/foo/_hidden/foo", "bar", Permanent, 3, 1)
+	fs.Create("/foo/_hidden/foo", "bar", Permanent, 3, 1)
 
 	e, _ = fs.Get("/foo", false, 2, 1)
 
@@ -86,7 +123,7 @@ func TestListDirectory(t *testing.T) {
 func TestRemove(t *testing.T) {
 	fs := New()
 
-	fs.Set("/foo", "bar", Permanent, 1, 1)
+	fs.Create("/foo", "bar", Permanent, 1, 1)
 	_, err := fs.Delete("/foo", false, 1, 1)
 
 	if err != nil {
@@ -99,9 +136,9 @@ func TestRemove(t *testing.T) {
 		t.Fatalf("can get the node after deletion")
 	}
 
-	fs.Set("/foo/bar", "bar", Permanent, 1, 1)
-	fs.Set("/foo/car", "car", Permanent, 1, 1)
-	fs.Set("/foo/dar/dar", "dar", Permanent, 1, 1)
+	fs.Create("/foo/bar", "bar", Permanent, 1, 1)
+	fs.Create("/foo/car", "car", Permanent, 1, 1)
+	fs.Create("/foo/dar/dar", "dar", Permanent, 1, 1)
 
 	_, err = fs.Delete("/foo", false, 1, 1)
 
@@ -128,7 +165,7 @@ func TestExpire(t *testing.T) {
 
 	expire := time.Now().Add(time.Second)
 
-	fs.Set("/foo", "bar", expire, 1, 1)
+	fs.Create("/foo", "bar", expire, 1, 1)
 
 	_, err := fs.InternalGet("/foo", 1, 1)
 
@@ -144,7 +181,7 @@ func TestExpire(t *testing.T) {
 		t.Fatalf("can get the node after expiration time")
 	}
 
-	fs.Set("/foo", "bar", expire, 1, 1)
+	fs.Create("/foo", "bar", expire, 1, 1)
 
 	time.Sleep(time.Millisecond * 50)
 	_, err = fs.InternalGet("/foo", 1, 1)
@@ -155,14 +192,14 @@ func TestExpire(t *testing.T) {
 
 	expire = time.Now().Add(time.Second)
 
-	fs.Set("/foo", "bar", expire, 1, 1)
+	fs.Create("/foo", "bar", expire, 1, 1)
 	fs.Delete("/foo", false, 1, 1)
 
 }
 
 func TestTestAndSet(t *testing.T) {
 	fs := New()
-	fs.Set("/foo", "bar", Permanent, 1, 1)
+	fs.Create("/foo", "bar", Permanent, 1, 1)
 
 	// test on wrong previous value
 	_, err := fs.TestAndSet("/foo", "barbar", 0, "car", Permanent, 2, 1)
@@ -191,23 +228,36 @@ func TestTestAndSet(t *testing.T) {
 	if e.PrevValue != "car" || e.Value != "bar" {
 		t.Fatalf("[%v/%v] [%v/%v]", e.PrevValue, "car", e.Value, "bar")
 	}
-
-	// test on empty previous value
-	e, err = fs.TestAndSet("/fooDir/foo", "", 0, "bar", Permanent, 4, 1)
-	if err != nil {
-		t.Fatal("test on empty node should be succeeded")
-	}
-
-	if e.Key != "/fooDir/foo" || e.PrevValue != "" || e.Value != "bar" {
-		t.Fatalf("[%v/%v] [%v/%v] [%v/%v]", e.Key, "/fooDir/foo", e.PrevValue, "", e.Value, "bar")
-	}
 }
 
-func setAndGet(fs *FileSystem, path string, t *testing.T) {
-	_, err := fs.Set(path, "bar", Permanent, 1, 1)
+func TestWatchRemove(t *testing.T) {
+	fs := New()
+	fs.Create("/foo/foo/foo", "bar", Permanent, 1, 1)
+
+	// watch at a deeper path
+	c, _ := fs.WatcherHub.watch("/foo/foo/foo", false, 0)
+	fs.Delete("/foo", true, 2, 1)
+	e := <-c
+	if e.Key != "/foo" {
+		t.Fatal("watch for delete fails")
+	}
+
+	fs.Create("/foo/foo/foo", "bar", Permanent, 3, 1)
+	// watch at a prefix
+	c, _ = fs.WatcherHub.watch("/foo", true, 0)
+	fs.Delete("/foo/foo/foo", false, 4, 1)
+	e = <-c
+	if e.Key != "/foo/foo/foo" {
+		t.Fatal("watch for delete fails")
+	}
+
+}
+
+func createAndGet(fs *FileSystem, path string, t *testing.T) {
+	_, err := fs.Create(path, "bar", Permanent, 1, 1)
 
 	if err != nil {
-		t.Fatalf("cannot set %s=bar [%s]", path, err.Error())
+		t.Fatalf("cannot create %s=bar [%s]", path, err.Error())
 	}
 
 	e, err := fs.Get(path, false, 1, 1)
@@ -219,4 +269,5 @@ func setAndGet(fs *FileSystem, path string, t *testing.T) {
 	if e.Value != "bar" {
 		t.Fatalf("expect value of %s is bar [%s]", path, e.Value)
 	}
+
 }

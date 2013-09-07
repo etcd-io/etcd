@@ -13,7 +13,7 @@ func TestEventQueue(t *testing.T) {
 
 	// Add
 	for i := 0; i < 200; i++ {
-		e := newEvent(Set, "/foo", uint64(i), 0)
+		e := newEvent(Create, "/foo", uint64(i), 0)
 		eh.addEvent(e)
 	}
 
@@ -33,11 +33,11 @@ func TestScanHistory(t *testing.T) {
 	eh := newEventHistory(100)
 
 	// Add
-	eh.addEvent(newEvent(Set, "/foo", 1, 0))
-	eh.addEvent(newEvent(Set, "/foo/bar", 2, 0))
-	eh.addEvent(newEvent(Set, "/foo/foo", 3, 0))
-	eh.addEvent(newEvent(Set, "/foo/bar/bar", 4, 0))
-	eh.addEvent(newEvent(Set, "/foo/foo/foo", 5, 0))
+	eh.addEvent(newEvent(Create, "/foo", 1, 0))
+	eh.addEvent(newEvent(Create, "/foo/bar", 2, 0))
+	eh.addEvent(newEvent(Create, "/foo/foo", 3, 0))
+	eh.addEvent(newEvent(Create, "/foo/bar/bar", 4, 0))
+	eh.addEvent(newEvent(Create, "/foo/foo/foo", 5, 0))
 
 	e, err := eh.scan("/foo", 1)
 	if err != nil || e.Index != 1 {
