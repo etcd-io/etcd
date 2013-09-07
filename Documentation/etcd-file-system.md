@@ -30,12 +30,19 @@ Besides the file and directory difference, all nodes have common attributes and 
     - If the node is a directory, the child nodes of the directory will be returned.
     - If recursive is true, it will recursively get the nodes of the directory.
 
-- **Set** (path, value[optional], ttl [optional])
+- **Create** (path, value[optional], ttl [optional])
 
-  Set the value to a file. Set operation will help to create intermediate directories with no expiration time.
-    - If the value is given, set will create a file
-    - If the value is not given, set will crate a directory
+  Create a file. Create operation will help to create intermediate directories with no expiration time.
+    - If the file already exists, create will fail.
+    - If the value is given, set will create a file.
+    - If the value is not given, set will crate a directory.
     - If ttl is given, the node will be deleted when it expires.
+
+- **Update** (path, value[optional], ttl [optional])
+
+  Update the content of the node.
+    - If the value is given, the value of the key will be updated.
+    - If ttl is given, the expiration time of the node will be updated.
 
 - **Delete** (path, recursive)
 

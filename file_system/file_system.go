@@ -65,15 +65,69 @@ func (fs *FileSystem) Get(keyPath string, recusive bool, index uint64, term uint
 	return e, nil
 }
 
-func (fs *FileSystem) Set(keyPath string, value string, expireTime time.Time, index uint64, term uint64) (*Event, error) {
+func (fs *FileSystem) Update(keyPath string, value string, expireTime time.Time, index uint64, term uint64) (*Event, error) {
+	n, err := fs.InternalGet(keyPath, index, term)
+
+	if err != nil { // if node does not exist, return error
+		return nil, err
+	}
+
+	e := newEvent(Set, keyPath, fs.Index, fs.Term)
+
+	if n.IsDir() { // if the node is a directory, we can only update ttl
+
+		if len(value) != 0 {
+			return nil, etcdErr.NewError(102, keyPath)
+		}
+
+		if n.ExpireTime != Permanent && expireTime != Permanent {
+			n.stopExpire <- true
+		}
+
+	} else { // if the node is a file, we can update value and ttl
+		e.PrevValue = n.Value
+
+		if len(value) != 0 {
+			e.Value = value
+		}
+
+		n.Write(value, index, term)
+
+		if n.ExpireTime != Permanent && expireTime != Permanent {
+			n.stopExpire <- true
+		}
+
+	}
+
+	// update ttl
+	if expireTime != Permanent {
+		go n.Expire()
+		e.Expiration = &n.ExpireTime
+		e.TTL = int64(expireTime.Sub(time.Now()) / time.Second)
+	}
+
+	return e, nil
+}
+
+func (fs *FileSystem) Create(keyPath string, value string, expireTime time.Time, create bool, index uint64, term uint64) (*Event, error) {
 	keyPath = path.Clean("/" + keyPath)
 
-	// update file system known index and term
-	fs.Index, fs.Term = index, term
+	// make sure we can create the node
+	_, err := fs.InternalGet(keyPath, index, term)
 
-	dir, name := path.Split(keyPath)
+	if err != nil { // key already exists
+		return nil, etcdErr.NewError(105, keyPath)
+	}
 
-	// walk through the keyPath and get the last directory node
+	etcdError, _ := err.(etcdErr.Error)
+
+	if etcdError.ErrorCode == 104 { // we cannot create the key due to meet a file while walking
+		return nil, err
+	}
+
+	dir, _ := path.Split(keyPath)
+
+	// walk through the keyPath, create dirs and get the last directory node
 	d, err := fs.walk(dir, fs.checkDir)
 
 	if err != nil {
@@ -83,28 +137,9 @@ func (fs *FileSystem) Set(keyPath string, value string, expireTime time.Time, in
 	e := newEvent(Set, keyPath, fs.Index, fs.Term)
 	e.Value = value
 
-	f, err := d.GetFile(name)
+	f := newFile(keyPath, value, fs.Index, fs.Term, d, "", expireTime)
 
-	if err == nil {
-
-		if f != nil { // update previous file if exist
-			e.PrevValue = f.Value
-			f.Write(e.Value, index, term)
-
-			// if the previous ExpireTime is not Permanent and expireTime is given
-			// we stop the previous expire routine
-			if f.ExpireTime != Permanent && expireTime != Permanent {
-				f.stopExpire <- true
-			}
-		} else { // create new file
-
-			f = newFile(keyPath, value, fs.Index, fs.Term, d, "", expireTime)
-
-			err = d.Add(f)
-
-		}
-
-	}
+	err = d.Add(f)
 
 	if err != nil {
 		return nil, err
@@ -124,20 +159,6 @@ func (fs *FileSystem) TestAndSet(keyPath string, prevValue string, prevIndex uin
 	f, err := fs.InternalGet(keyPath, index, term)
 
 	if err != nil {
-
-		etcdError, _ := err.(etcdErr.Error)
-		if etcdError.ErrorCode == 100 { // file does not exist
-
-			if prevValue == "" && prevIndex == 0 { // test against if prevValue is empty
-				fs.Set(keyPath, value, expireTime, index, term)
-				e := newEvent(TestAndSet, keyPath, index, term)
-				e.Value = value
-				return e, nil
-			}
-
-			return nil, err
-
-		}
 
 		return nil, err
 	}
