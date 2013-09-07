@@ -19,7 +19,7 @@ type FileSystem struct {
 
 func New() *FileSystem {
 	return &FileSystem{
-		Root:       newDir("/", 0, 0, nil, ""),
+		Root:       newDir("/", 0, 0, nil, "", Permanent),
 		WatcherHub: newWatchHub(1000),
 	}
 
@@ -36,6 +36,7 @@ func (fs *FileSystem) Get(keyPath string, recusive bool, index uint64, term uint
 	e := newEvent(Get, keyPath, index, term)
 
 	if n.IsDir() { // node is dir
+		e.Dir = true
 
 		children, _ := n.List()
 		e.KVPairs = make([]KeyValuePair, len(children))
@@ -57,7 +58,6 @@ func (fs *FileSystem) Get(keyPath string, recusive bool, index uint64, term uint
 
 		// eliminate hidden nodes
 		e.KVPairs = e.KVPairs[:i]
-
 	} else { // node is file
 		e.Value = n.Value
 	}
@@ -91,11 +91,22 @@ func (fs *FileSystem) Create(keyPath string, value string, expireTime time.Time,
 	}
 
 	e := newEvent(Set, keyPath, fs.Index, fs.Term)
-	e.Value = value
 
-	f := newFile(keyPath, value, fs.Index, fs.Term, d, "", expireTime)
+	var n *Node
 
-	err = d.Add(f)
+	if len(value) != 0 { // create file
+		e.Value = value
+
+		n = newFile(keyPath, value, fs.Index, fs.Term, d, "", expireTime)
+
+	} else { // create directory
+		e.Dir = true
+
+		n = newDir(keyPath, fs.Index, fs.Term, d, "", expireTime)
+
+	}
+
+	err = d.Add(n)
 
 	if err != nil {
 		return nil, err
@@ -103,8 +114,8 @@ func (fs *FileSystem) Create(keyPath string, value string, expireTime time.Time,
 
 	// Node with TTL
 	if expireTime != Permanent {
-		go f.Expire()
-		e.Expiration = &f.ExpireTime
+		go n.Expire()
+		e.Expiration = &n.ExpireTime
 		e.TTL = int64(expireTime.Sub(time.Now()) / time.Second)
 	}
 
@@ -268,7 +279,7 @@ func (fs *FileSystem) checkDir(parent *Node, dirName string) (*Node, error) {
 		return subDir, nil
 	}
 
-	n := newDir(path.Join(parent.Path, dirName), fs.Index, fs.Term, parent, parent.ACL)
+	n := newDir(path.Join(parent.Path, dirName), fs.Index, fs.Term, parent, parent.ACL, Permanent)
 
 	parent.Children[dirName] = n
 

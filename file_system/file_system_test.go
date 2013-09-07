@@ -21,10 +21,30 @@ func TestCreateAndGet(t *testing.T) {
 	}
 
 	// meet file, create should fail
-	_, err = fs.Create("/foo/bar/bar", "bar", Permanent, 1, 1)
+	_, err = fs.Create("/foo/bar/bar", "bar", Permanent, 2, 1)
 
 	if err == nil {
 		t.Fatal("Create should fail")
+	}
+
+	// create a directory
+	_, err = fs.Create("/fooDir", "", Permanent, 3, 1)
+
+	if err != nil {
+		t.Fatal("Cannot create /fooDir")
+	}
+
+	e, err := fs.Get("/fooDir", false, 3, 1)
+
+	if err != nil || e.Dir != true {
+		t.Fatal("Cannot create /fooDir ")
+	}
+
+	// create a file under directory
+	_, err = fs.Create("/fooDir/bar", "bar", Permanent, 4, 1)
+
+	if err != nil {
+		t.Fatal("Cannot create /fooDir/bar = bar")
 	}
 
 }

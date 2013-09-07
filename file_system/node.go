@@ -49,7 +49,7 @@ func newFile(keyPath string, value string, createIndex uint64, createTerm uint64
 	}
 }
 
-func newDir(keyPath string, createIndex uint64, createTerm uint64, parent *Node, ACL string) *Node {
+func newDir(keyPath string, createIndex uint64, createTerm uint64, parent *Node, ACL string, expireTime time.Time) *Node {
 	return &Node{
 		Path:        keyPath,
 		CreateIndex: createIndex,
@@ -57,6 +57,7 @@ func newDir(keyPath string, createIndex uint64, createTerm uint64, parent *Node,
 		Parent:      parent,
 		ACL:         ACL,
 		stopExpire:  make(chan bool, 1),
+		ExpireTime:  expireTime,
 		Children:    make(map[string]*Node),
 	}
 }
@@ -210,7 +211,7 @@ func (n *Node) Clone() *Node {
 		return newFile(n.Path, n.Value, n.CreateIndex, n.CreateTerm, n.Parent, n.ACL, n.ExpireTime)
 	}
 
-	clone := newDir(n.Path, n.CreateIndex, n.CreateTerm, n.Parent, n.ACL)
+	clone := newDir(n.Path, n.CreateIndex, n.CreateTerm, n.Parent, n.ACL, n.ExpireTime)
 
 	for key, child := range n.Children {
 		clone.Children[key] = child.Clone()
