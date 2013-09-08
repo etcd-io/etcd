@@ -159,6 +159,7 @@ func (fs *FileSystem) Update(nodePath string, value string, expireTime time.Time
 	}
 
 	if expireTime != Permanent {
+		n.ExpireTime = expireTime
 		go n.Expire()
 		e.Expiration = &n.ExpireTime
 		e.TTL = int64(expireTime.Sub(time.Now()) / time.Second)
