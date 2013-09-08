@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-func TestWatch(t *testing.T) {
+func TestWatcher(t *testing.T) {
 	wh := newWatchHub(100)
 	c, err := wh.watch("/foo", true, 0)
 
