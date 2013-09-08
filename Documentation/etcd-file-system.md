@@ -65,7 +65,36 @@ Besides the file and directory difference, all nodes have common attributes and 
   Set the node's expiration time to (current time + ttl)
 
 ## ACL
+
+### Theory
+Etcd exports a Unix-like file system interface consisting of files and directories, collectively called nodes.
+Each node has various meta-data, including three names of access control lists used to control reading, writing and changing (change ACL names for the node).
+
+We are storing the ACL names for nodes under a special *ACL* directory.
+Each node has ACL name corresponding to one file within *ACL* dir.
+Unless overridden, a node naturally inherits the ACL names of its parent directory on creation.
+
+For each ACL name, it has three children: *R (Reading)*, *W (Writing)*, *C (Changing)*
+
+Each permission is also a node. Under the node it contains the users who have this permission for the file refering to this ACL name.
+
+### Example
 [TODO]
+### Diagram
+[TODO]
+
+### Interface
+
+Testing permissions:
+
+- (node *Node) get_perm()
+- (node *Node) has_perm(perm string, user string)
+
+Setting/Changing permissions:
+
+- (node *Node) set_perm(perm string)
+- (node *Node) change_ACLname(aclname string)
+
 
 ## User Group
 [TODO]

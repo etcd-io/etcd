@@ -19,12 +19,16 @@ func TestEventQueue(t *testing.T) {
 
 	// Test
 	j := 100
-	for i := eh.Queue.front; i != eh.Queue.back; i = (i + 1) % eh.Queue.capacity {
+	i := eh.Queue.front
+	n := eh.Queue.size
+	for ; n > 0; n-- {
 		e := eh.Queue.events[i]
 		if e.Index != uint64(j) {
 			t.Fatalf("queue error!")
 		}
 		j++
+		i = (i + 1) % eh.Queue.capacity
+
 	}
 
 }

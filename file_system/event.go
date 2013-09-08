@@ -49,17 +49,21 @@ type eventQueue struct {
 	events   []*Event
 	size     int
 	front    int
-	back     int
 	capacity int
+}
+
+func (eq *eventQueue) back() int {
+	return (eq.front + eq.size - 1 + eq.capacity) % eq.capacity
 }
 
 func (eq *eventQueue) insert(e *Event) {
 
-	eq.back = (eq.back + 1) % eq.capacity
-	eq.events[eq.back] = e
+	index := (eq.back() + 1) % eq.capacity
+
+	eq.events[index] = e
 
 	if eq.size == eq.capacity { //dequeue
-		eq.front = (eq.back + 1) % eq.capacity
+		eq.front = (index + 1) % eq.capacity
 	} else {
 		eq.size++
 	}
@@ -77,7 +81,6 @@ func newEventHistory(capacity int) *EventHistory {
 		Queue: eventQueue{
 			capacity: capacity,
 			events:   make([]*Event, capacity),
-			back:     -1,
 		},
 	}
 }
@@ -92,27 +95,29 @@ func (eh *EventHistory) addEvent(e *Event) {
 	eh.StartIndex = eh.Queue.events[eh.Queue.front].Index
 }
 
+// scan function is enumerating events from the index in history and
+// stops till the first point where the key has identified prefix
 func (eh *EventHistory) scan(prefix string, index uint64) (*Event, error) {
 	eh.rwl.RLock()
 	defer eh.rwl.RUnlock()
 
 	start := index - eh.StartIndex
 
-	if start < 0 {
+	// the index should locate after the event history's StartIndex
+	// and before its size
 
+	if start < 0 {
 		// TODO: Add error type
 		return nil, nil
 	}
 
 	if start >= uint64(eh.Queue.size) {
-
 		return nil, nil
 	}
 
 	i := int((start + uint64(eh.Queue.front)) % uint64(eh.Queue.capacity))
 
 	for {
-
 		e := eh.Queue.events[i]
 		if strings.HasPrefix(e.Key, prefix) {
 			return e, nil
@@ -120,7 +125,7 @@ func (eh *EventHistory) scan(prefix string, index uint64) (*Event, error) {
 
 		i = (i + 1) % eh.Queue.capacity
 
-		if i == eh.Queue.back {
+		if i == eh.Queue.back() {
 			// TODO: Add error type
 			return nil, nil
 		}
