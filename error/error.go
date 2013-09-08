@@ -7,18 +7,38 @@ import (
 
 var errors map[int]string
 
-const ()
+const (
+	EcodeKeyNotFound    = 100
+	EcodeTestFailed     = 101
+	EcodeNotFile        = 102
+	EcodeNoMoreMachine  = 103
+	EcodeNotDir         = 104
+	EcodeNodeExist      = 105
+	EcodeKeyIsPreserved = 106
+
+	EcodeValueRequired     = 200
+	EcodePrevValueRequired = 201
+	EcodeTTLNaN            = 202
+	EcodeIndexNaN          = 203
+
+	EcodeRaftInternal = 300
+	EcodeLeaderElect  = 301
+
+	EcodeWatcherCleared    = 400
+	EcodeEventIndexCleared = 401
+)
 
 func init() {
 	errors = make(map[int]string)
 
 	// command related errors
 	errors[100] = "Key Not Found"
-	errors[101] = "Test Failed"
+	errors[101] = "Test Failed" //test and set
 	errors[102] = "Not A File"
 	errors[103] = "Reached the max number of machines in the cluster"
 	errors[104] = "Not A Directory"
-	errors[105] = "Already exists"
+	errors[105] = "Already exists" // create
+	errors[106] = "The prefix of given key is a keyword in etcd"
 
 	// Post form related errors
 	errors[200] = "Value is Required in POST form"
@@ -30,11 +50,9 @@ func init() {
 	errors[300] = "Raft Internal Error"
 	errors[301] = "During Leader Election"
 
-	// keyword
-	errors[400] = "The prefix of the given key is a keyword in etcd"
-
 	// etcd related errors
-	errors[500] = "watcher is cleared due to etcd recovery"
+	errors[400] = "watcher is cleared due to etcd recovery"
+	errors[401] = "The event in requested index is outdated and cleared"
 
 }
 

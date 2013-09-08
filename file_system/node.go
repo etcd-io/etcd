@@ -93,7 +93,7 @@ func (n *Node) Remove(recursive bool, callback func(path string)) error {
 	}
 
 	if !recursive {
-		return etcdErr.NewError(102, "")
+		return etcdErr.NewError(etcdErr.EcodeNotFile, "")
 	}
 
 	for _, child := range n.Children { // delete all children
@@ -116,21 +116,21 @@ func (n *Node) Remove(recursive bool, callback func(path string)) error {
 	return nil
 }
 
-// Get function gets the value of the node.
+// Read function gets the value of the node.
 // If the receiver node is not a key-value pair, a "Not A File" error will be returned.
 func (n *Node) Read() (string, error) {
 	if n.IsDir() {
-		return "", etcdErr.NewError(102, "")
+		return "", etcdErr.NewError(etcdErr.EcodeNotFile, "")
 	}
 
 	return n.Value, nil
 }
 
-// Set function set the value of the node to the given value.
+// Write function set the value of the node to the given value.
 // If the receiver node is a directory, a "Not A File" error will be returned.
 func (n *Node) Write(value string, index uint64, term uint64) error {
 	if n.IsDir() {
-		return etcdErr.NewError(102, "")
+		return etcdErr.NewError(etcdErr.EcodeNotFile, "")
 	}
 
 	n.Value = value
@@ -146,7 +146,7 @@ func (n *Node) List() ([]*Node, error) {
 	n.mu.Lock()
 	defer n.mu.Unlock()
 	if !n.IsDir() {
-		return nil, etcdErr.NewError(104, "")
+		return nil, etcdErr.NewError(etcdErr.EcodeNotDir, "")
 	}
 
 	nodes := make([]*Node, len(n.Children))
@@ -160,12 +160,18 @@ func (n *Node) List() ([]*Node, error) {
 	return nodes, nil
 }
 
+// GetFile function returns the file node under the directory node.
+// On success, it returns the file node
+// If the node that calls this function is not a directory, it returns
+// Not Directory Error
+// If the node corresponding to the name string is not file, it returns
+// Not File Error
 func (n *Node) GetFile(name string) (*Node, error) {
 	n.mu.Lock()
 	defer n.mu.Unlock()
 
 	if !n.IsDir() {
-		return nil, etcdErr.NewError(104, n.Path)
+		return nil, etcdErr.NewError(etcdErr.EcodeNotDir, n.Path)
 	}
 
 	f, ok := n.Children[name]
@@ -174,7 +180,7 @@ func (n *Node) GetFile(name string) (*Node, error) {
 		if !f.IsDir() {
 			return f, nil
 		} else {
-			return nil, etcdErr.NewError(102, f.Path)
+			return nil, etcdErr.NewError(etcdErr.EcodeNotFile, f.Path)
 		}
 	}
 
@@ -190,11 +196,11 @@ func (n *Node) Add(child *Node) error {
 	n.mu.Lock()
 	defer n.mu.Unlock()
 	if n.status == removed {
-		return etcdErr.NewError(100, "")
+		return etcdErr.NewError(etcdErr.EcodeKeyNotFound, "")
 	}
 
 	if !n.IsDir() {
-		return etcdErr.NewError(104, "")
+		return etcdErr.NewError(etcdErr.EcodeNotDir, "")
 	}
 
 	_, name := path.Split(child.Path)
@@ -202,7 +208,7 @@ func (n *Node) Add(child *Node) error {
 	_, ok := n.Children[name]
 
 	if ok {
-		return etcdErr.NewError(105, "")
+		return etcdErr.NewError(etcdErr.EcodeNodeExist, "")
 	}
 
 	n.Children[name] = child
