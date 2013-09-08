@@ -1,6 +1,8 @@
 package fileSystem
 
 import (
+	"fmt"
+	etcdErr "github.com/coreos/etcd/error"
 	"strings"
 	"sync"
 	"time"
@@ -108,7 +110,10 @@ func (eh *EventHistory) scan(prefix string, index uint64) (*Event, error) {
 
 	if start < 0 {
 		// TODO: Add error type
-		return nil, nil
+		return nil,
+			etcdErr.NewError(etcdErr.EcodeEventIndexCleared,
+				fmt.Sprintf("prefix:%v index:%v", prefix, index),
+			)
 	}
 
 	if start >= uint64(eh.Queue.size) {

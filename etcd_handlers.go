@@ -68,7 +68,7 @@ func SetHttpHandler(w http.ResponseWriter, req *http.Request) error {
 	key := req.URL.Path[len("/v1/keys/"):]
 
 	if store.CheckKeyword(key) {
-		return etcdErr.NewError(400, "Set")
+		return etcdErr.NewError(etcdErr.EcodeKeyIsPreserved, "Set")
 	}
 
 	debugf("[recv] POST %v/v1/keys/%s [%s]", e.url, key, req.RemoteAddr)
@@ -76,7 +76,7 @@ func SetHttpHandler(w http.ResponseWriter, req *http.Request) error {
 	value := req.FormValue("value")
 
 	if len(value) == 0 {
-		return etcdErr.NewError(200, "Set")
+		return etcdErr.NewError(etcdErr.EcodeValueRequired, "Set")
 	}
 
 	prevValue := req.FormValue("prevValue")
@@ -86,7 +86,7 @@ func SetHttpHandler(w http.ResponseWriter, req *http.Request) error {
 	expireTime, err := durationToExpireTime(strDuration)
 
 	if err != nil {
-		return etcdErr.NewError(202, "Set")
+		return etcdErr.NewError(etcdErr.EcodeTTLNaN, "Set")
 	}
 
 	if len(prevValue) != 0 {
@@ -131,7 +131,7 @@ func dispatch(c Command, w http.ResponseWriter, req *http.Request, etcd bool) er
 			return err
 		} else {
 			if body == nil {
-				return etcdErr.NewError(300, "Empty result from raft")
+				return etcdErr.NewError(etcdErr.EcodeRaftInternal, "Empty result from raft")
 			} else {
 				body, _ := body.([]byte)
 				w.WriteHeader(http.StatusOK)
@@ -144,7 +144,7 @@ func dispatch(c Command, w http.ResponseWriter, req *http.Request, etcd bool) er
 		leader := r.Leader()
 		// current no leader
 		if leader == "" {
-			return etcdErr.NewError(300, "")
+			return etcdErr.NewError(etcdErr.EcodeRaftInternal, "")
 		}
 
 		// tell the client where is the leader
@@ -165,7 +165,7 @@ func dispatch(c Command, w http.ResponseWriter, req *http.Request, etcd bool) er
 		http.Redirect(w, req, url, http.StatusTemporaryRedirect)
 		return nil
 	}
-	return etcdErr.NewError(300, "")
+	return etcdErr.NewError(etcdErr.EcodeRaftInternal, "")
 }
 
 //--------------------------------------
@@ -185,7 +185,7 @@ func dispatch(c Command, w http.ResponseWriter, req *http.Request, etcd bool) er
 // 		w.Write([]byte(raftURL))
 // 		return nil
 // 	} else {
-// 		return etcdErr.NewError(301, "")
+// 		return etcdErr.NewError(etcdErr.EcodeLeaderElect, "")
 // 	}
 // }
 
@@ -254,7 +254,7 @@ func WatchHttpHandler(w http.ResponseWriter, req *http.Request) error {
 
 		sinceIndex, err := strconv.ParseUint(string(content), 10, 64)
 		if err != nil {
-			return etcdErr.NewError(203, "Watch From Index")
+			return etcdErr.NewError(etcdErr.EcodeIndexNaN, "Watch From Index")
 		}
 		command.SinceIndex = sinceIndex
 
@@ -264,7 +264,7 @@ func WatchHttpHandler(w http.ResponseWriter, req *http.Request) error {
 	}
 
 	if body, err := command.Apply(r.Server); err != nil {
-		return etcdErr.NewError(500, key)
+		return etcdErr.NewError(etcdErr.EcodeWatcherCleared, key)
 	} else {
 		w.WriteHeader(http.StatusOK)
 

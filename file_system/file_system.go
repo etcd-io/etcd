@@ -74,7 +74,7 @@ func (fs *FileSystem) Create(nodePath string, value string, expireTime time.Time
 	_, err := fs.InternalGet(nodePath, index, term)
 
 	if err == nil { // key already exists
-		return nil, etcdErr.NewError(105, nodePath)
+		return nil, etcdErr.NewError(etcdErr.EcodeNodeExist, nodePath)
 	}
 
 	etcdError, _ := err.(etcdErr.Error)
@@ -140,7 +140,7 @@ func (fs *FileSystem) Update(nodePath string, value string, expireTime time.Time
 	if n.IsDir() { // if the node is a directory, we can only update ttl
 
 		if len(value) != 0 {
-			return nil, etcdErr.NewError(102, nodePath)
+			return nil, etcdErr.NewError(etcdErr.EcodeNotFile, nodePath)
 		}
 
 	} else { // if the node is a file, we can update value and ttl
@@ -180,7 +180,7 @@ func (fs *FileSystem) TestAndSet(nodePath string, prevValue string, prevIndex ui
 	}
 
 	if f.IsDir() { // can only test and set file
-		return nil, etcdErr.NewError(102, nodePath)
+		return nil, etcdErr.NewError(etcdErr.EcodeNotFile, nodePath)
 	}
 
 	if f.Value == prevValue || f.ModifiedIndex == prevIndex {
@@ -196,7 +196,7 @@ func (fs *FileSystem) TestAndSet(nodePath string, prevValue string, prevIndex ui
 	}
 
 	cause := fmt.Sprintf("[%v/%v] [%v/%v]", prevValue, f.Value, prevIndex, f.ModifiedIndex)
-	return nil, etcdErr.NewError(101, cause)
+	return nil, etcdErr.NewError(etcdErr.EcodeTestFailed, cause)
 }
 
 // Delete function deletes the node at the given path.
@@ -263,7 +263,7 @@ func (fs *FileSystem) InternalGet(nodePath string, index uint64, term uint64) (*
 	walkFunc := func(parent *Node, name string) (*Node, error) {
 
 		if !parent.IsDir() {
-			return nil, etcdErr.NewError(104, parent.Path)
+			return nil, etcdErr.NewError(etcdErr.EcodeNotDir, parent.Path)
 		}
 
 		child, ok := parent.Children[name]
@@ -271,7 +271,7 @@ func (fs *FileSystem) InternalGet(nodePath string, index uint64, term uint64) (*
 			return child, nil
 		}
 
-		return nil, etcdErr.NewError(100, path.Join(parent.Path, name))
+		return nil, etcdErr.NewError(etcdErr.EcodeKeyNotFound, path.Join(parent.Path, name))
 	}
 
 	f, err := fs.walk(nodePath, walkFunc)
