@@ -87,27 +87,27 @@ func TestUpdateFile(t *testing.T) {
 	if err != nil {
 		t.Fatal("cannot create [%s]", err.Error())
 	}
-	
+
 	_, err = fs.Create("/foo/foo/foo2", "", Permanent, 5, 1)
 	if err != nil {
 		t.Fatal("cannot create [%s]", err.Error())
 	}
-	
+
 	_, err = fs.Create("/foo/foo/foo2/boo", "boo1", Permanent, 6, 1)
 	if err != nil {
 		t.Fatal("cannot create [%s]", err.Error())
 	}
 
-	expire := time.Now().Add(time.Second*2)
+	expire := time.Now().Add(time.Second * 2)
 	_, err = fs.Update("/foo/foo", "", expire, 7, 1)
 	if err != nil {
 		t.Fatalf("cannot update dir [%s] [%s]", "/foo/foo", err.Error())
 	}
 
 	// sleep 50ms, it should still reach the node
-	time.Sleep(time.Microsecond*50)
+	time.Sleep(time.Microsecond * 50)
 	e, err = fs.Get("/foo/foo", true, 7, 1)
-	
+
 	if err != nil || e.Key != "/foo/foo" {
 		t.Fatalf("cannot get dir before expiration [%s]", err.Error())
 	}
@@ -125,9 +125,9 @@ func TestUpdateFile(t *testing.T) {
 	}*/
 
 	// wait for expiration
-	time.Sleep(time.Second*3)
+	time.Sleep(time.Second * 3)
 	e, err = fs.Get("/foo/foo", true, 7, 1)
-	
+
 	if err == nil {
 		t.Fatal("still can get dir after expiration [%s]")
 	}
@@ -147,10 +147,6 @@ func TestUpdateFile(t *testing.T) {
 		t.Fatalf("still can get sub node of sub dir after expiration [%s]", err.Error())
 	}
 
-	
-	
-	
-	
 }
 
 func TestListDirectory(t *testing.T) {
@@ -271,14 +267,13 @@ func TestExpire(t *testing.T) {
 	}
 
 	expire = time.Now().Add(time.Second)
-	
+
 	fs.Create("/foo", "bar", expire, 1, 1)
 	_, err = fs.Delete("/foo", false, 1, 1)
 
 	if err != nil {
 		t.Fatalf("cannot delete the node before expiration", err.Error())
 	}
-	
 
 }
 
@@ -322,12 +317,12 @@ func TestWatch(t *testing.T) {
 	// watch at a deeper path
 	c, _ := fs.WatcherHub.watch("/foo/foo/foo", false, 0)
 	fs.Create("/foo/foo/foo", "bar", Permanent, 1, 1)
-	
+
 	e := nonblockingRetrive(c)
 	if e.Key != "/foo/foo/foo" {
 		t.Fatal("watch for Create node fails")
 	}
-	
+
 	c, _ = fs.WatcherHub.watch("/foo/foo/foo", false, 0)
 	fs.Update("/foo/foo/foo", "car", Permanent, 2, 1)
 	e = nonblockingRetrive(c)
@@ -349,7 +344,6 @@ func TestWatch(t *testing.T) {
 		t.Fatal("watch for Delete node fails")
 	}
 
-		
 	// watch at a prefix
 	c, _ = fs.WatcherHub.watch("/foo", true, 0)
 	fs.Create("/foo/foo/boo", "bar", Permanent, 5, 1)
@@ -379,7 +373,6 @@ func TestWatch(t *testing.T) {
 		t.Fatal("watch for Delete subdirectory fails")
 	}
 
-
 }
 
 func createAndGet(fs *FileSystem, path string, t *testing.T) {
@@ -401,7 +394,7 @@ func createAndGet(fs *FileSystem, path string, t *testing.T) {
 
 }
 
-func nonblockingRetrive(c <-chan *Event) *Event{
+func nonblockingRetrive(c <-chan *Event) *Event {
 	select {
 	case e := <-c:
 		return e
