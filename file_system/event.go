@@ -36,6 +36,19 @@ type KeyValuePair struct {
 	KVPairs []KeyValuePair `json:"kvs,omitempty"`
 }
 
+// interfaces for sort
+func (e Event) Len() int {
+	return len(e.KVPairs)
+}
+
+func (e Event) Less(i, j int) bool {
+	return e.KVPairs[i].Key < e.KVPairs[j].Key
+}
+
+func (e Event) Swap(i, j int) {
+	e.KVPairs[i], e.KVPairs[j] = e.KVPairs[j], e.KVPairs[i]
+}
+
 func newEvent(action string, key string, index uint64, term uint64) *Event {
 	return &Event{
 		Action: action,

@@ -1,6 +1,7 @@
 package fileSystem
 
 import (
+	"store"
 	"testing"
 	"time"
 )
@@ -34,7 +35,7 @@ func TestCreateAndGet(t *testing.T) {
 		t.Fatal("Cannot create /fooDir")
 	}
 
-	e, err := fs.Get("/fooDir", false, 3, 1)
+	e, err := fs.Get("/fooDir", false, false, 3, 1)
 
 	if err != nil || e.Dir != true {
 		t.Fatal("Cannot create /fooDir ")
@@ -64,7 +65,7 @@ func TestUpdateFile(t *testing.T) {
 		t.Fatalf("cannot update %s=barbar [%s]", "/foo/bar", err.Error())
 	}
 
-	e, err := fs.Get("/foo/bar", false, 2, 1)
+	e, err := fs.Get("/foo/bar", false, false, 2, 1)
 
 	if err != nil {
 		t.Fatalf("cannot get %s [%s]", "/foo/bar", err.Error())
@@ -106,7 +107,7 @@ func TestUpdateFile(t *testing.T) {
 
 	// sleep 50ms, it should still reach the node
 	time.Sleep(time.Microsecond * 50)
-	e, err = fs.Get("/foo/foo", true, 7, 1)
+	e, err = fs.Get("/foo/foo", true, false, 7, 1)
 
 	if err != nil || e.Key != "/foo/foo" {
 		t.Fatalf("cannot get dir before expiration [%s]", err.Error())
@@ -126,23 +127,23 @@ func TestUpdateFile(t *testing.T) {
 
 	// wait for expiration
 	time.Sleep(time.Second * 3)
-	e, err = fs.Get("/foo/foo", true, 7, 1)
+	e, err = fs.Get("/foo/foo", true, false, 7, 1)
 
 	if err == nil {
 		t.Fatal("still can get dir after expiration [%s]")
 	}
 
-	_, err = fs.Get("/foo/foo/foo1", true, 7, 1)
+	_, err = fs.Get("/foo/foo/foo1", true, false, 7, 1)
 	if err == nil {
 		t.Fatal("still can get sub node after expiration [%s]")
 	}
 
-	_, err = fs.Get("/foo/foo/foo2", true, 7, 1)
+	_, err = fs.Get("/foo/foo/foo2", true, false, 7, 1)
 	if err == nil {
 		t.Fatal("still can get sub dir after expiration [%s]")
 	}
 
-	_, err = fs.Get("/foo/foo/foo2/boo", true, 7, 1)
+	_, err = fs.Get("/foo/foo/foo2/boo", true, false, 7, 1)
 	if err == nil {
 		t.Fatalf("still can get sub node of sub dir after expiration [%s]", err.Error())
 	}
@@ -160,7 +161,7 @@ func TestListDirectory(t *testing.T) {
 	// set key-value /foo/fooDir/foo=bar
 	fs.Create("/foo/fooDir/foo", "bar", Permanent, 2, 1)
 
-	e, err := fs.Get("/foo", true, 2, 1)
+	e, err := fs.Get("/foo", true, false, 2, 1)
 
 	if err != nil {
 		t.Fatalf("%v", err)
@@ -187,7 +188,7 @@ func TestListDirectory(t *testing.T) {
 	// set key-value /foo/_hidden/foo -> bar
 	fs.Create("/foo/_hidden/foo", "bar", Permanent, 3, 1)
 
-	e, _ = fs.Get("/foo", false, 2, 1)
+	e, _ = fs.Get("/foo", false, false, 2, 1)
 
 	if len(e.KVPairs) != 2 {
 		t.Fatalf("hidden node is not hidden! %s", e.KVPairs[2].Key)
@@ -204,7 +205,7 @@ func TestRemove(t *testing.T) {
 		t.Fatalf("cannot delete %s [%s]", "/foo", err.Error())
 	}
 
-	_, err = fs.Get("/foo", false, 1, 1)
+	_, err = fs.Get("/foo", false, false, 1, 1)
 
 	if err == nil || err.Error() != "Key Not Found" {
 		t.Fatalf("can get the node after deletion")
@@ -226,7 +227,7 @@ func TestRemove(t *testing.T) {
 		t.Fatalf("cannot delete %s [%s]", "/foo", err.Error())
 	}
 
-	_, err = fs.Get("/foo", false, 1, 1)
+	_, err = fs.Get("/foo", false, false, 1, 1)
 
 	if err == nil || err.Error() != "Key Not Found" {
 		t.Fatalf("can get the node after deletion ")
@@ -382,7 +383,7 @@ func createAndGet(fs *FileSystem, path string, t *testing.T) {
 		t.Fatalf("cannot create %s=bar [%s]", path, err.Error())
 	}
 
-	e, err := fs.Get(path, false, 1, 1)
+	e, err := fs.Get(path, false, false, 1, 1)
 
 	if err != nil {
 		t.Fatalf("cannot get %s [%s]", path, err.Error())
@@ -400,5 +401,34 @@ func nonblockingRetrive(c <-chan *Event) *Event {
 		return e
 	default:
 		return nil
+	}
+}
+
+func TestSort(t *testing.T) {
+	fs := New()
+
+	// simulating random creation
+	keys := store.GenKeys(100, 5)
+
+	//t.Log(keys)
+	i := uint64(1)
+	for _, k := range keys {
+		_, err := fs.Create(k, "bar", Permanent, i, 1)
+		if err != nil {
+			t.Fatalf("create node[%s] failed", k, err.Error())
+		}
+		i++
+	}
+
+	e, err := fs.Get("/foo", true, true, i, 1)
+	if err != nil {
+		t.Fatalf("get dir nodes failed [%s]", err.Error())
+	}
+
+	for i, k := range e.KVPairs[:len(e.KVPairs)-1] {
+		//t.Log(k)
+		if k.Key >= e.KVPairs[i+1].Key {
+			t.Fatalf("sort failed, [%s] should be placed after [%s]", k.Key, e.KVPairs[i+1].Key)
+		}
 	}
 }

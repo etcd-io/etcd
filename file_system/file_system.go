@@ -3,6 +3,7 @@ package fileSystem
 import (
 	"fmt"
 	"path"
+	"sort"
 	"strings"
 	"time"
 
@@ -25,7 +26,7 @@ func New() *FileSystem {
 
 }
 
-func (fs *FileSystem) Get(nodePath string, recusive bool, index uint64, term uint64) (*Event, error) {
+func (fs *FileSystem) Get(nodePath string, recusive, sorting bool, index uint64, term uint64) (*Event, error) {
 	n, err := fs.InternalGet(nodePath, index, term)
 
 	if err != nil {
@@ -57,6 +58,9 @@ func (fs *FileSystem) Get(nodePath string, recusive bool, index uint64, term uin
 
 		// eliminate hidden nodes
 		e.KVPairs = e.KVPairs[:i]
+		if sorting {
+			sort.Sort(e)
+		}
 	} else { // node is file
 		e.Value = n.Value
 	}
