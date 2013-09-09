@@ -45,6 +45,7 @@ func newRaftServer(name string, url string, listenHost string, tlsConf *TLSConfi
 		version:    raftVersion,
 		name:       name,
 		url:        url,
+		listenHost: listenHost,
 		tlsConf:    tlsConf,
 		tlsInfo:    tlsInfo,
 		peersStats: make(map[string]*raftPeerStats),
@@ -148,7 +149,7 @@ func startAsFollower() {
 
 // Start to listen and response raft command
 func (r *raftServer) startTransport(scheme string, tlsConf tls.Config) {
-	infof("raft server [%s:%s]", r.name, r.listenHost)
+	infof("raft server [name %s, listen on %s, advertised url %s]", r.name, r.listenHost, r.url)
 
 	raftMux := http.NewServeMux()
 
@@ -298,11 +299,14 @@ func (r *raftServer) Stats() []byte {
 		warn(err)
 	}
 
-	pBytes, _ := json.Marshal(r.peersStats)
+	if r.State() == raft.Leader {
+		pBytes, _ := json.Marshal(r.peersStats)
 
-	b := append(sBytes, pBytes...)
+		b := append(sBytes, pBytes...)
+		return b
+	}
 
-	return b
+	return sBytes
 }
 
 // Register commands to raft server

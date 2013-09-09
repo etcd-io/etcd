@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"math"
 	"sync"
 	"time"
@@ -13,14 +12,14 @@ const (
 	queueCapacity = 200
 )
 
-type runtimeStats struct {
-}
-
+// packageStats represent the stats we need for a package.
+// It has sending time and the size of the package.
 type packageStats struct {
 	sendingTime time.Time
 	size        int
 }
 
+// NewPackageStats creates a pacakgeStats and return the pointer to it.
 func NewPackageStats(now time.Time, size int) *packageStats {
 	return &packageStats{
 		sendingTime: now,
@@ -28,6 +27,7 @@ func NewPackageStats(now time.Time, size int) *packageStats {
 	}
 }
 
+// Time return the sending time of the package.
 func (ps *packageStats) Time() time.Time {
 	return ps.sendingTime
 }
@@ -38,13 +38,13 @@ type raftServerStats struct {
 	Leader       string    `json:"leader"`
 	LeaderUptime string    `json:"leaderUptime"`
 
-	RecvAppendRequestCnt uint64  `json:"recvAppendRequestCnt"`
-	RecvingPkgRate       float64 `json:"recvPkgRate"`
-	RecvingBandwidthRate float64 `json:"recvBandwidthRate"`
+	RecvAppendRequestCnt uint64  `json:"recvAppendRequestCnt,"`
+	RecvingPkgRate       float64 `json:"recvPkgRate,omitempty"`
+	RecvingBandwidthRate float64 `json:"recvBandwidthRate,omitempty"`
 
 	SendAppendRequestCnt uint64  `json:"sendAppendRequestCnt"`
-	SendingPkgRate       float64 `json:"sendPkgRate"`
-	SendingBandwidthRate float64 `json:"sendBandwidthRate"`
+	SendingPkgRate       float64 `json:"sendPkgRate,omitempty"`
+	SendingBandwidthRate float64 `json:"sendBandwidthRate,omitempty"`
 
 	leaderStartTime time.Time
 	sendRateQueue   *statsQueue
@@ -158,7 +158,6 @@ func (q *statsQueue) Insert(p *packageStats) {
 	q.items[q.back] = p
 	q.totalPkgSize += q.items[q.back].size
 
-	fmt.Println(q.front, q.back, q.size)
 }
 
 func (q *statsQueue) Rate() (float64, float64) {
