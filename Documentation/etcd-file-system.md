@@ -23,12 +23,13 @@ Besides the file and directory difference, all nodes have common attributes and 
   The path of access control list of the node.
 
 ### Operation:
-- **Get** (path, recursive)
+- **Get** (path, recursive, sorted)
 
   Get the content of the node
     - If the node is a file, the data of the file will be returned.
     - If the node is a directory, the child nodes of the directory will be returned.
     - If recursive is true, it will recursively get the nodes of the directory.
+    - If sorted is true, the result will be sorted based on the path.
 
 - **Create** (path, value[optional], ttl [optional])
 
