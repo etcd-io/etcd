@@ -86,10 +86,7 @@ type raftPeerStats struct {
 	SuccCnt          uint64  `json:"successCount"`
 }
 
-func (ps *raftPeerStats) Fail() {
-	ps.FailCnt++
-}
-
+// Succ function update the raftPeerStats with a successful send
 func (ps *raftPeerStats) Succ(d time.Duration) {
 
 	total := float64(ps.SuccCnt) * ps.AvgLatency
@@ -114,6 +111,11 @@ func (ps *raftPeerStats) Succ(d time.Duration) {
 	ps.SdvLatency = math.Sqrt(ps.avgLatencySquare - ps.AvgLatency*ps.AvgLatency)
 }
 
+// Fail function update the raftPeerStats with a unsuccessful send
+func (ps *raftPeerStats) Fail() {
+	ps.FailCnt++
+}
+
 type statsQueue struct {
 	items        [queueCapacity]*packageStats
 	size         int
@@ -127,7 +129,7 @@ func (q *statsQueue) Len() int {
 	return q.size
 }
 
-func (q *statsQueue) Size() int {
+func (q *statsQueue) PkgSize() int {
 	return q.totalPkgSize
 }
 
@@ -142,6 +144,7 @@ func (q *statsQueue) frontAndBack() (*packageStats, *packageStats) {
 	return nil, nil
 }
 
+// Insert function insert a packageStats into the queue and update the records
 func (q *statsQueue) Insert(p *packageStats) {
 	q.rwl.Lock()
 	defer q.rwl.Unlock()
@@ -160,6 +163,7 @@ func (q *statsQueue) Insert(p *packageStats) {
 
 }
 
+// Rate function returns the package rate and byte rate
 func (q *statsQueue) Rate() (float64, float64) {
 	front, back := q.frontAndBack()
 
@@ -176,11 +180,12 @@ func (q *statsQueue) Rate() (float64, float64) {
 
 	pr := float64(q.Len()) / float64(sampleDuration) * float64(time.Second)
 
-	br := float64(q.Size()) / float64(sampleDuration) * float64(time.Second)
+	br := float64(q.PkgSize()) / float64(sampleDuration) * float64(time.Second)
 
 	return pr, br
 }
 
+// Clear function clear up the statsQueue
 func (q *statsQueue) Clear() {
 	q.rwl.Lock()
 	defer q.rwl.Unlock()
