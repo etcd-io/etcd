@@ -10,11 +10,11 @@ func GenKeys(num int, depth int) []string {
 	keys := make([]string, num)
 	for i := 0; i < num; i++ {
 
-		keys[i] = "/foo/"
+		keys[i] = "/foo"
 		depth := rand.Intn(depth) + 1
 
 		for j := 0; j < depth; j++ {
-			keys[i] += "/" + strconv.Itoa(rand.Int())
+			keys[i] += "/" + strconv.Itoa(rand.Int()%20)
 		}
 	}
 	return keys
