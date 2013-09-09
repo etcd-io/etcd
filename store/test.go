@@ -14,7 +14,7 @@ func GenKeys(num int, depth int) []string {
 		depth := rand.Intn(depth) + 1
 
 		for j := 0; j < depth; j++ {
-			keys[i] += "/" + strconv.Itoa(rand.Int())
+			keys[i] += "/" + strconv.Itoa(rand.Int()%20)
 		}
 	}
 	return keys

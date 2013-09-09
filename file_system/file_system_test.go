@@ -1,7 +1,8 @@
 package fileSystem
 
 import (
-	"store"
+	"math/rand"
+	"strconv"
 	"testing"
 	"time"
 )
@@ -408,16 +409,17 @@ func TestSort(t *testing.T) {
 	fs := New()
 
 	// simulating random creation
-	keys := store.GenKeys(100, 5)
+	keys := GenKeys(80, 4)
 
 	//t.Log(keys)
 	i := uint64(1)
 	for _, k := range keys {
 		_, err := fs.Create(k, "bar", Permanent, i, 1)
 		if err != nil {
-			t.Fatalf("create node[%s] failed", k, err.Error())
+			//t.Logf("create node[%s] failed %s", k, err.Error())
+		} else {
+			i++
 		}
-		i++
 	}
 
 	e, err := fs.Get("/foo", true, true, i, 1)
@@ -426,9 +428,53 @@ func TestSort(t *testing.T) {
 	}
 
 	for i, k := range e.KVPairs[:len(e.KVPairs)-1] {
+		//t.Log("root:")
 		//t.Log(k)
 		if k.Key >= e.KVPairs[i+1].Key {
 			t.Fatalf("sort failed, [%s] should be placed after [%s]", k.Key, e.KVPairs[i+1].Key)
 		}
+
+		if k.Dir {
+			recursiveTestSort(k, t)
+		}
+
 	}
+
+	if k := e.KVPairs[len(e.KVPairs)-1]; k.Dir {
+		recursiveTestSort(k, t)
+	}
+}
+
+func recursiveTestSort(k KeyValuePair, t *testing.T) {
+	//t.Log("recursive in")
+	//t.Log(k)
+	for i, v := range k.KVPairs[:len(k.KVPairs)-1] {
+		if v.Key >= k.KVPairs[i+1].Key {
+			t.Fatalf("sort failed, [%s] should be placed after [%s]", v.Key, k.KVPairs[i+1].Key)
+		}
+
+		if v.Dir {
+			recursiveTestSort(v, t)
+		}
+
+	}
+
+	if v := k.KVPairs[len(k.KVPairs)-1]; v.Dir {
+		recursiveTestSort(v, t)
+	}
+}
+
+// GenKeys randomly generate num of keys with max depth
+func GenKeys(num int, depth int) []string {
+	keys := make([]string, num)
+	for i := 0; i < num; i++ {
+
+		keys[i] = "/foo"
+		depth := rand.Intn(depth) + 1
+
+		for j := 0; j < depth; j++ {
+			keys[i] += "/" + strconv.Itoa(rand.Int()%20)
+		}
+	}
+	return keys
 }

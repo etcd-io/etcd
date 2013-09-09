@@ -3,6 +3,7 @@ package fileSystem
 import (
 	"fmt"
 	"path"
+	"sort"
 	"sync"
 	"time"
 
@@ -279,7 +280,7 @@ func (n *Node) IsHidden() bool {
 	return false
 }
 
-func (n *Node) Pair(recurisive bool) KeyValuePair {
+func (n *Node) Pair(recurisive, sorted bool) KeyValuePair {
 
 	if n.IsDir() {
 		pair := KeyValuePair{
@@ -303,14 +304,16 @@ func (n *Node) Pair(recurisive bool) KeyValuePair {
 				continue
 			}
 
-			pair.KVPairs[i] = child.Pair(recurisive)
+			pair.KVPairs[i] = child.Pair(recurisive, sorted)
 
 			i++
 		}
 
 		// eliminate hidden nodes
 		pair.KVPairs = pair.KVPairs[:i]
-
+		if sorted {
+			sort.Sort(pair)
+		}
 		return pair
 	}
 

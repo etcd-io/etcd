@@ -26,7 +26,7 @@ func New() *FileSystem {
 
 }
 
-func (fs *FileSystem) Get(nodePath string, recusive, sorted bool, index uint64, term uint64) (*Event, error) {
+func (fs *FileSystem) Get(nodePath string, recursive, sorted bool, index uint64, term uint64) (*Event, error) {
 	n, err := fs.InternalGet(nodePath, index, term)
 
 	if err != nil {
@@ -51,16 +51,22 @@ func (fs *FileSystem) Get(nodePath string, recusive, sorted bool, index uint64, 
 				continue
 			}
 
-			e.KVPairs[i] = child.Pair(recusive)
+			e.KVPairs[i] = child.Pair(recursive, sorted)
 
 			i++
 		}
 
 		// eliminate hidden nodes
 		e.KVPairs = e.KVPairs[:i]
-		if sorted {
-			sort.Sort(e)
+
+		rootPairs := KeyValuePair{
+			KVPairs: e.KVPairs,
 		}
+
+		if sorted {
+			sort.Sort(rootPairs)
+		}
+
 	} else { // node is file
 		e.Value = n.Value
 	}
