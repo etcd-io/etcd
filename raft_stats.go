@@ -88,7 +88,6 @@ type raftPeerStats struct {
 
 // Succ function update the raftPeerStats with a successful send
 func (ps *raftPeerStats) Succ(d time.Duration) {
-
 	total := float64(ps.SuccCnt) * ps.AvgLatency
 	totalSquare := float64(ps.SuccCnt) * ps.avgLatencySquare
 

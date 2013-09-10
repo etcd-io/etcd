@@ -282,7 +282,6 @@ func joinByMachine(s *raft.Server, machine string, scheme string) error {
 }
 
 func (r *raftServer) Stats() []byte {
-
 	r.serverStats.LeaderUptime = time.Now().Sub(r.serverStats.leaderStartTime).String()
 
 	queue := r.serverStats.sendRateQueue
