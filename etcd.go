@@ -4,13 +4,14 @@ import (
 	"crypto/tls"
 	"flag"
 	"fmt"
-	"github.com/coreos/etcd/store"
-	"github.com/coreos/go-raft"
 	"io/ioutil"
 	"net/url"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/coreos/etcd/store"
+	"github.com/coreos/go-raft"
 )
 
 //------------------------------------------------------------------------------
