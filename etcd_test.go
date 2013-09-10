@@ -2,8 +2,6 @@ package main
 
 import (
 	"fmt"
-	"github.com/coreos/etcd/test"
-	"github.com/coreos/go-etcd/etcd"
 	"math/rand"
 	"net/http"
 	"net/http/httptest"
@@ -13,6 +11,9 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/coreos/etcd/test"
+	"github.com/coreos/go-etcd/etcd"
 )
 
 // Create a single node and try to set value

@@ -6,23 +6,26 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
-	etcdErr "github.com/coreos/etcd/error"
-	"github.com/coreos/go-raft"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"time"
+
+	etcdErr "github.com/coreos/etcd/error"
+	"github.com/coreos/go-raft"
 )
 
 type raftServer struct {
 	*raft.Server
-	version    string
-	joinIndex  uint64
-	name       string
-	url        string
-	listenHost string
-	tlsConf    *TLSConfig
-	tlsInfo    *TLSInfo
+	version     string
+	joinIndex   uint64
+	name        string
+	url         string
+	listenHost  string
+	tlsConf     *TLSConfig
+	tlsInfo     *TLSInfo
+	peersStats  map[string]*raftPeerStats
+	serverStats *raftServerStats
 }
 
 var r *raftServer
@@ -45,6 +48,16 @@ func newRaftServer(name string, url string, listenHost string, tlsConf *TLSConfi
 		listenHost: listenHost,
 		tlsConf:    tlsConf,
 		tlsInfo:    tlsInfo,
+		peersStats: make(map[string]*raftPeerStats),
+		serverStats: &raftServerStats{
+			StartTime: time.Now(),
+			sendRateQueue: &statsQueue{
+				back: -1,
+			},
+			recvRateQueue: &statsQueue{
+				back: -1,
+			},
+		},
 	}
 }
 
@@ -93,7 +106,7 @@ func (r *raftServer) ListenAndServe() {
 		}
 		ok := joinCluster(cluster)
 		if !ok {
-			warn("the whole cluster dies! restart the cluster")
+			warn("the entire cluster is down! this machine will restart the cluster.")
 		}
 
 		debugf("%s restart as a follower", r.name)
@@ -136,7 +149,7 @@ func startAsFollower() {
 
 // Start to listen and response raft command
 func (r *raftServer) startTransport(scheme string, tlsConf tls.Config) {
-	infof("raft server [%s:%s]", r.name, r.listenHost)
+	infof("raft server [name %s, listen on %s, advertised url %s]", r.name, r.listenHost, r.url)
 
 	raftMux := http.NewServeMux()
 
@@ -266,6 +279,33 @@ func joinByMachine(s *raft.Server, machine string, scheme string) error {
 
 	}
 	return fmt.Errorf("Unable to join: %v", err)
+}
+
+func (r *raftServer) Stats() []byte {
+	r.serverStats.LeaderUptime = time.Now().Sub(r.serverStats.leaderStartTime).String()
+
+	queue := r.serverStats.sendRateQueue
+
+	r.serverStats.SendingPkgRate, r.serverStats.SendingBandwidthRate = queue.Rate()
+
+	queue = r.serverStats.recvRateQueue
+
+	r.serverStats.RecvingPkgRate, r.serverStats.RecvingBandwidthRate = queue.Rate()
+
+	sBytes, err := json.Marshal(r.serverStats)
+
+	if err != nil {
+		warn(err)
+	}
+
+	if r.State() == raft.Leader {
+		pBytes, _ := json.Marshal(r.peersStats)
+
+		b := append(sBytes, pBytes...)
+		return b
+	}
+
+	return sBytes
 }
 
 // Register commands to raft server

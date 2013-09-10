@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"hash/crc32"
 	"os"
-	"syscall"
 )
 
 //------------------------------------------------------------------------------
@@ -54,7 +53,7 @@ func (ss *Snapshot) save() error {
 	}
 
 	// force the change writting to disk
-	syscall.Fsync(int(file.Fd()))
+	file.Sync()
 	return err
 }
 
