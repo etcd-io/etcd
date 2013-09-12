@@ -22,7 +22,7 @@ func NewEtcdMuxer() *http.ServeMux {
 	etcdMux.Handle("/"+version+"/watch/", errorHandler(WatchHttpHandler))
 	etcdMux.Handle("/"+version+"/leader", errorHandler(LeaderHttpHandler))
 	etcdMux.Handle("/"+version+"/machines", errorHandler(MachinesHttpHandler))
-	etcdMux.Handle("/"+version+"/stats", errorHandler(StatsHttpHandler))
+	etcdMux.Handle("/"+version+"/stats/", errorHandler(StatsHttpHandler))
 	etcdMux.Handle("/version", errorHandler(VersionHttpHandler))
 	etcdMux.HandleFunc("/test/", TestHttpHandler)
 	return etcdMux
@@ -167,22 +167,8 @@ func dispatch(c Command, w http.ResponseWriter, req *http.Request, etcd bool) er
 			return etcdErr.NewError(300, "")
 		}
 
-		// tell the client where is the leader
-		path := req.URL.Path
+		redirect(leader, etcd, w, req)
 
-		var url string
-
-		if etcd {
-			etcdAddr, _ := nameToEtcdURL(leader)
-			url = etcdAddr + path
-		} else {
-			raftAddr, _ := nameToRaftURL(leader)
-			url = raftAddr + path
-		}
-
-		debugf("Redirect to %s", url)
-
-		http.Redirect(w, req, url, http.StatusTemporaryRedirect)
 		return nil
 	}
 	return etcdErr.NewError(300, "")
@@ -227,9 +213,28 @@ func VersionHttpHandler(w http.ResponseWriter, req *http.Request) error {
 
 // Handler to return the basic stats of etcd
 func StatsHttpHandler(w http.ResponseWriter, req *http.Request) error {
-	w.WriteHeader(http.StatusOK)
-	w.Write(etcdStore.Stats())
-	w.Write(r.Stats())
+	option := req.URL.Path[len("/v1/stats/"):]
+
+	switch option {
+	case "self":
+		w.WriteHeader(http.StatusOK)
+		w.Write(r.Stats())
+	case "leader":
+		if r.State() == raft.Leader {
+			w.Write(r.PeerStats())
+		} else {
+			leader := r.Leader()
+			// current no leader
+			if leader == "" {
+				return etcdErr.NewError(300, "")
+			}
+			redirect(leader, true, w, req)
+		}
+	case "store":
+		w.WriteHeader(http.StatusOK)
+		w.Write(etcdStore.Stats())
+	}
+
 	return nil
 }
 
