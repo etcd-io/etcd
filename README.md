@@ -187,17 +187,17 @@ The watch command returns immediately with the same response as previous.
 
 Etcd can be used as a centralized coordination service in a cluster and `TestAndSet` is the most basic operation to build distributed lock service. This command will set the value only if the client provided `prevValue` is equal the current key value.
 
-Here is a simple example. Let's create a key-value pair first: `testAndSet=one`.
+Here is a simple example. Let's create a key-value pair first: `foo=one`.
 
 ```sh
-curl -L http://127.0.0.1:4001/v1/keys/testAndSet -d value=one
+curl -L http://127.0.0.1:4001/v1/keys/foo -d value=one
 ```
 
-Let's try an invaild `TestAndSet` command.
+Let's try an invalid `TestAndSet` command.
 We can give another parameter prevValue to set command to make it a TestAndSet command.
 
 ```sh
-curl -L http://127.0.0.1:4001/v1/keys/testAndSet -d prevValue=two -d value=three
+curl -L http://127.0.0.1:4001/v1/keys/foo -d prevValue=two -d value=three
 ```
 
 This will try to test if the previous of the key is two, it is change it to three.
@@ -208,16 +208,16 @@ This will try to test if the previous of the key is two, it is change it to thre
 
 which means `testAndSet` failed.
 
-Let us try a vaild one.
+Let us try a valid one.
 
 ```sh
-curl -L http://127.0.0.1:4001/v1/keys/testAndSet -d prevValue=one -d value=two
+curl -L http://127.0.0.1:4001/v1/keys/foo -d prevValue=one -d value=two
 ```
 
 The response should be
 
 ```json
-{"action":"SET","key":"/testAndSet","prevValue":"one","value":"two","index":10}
+{"action":"SET","key":"/foo","prevValue":"one","value":"two","index":10}
 ```
 
 We successfully changed the value from “one” to “two”, since we give the correct previous value.
