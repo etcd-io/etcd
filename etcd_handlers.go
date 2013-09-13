@@ -176,18 +176,18 @@ func dispatch(c Command, w http.ResponseWriter, req *http.Request, etcd bool) er
 //--------------------------------------
 
 // Handler to return the current leader's raft address
-// func LeaderHttpHandler(w http.ResponseWriter, req *http.Request) error {
-// 	leader := r.Leader()
+func LeaderHttpHandler(w http.ResponseWriter, req *http.Request) error {
+	leader := r.Leader()
 
-// 	if leader != "" {
-// 		w.WriteHeader(http.StatusOK)
-// 		raftURL, _ := nameToRaftURL(leader)
-// 		w.Write([]byte(raftURL))
-// 		return nil
-// 	} else {
-// 		return etcdErr.NewError(etcdErr.EcodeLeaderElect, "")
-// 	}
-// }
+	if leader != "" {
+		w.WriteHeader(http.StatusOK)
+		raftURL, _ := nameToRaftURL(leader)
+		w.Write([]byte(raftURL))
+		return nil
+	} else {
+		return etcdErr.NewError(etcdErr.EcodeLeaderElect, "")
+	}
+}
 
 // Handler to return all the known machines in the current cluster
 func MachinesHttpHandler(w http.ResponseWriter, req *http.Request) error {

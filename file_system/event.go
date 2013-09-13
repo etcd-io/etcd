@@ -2,10 +2,11 @@ package fileSystem
 
 import (
 	"fmt"
-	etcdErr "github.com/coreos/etcd/error"
 	"strings"
 	"sync"
 	"time"
+
+	etcdErr "github.com/coreos/etcd/error"
 )
 
 const (
@@ -61,26 +62,26 @@ func newEvent(action string, key string, index uint64, term uint64) *Event {
 }
 
 type eventQueue struct {
-	events   []*Event
-	size     int
-	front    int
-	capacity int
+	Events   []*Event
+	Size     int
+	Front    int
+	Capacity int
 }
 
 func (eq *eventQueue) back() int {
-	return (eq.front + eq.size - 1 + eq.capacity) % eq.capacity
+	return (eq.Front + eq.Size - 1 + eq.Capacity) % eq.Capacity
 }
 
 func (eq *eventQueue) insert(e *Event) {
 
-	index := (eq.back() + 1) % eq.capacity
+	index := (eq.back() + 1) % eq.Capacity
 
-	eq.events[index] = e
+	eq.Events[index] = e
 
-	if eq.size == eq.capacity { //dequeue
-		eq.front = (index + 1) % eq.capacity
+	if eq.Size == eq.Capacity { //dequeue
+		eq.Front = (index + 1) % eq.Capacity
 	} else {
-		eq.size++
+		eq.Size++
 	}
 
 }
@@ -94,8 +95,8 @@ type EventHistory struct {
 func newEventHistory(capacity int) *EventHistory {
 	return &EventHistory{
 		Queue: eventQueue{
-			capacity: capacity,
-			events:   make([]*Event, capacity),
+			Capacity: capacity,
+			Events:   make([]*Event, capacity),
 		},
 	}
 }
@@ -107,7 +108,7 @@ func (eh *EventHistory) addEvent(e *Event) {
 
 	eh.Queue.insert(e)
 
-	eh.StartIndex = eh.Queue.events[eh.Queue.front].Index
+	eh.StartIndex = eh.Queue.Events[eh.Queue.Front].Index
 }
 
 // scan function is enumerating events from the index in history and
@@ -129,19 +130,19 @@ func (eh *EventHistory) scan(prefix string, index uint64) (*Event, error) {
 			)
 	}
 
-	if start >= uint64(eh.Queue.size) {
+	if start >= uint64(eh.Queue.Size) {
 		return nil, nil
 	}
 
-	i := int((start + uint64(eh.Queue.front)) % uint64(eh.Queue.capacity))
+	i := int((start + uint64(eh.Queue.Front)) % uint64(eh.Queue.Capacity))
 
 	for {
-		e := eh.Queue.events[i]
+		e := eh.Queue.Events[i]
 		if strings.HasPrefix(e.Key, prefix) {
 			return e, nil
 		}
 
-		i = (i + 1) % eh.Queue.capacity
+		i = (i + 1) % eh.Queue.Capacity
 
 		if i == eh.Queue.back() {
 			// TODO: Add error type

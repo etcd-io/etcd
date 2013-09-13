@@ -1,6 +1,7 @@
 package fileSystem
 
 import (
+	"encoding/json"
 	"fmt"
 	"path"
 	"sort"
@@ -11,11 +12,10 @@ import (
 )
 
 type FileSystem struct {
-	Root         *Node
-	EventHistory *EventHistory
-	WatcherHub   *watcherHub
-	Index        uint64
-	Term         uint64
+	Root       *Node
+	WatcherHub *watcherHub
+	Index      uint64
+	Term       uint64
 }
 
 func New() *FileSystem {
@@ -126,7 +126,7 @@ func (fs *FileSystem) Create(nodePath string, value string, expireTime time.Time
 
 	// Node with TTL
 	if expireTime != Permanent {
-		go n.Expire()
+		n.Expire()
 		e.Expiration = &n.ExpireTime
 		e.TTL = int64(expireTime.Sub(time.Now()) / time.Second)
 	}
@@ -164,13 +164,13 @@ func (fs *FileSystem) Update(nodePath string, value string, expireTime time.Time
 	}
 
 	// update ttl
-	if n.ExpireTime != Permanent && expireTime != Permanent {
+	if !n.IsPermanent() && expireTime != Permanent {
 		n.stopExpire <- true
 	}
 
-	if expireTime != Permanent {
+	if expireTime.Sub(Permanent) != 0 {
 		n.ExpireTime = expireTime
-		go n.Expire()
+		n.Expire()
 		e.Expiration = &n.ExpireTime
 		e.TTL = int64(expireTime.Sub(time.Now()) / time.Second)
 	}
@@ -298,7 +298,6 @@ func (fs *FileSystem) InternalGet(nodePath string, index uint64, term uint64) (*
 // If it does not exist, this function will create a new directory and return the pointer to that node.
 // If it is a file, this function will return error.
 func (fs *FileSystem) checkDir(parent *Node, dirName string) (*Node, error) {
-
 	subDir, ok := parent.Children[dirName]
 
 	if ok {
@@ -310,4 +309,36 @@ func (fs *FileSystem) checkDir(parent *Node, dirName string) (*Node, error) {
 	parent.Children[dirName] = n
 
 	return n, nil
+}
+
+// Save function saves the static state of the store system.
+// Save function will not be able to save the state of watchers.
+// Save function will not save the parent field of the node. Or there will
+// be cyclic dependencies issue for the json package.
+func (fs *FileSystem) Save() []byte {
+	cloneFs := New()
+	cloneFs.Root = fs.Root.Clone()
+
+	b, err := json.Marshal(fs)
+
+	if err != nil {
+		panic(err)
+	}
+
+	return b
+}
+
+// recovery function recovery the store system from a static state.
+// It needs to recovery the parent field of the nodes.
+// It needs to delete the expired nodes since the saved time and also
+// need to create monitor go routines.
+func (fs *FileSystem) Recover(state []byte) {
+	err := json.Unmarshal(state, fs)
+
+	if err != nil {
+		panic(err)
+	}
+
+	fs.Root.recoverAndclean()
+
 }

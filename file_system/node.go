@@ -1,7 +1,6 @@
 package fileSystem
 
 import (
-	"fmt"
 	"path"
 	"sort"
 	"sync"
@@ -25,7 +24,7 @@ type Node struct {
 	CreateTerm    uint64
 	ModifiedIndex uint64
 	ModifiedTerm  uint64
-	Parent        *Node
+	Parent        *Node `json:"-"`
 	ExpireTime    time.Time
 	ACL           string
 	Value         string           // for key-value pair
@@ -237,62 +236,89 @@ func (n *Node) Clone() *Node {
 	return clone
 }
 
-// IsDir function checks whether the node is a directory.
-// If the node is a directory, the function will return true.
-// Otherwise the function will return false.
-func (n *Node) IsDir() bool {
-
-	if n.Children == nil { // key-value pair
-		return false
+func (n *Node) recoverAndclean() {
+	if n.IsDir() {
+		for _, child := range n.Children {
+			child.Parent = n
+			child.recoverAndclean()
+		}
 	}
 
-	return true
+	n.stopExpire = make(chan bool, 1)
+
+	n.Expire()
 }
 
 func (n *Node) Expire() {
-	duration := n.ExpireTime.Sub(time.Now())
-	if duration <= 0 {
+	expired, duration := n.IsExpired()
+
+	if expired { // has been expired
 		n.Remove(true, nil)
 		return
 	}
 
-	select {
-	// if timeout, delete the node
-	case <-time.After(duration):
-		n.Remove(true, nil)
+	if duration == 0 { // Permanent Node
 		return
-
-	// if stopped, return
-	case <-n.stopExpire:
-		fmt.Println("expire stopped")
-		return
-
 	}
+
+	go func() { // do monitoring
+		select {
+		// if timeout, delete the node
+		case <-time.After(duration):
+			n.Remove(true, nil)
+			return
+
+		// if stopped, return
+		case <-n.stopExpire:
+			return
+
+		}
+	}()
 }
 
 // IsHidden function checks if the node is a hidden node. A hidden node
 // will begin with '_'
-
 // A hidden node will not be shown via get command under a directory
 // For example if we have /foo/_hidden and /foo/notHidden, get "/foo"
 // will only return /foo/notHidden
 func (n *Node) IsHidden() bool {
 	_, name := path.Split(n.Path)
 
-	if name[0] == '_' { //hidden
-		return true
+	return name[0] == '_'
+
+}
+
+func (n *Node) IsPermanent() bool {
+	return n.ExpireTime.Sub(Permanent) == 0
+}
+
+func (n *Node) IsExpired() (bool, time.Duration) {
+	if n.IsPermanent() {
+		return false, 0
 	}
 
-	return false
+	duration := n.ExpireTime.Sub(time.Now())
+	if duration <= 0 {
+		return true, 0
+	}
+
+	return false, duration
+}
+
+// IsDir function checks whether the node is a directory.
+// If the node is a directory, the function will return true.
+// Otherwise the function will return false.
+func (n *Node) IsDir() bool {
+	return !(n.Children == nil)
 }
 
 func (n *Node) Pair(recurisive, sorted bool) KeyValuePair {
-
 	if n.IsDir() {
 		pair := KeyValuePair{
 			Key: n.Path,
 			Dir: true,
 		}
+
 		if !recurisive {
 			return pair
 		}

@@ -311,7 +311,6 @@ func TestTestAndSet(t *testing.T) { // TODO prevValue == nil ?
 		t.Fatalf("[%v/%v] [%v/%v]", e.PrevValue, "car", e.Value, "bar")
 	}
 
-	//e, err = fs.TestAndSet("/foo", )
 }
 
 func TestWatch(t *testing.T) {
@@ -377,6 +376,115 @@ func TestWatch(t *testing.T) {
 
 }
 
+func TestSort(t *testing.T) {
+	fs := New()
+
+	// simulating random creation
+	keys := GenKeys(80, 4)
+
+	i := uint64(1)
+	for _, k := range keys {
+		_, err := fs.Create(k, "bar", Permanent, i, 1)
+		if err != nil {
+			panic(err)
+		} else {
+			i++
+		}
+	}
+
+	e, err := fs.Get("/foo", true, true, i, 1)
+	if err != nil {
+		t.Fatalf("get dir nodes failed [%s]", err.Error())
+	}
+
+	for i, k := range e.KVPairs[:len(e.KVPairs)-1] {
+
+		if k.Key >= e.KVPairs[i+1].Key {
+			t.Fatalf("sort failed, [%s] should be placed after [%s]", k.Key, e.KVPairs[i+1].Key)
+		}
+
+		if k.Dir {
+			recursiveTestSort(k, t)
+		}
+
+	}
+
+	if k := e.KVPairs[len(e.KVPairs)-1]; k.Dir {
+		recursiveTestSort(k, t)
+	}
+}
+
+func TestSaveAndRecover(t *testing.T) {
+	fs := New()
+
+	// simulating random creation
+	keys := GenKeys(8, 4)
+
+	i := uint64(1)
+	for _, k := range keys {
+		_, err := fs.Create(k, "bar", Permanent, i, 1)
+		if err != nil {
+			panic(err)
+		} else {
+			i++
+		}
+	}
+
+	// create a node with expiration
+	// test if we can reach the node before expiration
+
+	expire := time.Now().Add(time.Second)
+	fs.Create("/foo/foo", "bar", expire, 1, 1)
+
+	b := fs.Save()
+
+	cloneFs := New()
+
+	time.Sleep(time.Second)
+
+	cloneFs.Recover(b)
+
+	for i, k := range keys {
+		_, err := cloneFs.Get(k, false, false, uint64(i), 1)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	if fs.WatcherHub.EventHistory.StartIndex != cloneFs.WatcherHub.EventHistory.StartIndex {
+		t.Fatal("Error recovered event history start index")
+	}
+
+	for i = 0; int(i) < fs.WatcherHub.EventHistory.Queue.Size; i++ {
+		if fs.WatcherHub.EventHistory.Queue.Events[i].Key !=
+			cloneFs.WatcherHub.EventHistory.Queue.Events[i].Key {
+			t.Fatal("Error recovered event history")
+		}
+	}
+
+	_, err := fs.Get("/foo/foo", false, false, 1, 1)
+
+	if err == nil || err.Error() != "Key Not Found" {
+		t.Fatalf("can get the node after deletion ")
+	}
+
+}
+
+// GenKeys randomly generate num of keys with max depth
+func GenKeys(num int, depth int) []string {
+	keys := make([]string, num)
+	for i := 0; i < num; i++ {
+
+		keys[i] = "/foo"
+		depth := rand.Intn(depth) + 1
+
+		for j := 0; j < depth; j++ {
+			keys[i] += "/" + strconv.Itoa(rand.Int())
+		}
+	}
+	return keys
+}
+
 func createAndGet(fs *FileSystem, path string, t *testing.T) {
 	_, err := fs.Create(path, "bar", Permanent, 1, 1)
 
@@ -396,58 +504,8 @@ func createAndGet(fs *FileSystem, path string, t *testing.T) {
 
 }
 
-func nonblockingRetrive(c <-chan *Event) *Event {
-	select {
-	case e := <-c:
-		return e
-	default:
-		return nil
-	}
-}
-
-func TestSort(t *testing.T) {
-	fs := New()
-
-	// simulating random creation
-	keys := GenKeys(80, 4)
-
-	//t.Log(keys)
-	i := uint64(1)
-	for _, k := range keys {
-		_, err := fs.Create(k, "bar", Permanent, i, 1)
-		if err != nil {
-			//t.Logf("create node[%s] failed %s", k, err.Error())
-		} else {
-			i++
-		}
-	}
-
-	e, err := fs.Get("/foo", true, true, i, 1)
-	if err != nil {
-		t.Fatalf("get dir nodes failed [%s]", err.Error())
-	}
-
-	for i, k := range e.KVPairs[:len(e.KVPairs)-1] {
-		//t.Log("root:")
-		//t.Log(k)
-		if k.Key >= e.KVPairs[i+1].Key {
-			t.Fatalf("sort failed, [%s] should be placed after [%s]", k.Key, e.KVPairs[i+1].Key)
-		}
-
-		if k.Dir {
-			recursiveTestSort(k, t)
-		}
-
-	}
-
-	if k := e.KVPairs[len(e.KVPairs)-1]; k.Dir {
-		recursiveTestSort(k, t)
-	}
-}
-
 func recursiveTestSort(k KeyValuePair, t *testing.T) {
-	//t.Log("recursive in")
-	//t.Log(k)
+
 	for i, v := range k.KVPairs[:len(k.KVPairs)-1] {
 		if v.Key >= k.KVPairs[i+1].Key {
 			t.Fatalf("sort failed, [%s] should be placed after [%s]", v.Key, k.KVPairs[i+1].Key)
@@ -464,17 +522,11 @@ func recursiveTestSort(k KeyValuePair, t *testing.T) {
 	}
 }
 
-// GenKeys randomly generate num of keys with max depth
-func GenKeys(num int, depth int) []string {
-	keys := make([]string, num)
-	for i := 0; i < num; i++ {
-
-		keys[i] = "/foo"
-		depth := rand.Intn(depth) + 1
-
-		for j := 0; j < depth; j++ {
-			keys[i] += "/" + strconv.Itoa(rand.Int()%20)
-		}
+func nonblockingRetrive(c <-chan *Event) *Event {
+	select {
+	case e := <-c:
+		return e
+	default:
+		return nil
 	}
-	return keys
 }

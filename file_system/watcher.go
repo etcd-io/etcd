@@ -99,7 +99,6 @@ func (wh *watcherHub) notifyWithPath(e *Event, path string, force bool) {
 }
 
 func (wh *watcherHub) notify(e *Event) {
-
 	segments := strings.Split(e.Key, "/")
 
 	currPath := "/"
@@ -109,4 +108,6 @@ func (wh *watcherHub) notify(e *Event) {
 		currPath = path.Join(currPath, segment)
 		wh.notifyWithPath(e, currPath, false)
 	}
+
+	wh.EventHistory.addEvent(e)
 }
