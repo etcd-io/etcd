@@ -18,7 +18,6 @@ foreach($i in (ls third_party/*)){
 	if("$i" -eq "third_party/src") {continue}
 	
 	cp -Recurse -force "$i" src/
-	write-host $i
 }
 
 ./scripts/release-version.ps1 | Out-File -Encoding UTF8 release_version.go
