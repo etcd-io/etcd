@@ -485,6 +485,10 @@ If you are using SSL for server to server communication, you must use it on all 
 - [jpfuentes2/etcd-ruby](https://github.com/jpfuentes2/etcd-ruby)
 - [ranjib/etcd-ruby](https://github.com/ranjib/etcd-ruby)
 
+**Chef Integration**
+
+- [coderanger/etcd-chef](https://github.com/coderanger/etcd-chef)
+
 **Chef Cookbook**
 
 - [spheromak/etcd-cookbook](https://github.com/spheromak/etcd-cookbook)
