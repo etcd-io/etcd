@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/coreos/etcd/web"
 	"io"
 	"log"
 	"net"
@@ -14,6 +13,9 @@ import (
 	"runtime/pprof"
 	"strconv"
 	"time"
+
+	"github.com/coreos/etcd/file_system"
+	"github.com/coreos/etcd/web"
 )
 
 //--------------------------------------
@@ -26,12 +28,12 @@ func durationToExpireTime(strDuration string) (time.Time, error) {
 		duration, err := strconv.Atoi(strDuration)
 
 		if err != nil {
-			return time.Unix(0, 0), err
+			return fileSystem.Permanent, err
 		}
 		return time.Now().Add(time.Second * (time.Duration)(duration)), nil
 
 	} else {
-		return time.Unix(0, 0), nil
+		return fileSystem.Permanent, nil
 	}
 }
 

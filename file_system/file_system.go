@@ -27,6 +27,8 @@ func New() *FileSystem {
 }
 
 func (fs *FileSystem) Get(nodePath string, recursive, sorted bool, index uint64, term uint64) (*Event, error) {
+	nodePath = path.Clean(path.Join("/", nodePath))
+
 	n, err := fs.InternalGet(nodePath, index, term)
 
 	if err != nil {
@@ -71,6 +73,11 @@ func (fs *FileSystem) Get(nodePath string, recursive, sorted bool, index uint64,
 		e.Value = n.Value
 	}
 
+	if n.ExpireTime.Sub(Permanent) != 0 {
+		e.Expiration = &n.ExpireTime
+		e.TTL = int64(n.ExpireTime.Sub(time.Now())/time.Second) + 1
+	}
+
 	return e, nil
 }
 
@@ -78,7 +85,7 @@ func (fs *FileSystem) Get(nodePath string, recursive, sorted bool, index uint64,
 // If the node has already existed, create will fail.
 // If any node on the path is a file, create will fail.
 func (fs *FileSystem) Create(nodePath string, value string, expireTime time.Time, index uint64, term uint64) (*Event, error) {
-	nodePath = path.Clean("/" + nodePath)
+	nodePath = path.Clean(path.Join("/", nodePath))
 
 	// make sure we can create the node
 	_, err := fs.InternalGet(nodePath, index, term)
@@ -125,10 +132,10 @@ func (fs *FileSystem) Create(nodePath string, value string, expireTime time.Time
 	}
 
 	// Node with TTL
-	if expireTime != Permanent {
+	if expireTime.Sub(Permanent) != 0 {
 		n.Expire()
 		e.Expiration = &n.ExpireTime
-		e.TTL = int64(expireTime.Sub(time.Now()) / time.Second)
+		e.TTL = int64(expireTime.Sub(time.Now())/time.Second) + 1
 	}
 
 	fs.WatcherHub.notify(e)
@@ -164,7 +171,7 @@ func (fs *FileSystem) Update(nodePath string, value string, expireTime time.Time
 	}
 
 	// update ttl
-	if !n.IsPermanent() && expireTime != Permanent {
+	if !n.IsPermanent() {
 		n.stopExpire <- true
 	}
 
@@ -172,7 +179,7 @@ func (fs *FileSystem) Update(nodePath string, value string, expireTime time.Time
 		n.ExpireTime = expireTime
 		n.Expire()
 		e.Expiration = &n.ExpireTime
-		e.TTL = int64(expireTime.Sub(time.Now()) / time.Second)
+		e.TTL = int64(expireTime.Sub(time.Now())/time.Second) + 1
 	}
 
 	fs.WatcherHub.notify(e)
@@ -205,7 +212,7 @@ func (fs *FileSystem) TestAndSet(nodePath string, prevValue string, prevIndex ui
 		return e, nil
 	}
 
-	cause := fmt.Sprintf("[%v/%v] [%v/%v]", prevValue, f.Value, prevIndex, f.ModifiedIndex)
+	cause := fmt.Sprintf("[%v != %v] [%v != %v]", prevValue, f.Value, prevIndex, f.ModifiedIndex)
 	return nil, etcdErr.NewError(etcdErr.EcodeTestFailed, cause)
 }
 
@@ -241,6 +248,16 @@ func (fs *FileSystem) Delete(nodePath string, recursive bool, index uint64, term
 	return e, nil
 }
 
+func (fs *FileSystem) Watch(prefix string, recursive bool, sinceIndex uint64, index uint64, term uint64) (<-chan *Event, error) {
+	fs.Index, fs.Term = index, term
+
+	if sinceIndex == 0 {
+		return fs.WatcherHub.watch(prefix, recursive, index+1)
+	}
+
+	return fs.WatcherHub.watch(prefix, recursive, sinceIndex)
+}
+
 // walk function walks all the nodePath and apply the walkFunc on each directory
 func (fs *FileSystem) walk(nodePath string, walkFunc func(prev *Node, component string) (*Node, error)) (*Node, error) {
 	components := strings.Split(nodePath, "/")
@@ -265,7 +282,7 @@ func (fs *FileSystem) walk(nodePath string, walkFunc func(prev *Node, component 
 
 // InternalGet function get the node of the given nodePath.
 func (fs *FileSystem) InternalGet(nodePath string, index uint64, term uint64) (*Node, error) {
-	nodePath = path.Clean("/" + nodePath)
+	nodePath = path.Clean(path.Join("/", nodePath))
 
 	// update file system known index and term
 	fs.Index, fs.Term = index, term

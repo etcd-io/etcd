@@ -2,12 +2,12 @@ package main
 
 import (
 	"fmt"
-	etcdErr "github.com/coreos/etcd/error"
-	"github.com/coreos/etcd/store"
-	"github.com/coreos/go-raft"
 	"net/http"
 	"strconv"
 	"strings"
+
+	etcdErr "github.com/coreos/etcd/error"
+	"github.com/coreos/go-raft"
 )
 
 //-------------------------------------------------------------------
@@ -18,7 +18,6 @@ func NewEtcdMuxer() *http.ServeMux {
 	// external commands
 	etcdMux := http.NewServeMux()
 	etcdMux.Handle("/"+version+"/keys/", errorHandler(Multiplexer))
-	etcdMux.Handle("/"+version+"/watch/", errorHandler(WatchHttpHandler))
 	etcdMux.Handle("/"+version+"/leader", errorHandler(LeaderHttpHandler))
 	etcdMux.Handle("/"+version+"/machines", errorHandler(MachinesHttpHandler))
 	etcdMux.Handle("/"+version+"/stats", errorHandler(StatsHttpHandler))
@@ -47,15 +46,16 @@ func Multiplexer(w http.ResponseWriter, req *http.Request) error {
 	case "GET":
 		return GetHttpHandler(w, req)
 	case "POST":
-		return SetHttpHandler(w, req)
+		return CreateHttpHandler(w, req)
 	case "PUT":
-		return SetHttpHandler(w, req)
+		return UpdateHttpHandler(w, req)
 	case "DELETE":
 		return DeleteHttpHandler(w, req)
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return nil
 	}
+	return nil
 }
 
 //--------------------------------------
@@ -63,61 +63,100 @@ func Multiplexer(w http.ResponseWriter, req *http.Request) error {
 // Set/Delete will dispatch to leader
 //--------------------------------------
 
-// Set Command Handler
-func SetHttpHandler(w http.ResponseWriter, req *http.Request) error {
-	key := req.URL.Path[len("/v1/keys/"):]
+func CreateHttpHandler(w http.ResponseWriter, req *http.Request) error {
+	key := req.URL.Path[len("/v2/keys"):]
 
-	if store.CheckKeyword(key) {
-		return etcdErr.NewError(etcdErr.EcodeKeyIsPreserved, "Set")
-	}
-
-	debugf("[recv] POST %v/v1/keys/%s [%s]", e.url, key, req.RemoteAddr)
+	debugf("recv.post[%v] [%v%v]\n", req.RemoteAddr, req.Host, req.URL)
 
 	value := req.FormValue("value")
 
-	if len(value) == 0 {
-		return etcdErr.NewError(etcdErr.EcodeValueRequired, "Set")
+	ttl := req.FormValue("ttl")
+
+	expireTime, err := durationToExpireTime(ttl)
+
+	if err != nil {
+		return etcdErr.NewError(etcdErr.EcodeTTLNaN, "Create")
+	}
+
+	command := &CreateCommand{
+		Key:        key,
+		Value:      value,
+		ExpireTime: expireTime,
+	}
+
+	return dispatch(command, w, req, true)
+
+}
+
+func UpdateHttpHandler(w http.ResponseWriter, req *http.Request) error {
+	key := req.URL.Path[len("/v2/keys"):]
+
+	debugf("recv.put[%v] [%v%v]\n", req.RemoteAddr, req.Host, req.URL)
+
+	value := req.FormValue("value")
+
+	ttl := req.FormValue("ttl")
+
+	expireTime, err := durationToExpireTime(ttl)
+
+	if err != nil {
+		return etcdErr.NewError(etcdErr.EcodeTTLNaN, "Update")
+	}
+
+	// TODO: update should give at least one option
+	if value == "" && ttl == "" {
+		return nil
 	}
 
 	prevValue := req.FormValue("prevValue")
 
-	strDuration := req.FormValue("ttl")
+	prevIndexStr := req.FormValue("prevIndex")
 
-	expireTime, err := durationToExpireTime(strDuration)
+	if prevValue == "" && prevIndexStr == "" { // update without test
+		command := &UpdateCommand{
+			Key:        key,
+			Value:      value,
+			ExpireTime: expireTime,
+		}
 
-	if err != nil {
-		return etcdErr.NewError(etcdErr.EcodeTTLNaN, "Set")
-	}
+		return dispatch(command, w, req, true)
 
-	if len(prevValue) != 0 {
+	} else { // update with test
+		var prevIndex uint64
+
+		if prevIndexStr != "" {
+			prevIndex, err = strconv.ParseUint(prevIndexStr, 10, 64)
+		}
+
+		// TODO: add error type
+		if err != nil {
+			return nil
+		}
+
 		command := &TestAndSetCommand{
-			Key:        key,
-			Value:      value,
-			PrevValue:  prevValue,
-			ExpireTime: expireTime,
-		}
-
-		return dispatch(command, w, req, true)
-
-	} else {
-		command := &SetCommand{
-			Key:        key,
-			Value:      value,
-			ExpireTime: expireTime,
+			Key:       key,
+			Value:     value,
+			PrevValue: prevValue,
+			PrevIndex: prevIndex,
 		}
 
 		return dispatch(command, w, req, true)
 	}
+
 }
 
 // Delete Handler
 func DeleteHttpHandler(w http.ResponseWriter, req *http.Request) error {
-	key := req.URL.Path[len("/v1/keys/"):]
+	key := req.URL.Path[len("/v2/keys"):]
 
-	debugf("[recv] DELETE %v/v1/keys/%s [%s]", e.url, key, req.RemoteAddr)
+	debugf("recv.delete[%v] [%v%v]\n", req.RemoteAddr, req.Host, req.URL)
 
 	command := &DeleteCommand{
 		Key: key,
+	}
+
+	if req.FormValue("recursive") == "true" {
+		command.Recursive = true
 	}
 
 	return dispatch(command, w, req, true)
@@ -212,64 +251,63 @@ func StatsHttpHandler(w http.ResponseWriter, req *http.Request) error {
 	return nil
 }
 
-// Get Handler
 func GetHttpHandler(w http.ResponseWriter, req *http.Request) error {
-	key := req.URL.Path[len("/v1/keys/"):]
+	var err error
+	var event interface{}
+	key := req.URL.Path[len("/v1/keys"):]
 
-	debugf("[recv] GET %s/v1/keys/%s [%s]", e.url, key, req.RemoteAddr)
+	debugf("recv.get[%v] [%v%v]\n", req.RemoteAddr, req.Host, req.URL)
 
-	command := &GetCommand{
-		Key: key,
+	recursive := req.FormValue("recursive")
+
+	if req.FormValue("wait") == "true" {
+		command := &WatchCommand{
+			Key: key,
+		}
+
+		if recursive == "true" {
+			command.Recursive = true
+		}
+
+		indexStr := req.FormValue("wait_index")
+
+		if indexStr != "" {
+			sinceIndex, err := strconv.ParseUint(indexStr, 10, 64)
+
+			if err != nil {
+				return etcdErr.NewError(etcdErr.EcodeIndexNaN, "Watch From Index")
+			}
+
+			command.SinceIndex = sinceIndex
+		}
+
+		event, err = command.Apply(r.Server)
+
+	} else {
+		command := &GetCommand{
+			Key: key,
+		}
+
+		sorted := req.FormValue("sorted")
+
+		if sorted == "true" {
+			command.Sorted = true
+		}
+
+		if recursive == "true" {
+			command.Recursive = true
+		}
+
+		event, err = command.Apply(r.Server)
 	}
 
-	if body, err := command.Apply(r.Server); err != nil {
+	if err != nil {
 		return err
 	} else {
-		body, _ := body.([]byte)
+		event, _ := event.([]byte)
 		w.WriteHeader(http.StatusOK)
-		w.Write(body)
+		w.Write(event)
 
-		return nil
-	}
-
-}
-
-// Watch handler
-func WatchHttpHandler(w http.ResponseWriter, req *http.Request) error {
-	key := req.URL.Path[len("/v1/watch/"):]
-
-	command := &WatchCommand{
-		Key: key,
-	}
-
-	if req.Method == "GET" {
-		debugf("[recv] GET %s/watch/%s [%s]", e.url, key, req.RemoteAddr)
-		command.SinceIndex = 0
-
-	} else if req.Method == "POST" {
-		// watch from a specific index
-
-		debugf("[recv] POST %s/watch/%s [%s]", e.url, key, req.RemoteAddr)
-		content := req.FormValue("index")
-
-		sinceIndex, err := strconv.ParseUint(string(content), 10, 64)
-		if err != nil {
-			return etcdErr.NewError(etcdErr.EcodeIndexNaN, "Watch From Index")
-		}
-		command.SinceIndex = sinceIndex
-
-	} else {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		return nil
-	}
-
-	if body, err := command.Apply(r.Server); err != nil {
-		return etcdErr.NewError(etcdErr.EcodeWatcherCleared, key)
-	} else {
-		w.WriteHeader(http.StatusOK)
-
-		body, _ := body.([]byte)
-		w.Write(body)
 		return nil
 	}
 

@@ -4,12 +4,12 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
-	etcdErr "github.com/coreos/etcd/error"
-	"github.com/coreos/etcd/store"
-	"github.com/coreos/go-raft"
 	"os"
 	"path"
 	"time"
+
+	etcdErr "github.com/coreos/etcd/error"
+	"github.com/coreos/go-raft"
 )
 
 const commandPrefix = "etcd:"
@@ -22,6 +22,54 @@ func commandName(name string) string {
 type Command interface {
 	CommandName() string
 	Apply(server *raft.Server) (interface{}, error)
+}
+
+// Create command
+type CreateCommand struct {
+	Key        string    `json:"key"`
+	Value      string    `json:"value"`
+	ExpireTime time.Time `json:"expireTime"`
+}
+
+// The name of the create command in the log
+func (c *CreateCommand) CommandName() string {
+	return commandName("create")
+}
+
+// Create node
+func (c *CreateCommand) Apply(server *raft.Server) (interface{}, error) {
+	e, err := etcdFs.Create(c.Key, c.Value, c.ExpireTime, server.CommitIndex(), server.Term())
+
+	if err != nil {
+		debug(err)
+		return nil, err
+	}
+
+	return json.Marshal(e)
+}
+
+// Update command
+type UpdateCommand struct {
+	Key        string    `json:"key"`
+	Value      string    `json:"value"`
+	ExpireTime time.Time `json:"expireTime"`
+}
+
+// The name of the update command in the log
+func (c *UpdateCommand) CommandName() string {
+	return commandName("update")
+}
+
+// Update node
+func (c *UpdateCommand) Apply(server *raft.Server) (interface{}, error) {
+	e, err := etcdFs.Update(c.Key, c.Value, c.ExpireTime, server.CommitIndex(), server.Term())
+
+	if err != nil {
+		debug(err)
+		return nil, err
+	}
+
+	return json.Marshal(e)
 }
 
 // Set command
@@ -45,8 +93,9 @@ func (c *SetCommand) Apply(server *raft.Server) (interface{}, error) {
 type TestAndSetCommand struct {
 	Key        string    `json:"key"`
 	Value      string    `json:"value"`
-	PrevValue  string    `json: prevValue`
 	ExpireTime time.Time `json:"expireTime"`
+	PrevValue  string    `json: prevValue`
+	PrevIndex  uint64    `json: prevValue`
 }
 
 // The name of the testAndSet command in the log
@@ -56,12 +105,22 @@ func (c *TestAndSetCommand) CommandName() string {
 
 // Set the key-value pair if the current value of the key equals to the given prevValue
 func (c *TestAndSetCommand) Apply(server *raft.Server) (interface{}, error) {
-	return etcdStore.TestAndSet(c.Key, c.PrevValue, c.Value, c.ExpireTime, server.CommitIndex())
+	e, err := etcdFs.TestAndSet(c.Key, c.PrevValue, c.PrevIndex,
+		c.Value, c.ExpireTime, server.CommitIndex(), server.Term())
+
+	if err != nil {
+		debug(err)
+		return nil, err
+	}
+
+	return json.Marshal(e)
 }
 
 // Get command
 type GetCommand struct {
-	Key string `json:"key"`
+	Key       string `json:"key"`
+	Recursive bool   `json:"recursive"`
+	Sorted    bool   `json:"sorted"`
 }
 
 // The name of the get command in the log
@@ -71,12 +130,20 @@ func (c *GetCommand) CommandName() string {
 
 // Get the value of key
 func (c *GetCommand) Apply(server *raft.Server) (interface{}, error) {
-	return etcdStore.Get(c.Key)
+	e, err := etcdFs.Get(c.Key, c.Recursive, c.Sorted, server.CommitIndex(), server.Term())
+
+	if err != nil {
+		debug(err)
+		return nil, err
+	}
+
+	return json.Marshal(e)
 }
 
 // Delete command
 type DeleteCommand struct {
-	Key string `json:"key"`
+	Key       string `json:"key"`
+	Recursive bool   `json:"recursive"`
 }
 
 // The name of the delete command in the log
@@ -86,13 +153,21 @@ func (c *DeleteCommand) CommandName() string {
 
 // Delete the key
 func (c *DeleteCommand) Apply(server *raft.Server) (interface{}, error) {
-	return etcdStore.Delete(c.Key, server.CommitIndex())
+	e, err := etcdFs.Delete(c.Key, c.Recursive, server.CommitIndex(), server.Term())
+
+	if err != nil {
+		debug(err)
+		return nil, err
+	}
+
+	return json.Marshal(e)
 }
 
 // Watch command
 type WatchCommand struct {
 	Key        string `json:"key"`
 	SinceIndex uint64 `json:"sinceIndex"`
+	Recursive  bool   `json:"recursive"`
 }
 
 // The name of the watch command in the log
@@ -101,20 +176,15 @@ func (c *WatchCommand) CommandName() string {
 }
 
 func (c *WatchCommand) Apply(server *raft.Server) (interface{}, error) {
-	// create a new watcher
-	watcher := store.NewWatcher()
+	eventChan, err := etcdFs.Watch(c.Key, c.Recursive, c.SinceIndex, server.CommitIndex(), server.Term())
 
-	// add to the watchers list
-	etcdStore.AddWatcher(c.Key, watcher, c.SinceIndex)
-
-	// wait for the notification for any changing
-	res := <-watcher.C
-
-	if res == nil {
-		return nil, fmt.Errorf("Clearing watch")
+	if err != nil {
+		return nil, err
 	}
 
-	return json.Marshal(res)
+	e := <-eventChan
+
+	return json.Marshal(e)
 }
 
 // JoinCommand

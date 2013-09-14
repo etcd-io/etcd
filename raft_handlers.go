@@ -2,8 +2,9 @@ package main
 
 import (
 	"encoding/json"
-	"github.com/coreos/go-raft"
 	"net/http"
+
+	"github.com/coreos/go-raft"
 )
 
 //-------------------------------------------------------------

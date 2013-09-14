@@ -10,10 +10,7 @@ import (
 func TestCreateAndGet(t *testing.T) {
 	fs := New()
 
-	// this should create successfully
-	createAndGet(fs, "/foobar", t)
-	createAndGet(fs, "/foo/bar", t)
-	createAndGet(fs, "/foo/foo/bar", t)
+	fs.Create("/foobar", "bar", Permanent, 1, 1)
 
 	// already exist, create should fail
 	_, err := fs.Create("/foobar", "bar", Permanent, 1, 1)
@@ -21,6 +18,13 @@ func TestCreateAndGet(t *testing.T) {
 	if err == nil {
 		t.Fatal("Create should fail")
 	}
+
+	fs.Delete("/foobar", true, 1, 1)
+
+	// this should create successfully
+	createAndGet(fs, "/foobar", t)
+	createAndGet(fs, "/foo/bar", t)
+	createAndGet(fs, "/foo/foo/bar", t)
 
 	// meet file, create should fail
 	_, err = fs.Create("/foo/bar/bar", "bar", Permanent, 2, 1)

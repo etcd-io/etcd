@@ -277,4 +277,7 @@ func registerCommands() {
 	raft.RegisterCommand(&DeleteCommand{})
 	raft.RegisterCommand(&WatchCommand{})
 	raft.RegisterCommand(&TestAndSetCommand{})
+
+	raft.RegisterCommand(&CreateCommand{})
+	raft.RegisterCommand(&UpdateCommand{})
 }
