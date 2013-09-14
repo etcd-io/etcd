@@ -927,26 +927,25 @@ func (s *Server) processRequestVoteRequest(req *RequestVoteRequest) (*RequestVot
 // Adds a peer to the server.
 func (s *Server) AddPeer(name string, connectiongString string) error {
 	s.debugln("server.peer.add: ", name, len(s.peers))
-	defer s.writeConf()
+
 	// Do not allow peers to be added twice.
 	if s.peers[name] != nil {
 		return nil
 	}
 
 	// Skip the Peer if it has the same name as the Server
-	if s.name == name {
-		return nil
+	if s.name != name {
+		peer := newPeer(s, name, connectiongString, s.heartbeatTimeout)
+
+		if s.State() == Leader {
+			peer.startHeartbeat()
+		}
+
+		s.peers[peer.Name] = peer
 	}
 
-	peer := newPeer(s, name, connectiongString, s.heartbeatTimeout)
-
-	if s.State() == Leader {
-		peer.startHeartbeat()
-	}
-
-	s.peers[peer.Name] = peer
-
-	s.debugln("server.peer.conf.write: ", name)
+	// Write the configuration to file.
+	s.writeConf()
 
 	return nil
 }
@@ -955,26 +954,24 @@ func (s *Server) AddPeer(name string, connectiongString string) error {
 func (s *Server) RemovePeer(name string) error {
 	s.debugln("server.peer.remove: ", name, len(s.peers))
 
-	defer s.writeConf()
+	// Skip the Peer if it has the same name as the Server
+	if name != s.Name() {
+		// Return error if peer doesn't exist.
+		peer := s.peers[name]
+		if peer == nil {
+			return fmt.Errorf("raft: Peer not found: %s", name)
+		}
 
-	if name == s.Name() {
-		// when the removed node restart, it should be able
-		// to know it has been removed before. So we need
-		// to update knownCommitIndex
-		return nil
-	}
-	// Return error if peer doesn't exist.
-	peer := s.peers[name]
-	if peer == nil {
-		return fmt.Errorf("raft: Peer not found: %s", name)
-	}
+		// Stop peer and remove it.
+		if s.State() == Leader {
+			peer.stopHeartbeat(true)
+		}
 
-	// Stop peer and remove it.
-	if s.State() == Leader {
-		peer.stopHeartbeat(true)
+		delete(s.peers, name)
 	}
 
-	delete(s.peers, name)
+	// Write the configuration to file.
+	s.writeConf()
 
 	return nil
 }

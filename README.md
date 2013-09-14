@@ -187,17 +187,17 @@ The watch command returns immediately with the same response as previous.
 
 Etcd can be used as a centralized coordination service in a cluster and `TestAndSet` is the most basic operation to build distributed lock service. This command will set the value only if the client provided `prevValue` is equal the current key value.
 
-Here is a simple example. Let's create a key-value pair first: `testAndSet=one`.
+Here is a simple example. Let's create a key-value pair first: `foo=one`.
 
 ```sh
-curl -L http://127.0.0.1:4001/v1/keys/testAndSet -d value=one
+curl -L http://127.0.0.1:4001/v1/keys/foo -d value=one
 ```
 
-Let's try an invaild `TestAndSet` command.
+Let's try an invalid `TestAndSet` command.
 We can give another parameter prevValue to set command to make it a TestAndSet command.
 
 ```sh
-curl -L http://127.0.0.1:4001/v1/keys/testAndSet -d prevValue=two -d value=three
+curl -L http://127.0.0.1:4001/v1/keys/foo -d prevValue=two -d value=three
 ```
 
 This will try to test if the previous of the key is two, it is change it to three.
@@ -208,16 +208,16 @@ This will try to test if the previous of the key is two, it is change it to thre
 
 which means `testAndSet` failed.
 
-Let us try a vaild one.
+Let us try a valid one.
 
 ```sh
-curl -L http://127.0.0.1:4001/v1/keys/testAndSet -d prevValue=one -d value=two
+curl -L http://127.0.0.1:4001/v1/keys/foo -d prevValue=one -d value=two
 ```
 
 The response should be
 
 ```json
-{"action":"SET","key":"/testAndSet","prevValue":"one","value":"two","index":10}
+{"action":"SET","key":"/foo","prevValue":"one","value":"two","index":10}
 ```
 
 We successfully changed the value from “one” to “two”, since we give the correct previous value.
@@ -465,6 +465,16 @@ If you are using SSL for server to server communication, you must use it on all 
 
 - [go-etcd](https://github.com/coreos/go-etcd)
 
+**Java libraries**
+
+- [justinsb/jetcd](https://github.com/justinsb/jetcd)
+- [diwakergupta/jetcd](https://github.com/diwakergupta/jetcd)
+
+
+**Python libraries**
+
+- [transitorykris/etcd-py](https://github.com/transitorykris/etcd-py)
+
 **Node libraries**
 
 - [stianeikeland/node-etcd](https://github.com/stianeikeland/node-etcd)
@@ -486,6 +496,19 @@ If you are using SSL for server to server communication, you must use it on all 
 - [garethr/hiera-etcd](https://github.com/garethr/hiera-etcd) - Puppet hiera backend using etcd
 - [mattn/etcd-vim](https://github.com/mattn/etcd-vim) - SET and GET keys from inside vim
 - [mattn/etcdenv](https://github.com/mattn/etcdenv) - "env" shebang with etcd integration
+
+## FAQ
+
+### What size cluster should I use?
+
+Every command the client sends to the master is broadcast it to all of the followers.
+But, the command is not be committed until the majority of the cluster machines receive that command.
+
+Because of this majority voting property the ideal cluster should be kept small to keep speed up and be made up of an odd number of machines.
+
+Odd numbers are good because if you have 8 machines the majority will be 5 and if you have 9 machines the majority with be 5.
+The result is that an 8 machine cluster can tolerate 3 machine failures and a 9 machine cluster can tolerate 4 nodes failures.
+And in the best case when all 9 machines are responding the cluster will perform at the speed of the fastest 5 nodes.
 
 ## Project Details
 

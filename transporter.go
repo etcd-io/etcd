@@ -5,11 +5,12 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"github.com/coreos/go-raft"
 	"io"
 	"net"
 	"net/http"
 	"time"
+
+	"github.com/coreos/go-raft"
 )
 
 // Transporter layer for communication between raft nodes
@@ -54,16 +55,37 @@ func dialTimeout(network, addr string) (net.Conn, error) {
 func (t *transporter) SendAppendEntriesRequest(server *raft.Server, peer *raft.Peer, req *raft.AppendEntriesRequest) *raft.AppendEntriesResponse {
 	var aersp *raft.AppendEntriesResponse
 	var b bytes.Buffer
+
 	json.NewEncoder(&b).Encode(req)
 
+	size := b.Len()
+
+	r.serverStats.SendAppendReq(size)
+
 	u, _ := nameToRaftURL(peer.Name)
+
 	debugf("Send LogEntries to %s ", u)
+
+	thisPeerStats, ok := r.peersStats[peer.Name]
+
+	start := time.Now()
 
 	resp, err := t.Post(fmt.Sprintf("%s/log/append", u), &b)
 
+	end := time.Now()
+
 	if err != nil {
 		debugf("Cannot send AppendEntriesRequest to %s: %s", u, err)
+		if ok {
+			thisPeerStats.Fail()
+		}
+	} else {
+		if ok {
+			thisPeerStats.Succ(end.Sub(start))
+		}
 	}
+
+	r.peersStats[peer.Name] = thisPeerStats
 
 	if resp != nil {
 		defer resp.Body.Close()
