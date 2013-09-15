@@ -105,7 +105,7 @@ func CreateHttpHandler(w http.ResponseWriter, req *http.Request) error {
 		ExpireTime: expireTime,
 	}
 
-	return dispatch(command, w, req, true)
+	return dispatchEtcdCommand(command, w, req)
 
 }
 
@@ -140,7 +140,7 @@ func UpdateHttpHandler(w http.ResponseWriter, req *http.Request) error {
 			ExpireTime: expireTime,
 		}
 
-		return dispatch(command, w, req, true)
+		return dispatchEtcdCommand(command, w, req)
 
 	} else { // update with test
 		var prevIndex uint64
@@ -161,7 +161,7 @@ func UpdateHttpHandler(w http.ResponseWriter, req *http.Request) error {
 			PrevIndex: prevIndex,
 		}
 
-		return dispatch(command, w, req, true)
+		return dispatchEtcdCommand(command, w, req)
 	}
 
 }
@@ -179,37 +179,12 @@ func DeleteHttpHandler(w http.ResponseWriter, req *http.Request) error {
 		command.Recursive = true
 	}
 
-	return dispatch(command, w, req, true)
+	return dispatchEtcdCommand(command, w, req)
 }
 
 // Dispatch the command to leader
-func dispatch(c Command, w http.ResponseWriter, req *http.Request, etcd bool) error {
-	if r.State() == raft.Leader {
-		if body, err := r.Do(c); err != nil {
-			return err
-		} else {
-			if body == nil {
-				return etcdErr.NewError(300, "Empty result from raft")
-			} else {
-				body, _ := body.([]byte)
-				w.WriteHeader(http.StatusOK)
-				w.Write(body)
-				return nil
-			}
-		}
-
-	} else {
-		leader := r.Leader()
-		// current no leader
-		if leader == "" {
-			return etcdErr.NewError(300, "")
-		}
-
-		redirect(leader, etcd, w, req)
-
-		return nil
-	}
-	return etcdErr.NewError(300, "")
+func dispatchEtcdCommand(c Command, w http.ResponseWriter, req *http.Request) error {
+	return dispatch(c, w, req, nameToEtcdURL)
 }
 
 //--------------------------------------
@@ -294,7 +269,8 @@ func GetHttpHandler(w http.ResponseWriter, req *http.Request) error {
 		if req.FormValue("consistent") == "true" {
 			if r.State() != raft.Leader {
 				leader := r.Leader()
-				redirect(leader, true, w, req)
+				url, _ := nameToEtcdURL(leader)
+				redirect(url, w, req)
 				return nil
 			}
 		}
