@@ -65,17 +65,40 @@ func startWebInterface() {
 // HTTP Utilities
 //--------------------------------------
 
-func redirect(node string, etcd bool, w http.ResponseWriter, req *http.Request) {
-	var url string
+func dispatch(c Command, w http.ResponseWriter, req *http.Request, toURL func(name string) (string, bool)) error {
+	if r.State() == raft.Leader {
+		if body, err := r.Do(c); err != nil {
+			return err
+		} else {
+			if body == nil {
+				return etcdErr.NewError(300, "Empty result from raft")
+			} else {
+				body, _ := body.([]byte)
+				w.WriteHeader(http.StatusOK)
+				w.Write(body)
+				return nil
+			}
+		}
+
+	} else {
+		leader := r.Leader()
+		// current no leader
+		if leader == "" {
+			return etcdErr.NewError(300, "")
+		}
+		url, _ := toURL(leader)
+
+		redirect(url, w, req)
+
+		return nil
+	}
+	return etcdErr.NewError(300, "")
+}
+
+func redirect(hostname string, w http.ResponseWriter, req *http.Request) {
 	path := req.URL.Path
 
-	if etcd {
-		etcdAddr, _ := nameToEtcdURL(node)
-		url = etcdAddr + path
-	} else {
-		raftAddr, _ := nameToRaftURL(node)
-		url = raftAddr + path
-	}
+	url := hostname + path
 
 	debugf("Redirect to %s", url)
 
