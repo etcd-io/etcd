@@ -65,6 +65,23 @@ func startWebInterface() {
 // HTTP Utilities
 //--------------------------------------
 
+func redirect(node string, etcd bool, w http.ResponseWriter, req *http.Request) {
+	var url string
+	path := req.URL.Path
+
+	if etcd {
+		etcdAddr, _ := nameToEtcdURL(node)
+		url = etcdAddr + path
+	} else {
+		raftAddr, _ := nameToRaftURL(node)
+		url = raftAddr + path
+	}
+
+	debugf("Redirect to %s", url)
+
+	http.Redirect(w, req, url, http.StatusTemporaryRedirect)
+}
+
 func decodeJsonRequest(req *http.Request, data interface{}) error {
 	decoder := json.NewDecoder(req.Body)
 	if err := decoder.Decode(&data); err != nil && err != io.EOF {

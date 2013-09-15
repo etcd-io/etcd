@@ -185,13 +185,12 @@ func DeleteHttpHandler(w http.ResponseWriter, req *http.Request) error {
 
 // Dispatch the command to leader
 func dispatch(c Command, w http.ResponseWriter, req *http.Request, etcd bool) error {
-
 	if r.State() == raft.Leader {
 		if body, err := r.Do(c); err != nil {
 			return err
 		} else {
 			if body == nil {
-				return etcdErr.NewError(etcdErr.EcodeRaftInternal, "Empty result from raft")
+				return etcdErr.NewError(300, "Empty result from raft")
 			} else {
 				body, _ := body.([]byte)
 				w.WriteHeader(http.StatusOK)
@@ -204,28 +203,14 @@ func dispatch(c Command, w http.ResponseWriter, req *http.Request, etcd bool) er
 		leader := r.Leader()
 		// current no leader
 		if leader == "" {
-			return etcdErr.NewError(etcdErr.EcodeRaftInternal, "")
+			return etcdErr.NewError(300, "")
 		}
 
-		// tell the client where is the leader
-		path := req.URL.Path
+		redirect(leader, etcd, w, req)
 
-		var url string
-
-		if etcd {
-			etcdAddr, _ := nameToEtcdURL(leader)
-			url = etcdAddr + path
-		} else {
-			raftAddr, _ := nameToRaftURL(leader)
-			url = raftAddr + path
-		}
-
-		debugf("Redirect to %s", url)
-
-		http.Redirect(w, req, url, http.StatusTemporaryRedirect)
 		return nil
 	}
-	return etcdErr.NewError(etcdErr.EcodeRaftInternal, "")
+	return etcdErr.NewError(300, "")
 }
 
 //--------------------------------------
@@ -282,7 +267,7 @@ func GetHttpHandler(w http.ResponseWriter, req *http.Request) error {
 
 	recursive := req.FormValue("recursive")
 
-	if req.FormValue("wait") == "true" {
+	if req.FormValue("wait") == "true" { // watch
 		command := &WatchCommand{
 			Key: key,
 		}
@@ -305,7 +290,16 @@ func GetHttpHandler(w http.ResponseWriter, req *http.Request) error {
 
 		event, err = command.Apply(r.Server)
 
-	} else {
+	} else { //get
+
+		if req.FormValue("consistent") == "true" {
+			if r.State() != raft.Leader {
+				leader := r.Leader()
+				redirect(leader, true, w, req)
+				return nil
+			}
+		}
+
 		command := &GetCommand{
 			Key: key,
 		}
