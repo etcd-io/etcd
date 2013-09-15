@@ -169,7 +169,6 @@ func UpdateHttpHandler(w http.ResponseWriter, req *http.Request) error {
 // Delete Handler
 func DeleteHttpHandler(w http.ResponseWriter, req *http.Request) error {
 	key := req.URL.Path[len("/v2/keys"):]
-
 	debugf("recv.delete[%v] [%v%v]\n", req.RemoteAddr, req.Host, req.URL)
 
 	command := &DeleteCommand{

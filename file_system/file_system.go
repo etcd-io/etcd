@@ -244,7 +244,6 @@ func (fs *FileSystem) Delete(nodePath string, recursive bool, index uint64, term
 	}
 
 	fs.WatcherHub.notify(e)
-
 	return e, nil
 }
 
