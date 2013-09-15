@@ -75,7 +75,7 @@ func (n *Node) Remove(recursive bool, callback func(path string)) error {
 
 	if !n.IsDir() { // file node: key-value pair
 		_, name := path.Split(n.Path)
-		
+
 		if n.Parent != nil && n.Parent.Children[name] == n {
 			// This is the only pointer to Node object
 			// Handled by garbage collector
