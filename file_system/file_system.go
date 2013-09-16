@@ -332,30 +332,30 @@ func (fs *FileSystem) checkDir(parent *Node, dirName string) (*Node, error) {
 // Save function will not be able to save the state of watchers.
 // Save function will not save the parent field of the node. Or there will
 // be cyclic dependencies issue for the json package.
-func (fs *FileSystem) Save() []byte {
+func (fs *FileSystem) Save() ([]byte, error) {
 	cloneFs := New()
 	cloneFs.Root = fs.Root.Clone()
 
 	b, err := json.Marshal(fs)
 
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
-	return b
+	return b, nil
 }
 
 // recovery function recovery the store system from a static state.
 // It needs to recovery the parent field of the nodes.
 // It needs to delete the expired nodes since the saved time and also
 // need to create monitor go routines.
-func (fs *FileSystem) Recover(state []byte) {
+func (fs *FileSystem) Recovery(state []byte) error {
 	err := json.Unmarshal(state, fs)
 
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	fs.Root.recoverAndclean()
-
+	return nil
 }

@@ -49,16 +49,20 @@ func addNameToURL(name string, version string, raftURL string, etcdURL string) {
 }
 
 func readURL(nodeName string, urlName string) (string, bool) {
-	// if fails, try to recover from etcd storage
+	if nodeName == "" {
+		return "", false
+	}
+
+	// convert nodeName to url from etcd storage
 	key := path.Join("/_etcd/machines", nodeName)
 
-	resps, err := etcdStore.RawGet(key)
+	e, err := etcdFs.Get(key, false, false, r.CommitIndex(), r.Term())
 
 	if err != nil {
 		return "", false
 	}
 
-	m, err := url.ParseQuery(resps[0].Value)
+	m, err := url.ParseQuery(e.Value)
 
 	if err != nil {
 		panic("Failed to parse machines entry")

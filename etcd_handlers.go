@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	etcdErr "github.com/coreos/etcd/error"
+	"github.com/coreos/etcd/file_system"
 	"github.com/coreos/go-raft"
 )
 
@@ -83,17 +84,13 @@ func Multiplexer(w http.ResponseWriter, req *http.Request) error {
 //--------------------------------------
 
 func CreateHttpHandler(w http.ResponseWriter, req *http.Request) error {
-	key := req.URL.Path[len("/v2/keys"):]
+	key := getNodePath(req.URL.Path)
 
 	debugf("recv.post[%v] [%v%v]\n", req.RemoteAddr, req.Host, req.URL)
 
-	req.ParseForm()
+	value := req.FormValue("value")
 
-	value := req.Form.Get("value")
-
-	ttl := req.FormValue("ttl")
-
-	expireTime, err := durationToExpireTime(ttl)
+	expireTime, err := durationToExpireTime(req.FormValue("ttl"))
 
 	if err != nil {
 		return etcdErr.NewError(etcdErr.EcodeTTLNaN, "Create")
@@ -110,22 +107,20 @@ func CreateHttpHandler(w http.ResponseWriter, req *http.Request) error {
 }
 
 func UpdateHttpHandler(w http.ResponseWriter, req *http.Request) error {
-	key := req.URL.Path[len("/v2/keys"):]
+	key := getNodePath(req.URL.Path)
 
 	debugf("recv.put[%v] [%v%v]\n", req.RemoteAddr, req.Host, req.URL)
 
 	value := req.FormValue("value")
 
-	ttl := req.FormValue("ttl")
-
-	expireTime, err := durationToExpireTime(ttl)
+	expireTime, err := durationToExpireTime(req.FormValue("ttl"))
 
 	if err != nil {
 		return etcdErr.NewError(etcdErr.EcodeTTLNaN, "Update")
 	}
 
 	// TODO: update should give at least one option
-	if value == "" && ttl == "" {
+	if value == "" && expireTime.Sub(fileSystem.Permanent) == 0 {
 		return nil
 	}
 
@@ -168,7 +163,7 @@ func UpdateHttpHandler(w http.ResponseWriter, req *http.Request) error {
 
 // Delete Handler
 func DeleteHttpHandler(w http.ResponseWriter, req *http.Request) error {
-	key := req.URL.Path[len("/v2/keys"):]
+	key := getNodePath(req.URL.Path)
 
 	debugf("recv.delete[%v] [%v%v]\n", req.RemoteAddr, req.Host, req.URL)
 
@@ -228,7 +223,7 @@ func VersionHttpHandler(w http.ResponseWriter, req *http.Request) error {
 // Handler to return the basic stats of etcd
 func StatsHttpHandler(w http.ResponseWriter, req *http.Request) error {
 	w.WriteHeader(http.StatusOK)
-	w.Write(etcdStore.Stats())
+	//w.Write(etcdStore.Stats())
 	w.Write(r.Stats())
 	return nil
 }
@@ -236,9 +231,17 @@ func StatsHttpHandler(w http.ResponseWriter, req *http.Request) error {
 func GetHttpHandler(w http.ResponseWriter, req *http.Request) error {
 	var err error
 	var event interface{}
-	key := req.URL.Path[len("/v1/keys"):]
-
 	debugf("recv.get[%v] [%v%v]\n", req.RemoteAddr, req.Host, req.URL)
+
+	if req.FormValue("consistent") == "true" && r.State() != raft.Leader {
+		// help client to redirect the request to the current leader
+		leader := r.Leader()
+		url, _ := nameToEtcdURL(leader)
+		redirect(url, w, req)
+		return nil
+	}
+
+	key := getNodePath(req.URL.Path)
 
 	recursive := req.FormValue("recursive")
 
@@ -267,15 +270,6 @@ func GetHttpHandler(w http.ResponseWriter, req *http.Request) error {
 
 	} else { //get
 
-		if req.FormValue("consistent") == "true" {
-			if r.State() != raft.Leader {
-				leader := r.Leader()
-				url, _ := nameToEtcdURL(leader)
-				redirect(url, w, req)
-				return nil
-			}
-		}
-
 		command := &GetCommand{
 			Key: key,
 		}
@@ -295,6 +289,7 @@ func GetHttpHandler(w http.ResponseWriter, req *http.Request) error {
 
 	if err != nil {
 		return err
+
 	} else {
 		event, _ := event.([]byte)
 		w.WriteHeader(http.StatusOK)

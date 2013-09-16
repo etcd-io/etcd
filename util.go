@@ -47,7 +47,7 @@ var storeMsg chan string
 // Help to send msg from store to webHub
 func webHelper() {
 	storeMsg = make(chan string)
-	etcdStore.SetMessager(storeMsg)
+	// etcdStore.SetMessager(storeMsg)
 	for {
 		// transfer the new msg to webHub
 		web.Hub().Send(<-storeMsg)
@@ -177,6 +177,11 @@ func check(err error) {
 	}
 }
 
+func getNodePath(urlPath string) string {
+	pathPrefixLen := len("/" + version + "/keys")
+	return urlPath[pathPrefixLen:]
+}
+
 //--------------------------------------
 // Log
 //--------------------------------------
@@ -259,7 +264,7 @@ func directSet() {
 
 func send(c chan bool) {
 	for i := 0; i < 10; i++ {
-		command := &SetCommand{}
+		command := &UpdateCommand{}
 		command.Key = "foo"
 		command.Value = "bar"
 		command.ExpireTime = time.Unix(0, 0)

@@ -73,23 +73,6 @@ func (c *UpdateCommand) Apply(server *raft.Server) (interface{}, error) {
 	return json.Marshal(e)
 }
 
-// Set command
-type SetCommand struct {
-	Key        string    `json:"key"`
-	Value      string    `json:"value"`
-	ExpireTime time.Time `json:"expireTime"`
-}
-
-// The name of the set command in the log
-func (c *SetCommand) CommandName() string {
-	return commandName("set")
-}
-
-// Set the key-value pair
-func (c *SetCommand) Apply(server *raft.Server) (interface{}, error) {
-	return etcdStore.Set(c.Key, c.Value, c.ExpireTime, server.CommitIndex())
-}
-
 // TestAndSet command
 type TestAndSetCommand struct {
 	Key        string    `json:"key"`
@@ -240,7 +223,7 @@ func (c *JoinCommand) Apply(raftServer *raft.Server) (interface{}, error) {
 	value := fmt.Sprintf("raft=%s&etcd=%s&raftVersion=%s", c.RaftURL, c.EtcdURL, c.RaftVersion)
 	etcdFs.Create(key, value, fileSystem.Permanent, raftServer.CommitIndex(), raftServer.Term())
 
-	if c.Name != r.Name() {
+	if c.Name != r.Name() { // do not add self to the peer list
 		r.peersStats[c.Name] = &raftPeerStats{MinLatency: 1 << 63}
 	}
 
@@ -267,7 +250,7 @@ func (c *RemoveCommand) Apply(raftServer *raft.Server) (interface{}, error) {
 	// remove machine in etcd storage
 	key := path.Join("_etcd/machines", c.Name)
 
-	_, err := etcdStore.Delete(key, raftServer.CommitIndex())
+	_, err := etcdFs.Delete(key, false, raftServer.CommitIndex(), raftServer.Term())
 	delete(r.peersStats, c.Name)
 
 	if err != nil {
