@@ -14,8 +14,10 @@ import (
 	"strconv"
 	"time"
 
+	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/file_system"
 	"github.com/coreos/etcd/web"
+	"github.com/coreos/go-raft"
 )
 
 //--------------------------------------

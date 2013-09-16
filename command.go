@@ -9,6 +9,7 @@ import (
 	"time"
 
 	etcdErr "github.com/coreos/etcd/error"
+	"github.com/coreos/etcd/file_system"
 	"github.com/coreos/go-raft"
 )
 
@@ -213,12 +214,12 @@ func (c *JoinCommand) CommandName() string {
 func (c *JoinCommand) Apply(raftServer *raft.Server) (interface{}, error) {
 
 	// check if the join command is from a previous machine, who lost all its previous log.
-	response, _ := etcdStore.RawGet(path.Join("_etcd/machines", c.Name))
+	e, _ := etcdFs.Get(path.Join("/_etcd/machines", c.Name), false, false, raftServer.CommitIndex(), raftServer.Term())
 
 	b := make([]byte, 8)
 	binary.PutUvarint(b, raftServer.CommitIndex())
 
-	if response != nil {
+	if e != nil {
 		return b, nil
 	}
 
@@ -237,7 +238,7 @@ func (c *JoinCommand) Apply(raftServer *raft.Server) (interface{}, error) {
 	// add machine in etcd storage
 	key := path.Join("_etcd/machines", c.Name)
 	value := fmt.Sprintf("raft=%s&etcd=%s&raftVersion=%s", c.RaftURL, c.EtcdURL, c.RaftVersion)
-	etcdStore.Set(key, value, time.Unix(0, 0), raftServer.CommitIndex())
+	etcdFs.Create(key, value, fileSystem.Permanent, raftServer.CommitIndex(), raftServer.Term())
 
 	if c.Name != r.Name() {
 		r.peersStats[c.Name] = &raftPeerStats{MinLatency: 1 << 63}
