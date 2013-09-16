@@ -13,8 +13,9 @@ type watcherHub struct {
 }
 
 type watcher struct {
-	eventChan chan *Event
-	recursive bool
+	eventChan  chan *Event
+	recursive  bool
+	sinceIndex uint64
 }
 
 func newWatchHub(capacity int) *watcherHub {
@@ -43,8 +44,9 @@ func (wh *watcherHub) watch(prefix string, recursive bool, index uint64) (<-chan
 	}
 
 	w := &watcher{
-		eventChan: eventChan,
-		recursive: recursive,
+		eventChan:  eventChan,
+		recursive:  recursive,
+		sinceIndex: index,
 	}
 
 	l, ok := wh.watchers[prefix]
@@ -85,7 +87,7 @@ func (wh *watcherHub) notifyWithPath(e *Event, path string, force bool) {
 
 			w, _ := curr.Value.(*watcher)
 
-			if w.recursive || force || e.Key == path {
+			if (w.recursive || force || e.Key == path) && e.Index >= w.sinceIndex {
 				w.eventChan <- e
 				l.Remove(curr)
 			} else {
