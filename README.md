@@ -495,6 +495,7 @@ If you are using SSL for server to server communication, you must use it on all 
 
 **Projects using etcd**
 
+- [binocarlos/yoda](https://github.com/binocarlos/yoda) - etcd + ZeroMQ
 - [calavera/active-proxy](https://github.com/calavera/active-proxy) - HTTP Proxy configured with etcd
 - [derekchiang/etcdplus](https://github.com/derekchiang/etcdplus) - A set of distributed synchronization primitives built upon etcd
 - [gleicon/goreman](https://github.com/gleicon/goreman/tree/etcd) - Branch of the Go Foreman clone with etcd support
