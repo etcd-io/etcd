@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/coreos/etcd/store"
+	"github.com/coreos/etcd/file_system"
 	"github.com/coreos/go-raft"
 )
 
@@ -136,7 +136,7 @@ type TLSConfig struct {
 //
 //------------------------------------------------------------------------------
 
-var etcdStore *store.Store
+var etcdFs *fileSystem.FileSystem
 
 //------------------------------------------------------------------------------
 //
@@ -204,7 +204,8 @@ func main() {
 	info := getInfo(dirPath)
 
 	// Create etcd key-value store
-	etcdStore = store.CreateStore(maxSize)
+	etcdFs = fileSystem.New()
+
 	snapConf = newSnapshotConf()
 
 	// Create etcd and raft server

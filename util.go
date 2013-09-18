@@ -14,7 +14,10 @@ import (
 	"strconv"
 	"time"
 
+	etcdErr "github.com/coreos/etcd/error"
+	"github.com/coreos/etcd/file_system"
 	"github.com/coreos/etcd/web"
+	"github.com/coreos/go-raft"
 )
 
 //--------------------------------------
@@ -27,12 +30,12 @@ func durationToExpireTime(strDuration string) (time.Time, error) {
 		duration, err := strconv.Atoi(strDuration)
 
 		if err != nil {
-			return time.Unix(0, 0), err
+			return fileSystem.Permanent, err
 		}
 		return time.Now().Add(time.Second * (time.Duration)(duration)), nil
 
 	} else {
-		return time.Unix(0, 0), nil
+		return fileSystem.Permanent, nil
 	}
 }
 
@@ -44,7 +47,7 @@ var storeMsg chan string
 // Help to send msg from store to webHub
 func webHelper() {
 	storeMsg = make(chan string)
-	etcdStore.SetMessager(storeMsg)
+	// etcdStore.SetMessager(storeMsg)
 	for {
 		// transfer the new msg to webHub
 		web.Hub().Send(<-storeMsg)
@@ -63,6 +66,46 @@ func startWebInterface() {
 //--------------------------------------
 // HTTP Utilities
 //--------------------------------------
+
+func dispatch(c Command, w http.ResponseWriter, req *http.Request, toURL func(name string) (string, bool)) error {
+	if r.State() == raft.Leader {
+		if body, err := r.Do(c); err != nil {
+			return err
+		} else {
+			if body == nil {
+				return etcdErr.NewError(300, "Empty result from raft")
+			} else {
+				body, _ := body.([]byte)
+				w.WriteHeader(http.StatusOK)
+				w.Write(body)
+				return nil
+			}
+		}
+
+	} else {
+		leader := r.Leader()
+		// current no leader
+		if leader == "" {
+			return etcdErr.NewError(300, "")
+		}
+		url, _ := toURL(leader)
+
+		redirect(url, w, req)
+
+		return nil
+	}
+	return etcdErr.NewError(300, "")
+}
+
+func redirect(hostname string, w http.ResponseWriter, req *http.Request) {
+	path := req.URL.Path
+
+	url := hostname + path
+
+	debugf("Redirect to %s", url)
+
+	http.Redirect(w, req, url, http.StatusTemporaryRedirect)
+}
 
 func decodeJsonRequest(req *http.Request, data interface{}) error {
 	decoder := json.NewDecoder(req.Body)
@@ -132,6 +175,11 @@ func check(err error) {
 	if err != nil {
 		fatal(err)
 	}
+}
+
+func getNodePath(urlPath string) string {
+	pathPrefixLen := len("/" + version + "/keys")
+	return urlPath[pathPrefixLen:]
 }
 
 //--------------------------------------
@@ -216,7 +264,7 @@ func directSet() {
 
 func send(c chan bool) {
 	for i := 0; i < 10; i++ {
-		command := &SetCommand{}
+		command := &UpdateCommand{}
 		command.Key = "foo"
 		command.Value = "bar"
 		command.ExpireTime = time.Unix(0, 0)

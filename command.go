@@ -9,7 +9,7 @@ import (
 	"time"
 
 	etcdErr "github.com/coreos/etcd/error"
-	"github.com/coreos/etcd/store"
+	"github.com/coreos/etcd/file_system"
 	"github.com/coreos/go-raft"
 )
 
@@ -25,29 +25,61 @@ type Command interface {
 	Apply(server *raft.Server) (interface{}, error)
 }
 
-// Set command
-type SetCommand struct {
+// Create command
+type CreateCommand struct {
 	Key        string    `json:"key"`
 	Value      string    `json:"value"`
 	ExpireTime time.Time `json:"expireTime"`
 }
 
-// The name of the set command in the log
-func (c *SetCommand) CommandName() string {
-	return commandName("set")
+// The name of the create command in the log
+func (c *CreateCommand) CommandName() string {
+	return commandName("create")
 }
 
-// Set the key-value pair
-func (c *SetCommand) Apply(server *raft.Server) (interface{}, error) {
-	return etcdStore.Set(c.Key, c.Value, c.ExpireTime, server.CommitIndex())
+// Create node
+func (c *CreateCommand) Apply(server *raft.Server) (interface{}, error) {
+	e, err := etcdFs.Create(c.Key, c.Value, c.ExpireTime, server.CommitIndex(), server.Term())
+
+	if err != nil {
+		debug(err)
+		return nil, err
+	}
+
+	return json.Marshal(e)
+}
+
+// Update command
+type UpdateCommand struct {
+	Key        string    `json:"key"`
+	Value      string    `json:"value"`
+	ExpireTime time.Time `json:"expireTime"`
+}
+
+// The name of the update command in the log
+func (c *UpdateCommand) CommandName() string {
+	return commandName("update")
+}
+
+// Update node
+func (c *UpdateCommand) Apply(server *raft.Server) (interface{}, error) {
+	e, err := etcdFs.Update(c.Key, c.Value, c.ExpireTime, server.CommitIndex(), server.Term())
+
+	if err != nil {
+		debug(err)
+		return nil, err
+	}
+
+	return json.Marshal(e)
 }
 
 // TestAndSet command
 type TestAndSetCommand struct {
 	Key        string    `json:"key"`
 	Value      string    `json:"value"`
-	PrevValue  string    `json: prevValue`
 	ExpireTime time.Time `json:"expireTime"`
+	PrevValue  string    `json: prevValue`
+	PrevIndex  uint64    `json: prevValue`
 }
 
 // The name of the testAndSet command in the log
@@ -57,12 +89,22 @@ func (c *TestAndSetCommand) CommandName() string {
 
 // Set the key-value pair if the current value of the key equals to the given prevValue
 func (c *TestAndSetCommand) Apply(server *raft.Server) (interface{}, error) {
-	return etcdStore.TestAndSet(c.Key, c.PrevValue, c.Value, c.ExpireTime, server.CommitIndex())
+	e, err := etcdFs.TestAndSet(c.Key, c.PrevValue, c.PrevIndex,
+		c.Value, c.ExpireTime, server.CommitIndex(), server.Term())
+
+	if err != nil {
+		debug(err)
+		return nil, err
+	}
+
+	return json.Marshal(e)
 }
 
 // Get command
 type GetCommand struct {
-	Key string `json:"key"`
+	Key       string `json:"key"`
+	Recursive bool   `json:"recursive"`
+	Sorted    bool   `json:"sorted"`
 }
 
 // The name of the get command in the log
@@ -72,12 +114,20 @@ func (c *GetCommand) CommandName() string {
 
 // Get the value of key
 func (c *GetCommand) Apply(server *raft.Server) (interface{}, error) {
-	return etcdStore.Get(c.Key)
+	e, err := etcdFs.Get(c.Key, c.Recursive, c.Sorted, server.CommitIndex(), server.Term())
+
+	if err != nil {
+		debug(err)
+		return nil, err
+	}
+
+	return json.Marshal(e)
 }
 
 // Delete command
 type DeleteCommand struct {
-	Key string `json:"key"`
+	Key       string `json:"key"`
+	Recursive bool   `json:"recursive"`
 }
 
 // The name of the delete command in the log
@@ -87,13 +137,21 @@ func (c *DeleteCommand) CommandName() string {
 
 // Delete the key
 func (c *DeleteCommand) Apply(server *raft.Server) (interface{}, error) {
-	return etcdStore.Delete(c.Key, server.CommitIndex())
+	e, err := etcdFs.Delete(c.Key, c.Recursive, server.CommitIndex(), server.Term())
+
+	if err != nil {
+		debug(err)
+		return nil, err
+	}
+
+	return json.Marshal(e)
 }
 
 // Watch command
 type WatchCommand struct {
 	Key        string `json:"key"`
 	SinceIndex uint64 `json:"sinceIndex"`
+	Recursive  bool   `json:"recursive"`
 }
 
 // The name of the watch command in the log
@@ -102,20 +160,15 @@ func (c *WatchCommand) CommandName() string {
 }
 
 func (c *WatchCommand) Apply(server *raft.Server) (interface{}, error) {
-	// create a new watcher
-	watcher := store.NewWatcher()
+	eventChan, err := etcdFs.Watch(c.Key, c.Recursive, c.SinceIndex, server.CommitIndex(), server.Term())
 
-	// add to the watchers list
-	etcdStore.AddWatcher(c.Key, watcher, c.SinceIndex)
-
-	// wait for the notification for any changing
-	res := <-watcher.C
-
-	if res == nil {
-		return nil, fmt.Errorf("Clearing watch")
+	if err != nil {
+		return nil, err
 	}
 
-	return json.Marshal(res)
+	e := <-eventChan
+
+	return json.Marshal(e)
 }
 
 // JoinCommand
@@ -144,12 +197,12 @@ func (c *JoinCommand) CommandName() string {
 func (c *JoinCommand) Apply(raftServer *raft.Server) (interface{}, error) {
 
 	// check if the join command is from a previous machine, who lost all its previous log.
-	response, _ := etcdStore.RawGet(path.Join("_etcd/machines", c.Name))
+	e, _ := etcdFs.Get(path.Join("/_etcd/machines", c.Name), false, false, raftServer.CommitIndex(), raftServer.Term())
 
 	b := make([]byte, 8)
 	binary.PutUvarint(b, raftServer.CommitIndex())
 
-	if response != nil {
+	if e != nil {
 		return b, nil
 	}
 
@@ -157,7 +210,7 @@ func (c *JoinCommand) Apply(raftServer *raft.Server) (interface{}, error) {
 	num := machineNum()
 	if num == maxClusterSize {
 		debug("Reject join request from ", c.Name)
-		return []byte{0}, etcdErr.NewError(103, "")
+		return []byte{0}, etcdErr.NewError(etcdErr.EcodeNoMoreMachine, "")
 	}
 
 	addNameToURL(c.Name, c.RaftVersion, c.RaftURL, c.EtcdURL)
@@ -168,9 +221,9 @@ func (c *JoinCommand) Apply(raftServer *raft.Server) (interface{}, error) {
 	// add machine in etcd storage
 	key := path.Join("_etcd/machines", c.Name)
 	value := fmt.Sprintf("raft=%s&etcd=%s&raftVersion=%s", c.RaftURL, c.EtcdURL, c.RaftVersion)
-	etcdStore.Set(key, value, time.Unix(0, 0), raftServer.CommitIndex())
+	etcdFs.Create(key, value, fileSystem.Permanent, raftServer.CommitIndex(), raftServer.Term())
 
-	if c.Name != r.Name() {
+	if c.Name != r.Name() { // do not add self to the peer list
 		r.peersStats[c.Name] = &raftPeerStats{MinLatency: 1 << 63}
 	}
 
@@ -197,7 +250,7 @@ func (c *RemoveCommand) Apply(raftServer *raft.Server) (interface{}, error) {
 	// remove machine in etcd storage
 	key := path.Join("_etcd/machines", c.Name)
 
-	_, err := etcdStore.Delete(key, raftServer.CommitIndex())
+	_, err := etcdFs.Delete(key, false, raftServer.CommitIndex(), raftServer.Term())
 	delete(r.peersStats, c.Name)
 
 	if err != nil {
