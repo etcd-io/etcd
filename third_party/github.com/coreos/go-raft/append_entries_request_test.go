@@ -10,7 +10,7 @@ func BenchmarkAppendEntriesRequestEncoding(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		var buf bytes.Buffer
-		req.encode(&buf)
+		req.Encode(&buf)
 	}
 	b.SetBytes(int64(len(tmp)))
 }
@@ -19,7 +19,7 @@ func BenchmarkAppendEntriesRequestDecoding(b *testing.B) {
 	req, buf := createTestAppendEntriesRequest(2000)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		req.decode(bytes.NewReader(buf))
+		req.Decode(bytes.NewReader(buf))
 	}
 	b.SetBytes(int64(len(buf)))
 }
@@ -34,7 +34,7 @@ func createTestAppendEntriesRequest(entryCount int) (*AppendEntriesRequest, []by
 	req := newAppendEntriesRequest(1, 1, 1, 1, "leader", entries)
 
 	var buf bytes.Buffer
-	req.encode(&buf)
+	req.Encode(&buf)
 
 	return req, buf.Bytes()
 }

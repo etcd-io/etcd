@@ -80,6 +80,8 @@ type Server struct {
 	lastSnapshot            *Snapshot
 	stateMachine            StateMachine
 	maxLogEntriesPerRequest uint64
+
+	connectionString string
 }
 
 // An event to be processed by the server's event loop.
@@ -96,7 +98,7 @@ type event struct {
 //------------------------------------------------------------------------------
 
 // Creates a new server with a log at the given path.
-func NewServer(name string, path string, transporter Transporter, stateMachine StateMachine, context interface{}) (*Server, error) {
+func NewServer(name string, path string, transporter Transporter, stateMachine StateMachine, context interface{}, connectiongString string) (*Server, error) {
 	if name == "" {
 		return nil, errors.New("raft.Server: Name cannot be blank")
 	}
@@ -117,6 +119,7 @@ func NewServer(name string, path string, transporter Transporter, stateMachine S
 		electionTimeout:         DefaultElectionTimeout,
 		heartbeatTimeout:        DefaultHeartbeatTimeout,
 		maxLogEntriesPerRequest: MaxLogEntriesPerRequest,
+		connectionString:        connectiongString,
 	}
 
 	// Setup apply function.
@@ -1009,10 +1012,16 @@ func (s *Server) TakeSnapshot() error {
 		state = []byte{0}
 	}
 
-	var peers []*Peer
+	peers := make([]*Peer, len(s.peers)+1)
 
+	i := 0
 	for _, peer := range s.peers {
-		peers = append(peers, peer.clone())
+		peers[i] = peer.clone()
+	}
+
+	peers[i] = &Peer{
+		Name:             s.Name(),
+		ConnectionString: s.connectionString,
 	}
 
 	s.currentSnapshot = &Snapshot{lastIndex, lastTerm, peers, state, path}
@@ -1253,7 +1262,7 @@ func (s *Server) readConf() error {
 		return err
 	}
 
-	s.log.commitIndex = conf.CommitIndex
+	s.log.updateCommitIndex(conf.CommitIndex)
 
 	return nil
 }

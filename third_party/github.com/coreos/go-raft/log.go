@@ -180,25 +180,22 @@ func (l *Log) open(path string) error {
 			}
 			break
 		}
-
-		// Append entry.
-		l.entries = append(l.entries, entry)
-
-		if entry.Index <= l.commitIndex {
-			command, err := newCommand(entry.CommandName, entry.Command)
-			if err != nil {
-				continue
+		if entry.Index > l.startIndex {
+			// Append entry.
+			l.entries = append(l.entries, entry)
+			if entry.Index <= l.commitIndex {
+				command, err := newCommand(entry.CommandName, entry.Command)
+				if err != nil {
+					continue
+				}
+				l.ApplyFunc(command)
 			}
-			l.ApplyFunc(command)
+			debugln("open.log.append log index ", entry.Index)
 		}
-
-		debugln("open.log.append log index ", entry.Index)
 
 		readBytes += int64(n)
 	}
 	l.results = make([]*logResult, len(l.entries))
-
-	l.compact(l.startIndex, l.startTerm)
 
 	debugln("open.log.recovery number of log ", len(l.entries))
 	return nil
@@ -272,6 +269,8 @@ func (l *Log) getEntriesAfter(index uint64, maxLogEntriesPerRequest uint64) ([]*
 
 	entries := l.entries[index-l.startIndex:]
 	length := len(entries)
+
+	traceln("log.entriesAfter: startIndex:", l.startIndex, " lenght", len(l.entries))
 
 	if uint64(length) < maxLogEntriesPerRequest {
 		// Determine the term at the given entry and return a subslice.
@@ -353,7 +352,10 @@ func (l *Log) lastInfo() (index uint64, term uint64) {
 func (l *Log) updateCommitIndex(index uint64) {
 	l.mutex.Lock()
 	defer l.mutex.Unlock()
-	l.commitIndex = index
+	if index > l.commitIndex {
+		l.commitIndex = index
+	}
+	debugln("update.commit.index ", index)
 }
 
 // Updates the commit index and writes entries after that index to the stable storage.

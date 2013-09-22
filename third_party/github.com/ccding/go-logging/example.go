@@ -22,14 +22,14 @@ import (
 )
 
 func main() {
-	logger1, _ := logging.SimpleLogger("main")
+	logger1, _ := logging.SimpleLogger("logger1")
 	logger1.SetLevel(logging.NOTSET)
 	logger1.Error("this is a test from error")
 	logger1.Debug("this is a test from debug")
 	logger1.Notset("orz", time.Now().UnixNano())
 	logger1.Destroy()
 
-	logger2, _ := logging.RichLogger("main")
+	logger2, _ := logging.RichLogger("logger2")
 	logger2.SetLevel(logging.DEBUG)
 	logger2.Error("this is a test from error")
 	logger2.Debug("this is a test from debug")

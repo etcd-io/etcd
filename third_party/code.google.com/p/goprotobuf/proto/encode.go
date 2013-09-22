@@ -37,6 +37,7 @@ package proto
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 	"sort"
 )
@@ -46,12 +47,16 @@ import (
 // all been initialized. It is also the error returned if Unmarshal is
 // called with an encoded protocol buffer that does not include all the
 // required fields.
+//
+// When printed, ErrRequiredNotSet reports the first unset required field in a
+// message. If the field cannot be precisely determined, it is reported as
+// "{Unknown}".
 type ErrRequiredNotSet struct {
-	t reflect.Type
+	field string
 }
 
 func (e *ErrRequiredNotSet) Error() string {
-	return "proto: required fields not set in " + e.t.String()
+	return fmt.Sprintf("proto: required field %q not set", e.field)
 }
 
 var (
@@ -175,7 +180,8 @@ func Marshal(pb Message) ([]byte, error) {
 	}
 	p := NewBuffer(nil)
 	err := p.Marshal(pb)
-	if err != nil {
+	var state errorState
+	if err != nil && !state.shouldContinue(err, nil) {
 		return nil, err
 	}
 	return p.buf, err
@@ -274,6 +280,7 @@ func isNil(v reflect.Value) bool {
 
 // Encode a message struct.
 func (o *Buffer) enc_struct_message(p *Properties, base structPointer) error {
+	var state errorState
 	structp := structPointer_GetStructPointer(base, p.field)
 	if structPointer_IsNil(structp) {
 		return ErrNil
@@ -283,7 +290,7 @@ func (o *Buffer) enc_struct_message(p *Properties, base structPointer) error {
 	if p.isMarshaler {
 		m := structPointer_Interface(structp, p.stype).(Marshaler)
 		data, err := m.Marshal()
-		if err != nil {
+		if err != nil && !state.shouldContinue(err, nil) {
 			return err
 		}
 		o.buf = append(o.buf, p.tagcode...)
@@ -300,18 +307,19 @@ func (o *Buffer) enc_struct_message(p *Properties, base structPointer) error {
 
 	nbuf := o.buf
 	o.buf = obuf
-	if err != nil {
+	if err != nil && !state.shouldContinue(err, nil) {
 		o.buffree(nbuf)
 		return err
 	}
 	o.buf = append(o.buf, p.tagcode...)
 	o.EncodeRawBytes(nbuf)
 	o.buffree(nbuf)
-	return nil
+	return state.err
 }
 
 // Encode a group struct.
 func (o *Buffer) enc_struct_group(p *Properties, base structPointer) error {
+	var state errorState
 	b := structPointer_GetStructPointer(base, p.field)
 	if structPointer_IsNil(b) {
 		return ErrNil
@@ -319,11 +327,11 @@ func (o *Buffer) enc_struct_group(p *Properties, base structPointer) error {
 
 	o.EncodeVarint(uint64((p.Tag << 3) | WireStartGroup))
 	err := o.enc_struct(p.stype, p.sprop, b)
-	if err != nil {
+	if err != nil && !state.shouldContinue(err, nil) {
 		return err
 	}
 	o.EncodeVarint(uint64((p.Tag << 3) | WireEndGroup))
-	return nil
+	return state.err
 }
 
 // Encode a slice of bools ([]bool).
@@ -470,6 +478,7 @@ func (o *Buffer) enc_slice_string(p *Properties, base structPointer) error {
 
 // Encode a slice of message structs ([]*struct).
 func (o *Buffer) enc_slice_struct_message(p *Properties, base structPointer) error {
+	var state errorState
 	s := structPointer_StructPointerSlice(base, p.field)
 	l := s.Len()
 
@@ -483,7 +492,7 @@ func (o *Buffer) enc_slice_struct_message(p *Properties, base structPointer) err
 		if p.isMarshaler {
 			m := structPointer_Interface(structp, p.stype).(Marshaler)
 			data, err := m.Marshal()
-			if err != nil {
+			if err != nil && !state.shouldContinue(err, nil) {
 				return err
 			}
 			o.buf = append(o.buf, p.tagcode...)
@@ -498,7 +507,7 @@ func (o *Buffer) enc_slice_struct_message(p *Properties, base structPointer) err
 
 		nbuf := o.buf
 		o.buf = obuf
-		if err != nil {
+		if err != nil && !state.shouldContinue(err, nil) {
 			o.buffree(nbuf)
 			if err == ErrNil {
 				return ErrRepeatedHasNil
@@ -510,11 +519,12 @@ func (o *Buffer) enc_slice_struct_message(p *Properties, base structPointer) err
 
 		o.buffree(nbuf)
 	}
-	return nil
+	return state.err
 }
 
 // Encode a slice of group structs ([]*struct).
 func (o *Buffer) enc_slice_struct_group(p *Properties, base structPointer) error {
+	var state errorState
 	s := structPointer_StructPointerSlice(base, p.field)
 	l := s.Len()
 
@@ -528,7 +538,7 @@ func (o *Buffer) enc_slice_struct_group(p *Properties, base structPointer) error
 
 		err := o.enc_struct(p.stype, p.sprop, b)
 
-		if err != nil {
+		if err != nil && !state.shouldContinue(err, nil) {
 			if err == ErrNil {
 				return ErrRepeatedHasNil
 			}
@@ -537,7 +547,7 @@ func (o *Buffer) enc_slice_struct_group(p *Properties, base structPointer) error
 
 		o.EncodeVarint(uint64((p.Tag << 3) | WireEndGroup))
 	}
-	return nil
+	return state.err
 }
 
 // Encode an extension map.
@@ -569,7 +579,7 @@ func (o *Buffer) enc_map(p *Properties, base structPointer) error {
 
 // Encode a struct.
 func (o *Buffer) enc_struct(t reflect.Type, prop *StructProperties, base structPointer) error {
-	required := prop.reqCount
+	var state errorState
 	// Encode fields in tag order so that decoders may use optimizations
 	// that depend on the ordering.
 	// http://code.google.com/apis/protocolbuffers/docs/encoding.html#order
@@ -577,18 +587,14 @@ func (o *Buffer) enc_struct(t reflect.Type, prop *StructProperties, base structP
 		p := prop.Prop[i]
 		if p.enc != nil {
 			err := p.enc(o, p, base)
-			if err != nil {
+			if err != nil && !state.shouldContinue(err, p) {
 				if err != ErrNil {
 					return err
+				} else if p.Required && state.err == nil {
+					state.err = &ErrRequiredNotSet{p.Name}
 				}
-			} else if p.Required {
-				required--
 			}
 		}
-	}
-	// See if we encoded all required fields.
-	if required > 0 {
-		return &ErrRequiredNotSet{t}
 	}
 
 	// Add unrecognized fields at the end.
@@ -599,5 +605,33 @@ func (o *Buffer) enc_struct(t reflect.Type, prop *StructProperties, base structP
 		}
 	}
 
-	return nil
+	return state.err
+}
+
+// errorState maintains the first error that occurs and updates that error
+// with additional context.
+type errorState struct {
+	err error
+}
+
+// shouldContinue reports whether encoding should continue upon encountering the
+// given error. If the error is ErrRequiredNotSet, shouldContinue returns true
+// and, if this is the first appearance of that error, remembers it for future
+// reporting.
+//
+// If prop is not nil, it may update any error with additional context about the
+// field with the error.
+func (s *errorState) shouldContinue(err error, prop *Properties) bool {
+	// Ignore unset required fields.
+	reqNotSet, ok := err.(*ErrRequiredNotSet)
+	if !ok {
+		return false
+	}
+	if s.err == nil {
+		if prop != nil {
+			err = &ErrRequiredNotSet{prop.Name + "." + reqNotSet.field}
+		}
+		s.err = err
+	}
+	return true
 }

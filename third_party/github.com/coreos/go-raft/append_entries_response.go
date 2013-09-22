@@ -30,7 +30,7 @@ func newAppendEntriesResponse(term uint64, success bool, index uint64, commitInd
 
 // Encodes the AppendEntriesResponse to a buffer. Returns the number of bytes
 // written and any error that may have occurred.
-func (resp *AppendEntriesResponse) encode(w io.Writer) (int, error) {
+func (resp *AppendEntriesResponse) Encode(w io.Writer) (int, error) {
 	pb := &protobuf.ProtoAppendEntriesResponse{
 		Term:        proto.Uint64(resp.Term),
 		Index:       proto.Uint64(resp.Index),
@@ -47,7 +47,7 @@ func (resp *AppendEntriesResponse) encode(w io.Writer) (int, error) {
 
 // Decodes the AppendEntriesResponse from a buffer. Returns the number of bytes read and
 // any error that occurs.
-func (resp *AppendEntriesResponse) decode(r io.Reader) (int, error) {
+func (resp *AppendEntriesResponse) Decode(r io.Reader) (int, error) {
 	data, err := ioutil.ReadAll(r)
 
 	if err != nil {

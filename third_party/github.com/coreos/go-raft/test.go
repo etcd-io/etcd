@@ -65,12 +65,12 @@ func newTestServer(name string, transporter Transporter) *Server {
 	if err := os.MkdirAll(p, 0644); err != nil {
 		panic(err.Error())
 	}
-	server, _ := NewServer(name, p, transporter, nil, nil)
+	server, _ := NewServer(name, p, transporter, nil, nil, "")
 	return server
 }
 
 func newTestServerWithPath(name string, transporter Transporter, p string) *Server {
-	server, _ := NewServer(name, p, transporter, nil, nil)
+	server, _ := NewServer(name, p, transporter, nil, nil, "")
 	return server
 }
 

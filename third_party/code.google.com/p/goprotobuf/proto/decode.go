@@ -46,7 +46,7 @@ import (
 // ErrWrongType occurs when the wire encoding for the field disagrees with
 // that specified in the type being decoded.  This is usually caused by attempting
 // to convert an encoded protocol buffer into a struct of the wrong type.
-var ErrWrongType = errors.New("field/encoding mismatch: wrong type for field")
+var ErrWrongType = errors.New("proto: field/encoding mismatch: wrong type for field")
 
 // errOverflow is returned when an integer is too large to be represented.
 var errOverflow = errors.New("proto: integer overflow")
@@ -353,6 +353,7 @@ func (p *Buffer) Unmarshal(pb Message) error {
 
 // unmarshalType does the work of unmarshaling a structure.
 func (o *Buffer) unmarshalType(st reflect.Type, prop *StructProperties, is_group bool, base structPointer) error {
+	var state errorState
 	required, reqFields := prop.reqCount, uint64(0)
 
 	var err error
@@ -406,7 +407,10 @@ func (o *Buffer) unmarshalType(st reflect.Type, prop *StructProperties, is_group
 				continue
 			}
 		}
-		err = dec(o, p, base)
+		decErr := dec(o, p, base)
+		if decErr != nil && !state.shouldContinue(decErr, p) {
+			err = decErr
+		}
 		if err == nil && p.Required {
 			// Successfully decoded a required field.
 			if tag <= 64 {
@@ -430,8 +434,14 @@ func (o *Buffer) unmarshalType(st reflect.Type, prop *StructProperties, is_group
 		if is_group {
 			return io.ErrUnexpectedEOF
 		}
+		if state.err != nil {
+			return state.err
+		}
 		if required > 0 {
-			return &ErrRequiredNotSet{st}
+			// Not enough information to determine the exact field. If we use extra
+			// CPU, we could determine the field only if the missing required field
+			// has a tag <= 64 and we check reqFields.
+			return &ErrRequiredNotSet{"{Unknown}"}
 		}
 	}
 	return err
