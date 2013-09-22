@@ -255,6 +255,12 @@ func (p *Peer) sendSnapshotRecoveryRequest() {
 	req := newSnapshotRecoveryRequest(p.server.name, p.server.lastSnapshot)
 	debugln("peer.snap.recovery.send: ", p.Name)
 	resp := p.server.Transporter().SendSnapshotRecoveryRequest(p.server, p, req)
+
+	if resp == nil {
+		debugln("peer.snap.recovery.timeout: ", p.Name)
+		return
+	}
+
 	if resp.Success {
 		p.prevLogIndex = req.LastIndex
 	} else {

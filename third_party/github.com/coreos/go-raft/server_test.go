@@ -428,7 +428,7 @@ func TestServerRecoverFromPreviousLogAndConf(t *testing.T) {
 	for _, name := range names {
 		server := servers[name]
 		if server.CommitIndex() != 17 {
-			t.Fatalf("%s commitIndex is invalid [%d/%d]", name, server.CommitIndex(), 16)
+			t.Fatalf("%s commitIndex is invalid [%d/%d]", name, server.CommitIndex(), 17)
 		}
 		server.Stop()
 	}

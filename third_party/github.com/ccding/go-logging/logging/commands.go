@@ -16,7 +16,7 @@
 
 package logging
 
-// Logln receives log request from the client. The request includes a set of
+// Log receives log request from the client. The request includes a set of
 // variables.
 func (logger *Logger) Log(level Level, v ...interface{}) {
 	// Don't delete this calling. The calling is used to keep the same

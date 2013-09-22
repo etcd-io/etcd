@@ -199,7 +199,7 @@ func (m *Request) GetHue() Request_Color {
 	if m != nil && m.Hue != nil {
 		return *m.Hue
 	}
-	return 0
+	return Request_RED
 }
 
 func (m *Request) GetHat() HatType {

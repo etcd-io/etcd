@@ -97,7 +97,7 @@ func RichLogger(name string) (*Logger, error) {
 
 // FileLogger creates a new logger with file output.
 func FileLogger(name string, level Level, format string, timeFormat string, file string, sync bool) (*Logger, error) {
-	out, err := os.Create(file)
+	out, err := os.OpenFile(file, os.O_WRONLY|os.O_APPEND|os.O_CREATE, os.ModeAppend|0666)
 	if err != nil {
 		return nil, err
 	}
