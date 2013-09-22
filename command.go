@@ -170,10 +170,6 @@ func (c *JoinCommand) Apply(raftServer *raft.Server) (interface{}, error) {
 	value := fmt.Sprintf("raft=%s&etcd=%s&raftVersion=%s", c.RaftURL, c.EtcdURL, c.RaftVersion)
 	etcdStore.Set(key, value, time.Unix(0, 0), raftServer.CommitIndex())
 
-	if c.Name != r.Name() {
-		r.peersStats[c.Name] = &raftPeerStats{MinLatency: 1 << 63}
-	}
-
 	return b, err
 }
 

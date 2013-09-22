@@ -68,6 +68,11 @@ func (t *transporter) SendAppendEntriesRequest(server *raft.Server, peer *raft.P
 
 	thisPeerStats, ok := r.peersStats[peer.Name]
 
+	if !ok { // we first see this peer
+		thisPeerStats = &raftPeerStats{MinLatency: 1 << 63}
+		r.peersStats[peer.Name] = thisPeerStats
+	}
+
 	start := time.Now()
 
 	resp, err := t.Post(fmt.Sprintf("%s/log/append", u), &b)
@@ -84,8 +89,6 @@ func (t *transporter) SendAppendEntriesRequest(server *raft.Server, peer *raft.P
 			thisPeerStats.Succ(end.Sub(start))
 		}
 	}
-
-	r.peersStats[peer.Name] = thisPeerStats
 
 	if resp != nil {
 		defer resp.Body.Close()
@@ -211,7 +214,7 @@ func (t *transporter) Get(path string) (*http.Response, error) {
 
 func (t *transporter) waitResponse(responseChan chan *transporterResponse) (*http.Response, error) {
 
-	timeoutChan := time.After(t.timeout)
+	timeoutChan := time.After(t.timeout * 10)
 
 	select {
 	case <-timeoutChan:
