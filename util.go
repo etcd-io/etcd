@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/web"
+	"github.com/coreos/go-systemd/journal"
 )
 
 //--------------------------------------
@@ -145,36 +146,60 @@ func init() {
 }
 
 func infof(msg string, v ...interface{}) {
-	logger.Printf("INFO "+msg+"\n", v...)
+	if journal.Enabled() {
+		journal.Send(fmt.Sprintf(msg, v...), journal.PriInfo, nil)
+	} else {
+		logger.Printf("INFO "+msg+"\n", v...)
+	}
 }
 
 func debugf(msg string, v ...interface{}) {
-	if verbose {
+	if journal.Enabled() {
+		journal.Send(fmt.Sprintf(msg, v...), journal.PriDebug, nil)
+	} else if verbose {
 		logger.Printf("DEBUG "+msg+"\n", v...)
 	}
 }
 
 func debug(v ...interface{}) {
-	if verbose {
+	if journal.Enabled() {
+		journal.Send(fmt.Sprint(v...), journal.PriDebug, nil)
+	} else if verbose {
 		logger.Println("DEBUG " + fmt.Sprint(v...))
 	}
 }
 
 func warnf(msg string, v ...interface{}) {
-	logger.Printf("WARN  "+msg+"\n", v...)
+	if journal.Enabled() {
+		journal.Send(fmt.Sprintf(msg, v...), journal.PriWarning, nil)
+	} else {
+		logger.Printf("WARN  "+msg+"\n", v...)
+	}
 }
 
 func warn(v ...interface{}) {
-	logger.Println("WARN " + fmt.Sprint(v...))
+	if journal.Enabled() {
+		journal.Send(fmt.Sprint(v...), journal.PriWarning, nil)
+	} else {
+		logger.Println("WARN " + fmt.Sprint(v...))
+	}
 }
 
 func fatalf(msg string, v ...interface{}) {
-	logger.Printf("FATAL "+msg+"\n", v...)
+	if journal.Enabled() {
+		journal.Send(fmt.Sprintf(msg, v...), journal.PriCrit, nil)
+	} else {
+		logger.Printf("FATAL "+msg+"\n", v...)
+	}
 	os.Exit(1)
 }
 
 func fatal(v ...interface{}) {
-	logger.Println("FATAL " + fmt.Sprint(v...))
+	if journal.Enabled() {
+		journal.Send(fmt.Sprint(v...), journal.PriCrit, nil)
+	} else {
+		logger.Println("FATAL " + fmt.Sprint(v...))
+	}
 	os.Exit(1)
 }
 
