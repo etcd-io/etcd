@@ -98,7 +98,7 @@ type event struct {
 //------------------------------------------------------------------------------
 
 // Creates a new server with a log at the given path.
-func NewServer(name string, path string, transporter Transporter, stateMachine StateMachine, context interface{}, connectiongString string) (*Server, error) {
+func NewServer(name string, path string, transporter Transporter, stateMachine StateMachine, context interface{}, connectionString string) (*Server, error) {
 	if name == "" {
 		return nil, errors.New("raft.Server: Name cannot be blank")
 	}
@@ -119,7 +119,7 @@ func NewServer(name string, path string, transporter Transporter, stateMachine S
 		electionTimeout:         DefaultElectionTimeout,
 		heartbeatTimeout:        DefaultHeartbeatTimeout,
 		maxLogEntriesPerRequest: MaxLogEntriesPerRequest,
-		connectionString:        connectiongString,
+		connectionString:        connectionString,
 	}
 
 	// Setup apply function.
@@ -1017,6 +1017,7 @@ func (s *Server) TakeSnapshot() error {
 	i := 0
 	for _, peer := range s.peers {
 		peers[i] = peer.clone()
+		i++
 	}
 
 	peers[i] = &Peer{

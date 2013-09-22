@@ -35,7 +35,7 @@ func newSnapshotRecoveryRequest(leaderName string, snapshot *Snapshot) *Snapshot
 
 // Encodes the SnapshotRecoveryRequest to a buffer. Returns the number of bytes
 // written and any error that may have occurred.
-func (req *SnapshotRecoveryRequest) encode(w io.Writer) (int, error) {
+func (req *SnapshotRecoveryRequest) Encode(w io.Writer) (int, error) {
 
 	protoPeers := make([]*protobuf.ProtoSnapshotRecoveryRequest_ProtoPeer, len(req.Peers))
 
@@ -63,7 +63,7 @@ func (req *SnapshotRecoveryRequest) encode(w io.Writer) (int, error) {
 
 // Decodes the SnapshotRecoveryRequest from a buffer. Returns the number of bytes read and
 // any error that occurs.
-func (req *SnapshotRecoveryRequest) decode(r io.Reader) (int, error) {
+func (req *SnapshotRecoveryRequest) Decode(r io.Reader) (int, error) {
 	data, err := ioutil.ReadAll(r)
 
 	if err != nil {
