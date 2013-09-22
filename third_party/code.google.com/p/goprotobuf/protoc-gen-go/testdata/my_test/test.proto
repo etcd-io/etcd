@@ -58,7 +58,7 @@ message Request {
   }
   repeated int64 key = 1;
 //  optional imp.ImportedMessage imported_message = 2;
-  optional Color hue = 3;
+  optional Color hue = 3; // no default
   optional HatType hat = 4 [default=FEDORA];
 //  optional imp.ImportedMessage.Owner owner = 6;
   optional float deadline = 7 [default=inf];

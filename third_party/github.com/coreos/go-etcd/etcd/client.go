@@ -117,7 +117,7 @@ func (c *Client) SyncCluster() bool {
 // sync cluster information by providing machine list
 func (c *Client) internalSyncCluster(machines []string) bool {
 	for _, machine := range machines {
-		httpPath := c.createHttpPath(machine, "v1/machines")
+		httpPath := c.createHttpPath(machine, version+"/machines")
 		resp, err := c.httpClient.Get(httpPath)
 		if err != nil {
 			// try another machine in the cluster
@@ -236,11 +236,12 @@ func (c *Client) sendRequest(method string, _path string, body string) (*http.Re
 				// try to connect the leader
 				continue
 			} else if resp.StatusCode == http.StatusInternalServerError {
+				resp.Body.Close()
+
 				retry++
 				if retry > 2*len(c.cluster.Machines) {
 					return nil, errors.New("Cannot reach servers")
 				}
-				resp.Body.Close()
 				continue
 			} else {
 				logger.Debug("send.return.response ", httpPath)

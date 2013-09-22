@@ -109,11 +109,11 @@ func isExtensionField(pb extendableProto, field int32) bool {
 func checkExtensionTypes(pb extendableProto, extension *ExtensionDesc) error {
 	// Check the extended type.
 	if a, b := reflect.TypeOf(pb), reflect.TypeOf(extension.ExtendedType); a != b {
-		return errors.New("bad extended type; " + b.String() + " does not extend " + a.String())
+		return errors.New("proto: bad extended type; " + b.String() + " does not extend " + a.String())
 	}
 	// Check the range.
 	if !isExtensionField(pb, extension.Field) {
-		return errors.New("bad extension number; not in declared ranges")
+		return errors.New("proto: bad extension number; not in declared ranges")
 	}
 	return nil
 }
@@ -272,7 +272,7 @@ func decodeExtension(b []byte, extension *ExtensionDesc) (interface{}, error) {
 func GetExtensions(pb Message, es []*ExtensionDesc) (extensions []interface{}, err error) {
 	epb, ok := pb.(extendableProto)
 	if !ok {
-		err = errors.New("not an extendable proto")
+		err = errors.New("proto: not an extendable proto")
 		return
 	}
 	extensions = make([]interface{}, len(es))
@@ -292,7 +292,7 @@ func SetExtension(pb extendableProto, extension *ExtensionDesc, value interface{
 	}
 	typ := reflect.TypeOf(extension.ExtensionType)
 	if typ != reflect.TypeOf(value) {
-		return errors.New("bad extension value type")
+		return errors.New("proto: bad extension value type")
 	}
 
 	pb.ExtensionMap()[extension.Field] = Extension{desc: extension, value: value}

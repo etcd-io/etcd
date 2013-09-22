@@ -487,14 +487,14 @@ func (m *FieldDescriptorProto) GetLabel() FieldDescriptorProto_Label {
 	if m != nil && m.Label != nil {
 		return *m.Label
 	}
-	return 0
+	return FieldDescriptorProto_LABEL_OPTIONAL
 }
 
 func (m *FieldDescriptorProto) GetType() FieldDescriptorProto_Type {
 	if m != nil && m.Type != nil {
 		return *m.Type
 	}
-	return 0
+	return FieldDescriptorProto_TYPE_DOUBLE
 }
 
 func (m *FieldDescriptorProto) GetTypeName() string {

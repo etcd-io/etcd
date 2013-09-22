@@ -31,7 +31,7 @@ func newAppendEntriesRequest(term uint64, prevLogIndex uint64, prevLogTerm uint6
 
 // Encodes the AppendEntriesRequest to a buffer. Returns the number of bytes
 // written and any error that may have occurred.
-func (req *AppendEntriesRequest) encode(w io.Writer) (int, error) {
+func (req *AppendEntriesRequest) Encode(w io.Writer) (int, error) {
 
 	protoEntries := make([]*protobuf.ProtoAppendEntriesRequest_ProtoLogEntry, len(req.Entries))
 
@@ -63,7 +63,7 @@ func (req *AppendEntriesRequest) encode(w io.Writer) (int, error) {
 
 // Decodes the AppendEntriesRequest from a buffer. Returns the number of bytes read and
 // any error that occurs.
-func (req *AppendEntriesRequest) decode(r io.Reader) (int, error) {
+func (req *AppendEntriesRequest) Decode(r io.Reader) (int, error) {
 	data, err := ioutil.ReadAll(r)
 
 	if err != nil {

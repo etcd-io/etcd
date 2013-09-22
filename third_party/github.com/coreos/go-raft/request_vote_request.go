@@ -28,7 +28,7 @@ func newRequestVoteRequest(term uint64, candidateName string, lastLogIndex uint6
 
 // Encodes the RequestVoteRequest to a buffer. Returns the number of bytes
 // written and any error that may have occurred.
-func (req *RequestVoteRequest) encode(w io.Writer) (int, error) {
+func (req *RequestVoteRequest) Encode(w io.Writer) (int, error) {
 	pb := &protobuf.ProtoRequestVoteRequest{
 		Term:          proto.Uint64(req.Term),
 		LastLogIndex:  proto.Uint64(req.LastLogIndex),
@@ -45,7 +45,7 @@ func (req *RequestVoteRequest) encode(w io.Writer) (int, error) {
 
 // Decodes the RequestVoteRequest from a buffer. Returns the number of bytes read and
 // any error that occurs.
-func (req *RequestVoteRequest) decode(r io.Reader) (int, error) {
+func (req *RequestVoteRequest) Decode(r io.Reader) (int, error) {
 	data, err := ioutil.ReadAll(r)
 
 	if err != nil {

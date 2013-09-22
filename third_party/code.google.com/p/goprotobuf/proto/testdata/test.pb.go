@@ -244,7 +244,7 @@ func (m *GoEnum) GetFoo() FOO {
 	if m != nil && m.Foo != nil {
 		return *m.Foo
 	}
-	return 0
+	return FOO_FOO1
 }
 
 type GoTestField struct {
@@ -378,7 +378,7 @@ func (m *GoTest) GetKind() GoTest_KIND {
 	if m != nil && m.Kind != nil {
 		return *m.Kind
 	}
-	return 0
+	return GoTest_VOID
 }
 
 func (m *GoTest) GetTable() string {
@@ -1289,7 +1289,7 @@ func (m *MyMessage) GetBikeshed() MyMessage_Color {
 	if m != nil && m.Bikeshed != nil {
 		return *m.Bikeshed
 	}
-	return 0
+	return MyMessage_RED
 }
 
 func (m *MyMessage) GetSomegroup() *MyMessage_SomeGroup {
