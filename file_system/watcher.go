@@ -10,6 +10,7 @@ type watcherHub struct {
 	watchers     map[string]*list.List
 	count        uint64 // current number of watchers
 	EventHistory *EventHistory
+	Stats        *EtcdStats
 }
 
 type watcher struct {
@@ -18,10 +19,11 @@ type watcher struct {
 	sinceIndex uint64
 }
 
-func newWatchHub(capacity int) *watcherHub {
+func newWatchHub(capacity int, stats *EtcdStats) *watcherHub {
 	return &watcherHub{
 		watchers:     make(map[string]*list.List),
 		EventHistory: newEventHistory(capacity),
+		Stats:        stats,
 	}
 }
 
@@ -35,8 +37,12 @@ func (wh *watcherHub) watch(prefix string, recursive bool, index uint64) (<-chan
 	e, err := wh.EventHistory.scan(prefix, index)
 
 	if err != nil {
+		wh.Stats.IncStats(StatsWatchMiss)
 		return nil, err
 	}
+
+	wh.Stats.IncStats(StatsWatchHit)
+	wh.Stats.IncStats(StatsInWatchingNum)
 
 	if e != nil {
 		eventChan <- e
@@ -67,7 +73,6 @@ func (wh *watcherHub) notifyWithPath(e *Event, path string, force bool) {
 	l, ok := wh.watchers[path]
 
 	if ok {
-
 		curr := l.Front()
 		notifiedAll := true
 
@@ -89,6 +94,9 @@ func (wh *watcherHub) notifyWithPath(e *Event, path string, force bool) {
 
 			if (w.recursive || force || e.Key == path) && e.Index >= w.sinceIndex {
 				w.eventChan <- e
+				wh.Stats.rwlock.Lock() // lock the InWatchingNum
+				wh.Stats.InWatchingNum--
+				wh.Stats.rwlock.Unlock()
 				l.Remove(curr)
 			} else {
 				notifiedAll = false

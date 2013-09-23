@@ -439,14 +439,12 @@ func TestSaveAndRecover(t *testing.T) {
 
 	expire := time.Now().Add(time.Second)
 	fs.Create("/foo/foo", "bar", expire, 1, 1)
-
-	b := fs.Save()
+	b, err := fs.Save()
 
 	cloneFs := New()
-
 	time.Sleep(time.Second)
 
-	cloneFs.Recover(b)
+	cloneFs.Recovery(b)
 
 	for i, k := range keys {
 		_, err := cloneFs.Get(k, false, false, uint64(i), 1)
@@ -466,7 +464,7 @@ func TestSaveAndRecover(t *testing.T) {
 		}
 	}
 
-	_, err := fs.Get("/foo/foo", false, false, 1, 1)
+	_, err = fs.Get("/foo/foo", false, false, 1, 1)
 
 	if err == nil || err.Error() != "Key Not Found" {
 		t.Fatalf("can get the node after deletion ")
@@ -476,6 +474,7 @@ func TestSaveAndRecover(t *testing.T) {
 
 // GenKeys randomly generate num of keys with max depth
 func GenKeys(num int, depth int) []string {
+	rand.Seed(time.Now().UnixNano())
 	keys := make([]string, num)
 	for i := 0; i < num; i++ {
 

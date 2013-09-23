@@ -224,6 +224,7 @@ func VersionHttpHandler(w http.ResponseWriter, req *http.Request) error {
 func StatsHttpHandler(w http.ResponseWriter, req *http.Request) error {
 	w.WriteHeader(http.StatusOK)
 	//w.Write(etcdStore.Stats())
+	w.Write(etcdFs.Stats.GetStats())
 	w.Write(r.Stats())
 	return nil
 }

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	etcdErr "github.com/coreos/etcd/error"
+	etcdErr "github.com/xiangli-cmu/etcd/error"
 )
 
 type FileSystem struct {
@@ -16,13 +16,16 @@ type FileSystem struct {
 	WatcherHub *watcherHub
 	Index      uint64
 	Term       uint64
+	Stats      *EtcdStats
 }
 
 func New() *FileSystem {
-	return &FileSystem{
-		Root:       newDir("/", 0, 0, nil, "", Permanent),
-		WatcherHub: newWatchHub(1000),
-	}
+	fs := new(FileSystem)
+	fs.Root = newDir("/", 0, 0, nil, "", Permanent)
+	fs.Stats = newStats()
+	fs.WatcherHub = newWatchHub(1000, fs.Stats)
+
+	return fs
 
 }
 
@@ -32,6 +35,7 @@ func (fs *FileSystem) Get(nodePath string, recursive, sorted bool, index uint64,
 	n, err := fs.InternalGet(nodePath, index, term)
 
 	if err != nil {
+		fs.Stats.IncStats(StatsGetsMiss)
 		return nil, err
 	}
 
@@ -78,6 +82,7 @@ func (fs *FileSystem) Get(nodePath string, recursive, sorted bool, index uint64,
 		e.TTL = int64(n.ExpireTime.Sub(time.Now())/time.Second) + 1
 	}
 
+	fs.Stats.IncStats(StatsGetsHit)
 	return e, nil
 }
 
@@ -91,12 +96,14 @@ func (fs *FileSystem) Create(nodePath string, value string, expireTime time.Time
 	_, err := fs.InternalGet(nodePath, index, term)
 
 	if err == nil { // key already exists
+		fs.Stats.IncStats(StatsSetsMiss)
 		return nil, etcdErr.NewError(etcdErr.EcodeNodeExist, nodePath)
 	}
 
 	etcdError, _ := err.(etcdErr.Error)
 
 	if etcdError.ErrorCode == 104 { // we cannot create the key due to meet a file while walking
+		fs.Stats.IncStats(StatsSetsMiss)
 		return nil, err
 	}
 
@@ -106,6 +113,7 @@ func (fs *FileSystem) Create(nodePath string, value string, expireTime time.Time
 	d, err := fs.walk(dir, fs.checkDir)
 
 	if err != nil {
+		fs.Stats.IncStats(StatsSetsMiss)
 		return nil, err
 	}
 
@@ -128,6 +136,7 @@ func (fs *FileSystem) Create(nodePath string, value string, expireTime time.Time
 	err = d.Add(n)
 
 	if err != nil {
+		fs.Stats.IncStats(StatsSetsMiss)
 		return nil, err
 	}
 
@@ -139,6 +148,7 @@ func (fs *FileSystem) Create(nodePath string, value string, expireTime time.Time
 	}
 
 	fs.WatcherHub.notify(e)
+	fs.Stats.IncStats(StatsSetsHit)
 	return e, nil
 }
 
@@ -149,6 +159,7 @@ func (fs *FileSystem) Update(nodePath string, value string, expireTime time.Time
 	n, err := fs.InternalGet(nodePath, index, term)
 
 	if err != nil { // if the node does not exist, return error
+		fs.Stats.IncStats(StatsUpdatesMiss)
 		return nil, err
 	}
 
@@ -157,6 +168,7 @@ func (fs *FileSystem) Update(nodePath string, value string, expireTime time.Time
 	if n.IsDir() { // if the node is a directory, we can only update ttl
 
 		if len(value) != 0 {
+			fs.Stats.IncStats(StatsUpdatesMiss)
 			return nil, etcdErr.NewError(etcdErr.EcodeNotFile, nodePath)
 		}
 
@@ -183,6 +195,7 @@ func (fs *FileSystem) Update(nodePath string, value string, expireTime time.Time
 	}
 
 	fs.WatcherHub.notify(e)
+	fs.Stats.IncStats(StatsUpdatesHit)
 	return e, nil
 }
 
@@ -192,11 +205,12 @@ func (fs *FileSystem) TestAndSet(nodePath string, prevValue string, prevIndex ui
 	f, err := fs.InternalGet(nodePath, index, term)
 
 	if err != nil {
-
+		fs.Stats.IncStats(StatsTestAndSetsMiss)
 		return nil, err
 	}
 
 	if f.IsDir() { // can only test and set file
+		fs.Stats.IncStats(StatsTestAndSetsMiss)
 		return nil, etcdErr.NewError(etcdErr.EcodeNotFile, nodePath)
 	}
 
@@ -208,11 +222,12 @@ func (fs *FileSystem) TestAndSet(nodePath string, prevValue string, prevIndex ui
 		f.Write(value, index, term)
 
 		fs.WatcherHub.notify(e)
-
+		fs.Stats.IncStats(StatsTestAndSetsHit)
 		return e, nil
 	}
 
 	cause := fmt.Sprintf("[%v != %v] [%v != %v]", prevValue, f.Value, prevIndex, f.ModifiedIndex)
+	fs.Stats.IncStats(StatsTestAndSetsMiss)
 	return nil, etcdErr.NewError(etcdErr.EcodeTestFailed, cause)
 }
 
@@ -222,6 +237,7 @@ func (fs *FileSystem) Delete(nodePath string, recursive bool, index uint64, term
 	n, err := fs.InternalGet(nodePath, index, term)
 
 	if err != nil { // if the node does not exist, return error
+		fs.Stats.IncStats(StatsDeletesMiss)
 		return nil, err
 	}
 
@@ -240,10 +256,12 @@ func (fs *FileSystem) Delete(nodePath string, recursive bool, index uint64, term
 	err = n.Remove(recursive, callback)
 
 	if err != nil {
+		fs.Stats.IncStats(StatsDeletesMiss)
 		return nil, err
 	}
 
 	fs.WatcherHub.notify(e)
+	fs.Stats.IncStats(StatsDeletesHit)
 
 	return e, nil
 }
@@ -333,15 +351,23 @@ func (fs *FileSystem) checkDir(parent *Node, dirName string) (*Node, error) {
 // Save function will not save the parent field of the node. Or there will
 // be cyclic dependencies issue for the json package.
 func (fs *FileSystem) Save() ([]byte, error) {
+
+	fs.Stats.IncStats(StatsSaveHit)
 	cloneFs := New()
 	cloneFs.Root = fs.Root.Clone()
 
 	b, err := json.Marshal(fs)
 
 	if err != nil {
+		fs.Stats.IncStats(StatsSaveMiss)
+		fs.Stats.rwlock.Lock()
+		fs.Stats.SaveHit-- // restore the savehit
+		fs.Stats.rwlock.Unlock()
+
 		return nil, err
 	}
 
+	fs.Stats.IncStats(StatsSaveHit)
 	return b, nil
 }
 
@@ -353,9 +379,11 @@ func (fs *FileSystem) Recovery(state []byte) error {
 	err := json.Unmarshal(state, fs)
 
 	if err != nil {
+		fs.Stats.IncStats(StatsRecoveryMiss)
 		return err
 	}
 
 	fs.Root.recoverAndclean()
+	fs.Stats.IncStats(StatsRecoveryHit)
 	return nil
 }

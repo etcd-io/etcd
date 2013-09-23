@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	etcdErr "github.com/coreos/etcd/error"
+	etcdErr "github.com/xiangli-cmu/etcd/error"
 )
 
 var (

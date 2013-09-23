@@ -5,7 +5,8 @@ import (
 )
 
 func TestWatcher(t *testing.T) {
-	wh := newWatchHub(100)
+	fs := New()
+	wh := fs.WatcherHub
 	c, err := wh.watch("/foo", true, 0)
 
 	if err != nil {
