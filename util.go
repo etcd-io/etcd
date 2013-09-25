@@ -138,12 +138,8 @@ func check(err error) {
 // Log
 //--------------------------------------
 
-var logger *log.Logger
-
-func init() {
-	logger = log.New("etcd", false,
-		log.CombinedSink(os.Stdout, "[%s] %s %-9s | %s\n", []string{"prefix", "time", "priority", "message"}))
-}
+var logger *log.Logger = log.New("etcd", false,
+	log.CombinedSink(os.Stdout, "[%s] %s %-9s | %s\n", []string{"prefix", "time", "priority", "message"}))
 
 func infof(format string, v ...interface{}) {
 	logger.Infof(format, v...)
