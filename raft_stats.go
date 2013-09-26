@@ -33,10 +33,14 @@ func (ps *packageStats) Time() time.Time {
 }
 
 type raftServerStats struct {
-	State        string    `json:"state"`
-	StartTime    time.Time `json:"startTime"`
-	Leader       string    `json:"leader"`
-	LeaderUptime string    `json:"leaderUptime"`
+	State     string    `json:"state"`
+	StartTime time.Time `json:"startTime"`
+
+	LeaderInfo struct {
+		Name      string `json:"leader"`
+		Uptime    string `json:"uptime"`
+		startTime time.Time
+	} `json:"leaderInfo"`
 
 	RecvAppendRequestCnt uint64  `json:"recvAppendRequestCnt,"`
 	RecvingPkgRate       float64 `json:"recvPkgRate,omitempty"`
@@ -46,16 +50,15 @@ type raftServerStats struct {
 	SendingPkgRate       float64 `json:"sendPkgRate,omitempty"`
 	SendingBandwidthRate float64 `json:"sendBandwidthRate,omitempty"`
 
-	leaderStartTime time.Time
-	sendRateQueue   *statsQueue
-	recvRateQueue   *statsQueue
+	sendRateQueue *statsQueue
+	recvRateQueue *statsQueue
 }
 
 func (ss *raftServerStats) RecvAppendReq(leaderName string, pkgSize int) {
 	ss.State = raft.Follower
-	if leaderName != ss.Leader {
-		ss.Leader = leaderName
-		ss.leaderStartTime = time.Now()
+	if leaderName != ss.LeaderInfo.Name {
+		ss.LeaderInfo.Name = leaderName
+		ss.LeaderInfo.startTime = time.Now()
 	}
 
 	ss.recvRateQueue.Insert(NewPackageStats(time.Now(), pkgSize))
@@ -64,15 +67,21 @@ func (ss *raftServerStats) RecvAppendReq(leaderName string, pkgSize int) {
 
 func (ss *raftServerStats) SendAppendReq(pkgSize int) {
 	now := time.Now()
+
 	if ss.State != raft.Leader {
 		ss.State = raft.Leader
-		ss.Leader = r.Name()
-		ss.leaderStartTime = now
+		ss.LeaderInfo.Name = r.Name()
+		ss.LeaderInfo.startTime = now
 	}
 
-	ss.sendRateQueue.Insert(NewPackageStats(time.Now(), pkgSize))
+	ss.sendRateQueue.Insert(NewPackageStats(now, pkgSize))
 
 	ss.SendAppendRequestCnt++
+}
+
+type raftPeersStats struct {
+	Leader string                    `json:"leader"`
+	Peers  map[string]*raftPeerStats `json:"peers"`
 }
 
 type raftPeerStats struct {

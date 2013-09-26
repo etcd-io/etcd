@@ -128,6 +128,23 @@ func sanitizeListenHost(listen string, advertised string) string {
 	return net.JoinHostPort(listen, aport)
 }
 
+func redirect(node string, etcd bool, w http.ResponseWriter, req *http.Request) {
+	var url string
+	path := req.URL.Path
+
+	if etcd {
+		etcdAddr, _ := nameToEtcdURL(node)
+		url = etcdAddr + path
+	} else {
+		raftAddr, _ := nameToRaftURL(node)
+		url = raftAddr + path
+	}
+
+	debugf("Redirect to %s", url)
+
+	http.Redirect(w, req, url, http.StatusTemporaryRedirect)
+}
+
 func check(err error) {
 	if err != nil {
 		fatal(err)
