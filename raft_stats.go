@@ -85,43 +85,48 @@ type raftPeersStats struct {
 }
 
 type raftPeerStats struct {
-	Latency          float64 `json:"latency"`
-	AvgLatency       float64 `json:"averageLatency"`
-	avgLatencySquare float64
-	SdvLatency       float64 `json:"sdvLatency"`
-	MinLatency       float64 `json:"minLatency"`
-	MaxLatency       float64 `json:"maxLatency"`
-	FailCnt          uint64  `json:"failsCount"`
-	SuccCnt          uint64  `json:"successCount"`
+	Latency struct {
+		Current           float64 `json:"current"`
+		Average           float64 `json:"average"`
+		averageSquare     float64
+		StandardDeviation float64 `json:"standardDeviation"`
+		Minimum           float64 `json:"minimum"`
+		Maximum           float64 `json:"maximum"`
+	} `json:"latency"`
+
+	Counts struct {
+		Fail    uint64 `json:"fail"`
+		Success uint64 `json:"success"`
+	} `json:"counts"`
 }
 
 // Succ function update the raftPeerStats with a successful send
 func (ps *raftPeerStats) Succ(d time.Duration) {
-	total := float64(ps.SuccCnt) * ps.AvgLatency
-	totalSquare := float64(ps.SuccCnt) * ps.avgLatencySquare
+	total := float64(ps.Counts.Success) * ps.Latency.Average
+	totalSquare := float64(ps.Counts.Success) * ps.Latency.averageSquare
 
-	ps.SuccCnt++
+	ps.Counts.Success++
 
-	ps.Latency = float64(d) / (1000000.0)
+	ps.Latency.Current = float64(d) / (1000000.0)
 
-	if ps.Latency > ps.MaxLatency {
-		ps.MaxLatency = ps.Latency
+	if ps.Latency.Current > ps.Latency.Maximum {
+		ps.Latency.Maximum = ps.Latency.Current
 	}
 
-	if ps.Latency < ps.MinLatency {
-		ps.MinLatency = ps.Latency
+	if ps.Latency.Current < ps.Latency.Minimum {
+		ps.Latency.Minimum = ps.Latency.Current
 	}
 
-	ps.AvgLatency = (total + ps.Latency) / float64(ps.SuccCnt)
-	ps.avgLatencySquare = (totalSquare + ps.Latency*ps.Latency) / float64(ps.SuccCnt)
+	ps.Latency.Average = (total + ps.Latency.Current) / float64(ps.Counts.Success)
+	ps.Latency.averageSquare = (totalSquare + ps.Latency.Current * ps.Latency.Current) / float64(ps.Counts.Success)
 
 	// sdv = sqrt(avg(x^2) - avg(x)^2)
-	ps.SdvLatency = math.Sqrt(ps.avgLatencySquare - ps.AvgLatency*ps.AvgLatency)
+	ps.Latency.StandardDeviation = math.Sqrt(ps.Latency.averageSquare - ps.Latency.Average*ps.Latency.Average)
 }
 
 // Fail function update the raftPeerStats with a unsuccessful send
 func (ps *raftPeerStats) Fail() {
-	ps.FailCnt++
+	ps.Counts.Fail++
 }
 
 type statsQueue struct {

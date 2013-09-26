@@ -172,7 +172,8 @@ func (c *JoinCommand) Apply(raftServer *raft.Server) (interface{}, error) {
 
 	// add peer stats
 	if c.Name != r.Name() {
-		r.peersStats.Peers[c.Name] = &raftPeerStats{MinLatency: 1 << 63}
+		r.peersStats.Peers[c.Name] = &raftPeerStats{}
+		r.peersStats.Peers[c.Name].Latency.Minimum = 1 << 63
 	}
 
 	return b, err
