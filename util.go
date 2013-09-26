@@ -36,6 +36,18 @@ func durationToExpireTime(strDuration string) (time.Time, error) {
 	}
 }
 
+// Convert a string boolean to a boolean
+func parseBoolean(strBoolean string) (bool, error) {
+	switch strBoolean {
+	case "true":
+		return true, nil
+	case "false":
+		return false, nil
+	default:
+		return false, fmt.Errorf("Malformed boolean value: %s", strBoolean)
+	}
+}
+
 //--------------------------------------
 // Web Helper
 //--------------------------------------
@@ -237,6 +249,7 @@ func send(c chan bool) {
 		command.Key = "foo"
 		command.Value = "bar"
 		command.ExpireTime = time.Unix(0, 0)
+		command.Sequential = false
 		r.Do(command)
 	}
 	c <- true

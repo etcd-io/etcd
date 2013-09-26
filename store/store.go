@@ -147,16 +147,16 @@ func (s *Store) SetMessager(messager chan<- string) {
 	s.messager = messager
 }
 
-func (s *Store) Set(key string, value string, expireTime time.Time, index uint64) ([]byte, error) {
+func (s *Store) Set(key string, value string, expireTime time.Time, sequential bool, index uint64) ([]byte, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	return s.internalSet(key, value, expireTime, index)
+	return s.internalSet(key, value, expireTime, sequential, index)
 
 }
 
 // Set the key to value with expiration time
-func (s *Store) internalSet(key string, value string, expireTime time.Time, index uint64) ([]byte, error) {
+func (s *Store) internalSet(key string, value string, expireTime time.Time, sequential bool, index uint64) ([]byte, error) {
 	//Update index
 	s.Index = index
 
@@ -164,6 +164,9 @@ func (s *Store) internalSet(key string, value string, expireTime time.Time, inde
 	s.BasicStats.Sets++
 
 	key = path.Clean("/" + key)
+	if sequential {
+		key += fmt.Sprintf(":%020d", index)
+	}
 
 	isExpire := !expireTime.Equal(PERMANENT)
 
@@ -474,13 +477,13 @@ func (s *Store) TestAndSet(key string, prevValue string, value string, expireTim
 			errmsg := fmt.Sprintf("TestAndSet: key not found and previousValue is not empty %s:%s ", key, prevValue)
 			return nil, etcdErr.NewError(100, errmsg)
 		}
-		return s.internalSet(key, value, expireTime, index)
+		return s.internalSet(key, value, expireTime, false, index)
 	}
 
 	if resp.Value == prevValue {
 
 		// If test succeed, do set
-		return s.internalSet(key, value, expireTime, index)
+		return s.internalSet(key, value, expireTime, false, index)
 	} else {
 
 		// If fails, return err
