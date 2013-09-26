@@ -89,7 +89,7 @@ func (t *HTTPTransporter) Install(server *Server, mux HTTPMuxer) {
 // Sends an AppendEntries RPC to a peer.
 func (t *HTTPTransporter) SendAppendEntriesRequest(server *Server, peer *Peer, req *AppendEntriesRequest) *AppendEntriesResponse {
 	var b bytes.Buffer
-	if _, err := req.encode(&b); err != nil {
+	if _, err := req.Encode(&b); err != nil {
 		traceln("transporter.ae.encoding.error:", err)
 		return nil
 	}
@@ -106,7 +106,7 @@ func (t *HTTPTransporter) SendAppendEntriesRequest(server *Server, peer *Peer, r
 	defer httpResp.Body.Close()
 
 	resp := &AppendEntriesResponse{}
-	if _, err = resp.decode(httpResp.Body); err != nil && err != io.EOF {
+	if _, err = resp.Decode(httpResp.Body); err != nil && err != io.EOF {
 		traceln("transporter.ae.decoding.error:", err)
 		return nil
 	}
@@ -117,7 +117,7 @@ func (t *HTTPTransporter) SendAppendEntriesRequest(server *Server, peer *Peer, r
 // Sends a RequestVote RPC to a peer.
 func (t *HTTPTransporter) SendVoteRequest(server *Server, peer *Peer, req *RequestVoteRequest) *RequestVoteResponse {
 	var b bytes.Buffer
-	if _, err := req.encode(&b); err != nil {
+	if _, err := req.Encode(&b); err != nil {
 		traceln("transporter.rv.encoding.error:", err)
 		return nil
 	}
@@ -134,7 +134,7 @@ func (t *HTTPTransporter) SendVoteRequest(server *Server, peer *Peer, req *Reque
 	defer httpResp.Body.Close()
 
 	resp := &RequestVoteResponse{}
-	if _, err = resp.decode(httpResp.Body); err != nil && err != io.EOF {
+	if _, err = resp.Decode(httpResp.Body); err != nil && err != io.EOF {
 		traceln("transporter.rv.decoding.error:", err)
 		return nil
 	}
@@ -162,13 +162,13 @@ func (t *HTTPTransporter) appendEntriesHandler(server *Server) http.HandlerFunc 
 		traceln(server.Name(), "RECV /appendEntries")
 
 		req := &AppendEntriesRequest{}
-		if _, err := req.decode(r.Body); err != nil {
+		if _, err := req.Decode(r.Body); err != nil {
 			http.Error(w, "", http.StatusBadRequest)
 			return
 		}
 
 		resp := server.AppendEntries(req)
-		if _, err := resp.encode(w); err != nil {
+		if _, err := resp.Encode(w); err != nil {
 			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
@@ -181,13 +181,13 @@ func (t *HTTPTransporter) requestVoteHandler(server *Server) http.HandlerFunc {
 		traceln(server.Name(), "RECV /requestVote")
 
 		req := &RequestVoteRequest{}
-		if _, err := req.decode(r.Body); err != nil {
+		if _, err := req.Decode(r.Body); err != nil {
 			http.Error(w, "", http.StatusBadRequest)
 			return
 		}
 
 		resp := server.RequestVote(req)
-		if _, err := resp.encode(w); err != nil {
+		if _, err := resp.Encode(w); err != nil {
 			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}

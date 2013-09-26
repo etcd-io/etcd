@@ -66,7 +66,7 @@ func (t *transporter) SendAppendEntriesRequest(server *raft.Server, peer *raft.P
 
 	debugf("Send LogEntries to %s ", u)
 
-	thisPeerStats, ok := r.peersStats[peer.Name]
+	thisPeerStats, ok := r.peersStats.Peers[peer.Name]
 
 	start := time.Now()
 
@@ -85,7 +85,7 @@ func (t *transporter) SendAppendEntriesRequest(server *raft.Server, peer *raft.P
 		}
 	}
 
-	r.peersStats[peer.Name] = thisPeerStats
+	r.peersStats.Peers[peer.Name] = thisPeerStats
 
 	if resp != nil {
 		defer resp.Body.Close()

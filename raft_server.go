@@ -24,7 +24,7 @@ type raftServer struct {
 	listenHost  string
 	tlsConf     *TLSConfig
 	tlsInfo     *TLSInfo
-	peersStats  map[string]*raftPeerStats
+	peersStats  *raftPeersStats
 	serverStats *raftServerStats
 }
 
@@ -36,7 +36,7 @@ func newRaftServer(name string, url string, listenHost string, tlsConf *TLSConfi
 	raftTransporter := newTransporter(tlsConf.Scheme, tlsConf.Client, ElectionTimeout)
 
 	// Create raft server
-	server, err := raft.NewServer(name, dirPath, raftTransporter, etcdStore, nil)
+	server, err := raft.NewServer(name, dirPath, raftTransporter, etcdStore, nil, "")
 
 	check(err)
 
@@ -48,7 +48,10 @@ func newRaftServer(name string, url string, listenHost string, tlsConf *TLSConfi
 		listenHost: listenHost,
 		tlsConf:    tlsConf,
 		tlsInfo:    tlsInfo,
-		peersStats: make(map[string]*raftPeerStats),
+		peersStats: &raftPeersStats{
+			Leader: name,
+			Peers:  make(map[string]*raftPeerStats),
+		},
 		serverStats: &raftServerStats{
 			StartTime: time.Now(),
 			sendRateQueue: &statsQueue{
@@ -63,7 +66,6 @@ func newRaftServer(name string, url string, listenHost string, tlsConf *TLSConfi
 
 // Start the raft server
 func (r *raftServer) ListenAndServe() {
-
 	// Setup commands.
 	registerCommands()
 
@@ -282,7 +284,7 @@ func joinByMachine(s *raft.Server, machine string, scheme string) error {
 }
 
 func (r *raftServer) Stats() []byte {
-	r.serverStats.LeaderUptime = time.Now().Sub(r.serverStats.leaderStartTime).String()
+	r.serverStats.LeaderInfo.Uptime = time.Now().Sub(r.serverStats.LeaderInfo.startTime).String()
 
 	queue := r.serverStats.sendRateQueue
 
@@ -292,20 +294,17 @@ func (r *raftServer) Stats() []byte {
 
 	r.serverStats.RecvingPkgRate, r.serverStats.RecvingBandwidthRate = queue.Rate()
 
-	sBytes, err := json.Marshal(r.serverStats)
+	b, _ := json.Marshal(r.serverStats)
 
-	if err != nil {
-		warn(err)
-	}
+	return b
+}
 
+func (r *raftServer) PeerStats() []byte {
 	if r.State() == raft.Leader {
-		pBytes, _ := json.Marshal(r.peersStats)
-
-		b := append(sBytes, pBytes...)
+		b, _ := json.Marshal(r.peersStats)
 		return b
 	}
-
-	return sBytes
+	return nil
 }
 
 // Register commands to raft server

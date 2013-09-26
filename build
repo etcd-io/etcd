@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 ETCD_PACKAGE=github.com/coreos/etcd
 export GOPATH="${PWD}"
