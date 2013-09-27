@@ -19,6 +19,7 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 
@@ -41,6 +42,7 @@ func NewEtcdMuxer() *http.ServeMux {
 	etcdMux.Handle("/"+version+"/stats/", errorHandler(StatsHttpHandler))
 	etcdMux.Handle("/version", errorHandler(VersionHttpHandler))
 	etcdMux.HandleFunc("/test/", TestHttpHandler)
+	etcdMux.Handle("/dashboard/", DashboardHttpHandler())
 	return etcdMux
 }
 
@@ -274,6 +276,19 @@ func GetHttpHandler(w http.ResponseWriter, req *http.Request) error {
 		return nil
 	}
 
+}
+
+// DashboardHttpHandler either uses the compiled in virtual filesystem for the
+// dashboard assets or if ETCD_DASHBOARD_DIR is set uses that as the source of
+// assets.
+func DashboardHttpHandler() http.Handler {
+	dashDir := os.Getenv("ETCD_DASHBOARD_DIR")
+
+	if len(dashDir) == 0 {
+		dashDir = "./"
+	}
+
+	return http.StripPrefix("/dashboard/", http.FileServer(http.Dir(dashDir)))
 }
 
 // Watch handler
