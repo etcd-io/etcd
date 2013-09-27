@@ -17,15 +17,15 @@ import (
 
 type raftServer struct {
 	*raft.Server
-	version     string
-	joinIndex   uint64
-	name        string
-	url         string
-	listenHost  string
-	tlsConf     *TLSConfig
-	tlsInfo     *TLSInfo
-	peersStats  *raftPeersStats
-	serverStats *raftServerStats
+	version        string
+	joinIndex      uint64
+	name           string
+	url            string
+	listenHost     string
+	tlsConf        *TLSConfig
+	tlsInfo        *TLSInfo
+	followersStats *raftFollowersStats
+	serverStats    *raftServerStats
 }
 
 var r *raftServer
@@ -48,9 +48,9 @@ func newRaftServer(name string, url string, listenHost string, tlsConf *TLSConfi
 		listenHost: listenHost,
 		tlsConf:    tlsConf,
 		tlsInfo:    tlsInfo,
-		peersStats: &raftPeersStats{
-			Leader: name,
-			Peers:  make(map[string]*raftPeerStats),
+		followersStats: &raftFollowersStats{
+			Leader:    name,
+			Followers: make(map[string]*raftFollowerStats),
 		},
 		serverStats: &raftServerStats{
 			StartTime: time.Now(),
@@ -301,7 +301,7 @@ func (r *raftServer) Stats() []byte {
 
 func (r *raftServer) PeerStats() []byte {
 	if r.State() == raft.Leader {
-		b, _ := json.Marshal(r.peersStats)
+		b, _ := json.Marshal(r.followersStats)
 		return b
 	}
 	return nil

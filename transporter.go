@@ -66,7 +66,13 @@ func (t *transporter) SendAppendEntriesRequest(server *raft.Server, peer *raft.P
 
 	debugf("Send LogEntries to %s ", u)
 
-	thisPeerStats, ok := r.peersStats.Peers[peer.Name]
+	thisFollowerStats, ok := r.followersStats.Followers[peer.Name]
+
+	if !ok { //this is the first time this follower has been seen
+		thisFollowerStats = &raftFollowerStats{}
+		thisFollowerStats.Latency.Minimum = 1 << 63
+		r.followersStats.Followers[peer.Name] = thisFollowerStats
+	}
 
 	start := time.Now()
 
@@ -77,15 +83,13 @@ func (t *transporter) SendAppendEntriesRequest(server *raft.Server, peer *raft.P
 	if err != nil {
 		debugf("Cannot send AppendEntriesRequest to %s: %s", u, err)
 		if ok {
-			thisPeerStats.Fail()
+			thisFollowerStats.Fail()
 		}
 	} else {
 		if ok {
-			thisPeerStats.Succ(end.Sub(start))
+			thisFollowerStats.Succ(end.Sub(start))
 		}
 	}
-
-	r.peersStats.Peers[peer.Name] = thisPeerStats
 
 	if resp != nil {
 		defer resp.Body.Close()
@@ -211,7 +215,7 @@ func (t *transporter) Get(path string) (*http.Response, error) {
 
 func (t *transporter) waitResponse(responseChan chan *transporterResponse) (*http.Response, error) {
 
-	timeoutChan := time.After(t.timeout)
+	timeoutChan := time.After(t.timeout * 10)
 
 	select {
 	case <-timeoutChan:

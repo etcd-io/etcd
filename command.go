@@ -172,8 +172,8 @@ func (c *JoinCommand) Apply(raftServer *raft.Server) (interface{}, error) {
 
 	// add peer stats
 	if c.Name != r.Name() {
-		r.peersStats.Peers[c.Name] = &raftPeerStats{}
-		r.peersStats.Peers[c.Name].Latency.Minimum = 1 << 63
+		r.followersStats.Followers[c.Name] = &raftFollowerStats{}
+		r.followersStats.Followers[c.Name].Latency.Minimum = 1 << 63
 	}
 
 	return b, err
@@ -202,7 +202,7 @@ func (c *RemoveCommand) Apply(raftServer *raft.Server) (interface{}, error) {
 	_, err := etcdStore.Delete(key, raftServer.CommitIndex())
 
 	// delete from stats
-	delete(r.peersStats.Peers, c.Name)
+	delete(r.followersStats.Followers, c.Name)
 
 	if err != nil {
 		return []byte{0}, err
