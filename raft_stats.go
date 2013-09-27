@@ -33,10 +33,14 @@ func (ps *packageStats) Time() time.Time {
 }
 
 type raftServerStats struct {
-	State        string    `json:"state"`
-	StartTime    time.Time `json:"startTime"`
-	Leader       string    `json:"leader"`
-	LeaderUptime string    `json:"leaderUptime"`
+	State     string    `json:"state"`
+	StartTime time.Time `json:"startTime"`
+
+	LeaderInfo struct {
+		Name      string `json:"leader"`
+		Uptime    string `json:"uptime"`
+		startTime time.Time
+	} `json:"leaderInfo"`
 
 	RecvAppendRequestCnt uint64  `json:"recvAppendRequestCnt,"`
 	RecvingPkgRate       float64 `json:"recvPkgRate,omitempty"`
@@ -46,16 +50,15 @@ type raftServerStats struct {
 	SendingPkgRate       float64 `json:"sendPkgRate,omitempty"`
 	SendingBandwidthRate float64 `json:"sendBandwidthRate,omitempty"`
 
-	leaderStartTime time.Time
-	sendRateQueue   *statsQueue
-	recvRateQueue   *statsQueue
+	sendRateQueue *statsQueue
+	recvRateQueue *statsQueue
 }
 
 func (ss *raftServerStats) RecvAppendReq(leaderName string, pkgSize int) {
 	ss.State = raft.Follower
-	if leaderName != ss.Leader {
-		ss.Leader = leaderName
-		ss.leaderStartTime = time.Now()
+	if leaderName != ss.LeaderInfo.Name {
+		ss.LeaderInfo.Name = leaderName
+		ss.LeaderInfo.startTime = time.Now()
 	}
 
 	ss.recvRateQueue.Insert(NewPackageStats(time.Now(), pkgSize))
@@ -64,55 +67,66 @@ func (ss *raftServerStats) RecvAppendReq(leaderName string, pkgSize int) {
 
 func (ss *raftServerStats) SendAppendReq(pkgSize int) {
 	now := time.Now()
+
 	if ss.State != raft.Leader {
 		ss.State = raft.Leader
-		ss.Leader = r.Name()
-		ss.leaderStartTime = now
+		ss.LeaderInfo.Name = r.Name()
+		ss.LeaderInfo.startTime = now
 	}
 
-	ss.sendRateQueue.Insert(NewPackageStats(time.Now(), pkgSize))
+	ss.sendRateQueue.Insert(NewPackageStats(now, pkgSize))
 
 	ss.SendAppendRequestCnt++
 }
 
-type raftPeerStats struct {
-	Latency          float64 `json:"latency"`
-	AvgLatency       float64 `json:"averageLatency"`
-	avgLatencySquare float64
-	SdvLatency       float64 `json:"sdvLatency"`
-	MinLatency       float64 `json:"minLatency"`
-	MaxLatency       float64 `json:"maxLatency"`
-	FailCnt          uint64  `json:"failsCount"`
-	SuccCnt          uint64  `json:"successCount"`
+type raftFollowersStats struct {
+	Leader    string                        `json:"leader"`
+	Followers map[string]*raftFollowerStats `json:"peers"`
 }
 
-// Succ function update the raftPeerStats with a successful send
-func (ps *raftPeerStats) Succ(d time.Duration) {
-	total := float64(ps.SuccCnt) * ps.AvgLatency
-	totalSquare := float64(ps.SuccCnt) * ps.avgLatencySquare
+type raftFollowerStats struct {
+	Latency struct {
+		Current           float64 `json:"current"`
+		Average           float64 `json:"average"`
+		averageSquare     float64
+		StandardDeviation float64 `json:"standardDeviation"`
+		Minimum           float64 `json:"minimum"`
+		Maximum           float64 `json:"maximum"`
+	} `json:"latency"`
 
-	ps.SuccCnt++
+	Counts struct {
+		Fail    uint64 `json:"fail"`
+		Success uint64 `json:"success"`
+	} `json:"counts"`
+}
 
-	ps.Latency = float64(d) / (1000000.0)
+// Succ function update the raftFollowerStats with a successful send
+func (ps *raftFollowerStats) Succ(d time.Duration) {
+	total := float64(ps.Counts.Success) * ps.Latency.Average
+	totalSquare := float64(ps.Counts.Success) * ps.Latency.averageSquare
 
-	if ps.Latency > ps.MaxLatency {
-		ps.MaxLatency = ps.Latency
+	ps.Counts.Success++
+
+	ps.Latency.Current = float64(d) / (1000000.0)
+
+	if ps.Latency.Current > ps.Latency.Maximum {
+		ps.Latency.Maximum = ps.Latency.Current
 	}
 
-	if ps.Latency < ps.MinLatency {
-		ps.MinLatency = ps.Latency
+	if ps.Latency.Current < ps.Latency.Minimum {
+		ps.Latency.Minimum = ps.Latency.Current
 	}
 
-	ps.AvgLatency = (total + ps.Latency) / float64(ps.SuccCnt)
-	ps.avgLatencySquare = (totalSquare + ps.Latency*ps.Latency) / float64(ps.SuccCnt)
+	ps.Latency.Average = (total + ps.Latency.Current) / float64(ps.Counts.Success)
+	ps.Latency.averageSquare = (totalSquare + ps.Latency.Current*ps.Latency.Current) / float64(ps.Counts.Success)
 
 	// sdv = sqrt(avg(x^2) - avg(x)^2)
-	ps.SdvLatency = math.Sqrt(ps.avgLatencySquare - ps.AvgLatency*ps.AvgLatency)
+	ps.Latency.StandardDeviation = math.Sqrt(ps.Latency.averageSquare - ps.Latency.Average*ps.Latency.Average)
 }
 
-// Fail function update the raftPeerStats with a unsuccessful send
-func (ps *raftPeerStats) Fail() {
-	ps.FailCnt++
+// Fail function update the raftFollowerStats with a unsuccessful send
+func (ps *raftFollowerStats) Fail() {
+	ps.Counts.Fail++
 }
 
 type statsQueue struct {

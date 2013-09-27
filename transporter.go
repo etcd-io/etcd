@@ -66,11 +66,12 @@ func (t *transporter) SendAppendEntriesRequest(server *raft.Server, peer *raft.P
 
 	debugf("Send LogEntries to %s ", u)
 
-	thisPeerStats, ok := r.peersStats[peer.Name]
+	thisFollowerStats, ok := r.followersStats.Followers[peer.Name]
 
-	if !ok { // we first see this peer
-		thisPeerStats = &raftPeerStats{MinLatency: 1 << 63}
-		r.peersStats[peer.Name] = thisPeerStats
+	if !ok { //this is the first time this follower has been seen
+		thisFollowerStats = &raftFollowerStats{}
+		thisFollowerStats.Latency.Minimum = 1 << 63
+		r.followersStats.Followers[peer.Name] = thisFollowerStats
 	}
 
 	start := time.Now()
@@ -82,11 +83,11 @@ func (t *transporter) SendAppendEntriesRequest(server *raft.Server, peer *raft.P
 	if err != nil {
 		debugf("Cannot send AppendEntriesRequest to %s: %s", u, err)
 		if ok {
-			thisPeerStats.Fail()
+			thisFollowerStats.Fail()
 		}
 	} else {
 		if ok {
-			thisPeerStats.Succ(end.Sub(start))
+			thisFollowerStats.Succ(end.Sub(start))
 		}
 	}
 
