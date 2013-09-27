@@ -81,7 +81,7 @@ func (ss *raftServerStats) SendAppendReq(pkgSize int) {
 
 type raftFollowersStats struct {
 	Leader    string                        `json:"leader"`
-	Followers map[string]*raftFollowerStats `json:"follwers"`
+	Followers map[string]*raftFollowerStats `json:"followers"`
 }
 
 type raftFollowerStats struct {
