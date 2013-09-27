@@ -79,12 +79,12 @@ func (ss *raftServerStats) SendAppendReq(pkgSize int) {
 	ss.SendAppendRequestCnt++
 }
 
-type raftPeersStats struct {
-	Leader string                    `json:"leader"`
-	Peers  map[string]*raftPeerStats `json:"peers"`
+type raftFollowersStats struct {
+	Leader    string                        `json:"leader"`
+	Followers map[string]*raftFollowerStats `json:"follwers"`
 }
 
-type raftPeerStats struct {
+type raftFollowerStats struct {
 	Latency struct {
 		Current           float64 `json:"current"`
 		Average           float64 `json:"average"`
@@ -100,8 +100,8 @@ type raftPeerStats struct {
 	} `json:"counts"`
 }
 
-// Succ function update the raftPeerStats with a successful send
-func (ps *raftPeerStats) Succ(d time.Duration) {
+// Succ function update the raftFollowerStats with a successful send
+func (ps *raftFollowerStats) Succ(d time.Duration) {
 	total := float64(ps.Counts.Success) * ps.Latency.Average
 	totalSquare := float64(ps.Counts.Success) * ps.Latency.averageSquare
 
@@ -118,14 +118,14 @@ func (ps *raftPeerStats) Succ(d time.Duration) {
 	}
 
 	ps.Latency.Average = (total + ps.Latency.Current) / float64(ps.Counts.Success)
-	ps.Latency.averageSquare = (totalSquare + ps.Latency.Current * ps.Latency.Current) / float64(ps.Counts.Success)
+	ps.Latency.averageSquare = (totalSquare + ps.Latency.Current*ps.Latency.Current) / float64(ps.Counts.Success)
 
 	// sdv = sqrt(avg(x^2) - avg(x)^2)
 	ps.Latency.StandardDeviation = math.Sqrt(ps.Latency.averageSquare - ps.Latency.Average*ps.Latency.Average)
 }
 
-// Fail function update the raftPeerStats with a unsuccessful send
-func (ps *raftPeerStats) Fail() {
+// Fail function update the raftFollowerStats with a unsuccessful send
+func (ps *raftFollowerStats) Fail() {
 	ps.Counts.Fail++
 }
 
