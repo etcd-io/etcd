@@ -17,15 +17,15 @@ import (
 
 type raftServer struct {
 	*raft.Server
-	version     string
-	joinIndex   uint64
-	name        string
-	url         string
-	listenHost  string
-	tlsConf     *TLSConfig
-	tlsInfo     *TLSInfo
-	peersStats  map[string]*raftPeerStats
-	serverStats *raftServerStats
+	version        string
+	joinIndex      uint64
+	name           string
+	url            string
+	listenHost     string
+	tlsConf        *TLSConfig
+	tlsInfo        *TLSInfo
+	followersStats *raftFollowersStats
+	serverStats    *raftServerStats
 }
 
 var r *raftServer
@@ -33,10 +33,10 @@ var r *raftServer
 func newRaftServer(name string, url string, listenHost string, tlsConf *TLSConfig, tlsInfo *TLSInfo) *raftServer {
 
 	// Create transporter for raft
-	raftTransporter := newTransporter(tlsConf.Scheme, tlsConf.Client, ElectionTimeout)
+	raftTransporter := newTransporter(tlsConf.Scheme, tlsConf.Client)
 
 	// Create raft server
-	server, err := raft.NewServer(name, dirPath, raftTransporter, etcdStore, nil)
+	server, err := raft.NewServer(name, dirPath, raftTransporter, etcdStore, nil, "")
 
 	check(err)
 
@@ -48,7 +48,10 @@ func newRaftServer(name string, url string, listenHost string, tlsConf *TLSConfi
 		listenHost: listenHost,
 		tlsConf:    tlsConf,
 		tlsInfo:    tlsInfo,
-		peersStats: make(map[string]*raftPeerStats),
+		followersStats: &raftFollowersStats{
+			Leader:    name,
+			Followers: make(map[string]*raftFollowerStats),
+		},
 		serverStats: &raftServerStats{
 			StartTime: time.Now(),
 			sendRateQueue: &statsQueue{
@@ -63,7 +66,6 @@ func newRaftServer(name string, url string, listenHost string, tlsConf *TLSConfi
 
 // Start the raft server
 func (r *raftServer) ListenAndServe() {
-
 	// Setup commands.
 	registerCommands()
 
@@ -183,13 +185,16 @@ func (r *raftServer) startTransport(scheme string, tlsConf tls.Config) {
 // will need to do something more sophisticated later when we allow mixed
 // version clusters.
 func getVersion(t *transporter, versionURL url.URL) (string, error) {
-	resp, err := t.Get(versionURL.String())
+	resp, req, err := t.Get(versionURL.String())
 
 	if err != nil {
 		return "", err
 	}
 
 	defer resp.Body.Close()
+
+	t.CancelWhenTimeout(req)
+
 	body, err := ioutil.ReadAll(resp.Body)
 
 	return string(body), nil
@@ -244,7 +249,7 @@ func joinByMachine(s *raft.Server, machine string, scheme string) error {
 
 	debugf("Send Join Request to %s", joinURL.String())
 
-	resp, err := t.Post(joinURL.String(), &b)
+	resp, req, err := t.Post(joinURL.String(), &b)
 
 	for {
 		if err != nil {
@@ -252,6 +257,9 @@ func joinByMachine(s *raft.Server, machine string, scheme string) error {
 		}
 		if resp != nil {
 			defer resp.Body.Close()
+
+			t.CancelWhenTimeout(req)
+
 			if resp.StatusCode == http.StatusOK {
 				b, _ := ioutil.ReadAll(resp.Body)
 				r.joinIndex, _ = binary.Uvarint(b)
@@ -264,7 +272,7 @@ func joinByMachine(s *raft.Server, machine string, scheme string) error {
 
 				json.NewEncoder(&b).Encode(newJoinCommand())
 
-				resp, err = t.Post(address, &b)
+				resp, req, err = t.Post(address, &b)
 
 			} else if resp.StatusCode == http.StatusBadRequest {
 				debug("Reach max number machines in the cluster")
@@ -282,7 +290,7 @@ func joinByMachine(s *raft.Server, machine string, scheme string) error {
 }
 
 func (r *raftServer) Stats() []byte {
-	r.serverStats.LeaderUptime = time.Now().Sub(r.serverStats.leaderStartTime).String()
+	r.serverStats.LeaderInfo.Uptime = time.Now().Sub(r.serverStats.LeaderInfo.startTime).String()
 
 	queue := r.serverStats.sendRateQueue
 
@@ -292,20 +300,17 @@ func (r *raftServer) Stats() []byte {
 
 	r.serverStats.RecvingPkgRate, r.serverStats.RecvingBandwidthRate = queue.Rate()
 
-	sBytes, err := json.Marshal(r.serverStats)
+	b, _ := json.Marshal(r.serverStats)
 
-	if err != nil {
-		warn(err)
-	}
+	return b
+}
 
+func (r *raftServer) PeerStats() []byte {
 	if r.State() == raft.Leader {
-		pBytes, _ := json.Marshal(r.peersStats)
-
-		b := append(sBytes, pBytes...)
+		b, _ := json.Marshal(r.followersStats)
 		return b
 	}
-
-	return sBytes
+	return nil
 }
 
 // Register commands to raft server

@@ -1,3 +1,3 @@
 package etcd
 
-var version = "v1"
+const version = "v1"

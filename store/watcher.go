@@ -116,3 +116,7 @@ func (wh *watcherHub) notify(e *Event) {
 
 	wh.EventHistory.addEvent(e)
 }
+
+func (wh *watcherHub) clone() *watcherHub {
+	return &watcherHub{}
+}

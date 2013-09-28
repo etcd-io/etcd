@@ -21,7 +21,7 @@ func NewEtcdMuxer() *http.ServeMux {
 	etcdMux.Handle("/"+version+"/keys/", errorHandler(Multiplexer))
 	etcdMux.Handle("/"+version+"/leader", errorHandler(LeaderHttpHandler))
 	etcdMux.Handle("/"+version+"/machines", errorHandler(MachinesHttpHandler))
-	etcdMux.Handle("/"+version+"/stats", errorHandler(StatsHttpHandler))
+	etcdMux.Handle("/"+version+"/stats/", errorHandler(StatsHttpHandler))
 	etcdMux.Handle("/version", errorHandler(VersionHttpHandler))
 	etcdMux.HandleFunc("/test/", TestHttpHandler)
 	return etcdMux
@@ -223,8 +223,28 @@ func VersionHttpHandler(w http.ResponseWriter, req *http.Request) error {
 // Handler to return the basic stats of etcd
 func StatsHttpHandler(w http.ResponseWriter, req *http.Request) error {
 	w.WriteHeader(http.StatusOK)
-	w.Write(etcdStore.JsonStats())
-	w.Write(r.Stats())
+
+	option := req.URL.Path[len("/v1/stats/"):]
+
+	switch option {
+	case "self":
+		w.Write(r.Stats())
+	case "leader":
+		if r.State() == raft.Leader {
+			w.Write(r.PeerStats())
+		} else {
+			leader := r.Leader()
+			// current no leader
+			if leader == "" {
+				return etcdErr.NewError(300, "")
+			}
+			hostname, _ := nameToEtcdURL(leader)
+			redirect(hostname, w, req)
+		}
+	case "store":
+		w.Write(etcdStore.JsonStats())
+	}
+
 	return nil
 }
 
@@ -236,8 +256,8 @@ func GetHttpHandler(w http.ResponseWriter, req *http.Request) error {
 	if req.FormValue("consistent") == "true" && r.State() != raft.Leader {
 		// help client to redirect the request to the current leader
 		leader := r.Leader()
-		url, _ := nameToEtcdURL(leader)
-		redirect(url, w, req)
+		hostname, _ := nameToEtcdURL(leader)
+		redirect(hostname, w, req)
 		return nil
 	}
 

@@ -303,7 +303,7 @@ type limitedWriter struct {
 	limit int
 }
 
-var outOfSpace = errors.New("insufficient space")
+var outOfSpace = errors.New("proto: insufficient space")
 
 func (w *limitedWriter) Write(p []byte) (n int, err error) {
 	var avail = w.limit - w.b.Len()

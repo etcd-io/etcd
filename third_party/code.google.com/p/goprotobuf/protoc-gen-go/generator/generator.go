@@ -1664,6 +1664,27 @@ func (g *Generator) generateMessage(message *Descriptor) {
 				g.P("return false")
 			case descriptor.FieldDescriptorProto_TYPE_STRING:
 				g.P(`return ""`)
+			case descriptor.FieldDescriptorProto_TYPE_ENUM:
+				// The default default for an enum is the first value in the enum,
+				// not zero.
+				obj := g.ObjectNamed(field.GetTypeName())
+				var enum *EnumDescriptor
+				if id, ok := obj.(*ImportedDescriptor); ok {
+					// The enum type has been publicly imported.
+					enum, _ = id.o.(*EnumDescriptor)
+				} else {
+					enum, _ = obj.(*EnumDescriptor)
+				}
+				if enum == nil {
+					log.Printf("don't know how to generate getter for %s", field.GetName())
+					continue
+				}
+				if len(enum.Value) == 0 {
+					g.P("return 0 // empty enum")
+				} else {
+					first := enum.Value[0].GetName()
+					g.P("return ", g.DefaultPackageName(obj)+enum.prefix()+first)
+				}
 			default:
 				g.P("return 0")
 			}

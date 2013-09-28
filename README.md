@@ -474,6 +474,7 @@ If you are using SSL for server to server communication, you must use it on all 
 **Python libraries**
 
 - [transitorykris/etcd-py](https://github.com/transitorykris/etcd-py)
+- [jplana/python-etcd](https://github.com/jplana/python-etcd)
 
 **Node libraries**
 
@@ -485,13 +486,23 @@ If you are using SSL for server to server communication, you must use it on all 
 - [jpfuentes2/etcd-ruby](https://github.com/jpfuentes2/etcd-ruby)
 - [ranjib/etcd-ruby](https://github.com/ranjib/etcd-ruby)
 
+**C libraries**
+
+- [jdarcy/etcd-api](https://github.com/jdarcy/etcd-api)
+
+**Chef Integration**
+
+- [coderanger/etcd-chef](https://github.com/coderanger/etcd-chef)
+
 **Chef Cookbook**
 
 - [spheromak/etcd-cookbook](https://github.com/spheromak/etcd-cookbook)
 
 **Projects using etcd**
 
+- [binocarlos/yoda](https://github.com/binocarlos/yoda) - etcd + ZeroMQ
 - [calavera/active-proxy](https://github.com/calavera/active-proxy) - HTTP Proxy configured with etcd
+- [derekchiang/etcdplus](https://github.com/derekchiang/etcdplus) - A set of distributed synchronization primitives built upon etcd
 - [gleicon/goreman](https://github.com/gleicon/goreman/tree/etcd) - Branch of the Go Foreman clone with etcd support
 - [garethr/hiera-etcd](https://github.com/garethr/hiera-etcd) - Puppet hiera backend using etcd
 - [mattn/etcd-vim](https://github.com/mattn/etcd-vim) - SET and GET keys from inside vim

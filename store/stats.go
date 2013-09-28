@@ -48,6 +48,12 @@ func newStats() *Stats {
 	return s
 }
 
+func (s *Stats) clone() *Stats {
+	return &Stats{s.GetSuccess, s.GetFail, s.SetSuccess, s.SetFail,
+		s.DeleteSuccess, s.DeleteFail, s.UpdateSuccess, s.UpdateFail,
+		s.TestAndSetSuccess, s.TestAndSetFail, s.Watchers}
+}
+
 // Status() return the statistics info of etcd storage its recent start
 func (s *Stats) toJson() []byte {
 	b, _ := json.Marshal(s)
