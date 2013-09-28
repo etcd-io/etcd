@@ -1,4 +1,4 @@
-package fileSystem
+package store
 
 import (
 	"math/rand"
@@ -8,46 +8,46 @@ import (
 )
 
 func TestCreateAndGet(t *testing.T) {
-	fs := New()
+	s := New()
 
-	fs.Create("/foobar", "bar", Permanent, 1, 1)
+	s.Create("/foobar", "bar", Permanent, 1, 1)
 
 	// already exist, create should fail
-	_, err := fs.Create("/foobar", "bar", Permanent, 1, 1)
+	_, err := s.Create("/foobar", "bar", Permanent, 1, 1)
 
 	if err == nil {
 		t.Fatal("Create should fail")
 	}
 
-	fs.Delete("/foobar", true, 1, 1)
+	s.Delete("/foobar", true, 1, 1)
 
 	// this should create successfully
-	createAndGet(fs, "/foobar", t)
-	createAndGet(fs, "/foo/bar", t)
-	createAndGet(fs, "/foo/foo/bar", t)
+	createAndGet(s, "/foobar", t)
+	createAndGet(s, "/foo/bar", t)
+	createAndGet(s, "/foo/foo/bar", t)
 
 	// meet file, create should fail
-	_, err = fs.Create("/foo/bar/bar", "bar", Permanent, 2, 1)
+	_, err = s.Create("/foo/bar/bar", "bar", Permanent, 2, 1)
 
 	if err == nil {
 		t.Fatal("Create should fail")
 	}
 
 	// create a directory
-	_, err = fs.Create("/fooDir", "", Permanent, 3, 1)
+	_, err = s.Create("/fooDir", "", Permanent, 3, 1)
 
 	if err != nil {
 		t.Fatal("Cannot create /fooDir")
 	}
 
-	e, err := fs.Get("/fooDir", false, false, 3, 1)
+	e, err := s.Get("/fooDir", false, false, 3, 1)
 
 	if err != nil || e.Dir != true {
 		t.Fatal("Cannot create /fooDir ")
 	}
 
 	// create a file under directory
-	_, err = fs.Create("/fooDir/bar", "bar", Permanent, 4, 1)
+	_, err = s.Create("/fooDir/bar", "bar", Permanent, 4, 1)
 
 	if err != nil {
 		t.Fatal("Cannot create /fooDir/bar = bar")
@@ -56,21 +56,21 @@ func TestCreateAndGet(t *testing.T) {
 }
 
 func TestUpdateFile(t *testing.T) {
-	fs := New()
+	s := New()
 
-	_, err := fs.Create("/foo/bar", "bar", Permanent, 1, 1)
+	_, err := s.Create("/foo/bar", "bar", Permanent, 1, 1)
 
 	if err != nil {
 		t.Fatalf("cannot create %s=bar [%s]", "/foo/bar", err.Error())
 	}
 
-	_, err = fs.Update("/foo/bar", "barbar", Permanent, 2, 1)
+	_, err = s.Update("/foo/bar", "barbar", Permanent, 2, 1)
 
 	if err != nil {
 		t.Fatalf("cannot update %s=barbar [%s]", "/foo/bar", err.Error())
 	}
 
-	e, err := fs.Get("/foo/bar", false, false, 2, 1)
+	e, err := s.Get("/foo/bar", false, false, 2, 1)
 
 	if err != nil {
 		t.Fatalf("cannot get %s [%s]", "/foo/bar", err.Error())
@@ -82,37 +82,37 @@ func TestUpdateFile(t *testing.T) {
 
 	// create a directory, update its ttl, to see if it will be deleted
 
-	_, err = fs.Create("/foo/foo", "", Permanent, 3, 1)
+	_, err = s.Create("/foo/foo", "", Permanent, 3, 1)
 
 	if err != nil {
 		t.Fatalf("cannot create dir [%s] [%s]", "/foo/foo", err.Error())
 	}
 
-	_, err = fs.Create("/foo/foo/foo1", "bar1", Permanent, 4, 1)
+	_, err = s.Create("/foo/foo/foo1", "bar1", Permanent, 4, 1)
 
 	if err != nil {
 		t.Fatal("cannot create [%s]", err.Error())
 	}
 
-	_, err = fs.Create("/foo/foo/foo2", "", Permanent, 5, 1)
+	_, err = s.Create("/foo/foo/foo2", "", Permanent, 5, 1)
 	if err != nil {
 		t.Fatal("cannot create [%s]", err.Error())
 	}
 
-	_, err = fs.Create("/foo/foo/foo2/boo", "boo1", Permanent, 6, 1)
+	_, err = s.Create("/foo/foo/foo2/boo", "boo1", Permanent, 6, 1)
 	if err != nil {
 		t.Fatal("cannot create [%s]", err.Error())
 	}
 
 	expire := time.Now().Add(time.Second * 2)
-	_, err = fs.Update("/foo/foo", "", expire, 7, 1)
+	_, err = s.Update("/foo/foo", "", expire, 7, 1)
 	if err != nil {
 		t.Fatalf("cannot update dir [%s] [%s]", "/foo/foo", err.Error())
 	}
 
 	// sleep 50ms, it should still reach the node
 	time.Sleep(time.Microsecond * 50)
-	e, err = fs.Get("/foo/foo", true, false, 7, 1)
+	e, err = s.Get("/foo/foo", true, false, 7, 1)
 
 	if err != nil || e.Key != "/foo/foo" {
 		t.Fatalf("cannot get dir before expiration [%s]", err.Error())
@@ -132,23 +132,23 @@ func TestUpdateFile(t *testing.T) {
 
 	// wait for expiration
 	time.Sleep(time.Second * 3)
-	e, err = fs.Get("/foo/foo", true, false, 7, 1)
+	e, err = s.Get("/foo/foo", true, false, 7, 1)
 
 	if err == nil {
 		t.Fatal("still can get dir after expiration [%s]")
 	}
 
-	_, err = fs.Get("/foo/foo/foo1", true, false, 7, 1)
+	_, err = s.Get("/foo/foo/foo1", true, false, 7, 1)
 	if err == nil {
 		t.Fatal("still can get sub node after expiration [%s]")
 	}
 
-	_, err = fs.Get("/foo/foo/foo2", true, false, 7, 1)
+	_, err = s.Get("/foo/foo/foo2", true, false, 7, 1)
 	if err == nil {
 		t.Fatal("still can get sub dir after expiration [%s]")
 	}
 
-	_, err = fs.Get("/foo/foo/foo2/boo", true, false, 7, 1)
+	_, err = s.Get("/foo/foo/foo2/boo", true, false, 7, 1)
 	if err == nil {
 		t.Fatalf("still can get sub node of sub dir after expiration [%s]", err.Error())
 	}
@@ -156,17 +156,17 @@ func TestUpdateFile(t *testing.T) {
 }
 
 func TestListDirectory(t *testing.T) {
-	fs := New()
+	s := New()
 
 	// create dir /foo
 	// set key-value /foo/foo=bar
-	fs.Create("/foo/foo", "bar", Permanent, 1, 1)
+	s.Create("/foo/foo", "bar", Permanent, 1, 1)
 
 	// create dir /foo/fooDir
 	// set key-value /foo/fooDir/foo=bar
-	fs.Create("/foo/fooDir/foo", "bar", Permanent, 2, 1)
+	s.Create("/foo/fooDir/foo", "bar", Permanent, 2, 1)
 
-	e, err := fs.Get("/foo", true, false, 2, 1)
+	e, err := s.Get("/foo", true, false, 2, 1)
 
 	if err != nil {
 		t.Fatalf("%v", err)
@@ -191,9 +191,9 @@ func TestListDirectory(t *testing.T) {
 
 	// create dir /foo/_hidden
 	// set key-value /foo/_hidden/foo -> bar
-	fs.Create("/foo/_hidden/foo", "bar", Permanent, 3, 1)
+	s.Create("/foo/_hidden/foo", "bar", Permanent, 3, 1)
 
-	e, _ = fs.Get("/foo", false, false, 2, 1)
+	e, _ = s.Get("/foo", false, false, 2, 1)
 
 	if len(e.KVPairs) != 2 {
 		t.Fatalf("hidden node is not hidden! %s", e.KVPairs[2].Key)
@@ -201,38 +201,38 @@ func TestListDirectory(t *testing.T) {
 }
 
 func TestRemove(t *testing.T) {
-	fs := New()
+	s := New()
 
-	fs.Create("/foo", "bar", Permanent, 1, 1)
-	_, err := fs.Delete("/foo", false, 1, 1)
+	s.Create("/foo", "bar", Permanent, 1, 1)
+	_, err := s.Delete("/foo", false, 1, 1)
 
 	if err != nil {
 		t.Fatalf("cannot delete %s [%s]", "/foo", err.Error())
 	}
 
-	_, err = fs.Get("/foo", false, false, 1, 1)
+	_, err = s.Get("/foo", false, false, 1, 1)
 
 	if err == nil || err.Error() != "Key Not Found" {
 		t.Fatalf("can get the node after deletion")
 	}
 
-	fs.Create("/foo/bar", "bar", Permanent, 1, 1)
-	fs.Create("/foo/car", "car", Permanent, 1, 1)
-	fs.Create("/foo/dar/dar", "dar", Permanent, 1, 1)
+	s.Create("/foo/bar", "bar", Permanent, 1, 1)
+	s.Create("/foo/car", "car", Permanent, 1, 1)
+	s.Create("/foo/dar/dar", "dar", Permanent, 1, 1)
 
-	_, err = fs.Delete("/foo", false, 1, 1)
+	_, err = s.Delete("/foo", false, 1, 1)
 
 	if err == nil {
 		t.Fatalf("should not be able to delete a directory without recursive")
 	}
 
-	_, err = fs.Delete("/foo", true, 1, 1)
+	_, err = s.Delete("/foo", true, 1, 1)
 
 	if err != nil {
 		t.Fatalf("cannot delete %s [%s]", "/foo", err.Error())
 	}
 
-	_, err = fs.Get("/foo", false, false, 1, 1)
+	_, err = s.Get("/foo", false, false, 1, 1)
 
 	if err == nil || err.Error() != "Key Not Found" {
 		t.Fatalf("can get the node after deletion ")
@@ -241,13 +241,13 @@ func TestRemove(t *testing.T) {
 }
 
 func TestExpire(t *testing.T) {
-	fs := New()
+	s := New()
 
 	expire := time.Now().Add(time.Second)
 
-	fs.Create("/foo", "bar", expire, 1, 1)
+	s.Create("/foo", "bar", expire, 1, 1)
 
-	_, err := fs.InternalGet("/foo", 1, 1)
+	_, err := s.InternalGet("/foo", 1, 1)
 
 	if err != nil {
 		t.Fatalf("can not get the node")
@@ -255,7 +255,7 @@ func TestExpire(t *testing.T) {
 
 	time.Sleep(time.Second * 2)
 
-	_, err = fs.InternalGet("/foo", 1, 1)
+	_, err = s.InternalGet("/foo", 1, 1)
 
 	if err == nil {
 		t.Fatalf("can get the node after expiration time")
@@ -263,10 +263,10 @@ func TestExpire(t *testing.T) {
 
 	// test if we can reach the node before expiration
 	expire = time.Now().Add(time.Second)
-	fs.Create("/foo", "bar", expire, 1, 1)
+	s.Create("/foo", "bar", expire, 1, 1)
 
 	time.Sleep(time.Millisecond * 50)
-	_, err = fs.InternalGet("/foo", 1, 1)
+	_, err = s.InternalGet("/foo", 1, 1)
 
 	if err != nil {
 		t.Fatalf("cannot get the node before expiration", err.Error())
@@ -274,8 +274,8 @@ func TestExpire(t *testing.T) {
 
 	expire = time.Now().Add(time.Second)
 
-	fs.Create("/foo", "bar", expire, 1, 1)
-	_, err = fs.Delete("/foo", false, 1, 1)
+	s.Create("/foo", "bar", expire, 1, 1)
+	_, err = s.Delete("/foo", false, 1, 1)
 
 	if err != nil {
 		t.Fatalf("cannot delete the node before expiration", err.Error())
@@ -284,17 +284,17 @@ func TestExpire(t *testing.T) {
 }
 
 func TestTestAndSet(t *testing.T) { // TODO prevValue == nil ?
-	fs := New()
-	fs.Create("/foo", "bar", Permanent, 1, 1)
+	s := New()
+	s.Create("/foo", "bar", Permanent, 1, 1)
 
 	// test on wrong previous value
-	_, err := fs.TestAndSet("/foo", "barbar", 0, "car", Permanent, 2, 1)
+	_, err := s.TestAndSet("/foo", "barbar", 0, "car", Permanent, 2, 1)
 	if err == nil {
 		t.Fatal("test and set should fail barbar != bar")
 	}
 
 	// test on value
-	e, err := fs.TestAndSet("/foo", "bar", 0, "car", Permanent, 3, 1)
+	e, err := s.TestAndSet("/foo", "bar", 0, "car", Permanent, 3, 1)
 
 	if err != nil {
 		t.Fatal("test and set should succeed bar == bar")
@@ -305,7 +305,7 @@ func TestTestAndSet(t *testing.T) { // TODO prevValue == nil ?
 	}
 
 	// test on index
-	e, err = fs.TestAndSet("/foo", "", 3, "bar", Permanent, 4, 1)
+	e, err = s.TestAndSet("/foo", "", 3, "bar", Permanent, 4, 1)
 
 	if err != nil {
 		t.Fatal("test and set should succeed index 3 == 3")
@@ -318,61 +318,61 @@ func TestTestAndSet(t *testing.T) { // TODO prevValue == nil ?
 }
 
 func TestWatch(t *testing.T) {
-	fs := New()
+	s := New()
 	// watch at a deeper path
-	c, _ := fs.WatcherHub.watch("/foo/foo/foo", false, 0)
-	fs.Create("/foo/foo/foo", "bar", Permanent, 1, 1)
+	c, _ := s.WatcherHub.watch("/foo/foo/foo", false, 0)
+	s.Create("/foo/foo/foo", "bar", Permanent, 1, 1)
 
 	e := nonblockingRetrive(c)
 	if e.Key != "/foo/foo/foo" {
 		t.Fatal("watch for Create node fails")
 	}
 
-	c, _ = fs.WatcherHub.watch("/foo/foo/foo", false, 0)
-	fs.Update("/foo/foo/foo", "car", Permanent, 2, 1)
+	c, _ = s.WatcherHub.watch("/foo/foo/foo", false, 0)
+	s.Update("/foo/foo/foo", "car", Permanent, 2, 1)
 	e = nonblockingRetrive(c)
 	if e.Key != "/foo/foo/foo" {
 		t.Fatal("watch for Update node fails")
 	}
 
-	c, _ = fs.WatcherHub.watch("/foo/foo/foo", false, 0)
-	fs.TestAndSet("/foo/foo/foo", "car", 0, "bar", Permanent, 3, 1)
+	c, _ = s.WatcherHub.watch("/foo/foo/foo", false, 0)
+	s.TestAndSet("/foo/foo/foo", "car", 0, "bar", Permanent, 3, 1)
 	e = nonblockingRetrive(c)
 	if e.Key != "/foo/foo/foo" {
 		t.Fatal("watch for TestAndSet node fails")
 	}
 
-	c, _ = fs.WatcherHub.watch("/foo/foo/foo", false, 0)
-	fs.Delete("/foo", true, 4, 1) //recursively delete
+	c, _ = s.WatcherHub.watch("/foo/foo/foo", false, 0)
+	s.Delete("/foo", true, 4, 1) //recursively delete
 	e = nonblockingRetrive(c)
 	if e.Key != "/foo" {
 		t.Fatal("watch for Delete node fails")
 	}
 
 	// watch at a prefix
-	c, _ = fs.WatcherHub.watch("/foo", true, 0)
-	fs.Create("/foo/foo/boo", "bar", Permanent, 5, 1)
+	c, _ = s.WatcherHub.watch("/foo", true, 0)
+	s.Create("/foo/foo/boo", "bar", Permanent, 5, 1)
 	e = nonblockingRetrive(c)
 	if e.Key != "/foo/foo/boo" {
 		t.Fatal("watch for Create subdirectory fails")
 	}
 
-	c, _ = fs.WatcherHub.watch("/foo", true, 0)
-	fs.Update("/foo/foo/boo", "foo", Permanent, 6, 1)
+	c, _ = s.WatcherHub.watch("/foo", true, 0)
+	s.Update("/foo/foo/boo", "foo", Permanent, 6, 1)
 	e = nonblockingRetrive(c)
 	if e.Key != "/foo/foo/boo" {
 		t.Fatal("watch for Update subdirectory fails")
 	}
 
-	c, _ = fs.WatcherHub.watch("/foo", true, 0)
-	fs.TestAndSet("/foo/foo/boo", "foo", 0, "bar", Permanent, 7, 1)
+	c, _ = s.WatcherHub.watch("/foo", true, 0)
+	s.TestAndSet("/foo/foo/boo", "foo", 0, "bar", Permanent, 7, 1)
 	e = nonblockingRetrive(c)
 	if e.Key != "/foo/foo/boo" {
 		t.Fatal("watch for TestAndSet subdirectory fails")
 	}
 
-	c, _ = fs.WatcherHub.watch("/foo", true, 0)
-	fs.Delete("/foo/foo/boo", false, 8, 1)
+	c, _ = s.WatcherHub.watch("/foo", true, 0)
+	s.Delete("/foo/foo/boo", false, 8, 1)
 	e = nonblockingRetrive(c)
 	if e.Key != "/foo/foo/boo" {
 		t.Fatal("watch for Delete subdirectory fails")
@@ -381,14 +381,14 @@ func TestWatch(t *testing.T) {
 }
 
 func TestSort(t *testing.T) {
-	fs := New()
+	s := New()
 
 	// simulating random creation
 	keys := GenKeys(80, 4)
 
 	i := uint64(1)
 	for _, k := range keys {
-		_, err := fs.Create(k, "bar", Permanent, i, 1)
+		_, err := s.Create(k, "bar", Permanent, i, 1)
 		if err != nil {
 			panic(err)
 		} else {
@@ -396,7 +396,7 @@ func TestSort(t *testing.T) {
 		}
 	}
 
-	e, err := fs.Get("/foo", true, true, i, 1)
+	e, err := s.Get("/foo", true, true, i, 1)
 	if err != nil {
 		t.Fatalf("get dir nodes failed [%s]", err.Error())
 	}
@@ -419,14 +419,14 @@ func TestSort(t *testing.T) {
 }
 
 func TestSaveAndRecover(t *testing.T) {
-	fs := New()
+	s := New()
 
 	// simulating random creation
 	keys := GenKeys(8, 4)
 
 	i := uint64(1)
 	for _, k := range keys {
-		_, err := fs.Create(k, "bar", Permanent, i, 1)
+		_, err := s.Create(k, "bar", Permanent, i, 1)
 		if err != nil {
 			panic(err)
 		} else {
@@ -438,8 +438,8 @@ func TestSaveAndRecover(t *testing.T) {
 	// test if we can reach the node before expiration
 
 	expire := time.Now().Add(time.Second)
-	fs.Create("/foo/foo", "bar", expire, 1, 1)
-	b, err := fs.Save()
+	s.Create("/foo/foo", "bar", expire, 1, 1)
+	b, err := s.Save()
 
 	cloneFs := New()
 	time.Sleep(time.Second)
@@ -453,18 +453,18 @@ func TestSaveAndRecover(t *testing.T) {
 		}
 	}
 
-	if fs.WatcherHub.EventHistory.StartIndex != cloneFs.WatcherHub.EventHistory.StartIndex {
+	if s.WatcherHub.EventHistory.StartIndex != cloneFs.WatcherHub.EventHistory.StartIndex {
 		t.Fatal("Error recovered event history start index")
 	}
 
-	for i = 0; int(i) < fs.WatcherHub.EventHistory.Queue.Size; i++ {
-		if fs.WatcherHub.EventHistory.Queue.Events[i].Key !=
+	for i = 0; int(i) < s.WatcherHub.EventHistory.Queue.Size; i++ {
+		if s.WatcherHub.EventHistory.Queue.Events[i].Key !=
 			cloneFs.WatcherHub.EventHistory.Queue.Events[i].Key {
 			t.Fatal("Error recovered event history")
 		}
 	}
 
-	_, err = fs.Get("/foo/foo", false, false, 1, 1)
+	_, err = s.Get("/foo/foo", false, false, 1, 1)
 
 	if err == nil || err.Error() != "Key Not Found" {
 		t.Fatalf("can get the node after deletion ")
@@ -488,14 +488,14 @@ func GenKeys(num int, depth int) []string {
 	return keys
 }
 
-func createAndGet(fs *FileSystem, path string, t *testing.T) {
-	_, err := fs.Create(path, "bar", Permanent, 1, 1)
+func createAndGet(s *Store, path string, t *testing.T) {
+	_, err := s.Create(path, "bar", Permanent, 1, 1)
 
 	if err != nil {
 		t.Fatalf("cannot create %s=bar [%s]", path, err.Error())
 	}
 
-	e, err := fs.Get(path, false, false, 1, 1)
+	e, err := s.Get(path, false, false, 1, 1)
 
 	if err != nil {
 		t.Fatalf("cannot get %s [%s]", path, err.Error())

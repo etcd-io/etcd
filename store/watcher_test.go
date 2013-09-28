@@ -1,12 +1,12 @@
-package fileSystem
+package store
 
 import (
 	"testing"
 )
 
 func TestWatcher(t *testing.T) {
-	fs := New()
-	wh := fs.WatcherHub
+	s := New()
+	wh := s.WatcherHub
 	c, err := wh.watch("/foo", true, 0)
 
 	if err != nil {

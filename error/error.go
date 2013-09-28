@@ -32,27 +32,27 @@ func init() {
 	errors = make(map[int]string)
 
 	// command related errors
-	errors[100] = "Key Not Found"
-	errors[101] = "Test Failed" //test and set
-	errors[102] = "Not A File"
-	errors[103] = "Reached the max number of machines in the cluster"
-	errors[104] = "Not A Directory"
-	errors[105] = "Already exists" // create
-	errors[106] = "The prefix of given key is a keyword in etcd"
+	errors[EcodeKeyNotFound] = "Key Not Found"
+	errors[EcodeTestFailed] = "Test Failed" //test and set
+	errors[EcodeNotFile] = "Not A File"
+	errors[EcodeNoMoreMachine] = "Reached the max number of machines in the cluster"
+	errors[EcodeNotDir] = "Not A Directory"
+	errors[EcodeNodeExist] = "Already exists" // create
+	errors[EcodeKeyIsPreserved] = "The prefix of given key is a keyword in etcd"
 
 	// Post form related errors
-	errors[200] = "Value is Required in POST form"
-	errors[201] = "PrevValue is Required in POST form"
-	errors[202] = "The given TTL in POST form is not a number"
-	errors[203] = "The given index in POST form is not a number"
+	errors[EcodeValueRequired] = "Value is Required in POST form"
+	errors[EcodePrevValueRequired] = "PrevValue is Required in POST form"
+	errors[EcodeTTLNaN] = "The given TTL in POST form is not a number"
+	errors[EcodeIndexNaN] = "The given index in POST form is not a number"
 
 	// raft related errors
-	errors[300] = "Raft Internal Error"
-	errors[301] = "During Leader Election"
+	errors[EcodeRaftInternal] = "Raft Internal Error"
+	errors[EcodeLeaderElect] = "During Leader Election"
 
 	// etcd related errors
-	errors[400] = "watcher is cleared due to etcd recovery"
-	errors[401] = "The event in requested index is outdated and cleared"
+	errors[EcodeWatcherCleared] = "watcher is cleared due to etcd recovery"
+	errors[EcodeEventIndexCleared] = "The event in requested index is outdated and cleared"
 
 }
 

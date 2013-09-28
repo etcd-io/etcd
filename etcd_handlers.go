@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	etcdErr "github.com/coreos/etcd/error"
-	"github.com/coreos/etcd/file_system"
+	"github.com/coreos/etcd/store"
 	"github.com/coreos/go-raft"
 )
 
@@ -120,7 +120,7 @@ func UpdateHttpHandler(w http.ResponseWriter, req *http.Request) error {
 	}
 
 	// TODO: update should give at least one option
-	if value == "" && expireTime.Sub(fileSystem.Permanent) == 0 {
+	if value == "" && expireTime.Sub(store.Permanent) == 0 {
 		return nil
 	}
 
@@ -223,8 +223,7 @@ func VersionHttpHandler(w http.ResponseWriter, req *http.Request) error {
 // Handler to return the basic stats of etcd
 func StatsHttpHandler(w http.ResponseWriter, req *http.Request) error {
 	w.WriteHeader(http.StatusOK)
-	//w.Write(etcdStore.Stats())
-	w.Write(etcdFs.Stats.GetStats())
+	w.Write(etcdStore.JsonStats())
 	w.Write(r.Stats())
 	return nil
 }

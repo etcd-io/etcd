@@ -1,4 +1,4 @@
-package fileSystem
+package store
 
 import (
 	"testing"

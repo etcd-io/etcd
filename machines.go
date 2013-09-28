@@ -2,7 +2,7 @@ package main
 
 // machineNum returns the number of machines in the cluster
 func machineNum() int {
-	e, err := etcdFs.Get("/_etcd/machines", false, false, r.CommitIndex(), r.Term())
+	e, err := etcdStore.Get("/_etcd/machines", false, false, r.CommitIndex(), r.Term())
 
 	if err != nil {
 		return 0

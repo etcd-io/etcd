@@ -15,7 +15,7 @@ import (
 	"time"
 
 	etcdErr "github.com/coreos/etcd/error"
-	"github.com/coreos/etcd/file_system"
+	"github.com/coreos/etcd/store"
 	"github.com/coreos/etcd/web"
 	"github.com/coreos/go-raft"
 )
@@ -30,12 +30,12 @@ func durationToExpireTime(strDuration string) (time.Time, error) {
 		duration, err := strconv.Atoi(strDuration)
 
 		if err != nil {
-			return fileSystem.Permanent, err
+			return store.Permanent, err
 		}
 		return time.Now().Add(time.Second * (time.Duration)(duration)), nil
 
 	} else {
-		return fileSystem.Permanent, nil
+		return store.Permanent, nil
 	}
 }
 

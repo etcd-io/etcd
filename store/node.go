@@ -1,4 +1,4 @@
-package fileSystem
+package store
 
 import (
 	"path"
@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	etcdErr "github.com/xiangli-cmu/etcd/error"
+	etcdErr "github.com/coreos/etcd/error"
 )
 
 var (

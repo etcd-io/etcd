@@ -9,7 +9,7 @@ import (
 	"time"
 
 	etcdErr "github.com/coreos/etcd/error"
-	"github.com/coreos/etcd/file_system"
+	"github.com/coreos/etcd/store"
 	"github.com/coreos/go-raft"
 )
 
@@ -39,7 +39,7 @@ func (c *CreateCommand) CommandName() string {
 
 // Create node
 func (c *CreateCommand) Apply(server *raft.Server) (interface{}, error) {
-	e, err := etcdFs.Create(c.Key, c.Value, c.ExpireTime, server.CommitIndex(), server.Term())
+	e, err := etcdStore.Create(c.Key, c.Value, c.ExpireTime, server.CommitIndex(), server.Term())
 
 	if err != nil {
 		debug(err)
@@ -63,7 +63,7 @@ func (c *UpdateCommand) CommandName() string {
 
 // Update node
 func (c *UpdateCommand) Apply(server *raft.Server) (interface{}, error) {
-	e, err := etcdFs.Update(c.Key, c.Value, c.ExpireTime, server.CommitIndex(), server.Term())
+	e, err := etcdStore.Update(c.Key, c.Value, c.ExpireTime, server.CommitIndex(), server.Term())
 
 	if err != nil {
 		debug(err)
@@ -89,7 +89,7 @@ func (c *TestAndSetCommand) CommandName() string {
 
 // Set the key-value pair if the current value of the key equals to the given prevValue
 func (c *TestAndSetCommand) Apply(server *raft.Server) (interface{}, error) {
-	e, err := etcdFs.TestAndSet(c.Key, c.PrevValue, c.PrevIndex,
+	e, err := etcdStore.TestAndSet(c.Key, c.PrevValue, c.PrevIndex,
 		c.Value, c.ExpireTime, server.CommitIndex(), server.Term())
 
 	if err != nil {
@@ -114,7 +114,7 @@ func (c *GetCommand) CommandName() string {
 
 // Get the value of key
 func (c *GetCommand) Apply(server *raft.Server) (interface{}, error) {
-	e, err := etcdFs.Get(c.Key, c.Recursive, c.Sorted, server.CommitIndex(), server.Term())
+	e, err := etcdStore.Get(c.Key, c.Recursive, c.Sorted, server.CommitIndex(), server.Term())
 
 	if err != nil {
 		debug(err)
@@ -137,7 +137,7 @@ func (c *DeleteCommand) CommandName() string {
 
 // Delete the key
 func (c *DeleteCommand) Apply(server *raft.Server) (interface{}, error) {
-	e, err := etcdFs.Delete(c.Key, c.Recursive, server.CommitIndex(), server.Term())
+	e, err := etcdStore.Delete(c.Key, c.Recursive, server.CommitIndex(), server.Term())
 
 	if err != nil {
 		debug(err)
@@ -160,7 +160,7 @@ func (c *WatchCommand) CommandName() string {
 }
 
 func (c *WatchCommand) Apply(server *raft.Server) (interface{}, error) {
-	eventChan, err := etcdFs.Watch(c.Key, c.Recursive, c.SinceIndex, server.CommitIndex(), server.Term())
+	eventChan, err := etcdStore.Watch(c.Key, c.Recursive, c.SinceIndex, server.CommitIndex(), server.Term())
 
 	if err != nil {
 		return nil, err
@@ -197,7 +197,7 @@ func (c *JoinCommand) CommandName() string {
 func (c *JoinCommand) Apply(raftServer *raft.Server) (interface{}, error) {
 
 	// check if the join command is from a previous machine, who lost all its previous log.
-	e, _ := etcdFs.Get(path.Join("/_etcd/machines", c.Name), false, false, raftServer.CommitIndex(), raftServer.Term())
+	e, _ := etcdStore.Get(path.Join("/_etcd/machines", c.Name), false, false, raftServer.CommitIndex(), raftServer.Term())
 
 	b := make([]byte, 8)
 	binary.PutUvarint(b, raftServer.CommitIndex())
@@ -221,7 +221,7 @@ func (c *JoinCommand) Apply(raftServer *raft.Server) (interface{}, error) {
 	// add machine in etcd storage
 	key := path.Join("_etcd/machines", c.Name)
 	value := fmt.Sprintf("raft=%s&etcd=%s&raftVersion=%s", c.RaftURL, c.EtcdURL, c.RaftVersion)
-	etcdFs.Create(key, value, fileSystem.Permanent, raftServer.CommitIndex(), raftServer.Term())
+	etcdStore.Create(key, value, store.Permanent, raftServer.CommitIndex(), raftServer.Term())
 
 	if c.Name != r.Name() { // do not add self to the peer list
 		r.peersStats[c.Name] = &raftPeerStats{MinLatency: 1 << 63}
@@ -250,7 +250,7 @@ func (c *RemoveCommand) Apply(raftServer *raft.Server) (interface{}, error) {
 	// remove machine in etcd storage
 	key := path.Join("_etcd/machines", c.Name)
 
-	_, err := etcdFs.Delete(key, false, raftServer.CommitIndex(), raftServer.Term())
+	_, err := etcdStore.Delete(key, false, raftServer.CommitIndex(), raftServer.Term())
 	delete(r.peersStats, c.Name)
 
 	if err != nil {
