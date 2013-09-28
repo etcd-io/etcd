@@ -1,19 +1,27 @@
 package etcd
 
 import (
-	"github.com/ccding/go-logging/logging"
+	"github.com/coreos/go-log/log"
+	"os"
 )
 
-var logger, _ = logging.SimpleLogger("go-etcd")
+var logger *log.Logger
 
 func init() {
-	logger.SetLevel(logging.FATAL)
+	setLogger(log.PriErr)
 }
 
 func OpenDebug() {
-	logger.SetLevel(logging.NOTSET)
+	setLogger(log.PriDebug)
 }
 
 func CloseDebug() {
-	logger.SetLevel(logging.FATAL)
+	setLogger(log.PriErr)
+}
+
+func setLogger(priority log.Priority) {
+	logger = log.NewSimple(
+		log.PriorityFilter(
+			priority,
+			log.WriterSink(os.Stdout, log.BasicFormat, log.BasicFields)))
 }
