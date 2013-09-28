@@ -90,12 +90,7 @@ func init() {
 const (
 	ElectionTimeout  = 200 * time.Millisecond
 	HeartbeatTimeout = 50 * time.Millisecond
-
-	// Timeout for internal raft http connection
-	// The original timeout for http is 45 seconds
-	// which is too long for our usage.
-	HTTPTimeout   = 10 * time.Second
-	RetryInterval = 10
+	RetryInterval    = 10
 )
 
 //------------------------------------------------------------------------------

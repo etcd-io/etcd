@@ -33,7 +33,7 @@ var r *raftServer
 func newRaftServer(name string, url string, listenHost string, tlsConf *TLSConfig, tlsInfo *TLSInfo) *raftServer {
 
 	// Create transporter for raft
-	raftTransporter := newTransporter(tlsConf.Scheme, tlsConf.Client, ElectionTimeout)
+	raftTransporter := newTransporter(tlsConf.Scheme, tlsConf.Client)
 
 	// Create raft server
 	server, err := raft.NewServer(name, dirPath, raftTransporter, etcdStore, nil, "")
@@ -185,13 +185,16 @@ func (r *raftServer) startTransport(scheme string, tlsConf tls.Config) {
 // will need to do something more sophisticated later when we allow mixed
 // version clusters.
 func getVersion(t *transporter, versionURL url.URL) (string, error) {
-	resp, err := t.Get(versionURL.String())
+	resp, req, err := t.Get(versionURL.String())
 
 	if err != nil {
 		return "", err
 	}
 
 	defer resp.Body.Close()
+
+	t.CancelWhenTimeout(req)
+
 	body, err := ioutil.ReadAll(resp.Body)
 
 	return string(body), nil
@@ -246,7 +249,7 @@ func joinByMachine(s *raft.Server, machine string, scheme string) error {
 
 	debugf("Send Join Request to %s", joinURL.String())
 
-	resp, err := t.Post(joinURL.String(), &b)
+	resp, req, err := t.Post(joinURL.String(), &b)
 
 	for {
 		if err != nil {
@@ -254,6 +257,9 @@ func joinByMachine(s *raft.Server, machine string, scheme string) error {
 		}
 		if resp != nil {
 			defer resp.Body.Close()
+
+			t.CancelWhenTimeout(req)
+
 			if resp.StatusCode == http.StatusOK {
 				b, _ := ioutil.ReadAll(resp.Body)
 				r.joinIndex, _ = binary.Uvarint(b)
@@ -266,7 +272,7 @@ func joinByMachine(s *raft.Server, machine string, scheme string) error {
 
 				json.NewEncoder(&b).Encode(newJoinCommand())
 
-				resp, err = t.Post(address, &b)
+				resp, req, err = t.Post(address, &b)
 
 			} else if resp.StatusCode == http.StatusBadRequest {
 				debug("Reach max number machines in the cluster")
