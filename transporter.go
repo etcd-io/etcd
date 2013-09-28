@@ -21,8 +21,8 @@ var dailTimeout = 3 * HeartbeatTimeout
 // This should not exceed 3 * RTT + RTT
 var responseHeaderTimeout = 4 * HeartbeatTimeout
 
-// Timeout for actually read the response body from the server
-// This hould not exceed election timeout
+// Timeout for receiving the response body from the server
+// This should not exceed election timeout
 var tranTimeout = ElectionTimeout
 
 // Transporter layer for communication between raft nodes
