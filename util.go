@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net"
 	"net/http"
 	"net/url"
@@ -15,6 +14,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/web"
+	"github.com/coreos/go-log/log"
 )
 
 //--------------------------------------
@@ -155,44 +155,39 @@ func check(err error) {
 // Log
 //--------------------------------------
 
-var logger *log.Logger
+var logger *log.Logger = log.New("etcd", false,
+	log.CombinedSink(os.Stdout, "[%s] %s %-9s | %s\n", []string{"prefix", "time", "priority", "message"}))
 
-func init() {
-	logger = log.New(os.Stdout, "[etcd] ", log.Lmicroseconds)
+func infof(format string, v ...interface{}) {
+	logger.Infof(format, v...)
 }
 
-func infof(msg string, v ...interface{}) {
-	logger.Printf("INFO "+msg+"\n", v...)
-}
-
-func debugf(msg string, v ...interface{}) {
+func debugf(format string, v ...interface{}) {
 	if verbose {
-		logger.Printf("DEBUG "+msg+"\n", v...)
+		logger.Debugf(format, v...)
 	}
 }
 
 func debug(v ...interface{}) {
 	if verbose {
-		logger.Println("DEBUG " + fmt.Sprint(v...))
+		logger.Debug(v...)
 	}
 }
 
-func warnf(msg string, v ...interface{}) {
-	logger.Printf("WARN  "+msg+"\n", v...)
+func warnf(format string, v ...interface{}) {
+	logger.Warningf(format, v...)
 }
 
 func warn(v ...interface{}) {
-	logger.Println("WARN " + fmt.Sprint(v...))
+	logger.Warning(v...)
 }
 
-func fatalf(msg string, v ...interface{}) {
-	logger.Printf("FATAL "+msg+"\n", v...)
-	os.Exit(1)
+func fatalf(format string, v ...interface{}) {
+	logger.Fatalf(format, v...)
 }
 
 func fatal(v ...interface{}) {
-	logger.Println("FATAL " + fmt.Sprint(v...))
-	os.Exit(1)
+	logger.Fatalln(v...)
 }
 
 //--------------------------------------
