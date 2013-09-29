@@ -374,10 +374,10 @@ func (s *Store) Save() ([]byte, error) {
 	s.worldLock.Lock()
 
 	clonedStore := New()
-	clonedStore.Root = s.Root.Clone()
-	clonedStore.WatcherHub = s.WatcherHub.clone()
 	clonedStore.Index = s.Index
 	clonedStore.Term = s.Term
+	clonedStore.Root = s.Root.Clone()
+	clonedStore.WatcherHub = s.WatcherHub.clone()
 	clonedStore.Stats = s.Stats.clone()
 
 	s.worldLock.Unlock()
