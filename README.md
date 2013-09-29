@@ -512,8 +512,8 @@ If you are using SSL for server to server communication, you must use it on all 
 
 ### What size cluster should I use?
 
-Every command the client sends to the master is broadcast it to all of the followers.
-But, the command is not be committed until the majority of the cluster machines receive that command.
+Every command the client sends to the master is broadcast to all of the followers.
+But, the command is not committed until the majority of the cluster machines receive that command.
 
 Because of this majority voting property the ideal cluster should be kept small to keep speed up and be made up of an odd number of machines.
 
