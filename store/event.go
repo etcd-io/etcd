@@ -151,3 +151,25 @@ func (eh *EventHistory) scan(prefix string, index uint64) (*Event, error) {
 	}
 
 }
+
+// clone will be protected by a stop-world lock
+// do not need to obtain internal lock
+func (eh *EventHistory) clone() *EventHistory {
+
+	clonedQueue := eventQueue{
+		Capacity: eh.Queue.Capacity,
+		Events:   make([]*Event, eh.Queue.Capacity),
+		Size:     eh.Queue.Size,
+		Front:    eh.Queue.Front,
+	}
+
+	for i, e := range eh.Queue.Events {
+		clonedQueue.Events[i] = e
+	}
+
+	return &EventHistory{
+		StartIndex: eh.StartIndex,
+		Queue:      clonedQueue,
+	}
+
+}

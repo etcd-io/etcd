@@ -247,7 +247,7 @@ func TestExpire(t *testing.T) {
 
 	s.Create("/foo", "bar", expire, 1, 1)
 
-	_, err := s.InternalGet("/foo", 1, 1)
+	_, err := s.internalGet("/foo", 1, 1)
 
 	if err != nil {
 		t.Fatalf("can not get the node")
@@ -255,7 +255,7 @@ func TestExpire(t *testing.T) {
 
 	time.Sleep(time.Second * 2)
 
-	_, err = s.InternalGet("/foo", 1, 1)
+	_, err = s.internalGet("/foo", 1, 1)
 
 	if err == nil {
 		t.Fatalf("can get the node after expiration time")
@@ -266,7 +266,7 @@ func TestExpire(t *testing.T) {
 	s.Create("/foo", "bar", expire, 1, 1)
 
 	time.Sleep(time.Millisecond * 50)
-	_, err = s.InternalGet("/foo", 1, 1)
+	_, err = s.internalGet("/foo", 1, 1)
 
 	if err != nil {
 		t.Fatalf("cannot get the node before expiration", err.Error())
