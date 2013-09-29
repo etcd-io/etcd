@@ -222,9 +222,8 @@ func VersionHttpHandler(w http.ResponseWriter, req *http.Request) error {
 
 // Handler to return the basic stats of etcd
 func StatsHttpHandler(w http.ResponseWriter, req *http.Request) error {
-	w.WriteHeader(http.StatusOK)
-
 	option := req.URL.Path[len("/v1/stats/"):]
+	w.WriteHeader(http.StatusOK)
 
 	switch option {
 	case "self":
