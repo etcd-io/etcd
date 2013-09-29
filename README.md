@@ -475,6 +475,7 @@ If you are using SSL for server to server communication, you must use it on all 
 
 - [transitorykris/etcd-py](https://github.com/transitorykris/etcd-py)
 - [jplana/python-etcd](https://github.com/jplana/python-etcd)
+- [russellhaering/txetcd](https://github.com/russellhaering/txetcd) - a Twisted Python library
 
 **Node libraries**
 
