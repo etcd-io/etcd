@@ -16,13 +16,15 @@ func TestBasicStats(t *testing.T) {
 
 	for _, k := range keys {
 		i++
-		_, err := s.Create(k, "bar", time.Now().Add(time.Second*time.Duration(rand.Intn(10))), i, 1)
+		_, err := s.Create(k, "bar", time.Now().Add(time.Second*time.Duration(rand.Intn(6))), i, 1)
 		if err != nil {
 			SetFail++
 		} else {
 			SetSuccess++
 		}
 	}
+
+	time.Sleep(time.Second * 3)
 
 	for _, k := range keys {
 		_, err := s.Get(k, false, false, i, 1)
@@ -35,13 +37,15 @@ func TestBasicStats(t *testing.T) {
 
 	for _, k := range keys {
 		i++
-		_, err := s.Update(k, "foo", time.Now().Add(time.Second*time.Duration(rand.Intn(5))), i, 1)
+		_, err := s.Update(k, "foo", time.Now().Add(time.Second*time.Duration(rand.Intn(6))), i, 1)
 		if err != nil {
 			UpdateFail++
 		} else {
 			UpdateSuccess++
 		}
 	}
+
+	time.Sleep(time.Second * 3)
 
 	for _, k := range keys {
 		_, err := s.Get(k, false, false, i, 1)
@@ -134,6 +138,28 @@ func TestBasicStats(t *testing.T) {
 
 	if TestAndSetFail != s.Stats.TestAndSetFail {
 		t.Fatalf("TestAndSetFail [%d] != Stats.TestAndSetFail [%d]", TestAndSetFail, s.Stats.TestAndSetFail)
+	}
+
+	s = New()
+	SetSuccess = 0
+	SetFail = 0
+
+	for _, k := range keys {
+		i++
+		_, err := s.Create(k, "bar", time.Now().Add(time.Second*3), i, 1)
+		if err != nil {
+			SetFail++
+		} else {
+			SetSuccess++
+		}
+	}
+
+	time.Sleep(6 * time.Second)
+
+	ExpireCount := SetSuccess
+
+	if ExpireCount != s.Stats.ExpireCount {
+		t.Fatalf("ExpireCount [%d] != Stats.ExpireCount [%d]", ExpireCount, s.Stats.ExpireCount)
 	}
 
 }

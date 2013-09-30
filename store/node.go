@@ -236,20 +236,20 @@ func (n *Node) Clone() *Node {
 	return clone
 }
 
-func (n *Node) recoverAndclean(WatcherHub *watcherHub) {
+func (n *Node) recoverAndclean(s *Store) {
 	if n.IsDir() {
 		for _, child := range n.Children {
 			child.Parent = n
-			child.recoverAndclean(WatcherHub)
+			child.recoverAndclean(s)
 		}
 	}
 
 	n.stopExpire = make(chan bool, 1)
 
-	n.Expire(WatcherHub)
+	n.Expire(s)
 }
 
-func (n *Node) Expire(WatcherHub *watcherHub) {
+func (n *Node) Expire(s *Store) {
 	expired, duration := n.IsExpired()
 
 	if expired { // has been expired
@@ -267,7 +267,8 @@ func (n *Node) Expire(WatcherHub *watcherHub) {
 		case <-time.After(duration):
 			n.Remove(true, nil)
 
-			WatcherHub.notifyWithoutIndex(Expire, n.Path)
+			s.Stats.Inc(ExpireCount)
+			s.WatcherHub.notifyWithoutIndex(Expire, n.Path)
 
 			return
 
@@ -358,13 +359,13 @@ func (n *Node) Pair(recurisive, sorted bool) KeyValuePair {
 	}
 }
 
-func (n *Node) UpdateTTL(expireTime time.Time, WatcherHub *watcherHub) {
+func (n *Node) UpdateTTL(expireTime time.Time, s *Store) {
 	if !n.IsPermanent() {
 		n.stopExpire <- true // suspend it to modify the expiration
 	}
 
 	if expireTime.Sub(Permanent) != 0 {
 		n.ExpireTime = expireTime
-		n.Expire(WatcherHub)
+		n.Expire(s)
 	}
 }

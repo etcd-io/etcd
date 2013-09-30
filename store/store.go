@@ -150,7 +150,7 @@ func (s *Store) Create(nodePath string, value string, expireTime time.Time, inde
 
 	// Node with TTL
 	if expireTime.Sub(Permanent) != 0 {
-		n.Expire(s.WatcherHub)
+		n.Expire(s)
 		e.Expiration = &n.ExpireTime
 		e.TTL = int64(expireTime.Sub(time.Now())/time.Second) + 1
 	}
@@ -194,7 +194,7 @@ func (s *Store) Update(nodePath string, value string, expireTime time.Time, inde
 	}
 
 	// update ttl
-	n.UpdateTTL(expireTime, s.WatcherHub)
+	n.UpdateTTL(expireTime, s)
 
 	e.Expiration = &n.ExpireTime
 	e.TTL = int64(expireTime.Sub(time.Now())/time.Second) + 1
@@ -230,7 +230,7 @@ func (s *Store) TestAndSet(nodePath string, prevValue string, prevIndex uint64,
 		e.Value = value
 		n.Write(value, index, term)
 
-		n.UpdateTTL(expireTime, s.WatcherHub)
+		n.UpdateTTL(expireTime, s)
 
 		s.WatcherHub.notify(e)
 		s.Stats.Inc(TestAndSetSuccess)
@@ -401,7 +401,7 @@ func (s *Store) Recovery(state []byte) error {
 		return err
 	}
 
-	s.Root.recoverAndclean(s.WatcherHub)
+	s.Root.recoverAndclean(s)
 	return nil
 }
 
