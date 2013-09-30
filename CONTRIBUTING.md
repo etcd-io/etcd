@@ -9,7 +9,7 @@ For simplicity etcd discussions happen on coreos-dev and in #coreos-dev.
 As the community grows we will move to a dedicated mailing list and IRC channel.
 
 - Email: [coreos-dev](https://groups.google.com/forum/#!forum/coreos-dev) 
-- IRC: [#coreos-dev](irc://irc.freenode.org:6667/#coreos) IRC channel on freenode.org
+- IRC: [#coreos](irc://irc.freenode.org:6667/#coreos) IRC channel on freenode.org
 
 ## Getting Started
 
