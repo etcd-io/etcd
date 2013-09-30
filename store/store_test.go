@@ -378,6 +378,33 @@ func TestWatch(t *testing.T) {
 		t.Fatal("watch for Delete subdirectory fails")
 	}
 
+	// watch expire
+	s.Create("/foo/foo/boo", "foo", time.Now().Add(time.Second*1), 9, 1)
+	c, _ = s.WatcherHub.watch("/foo", true, 0)
+	time.Sleep(time.Second * 2)
+	e = nonblockingRetrive(c)
+	if e.Key != "/foo/foo/boo" || e.Index != 9 {
+		t.Fatal("watch for Expiration of Create() subdirectory fails ", e)
+	}
+
+	s.Create("/foo/foo/boo", "foo", Permanent, 10, 1)
+	s.Update("/foo/foo/boo", "bar", time.Now().Add(time.Second*1), 11, 1)
+	c, _ = s.WatcherHub.watch("/foo", true, 0)
+	time.Sleep(time.Second * 2)
+	e = nonblockingRetrive(c)
+	if e.Key != "/foo/foo/boo" || e.Index != 11 {
+		t.Fatal("watch for Expiration of Update() subdirectory fails ", e)
+	}
+
+	s.Create("/foo/foo/boo", "foo", Permanent, 12, 1)
+	s.TestAndSet("/foo/foo/boo", "foo", 0, "bar", time.Now().Add(time.Second*1), 13, 1)
+	c, _ = s.WatcherHub.watch("/foo", true, 0)
+	time.Sleep(time.Second * 2)
+	e = nonblockingRetrive(c)
+	if e.Key != "/foo/foo/boo" || e.Index != 13 {
+		t.Fatal("watch for Expiration of TestAndSet() subdirectory fails ", e)
+	}
+
 }
 
 func TestSort(t *testing.T) {
@@ -442,7 +469,7 @@ func TestSaveAndRecover(t *testing.T) {
 	b, err := s.Save()
 
 	cloneFs := New()
-	time.Sleep(time.Second)
+	time.Sleep(2 * time.Second)
 
 	cloneFs.Recovery(b)
 
@@ -457,7 +484,17 @@ func TestSaveAndRecover(t *testing.T) {
 		t.Fatal("Error recovered event history start index")
 	}
 
-	for i = 0; int(i) < s.WatcherHub.EventHistory.Queue.Size; i++ {
+	//t.Log("watcherhub.size: ", s.WatcherHub.EventHistory.Queue.Size)
+	//for i = 0; int(i) < s.WatcherHub.EventHistory.Queue.Size; i++ {
+	//	t.Log(s.WatcherHub.EventHistory.Queue.Events[i])
+	//}
+	//
+	//t.Log("ClonedWatcherhub.size: ", cloneFs.WatcherHub.EventHistory.Queue.Size)
+	//for i = 0; int(i) < cloneFs.WatcherHub.EventHistory.Queue.Size; i++ {
+	//	t.Log(cloneFs.WatcherHub.EventHistory.Queue.Events[i])
+	//}
+
+	for i = 0; int(i) < cloneFs.WatcherHub.EventHistory.Queue.Size; i++ {
 		if s.WatcherHub.EventHistory.Queue.Events[i].Key !=
 			cloneFs.WatcherHub.EventHistory.Queue.Events[i].Key {
 			t.Fatal("Error recovered event history")

@@ -150,7 +150,7 @@ func (s *Store) Create(nodePath string, value string, expireTime time.Time, inde
 
 	// Node with TTL
 	if expireTime.Sub(Permanent) != 0 {
-		n.Expire()
+		n.Expire(s.WatcherHub)
 		e.Expiration = &n.ExpireTime
 		e.TTL = int64(expireTime.Sub(time.Now())/time.Second) + 1
 	}
@@ -194,19 +194,14 @@ func (s *Store) Update(nodePath string, value string, expireTime time.Time, inde
 	}
 
 	// update ttl
-	if !n.IsPermanent() {
-		n.stopExpire <- true
-	}
+	n.UpdateTTL(expireTime, s.WatcherHub)
 
-	if expireTime.Sub(Permanent) != 0 {
-		n.ExpireTime = expireTime
-		n.Expire()
-		e.Expiration = &n.ExpireTime
-		e.TTL = int64(expireTime.Sub(time.Now())/time.Second) + 1
-	}
+	e.Expiration = &n.ExpireTime
+	e.TTL = int64(expireTime.Sub(time.Now())/time.Second) + 1
 
 	s.WatcherHub.notify(e)
 	s.Stats.Inc(UpdateSuccess)
+
 	return e, nil
 }
 
@@ -216,31 +211,33 @@ func (s *Store) TestAndSet(nodePath string, prevValue string, prevIndex uint64,
 	s.worldLock.RLock()
 	defer s.worldLock.RUnlock()
 
-	f, err := s.internalGet(nodePath, index, term)
+	n, err := s.internalGet(nodePath, index, term)
 
 	if err != nil {
 		s.Stats.Inc(TestAndSetFail)
 		return nil, err
 	}
 
-	if f.IsDir() { // can only test and set file
+	if n.IsDir() { // can only test and set file
 		s.Stats.Inc(TestAndSetFail)
 		return nil, etcdErr.NewError(etcdErr.EcodeNotFile, nodePath)
 	}
 
-	if f.Value == prevValue || f.ModifiedIndex == prevIndex {
+	if n.Value == prevValue || n.ModifiedIndex == prevIndex {
 		// if test succeed, write the value
 		e := newEvent(TestAndSet, nodePath, index, term)
-		e.PrevValue = f.Value
+		e.PrevValue = n.Value
 		e.Value = value
-		f.Write(value, index, term)
+		n.Write(value, index, term)
+
+		n.UpdateTTL(expireTime, s.WatcherHub)
 
 		s.WatcherHub.notify(e)
 		s.Stats.Inc(TestAndSetSuccess)
 		return e, nil
 	}
 
-	cause := fmt.Sprintf("[%v != %v] [%v != %v]", prevValue, f.Value, prevIndex, f.ModifiedIndex)
+	cause := fmt.Sprintf("[%v != %v] [%v != %v]", prevValue, n.Value, prevIndex, n.ModifiedIndex)
 	s.Stats.Inc(TestAndSetFail)
 	return nil, etcdErr.NewError(etcdErr.EcodeTestFailed, cause)
 }
@@ -404,7 +401,7 @@ func (s *Store) Recovery(state []byte) error {
 		return err
 	}
 
-	s.Root.recoverAndclean()
+	s.Root.recoverAndclean(s.WatcherHub)
 	return nil
 }
 

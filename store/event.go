@@ -15,6 +15,7 @@ const (
 	Update     = "update"
 	Delete     = "delete"
 	TestAndSet = "testAndSet"
+	Expire     = "expire"
 )
 
 type Event struct {
@@ -111,6 +112,21 @@ func (eh *EventHistory) addEvent(e *Event) {
 	eh.StartIndex = eh.Queue.Events[eh.Queue.Front].Index
 }
 
+// addEvent with the last event's index and term
+func (eh *EventHistory) addEventWithouIndex(action, key string) (e *Event) {
+	eh.rwl.Lock()
+	defer eh.rwl.Unlock()
+
+	LastEvent := eh.Queue.Events[eh.Queue.back()]
+	e = newEvent(action, key, LastEvent.Index, LastEvent.Term)
+
+	eh.Queue.insert(e)
+
+	eh.StartIndex = eh.Queue.Events[eh.Queue.Front].Index
+
+	return e
+}
+
 // scan function is enumerating events from the index in history and
 // stops till the first point where the key has identified prefix
 func (eh *EventHistory) scan(prefix string, index uint64) (*Event, error) {
@@ -126,8 +142,7 @@ func (eh *EventHistory) scan(prefix string, index uint64) (*Event, error) {
 		// TODO: Add error type
 		return nil,
 			etcdErr.NewError(etcdErr.EcodeEventIndexCleared,
-				fmt.Sprintf("prefix:%v index:%v", prefix, index),
-			)
+				fmt.Sprintf("prefix:%v index:%v", prefix, index))
 	}
 
 	if start >= uint64(eh.Queue.Size) {
