@@ -455,6 +455,10 @@ In the previous example we showed how to use SSL client certs for client to serv
 
 If you are using SSL for server to server communication, you must use it on all instances of etcd.
 
+## Contributing
+
+See [CONTRIBUTING](https://github.com/coreos/etcd/blob/master/CONTRIBUTING.md) for details on submitting patches and contacting developers via IRC and mailing lists.
+
 ## Libraries and Tools
 
 **Tools**
