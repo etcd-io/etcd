@@ -90,6 +90,8 @@ func (eq *eventQueue) insert(e *Event) {
 type EventHistory struct {
 	Queue      eventQueue
 	StartIndex uint64
+	LastIndex  uint64
+	LastTerm   uint64
 	rwl        sync.RWMutex
 }
 
@@ -103,29 +105,42 @@ func newEventHistory(capacity int) *EventHistory {
 }
 
 // addEvent function adds event into the eventHistory
-func (eh *EventHistory) addEvent(e *Event) {
+func (eh *EventHistory) addEvent(e *Event) *Event {
 	eh.rwl.Lock()
 	defer eh.rwl.Unlock()
+
+	if e.Index == 0 {
+		e.Index = eh.LastIndex
+	}
+
+	if e.Term == 0 {
+		e.Term = eh.LastTerm
+	}
 
 	eh.Queue.insert(e)
 
 	eh.StartIndex = eh.Queue.Events[eh.Queue.Front].Index
+
+	eh.LastIndex = e.Index
+	eh.LastTerm = e.Term
+
+	return e
 }
 
 // addEvent with the last event's index and term
-func (eh *EventHistory) addEventWithouIndex(action, key string) (e *Event) {
+/*func (eh *EventHistory) addEventWithouIndex(action, key string) (e *Event) {
 	eh.rwl.Lock()
 	defer eh.rwl.Unlock()
 
 	LastEvent := eh.Queue.Events[eh.Queue.back()]
-	e = newEvent(action, key, LastEvent.Index, LastEvent.Term)
+	e = newEvent(action, key, LastEvent.Index, LastEvent.Term);
 
 	eh.Queue.insert(e)
 
 	eh.StartIndex = eh.Queue.Events[eh.Queue.Front].Index
 
-	return e
-}
+	return e;
+}*/
 
 // scan function is enumerating events from the index in history and
 // stops till the first point where the key has identified prefix

@@ -104,22 +104,7 @@ func (wh *watcherHub) notifyWithPath(e *Event, path string, force bool) {
 }
 
 func (wh *watcherHub) notify(e *Event) {
-	segments := strings.Split(e.Key, "/")
-
-	currPath := "/"
-
-	// walk through all the paths
-	for _, segment := range segments {
-		currPath = path.Join(currPath, segment)
-		wh.notifyWithPath(e, currPath, false)
-	}
-
-	wh.EventHistory.addEvent(e)
-}
-
-// notify with last event's index and term
-func (wh *watcherHub) notifyWithoutIndex(action, key string) {
-	e := wh.EventHistory.addEventWithouIndex(action, key)
+	e = wh.EventHistory.addEvent(e)
 
 	segments := strings.Split(e.Key, "/")
 

@@ -265,10 +265,13 @@ func (n *Node) Expire(s *Store) {
 		select {
 		// if timeout, delete the node
 		case <-time.After(duration):
+			e := newEvent(Expire, n.Path, 0, 0)
+
 			n.Remove(true, nil)
 
 			s.Stats.Inc(ExpireCount)
-			s.WatcherHub.notifyWithoutIndex(Expire, n.Path)
+
+			s.WatcherHub.notify(e)
 
 			return
 
