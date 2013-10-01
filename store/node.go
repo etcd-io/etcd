@@ -66,6 +66,7 @@ func newDir(nodePath string, createIndex uint64, createTerm uint64, parent *Node
 // If the node is a directory and recursive is true, the function will recursively remove
 // add nodes under the receiver node.
 func (n *Node) Remove(recursive bool, callback func(path string)) error {
+
 	n.mu.Lock()
 	defer n.mu.Unlock()
 
@@ -87,6 +88,7 @@ func (n *Node) Remove(recursive bool, callback func(path string)) error {
 
 			n.stopExpire <- true
 			n.status = removed
+
 		}
 
 		return nil
@@ -265,14 +267,14 @@ func (n *Node) Expire(s *Store) {
 		select {
 		// if timeout, delete the node
 		case <-time.After(duration):
-			e := newEvent(Expire, n.Path, 0, 0)
+			s.worldLock.Lock()
 
+			e := newEvent(Expire, n.Path, UndefIndex, UndefTerm)
+			s.WatcherHub.notify(e)
 			n.Remove(true, nil)
-
 			s.Stats.Inc(ExpireCount)
 
-			s.WatcherHub.notify(e)
-
+			s.worldLock.Unlock()
 			return
 
 		// if stopped, return
@@ -364,7 +366,11 @@ func (n *Node) Pair(recurisive, sorted bool) KeyValuePair {
 
 func (n *Node) UpdateTTL(expireTime time.Time, s *Store) {
 	if !n.IsPermanent() {
-		n.stopExpire <- true // suspend it to modify the expiration
+		expired, _ := n.IsExpired()
+
+		if !expired {
+			n.stopExpire <- true // suspend it to modify the expiration
+		}
 	}
 
 	if expireTime.Sub(Permanent) != 0 {

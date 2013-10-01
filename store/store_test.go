@@ -320,88 +320,88 @@ func TestTestAndSet(t *testing.T) { // TODO prevValue == nil ?
 func TestWatch(t *testing.T) {
 	s := New()
 	// watch at a deeper path
-	c, _ := s.WatcherHub.watch("/foo/foo/foo", false, 0)
+	c, _ := s.Watch("/foo/foo/foo", false, 0, 0, 1)
 	s.Create("/foo/foo/foo", "bar", Permanent, 1, 1)
 
 	e := nonblockingRetrive(c)
-	if e.Key != "/foo/foo/foo" {
-		t.Fatal("watch for Create node fails")
+	if e.Key != "/foo/foo/foo" || e.Action != Create {
+		t.Fatal("watch for Create node fails ", e)
 	}
 
-	c, _ = s.WatcherHub.watch("/foo/foo/foo", false, 0)
+	c, _ = s.Watch("/foo/foo/foo", false, 0, 1, 1)
 	s.Update("/foo/foo/foo", "car", Permanent, 2, 1)
 	e = nonblockingRetrive(c)
-	if e.Key != "/foo/foo/foo" {
-		t.Fatal("watch for Update node fails")
+	if e.Key != "/foo/foo/foo" || e.Action != Update {
+		t.Fatal("watch for Update node fails ", e)
 	}
 
-	c, _ = s.WatcherHub.watch("/foo/foo/foo", false, 0)
+	c, _ = s.Watch("/foo/foo/foo", false, 0, 2, 1)
 	s.TestAndSet("/foo/foo/foo", "car", 0, "bar", Permanent, 3, 1)
 	e = nonblockingRetrive(c)
-	if e.Key != "/foo/foo/foo" {
+	if e.Key != "/foo/foo/foo" || e.Action != TestAndSet {
 		t.Fatal("watch for TestAndSet node fails")
 	}
 
-	c, _ = s.WatcherHub.watch("/foo/foo/foo", false, 0)
+	c, _ = s.Watch("/foo/foo/foo", false, 0, 3, 1)
 	s.Delete("/foo", true, 4, 1) //recursively delete
 	e = nonblockingRetrive(c)
-	if e.Key != "/foo" {
-		t.Fatal("watch for Delete node fails")
+	if e.Key != "/foo" || e.Action != Delete {
+		t.Fatal("watch for Delete node fails ", e)
 	}
 
 	// watch at a prefix
-	c, _ = s.WatcherHub.watch("/foo", true, 0)
+	c, _ = s.Watch("/foo", true, 0, 4, 1)
 	s.Create("/foo/foo/boo", "bar", Permanent, 5, 1)
 	e = nonblockingRetrive(c)
-	if e.Key != "/foo/foo/boo" {
+	if e.Key != "/foo/foo/boo" || e.Action != Create {
 		t.Fatal("watch for Create subdirectory fails")
 	}
 
-	c, _ = s.WatcherHub.watch("/foo", true, 0)
+	c, _ = s.Watch("/foo", true, 0, 5, 1)
 	s.Update("/foo/foo/boo", "foo", Permanent, 6, 1)
 	e = nonblockingRetrive(c)
-	if e.Key != "/foo/foo/boo" {
+	if e.Key != "/foo/foo/boo" || e.Action != Update {
 		t.Fatal("watch for Update subdirectory fails")
 	}
 
-	c, _ = s.WatcherHub.watch("/foo", true, 0)
+	c, _ = s.Watch("/foo", true, 0, 6, 1)
 	s.TestAndSet("/foo/foo/boo", "foo", 0, "bar", Permanent, 7, 1)
 	e = nonblockingRetrive(c)
-	if e.Key != "/foo/foo/boo" {
+	if e.Key != "/foo/foo/boo" || e.Action != TestAndSet {
 		t.Fatal("watch for TestAndSet subdirectory fails")
 	}
 
-	c, _ = s.WatcherHub.watch("/foo", true, 0)
+	c, _ = s.Watch("/foo", true, 0, 7, 1)
 	s.Delete("/foo/foo/boo", false, 8, 1)
 	e = nonblockingRetrive(c)
-	if e.Key != "/foo/foo/boo" {
+	if e.Key != "/foo/foo/boo" || e.Action != Delete {
 		t.Fatal("watch for Delete subdirectory fails")
 	}
 
 	// watch expire
 	s.Create("/foo/foo/boo", "foo", time.Now().Add(time.Second*1), 9, 1)
-	c, _ = s.WatcherHub.watch("/foo", true, 0)
+	c, _ = s.Watch("/foo", true, 0, 9, 1)
 	time.Sleep(time.Second * 2)
 	e = nonblockingRetrive(c)
-	if e.Key != "/foo/foo/boo" || e.Index != 9 {
+	if e.Key != "/foo/foo/boo" || e.Action != Expire || e.Index != 9 {
 		t.Fatal("watch for Expiration of Create() subdirectory fails ", e)
 	}
 
 	s.Create("/foo/foo/boo", "foo", Permanent, 10, 1)
 	s.Update("/foo/foo/boo", "bar", time.Now().Add(time.Second*1), 11, 1)
-	c, _ = s.WatcherHub.watch("/foo", true, 0)
+	c, _ = s.Watch("/foo", true, 0, 11, 1)
 	time.Sleep(time.Second * 2)
 	e = nonblockingRetrive(c)
-	if e.Key != "/foo/foo/boo" || e.Index != 11 {
+	if e.Key != "/foo/foo/boo" || e.Action != Expire || e.Index != 11 {
 		t.Fatal("watch for Expiration of Update() subdirectory fails ", e)
 	}
 
 	s.Create("/foo/foo/boo", "foo", Permanent, 12, 1)
 	s.TestAndSet("/foo/foo/boo", "foo", 0, "bar", time.Now().Add(time.Second*1), 13, 1)
-	c, _ = s.WatcherHub.watch("/foo", true, 0)
+	c, _ = s.Watch("/foo", true, 0, 13, 1)
 	time.Sleep(time.Second * 2)
 	e = nonblockingRetrive(c)
-	if e.Key != "/foo/foo/boo" || e.Index != 13 {
+	if e.Key != "/foo/foo/boo" || e.Action != Expire || e.Index != 13 {
 		t.Fatal("watch for Expiration of TestAndSet() subdirectory fails ", e)
 	}
 
@@ -479,20 +479,11 @@ func TestSaveAndRecover(t *testing.T) {
 			panic(err)
 		}
 	}
-
+	s.worldLock.RLock()
+	defer s.worldLock.RUnlock()
 	if s.WatcherHub.EventHistory.StartIndex != cloneFs.WatcherHub.EventHistory.StartIndex {
 		t.Fatal("Error recovered event history start index")
 	}
-
-	//t.Log("watcherhub.size: ", s.WatcherHub.EventHistory.Queue.Size)
-	//for i = 0; int(i) < s.WatcherHub.EventHistory.Queue.Size; i++ {
-	//	t.Log(s.WatcherHub.EventHistory.Queue.Events[i])
-	//}
-	//
-	//t.Log("ClonedWatcherhub.size: ", cloneFs.WatcherHub.EventHistory.Queue.Size)
-	//for i = 0; int(i) < cloneFs.WatcherHub.EventHistory.Queue.Size; i++ {
-	//	t.Log(cloneFs.WatcherHub.EventHistory.Queue.Events[i])
-	//}
 
 	for i = 0; int(i) < cloneFs.WatcherHub.EventHistory.Queue.Size; i++ {
 		if s.WatcherHub.EventHistory.Queue.Events[i].Key !=

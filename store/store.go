@@ -164,6 +164,7 @@ func (s *Store) Create(nodePath string, value string, expireTime time.Time, inde
 // If the node is a file, the value and the ttl can be updated.
 // If the node is a directory, only the ttl can be updated.
 func (s *Store) Update(nodePath string, value string, expireTime time.Time, index uint64, term uint64) (*Event, error) {
+
 	s.worldLock.RLock()
 	defer s.worldLock.RUnlock()
 
@@ -171,15 +172,16 @@ func (s *Store) Update(nodePath string, value string, expireTime time.Time, inde
 
 	if err != nil { // if the node does not exist, return error
 		s.Stats.Inc(UpdateFail)
+
 		return nil, err
 	}
 
 	e := newEvent(Update, nodePath, s.Index, s.Term)
 
 	if n.IsDir() { // if the node is a directory, we can only update ttl
-
 		if len(value) != 0 {
 			s.Stats.Inc(UpdateFail)
+
 			return nil, etcdErr.NewError(etcdErr.EcodeNotFile, nodePath)
 		}
 
@@ -195,7 +197,6 @@ func (s *Store) Update(nodePath string, value string, expireTime time.Time, inde
 
 	// update ttl
 	n.UpdateTTL(expireTime, s)
-
 	e.Expiration = &n.ExpireTime
 	e.TTL = int64(expireTime.Sub(time.Now())/time.Second) + 1
 

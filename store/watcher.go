@@ -47,7 +47,7 @@ func (wh *watcherHub) watch(prefix string, recursive bool, index uint64) (<-chan
 	w := &watcher{
 		eventChan:  eventChan,
 		recursive:  recursive,
-		sinceIndex: index,
+		sinceIndex: index - 1, // to catch Expire()
 	}
 
 	l, ok := wh.watchers[prefix]

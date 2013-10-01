@@ -16,6 +16,8 @@ const (
 	Delete     = "delete"
 	TestAndSet = "testAndSet"
 	Expire     = "expire"
+	UndefIndex = 0
+	UndefTerm  = 0
 )
 
 type Event struct {
@@ -92,6 +94,7 @@ type EventHistory struct {
 	StartIndex uint64
 	LastIndex  uint64
 	LastTerm   uint64
+	DupIndex   uint64
 	rwl        sync.RWMutex
 }
 
@@ -109,12 +112,16 @@ func (eh *EventHistory) addEvent(e *Event) *Event {
 	eh.rwl.Lock()
 	defer eh.rwl.Unlock()
 
-	if e.Index == 0 {
+	DupIndex := uint64(0)
+
+	if e.Index == UndefIndex {
 		e.Index = eh.LastIndex
+		DupIndex = 1
 	}
 
-	if e.Term == 0 {
+	if e.Term == UndefTerm {
 		e.Term = eh.LastTerm
+		DupIndex = 1
 	}
 
 	eh.Queue.insert(e)
@@ -123,24 +130,10 @@ func (eh *EventHistory) addEvent(e *Event) *Event {
 
 	eh.LastIndex = e.Index
 	eh.LastTerm = e.Term
+	eh.DupIndex += DupIndex
 
 	return e
 }
-
-// addEvent with the last event's index and term
-/*func (eh *EventHistory) addEventWithouIndex(action, key string) (e *Event) {
-	eh.rwl.Lock()
-	defer eh.rwl.Unlock()
-
-	LastEvent := eh.Queue.Events[eh.Queue.back()]
-	e = newEvent(action, key, LastEvent.Index, LastEvent.Term);
-
-	eh.Queue.insert(e)
-
-	eh.StartIndex = eh.Queue.Events[eh.Queue.Front].Index
-
-	return e;
-}*/
 
 // scan function is enumerating events from the index in history and
 // stops till the first point where the key has identified prefix
@@ -148,7 +141,7 @@ func (eh *EventHistory) scan(prefix string, index uint64) (*Event, error) {
 	eh.rwl.RLock()
 	defer eh.rwl.RUnlock()
 
-	start := index - eh.StartIndex
+	start := index - eh.StartIndex + eh.DupIndex
 
 	// the index should locate after the event history's StartIndex
 	// and before its size
