@@ -3,7 +3,6 @@ package store
 import (
 	"path"
 	"sort"
-	"sync"
 	"time"
 
 	etcdErr "github.com/coreos/etcd/error"
@@ -30,7 +29,6 @@ type Node struct {
 	Value         string           // for key-value pair
 	Children      map[string]*Node // for directory
 	status        int
-	mu            sync.Mutex
 	stopExpire    chan bool // stop expire routine channel
 }
 
@@ -66,10 +64,7 @@ func newDir(nodePath string, createIndex uint64, createTerm uint64, parent *Node
 // If the node is a directory and recursive is true, the function will recursively remove
 // add nodes under the receiver node.
 func (n *Node) Remove(recursive bool, callback func(path string)) error {
-	n.mu.Lock()
-	defer n.mu.Unlock()
-
-	if n.status == removed {
+	if n.status == removed { // check race between remove and expire
 		return nil
 	}
 
@@ -144,8 +139,6 @@ func (n *Node) Write(value string, index uint64, term uint64) error {
 // List function return a slice of nodes under the receiver node.
 // If the receiver node is not a directory, a "Not A Directory" error will be returned.
 func (n *Node) List() ([]*Node, error) {
-	n.mu.Lock()
-	defer n.mu.Unlock()
 	if !n.IsDir() {
 		return nil, etcdErr.NewError(etcdErr.EcodeNotDir, "")
 	}
@@ -168,9 +161,6 @@ func (n *Node) List() ([]*Node, error) {
 // If the node corresponding to the name string is not file, it returns
 // Not File Error
 func (n *Node) GetFile(name string) (*Node, error) {
-	n.mu.Lock()
-	defer n.mu.Unlock()
-
 	if !n.IsDir() {
 		return nil, etcdErr.NewError(etcdErr.EcodeNotDir, n.Path)
 	}
@@ -193,12 +183,6 @@ func (n *Node) GetFile(name string) (*Node, error) {
 // If there is a existing node with the same name under the directory, a "Already Exist"
 // error will be returned
 func (n *Node) Add(child *Node) error {
-	n.mu.Lock()
-	defer n.mu.Unlock()
-	if n.status == removed {
-		return etcdErr.NewError(etcdErr.EcodeKeyNotFound, "")
-	}
-
 	if !n.IsDir() {
 		return etcdErr.NewError(etcdErr.EcodeNotDir, "")
 	}
@@ -220,8 +204,6 @@ func (n *Node) Add(child *Node) error {
 // If the node is a directory, it will clone all the content under this directory.
 // If the node is a key-value pair, it will clone the pair.
 func (n *Node) Clone() *Node {
-	n.mu.Lock()
-	defer n.mu.Unlock()
 	if !n.IsDir() {
 		return newFile(n.Path, n.Value, n.CreateIndex, n.CreateTerm, n.Parent, n.ACL, n.ExpireTime)
 	}
@@ -256,7 +238,6 @@ func (n *Node) Expire(s *Store) {
 	expired, duration := n.IsExpired()
 
 	if expired { // has been expired
-
 		// since the parent function of Expire() runs serially,
 		// there is no need for lock here
 		e := newEvent(Expire, n.Path, UndefIndex, UndefTerm)
@@ -277,17 +258,14 @@ func (n *Node) Expire(s *Store) {
 		// if timeout, delete the node
 		case <-time.After(duration):
 
-			// Lock the worldLock to avoid race on s.WatchHub,
-			// and the race with other slibling nodes on their common parent.
 			s.worldLock.Lock()
+			defer s.worldLock.Unlock()
 
 			e := newEvent(Expire, n.Path, UndefIndex, UndefTerm)
 			s.WatcherHub.notify(e)
 
 			n.Remove(true, nil)
 			s.Stats.Inc(ExpireCount)
-
-			s.worldLock.Unlock()
 
 			return
 

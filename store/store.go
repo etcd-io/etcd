@@ -18,7 +18,7 @@ type Store struct {
 	Index      uint64
 	Term       uint64
 	Stats      *Stats
-	worldLock  sync.RWMutex // stop the world lock. Used to do snapshot
+	worldLock  sync.RWMutex // stop the world lock
 }
 
 func New() *Store {
@@ -95,8 +95,8 @@ func (s *Store) Get(nodePath string, recursive, sorted bool, index uint64, term 
 // If the node has already existed, create will fail.
 // If any node on the path is a file, create will fail.
 func (s *Store) Create(nodePath string, value string, expireTime time.Time, index uint64, term uint64) (*Event, error) {
-	s.worldLock.RLock()
-	defer s.worldLock.RUnlock()
+	s.worldLock.Lock()
+	defer s.worldLock.Unlock()
 
 	nodePath = path.Clean(path.Join("/", nodePath))
 
@@ -164,8 +164,8 @@ func (s *Store) Create(nodePath string, value string, expireTime time.Time, inde
 // If the node is a file, the value and the ttl can be updated.
 // If the node is a directory, only the ttl can be updated.
 func (s *Store) Update(nodePath string, value string, expireTime time.Time, index uint64, term uint64) (*Event, error) {
-	s.worldLock.RLock()
-	defer s.worldLock.RUnlock()
+	s.worldLock.Lock()
+	defer s.worldLock.Unlock()
 
 	n, err := s.internalGet(nodePath, index, term)
 
@@ -209,8 +209,8 @@ func (s *Store) Update(nodePath string, value string, expireTime time.Time, inde
 func (s *Store) TestAndSet(nodePath string, prevValue string, prevIndex uint64,
 	value string, expireTime time.Time, index uint64, term uint64) (*Event, error) {
 
-	s.worldLock.RLock()
-	defer s.worldLock.RUnlock()
+	s.worldLock.Lock()
+	defer s.worldLock.Unlock()
 
 	n, err := s.internalGet(nodePath, index, term)
 
@@ -246,8 +246,8 @@ func (s *Store) TestAndSet(nodePath string, prevValue string, prevIndex uint64,
 // Delete function deletes the node at the given path.
 // If the node is a directory, recursive must be true to delete it.
 func (s *Store) Delete(nodePath string, recursive bool, index uint64, term uint64) (*Event, error) {
-	s.worldLock.RLock()
-	defer s.worldLock.RUnlock()
+	s.worldLock.Lock()
+	defer s.worldLock.Unlock()
 
 	n, err := s.internalGet(nodePath, index, term)
 
