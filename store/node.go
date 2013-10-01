@@ -87,6 +87,7 @@ func (n *Node) Remove(recursive bool, callback func(path string)) error {
 
 			n.stopExpire <- true
 			n.status = removed
+
 		}
 
 		return nil
@@ -185,7 +186,6 @@ func (n *Node) GetFile(name string) (*Node, error) {
 	}
 
 	return nil, nil
-
 }
 
 // Add function adds a node to the receiver node.
@@ -214,7 +214,6 @@ func (n *Node) Add(child *Node) error {
 	n.Children[name] = child
 
 	return nil
-
 }
 
 // Clone function clone the node recursively and return the new node.
@@ -236,24 +235,36 @@ func (n *Node) Clone() *Node {
 	return clone
 }
 
-func (n *Node) recoverAndclean() {
+func (n *Node) recoverAndclean(s *Store) {
 	if n.IsDir() {
 		for _, child := range n.Children {
 			child.Parent = n
-			child.recoverAndclean()
+			child.recoverAndclean(s)
 		}
 	}
 
 	n.stopExpire = make(chan bool, 1)
 
-	n.Expire()
+	n.Expire(s)
 }
 
-func (n *Node) Expire() {
+// Expire function will test if the node is expired.
+// if the node is already expired, delete the node and return.
+// if the node is permemant (this shouldn't happen), return at once.
+// else wait for a period time, then remove the node. and notify the watchhub.
+func (n *Node) Expire(s *Store) {
 	expired, duration := n.IsExpired()
 
 	if expired { // has been expired
+
+		// since the parent function of Expire() runs serially,
+		// there is no need for lock here
+		e := newEvent(Expire, n.Path, UndefIndex, UndefTerm)
+		s.WatcherHub.notify(e)
+
 		n.Remove(true, nil)
+		s.Stats.Inc(ExpireCount)
+
 		return
 	}
 
@@ -265,13 +276,24 @@ func (n *Node) Expire() {
 		select {
 		// if timeout, delete the node
 		case <-time.After(duration):
+
+			// Lock the worldLock to avoid race on s.WatchHub,
+			// and the race with other slibling nodes on their common parent.
+			s.worldLock.Lock()
+
+			e := newEvent(Expire, n.Path, UndefIndex, UndefTerm)
+			s.WatcherHub.notify(e)
+
 			n.Remove(true, nil)
+			s.Stats.Inc(ExpireCount)
+
+			s.worldLock.Unlock()
+
 			return
 
 		// if stopped, return
 		case <-n.stopExpire:
 			return
-
 		}
 	}()
 }
@@ -285,7 +307,6 @@ func (n *Node) IsHidden() bool {
 	_, name := path.Split(n.Path)
 
 	return name[0] == '_'
-
 }
 
 func (n *Node) IsPermanent() bool {
@@ -346,11 +367,27 @@ func (n *Node) Pair(recurisive, sorted bool) KeyValuePair {
 		if sorted {
 			sort.Sort(pair)
 		}
+
 		return pair
 	}
 
 	return KeyValuePair{
 		Key:   n.Path,
 		Value: n.Value,
+	}
+}
+
+func (n *Node) UpdateTTL(expireTime time.Time, s *Store) {
+	if !n.IsPermanent() {
+		expired, _ := n.IsExpired()
+
+		if !expired {
+			n.stopExpire <- true // suspend it to modify the expiration
+		}
+	}
+
+	if expireTime.Sub(Permanent) != 0 {
+		n.ExpireTime = expireTime
+		n.Expire(s)
 	}
 }

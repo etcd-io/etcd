@@ -47,7 +47,7 @@ func (wh *watcherHub) watch(prefix string, recursive bool, index uint64) (<-chan
 	w := &watcher{
 		eventChan:  eventChan,
 		recursive:  recursive,
-		sinceIndex: index,
+		sinceIndex: index - 1, // to catch Expire()
 	}
 
 	l, ok := wh.watchers[prefix]
@@ -74,21 +74,19 @@ func (wh *watcherHub) notifyWithPath(e *Event, path string, force bool) {
 		notifiedAll := true
 
 		for {
-
 			if curr == nil { // we have reached the end of the list
-
 				if notifiedAll {
 					// if we have notified all watcher in the list
 					// we can delete the list
 					delete(wh.watchers, path)
 				}
+
 				break
 			}
 
 			next := curr.Next() // save the next
 
 			w, _ := curr.Value.(*watcher)
-
 			if (w.recursive || force || e.Key == path) && e.Index >= w.sinceIndex {
 				w.eventChan <- e
 				l.Remove(curr)
@@ -98,12 +96,13 @@ func (wh *watcherHub) notifyWithPath(e *Event, path string, force bool) {
 			}
 
 			curr = next // go to the next one
-
 		}
 	}
 }
 
 func (wh *watcherHub) notify(e *Event) {
+	e = wh.EventHistory.addEvent(e)
+
 	segments := strings.Split(e.Key, "/")
 
 	currPath := "/"
@@ -113,8 +112,6 @@ func (wh *watcherHub) notify(e *Event) {
 		currPath = path.Join(currPath, segment)
 		wh.notifyWithPath(e, currPath, false)
 	}
-
-	wh.EventHistory.addEvent(e)
 }
 
 func (wh *watcherHub) clone() *watcherHub {
