@@ -277,7 +277,8 @@ func (n *Node) Expire(s *Store) {
 		// if timeout, delete the node
 		case <-time.After(duration):
 
-			// Lock to avoid race
+			// Lock the worldLock to avoid race on s.WatchHub,
+			// and the race with other slibling nodes on their common parent.
 			s.worldLock.Lock()
 
 			e := newEvent(Expire, n.Path, UndefIndex, UndefTerm)

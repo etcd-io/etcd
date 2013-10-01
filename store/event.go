@@ -111,7 +111,7 @@ func (eh *EventHistory) addEvent(e *Event) *Event {
 	eh.rwl.Lock()
 	defer eh.rwl.Unlock()
 
-	duped := uint64(0)
+	var duped uint64
 
 	if e.Index == UndefIndex {
 		e.Index = eh.LastIndex
