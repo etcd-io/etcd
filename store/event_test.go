@@ -28,9 +28,7 @@ func TestEventQueue(t *testing.T) {
 		}
 		j++
 		i = (i + 1) % eh.Queue.Capacity
-
 	}
-
 }
 
 func TestScanHistory(t *testing.T) {
@@ -65,5 +63,4 @@ func TestScanHistory(t *testing.T) {
 	if e != nil {
 		t.Fatalf("bad index shoud reuturn nil")
 	}
-
 }

@@ -164,7 +164,6 @@ func (s *Store) Create(nodePath string, value string, expireTime time.Time, inde
 // If the node is a file, the value and the ttl can be updated.
 // If the node is a directory, only the ttl can be updated.
 func (s *Store) Update(nodePath string, value string, expireTime time.Time, index uint64, term uint64) (*Event, error) {
-
 	s.worldLock.RLock()
 	defer s.worldLock.RUnlock()
 
@@ -197,10 +196,11 @@ func (s *Store) Update(nodePath string, value string, expireTime time.Time, inde
 
 	// update ttl
 	n.UpdateTTL(expireTime, s)
+
 	e.Expiration = &n.ExpireTime
 	e.TTL = int64(expireTime.Sub(time.Now())/time.Second) + 1
-
 	s.WatcherHub.notify(e)
+
 	s.Stats.Inc(UpdateSuccess)
 
 	return e, nil

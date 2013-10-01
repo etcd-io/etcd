@@ -74,21 +74,19 @@ func (wh *watcherHub) notifyWithPath(e *Event, path string, force bool) {
 		notifiedAll := true
 
 		for {
-
 			if curr == nil { // we have reached the end of the list
-
 				if notifiedAll {
 					// if we have notified all watcher in the list
 					// we can delete the list
 					delete(wh.watchers, path)
 				}
+
 				break
 			}
 
 			next := curr.Next() // save the next
 
 			w, _ := curr.Value.(*watcher)
-
 			if (w.recursive || force || e.Key == path) && e.Index >= w.sinceIndex {
 				w.eventChan <- e
 				l.Remove(curr)
@@ -98,7 +96,6 @@ func (wh *watcherHub) notifyWithPath(e *Event, path string, force bool) {
 			}
 
 			curr = next // go to the next one
-
 		}
 	}
 }

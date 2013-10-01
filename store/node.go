@@ -66,7 +66,6 @@ func newDir(nodePath string, createIndex uint64, createTerm uint64, parent *Node
 // If the node is a directory and recursive is true, the function will recursively remove
 // add nodes under the receiver node.
 func (n *Node) Remove(recursive bool, callback func(path string)) error {
-
 	n.mu.Lock()
 	defer n.mu.Unlock()
 
@@ -187,7 +186,6 @@ func (n *Node) GetFile(name string) (*Node, error) {
 	}
 
 	return nil, nil
-
 }
 
 // Add function adds a node to the receiver node.
@@ -216,7 +214,6 @@ func (n *Node) Add(child *Node) error {
 	n.Children[name] = child
 
 	return nil
-
 }
 
 // Clone function clone the node recursively and return the new node.
@@ -251,11 +248,23 @@ func (n *Node) recoverAndclean(s *Store) {
 	n.Expire(s)
 }
 
+// Expire function will test if the node is expired.
+// if the node is already expired, delete the node and return.
+// if the node is permemant (this shouldn't happen), return at once.
+// else wait for a period time, then remove the node. and notify the watchhub.
 func (n *Node) Expire(s *Store) {
 	expired, duration := n.IsExpired()
 
 	if expired { // has been expired
+
+		// since the parent function of Expire() runs serially,
+		// there is no need for lock here
+		e := newEvent(Expire, n.Path, UndefIndex, UndefTerm)
+		s.WatcherHub.notify(e)
+
 		n.Remove(true, nil)
+		s.Stats.Inc(ExpireCount)
+
 		return
 	}
 
@@ -267,20 +276,23 @@ func (n *Node) Expire(s *Store) {
 		select {
 		// if timeout, delete the node
 		case <-time.After(duration):
+
+			// Lock to avoid race
 			s.worldLock.Lock()
 
 			e := newEvent(Expire, n.Path, UndefIndex, UndefTerm)
 			s.WatcherHub.notify(e)
+
 			n.Remove(true, nil)
 			s.Stats.Inc(ExpireCount)
 
 			s.worldLock.Unlock()
+
 			return
 
 		// if stopped, return
 		case <-n.stopExpire:
 			return
-
 		}
 	}()
 }
@@ -294,7 +306,6 @@ func (n *Node) IsHidden() bool {
 	_, name := path.Split(n.Path)
 
 	return name[0] == '_'
-
 }
 
 func (n *Node) IsPermanent() bool {
@@ -355,6 +366,7 @@ func (n *Node) Pair(recurisive, sorted bool) KeyValuePair {
 		if sorted {
 			sort.Sort(pair)
 		}
+
 		return pair
 	}
 

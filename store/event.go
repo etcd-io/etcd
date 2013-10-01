@@ -76,7 +76,6 @@ func (eq *eventQueue) back() int {
 }
 
 func (eq *eventQueue) insert(e *Event) {
-
 	index := (eq.back() + 1) % eq.Capacity
 
 	eq.Events[index] = e
@@ -94,7 +93,7 @@ type EventHistory struct {
 	StartIndex uint64
 	LastIndex  uint64
 	LastTerm   uint64
-	DupIndex   uint64
+	DupCnt     uint64 // help to compute the watching point with duplicated indexes in the queue
 	rwl        sync.RWMutex
 }
 
@@ -112,16 +111,16 @@ func (eh *EventHistory) addEvent(e *Event) *Event {
 	eh.rwl.Lock()
 	defer eh.rwl.Unlock()
 
-	DupIndex := uint64(0)
+	duped := uint64(0)
 
 	if e.Index == UndefIndex {
 		e.Index = eh.LastIndex
-		DupIndex = 1
+		duped = 1
 	}
 
 	if e.Term == UndefTerm {
 		e.Term = eh.LastTerm
-		DupIndex = 1
+		duped = 1
 	}
 
 	eh.Queue.insert(e)
@@ -130,7 +129,7 @@ func (eh *EventHistory) addEvent(e *Event) *Event {
 
 	eh.LastIndex = e.Index
 	eh.LastTerm = e.Term
-	eh.DupIndex += DupIndex
+	eh.DupCnt += duped
 
 	return e
 }
@@ -141,7 +140,7 @@ func (eh *EventHistory) scan(prefix string, index uint64) (*Event, error) {
 	eh.rwl.RLock()
 	defer eh.rwl.RUnlock()
 
-	start := index - eh.StartIndex + eh.DupIndex
+	start := index - eh.StartIndex + eh.DupCnt
 
 	// the index should locate after the event history's StartIndex
 	// and before its size
@@ -172,13 +171,11 @@ func (eh *EventHistory) scan(prefix string, index uint64) (*Event, error) {
 			return nil, nil
 		}
 	}
-
 }
 
 // clone will be protected by a stop-world lock
 // do not need to obtain internal lock
 func (eh *EventHistory) clone() *EventHistory {
-
 	clonedQueue := eventQueue{
 		Capacity: eh.Queue.Capacity,
 		Events:   make([]*Event, eh.Queue.Capacity),

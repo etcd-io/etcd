@@ -52,7 +52,6 @@ func TestCreateAndGet(t *testing.T) {
 	if err != nil {
 		t.Fatal("Cannot create /fooDir/bar = bar")
 	}
-
 }
 
 func TestUpdateFile(t *testing.T) {
@@ -81,7 +80,6 @@ func TestUpdateFile(t *testing.T) {
 	}
 
 	// create a directory, update its ttl, to see if it will be deleted
-
 	_, err = s.Create("/foo/foo", "", Permanent, 3, 1)
 
 	if err != nil {
@@ -237,7 +235,6 @@ func TestRemove(t *testing.T) {
 	if err == nil || err.Error() != "Key Not Found" {
 		t.Fatalf("can get the node after deletion ")
 	}
-
 }
 
 func TestExpire(t *testing.T) {
@@ -280,7 +277,6 @@ func TestExpire(t *testing.T) {
 	if err != nil {
 		t.Fatalf("cannot delete the node before expiration", err.Error())
 	}
-
 }
 
 func TestTestAndSet(t *testing.T) { // TODO prevValue == nil ?
@@ -314,7 +310,6 @@ func TestTestAndSet(t *testing.T) { // TODO prevValue == nil ?
 	if e.PrevValue != "car" || e.Value != "bar" {
 		t.Fatalf("[%v/%v] [%v/%v]", e.PrevValue, "car", e.Value, "bar")
 	}
-
 }
 
 func TestWatch(t *testing.T) {
@@ -404,7 +399,6 @@ func TestWatch(t *testing.T) {
 	if e.Key != "/foo/foo/boo" || e.Action != Expire || e.Index != 13 {
 		t.Fatal("watch for Expiration of TestAndSet() subdirectory fails ", e)
 	}
-
 }
 
 func TestSort(t *testing.T) {
@@ -479,8 +473,11 @@ func TestSaveAndRecover(t *testing.T) {
 			panic(err)
 		}
 	}
+
+	// lock to avoid racing with Expire()
 	s.worldLock.RLock()
 	defer s.worldLock.RUnlock()
+
 	if s.WatcherHub.EventHistory.StartIndex != cloneFs.WatcherHub.EventHistory.StartIndex {
 		t.Fatal("Error recovered event history start index")
 	}
@@ -497,7 +494,6 @@ func TestSaveAndRecover(t *testing.T) {
 	if err == nil || err.Error() != "Key Not Found" {
 		t.Fatalf("can get the node after deletion ")
 	}
-
 }
 
 // GenKeys randomly generate num of keys with max depth
@@ -513,6 +509,7 @@ func GenKeys(num int, depth int) []string {
 			keys[i] += "/" + strconv.Itoa(rand.Int())
 		}
 	}
+
 	return keys
 }
 
@@ -532,11 +529,9 @@ func createAndGet(s *Store, path string, t *testing.T) {
 	if e.Value != "bar" {
 		t.Fatalf("expect value of %s is bar [%s]", path, e.Value)
 	}
-
 }
 
 func recursiveTestSort(k KeyValuePair, t *testing.T) {
-
 	for i, v := range k.KVPairs[:len(k.KVPairs)-1] {
 		if v.Key >= k.KVPairs[i+1].Key {
 			t.Fatalf("sort failed, [%s] should be placed after [%s]", v.Key, k.KVPairs[i+1].Key)
@@ -545,7 +540,6 @@ func recursiveTestSort(k KeyValuePair, t *testing.T) {
 		if v.Dir {
 			recursiveTestSort(v, t)
 		}
-
 	}
 
 	if v := k.KVPairs[len(k.KVPairs)-1]; v.Dir {
