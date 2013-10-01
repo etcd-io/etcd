@@ -24,8 +24,6 @@ func TestBasicStats(t *testing.T) {
 		}
 	}
 
-	//fmt.Println("create")
-
 	time.Sleep(time.Second * 3)
 
 	for _, k := range keys {
@@ -37,8 +35,6 @@ func TestBasicStats(t *testing.T) {
 		}
 	}
 
-	//fmt.Println("get")
-
 	for _, k := range keys {
 		i++
 		_, err := s.Update(k, "foo", time.Now().Add(time.Second*time.Duration(rand.Intn(6))), i, 1)
@@ -48,8 +44,6 @@ func TestBasicStats(t *testing.T) {
 			UpdateSuccess++
 		}
 	}
-
-	//fmt.Println("update")
 
 	time.Sleep(time.Second * 3)
 
@@ -72,14 +66,10 @@ func TestBasicStats(t *testing.T) {
 		}
 	}
 
-	//fmt.Println("get testAndSet")
-
 	for _, k := range keys {
 		s.Watch(k, false, 0, i, 1)
 		watcher_number++
 	}
-
-	//fmt.Println("watch")
 
 	for _, k := range keys {
 		_, err := s.Get(k, false, false, i, 1)
@@ -100,8 +90,6 @@ func TestBasicStats(t *testing.T) {
 			DeleteSuccess++
 		}
 	}
-
-	//fmt.Println("get delete")
 
 	for _, k := range keys {
 		_, err := s.Get(k, false, false, i, 1)
