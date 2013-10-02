@@ -534,10 +534,10 @@ etcd uses [semantic versioning][semver].
 When we release v1.0.0 of etcd we will promise not to break the "v1" REST API.
 New minor versions may add additional features to the API however.
 
-You can get the version of etcd by requesting the root path of etcd:
+You can get the version of etcd by issuing a request to /version:
 
 ```sh
-curl -L http://127.0.0.1:4001
+curl -L http://127.0.0.1:4001/version
 ```
 
 During the v0 series of releases we may break the API as we fix bugs and get feedback.
