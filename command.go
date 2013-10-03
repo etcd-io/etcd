@@ -27,9 +27,10 @@ type Command interface {
 
 // Create command
 type CreateCommand struct {
-	Key        string    `json:"key"`
-	Value      string    `json:"value"`
-	ExpireTime time.Time `json:"expireTime"`
+	Key               string    `json:"key"`
+	Value             string    `json:"value"`
+	ExpireTime        time.Time `json:"expireTime"`
+	IncrementalSuffix bool      `json:"incrementalSuffix"`
 }
 
 // The name of the create command in the log
@@ -39,7 +40,7 @@ func (c *CreateCommand) CommandName() string {
 
 // Create node
 func (c *CreateCommand) Apply(server *raft.Server) (interface{}, error) {
-	e, err := etcdStore.Create(c.Key, c.Value, c.ExpireTime, server.CommitIndex(), server.Term())
+	e, err := etcdStore.Create(c.Key, c.Value, c.IncrementalSuffix, c.ExpireTime, server.CommitIndex(), server.Term())
 
 	if err != nil {
 		debug(err)
@@ -221,7 +222,7 @@ func (c *JoinCommand) Apply(raftServer *raft.Server) (interface{}, error) {
 	// add machine in etcd storage
 	key := path.Join("_etcd/machines", c.Name)
 	value := fmt.Sprintf("raft=%s&etcd=%s&raftVersion=%s", c.RaftURL, c.EtcdURL, c.RaftVersion)
-	etcdStore.Create(key, value, store.Permanent, raftServer.CommitIndex(), raftServer.Term())
+	etcdStore.Create(key, value, false, store.Permanent, raftServer.CommitIndex(), raftServer.Term())
 
 	// add peer stats
 	if c.Name != r.Name() {

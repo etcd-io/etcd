@@ -75,6 +75,7 @@ func Multiplexer(w http.ResponseWriter, req *http.Request) error {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return nil
 	}
+
 	return nil
 }
 
@@ -100,6 +101,10 @@ func CreateHttpHandler(w http.ResponseWriter, req *http.Request) error {
 		Key:        key,
 		Value:      value,
 		ExpireTime: expireTime,
+	}
+
+	if req.FormValue("incremental") == "true" {
+		command.IncrementalSuffix = true
 	}
 
 	return dispatchEtcdCommand(command, w, req)
@@ -201,6 +206,7 @@ func LeaderHttpHandler(w http.ResponseWriter, req *http.Request) error {
 		w.WriteHeader(http.StatusOK)
 		raftURL, _ := nameToRaftURL(leader)
 		w.Write([]byte(raftURL))
+
 		return nil
 	} else {
 		return etcdErr.NewError(etcdErr.EcodeLeaderElect, "")
@@ -213,6 +219,7 @@ func MachinesHttpHandler(w http.ResponseWriter, req *http.Request) error {
 
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(strings.Join(machines, ", ")))
+
 	return nil
 }
 
@@ -220,6 +227,7 @@ func MachinesHttpHandler(w http.ResponseWriter, req *http.Request) error {
 func VersionHttpHandler(w http.ResponseWriter, req *http.Request) error {
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprintf(w, "etcd %s", releaseVersion)
+
 	return nil
 }
 
@@ -277,7 +285,6 @@ func GetHttpHandler(w http.ResponseWriter, req *http.Request) error {
 		}
 
 		indexStr := req.FormValue("wait_index")
-
 		if indexStr != "" {
 			sinceIndex, err := strconv.ParseUint(indexStr, 10, 64)
 
@@ -297,7 +304,6 @@ func GetHttpHandler(w http.ResponseWriter, req *http.Request) error {
 		}
 
 		sorted := req.FormValue("sorted")
-
 		if sorted == "true" {
 			command.Sorted = true
 		}
@@ -330,6 +336,7 @@ func TestHttpHandler(w http.ResponseWriter, req *http.Request) {
 		directSet()
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("speed test success"))
+
 		return
 	}
 

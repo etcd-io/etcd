@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"path"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -94,10 +95,12 @@ func (s *Store) Get(nodePath string, recursive, sorted bool, index uint64, term 
 // Create function creates the Node at nodePath. Create will help to create intermediate directories with no ttl.
 // If the node has already existed, create will fail.
 // If any node on the path is a file, create will fail.
-func (s *Store) Create(nodePath string, value string, expireTime time.Time, index uint64, term uint64) (*Event, error) {
+func (s *Store) Create(nodePath string, value string, incrementalSuffix bool,
+	expireTime time.Time, index uint64, term uint64) (*Event, error) {
+
 	s.worldLock.Lock()
 	defer s.worldLock.Unlock()
-	return s.internalCreate(nodePath, value, expireTime, index, term, Create)
+	return s.internalCreate(nodePath, value, incrementalSuffix, expireTime, index, term, Create)
 }
 
 // Update function updates the value/ttl of the node.
@@ -155,7 +158,7 @@ func (s *Store) TestAndSet(nodePath string, prevValue string, prevIndex uint64,
 	defer s.worldLock.Unlock()
 
 	if prevValue == "" && prevIndex == 0 { // try create
-		return s.internalCreate(nodePath, value, expireTime, index, term, TestAndSet)
+		return s.internalCreate(nodePath, value, false, expireTime, index, term, TestAndSet)
 	}
 
 	n, err := s.internalGet(nodePath, index, term)
@@ -262,7 +265,11 @@ func (s *Store) walk(nodePath string, walkFunc func(prev *Node, component string
 	return curr, nil
 }
 
-func (s *Store) internalCreate(nodePath string, value string, expireTime time.Time, index uint64, term uint64, action string) (*Event, error) {
+func (s *Store) internalCreate(nodePath string, value string, incrementalSuffix bool, expireTime time.Time, index uint64, term uint64, action string) (*Event, error) {
+	if incrementalSuffix { // append unique incremental suffix to the node path
+		nodePath += "_" + strconv.FormatUint(index, 10)
+	}
+
 	nodePath = path.Clean(path.Join("/", nodePath))
 
 	// make sure we can create the node
