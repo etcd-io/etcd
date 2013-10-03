@@ -30,6 +30,7 @@ type SetCommand struct {
 	Key        string    `json:"key"`
 	Value      string    `json:"value"`
 	ExpireTime time.Time `json:"expireTime"`
+	Sequential bool      `json:"sequential"`
 }
 
 // The name of the set command in the log
@@ -39,7 +40,7 @@ func (c *SetCommand) CommandName() string {
 
 // Set the key-value pair
 func (c *SetCommand) Apply(server *raft.Server) (interface{}, error) {
-	return etcdStore.Set(c.Key, c.Value, c.ExpireTime, server.CommitIndex())
+	return etcdStore.Set(c.Key, c.Value, c.ExpireTime, c.Sequential, server.CommitIndex())
 }
 
 // TestAndSet command
@@ -168,7 +169,7 @@ func (c *JoinCommand) Apply(raftServer *raft.Server) (interface{}, error) {
 	// add machine in etcd storage
 	key := path.Join("_etcd/machines", c.Name)
 	value := fmt.Sprintf("raft=%s&etcd=%s&raftVersion=%s", c.RaftURL, c.EtcdURL, c.RaftVersion)
-	etcdStore.Set(key, value, time.Unix(0, 0), raftServer.CommitIndex())
+	etcdStore.Set(key, value, time.Unix(0, 0), false, raftServer.CommitIndex())
 
 	// add peer stats
 	if c.Name != r.Name() {

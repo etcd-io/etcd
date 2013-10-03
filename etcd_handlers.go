@@ -109,7 +109,22 @@ func SetHttpHandler(w http.ResponseWriter, req *http.Request) error {
 		return etcdErr.NewError(202, "Set")
 	}
 
-	if prevValueArr, ok := req.Form["prevValue"]; ok && len(prevValueArr) > 0 {
+	strSequential := req.Form.Get("sequential")
+	sequential := false
+	if strSequential != "" {
+		sequential, err = parseBoolean(strSequential)
+		if err != nil {
+			return etcdErr.NewError(204, "Set")
+		}
+	}
+
+	prevValueArr, ok := req.Form["prefValue"]
+
+	if ok && len(prevValueArr) > 0 && sequential {
+		return etcdErr.NewError(205, "Set")
+	}
+
+	if ok && len(prevValueArr) > 0 {
 		command := &TestAndSetCommand{
 			Key:        key,
 			Value:      value,
@@ -124,6 +139,7 @@ func SetHttpHandler(w http.ResponseWriter, req *http.Request) error {
 			Key:        key,
 			Value:      value,
 			ExpireTime: expireTime,
+			Sequential: sequential,
 		}
 
 		return dispatch(command, w, req, true)

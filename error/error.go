@@ -23,6 +23,8 @@ func init() {
 	errors[201] = "PrevValue is Required in POST form"
 	errors[202] = "The given TTL in POST form is not a number"
 	errors[203] = "The given index in POST form is not a number"
+	errors[204] = "The given sequential in POST form is not a valid boolean"
+	errors[205] = "Can not specify both PrevValue and sequential in POST form"
 
 	// raft related errors
 	errors[300] = "Raft Internal Error"
