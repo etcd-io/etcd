@@ -387,7 +387,7 @@ Also try to get the current leader in the cluster
 ```
 curl -L http://127.0.0.1:4001/v1/leader
 ```
-The first server we set up should be the leader, if it has not dead during these commands.
+The first server we set up should be the leader, if it has not died during these commands.
 
 ```
 http://127.0.0.1:7001
