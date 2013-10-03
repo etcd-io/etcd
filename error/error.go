@@ -16,10 +16,11 @@ const (
 	EcodeNodeExist      = 105
 	EcodeKeyIsPreserved = 106
 
-	EcodeValueRequired     = 200
-	EcodePrevValueRequired = 201
-	EcodeTTLNaN            = 202
-	EcodeIndexNaN          = 203
+	EcodeValueRequired      = 200
+	EcodePrevValueRequired  = 201
+	EcodeTTLNaN             = 202
+	EcodeIndexNaN           = 203
+	EcodeValueOrTTLRequired = 204
 
 	EcodeRaftInternal = 300
 	EcodeLeaderElect  = 301
@@ -45,6 +46,7 @@ func init() {
 	errors[EcodePrevValueRequired] = "PrevValue is Required in POST form"
 	errors[EcodeTTLNaN] = "The given TTL in POST form is not a number"
 	errors[EcodeIndexNaN] = "The given index in POST form is not a number"
+	errors[EcodeValueOrTTLRequired] = "Value or TTL is required in POST form"
 
 	// raft related errors
 	errors[EcodeRaftInternal] = "Raft Internal Error"

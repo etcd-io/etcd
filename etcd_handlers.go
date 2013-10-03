@@ -111,24 +111,26 @@ func UpdateHttpHandler(w http.ResponseWriter, req *http.Request) error {
 
 	debugf("recv.put[%v] [%v%v]\n", req.RemoteAddr, req.Host, req.URL)
 
-	value := req.FormValue("value")
+	req.ParseForm()
 
-	expireTime, err := durationToExpireTime(req.FormValue("ttl"))
+	value := req.Form.Get("value")
+
+	expireTime, err := durationToExpireTime(req.Form.Get("ttl"))
 
 	if err != nil {
 		return etcdErr.NewError(etcdErr.EcodeTTLNaN, "Update")
 	}
 
-	// TODO: update should give at least one option
+	// update should give at least one option
 	if value == "" && expireTime.Sub(store.Permanent) == 0 {
-		return nil
+		return etcdErr.NewError(etcdErr.EcodeValueOrTTLRequired, "Update")
 	}
 
-	prevValue := req.FormValue("prevValue")
+	prevValue, valueOk := req.Form["prevValue"]
 
-	prevIndexStr := req.FormValue("prevIndex")
+	prevIndexStr, indexOk := req.Form["prevIndex"]
 
-	if prevValue == "" && prevIndexStr == "" { // update without test
+	if !valueOk && !indexOk { // update without test
 		command := &UpdateCommand{
 			Key:        key,
 			Value:      value,
@@ -140,19 +142,21 @@ func UpdateHttpHandler(w http.ResponseWriter, req *http.Request) error {
 	} else { // update with test
 		var prevIndex uint64
 
-		if prevIndexStr != "" {
-			prevIndex, err = strconv.ParseUint(prevIndexStr, 10, 64)
-		}
+		if indexOk {
+			prevIndex, err = strconv.ParseUint(prevIndexStr[0], 10, 64)
 
-		// TODO: add error type
-		if err != nil {
-			return nil
+			// bad previous index
+			if err != nil {
+				return etcdErr.NewError(etcdErr.EcodeIndexNaN, "Update")
+			}
+		} else {
+			prevIndex = 0
 		}
 
 		command := &TestAndSetCommand{
 			Key:       key,
 			Value:     value,
-			PrevValue: prevValue,
+			PrevValue: prevValue[0],
 			PrevIndex: prevIndex,
 		}
 
@@ -185,9 +189,8 @@ func dispatchEtcdCommand(c Command, w http.ResponseWriter, req *http.Request) er
 
 //--------------------------------------
 // State non-sensitive handlers
-// will not dispatch to leader
-// TODO: add sensitive version for these
-// command?
+// command with consistent option will
+// still dispatch to the leader
 //--------------------------------------
 
 // Handler to return the current leader's raft address

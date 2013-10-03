@@ -97,67 +97,7 @@ func (s *Store) Get(nodePath string, recursive, sorted bool, index uint64, term 
 func (s *Store) Create(nodePath string, value string, expireTime time.Time, index uint64, term uint64) (*Event, error) {
 	s.worldLock.Lock()
 	defer s.worldLock.Unlock()
-
-	nodePath = path.Clean(path.Join("/", nodePath))
-
-	// make sure we can create the node
-	_, err := s.internalGet(nodePath, index, term)
-
-	if err == nil { // key already exists
-		s.Stats.Inc(SetFail)
-		return nil, etcdErr.NewError(etcdErr.EcodeNodeExist, nodePath)
-	}
-
-	etcdError, _ := err.(etcdErr.Error)
-
-	if etcdError.ErrorCode == 104 { // we cannot create the key due to meet a file while walking
-		s.Stats.Inc(SetFail)
-		return nil, err
-	}
-
-	dir, _ := path.Split(nodePath)
-
-	// walk through the nodePath, create dirs and get the last directory node
-	d, err := s.walk(dir, s.checkDir)
-
-	if err != nil {
-		s.Stats.Inc(SetFail)
-		return nil, err
-	}
-
-	e := newEvent(Create, nodePath, s.Index, s.Term)
-
-	var n *Node
-
-	if len(value) != 0 { // create file
-		e.Value = value
-
-		n = newFile(nodePath, value, s.Index, s.Term, d, "", expireTime)
-
-	} else { // create directory
-		e.Dir = true
-
-		n = newDir(nodePath, s.Index, s.Term, d, "", expireTime)
-
-	}
-
-	err = d.Add(n)
-
-	if err != nil {
-		s.Stats.Inc(SetFail)
-		return nil, err
-	}
-
-	// Node with TTL
-	if expireTime.Sub(Permanent) != 0 {
-		n.Expire(s)
-		e.Expiration = &n.ExpireTime
-		e.TTL = int64(expireTime.Sub(time.Now())/time.Second) + 1
-	}
-
-	s.WatcherHub.notify(e)
-	s.Stats.Inc(SetSuccess)
-	return e, nil
+	return s.internalCreate(nodePath, value, expireTime, index, term, Create)
 }
 
 // Update function updates the value/ttl of the node.
@@ -197,8 +137,10 @@ func (s *Store) Update(nodePath string, value string, expireTime time.Time, inde
 	// update ttl
 	n.UpdateTTL(expireTime, s)
 
-	e.Expiration = &n.ExpireTime
-	e.TTL = int64(expireTime.Sub(time.Now())/time.Second) + 1
+	if n.ExpireTime.Sub(Permanent) != 0 {
+		e.Expiration = &n.ExpireTime
+		e.TTL = int64(expireTime.Sub(time.Now())/time.Second) + 1
+	}
 	s.WatcherHub.notify(e)
 
 	s.Stats.Inc(UpdateSuccess)
@@ -211,6 +153,10 @@ func (s *Store) TestAndSet(nodePath string, prevValue string, prevIndex uint64,
 
 	s.worldLock.Lock()
 	defer s.worldLock.Unlock()
+
+	if prevValue == "" && prevIndex == 0 { // try create
+		return s.internalCreate(nodePath, value, expireTime, index, term, TestAndSet)
+	}
 
 	n, err := s.internalGet(nodePath, index, term)
 
@@ -314,6 +260,69 @@ func (s *Store) walk(nodePath string, walkFunc func(prev *Node, component string
 	}
 
 	return curr, nil
+}
+
+func (s *Store) internalCreate(nodePath string, value string, expireTime time.Time, index uint64, term uint64, action string) (*Event, error) {
+	nodePath = path.Clean(path.Join("/", nodePath))
+
+	// make sure we can create the node
+	_, err := s.internalGet(nodePath, index, term)
+
+	if err == nil { // key already exists
+		s.Stats.Inc(SetFail)
+		return nil, etcdErr.NewError(etcdErr.EcodeNodeExist, nodePath)
+	}
+
+	etcdError, _ := err.(etcdErr.Error)
+
+	if etcdError.ErrorCode == 104 { // we cannot create the key due to meet a file while walking
+		s.Stats.Inc(SetFail)
+		return nil, err
+	}
+
+	dir, _ := path.Split(nodePath)
+
+	// walk through the nodePath, create dirs and get the last directory node
+	d, err := s.walk(dir, s.checkDir)
+
+	if err != nil {
+		s.Stats.Inc(SetFail)
+		return nil, err
+	}
+
+	e := newEvent(action, nodePath, s.Index, s.Term)
+
+	var n *Node
+
+	if len(value) != 0 { // create file
+		e.Value = value
+
+		n = newFile(nodePath, value, s.Index, s.Term, d, "", expireTime)
+
+	} else { // create directory
+		e.Dir = true
+
+		n = newDir(nodePath, s.Index, s.Term, d, "", expireTime)
+
+	}
+
+	err = d.Add(n)
+
+	if err != nil {
+		s.Stats.Inc(SetFail)
+		return nil, err
+	}
+
+	// Node with TTL
+	if expireTime.Sub(Permanent) != 0 {
+		n.Expire(s)
+		e.Expiration = &n.ExpireTime
+		e.TTL = int64(expireTime.Sub(time.Now())/time.Second) + 1
+	}
+
+	s.WatcherHub.notify(e)
+	s.Stats.Inc(SetSuccess)
+	return e, nil
 }
 
 // InternalGet function get the node of the given nodePath.

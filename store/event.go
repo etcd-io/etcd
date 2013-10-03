@@ -16,6 +16,9 @@ const (
 	Delete     = "delete"
 	TestAndSet = "testAndSet"
 	Expire     = "expire"
+)
+
+const (
 	UndefIndex = 0
 	UndefTerm  = 0
 )
