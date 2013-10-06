@@ -3,6 +3,7 @@ package journal
 
 import (
 	"bytes"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
@@ -12,7 +13,6 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
-	"encoding/binary"
 )
 
 // Priority of a journal message

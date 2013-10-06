@@ -104,7 +104,7 @@ func JoinHttpHandler(w http.ResponseWriter, req *http.Request) error {
 
 	if err := decodeJsonRequest(req, command); err == nil {
 		debugf("Receive Join Request from %s", command.Name)
-		return dispatch(command, w, req, false)
+		return dispatchRaftCommand(command, w, req)
 	} else {
 		w.WriteHeader(http.StatusInternalServerError)
 		return nil
@@ -125,8 +125,7 @@ func RemoveHttpHandler(w http.ResponseWriter, req *http.Request) {
 
 	debugf("[recv] Remove Request [%s]", command.Name)
 
-	dispatch(command, w, req, false)
-
+	dispatchRaftCommand(command, w, req)
 }
 
 // Response to the name request
@@ -141,4 +140,8 @@ func RaftVersionHttpHandler(w http.ResponseWriter, req *http.Request) {
 	debugf("[recv] Get %s/version/ ", r.url)
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(r.version))
+}
+
+func dispatchRaftCommand(c Command, w http.ResponseWriter, req *http.Request) error {
+	return dispatch(c, w, req, nameToRaftURL)
 }

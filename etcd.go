@@ -199,7 +199,8 @@ func main() {
 	info := getInfo(dirPath)
 
 	// Create etcd key-value store
-	etcdStore = store.CreateStore(maxSize)
+	etcdStore = store.New()
+
 	snapConf = newSnapshotConf()
 
 	// Create etcd and raft server

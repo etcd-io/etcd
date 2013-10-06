@@ -13,8 +13,11 @@ import (
 	"strconv"
 	"time"
 
+	etcdErr "github.com/coreos/etcd/error"
+	"github.com/coreos/etcd/store"
 	"github.com/coreos/etcd/web"
 	"github.com/coreos/go-log/log"
+	"github.com/coreos/go-raft"
 )
 
 //--------------------------------------
@@ -27,12 +30,12 @@ func durationToExpireTime(strDuration string) (time.Time, error) {
 		duration, err := strconv.Atoi(strDuration)
 
 		if err != nil {
-			return time.Unix(0, 0), err
+			return store.Permanent, err
 		}
 		return time.Now().Add(time.Second * (time.Duration)(duration)), nil
 
 	} else {
-		return time.Unix(0, 0), nil
+		return store.Permanent, nil
 	}
 }
 
@@ -44,7 +47,7 @@ var storeMsg chan string
 // Help to send msg from store to webHub
 func webHelper() {
 	storeMsg = make(chan string)
-	etcdStore.SetMessager(storeMsg)
+	// etcdStore.SetMessager(storeMsg)
 	for {
 		// transfer the new msg to webHub
 		web.Hub().Send(<-storeMsg)
@@ -63,6 +66,61 @@ func startWebInterface() {
 //--------------------------------------
 // HTTP Utilities
 //--------------------------------------
+
+func dispatch(c Command, w http.ResponseWriter, req *http.Request, toURL func(name string) (string, bool)) error {
+	if r.State() == raft.Leader {
+		if response, err := r.Do(c); err != nil {
+			return err
+		} else {
+			if response == nil {
+				return etcdErr.NewError(300, "Empty response from raft", store.UndefIndex, store.UndefTerm)
+			}
+
+			event, ok := response.(*store.Event)
+			if ok {
+				bytes, err := json.Marshal(event)
+				if err != nil {
+					fmt.Println(err)
+				}
+
+				w.Header().Add("X-Etcd-Index", fmt.Sprint(event.Index))
+				w.Header().Add("X-Etcd-Term", fmt.Sprint(event.Term))
+				w.WriteHeader(http.StatusOK)
+				w.Write(bytes)
+
+				return nil
+			}
+
+			bytes, _ := response.([]byte)
+			w.WriteHeader(http.StatusOK)
+			w.Write(bytes)
+
+			return nil
+		}
+
+	} else {
+		leader := r.Leader()
+		// current no leader
+		if leader == "" {
+			return etcdErr.NewError(300, "", store.UndefIndex, store.UndefTerm)
+		}
+		url, _ := toURL(leader)
+
+		redirect(url, w, req)
+
+		return nil
+	}
+}
+
+func redirect(hostname string, w http.ResponseWriter, req *http.Request) {
+	path := req.URL.Path
+
+	url := hostname + path
+
+	debugf("Redirect to %s", url)
+
+	http.Redirect(w, req, url, http.StatusTemporaryRedirect)
+}
 
 func decodeJsonRequest(req *http.Request, data interface{}) error {
 	decoder := json.NewDecoder(req.Body)
@@ -128,27 +186,15 @@ func sanitizeListenHost(listen string, advertised string) string {
 	return net.JoinHostPort(listen, aport)
 }
 
-func redirect(node string, etcd bool, w http.ResponseWriter, req *http.Request) {
-	var url string
-	path := req.URL.Path
-
-	if etcd {
-		etcdAddr, _ := nameToEtcdURL(node)
-		url = etcdAddr + path
-	} else {
-		raftAddr, _ := nameToRaftURL(node)
-		url = raftAddr + path
-	}
-
-	debugf("Redirect to %s", url)
-
-	http.Redirect(w, req, url, http.StatusTemporaryRedirect)
-}
-
 func check(err error) {
 	if err != nil {
 		fatal(err)
 	}
+}
+
+func getNodePath(urlPath string) string {
+	pathPrefixLen := len("/" + version + "/keys")
+	return urlPath[pathPrefixLen:]
 }
 
 //--------------------------------------
@@ -228,7 +274,7 @@ func directSet() {
 
 func send(c chan bool) {
 	for i := 0; i < 10; i++ {
-		command := &SetCommand{}
+		command := &UpdateCommand{}
 		command.Key = "foo"
 		command.Value = "bar"
 		command.ExpireTime = time.Unix(0, 0)

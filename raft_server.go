@@ -317,9 +317,11 @@ func (r *raftServer) PeerStats() []byte {
 func registerCommands() {
 	raft.RegisterCommand(&JoinCommand{})
 	raft.RegisterCommand(&RemoveCommand{})
-	raft.RegisterCommand(&SetCommand{})
 	raft.RegisterCommand(&GetCommand{})
 	raft.RegisterCommand(&DeleteCommand{})
 	raft.RegisterCommand(&WatchCommand{})
 	raft.RegisterCommand(&TestAndSetCommand{})
+
+	raft.RegisterCommand(&CreateCommand{})
+	raft.RegisterCommand(&UpdateCommand{})
 }
