@@ -34,6 +34,8 @@ var (
 
 	force bool
 
+	maddr string
+
 	maxSize int
 
 	snapshot bool
@@ -51,6 +53,8 @@ var (
 func init() {
 	flag.BoolVar(&verbose, "v", false, "verbose logging")
 	flag.BoolVar(&veryVerbose, "vv", false, "very verbose logging")
+
+	flag.StringVar(&maddr, "6", "", "enable IPv6 link local autoconfiguration and set the interface to use (overrides -C, -CF & -s)")
 
 	flag.StringVar(&machines, "C", "", "the ip address and port of a existing machines in the cluster, sepearate by comma")
 	flag.StringVar(&machinesFile, "CF", "", "the file contains a list of existing machines in the cluster, seperate by comma")
@@ -157,7 +161,30 @@ func main() {
 
 	parseCorsFlag()
 
-	if machines != "" {
+	// try IPv6 link local autoconfiguration
+	if maddr != "" {
+		// if just an interface given then assume multicast to everyone
+		if !strings.Contains(maddr, "%") {
+			maddr = "ff02::1%" + maddr
+		}
+		// set raft address
+		addr, dev, err := linkLocalAddr(maddr)
+		if err != nil {
+			fatalf("Unable to detect IPv6 link local address for multicast group %s: %s", maddr, err)
+		}
+		argInfo.RaftListenHost = fmt.Sprintf("[%s%%%s]:7001", addr, dev)
+		argInfo.RaftURL = fmt.Sprintf("[%s]:7001", addr)
+		// find other nearby machines
+		addrs, err := findNeighbours(maddr)
+		if err != nil {
+			fatalf("Unable to perform autoconfiguration using multicast address %s: %s", maddr, err)
+		}
+		cluster := make([]string, 0)
+		for _, addr := range addrs {
+			cluster = append(cluster, addr.String())
+			infof("Adding %s to list of neighbours", addr.String())
+		}
+	} else if machines != "" {
 		cluster = strings.Split(machines, ",")
 	} else if machinesFile != "" {
 		b, err := ioutil.ReadFile(machinesFile)
@@ -188,7 +215,9 @@ func main() {
 	argInfo.EtcdURL = sanitizeURL(argInfo.EtcdURL, etcdTLSConfig.Scheme)
 	argInfo.WebURL = sanitizeURL(argInfo.WebURL, "http")
 
-	argInfo.RaftListenHost = sanitizeListenHost(argInfo.RaftListenHost, argInfo.RaftURL)
+	if argInfo.RaftListenHost == "" {
+		argInfo.RaftListenHost = sanitizeListenHost(argInfo.RaftListenHost, argInfo.RaftURL)
+	}
 	argInfo.EtcdListenHost = sanitizeListenHost(argInfo.EtcdListenHost, argInfo.EtcdURL)
 
 	// Read server info from file or grab it from user.
