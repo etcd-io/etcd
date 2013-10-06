@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -23,6 +24,11 @@ func NewEtcdMuxer() *http.ServeMux {
 	etcdMux.Handle("/"+version+"/machines", errorHandler(MachinesHttpHandler))
 	etcdMux.Handle("/"+version+"/stats/", errorHandler(StatsHttpHandler))
 	etcdMux.Handle("/version", errorHandler(VersionHttpHandler))
+
+	etcdMux.Handle("/v1/keys/", errorHandler(MultiplexerV1))
+	etcdMux.Handle("/v1/leader", errorHandler(LeaderHttpHandler))
+	etcdMux.Handle("/v1/machines", errorHandler(MachinesHttpHandler))
+	etcdMux.Handle("/v1/stats/", errorHandler(StatsHttpHandler))
 	etcdMux.HandleFunc("/test/", TestHttpHandler)
 	return etcdMux
 }
@@ -50,8 +56,8 @@ func addCorsHeader(w http.ResponseWriter, r *http.Request) {
 func (fn errorHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	addCorsHeader(w, r)
 	if e := fn(w, r); e != nil {
-		if etcdErr, ok := e.(etcdErr.Error); ok {
-			debug("Return error: ", etcdErr.Error())
+		if etcdErr, ok := e.(*etcdErr.Error); ok {
+			debug("Return error: ", (*etcdErr).Error())
 			etcdErr.Write(w)
 		} else {
 			http.Error(w, e.Error(), http.StatusInternalServerError)
@@ -94,7 +100,7 @@ func CreateHttpHandler(w http.ResponseWriter, req *http.Request) error {
 	expireTime, err := durationToExpireTime(req.FormValue("ttl"))
 
 	if err != nil {
-		return etcdErr.NewError(etcdErr.EcodeTTLNaN, "Create")
+		return etcdErr.NewError(etcdErr.EcodeTTLNaN, "Create", store.UndefIndex, store.UndefTerm)
 	}
 
 	command := &CreateCommand{
@@ -123,12 +129,12 @@ func UpdateHttpHandler(w http.ResponseWriter, req *http.Request) error {
 	expireTime, err := durationToExpireTime(req.Form.Get("ttl"))
 
 	if err != nil {
-		return etcdErr.NewError(etcdErr.EcodeTTLNaN, "Update")
+		return etcdErr.NewError(etcdErr.EcodeTTLNaN, "Update", store.UndefIndex, store.UndefTerm)
 	}
 
 	// update should give at least one option
 	if value == "" && expireTime.Sub(store.Permanent) == 0 {
-		return etcdErr.NewError(etcdErr.EcodeValueOrTTLRequired, "Update")
+		return etcdErr.NewError(etcdErr.EcodeValueOrTTLRequired, "Update", store.UndefIndex, store.UndefTerm)
 	}
 
 	prevValue, valueOk := req.Form["prevValue"]
@@ -152,7 +158,7 @@ func UpdateHttpHandler(w http.ResponseWriter, req *http.Request) error {
 
 			// bad previous index
 			if err != nil {
-				return etcdErr.NewError(etcdErr.EcodeIndexNaN, "Update")
+				return etcdErr.NewError(etcdErr.EcodeIndexNaN, "Update", store.UndefIndex, store.UndefTerm)
 			}
 		} else {
 			prevIndex = 0
@@ -209,7 +215,7 @@ func LeaderHttpHandler(w http.ResponseWriter, req *http.Request) error {
 
 		return nil
 	} else {
-		return etcdErr.NewError(etcdErr.EcodeLeaderElect, "")
+		return etcdErr.NewError(etcdErr.EcodeLeaderElect, "", store.UndefIndex, store.UndefTerm)
 	}
 }
 
@@ -246,7 +252,7 @@ func StatsHttpHandler(w http.ResponseWriter, req *http.Request) error {
 			leader := r.Leader()
 			// current no leader
 			if leader == "" {
-				return etcdErr.NewError(300, "")
+				return etcdErr.NewError(300, "", store.UndefIndex, store.UndefTerm)
 			}
 			hostname, _ := nameToEtcdURL(leader)
 			redirect(hostname, w, req)
@@ -289,7 +295,7 @@ func GetHttpHandler(w http.ResponseWriter, req *http.Request) error {
 			sinceIndex, err := strconv.ParseUint(indexStr, 10, 64)
 
 			if err != nil {
-				return etcdErr.NewError(etcdErr.EcodeIndexNaN, "Watch From Index")
+				return etcdErr.NewError(etcdErr.EcodeIndexNaN, "Watch From Index", store.UndefIndex, store.UndefTerm)
 			}
 
 			command.SinceIndex = sinceIndex
@@ -319,9 +325,14 @@ func GetHttpHandler(w http.ResponseWriter, req *http.Request) error {
 		return err
 
 	} else {
-		event, _ := event.([]byte)
+		event, _ := event.(*store.Event)
+		bytes, _ := json.Marshal(event)
+
+		w.Header().Add("X-Etcd-Index", fmt.Sprint(event.Index))
+		w.Header().Add("X-Etcd-Term", fmt.Sprint(event.Term))
 		w.WriteHeader(http.StatusOK)
-		w.Write(event)
+
+		w.Write(bytes)
 
 		return nil
 	}

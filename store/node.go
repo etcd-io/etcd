@@ -63,7 +63,7 @@ func newDir(nodePath string, createIndex uint64, createTerm uint64, parent *Node
 // Remove function remove the node.
 // If the node is a directory and recursive is true, the function will recursively remove
 // add nodes under the receiver node.
-func (n *Node) Remove(recursive bool, callback func(path string)) error {
+func (n *Node) Remove(recursive bool, callback func(path string)) *etcdErr.Error {
 	if n.status == removed { // check race between remove and expire
 		return nil
 	}
@@ -89,7 +89,7 @@ func (n *Node) Remove(recursive bool, callback func(path string)) error {
 	}
 
 	if !recursive {
-		return etcdErr.NewError(etcdErr.EcodeNotFile, "")
+		return etcdErr.NewError(etcdErr.EcodeNotFile, "", UndefIndex, UndefTerm)
 	}
 
 	for _, child := range n.Children { // delete all children
@@ -114,9 +114,9 @@ func (n *Node) Remove(recursive bool, callback func(path string)) error {
 
 // Read function gets the value of the node.
 // If the receiver node is not a key-value pair, a "Not A File" error will be returned.
-func (n *Node) Read() (string, error) {
+func (n *Node) Read() (string, *etcdErr.Error) {
 	if n.IsDir() {
-		return "", etcdErr.NewError(etcdErr.EcodeNotFile, "")
+		return "", etcdErr.NewError(etcdErr.EcodeNotFile, "", UndefIndex, UndefTerm)
 	}
 
 	return n.Value, nil
@@ -124,9 +124,9 @@ func (n *Node) Read() (string, error) {
 
 // Write function set the value of the node to the given value.
 // If the receiver node is a directory, a "Not A File" error will be returned.
-func (n *Node) Write(value string, index uint64, term uint64) error {
+func (n *Node) Write(value string, index uint64, term uint64) *etcdErr.Error {
 	if n.IsDir() {
-		return etcdErr.NewError(etcdErr.EcodeNotFile, "")
+		return etcdErr.NewError(etcdErr.EcodeNotFile, "", UndefIndex, UndefTerm)
 	}
 
 	n.Value = value
@@ -138,9 +138,9 @@ func (n *Node) Write(value string, index uint64, term uint64) error {
 
 // List function return a slice of nodes under the receiver node.
 // If the receiver node is not a directory, a "Not A Directory" error will be returned.
-func (n *Node) List() ([]*Node, error) {
+func (n *Node) List() ([]*Node, *etcdErr.Error) {
 	if !n.IsDir() {
-		return nil, etcdErr.NewError(etcdErr.EcodeNotDir, "")
+		return nil, etcdErr.NewError(etcdErr.EcodeNotDir, "", UndefIndex, UndefTerm)
 	}
 
 	nodes := make([]*Node, len(n.Children))
@@ -154,25 +154,17 @@ func (n *Node) List() ([]*Node, error) {
 	return nodes, nil
 }
 
-// GetFile function returns the file node under the directory node.
+// GetChild function returns the child node under the directory node.
 // On success, it returns the file node
-// If the node that calls this function is not a directory, it returns
-// Not Directory Error
-// If the node corresponding to the name string is not file, it returns
-// Not File Error
-func (n *Node) GetFile(name string) (*Node, error) {
+func (n *Node) GetChild(name string) (*Node, *etcdErr.Error) {
 	if !n.IsDir() {
-		return nil, etcdErr.NewError(etcdErr.EcodeNotDir, n.Path)
+		return nil, etcdErr.NewError(etcdErr.EcodeNotDir, n.Path, UndefIndex, UndefTerm)
 	}
 
-	f, ok := n.Children[name]
+	child, ok := n.Children[name]
 
 	if ok {
-		if !f.IsDir() {
-			return f, nil
-		} else {
-			return nil, etcdErr.NewError(etcdErr.EcodeNotFile, f.Path)
-		}
+		return child, nil
 	}
 
 	return nil, nil
@@ -182,9 +174,9 @@ func (n *Node) GetFile(name string) (*Node, error) {
 // If the receiver is not a directory, a "Not A Directory" error will be returned.
 // If there is a existing node with the same name under the directory, a "Already Exist"
 // error will be returned
-func (n *Node) Add(child *Node) error {
+func (n *Node) Add(child *Node) *etcdErr.Error {
 	if !n.IsDir() {
-		return etcdErr.NewError(etcdErr.EcodeNotDir, "")
+		return etcdErr.NewError(etcdErr.EcodeNotDir, "", UndefIndex, UndefTerm)
 	}
 
 	_, name := path.Split(child.Path)
@@ -192,7 +184,7 @@ func (n *Node) Add(child *Node) error {
 	_, ok := n.Children[name]
 
 	if ok {
-		return etcdErr.NewError(etcdErr.EcodeNodeExist, "")
+		return etcdErr.NewError(etcdErr.EcodeNodeExist, "", UndefIndex, UndefTerm)
 	}
 
 	n.Children[name] = child

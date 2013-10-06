@@ -95,12 +95,13 @@ func (s *Store) Get(nodePath string, recursive, sorted bool, index uint64, term 
 // Create function creates the Node at nodePath. Create will help to create intermediate directories with no ttl.
 // If the node has already existed, create will fail.
 // If any node on the path is a file, create will fail.
-func (s *Store) Create(nodePath string, value string, incrementalSuffix bool,
+func (s *Store) Create(nodePath string, value string, incrementalSuffix bool, force bool,
 	expireTime time.Time, index uint64, term uint64) (*Event, error) {
+	nodePath = path.Clean(path.Join("/", nodePath))
 
 	s.worldLock.Lock()
 	defer s.worldLock.Unlock()
-	return s.internalCreate(nodePath, value, incrementalSuffix, expireTime, index, term, Create)
+	return s.internalCreate(nodePath, value, incrementalSuffix, force, expireTime, index, term, Create)
 }
 
 // Update function updates the value/ttl of the node.
@@ -109,6 +110,7 @@ func (s *Store) Create(nodePath string, value string, incrementalSuffix bool,
 func (s *Store) Update(nodePath string, value string, expireTime time.Time, index uint64, term uint64) (*Event, error) {
 	s.worldLock.Lock()
 	defer s.worldLock.Unlock()
+	nodePath = path.Clean(path.Join("/", nodePath))
 
 	n, err := s.internalGet(nodePath, index, term)
 
@@ -124,7 +126,8 @@ func (s *Store) Update(nodePath string, value string, expireTime time.Time, inde
 		if len(value) != 0 {
 			s.Stats.Inc(UpdateFail)
 
-			return nil, etcdErr.NewError(etcdErr.EcodeNotFile, nodePath)
+			err := etcdErr.NewError(etcdErr.EcodeNotFile, nodePath, index, term)
+			return nil, err
 		}
 
 	} else { // if the node is a file, we can update value and ttl
@@ -154,11 +157,13 @@ func (s *Store) Update(nodePath string, value string, expireTime time.Time, inde
 func (s *Store) TestAndSet(nodePath string, prevValue string, prevIndex uint64,
 	value string, expireTime time.Time, index uint64, term uint64) (*Event, error) {
 
+	nodePath = path.Clean(path.Join("/", nodePath))
+
 	s.worldLock.Lock()
 	defer s.worldLock.Unlock()
 
 	if prevValue == "" && prevIndex == 0 { // try create
-		return s.internalCreate(nodePath, value, false, expireTime, index, term, TestAndSet)
+		return s.internalCreate(nodePath, value, false, false, expireTime, index, term, TestAndSet)
 	}
 
 	n, err := s.internalGet(nodePath, index, term)
@@ -170,7 +175,7 @@ func (s *Store) TestAndSet(nodePath string, prevValue string, prevIndex uint64,
 
 	if n.IsDir() { // can only test and set file
 		s.Stats.Inc(TestAndSetFail)
-		return nil, etcdErr.NewError(etcdErr.EcodeNotFile, nodePath)
+		return nil, etcdErr.NewError(etcdErr.EcodeNotFile, nodePath, index, term)
 	}
 
 	if n.Value == prevValue || n.ModifiedIndex == prevIndex {
@@ -182,6 +187,11 @@ func (s *Store) TestAndSet(nodePath string, prevValue string, prevIndex uint64,
 
 		n.UpdateTTL(expireTime, s)
 
+		if n.ExpireTime.Sub(Permanent) != 0 {
+			e.Expiration = &n.ExpireTime
+			e.TTL = int64(expireTime.Sub(time.Now())/time.Second) + 1
+		}
+
 		s.WatcherHub.notify(e)
 		s.Stats.Inc(TestAndSetSuccess)
 		return e, nil
@@ -189,12 +199,14 @@ func (s *Store) TestAndSet(nodePath string, prevValue string, prevIndex uint64,
 
 	cause := fmt.Sprintf("[%v != %v] [%v != %v]", prevValue, n.Value, prevIndex, n.ModifiedIndex)
 	s.Stats.Inc(TestAndSetFail)
-	return nil, etcdErr.NewError(etcdErr.EcodeTestFailed, cause)
+	return nil, etcdErr.NewError(etcdErr.EcodeTestFailed, cause, index, term)
 }
 
 // Delete function deletes the node at the given path.
 // If the node is a directory, recursive must be true to delete it.
 func (s *Store) Delete(nodePath string, recursive bool, index uint64, term uint64) (*Event, error) {
+	nodePath = path.Clean(path.Join("/", nodePath))
+
 	s.worldLock.Lock()
 	defer s.worldLock.Unlock()
 
@@ -231,25 +243,38 @@ func (s *Store) Delete(nodePath string, recursive bool, index uint64, term uint6
 }
 
 func (s *Store) Watch(prefix string, recursive bool, sinceIndex uint64, index uint64, term uint64) (<-chan *Event, error) {
+	prefix = path.Clean(path.Join("/", prefix))
+
 	s.worldLock.RLock()
 	defer s.worldLock.RUnlock()
 
 	s.Index, s.Term = index, term
 
+	var c <-chan *Event
+	var err *etcdErr.Error
+
 	if sinceIndex == 0 {
-		return s.WatcherHub.watch(prefix, recursive, index+1)
+		c, err = s.WatcherHub.watch(prefix, recursive, index+1)
+
+	} else {
+		c, err = s.WatcherHub.watch(prefix, recursive, sinceIndex)
 	}
 
-	return s.WatcherHub.watch(prefix, recursive, sinceIndex)
+	if err != nil {
+		err.Index = index
+		err.Term = term
+	}
+
+	return c, err
 }
 
 // walk function walks all the nodePath and apply the walkFunc on each directory
-func (s *Store) walk(nodePath string, walkFunc func(prev *Node, component string) (*Node, error)) (*Node, error) {
+func (s *Store) walk(nodePath string, walkFunc func(prev *Node, component string) (*Node, *etcdErr.Error)) (*Node, *etcdErr.Error) {
 	components := strings.Split(nodePath, "/")
 
 	curr := s.Root
+	var err *etcdErr.Error
 
-	var err error
 	for i := 1; i < len(components); i++ {
 		if len(components[i]) == 0 { // ignore empty string
 			return curr, nil
@@ -265,7 +290,9 @@ func (s *Store) walk(nodePath string, walkFunc func(prev *Node, component string
 	return curr, nil
 }
 
-func (s *Store) internalCreate(nodePath string, value string, incrementalSuffix bool, expireTime time.Time, index uint64, term uint64, action string) (*Event, error) {
+func (s *Store) internalCreate(nodePath string, value string, incrementalSuffix bool, force bool,
+	expireTime time.Time, index uint64, term uint64, action string) (*Event, error) {
+
 	if incrementalSuffix { // append unique incremental suffix to the node path
 		nodePath += "_" + strconv.FormatUint(index, 10)
 	}
@@ -275,29 +302,41 @@ func (s *Store) internalCreate(nodePath string, value string, incrementalSuffix 
 	// make sure we can create the node
 	_, err := s.internalGet(nodePath, index, term)
 
-	if err == nil { // key already exists
+	if err == nil && !force { // key already exists
 		s.Stats.Inc(SetFail)
-		return nil, etcdErr.NewError(etcdErr.EcodeNodeExist, nodePath)
+		return nil, etcdErr.NewError(etcdErr.EcodeNodeExist, nodePath, index, term)
 	}
 
-	etcdError, _ := err.(etcdErr.Error)
-
-	if etcdError.ErrorCode == 104 { // we cannot create the key due to meet a file while walking
+	if err != nil && err.ErrorCode == 104 { // we cannot create the key due to meet a file while walking
 		s.Stats.Inc(SetFail)
 		return nil, err
 	}
 
-	dir, _ := path.Split(nodePath)
+	dir, newNodeName := path.Split(nodePath)
 
 	// walk through the nodePath, create dirs and get the last directory node
 	d, err := s.walk(dir, s.checkDir)
 
 	if err != nil {
 		s.Stats.Inc(SetFail)
+		fmt.Println("1: bad create")
 		return nil, err
 	}
 
 	e := newEvent(action, nodePath, s.Index, s.Term)
+
+	if force { // force will try to replace a existing file
+		n, _ := d.GetChild(newNodeName)
+		if n != nil {
+			if n.IsDir() {
+				return nil, etcdErr.NewError(etcdErr.EcodeNotFile, nodePath, index, term)
+			}
+			e.PrevValue, _ = n.Read()
+
+			n.Remove(false, nil)
+
+		}
+	}
 
 	var n *Node
 
@@ -333,16 +372,17 @@ func (s *Store) internalCreate(nodePath string, value string, incrementalSuffix 
 }
 
 // InternalGet function get the node of the given nodePath.
-func (s *Store) internalGet(nodePath string, index uint64, term uint64) (*Node, error) {
+func (s *Store) internalGet(nodePath string, index uint64, term uint64) (*Node, *etcdErr.Error) {
 	nodePath = path.Clean(path.Join("/", nodePath))
 
 	// update file system known index and term
 	s.Index, s.Term = index, term
 
-	walkFunc := func(parent *Node, name string) (*Node, error) {
+	walkFunc := func(parent *Node, name string) (*Node, *etcdErr.Error) {
 
 		if !parent.IsDir() {
-			return nil, etcdErr.NewError(etcdErr.EcodeNotDir, parent.Path)
+			err := etcdErr.NewError(etcdErr.EcodeNotDir, parent.Path, index, term)
+			return nil, err
 		}
 
 		child, ok := parent.Children[name]
@@ -350,7 +390,7 @@ func (s *Store) internalGet(nodePath string, index uint64, term uint64) (*Node, 
 			return child, nil
 		}
 
-		return nil, etcdErr.NewError(etcdErr.EcodeKeyNotFound, path.Join(parent.Path, name))
+		return nil, etcdErr.NewError(etcdErr.EcodeKeyNotFound, path.Join(parent.Path, name), index, term)
 	}
 
 	f, err := s.walk(nodePath, walkFunc)
@@ -358,7 +398,6 @@ func (s *Store) internalGet(nodePath string, index uint64, term uint64) (*Node, 
 	if err != nil {
 		return nil, err
 	}
-
 	return f, nil
 }
 
@@ -366,7 +405,7 @@ func (s *Store) internalGet(nodePath string, index uint64, term uint64) (*Node, 
 // If it is a directory, this function will return the pointer to that node.
 // If it does not exist, this function will create a new directory and return the pointer to that node.
 // If it is a file, this function will return error.
-func (s *Store) checkDir(parent *Node, dirName string) (*Node, error) {
+func (s *Store) checkDir(parent *Node, dirName string) (*Node, *etcdErr.Error) {
 	subDir, ok := parent.Children[dirName]
 
 	if ok {

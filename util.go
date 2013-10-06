@@ -69,24 +69,40 @@ func startWebInterface() {
 
 func dispatch(c Command, w http.ResponseWriter, req *http.Request, toURL func(name string) (string, bool)) error {
 	if r.State() == raft.Leader {
-		if body, err := r.Do(c); err != nil {
+		if response, err := r.Do(c); err != nil {
 			return err
 		} else {
-			if body == nil {
-				return etcdErr.NewError(300, "Empty result from raft")
-			} else {
-				body, _ := body.([]byte)
+			if response == nil {
+				return etcdErr.NewError(300, "Empty response from raft", store.UndefIndex, store.UndefTerm)
+			}
+
+			event, ok := response.(*store.Event)
+			if ok {
+				bytes, err := json.Marshal(event)
+				if err != nil {
+					fmt.Println(err)
+				}
+
+				w.Header().Add("X-Etcd-Index", fmt.Sprint(event.Index))
+				w.Header().Add("X-Etcd-Term", fmt.Sprint(event.Term))
 				w.WriteHeader(http.StatusOK)
-				w.Write(body)
+				w.Write(bytes)
+
 				return nil
 			}
+
+			bytes, _ := response.([]byte)
+			w.WriteHeader(http.StatusOK)
+			w.Write(bytes)
+
+			return nil
 		}
 
 	} else {
 		leader := r.Leader()
 		// current no leader
 		if leader == "" {
-			return etcdErr.NewError(300, "")
+			return etcdErr.NewError(300, "", store.UndefIndex, store.UndefTerm)
 		}
 		url, _ := toURL(leader)
 
@@ -94,7 +110,6 @@ func dispatch(c Command, w http.ResponseWriter, req *http.Request, toURL func(na
 
 		return nil
 	}
-	return etcdErr.NewError(300, "")
 }
 
 func redirect(hostname string, w http.ResponseWriter, req *http.Request) {

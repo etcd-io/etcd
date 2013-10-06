@@ -49,7 +49,7 @@ func TestSingleNode(t *testing.T) {
 
 	result, err = c.Set("foo", "bar", 100)
 
-	if err != nil || result.Key != "/foo" || result.Value != "bar" || result.PrevValue != "bar" || result.TTL != 99 {
+	if err != nil || result.Key != "/foo" || result.Value != "bar" || result.PrevValue != "bar" || result.TTL != 100 {
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -61,7 +61,7 @@ func TestSingleNode(t *testing.T) {
 	// First, we'll test we can change the value if we get it write
 	result, match, err := c.TestAndSet("foo", "bar", "foobar", 100)
 
-	if err != nil || result.Key != "/foo" || result.Value != "foobar" || result.PrevValue != "bar" || result.TTL != 99 || !match {
+	if err != nil || result.Key != "/foo" || result.Value != "foobar" || result.PrevValue != "bar" || result.TTL != 100 || !match {
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -223,7 +223,7 @@ func templateTestSimpleMultiNode(t *testing.T, tls bool) {
 
 	result, err = c.Set("foo", "bar", 100)
 
-	if err != nil || result.Key != "/foo" || result.Value != "bar" || result.PrevValue != "bar" || result.TTL != 99 {
+	if err != nil || result.Key != "/foo" || result.Value != "bar" || result.PrevValue != "bar" || result.TTL != 100 {
 		if err != nil {
 			t.Fatal(err)
 		}

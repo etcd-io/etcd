@@ -118,28 +118,24 @@ func (eh *EventHistory) addEvent(e *Event) *Event {
 
 	if e.Index == UndefIndex {
 		e.Index = eh.LastIndex
-		duped = 1
-	}
-
-	if e.Term == UndefTerm {
 		e.Term = eh.LastTerm
 		duped = 1
 	}
 
 	eh.Queue.insert(e)
 
-	eh.StartIndex = eh.Queue.Events[eh.Queue.Front].Index
-
 	eh.LastIndex = e.Index
 	eh.LastTerm = e.Term
 	eh.DupCnt += duped
+
+	eh.StartIndex = eh.Queue.Events[eh.Queue.Front].Index
 
 	return e
 }
 
 // scan function is enumerating events from the index in history and
 // stops till the first point where the key has identified prefix
-func (eh *EventHistory) scan(prefix string, index uint64) (*Event, error) {
+func (eh *EventHistory) scan(prefix string, index uint64) (*Event, *etcdErr.Error) {
 	eh.rwl.RLock()
 	defer eh.rwl.RUnlock()
 
@@ -150,7 +146,7 @@ func (eh *EventHistory) scan(prefix string, index uint64) (*Event, error) {
 		return nil,
 			etcdErr.NewError(etcdErr.EcodeEventIndexCleared,
 				fmt.Sprintf("the requested history has been cleared [%v/%v]",
-					eh.StartIndex, index))
+					eh.StartIndex, index), UndefIndex, UndefTerm)
 	}
 
 	// the index should locate before the size of the queue minus the duplicate count
@@ -191,6 +187,9 @@ func (eh *EventHistory) clone() *EventHistory {
 	return &EventHistory{
 		StartIndex: eh.StartIndex,
 		Queue:      clonedQueue,
+		LastIndex:  eh.LastIndex,
+		LastTerm:   eh.LastTerm,
+		DupCnt:     eh.DupCnt,
 	}
 
 }

@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/binary"
-	"encoding/json"
 	"fmt"
 	"os"
 	"path"
@@ -31,6 +30,7 @@ type CreateCommand struct {
 	Value             string    `json:"value"`
 	ExpireTime        time.Time `json:"expireTime"`
 	IncrementalSuffix bool      `json:"incrementalSuffix"`
+	Force             bool      `json:"force"`
 }
 
 // The name of the create command in the log
@@ -40,14 +40,14 @@ func (c *CreateCommand) CommandName() string {
 
 // Create node
 func (c *CreateCommand) Apply(server *raft.Server) (interface{}, error) {
-	e, err := etcdStore.Create(c.Key, c.Value, c.IncrementalSuffix, c.ExpireTime, server.CommitIndex(), server.Term())
+	e, err := etcdStore.Create(c.Key, c.Value, c.IncrementalSuffix, c.Force, c.ExpireTime, server.CommitIndex(), server.Term())
 
 	if err != nil {
 		debug(err)
 		return nil, err
 	}
 
-	return json.Marshal(e)
+	return e, nil
 }
 
 // Update command
@@ -71,7 +71,7 @@ func (c *UpdateCommand) Apply(server *raft.Server) (interface{}, error) {
 		return nil, err
 	}
 
-	return json.Marshal(e)
+	return e, nil
 }
 
 // TestAndSet command
@@ -98,7 +98,7 @@ func (c *TestAndSetCommand) Apply(server *raft.Server) (interface{}, error) {
 		return nil, err
 	}
 
-	return json.Marshal(e)
+	return e, nil
 }
 
 // Get command
@@ -122,7 +122,7 @@ func (c *GetCommand) Apply(server *raft.Server) (interface{}, error) {
 		return nil, err
 	}
 
-	return json.Marshal(e)
+	return e, nil
 }
 
 // Delete command
@@ -145,7 +145,7 @@ func (c *DeleteCommand) Apply(server *raft.Server) (interface{}, error) {
 		return nil, err
 	}
 
-	return json.Marshal(e)
+	return e, nil
 }
 
 // Watch command
@@ -169,7 +169,7 @@ func (c *WatchCommand) Apply(server *raft.Server) (interface{}, error) {
 
 	e := <-eventChan
 
-	return json.Marshal(e)
+	return e, nil
 }
 
 // JoinCommand
@@ -211,7 +211,7 @@ func (c *JoinCommand) Apply(raftServer *raft.Server) (interface{}, error) {
 	num := machineNum()
 	if num == maxClusterSize {
 		debug("Reject join request from ", c.Name)
-		return []byte{0}, etcdErr.NewError(etcdErr.EcodeNoMoreMachine, "")
+		return []byte{0}, etcdErr.NewError(etcdErr.EcodeNoMoreMachine, "", raftServer.CommitIndex(), raftServer.Term())
 	}
 
 	addNameToURL(c.Name, c.RaftVersion, c.RaftURL, c.EtcdURL)
@@ -222,7 +222,7 @@ func (c *JoinCommand) Apply(raftServer *raft.Server) (interface{}, error) {
 	// add machine in etcd storage
 	key := path.Join("_etcd/machines", c.Name)
 	value := fmt.Sprintf("raft=%s&etcd=%s&raftVersion=%s", c.RaftURL, c.EtcdURL, c.RaftVersion)
-	etcdStore.Create(key, value, false, store.Permanent, raftServer.CommitIndex(), raftServer.Term())
+	etcdStore.Create(key, value, false, false, store.Permanent, raftServer.CommitIndex(), raftServer.Term())
 
 	// add peer stats
 	if c.Name != r.Name() {
