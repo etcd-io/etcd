@@ -1,0 +1,10 @@
+#!/bin/sh
+
+grunt build
+
+git clean -x -f dashboard/dist
+
+for i in `find dashboard/dist -type f`; do
+	go build github.com/jteeuwen/go-bindata
+	./go-bindata -pkg "dist" -toc -prefix dashboard/dist $i
+done
