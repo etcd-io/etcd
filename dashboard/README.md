@@ -1,5 +1,13 @@
-This directory holds the frontend for the etcd dashboard. To have etcd serve from this directory run:
+# etcd Dashboard
+
+## Developing
+
+### Install yeoman
+
+http://yeoman.io/
+
+### Hacking
 
 ```
-ETCD_DASHBOARD_DIR=`pwd`/dashboard ./etcd
+grunt server
 ```
