@@ -11,7 +11,8 @@
     "angular-resource": "~1.2.0-rc.2",
     "angular-cookies": "~1.2.0-rc.2",
     "angular-sanitize": "~1.2.0-rc.2",
-    "d3": "~3.3.6"
+    "d3": "~3.3.6",
+    "moment": "~2.3.0"
   },
   "devDependencies": {
     "angular-mocks": "~1.2.0-rc.2",
