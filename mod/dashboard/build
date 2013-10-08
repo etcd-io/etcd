@@ -8,7 +8,7 @@ npm install
 bower install
 grunt build
 
-export GOPATH="${DIR}/../"
+export GOPATH="${DIR}/../../"
 
 for i in `find dist -type f`; do
 	file=$(echo $i | sed 's#dist/##g' | sed 's#/#-#g')
