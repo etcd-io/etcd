@@ -279,14 +279,21 @@ func (n *Node) Expire(s *Store) {
 		// if timeout, delete the node
 		case <-time.After(duration):
 
+			// before expire get the lock, the expiration time
+			// of the node may be updated.
+			// we have to check again when get the lock
 			s.worldLock.Lock()
 			defer s.worldLock.Unlock()
 
-			e := newEvent(Expire, n.Path, UndefIndex, UndefTerm)
-			s.WatcherHub.notify(e)
+			expired, _ := n.IsExpired()
 
-			n.Remove(true, nil)
-			s.Stats.Inc(ExpireCount)
+			if expired {
+				e := newEvent(Expire, n.Path, UndefIndex, UndefTerm)
+				s.WatcherHub.notify(e)
+
+				n.Remove(true, nil)
+				s.Stats.Inc(ExpireCount)
+			}
 
 			return
 
