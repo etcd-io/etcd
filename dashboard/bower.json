@@ -10,7 +10,8 @@
     "angular-route": "~1.2.0-rc.2",
     "angular-resource": "~1.2.0-rc.2",
     "angular-cookies": "~1.2.0-rc.2",
-    "angular-sanitize": "~1.2.0-rc.2"
+    "angular-sanitize": "~1.2.0-rc.2",
+    "d3": "~3.3.6"
   },
   "devDependencies": {
     "angular-mocks": "~1.2.0-rc.2",
