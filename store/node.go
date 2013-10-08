@@ -349,6 +349,9 @@ func (n *Node) Pair(recurisive, sorted bool) KeyValuePair {
 
 func (n *Node) UpdateTTL(expireTime time.Time, s *Store) {
 	if !n.IsPermanent() {
+		// check if the node has been expired
+		// if the node is not expired, we need to stop the go routine associated with
+		// that node.
 		expired, _ := n.IsExpired()
 
 		if !expired {

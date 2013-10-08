@@ -226,7 +226,8 @@ func (s *Store) Delete(nodePath string, recursive bool, index uint64, term uint6
 	}
 
 	callback := func(path string) { // notify function
-		s.WatcherHub.notifyWithPath(e, path, true)
+		// notify the watchers with delted set true
+		s.WatcherHub.notifyWatchers(e, path, true)
 	}
 
 	err = n.Remove(recursive, callback)
