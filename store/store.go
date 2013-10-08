@@ -344,7 +344,7 @@ func (s *Store) internalCreate(nodePath string, value string, incrementalSuffix 
 	if len(value) != 0 { // create file
 		e.Value = value
 
-		n = newFile(nodePath, value, s.Index, s.Term, d, "", expireTime)
+		n = newKV(nodePath, value, s.Index, s.Term, d, "", expireTime)
 
 	} else { // create directory
 		e.Dir = true
