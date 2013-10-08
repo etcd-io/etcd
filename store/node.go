@@ -253,7 +253,7 @@ func (n *Node) Add(child *Node) *etcdErr.Error {
 
 // Expire function will test if the node is expired.
 // if the node is already expired, delete the node and return.
-// if the node is permemant (this shouldn't happen), return at once.
+// if the node is permanent (this shouldn't happen), return at once.
 // else wait for a period time, then remove the node. and notify the watchhub.
 func (n *Node) Expire(s *Store) {
 	expired, duration := n.IsExpired()
@@ -383,6 +383,13 @@ func (n *Node) Clone() *Node {
 	return clone
 }
 
+// recoverAndclean function help to do recovery.
+// Two things need to be done: 1. recovery structure; 2. delete expired nodes
+
+// If the node is a directory, it will help recover children's parent pointer and recursively
+// call this function on its children.
+// We check the expire last since we need to recover the whole structure first and add all the
+// notifications into the event history.
 func (n *Node) recoverAndclean(s *Store) {
 	if n.IsDir() {
 		for _, child := range n.Children {
