@@ -5,6 +5,7 @@ grunt build
 git clean -x -f dashboard/dist
 
 for i in `find dashboard/dist -type f`; do
+	file=$(echo $i | sed 's#dashboard/dist/##g' | sed 's#/#-#g')
 	go build github.com/jteeuwen/go-bindata
-	./go-bindata -pkg "dist" -toc -prefix dashboard/dist $i
+	./go-bindata -pkg "resources" -toc -out dashboard/resources/$file.go -prefix dashboard/dist $i
 done
