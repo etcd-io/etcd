@@ -119,9 +119,7 @@ func (s *Store) Update(nodePath string, newValue string, expireTime time.Time, i
 		if n.IsDir() {
 			// if the node is a directory, we cannot update value
 			s.Stats.Inc(UpdateFail)
-
-			err := etcdErr.NewError(etcdErr.EcodeNotFile, nodePath, index, term)
-			return nil, err
+			return nil, etcdErr.NewError(etcdErr.EcodeNotFile, nodePath, index, term)
 		}
 
 		e.PrevValue = n.Value
