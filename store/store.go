@@ -31,7 +31,7 @@ func New() *Store {
 	return s
 }
 
-// get function returns a get event.
+// Get function returns a get event.
 // If recursive is true, it will return all the content under the node path.
 // If sorted is true, it will sort the content by keys.
 func (s *Store) Get(nodePath string, recursive, sorted bool, index uint64, term uint64) (*Event, error) {
@@ -110,7 +110,6 @@ func (s *Store) Update(nodePath string, value string, expireTime time.Time, inde
 
 	if err != nil { // if the node does not exist, return error
 		s.Stats.Inc(UpdateFail)
-
 		return nil, err
 	}
 
@@ -126,11 +125,6 @@ func (s *Store) Update(nodePath string, value string, expireTime time.Time, inde
 
 	} else { // if the node is a file, we can update value and ttl
 		e.PrevValue = n.Value
-
-		if len(value) != 0 {
-			e.Value = value
-		}
-
 		n.Write(value, index, term)
 	}
 
@@ -172,13 +166,12 @@ func (s *Store) TestAndSet(nodePath string, prevValue string, prevIndex uint64,
 
 	if n.Value == prevValue || n.ModifiedIndex == prevIndex {
 		// if test succeed, write the value
+		n.Write(value, index, term)
+		n.UpdateTTL(expireTime, s)
+
 		e := newEvent(TestAndSet, nodePath, index, term)
 		e.PrevValue = n.Value
 		e.Value = value
-		n.Write(value, index, term)
-
-		n.UpdateTTL(expireTime, s)
-
 		e.Expiration, e.TTL = n.ExpirationAndTTL()
 
 		s.WatcherHub.notify(e)
@@ -309,7 +302,6 @@ func (s *Store) internalCreate(nodePath string, value string, incrementalSuffix 
 
 	if err != nil {
 		s.Stats.Inc(SetFail)
-		fmt.Println("1: bad create")
 		return nil, err
 	}
 
