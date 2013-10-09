@@ -50,6 +50,8 @@ var (
 
 	force bool
 
+	printVersion bool
+
 	maxSize int
 
 	snapshot bool
@@ -65,6 +67,8 @@ var (
 )
 
 func init() {
+	flag.BoolVar(&printVersion, "version", false, "print the version and exit")
+
 	flag.BoolVar(&verbose, "v", false, "verbose logging")
 	flag.BoolVar(&veryVerbose, "vv", false, "very verbose logging")
 
@@ -161,6 +165,11 @@ var etcdStore *store.Store
 
 func main() {
 	flag.Parse()
+
+	if printVersion {
+		fmt.Println(releaseVersion)
+		os.Exit(0)
+	}
 
 	if cpuprofile != "" {
 		runCPUProfile()
