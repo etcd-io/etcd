@@ -116,61 +116,6 @@ func (n *Node) IsDir() bool {
 	return !(n.Children == nil)
 }
 
-// Remove function remove the node.
-func (n *Node) Remove(recursive bool, callback func(path string)) *etcdErr.Error {
-
-	if n.IsDir() && !recursive {
-		// cannot delete a directory without set recursive to true
-		return etcdErr.NewError(etcdErr.EcodeNotFile, "", UndefIndex, UndefTerm)
-	}
-
-	onceBody := func() {
-		n.internalRemove(recursive, callback)
-	}
-
-	// this function might be entered multiple times by expire and delete
-	// every node will only be deleted once.
-	n.once.Do(onceBody)
-
-	return nil
-}
-
-// internalRemove function will be called by remove()
-func (n *Node) internalRemove(recursive bool, callback func(path string)) {
-	if !n.IsDir() { // key-value pair
-		_, name := path.Split(n.Path)
-
-		// find its parent and remove the node from the map
-		if n.Parent != nil && n.Parent.Children[name] == n {
-			delete(n.Parent.Children, name)
-		}
-
-		if callback != nil {
-			callback(n.Path)
-		}
-
-		// the stop channel has a buffer. just send to it!
-		n.stopExpire <- true
-		return
-	}
-
-	for _, child := range n.Children { // delete all children
-		child.Remove(true, callback)
-	}
-
-	// delete self
-	_, name := path.Split(n.Path)
-	if n.Parent != nil && n.Parent.Children[name] == n {
-		delete(n.Parent.Children, name)
-
-		if callback != nil {
-			callback(n.Path)
-		}
-
-		n.stopExpire <- true
-	}
-}
-
 // Read function gets the value of the node.
 // If the receiver node is not a key-value pair, a "Not A File" error will be returned.
 func (n *Node) Read() (string, *etcdErr.Error) {
@@ -193,6 +138,13 @@ func (n *Node) Write(value string, index uint64, term uint64) *etcdErr.Error {
 	n.ModifiedTerm = term
 
 	return nil
+}
+
+func (n *Node) ExpirationAndTTL() (*time.Time, int64) {
+	if n.ExpireTime.Sub(Permanent) != 0 {
+		return &n.ExpireTime, int64(n.ExpireTime.Sub(time.Now())/time.Second) + 1
+	}
+	return nil, 0
 }
 
 // List function return a slice of nodes under the receiver node.
@@ -249,6 +201,61 @@ func (n *Node) Add(child *Node) *etcdErr.Error {
 	n.Children[name] = child
 
 	return nil
+}
+
+// Remove function remove the node.
+func (n *Node) Remove(recursive bool, callback func(path string)) *etcdErr.Error {
+
+	if n.IsDir() && !recursive {
+		// cannot delete a directory without set recursive to true
+		return etcdErr.NewError(etcdErr.EcodeNotFile, "", UndefIndex, UndefTerm)
+	}
+
+	onceBody := func() {
+		n.internalRemove(recursive, callback)
+	}
+
+	// this function might be entered multiple times by expire and delete
+	// every node will only be deleted once.
+	n.once.Do(onceBody)
+
+	return nil
+}
+
+// internalRemove function will be called by remove()
+func (n *Node) internalRemove(recursive bool, callback func(path string)) {
+	if !n.IsDir() { // key-value pair
+		_, name := path.Split(n.Path)
+
+		// find its parent and remove the node from the map
+		if n.Parent != nil && n.Parent.Children[name] == n {
+			delete(n.Parent.Children, name)
+		}
+
+		if callback != nil {
+			callback(n.Path)
+		}
+
+		// the stop channel has a buffer. just send to it!
+		n.stopExpire <- true
+		return
+	}
+
+	for _, child := range n.Children { // delete all children
+		child.Remove(true, callback)
+	}
+
+	// delete self
+	_, name := path.Split(n.Path)
+	if n.Parent != nil && n.Parent.Children[name] == n {
+		delete(n.Parent.Children, name)
+
+		if callback != nil {
+			callback(n.Path)
+		}
+
+		n.stopExpire <- true
+	}
 }
 
 // Expire function will test if the node is expired.

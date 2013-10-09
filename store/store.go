@@ -75,14 +75,11 @@ func (s *Store) Get(nodePath string, recursive, sorted bool, index uint64, term 
 			sort.Sort(e.KVPairs)
 		}
 
-	} else { // node is file
-		e.Value = n.Value
+	} else { // node is a file
+		e.Value, _ = n.Read()
 	}
 
-	if n.ExpireTime.Sub(Permanent) != 0 {
-		e.Expiration = &n.ExpireTime
-		e.TTL = int64(n.ExpireTime.Sub(time.Now())/time.Second) + 1
-	}
+	e.Expiration, e.TTL = n.ExpirationAndTTL()
 
 	s.Stats.Inc(GetSuccess)
 
@@ -140,10 +137,8 @@ func (s *Store) Update(nodePath string, value string, expireTime time.Time, inde
 	// update ttl
 	n.UpdateTTL(expireTime, s)
 
-	if n.ExpireTime.Sub(Permanent) != 0 {
-		e.Expiration = &n.ExpireTime
-		e.TTL = int64(expireTime.Sub(time.Now())/time.Second) + 1
-	}
+	e.Expiration, e.TTL = n.ExpirationAndTTL()
+
 	s.WatcherHub.notify(e)
 
 	s.Stats.Inc(UpdateSuccess)
@@ -184,10 +179,7 @@ func (s *Store) TestAndSet(nodePath string, prevValue string, prevIndex uint64,
 
 		n.UpdateTTL(expireTime, s)
 
-		if n.ExpireTime.Sub(Permanent) != 0 {
-			e.Expiration = &n.ExpireTime
-			e.TTL = int64(expireTime.Sub(time.Now())/time.Second) + 1
-		}
+		e.Expiration, e.TTL = n.ExpirationAndTTL()
 
 		s.WatcherHub.notify(e)
 		s.Stats.Inc(TestAndSetSuccess)
@@ -360,8 +352,7 @@ func (s *Store) internalCreate(nodePath string, value string, incrementalSuffix 
 	// Node with TTL
 	if expireTime.Sub(Permanent) != 0 {
 		n.Expire(s)
-		e.Expiration = &n.ExpireTime
-		e.TTL = int64(expireTime.Sub(time.Now())/time.Second) + 1
+		e.Expiration, e.TTL = n.ExpirationAndTTL()
 	}
 
 	s.WatcherHub.notify(e)
