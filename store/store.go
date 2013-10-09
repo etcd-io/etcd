@@ -24,13 +24,16 @@ type Store struct {
 
 func New() *Store {
 	s := new(Store)
-	s.Root = newDir("/", 0, 0, nil, "", Permanent)
+	s.Root = newDir("/", UndefIndex, UndefTerm, nil, "", Permanent)
 	s.Stats = newStats()
 	s.WatcherHub = newWatchHub(1000)
 
 	return s
 }
 
+// Get function returns a get event.
+// If recursive is true, it will return all the content under the node path.
+// If sorted is true, it will sort the content by keys.
 func (s *Store) Get(nodePath string, recursive, sorted bool, index uint64, term uint64) (*Event, error) {
 	s.worldLock.RLock()
 	defer s.worldLock.RUnlock()
@@ -46,7 +49,7 @@ func (s *Store) Get(nodePath string, recursive, sorted bool, index uint64, term 
 
 	e := newEvent(Get, nodePath, index, term)
 
-	if n.IsDir() { // node is dir
+	if n.IsDir() { // node is a directory
 		e.Dir = true
 
 		children, _ := n.List()
@@ -57,35 +60,26 @@ func (s *Store) Get(nodePath string, recursive, sorted bool, index uint64, term 
 		i := 0
 
 		for _, child := range children {
-
-			if child.IsHidden() { // get will not list hidden node
+			if child.IsHidden() { // get will not return hidden nodes
 				continue
 			}
 
 			e.KVPairs[i] = child.Pair(recursive, sorted)
-
 			i++
 		}
 
 		// eliminate hidden nodes
 		e.KVPairs = e.KVPairs[:i]
 
-		rootPairs := KeyValuePair{
-			KVPairs: e.KVPairs,
-		}
-
 		if sorted {
-			sort.Sort(rootPairs)
+			sort.Sort(e.KVPairs)
 		}
 
-	} else { // node is file
-		e.Value = n.Value
+	} else { // node is a file
+		e.Value, _ = n.Read()
 	}
 
-	if n.ExpireTime.Sub(Permanent) != 0 {
-		e.Expiration = &n.ExpireTime
-		e.TTL = int64(n.ExpireTime.Sub(time.Now())/time.Second) + 1
-	}
+	e.Expiration, e.TTL = n.ExpirationAndTTL()
 
 	s.Stats.Inc(GetSuccess)
 
@@ -107,7 +101,7 @@ func (s *Store) Create(nodePath string, value string, incrementalSuffix bool, fo
 // Update function updates the value/ttl of the node.
 // If the node is a file, the value and the ttl can be updated.
 // If the node is a directory, only the ttl can be updated.
-func (s *Store) Update(nodePath string, value string, expireTime time.Time, index uint64, term uint64) (*Event, error) {
+func (s *Store) Update(nodePath string, newValue string, expireTime time.Time, index uint64, term uint64) (*Event, error) {
 	s.worldLock.Lock()
 	defer s.worldLock.Unlock()
 	nodePath = path.Clean(path.Join("/", nodePath))
@@ -116,37 +110,27 @@ func (s *Store) Update(nodePath string, value string, expireTime time.Time, inde
 
 	if err != nil { // if the node does not exist, return error
 		s.Stats.Inc(UpdateFail)
-
 		return nil, err
 	}
 
 	e := newEvent(Update, nodePath, s.Index, s.Term)
 
-	if n.IsDir() { // if the node is a directory, we can only update ttl
-		if len(value) != 0 {
+	if len(newValue) != 0 {
+		if n.IsDir() {
+			// if the node is a directory, we cannot update value
 			s.Stats.Inc(UpdateFail)
-
-			err := etcdErr.NewError(etcdErr.EcodeNotFile, nodePath, index, term)
-			return nil, err
+			return nil, etcdErr.NewError(etcdErr.EcodeNotFile, nodePath, index, term)
 		}
 
-	} else { // if the node is a file, we can update value and ttl
 		e.PrevValue = n.Value
-
-		if len(value) != 0 {
-			e.Value = value
-		}
-
-		n.Write(value, index, term)
+		n.Write(newValue, index, term)
 	}
 
 	// update ttl
 	n.UpdateTTL(expireTime, s)
 
-	if n.ExpireTime.Sub(Permanent) != 0 {
-		e.Expiration = &n.ExpireTime
-		e.TTL = int64(expireTime.Sub(time.Now())/time.Second) + 1
-	}
+	e.Expiration, e.TTL = n.ExpirationAndTTL()
+
 	s.WatcherHub.notify(e)
 
 	s.Stats.Inc(UpdateSuccess)
@@ -179,18 +163,15 @@ func (s *Store) TestAndSet(nodePath string, prevValue string, prevIndex uint64,
 	}
 
 	if n.Value == prevValue || n.ModifiedIndex == prevIndex {
-		// if test succeed, write the value
 		e := newEvent(TestAndSet, nodePath, index, term)
 		e.PrevValue = n.Value
-		e.Value = value
-		n.Write(value, index, term)
 
+		// if test succeed, write the value
+		n.Write(value, index, term)
 		n.UpdateTTL(expireTime, s)
 
-		if n.ExpireTime.Sub(Permanent) != 0 {
-			e.Expiration = &n.ExpireTime
-			e.TTL = int64(expireTime.Sub(time.Now())/time.Second) + 1
-		}
+		e.Value = value
+		e.Expiration, e.TTL = n.ExpirationAndTTL()
 
 		s.WatcherHub.notify(e)
 		s.Stats.Inc(TestAndSetSuccess)
@@ -226,7 +207,8 @@ func (s *Store) Delete(nodePath string, recursive bool, index uint64, term uint6
 	}
 
 	callback := func(path string) { // notify function
-		s.WatcherHub.notifyWithPath(e, path, true)
+		// notify the watchers with delted set true
+		s.WatcherHub.notifyWatchers(e, path, true)
 	}
 
 	err = n.Remove(recursive, callback)
@@ -319,7 +301,6 @@ func (s *Store) internalCreate(nodePath string, value string, incrementalSuffix 
 
 	if err != nil {
 		s.Stats.Inc(SetFail)
-		fmt.Println("1: bad create")
 		return nil, err
 	}
 
@@ -343,7 +324,7 @@ func (s *Store) internalCreate(nodePath string, value string, incrementalSuffix 
 	if len(value) != 0 { // create file
 		e.Value = value
 
-		n = newFile(nodePath, value, s.Index, s.Term, d, "", expireTime)
+		n = newKV(nodePath, value, s.Index, s.Term, d, "", expireTime)
 
 	} else { // create directory
 		e.Dir = true
@@ -362,8 +343,7 @@ func (s *Store) internalCreate(nodePath string, value string, incrementalSuffix 
 	// Node with TTL
 	if expireTime.Sub(Permanent) != 0 {
 		n.Expire(s)
-		e.Expiration = &n.ExpireTime
-		e.TTL = int64(expireTime.Sub(time.Now())/time.Second) + 1
+		e.Expiration, e.TTL = n.ExpirationAndTTL()
 	}
 
 	s.WatcherHub.notify(e)

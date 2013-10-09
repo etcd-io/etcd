@@ -124,10 +124,6 @@ func TestUpdateFile(t *testing.T) {
 		t.Fatalf("cannot get sub dir before expiration [%s]", err.Error())
 	}
 
-	/*if e.KVPairs[2].Key != "/foo/foo/foo2/boo" || e.KVPairs[2].Value != "boo1" {
-		t.Fatalf("cannot get sub node of sub dir before expiration [%s]", err.Error())
-	}*/
-
 	// wait for expiration
 	time.Sleep(time.Second * 3)
 	e, err = s.Get("/foo/foo", true, false, 7, 1)

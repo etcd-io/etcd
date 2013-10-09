@@ -24,12 +24,14 @@ func NewEtcdMuxer() *http.ServeMux {
 	etcdMux.Handle("/"+version+"/machines", errorHandler(MachinesHttpHandler))
 	etcdMux.Handle("/"+version+"/stats/", errorHandler(StatsHttpHandler))
 	etcdMux.Handle("/version", errorHandler(VersionHttpHandler))
+	etcdMux.HandleFunc("/test/", TestHttpHandler)
 
+	// backward support
 	etcdMux.Handle("/v1/keys/", errorHandler(MultiplexerV1))
 	etcdMux.Handle("/v1/leader", errorHandler(LeaderHttpHandler))
 	etcdMux.Handle("/v1/machines", errorHandler(MachinesHttpHandler))
 	etcdMux.Handle("/v1/stats/", errorHandler(StatsHttpHandler))
-	etcdMux.HandleFunc("/test/", TestHttpHandler)
+
 	return etcdMux
 }
 

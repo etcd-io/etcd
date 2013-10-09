@@ -3,6 +3,7 @@ package store
 import (
 	"path"
 	"sort"
+	"sync"
 	"time"
 
 	etcdErr "github.com/coreos/etcd/error"
@@ -17,22 +18,37 @@ const (
 	removed
 )
 
+// Node is the basic element in the store system.
+// A key-value pair will have a string value
+// A directory will have a children map
 type Node struct {
-	Path          string
+	Path string
+
 	CreateIndex   uint64
 	CreateTerm    uint64
 	ModifiedIndex uint64
 	ModifiedTerm  uint64
-	Parent        *Node `json:"-"`
-	ExpireTime    time.Time
-	ACL           string
-	Value         string           // for key-value pair
-	Children      map[string]*Node // for directory
-	status        int
-	stopExpire    chan bool // stop expire routine channel
+
+	Parent *Node `json:"-"` // should not encode this field! avoid cyclical dependency.
+
+	ExpireTime time.Time
+	ACL        string
+	Value      string           // for key-value pair
+	Children   map[string]*Node // for directory
+
+	// a ttl node will have an expire routine associated with it.
+	// we need a channel to stop that routine when the expiration changes.
+	stopExpire chan bool
+
+	// ensure we only delete the node once
+	// expire and remove may try to delete a node twice
+	once sync.Once
 }
 
-func newFile(nodePath string, value string, createIndex uint64, createTerm uint64, parent *Node, ACL string, expireTime time.Time) *Node {
+// newKV creates a Key-Value pair
+func newKV(nodePath string, value string, createIndex uint64,
+	createTerm uint64, parent *Node, ACL string, expireTime time.Time) *Node {
+
 	return &Node{
 		Path:          nodePath,
 		CreateIndex:   createIndex,
@@ -47,7 +63,10 @@ func newFile(nodePath string, value string, createIndex uint64, createTerm uint6
 	}
 }
 
-func newDir(nodePath string, createIndex uint64, createTerm uint64, parent *Node, ACL string, expireTime time.Time) *Node {
+// newDir creates a directory
+func newDir(nodePath string, createIndex uint64, createTerm uint64,
+	parent *Node, ACL string, expireTime time.Time) *Node {
+
 	return &Node{
 		Path:        nodePath,
 		CreateIndex: createIndex,
@@ -60,56 +79,41 @@ func newDir(nodePath string, createIndex uint64, createTerm uint64, parent *Node
 	}
 }
 
-// Remove function remove the node.
-// If the node is a directory and recursive is true, the function will recursively remove
-// add nodes under the receiver node.
-func (n *Node) Remove(recursive bool, callback func(path string)) *etcdErr.Error {
-	if n.status == removed { // check race between remove and expire
-		return nil
-	}
-
-	if !n.IsDir() { // file node: key-value pair
-		_, name := path.Split(n.Path)
-
-		if n.Parent != nil && n.Parent.Children[name] == n {
-			// This is the only pointer to Node object
-			// Handled by garbage collector
-			delete(n.Parent.Children, name)
-
-			if callback != nil {
-				callback(n.Path)
-			}
-
-			n.stopExpire <- true
-			n.status = removed
-
-		}
-
-		return nil
-	}
-
-	if !recursive {
-		return etcdErr.NewError(etcdErr.EcodeNotFile, "", UndefIndex, UndefTerm)
-	}
-
-	for _, child := range n.Children { // delete all children
-		child.Remove(true, callback)
-	}
-
-	// delete self
+// IsHidden function checks if the node is a hidden node. A hidden node
+// will begin with '_'
+// A hidden node will not be shown via get command under a directory
+// For example if we have /foo/_hidden and /foo/notHidden, get "/foo"
+// will only return /foo/notHidden
+func (n *Node) IsHidden() bool {
 	_, name := path.Split(n.Path)
-	if n.Parent != nil && n.Parent.Children[name] == n {
-		delete(n.Parent.Children, name)
 
-		if callback != nil {
-			callback(n.Path)
-		}
+	return name[0] == '_'
+}
 
-		n.stopExpire <- true
-		n.status = removed
+// IsPermanent function checks if the node is a permanent one.
+func (n *Node) IsPermanent() bool {
+	return n.ExpireTime.Sub(Permanent) == 0
+}
+
+// IsExpired function checks if the node has been expired.
+func (n *Node) IsExpired() (bool, time.Duration) {
+	if n.IsPermanent() {
+		return false, 0
 	}
 
-	return nil
+	duration := n.ExpireTime.Sub(time.Now())
+	if duration <= 0 {
+		return true, 0
+	}
+
+	return false, duration
+}
+
+// IsDir function checks whether the node is a directory.
+// If the node is a directory, the function will return true.
+// Otherwise the function will return false.
+func (n *Node) IsDir() bool {
+	return !(n.Children == nil)
 }
 
 // Read function gets the value of the node.
@@ -134,6 +138,13 @@ func (n *Node) Write(value string, index uint64, term uint64) *etcdErr.Error {
 	n.ModifiedTerm = term
 
 	return nil
+}
+
+func (n *Node) ExpirationAndTTL() (*time.Time, int64) {
+	if n.ExpireTime.Sub(Permanent) != 0 {
+		return &n.ExpireTime, int64(n.ExpireTime.Sub(time.Now())/time.Second) + 1
+	}
+	return nil, 0
 }
 
 // List function return a slice of nodes under the receiver node.
@@ -192,39 +203,64 @@ func (n *Node) Add(child *Node) *etcdErr.Error {
 	return nil
 }
 
-// Clone function clone the node recursively and return the new node.
-// If the node is a directory, it will clone all the content under this directory.
-// If the node is a key-value pair, it will clone the pair.
-func (n *Node) Clone() *Node {
-	if !n.IsDir() {
-		return newFile(n.Path, n.Value, n.CreateIndex, n.CreateTerm, n.Parent, n.ACL, n.ExpireTime)
+// Remove function remove the node.
+func (n *Node) Remove(recursive bool, callback func(path string)) *etcdErr.Error {
+
+	if n.IsDir() && !recursive {
+		// cannot delete a directory without set recursive to true
+		return etcdErr.NewError(etcdErr.EcodeNotFile, "", UndefIndex, UndefTerm)
 	}
 
-	clone := newDir(n.Path, n.CreateIndex, n.CreateTerm, n.Parent, n.ACL, n.ExpireTime)
-
-	for key, child := range n.Children {
-		clone.Children[key] = child.Clone()
+	onceBody := func() {
+		n.internalRemove(recursive, callback)
 	}
 
-	return clone
+	// this function might be entered multiple times by expire and delete
+	// every node will only be deleted once.
+	n.once.Do(onceBody)
+
+	return nil
 }
 
-func (n *Node) recoverAndclean(s *Store) {
-	if n.IsDir() {
-		for _, child := range n.Children {
-			child.Parent = n
-			child.recoverAndclean(s)
+// internalRemove function will be called by remove()
+func (n *Node) internalRemove(recursive bool, callback func(path string)) {
+	if !n.IsDir() { // key-value pair
+		_, name := path.Split(n.Path)
+
+		// find its parent and remove the node from the map
+		if n.Parent != nil && n.Parent.Children[name] == n {
+			delete(n.Parent.Children, name)
 		}
+
+		if callback != nil {
+			callback(n.Path)
+		}
+
+		// the stop channel has a buffer. just send to it!
+		n.stopExpire <- true
+		return
 	}
 
-	n.stopExpire = make(chan bool, 1)
+	for _, child := range n.Children { // delete all children
+		child.Remove(true, callback)
+	}
 
-	n.Expire(s)
+	// delete self
+	_, name := path.Split(n.Path)
+	if n.Parent != nil && n.Parent.Children[name] == n {
+		delete(n.Parent.Children, name)
+
+		if callback != nil {
+			callback(n.Path)
+		}
+
+		n.stopExpire <- true
+	}
 }
 
 // Expire function will test if the node is expired.
 // if the node is already expired, delete the node and return.
-// if the node is permemant (this shouldn't happen), return at once.
+// if the node is permanent (this shouldn't happen), return at once.
 // else wait for a period time, then remove the node. and notify the watchhub.
 func (n *Node) Expire(s *Store) {
 	expired, duration := n.IsExpired()
@@ -250,14 +286,21 @@ func (n *Node) Expire(s *Store) {
 		// if timeout, delete the node
 		case <-time.After(duration):
 
+			// before expire get the lock, the expiration time
+			// of the node may be updated.
+			// we have to check again when get the lock
 			s.worldLock.Lock()
 			defer s.worldLock.Unlock()
 
-			e := newEvent(Expire, n.Path, UndefIndex, UndefTerm)
-			s.WatcherHub.notify(e)
+			expired, _ := n.IsExpired()
 
-			n.Remove(true, nil)
-			s.Stats.Inc(ExpireCount)
+			if expired {
+				e := newEvent(Expire, n.Path, UndefIndex, UndefTerm)
+				s.WatcherHub.notify(e)
+
+				n.Remove(true, nil)
+				s.Stats.Inc(ExpireCount)
+			}
 
 			return
 
@@ -266,41 +309,6 @@ func (n *Node) Expire(s *Store) {
 			return
 		}
 	}()
-}
-
-// IsHidden function checks if the node is a hidden node. A hidden node
-// will begin with '_'
-// A hidden node will not be shown via get command under a directory
-// For example if we have /foo/_hidden and /foo/notHidden, get "/foo"
-// will only return /foo/notHidden
-func (n *Node) IsHidden() bool {
-	_, name := path.Split(n.Path)
-
-	return name[0] == '_'
-}
-
-func (n *Node) IsPermanent() bool {
-	return n.ExpireTime.Sub(Permanent) == 0
-}
-
-func (n *Node) IsExpired() (bool, time.Duration) {
-	if n.IsPermanent() {
-		return false, 0
-	}
-
-	duration := n.ExpireTime.Sub(time.Now())
-	if duration <= 0 {
-		return true, 0
-	}
-
-	return false, duration
-}
-
-// IsDir function checks whether the node is a directory.
-// If the node is a directory, the function will return true.
-// Otherwise the function will return false.
-func (n *Node) IsDir() bool {
-	return !(n.Children == nil)
 }
 
 func (n *Node) Pair(recurisive, sorted bool) KeyValuePair {
@@ -335,7 +343,7 @@ func (n *Node) Pair(recurisive, sorted bool) KeyValuePair {
 		// eliminate hidden nodes
 		pair.KVPairs = pair.KVPairs[:i]
 		if sorted {
-			sort.Sort(pair)
+			sort.Sort(pair.KVPairs)
 		}
 
 		return pair
@@ -349,6 +357,9 @@ func (n *Node) Pair(recurisive, sorted bool) KeyValuePair {
 
 func (n *Node) UpdateTTL(expireTime time.Time, s *Store) {
 	if !n.IsPermanent() {
+		// check if the node has been expired
+		// if the node is not expired, we need to stop the go routine associated with
+		// that node.
 		expired, _ := n.IsExpired()
 
 		if !expired {
@@ -360,4 +371,41 @@ func (n *Node) UpdateTTL(expireTime time.Time, s *Store) {
 		n.ExpireTime = expireTime
 		n.Expire(s)
 	}
+}
+
+// Clone function clone the node recursively and return the new node.
+// If the node is a directory, it will clone all the content under this directory.
+// If the node is a key-value pair, it will clone the pair.
+func (n *Node) Clone() *Node {
+	if !n.IsDir() {
+		return newKV(n.Path, n.Value, n.CreateIndex, n.CreateTerm, n.Parent, n.ACL, n.ExpireTime)
+	}
+
+	clone := newDir(n.Path, n.CreateIndex, n.CreateTerm, n.Parent, n.ACL, n.ExpireTime)
+
+	for key, child := range n.Children {
+		clone.Children[key] = child.Clone()
+	}
+
+	return clone
+}
+
+// recoverAndclean function help to do recovery.
+// Two things need to be done: 1. recovery structure; 2. delete expired nodes
+
+// If the node is a directory, it will help recover children's parent pointer and recursively
+// call this function on its children.
+// We check the expire last since we need to recover the whole structure first and add all the
+// notifications into the event history.
+func (n *Node) recoverAndclean(s *Store) {
+	if n.IsDir() {
+		for _, child := range n.Children {
+			child.Parent = n
+			child.recoverAndclean(s)
+		}
+	}
+
+	n.stopExpire = make(chan bool, 1)
+
+	n.Expire(s)
 }
