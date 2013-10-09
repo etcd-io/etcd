@@ -24,38 +24,17 @@ const (
 )
 
 type Event struct {
-	Action     string         `json:"action"`
-	Key        string         `json:"key, omitempty"`
-	Dir        bool           `json:"dir,omitempty"`
-	PrevValue  string         `json:"prevValue,omitempty"`
-	Value      string         `json:"value,omitempty"`
-	KVPairs    []KeyValuePair `json:"kvs,omitempty"`
-	Expiration *time.Time     `json:"expiration,omitempty"`
-	TTL        int64          `json:"ttl,omitempty"` // Time to live in second
+	Action     string     `json:"action"`
+	Key        string     `json:"key, omitempty"`
+	Dir        bool       `json:"dir,omitempty"`
+	PrevValue  string     `json:"prevValue,omitempty"`
+	Value      string     `json:"value,omitempty"`
+	KVPairs    kvPairs    `json:"kvs,omitempty"`
+	Expiration *time.Time `json:"expiration,omitempty"`
+	TTL        int64      `json:"ttl,omitempty"` // Time to live in second
 	// The command index of the raft machine when the command is executed
 	Index uint64 `json:"index"`
 	Term  uint64 `json:"term"`
-}
-
-// When user list a directory, we add all the node into key-value pair slice
-type KeyValuePair struct {
-	Key     string         `json:"key, omitempty"`
-	Value   string         `json:"value,omitempty"`
-	Dir     bool           `json:"dir,omitempty"`
-	KVPairs []KeyValuePair `json:"kvs,omitempty"`
-}
-
-// interfaces for sorting
-func (k KeyValuePair) Len() int {
-	return len(k.KVPairs)
-}
-
-func (k KeyValuePair) Less(i, j int) bool {
-	return k.KVPairs[i].Key < k.KVPairs[j].Key
-}
-
-func (k KeyValuePair) Swap(i, j int) {
-	k.KVPairs[i], k.KVPairs[j] = k.KVPairs[j], k.KVPairs[i]
 }
 
 func newEvent(action string, key string, index uint64, term uint64) *Event {

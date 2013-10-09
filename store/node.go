@@ -336,7 +336,7 @@ func (n *Node) Pair(recurisive, sorted bool) KeyValuePair {
 		// eliminate hidden nodes
 		pair.KVPairs = pair.KVPairs[:i]
 		if sorted {
-			sort.Sort(pair)
+			sort.Sort(pair.KVPairs)
 		}
 
 		return pair

@@ -24,13 +24,16 @@ type Store struct {
 
 func New() *Store {
 	s := new(Store)
-	s.Root = newDir("/", 0, 0, nil, "", Permanent)
+	s.Root = newDir("/", UndefIndex, UndefTerm, nil, "", Permanent)
 	s.Stats = newStats()
 	s.WatcherHub = newWatchHub(1000)
 
 	return s
 }
 
+// get function returns a get event.
+// If recursive is true, it will return all the content under the node path.
+// If sorted is true, it will sort the content by keys.
 func (s *Store) Get(nodePath string, recursive, sorted bool, index uint64, term uint64) (*Event, error) {
 	s.worldLock.RLock()
 	defer s.worldLock.RUnlock()
@@ -46,7 +49,7 @@ func (s *Store) Get(nodePath string, recursive, sorted bool, index uint64, term 
 
 	e := newEvent(Get, nodePath, index, term)
 
-	if n.IsDir() { // node is dir
+	if n.IsDir() { // node is a directory
 		e.Dir = true
 
 		children, _ := n.List()
@@ -57,25 +60,19 @@ func (s *Store) Get(nodePath string, recursive, sorted bool, index uint64, term 
 		i := 0
 
 		for _, child := range children {
-
-			if child.IsHidden() { // get will not list hidden node
+			if child.IsHidden() { // get will not return hidden nodes
 				continue
 			}
 
 			e.KVPairs[i] = child.Pair(recursive, sorted)
-
 			i++
 		}
 
 		// eliminate hidden nodes
 		e.KVPairs = e.KVPairs[:i]
 
-		rootPairs := KeyValuePair{
-			KVPairs: e.KVPairs,
-		}
-
 		if sorted {
-			sort.Sort(rootPairs)
+			sort.Sort(e.KVPairs)
 		}
 
 	} else { // node is file
