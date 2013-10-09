@@ -101,7 +101,7 @@ func (s *Store) Create(nodePath string, value string, incrementalSuffix bool, fo
 // Update function updates the value/ttl of the node.
 // If the node is a file, the value and the ttl can be updated.
 // If the node is a directory, only the ttl can be updated.
-func (s *Store) Update(nodePath string, value string, expireTime time.Time, index uint64, term uint64) (*Event, error) {
+func (s *Store) Update(nodePath string, newValue string, expireTime time.Time, index uint64, term uint64) (*Event, error) {
 	s.worldLock.Lock()
 	defer s.worldLock.Unlock()
 	nodePath = path.Clean(path.Join("/", nodePath))
@@ -115,17 +115,17 @@ func (s *Store) Update(nodePath string, value string, expireTime time.Time, inde
 
 	e := newEvent(Update, nodePath, s.Index, s.Term)
 
-	if n.IsDir() { // if the node is a directory, we can only update ttl
-		if len(value) != 0 {
+	if len(newValue) != 0 {
+		if n.IsDir() {
+			// if the node is a directory, we cannot update value
 			s.Stats.Inc(UpdateFail)
 
 			err := etcdErr.NewError(etcdErr.EcodeNotFile, nodePath, index, term)
 			return nil, err
 		}
 
-	} else { // if the node is a file, we can update value and ttl
 		e.PrevValue = n.Value
-		n.Write(value, index, term)
+		n.Write(newValue, index, term)
 	}
 
 	// update ttl
@@ -165,12 +165,13 @@ func (s *Store) TestAndSet(nodePath string, prevValue string, prevIndex uint64,
 	}
 
 	if n.Value == prevValue || n.ModifiedIndex == prevIndex {
+		e := newEvent(TestAndSet, nodePath, index, term)
+		e.PrevValue = n.Value
+
 		// if test succeed, write the value
 		n.Write(value, index, term)
 		n.UpdateTTL(expireTime, s)
 
-		e := newEvent(TestAndSet, nodePath, index, term)
-		e.PrevValue = n.Value
 		e.Value = value
 		e.Expiration, e.TTL = n.ExpirationAndTTL()
 
