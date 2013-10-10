@@ -5,25 +5,32 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"path"
 	"time"
 
 	"github.com/coreos/etcd/mod/dashboard/resources"
 )
 
 func memoryFileServer(w http.ResponseWriter, req *http.Request) {
-	path := req.URL.Path
-	if len(path) == 0 {
-		path = "index.html"
+	upath := req.URL.Path
+	if len(upath) == 0 {
+		upath = "index.html"
 	}
 
-	b, ok := resources.File("/" + path)
+	// TODO: use the new mux to do this work
+	dir, file := path.Split(upath)
+	if file == "browser" || file == "stats" {
+		file = file + ".html"
+	}
+	upath = path.Join(dir, file)
+	b, ok := resources.File("/" + upath)
 
 	if ok == false {
-		http.Error(w, path+": File not found", http.StatusNotFound)
+		http.Error(w, upath+": File not found", http.StatusNotFound)
 		return
 	}
 
-	http.ServeContent(w, req, path, time.Time{}, bytes.NewReader(b))
+	http.ServeContent(w, req, upath, time.Time{}, bytes.NewReader(b))
 	return
 }
 
