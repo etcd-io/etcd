@@ -33,6 +33,7 @@ func (ps *packageStats) Time() time.Time {
 }
 
 type raftServerStats struct {
+	Name      string    `json:"name"`
 	State     string    `json:"state"`
 	StartTime time.Time `json:"startTime"`
 
@@ -70,7 +71,7 @@ func (ss *raftServerStats) SendAppendReq(pkgSize int) {
 
 	if ss.State != raft.Leader {
 		ss.State = raft.Leader
-		ss.LeaderInfo.Name = r.Name()
+		ss.LeaderInfo.Name = ss.Name
 		ss.LeaderInfo.startTime = now
 	}
 

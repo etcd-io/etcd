@@ -28,12 +28,9 @@ type raftServer struct {
 	serverStats    *raftServerStats
 }
 
-var r *raftServer
+//var r *raftServer
 
 func newRaftServer(name string, url string, listenHost string, tlsConf *TLSConfig, tlsInfo *TLSInfo) *raftServer {
-
-	// Create transporter for raft
-	raftTransporter := newTransporter(tlsConf.Scheme, tlsConf.Client)
 
 	raftWrapper := &raftServer{
 		version:    raftVersion,
@@ -56,6 +53,9 @@ func newRaftServer(name string, url string, listenHost string, tlsConf *TLSConfi
 			},
 		},
 	}
+
+	// Create transporter for raft
+	raftTransporter := newTransporter(tlsConf.Scheme, tlsConf.Client, raftWrapper)
 
 	// Create raft server
 	server, err := raft.NewServer(name, dirPath, raftTransporter, etcdStore, raftWrapper, "")
@@ -91,16 +91,16 @@ func (r *raftServer) ListenAndServe() {
 
 		// start as a leader in a new cluster
 		if len(cluster) == 0 {
-			startAsLeader()
+			r.startAsLeader()
 
 		} else {
-			startAsFollower()
+			r.startAsFollower()
 		}
 
 	} else {
 
 		// rejoin the previous cluster
-		cluster = getMachines(nameToRaftURL)
+		cluster = r.getMachines(nameToRaftURL)
 		for i := 0; i < len(cluster); i++ {
 			u, err := url.Parse(cluster[i])
 			if err != nil {
@@ -108,7 +108,7 @@ func (r *raftServer) ListenAndServe() {
 			}
 			cluster[i] = u.Host
 		}
-		ok := joinCluster(cluster)
+		ok := r.joinCluster(cluster)
 		if !ok {
 			warn("the entire cluster is down! this machine will restart the cluster.")
 		}
@@ -118,7 +118,7 @@ func (r *raftServer) ListenAndServe() {
 
 	// open the snapshot
 	if snapshot {
-		go monitorSnapshot()
+		go r.monitorSnapshot()
 	}
 
 	// start to response to raft requests
@@ -126,7 +126,7 @@ func (r *raftServer) ListenAndServe() {
 
 }
 
-func startAsLeader() {
+func (r *raftServer) startAsLeader() {
 	// leader need to join self as a peer
 	for {
 		_, err := r.Do(newJoinCommand(r.version, r.Name(), r.url, e.url))
@@ -137,10 +137,10 @@ func startAsLeader() {
 	debugf("%s start as a leader", r.name)
 }
 
-func startAsFollower() {
+func (r *raftServer) startAsFollower() {
 	// start as a follower in a existing cluster
 	for i := 0; i < retryTimes; i++ {
-		ok := joinCluster(cluster)
+		ok := r.joinCluster(cluster)
 		if ok {
 			return
 		}
@@ -164,16 +164,16 @@ func (r *raftServer) startTransport(scheme string, tlsConf tls.Config) {
 	}
 
 	// internal commands
-	raftMux.HandleFunc("/name", NameHttpHandler)
-	raftMux.HandleFunc("/version", RaftVersionHttpHandler)
-	raftMux.Handle("/join", errorHandler(JoinHttpHandler))
-	raftMux.HandleFunc("/remove/", RemoveHttpHandler)
-	raftMux.HandleFunc("/vote", VoteHttpHandler)
-	raftMux.HandleFunc("/log", GetLogHttpHandler)
-	raftMux.HandleFunc("/log/append", AppendEntriesHttpHandler)
-	raftMux.HandleFunc("/snapshot", SnapshotHttpHandler)
-	raftMux.HandleFunc("/snapshotRecovery", SnapshotRecoveryHttpHandler)
-	raftMux.HandleFunc("/etcdURL", EtcdURLHttpHandler)
+	raftMux.HandleFunc("/name", r.NameHttpHandler)
+	raftMux.HandleFunc("/version", r.RaftVersionHttpHandler)
+	raftMux.Handle("/join", errorHandler(r.JoinHttpHandler))
+	raftMux.HandleFunc("/remove/", r.RemoveHttpHandler)
+	raftMux.HandleFunc("/vote", r.VoteHttpHandler)
+	raftMux.HandleFunc("/log", r.GetLogHttpHandler)
+	raftMux.HandleFunc("/log/append", r.AppendEntriesHttpHandler)
+	raftMux.HandleFunc("/snapshot", r.SnapshotHttpHandler)
+	raftMux.HandleFunc("/snapshotRecovery", r.SnapshotRecoveryHttpHandler)
+	raftMux.HandleFunc("/etcdURL", r.EtcdURLHttpHandler)
 
 	if scheme == "http" {
 		fatal(server.ListenAndServe())
@@ -202,14 +202,14 @@ func getVersion(t *transporter, versionURL url.URL) (string, error) {
 	return string(body), nil
 }
 
-func joinCluster(cluster []string) bool {
+func (r *raftServer) joinCluster(cluster []string) bool {
 	for _, machine := range cluster {
 
 		if len(machine) == 0 {
 			continue
 		}
 
-		err := joinByMachine(r.Server, machine, r.tlsConf.Scheme)
+		err := r.joinByMachine(r.Server, machine, r.tlsConf.Scheme)
 		if err == nil {
 			debugf("%s success join to the cluster via machine %s", r.name, machine)
 			return true
@@ -226,7 +226,7 @@ func joinCluster(cluster []string) bool {
 }
 
 // Send join requests to machine.
-func joinByMachine(s *raft.Server, machine string, scheme string) error {
+func (r *raftServer) joinByMachine(s *raft.Server, machine string, scheme string) error {
 	var b bytes.Buffer
 
 	// t must be ok

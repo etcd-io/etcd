@@ -356,7 +356,9 @@ func (s *Store) internalGet(nodePath string, index uint64, term uint64) (*Node, 
 	nodePath = path.Clean(path.Join("/", nodePath))
 
 	// update file system known index and term
-	s.Index, s.Term = index, term
+	if index > s.Index {
+		s.Index, s.Term = index, term
+	}
 
 	walkFunc := func(parent *Node, name string) (*Node, *etcdErr.Error) {
 

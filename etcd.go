@@ -201,13 +201,12 @@ func main() {
 	// Create etcd key-value store
 	etcdStore = store.New()
 
-	snapConf = newSnapshotConf()
-
 	// Create etcd and raft server
-	e = newEtcdServer(info.Name, info.EtcdURL, info.EtcdListenHost, &etcdTLSConfig, &info.EtcdTLS)
-	r = newRaftServer(info.Name, info.RaftURL, info.RaftListenHost, &raftTLSConfig, &info.RaftTLS)
+	r := newRaftServer(info.Name, info.RaftURL, info.RaftListenHost, &raftTLSConfig, &info.RaftTLS)
+	snapConf = r.newSnapshotConf()
 
-	startWebInterface()
+	e = newEtcdServer(info.Name, info.EtcdURL, info.EtcdListenHost, &etcdTLSConfig, &info.EtcdTLS, r)
+
 	r.ListenAndServe()
 	e.ListenAndServe()
 
