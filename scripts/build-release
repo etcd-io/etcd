@@ -1,0 +1,39 @@
+#!/bin/sh -e
+
+VER=$1
+
+function build {
+	proj=${1}
+	ver=${2}
+
+	if [ ! -d ${proj} ]; then
+		git clone https://github.com/coreos/${proj}
+	fi
+
+	cd ${proj}
+	git checkout master
+	git fetch --all
+	git reset --hard origin/master
+	git checkout $ver
+	./build
+	cd -
+}
+
+function package {
+	proj=${1}
+	target=${2}
+
+	cp ${proj}/${proj} ${target}
+	cp ${proj}/README.md ${target}/README-${proj}.md
+}
+
+build etcd ${VER}
+build etcdctl ${VER}
+
+TARGET="etcd-$VER-$(uname -s)-$(uname -m)"
+mkdir ${TARGET}
+
+package etcd ${TARGET}
+package etcdctl ${TARGET}
+
+tar cvvfz ${TARGET}.tar.gz ${TARGET}
