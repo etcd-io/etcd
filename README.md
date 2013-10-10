@@ -495,6 +495,10 @@ See [CONTRIBUTING](https://github.com/coreos/etcd/blob/master/CONTRIBUTING.md) f
 
 - [jdarcy/etcd-api](https://github.com/jdarcy/etcd-api)
 
+**Clojure libraries**
+
+- [aterreno/etcd-clojure](https://github.com/aterreno/etcd-clojure)
+
 **Chef Integration**
 
 - [coderanger/etcd-chef](https://github.com/coderanger/etcd-chef)
