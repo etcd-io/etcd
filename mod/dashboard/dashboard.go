@@ -2,7 +2,6 @@ package dashboard
 
 import (
 	"bytes"
-	"fmt"
 	"net/http"
 	"os"
 	"path"
