@@ -56,7 +56,7 @@ func readURL(nodeName string, urlName string) (string, bool) {
 	// convert nodeName to url from etcd storage
 	key := path.Join("/_etcd/machines", nodeName)
 
-	e, err := etcdStore.Get(key, false, false, r.CommitIndex(), r.Term())
+	e, err := etcdStore.Get(key, false, false, 0, 0)
 
 	if err != nil {
 		return "", false

@@ -21,7 +21,7 @@ func TestTransporterTimeout(t *testing.T) {
 
 	conf := tls.Config{}
 
-	ts := newTransporter("http", conf)
+	ts := newTransporter("http", conf, nil)
 
 	ts.Get("http://google.com")
 	_, _, err := ts.Get("http://google.com:9999")

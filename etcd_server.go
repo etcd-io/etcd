@@ -6,26 +6,29 @@ import (
 
 type etcdServer struct {
 	http.Server
-	name    string
-	url     string
-	tlsConf *TLSConfig
-	tlsInfo *TLSInfo
+	raftServer *raftServer
+	name       string
+	url        string
+	tlsConf    *TLSConfig
+	tlsInfo    *TLSInfo
 }
 
 var e *etcdServer
 
-func newEtcdServer(name string, urlStr string, listenHost string, tlsConf *TLSConfig, tlsInfo *TLSInfo) *etcdServer {
-	return &etcdServer{
+func newEtcdServer(name string, urlStr string, listenHost string, tlsConf *TLSConfig, tlsInfo *TLSInfo, raftServer *raftServer) *etcdServer {
+	e = &etcdServer{
 		Server: http.Server{
-			Handler:   NewEtcdMuxer(),
 			TLSConfig: &tlsConf.Server,
 			Addr:      listenHost,
 		},
-		name:    name,
-		url:     urlStr,
-		tlsConf: tlsConf,
-		tlsInfo: tlsInfo,
+		name:       name,
+		url:        urlStr,
+		tlsConf:    tlsConf,
+		tlsInfo:    tlsInfo,
+		raftServer: raftServer,
 	}
+	e.Handler = NewEtcdMuxer()
+	return e
 }
 
 // Start to listen and response etcd client command

@@ -14,17 +14,17 @@ import (
 // Handlers to handle etcd-store related request via etcd url
 //-------------------------------------------------------------------
 // Multiplex GET/POST/DELETE request to corresponding handlers
-func MultiplexerV1(w http.ResponseWriter, req *http.Request) error {
+func (e *etcdServer) MultiplexerV1(w http.ResponseWriter, req *http.Request) error {
 
 	switch req.Method {
 	case "GET":
-		return GetHttpHandlerV1(w, req)
+		return e.GetHttpHandlerV1(w, req)
 	case "POST":
-		return SetHttpHandlerV1(w, req)
+		return e.SetHttpHandlerV1(w, req)
 	case "PUT":
-		return SetHttpHandlerV1(w, req)
+		return e.SetHttpHandlerV1(w, req)
 	case "DELETE":
-		return DeleteHttpHandlerV1(w, req)
+		return e.DeleteHttpHandlerV1(w, req)
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return nil
@@ -37,7 +37,7 @@ func MultiplexerV1(w http.ResponseWriter, req *http.Request) error {
 //--------------------------------------
 
 // Set Command Handler
-func SetHttpHandlerV1(w http.ResponseWriter, req *http.Request) error {
+func (e *etcdServer) SetHttpHandlerV1(w http.ResponseWriter, req *http.Request) error {
 	key := req.URL.Path[len("/v1/keys/"):]
 
 	debugf("[recv] POST %v/v1/keys/%s [%s]", e.url, key, req.RemoteAddr)
@@ -81,7 +81,7 @@ func SetHttpHandlerV1(w http.ResponseWriter, req *http.Request) error {
 }
 
 // Delete Handler
-func DeleteHttpHandlerV1(w http.ResponseWriter, req *http.Request) error {
+func (e *etcdServer) DeleteHttpHandlerV1(w http.ResponseWriter, req *http.Request) error {
 	key := req.URL.Path[len("/v1/keys/"):]
 
 	debugf("[recv] DELETE %v/v1/keys/%s [%s]", e.url, key, req.RemoteAddr)
@@ -101,9 +101,10 @@ func DeleteHttpHandlerV1(w http.ResponseWriter, req *http.Request) error {
 //--------------------------------------
 
 // Get Handler
-func GetHttpHandlerV1(w http.ResponseWriter, req *http.Request) error {
+func (e *etcdServer) GetHttpHandlerV1(w http.ResponseWriter, req *http.Request) error {
 	key := req.URL.Path[len("/v1/keys/"):]
 
+	r := e.raftServer
 	debugf("[recv] GET %s/v1/keys/%s [%s]", e.url, key, req.RemoteAddr)
 
 	command := &GetCommand{
@@ -128,13 +129,13 @@ func GetHttpHandlerV1(w http.ResponseWriter, req *http.Request) error {
 }
 
 // Watch handler
-func WatchHttpHandlerV1(w http.ResponseWriter, req *http.Request) error {
+func (e *etcdServer) WatchHttpHandlerV1(w http.ResponseWriter, req *http.Request) error {
 	key := req.URL.Path[len("/v1/watch/"):]
 
 	command := &WatchCommand{
 		Key: key,
 	}
-
+	r := e.raftServer
 	if req.Method == "GET" {
 		debugf("[recv] GET %s/watch/%s [%s]", e.url, key, req.RemoteAddr)
 		command.SinceIndex = 0
@@ -178,6 +179,7 @@ func dispatchEtcdCommandV1(c Command, w http.ResponseWriter, req *http.Request) 
 }
 
 func dispatchV1(c Command, w http.ResponseWriter, req *http.Request, toURL func(name string) (string, bool)) error {
+	r := e.raftServer
 	if r.State() == raft.Leader {
 		if event, err := r.Do(c); err != nil {
 			return err

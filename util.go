@@ -15,7 +15,6 @@ import (
 
 	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/store"
-	"github.com/coreos/etcd/web"
 	"github.com/coreos/go-log/log"
 	"github.com/coreos/go-raft"
 )
@@ -40,34 +39,10 @@ func durationToExpireTime(strDuration string) (time.Time, error) {
 }
 
 //--------------------------------------
-// Web Helper
-//--------------------------------------
-var storeMsg chan string
-
-// Help to send msg from store to webHub
-func webHelper() {
-	storeMsg = make(chan string)
-	// etcdStore.SetMessager(storeMsg)
-	for {
-		// transfer the new msg to webHub
-		web.Hub().Send(<-storeMsg)
-	}
-}
-
-// startWebInterface starts web interface if webURL is not empty
-func startWebInterface() {
-	if argInfo.WebURL != "" {
-		// start web
-		go webHelper()
-		go web.Start(r.Server, argInfo.WebURL)
-	}
-}
-
-//--------------------------------------
 // HTTP Utilities
 //--------------------------------------
 
-func dispatch(c Command, w http.ResponseWriter, req *http.Request, toURL func(name string) (string, bool)) error {
+func (r *raftServer) dispatch(c Command, w http.ResponseWriter, req *http.Request, toURL func(name string) (string, bool)) error {
 	if r.State() == raft.Leader {
 		if response, err := r.Do(c); err != nil {
 			return err
@@ -278,7 +253,7 @@ func send(c chan bool) {
 		command.Key = "foo"
 		command.Value = "bar"
 		command.ExpireTime = time.Unix(0, 0)
-		r.Do(command)
+		//r.Do(command)
 	}
 	c <- true
 }

@@ -12,7 +12,7 @@ import (
 //-------------------------------------------------------------
 
 // Get all the current logs
-func GetLogHttpHandler(w http.ResponseWriter, req *http.Request) {
+func (r *raftServer) GetLogHttpHandler(w http.ResponseWriter, req *http.Request) {
 	debugf("[recv] GET %s/log", r.url)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
@@ -20,7 +20,7 @@ func GetLogHttpHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 // Response to vote request
-func VoteHttpHandler(w http.ResponseWriter, req *http.Request) {
+func (r *raftServer) VoteHttpHandler(w http.ResponseWriter, req *http.Request) {
 	rvreq := &raft.RequestVoteRequest{}
 	err := decodeJsonRequest(req, rvreq)
 	if err == nil {
@@ -36,7 +36,7 @@ func VoteHttpHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 // Response to append entries request
-func AppendEntriesHttpHandler(w http.ResponseWriter, req *http.Request) {
+func (r *raftServer) AppendEntriesHttpHandler(w http.ResponseWriter, req *http.Request) {
 	aereq := &raft.AppendEntriesRequest{}
 	err := decodeJsonRequest(req, aereq)
 
@@ -59,7 +59,7 @@ func AppendEntriesHttpHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 // Response to recover from snapshot request
-func SnapshotHttpHandler(w http.ResponseWriter, req *http.Request) {
+func (r *raftServer) SnapshotHttpHandler(w http.ResponseWriter, req *http.Request) {
 	aereq := &raft.SnapshotRequest{}
 	err := decodeJsonRequest(req, aereq)
 	if err == nil {
@@ -75,7 +75,7 @@ func SnapshotHttpHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 // Response to recover from snapshot request
-func SnapshotRecoveryHttpHandler(w http.ResponseWriter, req *http.Request) {
+func (r *raftServer) SnapshotRecoveryHttpHandler(w http.ResponseWriter, req *http.Request) {
 	aereq := &raft.SnapshotRecoveryRequest{}
 	err := decodeJsonRequest(req, aereq)
 	if err == nil {
@@ -91,20 +91,20 @@ func SnapshotRecoveryHttpHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 // Get the port that listening for etcd connecting of the server
-func EtcdURLHttpHandler(w http.ResponseWriter, req *http.Request) {
+func (r *raftServer) EtcdURLHttpHandler(w http.ResponseWriter, req *http.Request) {
 	debugf("[recv] Get %s/etcdURL/ ", r.url)
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(argInfo.EtcdURL))
 }
 
 // Response to the join request
-func JoinHttpHandler(w http.ResponseWriter, req *http.Request) error {
+func (r *raftServer) JoinHttpHandler(w http.ResponseWriter, req *http.Request) error {
 
 	command := &JoinCommand{}
 
 	if err := decodeJsonRequest(req, command); err == nil {
 		debugf("Receive Join Request from %s", command.Name)
-		return dispatchRaftCommand(command, w, req)
+		return r.dispatchRaftCommand(command, w, req)
 	} else {
 		w.WriteHeader(http.StatusInternalServerError)
 		return nil
@@ -112,7 +112,7 @@ func JoinHttpHandler(w http.ResponseWriter, req *http.Request) error {
 }
 
 // Response to remove request
-func RemoveHttpHandler(w http.ResponseWriter, req *http.Request) {
+func (r *raftServer) RemoveHttpHandler(w http.ResponseWriter, req *http.Request) {
 	if req.Method != "DELETE" {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
@@ -125,23 +125,23 @@ func RemoveHttpHandler(w http.ResponseWriter, req *http.Request) {
 
 	debugf("[recv] Remove Request [%s]", command.Name)
 
-	dispatchRaftCommand(command, w, req)
+	r.dispatchRaftCommand(command, w, req)
 }
 
 // Response to the name request
-func NameHttpHandler(w http.ResponseWriter, req *http.Request) {
+func (r *raftServer) NameHttpHandler(w http.ResponseWriter, req *http.Request) {
 	debugf("[recv] Get %s/name/ ", r.url)
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(r.name))
 }
 
 // Response to the name request
-func RaftVersionHttpHandler(w http.ResponseWriter, req *http.Request) {
+func (r *raftServer) RaftVersionHttpHandler(w http.ResponseWriter, req *http.Request) {
 	debugf("[recv] Get %s/version/ ", r.url)
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(r.version))
 }
 
-func dispatchRaftCommand(c Command, w http.ResponseWriter, req *http.Request) error {
-	return dispatch(c, w, req, nameToRaftURL)
+func (r *raftServer) dispatchRaftCommand(c Command, w http.ResponseWriter, req *http.Request) error {
+	return r.dispatch(c, w, req, nameToRaftURL)
 }

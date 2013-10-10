@@ -27,14 +27,15 @@ var tranTimeout = ElectionTimeout
 
 // Transporter layer for communication between raft nodes
 type transporter struct {
-	client    *http.Client
-	transport *http.Transport
+	client     *http.Client
+	transport  *http.Transport
+	raftServer *raftServer
 }
 
 // Create transporter using by raft server
 // Create http or https transporter based on
 // whether the user give the server cert and key
-func newTransporter(scheme string, tlsConf tls.Config) *transporter {
+func newTransporter(scheme string, tlsConf tls.Config, raftServer *raftServer) *transporter {
 	t := transporter{}
 
 	tr := &http.Transport{
@@ -49,6 +50,7 @@ func newTransporter(scheme string, tlsConf tls.Config) *transporter {
 
 	t.client = &http.Client{Transport: tr}
 	t.transport = tr
+	t.raftServer = raftServer
 
 	return &t
 }
@@ -67,18 +69,18 @@ func (t *transporter) SendAppendEntriesRequest(server *raft.Server, peer *raft.P
 
 	size := b.Len()
 
-	r.serverStats.SendAppendReq(size)
+	t.raftServer.serverStats.SendAppendReq(size)
 
 	u, _ := nameToRaftURL(peer.Name)
 
 	debugf("Send LogEntries to %s ", u)
 
-	thisFollowerStats, ok := r.followersStats.Followers[peer.Name]
+	thisFollowerStats, ok := t.raftServer.followersStats.Followers[peer.Name]
 
 	if !ok { //this is the first time this follower has been seen
 		thisFollowerStats = &raftFollowerStats{}
 		thisFollowerStats.Latency.Minimum = 1 << 63
-		r.followersStats.Followers[peer.Name] = thisFollowerStats
+		t.raftServer.followersStats.Followers[peer.Name] = thisFollowerStats
 	}
 
 	start := time.Now()

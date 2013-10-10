@@ -18,12 +18,12 @@ type snapshotConf struct {
 
 var snapConf *snapshotConf
 
-func newSnapshotConf() *snapshotConf {
+func (r *raftServer) newSnapshotConf() *snapshotConf {
 	// check snapshot every 3 seconds and the threshold is 20K
 	return &snapshotConf{time.Second * 3, 0, 20 * 1000}
 }
 
-func monitorSnapshot() {
+func (r *raftServer) monitorSnapshot() {
 	for {
 		time.Sleep(snapConf.checkingInterval)
 		//currentWrites := etcdStore.TotalWrites() - snapConf.lastWrites
