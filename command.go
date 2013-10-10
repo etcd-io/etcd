@@ -192,12 +192,12 @@ type JoinCommand struct {
 	EtcdURL     string `json:"etcdURL"`
 }
 
-func newJoinCommand() *JoinCommand {
+func newJoinCommand(version, name, raftUrl, etcdUrl string) *JoinCommand {
 	return &JoinCommand{
-		RaftVersion: r.version,
-		Name:        r.name,
-		RaftURL:     r.url,
-		EtcdURL:     e.url,
+		RaftVersion: version,
+		Name:        name,
+		RaftURL:     raftUrl,
+		EtcdURL:     etcdUrl,
 	}
 }
 
@@ -209,6 +209,7 @@ func (c *JoinCommand) CommandName() string {
 // Join a server to the cluster
 func (c *JoinCommand) Apply(server *raft.Server) (interface{}, error) {
 	s, _ := server.StateMachine().(*store.Store)
+	r, _ := server.Context().(*raftServer)
 
 	// check if the join command is from a previous machine, who lost all its previous log.
 	e, _ := s.Get(path.Join("/_etcd/machines", c.Name), false, false, server.CommitIndex(), server.Term())
@@ -263,6 +264,7 @@ func (c *RemoveCommand) CommandName() string {
 // Remove a server from the cluster
 func (c *RemoveCommand) Apply(server *raft.Server) (interface{}, error) {
 	s, _ := server.StateMachine().(*store.Store)
+	r, _ := server.Context().(*raftServer)
 
 	// remove machine in etcd storage
 	key := path.Join("_etcd/machines", c.Name)
