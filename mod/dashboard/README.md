@@ -6,8 +6,18 @@
 
 http://yeoman.io/
 
-### Hacking
+### Install NPM locally
 
 ```
-grunt server
+npm install
 ```
+
+### Install Bower
+
+```
+bower install
+```
+
+### View in Browser
+
+http://localhost:4001/etcd/mod/dashboard/
