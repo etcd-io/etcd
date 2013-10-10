@@ -38,7 +38,6 @@ func memoryFileServer(w http.ResponseWriter, req *http.Request) {
 // dashboard assets or if ETCD_DASHBOARD_DIR is set uses that as the source of
 // assets.
 func HttpHandler() (handler http.Handler) {
-	fmt.Println("hello world")
 	handler = http.HandlerFunc(memoryFileServer)
 
 	// Serve the dashboard from a filesystem if the magic env variable is enabled
