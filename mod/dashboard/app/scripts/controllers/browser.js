@@ -113,7 +113,7 @@ angular.module('etcdBrowser', ['ngRoute', 'etcd', 'timeRelative'])
     }).error(function (data, status, headers, config) {
       //TODO: remove loader
       //show errors
-      $scope.showBrowseError('Error: Could not delete the key');
+      $scope.showBrowseError('Could not delete the key');
     });
   };
 
