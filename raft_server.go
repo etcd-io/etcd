@@ -35,13 +35,7 @@ func newRaftServer(name string, url string, listenHost string, tlsConf *TLSConfi
 	// Create transporter for raft
 	raftTransporter := newTransporter(tlsConf.Scheme, tlsConf.Client)
 
-	// Create raft server
-	server, err := raft.NewServer(name, dirPath, raftTransporter, etcdStore, nil, "")
-
-	check(err)
-
-	return &raftServer{
-		Server:     server,
+	raftWrapper := &raftServer{
 		version:    raftVersion,
 		name:       name,
 		url:        url,
@@ -62,6 +56,14 @@ func newRaftServer(name string, url string, listenHost string, tlsConf *TLSConfi
 			},
 		},
 	}
+
+	// Create raft server
+	server, err := raft.NewServer(name, dirPath, raftTransporter, etcdStore, raftWrapper, "")
+	check(err)
+
+	raftWrapper.Server = server
+
+	return raftWrapper
 }
 
 // Start the raft server
@@ -127,7 +129,7 @@ func (r *raftServer) ListenAndServe() {
 func startAsLeader() {
 	// leader need to join self as a peer
 	for {
-		_, err := r.Do(newJoinCommand())
+		_, err := r.Do(newJoinCommand(r.version, r.Name(), r.url, e.url))
 		if err == nil {
 			break
 		}
@@ -243,7 +245,7 @@ func joinByMachine(s *raft.Server, machine string, scheme string) error {
 		return fmt.Errorf("Unable to join: internal version mismatch, entire cluster must be running identical versions of etcd")
 	}
 
-	json.NewEncoder(&b).Encode(newJoinCommand())
+	json.NewEncoder(&b).Encode(newJoinCommand(r.version, r.Name(), r.url, e.url))
 
 	joinURL := url.URL{Host: machine, Scheme: scheme, Path: "/join"}
 
@@ -270,7 +272,7 @@ func joinByMachine(s *raft.Server, machine string, scheme string) error {
 				address := resp.Header.Get("Location")
 				debugf("Send Join Request to %s", address)
 
-				json.NewEncoder(&b).Encode(newJoinCommand())
+				json.NewEncoder(&b).Encode(newJoinCommand(r.version, r.Name(), r.url, e.url))
 
 				resp, req, err = t.Post(address, &b)
 

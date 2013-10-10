@@ -186,6 +186,11 @@ func (s *Server) Context() interface{} {
 	return s.context
 }
 
+// Retrieves the state machine passed into the constructor.
+func (s *Server) StateMachine() StateMachine {
+	return s.stateMachine
+}
+
 // Retrieves the log path for the server.
 func (s *Server) LogPath() string {
 	return path.Join(s.path, "log")
