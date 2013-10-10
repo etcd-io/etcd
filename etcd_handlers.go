@@ -24,6 +24,7 @@ import (
 
 	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/store"
+	"github.com/coreos/etcd/mod"
 	"github.com/coreos/go-raft"
 )
 
@@ -41,6 +42,8 @@ func NewEtcdMuxer() *http.ServeMux {
 	etcdMux.Handle("/"+version+"/stats/", errorHandler(StatsHttpHandler))
 	etcdMux.Handle("/version", errorHandler(VersionHttpHandler))
 	etcdMux.HandleFunc("/test/", TestHttpHandler)
+	// TODO: Use a mux in 0.2 that can handle this
+	etcdMux.Handle("/etcd/mod/dashboard/", *mod.ServeMux)
 	return etcdMux
 }
 
