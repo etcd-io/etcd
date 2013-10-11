@@ -3,12 +3,20 @@ package server
 import (
 	"github.com/gorilla/mux"
 	"net/http"
+	"net/url"
 )
 
-// The Server provides an HTTP interface to the underlying data store.
-type Server struct {
+// The Server provides an HTTP interface to the underlying store.
+type Server interface {
+    CommitIndex() uint64 
+    Term() uint64 
+    Dispatch(Command, http.ResponseWriter, *http.Request)
+}
+
+// This is the default implementation of the Server interface.
+type server struct {
 	http.Server
-	raftServer  *raftServer
+	raftServer  *raft.Server
 	name        string
 	url         string
 	tlsConf     *TLSConfig
@@ -17,8 +25,8 @@ type Server struct {
 }
 
 // Creates a new Server.
-func New(name string, urlStr string, listenHost string, tlsConf *TLSConfig, tlsInfo *TLSInfo, raftServer *raftServer) *Server {
-	s := &etcdServer{
+func New(name string, urlStr string, listenHost string, tlsConf *TLSConfig, tlsInfo *TLSInfo, raftServer *raft.Server) *Server {
+	s := &server{
 		Server: http.Server{
 			Handler:   mux.NewRouter(),
 			TLSConfig: &tlsConf.Server,
@@ -31,20 +39,44 @@ func New(name string, urlStr string, listenHost string, tlsConf *TLSConfig, tlsI
 		raftServer: raftServer,
 	}
 
-	// TODO: Move to main.go.
 	// Install the routes for each version of the API.
-	// v1.Install(s)
-	// v2.Install(s)
+	s.installV1()
 
 	return s
 }
 
+// The current Raft committed index.
+func (s *server) CommitIndex() uint64 {
+	return c.raftServer.CommitIndex()
+}
+
+// The current Raft term.
+func (s *server) Term() uint64 {
+	return c.raftServer.Term()
+}
+
+// Executes a command against the Raft server.
+func (s *server) Do(c Command, localOnly bool) (interface{}, error) {
+	return c.raftServer.Do(s.RaftServer().Server)
+}
+
+func (s *server) installV1() {
+	s.handleFunc("/v1/keys/{key:.*}", v1.GetKeyHandler).Methods("GET")
+	s.handleFunc("/v1/keys/{key:.*}", v1.SetKeyHandler).Methods("POST", "PUT")
+	s.handleFunc("/v1/keys/{key:.*}", v1.DeleteKeyHandler).Methods("DELETE")
+
+	s.handleFunc("/v1/watch/{key:.*}", v1.WatchKeyHandler).Methods("GET", "POST")
+}
+
 // Adds a server handler to the router.
-func (s *Server) HandleFunc(path string, f func(http.ResponseWriter, *http.Request, *server.Server) error) *mux.Route {
+func (s *server) handleFunc(path string, f func(http.ResponseWriter, *http.Request, Server) error) *mux.Route {
 	r := s.Handler.(*mux.Router)
 
 	// Wrap the standard HandleFunc interface to pass in the server reference.
 	return r.HandleFunc(path, func(w http.ResponseWriter, req *http.Request) {
+		// Log request.
+		debugf("[recv] %s %s [%s]", req.Method, s.url, req.URL.Path, req.RemoteAddr)
+
 		// Write CORS header.
 		if s.OriginAllowed("*") {
 			w.Header().Add("Access-Control-Allow-Origin", "*")
@@ -65,7 +97,7 @@ func (s *Server) HandleFunc(path string, f func(http.ResponseWriter, *http.Reque
 }
 
 // Start to listen and response etcd client command
-func (s *Server) ListenAndServe() {
+func (s *server) ListenAndServe() {
 	infof("etcd server [name %s, listen on %s, advertised url %s]", s.name, s.Server.Addr, s.url)
 
 	if s.tlsConf.Scheme == "http" {
@@ -76,7 +108,7 @@ func (s *Server) ListenAndServe() {
 }
 
 // Sets a comma-delimited list of origins that are allowed.
-func (s *Server) AllowOrigins(origins string) error {
+func (s *server) AllowOrigins(origins string) error {
 	// Construct a lookup of all origins.
 	m := make(map[string]bool)
 	for _, v := range strings.Split(cors, ",") {
@@ -87,12 +119,12 @@ func (s *Server) AllowOrigins(origins string) error {
 		}
 		m[v] = true
 	}
-	s.origins = m
+	s.corsOrigins = m
 
 	return nil
 }
 
 // Determines whether the server will allow a given CORS origin.
-func (s *Server) OriginAllowed(origin string) {
-	return s.origins["*"] || s.origins[origin]
+func (s *server) OriginAllowed(origin string) {
+	return s.corsOrigins["*"] || s.corsOrigins[origin]
 }

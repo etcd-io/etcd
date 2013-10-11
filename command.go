@@ -107,32 +107,6 @@ func (c *TestAndSetCommand) Apply(server *raft.Server) (interface{}, error) {
 	return e, nil
 }
 
-// Get command
-type GetCommand struct {
-	Key       string `json:"key"`
-	Recursive bool   `json:"recursive"`
-	Sorted    bool   `json:"sorted"`
-}
-
-// The name of the get command in the log
-func (c *GetCommand) CommandName() string {
-	return commandName("get")
-}
-
-// Get the value of key
-func (c *GetCommand) Apply(server *raft.Server) (interface{}, error) {
-	s, _ := server.StateMachine().(*store.Store)
-
-	e, err := s.Get(c.Key, c.Recursive, c.Sorted, server.CommitIndex(), server.Term())
-
-	if err != nil {
-		debug(err)
-		return nil, err
-	}
-
-	return e, nil
-}
-
 // Delete command
 type DeleteCommand struct {
 	Key       string `json:"key"`
@@ -154,32 +128,6 @@ func (c *DeleteCommand) Apply(server *raft.Server) (interface{}, error) {
 		debug(err)
 		return nil, err
 	}
-
-	return e, nil
-}
-
-// Watch command
-type WatchCommand struct {
-	Key        string `json:"key"`
-	SinceIndex uint64 `json:"sinceIndex"`
-	Recursive  bool   `json:"recursive"`
-}
-
-// The name of the watch command in the log
-func (c *WatchCommand) CommandName() string {
-	return commandName("watch")
-}
-
-func (c *WatchCommand) Apply(server *raft.Server) (interface{}, error) {
-	s, _ := server.StateMachine().(*store.Store)
-
-	eventChan, err := s.Watch(c.Key, c.Recursive, c.SinceIndex, server.CommitIndex(), server.Term())
-
-	if err != nil {
-		return nil, err
-	}
-
-	e := <-eventChan
 
 	return e, nil
 }

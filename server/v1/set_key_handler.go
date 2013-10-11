@@ -7,11 +7,9 @@ import (
 )
 
 // Sets the value for a given key.
-func setKeyHandler(w http.ResponseWriter, req *http.Request, e *etcdServer) error {
+func SetKeyHandler(w http.ResponseWriter, req *http.Request, s Server) error {
 	vars := mux.Vars(req)
 	key := "/" + vars["key"]
-
-	debugf("[recv] POST %v/v1/keys/%s [%s]", e.url, key, req.RemoteAddr)
 
 	req.ParseForm()
 
@@ -46,5 +44,5 @@ func setKeyHandler(w http.ResponseWriter, req *http.Request, e *etcdServer) erro
 		}
 	}
 
-	return dispatchEtcdCommand(command, w, req)
+	return s.Dispatch(command, w, req)
 }

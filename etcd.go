@@ -3,14 +3,13 @@ package main
 import (
 	"crypto/tls"
 	"flag"
-	"fmt"
 	"io/ioutil"
-	"net/url"
 	"os"
 	"strings"
 	"time"
 
 	"github.com/coreos/etcd/store"
+	"github.com/coreos/etcd/server"
 	"github.com/coreos/go-raft"
 )
 
@@ -154,8 +153,6 @@ func main() {
 		raft.SetLogLevel(raft.Debug)
 	}
 
-	parseCorsFlag()
-
 	if machines != "" {
 		cluster = strings.Split(machines, ",")
 	} else if machinesFile != "" {
@@ -204,10 +201,12 @@ func main() {
 	r := newRaftServer(info.Name, info.RaftURL, info.RaftListenHost, &raftTLSConfig, &info.RaftTLS)
 	snapConf = r.newSnapshotConf()
 
-	e = newEtcdServer(info.Name, info.EtcdURL, info.EtcdListenHost, &etcdTLSConfig, &info.EtcdTLS, r)
+	s := server.New(info.Name, info.EtcdURL, info.EtcdListenHost, &etcdTLSConfig, &info.EtcdTLS, r)
+	if err := e.AllowOrigins(cors); err != nil {
+		panic(err)
+	}
 
 	r.ListenAndServe()
-	e.ListenAndServe()
-
+	s.ListenAndServe()
 }
 

@@ -7,15 +7,12 @@ import (
 )
 
 // Retrieves the value for a given key.
-func getKeyHandler(w http.ResponseWriter, req *http.Request, e *etcdServer) error {
+func GetKeyHandler(w http.ResponseWriter, req *http.Request, e *etcdServer) error {
 	vars := mux.Vars(req)
 	key := "/" + vars["key"]
 
-	debugf("[recv] GET %s/v1/keys/%s [%s]", e.url, key, req.RemoteAddr)
-
-	// Execute the command.
-	command := &GetCommand{Key: key}
-	event, err := command.Apply(e.raftServer.Server)
+	// Retrieve the key from the store.
+	event, err := s.Store().Get(key, false, false, s.CommitIndex(), s.Term())
 	if err != nil {
 		return err
 	}

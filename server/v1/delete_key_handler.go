@@ -1,13 +1,15 @@
 package v1
 
-func deleteKeyHandler(w http.ResponseWriter, req *http.Request, e *etcdServer) error {
-	key := req.URL.Path[len("/v1/keys/"):]
+import (
+    "encoding/json"
+    "github.com/coreos/etcd/store"
+    "net/http"
+)
 
-	debugf("[recv] DELETE %v/v1/keys/%s [%s]", e.url, key, req.RemoteAddr)
-
-	command := &DeleteCommand{
-		Key: key,
-	}
-
-	return dispatchEtcdCommandV1(command, w, req)
+// Removes a key from the store.
+func DeleteKeyHandler(w http.ResponseWriter, req *http.Request, s Server) error {
+    vars := mux.Vars(req)
+    key := "/" + vars["key"]
+	command := &DeleteCommand{Key: key}
+	return s.Dispatch(command, w, req)
 }
