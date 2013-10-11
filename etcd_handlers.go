@@ -19,18 +19,18 @@ import (
 func NewEtcdMuxer() *http.ServeMux {
 	// external commands
 	etcdMux := http.NewServeMux()
-	etcdMux.Handle("/"+version+"/keys/", errorHandler(Multiplexer))
-	etcdMux.Handle("/"+version+"/leader", errorHandler(LeaderHttpHandler))
-	etcdMux.Handle("/"+version+"/machines", errorHandler(MachinesHttpHandler))
-	etcdMux.Handle("/"+version+"/stats/", errorHandler(StatsHttpHandler))
-	etcdMux.Handle("/version", errorHandler(VersionHttpHandler))
+	etcdMux.Handle("/"+version+"/keys/", errorHandler(e.Multiplexer))
+	etcdMux.Handle("/"+version+"/leader", errorHandler(e.LeaderHttpHandler))
+	etcdMux.Handle("/"+version+"/machines", errorHandler(e.MachinesHttpHandler))
+	etcdMux.Handle("/"+version+"/stats/", errorHandler(e.StatsHttpHandler))
+	etcdMux.Handle("/version", errorHandler(e.VersionHttpHandler))
 	etcdMux.HandleFunc("/test/", TestHttpHandler)
 
 	// backward support
-	etcdMux.Handle("/v1/keys/", errorHandler(MultiplexerV1))
-	etcdMux.Handle("/v1/leader", errorHandler(LeaderHttpHandler))
-	etcdMux.Handle("/v1/machines", errorHandler(MachinesHttpHandler))
-	etcdMux.Handle("/v1/stats/", errorHandler(StatsHttpHandler))
+	etcdMux.Handle("/v1/keys/", errorHandler(e.MultiplexerV1))
+	etcdMux.Handle("/v1/leader", errorHandler(e.LeaderHttpHandler))
+	etcdMux.Handle("/v1/machines", errorHandler(e.MachinesHttpHandler))
+	etcdMux.Handle("/v1/stats/", errorHandler(e.StatsHttpHandler))
 
 	return etcdMux
 }
@@ -68,17 +68,17 @@ func (fn errorHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 // Multiplex GET/POST/DELETE request to corresponding handlers
-func Multiplexer(w http.ResponseWriter, req *http.Request) error {
+func (e *etcdServer) Multiplexer(w http.ResponseWriter, req *http.Request) error {
 
 	switch req.Method {
 	case "GET":
-		return GetHttpHandler(w, req)
+		return e.GetHttpHandler(w, req)
 	case "POST":
-		return CreateHttpHandler(w, req)
+		return e.CreateHttpHandler(w, req)
 	case "PUT":
-		return UpdateHttpHandler(w, req)
+		return e.UpdateHttpHandler(w, req)
 	case "DELETE":
-		return DeleteHttpHandler(w, req)
+		return e.DeleteHttpHandler(w, req)
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return nil
@@ -92,7 +92,7 @@ func Multiplexer(w http.ResponseWriter, req *http.Request) error {
 // Set/Delete will dispatch to leader
 //--------------------------------------
 
-func CreateHttpHandler(w http.ResponseWriter, req *http.Request) error {
+func (e *etcdServer) CreateHttpHandler(w http.ResponseWriter, req *http.Request) error {
 	key := getNodePath(req.URL.Path)
 
 	debugf("recv.post[%v] [%v%v]\n", req.RemoteAddr, req.Host, req.URL)
@@ -115,11 +115,11 @@ func CreateHttpHandler(w http.ResponseWriter, req *http.Request) error {
 		command.IncrementalSuffix = true
 	}
 
-	return dispatchEtcdCommand(command, w, req)
+	return e.dispatchEtcdCommand(command, w, req)
 
 }
 
-func UpdateHttpHandler(w http.ResponseWriter, req *http.Request) error {
+func (e *etcdServer) UpdateHttpHandler(w http.ResponseWriter, req *http.Request) error {
 	key := getNodePath(req.URL.Path)
 
 	debugf("recv.put[%v] [%v%v]\n", req.RemoteAddr, req.Host, req.URL)
@@ -150,7 +150,7 @@ func UpdateHttpHandler(w http.ResponseWriter, req *http.Request) error {
 			ExpireTime: expireTime,
 		}
 
-		return dispatchEtcdCommand(command, w, req)
+		return e.dispatchEtcdCommand(command, w, req)
 
 	} else { // update with test
 		var prevIndex uint64
@@ -173,13 +173,13 @@ func UpdateHttpHandler(w http.ResponseWriter, req *http.Request) error {
 			PrevIndex: prevIndex,
 		}
 
-		return dispatchEtcdCommand(command, w, req)
+		return e.dispatchEtcdCommand(command, w, req)
 	}
 
 }
 
 // Delete Handler
-func DeleteHttpHandler(w http.ResponseWriter, req *http.Request) error {
+func (e *etcdServer) DeleteHttpHandler(w http.ResponseWriter, req *http.Request) error {
 	key := getNodePath(req.URL.Path)
 
 	debugf("recv.delete[%v] [%v%v]\n", req.RemoteAddr, req.Host, req.URL)
@@ -192,12 +192,12 @@ func DeleteHttpHandler(w http.ResponseWriter, req *http.Request) error {
 		command.Recursive = true
 	}
 
-	return dispatchEtcdCommand(command, w, req)
+	return e.dispatchEtcdCommand(command, w, req)
 }
 
 // Dispatch the command to leader
-func dispatchEtcdCommand(c Command, w http.ResponseWriter, req *http.Request) error {
-	return dispatch(c, w, req, nameToEtcdURL)
+func (e *etcdServer) dispatchEtcdCommand(c Command, w http.ResponseWriter, req *http.Request) error {
+	return e.raftServer.dispatch(c, w, req, nameToEtcdURL)
 }
 
 //--------------------------------------
@@ -207,7 +207,9 @@ func dispatchEtcdCommand(c Command, w http.ResponseWriter, req *http.Request) er
 //--------------------------------------
 
 // Handler to return the current leader's raft address
-func LeaderHttpHandler(w http.ResponseWriter, req *http.Request) error {
+func (e *etcdServer) LeaderHttpHandler(w http.ResponseWriter, req *http.Request) error {
+	r := e.raftServer
+
 	leader := r.Leader()
 
 	if leader != "" {
@@ -222,8 +224,8 @@ func LeaderHttpHandler(w http.ResponseWriter, req *http.Request) error {
 }
 
 // Handler to return all the known machines in the current cluster
-func MachinesHttpHandler(w http.ResponseWriter, req *http.Request) error {
-	machines := getMachines(nameToEtcdURL)
+func (e *etcdServer) MachinesHttpHandler(w http.ResponseWriter, req *http.Request) error {
+	machines := e.raftServer.getMachines(nameToEtcdURL)
 
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(strings.Join(machines, ", ")))
@@ -232,7 +234,7 @@ func MachinesHttpHandler(w http.ResponseWriter, req *http.Request) error {
 }
 
 // Handler to return the current version of etcd
-func VersionHttpHandler(w http.ResponseWriter, req *http.Request) error {
+func (e *etcdServer) VersionHttpHandler(w http.ResponseWriter, req *http.Request) error {
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprintf(w, "etcd %s", releaseVersion)
 
@@ -240,9 +242,11 @@ func VersionHttpHandler(w http.ResponseWriter, req *http.Request) error {
 }
 
 // Handler to return the basic stats of etcd
-func StatsHttpHandler(w http.ResponseWriter, req *http.Request) error {
+func (e *etcdServer) StatsHttpHandler(w http.ResponseWriter, req *http.Request) error {
 	option := req.URL.Path[len("/v1/stats/"):]
 	w.WriteHeader(http.StatusOK)
+
+	r := e.raftServer
 
 	switch option {
 	case "self":
@@ -266,9 +270,12 @@ func StatsHttpHandler(w http.ResponseWriter, req *http.Request) error {
 	return nil
 }
 
-func GetHttpHandler(w http.ResponseWriter, req *http.Request) error {
+func (e *etcdServer) GetHttpHandler(w http.ResponseWriter, req *http.Request) error {
 	var err error
 	var event interface{}
+
+	r := e.raftServer
+
 	debugf("recv.get[%v] [%v%v]\n", req.RemoteAddr, req.Host, req.URL)
 
 	if req.FormValue("consistent") == "true" && r.State() != raft.Leader {
