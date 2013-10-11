@@ -598,7 +598,7 @@ The `TLS` pacakge of `golang` checkes the key usage of certificate public key be
 
 Here is how to do it:
 
-Add the following section to my openssl.cnf:
+Add the following section to your openssl.cnf:
 
 ```
 [ ssl_client ]                                                                                                                                            
@@ -607,7 +607,7 @@ Add the following section to my openssl.cnf:
 ...
 ```
 
-When create the cert be sure to reference it in the -extensions flag:
+When creating the cert be sure to reference it in the -extensions flag:
 
 ```
 openssl ca -config openssl.cnf -policy policy_anything -extensions ssl_client -out certs/node.crt -infiles node.csr
