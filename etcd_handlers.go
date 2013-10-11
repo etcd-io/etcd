@@ -18,11 +18,11 @@ import (
 
 func NewEtcdMuxer() *http.ServeMux {
 	// external commands
-	etcdMux := http.NewServeMux()
-	etcdMux.Handle("/"+version+"/keys/", errorHandler(e.Multiplexer))
-	etcdMux.Handle("/"+version+"/leader", errorHandler(e.LeaderHttpHandler))
-	etcdMux.Handle("/"+version+"/machines", errorHandler(e.MachinesHttpHandler))
-	etcdMux.Handle("/"+version+"/stats/", errorHandler(e.StatsHttpHandler))
+	router := mux.NewRouter()
+	etcdMux.Handle("/v2/keys/", errorHandler(e.Multiplexer))
+	etcdMux.Handle("/v2/leader", errorHandler(e.LeaderHttpHandler))
+	etcdMux.Handle("/v2/machines", errorHandler(e.MachinesHttpHandler))
+	etcdMux.Handle("/v2/stats/", errorHandler(e.StatsHttpHandler))
 	etcdMux.Handle("/version", errorHandler(e.VersionHttpHandler))
 	etcdMux.HandleFunc("/test/", TestHttpHandler)
 

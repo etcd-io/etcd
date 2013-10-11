@@ -45,7 +45,6 @@ var (
 	cpuprofile string
 
 	cors     string
-	corsList map[string]bool
 )
 
 func init() {
@@ -212,20 +211,3 @@ func main() {
 
 }
 
-// parseCorsFlag gathers up the cors whitelist and puts it into the corsList.
-func parseCorsFlag() {
-	if cors != "" {
-		corsList = make(map[string]bool)
-		list := strings.Split(cors, ",")
-		for _, v := range list {
-			fmt.Println(v)
-			if v != "*" {
-				_, err := url.Parse(v)
-				if err != nil {
-					panic(fmt.Sprintf("bad cors url: %s", err))
-				}
-			}
-			corsList[v] = true
-		}
-	}
-}
