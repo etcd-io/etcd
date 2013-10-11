@@ -1,16 +1,5 @@
 package main
 
-// machineNum returns the number of machines in the cluster
-func machineNum() int {
-	e, err := etcdStore.Get("/_etcd/machines", false, false, 0, 0)
-
-	if err != nil {
-		return 0
-	}
-
-	return len(e.KVPairs)
-}
-
 // getMachines gets the current machines in the cluster
 func (r *raftServer) getMachines(toURL func(string) (string, bool)) []string {
 	peers := r.Peers()

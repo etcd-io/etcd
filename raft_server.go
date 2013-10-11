@@ -11,9 +11,14 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/coreos/etcd/command"
 	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/go-raft"
 )
+
+func init() {
+	command.Register()
+}
 
 type raftServer struct {
 	*raft.Server
@@ -26,9 +31,8 @@ type raftServer struct {
 	tlsInfo        *TLSInfo
 	followersStats *raftFollowersStats
 	serverStats    *raftServerStats
+	MaxClusterSize int
 }
-
-//var r *raftServer
 
 func newRaftServer(name string, url string, listenHost string, tlsConf *TLSConfig, tlsInfo *TLSInfo) *raftServer {
 
@@ -68,9 +72,6 @@ func newRaftServer(name string, url string, listenHost string, tlsConf *TLSConfi
 
 // Start the raft server
 func (r *raftServer) ListenAndServe() {
-	// Setup commands.
-	registerCommands()
-
 	// LoadSnapshot
 	if snapshot {
 		err := r.LoadSnapshot()
@@ -313,17 +314,4 @@ func (r *raftServer) PeerStats() []byte {
 		return b
 	}
 	return nil
-}
-
-// Register commands to raft server
-func registerCommands() {
-	raft.RegisterCommand(&JoinCommand{})
-	raft.RegisterCommand(&RemoveCommand{})
-	raft.RegisterCommand(&GetCommand{})
-	raft.RegisterCommand(&DeleteCommand{})
-	raft.RegisterCommand(&WatchCommand{})
-	raft.RegisterCommand(&TestAndSetCommand{})
-
-	raft.RegisterCommand(&CreateCommand{})
-	raft.RegisterCommand(&UpdateCommand{})
 }

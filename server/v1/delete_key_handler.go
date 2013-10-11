@@ -1,15 +1,15 @@
 package v1
 
 import (
-    "encoding/json"
-    "github.com/coreos/etcd/store"
-    "net/http"
+	"encoding/json"
+	"github.com/coreos/etcd/store"
+	"net/http"
 )
 
 // Removes a key from the store.
 func DeleteKeyHandler(w http.ResponseWriter, req *http.Request, s Server) error {
-    vars := mux.Vars(req)
-    key := "/" + vars["key"]
+	vars := mux.Vars(req)
+	key := "/" + vars["key"]
 	command := &DeleteCommand{Key: key}
 	return s.Dispatch(command, w, req)
 }

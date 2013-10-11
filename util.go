@@ -15,7 +15,6 @@ import (
 
 	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/store"
-	"github.com/coreos/go-log/log"
 	"github.com/coreos/go-raft"
 )
 
@@ -170,45 +169,6 @@ func check(err error) {
 func getNodePath(urlPath string) string {
 	pathPrefixLen := len("/" + version + "/keys")
 	return urlPath[pathPrefixLen:]
-}
-
-//--------------------------------------
-// Log
-//--------------------------------------
-
-var logger *log.Logger = log.New("etcd", false,
-	log.CombinedSink(os.Stdout, "[%s] %s %-9s | %s\n", []string{"prefix", "time", "priority", "message"}))
-
-func infof(format string, v ...interface{}) {
-	logger.Infof(format, v...)
-}
-
-func debugf(format string, v ...interface{}) {
-	if verbose {
-		logger.Debugf(format, v...)
-	}
-}
-
-func debug(v ...interface{}) {
-	if verbose {
-		logger.Debug(v...)
-	}
-}
-
-func warnf(format string, v ...interface{}) {
-	logger.Warningf(format, v...)
-}
-
-func warn(v ...interface{}) {
-	logger.Warning(v...)
-}
-
-func fatalf(format string, v ...interface{}) {
-	logger.Fatalf(format, v...)
-}
-
-func fatal(v ...interface{}) {
-	logger.Fatalln(v...)
 }
 
 //--------------------------------------

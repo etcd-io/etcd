@@ -8,8 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/coreos/etcd/store"
+	"github.com/coreos/etcd/log"
 	"github.com/coreos/etcd/server"
+	"github.com/coreos/etcd/store"
 	"github.com/coreos/go-raft"
 )
 
@@ -20,7 +21,6 @@ import (
 //------------------------------------------------------------------------------
 
 var (
-	verbose     bool
 	veryVerbose bool
 
 	machines     string
@@ -43,11 +43,11 @@ var (
 
 	cpuprofile string
 
-	cors     string
+	cors string
 )
 
 func init() {
-	flag.BoolVar(&verbose, "v", false, "verbose logging")
+	flag.BoolVar(&log.Verbose, "v", false, "verbose logging")
 	flag.BoolVar(&veryVerbose, "vv", false, "very verbose logging")
 
 	flag.StringVar(&machines, "C", "", "the ip address and port of a existing machines in the cluster, sepearate by comma")
@@ -97,12 +97,6 @@ const (
 //
 //------------------------------------------------------------------------------
 
-type TLSInfo struct {
-	CertFile string `json:"CertFile"`
-	KeyFile  string `json:"KeyFile"`
-	CAFile   string `json:"CAFile"`
-}
-
 type Info struct {
 	Name string `json:"name"`
 
@@ -115,12 +109,6 @@ type Info struct {
 
 	RaftTLS TLSInfo `json:"raftTLS"`
 	EtcdTLS TLSInfo `json:"etcdTLS"`
-}
-
-type TLSConfig struct {
-	Scheme string
-	Server tls.Config
-	Client tls.Config
 }
 
 //------------------------------------------------------------------------------
@@ -199,6 +187,7 @@ func main() {
 
 	// Create etcd and raft server
 	r := newRaftServer(info.Name, info.RaftURL, info.RaftListenHost, &raftTLSConfig, &info.RaftTLS)
+	r.MaxClusterSize = maxClusterSize
 	snapConf = r.newSnapshotConf()
 
 	s := server.New(info.Name, info.EtcdURL, info.EtcdListenHost, &etcdTLSConfig, &info.EtcdTLS, r)
@@ -209,4 +198,3 @@ func main() {
 	r.ListenAndServe()
 	s.ListenAndServe()
 }
-

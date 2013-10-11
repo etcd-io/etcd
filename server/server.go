@@ -1,16 +1,19 @@
 package server
 
 import (
-	"github.com/gorilla/mux"
 	"net/http"
 	"net/url"
+
+	"github.com/coreos/etcd/command"
+	"github.com/coreos/go-raft"
+	"github.com/gorilla/mux"
 )
 
 // The Server provides an HTTP interface to the underlying store.
 type Server interface {
-    CommitIndex() uint64 
-    Term() uint64 
-    Dispatch(Command, http.ResponseWriter, *http.Request)
+	CommitIndex() uint64
+	Term() uint64
+	Dispatch(command.Command, http.ResponseWriter, *http.Request)
 }
 
 // This is the default implementation of the Server interface.
@@ -53,11 +56,6 @@ func (s *server) CommitIndex() uint64 {
 // The current Raft term.
 func (s *server) Term() uint64 {
 	return c.raftServer.Term()
-}
-
-// Executes a command against the Raft server.
-func (s *server) Do(c Command, localOnly bool) (interface{}, error) {
-	return c.raftServer.Do(s.RaftServer().Server)
 }
 
 func (s *server) installV1() {
