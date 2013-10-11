@@ -522,7 +522,7 @@ The result is that an 8 machine cluster can tolerate 3 machine failures and a 9 
 And in the best case when all 9 machines are responding the cluster will perform at the speed of the fastest 5 nodes.
 
 ### Why SSLv3 alert handshake failure when using SSL client auth?
-The `TLS` pacakge of `golang` checkes the key usage of certificate public key before using it. To use the certificate public key to do client auth, we need to add `clientAuth` to `Extended Key Usage` when creates the certificate public key.
+The `TLS` pacakge of `golang` checks the key usage of certificate public key before using it. To use the certificate public key to do client auth, we need to add `clientAuth` to `Extended Key Usage` when creating the certificate public key.
 
 Here is how to do it:
 
