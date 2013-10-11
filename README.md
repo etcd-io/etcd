@@ -593,6 +593,26 @@ Odd numbers are good because if you have 8 machines the majority will be 5 and i
 The result is that an 8 machine cluster can tolerate 3 machine failures and a 9 machine cluster can tolerate 4 nodes failures.
 And in the best case when all 9 machines are responding the cluster will perform at the speed of the fastest 5 nodes.
 
+### Why SSLv3 alert handshake failure when using SSL client auth?
+The `TLS` pacakge of `golang` checkes the key usage of certificate public key before using it. To use the certificate public key to do client auth, we need to add `clientAuth` to `Extended Key Usage` when creates the certificate public key.
+
+Here is how to do it:
+
+Add the following section to my openssl.cnf:
+
+```
+[ ssl_client ]                                                                                                                                            
+...
+  extendedKeyUsage = clientAuth
+...
+```
+
+When create the cert be sure to reference it in the -extensions flag:
+
+```
+openssl ca -config openssl.cnf -policy policy_anything -extensions ssl_client -out certs/node.crt -infiles node.csr
+```
+
 ## Project Details
 
 ### Versioning
