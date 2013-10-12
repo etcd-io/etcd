@@ -110,7 +110,7 @@ func SnapshotRecoveryHttpHandler(w http.ResponseWriter, req *http.Request) {
 func EtcdURLHttpHandler(w http.ResponseWriter, req *http.Request) {
 	debugf("[recv] Get %s/etcdURL/ ", r.url)
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(argInfo.EtcdURL))
+	w.Write([]byte(config.Etcd.AdvertisedUrl))
 }
 
 // Response to the join request

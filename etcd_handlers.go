@@ -53,14 +53,14 @@ type errorHandler func(http.ResponseWriter, *http.Request) error
 // provided allowed origins and sets the Access-Control-Allow-Origin header if
 // there is a match.
 func addCorsHeader(w http.ResponseWriter, r *http.Request) {
-	val, ok := corsList["*"]
+	val, ok := config.Etcd.CorsWhiteList["*"]
 	if val && ok {
 		w.Header().Add("Access-Control-Allow-Origin", "*")
 		return
 	}
 
 	requestOrigin := r.Header.Get("Origin")
-	val, ok = corsList[requestOrigin]
+	val, ok = config.Etcd.CorsWhiteList[requestOrigin]
 	if val && ok {
 		w.Header().Add("Access-Control-Allow-Origin", requestOrigin)
 		return

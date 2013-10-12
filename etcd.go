@@ -17,13 +17,9 @@ limitations under the License.
 package main
 
 import (
-	"crypto/tls"
 	"flag"
 	"fmt"
-	"io/ioutil"
-	"net/url"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/coreos/etcd/store"
@@ -36,75 +32,66 @@ import (
 //
 //------------------------------------------------------------------------------
 
+const DefaultConfigFile = "/etc/etcd/etcd.toml"
+
 var (
-	verbose     bool
-	veryVerbose bool
-
-	machines     string
-	machinesFile string
-
-	cluster []string
-
-	argInfo Info
-	dirPath string
-
-	force bool
-
-	printVersion bool
-
-	maxSize int
-
-	snapshot bool
-
-	retryTimes int
-
-	maxClusterSize int
-
-	cpuprofile string
-
-	cors     string
-	corsList map[string]bool
+	config               *Config
+	configFile           string
+	cors                 string
+	etcdAdvertisedUrl    string
+	etcdCAFile           string
+	etcdCPUProfileFile   string
+	etcdCertFile         string
+	etcdDataDir          string
+	etcdKeyFile          string
+	etcdListenHost       string
+	etcdMaxClusterSize   int
+	etcdMaxResultBuffer  int
+	etcdMaxRetryAttempts int
+	etcdName             string
+	etcdSnapshot         bool
+	etcdWebURL           string
+	etcdVerbose          bool
+	etcdVeryVerbose      bool
+	machines             string
+	machinesFile         string
+	printVersion         bool
+	raftAdvertisedUrl    string
+	raftCAFile           string
+	raftCertFile         string
+	raftKeyFile          string
+	raftListenHost       string
 )
 
 func init() {
+	config = NewConfig()
+	flag.StringVar(&configFile, "configFile", DefaultConfigFile, "the etcd config file")
+	flag.StringVar(&cors, "cors", "", "comma seperated list of origins to whitelist for cross-origin resource sharing ('*' or 'http://localhost:8001',...)")
+	flag.StringVar(&machines, "C", "", "comma seperated list of machines in the cluster ('hostname:port',...)")
+	flag.StringVar(&machinesFile, "CF", "", "file containing a comma seperated list of machines in the cluster ('hostname:port',...)")
 	flag.BoolVar(&printVersion, "version", false, "print the version and exit")
-
-	flag.BoolVar(&verbose, "v", false, "verbose logging")
-	flag.BoolVar(&veryVerbose, "vv", false, "very verbose logging")
-
-	flag.StringVar(&machines, "C", "", "the ip address and port of a existing machines in the cluster, sepearate by comma")
-	flag.StringVar(&machinesFile, "CF", "", "the file contains a list of existing machines in the cluster, seperate by comma")
-
-	flag.StringVar(&argInfo.Name, "n", "default-name", "the node name (required)")
-	flag.StringVar(&argInfo.EtcdURL, "c", "127.0.0.1:4001", "the advertised public hostname:port for etcd client communication")
-	flag.StringVar(&argInfo.RaftURL, "s", "127.0.0.1:7001", "the advertised public hostname:port for raft server communication")
-	flag.StringVar(&argInfo.EtcdListenHost, "cl", "", "the listening hostname for etcd client communication (defaults to advertised ip)")
-	flag.StringVar(&argInfo.RaftListenHost, "sl", "", "the listening hostname for raft server communication (defaults to advertised ip)")
-	flag.StringVar(&argInfo.WebURL, "w", "", "the hostname:port of web interface")
-
-	flag.StringVar(&argInfo.RaftTLS.CAFile, "serverCAFile", "", "the path of the CAFile")
-	flag.StringVar(&argInfo.RaftTLS.CertFile, "serverCert", "", "the cert file of the server")
-	flag.StringVar(&argInfo.RaftTLS.KeyFile, "serverKey", "", "the key file of the server")
-
-	flag.StringVar(&argInfo.EtcdTLS.CAFile, "clientCAFile", "", "the path of the client CAFile")
-	flag.StringVar(&argInfo.EtcdTLS.CertFile, "clientCert", "", "the cert file of the client")
-	flag.StringVar(&argInfo.EtcdTLS.KeyFile, "clientKey", "", "the key file of the client")
-
-	flag.StringVar(&dirPath, "d", ".", "the directory to store log and snapshot")
-
-	flag.BoolVar(&force, "f", false, "force new node configuration if existing is found (WARNING: data loss!)")
-
-	flag.BoolVar(&snapshot, "snapshot", false, "open or close snapshot")
-
-	flag.IntVar(&maxSize, "m", 1024, "the max size of result buffer")
-
-	flag.IntVar(&retryTimes, "r", 3, "the max retry attempts when trying to join a cluster")
-
-	flag.IntVar(&maxClusterSize, "maxsize", 9, "the max size of the cluster")
-
-	flag.StringVar(&cpuprofile, "cpuprofile", "", "write cpu profile to file")
-
-	flag.StringVar(&cors, "cors", "", "whitelist origins for cross-origin resource sharing (e.g. '*' or 'http://localhost:8001,etc')")
+	// Etcd flags
+	flag.StringVar(&etcdAdvertisedUrl, "c", "127.0.0.1:4001", "advertised 'hostname:port' for client-server communication")
+	flag.StringVar(&etcdCAFile, "clientCAFile", "", "CA cert file for client-server communication")
+	flag.StringVar(&etcdCPUProfileFile, "cpuprofile", "", "where to write cpu profile data")
+	flag.StringVar(&etcdCertFile, "clientCert", "", "cert file for client-server communication")
+	flag.StringVar(&etcdDataDir, "d", ".", "where to store the log and snapshots")
+	flag.StringVar(&etcdKeyFile, "clientKey", "", "key file for client-server communication")
+	flag.StringVar(&etcdListenHost, "cl", "", "listening 'hostname' for client-server communication")
+	flag.IntVar(&etcdMaxClusterSize, "maxsize", 9, "maximum cluster size")
+	flag.IntVar(&etcdMaxResultBuffer, "m", 1024, "maximum result buffer size")
+	flag.IntVar(&etcdMaxRetryAttempts, "r", 3, "maximum number of attempts to join the cluster")
+	flag.StringVar(&etcdName, "n", "", "node name (required)")
+	flag.BoolVar(&etcdSnapshot, "snapshot", false, "open or close snapshot")
+	flag.StringVar(&etcdWebURL, "w", "", "listening 'hostname:port' for the web interface")
+	flag.BoolVar(&etcdVerbose, "v", false, "enable verbose logging")
+	flag.BoolVar(&etcdVeryVerbose, "vv", false, "enable very verbose logging")
+	// Raft flags
+	flag.StringVar(&raftAdvertisedUrl, "s", "127.0.0.1:7001", "advertised 'hostname:port' for server-server communication")
+	flag.StringVar(&raftCAFile, "serverCAFile", "", "CA cert file for server-server communication")
+	flag.StringVar(&raftCertFile, "serverCert", "", "cert file for server-server communication")
+	flag.StringVar(&raftKeyFile, "serverKey", "", "key file for server-server communication")
+	flag.StringVar(&raftListenHost, "sl", "", "listening 'hostname' for server-server communication")
 }
 
 const (
@@ -112,38 +99,6 @@ const (
 	HeartbeatTimeout = 50 * time.Millisecond
 	RetryInterval    = 10
 )
-
-//------------------------------------------------------------------------------
-//
-// Typedefs
-//
-//------------------------------------------------------------------------------
-
-type TLSInfo struct {
-	CertFile string `json:"CertFile"`
-	KeyFile  string `json:"KeyFile"`
-	CAFile   string `json:"CAFile"`
-}
-
-type Info struct {
-	Name string `json:"name"`
-
-	RaftURL string `json:"raftURL"`
-	EtcdURL string `json:"etcdURL"`
-	WebURL  string `json:"webURL"`
-
-	RaftListenHost string `json:"raftListenHost"`
-	EtcdListenHost string `json:"etcdListenHost"`
-
-	RaftTLS TLSInfo `json:"raftTLS"`
-	EtcdTLS TLSInfo `json:"etcdTLS"`
-}
-
-type TLSConfig struct {
-	Scheme string
-	Server tls.Config
-	Client tls.Config
-}
 
 //------------------------------------------------------------------------------
 //
@@ -164,93 +119,58 @@ var etcdStore *store.Store
 //--------------------------------------
 
 func main() {
+	flag.Usage = Usage
 	flag.Parse()
 
 	if printVersion {
 		fmt.Println(releaseVersion)
 		os.Exit(0)
 	}
+	// Use the default configuration file unless one was defined by the user.
+	if configFile == "" {
+		configFile = os.Getenv("ETCD_CONFIG_FILE")
+	}
+	if configFile == "" {
+		configFile = DefaultConfigFile
+	}
+	config.setConfigFile(configFile)
+	// Set up the system wide etcd and raft configuration. From this point on
+	// configuration settings can be accessed through the global config var.
+	config.processConfig()
 
-	if cpuprofile != "" {
+	if config.Etcd.CPUProfileFile != "" {
 		runCPUProfile()
 	}
 
-	if veryVerbose {
-		verbose = true
+	if config.Etcd.VeryVerbose {
+		config.Etcd.Verbose = true
 		raft.SetLogLevel(raft.Debug)
 	}
 
-	parseCorsFlag()
-
-	if machines != "" {
-		cluster = strings.Split(machines, ",")
-	} else if machinesFile != "" {
-		b, err := ioutil.ReadFile(machinesFile)
-		if err != nil {
-			fatalf("Unable to read the given machines file: %s", err)
-		}
-		cluster = strings.Split(string(b), ",")
-	}
-
-	// Check TLS arguments
-	raftTLSConfig, ok := tlsConfigFromInfo(argInfo.RaftTLS)
-	if !ok {
-		fatal("Please specify cert and key file or cert and key file and CAFile or none of the three")
-	}
-
-	etcdTLSConfig, ok := tlsConfigFromInfo(argInfo.EtcdTLS)
-	if !ok {
-		fatal("Please specify cert and key file or cert and key file and CAFile or none of the three")
-	}
-
-	argInfo.Name = strings.TrimSpace(argInfo.Name)
-	if argInfo.Name == "" {
-		fatal("ERROR: server name required. e.g. '-n=server_name'")
-	}
-
-	// Check host name arguments
-	argInfo.RaftURL = sanitizeURL(argInfo.RaftURL, raftTLSConfig.Scheme)
-	argInfo.EtcdURL = sanitizeURL(argInfo.EtcdURL, etcdTLSConfig.Scheme)
-	argInfo.WebURL = sanitizeURL(argInfo.WebURL, "http")
-
-	argInfo.RaftListenHost = sanitizeListenHost(argInfo.RaftListenHost, argInfo.RaftURL)
-	argInfo.EtcdListenHost = sanitizeListenHost(argInfo.EtcdListenHost, argInfo.EtcdURL)
-
 	// Read server info from file or grab it from user.
-	if err := os.MkdirAll(dirPath, 0744); err != nil {
+	if err := os.MkdirAll(config.Etcd.DataDir, 0744); err != nil {
 		fatalf("Unable to create path: %s", err)
 	}
 
-	info := getInfo(dirPath)
-
 	// Create etcd key-value store
-	etcdStore = store.CreateStore(maxSize)
+	etcdStore = store.CreateStore(config.Etcd.MaxClusterSize)
 	snapConf = newSnapshotConf()
 
 	// Create etcd and raft server
-	e = newEtcdServer(info.Name, info.EtcdURL, info.EtcdListenHost, &etcdTLSConfig, &info.EtcdTLS)
-	r = newRaftServer(info.Name, info.RaftURL, info.RaftListenHost, &raftTLSConfig, &info.RaftTLS)
+	e = newEtcdServer(config.Etcd.Name, config.Etcd.AdvertisedUrl, config.Etcd.ListenHost, &config.Etcd.TLSConfig, &config.Etcd.TLSInfo)
+	r = newRaftServer(config.Etcd.Name, config.Raft.AdvertisedUrl, config.Raft.ListenHost, &config.Raft.TLSConfig, &config.Raft.TLSInfo)
 
 	startWebInterface()
 	r.ListenAndServe()
 	e.ListenAndServe()
-
 }
 
-// parseCorsFlag gathers up the cors whitelist and puts it into the corsList.
-func parseCorsFlag() {
-	if cors != "" {
-		corsList = make(map[string]bool)
-		list := strings.Split(cors, ",")
-		for _, v := range list {
-			fmt.Println(v)
-			if v != "*" {
-				_, err := url.Parse(v)
-				if err != nil {
-					panic(fmt.Sprintf("bad cors url: %s", err))
-				}
-			}
-			corsList[v] = true
-		}
-	}
+// Usage prints the etcd usage to stderr.
+func Usage() {
+	fmt.Fprintf(os.Stderr, "Usage %s [-h] [options...]\n", os.Args[0])
+	fmt.Fprintf(os.Stderr, "Options:\n")
+	flag.VisitAll(func(f *flag.Flag) {
+		format := " -%-14s%s\n"
+		fmt.Fprintf(os.Stderr, format, f.Name, f.Usage)
+	})
 }

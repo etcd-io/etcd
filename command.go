@@ -171,7 +171,7 @@ func (c *JoinCommand) Apply(raftServer *raft.Server) (interface{}, error) {
 
 	// check machine number in the cluster
 	num := machineNum()
-	if num == maxClusterSize {
+	if num == config.Etcd.MaxClusterSize {
 		debug("Reject join request from ", c.Name)
 		return []byte{0}, etcdErr.NewError(103, "")
 	}
