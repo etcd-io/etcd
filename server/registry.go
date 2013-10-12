@@ -1,6 +1,9 @@
 package server
 
 import (
+    "fmt"
+    "net/url"
+    "path"
     "sync"
 
     "github.com/coreos/etcd/store"
@@ -48,13 +51,13 @@ func (r *Registry) Unregister(name string, commitIndex uint64, term uint64) erro
     defer r.Unlock()
 
     // Remove the key from the store.
-    _, err := s.Delete(path.Join(RegistryKey, name), false, commitIndex, term)
+    _, err := r.store.Delete(path.Join(RegistryKey, name), false, commitIndex, term)
     return err
 }
 
 // Returns the number of nodes in the cluster.
 func (r *Registry) Count() int {
-    e, err := s.Get(RegistryKey, false, false, 0, 0)
+    e, err := r.store.Get(RegistryKey, false, false, 0, 0)
     if err != nil {
         return 0
     }
@@ -86,7 +89,7 @@ func (r *Registry) URLs() []string {
     defer r.Unlock()
 
     // Retrieve a list of all nodes.
-    e, err := s.Get(RegistryKey, false, false, 0, 0)
+    e, err := r.store.Get(RegistryKey, false, false, 0, 0)
     if err != nil {
         return make([]string, 0)
     }
@@ -94,7 +97,9 @@ func (r *Registry) URLs() []string {
     // Lookup the URL for each one.
     urls := make([]string, 0)
     for _, pair := range e.KVPairs {
-        urls = append(urls, r.url(pair.Key))
+        if url, ok := r.url(pair.Key); ok {
+            urls = append(urls, url)
+        }
     }
 
     return urls
@@ -126,7 +131,7 @@ func (r *Registry) PeerURLs() []string {
     defer r.Unlock()
 
     // Retrieve a list of all nodes.
-    e, err := s.Get(RegistryKey, false, false, 0, 0)
+    e, err := r.store.Get(RegistryKey, false, false, 0, 0)
     if err != nil {
         return make([]string, 0)
     }
@@ -134,7 +139,9 @@ func (r *Registry) PeerURLs() []string {
     // Lookup the URL for each one.
     urls := make([]string, 0)
     for _, pair := range e.KVPairs {
-        urls = append(urls, r.peerURL(pair.Key))
+        if url, ok := r.peerURL(pair.Key); ok {
+            urls = append(urls, url)
+        }
     }
 
     return urls
@@ -147,7 +154,7 @@ func (r *Registry) load(name string) {
     }
 
     // Retrieve from store.
-    e, err := etcdStore.Get(path.Join(RegistryKey, name), false, false, 0, 0)
+    e, err := r.store.Get(path.Join(RegistryKey, name), false, false, 0, 0)
     if err != nil {
         return
     }

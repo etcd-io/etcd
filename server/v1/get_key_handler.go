@@ -2,12 +2,13 @@ package v1
 
 import (
 	"encoding/json"
-	"github.com/coreos/etcd/store"
 	"net/http"
+
+	"github.com/gorilla/mux"
 )
 
 // Retrieves the value for a given key.
-func GetKeyHandler(w http.ResponseWriter, req *http.Request, e *etcdServer) error {
+func GetKeyHandler(w http.ResponseWriter, req *http.Request, s Server) error {
 	vars := mux.Vars(req)
 	key := "/" + vars["key"]
 
@@ -18,9 +19,7 @@ func GetKeyHandler(w http.ResponseWriter, req *http.Request, e *etcdServer) erro
 	}
 
 	// Convert event to a response and write to client.
-	event, _ := event.(*store.Event)
-	response := eventToResponse(event)
-	b, _ := json.Marshal(response)
+	b, _ := json.Marshal(event.Response())
 	w.WriteHeader(http.StatusOK)
 	w.Write(b)
 

@@ -5,7 +5,6 @@ import (
 
 	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/log"
-	"github.com/coreos/etcd/store"
 	"github.com/coreos/go-raft"
 )
 
@@ -37,7 +36,6 @@ func (c *JoinCommand) CommandName() string {
 
 // Join a server to the cluster
 func (c *JoinCommand) Apply(server *raft.Server) (interface{}, error) {
-	s, _ := server.StateMachine().(*store.Store)
 	ps, _ := server.Context().(*PeerServer)
 
 	b := make([]byte, 8)

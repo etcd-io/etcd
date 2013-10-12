@@ -1,9 +1,12 @@
 package v1
 
 import (
-	"encoding/json"
-	"github.com/coreos/etcd/store"
 	"net/http"
+
+	etcdErr "github.com/coreos/etcd/error"
+	"github.com/coreos/etcd/store"
+	"github.com/coreos/go-raft"
+	"github.com/gorilla/mux"
 )
 
 // Sets the value for a given key.
@@ -16,19 +19,19 @@ func SetKeyHandler(w http.ResponseWriter, req *http.Request, s Server) error {
 	// Parse non-blank value.
 	value := req.Form.Get("value")
 	if len(value) == 0 {
-		return error.NewError(200, "Set", store.UndefIndex, store.UndefTerm)
+		return etcdErr.NewError(200, "Set", store.UndefIndex, store.UndefTerm)
 	}
 
 	// Convert time-to-live to an expiration time.
-	expireTime, err := durationToExpireTime(req.Form.Get("ttl"))
+	expireTime, err := store.TTL(req.Form.Get("ttl"))
 	if err != nil {
 		return etcdErr.NewError(202, "Set", store.UndefIndex, store.UndefTerm)
 	}
 
 	// If the "prevValue" is specified then test-and-set. Otherwise create a new key.
-	var c command.Command
+	var c raft.Command
 	if prevValueArr, ok := req.Form["prevValue"]; ok && len(prevValueArr) > 0 {
-		c = &TestAndSetCommand{
+		c = &store.TestAndSetCommand{
 			Key:        key,
 			Value:      value,
 			PrevValue:  prevValueArr[0],
@@ -36,7 +39,7 @@ func SetKeyHandler(w http.ResponseWriter, req *http.Request, s Server) error {
 		}
 
 	} else {
-		c = &CreateCommand{
+		c = &store.CreateCommand{
 			Key:        key,
 			Value:      value,
 			ExpireTime: expireTime,
@@ -44,5 +47,5 @@ func SetKeyHandler(w http.ResponseWriter, req *http.Request, s Server) error {
 		}
 	}
 
-	return s.Dispatch(command, w, req)
+	return s.Dispatch(c, w, req)
 }

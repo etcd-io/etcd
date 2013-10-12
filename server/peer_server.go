@@ -19,7 +19,7 @@ import (
 
 type PeerServer struct {
     *raft.Server
-    server         Server
+    server         *Server
     joinIndex      uint64
     name           string
     url            string
@@ -148,7 +148,7 @@ func (s *PeerServer) RaftServer() *raft.Server {
 }
 
 // Associates the client server with the peer server.
-func (s *PeerServer) SetServer(server Server) {
+func (s *PeerServer) SetServer(server *Server) {
     s.server = server
 }
 
@@ -239,15 +239,33 @@ func (s *PeerServer) EtcdURLHttpHandler(w http.ResponseWriter, req *http.Request
 }
 
 // Response to the join request
-func (s *PeerServer) JoinHttpHandler(w http.ResponseWriter, req *http.Request) error {
+func (s *PeerServer) JoinHttpHandler(w http.ResponseWriter, req *http.Request) {
     command := &JoinCommand{}
 
-    if err := decodeJsonRequest(req, command); err == nil {
-        log.Debugf("Receive Join Request from %s", command.Name)
-        return s.dispatchRaftCommand(command, w, req)
-    } else {
+    // Write CORS header.
+    if s.server.OriginAllowed("*") {
+        w.Header().Add("Access-Control-Allow-Origin", "*")
+    } else if s.server.OriginAllowed(req.Header.Get("Origin"))  {
+        w.Header().Add("Access-Control-Allow-Origin", req.Header.Get("Origin"))
+    }
+
+    err := decodeJsonRequest(req, command)
+    if err != nil {
         w.WriteHeader(http.StatusInternalServerError)
-        return nil
+        return
+    }
+
+    log.Debugf("Receive Join Request from %s", command.Name)
+    err = s.dispatchRaftCommand(command, w, req)
+
+    // Return status.
+    if err != nil {
+        if etcdErr, ok := err.(*etcdErr.Error); ok {
+            log.Debug("Return error: ", (*etcdErr).Error())
+            etcdErr.Write(w)
+        } else {
+            http.Error(w, err.Error(), http.StatusInternalServerError)
+        }
     }
 }
 
@@ -326,7 +344,7 @@ func (s *PeerServer) startTransport(scheme string, tlsConf tls.Config) {
     // internal commands
     raftMux.HandleFunc("/name", s.NameHttpHandler)
     raftMux.HandleFunc("/version", s.RaftVersionHttpHandler)
-    raftMux.Handle("/join", errorHandler(s.JoinHttpHandler))
+    raftMux.HandleFunc("/join", s.JoinHttpHandler)
     raftMux.HandleFunc("/remove/", s.RemoveHttpHandler)
     raftMux.HandleFunc("/vote", s.VoteHttpHandler)
     raftMux.HandleFunc("/log", s.GetLogHttpHandler)
@@ -421,7 +439,7 @@ func (s *PeerServer) joinByMachine(server *raft.Server, machine string, scheme s
 
             if resp.StatusCode == http.StatusOK {
                 b, _ := ioutil.ReadAll(resp.Body)
-                server.joinIndex, _ = binary.Uvarint(b)
+                s.joinIndex, _ = binary.Uvarint(b)
                 return nil
             }
             if resp.StatusCode == http.StatusTemporaryRedirect {
@@ -429,12 +447,12 @@ func (s *PeerServer) joinByMachine(server *raft.Server, machine string, scheme s
                 address := resp.Header.Get("Location")
                 log.Debugf("Send Join Request to %s", address)
 
-                json.NewEncoder(&b).Encode(newJoinCommand(PeerVersion, server.Name(), s.url, s.server.URL()))
+                json.NewEncoder(&b).Encode(NewJoinCommand(PeerVersion, server.Name(), s.url, s.server.URL()))
 
                 resp, req, err = t.Post(address, &b)
 
             } else if resp.StatusCode == http.StatusBadRequest {
-                debug("Reach max number machines in the cluster")
+                log.Debug("Reach max number machines in the cluster")
                 decoder := json.NewDecoder(resp.Body)
                 err := &etcdErr.Error{}
                 decoder.Decode(err)
@@ -477,15 +495,15 @@ func (s *PeerServer) monitorSnapshot() {
         time.Sleep(s.snapConf.checkingInterval)
         currentWrites := 0
         if uint64(currentWrites) > s.snapConf.writesThr {
-            r.TakeSnapshot()
+            s.TakeSnapshot()
             s.snapConf.lastWrites = 0
         }
     }
 }
 
 func (s *PeerServer) dispatch(c raft.Command, w http.ResponseWriter, req *http.Request) error {
-    if r.State() == raft.Leader {
-        if response, err := r.Do(c); err != nil {
+    if s.State() == raft.Leader {
+        if response, err := s.Do(c); err != nil {
             return err
         } else {
             if response == nil {
@@ -515,7 +533,7 @@ func (s *PeerServer) dispatch(c raft.Command, w http.ResponseWriter, req *http.R
         }
 
     } else {
-        leader := r.Leader()
+        leader := s.Leader()
         // current no leader
         if leader == "" {
             return etcdErr.NewError(300, "", store.UndefIndex, store.UndefTerm)
@@ -528,35 +546,3 @@ func (s *PeerServer) dispatch(c raft.Command, w http.ResponseWriter, req *http.R
     }
 }
 
-
-type errorHandler func(http.ResponseWriter, *http.Request) error
-
-// addCorsHeader parses the request Origin header and loops through the user
-// provided allowed origins and sets the Access-Control-Allow-Origin header if
-// there is a match.
-func addCorsHeader(w http.ResponseWriter, r *http.Request) {
-    val, ok := corsList["*"]
-    if val && ok {
-        w.Header().Add("Access-Control-Allow-Origin", "*")
-        return
-    }
-
-    requestOrigin := r.Header.Get("Origin")
-    val, ok = corsList[requestOrigin]
-    if val && ok {
-        w.Header().Add("Access-Control-Allow-Origin", requestOrigin)
-        return
-    }
-}
-
-func (fn errorHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-    addCorsHeader(w, r)
-    if e := fn(w, r); e != nil {
-        if etcdErr, ok := e.(*etcdErr.Error); ok {
-            debug("Return error: ", (*etcdErr).Error())
-            etcdErr.Write(w)
-        } else {
-            http.Error(w, e.Error(), http.StatusInternalServerError)
-        }
-    }
-}

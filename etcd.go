@@ -1,12 +1,10 @@
 package main
 
 import (
-	"crypto/tls"
 	"flag"
 	"io/ioutil"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/coreos/etcd/log"
 	"github.com/coreos/etcd/server"
@@ -101,17 +99,9 @@ type Info struct {
 	RaftListenHost string `json:"raftListenHost"`
 	EtcdListenHost string `json:"etcdListenHost"`
 
-	RaftTLS TLSInfo `json:"raftTLS"`
-	EtcdTLS TLSInfo `json:"etcdTLS"`
+	RaftTLS server.TLSInfo `json:"raftTLS"`
+	EtcdTLS server.TLSInfo `json:"etcdTLS"`
 }
-
-//------------------------------------------------------------------------------
-//
-// Variables
-//
-//------------------------------------------------------------------------------
-
-var etcdStore *store.Store
 
 //------------------------------------------------------------------------------
 //
@@ -131,7 +121,7 @@ func main() {
 	}
 
 	if veryVerbose {
-		verbose = true
+		log.Verbose = true
 		raft.SetLogLevel(raft.Debug)
 	}
 
@@ -140,7 +130,7 @@ func main() {
 	} else if machinesFile != "" {
 		b, err := ioutil.ReadFile(machinesFile)
 		if err != nil {
-			fatalf("Unable to read the given machines file: %s", err)
+			log.Fatalf("Unable to read the given machines file: %s", err)
 		}
 		cluster = strings.Split(string(b), ",")
 	}
@@ -148,17 +138,17 @@ func main() {
 	// Check TLS arguments
 	raftTLSConfig, ok := tlsConfigFromInfo(argInfo.RaftTLS)
 	if !ok {
-		fatal("Please specify cert and key file or cert and key file and CAFile or none of the three")
+		log.Fatal("Please specify cert and key file or cert and key file and CAFile or none of the three")
 	}
 
 	etcdTLSConfig, ok := tlsConfigFromInfo(argInfo.EtcdTLS)
 	if !ok {
-		fatal("Please specify cert and key file or cert and key file and CAFile or none of the three")
+		log.Fatal("Please specify cert and key file or cert and key file and CAFile or none of the three")
 	}
 
 	argInfo.Name = strings.TrimSpace(argInfo.Name)
 	if argInfo.Name == "" {
-		fatal("ERROR: server name required. e.g. '-n=server_name'")
+		log.Fatal("ERROR: server name required. e.g. '-n=server_name'")
 	}
 
 	// Check host name arguments
@@ -171,29 +161,29 @@ func main() {
 
 	// Read server info from file or grab it from user.
 	if err := os.MkdirAll(dirPath, 0744); err != nil {
-		fatalf("Unable to create path: %s", err)
+		log.Fatalf("Unable to create path: %s", err)
 	}
 
 	info := getInfo(dirPath)
 
 	// Create etcd key-value store
-	etcdStore = store.New()
+	store := store.New()
 
 	// Create a shared node registry.
-	registry := server.NewRegistry()
+	registry := server.NewRegistry(store)
 
 	// Create peer server.
-	ps := NewPeerServer(info.Name, dirPath, info.RaftURL, info.RaftListenHost, &raftTLSConfig, &info.RaftTLS, registry)
+	ps := server.NewPeerServer(info.Name, dirPath, info.RaftURL, info.RaftListenHost, &raftTLSConfig, &info.RaftTLS, registry, store)
 	ps.MaxClusterSize = maxClusterSize
 	ps.RetryTimes = retryTimes
 
-	s := server.New(info.Name, info.EtcdURL, info.EtcdListenHost, &etcdTLSConfig, &info.EtcdTLS, r)
-	if err := e.AllowOrigins(cors); err != nil {
+	s := server.New(info.Name, info.EtcdURL, info.EtcdListenHost, &etcdTLSConfig, &info.EtcdTLS, ps.Server, registry, store)
+	if err := s.AllowOrigins(cors); err != nil {
 		panic(err)
 	}
 
-	ps.SetServer(server)
+	ps.SetServer(s)
 
-	ps.ListenAndServe(snapshot)
+	ps.ListenAndServe(snapshot, cluster)
 	s.ListenAndServe()
 }

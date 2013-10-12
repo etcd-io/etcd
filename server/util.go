@@ -1,8 +1,11 @@
 package server
 
 import (
+    "encoding/json"
     "fmt"
+    "io"
     "net/http"
+
     "github.com/coreos/etcd/log"
 )
 
@@ -18,7 +21,7 @@ func decodeJsonRequest(req *http.Request, data interface{}) error {
 func redirect(hostname string, w http.ResponseWriter, req *http.Request) {
     path := req.URL.Path
     url := hostname + path
-    debugf("Redirect to %s", url)
+    log.Debugf("Redirect to %s", url)
     http.Redirect(w, req, url, http.StatusTemporaryRedirect)
 }
 

@@ -10,6 +10,7 @@ import (
     "net/http"
     "time"
 
+    "github.com/coreos/etcd/log"
     "github.com/coreos/go-raft"
 )
 
@@ -29,13 +30,13 @@ var tranTimeout = ElectionTimeout
 type transporter struct {
     client     *http.Client
     transport  *http.Transport
-    raftServer *raftServer
+    peerServer *PeerServer
 }
 
 // Create transporter using by raft server
 // Create http or https transporter based on
 // whether the user give the server cert and key
-func newTransporter(scheme string, tlsConf tls.Config, raftServer *raftServer) *transporter {
+func newTransporter(scheme string, tlsConf tls.Config, peerServer *PeerServer) *transporter {
     t := transporter{}
 
     tr := &http.Transport{
@@ -50,7 +51,7 @@ func newTransporter(scheme string, tlsConf tls.Config, raftServer *raftServer) *
 
     t.client = &http.Client{Transport: tr}
     t.transport = tr
-    t.raftServer = raftServer
+    t.peerServer = peerServer
 
     return &t
 }
@@ -69,18 +70,18 @@ func (t *transporter) SendAppendEntriesRequest(server *raft.Server, peer *raft.P
 
     size := b.Len()
 
-    t.raftServer.serverStats.SendAppendReq(size)
+    t.peerServer.serverStats.SendAppendReq(size)
 
-    u, _ := nameToRaftURL(peer.Name)
+    u, _ := t.peerServer.registry.PeerURL(peer.Name)
 
-    debugf("Send LogEntries to %s ", u)
+    log.Debugf("Send LogEntries to %s ", u)
 
-    thisFollowerStats, ok := t.raftServer.followersStats.Followers[peer.Name]
+    thisFollowerStats, ok := t.peerServer.followersStats.Followers[peer.Name]
 
     if !ok { //this is the first time this follower has been seen
         thisFollowerStats = &raftFollowerStats{}
         thisFollowerStats.Latency.Minimum = 1 << 63
-        t.raftServer.followersStats.Followers[peer.Name] = thisFollowerStats
+        t.peerServer.followersStats.Followers[peer.Name] = thisFollowerStats
     }
 
     start := time.Now()
@@ -90,7 +91,7 @@ func (t *transporter) SendAppendEntriesRequest(server *raft.Server, peer *raft.P
     end := time.Now()
 
     if err != nil {
-        debugf("Cannot send AppendEntriesRequest to %s: %s", u, err)
+        log.Debugf("Cannot send AppendEntriesRequest to %s: %s", u, err)
         if ok {
             thisFollowerStats.Fail()
         }
@@ -121,13 +122,13 @@ func (t *transporter) SendVoteRequest(server *raft.Server, peer *raft.Peer, req 
     var b bytes.Buffer
     json.NewEncoder(&b).Encode(req)
 
-    u, _ := nameToRaftURL(peer.Name)
-    debugf("Send Vote to %s", u)
+    u, _ := t.peerServer.registry.PeerURL(peer.Name)
+    log.Debugf("Send Vote to %s", u)
 
     resp, httpRequest, err := t.Post(fmt.Sprintf("%s/vote", u), &b)
 
     if err != nil {
-        debugf("Cannot send VoteRequest to %s : %s", u, err)
+        log.Debugf("Cannot send VoteRequest to %s : %s", u, err)
     }
 
     if resp != nil {
@@ -150,14 +151,14 @@ func (t *transporter) SendSnapshotRequest(server *raft.Server, peer *raft.Peer, 
     var b bytes.Buffer
     json.NewEncoder(&b).Encode(req)
 
-    u, _ := nameToRaftURL(peer.Name)
-    debugf("Send Snapshot to %s [Last Term: %d, LastIndex %d]", u,
+    u, _ := t.peerServer.registry.PeerURL(peer.Name)
+    log.Debugf("Send Snapshot to %s [Last Term: %d, LastIndex %d]", u,
         req.LastTerm, req.LastIndex)
 
     resp, httpRequest, err := t.Post(fmt.Sprintf("%s/snapshot", u), &b)
 
     if err != nil {
-        debugf("Cannot send SendSnapshotRequest to %s : %s", u, err)
+        log.Debugf("Cannot send SendSnapshotRequest to %s : %s", u, err)
     }
 
     if resp != nil {
@@ -181,14 +182,14 @@ func (t *transporter) SendSnapshotRecoveryRequest(server *raft.Server, peer *raf
     var b bytes.Buffer
     json.NewEncoder(&b).Encode(req)
 
-    u, _ := nameToRaftURL(peer.Name)
-    debugf("Send SnapshotRecovery to %s [Last Term: %d, LastIndex %d]", u,
+    u, _ := t.peerServer.registry.PeerURL(peer.Name)
+    log.Debugf("Send SnapshotRecovery to %s [Last Term: %d, LastIndex %d]", u,
         req.LastTerm, req.LastIndex)
 
     resp, _, err := t.Post(fmt.Sprintf("%s/snapshotRecovery", u), &b)
 
     if err != nil {
-        debugf("Cannot send SendSnapshotRecoveryRequest to %s : %s", u, err)
+        log.Debugf("Cannot send SendSnapshotRecoveryRequest to %s : %s", u, err)
     }
 
     if resp != nil {

@@ -95,7 +95,7 @@ func (e *etcdServer) CreateHttpHandler(w http.ResponseWriter, req *http.Request)
 
 	value := req.FormValue("value")
 
-	expireTime, err := durationToExpireTime(req.FormValue("ttl"))
+	expireTime, err := store.TTL(req.FormValue("ttl"))
 
 	if err != nil {
 		return etcdErr.NewError(etcdErr.EcodeTTLNaN, "Create", store.UndefIndex, store.UndefTerm)
@@ -124,7 +124,7 @@ func (e *etcdServer) UpdateHttpHandler(w http.ResponseWriter, req *http.Request)
 
 	value := req.Form.Get("value")
 
-	expireTime, err := durationToExpireTime(req.Form.Get("ttl"))
+	expireTime, err := store.TTL(req.Form.Get("ttl"))
 
 	if err != nil {
 		return etcdErr.NewError(etcdErr.EcodeTTLNaN, "Update", store.UndefIndex, store.UndefTerm)
@@ -344,6 +344,16 @@ func (e *etcdServer) GetHttpHandler(w http.ResponseWriter, req *http.Request) er
 
 }
 
+func getNodePath(urlPath string) string {
+	pathPrefixLen := len("/" + version + "/keys")
+	return urlPath[pathPrefixLen:]
+}
+
+
+//--------------------------------------
+// Testing
+//--------------------------------------
+
 // TestHandler
 func TestHttpHandler(w http.ResponseWriter, req *http.Request) {
 	testType := req.URL.Path[len("/test/"):]
@@ -357,4 +367,26 @@ func TestHttpHandler(w http.ResponseWriter, req *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusBadRequest)
+}
+
+func directSet() {
+	c := make(chan bool, 1000)
+	for i := 0; i < 1000; i++ {
+		go send(c)
+	}
+
+	for i := 0; i < 1000; i++ {
+		<-c
+	}
+}
+
+func send(c chan bool) {
+	for i := 0; i < 10; i++ {
+		command := &UpdateCommand{}
+		command.Key = "foo"
+		command.Value = "bar"
+		command.ExpireTime = time.Unix(0, 0)
+		//r.Do(command)
+	}
+	c <- true
 }

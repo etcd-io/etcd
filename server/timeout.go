@@ -1,5 +1,9 @@
 package server
 
+import (
+    "time"
+)
+
 const (
     // The amount of time to elapse without a heartbeat before becoming a candidate.
     ElectionTimeout  = 200 * time.Millisecond

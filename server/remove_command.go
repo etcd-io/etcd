@@ -2,8 +2,9 @@ package server
 
 import (
 	"encoding/binary"
+	"os"
 
-	"github.com/coreos/etcd/store"
+	"github.com/coreos/etcd/log"
 	"github.com/coreos/go-raft"
 )
 
@@ -23,7 +24,6 @@ func (c *RemoveCommand) CommandName() string {
 
 // Remove a server from the cluster
 func (c *RemoveCommand) Apply(server *raft.Server) (interface{}, error) {
-	s, _ := server.StateMachine().(*store.Store)
 	ps, _ := server.Context().(*PeerServer)
 
 	// Remove node from the shared registry.
@@ -50,11 +50,11 @@ func (c *RemoveCommand) Apply(server *raft.Server) (interface{}, error) {
 		// start. It is sure that this node received a new remove
 		// command and need to be removed
 		if server.CommitIndex() > ps.joinIndex && ps.joinIndex != 0 {
-			debugf("server [%s] is removed", server.Name())
+			log.Debugf("server [%s] is removed", server.Name())
 			os.Exit(0)
 		} else {
 			// else ignore remove
-			debugf("ignore previous remove command.")
+			log.Debugf("ignore previous remove command.")
 		}
 	}
 

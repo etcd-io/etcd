@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/coreos/etcd/server"
 	"github.com/coreos/etcd/test"
 	"github.com/coreos/go-etcd/etcd"
 )
@@ -398,8 +399,8 @@ func TestKillLeader(t *testing.T) {
 		totalTime += take
 		avgTime := totalTime / (time.Duration)(i+1)
 
-		fmt.Println("Leader election time is ", take, "with election timeout", ElectionTimeout)
-		fmt.Println("Leader election time average is", avgTime, "with election timeout", ElectionTimeout)
+		fmt.Println("Leader election time is ", take, "with election timeout", server.ElectionTimeout)
+		fmt.Println("Leader election time average is", avgTime, "with election timeout", server.ElectionTimeout)
 		etcds[num], err = os.StartProcess("etcd", argGroup[num], procAttr)
 	}
 	stop <- true
@@ -456,7 +457,7 @@ func TestKillRandom(t *testing.T) {
 			etcds[num].Wait()
 		}
 
-		time.Sleep(ElectionTimeout)
+		time.Sleep(server.ElectionTimeout)
 
 		<-leaderChan
 
