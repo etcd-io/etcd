@@ -173,15 +173,10 @@ func (c *WatchCommand) CommandName() string {
 func (c *WatchCommand) Apply(server *raft.Server) (interface{}, error) {
 	s, _ := server.StateMachine().(*store.Store)
 
+	// TODO: add cancellation
 	eventChan, err := s.Watch(c.Key, c.Recursive, c.SinceIndex, server.CommitIndex(), server.Term())
 
-	if err != nil {
-		return nil, err
-	}
-
-	e := <-eventChan
-
-	return e, nil
+	return eventChan, err
 }
 
 // JoinCommand

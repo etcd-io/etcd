@@ -245,9 +245,10 @@ func (s *Store) Watch(prefix string, recursive bool, sinceIndex uint64, index ui
 	if err != nil {
 		err.Index = index
 		err.Term = term
+		return nil, err
 	}
 
-	return c, err
+	return c, nil
 }
 
 // walk function walks all the nodePath and apply the walkFunc on each directory

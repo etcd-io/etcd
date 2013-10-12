@@ -273,7 +273,6 @@ func (e *etcdServer) StatsHttpHandler(w http.ResponseWriter, req *http.Request) 
 func (e *etcdServer) GetHttpHandler(w http.ResponseWriter, req *http.Request) error {
 	var err error
 	var event interface{}
-
 	r := e.raftServer
 
 	debugf("recv.get[%v] [%v%v]\n", req.RemoteAddr, req.Host, req.URL)
@@ -310,7 +309,37 @@ func (e *etcdServer) GetHttpHandler(w http.ResponseWriter, req *http.Request) er
 			command.SinceIndex = sinceIndex
 		}
 
-		event, err = command.Apply(r.Server)
+		eventChanI, err := command.Apply(r.Server)
+		if err != nil {
+			return err
+		}
+
+		eventChan, _ := eventChanI.(<-chan *store.Event)
+
+		// hijack http
+		hj, _ := w.(http.Hijacker)
+
+		conn, bufrw, err := hj.Hijack()
+
+		if err != nil {
+			return err
+		}
+
+		defer conn.Close()
+
+		closed := detectClose(conn)
+		select {
+		case <-closed:
+		case e := <-eventChan:
+			b, _ := json.Marshal(e)
+			bufrw.WriteString("HTTP/1.1 200 OK\r\n")
+			bufrw.WriteString("Content-Type: text/plain; charset=utf-8\r\n")
+			bufrw.WriteString("Content-Length:")
+			bufrw.WriteString(fmt.Sprintf(" %v\r\n\r\n", len(b)))
+			bufrw.Write(b)
+			bufrw.Flush()
+		}
+		return nil
 
 	} else { //get
 

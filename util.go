@@ -173,6 +173,23 @@ func getNodePath(urlPath string) string {
 }
 
 //--------------------------------------
+// TCP connection
+//--------------------------------------
+func detectClose(c net.Conn) chan bool {
+	b := make([]byte, 1)
+	closed := make(chan bool, 1)
+	go func() {
+		for {
+			_, err := c.Read(b)
+			if err != nil {
+				closed <- true
+			}
+		}
+	}()
+	return closed
+}
+
+//--------------------------------------
 // Log
 //--------------------------------------
 
