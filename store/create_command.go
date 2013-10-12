@@ -1,11 +1,14 @@
-package command
+package store
 
 import (
 	"github.com/coreos/etcd/log"
-	"github.com/coreos/etcd/store"
 	"github.com/coreos/go-raft"
 	"time"
 )
+
+func init() {
+    raft.RegisterCommand(&CreateCommand{})
+}
 
 // Create command
 type CreateCommand struct {
@@ -23,7 +26,7 @@ func (c *CreateCommand) CommandName() string {
 
 // Create node
 func (c *CreateCommand) Apply(server *raft.Server) (interface{}, error) {
-	s, _ := server.StateMachine().(*store.Store)
+	s, _ := server.StateMachine().(*Store)
 
 	e, err := s.Create(c.Key, c.Value, c.IncrementalSuffix, c.Force, c.ExpireTime, server.CommitIndex(), server.Term())
 

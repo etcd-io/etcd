@@ -1,12 +1,15 @@
-package command
+package store
 
 import (
 	"time"
 
 	"github.com/coreos/etcd/log"
-	"github.com/coreos/etcd/store"
 	"github.com/coreos/go-raft"
 )
+
+func init() {
+    raft.RegisterCommand(&UpdateCommand{})
+}
 
 // The UpdateCommand updates the value of a key in the Store.
 type UpdateCommand struct {
@@ -22,7 +25,7 @@ func (c *UpdateCommand) CommandName() string {
 
 // Update node
 func (c *UpdateCommand) Apply(server *raft.Server) (interface{}, error) {
-	s, _ := server.StateMachine().(*store.Store)
+	s, _ := server.StateMachine().(*Store)
 
 	e, err := s.Update(c.Key, c.Value, c.ExpireTime, server.CommitIndex(), server.Term())
 

@@ -1,10 +1,13 @@
-package command
+package store
 
 import (
 	"github.com/coreos/etcd/log"
-	"github.com/coreos/etcd/store"
 	"github.com/coreos/go-raft"
 )
+
+func init() {
+    raft.RegisterCommand(&DeleteCommand{})
+}
 
 // The DeleteCommand removes a key from the Store.
 type DeleteCommand struct {
@@ -19,7 +22,7 @@ func (c *DeleteCommand) CommandName() string {
 
 // Delete the key
 func (c *DeleteCommand) Apply(server *raft.Server) (interface{}, error) {
-	s, _ := server.StateMachine().(*store.Store)
+	s, _ := server.StateMachine().(*Store)
 
 	e, err := s.Delete(c.Key, c.Recursive, server.CommitIndex(), server.Term())
 

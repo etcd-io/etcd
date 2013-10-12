@@ -88,31 +88,9 @@ func (r *raftServer) dispatch(c Command, w http.ResponseWriter, req *http.Reques
 
 func redirect(hostname string, w http.ResponseWriter, req *http.Request) {
 	path := req.URL.Path
-
 	url := hostname + path
-
 	debugf("Redirect to %s", url)
-
 	http.Redirect(w, req, url, http.StatusTemporaryRedirect)
-}
-
-func decodeJsonRequest(req *http.Request, data interface{}) error {
-	decoder := json.NewDecoder(req.Body)
-	if err := decoder.Decode(&data); err != nil && err != io.EOF {
-		warnf("Malformed json request: %v", err)
-		return fmt.Errorf("Malformed json request: %v", err)
-	}
-	return nil
-}
-
-func encodeJsonResponse(w http.ResponseWriter, status int, data interface{}) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-
-	if data != nil {
-		encoder := json.NewEncoder(w)
-		encoder.Encode(data)
-	}
 }
 
 // sanitizeURL will cleanup a host string in the format hostname:port and

@@ -2,8 +2,6 @@ package server
 
 import (
 	"encoding/binary"
-	"fmt"
-	"path"
 
 	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/log"
@@ -42,38 +40,32 @@ func (c *JoinCommand) CommandName() string {
 // Join a server to the cluster
 func (c *JoinCommand) Apply(server *raft.Server) (interface{}, error) {
 	s, _ := server.StateMachine().(*store.Store)
-	r, _ := server.Context().(*RaftServer)
-
-	// check if the join command is from a previous machine, who lost all its previous log.
-	e, _ := s.Get(path.Join("/_etcd/machines", c.Name), false, false, server.CommitIndex(), server.Term())
+	ps, _ := server.Context().(*PeerServer)
 
 	b := make([]byte, 8)
 	binary.PutUvarint(b, server.CommitIndex())
 
-	if e != nil {
+	// Check if the join command is from a previous machine, who lost all its previous log.
+	if _, ok := ps.registry.URL(c.Name); ok {
 		return b, nil
 	}
 
-	// check machine number in the cluster
-	if s.MachineCount() == c.MaxClusterSize {
+	// Check machine number in the cluster
+	if ps.registry.Count() == c.MaxClusterSize {
 		log.Debug("Reject join request from ", c.Name)
 		return []byte{0}, etcdErr.NewError(etcdErr.EcodeNoMoreMachine, "", server.CommitIndex(), server.Term())
 	}
 
-	addNameToURL(c.Name, c.RaftVersion, c.RaftURL, c.EtcdURL)
+	// Add to shared machine registry.
+	ps.registry.Register(c.Name, c.RaftVersion, c.RaftURL, c.EtcdURL, server.CommitIndex(), server.Term())
 
-	// add peer in raft
+	// Add peer in raft
 	err := server.AddPeer(c.Name, "")
 
-	// add machine in etcd storage
-	key := path.Join("_etcd/machines", c.Name)
-	value := fmt.Sprintf("raft=%s&etcd=%s&raftVersion=%s", c.RaftURL, c.EtcdURL, c.RaftVersion)
-	s.Create(key, value, false, false, store.Permanent, server.CommitIndex(), server.Term())
-
-	// add peer stats
-	if c.Name != r.Name() {
-		r.followersStats.Followers[c.Name] = &raftFollowerStats{}
-		r.followersStats.Followers[c.Name].Latency.Minimum = 1 << 63
+	// Add peer stats
+	if c.Name != ps.Name() {
+		ps.followersStats.Followers[c.Name] = &raftFollowerStats{}
+		ps.followersStats.Followers[c.Name].Latency.Minimum = 1 << 63
 	}
 
 	return b, err

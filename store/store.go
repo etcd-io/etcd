@@ -401,16 +401,6 @@ func (s *Store) checkDir(parent *Node, dirName string) (*Node, *etcdErr.Error) {
 	return n, nil
 }
 
-// Returns the number of machines in the cluster.
-func (s *Store) MachineCount() int {
-	e, err := s.Get("/_etcd/machines", false, false, 0, 0)
-	if err != nil {
-		return 0
-	}
-
-	return len(e.KVPairs)
-}
-
 // Save function saves the static state of the store system.
 // Save function will not be able to save the state of watchers.
 // Save function will not save the parent field of the node. Or there will

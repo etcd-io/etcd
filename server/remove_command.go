@@ -25,22 +25,20 @@ func (c *RemoveCommand) CommandName() string {
 // Remove a server from the cluster
 func (c *RemoveCommand) Apply(server *raft.Server) (interface{}, error) {
 	s, _ := server.StateMachine().(*store.Store)
-	r, _ := server.Context().(*RaftServer)
+	ps, _ := server.Context().(*PeerServer)
 
-	// remove machine in etcd storage
-	key := path.Join("_etcd/machines", c.Name)
+	// Remove node from the shared registry.
+	err := ps.registry.Unregister(c.Name, server.CommitIndex(), server.Term())
 
-	_, err := s.Delete(key, false, server.CommitIndex(), server.Term())
-	// delete from stats
-	delete(r.followersStats.Followers, c.Name)
+	// Delete from stats
+	delete(ps.followersStats.Followers, c.Name)
 
 	if err != nil {
 		return []byte{0}, err
 	}
 
-	// remove peer in raft
+	// Remove peer in raft
 	err = server.RemovePeer(c.Name)
-
 	if err != nil {
 		return []byte{0}, err
 	}
@@ -52,7 +50,7 @@ func (c *RemoveCommand) Apply(server *raft.Server) (interface{}, error) {
 		// and the node has sent out a join request in this
 		// start. It is sure that this node received a new remove
 		// command and need to be removed
-		if server.CommitIndex() > r.joinIndex && r.joinIndex != 0 {
+		if server.CommitIndex() > ps.joinIndex && ps.joinIndex != 0 {
 			debugf("server [%s] is removed", server.Name())
 			os.Exit(0)
 		} else {

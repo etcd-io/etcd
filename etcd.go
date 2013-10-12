@@ -85,12 +85,6 @@ func init() {
 	flag.StringVar(&cors, "cors", "", "whitelist origins for cross-origin resource sharing (e.g. '*' or 'http://localhost:8001,etc')")
 }
 
-const (
-	ElectionTimeout  = 200 * time.Millisecond
-	HeartbeatTimeout = 50 * time.Millisecond
-	RetryInterval    = 10
-)
-
 //------------------------------------------------------------------------------
 //
 // Typedefs
@@ -185,16 +179,18 @@ func main() {
 	// Create etcd key-value store
 	etcdStore = store.New()
 
-	// Create etcd and raft server
-	r := newRaftServer(info.Name, info.RaftURL, info.RaftListenHost, &raftTLSConfig, &info.RaftTLS)
-	r.MaxClusterSize = maxClusterSize
-	snapConf = r.newSnapshotConf()
+	// Create a shared node registry.
+	registry := server.NewRegistry()
+
+	// Create peer server.
+	ps := NewPeerServer(info.Name, dirPath, info.RaftURL, info.RaftListenHost, &raftTLSConfig, &info.RaftTLS, registry)
+	ps.MaxClusterSize = maxClusterSize
 
 	s := server.New(info.Name, info.EtcdURL, info.EtcdListenHost, &etcdTLSConfig, &info.EtcdTLS, r)
 	if err := e.AllowOrigins(cors); err != nil {
 		panic(err)
 	}
 
-	r.ListenAndServe()
+	ps.ListenAndServe(snapshot)
 	s.ListenAndServe()
 }

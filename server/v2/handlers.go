@@ -12,10 +12,6 @@ import (
 	"github.com/coreos/go-raft"
 )
 
-//-------------------------------------------------------------------
-// Handlers to handle etcd-store related request via etcd url
-//-------------------------------------------------------------------
-
 func NewEtcdMuxer() *http.ServeMux {
 	// external commands
 	router := mux.NewRouter()

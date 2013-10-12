@@ -4,7 +4,6 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/coreos/etcd/command"
 	"github.com/coreos/go-raft"
 	"github.com/gorilla/mux"
 )
@@ -13,7 +12,7 @@ import (
 type Server interface {
 	CommitIndex() uint64
 	Term() uint64
-	Dispatch(command.Command, http.ResponseWriter, *http.Request)
+	Dispatch(raft.Command, http.ResponseWriter, *http.Request)
 }
 
 // This is the default implementation of the Server interface.
