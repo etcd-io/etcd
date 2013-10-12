@@ -41,57 +41,6 @@ func durationToExpireTime(strDuration string) (time.Time, error) {
 // HTTP Utilities
 //--------------------------------------
 
-func (r *raftServer) dispatch(c Command, w http.ResponseWriter, req *http.Request, toURL func(name string) (string, bool)) error {
-	if r.State() == raft.Leader {
-		if response, err := r.Do(c); err != nil {
-			return err
-		} else {
-			if response == nil {
-				return etcdErr.NewError(300, "Empty response from raft", store.UndefIndex, store.UndefTerm)
-			}
-
-			event, ok := response.(*store.Event)
-			if ok {
-				bytes, err := json.Marshal(event)
-				if err != nil {
-					fmt.Println(err)
-				}
-
-				w.Header().Add("X-Etcd-Index", fmt.Sprint(event.Index))
-				w.Header().Add("X-Etcd-Term", fmt.Sprint(event.Term))
-				w.WriteHeader(http.StatusOK)
-				w.Write(bytes)
-
-				return nil
-			}
-
-			bytes, _ := response.([]byte)
-			w.WriteHeader(http.StatusOK)
-			w.Write(bytes)
-
-			return nil
-		}
-
-	} else {
-		leader := r.Leader()
-		// current no leader
-		if leader == "" {
-			return etcdErr.NewError(300, "", store.UndefIndex, store.UndefTerm)
-		}
-		url, _ := toURL(leader)
-
-		redirect(url, w, req)
-
-		return nil
-	}
-}
-
-func redirect(hostname string, w http.ResponseWriter, req *http.Request) {
-	path := req.URL.Path
-	url := hostname + path
-	debugf("Redirect to %s", url)
-	http.Redirect(w, req, url, http.StatusTemporaryRedirect)
-}
 
 // sanitizeURL will cleanup a host string in the format hostname:port and
 // attach a schema.

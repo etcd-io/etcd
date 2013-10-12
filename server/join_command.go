@@ -19,16 +19,14 @@ type JoinCommand struct {
 	Name           string `json:"name"`
 	RaftURL        string `json:"raftURL"`
 	EtcdURL        string `json:"etcdURL"`
-	MaxClusterSize int    `json:"maxClusterSize"`
 }
 
-func NewJoinCommand(version, name, raftUrl, etcdUrl string, maxClusterSize int) *JoinCommand {
+func NewJoinCommand(version, name, raftUrl, etcdUrl string) *JoinCommand {
 	return &JoinCommand{
 		RaftVersion:    version,
 		Name:           name,
 		RaftURL:        raftUrl,
 		EtcdURL:        etcdUrl,
-		MaxClusterSize: maxClusterSize,
 	}
 }
 
@@ -51,7 +49,7 @@ func (c *JoinCommand) Apply(server *raft.Server) (interface{}, error) {
 	}
 
 	// Check machine number in the cluster
-	if ps.registry.Count() == c.MaxClusterSize {
+	if ps.registry.Count() == ps.MaxClusterSize {
 		log.Debug("Reject join request from ", c.Name)
 		return []byte{0}, etcdErr.NewError(etcdErr.EcodeNoMoreMachine, "", server.CommitIndex(), server.Term())
 	}

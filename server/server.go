@@ -12,6 +12,7 @@ import (
 type Server interface {
 	CommitIndex() uint64
 	Term() uint64
+	URL() string
 	Dispatch(raft.Command, http.ResponseWriter, *http.Request)
 }
 
@@ -49,12 +50,17 @@ func New(name string, urlStr string, listenHost string, tlsConf *TLSConfig, tlsI
 
 // The current Raft committed index.
 func (s *server) CommitIndex() uint64 {
-	return c.raftServer.CommitIndex()
+	return s.raftServer.CommitIndex()
 }
 
 // The current Raft term.
 func (s *server) Term() uint64 {
-	return c.raftServer.Term()
+	return s.raftServer.Term()
+}
+
+// The server URL.
+func (s *server) URL() string {
+	return s.url
 }
 
 func (s *server) installV1() {

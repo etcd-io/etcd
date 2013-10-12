@@ -185,11 +185,14 @@ func main() {
 	// Create peer server.
 	ps := NewPeerServer(info.Name, dirPath, info.RaftURL, info.RaftListenHost, &raftTLSConfig, &info.RaftTLS, registry)
 	ps.MaxClusterSize = maxClusterSize
+	ps.RetryTimes = retryTimes
 
 	s := server.New(info.Name, info.EtcdURL, info.EtcdListenHost, &etcdTLSConfig, &info.EtcdTLS, r)
 	if err := e.AllowOrigins(cors); err != nil {
 		panic(err)
 	}
+
+	ps.SetServer(server)
 
 	ps.ListenAndServe(snapshot)
 	s.ListenAndServe()

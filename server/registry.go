@@ -159,7 +159,7 @@ func (r *Registry) load(name string) {
     }
 
     // Create node.
-    r.nodes[name] := &node{
+    r.nodes[name] = &node{
         url: m["etcd"][0],
         peerURL: m["raft"][0],
         peerVersion: m["raftVersion"][0],

@@ -15,3 +15,10 @@ func decodeJsonRequest(req *http.Request, data interface{}) error {
     return nil
 }
 
+func redirect(hostname string, w http.ResponseWriter, req *http.Request) {
+    path := req.URL.Path
+    url := hostname + path
+    debugf("Redirect to %s", url)
+    http.Redirect(w, req, url, http.StatusTemporaryRedirect)
+}
+
