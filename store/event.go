@@ -77,5 +77,3 @@ func (event *Event) Response() interface{} {
 		return responses
 	}
 }
-
-

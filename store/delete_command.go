@@ -6,7 +6,7 @@ import (
 )
 
 func init() {
-    raft.RegisterCommand(&DeleteCommand{})
+	raft.RegisterCommand(&DeleteCommand{})
 }
 
 // The DeleteCommand removes a key from the Store.

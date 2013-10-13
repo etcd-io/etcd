@@ -8,7 +8,7 @@ import (
 )
 
 func init() {
-    raft.RegisterCommand(&TestAndSetCommand{})
+	raft.RegisterCommand(&TestAndSetCommand{})
 }
 
 // The TestAndSetCommand performs a conditional update on a key in the store.

@@ -32,7 +32,6 @@ func TestSingleNode(t *testing.T) {
 
 	time.Sleep(time.Second)
 
-	etcd.OpenDebug()
 	c := etcd.NewClient()
 
 	c.SyncCluster()
