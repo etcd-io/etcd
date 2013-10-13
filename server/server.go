@@ -6,10 +6,12 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/log"
 	"github.com/coreos/etcd/server/v1"
+	"github.com/coreos/etcd/server/v2"
 	"github.com/coreos/etcd/store"
 	"github.com/coreos/go-raft"
 	"github.com/gorilla/mux"
@@ -44,10 +46,22 @@ func New(name string, urlStr string, listenHost string, tlsConf *TLSConfig, tlsI
 		peerServer: peerServer,
 	}
 
-	// Install the routes for each version of the API.
+	// Install the routes.
+	s.handleFunc("/version", s.GetVersionHandler).Methods("GET")
 	s.installV1()
+	s.installV2()
 
 	return s
+}
+
+// The current state of the server in the cluster.
+func (s *Server) State() string {
+	return s.peerServer.State()
+}
+
+// The node name of the leader in the cluster.
+func (s *Server) Leader() string {
+	return s.peerServer.Leader()
 }
 
 // The current Raft committed index.
@@ -65,6 +79,11 @@ func (s *Server) URL() string {
 	return s.url
 }
 
+// Retrives the Peer URL for a given node name.
+func (s *Server) PeerURL(name string) (string, bool) {
+	return s.registry.PeerURL(name)
+}
+
 // Returns a reference to the Store.
 func (s *Server) Store() *store.Store {
 	return s.store
@@ -77,11 +96,32 @@ func (s *Server) installV1() {
 	s.handleFuncV1("/v1/watch/{key:.*}", v1.WatchKeyHandler).Methods("GET", "POST")
 	s.handleFunc("/v1/leader", s.GetLeaderHandler).Methods("GET")
 	s.handleFunc("/v1/machines", s.GetMachinesHandler).Methods("GET")
-	s.handleFunc("/v1/stats", s.GetStatsHandler).Methods("GET")
+	s.handleFunc("/v1/stats/self", s.GetStatsHandler).Methods("GET")
+	s.handleFunc("/v1/stats/leader", s.GetLeaderStatsHandler).Methods("GET")
+	s.handleFunc("/v1/stats/store", s.GetStoreStatsHandler).Methods("GET")
+}
+
+func (s *Server) installV2() {
+	s.handleFuncV2("/v2/keys/{key:.*}", v2.GetKeyHandler).Methods("GET")
+	s.handleFuncV2("/v2/keys/{key:.*}", v2.CreateKeyHandler).Methods("POST")
+	s.handleFuncV2("/v2/keys/{key:.*}", v2.UpdateKeyHandler).Methods("PUT")
+	s.handleFuncV2("/v2/keys/{key:.*}", v2.DeleteKeyHandler).Methods("DELETE")
+	s.handleFunc("/v2/leader", s.GetLeaderHandler).Methods("GET")
+	s.handleFunc("/v2/machines", s.GetMachinesHandler).Methods("GET")
+	s.handleFunc("/v2/stats/self", s.GetStatsHandler).Methods("GET")
+	s.handleFunc("/v2/stats/leader", s.GetLeaderStatsHandler).Methods("GET")
+	s.handleFunc("/v2/stats/store", s.GetStoreStatsHandler).Methods("GET")
 }
 
 // Adds a v1 server handler to the router.
 func (s *Server) handleFuncV1(path string, f func(http.ResponseWriter, *http.Request, v1.Server) error) *mux.Route {
+	return s.handleFunc(path, func(w http.ResponseWriter, req *http.Request) error {
+		return f(w, req, s)
+	})
+}
+
+// Adds a v2 server handler to the router.
+func (s *Server) handleFuncV2(path string, f func(http.ResponseWriter, *http.Request, v2.Server) error) *mux.Route {
 	return s.handleFunc(path, func(w http.ResponseWriter, req *http.Request) error {
 		return f(w, req, s)
 	})
@@ -181,6 +221,13 @@ func (s *Server) OriginAllowed(origin string) bool {
 	return s.corsOrigins["*"] || s.corsOrigins[origin]
 }
 
+// Handler to return the current version of etcd.
+func (s *Server) GetVersionHandler(w http.ResponseWriter, req *http.Request) error {
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprintf(w, "etcd %s", releaseVersion)
+	return nil
+}
+
 // Handler to return the current leader's raft address
 func (s *Server) GetLeaderHandler(w http.ResponseWriter, req *http.Request) error {
 	leader := s.peerServer.Leader()
@@ -227,4 +274,31 @@ func (s *Server) GetLeaderStatsHandler(w http.ResponseWriter, req *http.Request)
 func (s *Server) GetStoreStatsHandler(w http.ResponseWriter, req *http.Request) error {
   w.Write(s.store.JsonStats())
   return nil
+}
+
+// Executes a speed test to evaluate the performance of update replication.
+func (s *Server) SpeedTestHandler(w http.ResponseWriter, req *http.Request) error {
+	count := 1000
+	c := make(chan bool, count)
+	for i := 0; i < count; i++ {
+		go func() {
+			for j := 0; j < 10; j++ {
+				c := &store.UpdateCommand{
+					Key: "foo",
+					Value: "bar",
+					ExpireTime: time.Unix(0, 0),
+				}
+				s.peerServer.Do(c)
+			}
+			c <- true
+		}()
+	}
+
+	for i := 0; i < count; i++ {
+		<-c
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("speed test success"))
+	return nil
 }
