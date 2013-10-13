@@ -8,7 +8,7 @@ import (
 )
 
 func init() {
-    raft.RegisterCommand(&UpdateCommand{})
+	raft.RegisterCommand(&UpdateCommand{})
 }
 
 // The UpdateCommand updates the value of a key in the Store.

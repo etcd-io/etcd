@@ -14,7 +14,6 @@ import (
 // HTTP Utilities
 //--------------------------------------
 
-
 // sanitizeURL will cleanup a host string in the format hostname:port and
 // attach a schema.
 func sanitizeURL(host string, defaultScheme string) string {
@@ -87,4 +86,3 @@ func runCPUProfile() {
 		}
 	}()
 }
-

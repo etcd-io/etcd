@@ -1,9 +1,9 @@
 package v1
 
 import (
-	"net/http"
 	"github.com/coreos/etcd/store"
 	"github.com/coreos/go-raft"
+	"net/http"
 )
 
 // The Server interface provides all the methods required for the v1 API.

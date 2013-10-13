@@ -1,8 +1,8 @@
 package server
 
 import (
-	"fmt"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
@@ -38,6 +38,7 @@ func New(name string, urlStr string, listenHost string, tlsConf *TLSConfig, tlsI
 			TLSConfig: &tlsConf.Server,
 			Addr:      listenHost,
 		},
+		name:       name,
 		store:      store,
 		registry:   registry,
 		url:        urlStr,
@@ -134,7 +135,7 @@ func (s *Server) handleFunc(path string, f func(http.ResponseWriter, *http.Reque
 	// Wrap the standard HandleFunc interface to pass in the server reference.
 	return r.HandleFunc(path, func(w http.ResponseWriter, req *http.Request) {
 		// Log request.
-		log.Debugf("[recv] %s %s [%s]", req.Method, s.url, req.URL.Path, req.RemoteAddr)
+		log.Debugf("[recv] %s %s %s [%s]", req.Method, s.url, req.URL.Path, req.RemoteAddr)
 
 		// Write CORS header.
 		if s.OriginAllowed("*") {
@@ -242,28 +243,28 @@ func (s *Server) GetLeaderHandler(w http.ResponseWriter, req *http.Request) erro
 
 // Handler to return all the known machines in the current cluster.
 func (s *Server) GetMachinesHandler(w http.ResponseWriter, req *http.Request) error {
-  machines := s.registry.URLs(s.peerServer.Leader(), s.name)
-  w.WriteHeader(http.StatusOK)
-  w.Write([]byte(strings.Join(machines, ", ")))
-  return nil
+	machines := s.registry.URLs(s.peerServer.Leader(), s.name)
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(strings.Join(machines, ", ")))
+	return nil
 }
 
 // Retrieves stats on the Raft server.
 func (s *Server) GetStatsHandler(w http.ResponseWriter, req *http.Request) error {
-  w.Write(s.peerServer.Stats())
-  return nil
+	w.Write(s.peerServer.Stats())
+	return nil
 }
 
 // Retrieves stats on the leader.
 func (s *Server) GetLeaderStatsHandler(w http.ResponseWriter, req *http.Request) error {
 	if s.peerServer.State() == raft.Leader {
-	  w.Write(s.peerServer.PeerStats())
-	  return nil
+		w.Write(s.peerServer.PeerStats())
+		return nil
 	}
 
 	leader := s.peerServer.Leader()
 	if leader == "" {
-	return etcdErr.NewError(300, "", store.UndefIndex, store.UndefTerm)
+		return etcdErr.NewError(300, "", store.UndefIndex, store.UndefTerm)
 	}
 	hostname, _ := s.registry.URL(leader)
 	redirect(hostname, w, req)
@@ -272,8 +273,8 @@ func (s *Server) GetLeaderStatsHandler(w http.ResponseWriter, req *http.Request)
 
 // Retrieves stats on the leader.
 func (s *Server) GetStoreStatsHandler(w http.ResponseWriter, req *http.Request) error {
-  w.Write(s.store.JsonStats())
-  return nil
+	w.Write(s.store.JsonStats())
+	return nil
 }
 
 // Executes a speed test to evaluate the performance of update replication.
@@ -284,8 +285,8 @@ func (s *Server) SpeedTestHandler(w http.ResponseWriter, req *http.Request) erro
 		go func() {
 			for j := 0; j < 10; j++ {
 				c := &store.UpdateCommand{
-					Key: "foo",
-					Value: "bar",
+					Key:        "foo",
+					Value:      "bar",
 					ExpireTime: time.Unix(0, 0),
 				}
 				s.peerServer.Do(c)
