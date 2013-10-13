@@ -410,7 +410,7 @@ func (s *PeerServer) joinByMachine(server *raft.Server, machine string, scheme s
 	versionURL := url.URL{Host: machine, Scheme: scheme, Path: "/version"}
 	version, err := getVersion(t, versionURL)
 	if err != nil {
-		return fmt.Errorf("Unable to join: %v", err)
+		return fmt.Errorf("Error during join version check: %v", err)
 	}
 
 	// TODO: versioning of the internal protocol. See:
@@ -442,12 +442,9 @@ func (s *PeerServer) joinByMachine(server *raft.Server, machine string, scheme s
 				return nil
 			}
 			if resp.StatusCode == http.StatusTemporaryRedirect {
-
 				address := resp.Header.Get("Location")
 				log.Debugf("Send Join Request to %s", address)
-
 				json.NewEncoder(&b).Encode(NewJoinCommand(PeerVersion, server.Name(), s.url, s.server.URL()))
-
 				resp, req, err = t.Post(address, &b)
 
 			} else if resp.StatusCode == http.StatusBadRequest {
@@ -538,6 +535,7 @@ func (s *PeerServer) dispatch(c raft.Command, w http.ResponseWriter, req *http.R
 		}
 		url, _ := s.registry.PeerURL(leader)
 
+		log.Debugf("Not leader; Current leader: %s; redirect: %s", leader, url)
 		redirect(url, w, req)
 
 		return nil

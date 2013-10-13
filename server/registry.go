@@ -38,14 +38,16 @@ func NewRegistry(s *store.Store) *Registry {
 }
 
 // Adds a node to the registry.
-func (r *Registry) Register(name string, peerVersion string, peerURL string, url string, commitIndex uint64, term uint64) {
+func (r *Registry) Register(name string, peerVersion string, peerURL string, url string, commitIndex uint64, term uint64) error {
 	r.Lock()
 	defer r.Unlock()
 
 	// Write data to store.
 	key := path.Join(RegistryKey, name)
 	value := fmt.Sprintf("raft=%s&etcd=%s&raftVersion=%s", peerURL, url, peerVersion)
-	r.store.Create(key, value, false, false, store.Permanent, commitIndex, term)
+	_, err := r.store.Create(key, value, false, false, store.Permanent, commitIndex, term)
+	log.Debugf("Register: %s (%v)", name, err)
+	return err
 }
 
 // Removes a node from the registry.
@@ -53,8 +55,12 @@ func (r *Registry) Unregister(name string, commitIndex uint64, term uint64) erro
 	r.Lock()
 	defer r.Unlock()
 
+	// Remove from cache.
+	delete(r.nodes, name)
+
 	// Remove the key from the store.
 	_, err := r.store.Delete(path.Join(RegistryKey, name), false, commitIndex, term)
+	log.Debugf("Unregister: %s (%v)", name, err)
 	return err
 }
 

@@ -193,7 +193,13 @@ func (s *Server) Dispatch(c raft.Command, w http.ResponseWriter, req *http.Reque
 			return etcdErr.NewError(300, "", store.UndefIndex, store.UndefTerm)
 		}
 
-		url, _ := s.registry.PeerURL(leader)
+		var url string
+		switch c.(type) {
+		case *JoinCommand, *RemoveCommand:
+			url, _ = s.registry.PeerURL(leader)
+		default:
+			url, _ = s.registry.URL(leader)
+		}
 		redirect(url, w, req)
 
 		return nil

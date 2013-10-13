@@ -21,7 +21,7 @@ import (
 func TestSingleNode(t *testing.T) {
 	procAttr := new(os.ProcAttr)
 	procAttr.Files = []*os.File{nil, os.Stdout, os.Stderr}
-	args := []string{"etcd", "-vv", "-n=node1", "-f", "-d=/tmp/node1"}
+	args := []string{"etcd", "-n=node1", "-f", "-d=/tmp/node1"}
 
 	process, err := os.StartProcess("etcd", args, procAttr)
 	if err != nil {
@@ -249,6 +249,7 @@ func TestMultiNodeKillAllAndRecovery(t *testing.T) {
 
 	clusterSize := 5
 	argGroup, etcds, err := test.CreateCluster(clusterSize, procAttr, false)
+	defer test.DestroyCluster(etcds)
 
 	if err != nil {
 		t.Fatal("cannot create cluster")
@@ -300,9 +301,6 @@ func TestMultiNodeKillAllAndRecovery(t *testing.T) {
 	if result.Index != 18 {
 		t.Fatalf("recovery failed! [%d/18]", result.Index)
 	}
-
-	// kill all
-	test.DestroyCluster(etcds)
 }
 
 // Create a five nodes
@@ -479,6 +477,7 @@ func TestRemoveNode(t *testing.T) {
 
 	clusterSize := 3
 	argGroup, etcds, _ := test.CreateCluster(clusterSize, procAttr, false)
+	defer test.DestroyCluster(etcds)
 
 	time.Sleep(time.Second)
 
@@ -572,8 +571,6 @@ func TestRemoveNode(t *testing.T) {
 			}
 		}
 	}
-	test.DestroyCluster(etcds)
-
 }
 
 func templateBenchmarkEtcdDirectCall(b *testing.B, tls bool) {
