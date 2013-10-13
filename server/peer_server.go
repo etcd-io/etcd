@@ -116,7 +116,7 @@ func (s *PeerServer) ListenAndServe(snapshot bool, cluster []string) {
 
     } else {
         // Rejoin the previous cluster
-        cluster = s.registry.PeerURLs()
+        cluster = s.registry.PeerURLs(s.Leader(), s.name)
         for i := 0; i < len(cluster); i++ {
             u, err := url.Parse(cluster[i])
             if err != nil {

@@ -4,8 +4,10 @@ import (
     "fmt"
     "net/url"
     "path"
+    "strings"
     "sync"
 
+    "github.com/coreos/etcd/log"
     "github.com/coreos/etcd/store"
 )
 
@@ -84,27 +86,33 @@ func (r *Registry) url(name string) (string, bool) {
 }
 
 // Retrieves the URLs for all nodes.
-func (r *Registry) URLs() []string {
+func (r *Registry) URLs(leaderName, selfName string) []string {
     r.Lock()
     defer r.Unlock()
 
-    // Retrieve a list of all nodes.
-    e, err := r.store.Get(RegistryKey, false, false, 0, 0)
-    if err != nil {
-        return make([]string, 0)
+    // Build list including the leader and self.
+    urls := make([]string, 0)
+    if url, _ := r.url(leaderName); len(url) > 0 {
+        urls = append(urls, url)
+    }
+    if url, _ := r.url(selfName); len(url) > 0 {
+        urls = append(urls, url)
     }
 
-    // Lookup the URL for each one.
-    urls := make([]string, 0)
-    for _, pair := range e.KVPairs {
-        if url, ok := r.url(pair.Key); ok {
-            urls = append(urls, url)
+    // Retrieve a list of all nodes.
+    if e, _ := r.store.Get(RegistryKey, false, false, 0, 0); e != nil {
+        // Lookup the URL for each one.
+        for _, pair := range e.KVPairs {
+            if url, _ := r.url(pair.Key); len(url) > 0 {
+                urls = append(urls, url)
+            }
         }
     }
 
+    log.Infof("URLs: %s / %s (%s", leaderName, selfName, strings.Join(urls, ","))
+
     return urls
 }
-
 
 // Retrieves the peer URL for a given node by name.
 func (r *Registry) PeerURL(name string) (string, bool) {
@@ -126,23 +134,30 @@ func (r *Registry) peerURL(name string) (string, bool) {
 }
 
 // Retrieves the peer URLs for all nodes.
-func (r *Registry) PeerURLs() []string {
+func (r *Registry) PeerURLs(leaderName, selfName string) []string {
     r.Lock()
     defer r.Unlock()
 
-    // Retrieve a list of all nodes.
-    e, err := r.store.Get(RegistryKey, false, false, 0, 0)
-    if err != nil {
-        return make([]string, 0)
+    // Build list including the leader and self.
+    urls := make([]string, 0)
+    if url, _ := r.peerURL(leaderName); len(url) > 0 {
+        urls = append(urls, url)
+    }
+    if url, _ := r.peerURL(selfName); len(url) > 0 {
+        urls = append(urls, url)
     }
 
-    // Lookup the URL for each one.
-    urls := make([]string, 0)
-    for _, pair := range e.KVPairs {
-        if url, ok := r.peerURL(pair.Key); ok {
-            urls = append(urls, url)
+    // Retrieve a list of all nodes.
+    if e, _ := r.store.Get(RegistryKey, false, false, 0, 0); e != nil {
+        // Lookup the URL for each one.
+        for _, pair := range e.KVPairs {
+            if url, _ := r.peerURL(pair.Key); len(url) > 0 {
+                urls = append(urls, url)
+            }
         }
     }
+
+    log.Infof("PeerURLs: %s / %s (%s", leaderName, selfName, strings.Join(urls, ","))
 
     return urls
 }

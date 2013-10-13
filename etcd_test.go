@@ -41,7 +41,7 @@ func TestSingleNode(t *testing.T) {
 
 	if err != nil || result.Key != "/foo" || result.Value != "bar" || result.TTL < 95 {
 		if err != nil {
-			t.Fatal(err)
+			t.Fatal("Set 1: ", err)
 		}
 
 		t.Fatalf("Set 1 failed with %s %s %v", result.Key, result.Value, result.TTL)
@@ -53,7 +53,7 @@ func TestSingleNode(t *testing.T) {
 
 	if err != nil || result.Key != "/foo" || result.Value != "bar" || result.PrevValue != "bar" || result.TTL != 100 {
 		if err != nil {
-			t.Fatal(err)
+			t.Fatal("Set 2: ", err)
 		}
 		t.Fatalf("Set 2 failed with %s %s %v", result.Key, result.Value, result.TTL)
 	}
@@ -295,7 +295,7 @@ func TestMultiNodeKillAllAndRecovery(t *testing.T) {
 	result, err := c.Set("foo", "bar", 0)
 
 	if err != nil {
-		panic(err)
+		t.Fatalf("Recovery error: %s", err)
 	}
 
 	if result.Index != 18 {

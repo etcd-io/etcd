@@ -18,9 +18,9 @@ import (
 // This is the default implementation of the Server interface.
 type Server struct {
 	http.Server
-	raftServer  *raft.Server
-    registry    *Registry
-    store       *store.Store
+	peerServer  *PeerServer
+	registry    *Registry
+	store       *store.Store
 	name        string
 	url         string
 	tlsConf     *TLSConfig
@@ -29,7 +29,7 @@ type Server struct {
 }
 
 // Creates a new Server.
-func New(name string, urlStr string, listenHost string, tlsConf *TLSConfig, tlsInfo *TLSInfo, raftServer *raft.Server, registry *Registry, store *store.Store) *Server {
+func New(name string, urlStr string, listenHost string, tlsConf *TLSConfig, tlsInfo *TLSInfo, peerServer *PeerServer, registry *Registry, store *store.Store) *Server {
 	s := &Server{
 		Server: http.Server{
 			Handler:   mux.NewRouter(),
@@ -41,7 +41,7 @@ func New(name string, urlStr string, listenHost string, tlsConf *TLSConfig, tlsI
 		url:        urlStr,
 		tlsConf:    tlsConf,
 		tlsInfo:    tlsInfo,
-		raftServer: raftServer,
+		peerServer: peerServer,
 	}
 
 	// Install the routes for each version of the API.
@@ -52,12 +52,12 @@ func New(name string, urlStr string, listenHost string, tlsConf *TLSConfig, tlsI
 
 // The current Raft committed index.
 func (s *Server) CommitIndex() uint64 {
-	return s.raftServer.CommitIndex()
+	return s.peerServer.CommitIndex()
 }
 
 // The current Raft term.
 func (s *Server) Term() uint64 {
-	return s.raftServer.Term()
+	return s.peerServer.Term()
 }
 
 // The server URL.
@@ -74,19 +74,21 @@ func (s *Server) installV1() {
 	s.handleFuncV1("/v1/keys/{key:.*}", v1.GetKeyHandler).Methods("GET")
 	s.handleFuncV1("/v1/keys/{key:.*}", v1.SetKeyHandler).Methods("POST", "PUT")
 	s.handleFuncV1("/v1/keys/{key:.*}", v1.DeleteKeyHandler).Methods("DELETE")
-
 	s.handleFuncV1("/v1/watch/{key:.*}", v1.WatchKeyHandler).Methods("GET", "POST")
+	s.handleFunc("/v1/leader", s.GetLeaderHandler).Methods("GET")
+	s.handleFunc("/v1/machines", s.GetMachinesHandler).Methods("GET")
+	s.handleFunc("/v1/stats", s.GetStatsHandler).Methods("GET")
 }
 
 // Adds a v1 server handler to the router.
 func (s *Server) handleFuncV1(path string, f func(http.ResponseWriter, *http.Request, v1.Server) error) *mux.Route {
-	return s.handleFunc(path, func(w http.ResponseWriter, req *http.Request, s *Server) error {
+	return s.handleFunc(path, func(w http.ResponseWriter, req *http.Request) error {
 		return f(w, req, s)
 	})
 }
 
 // Adds a server handler to the router.
-func (s *Server) handleFunc(path string, f func(http.ResponseWriter, *http.Request, *Server) error) *mux.Route {
+func (s *Server) handleFunc(path string, f func(http.ResponseWriter, *http.Request) error) *mux.Route {
 	r := s.Handler.(*mux.Router)
 
 	// Wrap the standard HandleFunc interface to pass in the server reference.
@@ -102,7 +104,7 @@ func (s *Server) handleFunc(path string, f func(http.ResponseWriter, *http.Reque
 		}
 
 		// Execute handler function and return error if necessary.
-		if err := f(w, req, s); err != nil {
+		if err := f(w, req); err != nil {
 			if etcdErr, ok := err.(*etcdErr.Error); ok {
 				log.Debug("Return error: ", (*etcdErr).Error())
 				etcdErr.Write(w)
@@ -125,8 +127,8 @@ func (s *Server) ListenAndServe() {
 }
 
 func (s *Server) Dispatch(c raft.Command, w http.ResponseWriter, req *http.Request) error {
-	if s.raftServer.State() == raft.Leader {
-		event, err := s.raftServer.Do(c)
+	if s.peerServer.State() == raft.Leader {
+		event, err := s.peerServer.Do(c)
 		if err != nil {
 			return err
 		}
@@ -143,7 +145,7 @@ func (s *Server) Dispatch(c raft.Command, w http.ResponseWriter, req *http.Reque
 		return nil
 
 	} else {
-		leader := s.raftServer.Leader()
+		leader := s.peerServer.Leader()
 
 		// No leader available.
 		if leader == "" {
@@ -177,4 +179,52 @@ func (s *Server) AllowOrigins(origins string) error {
 // Determines whether the server will allow a given CORS origin.
 func (s *Server) OriginAllowed(origin string) bool {
 	return s.corsOrigins["*"] || s.corsOrigins[origin]
+}
+
+// Handler to return the current leader's raft address
+func (s *Server) GetLeaderHandler(w http.ResponseWriter, req *http.Request) error {
+	leader := s.peerServer.Leader()
+	if leader == "" {
+		return etcdErr.NewError(etcdErr.EcodeLeaderElect, "", store.UndefIndex, store.UndefTerm)
+	}
+	w.WriteHeader(http.StatusOK)
+	url, _ := s.registry.PeerURL(leader)
+	w.Write([]byte(url))
+	return nil
+}
+
+// Handler to return all the known machines in the current cluster.
+func (s *Server) GetMachinesHandler(w http.ResponseWriter, req *http.Request) error {
+  machines := s.registry.URLs(s.peerServer.Leader(), s.name)
+  w.WriteHeader(http.StatusOK)
+  w.Write([]byte(strings.Join(machines, ", ")))
+  return nil
+}
+
+// Retrieves stats on the Raft server.
+func (s *Server) GetStatsHandler(w http.ResponseWriter, req *http.Request) error {
+  w.Write(s.peerServer.Stats())
+  return nil
+}
+
+// Retrieves stats on the leader.
+func (s *Server) GetLeaderStatsHandler(w http.ResponseWriter, req *http.Request) error {
+	if s.peerServer.State() == raft.Leader {
+	  w.Write(s.peerServer.PeerStats())
+	  return nil
+	}
+
+	leader := s.peerServer.Leader()
+	if leader == "" {
+	return etcdErr.NewError(300, "", store.UndefIndex, store.UndefTerm)
+	}
+	hostname, _ := s.registry.URL(leader)
+	redirect(hostname, w, req)
+	return nil
+}
+
+// Retrieves stats on the leader.
+func (s *Server) GetStoreStatsHandler(w http.ResponseWriter, req *http.Request) error {
+  w.Write(s.store.JsonStats())
+  return nil
 }

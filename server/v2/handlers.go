@@ -202,66 +202,10 @@ func (e *etcdServer) dispatchEtcdCommand(c Command, w http.ResponseWriter, req *
 // still dispatch to the leader
 //--------------------------------------
 
-// Handler to return the current leader's raft address
-func (e *etcdServer) LeaderHttpHandler(w http.ResponseWriter, req *http.Request) error {
-	r := e.raftServer
-
-	leader := r.Leader()
-
-	if leader != "" {
-		w.WriteHeader(http.StatusOK)
-		raftURL, _ := nameToRaftURL(leader)
-		w.Write([]byte(raftURL))
-
-		return nil
-	} else {
-		return etcdErr.NewError(etcdErr.EcodeLeaderElect, "", store.UndefIndex, store.UndefTerm)
-	}
-}
-
-// Handler to return all the known machines in the current cluster
-func (e *etcdServer) MachinesHttpHandler(w http.ResponseWriter, req *http.Request) error {
-	machines := e.raftServer.getMachines(nameToEtcdURL)
-
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(strings.Join(machines, ", ")))
-
-	return nil
-}
-
 // Handler to return the current version of etcd
 func (e *etcdServer) VersionHttpHandler(w http.ResponseWriter, req *http.Request) error {
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprintf(w, "etcd %s", releaseVersion)
-
-	return nil
-}
-
-// Handler to return the basic stats of etcd
-func (e *etcdServer) StatsHttpHandler(w http.ResponseWriter, req *http.Request) error {
-	option := req.URL.Path[len("/v1/stats/"):]
-	w.WriteHeader(http.StatusOK)
-
-	r := e.raftServer
-
-	switch option {
-	case "self":
-		w.Write(r.Stats())
-	case "leader":
-		if r.State() == raft.Leader {
-			w.Write(r.PeerStats())
-		} else {
-			leader := r.Leader()
-			// current no leader
-			if leader == "" {
-				return etcdErr.NewError(300, "", store.UndefIndex, store.UndefTerm)
-			}
-			hostname, _ := nameToEtcdURL(leader)
-			redirect(hostname, w, req)
-		}
-	case "store":
-		w.Write(etcdStore.JsonStats())
-	}
 
 	return nil
 }

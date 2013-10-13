@@ -177,7 +177,7 @@ func main() {
 	ps.MaxClusterSize = maxClusterSize
 	ps.RetryTimes = retryTimes
 
-	s := server.New(info.Name, info.EtcdURL, info.EtcdListenHost, &etcdTLSConfig, &info.EtcdTLS, ps.Server, registry, store)
+	s := server.New(info.Name, info.EtcdURL, info.EtcdListenHost, &etcdTLSConfig, &info.EtcdTLS, ps, registry, store)
 	if err := s.AllowOrigins(cors); err != nil {
 		panic(err)
 	}
