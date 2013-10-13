@@ -245,9 +245,10 @@ func (s *Store) Watch(prefix string, recursive bool, sinceIndex uint64, index ui
 	if err != nil {
 		err.Index = index
 		err.Term = term
+		return nil, err
 	}
 
-	return c, err
+	return c, nil
 }
 
 // walk function walks all the nodePath and apply the walkFunc on each directory
@@ -275,24 +276,26 @@ func (s *Store) walk(nodePath string, walkFunc func(prev *Node, component string
 func (s *Store) internalCreate(nodePath string, value string, incrementalSuffix bool, force bool,
 	expireTime time.Time, index uint64, term uint64, action string) (*Event, error) {
 
+	s.Index, s.Term = index, term
+
 	if incrementalSuffix { // append unique incremental suffix to the node path
 		nodePath += "_" + strconv.FormatUint(index, 10)
 	}
 
 	nodePath = path.Clean(path.Join("/", nodePath))
 
-	// make sure we can create the node
-	_, err := s.internalGet(nodePath, index, term)
+	// // make sure we can create the node
+	// _, err := s.internalGet(nodePath, index, term)
 
-	if err == nil && !force { // key already exists
-		s.Stats.Inc(SetFail)
-		return nil, etcdErr.NewError(etcdErr.EcodeNodeExist, nodePath, index, term)
-	}
+	// if err == nil && !force { // key already exists
+	// 	s.Stats.Inc(SetFail)
+	// 	return nil, etcdErr.NewError(etcdErr.EcodeNodeExist, nodePath, index, term)
+	// }
 
-	if err != nil && err.ErrorCode == 104 { // we cannot create the key due to meet a file while walking
-		s.Stats.Inc(SetFail)
-		return nil, err
-	}
+	// if err != nil && err.ErrorCode == 104 { // we cannot create the key due to meet a file while walking
+	// 	s.Stats.Inc(SetFail)
+	// 	return nil, err
+	// }
 
 	dir, newNodeName := path.Split(nodePath)
 
@@ -301,35 +304,37 @@ func (s *Store) internalCreate(nodePath string, value string, incrementalSuffix 
 
 	if err != nil {
 		s.Stats.Inc(SetFail)
+		err.Index, err.Term = s.Index, s.Term
 		return nil, err
 	}
 
 	e := newEvent(action, nodePath, s.Index, s.Term)
 
-	if force { // force will try to replace a existing file
-		n, _ := d.GetChild(newNodeName)
-		if n != nil {
+	n, _ := d.GetChild(newNodeName)
+
+	// force will try to replace a existing file
+	if n != nil {
+		if force {
 			if n.IsDir() {
 				return nil, etcdErr.NewError(etcdErr.EcodeNotFile, nodePath, index, term)
 			}
 			e.PrevValue, _ = n.Read()
 
 			n.Remove(false, nil)
-
+		} else {
+			return nil, etcdErr.NewError(etcdErr.EcodeNodeExist, nodePath, index, term)
 		}
 	}
-
-	var n *Node
 
 	if len(value) != 0 { // create file
 		e.Value = value
 
-		n = newKV(nodePath, value, s.Index, s.Term, d, "", expireTime)
+		n = newKV(nodePath, value, index, term, d, "", expireTime)
 
 	} else { // create directory
 		e.Dir = true
 
-		n = newDir(nodePath, s.Index, s.Term, d, "", expireTime)
+		n = newDir(nodePath, index, term, d, "", expireTime)
 
 	}
 
@@ -363,8 +368,7 @@ func (s *Store) internalGet(nodePath string, index uint64, term uint64) (*Node, 
 	walkFunc := func(parent *Node, name string) (*Node, *etcdErr.Error) {
 
 		if !parent.IsDir() {
-			err := etcdErr.NewError(etcdErr.EcodeNotDir, parent.Path, index, term)
-			return nil, err
+			return nil, etcdErr.NewError(etcdErr.EcodeNotDir, parent.Path, index, term)
 		}
 
 		child, ok := parent.Children[name]
@@ -388,10 +392,14 @@ func (s *Store) internalGet(nodePath string, index uint64, term uint64) (*Node, 
 // If it does not exist, this function will create a new directory and return the pointer to that node.
 // If it is a file, this function will return error.
 func (s *Store) checkDir(parent *Node, dirName string) (*Node, *etcdErr.Error) {
-	subDir, ok := parent.Children[dirName]
+	node, ok := parent.Children[dirName]
 
 	if ok {
-		return subDir, nil
+		if node.IsDir() {
+			return node, nil
+		}
+
+		return nil, etcdErr.NewError(etcdErr.EcodeNotDir, parent.Path, UndefIndex, UndefTerm)
 	}
 
 	n := newDir(path.Join(parent.Path, dirName), s.Index, s.Term, parent, parent.ACL, Permanent)

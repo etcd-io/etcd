@@ -370,11 +370,19 @@ func TestWatch(t *testing.T) {
 	}
 
 	// watch expire
-	s.Create("/foo/foo/boo", "foo", false, false, time.Now().Add(time.Second*1), 9, 1)
-	c, _ = s.Watch("/foo", true, 0, 9, 1)
+	_, err := s.Create("/foo/foo/boo", "foo", false, false, time.Now().Add(time.Second*1), 9, 1)
+	if err != nil {
+		t.Fatal("Create %s failed", "/foo/foo/boo")
+	}
+
+	c, err = s.Watch("/foo", true, 0, 9, 1)
+	if err != nil {
+		t.Fatal("Watch %s error", "/foo/foo/boo")
+	}
+
 	time.Sleep(time.Second * 2)
 	e = nonblockingRetrive(c)
-	if e.Key != "/foo/foo/boo" || e.Action != Expire || e.Index != 9 {
+	if e == nil || e.Key != "/foo/foo/boo" || e.Action != Expire || e.Index != 9 {
 		t.Fatal("watch for Expiration of Create() subdirectory fails ", e)
 	}
 

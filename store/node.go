@@ -301,7 +301,6 @@ func (n *Node) Expire(s *Store) {
 				n.Remove(true, nil)
 				s.Stats.Inc(ExpireCount)
 			}
-
 			return
 
 		// if stopped, return
