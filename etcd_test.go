@@ -21,7 +21,7 @@ import (
 func TestSingleNode(t *testing.T) {
 	procAttr := new(os.ProcAttr)
 	procAttr.Files = []*os.File{nil, os.Stdout, os.Stderr}
-	args := []string{"etcd", "-n=node1", "-f", "-d=/tmp/node1"}
+	args := []string{"etcd", "-vv", "-n=node1", "-f", "-d=/tmp/node1"}
 
 	process, err := os.StartProcess("etcd", args, procAttr)
 	if err != nil {
@@ -32,6 +32,7 @@ func TestSingleNode(t *testing.T) {
 
 	time.Sleep(time.Second)
 
+	etcd.OpenDebug()
 	c := etcd.NewClient()
 
 	c.SyncCluster()
