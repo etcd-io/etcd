@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/url"
 	"path"
+	"path/filepath"
 	"strings"
 	"sync"
 
@@ -95,21 +96,19 @@ func (r *Registry) URLs(leaderName, selfName string) []string {
 	if url, _ := r.url(leaderName); len(url) > 0 {
 		urls = append(urls, url)
 	}
-	if url, _ := r.url(selfName); len(url) > 0 {
-		urls = append(urls, url)
-	}
 
 	// Retrieve a list of all nodes.
 	if e, _ := r.store.Get(RegistryKey, false, false, 0, 0); e != nil {
 		// Lookup the URL for each one.
 		for _, pair := range e.KVPairs {
-			if url, _ := r.url(pair.Key); len(url) > 0 && pair.Key != leaderName && pair.Key != selfName {
+			_, name := filepath.Split(pair.Key)
+			if url, _ := r.url(name); len(url) > 0 && name != leaderName {
 				urls = append(urls, url)
 			}
 		}
 	}
 
-	log.Infof("URLs: %s / %s (%s", leaderName, selfName, strings.Join(urls, ","))
+	log.Infof("URLs: %s / %s (%s)", leaderName, selfName, strings.Join(urls, ","))
 
 	return urls
 }
@@ -143,21 +142,19 @@ func (r *Registry) PeerURLs(leaderName, selfName string) []string {
 	if url, _ := r.peerURL(leaderName); len(url) > 0 {
 		urls = append(urls, url)
 	}
-	if url, _ := r.peerURL(selfName); len(url) > 0 {
-		urls = append(urls, url)
-	}
 
 	// Retrieve a list of all nodes.
 	if e, _ := r.store.Get(RegistryKey, false, false, 0, 0); e != nil {
 		// Lookup the URL for each one.
 		for _, pair := range e.KVPairs {
-			if url, _ := r.peerURL(pair.Key); len(url) > 0 && pair.Key != leaderName && pair.Key != selfName {
+			_, name := filepath.Split(pair.Key)
+			if url, _ := r.peerURL(name); len(url) > 0 && name != leaderName {
 				urls = append(urls, url)
 			}
 		}
 	}
 
-	log.Infof("PeerURLs: %s / %s (%s", leaderName, selfName, strings.Join(urls, ","))
+	log.Infof("PeerURLs: %s / %s (%s)", leaderName, selfName, strings.Join(urls, ","))
 
 	return urls
 }
