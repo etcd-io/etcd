@@ -183,6 +183,30 @@ func encodeExtensionMap(m map[int32]Extension) error {
 	return nil
 }
 
+func sizeExtensionMap(m map[int32]Extension) (n int) {
+	for _, e := range m {
+		if e.value == nil || e.desc == nil {
+			// Extension is only in its encoded form.
+			n += len(e.enc)
+			continue
+		}
+
+		// We don't skip extensions that have an encoded form set,
+		// because the extension value may have been mutated after
+		// the last time this function was called.
+
+		et := reflect.TypeOf(e.desc.ExtensionType)
+		props := extensionProperties(e.desc)
+
+		// If e.value has type T, the encoder expects a *struct{ X T }.
+		// Pass a *T with a zero field and hope it all works out.
+		x := reflect.New(et)
+		x.Elem().Set(reflect.ValueOf(e.value))
+		n += props.size(props, toStructPointer(x))
+	}
+	return
+}
+
 // HasExtension returns whether the given extension is present in pb.
 func HasExtension(pb extendableProto, extension *ExtensionDesc) bool {
 	// TODO: Check types, field numbers, etc.?
