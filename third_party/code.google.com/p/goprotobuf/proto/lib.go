@@ -223,6 +223,7 @@ type Stats struct {
 	Decode  uint64 // number of decodes
 	Chit    uint64 // number of cache hits
 	Cmiss   uint64 // number of cache misses
+	Size    uint64 // number of sizes
 }
 
 // Set to true to enable stats collection.
@@ -403,9 +404,7 @@ func EnumName(m map[int32]string, v int32) string {
 // names to its int values, and a byte buffer containing the JSON-encoded
 // value, it returns an int32 that can be cast to the enum type by the caller.
 //
-// The function can deal with older JSON representations, which represented
-// enums directly by their int32 values, or with newer representations, which
-// use the symbolic name as a string.
+// The function can deal with both JSON representations, numeric and symbolic.
 func UnmarshalJSONEnum(m map[string]int32, data []byte, enumName string) (int32, error) {
 	if data[0] == '"' {
 		// New style: enums are strings.
