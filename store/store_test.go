@@ -21,6 +21,17 @@ func TestCreateAndGet(t *testing.T) {
 
 	s.Delete("/foobar", true, 1, 1)
 
+	s.Create("/foobar/foo", "bar", false, false, Permanent, 1, 1)
+
+	// already exist, create should fail
+	_, err = s.Create("/foobar", "bar", false, false, Permanent, 1, 1)
+
+	if err == nil {
+		t.Fatal("Create should fail")
+	}
+
+	s.Delete("/foobar", true, 1, 1)
+
 	// this should create successfully
 	createAndGet(s, "/foobar", t)
 	createAndGet(s, "/foo/bar", t)
@@ -365,7 +376,7 @@ func TestWatch(t *testing.T) {
 	c, _ = s.Watch("/foo", true, 0, 7, 1)
 	s.Delete("/foo/foo/boo", false, 8, 1)
 	e = nonblockingRetrive(c)
-	if e.Key != "/foo/foo/boo" || e.Action != Delete {
+	if e == nil || e.Key != "/foo/foo/boo" || e.Action != Delete {
 		t.Fatal("watch for Delete subdirectory fails")
 	}
 
