@@ -7,7 +7,7 @@ import (
 )
 
 func init() {
-    raft.RegisterCommand(&CreateCommand{})
+	raft.RegisterCommand(&CreateCommand{})
 }
 
 // Create command

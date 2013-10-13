@@ -14,18 +14,18 @@ func init() {
 
 // The JoinCommand adds a node to the cluster.
 type JoinCommand struct {
-	RaftVersion    string `json:"raftVersion"`
-	Name           string `json:"name"`
-	RaftURL        string `json:"raftURL"`
-	EtcdURL        string `json:"etcdURL"`
+	RaftVersion string `json:"raftVersion"`
+	Name        string `json:"name"`
+	RaftURL     string `json:"raftURL"`
+	EtcdURL     string `json:"etcdURL"`
 }
 
 func NewJoinCommand(version, name, raftUrl, etcdUrl string) *JoinCommand {
 	return &JoinCommand{
-		RaftVersion:    version,
-		Name:           name,
-		RaftURL:        raftUrl,
-		EtcdURL:        etcdUrl,
+		RaftVersion: version,
+		Name:        name,
+		RaftURL:     raftUrl,
+		EtcdURL:     etcdUrl,
 	}
 }
 
