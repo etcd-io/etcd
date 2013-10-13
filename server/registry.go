@@ -103,7 +103,7 @@ func (r *Registry) URLs(leaderName, selfName string) []string {
     if e, _ := r.store.Get(RegistryKey, false, false, 0, 0); e != nil {
         // Lookup the URL for each one.
         for _, pair := range e.KVPairs {
-            if url, _ := r.url(pair.Key); len(url) > 0 {
+            if url, _ := r.url(pair.Key); len(url) > 0 && pair.Key != leaderName && pair.Key != selfName {
                 urls = append(urls, url)
             }
         }
@@ -151,7 +151,7 @@ func (r *Registry) PeerURLs(leaderName, selfName string) []string {
     if e, _ := r.store.Get(RegistryKey, false, false, 0, 0); e != nil {
         // Lookup the URL for each one.
         for _, pair := range e.KVPairs {
-            if url, _ := r.peerURL(pair.Key); len(url) > 0 {
+            if url, _ := r.peerURL(pair.Key); len(url) > 0 && pair.Key != leaderName && pair.Key != selfName {
                 urls = append(urls, url)
             }
         }
