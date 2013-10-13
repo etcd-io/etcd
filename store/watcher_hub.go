@@ -93,7 +93,6 @@ func (wh *watcherHub) notify(e *Event) {
 
 func (wh *watcherHub) notifyWatchers(e *Event, path string, deleted bool) {
 	l, ok := wh.watchers[path]
-
 	if ok {
 		curr := l.Front()
 		notifiedAll := true
