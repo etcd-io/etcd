@@ -8,6 +8,9 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+
+	"github.com/coreos/etcd/log"
+	"github.com/coreos/etcd/server"
 )
 
 //--------------------------------------
@@ -30,7 +33,7 @@ func getInfo(path string) *Info {
 		os.Remove(confPath)
 		os.RemoveAll(snapshotPath)
 	} else if info := readInfo(infoPath); info != nil {
-		infof("Found node configuration in '%s'. Ignoring flags", infoPath)
+		log.Infof("Found node configuration in '%s'. Ignoring flags", infoPath)
 		return info
 	}
 
@@ -41,10 +44,10 @@ func getInfo(path string) *Info {
 	content, _ := json.MarshalIndent(info, "", " ")
 	content = []byte(string(content) + "\n")
 	if err := ioutil.WriteFile(infoPath, content, 0644); err != nil {
-		fatalf("Unable to write info to file: %v", err)
+		log.Fatalf("Unable to write info to file: %v", err)
 	}
 
-	infof("Wrote node configuration to '%s'", infoPath)
+	log.Infof("Wrote node configuration to '%s'", infoPath)
 
 	return info
 }
@@ -57,7 +60,7 @@ func readInfo(path string) *Info {
 		if os.IsNotExist(err) {
 			return nil
 		}
-		fatal(err)
+		log.Fatal(err)
 	}
 	defer file.Close()
 
@@ -65,19 +68,19 @@ func readInfo(path string) *Info {
 
 	content, err := ioutil.ReadAll(file)
 	if err != nil {
-		fatalf("Unable to read info: %v", err)
+		log.Fatalf("Unable to read info: %v", err)
 		return nil
 	}
 
 	if err = json.Unmarshal(content, &info); err != nil {
-		fatalf("Unable to parse info: %v", err)
+		log.Fatalf("Unable to parse info: %v", err)
 		return nil
 	}
 
 	return info
 }
 
-func tlsConfigFromInfo(info TLSInfo) (t TLSConfig, ok bool) {
+func tlsConfigFromInfo(info server.TLSInfo) (t server.TLSConfig, ok bool) {
 	var keyFile, certFile, CAFile string
 	var tlsCert tls.Certificate
 	var err error
@@ -101,7 +104,7 @@ func tlsConfigFromInfo(info TLSInfo) (t TLSConfig, ok bool) {
 
 	tlsCert, err = tls.LoadX509KeyPair(certFile, keyFile)
 	if err != nil {
-		fatal(err)
+		log.Fatal(err)
 	}
 
 	t.Scheme = "https"

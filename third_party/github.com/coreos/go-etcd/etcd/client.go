@@ -136,7 +136,6 @@ func (c *Client) internalSyncCluster(machines []string) bool {
 			logger.Debugf("update.leader[%s,%s]", c.cluster.Leader, c.cluster.Machines[0])
 			c.cluster.Leader = c.cluster.Machines[0]
 
-			logger.Debug("sync.machines ", c.cluster.Machines)
 			return true
 		}
 	}

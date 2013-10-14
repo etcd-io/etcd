@@ -1,15 +1,13 @@
 package main
 
 import (
-	"crypto/tls"
 	"flag"
-	"fmt"
 	"io/ioutil"
-	"net/url"
 	"os"
 	"strings"
-	"time"
 
+	"github.com/coreos/etcd/log"
+	"github.com/coreos/etcd/server"
 	"github.com/coreos/etcd/store"
 	"github.com/coreos/go-raft"
 )
@@ -21,7 +19,6 @@ import (
 //------------------------------------------------------------------------------
 
 var (
-	verbose     bool
 	veryVerbose bool
 
 	machines     string
@@ -44,12 +41,11 @@ var (
 
 	cpuprofile string
 
-	cors     string
-	corsList map[string]bool
+	cors string
 )
 
 func init() {
-	flag.BoolVar(&verbose, "v", false, "verbose logging")
+	flag.BoolVar(&log.Verbose, "v", false, "verbose logging")
 	flag.BoolVar(&veryVerbose, "vv", false, "very verbose logging")
 
 	flag.StringVar(&machines, "C", "", "the ip address and port of a existing machines in the cluster, sepearate by comma")
@@ -87,23 +83,11 @@ func init() {
 	flag.StringVar(&cors, "cors", "", "whitelist origins for cross-origin resource sharing (e.g. '*' or 'http://localhost:8001,etc')")
 }
 
-const (
-	ElectionTimeout  = 200 * time.Millisecond
-	HeartbeatTimeout = 50 * time.Millisecond
-	RetryInterval    = 10
-)
-
 //------------------------------------------------------------------------------
 //
 // Typedefs
 //
 //------------------------------------------------------------------------------
-
-type TLSInfo struct {
-	CertFile string `json:"CertFile"`
-	KeyFile  string `json:"KeyFile"`
-	CAFile   string `json:"CAFile"`
-}
 
 type Info struct {
 	Name string `json:"name"`
@@ -115,23 +99,9 @@ type Info struct {
 	RaftListenHost string `json:"raftListenHost"`
 	EtcdListenHost string `json:"etcdListenHost"`
 
-	RaftTLS TLSInfo `json:"raftTLS"`
-	EtcdTLS TLSInfo `json:"etcdTLS"`
+	RaftTLS server.TLSInfo `json:"raftTLS"`
+	EtcdTLS server.TLSInfo `json:"etcdTLS"`
 }
-
-type TLSConfig struct {
-	Scheme string
-	Server tls.Config
-	Client tls.Config
-}
-
-//------------------------------------------------------------------------------
-//
-// Variables
-//
-//------------------------------------------------------------------------------
-
-var etcdStore *store.Store
 
 //------------------------------------------------------------------------------
 //
@@ -151,18 +121,16 @@ func main() {
 	}
 
 	if veryVerbose {
-		verbose = true
+		log.Verbose = true
 		raft.SetLogLevel(raft.Debug)
 	}
-
-	parseCorsFlag()
 
 	if machines != "" {
 		cluster = strings.Split(machines, ",")
 	} else if machinesFile != "" {
 		b, err := ioutil.ReadFile(machinesFile)
 		if err != nil {
-			fatalf("Unable to read the given machines file: %s", err)
+			log.Fatalf("Unable to read the given machines file: %s", err)
 		}
 		cluster = strings.Split(string(b), ",")
 	}
@@ -170,17 +138,17 @@ func main() {
 	// Check TLS arguments
 	raftTLSConfig, ok := tlsConfigFromInfo(argInfo.RaftTLS)
 	if !ok {
-		fatal("Please specify cert and key file or cert and key file and CAFile or none of the three")
+		log.Fatal("Please specify cert and key file or cert and key file and CAFile or none of the three")
 	}
 
 	etcdTLSConfig, ok := tlsConfigFromInfo(argInfo.EtcdTLS)
 	if !ok {
-		fatal("Please specify cert and key file or cert and key file and CAFile or none of the three")
+		log.Fatal("Please specify cert and key file or cert and key file and CAFile or none of the three")
 	}
 
 	argInfo.Name = strings.TrimSpace(argInfo.Name)
 	if argInfo.Name == "" {
-		fatal("ERROR: server name required. e.g. '-n=server_name'")
+		log.Fatal("ERROR: server name required. e.g. '-n=server_name'")
 	}
 
 	// Check host name arguments
@@ -193,39 +161,29 @@ func main() {
 
 	// Read server info from file or grab it from user.
 	if err := os.MkdirAll(dirPath, 0744); err != nil {
-		fatalf("Unable to create path: %s", err)
+		log.Fatalf("Unable to create path: %s", err)
 	}
 
 	info := getInfo(dirPath)
 
 	// Create etcd key-value store
-	etcdStore = store.New()
+	store := store.New()
 
-	// Create etcd and raft server
-	r := newRaftServer(info.Name, info.RaftURL, info.RaftListenHost, &raftTLSConfig, &info.RaftTLS)
-	snapConf = r.newSnapshotConf()
+	// Create a shared node registry.
+	registry := server.NewRegistry(store)
 
-	e = newEtcdServer(info.Name, info.EtcdURL, info.EtcdListenHost, &etcdTLSConfig, &info.EtcdTLS, r)
+	// Create peer server.
+	ps := server.NewPeerServer(info.Name, dirPath, info.RaftURL, info.RaftListenHost, &raftTLSConfig, &info.RaftTLS, registry, store)
+	ps.MaxClusterSize = maxClusterSize
+	ps.RetryTimes = retryTimes
 
-	r.ListenAndServe()
-	e.ListenAndServe()
-
-}
-
-// parseCorsFlag gathers up the cors whitelist and puts it into the corsList.
-func parseCorsFlag() {
-	if cors != "" {
-		corsList = make(map[string]bool)
-		list := strings.Split(cors, ",")
-		for _, v := range list {
-			fmt.Println(v)
-			if v != "*" {
-				_, err := url.Parse(v)
-				if err != nil {
-					panic(fmt.Sprintf("bad cors url: %s", err))
-				}
-			}
-			corsList[v] = true
-		}
+	s := server.New(info.Name, info.EtcdURL, info.EtcdListenHost, &etcdTLSConfig, &info.EtcdTLS, ps, registry, store)
+	if err := s.AllowOrigins(cors); err != nil {
+		panic(err)
 	}
+
+	ps.SetServer(s)
+
+	ps.ListenAndServe(snapshot, cluster)
+	s.ListenAndServe()
 }

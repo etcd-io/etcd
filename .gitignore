@@ -1,5 +1,5 @@
 src/
 pkg/
 /etcd
-release_version.go
+/server/release_version.go
 /machine*
