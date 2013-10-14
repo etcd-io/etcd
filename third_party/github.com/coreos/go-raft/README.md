@@ -57,7 +57,7 @@ A distributed consensus protocol is used for maintaining a consistent state acro
 Many distributed systems are built upon the Paxos protocol but Paxos can be difficult to understand and there are many gaps between Paxos and real world implementation.
 
 An alternative is the [Raft distributed consensus protocol][raft-paper] by Diego Ongaro and John Ousterhout.
-Raft is a protocol built with understandability as a primary tenant and it centers around two things:
+Raft is a protocol built with understandability as a primary tenet and it centers around two things:
 
 1. Leader Election
 2. Replicated Log

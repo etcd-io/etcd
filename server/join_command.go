@@ -35,7 +35,7 @@ func (c *JoinCommand) CommandName() string {
 }
 
 // Join a server to the cluster
-func (c *JoinCommand) Apply(server *raft.Server) (interface{}, error) {
+func (c *JoinCommand) Apply(server raft.Server) (interface{}, error) {
 	ps, _ := server.Context().(*PeerServer)
 
 	b := make([]byte, 8)
@@ -62,7 +62,7 @@ func (c *JoinCommand) Apply(server *raft.Server) (interface{}, error) {
 	err := server.AddPeer(c.Name, "")
 
 	// Add peer stats
-	if c.Name != ps.Name() {
+	if c.Name != ps.RaftServer().Name() {
 		ps.followersStats.Followers[c.Name] = &raftFollowerStats{}
 		ps.followersStats.Followers[c.Name].Latency.Minimum = 1 << 63
 	}

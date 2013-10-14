@@ -14,8 +14,8 @@ func TestHTTPTransporter(t *testing.T) {
 	transporter := NewHTTPTransporter("/raft")
 	transporter.DisableKeepAlives = true
 
-	servers := []*Server{}
-	f0 := func(server *Server, httpServer *http.Server) {
+	servers := []Server{}
+	f0 := func(server Server, httpServer *http.Server) {
 		// Stop the leader and wait for an election.
 		server.Stop()
 		time.Sleep(testElectionTimeout * 2)
@@ -25,15 +25,15 @@ func TestHTTPTransporter(t *testing.T) {
 		}
 		server.Start()
 	}
-	f1 := func(server *Server, httpServer *http.Server) {
+	f1 := func(server Server, httpServer *http.Server) {
 	}
-	f2 := func(server *Server, httpServer *http.Server) {
+	f2 := func(server Server, httpServer *http.Server) {
 	}
 	runTestHttpServers(t, &servers, transporter, f0, f1, f2)
 }
 
 // Starts multiple independent Raft servers wrapped with HTTP servers.
-func runTestHttpServers(t *testing.T, servers *[]*Server, transporter *HTTPTransporter, callbacks ...func(*Server, *http.Server)) {
+func runTestHttpServers(t *testing.T, servers *[]Server, transporter *HTTPTransporter, callbacks ...func(Server, *http.Server)) {
 	var wg sync.WaitGroup
 	httpServers := []*http.Server{}
 	listeners := []net.Listener{}
@@ -68,7 +68,7 @@ func runTestHttpServers(t *testing.T, servers *[]*Server, transporter *HTTPTrans
 
 	// Setup configuration.
 	for _, server := range *servers {
-		if _, err := (*servers)[0].Do(&DefaultJoinCommand{Name: server.Name()}); err != nil {
+		if _, err := (*servers)[0].Do(&DefaultJoinCommand{Name: server.Name(), ConnectionString: fmt.Sprintf("http://%s", server.Name())}); err != nil {
 			t.Fatalf("Server %s unable to join: %v", server.Name(), err)
 		}
 	}
@@ -94,7 +94,7 @@ func BenchmarkSpeed(b *testing.B) {
 	transporter := NewHTTPTransporter("/raft")
 	transporter.DisableKeepAlives = true
 
-	servers := []*Server{}
+	servers := []Server{}
 
 	for i := 0; i < 3; i++ {
 		port := 9000 + i
@@ -125,7 +125,7 @@ func BenchmarkSpeed(b *testing.B) {
 
 	// Setup configuration.
 	for _, server := range servers {
-		(servers)[0].Do(&DefaultJoinCommand{Name: server.Name()})
+		(servers)[0].Do(&DefaultJoinCommand{Name: server.Name(), ConnectionString: fmt.Sprintf("http://%s", server.Name())})
 	}
 
 	c := make(chan bool)
@@ -145,7 +145,7 @@ func BenchmarkSpeed(b *testing.B) {
 	}
 }
 
-func send(c chan bool, s *Server) {
+func send(c chan bool, s Server) {
 	for i := 0; i < 20; i++ {
 		s.Do(&NOPCommand{})
 	}

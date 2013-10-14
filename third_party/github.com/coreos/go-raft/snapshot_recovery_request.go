@@ -80,7 +80,7 @@ func (req *SnapshotRecoveryRequest) Decode(r io.Reader) (int, error) {
 	req.LeaderName = pb.GetLeaderName()
 	req.LastIndex = pb.GetLastIndex()
 	req.LastTerm = pb.GetLastTerm()
-	req.State = req.State
+	req.State = pb.GetState()
 
 	req.Peers = make([]*Peer, len(pb.Peers))
 

@@ -25,7 +25,7 @@ func (c *CreateCommand) CommandName() string {
 }
 
 // Create node
-func (c *CreateCommand) Apply(server *raft.Server) (interface{}, error) {
+func (c *CreateCommand) Apply(server raft.Server) (interface{}, error) {
 	s, _ := server.StateMachine().(Store)
 
 	e, err := s.Create(c.Key, c.Value, c.IncrementalSuffix, c.Force, c.ExpireTime, server.CommitIndex(), server.Term())
