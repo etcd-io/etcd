@@ -21,7 +21,7 @@ func (c *DeleteCommand) CommandName() string {
 }
 
 // Delete the key
-func (c *DeleteCommand) Apply(server *raft.Server) (interface{}, error) {
+func (c *DeleteCommand) Apply(server raft.Server) (interface{}, error) {
 	s, _ := server.StateMachine().(Store)
 
 	e, err := s.Delete(c.Key, c.Recursive, server.CommitIndex(), server.Term())

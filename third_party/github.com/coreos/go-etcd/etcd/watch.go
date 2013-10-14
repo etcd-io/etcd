@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/coreos/etcd/store"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -28,7 +27,7 @@ var (
 // channel. And after someone receive the channel, it will go on to watch that prefix.
 // If a stop channel is given, client can close long-term watch using the stop channel
 
-func (c *Client) Watch(prefix string, sinceIndex uint64, receiver chan *store.Response, stop chan bool) (*store.Response, error) {
+func (c *Client) Watch(prefix string, sinceIndex uint64, receiver chan *Response, stop chan bool) (*Response, error) {
 	logger.Debugf("watch %s [%s]", prefix, c.cluster.Leader)
 	if receiver == nil {
 		return c.watchOnce(prefix, sinceIndex, stop)
@@ -50,7 +49,7 @@ func (c *Client) Watch(prefix string, sinceIndex uint64, receiver chan *store.Re
 
 // helper func
 // return when there is change under the given prefix
-func (c *Client) watchOnce(key string, sinceIndex uint64, stop chan bool) (*store.Response, error) {
+func (c *Client) watchOnce(key string, sinceIndex uint64, stop chan bool) (*Response, error) {
 
 	var resp *http.Response
 	var err error
@@ -94,7 +93,7 @@ func (c *Client) watchOnce(key string, sinceIndex uint64, stop chan bool) (*stor
 		return nil, handleError(b)
 	}
 
-	var result store.Response
+	var result Response
 
 	err = json.Unmarshal(b, &result)
 

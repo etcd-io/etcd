@@ -23,7 +23,7 @@ func (c *RemoveCommand) CommandName() string {
 }
 
 // Remove a server from the cluster
-func (c *RemoveCommand) Apply(server *raft.Server) (interface{}, error) {
+func (c *RemoveCommand) Apply(server raft.Server) (interface{}, error) {
 	ps, _ := server.Context().(*PeerServer)
 
 	// Remove node from the shared registry.
