@@ -32,7 +32,7 @@ func TestSingleNode(t *testing.T) {
 
 	time.Sleep(time.Second)
 
-	c := etcd.NewClient()
+	c := etcd.NewClient(nil)
 
 	c.SyncCluster()
 	// Test Set
@@ -145,7 +145,7 @@ func TestSingleNodeRecovery(t *testing.T) {
 
 	time.Sleep(time.Second)
 
-	c := etcd.NewClient()
+	c := etcd.NewClient(nil)
 
 	c.SyncCluster()
 	// Test Set
@@ -205,7 +205,7 @@ func templateTestSimpleMultiNode(t *testing.T, tls bool) {
 
 	time.Sleep(time.Second)
 
-	c := etcd.NewClient()
+	c := etcd.NewClient(nil)
 
 	c.SyncCluster()
 
@@ -255,7 +255,7 @@ func TestMultiNodeKillAllAndRecovery(t *testing.T) {
 		t.Fatal("cannot create cluster")
 	}
 
-	c := etcd.NewClient()
+	c := etcd.NewClient(nil)
 
 	c.SyncCluster()
 
@@ -320,7 +320,7 @@ func TestMultiNodeKillOne(t *testing.T) {
 
 	time.Sleep(2 * time.Second)
 
-	c := etcd.NewClient()
+	c := etcd.NewClient(nil)
 
 	c.SyncCluster()
 
@@ -481,7 +481,7 @@ func TestRemoveNode(t *testing.T) {
 
 	time.Sleep(time.Second)
 
-	c := etcd.NewClient()
+	c := etcd.NewClient(nil)
 
 	c.SyncCluster()
 
