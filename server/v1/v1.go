@@ -10,6 +10,6 @@ import (
 type Server interface {
 	CommitIndex() uint64
 	Term() uint64
-	Store() *store.Store
+	Store() store.Store
 	Dispatch(raft.Command, http.ResponseWriter, *http.Request) error
 }

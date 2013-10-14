@@ -18,7 +18,7 @@ const RegistryKey = "/_etcd/machines"
 // The Registry stores URL information for nodes.
 type Registry struct {
 	sync.Mutex
-	store *store.Store
+	store store.Store
 	nodes map[string]*node
 }
 
@@ -30,7 +30,7 @@ type node struct {
 }
 
 // Creates a new Registry.
-func NewRegistry(s *store.Store) *Registry {
+func NewRegistry(s store.Store) *Registry {
 	return &Registry{
 		store: s,
 		nodes: make(map[string]*node),

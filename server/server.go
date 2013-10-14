@@ -21,7 +21,7 @@ type Server struct {
 	http.Server
 	peerServer  *PeerServer
 	registry    *Registry
-	store       *store.Store
+	store       store.Store
 	name        string
 	url         string
 	tlsConf     *TLSConfig
@@ -30,7 +30,7 @@ type Server struct {
 }
 
 // Creates a new Server.
-func New(name string, urlStr string, listenHost string, tlsConf *TLSConfig, tlsInfo *TLSInfo, peerServer *PeerServer, registry *Registry, store *store.Store) *Server {
+func New(name string, urlStr string, listenHost string, tlsConf *TLSConfig, tlsInfo *TLSInfo, peerServer *PeerServer, registry *Registry, store store.Store) *Server {
 	s := &Server{
 		Server: http.Server{
 			Handler:   mux.NewRouter(),
@@ -85,7 +85,7 @@ func (s *Server) PeerURL(name string) (string, bool) {
 }
 
 // Returns a reference to the Store.
-func (s *Server) Store() *store.Store {
+func (s *Server) Store() store.Store {
 	return s.store
 }
 

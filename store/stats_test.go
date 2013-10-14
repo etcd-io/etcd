@@ -7,7 +7,7 @@ import (
 )
 
 func TestBasicStats(t *testing.T) {
-	s := New()
+	s := newStore()
 	keys := GenKeys(rand.Intn(100), 5)
 
 	var i uint64
@@ -140,7 +140,7 @@ func TestBasicStats(t *testing.T) {
 		t.Fatalf("TestAndSetFail [%d] != Stats.TestAndSetFail [%d]", TestAndSetFail, s.Stats.TestAndSetFail)
 	}
 
-	s = New()
+	s = newStore()
 	SetSuccess = 0
 	SetFail = 0
 
