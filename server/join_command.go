@@ -45,7 +45,7 @@ func (c *JoinCommand) Apply(server *raft.Server) (interface{}, error) {
 	ps.registry.Invalidate(c.Name)
 
 	// Check if the join command is from a previous machine, who lost all its previous log.
-	if _, ok := ps.registry.URL(c.Name); ok {
+	if _, ok := ps.registry.ClientURL(c.Name); ok {
 		return b, nil
 	}
 
