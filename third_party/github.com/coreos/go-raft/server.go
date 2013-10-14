@@ -854,7 +854,7 @@ func (s *Server) processAppendEntriesResponse(resp *AppendEntriesResponse) {
 	for _, peer := range s.peers {
 		indices = append(indices, peer.getPrevLogIndex())
 	}
-	sort.Sort(uint64Slice(indices))
+	sort.Sort(sort.Reverse(uint64Slice(indices)))
 
 	// We can commit up to the index which the majority of the members have appended.
 	commitIndex := indices[s.QuorumSize()-1]

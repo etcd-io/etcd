@@ -16,6 +16,11 @@ type respAndErr struct {
 	err  error
 }
 
+// Errors introduced by the Watch command.
+var (
+	ErrWatchStoppedByUser = errors.New("Watch stopped by the user via stop channel")
+)
+
 // Watch any change under the given prefix.
 // When a sinceIndex is given, watch will try to scan from that index to the last index
 // and will return any changes under the given prefix during the history
@@ -66,7 +71,7 @@ func (c *Client) watchOnce(key string, sinceIndex uint64, stop chan bool) (*stor
 			resp, err = res.resp, res.err
 
 		case <-stop:
-			resp, err = nil, errors.New("User stoped watch")
+			resp, err = nil, ErrWatchStoppedByUser
 		}
 	} else {
 		resp, err = c.sendWatchRequest(key, sinceIndex)

@@ -22,7 +22,7 @@ func Set(stop chan bool) {
 
 	stopSet := false
 	i := 0
-	c := etcd.NewClient()
+	c := etcd.NewClient(nil)
 	for {
 		key := fmt.Sprintf("%s_%v", "foo", i)
 
