@@ -3,6 +3,8 @@ packages="
 	github.com/coreos/go-etcd
 	github.com/coreos/go-log/log
 	github.com/coreos/go-systemd
+	github.com/gorilla/context
+	github.com/gorilla/mux
 	bitbucket.org/kardianos/osext
 	code.google.com/p/go.net
 	code.google.com/p/goprotobuf

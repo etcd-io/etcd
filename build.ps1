@@ -20,5 +20,5 @@ foreach($i in (ls third_party/*)){
 	cp -Recurse -force "$i" src/
 }
 
-./scripts/release-version.ps1 | Out-File -Encoding UTF8 release_version.go
+./scripts/release-version.ps1 | Out-File -Encoding UTF8 server/release_version.go
 go build -v "${ETCD_PACKAGE}"

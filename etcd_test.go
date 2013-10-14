@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/coreos/etcd/server"
 	"github.com/coreos/etcd/test"
 	"github.com/coreos/go-etcd/etcd"
 )
@@ -39,7 +40,7 @@ func TestSingleNode(t *testing.T) {
 
 	if err != nil || result.Key != "/foo" || result.Value != "bar" || result.TTL < 95 {
 		if err != nil {
-			t.Fatal(err)
+			t.Fatal("Set 1: ", err)
 		}
 
 		t.Fatalf("Set 1 failed with %s %s %v", result.Key, result.Value, result.TTL)
@@ -51,7 +52,7 @@ func TestSingleNode(t *testing.T) {
 
 	if err != nil || result.Key != "/foo" || result.Value != "bar" || result.PrevValue != "bar" || result.TTL != 100 {
 		if err != nil {
-			t.Fatal(err)
+			t.Fatal("Set 2: ", err)
 		}
 		t.Fatalf("Set 2 failed with %s %s %v", result.Key, result.Value, result.TTL)
 	}
@@ -105,7 +106,7 @@ func TestInternalVersionFail(t *testing.T) {
 
 	procAttr := new(os.ProcAttr)
 	procAttr.Files = []*os.File{nil, os.Stdout, os.Stderr}
-	args := []string{"etcd", "-n=node1", "-f", "-d=/tmp/node1", "-vv", "-C=" + fakeURL.Host}
+	args := []string{"etcd", "-n=node1", "-f", "-d=/tmp/node1", "-C=" + fakeURL.Host}
 
 	process, err := os.StartProcess("etcd", args, procAttr)
 	if err != nil {
@@ -248,6 +249,7 @@ func TestMultiNodeKillAllAndRecovery(t *testing.T) {
 
 	clusterSize := 5
 	argGroup, etcds, err := test.CreateCluster(clusterSize, procAttr, false)
+	defer test.DestroyCluster(etcds)
 
 	if err != nil {
 		t.Fatal("cannot create cluster")
@@ -293,15 +295,12 @@ func TestMultiNodeKillAllAndRecovery(t *testing.T) {
 	result, err := c.Set("foo", "bar", 0)
 
 	if err != nil {
-		panic(err)
+		t.Fatalf("Recovery error: %s", err)
 	}
 
 	if result.Index != 18 {
 		t.Fatalf("recovery failed! [%d/18]", result.Index)
 	}
-
-	// kill all
-	test.DestroyCluster(etcds)
 }
 
 // Create a five nodes
@@ -398,8 +397,8 @@ func TestKillLeader(t *testing.T) {
 		totalTime += take
 		avgTime := totalTime / (time.Duration)(i+1)
 
-		fmt.Println("Leader election time is ", take, "with election timeout", ElectionTimeout)
-		fmt.Println("Leader election time average is", avgTime, "with election timeout", ElectionTimeout)
+		fmt.Println("Leader election time is ", take, "with election timeout", server.ElectionTimeout)
+		fmt.Println("Leader election time average is", avgTime, "with election timeout", server.ElectionTimeout)
 		etcds[num], err = os.StartProcess("etcd", argGroup[num], procAttr)
 	}
 	stop <- true
@@ -456,7 +455,7 @@ func TestKillRandom(t *testing.T) {
 			etcds[num].Wait()
 		}
 
-		time.Sleep(ElectionTimeout)
+		time.Sleep(server.ElectionTimeout)
 
 		<-leaderChan
 
@@ -478,6 +477,7 @@ func TestRemoveNode(t *testing.T) {
 
 	clusterSize := 3
 	argGroup, etcds, _ := test.CreateCluster(clusterSize, procAttr, false)
+	defer test.DestroyCluster(etcds)
 
 	time.Sleep(time.Second)
 
@@ -525,7 +525,7 @@ func TestRemoveNode(t *testing.T) {
 			}
 
 			if len(resp) != 3 {
-				t.Fatal("add machine fails")
+				t.Fatalf("add machine fails #1 (%d != 3)", len(resp))
 			}
 		}
 
@@ -567,12 +567,10 @@ func TestRemoveNode(t *testing.T) {
 			}
 
 			if len(resp) != 3 {
-				t.Fatal("add machine fails")
+				t.Fatalf("add machine fails #2 (%d != 3)", len(resp))
 			}
 		}
 	}
-	test.DestroyCluster(etcds)
-
 }
 
 func templateBenchmarkEtcdDirectCall(b *testing.B, tls bool) {

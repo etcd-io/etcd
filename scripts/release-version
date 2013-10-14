@@ -3,6 +3,6 @@
 VER=$(git describe --tags HEAD)
 
 cat <<EOF
-package main
+package server
 const releaseVersion = "$VER"
 EOF
