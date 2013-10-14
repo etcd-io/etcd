@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	etcdErr "github.com/coreos/etcd/error"
@@ -149,158 +150,6 @@ func (s *PeerServer) RaftServer() *raft.Server {
 // Associates the client server with the peer server.
 func (s *PeerServer) SetServer(server *Server) {
 	s.server = server
-}
-
-// Get all the current logs
-func (s *PeerServer) GetLogHttpHandler(w http.ResponseWriter, req *http.Request) {
-	log.Debugf("[recv] GET %s/log", s.url)
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(s.LogEntries())
-}
-
-// Response to vote request
-func (s *PeerServer) VoteHttpHandler(w http.ResponseWriter, req *http.Request) {
-	rvreq := &raft.RequestVoteRequest{}
-	err := decodeJsonRequest(req, rvreq)
-	if err == nil {
-		log.Debugf("[recv] POST %s/vote [%s]", s.url, rvreq.CandidateName)
-		if resp := s.RequestVote(rvreq); resp != nil {
-			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(resp)
-			return
-		}
-	}
-	log.Warnf("[vote] ERROR: %v", err)
-	w.WriteHeader(http.StatusInternalServerError)
-}
-
-// Response to append entries request
-func (s *PeerServer) AppendEntriesHttpHandler(w http.ResponseWriter, req *http.Request) {
-	aereq := &raft.AppendEntriesRequest{}
-	err := decodeJsonRequest(req, aereq)
-
-	if err == nil {
-		log.Debugf("[recv] POST %s/log/append [%d]", s.url, len(aereq.Entries))
-
-		s.serverStats.RecvAppendReq(aereq.LeaderName, int(req.ContentLength))
-
-		if resp := s.AppendEntries(aereq); resp != nil {
-			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(resp)
-			if !resp.Success {
-				log.Debugf("[Append Entry] Step back")
-			}
-			return
-		}
-	}
-	log.Warnf("[Append Entry] ERROR: %v", err)
-	w.WriteHeader(http.StatusInternalServerError)
-}
-
-// Response to recover from snapshot request
-func (s *PeerServer) SnapshotHttpHandler(w http.ResponseWriter, req *http.Request) {
-	aereq := &raft.SnapshotRequest{}
-	err := decodeJsonRequest(req, aereq)
-	if err == nil {
-		log.Debugf("[recv] POST %s/snapshot/ ", s.url)
-		if resp := s.RequestSnapshot(aereq); resp != nil {
-			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(resp)
-			return
-		}
-	}
-	log.Warnf("[Snapshot] ERROR: %v", err)
-	w.WriteHeader(http.StatusInternalServerError)
-}
-
-// Response to recover from snapshot request
-func (s *PeerServer) SnapshotRecoveryHttpHandler(w http.ResponseWriter, req *http.Request) {
-	aereq := &raft.SnapshotRecoveryRequest{}
-	err := decodeJsonRequest(req, aereq)
-	if err == nil {
-		log.Debugf("[recv] POST %s/snapshotRecovery/ ", s.url)
-		if resp := s.SnapshotRecoveryRequest(aereq); resp != nil {
-			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(resp)
-			return
-		}
-	}
-	log.Warnf("[Snapshot] ERROR: %v", err)
-	w.WriteHeader(http.StatusInternalServerError)
-}
-
-// Get the port that listening for etcd connecting of the server
-func (s *PeerServer) EtcdURLHttpHandler(w http.ResponseWriter, req *http.Request) {
-	log.Debugf("[recv] Get %s/etcdURL/ ", s.url)
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(s.server.URL()))
-}
-
-// Response to the join request
-func (s *PeerServer) JoinHttpHandler(w http.ResponseWriter, req *http.Request) {
-	command := &JoinCommand{}
-
-	// Write CORS header.
-	if s.server.OriginAllowed("*") {
-		w.Header().Add("Access-Control-Allow-Origin", "*")
-	} else if s.server.OriginAllowed(req.Header.Get("Origin")) {
-		w.Header().Add("Access-Control-Allow-Origin", req.Header.Get("Origin"))
-	}
-
-	err := decodeJsonRequest(req, command)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	log.Debugf("Receive Join Request from %s", command.Name)
-	err = s.dispatchRaftCommand(command, w, req)
-
-	// Return status.
-	if err != nil {
-		if etcdErr, ok := err.(*etcdErr.Error); ok {
-			log.Debug("Return error: ", (*etcdErr).Error())
-			etcdErr.Write(w)
-		} else {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
-	}
-}
-
-// Response to remove request
-func (s *PeerServer) RemoveHttpHandler(w http.ResponseWriter, req *http.Request) {
-	if req.Method != "DELETE" {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		return
-	}
-
-	nodeName := req.URL.Path[len("/remove/"):]
-	command := &RemoveCommand{
-		Name: nodeName,
-	}
-
-	log.Debugf("[recv] Remove Request [%s]", command.Name)
-
-	s.dispatchRaftCommand(command, w, req)
-}
-
-// Response to the name request
-func (s *PeerServer) NameHttpHandler(w http.ResponseWriter, req *http.Request) {
-	log.Debugf("[recv] Get %s/name/ ", s.url)
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(s.name))
-}
-
-// Response to the name request
-func (s *PeerServer) RaftVersionHttpHandler(w http.ResponseWriter, req *http.Request) {
-	log.Debugf("[recv] Get %s/version/ ", s.url)
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(PeerVersion))
-}
-
-func (s *PeerServer) dispatchRaftCommand(c raft.Command, w http.ResponseWriter, req *http.Request) error {
-	return s.dispatch(c, w, req)
 }
 
 func (s *PeerServer) startAsLeader() {
@@ -498,44 +347,48 @@ func (s *PeerServer) monitorSnapshot() {
 
 func (s *PeerServer) dispatch(c raft.Command, w http.ResponseWriter, req *http.Request) error {
 	if s.State() == raft.Leader {
-		if response, err := s.Do(c); err != nil {
+		result, err := s.Do(c)
+		if err != nil {
 			return err
-		} else {
-			if response == nil {
-				return etcdErr.NewError(300, "Empty response from raft", store.UndefIndex, store.UndefTerm)
-			}
+		}
 
-			event, ok := response.(*store.Event)
-			if ok {
-				bytes, err := json.Marshal(event)
-				if err != nil {
-					fmt.Println(err)
-				}
+		if result == nil {
+			return etcdErr.NewError(300, "Empty result from raft", store.UndefIndex, store.UndefTerm)
+		}
 
-				w.Header().Add("X-Etcd-Index", fmt.Sprint(event.Index))
-				w.Header().Add("X-Etcd-Term", fmt.Sprint(event.Term))
-				w.WriteHeader(http.StatusOK)
-				w.Write(bytes)
-
-				return nil
-			}
-
-			bytes, _ := response.([]byte)
+		// response for raft related commands[join/remove]
+		if b, ok := result.([]byte); ok {
 			w.WriteHeader(http.StatusOK)
-			w.Write(bytes)
-
+			w.Write(b)
 			return nil
 		}
 
+		var b []byte
+		if strings.HasPrefix(req.URL.Path, "/v1") {
+			b, _ = json.Marshal(result.(*store.Event).Response())
+		} else {
+			b, _ = json.Marshal(result.(*store.Event))
+		}
+		w.WriteHeader(http.StatusOK)
+		w.Write(b)
+
+		return nil
+
 	} else {
 		leader := s.Leader()
-		// current no leader
+
+		// No leader available.
 		if leader == "" {
 			return etcdErr.NewError(300, "", store.UndefIndex, store.UndefTerm)
 		}
-		url, _ := s.registry.PeerURL(leader)
 
-		log.Debugf("Not leader; Current leader: %s; redirect: %s", leader, url)
+		var url string
+		switch c.(type) {
+		case *JoinCommand, *RemoveCommand:
+			url, _ = s.registry.PeerURL(leader)
+		default:
+			url, _ = s.registry.ClientURL(leader)
+		}
 		redirect(url, w, req)
 
 		return nil
