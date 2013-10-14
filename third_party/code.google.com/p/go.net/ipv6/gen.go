@@ -97,20 +97,16 @@ func parseICMPv6Parameters(w io.Writer, r io.Reader) error {
 }
 
 type icmpv6Parameters struct {
-	XMLName    xml.Name              `xml:"registry"`
-	Title      string                `xml:"title"`
-	Updated    string                `xml:"updated"`
-	Registries []icmpv6ParamRegistry `xml:"registry"`
-}
-
-type icmpv6ParamRegistry struct {
-	Title   string              `xml:"title"`
-	Records []icmpv6ParamRecord `xml:"record"`
-}
-
-type icmpv6ParamRecord struct {
-	Value string `xml:"value"`
-	Name  string `xml:"name"`
+	XMLName    xml.Name `xml:"registry"`
+	Title      string   `xml:"title"`
+	Updated    string   `xml:"updated"`
+	Registries []struct {
+		Title   string `xml:"title"`
+		Records []struct {
+			Value string `xml:"value"`
+			Name  string `xml:"name"`
+		} `xml:"record"`
+	} `xml:"registry"`
 }
 
 type canonICMPv6ParamRecord struct {
@@ -188,18 +184,16 @@ func parseProtocolNumbers(w io.Writer, r io.Reader) error {
 }
 
 type protocolNumbers struct {
-	XMLName  xml.Name         `xml:"registry"`
-	Title    string           `xml:"title"`
-	Updated  string           `xml:"updated"`
-	RegTitle string           `xml:"registry>title"`
-	Note     string           `xml:"registry>note"`
-	Records  []protocolRecord `xml:"registry>record"`
-}
-
-type protocolRecord struct {
-	Value string `xml:"value"`
-	Name  string `xml:"name"`
-	Descr string `xml:"description"`
+	XMLName  xml.Name `xml:"registry"`
+	Title    string   `xml:"title"`
+	Updated  string   `xml:"updated"`
+	RegTitle string   `xml:"registry>title"`
+	Note     string   `xml:"registry>note"`
+	Records  []struct {
+		Value string `xml:"value"`
+		Name  string `xml:"name"`
+		Descr string `xml:"description"`
+	} `xml:"registry>record"`
 }
 
 type canonProtocolRecord struct {
