@@ -37,40 +37,40 @@ func TestServerRequestVote(t *testing.T) {
 
 // // Ensure that a vote request is denied if it comes from an old term.
 func TestServerRequestVoteDeniedForStaleTerm(t *testing.T) {
-	server := newTestServer("1", &testTransporter{})
+	s := newTestServer("1", &testTransporter{})
 
-	server.Start()
-	if _, err := server.Do(&DefaultJoinCommand{Name: server.Name()}); err != nil {
-		t.Fatalf("Server %s unable to join: %v", server.Name(), err)
+	s.Start()
+	if _, err := s.Do(&DefaultJoinCommand{Name: s.Name()}); err != nil {
+		t.Fatalf("Server %s unable to join: %v", s.Name(), err)
 	}
 
-	server.currentTerm = 2
-	defer server.Stop()
-	resp := server.RequestVote(newRequestVoteRequest(1, "foo", 1, 0))
+	s.(*server).currentTerm = 2
+	defer s.Stop()
+	resp := s.RequestVote(newRequestVoteRequest(1, "foo", 1, 0))
 	if resp.Term != 2 || resp.VoteGranted {
 		t.Fatalf("Invalid request vote response: %v/%v", resp.Term, resp.VoteGranted)
 	}
-	if server.currentTerm != 2 && server.State() != Follower {
-		t.Fatalf("Server did not update term and demote: %v / %v", server.currentTerm, server.State())
+	if s.Term() != 2 && s.State() != Follower {
+		t.Fatalf("Server did not update term and demote: %v / %v", s.Term(), s.State())
 	}
 }
 
 // Ensure that a vote request is denied if we've already voted for a different candidate.
 func TestServerRequestVoteDeniedIfAlreadyVoted(t *testing.T) {
-	server := newTestServer("1", &testTransporter{})
+	s := newTestServer("1", &testTransporter{})
 
-	server.Start()
-	if _, err := server.Do(&DefaultJoinCommand{Name: server.Name()}); err != nil {
-		t.Fatalf("Server %s unable to join: %v", server.Name(), err)
+	s.Start()
+	if _, err := s.Do(&DefaultJoinCommand{Name: s.Name()}); err != nil {
+		t.Fatalf("Server %s unable to join: %v", s.Name(), err)
 	}
 
-	server.currentTerm = 2
-	defer server.Stop()
-	resp := server.RequestVote(newRequestVoteRequest(2, "foo", 1, 0))
+	s.(*server).currentTerm = 2
+	defer s.Stop()
+	resp := s.RequestVote(newRequestVoteRequest(2, "foo", 1, 0))
 	if resp.Term != 2 || !resp.VoteGranted {
 		t.Fatalf("First vote should not have been denied")
 	}
-	resp = server.RequestVote(newRequestVoteRequest(2, "bar", 1, 0))
+	resp = s.RequestVote(newRequestVoteRequest(2, "bar", 1, 0))
 	if resp.Term != 2 || resp.VoteGranted {
 		t.Fatalf("Second vote should have been denied")
 	}
@@ -78,24 +78,24 @@ func TestServerRequestVoteDeniedIfAlreadyVoted(t *testing.T) {
 
 // Ensure that a vote request is approved if vote occurs in a new term.
 func TestServerRequestVoteApprovedIfAlreadyVotedInOlderTerm(t *testing.T) {
-	server := newTestServer("1", &testTransporter{})
+	s := newTestServer("1", &testTransporter{})
 
-	server.Start()
-	if _, err := server.Do(&DefaultJoinCommand{Name: server.Name()}); err != nil {
-		t.Fatalf("Server %s unable to join: %v", server.Name(), err)
+	s.Start()
+	if _, err := s.Do(&DefaultJoinCommand{Name: s.Name()}); err != nil {
+		t.Fatalf("Server %s unable to join: %v", s.Name(), err)
 	}
 
 	time.Sleep(time.Millisecond * 100)
 
-	server.currentTerm = 2
-	defer server.Stop()
-	resp := server.RequestVote(newRequestVoteRequest(2, "foo", 2, 1))
-	if resp.Term != 2 || !resp.VoteGranted || server.VotedFor() != "foo" {
+	s.(*server).currentTerm = 2
+	defer s.Stop()
+	resp := s.RequestVote(newRequestVoteRequest(2, "foo", 2, 1))
+	if resp.Term != 2 || !resp.VoteGranted || s.VotedFor() != "foo" {
 		t.Fatalf("First vote should not have been denied")
 	}
-	resp = server.RequestVote(newRequestVoteRequest(3, "bar", 2, 1))
+	resp = s.RequestVote(newRequestVoteRequest(3, "bar", 2, 1))
 
-	if resp.Term != 3 || !resp.VoteGranted || server.VotedFor() != "bar" {
+	if resp.Term != 3 || !resp.VoteGranted || s.VotedFor() != "bar" {
 		t.Fatalf("Second vote should have been approved")
 	}
 }
@@ -106,33 +106,32 @@ func TestServerRequestVoteDenyIfCandidateLogIsBehind(t *testing.T) {
 	e0, _ := newLogEntry(tmpLog, 1, 1, &testCommand1{Val: "foo", I: 20})
 	e1, _ := newLogEntry(tmpLog, 2, 1, &testCommand2{X: 100})
 	e2, _ := newLogEntry(tmpLog, 3, 2, &testCommand1{Val: "bar", I: 0})
-	server := newTestServerWithLog("1", &testTransporter{}, []*LogEntry{e0, e1, e2})
+	s := newTestServerWithLog("1", &testTransporter{}, []*LogEntry{e0, e1, e2})
 
 	// start as a follower with term 2 and index 3
-	server.Start()
-
-	defer server.Stop()
+	s.Start()
+	defer s.Stop()
 
 	// request vote from term 3 with last log entry 2, 2
-	resp := server.RequestVote(newRequestVoteRequest(3, "foo", 2, 2))
+	resp := s.RequestVote(newRequestVoteRequest(3, "foo", 2, 2))
 	if resp.Term != 3 || resp.VoteGranted {
 		t.Fatalf("Stale index vote should have been denied [%v/%v]", resp.Term, resp.VoteGranted)
 	}
 
 	// request vote from term 2 with last log entry 2, 3
-	resp = server.RequestVote(newRequestVoteRequest(2, "foo", 3, 2))
+	resp = s.RequestVote(newRequestVoteRequest(2, "foo", 3, 2))
 	if resp.Term != 3 || resp.VoteGranted {
 		t.Fatalf("Stale term vote should have been denied [%v/%v]", resp.Term, resp.VoteGranted)
 	}
 
 	// request vote from term 3 with last log entry 2, 3
-	resp = server.RequestVote(newRequestVoteRequest(3, "foo", 3, 2))
+	resp = s.RequestVote(newRequestVoteRequest(3, "foo", 3, 2))
 	if resp.Term != 3 || !resp.VoteGranted {
 		t.Fatalf("Matching log vote should have been granted")
 	}
 
 	// request vote from term 3 with last log entry 2, 4
-	resp = server.RequestVote(newRequestVoteRequest(3, "foo", 4, 2))
+	resp = s.RequestVote(newRequestVoteRequest(3, "foo", 4, 2))
 	if resp.Term != 3 || !resp.VoteGranted {
 		t.Fatalf("Ahead-of-log vote should have been granted")
 	}
@@ -145,28 +144,27 @@ func TestServerRequestVoteDenyIfCandidateLogIsBehind(t *testing.T) {
 // // Ensure that we can self-promote a server to candidate, obtain votes and become a fearless leader.
 func TestServerPromoteSelf(t *testing.T) {
 	e0, _ := newLogEntry(newLog(), 1, 1, &testCommand1{Val: "foo", I: 20})
-	server := newTestServerWithLog("1", &testTransporter{}, []*LogEntry{e0})
+	s := newTestServerWithLog("1", &testTransporter{}, []*LogEntry{e0})
 
 	// start as a follower
-	server.Start()
-
-	defer server.Stop()
+	s.Start()
+	defer s.Stop()
 
 	time.Sleep(2 * testElectionTimeout)
 
-	if server.State() != Leader {
-		t.Fatalf("Server self-promotion failed: %v", server.State())
+	if s.State() != Leader {
+		t.Fatalf("Server self-promotion failed: %v", s.State())
 	}
 }
 
 //Ensure that we can promote a server within a cluster to a leader.
 func TestServerPromote(t *testing.T) {
-	lookup := map[string]*Server{}
+	lookup := map[string]Server{}
 	transporter := &testTransporter{}
-	transporter.sendVoteRequestFunc = func(server *Server, peer *Peer, req *RequestVoteRequest) *RequestVoteResponse {
+	transporter.sendVoteRequestFunc = func(s Server, peer *Peer, req *RequestVoteRequest) *RequestVoteResponse {
 		return lookup[peer.Name].RequestVote(req)
 	}
-	transporter.sendAppendEntriesRequestFunc = func(server *Server, peer *Peer, req *AppendEntriesRequest) *AppendEntriesResponse {
+	transporter.sendAppendEntriesRequestFunc = func(s Server, peer *Peer, req *AppendEntriesRequest) *AppendEntriesResponse {
 		return lookup[peer.Name].AppendEntries(req)
 	}
 	servers := newTestCluster([]string{"1", "2", "3"}, transporter, lookup)
@@ -180,8 +178,8 @@ func TestServerPromote(t *testing.T) {
 	if servers[0].State() != Leader && servers[1].State() != Leader && servers[2].State() != Leader {
 		t.Fatalf("No leader elected: (%s, %s, %s)", servers[0].State(), servers[1].State(), servers[2].State())
 	}
-	for _, server := range servers {
-		server.Stop()
+	for _, s := range servers {
+		s.Stop()
 	}
 }
 
@@ -191,20 +189,20 @@ func TestServerPromote(t *testing.T) {
 
 // Ensure we can append entries to a server.
 func TestServerAppendEntries(t *testing.T) {
-	server := newTestServer("1", &testTransporter{})
+	s := newTestServer("1", &testTransporter{})
 
-	server.SetHeartbeatTimeout(time.Second * 10)
-	server.Start()
-	defer server.Stop()
+	s.SetHeartbeatTimeout(time.Second * 10)
+	s.Start()
+	defer s.Stop()
 
 	// Append single entry.
 	e, _ := newLogEntry(nil, 1, 1, &testCommand1{Val: "foo", I: 10})
 	entries := []*LogEntry{e}
-	resp := server.AppendEntries(newAppendEntriesRequest(1, 0, 0, 0, "ldr", entries))
+	resp := s.AppendEntries(newAppendEntriesRequest(1, 0, 0, 0, "ldr", entries))
 	if resp.Term != 1 || !resp.Success {
 		t.Fatalf("AppendEntries failed: %v/%v", resp.Term, resp.Success)
 	}
-	if index, term := server.log.commitInfo(); index != 0 || term != 0 {
+	if index, term := s.(*server).log.commitInfo(); index != 0 || term != 0 {
 		t.Fatalf("Invalid commit info [IDX=%v, TERM=%v]", index, term)
 	}
 
@@ -212,57 +210,56 @@ func TestServerAppendEntries(t *testing.T) {
 	e1, _ := newLogEntry(nil, 2, 1, &testCommand1{Val: "bar", I: 20})
 	e2, _ := newLogEntry(nil, 3, 1, &testCommand1{Val: "baz", I: 30})
 	entries = []*LogEntry{e1, e2}
-	resp = server.AppendEntries(newAppendEntriesRequest(1, 1, 1, 1, "ldr", entries))
+	resp = s.AppendEntries(newAppendEntriesRequest(1, 1, 1, 1, "ldr", entries))
 	if resp.Term != 1 || !resp.Success {
 		t.Fatalf("AppendEntries failed: %v/%v", resp.Term, resp.Success)
 	}
-	if index, term := server.log.commitInfo(); index != 1 || term != 1 {
+	if index, term := s.(*server).log.commitInfo(); index != 1 || term != 1 {
 		t.Fatalf("Invalid commit info [IDX=%v, TERM=%v]", index, term)
 	}
 
 	// Send zero entries and commit everything.
-	resp = server.AppendEntries(newAppendEntriesRequest(2, 3, 1, 3, "ldr", []*LogEntry{}))
+	resp = s.AppendEntries(newAppendEntriesRequest(2, 3, 1, 3, "ldr", []*LogEntry{}))
 	if resp.Term != 2 || !resp.Success {
 		t.Fatalf("AppendEntries failed: %v/%v", resp.Term, resp.Success)
 	}
-	if index, term := server.log.commitInfo(); index != 3 || term != 1 {
+	if index, term := s.(*server).log.commitInfo(); index != 3 || term != 1 {
 		t.Fatalf("Invalid commit info [IDX=%v, TERM=%v]", index, term)
 	}
 }
 
 //Ensure that entries with stale terms are rejected.
 func TestServerAppendEntriesWithStaleTermsAreRejected(t *testing.T) {
-	server := newTestServer("1", &testTransporter{})
+	s := newTestServer("1", &testTransporter{})
 
-	server.Start()
+	s.Start()
 
-	defer server.Stop()
-	server.currentTerm = 2
+	defer s.Stop()
+	s.(*server).currentTerm = 2
 
 	// Append single entry.
 	e, _ := newLogEntry(nil, 1, 1, &testCommand1{Val: "foo", I: 10})
 	entries := []*LogEntry{e}
-	resp := server.AppendEntries(newAppendEntriesRequest(1, 0, 0, 0, "ldr", entries))
+	resp := s.AppendEntries(newAppendEntriesRequest(1, 0, 0, 0, "ldr", entries))
 	if resp.Term != 2 || resp.Success {
 		t.Fatalf("AppendEntries should have failed: %v/%v", resp.Term, resp.Success)
 	}
-	if index, term := server.log.commitInfo(); index != 0 || term != 0 {
+	if index, term := s.(*server).log.commitInfo(); index != 0 || term != 0 {
 		t.Fatalf("Invalid commit info [IDX=%v, TERM=%v]", index, term)
 	}
 }
 
 // Ensure that we reject entries if the commit log is different.
 func TestServerAppendEntriesRejectedIfAlreadyCommitted(t *testing.T) {
-	server := newTestServer("1", &testTransporter{})
-	server.Start()
-
-	defer server.Stop()
+	s := newTestServer("1", &testTransporter{})
+	s.Start()
+	defer s.Stop()
 
 	// Append single entry + commit.
 	e1, _ := newLogEntry(nil, 1, 1, &testCommand1{Val: "foo", I: 10})
 	e2, _ := newLogEntry(nil, 2, 1, &testCommand1{Val: "foo", I: 15})
 	entries := []*LogEntry{e1, e2}
-	resp := server.AppendEntries(newAppendEntriesRequest(1, 0, 0, 2, "ldr", entries))
+	resp := s.AppendEntries(newAppendEntriesRequest(1, 0, 0, 2, "ldr", entries))
 	if resp.Term != 1 || !resp.Success {
 		t.Fatalf("AppendEntries failed: %v/%v", resp.Term, resp.Success)
 	}
@@ -270,7 +267,7 @@ func TestServerAppendEntriesRejectedIfAlreadyCommitted(t *testing.T) {
 	// Append entry again (post-commit).
 	e, _ := newLogEntry(nil, 2, 1, &testCommand1{Val: "bar", I: 20})
 	entries = []*LogEntry{e}
-	resp = server.AppendEntries(newAppendEntriesRequest(1, 2, 1, 1, "ldr", entries))
+	resp = s.AppendEntries(newAppendEntriesRequest(1, 2, 1, 1, "ldr", entries))
 	if resp.Term != 1 || resp.Success {
 		t.Fatalf("AppendEntries should have failed: %v/%v", resp.Term, resp.Success)
 	}
@@ -278,9 +275,9 @@ func TestServerAppendEntriesRejectedIfAlreadyCommitted(t *testing.T) {
 
 // Ensure that we uncommitted entries are rolled back if new entries overwrite them.
 func TestServerAppendEntriesOverwritesUncommittedEntries(t *testing.T) {
-	server := newTestServer("1", &testTransporter{})
-	server.Start()
-	defer server.Stop()
+	s := newTestServer("1", &testTransporter{})
+	s.Start()
+	defer s.Stop()
 
 	entry1, _ := newLogEntry(nil, 1, 1, &testCommand1{Val: "foo", I: 10})
 	entry2, _ := newLogEntry(nil, 2, 1, &testCommand1{Val: "foo", I: 15})
@@ -288,15 +285,15 @@ func TestServerAppendEntriesOverwritesUncommittedEntries(t *testing.T) {
 
 	// Append single entry + commit.
 	entries := []*LogEntry{entry1, entry2}
-	resp := server.AppendEntries(newAppendEntriesRequest(1, 0, 0, 1, "ldr", entries))
-	if resp.Term != 1 || !resp.Success || server.log.commitIndex != 1 || !reflect.DeepEqual(server.log.entries, []*LogEntry{entry1, entry2}) {
+	resp := s.AppendEntries(newAppendEntriesRequest(1, 0, 0, 1, "ldr", entries))
+	if resp.Term != 1 || !resp.Success || s.(*server).log.commitIndex != 1 || !reflect.DeepEqual(s.(*server).log.entries, []*LogEntry{entry1, entry2}) {
 		t.Fatalf("AppendEntries failed: %v/%v", resp.Term, resp.Success)
 	}
 
 	// Append entry that overwrites the second (uncommitted) entry.
 	entries = []*LogEntry{entry3}
-	resp = server.AppendEntries(newAppendEntriesRequest(2, 1, 1, 2, "ldr", entries))
-	if resp.Term != 2 || !resp.Success || server.log.commitIndex != 2 || !reflect.DeepEqual(server.log.entries, []*LogEntry{entry1, entry3}) {
+	resp = s.AppendEntries(newAppendEntriesRequest(2, 1, 1, 2, "ldr", entries))
+	if resp.Term != 2 || !resp.Success || s.(*server).log.commitIndex != 2 || !reflect.DeepEqual(s.(*server).log.entries, []*LogEntry{entry1, entry3}) {
 		t.Fatalf("AppendEntries should have succeeded: %v/%v", resp.Term, resp.Success)
 	}
 }
@@ -307,11 +304,11 @@ func TestServerAppendEntriesOverwritesUncommittedEntries(t *testing.T) {
 
 // Ensure that a follower cannot execute a command.
 func TestServerDenyCommandExecutionWhenFollower(t *testing.T) {
-	server := newTestServer("1", &testTransporter{})
-	server.Start()
-	defer server.Stop()
+	s := newTestServer("1", &testTransporter{})
+	s.Start()
+	defer s.Stop()
 	var err error
-	if _, err = server.Do(&testCommand1{Val: "foo", I: 10}); err != NotLeaderError {
+	if _, err = s.Do(&testCommand1{Val: "foo", I: 10}); err != NotLeaderError {
 		t.Fatalf("Expected error: %v, got: %v", NotLeaderError, err)
 	}
 }
@@ -324,27 +321,27 @@ func TestServerDenyCommandExecutionWhenFollower(t *testing.T) {
 func TestServerRecoverFromPreviousLogAndConf(t *testing.T) {
 	// Initialize the servers.
 	var mutex sync.RWMutex
-	servers := map[string]*Server{}
+	servers := map[string]Server{}
 
 	transporter := &testTransporter{}
-	transporter.sendVoteRequestFunc = func(server *Server, peer *Peer, req *RequestVoteRequest) *RequestVoteResponse {
+	transporter.sendVoteRequestFunc = func(s Server, peer *Peer, req *RequestVoteRequest) *RequestVoteResponse {
 		mutex.RLock()
-		s := servers[peer.Name]
+		target := servers[peer.Name]
 		mutex.RUnlock()
-		return s.RequestVote(req)
+		return target.RequestVote(req)
 	}
-	transporter.sendAppendEntriesRequestFunc = func(server *Server, peer *Peer, req *AppendEntriesRequest) *AppendEntriesResponse {
+	transporter.sendAppendEntriesRequestFunc = func(s Server, peer *Peer, req *AppendEntriesRequest) *AppendEntriesResponse {
 		mutex.RLock()
-		s := servers[peer.Name]
+		target := servers[peer.Name]
 		mutex.RUnlock()
-		return s.AppendEntries(req)
+		return target.AppendEntries(req)
 	}
 
 	disTransporter := &testTransporter{}
-	disTransporter.sendVoteRequestFunc = func(server *Server, peer *Peer, req *RequestVoteRequest) *RequestVoteResponse {
+	disTransporter.sendVoteRequestFunc = func(s Server, peer *Peer, req *RequestVoteRequest) *RequestVoteResponse {
 		return nil
 	}
-	disTransporter.sendAppendEntriesRequestFunc = func(server *Server, peer *Peer, req *AppendEntriesRequest) *AppendEntriesResponse {
+	disTransporter.sendAppendEntriesRequestFunc = func(s Server, peer *Peer, req *AppendEntriesRequest) *AppendEntriesResponse {
 		return nil
 	}
 
@@ -358,22 +355,22 @@ func TestServerRecoverFromPreviousLogAndConf(t *testing.T) {
 		names = append(names, strconv.Itoa(i))
 	}
 
-	var leader *Server
+	var leader Server
 	for _, name := range names {
-		server := newTestServer(name, transporter)
+		s := newTestServer(name, transporter)
 
-		servers[name] = server
-		paths[name] = server.Path()
+		servers[name] = s
+		paths[name] = s.Path()
 
 		if name == "1" {
-			leader = server
-			server.SetHeartbeatTimeout(testHeartbeatTimeout)
-			server.Start()
+			leader = s
+			s.SetHeartbeatTimeout(testHeartbeatTimeout)
+			s.Start()
 			time.Sleep(testHeartbeatTimeout)
 		} else {
-			server.SetElectionTimeout(testElectionTimeout)
-			server.SetHeartbeatTimeout(testHeartbeatTimeout)
-			server.Start()
+			s.SetElectionTimeout(testElectionTimeout)
+			s.SetHeartbeatTimeout(testHeartbeatTimeout)
+			s.Start()
 			time.Sleep(testHeartbeatTimeout)
 		}
 		if _, err := leader.Do(&DefaultJoinCommand{Name: name}); err != nil {
@@ -385,35 +382,35 @@ func TestServerRecoverFromPreviousLogAndConf(t *testing.T) {
 	// commit some commands
 	for i := 0; i < 10; i++ {
 		if _, err := leader.Do(&testCommand2{X: 1}); err != nil {
-			t.Fatalf("cannot commit command:", err.Error())
+			t.Fatalf("cannot commit command: %s", err.Error())
 		}
 	}
 
 	time.Sleep(2 * testHeartbeatTimeout)
 
 	for _, name := range names {
-		server := servers[name]
-		if server.CommitIndex() != 16 {
-			t.Fatalf("%s commitIndex is invalid [%d/%d]", name, server.CommitIndex(), 16)
+		s := servers[name]
+		if s.CommitIndex() != 16 {
+			t.Fatalf("%s commitIndex is invalid [%d/%d]", name, s.CommitIndex(), 16)
 		}
-		server.Stop()
+		s.Stop()
 	}
 
 	for _, name := range names {
 		// with old path and disable transportation
-		server := newTestServerWithPath(name, disTransporter, paths[name])
-		servers[name] = server
+		s := newTestServerWithPath(name, disTransporter, paths[name])
+		servers[name] = s
 
-		server.Start()
+		s.Start()
 
 		// should only commit to the last join command
-		if server.CommitIndex() != 6 {
-			t.Fatalf("%s recover phase 1 commitIndex is invalid [%d/%d]", name, server.CommitIndex(), 6)
+		if s.CommitIndex() != 6 {
+			t.Fatalf("%s recover phase 1 commitIndex is invalid [%d/%d]", name, s.CommitIndex(), 6)
 		}
 
 		// peer conf should be recovered
-		if len(server.Peers()) != 4 {
-			t.Fatalf("%s recover phase 1 peer failed! [%d/%d]", name, len(server.Peers()), 4)
+		if len(s.Peers()) != 4 {
+			t.Fatalf("%s recover phase 1 peer failed! [%d/%d]", name, len(s.Peers()), 4)
 		}
 	}
 
@@ -426,11 +423,11 @@ func TestServerRecoverFromPreviousLogAndConf(t *testing.T) {
 
 	// should commit to the previous index + 1(nop command when new leader elected)
 	for _, name := range names {
-		server := servers[name]
-		if server.CommitIndex() != 17 {
-			t.Fatalf("%s commitIndex is invalid [%d/%d]", name, server.CommitIndex(), 17)
+		s := servers[name]
+		if s.CommitIndex() != 17 {
+			t.Fatalf("%s commitIndex is invalid [%d/%d]", name, s.CommitIndex(), 17)
 		}
-		server.Stop()
+		s.Stop()
 	}
 }
 
@@ -440,29 +437,29 @@ func TestServerRecoverFromPreviousLogAndConf(t *testing.T) {
 
 // Ensure that we can start a single server and append to its log.
 func TestServerSingleNode(t *testing.T) {
-	server := newTestServer("1", &testTransporter{})
-	if server.State() != Stopped {
-		t.Fatalf("Unexpected server state: %v", server.State())
+	s := newTestServer("1", &testTransporter{})
+	if s.State() != Stopped {
+		t.Fatalf("Unexpected server state: %v", s.State())
 	}
 
-	server.Start()
+	s.Start()
 
 	time.Sleep(testHeartbeatTimeout)
 
 	// Join the server to itself.
-	if _, err := server.Do(&DefaultJoinCommand{Name: "1"}); err != nil {
+	if _, err := s.Do(&DefaultJoinCommand{Name: "1"}); err != nil {
 		t.Fatalf("Unable to join: %v", err)
 	}
 	debugln("finish command")
 
-	if server.State() != Leader {
-		t.Fatalf("Unexpected server state: %v", server.State())
+	if s.State() != Leader {
+		t.Fatalf("Unexpected server state: %v", s.State())
 	}
 
-	server.Stop()
+	s.Stop()
 
-	if server.State() != Stopped {
-		t.Fatalf("Unexpected server state: %v", server.State())
+	if s.State() != Stopped {
+		t.Fatalf("Unexpected server state: %v", s.State())
 	}
 }
 
@@ -470,27 +467,27 @@ func TestServerSingleNode(t *testing.T) {
 func TestServerMultiNode(t *testing.T) {
 	// Initialize the servers.
 	var mutex sync.RWMutex
-	servers := map[string]*Server{}
+	servers := map[string]Server{}
 
 	transporter := &testTransporter{}
-	transporter.sendVoteRequestFunc = func(server *Server, peer *Peer, req *RequestVoteRequest) *RequestVoteResponse {
+	transporter.sendVoteRequestFunc = func(s Server, peer *Peer, req *RequestVoteRequest) *RequestVoteResponse {
 		mutex.RLock()
-		s := servers[peer.Name]
+		target := servers[peer.Name]
 		mutex.RUnlock()
-		return s.RequestVote(req)
+		return target.RequestVote(req)
 	}
-	transporter.sendAppendEntriesRequestFunc = func(server *Server, peer *Peer, req *AppendEntriesRequest) *AppendEntriesResponse {
+	transporter.sendAppendEntriesRequestFunc = func(s Server, peer *Peer, req *AppendEntriesRequest) *AppendEntriesResponse {
 		mutex.RLock()
-		s := servers[peer.Name]
+		target := servers[peer.Name]
 		mutex.RUnlock()
-		return s.AppendEntries(req)
+		return target.AppendEntries(req)
 	}
 
 	disTransporter := &testTransporter{}
-	disTransporter.sendVoteRequestFunc = func(server *Server, peer *Peer, req *RequestVoteRequest) *RequestVoteResponse {
+	disTransporter.sendVoteRequestFunc = func(s Server, peer *Peer, req *RequestVoteRequest) *RequestVoteResponse {
 		return nil
 	}
-	disTransporter.sendAppendEntriesRequestFunc = func(server *Server, peer *Peer, req *AppendEntriesRequest) *AppendEntriesResponse {
+	disTransporter.sendAppendEntriesRequestFunc = func(s Server, peer *Peer, req *AppendEntriesRequest) *AppendEntriesResponse {
 		return nil
 	}
 
@@ -503,24 +500,24 @@ func TestServerMultiNode(t *testing.T) {
 		names = append(names, strconv.Itoa(i))
 	}
 
-	var leader *Server
+	var leader Server
 	for _, name := range names {
-		server := newTestServer(name, transporter)
-		defer server.Stop()
+		s := newTestServer(name, transporter)
+		defer s.Stop()
 
 		mutex.Lock()
-		servers[name] = server
+		servers[name] = s
 		mutex.Unlock()
 
 		if name == "1" {
-			leader = server
-			server.SetHeartbeatTimeout(testHeartbeatTimeout)
-			server.Start()
+			leader = s
+			s.SetHeartbeatTimeout(testHeartbeatTimeout)
+			s.Start()
 			time.Sleep(testHeartbeatTimeout)
 		} else {
-			server.SetElectionTimeout(testElectionTimeout)
-			server.SetHeartbeatTimeout(testHeartbeatTimeout)
-			server.Start()
+			s.SetElectionTimeout(testElectionTimeout)
+			s.SetHeartbeatTimeout(testHeartbeatTimeout)
+			s.Start()
 			time.Sleep(testHeartbeatTimeout)
 		}
 		if _, err := leader.Do(&DefaultJoinCommand{Name: name}); err != nil {
@@ -536,7 +533,7 @@ func TestServerMultiNode(t *testing.T) {
 		t.Fatalf("Expected member count to be %v, got %v", n, leader.MemberCount())
 	}
 	if servers["2"].State() == Leader || servers["3"].State() == Leader {
-		t.Fatalf("Expected leader should be 1: 2=%v, 3=%v\n", servers["2"].state, servers["3"].state)
+		t.Fatalf("Expected leader should be 1: 2=%v, 3=%v\n", servers["2"].State(), servers["3"].State())
 	}
 	mutex.RUnlock()
 
@@ -573,7 +570,7 @@ func TestServerMultiNode(t *testing.T) {
 						}
 						debugln("[Test] Done")
 					}
-					debugln("Leader is ", value.Name(), " Index ", value.log.commitIndex)
+					debugln("Leader is ", value.Name(), " Index ", value.(*server).log.commitIndex)
 				}
 				debugln("Not Found leader")
 			}
@@ -584,7 +581,7 @@ func TestServerMultiNode(t *testing.T) {
 					if value.State() == Leader {
 						leader++
 					}
-					debugln(value.Name(), " ", value.currentTerm, " ", value.state)
+					debugln(value.Name(), " ", value.(*server).Term(), " ", value.State())
 				}
 			}
 

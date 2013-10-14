@@ -2,13 +2,12 @@ package etcd
 
 import (
 	"fmt"
-	"github.com/coreos/etcd/store"
 	"testing"
 	"time"
 )
 
 func TestWatch(t *testing.T) {
-	c := NewClient()
+	c := NewClient(nil)
 
 	go setHelper("bar", c)
 
@@ -30,14 +29,17 @@ func TestWatch(t *testing.T) {
 		t.Fatalf("Watch with Index failed with %s %s %v %v", result.Key, result.Value, result.TTL, result.Index)
 	}
 
-	ch := make(chan *store.Response, 10)
+	ch := make(chan *Response, 10)
 	stop := make(chan bool, 1)
 
 	go setLoop("bar", c)
 
-	go reciver(ch, stop)
+	go receiver(ch, stop)
 
-	c.Watch("watch_foo", 0, ch, stop)
+	_, err = c.Watch("watch_foo", 0, ch, stop)
+	if err != ErrWatchStoppedByUser {
+		t.Fatalf("Watch returned a non-user stop error")
+	}
 }
 
 func setHelper(value string, c *Client) {
@@ -54,7 +56,7 @@ func setLoop(value string, c *Client) {
 	}
 }
 
-func reciver(c chan *store.Response, stop chan bool) {
+func receiver(c chan *Response, stop chan bool) {
 	for i := 0; i < 10; i++ {
 		<-c
 	}

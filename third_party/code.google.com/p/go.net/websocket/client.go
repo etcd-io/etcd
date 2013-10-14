@@ -43,26 +43,12 @@ func NewConfig(server, origin string) (config *Config, err error) {
 func NewClient(config *Config, rwc io.ReadWriteCloser) (ws *Conn, err error) {
 	br := bufio.NewReader(rwc)
 	bw := bufio.NewWriter(rwc)
-	switch config.Version {
-	case ProtocolVersionHixie75:
-		err = hixie75ClientHandshake(config, br, bw)
-	case ProtocolVersionHixie76, ProtocolVersionHybi00:
-		err = hixie76ClientHandshake(config, br, bw)
-	case ProtocolVersionHybi08, ProtocolVersionHybi13:
-		err = hybiClientHandshake(config, br, bw)
-	default:
-		err = ErrBadProtocolVersion
-	}
+	err = hybiClientHandshake(config, br, bw)
 	if err != nil {
 		return
 	}
 	buf := bufio.NewReadWriter(br, bw)
-	switch config.Version {
-	case ProtocolVersionHixie75, ProtocolVersionHixie76, ProtocolVersionHybi00:
-		ws = newHixieClientConn(config, buf, rwc)
-	case ProtocolVersionHybi08, ProtocolVersionHybi13:
-		ws = newHybiClientConn(config, buf, rwc)
-	}
+	ws = newHybiClientConn(config, buf, rwc)
 	return
 }
 

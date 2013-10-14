@@ -13,7 +13,7 @@ func (c NOPCommand) CommandName() string {
 	return "raft:nop"
 }
 
-func (c NOPCommand) Apply(server *Server) (interface{}, error) {
+func (c NOPCommand) Apply(server Server) (interface{}, error) {
 	return nil, nil
 }
 

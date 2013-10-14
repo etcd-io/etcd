@@ -8,7 +8,7 @@ import (
 )
 
 func TestCreateAndGet(t *testing.T) {
-	s := New()
+	s := newStore()
 
 	s.Create("/foobar", "bar", false, false, Permanent, 1, 1)
 
@@ -66,7 +66,7 @@ func TestCreateAndGet(t *testing.T) {
 }
 
 func TestUpdateFile(t *testing.T) {
-	s := New()
+	s := newStore()
 
 	_, err := s.Create("/foo/bar", "bar", false, false, Permanent, 1, 1)
 
@@ -161,7 +161,7 @@ func TestUpdateFile(t *testing.T) {
 }
 
 func TestListDirectory(t *testing.T) {
-	s := New()
+	s := newStore()
 
 	// create dir /foo
 	// set key-value /foo/foo=bar
@@ -206,7 +206,7 @@ func TestListDirectory(t *testing.T) {
 }
 
 func TestRemove(t *testing.T) {
-	s := New()
+	s := newStore()
 
 	s.Create("/foo", "bar", false, false, Permanent, 1, 1)
 	_, err := s.Delete("/foo", false, 1, 1)
@@ -245,7 +245,7 @@ func TestRemove(t *testing.T) {
 }
 
 func TestExpire(t *testing.T) {
-	s := New()
+	s := newStore()
 
 	expire := time.Now().Add(time.Second)
 
@@ -287,7 +287,7 @@ func TestExpire(t *testing.T) {
 }
 
 func TestTestAndSet(t *testing.T) { // TODO prevValue == nil ?
-	s := New()
+	s := newStore()
 	s.Create("/foo", "bar", false, false, Permanent, 1, 1)
 
 	// test on wrong previous value
@@ -320,7 +320,7 @@ func TestTestAndSet(t *testing.T) { // TODO prevValue == nil ?
 }
 
 func TestWatch(t *testing.T) {
-	s := New()
+	s := newStore()
 	// watch at a deeper path
 	c, _ := s.Watch("/foo/foo/foo", false, 0, 0, 1)
 	s.Create("/foo/foo/foo", "bar", false, false, Permanent, 1, 1)
@@ -409,7 +409,7 @@ func TestWatch(t *testing.T) {
 }
 
 func TestSort(t *testing.T) {
-	s := New()
+	s := newStore()
 
 	// simulating random creation
 	keys := GenKeys(80, 4)
@@ -447,7 +447,7 @@ func TestSort(t *testing.T) {
 }
 
 func TestSaveAndRecover(t *testing.T) {
-	s := New()
+	s := newStore()
 
 	// simulating random creation
 	keys := GenKeys(8, 4)
@@ -469,7 +469,7 @@ func TestSaveAndRecover(t *testing.T) {
 	s.Create("/foo/foo", "bar", false, false, expire, 1, 1)
 	b, err := s.Save()
 
-	cloneFs := New()
+	cloneFs := newStore()
 	time.Sleep(2 * time.Second)
 
 	cloneFs.Recovery(b)
@@ -521,7 +521,7 @@ func GenKeys(num int, depth int) []string {
 	return keys
 }
 
-func createAndGet(s *Store, path string, t *testing.T) {
+func createAndGet(s *store, path string, t *testing.T) {
 	_, err := s.Create(path, "bar", false, false, Permanent, 1, 1)
 
 	if err != nil {

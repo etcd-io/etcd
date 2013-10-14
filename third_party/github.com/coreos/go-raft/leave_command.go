@@ -3,7 +3,7 @@ package raft
 // Leave command interface
 type LeaveCommand interface {
 	CommandName() string
-	Apply(server *Server) (interface{}, error)
+	Apply(server Server) (interface{}, error)
 	NodeName() string
 }
 
@@ -17,7 +17,7 @@ func (c *DefaultLeaveCommand) CommandName() string {
 	return "raft:leave"
 }
 
-func (c *DefaultLeaveCommand) Apply(server *Server) (interface{}, error) {
+func (c *DefaultLeaveCommand) Apply(server Server) (interface{}, error) {
 	err := server.RemovePeer(c.Name)
 
 	return []byte("leave"), err

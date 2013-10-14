@@ -286,6 +286,20 @@ func TestTrailingSpaces(t *testing.T) {
 	}
 }
 
+func TestDialConfigBadVersion(t *testing.T) {
+	once.Do(startServer)
+	config := newConfig(t, "/echo")
+	config.Version = 1234
+
+	_, err := DialConfig(config)
+
+	if dialerr, ok := err.(*DialError); ok {
+		if dialerr.Err != ErrBadProtocolVersion {
+			t.Errorf("dial expected err %q but got %q", ErrBadProtocolVersion, dialerr.Err)
+		}
+	}
+}
+
 func TestSmallBuffer(t *testing.T) {
 	// http://code.google.com/p/go/issues/detail?id=1145
 	// Read should be able to handle reading a fragment of a frame.

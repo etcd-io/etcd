@@ -21,7 +21,7 @@ type Server struct {
 	http.Server
 	peerServer  *PeerServer
 	registry    *Registry
-	store       *store.Store
+	store       store.Store
 	name        string
 	url         string
 	tlsConf     *TLSConfig
@@ -30,7 +30,7 @@ type Server struct {
 }
 
 // Creates a new Server.
-func New(name string, urlStr string, listenHost string, tlsConf *TLSConfig, tlsInfo *TLSInfo, peerServer *PeerServer, registry *Registry, store *store.Store) *Server {
+func New(name string, urlStr string, listenHost string, tlsConf *TLSConfig, tlsInfo *TLSInfo, peerServer *PeerServer, registry *Registry, store store.Store) *Server {
 	s := &Server{
 		Server: http.Server{
 			Handler:   mux.NewRouter(),
@@ -56,22 +56,22 @@ func New(name string, urlStr string, listenHost string, tlsConf *TLSConfig, tlsI
 
 // The current state of the server in the cluster.
 func (s *Server) State() string {
-	return s.peerServer.State()
+	return s.peerServer.RaftServer().State()
 }
 
 // The node name of the leader in the cluster.
 func (s *Server) Leader() string {
-	return s.peerServer.Leader()
+	return s.peerServer.RaftServer().Leader()
 }
 
 // The current Raft committed index.
 func (s *Server) CommitIndex() uint64 {
-	return s.peerServer.CommitIndex()
+	return s.peerServer.RaftServer().CommitIndex()
 }
 
 // The current Raft term.
 func (s *Server) Term() uint64 {
-	return s.peerServer.Term()
+	return s.peerServer.RaftServer().Term()
 }
 
 // The server URL.
@@ -85,7 +85,7 @@ func (s *Server) PeerURL(name string) (string, bool) {
 }
 
 // Returns a reference to the Store.
-func (s *Server) Store() *store.Store {
+func (s *Server) Store() store.Store {
 	return s.store
 }
 
@@ -201,7 +201,7 @@ func (s *Server) GetVersionHandler(w http.ResponseWriter, req *http.Request) err
 
 // Handler to return the current leader's raft address
 func (s *Server) GetLeaderHandler(w http.ResponseWriter, req *http.Request) error {
-	leader := s.peerServer.Leader()
+	leader := s.peerServer.RaftServer().Leader()
 	if leader == "" {
 		return etcdErr.NewError(etcdErr.EcodeLeaderElect, "", store.UndefIndex, store.UndefTerm)
 	}
@@ -213,7 +213,7 @@ func (s *Server) GetLeaderHandler(w http.ResponseWriter, req *http.Request) erro
 
 // Handler to return all the known machines in the current cluster.
 func (s *Server) GetMachinesHandler(w http.ResponseWriter, req *http.Request) error {
-	machines := s.registry.ClientURLs(s.peerServer.Leader(), s.name)
+	machines := s.registry.ClientURLs(s.peerServer.RaftServer().Leader(), s.name)
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(strings.Join(machines, ", ")))
 	return nil
@@ -227,12 +227,12 @@ func (s *Server) GetStatsHandler(w http.ResponseWriter, req *http.Request) error
 
 // Retrieves stats on the leader.
 func (s *Server) GetLeaderStatsHandler(w http.ResponseWriter, req *http.Request) error {
-	if s.peerServer.State() == raft.Leader {
+	if s.peerServer.RaftServer().State() == raft.Leader {
 		w.Write(s.peerServer.PeerStats())
 		return nil
 	}
 
-	leader := s.peerServer.Leader()
+	leader := s.peerServer.RaftServer().Leader()
 	if leader == "" {
 		return etcdErr.NewError(300, "", store.UndefIndex, store.UndefTerm)
 	}
@@ -259,7 +259,7 @@ func (s *Server) SpeedTestHandler(w http.ResponseWriter, req *http.Request) erro
 					Value:      "bar",
 					ExpireTime: time.Unix(0, 0),
 				}
-				s.peerServer.Do(c)
+				s.peerServer.RaftServer().Do(c)
 			}
 			c <- true
 		}()

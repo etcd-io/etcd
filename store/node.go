@@ -36,6 +36,9 @@ type Node struct {
 	Value      string           // for key-value pair
 	Children   map[string]*Node // for directory
 
+	// A reference to the store this node is attached to.
+	store *store
+
 	// a ttl node will have an expire routine associated with it.
 	// we need a channel to stop that routine when the expiration changes.
 	stopExpire chan bool
@@ -46,7 +49,7 @@ type Node struct {
 }
 
 // newKV creates a Key-Value pair
-func newKV(nodePath string, value string, createIndex uint64,
+func newKV(store *store, nodePath string, value string, createIndex uint64,
 	createTerm uint64, parent *Node, ACL string, expireTime time.Time) *Node {
 
 	return &Node{
@@ -57,6 +60,7 @@ func newKV(nodePath string, value string, createIndex uint64,
 		ModifiedTerm:  createTerm,
 		Parent:        parent,
 		ACL:           ACL,
+		store:         store,
 		stopExpire:    make(chan bool, 1),
 		ExpireTime:    expireTime,
 		Value:         value,
@@ -64,7 +68,7 @@ func newKV(nodePath string, value string, createIndex uint64,
 }
 
 // newDir creates a directory
-func newDir(nodePath string, createIndex uint64, createTerm uint64,
+func newDir(store *store, nodePath string, createIndex uint64, createTerm uint64,
 	parent *Node, ACL string, expireTime time.Time) *Node {
 
 	return &Node{
@@ -76,6 +80,7 @@ func newDir(nodePath string, createIndex uint64, createTerm uint64,
 		stopExpire:  make(chan bool, 1),
 		ExpireTime:  expireTime,
 		Children:    make(map[string]*Node),
+		store:       store,
 	}
 }
 
@@ -262,17 +267,17 @@ func (n *Node) internalRemove(recursive bool, callback func(path string)) {
 // if the node is already expired, delete the node and return.
 // if the node is permanent (this shouldn't happen), return at once.
 // else wait for a period time, then remove the node. and notify the watchhub.
-func (n *Node) Expire(s *Store) {
+func (n *Node) Expire() {
 	expired, duration := n.IsExpired()
 
 	if expired { // has been expired
 		// since the parent function of Expire() runs serially,
 		// there is no need for lock here
 		e := newEvent(Expire, n.Path, UndefIndex, UndefTerm)
-		s.WatcherHub.notify(e)
+		n.store.WatcherHub.notify(e)
 
 		n.Remove(true, nil)
-		s.Stats.Inc(ExpireCount)
+		n.store.Stats.Inc(ExpireCount)
 
 		return
 	}
@@ -289,17 +294,17 @@ func (n *Node) Expire(s *Store) {
 			// before expire get the lock, the expiration time
 			// of the node may be updated.
 			// we have to check again when get the lock
-			s.worldLock.Lock()
-			defer s.worldLock.Unlock()
+			n.store.worldLock.Lock()
+			defer n.store.worldLock.Unlock()
 
 			expired, _ := n.IsExpired()
 
 			if expired {
 				e := newEvent(Expire, n.Path, UndefIndex, UndefTerm)
-				s.WatcherHub.notify(e)
+				n.store.WatcherHub.notify(e)
 
 				n.Remove(true, nil)
-				s.Stats.Inc(ExpireCount)
+				n.store.Stats.Inc(ExpireCount)
 			}
 
 			return
@@ -355,7 +360,7 @@ func (n *Node) Pair(recurisive, sorted bool) KeyValuePair {
 	}
 }
 
-func (n *Node) UpdateTTL(expireTime time.Time, s *Store) {
+func (n *Node) UpdateTTL(expireTime time.Time) {
 	if !n.IsPermanent() {
 		// check if the node has been expired
 		// if the node is not expired, we need to stop the go routine associated with
@@ -369,7 +374,7 @@ func (n *Node) UpdateTTL(expireTime time.Time, s *Store) {
 
 	if expireTime.Sub(Permanent) != 0 {
 		n.ExpireTime = expireTime
-		n.Expire(s)
+		n.Expire()
 	}
 }
 
@@ -378,10 +383,10 @@ func (n *Node) UpdateTTL(expireTime time.Time, s *Store) {
 // If the node is a key-value pair, it will clone the pair.
 func (n *Node) Clone() *Node {
 	if !n.IsDir() {
-		return newKV(n.Path, n.Value, n.CreateIndex, n.CreateTerm, n.Parent, n.ACL, n.ExpireTime)
+		return newKV(n.store, n.Path, n.Value, n.CreateIndex, n.CreateTerm, n.Parent, n.ACL, n.ExpireTime)
 	}
 
-	clone := newDir(n.Path, n.CreateIndex, n.CreateTerm, n.Parent, n.ACL, n.ExpireTime)
+	clone := newDir(n.store, n.Path, n.CreateIndex, n.CreateTerm, n.Parent, n.ACL, n.ExpireTime)
 
 	for key, child := range n.Children {
 		clone.Children[key] = child.Clone()
@@ -397,15 +402,16 @@ func (n *Node) Clone() *Node {
 // call this function on its children.
 // We check the expire last since we need to recover the whole structure first and add all the
 // notifications into the event history.
-func (n *Node) recoverAndclean(s *Store) {
+func (n *Node) recoverAndclean() {
 	if n.IsDir() {
 		for _, child := range n.Children {
 			child.Parent = n
-			child.recoverAndclean(s)
+			child.store = n.store
+			child.recoverAndclean()
 		}
 	}
 
 	n.stopExpire = make(chan bool, 1)
 
-	n.Expire(s)
+	n.Expire()
 }

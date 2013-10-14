@@ -14,7 +14,7 @@ func (s *PeerServer) GetLogHttpHandler(w http.ResponseWriter, req *http.Request)
 	log.Debugf("[recv] GET %s/log", s.url)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(s.LogEntries())
+	json.NewEncoder(w).Encode(s.raftServer.LogEntries())
 }
 
 // Response to vote request
@@ -23,7 +23,7 @@ func (s *PeerServer) VoteHttpHandler(w http.ResponseWriter, req *http.Request) {
 	err := decodeJsonRequest(req, rvreq)
 	if err == nil {
 		log.Debugf("[recv] POST %s/vote [%s]", s.url, rvreq.CandidateName)
-		if resp := s.RequestVote(rvreq); resp != nil {
+		if resp := s.raftServer.RequestVote(rvreq); resp != nil {
 			w.WriteHeader(http.StatusOK)
 			json.NewEncoder(w).Encode(resp)
 			return
@@ -43,7 +43,7 @@ func (s *PeerServer) AppendEntriesHttpHandler(w http.ResponseWriter, req *http.R
 
 		s.serverStats.RecvAppendReq(aereq.LeaderName, int(req.ContentLength))
 
-		if resp := s.AppendEntries(aereq); resp != nil {
+		if resp := s.raftServer.AppendEntries(aereq); resp != nil {
 			w.WriteHeader(http.StatusOK)
 			json.NewEncoder(w).Encode(resp)
 			if !resp.Success {
@@ -62,7 +62,7 @@ func (s *PeerServer) SnapshotHttpHandler(w http.ResponseWriter, req *http.Reques
 	err := decodeJsonRequest(req, aereq)
 	if err == nil {
 		log.Debugf("[recv] POST %s/snapshot/ ", s.url)
-		if resp := s.RequestSnapshot(aereq); resp != nil {
+		if resp := s.raftServer.RequestSnapshot(aereq); resp != nil {
 			w.WriteHeader(http.StatusOK)
 			json.NewEncoder(w).Encode(resp)
 			return
@@ -78,7 +78,7 @@ func (s *PeerServer) SnapshotRecoveryHttpHandler(w http.ResponseWriter, req *htt
 	err := decodeJsonRequest(req, aereq)
 	if err == nil {
 		log.Debugf("[recv] POST %s/snapshotRecovery/ ", s.url)
-		if resp := s.SnapshotRecoveryRequest(aereq); resp != nil {
+		if resp := s.raftServer.SnapshotRecoveryRequest(aereq); resp != nil {
 			w.WriteHeader(http.StatusOK)
 			json.NewEncoder(w).Encode(resp)
 			return
