@@ -162,7 +162,9 @@ func (s *Store) TestAndSet(nodePath string, prevValue string, prevIndex uint64,
 		return nil, etcdErr.NewError(etcdErr.EcodeNotFile, nodePath, index, term)
 	}
 
-	if n.Value == prevValue || n.ModifiedIndex == prevIndex {
+	// If both of the prevValue and prevIndex are given, we will test both of them.
+	// Command will be executed, only if both of the tests are successful.
+	if (prevValue == "" || n.Value == prevValue) && (prevIndex == 0 || n.ModifiedIndex == prevIndex) {
 		e := newEvent(TestAndSet, nodePath, index, term)
 		e.PrevValue = n.Value
 
