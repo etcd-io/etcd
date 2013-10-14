@@ -20,9 +20,9 @@ type Snapshot struct {
 	LastIndex uint64 `json:"lastIndex"`
 	LastTerm  uint64 `json:"lastTerm"`
 	// cluster configuration.
-	Peers []*Peer `json: "peers"`
-	State []byte  `json: "state"`
-	Path  string  `json: "path"`
+	Peers []*Peer `json:"peers"`
+	State []byte  `json:"state"`
+	Path  string  `json:"path"`
 }
 
 // Save the snapshot to a file

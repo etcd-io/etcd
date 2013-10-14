@@ -19,7 +19,7 @@ import (
 )
 
 type PeerServer struct {
-	*raft.Server
+	raftServer     raft.Server
 	server         *Server
 	joinIndex      uint64
 	name           string
@@ -78,12 +78,12 @@ func NewPeerServer(name string, path string, url string, listenHost string, tlsC
 	raftTransporter := newTransporter(tlsConf.Scheme, tlsConf.Client, s)
 
 	// Create raft server
-	server, err := raft.NewServer(name, path, raftTransporter, s.store, s, "")
+	raftServer, err := raft.NewServer(name, path, raftTransporter, s.store, s, "")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	s.Server = server
+	s.raftServer = raftServer
 
 	return s
 }
@@ -92,7 +92,7 @@ func NewPeerServer(name string, path string, url string, listenHost string, tlsC
 func (s *PeerServer) ListenAndServe(snapshot bool, cluster []string) {
 	// LoadSnapshot
 	if snapshot {
-		err := s.LoadSnapshot()
+		err := s.raftServer.LoadSnapshot()
 
 		if err == nil {
 			log.Debugf("%s finished load snapshot", s.name)
@@ -101,12 +101,12 @@ func (s *PeerServer) ListenAndServe(snapshot bool, cluster []string) {
 		}
 	}
 
-	s.SetElectionTimeout(ElectionTimeout)
-	s.SetHeartbeatTimeout(HeartbeatTimeout)
+	s.raftServer.SetElectionTimeout(ElectionTimeout)
+	s.raftServer.SetHeartbeatTimeout(HeartbeatTimeout)
 
-	s.Start()
+	s.raftServer.Start()
 
-	if s.IsLogEmpty() {
+	if s.raftServer.IsLogEmpty() {
 		// start as a leader in a new cluster
 		if len(cluster) == 0 {
 			s.startAsLeader()
@@ -116,7 +116,7 @@ func (s *PeerServer) ListenAndServe(snapshot bool, cluster []string) {
 
 	} else {
 		// Rejoin the previous cluster
-		cluster = s.registry.PeerURLs(s.Leader(), s.name)
+		cluster = s.registry.PeerURLs(s.raftServer.Leader(), s.name)
 		for i := 0; i < len(cluster); i++ {
 			u, err := url.Parse(cluster[i])
 			if err != nil {
@@ -143,8 +143,8 @@ func (s *PeerServer) ListenAndServe(snapshot bool, cluster []string) {
 }
 
 // Retrieves the underlying Raft server.
-func (s *PeerServer) RaftServer() *raft.Server {
-	return s.Server
+func (s *PeerServer) RaftServer() raft.Server {
+	return s.raftServer
 }
 
 // Associates the client server with the peer server.
@@ -155,7 +155,7 @@ func (s *PeerServer) SetServer(server *Server) {
 func (s *PeerServer) startAsLeader() {
 	// leader need to join self as a peer
 	for {
-		_, err := s.Do(NewJoinCommand(PeerVersion, s.Name(), s.url, s.server.URL()))
+		_, err := s.raftServer.Do(NewJoinCommand(PeerVersion, s.raftServer.Name(), s.url, s.server.URL()))
 		if err == nil {
 			break
 		}
@@ -232,7 +232,7 @@ func (s *PeerServer) joinCluster(cluster []string) bool {
 			continue
 		}
 
-		err := s.joinByMachine(s.Server, machine, s.tlsConf.Scheme)
+		err := s.joinByMachine(s.raftServer, machine, s.tlsConf.Scheme)
 		if err == nil {
 			log.Debugf("%s success join to the cluster via machine %s", s.name, machine)
 			return true
@@ -249,7 +249,7 @@ func (s *PeerServer) joinCluster(cluster []string) bool {
 }
 
 // Send join requests to machine.
-func (s *PeerServer) joinByMachine(server *raft.Server, machine string, scheme string) error {
+func (s *PeerServer) joinByMachine(server raft.Server, machine string, scheme string) error {
 	var b bytes.Buffer
 
 	// t must be ok
@@ -327,7 +327,7 @@ func (s *PeerServer) Stats() []byte {
 }
 
 func (s *PeerServer) PeerStats() []byte {
-	if s.State() == raft.Leader {
+	if s.raftServer.State() == raft.Leader {
 		b, _ := json.Marshal(s.followersStats)
 		return b
 	}
@@ -339,15 +339,15 @@ func (s *PeerServer) monitorSnapshot() {
 		time.Sleep(s.snapConf.checkingInterval)
 		currentWrites := 0
 		if uint64(currentWrites) > s.snapConf.writesThr {
-			s.TakeSnapshot()
+			s.raftServer.TakeSnapshot()
 			s.snapConf.lastWrites = 0
 		}
 	}
 }
 
 func (s *PeerServer) dispatch(c raft.Command, w http.ResponseWriter, req *http.Request) error {
-	if s.State() == raft.Leader {
-		result, err := s.Do(c)
+	if s.raftServer.State() == raft.Leader {
+		result, err := s.raftServer.Do(c)
 		if err != nil {
 			return err
 		}
@@ -375,7 +375,7 @@ func (s *PeerServer) dispatch(c raft.Command, w http.ResponseWriter, req *http.R
 		return nil
 
 	} else {
-		leader := s.Leader()
+		leader := s.raftServer.Leader()
 
 		// No leader available.
 		if leader == "" {

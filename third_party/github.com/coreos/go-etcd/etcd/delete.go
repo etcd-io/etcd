@@ -2,13 +2,12 @@ package etcd
 
 import (
 	"encoding/json"
-	"github.com/coreos/etcd/store"
 	"io/ioutil"
 	"net/http"
 	"path"
 )
 
-func (c *Client) Delete(key string) (*store.Response, error) {
+func (c *Client) Delete(key string) (*Response, error) {
 
 	resp, err := c.sendRequest("DELETE", path.Join("keys", key), "")
 
@@ -28,7 +27,7 @@ func (c *Client) Delete(key string) (*store.Response, error) {
 		return nil, handleError(b)
 	}
 
-	var result store.Response
+	var result Response
 
 	err = json.Unmarshal(b, &result)
 
