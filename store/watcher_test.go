@@ -5,7 +5,7 @@ import (
 )
 
 func TestWatcher(t *testing.T) {
-	s := New()
+	s := newStore()
 	wh := s.WatcherHub
 	c, err := wh.watch("/foo", true, 1)
 	if err != nil {

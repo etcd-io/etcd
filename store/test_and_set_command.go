@@ -27,7 +27,7 @@ func (c *TestAndSetCommand) CommandName() string {
 
 // Set the key-value pair if the current value of the key equals to the given prevValue
 func (c *TestAndSetCommand) Apply(server *raft.Server) (interface{}, error) {
-	s, _ := server.StateMachine().(*Store)
+	s, _ := server.StateMachine().(Store)
 
 	e, err := s.TestAndSet(c.Key, c.PrevValue, c.PrevIndex,
 		c.Value, c.ExpireTime, server.CommitIndex(), server.Term())
