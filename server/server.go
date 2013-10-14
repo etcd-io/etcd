@@ -258,7 +258,7 @@ func (s *Server) GetLeaderHandler(w http.ResponseWriter, req *http.Request) erro
 
 // Handler to return all the known machines in the current cluster.
 func (s *Server) GetMachinesHandler(w http.ResponseWriter, req *http.Request) error {
-	machines := s.registry.URLs(s.peerServer.Leader(), s.name, s.registry.clientURL)
+	machines := s.registry.ClientURLs(s.peerServer.Leader(), s.name)
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(strings.Join(machines, ", ")))
 	return nil

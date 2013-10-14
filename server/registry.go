@@ -111,8 +111,18 @@ func (r *Registry) peerURL(name string) (string, bool) {
 	return "", false
 }
 
-// Retrieves the URLs  for all nodes using url function.
-func (r *Registry) URLs(leaderName, selfName string, url func(name string) (string, bool)) []string {
+// Retrieves the Client URLs for all nodes.
+func (r *Registry) ClientURLs(leaderName, selfName string) []string {
+	return r.urls(leaderName, selfName, r.clientURL)
+}
+
+// Retrieves the Peer URLs for all nodes.
+func (r *Registry) PeerURLs(leaderName, selfName string) []string {
+	return r.urls(leaderName, selfName, r.peerURL)
+}
+
+// Retrieves the URLs for all nodes using url function.
+func (r *Registry) urls(leaderName, selfName string, url func(name string) (string, bool)) []string {
 	r.Lock()
 	defer r.Unlock()
 
