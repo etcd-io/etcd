@@ -123,7 +123,7 @@ func (t *transporter) SendVoteRequest(server *raft.Server, peer *raft.Peer, req 
 	json.NewEncoder(&b).Encode(req)
 
 	u, _ := t.peerServer.registry.PeerURL(peer.Name)
-	log.Debugf("Send Vote to %s", u)
+	log.Debugf("Send Vote from %s to %s", server.Name(), u)
 
 	resp, httpRequest, err := t.Post(fmt.Sprintf("%s/vote", u), &b)
 

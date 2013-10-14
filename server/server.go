@@ -178,8 +178,17 @@ func (s *Server) Dispatch(c raft.Command, w http.ResponseWriter, req *http.Reque
 			return etcdErr.NewError(300, "Empty result from raft", store.UndefIndex, store.UndefTerm)
 		}
 
-		response := event.(*store.Event).Response()
-		b, _ := json.Marshal(response)
+		if b, ok := event.([]byte); ok {
+			w.WriteHeader(http.StatusOK)
+			w.Write(b)
+		}
+
+		var b []byte
+		if strings.HasPrefix(req.URL.Path, "/v1") {
+			b, _ = json.Marshal(event.(*store.Event).Response())
+		} else {
+			b, _ = json.Marshal(event.(*store.Event))
+		}
 		w.WriteHeader(http.StatusOK)
 		w.Write(b)
 

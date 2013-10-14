@@ -33,12 +33,14 @@ func (c *RemoveCommand) Apply(server *raft.Server) (interface{}, error) {
 	delete(ps.followersStats.Followers, c.Name)
 
 	if err != nil {
+		log.Debugf("Error while unregistering: %s (%v)", c.Name, err)
 		return []byte{0}, err
 	}
 
 	// Remove peer in raft
 	err = server.RemovePeer(c.Name)
 	if err != nil {
+		log.Debugf("Unable to remove peer: %s (%v)", c.Name, err)
 		return []byte{0}, err
 	}
 
@@ -57,7 +59,7 @@ func (c *RemoveCommand) Apply(server *raft.Server) (interface{}, error) {
 			log.Debugf("ignore previous remove command.")
 		}
 	}
-
+	
 	b := make([]byte, 8)
 	binary.PutUvarint(b, server.CommitIndex())
 

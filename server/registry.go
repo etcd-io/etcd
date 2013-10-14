@@ -56,7 +56,7 @@ func (r *Registry) Unregister(name string, commitIndex uint64, term uint64) erro
 	defer r.Unlock()
 
 	// Remove from cache.
-	delete(r.nodes, name)
+	// delete(r.nodes, name)
 
 	// Remove the key from the store.
 	_, err := r.store.Delete(path.Join(RegistryKey, name), false, commitIndex, term)
@@ -163,6 +163,11 @@ func (r *Registry) PeerURLs(leaderName, selfName string) []string {
 	log.Infof("PeerURLs: %s / %s (%s)", leaderName, selfName, strings.Join(urls, ","))
 
 	return urls
+}
+
+// Removes a node from the cache.
+func (r *Registry) Invalidate(name string) {
+	delete(r.nodes, name)	
 }
 
 // Loads the given node by name from the store into the cache.

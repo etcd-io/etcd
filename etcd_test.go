@@ -106,7 +106,7 @@ func TestInternalVersionFail(t *testing.T) {
 
 	procAttr := new(os.ProcAttr)
 	procAttr.Files = []*os.File{nil, os.Stdout, os.Stderr}
-	args := []string{"etcd", "-n=node1", "-f", "-d=/tmp/node1", "-vv", "-C=" + fakeURL.Host}
+	args := []string{"etcd", "-n=node1", "-f", "-d=/tmp/node1", "-C=" + fakeURL.Host}
 
 	process, err := os.StartProcess("etcd", args, procAttr)
 	if err != nil {
@@ -525,7 +525,7 @@ func TestRemoveNode(t *testing.T) {
 			}
 
 			if len(resp) != 3 {
-				t.Fatal("add machine fails")
+				t.Fatalf("add machine fails #1 (%d != 3)", len(resp))
 			}
 		}
 
@@ -567,7 +567,7 @@ func TestRemoveNode(t *testing.T) {
 			}
 
 			if len(resp) != 3 {
-				t.Fatal("add machine fails")
+				t.Fatalf("add machine fails #2 (%d != 3)", len(resp))
 			}
 		}
 	}

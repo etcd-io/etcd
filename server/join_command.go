@@ -41,6 +41,9 @@ func (c *JoinCommand) Apply(server *raft.Server) (interface{}, error) {
 	b := make([]byte, 8)
 	binary.PutUvarint(b, server.CommitIndex())
 
+	// Make sure we're not getting a cached value from the registry.
+	ps.registry.Invalidate(c.Name)
+
 	// Check if the join command is from a previous machine, who lost all its previous log.
 	if _, ok := ps.registry.URL(c.Name); ok {
 		return b, nil
