@@ -69,13 +69,13 @@ func CreateCluster(size int, procAttr *os.ProcAttr, ssl bool) ([][]string, []*os
 
 	for i := 0; i < size; i++ {
 		if i == 0 {
-			argGroup[i] = []string{"etcd", "-v", "-d=/tmp/node1", "-n=node1"}
+			argGroup[i] = []string{"etcd", "-d=/tmp/node1", "-n=node1"}
 			if ssl {
 				argGroup[i] = append(argGroup[i], sslServer1...)
 			}
 		} else {
 			strI := strconv.Itoa(i + 1)
-			argGroup[i] = []string{"etcd", "-v", "-n=node" + strI, "-c=127.0.0.1:400" + strI, "-s=127.0.0.1:700" + strI, "-d=/tmp/node" + strI, "-C=127.0.0.1:7001"}
+			argGroup[i] = []string{"etcd", "-n=node" + strI, "-c=127.0.0.1:400" + strI, "-s=127.0.0.1:700" + strI, "-d=/tmp/node" + strI, "-C=127.0.0.1:7001"}
 			if ssl {
 				argGroup[i] = append(argGroup[i], sslServer2...)
 			}
