@@ -178,7 +178,7 @@ However, the watch command can do more than this. Using the the index we can wat
 Let's try to watch for the set command of index 6 again:
 
 ```sh
-curl -L http://127.0.0.1:4001/v1/watch/foo -d index=7
+curl -L http://127.0.0.1:4001/v1/watch/foo -d index=6
 ```
 
 The watch command returns immediately with the same response as previous.
