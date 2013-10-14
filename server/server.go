@@ -207,7 +207,7 @@ func (s *Server) Dispatch(c raft.Command, w http.ResponseWriter, req *http.Reque
 		case *JoinCommand, *RemoveCommand:
 			url, _ = s.registry.PeerURL(leader)
 		default:
-			url, _ = s.registry.URL(leader)
+			url, _ = s.registry.ClientURL(leader)
 		}
 		redirect(url, w, req)
 
@@ -258,7 +258,7 @@ func (s *Server) GetLeaderHandler(w http.ResponseWriter, req *http.Request) erro
 
 // Handler to return all the known machines in the current cluster.
 func (s *Server) GetMachinesHandler(w http.ResponseWriter, req *http.Request) error {
-	machines := s.registry.URLs(s.peerServer.Leader(), s.name)
+	machines := s.registry.URLs(s.peerServer.Leader(), s.name, s.registry.clientURL)
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(strings.Join(machines, ", ")))
 	return nil
@@ -281,7 +281,7 @@ func (s *Server) GetLeaderStatsHandler(w http.ResponseWriter, req *http.Request)
 	if leader == "" {
 		return etcdErr.NewError(300, "", store.UndefIndex, store.UndefTerm)
 	}
-	hostname, _ := s.registry.URL(leader)
+	hostname, _ := s.registry.ClientURL(leader)
 	redirect(hostname, w, req)
 	return nil
 }

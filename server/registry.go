@@ -73,14 +73,14 @@ func (r *Registry) Count() int {
 	return len(e.KVPairs)
 }
 
-// Retrieves the URL for a given node by name.
-func (r *Registry) URL(name string) (string, bool) {
+// Retrieves the client URL for a given node by name.
+func (r *Registry) ClientURL(name string) (string, bool) {
 	r.Lock()
 	defer r.Unlock()
-	return r.url(name)
+	return r.clientURL(name)
 }
 
-func (r *Registry) url(name string) (string, bool) {
+func (r *Registry) clientURL(name string) (string, bool) {
 	if r.nodes[name] == nil {
 		r.load(name)
 	}
@@ -90,33 +90,6 @@ func (r *Registry) url(name string) (string, bool) {
 	}
 
 	return "", false
-}
-
-// Retrieves the URLs for all nodes.
-func (r *Registry) URLs(leaderName, selfName string) []string {
-	r.Lock()
-	defer r.Unlock()
-
-	// Build list including the leader and self.
-	urls := make([]string, 0)
-	if url, _ := r.url(leaderName); len(url) > 0 {
-		urls = append(urls, url)
-	}
-
-	// Retrieve a list of all nodes.
-	if e, _ := r.store.Get(RegistryKey, false, false, 0, 0); e != nil {
-		// Lookup the URL for each one.
-		for _, pair := range e.KVPairs {
-			_, name := filepath.Split(pair.Key)
-			if url, _ := r.url(name); len(url) > 0 && name != leaderName {
-				urls = append(urls, url)
-			}
-		}
-	}
-
-	log.Infof("URLs: %s / %s (%s)", leaderName, selfName, strings.Join(urls, ","))
-
-	return urls
 }
 
 // Retrieves the peer URL for a given node by name.
@@ -138,14 +111,14 @@ func (r *Registry) peerURL(name string) (string, bool) {
 	return "", false
 }
 
-// Retrieves the peer URLs for all nodes.
-func (r *Registry) PeerURLs(leaderName, selfName string) []string {
+// Retrieves the URLs  for all nodes using url function.
+func (r *Registry) URLs(leaderName, selfName string, url func(name string) (string, bool)) []string {
 	r.Lock()
 	defer r.Unlock()
 
 	// Build list including the leader and self.
 	urls := make([]string, 0)
-	if url, _ := r.peerURL(leaderName); len(url) > 0 {
+	if url, _ := url(leaderName); len(url) > 0 {
 		urls = append(urls, url)
 	}
 
@@ -154,13 +127,13 @@ func (r *Registry) PeerURLs(leaderName, selfName string) []string {
 		// Lookup the URL for each one.
 		for _, pair := range e.KVPairs {
 			_, name := filepath.Split(pair.Key)
-			if url, _ := r.peerURL(name); len(url) > 0 && name != leaderName {
+			if url, _ := url(name); len(url) > 0 && name != leaderName {
 				urls = append(urls, url)
 			}
 		}
 	}
 
-	log.Infof("PeerURLs: %s / %s (%s)", leaderName, selfName, strings.Join(urls, ","))
+	log.Infof("URLs: %s / %s (%s)", leaderName, selfName, strings.Join(urls, ","))
 
 	return urls
 }
