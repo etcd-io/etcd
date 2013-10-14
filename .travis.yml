@@ -2,7 +2,7 @@ language: go
 go: 1.1
 
 install:
- - echo "Skip install"
+ - go get -u github.com/coreos/etcd-test-runner
 
 script:
  - ./test.sh
