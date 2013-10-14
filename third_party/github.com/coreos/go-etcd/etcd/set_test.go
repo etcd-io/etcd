@@ -6,7 +6,7 @@ import (
 )
 
 func TestSet(t *testing.T) {
-	c := NewClient()
+	c := NewClient(nil)
 
 	result, err := c.Set("foo", "bar", 100)
 
