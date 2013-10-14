@@ -157,68 +157,6 @@ Sec-WebSocket-Protocol: chat
 	}
 }
 
-func TestHybiClientHandshakeHybi08(t *testing.T) {
-	b := bytes.NewBuffer([]byte{})
-	bw := bufio.NewWriter(b)
-	br := bufio.NewReader(strings.NewReader(`HTTP/1.1 101 Switching Protocols
-Upgrade: websocket
-Connection: Upgrade
-Sec-WebSocket-Accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo=
-Sec-WebSocket-Protocol: chat
-
-`))
-	var err error
-	config := new(Config)
-	config.Location, err = url.ParseRequestURI("ws://server.example.com/chat")
-	if err != nil {
-		t.Fatal("location url", err)
-	}
-	config.Origin, err = url.ParseRequestURI("http://example.com")
-	if err != nil {
-		t.Fatal("origin url", err)
-	}
-	config.Protocol = append(config.Protocol, "chat")
-	config.Protocol = append(config.Protocol, "superchat")
-	config.Version = ProtocolVersionHybi08
-
-	config.handshakeData = map[string]string{
-		"key": "dGhlIHNhbXBsZSBub25jZQ==",
-	}
-	err = hybiClientHandshake(config, br, bw)
-	if err != nil {
-		t.Errorf("handshake failed: %v", err)
-	}
-	req, err := http.ReadRequest(bufio.NewReader(b))
-	if err != nil {
-		t.Fatalf("read request: %v", err)
-	}
-	if req.Method != "GET" {
-		t.Errorf("request method expected GET, but got %q", req.Method)
-	}
-	if req.URL.Path != "/chat" {
-		t.Errorf("request path expected /demo, but got %q", req.URL.Path)
-	}
-	if req.Proto != "HTTP/1.1" {
-		t.Errorf("request proto expected HTTP/1.1, but got %q", req.Proto)
-	}
-	if req.Host != "server.example.com" {
-		t.Errorf("request Host expected example.com, but got %v", req.Host)
-	}
-	var expectedHeader = map[string]string{
-		"Connection":             "Upgrade",
-		"Upgrade":                "websocket",
-		"Sec-Websocket-Key":      config.handshakeData["key"],
-		"Sec-Websocket-Origin":   config.Origin.String(),
-		"Sec-Websocket-Protocol": "chat, superchat",
-		"Sec-Websocket-Version":  fmt.Sprintf("%d", ProtocolVersionHybi08),
-	}
-	for k, v := range expectedHeader {
-		if req.Header.Get(k) != v {
-			t.Errorf(fmt.Sprintf("%s expected %q but got %q", k, v, req.Header.Get(k)))
-		}
-	}
-}
-
 func TestHybiServerHandshake(t *testing.T) {
 	config := new(Config)
 	handshaker := &hybiServerHandshaker{Config: config}
@@ -307,52 +245,6 @@ Sec-WebSocket-Version: 13
 		"Upgrade: websocket",
 		"Connection: Upgrade",
 		"Sec-WebSocket-Accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo=",
-		"", ""}, "\r\n")
-
-	if b.String() != expectedResponse {
-		t.Errorf("handshake expected %q but got %q", expectedResponse, b.String())
-	}
-}
-
-func TestHybiServerHandshakeHybi08(t *testing.T) {
-	config := new(Config)
-	handshaker := &hybiServerHandshaker{Config: config}
-	br := bufio.NewReader(strings.NewReader(`GET /chat HTTP/1.1
-Host: server.example.com
-Upgrade: websocket
-Connection: Upgrade
-Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==
-Sec-WebSocket-Origin: http://example.com
-Sec-WebSocket-Protocol: chat, superchat
-Sec-WebSocket-Version: 8
-
-`))
-	req, err := http.ReadRequest(br)
-	if err != nil {
-		t.Fatal("request", err)
-	}
-	code, err := handshaker.ReadHandshake(br, req)
-	if err != nil {
-		t.Errorf("handshake failed: %v", err)
-	}
-	if code != http.StatusSwitchingProtocols {
-		t.Errorf("status expected %q but got %q", http.StatusSwitchingProtocols, code)
-	}
-	b := bytes.NewBuffer([]byte{})
-	bw := bufio.NewWriter(b)
-
-	config.Protocol = []string{"chat"}
-
-	err = handshaker.AcceptHandshake(bw)
-	if err != nil {
-		t.Errorf("handshake response failed: %v", err)
-	}
-	expectedResponse := strings.Join([]string{
-		"HTTP/1.1 101 Switching Protocols",
-		"Upgrade: websocket",
-		"Connection: Upgrade",
-		"Sec-WebSocket-Accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo=",
-		"Sec-WebSocket-Protocol: chat",
 		"", ""}, "\r\n")
 
 	if b.String() != expectedResponse {

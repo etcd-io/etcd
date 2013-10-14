@@ -1,3 +1,4 @@
+// Package activation implements primitives for systemd socket activation.
 package activation
 
 import (
@@ -23,7 +24,7 @@ func Files() []*os.File {
 	files := []*os.File(nil)
 	for fd := listenFdsStart; fd < listenFdsStart+nfds; fd++ {
 		syscall.CloseOnExec(fd)
-		files = append(files, os.NewFile(uintptr(fd), "LISTEN_FD_"+strconv.Itoa(fd)))
+		files = append(files, os.NewFile(uintptr(fd), "LISTEN_FD_" + strconv.Itoa(fd)))
 	}
 	return files
 }
