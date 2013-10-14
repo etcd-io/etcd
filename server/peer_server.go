@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	etcdErr "github.com/coreos/etcd/error"
@@ -346,44 +347,48 @@ func (s *PeerServer) monitorSnapshot() {
 
 func (s *PeerServer) dispatch(c raft.Command, w http.ResponseWriter, req *http.Request) error {
 	if s.State() == raft.Leader {
-		if response, err := s.Do(c); err != nil {
+		result, err := s.Do(c)
+		if err != nil {
 			return err
-		} else {
-			if response == nil {
-				return etcdErr.NewError(300, "Empty response from raft", store.UndefIndex, store.UndefTerm)
-			}
+		}
 
-			event, ok := response.(*store.Event)
-			if ok {
-				bytes, err := json.Marshal(event)
-				if err != nil {
-					fmt.Println(err)
-				}
+		if result == nil {
+			return etcdErr.NewError(300, "Empty result from raft", store.UndefIndex, store.UndefTerm)
+		}
 
-				w.Header().Add("X-Etcd-Index", fmt.Sprint(event.Index))
-				w.Header().Add("X-Etcd-Term", fmt.Sprint(event.Term))
-				w.WriteHeader(http.StatusOK)
-				w.Write(bytes)
-
-				return nil
-			}
-
-			bytes, _ := response.([]byte)
+		// response for raft related commands[join/remove]
+		if b, ok := result.([]byte); ok {
 			w.WriteHeader(http.StatusOK)
-			w.Write(bytes)
-
+			w.Write(b)
 			return nil
 		}
 
+		var b []byte
+		if strings.HasPrefix(req.URL.Path, "/v1") {
+			b, _ = json.Marshal(result.(*store.Event).Response())
+		} else {
+			b, _ = json.Marshal(result.(*store.Event))
+		}
+		w.WriteHeader(http.StatusOK)
+		w.Write(b)
+
+		return nil
+
 	} else {
 		leader := s.Leader()
-		// current no leader
+
+		// No leader available.
 		if leader == "" {
 			return etcdErr.NewError(300, "", store.UndefIndex, store.UndefTerm)
 		}
-		url, _ := s.registry.PeerURL(leader)
 
-		log.Debugf("Not leader; Current leader: %s; redirect: %s", leader, url)
+		var url string
+		switch c.(type) {
+		case *JoinCommand, *RemoveCommand:
+			url, _ = s.registry.PeerURL(leader)
+		default:
+			url, _ = s.registry.ClientURL(leader)
+		}
 		redirect(url, w, req)
 
 		return nil

@@ -113,7 +113,7 @@ func (s *PeerServer) JoinHttpHandler(w http.ResponseWriter, req *http.Request) {
 	}
 
 	log.Debugf("Receive Join Request from %s", command.Name)
-	err = s.dispatchRaftCommand(command, w, req)
+	err = s.dispatch(command, w, req)
 
 	// Return status.
 	if err != nil {
@@ -140,7 +140,7 @@ func (s *PeerServer) RemoveHttpHandler(w http.ResponseWriter, req *http.Request)
 
 	log.Debugf("[recv] Remove Request [%s]", command.Name)
 
-	s.dispatchRaftCommand(command, w, req)
+	s.dispatch(command, w, req)
 }
 
 // Response to the name request
@@ -155,8 +155,4 @@ func (s *PeerServer) RaftVersionHttpHandler(w http.ResponseWriter, req *http.Req
 	log.Debugf("[recv] Get %s/version/ ", s.url)
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(PeerVersion))
-}
-
-func (s *PeerServer) dispatchRaftCommand(c raft.Command, w http.ResponseWriter, req *http.Request) error {
-	return s.dispatch(c, w, req)
 }
