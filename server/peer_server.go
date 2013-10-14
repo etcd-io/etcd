@@ -30,7 +30,7 @@ type PeerServer struct {
 	followersStats *raftFollowersStats
 	serverStats    *raftServerStats
 	registry       *Registry
-	store          *store.Store
+	store          store.Store
 	snapConf       *snapshotConf
 	MaxClusterSize int
 	RetryTimes     int
@@ -49,7 +49,7 @@ type snapshotConf struct {
 	writesThr uint64
 }
 
-func NewPeerServer(name string, path string, url string, listenHost string, tlsConf *TLSConfig, tlsInfo *TLSInfo, registry *Registry, store *store.Store) *PeerServer {
+func NewPeerServer(name string, path string, url string, listenHost string, tlsConf *TLSConfig, tlsInfo *TLSInfo, registry *Registry, store store.Store) *PeerServer {
 	s := &PeerServer{
 		name:       name,
 		url:        url,
