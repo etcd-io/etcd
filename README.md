@@ -354,8 +354,8 @@ A similar argument `-sl` is used to setup the listening address for the server p
 Let the join two more nodes to this cluster using the -C argument:
 
 ```sh
-./etcd -c 127.0.0.1:4002 -s 127.0.0.1:7002 -C 127.0.0.1:7001 -d nodes/node2 -n node2
-./etcd -c 127.0.0.1:4003 -s 127.0.0.1:7003 -C 127.0.0.1:7001 -d nodes/node3 -n node3
+./etcd -s 127.0.0.1:7002 -c 127.0.0.1:4002 -C 127.0.0.1:7001 -d nodes/node2 -n node2
+./etcd -s 127.0.0.1:7003 -c 127.0.0.1:4003 -C 127.0.0.1:7001 -d nodes/node3 -n node3
 ```
 
 Get the machines in the cluster:
