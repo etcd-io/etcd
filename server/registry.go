@@ -167,7 +167,7 @@ func (r *Registry) PeerURLs(leaderName, selfName string) []string {
 
 // Removes a node from the cache.
 func (r *Registry) Invalidate(name string) {
-	delete(r.nodes, name)	
+	delete(r.nodes, name)
 }
 
 // Loads the given node by name from the store into the cache.

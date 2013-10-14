@@ -59,7 +59,7 @@ func (c *RemoveCommand) Apply(server *raft.Server) (interface{}, error) {
 			log.Debugf("ignore previous remove command.")
 		}
 	}
-	
+
 	b := make([]byte, 8)
 	binary.PutUvarint(b, server.CommitIndex())
 
