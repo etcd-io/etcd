@@ -1,7 +1,6 @@
 package server
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -168,51 +167,7 @@ func (s *Server) ListenAndServe() {
 }
 
 func (s *Server) Dispatch(c raft.Command, w http.ResponseWriter, req *http.Request) error {
-	if s.peerServer.State() == raft.Leader {
-		event, err := s.peerServer.Do(c)
-		if err != nil {
-			return err
-		}
-
-		if event == nil {
-			return etcdErr.NewError(300, "Empty result from raft", store.UndefIndex, store.UndefTerm)
-		}
-
-		if b, ok := event.([]byte); ok {
-			w.WriteHeader(http.StatusOK)
-			w.Write(b)
-		}
-
-		var b []byte
-		if strings.HasPrefix(req.URL.Path, "/v1") {
-			b, _ = json.Marshal(event.(*store.Event).Response())
-		} else {
-			b, _ = json.Marshal(event.(*store.Event))
-		}
-		w.WriteHeader(http.StatusOK)
-		w.Write(b)
-
-		return nil
-
-	} else {
-		leader := s.peerServer.Leader()
-
-		// No leader available.
-		if leader == "" {
-			return etcdErr.NewError(300, "", store.UndefIndex, store.UndefTerm)
-		}
-
-		var url string
-		switch c.(type) {
-		case *JoinCommand, *RemoveCommand:
-			url, _ = s.registry.PeerURL(leader)
-		default:
-			url, _ = s.registry.ClientURL(leader)
-		}
-		redirect(url, w, req)
-
-		return nil
-	}
+	return s.peerServer.dispatch(c, w, req)
 }
 
 // Sets a comma-delimited list of origins that are allowed.
