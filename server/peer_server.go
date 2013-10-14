@@ -536,7 +536,10 @@ func (s *PeerServer) dispatch(c raft.Command, w http.ResponseWriter, req *http.R
 		url, _ := s.registry.PeerURL(leader)
 
 		log.Debugf("Not leader; Current leader: %s; redirect: %s", leader, url)
-		redirect(url, w, req)
+
+		url += req.URL.Path
+		log.Debugf("Redirect to %s", url)
+		http.Redirect(w, req, url, http.StatusTemporaryRedirect)
 
 		return nil
 	}

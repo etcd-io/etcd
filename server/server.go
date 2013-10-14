@@ -209,7 +209,9 @@ func (s *Server) Dispatch(c raft.Command, w http.ResponseWriter, req *http.Reque
 		default:
 			url, _ = s.registry.URL(leader)
 		}
-		redirect(url, w, req)
+		url += req.URL.Path
+		log.Debugf("Redirect to %s", url)
+		http.Redirect(w, req, url, http.StatusTemporaryRedirect)
 
 		return nil
 	}
@@ -281,8 +283,10 @@ func (s *Server) GetLeaderStatsHandler(w http.ResponseWriter, req *http.Request)
 	if leader == "" {
 		return etcdErr.NewError(300, "", store.UndefIndex, store.UndefTerm)
 	}
-	hostname, _ := s.registry.URL(leader)
-	redirect(hostname, w, req)
+	url, _ := s.registry.URL(leader)
+	url += req.URL.Path
+	log.Debugf("Redirect to %s", url)
+	http.Redirect(w, req, url, http.StatusTemporaryRedirect)
 	return nil
 }
 
