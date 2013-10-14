@@ -7,7 +7,7 @@ import (
 
 func TestGet(t *testing.T) {
 
-	c := NewClient()
+	c := NewClient(nil)
 
 	c.Set("foo", "bar", 100)
 
