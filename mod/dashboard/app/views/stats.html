@@ -38,7 +38,7 @@
                         <div ng-switch-default>{{machine.name}}</div>
                     </td>
                     <td>
-                        <div class="etcd-square ng-class: {'etcd-square-green': machine.latency.current < 2, 'etcd-square-orange': machine.latency.current < 5, 'etcd-square-red': machine.latency.current >= 10}"></div>
+                        <div class="etcd-square ng-class: {'etcd-square-green': machine.latency.current < 25, 'etcd-square-orange': machine.latency.current < 60, 'etcd-square-red': machine.latency.current >= 60}"></div>
                         <div class="etcd-latency-value">{{machine.latency.current | number:1 }} ms</div>
                     </td>
                 </tr>
