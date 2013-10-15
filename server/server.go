@@ -102,10 +102,10 @@ func (s *Server) installV1() {
 }
 
 func (s *Server) installV2() {
-	s.handleFuncV2("/v2/keys/{key:.*}", v2.GetKeyHandler).Methods("GET")
-	s.handleFuncV2("/v2/keys/{key:.*}", v2.CreateKeyHandler).Methods("POST")
-	s.handleFuncV2("/v2/keys/{key:.*}", v2.UpdateKeyHandler).Methods("PUT")
-	s.handleFuncV2("/v2/keys/{key:.*}", v2.DeleteKeyHandler).Methods("DELETE")
+	s.handleFuncV2("/v2/keys/{key:.*}", v2.GetHandler).Methods("GET")
+	s.handleFuncV2("/v2/keys/{key:.*}", v2.PostHandler).Methods("POST")
+	s.handleFuncV2("/v2/keys/{key:.*}", v2.PutHandler).Methods("PUT")
+	s.handleFuncV2("/v2/keys/{key:.*}", v2.DeleteHandler).Methods("DELETE")
 	s.handleFunc("/v2/leader", s.GetLeaderHandler).Methods("GET")
 	s.handleFunc("/v2/machines", s.GetMachinesHandler).Methods("GET")
 	s.handleFunc("/v2/stats/self", s.GetStatsHandler).Methods("GET")

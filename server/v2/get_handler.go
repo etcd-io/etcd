@@ -13,7 +13,7 @@ import (
 	"github.com/gorilla/mux"
 )
 
-func GetKeyHandler(w http.ResponseWriter, req *http.Request, s Server) error {
+func GetHandler(w http.ResponseWriter, req *http.Request, s Server) error {
 	var err error
 	var event *store.Event
 

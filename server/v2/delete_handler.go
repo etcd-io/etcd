@@ -7,7 +7,7 @@ import (
 	"github.com/gorilla/mux"
 )
 
-func DeleteKeyHandler(w http.ResponseWriter, req *http.Request, s Server) error {
+func DeleteHandler(w http.ResponseWriter, req *http.Request, s Server) error {
 	vars := mux.Vars(req)
 	key := "/" + vars["key"]
 

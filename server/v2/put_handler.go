@@ -10,7 +10,7 @@ import (
 	"github.com/gorilla/mux"
 )
 
-func UpdateKeyHandler(w http.ResponseWriter, req *http.Request, s Server) error {
+func PutHandler(w http.ResponseWriter, req *http.Request, s Server) error {
 	vars := mux.Vars(req)
 	key := "/" + vars["key"]
 
