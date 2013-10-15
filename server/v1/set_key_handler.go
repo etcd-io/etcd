@@ -39,11 +39,10 @@ func SetKeyHandler(w http.ResponseWriter, req *http.Request, s Server) error {
 		}
 
 	} else {
-		c = &store.CreateCommand{
+		c = &store.SetCommand{
 			Key:        key,
 			Value:      value,
 			ExpireTime: expireTime,
-			Force:      true,
 		}
 	}
 

@@ -35,11 +35,10 @@ func PutHandler(w http.ResponseWriter, req *http.Request, s Server) error {
 
 	// Set command: create a new node or replace the old one.
 	if !valueOk && !indexOk && !existOk {
-		c = &store.CreateCommand{
+		c = &store.SetCommand{
 			Key:        key,
 			Value:      value,
 			ExpireTime: expireTime,
-			Force:      true,
 		}
 		return s.Dispatch(c, w, req)
 	}
