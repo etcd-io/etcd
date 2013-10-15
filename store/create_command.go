@@ -27,7 +27,7 @@ func (c *CreateCommand) CommandName() string {
 func (c *CreateCommand) Apply(server raft.Server) (interface{}, error) {
 	s, _ := server.StateMachine().(Store)
 
-	e, err := s.Create(c.Key, c.Value, c.IncrementalSuffix, false, c.ExpireTime, server.CommitIndex(), server.Term())
+	e, err := s.Create(c.Key, c.Value, c.IncrementalSuffix, c.ExpireTime, server.CommitIndex(), server.Term())
 
 	if err != nil {
 		log.Debug(err)

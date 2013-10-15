@@ -7,6 +7,7 @@ import (
 const (
 	Get            = "get"
 	Create         = "create"
+	Set            = "set"
 	Update         = "update"
 	Delete         = "delete"
 	CompareAndSwap = "compareAndSwap"
@@ -54,7 +55,7 @@ func (event *Event) Response() interface{} {
 			Expiration: event.Expiration,
 		}
 
-		if response.Action == Create || response.Action == Update {
+		if response.Action == Create || response.Action == Set {
 			response.Action = "set"
 			if response.PrevValue == "" {
 				response.NewKey = true

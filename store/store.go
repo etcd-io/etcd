@@ -15,8 +15,9 @@ import (
 
 type Store interface {
 	Get(nodePath string, recursive, sorted bool, index uint64, term uint64) (*Event, error)
-	Create(nodePath string, value string, incrementalSuffix bool, force bool,
-		expireTime time.Time, index uint64, term uint64) (*Event, error)
+	Set(nodePath string, value string, expireTime time.Time, index uint64, term uint64) (*Event, error)
+	Create(nodePath string, value string, incrementalSuffix bool, expireTime time.Time,
+		index uint64, term uint64) (*Event, error)
 	CompareAndSwap(nodePath string, prevValue string, prevIndex uint64,
 		value string, expireTime time.Time, index uint64, term uint64) (*Event, error)
 	Delete(nodePath string, recursive bool, index uint64, term uint64) (*Event, error)
@@ -106,13 +107,22 @@ func (s *store) Get(nodePath string, recursive, sorted bool, index uint64, term 
 // Create function creates the Node at nodePath. Create will help to create intermediate directories with no ttl.
 // If the node has already existed, create will fail.
 // If any node on the path is a file, create will fail.
-func (s *store) Create(nodePath string, value string, incrementalSuffix bool, force bool,
+func (s *store) Create(nodePath string, value string, incrementalSuffix bool,
 	expireTime time.Time, index uint64, term uint64) (*Event, error) {
 	nodePath = path.Clean(path.Join("/", nodePath))
 
 	s.worldLock.Lock()
 	defer s.worldLock.Unlock()
-	return s.internalCreate(nodePath, value, incrementalSuffix, force, expireTime, index, term, Create)
+	return s.internalCreate(nodePath, value, incrementalSuffix, false, expireTime, index, term, Create)
+}
+
+// Set function creates or replace the Node at nodePath.
+func (s *store) Set(nodePath string, value string, expireTime time.Time, index uint64, term uint64) (*Event, error) {
+	nodePath = path.Clean(path.Join("/", nodePath))
+
+	s.worldLock.Lock()
+	defer s.worldLock.Unlock()
+	return s.internalCreate(nodePath, value, false, true, expireTime, index, term, Set)
 }
 
 func (s *store) CompareAndSwap(nodePath string, prevValue string, prevIndex uint64,

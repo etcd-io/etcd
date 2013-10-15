@@ -45,7 +45,7 @@ func (r *Registry) Register(name string, peerVersion string, peerURL string, url
 	// Write data to store.
 	key := path.Join(RegistryKey, name)
 	value := fmt.Sprintf("raft=%s&etcd=%s&raftVersion=%s", peerURL, url, peerVersion)
-	_, err := r.store.Create(key, value, false, false, store.Permanent, commitIndex, term)
+	_, err := r.store.Create(key, value, false, store.Permanent, commitIndex, term)
 	log.Debugf("Register: %s (%v)", name, err)
 	return err
 }
