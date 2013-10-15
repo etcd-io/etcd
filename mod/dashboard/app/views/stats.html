@@ -20,23 +20,23 @@
             </div>
         </div>
         <div class="etcd-graph">
-            <h2>Follower Latency</h2>
+            <h2>Machines Latency</h2>
             <div class="etcd-graph-container" id="latency">
             </div>
         </div>
         <div class="etcd-list">
-            <h2>Follower List</h2>
+            <h2>Machines List</h2>
             <table cellpadding="0" cellspacing="0">
             <thead>
                 <td class="etcd-name-header">Machine Name</td>
                 <td class="etcd-latency">Latency</td>
             </thead>
             <tbody>
-                <tr ng-repeat="follower in followers">
-                    <td>{{follower.name}}</td>
+                <tr ng-repeat="machine in machines">
+                    <td>{{machine.name}}</td>
                     <td>
-                        <div class="etcd-square ng-class: {'etcd-square-green': follower.latency.current < 2, 'etcd-square-orange': follower.latency.current < 5, 'etcd-square-red': follower.latency.current >= 10}"></div>
-                        <div class="etcd-latency-value">{{follower.latency.current | number:1 }} ms</div>
+                        <div class="etcd-square ng-class: {'etcd-square-green': machine.latency.current < 2, 'etcd-square-orange': machine.latency.current < 5, 'etcd-square-red': machine.latency.current >= 10}"></div>
+                        <div class="etcd-latency-value">{{machine.latency.current | number:1 }} ms</div>
                     </td>
                 </tr>
             </tbody>
