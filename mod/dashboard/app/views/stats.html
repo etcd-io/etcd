@@ -34,8 +34,8 @@
             <tbody>
                 <tr ng-repeat="machine in machines">
                     <td ng-switch on="{true:'leader', false: 'follower'}[leader == machine.name]">
-                        <div ng-switch-when="leader">{{machine.name}}</div>
-                        <div ng-switch-default>{{machine.name}}{{leader}}</div>
+                        <div ng-switch-when="leader">{{machine.name}} (leader)</div>
+                        <div ng-switch-default>{{machine.name}} (follower)</div>
                     </td>
                     <td>
                         <div class="etcd-square ng-class: {'etcd-square-green': machine.latency.current < 2, 'etcd-square-orange': machine.latency.current < 5, 'etcd-square-red': machine.latency.current >= 10}"></div>
