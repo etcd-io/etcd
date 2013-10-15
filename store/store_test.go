@@ -340,8 +340,8 @@ func TestWatch(t *testing.T) {
 	c, _ = s.Watch("/foo/foo/foo", false, 0, 2, 1)
 	s.CompareAndSwap("/foo/foo/foo", "car", 0, "bar", Permanent, 3, 1)
 	e = nonblockingRetrive(c)
-	if e.Key != "/foo/foo/foo" || e.Action != TestAndSet {
-		t.Fatal("watch for TestAndSet node fails")
+	if e.Key != "/foo/foo/foo" || e.Action != CompareAndSwap {
+		t.Fatal("watch for CompareAndSwap node fails")
 	}
 
 	c, _ = s.Watch("/foo/foo/foo", false, 0, 3, 1)
@@ -369,8 +369,8 @@ func TestWatch(t *testing.T) {
 	c, _ = s.Watch("/foo", true, 0, 6, 1)
 	s.CompareAndSwap("/foo/foo/boo", "foo", 0, "bar", Permanent, 7, 1)
 	e = nonblockingRetrive(c)
-	if e.Key != "/foo/foo/boo" || e.Action != TestAndSet {
-		t.Fatal("watch for TestAndSet subdirectory fails")
+	if e.Key != "/foo/foo/boo" || e.Action != CompareAndSwap {
+		t.Fatal("watch for CompareAndSwap subdirectory fails")
 	}
 
 	c, _ = s.Watch("/foo", true, 0, 7, 1)
@@ -404,7 +404,7 @@ func TestWatch(t *testing.T) {
 	time.Sleep(time.Second * 2)
 	e = nonblockingRetrive(c)
 	if e.Key != "/foo/foo/boo" || e.Action != Expire || e.Index != 13 {
-		t.Fatal("watch for Expiration of TestAndSet() subdirectory fails ", e)
+		t.Fatal("watch for Expiration of CompareAndSwap() subdirectory fails ", e)
 	}
 }
 

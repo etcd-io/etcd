@@ -130,19 +130,19 @@ func (s *store) CompareAndSwap(nodePath string, prevValue string, prevIndex uint
 	n, err := s.internalGet(nodePath, index, term)
 
 	if err != nil {
-		s.Stats.Inc(TestAndSetFail)
+		s.Stats.Inc(CompareAndSwapFail)
 		return nil, err
 	}
 
 	if n.IsDir() { // can only test and set file
-		s.Stats.Inc(TestAndSetFail)
+		s.Stats.Inc(CompareAndSwapFail)
 		return nil, etcdErr.NewError(etcdErr.EcodeNotFile, nodePath, index, term)
 	}
 
 	// If both of the prevValue and prevIndex are given, we will test both of them.
 	// Command will be executed, only if both of the tests are successful.
 	if (prevValue == "" || n.Value == prevValue) && (prevIndex == 0 || n.ModifiedIndex == prevIndex) {
-		e := newEvent(TestAndSet, nodePath, index, term)
+		e := newEvent(CompareAndSwap, nodePath, index, term)
 		e.PrevValue = n.Value
 
 		// if test succeed, write the value
@@ -153,12 +153,12 @@ func (s *store) CompareAndSwap(nodePath string, prevValue string, prevIndex uint
 		e.Expiration, e.TTL = n.ExpirationAndTTL()
 
 		s.WatcherHub.notify(e)
-		s.Stats.Inc(TestAndSetSuccess)
+		s.Stats.Inc(CompareAndSwapSuccess)
 		return e, nil
 	}
 
 	cause := fmt.Sprintf("[%v != %v] [%v != %v]", prevValue, n.Value, prevIndex, n.ModifiedIndex)
-	s.Stats.Inc(TestAndSetFail)
+	s.Stats.Inc(CompareAndSwapFail)
 	return nil, etcdErr.NewError(etcdErr.EcodeTestFailed, cause, index, term)
 }
 

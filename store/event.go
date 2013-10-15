@@ -5,12 +5,12 @@ import (
 )
 
 const (
-	Get        = "get"
-	Create     = "create"
-	Update     = "update"
-	Delete     = "delete"
-	TestAndSet = "testAndSet"
-	Expire     = "expire"
+	Get            = "get"
+	Create         = "create"
+	Update         = "update"
+	Delete         = "delete"
+	CompareAndSwap = "compareAndSwap"
+	Expire         = "expire"
 )
 
 const (

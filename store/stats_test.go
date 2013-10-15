@@ -12,7 +12,7 @@ func TestBasicStats(t *testing.T) {
 
 	var i uint64
 	var GetSuccess, GetFail, SetSuccess, SetFail, DeleteSuccess, DeleteFail uint64
-	var UpdateSuccess, UpdateFail, TestAndSetSuccess, TestAndSetFail, watcher_number uint64
+	var UpdateSuccess, UpdateFail, CompareAndSwapSuccess, CompareAndSwapFail, watcher_number uint64
 
 	for _, k := range keys {
 		i++
@@ -60,9 +60,9 @@ func TestBasicStats(t *testing.T) {
 		i++
 		_, err := s.CompareAndSwap(k, "foo", 0, "bar", Permanent, i, 1)
 		if err != nil {
-			TestAndSetFail++
+			CompareAndSwapFail++
 		} else {
-			TestAndSetSuccess++
+			CompareAndSwapSuccess++
 		}
 	}
 
@@ -132,12 +132,12 @@ func TestBasicStats(t *testing.T) {
 		t.Fatalf("UpdateFail [%d] != Stats.UpdateFail [%d]", UpdateFail, s.Stats.UpdateFail)
 	}
 
-	if TestAndSetSuccess != s.Stats.TestAndSetSuccess {
-		t.Fatalf("TestAndSetSuccess [%d] != Stats.TestAndSetSuccess [%d]", TestAndSetSuccess, s.Stats.TestAndSetSuccess)
+	if CompareAndSwapSuccess != s.Stats.CompareAndSwapSuccess {
+		t.Fatalf("TestAndSetSuccess [%d] != Stats.CompareAndSwapSuccess [%d]", CompareAndSwapSuccess, s.Stats.CompareAndSwapSuccess)
 	}
 
-	if TestAndSetFail != s.Stats.TestAndSetFail {
-		t.Fatalf("TestAndSetFail [%d] != Stats.TestAndSetFail [%d]", TestAndSetFail, s.Stats.TestAndSetFail)
+	if CompareAndSwapFail != s.Stats.CompareAndSwapFail {
+		t.Fatalf("TestAndSetFail [%d] != Stats.TestAndSetFail [%d]", CompareAndSwapFail, s.Stats.CompareAndSwapFail)
 	}
 
 	s = newStore()
