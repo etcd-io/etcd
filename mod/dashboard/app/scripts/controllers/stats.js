@@ -39,7 +39,6 @@ angular.module('etcdStats', ['ngRoute', 'etcd'])
         value.name = index;
         $scope.machines.push(value);
       });
-      console.log($scope.machines);
       drawGraph();
     });
   }
