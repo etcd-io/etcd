@@ -254,10 +254,11 @@ func (s *Server) SpeedTestHandler(w http.ResponseWriter, req *http.Request) erro
 	for i := 0; i < count; i++ {
 		go func() {
 			for j := 0; j < 10; j++ {
-				c := &store.UpdateCommand{
+				c := &store.CreateCommand{
 					Key:        "foo",
 					Value:      "bar",
 					ExpireTime: time.Unix(0, 0),
+					Force:      true,
 				}
 				s.peerServer.RaftServer().Do(c)
 			}

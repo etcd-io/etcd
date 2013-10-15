@@ -74,7 +74,7 @@ func TestUpdateFile(t *testing.T) {
 		t.Fatalf("cannot create %s=bar [%s]", "/foo/bar", err.Error())
 	}
 
-	_, err = s.Update("/foo/bar", "barbar", Permanent, 2, 1)
+	_, err = s.update("/foo/bar", "barbar", Permanent, 2, 1)
 
 	if err != nil {
 		t.Fatalf("cannot update %s=barbar [%s]", "/foo/bar", err.Error())
@@ -114,7 +114,7 @@ func TestUpdateFile(t *testing.T) {
 	}
 
 	expire := time.Now().Add(time.Second * 2)
-	_, err = s.Update("/foo/foo", "", expire, 7, 1)
+	_, err = s.update("/foo/foo", "", expire, 7, 1)
 	if err != nil {
 		t.Fatalf("cannot update dir [%s] [%s]", "/foo/foo", err.Error())
 	}
@@ -286,18 +286,18 @@ func TestExpire(t *testing.T) {
 	}
 }
 
-func TestTestAndSet(t *testing.T) { // TODO prevValue == nil ?
+func TestCompareAndSwap(t *testing.T) { // TODO prevValue == nil ?
 	s := newStore()
 	s.Create("/foo", "bar", false, false, Permanent, 1, 1)
 
 	// test on wrong previous value
-	_, err := s.TestAndSet("/foo", "barbar", 0, "car", Permanent, 2, 1)
+	_, err := s.CompareAndSwap("/foo", "barbar", 0, "car", Permanent, 2, 1)
 	if err == nil {
 		t.Fatal("test and set should fail barbar != bar")
 	}
 
 	// test on value
-	e, err := s.TestAndSet("/foo", "bar", 0, "car", Permanent, 3, 1)
+	e, err := s.CompareAndSwap("/foo", "bar", 0, "car", Permanent, 3, 1)
 
 	if err != nil {
 		t.Fatal("test and set should succeed bar == bar")
@@ -308,7 +308,7 @@ func TestTestAndSet(t *testing.T) { // TODO prevValue == nil ?
 	}
 
 	// test on index
-	e, err = s.TestAndSet("/foo", "", 3, "bar", Permanent, 4, 1)
+	e, err = s.CompareAndSwap("/foo", "", 3, "bar", Permanent, 4, 1)
 
 	if err != nil {
 		t.Fatal("test and set should succeed index 3 == 3")
@@ -331,14 +331,14 @@ func TestWatch(t *testing.T) {
 	}
 
 	c, _ = s.Watch("/foo/foo/foo", false, 0, 1, 1)
-	s.Update("/foo/foo/foo", "car", Permanent, 2, 1)
+	s.update("/foo/foo/foo", "car", Permanent, 2, 1)
 	e = nonblockingRetrive(c)
 	if e.Key != "/foo/foo/foo" || e.Action != Update {
 		t.Fatal("watch for Update node fails ", e)
 	}
 
 	c, _ = s.Watch("/foo/foo/foo", false, 0, 2, 1)
-	s.TestAndSet("/foo/foo/foo", "car", 0, "bar", Permanent, 3, 1)
+	s.CompareAndSwap("/foo/foo/foo", "car", 0, "bar", Permanent, 3, 1)
 	e = nonblockingRetrive(c)
 	if e.Key != "/foo/foo/foo" || e.Action != TestAndSet {
 		t.Fatal("watch for TestAndSet node fails")
@@ -360,14 +360,14 @@ func TestWatch(t *testing.T) {
 	}
 
 	c, _ = s.Watch("/foo", true, 0, 5, 1)
-	s.Update("/foo/foo/boo", "foo", Permanent, 6, 1)
+	s.update("/foo/foo/boo", "foo", Permanent, 6, 1)
 	e = nonblockingRetrive(c)
 	if e.Key != "/foo/foo/boo" || e.Action != Update {
 		t.Fatal("watch for Update subdirectory fails")
 	}
 
 	c, _ = s.Watch("/foo", true, 0, 6, 1)
-	s.TestAndSet("/foo/foo/boo", "foo", 0, "bar", Permanent, 7, 1)
+	s.CompareAndSwap("/foo/foo/boo", "foo", 0, "bar", Permanent, 7, 1)
 	e = nonblockingRetrive(c)
 	if e.Key != "/foo/foo/boo" || e.Action != TestAndSet {
 		t.Fatal("watch for TestAndSet subdirectory fails")
@@ -390,7 +390,7 @@ func TestWatch(t *testing.T) {
 	}
 
 	s.Create("/foo/foo/boo", "foo", false, false, Permanent, 10, 1)
-	s.Update("/foo/foo/boo", "bar", time.Now().Add(time.Second*1), 11, 1)
+	s.update("/foo/foo/boo", "bar", time.Now().Add(time.Second*1), 11, 1)
 	c, _ = s.Watch("/foo", true, 0, 11, 1)
 	time.Sleep(time.Second * 2)
 	e = nonblockingRetrive(c)
@@ -399,7 +399,7 @@ func TestWatch(t *testing.T) {
 	}
 
 	s.Create("/foo/foo/boo", "foo", false, false, Permanent, 12, 1)
-	s.TestAndSet("/foo/foo/boo", "foo", 0, "bar", time.Now().Add(time.Second*1), 13, 1)
+	s.CompareAndSwap("/foo/foo/boo", "foo", 0, "bar", time.Now().Add(time.Second*1), 13, 1)
 	c, _ = s.Watch("/foo", true, 0, 13, 1)
 	time.Sleep(time.Second * 2)
 	e = nonblockingRetrive(c)

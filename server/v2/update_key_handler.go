@@ -29,35 +29,58 @@ func UpdateKeyHandler(w http.ResponseWriter, req *http.Request, s Server) error 
 
 	prevValue, valueOk := req.Form["prevValue"]
 	prevIndexStr, indexOk := req.Form["prevIndex"]
+	prevExist, existOk := req.Form["prevExist"]
 
 	var c raft.Command
-	if !valueOk && !indexOk { // update without test
-		c = &store.UpdateCommand{
+
+	// Set command: create a new node or replace the old one.
+	if !valueOk && !indexOk && !existOk {
+		c = &store.CreateCommand{
 			Key:        key,
 			Value:      value,
 			ExpireTime: expireTime,
+			Force:      true,
 		}
+		return s.Dispatch(c, w, req)
+	}
 
-	} else { // update with test
-		var prevIndex uint64
-
-		if indexOk {
-			prevIndex, err = strconv.ParseUint(prevIndexStr[0], 10, 64)
-
-			// bad previous index
-			if err != nil {
-				return etcdErr.NewError(etcdErr.EcodeIndexNaN, "Update", store.UndefIndex, store.UndefTerm)
+	// update with test
+	if existOk {
+		if prevExist[0] == "false" {
+			// Create command: create a new node. Fail, if a node already exists
+			// Ignore prevIndex and prevValue
+			c = &store.CreateCommand{
+				Key:        key,
+				Value:      value,
+				ExpireTime: expireTime,
 			}
-		} else {
-			prevIndex = 0
 		}
+	}
 
-		c = &store.TestAndSetCommand{
-			Key:       key,
-			Value:     value,
-			PrevValue: prevValue[0],
-			PrevIndex: prevIndex,
+	var prevIndex uint64
+
+	if indexOk {
+		prevIndex, err = strconv.ParseUint(prevIndexStr[0], 10, 64)
+
+		// bad previous index
+		if err != nil {
+			return etcdErr.NewError(etcdErr.EcodeIndexNaN, "CompareAndSwap", store.UndefIndex, store.UndefTerm)
 		}
+	} else {
+		prevIndex = 0
+	}
+
+	if valueOk {
+		if prevValue[0] == "" {
+			return etcdErr.NewError(etcdErr.EcodePrevValueRequired, "CompareAndSwap", store.UndefIndex, store.UndefTerm)
+		}
+	}
+
+	c = &store.CompareAndSwapCommand{
+		Key:       key,
+		Value:     value,
+		PrevValue: prevValue[0],
+		PrevIndex: prevIndex,
 	}
 
 	return s.Dispatch(c, w, req)

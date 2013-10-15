@@ -37,7 +37,7 @@ func TestBasicStats(t *testing.T) {
 
 	for _, k := range keys {
 		i++
-		_, err := s.Update(k, "foo", time.Now().Add(time.Second*time.Duration(rand.Intn(6))), i, 1)
+		_, err := s.update(k, "foo", time.Now().Add(time.Second*time.Duration(rand.Intn(6))), i, 1)
 		if err != nil {
 			UpdateFail++
 		} else {
@@ -58,7 +58,7 @@ func TestBasicStats(t *testing.T) {
 
 	for _, k := range keys {
 		i++
-		_, err := s.TestAndSet(k, "foo", 0, "bar", Permanent, i, 1)
+		_, err := s.CompareAndSwap(k, "foo", 0, "bar", Permanent, i, 1)
 		if err != nil {
 			TestAndSetFail++
 		} else {

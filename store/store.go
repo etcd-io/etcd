@@ -17,8 +17,7 @@ type Store interface {
 	Get(nodePath string, recursive, sorted bool, index uint64, term uint64) (*Event, error)
 	Create(nodePath string, value string, incrementalSuffix bool, force bool,
 		expireTime time.Time, index uint64, term uint64) (*Event, error)
-	Update(nodePath string, newValue string, expireTime time.Time, index uint64, term uint64) (*Event, error)
-	TestAndSet(nodePath string, prevValue string, prevIndex uint64,
+	CompareAndSwap(nodePath string, prevValue string, prevIndex uint64,
 		value string, expireTime time.Time, index uint64, term uint64) (*Event, error)
 	Delete(nodePath string, recursive bool, index uint64, term uint64) (*Event, error)
 	Watch(prefix string, recursive bool, sinceIndex uint64, index uint64, term uint64) (<-chan *Event, error)
@@ -116,47 +115,7 @@ func (s *store) Create(nodePath string, value string, incrementalSuffix bool, fo
 	return s.internalCreate(nodePath, value, incrementalSuffix, force, expireTime, index, term, Create)
 }
 
-// Update function updates the value/ttl of the node.
-// If the node is a file, the value and the ttl can be updated.
-// If the node is a directory, only the ttl can be updated.
-func (s *store) Update(nodePath string, newValue string, expireTime time.Time, index uint64, term uint64) (*Event, error) {
-	s.worldLock.Lock()
-	defer s.worldLock.Unlock()
-	nodePath = path.Clean(path.Join("/", nodePath))
-
-	n, err := s.internalGet(nodePath, index, term)
-
-	if err != nil { // if the node does not exist, return error
-		s.Stats.Inc(UpdateFail)
-		return nil, err
-	}
-
-	e := newEvent(Update, nodePath, s.Index, s.Term)
-
-	if len(newValue) != 0 {
-		if n.IsDir() {
-			// if the node is a directory, we cannot update value
-			s.Stats.Inc(UpdateFail)
-			return nil, etcdErr.NewError(etcdErr.EcodeNotFile, nodePath, index, term)
-		}
-
-		e.PrevValue = n.Value
-		n.Write(newValue, index, term)
-	}
-
-	// update ttl
-	n.UpdateTTL(expireTime)
-
-	e.Expiration, e.TTL = n.ExpirationAndTTL()
-
-	s.WatcherHub.notify(e)
-
-	s.Stats.Inc(UpdateSuccess)
-
-	return e, nil
-}
-
-func (s *store) TestAndSet(nodePath string, prevValue string, prevIndex uint64,
+func (s *store) CompareAndSwap(nodePath string, prevValue string, prevIndex uint64,
 	value string, expireTime time.Time, index uint64, term uint64) (*Event, error) {
 
 	nodePath = path.Clean(path.Join("/", nodePath))
@@ -164,8 +123,8 @@ func (s *store) TestAndSet(nodePath string, prevValue string, prevIndex uint64,
 	s.worldLock.Lock()
 	defer s.worldLock.Unlock()
 
-	if prevValue == "" && prevIndex == 0 { // try create
-		return s.internalCreate(nodePath, value, false, false, expireTime, index, term, TestAndSet)
+	if prevValue == "" && prevIndex == 0 { // try just update
+		return s.update(nodePath, value, expireTime, index, term)
 	}
 
 	n, err := s.internalGet(nodePath, index, term)
@@ -291,6 +250,46 @@ func (s *store) walk(nodePath string, walkFunc func(prev *Node, component string
 	}
 
 	return curr, nil
+}
+
+// Update function updates the value/ttl of the node.
+// If the node is a file, the value and the ttl can be updated.
+// If the node is a directory, only the ttl can be updated.
+func (s *store) update(nodePath string, newValue string, expireTime time.Time, index uint64, term uint64) (*Event, error) {
+	s.worldLock.Lock()
+	defer s.worldLock.Unlock()
+	nodePath = path.Clean(path.Join("/", nodePath))
+
+	n, err := s.internalGet(nodePath, index, term)
+
+	if err != nil { // if the node does not exist, return error
+		s.Stats.Inc(UpdateFail)
+		return nil, err
+	}
+
+	e := newEvent(Update, nodePath, s.Index, s.Term)
+
+	if len(newValue) != 0 {
+		if n.IsDir() {
+			// if the node is a directory, we cannot update value
+			s.Stats.Inc(UpdateFail)
+			return nil, etcdErr.NewError(etcdErr.EcodeNotFile, nodePath, index, term)
+		}
+
+		e.PrevValue = n.Value
+		n.Write(newValue, index, term)
+	}
+
+	// update ttl
+	n.UpdateTTL(expireTime)
+
+	e.Expiration, e.TTL = n.ExpirationAndTTL()
+
+	s.WatcherHub.notify(e)
+
+	s.Stats.Inc(UpdateSuccess)
+
+	return e, nil
 }
 
 func (s *store) internalCreate(nodePath string, value string, incrementalSuffix bool, force bool,

@@ -31,7 +31,7 @@ func SetKeyHandler(w http.ResponseWriter, req *http.Request, s Server) error {
 	// If the "prevValue" is specified then test-and-set. Otherwise create a new key.
 	var c raft.Command
 	if prevValueArr, ok := req.Form["prevValue"]; ok && len(prevValueArr) > 0 {
-		c = &store.TestAndSetCommand{
+		c = &store.CompareAndSwapCommand{
 			Key:        key,
 			Value:      value,
 			PrevValue:  prevValueArr[0],
