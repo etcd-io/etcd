@@ -25,6 +25,7 @@ angular.module('etcdStats', ['ngRoute', 'etcd'])
       $scope.leaderStats = data;
       $scope.leaderName = data.leader;
       $scope.machines = [];
+      //hardcode leader stats
       $scope.machines.push({
         latency: {
           average: 0,
