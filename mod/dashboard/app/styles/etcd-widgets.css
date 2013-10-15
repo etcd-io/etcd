@@ -624,6 +624,12 @@ body {
 			background-color: #00DB24;
 		}
 
+	.etcd-container.etcd-stats .etcd-list .etcd-machine-type {
+		color: #999;
+		padding-left: 3px;
+		font-size: 13px;
+	}
+
 	.etcd-container.etcd-stats .etcd-list .etcd-latency-value {
 		display: inline-block;
 	}

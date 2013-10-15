@@ -23,10 +23,22 @@ angular.module('etcdStats', ['ngRoute', 'etcd'])
   function readStats() {
     EtcdV1.getStat('leader').get().success(function(data) {
       $scope.leaderStats = data;
-      $scope.followers = [];
+      $scope.leaderName = data.leader;
+      $scope.machines = [];
+      //hardcode leader stats
+      $scope.machines.push({
+        latency: {
+          average: 0,
+          current: 0,
+          minimum: 0,
+          maximum: 0,
+          standardDeviation: 0
+        },
+        name: data.leader
+      });
       $.each(data.followers, function(index, value) {
         value.name = index;
-        $scope.followers.push(value);
+        $scope.machines.push(value);
       });
       drawGraph();
     });
@@ -46,7 +58,7 @@ angular.module('etcdStats', ['ngRoute', 'etcd'])
         chart({
           el: $scope.graphContainer,
           data: {
-            'stats': $scope.followers
+            'stats': $scope.machines
           }
         }).width(width).height(height).update();
       });
