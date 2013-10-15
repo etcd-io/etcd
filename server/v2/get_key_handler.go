@@ -25,7 +25,7 @@ func GetKeyHandler(w http.ResponseWriter, req *http.Request, s Server) error {
 		leader := s.Leader()
 		hostname, _ := s.PeerURL(leader)
 		url := hostname + req.URL.Path
-		log.Debugf("Redirect to %s", url)
+		log.Debugf("Redirect consistent get to %s", url)
 		http.Redirect(w, req, url, http.StatusTemporaryRedirect)
 		return nil
 	}
@@ -36,8 +36,10 @@ func GetKeyHandler(w http.ResponseWriter, req *http.Request, s Server) error {
 	if req.FormValue("wait") == "true" { // watch
 		// Create a command to watch from a given index (default 0).
 		var sinceIndex uint64 = 0
-		if req.Method == "POST" {
-			sinceIndex, err = strconv.ParseUint(string(req.FormValue("wait_index")), 10, 64)
+
+		waitIndex := req.FormValue("waitIndex")
+		if waitIndex != "" {
+			sinceIndex, err = strconv.ParseUint(string(req.FormValue("waitIndex")), 10, 64)
 			if err != nil {
 				return etcdErr.NewError(etcdErr.EcodeIndexNaN, "Watch From Index", store.UndefIndex, store.UndefTerm)
 			}
