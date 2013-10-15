@@ -16,7 +16,7 @@ func TestBasicStats(t *testing.T) {
 
 	for _, k := range keys {
 		i++
-		_, err := s.Create(k, "bar", false, false, time.Now().Add(time.Second*time.Duration(rand.Intn(6))), i, 1)
+		_, err := s.Create(k, "bar", false, time.Now().Add(time.Second*time.Duration(rand.Intn(6))), i, 1)
 		if err != nil {
 			SetFail++
 		} else {
@@ -146,7 +146,7 @@ func TestBasicStats(t *testing.T) {
 
 	for _, k := range keys {
 		i++
-		_, err := s.Create(k, "bar", false, false, time.Now().Add(time.Second*3), i, 1)
+		_, err := s.Create(k, "bar", false, time.Now().Add(time.Second*3), i, 1)
 		if err != nil {
 			SetFail++
 		} else {

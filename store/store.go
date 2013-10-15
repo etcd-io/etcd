@@ -302,7 +302,7 @@ func (s *store) update(nodePath string, newValue string, expireTime time.Time, i
 	return e, nil
 }
 
-func (s *store) internalCreate(nodePath string, value string, incrementalSuffix bool, force bool,
+func (s *store) internalCreate(nodePath string, value string, incrementalSuffix bool, replace bool,
 	expireTime time.Time, index uint64, term uint64, action string) (*Event, error) {
 
 	s.Index, s.Term = index, term
@@ -330,7 +330,7 @@ func (s *store) internalCreate(nodePath string, value string, incrementalSuffix 
 
 	// force will try to replace a existing file
 	if n != nil {
-		if force {
+		if replace {
 			if n.IsDir() {
 				return nil, etcdErr.NewError(etcdErr.EcodeNotFile, nodePath, index, term)
 			}
