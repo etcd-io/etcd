@@ -640,6 +640,7 @@ body {
 		color: #999;
 		padding-left: 3px;
 		font-size: 13px;
+		line-height: 100%;
 	}
 
 	.etcd-container.etcd-stats .etcd-list .etcd-latency-value {
