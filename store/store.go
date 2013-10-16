@@ -107,13 +107,13 @@ func (s *store) Get(nodePath string, recursive, sorted bool, index uint64, term 
 // Create function creates the Node at nodePath. Create will help to create intermediate directories with no ttl.
 // If the node has already existed, create will fail.
 // If any node on the path is a file, create will fail.
-func (s *store) Create(nodePath string, value string, incrementalSuffix bool,
+func (s *store) Create(nodePath string, value string, unique bool,
 	expireTime time.Time, index uint64, term uint64) (*Event, error) {
 	nodePath = path.Clean(path.Join("/", nodePath))
 
 	s.worldLock.Lock()
 	defer s.worldLock.Unlock()
-	return s.internalCreate(nodePath, value, incrementalSuffix, false, expireTime, index, term, Create)
+	return s.internalCreate(nodePath, value, unique, false, expireTime, index, term, Create)
 }
 
 // Set function creates or replace the Node at nodePath.
@@ -302,13 +302,13 @@ func (s *store) update(nodePath string, newValue string, expireTime time.Time, i
 	return e, nil
 }
 
-func (s *store) internalCreate(nodePath string, value string, incrementalSuffix bool, replace bool,
+func (s *store) internalCreate(nodePath string, value string, unique bool, replace bool,
 	expireTime time.Time, index uint64, term uint64, action string) (*Event, error) {
 
 	s.Index, s.Term = index, term
 
-	if incrementalSuffix { // append unique incremental suffix to the node path
-		nodePath += "_" + strconv.FormatUint(index, 10)
+	if unique { // append unique item under the node path
+		nodePath += "/" + strconv.FormatUint(index, 10)
 	}
 
 	nodePath = path.Clean(path.Join("/", nodePath))

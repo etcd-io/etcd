@@ -12,10 +12,10 @@ func init() {
 
 // Create command
 type CreateCommand struct {
-	Key               string    `json:"key"`
-	Value             string    `json:"value"`
-	ExpireTime        time.Time `json:"expireTime"`
-	IncrementalSuffix bool      `json:"incrementalSuffix"`
+	Key        string    `json:"key"`
+	Value      string    `json:"value"`
+	ExpireTime time.Time `json:"expireTime"`
+	Unique     bool      `json:"unique"`
 }
 
 // The name of the create command in the log
@@ -27,7 +27,7 @@ func (c *CreateCommand) CommandName() string {
 func (c *CreateCommand) Apply(server raft.Server) (interface{}, error) {
 	s, _ := server.StateMachine().(Store)
 
-	e, err := s.Create(c.Key, c.Value, c.IncrementalSuffix, c.ExpireTime, server.CommitIndex(), server.Term())
+	e, err := s.Create(c.Key, c.Value, c.Unique, c.ExpireTime, server.CommitIndex(), server.Term())
 
 	if err != nil {
 		log.Debug(err)
