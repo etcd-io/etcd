@@ -8,7 +8,7 @@ import (
 	"github.com/gorilla/mux"
 )
 
-func CreateKeyHandler(w http.ResponseWriter, req *http.Request, s Server) error {
+func PostHandler(w http.ResponseWriter, req *http.Request, s Server) error {
 	vars := mux.Vars(req)
 	key := "/" + vars["key"]
 
@@ -19,10 +19,10 @@ func CreateKeyHandler(w http.ResponseWriter, req *http.Request, s Server) error 
 	}
 
 	c := &store.CreateCommand{
-		Key:               key,
-		Value:             value,
-		ExpireTime:        expireTime,
-		IncrementalSuffix: (req.FormValue("incremental") == "true"),
+		Key:        key,
+		Value:      value,
+		ExpireTime: expireTime,
+		Unique:     true,
 	}
 
 	return s.Dispatch(c, w, req)
