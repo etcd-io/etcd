@@ -23,11 +23,6 @@ func PutHandler(w http.ResponseWriter, req *http.Request, s Server) error {
 		return etcdErr.NewError(etcdErr.EcodeTTLNaN, "Update", store.UndefIndex, store.UndefTerm)
 	}
 
-	// Update should give at least one option
-	if value == "" && expireTime.Sub(store.Permanent) == 0 {
-		return etcdErr.NewError(etcdErr.EcodeValueOrTTLRequired, "Update", store.UndefIndex, store.UndefTerm)
-	}
-
 	prevValue, valueOk := req.Form["prevValue"]
 	prevIndexStr, indexOk := req.Form["prevIndex"]
 	prevExist, existOk := req.Form["prevExist"]
@@ -100,6 +95,11 @@ func CreateHandler(w http.ResponseWriter, req *http.Request, s Server, key, valu
 }
 
 func UpdateHandler(w http.ResponseWriter, req *http.Request, s Server, key, value string, expireTime time.Time) error {
+	// Update should give at least one option
+	if value == "" && expireTime.Sub(store.Permanent) == 0 {
+		return etcdErr.NewError(etcdErr.EcodeValueOrTTLRequired, "Update", store.UndefIndex, store.UndefTerm)
+	}
+
 	c := &store.UpdateCommand{
 		Key:        key,
 		Value:      value,
