@@ -1,0 +1,57 @@
+package test
+
+import (
+	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
+	"os"
+	"testing"
+	"time"
+)
+
+// Ensure that etcd does not come up if the internal raft versions do not match.
+func TestInternalVersion(t *testing.T) {
+	checkedVersion := false
+	testMux := http.NewServeMux()
+
+	testMux.HandleFunc("/version", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, "This is not a version number")
+		checkedVersion = true
+	})
+
+	testMux.HandleFunc("/join", func(w http.ResponseWriter, r *http.Request) {
+		t.Fatal("should not attempt to join!")
+	})
+
+	ts := httptest.NewServer(testMux)
+	defer ts.Close()
+
+	fakeURL, _ := url.Parse(ts.URL)
+
+	procAttr := new(os.ProcAttr)
+	procAttr.Files = []*os.File{nil, os.Stdout, os.Stderr}
+	args := []string{"etcd", "-n=node1", "-f", "-d=/tmp/node1", "-C=" + fakeURL.Host}
+
+	process, err := os.StartProcess(EtcdBinPath, args, procAttr)
+	if err != nil {
+		t.Fatal("start process failed:" + err.Error())
+		return
+	}
+	defer process.Kill()
+
+	time.Sleep(time.Second)
+
+	_, err = http.Get("http://127.0.0.1:4001")
+
+	if err == nil {
+		t.Fatal("etcd node should not be up")
+		return
+	}
+
+	if checkedVersion == false {
+		t.Fatal("etcd did not check the version")
+		return
+	}
+}
+
