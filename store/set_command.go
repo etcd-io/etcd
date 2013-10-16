@@ -7,27 +7,27 @@ import (
 )
 
 func init() {
-	raft.RegisterCommand(&CreateCommand{})
+	raft.RegisterCommand(&SetCommand{})
 }
 
 // Create command
-type CreateCommand struct {
+type SetCommand struct {
 	Key        string    `json:"key"`
 	Value      string    `json:"value"`
 	ExpireTime time.Time `json:"expireTime"`
-	Unique     bool      `json:"unique"`
 }
 
 // The name of the create command in the log
-func (c *CreateCommand) CommandName() string {
-	return "etcd:create"
+func (c *SetCommand) CommandName() string {
+	return "etcd:set"
 }
 
 // Create node
-func (c *CreateCommand) Apply(server raft.Server) (interface{}, error) {
+func (c *SetCommand) Apply(server raft.Server) (interface{}, error) {
 	s, _ := server.StateMachine().(Store)
 
-	e, err := s.Create(c.Key, c.Value, c.Unique, c.ExpireTime, server.CommitIndex(), server.Term())
+	// create a new node or replace the old node.
+	e, err := s.Set(c.Key, c.Value, c.ExpireTime, server.CommitIndex(), server.Term())
 
 	if err != nil {
 		log.Debug(err)

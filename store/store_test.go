@@ -10,10 +10,10 @@ import (
 func TestCreateAndGet(t *testing.T) {
 	s := newStore()
 
-	s.Create("/foobar", "bar", false, false, Permanent, 1, 1)
+	s.Create("/foobar", "bar", false, Permanent, 1, 1)
 
 	// already exist, create should fail
-	_, err := s.Create("/foobar", "bar", false, false, Permanent, 1, 1)
+	_, err := s.Create("/foobar", "bar", false, Permanent, 1, 1)
 
 	if err == nil {
 		t.Fatal("Create should fail")
@@ -21,10 +21,10 @@ func TestCreateAndGet(t *testing.T) {
 
 	s.Delete("/foobar", true, 1, 1)
 
-	s.Create("/foobar/foo", "bar", false, false, Permanent, 1, 1)
+	s.Create("/foobar/foo", "bar", false, Permanent, 1, 1)
 
 	// already exist, create should fail
-	_, err = s.Create("/foobar", "bar", false, false, Permanent, 1, 1)
+	_, err = s.Create("/foobar", "bar", false, Permanent, 1, 1)
 
 	if err == nil {
 		t.Fatal("Create should fail")
@@ -38,14 +38,14 @@ func TestCreateAndGet(t *testing.T) {
 	createAndGet(s, "/foo/foo/bar", t)
 
 	// meet file, create should fail
-	_, err = s.Create("/foo/bar/bar", "bar", false, false, Permanent, 2, 1)
+	_, err = s.Create("/foo/bar/bar", "bar", false, Permanent, 2, 1)
 
 	if err == nil {
 		t.Fatal("Create should fail")
 	}
 
 	// create a directory
-	_, err = s.Create("/fooDir", "", false, false, Permanent, 3, 1)
+	_, err = s.Create("/fooDir", "", false, Permanent, 3, 1)
 
 	if err != nil {
 		t.Fatal("Cannot create /fooDir")
@@ -58,7 +58,7 @@ func TestCreateAndGet(t *testing.T) {
 	}
 
 	// create a file under directory
-	_, err = s.Create("/fooDir/bar", "bar", false, false, Permanent, 4, 1)
+	_, err = s.Create("/fooDir/bar", "bar", false, Permanent, 4, 1)
 
 	if err != nil {
 		t.Fatal("Cannot create /fooDir/bar = bar")
@@ -68,7 +68,7 @@ func TestCreateAndGet(t *testing.T) {
 func TestUpdateFile(t *testing.T) {
 	s := newStore()
 
-	_, err := s.Create("/foo/bar", "bar", false, false, Permanent, 1, 1)
+	_, err := s.Create("/foo/bar", "bar", false, Permanent, 1, 1)
 
 	if err != nil {
 		t.Fatalf("cannot create %s=bar [%s]", "/foo/bar", err.Error())
@@ -91,24 +91,24 @@ func TestUpdateFile(t *testing.T) {
 	}
 
 	// create a directory, update its ttl, to see if it will be deleted
-	_, err = s.Create("/foo/foo", "", false, false, Permanent, 3, 1)
+	_, err = s.Create("/foo/foo", "", false, Permanent, 3, 1)
 
 	if err != nil {
 		t.Fatalf("cannot create dir [%s] [%s]", "/foo/foo", err.Error())
 	}
 
-	_, err = s.Create("/foo/foo/foo1", "bar1", false, false, Permanent, 4, 1)
+	_, err = s.Create("/foo/foo/foo1", "bar1", false, Permanent, 4, 1)
 
 	if err != nil {
 		t.Fatal("cannot create [%s]", err.Error())
 	}
 
-	_, err = s.Create("/foo/foo/foo2", "", false, false, Permanent, 5, 1)
+	_, err = s.Create("/foo/foo/foo2", "", false, Permanent, 5, 1)
 	if err != nil {
 		t.Fatal("cannot create [%s]", err.Error())
 	}
 
-	_, err = s.Create("/foo/foo/foo2/boo", "boo1", false, false, Permanent, 6, 1)
+	_, err = s.Create("/foo/foo/foo2/boo", "boo1", false, Permanent, 6, 1)
 	if err != nil {
 		t.Fatal("cannot create [%s]", err.Error())
 	}
@@ -165,11 +165,11 @@ func TestListDirectory(t *testing.T) {
 
 	// create dir /foo
 	// set key-value /foo/foo=bar
-	s.Create("/foo/foo", "bar", false, false, Permanent, 1, 1)
+	s.Create("/foo/foo", "bar", false, Permanent, 1, 1)
 
 	// create dir /foo/fooDir
 	// set key-value /foo/fooDir/foo=bar
-	s.Create("/foo/fooDir/foo", "bar", false, false, Permanent, 2, 1)
+	s.Create("/foo/fooDir/foo", "bar", false, Permanent, 2, 1)
 
 	e, err := s.Get("/foo", true, false, 2, 1)
 
@@ -196,7 +196,7 @@ func TestListDirectory(t *testing.T) {
 
 	// create dir /foo/_hidden
 	// set key-value /foo/_hidden/foo -> bar
-	s.Create("/foo/_hidden/foo", "bar", false, false, Permanent, 3, 1)
+	s.Create("/foo/_hidden/foo", "bar", false, Permanent, 3, 1)
 
 	e, _ = s.Get("/foo", false, false, 2, 1)
 
@@ -208,7 +208,7 @@ func TestListDirectory(t *testing.T) {
 func TestRemove(t *testing.T) {
 	s := newStore()
 
-	s.Create("/foo", "bar", false, false, Permanent, 1, 1)
+	s.Create("/foo", "bar", false, Permanent, 1, 1)
 	_, err := s.Delete("/foo", false, 1, 1)
 
 	if err != nil {
@@ -221,9 +221,9 @@ func TestRemove(t *testing.T) {
 		t.Fatalf("can get the node after deletion")
 	}
 
-	s.Create("/foo/bar", "bar", false, false, Permanent, 1, 1)
-	s.Create("/foo/car", "car", false, false, Permanent, 1, 1)
-	s.Create("/foo/dar/dar", "dar", false, false, Permanent, 1, 1)
+	s.Create("/foo/bar", "bar", false, Permanent, 1, 1)
+	s.Create("/foo/car", "car", false, Permanent, 1, 1)
+	s.Create("/foo/dar/dar", "dar", false, Permanent, 1, 1)
 
 	_, err = s.Delete("/foo", false, 1, 1)
 
@@ -249,7 +249,7 @@ func TestExpire(t *testing.T) {
 
 	expire := time.Now().Add(time.Second)
 
-	s.Create("/foo", "bar", false, false, expire, 1, 1)
+	s.Create("/foo", "bar", false, expire, 1, 1)
 
 	_, err := s.Get("/foo", false, false, 1, 1)
 
@@ -267,7 +267,7 @@ func TestExpire(t *testing.T) {
 
 	// test if we can reach the node before expiration
 	expire = time.Now().Add(time.Second)
-	s.Create("/foo", "bar", false, false, expire, 1, 1)
+	s.Create("/foo", "bar", false, expire, 1, 1)
 
 	time.Sleep(time.Millisecond * 50)
 	_, err = s.Get("/foo", false, false, 1, 1)
@@ -278,7 +278,7 @@ func TestExpire(t *testing.T) {
 
 	expire = time.Now().Add(time.Second)
 
-	s.Create("/foo", "bar", false, false, expire, 1, 1)
+	s.Create("/foo", "bar", false, expire, 1, 1)
 	_, err = s.Delete("/foo", false, 1, 1)
 
 	if err != nil {
@@ -286,18 +286,18 @@ func TestExpire(t *testing.T) {
 	}
 }
 
-func TestTestAndSet(t *testing.T) { // TODO prevValue == nil ?
+func TestCompareAndSwap(t *testing.T) { // TODO prevValue == nil ?
 	s := newStore()
-	s.Create("/foo", "bar", false, false, Permanent, 1, 1)
+	s.Create("/foo", "bar", false, Permanent, 1, 1)
 
 	// test on wrong previous value
-	_, err := s.TestAndSet("/foo", "barbar", 0, "car", Permanent, 2, 1)
+	_, err := s.CompareAndSwap("/foo", "barbar", 0, "car", Permanent, 2, 1)
 	if err == nil {
 		t.Fatal("test and set should fail barbar != bar")
 	}
 
 	// test on value
-	e, err := s.TestAndSet("/foo", "bar", 0, "car", Permanent, 3, 1)
+	e, err := s.CompareAndSwap("/foo", "bar", 0, "car", Permanent, 3, 1)
 
 	if err != nil {
 		t.Fatal("test and set should succeed bar == bar")
@@ -308,7 +308,7 @@ func TestTestAndSet(t *testing.T) { // TODO prevValue == nil ?
 	}
 
 	// test on index
-	e, err = s.TestAndSet("/foo", "", 3, "bar", Permanent, 4, 1)
+	e, err = s.CompareAndSwap("/foo", "", 3, "bar", Permanent, 4, 1)
 
 	if err != nil {
 		t.Fatal("test and set should succeed index 3 == 3")
@@ -323,7 +323,7 @@ func TestWatch(t *testing.T) {
 	s := newStore()
 	// watch at a deeper path
 	c, _ := s.Watch("/foo/foo/foo", false, 0, 0, 1)
-	s.Create("/foo/foo/foo", "bar", false, false, Permanent, 1, 1)
+	s.Create("/foo/foo/foo", "bar", false, Permanent, 1, 1)
 
 	e := nonblockingRetrive(c)
 	if e.Key != "/foo/foo/foo" || e.Action != Create {
@@ -338,10 +338,10 @@ func TestWatch(t *testing.T) {
 	}
 
 	c, _ = s.Watch("/foo/foo/foo", false, 0, 2, 1)
-	s.TestAndSet("/foo/foo/foo", "car", 0, "bar", Permanent, 3, 1)
+	s.CompareAndSwap("/foo/foo/foo", "car", 0, "bar", Permanent, 3, 1)
 	e = nonblockingRetrive(c)
-	if e.Key != "/foo/foo/foo" || e.Action != TestAndSet {
-		t.Fatal("watch for TestAndSet node fails")
+	if e.Key != "/foo/foo/foo" || e.Action != CompareAndSwap {
+		t.Fatal("watch for CompareAndSwap node fails")
 	}
 
 	c, _ = s.Watch("/foo/foo/foo", false, 0, 3, 1)
@@ -353,7 +353,7 @@ func TestWatch(t *testing.T) {
 
 	// watch at a prefix
 	c, _ = s.Watch("/foo", true, 0, 4, 1)
-	s.Create("/foo/foo/boo", "bar", false, false, Permanent, 5, 1)
+	s.Create("/foo/foo/boo", "bar", false, Permanent, 5, 1)
 	e = nonblockingRetrive(c)
 	if e.Key != "/foo/foo/boo" || e.Action != Create {
 		t.Fatal("watch for Create subdirectory fails")
@@ -367,10 +367,10 @@ func TestWatch(t *testing.T) {
 	}
 
 	c, _ = s.Watch("/foo", true, 0, 6, 1)
-	s.TestAndSet("/foo/foo/boo", "foo", 0, "bar", Permanent, 7, 1)
+	s.CompareAndSwap("/foo/foo/boo", "foo", 0, "bar", Permanent, 7, 1)
 	e = nonblockingRetrive(c)
-	if e.Key != "/foo/foo/boo" || e.Action != TestAndSet {
-		t.Fatal("watch for TestAndSet subdirectory fails")
+	if e.Key != "/foo/foo/boo" || e.Action != CompareAndSwap {
+		t.Fatal("watch for CompareAndSwap subdirectory fails")
 	}
 
 	c, _ = s.Watch("/foo", true, 0, 7, 1)
@@ -381,7 +381,7 @@ func TestWatch(t *testing.T) {
 	}
 
 	// watch expire
-	s.Create("/foo/foo/boo", "foo", false, false, time.Now().Add(time.Second*1), 9, 1)
+	s.Create("/foo/foo/boo", "foo", false, time.Now().Add(time.Second*1), 9, 1)
 	c, _ = s.Watch("/foo", true, 0, 9, 1)
 	time.Sleep(time.Second * 2)
 	e = nonblockingRetrive(c)
@@ -389,7 +389,7 @@ func TestWatch(t *testing.T) {
 		t.Fatal("watch for Expiration of Create() subdirectory fails ", e)
 	}
 
-	s.Create("/foo/foo/boo", "foo", false, false, Permanent, 10, 1)
+	s.Create("/foo/foo/boo", "foo", false, Permanent, 10, 1)
 	s.Update("/foo/foo/boo", "bar", time.Now().Add(time.Second*1), 11, 1)
 	c, _ = s.Watch("/foo", true, 0, 11, 1)
 	time.Sleep(time.Second * 2)
@@ -398,13 +398,13 @@ func TestWatch(t *testing.T) {
 		t.Fatal("watch for Expiration of Update() subdirectory fails ", e)
 	}
 
-	s.Create("/foo/foo/boo", "foo", false, false, Permanent, 12, 1)
-	s.TestAndSet("/foo/foo/boo", "foo", 0, "bar", time.Now().Add(time.Second*1), 13, 1)
+	s.Create("/foo/foo/boo", "foo", false, Permanent, 12, 1)
+	s.CompareAndSwap("/foo/foo/boo", "foo", 0, "bar", time.Now().Add(time.Second*1), 13, 1)
 	c, _ = s.Watch("/foo", true, 0, 13, 1)
 	time.Sleep(time.Second * 2)
 	e = nonblockingRetrive(c)
 	if e.Key != "/foo/foo/boo" || e.Action != Expire || e.Index != 13 {
-		t.Fatal("watch for Expiration of TestAndSet() subdirectory fails ", e)
+		t.Fatal("watch for Expiration of CompareAndSwap() subdirectory fails ", e)
 	}
 }
 
@@ -416,7 +416,7 @@ func TestSort(t *testing.T) {
 
 	i := uint64(1)
 	for _, k := range keys {
-		_, err := s.Create(k, "bar", false, false, Permanent, i, 1)
+		_, err := s.Create(k, "bar", false, Permanent, i, 1)
 		if err != nil {
 			panic(err)
 		} else {
@@ -454,7 +454,7 @@ func TestSaveAndRecover(t *testing.T) {
 
 	i := uint64(1)
 	for _, k := range keys {
-		_, err := s.Create(k, "bar", false, false, Permanent, i, 1)
+		_, err := s.Create(k, "bar", false, Permanent, i, 1)
 		if err != nil {
 			panic(err)
 		} else {
@@ -466,7 +466,7 @@ func TestSaveAndRecover(t *testing.T) {
 	// test if we can reach the node before expiration
 
 	expire := time.Now().Add(time.Second)
-	s.Create("/foo/foo", "bar", false, false, expire, 1, 1)
+	s.Create("/foo/foo", "bar", false, expire, 1, 1)
 	b, err := s.Save()
 
 	cloneFs := newStore()
@@ -522,7 +522,7 @@ func GenKeys(num int, depth int) []string {
 }
 
 func createAndGet(s *store, path string, t *testing.T) {
-	_, err := s.Create(path, "bar", false, false, Permanent, 1, 1)
+	_, err := s.Create(path, "bar", false, Permanent, 1, 1)
 
 	if err != nil {
 		t.Fatalf("cannot create %s=bar [%s]", path, err.Error())
