@@ -3,6 +3,7 @@ package v2
 import (
 	"net/http"
 	"strconv"
+	"time"
 
 	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/store"
@@ -33,14 +34,9 @@ func PutHandler(w http.ResponseWriter, req *http.Request, s Server) error {
 
 	var c raft.Command
 
-	// Set command: create a new node or replace the old one.
+	// Set handler: create a new node or replace the old one.
 	if !valueOk && !indexOk && !existOk {
-		c = &store.SetCommand{
-			Key:        key,
-			Value:      value,
-			ExpireTime: expireTime,
-		}
-		return s.Dispatch(c, w, req)
+		return SetHandler(w, req, s, key, value, expireTime)
 	}
 
 	// update with test
@@ -48,11 +44,11 @@ func PutHandler(w http.ResponseWriter, req *http.Request, s Server) error {
 		if prevExist[0] == "false" {
 			// Create command: create a new node. Fail, if a node already exists
 			// Ignore prevIndex and prevValue
-			c = &store.CreateCommand{
-				Key:        key,
-				Value:      value,
-				ExpireTime: expireTime,
-			}
+			return CreateHandler(w, req, s, key, value, expireTime)
+		}
+
+		if prevExist[0] == "true" && !indexOk && !valueOk {
+			return UpdateHandler(w, req, s, key, value, expireTime)
 		}
 	}
 
@@ -82,5 +78,32 @@ func PutHandler(w http.ResponseWriter, req *http.Request, s Server) error {
 		PrevIndex: prevIndex,
 	}
 
+	return s.Dispatch(c, w, req)
+}
+
+func SetHandler(w http.ResponseWriter, req *http.Request, s Server, key, value string, expireTime time.Time) error {
+	c := &store.SetCommand{
+		Key:        key,
+		Value:      value,
+		ExpireTime: expireTime,
+	}
+	return s.Dispatch(c, w, req)
+}
+
+func CreateHandler(w http.ResponseWriter, req *http.Request, s Server, key, value string, expireTime time.Time) error {
+	c := &store.CreateCommand{
+		Key:        key,
+		Value:      value,
+		ExpireTime: expireTime,
+	}
+	return s.Dispatch(c, w, req)
+}
+
+func UpdateHandler(w http.ResponseWriter, req *http.Request, s Server, key, value string, expireTime time.Time) error {
+	c := &store.UpdateCommand{
+		Key:        key,
+		Value:      value,
+		ExpireTime: expireTime,
+	}
 	return s.Dispatch(c, w, req)
 }

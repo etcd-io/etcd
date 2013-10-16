@@ -74,7 +74,7 @@ func TestUpdateFile(t *testing.T) {
 		t.Fatalf("cannot create %s=bar [%s]", "/foo/bar", err.Error())
 	}
 
-	_, err = s.update("/foo/bar", "barbar", Permanent, 2, 1)
+	_, err = s.Update("/foo/bar", "barbar", Permanent, 2, 1)
 
 	if err != nil {
 		t.Fatalf("cannot update %s=barbar [%s]", "/foo/bar", err.Error())
@@ -114,7 +114,7 @@ func TestUpdateFile(t *testing.T) {
 	}
 
 	expire := time.Now().Add(time.Second * 2)
-	_, err = s.update("/foo/foo", "", expire, 7, 1)
+	_, err = s.Update("/foo/foo", "", expire, 7, 1)
 	if err != nil {
 		t.Fatalf("cannot update dir [%s] [%s]", "/foo/foo", err.Error())
 	}
@@ -331,7 +331,7 @@ func TestWatch(t *testing.T) {
 	}
 
 	c, _ = s.Watch("/foo/foo/foo", false, 0, 1, 1)
-	s.update("/foo/foo/foo", "car", Permanent, 2, 1)
+	s.Update("/foo/foo/foo", "car", Permanent, 2, 1)
 	e = nonblockingRetrive(c)
 	if e.Key != "/foo/foo/foo" || e.Action != Update {
 		t.Fatal("watch for Update node fails ", e)
@@ -360,7 +360,7 @@ func TestWatch(t *testing.T) {
 	}
 
 	c, _ = s.Watch("/foo", true, 0, 5, 1)
-	s.update("/foo/foo/boo", "foo", Permanent, 6, 1)
+	s.Update("/foo/foo/boo", "foo", Permanent, 6, 1)
 	e = nonblockingRetrive(c)
 	if e.Key != "/foo/foo/boo" || e.Action != Update {
 		t.Fatal("watch for Update subdirectory fails")
@@ -390,7 +390,7 @@ func TestWatch(t *testing.T) {
 	}
 
 	s.Create("/foo/foo/boo", "foo", false, Permanent, 10, 1)
-	s.update("/foo/foo/boo", "bar", time.Now().Add(time.Second*1), 11, 1)
+	s.Update("/foo/foo/boo", "bar", time.Now().Add(time.Second*1), 11, 1)
 	c, _ = s.Watch("/foo", true, 0, 11, 1)
 	time.Sleep(time.Second * 2)
 	e = nonblockingRetrive(c)

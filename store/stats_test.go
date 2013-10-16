@@ -11,16 +11,16 @@ func TestBasicStats(t *testing.T) {
 	keys := GenKeys(rand.Intn(100), 5)
 
 	var i uint64
-	var GetSuccess, GetFail, SetSuccess, SetFail, DeleteSuccess, DeleteFail uint64
+	var GetSuccess, GetFail, CreateSuccess, CreateFail, DeleteSuccess, DeleteFail uint64
 	var UpdateSuccess, UpdateFail, CompareAndSwapSuccess, CompareAndSwapFail, watcher_number uint64
 
 	for _, k := range keys {
 		i++
 		_, err := s.Create(k, "bar", false, time.Now().Add(time.Second*time.Duration(rand.Intn(6))), i, 1)
 		if err != nil {
-			SetFail++
+			CreateFail++
 		} else {
-			SetSuccess++
+			CreateSuccess++
 		}
 	}
 
@@ -37,7 +37,7 @@ func TestBasicStats(t *testing.T) {
 
 	for _, k := range keys {
 		i++
-		_, err := s.update(k, "foo", time.Now().Add(time.Second*time.Duration(rand.Intn(6))), i, 1)
+		_, err := s.Update(k, "foo", time.Now().Add(time.Second*time.Duration(rand.Intn(6))), i, 1)
 		if err != nil {
 			UpdateFail++
 		} else {
@@ -108,12 +108,12 @@ func TestBasicStats(t *testing.T) {
 		t.Fatalf("GetFail [%d] != Stats.GetFail [%d]", GetFail, s.Stats.GetFail)
 	}
 
-	if SetSuccess != s.Stats.SetSuccess {
-		t.Fatalf("SetSuccess [%d] != Stats.SetSuccess [%d]", SetSuccess, s.Stats.SetSuccess)
+	if CreateSuccess != s.Stats.CreateSuccess {
+		t.Fatalf("CreateSuccess [%d] != Stats.CreateSuccess [%d]", CreateSuccess, s.Stats.CreateSuccess)
 	}
 
-	if SetFail != s.Stats.SetFail {
-		t.Fatalf("SetFail [%d] != Stats.SetFail [%d]", SetFail, s.Stats.SetFail)
+	if CreateFail != s.Stats.CreateFail {
+		t.Fatalf("CreateFail [%d] != Stats.CreateFail [%d]", CreateFail, s.Stats.CreateFail)
 	}
 
 	if DeleteSuccess != s.Stats.DeleteSuccess {
@@ -141,22 +141,22 @@ func TestBasicStats(t *testing.T) {
 	}
 
 	s = newStore()
-	SetSuccess = 0
-	SetFail = 0
+	CreateSuccess = 0
+	CreateFail = 0
 
 	for _, k := range keys {
 		i++
 		_, err := s.Create(k, "bar", false, time.Now().Add(time.Second*3), i, 1)
 		if err != nil {
-			SetFail++
+			CreateFail++
 		} else {
-			SetSuccess++
+			CreateSuccess++
 		}
 	}
 
 	time.Sleep(6 * time.Second)
 
-	ExpireCount := SetSuccess
+	ExpireCount := CreateSuccess
 
 	if ExpireCount != s.Stats.ExpireCount {
 		t.Fatalf("ExpireCount [%d] != Stats.ExpireCount [%d]", ExpireCount, s.Stats.ExpireCount)

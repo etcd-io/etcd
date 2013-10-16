@@ -6,17 +6,19 @@ import (
 )
 
 const (
-	SetSuccess            = 100
-	SetFail               = 101
-	DeleteSuccess         = 102
-	DeleteFail            = 103
-	UpdateSuccess         = 104
-	UpdateFail            = 105
-	CompareAndSwapSuccess = 106
-	CompareAndSwapFail    = 107
-	GetSuccess            = 110
-	GetFail               = 111
-	ExpireCount           = 112
+	SetSuccess = iota
+	SetFail
+	DeleteSuccess
+	DeleteFail
+	CreateSuccess
+	CreateFail
+	UpdateSuccess
+	UpdateFail
+	CompareAndSwapSuccess
+	CompareAndSwapFail
+	GetSuccess
+	GetFail
+	ExpireCount
 )
 
 type Stats struct {
@@ -37,6 +39,10 @@ type Stats struct {
 	UpdateSuccess uint64 `json:"updateSuccess"`
 	UpdateFail    uint64 `json:"updateFail"`
 
+	// Number of create requests
+	CreateSuccess uint64 `json:"createSuccess"`
+	CreateFail    uint64 `json:createFail`
+
 	// Number of testAndSet requests
 	CompareAndSwapSuccess uint64 `json:"compareAndSwapSuccess"`
 	CompareAndSwapFail    uint64 `json:"compareAndSwapFail"`
@@ -53,8 +59,8 @@ func newStats() *Stats {
 
 func (s *Stats) clone() *Stats {
 	return &Stats{s.GetSuccess, s.GetFail, s.SetSuccess, s.SetFail,
-		s.DeleteSuccess, s.DeleteFail, s.UpdateSuccess, s.UpdateFail,
-		s.CompareAndSwapSuccess, s.CompareAndSwapFail, s.Watchers, s.ExpireCount}
+		s.DeleteSuccess, s.DeleteFail, s.UpdateSuccess, s.UpdateFail, s.CreateSuccess,
+		s.CreateFail, s.CompareAndSwapSuccess, s.CompareAndSwapFail, s.Watchers, s.ExpireCount}
 }
 
 // Status() return the statistics info of etcd storage its recent start
@@ -80,6 +86,10 @@ func (s *Stats) Inc(field int) {
 		atomic.AddUint64(&s.SetSuccess, 1)
 	case SetFail:
 		atomic.AddUint64(&s.SetFail, 1)
+	case CreateSuccess:
+		atomic.AddUint64(&s.CreateSuccess, 1)
+	case CreateFail:
+		atomic.AddUint64(&s.CreateFail, 1)
 	case DeleteSuccess:
 		atomic.AddUint64(&s.DeleteSuccess, 1)
 	case DeleteFail:

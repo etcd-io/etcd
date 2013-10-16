@@ -16,6 +16,7 @@ import (
 type Store interface {
 	Get(nodePath string, recursive, sorted bool, index uint64, term uint64) (*Event, error)
 	Set(nodePath string, value string, expireTime time.Time, index uint64, term uint64) (*Event, error)
+	Update(nodePath string, newValue string, expireTime time.Time, index uint64, term uint64) (*Event, error)
 	Create(nodePath string, value string, incrementalSuffix bool, expireTime time.Time,
 		index uint64, term uint64) (*Event, error)
 	CompareAndSwap(nodePath string, prevValue string, prevIndex uint64,
@@ -113,7 +114,15 @@ func (s *store) Create(nodePath string, value string, unique bool,
 
 	s.worldLock.Lock()
 	defer s.worldLock.Unlock()
-	return s.internalCreate(nodePath, value, unique, false, expireTime, index, term, Create)
+	e, err := s.internalCreate(nodePath, value, unique, false, expireTime, index, term, Create)
+
+	if err == nil {
+		s.Stats.Inc(CreateSuccess)
+	} else {
+		s.Stats.Inc(CreateFail)
+	}
+
+	return e, err
 }
 
 // Set function creates or replace the Node at nodePath.
@@ -122,7 +131,15 @@ func (s *store) Set(nodePath string, value string, expireTime time.Time, index u
 
 	s.worldLock.Lock()
 	defer s.worldLock.Unlock()
-	return s.internalCreate(nodePath, value, false, true, expireTime, index, term, Set)
+	e, err := s.internalCreate(nodePath, value, false, true, expireTime, index, term, Set)
+
+	if err == nil {
+		s.Stats.Inc(SetSuccess)
+	} else {
+		s.Stats.Inc(SetFail)
+	}
+
+	return e, err
 }
 
 func (s *store) CompareAndSwap(nodePath string, prevValue string, prevIndex uint64,
@@ -132,10 +149,6 @@ func (s *store) CompareAndSwap(nodePath string, prevValue string, prevIndex uint
 
 	s.worldLock.Lock()
 	defer s.worldLock.Unlock()
-
-	if prevValue == "" && prevIndex == 0 { // try just update
-		return s.update(nodePath, value, expireTime, index, term)
-	}
 
 	n, err := s.internalGet(nodePath, index, term)
 
@@ -265,7 +278,7 @@ func (s *store) walk(nodePath string, walkFunc func(prev *Node, component string
 // Update function updates the value/ttl of the node.
 // If the node is a file, the value and the ttl can be updated.
 // If the node is a directory, only the ttl can be updated.
-func (s *store) update(nodePath string, newValue string, expireTime time.Time, index uint64, term uint64) (*Event, error) {
+func (s *store) Update(nodePath string, newValue string, expireTime time.Time, index uint64, term uint64) (*Event, error) {
 	s.worldLock.Lock()
 	defer s.worldLock.Unlock()
 	nodePath = path.Clean(path.Join("/", nodePath))
@@ -354,12 +367,8 @@ func (s *store) internalCreate(nodePath string, value string, unique bool, repla
 
 	}
 
-	err = d.Add(n)
-
-	if err != nil {
-		s.Stats.Inc(SetFail)
-		return nil, err
-	}
+	// we are sure d is a directory and does not have the children with name n.Name
+	d.Add(n)
 
 	// Node with TTL
 	if expireTime.Sub(Permanent) != 0 {
@@ -368,7 +377,6 @@ func (s *store) internalCreate(nodePath string, value string, unique bool, repla
 	}
 
 	s.WatcherHub.notify(e)
-	s.Stats.Inc(SetSuccess)
 	return e, nil
 }
 
