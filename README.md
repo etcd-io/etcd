@@ -549,3 +549,4 @@ During the v0 series of releases we may break the API as we fix bugs and get fee
 etcd is under the Apache 2.0 license. See the [LICENSE][license] file for details.
 
 [license]: https://github.com/coreos/etcd/blob/master/LICENSE
+
