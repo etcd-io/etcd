@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -121,7 +122,7 @@ func main() {
 	flag.Parse()
 
 	if printVersion {
-		fmt.Println(releaseVersion)
+		fmt.Println(server.ReleaseVersion)
 		os.Exit(0)
 	}
 
