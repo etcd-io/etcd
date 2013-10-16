@@ -11,6 +11,10 @@ body {
 	box-sizing: border-box;
 	-moz-box-sizing: border-box;
 	position: relative;
+	user-select: none;
+	-webkit-user-select: none;
+	-moz-user-select: none;
+	-ms-user-select: none;
 }
 
 	a {
@@ -99,6 +103,10 @@ body {
 		.etcd-popover-error .etcd-popover-content {
 			color: #FF3C43;
 			font-weight: bold;
+			user-select: text;
+			-webkit-user-select: text;
+			-moz-user-select: text;
+			-ms-user-select: text;
 		}
 
 		.etcd-popover-notch {
@@ -194,6 +202,10 @@ body {
 				padding-bottom: 6px;
 				padding-left: 0px;
 				vertical-align: text-top;
+				user-select: text;
+				-webkit-user-select: text;
+				-moz-user-select: text;
+				-ms-user-select: text;
 			}
 
 			.etcd-body table .etcd-ttl-header {

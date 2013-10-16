@@ -44,7 +44,7 @@ angular.module('etcdBrowser', ['ngRoute', 'etcd', 'timeRelative'])
     localStorage.setItem('etcdPath', $scope.etcdPath);
     $scope.enableBack = true;
     //disable back button if at root (/v1/keys/)
-    if($scope.etcdPath === '') {
+    if($scope.etcdPath === '/v1/keys') {
       $scope.enableBack = false;
     }
 
