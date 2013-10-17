@@ -55,11 +55,14 @@ func (event *Event) Response() interface{} {
 			Expiration: event.Expiration,
 		}
 
-		if response.Action == Create || response.Action == Set {
-			response.Action = "set"
+		if response.Action == Set {
 			if response.PrevValue == "" {
 				response.NewKey = true
 			}
+		}
+
+		if response.Action == CompareAndSwap || response.Action == Create {
+			response.Action = "testAndSet"
 		}
 
 		return response
