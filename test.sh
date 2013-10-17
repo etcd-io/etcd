@@ -1,4 +1,5 @@
 #!/bin/sh
+set -e
 
 # Get GOPATH, etc from build
 . ./build
