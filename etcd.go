@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -31,6 +32,8 @@ var (
 
 	force bool
 
+	printVersion bool
+
 	maxSize int
 
 	snapshot bool
@@ -45,6 +48,8 @@ var (
 )
 
 func init() {
+	flag.BoolVar(&printVersion, "version", false, "print the version and exit")
+
 	flag.BoolVar(&log.Verbose, "v", false, "verbose logging")
 	flag.BoolVar(&veryVerbose, "vv", false, "very verbose logging")
 
@@ -115,6 +120,11 @@ type Info struct {
 
 func main() {
 	flag.Parse()
+
+	if printVersion {
+		fmt.Println(server.ReleaseVersion)
+		os.Exit(0)
+	}
 
 	if cpuprofile != "" {
 		runCPUProfile()
