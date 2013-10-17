@@ -1,7 +1,6 @@
 package v1
 
 import (
-	"fmt"
 	"net/http"
 
 	etcdErr "github.com/coreos/etcd/error"
