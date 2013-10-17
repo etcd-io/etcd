@@ -195,7 +195,7 @@ func (s *Server) OriginAllowed(origin string) bool {
 // Handler to return the current version of etcd.
 func (s *Server) GetVersionHandler(w http.ResponseWriter, req *http.Request) error {
 	w.WriteHeader(http.StatusOK)
-	fmt.Fprintf(w, "etcd %s", releaseVersion)
+	fmt.Fprintf(w, "etcd %s", ReleaseVersion)
 	return nil
 }
 

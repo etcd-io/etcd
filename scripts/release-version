@@ -4,5 +4,5 @@ VER=$(git describe --tags HEAD)
 
 cat <<EOF
 package server
-const releaseVersion = "$VER"
+const ReleaseVersion = "$VER"
 EOF
