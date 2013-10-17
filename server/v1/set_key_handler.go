@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"fmt"
 	"net/http"
 
 	etcdErr "github.com/coreos/etcd/error"
@@ -31,7 +32,7 @@ func SetKeyHandler(w http.ResponseWriter, req *http.Request, s Server) error {
 	// If the "prevValue" is specified then test-and-set. Otherwise create a new key.
 	var c raft.Command
 	if prevValueArr, ok := req.Form["prevValue"]; ok {
-		if len(prevValueArr) > 0 { // test against previous value
+		if len(prevValueArr[0]) > 0 { // test against previous value
 			c = &store.CompareAndSwapCommand{
 				Key:        key,
 				Value:      value,
