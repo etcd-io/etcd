@@ -4,8 +4,13 @@ set -e
 # Get GOPATH, etc from build
 . ./build
 
+# use right GOPATH
+export GOPATH="${PWD}"
+
 # Unit tests
+go test -i ./store
 go test -v ./store
 
 # Functional tests
+go test -i ./tests/functional
 ETCD_BIN_PATH=$(pwd)/etcd go test -v ./tests/functional
