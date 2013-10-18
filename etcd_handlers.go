@@ -53,18 +53,21 @@ type errorHandler func(http.ResponseWriter, *http.Request) error
 // provided allowed origins and sets the Access-Control-Allow-Origin header if
 // there is a match.
 func addCorsHeader(w http.ResponseWriter, r *http.Request) {
-	val, ok := corsList["*"]
-	if val && ok {
-		w.Header().Add("Access-Control-Allow-Origin", "*")
+	addHeaders := func(origin string) bool {
+		val, ok := corsList[origin]
+		if val == false || ok == false {
+			return false
+		}
+		w.Header().Add("Access-Control-Allow-Origin", origin)
+		w.Header().Add("Access-Control-Allow-Methods", "POST, GET, PUT, DELETE, OPTIONS")
+		return true
+	}
+
+	if addHeaders("*") == true {
 		return
 	}
 
-	requestOrigin := r.Header.Get("Origin")
-	val, ok = corsList[requestOrigin]
-	if val && ok {
-		w.Header().Add("Access-Control-Allow-Origin", requestOrigin)
-		return
-	}
+	addHeaders(r.Header.Get("Origin"))
 }
 
 func (fn errorHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
