@@ -57,14 +57,14 @@ func Set(stop chan bool) {
 func CreateCluster(size int, procAttr *os.ProcAttr, ssl bool) ([][]string, []*os.Process, error) {
 	argGroup := make([][]string, size)
 
-	sslServer1 := []string{"-serverCAFile=./fixtures/ca/ca.crt",
-		"-serverCert=./fixtures/ca/server.crt",
-		"-serverKey=./fixtures/ca/server.key.insecure",
+	sslServer1 := []string{"-serverCAFile=../../fixtures/ca/ca.crt",
+		"-serverCert=../../fixtures/ca/server.crt",
+		"-serverKey=../../fixtures/ca/server.key.insecure",
 	}
 
-	sslServer2 := []string{"-serverCAFile=./fixtures/ca/ca.crt",
-		"-serverCert=./fixtures/ca/server2.crt",
-		"-serverKey=./fixtures/ca/server2.key.insecure",
+	sslServer2 := []string{"-serverCAFile=../../fixtures/ca/ca.crt",
+		"-serverCert=../../fixtures/ca/server2.crt",
+		"-serverKey=../../fixtures/ca/server2.key.insecure",
 	}
 
 	for i := 0; i < size; i++ {
