@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -21,6 +22,8 @@ import (
 type PeerServer struct {
 	raftServer     raft.Server
 	server         *Server
+	httpServer     *http.Server
+	listener       net.Listener
 	joinIndex      uint64
 	name           string
 	url            string
@@ -89,7 +92,7 @@ func NewPeerServer(name string, path string, url string, listenHost string, tlsC
 }
 
 // Start the raft server
-func (s *PeerServer) ListenAndServe(snapshot bool, cluster []string) {
+func (s *PeerServer) ListenAndServe(snapshot bool, cluster []string) error {
 	// LoadSnapshot
 	if snapshot {
 		err := s.raftServer.LoadSnapshot()
@@ -138,8 +141,60 @@ func (s *PeerServer) ListenAndServe(snapshot bool, cluster []string) {
 	}
 
 	// start to response to raft requests
-	go s.startTransport(s.tlsConf.Scheme, s.tlsConf.Server)
+	return s.startTransport(s.tlsConf.Scheme, s.tlsConf.Server)
+}
 
+// Overridden version of net/http added so we can manage the listener.
+func (s *PeerServer) listenAndServe() error {
+	addr := s.httpServer.Addr
+	if addr == "" {
+		addr = ":http"
+	}
+	l, e := net.Listen("tcp", addr)
+	if e != nil {
+		return e
+	}
+	s.listener = l
+	return s.httpServer.Serve(l)
+}
+
+// Overridden version of net/http added so we can manage the listener.
+func (s *PeerServer) listenAndServeTLS(certFile, keyFile string) error {
+	addr := s.httpServer.Addr
+	if addr == "" {
+		addr = ":https"
+	}
+	config := &tls.Config{}
+	if s.httpServer.TLSConfig != nil {
+		*config = *s.httpServer.TLSConfig
+	}
+	if config.NextProtos == nil {
+		config.NextProtos = []string{"http/1.1"}
+	}
+
+	var err error
+	config.Certificates = make([]tls.Certificate, 1)
+	config.Certificates[0], err = tls.LoadX509KeyPair(certFile, keyFile)
+	if err != nil {
+		return err
+	}
+
+	conn, err := net.Listen("tcp", addr)
+	if err != nil {
+		return err
+	}
+
+	tlsListener := tls.NewListener(conn, config)
+	s.listener = tlsListener
+	return s.httpServer.Serve(tlsListener)
+}
+
+// Stops the server.
+func (s *PeerServer) Close() {
+	if s.listener != nil {
+		s.listener.Close()
+		s.listener = nil
+	}
 }
 
 // Retrieves the underlying Raft server.
@@ -178,12 +233,12 @@ func (s *PeerServer) startAsFollower(cluster []string) {
 }
 
 // Start to listen and response raft command
-func (s *PeerServer) startTransport(scheme string, tlsConf tls.Config) {
+func (s *PeerServer) startTransport(scheme string, tlsConf tls.Config) error {
 	log.Infof("raft server [name %s, listen on %s, advertised url %s]", s.name, s.listenHost, s.url)
 
 	raftMux := http.NewServeMux()
 
-	server := &http.Server{
+	s.httpServer = &http.Server{
 		Handler:   raftMux,
 		TLSConfig: &tlsConf,
 		Addr:      s.listenHost,
@@ -202,9 +257,9 @@ func (s *PeerServer) startTransport(scheme string, tlsConf tls.Config) {
 	raftMux.HandleFunc("/etcdURL", s.EtcdURLHttpHandler)
 
 	if scheme == "http" {
-		log.Fatal(server.ListenAndServe())
+		return s.listenAndServe()
 	} else {
-		log.Fatal(server.ListenAndServeTLS(s.tlsInfo.CertFile, s.tlsInfo.KeyFile))
+		return s.listenAndServeTLS(s.tlsInfo.CertFile, s.tlsInfo.KeyFile)
 	}
 
 }
