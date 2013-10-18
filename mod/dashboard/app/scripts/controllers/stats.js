@@ -40,6 +40,12 @@ angular.module('etcdStats', ['ngRoute', 'etcd'])
         value.name = index;
         $scope.machines.push(value);
       });
+      //sort array so machines don't jump when output
+      $scope.machines.sort(function(a, b){
+          if(a.name < b.name) return -1;
+          if(a.name > b.name) return 1;
+          return 0;
+      });
       drawGraph();
     });
   }
