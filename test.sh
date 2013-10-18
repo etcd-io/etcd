@@ -1,15 +1,19 @@
 #!/bin/sh
 set -e
 
-# Unit tests
-echo "-- UNIT TESTS --"
-go test -v ./server/v2/tests
-go test -v ./store
-
 # Get GOPATH, etc from build
-echo "-- BUILDING BINARY --"
 . ./build
 
+# use right GOPATH
+export GOPATH="${PWD}"
+
+# Unit tests
+go test -i ./server/v2/tests
+go test -v ./server/v2/tests
+
+go test -i ./store
+go test -v ./store
+
 # Functional tests
-echo "-- FUNCTIONAL TESTS --"
-ETCD_BIN_PATH=$(PWD)/etcd go test -v ./tests/functional
+go test -i ./tests/functional
+ETCD_BIN_PATH=$(pwd)/etcd go test -v ./tests/functional
