@@ -20,7 +20,8 @@ func decodeJsonRequest(req *http.Request, data interface{}) error {
 
 func redirect(hostname string, w http.ResponseWriter, req *http.Request) {
 	path := req.URL.Path
-	url := hostname + path
+	query := req.URL.RawQuery
+	url := hostname + path + "?" + query
 	log.Debugf("Redirect to %s", url)
 	http.Redirect(w, req, url, http.StatusTemporaryRedirect)
 }
