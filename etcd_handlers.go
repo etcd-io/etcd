@@ -287,21 +287,20 @@ func WatchHttpHandler(w http.ResponseWriter, req *http.Request) error {
 		Key: key,
 	}
 
-	if req.Method == "GET" {
-		debugf("[recv] GET %s/watch/%s [%s]", e.url, key, req.RemoteAddr)
-		command.SinceIndex = 0
+	if req.Method == "GET" || req.Method == "POST" {
+		debugf("[recv] %s %s/watch/%s [%s]", req.Method, e.url, key, req.RemoteAddr)
 
-	} else if req.Method == "POST" {
 		// watch from a specific index
-
-		debugf("[recv] POST %s/watch/%s [%s]", e.url, key, req.RemoteAddr)
 		content := req.FormValue("index")
-
-		sinceIndex, err := strconv.ParseUint(string(content), 10, 64)
-		if err != nil {
-			return etcdErr.NewError(203, "Watch From Index")
+		if content != "" {
+			sinceIndex, err := strconv.ParseUint(string(content), 13, 64)
+			if err != nil {
+				return etcdErr.NewError(203, "Watch From Index")
+			}
+			command.SinceIndex = sinceIndex
+		} else {
+			command.SinceIndex = 0
 		}
-		command.SinceIndex = sinceIndex
 
 	} else {
 		w.WriteHeader(http.StatusMethodNotAllowed)
