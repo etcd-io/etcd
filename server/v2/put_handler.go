@@ -12,6 +12,8 @@ import (
 )
 
 func PutHandler(w http.ResponseWriter, req *http.Request, s Server) error {
+	var c raft.Command
+
 	vars := mux.Vars(req)
 	key := "/" + vars["key"]
 
@@ -23,11 +25,14 @@ func PutHandler(w http.ResponseWriter, req *http.Request, s Server) error {
 		return etcdErr.NewError(etcdErr.EcodeTTLNaN, "Update", store.UndefIndex, store.UndefTerm)
 	}
 
-	prevValue, valueOk := req.Form["prevValue"]
-	prevIndexStr, indexOk := req.Form["prevIndex"]
-	prevExist, existOk := req.Form["prevExist"]
+	_, valueOk := req.Form["prevValue"]
+	prevValue := req.Form.Get("prevValue")
 
-	var c raft.Command
+	_, indexOk := req.Form["prevIndex"]
+	prevIndexStr := req.Form.Get("prevIndex")
+
+	_, existOk := req.Form["prevExist"]
+	prevExist := req.Form.Get("prevExist")
 
 	// Set handler: create a new node or replace the old one.
 	if !valueOk && !indexOk && !existOk {
@@ -36,13 +41,13 @@ func PutHandler(w http.ResponseWriter, req *http.Request, s Server) error {
 
 	// update with test
 	if existOk {
-		if prevExist[0] == "false" {
+		if prevExist == "false" {
 			// Create command: create a new node. Fail, if a node already exists
 			// Ignore prevIndex and prevValue
 			return CreateHandler(w, req, s, key, value, expireTime)
 		}
 
-		if prevExist[0] == "true" && !indexOk && !valueOk {
+		if prevExist == "true" && !indexOk && !valueOk {
 			return UpdateHandler(w, req, s, key, value, expireTime)
 		}
 	}
@@ -50,7 +55,7 @@ func PutHandler(w http.ResponseWriter, req *http.Request, s Server) error {
 	var prevIndex uint64
 
 	if indexOk {
-		prevIndex, err = strconv.ParseUint(prevIndexStr[0], 10, 64)
+		prevIndex, err = strconv.ParseUint(prevIndexStr, 10, 64)
 
 		// bad previous index
 		if err != nil {
@@ -61,7 +66,7 @@ func PutHandler(w http.ResponseWriter, req *http.Request, s Server) error {
 	}
 
 	if valueOk {
-		if prevValue[0] == "" {
+		if prevValue == "" {
 			return etcdErr.NewError(etcdErr.EcodePrevValueRequired, "CompareAndSwap", store.UndefIndex, store.UndefTerm)
 		}
 	}
@@ -69,7 +74,7 @@ func PutHandler(w http.ResponseWriter, req *http.Request, s Server) error {
 	c = &store.CompareAndSwapCommand{
 		Key:       key,
 		Value:     value,
-		PrevValue: prevValue[0],
+		PrevValue: prevValue,
 		PrevIndex: prevIndex,
 	}
 

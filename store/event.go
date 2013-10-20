@@ -1,7 +1,6 @@
 package store
 
 import (
-	"net/http"
 	"time"
 )
 
@@ -43,16 +42,16 @@ func newEvent(action string, key string, index uint64, term uint64) *Event {
 	}
 }
 
-func (e *Event) HttpStatusCode() int {
+func (e *Event) IsCreated() bool {
 	if e.Action == Create {
-		return http.StatusCreated
+		return true
 	}
 
 	if e.Action == Set && e.PrevValue == "" {
-		return http.StatusCreated
+		return true
 	}
 
-	return http.StatusOK
+	return false
 }
 
 // Converts an event object into a response object.

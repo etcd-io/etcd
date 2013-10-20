@@ -8,6 +8,9 @@ set -e
 export GOPATH="${PWD}"
 
 # Unit tests
+go test -i ./server/v2/tests
+go test -v ./server/v2/tests
+
 go test -i ./store
 go test -v ./store
 
