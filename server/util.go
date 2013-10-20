@@ -20,7 +20,7 @@ func decodeJsonRequest(req *http.Request, data interface{}) error {
 }
 
 func redirect(hostname string, w http.ResponseWriter, req *http.Request) {
-	originalURL, _ := url.Parse(req.URL.String())
+	originalURL := req.URL
 	redirectURL, _ := url.Parse(hostname)
 
 	// we need the original path and raw query
