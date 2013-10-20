@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 
 	"github.com/coreos/etcd/log"
 )
@@ -19,9 +20,14 @@ func decodeJsonRequest(req *http.Request, data interface{}) error {
 }
 
 func redirect(hostname string, w http.ResponseWriter, req *http.Request) {
-	path := req.URL.Path
-	query := req.URL.RawQuery
-	url := hostname + path + "?" + query
-	log.Debugf("Redirect to %s", url)
-	http.Redirect(w, req, url, http.StatusTemporaryRedirect)
+	originalURL, _ := url.Parse(req.URL.String())
+	redirectURL, _ := url.Parse(hostname)
+
+	// we need the original path and raw query
+	redirectURL.Path = originalURL.Path
+	redirectURL.RawQuery = originalURL.RawQuery
+	redirectURL.Fragment = originalURL.Fragment
+
+	log.Debugf("Redirect to %s", redirectURL.String())
+	http.Redirect(w, req, redirectURL.String(), http.StatusTemporaryRedirect)
 }
