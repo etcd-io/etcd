@@ -10,7 +10,6 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"strings"
 	"time"
 
 	etcdErr "github.com/coreos/etcd/error"
@@ -397,55 +396,5 @@ func (s *PeerServer) monitorSnapshot() {
 			s.raftServer.TakeSnapshot()
 			s.snapConf.lastWrites = 0
 		}
-	}
-}
-
-func (s *PeerServer) dispatch(c raft.Command, w http.ResponseWriter, req *http.Request) error {
-	if s.raftServer.State() == raft.Leader {
-		result, err := s.raftServer.Do(c)
-		if err != nil {
-			return err
-		}
-
-		if result == nil {
-			return etcdErr.NewError(300, "Empty result from raft", store.UndefIndex, store.UndefTerm)
-		}
-
-		// response for raft related commands[join/remove]
-		if b, ok := result.([]byte); ok {
-			w.WriteHeader(http.StatusOK)
-			w.Write(b)
-			return nil
-		}
-
-		var b []byte
-		if strings.HasPrefix(req.URL.Path, "/v1") {
-			b, _ = json.Marshal(result.(*store.Event).Response())
-		} else {
-			b, _ = json.Marshal(result.(*store.Event))
-		}
-		w.WriteHeader(http.StatusOK)
-		w.Write(b)
-
-		return nil
-
-	} else {
-		leader := s.raftServer.Leader()
-
-		// No leader available.
-		if leader == "" {
-			return etcdErr.NewError(300, "", store.UndefIndex, store.UndefTerm)
-		}
-
-		var url string
-		switch c.(type) {
-		case *JoinCommand, *RemoveCommand:
-			url, _ = s.registry.PeerURL(leader)
-		default:
-			url, _ = s.registry.ClientURL(leader)
-		}
-		redirect(url, w, req)
-
-		return nil
 	}
 }

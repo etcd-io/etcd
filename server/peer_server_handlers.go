@@ -10,20 +10,20 @@ import (
 )
 
 // Get all the current logs
-func (s *PeerServer) GetLogHttpHandler(w http.ResponseWriter, req *http.Request) {
-	log.Debugf("[recv] GET %s/log", s.url)
+func (ps *PeerServer) GetLogHttpHandler(w http.ResponseWriter, req *http.Request) {
+	log.Debugf("[recv] GET %s/log", ps.url)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(s.raftServer.LogEntries())
+	json.NewEncoder(w).Encode(ps.raftServer.LogEntries())
 }
 
 // Response to vote request
-func (s *PeerServer) VoteHttpHandler(w http.ResponseWriter, req *http.Request) {
+func (ps *PeerServer) VoteHttpHandler(w http.ResponseWriter, req *http.Request) {
 	rvreq := &raft.RequestVoteRequest{}
 	err := decodeJsonRequest(req, rvreq)
 	if err == nil {
-		log.Debugf("[recv] POST %s/vote [%s]", s.url, rvreq.CandidateName)
-		if resp := s.raftServer.RequestVote(rvreq); resp != nil {
+		log.Debugf("[recv] POST %s/vote [%s]", ps.url, rvreq.CandidateName)
+		if resp := ps.raftServer.RequestVote(rvreq); resp != nil {
 			w.WriteHeader(http.StatusOK)
 			json.NewEncoder(w).Encode(resp)
 			return
@@ -34,16 +34,16 @@ func (s *PeerServer) VoteHttpHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 // Response to append entries request
-func (s *PeerServer) AppendEntriesHttpHandler(w http.ResponseWriter, req *http.Request) {
+func (ps *PeerServer) AppendEntriesHttpHandler(w http.ResponseWriter, req *http.Request) {
 	aereq := &raft.AppendEntriesRequest{}
 	err := decodeJsonRequest(req, aereq)
 
 	if err == nil {
-		log.Debugf("[recv] POST %s/log/append [%d]", s.url, len(aereq.Entries))
+		log.Debugf("[recv] POST %s/log/append [%d]", ps.url, len(aereq.Entries))
 
-		s.serverStats.RecvAppendReq(aereq.LeaderName, int(req.ContentLength))
+		ps.serverStats.RecvAppendReq(aereq.LeaderName, int(req.ContentLength))
 
-		if resp := s.raftServer.AppendEntries(aereq); resp != nil {
+		if resp := ps.raftServer.AppendEntries(aereq); resp != nil {
 			w.WriteHeader(http.StatusOK)
 			json.NewEncoder(w).Encode(resp)
 			if !resp.Success {
@@ -57,12 +57,12 @@ func (s *PeerServer) AppendEntriesHttpHandler(w http.ResponseWriter, req *http.R
 }
 
 // Response to recover from snapshot request
-func (s *PeerServer) SnapshotHttpHandler(w http.ResponseWriter, req *http.Request) {
+func (ps *PeerServer) SnapshotHttpHandler(w http.ResponseWriter, req *http.Request) {
 	aereq := &raft.SnapshotRequest{}
 	err := decodeJsonRequest(req, aereq)
 	if err == nil {
-		log.Debugf("[recv] POST %s/snapshot/ ", s.url)
-		if resp := s.raftServer.RequestSnapshot(aereq); resp != nil {
+		log.Debugf("[recv] POST %s/snapshot/ ", ps.url)
+		if resp := ps.raftServer.RequestSnapshot(aereq); resp != nil {
 			w.WriteHeader(http.StatusOK)
 			json.NewEncoder(w).Encode(resp)
 			return
@@ -73,12 +73,12 @@ func (s *PeerServer) SnapshotHttpHandler(w http.ResponseWriter, req *http.Reques
 }
 
 // Response to recover from snapshot request
-func (s *PeerServer) SnapshotRecoveryHttpHandler(w http.ResponseWriter, req *http.Request) {
+func (ps *PeerServer) SnapshotRecoveryHttpHandler(w http.ResponseWriter, req *http.Request) {
 	aereq := &raft.SnapshotRecoveryRequest{}
 	err := decodeJsonRequest(req, aereq)
 	if err == nil {
-		log.Debugf("[recv] POST %s/snapshotRecovery/ ", s.url)
-		if resp := s.raftServer.SnapshotRecoveryRequest(aereq); resp != nil {
+		log.Debugf("[recv] POST %s/snapshotRecovery/ ", ps.url)
+		if resp := ps.raftServer.SnapshotRecoveryRequest(aereq); resp != nil {
 			w.WriteHeader(http.StatusOK)
 			json.NewEncoder(w).Encode(resp)
 			return
@@ -89,20 +89,20 @@ func (s *PeerServer) SnapshotRecoveryHttpHandler(w http.ResponseWriter, req *htt
 }
 
 // Get the port that listening for etcd connecting of the server
-func (s *PeerServer) EtcdURLHttpHandler(w http.ResponseWriter, req *http.Request) {
-	log.Debugf("[recv] Get %s/etcdURL/ ", s.url)
+func (ps *PeerServer) EtcdURLHttpHandler(w http.ResponseWriter, req *http.Request) {
+	log.Debugf("[recv] Get %s/etcdURL/ ", ps.url)
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(s.server.URL()))
+	w.Write([]byte(ps.server.URL()))
 }
 
 // Response to the join request
-func (s *PeerServer) JoinHttpHandler(w http.ResponseWriter, req *http.Request) {
+func (ps *PeerServer) JoinHttpHandler(w http.ResponseWriter, req *http.Request) {
 	command := &JoinCommand{}
 
 	// Write CORS header.
-	if s.server.OriginAllowed("*") {
+	if ps.server.OriginAllowed("*") {
 		w.Header().Add("Access-Control-Allow-Origin", "*")
-	} else if s.server.OriginAllowed(req.Header.Get("Origin")) {
+	} else if ps.server.OriginAllowed(req.Header.Get("Origin")) {
 		w.Header().Add("Access-Control-Allow-Origin", req.Header.Get("Origin"))
 	}
 
@@ -113,7 +113,7 @@ func (s *PeerServer) JoinHttpHandler(w http.ResponseWriter, req *http.Request) {
 	}
 
 	log.Debugf("Receive Join Request from %s", command.Name)
-	err = s.dispatch(command, w, req)
+	err = ps.server.Dispatch(command, w, req)
 
 	// Return status.
 	if err != nil {
@@ -127,7 +127,7 @@ func (s *PeerServer) JoinHttpHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 // Response to remove request
-func (s *PeerServer) RemoveHttpHandler(w http.ResponseWriter, req *http.Request) {
+func (ps *PeerServer) RemoveHttpHandler(w http.ResponseWriter, req *http.Request) {
 	if req.Method != "DELETE" {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
@@ -140,19 +140,19 @@ func (s *PeerServer) RemoveHttpHandler(w http.ResponseWriter, req *http.Request)
 
 	log.Debugf("[recv] Remove Request [%s]", command.Name)
 
-	s.dispatch(command, w, req)
+	ps.server.Dispatch(command, w, req)
 }
 
 // Response to the name request
-func (s *PeerServer) NameHttpHandler(w http.ResponseWriter, req *http.Request) {
-	log.Debugf("[recv] Get %s/name/ ", s.url)
+func (ps *PeerServer) NameHttpHandler(w http.ResponseWriter, req *http.Request) {
+	log.Debugf("[recv] Get %s/name/ ", ps.url)
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(s.name))
+	w.Write([]byte(ps.name))
 }
 
 // Response to the name request
-func (s *PeerServer) RaftVersionHttpHandler(w http.ResponseWriter, req *http.Request) {
-	log.Debugf("[recv] Get %s/version/ ", s.url)
+func (ps *PeerServer) RaftVersionHttpHandler(w http.ResponseWriter, req *http.Request) {
+	log.Debugf("[recv] Get %s/version/ ", ps.url)
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(PeerVersion))
 }

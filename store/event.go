@@ -42,6 +42,18 @@ func newEvent(action string, key string, index uint64, term uint64) *Event {
 	}
 }
 
+func (e *Event) IsCreated() bool {
+	if e.Action == Create {
+		return true
+	}
+
+	if e.Action == Set && e.PrevValue == "" {
+		return true
+	}
+
+	return false
+}
+
 // Converts an event object into a response object.
 func (event *Event) Response() interface{} {
 	if !event.Dir {

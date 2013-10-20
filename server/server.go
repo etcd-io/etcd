@@ -2,6 +2,7 @@ package server
 
 import (
 	"crypto/tls"
+	"encoding/json"
 	"fmt"
 	"net"
 	"net/http"
@@ -223,7 +224,62 @@ func (s *Server) Close() {
 }
 
 func (s *Server) Dispatch(c raft.Command, w http.ResponseWriter, req *http.Request) error {
-	return s.peerServer.dispatch(c, w, req)
+	ps := s.peerServer
+	if ps.raftServer.State() == raft.Leader {
+		result, err := ps.raftServer.Do(c)
+		if err != nil {
+			return err
+		}
+
+		if result == nil {
+			return etcdErr.NewError(300, "Empty result from raft", store.UndefIndex, store.UndefTerm)
+		}
+
+		// response for raft related commands[join/remove]
+		if b, ok := result.([]byte); ok {
+			w.WriteHeader(http.StatusOK)
+			w.Write(b)
+			return nil
+		}
+
+		var b []byte
+		if strings.HasPrefix(req.URL.Path, "/v1") {
+			b, _ = json.Marshal(result.(*store.Event).Response())
+			w.WriteHeader(http.StatusOK)
+		} else {
+			e, _ := result.(*store.Event)
+			b, _ = json.Marshal(e)
+
+			if e.IsCreated() {
+				w.WriteHeader(http.StatusCreated)
+			} else {
+				w.WriteHeader(http.StatusOK)
+			}
+		}
+
+		w.Write(b)
+
+		return nil
+
+	} else {
+		leader := ps.raftServer.Leader()
+
+		// No leader available.
+		if leader == "" {
+			return etcdErr.NewError(300, "", store.UndefIndex, store.UndefTerm)
+		}
+
+		var url string
+		switch c.(type) {
+		case *JoinCommand, *RemoveCommand:
+			url, _ = ps.registry.PeerURL(leader)
+		default:
+			url, _ = ps.registry.ClientURL(leader)
+		}
+		redirect(url, w, req)
+
+		return nil
+	}
 }
 
 // Sets a comma-delimited list of origins that are allowed.
