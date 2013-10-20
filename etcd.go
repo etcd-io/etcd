@@ -27,7 +27,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/store"
-	"github.com/coreos/go-raft"
+	"github.com/goraft/raft"
 )
 
 //------------------------------------------------------------------------------

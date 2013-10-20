@@ -19,7 +19,7 @@ package web
 import (
 	"code.google.com/p/go.net/websocket"
 	"fmt"
-	"github.com/coreos/go-raft"
+	"github.com/goraft/raft"
 	"html/template"
 	"net/http"
 	"net/url"

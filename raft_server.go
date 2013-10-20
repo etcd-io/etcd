@@ -28,7 +28,7 @@ import (
 	"time"
 
 	etcdErr "github.com/coreos/etcd/error"
-	"github.com/coreos/go-raft"
+	"github.com/goraft/raft"
 )
 
 type raftServer struct {
