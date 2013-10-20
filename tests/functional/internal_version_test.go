@@ -38,12 +38,11 @@ func TestInternalVersion(t *testing.T) {
 		t.Fatal("start process failed:" + err.Error())
 		return
 	}
-	defer process.Kill()
 
 	time.Sleep(time.Second)
+	process.Kill()
 
 	_, err = http.Get("http://127.0.0.1:4001")
-
 	if err == nil {
 		t.Fatal("etcd node should not be up")
 		return

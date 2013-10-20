@@ -194,6 +194,8 @@ func main() {
 
 	ps.SetServer(s)
 
-	ps.ListenAndServe(snapshot, cluster)
-	s.ListenAndServe()
+	go func() {
+		log.Fatal(ps.ListenAndServe(snapshot, cluster))
+	}()
+	log.Fatal(s.ListenAndServe())
 }

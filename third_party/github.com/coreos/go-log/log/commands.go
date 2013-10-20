@@ -1,5 +1,4 @@
 package log
-
 // Copyright 2013, CoreOS, Inc. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -42,6 +41,7 @@ func (logger *Logger) Log(priority Priority, v ...interface{}) {
 func (logger *Logger) Logf(priority Priority, format string, v ...interface{}) {
 	logger.Log(priority, fmt.Sprintf(format, v...))
 }
+
 
 func (logger *Logger) Emergency(v ...interface{}) {
 	logger.Log(PriEmerg, v...)
@@ -98,6 +98,7 @@ func (logger *Logger) Debug(v ...interface{}) {
 func (logger *Logger) Debugf(format string, v ...interface{}) {
 	logger.Log(PriDebug, fmt.Sprintf(format, v...))
 }
+
 
 func Emergency(v ...interface{}) {
 	defaultLogger.Log(PriEmerg, v...)
@@ -157,56 +158,57 @@ func Debugf(format string, v ...interface{}) {
 
 // Standard library log functions
 
-func (logger *Logger) Fatalln(v ...interface{}) {
+func (logger *Logger)Fatalln (v ...interface{}) {
 	logger.Log(PriCrit, v...)
 	os.Exit(1)
 }
-func (logger *Logger) Fatalf(format string, v ...interface{}) {
+func (logger *Logger)Fatalf (format string, v ...interface{}) {
 	logger.Logf(PriCrit, format, v...)
 	os.Exit(1)
 }
 
-func (logger *Logger) Panicln(v ...interface{}) {
+func (logger *Logger)Panicln (v ...interface{}) {
 	s := fmt.Sprint(v...)
 	logger.Log(PriErr, s)
 	panic(s)
 }
-func (logger *Logger) Panicf(format string, v ...interface{}) {
+func (logger *Logger)Panicf (format string, v ...interface{}) {
 	s := fmt.Sprintf(format, v...)
 	logger.Log(PriErr, s)
 	panic(s)
 }
 
-func (logger *Logger) Println(v ...interface{}) {
+func (logger *Logger)Println (v ...interface{}) {
 	logger.Log(PriInfo, v...)
 }
-func (logger *Logger) Printf(format string, v ...interface{}) {
+func (logger *Logger)Printf (format string, v ...interface{}) {
 	logger.Logf(PriInfo, format, v...)
 }
 
-func Fatalln(v ...interface{}) {
+
+func Fatalln (v ...interface{}) {
 	defaultLogger.Log(PriCrit, v...)
 	os.Exit(1)
 }
-func Fatalf(format string, v ...interface{}) {
+func Fatalf (format string, v ...interface{}) {
 	defaultLogger.Logf(PriCrit, format, v...)
 	os.Exit(1)
 }
 
-func Panicln(v ...interface{}) {
+func Panicln (v ...interface{}) {
 	s := fmt.Sprint(v...)
 	defaultLogger.Log(PriErr, s)
 	panic(s)
 }
-func Panicf(format string, v ...interface{}) {
+func Panicf (format string, v ...interface{}) {
 	s := fmt.Sprintf(format, v...)
 	defaultLogger.Log(PriErr, s)
 	panic(s)
 }
 
-func Println(v ...interface{}) {
+func Println (v ...interface{}) {
 	defaultLogger.Log(PriInfo, v...)
 }
-func Printf(format string, v ...interface{}) {
+func Printf (format string, v ...interface{}) {
 	defaultLogger.Logf(PriInfo, format, v...)
 }

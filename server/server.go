@@ -1,7 +1,9 @@
 package server
 
 import (
+	"crypto/tls"
 	"fmt"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -21,6 +23,7 @@ type Server struct {
 	http.Server
 	peerServer  *PeerServer
 	registry    *Registry
+	listener    net.Listener
 	store       store.Store
 	name        string
 	url         string
@@ -156,13 +159,66 @@ func (s *Server) handleFunc(path string, f func(http.ResponseWriter, *http.Reque
 }
 
 // Start to listen and response etcd client command
-func (s *Server) ListenAndServe() {
+func (s *Server) ListenAndServe() error {
 	log.Infof("etcd server [name %s, listen on %s, advertised url %s]", s.name, s.Server.Addr, s.url)
 
 	if s.tlsConf.Scheme == "http" {
-		log.Fatal(s.Server.ListenAndServe())
+		return s.listenAndServe()
 	} else {
-		log.Fatal(s.Server.ListenAndServeTLS(s.tlsInfo.CertFile, s.tlsInfo.KeyFile))
+		return s.listenAndServeTLS(s.tlsInfo.CertFile, s.tlsInfo.KeyFile)
+	}
+}
+
+// Overridden version of net/http added so we can manage the listener.
+func (s *Server) listenAndServe() error {
+	addr := s.Server.Addr
+	if addr == "" {
+		addr = ":http"
+	}
+	l, e := net.Listen("tcp", addr)
+	if e != nil {
+		return e
+	}
+	s.listener = l
+	return s.Server.Serve(l)
+}
+
+// Overridden version of net/http added so we can manage the listener.
+func (s *Server) listenAndServeTLS(certFile, keyFile string) error {
+	addr := s.Server.Addr
+	if addr == "" {
+		addr = ":https"
+	}
+	config := &tls.Config{}
+	if s.Server.TLSConfig != nil {
+		*config = *s.Server.TLSConfig
+	}
+	if config.NextProtos == nil {
+		config.NextProtos = []string{"http/1.1"}
+	}
+
+	var err error
+	config.Certificates = make([]tls.Certificate, 1)
+	config.Certificates[0], err = tls.LoadX509KeyPair(certFile, keyFile)
+	if err != nil {
+		return err
+	}
+
+	conn, err := net.Listen("tcp", addr)
+	if err != nil {
+		return err
+	}
+
+	tlsListener := tls.NewListener(conn, config)
+	s.listener = tlsListener
+	return s.Server.Serve(tlsListener)
+}
+
+// Stops the server.
+func (s *Server) Close() {
+	if s.listener != nil {
+		s.listener.Close()
+		s.listener = nil
 	}
 }
 
