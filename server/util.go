@@ -26,6 +26,7 @@ func redirect(hostname string, w http.ResponseWriter, req *http.Request) {
 	// we need the original path and raw query
 	redirectURL.Path = originalURL.Path
 	redirectURL.RawQuery = originalURL.RawQuery
+	redirectURL.Fragment = originalURL.Fragment
 
 	log.Debugf("Redirect to %s", redirectURL.String())
 	http.Redirect(w, req, redirectURL.String(), http.StatusTemporaryRedirect)
