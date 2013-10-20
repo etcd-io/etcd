@@ -306,6 +306,8 @@ func (s *store) Update(nodePath string, newValue string, expireTime time.Time, i
 	// update ttl
 	n.UpdateTTL(expireTime)
 
+	e.Value = newValue
+
 	e.Expiration, e.TTL = n.ExpirationAndTTL()
 
 	s.WatcherHub.notify(e)
