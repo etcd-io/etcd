@@ -1,165 +1,94 @@
 package store
 
 import (
-	"math/rand"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
-func TestBasicStats(t *testing.T) {
+// Ensure that a successful Get is recorded in the stats.
+func TestStoreStatsGetSuccess(t *testing.T) {
 	s := newStore()
-	keys := GenKeys(rand.Intn(100), 5)
+	s.Create("/foo", "bar", false, Permanent, 3, 1)
+	s.Get("/foo", false, false, 3, 1)
+	assert.Equal(t, uint64(1), s.Stats.GetSuccess, "")
+}
 
-	var i uint64
-	var GetSuccess, GetFail, CreateSuccess, CreateFail, DeleteSuccess, DeleteFail uint64
-	var UpdateSuccess, UpdateFail, CompareAndSwapSuccess, CompareAndSwapFail, watcher_number uint64
+// Ensure that a failed Get is recorded in the stats.
+func TestStoreStatsGetFail(t *testing.T) {
+	s := newStore()
+	s.Create("/foo", "bar", false, Permanent, 3, 1)
+	s.Get("/no_such_key", false, false, 3, 1)
+	assert.Equal(t, uint64(1), s.Stats.GetFail, "")
+}
 
-	for _, k := range keys {
-		i++
-		_, err := s.Create(k, "bar", false, time.Now().Add(time.Second*time.Duration(rand.Intn(6))), i, 1)
-		if err != nil {
-			CreateFail++
-		} else {
-			CreateSuccess++
-		}
-	}
+// Ensure that a successful Create is recorded in the stats.
+func TestStoreStatsCreateSuccess(t *testing.T) {
+	s := newStore()
+	s.Create("/foo", "bar", false, Permanent, 3, 1)
+	assert.Equal(t, uint64(1), s.Stats.CreateSuccess, "")
+}
 
-	time.Sleep(time.Second * 3)
+// Ensure that a failed Create is recorded in the stats.
+func TestStoreStatsCreateFail(t *testing.T) {
+	s := newStore()
+	s.Create("/foo", "", false, Permanent, 3, 1)
+	s.Create("/foo", "bar", false, Permanent, 4, 1)
+	assert.Equal(t, uint64(1), s.Stats.CreateFail, "")
+}
 
-	for _, k := range keys {
-		_, err := s.Get(k, false, false, i, 1)
-		if err != nil {
-			GetFail++
-		} else {
-			GetSuccess++
-		}
-	}
+// Ensure that a successful Update is recorded in the stats.
+func TestStoreStatsUpdateSuccess(t *testing.T) {
+	s := newStore()
+	s.Create("/foo", "bar", false, Permanent, 3, 1)
+	s.Update("/foo", "baz", Permanent, 4, 1)
+	assert.Equal(t, uint64(1), s.Stats.UpdateSuccess, "")
+}
 
-	for _, k := range keys {
-		i++
-		_, err := s.Update(k, "foo", time.Now().Add(time.Second*time.Duration(rand.Intn(6))), i, 1)
-		if err != nil {
-			UpdateFail++
-		} else {
-			UpdateSuccess++
-		}
-	}
+// Ensure that a failed Update is recorded in the stats.
+func TestStoreStatsUpdateFail(t *testing.T) {
+	s := newStore()
+	s.Update("/foo", "bar", Permanent, 4, 1)
+	assert.Equal(t, uint64(1), s.Stats.UpdateFail, "")
+}
 
-	time.Sleep(time.Second * 3)
+// Ensure that a successful CAS is recorded in the stats.
+func TestStoreStatsCompareAndSwapSuccess(t *testing.T) {
+	s := newStore()
+	s.Create("/foo", "bar", false, Permanent, 3, 1)
+	s.CompareAndSwap("/foo", "bar", 0, "baz", Permanent, 4, 1)
+	assert.Equal(t, uint64(1), s.Stats.CompareAndSwapSuccess, "")
+}
 
-	for _, k := range keys {
-		_, err := s.Get(k, false, false, i, 1)
-		if err != nil {
-			GetFail++
-		} else {
-			GetSuccess++
-		}
-	}
+// Ensure that a failed CAS is recorded in the stats.
+func TestStoreStatsCompareAndSwapFail(t *testing.T) {
+	s := newStore()
+	s.Create("/foo", "bar", false, Permanent, 3, 1)
+	s.CompareAndSwap("/foo", "wrong_value", 0, "baz", Permanent, 4, 1)
+	assert.Equal(t, uint64(1), s.Stats.CompareAndSwapFail, "")
+}
 
-	for _, k := range keys {
-		i++
-		_, err := s.CompareAndSwap(k, "foo", 0, "bar", Permanent, i, 1)
-		if err != nil {
-			CompareAndSwapFail++
-		} else {
-			CompareAndSwapSuccess++
-		}
-	}
+// Ensure that a successful Delete is recorded in the stats.
+func TestStoreStatsDeleteSuccess(t *testing.T) {
+	s := newStore()
+	s.Create("/foo", "bar", false, Permanent, 3, 1)
+	s.Delete("/foo", false, 4, 1)
+	assert.Equal(t, uint64(1), s.Stats.DeleteSuccess, "")
+}
 
-	for _, k := range keys {
-		s.Watch(k, false, 0, i, 1)
-		watcher_number++
-	}
+// Ensure that a failed Delete is recorded in the stats.
+func TestStoreStatsDeleteFail(t *testing.T) {
+	s := newStore()
+	s.Delete("/foo", false, 4, 1)
+	assert.Equal(t, uint64(1), s.Stats.DeleteFail, "")
+}
 
-	for _, k := range keys {
-		_, err := s.Get(k, false, false, i, 1)
-		if err != nil {
-			GetFail++
-		} else {
-			GetSuccess++
-		}
-	}
-
-	for _, k := range keys {
-		i++
-		_, err := s.Delete(k, false, i, 1)
-		if err != nil {
-			DeleteFail++
-		} else {
-			watcher_number--
-			DeleteSuccess++
-		}
-	}
-
-	for _, k := range keys {
-		_, err := s.Get(k, false, false, i, 1)
-		if err != nil {
-			GetFail++
-		} else {
-			GetSuccess++
-		}
-	}
-
-	if GetSuccess != s.Stats.GetSuccess {
-		t.Fatalf("GetSuccess [%d] != Stats.GetSuccess [%d]", GetSuccess, s.Stats.GetSuccess)
-	}
-
-	if GetFail != s.Stats.GetFail {
-		t.Fatalf("GetFail [%d] != Stats.GetFail [%d]", GetFail, s.Stats.GetFail)
-	}
-
-	if CreateSuccess != s.Stats.CreateSuccess {
-		t.Fatalf("CreateSuccess [%d] != Stats.CreateSuccess [%d]", CreateSuccess, s.Stats.CreateSuccess)
-	}
-
-	if CreateFail != s.Stats.CreateFail {
-		t.Fatalf("CreateFail [%d] != Stats.CreateFail [%d]", CreateFail, s.Stats.CreateFail)
-	}
-
-	if DeleteSuccess != s.Stats.DeleteSuccess {
-		t.Fatalf("DeleteSuccess [%d] != Stats.DeleteSuccess [%d]", DeleteSuccess, s.Stats.DeleteSuccess)
-	}
-
-	if DeleteFail != s.Stats.DeleteFail {
-		t.Fatalf("DeleteFail [%d] != Stats.DeleteFail [%d]", DeleteFail, s.Stats.DeleteFail)
-	}
-
-	if UpdateSuccess != s.Stats.UpdateSuccess {
-		t.Fatalf("UpdateSuccess [%d] != Stats.UpdateSuccess [%d]", UpdateSuccess, s.Stats.UpdateSuccess)
-	}
-
-	if UpdateFail != s.Stats.UpdateFail {
-		t.Fatalf("UpdateFail [%d] != Stats.UpdateFail [%d]", UpdateFail, s.Stats.UpdateFail)
-	}
-
-	if CompareAndSwapSuccess != s.Stats.CompareAndSwapSuccess {
-		t.Fatalf("TestAndSetSuccess [%d] != Stats.CompareAndSwapSuccess [%d]", CompareAndSwapSuccess, s.Stats.CompareAndSwapSuccess)
-	}
-
-	if CompareAndSwapFail != s.Stats.CompareAndSwapFail {
-		t.Fatalf("TestAndSetFail [%d] != Stats.TestAndSetFail [%d]", CompareAndSwapFail, s.Stats.CompareAndSwapFail)
-	}
-
-	s = newStore()
-	CreateSuccess = 0
-	CreateFail = 0
-
-	for _, k := range keys {
-		i++
-		_, err := s.Create(k, "bar", false, time.Now().Add(time.Second*3), i, 1)
-		if err != nil {
-			CreateFail++
-		} else {
-			CreateSuccess++
-		}
-	}
-
-	time.Sleep(6 * time.Second)
-
-	ExpireCount := CreateSuccess
-
-	if ExpireCount != s.Stats.ExpireCount {
-		t.Fatalf("ExpireCount [%d] != Stats.ExpireCount [%d]", ExpireCount, s.Stats.ExpireCount)
-	}
-
+// Ensure that the number of expirations is recorded in the stats.
+func TestStoreStatsExpireCount(t *testing.T) {
+	s := newStore()
+	s.Create("/foo", "bar", false, time.Now().Add(5 * time.Millisecond), 3, 1)
+	assert.Equal(t, uint64(0), s.Stats.ExpireCount, "")
+	time.Sleep(10 * time.Millisecond)
+	assert.Equal(t, uint64(1), s.Stats.ExpireCount, "")
 }

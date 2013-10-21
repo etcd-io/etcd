@@ -1,561 +1,398 @@
 package store
 
 import (
-	"math/rand"
-	"strconv"
 	"testing"
 	"time"
+
+	etcdErr "github.com/coreos/etcd/error"
+	"github.com/stretchr/testify/assert"
 )
 
-func TestCreateAndGet(t *testing.T) {
+// Ensure that the store can retrieve an existing value.
+func TestStoreGetValue(t *testing.T) {
 	s := newStore()
-
-	s.Create("/foobar", "bar", false, Permanent, 1, 1)
-
-	// already exist, create should fail
-	_, err := s.Create("/foobar", "bar", false, Permanent, 1, 1)
-
-	if err == nil {
-		t.Fatal("Create should fail")
-	}
-
-	s.Delete("/foobar", true, 1, 1)
-
-	s.Create("/foobar/foo", "bar", false, Permanent, 1, 1)
-
-	// already exist, create should fail
-	_, err = s.Create("/foobar", "bar", false, Permanent, 1, 1)
-
-	if err == nil {
-		t.Fatal("Create should fail")
-	}
-
-	s.Delete("/foobar", true, 1, 1)
-
-	// this should create successfully
-	createAndGet(s, "/foobar", t)
-	createAndGet(s, "/foo/bar", t)
-	createAndGet(s, "/foo/foo/bar", t)
-
-	// meet file, create should fail
-	_, err = s.Create("/foo/bar/bar", "bar", false, Permanent, 2, 1)
-
-	if err == nil {
-		t.Fatal("Create should fail")
-	}
-
-	// create a directory
-	_, err = s.Create("/fooDir", "", false, Permanent, 3, 1)
-
-	if err != nil {
-		t.Fatal("Cannot create /fooDir")
-	}
-
-	e, err := s.Get("/fooDir", false, false, 3, 1)
-
-	if err != nil || e.Dir != true {
-		t.Fatal("Cannot create /fooDir ")
-	}
-
-	// create a file under directory
-	_, err = s.Create("/fooDir/bar", "bar", false, Permanent, 4, 1)
-
-	if err != nil {
-		t.Fatal("Cannot create /fooDir/bar = bar")
-	}
+	s.Create("/foo", "bar", false, Permanent, 2, 1)
+	e, err := s.Get("/foo", false, false, 2, 1)
+	assert.Nil(t, err, "")
+	assert.Equal(t, e.Action, "get", "")
+	assert.Equal(t, e.Key, "/foo", "")
+	assert.Equal(t, e.Value, "bar", "")
 }
 
-func TestUpdateFile(t *testing.T) {
+// Ensure that the store can recrusively retrieve a directory listing.
+// Note that hidden files should not be returned.
+func TestStoreGetDirectory(t *testing.T) {
 	s := newStore()
-
-	_, err := s.Create("/foo/bar", "bar", false, Permanent, 1, 1)
-
-	if err != nil {
-		t.Fatalf("cannot create %s=bar [%s]", "/foo/bar", err.Error())
-	}
-
-	_, err = s.Update("/foo/bar", "barbar", Permanent, 2, 1)
-
-	if err != nil {
-		t.Fatalf("cannot update %s=barbar [%s]", "/foo/bar", err.Error())
-	}
-
-	e, err := s.Get("/foo/bar", false, false, 2, 1)
-
-	if err != nil {
-		t.Fatalf("cannot get %s [%s]", "/foo/bar", err.Error())
-	}
-
-	if e.Value != "barbar" {
-		t.Fatalf("expect value of %s is barbar [%s]", "/foo/bar", e.Value)
-	}
-
-	// create a directory, update its ttl, to see if it will be deleted
-	_, err = s.Create("/foo/foo", "", false, Permanent, 3, 1)
-
-	if err != nil {
-		t.Fatalf("cannot create dir [%s] [%s]", "/foo/foo", err.Error())
-	}
-
-	_, err = s.Create("/foo/foo/foo1", "bar1", false, Permanent, 4, 1)
-
-	if err != nil {
-		t.Fatal("cannot create [%s]", err.Error())
-	}
-
-	_, err = s.Create("/foo/foo/foo2", "", false, Permanent, 5, 1)
-	if err != nil {
-		t.Fatal("cannot create [%s]", err.Error())
-	}
-
-	_, err = s.Create("/foo/foo/foo2/boo", "boo1", false, Permanent, 6, 1)
-	if err != nil {
-		t.Fatal("cannot create [%s]", err.Error())
-	}
-
-	expire := time.Now().Add(time.Second * 2)
-	_, err = s.Update("/foo/foo", "", expire, 7, 1)
-	if err != nil {
-		t.Fatalf("cannot update dir [%s] [%s]", "/foo/foo", err.Error())
-	}
-
-	// sleep 50ms, it should still reach the node
-	time.Sleep(time.Microsecond * 50)
-	e, err = s.Get("/foo/foo", true, false, 7, 1)
-
-	if err != nil || e.Key != "/foo/foo" {
-		t.Fatalf("cannot get dir before expiration [%s]", err.Error())
-	}
-
-	if e.KVPairs[0].Key != "/foo/foo/foo1" || e.KVPairs[0].Value != "bar1" {
-		t.Fatalf("cannot get sub node before expiration [%s]", err.Error())
-	}
-
-	if e.KVPairs[1].Key != "/foo/foo/foo2" || e.KVPairs[1].Dir != true {
-		t.Fatalf("cannot get sub dir before expiration [%s]", err.Error())
-	}
-
-	// wait for expiration
-	time.Sleep(time.Second * 3)
-	e, err = s.Get("/foo/foo", true, false, 7, 1)
-
-	if err == nil {
-		t.Fatal("still can get dir after expiration [%s]")
-	}
-
-	_, err = s.Get("/foo/foo/foo1", true, false, 7, 1)
-	if err == nil {
-		t.Fatal("still can get sub node after expiration [%s]")
-	}
-
-	_, err = s.Get("/foo/foo/foo2", true, false, 7, 1)
-	if err == nil {
-		t.Fatal("still can get sub dir after expiration [%s]")
-	}
-
-	_, err = s.Get("/foo/foo/foo2/boo", true, false, 7, 1)
-	if err == nil {
-		t.Fatalf("still can get sub node of sub dir after expiration [%s]", err.Error())
-	}
-
+	s.Create("/foo", "", false, Permanent, 2, 1)
+	s.Create("/foo/bar", "X", false, Permanent, 3, 1)
+	s.Create("/foo/_hidden", "*", false, Permanent, 4, 1)
+	s.Create("/foo/baz", "", false, Permanent, 5, 1)
+	s.Create("/foo/baz/bat", "Y", false, Permanent, 6, 1)
+	s.Create("/foo/baz/_hidden", "*", false, Permanent, 7, 1)
+	e, err := s.Get("/foo", true, false, 8, 1)
+	assert.Nil(t, err, "")
+	assert.Equal(t, e.Action, "get", "")
+	assert.Equal(t, e.Key, "/foo", "")
+	assert.Equal(t, len(e.KVPairs), 2, "")
+	assert.Equal(t, e.KVPairs[0].Key, "/foo/bar", "")
+	assert.Equal(t, e.KVPairs[0].Value, "X", "")
+	assert.Equal(t, e.KVPairs[0].Dir, false, "")
+	assert.Equal(t, e.KVPairs[1].Key, "/foo/baz", "")
+	assert.Equal(t, e.KVPairs[1].Dir, true, "")
+	assert.Equal(t, len(e.KVPairs[1].KVPairs), 1, "")
+	assert.Equal(t, e.KVPairs[1].KVPairs[0].Key, "/foo/baz/bat", "")
+	assert.Equal(t, e.KVPairs[1].KVPairs[0].Value, "Y", "")
+	assert.Equal(t, e.KVPairs[1].KVPairs[0].Dir, false, "")
 }
 
-func TestListDirectory(t *testing.T) {
+// Ensure that the store can retrieve a directory in sorted order.
+func TestStoreGetSorted(t *testing.T) {
 	s := newStore()
-
-	// create dir /foo
-	// set key-value /foo/foo=bar
-	s.Create("/foo/foo", "bar", false, Permanent, 1, 1)
-
-	// create dir /foo/fooDir
-	// set key-value /foo/fooDir/foo=bar
-	s.Create("/foo/fooDir/foo", "bar", false, Permanent, 2, 1)
-
-	e, err := s.Get("/foo", true, false, 2, 1)
-
-	if err != nil {
-		t.Fatalf("%v", err)
-	}
-
-	if len(e.KVPairs) != 2 {
-		t.Fatalf("wrong number of kv pairs [%d/2]", len(e.KVPairs))
-	}
-
-	if e.KVPairs[0].Key != "/foo/foo" || e.KVPairs[0].Value != "bar" {
-		t.Fatalf("wrong kv [/foo/foo/ / %s] -> [bar / %s]", e.KVPairs[0].Key, e.KVPairs[0].Value)
-	}
-
-	if e.KVPairs[1].Key != "/foo/fooDir" || e.KVPairs[1].Dir != true {
-		t.Fatalf("wrong kv [/foo/fooDir/ / %s] -> [true / %v]", e.KVPairs[1].Key, e.KVPairs[1].Dir)
-	}
-
-	if e.KVPairs[1].KVPairs[0].Key != "/foo/fooDir/foo" || e.KVPairs[1].KVPairs[0].Value != "bar" {
-		t.Fatalf("wrong kv [/foo/fooDir/foo / %s] -> [bar / %v]", e.KVPairs[1].KVPairs[0].Key, e.KVPairs[1].KVPairs[0].Value)
-	}
-	// test hidden node
-
-	// create dir /foo/_hidden
-	// set key-value /foo/_hidden/foo -> bar
-	s.Create("/foo/_hidden/foo", "bar", false, Permanent, 3, 1)
-
-	e, _ = s.Get("/foo", false, false, 2, 1)
-
-	if len(e.KVPairs) != 2 {
-		t.Fatalf("hidden node is not hidden! %s", e.KVPairs[2].Key)
-	}
+	s.Create("/foo", "", false, Permanent, 2, 1)
+	s.Create("/foo/x", "0", false, Permanent, 3, 1)
+	s.Create("/foo/z", "0", false, Permanent, 4, 1)
+	s.Create("/foo/y", "", false, Permanent, 5, 1)
+	s.Create("/foo/y/a", "0", false, Permanent, 6, 1)
+	s.Create("/foo/y/b", "0", false, Permanent, 7, 1)
+	e, err := s.Get("/foo", true, true, 8, 1)
+	assert.Nil(t, err, "")
+	assert.Equal(t, e.KVPairs[0].Key, "/foo/x", "")
+	assert.Equal(t, e.KVPairs[1].Key, "/foo/y", "")
+	assert.Equal(t, e.KVPairs[1].KVPairs[0].Key, "/foo/y/a", "")
+	assert.Equal(t, e.KVPairs[1].KVPairs[1].Key, "/foo/y/b", "")
+	assert.Equal(t, e.KVPairs[2].Key, "/foo/z", "")
 }
 
-func TestRemove(t *testing.T) {
+
+// Ensure that the store can create a new key if it doesn't already exist.
+func TestStoreCreateValue(t *testing.T) {
 	s := newStore()
-
-	s.Create("/foo", "bar", false, Permanent, 1, 1)
-	_, err := s.Delete("/foo", false, 1, 1)
-
-	if err != nil {
-		t.Fatalf("cannot delete %s [%s]", "/foo", err.Error())
-	}
-
-	_, err = s.Get("/foo", false, false, 1, 1)
-
-	if err == nil || err.Error() != "Key Not Found" {
-		t.Fatalf("can get the node after deletion")
-	}
-
-	s.Create("/foo/bar", "bar", false, Permanent, 1, 1)
-	s.Create("/foo/car", "car", false, Permanent, 1, 1)
-	s.Create("/foo/dar/dar", "dar", false, Permanent, 1, 1)
-
-	_, err = s.Delete("/foo", false, 1, 1)
-
-	if err == nil {
-		t.Fatalf("should not be able to delete a directory without recursive")
-	}
-
-	_, err = s.Delete("/foo", true, 1, 1)
-
-	if err != nil {
-		t.Fatalf("cannot delete %s [%s]", "/foo", err.Error())
-	}
-
-	_, err = s.Get("/foo", false, false, 1, 1)
-
-	if err == nil || err.Error() != "Key Not Found" {
-		t.Fatalf("can get the node after deletion ")
-	}
+	e, err := s.Create("/foo", "bar", false, Permanent, 2, 1)
+	assert.Nil(t, err, "")
+	assert.Equal(t, e.Action, "create", "")
+	assert.Equal(t, e.Key, "/foo", "")
+	assert.False(t, e.Dir, "")
+	assert.Equal(t, e.PrevValue, "", "")
+	assert.Equal(t, e.Value, "bar", "")
+	assert.Nil(t, e.KVPairs, "")
+	assert.Nil(t, e.Expiration, "")
+	assert.Equal(t, e.TTL, 0, "")
+	assert.Equal(t, e.Index, uint64(2), "")
+	assert.Equal(t, e.Term, uint64(1), "")
 }
 
-func TestExpire(t *testing.T) {
+// Ensure that the store can create a new directory if it doesn't already exist.
+func TestStoreCreateDirectory(t *testing.T) {
 	s := newStore()
-
-	expire := time.Now().Add(time.Second)
-
-	s.Create("/foo", "bar", false, expire, 1, 1)
-
-	_, err := s.Get("/foo", false, false, 1, 1)
-
-	if err != nil {
-		t.Fatalf("can not get the node")
-	}
-
-	time.Sleep(time.Second * 2)
-
-	_, err = s.Get("/foo", false, false, 1, 1)
-
-	if err == nil {
-		t.Fatalf("can get the node after expiration time")
-	}
-
-	// test if we can reach the node before expiration
-	expire = time.Now().Add(time.Second)
-	s.Create("/foo", "bar", false, expire, 1, 1)
-
-	time.Sleep(time.Millisecond * 50)
-	_, err = s.Get("/foo", false, false, 1, 1)
-
-	if err != nil {
-		t.Fatalf("cannot get the node before expiration", err.Error())
-	}
-
-	expire = time.Now().Add(time.Second)
-
-	s.Create("/foo", "bar", false, expire, 1, 1)
-	_, err = s.Delete("/foo", false, 1, 1)
-
-	if err != nil {
-		t.Fatalf("cannot delete the node before expiration", err.Error())
-	}
+	e, err := s.Create("/foo", "", false, Permanent, 2, 1)
+	assert.Nil(t, err, "")
+	assert.Equal(t, e.Action, "create", "")
+	assert.Equal(t, e.Key, "/foo", "")
+	assert.True(t, e.Dir, "")
 }
 
-func TestCompareAndSwap(t *testing.T) { // TODO prevValue == nil ?
+// Ensure that the store fails to create a key if it already exists.
+func TestStoreCreateFailsIfExists(t *testing.T) {
 	s := newStore()
-	s.Create("/foo", "bar", false, Permanent, 1, 1)
-
-	// test on wrong previous value
-	_, err := s.CompareAndSwap("/foo", "barbar", 0, "car", Permanent, 2, 1)
-	if err == nil {
-		t.Fatal("test and set should fail barbar != bar")
-	}
-
-	// test on value
-	e, err := s.CompareAndSwap("/foo", "bar", 0, "car", Permanent, 3, 1)
-
-	if err != nil {
-		t.Fatal("test and set should succeed bar == bar")
-	}
-
-	if e.PrevValue != "bar" || e.Value != "car" {
-		t.Fatalf("[%v/%v] [%v/%v]", e.PrevValue, "bar", e.Value, "car")
-	}
-
-	// test on index
-	e, err = s.CompareAndSwap("/foo", "", 3, "bar", Permanent, 4, 1)
-
-	if err != nil {
-		t.Fatal("test and set should succeed index 3 == 3")
-	}
-
-	if e.PrevValue != "car" || e.Value != "bar" {
-		t.Fatalf("[%v/%v] [%v/%v]", e.PrevValue, "car", e.Value, "bar")
-	}
+	s.Create("/foo", "", false, Permanent, 2, 1)
+	e, _err := s.Create("/foo", "", false, Permanent, 3, 1)
+	err := _err.(*etcdErr.Error)
+	assert.Equal(t, err.ErrorCode, etcdErr.EcodeNodeExist, "")
+	assert.Equal(t, err.Message, "Already exists", "")
+	assert.Equal(t, err.Cause, "/foo", "")
+	assert.Equal(t, err.Index, uint64(3), "")
+	assert.Equal(t, err.Term, uint64(1), "")
+	assert.Nil(t, e, 0, "")
 }
 
-func TestWatch(t *testing.T) {
+// Ensure that the store can update a key if it already exists.
+func TestStoreUpdateValue(t *testing.T) {
 	s := newStore()
-	// watch at a deeper path
-	c, _ := s.Watch("/foo/foo/foo", false, 0, 0, 1)
-	s.Create("/foo/foo/foo", "bar", false, Permanent, 1, 1)
-
-	e := nonblockingRetrive(c)
-	if e.Key != "/foo/foo/foo" || e.Action != Create {
-		t.Fatal("watch for Create node fails ", e)
-	}
-
-	c, _ = s.Watch("/foo/foo/foo", false, 0, 1, 1)
-	s.Update("/foo/foo/foo", "car", Permanent, 2, 1)
-	e = nonblockingRetrive(c)
-	if e.Key != "/foo/foo/foo" || e.Action != Update {
-		t.Fatal("watch for Update node fails ", e)
-	}
-
-	c, _ = s.Watch("/foo/foo/foo", false, 0, 2, 1)
-	s.CompareAndSwap("/foo/foo/foo", "car", 0, "bar", Permanent, 3, 1)
-	e = nonblockingRetrive(c)
-	if e.Key != "/foo/foo/foo" || e.Action != CompareAndSwap {
-		t.Fatal("watch for CompareAndSwap node fails")
-	}
-
-	c, _ = s.Watch("/foo/foo/foo", false, 0, 3, 1)
-	s.Delete("/foo", true, 4, 1) //recursively delete
-	e = nonblockingRetrive(c)
-	if e.Key != "/foo" || e.Action != Delete {
-		t.Fatal("watch for Delete node fails ", e)
-	}
-
-	// watch at a prefix
-	c, _ = s.Watch("/foo", true, 0, 4, 1)
-	s.Create("/foo/foo/boo", "bar", false, Permanent, 5, 1)
-	e = nonblockingRetrive(c)
-	if e.Key != "/foo/foo/boo" || e.Action != Create {
-		t.Fatal("watch for Create subdirectory fails")
-	}
-
-	c, _ = s.Watch("/foo", true, 0, 5, 1)
-	s.Update("/foo/foo/boo", "foo", Permanent, 6, 1)
-	e = nonblockingRetrive(c)
-	if e.Key != "/foo/foo/boo" || e.Action != Update {
-		t.Fatal("watch for Update subdirectory fails")
-	}
-
-	c, _ = s.Watch("/foo", true, 0, 6, 1)
-	s.CompareAndSwap("/foo/foo/boo", "foo", 0, "bar", Permanent, 7, 1)
-	e = nonblockingRetrive(c)
-	if e.Key != "/foo/foo/boo" || e.Action != CompareAndSwap {
-		t.Fatal("watch for CompareAndSwap subdirectory fails")
-	}
-
-	c, _ = s.Watch("/foo", true, 0, 7, 1)
-	s.Delete("/foo/foo/boo", false, 8, 1)
-	e = nonblockingRetrive(c)
-	if e == nil || e.Key != "/foo/foo/boo" || e.Action != Delete {
-		t.Fatal("watch for Delete subdirectory fails")
-	}
-
-	// watch expire
-	s.Create("/foo/foo/boo", "foo", false, time.Now().Add(time.Second*1), 9, 1)
-	c, _ = s.Watch("/foo", true, 0, 9, 1)
-	time.Sleep(time.Second * 2)
-	e = nonblockingRetrive(c)
-	if e.Key != "/foo/foo/boo" || e.Action != Expire || e.Index != 9 {
-		t.Fatal("watch for Expiration of Create() subdirectory fails ", e)
-	}
-
-	s.Create("/foo/foo/boo", "foo", false, Permanent, 10, 1)
-	s.Update("/foo/foo/boo", "bar", time.Now().Add(time.Second*1), 11, 1)
-	c, _ = s.Watch("/foo", true, 0, 11, 1)
-	time.Sleep(time.Second * 2)
-	e = nonblockingRetrive(c)
-	if e.Key != "/foo/foo/boo" || e.Action != Expire || e.Index != 11 {
-		t.Fatal("watch for Expiration of Update() subdirectory fails ", e)
-	}
-
-	s.Create("/foo/foo/boo", "foo", false, Permanent, 12, 1)
-	s.CompareAndSwap("/foo/foo/boo", "foo", 0, "bar", time.Now().Add(time.Second*1), 13, 1)
-	c, _ = s.Watch("/foo", true, 0, 13, 1)
-	time.Sleep(time.Second * 2)
-	e = nonblockingRetrive(c)
-	if e.Key != "/foo/foo/boo" || e.Action != Expire || e.Index != 13 {
-		t.Fatal("watch for Expiration of CompareAndSwap() subdirectory fails ", e)
-	}
+	s.Create("/foo", "bar", false, Permanent, 2, 1)
+	e, err := s.Update("/foo", "baz", Permanent, 3, 1)
+	assert.Nil(t, err, "")
+	assert.Equal(t, e.Action, "update", "")
+	assert.Equal(t, e.Key, "/foo", "")
+	assert.False(t, e.Dir, "")
+	assert.Equal(t, e.PrevValue, "bar", "")
+	assert.Equal(t, e.Value, "baz", "")
+	assert.Equal(t, e.TTL, 0, "")
+	assert.Equal(t, e.Index, uint64(3), "")
+	assert.Equal(t, e.Term, uint64(1), "")
+	e, _ = s.Get("/foo", false, false, 3, 1)
+	assert.Equal(t, e.Value, "baz", "")
 }
 
-func TestSort(t *testing.T) {
+// Ensure that the store cannot update a directory.
+func TestStoreUpdateFailsIfDirectory(t *testing.T) {
 	s := newStore()
-
-	// simulating random creation
-	keys := GenKeys(80, 4)
-
-	i := uint64(1)
-	for _, k := range keys {
-		_, err := s.Create(k, "bar", false, Permanent, i, 1)
-		if err != nil {
-			panic(err)
-		} else {
-			i++
-		}
-	}
-
-	e, err := s.Get("/foo", true, true, i, 1)
-	if err != nil {
-		t.Fatalf("get dir nodes failed [%s]", err.Error())
-	}
-
-	for i, k := range e.KVPairs[:len(e.KVPairs)-1] {
-
-		if k.Key >= e.KVPairs[i+1].Key {
-			t.Fatalf("sort failed, [%s] should be placed after [%s]", k.Key, e.KVPairs[i+1].Key)
-		}
-
-		if k.Dir {
-			recursiveTestSort(k, t)
-		}
-
-	}
-
-	if k := e.KVPairs[len(e.KVPairs)-1]; k.Dir {
-		recursiveTestSort(k, t)
-	}
+	s.Create("/foo", "", false, Permanent, 2, 1)
+	e, _err := s.Update("/foo", "baz", Permanent, 3, 1)
+	err := _err.(*etcdErr.Error)
+	assert.Equal(t, err.ErrorCode, etcdErr.EcodeNotFile, "")
+	assert.Equal(t, err.Message, "Not A File", "")
+	assert.Equal(t, err.Cause, "/foo", "")
+	assert.Nil(t, e, "")
 }
 
-func TestSaveAndRecover(t *testing.T) {
+// Ensure that the store can update the TTL on a value.
+func TestStoreUpdateValueTTL(t *testing.T) {
 	s := newStore()
+	s.Create("/foo", "bar", false, Permanent, 2, 1)
+	_, err := s.Update("/foo", "baz", time.Now().Add(1 * time.Millisecond), 3, 1)
+	e, _ := s.Get("/foo", false, false, 3, 1)
+	assert.Equal(t, e.Value, "baz", "")
+	
+	time.Sleep(2 * time.Millisecond)
+	e, err = s.Get("/foo", false, false, 3, 1)
+	assert.Nil(t, e, "")
+	assert.Equal(t, err.(*etcdErr.Error).ErrorCode, etcdErr.EcodeKeyNotFound, "")
+}
 
-	// simulating random creation
-	keys := GenKeys(8, 4)
+// Ensure that the store can update the TTL on a directory.
+func TestStoreUpdateDirTTL(t *testing.T) {
+	s := newStore()
+	s.Create("/foo", "", false, Permanent, 2, 1)
+	s.Create("/foo/bar", "baz", false, Permanent, 3, 1)
+	_, err := s.Update("/foo", "", time.Now().Add(1 * time.Millisecond), 3, 1)
+	e, _ := s.Get("/foo/bar", false, false, 3, 1)
+	assert.Equal(t, e.Value, "baz", "")
+	
+	time.Sleep(2 * time.Millisecond)
+	e, err = s.Get("/foo/bar", false, false, 3, 1)
+	assert.Nil(t, e, "")
+	assert.Equal(t, err.(*etcdErr.Error).ErrorCode, etcdErr.EcodeKeyNotFound, "")
+}
 
-	i := uint64(1)
-	for _, k := range keys {
-		_, err := s.Create(k, "bar", false, Permanent, i, 1)
-		if err != nil {
-			panic(err)
-		} else {
-			i++
-		}
-	}
+// Ensure that the store can delete a value.
+func TestStoreDeleteValue(t *testing.T) {
+	s := newStore()
+	s.Create("/foo", "bar", false, Permanent, 2, 1)
+	e, err := s.Delete("/foo", false, 3, 1)
+	assert.Nil(t, err, "")
+	assert.Equal(t, e.Action, "delete", "")
+}
 
-	// create a node with expiration
-	// test if we can reach the node before expiration
+// Ensure that the store can delete a directory if recursive is specified.
+func TestStoreDeleteDiretory(t *testing.T) {
+	s := newStore()
+	s.Create("/foo", "", false, Permanent, 2, 1)
+	e, err := s.Delete("/foo", true, 3, 1)
+	assert.Nil(t, err, "")
+	assert.Equal(t, e.Action, "delete", "")
+}
 
-	expire := time.Now().Add(time.Second)
-	s.Create("/foo/foo", "bar", false, expire, 1, 1)
+// Ensure that the store cannot delete a directory if recursive is not specified.
+func TestStoreDeleteDiretoryFailsIfNonRecursive(t *testing.T) {
+	s := newStore()
+	s.Create("/foo", "", false, Permanent, 2, 1)
+	e, _err := s.Delete("/foo", false, 3, 1)
+	err := _err.(*etcdErr.Error)
+	assert.Equal(t, err.ErrorCode, etcdErr.EcodeNotFile, "")
+	assert.Equal(t, err.Message, "Not A File", "")
+	assert.Nil(t, e, "")
+}
+
+
+// Ensure that the store can conditionally update a key if it has a previous value.
+func TestStoreCompareAndSwapPrevValue(t *testing.T) {
+	s := newStore()
+	s.Create("/foo", "bar", false, Permanent, 2, 1)
+	e, err := s.CompareAndSwap("/foo", "bar", 0, "baz", Permanent, 3, 1)
+	assert.Nil(t, err, "")
+	assert.Equal(t, e.Action, "compareAndSwap", "")
+	assert.Equal(t, e.PrevValue, "bar", "")
+	assert.Equal(t, e.Value, "baz", "")
+	e, _ = s.Get("/foo", false, false, 3, 1)
+	assert.Equal(t, e.Value, "baz", "")
+}
+
+// Ensure that the store cannot conditionally update a key if it has the wrong previous value.
+func TestStoreCompareAndSwapPrevValueFailsIfNotMatch(t *testing.T) {
+	s := newStore()
+	s.Create("/foo", "bar", false, Permanent, 2, 1)
+	e, _err := s.CompareAndSwap("/foo", "wrong_value", 0, "baz", Permanent, 3, 1)
+	err := _err.(*etcdErr.Error)
+	assert.Equal(t, err.ErrorCode, etcdErr.EcodeTestFailed, "")
+	assert.Equal(t, err.Message, "Test Failed", "")
+	assert.Nil(t, e, "")
+	e, _ = s.Get("/foo", false, false, 3, 1)
+	assert.Equal(t, e.Value, "bar", "")
+}
+
+// Ensure that the store can conditionally update a key if it has a previous index.
+func TestStoreCompareAndSwapPrevIndex(t *testing.T) {
+	s := newStore()
+	s.Create("/foo", "bar", false, Permanent, 2, 1)
+	e, err := s.CompareAndSwap("/foo", "", 2, "baz", Permanent, 3, 1)
+	assert.Nil(t, err, "")
+	assert.Equal(t, e.Action, "compareAndSwap", "")
+	assert.Equal(t, e.PrevValue, "bar", "")
+	assert.Equal(t, e.Value, "baz", "")
+	e, _ = s.Get("/foo", false, false, 3, 1)
+	assert.Equal(t, e.Value, "baz", "")
+}
+
+// Ensure that the store cannot conditionally update a key if it has the wrong previous index.
+func TestStoreCompareAndSwapPrevIndexFailsIfNotMatch(t *testing.T) {
+	s := newStore()
+	s.Create("/foo", "bar", false, Permanent, 2, 1)
+	e, _err := s.CompareAndSwap("/foo", "", 100, "baz", Permanent, 3, 1)
+	err := _err.(*etcdErr.Error)
+	assert.Equal(t, err.ErrorCode, etcdErr.EcodeTestFailed, "")
+	assert.Equal(t, err.Message, "Test Failed", "")
+	assert.Nil(t, e, "")
+	e, _ = s.Get("/foo", false, false, 3, 1)
+	assert.Equal(t, e.Value, "bar", "")
+}
+
+// Ensure that the store can watch for key creation.
+func TestStoreWatchCreate(t *testing.T) {
+	s := newStore()
+	c, _ := s.Watch("/foo", false, 0, 0, 1)
+	s.Create("/foo", "bar", false, Permanent, 2, 1)
+	e := nbselect(c)
+	assert.Equal(t, e.Action, "create", "")
+	assert.Equal(t, e.Key, "/foo", "")
+	e = nbselect(c)
+	assert.Nil(t, e, "")
+}
+
+// Ensure that the store can watch for recursive key creation.
+func TestStoreWatchRecursiveCreate(t *testing.T) {
+	s := newStore()
+	c, _ := s.Watch("/foo", true, 0, 0, 1)
+	s.Create("/foo/bar", "baz", false, Permanent, 2, 1)
+	e := nbselect(c)
+	assert.Equal(t, e.Action, "create", "")
+	assert.Equal(t, e.Key, "/foo/bar", "")
+}
+
+// Ensure that the store can watch for key updates.
+func TestStoreWatchUpdate(t *testing.T) {
+	s := newStore()
+	s.Create("/foo", "bar", false, Permanent, 2, 1)
+	c, _ := s.Watch("/foo", false, 0, 0, 1)
+	s.Update("/foo", "baz", Permanent, 3, 1)
+	e := nbselect(c)
+	assert.Equal(t, e.Action, "update", "")
+	assert.Equal(t, e.Key, "/foo", "")
+}
+
+// Ensure that the store can watch for recursive key updates.
+func TestStoreWatchRecursiveUpdate(t *testing.T) {
+	s := newStore()
+	s.Create("/foo/bar", "baz", false, Permanent, 2, 1)
+	c, _ := s.Watch("/foo", true, 0, 0, 1)
+	s.Update("/foo/bar", "baz", Permanent, 3, 1)
+	e := nbselect(c)
+	assert.Equal(t, e.Action, "update", "")
+	assert.Equal(t, e.Key, "/foo/bar", "")
+}
+
+// Ensure that the store can watch for key deletions.
+func TestStoreWatchDelete(t *testing.T) {
+	s := newStore()
+	s.Create("/foo", "bar", false, Permanent, 2, 1)
+	c, _ := s.Watch("/foo", false, 0, 0, 1)
+	s.Delete("/foo", false, 3, 1)
+	e := nbselect(c)
+	assert.Equal(t, e.Action, "delete", "")
+	assert.Equal(t, e.Key, "/foo", "")
+}
+
+// Ensure that the store can watch for recursive key deletions.
+func TestStoreWatchRecursiveDelete(t *testing.T) {
+	s := newStore()
+	s.Create("/foo/bar", "baz", false, Permanent, 2, 1)
+	c, _ := s.Watch("/foo", true, 0, 0, 1)
+	s.Delete("/foo/bar", false, 3, 1)
+	e := nbselect(c)
+	assert.Equal(t, e.Action, "delete", "")
+	assert.Equal(t, e.Key, "/foo/bar", "")
+}
+
+// Ensure that the store can watch for CAS updates.
+func TestStoreWatchCompareAndSwap(t *testing.T) {
+	s := newStore()
+	s.Create("/foo", "bar", false, Permanent, 2, 1)
+	c, _ := s.Watch("/foo", false, 0, 0, 1)
+	s.CompareAndSwap("/foo", "bar", 0, "baz", Permanent, 3, 1)
+	e := nbselect(c)
+	assert.Equal(t, e.Action, "compareAndSwap", "")
+	assert.Equal(t, e.Key, "/foo", "")
+}
+
+// Ensure that the store can watch for recursive CAS updates.
+func TestStoreWatchRecursiveCompareAndSwap(t *testing.T) {
+	s := newStore()
+	s.Create("/foo/bar", "baz", false, Permanent, 2, 1)
+	c, _ := s.Watch("/foo", true, 0, 0, 1)
+	s.CompareAndSwap("/foo/bar", "baz", 0, "bat", Permanent, 3, 1)
+	e := nbselect(c)
+	assert.Equal(t, e.Action, "compareAndSwap", "")
+	assert.Equal(t, e.Key, "/foo/bar", "")
+}
+
+// Ensure that the store can watch for key expiration.
+func TestStoreWatchExpire(t *testing.T) {
+	s := newStore()
+	s.Create("/foo", "bar", false, time.Now().Add(1 * time.Millisecond), 2, 1)
+	c, _ := s.Watch("/foo", false, 0, 0, 1)
+	e := nbselect(c)
+	assert.Nil(t, e, "")
+	time.Sleep(2 * time.Millisecond)
+	e = nbselect(c)
+	assert.Equal(t, e.Action, "expire", "")
+	assert.Equal(t, e.Key, "/foo", "")
+}
+
+// Ensure that the store can recover from a previously saved state.
+func TestStoreRecover(t *testing.T) {
+	s := newStore()
+	s.Create("/foo", "", false, Permanent, 2, 1)
+	s.Create("/foo/x", "bar", false, Permanent, 3, 1)
+	s.Create("/foo/y", "baz", false, Permanent, 4, 1)
 	b, err := s.Save()
 
-	cloneFs := newStore()
-	time.Sleep(2 * time.Second)
+	s2 := newStore()
+	s2.Recovery(b)
 
-	cloneFs.Recovery(b)
+	e, err := s.Get("/foo/x", false, false, 4, 1)
+	assert.Nil(t, err, "")
+	assert.Equal(t, e.Value, "bar", "")
 
-	for i, k := range keys {
-		_, err := cloneFs.Get(k, false, false, uint64(i), 1)
-		if err != nil {
-			panic(err)
-		}
-	}
-
-	// lock to avoid racing with Expire()
-	s.worldLock.RLock()
-	defer s.worldLock.RUnlock()
-
-	if s.WatcherHub.EventHistory.StartIndex != cloneFs.WatcherHub.EventHistory.StartIndex {
-		t.Fatalf("Error recovered event history start index[%v/%v]",
-			s.WatcherHub.EventHistory.StartIndex, cloneFs.WatcherHub.EventHistory.StartIndex)
-	}
-
-	for i = 0; int(i) < cloneFs.WatcherHub.EventHistory.Queue.Size; i++ {
-		if s.WatcherHub.EventHistory.Queue.Events[i].Key !=
-			cloneFs.WatcherHub.EventHistory.Queue.Events[i].Key {
-			t.Fatal("Error recovered event history")
-		}
-	}
-
-	_, err = s.Get("/foo/foo", false, false, 1, 1)
-
-	if err == nil || err.Error() != "Key Not Found" {
-		t.Fatalf("can get the node after deletion ")
-	}
+	e, err = s.Get("/foo/y", false, false, 4, 1)
+	assert.Nil(t, err, "")
+	assert.Equal(t, e.Value, "baz", "")
 }
 
-// GenKeys randomly generate num of keys with max depth
-func GenKeys(num int, depth int) []string {
-	rand.Seed(time.Now().UnixNano())
-	keys := make([]string, num)
-	for i := 0; i < num; i++ {
+// Ensure that the store can recover from a previously saved state that includes an expiring key.
+func TestStoreRecoverWithExpiration(t *testing.T) {
+	s := newStore()
+	s.Create("/foo", "", false, Permanent, 2, 1)
+	s.Create("/foo/x", "bar", false, Permanent, 3, 1)
+	s.Create("/foo/y", "baz", false, time.Now().Add(5 * time.Millisecond), 4, 1)
+	b, err := s.Save()
 
-		keys[i] = "/foo"
-		depth := rand.Intn(depth) + 1
+	time.Sleep(10 * time.Millisecond)
 
-		for j := 0; j < depth; j++ {
-			keys[i] += "/" + strconv.Itoa(rand.Int())
-		}
-	}
+	s2 := newStore()
+	s2.Recovery(b)
 
-	return keys
+	e, err := s.Get("/foo/x", false, false, 4, 1)
+	assert.Nil(t, err, "")
+	assert.Equal(t, e.Value, "bar", "")
+
+	e, err = s.Get("/foo/y", false, false, 4, 1)
+	assert.NotNil(t, err, "")
+	assert.Nil(t, e, "")
 }
 
-func createAndGet(s *store, path string, t *testing.T) {
-	_, err := s.Create(path, "bar", false, Permanent, 1, 1)
 
-	if err != nil {
-		t.Fatalf("cannot create %s=bar [%s]", path, err.Error())
-	}
 
-	e, err := s.Get(path, false, false, 1, 1)
-
-	if err != nil {
-		t.Fatalf("cannot get %s [%s]", path, err.Error())
-	}
-
-	if e.Value != "bar" {
-		t.Fatalf("expect value of %s is bar [%s]", path, e.Value)
-	}
-}
-
-func recursiveTestSort(k KeyValuePair, t *testing.T) {
-	for i, v := range k.KVPairs[:len(k.KVPairs)-1] {
-		if v.Key >= k.KVPairs[i+1].Key {
-			t.Fatalf("sort failed, [%s] should be placed after [%s]", v.Key, k.KVPairs[i+1].Key)
-		}
-
-		if v.Dir {
-			recursiveTestSort(v, t)
-		}
-	}
-
-	if v := k.KVPairs[len(k.KVPairs)-1]; v.Dir {
-		recursiveTestSort(v, t)
-	}
-}
-
-func nonblockingRetrive(c <-chan *Event) *Event {
+// Performs a non-blocking select on an event channel.
+func nbselect(c <-chan *Event) *Event {
 	select {
 	case e := <-c:
 		return e
