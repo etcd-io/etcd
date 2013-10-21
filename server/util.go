@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"github.com/coreos/etcd/log"
 )
@@ -30,4 +31,16 @@ func redirect(hostname string, w http.ResponseWriter, req *http.Request) {
 
 	log.Debugf("Redirect to %s", redirectURL.String())
 	http.Redirect(w, req, redirectURL.String(), http.StatusTemporaryRedirect)
+}
+
+// trimsplit slices s into all substrings separated by sep and returns a
+// slice of the substrings between the separator with all leading and trailing
+// white space removed, as defined by Unicode.
+func trimsplit(s, sep string) []string {
+  raw := strings.Split(s, ",")
+  trimmed := make([]string, len(raw))
+  for _, r := range raw {
+    trimmed = append(trimmed, strings.TrimSpace(r))
+  }
+  return trimmed
 }
