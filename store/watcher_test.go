@@ -9,7 +9,7 @@ func TestWatcher(t *testing.T) {
 	wh := s.WatcherHub
 	c, err := wh.watch("/foo", true, 1)
 	if err != nil {
-		t.Fatal("%v", err)
+		t.Fatalf("%v", err)
 	}
 
 	select {
