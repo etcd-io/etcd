@@ -46,7 +46,7 @@ func (r *Registry) Register(name string, peerVersion string, peerURL string, url
 	key := path.Join(RegistryKey, name)
 	value := fmt.Sprintf("raft=%s&etcd=%s&raftVersion=%s", peerURL, url, peerVersion)
 	_, err := r.store.Create(key, value, false, store.Permanent, commitIndex, term)
-	log.Debugf("Register: %s (%v)", name, err)
+	log.Debugf("Register: %s", name)
 	return err
 }
 
@@ -60,7 +60,7 @@ func (r *Registry) Unregister(name string, commitIndex uint64, term uint64) erro
 
 	// Remove the key from the store.
 	_, err := r.store.Delete(path.Join(RegistryKey, name), false, commitIndex, term)
-	log.Debugf("Unregister: %s (%v)", name, err)
+	log.Debugf("Unregister: %s", name)
 	return err
 }
 
