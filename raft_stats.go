@@ -21,7 +21,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/coreos/go-raft"
+	"github.com/goraft/raft"
 )
 
 const (

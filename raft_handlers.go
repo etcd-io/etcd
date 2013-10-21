@@ -20,7 +20,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/coreos/go-raft"
+	"github.com/goraft/raft"
 )
 
 //-------------------------------------------------------------

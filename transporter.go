@@ -26,7 +26,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/coreos/go-raft"
+	"github.com/goraft/raft"
 )
 
 // Timeout for setup internal raft http connection
