@@ -1,3 +1,4 @@
+// Package activation implements primitives for systemd socket activation.
 package activation
 
 import (

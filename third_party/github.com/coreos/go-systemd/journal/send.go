@@ -3,6 +3,7 @@ package journal
 
 import (
 	"bytes"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
@@ -12,7 +13,6 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
-	"encoding/binary"
 )
 
 // Priority of a journal message
@@ -32,7 +32,11 @@ const (
 var conn net.Conn
 
 func init() {
-	conn, _ = net.Dial("unixgram", "/run/systemd/journal/socket")
+	var err error
+	conn, err = net.Dial("unixgram", "/run/systemd/journal/socket")
+	if err != nil {
+		conn = nil
+	}
 }
 
 // Enabled returns true iff the systemd journal is available for logging
