@@ -46,11 +46,19 @@ func GetHandler(w http.ResponseWriter, req *http.Request, s Server) error {
 		}
 
 		// Start the watcher on the store.
-		c, err := s.Store().Watch(key, recursive, sinceIndex, s.CommitIndex(), s.Term())
+		eventChan, err := s.Store().Watch(key, recursive, sinceIndex, s.CommitIndex(), s.Term())
 		if err != nil {
 			return etcdErr.NewError(500, key, store.UndefIndex, store.UndefTerm)
 		}
-		event = <-c
+
+		cn, _ := w.(http.CloseNotifier)
+		closeChan := cn.CloseNotify()
+
+		select {
+		case <-closeChan:
+			return nil
+		case event = <-eventChan:
+		}
 
 	} else { //get
 		// Retrieve the key from the store.
