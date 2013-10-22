@@ -52,7 +52,7 @@ func newRaftServer(name string, url string, listenHost string, tlsConf *TLSConfi
 	raftTransporter := newTransporter(tlsConf.Scheme, tlsConf.Client)
 
 	// Create raft server
-	server, err := raft.NewServer(name, dirPath, raftTransporter, etcdStore, nil, "")
+	server, err := raft.NewServer(name, config.Etcd.DataDir, raftTransporter, etcdStore, nil, "")
 
 	check(err)
 
@@ -86,7 +86,7 @@ func (r *raftServer) ListenAndServe() {
 	registerCommands()
 
 	// LoadSnapshot
-	if snapshot {
+	if config.Etcd.Snapshot {
 		err := r.LoadSnapshot()
 
 		if err == nil {
@@ -104,7 +104,7 @@ func (r *raftServer) ListenAndServe() {
 	if r.IsLogEmpty() {
 
 		// start as a leader in a new cluster
-		if len(cluster) == 0 {
+		if len(config.Etcd.Machines) == 0 {
 			startAsLeader()
 
 		} else {
@@ -114,15 +114,15 @@ func (r *raftServer) ListenAndServe() {
 	} else {
 
 		// rejoin the previous cluster
-		cluster = getMachines(nameToRaftURL)
-		for i := 0; i < len(cluster); i++ {
-			u, err := url.Parse(cluster[i])
+		config.Etcd.Machines = getMachines(nameToRaftURL)
+		for i := 0; i < len(config.Etcd.Machines); i++ {
+			u, err := url.Parse(config.Etcd.Machines[i])
 			if err != nil {
 				debug("rejoin cannot parse url: ", err)
 			}
-			cluster[i] = u.Host
+			config.Etcd.Machines[i] = u.Host
 		}
-		ok := joinCluster(cluster)
+		ok := joinCluster(config.Etcd.Machines)
 		if !ok {
 			warn("the entire cluster is down! this machine will restart the cluster.")
 		}
@@ -131,7 +131,7 @@ func (r *raftServer) ListenAndServe() {
 	}
 
 	// open the snapshot
-	if snapshot {
+	if config.Etcd.Snapshot {
 		go monitorSnapshot()
 	}
 
@@ -153,8 +153,8 @@ func startAsLeader() {
 
 func startAsFollower() {
 	// start as a follower in a existing cluster
-	for i := 0; i < retryTimes; i++ {
-		ok := joinCluster(cluster)
+	for i := 0; i < config.Etcd.MaxRetryAttempts; i++ {
+		ok := joinCluster(config.Etcd.Machines)
 		if ok {
 			return
 		}
@@ -162,7 +162,7 @@ func startAsFollower() {
 		time.Sleep(time.Second * RetryInterval)
 	}
 
-	fatalf("Cannot join the cluster via given machines after %x retries", retryTimes)
+	fatalf("Cannot join the cluster via given machines after %x retries", config.Etcd.MaxRetryAttempts)
 }
 
 // Start to listen and response raft command

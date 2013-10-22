@@ -26,6 +26,7 @@ import (
 	"os"
 	"os/signal"
 	"runtime/pprof"
+	"strings"
 	"strconv"
 	"time"
 
@@ -52,6 +53,42 @@ func durationToExpireTime(strDuration string) (time.Time, error) {
 	}
 }
 
+// envToVar sets dest to the value returned by the environment var named by
+// key. Values are converted to the appropriate type if necessary.
+// It logs and exits if there are any errors.
+func envToVar(key string, dest interface{}) {
+	value := strings.TrimSpace(os.Getenv(key))
+	if value == "" {
+		return
+	}
+	switch dest.(type) {
+	case bool:
+		dest = true
+	case int:
+		newValue, err := strconv.ParseInt(value, 10, 0)
+		if err != nil {
+			fatalf("Unable to parse %s: %s", key, err)
+		}
+		dest = newValue
+	case string:
+		dest = value
+	case []string:
+		dest = splitAndTrimSpace(value, ",")
+	}
+}
+
+// splitAndTrim slices s into all substrings separated by sep and returns a
+// slice of the substrings between the separator with all leading and trailing
+// white space removed, as defined by Unicode.
+func splitAndTrimSpace(s, sep string) []string {
+	raw := strings.Split(s, ",")
+	trimmed := make([]string, len(raw))
+	for _, r := range raw {
+		trimmed = append(trimmed, strings.TrimSpace(r))
+	}
+	return trimmed
+}
+
 //--------------------------------------
 // Web Helper
 //--------------------------------------
@@ -69,10 +106,10 @@ func webHelper() {
 
 // startWebInterface starts web interface if webURL is not empty
 func startWebInterface() {
-	if argInfo.WebURL != "" {
+	if config.Etcd.WebURL != "" {
 		// start web
 		go webHelper()
-		go web.Start(r.Server, argInfo.WebURL)
+		go web.Start(r.Server, config.Etcd.WebURL)
 	}
 }
 
@@ -179,13 +216,13 @@ func infof(format string, v ...interface{}) {
 }
 
 func debugf(format string, v ...interface{}) {
-	if verbose {
+	if config.Etcd.Verbose {
 		logger.Debugf(format, v...)
 	}
 }
 
 func debug(v ...interface{}) {
-	if verbose {
+	if config.Etcd.Verbose {
 		logger.Debug(v...)
 	}
 }
@@ -211,7 +248,7 @@ func fatal(v ...interface{}) {
 //--------------------------------------
 func runCPUProfile() {
 
-	f, err := os.Create(cpuprofile)
+	f, err := os.Create(config.Etcd.CPUProfileFile)
 	if err != nil {
 		fatal(err)
 	}

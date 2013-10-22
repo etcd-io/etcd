@@ -19,78 +19,303 @@ package main
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/json"
 	"encoding/pem"
+	"flag"
+	"fmt"
 	"io/ioutil"
+	"net/url"
 	"os"
-	"path/filepath"
+
+	"github.com/BurntSushi/toml"
 )
 
 //--------------------------------------
 // Config
 //--------------------------------------
 
-// Get the server info from previous conf file
-// or from the user
-func getInfo(path string) *Info {
-
-	infoPath := filepath.Join(path, "info")
-
-	if force {
-		// Delete the old configuration if exist
-		logPath := filepath.Join(path, "log")
-		confPath := filepath.Join(path, "conf")
-		snapshotPath := filepath.Join(path, "snapshot")
-		os.Remove(infoPath)
-		os.Remove(logPath)
-		os.Remove(confPath)
-		os.RemoveAll(snapshotPath)
-	} else if info := readInfo(infoPath); info != nil {
-		infof("Found node configuration in '%s'. Ignoring flags", infoPath)
-		return info
-	}
-
-	// Read info from command line
-	info := &argInfo
-
-	// Write to file.
-	content, _ := json.MarshalIndent(info, "", " ")
-	content = []byte(string(content) + "\n")
-	if err := ioutil.WriteFile(infoPath, content, 0644); err != nil {
-		fatalf("Unable to write info to file: %v", err)
-	}
-
-	infof("Wrote node configuration to '%s'", infoPath)
-
-	return info
+// Config holds the etcd and raft server configurations.
+type Config struct {
+	ConfigFile string
+	Etcd       EtcdConfig
+	Raft       RaftConfig
 }
 
-// readInfo reads from info file and decode to Info struct
-func readInfo(path string) *Info {
-	file, err := os.Open(path)
+// EtcdConfig represents the etcd server configuration.
+type EtcdConfig struct {
+	AdvertisedUrl    string   `toml:"advertised_url"`
+	CAFile           string   `toml:"ca_file"`
+	CertFile         string   `toml:"cert_file"`
+	CPUProfileFile   string   `toml:"cpu_profile_file"`
+	Cors             []string `toml:"cors"`
+	CorsWhiteList    map[string]bool
+	DataDir          string   `toml:"datadir"`
+	KeyFile          string   `toml:"key_file"`
+	ListenHost       string   `toml:"listen_host"`
+	Machines         []string `toml:"machines"`
+	MachinesFile     string   `toml:"machines_file"`
+	MaxClusterSize   int      `toml:"max_cluster_size"`
+	MaxResultBuffer  int      `toml:"max_result_buffer"`
+	MaxRetryAttempts int      `toml:"max_retry_attempts"`
+	Name             string   `toml:"name"`
+	Snapshot         bool     `toml:"snapshot"`
+	TLSConfig        TLSConfig
+	TLSInfo          TLSInfo
+	Verbose          bool   `toml:"verbose"`
+	VeryVerbose      bool   `toml:"very_verbose"`
+	WebURL           string `toml:"web_url"`
+}
 
+// RaftConfig represents the raft server configuration.
+type RaftConfig struct {
+	AdvertisedUrl string `toml:"advertised_url"`
+	CAFile        string `toml:"ca_file"`
+	CertFile      string `toml:"cert_file"`
+	KeyFile       string `toml:"key_file"`
+	ListenHost    string `toml:"listen_host"`
+	TLSConfig     TLSConfig
+	TLSInfo       TLSInfo
+}
+
+// TLSConfig holds the TLS configuration.
+type TLSConfig struct {
+	Scheme string
+	Server tls.Config
+	Client tls.Config
+}
+
+// TLSInfo holds the SSL certificates paths.
+type TLSInfo struct {
+	CAFile   string
+	CertFile string
+	KeyFile  string
+}
+
+// NewConfig return a Config initialized with default values.
+func NewConfig() *Config {
+	c := new(Config)
+	c.Etcd.AdvertisedUrl = "127.0.0.1:4001"
+	c.Etcd.CorsWhiteList = make(map[string]bool)
+	c.Etcd.DataDir = "."
+	c.Etcd.MaxClusterSize = 9
+	c.Etcd.MaxResultBuffer = 1024
+	c.Etcd.MaxRetryAttempts = 3
+	c.Raft.AdvertisedUrl = "127.0.0.1:7001"
+	return c
+}
+
+// processConfig sets the etcd and raft configuration by processing configuration
+// sources starting with the etcd configuration file. Setting are overridden by
+// the next configuration source.
+func (c *Config) processConfig() {
+	c.setConfigFromFile()
+	c.setConfigFromEnv()
+	c.setConfigFromFlags()
+	c.setMachines()
+	c.setCorsWhiteList()
+	c.setEtcdTLSInfo()
+	c.setEtcdTLSConfig()
+	c.setRaftTLSInfo()
+	c.setRaftTLSConfig()
+	c.sanitize()
+	c.check()
+}
+
+// setConfigFile sets the path to the etcd configuration file.
+func (c *Config) setConfigFile(path string) {
+	c.ConfigFile = path
+}
+
+// setConfigFromFile sets configuration options from a configuration file.
+// It logs and exits if there are any errors.
+func (c *Config) setConfigFromFile() {
+	if c.ConfigFile == "" {
+		return
+	}
+	// Ignore the metadata as we don't need it.
+	_, err := toml.DecodeFile(c.ConfigFile, &c)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return nil
+		fatalf("Unable to parse config: %v", err)
+	}
+}
+
+// setConfigFromEnv sets configuration options from environment variables.
+func (c *Config) setConfigFromEnv() {
+	envToVar("ETCD_ADVERTISED_URL", c.Etcd.AdvertisedUrl)
+	envToVar("ETCD_CA_FILE", c.Etcd.CAFile)
+	envToVar("ETCD_CERT_FILE", c.Etcd.CertFile)
+	envToVar("ETCD_CPU_PROFILE_FILE", c.Etcd.CPUProfileFile)
+	envToVar("ETCD_DATADIR", c.Etcd.DataDir)
+	envToVar("ETCD_KEY_FILE", c.Etcd.KeyFile)
+	envToVar("ETCD_LISTEN_HOST", c.Etcd.ListenHost)
+	envToVar("ETCD_MAX_CLUSTER_SIZE", c.Etcd.MaxClusterSize)
+	envToVar("ETCD_MAX_RESULTS_BUFFER", c.Etcd.MaxResultBuffer)
+	envToVar("ETCD_MAX_RETRY_ATTEMPTS", c.Etcd.MaxRetryAttempts)
+	envToVar("ETCD_NAME", c.Etcd.Name)
+	envToVar("ETCD_SNAPSHOT", c.Etcd.Snapshot)
+	envToVar("ETCD_VERBOSE", c.Etcd.Verbose)
+	envToVar("ETCD_VERY_VERBOSE", c.Etcd.VeryVerbose)
+	envToVar("ETCD_WEB_URL", c.Etcd.WebURL)
+	envToVar("ETCD_RAFT_ADVERTISED_URL", c.Raft.AdvertisedUrl)
+	envToVar("ETCD_RAFT_CA_FILE", c.Raft.CAFile)
+	envToVar("ETCD_RAFT_CERT_FILE", c.Raft.CertFile)
+	envToVar("ETCD_RAFT_KEY_FILE", c.Raft.KeyFile)
+	envToVar("ETCD_RAFT_LISTEN_HOST", c.Raft.ListenHost)
+}
+
+// setConfigFromFlags sets configuration options from the command line flags.
+func (c *Config) setConfigFromFlags() {
+	flag.Visit(c.overrideFromFlags)
+}
+
+// overrideFromFlags overrides configuration settings based on values passed
+// in through command line flags.
+func (c *Config) overrideFromFlags(f *flag.Flag) {
+	switch f.Name {
+	case "c":
+		c.Etcd.AdvertisedUrl = etcdAdvertisedUrl
+	case "cl":
+		c.Etcd.ListenHost = etcdListenHost
+	case "clientCAFile":
+		c.Etcd.CAFile = etcdCAFile
+	case "clientCert":
+		c.Etcd.CertFile = etcdCertFile
+	case "clientKey":
+		c.Etcd.KeyFile = etcdKeyFile
+	case "cpuprofile":
+		c.Etcd.CPUProfileFile = etcdCPUProfileFile
+	case "d":
+		c.Etcd.DataDir = etcdDataDir
+	case "n":
+		c.Etcd.Name = etcdName
+	case "maxsize":
+		c.Etcd.MaxClusterSize = etcdMaxClusterSize
+	case "m":
+		c.Etcd.MaxResultBuffer = etcdMaxResultBuffer
+	case "r":
+		c.Etcd.MaxRetryAttempts = etcdMaxRetryAttempts
+	case "s":
+		c.Raft.AdvertisedUrl = raftAdvertisedUrl
+	case "sl":
+		c.Raft.ListenHost = raftListenHost
+	case "serverCAFile":
+		c.Raft.CAFile = raftCAFile
+	case "serverCert":
+		c.Raft.CertFile = raftCertFile
+	case "serverKey":
+		c.Raft.KeyFile = raftKeyFile
+	case "snapshot":
+		c.Etcd.Snapshot = etcdSnapshot
+	case "w":
+		c.Etcd.WebURL = etcdWebURL
+	case "v":
+		c.Etcd.Verbose = etcdVerbose
+	case "vv":
+		c.Etcd.VeryVerbose = etcdVeryVerbose
+	}
+}
+
+// setMachines sets the etcd cluster members.
+func (c *Config) setMachines() {
+	// First check if a machine list was supplied on the command line.
+	// Then look to the environment.
+	if machines == "" {
+		machines = os.Getenv("ETCD_MACHINES")
+	}
+	if machinesFile == "" {
+		machinesFile = os.Getenv("ETCD_MACHINES_FILE")
+	}
+	if machinesFile == "" {
+		machinesFile = c.Etcd.MachinesFile
+	}
+	if machines != "" {
+		c.Etcd.Machines = splitAndTrimSpace(machines, ",")
+	} else if machinesFile != "" {
+		b, err := ioutil.ReadFile(machinesFile)
+		if err != nil {
+			fatalf("Unable to read the given machines file: %s", err)
 		}
-		fatal(err)
+		c.Etcd.Machines = splitAndTrimSpace(string(b), ",")
 	}
-	defer file.Close()
+}
 
-	info := &Info{}
-
-	content, err := ioutil.ReadAll(file)
-	if err != nil {
-		fatalf("Unable to read info: %v", err)
-		return nil
+// setEtcdTLSInfo sets the etcd TLSInfo.
+func (c *Config) setEtcdTLSInfo() {
+	c.Etcd.TLSInfo = TLSInfo{
+		CAFile:   c.Etcd.CAFile,
+		CertFile: c.Etcd.CertFile,
+		KeyFile:  c.Etcd.KeyFile,
 	}
+}
 
-	if err = json.Unmarshal(content, &info); err != nil {
-		fatalf("Unable to parse info: %v", err)
-		return nil
+// setRaftTLSInfo sets the raft TLSInfo.
+func (c *Config) setRaftTLSInfo() {
+	c.Raft.TLSInfo = TLSInfo{
+		CAFile:   c.Raft.CAFile,
+		CertFile: c.Raft.CertFile,
+		KeyFile:  c.Raft.KeyFile,
 	}
+}
 
-	return info
+// setEtcdTLSConfig sets the etcd TLSConfig.
+// It logs and exits if there are any errors.
+func (c *Config) setEtcdTLSConfig() {
+	var ok bool
+	c.Etcd.TLSConfig, ok = tlsConfigFromInfo(config.Etcd.TLSInfo)
+	if !ok {
+		fatal("Please specify cert and key file or cert and key file and CAFile or none of the three")
+	}
+}
+
+// setRaftTLSConfig sets the etcd TLSConfig.
+// It logs and exits if there are any errors.
+func (c *Config) setRaftTLSConfig() {
+	var ok bool
+	c.Raft.TLSConfig, ok = tlsConfigFromInfo(config.Raft.TLSInfo)
+	if !ok {
+		fatal("Please specify cert and key file or cert and key file and CAFile or none of the three")
+	}
+}
+
+// check checks the configuration options.
+func (c *Config) check() {
+	if config.Etcd.Name == "" {
+		fatal("ERROR: server name required. e.g. '-n=server_name'")
+	}
+}
+
+// sanitize sanitizes the hostname and URL configuration options.
+func (c *Config) sanitize() {
+	config.Etcd.AdvertisedUrl = sanitizeURL(config.Etcd.AdvertisedUrl, config.Etcd.TLSConfig.Scheme)
+	config.Etcd.ListenHost = sanitizeListenHost(config.Etcd.ListenHost, config.Etcd.AdvertisedUrl)
+	config.Etcd.WebURL = sanitizeURL(config.Etcd.WebURL, "http")
+	config.Raft.AdvertisedUrl = sanitizeURL(config.Raft.AdvertisedUrl, config.Raft.TLSConfig.Scheme)
+	config.Raft.ListenHost = sanitizeListenHost(config.Raft.ListenHost, config.Raft.AdvertisedUrl)
+}
+
+// setCorsWhiteList sets CorsWhiteList.
+// It panics if the cors white list would contains an invalid URL.
+func (c *Config) setCorsWhiteList() {
+	var corsList []string
+	if cors == "" {
+		cors = os.Getenv("ETCD_CORS")
+	}
+	if cors != "" {
+		corsList = splitAndTrimSpace(cors, ",")
+	} else {
+		corsList = c.Etcd.Cors
+	}
+	if len(corsList) > 0 {
+		for _, v := range corsList {
+			fmt.Println(v)
+			if v != "*" {
+				_, err := url.Parse(v)
+				if err != nil {
+					panic(fmt.Sprintf("bad cors url: %s", err))
+				}
+			}
+			c.Etcd.CorsWhiteList[v] = true
+		}
+	}
 }
 
 func tlsConfigFromInfo(info TLSInfo) (t TLSConfig, ok bool) {
