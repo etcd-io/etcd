@@ -18,13 +18,15 @@ import (
 // This should not exceed 3 * RTT
 var dailTimeout = 3 * HeartbeatTimeout
 
-// Timeout for setup internal raft http connection + receive response header
-// This should not exceed 3 * RTT + RTT
-var responseHeaderTimeout = 4 * HeartbeatTimeout
+// Timeout for setup internal raft http connection + receive all post body
+// The raft server will not send back response header until it received all the
+// post body.
+// This should not exceed dailTimeout + electionTimeout
+var responseHeaderTimeout = 3*HeartbeatTimeout + ElectionTimeout
 
 // Timeout for receiving the response body from the server
-// This should not exceed election timeout
-var tranTimeout = ElectionTimeout
+// This should not exceed heartbeatTimeout
+var tranTimeout = HeartbeatTimeout
 
 // Transporter layer for communication between raft nodes
 type transporter struct {
