@@ -223,7 +223,7 @@ func (t *transporter) Get(urlStr string) (*http.Response, *http.Request, error) 
 // Cancel the on fly HTTP transaction when timeout happens.
 func (t *transporter) CancelWhenTimeout(req *http.Request) {
 	go func() {
-		time.Sleep(ElectionTimeout)
+		time.Sleep(tranTimeout)
 		t.transport.CancelRequest(req)
 	}()
 }
