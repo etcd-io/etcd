@@ -91,7 +91,7 @@ curl -L http://127.0.0.1:4001/v2/keys/message
 ```json
 {"action":"get","key":"/message","value":"Hello world","index":3,"term":0}
 ```
-### Change the value of a key
+### Changing the value of a key
 
 Change the value of `/message` from `Hello world` to `Hello etcd` with another PUT request to the key:
 
@@ -104,7 +104,7 @@ curl -L http://127.0.0.1:4001/v1/keys/message -XPUT -d value="Hello etcd"
 ```
 
 Notice that the `prevValue` is set to the previous value of the key - `Hello world`. It is useful when you want to atomically set a value to a key and get its old value.
-### Delete a key
+### Deleting a key
 
 Remove the `/message` key with a DELETE:
 
@@ -116,7 +116,7 @@ curl -L http://127.0.0.1:4001/v2/keys/message -XDELETE
 {"action":"delete","key":"/message","prevValue":"Hello etcd","index":5,"term":0}
 ```
 
-### Use key TTL
+### Using key TTL
 
 Keys in etcd can be set to expire after a specified number of seconds. That is done by setting a TTL (time to live) on the key when you POST:
 
@@ -146,9 +146,9 @@ If the TTL has expired, the key will be deleted, and you will be returned a 100.
 {"errorCode":100,"message":"Key Not Found","cause":"/foo","index":6,"term":0}
 ```
 
-### Wait for a change 
+### Waiting for a change 
 
-We can watch for a change and get notification just at the given path or under the given path
+We can watch for a change and get a notification at a given path or any keys underneath it.
 
 In one terminal, we send a get request with `wait=true` :
 
@@ -228,7 +228,7 @@ The response should be
 
 We successfully changed the value from “one” to “two”, since we give the correct previous value.
 
-### Get a directory
+### Listing a directory
 
 Let us create some keys first.
 
@@ -268,7 +268,7 @@ curl -L http://127.0.0.1:4001/v2/keys/?recursive=true
 {"action":"get","key":"/","dir":true,"kvs":[{"key":"/foo","value":"two"},{"key":"/foo_dir","dir":true,"kvs":[{"key":"/foo_dir/foo","value":"bar"}]}],"index":11,"term":0}
 ```
 
-### Delete a directory
+### Deleting a directory
 Let try to delete the directory `/foo_dir`.
 
 To delete a directory, we must add `recursive=true`.
@@ -281,7 +281,7 @@ curl -L http://127.0.0.1:4001/v2/keys/foo_dir?recursive=true -XDELETE
 {"action":"delete","key":"/foo_dir","dir":true,"index":12,"term":0}
 ```
 
-### Create a hidden node
+### Creating a hidden node
 We can create a hidden key-value pair or directory by add `_` prefix. The hidden item will not be list when using get for a directory.
 
 ```sh
