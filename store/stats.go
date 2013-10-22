@@ -41,7 +41,7 @@ type Stats struct {
 
 	// Number of create requests
 	CreateSuccess uint64 `json:"createSuccess"`
-	CreateFail    uint64 `json:createFail`
+	CreateFail    uint64 `json:"createFail"`
 
 	// Number of testAndSet requests
 	CompareAndSwapSuccess uint64 `json:"compareAndSwapSuccess"`

@@ -16,8 +16,8 @@ type CompareAndSwapCommand struct {
 	Key        string    `json:"key"`
 	Value      string    `json:"value"`
 	ExpireTime time.Time `json:"expireTime"`
-	PrevValue  string    `json: prevValue`
-	PrevIndex  uint64    `json: prevIndex`
+	PrevValue  string    `json:"prevValue"`
+	PrevIndex  uint64    `json:"prevIndex"`
 }
 
 // The name of the testAndSet command in the log
