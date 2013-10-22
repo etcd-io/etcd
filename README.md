@@ -1,5 +1,5 @@
 # etcd
-README version 0.1.0
+README version 0.2.0
 
 [![Build Status](https://travis-ci.org/coreos/etcd.png)](https://travis-ci.org/coreos/etcd)
 
@@ -62,73 +62,70 @@ The `-n node0` tells the rest of the cluster that this node is named node0.
 Let’s set the first key-value pair to the node. In this case the key is `/message` and the value is `Hello world`.
 
 ```sh
-curl -L http://127.0.0.1:4001/v1/keys/message -d value="Hello world"
+curl -L http://127.0.0.1:4001/v2/keys/message -XPUT -d value="Hello world"
 ```
 
 ```json
-{"action":"SET","key":"/message","value":"Hello world","newKey":true,"index":3}
+{"action":"set","key":"/message","value":"Hello world","index":3,"term":0}
 ```
 
 This response contains five fields. We will introduce three more fields as we try more commands.
 
-1. The action of the request; we set the value via a POST request, thus the action is `SET`.
+1. The action of the request; we set the value via a PUT request, thus the action is `set`.
 
 2. The key of the request; we set `/message` to `Hello world!`, so the key field is `/message`.
 Notice we use a file system like structure to represent the key-value pairs. So each key starts with `/`.
 
 3. The current value of the key; we set the value to`Hello world`.
 
-4. If we set a new key; `/message` did not exist before, so this is a new key.
-
-5. Index is the unique internal log index of the set request. Requests that change the log index include `SET`, `DELETE` and `TESTANDSET`. The `GET`, `LIST` and `WATCH` commands do not change state in the store and so they do not change the index. You may notice that in this example the index is 3, although it is the first request you sent to the server. This is because there are internal commands that also change the state like adding and syncing servers.
+4. Index is the unique internal log index of the set request. Requests that change the log index include `set`, `delete`, `update`, `create` and `compareAndSwap`. The `get` and `watch` commands do not change state in the store and so they do not change the index. You may notice that in this example the index is 3, although it is the first request you sent to the server. This is because there are internal commands that also change the state like adding and syncing servers.
 
 ### Get the value of a key
 
 Get the value that we just set in `/message` by issuing a GET:
 
 ```sh
-curl -L http://127.0.0.1:4001/v1/keys/message
+curl -L http://127.0.0.1:4001/v2/keys/message
 ```
 
 ```json
-{"action":"GET","key":"/message","value":"Hello world","index":3}
+{"action":"get","key":"/message","value":"Hello world","index":3,"term":0}
 ```
 ### Change the value of a key
 
-Change the value of `/message` from `Hello world` to `Hello etcd` with another POST to the key:
+Change the value of `/message` from `Hello world` to `Hello etcd` with another PUT request to the key:
 
 ```sh
-curl -L http://127.0.0.1:4001/v1/keys/message -d value="Hello etcd"
+curl -L http://127.0.0.1:4001/v1/keys/message -XPUT -d value="Hello etcd"
 ```
 
 ```json
-{"action":"SET","key":"/message","prevValue":"Hello world","value":"Hello etcd","index":4}
+{"action":"set","key":"/message","prevValue":"Hello world","value":"Hello etcd","index":4,"term":0}
 ```
 
-Notice that the `prevValue` is set to `Hello world`.
-
+Notice that the `prevValue` is set to the previous value of the key - `Hello world`. It is useful when you want to atomically set a value to a key and get its old value.
 ### Delete a key
 
 Remove the `/message` key with a DELETE:
 
 ```sh
-curl -L http://127.0.0.1:4001/v1/keys/message -X DELETE
+curl -L http://127.0.0.1:4001/v2/keys/message -XDELETE
 ```
 
 ```json
-{"action":"DELETE","key":"/message","prevValue":"Hello etcd","index":5}
+{"action":"delete","key":"/message","prevValue":"Hello etcd","index":5,"term":0}
 ```
 
-### Using key TTL
+### Use key TTL
 
 Keys in etcd can be set to expire after a specified number of seconds. That is done by setting a TTL (time to live) on the key when you POST:
 
 ```sh
-curl -L http://127.0.0.1:4001/v1/keys/foo -d value=bar -d ttl=5
+curl -L http://127.0.0.1:4001/v2/keys/foo -XPUT -d value=bar -d ttl=5
 ```
 
 ```json
-{"action":"SET","key":"/foo","value":"bar","newKey":true,"expiration":"2013-07-11T20:31:12.156146039-07:00","ttl":4,"index":6}
+{"action":"set","key":"/foo","value":"bar","expiration":"2013-10-19T18:44:04.528757176-07:00","ttl":5,"index":6,"term":0}
 ```
 
 Note the last two new fields in response:
@@ -140,115 +137,180 @@ Note the last two new fields in response:
 Now you can try to get the key by sending:
 
 ```sh
-curl -L http://127.0.0.1:4001/v1/keys/foo
+curl -L http://127.0.0.1:4001/v2/keys/foo
 ```
 
 If the TTL has expired, the key will be deleted, and you will be returned a 100.
 
 ```json
-{"errorCode":100,"message":"Key Not Found","cause":"/foo"}
+{"errorCode":100,"message":"Key Not Found","cause":"/foo","index":6,"term":0}
 ```
 
-### Watching a prefix
+### Wait for a change 
 
-We can watch a path prefix and get notifications if any key change under that prefix.
+We can watch for a change and get notification just at the given path or under the given path
 
-In one terminal, we send a watch request:
+In one terminal, we send a get request with `wait=true` :
 
 ```sh
-curl -L http://127.0.0.1:4001/v1/watch/foo
+curl -L http://127.0.0.1:4001/v2/keys/foo?wait=true
 ```
 
-Now, we are watching at the path prefix `/foo` and wait for any changes under this path.
+Now, we are waitting for any changes at path `/foo`.
 
-In another terminal, we set a key `/foo/foo` to `barbar` to see what will happen:
+In another terminal, we set a key `/foo` with value `bar`:
 
 ```sh
-curl -L http://127.0.0.1:4001/v1/keys/foo/foo -d value=barbar
+curl -L http://127.0.0.1:4001/v2/keys/foo -XPUT -d value=bar
 ```
 
 The first terminal should get the notification and return with the same response as the set request.
 
 ```json
-{"action":"SET","key":"/foo/foo","value":"barbar","newKey":true,"index":7}
+{"action":"set","key":"/foo","value":"bar","index":7,"term":0}
 ```
 
 However, the watch command can do more than this. Using the the index we can watch for commands that has happened in the past. This is useful for ensuring you don't miss events between watch commands.
 
-Let's try to watch for the set command of index 6 again:
+Let's try to watch for the set command of index 7 again:
 
 ```sh
-curl -L http://127.0.0.1:4001/v1/watch/foo -d index=7
+curl -L http://127.0.0.1:4001/v2/keys/foo?wait=true\&waitIndex=7
 ```
 
 The watch command returns immediately with the same response as previous.
 
-### Atomic Test and Set
+### Atomic Compare and Swap
 
-Etcd can be used as a centralized coordination service in a cluster and `TestAndSet` is the most basic operation to build distributed lock service. This command will set the value only if the client provided `prevValue` is equal the current key value.
+Etcd can be used as a centralized coordination service in a cluster and `CompareAndSwap` is the most basic operation to build distributed lock service. 
+
+This command will set the value to the key only if the client provided conditions are equal to the current conditions. 
+
+The current comparable conditions are:
+1. `prevValue` previous value of the key: 
+
+2. `prevIndex` previous index of the key
+
+3. `prevExist` previous existence of the key: if `prevExist` is true, it is a  `update` request; if prevExist is `false`, it is a `create` request.
 
 Here is a simple example. Let's create a key-value pair first: `foo=one`.
 
 ```sh
-curl -L http://127.0.0.1:4001/v1/keys/foo -d value=one
+curl -L http://127.0.0.1:4001/v1/keys/foo -XPUT -d value=one
 ```
 
-Let's try an invalid `TestAndSet` command.
-We can give another parameter prevValue to set command to make it a TestAndSet command.
+Let's try an invalid `CompareAndSwap` command.
+We can give another parameter prevValue to set command to make it a `CompareAndSwap` command.
 
 ```sh
-curl -L http://127.0.0.1:4001/v1/keys/foo -d prevValue=two -d value=three
+curl -L http://127.0.0.1:4001/v1/keys/foo?prevValue=two -XPUT -d value=three
 ```
 
-This will try to test if the previous of the key is two, it is change it to three.
+This will try to compare the previous value of the key and the previous value we provided. If they are equal, the value of the key will change to three.
 
 ```json
-{"errorCode":101,"message":"The given PrevValue is not equal to the value of the key","cause":"TestAndSet: one!=two"}
+{"errorCode":101,"message":"Test Failed","cause":"[two != one] [0 != 8]","index":9,"term":0}
 ```
 
-which means `testAndSet` failed.
+which means `compareAndSwap` failed.
 
 Let us try a valid one.
 
 ```sh
-curl -L http://127.0.0.1:4001/v1/keys/foo -d prevValue=one -d value=two
+curl -L http://127.0.0.1:4001/v2/keys/foo?prevValue=one -XPUT -d value=two
 ```
 
 The response should be
 
 ```json
-{"action":"SET","key":"/foo","prevValue":"one","value":"two","index":10}
+{"action":"compareAndSwap","key":"/foo","prevValue":"one","value":"two","index":10,"term":0}
 ```
 
 We successfully changed the value from “one” to “two”, since we give the correct previous value.
 
-### Listing a directory
-
-Last we provide a simple List command to list all the keys under a prefix path.
+### Get a directory
 
 Let us create some keys first.
 
-We already have `/foo/foo=barbar`
+We already have `/foo=two`
 
-We create another one `/foo/foo_dir/foo=barbarbar`
+We create another one `/foo_dir/foo=bar`
 
 ```sh
-curl -L http://127.0.0.1:4001/v1/keys/foo/foo_dir/bar -d value=barbarbar
+curl -L http://127.0.0.1:4001/v2/keys/foo_dir/foo -XPUT -d value=bar
 ```
 
-Now list the keys under `/foo`
+```json
+{"action":"set","key":"/foo_dir/foo","value":"bar","index":11,"term":0}
+```
+
+Now list the keys under root `/`
 
 ```sh
-curl -L http://127.0.0.1:4001/v1/keys/foo/
+curl -L http://127.0.0.1:4001/v2/keys/
 ```
 
 We should see the response as an array of items
 
 ```json
-[{"action":"GET","key":"/foo/foo","value":"barbar","index":10},{"action":"GET","key":"/foo/foo_dir","dir":true,"index":10}]
+{"action":"get","key":"/","dir":true,"kvs":[{"key":"/foo","value":"two"},{"key":"/foo_dir","dir":true}],"index":11,"term":0}
 ```
 
-which meas `foo=barbar` is a key-value pair under `/foo` and `foo_dir` is a directory.
+which meas `/foo=two` is a key-value pair under `/ and `/foo_dir` is a directory.
+
+Also we can recursively get all the content under a directory by add `recursive=true`.
+
+```sh
+curl -L http://127.0.0.1:4001/v2/keys/?recursive=true
+```
+
+```json
+{"action":"get","key":"/","dir":true,"kvs":[{"key":"/foo","value":"two"},{"key":"/foo_dir","dir":true,"kvs":[{"key":"/foo_dir/foo","value":"bar"}]}],"index":11,"term":0}
+```
+
+### Delete a directory
+Let try to delete the directory `/foo_dir`.
+
+To delete a directory, we must add `recursive=true`.
+
+```sh
+curl -L http://127.0.0.1:4001/v2/keys/foo_dir?recursive=true -XDELETE
+```
+
+```json
+{"action":"delete","key":"/foo_dir","dir":true,"index":12,"term":0}
+```
+
+### Create a hidden node
+We can create a hidden key-value pair or directory by add `_` prefix. The hidden item will not be list when using get for a directory.
+
+```sh
+curl -L http://127.0.0.1:4001/v2/keys/_message -XPUT -d value="Hello hidden world"
+```
+
+```json
+{"action":"set","key":"/_message","value":"Hello hidden world","index":13,"term":0}
+```
+
+```sh
+curl -L http://127.0.0.1:4001/v2/keys/message -XPUT -d value="Hello world"
+```
+
+```json
+{"action":"set","key":"/message","value":"Hello world","index":14,"term":0}
+```
+
+Let us try to get the root `/`
+
+```sh
+curl -L http://127.0.0.1:4001/v2/keys/
+```
+
+```json
+{"action":"get","key":"/","dir":true,"kvs":[{"key":"/foo","value":"two"},{"key":"/message","value":"Hello world"}],"index":15,"term":0}
+```
+
+We can only get `/message`, but cannot get `/_message`.
 
 ## Advanced Usage
 
@@ -273,7 +335,7 @@ Next, lets configure etcd to use this keypair:
 You can now test the configuration using https:
 
 ```sh
-curl --cacert fixtures/ca/ca.crt https://127.0.0.1:4001/v1/keys/foo -d value=bar -v
+curl --cacert fixtures/ca/ca.crt https://127.0.0.1:4001/v2/keys/foo -XPUT -d value=bar -v
 ```
 
 You should be able to see the handshake succeed.
@@ -287,7 +349,7 @@ SSLv3, TLS handshake, Finished (20):
 And also the response from the etcd server.
 
 ```json
-{"action":"SET","key":"/foo","value":"bar","newKey":true,"index":3}
+{"action":"set","key":"/foo","value":"bar","index":3, "term: 0"}
 ```
 
 ### Authentication with HTTPS client certificates
@@ -303,7 +365,7 @@ We can also do authentication using CA certs. The clients will provide their cer
 Try the same request to this server:
 
 ```sh
-curl --cacert fixtures/ca/ca.crt https://127.0.0.1:4001/v1/keys/foo -d value=bar -v
+curl --cacert fixtures/ca/ca.crt https://127.0.0.1:4001/v2/keys/foo -XPUT -d value=bar -v
 ```
 
 The request should be rejected by the server.
@@ -317,7 +379,7 @@ routines:SSL3_READ_BYTES:sslv3 alert bad certificate
 We need to give the CA signed cert to the server.
 
 ```sh
-curl -L https://127.0.0.1:4001/v1/keys/foo -d value=bar -v --key myclient.key --cert myclient.crt -cacert clientCA.crt
+curl -L https://127.0.0.1:4001/v1/keys/foo -XPUT -d value=bar -v --key myclient.key --cert myclient.crt -cacert clientCA.crt
 ```
 
 You should able to see
@@ -331,7 +393,7 @@ TLS handshake, Finished (20)
 And also the response from the server:
 
 ```json
-{"action":"SET","key":"/foo","value":"bar","newKey":true,"index":3}
+{"action":"set","key":"/foo","value":"bar","index":3,"term:0"}
 ```
 
 ## Clustering
@@ -377,7 +439,7 @@ curl -L http://127.0.0.1:4001/v1/keys/_etcd/machines
 ```
 
 ```json
-[{"action":"GET","key":"/_etcd/machines/node1","value":"raft=http://127.0.0.1:7001&etcd=http://127.0.0.1:4001","index":4},{"action":"GET","key":"/_etcd/machines/node2","value":"raft=http://127.0.0.1:7002&etcd=http://127.0.0.1:4002","index":4},{"action":"GET","key":"/_etcd/machines/node3","value":"raft=http://127.0.0.1:7003&etcd=http://127.0.0.1:4003","index":4}]
+[{"action":"get","key":"/_etcd/machines/node1","value":"raft=http://127.0.0.1:7001&etcd=http://127.0.0.1:4001&raftVersion=v0.1.1-311-g91cad59","index":4},{"action":"get","key":"/_etcd/machines/node2","value":"raft=http://127.0.0.1:7002&etcd=http://127.0.0.1:4002&raftVersion=v0.1.1-311-g91cad59","index":4},{"action":"get","key":"/_etcd/machines/node3","value":"raft=http://127.0.0.1:7003&etcd=http://127.0.0.1:4003&raftVersion=v0.1.1-311-g91cad59","index":4}]
 ```
 
 The key of the machine is based on the ```commit index``` when it was added. The value of the machine is ```hostname```, ```raft port``` and ```client port```.
@@ -385,7 +447,7 @@ The key of the machine is based on the ```commit index``` when it was added. The
 Also try to get the current leader in the cluster
 
 ```
-curl -L http://127.0.0.1:4001/v1/leader
+curl -L http://127.0.0.1:4001/v2/leader
 ```
 The first server we set up should be the leader, if it has not died during these commands.
 
@@ -396,11 +458,11 @@ http://127.0.0.1:7001
 Now we can do normal SET and GET operations on keys as we explored earlier.
 
 ```sh
-curl -L http://127.0.0.1:4001/v1/keys/foo -d value=bar
+curl -L http://127.0.0.1:4001/v2/keys/foo -XPUT -d value=bar
 ```
 
 ```json
-{"action":"SET","key":"/foo","value":"bar","newKey":true,"index":5}
+{"action":"set","key":"/foo","value":"bar","index":5,"term:0"}
 ```
 
 ### Killing Nodes in the Cluster
@@ -430,7 +492,7 @@ http://127.0.0.1:7003
 You should be able to see this:
 
 ```json
-{"action":"GET","key":"/foo","value":"bar","index":5}
+{"action":"get","key":"/foo","value":"bar","index":5,"term:1"}
 ```
 
 It succeeded!
