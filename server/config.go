@@ -17,7 +17,7 @@ import (
 )
 
 // The default location for the etcd configuration file.
-const DefaultSystemConfigPath = "/etc/etcd/etcd.toml"
+const DefaultSystemConfigPath = "/etc/etcd/etcd.conf"
 
 // Config represents the server configuration.
 type Config struct {

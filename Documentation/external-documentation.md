@@ -25,7 +25,7 @@ configuration files.
 * `-clientCAFile` - The path of the client CAFile. Enables client cert authentication when present.
 * `-clientCert` - The cert file of the client.
 * `-clientKey` - The key file of the client.
-* `-configfile` - The path of the etcd config file. Defaults to `/etc/etcd/etcd.toml`.
+* `-configfile` - The path of the etcd config file. Defaults to `/etc/etcd/etcd.conf`.
 * `-cors` - A comma separated white list of origins for cross-origin resource sharing.
 * `-cpuprofile` - The path to a file to output cpu profile data. Enables cpu profiling when present.
 * `-d` - The directory to store log and snapshot. Defaults to the current working directory.
@@ -46,35 +46,34 @@ configuration files.
 ## Configuration File
 
 The etcd configuration file is written in [TOML](https://github.com/mojombo/toml)
-and read from `/etc/etcd/etcd.toml` by default.
+and read from `/etc/etcd/etcd.conf` by default.
 
 ```TOML
-[etcd]
-  advertised_url = "127.0.0.1:4001"
-  ca_file = ""
-  cert_file = ""
-  cors = []
-  cpu_profile_file = ""
-  datadir = "."
-  key_file = ""
-  listen_host = "127.0.0.1:4001"
-  machines = []
-  machines_file = ""
-  max_cluster_size = 9
-  max_result_buffer = 1024
-  max_retry_attempts = 3
-  name = "default-name"
-  snapshot = false
-  verbose = false
-  very_verbose = false
-  web_url = ""
+advertised_url = "127.0.0.1:4001"
+ca_file = ""
+cert_file = ""
+cors = []
+cpu_profile_file = ""
+datadir = "."
+key_file = ""
+listen_host = "127.0.0.1:4001"
+machines = []
+machines_file = ""
+max_cluster_size = 9
+max_result_buffer = 1024
+max_retry_attempts = 3
+name = "default-name"
+snapshot = false
+verbose = false
+very_verbose = false
+web_url = ""
 
-[raft]
-  advertised_url = "127.0.0.1:7001"
-  ca_file = ""
-  cert_file = ""
-  key_file = ""
-  listen_host = "127.0.0.1:7001"
+[peer]
+advertised_url = "127.0.0.1:7001"
+ca_file = ""
+cert_file = ""
+key_file = ""
+listen_host = "127.0.0.1:7001"
 ```
 
 ## Environment Variables
@@ -98,8 +97,8 @@ and read from `/etc/etcd/etcd.toml` by default.
  * `ETCD_VERBOSE`
  * `ETCD_VERY_VERBOSE`
  * `ETCD_WEB_URL`
- * `ETCD_RAFT_ADVERTISED_URL`
- * `ETCD_RAFT_CA_FILE`
- * `ETCD_RAFT_CERT_FILE`
- * `ETCD_RAFT_KEY_FILE`
- * `ETCD_RAFT_LISTEN_HOST`
+ * `ETCD_PEER_ADVERTISED_URL`
+ * `ETCD_PEER_CA_FILE`
+ * `ETCD_PEER_CERT_FILE`
+ * `ETCD_PEER_KEY_FILE`
+ * `ETCD_PEER_LISTEN_HOST`
