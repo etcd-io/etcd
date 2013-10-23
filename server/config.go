@@ -47,6 +47,7 @@ type Config struct {
 		CertFile      string `toml:"cert_file" env:"ETCD_PEER_CERT_FILE"`
 		KeyFile       string `toml:"key_file" env:"ETCD_PEER_KEY_FILE"`
 		ListenHost    string `toml:"listen_host" env:"ETCD_PEER_LISTEN_HOST"`
+
 	}
 }
 
@@ -54,6 +55,7 @@ type Config struct {
 func NewConfig() *Config {
 	c := new(Config)
 	c.SystemPath = DefaultSystemConfigPath
+	c.AdvertisedUrl = "127.0.0.1:4001"
 	c.AdvertisedUrl = "127.0.0.1:4001"
 	c.DataDir = "."
 	c.MaxClusterSize = 9

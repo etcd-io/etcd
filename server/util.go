@@ -44,4 +44,3 @@ func trimsplit(s, sep string) []string {
   }
   return trimmed
 }
-
