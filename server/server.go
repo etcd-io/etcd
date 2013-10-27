@@ -283,10 +283,10 @@ func (s *Server) Dispatch(c raft.Command, w http.ResponseWriter, req *http.Reque
 }
 
 // Sets a comma-delimited list of origins that are allowed.
-func (s *Server) AllowOrigins(origins string) error {
+func (s *Server) AllowOrigins(origins []string) error {
 	// Construct a lookup of all origins.
 	m := make(map[string]bool)
-	for _, v := range strings.Split(origins, ",") {
+	for _, v := range origins {
 		if v != "*" {
 			if _, err := url.Parse(v); err != nil {
 				return fmt.Errorf("Invalid CORS origin: %s", err)

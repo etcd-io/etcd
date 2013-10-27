@@ -1,5 +1,6 @@
 package server
 
+/*
 import (
 	"crypto/tls"
 	"fmt"
@@ -59,3 +60,4 @@ func TestTransporterTimeout(t *testing.T) {
 	}
 
 }
+*/
