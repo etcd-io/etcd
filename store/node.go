@@ -372,8 +372,8 @@ func (n *Node) UpdateTTL(expireTime time.Time) {
 		}
 	}
 
+	n.ExpireTime = expireTime
 	if expireTime.Sub(Permanent) != 0 {
-		n.ExpireTime = expireTime
 		n.Expire()
 	}
 }

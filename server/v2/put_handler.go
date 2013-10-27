@@ -72,10 +72,11 @@ func PutHandler(w http.ResponseWriter, req *http.Request, s Server) error {
 	}
 
 	c = &store.CompareAndSwapCommand{
-		Key:       key,
-		Value:     value,
-		PrevValue: prevValue,
-		PrevIndex: prevIndex,
+		Key:        key,
+		Value:      value,
+		PrevValue:  prevValue,
+		PrevIndex:  prevIndex,
+		ExpireTime: expireTime,
 	}
 
 	return s.Dispatch(c, w, req)
