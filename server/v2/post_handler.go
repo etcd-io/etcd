@@ -18,12 +18,6 @@ func PostHandler(w http.ResponseWriter, req *http.Request, s Server) error {
 		return etcdErr.NewError(etcdErr.EcodeTTLNaN, "Create", store.UndefIndex, store.UndefTerm)
 	}
 
-	c := &store.CreateCommand{
-		Key:        key,
-		Value:      value,
-		ExpireTime: expireTime,
-		Unique:     true,
-	}
-
+	c := s.Store().CommandFactory().CreateCreateCommand(key, value, expireTime, true)
 	return s.Dispatch(c, w, req)
 }

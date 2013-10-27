@@ -38,13 +38,13 @@ func NewRegistry(s store.Store) *Registry {
 }
 
 // Adds a node to the registry.
-func (r *Registry) Register(name string, peerVersion string, peerURL string, url string, commitIndex uint64, term uint64) error {
+func (r *Registry) Register(name string, peerURL string, url string, commitIndex uint64, term uint64) error {
 	r.Lock()
 	defer r.Unlock()
 
 	// Write data to store.
 	key := path.Join(RegistryKey, name)
-	value := fmt.Sprintf("raft=%s&etcd=%s&raftVersion=%s", peerURL, url, peerVersion)
+	value := fmt.Sprintf("raft=%s&etcd=%s", peerURL, url)
 	_, err := r.store.Create(key, value, false, store.Permanent, commitIndex, term)
 	log.Debugf("Register: %s", name)
 	return err
@@ -175,6 +175,5 @@ func (r *Registry) load(name string) {
 	r.nodes[name] = &node{
 		url:         m["etcd"][0],
 		peerURL:     m["raft"][0],
-		peerVersion: m["raftVersion"][0],
 	}
 }

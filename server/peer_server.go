@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"strconv"
 	"time"
 
 	etcdErr "github.com/coreos/etcd/error"
@@ -209,7 +210,7 @@ func (s *PeerServer) SetServer(server *Server) {
 func (s *PeerServer) startAsLeader() {
 	// leader need to join self as a peer
 	for {
-		_, err := s.raftServer.Do(NewJoinCommand(PeerVersion, s.raftServer.Name(), s.url, s.server.URL()))
+		_, err := s.raftServer.Do(NewJoinCommand(store.MinVersion(), store.MaxVersion(), s.raftServer.Name(), s.url, s.server.URL()))
 		if err == nil {
 			break
 		}
@@ -245,7 +246,7 @@ func (s *PeerServer) startTransport(scheme string, tlsConf tls.Config) error {
 
 	// internal commands
 	raftMux.HandleFunc("/name", s.NameHttpHandler)
-	raftMux.HandleFunc("/version", s.RaftVersionHttpHandler)
+	raftMux.HandleFunc("/version", s.VersionHttpHandler)
 	raftMux.HandleFunc("/join", s.JoinHttpHandler)
 	raftMux.HandleFunc("/remove/", s.RemoveHttpHandler)
 	raftMux.HandleFunc("/vote", s.VoteHttpHandler)
@@ -263,21 +264,23 @@ func (s *PeerServer) startTransport(scheme string, tlsConf tls.Config) error {
 
 }
 
-// getVersion fetches the raft version of a peer. This works for now but we
-// will need to do something more sophisticated later when we allow mixed
-// version clusters.
-func getVersion(t *transporter, versionURL url.URL) (string, error) {
+// getVersion fetches the peer version of a cluster.
+func getVersion(t *transporter, versionURL url.URL) (int, error) {
 	resp, req, err := t.Get(versionURL.String())
 	if err != nil {
-		return "", err
+		return 0, err
 	}
 	defer resp.Body.Close()
 
 	t.CancelWhenTimeout(req)
-
 	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return 0, err
+	}
 
-	return string(body), nil
+	// Parse version number.
+	version, _ := strconv.Atoi(string(body))
+	return version, nil
 }
 
 func (s *PeerServer) joinCluster(cluster []string) bool {
@@ -315,14 +318,11 @@ func (s *PeerServer) joinByMachine(server raft.Server, machine string, scheme st
 	if err != nil {
 		return fmt.Errorf("Error during join version check: %v", err)
 	}
-
-	// TODO: versioning of the internal protocol. See:
-	// Documentation/internatl-protocol-versioning.md
-	if version != PeerVersion {
-		return fmt.Errorf("Unable to join: internal version mismatch, entire cluster must be running identical versions of etcd")
+	if version < store.MinVersion() || version > store.MaxVersion() {
+		return fmt.Errorf("Unable to join: cluster version is %d; version compatibility is %d - %d", version, store.MinVersion(), store.MaxVersion())
 	}
 
-	json.NewEncoder(&b).Encode(NewJoinCommand(PeerVersion, server.Name(), s.url, s.server.URL()))
+	json.NewEncoder(&b).Encode(NewJoinCommand(store.MinVersion(), store.MaxVersion(), server.Name(), s.url, s.server.URL()))
 
 	joinURL := url.URL{Host: machine, Scheme: scheme, Path: "/join"}
 
@@ -347,7 +347,7 @@ func (s *PeerServer) joinByMachine(server raft.Server, machine string, scheme st
 			if resp.StatusCode == http.StatusTemporaryRedirect {
 				address := resp.Header.Get("Location")
 				log.Debugf("Send Join Request to %s", address)
-				json.NewEncoder(&b).Encode(NewJoinCommand(PeerVersion, server.Name(), s.url, s.server.URL()))
+				json.NewEncoder(&b).Encode(NewJoinCommand(store.MinVersion(), store.MaxVersion(), server.Name(), s.url, s.server.URL()))
 				resp, req, err = t.Post(address, &b)
 
 			} else if resp.StatusCode == http.StatusBadRequest {

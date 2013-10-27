@@ -14,15 +14,17 @@ func init() {
 
 // The JoinCommand adds a node to the cluster.
 type JoinCommand struct {
-	RaftVersion string `json:"raftVersion"`
+	MinVersion int `json:"minVersion"`
+	MaxVersion int `json:"maxVersion"`
 	Name        string `json:"name"`
 	RaftURL     string `json:"raftURL"`
 	EtcdURL     string `json:"etcdURL"`
 }
 
-func NewJoinCommand(version, name, raftUrl, etcdUrl string) *JoinCommand {
+func NewJoinCommand(minVersion int, maxVersion int, name, raftUrl, etcdUrl string) *JoinCommand {
 	return &JoinCommand{
-		RaftVersion: version,
+		MinVersion: minVersion,
+		MaxVersion: maxVersion,
 		Name:        name,
 		RaftURL:     raftUrl,
 		EtcdURL:     etcdUrl,
@@ -56,7 +58,7 @@ func (c *JoinCommand) Apply(server raft.Server) (interface{}, error) {
 	}
 
 	// Add to shared machine registry.
-	ps.registry.Register(c.Name, c.RaftVersion, c.RaftURL, c.EtcdURL, server.CommitIndex(), server.Term())
+	ps.registry.Register(c.Name, c.RaftURL, c.EtcdURL, server.CommitIndex(), server.Term())
 
 	// Add peer in raft
 	err := server.AddPeer(c.Name, "")

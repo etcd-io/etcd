@@ -15,6 +15,7 @@ import (
 	"github.com/coreos/etcd/server/v1"
 	"github.com/coreos/etcd/server/v2"
 	"github.com/coreos/etcd/store"
+	_ "github.com/coreos/etcd/store/v2"
 	"github.com/coreos/go-raft"
 	"github.com/gorilla/mux"
 )
@@ -366,11 +367,7 @@ func (s *Server) SpeedTestHandler(w http.ResponseWriter, req *http.Request) erro
 	for i := 0; i < count; i++ {
 		go func() {
 			for j := 0; j < 10; j++ {
-				c := &store.SetCommand{
-					Key:        "foo",
-					Value:      "bar",
-					ExpireTime: time.Unix(0, 0),
-				}
+				c := s.Store().CommandFactory().CreateSetCommand("foo", "bar", time.Unix(0, 0))
 				s.peerServer.RaftServer().Do(c)
 			}
 			c <- true

@@ -1,7 +1,6 @@
 package v1
 
 import (
-	"github.com/coreos/etcd/store"
 	"github.com/gorilla/mux"
 	"net/http"
 )
@@ -10,6 +9,6 @@ import (
 func DeleteKeyHandler(w http.ResponseWriter, req *http.Request, s Server) error {
 	vars := mux.Vars(req)
 	key := "/" + vars["key"]
-	c := &store.DeleteCommand{Key: key}
+	c := s.Store().CommandFactory().CreateDeleteCommand(key, false)
 	return s.Dispatch(c, w, req)
 }

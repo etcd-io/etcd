@@ -1,9 +1,10 @@
-package store
+package v2
 
 import (
 	"time"
 
 	"github.com/coreos/etcd/log"
+	"github.com/coreos/etcd/store"
 	"github.com/coreos/go-raft"
 )
 
@@ -22,12 +23,12 @@ type CompareAndSwapCommand struct {
 
 // The name of the testAndSet command in the log
 func (c *CompareAndSwapCommand) CommandName() string {
-	return "etcd:compareAndSwap"
+	return "etcd:v2:compareAndSwap"
 }
 
 // Set the key-value pair if the current value of the key equals to the given prevValue
 func (c *CompareAndSwapCommand) Apply(server raft.Server) (interface{}, error) {
-	s, _ := server.StateMachine().(Store)
+	s, _ := server.StateMachine().(store.Store)
 
 	e, err := s.CompareAndSwap(c.Key, c.PrevValue, c.PrevIndex,
 		c.Value, c.ExpireTime, server.CommitIndex(), server.Term())

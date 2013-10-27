@@ -13,7 +13,12 @@ import (
 	etcdErr "github.com/coreos/etcd/error"
 )
 
+// The default version to set when the store is first initialized.
+const defaultVersion = 2
+
 type Store interface {
+	Version() int
+	CommandFactory() CommandFactory
 	Get(nodePath string, recursive, sorted bool, index uint64, term uint64) (*Event, error)
 	Set(nodePath string, value string, expireTime time.Time, index uint64, term uint64) (*Event, error)
 	Update(nodePath string, newValue string, expireTime time.Time, index uint64, term uint64) (*Event, error)
@@ -34,6 +39,7 @@ type store struct {
 	Index      uint64
 	Term       uint64
 	Stats      *Stats
+	CurrentVersion    int
 	worldLock  sync.RWMutex // stop the world lock
 }
 
@@ -43,11 +49,21 @@ func New() Store {
 
 func newStore() *store {
 	s := new(store)
+	s.CurrentVersion = defaultVersion
 	s.Root = newDir(s, "/", UndefIndex, UndefTerm, nil, "", Permanent)
 	s.Stats = newStats()
 	s.WatcherHub = newWatchHub(1000)
-
 	return s
+}
+
+// Version retrieves current version of the store.
+func (s *store) Version() int {
+	return s.CurrentVersion
+}
+
+// CommandFactory retrieves the command factory for the current version of the store.
+func (s *store) CommandFactory() CommandFactory {
+	return GetCommandFactory(s.Version())
 }
 
 // Get function returns a get event.
@@ -449,6 +465,7 @@ func (s *store) Save() ([]byte, error) {
 	clonedStore.Root = s.Root.Clone()
 	clonedStore.WatcherHub = s.WatcherHub.clone()
 	clonedStore.Stats = s.Stats.clone()
+	clonedStore.CurrentVersion = s.CurrentVersion
 
 	s.worldLock.Unlock()
 
@@ -482,3 +499,4 @@ func (s *store) JsonStats() []byte {
 	s.Stats.Watchers = uint64(s.WatcherHub.count)
 	return s.Stats.toJson()
 }
+
