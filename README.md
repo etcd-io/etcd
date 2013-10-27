@@ -222,6 +222,30 @@ The response should be
 
 We successfully changed the value from “one” to “two”, since we give the correct previous value.
 
+To set a key to a given value only if it does not exist, simply supply an empty prevValue parameter.
+
+```sh
+curl -L http://127.0.0.1:4001/v1/keys/bar -d prevValue= -d value=four
+```
+
+Since the key "bar" does not exist, the response should be
+
+```json
+{"action":"SET","key":"/bar","value":"four","newKey":true,"index":11}
+```
+
+However, using a empty prevValue with a key that does exist will fail.
+
+```sh
+curl -L http://127.0.0.1:4001/v1/keys/bar -d prevValue= -d value=five
+```
+
+will result in
+
+```json
+{"errorCode":101,"message":"The given PrevValue is not equal to the value of the key","cause":"TestAndSet: four!="}
+```
+
 ### Listing a directory
 
 Last we provide a simple List command to list all the keys under a prefix path.
