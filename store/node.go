@@ -322,6 +322,7 @@ func (n *Node) Pair(recurisive, sorted bool) KeyValuePair {
 			Key: n.Path,
 			Dir: true,
 		}
+		pair.Expiration, pair.TTL = n.ExpirationAndTTL()
 
 		if !recurisive {
 			return pair
@@ -354,10 +355,12 @@ func (n *Node) Pair(recurisive, sorted bool) KeyValuePair {
 		return pair
 	}
 
-	return KeyValuePair{
+	pair := KeyValuePair{
 		Key:   n.Path,
 		Value: n.Value,
 	}
+	pair.Expiration, pair.TTL = n.ExpirationAndTTL()
+	return pair
 }
 
 func (n *Node) UpdateTTL(expireTime time.Time) {
