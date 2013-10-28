@@ -29,6 +29,7 @@ func TestStoreGetDirectory(t *testing.T) {
 	s.Create("/foo/baz", "", false, Permanent, 5, 1)
 	s.Create("/foo/baz/bat", "Y", false, Permanent, 6, 1)
 	s.Create("/foo/baz/_hidden", "*", false, Permanent, 7, 1)
+	s.Create("/foo/baz/ttl", "Y", false, time.Now().Add(time.Second*3), 8, 1)
 	e, err := s.Get("/foo", true, false, 8, 1)
 	assert.Nil(t, err, "")
 	assert.Equal(t, e.Action, "get", "")
@@ -39,10 +40,14 @@ func TestStoreGetDirectory(t *testing.T) {
 	assert.Equal(t, e.KVPairs[0].Dir, false, "")
 	assert.Equal(t, e.KVPairs[1].Key, "/foo/baz", "")
 	assert.Equal(t, e.KVPairs[1].Dir, true, "")
-	assert.Equal(t, len(e.KVPairs[1].KVPairs), 1, "")
+	assert.Equal(t, len(e.KVPairs[1].KVPairs), 2, "")
 	assert.Equal(t, e.KVPairs[1].KVPairs[0].Key, "/foo/baz/bat", "")
 	assert.Equal(t, e.KVPairs[1].KVPairs[0].Value, "Y", "")
 	assert.Equal(t, e.KVPairs[1].KVPairs[0].Dir, false, "")
+	assert.Equal(t, e.KVPairs[1].KVPairs[1].Key, "/foo/baz/ttl", "")
+	assert.Equal(t, e.KVPairs[1].KVPairs[1].Value, "Y", "")
+	assert.Equal(t, e.KVPairs[1].KVPairs[1].Dir, false, "")
+	assert.Equal(t, e.KVPairs[1].KVPairs[1].TTL, 3, "")
 }
 
 // Ensure that the store can retrieve a directory in sorted order.
@@ -62,7 +67,6 @@ func TestStoreGetSorted(t *testing.T) {
 	assert.Equal(t, e.KVPairs[1].KVPairs[1].Key, "/foo/y/b", "")
 	assert.Equal(t, e.KVPairs[2].Key, "/foo/z", "")
 }
-
 
 // Ensure that the store can create a new key if it doesn't already exist.
 func TestStoreCreateValue(t *testing.T) {
@@ -139,10 +143,10 @@ func TestStoreUpdateFailsIfDirectory(t *testing.T) {
 func TestStoreUpdateValueTTL(t *testing.T) {
 	s := newStore()
 	s.Create("/foo", "bar", false, Permanent, 2, 1)
-	_, err := s.Update("/foo", "baz", time.Now().Add(1 * time.Millisecond), 3, 1)
+	_, err := s.Update("/foo", "baz", time.Now().Add(1*time.Millisecond), 3, 1)
 	e, _ := s.Get("/foo", false, false, 3, 1)
 	assert.Equal(t, e.Value, "baz", "")
-	
+
 	time.Sleep(2 * time.Millisecond)
 	e, err = s.Get("/foo", false, false, 3, 1)
 	assert.Nil(t, e, "")
@@ -154,10 +158,10 @@ func TestStoreUpdateDirTTL(t *testing.T) {
 	s := newStore()
 	s.Create("/foo", "", false, Permanent, 2, 1)
 	s.Create("/foo/bar", "baz", false, Permanent, 3, 1)
-	_, err := s.Update("/foo", "", time.Now().Add(1 * time.Millisecond), 3, 1)
+	_, err := s.Update("/foo", "", time.Now().Add(1*time.Millisecond), 3, 1)
 	e, _ := s.Get("/foo/bar", false, false, 3, 1)
 	assert.Equal(t, e.Value, "baz", "")
-	
+
 	time.Sleep(2 * time.Millisecond)
 	e, err = s.Get("/foo/bar", false, false, 3, 1)
 	assert.Nil(t, e, "")
@@ -192,7 +196,6 @@ func TestStoreDeleteDiretoryFailsIfNonRecursive(t *testing.T) {
 	assert.Equal(t, err.Message, "Not A File", "")
 	assert.Nil(t, e, "")
 }
-
 
 // Ensure that the store can conditionally update a key if it has a previous value.
 func TestStoreCompareAndSwapPrevValue(t *testing.T) {
@@ -337,7 +340,7 @@ func TestStoreWatchRecursiveCompareAndSwap(t *testing.T) {
 // Ensure that the store can watch for key expiration.
 func TestStoreWatchExpire(t *testing.T) {
 	s := newStore()
-	s.Create("/foo", "bar", false, time.Now().Add(1 * time.Millisecond), 2, 1)
+	s.Create("/foo", "bar", false, time.Now().Add(1*time.Millisecond), 2, 1)
 	c, _ := s.Watch("/foo", false, 0, 0, 1)
 	e := nbselect(c)
 	assert.Nil(t, e, "")
@@ -372,7 +375,7 @@ func TestStoreRecoverWithExpiration(t *testing.T) {
 	s := newStore()
 	s.Create("/foo", "", false, Permanent, 2, 1)
 	s.Create("/foo/x", "bar", false, Permanent, 3, 1)
-	s.Create("/foo/y", "baz", false, time.Now().Add(5 * time.Millisecond), 4, 1)
+	s.Create("/foo/y", "baz", false, time.Now().Add(5*time.Millisecond), 4, 1)
 	b, err := s.Save()
 
 	time.Sleep(10 * time.Millisecond)
@@ -388,8 +391,6 @@ func TestStoreRecoverWithExpiration(t *testing.T) {
 	assert.NotNil(t, err, "")
 	assert.Nil(t, e, "")
 }
-
-
 
 // Performs a non-blocking select on an event channel.
 func nbselect(c <-chan *Event) *Event {
