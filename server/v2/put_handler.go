@@ -71,7 +71,7 @@ func PutHandler(w http.ResponseWriter, req *http.Request, s Server) error {
 		}
 	}
 
-	c = s.Store().CommandFactory().CreateCompareAndSwapCommand(key, value, prevValue, prevIndex, store.Permanent)
+	c = s.Store().CommandFactory().CreateCompareAndSwapCommand(key, value, prevValue, prevIndex, expireTime)
 	return s.Dispatch(c, w, req)
 }
 
