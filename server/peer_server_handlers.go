@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 
 	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/log"
@@ -151,8 +152,8 @@ func (ps *PeerServer) NameHttpHandler(w http.ResponseWriter, req *http.Request) 
 }
 
 // Response to the name request
-func (ps *PeerServer) RaftVersionHttpHandler(w http.ResponseWriter, req *http.Request) {
+func (ps *PeerServer) VersionHttpHandler(w http.ResponseWriter, req *http.Request) {
 	log.Debugf("[recv] Get %s/version/ ", ps.url)
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(PeerVersion))
+	w.Write([]byte(strconv.Itoa(ps.store.Version())))
 }

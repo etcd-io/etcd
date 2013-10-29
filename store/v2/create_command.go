@@ -1,9 +1,11 @@
-package store
+package v2
 
 import (
-	"github.com/coreos/etcd/log"
-	"github.com/coreos/go-raft"
 	"time"
+
+	"github.com/coreos/etcd/log"
+	"github.com/coreos/etcd/store"
+	"github.com/coreos/go-raft"
 )
 
 func init() {
@@ -20,12 +22,12 @@ type CreateCommand struct {
 
 // The name of the create command in the log
 func (c *CreateCommand) CommandName() string {
-	return "etcd:create"
+	return "etcd:v2:create"
 }
 
 // Create node
 func (c *CreateCommand) Apply(server raft.Server) (interface{}, error) {
-	s, _ := server.StateMachine().(Store)
+	s, _ := server.StateMachine().(store.Store)
 
 	e, err := s.Create(c.Key, c.Value, c.Unique, c.ExpireTime, server.CommitIndex(), server.Term())
 

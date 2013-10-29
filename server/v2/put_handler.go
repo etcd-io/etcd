@@ -71,32 +71,17 @@ func PutHandler(w http.ResponseWriter, req *http.Request, s Server) error {
 		}
 	}
 
-	c = &store.CompareAndSwapCommand{
-		Key:        key,
-		Value:      value,
-		PrevValue:  prevValue,
-		PrevIndex:  prevIndex,
-		ExpireTime: expireTime,
-	}
-
+	c = s.Store().CommandFactory().CreateCompareAndSwapCommand(key, value, prevValue, prevIndex, expireTime)
 	return s.Dispatch(c, w, req)
 }
 
 func SetHandler(w http.ResponseWriter, req *http.Request, s Server, key, value string, expireTime time.Time) error {
-	c := &store.SetCommand{
-		Key:        key,
-		Value:      value,
-		ExpireTime: expireTime,
-	}
+	c := s.Store().CommandFactory().CreateSetCommand(key, value, expireTime)
 	return s.Dispatch(c, w, req)
 }
 
 func CreateHandler(w http.ResponseWriter, req *http.Request, s Server, key, value string, expireTime time.Time) error {
-	c := &store.CreateCommand{
-		Key:        key,
-		Value:      value,
-		ExpireTime: expireTime,
-	}
+	c := s.Store().CommandFactory().CreateCreateCommand(key, value, expireTime, false)
 	return s.Dispatch(c, w, req)
 }
 
@@ -106,10 +91,6 @@ func UpdateHandler(w http.ResponseWriter, req *http.Request, s Server, key, valu
 		return etcdErr.NewError(etcdErr.EcodeValueOrTTLRequired, "Update", store.UndefIndex, store.UndefTerm)
 	}
 
-	c := &store.UpdateCommand{
-		Key:        key,
-		Value:      value,
-		ExpireTime: expireTime,
-	}
+	c := s.Store().CommandFactory().CreateUpdateCommand(key, value, expireTime)
 	return s.Dispatch(c, w, req)
 }
