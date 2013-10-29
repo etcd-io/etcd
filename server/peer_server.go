@@ -17,6 +17,7 @@ import (
 	"github.com/coreos/etcd/log"
 	"github.com/coreos/etcd/store"
 	"github.com/coreos/go-raft"
+	"github.com/gorilla/mux"
 )
 
 type PeerServer struct {
@@ -236,25 +237,27 @@ func (s *PeerServer) startAsFollower(cluster []string) {
 func (s *PeerServer) startTransport(scheme string, tlsConf tls.Config) error {
 	log.Infof("raft server [name %s, listen on %s, advertised url %s]", s.name, s.listenHost, s.url)
 
-	raftMux := http.NewServeMux()
+	router := mux.NewRouter()
 
 	s.httpServer = &http.Server{
-		Handler:   raftMux,
+		Handler:   router,
 		TLSConfig: &tlsConf,
 		Addr:      s.listenHost,
 	}
 
 	// internal commands
-	raftMux.HandleFunc("/name", s.NameHttpHandler)
-	raftMux.HandleFunc("/version", s.VersionHttpHandler)
-	raftMux.HandleFunc("/join", s.JoinHttpHandler)
-	raftMux.HandleFunc("/remove/", s.RemoveHttpHandler)
-	raftMux.HandleFunc("/vote", s.VoteHttpHandler)
-	raftMux.HandleFunc("/log", s.GetLogHttpHandler)
-	raftMux.HandleFunc("/log/append", s.AppendEntriesHttpHandler)
-	raftMux.HandleFunc("/snapshot", s.SnapshotHttpHandler)
-	raftMux.HandleFunc("/snapshotRecovery", s.SnapshotRecoveryHttpHandler)
-	raftMux.HandleFunc("/etcdURL", s.EtcdURLHttpHandler)
+	router.HandleFunc("/name", s.NameHttpHandler)
+	router.HandleFunc("/version", s.VersionHttpHandler)
+	router.HandleFunc("/version/{version:[0-9]+}/check", s.VersionCheckHttpHandler)
+	router.HandleFunc("/upgrade", s.UpgradeHttpHandler)
+	router.HandleFunc("/join", s.JoinHttpHandler)
+	router.HandleFunc("/remove/{name:.+}", s.RemoveHttpHandler)
+	router.HandleFunc("/vote", s.VoteHttpHandler)
+	router.HandleFunc("/log", s.GetLogHttpHandler)
+	router.HandleFunc("/log/append", s.AppendEntriesHttpHandler)
+	router.HandleFunc("/snapshot", s.SnapshotHttpHandler)
+	router.HandleFunc("/snapshotRecovery", s.SnapshotRecoveryHttpHandler)
+	router.HandleFunc("/etcdURL", s.EtcdURLHttpHandler)
 
 	if scheme == "http" {
 		return s.listenAndServe()
@@ -281,6 +284,29 @@ func getVersion(t *transporter, versionURL url.URL) (int, error) {
 	// Parse version number.
 	version, _ := strconv.Atoi(string(body))
 	return version, nil
+}
+
+// Upgradable checks whether all peers in a cluster support an upgrade to the next store version.
+func (s *PeerServer) Upgradable() error {
+	nextVersion := s.store.Version() + 1
+	for _, peerURL := range s.registry.PeerURLs(s.raftServer.Leader(), s.name) {
+		u, err := url.Parse(peerURL)
+		if err != nil {
+			return fmt.Errorf("PeerServer: Cannot parse URL: '%s' (%s)", peerURL, err)
+		}
+
+		t, _ := s.raftServer.Transporter().(*transporter)
+		checkURL := (&url.URL{Host: u.Host, Scheme: s.tlsConf.Scheme, Path: fmt.Sprintf("/version/%d/check", nextVersion)}).String()
+		resp, _, err := t.Get(checkURL)
+		if err != nil {
+			return fmt.Errorf("PeerServer: Cannot check version compatibility: %s", u.Host)
+		}
+		if resp.StatusCode != 200 {
+			return fmt.Errorf("PeerServer: Version %d is not compatible with peer: %s", nextVersion, u.Host)
+		}
+	}
+
+	return nil
 }
 
 func (s *PeerServer) joinCluster(cluster []string) bool {

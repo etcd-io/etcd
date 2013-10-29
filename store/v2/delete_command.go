@@ -18,7 +18,7 @@ type DeleteCommand struct {
 
 // The name of the delete command in the log
 func (c *DeleteCommand) CommandName() string {
-	return "etcd:v2:delete"
+	return "etcd:delete"
 }
 
 // Delete the key

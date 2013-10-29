@@ -21,7 +21,7 @@ type SetCommand struct {
 
 // The name of the create command in the log
 func (c *SetCommand) CommandName() string {
-	return "etcd:v2:set"
+	return "etcd:set"
 }
 
 // Create node

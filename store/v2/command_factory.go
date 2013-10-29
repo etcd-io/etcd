@@ -20,6 +20,11 @@ func (f *CommandFactory) Version() int {
 	return 2
 }
 
+// CreateUpgradeCommand is a no-op since version 2 is the first version to support store versioning.
+func (f *CommandFactory) CreateUpgradeCommand() raft.Command {
+	return &raft.NOPCommand{}
+}
+
 // CreateSetCommand creates a version 2 command to set a key to a given value in the store.
 func (f *CommandFactory) CreateSetCommand(key string, value string, expireTime time.Time) raft.Command {
 	return &SetCommand{

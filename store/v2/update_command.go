@@ -20,7 +20,7 @@ type UpdateCommand struct {
 
 // The name of the update command in the log
 func (c *UpdateCommand) CommandName() string {
-	return "etcd:v2:update"
+	return "etcd:update"
 }
 
 // Create node
