@@ -523,6 +523,10 @@ See [CONTRIBUTING](https://github.com/coreos/etcd/blob/master/CONTRIBUTING.md) f
 
 - [aterreno/etcd-clojure](https://github.com/aterreno/etcd-clojure)
 
+**Erlang libraries**
+
+- [marshall-lee/etcd.erl](https://github.com/marshall-lee/etcd.erl)
+
 **Chef Integration**
 
 - [coderanger/etcd-chef](https://github.com/coderanger/etcd-chef)
