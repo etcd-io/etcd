@@ -22,7 +22,7 @@ type CreateCommand struct {
 
 // The name of the create command in the log
 func (c *CreateCommand) CommandName() string {
-	return "etcd:v2:create"
+	return "etcd:create"
 }
 
 // Create node

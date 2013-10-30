@@ -15,6 +15,7 @@ var minVersion, maxVersion int
 // depending on the current version of the store.
 type CommandFactory interface {
 	Version() int
+	CreateUpgradeCommand() raft.Command
 	CreateSetCommand(key string, value string, expireTime time.Time) raft.Command
 	CreateCreateCommand(key string, value string, expireTime time.Time, unique bool) raft.Command
 	CreateUpdateCommand(key string, value string, expireTime time.Time) raft.Command

@@ -23,7 +23,7 @@ type CompareAndSwapCommand struct {
 
 // The name of the testAndSet command in the log
 func (c *CompareAndSwapCommand) CommandName() string {
-	return "etcd:v2:compareAndSwap"
+	return "etcd:compareAndSwap"
 }
 
 // Set the key-value pair if the current value of the key equals to the given prevValue
