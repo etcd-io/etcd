@@ -190,9 +190,9 @@ func (r *raftServer) startTransport(scheme string, tlsConf tls.Config) {
 	raftMux.HandleFunc("/etcdURL", EtcdURLHttpHandler)
 
 	if scheme == "http" {
-		fatal(server.ListenAndServe())
+		fatal(ActivateListenAndServe(server, raftSock))
 	} else {
-		fatal(server.ListenAndServeTLS(r.tlsInfo.CertFile, r.tlsInfo.KeyFile))
+		fatal(ActivateListenAndServeTLS(server, raftSock, r.tlsInfo.CertFile, r.tlsInfo.KeyFile))
 	}
 
 }

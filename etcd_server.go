@@ -50,8 +50,8 @@ func (e *etcdServer) ListenAndServe() {
 	infof("etcd server [name %s, listen on %s, advertised url %s]", e.name, e.Server.Addr, e.url)
 
 	if e.tlsConf.Scheme == "http" {
-		fatal(e.Server.ListenAndServe())
+		fatal(ActivateListenAndServe(&e.Server, etcdSock))
 	} else {
-		fatal(e.Server.ListenAndServeTLS(e.tlsInfo.CertFile, e.tlsInfo.KeyFile))
+		fatal(ActivateListenAndServeTLS(&e.Server,etcdSock,  e.tlsInfo.CertFile, e.tlsInfo.KeyFile))
 	}
 }

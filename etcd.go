@@ -223,6 +223,15 @@ func main() {
 
 	info := getInfo(dirPath)
 
+	// Used socket activated port in advertised URLs, if applicable
+	if socketActivated() {
+		info.RaftURL = useActivatedPort(info.RaftURL, raftSock)
+		info.EtcdURL = useActivatedPort(info.EtcdURL, etcdSock)
+
+		info.RaftListenHost = ":" + getActivatedPort(raftSock)
+		info.EtcdListenHost = ":" + getActivatedPort(etcdSock)
+	}
+
 	// Create etcd key-value store
 	etcdStore = store.CreateStore(maxSize)
 	snapConf = newSnapshotConf()
