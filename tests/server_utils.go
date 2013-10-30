@@ -5,14 +5,14 @@ import (
 	"os"
 	"time"
 
-	"github.com/coreos/etcd/store"
 	"github.com/coreos/etcd/server"
+	"github.com/coreos/etcd/store"
 )
 
 const (
-	testName = "ETCDTEST"
+	testName      = "ETCDTEST"
 	testClientURL = "localhost:4401"
-	testRaftURL = "localhost:7701"
+	testRaftURL   = "localhost:7701"
 )
 
 // Starts a server in a temporary directory.
@@ -22,8 +22,8 @@ func RunServer(f func(*server.Server)) {
 
 	store := store.New()
 	registry := server.NewRegistry(store)
-	ps := server.NewPeerServer(testName, path, testRaftURL, testRaftURL, &server.TLSConfig{Scheme:"http"}, &server.TLSInfo{}, registry, store)
-	s := server.New(testName, testClientURL, testClientURL, &server.TLSConfig{Scheme:"http"}, &server.TLSInfo{}, ps, registry, store)
+	ps := server.NewPeerServer(testName, path, testRaftURL, testRaftURL, &server.TLSConfig{Scheme: "http"}, &server.TLSInfo{}, registry, store)
+	s := server.New(testName, testClientURL, testClientURL, &server.TLSConfig{Scheme: "http"}, &server.TLSInfo{}, ps, registry, store)
 	ps.SetServer(s)
 
 	// Start up peer server.
@@ -32,17 +32,17 @@ func RunServer(f func(*server.Server)) {
 		c <- true
 		ps.ListenAndServe(false, []string{})
 	}()
-	<- c
+	<-c
 
 	// Start up etcd server.
 	go func() {
 		c <- true
 		s.ListenAndServe()
 	}()
-	<- c
+	<-c
 
 	// Wait to make sure servers have started.
-	time.Sleep(5 * time.Millisecond)
+	time.Sleep(50 * time.Millisecond)
 
 	// Execute the function passed in.
 	f(s)
