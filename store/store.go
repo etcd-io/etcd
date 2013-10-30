@@ -25,6 +25,7 @@ type Store interface {
 	Watch(prefix string, recursive bool, sinceIndex uint64, index uint64, term uint64) (<-chan *Event, error)
 	Save() ([]byte, error)
 	Recovery(state []byte) error
+	TotalTransactions() uint64
 	JsonStats() []byte
 }
 
@@ -481,4 +482,8 @@ func (s *store) Recovery(state []byte) error {
 func (s *store) JsonStats() []byte {
 	s.Stats.Watchers = uint64(s.WatcherHub.count)
 	return s.Stats.toJson()
+}
+
+func (s *store) TotalTransactions() uint64 {
+	return s.Stats.TotalTranscations()
 }
