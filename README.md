@@ -19,8 +19,8 @@ See [etcdctl][etcdctl] for a simple command line client. Or feel free to just us
 
 ## Contact
 
-Mailing list: http://coreos.com/lists/etcd-dev/
-IRC: #coreos on irc.freenode.net
+- Mailing list: http://coreos.com/lists/etcd-dev/
+- IRC: #coreos on irc.freenode.net
 
 ## Getting Started
 
