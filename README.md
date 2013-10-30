@@ -17,6 +17,11 @@ See [etcdctl][etcdctl] for a simple command line client. Or feel free to just us
 [raft]: https://github.com/coreos/go-raft
 [etcdctl]: http://coreos.com/docs/etcdctl/
 
+## Contact
+
+Mailing list: http://coreos.com/lists/etcd-dev/
+IRC: #coreos on irc.freenode.net
+
 ## Getting Started
 
 ### Getting etcd
