@@ -116,9 +116,11 @@ func TestV2WatchKey(t *testing.T) {
 func TestV2WatchKeyWithIndex(t *testing.T) {
 	tests.RunServer(func(s *server.Server) {
 		var body map[string]interface{}
+		c := make(chan bool)
 		go func() {
 			resp, _ := tests.Get(fmt.Sprintf("http://%s%s", s.URL(), "/v2/keys/foo/bar?wait=true&waitIndex=5"))
 			body = tests.ReadBodyJSON(resp)
+			c <- true
 		}()
 
 		// Make sure response didn't fire early.
@@ -142,6 +144,14 @@ func TestV2WatchKeyWithIndex(t *testing.T) {
 
 		// A response should follow from the GET above.
 		time.Sleep(1 * time.Millisecond)
+
+		select {
+		case <-c:
+
+		default:
+			t.Fatal("cannot get watch result")
+		}
+
 		assert.NotNil(t, body, "")
 		assert.Equal(t, body["action"], "set", "")
 		assert.Equal(t, body["key"], "/foo/bar", "")
