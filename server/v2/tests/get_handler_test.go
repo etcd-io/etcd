@@ -42,6 +42,7 @@ func TestV2GetKeyRecursively(t *testing.T) {
 	tests.RunServer(func(s *server.Server) {
 		v := url.Values{}
 		v.Set("value", "XXX")
+		v.Set("ttl", "10")
 		resp, _ := tests.PutForm(fmt.Sprintf("http://%s%s", s.URL(), "/v2/keys/foo/x"), v)
 		tests.ReadBody(resp)
 
@@ -60,6 +61,7 @@ func TestV2GetKeyRecursively(t *testing.T) {
 		kv0 := body["kvs"].([]interface{})[0].(map[string]interface{})
 		assert.Equal(t, kv0["key"], "/foo/x", "")
 		assert.Equal(t, kv0["value"], "XXX", "")
+		assert.Equal(t, kv0["ttl"], 10, "")
 
 		kv1 := body["kvs"].([]interface{})[1].(map[string]interface{})
 		assert.Equal(t, kv1["key"], "/foo/y", "")
@@ -105,7 +107,6 @@ func TestV2WatchKey(t *testing.T) {
 	})
 }
 
-
 // Ensures that a watcher can wait for a value to be set after a given index.
 //
 //   $ curl localhost:4001/v2/keys/foo/bar?wait=true&waitIndex=4
@@ -115,9 +116,11 @@ func TestV2WatchKey(t *testing.T) {
 func TestV2WatchKeyWithIndex(t *testing.T) {
 	tests.RunServer(func(s *server.Server) {
 		var body map[string]interface{}
+		c := make(chan bool)
 		go func() {
 			resp, _ := tests.Get(fmt.Sprintf("http://%s%s", s.URL(), "/v2/keys/foo/bar?wait=true&waitIndex=5"))
 			body = tests.ReadBodyJSON(resp)
+			c <- true
 		}()
 
 		// Make sure response didn't fire early.
@@ -141,6 +144,14 @@ func TestV2WatchKeyWithIndex(t *testing.T) {
 
 		// A response should follow from the GET above.
 		time.Sleep(1 * time.Millisecond)
+
+		select {
+		case <-c:
+
+		default:
+			t.Fatal("cannot get watch result")
+		}
+
 		assert.NotNil(t, body, "")
 		assert.Equal(t, body["action"], "set", "")
 		assert.Equal(t, body["key"], "/foo/bar", "")
@@ -149,4 +160,3 @@ func TestV2WatchKeyWithIndex(t *testing.T) {
 		assert.Equal(t, body["term"], 0, "")
 	})
 }
-

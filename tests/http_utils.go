@@ -55,6 +55,14 @@ func PutForm(url string, data url.Values) (*http.Response, error) {
 	return Put(url, "application/x-www-form-urlencoded", strings.NewReader(data.Encode()))
 }
 
+func Delete(url string, bodyType string, body io.Reader) (*http.Response, error) {
+	return send("DELETE", url, bodyType, body)
+}
+
+func DeleteForm(url string, data url.Values) (*http.Response, error) {
+	return Delete(url, "application/x-www-form-urlencoded", strings.NewReader(data.Encode()))
+}
+
 
 func send(method string, url string, bodyType string, body io.Reader) (*http.Response, error) {
 	c := NewHTTPClient()

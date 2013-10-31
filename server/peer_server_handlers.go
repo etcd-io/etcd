@@ -3,10 +3,13 @@ package server
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 
 	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/log"
+	"github.com/coreos/etcd/store"
 	"github.com/coreos/go-raft"
+	"github.com/gorilla/mux"
 )
 
 // Get all the current logs
@@ -133,9 +136,9 @@ func (ps *PeerServer) RemoveHttpHandler(w http.ResponseWriter, req *http.Request
 		return
 	}
 
-	nodeName := req.URL.Path[len("/remove/"):]
+	vars := mux.Vars(req)
 	command := &RemoveCommand{
-		Name: nodeName,
+		Name: vars["name"],
 	}
 
 	log.Debugf("[recv] Remove Request [%s]", command.Name)
@@ -151,8 +154,40 @@ func (ps *PeerServer) NameHttpHandler(w http.ResponseWriter, req *http.Request) 
 }
 
 // Response to the name request
-func (ps *PeerServer) RaftVersionHttpHandler(w http.ResponseWriter, req *http.Request) {
+func (ps *PeerServer) VersionHttpHandler(w http.ResponseWriter, req *http.Request) {
 	log.Debugf("[recv] Get %s/version/ ", ps.url)
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(PeerVersion))
+	w.Write([]byte(strconv.Itoa(ps.store.Version())))
+}
+
+// Checks whether a given version is supported.
+func (ps *PeerServer) VersionCheckHttpHandler(w http.ResponseWriter, req *http.Request) {
+	log.Debugf("[recv] Get %s%s ", ps.url, req.URL.Path)
+	vars := mux.Vars(req)
+	version, _ := strconv.Atoi(vars["version"])
+	if version >= store.MinVersion() && version <= store.MaxVersion() {
+		w.WriteHeader(http.StatusOK)
+	} else {
+		w.WriteHeader(http.StatusForbidden)
+	}
+}
+
+// Upgrades the current store version to the next version.
+func (ps *PeerServer) UpgradeHttpHandler(w http.ResponseWriter, req *http.Request) {
+	log.Debugf("[recv] Get %s/version", ps.url)
+
+	// Check if upgrade is possible for all nodes.
+	if err := ps.Upgradable(); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Create an upgrade command from the current version.
+	c := ps.store.CommandFactory().CreateUpgradeCommand()
+	if err := ps.server.Dispatch(c, w, req); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }

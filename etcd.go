@@ -5,7 +5,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"strings"
+	"os/signal"
+	"runtime/pprof"
 
 	"github.com/coreos/etcd/log"
 	"github.com/coreos/etcd/server"
@@ -13,189 +14,103 @@ import (
 	"github.com/coreos/go-raft"
 )
 
-//------------------------------------------------------------------------------
-//
-// Initialization
-//
-//------------------------------------------------------------------------------
-
-var (
-	veryVerbose bool
-
-	machines     string
-	machinesFile string
-
-	cluster []string
-
-	argInfo Info
-	dirPath string
-
-	force bool
-
-	printVersion bool
-
-	maxSize int
-
-	snapshot bool
-
-	retryTimes int
-
-	maxClusterSize int
-
-	cpuprofile string
-
-	cors string
-)
-
-func init() {
-	flag.BoolVar(&printVersion, "version", false, "print the version and exit")
-
-	flag.BoolVar(&log.Verbose, "v", false, "verbose logging")
-	flag.BoolVar(&veryVerbose, "vv", false, "very verbose logging")
-
-	flag.StringVar(&machines, "C", "", "the ip address and port of a existing machines in the cluster, sepearate by comma")
-	flag.StringVar(&machinesFile, "CF", "", "the file contains a list of existing machines in the cluster, seperate by comma")
-
-	flag.StringVar(&argInfo.Name, "n", "default-name", "the node name (required)")
-	flag.StringVar(&argInfo.EtcdURL, "c", "127.0.0.1:4001", "the advertised public hostname:port for etcd client communication")
-	flag.StringVar(&argInfo.RaftURL, "s", "127.0.0.1:7001", "the advertised public hostname:port for raft server communication")
-	flag.StringVar(&argInfo.EtcdListenHost, "cl", "", "the listening hostname for etcd client communication (defaults to advertised ip)")
-	flag.StringVar(&argInfo.RaftListenHost, "sl", "", "the listening hostname for raft server communication (defaults to advertised ip)")
-	flag.StringVar(&argInfo.WebURL, "w", "", "the hostname:port of web interface")
-
-	flag.StringVar(&argInfo.RaftTLS.CAFile, "serverCAFile", "", "the path of the CAFile")
-	flag.StringVar(&argInfo.RaftTLS.CertFile, "serverCert", "", "the cert file of the server")
-	flag.StringVar(&argInfo.RaftTLS.KeyFile, "serverKey", "", "the key file of the server")
-
-	flag.StringVar(&argInfo.EtcdTLS.CAFile, "clientCAFile", "", "the path of the client CAFile")
-	flag.StringVar(&argInfo.EtcdTLS.CertFile, "clientCert", "", "the cert file of the client")
-	flag.StringVar(&argInfo.EtcdTLS.KeyFile, "clientKey", "", "the key file of the client")
-
-	flag.StringVar(&dirPath, "d", ".", "the directory to store log and snapshot")
-
-	flag.BoolVar(&force, "f", false, "force new node configuration if existing is found (WARNING: data loss!)")
-
-	flag.BoolVar(&snapshot, "snapshot", false, "open or close snapshot")
-
-	flag.IntVar(&maxSize, "m", 1024, "the max size of result buffer")
-
-	flag.IntVar(&retryTimes, "r", 3, "the max retry attempts when trying to join a cluster")
-
-	flag.IntVar(&maxClusterSize, "maxsize", 9, "the max size of the cluster")
-
-	flag.StringVar(&cpuprofile, "cpuprofile", "", "write cpu profile to file")
-
-	flag.StringVar(&cors, "cors", "", "whitelist origins for cross-origin resource sharing (e.g. '*' or 'http://localhost:8001,etc')")
-}
-
-//------------------------------------------------------------------------------
-//
-// Typedefs
-//
-//------------------------------------------------------------------------------
-
-type Info struct {
-	Name string `json:"name"`
-
-	RaftURL string `json:"raftURL"`
-	EtcdURL string `json:"etcdURL"`
-	WebURL  string `json:"webURL"`
-
-	RaftListenHost string `json:"raftListenHost"`
-	EtcdListenHost string `json:"etcdListenHost"`
-
-	RaftTLS server.TLSInfo `json:"raftTLS"`
-	EtcdTLS server.TLSInfo `json:"etcdTLS"`
-}
-
-//------------------------------------------------------------------------------
-//
-// Functions
-//
-//------------------------------------------------------------------------------
-
-//--------------------------------------
-// Main
-//--------------------------------------
-
 func main() {
-	flag.Parse()
+	parseFlags()
 
-	if printVersion {
-		fmt.Println(server.ReleaseVersion)
-		os.Exit(0)
+	// Load configuration.
+	var config = server.NewConfig()
+	if err := config.Load(os.Args[1:]); err != nil {
+		log.Fatal("Configuration error:", err)
 	}
 
-	if cpuprofile != "" {
-		runCPUProfile()
-	}
-
-	if veryVerbose {
+	// Turn on logging.
+	if config.VeryVerbose {
 		log.Verbose = true
 		raft.SetLogLevel(raft.Debug)
+	} else if config.Verbose {
+		log.Verbose = true
 	}
 
-	if machines != "" {
-		cluster = strings.Split(machines, ",")
-	} else if machinesFile != "" {
-		b, err := ioutil.ReadFile(machinesFile)
-		if err != nil {
-			log.Fatalf("Unable to read the given machines file: %s", err)
-		}
-		cluster = strings.Split(string(b), ",")
-	}
-
-	// Check TLS arguments
-	raftTLSConfig, ok := tlsConfigFromInfo(argInfo.RaftTLS)
-	if !ok {
-		log.Fatal("Please specify cert and key file or cert and key file and CAFile or none of the three")
-	}
-
-	etcdTLSConfig, ok := tlsConfigFromInfo(argInfo.EtcdTLS)
-	if !ok {
-		log.Fatal("Please specify cert and key file or cert and key file and CAFile or none of the three")
-	}
-
-	argInfo.Name = strings.TrimSpace(argInfo.Name)
-	if argInfo.Name == "" {
-		log.Fatal("ERROR: server name required. e.g. '-n=server_name'")
-	}
-
-	// Check host name arguments
-	argInfo.RaftURL = sanitizeURL(argInfo.RaftURL, raftTLSConfig.Scheme)
-	argInfo.EtcdURL = sanitizeURL(argInfo.EtcdURL, etcdTLSConfig.Scheme)
-	argInfo.WebURL = sanitizeURL(argInfo.WebURL, "http")
-
-	argInfo.RaftListenHost = sanitizeListenHost(argInfo.RaftListenHost, argInfo.RaftURL)
-	argInfo.EtcdListenHost = sanitizeListenHost(argInfo.EtcdListenHost, argInfo.EtcdURL)
-
-	// Read server info from file or grab it from user.
-	if err := os.MkdirAll(dirPath, 0744); err != nil {
+	// Create data directory if it doesn't already exist.
+	if err := os.MkdirAll(config.DataDir, 0744); err != nil {
 		log.Fatalf("Unable to create path: %s", err)
 	}
 
-	info := getInfo(dirPath)
+	// Load info object.
+	info, err := config.Info()
+	if err != nil {
+		log.Fatal("info:", err)
+	}
+	if info.Name == "" {
+		log.Fatal("ERROR: server name required. e.g. '-n=server_name'")
+	}
 
-	// Create etcd key-value store
+	// Retrieve TLS configuration.
+	tlsConfig, err := info.EtcdTLS.Config()
+	if err != nil {
+		log.Fatal("Client TLS:", err)
+	}
+	peerTLSConfig, err := info.RaftTLS.Config()
+	if err != nil {
+		log.Fatal("Peer TLS:", err)
+	}
+
+	// Create etcd key-value store and registry.
 	store := store.New()
-
-	// Create a shared node registry.
 	registry := server.NewRegistry(store)
 
 	// Create peer server.
-	ps := server.NewPeerServer(info.Name, dirPath, info.RaftURL, info.RaftListenHost, &raftTLSConfig, &info.RaftTLS, registry, store)
-	ps.MaxClusterSize = maxClusterSize
-	ps.RetryTimes = retryTimes
+	ps := server.NewPeerServer(info.Name, config.DataDir, info.RaftURL, info.RaftListenHost, &peerTLSConfig, &info.RaftTLS, registry, store, config.SnapCount)
+	ps.MaxClusterSize = config.MaxClusterSize
+	ps.RetryTimes = config.MaxRetryAttempts
 
-	s := server.New(info.Name, info.EtcdURL, info.EtcdListenHost, &etcdTLSConfig, &info.EtcdTLS, ps, registry, store)
-	if err := s.AllowOrigins(cors); err != nil {
+	// Create client server.
+	s := server.New(info.Name, info.EtcdURL, info.EtcdListenHost, &tlsConfig, &info.EtcdTLS, ps, registry, store)
+	if err := s.AllowOrigins(config.Cors); err != nil {
 		panic(err)
 	}
 
 	ps.SetServer(s)
 
+	// Run peer server in separate thread while the client server blocks.
 	go func() {
-		log.Fatal(ps.ListenAndServe(snapshot, cluster))
+		log.Fatal(ps.ListenAndServe(config.Snapshot, config.Machines))
 	}()
 	log.Fatal(s.ListenAndServe())
+}
+
+// Parses non-configuration flags.
+func parseFlags() {
+	var versionFlag bool
+	var cpuprofile string
+
+	f := flag.NewFlagSet(os.Args[0], -1)
+	f.SetOutput(ioutil.Discard)
+	f.BoolVar(&versionFlag, "version", false, "print the version and exit")
+	f.StringVar(&cpuprofile, "cpuprofile", "", "write cpu profile to file")
+	f.Parse(os.Args[1:])
+
+	// Print version if necessary.
+	if versionFlag {
+		fmt.Println(server.ReleaseVersion)
+		os.Exit(0)
+	}
+
+	// Begin CPU profiling if specified.
+	if cpuprofile != "" {
+		f, err := os.Create(cpuprofile)
+		if err != nil {
+			log.Fatal(err)
+		}
+		pprof.StartCPUProfile(f)
+
+		c := make(chan os.Signal, 1)
+		signal.Notify(c, os.Interrupt)
+		go func() {
+			sig := <-c
+			log.Infof("captured %v, stopping profiler and exiting..", sig)
+			pprof.StopCPUProfile()
+			os.Exit(1)
+		}()
+	}
 }
