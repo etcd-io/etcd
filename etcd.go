@@ -42,7 +42,12 @@ func main() {
 		log.Fatal("info:", err)
 	}
 	if info.Name == "" {
-		log.Fatal("ERROR: server name required. e.g. '-n=server_name'")
+		host, err := os.Hostname()
+		if err != nil || host == "" {
+			log.Fatal("Machine name required and hostname not set. e.g. '-n=machine_name'")
+		}
+		log.Warnf("Using hostname %s as the machine name. You must ensure this name is unique among etcd machines.", host)
+		info.Name = host
 	}
 
 	// Retrieve TLS configuration.
