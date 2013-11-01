@@ -156,7 +156,7 @@ In one terminal, we send a get request with `wait=true` :
 curl -L http://127.0.0.1:4001/v2/keys/foo?wait=true
 ```
 
-Now, we are waitting for any changes at path `/foo`.
+Now, we are waiting for any changes at path `/foo`.
 
 In another terminal, we set a key `/foo` with value `bar`:
 
