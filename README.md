@@ -369,7 +369,7 @@ And also the response from the server:
 
 Let's explore the use of etcd clustering. We use go-raft as the underlying distributed protocol which provides consistency and persistence of the data across all of the etcd instances.
 
-Let start by creating 3 new etcd instances.
+We'll start by creating 3 new etcd instances.
 
 We use -s to specify server port and -c to specify client port and -d to specify the directory to store the log and info of the node in the cluster
 
@@ -380,7 +380,7 @@ We use -s to specify server port and -c to specify client port and -d to specify
 **Note:** If you want to run etcd on external IP address and still have access locally you need to add `-cl 0.0.0.0` so that it will listen on both external and localhost addresses.
 A similar argument `-sl` is used to setup the listening address for the server port.
 
-Let the join two more nodes to this cluster using the -C argument:
+Let's join two more nodes to this cluster using the -C argument:
 
 ```sh
 ./etcd -s 127.0.0.1:7002 -c 127.0.0.1:4002 -C 127.0.0.1:7001 -d nodes/node2 -n node2
@@ -466,7 +466,7 @@ It succeeded!
 
 ### Testing Persistence
 
-OK. Next let us kill all the nodes to test persistence. And restart all the nodes use the same command as before.
+OK. Next let us kill all the nodes to test persistence. Restart all the nodes using the same command as before.
 
 Your request for the `foo` key will return the correct value:
 
@@ -561,7 +561,7 @@ But, the command is not committed until the majority of the cluster machines rec
 
 Because of this majority voting property the ideal cluster should be kept small to keep speed up and be made up of an odd number of machines.
 
-Odd numbers are good because if you have 8 machines the majority will be 5 and if you have 9 machines the majority with be 5.
+Odd numbers are good because if you have 8 machines the majority will be 5 and if you have 9 machines the majority will be 5.
 The result is that an 8 machine cluster can tolerate 3 machine failures and a 9 machine cluster can tolerate 4 nodes failures.
 And in the best case when all 9 machines are responding the cluster will perform at the speed of the fastest 5 nodes.
 
