@@ -4,3 +4,7 @@ pkg/
 /go-bindata
 release_version.go
 /machine*
+.vagrant/
+conf
+info
+log
