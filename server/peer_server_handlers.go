@@ -23,72 +23,115 @@ func (ps *PeerServer) GetLogHttpHandler(w http.ResponseWriter, req *http.Request
 // Response to vote request
 func (ps *PeerServer) VoteHttpHandler(w http.ResponseWriter, req *http.Request) {
 	rvreq := &raft.RequestVoteRequest{}
-	err := decodeJsonRequest(req, rvreq)
-	if err == nil {
-		log.Debugf("[recv] POST %s/vote [%s]", ps.url, rvreq.CandidateName)
-		if resp := ps.raftServer.RequestVote(rvreq); resp != nil {
-			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(resp)
-			return
-		}
+
+	if _, err := rvreq.Decode(req.Body); err != nil {
+		http.Error(w, "", http.StatusBadRequest)
+		log.Warnf("[recv] BADREQUEST %s/vote [%v]", ps.url, err)
+		return
 	}
-	log.Warnf("[vote] ERROR: %v", err)
-	w.WriteHeader(http.StatusInternalServerError)
+
+	log.Debugf("[recv] POST %s/vote [%s]", ps.url, rvreq.CandidateName)
+
+	resp := ps.raftServer.RequestVote(rvreq)
+
+	if resp == nil {
+		log.Warn("[vote] Error: nil response")
+		http.Error(w, "", http.StatusInternalServerError)
+		return
+	}
+
+	if _, err := resp.Encode(w); err != nil {
+		log.Warn("[vote] Error: %v", err)
+		http.Error(w, "", http.StatusInternalServerError)
+		return
+	}
 }
 
 // Response to append entries request
 func (ps *PeerServer) AppendEntriesHttpHandler(w http.ResponseWriter, req *http.Request) {
 	aereq := &raft.AppendEntriesRequest{}
-	err := decodeJsonRequest(req, aereq)
 
-	if err == nil {
-		log.Debugf("[recv] POST %s/log/append [%d]", ps.url, len(aereq.Entries))
-
-		ps.serverStats.RecvAppendReq(aereq.LeaderName, int(req.ContentLength))
-
-		if resp := ps.raftServer.AppendEntries(aereq); resp != nil {
-			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(resp)
-			if !resp.Success {
-				log.Debugf("[Append Entry] Step back")
-			}
-			return
-		}
+	if _, err := aereq.Decode(req.Body); err != nil {
+		http.Error(w, "", http.StatusBadRequest)
+		log.Warnf("[recv] BADREQUEST %s/log/append [%v]", ps.url, err)
+		return
 	}
-	log.Warnf("[Append Entry] ERROR: %v", err)
-	w.WriteHeader(http.StatusInternalServerError)
+
+	log.Debugf("[recv] POST %s/log/append [%d]", ps.url, len(aereq.Entries))
+
+	ps.serverStats.RecvAppendReq(aereq.LeaderName, int(req.ContentLength))
+
+	resp := ps.raftServer.AppendEntries(aereq)
+
+	if resp == nil {
+		log.Warn("[ae] Error: nil response")
+		http.Error(w, "", http.StatusInternalServerError)
+		return
+	}
+
+	if !resp.Success {
+		log.Debugf("[Append Entry] Step back")
+	}
+
+	if _, err := resp.Encode(w); err != nil {
+		log.Warn("[ae] Error: %v", err)
+		http.Error(w, "", http.StatusInternalServerError)
+		return
+	}
 }
 
 // Response to recover from snapshot request
 func (ps *PeerServer) SnapshotHttpHandler(w http.ResponseWriter, req *http.Request) {
-	aereq := &raft.SnapshotRequest{}
-	err := decodeJsonRequest(req, aereq)
-	if err == nil {
-		log.Debugf("[recv] POST %s/snapshot/ ", ps.url)
-		if resp := ps.raftServer.RequestSnapshot(aereq); resp != nil {
-			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(resp)
-			return
-		}
+	ssreq := &raft.SnapshotRequest{}
+
+	if _, err := ssreq.Decode(req.Body); err != nil {
+		http.Error(w, "", http.StatusBadRequest)
+		log.Warnf("[recv] BADREQUEST %s/snapshot [%v]", ps.url, err)
+		return
 	}
-	log.Warnf("[Snapshot] ERROR: %v", err)
-	w.WriteHeader(http.StatusInternalServerError)
+
+	log.Debugf("[recv] POST %s/snapshot", ps.url)
+
+	resp := ps.raftServer.RequestSnapshot(ssreq)
+
+	if resp == nil {
+		log.Warn("[ss] Error: nil response")
+		http.Error(w, "", http.StatusInternalServerError)
+		return
+	}
+
+	if _, err := resp.Encode(w); err != nil {
+		log.Warn("[ss] Error: %v", err)
+		http.Error(w, "", http.StatusInternalServerError)
+		return
+	}
 }
 
 // Response to recover from snapshot request
 func (ps *PeerServer) SnapshotRecoveryHttpHandler(w http.ResponseWriter, req *http.Request) {
-	aereq := &raft.SnapshotRecoveryRequest{}
-	err := decodeJsonRequest(req, aereq)
-	if err == nil {
-		log.Debugf("[recv] POST %s/snapshotRecovery/ ", ps.url)
-		if resp := ps.raftServer.SnapshotRecoveryRequest(aereq); resp != nil {
-			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(resp)
-			return
-		}
+	ssrreq := &raft.SnapshotRecoveryRequest{}
+
+	if _, err := ssrreq.Decode(req.Body); err != nil {
+		http.Error(w, "", http.StatusBadRequest)
+		log.Warnf("[recv] BADREQUEST %s/snapshotRecovery [%v]", ps.url, err)
+		return
 	}
-	log.Warnf("[Snapshot] ERROR: %v", err)
-	w.WriteHeader(http.StatusInternalServerError)
+
+	log.Debugf("[recv] POST %s/snapshotRecovery", ps.url)
+
+	resp := ps.raftServer.SnapshotRecoveryRequest(ssrreq)
+
+	if resp == nil {
+		log.Warn("[ssr] Error: nil response")
+		http.Error(w, "", http.StatusInternalServerError)
+		return
+	}
+
+	if _, err := resp.Encode(w); err != nil {
+		log.Warn("[ssr] Error: %v", err)
+		http.Error(w, "", http.StatusInternalServerError)
+		return
+	}
 }
 
 // Get the port that listening for etcd connecting of the server
