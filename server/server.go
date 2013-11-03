@@ -116,6 +116,7 @@ func (s *Server) installV2() {
 	s.handleFunc("/v2/stats/self", s.GetStatsHandler).Methods("GET")
 	s.handleFunc("/v2/stats/leader", s.GetLeaderStatsHandler).Methods("GET")
 	s.handleFunc("/v2/stats/store", s.GetStoreStatsHandler).Methods("GET")
+	s.handleFunc("/v2/speedTest", s.SpeedTestHandler).Methods("GET")
 }
 
 // Adds a v1 server handler to the router.
