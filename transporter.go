@@ -19,7 +19,6 @@ package main
 import (
 	"bytes"
 	"crypto/tls"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net"
@@ -76,10 +75,12 @@ func dialWithTimeout(network, addr string) (net.Conn, error) {
 
 // Sends AppendEntries RPCs to a peer when the server is the leader.
 func (t *transporter) SendAppendEntriesRequest(server *raft.Server, peer *raft.Peer, req *raft.AppendEntriesRequest) *raft.AppendEntriesResponse {
-	var aersp *raft.AppendEntriesResponse
 	var b bytes.Buffer
 
-	json.NewEncoder(&b).Encode(req)
+	if _, err := req.Encode(&b); err != nil {
+		warn("transporter.ae.encoding.error:", err)
+		return nil
+	}
 
 	size := b.Len()
 
@@ -108,6 +109,7 @@ func (t *transporter) SendAppendEntriesRequest(server *raft.Server, peer *raft.P
 		if ok {
 			thisFollowerStats.Fail()
 		}
+		return nil
 	} else {
 		if ok {
 			thisFollowerStats.Succ(end.Sub(start))
@@ -119,24 +121,28 @@ func (t *transporter) SendAppendEntriesRequest(server *raft.Server, peer *raft.P
 
 		t.CancelWhenTimeout(httpRequest)
 
-		aersp = &raft.AppendEntriesResponse{}
-		if err := json.NewDecoder(resp.Body).Decode(&aersp); err == nil || err == io.EOF {
-			return aersp
+		aeresp := &raft.AppendEntriesResponse{}
+		if _, err = aeresp.Decode(resp.Body); err != nil && err != io.EOF {
+			warn("transporter.ae.decoding.error:", err)
+			return nil
 		}
-
+		return aeresp
 	}
 
-	return aersp
+	return nil
 }
 
 // Sends RequestVote RPCs to a peer when the server is the candidate.
 func (t *transporter) SendVoteRequest(server *raft.Server, peer *raft.Peer, req *raft.RequestVoteRequest) *raft.RequestVoteResponse {
-	var rvrsp *raft.RequestVoteResponse
 	var b bytes.Buffer
-	json.NewEncoder(&b).Encode(req)
+
+	if _, err := req.Encode(&b); err != nil {
+		warn("transporter.vr.encoding.error:", err)
+		return nil
+	}
 
 	u, _ := nameToRaftURL(peer.Name)
-	debugf("Send Vote to %s", u)
+	debugf("Send Vote from %s to %s", server.Name(), u)
 
 	resp, httpRequest, err := t.Post(fmt.Sprintf("%s/vote", u), &b)
 
@@ -150,28 +156,31 @@ func (t *transporter) SendVoteRequest(server *raft.Server, peer *raft.Peer, req 
 		t.CancelWhenTimeout(httpRequest)
 
 		rvrsp := &raft.RequestVoteResponse{}
-		if err := json.NewDecoder(resp.Body).Decode(&rvrsp); err == nil || err == io.EOF {
-			return rvrsp
+		if _, err = rvrsp.Decode(resp.Body); err != nil && err != io.EOF {
+			warn("transporter.vr.decoding.error:", err)
+			return nil
 		}
-
+		return rvrsp
 	}
-	return rvrsp
+	return nil
 }
 
 // Sends SnapshotRequest RPCs to a peer when the server is the candidate.
 func (t *transporter) SendSnapshotRequest(server *raft.Server, peer *raft.Peer, req *raft.SnapshotRequest) *raft.SnapshotResponse {
-	var aersp *raft.SnapshotResponse
 	var b bytes.Buffer
-	json.NewEncoder(&b).Encode(req)
+
+	if _, err := req.Encode(&b); err != nil {
+		warn("transporter.ss.encoding.error:", err)
+		return nil
+	}
 
 	u, _ := nameToRaftURL(peer.Name)
-	debugf("Send Snapshot to %s [Last Term: %d, LastIndex %d]", u,
-		req.LastTerm, req.LastIndex)
+	debugf("Send Snapshot Request from %s to %s", server.Name(), u)
 
 	resp, httpRequest, err := t.Post(fmt.Sprintf("%s/snapshot", u), &b)
 
 	if err != nil {
-		debugf("Cannot send SendSnapshotRequest to %s : %s", u, err)
+		debugf("Cannot send Snapshot Request to %s : %s", u, err)
 	}
 
 	if resp != nil {
@@ -179,69 +188,68 @@ func (t *transporter) SendSnapshotRequest(server *raft.Server, peer *raft.Peer, 
 
 		t.CancelWhenTimeout(httpRequest)
 
-		aersp = &raft.SnapshotResponse{}
-		if err = json.NewDecoder(resp.Body).Decode(&aersp); err == nil || err == io.EOF {
-
-			return aersp
+		ssrsp := &raft.SnapshotResponse{}
+		if _, err = ssrsp.Decode(resp.Body); err != nil && err != io.EOF {
+			warn("transporter.ss.decoding.error:", err)
+			return nil
 		}
+		return ssrsp
 	}
-
-	return aersp
+	return nil
 }
 
 // Sends SnapshotRecoveryRequest RPCs to a peer when the server is the candidate.
 func (t *transporter) SendSnapshotRecoveryRequest(server *raft.Server, peer *raft.Peer, req *raft.SnapshotRecoveryRequest) *raft.SnapshotRecoveryResponse {
-	var aersp *raft.SnapshotRecoveryResponse
 	var b bytes.Buffer
-	json.NewEncoder(&b).Encode(req)
+
+	if _, err := req.Encode(&b); err != nil {
+		warn("transporter.ss.encoding.error:", err)
+		return nil
+	}
 
 	u, _ := nameToRaftURL(peer.Name)
-	debugf("Send SnapshotRecovery to %s [Last Term: %d, LastIndex %d]", u,
-		req.LastTerm, req.LastIndex)
+	debugf("Send Snapshot Recovery from %s to %s", server.Name(), u)
 
-	resp, _, err := t.Post(fmt.Sprintf("%s/snapshotRecovery", u), &b)
+	resp, httpRequest, err := t.Post(fmt.Sprintf("%s/snapshotRecovery", u), &b)
 
 	if err != nil {
-		debugf("Cannot send SendSnapshotRecoveryRequest to %s : %s", u, err)
+		debugf("Cannot send Snapshot Recovery to %s : %s", u, err)
 	}
 
 	if resp != nil {
 		defer resp.Body.Close()
-		aersp = &raft.SnapshotRecoveryResponse{}
 
-		if err = json.NewDecoder(resp.Body).Decode(&aersp); err == nil || err == io.EOF {
-			return aersp
+		t.CancelWhenTimeout(httpRequest)
+
+		ssrrsp := &raft.SnapshotRecoveryResponse{}
+		if _, err = ssrrsp.Decode(resp.Body); err != nil && err != io.EOF {
+			warn("transporter.ssr.decoding.error:", err)
+			return nil
 		}
+		return ssrrsp
 	}
+	return nil
 
-	return aersp
 }
 
 // Send server side POST request
 func (t *transporter) Post(urlStr string, body io.Reader) (*http.Response, *http.Request, error) {
-
 	req, _ := http.NewRequest("POST", urlStr, body)
-
 	resp, err := t.client.Do(req)
-
 	return resp, req, err
-
 }
 
 // Send server side GET request
 func (t *transporter) Get(urlStr string) (*http.Response, *http.Request, error) {
-
 	req, _ := http.NewRequest("GET", urlStr, nil)
-
 	resp, err := t.client.Do(req)
-
 	return resp, req, err
 }
 
-// Cancel the on fly HTTP transaction when timeout happens
+// Cancel the on fly HTTP transaction when timeout happens.
 func (t *transporter) CancelWhenTimeout(req *http.Request) {
 	go func() {
-		time.Sleep(ElectionTimeout)
+		time.Sleep(tranTimeout)
 		t.transport.CancelRequest(req)
 	}()
 }
