@@ -12,4 +12,4 @@ $ tests/fixtures/v1/complete.2.sh
 $ tests/fixtures/v1/complete.3.sh
 $ tests/fixtures/v1/complete.4.sh
 
-The resulting server state data can be found in tmp/node0.
+The resulting server state data can be found in tmp/node*.
