@@ -19,6 +19,7 @@ func TestSimpleSnapshot(t *testing.T) {
 	if err != nil {
 		t.Fatal("start process failed:" + err.Error())
 	}
+	defer process.Kill()
 
 	time.Sleep(time.Second)
 
@@ -84,6 +85,4 @@ func TestSimpleSnapshot(t *testing.T) {
 	if snapshots[0].Name() != "0_1004.ss" {
 		t.Fatal("wrong name of snapshot :[0_1004.ss/", snapshots[0].Name(), "]")
 	}
-
-	process.Kill()
 }
