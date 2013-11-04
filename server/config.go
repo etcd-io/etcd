@@ -37,7 +37,7 @@ type Config struct {
 	MaxRetryAttempts int      `toml:"max_retry_attempts" env:"ETCD_MAX_RETRY_ATTEMPTS"`
 	Name             string   `toml:"name" env:"ETCD_NAME"`
 	Snapshot         bool     `toml:"snapshot" env:"ETCD_SNAPSHOT"`
-	SnapCount        int      `toml:"snap_count" env:"ETCD_SNAPCOUNT"`
+	SnapCount        int      `toml:"snapshot_count" env:"ETCD_SNAPSHOTCOUNT"`
 	Verbose          bool     `toml:"verbose" env:"ETCD_VERBOSE"`
 	VeryVerbose      bool     `toml:"very_verbose" env:"ETCD_VERY_VERBOSE"`
 	WebURL           string   `toml:"web_url" env:"ETCD_WEB_URL"`
@@ -203,7 +203,7 @@ func (c *Config) LoadFlags(arguments []string) error {
 	f.StringVar(&cors, "cors", "", "whitelist origins for cross-origin resource sharing (e.g. '*' or 'http://localhost:8001,etc')")
 
 	f.BoolVar(&c.Snapshot, "snapshot", c.Snapshot, "open or close snapshot")
-	f.IntVar(&c.SnapCount, "snapCount", c.SnapCount, "save the in memory logs and states to a snapshot file after snapCount transactions")
+	f.IntVar(&c.SnapCount, "snapshotCount", c.SnapCount, "save the in memory logs and states to a snapshot file after snapCount transactions")
 
 	// These flags are ignored since they were already parsed.
 	var path string
