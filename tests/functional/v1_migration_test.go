@@ -19,13 +19,19 @@ func TestV1Migration(t *testing.T) {
 	os.RemoveAll(path)
 	defer os.RemoveAll(path)
 
-	nodes := []string{"node0", "node1"}
+	nodes := []string{"node0", "node2"}
 	for i, node := range nodes {
 		nodepath := filepath.Join(path, node)
+		fixturepath, _ := filepath.Abs(filepath.Join("../fixtures/v1/", node))
+		fmt.Println("FIXPATH  =", fixturepath)
+		fmt.Println("NODEPATH =", nodepath)
+		os.MkdirAll(filepath.Dir(nodepath), 0777)
 
 		// Copy over fixture files.
-		if err := exec.Command("cp", "-r", "../fixtures/v1/" + node, nodepath).Run(); err != nil {
-			panic("Fixture initialization error")
+		c := exec.Command("cp", "-rf", fixturepath, nodepath)
+		if out, err := c.CombinedOutput(); err != nil {
+			fmt.Println(">>>>>>\n", string(out), "<<<<<<")
+			panic("Fixture initialization error:" + err.Error())
 		}
 
 		procAttr := new(os.ProcAttr)
@@ -43,6 +49,7 @@ func TestV1Migration(t *testing.T) {
 		time.Sleep(time.Second)
 	}
 
+	time.Sleep(120 * time.Second)
 
 	// Ensure deleted message is removed.
 	resp, err := tests.Get("http://localhost:4001/v2/keys/message")
