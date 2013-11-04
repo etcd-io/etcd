@@ -14,7 +14,7 @@ import (
 func WatchKeyHandler(w http.ResponseWriter, req *http.Request, s Server) error {
 	var err error
 	vars := mux.Vars(req)
-	key := "/" + vars["key"]
+	key := vars["key"]
 
 	// Create a command to watch from a given index (default 0).
 	var sinceIndex uint64 = 0

@@ -18,7 +18,7 @@ func GetHandler(w http.ResponseWriter, req *http.Request, s Server) error {
 	var event *store.Event
 
 	vars := mux.Vars(req)
-	key := "/" + vars["key"]
+	key := vars["key"]
 
 	// Help client to redirect the request to the current leader
 	if req.FormValue("consistent") == "true" && s.State() != raft.Leader {

@@ -10,7 +10,7 @@ import (
 // Retrieves the value for a given key.
 func GetKeyHandler(w http.ResponseWriter, req *http.Request, s Server) error {
 	vars := mux.Vars(req)
-	key := "/" + vars["key"]
+	key := vars["key"]
 
 	// Retrieve the key from the store.
 	event, err := s.Store().Get(key, false, false, s.CommitIndex(), s.Term())
