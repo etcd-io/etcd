@@ -30,17 +30,18 @@ type Store interface {
 	Watch(prefix string, recursive bool, sinceIndex uint64, index uint64, term uint64) (<-chan *Event, error)
 	Save() ([]byte, error)
 	Recovery(state []byte) error
+	TotalTransactions() uint64
 	JsonStats() []byte
 }
 
 type store struct {
-	Root       *Node
-	WatcherHub *watcherHub
-	Index      uint64
-	Term       uint64
-	Stats      *Stats
-	CurrentVersion    int
-	worldLock  sync.RWMutex // stop the world lock
+	Root           *Node
+	WatcherHub     *watcherHub
+	Index          uint64
+	Term           uint64
+	Stats          *Stats
+	CurrentVersion int
+	worldLock      sync.RWMutex // stop the world lock
 }
 
 func New() Store {
@@ -500,3 +501,6 @@ func (s *store) JsonStats() []byte {
 	return s.Stats.toJson()
 }
 
+func (s *store) TotalTransactions() uint64 {
+	return s.Stats.TotalTranscations()
+}

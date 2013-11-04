@@ -73,7 +73,7 @@ func (s *Stats) TotalReads() uint64 {
 	return s.GetSuccess + s.GetFail
 }
 
-func (s *Stats) TotalWrites() uint64 {
+func (s *Stats) TotalTranscations() uint64 {
 	return s.SetSuccess + s.SetFail +
 		s.DeleteSuccess + s.DeleteFail +
 		s.CompareAndSwapSuccess + s.CompareAndSwapFail +

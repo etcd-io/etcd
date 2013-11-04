@@ -4,9 +4,9 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
-	"runtime/pprof"
 	"os"
 	"os/signal"
+	"runtime/pprof"
 
 	"github.com/coreos/etcd/log"
 	"github.com/coreos/etcd/server"
@@ -65,7 +65,7 @@ func main() {
 	registry := server.NewRegistry(store)
 
 	// Create peer server.
-	ps := server.NewPeerServer(info.Name, config.DataDir, info.RaftURL, info.RaftListenHost, &peerTLSConfig, &info.RaftTLS, registry, store)
+	ps := server.NewPeerServer(info.Name, config.DataDir, info.RaftURL, info.RaftListenHost, &peerTLSConfig, &info.RaftTLS, registry, store, config.SnapCount)
 	ps.MaxClusterSize = config.MaxClusterSize
 	ps.RetryTimes = config.MaxRetryAttempts
 

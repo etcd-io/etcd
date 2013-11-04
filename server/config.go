@@ -2,8 +2,8 @@ package server
 
 import (
 	"encoding/json"
-	"fmt"
 	"flag"
+	"fmt"
 	"io/ioutil"
 	"net"
 	"net/url"
@@ -37,6 +37,7 @@ type Config struct {
 	MaxRetryAttempts int      `toml:"max_retry_attempts" env:"ETCD_MAX_RETRY_ATTEMPTS"`
 	Name             string   `toml:"name" env:"ETCD_NAME"`
 	Snapshot         bool     `toml:"snapshot" env:"ETCD_SNAPSHOT"`
+	SnapCount        int      `toml:"snapshot_count" env:"ETCD_SNAPSHOTCOUNT"`
 	Verbose          bool     `toml:"verbose" env:"ETCD_VERBOSE"`
 	VeryVerbose      bool     `toml:"very_verbose" env:"ETCD_VERY_VERBOSE"`
 	WebURL           string   `toml:"web_url" env:"ETCD_WEB_URL"`
@@ -47,7 +48,6 @@ type Config struct {
 		CertFile      string `toml:"cert_file" env:"ETCD_PEER_CERT_FILE"`
 		KeyFile       string `toml:"key_file" env:"ETCD_PEER_KEY_FILE"`
 		ListenHost    string `toml:"listen_host" env:"ETCD_PEER_LISTEN_HOST"`
-
 	}
 }
 
@@ -62,6 +62,7 @@ func NewConfig() *Config {
 	c.MaxResultBuffer = 1024
 	c.MaxRetryAttempts = 3
 	c.Peer.AdvertisedUrl = "127.0.0.1:7001"
+	c.SnapCount = 10000
 	return c
 }
 
@@ -196,13 +197,15 @@ func (c *Config) LoadFlags(arguments []string) error {
 	f.StringVar(&c.KeyFile, "clientKey", c.KeyFile, "the key file of the client")
 
 	f.StringVar(&c.DataDir, "d", c.DataDir, "the directory to store log and snapshot")
-	f.BoolVar(&c.Snapshot, "snapshot", c.Snapshot, "open or close snapshot")
 	f.IntVar(&c.MaxResultBuffer, "m", c.MaxResultBuffer, "the max size of result buffer")
 	f.IntVar(&c.MaxRetryAttempts, "r", c.MaxRetryAttempts, "the max retry attempts when trying to join a cluster")
 	f.IntVar(&c.MaxClusterSize, "maxsize", c.MaxClusterSize, "the max size of the cluster")
 	f.StringVar(&cors, "cors", "", "whitelist origins for cross-origin resource sharing (e.g. '*' or 'http://localhost:8001,etc')")
 
-	// These flags are ignored since they were already parsed.	
+	f.BoolVar(&c.Snapshot, "snapshot", c.Snapshot, "open or close snapshot")
+	f.IntVar(&c.SnapCount, "snapshotCount", c.SnapCount, "save the in memory logs and states to a snapshot file after snapCount transactions")
+
+	// These flags are ignored since they were already parsed.
 	var path string
 	f.StringVar(&path, "config", "", "path to config file")
 
@@ -329,7 +332,6 @@ func (c *Config) Sanitize() error {
 
 	return nil
 }
-
 
 // TLSInfo retrieves a TLSInfo object for the client server.
 func (c *Config) TLSInfo() TLSInfo {
