@@ -16,14 +16,13 @@ func TestHeapPushPop(t *testing.T) {
 		path := fmt.Sprintf("%v", 10-i)
 		m := time.Duration(10 - i)
 		n := newKV(nil, path, path, 0, 0, nil, "", time.Now().Add(time.Second*m))
-		heap.Push(h, n)
+		h.push(n)
 	}
 
 	min := time.Now()
 
 	for i := 0; i < 10; i++ {
-		iNode := heap.Pop(h)
-		node, _ := iNode.(*Node)
+		node := h.pop()
 		if node.ExpireTime.Before(min) {
 			t.Fatal("heap sort wrong!")
 		}
@@ -45,7 +44,7 @@ func TestHeapUpdate(t *testing.T) {
 		m := time.Duration(10 - i)
 		n = newKV(nil, path, path, 0, 0, nil, "", time.Now().Add(time.Second*m))
 		kvs[i] = n
-		heap.Push(h, n)
+		h.push(n)
 	}
 
 	// Path 7
@@ -60,8 +59,7 @@ func TestHeapUpdate(t *testing.T) {
 	min := time.Now()
 
 	for i := 0; i < 10; i++ {
-		iNode := heap.Pop(h)
-		node, _ := iNode.(*Node)
+		node := h.pop()
 		if node.ExpireTime.Before(min) {
 			t.Fatal("heap sort wrong!")
 		}

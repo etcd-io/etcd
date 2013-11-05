@@ -48,6 +48,16 @@ func (h *TTLKeyHeap) Pop() interface{} {
 	return x
 }
 
+func (h *TTLKeyHeap) pop() *Node {
+	x := heap.Pop(h)
+	n, _ := x.(*Node)
+	return n
+}
+
+func (h *TTLKeyHeap) push(x interface{}) {
+	heap.Push(h, x)
+}
+
 func (h *TTLKeyHeap) update(n *Node) {
 	index := h.Map[n]
 	heap.Remove(h, index)
