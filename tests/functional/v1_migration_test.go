@@ -21,7 +21,7 @@ func TestV1SoloMigration(t *testing.T) {
 
 	nodepath := filepath.Join(path, "node0")
 	fixturepath, _ := filepath.Abs("../fixtures/v1.solo/node0")
-	
+	fmt.Println("DATA_DIR =", nodepath)
 
 	// Copy over fixture files.
 	c := exec.Command("cp", "-rf", fixturepath, nodepath)
@@ -44,19 +44,11 @@ func TestV1SoloMigration(t *testing.T) {
 	defer process.Kill()
 	time.Sleep(time.Second)
 
-	time.Sleep(120 * time.Second)
-
 	// Ensure deleted message is removed.
 	resp, err := tests.Get("http://localhost:4001/v2/keys/message")
 	tests.ReadBody(resp)
 	assert.Nil(t, err, "")
-	assert.Equal(t, resp.StatusCode, 404, "")
-
-	// Ensure TTL'd message is removed.
-	resp, err = tests.Get("http://localhost:4001/v2/keys/foo")
-	tests.ReadBody(resp)
-	assert.Nil(t, err, "")
-	assert.Equal(t, resp.StatusCode, 404, "")
+	assert.Equal(t, resp.StatusCode, 200, "")
 }
 
 // Ensure that we can start a v2 cluster from the logs of a v1 cluster.

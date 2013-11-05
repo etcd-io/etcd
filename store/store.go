@@ -16,6 +16,12 @@ import (
 // The default version to set when the store is first initialized.
 const defaultVersion = 2
 
+var minExpireTime time.Time
+
+func init() {
+	minExpireTime, _ = time.Parse(time.RFC3339, "2000-01-01T00:00:00Z")
+}
+
 type Store interface {
 	Version() int
 	CommandFactory() CommandFactory
@@ -343,6 +349,13 @@ func (s *store) internalCreate(nodePath string, value string, unique bool, repla
 	}
 
 	nodePath = path.Clean(path.Join("/", nodePath))
+
+	// Assume expire times that are way in the past are not valid.
+	// This can occur when the time is serialized to JSON and read back in.
+	if expireTime.Before(minExpireTime) {
+		expireTime = Permanent
+	}
+
 
 	dir, newNodeName := path.Split(nodePath)
 
