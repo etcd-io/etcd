@@ -457,6 +457,10 @@ func (s *store) checkDir(parent *Node, dirName string) (*Node, *etcdErr.Error) {
 	return n, nil
 }
 
+func (s *store) MonitorTTLKeys() {
+
+}
+
 // Save function saves the static state of the store system.
 // Save function will not be able to save the state of watchers.
 // Save function will not save the parent field of the node. Or there will

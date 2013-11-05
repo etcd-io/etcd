@@ -48,6 +48,10 @@ func (h *ttlKeyHeap) Pop() interface{} {
 	return x
 }
 
+func (h *ttlKeyHeap) top() *Node {
+	return h.array[0]
+}
+
 func (h *ttlKeyHeap) pop() *Node {
 	x := heap.Pop(h)
 	n, _ := x.(*Node)
