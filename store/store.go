@@ -37,6 +37,7 @@ type Store interface {
 type store struct {
 	Root           *Node
 	WatcherHub     *watcherHub
+	TTLKeyHeap     *TTLKeyHeap
 	Index          uint64
 	Term           uint64
 	Stats          *Stats
@@ -54,6 +55,7 @@ func newStore() *store {
 	s.Root = newDir(s, "/", UndefIndex, UndefTerm, nil, "", Permanent)
 	s.Stats = newStats()
 	s.WatcherHub = newWatchHub(1000)
+	s.TTLKeyHeap = newTTLKeyHeap()
 	return s
 }
 
@@ -390,7 +392,7 @@ func (s *store) internalCreate(nodePath string, value string, unique bool, repla
 	d.Add(n)
 
 	// Node with TTL
-	if expireTime.Sub(Permanent) != 0 {
+	if !n.IsPermanent() {
 		n.Expire()
 		e.Expiration, e.TTL = n.ExpirationAndTTL()
 	}

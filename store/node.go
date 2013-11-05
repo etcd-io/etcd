@@ -9,14 +9,12 @@ import (
 	etcdErr "github.com/coreos/etcd/error"
 )
 
-var (
-	Permanent time.Time
-)
-
 const (
 	normal = iota
 	removed
 )
+
+var Permanent time.Time
 
 // Node is the basic element in the store system.
 // A key-value pair will have a string value
@@ -97,7 +95,7 @@ func (n *Node) IsHidden() bool {
 
 // IsPermanent function checks if the node is a permanent one.
 func (n *Node) IsPermanent() bool {
-	return n.ExpireTime.Sub(Permanent) == 0
+	return !n.ExpireTime.IsZero()
 }
 
 // IsExpired function checks if the node has been expired.
@@ -146,7 +144,7 @@ func (n *Node) Write(value string, index uint64, term uint64) *etcdErr.Error {
 }
 
 func (n *Node) ExpirationAndTTL() (*time.Time, int64) {
-	if n.ExpireTime.Sub(Permanent) != 0 {
+	if n.IsPermanent() {
 		return &n.ExpireTime, int64(n.ExpireTime.Sub(time.Now())/time.Second) + 1
 	}
 	return nil, 0
@@ -376,7 +374,7 @@ func (n *Node) UpdateTTL(expireTime time.Time) {
 	}
 
 	n.ExpireTime = expireTime
-	if expireTime.Sub(Permanent) != 0 {
+	if !n.IsPermanent() {
 		n.Expire()
 	}
 }
