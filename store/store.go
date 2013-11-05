@@ -1,7 +1,6 @@
 package store
 
 import (
-	"container/heap"
 	"encoding/json"
 	"fmt"
 	"path"
@@ -394,7 +393,7 @@ func (s *store) internalCreate(nodePath string, value string, unique bool, repla
 
 	// Node with TTL
 	if !n.IsPermanent() {
-		heap.Push(s.TTLKeyHeap, n)
+		s.TTLKeyHeap.push(n)
 
 		n.Expire()
 		e.Expiration, e.TTL = n.ExpirationAndTTL()

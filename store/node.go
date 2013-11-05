@@ -1,7 +1,6 @@
 package store
 
 import (
-	"container/heap"
 	"path"
 	"sort"
 	"sync"
@@ -387,7 +386,7 @@ func (n *Node) UpdateTTL(expireTime time.Time) {
 		if !expireTime.IsZero() {
 			// from permanent to ttl
 			// push into ttl heap
-			heap.Push(n.store.TTLKeyHeap, n)
+			n.store.TTLKeyHeap.push(n)
 		}
 	}
 
