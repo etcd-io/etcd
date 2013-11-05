@@ -1,14 +1,13 @@
 package store
 
 import (
-	"container/heap"
 	"fmt"
 	"testing"
 	"time"
 )
 
 func TestHeapPushPop(t *testing.T) {
-	h := newTTLKeyHeap()
+	h := newTtlKeyHeap()
 
 	// add from older expire time to earlier expire time
 	// the path is equal to ttl from now
@@ -32,8 +31,7 @@ func TestHeapPushPop(t *testing.T) {
 }
 
 func TestHeapUpdate(t *testing.T) {
-	h := &TTLKeyHeap{Map: make(map[*Node]int)}
-	heap.Init(h)
+	h := newTtlKeyHeap()
 
 	kvs := make([]*Node, 10)
 

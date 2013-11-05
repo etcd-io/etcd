@@ -240,7 +240,7 @@ func (n *Node) internalRemove(recursive bool, callback func(path string)) {
 		}
 
 		if !n.IsPermanent() {
-			n.store.TTLKeyHeap.remove(n)
+			n.store.ttlKeyHeap.remove(n)
 		}
 
 		// the stop channel has a buffer. just send to it!
@@ -262,7 +262,7 @@ func (n *Node) internalRemove(recursive bool, callback func(path string)) {
 		}
 
 		if !n.IsPermanent() {
-			n.store.TTLKeyHeap.remove(n)
+			n.store.ttlKeyHeap.remove(n)
 		}
 
 		n.stopExpire <- true
@@ -375,18 +375,18 @@ func (n *Node) UpdateTTL(expireTime time.Time) {
 		if expireTime.IsZero() {
 			// from ttl to permanent
 			// remove from ttl heap
-			n.store.TTLKeyHeap.remove(n)
+			n.store.ttlKeyHeap.remove(n)
 		} else {
 			// update ttl
 			// update ttl heap
-			n.store.TTLKeyHeap.update(n)
+			n.store.ttlKeyHeap.update(n)
 		}
 
 	} else {
 		if !expireTime.IsZero() {
 			// from permanent to ttl
 			// push into ttl heap
-			n.store.TTLKeyHeap.push(n)
+			n.store.ttlKeyHeap.push(n)
 		}
 	}
 
@@ -441,6 +441,10 @@ func (n *Node) recoverAndclean() {
 	}
 
 	n.stopExpire = make(chan bool, 1)
+
+	if !n.ExpireTime.IsZero() {
+		n.store.ttlKeyHeap.push(n)
+	}
 
 	n.Expire()
 }

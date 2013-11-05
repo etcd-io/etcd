@@ -37,11 +37,11 @@ type Store interface {
 type store struct {
 	Root           *Node
 	WatcherHub     *watcherHub
-	TTLKeyHeap     *TTLKeyHeap
 	Index          uint64
 	Term           uint64
 	Stats          *Stats
 	CurrentVersion int
+	ttlKeyHeap     *ttlKeyHeap  // need to recovery manually
 	worldLock      sync.RWMutex // stop the world lock
 }
 
@@ -55,7 +55,7 @@ func newStore() *store {
 	s.Root = newDir(s, "/", UndefIndex, UndefTerm, nil, "", Permanent)
 	s.Stats = newStats()
 	s.WatcherHub = newWatchHub(1000)
-	s.TTLKeyHeap = newTTLKeyHeap()
+	s.ttlKeyHeap = newTtlKeyHeap()
 	return s
 }
 
@@ -393,7 +393,7 @@ func (s *store) internalCreate(nodePath string, value string, unique bool, repla
 
 	// Node with TTL
 	if !n.IsPermanent() {
-		s.TTLKeyHeap.push(n)
+		s.ttlKeyHeap.push(n)
 
 		n.Expire()
 		e.Expiration, e.TTL = n.ExpirationAndTTL()
@@ -477,6 +477,7 @@ func (s *store) Save() ([]byte, error) {
 	b, err := json.Marshal(clonedStore)
 
 	if err != nil {
+		fmt.Println(err)
 		return nil, err
 	}
 
@@ -495,6 +496,8 @@ func (s *store) Recovery(state []byte) error {
 	if err != nil {
 		return err
 	}
+
+	s.ttlKeyHeap = newTtlKeyHeap()
 
 	s.Root.recoverAndclean()
 	return nil
