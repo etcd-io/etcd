@@ -54,8 +54,8 @@ func TestHeapUpdate(t *testing.T) {
 	// Path 5
 	kvs[5].ExpireTime = time.Now().Add(time.Second * 12)
 
-	h.Update(kvs[3])
-	h.Update(kvs[5])
+	h.update(kvs[3])
+	h.update(kvs[5])
 
 	min := time.Now()
 

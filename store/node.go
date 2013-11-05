@@ -1,6 +1,7 @@
 package store
 
 import (
+	"container/heap"
 	"path"
 	"sort"
 	"sync"
@@ -95,7 +96,7 @@ func (n *Node) IsHidden() bool {
 
 // IsPermanent function checks if the node is a permanent one.
 func (n *Node) IsPermanent() bool {
-	return !n.ExpireTime.IsZero()
+	return n.ExpireTime.IsZero()
 }
 
 // IsExpired function checks if the node has been expired.
@@ -144,7 +145,7 @@ func (n *Node) Write(value string, index uint64, term uint64) *etcdErr.Error {
 }
 
 func (n *Node) ExpirationAndTTL() (*time.Time, int64) {
-	if n.IsPermanent() {
+	if !n.IsPermanent() {
 		return &n.ExpireTime, int64(n.ExpireTime.Sub(time.Now())/time.Second) + 1
 	}
 	return nil, 0
@@ -239,6 +240,10 @@ func (n *Node) internalRemove(recursive bool, callback func(path string)) {
 			callback(n.Path)
 		}
 
+		if !n.IsPermanent() {
+			n.store.TTLKeyHeap.remove(n)
+		}
+
 		// the stop channel has a buffer. just send to it!
 		n.stopExpire <- true
 		return
@@ -255,6 +260,10 @@ func (n *Node) internalRemove(recursive bool, callback func(path string)) {
 
 		if callback != nil {
 			callback(n.Path)
+		}
+
+		if !n.IsPermanent() {
+			n.store.TTLKeyHeap.remove(n)
 		}
 
 		n.stopExpire <- true
@@ -362,6 +371,26 @@ func (n *Node) Pair(recurisive, sorted bool) KeyValuePair {
 }
 
 func (n *Node) UpdateTTL(expireTime time.Time) {
+
+	if !n.IsPermanent() {
+		if expireTime.IsZero() {
+			// from ttl to permanent
+			// remove from ttl heap
+			n.store.TTLKeyHeap.remove(n)
+		} else {
+			// update ttl
+			// update ttl heap
+			n.store.TTLKeyHeap.update(n)
+		}
+
+	} else {
+		if !expireTime.IsZero() {
+			// from permanent to ttl
+			// push into ttl heap
+			heap.Push(n.store.TTLKeyHeap, n)
+		}
+	}
+
 	if !n.IsPermanent() {
 		// check if the node has been expired
 		// if the node is not expired, we need to stop the go routine associated with
