@@ -10,6 +10,12 @@ type TTLKeyHeap struct {
 	Map   map[*Node]int
 }
 
+func newTTLKeyHeap() *TTLKeyHeap {
+	h := &TTLKeyHeap{Map: make(map[*Node]int)}
+	heap.Init(h)
+	return h
+}
+
 func (h TTLKeyHeap) Len() int {
 	return len(h.Array)
 }

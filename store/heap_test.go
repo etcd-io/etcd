@@ -8,8 +8,7 @@ import (
 )
 
 func TestHeapPushPop(t *testing.T) {
-	h := &TTLKeyHeap{Map: make(map[*Node]int)}
-	heap.Init(h)
+	h := newTTLKeyHeap()
 
 	// add from older expire time to earlier expire time
 	// the path is equal to ttl from now
