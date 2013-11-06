@@ -2,7 +2,7 @@ package store
 
 import (
 	"testing"
-	//"time"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -84,11 +84,12 @@ func TestStoreStatsDeleteFail(t *testing.T) {
 	assert.Equal(t, uint64(1), s.Stats.DeleteFail, "")
 }
 
-// Ensure that the number of expirations is recorded in the stats.
-// func TestStoreStatsExpireCount(t *testing.T) {
-// 	s := newStore()
-// 	s.Create("/foo", "bar", false, time.Now().Add(5 * time.Millisecond), 3, 1)
-// 	assert.Equal(t, uint64(0), s.Stats.ExpireCount, "")
-// 	time.Sleep(10 * time.Millisecond)
-// 	assert.Equal(t, uint64(1), s.Stats.ExpireCount, "")
-// }
+//Ensure that the number of expirations is recorded in the stats.
+func TestStoreStatsExpireCount(t *testing.T) {
+	s := newStore()
+	go mockSyncService(s.deleteExpiredKeys)
+	s.Create("/foo", "bar", false, time.Now().Add(500*time.Millisecond), 3, 1)
+	assert.Equal(t, uint64(0), s.Stats.ExpireCount, "")
+	time.Sleep(600 * time.Millisecond)
+	assert.Equal(t, uint64(1), s.Stats.ExpireCount, "")
+}

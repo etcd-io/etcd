@@ -3,7 +3,6 @@ package store
 import (
 	"path"
 	"sort"
-	"sync"
 	"time"
 
 	etcdErr "github.com/coreos/etcd/error"
@@ -36,10 +35,6 @@ type Node struct {
 
 	// A reference to the store this node is attached to.
 	store *store
-
-	// ensure we only delete the node once
-	// expire and remove may try to delete a node twice
-	once sync.Once
 }
 
 // newKV creates a Key-Value pair
