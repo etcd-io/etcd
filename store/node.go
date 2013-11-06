@@ -286,6 +286,7 @@ func (n *Node) UpdateTTL(expireTime time.Time) {
 			n.store.ttlKeyHeap.remove(n)
 		} else {
 			// update ttl
+			n.ExpireTime = expireTime
 			// update ttl heap
 			n.store.ttlKeyHeap.update(n)
 		}
@@ -293,12 +294,11 @@ func (n *Node) UpdateTTL(expireTime time.Time) {
 	} else {
 		if !expireTime.IsZero() {
 			// from permanent to ttl
+			n.ExpireTime = expireTime
 			// push into ttl heap
 			n.store.ttlKeyHeap.push(n)
 		}
 	}
-
-	n.ExpireTime = expireTime
 }
 
 // Clone function clone the node recursively and return the new node.
