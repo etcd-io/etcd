@@ -142,12 +142,13 @@ func TestStoreUpdateFailsIfDirectory(t *testing.T) {
 // Ensure that the store can update the TTL on a value.
 func TestStoreUpdateValueTTL(t *testing.T) {
 	s := newStore()
+	go mockSyncService(s.deleteExpiredKeys)
 	s.Create("/foo", "bar", false, Permanent, 2, 1)
-	_, err := s.Update("/foo", "baz", time.Now().Add(1*time.Millisecond), 3, 1)
+	_, err := s.Update("/foo", "baz", time.Now().Add(500*time.Millisecond), 3, 1)
 	e, _ := s.Get("/foo", false, false, 3, 1)
 	assert.Equal(t, e.Value, "baz", "")
 
-	time.Sleep(2 * time.Millisecond)
+	time.Sleep(600 * time.Millisecond)
 	e, err = s.Get("/foo", false, false, 3, 1)
 	assert.Nil(t, e, "")
 	assert.Equal(t, err.(*etcdErr.Error).ErrorCode, etcdErr.EcodeKeyNotFound, "")
@@ -156,13 +157,14 @@ func TestStoreUpdateValueTTL(t *testing.T) {
 // Ensure that the store can update the TTL on a directory.
 func TestStoreUpdateDirTTL(t *testing.T) {
 	s := newStore()
+	go mockSyncService(s.deleteExpiredKeys)
 	s.Create("/foo", "", false, Permanent, 2, 1)
 	s.Create("/foo/bar", "baz", false, Permanent, 3, 1)
-	_, err := s.Update("/foo", "", time.Now().Add(1*time.Millisecond), 3, 1)
+	_, err := s.Update("/foo", "", time.Now().Add(500*time.Millisecond), 3, 1)
 	e, _ := s.Get("/foo/bar", false, false, 3, 1)
 	assert.Equal(t, e.Value, "baz", "")
 
-	time.Sleep(2 * time.Millisecond)
+	time.Sleep(600 * time.Millisecond)
 	e, err = s.Get("/foo/bar", false, false, 3, 1)
 	assert.Nil(t, e, "")
 	assert.Equal(t, err.(*etcdErr.Error).ErrorCode, etcdErr.EcodeKeyNotFound, "")
@@ -340,11 +342,12 @@ func TestStoreWatchRecursiveCompareAndSwap(t *testing.T) {
 // Ensure that the store can watch for key expiration.
 func TestStoreWatchExpire(t *testing.T) {
 	s := newStore()
-	s.Create("/foo", "bar", false, time.Now().Add(1*time.Millisecond), 2, 1)
+	go mockSyncService(s.deleteExpiredKeys)
+	s.Create("/foo", "bar", false, time.Now().Add(500*time.Millisecond), 2, 1)
 	c, _ := s.Watch("/foo", false, 0, 0, 1)
 	e := nbselect(c)
 	assert.Nil(t, e, "")
-	time.Sleep(2 * time.Millisecond)
+	time.Sleep(600 * time.Millisecond)
 	e = nbselect(c)
 	assert.Equal(t, e.Action, "expire", "")
 	assert.Equal(t, e.Key, "/foo", "")
@@ -373,6 +376,7 @@ func TestStoreRecover(t *testing.T) {
 // Ensure that the store can recover from a previously saved state that includes an expiring key.
 func TestStoreRecoverWithExpiration(t *testing.T) {
 	s := newStore()
+	go mockSyncService(s.deleteExpiredKeys)
 	s.Create("/foo", "", false, Permanent, 2, 1)
 	s.Create("/foo/x", "bar", false, Permanent, 3, 1)
 	s.Create("/foo/y", "baz", false, time.Now().Add(5*time.Millisecond), 4, 1)
@@ -381,7 +385,10 @@ func TestStoreRecoverWithExpiration(t *testing.T) {
 	time.Sleep(10 * time.Millisecond)
 
 	s2 := newStore()
+	go mockSyncService(s2.deleteExpiredKeys)
 	s2.Recovery(b)
+
+	time.Sleep(600 * time.Millisecond)
 
 	e, err := s.Get("/foo/x", false, false, 4, 1)
 	assert.Nil(t, err, "")
@@ -399,5 +406,12 @@ func nbselect(c <-chan *Event) *Event {
 		return e
 	default:
 		return nil
+	}
+}
+
+func mockSyncService(f func(now time.Time)) {
+	ticker := time.Tick(time.Millisecond * 500)
+	for now := range ticker {
+		f(now)
 	}
 }

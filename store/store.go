@@ -395,7 +395,6 @@ func (s *store) internalCreate(nodePath string, value string, unique bool, repla
 	if !n.IsPermanent() {
 		s.ttlKeyHeap.push(n)
 
-		n.Expire()
 		e.Expiration, e.TTL = n.ExpirationAndTTL()
 	}
 
@@ -435,6 +434,24 @@ func (s *store) internalGet(nodePath string, index uint64, term uint64) (*Node, 
 	return f, nil
 }
 
+// deleteExpiredKyes will delete all
+func (s *store) deleteExpiredKeys(cutoff time.Time) {
+	s.worldLock.Lock()
+	defer s.worldLock.Unlock()
+
+	for {
+		node := s.ttlKeyHeap.top()
+		if node == nil || node.ExpireTime.After(cutoff) {
+			return
+		}
+
+		s.ttlKeyHeap.pop()
+		node.Remove(true, nil)
+
+		s.WatcherHub.notify(newEvent(Expire, node.Path, s.Index, s.Term))
+	}
+}
+
 // checkDir function will check whether the component is a directory under parent node.
 // If it is a directory, this function will return the pointer to that node.
 // If it does not exist, this function will create a new directory and return the pointer to that node.
@@ -455,10 +472,6 @@ func (s *store) checkDir(parent *Node, dirName string) (*Node, *etcdErr.Error) {
 	parent.Children[dirName] = n
 
 	return n, nil
-}
-
-func (s *store) MonitorTTLKeys() {
-
 }
 
 // Save function saves the static state of the store system.

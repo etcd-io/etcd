@@ -37,10 +37,6 @@ type Node struct {
 	// A reference to the store this node is attached to.
 	store *store
 
-	// a ttl node will have an expire routine associated with it.
-	// we need a channel to stop that routine when the expiration changes.
-	stopExpire chan bool
-
 	// ensure we only delete the node once
 	// expire and remove may try to delete a node twice
 	once sync.Once
@@ -59,7 +55,6 @@ func newKV(store *store, nodePath string, value string, createIndex uint64,
 		Parent:        parent,
 		ACL:           ACL,
 		store:         store,
-		stopExpire:    make(chan bool, 1),
 		ExpireTime:    expireTime,
 		Value:         value,
 	}
@@ -75,7 +70,6 @@ func newDir(store *store, nodePath string, createIndex uint64, createTerm uint64
 		CreateTerm:  createTerm,
 		Parent:      parent,
 		ACL:         ACL,
-		stopExpire:  make(chan bool, 1),
 		ExpireTime:  expireTime,
 		Children:    make(map[string]*Node),
 		store:       store,
@@ -96,20 +90,6 @@ func (n *Node) IsHidden() bool {
 // IsPermanent function checks if the node is a permanent one.
 func (n *Node) IsPermanent() bool {
 	return n.ExpireTime.IsZero()
-}
-
-// IsExpired function checks if the node has been expired.
-func (n *Node) IsExpired() (bool, time.Duration) {
-	if n.IsPermanent() {
-		return false, 0
-	}
-
-	duration := n.ExpireTime.Sub(time.Now())
-	if duration <= 0 {
-		return true, 0
-	}
-
-	return false, duration
 }
 
 // IsDir function checks whether the node is a directory.
@@ -214,19 +194,6 @@ func (n *Node) Remove(recursive bool, callback func(path string)) *etcdErr.Error
 		return etcdErr.NewError(etcdErr.EcodeNotFile, "", UndefIndex, UndefTerm)
 	}
 
-	onceBody := func() {
-		n.internalRemove(recursive, callback)
-	}
-
-	// this function might be entered multiple times by expire and delete
-	// every node will only be deleted once.
-	n.once.Do(onceBody)
-
-	return nil
-}
-
-// internalRemove function will be called by remove()
-func (n *Node) internalRemove(recursive bool, callback func(path string)) {
 	if !n.IsDir() { // key-value pair
 		_, name := path.Split(n.Path)
 
@@ -243,9 +210,7 @@ func (n *Node) internalRemove(recursive bool, callback func(path string)) {
 			n.store.ttlKeyHeap.remove(n)
 		}
 
-		// the stop channel has a buffer. just send to it!
-		n.stopExpire <- true
-		return
+		return nil
 	}
 
 	for _, child := range n.Children { // delete all children
@@ -265,61 +230,9 @@ func (n *Node) internalRemove(recursive bool, callback func(path string)) {
 			n.store.ttlKeyHeap.remove(n)
 		}
 
-		n.stopExpire <- true
-	}
-}
-
-// Expire function will test if the node is expired.
-// if the node is already expired, delete the node and return.
-// if the node is permanent (this shouldn't happen), return at once.
-// else wait for a period time, then remove the node. and notify the watchhub.
-func (n *Node) Expire() {
-	expired, duration := n.IsExpired()
-
-	if expired { // has been expired
-		// since the parent function of Expire() runs serially,
-		// there is no need for lock here
-		e := newEvent(Expire, n.Path, UndefIndex, UndefTerm)
-		n.store.WatcherHub.notify(e)
-
-		n.Remove(true, nil)
-		n.store.Stats.Inc(ExpireCount)
-
-		return
 	}
 
-	if duration == 0 { // Permanent Node
-		return
-	}
-
-	go func() { // do monitoring
-		select {
-		// if timeout, delete the node
-		case <-time.After(duration):
-
-			// before expire get the lock, the expiration time
-			// of the node may be updated.
-			// we have to check again when get the lock
-			n.store.worldLock.Lock()
-			defer n.store.worldLock.Unlock()
-
-			expired, _ := n.IsExpired()
-
-			if expired {
-				e := newEvent(Expire, n.Path, UndefIndex, UndefTerm)
-				n.store.WatcherHub.notify(e)
-
-				n.Remove(true, nil)
-				n.store.Stats.Inc(ExpireCount)
-			}
-
-			return
-
-		// if stopped, return
-		case <-n.stopExpire:
-			return
-		}
-	}()
+	return nil
 }
 
 func (n *Node) Pair(recurisive, sorted bool) KeyValuePair {
@@ -390,21 +303,7 @@ func (n *Node) UpdateTTL(expireTime time.Time) {
 		}
 	}
 
-	if !n.IsPermanent() {
-		// check if the node has been expired
-		// if the node is not expired, we need to stop the go routine associated with
-		// that node.
-		expired, _ := n.IsExpired()
-
-		if !expired {
-			n.stopExpire <- true // suspend it to modify the expiration
-		}
-	}
-
 	n.ExpireTime = expireTime
-	if !n.IsPermanent() {
-		n.Expire()
-	}
 }
 
 // Clone function clone the node recursively and return the new node.
@@ -440,11 +339,8 @@ func (n *Node) recoverAndclean() {
 		}
 	}
 
-	n.stopExpire = make(chan bool, 1)
-
 	if !n.ExpireTime.IsZero() {
 		n.store.ttlKeyHeap.push(n)
 	}
 
-	n.Expire()
 }

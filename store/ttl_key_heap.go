@@ -49,7 +49,10 @@ func (h *ttlKeyHeap) Pop() interface{} {
 }
 
 func (h *ttlKeyHeap) top() *Node {
-	return h.array[0]
+	if h.Len() != 0 {
+		return h.array[0]
+	}
+	return nil
 }
 
 func (h *ttlKeyHeap) pop() *Node {
@@ -63,12 +66,16 @@ func (h *ttlKeyHeap) push(x interface{}) {
 }
 
 func (h *ttlKeyHeap) update(n *Node) {
-	index := h.keyMap[n]
-	heap.Remove(h, index)
-	heap.Push(h, n)
+	index, ok := h.keyMap[n]
+	if ok {
+		heap.Remove(h, index)
+		heap.Push(h, n)
+	}
 }
 
 func (h *ttlKeyHeap) remove(n *Node) {
-	index := h.keyMap[n]
-	heap.Remove(h, index)
+	index, ok := h.keyMap[n]
+	if ok {
+		heap.Remove(h, index)
+	}
 }
