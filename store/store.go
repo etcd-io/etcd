@@ -451,6 +451,8 @@ func (s *store) deleteExpiredKeys(cutoff time.Time) {
 		s.Stats.Inc(ExpireCount)
 		s.WatcherHub.notify(newEvent(Expire, node.Path, s.Index, s.Term))
 	}
+
+	s.WatcherHub.clearPendingWatchers()
 }
 
 // checkDir function will check whether the component is a directory under parent node.
