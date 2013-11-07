@@ -344,13 +344,18 @@ func TestStoreWatchExpire(t *testing.T) {
 	s := newStore()
 	go mockSyncService(s.deleteExpiredKeys)
 	s.Create("/foo", "bar", false, time.Now().Add(500*time.Millisecond), 2, 1)
-	c, _ := s.Watch("/foo", false, 0, 0, 1)
+	s.Create("/foofoo", "barbarbar", false, time.Now().Add(500*time.Millisecond), 2, 1)
+
+	c, _ := s.Watch("/", true, 0, 0, 1)
 	e := nbselect(c)
 	assert.Nil(t, e, "")
 	time.Sleep(600 * time.Millisecond)
 	e = nbselect(c)
 	assert.Equal(t, e.Action, "expire", "")
 	assert.Equal(t, e.Key, "/foo", "")
+	e = nbselect(c)
+	assert.Equal(t, e.Action, "expire", "")
+	assert.Equal(t, e.Key, "/foofoo", "")
 }
 
 // Ensure that the store can recover from a previously saved state.
@@ -409,9 +414,9 @@ func nbselect(c <-chan *Event) *Event {
 	}
 }
 
-func mockSyncService(f func(now time.Time)) {
+func mockSyncService(f func(now time.Time, index uint64, term uint64)) {
 	ticker := time.Tick(time.Millisecond * 500)
 	for now := range ticker {
-		f(now)
+		f(now, 2, 1)
 	}
 }

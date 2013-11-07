@@ -435,9 +435,11 @@ func (s *store) internalGet(nodePath string, index uint64, term uint64) (*Node, 
 }
 
 // deleteExpiredKyes will delete all
-func (s *store) deleteExpiredKeys(cutoff time.Time) {
+func (s *store) deleteExpiredKeys(cutoff time.Time, index uint64, term uint64) {
 	s.worldLock.Lock()
 	defer s.worldLock.Unlock()
+
+	s.Index, s.Term = index, term
 
 	for {
 		node := s.ttlKeyHeap.top()
@@ -497,7 +499,6 @@ func (s *store) Save() ([]byte, error) {
 	b, err := json.Marshal(clonedStore)
 
 	if err != nil {
-		fmt.Println(err)
 		return nil, err
 	}
 
