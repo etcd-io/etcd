@@ -444,7 +444,7 @@ func (s *store) deleteExpiredKeys(cutoff time.Time, index uint64, term uint64) {
 	for {
 		node := s.ttlKeyHeap.top()
 		if node == nil || node.ExpireTime.After(cutoff) {
-			return
+			break
 		}
 
 		s.ttlKeyHeap.pop()
@@ -453,7 +453,6 @@ func (s *store) deleteExpiredKeys(cutoff time.Time, index uint64, term uint64) {
 		s.Stats.Inc(ExpireCount)
 		s.WatcherHub.notify(newEvent(Expire, node.Path, s.Index, s.Term))
 	}
-
 	s.WatcherHub.clearPendingWatchers()
 }
 
