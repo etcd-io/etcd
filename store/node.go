@@ -84,6 +84,9 @@ func (n *Node) IsHidden() bool {
 
 // IsPermanent function checks if the node is a permanent one.
 func (n *Node) IsPermanent() bool {
+	// we use a uninitialized time.Time to indicate the node is a
+	// permanent one.
+	// the uninitialized time.Time should equal zero.
 	return n.ExpireTime.IsZero()
 }
 
