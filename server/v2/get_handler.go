@@ -60,6 +60,9 @@ func GetHandler(w http.ResponseWriter, req *http.Request, s Server) error {
 			case <-closeChan:
 				return nil
 			case event = <-eventChan:
+				// for events other than expire, just one event for one watch
+				// for expire event, we might have a stream of events
+				// we use a nil item to terminate the expire event stream
 				if event != nil && event.Action == store.Expire {
 					events = append(events, event)
 				} else {
