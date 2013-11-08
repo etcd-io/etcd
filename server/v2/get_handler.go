@@ -16,6 +16,7 @@ import (
 func GetHandler(w http.ResponseWriter, req *http.Request, s Server) error {
 	var err error
 	var event *store.Event
+	events := make([]*store.Event, 0)
 
 	vars := mux.Vars(req)
 	key := "/" + vars["key"]
@@ -54,10 +55,17 @@ func GetHandler(w http.ResponseWriter, req *http.Request, s Server) error {
 		cn, _ := w.(http.CloseNotifier)
 		closeChan := cn.CloseNotify()
 
-		select {
-		case <-closeChan:
-			return nil
-		case event = <-eventChan:
+		for {
+			select {
+			case <-closeChan:
+				return nil
+			case event = <-eventChan:
+				if event != nil && event.Action == store.Expire {
+					events = append(events, event)
+				} else {
+					goto finish
+				}
+			}
 		}
 
 	} else { //get
@@ -68,11 +76,19 @@ func GetHandler(w http.ResponseWriter, req *http.Request, s Server) error {
 		}
 	}
 
+finish:
+
 	w.Header().Add("X-Etcd-Index", fmt.Sprint(event.Index))
 	w.Header().Add("X-Etcd-Term", fmt.Sprint(event.Term))
 	w.WriteHeader(http.StatusOK)
 
-	b, _ := json.Marshal(event)
+	var b []byte
+
+	if len(events) == 0 {
+		b, _ = json.Marshal(event)
+	} else {
+		b, _ = json.Marshal(events)
+	}
 	w.Write(b)
 
 	return nil
