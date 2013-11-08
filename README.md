@@ -277,7 +277,7 @@ We should see the response as an array of items
 [{"action":"GET","key":"/foo/foo","value":"barbar","index":10},{"action":"GET","key":"/foo/foo_dir","dir":true,"index":10}]
 ```
 
-which meas `foo=barbar` is a key-value pair under `/foo` and `foo_dir` is a directory.
+which means `foo=barbar` is a key-value pair under `/foo` and `foo_dir` is a directory.
 
 ## Advanced Usage
 
