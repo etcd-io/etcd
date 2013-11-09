@@ -13,5 +13,5 @@ export GOPATH="${DIR}/../../"
 for i in `find dist -type f`; do
 	file=$(echo $i | sed 's#dist/##g' | sed 's#/#-#g')
 	go build github.com/jteeuwen/go-bindata
-	./go-bindata -pkg "resources" -toc -out resources/$file.go -prefix dist $i
+	./go-bindata -nomemcopy -pkg "resources" -toc -out resources/$file.go -prefix dist $i
 done
