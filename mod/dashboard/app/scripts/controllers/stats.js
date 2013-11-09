@@ -14,14 +14,14 @@ angular.module('etcdStats', ['ngRoute', 'etcd'])
     });
 }])
 
-.controller('StatsCtrl', ['$scope', 'EtcdV1', 'statsVega', function ($scope, EtcdV1, statsVega) {
+.controller('StatsCtrl', ['$scope', 'EtcdV2', 'statsVega', function ($scope, EtcdV2, statsVega) {
   $scope.graphContainer = '#latency';
   $scope.graphVisibility = 'etcd-graph-show';
   $scope.tableVisibility = 'etcd-table-hide';
 
   //make requests
   function readStats() {
-    EtcdV1.getStat('leader').get().success(function(data) {
+    EtcdV2.getStat('leader').get().success(function(data) {
       $scope.leaderStats = data;
       $scope.leaderName = data.leader;
       $scope.machines = [];
