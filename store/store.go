@@ -32,6 +32,7 @@ type Store interface {
 	Recovery(state []byte) error
 	TotalTransactions() uint64
 	JsonStats() []byte
+	DeleteExpiredKeys(cutoff time.Time, index uint64, term uint64)
 }
 
 type store struct {
@@ -435,7 +436,7 @@ func (s *store) internalGet(nodePath string, index uint64, term uint64) (*Node, 
 }
 
 // deleteExpiredKyes will delete all
-func (s *store) deleteExpiredKeys(cutoff time.Time, index uint64, term uint64) {
+func (s *store) DeleteExpiredKeys(cutoff time.Time, index uint64, term uint64) {
 	s.worldLock.Lock()
 	defer s.worldLock.Unlock()
 

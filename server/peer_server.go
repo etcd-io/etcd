@@ -136,6 +136,8 @@ func (s *PeerServer) ListenAndServe(snapshot bool, cluster []string) error {
 		log.Debugf("%s restart as a follower", s.name)
 	}
 
+	go s.monitorSync()
+
 	// open the snapshot
 	if snapshot {
 		go s.monitorSnapshot()
@@ -421,6 +423,18 @@ func (s *PeerServer) monitorSnapshot() {
 		if uint64(currentWrites) > s.snapConf.writesThr {
 			s.raftServer.TakeSnapshot()
 			s.snapConf.lastWrites = s.store.TotalTransactions()
+		}
+	}
+}
+
+func (s *PeerServer) monitorSync() {
+	ticker := time.Tick(time.Millisecond * 500)
+	for {
+		select {
+		case now := <-ticker:
+			if s.raftServer.State() == raft.Leader {
+				s.raftServer.Do(s.store.CommandFactory().CreateSyncCommand(now))
+			}
 		}
 	}
 }

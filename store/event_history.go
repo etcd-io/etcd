@@ -51,10 +51,8 @@ func (eh *EventHistory) scan(prefix string, index uint64) ([]*Event, *etcdErr.Er
 	eh.rwl.RLock()
 	defer eh.rwl.RUnlock()
 
-	start := index - eh.StartIndex
-
 	// the index should locate after the event history's StartIndex
-	if start < 0 {
+	if index-eh.StartIndex < 0 {
 		return nil,
 			etcdErr.NewError(etcdErr.EcodeEventIndexCleared,
 				fmt.Sprintf("the requested history has been cleared [%v/%v]",
@@ -62,11 +60,11 @@ func (eh *EventHistory) scan(prefix string, index uint64) ([]*Event, *etcdErr.Er
 	}
 
 	// the index should locate before the size of the queue minus the duplicate count
-	if start >= (uint64(eh.Queue.Size) - eh.DupCnt) { // future index
+	if index > eh.LastIndex { // future index
 		return nil, nil
 	}
 
-	i := int((start + uint64(eh.Queue.Front)) % uint64(eh.Queue.Capacity))
+	i := eh.Queue.Front
 
 	events := make([]*Event, 0)
 	var eventIndex uint64
@@ -85,11 +83,10 @@ func (eh *EventHistory) scan(prefix string, index uint64) ([]*Event, *etcdErr.Er
 
 		i = (i + 1) % eh.Queue.Capacity
 
-		if i == eh.Queue.back() {
+		if i > eh.Queue.back() {
 			if eventIndex == 0 { // find nothing, return and watch from current index
 				return nil, nil
 			}
-
 			return events, nil
 		}
 	}

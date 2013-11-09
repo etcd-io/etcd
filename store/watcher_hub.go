@@ -54,7 +54,7 @@ func (wh *watcherHub) watch(prefix string, recursive bool, index uint64) (<-chan
 			eventChan <- e
 		}
 
-		if len(events) > 1 {
+		if events[0].Action == Expire {
 			eventChan <- nil
 		}
 
