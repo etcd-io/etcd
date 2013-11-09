@@ -2,7 +2,7 @@
 
 angular.module('etcdBrowser', ['ngRoute', 'etcd', 'timeRelative'])
 
-.constant('keyPrefix', '/v1/keys')
+.constant('keyPrefix', '/v2/keys/')
 
 .config(['$routeProvider', 'keyPrefix', function ($routeProvider, keyPrefix) {
   //read localstorage
@@ -18,7 +18,7 @@ angular.module('etcdBrowser', ['ngRoute', 'etcd', 'timeRelative'])
     });
 }])
 
-.controller('MainCtrl', ['$scope', '$location', 'EtcdV1', 'keyPrefix', function ($scope, $location, EtcdV1, keyPrefix) {
+.controller('MainCtrl', ['$scope', '$location', 'EtcdV2', 'keyPrefix', function ($scope, $location, EtcdV2, keyPrefix) {
   $scope.save = 'etcd-save-hide';
   $scope.preview = 'etcd-preview-hide';
   $scope.enableBack = true;
@@ -43,12 +43,12 @@ angular.module('etcdBrowser', ['ngRoute', 'etcd', 'timeRelative'])
     // Notify everyone of the update
     localStorage.setItem('etcdPath', $scope.etcdPath);
     $scope.enableBack = true;
-    //disable back button if at root (/v1/keys/)
-    if($scope.etcdPath === '/v1/keys') {
+    //disable back button if at root (/v2/keys/)
+    if($scope.etcdPath === keyPrefix) {
       $scope.enableBack = false;
     }
 
-    $scope.key = EtcdV1.getKey(etcdPathKey($scope.etcdPath));
+    $scope.key = EtcdV2.getKey(etcdPathKey($scope.etcdPath));
   });
 
   $scope.$watch('key', function() {
@@ -59,14 +59,14 @@ angular.module('etcdBrowser', ['ngRoute', 'etcd', 'timeRelative'])
       //hide any errors
       $('#etcd-browse-error').hide();
       // Looking at a directory if we got an array
-      if (data.length) {
-        $scope.list = data;
+      if (data.dir === true) {
+        $scope.list = data.kvs;
         $scope.preview = 'etcd-preview-hide';
       } else {
         $scope.singleValue = data.value;
         $scope.preview = 'etcd-preview-reveal';
         $scope.key.getParent().get().success(function(data) {
-          $scope.list = data;
+          $scope.list = data.kvs;
         });
       }
       $scope.previewMessage = 'No key selected.';
