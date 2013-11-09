@@ -1,0 +1,49 @@
+<div class="etcd-container etcd-stats {{columns}} {{tableVisibility}}">
+    <div class="etcd-body">
+        <div class="etcd-format-selector">
+            <div class="etcd-selector-item etcd-selector-graph" ng-click="showGraph()">
+                <svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
+                preserveAspectRatio="xMinYMin" viewBox="0 0 60 60.007" enable-background="new 0 0 60 60.007" xml:space="preserve">
+                <path fill="#1D1D1B" d="M30-0.091c-16.621,0-30.094,13.474-30.094,30.094c0,16.621,13.474,30.094,30.094,30.094
+                s30.094-13.474,30.094-30.094C60.094,13.383,46.621-0.091,30-0.091z M30,47.239c-9.519,0-17.235-7.716-17.235-17.235
+                S20.481,12.768,30,12.768c9.519,0,17.235,7.716,17.235,17.235S39.519,47.239,30,47.239z"/>
+                </svg>
+
+            </div>
+            <div class="etcd-selector-item etcd-selector-table" ng-click="showTable()">
+                <svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
+                preserveAspectRatio="xMinYMin" viewBox="0 0 59.496 59.503" enable-background="new 0 0 59.496 59.503" xml:space="preserve">
+                <rect x="0" y="0" fill="#1D1D1B" width="59.496" height="13.111"/>
+                <rect x="0" y="23.196" fill="#1D1D1B" width="59.496" height="13.111"/>
+                <rect x="0" y="46.392" fill="#1D1D1B" width="59.496" height="13.111"/>
+                </svg>
+            </div>
+        </div>
+        <div class="etcd-graph">
+            <h2>Machine Latency</h2>
+            <div class="etcd-graph-container" id="latency">
+            </div>
+        </div>
+        <div class="etcd-list">
+            <h2>Machine List</h2>
+            <table cellpadding="0" cellspacing="0">
+            <thead>
+                <td class="etcd-name-header">Machine Name</td>
+                <td class="etcd-latency">Latency</td>
+            </thead>
+            <tbody>
+                <tr ng-repeat="machine in machines">
+                    <td ng-switch on="{true:'leader', false: 'follower'}[leaderName == machine.name]">
+                        <div ng-switch-when="leader">{{machine.name}}<span class="etcd-machine-type">(leader)</span></div>
+                        <div ng-switch-default>{{machine.name}}</div>
+                    </td>
+                    <td>
+                        <div class="etcd-square ng-class: {'etcd-square-green': machine.latency.current < 25, 'etcd-square-orange': machine.latency.current < 60, 'etcd-square-red': machine.latency.current >= 60}"></div>
+                        <div class="etcd-latency-value">{{machine.latency.current | number:1 }} ms</div>
+                    </td>
+                </tr>
+            </tbody>
+            </table>
+        </div>
+    </div>
+</div>

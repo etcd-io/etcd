@@ -12,6 +12,7 @@ import (
 
 	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/log"
+	"github.com/coreos/etcd/mod"
 	"github.com/coreos/etcd/server/v1"
 	"github.com/coreos/etcd/server/v2"
 	"github.com/coreos/etcd/store"
@@ -55,6 +56,7 @@ func New(name string, urlStr string, listenHost string, tlsConf *TLSConfig, tlsI
 	s.handleFunc("/version", s.GetVersionHandler).Methods("GET")
 	s.installV1()
 	s.installV2()
+	s.installMod()
 
 	return s
 }
@@ -117,6 +119,11 @@ func (s *Server) installV2() {
 	s.handleFunc("/v2/stats/leader", s.GetLeaderStatsHandler).Methods("GET")
 	s.handleFunc("/v2/stats/store", s.GetStoreStatsHandler).Methods("GET")
 	s.handleFunc("/v2/speedTest", s.SpeedTestHandler).Methods("GET")
+}
+
+func (s *Server) installMod() {
+	r := s.Handler.(*mux.Router)
+	r.PathPrefix("/etcd/mod").Handler(http.StripPrefix("/etcd/mod", mod.HttpHandler()))
 }
 
 // Adds a v1 server handler to the router.
