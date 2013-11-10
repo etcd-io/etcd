@@ -1,6 +1,7 @@
 package test
 
 import (
+	"fmt"
 	"net/http"
 	"os"
 	"testing"
@@ -31,6 +32,7 @@ func TestRemoveNode(t *testing.T) {
 		for i := 0; i < 2; i++ {
 			client.Do(rmReq)
 
+			fmt.Println("send remove to node3 and wait for its exiting")
 			etcds[2].Wait()
 
 			resp, err := c.Get("_etcd/machines")
@@ -71,6 +73,7 @@ func TestRemoveNode(t *testing.T) {
 		// first kill the node, then remove it, then add it back
 		for i := 0; i < 2; i++ {
 			etcds[2].Kill()
+			fmt.Println("kill node3 and wait for its exiting")
 			etcds[2].Wait()
 
 			client.Do(rmReq)
