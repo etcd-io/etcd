@@ -51,13 +51,14 @@ func newDir(store *store, nodePath string, createIndex uint64, parent *Node,
 	ACL string, expireTime time.Time) *Node {
 
 	return &Node{
-		Path:        nodePath,
-		CreateIndex: createIndex,
-		Parent:      parent,
-		ACL:         ACL,
-		ExpireTime:  expireTime,
-		Children:    make(map[string]*Node),
-		store:       store,
+		Path:          nodePath,
+		CreateIndex:   createIndex,
+		ModifiedIndex: createIndex,
+		Parent:        parent,
+		ACL:           ACL,
+		ExpireTime:    expireTime,
+		Children:      make(map[string]*Node),
+		store:         store,
 	}
 }
 

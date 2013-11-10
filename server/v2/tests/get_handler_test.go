@@ -27,7 +27,7 @@ func TestV2GetKey(t *testing.T) {
 		assert.Equal(t, body["action"], "get", "")
 		assert.Equal(t, body["key"], "/foo/bar", "")
 		assert.Equal(t, body["value"], "XXX", "")
-		assert.Equal(t, body["index"], 1, "")
+		assert.Equal(t, body["modifiedIndex"], 1, "")
 	})
 }
 
@@ -54,7 +54,7 @@ func TestV2GetKeyRecursively(t *testing.T) {
 		assert.Equal(t, body["action"], "get", "")
 		assert.Equal(t, body["key"], "/foo", "")
 		assert.Equal(t, body["dir"], true, "")
-		assert.Equal(t, body["index"], 2, "")
+		assert.Equal(t, body["modifiedIndex"], 1, "")
 		assert.Equal(t, len(body["kvs"].([]interface{})), 2, "")
 
 		kv0 := body["kvs"].([]interface{})[0].(map[string]interface{})
@@ -111,7 +111,7 @@ func TestV2WatchKey(t *testing.T) {
 		assert.Equal(t, body["action"], "set", "")
 		assert.Equal(t, body["key"], "/foo/bar", "")
 		assert.Equal(t, body["value"], "XXX", "")
-		assert.Equal(t, body["index"], 1, "")
+		assert.Equal(t, body["modifiedIndex"], 1, "")
 	})
 }
 
@@ -164,6 +164,6 @@ func TestV2WatchKeyWithIndex(t *testing.T) {
 		assert.Equal(t, body["action"], "set", "")
 		assert.Equal(t, body["key"], "/foo/bar", "")
 		assert.Equal(t, body["value"], "YYY", "")
-		assert.Equal(t, body["index"], 2, "")
+		assert.Equal(t, body["modifiedIndex"], 2, "")
 	})
 }

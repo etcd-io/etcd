@@ -15,23 +15,23 @@ const (
 )
 
 type Event struct {
-	Action     string     `json:"action"`
-	Key        string     `json:"key, omitempty"`
-	Dir        bool       `json:"dir,omitempty"`
-	PrevValue  string     `json:"prevValue,omitempty"`
-	Value      string     `json:"value,omitempty"`
-	KVPairs    kvPairs    `json:"kvs,omitempty"`
-	Expiration *time.Time `json:"expiration,omitempty"`
-	TTL        int64      `json:"ttl,omitempty"` // Time to live in second
-	// The index of the etcd state machine when the comment is executed
-	Index uint64 `json:"index"`
+	Action string `json:"action"`
+
+	Key           string     `json:"key, omitempty"`
+	Dir           bool       `json:"dir,omitempty"`
+	PrevValue     string     `json:"prevValue,omitempty"`
+	Value         string     `json:"value,omitempty"`
+	KVPairs       kvPairs    `json:"kvs,omitempty"`
+	Expiration    *time.Time `json:"expiration,omitempty"`
+	TTL           int64      `json:"ttl,omitempty"` // Time to live in second
+	ModifiedIndex uint64     `json:"modifiedIndex"`
 }
 
 func newEvent(action string, key string, index uint64) *Event {
 	return &Event{
-		Action: action,
-		Key:    key,
-		Index:  index,
+		Action:        action,
+		Key:           key,
+		ModifiedIndex: index,
 	}
 }
 
@@ -47,6 +47,10 @@ func (e *Event) IsCreated() bool {
 	return false
 }
 
+func (e *Event) Index() uint64 {
+	return e.ModifiedIndex
+}
+
 // Converts an event object into a response object.
 func (event *Event) Response() interface{} {
 	if !event.Dir {
@@ -55,7 +59,7 @@ func (event *Event) Response() interface{} {
 			Key:        event.Key,
 			Value:      event.Value,
 			PrevValue:  event.PrevValue,
-			Index:      event.Index,
+			Index:      event.ModifiedIndex,
 			TTL:        event.TTL,
 			Expiration: event.Expiration,
 		}
@@ -80,7 +84,7 @@ func (event *Event) Response() interface{} {
 				Key:    kv.Key,
 				Value:  kv.Value,
 				Dir:    kv.Dir,
-				Index:  event.Index,
+				Index:  event.ModifiedIndex,
 			}
 		}
 		return responses

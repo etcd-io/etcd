@@ -31,9 +31,9 @@ func (eh *EventHistory) addEvent(e *Event) *Event {
 
 	eh.Queue.insert(e)
 
-	eh.LastIndex = e.Index
+	eh.LastIndex = e.Index()
 
-	eh.StartIndex = eh.Queue.Events[eh.Queue.Front].Index
+	eh.StartIndex = eh.Queue.Events[eh.Queue.Front].ModifiedIndex
 
 	return e
 }
@@ -62,7 +62,7 @@ func (eh *EventHistory) scan(prefix string, index uint64) (*Event, *etcdErr.Erro
 	for {
 		e := eh.Queue.Events[i]
 
-		if strings.HasPrefix(e.Key, prefix) && index <= e.Index { // make sure we bypass the smaller one
+		if strings.HasPrefix(e.Key, prefix) && index <= e.Index() { // make sure we bypass the smaller one
 			return e, nil
 		}
 

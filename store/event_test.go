@@ -23,7 +23,7 @@ func TestEventQueue(t *testing.T) {
 	n := eh.Queue.Size
 	for ; n > 0; n-- {
 		e := eh.Queue.Events[i]
-		if e.Index != uint64(j) {
+		if e.Index() != uint64(j) {
 			t.Fatalf("queue error!")
 		}
 		j++
@@ -42,19 +42,19 @@ func TestScanHistory(t *testing.T) {
 	eh.addEvent(newEvent(Create, "/foo/foo/foo", 5))
 
 	e, err := eh.scan("/foo", 1)
-	if err != nil || e.Index != 1 {
+	if err != nil || e.Index() != 1 {
 		t.Fatalf("scan error [/foo] [1] %v", e.Index)
 	}
 
 	e, err = eh.scan("/foo/bar", 1)
 
-	if err != nil || e.Index != 2 {
+	if err != nil || e.Index() != 2 {
 		t.Fatalf("scan error [/foo/bar] [2] %v", e.Index)
 	}
 
 	e, err = eh.scan("/foo/bar", 3)
 
-	if err != nil || e.Index != 4 {
+	if err != nil || e.Index() != 4 {
 		t.Fatalf("scan error [/foo/bar/bar] [4] %v", e.Index)
 	}
 

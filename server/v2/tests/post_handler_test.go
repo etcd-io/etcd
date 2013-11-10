@@ -23,7 +23,7 @@ func TestV2CreateUnique(t *testing.T) {
 		assert.Equal(t, body["action"], "create", "")
 		assert.Equal(t, body["key"], "/foo/bar/1", "")
 		assert.Equal(t, body["dir"], true, "")
-		assert.Equal(t, body["index"], 1, "")
+		assert.Equal(t, body["modifiedIndex"], 1, "")
 
 		// Second POST should add next index to list.
 		resp, _ = tests.PostForm(fmt.Sprintf("http://%s%s", s.URL(), "/v2/keys/foo/bar"), nil)

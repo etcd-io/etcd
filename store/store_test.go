@@ -81,7 +81,7 @@ func TestStoreCreateValue(t *testing.T) {
 	assert.Nil(t, e.KVPairs, "")
 	assert.Nil(t, e.Expiration, "")
 	assert.Equal(t, e.TTL, 0, "")
-	assert.Equal(t, e.Index, uint64(1), "")
+	assert.Equal(t, e.ModifiedIndex, uint64(1), "")
 }
 
 // Ensure that the store can create a new directory if it doesn't already exist.
@@ -119,7 +119,7 @@ func TestStoreUpdateValue(t *testing.T) {
 	assert.Equal(t, e.PrevValue, "bar", "")
 	assert.Equal(t, e.Value, "baz", "")
 	assert.Equal(t, e.TTL, 0, "")
-	assert.Equal(t, e.Index, uint64(2), "")
+	assert.Equal(t, e.ModifiedIndex, uint64(2), "")
 	e, _ = s.Get("/foo", false, false)
 	assert.Equal(t, e.Value, "baz", "")
 }

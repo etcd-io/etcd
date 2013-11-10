@@ -220,6 +220,8 @@ func (s *store) Delete(nodePath string, recursive bool) (*Event, error) {
 	s.worldLock.Lock()
 	defer s.worldLock.Unlock()
 
+	nextIndex := s.CurrentIndex + 1
+
 	n, err := s.internalGet(nodePath)
 
 	if err != nil { // if the node does not exist, return error
@@ -227,7 +229,7 @@ func (s *store) Delete(nodePath string, recursive bool) (*Event, error) {
 		return nil, err
 	}
 
-	e := newEvent(Delete, nodePath, s.CurrentIndex)
+	e := newEvent(Delete, nodePath, nextIndex)
 
 	if n.IsDir() {
 		e.Dir = true
@@ -249,7 +251,6 @@ func (s *store) Delete(nodePath string, recursive bool) (*Event, error) {
 
 	// update etcd index
 	s.CurrentIndex++
-	e.Index = s.CurrentIndex
 
 	s.WatcherHub.notify(e)
 	s.Stats.Inc(DeleteSuccess)
@@ -488,7 +489,7 @@ func (s *store) checkDir(parent *Node, dirName string) (*Node, *etcdErr.Error) {
 		return nil, etcdErr.NewError(etcdErr.EcodeNotDir, parent.Path, s.CurrentIndex)
 	}
 
-	n := newDir(s, path.Join(parent.Path, dirName), s.CurrentIndex, parent, parent.ACL, Permanent)
+	n := newDir(s, path.Join(parent.Path, dirName), s.CurrentIndex+1, parent, parent.ACL, Permanent)
 
 	parent.Children[dirName] = n
 
