@@ -91,7 +91,7 @@ func (s *store) Get(nodePath string, recursive, sorted bool) (*Event, error) {
 		return nil, err
 	}
 
-	e := newEvent(Get, nodePath, s.CurrentIndex)
+	e := newEvent(Get, nodePath, n.ModifiedIndex)
 
 	if n.IsDir() { // node is a directory
 		e.Dir = true
