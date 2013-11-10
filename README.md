@@ -21,6 +21,8 @@ See [etcdctl][etcdctl] for a simple command line client. Or feel free to just us
 
 - Mailing list: http://coreos.com/lists/etcd-dev/
 - IRC: #coreos on irc.freenode.net
+- Planning/Roadmap: https://trello.com/b/OiEbU547/etcd
+- Bugs: https://github.com/coreos/etcd/issues
 
 ## Getting Started
 
