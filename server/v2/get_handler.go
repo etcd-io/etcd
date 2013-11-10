@@ -68,7 +68,9 @@ func GetHandler(w http.ResponseWriter, req *http.Request, s Server) error {
 		}
 	}
 
-	w.Header().Add("X-Etcd-Index", fmt.Sprint(event.Index))
+	w.Header().Add("X-Etcd-Index", fmt.Sprint(s.Store().Index()))
+	w.Header().Add("X-Raft-Index", fmt.Sprint(s.CommitIndex()))
+	w.Header().Add("X-Raft-Term", fmt.Sprint(s.Term()))
 	w.WriteHeader(http.StatusOK)
 	b, _ := json.Marshal(event)
 

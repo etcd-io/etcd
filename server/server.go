@@ -225,6 +225,7 @@ func (s *Server) Close() {
 	}
 }
 
+// Dispatch command to the current leader
 func (s *Server) Dispatch(c raft.Command, w http.ResponseWriter, req *http.Request) error {
 	ps := s.peerServer
 	if ps.raftServer.State() == raft.Leader {
@@ -251,6 +252,12 @@ func (s *Server) Dispatch(c raft.Command, w http.ResponseWriter, req *http.Reque
 		} else {
 			e, _ := result.(*store.Event)
 			b, _ = json.Marshal(e)
+
+			// etcd index should be the same as the event index
+			// which is also the last modified index of the node
+			w.Header().Add("X-Etcd-Index", fmt.Sprint(e.Index))
+			w.Header().Add("X-Raft-Index", fmt.Sprint(s.CommitIndex()))
+			w.Header().Add("X-Raft-Term", fmt.Sprint(s.Term()))
 
 			if e.IsCreated() {
 				w.WriteHeader(http.StatusCreated)

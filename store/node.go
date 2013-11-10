@@ -17,7 +17,6 @@ type Node struct {
 	Path string
 
 	CreateIndex   uint64
-	CreateTerm    uint64
 	ModifiedIndex uint64
 
 	Parent *Node `json:"-"` // should not encode this field! avoid circular dependency.
