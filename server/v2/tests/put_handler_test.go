@@ -22,7 +22,7 @@ func TestV2SetKey(t *testing.T) {
 		resp, err := tests.PutForm(fmt.Sprintf("http://%s%s", s.URL(), "/v2/keys/foo/bar"), v)
 		body := tests.ReadBody(resp)
 		assert.Nil(t, err, "")
-		assert.Equal(t, string(body), `{"action":"set","key":"/foo/bar","value":"XXX","index":3,"term":0}`, "")
+		assert.Equal(t, string(body), `{"action":"set","key":"/foo/bar","value":"XXX","index":1}`, "")
 	})
 }
 
@@ -42,7 +42,7 @@ func TestV2SetKeyWithTTL(t *testing.T) {
 
 		// Make sure the expiration date is correct.
 		expiration, _ := time.Parse(time.RFC3339Nano, body["expiration"].(string))
-		assert.Equal(t, expiration.Sub(t0) / time.Second, 20, "")
+		assert.Equal(t, expiration.Sub(t0)/time.Second, 20, "")
 	})
 }
 
@@ -110,7 +110,7 @@ func TestV2UpdateKeySuccess(t *testing.T) {
 		v.Set("value", "XXX")
 		resp, _ := tests.PutForm(fmt.Sprintf("http://%s%s", s.URL(), "/v2/keys/foo/bar"), v)
 		tests.ReadBody(resp)
-		
+
 		v.Set("value", "YYY")
 		v.Set("prevExist", "true")
 		resp, _ = tests.PutForm(fmt.Sprintf("http://%s%s", s.URL(), "/v2/keys/foo/bar"), v)
@@ -160,7 +160,7 @@ func TestV2UpdateKeyFailOnMissingDirectory(t *testing.T) {
 // Ensures that a key is set only if the previous index matches.
 //
 //   $ curl -X PUT localhost:4001/v2/keys/foo/bar -d value=XXX
-//   $ curl -X PUT localhost:4001/v2/keys/foo/bar -d value=YYY -d prevIndex=3
+//   $ curl -X PUT localhost:4001/v2/keys/foo/bar -d value=YYY -d prevIndex=1
 //
 func TestV2SetKeyCASOnIndexSuccess(t *testing.T) {
 	tests.RunServer(func(s *server.Server) {
@@ -169,13 +169,13 @@ func TestV2SetKeyCASOnIndexSuccess(t *testing.T) {
 		resp, _ := tests.PutForm(fmt.Sprintf("http://%s%s", s.URL(), "/v2/keys/foo/bar"), v)
 		tests.ReadBody(resp)
 		v.Set("value", "YYY")
-		v.Set("prevIndex", "3")
+		v.Set("prevIndex", "1")
 		resp, _ = tests.PutForm(fmt.Sprintf("http://%s%s", s.URL(), "/v2/keys/foo/bar"), v)
 		body := tests.ReadBodyJSON(resp)
 		assert.Equal(t, body["action"], "compareAndSwap", "")
 		assert.Equal(t, body["prevValue"], "XXX", "")
 		assert.Equal(t, body["value"], "YYY", "")
-		assert.Equal(t, body["index"], 4, "")
+		assert.Equal(t, body["index"], 2, "")
 	})
 }
 
@@ -196,8 +196,8 @@ func TestV2SetKeyCASOnIndexFail(t *testing.T) {
 		body := tests.ReadBodyJSON(resp)
 		assert.Equal(t, body["errorCode"], 101, "")
 		assert.Equal(t, body["message"], "Test Failed", "")
-		assert.Equal(t, body["cause"], "[ != XXX] [10 != 3]", "")
-		assert.Equal(t, body["index"], 4, "")
+		assert.Equal(t, body["cause"], "[ != XXX] [10 != 1]", "")
+		assert.Equal(t, body["index"], 1, "")
 	})
 }
 
@@ -236,7 +236,7 @@ func TestV2SetKeyCASOnValueSuccess(t *testing.T) {
 		assert.Equal(t, body["action"], "compareAndSwap", "")
 		assert.Equal(t, body["prevValue"], "XXX", "")
 		assert.Equal(t, body["value"], "YYY", "")
-		assert.Equal(t, body["index"], 4, "")
+		assert.Equal(t, body["index"], 2, "")
 	})
 }
 
@@ -257,8 +257,8 @@ func TestV2SetKeyCASOnValueFail(t *testing.T) {
 		body := tests.ReadBodyJSON(resp)
 		assert.Equal(t, body["errorCode"], 101, "")
 		assert.Equal(t, body["message"], "Test Failed", "")
-		assert.Equal(t, body["cause"], "[AAA != XXX] [0 != 3]", "")
-		assert.Equal(t, body["index"], 4, "")
+		assert.Equal(t, body["cause"], "[AAA != XXX] [0 != 1]", "")
+		assert.Equal(t, body["index"], 1, "")
 	})
 }
 

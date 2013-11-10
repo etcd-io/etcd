@@ -19,13 +19,13 @@ func SetKeyHandler(w http.ResponseWriter, req *http.Request, s Server) error {
 	// Parse non-blank value.
 	value := req.Form.Get("value")
 	if len(value) == 0 {
-		return etcdErr.NewError(200, "Set", store.UndefIndex, store.UndefTerm)
+		return etcdErr.NewError(200, "Set", s.Store().Index())
 	}
 
 	// Convert time-to-live to an expiration time.
 	expireTime, err := store.TTL(req.Form.Get("ttl"))
 	if err != nil {
-		return etcdErr.NewError(202, "Set", store.UndefIndex, store.UndefTerm)
+		return etcdErr.NewError(202, "Set", s.Store().Index())
 	}
 
 	// If the "prevValue" is specified then test-and-set. Otherwise create a new key.

@@ -8,11 +8,6 @@ import (
 	etcdErr "github.com/coreos/etcd/error"
 )
 
-const (
-	normal = iota
-	removed
-)
-
 var Permanent time.Time
 
 // Node is the basic element in the store system.
@@ -26,7 +21,7 @@ type Node struct {
 	ModifiedIndex uint64
 	ModifiedTerm  uint64
 
-	Parent *Node `json:"-"` // should not encode this field! avoid cyclical dependency.
+	Parent *Node `json:"-"` // should not encode this field! avoid circular dependency.
 
 	ExpireTime time.Time
 	ACL        string
@@ -39,14 +34,12 @@ type Node struct {
 
 // newKV creates a Key-Value pair
 func newKV(store *store, nodePath string, value string, createIndex uint64,
-	createTerm uint64, parent *Node, ACL string, expireTime time.Time) *Node {
+	parent *Node, ACL string, expireTime time.Time) *Node {
 
 	return &Node{
 		Path:          nodePath,
 		CreateIndex:   createIndex,
-		CreateTerm:    createTerm,
 		ModifiedIndex: createIndex,
-		ModifiedTerm:  createTerm,
 		Parent:        parent,
 		ACL:           ACL,
 		store:         store,
@@ -56,13 +49,12 @@ func newKV(store *store, nodePath string, value string, createIndex uint64,
 }
 
 // newDir creates a directory
-func newDir(store *store, nodePath string, createIndex uint64, createTerm uint64,
-	parent *Node, ACL string, expireTime time.Time) *Node {
+func newDir(store *store, nodePath string, createIndex uint64, parent *Node,
+	ACL string, expireTime time.Time) *Node {
 
 	return &Node{
 		Path:        nodePath,
 		CreateIndex: createIndex,
-		CreateTerm:  createTerm,
 		Parent:      parent,
 		ACL:         ACL,
 		ExpireTime:  expireTime,
@@ -101,7 +93,7 @@ func (n *Node) IsDir() bool {
 // If the receiver node is not a key-value pair, a "Not A File" error will be returned.
 func (n *Node) Read() (string, *etcdErr.Error) {
 	if n.IsDir() {
-		return "", etcdErr.NewError(etcdErr.EcodeNotFile, "", UndefIndex, UndefTerm)
+		return "", etcdErr.NewError(etcdErr.EcodeNotFile, "", n.store.Index())
 	}
 
 	return n.Value, nil
@@ -109,14 +101,13 @@ func (n *Node) Read() (string, *etcdErr.Error) {
 
 // Write function set the value of the node to the given value.
 // If the receiver node is a directory, a "Not A File" error will be returned.
-func (n *Node) Write(value string, index uint64, term uint64) *etcdErr.Error {
+func (n *Node) Write(value string, index uint64) *etcdErr.Error {
 	if n.IsDir() {
-		return etcdErr.NewError(etcdErr.EcodeNotFile, "", UndefIndex, UndefTerm)
+		return etcdErr.NewError(etcdErr.EcodeNotFile, "", n.store.Index())
 	}
 
 	n.Value = value
 	n.ModifiedIndex = index
-	n.ModifiedTerm = term
 
 	return nil
 }
@@ -132,7 +123,7 @@ func (n *Node) ExpirationAndTTL() (*time.Time, int64) {
 // If the receiver node is not a directory, a "Not A Directory" error will be returned.
 func (n *Node) List() ([]*Node, *etcdErr.Error) {
 	if !n.IsDir() {
-		return nil, etcdErr.NewError(etcdErr.EcodeNotDir, "", UndefIndex, UndefTerm)
+		return nil, etcdErr.NewError(etcdErr.EcodeNotDir, "", n.store.Index())
 	}
 
 	nodes := make([]*Node, len(n.Children))
@@ -150,7 +141,7 @@ func (n *Node) List() ([]*Node, *etcdErr.Error) {
 // On success, it returns the file node
 func (n *Node) GetChild(name string) (*Node, *etcdErr.Error) {
 	if !n.IsDir() {
-		return nil, etcdErr.NewError(etcdErr.EcodeNotDir, n.Path, UndefIndex, UndefTerm)
+		return nil, etcdErr.NewError(etcdErr.EcodeNotDir, n.Path, n.store.Index())
 	}
 
 	child, ok := n.Children[name]
@@ -168,7 +159,7 @@ func (n *Node) GetChild(name string) (*Node, *etcdErr.Error) {
 // error will be returned
 func (n *Node) Add(child *Node) *etcdErr.Error {
 	if !n.IsDir() {
-		return etcdErr.NewError(etcdErr.EcodeNotDir, "", UndefIndex, UndefTerm)
+		return etcdErr.NewError(etcdErr.EcodeNotDir, "", n.store.Index())
 	}
 
 	_, name := path.Split(child.Path)
@@ -176,7 +167,7 @@ func (n *Node) Add(child *Node) *etcdErr.Error {
 	_, ok := n.Children[name]
 
 	if ok {
-		return etcdErr.NewError(etcdErr.EcodeNodeExist, "", UndefIndex, UndefTerm)
+		return etcdErr.NewError(etcdErr.EcodeNodeExist, "", n.store.Index())
 	}
 
 	n.Children[name] = child
@@ -189,7 +180,7 @@ func (n *Node) Remove(recursive bool, callback func(path string)) *etcdErr.Error
 
 	if n.IsDir() && !recursive {
 		// cannot delete a directory without set recursive to true
-		return etcdErr.NewError(etcdErr.EcodeNotFile, "", UndefIndex, UndefTerm)
+		return etcdErr.NewError(etcdErr.EcodeNotFile, "", n.store.Index())
 	}
 
 	if !n.IsDir() { // key-value pair
@@ -309,10 +300,10 @@ func (n *Node) UpdateTTL(expireTime time.Time) {
 // If the node is a key-value pair, it will clone the pair.
 func (n *Node) Clone() *Node {
 	if !n.IsDir() {
-		return newKV(n.store, n.Path, n.Value, n.CreateIndex, n.CreateTerm, n.Parent, n.ACL, n.ExpireTime)
+		return newKV(n.store, n.Path, n.Value, n.CreateIndex, n.Parent, n.ACL, n.ExpireTime)
 	}
 
-	clone := newDir(n.store, n.Path, n.CreateIndex, n.CreateTerm, n.Parent, n.ACL, n.ExpireTime)
+	clone := newDir(n.store, n.Path, n.CreateIndex, n.Parent, n.ACL, n.ExpireTime)
 
 	for key, child := range n.Children {
 		clone.Children[key] = child.Clone()

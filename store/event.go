@@ -14,11 +14,6 @@ const (
 	Expire         = "expire"
 )
 
-const (
-	UndefIndex = 0
-	UndefTerm  = 0
-)
-
 type Event struct {
 	Action     string     `json:"action"`
 	Key        string     `json:"key, omitempty"`
@@ -28,17 +23,15 @@ type Event struct {
 	KVPairs    kvPairs    `json:"kvs,omitempty"`
 	Expiration *time.Time `json:"expiration,omitempty"`
 	TTL        int64      `json:"ttl,omitempty"` // Time to live in second
-	// The command index of the raft machine when the command is executed
+	// The index of the etcd state machine when the comment is executed
 	Index uint64 `json:"index"`
-	Term  uint64 `json:"term"`
 }
 
-func newEvent(action string, key string, index uint64, term uint64) *Event {
+func newEvent(action string, key string, index uint64) *Event {
 	return &Event{
 		Action: action,
 		Key:    key,
 		Index:  index,
-		Term:   term,
 	}
 }
 

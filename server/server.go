@@ -234,7 +234,7 @@ func (s *Server) Dispatch(c raft.Command, w http.ResponseWriter, req *http.Reque
 		}
 
 		if result == nil {
-			return etcdErr.NewError(300, "Empty result from raft", store.UndefIndex, store.UndefTerm)
+			return etcdErr.NewError(300, "Empty result from raft", s.Store().Index())
 		}
 
 		// response for raft related commands[join/remove]
@@ -268,7 +268,7 @@ func (s *Server) Dispatch(c raft.Command, w http.ResponseWriter, req *http.Reque
 
 		// No leader available.
 		if leader == "" {
-			return etcdErr.NewError(300, "", store.UndefIndex, store.UndefTerm)
+			return etcdErr.NewError(300, "", s.Store().Index())
 		}
 
 		var url string
@@ -317,7 +317,7 @@ func (s *Server) GetVersionHandler(w http.ResponseWriter, req *http.Request) err
 func (s *Server) GetLeaderHandler(w http.ResponseWriter, req *http.Request) error {
 	leader := s.peerServer.RaftServer().Leader()
 	if leader == "" {
-		return etcdErr.NewError(etcdErr.EcodeLeaderElect, "", store.UndefIndex, store.UndefTerm)
+		return etcdErr.NewError(etcdErr.EcodeLeaderElect, "", s.Store().Index())
 	}
 	w.WriteHeader(http.StatusOK)
 	url, _ := s.registry.PeerURL(leader)
@@ -348,7 +348,7 @@ func (s *Server) GetLeaderStatsHandler(w http.ResponseWriter, req *http.Request)
 
 	leader := s.peerServer.RaftServer().Leader()
 	if leader == "" {
-		return etcdErr.NewError(300, "", store.UndefIndex, store.UndefTerm)
+		return etcdErr.NewError(300, "", s.Store().Index())
 	}
 	hostname, _ := s.registry.ClientURL(leader)
 	redirect(hostname, w, req)

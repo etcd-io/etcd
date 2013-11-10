@@ -16,11 +16,9 @@ import (
 // event happens between the end of the first watch command and the start
 // of the second command.
 type watcherHub struct {
-	watchers        map[string]*list.List
-	count           int64 // current number of watchers.
-	EventHistory    *EventHistory
-	pendingWatchers map[*list.Element]*list.List
-	pendingList     map[*list.List]string
+	watchers     map[string]*list.List
+	count        int64 // current number of watchers.
+	EventHistory *EventHistory
 }
 
 // newWatchHub creates a watchHub. The capacity determines how many events we will
@@ -29,10 +27,8 @@ type watcherHub struct {
 // Ideally, it should smaller than 20K/s[max throughput] * 2 * 50ms[RTT] = 2000
 func newWatchHub(capacity int) *watcherHub {
 	return &watcherHub{
-		watchers:        make(map[string]*list.List),
-		EventHistory:    newEventHistory(capacity),
-		pendingWatchers: make(map[*list.Element]*list.List),
-		pendingList:     make(map[*list.List]string),
+		watchers:     make(map[string]*list.List),
+		EventHistory: newEventHistory(capacity),
 	}
 }
 
@@ -41,22 +37,16 @@ func newWatchHub(capacity int) *watcherHub {
 // If recursive is false, the first change after index at prefix will be sent to the event channel.
 // If index is zero, watch will start from the current index + 1.
 func (wh *watcherHub) watch(prefix string, recursive bool, index uint64) (<-chan *Event, *etcdErr.Error) {
-	events, err := wh.EventHistory.scan(prefix, index)
+	event, err := wh.EventHistory.scan(prefix, index)
 
 	if err != nil {
 		return nil, err
 	}
 
-	eventChan := make(chan *Event, len(events)+5) // use a buffered channel
+	eventChan := make(chan *Event, 1) // use a buffered channel
 
-	if events != nil {
-		for _, e := range events {
-			eventChan <- e
-		}
-
-		if events[0].Action == Expire {
-			eventChan <- nil
-		}
+	if event != nil {
+		eventChan <- event
 
 		return eventChan, nil
 	}
@@ -123,43 +113,17 @@ func (wh *watcherHub) notifyWatchers(e *Event, path string, deleted bool) {
 
 			if w.notify(e, e.Key == path, deleted) {
 
-				if e.Action == Expire {
-					wh.pendingWatchers[curr] = l
-					wh.pendingList[l] = path
-				} else {
-					// if we successfully notify a watcher
-					// we need to remove the watcher from the list
-					// and decrease the counter
-					l.Remove(curr)
-					atomic.AddInt64(&wh.count, -1)
-				}
+				// if we successfully notify a watcher
+				// we need to remove the watcher from the list
+				// and decrease the counter
+				l.Remove(curr)
+				atomic.AddInt64(&wh.count, -1)
 
 			}
 
 			curr = next // update current to the next
 		}
 	}
-}
-
-func (wh *watcherHub) clearPendingWatchers() {
-	if len(wh.pendingWatchers) == 0 { // avoid making new maps
-		return
-	}
-
-	for e, l := range wh.pendingWatchers {
-		l.Remove(e)
-
-		if l.Len() == 0 {
-			path := wh.pendingList[l]
-			delete(wh.watchers, path)
-		}
-
-		w, _ := e.Value.(*watcher)
-		w.eventChan <- nil
-	}
-
-	wh.pendingWatchers = make(map[*list.Element]*list.List)
-	wh.pendingList = make(map[*list.List]string)
 }
 
 // clone function clones the watcherHub and return the cloned one.

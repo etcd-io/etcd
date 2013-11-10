@@ -30,8 +30,7 @@ func (c *CompareAndSwapCommand) CommandName() string {
 func (c *CompareAndSwapCommand) Apply(server raft.Server) (interface{}, error) {
 	s, _ := server.StateMachine().(store.Store)
 
-	e, err := s.CompareAndSwap(c.Key, c.PrevValue, c.PrevIndex,
-		c.Value, c.ExpireTime, server.CommitIndex(), server.Term())
+	e, err := s.CompareAndSwap(c.Key, c.PrevValue, c.PrevIndex, c.Value, c.ExpireTime)
 
 	if err != nil {
 		log.Debug(err)

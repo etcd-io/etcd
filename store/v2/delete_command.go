@@ -25,7 +25,7 @@ func (c *DeleteCommand) CommandName() string {
 func (c *DeleteCommand) Apply(server raft.Server) (interface{}, error) {
 	s, _ := server.StateMachine().(store.Store)
 
-	e, err := s.Delete(c.Key, c.Recursive, server.CommitIndex(), server.Term())
+	e, err := s.Delete(c.Key, c.Recursive)
 
 	if err != nil {
 		log.Debug(err)

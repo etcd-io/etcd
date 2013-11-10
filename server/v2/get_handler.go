@@ -16,7 +16,6 @@ import (
 func GetHandler(w http.ResponseWriter, req *http.Request, s Server) error {
 	var err error
 	var event *store.Event
-	events := make([]*store.Event, 0)
 
 	vars := mux.Vars(req)
 	key := "/" + vars["key"]
@@ -42,51 +41,36 @@ func GetHandler(w http.ResponseWriter, req *http.Request, s Server) error {
 		if waitIndex != "" {
 			sinceIndex, err = strconv.ParseUint(string(req.FormValue("waitIndex")), 10, 64)
 			if err != nil {
-				return etcdErr.NewError(etcdErr.EcodeIndexNaN, "Watch From Index", store.UndefIndex, store.UndefTerm)
+				return etcdErr.NewError(etcdErr.EcodeIndexNaN, "Watch From Index", s.Store().Index())
 			}
 		}
 
 		// Start the watcher on the store.
-		eventChan, err := s.Store().Watch(key, recursive, sinceIndex, s.CommitIndex(), s.Term())
+		eventChan, err := s.Store().Watch(key, recursive, sinceIndex)
 		if err != nil {
-			return etcdErr.NewError(500, key, store.UndefIndex, store.UndefTerm)
+			return etcdErr.NewError(500, key, s.Store().Index())
 		}
 
 		cn, _ := w.(http.CloseNotifier)
 		closeChan := cn.CloseNotify()
 
-	eventLoop:
-		for {
-			select {
-			case <-closeChan:
-				return nil
-			case event = <-eventChan:
-				// for events other than expire, just one event for one watch
-				// for expire event, we might have a stream of events
-				// we use a nil item to terminate the expire event stream
-				if event != nil && event.Action == store.Expire {
-					events = append(events, event)
-				} else {
-					events = append(events, event)
-					break eventLoop
-				}
-			}
+		select {
+		case <-closeChan:
+			return nil
+		case event = <-eventChan:
 		}
 
 	} else { //get
 		// Retrieve the key from the store.
-		event, err = s.Store().Get(key, recursive, sorted, s.CommitIndex(), s.Term())
+		event, err = s.Store().Get(key, recursive, sorted)
 		if err != nil {
 			return err
 		}
 	}
 
-	var b []byte
-
-	w.Header().Add("X-Etcd-Index", fmt.Sprint(events[0].Index))
-	w.Header().Add("X-Etcd-Term", fmt.Sprint(events[0].Term))
+	w.Header().Add("X-Etcd-Index", fmt.Sprint(event.Index))
 	w.WriteHeader(http.StatusOK)
-	b, _ = json.Marshal(events)
+	b, _ := json.Marshal(event)
 
 	w.Write(b)
 

@@ -13,7 +13,7 @@ func TestEventQueue(t *testing.T) {
 
 	// Add
 	for i := 0; i < 200; i++ {
-		e := newEvent(Create, "/foo", uint64(i), 1)
+		e := newEvent(Create, "/foo", uint64(i))
 		eh.addEvent(e)
 	}
 
@@ -35,27 +35,27 @@ func TestScanHistory(t *testing.T) {
 	eh := newEventHistory(100)
 
 	// Add
-	eh.addEvent(newEvent(Create, "/foo", 1, 1))
-	eh.addEvent(newEvent(Create, "/foo/bar", 2, 1))
-	eh.addEvent(newEvent(Create, "/foo/foo", 3, 1))
-	eh.addEvent(newEvent(Create, "/foo/bar/bar", 4, 1))
-	eh.addEvent(newEvent(Create, "/foo/foo/foo", 5, 1))
+	eh.addEvent(newEvent(Create, "/foo", 1))
+	eh.addEvent(newEvent(Create, "/foo/bar", 2))
+	eh.addEvent(newEvent(Create, "/foo/foo", 3))
+	eh.addEvent(newEvent(Create, "/foo/bar/bar", 4))
+	eh.addEvent(newEvent(Create, "/foo/foo/foo", 5))
 
 	e, err := eh.scan("/foo", 1)
-	if err != nil || e[0].Index != 1 {
-		t.Fatalf("scan error [/foo] [1] %v", e[0].Index)
+	if err != nil || e.Index != 1 {
+		t.Fatalf("scan error [/foo] [1] %v", e.Index)
 	}
 
 	e, err = eh.scan("/foo/bar", 1)
 
-	if err != nil || e[0].Index != 2 {
-		t.Fatalf("scan error [/foo/bar] [2] %v", e[0].Index)
+	if err != nil || e.Index != 2 {
+		t.Fatalf("scan error [/foo/bar] [2] %v", e.Index)
 	}
 
 	e, err = eh.scan("/foo/bar", 3)
 
-	if err != nil || e[0].Index != 4 {
-		t.Fatalf("scan error [/foo/bar/bar] [4] %v", e[0].Index)
+	if err != nil || e.Index != 4 {
+		t.Fatalf("scan error [/foo/bar/bar] [4] %v", e.Index)
 	}
 
 	e, err = eh.scan("/foo/bar", 6)
