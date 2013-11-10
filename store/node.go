@@ -226,8 +226,9 @@ func (n *Node) Remove(recursive bool, callback func(path string)) *etcdErr.Error
 func (n *Node) Pair(recurisive, sorted bool) KeyValuePair {
 	if n.IsDir() {
 		pair := KeyValuePair{
-			Key: n.Path,
-			Dir: true,
+			Key:           n.Path,
+			Dir:           true,
+			ModifiedIndex: n.ModifiedIndex,
 		}
 		pair.Expiration, pair.TTL = n.ExpirationAndTTL()
 
@@ -263,8 +264,9 @@ func (n *Node) Pair(recurisive, sorted bool) KeyValuePair {
 	}
 
 	pair := KeyValuePair{
-		Key:   n.Path,
-		Value: n.Value,
+		Key:           n.Path,
+		Value:         n.Value,
+		ModifiedIndex: n.ModifiedIndex,
 	}
 	pair.Expiration, pair.TTL = n.ExpirationAndTTL()
 	return pair
