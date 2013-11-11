@@ -53,7 +53,7 @@ type snapshotConf struct {
 	writesThr uint64
 }
 
-func NewPeerServer(name string, path string, url string, listenHost string, tlsConf *TLSConfig, tlsInfo *TLSInfo, registry *Registry, store store.Store) *PeerServer {
+func NewPeerServer(name string, path string, url string, listenHost string, tlsConf *TLSConfig, tlsInfo *TLSInfo, registry *Registry, store store.Store, snapCount int) *PeerServer {
 	s := &PeerServer{
 		name:       name,
 		url:        url,
@@ -62,7 +62,7 @@ func NewPeerServer(name string, path string, url string, listenHost string, tlsC
 		tlsInfo:    tlsInfo,
 		registry:   registry,
 		store:      store,
-		snapConf:   &snapshotConf{time.Second * 3, 0, 20 * 1000},
+		snapConf:   &snapshotConf{time.Second * 3, 0, uint64(snapCount)},
 		followersStats: &raftFollowersStats{
 			Leader:    name,
 			Followers: make(map[string]*raftFollowerStats),
@@ -417,10 +417,10 @@ func (s *PeerServer) PeerStats() []byte {
 func (s *PeerServer) monitorSnapshot() {
 	for {
 		time.Sleep(s.snapConf.checkingInterval)
-		currentWrites := 0
+		currentWrites := s.store.TotalTransactions() - s.snapConf.lastWrites
 		if uint64(currentWrites) > s.snapConf.writesThr {
 			s.raftServer.TakeSnapshot()
-			s.snapConf.lastWrites = 0
+			s.snapConf.lastWrites = s.store.TotalTransactions()
 		}
 	}
 }

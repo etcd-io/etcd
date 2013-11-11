@@ -11,4 +11,5 @@ packages="
 	bitbucket.org/kardianos/osext
 	code.google.com/p/go.net
 	code.google.com/p/goprotobuf
+	github.com/jteeuwen/go-bindata
 "
