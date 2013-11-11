@@ -58,13 +58,13 @@ This allows the message to be easier to read on github as well as in various git
 The subject line contains succinct description of the change.
 
 ### Allowed <type>
-feat (feature)
-fix (bug fix)
-docs (documentation)
-style (formatting, missing semi colons, …)
-refactor
-test (when adding missing tests)
-chore (maintain)
+- feat (feature)
+- fix (bug fix)
+- docs (documentation)
+- style (formatting, missing semi colons, …)
+- refactor
+- test (when adding missing tests)
+- chore (maintain)
 
 ### Allowed <scope>
 
