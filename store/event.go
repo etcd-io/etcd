@@ -15,8 +15,7 @@ const (
 )
 
 type Event struct {
-	Action string `json:"action"`
-
+	Action        string     `json:"action"`
 	Key           string     `json:"key, omitempty"`
 	Dir           bool       `json:"dir,omitempty"`
 	PrevValue     string     `json:"prevValue,omitempty"`
