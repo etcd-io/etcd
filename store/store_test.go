@@ -139,7 +139,13 @@ func TestStoreUpdateFailsIfDirectory(t *testing.T) {
 // Ensure that the store can update the TTL on a value.
 func TestStoreUpdateValueTTL(t *testing.T) {
 	s := newStore()
-	go mockSyncService(s.DeleteExpiredKeys)
+
+	c := make(chan bool)
+	defer func() {
+		c <- true
+	}()
+	go mockSyncService(s.DeleteExpiredKeys, c)
+
 	s.Create("/foo", "bar", false, Permanent)
 	_, err := s.Update("/foo", "baz", time.Now().Add(500*time.Millisecond))
 	e, _ := s.Get("/foo", false, false)
@@ -154,7 +160,13 @@ func TestStoreUpdateValueTTL(t *testing.T) {
 // Ensure that the store can update the TTL on a directory.
 func TestStoreUpdateDirTTL(t *testing.T) {
 	s := newStore()
-	go mockSyncService(s.DeleteExpiredKeys)
+
+	c := make(chan bool)
+	defer func() {
+		c <- true
+	}()
+	go mockSyncService(s.DeleteExpiredKeys, c)
+
 	s.Create("/foo", "", false, Permanent)
 	s.Create("/foo/bar", "baz", false, Permanent)
 	_, err := s.Update("/foo", "", time.Now().Add(500*time.Millisecond))
@@ -339,7 +351,13 @@ func TestStoreWatchRecursiveCompareAndSwap(t *testing.T) {
 // Ensure that the store can watch for key expiration.
 func TestStoreWatchExpire(t *testing.T) {
 	s := newStore()
-	go mockSyncService(s.DeleteExpiredKeys)
+
+	stopChan := make(chan bool)
+	defer func() {
+		stopChan <- true
+	}()
+	go mockSyncService(s.DeleteExpiredKeys, stopChan)
+
 	s.Create("/foo", "bar", false, time.Now().Add(500*time.Millisecond))
 	s.Create("/foofoo", "barbarbar", false, time.Now().Add(500*time.Millisecond))
 
@@ -379,7 +397,13 @@ func TestStoreRecover(t *testing.T) {
 // Ensure that the store can recover from a previously saved state that includes an expiring key.
 func TestStoreRecoverWithExpiration(t *testing.T) {
 	s := newStore()
-	go mockSyncService(s.DeleteExpiredKeys)
+
+	c := make(chan bool)
+	defer func() {
+		c <- true
+	}()
+	go mockSyncService(s.DeleteExpiredKeys, c)
+
 	s.Create("/foo", "", false, Permanent)
 	s.Create("/foo/x", "bar", false, Permanent)
 	s.Create("/foo/y", "baz", false, time.Now().Add(5*time.Millisecond))
@@ -388,7 +412,13 @@ func TestStoreRecoverWithExpiration(t *testing.T) {
 	time.Sleep(10 * time.Millisecond)
 
 	s2 := newStore()
-	go mockSyncService(s2.DeleteExpiredKeys)
+
+	c2 := make(chan bool)
+	defer func() {
+		c2 <- true
+	}()
+	go mockSyncService(s2.DeleteExpiredKeys, c2)
+
 	s2.Recovery(b)
 
 	time.Sleep(600 * time.Millisecond)
@@ -412,9 +442,14 @@ func nbselect(c <-chan *Event) *Event {
 	}
 }
 
-func mockSyncService(f func(now time.Time)) {
+func mockSyncService(f func(now time.Time), c chan bool) {
 	ticker := time.Tick(time.Millisecond * 500)
-	for now := range ticker {
-		f(now)
+	for {
+		select {
+		case <-c:
+			return
+		case now := <-ticker:
+			f(now)
+		}
 	}
 }
