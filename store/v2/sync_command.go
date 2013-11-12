@@ -21,7 +21,6 @@ func (c SyncCommand) CommandName() string {
 }
 
 func (c SyncCommand) Apply(server raft.Server) (interface{}, error) {
-
 	s, _ := server.StateMachine().(store.Store)
 	s.DeleteExpiredKeys(c.Time)
 

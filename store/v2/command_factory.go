@@ -73,5 +73,7 @@ func (f *CommandFactory) CreateCompareAndSwapCommand(key string, value string, p
 }
 
 func (f *CommandFactory) CreateSyncCommand(now time.Time) raft.Command {
-	return &SyncCommand{time.Now()}
+	return &SyncCommand{
+		Time: time.Now(),
+	}
 }
