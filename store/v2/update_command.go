@@ -27,7 +27,7 @@ func (c *UpdateCommand) CommandName() string {
 func (c *UpdateCommand) Apply(server raft.Server) (interface{}, error) {
 	s, _ := server.StateMachine().(store.Store)
 
-	e, err := s.Update(c.Key, c.Value, c.ExpireTime, server.CommitIndex(), server.Term())
+	e, err := s.Update(c.Key, c.Value, c.ExpireTime)
 
 	if err != nil {
 		log.Debug(err)

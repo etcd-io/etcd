@@ -15,7 +15,7 @@ func PostHandler(w http.ResponseWriter, req *http.Request, s Server) error {
 	value := req.FormValue("value")
 	expireTime, err := store.TTL(req.FormValue("ttl"))
 	if err != nil {
-		return etcdErr.NewError(etcdErr.EcodeTTLNaN, "Create", store.UndefIndex, store.UndefTerm)
+		return etcdErr.NewError(etcdErr.EcodeTTLNaN, "Create", s.Store().Index())
 	}
 
 	c := s.Store().CommandFactory().CreateCreateCommand(key, value, expireTime, true)

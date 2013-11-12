@@ -38,20 +38,20 @@ func NewRegistry(s store.Store) *Registry {
 }
 
 // Adds a node to the registry.
-func (r *Registry) Register(name string, peerURL string, url string, commitIndex uint64, term uint64) error {
+func (r *Registry) Register(name string, peerURL string, url string) error {
 	r.Lock()
 	defer r.Unlock()
 
 	// Write data to store.
 	key := path.Join(RegistryKey, name)
 	value := fmt.Sprintf("raft=%s&etcd=%s", peerURL, url)
-	_, err := r.store.Create(key, value, false, store.Permanent, commitIndex, term)
+	_, err := r.store.Create(key, value, false, store.Permanent)
 	log.Debugf("Register: %s", name)
 	return err
 }
 
 // Removes a node from the registry.
-func (r *Registry) Unregister(name string, commitIndex uint64, term uint64) error {
+func (r *Registry) Unregister(name string) error {
 	r.Lock()
 	defer r.Unlock()
 
@@ -59,14 +59,14 @@ func (r *Registry) Unregister(name string, commitIndex uint64, term uint64) erro
 	// delete(r.nodes, name)
 
 	// Remove the key from the store.
-	_, err := r.store.Delete(path.Join(RegistryKey, name), false, commitIndex, term)
+	_, err := r.store.Delete(path.Join(RegistryKey, name), false)
 	log.Debugf("Unregister: %s", name)
 	return err
 }
 
 // Returns the number of nodes in the cluster.
 func (r *Registry) Count() int {
-	e, err := r.store.Get(RegistryKey, false, false, 0, 0)
+	e, err := r.store.Get(RegistryKey, false, false)
 	if err != nil {
 		return 0
 	}
@@ -133,7 +133,7 @@ func (r *Registry) urls(leaderName, selfName string, url func(name string) (stri
 	}
 
 	// Retrieve a list of all nodes.
-	if e, _ := r.store.Get(RegistryKey, false, false, 0, 0); e != nil {
+	if e, _ := r.store.Get(RegistryKey, false, false); e != nil {
 		// Lookup the URL for each one.
 		for _, pair := range e.KVPairs {
 			_, name := filepath.Split(pair.Key)
@@ -160,7 +160,7 @@ func (r *Registry) load(name string) {
 	}
 
 	// Retrieve from store.
-	e, err := r.store.Get(path.Join(RegistryKey, name), false, false, 0, 0)
+	e, err := r.store.Get(path.Join(RegistryKey, name), false, false)
 	if err != nil {
 		return
 	}
@@ -173,7 +173,7 @@ func (r *Registry) load(name string) {
 
 	// Create node.
 	r.nodes[name] = &node{
-		url:         m["etcd"][0],
-		peerURL:     m["raft"][0],
+		url:     m["etcd"][0],
+		peerURL: m["raft"][0],
 	}
 }

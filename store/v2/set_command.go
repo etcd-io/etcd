@@ -29,7 +29,7 @@ func (c *SetCommand) Apply(server raft.Server) (interface{}, error) {
 	s, _ := server.StateMachine().(store.Store)
 
 	// create a new node or replace the old node.
-	e, err := s.Set(c.Key, c.Value, c.ExpireTime, server.CommitIndex(), server.Term())
+	e, err := s.Set(c.Key, c.Value, c.ExpireTime)
 
 	if err != nil {
 		log.Debug(err)

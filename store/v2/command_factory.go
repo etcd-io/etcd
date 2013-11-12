@@ -2,7 +2,7 @@ package v2
 
 import (
 	"time"
-	
+
 	"github.com/coreos/etcd/store"
 	"github.com/coreos/go-raft"
 )
@@ -28,8 +28,8 @@ func (f *CommandFactory) CreateUpgradeCommand() raft.Command {
 // CreateSetCommand creates a version 2 command to set a key to a given value in the store.
 func (f *CommandFactory) CreateSetCommand(key string, value string, expireTime time.Time) raft.Command {
 	return &SetCommand{
-		Key: key,
-		Value: value,
+		Key:        key,
+		Value:      value,
 		ExpireTime: expireTime,
 	}
 }
@@ -37,18 +37,18 @@ func (f *CommandFactory) CreateSetCommand(key string, value string, expireTime t
 // CreateCreateCommand creates a version 2 command to create a new key in the store.
 func (f *CommandFactory) CreateCreateCommand(key string, value string, expireTime time.Time, unique bool) raft.Command {
 	return &CreateCommand{
-		Key: key,
-		Value: value,
+		Key:        key,
+		Value:      value,
 		ExpireTime: expireTime,
-		Unique: unique,
+		Unique:     unique,
 	}
 }
 
 // CreateUpdateCommand creates a version 2 command to update a key to a given value in the store.
 func (f *CommandFactory) CreateUpdateCommand(key string, value string, expireTime time.Time) raft.Command {
 	return &UpdateCommand{
-		Key: key,
-		Value: value,
+		Key:        key,
+		Value:      value,
 		ExpireTime: expireTime,
 	}
 }
@@ -56,7 +56,7 @@ func (f *CommandFactory) CreateUpdateCommand(key string, value string, expireTim
 // CreateDeleteCommand creates a version 2 command to delete a key from the store.
 func (f *CommandFactory) CreateDeleteCommand(key string, recursive bool) raft.Command {
 	return &DeleteCommand{
-		Key: key,
+		Key:       key,
 		Recursive: recursive,
 	}
 }
@@ -69,5 +69,11 @@ func (f *CommandFactory) CreateCompareAndSwapCommand(key string, value string, p
 		PrevValue:  prevValue,
 		PrevIndex:  prevIndex,
 		ExpireTime: expireTime,
+	}
+}
+
+func (f *CommandFactory) CreateSyncCommand(now time.Time) raft.Command {
+	return &SyncCommand{
+		Time: time.Now(),
 	}
 }

@@ -14,20 +14,20 @@ func init() {
 
 // The JoinCommand adds a node to the cluster.
 type JoinCommand struct {
-	MinVersion int `json:"minVersion"`
-	MaxVersion int `json:"maxVersion"`
-	Name        string `json:"name"`
-	RaftURL     string `json:"raftURL"`
-	EtcdURL     string `json:"etcdURL"`
+	MinVersion int    `json:"minVersion"`
+	MaxVersion int    `json:"maxVersion"`
+	Name       string `json:"name"`
+	RaftURL    string `json:"raftURL"`
+	EtcdURL    string `json:"etcdURL"`
 }
 
 func NewJoinCommand(minVersion int, maxVersion int, name, raftUrl, etcdUrl string) *JoinCommand {
 	return &JoinCommand{
 		MinVersion: minVersion,
 		MaxVersion: maxVersion,
-		Name:        name,
-		RaftURL:     raftUrl,
-		EtcdURL:     etcdUrl,
+		Name:       name,
+		RaftURL:    raftUrl,
+		EtcdURL:    etcdUrl,
 	}
 }
 
@@ -54,11 +54,11 @@ func (c *JoinCommand) Apply(server raft.Server) (interface{}, error) {
 	// Check machine number in the cluster
 	if ps.registry.Count() == ps.MaxClusterSize {
 		log.Debug("Reject join request from ", c.Name)
-		return []byte{0}, etcdErr.NewError(etcdErr.EcodeNoMoreMachine, "", server.CommitIndex(), server.Term())
+		return []byte{0}, etcdErr.NewError(etcdErr.EcodeNoMoreMachine, "", server.CommitIndex())
 	}
 
 	// Add to shared machine registry.
-	ps.registry.Register(c.Name, c.RaftURL, c.EtcdURL, server.CommitIndex(), server.Term())
+	ps.registry.Register(c.Name, c.RaftURL, c.EtcdURL)
 
 	// Add peer in raft
 	err := server.AddPeer(c.Name, "")

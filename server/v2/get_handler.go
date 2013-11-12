@@ -41,14 +41,14 @@ func GetHandler(w http.ResponseWriter, req *http.Request, s Server) error {
 		if waitIndex != "" {
 			sinceIndex, err = strconv.ParseUint(string(req.FormValue("waitIndex")), 10, 64)
 			if err != nil {
-				return etcdErr.NewError(etcdErr.EcodeIndexNaN, "Watch From Index", store.UndefIndex, store.UndefTerm)
+				return etcdErr.NewError(etcdErr.EcodeIndexNaN, "Watch From Index", s.Store().Index())
 			}
 		}
 
 		// Start the watcher on the store.
-		eventChan, err := s.Store().Watch(key, recursive, sinceIndex, s.CommitIndex(), s.Term())
+		eventChan, err := s.Store().Watch(key, recursive, sinceIndex)
 		if err != nil {
-			return etcdErr.NewError(500, key, store.UndefIndex, store.UndefTerm)
+			return etcdErr.NewError(500, key, s.Store().Index())
 		}
 
 		cn, _ := w.(http.CloseNotifier)
@@ -62,17 +62,18 @@ func GetHandler(w http.ResponseWriter, req *http.Request, s Server) error {
 
 	} else { //get
 		// Retrieve the key from the store.
-		event, err = s.Store().Get(key, recursive, sorted, s.CommitIndex(), s.Term())
+		event, err = s.Store().Get(key, recursive, sorted)
 		if err != nil {
 			return err
 		}
 	}
 
-	w.Header().Add("X-Etcd-Index", fmt.Sprint(event.Index))
-	w.Header().Add("X-Etcd-Term", fmt.Sprint(event.Term))
+	w.Header().Add("X-Etcd-Index", fmt.Sprint(s.Store().Index()))
+	w.Header().Add("X-Raft-Index", fmt.Sprint(s.CommitIndex()))
+	w.Header().Add("X-Raft-Term", fmt.Sprint(s.Term()))
 	w.WriteHeader(http.StatusOK)
-
 	b, _ := json.Marshal(event)
+
 	w.Write(b)
 
 	return nil

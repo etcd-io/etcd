@@ -6,7 +6,6 @@ import (
 	"strconv"
 
 	etcdErr "github.com/coreos/etcd/error"
-	"github.com/coreos/etcd/store"
 	"github.com/gorilla/mux"
 )
 
@@ -21,14 +20,14 @@ func WatchKeyHandler(w http.ResponseWriter, req *http.Request, s Server) error {
 	if req.Method == "POST" {
 		sinceIndex, err = strconv.ParseUint(string(req.FormValue("index")), 10, 64)
 		if err != nil {
-			return etcdErr.NewError(203, "Watch From Index", store.UndefIndex, store.UndefTerm)
+			return etcdErr.NewError(203, "Watch From Index", s.Store().Index())
 		}
 	}
 
 	// Start the watcher on the store.
-	c, err := s.Store().Watch(key, false, sinceIndex, s.CommitIndex(), s.Term())
+	c, err := s.Store().Watch(key, false, sinceIndex)
 	if err != nil {
-		return etcdErr.NewError(500, key, store.UndefIndex, store.UndefTerm)
+		return etcdErr.NewError(500, key, s.Store().Index())
 	}
 	event := <-c
 

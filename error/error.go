@@ -80,16 +80,14 @@ type Error struct {
 	Message   string `json:"message"`
 	Cause     string `json:"cause,omitempty"`
 	Index     uint64 `json:"index"`
-	Term      uint64 `json:"term"`
 }
 
-func NewError(errorCode int, cause string, index uint64, term uint64) *Error {
+func NewError(errorCode int, cause string, index uint64) *Error {
 	return &Error{
 		ErrorCode: errorCode,
 		Message:   errors[errorCode],
 		Cause:     cause,
 		Index:     index,
-		Term:      term,
 	}
 }
 
@@ -109,7 +107,6 @@ func (e Error) toJsonString() string {
 
 func (e Error) Write(w http.ResponseWriter) {
 	w.Header().Add("X-Etcd-Index", fmt.Sprint(e.Index))
-	w.Header().Add("X-Etcd-Term", fmt.Sprint(e.Term))
 	// 3xx is reft internal error
 	if e.ErrorCode/100 == 3 {
 		http.Error(w, e.toJsonString(), http.StatusInternalServerError)
