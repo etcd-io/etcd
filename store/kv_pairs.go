@@ -6,12 +6,13 @@ import (
 
 // When user list a directory, we add all the node into key-value pair slice
 type KeyValuePair struct {
-	Key        string     `json:"key, omitempty"`
-	Value      string     `json:"value,omitempty"`
-	Dir        bool       `json:"dir,omitempty"`
-	Expiration *time.Time `json:"expiration,omitempty"`
-	TTL        int64      `json:"ttl,omitempty"` // Time to live in second
-	KVPairs    kvPairs    `json:"kvs,omitempty"`
+	Key           string     `json:"key, omitempty"`
+	Value         string     `json:"value,omitempty"`
+	Dir           bool       `json:"dir,omitempty"`
+	Expiration    *time.Time `json:"expiration,omitempty"`
+	TTL           int64      `json:"ttl,omitempty"` // Time to live in second
+	KVPairs       kvPairs    `json:"kvs,omitempty"`
+	ModifiedIndex uint64     `json:"modifiedIndex,omitempty"`
 }
 
 type kvPairs []KeyValuePair

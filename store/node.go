@@ -3,20 +3,12 @@ package store
 import (
 	"path"
 	"sort"
-	"sync"
 	"time"
 
 	etcdErr "github.com/coreos/etcd/error"
 )
 
-var (
-	Permanent time.Time
-)
-
-const (
-	normal = iota
-	removed
-)
+var Permanent time.Time
 
 // Node is the basic element in the store system.
 // A key-value pair will have a string value
@@ -25,11 +17,9 @@ type Node struct {
 	Path string
 
 	CreateIndex   uint64
-	CreateTerm    uint64
 	ModifiedIndex uint64
-	ModifiedTerm  uint64
 
-	Parent *Node `json:"-"` // should not encode this field! avoid cyclical dependency.
+	Parent *Node `json:"-"` // should not encode this field! avoid circular dependency.
 
 	ExpireTime time.Time
 	ACL        string
@@ -38,49 +28,37 @@ type Node struct {
 
 	// A reference to the store this node is attached to.
 	store *store
-
-	// a ttl node will have an expire routine associated with it.
-	// we need a channel to stop that routine when the expiration changes.
-	stopExpire chan bool
-
-	// ensure we only delete the node once
-	// expire and remove may try to delete a node twice
-	once sync.Once
 }
 
 // newKV creates a Key-Value pair
 func newKV(store *store, nodePath string, value string, createIndex uint64,
-	createTerm uint64, parent *Node, ACL string, expireTime time.Time) *Node {
+	parent *Node, ACL string, expireTime time.Time) *Node {
 
 	return &Node{
 		Path:          nodePath,
 		CreateIndex:   createIndex,
-		CreateTerm:    createTerm,
 		ModifiedIndex: createIndex,
-		ModifiedTerm:  createTerm,
 		Parent:        parent,
 		ACL:           ACL,
 		store:         store,
-		stopExpire:    make(chan bool, 1),
 		ExpireTime:    expireTime,
 		Value:         value,
 	}
 }
 
 // newDir creates a directory
-func newDir(store *store, nodePath string, createIndex uint64, createTerm uint64,
-	parent *Node, ACL string, expireTime time.Time) *Node {
+func newDir(store *store, nodePath string, createIndex uint64, parent *Node,
+	ACL string, expireTime time.Time) *Node {
 
 	return &Node{
-		Path:        nodePath,
-		CreateIndex: createIndex,
-		CreateTerm:  createTerm,
-		Parent:      parent,
-		ACL:         ACL,
-		stopExpire:  make(chan bool, 1),
-		ExpireTime:  expireTime,
-		Children:    make(map[string]*Node),
-		store:       store,
+		Path:          nodePath,
+		CreateIndex:   createIndex,
+		ModifiedIndex: createIndex,
+		Parent:        parent,
+		ACL:           ACL,
+		ExpireTime:    expireTime,
+		Children:      make(map[string]*Node),
+		store:         store,
 	}
 }
 
@@ -97,21 +75,10 @@ func (n *Node) IsHidden() bool {
 
 // IsPermanent function checks if the node is a permanent one.
 func (n *Node) IsPermanent() bool {
-	return n.ExpireTime.Sub(Permanent) == 0
-}
-
-// IsExpired function checks if the node has been expired.
-func (n *Node) IsExpired() (bool, time.Duration) {
-	if n.IsPermanent() {
-		return false, 0
-	}
-
-	duration := n.ExpireTime.Sub(time.Now())
-	if duration <= 0 {
-		return true, 0
-	}
-
-	return false, duration
+	// we use a uninitialized time.Time to indicate the node is a
+	// permanent one.
+	// the uninitialized time.Time should equal zero.
+	return n.ExpireTime.IsZero()
 }
 
 // IsDir function checks whether the node is a directory.
@@ -125,7 +92,7 @@ func (n *Node) IsDir() bool {
 // If the receiver node is not a key-value pair, a "Not A File" error will be returned.
 func (n *Node) Read() (string, *etcdErr.Error) {
 	if n.IsDir() {
-		return "", etcdErr.NewError(etcdErr.EcodeNotFile, "", UndefIndex, UndefTerm)
+		return "", etcdErr.NewError(etcdErr.EcodeNotFile, "", n.store.Index())
 	}
 
 	return n.Value, nil
@@ -133,20 +100,19 @@ func (n *Node) Read() (string, *etcdErr.Error) {
 
 // Write function set the value of the node to the given value.
 // If the receiver node is a directory, a "Not A File" error will be returned.
-func (n *Node) Write(value string, index uint64, term uint64) *etcdErr.Error {
+func (n *Node) Write(value string, index uint64) *etcdErr.Error {
 	if n.IsDir() {
-		return etcdErr.NewError(etcdErr.EcodeNotFile, "", UndefIndex, UndefTerm)
+		return etcdErr.NewError(etcdErr.EcodeNotFile, "", n.store.Index())
 	}
 
 	n.Value = value
 	n.ModifiedIndex = index
-	n.ModifiedTerm = term
 
 	return nil
 }
 
 func (n *Node) ExpirationAndTTL() (*time.Time, int64) {
-	if n.ExpireTime.Sub(Permanent) != 0 {
+	if !n.IsPermanent() {
 		return &n.ExpireTime, int64(n.ExpireTime.Sub(time.Now())/time.Second) + 1
 	}
 	return nil, 0
@@ -156,7 +122,7 @@ func (n *Node) ExpirationAndTTL() (*time.Time, int64) {
 // If the receiver node is not a directory, a "Not A Directory" error will be returned.
 func (n *Node) List() ([]*Node, *etcdErr.Error) {
 	if !n.IsDir() {
-		return nil, etcdErr.NewError(etcdErr.EcodeNotDir, "", UndefIndex, UndefTerm)
+		return nil, etcdErr.NewError(etcdErr.EcodeNotDir, "", n.store.Index())
 	}
 
 	nodes := make([]*Node, len(n.Children))
@@ -174,7 +140,7 @@ func (n *Node) List() ([]*Node, *etcdErr.Error) {
 // On success, it returns the file node
 func (n *Node) GetChild(name string) (*Node, *etcdErr.Error) {
 	if !n.IsDir() {
-		return nil, etcdErr.NewError(etcdErr.EcodeNotDir, n.Path, UndefIndex, UndefTerm)
+		return nil, etcdErr.NewError(etcdErr.EcodeNotDir, n.Path, n.store.Index())
 	}
 
 	child, ok := n.Children[name]
@@ -192,7 +158,7 @@ func (n *Node) GetChild(name string) (*Node, *etcdErr.Error) {
 // error will be returned
 func (n *Node) Add(child *Node) *etcdErr.Error {
 	if !n.IsDir() {
-		return etcdErr.NewError(etcdErr.EcodeNotDir, "", UndefIndex, UndefTerm)
+		return etcdErr.NewError(etcdErr.EcodeNotDir, "", n.store.Index())
 	}
 
 	_, name := path.Split(child.Path)
@@ -200,7 +166,7 @@ func (n *Node) Add(child *Node) *etcdErr.Error {
 	_, ok := n.Children[name]
 
 	if ok {
-		return etcdErr.NewError(etcdErr.EcodeNodeExist, "", UndefIndex, UndefTerm)
+		return etcdErr.NewError(etcdErr.EcodeNodeExist, "", n.store.Index())
 	}
 
 	n.Children[name] = child
@@ -213,22 +179,9 @@ func (n *Node) Remove(recursive bool, callback func(path string)) *etcdErr.Error
 
 	if n.IsDir() && !recursive {
 		// cannot delete a directory without set recursive to true
-		return etcdErr.NewError(etcdErr.EcodeNotFile, "", UndefIndex, UndefTerm)
+		return etcdErr.NewError(etcdErr.EcodeNotFile, "", n.store.Index())
 	}
 
-	onceBody := func() {
-		n.internalRemove(recursive, callback)
-	}
-
-	// this function might be entered multiple times by expire and delete
-	// every node will only be deleted once.
-	n.once.Do(onceBody)
-
-	return nil
-}
-
-// internalRemove function will be called by remove()
-func (n *Node) internalRemove(recursive bool, callback func(path string)) {
 	if !n.IsDir() { // key-value pair
 		_, name := path.Split(n.Path)
 
@@ -241,9 +194,11 @@ func (n *Node) internalRemove(recursive bool, callback func(path string)) {
 			callback(n.Path)
 		}
 
-		// the stop channel has a buffer. just send to it!
-		n.stopExpire <- true
-		return
+		if !n.IsPermanent() {
+			n.store.ttlKeyHeap.remove(n)
+		}
+
+		return nil
 	}
 
 	for _, child := range n.Children { // delete all children
@@ -259,68 +214,21 @@ func (n *Node) internalRemove(recursive bool, callback func(path string)) {
 			callback(n.Path)
 		}
 
-		n.stopExpire <- true
-	}
-}
-
-// Expire function will test if the node is expired.
-// if the node is already expired, delete the node and return.
-// if the node is permanent (this shouldn't happen), return at once.
-// else wait for a period time, then remove the node. and notify the watchhub.
-func (n *Node) Expire() {
-	expired, duration := n.IsExpired()
-
-	if expired { // has been expired
-		// since the parent function of Expire() runs serially,
-		// there is no need for lock here
-		e := newEvent(Expire, n.Path, UndefIndex, UndefTerm)
-		n.store.WatcherHub.notify(e)
-
-		n.Remove(true, nil)
-		n.store.Stats.Inc(ExpireCount)
-
-		return
-	}
-
-	if duration == 0 { // Permanent Node
-		return
-	}
-
-	go func() { // do monitoring
-		select {
-		// if timeout, delete the node
-		case <-time.After(duration):
-
-			// before expire get the lock, the expiration time
-			// of the node may be updated.
-			// we have to check again when get the lock
-			n.store.worldLock.Lock()
-			defer n.store.worldLock.Unlock()
-
-			expired, _ := n.IsExpired()
-
-			if expired {
-				e := newEvent(Expire, n.Path, UndefIndex, UndefTerm)
-				n.store.WatcherHub.notify(e)
-
-				n.Remove(true, nil)
-				n.store.Stats.Inc(ExpireCount)
-			}
-
-			return
-
-		// if stopped, return
-		case <-n.stopExpire:
-			return
+		if !n.IsPermanent() {
+			n.store.ttlKeyHeap.remove(n)
 		}
-	}()
+
+	}
+
+	return nil
 }
 
 func (n *Node) Pair(recurisive, sorted bool) KeyValuePair {
 	if n.IsDir() {
 		pair := KeyValuePair{
-			Key: n.Path,
-			Dir: true,
+			Key:           n.Path,
+			Dir:           true,
+			ModifiedIndex: n.ModifiedIndex,
 		}
 		pair.Expiration, pair.TTL = n.ExpirationAndTTL()
 
@@ -356,28 +264,35 @@ func (n *Node) Pair(recurisive, sorted bool) KeyValuePair {
 	}
 
 	pair := KeyValuePair{
-		Key:   n.Path,
-		Value: n.Value,
+		Key:           n.Path,
+		Value:         n.Value,
+		ModifiedIndex: n.ModifiedIndex,
 	}
 	pair.Expiration, pair.TTL = n.ExpirationAndTTL()
 	return pair
 }
 
 func (n *Node) UpdateTTL(expireTime time.Time) {
+
 	if !n.IsPermanent() {
-		// check if the node has been expired
-		// if the node is not expired, we need to stop the go routine associated with
-		// that node.
-		expired, _ := n.IsExpired()
-
-		if !expired {
-			n.stopExpire <- true // suspend it to modify the expiration
+		if expireTime.IsZero() {
+			// from ttl to permanent
+			// remove from ttl heap
+			n.store.ttlKeyHeap.remove(n)
+		} else {
+			// update ttl
+			n.ExpireTime = expireTime
+			// update ttl heap
+			n.store.ttlKeyHeap.update(n)
 		}
-	}
 
-	n.ExpireTime = expireTime
-	if expireTime.Sub(Permanent) != 0 {
-		n.Expire()
+	} else {
+		if !expireTime.IsZero() {
+			// from permanent to ttl
+			n.ExpireTime = expireTime
+			// push into ttl heap
+			n.store.ttlKeyHeap.push(n)
+		}
 	}
 }
 
@@ -386,10 +301,10 @@ func (n *Node) UpdateTTL(expireTime time.Time) {
 // If the node is a key-value pair, it will clone the pair.
 func (n *Node) Clone() *Node {
 	if !n.IsDir() {
-		return newKV(n.store, n.Path, n.Value, n.CreateIndex, n.CreateTerm, n.Parent, n.ACL, n.ExpireTime)
+		return newKV(n.store, n.Path, n.Value, n.CreateIndex, n.Parent, n.ACL, n.ExpireTime)
 	}
 
-	clone := newDir(n.store, n.Path, n.CreateIndex, n.CreateTerm, n.Parent, n.ACL, n.ExpireTime)
+	clone := newDir(n.store, n.Path, n.CreateIndex, n.Parent, n.ACL, n.ExpireTime)
 
 	for key, child := range n.Children {
 		clone.Children[key] = child.Clone()
@@ -414,7 +329,8 @@ func (n *Node) recoverAndclean() {
 		}
 	}
 
-	n.stopExpire = make(chan bool, 1)
+	if !n.ExpireTime.IsZero() {
+		n.store.ttlKeyHeap.push(n)
+	}
 
-	n.Expire()
 }

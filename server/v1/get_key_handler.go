@@ -13,7 +13,7 @@ func GetKeyHandler(w http.ResponseWriter, req *http.Request, s Server) error {
 	key := "/" + vars["key"]
 
 	// Retrieve the key from the store.
-	event, err := s.Store().Get(key, false, false, s.CommitIndex(), s.Term())
+	event, err := s.Store().Get(key, false, false)
 	if err != nil {
 		return err
 	}

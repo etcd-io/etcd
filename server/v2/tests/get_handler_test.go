@@ -27,8 +27,7 @@ func TestV2GetKey(t *testing.T) {
 		assert.Equal(t, body["action"], "get", "")
 		assert.Equal(t, body["key"], "/foo/bar", "")
 		assert.Equal(t, body["value"], "XXX", "")
-		assert.Equal(t, body["index"], 3, "")
-		assert.Equal(t, body["term"], 0, "")
+		assert.Equal(t, body["modifiedIndex"], 1, "")
 	})
 }
 
@@ -55,7 +54,7 @@ func TestV2GetKeyRecursively(t *testing.T) {
 		assert.Equal(t, body["action"], "get", "")
 		assert.Equal(t, body["key"], "/foo", "")
 		assert.Equal(t, body["dir"], true, "")
-		assert.Equal(t, body["index"], 4, "")
+		assert.Equal(t, body["modifiedIndex"], 1, "")
 		assert.Equal(t, len(body["kvs"].([]interface{})), 2, "")
 
 		kv0 := body["kvs"].([]interface{})[0].(map[string]interface{})
@@ -81,9 +80,11 @@ func TestV2GetKeyRecursively(t *testing.T) {
 func TestV2WatchKey(t *testing.T) {
 	tests.RunServer(func(s *server.Server) {
 		var body map[string]interface{}
+		c := make(chan bool)
 		go func() {
 			resp, _ := tests.Get(fmt.Sprintf("http://%s%s", s.URL(), "/v2/keys/foo/bar?wait=true"))
 			body = tests.ReadBodyJSON(resp)
+			c <- true
 		}()
 
 		// Make sure response didn't fire early.
@@ -98,12 +99,19 @@ func TestV2WatchKey(t *testing.T) {
 
 		// A response should follow from the GET above.
 		time.Sleep(1 * time.Millisecond)
+
+		select {
+		case <-c:
+
+		default:
+			t.Fatal("cannot get watch result")
+		}
+
 		assert.NotNil(t, body, "")
 		assert.Equal(t, body["action"], "set", "")
 		assert.Equal(t, body["key"], "/foo/bar", "")
 		assert.Equal(t, body["value"], "XXX", "")
-		assert.Equal(t, body["index"], 3, "")
-		assert.Equal(t, body["term"], 0, "")
+		assert.Equal(t, body["modifiedIndex"], 1, "")
 	})
 }
 
@@ -118,7 +126,7 @@ func TestV2WatchKeyWithIndex(t *testing.T) {
 		var body map[string]interface{}
 		c := make(chan bool)
 		go func() {
-			resp, _ := tests.Get(fmt.Sprintf("http://%s%s", s.URL(), "/v2/keys/foo/bar?wait=true&waitIndex=5"))
+			resp, _ := tests.Get(fmt.Sprintf("http://%s%s", s.URL(), "/v2/keys/foo/bar?wait=true&waitIndex=2"))
 			body = tests.ReadBodyJSON(resp)
 			c <- true
 		}()
@@ -156,7 +164,6 @@ func TestV2WatchKeyWithIndex(t *testing.T) {
 		assert.Equal(t, body["action"], "set", "")
 		assert.Equal(t, body["key"], "/foo/bar", "")
 		assert.Equal(t, body["value"], "YYY", "")
-		assert.Equal(t, body["index"], 4, "")
-		assert.Equal(t, body["term"], 0, "")
+		assert.Equal(t, body["modifiedIndex"], 2, "")
 	})
 }

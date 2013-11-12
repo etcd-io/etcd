@@ -3,6 +3,7 @@ package test
 import (
 	"io/ioutil"
 	"os"
+	"strconv"
 	"testing"
 	"time"
 
@@ -52,8 +53,10 @@ func TestSimpleSnapshot(t *testing.T) {
 		t.Fatal("wrong number of snapshot :[1/", len(snapshots), "]")
 	}
 
-	if snapshots[0].Name() != "0_503.ss" {
-		t.Fatal("wrong name of snapshot :[0_503.ss/", snapshots[0].Name(), "]")
+	index, _ := strconv.Atoi(snapshots[0].Name()[2:5])
+
+	if index < 507 || index > 510 {
+		t.Fatal("wrong name of snapshot :", snapshots[0].Name())
 	}
 
 	// issue second 501 commands
@@ -82,7 +85,9 @@ func TestSimpleSnapshot(t *testing.T) {
 		t.Fatal("wrong number of snapshot :[1/", len(snapshots), "]")
 	}
 
-	if snapshots[0].Name() != "0_1004.ss" {
-		t.Fatal("wrong name of snapshot :[0_1004.ss/", snapshots[0].Name(), "]")
+	index, _ = strconv.Atoi(snapshots[0].Name()[2:6])
+
+	if index < 1015 || index > 1018 {
+		t.Fatal("wrong name of snapshot :", snapshots[0].Name())
 	}
 }
