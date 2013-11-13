@@ -1,21 +1,26 @@
 # etcd
+
 README version 0.2.0
 
 [![Build Status](https://travis-ci.org/coreos/etcd.png)](https://travis-ci.org/coreos/etcd)
 
-A highly-available key value store for shared configuration and service discovery. etcd is inspired by zookeeper and doozer, with a focus on:
+A highly-available key value store for shared configuration and service discovery.
+etcd is inspired by zookeeper and doozer, with a focus on:
 
 * Simple: curl'able user facing API (HTTP+JSON)
 * Secure: optional SSL client cert authentication
 * Fast: benchmarked 1000s of writes/s per instance
 * Reliable: Properly distributed using Raft
 
-Etcd is written in Go and uses the [raft][raft] consensus algorithm to manage a highly-available replicated log.
+Etcd is written in Go and uses the [Raft][raft] consensus algorithm to manage a highly-available replicated log.
 
-See [etcdctl][etcdctl] for a simple command line client. Or feel free to just use curl, as in the examples below.
+See [etcdctl][etcdctl] for a simple command line client.
+Or feel free to just use curl, as in the examples below.
 
 [raft]: https://github.com/coreos/go-raft
 [etcdctl]: http://coreos.com/docs/etcdctl/
+
+
 
 ## Getting Started
 
@@ -24,6 +29,7 @@ See [etcdctl][etcdctl] for a simple command line client. Or feel free to just us
 The latest release is available as a binary at [Github][github-release].
 
 [github-release]: https://github.com/coreos/etcd/releases/
+
 
 ### Building
 
@@ -43,9 +49,11 @@ _NOTE_: you need go 1.1+. Please check your installation with
 go version
 ```
 
+
 ### Running a single node
 
-These examples will use a single node cluster to show you the basics of the etcd REST API. Lets start etcd:
+These examples will use a single node cluster to show you the basics of the etcd REST API.
+Let's start etcd:
 
 ```sh
 ./etcd -d node0 -n node0
@@ -55,86 +63,104 @@ This will bring up an etcd node listening on port 4001 for client communication 
 The `-d node0` argument tells etcd to write node configuration, logs and snapshots to the `./node0/` directory.
 The `-n node0` tells the rest of the cluster that this node is named node0.
 
+
+
 ## Usage
 
 ### Setting the value to a key
 
-Let’s set the first key-value pair to the node. In this case the key is `/message` and the value is `Hello world`.
+Let’s set the first key-value pair to the node.
+In this case the key is `/message` and the value is `Hello world`.
 
 ```sh
-curl -L http://127.0.0.1:4001/v2/keys/message -XPUT -d value="Hello world"
+curl -L http://127.0.0.1:4001/v2/keys/message -X PUT -d value="Hello world"
 ```
 
 ```json
-{"action":"set","key":"/message","value":"Hello world","index":3,"term":0}
+{"action":"set","key":"/message","value":"Hello world","modifiedIndex":2}
 ```
 
-This response contains five fields. We will introduce three more fields as we try more commands.
+This response contains four fields.
+We will introduce three more fields as we try more commands.
 
-1. The action of the request; we set the value via a PUT request, thus the action is `set`.
+1. The action of the request; we set the value via a `PUT` request, thus the action is `set`.
 
-2. The key of the request; we set `/message` to `Hello world!`, so the key field is `/message`.
-Notice we use a file system like structure to represent the key-value pairs. So each key starts with `/`.
+2. The key of the request; we set `/message` to `Hello world`, so the key field is `/message`.
+We use a file system like structure to represent the key-value pairs so each key starts with `/`.
 
 3. The current value of the key; we set the value to`Hello world`.
 
-4. Index is the unique internal log index of the set request. Requests that change the log index include `set`, `delete`, `update`, `create` and `compareAndSwap`. The `get` and `watch` commands do not change state in the store and so they do not change the index. You may notice that in this example the index is 3, although it is the first request you sent to the server. This is because there are internal commands that also change the state like adding and syncing servers.
+4. Modified Index is a unique, monotonically incrementing index created for each change to etcd.
+Requests that change the index include `set`, `delete`, `update`, `create` and `compareAndSwap`.
+Since the `get` and `watch` commands do not change state in the store, they do not change the index.
+You may notice that in this example the index is `2` even though it is the first request you sent to the server.
+This is because there are internal commands that also change the state like adding and syncing servers.
+
 
 ### Get the value of a key
 
-Get the value that we just set in `/message` by issuing a GET:
+We can get the value that we just set in `/message` by issuing a `GET` request:
 
 ```sh
 curl -L http://127.0.0.1:4001/v2/keys/message
 ```
 
 ```json
-{"action":"get","key":"/message","value":"Hello world","index":3,"term":0}
+{"action":"get","key":"/message","value":"Hello world","modifiedIndex":2}
 ```
+
+
 ### Changing the value of a key
 
-Change the value of `/message` from `Hello world` to `Hello etcd` with another PUT request to the key:
+You can change the value of `/message` from `Hello world` to `Hello etcd` with another `PUT` request to the key:
 
 ```sh
 curl -L http://127.0.0.1:4001/v1/keys/message -XPUT -d value="Hello etcd"
 ```
 
 ```json
-{"action":"set","key":"/message","prevValue":"Hello world","value":"Hello etcd","index":4,"term":0}
+{"action":"set","key":"/message","prevValue":"Hello world","value":"Hello etcd","index":3}
 ```
 
-Notice that the `prevValue` is set to the previous value of the key - `Hello world`. It is useful when you want to atomically set a value to a key and get its old value.
+Notice that the `prevValue` is set to the previous value of the key - `Hello world`.
+It is useful when you want to atomically set a value to a key and get its old value.
+
+
 ### Deleting a key
 
-Remove the `/message` key with a DELETE:
+You can remove the `/message` key with a `DELETE` request:
 
 ```sh
 curl -L http://127.0.0.1:4001/v2/keys/message -XDELETE
 ```
 
 ```json
-{"action":"delete","key":"/message","prevValue":"Hello etcd","index":5,"term":0}
+{"action":"delete","key":"/message","prevValue":"Hello etcd","modifiedIndex":4}
 ```
+
 
 ### Using key TTL
 
-Keys in etcd can be set to expire after a specified number of seconds. That is done by setting a TTL (time to live) on the key when you POST:
+Keys in etcd can be set to expire after a specified number of seconds.
+You can do this by setting a TTL (time to live) on the key when send a `PUT` request:
 
 ```sh
 curl -L http://127.0.0.1:4001/v2/keys/foo -XPUT -d value=bar -d ttl=5
 ```
 
 ```json
-{"action":"set","key":"/foo","value":"bar","expiration":"2013-10-19T18:44:04.528757176-07:00","ttl":5,"index":6,"term":0}
+{"action":"set","key":"/foo","value":"bar","expiration":"2013-11-12T20:21:22.629352334-05:00","ttl":5,"modifiedIndex":5}
 ```
 
-Note the last two new fields in response:
+Note the two new fields in response:
 
-1. The expiration is the time that this key will expire and be deleted.
+1. The `expiration` is the time that this key will expire and be deleted.
 
-2. The ttl is the time to live of the key.
+2. The `ttl` is the time to live for the key, in seconds.
 
-Now you can try to get the key by sending:
+_NOTE_: Keys can only be expired by a cluster leader so if a node gets disconnected from the cluster, its keys will not expire until it rejoins.
+
+Now you can try to get the key by sending a `GET` request:
 
 ```sh
 curl -L http://127.0.0.1:4001/v2/keys/foo
@@ -143,12 +169,14 @@ curl -L http://127.0.0.1:4001/v2/keys/foo
 If the TTL has expired, the key will be deleted, and you will be returned a 100.
 
 ```json
-{"errorCode":100,"message":"Key Not Found","cause":"/foo","index":6,"term":0}
+{"errorCode":100,"message":"Key Not Found","cause":"/foo","index":6}
 ```
+
 
 ### Waiting for a change 
 
-We can watch for a change and get a notification at a given path or any keys underneath it.
+We can watch for a change on a key and receive a notification by using long polling.
+This also works for child keys by passing `recursive=true` in curl.
 
 In one terminal, we send a get request with `wait=true` :
 
@@ -156,7 +184,7 @@ In one terminal, we send a get request with `wait=true` :
 curl -L http://127.0.0.1:4001/v2/keys/foo?wait=true
 ```
 
-Now, we are waiting for any changes at path `/foo`.
+Now we are waiting for any changes at path `/foo`.
 
 In another terminal, we set a key `/foo` with value `bar`:
 
@@ -167,10 +195,12 @@ curl -L http://127.0.0.1:4001/v2/keys/foo -XPUT -d value=bar
 The first terminal should get the notification and return with the same response as the set request.
 
 ```json
-{"action":"set","key":"/foo","value":"bar","index":7,"term":0}
+{"action":"set","key":"/foo","value":"bar","modifiedIndex":7}
 ```
 
-However, the watch command can do more than this. Using the the index we can watch for commands that has happened in the past. This is useful for ensuring you don't miss events between watch commands.
+However, the watch command can do more than this.
+Using the the index we can watch for commands that has happened in the past.
+This is useful for ensuring you don't miss events between watch commands.
 
 Let's try to watch for the set command of index 7 again:
 
@@ -180,27 +210,30 @@ curl -L http://127.0.0.1:4001/v2/keys/foo?wait=true\&waitIndex=7
 
 The watch command returns immediately with the same response as previous.
 
-### Atomic Compare and Swap
+
+### Atomic Compare-and-Swap (CAS)
 
 Etcd can be used as a centralized coordination service in a cluster and `CompareAndSwap` is the most basic operation to build distributed lock service. 
 
-This command will set the value to the key only if the client provided conditions are equal to the current conditions. 
+This command will set the value of a key only if the client-provided conditions are equal to the current conditions. 
 
 The current comparable conditions are:
-1. `prevValue` previous value of the key: 
 
-2. `prevIndex` previous index of the key
+1. `prevValue` - checks the previous value of the key.
 
-3. `prevExist` previous existence of the key: if `prevExist` is true, it is a  `update` request; if prevExist is `false`, it is a `create` request.
+2. `prevIndex` - checks the previous index of the key.
 
-Here is a simple example. Let's create a key-value pair first: `foo=one`.
+3. `prevExist` - checks existence of the key: if `prevExist` is true, it is a  `update` request; if prevExist is `false`, it is a `create` request.
+
+Here is a simple example.
+Let's create a key-value pair first: `foo=one`.
 
 ```sh
 curl -L http://127.0.0.1:4001/v1/keys/foo -XPUT -d value=one
 ```
 
-Let's try an invalid `CompareAndSwap` command.
-We can give another parameter prevValue to set command to make it a `CompareAndSwap` command.
+Let's try an invalid `CompareAndSwap` command first.
+We can provide the `prevValue` parameter to the set command to make it a `CompareAndSwap` command.
 
 ```sh
 curl -L http://127.0.0.1:4001/v1/keys/foo?prevValue=two -XPUT -d value=three
@@ -209,12 +242,12 @@ curl -L http://127.0.0.1:4001/v1/keys/foo?prevValue=two -XPUT -d value=three
 This will try to compare the previous value of the key and the previous value we provided. If they are equal, the value of the key will change to three.
 
 ```json
-{"errorCode":101,"message":"Test Failed","cause":"[two != one] [0 != 8]","index":9,"term":0}
+{"errorCode":101,"message":"Test Failed","cause":"[two != one] [0 != 8]","index":8}
 ```
 
-which means `compareAndSwap` failed.
+which means `CompareAndSwap` failed.
 
-Let us try a valid one.
+Let's try a valid condition:
 
 ```sh
 curl -L http://127.0.0.1:4001/v2/keys/foo?prevValue=one -XPUT -d value=two
@@ -223,53 +256,57 @@ curl -L http://127.0.0.1:4001/v2/keys/foo?prevValue=one -XPUT -d value=two
 The response should be
 
 ```json
-{"action":"compareAndSwap","key":"/foo","prevValue":"one","value":"two","index":10,"term":0}
+{"action":"compareAndSwap","key":"/foo","prevValue":"one","value":"two","modifiedIndex":9}
 ```
 
-We successfully changed the value from “one” to “two”, since we give the correct previous value.
+We successfully changed the value from “one” to “two” since we gave the correct previous value.
+
 
 ### Listing a directory
 
-Let us create some keys first.
+In etcd we can store two types of things: keys and directories.
+Keys store a single string value.
+Directories store a set of keys and/or other directories.
 
-We already have `/foo=two`
+In this example, let's first create some keys:
 
-We create another one `/foo_dir/foo=bar`
+We already have `/foo=two` so now we'll create another one called `/foo_dir/foo` with the value of `bar`:
 
 ```sh
 curl -L http://127.0.0.1:4001/v2/keys/foo_dir/foo -XPUT -d value=bar
 ```
 
 ```json
-{"action":"set","key":"/foo_dir/foo","value":"bar","index":11,"term":0}
+{"action":"set","key":"/foo_dir/foo","value":"bar","modifiedIndex":10}
 ```
 
-Now list the keys under root `/`
+Now we can list the keys under root `/`:
 
 ```sh
 curl -L http://127.0.0.1:4001/v2/keys/
 ```
 
-We should see the response as an array of items
+We should see the response as an array of items:
 
 ```json
-{"action":"get","key":"/","dir":true,"kvs":[{"key":"/foo","value":"two"},{"key":"/foo_dir","dir":true}],"index":11,"term":0}
+{"action":"get","key":"/","dir":true,"kvs":[{"key":"/foo","value":"two","modifiedIndex":9},{"key":"/foo_dir","dir":true,"modifiedIndex":10}],"modifiedIndex":0}
 ```
 
-which meas `/foo=two` is a key-value pair under `/ and `/foo_dir` is a directory.
-
-Also we can recursively get all the content under a directory by add `recursive=true`.
+Here we can see `/foo` is a key-value pair under `/` and `/foo_dir` is a directory.
+We can also recursively get all the contents under a directory by adding `recursive=true`.
 
 ```sh
 curl -L http://127.0.0.1:4001/v2/keys/?recursive=true
 ```
 
 ```json
-{"action":"get","key":"/","dir":true,"kvs":[{"key":"/foo","value":"two"},{"key":"/foo_dir","dir":true,"kvs":[{"key":"/foo_dir/foo","value":"bar"}]}],"index":11,"term":0}
+{"action":"get","key":"/","dir":true,"kvs":[{"key":"/foo","value":"two","modifiedIndex":9},{"key":"/foo_dir","dir":true,"kvs":[{"key":"/foo_dir/foo","value":"bar","modifiedIndex":10}],"modifiedIndex":10}],"modifiedIndex":0}
 ```
 
+
 ### Deleting a directory
-Let try to delete the directory `/foo_dir`.
+
+Now let's try to delete the directory `/foo_dir`.
 
 To delete a directory, we must add `recursive=true`.
 
@@ -278,61 +315,73 @@ curl -L http://127.0.0.1:4001/v2/keys/foo_dir?recursive=true -XDELETE
 ```
 
 ```json
-{"action":"delete","key":"/foo_dir","dir":true,"index":12,"term":0}
+{"action":"delete","key":"/foo_dir","dir":true,"modifiedIndex":11}
 ```
 
+
 ### Creating a hidden node
-We can create a hidden key-value pair or directory by add `_` prefix. The hidden item will not be list when using get for a directory.
+
+We can create a hidden key-value pair or directory by add a `_` prefix.
+The hidden item will not be listed when sending a `GET` request for a directory.
+
+First we'll add a hidden key named `/_message`:
 
 ```sh
 curl -L http://127.0.0.1:4001/v2/keys/_message -XPUT -d value="Hello hidden world"
 ```
 
 ```json
-{"action":"set","key":"/_message","value":"Hello hidden world","index":13,"term":0}
+{"action":"set","key":"/_message","value":"Hello hidden world","modifiedIndex":12}
 ```
+
+
+Next we'll add a regular key named `/message`:
 
 ```sh
 curl -L http://127.0.0.1:4001/v2/keys/message -XPUT -d value="Hello world"
 ```
 
 ```json
-{"action":"set","key":"/message","value":"Hello world","index":14,"term":0}
+{"action":"set","key":"/message","value":"Hello world","modifiedIndex":13}
 ```
 
-Let us try to get the root `/`
+Now let's try to get a listing of keys under the root directory, `/`:
 
 ```sh
 curl -L http://127.0.0.1:4001/v2/keys/
 ```
 
 ```json
-{"action":"get","key":"/","dir":true,"kvs":[{"key":"/foo","value":"two"},{"key":"/message","value":"Hello world"}],"index":15,"term":0}
+{"action":"get","key":"/","dir":true,"kvs":[{"key":"/foo","value":"two","modifiedIndex":9},{"key":"/message","value":"Hello world","modifiedIndex":13}],"modifiedIndex":0}
 ```
 
-We can only get `/message`, but cannot get `/_message`.
+Here we see the `/message` key but our hidden `/_message` key is not returned.
+
 
 ## Advanced Usage
 
 ### Transport security with HTTPS
 
-Etcd supports SSL/TLS and client cert authentication for clients to server, as well as server to server communication
+Etcd supports SSL/TLS and client cert authentication for clients to server, as well as server to server communication.
 
-First, you need to have a CA cert `clientCA.crt` and signed key pair `client.crt`, `client.key`. This site has a good reference for how to generate self-signed key pairs:
+First, you need to have a CA cert `clientCA.crt` and signed key pair `client.crt`, `client.key`.
+This site has a good reference for how to generate self-signed key pairs:
 http://www.g-loaded.eu/2005/11/10/be-your-own-ca/
 
 For testing you can use the certificates in the `fixtures/ca` directory.
 
-Next, lets configure etcd to use this keypair:
+Let's configure etcd to use this keypair:
 
 ```sh
 ./etcd -n node0 -d node0 -clientCert=./fixtures/ca/server.crt -clientKey=./fixtures/ca/server.key.insecure -f
 ```
 
-`-f` forces new node configuration if existing configuration is found (WARNING: data loss!)
-`-clientCert` and `-clientKey` are the key and cert for transport layer security between client and server
+There are a few new options we're using:
 
-You can now test the configuration using https:
+* `-f` - forces a new node configuration, even if an existing configuration is found. (WARNING: data loss!)
+* `-clientCert` and `-clientKey` specify the location of the cert and key files to be used for for transport layer security between the client and server.
+
+You can now test the configuration using HTTPS:
 
 ```sh
 curl --cacert fixtures/ca/ca.crt https://127.0.0.1:4001/v2/keys/foo -XPUT -d value=bar -v
@@ -346,15 +395,17 @@ SSLv3, TLS handshake, Finished (20):
 ...
 ```
 
-And also the response from the etcd server.
+And also the response from the etcd server:
 
 ```json
-{"action":"set","key":"/foo","value":"bar","index":3, "term: 0"}
+{"action":"set","key":"/foo","prevValue":"bar","value":"bar","modifiedIndex":3}
 ```
+
 
 ### Authentication with HTTPS client certificates
 
-We can also do authentication using CA certs. The clients will provide their cert to the server and the server will check whether the cert is signed by the CA and decide whether to serve the request.
+We can also do authentication using CA certs.
+The clients will provide their cert to the server and the server will check whether the cert is signed by the CA and decide whether to serve the request.
 
 ```sh
 ./etcd -n node0 -d node0 -clientCAFile=./fixtures/ca/ca.crt -clientCert=./fixtures/ca/server.crt -clientKey=./fixtures/ca/server.key.insecure -f
@@ -382,7 +433,8 @@ We need to give the CA signed cert to the server.
 curl -L https://127.0.0.1:4001/v1/keys/foo -XPUT -d value=bar -v --key myclient.key --cert myclient.crt -cacert clientCA.crt
 ```
 
-You should able to see
+You should able to see:
+
 ```
 ...
 SSLv3, TLS handshake, CERT verify (15):
@@ -393,14 +445,16 @@ TLS handshake, Finished (20)
 And also the response from the server:
 
 ```json
-{"action":"set","key":"/foo","value":"bar","index":3,"term:0"}
+{"action":"set","key":"/foo","prevValue":"bar","value":"bar","modifiedIndex":3}
 ```
+
 
 ## Clustering
 
 ### Example cluster of three machines
 
-Let's explore the use of etcd clustering. We use go-raft as the underlying distributed protocol which provides consistency and persistence of the data across all of the etcd instances.
+Let's explore the use of etcd clustering.
+We use Raft as the underlying distributed protocol which provides consistency and persistence of the data across all of the etcd instances.
 
 Let start by creating 3 new etcd instances.
 
@@ -410,17 +464,17 @@ We use -s to specify server port and -c to specify client port and -d to specify
 ./etcd -s 127.0.0.1:7001 -c 127.0.0.1:4001 -d nodes/node1 -n node1
 ```
 
-**Note:** If you want to run etcd on external IP address and still have access locally you need to add `-cl 0.0.0.0` so that it will listen on both external and localhost addresses.
+**Note:** If you want to run etcd on an external IP address and still have access locally, you'll need to add `-cl 0.0.0.0` so that it will listen on both external and localhost addresses.
 A similar argument `-sl` is used to setup the listening address for the server port.
 
-Let the join two more nodes to this cluster using the -C argument:
+Let's join two more nodes to this cluster using the `-C` argument:
 
 ```sh
 ./etcd -s 127.0.0.1:7002 -c 127.0.0.1:4002 -C 127.0.0.1:7001 -d nodes/node2 -n node2
 ./etcd -s 127.0.0.1:7003 -c 127.0.0.1:4003 -C 127.0.0.1:7001 -d nodes/node3 -n node3
 ```
 
-Get the machines in the cluster:
+We can retrieve a list of machines in the cluster using the HTTP API:
 
 ```sh
 curl -L http://127.0.0.1:4001/v1/machines
@@ -432,24 +486,23 @@ We should see there are three nodes in the cluster
 http://127.0.0.1:4001, http://127.0.0.1:4002, http://127.0.0.1:4003
 ```
 
-The machine list is also available via this API:
+The machine list is also available via the main key API:
 
 ```sh
 curl -L http://127.0.0.1:4001/v1/keys/_etcd/machines
 ```
 
 ```json
-[{"action":"get","key":"/_etcd/machines/node1","value":"raft=http://127.0.0.1:7001&etcd=http://127.0.0.1:4001&raftVersion=v0.1.1-311-g91cad59","index":4},{"action":"get","key":"/_etcd/machines/node2","value":"raft=http://127.0.0.1:7002&etcd=http://127.0.0.1:4002&raftVersion=v0.1.1-311-g91cad59","index":4},{"action":"get","key":"/_etcd/machines/node3","value":"raft=http://127.0.0.1:7003&etcd=http://127.0.0.1:4003&raftVersion=v0.1.1-311-g91cad59","index":4}]
+[{"action":"get","key":"/_etcd/machines/node1","value":"raft=http://127.0.0.1:7001\u0026etcd=http://127.0.0.1:4001","index":1},{"action":"get","key":"/_etcd/machines/node2","value":"raft=http://127.0.0.1:7002\u0026etcd=http://127.0.0.1:4002","index":1},{"action":"get","key":"/_etcd/machines/node3","value":"raft=http://127.0.0.1:7003\u0026etcd=http://127.0.0.1:4003","index":1}]
 ```
 
-The key of the machine is based on the ```commit index``` when it was added. The value of the machine is ```hostname```, ```raft port``` and ```client port```.
-
-Also try to get the current leader in the cluster
+We can also get the current leader in the cluster:
 
 ```
 curl -L http://127.0.0.1:4001/v2/leader
 ```
-The first server we set up should be the leader, if it has not died during these commands.
+
+The first server we set up should still be the leader unless it has died during these commands.
 
 ```
 http://127.0.0.1:7001
@@ -462,21 +515,22 @@ curl -L http://127.0.0.1:4001/v2/keys/foo -XPUT -d value=bar
 ```
 
 ```json
-{"action":"set","key":"/foo","value":"bar","index":5,"term:0"}
+{"action":"set","key":"/foo","value":"bar","modifiedIndex":4}
 ```
+
 
 ### Killing Nodes in the Cluster
 
-Let's kill the leader of the cluster and get the value from the other machine:
+Now if we kill the leader of the cluster, we can get the value from one of the other two machines:
 
 ```sh
 curl -L http://127.0.0.1:4002/v1/keys/foo
 ```
 
-A new leader should have been elected.
+We can also see that a new leader has been elected:
 
 ```
-curl -L http://127.0.0.1:4001/v1/leader
+curl -L http://127.0.0.1:4002/v1/leader
 ```
 
 ```
@@ -489,17 +543,11 @@ or
 http://127.0.0.1:7003
 ```
 
-You should be able to see this:
-
-```json
-{"action":"get","key":"/foo","value":"bar","index":5,"term:1"}
-```
-
-It succeeded!
 
 ### Testing Persistence
 
-OK. Next let us kill all the nodes to test persistence. And restart all the nodes use the same command as before.
+Next we'll kill all the nodes to test persistence.
+Type `CTRL-C` on each terminal and then rerun the same command you used to start each node.
 
 Your request for the `foo` key will return the correct value:
 
@@ -508,18 +556,23 @@ curl -L http://127.0.0.1:4002/v1/keys/foo
 ```
 
 ```json
-{"action":"GET","key":"/foo","value":"bar","index":5}
+{"action":"get","key":"/foo","value":"bar","index":4}
 ```
+
 
 ### Using HTTPS between servers
 
-In the previous example we showed how to use SSL client certs for client to server communication. Etcd can also do internal server to server communication using SSL client certs. To do this just change the ```-client*``` flags to ```-server*```.
+In the previous example we showed how to use SSL client certs for client-to-server communication.
+Etcd can also do internal server-to-server communication using SSL client certs.
+To do this just change the `-client*` flags to `-server*`.
 
-If you are using SSL for server to server communication, you must use it on all instances of etcd.
+If you are using SSL for server-to-server communication, you must use it on all instances of etcd.
+
 
 ## Contributing
 
 See [CONTRIBUTING](https://github.com/coreos/etcd/blob/master/CONTRIBUTING.md) for details on submitting patches and contacting developers via IRC and mailing lists.
+
 
 ## Libraries and Tools
 
@@ -535,7 +588,6 @@ See [CONTRIBUTING](https://github.com/coreos/etcd/blob/master/CONTRIBUTING.md) f
 
 - [justinsb/jetcd](https://github.com/justinsb/jetcd)
 - [diwakergupta/jetcd](https://github.com/diwakergupta/jetcd)
-
 
 **Python libraries**
 
@@ -581,45 +633,49 @@ See [CONTRIBUTING](https://github.com/coreos/etcd/blob/master/CONTRIBUTING.md) f
 - [mattn/etcdenv](https://github.com/mattn/etcdenv) - "env" shebang with etcd integration
 - [kelseyhightower/confd](https://github.com/kelseyhightower/confd) - Manage local app config files using templates and data from etcd
 
+
 ## FAQ
 
 ### What size cluster should I use?
 
 Every command the client sends to the master is broadcast to all of the followers.
-But, the command is not committed until the majority of the cluster machines receive that command.
+The command is not committed until the majority of the cluster machines receive that command.
 
-Because of this majority voting property the ideal cluster should be kept small to keep speed up and be made up of an odd number of machines.
+Because of this majority voting property, the ideal cluster should be kept small to keep speed up and be made up of an odd number of machines.
 
-Odd numbers are good because if you have 8 machines the majority will be 5 and if you have 9 machines the majority with be 5.
+Odd numbers are good because if you have 8 machines the majority will be 5 and if you have 9 machines the majority will still be 5.
 The result is that an 8 machine cluster can tolerate 3 machine failures and a 9 machine cluster can tolerate 4 nodes failures.
 And in the best case when all 9 machines are responding the cluster will perform at the speed of the fastest 5 nodes.
 
+
 ### Why SSLv3 alert handshake failure when using SSL client auth?
-The `TLS` pacakge of `golang` checks the key usage of certificate public key before using it. To use the certificate public key to do client auth, we need to add `clientAuth` to `Extended Key Usage` when creating the certificate public key.
+
+The `crypto/tls` package of `golang` checks the key usage of the certificate public key before using it.
+To use the certificate public key to do client auth, we need to add `clientAuth` to `Extended Key Usage` when creating the certificate public key.
 
 Here is how to do it:
 
 Add the following section to your openssl.cnf:
 
 ```
-[ ssl_client ]                                                                                                                                            
+[ ssl_client ]
 ...
   extendedKeyUsage = clientAuth
 ...
 ```
 
-When creating the cert be sure to reference it in the -extensions flag:
+When creating the cert be sure to reference it in the `-extensions` flag:
 
 ```
 openssl ca -config openssl.cnf -policy policy_anything -extensions ssl_client -out certs/node.crt -infiles node.csr
 ```
+
 
 ## Project Details
 
 ### Versioning
 
 etcd uses [semantic versioning][semver].
-When we release v1.0.0 of etcd we will promise not to break the "v1" REST API.
 New minor versions may add additional features to the API however.
 
 You can get the version of etcd by issuing a request to /version:
@@ -628,9 +684,10 @@ You can get the version of etcd by issuing a request to /version:
 curl -L http://127.0.0.1:4001/version
 ```
 
-During the v0 series of releases we may break the API as we fix bugs and get feedback.
+During the pre-v1.0.0 series of releases we may break the API as we fix bugs and get feedback.
 
 [semver]: http://semver.org/
+
 
 ### License
 
