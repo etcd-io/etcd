@@ -24,4 +24,4 @@ bower install
 
 Run etcd like you normally would and afterward browse to:
 
-http://localhost:4001/etcd/mod/dashboard/
+http://localhost:4001/mod/dashboard/
