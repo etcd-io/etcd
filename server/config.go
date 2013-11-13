@@ -57,7 +57,6 @@ func NewConfig() *Config {
 	c.SystemPath = DefaultSystemConfigPath
 	c.AdvertisedUrl = "127.0.0.1:4001"
 	c.AdvertisedUrl = "127.0.0.1:4001"
-	c.DataDir = "."
 	c.MaxClusterSize = 9
 	c.MaxResultBuffer = 1024
 	c.MaxRetryAttempts = 3
