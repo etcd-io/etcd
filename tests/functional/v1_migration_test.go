@@ -87,17 +87,17 @@ func TestV1ClusterMigration(t *testing.T) {
 		time.Sleep(time.Second)
 	}
 
-	time.Sleep(120 * time.Second)
-
 	// Ensure deleted message is removed.
 	resp, err := tests.Get("http://localhost:4001/v2/keys/message")
-	tests.ReadBody(resp)
+	body := tests.ReadBody(resp)
 	assert.Nil(t, err, "")
-	assert.Equal(t, resp.StatusCode, 404, "")
+	assert.Equal(t, resp.StatusCode, 400, )
+	assert.Equal(t, string(body), `{"errorCode":100,"message":"Key Not Found","cause":"/message","index":11}`+"\n")
 
 	// Ensure TTL'd message is removed.
 	resp, err = tests.Get("http://localhost:4001/v2/keys/foo")
-	tests.ReadBody(resp)
+	body = tests.ReadBody(resp)
 	assert.Nil(t, err, "")
-	assert.Equal(t, resp.StatusCode, 404, "")
+	assert.Equal(t, resp.StatusCode, 200, "")
+	assert.Equal(t, string(body), `{"action":"get","key":"/foo","value":"one","modifiedIndex":9}`)
 }

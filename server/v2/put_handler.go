@@ -15,7 +15,7 @@ func PutHandler(w http.ResponseWriter, req *http.Request, s Server) error {
 	var c raft.Command
 
 	vars := mux.Vars(req)
-	key := vars["key"]
+	key := "/" + vars["key"]
 
 	req.ParseForm()
 

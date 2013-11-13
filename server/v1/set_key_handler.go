@@ -12,7 +12,7 @@ import (
 // Sets the value for a given key.
 func SetKeyHandler(w http.ResponseWriter, req *http.Request, s Server) error {
 	vars := mux.Vars(req)
-	key := vars["key"]
+	key := "/" + vars["key"]
 
 	req.ParseForm()
 
