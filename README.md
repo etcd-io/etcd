@@ -384,7 +384,7 @@ There are a few new options we're using:
 You can now test the configuration using HTTPS:
 
 ```sh
-curl --cacert fixtures/ca/ca.crt https://127.0.0.1:4001/v2/keys/foo -XPUT -d value=bar -v
+curl --cacert ./fixtures/ca/server-chain.pem https://127.0.0.1:4001/v2/keys/foo -XPUT -d value=bar -v
 ```
 
 You should be able to see the handshake succeed.
@@ -416,7 +416,7 @@ The clients will provide their cert to the server and the server will check whet
 Try the same request to this server:
 
 ```sh
-curl --cacert fixtures/ca/ca.crt https://127.0.0.1:4001/v2/keys/foo -XPUT -d value=bar -v
+curl --cacert ./fixtures/ca/server-chain.pem https://127.0.0.1:4001/v2/keys/foo -XPUT -d value=bar -v
 ```
 
 The request should be rejected by the server.
@@ -430,7 +430,7 @@ routines:SSL3_READ_BYTES:sslv3 alert bad certificate
 We need to give the CA signed cert to the server.
 
 ```sh
-curl -L https://127.0.0.1:4001/v1/keys/foo -XPUT -d value=bar -v --key myclient.key --cert myclient.crt -cacert clientCA.crt
+curl --key ./fixtures/ca/server2.key.insecure --cert ./fixtures/ca/server2.crt --cacert ./fixtures/ca/server-chain.pem -L https://127.0.0.1:4001/v1/keys/foo -XPUT -d value=bar -v
 ```
 
 You should able to see:

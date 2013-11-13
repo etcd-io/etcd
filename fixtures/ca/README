@@ -1,8 +1,10 @@
-Testing x509 certs for luacrypto
+Testing x509 certs for etcd
+
+The passphrases for the keys are `asdf`.
 
 # Make the CA cert
 openssl genrsa -des3 -out ca.key 4096
-openssl req -new -x509 -days 365 -key ca.key -out ca.crt  -extfile openssl.cnf -extensions v3_ca
+openssl req -new -x509 -days 365 -key ca.key -out ca.crt  -config openssl.cnf -extensions v3_ca
 
 # Make server cert and signing request
 openssl genrsa -des3 -out server.key 4096
@@ -16,3 +18,4 @@ openssl rsa -in server.key -out server.key.insecure
 
 # Output "raw" public key from server crt
 openssl x509 -pubkey -noout -in server.crt > server.pub
+
