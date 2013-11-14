@@ -16,130 +16,33 @@ limitations under the License.
 
 package store
 
-import (
-	"path"
-	"strconv"
-	"strings"
-)
-
-//------------------------------------------------------------------------------
-//
-// Typedefs
-//
-//------------------------------------------------------------------------------
-
-// WatcherHub is where the client register its watcher
-type WatcherHub struct {
-	watchers map[string][]*Watcher
+type watcher struct {
+	eventChan  chan *Event
+	recursive  bool
+	sinceIndex uint64
 }
 
-// Currently watcher only contains a response channel
-type Watcher struct {
-	C chan *Response
-}
+// notify function notifies the watcher. If the watcher interests in the given path,
+// the function will return true.
+func (w *watcher) notify(e *Event, originalPath bool, deleted bool) bool {
+	// watcher is interested the path in three cases and under one condition
+	// the condition is that the event happens after the watcher's sinceIndex
 
-// Create a new watcherHub
-func newWatcherHub() *WatcherHub {
-	w := new(WatcherHub)
-	w.watchers = make(map[string][]*Watcher)
-	return w
-}
+	// 1. the path at which the event happens is the path the watcher is watching at.
+	// For example if the watcher is watching at "/foo" and the event happens at "/foo",
+	// the watcher must be interested in that event.
 
-// Create a new watcher
-func NewWatcher() *Watcher {
-	return &Watcher{C: make(chan *Response, 1)}
-}
+	// 2. the watcher is a recursive watcher, it interests in the event happens after
+	// its watching path. For example if watcher A watches at "/foo" and it is a recursive
+	// one, it will interest in the event happens at "/foo/bar".
 
-// Add a watcher to the watcherHub
-func (w *WatcherHub) addWatcher(prefix string, watcher *Watcher, sinceIndex uint64,
-	responseStartIndex uint64, currentIndex uint64, resMap map[string]*Response) error {
-
-	prefix = path.Clean("/" + prefix)
-
-	if sinceIndex != 0 && sinceIndex >= responseStartIndex {
-		for i := sinceIndex; i <= currentIndex; i++ {
-			if checkResponse(prefix, i, resMap) {
-				watcher.C <- resMap[strconv.FormatUint(i, 10)]
-				return nil
-			}
-		}
+	// 3. when we delete a directory, we need to force notify all the watchers who watches
+	// at the file we need to delete.
+	// For example a watcher is watching at "/foo/bar". And we deletes "/foo". The watcher
+	// should get notified even if "/foo" is not the path it is watching.
+	if (w.recursive || originalPath || deleted) && e.Index() >= w.sinceIndex {
+		w.eventChan <- e
+		return true
 	}
-
-	_, ok := w.watchers[prefix]
-
-	if !ok {
-		w.watchers[prefix] = make([]*Watcher, 0)
-	}
-
-	w.watchers[prefix] = append(w.watchers[prefix], watcher)
-
-	return nil
-}
-
-// Check if the response has what we are watching
-func checkResponse(prefix string, index uint64, resMap map[string]*Response) bool {
-
-	resp, ok := resMap[strconv.FormatUint(index, 10)]
-
-	if !ok {
-		// not storage system command
-		return false
-	} else {
-		path := resp.Key
-		if strings.HasPrefix(path, prefix) {
-			prefixLen := len(prefix)
-			if len(path) == prefixLen || path[prefixLen] == '/' {
-				return true
-			}
-
-		}
-	}
-
 	return false
-}
-
-// Notify the watcher a action happened
-func (w *WatcherHub) notify(resp Response) error {
-	resp.Key = path.Clean(resp.Key)
-
-	segments := strings.Split(resp.Key, "/")
-	currPath := "/"
-
-	// walk through all the pathes
-	for _, segment := range segments {
-		currPath = path.Join(currPath, segment)
-
-		watchers, ok := w.watchers[currPath]
-
-		if ok {
-
-			newWatchers := make([]*Watcher, 0)
-			// notify all the watchers
-			for _, watcher := range watchers {
-				watcher.C <- &resp
-			}
-
-			if len(newWatchers) == 0 {
-				// we have notified all the watchers at this path
-				// delete the map
-				delete(w.watchers, currPath)
-			} else {
-				w.watchers[currPath] = newWatchers
-			}
-		}
-
-	}
-
-	return nil
-}
-
-// stopWatchers stops all the watchers
-// This function is used when the etcd recovery from a snapshot at runtime
-func (w *WatcherHub) stopWatchers() {
-	for _, subWatchers := range w.watchers {
-		for _, watcher := range subWatchers {
-			watcher.C <- nil
-		}
-	}
-	w.watchers = nil
 }

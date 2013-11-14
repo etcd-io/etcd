@@ -3,7 +3,7 @@
 
 package ipv6
 
-// Internet Control Message Protocol version 6 (ICMPv6) Parameters, Updated: 2012-11-12
+// Internet Control Message Protocol version 6 (ICMPv6) Parameters, Updated: 2013-07-03
 const (
 	ICMPTypeDestinationUnreachable                ICMPType = 1   // Destination Unreachable
 	ICMPTypePacketTooBig                          ICMPType = 2   // Packet Too Big
@@ -41,7 +41,7 @@ const (
 	ICMPTypeDuplicateAddressConfirmation          ICMPType = 158 // Duplicate Address Confirmation
 )
 
-// Internet Control Message Protocol version 6 (ICMPv6) Parameters, Updated: 2012-11-12
+// Internet Control Message Protocol version 6 (ICMPv6) Parameters, Updated: 2013-07-03
 var icmpTypes = map[ICMPType]string{
 	1:   "destination unreachable",
 	2:   "packet too big",

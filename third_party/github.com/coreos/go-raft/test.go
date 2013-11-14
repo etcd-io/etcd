@@ -60,7 +60,7 @@ func setupLog(entries []*LogEntry) (*Log, string) {
 // Servers
 //--------------------------------------
 
-func newTestServer(name string, transporter Transporter) *Server {
+func newTestServer(name string, transporter Transporter) Server {
 	p, _ := ioutil.TempDir("", "raft-server-")
 	if err := os.MkdirAll(p, 0644); err != nil {
 		panic(err.Error())
@@ -69,12 +69,12 @@ func newTestServer(name string, transporter Transporter) *Server {
 	return server
 }
 
-func newTestServerWithPath(name string, transporter Transporter, p string) *Server {
+func newTestServerWithPath(name string, transporter Transporter, p string) Server {
 	server, _ := NewServer(name, p, transporter, nil, nil, "")
 	return server
 }
 
-func newTestServerWithLog(name string, transporter Transporter, entries []*LogEntry) *Server {
+func newTestServerWithLog(name string, transporter Transporter, entries []*LogEntry) Server {
 	server := newTestServer(name, transporter)
 	f, err := os.Create(server.LogPath())
 	if err != nil {
@@ -88,8 +88,8 @@ func newTestServerWithLog(name string, transporter Transporter, entries []*LogEn
 	return server
 }
 
-func newTestCluster(names []string, transporter Transporter, lookup map[string]*Server) []*Server {
-	servers := []*Server{}
+func newTestCluster(names []string, transporter Transporter, lookup map[string]Server) []Server {
+	servers := []Server{}
 	e0, _ := newLogEntry(newLog(), 1, 1, &testCommand1{Val: "foo", I: 20})
 
 	for _, name := range names {
@@ -116,24 +116,24 @@ func newTestCluster(names []string, transporter Transporter, lookup map[string]*
 //--------------------------------------
 
 type testTransporter struct {
-	sendVoteRequestFunc          func(server *Server, peer *Peer, req *RequestVoteRequest) *RequestVoteResponse
-	sendAppendEntriesRequestFunc func(server *Server, peer *Peer, req *AppendEntriesRequest) *AppendEntriesResponse
-	sendSnapshotRequestFunc      func(server *Server, peer *Peer, req *SnapshotRequest) *SnapshotResponse
+	sendVoteRequestFunc          func(server Server, peer *Peer, req *RequestVoteRequest) *RequestVoteResponse
+	sendAppendEntriesRequestFunc func(server Server, peer *Peer, req *AppendEntriesRequest) *AppendEntriesResponse
+	sendSnapshotRequestFunc      func(server Server, peer *Peer, req *SnapshotRequest) *SnapshotResponse
 }
 
-func (t *testTransporter) SendVoteRequest(server *Server, peer *Peer, req *RequestVoteRequest) *RequestVoteResponse {
+func (t *testTransporter) SendVoteRequest(server Server, peer *Peer, req *RequestVoteRequest) *RequestVoteResponse {
 	return t.sendVoteRequestFunc(server, peer, req)
 }
 
-func (t *testTransporter) SendAppendEntriesRequest(server *Server, peer *Peer, req *AppendEntriesRequest) *AppendEntriesResponse {
+func (t *testTransporter) SendAppendEntriesRequest(server Server, peer *Peer, req *AppendEntriesRequest) *AppendEntriesResponse {
 	return t.sendAppendEntriesRequestFunc(server, peer, req)
 }
 
-func (t *testTransporter) SendSnapshotRequest(server *Server, peer *Peer, req *SnapshotRequest) *SnapshotResponse {
+func (t *testTransporter) SendSnapshotRequest(server Server, peer *Peer, req *SnapshotRequest) *SnapshotResponse {
 	return t.sendSnapshotRequestFunc(server, peer, req)
 }
 
-func (t *testTransporter) SendSnapshotRecoveryRequest(server *Server, peer *Peer, req *SnapshotRecoveryRequest) *SnapshotRecoveryResponse {
+func (t *testTransporter) SendSnapshotRecoveryRequest(server Server, peer *Peer, req *SnapshotRecoveryRequest) *SnapshotRecoveryResponse {
 	return t.SendSnapshotRecoveryRequest(server, peer, req)
 }
 
@@ -163,7 +163,7 @@ func (c *testCommand1) CommandName() string {
 	return "cmd_1"
 }
 
-func (c *testCommand1) Apply(server *Server) (interface{}, error) {
+func (c *testCommand1) Apply(server Server) (interface{}, error) {
 	return nil, nil
 }
 
@@ -179,6 +179,6 @@ func (c *testCommand2) CommandName() string {
 	return "cmd_2"
 }
 
-func (c *testCommand2) Apply(server *Server) (interface{}, error) {
+func (c *testCommand2) Apply(server Server) (interface{}, error) {
 	return nil, nil
 }

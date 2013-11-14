@@ -3,13 +3,16 @@ package mod
 
 import (
 	"net/http"
+
 	"github.com/coreos/etcd/mod/dashboard"
+	"github.com/gorilla/mux"
 )
 
 var ServeMux *http.Handler
 
-func init() {
-	// TODO: Use a Gorilla mux to handle this in 0.2 and remove the strip
-	handler := http.StripPrefix("/etcd/mod/dashboard/", dashboard.HttpHandler())
-	ServeMux = &handler
+func HttpHandler() (handler http.Handler) {
+	modMux := mux.NewRouter()
+	modMux.PathPrefix("/dashboard/").
+		Handler(http.StripPrefix("/dashboard/", dashboard.HttpHandler()))
+	return modMux
 }

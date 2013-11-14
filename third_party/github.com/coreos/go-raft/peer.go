@@ -13,7 +13,7 @@ import (
 
 // A peer is a reference to another server involved in the consensus protocol.
 type Peer struct {
-	server           *Server
+	server           *server
 	Name             string `json:"name"`
 	ConnectionString string `json:"connectionString"`
 	prevLogIndex     uint64
@@ -29,7 +29,7 @@ type Peer struct {
 //------------------------------------------------------------------------------
 
 // Creates a new peer.
-func newPeer(server *Server, name string, connectionString string, heartbeatTimeout time.Duration) *Peer {
+func newPeer(server *server, name string, connectionString string, heartbeatTimeout time.Duration) *Peer {
 	return &Peer{
 		server:           server,
 		Name:             name,

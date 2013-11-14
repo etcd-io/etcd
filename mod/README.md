@@ -1,7 +1,7 @@
 ## Etcd modules
 
 etcd modules (mods) are higher order pieces of functionality that only
-speak to the client etcd API and are presented in the `/etcd/mod` HTTP path
+speak to the client etcd API and are presented in the `/mod` HTTP path
 of the etcd service.
 
 The basic idea is that etcd can ship things like dashboards, master

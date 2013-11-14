@@ -1,0 +1,15 @@
+README
+
+The scripts in this directory should be run from the project root:
+
+$ cd $GOPATH/src/github.com/coreos/etcd
+$ tests/fixtures/v1/run.1.sh
+
+Scripts with numbers should be run in separate terminal windows (in order):
+
+$ tests/fixtures/v1/run.1.sh
+$ tests/fixtures/v1/run.2.sh
+$ tests/fixtures/v1/run.3.sh
+$ tests/fixtures/v1/run.4.sh
+
+The resulting server state data can be found in tmp/node*.

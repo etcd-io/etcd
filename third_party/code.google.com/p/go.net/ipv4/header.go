@@ -36,41 +36,47 @@ const (
 	maxHeaderLen = 60 // sensible default, revisit if later RFCs define new usage of version and header length fields
 )
 
-type headerField int
+const (
+	posTOS      = 1  // type-of-service
+	posTotalLen = 2  // packet total length
+	posID       = 4  // identification
+	posFragOff  = 6  // fragment offset
+	posTTL      = 8  // time-to-live
+	posProtocol = 9  // next protocol
+	posChecksum = 10 // checksum
+	posSrc      = 12 // source address
+	posDst      = 16 // destination address
+)
+
+type HeaderFlags int
 
 const (
-	posTOS      headerField = 1  // type-of-service
-	posTotalLen             = 2  // packet total length
-	posID                   = 4  // identification
-	posFragOff              = 6  // fragment offset
-	posTTL                  = 8  // time-to-live
-	posProtocol             = 9  // next protocol
-	posChecksum             = 10 // checksum
-	posSrc                  = 12 // source address
-	posDst                  = 16 // destination address
+	MoreFragments HeaderFlags = 1 << iota // more fragments flag
+	DontFragment                          // don't fragment flag
 )
 
 // A Header represents an IPv4 header.
 type Header struct {
-	Version  int    // protocol version
-	Len      int    // header length
-	TOS      int    // type-of-service
-	TotalLen int    // packet total length
-	ID       int    // identification
-	FragOff  int    // fragment offset
-	TTL      int    // time-to-live
-	Protocol int    // next protocol
-	Checksum int    // checksum
-	Src      net.IP // source address
-	Dst      net.IP // destination address
-	Options  []byte // options, extension headers
+	Version  int         // protocol version
+	Len      int         // header length
+	TOS      int         // type-of-service
+	TotalLen int         // packet total length
+	ID       int         // identification
+	Flags    HeaderFlags // flags
+	FragOff  int         // fragment offset
+	TTL      int         // time-to-live
+	Protocol int         // next protocol
+	Checksum int         // checksum
+	Src      net.IP      // source address
+	Dst      net.IP      // destination address
+	Options  []byte      // options, extension headers
 }
 
 func (h *Header) String() string {
 	if h == nil {
 		return "<nil>"
 	}
-	return fmt.Sprintf("ver: %v, hdrlen: %v, tos: %#x, totallen: %v, id: %#x, fragoff: %#x, ttl: %v, proto: %v, cksum: %#x, src: %v, dst: %v", h.Version, h.Len, h.TOS, h.TotalLen, h.ID, h.FragOff, h.TTL, h.Protocol, h.Checksum, h.Src, h.Dst)
+	return fmt.Sprintf("ver: %v, hdrlen: %v, tos: %#x, totallen: %v, id: %#x, flags: %#x, fragoff: %#x, ttl: %v, proto: %v, cksum: %#x, src: %v, dst: %v", h.Version, h.Len, h.TOS, h.TotalLen, h.ID, h.Flags, h.FragOff, h.TTL, h.Protocol, h.Checksum, h.Src, h.Dst)
 }
 
 // Please refer to the online manual; IP(4) on Darwin, FreeBSD and
@@ -89,12 +95,13 @@ func (h *Header) Marshal() ([]byte, error) {
 	b := make([]byte, hdrlen)
 	b[0] = byte(Version<<4 | (hdrlen >> 2 & 0x0f))
 	b[posTOS] = byte(h.TOS)
+	flagsAndFragOff := (h.FragOff & 0x1fff) | int(h.Flags<<13)
 	if supportsNewIPInput {
 		b[posTotalLen], b[posTotalLen+1] = byte(h.TotalLen>>8), byte(h.TotalLen)
-		b[posFragOff], b[posFragOff+1] = byte(h.FragOff>>8), byte(h.FragOff)
+		b[posFragOff], b[posFragOff+1] = byte(flagsAndFragOff>>8), byte(flagsAndFragOff)
 	} else {
 		*(*uint16)(unsafe.Pointer(&b[posTotalLen : posTotalLen+1][0])) = uint16(h.TotalLen)
-		*(*uint16)(unsafe.Pointer(&b[posFragOff : posFragOff+1][0])) = uint16(h.FragOff)
+		*(*uint16)(unsafe.Pointer(&b[posFragOff : posFragOff+1][0])) = uint16(flagsAndFragOff)
 	}
 	b[posID], b[posID+1] = byte(h.ID>>8), byte(h.ID)
 	b[posTTL] = byte(h.TTL)
@@ -135,6 +142,8 @@ func ParseHeader(b []byte) (*Header, error) {
 		h.TotalLen += hdrlen
 		h.FragOff = int(*(*uint16)(unsafe.Pointer(&b[posFragOff : posFragOff+1][0])))
 	}
+	h.Flags = HeaderFlags(h.FragOff&0xe000) >> 13
+	h.FragOff = h.FragOff & 0x1fff
 	h.ID = int(b[posID])<<8 | int(b[posID+1])
 	h.TTL = int(b[posTTL])
 	h.Protocol = int(b[posProtocol])

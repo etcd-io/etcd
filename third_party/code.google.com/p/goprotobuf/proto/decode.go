@@ -441,7 +441,7 @@ func (o *Buffer) unmarshalType(st reflect.Type, prop *StructProperties, is_group
 			// Not enough information to determine the exact field. If we use extra
 			// CPU, we could determine the field only if the missing required field
 			// has a tag <= 64 and we check reqFields.
-			return &ErrRequiredNotSet{"{Unknown}"}
+			return &RequiredNotSetError{"{Unknown}"}
 		}
 	}
 	return err

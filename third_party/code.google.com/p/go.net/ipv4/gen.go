@@ -97,20 +97,16 @@ func parseICMPv4Parameters(w io.Writer, r io.Reader) error {
 }
 
 type icmpv4Parameters struct {
-	XMLName    xml.Name              `xml:"registry"`
-	Title      string                `xml:"title"`
-	Updated    string                `xml:"updated"`
-	Registries []icmpv4ParamRegistry `xml:"registry"`
-}
-
-type icmpv4ParamRegistry struct {
-	Title   string              `xml:"title"`
-	Records []icmpv4ParamRecord `xml:"record"`
-}
-
-type icmpv4ParamRecord struct {
-	Value string `xml:"value"`
-	Descr string `xml:"description"`
+	XMLName    xml.Name `xml:"registry"`
+	Title      string   `xml:"title"`
+	Updated    string   `xml:"updated"`
+	Registries []struct {
+		Title   string `xml:"title"`
+		Records []struct {
+			Value string `xml:"value"`
+			Descr string `xml:"description"`
+		} `xml:"record"`
+	} `xml:"registry"`
 }
 
 type canonICMPv4ParamRecord struct {
@@ -193,18 +189,16 @@ func parseProtocolNumbers(w io.Writer, r io.Reader) error {
 }
 
 type protocolNumbers struct {
-	XMLName  xml.Name         `xml:"registry"`
-	Title    string           `xml:"title"`
-	Updated  string           `xml:"updated"`
-	RegTitle string           `xml:"registry>title"`
-	Note     string           `xml:"registry>note"`
-	Records  []protocolRecord `xml:"registry>record"`
-}
-
-type protocolRecord struct {
-	Value string `xml:"value"`
-	Name  string `xml:"name"`
-	Descr string `xml:"description"`
+	XMLName  xml.Name `xml:"registry"`
+	Title    string   `xml:"title"`
+	Updated  string   `xml:"updated"`
+	RegTitle string   `xml:"registry>title"`
+	Note     string   `xml:"registry>note"`
+	Records  []struct {
+		Value string `xml:"value"`
+		Name  string `xml:"name"`
+		Descr string `xml:"description"`
+	} `xml:"registry>record"`
 }
 
 type canonProtocolRecord struct {

@@ -57,7 +57,46 @@ var CommandTimeoutError = errors.New("raft: Command timeout")
 
 // A server is involved in the consensus protocol and can act as a follower,
 // candidate or a leader.
-type Server struct {
+type Server interface {
+	Name() string
+	Context() interface{}
+	StateMachine() StateMachine
+	Leader() string
+	State() string
+	Path() string
+	LogPath() string
+	SnapshotPath(lastIndex uint64, lastTerm uint64) string
+	Term() uint64
+	CommitIndex() uint64
+	VotedFor() string
+	MemberCount() int
+	QuorumSize() int
+	IsLogEmpty() bool
+	LogEntries() []*LogEntry
+	LastCommandName() string
+	GetState() string
+	ElectionTimeout() time.Duration
+	SetElectionTimeout(duration time.Duration)
+	HeartbeatTimeout() time.Duration
+	SetHeartbeatTimeout(duration time.Duration)
+	Transporter() Transporter
+	SetTransporter(t Transporter)
+	AppendEntries(req *AppendEntriesRequest) *AppendEntriesResponse
+	RequestVote(req *RequestVoteRequest) *RequestVoteResponse
+	RequestSnapshot(req *SnapshotRequest) *SnapshotResponse
+	SnapshotRecoveryRequest(req *SnapshotRecoveryRequest) *SnapshotRecoveryResponse
+	AddPeer(name string, connectiongString string) error
+	RemovePeer(name string) error
+	Peers() map[string]*Peer
+	Start() error
+	Stop()
+	Running() bool
+	Do(command Command) (interface{}, error)
+	TakeSnapshot() error
+	LoadSnapshot() error
+}
+
+type server struct {
 	name        string
 	path        string
 	state       string
@@ -98,7 +137,7 @@ type event struct {
 //------------------------------------------------------------------------------
 
 // Creates a new server with a log at the given path.
-func NewServer(name string, path string, transporter Transporter, stateMachine StateMachine, context interface{}, connectionString string) (*Server, error) {
+func NewServer(name string, path string, transporter Transporter, stateMachine StateMachine, context interface{}, connectionString string) (Server, error) {
 	if name == "" {
 		return nil, errors.New("raft.Server: Name cannot be blank")
 	}
@@ -106,7 +145,7 @@ func NewServer(name string, path string, transporter Transporter, stateMachine S
 		panic("raft: Transporter required")
 	}
 
-	s := &Server{
+	s := &server{
 		name:                    name,
 		path:                    path,
 		transporter:             transporter,
@@ -142,22 +181,22 @@ func NewServer(name string, path string, transporter Transporter, stateMachine S
 //--------------------------------------
 
 // Retrieves the name of the server.
-func (s *Server) Name() string {
+func (s *server) Name() string {
 	return s.name
 }
 
 // Retrieves the storage path for the server.
-func (s *Server) Path() string {
+func (s *server) Path() string {
 	return s.path
 }
 
 // The name of the current leader.
-func (s *Server) Leader() string {
+func (s *server) Leader() string {
 	return s.leader
 }
 
 // Retrieves a copy of the peer data.
-func (s *Server) Peers() map[string]*Peer {
+func (s *server) Peers() map[string]*Peer {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -169,37 +208,42 @@ func (s *Server) Peers() map[string]*Peer {
 }
 
 // Retrieves the object that transports requests.
-func (s *Server) Transporter() Transporter {
+func (s *server) Transporter() Transporter {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 	return s.transporter
 }
 
-func (s *Server) SetTransporter(t Transporter) {
+func (s *server) SetTransporter(t Transporter) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	s.transporter = t
 }
 
 // Retrieves the context passed into the constructor.
-func (s *Server) Context() interface{} {
+func (s *server) Context() interface{} {
 	return s.context
 }
 
+// Retrieves the state machine passed into the constructor.
+func (s *server) StateMachine() StateMachine {
+	return s.stateMachine
+}
+
 // Retrieves the log path for the server.
-func (s *Server) LogPath() string {
+func (s *server) LogPath() string {
 	return path.Join(s.path, "log")
 }
 
 // Retrieves the current state of the server.
-func (s *Server) State() string {
+func (s *server) State() string {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 	return s.state
 }
 
 // Sets the state of the server.
-func (s *Server) setState(state string) {
+func (s *server) setState(state string) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	s.state = state
@@ -209,44 +253,44 @@ func (s *Server) setState(state string) {
 }
 
 // Retrieves the current term of the server.
-func (s *Server) Term() uint64 {
+func (s *server) Term() uint64 {
 	return s.currentTerm
 }
 
 // Retrieves the current commit index of the server.
-func (s *Server) CommitIndex() uint64 {
+func (s *server) CommitIndex() uint64 {
 	return s.log.commitIndex
 }
 
 // Retrieves the name of the candidate this server voted for in this term.
-func (s *Server) VotedFor() string {
+func (s *server) VotedFor() string {
 	return s.votedFor
 }
 
 // Retrieves whether the server's log has no entries.
-func (s *Server) IsLogEmpty() bool {
+func (s *server) IsLogEmpty() bool {
 	return s.log.isEmpty()
 }
 
 // A list of all the log entries. This should only be used for debugging purposes.
-func (s *Server) LogEntries() []*LogEntry {
+func (s *server) LogEntries() []*LogEntry {
 	return s.log.entries
 }
 
 // A reference to the command name of the last entry.
-func (s *Server) LastCommandName() string {
+func (s *server) LastCommandName() string {
 	return s.log.lastCommandName()
 }
 
 // Get the state of the server for debugging
-func (s *Server) GetState() string {
+func (s *server) GetState() string {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 	return fmt.Sprintf("Name: %s, State: %s, Term: %v, CommitedIndex: %v ", s.name, s.state, s.currentTerm, s.log.commitIndex)
 }
 
 // Check if the server is promotable
-func (s *Server) promotable() bool {
+func (s *server) promotable() bool {
 	return s.log.currentIndex() > 0
 }
 
@@ -255,14 +299,14 @@ func (s *Server) promotable() bool {
 //--------------------------------------
 
 // Retrieves the number of member servers in the consensus.
-func (s *Server) MemberCount() int {
+func (s *server) MemberCount() int {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	return len(s.peers) + 1
 }
 
 // Retrieves the number of servers required to make a quorum.
-func (s *Server) QuorumSize() int {
+func (s *server) QuorumSize() int {
 	return (s.MemberCount() / 2) + 1
 }
 
@@ -271,14 +315,14 @@ func (s *Server) QuorumSize() int {
 //--------------------------------------
 
 // Retrieves the election timeout.
-func (s *Server) ElectionTimeout() time.Duration {
+func (s *server) ElectionTimeout() time.Duration {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 	return s.electionTimeout
 }
 
 // Sets the election timeout.
-func (s *Server) SetElectionTimeout(duration time.Duration) {
+func (s *server) SetElectionTimeout(duration time.Duration) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	s.electionTimeout = duration
@@ -289,14 +333,14 @@ func (s *Server) SetElectionTimeout(duration time.Duration) {
 //--------------------------------------
 
 // Retrieves the heartbeat timeout.
-func (s *Server) HeartbeatTimeout() time.Duration {
+func (s *server) HeartbeatTimeout() time.Duration {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 	return s.heartbeatTimeout
 }
 
 // Sets the heartbeat timeout.
-func (s *Server) SetHeartbeatTimeout(duration time.Duration) {
+func (s *server) SetHeartbeatTimeout(duration time.Duration) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -329,7 +373,7 @@ func init() {
 // If no log entries exist and a self-join command is issued then
 // immediately become leader and commit entry.
 
-func (s *Server) Start() error {
+func (s *server) Start() error {
 	// Exit if the server is already running.
 	if s.state != Stopped {
 		return errors.New("raft.Server: Server already running")
@@ -375,7 +419,7 @@ func (s *Server) Start() error {
 }
 
 // Shuts down the server.
-func (s *Server) Stop() {
+func (s *server) Stop() {
 	s.send(&stopValue)
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
@@ -383,7 +427,7 @@ func (s *Server) Stop() {
 }
 
 // Checks if the server is currently running.
-func (s *Server) Running() bool {
+func (s *server) Running() bool {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 	return s.state != Stopped
@@ -395,7 +439,7 @@ func (s *Server) Running() bool {
 
 // Sets the current term for the server. This is only used when an external
 // current term is found.
-func (s *Server) setCurrentTerm(term uint64, leaderName string, append bool) {
+func (s *server) setCurrentTerm(term uint64, leaderName string, append bool) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -434,7 +478,7 @@ func (s *Server) setCurrentTerm(term uint64, leaderName string, append bool) {
 //                    |            new leader |                                     |
 //                    |_______________________|____________________________________ |
 // The main event loop for the server
-func (s *Server) loop() {
+func (s *server) loop() {
 	defer s.debugln("server.loop.end")
 
 	for {
@@ -462,13 +506,13 @@ func (s *Server) loop() {
 
 // Sends an event to the event loop to be processed. The function will wait
 // until the event is actually processed before returning.
-func (s *Server) send(value interface{}) (interface{}, error) {
+func (s *server) send(value interface{}) (interface{}, error) {
 	event := s.sendAsync(value)
 	err := <-event.c
 	return event.returnValue, err
 }
 
-func (s *Server) sendAsync(value interface{}) *event {
+func (s *server) sendAsync(value interface{}) *event {
 	event := &event{target: value, c: make(chan error, 1)}
 	s.c <- event
 	return event
@@ -479,7 +523,7 @@ func (s *Server) sendAsync(value interface{}) *event {
 // Converts to candidate if election timeout elapses without either:
 //   1.Receiving valid AppendEntries RPC, or
 //   2.Granting vote to candidate
-func (s *Server) followerLoop() {
+func (s *server) followerLoop() {
 
 	s.setState(Follower)
 	timeoutChan := afterBetween(s.ElectionTimeout(), s.ElectionTimeout()*2)
@@ -542,7 +586,7 @@ func (s *Server) followerLoop() {
 }
 
 // The event loop that is run when the server is in a Candidate state.
-func (s *Server) candidateLoop() {
+func (s *server) candidateLoop() {
 	lastLogIndex, lastLogTerm := s.log.lastInfo()
 	s.leader = ""
 
@@ -625,7 +669,7 @@ func (s *Server) candidateLoop() {
 }
 
 // The event loop that is run when the server is in a Leader state.
-func (s *Server) leaderLoop() {
+func (s *server) leaderLoop() {
 	s.setState(Leader)
 	s.syncedPeer = make(map[string]bool)
 	logIndex, _ := s.log.lastInfo()
@@ -677,7 +721,7 @@ func (s *Server) leaderLoop() {
 	s.syncedPeer = nil
 }
 
-func (s *Server) snapshotLoop() {
+func (s *server) snapshotLoop() {
 	s.setState(Snapshotting)
 
 	for {
@@ -716,12 +760,12 @@ func (s *Server) snapshotLoop() {
 // Attempts to execute a command and replicate it. The function will return
 // when the command has been successfully committed or an error has occurred.
 
-func (s *Server) Do(command Command) (interface{}, error) {
+func (s *server) Do(command Command) (interface{}, error) {
 	return s.send(command)
 }
 
 // Processes a command.
-func (s *Server) processCommand(command Command, e *event) {
+func (s *server) processCommand(command Command, e *event) {
 	s.debugln("server.command.process")
 
 	// Create an entry for the command in the log.
@@ -774,14 +818,14 @@ func (s *Server) processCommand(command Command, e *event) {
 //--------------------------------------
 
 // Appends zero or more log entry from the leader to this server.
-func (s *Server) AppendEntries(req *AppendEntriesRequest) *AppendEntriesResponse {
+func (s *server) AppendEntries(req *AppendEntriesRequest) *AppendEntriesResponse {
 	ret, _ := s.send(req)
 	resp, _ := ret.(*AppendEntriesResponse)
 	return resp
 }
 
 // Processes the "append entries" request.
-func (s *Server) processAppendEntriesRequest(req *AppendEntriesRequest) (*AppendEntriesResponse, bool) {
+func (s *server) processAppendEntriesRequest(req *AppendEntriesRequest) (*AppendEntriesResponse, bool) {
 
 	s.traceln("server.ae.process")
 
@@ -819,7 +863,7 @@ func (s *Server) processAppendEntriesRequest(req *AppendEntriesRequest) (*Append
 // Processes the "append entries" response from the peer. This is only
 // processed when the server is a leader. Responses received during other
 // states are dropped.
-func (s *Server) processAppendEntriesResponse(resp *AppendEntriesResponse) {
+func (s *server) processAppendEntriesResponse(resp *AppendEntriesResponse) {
 
 	// If we find a higher term then change to a follower and exit.
 	if resp.Term > s.currentTerm {
@@ -849,7 +893,7 @@ func (s *Server) processAppendEntriesResponse(resp *AppendEntriesResponse) {
 	for _, peer := range s.peers {
 		indices = append(indices, peer.getPrevLogIndex())
 	}
-	sort.Sort(uint64Slice(indices))
+	sort.Sort(sort.Reverse(uint64Slice(indices)))
 
 	// We can commit up to the index which the majority of the members have appended.
 	commitIndex := indices[s.QuorumSize()-1]
@@ -883,14 +927,14 @@ func (s *Server) processAppendEntriesResponse(resp *AppendEntriesResponse) {
 // Requests a vote from a server. A vote can be obtained if the vote's term is
 // at the server's current term and the server has not made a vote yet. A vote
 // can also be obtained if the term is greater than the server's current term.
-func (s *Server) RequestVote(req *RequestVoteRequest) *RequestVoteResponse {
+func (s *server) RequestVote(req *RequestVoteRequest) *RequestVoteResponse {
 	ret, _ := s.send(req)
 	resp, _ := ret.(*RequestVoteResponse)
 	return resp
 }
 
 // Processes a "request vote" request.
-func (s *Server) processRequestVoteRequest(req *RequestVoteRequest) (*RequestVoteResponse, bool) {
+func (s *server) processRequestVoteRequest(req *RequestVoteRequest) (*RequestVoteResponse, bool) {
 
 	// If the request is coming from an old term then reject it.
 	if req.Term < s.currentTerm {
@@ -928,7 +972,7 @@ func (s *Server) processRequestVoteRequest(req *RequestVoteRequest) (*RequestVot
 //--------------------------------------
 
 // Adds a peer to the server.
-func (s *Server) AddPeer(name string, connectiongString string) error {
+func (s *server) AddPeer(name string, connectiongString string) error {
 	s.debugln("server.peer.add: ", name, len(s.peers))
 
 	// Do not allow peers to be added twice.
@@ -954,7 +998,7 @@ func (s *Server) AddPeer(name string, connectiongString string) error {
 }
 
 // Removes a peer from the server.
-func (s *Server) RemovePeer(name string) error {
+func (s *server) RemovePeer(name string) error {
 	s.debugln("server.peer.remove: ", name, len(s.peers))
 
 	// Skip the Peer if it has the same name as the Server
@@ -983,7 +1027,7 @@ func (s *Server) RemovePeer(name string) error {
 // Log compaction
 //--------------------------------------
 
-func (s *Server) TakeSnapshot() error {
+func (s *server) TakeSnapshot() error {
 	//TODO put a snapshot mutex
 	s.debugln("take Snapshot")
 	if s.currentSnapshot != nil {
@@ -1042,7 +1086,7 @@ func (s *Server) TakeSnapshot() error {
 }
 
 // Retrieves the log path for the server.
-func (s *Server) saveSnapshot() error {
+func (s *server) saveSnapshot() error {
 
 	if s.currentSnapshot == nil {
 		return errors.New("no snapshot to save")
@@ -1066,17 +1110,17 @@ func (s *Server) saveSnapshot() error {
 }
 
 // Retrieves the log path for the server.
-func (s *Server) SnapshotPath(lastIndex uint64, lastTerm uint64) string {
+func (s *server) SnapshotPath(lastIndex uint64, lastTerm uint64) string {
 	return path.Join(s.path, "snapshot", fmt.Sprintf("%v_%v.ss", lastTerm, lastIndex))
 }
 
-func (s *Server) RequestSnapshot(req *SnapshotRequest) *SnapshotResponse {
+func (s *server) RequestSnapshot(req *SnapshotRequest) *SnapshotResponse {
 	ret, _ := s.send(req)
 	resp, _ := ret.(*SnapshotResponse)
 	return resp
 }
 
-func (s *Server) processSnapshotRequest(req *SnapshotRequest) *SnapshotResponse {
+func (s *server) processSnapshotRequest(req *SnapshotRequest) *SnapshotResponse {
 
 	// If the follower’s log contains an entry at the snapshot’s last index with a term
 	// that matches the snapshot’s last term
@@ -1094,13 +1138,13 @@ func (s *Server) processSnapshotRequest(req *SnapshotRequest) *SnapshotResponse 
 	return newSnapshotResponse(true)
 }
 
-func (s *Server) SnapshotRecoveryRequest(req *SnapshotRecoveryRequest) *SnapshotRecoveryResponse {
+func (s *server) SnapshotRecoveryRequest(req *SnapshotRecoveryRequest) *SnapshotRecoveryResponse {
 	ret, _ := s.send(req)
 	resp, _ := ret.(*SnapshotRecoveryResponse)
 	return resp
 }
 
-func (s *Server) processSnapshotRecoveryRequest(req *SnapshotRecoveryRequest) *SnapshotRecoveryResponse {
+func (s *server) processSnapshotRecoveryRequest(req *SnapshotRecoveryRequest) *SnapshotRecoveryResponse {
 
 	s.stateMachine.Recovery(req.State)
 
@@ -1131,7 +1175,7 @@ func (s *Server) processSnapshotRecoveryRequest(req *SnapshotRecoveryRequest) *S
 }
 
 // Load a snapshot at restart
-func (s *Server) LoadSnapshot() error {
+func (s *server) LoadSnapshot() error {
 	dir, err := os.OpenFile(path.Join(s.path, "snapshot"), os.O_RDONLY, 0)
 	if err != nil {
 
@@ -1216,7 +1260,7 @@ func (s *Server) LoadSnapshot() error {
 // Config File
 //--------------------------------------
 
-func (s *Server) writeConf() {
+func (s *server) writeConf() {
 
 	peers := make([]*Peer, len(s.peers))
 
@@ -1246,7 +1290,7 @@ func (s *Server) writeConf() {
 }
 
 // Read the configuration for the server.
-func (s *Server) readConf() error {
+func (s *server) readConf() error {
 	confPath := path.Join(s.path, "conf")
 	s.debugln("readConf.open ", confPath)
 
@@ -1272,10 +1316,10 @@ func (s *Server) readConf() error {
 // Debugging
 //--------------------------------------
 
-func (s *Server) debugln(v ...interface{}) {
+func (s *server) debugln(v ...interface{}) {
 	debugf("[%s Term:%d] %s", s.name, s.currentTerm, fmt.Sprintln(v...))
 }
 
-func (s *Server) traceln(v ...interface{}) {
+func (s *server) traceln(v ...interface{}) {
 	tracef("[%s] %s", s.name, fmt.Sprintln(v...))
 }
