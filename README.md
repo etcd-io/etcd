@@ -361,12 +361,7 @@ curl -L http://127.0.0.1:4001/v2/keys/
 {"action":"get","key":"/","dir":true,"kvs":[{"key":"/foo","value":"two","modifiedIndex":9},{"key":"/message","value":"Hello world","modifiedIndex":13}],"modifiedIndex":0}
 ```
 
-<<<<<<< HEAD
-which means `foo=barbar` is a key-value pair under `/foo` and `foo_dir` is a directory.
-=======
 Here we see the `/message` key but our hidden `/_message` key is not returned.
-
->>>>>>> aa047b124d7beefcfa3dc79f1791bf60980cbe6b
 
 ## Advanced Usage
 
