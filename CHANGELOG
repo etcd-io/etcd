@@ -1,0 +1,26 @@
+v0.2
+* Add Compare-and-Swap (CAS) support.
+* Support recursive GETs.
+* Support fully consistent GETs.
+* Allow clients to watch for key expiration.
+* Refactor low-level data store.
+* Modularize store, server and API code.
+* Integrate Gorilla Web Toolkit.
+* Add tiered configuration (command line args, env variables, config file).
+* Add peer protocol versioning.
+* Add rolling upgrade support for future versions.
+* Sync key expiration across cluster.
+* Significantly improve test coverage.
+* Improve migration testing.
+* Bug Fixes: https://github.com/coreos/etcd/issues?milestone=1&state=closed
+
+Contributors:
+* Xiang Li (@xiangli-cmu)
+* Ben Johnson (@benbjohnson)
+* Brandon Philips (@philips)
+* Yifan (@yifan-gu)
+* Rob Szumski
+* Hongchao Deng (@fengjingchao)
+* Kelsey Hightower (@kelseyhightower)
+* Adrián (@adrianlzt)
+* Antonio Terreno (@aterreno)
