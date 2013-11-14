@@ -477,7 +477,7 @@ func writeUnknownStruct(w *textWriter, data []byte) (err error) {
 		switch wire {
 		case WireBytes:
 			buf, e := b.DecodeRawBytes(false)
-			if err == nil {
+			if e == nil {
 				_, err = fmt.Fprintf(w, "%q", buf)
 			} else {
 				_, err = fmt.Fprintf(w, "/* %v */", e)

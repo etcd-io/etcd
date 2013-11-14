@@ -36,12 +36,16 @@ type Client struct {
 }
 
 // Setup a basic conf and cluster
-func NewClient() *Client {
+func NewClient(machines []string) *Client {
+	// if an empty slice was sent in then just assume localhost
+	if len(machines) == 0 {
+		machines = []string{"http://127.0.0.1:4001"}
+	}
 
 	// default leader and machines
 	cluster := Cluster{
-		Leader:   "http://127.0.0.1:4001",
-		Machines: []string{"http://127.0.0.1:4001"},
+		Leader:   machines[0],
+		Machines: machines,
 	}
 
 	config := Config{
@@ -107,6 +111,10 @@ func (c *Client) SetCluster(machines []string) bool {
 	return success
 }
 
+func (c *Client) GetCluster() []string {
+	return c.cluster.Machines
+}
+
 // sycn cluster information using the existing machine list
 func (c *Client) SyncCluster() bool {
 	success := c.internalSyncCluster(c.cluster.Machines)
@@ -128,8 +136,9 @@ func (c *Client) internalSyncCluster(machines []string) bool {
 				// try another machine in the cluster
 				continue
 			}
+
 			// update Machines List
-			c.cluster.Machines = strings.Split(string(b), ",")
+			c.cluster.Machines = strings.Split(string(b), ", ")
 
 			// update leader
 			// the first one in the machine list is the leader
@@ -147,6 +156,9 @@ func (c *Client) internalSyncCluster(machines []string) bool {
 func (c *Client) createHttpPath(serverName string, _path string) string {
 	u, _ := url.Parse(serverName)
 	u.Path = path.Join(u.Path, "/", _path)
+	if u.Scheme == "" {
+		u.Scheme = "http"
+	}
 	return u.String()
 }
 

@@ -1,8 +1,13 @@
 packages="
+	github.com/BurntSushi/toml
 	github.com/coreos/go-raft
 	github.com/coreos/go-etcd
 	github.com/coreos/go-log/log
 	github.com/coreos/go-systemd
+	github.com/gorilla/context
+	github.com/gorilla/mux
+	github.com/stretchr/testify/assert
+	github.com/stretchr/testify/mock
 	bitbucket.org/kardianos/osext
 	code.google.com/p/go.net
 	code.google.com/p/goprotobuf

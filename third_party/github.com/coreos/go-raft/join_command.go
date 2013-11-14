@@ -3,7 +3,7 @@ package raft
 // Join command interface
 type JoinCommand interface {
 	CommandName() string
-	Apply(server *Server) (interface{}, error)
+	Apply(server Server) (interface{}, error)
 	NodeName() string
 }
 
@@ -18,7 +18,7 @@ func (c *DefaultJoinCommand) CommandName() string {
 	return "raft:join"
 }
 
-func (c *DefaultJoinCommand) Apply(server *Server) (interface{}, error) {
+func (c *DefaultJoinCommand) Apply(server Server) (interface{}, error) {
 	err := server.AddPeer(c.Name, c.ConnectionString)
 
 	return []byte("join"), err

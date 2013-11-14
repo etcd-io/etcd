@@ -2,10 +2,10 @@
 
 angular.module('etcd', [])
 
-.factory('EtcdV1', ['$http', function($http) {
-  var keyPrefix = '/v1/keys/'
-  var statsPrefix = '/v1/stats/'
-  var baseURL = '/v1/'
+.factory('EtcdV2', ['$http', function($http) {
+  var keyPrefix = '/v2/keys/'
+  var statsPrefix = '/v2/stats/'
+  var baseURL = '/v2/'
 
   delete $http.defaults.headers.common['X-Requested-With'];
 
@@ -15,7 +15,8 @@ angular.module('etcd', [])
       return '';
     }
     parts = parts.filter(function(v){return v!=='';});
-    return parts.join('/');
+    parts = parts.join('/');
+    return parts
   }
 
   function newKey(keyName) {
@@ -32,7 +33,11 @@ angular.module('etcd', [])
     };
 
     self.path = function() {
-      return '/' + cleanupPath(keyPrefix + self.name);
+      var path = '/' + cleanupPath(keyPrefix + self.name);
+      if (path === keyPrefix.substring(0, keyPrefix.length - 1)) {
+        return keyPrefix
+      }
+      return path
     };
 
     self.get = function() {
@@ -43,7 +48,7 @@ angular.module('etcd', [])
       return $http({
         url: self.path(),
         data: $.param({value: keyValue}),
-        method: 'POST',
+        method: 'PUT',
         headers: {'Content-Type': 'application/x-www-form-urlencoded'}
       });
     };

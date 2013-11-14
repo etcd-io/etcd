@@ -20,660 +20,560 @@ import (
 	"encoding/json"
 	"fmt"
 	"path"
+	"sort"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
 	etcdErr "github.com/coreos/etcd/error"
 )
 
-//------------------------------------------------------------------------------
-//
-// Typedefs
-//
-//------------------------------------------------------------------------------
+// The default version to set when the store is first initialized.
+const defaultVersion = 2
 
-// The main struct of the Key-Value store
-type Store struct {
+var minExpireTime time.Time
 
-	// key-value store structure
-	Tree *tree
-
-	// This mutex protects everything except add watcher member.
-	// Add watch member does not depend on the current state of the store.
-	// And watch will return when other protected function is called and reach
-	// the watching condition.
-	// It is needed so that clone() can atomically replicate the Store
-	// and do the log snapshot in a go routine.
-	mutex sync.RWMutex
-
-	// WatcherHub is where we register all the clients
-	// who issue a watch request
-	watcher *WatcherHub
-
-	// The string channel to send messages to the outside world
-	// Now we use it to send changes to the hub of the web service
-	messager chan<- string
-
-	// A map to keep the recent response to the clients
-	ResponseMap map[string]*Response
-
-	// The max number of the recent responses we can record
-	ResponseMaxSize int
-
-	// The current number of the recent responses we have recorded
-	ResponseCurrSize uint
-
-	// The index of the first recent responses we have
-	ResponseStartIndex uint64
-
-	// Current index of the raft machine
-	Index uint64
-
-	// Basic statistics information of etcd storage
-	BasicStats EtcdStats
+func init() {
+	minExpireTime, _ = time.Parse(time.RFC3339, "2000-01-01T00:00:00Z")
 }
 
-// A Node represents a Value in the Key-Value pair in the store
-// It has its value, expire time and a channel used to update the
-// expire time (since we do countdown in a go routine, we need to
-// communicate with it via channel)
-type Node struct {
-	// The string value of the node
-	Value string `json:"value"`
-
-	// If the node is a permanent one the ExprieTime will be Unix(0,0)
-	// Otherwise after the expireTime, the node will be deleted
-	ExpireTime time.Time `json:"expireTime"`
-
-	// A channel to update the expireTime of the node
-	update chan time.Time `json:"-"`
+type Store interface {
+	Version() int
+	CommandFactory() CommandFactory
+	Index() uint64
+	Get(nodePath string, recursive, sorted bool) (*Event, error)
+	Set(nodePath string, value string, expireTime time.Time) (*Event, error)
+	Update(nodePath string, newValue string, expireTime time.Time) (*Event, error)
+	Create(nodePath string, value string, incrementalSuffix bool,
+		expireTime time.Time) (*Event, error)
+	CompareAndSwap(nodePath string, prevValue string, prevIndex uint64,
+		value string, expireTime time.Time) (*Event, error)
+	Delete(nodePath string, recursive bool) (*Event, error)
+	Watch(prefix string, recursive bool, sinceIndex uint64) (<-chan *Event, error)
+	Save() ([]byte, error)
+	Recovery(state []byte) error
+	TotalTransactions() uint64
+	JsonStats() []byte
+	DeleteExpiredKeys(cutoff time.Time)
 }
 
-// The response from the store to the user who issue a command
-type Response struct {
-	Action    string `json:"action"`
-	Key       string `json:"key"`
-	Dir       bool   `json:"dir,omitempty"`
-	PrevValue string `json:"prevValue,omitempty"`
-	Value     string `json:"value,omitempty"`
-
-	// If the key did not exist before the action,
-	// this field should be set to true
-	NewKey bool `json:"newKey,omitempty"`
-
-	Expiration *time.Time `json:"expiration,omitempty"`
-
-	// Time to live in second
-	TTL int64 `json:"ttl,omitempty"`
-
-	// The command index of the raft machine when the command is executed
-	Index uint64 `json:"index"`
+type store struct {
+	Root           *Node
+	WatcherHub     *watcherHub
+	CurrentIndex   uint64
+	Stats          *Stats
+	CurrentVersion int
+	ttlKeyHeap     *ttlKeyHeap  // need to recovery manually
+	worldLock      sync.RWMutex // stop the world lock
 }
 
-// A listNode represent the simplest Key-Value pair with its type
-// It is only used when do list opeartion
-// We want to have a file system like store, thus we distingush "file"
-// and "directory"
-type ListNode struct {
-	Key   string
-	Value string
-	Type  string
+func New() Store {
+	return newStore()
 }
 
-var PERMANENT = time.Unix(0, 0)
-
-//------------------------------------------------------------------------------
-//
-// Methods
-//
-//------------------------------------------------------------------------------
-
-// Create a new stroe
-// Arguement max is the max number of response we want to record
-func CreateStore(max int) *Store {
-	s := new(Store)
-
-	s.messager = nil
-
-	s.ResponseMap = make(map[string]*Response)
-	s.ResponseStartIndex = 0
-	s.ResponseMaxSize = max
-	s.ResponseCurrSize = 0
-
-	s.Tree = &tree{
-		&treeNode{
-			Node{
-				"/",
-				time.Unix(0, 0),
-				nil,
-			},
-			true,
-			make(map[string]*treeNode),
-		},
-	}
-
-	s.watcher = newWatcherHub()
-
+func newStore() *store {
+	s := new(store)
+	s.CurrentVersion = defaultVersion
+	s.Root = newDir(s, "/", s.CurrentIndex, nil, "", Permanent)
+	s.Stats = newStats()
+	s.WatcherHub = newWatchHub(1000)
+	s.ttlKeyHeap = newTtlKeyHeap()
 	return s
 }
 
-// Set the messager of the store
-func (s *Store) SetMessager(messager chan<- string) {
-	s.messager = messager
+// Version retrieves current version of the store.
+func (s *store) Version() int {
+	return s.CurrentVersion
 }
 
-func (s *Store) Set(key string, value string, expireTime time.Time, index uint64) ([]byte, error) {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
-	return s.internalSet(key, value, expireTime, index)
-
+// Retrieves current of the store
+func (s *store) Index() uint64 {
+	return s.CurrentIndex
 }
 
-// Set the key to value with expiration time
-func (s *Store) internalSet(key string, value string, expireTime time.Time, index uint64) ([]byte, error) {
-	//Update index
-	s.Index = index
+// CommandFactory retrieves the command factory for the current version of the store.
+func (s *store) CommandFactory() CommandFactory {
+	return GetCommandFactory(s.Version())
+}
 
-	//Update stats
-	s.BasicStats.Sets++
+// Get function returns a get event.
+// If recursive is true, it will return all the content under the node path.
+// If sorted is true, it will sort the content by keys.
+func (s *store) Get(nodePath string, recursive, sorted bool) (*Event, error) {
+	s.worldLock.RLock()
+	defer s.worldLock.RUnlock()
 
-	key = path.Clean("/" + key)
+	nodePath = path.Clean(path.Join("/", nodePath))
 
-	isExpire := !expireTime.Equal(PERMANENT)
+	n, err := s.internalGet(nodePath)
 
-	// base response
-	resp := Response{
-		Action: "SET",
-		Key:    key,
-		Value:  value,
-		Index:  index,
+	if err != nil {
+		s.Stats.Inc(GetFail)
+		return nil, err
 	}
 
-	// When the slow follower receive the set command
-	// the key may be expired, we should not add the node
-	// also if the node exist, we need to delete the node
-	if isExpire && expireTime.Sub(time.Now()) < 0 {
-		return s.internalDelete(key, index)
-	}
+	e := newEvent(Get, nodePath, n.ModifiedIndex)
 
-	var TTL int64
+	if n.IsDir() { // node is a directory
+		e.Dir = true
 
-	// Update ttl
-	if isExpire {
-		TTL = int64(expireTime.Sub(time.Now()) / time.Second)
-		resp.Expiration = &expireTime
-		resp.TTL = TTL
-	}
+		children, _ := n.List()
+		e.KVPairs = make([]KeyValuePair, len(children))
 
-	// Get the node
-	node, ok := s.Tree.get(key)
+		// we do not use the index in the children slice directly
+		// we need to skip the hidden one
+		i := 0
 
-	if ok {
-		// Update when node exists
-
-		// Node is not permanent
-		if !node.ExpireTime.Equal(PERMANENT) {
-
-			// If node is not permanent
-			// Update its expireTime
-			node.update <- expireTime
-
-		} else {
-
-			// If we want the permanent node to have expire time
-			// We need to create a go routine with a channel
-			if isExpire {
-				node.update = make(chan time.Time)
-				go s.monitorExpiration(key, node.update, expireTime)
+		for _, child := range children {
+			if child.IsHidden() { // get will not return hidden nodes
+				continue
 			}
 
+			e.KVPairs[i] = child.Pair(recursive, sorted)
+			i++
 		}
 
-		// Update the information of the node
-		s.Tree.set(key, Node{value, expireTime, node.update})
+		// eliminate hidden nodes
+		e.KVPairs = e.KVPairs[:i]
 
-		resp.PrevValue = node.Value
-
-		s.watcher.notify(resp)
-
-		msg, err := json.Marshal(resp)
-
-		// Send to the messager
-		if s.messager != nil && err == nil {
-			s.messager <- string(msg)
+		if sorted {
+			sort.Sort(e.KVPairs)
 		}
 
-		s.addToResponseMap(index, &resp)
-
-		return msg, err
-
-		// Add new node
-	} else {
-
-		update := make(chan time.Time)
-
-		ok := s.Tree.set(key, Node{value, expireTime, update})
-
-		if !ok {
-			return nil, etcdErr.NewError(102, "set: "+key)
-		}
-
-		if isExpire {
-			go s.monitorExpiration(key, update, expireTime)
-		}
-
-		resp.NewKey = true
-
-		msg, err := json.Marshal(resp)
-
-		// Nofity the watcher
-		s.watcher.notify(resp)
-
-		// Send to the messager
-		if s.messager != nil && err == nil {
-			s.messager <- string(msg)
-		}
-
-		s.addToResponseMap(index, &resp)
-		return msg, err
+	} else { // node is a file
+		e.Value, _ = n.Read()
 	}
 
+	e.Expiration, e.TTL = n.ExpirationAndTTL()
+
+	s.Stats.Inc(GetSuccess)
+
+	return e, nil
 }
 
-// Get the value of the key and return the raw response
-func (s *Store) internalGet(key string) *Response {
+// Create function creates the Node at nodePath. Create will help to create intermediate directories with no ttl.
+// If the node has already existed, create will fail.
+// If any node on the path is a file, create will fail.
+func (s *store) Create(nodePath string, value string, unique bool, expireTime time.Time) (*Event, error) {
+	nodePath = path.Clean(path.Join("/", nodePath))
 
-	key = path.Clean("/" + key)
+	s.worldLock.Lock()
+	defer s.worldLock.Unlock()
+	e, err := s.internalCreate(nodePath, value, unique, false, expireTime, Create)
 
-	node, ok := s.Tree.get(key)
+	if err == nil {
+		s.Stats.Inc(CreateSuccess)
+	} else {
+		s.Stats.Inc(CreateFail)
+	}
 
-	if ok {
-		var TTL int64
-		var isExpire bool = false
+	return e, err
+}
 
-		isExpire = !node.ExpireTime.Equal(PERMANENT)
+// Set function creates or replace the Node at nodePath.
+func (s *store) Set(nodePath string, value string, expireTime time.Time) (*Event, error) {
+	nodePath = path.Clean(path.Join("/", nodePath))
 
-		resp := &Response{
-			Action: "GET",
-			Key:    key,
-			Value:  node.Value,
-			Index:  s.Index,
-		}
+	s.worldLock.Lock()
+	defer s.worldLock.Unlock()
+	e, err := s.internalCreate(nodePath, value, false, true, expireTime, Set)
 
-		// Update ttl
-		if isExpire {
-			TTL = int64(node.ExpireTime.Sub(time.Now()) / time.Second)
-			resp.Expiration = &node.ExpireTime
-			resp.TTL = TTL
-		}
+	if err == nil {
+		s.Stats.Inc(SetSuccess)
+	} else {
+		s.Stats.Inc(SetFail)
+	}
 
-		return resp
+	return e, err
+}
+
+func (s *store) CompareAndSwap(nodePath string, prevValue string, prevIndex uint64,
+	value string, expireTime time.Time) (*Event, error) {
+
+	nodePath = path.Clean(path.Join("/", nodePath))
+
+	s.worldLock.Lock()
+	defer s.worldLock.Unlock()
+
+	n, err := s.internalGet(nodePath)
+
+	if err != nil {
+		s.Stats.Inc(CompareAndSwapFail)
+		return nil, err
+	}
+
+	if n.IsDir() { // can only test and set file
+		s.Stats.Inc(CompareAndSwapFail)
+		return nil, etcdErr.NewError(etcdErr.EcodeNotFile, nodePath, s.CurrentIndex)
+	}
+
+	// If both of the prevValue and prevIndex are given, we will test both of them.
+	// Command will be executed, only if both of the tests are successful.
+	if (prevValue == "" || n.Value == prevValue) && (prevIndex == 0 || n.ModifiedIndex == prevIndex) {
+		// update etcd index
+		s.CurrentIndex++
+
+		e := newEvent(CompareAndSwap, nodePath, s.CurrentIndex)
+		e.PrevValue = n.Value
+
+		// if test succeed, write the value
+		n.Write(value, s.CurrentIndex)
+		n.UpdateTTL(expireTime)
+
+		e.Value = value
+		e.Expiration, e.TTL = n.ExpirationAndTTL()
+
+		s.WatcherHub.notify(e)
+		s.Stats.Inc(CompareAndSwapSuccess)
+		return e, nil
+	}
+
+	cause := fmt.Sprintf("[%v != %v] [%v != %v]", prevValue, n.Value, prevIndex, n.ModifiedIndex)
+	s.Stats.Inc(CompareAndSwapFail)
+	return nil, etcdErr.NewError(etcdErr.EcodeTestFailed, cause, s.CurrentIndex)
+}
+
+// Delete function deletes the node at the given path.
+// If the node is a directory, recursive must be true to delete it.
+func (s *store) Delete(nodePath string, recursive bool) (*Event, error) {
+	nodePath = path.Clean(path.Join("/", nodePath))
+
+	s.worldLock.Lock()
+	defer s.worldLock.Unlock()
+
+	nextIndex := s.CurrentIndex + 1
+
+	n, err := s.internalGet(nodePath)
+
+	if err != nil { // if the node does not exist, return error
+		s.Stats.Inc(DeleteFail)
+		return nil, err
+	}
+
+	e := newEvent(Delete, nodePath, nextIndex)
+
+	if n.IsDir() {
+		e.Dir = true
+	} else {
+		e.PrevValue = n.Value
+	}
+
+	callback := func(path string) { // notify function
+		// notify the watchers with delted set true
+		s.WatcherHub.notifyWatchers(e, path, true)
+	}
+
+	err = n.Remove(recursive, callback)
+
+	if err != nil {
+		s.Stats.Inc(DeleteFail)
+		return nil, err
+	}
+
+	// update etcd index
+	s.CurrentIndex++
+
+	s.WatcherHub.notify(e)
+	s.Stats.Inc(DeleteSuccess)
+
+	return e, nil
+}
+
+func (s *store) Watch(prefix string, recursive bool, sinceIndex uint64) (<-chan *Event, error) {
+	prefix = path.Clean(path.Join("/", prefix))
+
+	nextIndex := s.CurrentIndex + 1
+
+	s.worldLock.RLock()
+	defer s.worldLock.RUnlock()
+
+	var c <-chan *Event
+	var err *etcdErr.Error
+
+	if sinceIndex == 0 {
+		c, err = s.WatcherHub.watch(prefix, recursive, nextIndex)
 
 	} else {
-		// we do not found the key
-		return nil
+		c, err = s.WatcherHub.watch(prefix, recursive, sinceIndex)
 	}
+
+	if err != nil {
+		// watchhub do not know the current Index
+		// we need to attach the currentIndex here
+		err.Index = s.CurrentIndex
+		return nil, err
+	}
+
+	return c, nil
 }
 
-// Get all the items under key
-// If key is a file return the file
-// If key is a directory reuturn an array of files
-func (s *Store) Get(key string) ([]byte, error) {
-	s.mutex.RLock()
-	defer s.mutex.RUnlock()
+// walk function walks all the nodePath and apply the walkFunc on each directory
+func (s *store) walk(nodePath string, walkFunc func(prev *Node, component string) (*Node, *etcdErr.Error)) (*Node, *etcdErr.Error) {
+	components := strings.Split(nodePath, "/")
 
-	resps, err := s.RawGet(key)
+	curr := s.Root
+	var err *etcdErr.Error
+
+	for i := 1; i < len(components); i++ {
+		if len(components[i]) == 0 { // ignore empty string
+			return curr, nil
+		}
+
+		curr, err = walkFunc(curr, components[i])
+		if err != nil {
+			return nil, err
+		}
+
+	}
+
+	return curr, nil
+}
+
+// Update function updates the value/ttl of the node.
+// If the node is a file, the value and the ttl can be updated.
+// If the node is a directory, only the ttl can be updated.
+func (s *store) Update(nodePath string, newValue string, expireTime time.Time) (*Event, error) {
+	s.worldLock.Lock()
+	defer s.worldLock.Unlock()
+
+	currIndex, nextIndex := s.CurrentIndex, s.CurrentIndex+1
+
+	nodePath = path.Clean(path.Join("/", nodePath))
+
+	n, err := s.internalGet(nodePath)
+
+	if err != nil { // if the node does not exist, return error
+		s.Stats.Inc(UpdateFail)
+		return nil, err
+	}
+
+	e := newEvent(Update, nodePath, nextIndex)
+
+	if len(newValue) != 0 {
+		if n.IsDir() {
+			// if the node is a directory, we cannot update value
+			s.Stats.Inc(UpdateFail)
+			return nil, etcdErr.NewError(etcdErr.EcodeNotFile, nodePath, currIndex)
+		}
+
+		e.PrevValue = n.Value
+		n.Write(newValue, nextIndex)
+		e.Value = newValue
+	} else {
+		// do not update value
+		e.Value = n.Value
+	}
+
+	// update ttl
+	n.UpdateTTL(expireTime)
+
+	e.Expiration, e.TTL = n.ExpirationAndTTL()
+
+	s.WatcherHub.notify(e)
+
+	s.Stats.Inc(UpdateSuccess)
+
+	s.CurrentIndex = nextIndex
+
+	return e, nil
+}
+
+func (s *store) internalCreate(nodePath string, value string, unique bool, replace bool,
+	expireTime time.Time, action string) (*Event, error) {
+
+	currIndex, nextIndex := s.CurrentIndex, s.CurrentIndex+1
+
+	if unique { // append unique item under the node path
+		nodePath += "/" + strconv.FormatUint(nextIndex, 10)
+	}
+
+	nodePath = path.Clean(path.Join("/", nodePath))
+
+	// Assume expire times that are way in the past are not valid.
+	// This can occur when the time is serialized to JSON and read back in.
+	if expireTime.Before(minExpireTime) {
+		expireTime = Permanent
+	}
+
+
+	dir, newNodeName := path.Split(nodePath)
+
+	// walk through the nodePath, create dirs and get the last directory node
+	d, err := s.walk(dir, s.checkDir)
+
+	if err != nil {
+		s.Stats.Inc(SetFail)
+		err.Index = currIndex
+		return nil, err
+	}
+
+	e := newEvent(action, nodePath, nextIndex)
+
+	n, _ := d.GetChild(newNodeName)
+
+	// force will try to replace a existing file
+	if n != nil {
+		if replace {
+			if n.IsDir() {
+				return nil, etcdErr.NewError(etcdErr.EcodeNotFile, nodePath, currIndex)
+			}
+			e.PrevValue, _ = n.Read()
+
+			n.Remove(false, nil)
+		} else {
+			return nil, etcdErr.NewError(etcdErr.EcodeNodeExist, nodePath, currIndex)
+		}
+	}
+
+	if len(value) != 0 { // create file
+		e.Value = value
+
+		n = newKV(s, nodePath, value, nextIndex, d, "", expireTime)
+
+	} else { // create directory
+		e.Dir = true
+
+		n = newDir(s, nodePath, nextIndex, d, "", expireTime)
+
+	}
+
+	// we are sure d is a directory and does not have the children with name n.Name
+	d.Add(n)
+
+	// Node with TTL
+	if !n.IsPermanent() {
+		s.ttlKeyHeap.push(n)
+
+		e.Expiration, e.TTL = n.ExpirationAndTTL()
+	}
+
+	s.CurrentIndex = nextIndex
+
+	s.WatcherHub.notify(e)
+	return e, nil
+}
+
+// InternalGet function get the node of the given nodePath.
+func (s *store) internalGet(nodePath string) (*Node, *etcdErr.Error) {
+	nodePath = path.Clean(path.Join("/", nodePath))
+
+	walkFunc := func(parent *Node, name string) (*Node, *etcdErr.Error) {
+
+		if !parent.IsDir() {
+			err := etcdErr.NewError(etcdErr.EcodeNotDir, parent.Path, s.CurrentIndex)
+			return nil, err
+		}
+
+		child, ok := parent.Children[name]
+		if ok {
+			return child, nil
+		}
+
+		return nil, etcdErr.NewError(etcdErr.EcodeKeyNotFound, path.Join(parent.Path, name), s.CurrentIndex)
+	}
+
+	f, err := s.walk(nodePath, walkFunc)
 
 	if err != nil {
 		return nil, err
 	}
-
-	key = path.Clean("/" + key)
-
-	// If the number of resps == 1 and the response key
-	// is the key we query, a signal key-value should
-	// be returned
-	if len(resps) == 1 && resps[0].Key == key {
-		return json.Marshal(resps[0])
-	}
-
-	return json.Marshal(resps)
+	return f, nil
 }
 
-func (s *Store) rawGetNode(key string, node *Node) ([]*Response, error) {
-	resps := make([]*Response, 1)
-
-	isExpire := !node.ExpireTime.Equal(PERMANENT)
-
-	resps[0] = &Response{
-		Action: "GET",
-		Index:  s.Index,
-		Key:    key,
-		Value:  node.Value,
-	}
-
-	// Update ttl
-	if isExpire {
-		TTL := int64(node.ExpireTime.Sub(time.Now()) / time.Second)
-		resps[0].Expiration = &node.ExpireTime
-		resps[0].TTL = TTL
-	}
-
-	return resps, nil
-}
-
-func (s *Store) rawGetNodeList(key string, keys []string, nodes []*Node) ([]*Response, error) {
-	resps := make([]*Response, len(nodes))
-
-	// TODO: check if nodes and keys are the same length
-	for i := 0; i < len(nodes); i++ {
-		var TTL int64
-		var isExpire bool = false
-
-		isExpire = !nodes[i].ExpireTime.Equal(PERMANENT)
-
-		resps[i] = &Response{
-			Action: "GET",
-			Index:  s.Index,
-			Key:    path.Join(key, keys[i]),
-		}
-
-		if len(nodes[i].Value) != 0 {
-			resps[i].Value = nodes[i].Value
-		} else {
-			resps[i].Dir = true
-		}
-
-		// Update ttl
-		if isExpire {
-			TTL = int64(nodes[i].ExpireTime.Sub(time.Now()) / time.Second)
-			resps[i].Expiration = &nodes[i].ExpireTime
-			resps[i].TTL = TTL
-		}
-
-	}
-
-	return resps, nil
-}
-
-func (s *Store) RawGet(key string) ([]*Response, error) {
-	// Update stats
-	s.BasicStats.Gets++
-
-	key = path.Clean("/" + key)
-
-	nodes, keys, ok := s.Tree.list(key)
-	if !ok {
-		return nil, etcdErr.NewError(100, "get: "+key)
-	}
-
-	switch node := nodes.(type) {
-	case *Node:
-		return s.rawGetNode(key, node)
-	case []*Node:
-		return s.rawGetNodeList(key, keys, node)
-	default:
-		panic("invalid cast ")
-	}
-}
-
-func (s *Store) Delete(key string, index uint64) ([]byte, error) {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-	return s.internalDelete(key, index)
-}
-
-// Delete the key
-func (s *Store) internalDelete(key string, index uint64) ([]byte, error) {
-
-	// Update stats
-	s.BasicStats.Deletes++
-
-	key = path.Clean("/" + key)
-
-	// Update index
-	s.Index = index
-
-	node, ok := s.Tree.get(key)
-
-	if !ok {
-		return nil, etcdErr.NewError(100, "delete: "+key)
-	}
-
-	resp := Response{
-		Action:    "DELETE",
-		Key:       key,
-		PrevValue: node.Value,
-		Index:     index,
-	}
-
-	if node.ExpireTime.Equal(PERMANENT) {
-
-		s.Tree.delete(key)
-
-	} else {
-		resp.Expiration = &node.ExpireTime
-		// Kill the expire go routine
-		node.update <- PERMANENT
-		s.Tree.delete(key)
-
-	}
-
-	msg, err := json.Marshal(resp)
-
-	s.watcher.notify(resp)
-
-	// notify the messager
-	if s.messager != nil && err == nil {
-		s.messager <- string(msg)
-	}
-
-	s.addToResponseMap(index, &resp)
-
-	return msg, err
-}
-
-// Set the value of the key to the value if the given prevValue is equal to the value of the key
-func (s *Store) TestAndSet(key string, prevValue string, value string, expireTime time.Time, index uint64) ([]byte, error) {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
-	// Update stats
-	s.BasicStats.TestAndSets++
-
-	resp := s.internalGet(key)
-
-	if resp == nil {
-		if prevValue != "" {
-			errmsg := fmt.Sprintf("TestAndSet: key not found and previousValue is not empty %s:%s ", key, prevValue)
-			return nil, etcdErr.NewError(100, errmsg)
-		}
-		return s.internalSet(key, value, expireTime, index)
-	}
-
-	if resp.Value == prevValue {
-
-		// If test succeed, do set
-		return s.internalSet(key, value, expireTime, index)
-	} else {
-
-		// If fails, return err
-		return nil, etcdErr.NewError(101, fmt.Sprintf("TestAndSet: %s!=%s",
-			resp.Value, prevValue))
-	}
-
-}
-
-// Add a channel to the watchHub.
-// The watchHub will send response to the channel when any key under the prefix
-// changes [since the sinceIndex if given]
-func (s *Store) AddWatcher(prefix string, watcher *Watcher, sinceIndex uint64) error {
-	return s.watcher.addWatcher(prefix, watcher, sinceIndex, s.ResponseStartIndex, s.Index, s.ResponseMap)
-}
-
-// This function should be created as a go routine to delete the key-value pair
-// when it reaches expiration time
-
-func (s *Store) monitorExpiration(key string, update chan time.Time, expireTime time.Time) {
-
-	duration := expireTime.Sub(time.Now())
+// deleteExpiredKyes will delete all
+func (s *store) DeleteExpiredKeys(cutoff time.Time) {
+	s.worldLock.Lock()
+	defer s.worldLock.Unlock()
 
 	for {
-		select {
-
-		// Timeout delete the node
-		case <-time.After(duration):
-			node, ok := s.Tree.get(key)
-
-			if !ok {
-				return
-
-			} else {
-				s.mutex.Lock()
-
-				s.Tree.delete(key)
-
-				resp := Response{
-					Action:     "DELETE",
-					Key:        key,
-					PrevValue:  node.Value,
-					Expiration: &node.ExpireTime,
-					Index:      s.Index,
-				}
-				s.mutex.Unlock()
-
-				msg, err := json.Marshal(resp)
-
-				s.watcher.notify(resp)
-
-				// notify the messager
-				if s.messager != nil && err == nil {
-					s.messager <- string(msg)
-				}
-
-				return
-
-			}
-
-		case updateTime := <-update:
-			// Update duration
-			// If the node become a permanent one, the go routine is
-			// not needed
-			if updateTime.Equal(PERMANENT) {
-				return
-			}
-
-			// Update duration
-			duration = updateTime.Sub(time.Now())
+		node := s.ttlKeyHeap.top()
+		if node == nil || node.ExpireTime.After(cutoff) {
+			break
 		}
+
+		s.ttlKeyHeap.pop()
+		node.Remove(true, nil)
+
+		s.CurrentIndex++
+
+		s.Stats.Inc(ExpireCount)
+		s.WatcherHub.notify(newEvent(Expire, node.Path, s.CurrentIndex))
 	}
+
 }
 
-// When we receive a command that will change the state of the key-value store
-// We will add the result of it to the ResponseMap for the use of watch command
-// Also we may remove the oldest response when we add new one
-func (s *Store) addToResponseMap(index uint64, resp *Response) {
+// checkDir function will check whether the component is a directory under parent node.
+// If it is a directory, this function will return the pointer to that node.
+// If it does not exist, this function will create a new directory and return the pointer to that node.
+// If it is a file, this function will return error.
+func (s *store) checkDir(parent *Node, dirName string) (*Node, *etcdErr.Error) {
+	node, ok := parent.Children[dirName]
 
-	// zero case
-	if s.ResponseMaxSize == 0 {
-		return
+	if ok {
+		if node.IsDir() {
+			return node, nil
+		}
+
+		return nil, etcdErr.NewError(etcdErr.EcodeNotDir, parent.Path, s.CurrentIndex)
 	}
 
-	strIndex := strconv.FormatUint(index, 10)
-	s.ResponseMap[strIndex] = resp
+	n := newDir(s, path.Join(parent.Path, dirName), s.CurrentIndex+1, parent, parent.ACL, Permanent)
 
-	// unlimited
-	if s.ResponseMaxSize < 0 {
-		s.ResponseCurrSize++
-		return
-	}
+	parent.Children[dirName] = n
 
-	// if we reach the max point, we need to delete the most latest
-	// response and update the startIndex
-	if s.ResponseCurrSize == uint(s.ResponseMaxSize) {
-		s.ResponseStartIndex++
-		delete(s.ResponseMap, strconv.FormatUint(s.ResponseStartIndex, 10))
-	} else {
-		s.ResponseCurrSize++
-	}
+	return n, nil
 }
 
-func (s *Store) clone() *Store {
-	newStore := &Store{
-		ResponseMaxSize:    s.ResponseMaxSize,
-		ResponseCurrSize:   s.ResponseCurrSize,
-		ResponseStartIndex: s.ResponseStartIndex,
-		Index:              s.Index,
-		BasicStats:         s.BasicStats,
-	}
+// Save function saves the static state of the store system.
+// Save function will not be able to save the state of watchers.
+// Save function will not save the parent field of the node. Or there will
+// be cyclic dependencies issue for the json package.
+func (s *store) Save() ([]byte, error) {
+	s.worldLock.Lock()
 
-	newStore.Tree = s.Tree.clone()
-	newStore.ResponseMap = make(map[string]*Response)
+	clonedStore := newStore()
+	clonedStore.CurrentIndex = s.CurrentIndex
+	clonedStore.Root = s.Root.Clone()
+	clonedStore.WatcherHub = s.WatcherHub.clone()
+	clonedStore.Stats = s.Stats.clone()
+	clonedStore.CurrentVersion = s.CurrentVersion
 
-	for index, response := range s.ResponseMap {
-		newStore.ResponseMap[index] = response
-	}
+	s.worldLock.Unlock()
 
-	return newStore
-}
+	b, err := json.Marshal(clonedStore)
 
-// Save the current state of the storage system
-func (s *Store) Save() ([]byte, error) {
-	// first we clone the store
-	// json is very slow, we cannot hold the lock for such a long time
-	s.mutex.Lock()
-	cloneStore := s.clone()
-	s.mutex.Unlock()
-
-	b, err := json.Marshal(cloneStore)
 	if err != nil {
-		fmt.Println(err)
 		return nil, err
 	}
+
 	return b, nil
 }
 
-// Recovery the state of the stroage system from a previous state
-func (s *Store) Recovery(state []byte) error {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-	// we need to stop all the current watchers
-	// recovery will clear watcherHub
-	s.watcher.stopWatchers()
-
+// recovery function recovery the store system from a static state.
+// It needs to recovery the parent field of the nodes.
+// It needs to delete the expired nodes since the saved time and also
+// need to create monitor go routines.
+func (s *store) Recovery(state []byte) error {
+	s.worldLock.Lock()
+	defer s.worldLock.Unlock()
 	err := json.Unmarshal(state, s)
 
-	// The only thing need to change after the recovery is the
-	// node with expiration time, we need to delete all the node
-	// that have been expired and setup go routines to monitor the
-	// other ones
-	s.checkExpiration()
-
-	return err
-}
-
-// Clean the expired nodes
-// Set up go routines to mon
-func (s *Store) checkExpiration() {
-	s.Tree.traverse(s.checkNode, false)
-}
-
-// Check each node
-func (s *Store) checkNode(key string, node *Node) {
-
-	if node.ExpireTime.Equal(PERMANENT) {
-		return
-	} else {
-		if node.ExpireTime.Sub(time.Now()) >= time.Second {
-
-			node.update = make(chan time.Time)
-			go s.monitorExpiration(key, node.update, node.ExpireTime)
-
-		} else {
-			// we should delete this node
-			s.Tree.delete(key)
-		}
+	if err != nil {
+		return err
 	}
+
+	s.ttlKeyHeap = newTtlKeyHeap()
+
+	s.Root.recoverAndclean()
+	return nil
+}
+
+func (s *store) JsonStats() []byte {
+	s.Stats.Watchers = uint64(s.WatcherHub.count)
+	return s.Stats.toJson()
+}
+
+func (s *store) TotalTransactions() uint64 {
+	return s.Stats.TotalTranscations()
 }

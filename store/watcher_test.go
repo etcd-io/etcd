@@ -18,83 +18,54 @@ package store
 
 import (
 	"testing"
-	"time"
 )
 
-func TestWatch(t *testing.T) {
-
-	s := CreateStore(100)
-
-	watchers := make([]*Watcher, 10)
-
-	for i, _ := range watchers {
-
-		// create a new watcher
-		watchers[i] = NewWatcher()
-		// add to the watchers list
-		s.AddWatcher("foo", watchers[i], 0)
-
+func TestWatcher(t *testing.T) {
+	s := newStore()
+	wh := s.WatcherHub
+	c, err := wh.watch("/foo", true, 1)
+	if err != nil {
+		t.Fatalf("%v", err)
 	}
 
-	s.Set("/foo/foo", "bar", time.Unix(0, 0), 1)
-
-	for _, watcher := range watchers {
-
-		// wait for the notification for any changing
-		res := <-watcher.C
-
-		if res == nil {
-			t.Fatal("watcher is cleared")
-		}
+	select {
+	case <-c:
+		t.Fatal("should not receive from channel before send the event")
+	default:
+		// do nothing
 	}
 
-	for i, _ := range watchers {
+	e := newEvent(Create, "/foo/bar", 1)
 
-		// create a new watcher
-		watchers[i] = NewWatcher()
-		// add to the watchers list
-		s.AddWatcher("foo/foo/foo", watchers[i], 0)
+	wh.notify(e)
 
+	re := <-c
+
+	if e != re {
+		t.Fatal("recv != send")
 	}
 
-	s.watcher.stopWatchers()
+	c, _ = wh.watch("/foo", false, 2)
 
-	for _, watcher := range watchers {
+	e = newEvent(Create, "/foo/bar", 2)
 
-		// wait for the notification for any changing
-		res := <-watcher.C
+	wh.notify(e)
 
-		if res != nil {
-			t.Fatal("watcher is cleared")
-		}
+	select {
+	case re = <-c:
+		t.Fatal("should not receive from channel if not recursive ", re)
+	default:
+		// do nothing
 	}
-}
 
-// BenchmarkWatch creates 10K watchers watch at /foo/[path] each time.
-// Path is randomly chosen with max depth 10.
-// It should take less than 15ms to wake up 10K watchers.
-func BenchmarkWatch(b *testing.B) {
-	s := CreateStore(100)
+	e = newEvent(Create, "/foo", 3)
 
-	keys := GenKeys(10000, 10)
+	wh.notify(e)
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		watchers := make([]*Watcher, 10000)
-		for i := 0; i < 10000; i++ {
-			// create a new watcher
-			watchers[i] = NewWatcher()
-			// add to the watchers list
-			s.AddWatcher(keys[i], watchers[i], 0)
-		}
+	re = <-c
 
-		s.watcher.stopWatchers()
-
-		for _, watcher := range watchers {
-			// wait for the notification for any changing
-			<-watcher.C
-		}
-
-		s.watcher = newWatcherHub()
+	if e != re {
+		t.Fatal("recv != send")
 	}
+
 }

@@ -3,6 +3,8 @@ package etcd
 import (
 	"fmt"
 	"testing"
+	"net/url"
+	"net"
 )
 
 // To pass this test, we need to create a cluster of 3 machines
@@ -10,11 +12,29 @@ import (
 func TestSync(t *testing.T) {
 	fmt.Println("Make sure there are three nodes at 0.0.0.0:4001-4003")
 
-	c := NewClient()
+	c := NewClient(nil)
 
 	success := c.SyncCluster()
 	if !success {
 		t.Fatal("cannot sync machines")
+	}
+
+	for _, m := range(c.GetCluster()) {
+		u, err := url.Parse(m)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if u.Scheme != "http" {
+			t.Fatal("scheme must be http")
+		}
+		
+		host, _, err := net.SplitHostPort(u.Host)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if host != "127.0.0.1" {
+			t.Fatal("Host must be 127.0.0.1")
+		}
 	}
 
 	badMachines := []string{"abc", "edef"}

@@ -6,7 +6,7 @@ import (
 )
 
 func TestList(t *testing.T) {
-	c := NewClient()
+	c := NewClient(nil)
 
 	c.Set("foo_list/foo", "bar", 100)
 	c.Set("foo_list/fooo", "barbar", 100)

@@ -7,10 +7,12 @@ import (
 	"path"
 	"time"
 
+	"github.com/coreos/etcd/log"
 	"github.com/coreos/etcd/mod/dashboard/resources"
 )
 
 func memoryFileServer(w http.ResponseWriter, req *http.Request) {
+	log.Debugf("[recv] %s %s [%s]", req.Method, req.URL.Path, req.RemoteAddr)
 	upath := req.URL.Path
 	if len(upath) == 0 {
 		upath = "index.html"
@@ -42,6 +44,7 @@ func HttpHandler() (handler http.Handler) {
 	// Serve the dashboard from a filesystem if the magic env variable is enabled
 	dashDir := os.Getenv("ETCD_DASHBOARD_DIR")
 	if len(dashDir) != 0 {
+		log.Debugf("Using dashboard directory %s", dashDir)
 		handler = http.FileServer(http.Dir(dashDir))
 	}
 
