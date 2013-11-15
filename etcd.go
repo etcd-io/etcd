@@ -47,6 +47,17 @@ func main() {
 		log.Verbose = true
 	}
 
+	// Setup a default directory based on the machine name
+	if config.DataDir == "" {
+		config.DataDir = config.Name + ".etcd"
+		log.Warnf("Using the directory %s as the etcd configuration directory because a directory was not specified. ", config.DataDir)
+	}
+
+	// Create data directory if it doesn't already exist.
+	if err := os.MkdirAll(config.DataDir, 0744); err != nil {
+		log.Fatalf("Unable to create path: %s", err)
+	}
+
 	// Load info object.
 	info, err := config.Info()
 	if err != nil {
