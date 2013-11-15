@@ -55,4 +55,3 @@ func TestMultiNodeKillOne(t *testing.T) {
 	stop <- true
 	<-stop
 }
-

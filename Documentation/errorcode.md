@@ -17,7 +17,7 @@ Error code corresponding strerror
         EcodeKeyNotFound    = 100
         EcodeTestFailed     = 101
         EcodeNotFile        = 102
-        EcodeNoMoreMachine  = 103
+        EcodeNoMorePeer     = 103
         EcodeNotDir         = 104
         EcodeNodeExist      = 105
         EcodeKeyIsPreserved = 106
@@ -38,7 +38,7 @@ Error code corresponding strerror
     errors[100] = "Key Not Found"
     errors[101] = "Test Failed" //test and set
     errors[102] = "Not A File"
-    errors[103] = "Reached the max number of machines in the cluster"
+    errors[103] = "Reached the max number of peers in the cluster"
     errors[104] = "Not A Directory"
     errors[105] = "Already exists" // create
     errors[106] = "The prefix of given key is a keyword in etcd"

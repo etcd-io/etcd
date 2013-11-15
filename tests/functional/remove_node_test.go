@@ -42,7 +42,7 @@ func TestRemoveNode(t *testing.T) {
 			}
 
 			if len(resp) != 2 {
-				t.Fatal("cannot remove machine")
+				t.Fatal("cannot remove peer")
 			}
 
 			if i == 1 {
@@ -50,7 +50,7 @@ func TestRemoveNode(t *testing.T) {
 				etcds[2], err = os.StartProcess(EtcdBinPath, argGroup[2], procAttr)
 			} else {
 				// rejoin without log
-				etcds[2], err = os.StartProcess(EtcdBinPath, append(argGroup[2], "-f"), procAttr)
+				etcds[2], err = os.StartProcess(EtcdBinPath, append(argGroup[2], "-force-config"), procAttr)
 			}
 
 			if err != nil {
@@ -66,7 +66,7 @@ func TestRemoveNode(t *testing.T) {
 			}
 
 			if len(resp) != 3 {
-				t.Fatalf("add machine fails #1 (%d != 3)", len(resp))
+				t.Fatalf("add peer fails #1 (%d != 3)", len(resp))
 			}
 		}
 
@@ -85,7 +85,7 @@ func TestRemoveNode(t *testing.T) {
 			}
 
 			if len(resp) != 2 {
-				t.Fatal("cannot remove machine")
+				t.Fatal("cannot remove peer")
 			}
 
 			if i == 1 {
@@ -93,7 +93,7 @@ func TestRemoveNode(t *testing.T) {
 				etcds[2], err = os.StartProcess(EtcdBinPath, append(argGroup[2]), procAttr)
 			} else {
 				// rejoin without log
-				etcds[2], err = os.StartProcess(EtcdBinPath, append(argGroup[2], "-f"), procAttr)
+				etcds[2], err = os.StartProcess(EtcdBinPath, append(argGroup[2], "-force-config"), procAttr)
 			}
 
 			if err != nil {
@@ -109,7 +109,7 @@ func TestRemoveNode(t *testing.T) {
 			}
 
 			if len(resp) != 3 {
-				t.Fatalf("add machine fails #2 (%d != 3)", len(resp))
+				t.Fatalf("add peer fails #2 (%d != 3)", len(resp))
 			}
 		}
 	}

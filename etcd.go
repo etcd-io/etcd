@@ -55,13 +55,13 @@ func main() {
 	if info.Name == "" {
 		host, err := os.Hostname()
 		if err != nil || host == "" {
-			log.Fatal("Machine name required and hostname not set. e.g. '-n=machine_name'")
+			log.Fatal("Node name required and hostname not set. e.g. '-name=name'")
 		}
-		log.Warnf("Using hostname %s as the machine name. You must ensure this name is unique among etcd machines.", host)
+		log.Warnf("Using hostname %s as the node name. You must ensure this name is unique among etcd nodes.", host)
 		info.Name = host
 	}
 
-	// Setup a default directory based on the machine name
+	// Setup a default directory based on the node name
 	if config.DataDir == "" {
 		config.DataDir = info.Name + ".etcd"
 		log.Warnf("Using the directory %s as the etcd configuration directory because a directory was not specified. ", config.DataDir)
@@ -87,13 +87,13 @@ func main() {
 	registry := server.NewRegistry(store)
 
 	// Create peer server.
-	ps := server.NewPeerServer(info.Name, config.DataDir, info.RaftURL, info.RaftListenHost, &peerTLSConfig, &info.RaftTLS, registry, store, config.SnapCount)
+	ps := server.NewPeerServer(info.Name, config.DataDir, info.RaftURL, info.RaftListenHost, &peerTLSConfig, &info.RaftTLS, registry, store, config.SnapshotCount)
 	ps.MaxClusterSize = config.MaxClusterSize
 	ps.RetryTimes = config.MaxRetryAttempts
 
 	// Create client server.
 	s := server.New(info.Name, info.EtcdURL, info.EtcdListenHost, &tlsConfig, &info.EtcdTLS, ps, registry, store)
-	if err := s.AllowOrigins(config.Cors); err != nil {
+	if err := s.AllowOrigins(config.CorsOrigins); err != nil {
 		panic(err)
 	}
 
@@ -101,7 +101,7 @@ func main() {
 
 	// Run peer server in separate thread while the client server blocks.
 	go func() {
-		log.Fatal(ps.ListenAndServe(config.Snapshot, config.Machines))
+		log.Fatal(ps.ListenAndServe(config.Snapshot, config.Peers))
 	}()
 	log.Fatal(s.ListenAndServe())
 }

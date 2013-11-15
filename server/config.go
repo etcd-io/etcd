@@ -23,31 +23,31 @@ const DefaultSystemConfigPath = "/etc/etcd/etcd.conf"
 type Config struct {
 	SystemPath string
 
-	AdvertisedUrl    string   `toml:"advertised_url" env:"ETCD_ADVERTISED_URL"`
+	Addr             string   `toml:"addr" env:"ETCD_ADDR"`
+	BindAddr         string   `toml:"bind_addr" env:"ETCD_BIND_ADDR"`
 	CAFile           string   `toml:"ca_file" env:"ETCD_CA_FILE"`
 	CertFile         string   `toml:"cert_file" env:"ETCD_CERT_FILE"`
-	Cors             []string `toml:"cors" env:"ETCD_CORS"`
-	DataDir          string   `toml:"datadir" env:"ETCD_DATADIR"`
+	CorsOrigins      []string `toml:"cors_origins" env:"ETCD_CORS_ORIGINS"`
+	DataDir          string   `toml:"data_dir" env:"ETCD_DATA_DIR"`
 	KeyFile          string   `toml:"key_file" env:"ETCD_KEY_FILE"`
-	ListenHost       string   `toml:"listen_host" env:"ETCD_LISTEN_HOST"`
-	Machines         []string `toml:"machines" env:"ETCD_MACHINES"`
-	MachinesFile     string   `toml:"machines_file" env:"ETCD_MACHINES_FILE"`
+	Peers            []string `toml:"peers" env:"ETCD_PEERS"`
+	PeersFile        string   `toml:"peers_file" env:"ETCD_PEERS_FILE"`
 	MaxClusterSize   int      `toml:"max_cluster_size" env:"ETCD_MAX_CLUSTER_SIZE"`
 	MaxResultBuffer  int      `toml:"max_result_buffer" env:"ETCD_MAX_RESULT_BUFFER"`
 	MaxRetryAttempts int      `toml:"max_retry_attempts" env:"ETCD_MAX_RETRY_ATTEMPTS"`
 	Name             string   `toml:"name" env:"ETCD_NAME"`
 	Snapshot         bool     `toml:"snapshot" env:"ETCD_SNAPSHOT"`
-	SnapCount        int      `toml:"snapshot_count" env:"ETCD_SNAPSHOTCOUNT"`
+	SnapshotCount    int      `toml:"snapshot_count" env:"ETCD_SNAPSHOTCOUNT"`
 	Verbose          bool     `toml:"verbose" env:"ETCD_VERBOSE"`
 	VeryVerbose      bool     `toml:"very_verbose" env:"ETCD_VERY_VERBOSE"`
 	WebURL           string   `toml:"web_url" env:"ETCD_WEB_URL"`
 
 	Peer struct {
-		AdvertisedUrl string `toml:"advertised_url" env:"ETCD_PEER_ADVERTISED_URL"`
-		CAFile        string `toml:"ca_file" env:"ETCD_PEER_CA_FILE"`
-		CertFile      string `toml:"cert_file" env:"ETCD_PEER_CERT_FILE"`
-		KeyFile       string `toml:"key_file" env:"ETCD_PEER_KEY_FILE"`
-		ListenHost    string `toml:"listen_host" env:"ETCD_PEER_LISTEN_HOST"`
+		Addr     string `toml:"addr" env:"ETCD_PEER_ADDR"`
+		BindAddr string `toml:"bind_addr" env:"ETCD_PEER_BIND_ADDR"`
+		CAFile   string `toml:"ca_file" env:"ETCD_PEER_CA_FILE"`
+		CertFile string `toml:"cert_file" env:"ETCD_PEER_CERT_FILE"`
+		KeyFile  string `toml:"key_file" env:"ETCD_PEER_KEY_FILE"`
 	}
 }
 
@@ -55,13 +55,12 @@ type Config struct {
 func NewConfig() *Config {
 	c := new(Config)
 	c.SystemPath = DefaultSystemConfigPath
-	c.AdvertisedUrl = "127.0.0.1:4001"
-	c.AdvertisedUrl = "127.0.0.1:4001"
+	c.Addr = "127.0.0.1:4001"
 	c.MaxClusterSize = 9
 	c.MaxResultBuffer = 1024
 	c.MaxRetryAttempts = 3
-	c.Peer.AdvertisedUrl = "127.0.0.1:7001"
-	c.SnapCount = 10000
+	c.Peer.Addr = "127.0.0.1:7001"
+	c.SnapshotCount = 10000
 	return c
 }
 
@@ -96,8 +95,8 @@ func (c *Config) Load(arguments []string) error {
 		return err
 	}
 
-	// Loads machines if a machine file was specified.
-	if err := c.LoadMachineFile(); err != nil {
+	// Loads peers if a peer file was specified.
+	if err := c.LoadPeersFile(); err != nil {
 		return err
 	}
 
@@ -167,42 +166,42 @@ func (c *Config) loadEnv(target interface{}) error {
 
 // Loads configuration from command line flags.
 func (c *Config) LoadFlags(arguments []string) error {
-	var machines, cors string
+	var peers, cors string
 	var force bool
 
 	f := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 
-	f.BoolVar(&force, "f", false, "force new node configuration if existing is found (WARNING: data loss!)")
+	f.BoolVar(&force, "force-config", false, "force new node configuration if existing is found (WARNING: data loss!)")
 
 	f.BoolVar(&c.Verbose, "v", c.Verbose, "verbose logging")
 	f.BoolVar(&c.VeryVerbose, "vv", c.Verbose, "very verbose logging")
 
-	f.StringVar(&machines, "C", "", "the ip address and port of a existing machines in the cluster, sepearate by comma")
-	f.StringVar(&c.MachinesFile, "CF", c.MachinesFile, "the file contains a list of existing machines in the cluster, seperate by comma")
+	f.StringVar(&peers, "peers", "", "the ip address and port of a existing peers in the cluster, sepearate by comma")
+	f.StringVar(&c.PeersFile, "peers-file", c.PeersFile, "the file contains a list of existing peers in the cluster, seperate by comma")
 
-	f.StringVar(&c.Name, "n", c.Name, "the node name (required)")
-	f.StringVar(&c.AdvertisedUrl, "c", c.AdvertisedUrl, "the advertised public hostname:port for etcd client communication")
-	f.StringVar(&c.Peer.AdvertisedUrl, "s", c.Peer.AdvertisedUrl, "the advertised public hostname:port for raft server communication")
-	f.StringVar(&c.ListenHost, "cl", c.ListenHost, "the listening hostname for etcd client communication (defaults to advertised ip)")
-	f.StringVar(&c.Peer.ListenHost, "sl", c.Peer.ListenHost, "the listening hostname for raft server communication (defaults to advertised ip)")
-	f.StringVar(&c.WebURL, "w", c.WebURL, "the hostname:port of web interface")
+	f.StringVar(&c.Name, "name", c.Name, "the node name (required)")
+	f.StringVar(&c.Addr, "addr", c.Addr, "the advertised public hostname:port for etcd client communication")
+	f.StringVar(&c.BindAddr, "bind-addr", c.BindAddr, "the listening hostname for etcd client communication (defaults to advertised ip)")
+	f.StringVar(&c.Peer.Addr, "peer-addr", c.Peer.Addr, "the advertised public hostname:port for raft server communication")
+	f.StringVar(&c.Peer.BindAddr, "peer-bind-addr", c.Peer.BindAddr, "the listening hostname for raft server communication (defaults to advertised ip)")
+	f.StringVar(&c.WebURL, "web-url", c.WebURL, "the hostname:port of web interface")
 
-	f.StringVar(&c.Peer.CAFile, "serverCAFile", c.Peer.CAFile, "the path of the CAFile")
-	f.StringVar(&c.Peer.CertFile, "serverCert", c.Peer.CertFile, "the cert file of the server")
-	f.StringVar(&c.Peer.KeyFile, "serverKey", c.Peer.KeyFile, "the key file of the server")
+	f.StringVar(&c.Peer.CAFile, "peer-ca-file", c.Peer.CAFile, "the path of the CAFile")
+	f.StringVar(&c.Peer.CertFile, "peer-cert-file", c.Peer.CertFile, "the cert file of the server")
+	f.StringVar(&c.Peer.KeyFile, "peer-key-file", c.Peer.KeyFile, "the key file of the server")
 
-	f.StringVar(&c.CAFile, "clientCAFile", c.CAFile, "the path of the client CAFile")
-	f.StringVar(&c.CertFile, "clientCert", c.CertFile, "the cert file of the client")
-	f.StringVar(&c.KeyFile, "clientKey", c.KeyFile, "the key file of the client")
+	f.StringVar(&c.CAFile, "ca-file", c.CAFile, "the path of the client CAFile")
+	f.StringVar(&c.CertFile, "cert-file", c.CertFile, "the cert file of the client")
+	f.StringVar(&c.KeyFile, "key-file", c.KeyFile, "the key file of the client")
 
-	f.StringVar(&c.DataDir, "d", c.DataDir, "the directory to store log and snapshot")
-	f.IntVar(&c.MaxResultBuffer, "m", c.MaxResultBuffer, "the max size of result buffer")
-	f.IntVar(&c.MaxRetryAttempts, "r", c.MaxRetryAttempts, "the max retry attempts when trying to join a cluster")
-	f.IntVar(&c.MaxClusterSize, "maxsize", c.MaxClusterSize, "the max size of the cluster")
-	f.StringVar(&cors, "cors", "", "whitelist origins for cross-origin resource sharing (e.g. '*' or 'http://localhost:8001,etc')")
+	f.StringVar(&c.DataDir, "data-dir", c.DataDir, "the directory to store log and snapshot")
+	f.IntVar(&c.MaxResultBuffer, "max-result-buffer", c.MaxResultBuffer, "the max size of result buffer")
+	f.IntVar(&c.MaxRetryAttempts, "max-retry-attempts", c.MaxRetryAttempts, "the max retry attempts when trying to join a cluster")
+	f.IntVar(&c.MaxClusterSize, "max-cluster-size", c.MaxClusterSize, "the max size of the cluster")
+	f.StringVar(&cors, "cors-origins", "", "whitelist origins for cross-origin resource sharing (e.g. '*' or 'http://localhost:8001,etc')")
 
 	f.BoolVar(&c.Snapshot, "snapshot", c.Snapshot, "open or close snapshot")
-	f.IntVar(&c.SnapCount, "snapshotCount", c.SnapCount, "save the in memory logs and states to a snapshot file after snapCount transactions")
+	f.IntVar(&c.SnapshotCount, "snapshot-count", c.SnapshotCount, "save the in-memory logs and states to a snapshot file a given number of transactions")
 
 	// These flags are ignored since they were already parsed.
 	var path string
@@ -211,11 +210,11 @@ func (c *Config) LoadFlags(arguments []string) error {
 	f.Parse(arguments)
 
 	// Convert some parameters to lists.
-	if machines != "" {
-		c.Machines = trimsplit(machines, ",")
+	if peers != "" {
+		c.Peers = trimsplit(peers, ",")
 	}
 	if cors != "" {
-		c.Cors = trimsplit(cors, ",")
+		c.CorsOrigins = trimsplit(cors, ",")
 	}
 
 	// Force remove server configuration if specified.
@@ -226,17 +225,17 @@ func (c *Config) LoadFlags(arguments []string) error {
 	return nil
 }
 
-// LoadMachineFile loads the machines listed in the machine file.
-func (c *Config) LoadMachineFile() error {
-	if c.MachinesFile == "" {
+// LoadPeersFile loads the peers listed in the peers file.
+func (c *Config) LoadPeersFile() error {
+	if c.PeersFile == "" {
 		return nil
 	}
 
-	b, err := ioutil.ReadFile(c.MachinesFile)
+	b, err := ioutil.ReadFile(c.PeersFile)
 	if err != nil {
-		return fmt.Errorf("Machines file error: %s", err)
+		return fmt.Errorf("Peers file error: %s", err)
 	}
-	c.Machines = trimsplit(string(b), ",")
+	c.Peers = trimsplit(string(b), ",")
 
 	return nil
 }
@@ -278,10 +277,10 @@ func (c *Config) Info() (*Info, error) {
 
 	// If the file doesn't exist then initialize it.
 	info.Name = strings.TrimSpace(c.Name)
-	info.EtcdURL = c.AdvertisedUrl
-	info.EtcdListenHost = c.ListenHost
-	info.RaftURL = c.Peer.AdvertisedUrl
-	info.RaftListenHost = c.Peer.ListenHost
+	info.EtcdURL = c.Addr
+	info.EtcdListenHost = c.BindAddr
+	info.RaftURL = c.Peer.Addr
+	info.RaftListenHost = c.Peer.BindAddr
 	info.WebURL = c.WebURL
 	info.EtcdTLS = c.TLSInfo()
 	info.RaftTLS = c.PeerTLSInfo()
@@ -313,19 +312,19 @@ func (c *Config) Sanitize() error {
 	}
 
 	// Sanitize the URLs first.
-	if c.AdvertisedUrl, err = sanitizeURL(c.AdvertisedUrl, tlsConfig.Scheme); err != nil {
+	if c.Addr, err = sanitizeURL(c.Addr, tlsConfig.Scheme); err != nil {
 		return fmt.Errorf("Advertised URL: %s", err)
 	}
-	if c.ListenHost, err = sanitizeListenHost(c.ListenHost, c.AdvertisedUrl); err != nil {
+	if c.BindAddr, err = sanitizeBindAddr(c.BindAddr, c.Addr); err != nil {
 		return fmt.Errorf("Listen Host: %s", err)
 	}
 	if c.WebURL, err = sanitizeURL(c.WebURL, "http"); err != nil {
 		return fmt.Errorf("Web URL: %s", err)
 	}
-	if c.Peer.AdvertisedUrl, err = sanitizeURL(c.Peer.AdvertisedUrl, peerTlsConfig.Scheme); err != nil {
+	if c.Peer.Addr, err = sanitizeURL(c.Peer.Addr, peerTlsConfig.Scheme); err != nil {
 		return fmt.Errorf("Peer Advertised URL: %s", err)
 	}
-	if c.Peer.ListenHost, err = sanitizeListenHost(c.Peer.ListenHost, c.Peer.AdvertisedUrl); err != nil {
+	if c.Peer.BindAddr, err = sanitizeBindAddr(c.Peer.BindAddr, c.Peer.Addr); err != nil {
 		return fmt.Errorf("Peer Listen Host: %s", err)
 	}
 
@@ -383,10 +382,10 @@ func sanitizeURL(host string, defaultScheme string) (string, error) {
 	return p.String(), nil
 }
 
-// sanitizeListenHost cleans up the ListenHost parameter and appends a port
+// sanitizeBindAddr cleans up the BindAddr parameter and appends a port
 // if necessary based on the advertised port.
-func sanitizeListenHost(listen string, advertised string) (string, error) {
-	aurl, err := url.Parse(advertised)
+func sanitizeBindAddr(bindAddr string, addr string) (string, error) {
+	aurl, err := url.Parse(addr)
 	if err != nil {
 		return "", err
 	}
@@ -397,9 +396,9 @@ func sanitizeListenHost(listen string, advertised string) (string, error) {
 	}
 
 	// If the listen host isn't set use the advertised host
-	if listen == "" {
-		listen = ahost
+	if bindAddr == "" {
+		bindAddr = ahost
 	}
 
-	return net.JoinHostPort(listen, aport), nil
+	return net.JoinHostPort(bindAddr, aport), nil
 }

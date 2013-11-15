@@ -4,15 +4,15 @@ SESSION=etcd-cluster
 tmux new-session -d -s $SESSION
 
 # Setup a window for tailing log files
-tmux new-window -t $SESSION:1 -n 'machines'
+tmux new-window -t $SESSION:1 -n 'peers'
 tmux split-window -h
 tmux select-pane -t 0
-tmux send-keys "./etcd -s 127.0.0.1:7001 -c 127.0.0.1:4001 -d machine1 -n machine1" C-m
+tmux send-keys "./etcd -s 127.0.0.1:7001 -c 127.0.0.1:4001 -d peer1 -n peer1" C-m
 
 for i in 2 3; do
 	tmux select-pane -t 0
 	tmux split-window -v
-	tmux send-keys "./etcd -cors='*' -s 127.0.0.1:700${i} -c 127.0.0.1:400${i} -C 127.0.0.1:7001 -d machine${i} -n machine${i}" C-m
+	tmux send-keys "./etcd -cors='*' -s 127.0.0.1:700${i} -c 127.0.0.1:400${i} -C 127.0.0.1:7001 -d peer${i} -n peer${i}" C-m
 done
 
 # Attach to session

@@ -20,26 +20,26 @@
             </div>
         </div>
         <div class="etcd-graph">
-            <h2>Machine Latency</h2>
+            <h2>Peer Latency</h2>
             <div class="etcd-graph-container" id="latency">
             </div>
         </div>
         <div class="etcd-list">
-            <h2>Machine List</h2>
+            <h2>Peer List</h2>
             <table cellpadding="0" cellspacing="0">
             <thead>
-                <td class="etcd-name-header">Machine Name</td>
+                <td class="etcd-name-header">Peer Name</td>
                 <td class="etcd-latency">Latency</td>
             </thead>
             <tbody>
-                <tr ng-repeat="machine in machines">
-                    <td ng-switch on="{true:'leader', false: 'follower'}[leaderName == machine.name]">
-                        <div ng-switch-when="leader">{{machine.name}}<span class="etcd-machine-type">(leader)</span></div>
-                        <div ng-switch-default>{{machine.name}}</div>
+                <tr ng-repeat="peer in peers">
+                    <td ng-switch on="{true:'leader', false: 'follower'}[leaderName == peer.name]">
+                        <div ng-switch-when="leader">{{peer.name}}<span class="etcd-peer-type">(leader)</span></div>
+                        <div ng-switch-default>{{peer.name}}</div>
                     </td>
                     <td>
-                        <div class="etcd-square ng-class: {'etcd-square-green': machine.latency.current < 25, 'etcd-square-orange': machine.latency.current < 60, 'etcd-square-red': machine.latency.current >= 60}"></div>
-                        <div class="etcd-latency-value">{{machine.latency.current | number:1 }} ms</div>
+                        <div class="etcd-square ng-class: {'etcd-square-green': peer.latency.current < 25, 'etcd-square-orange': peer.latency.current < 60, 'etcd-square-red': peer.latency.current >= 60}"></div>
+                        <div class="etcd-latency-value">{{peer.latency.current | number:1 }} ms</div>
                     </td>
                 </tr>
             </tbody>

@@ -63,7 +63,6 @@ func DeleteForm(url string, data url.Values) (*http.Response, error) {
 	return Delete(url, "application/x-www-form-urlencoded", strings.NewReader(data.Encode()))
 }
 
-
 func send(method string, url string, bodyType string, body io.Reader) (*http.Response, error) {
 	c := NewHTTPClient()
 	req, err := http.NewRequest(method, url, body)

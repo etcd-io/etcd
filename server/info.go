@@ -16,4 +16,3 @@ type Info struct {
 	RaftTLS TLSInfo `json:"raftTLS"`
 	EtcdTLS TLSInfo `json:"etcdTLS"`
 }
-
