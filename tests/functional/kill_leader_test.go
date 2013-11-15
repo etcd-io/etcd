@@ -55,9 +55,8 @@ func TestKillLeader(t *testing.T) {
 		totalTime += take
 		avgTime := totalTime / (time.Duration)(i+1)
 		fmt.Println("Total time:", totalTime, "; Avg time:", avgTime)
-		
+
 		etcds[num], err = os.StartProcess(EtcdBinPath, argGroup[num], procAttr)
 	}
 	stop <- true
 }
-

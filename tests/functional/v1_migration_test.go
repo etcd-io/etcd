@@ -33,9 +33,9 @@ func TestV1SoloMigration(t *testing.T) {
 	procAttr := new(os.ProcAttr)
 	procAttr.Files = []*os.File{nil, os.Stdout, os.Stderr}
 
-	args := []string{"etcd", fmt.Sprintf("-d=%s", nodepath)}
-	args = append(args, "-c", "127.0.0.1:4001")
-	args = append(args, "-s", "127.0.0.1:7001")
+	args := []string{"etcd", fmt.Sprintf("-data-dir=%s", nodepath)}
+	args = append(args, "-addr", "127.0.0.1:4001")
+	args = append(args, "-peer-addr", "127.0.0.1:7001")
 	process, err := os.StartProcess(EtcdBinPath, args, procAttr)
 	if err != nil {
 		t.Fatal("start process failed:" + err.Error())
@@ -75,9 +75,9 @@ func TestV1ClusterMigration(t *testing.T) {
 		procAttr := new(os.ProcAttr)
 		procAttr.Files = []*os.File{nil, os.Stdout, os.Stderr}
 
-		args := []string{"etcd", fmt.Sprintf("-d=%s", nodepath)}
-		args = append(args, "-c", fmt.Sprintf("127.0.0.1:%d", 4001 + i))
-		args = append(args, "-s", fmt.Sprintf("127.0.0.1:%d", 7001 + i))
+		args := []string{"etcd", fmt.Sprintf("-data-dir=%s", nodepath)}
+		args = append(args, "-addr", fmt.Sprintf("127.0.0.1:%d", 4001+i))
+		args = append(args, "-peer-addr", fmt.Sprintf("127.0.0.1:%d", 7001+i))
 		process, err := os.StartProcess(EtcdBinPath, args, procAttr)
 		if err != nil {
 			t.Fatal("start process failed:" + err.Error())
@@ -91,7 +91,7 @@ func TestV1ClusterMigration(t *testing.T) {
 	resp, err := tests.Get("http://localhost:4001/v2/keys/message")
 	body := tests.ReadBody(resp)
 	assert.Nil(t, err, "")
-	assert.Equal(t, resp.StatusCode, 400, )
+	assert.Equal(t, resp.StatusCode, 400)
 	assert.Equal(t, string(body), `{"errorCode":100,"message":"Key Not Found","cause":"/message","index":11}`+"\n")
 
 	// Ensure TTL'd message is removed.

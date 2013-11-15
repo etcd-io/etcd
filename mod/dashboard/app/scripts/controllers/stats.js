@@ -24,9 +24,9 @@ angular.module('etcdStats', ['ngRoute', 'etcd'])
     EtcdV2.getStat('leader').get().success(function(data) {
       $scope.leaderStats = data;
       $scope.leaderName = data.leader;
-      $scope.machines = [];
+      $scope.peers = [];
       //hardcode leader stats
-      $scope.machines.push({
+      $scope.peers.push({
         latency: {
           average: 0,
           current: 0,
@@ -38,10 +38,10 @@ angular.module('etcdStats', ['ngRoute', 'etcd'])
       });
       $.each(data.followers, function(index, value) {
         value.name = index;
-        $scope.machines.push(value);
+        $scope.peers.push(value);
       });
-      //sort array so machines don't jump when output
-      $scope.machines.sort(function(a, b){
+      //sort array so peers don't jump when output
+      $scope.peers.sort(function(a, b){
           if(a.name < b.name) return -1;
           if(a.name > b.name) return 1;
           return 0;
@@ -64,7 +64,7 @@ angular.module('etcdStats', ['ngRoute', 'etcd'])
         chart({
           el: $scope.graphContainer,
           data: {
-            'stats': $scope.machines
+            'stats': $scope.peers
           }
         }).width(width).height(height).update();
       });

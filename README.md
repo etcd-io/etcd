@@ -62,12 +62,12 @@ These examples will use a single node cluster to show you the basics of the etcd
 Let's start etcd:
 
 ```sh
-./etcd -d node0 -n node0
+./etcd -data-dir node0 -name node0
 ```
 
 This will bring up an etcd node listening on port 4001 for client communication and on port 7001 for server-to-server communication.
-The `-d node0` argument tells etcd to write node configuration, logs and snapshots to the `./node0/` directory.
-The `-n node0` tells the rest of the cluster that this node is named node0.
+The `-data-dir node0` argument tells etcd to write node configuration, logs and snapshots to the `./node0/` directory.
+The `-name node0` tells the rest of the cluster that this node is named node0.
 
 
 
@@ -378,13 +378,13 @@ For testing you can use the certificates in the `fixtures/ca` directory.
 Let's configure etcd to use this keypair:
 
 ```sh
-./etcd -n node0 -d node0 -clientCert=./fixtures/ca/server.crt -clientKey=./fixtures/ca/server.key.insecure -f
+./etcd -name node0 -data-dir node0 -cert-file=./fixtures/ca/server.crt -key-file=./fixtures/ca/server.key.insecure -force-config
 ```
 
 There are a few new options we're using:
 
-* `-f` - forces a new node configuration, even if an existing configuration is found. (WARNING: data loss!)
-* `-clientCert` and `-clientKey` specify the location of the cert and key files to be used for for transport layer security between the client and server.
+* `-force-config` - forces a new node configuration, even if an existing configuration is found. (WARNING: data loss!)
+* `-cert-file` and `-key-file` specify the location of the cert and key files to be used for for transport layer security between the client and server.
 
 You can now test the configuration using HTTPS:
 
@@ -413,10 +413,10 @@ We can also do authentication using CA certs.
 The clients will provide their cert to the server and the server will check whether the cert is signed by the CA and decide whether to serve the request.
 
 ```sh
-./etcd -n node0 -d node0 -clientCAFile=./fixtures/ca/ca.crt -clientCert=./fixtures/ca/server.crt -clientKey=./fixtures/ca/server.key.insecure -f
+./etcd -name node0 -data-dir node0 -ca-file=./fixtures/ca/ca.crt -cert-file=./fixtures/ca/server.crt -key-file=./fixtures/ca/server.key.insecure -force-config
 ```
 
-```-clientCAFile``` is the path to the CA cert.
+```-ca-file``` is the path to the CA cert.
 
 Try the same request to this server:
 
@@ -463,20 +463,20 @@ We use Raft as the underlying distributed protocol which provides consistency an
 
 Let start by creating 3 new etcd instances.
 
-We use -s to specify server port and -c to specify client port and -d to specify the directory to store the log and info of the node in the cluster
+We use `-peer-addr` to specify server port and `-addr` to specify client port and `-data-dir` to specify the directory to store the log and info of the node in the cluster:
 
 ```sh
-./etcd -s 127.0.0.1:7001 -c 127.0.0.1:4001 -d nodes/node1 -n node1
+./etcd -peer-addr 127.0.0.1:7001 -addr 127.0.0.1:4001 -data-dir nodes/node1 -name node1
 ```
 
-**Note:** If you want to run etcd on an external IP address and still have access locally, you'll need to add `-cl 0.0.0.0` so that it will listen on both external and localhost addresses.
-A similar argument `-sl` is used to setup the listening address for the server port.
+**Note:** If you want to run etcd on an external IP address and still have access locally, you'll need to add `-bind-addr 0.0.0.0` so that it will listen on both external and localhost addresses.
+A similar argument `-peer-bind-addr` is used to setup the listening address for the server port.
 
-Let's join two more nodes to this cluster using the `-C` argument:
+Let's join two more nodes to this cluster using the `-peers` argument:
 
 ```sh
-./etcd -s 127.0.0.1:7002 -c 127.0.0.1:4002 -C 127.0.0.1:7001 -d nodes/node2 -n node2
-./etcd -s 127.0.0.1:7003 -c 127.0.0.1:4003 -C 127.0.0.1:7001 -d nodes/node3 -n node3
+./etcd -peer-addr 127.0.0.1:7002 -addr 127.0.0.1:4002 -peers 127.0.0.1:7001 -data-dir nodes/node2 -name node2
+./etcd -peer-addr 127.0.0.1:7003 -addr 127.0.0.1:4003 -peers 127.0.0.1:7001 -data-dir nodes/node3 -name node3
 ```
 
 We can retrieve a list of machines in the cluster using the HTTP API:
@@ -569,7 +569,7 @@ curl -L http://127.0.0.1:4002/v1/keys/foo
 
 In the previous example we showed how to use SSL client certs for client-to-server communication.
 Etcd can also do internal server-to-server communication using SSL client certs.
-To do this just change the `-client*` flags to `-server*`.
+To do this just change the `-*-file` flags to `-peer-*-file`.
 
 If you are using SSL for server-to-server communication, you must use it on all instances of etcd.
 
@@ -648,13 +648,13 @@ See [CONTRIBUTING](https://github.com/coreos/etcd/blob/master/CONTRIBUTING.md) f
 ### What size cluster should I use?
 
 Every command the client sends to the master is broadcast to all of the followers.
-The command is not committed until the majority of the cluster machines receive that command.
+The command is not committed until the majority of the cluster peers receive that command.
 
-Because of this majority voting property, the ideal cluster should be kept small to keep speed up and be made up of an odd number of machines.
+Because of this majority voting property, the ideal cluster should be kept small to keep speed up and be made up of an odd number of peers.
 
-Odd numbers are good because if you have 8 machines the majority will be 5 and if you have 9 machines the majority will still be 5.
-The result is that an 8 machine cluster can tolerate 3 machine failures and a 9 machine cluster can tolerate 4 nodes failures.
-And in the best case when all 9 machines are responding the cluster will perform at the speed of the fastest 5 nodes.
+Odd numbers are good because if you have 8 peers the majority will be 5 and if you have 9 peers the majority will still be 5.
+The result is that an 8 peer cluster can tolerate 3 peer failures and a 9 peer cluster can tolerate 4 nodes failures.
+And in the best case when all 9 peers are responding the cluster will perform at the speed of the fastest 5 nodes.
 
 
 ### Why SSLv3 alert handshake failure when using SSL client auth?

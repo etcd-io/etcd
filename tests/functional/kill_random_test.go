@@ -8,8 +8,8 @@ import (
 	"time"
 )
 
-// TestKillRandom kills random machines in the cluster and
-// restart them after all other machines agree on the same leader
+// TestKillRandom kills random peers in the cluster and
+// restart them after all other peers agree on the same leader
 func TestKillRandom(t *testing.T) {
 	procAttr := new(os.ProcAttr)
 	procAttr.Files = []*os.File{nil, os.Stdout, os.Stderr}
@@ -73,4 +73,3 @@ func TestKillRandom(t *testing.T) {
 
 	stop <- true
 }
-

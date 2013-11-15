@@ -12,7 +12,7 @@ import (
 	"github.com/coreos/etcd/store"
 )
 
-// The location of the machine URL data.
+// The location of the peer URL data.
 const RegistryKey = "/_etcd/machines"
 
 // The Registry stores URL information for nodes.
@@ -168,7 +168,7 @@ func (r *Registry) load(name string) {
 	// Parse as a query string.
 	m, err := url.ParseQuery(e.Value)
 	if err != nil {
-		panic(fmt.Sprintf("Failed to parse machines entry: %s", name))
+		panic(fmt.Sprintf("Failed to parse peers entry: %s", name))
 	}
 
 	// Create node.

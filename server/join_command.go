@@ -46,18 +46,18 @@ func (c *JoinCommand) Apply(server raft.Server) (interface{}, error) {
 	// Make sure we're not getting a cached value from the registry.
 	ps.registry.Invalidate(c.Name)
 
-	// Check if the join command is from a previous machine, who lost all its previous log.
+	// Check if the join command is from a previous peer, who lost all its previous log.
 	if _, ok := ps.registry.ClientURL(c.Name); ok {
 		return b, nil
 	}
 
-	// Check machine number in the cluster
+	// Check peer number in the cluster
 	if ps.registry.Count() == ps.MaxClusterSize {
 		log.Debug("Reject join request from ", c.Name)
-		return []byte{0}, etcdErr.NewError(etcdErr.EcodeNoMoreMachine, "", server.CommitIndex())
+		return []byte{0}, etcdErr.NewError(etcdErr.EcodeNoMorePeer, "", server.CommitIndex())
 	}
 
-	// Add to shared machine registry.
+	// Add to shared peer registry.
 	ps.registry.Register(c.Name, c.RaftURL, c.EtcdURL)
 
 	// Add peer in raft

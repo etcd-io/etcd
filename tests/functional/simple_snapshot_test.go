@@ -14,9 +14,9 @@ import (
 func TestSimpleSnapshot(t *testing.T) {
 	procAttr := new(os.ProcAttr)
 	procAttr.Files = []*os.File{nil, os.Stdout, os.Stderr}
-	args := []string{"etcd", "-n=node1", "-d=/tmp/node1", "-snapshot=true", "-snapshotCount=500"}
+	args := []string{"etcd", "-name=node1", "-data-dir=/tmp/node1", "-snapshot=true", "-snapshot-count=500"}
 
-	process, err := os.StartProcess(EtcdBinPath, append(args, "-f"), procAttr)
+	process, err := os.StartProcess(EtcdBinPath, append(args, "-force-config"), procAttr)
 	if err != nil {
 		t.Fatal("start process failed:" + err.Error())
 	}
@@ -55,7 +55,7 @@ func TestSimpleSnapshot(t *testing.T) {
 
 	index, _ := strconv.Atoi(snapshots[0].Name()[2:5])
 
-	if index < 507 || index > 510 {
+	if index <= 507 || index >= 510 {
 		t.Fatal("wrong name of snapshot :", snapshots[0].Name())
 	}
 
@@ -87,7 +87,7 @@ func TestSimpleSnapshot(t *testing.T) {
 
 	index, _ = strconv.Atoi(snapshots[0].Name()[2:6])
 
-	if index < 1015 || index > 1018 {
+	if index <= 1014 || index >= 1017 {
 		t.Fatal("wrong name of snapshot :", snapshots[0].Name())
 	}
 }
