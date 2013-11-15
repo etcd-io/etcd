@@ -52,7 +52,7 @@ func templateTestSimpleMultiNode(t *testing.T, tls bool) {
 
 	result, err = c.Set("foo", "bar", 100)
 
-	if err != nil || result.Key != "/foo" || result.Value != "bar" || result.PrevValue != "bar" || result.TTL != 100 {
+	if err != nil || result.Key != "/foo" || result.Value != "bar" || result.PrevValue != "bar" || result.TTL < 95 {
 		if err != nil {
 			t.Fatal(err)
 		}
