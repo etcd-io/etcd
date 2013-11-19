@@ -14,7 +14,7 @@ import (
 func TestSimpleSnapshot(t *testing.T) {
 	procAttr := new(os.ProcAttr)
 	procAttr.Files = []*os.File{nil, os.Stdout, os.Stderr}
-	args := []string{"etcd", "-n=node1", "-d=/tmp/node1", "-snapshot=true", "-snapshotCount=500"}
+	args := []string{"etcd", "-name=node1", "-data-dir=/tmp/node1", "-snapshot=true", "-snapshot-count=500"}
 
 	process, err := os.StartProcess(EtcdBinPath, append(args, "-f"), procAttr)
 	if err != nil {

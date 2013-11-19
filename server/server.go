@@ -36,12 +36,12 @@ type Server struct {
 }
 
 // Creates a new Server.
-func New(name string, urlStr string, listenHost string, tlsConf *TLSConfig, tlsInfo *TLSInfo, peerServer *PeerServer, registry *Registry, store store.Store) *Server {
+func New(name string, urlStr string, bindAddr string, tlsConf *TLSConfig, tlsInfo *TLSInfo, peerServer *PeerServer, registry *Registry, store store.Store) *Server {
 	s := &Server{
 		Server: http.Server{
 			Handler:   mux.NewRouter(),
 			TLSConfig: &tlsConf.Server,
-			Addr:      listenHost,
+			Addr:      bindAddr,
 		},
 		name:       name,
 		store:      store,
@@ -102,7 +102,8 @@ func (s *Server) installV1() {
 	s.handleFuncV1("/v1/keys/{key:.*}", v1.DeleteKeyHandler).Methods("DELETE")
 	s.handleFuncV1("/v1/watch/{key:.*}", v1.WatchKeyHandler).Methods("GET", "POST")
 	s.handleFunc("/v1/leader", s.GetLeaderHandler).Methods("GET")
-	s.handleFunc("/v1/machines", s.GetMachinesHandler).Methods("GET")
+	s.handleFunc("/v1/machines", s.GetPeersHandler).Methods("GET")
+	s.handleFunc("/v1/peers", s.GetPeersHandler).Methods("GET")
 	s.handleFunc("/v1/stats/self", s.GetStatsHandler).Methods("GET")
 	s.handleFunc("/v1/stats/leader", s.GetLeaderStatsHandler).Methods("GET")
 	s.handleFunc("/v1/stats/store", s.GetStoreStatsHandler).Methods("GET")
@@ -114,7 +115,8 @@ func (s *Server) installV2() {
 	s.handleFuncV2("/v2/keys/{key:.*}", v2.PutHandler).Methods("PUT")
 	s.handleFuncV2("/v2/keys/{key:.*}", v2.DeleteHandler).Methods("DELETE")
 	s.handleFunc("/v2/leader", s.GetLeaderHandler).Methods("GET")
-	s.handleFunc("/v2/machines", s.GetMachinesHandler).Methods("GET")
+	s.handleFunc("/v2/machines", s.GetPeersHandler).Methods("GET")
+	s.handleFunc("/v2/peers", s.GetPeersHandler).Methods("GET")
 	s.handleFunc("/v2/stats/self", s.GetStatsHandler).Methods("GET")
 	s.handleFunc("/v2/stats/leader", s.GetLeaderStatsHandler).Methods("GET")
 	s.handleFunc("/v2/stats/store", s.GetStoreStatsHandler).Methods("GET")
@@ -341,11 +343,11 @@ func (s *Server) GetLeaderHandler(w http.ResponseWriter, req *http.Request) erro
 	return nil
 }
 
-// Handler to return all the known machines in the current cluster.
-func (s *Server) GetMachinesHandler(w http.ResponseWriter, req *http.Request) error {
-	machines := s.registry.ClientURLs(s.peerServer.RaftServer().Leader(), s.name)
+// Handler to return all the known peers in the current cluster.
+func (s *Server) GetPeersHandler(w http.ResponseWriter, req *http.Request) error {
+	peers := s.registry.ClientURLs(s.peerServer.RaftServer().Leader(), s.name)
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(strings.Join(machines, ", ")))
+	w.Write([]byte(strings.Join(peers, ", ")))
 	return nil
 }
 

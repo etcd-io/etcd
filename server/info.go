@@ -8,7 +8,6 @@ type Info struct {
 
 	RaftURL string `json:"raftURL"`
 	EtcdURL string `json:"etcdURL"`
-	WebURL  string `json:"webURL"`
 
 	RaftListenHost string `json:"raftListenHost"`
 	EtcdListenHost string `json:"etcdListenHost"`
@@ -16,4 +15,3 @@ type Info struct {
 	RaftTLS TLSInfo `json:"raftTLS"`
 	EtcdTLS TLSInfo `json:"etcdTLS"`
 }
-

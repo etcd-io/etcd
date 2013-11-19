@@ -28,7 +28,7 @@ const (
 	EcodeKeyNotFound    = 100
 	EcodeTestFailed     = 101
 	EcodeNotFile        = 102
-	EcodeNoMoreMachine  = 103
+	EcodeNoMorePeer     = 103
 	EcodeNotDir         = 104
 	EcodeNodeExist      = 105
 	EcodeKeyIsPreserved = 106
@@ -53,7 +53,7 @@ func init() {
 	errors[EcodeKeyNotFound] = "Key Not Found"
 	errors[EcodeTestFailed] = "Test Failed" //test and set
 	errors[EcodeNotFile] = "Not A File"
-	errors[EcodeNoMoreMachine] = "Reached the max number of machines in the cluster"
+	errors[EcodeNoMorePeer] = "Reached the max number of peers in the cluster"
 	errors[EcodeNotDir] = "Not A Directory"
 	errors[EcodeNodeExist] = "Already exists" // create
 	errors[EcodeKeyIsPreserved] = "The prefix of given key is a keyword in etcd"

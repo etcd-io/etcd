@@ -2,7 +2,7 @@ package mock
 
 import (
 	"net/http"
-	
+
 	"github.com/coreos/etcd/store"
 	"github.com/coreos/go-raft"
 	"github.com/stretchr/testify/mock"

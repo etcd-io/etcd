@@ -32,7 +32,7 @@ func (info TLSInfo) Config() (TLSConfig, error) {
 
 	tlsCert, err := tls.LoadX509KeyPair(info.CertFile, info.KeyFile)
 	if err != nil {
-		return t, err 
+		return t, err
 	}
 
 	t.Scheme = "https"

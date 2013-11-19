@@ -42,7 +42,7 @@ func TestRemoveNode(t *testing.T) {
 			}
 
 			if len(resp) != 2 {
-				t.Fatal("cannot remove machine")
+				t.Fatal("cannot remove peer")
 			}
 
 			if i == 1 {
@@ -66,7 +66,7 @@ func TestRemoveNode(t *testing.T) {
 			}
 
 			if len(resp) != 3 {
-				t.Fatalf("add machine fails #1 (%d != 3)", len(resp))
+				t.Fatalf("add peer fails #1 (%d != 3)", len(resp))
 			}
 		}
 
@@ -85,7 +85,7 @@ func TestRemoveNode(t *testing.T) {
 			}
 
 			if len(resp) != 2 {
-				t.Fatal("cannot remove machine")
+				t.Fatal("cannot remove peer")
 			}
 
 			if i == 1 {
@@ -109,7 +109,7 @@ func TestRemoveNode(t *testing.T) {
 			}
 
 			if len(resp) != 3 {
-				t.Fatalf("add machine fails #2 (%d != 3)", len(resp))
+				t.Fatalf("add peer fails #2 (%d != 3)", len(resp))
 			}
 		}
 	}

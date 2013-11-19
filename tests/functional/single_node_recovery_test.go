@@ -13,7 +13,7 @@ import (
 func TestSingleNodeRecovery(t *testing.T) {
 	procAttr := new(os.ProcAttr)
 	procAttr.Files = []*os.File{nil, os.Stdout, os.Stderr}
-	args := []string{"etcd", "-n=node1", "-d=/tmp/node1"}
+	args := []string{"etcd", "-name=node1", "-data-dir=/tmp/node1"}
 
 	process, err := os.StartProcess(EtcdBinPath, append(args, "-f"), procAttr)
 	if err != nil {
@@ -65,4 +65,3 @@ func TestSingleNodeRecovery(t *testing.T) {
 		t.Fatalf("Recovery Get failed with %s %s %v", result.Key, result.Value, result.TTL)
 	}
 }
-
