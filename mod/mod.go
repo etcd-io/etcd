@@ -5,14 +5,17 @@ import (
 	"net/http"
 
 	"github.com/coreos/etcd/mod/dashboard"
+	"github.com/coreos/etcd/mod/lock"
 	"github.com/gorilla/mux"
 )
 
 var ServeMux *http.Handler
 
 func HttpHandler() (handler http.Handler) {
-	modMux := mux.NewRouter()
-	modMux.PathPrefix("/dashboard/").
+	r := mux.NewRouter()
+	r.PathPrefix("/dashboard/").
 		Handler(http.StripPrefix("/dashboard/", dashboard.HttpHandler()))
-	return modMux
+	r.PathPrefix("/lock/").
+		Handler(http.StripPrefix("/lock", lock.NewHandler()))
+	return r
 }
