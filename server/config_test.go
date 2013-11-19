@@ -15,7 +15,7 @@ func TestConfigTOML(t *testing.T) {
 		addr = "127.0.0.1:4002"
 		ca_file = "/tmp/file.ca"
 		cert_file = "/tmp/file.cert"
-		cors_origins = ["*"]
+		cors = ["*"]
 		cpu_profile_file = "XXX"
 		data_dir = "/tmp/data"
 		key_file = "/tmp/file.key"
@@ -57,7 +57,6 @@ func TestConfigTOML(t *testing.T) {
 	assert.Equal(t, c.Snapshot, true, "")
 	assert.Equal(t, c.Verbose, true, "")
 	assert.Equal(t, c.VeryVerbose, true, "")
-	assert.Equal(t, c.WebURL, "/web", "")
 	assert.Equal(t, c.Peer.Addr, "127.0.0.1:7002", "")
 	assert.Equal(t, c.Peer.CAFile, "/tmp/peer/file.ca", "")
 	assert.Equal(t, c.Peer.CertFile, "/tmp/peer/file.cert", "")
@@ -70,7 +69,7 @@ func TestConfigEnv(t *testing.T) {
 	os.Setenv("ETCD_CA_FILE", "/tmp/file.ca")
 	os.Setenv("ETCD_CERT_FILE", "/tmp/file.cert")
 	os.Setenv("ETCD_CPU_PROFILE_FILE", "XXX")
-	os.Setenv("ETCD_CORS_ORIGINS", "localhost:4001,localhost:4002")
+	os.Setenv("ETCD_CORS", "localhost:4001,localhost:4002")
 	os.Setenv("ETCD_DATA_DIR", "/tmp/data")
 	os.Setenv("ETCD_KEY_FILE", "/tmp/file.key")
 	os.Setenv("ETCD_BIND_ADDR", "127.0.0.1:4003")
@@ -94,7 +93,7 @@ func TestConfigEnv(t *testing.T) {
 	c.LoadEnv()
 	assert.Equal(t, c.CAFile, "/tmp/file.ca", "")
 	assert.Equal(t, c.CertFile, "/tmp/file.cert", "")
-	assert.Equal(t, c.CorsOrigins, []string{"localhost:4001", "localhost:4002"}, "")
+	assert.Equal(t, c.CorsOrigins, []string{"localhost:4001", "localhost:4002"}, "") 
 	assert.Equal(t, c.DataDir, "/tmp/data", "")
 	assert.Equal(t, c.KeyFile, "/tmp/file.key", "")
 	assert.Equal(t, c.BindAddr, "127.0.0.1:4003", "")
@@ -107,12 +106,25 @@ func TestConfigEnv(t *testing.T) {
 	assert.Equal(t, c.Snapshot, true, "")
 	assert.Equal(t, c.Verbose, true, "")
 	assert.Equal(t, c.VeryVerbose, true, "")
-	assert.Equal(t, c.WebURL, "/web", "")
 	assert.Equal(t, c.Peer.Addr, "127.0.0.1:7002", "")
 	assert.Equal(t, c.Peer.CAFile, "/tmp/peer/file.ca", "")
 	assert.Equal(t, c.Peer.CertFile, "/tmp/peer/file.cert", "")
 	assert.Equal(t, c.Peer.KeyFile, "/tmp/peer/file.key", "")
 	assert.Equal(t, c.Peer.BindAddr, "127.0.0.1:7003", "")
+}
+
+// Ensures that the "force config" flag can be parsed.
+func TestConfigForceFlag(t *testing.T) {
+	c := NewConfig()
+	assert.Nil(t, c.LoadFlags([]string{"-force"}), "")
+	assert.True(t, c.Force)
+}
+
+// Ensures that the abbreviated "force config" flag can be parsed.
+func TestConfigAbbreviatedForceFlag(t *testing.T) {
+	c := NewConfig()
+	assert.Nil(t, c.LoadFlags([]string{"-f"}), "")
+	assert.True(t, c.Force)
 }
 
 // Ensures that a the advertised url can be parsed from the environment.
@@ -325,21 +337,6 @@ func TestConfigVeryVerboseFlag(t *testing.T) {
 	assert.Equal(t, c.VeryVerbose, true, "")
 }
 
-// Ensures that Web URL can be parsed from the environment.
-func TestConfigWebURLEnv(t *testing.T) {
-	withEnv("ETCD_WEB_URL", "/web", func(c *Config) {
-		assert.Nil(t, c.LoadEnv(), "")
-		assert.Equal(t, c.WebURL, "/web", "")
-	})
-}
-
-// Ensures that a the Web URL flag can be parsed.
-func TestConfigWebURLFlag(t *testing.T) {
-	c := NewConfig()
-	assert.Nil(t, c.LoadFlags([]string{"-web-url", "/web"}), "")
-	assert.Equal(t, c.WebURL, "/web", "")
-}
-
 // Ensures that the Peer Advertised URL can be parsed from the environment.
 func TestConfigPeerAddrEnv(t *testing.T) {
 	withEnv("ETCD_PEER_ADDR", "localhost:7002", func(c *Config) {
@@ -453,6 +450,123 @@ func TestConfigCLIArgsOverrideEnvVar(t *testing.T) {
 	assert.Nil(t, c.Load([]string{"-addr", "127.0.0.1:2000"}), "")
 	assert.Equal(t, c.Addr, "http://127.0.0.1:2000", "")
 }
+
+//--------------------------------------
+// DEPRECATED (v1)
+//--------------------------------------
+
+func TestConfigDeprecatedAddrFlag(t *testing.T) {
+	c := NewConfig()
+	err := c.LoadDeprecatedFlags([]string{"-c", "127.0.0.1:4002"})
+	assert.Equal(t, err.Error(), "[deprecated] use -addr, not -c", "")
+	assert.Equal(t, c.Addr, "127.0.0.1:4002", "")
+}
+
+func TestConfigDeprecatedBindAddrFlag(t *testing.T) {
+	c := NewConfig()
+	err := c.LoadDeprecatedFlags([]string{"-cl", "127.0.0.1:4003"})
+	assert.Equal(t, err.Error(), "[deprecated] use -bind-addr, not -cl", "")
+	assert.Equal(t, c.BindAddr, "127.0.0.1:4003", "")
+}
+
+func TestConfigDeprecatedCAFileFlag(t *testing.T) {
+	c := NewConfig()
+	err := c.LoadDeprecatedFlags([]string{"-clientCAFile", "/tmp/file.ca"})
+	assert.Equal(t, err.Error(), "[deprecated] use -ca-file, not -clientCAFile", "")
+	assert.Equal(t, c.CAFile, "/tmp/file.ca", "")
+}
+
+func TestConfigDeprecatedCertFileFlag(t *testing.T) {
+	c := NewConfig()
+	err := c.LoadDeprecatedFlags([]string{"-clientCert", "/tmp/file.cert"})
+	assert.Equal(t, err.Error(), "[deprecated] use -cert-file, not -clientCert", "")
+	assert.Equal(t, c.CertFile, "/tmp/file.cert", "")
+}
+
+func TestConfigDeprecatedKeyFileFlag(t *testing.T) {
+	c := NewConfig()
+	err := c.LoadDeprecatedFlags([]string{"-clientKey", "/tmp/file.key"})
+	assert.Equal(t, err.Error(), "[deprecated] use -key-file, not -clientKey", "")
+	assert.Equal(t, c.KeyFile, "/tmp/file.key", "")
+}
+
+func TestConfigDeprecatedPeersFlag(t *testing.T) {
+	c := NewConfig()
+	err := c.LoadDeprecatedFlags([]string{"-C", "coreos.com:4001,coreos.com:4002"})
+	assert.Equal(t, err.Error(), "[deprecated] use -peers, not -C", "")
+	assert.Equal(t, c.Peers, []string{"coreos.com:4001", "coreos.com:4002"}, "")
+}
+
+func TestConfigDeprecatedPeersFileFlag(t *testing.T) {
+	c := NewConfig()
+	err := c.LoadDeprecatedFlags([]string{"-CF", "/tmp/machines"})
+	assert.Equal(t, err.Error(), "[deprecated] use -peers-file, not -CF", "")
+	assert.Equal(t, c.PeersFile, "/tmp/machines", "")
+}
+
+func TestConfigDeprecatedMaxClusterSizeFlag(t *testing.T) {
+	c := NewConfig()
+	err := c.LoadDeprecatedFlags([]string{"-maxsize", "5"})
+	assert.Equal(t, err.Error(), "[deprecated] use -max-cluster-size, not -maxsize", "")
+	assert.Equal(t, c.MaxClusterSize, 5, "")
+}
+
+func TestConfigDeprecatedMaxResultBufferFlag(t *testing.T) {
+	c := NewConfig()
+	err := c.LoadDeprecatedFlags([]string{"-m", "512"})
+	assert.Equal(t, err.Error(), "[deprecated] use -max-result-buffer, not -m", "")
+	assert.Equal(t, c.MaxResultBuffer, 512, "")
+}
+
+func TestConfigDeprecatedMaxRetryAttemptsFlag(t *testing.T) {
+	c := NewConfig()
+	err := c.LoadDeprecatedFlags([]string{"-r", "10"})
+	assert.Equal(t, err.Error(), "[deprecated] use -max-retry-attempts, not -r", "")
+	assert.Equal(t, c.MaxRetryAttempts, 10, "")
+}
+
+func TestConfigDeprecatedNameFlag(t *testing.T) {
+	c := NewConfig()
+	err := c.LoadDeprecatedFlags([]string{"-n", "test-name"})
+	assert.Equal(t, err.Error(), "[deprecated] use -name, not -n", "")
+	assert.Equal(t, c.Name, "test-name", "")
+}
+
+func TestConfigDeprecatedPeerAddrFlag(t *testing.T) {
+	c := NewConfig()
+	err := c.LoadDeprecatedFlags([]string{"-s", "localhost:7002"})
+	assert.Equal(t, err.Error(), "[deprecated] use -peer-addr, not -s", "")
+	assert.Equal(t, c.Peer.Addr, "localhost:7002", "")
+}
+
+func TestConfigDeprecatedPeerBindAddrFlag(t *testing.T) {
+	c := NewConfig()
+	err := c.LoadDeprecatedFlags([]string{"-sl", "127.0.0.1:4003"})
+	assert.Equal(t, err.Error(), "[deprecated] use -peer-bind-addr, not -sl", "")
+	assert.Equal(t, c.Peer.BindAddr, "127.0.0.1:4003", "")
+}
+
+func TestConfigDeprecatedPeerCAFileFlag(t *testing.T) {
+	c := NewConfig()
+	err := c.LoadDeprecatedFlags([]string{"-serverCAFile", "/tmp/peer/file.ca"})
+	assert.Equal(t, err.Error(), "[deprecated] use -peer-ca-file, not -serverCAFile", "")
+	assert.Equal(t, c.Peer.CAFile, "/tmp/peer/file.ca", "")
+}
+
+func TestConfigDeprecatedPeerCertFileFlag(t *testing.T) {
+	c := NewConfig()
+	err := c.LoadDeprecatedFlags([]string{"-serverCert", "/tmp/peer/file.cert"})
+	assert.Equal(t, err.Error(), "[deprecated] use -peer-cert-file, not -serverCert", "")
+	assert.Equal(t, c.Peer.CertFile, "/tmp/peer/file.cert", "")
+}
+
+func TestConfigDeprecatedPeerKeyFileFlag(t *testing.T) {
+	c := NewConfig()
+	err := c.LoadDeprecatedFlags([]string{"-serverKey", "/tmp/peer/file.key"})
+	assert.Equal(t, err.Error(), "[deprecated] use -peer-key-file, not -serverKey", "")
+	assert.Equal(t, c.Peer.KeyFile, "/tmp/peer/file.key", "")
+}
+
 
 //--------------------------------------
 // Helpers

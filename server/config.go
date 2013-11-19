@@ -19,6 +19,28 @@ import (
 // The default location for the etcd configuration file.
 const DefaultSystemConfigPath = "/etc/etcd/etcd.conf"
 
+// A lookup of deprecated flags to their new flag name.
+var newFlagNameLookup = map[string]string{
+	"C": "peers",
+	"CF": "peers-file",
+	"n": "name",
+	"c": "addr",
+	"cl": "bind-addr",
+	"s": "peer-addr",
+	"sl": "peer-bind-addr",
+	"d": "data-dir",
+	"m": "max-result-buffer",
+	"r": "max-retry-attempts",
+	"maxsize": "max-cluster-size",
+	"clientCAFile": "ca-file",
+	"clientCert": "cert-file",
+	"clientKey": "key-file",
+	"serverCAFile": "peer-ca-file",
+	"serverCert": "peer-cert-file",
+	"serverKey": "peer-key-file",
+	"snapshotCount": "snapshot-count",
+}
+
 // Config represents the server configuration.
 type Config struct {
 	SystemPath string
@@ -27,8 +49,9 @@ type Config struct {
 	BindAddr         string   `toml:"bind_addr" env:"ETCD_BIND_ADDR"`
 	CAFile           string   `toml:"ca_file" env:"ETCD_CA_FILE"`
 	CertFile         string   `toml:"cert_file" env:"ETCD_CERT_FILE"`
-	CorsOrigins      []string `toml:"cors_origins" env:"ETCD_CORS_ORIGINS"`
+	CorsOrigins      []string `toml:"cors" env:"ETCD_CORS"`
 	DataDir          string   `toml:"data_dir" env:"ETCD_DATA_DIR"`
+	Force            bool
 	KeyFile          string   `toml:"key_file" env:"ETCD_KEY_FILE"`
 	Peers            []string `toml:"peers" env:"ETCD_PEERS"`
 	PeersFile        string   `toml:"peers_file" env:"ETCD_PEERS_FILE"`
@@ -40,7 +63,6 @@ type Config struct {
 	SnapshotCount    int      `toml:"snapshot_count" env:"ETCD_SNAPSHOTCOUNT"`
 	Verbose          bool     `toml:"verbose" env:"ETCD_VERBOSE"`
 	VeryVerbose      bool     `toml:"very_verbose" env:"ETCD_VERY_VERBOSE"`
-	WebURL           string   `toml:"web_url" env:"ETCD_WEB_URL"`
 
 	Peer struct {
 		Addr     string `toml:"addr" env:"ETCD_PEER_ADDR"`
@@ -93,6 +115,15 @@ func (c *Config) Load(arguments []string) error {
 	// Load from command line flags.
 	if err := c.LoadFlags(arguments); err != nil {
 		return err
+	}
+
+	// Load from command line flags (deprecated).
+	if err := c.LoadDeprecatedFlags(arguments); err != nil {
+		if err, ok := err.(*DeprecationError); ok {
+			fmt.Fprintln(os.Stderr, err.Error())
+		} else {
+			return err
+		}
 	}
 
 	// Loads peers if a peer file was specified.
@@ -164,14 +195,65 @@ func (c *Config) loadEnv(target interface{}) error {
 	return nil
 }
 
+// Loads deprecated configuration settings from the command line.
+func (c *Config) LoadDeprecatedFlags(arguments []string) error {
+	var peers string
+
+	f := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
+	f.SetOutput(ioutil.Discard)
+
+	f.StringVar(&peers, "C", "", "(deprecated)")
+	f.StringVar(&c.PeersFile, "CF", c.PeersFile, "(deprecated)")
+
+	f.StringVar(&c.Name, "n", c.Name, "(deprecated)")
+	f.StringVar(&c.Addr, "c", c.Addr, "(deprecated)")
+	f.StringVar(&c.BindAddr, "cl", c.BindAddr, "the listening hostname for etcd client communication (defaults to advertised ip)")
+	f.StringVar(&c.Peer.Addr, "s", c.Peer.Addr, "the advertised public hostname:port for raft server communication")
+	f.StringVar(&c.Peer.BindAddr, "sl", c.Peer.BindAddr, "the listening hostname for raft server communication (defaults to advertised ip)")
+
+	f.StringVar(&c.Peer.CAFile, "serverCAFile", c.Peer.CAFile, "the path of the CAFile")
+	f.StringVar(&c.Peer.CertFile, "serverCert", c.Peer.CertFile, "the cert file of the server")
+	f.StringVar(&c.Peer.KeyFile, "serverKey", c.Peer.KeyFile, "the key file of the server")
+
+	f.StringVar(&c.CAFile, "clientCAFile", c.CAFile, "the path of the client CAFile")
+	f.StringVar(&c.CertFile, "clientCert", c.CertFile, "the cert file of the client")
+	f.StringVar(&c.KeyFile, "clientKey", c.KeyFile, "the key file of the client")
+
+	f.StringVar(&c.DataDir, "d", c.DataDir, "the directory to store log and snapshot")
+	f.IntVar(&c.MaxResultBuffer, "m", c.MaxResultBuffer, "the max size of result buffer")
+	f.IntVar(&c.MaxRetryAttempts, "r", c.MaxRetryAttempts, "the max retry attempts when trying to join a cluster")
+	f.IntVar(&c.MaxClusterSize, "maxsize", c.MaxClusterSize, "the max size of the cluster")
+
+	f.IntVar(&c.SnapshotCount, "snapshotCount", c.SnapshotCount, "save the in-memory logs and states to a snapshot file a given number of transactions")
+
+	f.Parse(arguments)
+
+	// Convert some parameters to lists.
+	if peers != "" {
+		c.Peers = trimsplit(peers, ",")
+	}
+
+	// Generate deprecation warning.
+	warnings := make([]string, 0)
+	f.Visit(func(f *flag.Flag) {
+		warnings = append(warnings, fmt.Sprintf("[deprecated] use -%s, not -%s", newFlagNameLookup[f.Name], f.Name))
+	})
+	if len(warnings) > 0 {
+		return &DeprecationError{strings.Join(warnings, "\n")}
+	}
+
+	return nil
+}
+
 // Loads configuration from command line flags.
 func (c *Config) LoadFlags(arguments []string) error {
 	var peers, cors string
-	var force bool
 
 	f := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
+	f.SetOutput(ioutil.Discard)
 
-	f.BoolVar(&force, "force-config", false, "force new node configuration if existing is found (WARNING: data loss!)")
+	f.BoolVar(&c.Force, "f", false, "force new node configuration if existing is found (WARNING: data loss!)")
+	f.BoolVar(&c.Force, "force", false, "force new node configuration if existing is found (WARNING: data loss!)")
 
 	f.BoolVar(&c.Verbose, "v", c.Verbose, "verbose logging")
 	f.BoolVar(&c.VeryVerbose, "vv", c.Verbose, "very verbose logging")
@@ -184,7 +266,6 @@ func (c *Config) LoadFlags(arguments []string) error {
 	f.StringVar(&c.BindAddr, "bind-addr", c.BindAddr, "the listening hostname for etcd client communication (defaults to advertised ip)")
 	f.StringVar(&c.Peer.Addr, "peer-addr", c.Peer.Addr, "the advertised public hostname:port for raft server communication")
 	f.StringVar(&c.Peer.BindAddr, "peer-bind-addr", c.Peer.BindAddr, "the listening hostname for raft server communication (defaults to advertised ip)")
-	f.StringVar(&c.WebURL, "web-url", c.WebURL, "the hostname:port of web interface")
 
 	f.StringVar(&c.Peer.CAFile, "peer-ca-file", c.Peer.CAFile, "the path of the CAFile")
 	f.StringVar(&c.Peer.CertFile, "peer-cert-file", c.Peer.CertFile, "the cert file of the server")
@@ -198,7 +279,7 @@ func (c *Config) LoadFlags(arguments []string) error {
 	f.IntVar(&c.MaxResultBuffer, "max-result-buffer", c.MaxResultBuffer, "the max size of result buffer")
 	f.IntVar(&c.MaxRetryAttempts, "max-retry-attempts", c.MaxRetryAttempts, "the max retry attempts when trying to join a cluster")
 	f.IntVar(&c.MaxClusterSize, "max-cluster-size", c.MaxClusterSize, "the max size of the cluster")
-	f.StringVar(&cors, "cors-origins", "", "whitelist origins for cross-origin resource sharing (e.g. '*' or 'http://localhost:8001,etc')")
+	f.StringVar(&cors, "cors", "", "whitelist origins for cross-origin resource sharing (e.g. '*' or 'http://localhost:8001,etc')")
 
 	f.BoolVar(&c.Snapshot, "snapshot", c.Snapshot, "open or close snapshot")
 	f.IntVar(&c.SnapshotCount, "snapshot-count", c.SnapshotCount, "save the in-memory logs and states to a snapshot file a given number of transactions")
@@ -218,7 +299,7 @@ func (c *Config) LoadFlags(arguments []string) error {
 	}
 
 	// Force remove server configuration if specified.
-	if force {
+	if c.Force {
 		c.Reset()
 	}
 
@@ -281,7 +362,6 @@ func (c *Config) Info() (*Info, error) {
 	info.EtcdListenHost = c.BindAddr
 	info.RaftURL = c.Peer.Addr
 	info.RaftListenHost = c.Peer.BindAddr
-	info.WebURL = c.WebURL
 	info.EtcdTLS = c.TLSInfo()
 	info.RaftTLS = c.PeerTLSInfo()
 
@@ -317,9 +397,6 @@ func (c *Config) Sanitize() error {
 	}
 	if c.BindAddr, err = sanitizeBindAddr(c.BindAddr, c.Addr); err != nil {
 		return fmt.Errorf("Listen Host: %s", err)
-	}
-	if c.WebURL, err = sanitizeURL(c.WebURL, "http"); err != nil {
-		return fmt.Errorf("Web URL: %s", err)
 	}
 	if c.Peer.Addr, err = sanitizeURL(c.Peer.Addr, peerTlsConfig.Scheme); err != nil {
 		return fmt.Errorf("Peer Advertised URL: %s", err)
@@ -402,3 +479,15 @@ func sanitizeBindAddr(bindAddr string, addr string) (string, error) {
 
 	return net.JoinHostPort(bindAddr, aport), nil
 }
+
+
+// DeprecationError is a warning for CLI users that one or more arguments will
+// not be supported in future released.
+type DeprecationError struct {
+	s string
+}
+
+func (e *DeprecationError) Error() string {
+	return e.s
+}
+
