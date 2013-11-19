@@ -50,7 +50,7 @@ func TestRemoveNode(t *testing.T) {
 				etcds[2], err = os.StartProcess(EtcdBinPath, argGroup[2], procAttr)
 			} else {
 				// rejoin without log
-				etcds[2], err = os.StartProcess(EtcdBinPath, append(argGroup[2], "-force-config"), procAttr)
+				etcds[2], err = os.StartProcess(EtcdBinPath, append(argGroup[2], "-f"), procAttr)
 			}
 
 			if err != nil {
@@ -93,7 +93,7 @@ func TestRemoveNode(t *testing.T) {
 				etcds[2], err = os.StartProcess(EtcdBinPath, append(argGroup[2]), procAttr)
 			} else {
 				// rejoin without log
-				etcds[2], err = os.StartProcess(EtcdBinPath, append(argGroup[2], "-force-config"), procAttr)
+				etcds[2], err = os.StartProcess(EtcdBinPath, append(argGroup[2], "-f"), procAttr)
 			}
 
 			if err != nil {

@@ -378,12 +378,12 @@ For testing you can use the certificates in the `fixtures/ca` directory.
 Let's configure etcd to use this keypair:
 
 ```sh
-./etcd -name node0 -data-dir node0 -cert-file=./fixtures/ca/server.crt -key-file=./fixtures/ca/server.key.insecure -force-config
+./etcd -f -name node0 -data-dir node0 -cert-file=./fixtures/ca/server.crt -key-file=./fixtures/ca/server.key.insecure
 ```
 
 There are a few new options we're using:
 
-* `-force-config` - forces a new node configuration, even if an existing configuration is found. (WARNING: data loss!)
+* `-f` - forces a new node configuration, even if an existing configuration is found. (WARNING: data loss!)
 * `-cert-file` and `-key-file` specify the location of the cert and key files to be used for for transport layer security between the client and server.
 
 You can now test the configuration using HTTPS:
@@ -413,7 +413,7 @@ We can also do authentication using CA certs.
 The clients will provide their cert to the server and the server will check whether the cert is signed by the CA and decide whether to serve the request.
 
 ```sh
-./etcd -name node0 -data-dir node0 -ca-file=./fixtures/ca/ca.crt -cert-file=./fixtures/ca/server.crt -key-file=./fixtures/ca/server.key.insecure -force-config
+./etcd -f -name node0 -data-dir node0 -ca-file=./fixtures/ca/ca.crt -cert-file=./fixtures/ca/server.crt -key-file=./fixtures/ca/server.key.insecure
 ```
 
 ```-ca-file``` is the path to the CA cert.

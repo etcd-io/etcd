@@ -16,7 +16,7 @@ func TestSimpleSnapshot(t *testing.T) {
 	procAttr.Files = []*os.File{nil, os.Stdout, os.Stderr}
 	args := []string{"etcd", "-name=node1", "-data-dir=/tmp/node1", "-snapshot=true", "-snapshot-count=500"}
 
-	process, err := os.StartProcess(EtcdBinPath, append(args, "-force-config"), procAttr)
+	process, err := os.StartProcess(EtcdBinPath, append(args, "-f"), procAttr)
 	if err != nil {
 		t.Fatal("start process failed:" + err.Error())
 	}

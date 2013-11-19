@@ -102,7 +102,7 @@ func CreateCluster(size int, procAttr *os.ProcAttr, ssl bool) ([][]string, []*os
 
 	for i, _ := range etcds {
 		var err error
-		etcds[i], err = os.StartProcess(EtcdBinPath, append(argGroup[i], "-force-config"), procAttr)
+		etcds[i], err = os.StartProcess(EtcdBinPath, append(argGroup[i], "-f"), procAttr)
 		if err != nil {
 			return nil, nil, err
 		}
