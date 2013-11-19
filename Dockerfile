@@ -8,4 +8,4 @@ ADD . /opt/etcd
 RUN cd /opt/etcd && ./build
 RUN ln -s /opt/etcd/etcd /usr/local/bin/etcd
 EXPOSE 4001 7001
-ENTRYPOINT ["/opt/etcd/etcd", "-c", "0.0.0.0:4001", "-s", "0.0.0.0:7001"]
+CMD ["/opt/etcd/etcd", "-c", "0.0.0.0:4001", "-s", "0.0.0.0:7001"]
