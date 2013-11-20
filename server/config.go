@@ -21,23 +21,23 @@ const DefaultSystemConfigPath = "/etc/etcd/etcd.conf"
 
 // A lookup of deprecated flags to their new flag name.
 var newFlagNameLookup = map[string]string{
-	"C": "peers",
-	"CF": "peers-file",
-	"n": "name",
-	"c": "addr",
-	"cl": "bind-addr",
-	"s": "peer-addr",
-	"sl": "peer-bind-addr",
-	"d": "data-dir",
-	"m": "max-result-buffer",
-	"r": "max-retry-attempts",
-	"maxsize": "max-cluster-size",
-	"clientCAFile": "ca-file",
-	"clientCert": "cert-file",
-	"clientKey": "key-file",
-	"serverCAFile": "peer-ca-file",
-	"serverCert": "peer-cert-file",
-	"serverKey": "peer-key-file",
+	"C":             "peers",
+	"CF":            "peers-file",
+	"n":             "name",
+	"c":             "addr",
+	"cl":            "bind-addr",
+	"s":             "peer-addr",
+	"sl":            "peer-bind-addr",
+	"d":             "data-dir",
+	"m":             "max-result-buffer",
+	"r":             "max-retry-attempts",
+	"maxsize":       "max-cluster-size",
+	"clientCAFile":  "ca-file",
+	"clientCert":    "cert-file",
+	"clientKey":     "key-file",
+	"serverCAFile":  "peer-ca-file",
+	"serverCert":    "peer-cert-file",
+	"serverKey":     "peer-key-file",
 	"snapshotCount": "snapshot-count",
 }
 
@@ -45,10 +45,11 @@ var newFlagNameLookup = map[string]string{
 type Config struct {
 	SystemPath string
 
-	Addr             string   `toml:"addr" env:"ETCD_ADDR"`
-	BindAddr         string   `toml:"bind_addr" env:"ETCD_BIND_ADDR"`
-	CAFile           string   `toml:"ca_file" env:"ETCD_CA_FILE"`
-	CertFile         string   `toml:"cert_file" env:"ETCD_CERT_FILE"`
+	Addr             string `toml:"addr" env:"ETCD_ADDR"`
+	BindAddr         string `toml:"bind_addr" env:"ETCD_BIND_ADDR"`
+	CAFile           string `toml:"ca_file" env:"ETCD_CA_FILE"`
+	CertFile         string `toml:"cert_file" env:"ETCD_CERT_FILE"`
+	CPUProfileFile   string
 	CorsOrigins      []string `toml:"cors" env:"ETCD_CORS"`
 	DataDir          string   `toml:"data_dir" env:"ETCD_DATA_DIR"`
 	Force            bool
@@ -61,8 +62,10 @@ type Config struct {
 	Name             string   `toml:"name" env:"ETCD_NAME"`
 	Snapshot         bool     `toml:"snapshot" env:"ETCD_SNAPSHOT"`
 	SnapshotCount    int      `toml:"snapshot_count" env:"ETCD_SNAPSHOTCOUNT"`
-	Verbose          bool     `toml:"verbose" env:"ETCD_VERBOSE"`
-	VeryVerbose      bool     `toml:"very_verbose" env:"ETCD_VERY_VERBOSE"`
+	ShowHelp         bool
+	ShowVersion      bool
+	Verbose          bool `toml:"verbose" env:"ETCD_VERBOSE"`
+	VeryVerbose      bool `toml:"very_verbose" env:"ETCD_VERY_VERBOSE"`
 
 	Peer struct {
 		Addr     string `toml:"addr" env:"ETCD_PEER_ADDR"`
@@ -117,15 +120,6 @@ func (c *Config) Load(arguments []string) error {
 		return err
 	}
 
-	// Load from command line flags (deprecated).
-	if err := c.LoadDeprecatedFlags(arguments); err != nil {
-		if err, ok := err.(*DeprecationError); ok {
-			fmt.Fprintln(os.Stderr, err.Error())
-		} else {
-			return err
-		}
-	}
-
 	// Loads peers if a peer file was specified.
 	if err := c.LoadPeersFile(); err != nil {
 		return err
@@ -133,7 +127,7 @@ func (c *Config) Load(arguments []string) error {
 
 	// Sanitize all the input fields.
 	if err := c.Sanitize(); err != nil {
-		return fmt.Errorf("sanitize:", err)
+		return fmt.Errorf("sanitize: %v", err)
 	}
 
 	return nil
@@ -195,100 +189,85 @@ func (c *Config) loadEnv(target interface{}) error {
 	return nil
 }
 
-// Loads deprecated configuration settings from the command line.
-func (c *Config) LoadDeprecatedFlags(arguments []string) error {
-	var peers string
-
-	f := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
-	f.SetOutput(ioutil.Discard)
-
-	f.StringVar(&peers, "C", "", "(deprecated)")
-	f.StringVar(&c.PeersFile, "CF", c.PeersFile, "(deprecated)")
-
-	f.StringVar(&c.Name, "n", c.Name, "(deprecated)")
-	f.StringVar(&c.Addr, "c", c.Addr, "(deprecated)")
-	f.StringVar(&c.BindAddr, "cl", c.BindAddr, "the listening hostname for etcd client communication (defaults to advertised ip)")
-	f.StringVar(&c.Peer.Addr, "s", c.Peer.Addr, "the advertised public hostname:port for raft server communication")
-	f.StringVar(&c.Peer.BindAddr, "sl", c.Peer.BindAddr, "the listening hostname for raft server communication (defaults to advertised ip)")
-
-	f.StringVar(&c.Peer.CAFile, "serverCAFile", c.Peer.CAFile, "the path of the CAFile")
-	f.StringVar(&c.Peer.CertFile, "serverCert", c.Peer.CertFile, "the cert file of the server")
-	f.StringVar(&c.Peer.KeyFile, "serverKey", c.Peer.KeyFile, "the key file of the server")
-
-	f.StringVar(&c.CAFile, "clientCAFile", c.CAFile, "the path of the client CAFile")
-	f.StringVar(&c.CertFile, "clientCert", c.CertFile, "the cert file of the client")
-	f.StringVar(&c.KeyFile, "clientKey", c.KeyFile, "the key file of the client")
-
-	f.StringVar(&c.DataDir, "d", c.DataDir, "the directory to store log and snapshot")
-	f.IntVar(&c.MaxResultBuffer, "m", c.MaxResultBuffer, "the max size of result buffer")
-	f.IntVar(&c.MaxRetryAttempts, "r", c.MaxRetryAttempts, "the max retry attempts when trying to join a cluster")
-	f.IntVar(&c.MaxClusterSize, "maxsize", c.MaxClusterSize, "the max size of the cluster")
-
-	f.IntVar(&c.SnapshotCount, "snapshotCount", c.SnapshotCount, "save the in-memory logs and states to a snapshot file a given number of transactions")
-
-	f.Parse(arguments)
-
-	// Convert some parameters to lists.
-	if peers != "" {
-		c.Peers = trimsplit(peers, ",")
-	}
-
-	// Generate deprecation warning.
-	warnings := make([]string, 0)
-	f.Visit(func(f *flag.Flag) {
-		warnings = append(warnings, fmt.Sprintf("[deprecated] use -%s, not -%s", newFlagNameLookup[f.Name], f.Name))
-	})
-	if len(warnings) > 0 {
-		return &DeprecationError{strings.Join(warnings, "\n")}
-	}
-
-	return nil
-}
-
 // Loads configuration from command line flags.
 func (c *Config) LoadFlags(arguments []string) error {
-	var peers, cors string
+	var peers, cors, path string
 
 	f := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 	f.SetOutput(ioutil.Discard)
 
-	f.BoolVar(&c.Force, "f", false, "force new node configuration if existing is found (WARNING: data loss!)")
-	f.BoolVar(&c.Force, "force", false, "force new node configuration if existing is found (WARNING: data loss!)")
+	f.BoolVar(&c.ShowHelp, "h", false, "")
+	f.BoolVar(&c.ShowHelp, "help", false, "")
+	f.BoolVar(&c.ShowVersion, "version", false, "")
 
-	f.BoolVar(&c.Verbose, "v", c.Verbose, "verbose logging")
-	f.BoolVar(&c.VeryVerbose, "vv", c.Verbose, "very verbose logging")
+	f.BoolVar(&c.Force, "f", false, "")
+	f.BoolVar(&c.Force, "force", false, "")
 
-	f.StringVar(&peers, "peers", "", "the ip address and port of a existing peers in the cluster, sepearate by comma")
-	f.StringVar(&c.PeersFile, "peers-file", c.PeersFile, "the file contains a list of existing peers in the cluster, seperate by comma")
+	f.BoolVar(&c.Verbose, "v", c.Verbose, "")
+	f.BoolVar(&c.VeryVerbose, "vv", c.Verbose, "")
 
-	f.StringVar(&c.Name, "name", c.Name, "the node name (required)")
-	f.StringVar(&c.Addr, "addr", c.Addr, "the advertised public hostname:port for etcd client communication")
-	f.StringVar(&c.BindAddr, "bind-addr", c.BindAddr, "the listening hostname for etcd client communication (defaults to advertised ip)")
-	f.StringVar(&c.Peer.Addr, "peer-addr", c.Peer.Addr, "the advertised public hostname:port for raft server communication")
-	f.StringVar(&c.Peer.BindAddr, "peer-bind-addr", c.Peer.BindAddr, "the listening hostname for raft server communication (defaults to advertised ip)")
+	f.StringVar(&peers, "peers", "", "")
+	f.StringVar(&c.PeersFile, "peers-file", c.PeersFile, "")
 
-	f.StringVar(&c.Peer.CAFile, "peer-ca-file", c.Peer.CAFile, "the path of the CAFile")
-	f.StringVar(&c.Peer.CertFile, "peer-cert-file", c.Peer.CertFile, "the cert file of the server")
-	f.StringVar(&c.Peer.KeyFile, "peer-key-file", c.Peer.KeyFile, "the key file of the server")
+	f.StringVar(&c.Name, "name", c.Name, "")
+	f.StringVar(&c.Addr, "addr", c.Addr, "")
+	f.StringVar(&c.BindAddr, "bind-addr", c.BindAddr, "")
+	f.StringVar(&c.Peer.Addr, "peer-addr", c.Peer.Addr, "")
+	f.StringVar(&c.Peer.BindAddr, "peer-bind-addr", c.Peer.BindAddr, "")
 
-	f.StringVar(&c.CAFile, "ca-file", c.CAFile, "the path of the client CAFile")
-	f.StringVar(&c.CertFile, "cert-file", c.CertFile, "the cert file of the client")
-	f.StringVar(&c.KeyFile, "key-file", c.KeyFile, "the key file of the client")
+	f.StringVar(&c.CAFile, "ca-file", c.CAFile, "")
+	f.StringVar(&c.CertFile, "cert-file", c.CertFile, "")
+	f.StringVar(&c.KeyFile, "key-file", c.KeyFile, "")
 
-	f.StringVar(&c.DataDir, "data-dir", c.DataDir, "the directory to store log and snapshot")
-	f.IntVar(&c.MaxResultBuffer, "max-result-buffer", c.MaxResultBuffer, "the max size of result buffer")
-	f.IntVar(&c.MaxRetryAttempts, "max-retry-attempts", c.MaxRetryAttempts, "the max retry attempts when trying to join a cluster")
-	f.IntVar(&c.MaxClusterSize, "max-cluster-size", c.MaxClusterSize, "the max size of the cluster")
-	f.StringVar(&cors, "cors", "", "whitelist origins for cross-origin resource sharing (e.g. '*' or 'http://localhost:8001,etc')")
+	f.StringVar(&c.Peer.CAFile, "peer-ca-file", c.Peer.CAFile, "")
+	f.StringVar(&c.Peer.CertFile, "peer-cert-file", c.Peer.CertFile, "")
+	f.StringVar(&c.Peer.KeyFile, "peer-key-file", c.Peer.KeyFile, "")
 
-	f.BoolVar(&c.Snapshot, "snapshot", c.Snapshot, "open or close snapshot")
-	f.IntVar(&c.SnapshotCount, "snapshot-count", c.SnapshotCount, "save the in-memory logs and states to a snapshot file a given number of transactions")
+	f.StringVar(&c.DataDir, "data-dir", c.DataDir, "")
+	f.IntVar(&c.MaxResultBuffer, "max-result-buffer", c.MaxResultBuffer, "")
+	f.IntVar(&c.MaxRetryAttempts, "max-retry-attempts", c.MaxRetryAttempts, "")
+	f.IntVar(&c.MaxClusterSize, "max-cluster-size", c.MaxClusterSize, "")
+	f.StringVar(&cors, "cors", "", "")
 
-	// These flags are ignored since they were already parsed.
-	var path string
-	f.StringVar(&path, "config", "", "path to config file")
+	f.BoolVar(&c.Snapshot, "snapshot", c.Snapshot, "")
+	f.IntVar(&c.SnapshotCount, "snapshot-count", c.SnapshotCount, "")
+	f.StringVar(&c.CPUProfileFile, "cpuprofile", "", "")
 
-	f.Parse(arguments)
+	// BEGIN IGNORED FLAGS
+	f.StringVar(&path, "config", "", "")
+	// BEGIN IGNORED FLAGS
+
+	// BEGIN DEPRECATED FLAGS
+	f.StringVar(&peers, "C", "", "(deprecated)")
+	f.StringVar(&c.PeersFile, "CF", c.PeersFile, "(deprecated)")
+	f.StringVar(&c.Name, "n", c.Name, "(deprecated)")
+	f.StringVar(&c.Addr, "c", c.Addr, "(deprecated)")
+	f.StringVar(&c.BindAddr, "cl", c.BindAddr, "(deprecated)")
+	f.StringVar(&c.Peer.Addr, "s", c.Peer.Addr, "(deprecated)")
+	f.StringVar(&c.Peer.BindAddr, "sl", c.Peer.BindAddr, "(deprecated)")
+	f.StringVar(&c.Peer.CAFile, "serverCAFile", c.Peer.CAFile, "(deprecated)")
+	f.StringVar(&c.Peer.CertFile, "serverCert", c.Peer.CertFile, "(deprecated)")
+	f.StringVar(&c.Peer.KeyFile, "serverKey", c.Peer.KeyFile, "(deprecated)")
+	f.StringVar(&c.CAFile, "clientCAFile", c.CAFile, "(deprecated)")
+	f.StringVar(&c.CertFile, "clientCert", c.CertFile, "(deprecated)")
+	f.StringVar(&c.KeyFile, "clientKey", c.KeyFile, "(deprecated)")
+	f.StringVar(&c.DataDir, "d", c.DataDir, "(deprecated)")
+	f.IntVar(&c.MaxResultBuffer, "m", c.MaxResultBuffer, "(deprecated)")
+	f.IntVar(&c.MaxRetryAttempts, "r", c.MaxRetryAttempts, "(deprecated)")
+	f.IntVar(&c.MaxClusterSize, "maxsize", c.MaxClusterSize, "(deprecated)")
+	f.IntVar(&c.SnapshotCount, "snapshotCount", c.SnapshotCount, "(deprecated)")
+	// END DEPRECATED FLAGS
+
+	if err := f.Parse(arguments); err != nil {
+		return err
+	}
+
+	// Print deprecation warnings on STDERR.
+	f.Visit(func(f *flag.Flag) {
+		if len(newFlagNameLookup[f.Name]) > 0 {
+			fmt.Fprintf(os.Stderr, "[deprecated] use -%s, not -%s", newFlagNameLookup[f.Name], f.Name)
+		}
+	})
 
 	// Convert some parameters to lists.
 	if peers != "" {
@@ -479,15 +458,3 @@ func sanitizeBindAddr(bindAddr string, addr string) (string, error) {
 
 	return net.JoinHostPort(bindAddr, aport), nil
 }
-
-
-// DeprecationError is a warning for CLI users that one or more arguments will
-// not be supported in future released.
-type DeprecationError struct {
-	s string
-}
-
-func (e *DeprecationError) Error() string {
-	return e.s
-}
-
