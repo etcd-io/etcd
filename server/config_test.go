@@ -93,7 +93,7 @@ func TestConfigEnv(t *testing.T) {
 	c.LoadEnv()
 	assert.Equal(t, c.CAFile, "/tmp/file.ca", "")
 	assert.Equal(t, c.CertFile, "/tmp/file.cert", "")
-	assert.Equal(t, c.CorsOrigins, []string{"localhost:4001", "localhost:4002"}, "") 
+	assert.Equal(t, c.CorsOrigins, []string{"localhost:4001", "localhost:4002"}, "")
 	assert.Equal(t, c.DataDir, "/tmp/data", "")
 	assert.Equal(t, c.KeyFile, "/tmp/file.key", "")
 	assert.Equal(t, c.BindAddr, "127.0.0.1:4003", "")
@@ -111,6 +111,27 @@ func TestConfigEnv(t *testing.T) {
 	assert.Equal(t, c.Peer.CertFile, "/tmp/peer/file.cert", "")
 	assert.Equal(t, c.Peer.KeyFile, "/tmp/peer/file.key", "")
 	assert.Equal(t, c.Peer.BindAddr, "127.0.0.1:7003", "")
+}
+
+// Ensures that the "help" flag can be parsed.
+func TestConfigHelpFlag(t *testing.T) {
+	c := NewConfig()
+	assert.Nil(t, c.LoadFlags([]string{"-help"}), "")
+	assert.True(t, c.ShowHelp)
+}
+
+// Ensures that the abbreviated "help" flag can be parsed.
+func TestConfigAbbreviatedHelpFlag(t *testing.T) {
+	c := NewConfig()
+	assert.Nil(t, c.LoadFlags([]string{"-h"}), "")
+	assert.True(t, c.ShowHelp)
+}
+
+// Ensures that the "version" flag can be parsed.
+func TestConfigVersionFlag(t *testing.T) {
+	c := NewConfig()
+	assert.Nil(t, c.LoadFlags([]string{"-version"}), "")
+	assert.True(t, c.ShowVersion)
 }
 
 // Ensures that the "force config" flag can be parsed.
@@ -405,6 +426,14 @@ func TestConfigPeerBindAddrEnv(t *testing.T) {
 	})
 }
 
+// Ensures that a bad flag returns an error.
+func TestConfigBadFlag(t *testing.T) {
+	c := NewConfig()
+	err := c.LoadFlags([]string{"-no-such-flag"})
+	assert.Error(t, err)
+	assert.Equal(t, err.Error(), `flag provided but not defined: -no-such-flag`)
+}
+
 // Ensures that a the Peer Listen Host file flag can be parsed.
 func TestConfigPeerBindAddrFlag(t *testing.T) {
 	c := NewConfig()
@@ -456,117 +485,164 @@ func TestConfigCLIArgsOverrideEnvVar(t *testing.T) {
 //--------------------------------------
 
 func TestConfigDeprecatedAddrFlag(t *testing.T) {
-	c := NewConfig()
-	err := c.LoadDeprecatedFlags([]string{"-c", "127.0.0.1:4002"})
-	assert.Equal(t, err.Error(), "[deprecated] use -addr, not -c", "")
-	assert.Equal(t, c.Addr, "127.0.0.1:4002", "")
+	_, stderr := capture(func() {
+		c := NewConfig()
+		err := c.LoadFlags([]string{"-c", "127.0.0.1:4002"})
+		assert.NoError(t, err)
+		assert.Equal(t, c.Addr, "127.0.0.1:4002")
+	})
+	assert.Equal(t, stderr, "[deprecated] use -addr, not -c")
 }
 
 func TestConfigDeprecatedBindAddrFlag(t *testing.T) {
-	c := NewConfig()
-	err := c.LoadDeprecatedFlags([]string{"-cl", "127.0.0.1:4003"})
-	assert.Equal(t, err.Error(), "[deprecated] use -bind-addr, not -cl", "")
-	assert.Equal(t, c.BindAddr, "127.0.0.1:4003", "")
+	_, stderr := capture(func() {
+		c := NewConfig()
+		err := c.LoadFlags([]string{"-cl", "127.0.0.1:4003"})
+		assert.NoError(t, err)
+		assert.Equal(t, c.BindAddr, "127.0.0.1:4003", "")
+	})
+	assert.Equal(t, stderr, "[deprecated] use -bind-addr, not -cl", "")
 }
 
 func TestConfigDeprecatedCAFileFlag(t *testing.T) {
-	c := NewConfig()
-	err := c.LoadDeprecatedFlags([]string{"-clientCAFile", "/tmp/file.ca"})
-	assert.Equal(t, err.Error(), "[deprecated] use -ca-file, not -clientCAFile", "")
-	assert.Equal(t, c.CAFile, "/tmp/file.ca", "")
+	_, stderr := capture(func() {
+		c := NewConfig()
+		err := c.LoadFlags([]string{"-clientCAFile", "/tmp/file.ca"})
+		assert.NoError(t, err)
+		assert.Equal(t, c.CAFile, "/tmp/file.ca", "")
+	})
+	assert.Equal(t, stderr, "[deprecated] use -ca-file, not -clientCAFile", "")
 }
 
 func TestConfigDeprecatedCertFileFlag(t *testing.T) {
-	c := NewConfig()
-	err := c.LoadDeprecatedFlags([]string{"-clientCert", "/tmp/file.cert"})
-	assert.Equal(t, err.Error(), "[deprecated] use -cert-file, not -clientCert", "")
-	assert.Equal(t, c.CertFile, "/tmp/file.cert", "")
+	_, stderr := capture(func() {
+		c := NewConfig()
+		err := c.LoadFlags([]string{"-clientCert", "/tmp/file.cert"})
+		assert.NoError(t, err)
+		assert.Equal(t, c.CertFile, "/tmp/file.cert", "")
+	})
+	assert.Equal(t, stderr, "[deprecated] use -cert-file, not -clientCert", "")
 }
 
 func TestConfigDeprecatedKeyFileFlag(t *testing.T) {
-	c := NewConfig()
-	err := c.LoadDeprecatedFlags([]string{"-clientKey", "/tmp/file.key"})
-	assert.Equal(t, err.Error(), "[deprecated] use -key-file, not -clientKey", "")
-	assert.Equal(t, c.KeyFile, "/tmp/file.key", "")
+	_, stderr := capture(func() {
+		c := NewConfig()
+		err := c.LoadFlags([]string{"-clientKey", "/tmp/file.key"})
+		assert.NoError(t, err)
+		assert.Equal(t, c.KeyFile, "/tmp/file.key", "")
+	})
+	assert.Equal(t, stderr, "[deprecated] use -key-file, not -clientKey", "")
 }
 
 func TestConfigDeprecatedPeersFlag(t *testing.T) {
-	c := NewConfig()
-	err := c.LoadDeprecatedFlags([]string{"-C", "coreos.com:4001,coreos.com:4002"})
-	assert.Equal(t, err.Error(), "[deprecated] use -peers, not -C", "")
-	assert.Equal(t, c.Peers, []string{"coreos.com:4001", "coreos.com:4002"}, "")
+	_, stderr := capture(func() {
+		c := NewConfig()
+		err := c.LoadFlags([]string{"-C", "coreos.com:4001,coreos.com:4002"})
+		assert.NoError(t, err)
+		assert.Equal(t, c.Peers, []string{"coreos.com:4001", "coreos.com:4002"}, "")
+	})
+	assert.Equal(t, stderr, "[deprecated] use -peers, not -C", "")
 }
 
 func TestConfigDeprecatedPeersFileFlag(t *testing.T) {
-	c := NewConfig()
-	err := c.LoadDeprecatedFlags([]string{"-CF", "/tmp/machines"})
-	assert.Equal(t, err.Error(), "[deprecated] use -peers-file, not -CF", "")
-	assert.Equal(t, c.PeersFile, "/tmp/machines", "")
+	_, stderr := capture(func() {
+		c := NewConfig()
+		err := c.LoadFlags([]string{"-CF", "/tmp/machines"})
+		assert.NoError(t, err)
+		assert.Equal(t, c.PeersFile, "/tmp/machines", "")
+	})
+	assert.Equal(t, stderr, "[deprecated] use -peers-file, not -CF", "")
 }
 
 func TestConfigDeprecatedMaxClusterSizeFlag(t *testing.T) {
-	c := NewConfig()
-	err := c.LoadDeprecatedFlags([]string{"-maxsize", "5"})
-	assert.Equal(t, err.Error(), "[deprecated] use -max-cluster-size, not -maxsize", "")
-	assert.Equal(t, c.MaxClusterSize, 5, "")
+	_, stderr := capture(func() {
+		c := NewConfig()
+		err := c.LoadFlags([]string{"-maxsize", "5"})
+		assert.NoError(t, err)
+		assert.Equal(t, c.MaxClusterSize, 5, "")
+	})
+	assert.Equal(t, stderr, "[deprecated] use -max-cluster-size, not -maxsize", "")
 }
 
 func TestConfigDeprecatedMaxResultBufferFlag(t *testing.T) {
-	c := NewConfig()
-	err := c.LoadDeprecatedFlags([]string{"-m", "512"})
-	assert.Equal(t, err.Error(), "[deprecated] use -max-result-buffer, not -m", "")
-	assert.Equal(t, c.MaxResultBuffer, 512, "")
+	_, stderr := capture(func() {
+		c := NewConfig()
+		err := c.LoadFlags([]string{"-m", "512"})
+		assert.NoError(t, err)
+		assert.Equal(t, c.MaxResultBuffer, 512, "")
+	})
+	assert.Equal(t, stderr, "[deprecated] use -max-result-buffer, not -m", "")
 }
 
 func TestConfigDeprecatedMaxRetryAttemptsFlag(t *testing.T) {
-	c := NewConfig()
-	err := c.LoadDeprecatedFlags([]string{"-r", "10"})
-	assert.Equal(t, err.Error(), "[deprecated] use -max-retry-attempts, not -r", "")
-	assert.Equal(t, c.MaxRetryAttempts, 10, "")
+	_, stderr := capture(func() {
+		c := NewConfig()
+		err := c.LoadFlags([]string{"-r", "10"})
+		assert.NoError(t, err)
+		assert.Equal(t, c.MaxRetryAttempts, 10, "")
+	})
+	assert.Equal(t, stderr, "[deprecated] use -max-retry-attempts, not -r", "")
 }
 
 func TestConfigDeprecatedNameFlag(t *testing.T) {
-	c := NewConfig()
-	err := c.LoadDeprecatedFlags([]string{"-n", "test-name"})
-	assert.Equal(t, err.Error(), "[deprecated] use -name, not -n", "")
-	assert.Equal(t, c.Name, "test-name", "")
+	_, stderr := capture(func() {
+		c := NewConfig()
+		err := c.LoadFlags([]string{"-n", "test-name"})
+		assert.NoError(t, err)
+		assert.Equal(t, c.Name, "test-name", "")
+	})
+	assert.Equal(t, stderr, "[deprecated] use -name, not -n", "")
 }
 
 func TestConfigDeprecatedPeerAddrFlag(t *testing.T) {
-	c := NewConfig()
-	err := c.LoadDeprecatedFlags([]string{"-s", "localhost:7002"})
-	assert.Equal(t, err.Error(), "[deprecated] use -peer-addr, not -s", "")
-	assert.Equal(t, c.Peer.Addr, "localhost:7002", "")
+	_, stderr := capture(func() {
+		c := NewConfig()
+		err := c.LoadFlags([]string{"-s", "localhost:7002"})
+		assert.NoError(t, err)
+		assert.Equal(t, c.Peer.Addr, "localhost:7002", "")
+	})
+	assert.Equal(t, stderr, "[deprecated] use -peer-addr, not -s", "")
 }
 
 func TestConfigDeprecatedPeerBindAddrFlag(t *testing.T) {
-	c := NewConfig()
-	err := c.LoadDeprecatedFlags([]string{"-sl", "127.0.0.1:4003"})
-	assert.Equal(t, err.Error(), "[deprecated] use -peer-bind-addr, not -sl", "")
-	assert.Equal(t, c.Peer.BindAddr, "127.0.0.1:4003", "")
+	_, stderr := capture(func() {
+		c := NewConfig()
+		err := c.LoadFlags([]string{"-sl", "127.0.0.1:4003"})
+		assert.NoError(t, err)
+		assert.Equal(t, c.Peer.BindAddr, "127.0.0.1:4003", "")
+	})
+	assert.Equal(t, stderr, "[deprecated] use -peer-bind-addr, not -sl", "")
 }
 
 func TestConfigDeprecatedPeerCAFileFlag(t *testing.T) {
-	c := NewConfig()
-	err := c.LoadDeprecatedFlags([]string{"-serverCAFile", "/tmp/peer/file.ca"})
-	assert.Equal(t, err.Error(), "[deprecated] use -peer-ca-file, not -serverCAFile", "")
-	assert.Equal(t, c.Peer.CAFile, "/tmp/peer/file.ca", "")
+	_, stderr := capture(func() {
+		c := NewConfig()
+		err := c.LoadFlags([]string{"-serverCAFile", "/tmp/peer/file.ca"})
+		assert.NoError(t, err)
+		assert.Equal(t, c.Peer.CAFile, "/tmp/peer/file.ca", "")
+	})
+	assert.Equal(t, stderr, "[deprecated] use -peer-ca-file, not -serverCAFile", "")
 }
 
 func TestConfigDeprecatedPeerCertFileFlag(t *testing.T) {
-	c := NewConfig()
-	err := c.LoadDeprecatedFlags([]string{"-serverCert", "/tmp/peer/file.cert"})
-	assert.Equal(t, err.Error(), "[deprecated] use -peer-cert-file, not -serverCert", "")
-	assert.Equal(t, c.Peer.CertFile, "/tmp/peer/file.cert", "")
+	_, stderr := capture(func() {
+		c := NewConfig()
+		err := c.LoadFlags([]string{"-serverCert", "/tmp/peer/file.cert"})
+		assert.NoError(t, err)
+		assert.Equal(t, c.Peer.CertFile, "/tmp/peer/file.cert", "")
+	})
+	assert.Equal(t, stderr, "[deprecated] use -peer-cert-file, not -serverCert", "")
 }
 
 func TestConfigDeprecatedPeerKeyFileFlag(t *testing.T) {
-	c := NewConfig()
-	err := c.LoadDeprecatedFlags([]string{"-serverKey", "/tmp/peer/file.key"})
-	assert.Equal(t, err.Error(), "[deprecated] use -peer-key-file, not -serverKey", "")
-	assert.Equal(t, c.Peer.KeyFile, "/tmp/peer/file.key", "")
+	_, stderr := capture(func() {
+		c := NewConfig()
+		err := c.LoadFlags([]string{"-serverKey", "/tmp/peer/file.key"})
+		assert.NoError(t, err)
+		assert.Equal(t, c.Peer.KeyFile, "/tmp/peer/file.key", "")
+	})
+	assert.Equal(t, stderr, "[deprecated] use -peer-key-file, not -serverKey", "")
 }
-
 
 //--------------------------------------
 // Helpers
@@ -587,4 +663,28 @@ func withTempFile(content string, fn func(string)) {
 	f.Close()
 	defer os.Remove(f.Name())
 	fn(f.Name())
+}
+
+// Captures STDOUT & STDERR and returns the output as strings.
+func capture(fn func()) (string, string) {
+	// Create temp files.
+	tmpout, _ := ioutil.TempFile("", "")
+	defer os.Remove(tmpout.Name())
+	tmperr, _ := ioutil.TempFile("", "")
+	defer os.Remove(tmperr.Name())
+
+	stdout, stderr := os.Stdout, os.Stderr
+	os.Stdout, os.Stderr = tmpout, tmperr
+
+	// Execute function argument and then reassign stdout/stderr.
+	fn()
+	os.Stdout, os.Stderr = stdout, stderr
+
+	// Close temp files and read them.
+	tmpout.Close()
+	bout, _ := ioutil.ReadFile(tmpout.Name())
+	tmperr.Close()
+	berr, _ := ioutil.ReadFile(tmperr.Name())
+
+	return string(bout), string(berr)
 }
