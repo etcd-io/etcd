@@ -32,6 +32,7 @@ type KeyValuePair struct {
 	Value   string  `json:"value,omitempty"`
 	Dir     bool    `json:"dir,omitempty"`
 	KVPairs kvPairs `json:"kvs,omitempty"`
+	TTL     int64   `json:"ttl,omitempty"`
 }
 
 type kvPairs []KeyValuePair

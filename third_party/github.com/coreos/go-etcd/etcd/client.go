@@ -162,15 +162,15 @@ func (c *Client) SetPersistence(writer io.Writer) {
 //
 // When consistency is set to STRONG_CONSISTENCY, all requests,
 // including GET, are sent to the leader.  This means that, assuming
-// the absence of leader failures, GET requests are guranteed to see
+// the absence of leader failures, GET requests are guaranteed to see
 // the changes made by previous requests.
 //
 // When consistency is set to WEAK_CONSISTENCY, other requests
 // are still sent to the leader, but GET requests are sent to a
 // random server from the server pool.  This reduces the read
-// load on the leader, but it's not guranteed that the GET requests
+// load on the leader, but it's not guaranteed that the GET requests
 // will see changes made by previous requests (they might have not
-// yet been commited on non-leader servers).
+// yet been committed on non-leader servers).
 func (c *Client) SetConsistency(consistency string) error {
 	if !(consistency == STRONG_CONSISTENCY || consistency == WEAK_CONSISTENCY) {
 		return errors.New("The argument must be either STRONG_CONSISTENCY or WEAK_CONSISTENCY.")
