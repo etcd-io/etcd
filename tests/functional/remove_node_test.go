@@ -35,13 +35,13 @@ func TestRemoveNode(t *testing.T) {
 			fmt.Println("send remove to node3 and wait for its exiting")
 			etcds[2].Wait()
 
-			resp, err := c.Get("_etcd/machines")
+			resp, err := c.Get("_etcd/machines", false)
 
 			if err != nil {
 				panic(err)
 			}
 
-			if len(resp) != 2 {
+			if len(resp.Kvs) != 2 {
 				t.Fatal("cannot remove peer")
 			}
 
@@ -59,14 +59,14 @@ func TestRemoveNode(t *testing.T) {
 
 			time.Sleep(time.Second)
 
-			resp, err = c.Get("_etcd/machines")
+			resp, err = c.Get("_etcd/machines", false)
 
 			if err != nil {
 				panic(err)
 			}
 
-			if len(resp) != 3 {
-				t.Fatalf("add peer fails #1 (%d != 3)", len(resp))
+			if len(resp.Kvs) != 3 {
+				t.Fatalf("add peer fails #1 (%d != 3)", len(resp.Kvs))
 			}
 		}
 
@@ -78,13 +78,13 @@ func TestRemoveNode(t *testing.T) {
 
 			client.Do(rmReq)
 
-			resp, err := c.Get("_etcd/machines")
+			resp, err := c.Get("_etcd/machines", false)
 
 			if err != nil {
 				panic(err)
 			}
 
-			if len(resp) != 2 {
+			if len(resp.Kvs) != 2 {
 				t.Fatal("cannot remove peer")
 			}
 
@@ -102,14 +102,14 @@ func TestRemoveNode(t *testing.T) {
 
 			time.Sleep(time.Second)
 
-			resp, err = c.Get("_etcd/machines")
+			resp, err = c.Get("_etcd/machines", false)
 
 			if err != nil {
 				panic(err)
 			}
 
-			if len(resp) != 3 {
-				t.Fatalf("add peer fails #2 (%d != 3)", len(resp))
+			if len(resp.Kvs) != 3 {
+				t.Fatalf("add peer fails #2 (%d != 3)", len(resp.Kvs))
 			}
 		}
 	}
