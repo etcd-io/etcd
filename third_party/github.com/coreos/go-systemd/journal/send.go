@@ -103,7 +103,7 @@ func appendVariable(w io.Writer, name, value string) {
 		fmt.Fprintln(w, value)
 	} else {
 		/* just write the variable and value all on one line */
-		fmt.Fprintf(w, "%s=%s\n", name, value)
+		fmt.Fprintln(w, "%s=%s", name, value)
 	}
 }
 
@@ -111,8 +111,8 @@ func validVarName(name string) bool {
 	/* The variable name must be in uppercase and consist only of characters,
 	 * numbers and underscores, and may not begin with an underscore. (from the docs)
 	 */
-	valid := true
-	valid = valid && name[0] != '_'
+
+	valid := name[0] != '_'
 	for _, c := range name {
 		valid = valid && ('A' <= c && c <= 'Z') || ('0' <= c && c <= '9') || c == '_'
 	}

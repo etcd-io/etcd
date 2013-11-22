@@ -10,6 +10,7 @@ import (
 	"os"
 	"runtime"
 	"testing"
+	"time"
 )
 
 func benchmarkUDPListener() (net.PacketConn, net.Addr, error) {
@@ -106,6 +107,7 @@ func TestPacketConnReadWriteUnicastUDP(t *testing.T) {
 	}
 
 	p := ipv6.NewPacketConn(c)
+	defer p.Close()
 	cm := ipv6.ControlMessage{
 		TrafficClass: DiffServAF11 | CongestionExperienced,
 	}
@@ -120,10 +122,16 @@ func TestPacketConnReadWriteUnicastUDP(t *testing.T) {
 			t.Fatalf("ipv6.PacketConn.SetControlMessage failed: %v", err)
 		}
 		cm.HopLimit = i + 1
+		if err := p.SetWriteDeadline(time.Now().Add(time.Millisecond * 100)); err != nil {
+			t.Fatalf("ipv6.PacketConn.SetWriteDeadline failed: %v", err)
+		}
 		if _, err := p.WriteTo([]byte("HELLO-R-U-THERE"), &cm, dst); err != nil {
 			t.Fatalf("ipv6.PacketConn.WriteTo failed: %v", err)
 		}
 		b := make([]byte, 128)
+		if err := p.SetReadDeadline(time.Now().Add(time.Millisecond * 100)); err != nil {
+			t.Fatalf("ipv6.PacketConn.SetReadDeadline failed: %v", err)
+		}
 		if _, cm, _, err := p.ReadFrom(b); err != nil {
 			t.Fatalf("ipv6.PacketConn.ReadFrom failed: %v", err)
 		} else {
@@ -155,7 +163,9 @@ func TestPacketConnReadWriteUnicastICMP(t *testing.T) {
 		t.Fatalf("net.ResolveIPAddr failed: %v", err)
 	}
 
+	pshicmp := ipv6PseudoHeader(c.LocalAddr().(*net.IPAddr).IP, dst.IP, ianaProtocolIPv6ICMP)
 	p := ipv6.NewPacketConn(c)
+	defer p.Close()
 	cm := ipv6.ControlMessage{TrafficClass: DiffServAF11 | CongestionExperienced}
 	cf := ipv6.FlagTrafficClass | ipv6.FlagHopLimit | ipv6.FlagInterface | ipv6.FlagPathMTU
 	ifi := loopbackInterface()
@@ -170,14 +180,26 @@ func TestPacketConnReadWriteUnicastICMP(t *testing.T) {
 		t.Fatalf("ipv6.PacketConn.SetICMPFilter failed: %v", err)
 	}
 
+	var psh []byte
 	for i, toggle := range []bool{true, false, true} {
+		if toggle {
+			psh = nil
+			if err := p.SetChecksum(true, 2); err != nil {
+				t.Fatalf("ipv6.PacketConn.SetChecksum failed: %v", err)
+			}
+		} else {
+			psh = pshicmp
+			// Some platforms never allow to disable the
+			// kernel checksum processing.
+			p.SetChecksum(false, -1)
+		}
 		wb, err := (&icmpMessage{
 			Type: ipv6.ICMPTypeEchoRequest, Code: 0,
 			Body: &icmpEcho{
 				ID: os.Getpid() & 0xffff, Seq: i + 1,
 				Data: []byte("HELLO-R-U-THERE"),
 			},
-		}).Marshal()
+		}).Marshal(psh)
 		if err != nil {
 			t.Fatalf("icmpMessage.Marshal failed: %v", err)
 		}
@@ -185,10 +207,16 @@ func TestPacketConnReadWriteUnicastICMP(t *testing.T) {
 			t.Fatalf("ipv6.PacketConn.SetControlMessage failed: %v", err)
 		}
 		cm.HopLimit = i + 1
+		if err := p.SetWriteDeadline(time.Now().Add(time.Millisecond * 100)); err != nil {
+			t.Fatalf("ipv6.PacketConn.SetWriteDeadline failed: %v", err)
+		}
 		if _, err := p.WriteTo(wb, &cm, dst); err != nil {
 			t.Fatalf("ipv6.PacketConn.WriteTo failed: %v", err)
 		}
 		b := make([]byte, 128)
+		if err := p.SetReadDeadline(time.Now().Add(time.Millisecond * 100)); err != nil {
+			t.Fatalf("ipv6.PacketConn.SetReadDeadline failed: %v", err)
+		}
 		if n, cm, _, err := p.ReadFrom(b); err != nil {
 			t.Fatalf("ipv6.PacketConn.ReadFrom failed: %v", err)
 		} else {

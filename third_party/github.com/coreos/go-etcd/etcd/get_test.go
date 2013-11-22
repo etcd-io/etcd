@@ -1,46 +1,99 @@
 package etcd
 
 import (
+	"reflect"
 	"testing"
-	"time"
 )
 
 func TestGet(t *testing.T) {
-
 	c := NewClient(nil)
+	defer func() {
+		c.DeleteAll("foo")
+	}()
 
-	c.Set("foo", "bar", 100)
+	c.Set("foo", "bar", 5)
 
-	// wait for commit
-	time.Sleep(100 * time.Millisecond)
+	result, err := c.Get("foo", false)
 
-	results, err := c.Get("foo")
-
-	if err != nil || results[0].Key != "/foo" || results[0].Value != "bar" {
-		if err != nil {
-			t.Fatal(err)
-		}
-		t.Fatalf("Get failed with %s %s %v", results[0].Key, results[0].Value, results[0].TTL)
+	if err != nil {
+		t.Fatal(err)
 	}
 
-	results, err = c.Get("goo")
+	if result.Key != "/foo" || result.Value != "bar" {
+		t.Fatalf("Get failed with %s %s %v", result.Key, result.Value, result.TTL)
+	}
 
+	result, err = c.Get("goo", false)
 	if err == nil {
 		t.Fatalf("should not be able to get non-exist key")
 	}
+}
 
-	results, err = c.GetFrom("foo", "0.0.0.0:4001")
+func TestGetAll(t *testing.T) {
+	c := NewClient(nil)
+	defer func() {
+		c.DeleteAll("fooDir")
+	}()
 
-	if err != nil || results[0].Key != "/foo" || results[0].Value != "bar" {
-		if err != nil {
-			t.Fatal(err)
-		}
-		t.Fatalf("Get failed with %s %s %v", results[0].Key, results[0].Value, results[0].TTL)
+	c.SetDir("fooDir", 5)
+	c.Set("fooDir/k0", "v0", 5)
+	c.Set("fooDir/k1", "v1", 5)
+
+	// Return kv-pairs in sorted order
+	result, err := c.Get("fooDir", true)
+
+	if err != nil {
+		t.Fatal(err)
 	}
 
-	results, err = c.GetFrom("foo", "0.0.0.0:4009")
+	expected := kvPairs{
+		KeyValuePair{
+			Key:   "/fooDir/k0",
+			Value: "v0",
+		},
+		KeyValuePair{
+			Key:   "/fooDir/k1",
+			Value: "v1",
+		},
+	}
 
-	if err == nil {
-		t.Fatal("should not get from port 4009")
+	if !reflect.DeepEqual(result.Kvs, expected) {
+		t.Fatalf("(actual) %v != (expected) %v", result.Kvs, expected)
+	}
+
+	// Test the `recursive` option
+	c.SetDir("fooDir/childDir", 5)
+	c.Set("fooDir/childDir/k2", "v2", 5)
+
+	// Return kv-pairs in sorted order
+	result, err = c.GetAll("fooDir", true)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expected = kvPairs{
+		KeyValuePair{
+			Key: "/fooDir/childDir",
+			Dir: true,
+			KVPairs: kvPairs{
+				KeyValuePair{
+					Key:   "/fooDir/childDir/k2",
+					Value: "v2",
+				},
+			},
+		},
+		KeyValuePair{
+			Key:   "/fooDir/k0",
+			Value: "v0",
+		},
+		KeyValuePair{
+			Key:   "/fooDir/k1",
+			Value: "v1",
+		},
+	}
+
+	if !reflect.DeepEqual(result.Kvs, expected) {
+		t.Fatalf("(actual) %v != (expected) %v", result.Kvs)
 	}
 }

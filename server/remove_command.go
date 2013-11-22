@@ -5,7 +5,7 @@ import (
 	"os"
 
 	"github.com/coreos/etcd/log"
-	"github.com/coreos/go-raft"
+	"github.com/coreos/raft"
 )
 
 func init() {

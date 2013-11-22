@@ -12,7 +12,15 @@ const (
 	listenFdsStart = 3
 )
 
-func Files() []*os.File {
+func Files(unsetEnv bool) []*os.File {
+
+	if unsetEnv {
+		// there is no way to unset env in golang os package for now
+		// https://code.google.com/p/go/issues/detail?id=6423
+		defer os.Setenv("LISTEN_PID", "")
+		defer os.Setenv("LISTEN_FDS", "")
+	}
+
 	pid, err := strconv.Atoi(os.Getenv("LISTEN_PID"))
 	if err != nil || pid != os.Getpid() {
 		return nil
@@ -24,7 +32,7 @@ func Files() []*os.File {
 	files := []*os.File(nil)
 	for fd := listenFdsStart; fd < listenFdsStart+nfds; fd++ {
 		syscall.CloseOnExec(fd)
-		files = append(files, os.NewFile(uintptr(fd), "LISTEN_FD_" + strconv.Itoa(fd)))
+		files = append(files, os.NewFile(uintptr(fd), "LISTEN_FD_"+strconv.Itoa(fd)))
 	}
 	return files
 }
