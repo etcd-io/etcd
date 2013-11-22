@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/store"
-	"github.com/coreos/go-raft"
+	"github.com/coreos/raft"
 )
 
 func init() {

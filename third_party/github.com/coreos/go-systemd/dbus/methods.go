@@ -164,3 +164,53 @@ type UnitStatus struct {
 	JobType     string          // The job type as string
 	JobPath     dbus.ObjectPath // The job object path
 }
+
+// EnableUnitFiles() may be used to enable one or more units in the system (by
+// creating symlinks to them in /etc or /run).
+//
+// It takes a list of unit files to enable (either just file names or full
+// absolute paths if the unit files are residing outside the usual unit
+// search paths), and two booleans: the first controls whether the unit shall
+// be enabled for runtime only (true, /run), or persistently (false, /etc).
+// The second one controls whether symlinks pointing to other units shall
+// be replaced if necessary.
+//
+// This call returns one boolean and an array with the changes made. The
+// boolean signals whether the unit files contained any enablement
+// information (i.e. an [Install]) section. The changes list consists of
+// structures with three strings: the type of the change (one of symlink
+// or unlink), the file name of the symlink and the destination of the
+// symlink.
+func (c *Conn) EnableUnitFiles(files []string, runtime bool, force bool) (bool, []EnableUnitFileChange, error) {
+	var carries_install_info bool
+
+	result := make([][]interface{}, 0)
+	err := c.sysobj.Call("EnableUnitFiles", 0, files, runtime, force).Store(&carries_install_info, &result)
+	if err != nil {
+		return false, nil, err
+	}
+
+	resultInterface := make([]interface{}, len(result))
+	for i := range result {
+		resultInterface[i] = result[i]
+	}
+
+	changes := make([]EnableUnitFileChange, len(result))
+	changesInterface := make([]interface{}, len(changes))
+	for i := range changes {
+		changesInterface[i] = &changes[i]
+	}
+
+	err = dbus.Store(resultInterface, changesInterface...)
+	if err != nil {
+		return false, nil, err
+	}
+
+	return carries_install_info, changes, nil
+}
+
+type EnableUnitFileChange struct {
+	Type        string // Type of the change (one of symlink or unlink)
+	Filename    string // File name of the symlink
+	Destination string // Destination of the symlink
+}

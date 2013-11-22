@@ -27,6 +27,10 @@ type Call struct {
 	// Holds the arguments that should be returned when
 	// this method is called.
 	ReturnArguments Arguments
+
+	// The number of times to return the return arguments when setting
+	// expectations. 0 means to always return the value.
+	Repeatability int
 }
 
 // Mock is the workhorse used to track activity on another object.
@@ -83,26 +87,48 @@ func (m *Mock) On(methodName string, arguments ...interface{}) *Mock {
 //
 //     Mock.On("MyMethod", arg1, arg2).Return(returnArg1, returnArg2)
 func (m *Mock) Return(returnArguments ...interface{}) *Mock {
-	m.ExpectedCalls = append(m.ExpectedCalls, Call{m.onMethodName, m.onMethodArguments, returnArguments})
+	m.ExpectedCalls = append(m.ExpectedCalls, Call{m.onMethodName, m.onMethodArguments, returnArguments, 0})
 	return m
+}
+
+// Once indicates that that the mock should only return the value once.
+//
+//    Mock.On("MyMethod", arg1, arg2).Return(returnArg1, returnArg2).Once()
+func (m* Mock) Once() {
+	m.ExpectedCalls[len(m.ExpectedCalls) - 1].Repeatability = 1
+}
+
+// Twice indicates that that the mock should only return the value twice.
+//
+//    Mock.On("MyMethod", arg1, arg2).Return(returnArg1, returnArg2).Twice()
+func (m* Mock) Twice() {
+	m.ExpectedCalls[len(m.ExpectedCalls) - 1].Repeatability = 2
+}
+
+// Times indicates that that the mock should only return the indicated number
+// of times.
+//
+//    Mock.On("MyMethod", arg1, arg2).Return(returnArg1, returnArg2).Times(5)
+func (m* Mock) Times(i int) {
+	m.ExpectedCalls[len(m.ExpectedCalls) - 1].Repeatability = i
 }
 
 /*
 	Recording and responding to activity
 */
 
-func (m *Mock) findExpectedCall(method string, arguments ...interface{}) (bool, *Call) {
-	for _, call := range m.ExpectedCalls {
-		if call.Method == method {
+func (m *Mock) findExpectedCall(method string, arguments ...interface{}) (int, *Call) {
+	for i, call := range m.ExpectedCalls {
+		if call.Method == method && call.Repeatability > -1 {
 
 			_, diffCount := call.Arguments.Diff(arguments)
 			if diffCount == 0 {
-				return true, &call
+				return i, &call
 			}
 
 		}
 	}
-	return false, nil
+	return -1, nil
 }
 
 func (m *Mock) findClosestCall(method string, arguments ...interface{}) (bool, *Call) {
@@ -159,8 +185,8 @@ func (m *Mock) Called(arguments ...interface{}) Arguments {
 
 	found, call := m.findExpectedCall(functionName, arguments...)
 
-	if !found {
-
+	switch {
+	case found < 0:
 		// we have to fail here - because we don't know what to do
 		// as the return arguments.  This is because:
 		//
@@ -175,11 +201,16 @@ func (m *Mock) Called(arguments ...interface{}) Arguments {
 		} else {
 			panic(fmt.Sprintf("\nassert: mock: I don't know what to return because the method call was unexpected.\n\tEither do Mock.On(\"%s\").Return(...) first, or remove the %s() call.\n\tThis method was unexpected:\n\t\t%s\n\tat: %s", functionName, functionName, callString(functionName, arguments, true), assert.CallerInfo()))
 		}
-
+	case call.Repeatability == 1:
+		call.Repeatability = -1
+		m.ExpectedCalls[found] = *call
+	case call.Repeatability > 1:
+		call.Repeatability -= 1
+		m.ExpectedCalls[found] = *call
 	}
 
 	// add the call
-	m.Calls = append(m.Calls, Call{functionName, arguments, make([]interface{}, 0)})
+	m.Calls = append(m.Calls, Call{functionName, arguments, make([]interface{}, 0), 0})
 
 	return call.ReturnArguments
 
@@ -211,11 +242,15 @@ func (m *Mock) AssertExpectations(t *testing.T) bool {
 
 	// iterate through each expectation
 	for _, expectedCall := range m.ExpectedCalls {
-		if !m.methodWasCalled(expectedCall.Method, expectedCall.Arguments) {
+		switch {
+		case !m.methodWasCalled(expectedCall.Method, expectedCall.Arguments):
 			somethingMissing = true
 			failedExpectations++
 			t.Logf("\u274C\t%s(%s)", expectedCall.Method, expectedCall.Arguments.String())
-		} else {
+		case expectedCall.Repeatability > 0:
+			somethingMissing = true
+			failedExpectations++
+		default:
 			t.Logf("\u2705\t%s(%s)", expectedCall.Method, expectedCall.Arguments.String())
 		}
 	}

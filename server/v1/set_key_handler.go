@@ -5,7 +5,7 @@ import (
 
 	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/store"
-	"github.com/coreos/go-raft"
+	"github.com/coreos/raft"
 	"github.com/gorilla/mux"
 )
 

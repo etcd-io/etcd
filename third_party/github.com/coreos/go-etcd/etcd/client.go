@@ -2,12 +2,16 @@ package etcd
 
 import (
 	"crypto/tls"
+	"encoding/json"
 	"errors"
+	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"path"
+	"reflect"
 	"strings"
 	"time"
 )
@@ -17,25 +21,43 @@ const (
 	HTTPS
 )
 
+// See SetConsistency for how to use these constants.
+const (
+	// Using strings rather than iota because the consistency level
+	// could be persisted to disk, so it'd be better to use
+	// human-readable values.
+	STRONG_CONSISTENCY = "STRONG"
+	WEAK_CONSISTENCY   = "WEAK"
+)
+
 type Cluster struct {
-	Leader   string
-	Machines []string
+	Leader   string   `json:"leader"`
+	Machines []string `json:"machines"`
 }
 
 type Config struct {
-	CertFile string
-	KeyFile  string
-	Scheme   string
-	Timeout  time.Duration
+	CertFile    string        `json:"certFile"`
+	KeyFile     string        `json:"keyFile"`
+	Scheme      string        `json:"scheme"`
+	Timeout     time.Duration `json:"timeout"`
+	Consistency string        `json: "consistency"`
 }
 
 type Client struct {
-	cluster    Cluster
-	config     Config
-	httpClient *http.Client
+	cluster     Cluster `json:"cluster"`
+	config      Config  `json:"config"`
+	httpClient  *http.Client
+	persistence io.Writer
 }
 
-// Setup a basic conf and cluster
+type options map[string]interface{}
+
+// An internally-used data structure that represents a mapping
+// between valid options and their kinds
+type validOptions map[string]reflect.Kind
+
+// NewClient create a basic client that is configured to be used
+// with the given machine list.
 func NewClient(machines []string) *Client {
 	// if an empty slice was sent in then just assume localhost
 	if len(machines) == 0 {
@@ -53,30 +75,168 @@ func NewClient(machines []string) *Client {
 		Scheme: "http",
 		// default timeout is one second
 		Timeout: time.Second,
+		// default consistency level is STRONG
+		Consistency: STRONG_CONSISTENCY,
 	}
 
-	tr := &http.Transport{
-		Dial: dialTimeout,
-		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: true,
-		},
+	client := &Client{
+		cluster: cluster,
+		config:  config,
 	}
 
-	return &Client{
-		cluster:    cluster,
-		config:     config,
-		httpClient: &http.Client{Transport: tr},
+	err := setupHttpClient(client)
+	if err != nil {
+		panic(err)
 	}
 
+	return client
 }
 
-func (c *Client) SetCertAndKey(cert string, key string) (bool, error) {
+// NewClientFile creates a client from a given file path.
+// The given file is expected to use the JSON format.
+func NewClientFile(fpath string) (*Client, error) {
+	fi, err := os.Open(fpath)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		if err := fi.Close(); err != nil {
+			panic(err)
+		}
+	}()
 
+	return NewClientReader(fi)
+}
+
+// NewClientReader creates a Client configured from a given reader.
+// The config is expected to use the JSON format.
+func NewClientReader(reader io.Reader) (*Client, error) {
+	var client Client
+
+	b, err := ioutil.ReadAll(reader)
+	if err != nil {
+		return nil, err
+	}
+
+	err = json.Unmarshal(b, &client)
+	if err != nil {
+		return nil, err
+	}
+
+	err = setupHttpClient(&client)
+	if err != nil {
+		return nil, err
+	}
+
+	return &client, nil
+}
+
+func setupHttpClient(client *Client) error {
+	if client.config.CertFile != "" && client.config.KeyFile != "" {
+		err := client.SetCertAndKey(client.config.CertFile, client.config.KeyFile)
+		if err != nil {
+			return err
+		}
+	} else {
+		client.config.CertFile = ""
+		client.config.KeyFile = ""
+		tr := &http.Transport{
+			Dial: dialTimeout,
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: true,
+			},
+		}
+		client.httpClient = &http.Client{Transport: tr}
+	}
+
+	return nil
+}
+
+// SetPersistence sets a writer to which the config will be
+// written every time it's changed.
+func (c *Client) SetPersistence(writer io.Writer) {
+	c.persistence = writer
+}
+
+// SetConsistency changes the consistency level of the client.
+//
+// When consistency is set to STRONG_CONSISTENCY, all requests,
+// including GET, are sent to the leader.  This means that, assuming
+// the absence of leader failures, GET requests are guranteed to see
+// the changes made by previous requests.
+//
+// When consistency is set to WEAK_CONSISTENCY, other requests
+// are still sent to the leader, but GET requests are sent to a
+// random server from the server pool.  This reduces the read
+// load on the leader, but it's not guranteed that the GET requests
+// will see changes made by previous requests (they might have not
+// yet been commited on non-leader servers).
+func (c *Client) SetConsistency(consistency string) error {
+	if !(consistency == STRONG_CONSISTENCY || consistency == WEAK_CONSISTENCY) {
+		return errors.New("The argument must be either STRONG_CONSISTENCY or WEAK_CONSISTENCY.")
+	}
+	c.config.Consistency = consistency
+	return nil
+}
+
+// MarshalJSON implements the Marshaller interface
+// as defined by the standard JSON package.
+func (c *Client) MarshalJSON() ([]byte, error) {
+	b, err := json.Marshal(struct {
+		Config  Config  `json:"config"`
+		Cluster Cluster `json:"cluster"`
+	}{
+		Config:  c.config,
+		Cluster: c.cluster,
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return b, nil
+}
+
+// UnmarshalJSON implements the Unmarshaller interface
+// as defined by the standard JSON package.
+func (c *Client) UnmarshalJSON(b []byte) error {
+	temp := struct {
+		Config  Config  `json: "config"`
+		Cluster Cluster `json: "cluster"`
+	}{}
+	err := json.Unmarshal(b, &temp)
+	if err != nil {
+		return err
+	}
+
+	c.cluster = temp.Cluster
+	c.config = temp.Config
+	return nil
+}
+
+// saveConfig saves the current config using c.persistence.
+func (c *Client) saveConfig() error {
+	if c.persistence != nil {
+		b, err := json.Marshal(c)
+		if err != nil {
+			return err
+		}
+
+		_, err = c.persistence.Write(b)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (c *Client) SetCertAndKey(cert string, key string) error {
 	if cert != "" && key != "" {
 		tlsCert, err := tls.LoadX509KeyPair(cert, key)
 
 		if err != nil {
-			return false, err
+			return err
 		}
 
 		tr := &http.Transport{
@@ -88,24 +248,27 @@ func (c *Client) SetCertAndKey(cert string, key string) (bool, error) {
 		}
 
 		c.httpClient = &http.Client{Transport: tr}
-		return true, nil
+		c.saveConfig()
+		return nil
 	}
-	return false, errors.New("Require both cert and key path")
+	return errors.New("Require both cert and key path")
 }
 
-func (c *Client) SetScheme(scheme int) (bool, error) {
+func (c *Client) SetScheme(scheme int) error {
 	if scheme == HTTP {
 		c.config.Scheme = "http"
-		return true, nil
+		c.saveConfig()
+		return nil
 	}
 	if scheme == HTTPS {
 		c.config.Scheme = "https"
-		return true, nil
+		c.saveConfig()
+		return nil
 	}
-	return false, errors.New("Unknown Scheme")
+	return errors.New("Unknown Scheme")
 }
 
-// Try to sync from the given machine
+// SetCluster updates config using the given machine list.
 func (c *Client) SetCluster(machines []string) bool {
 	success := c.internalSyncCluster(machines)
 	return success
@@ -115,13 +278,13 @@ func (c *Client) GetCluster() []string {
 	return c.cluster.Machines
 }
 
-// sycn cluster information using the existing machine list
+// SyncCluster updates config using the internal machine list.
 func (c *Client) SyncCluster() bool {
 	success := c.internalSyncCluster(c.cluster.Machines)
 	return success
 }
 
-// sync cluster information by providing machine list
+// internalSyncCluster syncs cluster information using the given machine list.
 func (c *Client) internalSyncCluster(machines []string) bool {
 	for _, machine := range machines {
 		httpPath := c.createHttpPath(machine, version+"/machines")
@@ -146,16 +309,19 @@ func (c *Client) internalSyncCluster(machines []string) bool {
 			c.cluster.Leader = c.cluster.Machines[0]
 
 			logger.Debug("sync.machines ", c.cluster.Machines)
+			c.saveConfig()
 			return true
 		}
 	}
 	return false
 }
 
-// serverName should contain both hostName and port
+// createHttpPath creates a complete HTTP URL.
+// serverName should contain both the host name and a port number, if any.
 func (c *Client) createHttpPath(serverName string, _path string) string {
 	u, _ := url.Parse(serverName)
 	u.Path = path.Join(u.Path, "/", _path)
+
 	if u.Scheme == "" {
 		u.Scheme = "http"
 	}
@@ -165,18 +331,6 @@ func (c *Client) createHttpPath(serverName string, _path string) string {
 // Dial with timeout.
 func dialTimeout(network, addr string) (net.Conn, error) {
 	return net.DialTimeout(network, addr, time.Second)
-}
-
-func (c *Client) getHttpPath(s ...string) string {
-	u, _ := url.Parse(c.cluster.Leader)
-
-	u.Path = path.Join(u.Path, "/", version)
-
-	for _, seg := range s {
-		u.Path = path.Join(u.Path, seg)
-	}
-
-	return u.String()
 }
 
 func (c *Client) updateLeader(httpPath string) {
@@ -191,77 +345,5 @@ func (c *Client) updateLeader(httpPath string) {
 
 	logger.Debugf("update.leader[%s,%s]", c.cluster.Leader, leader)
 	c.cluster.Leader = leader
-}
-
-// Wrap GET, POST and internal error handling
-func (c *Client) sendRequest(method string, _path string, body string) (*http.Response, error) {
-
-	var resp *http.Response
-	var err error
-	var req *http.Request
-
-	retry := 0
-	// if we connect to a follower, we will retry until we found a leader
-	for {
-
-		httpPath := c.getHttpPath(_path)
-
-		logger.Debug("send.request.to ", httpPath)
-		if body == "" {
-
-			req, _ = http.NewRequest(method, httpPath, nil)
-
-		} else {
-			req, _ = http.NewRequest(method, httpPath, strings.NewReader(body))
-			req.Header.Set("Content-Type", "application/x-www-form-urlencoded; param=value")
-		}
-
-		resp, err = c.httpClient.Do(req)
-
-		logger.Debug("recv.response.from ", httpPath)
-		// network error, change a machine!
-		if err != nil {
-			retry++
-			if retry > 2*len(c.cluster.Machines) {
-				return nil, errors.New("Cannot reach servers")
-			}
-			num := retry % len(c.cluster.Machines)
-			logger.Debug("update.leader[", c.cluster.Leader, ",", c.cluster.Machines[num], "]")
-			c.cluster.Leader = c.cluster.Machines[num]
-			time.Sleep(time.Millisecond * 200)
-			continue
-		}
-
-		if resp != nil {
-			if resp.StatusCode == http.StatusTemporaryRedirect {
-				httpPath := resp.Header.Get("Location")
-
-				resp.Body.Close()
-
-				if httpPath == "" {
-					return nil, errors.New("Cannot get redirection location")
-				}
-
-				c.updateLeader(httpPath)
-				logger.Debug("send.redirect")
-				// try to connect the leader
-				continue
-			} else if resp.StatusCode == http.StatusInternalServerError {
-				resp.Body.Close()
-
-				retry++
-				if retry > 2*len(c.cluster.Machines) {
-					return nil, errors.New("Cannot reach servers")
-				}
-				continue
-			} else {
-				logger.Debug("send.return.response ", httpPath)
-				break
-			}
-
-		}
-		logger.Debug("error.from ", httpPath, " ", err.Error())
-		return nil, err
-	}
-	return resp, nil
+	c.saveConfig()
 }

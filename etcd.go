@@ -23,7 +23,7 @@ import (
 	"github.com/coreos/etcd/log"
 	"github.com/coreos/etcd/server"
 	"github.com/coreos/etcd/store"
-	"github.com/coreos/go-raft"
+	"github.com/coreos/raft"
 )
 
 func main() {

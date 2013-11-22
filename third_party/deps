@@ -1,6 +1,6 @@
 packages="
 	github.com/BurntSushi/toml
-	github.com/coreos/go-raft
+	github.com/coreos/raft
 	github.com/coreos/go-etcd
 	github.com/coreos/go-log/log
 	github.com/coreos/go-systemd

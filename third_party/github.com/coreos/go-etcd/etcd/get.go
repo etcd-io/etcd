@@ -1,82 +1,23 @@
 package etcd
 
-import (
-	"encoding/json"
-	"io/ioutil"
-	"net/http"
-	"path"
-)
-
-func (c *Client) Get(key string) ([]*Response, error) {
-	logger.Debugf("get %s [%s]", key, c.cluster.Leader)
-	resp, err := c.sendRequest("GET", path.Join("keys", key), "")
-
-	if err != nil {
-		return nil, err
-	}
-
-	b, err := ioutil.ReadAll(resp.Body)
-
-	resp.Body.Close()
-
-	if err != nil {
-		return nil, err
-	}
-
-	if resp.StatusCode != http.StatusOK {
-
-		return nil, handleError(b)
-	}
-
-	return convertGetResponse(b)
-
+// GetDir gets the all contents under the given key.
+// If the key points to a file, the file is returned.
+// If the key points to a directory, everything under it is returnd,
+// including all contents under all child directories.
+func (c *Client) GetAll(key string, sort bool) (*Response, error) {
+	return c.get(key, options{
+		"recursive": true,
+		"sorted":    sort,
+	})
 }
 
-// GetTo gets the value of the key from a given machine address.
-// If the given machine is not available it returns an error.
-// Mainly use for testing purpose
-func (c *Client) GetFrom(key string, addr string) ([]*Response, error) {
-	httpPath := c.createHttpPath(addr, path.Join(version, "keys", key))
-
-	resp, err := c.httpClient.Get(httpPath)
-
-	if err != nil {
-		return nil, err
-	}
-
-	b, err := ioutil.ReadAll(resp.Body)
-
-	resp.Body.Close()
-
-	if err != nil {
-		return nil, err
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, handleError(b)
-	}
-
-	return convertGetResponse(b)
-}
-
-// Convert byte stream to response.
-func convertGetResponse(b []byte) ([]*Response, error) {
-
-	var results []*Response
-	var result *Response
-
-	err := json.Unmarshal(b, &result)
-
-	if err != nil {
-		err = json.Unmarshal(b, &results)
-
-		if err != nil {
-			return nil, err
-		}
-
-	} else {
-		results = make([]*Response, 1)
-		results[0] = result
-	}
-	return results, nil
+// Get gets the file or directory associated with the given key.
+// If the key points to a directory, files and directories under
+// it will be returned in sorted or unsorted order, depending on
+// the sort flag.  Note that contents under child directories
+// will not be returned.  To get those contents, use GetAll.
+func (c *Client) Get(key string, sort bool) (*Response, error) {
+	return c.get(key, options{
+		"sorted": sort,
+	})
 }

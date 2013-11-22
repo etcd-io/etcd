@@ -1,8 +1,10 @@
 package dbus
 
 import (
-	"github.com/guelfey/go.dbus"
+	"errors"
 	"time"
+
+	"github.com/guelfey/go.dbus"
 )
 
 const (
@@ -71,12 +73,6 @@ type SubStateUpdate struct {
 	SubState string
 }
 
-type Error string
-
-func (e Error) Error() string {
-	return string(e)
-}
-
 // SetSubStateSubscriber writes to updateCh when any unit's substate changes.
 // Althrough this writes to updateCh on every state change, the reported state
 // may be more recent than the change that generated it (due to an unavoidable
@@ -104,7 +100,7 @@ func (c *Conn) sendSubStateUpdate(path dbus.ObjectPath) {
 		return
 	}
 
-	info, err := c.getUnitInfo(path)
+	info, err := c.GetUnitInfo(path)
 	if err != nil {
 		select {
 		case c.subscriber.errCh <- err:
@@ -120,7 +116,7 @@ func (c *Conn) sendSubStateUpdate(path dbus.ObjectPath) {
 	case c.subscriber.updateCh <- update:
 	default:
 		select {
-		case c.subscriber.errCh <- Error("update channel full!"):
+		case c.subscriber.errCh <- errors.New("update channel full!"):
 		default:
 		}
 	}
@@ -128,7 +124,7 @@ func (c *Conn) sendSubStateUpdate(path dbus.ObjectPath) {
 	c.updateIgnore(path, info)
 }
 
-func (c *Conn) getUnitInfo(path dbus.ObjectPath) (map[string]dbus.Variant, error) {
+func (c *Conn) GetUnitInfo(path dbus.ObjectPath) (map[string]dbus.Variant, error) {
 	var err error
 	var props map[string]dbus.Variant
 	obj := c.sysconn.Object("org.freedesktop.systemd1", path)

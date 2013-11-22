@@ -17,7 +17,7 @@ import (
 	"github.com/coreos/etcd/server/v2"
 	"github.com/coreos/etcd/store"
 	_ "github.com/coreos/etcd/store/v2"
-	"github.com/coreos/go-raft"
+	"github.com/coreos/raft"
 	"github.com/gorilla/mux"
 )
 

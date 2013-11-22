@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/coreos/go-raft"
+	"github.com/coreos/raft"
 )
 
 // A lookup of factories by version.

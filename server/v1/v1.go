@@ -2,7 +2,7 @@ package v1
 
 import (
 	"github.com/coreos/etcd/store"
-	"github.com/coreos/go-raft"
+	"github.com/coreos/raft"
 	"net/http"
 )
 
