@@ -2,10 +2,11 @@
 
 angular.module('etcd', [])
 
-.factory('EtcdV2', ['$http', function($http) {
+.factory('EtcdV2', ['$http', '$q', function($http, $q) {
   var keyPrefix = '/v2/keys/'
   var statsPrefix = '/v2/stats/'
   var baseURL = '/v2/'
+  var leaderURL = ''
 
   delete $http.defaults.headers.common['X-Requested-With'];
 
@@ -45,19 +46,23 @@ angular.module('etcd', [])
     };
 
     self.set = function(keyValue) {
-      return $http({
-        url: self.path(),
-        data: $.param({value: keyValue}),
-        method: 'PUT',
-        headers: {'Content-Type': 'application/x-www-form-urlencoded'}
+      return getLeader().then(function(leader) {
+        return $http({
+          url: leader + self.path(),
+          data: $.param({value: keyValue}),
+          method: 'PUT',
+          headers: {'Content-Type': 'application/x-www-form-urlencoded'}
+        });
       });
     };
 
     self.deleteKey = function(keyValue) {
-      return $http({
-        url: self.path(),
-        method: 'DELETE',
-        headers: {'Content-Type': 'application/x-www-form-urlencoded'}
+      return getLeader().then(function(leader) {
+        return $http({
+          url: leader + self.path(),
+          method: 'DELETE',
+          headers: {'Content-Type': 'application/x-www-form-urlencoded'}
+        });
       });
     };
 
@@ -79,8 +84,18 @@ angular.module('etcd', [])
     return self
   }
 
+  function getLeader() {
+    return newStat('leader').get().then(function(response) {
+      return newKey('/_etcd/machines/' + response.data.leader).get().then(function(response) {
+        // TODO: do something better here p.s. I hate javascript
+        var data = JSON.parse('{"' + decodeURI(response.data.value.replace(/&/g, "\",\"").replace(/=/g,"\":\"")) + '"}');
+        return data.etcd;
+      });
+    });
+  }
+
   return {
     getStat: newStat,
-    getKey: newKey
+    getKey: newKey,
   }
 }]);
