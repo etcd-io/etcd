@@ -1,6 +1,7 @@
 package v2
 
 import (
+	"github.com/coreos/etcd/server/proxy"
 	"github.com/coreos/etcd/store"
 	"github.com/coreos/raft"
 	"net/http"
@@ -15,4 +16,6 @@ type Server interface {
 	PeerURL(string) (string, bool)
 	Store() store.Store
 	Dispatch(raft.Command, http.ResponseWriter, *http.Request) error
+	Mode() string
+	Proxy() *proxy.Proxy
 }

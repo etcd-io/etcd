@@ -20,8 +20,32 @@ func GetHandler(w http.ResponseWriter, req *http.Request, s Server) error {
 	vars := mux.Vars(req)
 	key := "/" + vars["key"]
 
+	consistent := (req.FormValue("consistent") == "true")
+	recursive := (req.FormValue("recursive") == "true")
+	sorted := (req.FormValue("sorted") == "true")
+	wait := (req.FormValue("wait") == "true")
+	waitIndex := (req.FormValue("waitIndex"))
+
+	// default index is 0
+	var sinceIndex uint64 = 0
+
+	if waitIndex != "" {
+		sinceIndex, err = strconv.ParseUint(string(waitIndex), 10, 64)
+		if err != nil {
+			return etcdErr.NewError(etcdErr.EcodeIndexNaN, "Watch From Index", s.Store().Index())
+		}
+	}
+
+	if s.Mode() == "proxy" {
+		if wait {
+			return nil
+		}
+
+		return s.Proxy().Get(key, sorted, recursive, w)
+	}
+
 	// Help client to redirect the request to the current leader
-	if req.FormValue("consistent") == "true" && s.State() != raft.Leader {
+	if consistent && s.State() != raft.Leader {
 		leader := s.Leader()
 		hostname, _ := s.PeerURL(leader)
 		url := hostname + req.URL.Path
@@ -30,21 +54,7 @@ func GetHandler(w http.ResponseWriter, req *http.Request, s Server) error {
 		return nil
 	}
 
-	recursive := (req.FormValue("recursive") == "true")
-	sorted := (req.FormValue("sorted") == "true")
-
-	if req.FormValue("wait") == "true" { // watch
-		// Create a command to watch from a given index (default 0).
-		var sinceIndex uint64 = 0
-
-		waitIndex := req.FormValue("waitIndex")
-		if waitIndex != "" {
-			sinceIndex, err = strconv.ParseUint(string(req.FormValue("waitIndex")), 10, 64)
-			if err != nil {
-				return etcdErr.NewError(etcdErr.EcodeIndexNaN, "Watch From Index", s.Store().Index())
-			}
-		}
-
+	if wait { // watch
 		// Start the watcher on the store.
 		eventChan, err := s.Store().Watch(key, recursive, sinceIndex)
 		if err != nil {

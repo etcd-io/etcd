@@ -13,12 +13,18 @@ import (
 	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/log"
 	"github.com/coreos/etcd/mod"
+	"github.com/coreos/etcd/server/proxy"
 	"github.com/coreos/etcd/server/v1"
 	"github.com/coreos/etcd/server/v2"
 	"github.com/coreos/etcd/store"
 	_ "github.com/coreos/etcd/store/v2"
 	"github.com/coreos/raft"
 	"github.com/gorilla/mux"
+)
+
+const (
+	Proxy  = "proxy"
+	Normal = "normal"
 )
 
 // This is the default implementation of the Server interface.
@@ -33,10 +39,12 @@ type Server struct {
 	tlsConf     *TLSConfig
 	tlsInfo     *TLSInfo
 	corsOrigins map[string]bool
+	mode        string
+	proxy       *proxy.Proxy
 }
 
 // Creates a new Server.
-func New(name string, urlStr string, bindAddr string, tlsConf *TLSConfig, tlsInfo *TLSInfo, peerServer *PeerServer, registry *Registry, store store.Store) *Server {
+func New(name string, urlStr string, bindAddr string, mode string, tlsConf *TLSConfig, tlsInfo *TLSInfo, peerServer *PeerServer, registry *Registry, store store.Store) *Server {
 	s := &Server{
 		Server: http.Server{
 			Handler:   mux.NewRouter(),
@@ -50,6 +58,7 @@ func New(name string, urlStr string, bindAddr string, tlsConf *TLSConfig, tlsInf
 		tlsConf:    tlsConf,
 		tlsInfo:    tlsInfo,
 		peerServer: peerServer,
+		mode:       mode,
 	}
 
 	// Install the routes.
@@ -94,6 +103,18 @@ func (s *Server) PeerURL(name string) (string, bool) {
 // Returns a reference to the Store.
 func (s *Server) Store() store.Store {
 	return s.store
+}
+
+func (s *Server) Mode() string {
+	return s.mode
+}
+
+func (s *Server) Proxy() *proxy.Proxy {
+	return s.proxy
+}
+
+func (s *Server) SetProxy(p *proxy.Proxy) {
+	s.proxy = p
 }
 
 func (s *Server) installV1() {
