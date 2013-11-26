@@ -38,9 +38,8 @@ func (eh *EventHistory) addEvent(e *Event) *Event {
 	return e
 }
 
-// scan function is enumerating events from the index in history and
-// stops till the first point where the key has identified prefix
-func (eh *EventHistory) scan(prefix string, index uint64) (*Event, *etcdErr.Error) {
+// scan returns all events starting from the index where the key starts with prefix.
+func (eh *EventHistory) scan(prefix string, index uint64) ([]*Event, *etcdErr.Error) {
 	eh.rwl.RLock()
 	defer eh.rwl.RUnlock()
 
@@ -57,21 +56,25 @@ func (eh *EventHistory) scan(prefix string, index uint64) (*Event, *etcdErr.Erro
 		return nil, nil
 	}
 
+	var events []*Event
+
 	i := eh.Queue.Front
 
 	for {
 		e := eh.Queue.Events[i]
 
 		if strings.HasPrefix(e.Key, prefix) && index <= e.Index() { // make sure we bypass the smaller one
-			return e, nil
+			events = append(events, e)
 		}
 
 		i = (i + 1) % eh.Queue.Capacity
 
 		if i > eh.Queue.back() {
-			return nil, nil
+			break // end of the history
 		}
 	}
+
+	return events, nil
 }
 
 // clone will be protected by a stop-world lock
