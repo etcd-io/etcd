@@ -49,10 +49,11 @@ func GetHandler(w http.ResponseWriter, req *http.Request, s Server) error {
 		}
 
 		// Start the watcher on the store.
-		eventChan, err := s.Store().Watch(key, recursive, stream, sinceIndex)
+		watcher, err := s.Store().Watch(key, recursive, stream, sinceIndex)
 		if err != nil {
 			return etcdErr.NewError(500, key, s.Store().Index())
 		}
+		defer watcher.Cancel()
 
 		cn := w.(http.CloseNotifier)
 		closeChan := cn.CloseNotify()
@@ -66,7 +67,7 @@ func GetHandler(w http.ResponseWriter, req *http.Request, s Server) error {
 				case <-closeChan:
 					chunkW.Close()
 					return nil
-				case event = <-eventChan:
+				case event = <-watcher.EventChan:
 					b, _ := json.Marshal(event)
 					chunkW.Write(b)
 					w.(http.Flusher).Flush()
@@ -77,7 +78,7 @@ func GetHandler(w http.ResponseWriter, req *http.Request, s Server) error {
 			select {
 			case <-closeChan:
 				return nil
-			case event = <-eventChan:
+			case event = <-watcher.EventChan:
 				b, _ := json.Marshal(event)
 				w.Write(b)
 			}

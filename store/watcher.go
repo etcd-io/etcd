@@ -17,7 +17,8 @@ limitations under the License.
 package store
 
 type watcher struct {
-	eventChan  chan *Event
+	EventChan  chan *Event
+	Cancel     func()
 	recursive  bool
 	stream     bool
 	sinceIndex uint64
@@ -42,7 +43,7 @@ func (w *watcher) notify(e *Event, originalPath bool, deleted bool) bool {
 	// For example a watcher is watching at "/foo/bar". And we deletes "/foo". The watcher
 	// should get notified even if "/foo" is not the path it is watching.
 	if (w.recursive || originalPath || deleted) && e.Index() >= w.sinceIndex {
-		w.eventChan <- e
+		w.EventChan <- e
 		return true
 	}
 	return false
