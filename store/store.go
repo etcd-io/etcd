@@ -50,7 +50,7 @@ type Store interface {
 	CompareAndSwap(nodePath string, prevValue string, prevIndex uint64,
 		value string, expireTime time.Time) (*Event, error)
 	Delete(nodePath string, recursive bool) (*Event, error)
-	Watch(prefix string, recursive bool, sinceIndex uint64) (<-chan *Event, error)
+	Watch(prefix string, recursive bool, sinceIndex uint64) (*watcher, error)
 	Save() ([]byte, error)
 	Recovery(state []byte) error
 	TotalTransactions() uint64
@@ -260,7 +260,7 @@ func (s *store) Delete(nodePath string, recursive bool) (*Event, error) {
 	}
 
 	callback := func(path string) { // notify function
-		// notify the watchers with delted set true
+		// notify the watchers with deleted set true
 		s.WatcherHub.notifyWatchers(e, path, true)
 	}
 
@@ -280,7 +280,10 @@ func (s *store) Delete(nodePath string, recursive bool) (*Event, error) {
 	return e, nil
 }
 
-func (s *store) Watch(prefix string, recursive bool, sinceIndex uint64) (<-chan *Event, error) {
+// Watch returns a pointer to a new watcher and an error.
+// It is the callers responsibility to cancel the watcher by calling w.Cancel().
+// If it is forgotten, the etcd server hangs when the forgotten watcher is notified.
+func (s *store) Watch(prefix string, recursive bool, sinceIndex uint64) (*watcher, error) {
 	prefix = path.Clean(path.Join("/", prefix))
 
 	nextIndex := s.CurrentIndex + 1
@@ -288,14 +291,14 @@ func (s *store) Watch(prefix string, recursive bool, sinceIndex uint64) (<-chan 
 	s.worldLock.RLock()
 	defer s.worldLock.RUnlock()
 
-	var c <-chan *Event
+	var w *watcher
 	var err *etcdErr.Error
 
 	if sinceIndex == 0 {
-		c, err = s.WatcherHub.watch(prefix, recursive, nextIndex)
+		w, err = s.WatcherHub.watch(prefix, recursive, nextIndex)
 
 	} else {
-		c, err = s.WatcherHub.watch(prefix, recursive, sinceIndex)
+		w, err = s.WatcherHub.watch(prefix, recursive, sinceIndex)
 	}
 
 	if err != nil {
@@ -305,7 +308,7 @@ func (s *store) Watch(prefix string, recursive bool, sinceIndex uint64) (<-chan 
 		return nil, err
 	}
 
-	return c, nil
+	return w, nil
 }
 
 // walk function walks all the nodePath and apply the walkFunc on each directory
@@ -395,7 +398,6 @@ func (s *store) internalCreate(nodePath string, value string, unique bool, repla
 	if expireTime.Before(minExpireTime) {
 		expireTime = Permanent
 	}
-
 
 	dir, newNodeName := path.Split(nodePath)
 
