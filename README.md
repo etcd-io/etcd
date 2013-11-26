@@ -121,7 +121,7 @@ curl -L http://127.0.0.1:4001/v2/keys/message
 You can change the value of `/message` from `Hello world` to `Hello etcd` with another `PUT` request to the key:
 
 ```sh
-curl -L http://127.0.0.1:4001/v1/keys/message -XPUT -d value="Hello etcd"
+curl -L http://127.0.0.1:4001/v2/keys/message -XPUT -d value="Hello etcd"
 ```
 
 ```json
@@ -235,14 +235,14 @@ Here is a simple example.
 Let's create a key-value pair first: `foo=one`.
 
 ```sh
-curl -L http://127.0.0.1:4001/v1/keys/foo -XPUT -d value=one
+curl -L http://127.0.0.1:4001/v2/keys/foo -XPUT -d value=one
 ```
 
 Let's try an invalid `CompareAndSwap` command first.
 We can provide the `prevValue` parameter to the set command to make it a `CompareAndSwap` command.
 
 ```sh
-curl -L http://127.0.0.1:4001/v1/keys/foo?prevValue=two -XPUT -d value=three
+curl -L http://127.0.0.1:4001/v2/keys/foo?prevValue=two -XPUT -d value=three
 ```
 
 This will try to compare the previous value of the key and the previous value we provided. If they are equal, the value of the key will change to three.
@@ -435,7 +435,7 @@ routines:SSL3_READ_BYTES:sslv3 alert bad certificate
 We need to give the CA signed cert to the server.
 
 ```sh
-curl --key ./fixtures/ca/server2.key.insecure --cert ./fixtures/ca/server2.crt --cacert ./fixtures/ca/server-chain.pem -L https://127.0.0.1:4001/v1/keys/foo -XPUT -d value=bar -v
+curl --key ./fixtures/ca/server2.key.insecure --cert ./fixtures/ca/server2.crt --cacert ./fixtures/ca/server-chain.pem -L https://127.0.0.1:4001/v2/keys/foo -XPUT -d value=bar -v
 ```
 
 You should able to see:
@@ -482,7 +482,7 @@ Let's join two more machines to this cluster using the `-peers` argument:
 We can retrieve a list of machines in the cluster using the HTTP API:
 
 ```sh
-curl -L http://127.0.0.1:4001/v1/machines
+curl -L http://127.0.0.1:4001/v2/machines
 ```
 
 We should see there are three machines in the cluster
@@ -494,7 +494,7 @@ http://127.0.0.1:4001, http://127.0.0.1:4002, http://127.0.0.1:4003
 The machine list is also available via the main key API:
 
 ```sh
-curl -L http://127.0.0.1:4001/v1/keys/_etcd/machines
+curl -L http://127.0.0.1:4001/v2/keys/_etcd/machines
 ```
 
 ```json
@@ -529,13 +529,13 @@ curl -L http://127.0.0.1:4001/v2/keys/foo -XPUT -d value=bar
 Now if we kill the leader of the cluster, we can get the value from one of the other two machines:
 
 ```sh
-curl -L http://127.0.0.1:4002/v1/keys/foo
+curl -L http://127.0.0.1:4002/v2/keys/foo
 ```
 
 We can also see that a new leader has been elected:
 
 ```
-curl -L http://127.0.0.1:4002/v1/leader
+curl -L http://127.0.0.1:4002/v2/leader
 ```
 
 ```
@@ -557,7 +557,7 @@ Type `CTRL-C` on each terminal and then rerun the same command you used to start
 Your request for the `foo` key will return the correct value:
 
 ```sh
-curl -L http://127.0.0.1:4002/v1/keys/foo
+curl -L http://127.0.0.1:4002/v2/keys/foo
 ```
 
 ```json
