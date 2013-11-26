@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/http/httputil"
 	"strconv"
 
 	etcdErr "github.com/coreos/etcd/error"
@@ -57,24 +58,32 @@ func GetHandler(w http.ResponseWriter, req *http.Request, s Server) error {
 		closeChan := cn.CloseNotify()
 
 		writeHeaders(w, s)
-		for {
+
+		if stream {
+			chunkW := httputil.NewChunkedWriter(w)
+			for {
+				select {
+				case <-closeChan:
+					chunkW.Close()
+					return nil
+				case event = <-eventChan:
+					b, _ := json.Marshal(event)
+					chunkW.Write(b)
+					w.(http.Flusher).Flush()
+				}
+			}
+
+		} else { // single event
 			select {
 			case <-closeChan:
 				return nil
 			case event = <-eventChan:
 				b, _ := json.Marshal(event)
 				w.Write(b)
-
-				if stream {
-					w.Write([]byte("\n"))
-					w.(http.Flusher).Flush()
-				} else {
-					return nil
-				}
 			}
 		}
 
-	} else { //get
+	} else { // get
 		// Retrieve the key from the store.
 		event, err = s.Store().Get(key, recursive, sorted)
 		if err != nil {
