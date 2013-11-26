@@ -29,6 +29,8 @@ func WatchKeyHandler(w http.ResponseWriter, req *http.Request, s Server) error {
 	if err != nil {
 		return etcdErr.NewError(500, key, s.Store().Index())
 	}
+	defer watcher.Cancel()
+
 	event := <-watcher.EventChan
 
 	b, _ := json.Marshal(event.Response())
