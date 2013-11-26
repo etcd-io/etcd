@@ -23,13 +23,13 @@ import (
 func TestWatcher(t *testing.T) {
 	s := newStore()
 	wh := s.WatcherHub
-	c, err := wh.watch("/foo", true, 1)
+	w, err := wh.watch("/foo", true, 1)
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
 
 	select {
-	case <-c:
+	case <-w.EventChan:
 		t.Fatal("should not receive from channel before send the event")
 	default:
 		// do nothing
@@ -39,20 +39,20 @@ func TestWatcher(t *testing.T) {
 
 	wh.notify(e)
 
-	re := <-c
+	re := <-w.EventChan
 
 	if e != re {
 		t.Fatal("recv != send")
 	}
 
-	c, _ = wh.watch("/foo", false, 2)
+	w, _ = wh.watch("/foo", false, 2)
 
 	e = newEvent(Create, "/foo/bar", 2)
 
 	wh.notify(e)
 
 	select {
-	case re = <-c:
+	case re = <-w.EventChan:
 		t.Fatal("should not receive from channel if not recursive ", re)
 	default:
 		// do nothing
@@ -62,7 +62,7 @@ func TestWatcher(t *testing.T) {
 
 	wh.notify(e)
 
-	re = <-c
+	re = <-w.EventChan
 
 	if e != re {
 		t.Fatal("recv != send")
