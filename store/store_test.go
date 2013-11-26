@@ -279,7 +279,7 @@ func TestStoreCompareAndSwapPrevIndexFailsIfNotMatch(t *testing.T) {
 // Ensure that the store can watch for key creation.
 func TestStoreWatchCreate(t *testing.T) {
 	s := newStore()
-	c, _ := s.Watch("/foo", false, 0)
+	c, _ := s.Watch("/foo", false, false, 0)
 	s.Create("/foo", "bar", false, Permanent)
 	e := nbselect(c)
 	assert.Equal(t, e.Action, "create", "")
@@ -291,7 +291,7 @@ func TestStoreWatchCreate(t *testing.T) {
 // Ensure that the store can watch for recursive key creation.
 func TestStoreWatchRecursiveCreate(t *testing.T) {
 	s := newStore()
-	c, _ := s.Watch("/foo", true, 0)
+	c, _ := s.Watch("/foo", true, false, 0)
 	s.Create("/foo/bar", "baz", false, Permanent)
 	e := nbselect(c)
 	assert.Equal(t, e.Action, "create", "")
@@ -302,7 +302,7 @@ func TestStoreWatchRecursiveCreate(t *testing.T) {
 func TestStoreWatchUpdate(t *testing.T) {
 	s := newStore()
 	s.Create("/foo", "bar", false, Permanent)
-	c, _ := s.Watch("/foo", false, 0)
+	c, _ := s.Watch("/foo", false, false, 0)
 	s.Update("/foo", "baz", Permanent)
 	e := nbselect(c)
 	assert.Equal(t, e.Action, "update", "")
@@ -313,7 +313,7 @@ func TestStoreWatchUpdate(t *testing.T) {
 func TestStoreWatchRecursiveUpdate(t *testing.T) {
 	s := newStore()
 	s.Create("/foo/bar", "baz", false, Permanent)
-	c, _ := s.Watch("/foo", true, 0)
+	c, _ := s.Watch("/foo", true, false, 0)
 	s.Update("/foo/bar", "baz", Permanent)
 	e := nbselect(c)
 	assert.Equal(t, e.Action, "update", "")
@@ -324,7 +324,7 @@ func TestStoreWatchRecursiveUpdate(t *testing.T) {
 func TestStoreWatchDelete(t *testing.T) {
 	s := newStore()
 	s.Create("/foo", "bar", false, Permanent)
-	c, _ := s.Watch("/foo", false, 0)
+	c, _ := s.Watch("/foo", false, false, 0)
 	s.Delete("/foo", false)
 	e := nbselect(c)
 	assert.Equal(t, e.Action, "delete", "")
@@ -335,7 +335,7 @@ func TestStoreWatchDelete(t *testing.T) {
 func TestStoreWatchRecursiveDelete(t *testing.T) {
 	s := newStore()
 	s.Create("/foo/bar", "baz", false, Permanent)
-	c, _ := s.Watch("/foo", true, 0)
+	c, _ := s.Watch("/foo", true, false, 0)
 	s.Delete("/foo/bar", false)
 	e := nbselect(c)
 	assert.Equal(t, e.Action, "delete", "")
@@ -346,7 +346,7 @@ func TestStoreWatchRecursiveDelete(t *testing.T) {
 func TestStoreWatchCompareAndSwap(t *testing.T) {
 	s := newStore()
 	s.Create("/foo", "bar", false, Permanent)
-	c, _ := s.Watch("/foo", false, 0)
+	c, _ := s.Watch("/foo", false, false, 0)
 	s.CompareAndSwap("/foo", "bar", 0, "baz", Permanent)
 	e := nbselect(c)
 	assert.Equal(t, e.Action, "compareAndSwap", "")
@@ -357,7 +357,7 @@ func TestStoreWatchCompareAndSwap(t *testing.T) {
 func TestStoreWatchRecursiveCompareAndSwap(t *testing.T) {
 	s := newStore()
 	s.Create("/foo/bar", "baz", false, Permanent)
-	c, _ := s.Watch("/foo", true, 0)
+	c, _ := s.Watch("/foo", true, false, 0)
 	s.CompareAndSwap("/foo/bar", "baz", 0, "bat", Permanent)
 	e := nbselect(c)
 	assert.Equal(t, e.Action, "compareAndSwap", "")
@@ -377,14 +377,14 @@ func TestStoreWatchExpire(t *testing.T) {
 	s.Create("/foo", "bar", false, time.Now().Add(500*time.Millisecond))
 	s.Create("/foofoo", "barbarbar", false, time.Now().Add(500*time.Millisecond))
 
-	c, _ := s.Watch("/", true, 0)
+	c, _ := s.Watch("/", true, false, 0)
 	e := nbselect(c)
 	assert.Nil(t, e, "")
 	time.Sleep(600 * time.Millisecond)
 	e = nbselect(c)
 	assert.Equal(t, e.Action, "expire", "")
 	assert.Equal(t, e.Key, "/foo", "")
-	c, _ = s.Watch("/", true, 4)
+	c, _ = s.Watch("/", true, false, 4)
 	e = nbselect(c)
 	assert.Equal(t, e.Action, "expire", "")
 	assert.Equal(t, e.Key, "/foofoo", "")

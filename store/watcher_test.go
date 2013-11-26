@@ -23,7 +23,7 @@ import (
 func TestWatcher(t *testing.T) {
 	s := newStore()
 	wh := s.WatcherHub
-	c, err := wh.watch("/foo", true, 1)
+	c, err := wh.watch("/foo", true, false, 1)
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
@@ -45,7 +45,7 @@ func TestWatcher(t *testing.T) {
 		t.Fatal("recv != send")
 	}
 
-	c, _ = wh.watch("/foo", false, 2)
+	c, _ = wh.watch("/foo", false, false, 2)
 
 	e = newEvent(Create, "/foo/bar", 2)
 
