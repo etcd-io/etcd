@@ -107,9 +107,7 @@ func (wh *watcherHub) notifyWatchers(e *Event, path string, deleted bool) {
 	if ok {
 		for elem := l.Front(); elem != nil; elem = elem.Next() {
 			w := elem.Value.(*watcher)
-			if w.notify(e, e.Key == path, deleted) {
-				w.Cancel()
-			}
+			w.notify(e, e.Key == path, deleted)
 		}
 	}
 }
