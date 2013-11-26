@@ -50,7 +50,7 @@ type Store interface {
 	CompareAndSwap(nodePath string, prevValue string, prevIndex uint64,
 		value string, expireTime time.Time) (*Event, error)
 	Delete(nodePath string, recursive bool) (*Event, error)
-	Watch(prefix string, recursive bool, sinceIndex uint64) (<-chan *Event, error)
+	Watch(prefix string, recursive bool, stream bool, sinceIndex uint64) (<-chan *Event, error)
 	Save() ([]byte, error)
 	Recovery(state []byte) error
 	TotalTransactions() uint64
@@ -280,7 +280,7 @@ func (s *store) Delete(nodePath string, recursive bool) (*Event, error) {
 	return e, nil
 }
 
-func (s *store) Watch(prefix string, recursive bool, sinceIndex uint64) (<-chan *Event, error) {
+func (s *store) Watch(prefix string, recursive bool, stream bool, sinceIndex uint64) (<-chan *Event, error) {
 	prefix = path.Clean(path.Join("/", prefix))
 
 	nextIndex := s.CurrentIndex + 1
@@ -292,10 +292,10 @@ func (s *store) Watch(prefix string, recursive bool, sinceIndex uint64) (<-chan 
 	var err *etcdErr.Error
 
 	if sinceIndex == 0 {
-		c, err = s.WatcherHub.watch(prefix, recursive, nextIndex)
+		c, err = s.WatcherHub.watch(prefix, recursive, stream, nextIndex)
 
 	} else {
-		c, err = s.WatcherHub.watch(prefix, recursive, sinceIndex)
+		c, err = s.WatcherHub.watch(prefix, recursive, stream, sinceIndex)
 	}
 
 	if err != nil {

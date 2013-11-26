@@ -19,6 +19,7 @@ package store
 type watcher struct {
 	eventChan  chan *Event
 	recursive  bool
+	stream     bool
 	sinceIndex uint64
 }
 

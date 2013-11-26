@@ -25,7 +25,7 @@ func WatchKeyHandler(w http.ResponseWriter, req *http.Request, s Server) error {
 	}
 
 	// Start the watcher on the store.
-	c, err := s.Store().Watch(key, false, sinceIndex)
+	c, err := s.Store().Watch(key, false, false, sinceIndex)
 	if err != nil {
 		return etcdErr.NewError(500, key, s.Store().Index())
 	}
