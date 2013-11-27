@@ -261,10 +261,17 @@ func (s *store) Delete(nodePath string, recursive bool) (*Event, error) {
 
 	callback := func(path string) { // notify function
 		// notify the watchers with deleted set true
-		s.WatcherHub.notifyWatchers(e, path, true)
+		// but do not notify for the base path
+		// because s.WatcherHub.notify(e) below will do it
+		// otherwise it sends a duplicate notification for the path.
+		if path != nodePath {
+			s.WatcherHub.notifyWatchers(e, path, true)
+		}
 	}
 
+	s.WatcherHub.rwl.RLock()
 	err = n.Remove(recursive, callback)
+	s.WatcherHub.rwl.RUnlock()
 
 	if err != nil {
 		s.Stats.Inc(DeleteFail)
