@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/coreos/etcd/log"
 	"github.com/BurntSushi/toml"
 )
 
@@ -298,6 +299,25 @@ func (c *Config) LoadPeersFile() error {
 	c.Peers = trimsplit(string(b), ",")
 
 	return nil
+}
+
+// DataDirFromName sets the data dir from a machine name and issue a warning
+// that etcd is guessing.
+func (c *Config) DataDirFromName() {
+	c.DataDir = c.Name + ".etcd"
+	log.Warnf("Using the directory %s as the etcd curation directory because a directory was not specified. ", c.DataDir)
+
+	return
+}
+
+// NameFromHostname sets the machine name from the hostname. This is to help
+// people get started without thinking up a name.
+func (c *Config) NameFromHostname() {
+	host, err := os.Hostname()
+	if err != nil && host == "" {
+		log.Fatal("Node name required and hostname not set. e.g. '-name=name'")
+	}
+	c.Name = host
 }
 
 // Reset removes all server configuration files.
