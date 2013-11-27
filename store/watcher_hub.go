@@ -4,6 +4,7 @@ import (
 	"container/list"
 	"path"
 	"strings"
+	"sync"
 	"sync/atomic"
 
 	etcdErr "github.com/coreos/etcd/error"
@@ -19,6 +20,7 @@ type watcherHub struct {
 	watchers     map[string]*list.List
 	count        int64 // current number of watchers.
 	EventHistory *EventHistory
+	rwl          sync.RWMutex
 }
 
 // newWatchHub creates a watchHub. The capacity determines how many events we will
@@ -37,8 +39,10 @@ func newWatchHub(capacity int) *watcherHub {
 // If recursive is false, the first change after index at prefix will be sent to the event channel.
 // If index is zero, watch will start from the current index + 1.
 func (wh *watcherHub) watch(prefix string, recursive bool, stream bool, index uint64) (*watcher, *etcdErr.Error) {
-	event, err := wh.EventHistory.scan(prefix, index)
+	wh.rwl.Lock()
+	defer wh.rwl.Unlock()
 
+	event, err := wh.EventHistory.scan(prefix, index)
 	if err != nil {
 		return nil, err
 	}
@@ -47,8 +51,11 @@ func (wh *watcherHub) watch(prefix string, recursive bool, stream bool, index ui
 
 	w := &watcher{
 		EventChan: make(chan *Event, 1), // use a buffered channel
-		Cancel: func() {
+		Remove: func() {
 			if l, ok := wh.watchers[prefix]; ok {
+				wh.rwl.Lock()
+				defer wh.rwl.Unlock()
+
 				l.Remove(elem)
 				if l.Len() == 0 {
 					delete(wh.watchers, prefix)
@@ -85,6 +92,9 @@ func (wh *watcherHub) watch(prefix string, recursive bool, stream bool, index ui
 
 // notify function accepts an event and notify to the watchers.
 func (wh *watcherHub) notify(e *Event) {
+	wh.rwl.RLock()
+	defer wh.rwl.RUnlock()
+
 	e = wh.EventHistory.addEvent(e) // add event into the eventHistory
 
 	segments := strings.Split(e.Key, "/")

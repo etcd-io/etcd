@@ -269,7 +269,9 @@ func (s *store) Delete(nodePath string, recursive bool) (*Event, error) {
 		}
 	}
 
+	s.WatcherHub.rwl.RLock()
 	err = n.Remove(recursive, callback)
+	s.WatcherHub.rwl.RUnlock()
 
 	if err != nil {
 		s.Stats.Inc(DeleteFail)
