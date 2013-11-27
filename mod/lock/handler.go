@@ -1,19 +1,20 @@
 package lock
 
 import (
-	"bytes"
+	"fmt"
 	"net/http"
-	"os"
 	"path"
-	"time"
 
+	"github.com/gorilla/mux"
 	"github.com/coreos/go-etcd/etcd"
 )
+
+const prefix = "/_etcd/locks"
 
 // handler manages the lock HTTP request.
 type handler struct {
 	*mux.Router
-	client string
+	client *etcd.Client
 }
 
 // NewHandler creates an HTTP handler that can be registered on a router.
@@ -22,23 +23,33 @@ func NewHandler(addr string) (http.Handler) {
 		Router: mux.NewRouter(),
 		client: etcd.NewClient([]string{addr}),
 	}
-	h.HandleFunc("/{key:.+}", h.getLockHandler).Methods("GET")
-	h.HandleFunc("/{key:.+}", h.acquireLockHandler).Methods("PUT")
-	h.HandleFunc("/{key:.+}", h.releaseLockHandler).Methods("DELETE")
+	h.StrictSlash(false)
+	h.HandleFunc("/{key:.*}", h.acquireHandler).Methods("POST")
+	h.HandleFunc("/{key_with_index:.*}", h.renewLockHandler).Methods("PUT")
+	h.HandleFunc("/{key_with_index:.*}", h.releaseLockHandler).Methods("DELETE")
+	return h
 }
 
-// getLockHandler retrieves whether a lock has been obtained for a given key.
-func (h *handler) getLockHandler(w http.ResponseWriter, req *http.Request) {
-	// TODO
+
+// extractResponseIndices extracts a sorted list of indicies from a response.
+func extractResponseIndices(resp *etcd.Response) []int {
+	var indices []int
+	for _, kv := range resp.Kvs {
+		if index, _ := strconv.Atoi(path.Base(kv.Key)); index > 0 {
+			indicies = append(indices, index)
+		}
+	}
+	return indices
 }
 
-// acquireLockHandler attempts to acquire a lock on the given key.
-// The lock is released when the connection is disconnected.
-func (h *handler) acquireLockHandler(w http.ResponseWriter, req *http.Request) {
-	// TODO
-}
-
-// releaseLockHandler forces the release of a lock on the given key.
-func (h *handler) releaseLockHandler(w http.ResponseWriter, req *http.Request) {
-	// TODO
+// findPrevIndex retrieves the previous index before the given index.
+func findPrevIndex(indices []int, idx int) int {
+	var prevIndex int
+	for _, index := range indices {
+		if index == idx {
+			break
+		}
+		prevIndex = index
+	}
+	return prevIndex
 }

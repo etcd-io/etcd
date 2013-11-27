@@ -13,9 +13,9 @@ var ServeMux *http.Handler
 
 func HttpHandler() (handler http.Handler) {
 	r := mux.NewRouter()
-	r.PathPrefix("/dashboard/").
-		Handler(http.StripPrefix("/dashboard/", dashboard.HttpHandler()))
-	r.PathPrefix("/lock/").
-		Handler(http.StripPrefix("/lock", lock.NewHandler()))
+	r.PathPrefix("/dashboard/").Handler(http.StripPrefix("/dashboard/", dashboard.HttpHandler()))
+
+	// TODO: Use correct addr.
+	r.PathPrefix("/lock").Handler(http.StripPrefix("/lock", lock.NewHandler("127.0.0.1:4001")))
 	return r
 }

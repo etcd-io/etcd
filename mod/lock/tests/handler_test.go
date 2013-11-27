@@ -1,17 +1,32 @@
 package lock
 
 import (
+	"fmt"
+	"net/url"
 	"testing"
+	"time"
 
+	"github.com/coreos/etcd/server"
+	"github.com/coreos/etcd/tests"
 	"github.com/stretchr/testify/assert"
 )
 
 // Ensure that a lock can be acquired and released.
 func TestModLockAcquire(t *testing.T) {
-	// TODO: Acquire lock.
-	// TODO: Check that it has been acquired.
-	// TODO: Release lock.
-	// TODO: Check that it has been released.
+	v := url.Values{}
+	tests.RunServer(func(s *server.Server) {
+		// Acquire lock.
+		resp, err := tests.PutForm(fmt.Sprintf("http://%s%s", s.URL(), "/mod/lock"), v)
+		assert.NoError(t, err)
+		ret := tests.ReadBody(resp)
+		assert.Equal(t, string(ret), "XXX")
+
+		fmt.Println("URL:", fmt.Sprintf("http://%s%s", s.URL(), "/mod/lock"))
+		time.Sleep(60 * time.Second)
+		// TODO: Check that it has been acquired.
+		// TODO: Release lock.
+		// TODO: Check that it has been released.
+	})
 }
 
 // Ensure that a lock can be acquired and another process is blocked until released.
