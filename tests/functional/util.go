@@ -80,7 +80,7 @@ func CreateCluster(size int, procAttr *os.ProcAttr, ssl bool) ([][]string, []*os
 
 	sslServer2 := []string{"-peer-ca-file=../../fixtures/ca/ca.crt",
 		"-peer-cert-file=../../fixtures/ca/server2.crt",
-		"-peer-cert-file=../../fixtures/ca/server2.key.insecure",
+		"-peer-key-file=../../fixtures/ca/server2.key.insecure",
 	}
 
 	for i := 0; i < size; i++ {

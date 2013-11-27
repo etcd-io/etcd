@@ -22,7 +22,7 @@ type TestExampleImplementation struct {
 
 func (i *TestExampleImplementation) TheExampleMethod(a, b, c int) (int, error) {
 	args := i.Mock.Called(a, b, c)
-	return args.Int(0), args.Error(1)
+	return args.Int(0), errors.New("Whoops")
 }
 
 func (i *TestExampleImplementation) TheExampleMethod2(yesorno bool) {
@@ -87,6 +87,79 @@ func Test_Mock_Return(t *testing.T) {
 		assert.Equal(t, 1, call.ReturnArguments[0])
 		assert.Equal(t, "two", call.ReturnArguments[1])
 		assert.Equal(t, true, call.ReturnArguments[2])
+		assert.Equal(t, 0, call.Repeatability)
+
+	}
+
+}
+
+func Test_Mock_Return_Once(t *testing.T) {
+
+	// make a test impl object
+	var mockedService *TestExampleImplementation = new(TestExampleImplementation)
+
+	mockedService.Mock.On("TheExampleMethod", "A", "B", true).Return(1, "two", true).Once()
+
+	// ensure the call was created
+	if assert.Equal(t, 1, len(mockedService.Mock.ExpectedCalls)) {
+		call := mockedService.Mock.ExpectedCalls[0]
+
+		assert.Equal(t, "TheExampleMethod", call.Method)
+		assert.Equal(t, "A", call.Arguments[0])
+		assert.Equal(t, "B", call.Arguments[1])
+		assert.Equal(t, true, call.Arguments[2])
+		assert.Equal(t, 1, call.ReturnArguments[0])
+		assert.Equal(t, "two", call.ReturnArguments[1])
+		assert.Equal(t, true, call.ReturnArguments[2])
+		assert.Equal(t, 1, call.Repeatability)
+
+	}
+
+}
+
+func Test_Mock_Return_Twice(t *testing.T) {
+
+	// make a test impl object
+	var mockedService *TestExampleImplementation = new(TestExampleImplementation)
+
+	mockedService.Mock.On("TheExampleMethod", "A", "B", true).Return(1, "two", true).Twice()
+
+	// ensure the call was created
+	if assert.Equal(t, 1, len(mockedService.Mock.ExpectedCalls)) {
+		call := mockedService.Mock.ExpectedCalls[0]
+
+		assert.Equal(t, "TheExampleMethod", call.Method)
+		assert.Equal(t, "A", call.Arguments[0])
+		assert.Equal(t, "B", call.Arguments[1])
+		assert.Equal(t, true, call.Arguments[2])
+		assert.Equal(t, 1, call.ReturnArguments[0])
+		assert.Equal(t, "two", call.ReturnArguments[1])
+		assert.Equal(t, true, call.ReturnArguments[2])
+		assert.Equal(t, 2, call.Repeatability)
+
+	}
+
+}
+
+func Test_Mock_Return_Times(t *testing.T) {
+
+	// make a test impl object
+	var mockedService *TestExampleImplementation = new(TestExampleImplementation)
+
+	mockedService.Mock.On("TheExampleMethod", "A", "B", true).Return(1, "two", true).Times(5)
+
+	// ensure the call was created
+	if assert.Equal(t, 1, len(mockedService.Mock.ExpectedCalls)) {
+		call := mockedService.Mock.ExpectedCalls[0]
+
+		assert.Equal(t, "TheExampleMethod", call.Method)
+		assert.Equal(t, "A", call.Arguments[0])
+		assert.Equal(t, "B", call.Arguments[1])
+		assert.Equal(t, true, call.Arguments[2])
+		assert.Equal(t, 1, call.ReturnArguments[0])
+		assert.Equal(t, "two", call.ReturnArguments[1])
+		assert.Equal(t, true, call.ReturnArguments[2])
+		assert.Equal(t, 5, call.Repeatability)
 
 	}
 
@@ -122,7 +195,40 @@ func Test_Mock_findExpectedCall(t *testing.T) {
 
 	f, c := m.findExpectedCall("Two", 3)
 
-	if assert.True(t, f) {
+	if assert.Equal(t, 2, f) {
+		if assert.NotNil(t, c) {
+			assert.Equal(t, "Two", c.Method)
+			assert.Equal(t, 3, c.Arguments[0])
+			assert.Equal(t, "three", c.ReturnArguments[0])
+		}
+	}
+
+}
+
+func Test_Mock_findExpectedCall_For_Unknown_Method(t *testing.T) {
+
+	m := new(Mock)
+	m.On("One", 1).Return("one")
+	m.On("Two", 2).Return("two")
+	m.On("Two", 3).Return("three")
+
+	f, _ := m.findExpectedCall("Two")
+
+	assert.Equal(t, -1, f)
+
+}
+
+func Test_Mock_findExpectedCall_Respects_Repeatability(t *testing.T) {
+
+	m := new(Mock)
+	m.On("One", 1).Return("one")
+	m.On("Two", 2).Return("two").Once()
+	m.On("Two", 3).Return("three").Twice()
+	m.On("Two", 3).Return("three").Times(8)
+
+	f, c := m.findExpectedCall("Two", 3)
+
+	if assert.Equal(t, 2, f) {
 		if assert.NotNil(t, c) {
 			assert.Equal(t, "Two", c.Method)
 			assert.Equal(t, 3, c.Arguments[0])
@@ -158,6 +264,58 @@ func Test_Mock_Called(t *testing.T) {
 		assert.Equal(t, "6", returnArguments[1])
 		assert.Equal(t, true, returnArguments[2])
 	}
+
+}
+
+func Test_Mock_Called_For_Bounded_Repeatability(t *testing.T) {
+
+	var mockedService *TestExampleImplementation = new(TestExampleImplementation)
+
+	mockedService.Mock.On("Test_Mock_Called_For_Bounded_Repeatability", 1, 2, 3).Return(5, "6", true).Once()
+	mockedService.Mock.On("Test_Mock_Called_For_Bounded_Repeatability", 1, 2, 3).Return(-1, "hi", false)
+
+	returnArguments1 := mockedService.Mock.Called(1, 2, 3)
+	returnArguments2 := mockedService.Mock.Called(1, 2, 3)
+
+	if assert.Equal(t, 2, len(mockedService.Mock.Calls)) {
+		assert.Equal(t, "Test_Mock_Called_For_Bounded_Repeatability", mockedService.Mock.Calls[0].Method)
+		assert.Equal(t, 1, mockedService.Mock.Calls[0].Arguments[0])
+		assert.Equal(t, 2, mockedService.Mock.Calls[0].Arguments[1])
+		assert.Equal(t, 3, mockedService.Mock.Calls[0].Arguments[2])
+
+		assert.Equal(t, "Test_Mock_Called_For_Bounded_Repeatability", mockedService.Mock.Calls[1].Method)
+		assert.Equal(t, 1, mockedService.Mock.Calls[1].Arguments[0])
+		assert.Equal(t, 2, mockedService.Mock.Calls[1].Arguments[1])
+		assert.Equal(t, 3, mockedService.Mock.Calls[1].Arguments[2])
+	}
+
+	if assert.Equal(t, 3, len(returnArguments1)) {
+		assert.Equal(t, 5, returnArguments1[0])
+		assert.Equal(t, "6", returnArguments1[1])
+		assert.Equal(t, true, returnArguments1[2])
+	}
+
+	if assert.Equal(t, 3, len(returnArguments2)) {
+		assert.Equal(t, -1, returnArguments2[0])
+		assert.Equal(t, "hi", returnArguments2[1])
+		assert.Equal(t, false, returnArguments2[2])
+	}
+
+}
+
+func Test_Mock_Called_For_SetTime_Expectation(t *testing.T) {
+
+	var mockedService *TestExampleImplementation = new(TestExampleImplementation)
+
+	mockedService.Mock.On("TheExampleMethod", 1, 2, 3).Return(5, "6", true).Times(4)
+
+	mockedService.TheExampleMethod(1, 2, 3)
+	mockedService.TheExampleMethod(1, 2, 3)
+	mockedService.TheExampleMethod(1, 2, 3)
+	mockedService.TheExampleMethod(1, 2, 3)
+	assert.Panics(t, func() {
+		mockedService.TheExampleMethod(1, 2, 3)
+	})
 
 }
 
@@ -225,6 +383,27 @@ func Test_Mock_AssertExpectations(t *testing.T) {
 
 }
 
+func Test_Mock_AssertExpectations_With_Repeatability(t *testing.T) {
+
+	var mockedService *TestExampleImplementation = new(TestExampleImplementation)
+
+	mockedService.Mock.On("Test_Mock_AssertExpectations_With_Repeatability", 1, 2, 3).Return(5, 6, 7).Twice()
+
+	tt := new(testing.T)
+	assert.False(t, mockedService.AssertExpectations(tt))
+
+	// make the call now
+	mockedService.Mock.Called(1, 2, 3)
+
+	assert.False(t, mockedService.AssertExpectations(tt))
+
+	mockedService.Mock.Called(1, 2, 3)
+
+	// now assert expectations
+	assert.True(t, mockedService.AssertExpectations(tt))
+
+}
+
 func Test_Mock_AssertNumberOfCalls(t *testing.T) {
 
 	var mockedService *TestExampleImplementation = new(TestExampleImplementation)
@@ -262,6 +441,23 @@ func Test_Mock_AssertCalled_WithArguments(t *testing.T) {
 	tt := new(testing.T)
 	assert.True(t, mockedService.AssertCalled(tt, "Test_Mock_AssertCalled_WithArguments", 1, 2, 3))
 	assert.False(t, mockedService.AssertCalled(tt, "Test_Mock_AssertCalled_WithArguments", 2, 3, 4))
+
+}
+
+func Test_Mock_AssertCalled_WithArguments_With_Repeatability(t *testing.T) {
+
+	var mockedService *TestExampleImplementation = new(TestExampleImplementation)
+
+	mockedService.Mock.On("Test_Mock_AssertCalled_WithArguments_With_Repeatability", 1, 2, 3).Return(5, 6, 7).Once()
+	mockedService.Mock.On("Test_Mock_AssertCalled_WithArguments_With_Repeatability", 2, 3, 4).Return(5, 6, 7).Once()
+
+	mockedService.Mock.Called(1, 2, 3)
+	mockedService.Mock.Called(2, 3, 4)
+
+	tt := new(testing.T)
+	assert.True(t, mockedService.AssertCalled(tt, "Test_Mock_AssertCalled_WithArguments_With_Repeatability", 1, 2, 3))
+	assert.True(t, mockedService.AssertCalled(tt, "Test_Mock_AssertCalled_WithArguments_With_Repeatability", 2, 3, 4))
+	assert.False(t, mockedService.AssertCalled(tt, "Test_Mock_AssertCalled_WithArguments_With_Repeatability", 3, 4, 5))
 
 }
 

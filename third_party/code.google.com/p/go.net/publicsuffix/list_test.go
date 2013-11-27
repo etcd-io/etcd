@@ -99,19 +99,18 @@ var publicSuffixTestCases = []struct {
 	{"www.xxx.yyy.zzz.pb.ao", "pb.ao"},
 
 	// The .ar rules are:
-	// *.ar
-	// !congresodelalengua3.ar
-	// !educ.ar
-	// !gobiernoelectronico.ar
-	// !mecon.ar
-	// !nacion.ar
-	// !nic.ar
-	// !promocion.ar
-	// !retina.ar
-	// !uba.ar
+	// ar
+	// com.ar
+	// edu.ar
+	// gob.ar
+	// int.ar
+	// mil.ar
+	// net.ar
+	// org.ar
+	// tur.ar
 	// blogspot.com.ar
 	{"ar", "ar"},
-	{"www.ar", "www.ar"},
+	{"www.ar", "ar"},
 	{"nic.ar", "ar"},
 	{"www.nic.ar", "ar"},
 	{"com.ar", "com.ar"},
@@ -376,12 +375,12 @@ var eTLDPlusOneTestCases = []struct {
 	{"city.kobe.jp", "city.kobe.jp"},
 	{"www.city.kobe.jp", "city.kobe.jp"},
 	// TLD with a wildcard rule and exceptions.
-	{"om", ""},
-	{"test.om", ""},
-	{"b.test.om", "b.test.om"},
-	{"a.b.test.om", "b.test.om"},
-	{"songfest.om", "songfest.om"},
-	{"www.songfest.om", "songfest.om"},
+	{"ck", ""},
+	{"test.ck", ""},
+	{"b.test.ck", "b.test.ck"},
+	{"a.b.test.ck", "b.test.ck"},
+	{"www.ck", "www.ck"},
+	{"www.www.ck", "www.ck"},
 	// US K12.
 	{"us", ""},
 	{"test.us", "test.us"},

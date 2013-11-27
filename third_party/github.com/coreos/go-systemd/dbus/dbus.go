@@ -25,32 +25,36 @@ type Conn struct {
 	dispatch map[string]func(dbus.Signal)
 }
 
-func New() *Conn {
+func New() (*Conn, error) {
 	c := new(Conn)
-	c.initConnection()
+
+	if err := c.initConnection(); err != nil {
+		return nil, err
+	}
+
 	c.initJobs()
 	c.initSubscription()
 	c.initDispatch()
-	return c
+	return c, nil
 }
 
-func (c *Conn) initConnection() {
+func (c *Conn) initConnection() error {
 	var err error
 	c.sysconn, err = dbus.SystemBusPrivate()
 	if err != nil {
-		return
+		return err
 	}
 
 	err = c.sysconn.Auth(nil)
 	if err != nil {
 		c.sysconn.Close()
-		return
+		return err
 	}
 
 	err = c.sysconn.Hello()
 	if err != nil {
 		c.sysconn.Close()
-		return
+		return err
 	}
 
 	c.sysobj = c.sysconn.Object("org.freedesktop.systemd1", dbus.ObjectPath("/org/freedesktop/systemd1"))
@@ -65,8 +69,10 @@ func (c *Conn) initConnection() {
 	err = c.sysobj.Call("org.freedesktop.systemd1.Manager.Subscribe", 0).Store()
 	if err != nil {
 		c.sysconn.Close()
-		return
+		return err
 	}
+
+	return nil
 }
 
 func (c *Conn) initDispatch() {

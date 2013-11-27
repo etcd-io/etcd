@@ -245,7 +245,7 @@ func TestWithTwoProtocol(t *testing.T) {
 func TestWithBadProtocol(t *testing.T) {
 	_, err := testWithProtocol(t, []string{"test"})
 	if err != ErrBadStatus {
-		t.Errorf("SubProto: expected %q, got %q", ErrBadStatus)
+		t.Errorf("SubProto: expected %v, got %v", ErrBadStatus, err)
 	}
 }
 

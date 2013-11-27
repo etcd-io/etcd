@@ -50,13 +50,11 @@ func TestSingleNodeRecovery(t *testing.T) {
 
 	time.Sleep(time.Second)
 
-	results, err := c.Get("foo")
+	result, err = c.Get("foo", false)
 	if err != nil {
 		t.Fatal("get fail: " + err.Error())
 		return
 	}
-
-	result = results[0]
 
 	if err != nil || result.Key != "/foo" || result.Value != "bar" || result.TTL > 99 {
 		if err != nil {

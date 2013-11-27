@@ -3,6 +3,7 @@ package mod
 
 import (
 	"net/http"
+	"path"
 
 	"github.com/coreos/etcd/mod/dashboard"
 	"github.com/coreos/etcd/mod/lock"
@@ -11,11 +12,18 @@ import (
 
 var ServeMux *http.Handler
 
+func addSlash(w http.ResponseWriter, req *http.Request) {
+	http.Redirect(w, req, path.Join("mod", req.URL.Path) + "/", 302)
+	return
+}
+
 func HttpHandler() (handler http.Handler) {
 	r := mux.NewRouter()
+	r.HandleFunc("/dashboard", addSlash)
 	r.PathPrefix("/dashboard/").Handler(http.StripPrefix("/dashboard/", dashboard.HttpHandler()))
 
 	// TODO: Use correct addr.
+	r.HandleFunc("/lock", addSlash)
 	r.PathPrefix("/lock").Handler(http.StripPrefix("/lock", lock.NewHandler("127.0.0.1:4001")))
 	return r
 }

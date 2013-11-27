@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// +build darwin freebsd linux netbsd openbsd
-
 package ipv4_test
 
 import (
@@ -75,6 +73,10 @@ func writeThenReadDatagram(t *testing.T, i int, c *ipv4.RawConn, wb []byte, src,
 	return b
 }
 
+func isUnicast(ip net.IP) bool {
+	return ip.To4() != nil && (ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsGlobalUnicast())
+}
+
 // LoopbackInterface returns a logical network interface for loopback
 // tests.
 func loopbackInterface() *net.Interface {
@@ -83,8 +85,24 @@ func loopbackInterface() *net.Interface {
 		return nil
 	}
 	for _, ifi := range ift {
-		if ifi.Flags&net.FlagLoopback != 0 {
-			return &ifi
+		if ifi.Flags&net.FlagLoopback == 0 || ifi.Flags&net.FlagUp == 0 {
+			continue
+		}
+		ifat, err := ifi.Addrs()
+		if err != nil {
+			continue
+		}
+		for _, ifa := range ifat {
+			switch ifa := ifa.(type) {
+			case *net.IPAddr:
+				if isUnicast(ifa.IP) {
+					return &ifi
+				}
+			case *net.IPNet:
+				if isUnicast(ifa.IP) {
+					return &ifi
+				}
+			}
 		}
 	}
 	return nil
@@ -94,31 +112,24 @@ func loopbackInterface() *net.Interface {
 // enabled network interface.  It also returns a unicast IPv4 address
 // that can be used for listening on ifi.
 func isMulticastAvailable(ifi *net.Interface) (net.IP, bool) {
-	if ifi.Flags&net.FlagUp == 0 || ifi.Flags&net.FlagMulticast == 0 {
+	if ifi == nil || ifi.Flags&net.FlagUp == 0 || ifi.Flags&net.FlagMulticast == 0 {
 		return nil, false
 	}
 	ifat, err := ifi.Addrs()
 	if err != nil {
 		return nil, false
 	}
-	if len(ifat) == 0 {
-		return nil, false
-	}
-	var ip net.IP
 	for _, ifa := range ifat {
-		switch v := ifa.(type) {
+		switch ifa := ifa.(type) {
 		case *net.IPAddr:
-			ip = v.IP
+			if isUnicast(ifa.IP) {
+				return ifa.IP, true
+			}
 		case *net.IPNet:
-			ip = v.IP
-		default:
-			continue
+			if isUnicast(ifa.IP) {
+				return ifa.IP, true
+			}
 		}
-		if ip.To4() == nil {
-			ip = nil
-			continue
-		}
-		break
 	}
-	return ip, true
+	return nil, false
 }

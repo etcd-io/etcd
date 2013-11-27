@@ -17,45 +17,39 @@ limitations under the License.
 package main
 
 import (
-	"flag"
 	"fmt"
-	"io/ioutil"
 	"os"
-	"os/signal"
-	"runtime/pprof"
 
 	"github.com/coreos/etcd/log"
 	"github.com/coreos/etcd/server"
 	"github.com/coreos/etcd/store"
-	"github.com/coreos/go-raft"
+	"github.com/coreos/raft"
 )
 
 func main() {
-	parseFlags()
-
 	// Load configuration.
 	var config = server.NewConfig()
 	if err := config.Load(os.Args[1:]); err != nil {
-		log.Fatal("Configuration error:", err)
+		fmt.Println(server.Usage() + "\n")
+		fmt.Println(err.Error() + "\n")
+		os.Exit(1)
+	} else if config.ShowVersion {
+		fmt.Println(server.ReleaseVersion)
+		os.Exit(0)
+	} else if config.ShowHelp {
+		fmt.Println(server.Usage() + "\n")
+		os.Exit(0)
 	}
 
-	// Turn on logging.
+	// Enable options.
 	if config.VeryVerbose {
 		log.Verbose = true
 		raft.SetLogLevel(raft.Debug)
 	} else if config.Verbose {
 		log.Verbose = true
 	}
-
-	// Setup a default directory based on the machine name
-	if config.DataDir == "" {
-		config.DataDir = config.Name + ".etcd"
-		log.Warnf("Using the directory %s as the etcd configuration directory because a directory was not specified. ", config.DataDir)
-	}
-
-	// Create data directory if it doesn't already exist.
-	if err := os.MkdirAll(config.DataDir, 0744); err != nil {
-		log.Fatalf("Unable to create path: %s", err)
+	if config.CPUProfileFile != "" {
+		profile(config.CPUProfileFile)
 	}
 
 	// Load info object.
@@ -115,40 +109,4 @@ func main() {
 		log.Fatal(ps.ListenAndServe(config.Snapshot, config.Peers))
 	}()
 	log.Fatal(s.ListenAndServe())
-}
-
-// Parses non-configuration flags.
-func parseFlags() {
-	var versionFlag bool
-	var cpuprofile string
-
-	f := flag.NewFlagSet(os.Args[0], -1)
-	f.SetOutput(ioutil.Discard)
-	f.BoolVar(&versionFlag, "version", false, "print the version and exit")
-	f.StringVar(&cpuprofile, "cpuprofile", "", "write cpu profile to file")
-	f.Parse(os.Args[1:])
-
-	// Print version if necessary.
-	if versionFlag {
-		fmt.Println(server.ReleaseVersion)
-		os.Exit(0)
-	}
-
-	// Begin CPU profiling if specified.
-	if cpuprofile != "" {
-		f, err := os.Create(cpuprofile)
-		if err != nil {
-			log.Fatal(err)
-		}
-		pprof.StartCPUProfile(f)
-
-		c := make(chan os.Signal, 1)
-		signal.Notify(c, os.Interrupt)
-		go func() {
-			sig := <-c
-			log.Infof("captured %v, stopping profiler and exiting..", sig)
-			pprof.StopCPUProfile()
-			os.Exit(1)
-		}()
-	}
 }

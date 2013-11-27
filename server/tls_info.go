@@ -4,7 +4,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
-	"errors"
+	"fmt"
 	"io/ioutil"
 )
 
@@ -27,7 +27,7 @@ func (info TLSInfo) Config() (TLSConfig, error) {
 
 	// Both the key and cert must be present.
 	if info.KeyFile == "" || info.CertFile == "" {
-		return t, errors.New("KeyFile and CertFile must both be present")
+		return t, fmt.Errorf("KeyFile and CertFile must both be present[key: %v, cert: %v]", info.KeyFile, info.CertFile)
 	}
 
 	tlsCert, err := tls.LoadX509KeyPair(info.CertFile, info.KeyFile)

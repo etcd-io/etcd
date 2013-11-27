@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"net/url"
 	"strings"
 	"time"
 
@@ -17,7 +16,7 @@ import (
 	"github.com/coreos/etcd/server/v2"
 	"github.com/coreos/etcd/store"
 	_ "github.com/coreos/etcd/store/v2"
-	"github.com/coreos/go-raft"
+	"github.com/coreos/raft"
 	"github.com/gorilla/mux"
 )
 
@@ -32,14 +31,18 @@ type Server struct {
 	url         string
 	tlsConf     *TLSConfig
 	tlsInfo     *TLSInfo
-	corsOrigins map[string]bool
+	router      *mux.Router
+	corsHandler *corsHandler
 }
 
 // Creates a new Server.
 func New(name string, urlStr string, bindAddr string, tlsConf *TLSConfig, tlsInfo *TLSInfo, peerServer *PeerServer, registry *Registry, store store.Store) *Server {
+	r := mux.NewRouter()
+	cors := &corsHandler{router: r}
+
 	s := &Server{
 		Server: http.Server{
-			Handler:   mux.NewRouter(),
+			Handler:   cors,
 			TLSConfig: &tlsConf.Server,
 			Addr:      bindAddr,
 		},
@@ -50,6 +53,8 @@ func New(name string, urlStr string, bindAddr string, tlsConf *TLSConfig, tlsInf
 		tlsConf:    tlsConf,
 		tlsInfo:    tlsInfo,
 		peerServer: peerServer,
+		router:     r,
+		corsHandler: cors,
 	}
 
 	// Install the routes.
@@ -124,7 +129,7 @@ func (s *Server) installV2() {
 }
 
 func (s *Server) installMod() {
-	r := s.Handler.(*mux.Router)
+	r := s.router
 	r.PathPrefix("/mod").Handler(http.StripPrefix("/mod", mod.HttpHandler()))
 }
 
@@ -144,19 +149,12 @@ func (s *Server) handleFuncV2(path string, f func(http.ResponseWriter, *http.Req
 
 // Adds a server handler to the router.
 func (s *Server) handleFunc(path string, f func(http.ResponseWriter, *http.Request) error) *mux.Route {
-	r := s.Handler.(*mux.Router)
+	r := s.router
 
 	// Wrap the standard HandleFunc interface to pass in the server reference.
 	return r.HandleFunc(path, func(w http.ResponseWriter, req *http.Request) {
 		// Log request.
 		log.Debugf("[recv] %s %s %s [%s]", req.Method, s.url, req.URL.Path, req.RemoteAddr)
-
-		// Write CORS header.
-		if s.OriginAllowed("*") {
-			w.Header().Add("Access-Control-Allow-Origin", "*")
-		} else if origin := req.Header.Get("Origin"); s.OriginAllowed(origin) {
-			w.Header().Add("Access-Control-Allow-Origin", origin)
-		}
 
 		// Execute handler function and return error if necessary.
 		if err := f(w, req); err != nil {
@@ -302,26 +300,14 @@ func (s *Server) Dispatch(c raft.Command, w http.ResponseWriter, req *http.Reque
 	}
 }
 
-// Sets a comma-delimited list of origins that are allowed.
-func (s *Server) AllowOrigins(origins []string) error {
-	// Construct a lookup of all origins.
-	m := make(map[string]bool)
-	for _, v := range origins {
-		if v != "*" {
-			if _, err := url.Parse(v); err != nil {
-				return fmt.Errorf("Invalid CORS origin: %s", err)
-			}
-		}
-		m[v] = true
-	}
-	s.corsOrigins = m
-
-	return nil
+// OriginAllowed determines whether the server will allow a given CORS origin.
+func (s *Server) OriginAllowed(origin string) bool {
+	return s.corsHandler.OriginAllowed(origin)
 }
 
-// Determines whether the server will allow a given CORS origin.
-func (s *Server) OriginAllowed(origin string) bool {
-	return s.corsOrigins["*"] || s.corsOrigins[origin]
+// AllowOrigins sets a comma-delimited list of origins that are allowed.
+func (s *Server) AllowOrigins(origins []string) error {
+	return s.corsHandler.AllowOrigins(origins)
 }
 
 // Handler to return the current version of etcd.

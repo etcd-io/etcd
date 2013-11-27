@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/log"
-	"github.com/coreos/go-raft"
+	"github.com/coreos/raft"
 )
 
 // Timeout for setup internal raft http connection

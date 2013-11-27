@@ -94,23 +94,23 @@ angular.module('etcdBrowser', ['ngRoute', 'etcd', 'timeRelative'])
 
   $scope.saveData = function() {
     // TODO: fixup etcd to allow for empty values
-    $scope.key.set($scope.singleValue || ' ').success(function (data, status, headers, config) {
+    $scope.key.set($scope.singleValue || ' ').then(function(response) {
       $scope.save = 'etcd-save-hide';
       $scope.preview = 'etcd-preview-hide';
       $scope.back();
       $scope.writingNew = false;
-    }).error(function (data, status, headers, config) {
+    }, function (response) {
       $scope.showSaveError(data.message);
     });
   };
 
   $scope.deleteKey = function() {
-    $scope.key.deleteKey().success(function (data, status, headers, config) {
+    $scope.key.deleteKey().then(function(response) {
       //TODO: remove loader
       $scope.save = 'etcd-save-hide';
       $scope.preview = 'etcd-preview-hide';
       $scope.back();
-    }).error(function (data, status, headers, config) {
+    }, function (response) {
       //TODO: remove loader
       //show errors
       $scope.showBrowseError('Could not delete the key');

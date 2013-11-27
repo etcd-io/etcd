@@ -72,7 +72,7 @@ func slicePacket(b []byte) (h, p []byte, err error) {
 //	Checksum      = platform sets an appropriate value if Checksum is zero
 //	Src           = platform sets an appropriate value if Src is nil
 //	Dst           = <must be specified>
-//	h.Options     = optional
+//	Options       = optional
 func (c *packetHandler) WriteTo(h *Header, p []byte, cm *ControlMessage) error {
 	if !c.ok() {
 		return syscall.EINVAL
