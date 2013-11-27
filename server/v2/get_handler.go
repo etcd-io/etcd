@@ -50,7 +50,7 @@ func GetHandler(w http.ResponseWriter, req *http.Request, s Server) error {
 		if err != nil {
 			return etcdErr.NewError(500, key, s.Store().Index())
 		}
-		defer watcher.Cancel()
+		defer watcher.Remove()
 
 		cn, _ := w.(http.CloseNotifier)
 		closeChan := cn.CloseNotify()

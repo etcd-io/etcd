@@ -51,7 +51,7 @@ func (wh *watcherHub) watch(prefix string, recursive bool, index uint64) (*watch
 
 	w := &watcher{
 		EventChan: make(chan *Event, 1), // use a buffered channel
-		Cancel: func() {
+		Remove: func() {
 			if l, ok := wh.watchers[prefix]; ok {
 				wh.rwl.Lock()
 				defer wh.rwl.Unlock()

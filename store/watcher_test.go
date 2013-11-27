@@ -45,7 +45,7 @@ func TestWatcher(t *testing.T) {
 		t.Fatal("recv != send")
 	}
 
-	w.Cancel()
+	w.Remove()
 
 	w, _ = wh.watch("/foo", false, 2)
 

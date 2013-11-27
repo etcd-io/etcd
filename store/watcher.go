@@ -18,7 +18,7 @@ package store
 
 type watcher struct {
 	EventChan  chan *Event
-	Cancel     func()
+	Remove     func()
 	recursive  bool
 	sinceIndex uint64
 }
