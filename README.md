@@ -216,6 +216,13 @@ curl -L http://127.0.0.1:4001/v2/keys/foo?wait=true\&waitIndex=7
 
 The watch command returns immediately with the same response as previous.
 
+If you pass `stream=true` in query parameters, the response does not end after returning the first change,
+instead all changes to the key are returned until you close the connection:
+
+```sh
+curl -L http://127.0.0.1:4001/v2/keys/foo?wait=true\&stream=true
+```
+
 
 ### Atomic Compare-and-Swap (CAS)
 

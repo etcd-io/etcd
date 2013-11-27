@@ -17,14 +17,15 @@ limitations under the License.
 package store
 
 type watcher struct {
-	eventChan  chan *Event
+	EventChan  chan *Event
+	Remove     func()
 	recursive  bool
+	stream     bool
 	sinceIndex uint64
 }
 
-// notify function notifies the watcher. If the watcher interests in the given path,
-// the function will return true.
-func (w *watcher) notify(e *Event, originalPath bool, deleted bool) bool {
+// notify function notifies the watcher. Sends the event to EventChan if interested.
+func (w *watcher) notify(e *Event, originalPath bool, deleted bool) {
 	// watcher is interested the path in three cases and under one condition
 	// the condition is that the event happens after the watcher's sinceIndex
 
@@ -38,11 +39,9 @@ func (w *watcher) notify(e *Event, originalPath bool, deleted bool) bool {
 
 	// 3. when we delete a directory, we need to force notify all the watchers who watches
 	// at the file we need to delete.
-	// For example a watcher is watching at "/foo/bar". And we deletes "/foo". The watcher
+	// For example a watcher is watching at "/foo/bar" and we delete "/foo". The watcher
 	// should get notified even if "/foo" is not the path it is watching.
 	if (w.recursive || originalPath || deleted) && e.Index() >= w.sinceIndex {
-		w.eventChan <- e
-		return true
+		w.EventChan <- e
 	}
-	return false
 }

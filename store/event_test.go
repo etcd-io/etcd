@@ -41,26 +41,35 @@ func TestScanHistory(t *testing.T) {
 	eh.addEvent(newEvent(Create, "/foo/bar/bar", 4))
 	eh.addEvent(newEvent(Create, "/foo/foo/foo", 5))
 
-	e, err := eh.scan("/foo", 1)
+	events, err := eh.scan("/foo", 1)
+	e := events[0]
 	if err != nil || e.Index() != 1 {
 		t.Fatalf("scan error [/foo] [1] %v", e.Index)
 	}
+	if len(events) != 5 {
+		t.Fatalf("invalid history")
+	}
 
-	e, err = eh.scan("/foo/bar", 1)
-
+	events, err = eh.scan("/foo/bar", 1)
+	e = events[0]
 	if err != nil || e.Index() != 2 {
 		t.Fatalf("scan error [/foo/bar] [2] %v", e.Index)
 	}
+	if len(events) != 2 {
+		t.Fatalf("invalid history")
+	}
 
-	e, err = eh.scan("/foo/bar", 3)
-
+	events, err = eh.scan("/foo/bar", 3)
+	e = events[0]
 	if err != nil || e.Index() != 4 {
 		t.Fatalf("scan error [/foo/bar/bar] [4] %v", e.Index)
 	}
+	if len(events) != 1 {
+		t.Fatalf("invalid history")
+	}
 
-	e, err = eh.scan("/foo/bar", 6)
-
-	if e != nil {
+	events, err = eh.scan("/foo/bar", 6)
+	if events != nil {
 		t.Fatalf("bad index shoud reuturn nil")
 	}
 }
