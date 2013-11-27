@@ -46,6 +46,7 @@ func (r *Registry) Register(name string, peerURL string, url string) error {
 	key := path.Join(RegistryKey, name)
 	value := fmt.Sprintf("raft=%s&etcd=%s", peerURL, url)
 	_, err := r.store.Create(key, value, false, store.Permanent)
+	fmt.Println("register.1:", key, value, err)
 	log.Debugf("Register: %s", name)
 	return err
 }

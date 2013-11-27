@@ -207,7 +207,7 @@ func (c *Client) sendRequest(method string, _path string, values url.Values) (*R
 		if err != nil {
 			retry++
 			if retry > 2*len(c.cluster.Machines) {
-				return nil, errors.New("Cannot reach servers")
+				return nil, errors.New("Cannot reach servers" + err.Error())
 			}
 			num := retry % len(c.cluster.Machines)
 			logger.Debug("update.leader[", c.cluster.Leader, ",", c.cluster.Machines[num], "]")

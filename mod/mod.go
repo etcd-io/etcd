@@ -17,13 +17,12 @@ func addSlash(w http.ResponseWriter, req *http.Request) {
 	return
 }
 
-func HttpHandler() (handler http.Handler) {
+func HttpHandler(addr string) http.Handler {
 	r := mux.NewRouter()
 	r.HandleFunc("/dashboard", addSlash)
 	r.PathPrefix("/dashboard/").Handler(http.StripPrefix("/dashboard/", dashboard.HttpHandler()))
 
 	// TODO: Use correct addr.
-	r.HandleFunc("/lock", addSlash)
-	r.PathPrefix("/lock").Handler(http.StripPrefix("/lock", lock.NewHandler("127.0.0.1:4001")))
+	r.PathPrefix("/lock").Handler(http.StripPrefix("/lock", lock.NewHandler(addr)))
 	return r
 }

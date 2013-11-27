@@ -16,12 +16,12 @@ func TestModLockAcquire(t *testing.T) {
 	v := url.Values{}
 	tests.RunServer(func(s *server.Server) {
 		// Acquire lock.
-		resp, err := tests.PutForm(fmt.Sprintf("http://%s%s", s.URL(), "/mod/lock"), v)
+		url := fmt.Sprintf("http://%s%s", s.URL(), "/mod/lock/foo?ttl=2")
+		resp, err := tests.PutForm(url, v)
 		assert.NoError(t, err)
 		ret := tests.ReadBody(resp)
 		assert.Equal(t, string(ret), "XXX")
 
-		fmt.Println("URL:", fmt.Sprintf("http://%s%s", s.URL(), "/mod/lock"))
 		time.Sleep(60 * time.Second)
 		// TODO: Check that it has been acquired.
 		// TODO: Release lock.

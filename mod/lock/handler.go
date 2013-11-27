@@ -1,9 +1,10 @@
 package lock
 
 import (
-	"fmt"
 	"net/http"
 	"path"
+	"strconv"
+	"sort"
 
 	"github.com/gorilla/mux"
 	"github.com/coreos/go-etcd/etcd"
@@ -19,6 +20,7 @@ type handler struct {
 
 // NewHandler creates an HTTP handler that can be registered on a router.
 func NewHandler(addr string) (http.Handler) {
+	etcd.OpenDebug()
 	h := &handler{
 		Router: mux.NewRouter(),
 		client: etcd.NewClient([]string{addr}),
@@ -36,9 +38,10 @@ func extractResponseIndices(resp *etcd.Response) []int {
 	var indices []int
 	for _, kv := range resp.Kvs {
 		if index, _ := strconv.Atoi(path.Base(kv.Key)); index > 0 {
-			indicies = append(indices, index)
+			indices = append(indices, index)
 		}
 	}
+	sort.Ints(indices)
 	return indices
 }
 

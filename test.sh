@@ -1,6 +1,9 @@
 #!/bin/sh
 set -e
 
+PKGS="./mod/lock/tests"
+# PKGS="./store ./server ./server/v2/tests"
+
 # Get GOPATH, etc from build
 . ./build
 
@@ -8,14 +11,11 @@ set -e
 export GOPATH="${PWD}"
 
 # Unit tests
-go test -i ./server
-go test -v ./server
-
-go test -i ./server/v2/tests
-go test -v ./server/v2/tests
-
-go test -i ./store
-go test -v ./store
+for PKG in $PKGS
+do
+    go test -i $PKG
+    go test -v $PKG
+done
 
 # Functional tests
 go test -i ./tests/functional

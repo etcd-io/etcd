@@ -130,7 +130,7 @@ func (s *Server) installV2() {
 
 func (s *Server) installMod() {
 	r := s.router
-	r.PathPrefix("/mod").Handler(http.StripPrefix("/mod", mod.HttpHandler()))
+	r.PathPrefix("/mod").Handler(http.StripPrefix("/mod", mod.HttpHandler(s.url)))
 }
 
 // Adds a v1 server handler to the router.
@@ -320,12 +320,14 @@ func (s *Server) GetVersionHandler(w http.ResponseWriter, req *http.Request) err
 // Handler to return the current leader's raft address
 func (s *Server) GetLeaderHandler(w http.ResponseWriter, req *http.Request) error {
 	leader := s.peerServer.RaftServer().Leader()
+	fmt.Println("/leader.1?", leader)
 	if leader == "" {
 		return etcdErr.NewError(etcdErr.EcodeLeaderElect, "", s.Store().Index())
 	}
 	w.WriteHeader(http.StatusOK)
 	url, _ := s.registry.PeerURL(leader)
 	w.Write([]byte(url))
+	fmt.Println("/leader.2?", leader, url)
 	return nil
 }
 
