@@ -364,6 +364,28 @@ func TestStoreWatchRecursiveCompareAndSwap(t *testing.T) {
 	assert.Equal(t, e.Key, "/foo/bar", "")
 }
 
+// Ensure that the store can watch in streaming mode.
+func TestStoreWatchStream(t *testing.T) {
+	s := newStore()
+	w, _ := s.Watch("/foo", false, true, 0)
+	// first modification
+	s.Create("/foo", "bar", false, Permanent)
+	e := nbselect(w.EventChan)
+	assert.Equal(t, e.Action, "create", "")
+	assert.Equal(t, e.Key, "/foo", "")
+	assert.Equal(t, e.Value, "bar", "")
+	e = nbselect(w.EventChan)
+	assert.Nil(t, e, "")
+	// second modification
+	s.Update("/foo", "baz", Permanent)
+	e = nbselect(w.EventChan)
+	assert.Equal(t, e.Action, "update", "")
+	assert.Equal(t, e.Key, "/foo", "")
+	assert.Equal(t, e.Value, "baz", "")
+	e = nbselect(w.EventChan)
+	assert.Nil(t, e, "")
+}
+
 // Ensure that the store can watch for key expiration.
 func TestStoreWatchExpire(t *testing.T) {
 	s := newStore()
