@@ -18,7 +18,7 @@ See [etcdctl][etcdctl] for a simple command line client.
 Or feel free to just use curl, as in the examples below.
 
 [raft]: https://github.com/coreos/go-raft
-[etcdctl]: http://coreos.com/docs/etcdctl/
+[etcdctl]: http://github.com/coreos/etcdctl/
 
 ## Contact
 
