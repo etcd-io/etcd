@@ -59,7 +59,7 @@ type Store interface {
 }
 
 type store struct {
-	Root           *Node
+	Root           *node
 	WatcherHub     *watcherHub
 	CurrentIndex   uint64
 	Stats          *Stats
@@ -152,7 +152,7 @@ func (s *store) Get(nodePath string, recursive, sorted bool) (*Event, error) {
 	return e, nil
 }
 
-// Create function creates the Node at nodePath. Create will help to create intermediate directories with no ttl.
+// Create function creates the node at nodePath. Create will help to create intermediate directories with no ttl.
 // If the node has already existed, create will fail.
 // If any node on the path is a file, create will fail.
 func (s *store) Create(nodePath string, value string, unique bool, expireTime time.Time) (*Event, error) {
@@ -171,7 +171,7 @@ func (s *store) Create(nodePath string, value string, unique bool, expireTime ti
 	return e, err
 }
 
-// Set function creates or replace the Node at nodePath.
+// Set function creates or replace the node at nodePath.
 func (s *store) Set(nodePath string, value string, expireTime time.Time) (*Event, error) {
 	nodePath = path.Clean(path.Join("/", nodePath))
 
@@ -309,7 +309,7 @@ func (s *store) Watch(prefix string, recursive bool, sinceIndex uint64) (<-chan 
 }
 
 // walk function walks all the nodePath and apply the walkFunc on each directory
-func (s *store) walk(nodePath string, walkFunc func(prev *Node, component string) (*Node, *etcdErr.Error)) (*Node, *etcdErr.Error) {
+func (s *store) walk(nodePath string, walkFunc func(prev *node, component string) (*node, *etcdErr.Error)) (*node, *etcdErr.Error) {
 	components := strings.Split(nodePath, "/")
 
 	curr := s.Root
@@ -396,8 +396,7 @@ func (s *store) internalCreate(nodePath string, value string, unique bool, repla
 		expireTime = Permanent
 	}
 
-
-	dir, newNodeName := path.Split(nodePath)
+	dir, newnodeName := path.Split(nodePath)
 
 	// walk through the nodePath, create dirs and get the last directory node
 	d, err := s.walk(dir, s.checkDir)
@@ -410,7 +409,7 @@ func (s *store) internalCreate(nodePath string, value string, unique bool, repla
 
 	e := newEvent(action, nodePath, nextIndex)
 
-	n, _ := d.GetChild(newNodeName)
+	n, _ := d.GetChild(newnodeName)
 
 	// force will try to replace a existing file
 	if n != nil {
@@ -441,7 +440,7 @@ func (s *store) internalCreate(nodePath string, value string, unique bool, repla
 	// we are sure d is a directory and does not have the children with name n.Name
 	d.Add(n)
 
-	// Node with TTL
+	// node with TTL
 	if !n.IsPermanent() {
 		s.ttlKeyHeap.push(n)
 
@@ -455,10 +454,10 @@ func (s *store) internalCreate(nodePath string, value string, unique bool, repla
 }
 
 // InternalGet function get the node of the given nodePath.
-func (s *store) internalGet(nodePath string) (*Node, *etcdErr.Error) {
+func (s *store) internalGet(nodePath string) (*node, *etcdErr.Error) {
 	nodePath = path.Clean(path.Join("/", nodePath))
 
-	walkFunc := func(parent *Node, name string) (*Node, *etcdErr.Error) {
+	walkFunc := func(parent *node, name string) (*node, *etcdErr.Error) {
 
 		if !parent.IsDir() {
 			err := etcdErr.NewError(etcdErr.EcodeNotDir, parent.Path, s.CurrentIndex)
@@ -507,7 +506,7 @@ func (s *store) DeleteExpiredKeys(cutoff time.Time) {
 // If it is a directory, this function will return the pointer to that node.
 // If it does not exist, this function will create a new directory and return the pointer to that node.
 // If it is a file, this function will return error.
-func (s *store) checkDir(parent *Node, dirName string) (*Node, *etcdErr.Error) {
+func (s *store) checkDir(parent *node, dirName string) (*node, *etcdErr.Error) {
 	node, ok := parent.Children[dirName]
 
 	if ok {
