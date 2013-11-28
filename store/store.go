@@ -113,13 +113,14 @@ func (s *store) Get(nodePath string, recursive, sorted bool) (*Event, error) {
 		return nil, err
 	}
 
-	e := newEvent(Get, nodePath, n.ModifiedIndex)
+	e := newEvent(Get, nodePath, n.ModifiedIndex, n.CreatedIndex)
+	eNode := e.Node
 
 	if n.IsDir() { // node is a directory
-		e.Dir = true
+		eNode.Dir = true
 
 		children, _ := n.List()
-		e.KVPairs = make([]KeyValuePair, len(children))
+		eNode.Nodes = make(Nodes, len(children))
 
 		// we do not use the index in the children slice directly
 		// we need to skip the hidden one
@@ -130,22 +131,22 @@ func (s *store) Get(nodePath string, recursive, sorted bool) (*Event, error) {
 				continue
 			}
 
-			e.KVPairs[i] = child.Pair(recursive, sorted)
+			eNode.Nodes[i] = child.Repr(recursive, sorted)
 			i++
 		}
 
 		// eliminate hidden nodes
-		e.KVPairs = e.KVPairs[:i]
+		eNode.Nodes = eNode.Nodes[:i]
 
 		if sorted {
-			sort.Sort(e.KVPairs)
+			sort.Sort(eNode.Nodes)
 		}
 
 	} else { // node is a file
-		e.Value, _ = n.Read()
+		eNode.Value, _ = n.Read()
 	}
 
-	e.Expiration, e.TTL = n.ExpirationAndTTL()
+	eNode.Expiration, eNode.TTL = n.ExpirationAndTTL()
 
 	s.Stats.Inc(GetSuccess)
 
@@ -214,15 +215,17 @@ func (s *store) CompareAndSwap(nodePath string, prevValue string, prevIndex uint
 		// update etcd index
 		s.CurrentIndex++
 
-		e := newEvent(CompareAndSwap, nodePath, s.CurrentIndex)
-		e.PrevValue = n.Value
+		e := newEvent(CompareAndSwap, nodePath, s.CurrentIndex, n.CreatedIndex)
+		eNode := e.Node
+
+		eNode.PrevValue = n.Value
 
 		// if test succeed, write the value
 		n.Write(value, s.CurrentIndex)
 		n.UpdateTTL(expireTime)
 
-		e.Value = value
-		e.Expiration, e.TTL = n.ExpirationAndTTL()
+		eNode.Value = value
+		eNode.Expiration, eNode.TTL = n.ExpirationAndTTL()
 
 		s.WatcherHub.notify(e)
 		s.Stats.Inc(CompareAndSwapSuccess)
@@ -251,12 +254,13 @@ func (s *store) Delete(nodePath string, recursive bool) (*Event, error) {
 		return nil, err
 	}
 
-	e := newEvent(Delete, nodePath, nextIndex)
+	e := newEvent(Delete, nodePath, nextIndex, n.CreatedIndex)
+	eNode := e.Node
 
 	if n.IsDir() {
-		e.Dir = true
+		eNode.Dir = true
 	} else {
-		e.PrevValue = n.Value
+		eNode.PrevValue = eNode.Value
 	}
 
 	callback := func(path string) { // notify function
@@ -348,7 +352,8 @@ func (s *store) Update(nodePath string, newValue string, expireTime time.Time) (
 		return nil, err
 	}
 
-	e := newEvent(Update, nodePath, nextIndex)
+	e := newEvent(Update, nodePath, nextIndex, n.CreatedIndex)
+	eNode := e.Node
 
 	if len(newValue) != 0 {
 		if n.IsDir() {
@@ -357,18 +362,19 @@ func (s *store) Update(nodePath string, newValue string, expireTime time.Time) (
 			return nil, etcdErr.NewError(etcdErr.EcodeNotFile, nodePath, currIndex)
 		}
 
-		e.PrevValue = n.Value
+		eNode.PrevValue = n.Value
 		n.Write(newValue, nextIndex)
-		e.Value = newValue
+		eNode.Value = newValue
+
 	} else {
 		// do not update value
-		e.Value = n.Value
+		eNode.Value = n.Value
 	}
 
 	// update ttl
 	n.UpdateTTL(expireTime)
 
-	e.Expiration, e.TTL = n.ExpirationAndTTL()
+	eNode.Expiration, eNode.TTL = n.ExpirationAndTTL()
 
 	s.WatcherHub.notify(e)
 
@@ -407,7 +413,8 @@ func (s *store) internalCreate(nodePath string, value string, unique bool, repla
 		return nil, err
 	}
 
-	e := newEvent(action, nodePath, nextIndex)
+	e := newEvent(action, nodePath, nextIndex, nextIndex)
+	eNode := e.Node
 
 	n, _ := d.GetChild(newnodeName)
 
@@ -417,7 +424,7 @@ func (s *store) internalCreate(nodePath string, value string, unique bool, repla
 			if n.IsDir() {
 				return nil, etcdErr.NewError(etcdErr.EcodeNotFile, nodePath, currIndex)
 			}
-			e.PrevValue, _ = n.Read()
+			eNode.PrevValue, _ = n.Read()
 
 			n.Remove(false, nil)
 		} else {
@@ -426,12 +433,12 @@ func (s *store) internalCreate(nodePath string, value string, unique bool, repla
 	}
 
 	if len(value) != 0 { // create file
-		e.Value = value
+		eNode.Value = value
 
 		n = newKV(s, nodePath, value, nextIndex, d, "", expireTime)
 
 	} else { // create directory
-		e.Dir = true
+		eNode.Dir = true
 
 		n = newDir(s, nodePath, nextIndex, d, "", expireTime)
 
@@ -444,7 +451,7 @@ func (s *store) internalCreate(nodePath string, value string, unique bool, repla
 	if !n.IsPermanent() {
 		s.ttlKeyHeap.push(n)
 
-		e.Expiration, e.TTL = n.ExpirationAndTTL()
+		eNode.Expiration, eNode.TTL = n.ExpirationAndTTL()
 	}
 
 	s.CurrentIndex = nextIndex
@@ -497,7 +504,7 @@ func (s *store) DeleteExpiredKeys(cutoff time.Time) {
 		s.CurrentIndex++
 
 		s.Stats.Inc(ExpireCount)
-		s.WatcherHub.notify(newEvent(Expire, node.Path, s.CurrentIndex))
+		s.WatcherHub.notify(newEvent(Expire, node.Path, s.CurrentIndex, node.CreatedIndex))
 	}
 
 }

@@ -77,7 +77,7 @@ func (wh *watcherHub) watch(prefix string, recursive bool, index uint64) (<-chan
 func (wh *watcherHub) notify(e *Event) {
 	e = wh.EventHistory.addEvent(e) // add event into the eventHistory
 
-	segments := strings.Split(e.Key, "/")
+	segments := strings.Split(e.Node.Key, "/")
 
 	currPath := "/"
 
@@ -111,7 +111,7 @@ func (wh *watcherHub) notifyWatchers(e *Event, path string, deleted bool) {
 
 			w, _ := curr.Value.(*watcher)
 
-			if w.notify(e, e.Key == path, deleted) {
+			if w.notify(e, e.Node.Key == path, deleted) {
 
 				// if we successfully notify a watcher
 				// we need to remove the watcher from the list

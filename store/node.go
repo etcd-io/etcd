@@ -16,7 +16,7 @@ var Permanent time.Time
 type node struct {
 	Path string
 
-	CreateIndex   uint64
+	CreatedIndex  uint64
 	ModifiedIndex uint64
 
 	Parent *node `json:"-"` // should not encode this field! avoid circular dependency.
@@ -31,13 +31,13 @@ type node struct {
 }
 
 // newKV creates a Key-Value pair
-func newKV(store *store, nodePath string, value string, createIndex uint64,
+func newKV(store *store, nodePath string, value string, createdIndex uint64,
 	parent *node, ACL string, expireTime time.Time) *node {
 
 	return &node{
 		Path:          nodePath,
-		CreateIndex:   createIndex,
-		ModifiedIndex: createIndex,
+		CreatedIndex:  createdIndex,
+		ModifiedIndex: createdIndex,
 		Parent:        parent,
 		ACL:           ACL,
 		store:         store,
@@ -47,13 +47,13 @@ func newKV(store *store, nodePath string, value string, createIndex uint64,
 }
 
 // newDir creates a directory
-func newDir(store *store, nodePath string, createIndex uint64, parent *node,
+func newDir(store *store, nodePath string, createdIndex uint64, parent *node,
 	ACL string, expireTime time.Time) *node {
 
 	return &node{
 		Path:          nodePath,
-		CreateIndex:   createIndex,
-		ModifiedIndex: createIndex,
+		CreatedIndex:  createdIndex,
+		ModifiedIndex: createdIndex,
 		Parent:        parent,
 		ACL:           ACL,
 		ExpireTime:    expireTime,
@@ -223,21 +223,21 @@ func (n *node) Remove(recursive bool, callback func(path string)) *etcdErr.Error
 	return nil
 }
 
-func (n *node) Pair(recurisive, sorted bool) KeyValuePair {
+func (n *node) Repr(recurisive, sorted bool) Node {
 	if n.IsDir() {
-		pair := KeyValuePair{
+		node := Node{
 			Key:           n.Path,
 			Dir:           true,
 			ModifiedIndex: n.ModifiedIndex,
 		}
-		pair.Expiration, pair.TTL = n.ExpirationAndTTL()
+		node.Expiration, node.TTL = n.ExpirationAndTTL()
 
 		if !recurisive {
-			return pair
+			return node
 		}
 
 		children, _ := n.List()
-		pair.KVPairs = make([]KeyValuePair, len(children))
+		node.Nodes = make(Nodes, len(children))
 
 		// we do not use the index in the children slice directly
 		// we need to skip the hidden one
@@ -249,27 +249,27 @@ func (n *node) Pair(recurisive, sorted bool) KeyValuePair {
 				continue
 			}
 
-			pair.KVPairs[i] = child.Pair(recurisive, sorted)
+			node.Nodes[i] = child.Repr(recurisive, sorted)
 
 			i++
 		}
 
 		// eliminate hidden nodes
-		pair.KVPairs = pair.KVPairs[:i]
+		node.Nodes = node.Nodes[:i]
 		if sorted {
-			sort.Sort(pair.KVPairs)
+			sort.Sort(node.Nodes)
 		}
 
-		return pair
+		return node
 	}
 
-	pair := KeyValuePair{
+	node := Node{
 		Key:           n.Path,
 		Value:         n.Value,
 		ModifiedIndex: n.ModifiedIndex,
 	}
-	pair.Expiration, pair.TTL = n.ExpirationAndTTL()
-	return pair
+	node.Expiration, node.TTL = n.ExpirationAndTTL()
+	return node
 }
 
 func (n *node) UpdateTTL(expireTime time.Time) {
@@ -301,10 +301,10 @@ func (n *node) UpdateTTL(expireTime time.Time) {
 // If the node is a key-value pair, it will clone the pair.
 func (n *node) Clone() *node {
 	if !n.IsDir() {
-		return newKV(n.store, n.Path, n.Value, n.CreateIndex, n.Parent, n.ACL, n.ExpireTime)
+		return newKV(n.store, n.Path, n.Value, n.CreatedIndex, n.Parent, n.ACL, n.ExpireTime)
 	}
 
-	clone := newDir(n.store, n.Path, n.CreateIndex, n.Parent, n.ACL, n.ExpireTime)
+	clone := newDir(n.store, n.Path, n.CreatedIndex, n.Parent, n.ACL, n.ExpireTime)
 
 	for key, child := range n.Children {
 		clone.Children[key] = child.Clone()

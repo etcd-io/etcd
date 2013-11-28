@@ -70,7 +70,7 @@ func (r *Registry) Count() int {
 	if err != nil {
 		return 0
 	}
-	return len(e.KVPairs)
+	return len(e.Node.Nodes)
 }
 
 // Retrieves the client URL for a given node by name.
@@ -135,7 +135,7 @@ func (r *Registry) urls(leaderName, selfName string, url func(name string) (stri
 	// Retrieve a list of all nodes.
 	if e, _ := r.store.Get(RegistryKey, false, false); e != nil {
 		// Lookup the URL for each one.
-		for _, pair := range e.KVPairs {
+		for _, pair := range e.Node.Nodes {
 			_, name := filepath.Split(pair.Key)
 			if url, _ := url(name); len(url) > 0 && name != leaderName {
 				urls = append(urls, url)
@@ -166,7 +166,7 @@ func (r *Registry) load(name string) {
 	}
 
 	// Parse as a query string.
-	m, err := url.ParseQuery(e.Value)
+	m, err := url.ParseQuery(e.Node.Value)
 	if err != nil {
 		panic(fmt.Sprintf("Failed to parse peers entry: %s", name))
 	}
