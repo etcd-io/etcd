@@ -27,6 +27,7 @@ func (h *handler) acquireHandler(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, "add lock index error: " + err.Error(), http.StatusInternalServerError)
 		return
 	}
+	indexpath := resp.Key
 
 	// Keep updating TTL to make sure lock request is not expired before acquisition.
 	stopChan := make(chan bool)
@@ -44,7 +45,7 @@ func (h *handler) acquireHandler(w http.ResponseWriter, req *http.Request) {
 				break
 			}
 		}
-	}(resp.Key)
+	}(indexpath)
 
 	// Extract the lock index.
 	index, _ := strconv.Atoi(path.Base(resp.Key))
@@ -72,4 +73,7 @@ func (h *handler) acquireHandler(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 	}
+
+	// Write lock index to response body.
+	w.Write([]byte(strconv.Itoa(index)))
 }
