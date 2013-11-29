@@ -1,8 +1,7 @@
 #!/bin/sh
 set -e
 
-PKGS="./mod/lock/tests"
-# PKGS="./store ./server ./server/v2/tests"
+PKGS="./store ./server ./server/v2/tests ./mod/lock/tests"
 
 # Get GOPATH, etc from build
 . ./build
