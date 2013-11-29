@@ -11,12 +11,12 @@ const (
 )
 
 type Event struct {
-	Action string `json:"action"`
-	Node   *Node  `json:"node,omitempty"`
+	Action string      `json:"action"`
+	Node   *NodeExtern `json:"node,omitempty"`
 }
 
 func newEvent(action string, key string, modifiedIndex, createdIndex uint64) *Event {
-	n := &Node{
+	n := &NodeExtern{
 		Key:           key,
 		ModifiedIndex: modifiedIndex,
 		CreatedIndex:  createdIndex,

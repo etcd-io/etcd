@@ -120,7 +120,7 @@ func (s *store) Get(nodePath string, recursive, sorted bool) (*Event, error) {
 		eNode.Dir = true
 
 		children, _ := n.List()
-		eNode.Nodes = make(Nodes, len(children))
+		eNode.Nodes = make(NodeExterns, len(children))
 
 		// we do not use the index in the children slice directly
 		// we need to skip the hidden one
@@ -260,7 +260,7 @@ func (s *store) Delete(nodePath string, recursive bool) (*Event, error) {
 	if n.IsDir() {
 		eNode.Dir = true
 	} else {
-		eNode.PrevValue = eNode.Value
+		eNode.PrevValue = n.Value
 	}
 
 	callback := func(path string) { // notify function

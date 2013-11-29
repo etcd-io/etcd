@@ -223,12 +223,13 @@ func (n *node) Remove(recursive bool, callback func(path string)) *etcdErr.Error
 	return nil
 }
 
-func (n *node) Repr(recurisive, sorted bool) Node {
+func (n *node) Repr(recurisive, sorted bool) NodeExtern {
 	if n.IsDir() {
-		node := Node{
+		node := NodeExtern{
 			Key:           n.Path,
 			Dir:           true,
 			ModifiedIndex: n.ModifiedIndex,
+			CreatedIndex:  n.CreatedIndex,
 		}
 		node.Expiration, node.TTL = n.ExpirationAndTTL()
 
@@ -237,7 +238,7 @@ func (n *node) Repr(recurisive, sorted bool) Node {
 		}
 
 		children, _ := n.List()
-		node.Nodes = make(Nodes, len(children))
+		node.Nodes = make(NodeExterns, len(children))
 
 		// we do not use the index in the children slice directly
 		// we need to skip the hidden one
@@ -263,10 +264,11 @@ func (n *node) Repr(recurisive, sorted bool) Node {
 		return node
 	}
 
-	node := Node{
+	node := NodeExtern{
 		Key:           n.Path,
 		Value:         n.Value,
 		ModifiedIndex: n.ModifiedIndex,
+		CreatedIndex:  n.CreatedIndex,
 	}
 	node.Expiration, node.TTL = n.ExpirationAndTTL()
 	return node
