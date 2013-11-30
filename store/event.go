@@ -5,14 +5,14 @@ import (
 )
 
 const (
-	Get            = "get"
-	Create         = "create"
-	Set            = "set"
-	Update         = "update"
-	Delete         = "delete"
-	CompareAndSwap = "compareAndSwap"
+	Get              = "get"
+	Create           = "create"
+	Set              = "set"
+	Update           = "update"
+	Delete           = "delete"
+	CompareAndSwap   = "compareAndSwap"
 	CompareAndDelete = "compareAndDelete"
-	Expire         = "expire"
+	Expire           = "expire"
 )
 
 type Event struct {

@@ -50,6 +50,7 @@ type Store interface {
 	CompareAndSwap(nodePath string, prevValue string, prevIndex uint64,
 		value string, expireTime time.Time) (*Event, error)
 	Delete(nodePath string, recursive bool) (*Event, error)
+	CompareAndDelete(nodePath string, prevValue string, prevIndex uint64) (*Event, error)
 	Watch(prefix string, recursive bool, sinceIndex uint64) (<-chan *Event, error)
 	Save() ([]byte, error)
 	Recovery(state []byte) error
