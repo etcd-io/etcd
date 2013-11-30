@@ -304,7 +304,7 @@ func (s *store) CompareAndDelete(nodePath string, prevValue string, prevIndex ui
 	// Command will be executed, only if both of the tests are successful.
 	if (prevValue == "" || n.Value == prevValue) && (prevIndex == 0 || n.ModifiedIndex == prevIndex) {
 
-		e := newEvent(Delete, nodePath, s.CurrentIndex+1)
+		e := newEvent(CompareAndDelete, nodePath, s.CurrentIndex+1)
 		e.PrevValue = n.Value
 
 		callback := func(path string) { // notify function

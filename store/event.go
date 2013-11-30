@@ -11,6 +11,7 @@ const (
 	Update         = "update"
 	Delete         = "delete"
 	CompareAndSwap = "compareAndSwap"
+	CompareAndDelete = "compareAndDelete"
 	Expire         = "expire"
 )
 

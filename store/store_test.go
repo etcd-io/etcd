@@ -209,7 +209,7 @@ func TestStoreCompareAndDeletePrevValue(t *testing.T) {
 	s.Create("/foo", "bar", false, Permanent)
 	e, err := s.CompareAndDelete("/foo", "bar", 0)
 	assert.Nil(t, err, "")
-	assert.Equal(t, e.Action, "delete", "")
+	assert.Equal(t, e.Action, "compareAndDelete", "")
 }
 
 func TestStoreCompareAndDeletePrevValueFailsIfNotMatch(t *testing.T) {
@@ -229,7 +229,7 @@ func TestStoreCompareAndDeletePrevIndex(t *testing.T) {
 	s.Create("/foo", "bar", false, Permanent)
 	e, err := s.CompareAndDelete("/foo", "", 1)
 	assert.Nil(t, err, "")
-	assert.Equal(t, e.Action, "delete", "")
+	assert.Equal(t, e.Action, "compareAndDelete", "")
 }
 
 func TestStoreCompareAndDeletePrevIndexFailsIfNotMatch(t *testing.T) {
