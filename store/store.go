@@ -291,12 +291,12 @@ func (s *store) CompareAndDelete(nodePath string, prevValue string, prevIndex ui
 	n, err := s.internalGet(nodePath)
 
 	if err != nil { // if the node does not exist, return error
-		s.Stats.Inc(DeleteFail)
+		s.Stats.Inc(CompareAndDeleteFail)
 		return nil, err
 	}
 
 	if n.IsDir() { // can only test and set file
-		s.Stats.Inc(DeleteFail)
+		s.Stats.Inc(CompareAndDeleteFail)
 		return nil, etcdErr.NewError(etcdErr.EcodeNotFile, nodePath, s.CurrentIndex)
 	}
 
@@ -315,7 +315,7 @@ func (s *store) CompareAndDelete(nodePath string, prevValue string, prevIndex ui
 		err = n.Remove(false, callback)
 
 		if err != nil {
-			s.Stats.Inc(DeleteFail)
+			s.Stats.Inc(CompareAndDeleteFail)
 			return nil, err
 		}
 
@@ -323,12 +323,12 @@ func (s *store) CompareAndDelete(nodePath string, prevValue string, prevIndex ui
 		s.CurrentIndex++
 
 		s.WatcherHub.notify(e)
-		s.Stats.Inc(DeleteSuccess)
+		s.Stats.Inc(CompareAndDeleteSuccess)
 		return e, nil
 	}
 
 	cause := fmt.Sprintf("[%v != %v] [%v != %v]", prevValue, n.Value, prevIndex, n.ModifiedIndex)
-	s.Stats.Inc(DeleteFail)
+	s.Stats.Inc(CompareAndDeleteFail)
 	return nil, etcdErr.NewError(etcdErr.EcodeTestFailed, cause, s.CurrentIndex)
 }
 
