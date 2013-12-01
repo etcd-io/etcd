@@ -5,8 +5,8 @@ import "testing"
 func TestAddChild(t *testing.T) {
 	c := NewClient(nil)
 	defer func() {
-		c.DeleteAll("fooDir")
-		c.DeleteAll("nonexistentDir")
+		c.Delete("fooDir", true)
+		c.Delete("nonexistentDir", true)
 	}()
 
 	c.SetDir("fooDir", 5)
@@ -21,10 +21,10 @@ func TestAddChild(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	resp, err := c.Get("fooDir", true)
+	resp, err := c.Get("fooDir", true, false)
 	// The child with v0 should proceed the child with v1 because it's added
 	// earlier, so it should have a lower key.
-	if !(len(resp.Kvs) == 2 && (resp.Kvs[0].Value == "v0" && resp.Kvs[1].Value == "v1")) {
+	if !(len(resp.Node.Nodes) == 2 && (resp.Node.Nodes[0].Value == "v0" && resp.Node.Nodes[1].Value == "v1")) {
 		t.Fatalf("AddChild 1 failed.  There should be two chlidren whose values are v0 and v1, respectively."+
 			"  The response was: %#v", resp)
 	}
@@ -40,8 +40,8 @@ func TestAddChild(t *testing.T) {
 func TestAddChildDir(t *testing.T) {
 	c := NewClient(nil)
 	defer func() {
-		c.DeleteAll("fooDir")
-		c.DeleteAll("nonexistentDir")
+		c.Delete("fooDir", true)
+		c.Delete("nonexistentDir", true)
 	}()
 
 	c.SetDir("fooDir", 5)
@@ -56,10 +56,10 @@ func TestAddChildDir(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	resp, err := c.Get("fooDir", true)
+	resp, err := c.Get("fooDir", true, false)
 	// The child with v0 should proceed the child with v1 because it's added
 	// earlier, so it should have a lower key.
-	if !(len(resp.Kvs) == 2 && (len(resp.Kvs[0].KVPairs) == 0 && len(resp.Kvs[1].KVPairs) == 0)) {
+	if !(len(resp.Node.Nodes) == 2 && (len(resp.Node.Nodes[0].Nodes) == 0 && len(resp.Node.Nodes[1].Nodes) == 0)) {
 		t.Fatalf("AddChildDir 1 failed.  There should be two chlidren whose values are v0 and v1, respectively."+
 			"  The response was: %#v", resp)
 	}

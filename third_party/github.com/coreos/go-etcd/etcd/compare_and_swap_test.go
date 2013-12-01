@@ -7,7 +7,7 @@ import (
 func TestCompareAndSwap(t *testing.T) {
 	c := NewClient(nil)
 	defer func() {
-		c.DeleteAll("foo")
+		c.Delete("foo", true)
 	}()
 
 	c.Set("foo", "bar", 5)
@@ -17,8 +17,8 @@ func TestCompareAndSwap(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !(resp.Value == "bar2" && resp.PrevValue == "bar" &&
-		resp.Key == "/foo" && resp.TTL == 5) {
+	if !(resp.Node.Value == "bar2" && resp.Node.PrevValue == "bar" &&
+		resp.Node.Key == "/foo" && resp.Node.TTL == 5) {
 		t.Fatalf("CompareAndSwap 1 failed: %#v", resp)
 	}
 
@@ -34,12 +34,12 @@ func TestCompareAndSwap(t *testing.T) {
 	}
 
 	// This should succeed
-	resp, err = c.CompareAndSwap("foo", "bar2", 5, "", resp.ModifiedIndex)
+	resp, err = c.CompareAndSwap("foo", "bar2", 5, "", resp.Node.ModifiedIndex)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !(resp.Value == "bar2" && resp.PrevValue == "bar" &&
-		resp.Key == "/foo" && resp.TTL == 5) {
+	if !(resp.Node.Value == "bar2" && resp.Node.PrevValue == "bar" &&
+		resp.Node.Key == "/foo" && resp.Node.TTL == 5) {
 		t.Fatalf("CompareAndSwap 1 failed: %#v", resp)
 	}
 

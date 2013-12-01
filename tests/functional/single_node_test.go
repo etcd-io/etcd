@@ -28,36 +28,39 @@ func TestSingleNode(t *testing.T) {
 	c.SyncCluster()
 	// Test Set
 	result, err := c.Set("foo", "bar", 100)
+	node := result.Node
 
-	if err != nil || result.Key != "/foo" || result.Value != "bar" || result.TTL < 95 {
+	if err != nil || node.Key != "/foo" || node.Value != "bar" || node.TTL < 95 {
 		if err != nil {
 			t.Fatal("Set 1: ", err)
 		}
 
-		t.Fatalf("Set 1 failed with %s %s %v", result.Key, result.Value, result.TTL)
+		t.Fatalf("Set 1 failed with %s %s %v", node.Key, node.Value, node.TTL)
 	}
 
 	time.Sleep(time.Second)
 
 	result, err = c.Set("foo", "bar", 100)
+	node = result.Node
 
-	if err != nil || result.Key != "/foo" || result.Value != "bar" || result.PrevValue != "bar" || result.TTL != 100 {
+	if err != nil || node.Key != "/foo" || node.Value != "bar" || node.PrevValue != "bar" || node.TTL != 100 {
 		if err != nil {
 			t.Fatal("Set 2: ", err)
 		}
-		t.Fatalf("Set 2 failed with %s %s %v", result.Key, result.Value, result.TTL)
+		t.Fatalf("Set 2 failed with %s %s %v", node.Key, node.Value, node.TTL)
 	}
 
 	// Add a test-and-set test
 
 	// First, we'll test we can change the value if we get it write
 	result, err = c.CompareAndSwap("foo", "foobar", 100, "bar", 0)
+	node = result.Node
 
-	if err != nil || result.Key != "/foo" || result.Value != "foobar" || result.PrevValue != "bar" || result.TTL != 100 {
+	if err != nil || node.Key != "/foo" || node.Value != "foobar" || node.PrevValue != "bar" || node.TTL != 100 {
 		if err != nil {
 			t.Fatal(err)
 		}
-		t.Fatalf("Set 3 failed with %s %s %v", result.Key, result.Value, result.TTL)
+		t.Fatalf("Set 3 failed with %s %s %v", node.Key, node.Value, node.TTL)
 	}
 
 	// Next, we'll make sure we can't set it without the correct prior value

@@ -1,17 +1,26 @@
 package etcd
 
-// DeleteAll deletes everything under the given key.  If the key
-// points to a file, the file will be deleted.  If the key points
-// to a directory, then everything under the directory, include
+// Delete deletes the given key.
+// When recursive set to false If the key points to a
+// directory, the method will fail.
+// When recursive set to true, if the key points to a file,
+// the file will be deleted.  If the key points
+// to a directory, then everything under the directory, including
 // all child directories, will be deleted.
-func (c *Client) DeleteAll(key string) (*Response, error) {
-	return c.delete(key, options{
-		"recursive": true,
-	})
+func (c *Client) Delete(key string, recursive bool) (*Response, error) {
+	raw, err := c.DeleteRaw(key, recursive)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return raw.toResponse()
 }
 
-// Delete deletes the given key.  If the key points to a
-// directory, the method will fail.
-func (c *Client) Delete(key string) (*Response, error) {
-	return c.delete(key, nil)
+func (c *Client) DeleteRaw(key string, recursive bool) (*RawResponse, error) {
+	ops := options{
+		"recursive": recursive,
+	}
+
+	return c.delete(key, ops)
 }
