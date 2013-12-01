@@ -238,8 +238,20 @@ Let's create a key-value pair first: `foo=one`.
 curl -L http://127.0.0.1:4001/v2/keys/foo -XPUT -d value=one
 ```
 
-Let's try an invalid `CompareAndSwap` command first.
-We can provide the `prevValue` parameter to the set command to make it a `CompareAndSwap` command.
+Let's try some invalid `CompareAndSwap` commands first.
+
+Trying to set this existing key with `prevExist=false` fails as expected:
+```sh
+curl -L http://127.0.0.1:4001/v2/keys/foo?prevExist=false -XPUT -d value=three
+```
+
+The error code explains the problem:
+
+```json
+{"errorCode":105,"message":"Already exists","cause":"/foo","index":39776}
+```
+
+Now lets provide a `prevValue` parameter:
 
 ```sh
 curl -L http://127.0.0.1:4001/v2/keys/foo?prevValue=two -XPUT -d value=three
