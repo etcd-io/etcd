@@ -21,7 +21,7 @@ type CommandFactory interface {
 	CreateUpdateCommand(key string, value string, expireTime time.Time) raft.Command
 	CreateDeleteCommand(key string, recursive bool) raft.Command
 	CreateCompareAndSwapCommand(key string, value string, prevValue string, prevIndex uint64, expireTime time.Time) raft.Command
-	CreateCompareAndDeleteCommand(key string, prevValue string, prevIndex uint64) raft.Command
+	CreateCompareAndDeleteCommand(key string, recursive bool, prevValue string, prevIndex uint64) raft.Command
 	CreateSyncCommand(now time.Time) raft.Command
 }
 

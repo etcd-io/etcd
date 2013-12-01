@@ -15,6 +15,7 @@ type CompareAndDeleteCommand struct {
 	Key       string `json:"key"`
 	PrevValue string `json:"prevValue"`
 	PrevIndex uint64 `json:"prevIndex"`
+	Recursive bool   `json:"recursive"`
 }
 
 // The name of the compareAndDelete command in the log
@@ -26,7 +27,7 @@ func (c *CompareAndDeleteCommand) CommandName() string {
 func (c *CompareAndDeleteCommand) Apply(server raft.Server) (interface{}, error) {
 	s, _ := server.StateMachine().(store.Store)
 
-	e, err := s.CompareAndDelete(c.Key, c.PrevValue, c.PrevIndex)
+	e, err := s.CompareAndDelete(c.Key, c.Recursive, c.PrevValue, c.PrevIndex)
 
 	if err != nil {
 		log.Debug(err)

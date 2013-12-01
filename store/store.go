@@ -50,7 +50,7 @@ type Store interface {
 	CompareAndSwap(nodePath string, prevValue string, prevIndex uint64,
 		value string, expireTime time.Time) (*Event, error)
 	Delete(nodePath string, recursive bool) (*Event, error)
-	CompareAndDelete(nodePath string, prevValue string, prevIndex uint64) (*Event, error)
+	CompareAndDelete(nodePath string, recursive bool, prevValue string, prevIndex uint64) (*Event, error)
 	Watch(prefix string, recursive bool, sinceIndex uint64) (<-chan *Event, error)
 	Save() ([]byte, error)
 	Recovery(state []byte) error
@@ -281,9 +281,7 @@ func (s *store) Delete(nodePath string, recursive bool) (*Event, error) {
 	return e, nil
 }
 
-func (s *store) CompareAndDelete(nodePath string, prevValue string, prevIndex uint64,
-) (*Event, error) {
-
+func (s *store) CompareAndDelete(nodePath string, recursive bool, prevValue string, prevIndex uint64) (*Event, error) {
 	nodePath = path.Clean(path.Join("/", nodePath))
 
 	s.worldLock.Lock()
@@ -296,24 +294,25 @@ func (s *store) CompareAndDelete(nodePath string, prevValue string, prevIndex ui
 		return nil, err
 	}
 
-	if n.IsDir() { // can only test and set file
-		s.Stats.Inc(CompareAndDeleteFail)
-		return nil, etcdErr.NewError(etcdErr.EcodeNotFile, nodePath, s.CurrentIndex)
-	}
+  isDir := n.IsDir()
 
 	// If both of the prevValue and prevIndex are given, we will test both of them.
 	// Command will be executed, only if both of the tests are successful.
-	if (prevValue == "" || n.Value == prevValue) && (prevIndex == 0 || n.ModifiedIndex == prevIndex) {
+	if (isDir || prevValue == "" || n.Value == prevValue) && (prevIndex == 0 || n.ModifiedIndex == prevIndex) {
 
 		e := newEvent(CompareAndDelete, nodePath, s.CurrentIndex+1)
-		e.PrevValue = n.Value
+    if isDir {
+      e.Dir = true
+    } else {
+	    e.PrevValue = n.Value
+    }
 
 		callback := func(path string) { // notify function
 			// notify the watchers with deleted set true
 			s.WatcherHub.notifyWatchers(e, path, true)
 		}
 
-		err = n.Remove(false, callback)
+		err = n.Remove(recursive, callback)
 
 		if err != nil {
 			s.Stats.Inc(CompareAndDeleteFail)
