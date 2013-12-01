@@ -66,7 +66,13 @@ func (eh *EventHistory) scan(key string, recursive bool, index uint64) (*Event, 
 		ok := (e.Key == key)
 
 		if recursive {
-			ok = ok || strings.HasPrefix(e.Key, path.Join(key, "/"))
+			// add tailing slash
+			key := path.Clean(key)
+			if key[len(key)-1] != '/' {
+				key = key + "/"
+			}
+
+			ok = ok || strings.HasPrefix(e.Key, key)
 		}
 
 		if ok && index <= e.Index() { // make sure we bypass the smaller one

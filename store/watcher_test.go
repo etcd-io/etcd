@@ -68,4 +68,24 @@ func TestWatcher(t *testing.T) {
 		t.Fatal("recv != send")
 	}
 
+	// ensure we are doing exact matching rather than prefix matching
+	c, _ = wh.watch("/fo", true, 1)
+
+	select {
+	case re = <-c:
+		t.Fatal("should not receive from channel:", re)
+	default:
+		// do nothing
+	}
+
+	e = newEvent(Create, "/fo/bar", 3)
+
+	wh.notify(e)
+
+	re = <-c
+
+	if e != re {
+		t.Fatal("recv != send")
+	}
+
 }
