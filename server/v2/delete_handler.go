@@ -15,10 +15,9 @@ func DeleteHandler(w http.ResponseWriter, req *http.Request, s Server) error {
 	req.ParseForm()
 	_, valueOk := req.Form["prevValue"]
 	_, indexOk := req.Form["prevIndex"]
+	recursive := (req.Form.Get("recursive") == "true")
 
 	if !valueOk && !indexOk {
-		recursive := (req.Form.Get("recursive") == "true")
-
 		c := s.Store().CommandFactory().CreateDeleteCommand(key, recursive)
 		return s.Dispatch(c, w, req)
 	}
@@ -43,6 +42,6 @@ func DeleteHandler(w http.ResponseWriter, req *http.Request, s Server) error {
 		}
 	}
 
-	c := s.Store().CommandFactory().CreateCompareAndDeleteCommand(key, prevValue, prevIndex)
+	c := s.Store().CommandFactory().CreateCompareAndDeleteCommand(key, recursive, prevValue, prevIndex)
 	return s.Dispatch(c, w, req)
 }
