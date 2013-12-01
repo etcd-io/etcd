@@ -219,9 +219,9 @@ The watch command returns immediately with the same response as previous.
 
 ### Atomic Compare-and-Swap (CAS)
 
-Etcd can be used as a centralized coordination service in a cluster and `CompareAndSwap` is the most basic operation to build distributed lock service. 
+Etcd can be used as a centralized coordination service in a cluster and `CompareAndSwap` is the most basic operation to build distributed lock service.
 
-This command will set the value of a key only if the client-provided conditions are equal to the current conditions. 
+This command will set the value of a key only if the client-provided conditions are equal to the current conditions.
 
 The current comparable conditions are:
 
