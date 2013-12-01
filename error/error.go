@@ -32,6 +32,7 @@ const (
 	EcodeNotDir         = 104
 	EcodeNodeExist      = 105
 	EcodeKeyIsPreserved = 106
+	EcodeRootROnly      = 107
 
 	EcodeValueRequired      = 200
 	EcodePrevValueRequired  = 201
@@ -56,6 +57,7 @@ func init() {
 	errors[EcodeNoMorePeer] = "Reached the max number of peers in the cluster"
 	errors[EcodeNotDir] = "Not A Directory"
 	errors[EcodeNodeExist] = "Already exists" // create
+	errors[EcodeRootROnly] = "Root is read only"
 	errors[EcodeKeyIsPreserved] = "The prefix of given key is a keyword in etcd"
 
 	// Post form related errors
