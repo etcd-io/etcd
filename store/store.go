@@ -280,8 +280,8 @@ func (s *store) Delete(nodePath string, recursive bool) (*Event, error) {
 	return e, nil
 }
 
-func (s *store) Watch(prefix string, recursive bool, sinceIndex uint64) (<-chan *Event, error) {
-	prefix = path.Clean(path.Join("/", prefix))
+func (s *store) Watch(key string, recursive bool, sinceIndex uint64) (<-chan *Event, error) {
+	key = path.Clean(path.Join("/", key))
 
 	nextIndex := s.CurrentIndex + 1
 
@@ -292,10 +292,10 @@ func (s *store) Watch(prefix string, recursive bool, sinceIndex uint64) (<-chan 
 	var err *etcdErr.Error
 
 	if sinceIndex == 0 {
-		c, err = s.WatcherHub.watch(prefix, recursive, nextIndex)
+		c, err = s.WatcherHub.watch(key, recursive, nextIndex)
 
 	} else {
-		c, err = s.WatcherHub.watch(prefix, recursive, sinceIndex)
+		c, err = s.WatcherHub.watch(key, recursive, sinceIndex)
 	}
 
 	if err != nil {
@@ -395,7 +395,6 @@ func (s *store) internalCreate(nodePath string, value string, unique bool, repla
 	if expireTime.Before(minExpireTime) {
 		expireTime = Permanent
 	}
-
 
 	dir, newNodeName := path.Split(nodePath)
 
