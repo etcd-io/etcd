@@ -56,18 +56,18 @@ go version
 ```
 
 
-### Running a single node
+### Running a single machine
 
-These examples will use a single node cluster to show you the basics of the etcd REST API.
+These examples will use a single machine cluster to show you the basics of the etcd REST API.
 Let's start etcd:
 
 ```sh
-./etcd -data-dir node0 -name node0
+./etcd -data-dir machine0 -name machine0
 ```
 
-This will bring up an etcd node listening on port 4001 for client communication and on port 7001 for server-to-server communication.
-The `-data-dir node0` argument tells etcd to write node configuration, logs and snapshots to the `./node0/` directory.
-The `-name node0` tells the rest of the cluster that this node is named node0.
+This will bring up etcd listening on port 4001 for client communication and on port 7001 for server-to-server communication.
+The `-data-dir machine0` argument tells etcd to write machine configuration, logs and snapshots to the `./machine0/` directory.
+The `-name machine` tells the rest of the cluster that this machine is named machine0.
 
 
 
@@ -75,7 +75,7 @@ The `-name node0` tells the rest of the cluster that this node is named node0.
 
 ### Setting the value to a key
 
-Let’s set the first key-value pair to the node.
+Let’s set the first key-value pair to the datastore.
 In this case the key is `/message` and the value is `Hello world`.
 
 ```sh
@@ -121,7 +121,7 @@ curl -L http://127.0.0.1:4001/v2/keys/message
 You can change the value of `/message` from `Hello world` to `Hello etcd` with another `PUT` request to the key:
 
 ```sh
-curl -L http://127.0.0.1:4001/v1/keys/message -XPUT -d value="Hello etcd"
+curl -L http://127.0.0.1:4001/v2/keys/message -XPUT -d value="Hello etcd"
 ```
 
 ```json
@@ -164,7 +164,7 @@ Note the two new fields in response:
 
 2. The `ttl` is the time to live for the key, in seconds.
 
-_NOTE_: Keys can only be expired by a cluster leader so if a node gets disconnected from the cluster, its keys will not expire until it rejoins.
+_NOTE_: Keys can only be expired by a cluster leader so if a machine gets disconnected from the cluster, its keys will not expire until it rejoins.
 
 Now you can try to get the key by sending a `GET` request:
 
@@ -219,9 +219,9 @@ The watch command returns immediately with the same response as previous.
 
 ### Atomic Compare-and-Swap (CAS)
 
-Etcd can be used as a centralized coordination service in a cluster and `CompareAndSwap` is the most basic operation to build distributed lock service. 
+Etcd can be used as a centralized coordination service in a cluster and `CompareAndSwap` is the most basic operation to build distributed lock service.
 
-This command will set the value of a key only if the client-provided conditions are equal to the current conditions. 
+This command will set the value of a key only if the client-provided conditions are equal to the current conditions.
 
 The current comparable conditions are:
 
@@ -235,14 +235,26 @@ Here is a simple example.
 Let's create a key-value pair first: `foo=one`.
 
 ```sh
-curl -L http://127.0.0.1:4001/v1/keys/foo -XPUT -d value=one
+curl -L http://127.0.0.1:4001/v2/keys/foo -XPUT -d value=one
 ```
 
-Let's try an invalid `CompareAndSwap` command first.
-We can provide the `prevValue` parameter to the set command to make it a `CompareAndSwap` command.
+Let's try some invalid `CompareAndSwap` commands first.
+
+Trying to set this existing key with `prevExist=false` fails as expected:
+```sh
+curl -L http://127.0.0.1:4001/v2/keys/foo?prevExist=false -XPUT -d value=three
+```
+
+The error code explains the problem:
+
+```json
+{"errorCode":105,"message":"Already exists","cause":"/foo","index":39776}
+```
+
+Now lets provide a `prevValue` parameter:
 
 ```sh
-curl -L http://127.0.0.1:4001/v1/keys/foo?prevValue=two -XPUT -d value=three
+curl -L http://127.0.0.1:4001/v2/keys/foo?prevValue=two -XPUT -d value=three
 ```
 
 This will try to compare the previous value of the key and the previous value we provided. If they are equal, the value of the key will change to three.
@@ -378,12 +390,12 @@ For testing you can use the certificates in the `fixtures/ca` directory.
 Let's configure etcd to use this keypair:
 
 ```sh
-./etcd -f -name node0 -data-dir node0 -cert-file=./fixtures/ca/server.crt -key-file=./fixtures/ca/server.key.insecure
+./etcd -f -name machine0 -data-dir machine0 -cert-file=./fixtures/ca/server.crt -key-file=./fixtures/ca/server.key.insecure
 ```
 
 There are a few new options we're using:
 
-* `-f` - forces a new node configuration, even if an existing configuration is found. (WARNING: data loss!)
+* `-f` - forces a new machine configuration, even if an existing configuration is found. (WARNING: data loss!)
 * `-cert-file` and `-key-file` specify the location of the cert and key files to be used for for transport layer security between the client and server.
 
 You can now test the configuration using HTTPS:
@@ -413,7 +425,7 @@ We can also do authentication using CA certs.
 The clients will provide their cert to the server and the server will check whether the cert is signed by the CA and decide whether to serve the request.
 
 ```sh
-./etcd -f -name node0 -data-dir node0 -ca-file=./fixtures/ca/ca.crt -cert-file=./fixtures/ca/server.crt -key-file=./fixtures/ca/server.key.insecure
+./etcd -f -name machine0 -data-dir machine0 -ca-file=./fixtures/ca/ca.crt -cert-file=./fixtures/ca/server.crt -key-file=./fixtures/ca/server.key.insecure
 ```
 
 ```-ca-file``` is the path to the CA cert.
@@ -435,7 +447,7 @@ routines:SSL3_READ_BYTES:sslv3 alert bad certificate
 We need to give the CA signed cert to the server.
 
 ```sh
-curl --key ./fixtures/ca/server2.key.insecure --cert ./fixtures/ca/server2.crt --cacert ./fixtures/ca/server-chain.pem -L https://127.0.0.1:4001/v1/keys/foo -XPUT -d value=bar -v
+curl --key ./fixtures/ca/server2.key.insecure --cert ./fixtures/ca/server2.crt --cacert ./fixtures/ca/server-chain.pem -L https://127.0.0.1:4001/v2/keys/foo -XPUT -d value=bar -v
 ```
 
 You should able to see:
@@ -463,29 +475,29 @@ We use Raft as the underlying distributed protocol which provides consistency an
 
 Let start by creating 3 new etcd instances.
 
-We use `-peer-addr` to specify server port and `-addr` to specify client port and `-data-dir` to specify the directory to store the log and info of the node in the cluster:
+We use `-peer-addr` to specify server port and `-addr` to specify client port and `-data-dir` to specify the directory to store the log and info of the machine in the cluster:
 
 ```sh
-./etcd -peer-addr 127.0.0.1:7001 -addr 127.0.0.1:4001 -data-dir nodes/node1 -name node1
+./etcd -peer-addr 127.0.0.1:7001 -addr 127.0.0.1:4001 -data-dir machines/machine1 -name machine1
 ```
 
 **Note:** If you want to run etcd on an external IP address and still have access locally, you'll need to add `-bind-addr 0.0.0.0` so that it will listen on both external and localhost addresses.
 A similar argument `-peer-bind-addr` is used to setup the listening address for the server port.
 
-Let's join two more nodes to this cluster using the `-peers` argument:
+Let's join two more machines to this cluster using the `-peers` argument:
 
 ```sh
-./etcd -peer-addr 127.0.0.1:7002 -addr 127.0.0.1:4002 -peers 127.0.0.1:7001 -data-dir nodes/node2 -name node2
-./etcd -peer-addr 127.0.0.1:7003 -addr 127.0.0.1:4003 -peers 127.0.0.1:7001 -data-dir nodes/node3 -name node3
+./etcd -peer-addr 127.0.0.1:7002 -addr 127.0.0.1:4002 -peers 127.0.0.1:7001 -data-dir machines/machine2 -name machine2
+./etcd -peer-addr 127.0.0.1:7003 -addr 127.0.0.1:4003 -peers 127.0.0.1:7001 -data-dir machines/machine3 -name machine3
 ```
 
 We can retrieve a list of machines in the cluster using the HTTP API:
 
 ```sh
-curl -L http://127.0.0.1:4001/v1/machines
+curl -L http://127.0.0.1:4001/v2/machines
 ```
 
-We should see there are three nodes in the cluster
+We should see there are three machines in the cluster
 
 ```
 http://127.0.0.1:4001, http://127.0.0.1:4002, http://127.0.0.1:4003
@@ -494,11 +506,11 @@ http://127.0.0.1:4001, http://127.0.0.1:4002, http://127.0.0.1:4003
 The machine list is also available via the main key API:
 
 ```sh
-curl -L http://127.0.0.1:4001/v1/keys/_etcd/machines
+curl -L http://127.0.0.1:4001/v2/keys/_etcd/machines
 ```
 
 ```json
-[{"action":"get","key":"/_etcd/machines/node1","value":"raft=http://127.0.0.1:7001\u0026etcd=http://127.0.0.1:4001","index":1},{"action":"get","key":"/_etcd/machines/node2","value":"raft=http://127.0.0.1:7002\u0026etcd=http://127.0.0.1:4002","index":1},{"action":"get","key":"/_etcd/machines/node3","value":"raft=http://127.0.0.1:7003\u0026etcd=http://127.0.0.1:4003","index":1}]
+[{"action":"get","key":"/_etcd/machines/machine1","value":"raft=http://127.0.0.1:7001\u0026etcd=http://127.0.0.1:4001","index":1},{"action":"get","key":"/_etcd/machines/machine2","value":"raft=http://127.0.0.1:7002\u0026etcd=http://127.0.0.1:4002","index":1},{"action":"get","key":"/_etcd/machines/machine3","value":"raft=http://127.0.0.1:7003\u0026etcd=http://127.0.0.1:4003","index":1}]
 ```
 
 We can also get the current leader in the cluster:
@@ -529,13 +541,13 @@ curl -L http://127.0.0.1:4001/v2/keys/foo -XPUT -d value=bar
 Now if we kill the leader of the cluster, we can get the value from one of the other two machines:
 
 ```sh
-curl -L http://127.0.0.1:4002/v1/keys/foo
+curl -L http://127.0.0.1:4002/v2/keys/foo
 ```
 
 We can also see that a new leader has been elected:
 
 ```
-curl -L http://127.0.0.1:4002/v1/leader
+curl -L http://127.0.0.1:4002/v2/leader
 ```
 
 ```
@@ -551,13 +563,13 @@ http://127.0.0.1:7003
 
 ### Testing Persistence
 
-Next we'll kill all the nodes to test persistence.
-Type `CTRL-C` on each terminal and then rerun the same command you used to start each node.
+Next we'll kill all the machines to test persistence.
+Type `CTRL-C` on each terminal and then rerun the same command you used to start each machine.
 
 Your request for the `foo` key will return the correct value:
 
 ```sh
-curl -L http://127.0.0.1:4002/v1/keys/foo
+curl -L http://127.0.0.1:4002/v2/keys/foo
 ```
 
 ```json
@@ -654,8 +666,8 @@ The command is not committed until the majority of the cluster peers receive tha
 Because of this majority voting property, the ideal cluster should be kept small to keep speed up and be made up of an odd number of peers.
 
 Odd numbers are good because if you have 8 peers the majority will be 5 and if you have 9 peers the majority will still be 5.
-The result is that an 8 peer cluster can tolerate 3 peer failures and a 9 peer cluster can tolerate 4 nodes failures.
-And in the best case when all 9 peers are responding the cluster will perform at the speed of the fastest 5 nodes.
+The result is that an 8 peer cluster can tolerate 3 peer failures and a 9 peer cluster can tolerate 4 machine failures.
+And in the best case when all 9 peers are responding the cluster will perform at the speed of the fastest 5 machines.
 
 
 ### Why SSLv3 alert handshake failure when using SSL client auth?
@@ -677,7 +689,7 @@ Add the following section to your openssl.cnf:
 When creating the cert be sure to reference it in the `-extensions` flag:
 
 ```
-openssl ca -config openssl.cnf -policy policy_anything -extensions ssl_client -out certs/node.crt -infiles node.csr
+openssl ca -config openssl.cnf -policy policy_anything -extensions ssl_client -out certs/machine.crt -infiles machine.csr
 ```
 
 

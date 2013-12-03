@@ -157,8 +157,6 @@ func (s *store) Get(nodePath string, recursive, sorted bool) (*Event, error) {
 // If the node has already existed, create will fail.
 // If any node on the path is a file, create will fail.
 func (s *store) Create(nodePath string, value string, unique bool, expireTime time.Time) (*Event, error) {
-	nodePath = path.Clean(path.Join("/", nodePath))
-
 	s.worldLock.Lock()
 	defer s.worldLock.Unlock()
 	e, err := s.internalCreate(nodePath, value, unique, false, expireTime, Create)
@@ -174,8 +172,6 @@ func (s *store) Create(nodePath string, value string, unique bool, expireTime ti
 
 // Set function creates or replace the node at nodePath.
 func (s *store) Set(nodePath string, value string, expireTime time.Time) (*Event, error) {
-	nodePath = path.Clean(path.Join("/", nodePath))
-
 	s.worldLock.Lock()
 	defer s.worldLock.Unlock()
 	e, err := s.internalCreate(nodePath, value, false, true, expireTime, Set)
@@ -193,6 +189,10 @@ func (s *store) CompareAndSwap(nodePath string, prevValue string, prevIndex uint
 	value string, expireTime time.Time) (*Event, error) {
 
 	nodePath = path.Clean(path.Join("/", nodePath))
+	// we do not allow the user to change "/"
+	if nodePath == "/" {
+		return nil, etcdErr.NewError(etcdErr.EcodeRootROnly, "/", s.CurrentIndex)
+	}
 
 	s.worldLock.Lock()
 	defer s.worldLock.Unlock()
@@ -241,6 +241,10 @@ func (s *store) CompareAndSwap(nodePath string, prevValue string, prevIndex uint
 // If the node is a directory, recursive must be true to delete it.
 func (s *store) Delete(nodePath string, recursive bool) (*Event, error) {
 	nodePath = path.Clean(path.Join("/", nodePath))
+	// we do not allow the user to change "/"
+	if nodePath == "/" {
+		return nil, etcdErr.NewError(etcdErr.EcodeRootROnly, "/", s.CurrentIndex)
+	}
 
 	s.worldLock.Lock()
 	defer s.worldLock.Unlock()
@@ -284,8 +288,8 @@ func (s *store) Delete(nodePath string, recursive bool) (*Event, error) {
 	return e, nil
 }
 
-func (s *store) Watch(prefix string, recursive bool, sinceIndex uint64) (<-chan *Event, error) {
-	prefix = path.Clean(path.Join("/", prefix))
+func (s *store) Watch(key string, recursive bool, sinceIndex uint64) (<-chan *Event, error) {
+	key = path.Clean(path.Join("/", key))
 
 	nextIndex := s.CurrentIndex + 1
 
@@ -296,10 +300,10 @@ func (s *store) Watch(prefix string, recursive bool, sinceIndex uint64) (<-chan 
 	var err *etcdErr.Error
 
 	if sinceIndex == 0 {
-		c, err = s.WatcherHub.watch(prefix, recursive, nextIndex)
+		c, err = s.WatcherHub.watch(key, recursive, nextIndex)
 
 	} else {
-		c, err = s.WatcherHub.watch(prefix, recursive, sinceIndex)
+		c, err = s.WatcherHub.watch(key, recursive, sinceIndex)
 	}
 
 	if err != nil {
@@ -338,12 +342,16 @@ func (s *store) walk(nodePath string, walkFunc func(prev *node, component string
 // If the node is a file, the value and the ttl can be updated.
 // If the node is a directory, only the ttl can be updated.
 func (s *store) Update(nodePath string, newValue string, expireTime time.Time) (*Event, error) {
+	nodePath = path.Clean(path.Join("/", nodePath))
+	// we do not allow the user to change "/"
+	if nodePath == "/" {
+		return nil, etcdErr.NewError(etcdErr.EcodeRootROnly, "/", s.CurrentIndex)
+	}
+
 	s.worldLock.Lock()
 	defer s.worldLock.Unlock()
 
 	currIndex, nextIndex := s.CurrentIndex, s.CurrentIndex+1
-
-	nodePath = path.Clean(path.Join("/", nodePath))
 
 	n, err := s.internalGet(nodePath)
 
@@ -396,13 +404,18 @@ func (s *store) internalCreate(nodePath string, value string, unique bool, repla
 
 	nodePath = path.Clean(path.Join("/", nodePath))
 
+	// we do not allow the user to change "/"
+	if nodePath == "/" {
+		return nil, etcdErr.NewError(etcdErr.EcodeRootROnly, "/", currIndex)
+	}
+
 	// Assume expire times that are way in the past are not valid.
 	// This can occur when the time is serialized to JSON and read back in.
 	if expireTime.Before(minExpireTime) {
 		expireTime = Permanent
 	}
 
-	dir, newnodeName := path.Split(nodePath)
+	dir, newNodeName := path.Split(nodePath)
 
 	// walk through the nodePath, create dirs and get the last directory node
 	d, err := s.walk(dir, s.checkDir)
@@ -416,7 +429,7 @@ func (s *store) internalCreate(nodePath string, value string, unique bool, repla
 	e := newEvent(action, nodePath, nextIndex, nextIndex)
 	eNode := e.Node
 
-	n, _ := d.GetChild(newnodeName)
+	n, _ := d.GetChild(newNodeName)
 
 	// force will try to replace a existing file
 	if n != nil {

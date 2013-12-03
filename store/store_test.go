@@ -213,6 +213,26 @@ func TestStoreDeleteDiretory(t *testing.T) {
 	assert.Equal(t, e.Action, "delete", "")
 }
 
+func TestRootRdOnly(t *testing.T) {
+	s := newStore()
+
+	_, err := s.Set("/", "", Permanent)
+	assert.NotNil(t, err, "")
+
+	_, err = s.Delete("/", true)
+	assert.NotNil(t, err, "")
+
+	_, err = s.Create("/", "", false, Permanent)
+	assert.NotNil(t, err, "")
+
+	_, err = s.Update("/", "", Permanent)
+	assert.NotNil(t, err, "")
+
+	_, err = s.CompareAndSwap("/", "", 0, "", Permanent)
+	assert.NotNil(t, err, "")
+
+}
+
 // Ensure that the store cannot delete a directory if recursive is not specified.
 func TestStoreDeleteDiretoryFailsIfNonRecursive(t *testing.T) {
 	s := newStore()

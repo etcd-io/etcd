@@ -96,6 +96,11 @@ func (s *Server) PeerURL(name string) (string, bool) {
 	return s.registry.PeerURL(name)
 }
 
+// ClientURL retrieves the Client URL for a given node name.
+func (s *Server) ClientURL(name string) (string, bool) {
+	return s.registry.ClientURL(name)
+}
+
 // Returns a reference to the Store.
 func (s *Server) Store() store.Store {
 	return s.store
