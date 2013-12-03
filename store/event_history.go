@@ -34,7 +34,7 @@ func (eh *EventHistory) addEvent(e *Event) *Event {
 
 	eh.LastIndex = e.Index()
 
-	eh.StartIndex = eh.Queue.Events[eh.Queue.Front].ModifiedIndex
+	eh.StartIndex = eh.Queue.Events[eh.Queue.Front].Index()
 
 	return e
 }
@@ -63,7 +63,7 @@ func (eh *EventHistory) scan(key string, recursive bool, index uint64) (*Event, 
 	for {
 		e := eh.Queue.Events[i]
 
-		ok := (e.Key == key)
+		ok := (e.Node.Key == key)
 
 		if recursive {
 			// add tailing slash
@@ -72,7 +72,7 @@ func (eh *EventHistory) scan(key string, recursive bool, index uint64) (*Event, 
 				key = key + "/"
 			}
 
-			ok = ok || strings.HasPrefix(e.Key, key)
+			ok = ok || strings.HasPrefix(e.Node.Key, key)
 		}
 
 		if ok && index <= e.Index() { // make sure we bypass the smaller one

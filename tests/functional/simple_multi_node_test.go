@@ -39,24 +39,26 @@ func templateTestSimpleMultiNode(t *testing.T, tls bool) {
 
 	// Test Set
 	result, err := c.Set("foo", "bar", 100)
+	node := result.Node
 
-	if err != nil || result.Key != "/foo" || result.Value != "bar" || result.TTL < 95 {
+	if err != nil || node.Key != "/foo" || node.Value != "bar" || node.TTL < 95 {
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		t.Fatalf("Set 1 failed with %s %s %v", result.Key, result.Value, result.TTL)
+		t.Fatalf("Set 1 failed with %s %s %v", node.Key, node.Value, node.TTL)
 	}
 
 	time.Sleep(time.Second)
 
 	result, err = c.Set("foo", "bar", 100)
+	node = result.Node
 
-	if err != nil || result.Key != "/foo" || result.Value != "bar" || result.PrevValue != "bar" || result.TTL < 95 {
+	if err != nil || node.Key != "/foo" || node.Value != "bar" || node.PrevValue != "bar" || node.TTL < 95 {
 		if err != nil {
 			t.Fatal(err)
 		}
-		t.Fatalf("Set 2 failed with %s %s %v", result.Key, result.Value, result.TTL)
+		t.Fatalf("Set 2 failed with %s %s %v", node.Key, node.Value, node.TTL)
 	}
 
 }

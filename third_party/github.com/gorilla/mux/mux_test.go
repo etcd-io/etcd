@@ -22,6 +22,7 @@ type routeTest struct {
 	shouldMatch bool              // whether the request is expected to match the route at all
 }
 
+
 func TestHost(t *testing.T) {
 	// newRequestHost a new request with a method, url, and host header
 	newRequestHost := func(method, url, host string) *http.Request {
@@ -417,6 +418,15 @@ func TestQueries(t *testing.T) {
 			shouldMatch: true,
 		},
 		{
+			title:       "Queries route, match with a query string",
+			route:       new(Route).Host("www.example.com").Path("/api").Queries("foo", "bar", "baz", "ding"),
+			request:     newRequest("GET", "http://www.example.com/api?foo=bar&baz=ding"),
+			vars:        map[string]string{},
+			host:        "",
+			path:        "",
+			shouldMatch: true,
+		},
+		{
 			title:       "Queries route, bad query",
 			route:       new(Route).Queries("foo", "bar", "baz", "ding"),
 			request:     newRequest("GET", "http://localhost?foo=bar&baz=dong"),
@@ -663,7 +673,7 @@ func testRoute(t *testing.T, test routeTest) {
 func TestKeepContext(t *testing.T) {
 	func1 := func(w http.ResponseWriter, r *http.Request) {}
 
-	r := NewRouter()
+	r:= NewRouter()
 	r.HandleFunc("/", func1).Name("func1")
 
 	req, _ := http.NewRequest("GET", "http://localhost/", nil)
@@ -686,6 +696,47 @@ func TestKeepContext(t *testing.T) {
 		t.Error("Context should NOT have been cleared at end of request")
 	}
 
+}
+
+
+type TestA301ResponseWriter struct {
+	hh			http.Header
+	status		int
+}
+
+func (ho TestA301ResponseWriter) Header() http.Header {
+	return http.Header(ho.hh)
+}
+
+func (ho TestA301ResponseWriter) Write( b []byte) (int, error) {
+	return 0, nil
+}
+
+func (ho TestA301ResponseWriter) WriteHeader( code int ) {
+	ho.status = code
+}
+
+func Test301Redirect(t *testing.T) {
+	m := make(http.Header)
+
+	func1 := func(w http.ResponseWriter, r *http.Request) {}
+	func2 := func(w http.ResponseWriter, r *http.Request) {}
+
+	r:= NewRouter()
+	r.HandleFunc("/api/", func2).Name("func2")
+	r.HandleFunc("/", func1).Name("func1")
+
+	req, _ := http.NewRequest("GET", "http://localhost//api/?abc=def", nil)
+
+	res := TestA301ResponseWriter{
+			hh: m,
+			status : 0,
+		}
+	r.ServeHTTP(&res, req)
+
+	if "http://localhost/api/?abc=def" != res.hh["Location"][0] {
+		t.Errorf("Should have complete URL with query string")
+	}
 }
 
 // https://plus.google.com/101022900381697718949/posts/eWy6DjFJ6uW

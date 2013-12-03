@@ -28,13 +28,14 @@ func TestSingleNodeRecovery(t *testing.T) {
 	c.SyncCluster()
 	// Test Set
 	result, err := c.Set("foo", "bar", 100)
+	node := result.Node
 
-	if err != nil || result.Key != "/foo" || result.Value != "bar" || result.TTL < 95 {
+	if err != nil || node.Key != "/foo" || node.Value != "bar" || node.TTL < 95 {
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		t.Fatalf("Set 1 failed with %s %s %v", result.Key, result.Value, result.TTL)
+		t.Fatalf("Set 1 failed with %s %s %v", node.Key, node.Value, node.TTL)
 	}
 
 	time.Sleep(time.Second)
@@ -50,16 +51,18 @@ func TestSingleNodeRecovery(t *testing.T) {
 
 	time.Sleep(time.Second)
 
-	result, err = c.Get("foo", false)
+	result, err = c.Get("foo", false, false)
+	node = result.Node
+
 	if err != nil {
 		t.Fatal("get fail: " + err.Error())
 		return
 	}
 
-	if err != nil || result.Key != "/foo" || result.Value != "bar" || result.TTL > 99 {
+	if err != nil || node.Key != "/foo" || node.Value != "bar" || node.TTL > 99 {
 		if err != nil {
 			t.Fatal(err)
 		}
-		t.Fatalf("Recovery Get failed with %s %s %v", result.Key, result.Value, result.TTL)
+		t.Fatalf("Recovery Get failed with %s %s %v", node.Key, node.Value, node.TTL)
 	}
 }

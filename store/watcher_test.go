@@ -35,7 +35,7 @@ func TestWatcher(t *testing.T) {
 		// do nothing
 	}
 
-	e := newEvent(Create, "/foo/bar", 1)
+	e := newEvent(Create, "/foo/bar", 1, 1)
 
 	wh.notify(e)
 
@@ -47,7 +47,7 @@ func TestWatcher(t *testing.T) {
 
 	c, _ = wh.watch("/foo", false, 2)
 
-	e = newEvent(Create, "/foo/bar", 2)
+	e = newEvent(Create, "/foo/bar", 2, 2)
 
 	wh.notify(e)
 
@@ -58,7 +58,7 @@ func TestWatcher(t *testing.T) {
 		// do nothing
 	}
 
-	e = newEvent(Create, "/foo", 3)
+	e = newEvent(Create, "/foo", 3, 3)
 
 	wh.notify(e)
 
@@ -78,7 +78,7 @@ func TestWatcher(t *testing.T) {
 		// do nothing
 	}
 
-	e = newEvent(Create, "/fo/bar", 3)
+	e = newEvent(Create, "/fo/bar", 3, 3)
 
 	wh.notify(e)
 

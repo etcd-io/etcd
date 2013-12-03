@@ -21,18 +21,22 @@ func TestV2CreateUnique(t *testing.T) {
 		resp, _ := tests.PostForm(fmt.Sprintf("http://%s%s", s.URL(), "/v2/keys/foo/bar"), nil)
 		body := tests.ReadBodyJSON(resp)
 		assert.Equal(t, body["action"], "create", "")
-		assert.Equal(t, body["key"], "/foo/bar/1", "")
-		assert.Equal(t, body["dir"], true, "")
-		assert.Equal(t, body["modifiedIndex"], 1, "")
+
+		node := body["node"].(map[string]interface{})
+		assert.Equal(t, node["key"], "/foo/bar/1", "")
+		assert.Equal(t, node["dir"], true, "")
+		assert.Equal(t, node["modifiedIndex"], 1, "")
 
 		// Second POST should add next index to list.
 		resp, _ = tests.PostForm(fmt.Sprintf("http://%s%s", s.URL(), "/v2/keys/foo/bar"), nil)
 		body = tests.ReadBodyJSON(resp)
-		assert.Equal(t, body["key"], "/foo/bar/2", "")
+		node = body["node"].(map[string]interface{})
+		assert.Equal(t, node["key"], "/foo/bar/2", "")
 
 		// POST to a different key should add index to that list.
 		resp, _ = tests.PostForm(fmt.Sprintf("http://%s%s", s.URL(), "/v2/keys/foo/baz"), nil)
 		body = tests.ReadBodyJSON(resp)
-		assert.Equal(t, body["key"], "/foo/baz/3", "")
+		node = body["node"].(map[string]interface{})
+		assert.Equal(t, node["key"], "/foo/baz/3", "")
 	})
 }

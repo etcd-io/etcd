@@ -14,5 +14,12 @@ func (c *Client) CompareAndSwap(key string, value string, ttl uint64, prevValue 
 	if prevIndex != 0 {
 		options["prevIndex"] = prevIndex
 	}
-	return c.put(key, value, ttl, options)
+
+	raw, err := c.put(key, value, ttl, options)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return raw.toResponse()
 }

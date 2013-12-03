@@ -30,13 +30,14 @@ func TestSimpleSnapshot(t *testing.T) {
 	// issue first 501 commands
 	for i := 0; i < 501; i++ {
 		result, err := c.Set("foo", "bar", 100)
+		node := result.Node
 
-		if err != nil || result.Key != "/foo" || result.Value != "bar" || result.TTL < 95 {
+		if err != nil || node.Key != "/foo" || node.Value != "bar" || node.TTL < 95 {
 			if err != nil {
 				t.Fatal(err)
 			}
 
-			t.Fatalf("Set failed with %s %s %v", result.Key, result.Value, result.TTL)
+			t.Fatalf("Set failed with %s %s %v", node.Key, node.Value, node.TTL)
 		}
 	}
 
@@ -62,13 +63,14 @@ func TestSimpleSnapshot(t *testing.T) {
 	// issue second 501 commands
 	for i := 0; i < 501; i++ {
 		result, err := c.Set("foo", "bar", 100)
+		node := result.Node
 
-		if err != nil || result.Key != "/foo" || result.Value != "bar" || result.TTL < 95 {
+		if err != nil || node.Key != "/foo" || node.Value != "bar" || node.TTL < 95 {
 			if err != nil {
 				t.Fatal(err)
 			}
 
-			t.Fatalf("Set failed with %s %s %v", result.Key, result.Value, result.TTL)
+			t.Fatalf("Set failed with %s %s %v", node.Key, node.Value, node.TTL)
 		}
 	}
 

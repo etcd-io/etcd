@@ -65,7 +65,7 @@ func TestMultiNodeKillAllAndRecovery(t *testing.T) {
 		t.Fatalf("Recovery error: %s", err)
 	}
 
-	if result.ModifiedIndex != 16 {
-		t.Fatalf("recovery failed! [%d/16]", result.ModifiedIndex)
+	if result.Node.ModifiedIndex != 16 {
+		t.Fatalf("recovery failed! [%d/16]", result.Node.ModifiedIndex)
 	}
 }
