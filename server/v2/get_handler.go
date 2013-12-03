@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strconv"
 
 	etcdErr "github.com/coreos/etcd/error"
@@ -24,9 +25,17 @@ func GetHandler(w http.ResponseWriter, req *http.Request, s Server) error {
 	if req.FormValue("consistent") == "true" && s.State() != raft.Leader {
 		leader := s.Leader()
 		hostname, _ := s.ClientURL(leader)
-		url := hostname + req.URL.Path
-		log.Debugf("Redirect consistent get to %s", url)
-		http.Redirect(w, req, url, http.StatusTemporaryRedirect)
+
+		url, err := url.Parse(hostname)
+		if err != nil {
+			log.Warn("Redirect cannot parse hostName ", hostname)
+			return err
+		}
+		url.RawQuery = req.URL.RawQuery
+		url.Path = req.URL.Path
+
+		log.Debugf("Redirect consistent get to %s", url.String())
+		http.Redirect(w, req, url.String(), http.StatusTemporaryRedirect)
 		return nil
 	}
 
