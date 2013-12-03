@@ -23,7 +23,7 @@ func GetHandler(w http.ResponseWriter, req *http.Request, s Server) error {
 	// Help client to redirect the request to the current leader
 	if req.FormValue("consistent") == "true" && s.State() != raft.Leader {
 		leader := s.Leader()
-		hostname, _ := s.PeerURL(leader)
+		hostname, _ := s.ClientURL(leader)
 		url := hostname + req.URL.Path
 		log.Debugf("Redirect consistent get to %s", url)
 		http.Redirect(w, req, url, http.StatusTemporaryRedirect)
