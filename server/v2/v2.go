@@ -13,6 +13,7 @@ type Server interface {
 	CommitIndex() uint64
 	Term() uint64
 	PeerURL(string) (string, bool)
+	ClientURL(string) (string, bool)
 	Store() store.Store
 	Dispatch(raft.Command, http.ResponseWriter, *http.Request) error
 }
