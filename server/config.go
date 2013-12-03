@@ -131,6 +131,21 @@ func (c *Config) Load(arguments []string) error {
 		return fmt.Errorf("sanitize: %v", err)
 	}
 
+	// Only guess the machine name if there is no data dir specified
+	// because the info file will should have our name
+	if c.Name == "" && c.DataDir == "" {
+		c.NameFromHostname()
+	}
+
+	if c.DataDir == "" && c.Name != "" {
+		c.DataDirFromName()
+	}
+
+	// Force remove server configuration if specified.
+	if c.Force {
+		c.Reset()
+	}
+
 	return nil
 }
 
@@ -276,11 +291,6 @@ func (c *Config) LoadFlags(arguments []string) error {
 	}
 	if cors != "" {
 		c.CorsOrigins = trimsplit(cors, ",")
-	}
-
-	// Force remove server configuration if specified.
-	if c.Force {
-		c.Reset()
 	}
 
 	return nil
