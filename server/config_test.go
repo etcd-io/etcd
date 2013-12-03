@@ -313,6 +313,24 @@ func TestConfigNameFlag(t *testing.T) {
 	assert.Equal(t, c.Name, "test-name", "")
 }
 
+// Ensures that a Name gets guessed if not specified
+func TestConfigNameGuess(t *testing.T) {
+	c := NewConfig()
+	assert.Nil(t, c.LoadFlags([]string{}), "")
+	assert.Nil(t, c.Sanitize())
+	name, _ := os.Hostname()
+	assert.Equal(t, c.Name, name, "")
+}
+
+// Ensures that a DataDir gets guessed if not specified
+func TestConfigDataDirGuess(t *testing.T) {
+	c := NewConfig()
+	assert.Nil(t, c.LoadFlags([]string{}), "")
+	assert.Nil(t, c.Sanitize())
+	name, _ := os.Hostname()
+	assert.Equal(t, c.DataDir, name+".etcd", "")
+}
+
 // Ensures that Snapshot can be parsed from the environment.
 func TestConfigSnapshotEnv(t *testing.T) {
 	withEnv("ETCD_SNAPSHOT", "1", func(c *Config) {
