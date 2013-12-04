@@ -83,7 +83,7 @@ curl -L http://127.0.0.1:4001/v2/keys/message -X PUT -d value="Hello world"
 ```
 
 ```json
-{"action":"set","key":"/message","value":"Hello world","modifiedIndex":2}
+{"action":"set","node":{"key":"/message","value":"Hello world","modifiedIndex":2,"createdIndex":2}}
 ```
 
 This response contains four fields.
@@ -112,7 +112,7 @@ curl -L http://127.0.0.1:4001/v2/keys/message
 ```
 
 ```json
-{"action":"get","key":"/message","value":"Hello world","modifiedIndex":2}
+{"action":"get","node":{"key":"/message","value":"Hello world","modifiedIndex":2,"createdIndex":2}}
 ```
 
 
@@ -125,10 +125,10 @@ curl -L http://127.0.0.1:4001/v2/keys/message -XPUT -d value="Hello etcd"
 ```
 
 ```json
-{"action":"set","key":"/message","prevValue":"Hello world","value":"Hello etcd","index":3}
+{"action":"set","node":{"key":"/message","prevValue":"Hello world","value":"Hello etcd","modifiedIndex":3,"createdIndex":3}}
 ```
 
-Notice that the `prevValue` is set to the previous value of the key - `Hello world`.
+Notice that `node.prevValue` is set to the previous value of the key - `Hello world`.
 It is useful when you want to atomically set a value to a key and get its old value.
 
 
@@ -141,7 +141,7 @@ curl -L http://127.0.0.1:4001/v2/keys/message -XDELETE
 ```
 
 ```json
-{"action":"delete","key":"/message","prevValue":"Hello etcd","modifiedIndex":4}
+{"action":"delete","node":{"key":"/message","prevValue":"Hello etcd","modifiedIndex":4,"createdIndex":3}}
 ```
 
 
@@ -155,7 +155,7 @@ curl -L http://127.0.0.1:4001/v2/keys/foo -XPUT -d value=bar -d ttl=5
 ```
 
 ```json
-{"action":"set","key":"/foo","value":"bar","expiration":"2013-11-12T20:21:22.629352334-05:00","ttl":5,"modifiedIndex":5}
+{"action":"set","node":{"key":"/foo","value":"bar","expiration":"2013-12-04T12:01:21.874888581-08:00","ttl":5,"modifiedIndex":5,"createdIndex":5}}
 ```
 
 Note the two new fields in response:
@@ -201,7 +201,7 @@ curl -L http://127.0.0.1:4001/v2/keys/foo -XPUT -d value=bar
 The first terminal should get the notification and return with the same response as the set request.
 
 ```json
-{"action":"set","key":"/foo","value":"bar","modifiedIndex":7}
+{"action":"set","node":{"key":"/foo","value":"bar","modifiedIndex":7,"createdIndex":7}}
 ```
 
 However, the watch command can do more than this.
@@ -274,10 +274,10 @@ curl -L http://127.0.0.1:4001/v2/keys/foo?prevValue=one -XPUT -d value=two
 The response should be
 
 ```json
-{"action":"compareAndSwap","key":"/foo","prevValue":"one","value":"two","modifiedIndex":9}
+{"action":"compareAndSwap","node":{"key":"/foo","prevValue":"one","value":"two","modifiedIndex":9,"createdIndex":8}}
 ```
 
-We successfully changed the value from “one” to “two” since we gave the correct previous value.
+We successfully changed the value from "one" to "two" since we gave the correct previous value.
 
 
 ### Listing a directory
@@ -295,7 +295,7 @@ curl -L http://127.0.0.1:4001/v2/keys/foo_dir/foo -XPUT -d value=bar
 ```
 
 ```json
-{"action":"set","key":"/foo_dir/foo","value":"bar","modifiedIndex":10}
+{"action":"set","node":{"key":"/foo_dir/foo","value":"bar","modifiedIndex":2,"createdIndex":2}}
 ```
 
 Now we can list the keys under root `/`:
@@ -307,7 +307,7 @@ curl -L http://127.0.0.1:4001/v2/keys/
 We should see the response as an array of items:
 
 ```json
-{"action":"get","key":"/","dir":true,"kvs":[{"key":"/foo","value":"two","modifiedIndex":9},{"key":"/foo_dir","dir":true,"modifiedIndex":10}],"modifiedIndex":0}
+{"action":"get","node":{"key":"/","dir":true,"nodes":[{"key":"/foo_dir","dir":true,"modifiedIndex":2,"createdIndex":2}]}}
 ```
 
 Here we can see `/foo` is a key-value pair under `/` and `/foo_dir` is a directory.
@@ -318,7 +318,7 @@ curl -L http://127.0.0.1:4001/v2/keys/?recursive=true
 ```
 
 ```json
-{"action":"get","key":"/","dir":true,"kvs":[{"key":"/foo","value":"two","modifiedIndex":9},{"key":"/foo_dir","dir":true,"kvs":[{"key":"/foo_dir/foo","value":"bar","modifiedIndex":10}],"modifiedIndex":10}],"modifiedIndex":0}
+{"action":"get","node":{"key":"/","dir":true,"nodes":[{"key":"/foo_dir","dir":true,"nodes":[{"key":"/foo_dir/foo","value":"bar","modifiedIndex":2,"createdIndex":2}],"modifiedIndex":2,"createdIndex":2}]}}
 ```
 
 
@@ -333,7 +333,7 @@ curl -L http://127.0.0.1:4001/v2/keys/foo_dir?recursive=true -XDELETE
 ```
 
 ```json
-{"action":"delete","key":"/foo_dir","dir":true,"modifiedIndex":11}
+{"action":"delete","node":{"key":"/foo_dir","dir":true,"modifiedIndex":11,"createdIndex":10}}
 ```
 
 
@@ -349,7 +349,7 @@ curl -L http://127.0.0.1:4001/v2/keys/_message -XPUT -d value="Hello hidden worl
 ```
 
 ```json
-{"action":"set","key":"/_message","value":"Hello hidden world","modifiedIndex":12}
+{"action":"set","node":{"key":"/_message","value":"Hello hidden world","modifiedIndex":3,"createdIndex":3}}
 ```
 
 
@@ -360,7 +360,7 @@ curl -L http://127.0.0.1:4001/v2/keys/message -XPUT -d value="Hello world"
 ```
 
 ```json
-{"action":"set","key":"/message","value":"Hello world","modifiedIndex":13}
+{"action":"set","node":{"key":"/message","value":"Hello world","modifiedIndex":4,"createdIndex":4}}
 ```
 
 Now let's try to get a listing of keys under the root directory, `/`:
@@ -370,7 +370,7 @@ curl -L http://127.0.0.1:4001/v2/keys/
 ```
 
 ```json
-{"action":"get","key":"/","dir":true,"kvs":[{"key":"/foo","value":"two","modifiedIndex":9},{"key":"/message","value":"Hello world","modifiedIndex":13}],"modifiedIndex":0}
+{"action":"get","node":{"key":"/","dir":true,"nodes":[{"key":"/foo_dir","dir":true,"modifiedIndex":2,"createdIndex":2},{"key":"/message","value":"Hello world","modifiedIndex":4,"createdIndex":4}]}}
 ```
 
 Here we see the `/message` key but our hidden `/_message` key is not returned.
@@ -468,7 +468,7 @@ TLS handshake, Finished (20)
 And also the response from the server:
 
 ```json
-{"action":"set","key":"/foo","prevValue":"bar","value":"bar","modifiedIndex":3}
+{"action":"set","node":{"key":"/foo","prevValue":"two","value":"bar","modifiedIndex":12,"createdIndex":12}}
 ```
 
 
@@ -516,7 +516,7 @@ curl -L http://127.0.0.1:4001/v2/keys/_etcd/machines
 ```
 
 ```json
-[{"action":"get","key":"/_etcd/machines/machine1","value":"raft=http://127.0.0.1:7001\u0026etcd=http://127.0.0.1:4001","index":1},{"action":"get","key":"/_etcd/machines/machine2","value":"raft=http://127.0.0.1:7002\u0026etcd=http://127.0.0.1:4002","index":1},{"action":"get","key":"/_etcd/machines/machine3","value":"raft=http://127.0.0.1:7003\u0026etcd=http://127.0.0.1:4003","index":1}]
+{"action":"get","node":{"key":"/_etcd/machines","dir":true,"nodes":[{"key":"/_etcd/machines/machine1","value":"raft=http://127.0.0.1:7001\u0026etcd=http://127.0.0.1:4001","modifiedIndex":1,"createdIndex":1},{"key":"/_etcd/machines/machine2","value":"raft=http://127.0.0.1:7002\u0026etcd=http://127.0.0.1:4002","modifiedIndex":2,"createdIndex":2},{"key":"/_etcd/machines/machine3","value":"raft=http://127.0.0.1:7003\u0026etcd=http://127.0.0.1:4003","modifiedIndex":3,"createdIndex":3}],"modifiedIndex":1,"createdIndex":1}}
 ```
 
 We can also get the current leader in the cluster:
@@ -538,7 +538,7 @@ curl -L http://127.0.0.1:4001/v2/keys/foo -XPUT -d value=bar
 ```
 
 ```json
-{"action":"set","key":"/foo","value":"bar","modifiedIndex":4}
+{"action":"set","node":{"key":"/foo","value":"bar","modifiedIndex":4,"createdIndex":4}}
 ```
 
 
@@ -579,7 +579,7 @@ curl -L http://127.0.0.1:4002/v2/keys/foo
 ```
 
 ```json
-{"action":"get","key":"/foo","value":"bar","index":4}
+{"action":"get","node":{"key":"/foo","value":"bar","modifiedIndex":4,"createdIndex":4}}
 ```
 
 
