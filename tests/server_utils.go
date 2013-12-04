@@ -14,6 +14,8 @@ const (
 	testClientURL     = "localhost:4401"
 	testRaftURL       = "localhost:7701"
 	testSnapshotCount = 10000
+	testHeartbeatTimeout = 50
+	testElectionTimeout = 200
 )
 
 // Starts a server in a temporary directory.
@@ -23,7 +25,7 @@ func RunServer(f func(*server.Server)) {
 
 	store := store.New()
 	registry := server.NewRegistry(store)
-	ps := server.NewPeerServer(testName, path, testRaftURL, testRaftURL, &server.TLSConfig{Scheme: "http"}, &server.TLSInfo{}, registry, store, testSnapshotCount)
+	ps := server.NewPeerServer(testName, path, testRaftURL, testRaftURL, &server.TLSConfig{Scheme: "http"}, &server.TLSInfo{}, registry, store, testSnapshotCount, testHeartbeatTimeout, testElectionTimeout)
 	s := server.New(testName, testClientURL, testClientURL, &server.TLSConfig{Scheme: "http"}, &server.TLSInfo{}, ps, registry, store)
 	ps.SetServer(s)
 
