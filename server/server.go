@@ -227,6 +227,7 @@ func (s *Server) listenAndServeTLS(certFile, keyFile string) error {
 
 	tlsListener := tls.NewListener(conn, config)
 	s.listener = tlsListener
+	log.Debugf("etcd listening using tls key %s, cert %s", keyFile, certFile)
 	return s.Server.Serve(tlsListener)
 }
 

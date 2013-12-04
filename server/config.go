@@ -67,7 +67,8 @@ type Config struct {
 	ShowVersion      bool
 	Verbose          bool `toml:"verbose" env:"ETCD_VERBOSE"`
 	VeryVerbose      bool `toml:"very_verbose" env:"ETCD_VERY_VERBOSE"`
-
+	HeartbeatTimeout int
+	ElectionTimeout  int
 	Peer struct {
 		Addr     string `toml:"addr" env:"ETCD_PEER_ADDR"`
 		BindAddr string `toml:"bind_addr" env:"ETCD_PEER_BIND_ADDR"`
@@ -228,6 +229,9 @@ func (c *Config) LoadFlags(arguments []string) error {
 	f.IntVar(&c.MaxResultBuffer, "max-result-buffer", c.MaxResultBuffer, "")
 	f.IntVar(&c.MaxRetryAttempts, "max-retry-attempts", c.MaxRetryAttempts, "")
 	f.IntVar(&c.MaxClusterSize, "max-cluster-size", c.MaxClusterSize, "")
+	f.IntVar(&c.HeartbeatTimeout, "peer-heartbeat-timeout", HeartbeatTimeout, "")
+	f.IntVar(&c.ElectionTimeout, "peer-election-timeout", ElectionTimeout, "")
+
 	f.StringVar(&cors, "cors", "", "")
 
 	f.BoolVar(&c.Snapshot, "snapshot", c.Snapshot, "")
