@@ -406,6 +406,12 @@ curl --cacert ./fixtures/ca/server-chain.pem https://127.0.0.1:4001/v2/keys/foo 
 
 You should be able to see the handshake succeed.
 
+**OSX 10.9+ Users**: curl 7.30.0 on OSX 10.9+ doesn't understand certificates passed in on the command line.
+Instead you must import the dummy ca.crt directly into the keychain or add the `-k` flag to curl to ignore errors.
+If you want to test without the `-k` flag run `open ./fixtures/ca/ca.crt` and follow the prompts.
+Please remove this certificate after you are done testing!
+If you know of a workaround let us know.
+
 ```
 ...
 SSLv3, TLS handshake, Finished (20):
