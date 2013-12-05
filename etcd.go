@@ -22,6 +22,7 @@ import (
 
 	"github.com/coreos/etcd/log"
 	"github.com/coreos/etcd/server"
+	"github.com/coreos/etcd/server/proxy"
 	"github.com/coreos/etcd/store"
 	"github.com/coreos/raft"
 )
@@ -81,22 +82,40 @@ func main() {
 	store := store.New()
 	registry := server.NewRegistry(store)
 
-	// Create peer server.
-	ps := server.NewPeerServer(info.Name, config.DataDir, info.RaftURL, info.RaftListenHost, &peerTLSConfig, &info.RaftTLS, registry, store, config.SnapshotCount)
-	ps.MaxClusterSize = config.MaxClusterSize
-	ps.RetryTimes = config.MaxRetryAttempts
+	var ps *server.PeerServer
+	var p *proxy.Proxy
+
+	if config.Mode == server.Proxy {
+		log.Infof("Start as Proxy Mode")
+		if len(config.Peers) == 0 {
+			log.Fatal("Proxy Mode requires cluster peers!")
+		}
+		p = proxy.New(config.Peers, peerTLSConfig.Scheme)
+
+	} else {
+		// Create peer server.
+		ps = server.NewPeerServer(info.Name, config.DataDir, info.RaftURL, info.RaftListenHost, &peerTLSConfig, &info.RaftTLS, registry, store, config.SnapshotCount)
+		ps.MaxClusterSize = config.MaxClusterSize
+		ps.RetryTimes = config.MaxRetryAttempts
+	}
 
 	// Create client server.
-	s := server.New(info.Name, info.EtcdURL, info.EtcdListenHost, &tlsConfig, &info.EtcdTLS, ps, registry, store)
+	s := server.New(info.Name, info.EtcdURL, info.EtcdListenHost, config.Mode, &tlsConfig, &info.EtcdTLS, ps, registry, store)
 	if err := s.AllowOrigins(config.CorsOrigins); err != nil {
 		panic(err)
 	}
 
-	ps.SetServer(s)
+	if p != nil {
+		s.SetProxy(p)
+	}
 
-	// Run peer server in separate thread while the client server blocks.
-	go func() {
-		log.Fatal(ps.ListenAndServe(config.Snapshot, config.Peers))
-	}()
+	if ps != nil {
+		ps.SetServer(s)
+		// Run peer server in separate thread while the client server blocks.
+		go func() {
+			log.Fatal(ps.ListenAndServe(config.Snapshot, config.Peers))
+		}()
+	}
+
 	log.Fatal(s.ListenAndServe())
 }

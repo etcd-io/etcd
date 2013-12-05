@@ -65,8 +65,9 @@ type Config struct {
 	SnapshotCount    int      `toml:"snapshot_count" env:"ETCD_SNAPSHOTCOUNT"`
 	ShowHelp         bool
 	ShowVersion      bool
-	Verbose          bool `toml:"verbose" env:"ETCD_VERBOSE"`
-	VeryVerbose      bool `toml:"very_verbose" env:"ETCD_VERY_VERBOSE"`
+	Verbose          bool   `toml:"verbose" env:"ETCD_VERBOSE"`
+	VeryVerbose      bool   `toml:"very_verbose" env:"ETCD_VERY_VERBOSE"`
+	Mode             string `toml:"mode" env:"ETCD_MODE"`
 
 	Peer struct {
 		Addr     string `toml:"addr" env:"ETCD_PEER_ADDR"`
@@ -87,6 +88,7 @@ func NewConfig() *Config {
 	c.MaxRetryAttempts = 3
 	c.Peer.Addr = "127.0.0.1:7001"
 	c.SnapshotCount = 10000
+	c.Mode = Normal
 	return c
 }
 
@@ -238,6 +240,8 @@ func (c *Config) LoadFlags(arguments []string) error {
 	f.BoolVar(&c.Snapshot, "snapshot", c.Snapshot, "")
 	f.IntVar(&c.SnapshotCount, "snapshot-count", c.SnapshotCount, "")
 	f.StringVar(&c.CPUProfileFile, "cpuprofile", "", "")
+
+	f.StringVar(&c.Mode, "mode", c.Mode, "")
 
 	// BEGIN IGNORED FLAGS
 	f.StringVar(&path, "config", "", "")
