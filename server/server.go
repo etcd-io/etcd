@@ -46,14 +46,14 @@ func New(name string, urlStr string, bindAddr string, tlsConf *TLSConfig, tlsInf
 			TLSConfig: &tlsConf.Server,
 			Addr:      bindAddr,
 		},
-		name:       name,
-		store:      store,
-		registry:   registry,
-		url:        urlStr,
-		tlsConf:    tlsConf,
-		tlsInfo:    tlsInfo,
-		peerServer: peerServer,
-		router:     r,
+		name:        name,
+		store:       store,
+		registry:    registry,
+		url:         urlStr,
+		tlsConf:     tlsConf,
+		tlsInfo:     tlsInfo,
+		peerServer:  peerServer,
+		router:      r,
 		corsHandler: cors,
 	}
 
@@ -377,7 +377,7 @@ func (s *Server) SpeedTestHandler(w http.ResponseWriter, req *http.Request) erro
 	for i := 0; i < count; i++ {
 		go func() {
 			for j := 0; j < 10; j++ {
-				c := s.Store().CommandFactory().CreateSetCommand("foo", "bar", time.Unix(0, 0))
+				c := s.Store().CommandFactory().CreateSetCommand("foo", false, "bar", time.Unix(0, 0))
 				s.peerServer.RaftServer().Do(c)
 			}
 			c <- true

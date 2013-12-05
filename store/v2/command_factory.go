@@ -26,21 +26,23 @@ func (f *CommandFactory) CreateUpgradeCommand() raft.Command {
 }
 
 // CreateSetCommand creates a version 2 command to set a key to a given value in the store.
-func (f *CommandFactory) CreateSetCommand(key string, value string, expireTime time.Time) raft.Command {
+func (f *CommandFactory) CreateSetCommand(key string, dir bool, value string, expireTime time.Time) raft.Command {
 	return &SetCommand{
 		Key:        key,
 		Value:      value,
 		ExpireTime: expireTime,
+		Dir:        dir,
 	}
 }
 
 // CreateCreateCommand creates a version 2 command to create a new key in the store.
-func (f *CommandFactory) CreateCreateCommand(key string, value string, expireTime time.Time, unique bool) raft.Command {
+func (f *CommandFactory) CreateCreateCommand(key string, dir bool, value string, expireTime time.Time, unique bool) raft.Command {
 	return &CreateCommand{
 		Key:        key,
 		Value:      value,
 		ExpireTime: expireTime,
 		Unique:     unique,
+		Dir:        dir,
 	}
 }
 
@@ -54,10 +56,11 @@ func (f *CommandFactory) CreateUpdateCommand(key string, value string, expireTim
 }
 
 // CreateDeleteCommand creates a version 2 command to delete a key from the store.
-func (f *CommandFactory) CreateDeleteCommand(key string, recursive bool) raft.Command {
+func (f *CommandFactory) CreateDeleteCommand(key string, dir, recursive bool) raft.Command {
 	return &DeleteCommand{
 		Key:       key,
 		Recursive: recursive,
+		Dir:       dir,
 	}
 }
 
