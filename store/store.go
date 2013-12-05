@@ -366,22 +366,15 @@ func (s *store) Update(nodePath string, newValue string, expireTime time.Time) (
 	e := newEvent(Update, nodePath, nextIndex, n.CreatedIndex)
 	eNode := e.Node
 
-	if len(newValue) != 0 {
-		if n.IsDir() {
-			// if the node is a directory, we cannot update value
-			s.Stats.Inc(UpdateFail)
-			return nil, etcdErr.NewError(etcdErr.EcodeNotFile, nodePath, currIndex)
-		}
-
-		eNode.PrevValue = n.Value
-		n.Write(newValue, nextIndex)
-		eNode.Value = newValue
-
-	} else {
-		// update value to empty
-		eNode.Value = n.Value
-		n.Value = ""
+	if n.IsDir() && len(newValue) != 0 {
+		// if the node is a directory, we cannot update value to non-empty
+		s.Stats.Inc(UpdateFail)
+		return nil, etcdErr.NewError(etcdErr.EcodeNotFile, nodePath, currIndex)
 	}
+
+	eNode.PrevValue = n.Value
+	n.Write(newValue, nextIndex)
+	eNode.Value = newValue
 
 	// update ttl
 	n.UpdateTTL(expireTime)
