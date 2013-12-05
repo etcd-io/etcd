@@ -451,7 +451,6 @@ func (s *store) internalCreate(nodePath string, dir bool, value string, unique, 
 		eNode.Dir = true
 
 		n = newDir(s, nodePath, nextIndex, d, "", expireTime)
-
 	}
 
 	// we are sure d is a directory and does not have the children with name n.Name

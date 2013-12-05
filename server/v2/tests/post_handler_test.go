@@ -24,7 +24,7 @@ func TestV2CreateUnique(t *testing.T) {
 
 		node := body["node"].(map[string]interface{})
 		assert.Equal(t, node["key"], "/foo/bar/2", "")
-		assert.Equal(t, node["dir"], true, "")
+		assert.Nil(t, node["dir"], "")
 		assert.Equal(t, node["modifiedIndex"], 2, "")
 
 		// Second POST should add next index to list.

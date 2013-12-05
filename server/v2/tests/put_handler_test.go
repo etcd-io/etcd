@@ -126,12 +126,13 @@ func TestV2UpdateKeySuccess(t *testing.T) {
 
 // Ensures that a key is not conditionally set if it previously did not exist.
 //
+//   $ curl -X PUT localhost:4001/v2/keys/foo?dir=true
 //   $ curl -X PUT localhost:4001/v2/keys/foo/bar -d value=XXX -d prevExist=true
 //
 func TestV2UpdateKeyFailOnValue(t *testing.T) {
 	tests.RunServer(func(s *server.Server) {
 		v := url.Values{}
-		resp, _ := tests.PutForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo"), v)
+		resp, _ := tests.PutForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo?dir=true"), v)
 
 		v.Set("value", "YYY")
 		v.Set("prevExist", "true")
