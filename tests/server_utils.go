@@ -10,12 +10,12 @@ import (
 )
 
 const (
-	testName          = "ETCDTEST"
-	testClientURL     = "localhost:4401"
-	testRaftURL       = "localhost:7701"
-	testSnapshotCount = 10000
+	testName             = "ETCDTEST"
+	testClientURL        = "localhost:4401"
+	testRaftURL          = "localhost:7701"
+	testSnapshotCount    = 10000
 	testHeartbeatTimeout = 50
-	testElectionTimeout = 200
+	testElectionTimeout  = 200
 )
 
 // Starts a server in a temporary directory.

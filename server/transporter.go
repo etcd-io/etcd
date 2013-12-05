@@ -27,13 +27,17 @@ type dialer func(network, addr string) (net.Conn, error)
 // Create http or https transporter based on
 // whether the user give the server cert and key
 func newTransporter(scheme string, tlsConf tls.Config, peerServer *PeerServer) *transporter {
+	// names for each type of timeout, for the sake of clarity
+	dialTimeout := time.Duration(3 * peerServer.heartbeatTimeout + peerServer.electionTimeout) * time.Millisecond
+	responseHeaderTimeout := time.Duration(3 * peerServer.heartbeatTimeout + peerServer.electionTimeout) * time.Millisecond
+
 	t := transporter{}
 
 	t.tranTimeout = time.Duration(peerServer.heartbeatTimeout) * time.Millisecond
 
 	tr := &http.Transport{
-		Dial: dialWithTimeoutFactory( time.Duration(3 * peerServer.heartbeatTimeout + peerServer.electionTimeout) * time.Millisecond),
-		ResponseHeaderTimeout: time.Duration(3 * peerServer.heartbeatTimeout + peerServer.electionTimeout) * time.Millisecond,
+		Dial: dialWithTimeoutFactory(dialTimeout),
+		ResponseHeaderTimeout: responseHeaderTimeout,
 	}
 
 	if scheme == "https" {
