@@ -52,16 +52,6 @@ func main() {
 		profile(config.CPUProfileFile)
 	}
 
-	// Only guess the machine name if there is no data dir specified
-	// because the info file will should have our name
-	if config.Name == "" && config.DataDir == "" {
-		config.NameFromHostname()
-	}
-
-	if config.DataDir == "" && config.Name != "" {
-		config.DataDirFromName()
-	}
-
 	if config.DataDir == "" {
 		log.Fatal("The data dir was not set and could not be guessed from machine name")
 	}

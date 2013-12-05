@@ -131,6 +131,11 @@ func (c *Config) Load(arguments []string) error {
 		return fmt.Errorf("sanitize: %v", err)
 	}
 
+	// Force remove server configuration if specified.
+	if c.Force {
+		c.Reset()
+	}
+
 	return nil
 }
 
@@ -278,11 +283,6 @@ func (c *Config) LoadFlags(arguments []string) error {
 		c.CorsOrigins = trimsplit(cors, ",")
 	}
 
-	// Force remove server configuration if specified.
-	if c.Force {
-		c.Reset()
-	}
-
 	return nil
 }
 
@@ -402,6 +402,16 @@ func (c *Config) Sanitize() error {
 	}
 	if c.Peer.BindAddr, err = sanitizeBindAddr(c.Peer.BindAddr, c.Peer.Addr); err != nil {
 		return fmt.Errorf("Peer Listen Host: %s", err)
+	}
+
+	// Only guess the machine name if there is no data dir specified
+	// because the info file should have our name
+	if c.Name == "" && c.DataDir == "" {
+		c.NameFromHostname()
+	}
+
+	if c.DataDir == "" && c.Name != "" {
+		c.DataDirFromName()
 	}
 
 	return nil
