@@ -2,6 +2,7 @@ package store
 
 import (
 	"fmt"
+	"path"
 	"strings"
 	"sync"
 
@@ -33,14 +34,14 @@ func (eh *EventHistory) addEvent(e *Event) *Event {
 
 	eh.LastIndex = e.Index()
 
-	eh.StartIndex = eh.Queue.Events[eh.Queue.Front].ModifiedIndex
+	eh.StartIndex = eh.Queue.Events[eh.Queue.Front].Index()
 
 	return e
 }
 
 // scan function is enumerating events from the index in history and
-// stops till the first point where the key has identified prefix
-func (eh *EventHistory) scan(prefix string, index uint64) (*Event, *etcdErr.Error) {
+// stops till the first point where the key has identified key
+func (eh *EventHistory) scan(key string, recursive bool, index uint64) (*Event, *etcdErr.Error) {
 	eh.rwl.RLock()
 	defer eh.rwl.RUnlock()
 
@@ -62,7 +63,19 @@ func (eh *EventHistory) scan(prefix string, index uint64) (*Event, *etcdErr.Erro
 	for {
 		e := eh.Queue.Events[i]
 
-		if strings.HasPrefix(e.Key, prefix) && index <= e.Index() { // make sure we bypass the smaller one
+		ok := (e.Node.Key == key)
+
+		if recursive {
+			// add tailing slash
+			key := path.Clean(key)
+			if key[len(key)-1] != '/' {
+				key = key + "/"
+			}
+
+			ok = ok || strings.HasPrefix(e.Node.Key, key)
+		}
+
+		if ok && index <= e.Index() { // make sure we bypass the smaller one
 			return e, nil
 		}
 

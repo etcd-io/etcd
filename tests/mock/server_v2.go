@@ -45,6 +45,11 @@ func (s *ServerV2) PeerURL(name string) (string, bool) {
 	return args.String(0), args.Bool(1)
 }
 
+func (s *ServerV2) ClientURL(name string) (string, bool) {
+	args := s.Called(name)
+	return args.String(0), args.Bool(1)
+}
+
 func (s *ServerV2) Store() store.Store {
 	return s.store
 }

@@ -99,5 +99,5 @@ func TestV1ClusterMigration(t *testing.T) {
 	body = tests.ReadBody(resp)
 	assert.Nil(t, err, "")
 	assert.Equal(t, resp.StatusCode, 200, "")
-	assert.Equal(t, string(body), `{"action":"get","key":"/foo","value":"one","modifiedIndex":9}`)
+	assert.Equal(t, string(body), `{"action":"get","node":{"key":"/foo","value":"one","modifiedIndex":9,"createdIndex":9}}`)
 }

@@ -11,7 +11,6 @@ import (
 	"net/url"
 	"os"
 	"path"
-	"reflect"
 	"strings"
 	"time"
 )
@@ -28,6 +27,10 @@ const (
 	// human-readable values.
 	STRONG_CONSISTENCY = "STRONG"
 	WEAK_CONSISTENCY   = "WEAK"
+)
+
+const (
+	defaultBufferSize = 10
 )
 
 type Cluster struct {
@@ -48,13 +51,8 @@ type Client struct {
 	config      Config  `json:"config"`
 	httpClient  *http.Client
 	persistence io.Writer
+	cURLch      chan string
 }
-
-type options map[string]interface{}
-
-// An internally-used data structure that represents a mapping
-// between valid options and their kinds
-type validOptions map[string]reflect.Kind
 
 // NewClient create a basic client that is configured to be used
 // with the given machine list.
@@ -333,9 +331,7 @@ func dialTimeout(network, addr string) (net.Conn, error) {
 	return net.DialTimeout(network, addr, time.Second)
 }
 
-func (c *Client) updateLeader(httpPath string) {
-	u, _ := url.Parse(httpPath)
-
+func (c *Client) updateLeader(u *url.URL) {
 	var leader string
 	if u.Scheme == "" {
 		leader = "http://" + u.Host
@@ -346,4 +342,33 @@ func (c *Client) updateLeader(httpPath string) {
 	logger.Debugf("update.leader[%s,%s]", c.cluster.Leader, leader)
 	c.cluster.Leader = leader
 	c.saveConfig()
+}
+
+// switchLeader switch the current leader to machines[num]
+func (c *Client) switchLeader(num int) {
+	logger.Debugf("switch.leader[from %v to %v]",
+		c.cluster.Leader, c.cluster.Machines[num])
+
+	c.cluster.Leader = c.cluster.Machines[num]
+}
+
+func (c *Client) OpenCURL() {
+	c.cURLch = make(chan string, defaultBufferSize)
+}
+
+func (c *Client) CloseCURL() {
+	c.cURLch = nil
+}
+
+func (c *Client) sendCURL(command string) {
+	go func() {
+		select {
+		case c.cURLch <- command:
+		default:
+		}
+	}()
+}
+
+func (c *Client) RecvCURL() string {
+	return <-c.cURLch
 }

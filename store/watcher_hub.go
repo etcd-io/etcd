@@ -33,11 +33,11 @@ func newWatchHub(capacity int) *watcherHub {
 }
 
 // watch function returns an Event channel.
-// If recursive is true, the first change after index under prefix will be sent to the event channel.
-// If recursive is false, the first change after index at prefix will be sent to the event channel.
+// If recursive is true, the first change after index under key will be sent to the event channel.
+// If recursive is false, the first change after index at key will be sent to the event channel.
 // If index is zero, watch will start from the current index + 1.
-func (wh *watcherHub) watch(prefix string, recursive bool, index uint64) (<-chan *Event, *etcdErr.Error) {
-	event, err := wh.EventHistory.scan(prefix, index)
+func (wh *watcherHub) watch(key string, recursive bool, index uint64) (<-chan *Event, *etcdErr.Error) {
+	event, err := wh.EventHistory.scan(key, recursive, index)
 
 	if err != nil {
 		return nil, err
@@ -57,7 +57,7 @@ func (wh *watcherHub) watch(prefix string, recursive bool, index uint64) (<-chan
 		sinceIndex: index,
 	}
 
-	l, ok := wh.watchers[prefix]
+	l, ok := wh.watchers[key]
 
 	if ok { // add the new watcher to the back of the list
 		l.PushBack(w)
@@ -65,7 +65,7 @@ func (wh *watcherHub) watch(prefix string, recursive bool, index uint64) (<-chan
 	} else { // create a new list and add the new watcher
 		l := list.New()
 		l.PushBack(w)
-		wh.watchers[prefix] = l
+		wh.watchers[key] = l
 	}
 
 	atomic.AddInt64(&wh.count, 1)
@@ -77,7 +77,7 @@ func (wh *watcherHub) watch(prefix string, recursive bool, index uint64) (<-chan
 func (wh *watcherHub) notify(e *Event) {
 	e = wh.EventHistory.addEvent(e) // add event into the eventHistory
 
-	segments := strings.Split(e.Key, "/")
+	segments := strings.Split(e.Node.Key, "/")
 
 	currPath := "/"
 
@@ -111,7 +111,7 @@ func (wh *watcherHub) notifyWatchers(e *Event, path string, deleted bool) {
 
 			w, _ := curr.Value.(*watcher)
 
-			if w.notify(e, e.Key == path, deleted) {
+			if w.notify(e, e.Node.Key == path, deleted) {
 
 				// if we successfully notify a watcher
 				// we need to remove the watcher from the list

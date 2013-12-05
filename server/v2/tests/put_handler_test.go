@@ -22,7 +22,7 @@ func TestV2SetKey(t *testing.T) {
 		resp, err := tests.PutForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo/bar"), v)
 		body := tests.ReadBody(resp)
 		assert.Nil(t, err, "")
-		assert.Equal(t, string(body), `{"action":"set","key":"/foo/bar","value":"XXX","modifiedIndex":2}`, "")
+		assert.Equal(t, string(body), `{"action":"set","node":{"key":"/foo/bar","value":"XXX","modifiedIndex":2,"createdIndex":2}}`, "")
 	})
 }
 
@@ -38,10 +38,11 @@ func TestV2SetKeyWithTTL(t *testing.T) {
 		v.Set("ttl", "20")
 		resp, _ := tests.PutForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo/bar"), v)
 		body := tests.ReadBodyJSON(resp)
-		assert.Equal(t, body["ttl"], 20, "")
+		node := body["node"].(map[string]interface{})
+		assert.Equal(t, node["ttl"], 20, "")
 
 		// Make sure the expiration date is correct.
-		expiration, _ := time.Parse(time.RFC3339Nano, body["expiration"].(string))
+		expiration, _ := time.Parse(time.RFC3339Nano, node["expiration"].(string))
 		assert.Equal(t, expiration.Sub(t0)/time.Second, 20, "")
 	})
 }
@@ -74,7 +75,8 @@ func TestV2CreateKeySuccess(t *testing.T) {
 		v.Set("prevExist", "false")
 		resp, _ := tests.PutForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo/bar"), v)
 		body := tests.ReadBodyJSON(resp)
-		assert.Equal(t, body["value"], "XXX", "")
+		node := body["node"].(map[string]interface{})
+		assert.Equal(t, node["value"], "XXX", "")
 	})
 }
 
@@ -116,7 +118,9 @@ func TestV2UpdateKeySuccess(t *testing.T) {
 		resp, _ = tests.PutForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo/bar"), v)
 		body := tests.ReadBodyJSON(resp)
 		assert.Equal(t, body["action"], "update", "")
-		assert.Equal(t, body["prevValue"], "XXX", "")
+
+		node := body["node"].(map[string]interface{})
+		assert.Equal(t, node["prevValue"], "XXX", "")
 	})
 }
 
@@ -173,9 +177,10 @@ func TestV2SetKeyCASOnIndexSuccess(t *testing.T) {
 		resp, _ = tests.PutForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo/bar"), v)
 		body := tests.ReadBodyJSON(resp)
 		assert.Equal(t, body["action"], "compareAndSwap", "")
-		assert.Equal(t, body["prevValue"], "XXX", "")
-		assert.Equal(t, body["value"], "YYY", "")
-		assert.Equal(t, body["modifiedIndex"], 3, "")
+		node := body["node"].(map[string]interface{})
+		assert.Equal(t, node["prevValue"], "XXX", "")
+		assert.Equal(t, node["value"], "YYY", "")
+		assert.Equal(t, node["modifiedIndex"], 3, "")
 	})
 }
 
@@ -234,9 +239,10 @@ func TestV2SetKeyCASOnValueSuccess(t *testing.T) {
 		resp, _ = tests.PutForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo/bar"), v)
 		body := tests.ReadBodyJSON(resp)
 		assert.Equal(t, body["action"], "compareAndSwap", "")
-		assert.Equal(t, body["prevValue"], "XXX", "")
-		assert.Equal(t, body["value"], "YYY", "")
-		assert.Equal(t, body["modifiedIndex"], 3, "")
+		node := body["node"].(map[string]interface{})
+		assert.Equal(t, node["prevValue"], "XXX", "")
+		assert.Equal(t, node["value"], "YYY", "")
+		assert.Equal(t, node["modifiedIndex"], 3, "")
 	})
 }
 

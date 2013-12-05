@@ -35,7 +35,7 @@ func TestWatcher(t *testing.T) {
 		// do nothing
 	}
 
-	e := newEvent(Create, "/foo/bar", 1)
+	e := newEvent(Create, "/foo/bar", 1, 1)
 
 	wh.notify(e)
 
@@ -47,7 +47,7 @@ func TestWatcher(t *testing.T) {
 
 	c, _ = wh.watch("/foo", false, 2)
 
-	e = newEvent(Create, "/foo/bar", 2)
+	e = newEvent(Create, "/foo/bar", 2, 2)
 
 	wh.notify(e)
 
@@ -58,7 +58,27 @@ func TestWatcher(t *testing.T) {
 		// do nothing
 	}
 
-	e = newEvent(Create, "/foo", 3)
+	e = newEvent(Create, "/foo", 3, 3)
+
+	wh.notify(e)
+
+	re = <-c
+
+	if e != re {
+		t.Fatal("recv != send")
+	}
+
+	// ensure we are doing exact matching rather than prefix matching
+	c, _ = wh.watch("/fo", true, 1)
+
+	select {
+	case re = <-c:
+		t.Fatal("should not receive from channel:", re)
+	default:
+		// do nothing
+	}
+
+	e = newEvent(Create, "/fo/bar", 3, 3)
 
 	wh.notify(e)
 

@@ -4,9 +4,9 @@ Goal: We want to be able to upgrade an individual peer in an etcd cluster to a n
 The process will take the form of individual followers upgrading to the latest version until the entire cluster is on the new version.
 
 Immediate need: etcd is moving too fast to version the internal API right now.
-But, we need to keep mixed version clusters from being started by a rollowing upgrade process (e.g. the CoreOS developer alpha).
+But, we need to keep mixed version clusters from being started by a rolling upgrade process (e.g. the CoreOS developer alpha).
 
-Longer term need: Having a mixed version cluster where all peers are not be running the exact same version of etcd itself but are able to speak one version of the internal protocol.
+Longer term need: Having a mixed version cluster where all peers are not running the exact same version of etcd itself but are able to speak one version of the internal protocol.
 
 Solution: The internal protocol needs to be versioned just as the client protocol is.
 Initially during the 0.\*.\* series of etcd releases we won't allow mixed versions at all.

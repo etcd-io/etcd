@@ -46,7 +46,7 @@ func (h *handler) acquireHandler(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, "add lock index error: " + err.Error(), http.StatusInternalServerError)
 		return
 	}
-	indexpath := resp.Key
+	indexpath := resp.Node.Key
 
 	// Keep updating TTL to make sure lock request is not expired before acquisition.
 	stop := make(chan bool)
@@ -64,19 +64,19 @@ func (h *handler) acquireHandler(w http.ResponseWriter, req *http.Request) {
 	}()
 
 	// Extract the lock index.
-	index, _ := strconv.Atoi(path.Base(resp.Key))
+	index, _ := strconv.Atoi(path.Base(resp.Node.Key))
 
 	// Wait until we successfully get a lock or we get a failure.
 	var success bool
 	for {
 		// Read all indices.
-		resp, err = h.client.GetAll(keypath, true)
+		resp, err = h.client.Get(keypath, true, true)
 		if err != nil {
 			http.Error(w, "lock children lookup error: " + err.Error(), http.StatusInternalServerError)
 			break
 		}
 		indices := extractResponseIndices(resp)
-		waitIndex := resp.ModifiedIndex
+		waitIndex := resp.Node.ModifiedIndex
 		prevIndex := findPrevIndex(indices, index)
 
 		// If there is no previous index then we have the lock.
@@ -86,7 +86,7 @@ func (h *handler) acquireHandler(w http.ResponseWriter, req *http.Request) {
 		}
 
 		// Otherwise watch previous index until it's gone.
-		_, err = h.client.Watch(path.Join(keypath, strconv.Itoa(prevIndex)), waitIndex, nil, stopWatchChan)
+		_, err = h.client.Watch(path.Join(keypath, strconv.Itoa(prevIndex)), waitIndex, false, nil, stopWatchChan)
 		if err == etcd.ErrWatchStoppedByUser {
 			break
 		} else if err != nil {
@@ -111,7 +111,7 @@ func (h *handler) acquireHandler(w http.ResponseWriter, req *http.Request) {
 		w.Write([]byte(strconv.Itoa(index)))
 	} else {
 		// Make sure key is deleted if we couldn't acquire.
-		h.client.Delete(indexpath)
+		h.client.Delete(indexpath, false)
 	}
 }
 

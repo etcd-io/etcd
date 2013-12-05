@@ -1,23 +1,27 @@
 package etcd
 
-// GetDir gets the all contents under the given key.
-// If the key points to a file, the file is returned.
-// If the key points to a directory, everything under it is returnd,
-// including all contents under all child directories.
-func (c *Client) GetAll(key string, sort bool) (*Response, error) {
-	return c.get(key, options{
-		"recursive": true,
-		"sorted":    sort,
-	})
-}
-
 // Get gets the file or directory associated with the given key.
 // If the key points to a directory, files and directories under
 // it will be returned in sorted or unsorted order, depending on
-// the sort flag.  Note that contents under child directories
-// will not be returned.  To get those contents, use GetAll.
-func (c *Client) Get(key string, sort bool) (*Response, error) {
-	return c.get(key, options{
-		"sorted": sort,
-	})
+// the sort flag.
+// If recursive is set to false, contents under child directories
+// will not be returned.
+// If recursive is set to true, all the contents will be returned.
+func (c *Client) Get(key string, sort, recursive bool) (*Response, error) {
+	raw, err := c.RawGet(key, sort, recursive)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return raw.toResponse()
+}
+
+func (c *Client) RawGet(key string, sort, recursive bool) (*RawResponse, error) {
+	ops := options{
+		"recursive": recursive,
+		"sorted":    sort,
+	}
+
+	return c.get(key, ops)
 }

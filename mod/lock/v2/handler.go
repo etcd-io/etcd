@@ -36,8 +36,8 @@ func NewHandler(addr string) (http.Handler) {
 // extractResponseIndices extracts a sorted list of indicies from a response.
 func extractResponseIndices(resp *etcd.Response) []int {
 	var indices []int
-	for _, kv := range resp.Kvs {
-		if index, _ := strconv.Atoi(path.Base(kv.Key)); index > 0 {
+	for _, node := range resp.Node.Nodes {
+		if index, _ := strconv.Atoi(path.Base(node.Key)); index > 0 {
 			indices = append(indices, index)
 		}
 	}
