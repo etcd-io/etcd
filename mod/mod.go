@@ -6,6 +6,7 @@ import (
 	"path"
 
 	"github.com/coreos/etcd/mod/dashboard"
+	lock2 "github.com/coreos/etcd/mod/lock/v2"
 	"github.com/gorilla/mux"
 )
 
@@ -16,11 +17,12 @@ func addSlash(w http.ResponseWriter, req *http.Request) {
 	return
 }
 
-func HttpHandler() (handler http.Handler) {
-	modMux := mux.NewRouter()
-	modMux.HandleFunc("/dashboard", addSlash)
-	modMux.PathPrefix("/dashboard/").
-		Handler(http.StripPrefix("/dashboard/", dashboard.HttpHandler()))
+func HttpHandler(addr string) http.Handler {
+	r := mux.NewRouter()
+	r.HandleFunc("/dashboard", addSlash)
+	r.PathPrefix("/dashboard/").Handler(http.StripPrefix("/dashboard/", dashboard.HttpHandler()))
 
-	return modMux
+	// TODO: Use correct addr.
+	r.PathPrefix("/v2/lock").Handler(http.StripPrefix("/v2/lock", lock2.NewHandler(addr)))
+	return r
 }

@@ -1,6 +1,10 @@
 #!/bin/sh
 set -e
 
+if [ -z "$PKG" ]; then
+    PKG="./store ./server ./server/v2/tests ./mod/lock/v2/tests"
+fi
+
 # Get GOPATH, etc from build
 . ./build
 
@@ -8,14 +12,11 @@ set -e
 export GOPATH="${PWD}"
 
 # Unit tests
-go test -i ./server
-go test -v ./server
-
-go test -i ./server/v2/tests
-go test -v ./server/v2/tests
-
-go test -i ./store
-go test -v ./store
+for i in $PKG
+do
+    go test -i $i
+    go test -v $i
+done
 
 # Functional tests
 go test -i ./tests/functional
