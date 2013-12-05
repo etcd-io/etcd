@@ -27,6 +27,7 @@ func (c *DeleteCommand) Apply(server raft.Server) (interface{}, error) {
 	s, _ := server.StateMachine().(store.Store)
 
 	if c.Recursive {
+		// recursive implies dir
 		c.Dir = true
 	}
 
