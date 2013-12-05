@@ -23,6 +23,6 @@ func HttpHandler(addr string) http.Handler {
 	r.PathPrefix("/dashboard/").Handler(http.StripPrefix("/dashboard/", dashboard.HttpHandler()))
 
 	// TODO: Use correct addr.
-	r.PathPrefix("/lock/v2").Handler(http.StripPrefix("/lock/v2", lock2.NewHandler(addr)))
+	r.PathPrefix("/v2/lock").Handler(http.StripPrefix("/v2/lock", lock2.NewHandler(addr)))
 	return r
 }
