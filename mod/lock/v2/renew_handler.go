@@ -1,4 +1,4 @@
-package lock
+package v2
 
 import (
 	"path"

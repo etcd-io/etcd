@@ -164,25 +164,25 @@ func TestModLockRenew(t *testing.T) {
 
 
 func testAcquireLock(s *server.Server, key string, ttl int) (string, error) {
-	resp, err := tests.PostForm(fmt.Sprintf("%s/mod/lock/%s?ttl=%d", s.URL(), key, ttl), nil)
+	resp, err := tests.PostForm(fmt.Sprintf("%s/mod/lock/v2/%s?ttl=%d", s.URL(), key, ttl), nil)
 	ret := tests.ReadBody(resp)
 	return string(ret), err
 }
 
 func testGetLockIndex(s *server.Server, key string) (string, error) {
-	resp, err := tests.Get(fmt.Sprintf("%s/mod/lock/%s", s.URL(), key))
+	resp, err := tests.Get(fmt.Sprintf("%s/mod/lock/v2/%s", s.URL(), key))
 	ret := tests.ReadBody(resp)
 	return string(ret), err
 }
 
 func testReleaseLock(s *server.Server, key string, index int) (string, error) {
-	resp, err := tests.DeleteForm(fmt.Sprintf("%s/mod/lock/%s/%d", s.URL(), key, index), nil)
+	resp, err := tests.DeleteForm(fmt.Sprintf("%s/mod/lock/v2/%s/%d", s.URL(), key, index), nil)
 	ret := tests.ReadBody(resp)
 	return string(ret), err
 }
 
 func testRenewLock(s *server.Server, key string, index int, ttl int) (string, error) {
-	resp, err := tests.PutForm(fmt.Sprintf("%s/mod/lock/%s/%d?ttl=%d", s.URL(), key, index, ttl), nil)
+	resp, err := tests.PutForm(fmt.Sprintf("%s/mod/lock/v2/%s/%d?ttl=%d", s.URL(), key, index, ttl), nil)
 	ret := tests.ReadBody(resp)
 	return string(ret), err
 }

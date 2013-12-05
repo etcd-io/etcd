@@ -2,7 +2,7 @@
 set -e
 
 if [ -z "$PKG" ]; then
-    PKG="./store ./server ./server/v2/tests ./mod/lock/tests"
+    PKG="./store ./server ./server/v2/tests ./mod/lock/v2/tests"
 fi
 
 # Get GOPATH, etc from build

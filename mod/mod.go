@@ -6,7 +6,7 @@ import (
 	"path"
 
 	"github.com/coreos/etcd/mod/dashboard"
-	"github.com/coreos/etcd/mod/lock"
+	lock2 "github.com/coreos/etcd/mod/lock/v2"
 	"github.com/gorilla/mux"
 )
 
@@ -23,6 +23,6 @@ func HttpHandler(addr string) http.Handler {
 	r.PathPrefix("/dashboard/").Handler(http.StripPrefix("/dashboard/", dashboard.HttpHandler()))
 
 	// TODO: Use correct addr.
-	r.PathPrefix("/lock").Handler(http.StripPrefix("/lock", lock.NewHandler(addr)))
+	r.PathPrefix("/lock/v2").Handler(http.StripPrefix("/lock/v2", lock2.NewHandler(addr)))
 	return r
 }
