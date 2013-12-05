@@ -435,7 +435,7 @@ func (c *Config) PeerTLSConfig() (TLSConfig, error) {
 	return c.PeerTLSInfo().Config()
 }
 
-// sanitizeURL will cleanup a host string in the format hostname:port and
+// sanitizeURL will cleanup a host string in the format hostname[:port] and
 // attach a schema.
 func sanitizeURL(host string, defaultScheme string) (string, error) {
 	// Blank URLs are fine input, just return it
@@ -466,14 +466,22 @@ func sanitizeBindAddr(bindAddr string, addr string) (string, error) {
 		return "", err
 	}
 
-	ahost, aport, err := net.SplitHostPort(aurl.Host)
-	if err != nil {
-		return "", err
+	// If it is a valid host:port simply return with no further checks.
+	bhost, bport, err := net.SplitHostPort(bindAddr)
+	if err == nil && bhost != "" {
+		return bindAddr, nil
 	}
 
-	// If the listen host isn't set use the advertised host
-	if bindAddr == "" {
-		bindAddr = ahost
+	// SplitHostPort makes the host optional, but we don't want that.
+	if bhost == "" && bport != "" {
+		return "", fmt.Errorf("IP required can't use a port only")
+	}
+
+	// bindAddr doesn't have a port if we reach here so take the port from the
+	// advertised URL.
+	_, aport, err := net.SplitHostPort(aurl.Host)
+	if err != nil {
+		return "", err
 	}
 
 	return net.JoinHostPort(bindAddr, aport), nil

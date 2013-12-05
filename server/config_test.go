@@ -223,6 +223,29 @@ func TestConfigBindAddrFlag(t *testing.T) {
 	assert.Equal(t, c.BindAddr, "127.0.0.1:4003", "")
 }
 
+// Ensures that a the Listen Host port overrides the advertised port
+func TestConfigBindAddrOverride(t *testing.T) {
+	c := NewConfig()
+	assert.Nil(t, c.LoadFlags([]string{"-addr", "127.0.0.1:4009", "-bind-addr", "127.0.0.1:4010"}), "")
+	assert.Nil(t, c.Sanitize())
+	assert.Equal(t, c.BindAddr, "127.0.0.1:4010", "")
+}
+
+// Ensures that a the Listen Host inherits its port from the advertised addr
+func TestConfigBindAddrInheritPort(t *testing.T) {
+	c := NewConfig()
+	assert.Nil(t, c.LoadFlags([]string{"-addr", "127.0.0.1:4009", "-bind-addr", "127.0.0.1"}), "")
+	assert.Nil(t, c.Sanitize())
+	assert.Equal(t, c.BindAddr, "127.0.0.1:4009", "")
+}
+
+// Ensures that a port only argument errors out
+func TestConfigBindAddrErrorOnNoHost(t *testing.T) {
+	c := NewConfig()
+	assert.Nil(t, c.LoadFlags([]string{"-addr", "127.0.0.1:4009", "-bind-addr", ":4010"}), "")
+	assert.Error(t, c.Sanitize())
+}
+
 // Ensures that the peers can be parsed from the environment.
 func TestConfigPeersEnv(t *testing.T) {
 	withEnv("ETCD_PEERS", "coreos.com:4001,coreos.com:4002", func(c *Config) {
