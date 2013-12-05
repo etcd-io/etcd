@@ -33,6 +33,11 @@ func GetHandler(w http.ResponseWriter, req *http.Request, s Server) error {
 	recursive := (req.FormValue("recursive") == "true")
 	sorted := (req.FormValue("sorted") == "true")
 
+	//Stream trumps wait.
+	if req.FormValue("stream") == "true" {
+		return startEventStream(w, req, s, key, recursive)
+	}
+
 	if req.FormValue("wait") == "true" { // watch
 		// Create a command to watch from a given index (default 0).
 		var sinceIndex uint64 = 0
@@ -78,4 +83,68 @@ func GetHandler(w http.ResponseWriter, req *http.Request, s Server) error {
 	w.Write(b)
 
 	return nil
+}
+
+func startEventStream(w http.ResponseWriter, req *http.Request, s Server, key string, recursive bool) error {
+	var err error
+
+	f, ok := w.(http.Flusher)
+	if !ok {
+		return fmt.Errorf("Streaming Not Supported")
+	}
+
+	//Set some basic headers
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+
+	// Create a command to watch from a given index (default 0).
+	var sinceIndex uint64 = 0
+
+	//Last-Event-ID header takes precedence over streamIndex Query param
+	lastEventId := req.Header.Get("Last-Event-Id")
+	if lastEventId == "" {
+		lastEventId = req.FormValue("streamIndex")
+	}
+	if lastEventId != "" {
+		sinceIndex, err = strconv.ParseUint(lastEventId, 10, 64)
+		if err != nil {
+			return etcdErr.NewError(etcdErr.EcodeIndexNaN, "Stream From Index", s.Store().Index())
+		}
+	}
+
+	//finish when the client disconnects.
+	cn, _ := w.(http.CloseNotifier)
+	closeChan := cn.CloseNotify()
+
+	var event *store.Event
+	var eventChan <-chan *store.Event
+	// Set Content type header
+	w.Header().Set("Content-Type", "text/event-stream")
+
+	//For nginx to allow streaming
+	w.Header().Set("X-Accel-Buffering", "no")
+
+	//The main loop where, until the client disconnects, we stream all events they
+	//are interested in. This is a loop here as the main "watcher" processes are
+	//very much designed to be single use.
+	for {
+		eventChan, err = s.Store().Watch(key, recursive, sinceIndex)
+		if err != nil {
+			return etcdErr.NewError(500, key, s.Store().Index())
+		}
+
+		select {
+		case <-closeChan:
+			return nil
+		case event = <-eventChan:
+		}
+
+		b, _ := json.Marshal(event)
+		fmt.Fprintf(w, "id: %d\ndata: %s\n\n", event.Node.ModifiedIndex, b)
+		f.Flush()
+
+		sinceIndex = event.Node.ModifiedIndex + 1
+	}
+
 }
