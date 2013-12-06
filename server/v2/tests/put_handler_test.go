@@ -26,6 +26,19 @@ func TestV2SetKey(t *testing.T) {
 	})
 }
 
+// Ensures that a directory is created
+//
+//   $ curl -X PUT localhost:4001/v2/keys/foo/bar?dir=true
+//
+func TestV2SetDirectory(t *testing.T) {
+	tests.RunServer(func(s *server.Server) {
+		resp, err := tests.PutForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo?dir=true"), url.Values{})
+		body := tests.ReadBody(resp)
+		assert.Nil(t, err, "")
+		assert.Equal(t, string(body), `{"action":"set","node":{"key":"/foo","dir":true,"modifiedIndex":2,"createdIndex":2}}`, "")
+	})
+}
+
 // Ensures that a time-to-live is added to a key.
 //
 //   $ curl -X PUT localhost:4001/v2/keys/foo/bar -d value=XXX -d ttl=20

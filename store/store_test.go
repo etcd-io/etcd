@@ -84,9 +84,53 @@ func TestStoreGetSorted(t *testing.T) {
 	assert.Equal(t, e.Node.Nodes[2].Key, "/foo/z", "")
 }
 
+func TestSet(t *testing.T) {
+	s := newStore()
+
+	// Set /foo=""
+	e, err := s.Set("/foo", false, "", Permanent)
+	assert.Nil(t, err, "")
+	assert.Equal(t, e.Action, "set", "")
+	assert.Equal(t, e.Node.Key, "/foo", "")
+	assert.False(t, e.Node.Dir, "")
+	assert.Equal(t, e.Node.PrevValue, "", "")
+	assert.Equal(t, e.Node.Value, "", "")
+	assert.Nil(t, e.Node.Nodes, "")
+	assert.Nil(t, e.Node.Expiration, "")
+	assert.Equal(t, e.Node.TTL, 0, "")
+	assert.Equal(t, e.Node.ModifiedIndex, uint64(1), "")
+
+	// Set /foo="bar"
+	e, err = s.Set("/foo", false, "bar", Permanent)
+	assert.Nil(t, err, "")
+	assert.Equal(t, e.Action, "set", "")
+	assert.Equal(t, e.Node.Key, "/foo", "")
+	assert.False(t, e.Node.Dir, "")
+	assert.Equal(t, e.Node.PrevValue, "", "")
+	assert.Equal(t, e.Node.Value, "bar", "")
+	assert.Nil(t, e.Node.Nodes, "")
+	assert.Nil(t, e.Node.Expiration, "")
+	assert.Equal(t, e.Node.TTL, 0, "")
+	assert.Equal(t, e.Node.ModifiedIndex, uint64(2), "")
+
+	// Set /dir as a directory
+	e, err = s.Set("/dir", true, "", Permanent)
+	assert.Nil(t, err, "")
+	assert.Equal(t, e.Action, "set", "")
+	assert.Equal(t, e.Node.Key, "/dir", "")
+	assert.True(t, e.Node.Dir, "")
+	assert.Equal(t, e.Node.PrevValue, "", "")
+	assert.Equal(t, e.Node.Value, "", "")
+	assert.Nil(t, e.Node.Nodes, "")
+	assert.Nil(t, e.Node.Expiration, "")
+	assert.Equal(t, e.Node.TTL, 0, "")
+	assert.Equal(t, e.Node.ModifiedIndex, uint64(3), "")
+}
+
 // Ensure that the store can create a new key if it doesn't already exist.
 func TestStoreCreateValue(t *testing.T) {
 	s := newStore()
+	// Create /foo=bar
 	e, err := s.Create("/foo", false, "bar", false, Permanent)
 	assert.Nil(t, err, "")
 	assert.Equal(t, e.Action, "create", "")
@@ -98,6 +142,20 @@ func TestStoreCreateValue(t *testing.T) {
 	assert.Nil(t, e.Node.Expiration, "")
 	assert.Equal(t, e.Node.TTL, 0, "")
 	assert.Equal(t, e.Node.ModifiedIndex, uint64(1), "")
+
+	// Create /empty=""
+	e, err = s.Create("/empty", false, "", false, Permanent)
+	assert.Nil(t, err, "")
+	assert.Equal(t, e.Action, "create", "")
+	assert.Equal(t, e.Node.Key, "/empty", "")
+	assert.False(t, e.Node.Dir, "")
+	assert.Equal(t, e.Node.PrevValue, "", "")
+	assert.Equal(t, e.Node.Value, "", "")
+	assert.Nil(t, e.Node.Nodes, "")
+	assert.Nil(t, e.Node.Expiration, "")
+	assert.Equal(t, e.Node.TTL, 0, "")
+	assert.Equal(t, e.Node.ModifiedIndex, uint64(2), "")
+
 }
 
 // Ensure that the store can create a new directory if it doesn't already exist.
@@ -113,7 +171,10 @@ func TestStoreCreateDirectory(t *testing.T) {
 // Ensure that the store fails to create a key if it already exists.
 func TestStoreCreateFailsIfExists(t *testing.T) {
 	s := newStore()
+	// create /foo as dir
 	s.Create("/foo", true, "", false, Permanent)
+
+	// create /foo as dir again
 	e, _err := s.Create("/foo", true, "", false, Permanent)
 	err := _err.(*etcdErr.Error)
 	assert.Equal(t, err.ErrorCode, etcdErr.EcodeNodeExist, "")
@@ -126,7 +187,9 @@ func TestStoreCreateFailsIfExists(t *testing.T) {
 // Ensure that the store can update a key if it already exists.
 func TestStoreUpdateValue(t *testing.T) {
 	s := newStore()
+	// create /foo=bar
 	s.Create("/foo", false, "bar", false, Permanent)
+	// update /foo="bzr"
 	e, err := s.Update("/foo", "baz", Permanent)
 	assert.Nil(t, err, "")
 	assert.Equal(t, e.Action, "update", "")
@@ -138,6 +201,19 @@ func TestStoreUpdateValue(t *testing.T) {
 	assert.Equal(t, e.Node.ModifiedIndex, uint64(2), "")
 	e, _ = s.Get("/foo", false, false)
 	assert.Equal(t, e.Node.Value, "baz", "")
+
+	// update /foo=""
+	e, err = s.Update("/foo", "", Permanent)
+	assert.Nil(t, err, "")
+	assert.Equal(t, e.Action, "update", "")
+	assert.Equal(t, e.Node.Key, "/foo", "")
+	assert.False(t, e.Node.Dir, "")
+	assert.Equal(t, e.Node.PrevValue, "baz", "")
+	assert.Equal(t, e.Node.Value, "", "")
+	assert.Equal(t, e.Node.TTL, 0, "")
+	assert.Equal(t, e.Node.ModifiedIndex, uint64(3), "")
+	e, _ = s.Get("/foo", false, false)
+	assert.Equal(t, e.Node.Value, "", "")
 }
 
 // Ensure that the store cannot update a directory.
@@ -207,10 +283,41 @@ func TestStoreDeleteValue(t *testing.T) {
 // Ensure that the store can delete a directory if recursive is specified.
 func TestStoreDeleteDiretory(t *testing.T) {
 	s := newStore()
+	// create directory /foo
 	s.Create("/foo", true, "", false, Permanent)
-	e, err := s.Delete("/foo", true, true)
+	// delete /foo with dir = true and recursive = false
+	// this should success, since the directory is empty
+	e, err := s.Delete("/foo", true, false)
 	assert.Nil(t, err, "")
 	assert.Equal(t, e.Action, "delete", "")
+
+	// create directory /foo and directory /foo/bar
+	s.Create("/foo/bar", true, "", false, Permanent)
+	// delete /foo with dir = true and recursive = false
+	// this should fail, since the directory is not empty
+	_, err = s.Delete("/foo", true, false)
+	assert.NotNil(t, err, "")
+
+	// delete /foo with dir=false and recursive = true
+	// this should success, since recursive implies dir=true
+	// and recursively delete should be able to delete all
+	// items under the given directory
+	e, err = s.Delete("/foo", false, true)
+	assert.Nil(t, err, "")
+	assert.Equal(t, e.Action, "delete", "")
+
+}
+
+// Ensure that the store cannot delete a directory if both of recursive
+// and dir are not specified.
+func TestStoreDeleteDiretoryFailsIfNonRecursiveAndDir(t *testing.T) {
+	s := newStore()
+	s.Create("/foo", true, "", false, Permanent)
+	e, _err := s.Delete("/foo", false, false)
+	err := _err.(*etcdErr.Error)
+	assert.Equal(t, err.ErrorCode, etcdErr.EcodeNotFile, "")
+	assert.Equal(t, err.Message, "Not a file", "")
+	assert.Nil(t, e, "")
 }
 
 func TestRootRdOnly(t *testing.T) {
@@ -231,17 +338,6 @@ func TestRootRdOnly(t *testing.T) {
 	_, err = s.CompareAndSwap("/", "", 0, "", Permanent)
 	assert.NotNil(t, err, "")
 
-}
-
-// Ensure that the store cannot delete a directory if recursive is not specified.
-func TestStoreDeleteDiretoryFailsIfNonRecursive(t *testing.T) {
-	s := newStore()
-	s.Create("/foo", true, "", false, Permanent)
-	e, _err := s.Delete("/foo", false, false)
-	err := _err.(*etcdErr.Error)
-	assert.Equal(t, err.ErrorCode, etcdErr.EcodeNotFile, "")
-	assert.Equal(t, err.Message, "Not a file", "")
-	assert.Nil(t, e, "")
 }
 
 // Ensure that the store can conditionally update a key if it has a previous value.

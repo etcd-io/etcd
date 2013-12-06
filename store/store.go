@@ -252,6 +252,11 @@ func (s *store) Delete(nodePath string, dir, recursive bool) (*Event, error) {
 	s.worldLock.Lock()
 	defer s.worldLock.Unlock()
 
+	// recursive implies dir
+	if recursive == true {
+		dir = true
+	}
+
 	nextIndex := s.CurrentIndex + 1
 
 	n, err := s.internalGet(nodePath)
