@@ -135,7 +135,7 @@ func (s *Server) installV2() {
 
 func (s *Server) installMod() {
 	r := s.router
-	r.PathPrefix("/mod").Handler(http.StripPrefix("/mod", mod.HttpHandler()))
+	r.PathPrefix("/mod").Handler(http.StripPrefix("/mod", mod.HttpHandler(s.url)))
 }
 
 // Adds a v1 server handler to the router.

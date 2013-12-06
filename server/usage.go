@@ -31,15 +31,15 @@ Cluster Configuration Options:
                                   should match the peer's '-peer-addr' flag.
 
 Client Communication Options:
-  -addr=<host:port>   The public host:port used for client communication.
-  -bind-addr=<host>   The listening hostname used for client communication.
-  -ca-file=<path>     Path to the client CA file.
-  -cert-file=<path>   Path to the client cert file.
-  -key-file=<path>    Path to the client key file.
+  -addr=<host:port>         The public host:port used for client communication.
+  -bind-addr=<host[:port]>  The listening host:port used for client communication.
+  -ca-file=<path>           Path to the client CA file.
+  -cert-file=<path>         Path to the client cert file.
+  -key-file=<path>          Path to the client key file.
 
 Peer Communication Options:
   -peer-addr=<host:port>  The public host:port used for peer communication.
-  -peer-bind-addr=<host>  The listening hostname used for peer communication.
+  -peer-bind-addr=<host[:port]>  The listening host:port used for peer communication.
   -peer-ca-file=<path>    Path to the peer CA file.
   -peer-cert-file=<path>  Path to the peer cert file.
   -peer-key-file=<path>   Path to the peer key file.
