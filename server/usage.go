@@ -38,11 +38,15 @@ Client Communication Options:
   -key-file=<path>          Path to the client key file.
 
 Peer Communication Options:
-  -peer-addr=<host:port>         The public host:port used for peer communication.
+  -peer-addr=<host:port>  The public host:port used for peer communication.
   -peer-bind-addr=<host[:port]>  The listening host:port used for peer communication.
-  -peer-ca-file=<path>           Path to the peer CA file.
-  -peer-cert-file=<path>         Path to the peer cert file.
-  -peer-key-file=<path>          Path to the peer key file.
+  -peer-ca-file=<path>    Path to the peer CA file.
+  -peer-cert-file=<path>  Path to the peer cert file.
+  -peer-key-file=<path>   Path to the peer key file.
+  -peer-heartbeat-timeout=<time>
+                          Time (in milliseconds) for a heartbeat to timeout
+  -peer-election-timeout=<time>
+                          Time (in milliseconds) for an election to timeout
 
 Other Options:
   -max-result-buffer   Max size of the result buffer.
