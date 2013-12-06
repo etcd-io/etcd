@@ -10,11 +10,6 @@ import (
 
 var Permanent time.Time
 
-const (
-	tDir  = true  // type dir
-	tNode = false // type node
-)
-
 // node is the basic element in the store system.
 // A key-value pair will have a string value
 // A directory will have a children map
