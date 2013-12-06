@@ -10,7 +10,7 @@ import (
 // TTL is time to live in second
 type NodeExtern struct {
 	Key           string      `json:"key, omitempty"`
-	PrevValue     string      `json:"prevValue,omitempty"`
+	PrevValue     string      `json:"-"`
 	Value         string      `json:"value,omitempty"`
 	Dir           bool        `json:"dir,omitempty"`
 	Expiration    *time.Time  `json:"expiration,omitempty"`

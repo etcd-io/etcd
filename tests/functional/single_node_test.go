@@ -43,7 +43,7 @@ func TestSingleNode(t *testing.T) {
 	result, err = c.Set("foo", "bar", 100)
 	node = result.Node
 
-	if err != nil || node.Key != "/foo" || node.Value != "bar" || node.PrevValue != "bar" || node.TTL != 100 {
+	if err != nil || node.Key != "/foo" || node.Value != "bar" || node.TTL != 100 {
 		if err != nil {
 			t.Fatal("Set 2: ", err)
 		}
@@ -56,7 +56,7 @@ func TestSingleNode(t *testing.T) {
 	result, err = c.CompareAndSwap("foo", "foobar", 100, "bar", 0)
 	node = result.Node
 
-	if err != nil || node.Key != "/foo" || node.Value != "foobar" || node.PrevValue != "bar" || node.TTL != 100 {
+	if err != nil || node.Key != "/foo" || node.Value != "foobar" || node.TTL != 100 {
 		if err != nil {
 			t.Fatal(err)
 		}
