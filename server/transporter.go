@@ -13,35 +13,30 @@ import (
 	"github.com/coreos/raft"
 )
 
-// Timeout for setup internal raft http connection
-// This should not exceed 3 * RTT
-var dailTimeout = 3 * HeartbeatTimeout
-
-// Timeout for setup internal raft http connection + receive all post body
-// The raft server will not send back response header until it received all the
-// post body.
-// This should not exceed dailTimeout + electionTimeout
-var responseHeaderTimeout = 3*HeartbeatTimeout + ElectionTimeout
-
-// Timeout for receiving the response body from the server
-// This should not exceed heartbeatTimeout
-var tranTimeout = HeartbeatTimeout
-
 // Transporter layer for communication between raft nodes
 type transporter struct {
 	client     *http.Client
 	transport  *http.Transport
 	peerServer *PeerServer
+	tranTimeout time.Duration
 }
+
+type dialer func(network, addr string) (net.Conn, error)
 
 // Create transporter using by raft server
 // Create http or https transporter based on
 // whether the user give the server cert and key
 func newTransporter(scheme string, tlsConf tls.Config, peerServer *PeerServer) *transporter {
+	// names for each type of timeout, for the sake of clarity
+	dialTimeout := time.Duration(3 * peerServer.heartbeatTimeout + peerServer.electionTimeout) * time.Millisecond
+	responseHeaderTimeout := time.Duration(3 * peerServer.heartbeatTimeout + peerServer.electionTimeout) * time.Millisecond
+
 	t := transporter{}
 
+	t.tranTimeout = time.Duration(peerServer.heartbeatTimeout) * time.Millisecond
+
 	tr := &http.Transport{
-		Dial: dialWithTimeout,
+		Dial: dialWithTimeoutFactory(dialTimeout),
 		ResponseHeaderTimeout: responseHeaderTimeout,
 	}
 
@@ -57,9 +52,11 @@ func newTransporter(scheme string, tlsConf tls.Config, peerServer *PeerServer) *
 	return &t
 }
 
-// Dial with timeout
-func dialWithTimeout(network, addr string) (net.Conn, error) {
-	return net.DialTimeout(network, addr, dailTimeout)
+// factory function to return a dialer
+func dialWithTimeoutFactory( timeout time.Duration ) dialer {
+	return func(network, addr string) (net.Conn, error) {
+		return net.DialTimeout(network, addr, timeout)
+	}
 }
 
 // Sends AppendEntries RPCs to a peer when the server is the leader.
@@ -238,7 +235,7 @@ func (t *transporter) Get(urlStr string) (*http.Response, *http.Request, error) 
 // Cancel the on fly HTTP transaction when timeout happens.
 func (t *transporter) CancelWhenTimeout(req *http.Request) {
 	go func() {
-		time.Sleep(tranTimeout)
+		time.Sleep(t.tranTimeout)
 		t.transport.CancelRequest(req)
 	}()
 }

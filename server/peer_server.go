@@ -38,6 +38,8 @@ type PeerServer struct {
 	snapConf       *snapshotConf
 	MaxClusterSize int
 	RetryTimes     int
+	heartbeatTimeout int
+	electionTimeout  int
 }
 
 // TODO: find a good policy to do snapshot
@@ -53,7 +55,7 @@ type snapshotConf struct {
 	writesThr uint64
 }
 
-func NewPeerServer(name string, path string, url string, bindAddr string, tlsConf *TLSConfig, tlsInfo *TLSInfo, registry *Registry, store store.Store, snapshotCount int) *PeerServer {
+func NewPeerServer(name string, path string, url string, bindAddr string, tlsConf *TLSConfig, tlsInfo *TLSInfo, registry *Registry, store store.Store, snapshotCount int, heartbeatTimeout int, electionTimeout int) *PeerServer {
 	s := &PeerServer{
 		name:     name,
 		url:      url,
@@ -76,6 +78,8 @@ func NewPeerServer(name string, path string, url string, bindAddr string, tlsCon
 				back: -1,
 			},
 		},
+		heartbeatTimeout: heartbeatTimeout,
+		electionTimeout: electionTimeout,
 	}
 
 	// Create transporter for raft
@@ -105,8 +109,8 @@ func (s *PeerServer) ListenAndServe(snapshot bool, cluster []string) error {
 		}
 	}
 
-	s.raftServer.SetElectionTimeout(ElectionTimeout)
-	s.raftServer.SetHeartbeatTimeout(HeartbeatTimeout)
+	s.raftServer.SetElectionTimeout(time.Duration(s.electionTimeout) * time.Millisecond)
+	s.raftServer.SetHeartbeatTimeout(time.Duration(s.heartbeatTimeout) * time.Millisecond)
 
 	s.raftServer.Start()
 
