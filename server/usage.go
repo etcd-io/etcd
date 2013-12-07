@@ -44,9 +44,9 @@ Peer Communication Options:
   -peer-cert-file=<path>  Path to the peer cert file.
   -peer-key-file=<path>   Path to the peer key file.
   -peer-heartbeat-timeout=<time>
-                          Time (in milliseconds) for a heartbeat to timeout
+                          Time (in milliseconds) for a heartbeat to timeout.
   -peer-election-timeout=<time>
-                          Time (in milliseconds) for an election to timeout
+                          Time (in milliseconds) for an election to timeout.
 
 Other Options:
   -max-result-buffer   Max size of the result buffer.

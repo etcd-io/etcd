@@ -20,6 +20,8 @@ import (
 	"github.com/gorilla/mux"
 )
 
+const retryInterval = 10
+
 type PeerServer struct {
 	raftServer     raft.Server
 	server         *Server
@@ -38,8 +40,8 @@ type PeerServer struct {
 	snapConf       *snapshotConf
 	MaxClusterSize int
 	RetryTimes     int
-	heartbeatTimeout int
-	electionTimeout  int
+	HeartbeatTimeout time.Duration
+	ElectionTimeout  time.Duration
 }
 
 // TODO: find a good policy to do snapshot
@@ -55,7 +57,7 @@ type snapshotConf struct {
 	writesThr uint64
 }
 
-func NewPeerServer(name string, path string, url string, bindAddr string, tlsConf *TLSConfig, tlsInfo *TLSInfo, registry *Registry, store store.Store, snapshotCount int, heartbeatTimeout int, electionTimeout int) *PeerServer {
+func NewPeerServer(name string, path string, url string, bindAddr string, tlsConf *TLSConfig, tlsInfo *TLSInfo, registry *Registry, store store.Store, snapshotCount int) *PeerServer {
 	s := &PeerServer{
 		name:     name,
 		url:      url,
@@ -78,8 +80,8 @@ func NewPeerServer(name string, path string, url string, bindAddr string, tlsCon
 				back: -1,
 			},
 		},
-		heartbeatTimeout: heartbeatTimeout,
-		electionTimeout: electionTimeout,
+		HeartbeatTimeout: defaultHeartbeatTimeout,
+		ElectionTimeout: defaultElectionTimeout,
 	}
 
 	// Create transporter for raft
@@ -109,8 +111,8 @@ func (s *PeerServer) ListenAndServe(snapshot bool, cluster []string) error {
 		}
 	}
 
-	s.raftServer.SetElectionTimeout(time.Duration(s.electionTimeout) * time.Millisecond)
-	s.raftServer.SetHeartbeatTimeout(time.Duration(s.heartbeatTimeout) * time.Millisecond)
+	s.raftServer.SetElectionTimeout(s.ElectionTimeout)
+	s.raftServer.SetHeartbeatTimeout(s.HeartbeatTimeout)
 
 	s.raftServer.Start()
 
@@ -232,8 +234,8 @@ func (s *PeerServer) startAsFollower(cluster []string) {
 		if ok {
 			return
 		}
-		log.Warnf("cannot join to cluster via given peers, retry in %d seconds", RetryInterval)
-		time.Sleep(time.Second * RetryInterval)
+		log.Warnf("cannot join to cluster via given peers, retry in %d seconds", retryInterval)
+		time.Sleep(time.Second * retryInterval)
 	}
 
 	log.Fatalf("Cannot join the cluster via given peers after %x retries", s.RetryTimes)

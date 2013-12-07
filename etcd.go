@@ -19,6 +19,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/coreos/etcd/log"
 	"github.com/coreos/etcd/server"
@@ -82,9 +83,15 @@ func main() {
 	registry := server.NewRegistry(store)
 
 	// Create peer server.
-	ps := server.NewPeerServer(info.Name, config.DataDir, info.RaftURL, info.RaftListenHost, &peerTLSConfig, &info.RaftTLS, registry, store, config.SnapshotCount, config.HeartbeatTimeout, config.ElectionTimeout)
+	ps := server.NewPeerServer(info.Name, config.DataDir, info.RaftURL, info.RaftListenHost, &peerTLSConfig, &info.RaftTLS, registry, store, config.SnapshotCount)
 	ps.MaxClusterSize = config.MaxClusterSize
 	ps.RetryTimes = config.MaxRetryAttempts
+	if config.HeartbeatTimeout > 0 {
+		ps.HeartbeatTimeout = time.Duration(config.HeartbeatTimeout) * time.Millisecond
+	}
+	if config.ElectionTimeout > 0 {
+		ps.ElectionTimeout = time.Duration(config.ElectionTimeout) * time.Millisecond
+	}
 
 	// Create client server.
 	s := server.New(info.Name, info.EtcdURL, info.EtcdListenHost, &tlsConfig, &info.EtcdTLS, ps, registry, store)

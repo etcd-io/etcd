@@ -18,7 +18,6 @@ type transporter struct {
 	client     *http.Client
 	transport  *http.Transport
 	peerServer *PeerServer
-	tranTimeout time.Duration
 }
 
 type dialer func(network, addr string) (net.Conn, error)
@@ -28,15 +27,15 @@ type dialer func(network, addr string) (net.Conn, error)
 // whether the user give the server cert and key
 func newTransporter(scheme string, tlsConf tls.Config, peerServer *PeerServer) *transporter {
 	// names for each type of timeout, for the sake of clarity
-	dialTimeout := time.Duration(3 * peerServer.heartbeatTimeout + peerServer.electionTimeout) * time.Millisecond
-	responseHeaderTimeout := time.Duration(3 * peerServer.heartbeatTimeout + peerServer.electionTimeout) * time.Millisecond
+	dialTimeout := (3 * peerServer.HeartbeatTimeout) + peerServer.ElectionTimeout
+	responseHeaderTimeout := (3 * peerServer.HeartbeatTimeout) + peerServer.ElectionTimeout
 
 	t := transporter{}
 
-	t.tranTimeout = time.Duration(peerServer.heartbeatTimeout) * time.Millisecond
-
 	tr := &http.Transport{
-		Dial: dialWithTimeoutFactory(dialTimeout),
+		Dial: func(network, addr string) (net.Conn, error) {
+			return net.DialTimeout(network, addr, dialTimeout)
+		},
 		ResponseHeaderTimeout: responseHeaderTimeout,
 	}
 
@@ -50,13 +49,6 @@ func newTransporter(scheme string, tlsConf tls.Config, peerServer *PeerServer) *
 	t.peerServer = peerServer
 
 	return &t
-}
-
-// factory function to return a dialer
-func dialWithTimeoutFactory( timeout time.Duration ) dialer {
-	return func(network, addr string) (net.Conn, error) {
-		return net.DialTimeout(network, addr, timeout)
-	}
 }
 
 // Sends AppendEntries RPCs to a peer when the server is the leader.
@@ -235,7 +227,7 @@ func (t *transporter) Get(urlStr string) (*http.Response, *http.Request, error) 
 // Cancel the on fly HTTP transaction when timeout happens.
 func (t *transporter) CancelWhenTimeout(req *http.Request) {
 	go func() {
-		time.Sleep(t.tranTimeout)
+		time.Sleep(t.peerServer.HeartbeatTimeout)
 		t.transport.CancelRequest(req)
 	}()
 }

@@ -1,11 +1,13 @@
 package server
 
+import (
+	"time"
+)
+
 const (
-	// The amount of time (ms) to elapse without a heartbeat before becoming a candidate.
-	ElectionTimeout = 200
-
+	// The amount of time to elapse without a heartbeat before becoming a candidate
+	defaultElectionTimeout = 200 * time.Millisecond
+	
 	// The frequency by which heartbeats are sent to followers.
-	HeartbeatTimeout = 50
-
-	RetryInterval = 10
+	defaultHeartbeatTimeout = 50 * time.Millisecond
 )
