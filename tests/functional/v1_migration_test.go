@@ -92,7 +92,7 @@ func TestV1ClusterMigration(t *testing.T) {
 	body := tests.ReadBody(resp)
 	assert.Nil(t, err, "")
 	assert.Equal(t, resp.StatusCode, 400)
-	assert.Equal(t, string(body), `{"errorCode":100,"message":"Key Not Found","cause":"/message","index":11}`+"\n")
+	assert.Equal(t, string(body), `{"errorCode":100,"message":"Key not found","cause":"/message","index":11}`+"\n")
 
 	// Ensure TTL'd message is removed.
 	resp, err = tests.Get("http://localhost:4001/v2/keys/foo")

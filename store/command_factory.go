@@ -16,11 +16,12 @@ var minVersion, maxVersion int
 type CommandFactory interface {
 	Version() int
 	CreateUpgradeCommand() raft.Command
-	CreateSetCommand(key string, value string, expireTime time.Time) raft.Command
-	CreateCreateCommand(key string, value string, expireTime time.Time, unique bool) raft.Command
+	CreateSetCommand(key string, dir bool, value string, expireTime time.Time) raft.Command
+	CreateCreateCommand(key string, dir bool, value string, expireTime time.Time, unique bool) raft.Command
 	CreateUpdateCommand(key string, value string, expireTime time.Time) raft.Command
-	CreateDeleteCommand(key string, recursive bool) raft.Command
-	CreateCompareAndSwapCommand(key string, value string, prevValue string, prevIndex uint64, expireTime time.Time) raft.Command
+	CreateDeleteCommand(key string, dir, recursive bool) raft.Command
+	CreateCompareAndSwapCommand(key string, value string, prevValue string,
+		prevIndex uint64, expireTime time.Time) raft.Command
 	CreateSyncCommand(now time.Time) raft.Command
 }
 

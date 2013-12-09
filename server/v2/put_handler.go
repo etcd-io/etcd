@@ -20,23 +20,25 @@ func PutHandler(w http.ResponseWriter, req *http.Request, s Server) error {
 	req.ParseForm()
 
 	value := req.Form.Get("value")
+	dir := (req.FormValue("dir") == "true")
+
 	expireTime, err := store.TTL(req.Form.Get("ttl"))
 	if err != nil {
 		return etcdErr.NewError(etcdErr.EcodeTTLNaN, "Update", s.Store().Index())
 	}
 
 	_, valueOk := req.Form["prevValue"]
-	prevValue := req.Form.Get("prevValue")
+	prevValue := req.FormValue("prevValue")
 
 	_, indexOk := req.Form["prevIndex"]
-	prevIndexStr := req.Form.Get("prevIndex")
+	prevIndexStr := req.FormValue("prevIndex")
 
 	_, existOk := req.Form["prevExist"]
-	prevExist := req.Form.Get("prevExist")
+	prevExist := req.FormValue("prevExist")
 
 	// Set handler: create a new node or replace the old one.
 	if !valueOk && !indexOk && !existOk {
-		return SetHandler(w, req, s, key, value, expireTime)
+		return SetHandler(w, req, s, key, dir, value, expireTime)
 	}
 
 	// update with test
@@ -44,7 +46,7 @@ func PutHandler(w http.ResponseWriter, req *http.Request, s Server) error {
 		if prevExist == "false" {
 			// Create command: create a new node. Fail, if a node already exists
 			// Ignore prevIndex and prevValue
-			return CreateHandler(w, req, s, key, value, expireTime)
+			return CreateHandler(w, req, s, key, dir, value, expireTime)
 		}
 
 		if prevExist == "true" && !indexOk && !valueOk {
@@ -75,13 +77,13 @@ func PutHandler(w http.ResponseWriter, req *http.Request, s Server) error {
 	return s.Dispatch(c, w, req)
 }
 
-func SetHandler(w http.ResponseWriter, req *http.Request, s Server, key, value string, expireTime time.Time) error {
-	c := s.Store().CommandFactory().CreateSetCommand(key, value, expireTime)
+func SetHandler(w http.ResponseWriter, req *http.Request, s Server, key string, dir bool, value string, expireTime time.Time) error {
+	c := s.Store().CommandFactory().CreateSetCommand(key, dir, value, expireTime)
 	return s.Dispatch(c, w, req)
 }
 
-func CreateHandler(w http.ResponseWriter, req *http.Request, s Server, key, value string, expireTime time.Time) error {
-	c := s.Store().CommandFactory().CreateCreateCommand(key, value, expireTime, false)
+func CreateHandler(w http.ResponseWriter, req *http.Request, s Server, key string, dir bool, value string, expireTime time.Time) error {
+	c := s.Store().CommandFactory().CreateCreateCommand(key, dir, value, expireTime, false)
 	return s.Dispatch(c, w, req)
 }
 

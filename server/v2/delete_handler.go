@@ -9,8 +9,10 @@ import (
 func DeleteHandler(w http.ResponseWriter, req *http.Request, s Server) error {
 	vars := mux.Vars(req)
 	key := "/" + vars["key"]
-	recursive := (req.FormValue("recursive") == "true")
 
-	c := s.Store().CommandFactory().CreateDeleteCommand(key, recursive)
+	recursive := (req.FormValue("recursive") == "true")
+	dir := (req.FormValue("dir") == "true")
+
+	c := s.Store().CommandFactory().CreateDeleteCommand(key, dir, recursive)
 	return s.Dispatch(c, w, req)
 }

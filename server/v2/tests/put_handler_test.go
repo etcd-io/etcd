@@ -26,6 +26,19 @@ func TestV2SetKey(t *testing.T) {
 	})
 }
 
+// Ensures that a directory is created
+//
+//   $ curl -X PUT localhost:4001/v2/keys/foo/bar?dir=true
+//
+func TestV2SetDirectory(t *testing.T) {
+	tests.RunServer(func(s *server.Server) {
+		resp, err := tests.PutForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo?dir=true"), url.Values{})
+		body := tests.ReadBody(resp)
+		assert.Nil(t, err, "")
+		assert.Equal(t, string(body), `{"action":"set","node":{"key":"/foo","dir":true,"modifiedIndex":2,"createdIndex":2}}`, "")
+	})
+}
+
 // Ensures that a time-to-live is added to a key.
 //
 //   $ curl -X PUT localhost:4001/v2/keys/foo/bar -d value=XXX -d ttl=20
@@ -95,7 +108,7 @@ func TestV2CreateKeyFail(t *testing.T) {
 		resp, _ = tests.PutForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo/bar"), v)
 		body := tests.ReadBodyJSON(resp)
 		assert.Equal(t, body["errorCode"], 105, "")
-		assert.Equal(t, body["message"], "Already exists", "")
+		assert.Equal(t, body["message"], "Key already exists", "")
 		assert.Equal(t, body["cause"], "/foo/bar", "")
 	})
 }
@@ -123,19 +136,20 @@ func TestV2UpdateKeySuccess(t *testing.T) {
 
 // Ensures that a key is not conditionally set if it previously did not exist.
 //
+//   $ curl -X PUT localhost:4001/v2/keys/foo?dir=true
 //   $ curl -X PUT localhost:4001/v2/keys/foo/bar -d value=XXX -d prevExist=true
 //
 func TestV2UpdateKeyFailOnValue(t *testing.T) {
 	tests.RunServer(func(s *server.Server) {
 		v := url.Values{}
-		resp, _ := tests.PutForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo"), v)
+		resp, _ := tests.PutForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo?dir=true"), v)
 
 		v.Set("value", "YYY")
 		v.Set("prevExist", "true")
 		resp, _ = tests.PutForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo/bar"), v)
 		body := tests.ReadBodyJSON(resp)
 		assert.Equal(t, body["errorCode"], 100, "")
-		assert.Equal(t, body["message"], "Key Not Found", "")
+		assert.Equal(t, body["message"], "Key not found", "")
 		assert.Equal(t, body["cause"], "/foo/bar", "")
 	})
 }
@@ -153,7 +167,7 @@ func TestV2UpdateKeyFailOnMissingDirectory(t *testing.T) {
 		resp, _ := tests.PutForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo/bar"), v)
 		body := tests.ReadBodyJSON(resp)
 		assert.Equal(t, body["errorCode"], 100, "")
-		assert.Equal(t, body["message"], "Key Not Found", "")
+		assert.Equal(t, body["message"], "Key not found", "")
 		assert.Equal(t, body["cause"], "/foo", "")
 	})
 }
@@ -196,7 +210,7 @@ func TestV2SetKeyCASOnIndexFail(t *testing.T) {
 		resp, _ = tests.PutForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo/bar"), v)
 		body := tests.ReadBodyJSON(resp)
 		assert.Equal(t, body["errorCode"], 101, "")
-		assert.Equal(t, body["message"], "Test Failed", "")
+		assert.Equal(t, body["message"], "Compare failed", "")
 		assert.Equal(t, body["cause"], "[ != XXX] [10 != 2]", "")
 		assert.Equal(t, body["index"], 2, "")
 	})
@@ -257,7 +271,7 @@ func TestV2SetKeyCASOnValueFail(t *testing.T) {
 		resp, _ = tests.PutForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo/bar"), v)
 		body := tests.ReadBodyJSON(resp)
 		assert.Equal(t, body["errorCode"], 101, "")
-		assert.Equal(t, body["message"], "Test Failed", "")
+		assert.Equal(t, body["message"], "Compare failed", "")
 		assert.Equal(t, body["cause"], "[AAA != XXX] [0 != 2]", "")
 		assert.Equal(t, body["index"], 2, "")
 	})

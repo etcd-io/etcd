@@ -175,11 +175,19 @@ func (n *node) Add(child *node) *etcdErr.Error {
 }
 
 // Remove function remove the node.
-func (n *node) Remove(recursive bool, callback func(path string)) *etcdErr.Error {
+func (n *node) Remove(dir, recursive bool, callback func(path string)) *etcdErr.Error {
 
-	if n.IsDir() && !recursive {
-		// cannot delete a directory without set recursive to true
-		return etcdErr.NewError(etcdErr.EcodeNotFile, "", n.store.Index())
+	if n.IsDir() {
+		if !dir {
+			// cannot delete a directory without recursive set to true
+			return etcdErr.NewError(etcdErr.EcodeNotFile, n.Path, n.store.Index())
+		}
+
+		if len(n.Children) != 0 && !recursive {
+			// cannot delete a directory if it is not empty and the operation
+			// is not recursive
+			return etcdErr.NewError(etcdErr.EcodeDirNotEmpty, n.Path, n.store.Index())
+		}
 	}
 
 	if !n.IsDir() { // key-value pair
@@ -202,7 +210,7 @@ func (n *node) Remove(recursive bool, callback func(path string)) *etcdErr.Error
 	}
 
 	for _, child := range n.Children { // delete all children
-		child.Remove(true, callback)
+		child.Remove(true, true, callback)
 	}
 
 	// delete self

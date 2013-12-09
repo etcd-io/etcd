@@ -366,7 +366,8 @@ func (l *Log) setCommitIndex(index uint64) error {
 	// this is not error any more after limited the number of sending entries
 	// commit up to what we already have
 	if index > l.startIndex+uint64(len(l.entries)) {
-		debugln("raft.Log: Commit index", index, "set back to ", len(l.entries))
+		debugln("raft.StartIndex", l.startIndex)
+		debugln("raft.Log: Commit index", index, "set back to ", l.startIndex+uint64(len(l.entries)))
 		index = l.startIndex + uint64(len(l.entries))
 	}
 
@@ -386,6 +387,7 @@ func (l *Log) setCommitIndex(index uint64) error {
 	// follower 2 should reply success and let leader 3 update the committed index to 80
 
 	if index < l.commitIndex {
+		debugln("raft.Log: index", index, "committedIndex", l.commitIndex)
 		return nil
 	}
 

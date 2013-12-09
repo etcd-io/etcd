@@ -45,7 +45,7 @@ func (r *Registry) Register(name string, peerURL string, url string) error {
 	// Write data to store.
 	key := path.Join(RegistryKey, name)
 	value := fmt.Sprintf("raft=%s&etcd=%s", peerURL, url)
-	_, err := r.store.Create(key, value, false, store.Permanent)
+	_, err := r.store.Create(key, false, value, false, store.Permanent)
 	log.Debugf("Register: %s", name)
 	return err
 }
@@ -59,7 +59,7 @@ func (r *Registry) Unregister(name string) error {
 	// delete(r.nodes, name)
 
 	// Remove the key from the store.
-	_, err := r.store.Delete(path.Join(RegistryKey, name), false)
+	_, err := r.store.Delete(path.Join(RegistryKey, name), false, false)
 	log.Debugf("Unregister: %s", name)
 	return err
 }

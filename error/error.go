@@ -33,6 +33,7 @@ const (
 	EcodeNodeExist      = 105
 	EcodeKeyIsPreserved = 106
 	EcodeRootROnly      = 107
+	EcodeDirNotEmpty    = 108
 
 	EcodeValueRequired      = 200
 	EcodePrevValueRequired  = 201
@@ -51,14 +52,15 @@ func init() {
 	errors = make(map[int]string)
 
 	// command related errors
-	errors[EcodeKeyNotFound] = "Key Not Found"
-	errors[EcodeTestFailed] = "Test Failed" //test and set
-	errors[EcodeNotFile] = "Not A File"
+	errors[EcodeKeyNotFound] = "Key not found"
+	errors[EcodeTestFailed] = "Compare failed" //test and set
+	errors[EcodeNotFile] = "Not a file"
 	errors[EcodeNoMorePeer] = "Reached the max number of peers in the cluster"
-	errors[EcodeNotDir] = "Not A Directory"
-	errors[EcodeNodeExist] = "Already exists" // create
+	errors[EcodeNotDir] = "Not a directory"
+	errors[EcodeNodeExist] = "Key already exists" // create
 	errors[EcodeRootROnly] = "Root is read only"
 	errors[EcodeKeyIsPreserved] = "The prefix of given key is a keyword in etcd"
+	errors[EcodeDirNotEmpty] = "Directory not empty"
 
 	// Post form related errors
 	errors[EcodeValueRequired] = "Value is Required in POST form"

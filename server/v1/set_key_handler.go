@@ -36,11 +36,11 @@ func SetKeyHandler(w http.ResponseWriter, req *http.Request, s Server) error {
 			c = s.Store().CommandFactory().CreateCompareAndSwapCommand(key, value, prevValueArr[0], 0, expireTime)
 		} else {
 			// test against existence
-			c = s.Store().CommandFactory().CreateCreateCommand(key, value, expireTime, false)
+			c = s.Store().CommandFactory().CreateCreateCommand(key, false, value, expireTime, false)
 		}
 
 	} else {
-		c = s.Store().CommandFactory().CreateSetCommand(key, value, expireTime)
+		c = s.Store().CommandFactory().CreateSetCommand(key, false, value, expireTime)
 	}
 
 	return s.Dispatch(c, w, req)

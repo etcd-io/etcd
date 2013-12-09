@@ -13,11 +13,12 @@ func PostHandler(w http.ResponseWriter, req *http.Request, s Server) error {
 	key := "/" + vars["key"]
 
 	value := req.FormValue("value")
+	dir := (req.FormValue("dir") == "true")
 	expireTime, err := store.TTL(req.FormValue("ttl"))
 	if err != nil {
 		return etcdErr.NewError(etcdErr.EcodeTTLNaN, "Create", s.Store().Index())
 	}
 
-	c := s.Store().CommandFactory().CreateCreateCommand(key, value, expireTime, true)
+	c := s.Store().CommandFactory().CreateCreateCommand(key, dir, value, expireTime, true)
 	return s.Dispatch(c, w, req)
 }

@@ -9,6 +9,6 @@ import (
 func DeleteKeyHandler(w http.ResponseWriter, req *http.Request, s Server) error {
 	vars := mux.Vars(req)
 	key := "/" + vars["key"]
-	c := s.Store().CommandFactory().CreateDeleteCommand(key, false)
+	c := s.Store().CommandFactory().CreateDeleteCommand(key, false, false)
 	return s.Dispatch(c, w, req)
 }
