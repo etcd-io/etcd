@@ -286,7 +286,7 @@ func TestStoreDeleteDiretory(t *testing.T) {
 	// create directory /foo
 	s.Create("/foo", true, "", false, Permanent)
 	// delete /foo with dir = true and recursive = false
-	// this should success, since the directory is empty
+	// this should succeed, since the directory is empty
 	e, err := s.Delete("/foo", true, false)
 	assert.Nil(t, err, "")
 	assert.Equal(t, e.Action, "delete", "")
@@ -299,7 +299,7 @@ func TestStoreDeleteDiretory(t *testing.T) {
 	assert.NotNil(t, err, "")
 
 	// delete /foo with dir=false and recursive = true
-	// this should success, since recursive implies dir=true
+	// this should succeed, since recursive implies dir=true
 	// and recursively delete should be able to delete all
 	// items under the given directory
 	e, err = s.Delete("/foo", false, true)

@@ -179,7 +179,7 @@ func (n *node) Remove(dir, recursive bool, callback func(path string)) *etcdErr.
 
 	if n.IsDir() {
 		if !dir {
-			// cannot delete a directory without set recursive to true
+			// cannot delete a directory without recursive set to true
 			return etcdErr.NewError(etcdErr.EcodeNotFile, n.Path, n.store.Index())
 		}
 
