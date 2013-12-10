@@ -10,10 +10,12 @@ import (
 )
 
 const (
-	testName          = "ETCDTEST"
-	testClientURL     = "localhost:4401"
-	testRaftURL       = "localhost:7701"
-	testSnapshotCount = 10000
+	testName             = "ETCDTEST"
+	testClientURL        = "localhost:4401"
+	testRaftURL          = "localhost:7701"
+	testSnapshotCount    = 10000
+	testHeartbeatTimeout = 50
+	testElectionTimeout  = 200
 )
 
 // Starts a server in a temporary directory.
@@ -23,8 +25,11 @@ func RunServer(f func(*server.Server)) {
 
 	store := store.New()
 	registry := server.NewRegistry(store)
+
 	ps := server.NewPeerServer(testName, path, "http://" + testRaftURL, testRaftURL, &server.TLSConfig{Scheme: "http"}, &server.TLSInfo{}, registry, store, testSnapshotCount)
 	ps.MaxClusterSize = 9
+	ps.ElectionTimeout = testElectionTimeout
+	ps.HeartbeatTimeout = testHeartbeatTimeout
 	s := server.New(testName, "http://" + testClientURL, testClientURL, &server.TLSConfig{Scheme: "http"}, &server.TLSInfo{}, ps, registry, store)
 	ps.SetServer(s)
 

@@ -19,6 +19,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/coreos/etcd/log"
 	"github.com/coreos/etcd/server"
@@ -50,16 +51,6 @@ func main() {
 	}
 	if config.CPUProfileFile != "" {
 		profile(config.CPUProfileFile)
-	}
-
-	// Only guess the machine name if there is no data dir specified
-	// because the info file will should have our name
-	if config.Name == "" && config.DataDir == "" {
-		config.NameFromHostname()
-	}
-
-	if config.DataDir == "" && config.Name != "" {
-		config.DataDirFromName()
 	}
 
 	if config.DataDir == "" {
@@ -95,6 +86,12 @@ func main() {
 	ps := server.NewPeerServer(info.Name, config.DataDir, info.RaftURL, info.RaftListenHost, &peerTLSConfig, &info.RaftTLS, registry, store, config.SnapshotCount)
 	ps.MaxClusterSize = config.MaxClusterSize
 	ps.RetryTimes = config.MaxRetryAttempts
+	if config.HeartbeatTimeout > 0 {
+		ps.HeartbeatTimeout = time.Duration(config.HeartbeatTimeout) * time.Millisecond
+	}
+	if config.ElectionTimeout > 0 {
+		ps.ElectionTimeout = time.Duration(config.ElectionTimeout) * time.Millisecond
+	}
 
 	// Create client server.
 	s := server.New(info.Name, info.EtcdURL, info.EtcdListenHost, &tlsConfig, &info.EtcdTLS, ps, registry, store)

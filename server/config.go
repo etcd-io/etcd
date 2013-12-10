@@ -67,7 +67,8 @@ type Config struct {
 	ShowVersion      bool
 	Verbose          bool `toml:"verbose" env:"ETCD_VERBOSE"`
 	VeryVerbose      bool `toml:"very_verbose" env:"ETCD_VERY_VERBOSE"`
-
+	HeartbeatTimeout int  `toml:"peer_heartbeat_timeout" env:"ETCD_PEER_HEARTBEAT_TIMEOUT"`
+	ElectionTimeout  int  `toml:"peer_election_timeout" env:"ETCD_PEER_ELECTION_TIMEOUT"`
 	Peer struct {
 		Addr     string `toml:"addr" env:"ETCD_PEER_ADDR"`
 		BindAddr string `toml:"bind_addr" env:"ETCD_PEER_BIND_ADDR"`
@@ -87,6 +88,8 @@ func NewConfig() *Config {
 	c.MaxRetryAttempts = 3
 	c.Peer.Addr = "127.0.0.1:7001"
 	c.SnapshotCount = 10000
+	c.ElectionTimeout = 0
+	c.HeartbeatTimeout = 0
 	return c
 }
 
@@ -129,6 +132,11 @@ func (c *Config) Load(arguments []string) error {
 	// Sanitize all the input fields.
 	if err := c.Sanitize(); err != nil {
 		return fmt.Errorf("sanitize: %v", err)
+	}
+
+	// Force remove server configuration if specified.
+	if c.Force {
+		c.Reset()
 	}
 
 	return nil
@@ -228,6 +236,9 @@ func (c *Config) LoadFlags(arguments []string) error {
 	f.IntVar(&c.MaxResultBuffer, "max-result-buffer", c.MaxResultBuffer, "")
 	f.IntVar(&c.MaxRetryAttempts, "max-retry-attempts", c.MaxRetryAttempts, "")
 	f.IntVar(&c.MaxClusterSize, "max-cluster-size", c.MaxClusterSize, "")
+	f.IntVar(&c.HeartbeatTimeout, "peer-heartbeat-timeout", c.HeartbeatTimeout, "")
+	f.IntVar(&c.ElectionTimeout, "peer-election-timeout", c.ElectionTimeout, "")
+
 	f.StringVar(&cors, "cors", "", "")
 
 	f.BoolVar(&c.Snapshot, "snapshot", c.Snapshot, "")
@@ -276,11 +287,6 @@ func (c *Config) LoadFlags(arguments []string) error {
 	}
 	if cors != "" {
 		c.CorsOrigins = trimsplit(cors, ",")
-	}
-
-	// Force remove server configuration if specified.
-	if c.Force {
-		c.Reset()
 	}
 
 	return nil
@@ -404,6 +410,16 @@ func (c *Config) Sanitize() error {
 		return fmt.Errorf("Peer Listen Host: %s", err)
 	}
 
+	// Only guess the machine name if there is no data dir specified
+	// because the info file should have our name
+	if c.Name == "" && c.DataDir == "" {
+		c.NameFromHostname()
+	}
+
+	if c.DataDir == "" && c.Name != "" {
+		c.DataDirFromName()
+	}
+
 	return nil
 }
 
@@ -435,7 +451,7 @@ func (c *Config) PeerTLSConfig() (TLSConfig, error) {
 	return c.PeerTLSInfo().Config()
 }
 
-// sanitizeURL will cleanup a host string in the format hostname:port and
+// sanitizeURL will cleanup a host string in the format hostname[:port] and
 // attach a schema.
 func sanitizeURL(host string, defaultScheme string) (string, error) {
 	// Blank URLs are fine input, just return it
@@ -466,14 +482,22 @@ func sanitizeBindAddr(bindAddr string, addr string) (string, error) {
 		return "", err
 	}
 
-	ahost, aport, err := net.SplitHostPort(aurl.Host)
-	if err != nil {
-		return "", err
+	// If it is a valid host:port simply return with no further checks.
+	bhost, bport, err := net.SplitHostPort(bindAddr)
+	if err == nil && bhost != "" {
+		return bindAddr, nil
 	}
 
-	// If the listen host isn't set use the advertised host
-	if bindAddr == "" {
-		bindAddr = ahost
+	// SplitHostPort makes the host optional, but we don't want that.
+	if bhost == "" && bport != "" {
+		return "", fmt.Errorf("IP required can't use a port only")
+	}
+
+	// bindAddr doesn't have a port if we reach here so take the port from the
+	// advertised URL.
+	_, aport, err := net.SplitHostPort(aurl.Host)
+	if err != nil {
+		return "", err
 	}
 
 	return net.JoinHostPort(bindAddr, aport), nil
