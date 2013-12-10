@@ -512,13 +512,19 @@ func (s *store) DeleteExpiredKeys(cutoff time.Time) {
 			break
 		}
 
-		s.ttlKeyHeap.pop()
-		node.Remove(true, true, nil)
-
 		s.CurrentIndex++
+		e := newEvent(Expire, node.Path, s.CurrentIndex, node.CreatedIndex)
+
+		callback := func(path string) { // notify function
+			// notify the watchers with deleted set true
+			s.WatcherHub.notifyWatchers(e, path, true)
+		}
+
+		s.ttlKeyHeap.pop()
+		node.Remove(true, true, callback)
 
 		s.Stats.Inc(ExpireCount)
-		s.WatcherHub.notify(newEvent(Expire, node.Path, s.CurrentIndex, node.CreatedIndex))
+		s.WatcherHub.notify(e)
 	}
 
 }
