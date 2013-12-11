@@ -19,7 +19,8 @@ func GetKeyHandler(w http.ResponseWriter, req *http.Request, s Server) error {
 	}
 
 	// Convert event to a response and write to client.
-	b, _ := json.Marshal(event.Response())
+	b, _ := json.Marshal(event.Response(s.Store().Index()))
+
 	w.WriteHeader(http.StatusOK)
 	w.Write(b)
 

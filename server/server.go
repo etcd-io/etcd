@@ -260,7 +260,7 @@ func (s *Server) Dispatch(c raft.Command, w http.ResponseWriter, req *http.Reque
 
 		var b []byte
 		if strings.HasPrefix(req.URL.Path, "/v1") {
-			b, _ = json.Marshal(result.(*store.Event).Response())
+			b, _ = json.Marshal(result.(*store.Event).Response(0))
 			w.WriteHeader(http.StatusOK)
 		} else {
 			e, _ := result.(*store.Event)

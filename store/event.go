@@ -45,7 +45,7 @@ func (e *Event) Index() uint64 {
 }
 
 // Converts an event object into a response object.
-func (event *Event) Response() interface{} {
+func (event *Event) Response(currentIndex uint64) interface{} {
 	if !event.Node.Dir {
 		response := &Response{
 			Action:     event.Action,
@@ -55,6 +55,10 @@ func (event *Event) Response() interface{} {
 			Index:      event.Node.ModifiedIndex,
 			TTL:        event.Node.TTL,
 			Expiration: event.Node.Expiration,
+		}
+
+		if currentIndex != 0 {
+			response.Index = currentIndex
 		}
 
 		if response.Action == Set {
@@ -78,6 +82,10 @@ func (event *Event) Response() interface{} {
 				Value:  node.Value,
 				Dir:    node.Dir,
 				Index:  node.ModifiedIndex,
+			}
+
+			if currentIndex != 0 {
+				responses[i].Index = currentIndex
 			}
 		}
 		return responses
