@@ -226,8 +226,7 @@ If the TTL has expired, the key will be deleted, and you will be returned a 100.
 }
 ```
 
-
-### Waiting for a change 
+### Waiting for a change
 
 We can watch for a change on a key and receive a notification by using long polling.
 This also works for child keys by passing `recursive=true` in curl.
@@ -271,6 +270,54 @@ curl -L http://127.0.0.1:4001/v2/keys/foo?wait=true\&waitIndex=7
 ```
 
 The watch command returns immediately with the same response as previous.
+
+
+### Using a directory TTL
+
+Like keys, directories in etcd can be set to expire after a specified number of seconds.
+You can do this by setting a TTL (time to live) on a directory when it is created with a `PUT`:
+
+```sh
+curl -L http://127.0.0.1:4001/v2/keys/dir -XPUT -d ttl=30 -d dir=true
+```
+
+```json
+{
+    "action": "set",
+    "node": {
+        "createdIndex": 17,
+        "dir": true,
+        "expiration": "2013-12-11T10:37:33.689275857-08:00",
+        "key": "/newdir",
+        "modifiedIndex": 17,
+        "ttl": 30
+    }
+}
+```
+
+The directories TTL can be refreshed by making an update.
+You can do this by making a PUT with `prevExist=true` and a new TTL.
+
+```sh
+curl -L http://127.0.0.1:4001/v2/keys/dir -XPUT -d ttl=30 -d dir=true -d prevExist=true
+```
+
+Keys that are under this directory work as usual, but when the directory expires a watcher on a key under the directory will get an expire event:
+
+```sh
+curl -X GET http://127.0.0.1:4001/v2/keys/dir/asdf\?consistent\=true\&wait\=true
+```
+
+```json
+{
+    "action": "expire",
+    "node": {
+        "createdIndex": 8,
+        "key": "/dir",
+        "modifiedIndex": 15
+    }
+}
+```
 
 
 ### Atomic Compare-and-Swap (CAS)
