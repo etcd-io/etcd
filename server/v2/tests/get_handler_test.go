@@ -204,6 +204,9 @@ func TestV2WatchKeyInDir(t *testing.T) {
 			c <- true
 		}()
 
+		// wait for expiration, we do have a up to 500 millisecond delay
+		time.Sleep(1500 * time.Millisecond)
+
 		select {
 		case <-c:
 
@@ -215,7 +218,6 @@ func TestV2WatchKeyInDir(t *testing.T) {
 		assert.Equal(t, body["action"], "expire", "")
 
 		node := body["node"].(map[string]interface{})
-		assert.Equal(t, node["key"], "/keyindir/bar", "")
-		assert.Equal(t, node["value"], "XXX", "")
+		assert.Equal(t, node["key"], "/keyindir", "")
 	})
 }
