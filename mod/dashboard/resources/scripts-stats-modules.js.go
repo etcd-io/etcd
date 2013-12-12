@@ -33,7 +33,6 @@ func scripts_stats_modules_js() []byte {
 	return buf.Bytes()
 }
 
-
 func init() {
 	go_bindata["/scripts/stats-modules.js"] = scripts_stats_modules_js
 }

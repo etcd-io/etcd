@@ -69,7 +69,7 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if p := cleanPath(req.URL.Path); p != req.URL.Path {
 
 		// Added 3 lines (Philip Schlump) - It was droping the query string and #whatever from query.
-		// This matches with fix in go 1.2 r.c. 4 for same problem.  Go Issue: 
+		// This matches with fix in go 1.2 r.c. 4 for same problem.  Go Issue:
 		// http://code.google.com/p/go/issues/detail?id=5252
 		url := *req.URL
 		url.Path = p

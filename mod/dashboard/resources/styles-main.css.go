@@ -33,7 +33,6 @@ func styles_main_css() []byte {
 	return buf.Bytes()
 }
 
-
 func init() {
 	go_bindata["/styles/main.css"] = styles_main_css
 }

@@ -1,8 +1,8 @@
 package v2
 
 import (
-	"path"
 	"net/http"
+	"path"
 
 	"github.com/gorilla/mux"
 )
@@ -17,8 +17,7 @@ func (h *handler) releaseLockHandler(w http.ResponseWriter, req *http.Request) {
 	// Delete the lock.
 	_, err := h.client.Delete(keypath, false)
 	if err != nil {
-		http.Error(w, "delete lock index error: " + err.Error(), http.StatusInternalServerError)
+		http.Error(w, "delete lock index error: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 }
-

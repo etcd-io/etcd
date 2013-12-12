@@ -26,16 +26,16 @@ func (h *handler) acquireHandler(w http.ResponseWriter, req *http.Request) {
 	keypath := path.Join(prefix, vars["key"])
 	ttl, err := strconv.Atoi(req.FormValue("ttl"))
 	if err != nil {
-		http.Error(w, "invalid ttl: " + err.Error(), http.StatusInternalServerError)
+		http.Error(w, "invalid ttl: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	
+
 	// Parse "timeout" parameter.
 	var timeout int
 	if len(req.FormValue("timeout")) == 0 {
 		timeout = -1
 	} else if timeout, err = strconv.Atoi(req.FormValue("timeout")); err != nil {
-		http.Error(w, "invalid timeout: " + err.Error(), http.StatusInternalServerError)
+		http.Error(w, "invalid timeout: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 	timeout = timeout + 1
@@ -43,7 +43,7 @@ func (h *handler) acquireHandler(w http.ResponseWriter, req *http.Request) {
 	// Create an incrementing id for the lock.
 	resp, err := h.client.AddChild(keypath, "-", uint64(ttl))
 	if err != nil {
-		http.Error(w, "add lock index error: " + err.Error(), http.StatusInternalServerError)
+		http.Error(w, "add lock index error: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 	indexpath := resp.Node.Key
@@ -72,7 +72,7 @@ func (h *handler) acquireHandler(w http.ResponseWriter, req *http.Request) {
 		// Read all indices.
 		resp, err = h.client.Get(keypath, true, true)
 		if err != nil {
-			http.Error(w, "lock children lookup error: " + err.Error(), http.StatusInternalServerError)
+			http.Error(w, "lock children lookup error: "+err.Error(), http.StatusInternalServerError)
 			break
 		}
 		indices := extractResponseIndices(resp)
@@ -90,7 +90,7 @@ func (h *handler) acquireHandler(w http.ResponseWriter, req *http.Request) {
 		if err == etcd.ErrWatchStoppedByUser {
 			break
 		} else if err != nil {
-			http.Error(w, "lock watch error: " + err.Error(), http.StatusInternalServerError)
+			http.Error(w, "lock watch error: "+err.Error(), http.StatusInternalServerError)
 			break
 		}
 	}
@@ -119,7 +119,7 @@ func (h *handler) acquireHandler(w http.ResponseWriter, req *http.Request) {
 func (h *handler) ttlKeepAlive(k string, ttl int, stop chan bool) {
 	for {
 		select {
-		case <-time.After(time.Duration(ttl / 2) * time.Second):
+		case <-time.After(time.Duration(ttl/2) * time.Second):
 			h.client.Update(k, "-", uint64(ttl))
 		case <-stop:
 			return
