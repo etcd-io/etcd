@@ -25,7 +25,7 @@ import (
 )
 
 type corsHandler struct {
-	router *mux.Router
+	router      *mux.Router
 	corsOrigins map[string]bool
 }
 
@@ -74,5 +74,3 @@ func (h *corsHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	h.router.ServeHTTP(w, req)
 }
-
-
