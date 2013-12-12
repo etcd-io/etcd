@@ -33,7 +33,7 @@ func (h *handler) releaseLockHandler(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 		nodes := lockNodes{resp.Node.Nodes}
-		node := nodes.FindByValue(value)
+		node, _ := nodes.FindByValue(value)
 		if node == nil {
 			http.Error(w, "release lock error: cannot find: " + value, http.StatusInternalServerError)
 			return

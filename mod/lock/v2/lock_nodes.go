@@ -30,15 +30,15 @@ func (s lockNodes) First() *etcd.Node {
 }
 
 // Retrieves the first node with a given value.
-func (s lockNodes) FindByValue(value string) *etcd.Node {
+func (s lockNodes) FindByValue(value string) (*etcd.Node, int) {
 	sort.Sort(s)
 
-	for _, node := range s.Nodes {
+	for i, node := range s.Nodes {
 		if node.Value == value {
-			return &node
+			return &node, i
 		}
 	}
-	return nil
+	return nil, 0
 }
 
 // Retrieves the index that occurs before a given index.

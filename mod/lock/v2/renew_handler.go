@@ -41,7 +41,7 @@ func (h *handler) renewLockHandler(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 		nodes := lockNodes{resp.Node.Nodes}
-		node := nodes.FindByValue(value)
+		node, _ := nodes.FindByValue(value)
 		if node == nil {
 			http.Error(w, "renew lock error: cannot find: " + value, http.StatusInternalServerError)
 			return
