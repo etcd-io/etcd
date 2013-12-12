@@ -13,7 +13,7 @@ import (
 var ServeMux *http.Handler
 
 func addSlash(w http.ResponseWriter, req *http.Request) {
-	http.Redirect(w, req, path.Join("mod", req.URL.Path) + "/", 302)
+	http.Redirect(w, req, path.Join("mod", req.URL.Path)+"/", 302)
 	return
 }
 

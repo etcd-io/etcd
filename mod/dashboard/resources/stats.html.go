@@ -33,7 +33,6 @@ func stats_html() []byte {
 	return buf.Bytes()
 }
 
-
 func init() {
 	go_bindata["/stats.html"] = stats_html
 }

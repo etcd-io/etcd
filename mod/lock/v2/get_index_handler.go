@@ -18,7 +18,7 @@ func (h *handler) getIndexHandler(w http.ResponseWriter, req *http.Request) {
 	// Read all indices.
 	resp, err := h.client.Get(keypath, true, true)
 	if err != nil {
-		http.Error(w, "lock children lookup error: " + err.Error(), http.StatusInternalServerError)
+		http.Error(w, "lock children lookup error: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 

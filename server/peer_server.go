@@ -23,23 +23,23 @@ import (
 const retryInterval = 10
 
 type PeerServer struct {
-	raftServer     raft.Server
-	server         *Server
-	httpServer     *http.Server
-	listener       net.Listener
-	joinIndex      uint64
-	name           string
-	url            string
-	bindAddr       string
-	tlsConf        *TLSConfig
-	tlsInfo        *TLSInfo
-	followersStats *raftFollowersStats
-	serverStats    *raftServerStats
-	registry       *Registry
-	store          store.Store
-	snapConf       *snapshotConf
-	MaxClusterSize int
-	RetryTimes     int
+	raftServer       raft.Server
+	server           *Server
+	httpServer       *http.Server
+	listener         net.Listener
+	joinIndex        uint64
+	name             string
+	url              string
+	bindAddr         string
+	tlsConf          *TLSConfig
+	tlsInfo          *TLSInfo
+	followersStats   *raftFollowersStats
+	serverStats      *raftServerStats
+	registry         *Registry
+	store            store.Store
+	snapConf         *snapshotConf
+	MaxClusterSize   int
+	RetryTimes       int
 	HeartbeatTimeout time.Duration
 	ElectionTimeout  time.Duration
 }
@@ -81,7 +81,7 @@ func NewPeerServer(name string, path string, url string, bindAddr string, tlsCon
 			},
 		},
 		HeartbeatTimeout: defaultHeartbeatTimeout,
-		ElectionTimeout: defaultElectionTimeout,
+		ElectionTimeout:  defaultElectionTimeout,
 	}
 
 	// Create transporter for raft

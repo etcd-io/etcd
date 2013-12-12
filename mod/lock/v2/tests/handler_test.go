@@ -47,7 +47,7 @@ func TestModLockBlockUntilAcquire(t *testing.T) {
 			assert.Equal(t, body, "2")
 			c <- true
 		}()
-		<- c
+		<-c
 
 		// Acquire lock #2.
 		go func() {
@@ -56,7 +56,7 @@ func TestModLockBlockUntilAcquire(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, body, "4")
 		}()
-		<- c
+		<-c
 
 		time.Sleep(1 * time.Second)
 
@@ -97,7 +97,7 @@ func TestModLockExpireAndRelease(t *testing.T) {
 			assert.Equal(t, body, "2")
 			c <- true
 		}()
-		<- c
+		<-c
 
 		// Acquire lock #2.
 		go func() {
@@ -106,7 +106,7 @@ func TestModLockExpireAndRelease(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, body, "4")
 		}()
-		<- c
+		<-c
 
 		time.Sleep(1 * time.Second)
 
@@ -160,8 +160,6 @@ func TestModLockRenew(t *testing.T) {
 		assert.Equal(t, body, "")
 	})
 }
-
-
 
 func testAcquireLock(s *server.Server, key string, ttl int) (string, error) {
 	resp, err := tests.PostForm(fmt.Sprintf("%s/mod/v2/lock/%s?ttl=%d", s.URL(), key, ttl), nil)

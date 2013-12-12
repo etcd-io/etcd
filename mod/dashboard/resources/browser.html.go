@@ -33,7 +33,6 @@ func browser_html() []byte {
 	return buf.Bytes()
 }
 
-
 func init() {
 	go_bindata["/browser.html"] = browser_html
 }

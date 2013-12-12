@@ -94,23 +94,23 @@ func (m *Mock) Return(returnArguments ...interface{}) *Mock {
 // Once indicates that that the mock should only return the value once.
 //
 //    Mock.On("MyMethod", arg1, arg2).Return(returnArg1, returnArg2).Once()
-func (m* Mock) Once() {
-	m.ExpectedCalls[len(m.ExpectedCalls) - 1].Repeatability = 1
+func (m *Mock) Once() {
+	m.ExpectedCalls[len(m.ExpectedCalls)-1].Repeatability = 1
 }
 
 // Twice indicates that that the mock should only return the value twice.
 //
 //    Mock.On("MyMethod", arg1, arg2).Return(returnArg1, returnArg2).Twice()
-func (m* Mock) Twice() {
-	m.ExpectedCalls[len(m.ExpectedCalls) - 1].Repeatability = 2
+func (m *Mock) Twice() {
+	m.ExpectedCalls[len(m.ExpectedCalls)-1].Repeatability = 2
 }
 
 // Times indicates that that the mock should only return the indicated number
 // of times.
 //
 //    Mock.On("MyMethod", arg1, arg2).Return(returnArg1, returnArg2).Times(5)
-func (m* Mock) Times(i int) {
-	m.ExpectedCalls[len(m.ExpectedCalls) - 1].Repeatability = i
+func (m *Mock) Times(i int) {
+	m.ExpectedCalls[len(m.ExpectedCalls)-1].Repeatability = i
 }
 
 /*

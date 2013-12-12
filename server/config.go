@@ -13,8 +13,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/coreos/etcd/log"
 	"github.com/BurntSushi/toml"
+	"github.com/coreos/etcd/log"
 )
 
 // The default location for the etcd configuration file.
@@ -69,7 +69,7 @@ type Config struct {
 	VeryVerbose      bool `toml:"very_verbose" env:"ETCD_VERY_VERBOSE"`
 	HeartbeatTimeout int  `toml:"peer_heartbeat_timeout" env:"ETCD_PEER_HEARTBEAT_TIMEOUT"`
 	ElectionTimeout  int  `toml:"peer_election_timeout" env:"ETCD_PEER_ELECTION_TIMEOUT"`
-	Peer struct {
+	Peer             struct {
 		Addr     string `toml:"addr" env:"ETCD_PEER_ADDR"`
 		BindAddr string `toml:"bind_addr" env:"ETCD_PEER_BIND_ADDR"`
 		CAFile   string `toml:"ca_file" env:"ETCD_PEER_CA_FILE"`
