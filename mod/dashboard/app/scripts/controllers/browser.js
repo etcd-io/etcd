@@ -56,17 +56,18 @@ angular.module('etcdBrowser', ['ngRoute', 'etcd', 'timeRelative'])
       return;
     }
     $scope.key.get().success(function (data, status, headers, config) {
+      console.log(data)
       //hide any errors
       $('#etcd-browse-error').hide();
       // Looking at a directory if we got an array
       if (data.dir === true) {
-        $scope.list = data.kvs;
+        $scope.list = data.node.nodes;
         $scope.preview = 'etcd-preview-hide';
       } else {
         $scope.singleValue = data.value;
         $scope.preview = 'etcd-preview-reveal';
         $scope.key.getParent().get().success(function(data) {
-          $scope.list = data.kvs;
+          $scope.list = data.node.nodes;
         });
       }
       $scope.previewMessage = 'No key selected.';
