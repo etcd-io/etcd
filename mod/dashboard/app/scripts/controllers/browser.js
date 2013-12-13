@@ -56,7 +56,6 @@ angular.module('etcdBrowser', ['ngRoute', 'etcd', 'timeRelative'])
       return;
     }
     $scope.key.get().success(function (data, status, headers, config) {
-      console.log(data)
       //hide any errors
       $('#etcd-browse-error').hide();
       // Looking at a directory if we got an array
