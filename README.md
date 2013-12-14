@@ -272,6 +272,51 @@ curl -L http://127.0.0.1:4001/v2/keys/foo?wait=true\&waitIndex=7
 The watch command returns immediately with the same response as previous.
 
 
+### Atomically Creating In-Order Keys
+
+Using the `POST` on a directory you can create keys with key names that are created in-order.
+This can be used in a variety of useful patterns like implementing queues of keys that need to be processed in strict order.
+An example use case is the [locking module][lockmod] which uses it to ensure clients get fair access to a mutex.
+
+Creating an in-order key is easy
+
+```sh
+curl -X POST http://127.0.0.1:4001/v2/keys/queue -d value=Job1
+```
+
+```json
+{
+    "action": "create",
+    "node": {
+        "createdIndex": 6,
+        "key": "/queue/6",
+        "modifiedIndex": 6,
+        "value": "Job1"
+    }
+}
+```
+
+If you create another entry some time later it is guaranteed to have a key name that is greater than the previous key.
+Also note the key names use the global etcd index so the next key can be more than `previous + 1`.
+
+```sh
+curl -X POST http://127.0.0.1:4001/v2/keys/queue -d value=Job2
+```
+
+```json
+{
+    "action": "create",
+    "node": {
+        "createdIndex": 29,
+        "key": "/queue/29",
+        "modifiedIndex": 29,
+        "value": "Job2"
+    }
+}
+```
+
+[lockmod]: #lock
+
 ### Using a directory TTL
 
 Like keys, directories in etcd can be set to expire after a specified number of seconds.
