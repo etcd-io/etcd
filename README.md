@@ -226,8 +226,7 @@ If the TTL has expired, the key will be deleted, and you will be returned a 100.
 }
 ```
 
-
-### Waiting for a change 
+### Waiting for a change
 
 We can watch for a change on a key and receive a notification by using long polling.
 This also works for child keys by passing `recursive=true` in curl.
@@ -271,6 +270,54 @@ curl -L http://127.0.0.1:4001/v2/keys/foo?wait=true\&waitIndex=7
 ```
 
 The watch command returns immediately with the same response as previous.
+
+
+### Using a directory TTL
+
+Like keys, directories in etcd can be set to expire after a specified number of seconds.
+You can do this by setting a TTL (time to live) on a directory when it is created with a `PUT`:
+
+```sh
+curl -L http://127.0.0.1:4001/v2/keys/dir -XPUT -d ttl=30 -d dir=true
+```
+
+```json
+{
+    "action": "set",
+    "node": {
+        "createdIndex": 17,
+        "dir": true,
+        "expiration": "2013-12-11T10:37:33.689275857-08:00",
+        "key": "/newdir",
+        "modifiedIndex": 17,
+        "ttl": 30
+    }
+}
+```
+
+The directories TTL can be refreshed by making an update.
+You can do this by making a PUT with `prevExist=true` and a new TTL.
+
+```sh
+curl -L http://127.0.0.1:4001/v2/keys/dir -XPUT -d ttl=30 -d dir=true -d prevExist=true
+```
+
+Keys that are under this directory work as usual, but when the directory expires a watcher on a key under the directory will get an expire event:
+
+```sh
+curl -X GET http://127.0.0.1:4001/v2/keys/dir/asdf\?consistent\=true\&wait\=true
+```
+
+```json
+{
+    "action": "expire",
+    "node": {
+        "createdIndex": 8,
+        "key": "/dir",
+        "modifiedIndex": 15
+    }
+}
+```
 
 
 ### Atomic Compare-and-Swap (CAS)
@@ -813,6 +860,71 @@ To do this just change the `-*-file` flags to `-peer-*-file`.
 
 If you are using SSL for server-to-server communication, you must use it on all instances of etcd.
 
+## Modules
+
+etcd has a number of modules that are built on top of the core etcd API.
+These modules provide things like dashboards, locks and leader election.
+
+### Dashboard
+
+An HTML dashboard can be found at `http://127.0.0.1:4001/mod/dashboard/```
+
+### Lock
+
+The Lock module implements a fair lock that can be used when lots of clients want access to a single resource.
+A lock can be associated with a name.
+The name is unique so if a lock tries to request a name that is already queued for a lock then it will find it and watch until that name obtains the lock.
+If you lock the same name on a key from two separate curl sessions they'll both return at the same time.
+
+Here's the API:
+
+**Acquire a lock (with no name) for "customer1"**
+
+```sh
+curl -X POST http://127.0.0.1:4001/mod/v2/lock/customer1?ttl=60
+```
+
+**Acquire a lock for "customer1" that is associated with the name "bar"**
+
+```sh
+curl -X POST http://127.0.0.1:4001/mod/v2/lock/customer1?ttl=60 -d name=bar
+```
+
+**Renew the TTL on the "customer1" lock for index 2**
+
+```sh
+curl -X PUT http://127.0.0.1:4001/mod/v2/lock/customer1?ttl=60 -d index=2
+```
+
+**Renew the TTL on the "customer1" lock for name "customer1"**
+
+```sh
+curl -X PUT http://127.0.0.1:4001/mod/v2/lock/customer1?ttl=60 -d name=bar
+```
+
+**Retrieve the current name for the "customer1" lock.**
+
+```sh
+curl http://127.0.0.1:4001/mod/v2/lock/customer1
+```
+
+**Retrieve the current index for the "customer1" lock**
+
+```sh
+curl http://127.0.0.1:4001/mod/v2/lock/customer1?field=index
+```
+
+**Delete the "customer1" lock with the index 2**
+
+```sh
+curl -X DELETE http://127.0.0.1:4001/mod/v2/lock/customer1?index=customer1
+```
+
+**Delete the "customer1" lock with the name "bar"**
+
+```sh
+curl -X DELETE http://127.0.0.1:4001/mod/v2/lock/customer1?name=bar
+```
 
 ## Contributing
 

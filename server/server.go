@@ -269,7 +269,7 @@ func (s *Server) Dispatch(c raft.Command, w http.ResponseWriter, req *http.Reque
 			w.Header().Set("Content-Type", "application/json")
 			// etcd index should be the same as the event index
 			// which is also the last modified index of the node
-			w.Header().Add("X-Etcd-Index", fmt.Sprint(e.Index))
+			w.Header().Add("X-Etcd-Index", fmt.Sprint(e.Index()))
 			w.Header().Add("X-Raft-Index", fmt.Sprint(s.CommitIndex()))
 			w.Header().Add("X-Raft-Term", fmt.Sprint(s.Term()))
 

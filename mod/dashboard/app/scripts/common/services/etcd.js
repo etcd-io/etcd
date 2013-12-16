@@ -88,7 +88,9 @@ angular.module('etcd', [])
     return newStat('leader').get().then(function(response) {
       return newKey('/_etcd/machines/' + response.data.leader).get().then(function(response) {
         // TODO: do something better here p.s. I hate javascript
-        var data = JSON.parse('{"' + decodeURI(response.data.value.replace(/&/g, "\",\"").replace(/=/g,"\":\"")) + '"}');
+        var data = decodeURIComponent(response.data.node.value);
+        data = data.replace(/&/g, "\",\"").replace(/=/g,"\":\"");
+        data = JSON.parse('{"' + data + '"}');
         return data.etcd;
       });
     });
