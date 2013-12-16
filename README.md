@@ -110,6 +110,21 @@ Since the `get` and `watch` commands do not change state in the store, they do n
 You may notice that in this example the index is `2` even though it is the first request you sent to the server.
 This is because there are internal commands that also change the state like adding and syncing servers.
 
+### Response Headers
+
+etcd includes a few HTTP headers that provide global information about the etcd cluster that serviced a request:
+
+```
+X-Etcd-Index: 35
+X-Raft-Index: 5398
+X-Raft-Term: 0
+```
+
+- `X-Etcd-Index` is the current etcd index as explained above.
+- `X-Raft-Index` is similar to the etcd index but is for the underlying raft protocol
+- `X-Raft-Term` this number will increase when an etcd master election happens. If this number is increasing rapdily you may need to tune the election timeout. See the [tuning][tuning] section for details.
+
+[tuning]: #tuning
 
 ### Get the value of a key
 
@@ -1117,6 +1132,9 @@ When creating the cert be sure to reference it in the `-extensions` flag:
 openssl ca -config openssl.cnf -policy policy_anything -extensions ssl_client -out certs/machine.crt -infiles machine.csr
 ```
 
+### Tuning
+
+TODO
 
 ## Project Details
 
