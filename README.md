@@ -926,6 +926,41 @@ curl -X DELETE http://127.0.0.1:4001/mod/v2/lock/customer1?index=customer1
 curl -X DELETE http://127.0.0.1:4001/mod/v2/lock/customer1?name=bar
 ```
 
+
+### Leader Election
+
+The Leader Election module wraps the Lock module to allow clients to come to consensus on a single value.
+This is useful when you want one server to process at a time but allow other servers to fail over.
+The API is similar to the Lock module but is limited to simple strings values.
+
+Here's the API:
+
+**Attempt to set a value for the "order_processing" leader key:**
+
+```sh
+curl -X POST http://127.0.0.1:4001/mod/v2/leader/order_processing?ttl=60 -d name=myserver1.foo.com
+```
+
+**Retrieve the current value for the "order_processing" leader key:**
+
+```sh
+curl http://127.0.0.1:4001/mod/v2/leader/order_processing
+myserver1.foo.com
+```
+
+**Remove a value from the "order_processing" leader key:**
+
+```sh
+curl -X POST http://127.0.0.1:4001/mod/v2/leader/order_processing?name=myserver1.foo.com
+```
+
+If multiple clients attempt to set the value for a key then only one will succeed.
+The other clients will hang until the current value is removed because of TTL or because of a `DELETE` operation.
+Multiple clients can submit the same value and will all be notified when that value succeeds.
+
+To update the TTL of a value simply reissue the same `POST` command that you used to set the value.
+
+
 ## Contributing
 
 See [CONTRIBUTING](https://github.com/coreos/etcd/blob/master/CONTRIBUTING.md) for details on submitting patches and contacting developers via IRC and mailing lists.
