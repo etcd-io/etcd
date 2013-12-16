@@ -1053,6 +1053,7 @@ See [CONTRIBUTING](https://github.com/coreos/etcd/blob/master/CONTRIBUTING.md) f
 **Clojure libraries**
 
 - [aterreno/etcd-clojure](https://github.com/aterreno/etcd-clojure)
+- [dwwoelfel/cetcd](https://github.com/dwwoelfel/cetcd)
 - [rthomas/clj-etcd](https://github.com/rthomas/clj-etcd)
 
 **Erlang libraries**
