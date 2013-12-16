@@ -49,9 +49,15 @@ func (h *handler) acquireHandler(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// If node exists then just watch it. Otherwise create the node and watch it.
-	index := h.findExistingNode(keypath, value)
+	node, index, pos := h.findExistingNode(keypath, value)
 	if index > 0 {
-		err = h.watch(keypath, index, nil)
+		if pos == 0 {
+			// If lock is already acquired then update the TTL.
+			h.client.Update(node.Key, node.Value, uint64(ttl))
+		} else {
+			// Otherwise watch until it becomes acquired (or errors).
+			err = h.watch(keypath, index, nil)
+		}
 	} else {
 		index, err = h.createNode(keypath, value, ttl, closeChan, stopChan)
 	}
@@ -108,18 +114,18 @@ func (h *handler) createNode(keypath string, value string, ttl int, closeChan <-
 }
 
 // findExistingNode search for a node on the lock with the given value.
-func (h *handler) findExistingNode(keypath string, value string) int {
+func (h *handler) findExistingNode(keypath string, value string) (*etcd.Node, int, int) {
 	if len(value) > 0 {
 		resp, err := h.client.Get(keypath, true, true)
 		if err == nil {
 			nodes := lockNodes{resp.Node.Nodes}
-			if node := nodes.FindByValue(value); node != nil {
+			if node, pos := nodes.FindByValue(value); node != nil {
 				index, _ := strconv.Atoi(path.Base(node.Key))
-				return index
+				return node, index, pos
 			}
 		}
 	}
-	return 0
+	return nil, 0, 0
 }
 
 // ttlKeepAlive continues to update a key's TTL until the stop channel is closed.
