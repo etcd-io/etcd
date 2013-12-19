@@ -75,6 +75,16 @@ func (f *CommandFactory) CreateCompareAndSwapCommand(key string, value string, p
 	}
 }
 
+// CreateCompareAndDeleteCommand creates a version 2 command to conditionally delete a key from the store.
+func (f *CommandFactory) CreateCompareAndDeleteCommand(key string, recursive bool, prevValue string, prevIndex uint64) raft.Command {
+	return &CompareAndDeleteCommand{
+		Key:       key,
+		Recursive: recursive,
+		PrevValue: prevValue,
+		PrevIndex: prevIndex,
+	}
+}
+
 func (f *CommandFactory) CreateSyncCommand(now time.Time) raft.Command {
 	return &SyncCommand{
 		Time: time.Now(),
