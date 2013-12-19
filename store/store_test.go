@@ -341,95 +341,54 @@ func TestRootRdOnly(t *testing.T) {
 
 func TestStoreCompareAndDeletePrevValue(t *testing.T) {
 	s := newStore()
-	s.Create("/foo", "bar", false, Permanent)
-	e, err := s.CompareAndDelete("/foo", false, "bar", 0)
+	s.Create("/foo", false, "bar", false, Permanent)
+	e, err := s.CompareAndDelete("/foo", "bar", 0)
 	assert.Nil(t, err, "")
 	assert.Equal(t, e.Action, "compareAndDelete", "")
-	assert.Equal(t, e.Dir, false, "")
+	assert.Equal(t, e.Node.Key, "/foo", "")
 }
 
 func TestStoreCompareAndDeletePrevValueFailsIfNotMatch(t *testing.T) {
 	s := newStore()
-	s.Create("/foo", "bar", false, Permanent)
-	e, _err := s.CompareAndDelete("/foo", false, "baz", 0)
+	s.Create("/foo", false, "bar", false, Permanent)
+	e, _err := s.CompareAndDelete("/foo", "baz", 0)
 	err := _err.(*etcdErr.Error)
 	assert.Equal(t, err.ErrorCode, etcdErr.EcodeTestFailed, "")
-	assert.Equal(t, err.Message, "Test Failed", "")
+	assert.Equal(t, err.Message, "Compare failed", "")
 	assert.Nil(t, e, "")
 	e, _ = s.Get("/foo", false, false)
-	assert.Equal(t, e.Value, "bar", "")
+	assert.Equal(t, e.Node.Value, "bar", "")
 }
 
 func TestStoreCompareAndDeletePrevIndex(t *testing.T) {
 	s := newStore()
-	s.Create("/foo", "bar", false, Permanent)
-	e, err := s.CompareAndDelete("/foo", false, "", 1)
+	s.Create("/foo", false, "bar", false, Permanent)
+	e, err := s.CompareAndDelete("/foo", "", 1)
 	assert.Nil(t, err, "")
 	assert.Equal(t, e.Action, "compareAndDelete", "")
 }
 
 func TestStoreCompareAndDeletePrevIndexFailsIfNotMatch(t *testing.T) {
 	s := newStore()
-	s.Create("/foo", "bar", false, Permanent)
-	e, _err := s.CompareAndDelete("/foo", false, "", 100)
+	s.Create("/foo", false, "bar", false, Permanent)
+	e, _err := s.CompareAndDelete("/foo", "", 100)
+	assert.NotNil(t, _err, "")
 	err := _err.(*etcdErr.Error)
 	assert.Equal(t, err.ErrorCode, etcdErr.EcodeTestFailed, "")
-	assert.Equal(t, err.Message, "Test Failed", "")
+	assert.Equal(t, err.Message, "Compare failed", "")
 	assert.Nil(t, e, "")
 	e, _ = s.Get("/foo", false, false)
-	assert.Equal(t, e.Value, "bar", "")
+	assert.Equal(t, e.Node.Value, "bar", "")
 }
 
-// Ensure that the store can delete a directory if recursive is specified.
-func TestStoreCompareAndDeleteDiretory(t *testing.T) {
+// Ensure that the store cannot delete a directory.
+func TestStoreCompareAndDeleteDiretoryFail(t *testing.T) {
 	s := newStore()
-	s.Create("/foo", "", false, Permanent)
-	e, err := s.CompareAndDelete("/foo", true, "", 0)
-	assert.Nil(t, err, "")
-	assert.Equal(t, e.Action, "compareAndDelete", "")
-	assert.Equal(t, e.Dir, true, "")
-}
-
-// Ensure that the store can delete a directory if recursive is specified.
-func TestStoreCompareAndDeleteDiretoryIgnoringPrevValue(t *testing.T) {
-	s := newStore()
-	s.Create("/foo", "", false, Permanent)
-	e, err := s.CompareAndDelete("/foo", true, "baz", 0)
-	assert.Nil(t, err, "")
-	assert.Equal(t, e.Action, "compareAndDelete", "")
-}
-
-// Ensure that the store can delete a directory with a prev index.
-func TestStoreCompareAndDeleteDirectoryPrevIndex(t *testing.T) {
-	s := newStore()
-	s.Create("/foo", "", false, Permanent)
-	e, err := s.CompareAndDelete("/foo", true, "", 1)
-	assert.Nil(t, err, "")
-	assert.Equal(t, e.Action, "compareAndDelete", "")
-}
-
-// Ensure that the store won't delete a directory if prevIndex does not match
-func TestStoreCompareAndDeleteDirectoryPrevIndexFailsIfNotMatch(t *testing.T) {
-	s := newStore()
-	s.Create("/foo", "", false, Permanent)
-	e, _err := s.CompareAndDelete("/foo", true, "", 100)
-	err := _err.(*etcdErr.Error)
-	assert.Equal(t, err.ErrorCode, etcdErr.EcodeTestFailed, "")
-	assert.Equal(t, err.Message, "Test Failed", "")
-	assert.Nil(t, e, "")
-	e, _ = s.Get("/foo", false, false)
-	assert.Equal(t, e.Value, "", "")
-}
-
-// Ensure that the store cannot delete a directory if recursive is not specified.
-func TestStoreCompareAndDeleteDiretoryFailsIfNonRecursive(t *testing.T) {
-	s := newStore()
-	s.Create("/foo", "", false, Permanent)
-	e, _err := s.CompareAndDelete("/foo", false, "", 0)
+	s.Create("/foo", true, "", false, Permanent)
+	_, _err := s.CompareAndDelete("/foo", "", 0)
+	assert.NotNil(t, _err, "")
 	err := _err.(*etcdErr.Error)
 	assert.Equal(t, err.ErrorCode, etcdErr.EcodeNotFile, "")
-	assert.Equal(t, err.Message, "Not A File", "")
-	assert.Nil(t, e, "")
 }
 
 // Ensure that the store can conditionally update a key if it has a previous value.

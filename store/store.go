@@ -51,7 +51,7 @@ type Store interface {
 	CompareAndSwap(nodePath string, prevValue string, prevIndex uint64,
 		value string, expireTime time.Time) (*Event, error)
 	Delete(nodePath string, recursive, dir bool) (*Event, error)
-	CompareAndDelete(nodePath string, recursive bool, prevValue string, prevIndex uint64) (*Event, error)
+	CompareAndDelete(nodePath string, prevValue string, prevIndex uint64) (*Event, error)
 	Watch(prefix string, recursive bool, sinceIndex uint64) (<-chan *Event, error)
 
 	Save() ([]byte, error)
@@ -208,14 +208,14 @@ func (s *store) CompareAndSwap(nodePath string, prevValue string, prevIndex uint
 		return nil, err
 	}
 
-	if n.IsDir() { // can only test and set file
+	if n.IsDir() { // can only compare and swap file
 		s.Stats.Inc(CompareAndSwapFail)
 		return nil, etcdErr.NewError(etcdErr.EcodeNotFile, nodePath, s.CurrentIndex)
 	}
 
 	// If both of the prevValue and prevIndex are given, we will test both of them.
 	// Command will be executed, only if both of the tests are successful.
-	if (prevValue == "" || n.Value == prevValue) && (prevIndex == 0 || n.ModifiedIndex == prevIndex) {
+	if n.Compare(prevValue, prevIndex) {
 		// update etcd index
 		s.CurrentIndex++
 
@@ -258,8 +258,6 @@ func (s *store) Delete(nodePath string, dir, recursive bool) (*Event, error) {
 		dir = true
 	}
 
-	nextIndex := s.CurrentIndex + 1
-
 	n, err := s.internalGet(nodePath)
 
 	if err != nil { // if the node does not exist, return error
@@ -267,6 +265,7 @@ func (s *store) Delete(nodePath string, dir, recursive bool) (*Event, error) {
 		return nil, err
 	}
 
+	nextIndex := s.CurrentIndex + 1
 	e := newEvent(Delete, nodePath, nextIndex, n.CreatedIndex)
 	eNode := e.Node
 
@@ -297,7 +296,7 @@ func (s *store) Delete(nodePath string, dir, recursive bool) (*Event, error) {
 	return e, nil
 }
 
-func (s *store) CompareAndDelete(nodePath string, recursive bool, prevValue string, prevIndex uint64) (*Event, error) {
+func (s *store) CompareAndDelete(nodePath string, prevValue string, prevIndex uint64) (*Event, error) {
 	nodePath = path.Clean(path.Join("/", nodePath))
 
 	s.worldLock.Lock()
@@ -310,31 +309,26 @@ func (s *store) CompareAndDelete(nodePath string, recursive bool, prevValue stri
 		return nil, err
 	}
 
-	isDir := n.IsDir()
+	if n.IsDir() { // can only compare and delete file
+		s.Stats.Inc(CompareAndSwapFail)
+		return nil, etcdErr.NewError(etcdErr.EcodeNotFile, nodePath, s.CurrentIndex)
+	}
 
 	// If both of the prevValue and prevIndex are given, we will test both of them.
 	// Command will be executed, only if both of the tests are successful.
-	if (isDir || prevValue == "" || n.Value == prevValue) && (prevIndex == 0 || n.ModifiedIndex == prevIndex) {
+	if n.Compare(prevValue, prevIndex) {
+		// update etcd index
+		s.CurrentIndex++
 
-		e := newEvent(CompareAndDelete, nodePath, s.CurrentIndex+1, n.CreatedIndex)
-		if isDir {
-			e.Node.Dir = true
-		}
+		e := newEvent(CompareAndDelete, nodePath, s.CurrentIndex, n.CreatedIndex)
 
 		callback := func(path string) { // notify function
 			// notify the watchers with deleted set true
 			s.WatcherHub.notifyWatchers(e, path, true)
 		}
 
-		err = n.Remove(true, recursive, callback)
-
-		if err != nil {
-			s.Stats.Inc(CompareAndDeleteFail)
-			return nil, err
-		}
-
-		// update etcd index
-		s.CurrentIndex++
+		// delete a key-value pair, no error should happen
+		n.Remove(false, false, callback)
 
 		s.WatcherHub.notify(e)
 		s.Stats.Inc(CompareAndDeleteSuccess)

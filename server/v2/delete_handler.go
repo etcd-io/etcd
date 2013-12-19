@@ -44,6 +44,6 @@ func DeleteHandler(w http.ResponseWriter, req *http.Request, s Server) error {
 		}
 	}
 
-	c := s.Store().CommandFactory().CreateCompareAndDeleteCommand(key, recursive, prevValue, prevIndex)
+	c := s.Store().CommandFactory().CreateCompareAndDeleteCommand(key, prevValue, prevIndex)
 	return s.Dispatch(c, w, req)
 }

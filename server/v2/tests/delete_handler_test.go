@@ -84,95 +84,42 @@ func TestV2DeleteDirectoryRecursiveImpliesDir(t *testing.T) {
 	})
 }
 
-// Ensures that a directory is deleted.
+// Ensures that a key is deleted if the previous index matches
 //
-//   $ curl -X PUT localhost:4001/v2/keys/foo/bar -d value=XXX
-//   $ curl -X DELETE localhost:4001/v2/keys/foo?recursive=true
-//
-func TestV2DeleteDirectory(t *testing.T) {
-	tests.RunServer(func(s *server.Server) {
-		v := url.Values{}
-		v.Set("value", "XXX")
-		resp, err := tests.PutForm(fmt.Sprintf("http://%s%s", s.URL(), "/v2/keys/foo/bar"), v)
-		tests.ReadBody(resp)
-		resp, err = tests.DeleteForm(fmt.Sprintf("http://%s%s", s.URL(), "/v2/keys/foo?recursive=true"), url.Values{})
-		assert.Nil(t, err, "")
-		body := tests.ReadBodyJSON(resp)
-		assert.Equal(t, body["action"], "delete", "")
-		assert.Equal(t, body["dir"], true, "")
-		assert.Equal(t, body["modifiedIndex"], 2, "")
-	})
-}
-
-// Ensures that a directory is deleted if the previous index matches
-//
-//   $ curl -X PUT localhost:4001/v2/keys/foo/bar -d value=XXX
-//   $ curl -X DELETE localhost:4001/v2/keys/foo?recursive=true&prevIndex=1
-//
-func TestV2DeleteDirectoryCADOnIndexSuccess(t *testing.T) {
-	tests.RunServer(func(s *server.Server) {
-		v := url.Values{}
-		v.Set("value", "XXX")
-		resp, err := tests.PutForm(fmt.Sprintf("http://%s%s", s.URL(), "/v2/keys/foo/bar"), v)
-		tests.ReadBody(resp)
-		resp, err = tests.DeleteForm(fmt.Sprintf("http://%s%s", s.URL(), "/v2/keys/foo?recursive=true&prevIndex=1"), url.Values{})
-		assert.Nil(t, err, "")
-		body := tests.ReadBodyJSON(resp)
-		assert.Equal(t, body["action"], "compareAndDelete", "")
-		assert.Equal(t, body["dir"], true, "")
-		assert.Equal(t, body["modifiedIndex"], 2, "")
-	})
-}
-
-// Ensures that a directory is not deleted if the previous index does not match
-//
-//   $ curl -X PUT localhost:4001/v2/keys/foo/bar -d value=XXX
-//   $ curl -X DELETE localhost:4001/v2/keys/foo?recursive=true&prevIndex=100
-//
-func TestV2DeleteDirectoryCADOnIndexFail(t *testing.T) {
-	tests.RunServer(func(s *server.Server) {
-		v := url.Values{}
-		v.Set("value", "XXX")
-		resp, err := tests.PutForm(fmt.Sprintf("http://%s%s", s.URL(), "/v2/keys/foo/bar"), v)
-		tests.ReadBody(resp)
-		resp, err = tests.DeleteForm(fmt.Sprintf("http://%s%s", s.URL(), "/v2/keys/foo?recursive=true&prevIndex=100"), url.Values{})
-		assert.Nil(t, err, "")
-		body := tests.ReadBodyJSON(resp)
-		assert.Equal(t, body["errorCode"], 101)
-	})
-}
-
-// Ensures that a key is deleted only if the previous index matches.
-//
-//   $ curl -X PUT localhost:4001/v2/keys/foo/bar -d value=XXX
-//   $ curl -X DELETE localhost:4001/v2/keys/foo/bar?prevIndex=1
+//   $ curl -X PUT localhost:4001/v2/keys/foo -d value=XXX
+//   $ curl -X DELETE localhost:4001/v2/keys/foo?prevIndex=1
 //
 func TestV2DeleteKeyCADOnIndexSuccess(t *testing.T) {
 	tests.RunServer(func(s *server.Server) {
 		v := url.Values{}
 		v.Set("value", "XXX")
-		resp, _ := tests.PutForm(fmt.Sprintf("http://%s%s", s.URL(), "/v2/keys/foo/bar"), v)
+		resp, err := tests.PutForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo"), v)
 		tests.ReadBody(resp)
-		resp, _ = tests.DeleteForm(fmt.Sprintf("http://%s%s", s.URL(), "/v2/keys/foo/bar?prevIndex=1"), v)
+		resp, err = tests.DeleteForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo?prevIndex=2"), url.Values{})
+		assert.Nil(t, err, "")
+		fmt.Println(resp)
 		body := tests.ReadBodyJSON(resp)
 		assert.Equal(t, body["action"], "compareAndDelete", "")
-		assert.Equal(t, body["prevValue"], "XXX", "")
-		assert.Equal(t, body["modifiedIndex"], 2, "")
+
+		node := body["node"].(map[string]interface{})
+		assert.Equal(t, node["key"], "/foo", "")
+		assert.Equal(t, node["modifiedIndex"], 3, "")
 	})
 }
 
-// Ensures that a key is not deleted if the previous index does not matche.
+// Ensures that a key is not deleted if the previous index does not match
 //
-//   $ curl -X PUT localhost:4001/v2/keys/foo/bar -d value=XXX
-//   $ curl -X DELETE localhost:4001/v2/keys/foo/bar?prevIndex=2
+//   $ curl -X PUT localhost:4001/v2/keys/foo -d value=XXX
+//   $ curl -X DELETE localhost:4001/v2/keys/foo?prevIndex=100
 //
 func TestV2DeleteKeyCADOnIndexFail(t *testing.T) {
 	tests.RunServer(func(s *server.Server) {
 		v := url.Values{}
 		v.Set("value", "XXX")
-		resp, _ := tests.PutForm(fmt.Sprintf("http://%s%s", s.URL(), "/v2/keys/foo/bar"), v)
+		resp, err := tests.PutForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo"), v)
 		tests.ReadBody(resp)
-		resp, _ = tests.DeleteForm(fmt.Sprintf("http://%s%s", s.URL(), "/v2/keys/foo/bar?prevIndex=100"), v)
+		resp, err = tests.DeleteForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo?prevIndex=100"), url.Values{})
+		assert.Nil(t, err, "")
 		body := tests.ReadBodyJSON(resp)
 		assert.Equal(t, body["errorCode"], 101)
 	})
@@ -187,9 +134,9 @@ func TestV2DeleteKeyCADWithInvalidIndex(t *testing.T) {
 	tests.RunServer(func(s *server.Server) {
 		v := url.Values{}
 		v.Set("value", "XXX")
-		resp, _ := tests.PutForm(fmt.Sprintf("http://%s%s", s.URL(), "/v2/keys/foo/bar"), v)
+		resp, _ := tests.PutForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo/bar"), v)
 		tests.ReadBody(resp)
-		resp, _ = tests.DeleteForm(fmt.Sprintf("http://%s%s", s.URL(), "/v2/keys/foo/bar?prevIndex=bad_index"), v)
+		resp, _ = tests.DeleteForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo/bar?prevIndex=bad_index"), v)
 		body := tests.ReadBodyJSON(resp)
 		assert.Equal(t, body["errorCode"], 203)
 	})
@@ -204,17 +151,18 @@ func TestV2DeleteKeyCADOnValueSuccess(t *testing.T) {
 	tests.RunServer(func(s *server.Server) {
 		v := url.Values{}
 		v.Set("value", "XXX")
-		resp, _ := tests.PutForm(fmt.Sprintf("http://%s%s", s.URL(), "/v2/keys/foo/bar"), v)
+		resp, _ := tests.PutForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo/bar"), v)
 		tests.ReadBody(resp)
-		resp, _ = tests.DeleteForm(fmt.Sprintf("http://%s%s", s.URL(), "/v2/keys/foo/bar?prevValue=XXX"), v)
+		resp, _ = tests.DeleteForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo/bar?prevValue=XXX"), v)
 		body := tests.ReadBodyJSON(resp)
 		assert.Equal(t, body["action"], "compareAndDelete", "")
-		assert.Equal(t, body["prevValue"], "XXX", "")
-		assert.Equal(t, body["modifiedIndex"], 2, "")
+
+		node := body["node"].(map[string]interface{})
+		assert.Equal(t, node["modifiedIndex"], 3, "")
 	})
 }
 
-// Ensures that a key is not deleted if the previous value does not matche.
+// Ensures that a key is not deleted if the previous value does not match.
 //
 //   $ curl -X PUT localhost:4001/v2/keys/foo/bar -d value=XXX
 //   $ curl -X DELETE localhost:4001/v2/keys/foo/bar?prevValue=YYY
@@ -223,9 +171,9 @@ func TestV2DeleteKeyCADOnValueFail(t *testing.T) {
 	tests.RunServer(func(s *server.Server) {
 		v := url.Values{}
 		v.Set("value", "XXX")
-		resp, _ := tests.PutForm(fmt.Sprintf("http://%s%s", s.URL(), "/v2/keys/foo/bar"), v)
+		resp, _ := tests.PutForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo/bar"), v)
 		tests.ReadBody(resp)
-		resp, _ = tests.DeleteForm(fmt.Sprintf("http://%s%s", s.URL(), "/v2/keys/foo/bar?prevValue=YYY"), v)
+		resp, _ = tests.DeleteForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo/bar?prevValue=YYY"), v)
 		body := tests.ReadBodyJSON(resp)
 		assert.Equal(t, body["errorCode"], 101)
 	})
@@ -240,9 +188,9 @@ func TestV2DeleteKeyCADWithInvalidValue(t *testing.T) {
 	tests.RunServer(func(s *server.Server) {
 		v := url.Values{}
 		v.Set("value", "XXX")
-		resp, _ := tests.PutForm(fmt.Sprintf("http://%s%s", s.URL(), "/v2/keys/foo/bar"), v)
+		resp, _ := tests.PutForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo/bar"), v)
 		tests.ReadBody(resp)
-		resp, _ = tests.DeleteForm(fmt.Sprintf("http://%s%s", s.URL(), "/v2/keys/foo/bar?prevValue="), v)
+		resp, _ = tests.DeleteForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo/bar?prevValue="), v)
 		body := tests.ReadBodyJSON(resp)
 		assert.Equal(t, body["errorCode"], 201)
 	})
