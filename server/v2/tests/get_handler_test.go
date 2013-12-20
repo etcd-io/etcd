@@ -205,7 +205,7 @@ func TestV2WatchKeyInDir(t *testing.T) {
 		}()
 
 		// wait for expiration, we do have a up to 500 millisecond delay
-		time.Sleep(1500 * time.Millisecond)
+		time.Sleep(2000 * time.Millisecond)
 
 		select {
 		case <-c:
