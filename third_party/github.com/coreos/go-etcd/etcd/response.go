@@ -3,6 +3,7 @@ package etcd
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"time"
 )
 
@@ -32,17 +33,24 @@ func (rr *RawResponse) toResponse() (*Response, error) {
 		return nil, err
 	}
 
+	// attach index and term to response
+	resp.EtcdIndex, _ = strconv.ParseUint(rr.Header.Get("X-Etcd-Index"), 10, 64)
+	resp.RaftIndex, _ = strconv.ParseUint(rr.Header.Get("X-Raft-Index"), 10, 64)
+	resp.RaftTerm, _ = strconv.ParseUint(rr.Header.Get("X-Raft-Term"), 10, 64)
+
 	return resp, nil
 }
 
 type Response struct {
-	Action string `json:"action"`
-	Node   *Node  `json:"node,omitempty"`
+	Action    string `json:"action"`
+	Node      *Node  `json:"node"`
+	EtcdIndex uint64 `json:"etcdIndex"`
+	RaftIndex uint64 `json:"raftIndex"`
+	RaftTerm  uint64 `json:"raftTerm"`
 }
 
 type Node struct {
 	Key           string     `json:"key, omitempty"`
-	PrevValue     string     `json:"prevValue,omitempty"`
 	Value         string     `json:"value,omitempty"`
 	Dir           bool       `json:"dir,omitempty"`
 	Expiration    *time.Time `json:"expiration,omitempty"`
