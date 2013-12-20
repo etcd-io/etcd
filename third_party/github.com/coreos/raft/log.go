@@ -333,7 +333,7 @@ func (l *Log) commitInfo() (index uint64, term uint64) {
 	return entry.Index, entry.Term
 }
 
-// Retrieves the last index and term that has been committed to the log.
+// Retrieves the last index and term that has been appended to the log.
 func (l *Log) lastInfo() (index uint64, term uint64) {
 	l.mutex.RLock()
 	defer l.mutex.RUnlock()
@@ -366,8 +366,7 @@ func (l *Log) setCommitIndex(index uint64) error {
 	// this is not error any more after limited the number of sending entries
 	// commit up to what we already have
 	if index > l.startIndex+uint64(len(l.entries)) {
-		debugln("raft.StartIndex", l.startIndex)
-		debugln("raft.Log: Commit index", index, "set back to ", l.startIndex+uint64(len(l.entries)))
+		debugln("raft.Log: Commit index", index, "set back to ", len(l.entries))
 		index = l.startIndex + uint64(len(l.entries))
 	}
 
@@ -387,7 +386,6 @@ func (l *Log) setCommitIndex(index uint64) error {
 	// follower 2 should reply success and let leader 3 update the committed index to 80
 
 	if index < l.commitIndex {
-		debugln("raft.Log: index", index, "committedIndex", l.commitIndex)
 		return nil
 	}
 
@@ -475,8 +473,7 @@ func (l *Log) truncate(index uint64, term uint64) error {
 // Append
 //--------------------------------------
 
-// Appends a series of entries to the log. These entries are not written to
-// disk until setCommitIndex() is called.
+// Appends a series of entries to the log.
 func (l *Log) appendEntries(entries []*LogEntry) error {
 	l.mutex.Lock()
 	defer l.mutex.Unlock()
@@ -497,14 +494,20 @@ func (l *Log) appendEntries(entries []*LogEntry) error {
 		startPosition += size
 	}
 	w.Flush()
+	err = l.file.Sync()
+
+	if err != nil {
+		panic(err)
+	}
 
 	return nil
 }
 
-// Writes a single log entry to the end of the log. This function does not
-// obtain a lock and should only be used internally. Use AppendEntries() and
-// AppendEntry() to use it externally.
+// Writes a single log entry to the end of the log.
 func (l *Log) appendEntry(entry *LogEntry) error {
+	l.mutex.Lock()
+	defer l.mutex.Unlock()
+
 	if l.file == nil {
 		return errors.New("raft.Log: Log is not open")
 	}

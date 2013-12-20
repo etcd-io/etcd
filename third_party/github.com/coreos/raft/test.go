@@ -12,6 +12,10 @@ const (
 	testElectionTimeout  = 200 * time.Millisecond
 )
 
+const (
+	testListenerLoggerEnabled = false
+)
+
 func init() {
 	RegisterCommand(&testCommand1{})
 	RegisterCommand(&testCommand2{})
@@ -66,6 +70,15 @@ func newTestServer(name string, transporter Transporter) Server {
 		panic(err.Error())
 	}
 	server, _ := NewServer(name, p, transporter, nil, nil, "")
+	if testListenerLoggerEnabled {
+		fn := func(e Event) {
+			server := e.Source().(Server)
+			warnf("[%s] %s %v -> %v\n", server.Name(), e.Type(), e.PrevValue(), e.Value())
+		}
+		server.AddEventListener(StateChangeEventType, fn)
+		server.AddEventListener(LeaderChangeEventType, fn)
+		server.AddEventListener(TermChangeEventType, fn)
+	}
 	return server
 }
 

@@ -23,6 +23,7 @@ type HTTPTransporter struct {
 	prefix            string
 	appendEntriesPath string
 	requestVotePath   string
+	httpClient        http.Client
 }
 
 type HTTPMuxer interface {
@@ -42,6 +43,7 @@ func NewHTTPTransporter(prefix string) *HTTPTransporter {
 		prefix:            prefix,
 		appendEntriesPath: fmt.Sprintf("%s%s", prefix, "/appendEntries"),
 		requestVotePath:   fmt.Sprintf("%s%s", prefix, "/requestVote"),
+		httpClient:        http.Client{Transport: &http.Transport{DisableKeepAlives: false}},
 	}
 }
 
@@ -97,8 +99,7 @@ func (t *HTTPTransporter) SendAppendEntriesRequest(server Server, peer *Peer, re
 	url := fmt.Sprintf("%s%s", peer.ConnectionString, t.AppendEntriesPath())
 	traceln(server.Name(), "POST", url)
 
-	client := &http.Client{Transport: &http.Transport{DisableKeepAlives: t.DisableKeepAlives}}
-	httpResp, err := client.Post(url, "application/protobuf", &b)
+	httpResp, err := t.httpClient.Post(url, "application/protobuf", &b)
 	if httpResp == nil || err != nil {
 		traceln("transporter.ae.response.error:", err)
 		return nil
@@ -125,8 +126,7 @@ func (t *HTTPTransporter) SendVoteRequest(server Server, peer *Peer, req *Reques
 	url := fmt.Sprintf("%s%s", peer.ConnectionString, t.RequestVotePath())
 	traceln(server.Name(), "POST", url)
 
-	client := &http.Client{Transport: &http.Transport{DisableKeepAlives: t.DisableKeepAlives}}
-	httpResp, err := client.Post(url, "application/protobuf", &b)
+	httpResp, err := t.httpClient.Post(url, "application/protobuf", &b)
 	if httpResp == nil || err != nil {
 		traceln("transporter.rv.response.error:", err)
 		return nil
