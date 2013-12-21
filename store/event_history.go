@@ -58,7 +58,8 @@ func (eh *EventHistory) scan(key string, recursive bool, index uint64) (*Event, 
 		return nil, nil
 	}
 
-	i := eh.Queue.Front
+	offset := index - eh.StartIndex
+	i := (eh.Queue.Front + int(offset)) % eh.Queue.Capacity
 
 	for {
 		e := eh.Queue.Events[i]
@@ -75,7 +76,7 @@ func (eh *EventHistory) scan(key string, recursive bool, index uint64) (*Event, 
 			ok = ok || strings.HasPrefix(e.Node.Key, key)
 		}
 
-		if ok && index <= e.Index() { // make sure we bypass the smaller one
+		if ok {
 			return e, nil
 		}
 
