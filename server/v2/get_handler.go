@@ -57,7 +57,7 @@ func GetHandler(w http.ResponseWriter, req *http.Request, s Server) error {
 		// Start the watcher on the store.
 		eventChan, err := s.Store().Watch(key, recursive, sinceIndex)
 		if err != nil {
-			return etcdErr.NewError(500, key, s.Store().Index())
+			return err
 		}
 
 		cn, _ := w.(http.CloseNotifier)

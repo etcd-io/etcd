@@ -46,7 +46,7 @@ func (eh *EventHistory) scan(key string, recursive bool, index uint64) (*Event, 
 	defer eh.rwl.RUnlock()
 
 	// the index should locate after the event history's StartIndex
-	if index-eh.StartIndex < 0 {
+	if index < eh.StartIndex {
 		return nil,
 			etcdErr.NewError(etcdErr.EcodeEventIndexCleared,
 				fmt.Sprintf("the requested history has been cleared [%v/%v]",
@@ -81,7 +81,7 @@ func (eh *EventHistory) scan(key string, recursive bool, index uint64) (*Event, 
 
 		i = (i + 1) % eh.Queue.Capacity
 
-		if i > eh.Queue.back() {
+		if i == eh.Queue.Back {
 			return nil, nil
 		}
 	}
@@ -95,6 +95,7 @@ func (eh *EventHistory) clone() *EventHistory {
 		Events:   make([]*Event, eh.Queue.Capacity),
 		Size:     eh.Queue.Size,
 		Front:    eh.Queue.Front,
+		Back:     eh.Queue.Back,
 	}
 
 	for i, e := range eh.Queue.Events {
