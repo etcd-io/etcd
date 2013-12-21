@@ -1,6 +1,7 @@
 src/
 pkg/
 /etcd
+/etcdbench
 /server/release_version.go
 /go-bindata
 /machine*
