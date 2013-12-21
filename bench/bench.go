@@ -8,23 +8,19 @@ import (
 	"github.com/coreos/go-etcd/etcd"
 )
 
-func doWrite(client *etcd.Client, key string, c chan int) {
-	client.Set(key, key, 0)
-	c <- 1
-}
-
-func write(client *etcd.Client, requests int, end chan int) {
-	c := make(chan int)
+func write(requests int, end chan int) {
+	client := etcd.NewClient(nil)
 
 	for i := 0; i < requests; i++ {
 		key := strconv.Itoa(i)
-		go doWrite(client, key, c)
-		<-c
+		client.Set(key, key, 0)
 	}
 	end <- 1
 }
 
-func watch(client *etcd.Client, key string) {
+func watch(key string) {
+	client := etcd.NewClient(nil)
+
 	receiver := make(chan *etcd.Response)
 	go client.Watch(key, 0, true, receiver, nil)
 
@@ -45,16 +41,14 @@ func main() {
 
 	flag.Parse()
 
-	client := etcd.NewClient(nil)
-
 	for i := 0; i < *watches; i++ {
 		key := strconv.Itoa(i)
-		go watch(client, key)
+		go watch(key)
 	}
 
 	wChan := make(chan int, *cWrites)
 	for i := 0; i < *cWrites; i++ {
-		go write(client, (*rWrites / *cWrites), wChan)
+		go write((*rWrites / *cWrites), wChan)
 	}
 
 	for i := 0; i < *cWrites; i++ {
