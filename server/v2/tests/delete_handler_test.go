@@ -31,7 +31,7 @@ func TestV2DeleteKey(t *testing.T) {
 // Ensures that an empty directory is deleted when dir is set.
 //
 //   $ curl -X PUT localhost:4001/v2/keys/foo?dir=true
-//   $ curl -X PUT localhost:4001/v2/keys/foo ->fail
+//   $ curl -X DELETE localhost:4001/v2/keys/foo ->fail
 //   $ curl -X DELETE localhost:4001/v2/keys/foo?dir=true
 //
 func TestV2DeleteEmptyDirectory(t *testing.T) {

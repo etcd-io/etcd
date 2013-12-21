@@ -77,7 +77,7 @@ func TestV2SetKeyWithBadTTL(t *testing.T) {
 	})
 }
 
-// Ensures that a key is conditionally set only if it previously did not exist.
+// Ensures that a key is conditionally set if it previously did not exist.
 //
 //   $ curl -X PUT localhost:4001/v2/keys/foo/bar -d value=XXX -d prevExist=false
 //
@@ -93,10 +93,10 @@ func TestV2CreateKeySuccess(t *testing.T) {
 	})
 }
 
-// Ensures that a key is not conditionally because it previously existed.
+// Ensures that a key is not conditionally set because it previously existed.
 //
-//   $ curl -X PUT localhost:4001/v2/keys/foo/bar -d value=XXX
 //   $ curl -X PUT localhost:4001/v2/keys/foo/bar -d value=XXX -d prevExist=false
+//   $ curl -X PUT localhost:4001/v2/keys/foo/bar -d value=XXX -d prevExist=false -> fail
 //
 func TestV2CreateKeyFail(t *testing.T) {
 	tests.RunServer(func(s *server.Server) {
@@ -158,16 +158,22 @@ func TestV2UpdateKeyFailOnValue(t *testing.T) {
 
 // Ensures that a key is not conditionally set if it previously did not exist.
 //
-//   $ curl -X PUT localhost:4001/v2/keys/foo -d value=XXX -d prevExist=true
-//   $ curl -X PUT localhost:4001/v2/keys/foo/bar -d value=XXX -d prevExist=true
+//   $ curl -X PUT localhost:4001/v2/keys/foo -d value=YYY -d prevExist=true -> fail
+//   $ curl -X PUT localhost:4001/v2/keys/foo/bar -d value=YYY -d prevExist=true -> fail
 //
 func TestV2UpdateKeyFailOnMissingDirectory(t *testing.T) {
 	tests.RunServer(func(s *server.Server) {
 		v := url.Values{}
 		v.Set("value", "YYY")
 		v.Set("prevExist", "true")
-		resp, _ := tests.PutForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo/bar"), v)
+		resp, _ := tests.PutForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo"), v)
 		body := tests.ReadBodyJSON(resp)
+		assert.Equal(t, body["errorCode"], 100, "")
+		assert.Equal(t, body["message"], "Key not found", "")
+		assert.Equal(t, body["cause"], "/foo", "")
+
+		resp, _ = tests.PutForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo/bar"), v)
+		body = tests.ReadBodyJSON(resp)
 		assert.Equal(t, body["errorCode"], 100, "")
 		assert.Equal(t, body["message"], "Key not found", "")
 		assert.Equal(t, body["cause"], "/foo", "")
