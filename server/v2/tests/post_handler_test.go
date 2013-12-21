@@ -3,6 +3,7 @@ package v2
 import (
 	"fmt"
 	"testing"
+	"net/http"
 
 	"github.com/coreos/etcd/server"
 	"github.com/coreos/etcd/tests"
@@ -20,6 +21,7 @@ func TestV2CreateUnique(t *testing.T) {
 		// POST should add index to list.
 		fullURL := fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo/bar")
 		resp, _ := tests.PostForm(fullURL, nil)
+		assert.Equal(t, resp.StatusCode, http.StatusCreated)
 		body := tests.ReadBodyJSON(resp)
 		assert.Equal(t, body["action"], "create", "")
 
@@ -30,6 +32,7 @@ func TestV2CreateUnique(t *testing.T) {
 
 		// Second POST should add next index to list.
 		resp, _ = tests.PostForm(fullURL, nil)
+		assert.Equal(t, resp.StatusCode, http.StatusCreated)
 		body = tests.ReadBodyJSON(resp)
 
 		node = body["node"].(map[string]interface{})
@@ -37,6 +40,7 @@ func TestV2CreateUnique(t *testing.T) {
 
 		// POST to a different key should add index to that list.
 		resp, _ = tests.PostForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo/baz"), nil)
+		assert.Equal(t, resp.StatusCode, http.StatusCreated)
 		body = tests.ReadBodyJSON(resp)
 
 		node = body["node"].(map[string]interface{})

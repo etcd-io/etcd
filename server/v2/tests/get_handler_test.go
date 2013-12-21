@@ -2,6 +2,7 @@ package v2
 
 import (
 	"fmt"
+	"net/http"
 	"net/url"
 	"testing"
 	"time"
@@ -13,6 +14,7 @@ import (
 
 // Ensures that a value can be retrieve for a given key.
 //
+//   $ curl localhost:4001/v2/keys/foo/bar -> fail
 //   $ curl -X PUT localhost:4001/v2/keys/foo/bar -d value=XXX
 //   $ curl localhost:4001/v2/keys/foo/bar
 //
@@ -21,9 +23,14 @@ func TestV2GetKey(t *testing.T) {
 		v := url.Values{}
 		v.Set("value", "XXX")
 		fullURL := fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo/bar")
-		resp, _ := tests.PutForm(fullURL, v)
+		resp, _ := tests.Get(fullURL)
+		assert.Equal(t, resp.StatusCode, http.StatusNotFound)
+
+		resp, _ = tests.PutForm(fullURL, v)
 		tests.ReadBody(resp)
+
 		resp, _ = tests.Get(fullURL)
+		assert.Equal(t, resp.StatusCode, http.StatusOK)
 		body := tests.ReadBodyJSON(resp)
 		assert.Equal(t, body["action"], "get", "")
 		node := body["node"].(map[string]interface{})
@@ -52,6 +59,7 @@ func TestV2GetKeyRecursively(t *testing.T) {
 		tests.ReadBody(resp)
 
 		resp, _ = tests.Get(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo?recursive=true"))
+		assert.Equal(t, resp.StatusCode, http.StatusOK)
 		body := tests.ReadBodyJSON(resp)
 		assert.Equal(t, body["action"], "get", "")
 		node := body["node"].(map[string]interface{})

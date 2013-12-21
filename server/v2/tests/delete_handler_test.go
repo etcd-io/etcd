@@ -2,6 +2,7 @@ package v2
 
 import (
 	"fmt"
+	"net/http"
 	"net/url"
 	"testing"
 
@@ -22,6 +23,7 @@ func TestV2DeleteKey(t *testing.T) {
 		resp, err := tests.PutForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo/bar"), v)
 		tests.ReadBody(resp)
 		resp, err = tests.DeleteForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo/bar"), url.Values{})
+		assert.Equal(t, resp.StatusCode, http.StatusOK)
 		body := tests.ReadBody(resp)
 		assert.Nil(t, err, "")
 		assert.Equal(t, string(body), `{"action":"delete","node":{"key":"/foo/bar","modifiedIndex":3,"createdIndex":2}}`, "")
@@ -39,9 +41,11 @@ func TestV2DeleteEmptyDirectory(t *testing.T) {
 		resp, err := tests.PutForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo?dir=true"), url.Values{})
 		tests.ReadBody(resp)
 		resp, err = tests.DeleteForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo"), url.Values{})
+		assert.Equal(t, resp.StatusCode, http.StatusForbidden)
 		bodyJson := tests.ReadBodyJSON(resp)
 		assert.Equal(t, bodyJson["errorCode"], 102, "")
 		resp, err = tests.DeleteForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo?dir=true"), url.Values{})
+		assert.Equal(t, resp.StatusCode, http.StatusOK)
 		body := tests.ReadBody(resp)
 		assert.Nil(t, err, "")
 		assert.Equal(t, string(body), `{"action":"delete","node":{"key":"/foo","dir":true,"modifiedIndex":3,"createdIndex":2}}`, "")
@@ -59,9 +63,11 @@ func TestV2DeleteNonEmptyDirectory(t *testing.T) {
 		resp, err := tests.PutForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo/bar?dir=true"), url.Values{})
 		tests.ReadBody(resp)
 		resp, err = tests.DeleteForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo?dir=true"), url.Values{})
+		assert.Equal(t, resp.StatusCode, http.StatusForbidden)
 		bodyJson := tests.ReadBodyJSON(resp)
 		assert.Equal(t, bodyJson["errorCode"], 108, "")
 		resp, err = tests.DeleteForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo?dir=true&recursive=true"), url.Values{})
+		assert.Equal(t, resp.StatusCode, http.StatusOK)
 		body := tests.ReadBody(resp)
 		assert.Nil(t, err, "")
 		assert.Equal(t, string(body), `{"action":"delete","node":{"key":"/foo","dir":true,"modifiedIndex":3,"createdIndex":2}}`, "")
@@ -78,6 +84,7 @@ func TestV2DeleteDirectoryRecursiveImpliesDir(t *testing.T) {
 		resp, err := tests.PutForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo?dir=true"), url.Values{})
 		tests.ReadBody(resp)
 		resp, err = tests.DeleteForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo?recursive=true"), url.Values{})
+		assert.Equal(t, resp.StatusCode, http.StatusOK)
 		body := tests.ReadBody(resp)
 		assert.Nil(t, err, "")
 		assert.Equal(t, string(body), `{"action":"delete","node":{"key":"/foo","dir":true,"modifiedIndex":3,"createdIndex":2}}`, "")
