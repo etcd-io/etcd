@@ -24,3 +24,4 @@ done
 
 ./scripts/release-version > server/release_version.go
 go build "${ETCD_PACKAGE}"
+go build -o etcdbench "${ETCD_PACKAGE}"/bench
