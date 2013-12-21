@@ -18,7 +18,8 @@ import (
 func TestV2CreateUnique(t *testing.T) {
 	tests.RunServer(func(s *server.Server) {
 		// POST should add index to list.
-		resp, _ := tests.PostForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo/bar"), nil)
+		fullURL := fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo/bar")
+		resp, _ := tests.PostForm(fullURL, nil)
 		body := tests.ReadBodyJSON(resp)
 		assert.Equal(t, body["action"], "create", "")
 
@@ -28,7 +29,7 @@ func TestV2CreateUnique(t *testing.T) {
 		assert.Equal(t, node["modifiedIndex"], 2, "")
 
 		// Second POST should add next index to list.
-		resp, _ = tests.PostForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo/bar"), nil)
+		resp, _ = tests.PostForm(fullURL, nil)
 		body = tests.ReadBodyJSON(resp)
 
 		node = body["node"].(map[string]interface{})

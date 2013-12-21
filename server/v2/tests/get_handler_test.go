@@ -20,9 +20,10 @@ func TestV2GetKey(t *testing.T) {
 	tests.RunServer(func(s *server.Server) {
 		v := url.Values{}
 		v.Set("value", "XXX")
-		resp, _ := tests.PutForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo/bar"), v)
+		fullURL := fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo/bar")
+		resp, _ := tests.PutForm(fullURL, v)
 		tests.ReadBody(resp)
-		resp, _ = tests.Get(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo/bar"))
+		resp, _ = tests.Get(fullURL)
 		body := tests.ReadBodyJSON(resp)
 		assert.Equal(t, body["action"], "get", "")
 		node := body["node"].(map[string]interface{})

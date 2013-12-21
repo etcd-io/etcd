@@ -103,9 +103,10 @@ func TestV2CreateKeyFail(t *testing.T) {
 		v := url.Values{}
 		v.Set("value", "XXX")
 		v.Set("prevExist", "false")
-		resp, _ := tests.PutForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo/bar"), v)
+		fullURL := fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo/bar")
+		resp, _ := tests.PutForm(fullURL, v)
 		tests.ReadBody(resp)
-		resp, _ = tests.PutForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo/bar"), v)
+		resp, _ = tests.PutForm(fullURL, v)
 		body := tests.ReadBodyJSON(resp)
 		assert.Equal(t, body["errorCode"], 105, "")
 		assert.Equal(t, body["message"], "Key already exists", "")
@@ -123,12 +124,13 @@ func TestV2UpdateKeySuccess(t *testing.T) {
 		v := url.Values{}
 
 		v.Set("value", "XXX")
-		resp, _ := tests.PutForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo/bar"), v)
+		fullURL := fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo/bar")
+		resp, _ := tests.PutForm(fullURL, v)
 		tests.ReadBody(resp)
 
 		v.Set("value", "YYY")
 		v.Set("prevExist", "true")
-		resp, _ = tests.PutForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo/bar"), v)
+		resp, _ = tests.PutForm(fullURL, v)
 		body := tests.ReadBodyJSON(resp)
 		assert.Equal(t, body["action"], "update", "")
 	})
@@ -181,11 +183,12 @@ func TestV2SetKeyCASOnIndexSuccess(t *testing.T) {
 	tests.RunServer(func(s *server.Server) {
 		v := url.Values{}
 		v.Set("value", "XXX")
-		resp, _ := tests.PutForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo/bar"), v)
+		fullURL := fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo/bar")
+		resp, _ := tests.PutForm(fullURL, v)
 		tests.ReadBody(resp)
 		v.Set("value", "YYY")
 		v.Set("prevIndex", "2")
-		resp, _ = tests.PutForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo/bar"), v)
+		resp, _ = tests.PutForm(fullURL, v)
 		body := tests.ReadBodyJSON(resp)
 		assert.Equal(t, body["action"], "compareAndSwap", "")
 		node := body["node"].(map[string]interface{})
@@ -203,11 +206,12 @@ func TestV2SetKeyCASOnIndexFail(t *testing.T) {
 	tests.RunServer(func(s *server.Server) {
 		v := url.Values{}
 		v.Set("value", "XXX")
-		resp, _ := tests.PutForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo/bar"), v)
+		fullURL := fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo/bar")
+		resp, _ := tests.PutForm(fullURL, v)
 		tests.ReadBody(resp)
 		v.Set("value", "YYY")
 		v.Set("prevIndex", "10")
-		resp, _ = tests.PutForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo/bar"), v)
+		resp, _ = tests.PutForm(fullURL, v)
 		body := tests.ReadBodyJSON(resp)
 		assert.Equal(t, body["errorCode"], 101, "")
 		assert.Equal(t, body["message"], "Compare failed", "")
@@ -242,11 +246,12 @@ func TestV2SetKeyCASOnValueSuccess(t *testing.T) {
 	tests.RunServer(func(s *server.Server) {
 		v := url.Values{}
 		v.Set("value", "XXX")
-		resp, _ := tests.PutForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo/bar"), v)
+		fullURL := fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo/bar")
+		resp, _ := tests.PutForm(fullURL, v)
 		tests.ReadBody(resp)
 		v.Set("value", "YYY")
 		v.Set("prevValue", "XXX")
-		resp, _ = tests.PutForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo/bar"), v)
+		resp, _ = tests.PutForm(fullURL, v)
 		body := tests.ReadBodyJSON(resp)
 		assert.Equal(t, body["action"], "compareAndSwap", "")
 		node := body["node"].(map[string]interface{})
@@ -264,11 +269,12 @@ func TestV2SetKeyCASOnValueFail(t *testing.T) {
 	tests.RunServer(func(s *server.Server) {
 		v := url.Values{}
 		v.Set("value", "XXX")
-		resp, _ := tests.PutForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo/bar"), v)
+		fullURL := fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo/bar")
+		resp, _ := tests.PutForm(fullURL, v)
 		tests.ReadBody(resp)
 		v.Set("value", "YYY")
 		v.Set("prevValue", "AAA")
-		resp, _ = tests.PutForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo/bar"), v)
+		resp, _ = tests.PutForm(fullURL, v)
 		body := tests.ReadBodyJSON(resp)
 		assert.Equal(t, body["errorCode"], 101, "")
 		assert.Equal(t, body["message"], "Compare failed", "")
