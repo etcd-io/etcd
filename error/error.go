@@ -111,7 +111,7 @@ func (e Error) toJsonString() string {
 
 func (e Error) Write(w http.ResponseWriter) {
 	w.Header().Add("X-Etcd-Index", fmt.Sprint(e.Index))
-	// 3xx is reft internal error
+	// 3xx is raft internal error
 	if e.ErrorCode/100 == 3 {
 		http.Error(w, e.toJsonString(), http.StatusInternalServerError)
 	} else {
