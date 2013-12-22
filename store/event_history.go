@@ -39,13 +39,13 @@ func (eh *EventHistory) addEvent(e *Event) *Event {
 	return e
 }
 
-// scan function is enumerating events from the index in history and
-// stops till the first point where the key has identified key
+// scan enumerates events from the index history and stops at the first point
+// where the key matches.
 func (eh *EventHistory) scan(key string, recursive bool, index uint64) (*Event, *etcdErr.Error) {
 	eh.rwl.RLock()
 	defer eh.rwl.RUnlock()
 
-	// the index should locate after the event history's StartIndex
+	// index should be after the event history's StartIndex
 	if index < eh.StartIndex {
 		return nil,
 			etcdErr.NewError(etcdErr.EcodeEventIndexCleared,
@@ -53,7 +53,7 @@ func (eh *EventHistory) scan(key string, recursive bool, index uint64) (*Event, 
 					eh.StartIndex, index), 0)
 	}
 
-	// the index should locate before the size of the queue minus the duplicate count
+	// the index should come before the size of the queue minus the duplicate count
 	if index > eh.LastIndex { // future index
 		return nil, nil
 	}
