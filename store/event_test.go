@@ -64,3 +64,23 @@ func TestScanHistory(t *testing.T) {
 		t.Fatalf("bad index shoud reuturn nil")
 	}
 }
+
+// TestFullEventQueue tests a queue with capacity = 10
+// Add 1000 events into that queue, and test if scanning
+// works still for previous events.
+func TestFullEventQueue(t *testing.T) {
+
+	eh := newEventHistory(10)
+
+	// Add
+	for i := 0; i < 1000; i++ {
+		e := newEvent(Create, "/foo", uint64(i), uint64(i))
+		eh.addEvent(e)
+		e, err := eh.scan("/foo", true, uint64(i-1))
+		if i > 0 {
+			if e == nil || err != nil {
+				t.Fatalf("scan error [/foo] [%v] %v", i-1, i)
+			}
+		}
+	}
+}
