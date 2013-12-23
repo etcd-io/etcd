@@ -144,7 +144,7 @@ type ev struct {
 // compaction is to be disabled. context can be anything (including nil)
 // and is not used by the raft package except returned by
 // Server.Context(). connectionString can be anything.
-func NewServer(name string, path string, transporter Transporter, stateMachine StateMachine, context interface{}, connectionString string) (Server, error) {
+func NewServer(name string, path string, transporter Transporter, stateMachine StateMachine, ctx interface{}, connectionString string) (Server, error) {
 	if name == "" {
 		return nil, errors.New("raft.Server: Name cannot be blank")
 	}
@@ -157,7 +157,7 @@ func NewServer(name string, path string, transporter Transporter, stateMachine S
 		path:                    path,
 		transporter:             transporter,
 		stateMachine:            stateMachine,
-		context:                 context,
+		context:                 ctx,
 		state:                   Stopped,
 		peers:                   make(map[string]*Peer),
 		log:                     newLog(),
@@ -171,8 +171,14 @@ func NewServer(name string, path string, transporter Transporter, stateMachine S
 
 	// Setup apply function.
 	s.log.ApplyFunc = func(c Command) (interface{}, error) {
-		result, err := c.Apply(s)
-		return result, err
+		switch c := c.(type) {
+		case CommandApply:
+			return c.Apply(&context{server: s, currentTerm: s.currentTerm, currentIndex: s.log.currentIndex()})
+		case deprecatedCommandApply:
+			return c.Apply(s)
+		default:
+			return nil, fmt.Errorf("Command does not implement Apply()")
+		}
 	}
 
 	return s, nil
