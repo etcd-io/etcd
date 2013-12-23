@@ -1118,6 +1118,11 @@ See [CONTRIBUTING](https://github.com/coreos/etcd/blob/master/CONTRIBUTING.md) f
 
 - [spheromak/etcd-cookbook](https://github.com/spheromak/etcd-cookbook)
 
+**BOSH Releases**
+
+- [cloudfoundry-community/etcd-boshrelease](https://github.com/cloudfoundry-community/etcd-boshrelease)
+- [cloudfoundry/cf-release](https://github.com/cloudfoundry/cf-release/tree/master/jobs/etcd)
+
 **Projects using etcd**
 
 - [binocarlos/yoda](https://github.com/binocarlos/yoda) - etcd + ZeroMQ
