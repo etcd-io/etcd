@@ -173,7 +173,12 @@ func NewServer(name string, path string, transporter Transporter, stateMachine S
 	s.log.ApplyFunc = func(c Command) (interface{}, error) {
 		switch c := c.(type) {
 		case CommandApply:
-			return c.Apply(&context{server: s, currentTerm: s.currentTerm, currentIndex: s.log.currentIndex()})
+			return c.Apply(&context{
+				server:       s,
+				currentTerm:  s.currentTerm,
+				currentIndex: s.log.currentIndex(),
+				commitIndex:  s.log.commitIndex,
+			})
 		case deprecatedCommandApply:
 			return c.Apply(s)
 		default:
