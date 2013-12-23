@@ -94,6 +94,11 @@ func NewPeerServer(name string, path string, url string, bindAddr string, tlsCon
 	}
 
 	s.raftServer = raftServer
+	s.raftServer.AddEventListener(raft.StateChangeEventType, s.raftEventLogger)
+	s.raftServer.AddEventListener(raft.LeaderChangeEventType, s.raftEventLogger)
+	s.raftServer.AddEventListener(raft.TermChangeEventType, s.raftEventLogger)
+	s.raftServer.AddEventListener(raft.AddPeerEventType, s.raftEventLogger)
+	s.raftServer.AddEventListener(raft.RemovePeerEventType, s.raftEventLogger)
 
 	return s
 }
@@ -420,6 +425,31 @@ func (s *PeerServer) PeerStats() []byte {
 		return b
 	}
 	return nil
+}
+
+// raftEventLogger converts events from the Raft server into log messages.
+func (s *PeerServer) raftEventLogger(event raft.Event) {
+	value := event.Value()
+	prevValue := event.PrevValue()
+	if value == nil {
+		value = "<nil>"
+	}
+	if prevValue == nil {
+		prevValue = "<nil>"
+	}
+
+	switch event.Type() {
+	case raft.StateChangeEventType:
+		fmt.Printf("[%s] State changed from '%v' to '%v'.\n", s.name, prevValue, value)
+	case raft.TermChangeEventType:
+		fmt.Printf("[%s] Term #%v started.\n", s.name, value)
+	case raft.LeaderChangeEventType:
+		fmt.Printf("[%s] Leader changed from '%v' to '%v'.\n", s.name, prevValue, value)
+	case raft.AddPeerEventType:
+		fmt.Printf("[%s] Peer added: '%v'\n", s.name, value)
+	case raft.RemovePeerEventType:
+		fmt.Printf("[%s] Peer removed: '%v'\n", s.name, value)
+	}
 }
 
 func (s *PeerServer) monitorSnapshot() {
