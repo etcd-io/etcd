@@ -151,29 +151,41 @@ func unifyStruct(mapping interface{}, rv reflect.Value) error {
 		return mismatch(rv, "map", mapping)
 	}
 
-	rt := rv.Type()
-	for i := 0; i < rt.NumField(); i++ {
-		// A little tricky. We want to use the special `toml` name in the
-		// struct tag if it exists. In particular, we need to make sure that
-		// this struct field is in the current map before trying to unify it.
-		sft := rt.Field(i)
-		kname := sft.Tag.Get("toml")
-		if len(kname) == 0 {
-			kname = sft.Name
+	for key, datum := range tmap {
+		var f *field
+		fields := cachedTypeFields(rv.Type())
+		for i := range fields {
+			ff := &fields[i]
+			if ff.name == key {
+				f = ff
+				break
+			}
+			if f == nil && strings.EqualFold(ff.name, key) {
+				f = ff
+			}
 		}
-		if datum, ok := insensitiveGet(tmap, kname); ok {
-			sf := indirect(rv.Field(i))
+		if f != nil {
+			subv := rv
+			for _, i := range f.index {
+				if subv.Kind() == reflect.Ptr {
+					if subv.IsNil() {
+						subv.Set(reflect.New(subv.Type().Elem()))
+					}
+					subv = subv.Elem()
+				}
+				subv = subv.Field(i)
+			}
+			sf := indirect(subv)
 
-			// Don't try to mess with unexported types and other such things.
 			if sf.CanSet() {
 				if err := unify(datum, sf); err != nil {
 					return e("Type mismatch for '%s.%s': %s",
-						rt.String(), sft.Name, err)
+						rv.Type().String(), f.name, err)
 				}
-			} else if len(sft.Tag.Get("toml")) > 0 {
+			} else if f.name != "" {
 				// Bad user! No soup for you!
 				return e("Field '%s.%s' is unexported, and therefore cannot "+
-					"be loaded with reflection.", rt.String(), sft.Name)
+					"be loaded with reflection.", rv.Type().String(), f.name)
 			}
 		}
 	}

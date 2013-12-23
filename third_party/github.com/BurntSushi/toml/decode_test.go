@@ -1,6 +1,7 @@
 package toml
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"reflect"
@@ -61,6 +62,53 @@ func TestDecode(t *testing.T) {
 	testf("Type of 'colors'? %s\n\n", md.Type("colors"))
 
 	testf("%v\n", val)
+}
+
+func TestDecodeEmbedded(t *testing.T) {
+	type Dog struct{ Name string }
+
+	tests := map[string]struct {
+		input       string
+		decodeInto  interface{}
+		wantDecoded interface{}
+	}{
+		"embedded struct": {
+			input:       `Name = "milton"`,
+			decodeInto:  &struct{ Dog }{},
+			wantDecoded: &struct{ Dog }{Dog{"milton"}},
+		},
+		"embedded non-nil pointer to struct": {
+			input:       `Name = "milton"`,
+			decodeInto:  &struct{ *Dog }{},
+			wantDecoded: &struct{ *Dog }{&Dog{"milton"}},
+		},
+		"embedded nil pointer to struct": {
+			input:       ``,
+			decodeInto:  &struct{ *Dog }{},
+			wantDecoded: &struct{ *Dog }{nil},
+		},
+	}
+
+	for label, test := range tests {
+		_, err := Decode(test.input, test.decodeInto)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		want, got := jsonstr(test.wantDecoded), jsonstr(test.decodeInto)
+		if want != got {
+			t.Errorf("%s: want decoded == %+v, got %+v", label, want, got)
+		}
+	}
+}
+
+// jsonstr allows comparison of deeply nested structs with pointer members.
+func jsonstr(o interface{}) string {
+	s, err := json.MarshalIndent(o, "", "  ")
+	if err != nil {
+		panic(err.Error())
+	}
+	return string(s)
 }
 
 var tomlTableArrays = `
@@ -124,8 +172,6 @@ tOpdate = 2006-01-02T15:04:05Z
 tOparray = [ "array" ]
 Match = "i should be in Match only"
 MatcH = "i should be in MatcH only"
-Field = "neat"
-FielD = "messy"
 once = "just once"
 [nEst.eD]
 nEstedString = "another string"
@@ -140,7 +186,6 @@ type Insensitive struct {
 	TopArray  []string
 	Match     string
 	MatcH     string
-	Field     string
 	Once      string
 	OncE      string
 	Nest      InsensitiveNest
@@ -168,9 +213,8 @@ func TestCase(t *testing.T) {
 		TopArray:  []string{"array"},
 		MatcH:     "i should be in MatcH only",
 		Match:     "i should be in Match only",
-		Field:     "neat", // encoding/json would store "messy" here
 		Once:      "just once",
-		OncE:      "just once", // wait, what?
+		OncE:      "",
 		Nest: InsensitiveNest{
 			Ed: InsensitiveEd{NestedString: "another string"},
 		},
