@@ -20,8 +20,19 @@ type RawResponse struct {
 	Header     http.Header
 }
 
+var (
+	validHttpStatusCode = map[int]bool{
+		http.StatusCreated:            true,
+		http.StatusOK:                 true,
+		http.StatusBadRequest:         true,
+		http.StatusNotFound:           true,
+		http.StatusPreconditionFailed: true,
+		http.StatusForbidden:          true,
+	}
+)
+
 func (rr *RawResponse) toResponse() (*Response, error) {
-	if rr.StatusCode == http.StatusBadRequest {
+	if rr.StatusCode != http.StatusOK && rr.StatusCode != http.StatusCreated {
 		return nil, handleError(rr.Body)
 	}
 

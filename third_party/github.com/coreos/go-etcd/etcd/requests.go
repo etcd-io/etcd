@@ -203,9 +203,7 @@ func (c *Client) handleResp(resp *http.Response) (bool, []byte) {
 	} else if code == http.StatusInternalServerError {
 		time.Sleep(time.Millisecond * 200)
 
-	} else if code == http.StatusOK ||
-		code == http.StatusCreated ||
-		code == http.StatusBadRequest {
+	} else if validHttpStatusCode[code] {
 		b, err := ioutil.ReadAll(resp.Body)
 
 		if err != nil {
