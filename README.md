@@ -32,7 +32,7 @@ Or feel free to just use curl, as in the examples below.
 
 ### Getting etcd
 
-The latest release is available as a binary at [Github][github-release].
+The latest release and setup instructions are available at [Github][github-release].
 
 [github-release]: https://github.com/coreos/etcd/releases/
 
