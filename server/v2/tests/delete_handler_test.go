@@ -87,7 +87,7 @@ func TestV2DeleteDirectoryRecursiveImpliesDir(t *testing.T) {
 // Ensures that a key is deleted if the previous index matches
 //
 //   $ curl -X PUT localhost:4001/v2/keys/foo -d value=XXX
-//   $ curl -X DELETE localhost:4001/v2/keys/foo?prevIndex=1
+//   $ curl -X DELETE localhost:4001/v2/keys/foo?prevIndex=2
 //
 func TestV2DeleteKeyCADOnIndexSuccess(t *testing.T) {
 	tests.RunServer(func(s *server.Server) {
@@ -97,7 +97,6 @@ func TestV2DeleteKeyCADOnIndexSuccess(t *testing.T) {
 		tests.ReadBody(resp)
 		resp, err = tests.DeleteForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo?prevIndex=2"), url.Values{})
 		assert.Nil(t, err, "")
-		fmt.Println(resp)
 		body := tests.ReadBodyJSON(resp)
 		assert.Equal(t, body["action"], "compareAndDelete", "")
 
