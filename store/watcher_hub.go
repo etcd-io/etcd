@@ -36,41 +36,48 @@ func newWatchHub(capacity int) *watcherHub {
 // If recursive is true, the first change after index under key will be sent to the event channel.
 // If recursive is false, the first change after index at key will be sent to the event channel.
 // If index is zero, watch will start from the current index + 1.
-func (wh *watcherHub) watch(key string, recursive bool, index uint64) (<-chan *Event, *etcdErr.Error) {
+func (wh *watcherHub) watch(key string, recursive bool, index uint64) (*Watcher, *etcdErr.Error) {
 	event, err := wh.EventHistory.scan(key, recursive, index)
 
 	if err != nil {
 		return nil, err
 	}
 
-	eventChan := make(chan *Event, 1) // use a buffered channel
-
-	if event != nil {
-		eventChan <- event
-
-		return eventChan, nil
-	}
-
-	w := &watcher{
-		eventChan:  eventChan,
+	w := &Watcher{
+		EventChan:  make(chan *Event, 1), // use a buffered channel
 		recursive:  recursive,
 		sinceIndex: index,
 	}
 
+	if event != nil {
+		w.EventChan <- event
+
+		return w, nil
+	}
+
 	l, ok := wh.watchers[key]
 
+	var elem *list.Element
+
 	if ok { // add the new watcher to the back of the list
-		l.PushBack(w)
+		elem = l.PushBack(w)
 
 	} else { // create a new list and add the new watcher
-		l := list.New()
-		l.PushBack(w)
+		l = list.New()
+		elem = l.PushBack(w)
 		wh.watchers[key] = l
+	}
+
+	w.Remove = func() {
+		l.Remove(elem)
+		if l.Len() == 0 {
+			delete(wh.watchers, key)
+		}
 	}
 
 	atomic.AddInt64(&wh.count, 1)
 
-	return eventChan, nil
+	return w, nil
 }
 
 // notify function accepts an event and notify to the watchers.
@@ -109,7 +116,7 @@ func (wh *watcherHub) notifyWatchers(e *Event, path string, deleted bool) {
 
 			next := curr.Next() // save reference to the next one in the list
 
-			w, _ := curr.Value.(*watcher)
+			w, _ := curr.Value.(*Watcher)
 
 			if w.notify(e, e.Node.Key == path, deleted) {
 

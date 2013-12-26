@@ -25,11 +25,11 @@ func WatchKeyHandler(w http.ResponseWriter, req *http.Request, s Server) error {
 	}
 
 	// Start the watcher on the store.
-	c, err := s.Store().Watch(key, false, sinceIndex)
+	watcher, err := s.Store().NewWatcher(key, false, sinceIndex)
 	if err != nil {
 		return etcdErr.NewError(500, key, s.Store().Index())
 	}
-	event := <-c
+	event := <-watcher.EventChan
 
 	// Convert event to a response and write to client.
 	b, _ := json.Marshal(event.Response(s.Store().Index()))
