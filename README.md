@@ -966,7 +966,7 @@ These modules provide things like dashboards, locks and leader election.
 
 ### Dashboard
 
-An HTML dashboard can be found at `http://127.0.0.1:4001/mod/dashboard/```
+An HTML dashboard can be found at `http://127.0.0.1:4001/mod/dashboard/`
 
 ### Lock
 
