@@ -2,8 +2,7 @@ package raft
 
 // Join command interface
 type JoinCommand interface {
-	CommandName() string
-	Apply(server Server) (interface{}, error)
+	Command
 	NodeName() string
 }
 

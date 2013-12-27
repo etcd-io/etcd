@@ -74,11 +74,7 @@ func (l *Log) CommitIndex() uint64 {
 func (l *Log) currentIndex() uint64 {
 	l.mutex.RLock()
 	defer l.mutex.RUnlock()
-
-	if len(l.entries) == 0 {
-		return l.startIndex
-	}
-	return l.entries[len(l.entries)-1].Index
+	return l.internalCurrentIndex()
 }
 
 // The current index in the log without locking
