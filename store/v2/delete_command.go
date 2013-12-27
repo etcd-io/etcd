@@ -23,8 +23,8 @@ func (c *DeleteCommand) CommandName() string {
 }
 
 // Delete the key
-func (c *DeleteCommand) Apply(server raft.Server) (interface{}, error) {
-	s, _ := server.StateMachine().(store.Store)
+func (c *DeleteCommand) Apply(context raft.Context) (interface{}, error) {
+	s, _ := context.Server().StateMachine().(store.Store)
 
 	if c.Recursive {
 		// recursive implies dir

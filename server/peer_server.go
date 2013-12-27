@@ -440,15 +440,15 @@ func (s *PeerServer) raftEventLogger(event raft.Event) {
 
 	switch event.Type() {
 	case raft.StateChangeEventType:
-		fmt.Printf("[%s] State changed from '%v' to '%v'.\n", s.name, prevValue, value)
+		log.Infof("%s: state changed from '%v' to '%v'.", s.name, prevValue, value)
 	case raft.TermChangeEventType:
-		fmt.Printf("[%s] Term #%v started.\n", s.name, value)
+		log.Infof("%s: term #%v started.", s.name, value)
 	case raft.LeaderChangeEventType:
-		fmt.Printf("[%s] Leader changed from '%v' to '%v'.\n", s.name, prevValue, value)
+		log.Infof("%s: leader changed from '%v' to '%v'.", s.name, prevValue, value)
 	case raft.AddPeerEventType:
-		fmt.Printf("[%s] Peer added: '%v'\n", s.name, value)
+		log.Infof("%s: peer added: '%v'", s.name, value)
 	case raft.RemovePeerEventType:
-		fmt.Printf("[%s] Peer removed: '%v'\n", s.name, value)
+		log.Infof("%s: peer removed: '%v'", s.name, value)
 	}
 }
 
