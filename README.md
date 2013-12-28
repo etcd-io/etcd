@@ -333,7 +333,7 @@ curl -X POST http://127.0.0.1:4001/v2/keys/queue -d value=Job2
 To enumerate the in-order keys as a sorted list, use the "sorted" parameter.
 
 ```sh
-curl -s -X GET 'http://127.0.0.1:4001/v2/keys/queue?recursive=true&sorted=true' | python -m json.tool
+curl -s -X GET 'http://127.0.0.1:4001/v2/keys/queue?recursive=true&sorted=true'
 ```
 
 ```json
