@@ -76,6 +76,7 @@ func (wh *watcherHub) newWatcher(key string, recursive bool, index uint64) (*Wat
 		wh.mutex.Lock()
 		defer wh.mutex.Unlock()
 		l.Remove(elem)
+		atomic.AddInt64(&wh.count, -1)
 		if l.Len() == 0 {
 			delete(wh.watchers, key)
 		}
