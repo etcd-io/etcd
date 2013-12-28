@@ -4,6 +4,7 @@ import (
 	"container/list"
 	"path"
 	"strings"
+	"sync"
 	"sync/atomic"
 
 	etcdErr "github.com/coreos/etcd/error"
@@ -16,6 +17,7 @@ import (
 // event happens between the end of the first watch command and the start
 // of the second command.
 type watcherHub struct {
+	mutex        sync.Mutex // protect the hash map
 	watchers     map[string]*list.List
 	count        int64 // current number of watchers.
 	EventHistory *EventHistory
@@ -32,11 +34,11 @@ func newWatchHub(capacity int) *watcherHub {
 	}
 }
 
-// watch function returns an Event channel.
-// If recursive is true, the first change after index under key will be sent to the event channel.
-// If recursive is false, the first change after index at key will be sent to the event channel.
+// newWatcher function returns a watcher.
+// If recursive is true, the first change after index under key will be sent to the event channel of the watcher.
+// If recursive is false, the first change after index at key will be sent to the event channel of the watcher.
 // If index is zero, watch will start from the current index + 1.
-func (wh *watcherHub) watch(key string, recursive bool, index uint64) (*Watcher, *etcdErr.Error) {
+func (wh *watcherHub) newWatcher(key string, recursive bool, index uint64) (*Watcher, *etcdErr.Error) {
 	event, err := wh.EventHistory.scan(key, recursive, index)
 
 	if err != nil {
@@ -51,9 +53,11 @@ func (wh *watcherHub) watch(key string, recursive bool, index uint64) (*Watcher,
 
 	if event != nil {
 		w.EventChan <- event
-
 		return w, nil
 	}
+
+	wh.mutex.Lock()
+	defer wh.mutex.Unlock()
 
 	l, ok := wh.watchers[key]
 
@@ -69,6 +73,8 @@ func (wh *watcherHub) watch(key string, recursive bool, index uint64) (*Watcher,
 	}
 
 	w.Remove = func() {
+		wh.mutex.Lock()
+		defer wh.mutex.Unlock()
 		l.Remove(elem)
 		if l.Len() == 0 {
 			delete(wh.watchers, key)
@@ -100,6 +106,9 @@ func (wh *watcherHub) notify(e *Event) {
 }
 
 func (wh *watcherHub) notifyWatchers(e *Event, path string, deleted bool) {
+	wh.mutex.Lock()
+	defer wh.mutex.Unlock()
+
 	l, ok := wh.watchers[path]
 	if ok {
 		curr := l.Front()

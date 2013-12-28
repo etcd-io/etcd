@@ -352,10 +352,10 @@ func (s *store) NewWatcher(key string, recursive bool, sinceIndex uint64) (*Watc
 	var err *etcdErr.Error
 
 	if sinceIndex == 0 {
-		w, err = s.WatcherHub.watch(key, recursive, nextIndex)
+		w, err = s.WatcherHub.newWatcher(key, recursive, nextIndex)
 
 	} else {
-		w, err = s.WatcherHub.watch(key, recursive, sinceIndex)
+		w, err = s.WatcherHub.newWatcher(key, recursive, sinceIndex)
 	}
 
 	if err != nil {
