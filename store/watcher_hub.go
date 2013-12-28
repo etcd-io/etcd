@@ -113,31 +113,26 @@ func (wh *watcherHub) notifyWatchers(e *Event, path string, deleted bool) {
 	if ok {
 		curr := l.Front()
 
-		for {
-			if curr == nil { // we have reached the end of the list
-				if l.Len() == 0 {
-					// if we have notified all watcher in the list
-					// we can delete the list
-					delete(wh.watchers, path)
-				}
-				break
-			}
-
+		for curr != nil {
 			next := curr.Next() // save reference to the next one in the list
 
 			w, _ := curr.Value.(*Watcher)
 
 			if w.notify(e, e.Node.Key == path, deleted) {
-
 				// if we successfully notify a watcher
 				// we need to remove the watcher from the list
 				// and decrease the counter
 				l.Remove(curr)
 				atomic.AddInt64(&wh.count, -1)
-
 			}
 
-			curr = next // update current to the next
+			curr = next // update current to the next element in the list
+		}
+
+		if l.Len() == 0 {
+			// if we have notified all watcher in the list
+			// we can delete the list
+			delete(wh.watchers, path)
 		}
 	}
 }
