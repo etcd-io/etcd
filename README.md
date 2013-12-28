@@ -1223,8 +1223,10 @@ The values are specified in milliseconds.
 
 ### Versioning
 
+#### Service Versioning
+
 etcd uses [semantic versioning][semver].
-New minor versions may add additional features to the API however.
+New minor versions may add additional features to the API.
 
 You can get the version of etcd by issuing a request to /version:
 
@@ -1232,10 +1234,15 @@ You can get the version of etcd by issuing a request to /version:
 curl -L http://127.0.0.1:4001/version
 ```
 
-During the pre-v1.0.0 series of releases we may break the API as we fix bugs and get feedback.
-
 [semver]: http://semver.org/
 
+#### API Versioning
+
+Clients are encouraged to use the `v2` API. The `v1` API will not change.
+
+The `v2` API responses should not change after the 0.2.0 release but new features will be added over time.
+
+During the pre-v1.0.0 series of releases we may break the API as we fix bugs and get feedback.
 
 ### License
 
