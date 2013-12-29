@@ -17,8 +17,7 @@ func TestCompareAndSwap(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !(resp.Node.Value == "bar2" && resp.Node.PrevValue == "bar" &&
-		resp.Node.Key == "/foo" && resp.Node.TTL == 5) {
+	if !(resp.Node.Value == "bar2" && resp.Node.Key == "/foo" && resp.Node.TTL == 5) {
 		t.Fatalf("CompareAndSwap 1 failed: %#v", resp)
 	}
 
@@ -38,8 +37,7 @@ func TestCompareAndSwap(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !(resp.Node.Value == "bar2" && resp.Node.PrevValue == "bar" &&
-		resp.Node.Key == "/foo" && resp.Node.TTL == 5) {
+	if !(resp.Node.Value == "bar2" && resp.Node.Key == "/foo" && resp.Node.TTL == 5) {
 		t.Fatalf("CompareAndSwap 1 failed: %#v", resp)
 	}
 

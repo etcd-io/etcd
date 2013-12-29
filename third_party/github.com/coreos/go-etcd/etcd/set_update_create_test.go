@@ -22,8 +22,7 @@ func TestSet(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !(resp.Node.Key == "/foo" && resp.Node.Value == "bar2" &&
-		resp.Node.PrevValue == "bar" && resp.Node.TTL == 5) {
+	if !(resp.Node.Key == "/foo" && resp.Node.Value == "bar2" && resp.Node.TTL == 5) {
 		t.Fatalf("Set 2 failed: %#v", resp)
 	}
 }
@@ -47,8 +46,7 @@ func TestUpdate(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if !(resp.Action == "update" && resp.Node.Key == "/foo" &&
-		resp.Node.PrevValue == "bar" && resp.Node.TTL == 5) {
+	if !(resp.Action == "update" && resp.Node.Key == "/foo" && resp.Node.TTL == 5) {
 		t.Fatalf("Update 1 failed: %#v", resp)
 	}
 
@@ -76,7 +74,7 @@ func TestCreate(t *testing.T) {
 	}
 
 	if !(resp.Action == "create" && resp.Node.Key == newKey &&
-		resp.Node.Value == newValue && resp.Node.PrevValue == "" && resp.Node.TTL == 5) {
+		resp.Node.Value == newValue && resp.Node.TTL == 5) {
 		t.Fatalf("Create 1 failed: %#v", resp)
 	}
 
@@ -95,7 +93,7 @@ func TestSetDir(t *testing.T) {
 		c.Delete("fooDir", true)
 	}()
 
-	resp, err := c.SetDir("fooDir", 5)
+	resp, err := c.CreateDir("fooDir", 5)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -104,7 +102,7 @@ func TestSetDir(t *testing.T) {
 	}
 
 	// This should fail because /fooDir already points to a directory
-	resp, err = c.SetDir("/fooDir", 5)
+	resp, err = c.CreateDir("/fooDir", 5)
 	if err == nil {
 		t.Fatalf("fooDir already points to a directory, so SetDir should have failed."+
 			"The response was: %#v", resp)
@@ -116,12 +114,12 @@ func TestSetDir(t *testing.T) {
 	}
 
 	// This should succeed
+	// It should replace the key
 	resp, err = c.SetDir("foo", 5)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !(resp.Node.Key == "/foo" && resp.Node.Value == "" &&
-		resp.Node.PrevValue == "bar" && resp.Node.TTL == 5) {
+	if !(resp.Node.Key == "/foo" && resp.Node.Value == "" && resp.Node.TTL == 5) {
 		t.Fatalf("SetDir 2 failed: %#v", resp)
 	}
 }
@@ -132,7 +130,7 @@ func TestUpdateDir(t *testing.T) {
 		c.Delete("fooDir", true)
 	}()
 
-	resp, err := c.SetDir("fooDir", 5)
+	resp, err := c.CreateDir("fooDir", 5)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -144,7 +142,7 @@ func TestUpdateDir(t *testing.T) {
 	}
 
 	if !(resp.Action == "update" && resp.Node.Key == "/fooDir" &&
-		resp.Node.Value == "" && resp.Node.PrevValue == "" && resp.Node.TTL == 5) {
+		resp.Node.Value == "" && resp.Node.TTL == 5) {
 		t.Fatalf("UpdateDir 1 failed: %#v", resp)
 	}
 
@@ -169,7 +167,7 @@ func TestCreateDir(t *testing.T) {
 	}
 
 	if !(resp.Action == "create" && resp.Node.Key == "/fooDir" &&
-		resp.Node.Value == "" && resp.Node.PrevValue == "" && resp.Node.TTL == 5) {
+		resp.Node.Value == "" && resp.Node.TTL == 5) {
 		t.Fatalf("CreateDir 1 failed: %#v", resp)
 	}
 
