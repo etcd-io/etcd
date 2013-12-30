@@ -162,15 +162,10 @@ curl -L http://127.0.0.1:4001/v2/keys/message -XPUT -d value="Hello etcd"
         "createdIndex": 3,
         "key": "/message",
         "modifiedIndex": 3,
-        "prevValue": "Hello world",
         "value": "Hello etcd"
     }
 }
 ```
-
-Notice that `node.prevValue` is set to the previous value of the key - `Hello world`.
-It is useful when you want to atomically set a value to a key and get its old value.
-
 
 ### Deleting a key
 
@@ -186,8 +181,7 @@ curl -L http://127.0.0.1:4001/v2/keys/message -XDELETE
     "node": {
         "createdIndex": 3,
         "key": "/message",
-        "modifiedIndex": 4,
-        "prevValue": "Hello etcd"
+        "modifiedIndex": 4
     }
 }
 ```
