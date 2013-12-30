@@ -415,7 +415,7 @@ curl -X GET http://127.0.0.1:4001/v2/keys/dir/asdf\?consistent\=true\&wait\=true
 
 ### Atomic Compare-and-Swap (CAS)
 
-Etcd can be used as a centralized coordination service in a cluster and `CompareAndSwap` is the most basic operation to build distributed lock service.
+Etcd can be used as a centralized coordination service in a cluster and `CompareAndSwap` is the most basic operation used to build a distributed lock service.
 
 This command will set the value of a key only if the client-provided conditions are equal to the current conditions.
 
