@@ -1048,7 +1048,7 @@ curl http://127.0.0.1:4001/mod/v2/lock/customer1?field=index
 **Delete the "customer1" lock with the index 2**
 
 ```sh
-curl -X DELETE http://127.0.0.1:4001/mod/v2/lock/customer1?index=customer1
+curl -X DELETE http://127.0.0.1:4001/mod/v2/lock/customer1?index=2
 ```
 
 **Delete the "customer1" lock with the value "bar"**
