@@ -162,15 +162,10 @@ curl -L http://127.0.0.1:4001/v2/keys/message -XPUT -d value="Hello etcd"
         "createdIndex": 3,
         "key": "/message",
         "modifiedIndex": 3,
-        "prevValue": "Hello world",
         "value": "Hello etcd"
     }
 }
 ```
-
-Notice that `node.prevValue` is set to the previous value of the key - `Hello world`.
-It is useful when you want to atomically set a value to a key and get its old value.
-
 
 ### Deleting a key
 
@@ -186,8 +181,7 @@ curl -L http://127.0.0.1:4001/v2/keys/message -XDELETE
     "node": {
         "createdIndex": 3,
         "key": "/message",
-        "modifiedIndex": 4,
-        "prevValue": "Hello etcd"
+        "modifiedIndex": 4
     }
 }
 ```
@@ -486,7 +480,6 @@ The response should be
         "createdIndex": 8,
         "key": "/foo",
         "modifiedIndex": 9,
-        "prevValue": "one",
         "value": "two"
     }
 }
@@ -766,7 +759,6 @@ And also the response from the etcd server:
     "action": "set",
     "key": "/foo",
     "modifiedIndex": 3,
-    "prevValue": "bar",
     "value": "bar"
 }
 ```
@@ -821,7 +813,6 @@ And also the response from the server:
         "createdIndex": 12,
         "key": "/foo",
         "modifiedIndex": 12,
-        "prevValue": "two",
         "value": "bar"
     }
 }
