@@ -111,10 +111,19 @@ func (e Error) toJsonString() string {
 
 func (e Error) Write(w http.ResponseWriter) {
 	w.Header().Add("X-Etcd-Index", fmt.Sprint(e.Index))
-	// 3xx is reft internal error
-	if e.ErrorCode/100 == 3 {
-		http.Error(w, e.toJsonString(), http.StatusInternalServerError)
-	} else {
-		http.Error(w, e.toJsonString(), http.StatusBadRequest)
+	// 3xx is raft internal error
+	status := http.StatusBadRequest
+	switch e.ErrorCode {
+	case EcodeKeyNotFound:
+		status = http.StatusNotFound
+	case EcodeNotFile, EcodeDirNotEmpty:
+		status = http.StatusForbidden
+	case EcodeTestFailed, EcodeNodeExist:
+		status = http.StatusPreconditionFailed
+	default:
+		if e.ErrorCode/100 == 3 {
+			status = http.StatusInternalServerError
+		}
 	}
+	http.Error(w, e.toJsonString(), status)
 }

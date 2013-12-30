@@ -306,6 +306,13 @@ func (n *node) UpdateTTL(expireTime time.Time) {
 	}
 }
 
+func (n *node) Compare(prevValue string, prevIndex uint64) bool {
+	compareValue := (prevValue == "" || n.Value == prevValue)
+	compareIndex := (prevIndex == 0 || n.ModifiedIndex == prevIndex)
+
+	return compareValue && compareIndex
+}
+
 // Clone function clone the node recursively and return the new node.
 // If the node is a directory, it will clone all the content under this directory.
 // If the node is a key-value pair, it will clone the pair.

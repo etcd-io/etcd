@@ -35,6 +35,8 @@ const (
 	GetSuccess
 	GetFail
 	ExpireCount
+	CompareAndDeleteSuccess
+	CompareAndDeleteFail
 )
 
 type Stats struct {
@@ -63,6 +65,10 @@ type Stats struct {
 	CompareAndSwapSuccess uint64 `json:"compareAndSwapSuccess"`
 	CompareAndSwapFail    uint64 `json:"compareAndSwapFail"`
 
+	// Number of compareAndDelete requests
+	CompareAndDeleteSuccess uint64 `json:"compareAndDeleteSuccess"`
+	CompareAndDeleteFail    uint64 `json:"compareAndDeleteFail"`
+
 	ExpireCount uint64 `json:"expireCount"`
 
 	Watchers uint64 `json:"watchers"`
@@ -76,7 +82,8 @@ func newStats() *Stats {
 func (s *Stats) clone() *Stats {
 	return &Stats{s.GetSuccess, s.GetFail, s.SetSuccess, s.SetFail,
 		s.DeleteSuccess, s.DeleteFail, s.UpdateSuccess, s.UpdateFail, s.CreateSuccess,
-		s.CreateFail, s.CompareAndSwapSuccess, s.CompareAndSwapFail, s.Watchers, s.ExpireCount}
+		s.CreateFail, s.CompareAndSwapSuccess, s.CompareAndSwapFail,
+		s.CompareAndDeleteSuccess, s.CompareAndDeleteFail, s.Watchers, s.ExpireCount}
 }
 
 // Status() return the statistics info of etcd storage its recent start
@@ -93,6 +100,7 @@ func (s *Stats) TotalTranscations() uint64 {
 	return s.SetSuccess + s.SetFail +
 		s.DeleteSuccess + s.DeleteFail +
 		s.CompareAndSwapSuccess + s.CompareAndSwapFail +
+		s.CompareAndDeleteSuccess + s.CompareAndDeleteFail +
 		s.UpdateSuccess + s.UpdateFail
 }
 
@@ -122,6 +130,10 @@ func (s *Stats) Inc(field int) {
 		atomic.AddUint64(&s.CompareAndSwapSuccess, 1)
 	case CompareAndSwapFail:
 		atomic.AddUint64(&s.CompareAndSwapFail, 1)
+	case CompareAndDeleteSuccess:
+		atomic.AddUint64(&s.CompareAndDeleteSuccess, 1)
+	case CompareAndDeleteFail:
+		atomic.AddUint64(&s.CompareAndDeleteFail, 1)
 	case ExpireCount:
 		atomic.AddUint64(&s.ExpireCount, 1)
 	}

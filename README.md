@@ -32,7 +32,7 @@ Or feel free to just use curl, as in the examples below.
 
 ### Getting etcd
 
-The latest release is available as a binary at [Github][github-release].
+The latest release and setup instructions are available at [Github][github-release].
 
 [github-release]: https://github.com/coreos/etcd/releases/
 
@@ -162,15 +162,10 @@ curl -L http://127.0.0.1:4001/v2/keys/message -XPUT -d value="Hello etcd"
         "createdIndex": 3,
         "key": "/message",
         "modifiedIndex": 3,
-        "prevValue": "Hello world",
         "value": "Hello etcd"
     }
 }
 ```
-
-Notice that `node.prevValue` is set to the previous value of the key - `Hello world`.
-It is useful when you want to atomically set a value to a key and get its old value.
-
 
 ### Deleting a key
 
@@ -186,8 +181,7 @@ curl -L http://127.0.0.1:4001/v2/keys/message -XDELETE
     "node": {
         "createdIndex": 3,
         "key": "/message",
-        "modifiedIndex": 4,
-        "prevValue": "Hello etcd"
+        "modifiedIndex": 4
     }
 }
 ```
@@ -330,6 +324,38 @@ curl -X POST http://127.0.0.1:4001/v2/keys/queue -d value=Job2
 }
 ```
 
+To enumerate the in-order keys as a sorted list, use the "sorted" parameter.
+
+```sh
+curl -s -X GET 'http://127.0.0.1:4001/v2/keys/queue?recursive=true&sorted=true'
+```
+
+```json
+{
+    "action": "get",
+    "node": {
+        "createdIndex": 2,
+        "dir": true,
+        "key": "/queue",
+        "modifiedIndex": 2,
+        "nodes": [
+            {
+                "createdIndex": 2,
+                "key": "/queue/2",
+                "modifiedIndex": 2,
+                "value": "Job1"
+            },
+            {
+                "createdIndex": 3,
+                "key": "/queue/3",
+                "modifiedIndex": 3,
+                "value": "Job2"
+            }
+        ]
+    }
+}
+```
+
 [lockmod]: #lock
 
 
@@ -383,7 +409,7 @@ curl -X GET http://127.0.0.1:4001/v2/keys/dir/asdf\?consistent\=true\&wait\=true
 
 ### Atomic Compare-and-Swap (CAS)
 
-Etcd can be used as a centralized coordination service in a cluster and `CompareAndSwap` is the most basic operation to build distributed lock service.
+Etcd can be used as a centralized coordination service in a cluster and `CompareAndSwap` is the most basic operation used to build a distributed lock service.
 
 This command will set the value of a key only if the client-provided conditions are equal to the current conditions.
 
@@ -454,7 +480,6 @@ The response should be
         "createdIndex": 8,
         "key": "/foo",
         "modifiedIndex": 9,
-        "prevValue": "one",
         "value": "two"
     }
 }
@@ -734,7 +759,6 @@ And also the response from the etcd server:
     "action": "set",
     "key": "/foo",
     "modifiedIndex": 3,
-    "prevValue": "bar",
     "value": "bar"
 }
 ```
@@ -789,7 +813,6 @@ And also the response from the server:
         "createdIndex": 12,
         "key": "/foo",
         "modifiedIndex": 12,
-        "prevValue": "two",
         "value": "bar"
     }
 }
@@ -966,27 +989,27 @@ These modules provide things like dashboards, locks and leader election.
 
 ### Dashboard
 
-An HTML dashboard can be found at `http://127.0.0.1:4001/mod/dashboard/```
+An HTML dashboard can be found at `http://127.0.0.1:4001/mod/dashboard/`
 
 ### Lock
 
 The Lock module implements a fair lock that can be used when lots of clients want access to a single resource.
-A lock can be associated with a name.
-The name is unique so if a lock tries to request a name that is already queued for a lock then it will find it and watch until that name obtains the lock.
-If you lock the same name on a key from two separate curl sessions they'll both return at the same time.
+A lock can be associated with a value.
+The value is unique so if a lock tries to request a value that is already queued for a lock then it will find it and watch until that value obtains the lock.
+If you lock the same value on a key from two separate curl sessions they'll both return at the same time.
 
 Here's the API:
 
-**Acquire a lock (with no name) for "customer1"**
+**Acquire a lock (with no value) for "customer1"**
 
 ```sh
 curl -X POST http://127.0.0.1:4001/mod/v2/lock/customer1?ttl=60
 ```
 
-**Acquire a lock for "customer1" that is associated with the name "bar"**
+**Acquire a lock for "customer1" that is associated with the value "bar"**
 
 ```sh
-curl -X POST http://127.0.0.1:4001/mod/v2/lock/customer1?ttl=60 -d name=bar
+curl -X POST http://127.0.0.1:4001/mod/v2/lock/customer1?ttl=60 -d value=bar
 ```
 
 **Renew the TTL on the "customer1" lock for index 2**
@@ -995,13 +1018,13 @@ curl -X POST http://127.0.0.1:4001/mod/v2/lock/customer1?ttl=60 -d name=bar
 curl -X PUT http://127.0.0.1:4001/mod/v2/lock/customer1?ttl=60 -d index=2
 ```
 
-**Renew the TTL on the "customer1" lock for name "customer1"**
+**Renew the TTL on the "customer1" lock for value "customer1"**
 
 ```sh
-curl -X PUT http://127.0.0.1:4001/mod/v2/lock/customer1?ttl=60 -d name=bar
+curl -X PUT http://127.0.0.1:4001/mod/v2/lock/customer1?ttl=60 -d value=bar
 ```
 
-**Retrieve the current name for the "customer1" lock.**
+**Retrieve the current value for the "customer1" lock.**
 
 ```sh
 curl http://127.0.0.1:4001/mod/v2/lock/customer1
@@ -1016,13 +1039,13 @@ curl http://127.0.0.1:4001/mod/v2/lock/customer1?field=index
 **Delete the "customer1" lock with the index 2**
 
 ```sh
-curl -X DELETE http://127.0.0.1:4001/mod/v2/lock/customer1?index=customer1
+curl -X DELETE http://127.0.0.1:4001/mod/v2/lock/customer1?index=2
 ```
 
-**Delete the "customer1" lock with the name "bar"**
+**Delete the "customer1" lock with the value "bar"**
 
 ```sh
-curl -X DELETE http://127.0.0.1:4001/mod/v2/lock/customer1?name=bar
+curl -X DELETE http://127.0.0.1:4001/mod/v2/lock/customer1?value=bar
 ```
 
 
@@ -1037,7 +1060,7 @@ Here's the API:
 **Attempt to set a value for the "order_processing" leader key:**
 
 ```sh
-curl -X POST http://127.0.0.1:4001/mod/v2/leader/order_processing?ttl=60 -d name=myserver1.foo.com
+curl -X PUT http://127.0.0.1:4001/mod/v2/leader/order_processing?ttl=60 -d name=myserver1.foo.com
 ```
 
 **Retrieve the current value for the "order_processing" leader key:**
@@ -1050,14 +1073,14 @@ myserver1.foo.com
 **Remove a value from the "order_processing" leader key:**
 
 ```sh
-curl -X POST http://127.0.0.1:4001/mod/v2/leader/order_processing?name=myserver1.foo.com
+curl -X DELETE http://127.0.0.1:4001/mod/v2/leader/order_processing?name=myserver1.foo.com
 ```
 
 If multiple clients attempt to set the value for a key then only one will succeed.
 The other clients will hang until the current value is removed because of TTL or because of a `DELETE` operation.
 Multiple clients can submit the same value and will all be notified when that value succeeds.
 
-To update the TTL of a value simply reissue the same `POST` command that you used to set the value.
+To update the TTL of a value simply reissue the same `PUT` command that you used to set the value.
 
 
 ## Contributing
@@ -1117,6 +1140,11 @@ See [CONTRIBUTING](https://github.com/coreos/etcd/blob/master/CONTRIBUTING.md) f
 **Chef Cookbook**
 
 - [spheromak/etcd-cookbook](https://github.com/spheromak/etcd-cookbook)
+
+**BOSH Releases**
+
+- [cloudfoundry-community/etcd-boshrelease](https://github.com/cloudfoundry-community/etcd-boshrelease)
+- [cloudfoundry/cf-release](https://github.com/cloudfoundry/cf-release/tree/master/jobs/etcd)
 
 **Projects using etcd**
 
@@ -1218,8 +1246,10 @@ The values are specified in milliseconds.
 
 ### Versioning
 
+#### Service Versioning
+
 etcd uses [semantic versioning][semver].
-New minor versions may add additional features to the API however.
+New minor versions may add additional features to the API.
 
 You can get the version of etcd by issuing a request to /version:
 
@@ -1227,10 +1257,15 @@ You can get the version of etcd by issuing a request to /version:
 curl -L http://127.0.0.1:4001/version
 ```
 
-During the pre-v1.0.0 series of releases we may break the API as we fix bugs and get feedback.
-
 [semver]: http://semver.org/
 
+#### API Versioning
+
+Clients are encouraged to use the `v2` API. The `v1` API will not change.
+
+The `v2` API responses should not change after the 0.2.0 release but new features will be added over time.
+
+During the pre-v1.0.0 series of releases we may break the API as we fix bugs and get feedback.
 
 ### License
 

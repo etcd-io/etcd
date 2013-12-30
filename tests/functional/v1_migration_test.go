@@ -3,6 +3,7 @@ package test
 import (
 	"fmt"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -91,7 +92,7 @@ func TestV1ClusterMigration(t *testing.T) {
 	resp, err := tests.Get("http://localhost:4001/v2/keys/message")
 	body := tests.ReadBody(resp)
 	assert.Nil(t, err, "")
-	assert.Equal(t, resp.StatusCode, 400)
+	assert.Equal(t, resp.StatusCode, http.StatusNotFound)
 	assert.Equal(t, string(body), `{"errorCode":100,"message":"Key not found","cause":"/message","index":11}`+"\n")
 
 	// Ensure TTL'd message is removed.
