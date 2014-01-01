@@ -38,8 +38,8 @@ func redirect(hostname string, w http.ResponseWriter, req *http.Request) {
 // white space removed, as defined by Unicode.
 func trimsplit(s, sep string) []string {
 	trimmed := strings.Split(s, sep)
-	for i, r := range trimmed {
-		trimmed[i] = strings.TrimSpace(r)
+	for i := range trimmed {
+		trimmed[i] = strings.TrimSpace(trimmed[i])
 	}
 	return trimmed
 }
