@@ -20,7 +20,7 @@ type NodeExtern struct {
 	CreatedIndex  uint64      `json:"createdIndex,omitempty"`
 }
 
-type NodeExterns []NodeExtern
+type NodeExterns []*NodeExtern
 
 // interfaces for sorting
 func (ns NodeExterns) Len() int {
