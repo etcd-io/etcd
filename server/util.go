@@ -37,10 +37,9 @@ func redirect(hostname string, w http.ResponseWriter, req *http.Request) {
 // slice of the substrings between the separator with all leading and trailing
 // white space removed, as defined by Unicode.
 func trimsplit(s, sep string) []string {
-	raw := strings.Split(s, ",")
-	trimmed := make([]string, 0)
-	for _, r := range raw {
-		trimmed = append(trimmed, strings.TrimSpace(r))
+	trimmed := strings.Split(s, sep)
+	for i := range trimmed {
+		trimmed[i] = strings.TrimSpace(trimmed[i])
 	}
 	return trimmed
 }
