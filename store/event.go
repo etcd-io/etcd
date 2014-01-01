@@ -35,7 +35,7 @@ func (e *Event) IsCreated() bool {
 		return true
 	}
 
-	if e.Action == Set && e.Node.PrevValue == "" {
+	if e.Action == Set && e.PrevNode == nil {
 		return true
 	}
 
@@ -53,7 +53,7 @@ func (event *Event) Response(currentIndex uint64) interface{} {
 			Action:     event.Action,
 			Key:        event.Node.Key,
 			Value:      event.Node.Value,
-			PrevValue:  event.Node.PrevValue,
+			PrevValue:  event.PrevNode.Value,
 			Index:      event.Node.ModifiedIndex,
 			TTL:        event.Node.TTL,
 			Expiration: event.Node.Expiration,

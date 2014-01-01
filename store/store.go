@@ -228,8 +228,6 @@ func (s *store) CompareAndSwap(nodePath string, prevValue string, prevIndex uint
 	e.PrevNode = n.Repr(false, false)
 	eNode := e.Node
 
-	eNode.PrevValue = n.Value
-
 	// if test succeed, write the value
 	n.Write(value, s.CurrentIndex)
 	n.UpdateTTL(expireTime)
@@ -273,8 +271,6 @@ func (s *store) Delete(nodePath string, dir, recursive bool) (*Event, error) {
 
 	if n.IsDir() {
 		eNode.Dir = true
-	} else {
-		eNode.PrevValue = n.Value
 	}
 
 	callback := func(path string) { // notify function
@@ -424,7 +420,6 @@ func (s *store) Update(nodePath string, newValue string, expireTime time.Time) (
 		return nil, etcdErr.NewError(etcdErr.EcodeNotFile, nodePath, currIndex)
 	}
 
-	eNode.PrevValue = n.Value
 	n.Write(newValue, nextIndex)
 	eNode.Value = newValue
 
@@ -487,7 +482,6 @@ func (s *store) internalCreate(nodePath string, dir bool, value string, unique, 
 				return nil, etcdErr.NewError(etcdErr.EcodeNotFile, nodePath, currIndex)
 			}
 			e.PrevNode = n.Repr(false, false)
-			eNode.PrevValue, _ = n.Read()
 
 			n.Remove(false, false, nil)
 		} else {
