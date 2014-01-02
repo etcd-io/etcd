@@ -103,7 +103,7 @@ func newTestServerWithLog(name string, transporter Transporter, entries []*LogEn
 
 func newTestCluster(names []string, transporter Transporter, lookup map[string]Server) []Server {
 	servers := []Server{}
-	e0, _ := newLogEntry(newLog(), 1, 1, &testCommand1{Val: "foo", I: 20})
+	e0, _ := newLogEntry(newLog(), nil, 1, 1, &testCommand1{Val: "foo", I: 20})
 
 	for _, name := range names {
 		if lookup[name] != nil {

@@ -37,6 +37,11 @@ const (
 	DefaultElectionTimeout  = 150 * time.Millisecond
 )
 
+// ElectionTimeoutThresholdPercent specifies the threshold at which the server
+// will dispatch warning events that the heartbeat RTT is too close to the
+// election timeout.
+const ElectionTimeoutThresholdPercent = 0.8
+
 var stopValue interface{}
 
 //------------------------------------------------------------------------------
@@ -575,6 +580,8 @@ func (s *server) sendAsync(value interface{}) *ev {
 func (s *server) followerLoop() {
 
 	s.setState(Follower)
+	since := time.Now()
+	electionTimeout := s.ElectionTimeout()
 	timeoutChan := afterBetween(s.ElectionTimeout(), s.ElectionTimeout()*2)
 
 	for {
@@ -597,6 +604,11 @@ func (s *server) followerLoop() {
 						err = NotLeaderError
 					}
 				case *AppendEntriesRequest:
+					// If heartbeats get too close to the election timeout then send an event.
+					elapsedTime := time.Now().Sub(since)
+					if elapsedTime > time.Duration(float64(electionTimeout)*ElectionTimeoutThresholdPercent) {
+						s.DispatchEvent(newEvent(ElectionTimeoutThresholdEventType, elapsedTime, nil))
+					}
 					e.returnValue, update = s.processAppendEntriesRequest(req)
 				case *RequestVoteRequest:
 					e.returnValue, update = s.processRequestVoteRequest(req)
@@ -624,6 +636,7 @@ func (s *server) followerLoop() {
 		//   1.Receiving valid AppendEntries RPC, or
 		//   2.Granting vote to candidate
 		if update {
+			since = time.Now()
 			timeoutChan = afterBetween(s.ElectionTimeout(), s.ElectionTimeout()*2)
 		}
 
@@ -824,7 +837,7 @@ func (s *server) processCommand(command Command, e *ev) {
 	s.debugln("server.command.process")
 
 	// Create an entry for the command in the log.
-	entry, err := s.log.createEntry(s.currentTerm, command)
+	entry, err := s.log.createEntry(s.currentTerm, command, e)
 
 	if err != nil {
 		s.debugln("server.command.log.entry.error:", err)
@@ -837,21 +850,6 @@ func (s *server) processCommand(command Command, e *ev) {
 		e.c <- err
 		return
 	}
-
-	// Issue a callback for the entry once it's committed.
-	go func() {
-		// Wait for the entry to be committed.
-		select {
-		case <-entry.commit:
-			var err error
-			s.debugln("server.command.commit")
-			e.returnValue, err = s.log.getEntryResult(entry, true)
-			e.c <- err
-		case <-time.After(time.Second):
-			s.debugln("server.command.timeout")
-			e.c <- CommandTimeoutError
-		}
-	}()
 
 	// Issue an append entries response for the server.
 	resp := newAppendEntriesResponse(s.currentTerm, true, s.log.currentIndex(), s.log.CommitIndex())
@@ -957,22 +955,6 @@ func (s *server) processAppendEntriesResponse(resp *AppendEntriesResponse) {
 	if commitIndex > committedIndex {
 		s.log.setCommitIndex(commitIndex)
 		s.debugln("commit index ", commitIndex)
-		for i := committedIndex; i < commitIndex; i++ {
-			if entry := s.log.getEntry(i + 1); entry != nil {
-				// if the leader is a new one and the entry came from the
-				// old leader, the commit channel will be nil and no go routine
-				// is waiting from this channel
-				// if we try to send to it, the new leader will get stuck
-				if entry.commit != nil {
-					select {
-					case entry.commit <- true:
-					default:
-						panic("server unable to send signal to commit channel")
-					}
-					entry.commit = nil
-				}
-			}
-		}
 	}
 }
 

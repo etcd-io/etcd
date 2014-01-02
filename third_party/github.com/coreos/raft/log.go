@@ -23,7 +23,6 @@ type Log struct {
 	file        *os.File
 	path        string
 	entries     []*LogEntry
-	results     []*logResult
 	commitIndex uint64
 	mutex       sync.RWMutex
 	startIndex  uint64 // the index before the first entry in the Log entries
@@ -162,7 +161,7 @@ func (l *Log) open(path string) error {
 	// Read the file and decode entries.
 	for {
 		// Instantiate log entry and decode into it.
-		entry, _ := newLogEntry(l, 0, 0, nil)
+		entry, _ := newLogEntry(l, nil, 0, 0, nil)
 		entry.Position, _ = l.file.Seek(0, os.SEEK_CUR)
 
 		n, err := entry.decode(l.file)
@@ -191,8 +190,6 @@ func (l *Log) open(path string) error {
 
 		readBytes += int64(n)
 	}
-	l.results = make([]*logResult, len(l.entries))
-
 	debugln("open.log.recovery number of log ", len(l.entries))
 	return nil
 }
@@ -207,7 +204,6 @@ func (l *Log) close() {
 		l.file = nil
 	}
 	l.entries = make([]*LogEntry, 0)
-	l.results = make([]*logResult, 0)
 }
 
 //--------------------------------------
@@ -215,8 +211,8 @@ func (l *Log) close() {
 //--------------------------------------
 
 // Creates a log entry associated with this log.
-func (l *Log) createEntry(term uint64, command Command) (*LogEntry, error) {
-	return newLogEntry(l, l.nextIndex(), term, command)
+func (l *Log) createEntry(term uint64, command Command, e *ev) (*LogEntry, error) {
+	return newLogEntry(l, e, l.nextIndex(), term, command)
 }
 
 // Retrieves an entry from the log. If the entry has been eliminated because
@@ -274,35 +270,6 @@ func (l *Log) getEntriesAfter(index uint64, maxLogEntriesPerRequest uint64) ([]*
 	} else {
 		return entries[:maxLogEntriesPerRequest], l.entries[index-1-l.startIndex].Term
 	}
-}
-
-// Retrieves the return value and error for an entry. The result can only exist
-// after the entry has been committed.
-func (l *Log) getEntryResult(entry *LogEntry, clear bool) (interface{}, error) {
-	l.mutex.RLock()
-	defer l.mutex.RUnlock()
-
-	if entry == nil {
-		panic("raft: Log entry required for error retrieval")
-	}
-	debugln("getEntryResult.result index: ", entry.Index-l.startIndex-1)
-	// If a result exists for the entry then return it with its error.
-	if entry.Index > l.startIndex && entry.Index <= l.startIndex+uint64(len(l.results)) {
-		if result := l.results[entry.Index-l.startIndex-1]; result != nil {
-
-			// keep the records before remove it
-			returnValue, err := result.returnValue, result.err
-
-			// Remove reference to result if it's being cleared after retrieval.
-			if clear {
-				result.returnValue = nil
-			}
-
-			return returnValue, err
-		}
-	}
-
-	return nil, nil
 }
 
 //--------------------------------------
@@ -402,7 +369,10 @@ func (l *Log) setCommitIndex(index uint64) error {
 		// Apply the changes to the state machine and store the error code.
 		returnValue, err := l.ApplyFunc(command)
 		debugln("setCommitIndex.set.result index: ", entryIndex)
-		l.results[entryIndex] = &logResult{returnValue: returnValue, err: err}
+		if entry.event != nil {
+			entry.event.returnValue = returnValue
+			entry.event.c <- err
+		}
 	}
 	return nil
 }
@@ -443,6 +413,14 @@ func (l *Log) truncate(index uint64, term uint64) error {
 		debugln("log.truncate.clear")
 		l.file.Truncate(0)
 		l.file.Seek(0, os.SEEK_SET)
+
+		// notify clients if this node is the previous leader
+		for _, entry := range l.entries {
+			if entry.event != nil {
+				entry.event.c <- errors.New("command failed to be committed due to node failure")
+			}
+		}
+
 		l.entries = []*LogEntry{}
 	} else {
 		// Do not truncate if the entry at index does not have the matching term.
@@ -458,6 +436,15 @@ func (l *Log) truncate(index uint64, term uint64) error {
 			position := l.entries[index-l.startIndex].Position
 			l.file.Truncate(position)
 			l.file.Seek(position, os.SEEK_SET)
+
+			// notify clients if this node is the previous leader
+			for i := index - l.startIndex; i < uint64(len(l.entries)); i++ {
+				entry := l.entries[i]
+				if entry.event != nil {
+					entry.event.c <- errors.New("command failed to be committed due to node failure")
+				}
+			}
+
 			l.entries = l.entries[0 : index-l.startIndex]
 		}
 	}
@@ -529,7 +516,6 @@ func (l *Log) appendEntry(entry *LogEntry) error {
 
 	// Append to entries list if stored on disk.
 	l.entries = append(l.entries, entry)
-	l.results = append(l.results, nil)
 
 	return nil
 }
@@ -558,7 +544,6 @@ func (l *Log) writeEntry(entry *LogEntry, w io.Writer) (int64, error) {
 
 	// Append to entries list if stored on disk.
 	l.entries = append(l.entries, entry)
-	l.results = append(l.results, nil)
 
 	return int64(size), nil
 }
@@ -570,7 +555,6 @@ func (l *Log) writeEntry(entry *LogEntry, w io.Writer) (int64, error) {
 // compact the log before index (including index)
 func (l *Log) compact(index uint64, term uint64) error {
 	var entries []*LogEntry
-	var results []*logResult
 
 	l.mutex.Lock()
 	defer l.mutex.Unlock()
@@ -583,11 +567,9 @@ func (l *Log) compact(index uint64, term uint64) error {
 	// we just recovery from on snapshot
 	if index >= l.internalCurrentIndex() {
 		entries = make([]*LogEntry, 0)
-		results = make([]*logResult, 0)
 	} else {
 		// get all log entries after index
 		entries = l.entries[index-l.startIndex:]
-		results = l.results[index-l.startIndex:]
 	}
 
 	// create a new log file and add all the entries
@@ -621,7 +603,6 @@ func (l *Log) compact(index uint64, term uint64) error {
 
 	// compaction the in memory log
 	l.entries = entries
-	l.results = results
 	l.startIndex = index
 	l.startTerm = term
 	return nil

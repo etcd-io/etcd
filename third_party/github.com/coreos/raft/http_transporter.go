@@ -24,6 +24,7 @@ type HTTPTransporter struct {
 	appendEntriesPath string
 	requestVotePath   string
 	httpClient        http.Client
+	Transport         *http.Transport
 }
 
 type HTTPMuxer interface {
@@ -38,13 +39,15 @@ type HTTPMuxer interface {
 
 // Creates a new HTTP transporter with the given path prefix.
 func NewHTTPTransporter(prefix string) *HTTPTransporter {
-	return &HTTPTransporter{
+	t := &HTTPTransporter{
 		DisableKeepAlives: false,
 		prefix:            prefix,
 		appendEntriesPath: fmt.Sprintf("%s%s", prefix, "/appendEntries"),
 		requestVotePath:   fmt.Sprintf("%s%s", prefix, "/requestVote"),
-		httpClient:        http.Client{Transport: &http.Transport{DisableKeepAlives: false}},
+		Transport:         &http.Transport{DisableKeepAlives: false},
 	}
+	t.httpClient.Transport = t.Transport
+	return t
 }
 
 //------------------------------------------------------------------------------
@@ -99,6 +102,7 @@ func (t *HTTPTransporter) SendAppendEntriesRequest(server Server, peer *Peer, re
 	url := fmt.Sprintf("%s%s", peer.ConnectionString, t.AppendEntriesPath())
 	traceln(server.Name(), "POST", url)
 
+	t.Transport.ResponseHeaderTimeout = server.ElectionTimeout()
 	httpResp, err := t.httpClient.Post(url, "application/protobuf", &b)
 	if httpResp == nil || err != nil {
 		traceln("transporter.ae.response.error:", err)

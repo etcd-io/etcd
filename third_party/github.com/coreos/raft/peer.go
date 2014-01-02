@@ -176,6 +176,7 @@ func (p *Peer) sendAppendEntriesRequest(req *AppendEntriesRequest) {
 
 	resp := p.server.Transporter().SendAppendEntriesRequest(p.server, p, req)
 	if resp == nil {
+		p.server.DispatchEvent(newEvent(HeartbeatTimeoutEventType, p, nil))
 		debugln("peer.flush.timeout: ", p.server.Name(), "->", p.Name)
 		return
 	}
