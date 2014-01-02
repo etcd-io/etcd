@@ -4,6 +4,7 @@ $env:GOPATH=$pwd.Path
 $SRC_DIR="$env:GOPATH/src"
 $ETCD_DIR="$SRC_DIR/$ETCD_PACKAGE"
 $env:ETCD_DIR="$SRC_DIR/$ETCD_PACKAGE"
+$env:ETCD_TARGET=$pwd.Path
 
 $ETCD_BASE=(Split-Path $ETCD_DIR -Parent)
 if(-not(test-path $ETCD_DIR)){
@@ -11,7 +12,7 @@ if(-not(test-path $ETCD_DIR)){
 }
 
 if(-not(test-path $ETCD_DIR )){
-	cmd /c 'mklink /D "%ETCD_DIR%" ..\..\..\'
+	cmd /c 'mklink /J "%ETCD_DIR%" %ETCD_TARGET%'
 }
 
 foreach($i in (ls third_party/*)){
