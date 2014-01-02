@@ -2,6 +2,7 @@ package etcd
 
 import (
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"io"
@@ -41,6 +42,7 @@ type Cluster struct {
 type Config struct {
 	CertFile    string        `json:"certFile"`
 	KeyFile     string        `json:"keyFile"`
+	CaCertFile  string        `json:"caCertFile"`
 	Scheme      string        `json:"scheme"`
 	Timeout     time.Duration `json:"timeout"`
 	Consistency string        `json: "consistency"`
@@ -131,7 +133,7 @@ func NewClientReader(reader io.Reader) (*Client, error) {
 
 func setupHttpClient(client *Client) error {
 	if client.config.CertFile != "" && client.config.KeyFile != "" {
-		err := client.SetCertAndKey(client.config.CertFile, client.config.KeyFile)
+		err := client.SetCertAndKey(client.config.CertFile, client.config.KeyFile, client.config.CaCertFile)
 		if err != nil {
 			return err
 		}
@@ -229,7 +231,7 @@ func (c *Client) saveConfig() error {
 	return nil
 }
 
-func (c *Client) SetCertAndKey(cert string, key string) error {
+func (c *Client) SetCertAndKey(cert string, key string, caCert string) error {
 	if cert != "" && key != "" {
 		tlsCert, err := tls.LoadX509KeyPair(cert, key)
 
@@ -237,12 +239,30 @@ func (c *Client) SetCertAndKey(cert string, key string) error {
 			return err
 		}
 
+		tlsConfig := &tls.Config{
+			Certificates: []tls.Certificate{tlsCert},
+		}
+
+		if caCert != "" {
+			caCertPool := x509.NewCertPool()
+
+			certBytes, err := ioutil.ReadFile(caCert)
+			if err != nil {
+				return err
+			}
+
+			if !caCertPool.AppendCertsFromPEM(certBytes) {
+				return errors.New("Unable to load caCert")
+			}
+
+			tlsConfig.RootCAs = caCertPool
+		} else {
+			tlsConfig.InsecureSkipVerify = true
+		}
+
 		tr := &http.Transport{
-			TLSClientConfig: &tls.Config{
-				Certificates:       []tls.Certificate{tlsCert},
-				InsecureSkipVerify: true,
-			},
-			Dial: dialTimeout,
+			TLSClientConfig: tlsConfig,
+			Dial:            dialTimeout,
 		}
 
 		c.httpClient = &http.Client{Transport: tr}

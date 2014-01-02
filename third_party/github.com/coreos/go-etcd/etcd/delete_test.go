@@ -20,6 +20,10 @@ func TestDelete(t *testing.T) {
 		t.Fatalf("Delete failed with %s", resp.Node.Value)
 	}
 
+	if !(resp.PrevNode.Value == "bar") {
+		t.Fatalf("Delete PrevNode failed with %s", resp.Node.Value)
+	}
+
 	resp, err = c.Delete("foo", false)
 	if err == nil {
 		t.Fatalf("Delete should have failed because the key foo did not exist.  "+
@@ -34,7 +38,7 @@ func TestDeleteAll(t *testing.T) {
 		c.Delete("fooDir", true)
 	}()
 
-	c.Set("foo", "bar", 5)
+	c.SetDir("foo", 5)
 	// test delete an empty dir
 	resp, err := c.DeleteDir("foo")
 	if err != nil {
@@ -43,6 +47,10 @@ func TestDeleteAll(t *testing.T) {
 
 	if !(resp.Node.Value == "") {
 		t.Fatalf("DeleteAll 1 failed: %#v", resp)
+	}
+
+	if !(resp.PrevNode.Dir == true && resp.PrevNode.Value == "") {
+		t.Fatalf("DeleteAll 1 PrevNode failed: %#v", resp)
 	}
 
 	c.CreateDir("fooDir", 5)
@@ -59,6 +67,10 @@ func TestDeleteAll(t *testing.T) {
 
 	if !(resp.Node.Value == "") {
 		t.Fatalf("DeleteAll 2 failed: %#v", resp)
+	}
+
+	if !(resp.PrevNode.Dir == true && resp.PrevNode.Value == "") {
+		t.Fatalf("DeleteAll 2 PrevNode failed: %#v", resp)
 	}
 
 	resp, err = c.Delete("foo", true)

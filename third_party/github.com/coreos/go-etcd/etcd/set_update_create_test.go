@@ -17,6 +17,9 @@ func TestSet(t *testing.T) {
 	if resp.Node.Key != "/foo" || resp.Node.Value != "bar" || resp.Node.TTL != 5 {
 		t.Fatalf("Set 1 failed: %#v", resp)
 	}
+	if resp.PrevNode != nil {
+		t.Fatalf("Set 1 PrevNode failed: %#v", resp)
+	}
 
 	resp, err = c.Set("foo", "bar2", 5)
 	if err != nil {
@@ -24,6 +27,9 @@ func TestSet(t *testing.T) {
 	}
 	if !(resp.Node.Key == "/foo" && resp.Node.Value == "bar2" && resp.Node.TTL == 5) {
 		t.Fatalf("Set 2 failed: %#v", resp)
+	}
+	if resp.PrevNode.Key != "/foo" || resp.PrevNode.Value != "bar" || resp.Node.TTL != 5 {
+		t.Fatalf("Set 2 PrevNode failed: %#v", resp)
 	}
 }
 
@@ -48,6 +54,9 @@ func TestUpdate(t *testing.T) {
 
 	if !(resp.Action == "update" && resp.Node.Key == "/foo" && resp.Node.TTL == 5) {
 		t.Fatalf("Update 1 failed: %#v", resp)
+	}
+	if !(resp.PrevNode.Key == "/foo" && resp.PrevNode.Value == "bar" && resp.Node.TTL == 5) {
+		t.Fatalf("Update 1 prevValue failed: %#v", resp)
 	}
 
 	// This should fail because the key does not exist.
@@ -77,6 +86,9 @@ func TestCreate(t *testing.T) {
 		resp.Node.Value == newValue && resp.Node.TTL == 5) {
 		t.Fatalf("Create 1 failed: %#v", resp)
 	}
+	if resp.PrevNode != nil {
+		t.Fatalf("Create 1 PrevNode failed: %#v", resp)
+	}
 
 	// This should fail, because the key is already there
 	resp, err = c.Create(newKey, newValue, 5)
@@ -100,6 +112,9 @@ func TestSetDir(t *testing.T) {
 	if !(resp.Node.Key == "/fooDir" && resp.Node.Value == "" && resp.Node.TTL == 5) {
 		t.Fatalf("SetDir 1 failed: %#v", resp)
 	}
+	if resp.PrevNode != nil {
+		t.Fatalf("SetDir 1 PrevNode failed: %#v", resp)
+	}
 
 	// This should fail because /fooDir already points to a directory
 	resp, err = c.CreateDir("/fooDir", 5)
@@ -120,6 +135,9 @@ func TestSetDir(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !(resp.Node.Key == "/foo" && resp.Node.Value == "" && resp.Node.TTL == 5) {
+		t.Fatalf("SetDir 2 failed: %#v", resp)
+	}
+	if !(resp.PrevNode.Key == "/foo" && resp.PrevNode.Value == "bar" && resp.PrevNode.TTL == 5) {
 		t.Fatalf("SetDir 2 failed: %#v", resp)
 	}
 }
@@ -145,6 +163,9 @@ func TestUpdateDir(t *testing.T) {
 		resp.Node.Value == "" && resp.Node.TTL == 5) {
 		t.Fatalf("UpdateDir 1 failed: %#v", resp)
 	}
+	if !(resp.PrevNode.Key == "/fooDir" && resp.PrevNode.Dir == true && resp.PrevNode.TTL == 5) {
+		t.Fatalf("UpdateDir 1 PrevNode failed: %#v", resp)
+	}
 
 	// This should fail because the key does not exist.
 	resp, err = c.UpdateDir("nonexistentDir", 5)
@@ -169,6 +190,9 @@ func TestCreateDir(t *testing.T) {
 	if !(resp.Action == "create" && resp.Node.Key == "/fooDir" &&
 		resp.Node.Value == "" && resp.Node.TTL == 5) {
 		t.Fatalf("CreateDir 1 failed: %#v", resp)
+	}
+	if resp.PrevNode != nil {
+		t.Fatalf("CreateDir 1 PrevNode failed: %#v", resp)
 	}
 
 	// This should fail, because the key is already there

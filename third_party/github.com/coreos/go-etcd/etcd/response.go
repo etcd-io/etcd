@@ -55,6 +55,7 @@ func (rr *RawResponse) toResponse() (*Response, error) {
 type Response struct {
 	Action    string `json:"action"`
 	Node      *Node  `json:"node"`
+	PrevNode  *Node  `json:"prevNode,omitempty"`
 	EtcdIndex uint64 `json:"etcdIndex"`
 	RaftIndex uint64 `json:"raftIndex"`
 	RaftTerm  uint64 `json:"raftTerm"`
