@@ -1,6 +1,7 @@
 package toml
 
 import (
+	"encoding"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -43,10 +44,61 @@ func PrimitiveDecode(primValue Primitive, v interface{}) error {
 // TOML hashes correspond to Go structs or maps. (Dealer's choice. They can be
 // used interchangeably.)
 //
+// TOML arrays of tables correspond to either a slice of structs or a slice
+// of maps.
+//
 // TOML datetimes correspond to Go `time.Time` values.
 //
 // All other TOML types (float, string, int, bool and array) correspond
 // to the obvious Go types.
+//
+// An exception to the above rules is if a type implements the
+// encoding.TextUnmarshaler interface. In this case, any primitive TOML value
+// (floats, strings, integers, booleans and datetimes) will be converted to
+// a byte string and given to the value's UnmarshalText method. Here's an
+// example for parsing durations:
+//
+//	type duration struct {
+//		time.Duration
+//	}
+//
+//	func (d *duration) UnmarshalText(text []byte) error {
+//		var err error
+//		d.Duration, err = time.ParseDuration(string(text))
+//		return err
+//	}
+//
+//	func ExampleUnmarshaler() {
+//		blob := `
+//	[[song]]
+//	name = "Thunder Road"
+//	duration = "4m49s"
+//
+//	[[song]]
+//	name = "Stairway to Heaven"
+//	duration = "8m03s"
+//	`
+//		type song struct {
+//			Name     string
+//			Duration duration
+//		}
+//		type songs struct {
+//			Song []song
+//		}
+//		var favorites songs
+//		if _, err := Decode(blob, &favorites); err != nil {
+//			log.Fatal(err)
+//		}
+//
+//		for _, s := range favorites.Song {
+//			fmt.Printf("%s (%s)\n", s.Name, s.Duration)
+//		}
+//		// Output:
+//		// Thunder Road (4m49s)
+//		// Stairway to Heaven (8m3s)
+//	}
+//
+// Key mapping
 //
 // TOML keys can map to either keys in a Go map or field names in a Go
 // struct. The special `toml` struct tag may be used to map TOML keys to
@@ -100,11 +152,17 @@ func unify(data interface{}, rv reflect.Value) error {
 		return unifyAnything(data, rv)
 	}
 
-	// Special case. Go's `time.Time` is a struct, which we don't want
-	// to confuse with a user struct.
-	if rv.Type().AssignableTo(rvalue(time.Time{}).Type()) {
-		return unifyDatetime(data, rv)
+	// Special case. Look for a value satisfying the TextUnmarshaler interface.
+	if v, ok := rv.Interface().(encoding.TextUnmarshaler); ok {
+		return unifyText(data, v)
 	}
+	// BUG(burntsushi)
+	// The behavior here is incorrect whenever a Go type satisfies the
+	// encoding.TextUnmarshaler interface but also corresponds to a TOML
+	// hash or array. In particular, the unmarshaler should only be applied
+	// to primitive TOML values. But at this point, it will be applied to
+	// all kinds of values and produce an incorrect error whenever those values
+	// are hashes or arrays (including arrays of tables).
 
 	k := rv.Kind()
 
@@ -177,7 +235,7 @@ func unifyStruct(mapping interface{}, rv reflect.Value) error {
 			}
 			sf := indirect(subv)
 
-			if sf.CanSet() {
+			if isUnifiable(sf) {
 				if err := unify(datum, sf); err != nil {
 					return e("Type mismatch for '%s.%s': %s",
 						rv.Type().String(), f.name, err)
@@ -299,12 +357,40 @@ func unifyBool(data interface{}, rv reflect.Value) error {
 		rv.SetBool(b)
 		return nil
 	}
-	return badtype("integer", data)
+	return badtype("boolean", data)
 }
 
 func unifyAnything(data interface{}, rv reflect.Value) error {
 	// too awesome to fail
 	rv.Set(reflect.ValueOf(data))
+	return nil
+}
+
+func unifyText(data interface{}, v encoding.TextUnmarshaler) error {
+	var s string
+	switch sdata := data.(type) {
+	case encoding.TextMarshaler:
+		text, err := sdata.MarshalText()
+		if err != nil {
+			return err
+		}
+		s = string(text)
+	case fmt.Stringer:
+		s = sdata.String()
+	case string:
+		s = sdata
+	case bool:
+		s = fmt.Sprintf("%v", sdata)
+	case int64:
+		s = fmt.Sprintf("%d", sdata)
+	case float64:
+		s = fmt.Sprintf("%f", sdata)
+	default:
+		return badtype("primitive (string-like)", data)
+	}
+	if err := v.UnmarshalText([]byte(s)); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -316,14 +402,33 @@ func rvalue(v interface{}) reflect.Value {
 // indirect returns the value pointed to by a pointer.
 // Pointers are followed until the value is not a pointer.
 // New values are allocated for each nil pointer.
+//
+// An exception to this rule is if the value satisfies an interface of
+// interest to us (like encoding.TextUnmarshaler).
 func indirect(v reflect.Value) reflect.Value {
 	if v.Kind() != reflect.Ptr {
+		if v.CanAddr() {
+			pv := v.Addr()
+			if _, ok := pv.Interface().(encoding.TextUnmarshaler); ok {
+				return pv
+			}
+		}
 		return v
 	}
 	if v.IsNil() {
 		v.Set(reflect.New(v.Type().Elem()))
 	}
 	return indirect(reflect.Indirect(v))
+}
+
+func isUnifiable(rv reflect.Value) bool {
+	if rv.CanSet() {
+		return true
+	}
+	if _, ok := rv.Interface().(encoding.TextUnmarshaler); ok {
+		return true
+	}
+	return false
 }
 
 func tstring(rv reflect.Value) string {
@@ -356,8 +461,6 @@ func insensitiveGet(
 // MetaData allows access to meta information about TOML data that may not
 // be inferrable via reflection. In particular, whether a key has been defined
 // and the TOML type of a key.
-//
-// (XXX: If TOML gets NULL values, that information will be added here too.)
 type MetaData struct {
 	mapping map[string]interface{}
 	types   map[string]tomlType

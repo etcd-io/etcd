@@ -14,10 +14,10 @@ import (
 
 // A field represents a single field found in a struct.
 type field struct {
-	name  string
-	tag   bool
-	index []int
-	typ   reflect.Type
+	name  string       // the name of the field (`toml` tag included)
+	tag   bool         // whether field has a `toml` tag
+	index []int        // represents the depth of an anonymous field
+	typ   reflect.Type // the type of the field
 }
 
 // byName sorts field by name, breaking ties with depth,

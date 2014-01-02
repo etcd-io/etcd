@@ -379,9 +379,50 @@ ip = "10.0.0.2"
 		fmt.Printf("Ports: %v\n", s.Config.Ports)
 	}
 
-	// // Output:
+	// Output:
 	// Server: alpha (ip: 10.0.0.1) in Toronto created on 1987-07-05
 	// Ports: [8001 8002]
 	// Server: beta (ip: 10.0.0.2) in New Jersey created on 1887-01-05
 	// Ports: [9001 9002]
+}
+
+type duration struct {
+	time.Duration
+}
+
+func (d *duration) UnmarshalText(text []byte) error {
+	var err error
+	d.Duration, err = time.ParseDuration(string(text))
+	return err
+}
+
+// Example Unmarshaler blah blah.
+func ExampleUnmarshaler() {
+	blob := `
+[[song]]
+name = "Thunder Road"
+duration = "4m49s"
+
+[[song]]
+name = "Stairway to Heaven"
+duration = "8m03s"
+`
+	type song struct {
+		Name     string
+		Duration duration
+	}
+	type songs struct {
+		Song []song
+	}
+	var favorites songs
+	if _, err := Decode(blob, &favorites); err != nil {
+		log.Fatal(err)
+	}
+
+	for _, s := range favorites.Song {
+		fmt.Printf("%s (%s)\n", s.Name, s.Duration)
+	}
+	// Output:
+	// Thunder Road (4m49s)
+	// Stairway to Heaven (8m3s)
 }
