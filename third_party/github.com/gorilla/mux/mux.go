@@ -166,7 +166,7 @@ func (r *Router) Handle(path string, handler http.Handler) *Route {
 // HandleFunc registers a new route with a matcher for the URL path.
 // See Route.Path() and Route.HandlerFunc().
 func (r *Router) HandleFunc(path string, f func(http.ResponseWriter,
-	*http.Request)) *Route {
+	*http.Request),) *Route {
 	return r.NewRoute().Path(path).HandlerFunc(f)
 }
 

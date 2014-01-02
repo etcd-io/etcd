@@ -22,7 +22,6 @@ type routeTest struct {
 	shouldMatch bool              // whether the request is expected to match the route at all
 }
 
-
 func TestHost(t *testing.T) {
 	// newRequestHost a new request with a method, url, and host header
 	newRequestHost := func(method, url, host string) *http.Request {
@@ -673,7 +672,7 @@ func testRoute(t *testing.T, test routeTest) {
 func TestKeepContext(t *testing.T) {
 	func1 := func(w http.ResponseWriter, r *http.Request) {}
 
-	r:= NewRouter()
+	r := NewRouter()
 	r.HandleFunc("/", func1).Name("func1")
 
 	req, _ := http.NewRequest("GET", "http://localhost/", nil)
@@ -698,21 +697,20 @@ func TestKeepContext(t *testing.T) {
 
 }
 
-
 type TestA301ResponseWriter struct {
-	hh			http.Header
-	status		int
+	hh     http.Header
+	status int
 }
 
 func (ho TestA301ResponseWriter) Header() http.Header {
 	return http.Header(ho.hh)
 }
 
-func (ho TestA301ResponseWriter) Write( b []byte) (int, error) {
+func (ho TestA301ResponseWriter) Write(b []byte) (int, error) {
 	return 0, nil
 }
 
-func (ho TestA301ResponseWriter) WriteHeader( code int ) {
+func (ho TestA301ResponseWriter) WriteHeader(code int) {
 	ho.status = code
 }
 
@@ -722,16 +720,16 @@ func Test301Redirect(t *testing.T) {
 	func1 := func(w http.ResponseWriter, r *http.Request) {}
 	func2 := func(w http.ResponseWriter, r *http.Request) {}
 
-	r:= NewRouter()
+	r := NewRouter()
 	r.HandleFunc("/api/", func2).Name("func2")
 	r.HandleFunc("/", func1).Name("func1")
 
 	req, _ := http.NewRequest("GET", "http://localhost//api/?abc=def", nil)
 
 	res := TestA301ResponseWriter{
-			hh: m,
-			status : 0,
-		}
+		hh:     m,
+		status: 0,
+	}
 	r.ServeHTTP(&res, req)
 
 	if "http://localhost/api/?abc=def" != res.hh["Location"][0] {
