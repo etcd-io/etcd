@@ -277,7 +277,7 @@ func (c *Config) LoadFlags(arguments []string) error {
 	// Print deprecation warnings on STDERR.
 	f.Visit(func(f *flag.Flag) {
 		if len(newFlagNameLookup[f.Name]) > 0 {
-			fmt.Fprintf(os.Stderr, "[deprecated] use -%s, not -%s", newFlagNameLookup[f.Name], f.Name)
+			fmt.Fprintf(os.Stderr, "[deprecated] use -%s, not -%s\n", newFlagNameLookup[f.Name], f.Name)
 		}
 	})
 
@@ -416,7 +416,7 @@ func (c *Config) Sanitize() error {
 		c.NameFromHostname()
 	}
 
-	if c.DataDir == "" && c.Name != "" {
+	if c.DataDir == "" && c.Name != "" && !c.ShowVersion && !c.ShowHelp {
 		c.DataDirFromName()
 	}
 
