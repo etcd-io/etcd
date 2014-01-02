@@ -63,12 +63,12 @@ var tokenTests = []tokenTest{
 	{
 		"not a tag #2",
 		"</>",
-		"",
+		"<!---->",
 	},
 	{
 		"not a tag #3",
 		"a</>b",
-		"a$b",
+		"a$<!---->$b",
 	},
 	{
 		"not a tag #4",
@@ -469,6 +469,25 @@ loop:
 	}
 }
 
+func TestPassthrough(t *testing.T) {
+	// Accumulating the raw output for each parse event should reconstruct the
+	// original input.
+	for _, test := range tokenTests {
+		z := NewTokenizer(strings.NewReader(test.html))
+		var parsed bytes.Buffer
+		for {
+			tt := z.Next()
+			parsed.Write(z.Raw())
+			if tt == ErrorToken {
+				break
+			}
+		}
+		if got, want := parsed.String(), test.html; got != want {
+			t.Errorf("%s: parsed output:\n got: %q\nwant: %q", test.desc, got, want)
+		}
+	}
+}
+
 func TestBufAPI(t *testing.T) {
 	s := "0<a>1</a>2<b>3<a>4<a>5</a>6</b>7</a>8<a/>9"
 	z := NewTokenizer(bytes.NewBufferString(s))
@@ -510,20 +529,20 @@ func TestConvertNewlines(t *testing.T) {
 		"Mac\rDOS\r\nUnix\n":    "Mac\nDOS\nUnix\n",
 		"Unix\nMac\rDOS\r\n":    "Unix\nMac\nDOS\n",
 		"DOS\r\nDOS\r\nDOS\r\n": "DOS\nDOS\nDOS\n",
-		"":         "",
-		"\n":       "\n",
-		"\n\r":     "\n\n",
-		"\r":       "\n",
-		"\r\n":     "\n",
-		"\r\n\n":   "\n\n",
-		"\r\n\r":   "\n\n",
-		"\r\n\r\n": "\n\n",
-		"\r\r":     "\n\n",
-		"\r\r\n":   "\n\n",
-		"\r\r\n\n": "\n\n\n",
-		"\r\r\r\n": "\n\n\n",
-		"\r \n":    "\n \n",
-		"xyz":      "xyz",
+		"":                      "",
+		"\n":                    "\n",
+		"\n\r":                  "\n\n",
+		"\r":                    "\n",
+		"\r\n":                  "\n",
+		"\r\n\n":                "\n\n",
+		"\r\n\r":                "\n\n",
+		"\r\n\r\n":              "\n\n",
+		"\r\r":                  "\n\n",
+		"\r\r\n":                "\n\n",
+		"\r\r\n\n":              "\n\n\n",
+		"\r\r\r\n":              "\n\n\n",
+		"\r \n":                 "\n \n",
+		"xyz":                   "xyz",
 	}
 	for in, want := range testCases {
 		if got := string(convertNewlines([]byte(in))); got != want {

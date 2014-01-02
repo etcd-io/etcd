@@ -143,9 +143,7 @@ func marshalControlMessage(cm *ControlMessage) (oob []byte) {
 			m.Type = sysSockopt2292NextHop
 			m.SetLen(syscall.CmsgLen(syscall.SizeofSockaddrInet6))
 			sa := (*syscall.RawSockaddrInet6)(unsafe.Pointer(&oob[off+syscall.CmsgLen(0)]))
-			sa.Len = syscall.SizeofSockaddrInet6
-			sa.Family = syscall.AF_INET6
-			copy(sa.Addr[:], cm.NextHop)
+			setSockaddr(sa, cm.NextHop, cm.IfIndex)
 			off += syscall.CmsgSpace(syscall.SizeofSockaddrInet6)
 		}
 	}
