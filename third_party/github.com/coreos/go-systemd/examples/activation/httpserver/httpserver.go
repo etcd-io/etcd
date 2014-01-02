@@ -13,7 +13,7 @@ func HelloServer(w http.ResponseWriter, req *http.Request) {
 }
 
 func main() {
-	files := activation.Files()
+	files := activation.Files(true)
 
 	if len(files) != 1 {
 		panic("Unexpected number of socket activation fds")
