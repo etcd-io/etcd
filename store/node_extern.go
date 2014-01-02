@@ -10,7 +10,6 @@ import (
 // TTL is time to live in second
 type NodeExtern struct {
 	Key           string      `json:"key, omitempty"`
-	PrevValue     string      `json:"-"`
 	Value         string      `json:"value,omitempty"`
 	Dir           bool        `json:"dir,omitempty"`
 	Expiration    *time.Time  `json:"expiration,omitempty"`
@@ -20,7 +19,7 @@ type NodeExtern struct {
 	CreatedIndex  uint64      `json:"createdIndex,omitempty"`
 }
 
-type NodeExterns []NodeExtern
+type NodeExterns []*NodeExtern
 
 // interfaces for sorting
 func (ns NodeExterns) Len() int {

@@ -94,21 +94,27 @@ curl -L http://127.0.0.1:4001/v2/keys/message -X PUT -d value="Hello world"
 }
 ```
 
-This response contains four fields.
-We will introduce three more fields as we try more commands.
+The response object contains several attributes:
 
-1. The action of the request; we set the value via a `PUT` request, thus the action is `set`.
+1. `action`: the action of the request that was just made.
+The request attempted to modify `node.value` via a `PUT` HTTP request, thus the value of action is `set`.
 
-2. The key of the request; we set `/message` to `Hello world`, so the key field is `/message`.
-We use a file system like structure to represent the key-value pairs so each key starts with `/`.
+2. `node.key`: the HTTP path the to which the request was made.
+We set `/message` to `Hello world`, so the key field is `/message`.
+Etcd uses a file-system-like structure to represent the key-value pairs, therefore all keys start with `/`.
 
-3. The current value of the key; we set the value to`Hello world`.
+3. `node.value`: the value of the key after resolving the request.
+In this case, a successful request was made that attempted to change the node's value to `Hello world`.
 
-4. Modified Index is a unique, monotonically incrementing index created for each change to etcd.
-Requests that change the index include `set`, `delete`, `update`, `create` and `compareAndSwap`.
-Since the `get` and `watch` commands do not change state in the store, they do not change the index.
+4. `node.createdIndex`: an index is a unique, monotonically-incrementing integer created for each change to etcd.
+This specific index reflects at which point in the etcd state machine a given key was created.
 You may notice that in this example the index is `2` even though it is the first request you sent to the server.
-This is because there are internal commands that also change the state like adding and syncing servers.
+This is because there are internal commands that also change the state behind the scenes like adding and syncing servers.
+
+5. `node.modifiedIndex`: like `node.createdIndex`, this attribute is also an etcd index.
+Actions that cause the value to change include `set`, `delete`, `update`, `create` and `compareAndSwap`.
+Since the `get` and `watch` commands do not change state in the store, they do not change the value of `node.modifiedIndex`.
+
 
 ### Response Headers
 

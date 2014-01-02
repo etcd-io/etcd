@@ -225,9 +225,8 @@ func (s *store) CompareAndSwap(nodePath string, prevValue string, prevIndex uint
 	s.CurrentIndex++
 
 	e := newEvent(CompareAndSwap, nodePath, s.CurrentIndex, n.CreatedIndex)
+	e.PrevNode = n.Repr(false, false)
 	eNode := e.Node
-
-	eNode.PrevValue = n.Value
 
 	// if test succeed, write the value
 	n.Write(value, s.CurrentIndex)
@@ -267,12 +266,11 @@ func (s *store) Delete(nodePath string, dir, recursive bool) (*Event, error) {
 
 	nextIndex := s.CurrentIndex + 1
 	e := newEvent(Delete, nodePath, nextIndex, n.CreatedIndex)
+	e.PrevNode = n.Repr(false, false)
 	eNode := e.Node
 
 	if n.IsDir() {
 		eNode.Dir = true
-	} else {
-		eNode.PrevValue = n.Value
 	}
 
 	callback := func(path string) { // notify function
@@ -326,6 +324,7 @@ func (s *store) CompareAndDelete(nodePath string, prevValue string, prevIndex ui
 	s.CurrentIndex++
 
 	e := newEvent(CompareAndDelete, nodePath, s.CurrentIndex, n.CreatedIndex)
+	e.PrevNode = n.Repr(false, false)
 
 	callback := func(path string) { // notify function
 		// notify the watchers with deleted set true
@@ -412,6 +411,7 @@ func (s *store) Update(nodePath string, newValue string, expireTime time.Time) (
 	}
 
 	e := newEvent(Update, nodePath, nextIndex, n.CreatedIndex)
+	e.PrevNode = n.Repr(false, false)
 	eNode := e.Node
 
 	if n.IsDir() && len(newValue) != 0 {
@@ -420,7 +420,6 @@ func (s *store) Update(nodePath string, newValue string, expireTime time.Time) (
 		return nil, etcdErr.NewError(etcdErr.EcodeNotFile, nodePath, currIndex)
 	}
 
-	eNode.PrevValue = n.Value
 	n.Write(newValue, nextIndex)
 	eNode.Value = newValue
 
@@ -482,7 +481,7 @@ func (s *store) internalCreate(nodePath string, dir bool, value string, unique, 
 			if n.IsDir() {
 				return nil, etcdErr.NewError(etcdErr.EcodeNotFile, nodePath, currIndex)
 			}
-			eNode.PrevValue, _ = n.Read()
+			e.PrevNode = n.Repr(false, false)
 
 			n.Remove(false, false, nil)
 		} else {
@@ -557,6 +556,7 @@ func (s *store) DeleteExpiredKeys(cutoff time.Time) {
 
 		s.CurrentIndex++
 		e := newEvent(Expire, node.Path, s.CurrentIndex, node.CreatedIndex)
+		e.PrevNode = node.Repr(false, false)
 
 		callback := func(path string) { // notify function
 			// notify the watchers with deleted set true
