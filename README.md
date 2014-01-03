@@ -78,6 +78,7 @@ You have successfully started an etcd on a single machine and written a key to t
 
 - Explore the full [API][api.md].
 - Setup a [multi-machine cluster][clustering.md].
+- Learn the [config format, env variables and flags][configuration.md].
 - Find [language bindings and tools][libraries-and-tools.md].
 - Learn about the dashboard, lock and leader election [modules][modules.md].
 - Use TLS to [secure an etcd cluster][security.md].
@@ -85,6 +86,7 @@ You have successfully started an etcd on a single machine and written a key to t
 
 [api.md]: https://github.com/coreos/etcd/blob/master/Documentation/api.md
 [clustering.md]: https://github.com/coreos/etcd/blob/master/Documentation/clustering.md
+[configuration.md]: https://github.com/coreos/etcd/blob/master/Documentation/configuration.md
 [libraries-and-tools.md]: https://github.com/coreos/etcd/blob/master/Documentation/libraries-and-tools.md
 [modules.md]: https://github.com/coreos/etcd/blob/master/Documentation/modules.md
 [security.md]: https://github.com/coreos/etcd/blob/master/Documentation/security.md
