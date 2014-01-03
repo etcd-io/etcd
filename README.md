@@ -1102,38 +1102,39 @@ See [CONTRIBUTING](https://github.com/coreos/etcd/blob/master/CONTRIBUTING.md) f
 
 **Go libraries**
 
-- [go-etcd](https://github.com/coreos/go-etcd)
+- [go-etcd](https://github.com/coreos/go-etcd) - Supports v2
 
 **Java libraries**
 
 - [justinsb/jetcd](https://github.com/justinsb/jetcd)
-- [diwakergupta/jetcd](https://github.com/diwakergupta/jetcd)
+- [diwakergupta/jetcd](https://github.com/diwakergupta/jetcd) - Supports v2
 
 **Python libraries**
 
 - [transitorykris/etcd-py](https://github.com/transitorykris/etcd-py)
-- [jplana/python-etcd](https://github.com/jplana/python-etcd)
+- [jplana/python-etcd](https://github.com/jplana/python-etcd) - Supports v2
 - [russellhaering/txetcd](https://github.com/russellhaering/txetcd) - a Twisted Python library
 
 **Node libraries**
 
-- [stianeikeland/node-etcd](https://github.com/stianeikeland/node-etcd)
+- [stianeikeland/node-etcd](https://github.com/stianeikeland/node-etcd) - Supports v2 (w Coffeescript)
+- [lavagetto/nodejs-etcd](https://github.com/lavagetto/nodejs-etcd) - Supports v2
 
 **Ruby libraries**
 
 - [iconara/etcd-rb](https://github.com/iconara/etcd-rb)
 - [jpfuentes2/etcd-ruby](https://github.com/jpfuentes2/etcd-ruby)
-- [ranjib/etcd-ruby](https://github.com/ranjib/etcd-ruby)
+- [ranjib/etcd-ruby](https://github.com/ranjib/etcd-ruby) - Supports v2
 
 **C libraries**
 
-- [jdarcy/etcd-api](https://github.com/jdarcy/etcd-api)
+- [jdarcy/etcd-api](https://github.com/jdarcy/etcd-api) - Supports v2
 
 **Clojure libraries**
 
 - [aterreno/etcd-clojure](https://github.com/aterreno/etcd-clojure)
-- [dwwoelfel/cetcd](https://github.com/dwwoelfel/cetcd)
-- [rthomas/clj-etcd](https://github.com/rthomas/clj-etcd)
+- [dwwoelfel/cetcd](https://github.com/dwwoelfel/cetcd) - Supports v2
+- [rthomas/clj-etcd](https://github.com/rthomas/clj-etcd) - Supports v2
 
 **Erlang libraries**
 
@@ -1163,6 +1164,7 @@ See [CONTRIBUTING](https://github.com/coreos/etcd/blob/master/CONTRIBUTING.md) f
 - [mattn/etcd-vim](https://github.com/mattn/etcd-vim) - SET and GET keys from inside vim
 - [mattn/etcdenv](https://github.com/mattn/etcdenv) - "env" shebang with etcd integration
 - [kelseyhightower/confd](https://github.com/kelseyhightower/confd) - Manage local app config files using templates and data from etcd
+- [configdb](https://git.autistici.org/ai/configdb/tree/master) - A REST relational abstraction on top of arbitrary database backends, aimed at storing configs and inventories.
 
 
 ## FAQ
