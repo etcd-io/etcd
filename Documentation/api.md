@@ -1,4 +1,4 @@
-## Usage
+## etcd API
 
 ### Running a Single Machine Cluster
 
