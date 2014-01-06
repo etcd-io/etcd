@@ -29,7 +29,6 @@ func TestConfigTOML(t *testing.T) {
 		snapshot = true
 		verbose = true
 		very_verbose = true
-		web_url = "/web"
 
 		[peer]
 		addr = "127.0.0.1:7002"
@@ -82,7 +81,6 @@ func TestConfigEnv(t *testing.T) {
 	os.Setenv("ETCD_SNAPSHOT", "true")
 	os.Setenv("ETCD_VERBOSE", "1")
 	os.Setenv("ETCD_VERY_VERBOSE", "yes")
-	os.Setenv("ETCD_WEB_URL", "/web")
 	os.Setenv("ETCD_PEER_ADDR", "127.0.0.1:7002")
 	os.Setenv("ETCD_PEER_CA_FILE", "/tmp/peer/file.ca")
 	os.Setenv("ETCD_PEER_CERT_FILE", "/tmp/peer/file.cert")
