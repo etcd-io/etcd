@@ -658,4 +658,110 @@ curl -L http://127.0.0.1:4001/v2/keys/
 
 Here we see the `/message` key but our hidden `/_message` key is not returned.
 
+## Statistics
 
+An etcd cluster keeps track of a number of stastics including latency, bandwidth and uptime.
+These statistics are used in the `/mod/dashboard` to generate tables and graphs about the cluster state.
+
+### Leader Statistics
+
+The leader has a view of the entire cluster and keeps track of two interesting statistics: latency to each peer in the cluster and the number of failed and successful Raft RPC requests.
+You can find grab these stastistics from the `/v2/stats/leader` endpoint:
+
+```sh
+curl -L 127.0.0.1:4001/v2/stats/leader
+```
+
+```json
+{
+    "followers": {
+        "etcd-node1": {
+            "counts": {
+                "fail": 1212,
+                "success": 4163176
+            },
+            "latency": {
+                "average": 2.7206299430775007,
+                "current": 1.486487,
+                "maximum": 2018.410279,
+                "minimum": 1.011763,
+                "standardDeviation": 6.246990702203536
+            }
+        },
+        "etcd-node3": {
+            "counts": {
+                "fail": 1378,
+                "success": 4164598
+            },
+            "latency": {
+                "average": 2.707100125761001,
+                "current": 1.666258,
+                "maximum": 1409.054765,
+                "minimum": 0.998415,
+                "standardDeviation": 5.910089773061448
+            }
+        }
+    },
+    "leader": "etcd-node2"
+}
+```
+
+### Self Statistics
+
+Each node keeps a number of internal statistics:
+
+- `leaderInfo.leader`: name of the current leader machine
+- `leaderInfo.uptime`: amount of time the leader has been leader
+- `name`: this machine's name
+- `recvAppendRequestCnt`: number of append requests this node has processed
+- `recvBandwidthRate`: number of bytes per second this node is receiving (follower only)
+- `recvPkgRate`: number of requests per second this node is receiving (follower only)
+- `sendAppendRequestCnt`: number of requests that this node has sent
+- `sendBandwidthRate`: number of bytes per second this node is receiving (leader only)
+- `sendPkgRate`: number of requests per second this node is receiving (leader only)
+- `state`: either leader or folower
+- `startTime`: the time when this node was started
+
+This is an example response from a follower machine:
+
+```sh
+curl -L 127.0.0.1:4001/v2/stats/self
+```
+
+```json
+{
+    "leaderInfo": {
+        "leader": "etcd-node2",
+        "uptime": "1m18.544996775s"
+    },
+    "name": "",
+    "recvAppendRequestCnt": 5871307,
+    "recvBandwidthRate": 630.3121596542599,
+    "recvPkgRate": 19.272654323628185,
+    "sendAppendRequestCnt": 3175763,
+    "startTime": "2014-01-01T15:26:24.96569404Z",
+    "state": "follower"
+}
+```
+
+And this is an example response from a leader machine:
+
+```sh
+curl -L 127.0.0.1:4001/v2/stats/self
+```
+
+```
+{
+    "leaderInfo": {
+        "leader": "",
+        "uptime": "24.648619798s"
+    },
+    "name": "",
+    "recvAppendRequestCnt": 5901116,
+    "sendAppendRequestCnt": 3212344,
+    "sendBandwidthRate": 1254.3151237301615,
+    "sendPkgRate": 38.71342974475808,
+    "startTime": "2014-01-01T15:26:24.96569404Z",
+    "state": "leader"
+}
+```
