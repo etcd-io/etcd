@@ -79,7 +79,7 @@ func TestPersistence(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	c2, err := NewClientFile("config.json")
+	c2, err := NewClientFromFile("config.json")
 	if err != nil {
 		t.Fatal(err)
 	}

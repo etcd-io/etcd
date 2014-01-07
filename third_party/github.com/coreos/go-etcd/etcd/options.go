@@ -28,12 +28,14 @@ var (
 		"prevValue": reflect.String,
 		"prevIndex": reflect.Uint64,
 		"prevExist": reflect.Bool,
+		"dir":       reflect.Bool,
 	}
 
 	VALID_POST_OPTIONS = validOptions{}
 
 	VALID_DELETE_OPTIONS = validOptions{
 		"recursive": reflect.Bool,
+		"dir":       reflect.Bool,
 	}
 )
 

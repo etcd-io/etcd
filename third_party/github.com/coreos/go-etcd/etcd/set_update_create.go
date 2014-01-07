@@ -1,6 +1,21 @@
 package etcd
 
-// SetDir sets the given key to a directory.
+// Set sets the given key to the given value.
+// It will create a new key value pair or replace the old one.
+// It will not replace a existing directory.
+func (c *Client) Set(key string, value string, ttl uint64) (*Response, error) {
+	raw, err := c.RawSet(key, value, ttl)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return raw.toResponse()
+}
+
+// Set sets the given key to a directory.
+// It will create a new directory or replace the old key value pair by a directory.
+// It will not replace a existing directory.
 func (c *Client) SetDir(key string, ttl uint64) (*Response, error) {
 	raw, err := c.RawSetDir(key, ttl)
 
@@ -11,19 +26,7 @@ func (c *Client) SetDir(key string, ttl uint64) (*Response, error) {
 	return raw.toResponse()
 }
 
-// UpdateDir updates the given key to a directory.  It succeeds only if the
-// given key already exists.
-func (c *Client) UpdateDir(key string, ttl uint64) (*Response, error) {
-	raw, err := c.RawUpdateDir(key, ttl)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return raw.toResponse()
-}
-
-// UpdateDir creates a directory under the given key.  It succeeds only if
+// CreateDir creates a directory. It succeeds only if
 // the given key does not yet exist.
 func (c *Client) CreateDir(key string, ttl uint64) (*Response, error) {
 	raw, err := c.RawCreateDir(key, ttl)
@@ -35,21 +38,10 @@ func (c *Client) CreateDir(key string, ttl uint64) (*Response, error) {
 	return raw.toResponse()
 }
 
-// Set sets the given key to the given value.
-func (c *Client) Set(key string, value string, ttl uint64) (*Response, error) {
-	raw, err := c.RawSet(key, value, ttl)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return raw.toResponse()
-}
-
-// Update updates the given key to the given value.  It succeeds only if the
+// UpdateDir updates the given directory. It succeeds only if the
 // given key already exists.
-func (c *Client) Update(key string, value string, ttl uint64) (*Response, error) {
-	raw, err := c.RawUpdate(key, value, ttl)
+func (c *Client) UpdateDir(key string, ttl uint64) (*Response, error) {
+	raw, err := c.RawUpdateDir(key, ttl)
 
 	if err != nil {
 		return nil, err
@@ -70,13 +62,22 @@ func (c *Client) Create(key string, value string, ttl uint64) (*Response, error)
 	return raw.toResponse()
 }
 
-func (c *Client) RawSetDir(key string, ttl uint64) (*RawResponse, error) {
-	return c.put(key, "", ttl, nil)
+// Update updates the given key to the given value.  It succeeds only if the
+// given key already exists.
+func (c *Client) Update(key string, value string, ttl uint64) (*Response, error) {
+	raw, err := c.RawUpdate(key, value, ttl)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return raw.toResponse()
 }
 
 func (c *Client) RawUpdateDir(key string, ttl uint64) (*RawResponse, error) {
 	ops := options{
 		"prevExist": true,
+		"dir":       true,
 	}
 
 	return c.put(key, "", ttl, ops)
@@ -85,6 +86,7 @@ func (c *Client) RawUpdateDir(key string, ttl uint64) (*RawResponse, error) {
 func (c *Client) RawCreateDir(key string, ttl uint64) (*RawResponse, error) {
 	ops := options{
 		"prevExist": false,
+		"dir":       true,
 	}
 
 	return c.put(key, "", ttl, ops)
@@ -92,6 +94,14 @@ func (c *Client) RawCreateDir(key string, ttl uint64) (*RawResponse, error) {
 
 func (c *Client) RawSet(key string, value string, ttl uint64) (*RawResponse, error) {
 	return c.put(key, value, ttl, nil)
+}
+
+func (c *Client) RawSetDir(key string, ttl uint64) (*RawResponse, error) {
+	ops := options{
+		"dir": true,
+	}
+
+	return c.put(key, "", ttl, ops)
 }
 
 func (c *Client) RawUpdate(key string, value string, ttl uint64) (*RawResponse, error) {
