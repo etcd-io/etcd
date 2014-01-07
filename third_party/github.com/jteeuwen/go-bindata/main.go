@@ -11,6 +11,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 	"unicode"
 )
 
@@ -90,7 +91,14 @@ func parseArgs() {
 	pipe = flag.NArg() == 0
 
 	if !pipe {
+		sepsuffix := false
+		if strings.HasSuffix(*prefix, string(filepath.Separator)) {
+			sepsuffix = true
+		}
 		*prefix, _ = filepath.Abs(filepath.Clean(*prefix))
+		if sepsuffix {
+			*prefix += string(filepath.Separator)
+		}
 		in, _ = filepath.Abs(filepath.Clean(flag.Args()[0]))
 		*out = safeFilename(*out, in)
 	}
