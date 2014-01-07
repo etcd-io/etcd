@@ -12,6 +12,10 @@ const (
 	testElectionTimeout  = 200 * time.Millisecond
 )
 
+const (
+	testListenerLoggerEnabled = false
+)
+
 func init() {
 	RegisterCommand(&testCommand1{})
 	RegisterCommand(&testCommand2{})
@@ -66,6 +70,15 @@ func newTestServer(name string, transporter Transporter) Server {
 		panic(err.Error())
 	}
 	server, _ := NewServer(name, p, transporter, nil, nil, "")
+	if testListenerLoggerEnabled {
+		fn := func(e Event) {
+			server := e.Source().(Server)
+			warnf("[%s] %s %v -> %v\n", server.Name(), e.Type(), e.PrevValue(), e.Value())
+		}
+		server.AddEventListener(StateChangeEventType, fn)
+		server.AddEventListener(LeaderChangeEventType, fn)
+		server.AddEventListener(TermChangeEventType, fn)
+	}
 	return server
 }
 
@@ -90,7 +103,7 @@ func newTestServerWithLog(name string, transporter Transporter, entries []*LogEn
 
 func newTestCluster(names []string, transporter Transporter, lookup map[string]Server) []Server {
 	servers := []Server{}
-	e0, _ := newLogEntry(newLog(), 1, 1, &testCommand1{Val: "foo", I: 20})
+	e0, _ := newLogEntry(newLog(), nil, 1, 1, &testCommand1{Val: "foo", I: 20})
 
 	for _, name := range names {
 		if lookup[name] != nil {

@@ -8,44 +8,31 @@ import (
 	"reflect"
 )
 
-//------------------------------------------------------------------------------
-//
-// Globals
-//
-//------------------------------------------------------------------------------
-
 var commandTypes map[string]Command
 
 func init() {
 	commandTypes = map[string]Command{}
 }
 
-//------------------------------------------------------------------------------
-//
-// Typedefs
-//
-//------------------------------------------------------------------------------
-
-// A command represents an action to be taken on the replicated state machine.
+// Command represents an action to be taken on the replicated state machine.
 type Command interface {
 	CommandName() string
-	Apply(server Server) (interface{}, error)
+}
+
+// CommandApply represents the interface to apply a command to the server.
+type CommandApply interface {
+	Apply(Context) (interface{}, error)
+}
+
+// deprecatedCommandApply represents the old interface to apply a command to the server.
+type deprecatedCommandApply interface {
+	Apply(Server) (interface{}, error)
 }
 
 type CommandEncoder interface {
 	Encode(w io.Writer) error
 	Decode(r io.Reader) error
 }
-
-//------------------------------------------------------------------------------
-//
-// Functions
-//
-//------------------------------------------------------------------------------
-
-//--------------------------------------
-// Instantiation
-//--------------------------------------
 
 // Creates a new instance of a command by name.
 func newCommand(name string, data []byte) (Command, error) {
@@ -75,10 +62,6 @@ func newCommand(name string, data []byte) (Command, error) {
 
 	return copy, nil
 }
-
-//--------------------------------------
-// Registration
-//--------------------------------------
 
 // Registers a command by storing a reference to an instance of it.
 func RegisterCommand(command Command) {

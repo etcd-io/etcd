@@ -34,10 +34,26 @@ go-raft is under the MIT license.
 
 These projects are built on go-raft:
 
-- [coreos/etcd](https://github.com/coreos/etcd) - A highly-available key value store for shared configuration and service discovery
-- [benbjohnson/raftd](https://github.com/benbjohnson/raftd) - A reference implementation for using the go-raft library for distributed consensus.
+- [coreos/etcd](https://github.com/coreos/etcd) - A highly-available key value store for shared configuration and service discovery.
+- [goraft/raftd](https://github.com/goraft/raftd) - A reference implementation for using the go-raft library for distributed consensus.
+- [skynetservices/skydns](https://github.com/skynetservices/skydns) - DNS for skynet or any other service discovery.
+- [influxdb/influxdb](https://github.com/influxdb/influxdb) - An open-source, distributed, time series, events, and metrics database.
 
 If you have a project that you're using go-raft in, please add it to this README so others can see implementation examples.
+
+## Contact and Resources
+
+- [raft-dev][raft-dev] is a mailing list for discussion about best practices
+  and implementation of Raft. Not goraft specific but helpful if you have
+  questions.
+- [Slides from Ben's talk][bens-talk] which includes easy to understand
+  diagrams of leader election and replication
+- The [Raft Consensus homepage][raft-home] has links to additional raft
+  implementations, slides to talks on Raft and general information
+
+[raft-home]:  http://raftconsensus.github.io/
+[raft-dev]: https://groups.google.com/forum/#!forum/raft-dev
+[bens-talk]: https://speakerdeck.com/benbjohnson/raft-the-understandable-distributed-consensus-protocol
 
 ## The Raft Protocol
 
@@ -82,6 +98,38 @@ By ensuring that this log is replicated identically between all the nodes in the
 
 Replicating the log under normal conditions is done by sending an `AppendEntries` RPC from the leader to each of the other servers in the cluster (called Peers).
 Each peer will append the entries from the leader through a 2-phase commit process which ensure that a majority of servers in the cluster have entries written to log.
+
+
+## Raft in Practice
+
+### Optimal Cluster Size
+
+The primary consideration when choosing the node count in your Raft cluster is the number of nodes that can simultaneously fail.
+Because Raft requires a majority of nodes to be available to make progress, the number of node failures the cluster can tolerate is `(n / 2) - 1`.
+
+This means that a 3-node cluster can tolerate 1 node failure.
+If 2 nodes fail then the cluster cannot commit entries or elect a new leader so progress stops.
+A 5-node cluster can tolerate 2 node failures. A 9-node cluster can tolerate 4 node failures.
+It is unlikely that 4 nodes will simultaneously fail so clusters larger than 9 nodes are not common.
+
+Another consideration is performance.
+The leader must replicate log entries for each follower node so CPU and networking resources can quickly be bottlenecked under stress in a large cluster.
+
+
+### Scaling Raft
+
+Once you grow beyond the maximum size of your cluster there are a few options for scaling Raft:
+
+1. *Core nodes with dumb replication.*
+   This option requires you to maintain a small cluster (e.g. 5 nodes) that is involved in the Raft process and then replicate only committed log entries to the remaining nodes in the cluster.
+   This works well if you have reads in your system that can be stale.
+
+2. *Sharding.*
+   This option requires that you segment your data into different clusters.
+   This option works well if you need very strong consistency and therefore need to read and write heavily from the leader.
+
+If you have a very large cluster that you need to replicate to using Option 1 then you may want to look at performing hierarchical replication so that nodes can better share the load.
+
 
 ## History
 

@@ -30,15 +30,15 @@ func TestLogNewLog(t *testing.T) {
 	defer log.close()
 	defer os.Remove(path)
 
-	e, _ := newLogEntry(log, 1, 1, &testCommand1{Val: "foo", I: 20})
+	e, _ := newLogEntry(log, nil, 1, 1, &testCommand1{Val: "foo", I: 20})
 	if err := log.appendEntry(e); err != nil {
 		t.Fatalf("Unable to append: %v", err)
 	}
-	e, _ = newLogEntry(log, 2, 1, &testCommand2{X: 100})
+	e, _ = newLogEntry(log, nil, 2, 1, &testCommand2{X: 100})
 	if err := log.appendEntry(e); err != nil {
 		t.Fatalf("Unable to append: %v", err)
 	}
-	e, _ = newLogEntry(log, 3, 2, &testCommand1{Val: "bar", I: 0})
+	e, _ = newLogEntry(log, nil, 3, 2, &testCommand1{Val: "bar", I: 0})
 	if err := log.appendEntry(e); err != nil {
 		t.Fatalf("Unable to append: %v", err)
 	}
@@ -63,9 +63,9 @@ func TestLogNewLog(t *testing.T) {
 // Ensure that we can decode and encode to an existing log.
 func TestLogExistingLog(t *testing.T) {
 	tmpLog := newLog()
-	e0, _ := newLogEntry(tmpLog, 1, 1, &testCommand1{Val: "foo", I: 20})
-	e1, _ := newLogEntry(tmpLog, 2, 1, &testCommand2{X: 100})
-	e2, _ := newLogEntry(tmpLog, 3, 2, &testCommand1{Val: "bar", I: 0})
+	e0, _ := newLogEntry(tmpLog, nil, 1, 1, &testCommand1{Val: "foo", I: 20})
+	e1, _ := newLogEntry(tmpLog, nil, 2, 1, &testCommand2{X: 100})
+	e2, _ := newLogEntry(tmpLog, nil, 3, 2, &testCommand1{Val: "bar", I: 0})
 	log, path := setupLog([]*LogEntry{e0, e1, e2})
 	defer log.close()
 	defer os.Remove(path)
@@ -88,9 +88,9 @@ func TestLogExistingLog(t *testing.T) {
 // Ensure that we can check the contents of the log by index/term.
 func TestLogContainsEntries(t *testing.T) {
 	tmpLog := newLog()
-	e0, _ := newLogEntry(tmpLog, 1, 1, &testCommand1{Val: "foo", I: 20})
-	e1, _ := newLogEntry(tmpLog, 2, 1, &testCommand2{X: 100})
-	e2, _ := newLogEntry(tmpLog, 3, 2, &testCommand1{Val: "bar", I: 0})
+	e0, _ := newLogEntry(tmpLog, nil, 1, 1, &testCommand1{Val: "foo", I: 20})
+	e1, _ := newLogEntry(tmpLog, nil, 2, 1, &testCommand2{X: 100})
+	e2, _ := newLogEntry(tmpLog, nil, 3, 2, &testCommand1{Val: "bar", I: 0})
 	log, path := setupLog([]*LogEntry{e0, e1, e2})
 	defer log.close()
 	defer os.Remove(path)
@@ -115,8 +115,8 @@ func TestLogContainsEntries(t *testing.T) {
 // Ensure that we can recover from an incomplete/corrupt log and continue logging.
 func TestLogRecovery(t *testing.T) {
 	tmpLog := newLog()
-	e0, _ := newLogEntry(tmpLog, 1, 1, &testCommand1{Val: "foo", I: 20})
-	e1, _ := newLogEntry(tmpLog, 2, 1, &testCommand2{X: 100})
+	e0, _ := newLogEntry(tmpLog, nil, 1, 1, &testCommand1{Val: "foo", I: 20})
+	e1, _ := newLogEntry(tmpLog, nil, 2, 1, &testCommand2{X: 100})
 	f, _ := ioutil.TempFile("", "raft-log-")
 
 	e0.encode(f)
@@ -134,7 +134,7 @@ func TestLogRecovery(t *testing.T) {
 	defer log.close()
 	defer os.Remove(f.Name())
 
-	e, _ := newLogEntry(log, 3, 2, &testCommand1{Val: "bat", I: -5})
+	e, _ := newLogEntry(log, nil, 3, 2, &testCommand1{Val: "bat", I: -5})
 	if err := log.appendEntry(e); err != nil {
 		t.Fatalf("Unable to append: %v", err)
 	}
@@ -167,15 +167,15 @@ func TestLogTruncate(t *testing.T) {
 
 	defer os.Remove(path)
 
-	entry1, _ := newLogEntry(log, 1, 1, &testCommand1{Val: "foo", I: 20})
+	entry1, _ := newLogEntry(log, nil, 1, 1, &testCommand1{Val: "foo", I: 20})
 	if err := log.appendEntry(entry1); err != nil {
 		t.Fatalf("Unable to append: %v", err)
 	}
-	entry2, _ := newLogEntry(log, 2, 1, &testCommand2{X: 100})
+	entry2, _ := newLogEntry(log, nil, 2, 1, &testCommand2{X: 100})
 	if err := log.appendEntry(entry2); err != nil {
 		t.Fatalf("Unable to append: %v", err)
 	}
-	entry3, _ := newLogEntry(log, 3, 2, &testCommand1{Val: "bar", I: 0})
+	entry3, _ := newLogEntry(log, nil, 3, 2, &testCommand1{Val: "bar", I: 0})
 	if err := log.appendEntry(entry3); err != nil {
 		t.Fatalf("Unable to append: %v", err)
 	}
