@@ -1,0 +1,9 @@
+#!/bin/sh -e
+
+PKG="github.com/coreos/go-systemd"
+
+rm -R src
+mkdir -p src/$(dirname $PKG)
+ln -s ../../../ src/$PKG
+
+go test -v ${PKG}/activation
