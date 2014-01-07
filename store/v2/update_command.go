@@ -1,10 +1,11 @@
 package v2
 
 import (
+	"time"
+
 	"github.com/coreos/etcd/log"
 	"github.com/coreos/etcd/store"
 	"github.com/coreos/raft"
-	"time"
 )
 
 func init() {
@@ -24,7 +25,9 @@ func (c *UpdateCommand) CommandName() string {
 }
 
 // Create node
-func (c *UpdateCommand) Apply(server raft.Server) (interface{}, error) {
+func (c *UpdateCommand) Apply(cxt raft.Context) (interface{}, error) {
+	server := cxt.Server()
+
 	s, _ := server.StateMachine().(store.Store)
 
 	e, err := s.Update(c.Key, c.Value, c.ExpireTime)
