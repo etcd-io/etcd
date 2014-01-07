@@ -44,6 +44,8 @@
 
 - [marshall-lee/etcd.erl](https://github.com/marshall-lee/etcd.erl)
 
+A detailed recap of client functionalities can be found in the [clients compatibility matrix][clients-matrix.md].
+
 **Chef Integration**
 
 - [coderanger/etcd-chef](https://github.com/coderanger/etcd-chef)
@@ -69,5 +71,3 @@
 - [mattn/etcdenv](https://github.com/mattn/etcdenv) - "env" shebang with etcd integration
 - [kelseyhightower/confd](https://github.com/kelseyhightower/confd) - Manage local app config files using templates and data from etcd
 - [configdb](https://git.autistici.org/ai/configdb/tree/master) - A REST relational abstraction on top of arbitrary database backends, aimed at storing configs and inventories.
-
-
