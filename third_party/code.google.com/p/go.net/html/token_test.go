@@ -63,12 +63,12 @@ var tokenTests = []tokenTest{
 	{
 		"not a tag #2",
 		"</>",
-		"",
+		"<!---->",
 	},
 	{
 		"not a tag #3",
 		"a</>b",
-		"a$b",
+		"a$<!---->$b",
 	},
 	{
 		"not a tag #4",
@@ -465,6 +465,80 @@ loop:
 		z.Next()
 		if z.Err() != io.EOF {
 			t.Errorf("%s: want EOF got %q", tt.desc, z.Err())
+		}
+	}
+}
+
+func TestMaxBuffer(t *testing.T) {
+	// Exceeding the maximum buffer size generates ErrBufferExceeded.
+	z := NewTokenizer(strings.NewReader("<" + strings.Repeat("t", 10)))
+	z.SetMaxBuf(5)
+	tt := z.Next()
+	if got, want := tt, ErrorToken; got != want {
+		t.Fatalf("token type: got: %v want: %v", got, want)
+	}
+	if got, want := z.Err(), ErrBufferExceeded; got != want {
+		t.Errorf("error type: got: %v want: %v", got, want)
+	}
+	if got, want := string(z.Raw()), "<tttt"; got != want {
+		t.Fatalf("buffered before overflow: got: %q want: %q", got, want)
+	}
+}
+
+func TestMaxBufferReconstruction(t *testing.T) {
+	// Exceeding the maximum buffer size at any point while tokenizing permits
+	// reconstructing the original input.
+tests:
+	for _, test := range tokenTests {
+		for maxBuf := 1; ; maxBuf++ {
+			r := strings.NewReader(test.html)
+			z := NewTokenizer(r)
+			z.SetMaxBuf(maxBuf)
+			var tokenized bytes.Buffer
+			for {
+				tt := z.Next()
+				tokenized.Write(z.Raw())
+				if tt == ErrorToken {
+					if err := z.Err(); err != io.EOF && err != ErrBufferExceeded {
+						t.Errorf("%s: unexpected error: %v", test.desc, err)
+					}
+					break
+				}
+			}
+			// Anything tokenized along with untokenized input or data left in the reader.
+			assembled, err := ioutil.ReadAll(io.MultiReader(&tokenized, bytes.NewReader(z.Buffered()), r))
+			if err != nil {
+				t.Errorf("%s: ReadAll: %v", test.desc, err)
+				continue tests
+			}
+			if got, want := string(assembled), test.html; got != want {
+				t.Errorf("%s: reassembled html:\n got: %q\nwant: %q", test.desc, got, want)
+				continue tests
+			}
+			// EOF indicates that we completed tokenization and hence found the max
+			// maxBuf that generates ErrBufferExceeded, so continue to the next test.
+			if z.Err() == io.EOF {
+				break
+			}
+		} // buffer sizes
+	} // tests
+}
+
+func TestPassthrough(t *testing.T) {
+	// Accumulating the raw output for each parse event should reconstruct the
+	// original input.
+	for _, test := range tokenTests {
+		z := NewTokenizer(strings.NewReader(test.html))
+		var parsed bytes.Buffer
+		for {
+			tt := z.Next()
+			parsed.Write(z.Raw())
+			if tt == ErrorToken {
+				break
+			}
+		}
+		if got, want := parsed.String(), test.html; got != want {
+			t.Errorf("%s: parsed output:\n got: %q\nwant: %q", test.desc, got, want)
 		}
 	}
 }
