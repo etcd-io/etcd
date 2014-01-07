@@ -94,23 +94,23 @@ func (m *Mock) Return(returnArguments ...interface{}) *Mock {
 // Once indicates that that the mock should only return the value once.
 //
 //    Mock.On("MyMethod", arg1, arg2).Return(returnArg1, returnArg2).Once()
-func (m* Mock) Once() {
-	m.ExpectedCalls[len(m.ExpectedCalls) - 1].Repeatability = 1
+func (m *Mock) Once() {
+	m.ExpectedCalls[len(m.ExpectedCalls)-1].Repeatability = 1
 }
 
 // Twice indicates that that the mock should only return the value twice.
 //
 //    Mock.On("MyMethod", arg1, arg2).Return(returnArg1, returnArg2).Twice()
-func (m* Mock) Twice() {
-	m.ExpectedCalls[len(m.ExpectedCalls) - 1].Repeatability = 2
+func (m *Mock) Twice() {
+	m.ExpectedCalls[len(m.ExpectedCalls)-1].Repeatability = 2
 }
 
 // Times indicates that that the mock should only return the indicated number
 // of times.
 //
 //    Mock.On("MyMethod", arg1, arg2).Return(returnArg1, returnArg2).Times(5)
-func (m* Mock) Times(i int) {
-	m.ExpectedCalls[len(m.ExpectedCalls) - 1].Repeatability = i
+func (m *Mock) Times(i int) {
+	m.ExpectedCalls[len(m.ExpectedCalls)-1].Repeatability = i
 }
 
 /*
@@ -369,22 +369,22 @@ func (args Arguments) Diff(objects []interface{}) (string, int) {
 	for i := 0; i < maxArgCount; i++ {
 		var actual, expected interface{}
 
-		if len(args) <= i {
+		if len(objects) <= i {
 			actual = "(Missing)"
 		} else {
-			actual = args[i]
+			actual = objects[i]
 		}
 
-		if len(objects) <= i {
+		if len(args) <= i {
 			expected = "(Missing)"
 		} else {
-			expected = objects[i]
+			expected = args[i]
 		}
 
 		if reflect.TypeOf(expected) == reflect.TypeOf((*AnythingOfTypeArgument)(nil)).Elem() {
 
 			// type checking
-			if reflect.TypeOf(actual).Name() != string(expected.(AnythingOfTypeArgument)) {
+			if reflect.TypeOf(actual).Name() != string(expected.(AnythingOfTypeArgument)) && reflect.TypeOf(actual).String() != string(expected.(AnythingOfTypeArgument)) {
 				// not match
 				differences++
 				output = fmt.Sprintf("%s\t%d: \u274C  type %s != type %s - %s\n", output, i, expected, reflect.TypeOf(actual).Name(), actual)
@@ -396,11 +396,11 @@ func (args Arguments) Diff(objects []interface{}) (string, int) {
 
 			if assert.ObjectsAreEqual(expected, Anything) || assert.ObjectsAreEqual(actual, Anything) || assert.ObjectsAreEqual(actual, expected) {
 				// match
-				output = fmt.Sprintf("%s\t%d: \u2705  %s == %s\n", output, i, expected, actual)
+				output = fmt.Sprintf("%s\t%d: \u2705  %s == %s\n", output, i, actual, expected)
 			} else {
 				// not match
 				differences++
-				output = fmt.Sprintf("%s\t%d: \u274C  %s != %s\n", output, i, expected, actual)
+				output = fmt.Sprintf("%s\t%d: \u274C  %s != %s\n", output, i, actual, expected)
 			}
 		}
 
