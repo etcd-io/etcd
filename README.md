@@ -68,8 +68,8 @@ This will bring up etcd listening on port 4001 for client communication and on p
 Next lets set a single key and then retrieve it:
 
 ```
-curl -L http://127.0.0.1:4002/v2/keys/mykey -XPUT -d value="this is awesome"
-curl -L http://127.0.0.1:4002/v2/keys/mykey
+curl -L http://127.0.0.1:4001/v2/keys/mykey -XPUT -d value="this is awesome"
+curl -L http://127.0.0.1:4001/v2/keys/mykey
 ```
 
 You have successfully started an etcd on a single machine and written a key to the store. Now it time to dig into the full etcd API and other guides.
