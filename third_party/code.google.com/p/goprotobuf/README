@@ -2,6 +2,8 @@ Go support for Protocol Buffers - Google's data interchange format
 Copyright 2010 The Go Authors.
 http://code.google.com/p/goprotobuf/
 
+This package and the code it generates requires at least Go 1.1.
+
 This software implements Go bindings for protocol buffers.  For
 information about protocol buffers themselves, see
 	http://code.google.com/apis/protocolbuffers/
