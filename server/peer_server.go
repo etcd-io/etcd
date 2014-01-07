@@ -72,6 +72,7 @@ func NewPeerServer(name string, path string, url string, bindAddr string, tlsCon
 			Followers: make(map[string]*raftFollowerStats),
 		},
 		serverStats: &raftServerStats{
+			Name:      name,
 			StartTime: time.Now(),
 			sendRateQueue: &statsQueue{
 				back: -1,
@@ -400,6 +401,12 @@ func (s *PeerServer) joinByPeer(server raft.Server, peer string, scheme string) 
 
 func (s *PeerServer) Stats() []byte {
 	s.serverStats.LeaderInfo.Uptime = time.Now().Sub(s.serverStats.LeaderInfo.startTime).String()
+
+	// TODO: register state listener to raft to change this field
+	// rather than compare the state each time Stats() is called.
+	if s.RaftServer().State() == raft.Leader {
+		s.serverStats.LeaderInfo.Name = s.RaftServer().Name()
+	}
 
 	queue := s.serverStats.sendRateQueue
 
