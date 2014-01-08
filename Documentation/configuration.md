@@ -41,7 +41,6 @@ configuration files.
 * `-v` - Enable verbose logging. Defaults to `false`.
 * `-vv` - Enable very verbose logging. Defaults to `false`.
 * `-version` - Print the version and exit.
-* `-web-url` - The hostname:port of web interface.
 
 ## Configuration File
 
@@ -66,7 +65,6 @@ name = "default-name"
 snapshot = false
 verbose = false
 very_verbose = false
-web_url = ""
 
 [peer]
 addr = "127.0.0.1:7001"
@@ -96,7 +94,6 @@ key_file = ""
  * `ETCD_SNAPSHOT`
  * `ETCD_VERBOSE`
  * `ETCD_VERY_VERBOSE`
- * `ETCD_WEB_URL`
  * `ETCD_PEER_ADDR`
  * `ETCD_PEER_BIND_ADDR`
  * `ETCD_PEER_CA_FILE`
