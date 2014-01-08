@@ -731,10 +731,10 @@ curl -L 127.0.0.1:4001/v2/stats/self
 ```json
 {
     "leaderInfo": {
-        "leader": "etcd-node2",
+        "leader": "machine1",
         "uptime": "1m18.544996775s"
     },
-    "name": "",
+    "name": "machine0",
     "recvAppendRequestCnt": 5871307,
     "recvBandwidthRate": 630.3121596542599,
     "recvPkgRate": 19.272654323628185,
@@ -753,10 +753,10 @@ curl -L 127.0.0.1:4001/v2/stats/self
 ```
 {
     "leaderInfo": {
-        "leader": "",
+        "leader": "machine0",
         "uptime": "24.648619798s"
     },
-    "name": "",
+    "name": "machine0",
     "recvAppendRequestCnt": 5901116,
     "sendAppendRequestCnt": 3212344,
     "sendBandwidthRate": 1254.3151237301615,
