@@ -765,3 +765,33 @@ curl -L 127.0.0.1:4001/v2/stats/self
     "state": "leader"
 }
 ```
+
+### Store Statistics
+
+The store statistics include information about the operations that this node has handled.
+
+Operations that modify the store's state like create, delete, set and update are seen by the entire cluster and the number will increase on all nodes.
+Operations like get and watch are node local and will only be seen on this node.
+
+```sh
+curl -L 127.0.0.1:4001/v2/stats/store
+```
+
+```json
+{
+    "compareAndSwapFail": 0,
+    "compareAndSwapSuccess": 0,
+    "createFail": 0,
+    "createSuccess": 2,
+    "deleteFail": 0,
+    "deleteSuccess": 0,
+    "expireCount": 0,
+    "getsFail": 4,
+    "getsSuccess": 75,
+    "setsFail": 2,
+    "setsSuccess": 4,
+    "updateFail": 0,
+    "updateSuccess": 0,
+    "watchers": 0
+}
+```
