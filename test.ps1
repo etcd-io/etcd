@@ -11,4 +11,5 @@ foreach ($i in $PKG) {
 
 # Functional tests
 go test -i ./tests/functional
+$env:ETCD_BIN_PATH = "$pwd\etcd.exe"
 go test -v ./tests/functional
