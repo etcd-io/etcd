@@ -22,6 +22,8 @@ import (
 
 const retryInterval = 10
 
+const ThresholdMonitorTimeout = 5 * time.Second
+
 type PeerServer struct {
 	raftServer       raft.Server
 	server           *Server
@@ -512,6 +514,6 @@ func (s *PeerServer) monitorTimeoutThreshold(closeChan chan bool) {
 			return
 		}
 
-		time.Sleep(5 * time.Second)
+		time.Sleep(ThresholdMonitorTimeout)
 	}
 }
