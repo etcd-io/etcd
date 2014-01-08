@@ -542,9 +542,9 @@ func Test_Arguments_Diff_WithAnythingArgument_InActualToo(t *testing.T) {
 
 func Test_Arguments_Diff_WithAnythingOfTypeArgument(t *testing.T) {
 
-	var args Arguments = []interface{}{"string", 123, true}
+	var args Arguments = []interface{}{"string", AnythingOfType("int"), true}
 	var count int
-	_, count = args.Diff([]interface{}{"string", AnythingOfType("int"), true})
+	_, count = args.Diff([]interface{}{"string", 123, true})
 
 	assert.Equal(t, 0, count)
 
@@ -552,10 +552,10 @@ func Test_Arguments_Diff_WithAnythingOfTypeArgument(t *testing.T) {
 
 func Test_Arguments_Diff_WithAnythingOfTypeArgument_Failing(t *testing.T) {
 
-	var args Arguments = []interface{}{"string", 123, true}
+	var args Arguments = []interface{}{"string", AnythingOfType("string"), true}
 	var count int
 	var diff string
-	diff, count = args.Diff([]interface{}{"string", AnythingOfType("string"), true})
+	diff, count = args.Diff([]interface{}{"string", 123, true})
 
 	assert.Equal(t, 1, count)
 	assert.Contains(t, diff, `string != type int - %!s(int=123)`)

@@ -2,8 +2,7 @@ package raft
 
 // Leave command interface
 type LeaveCommand interface {
-	CommandName() string
-	Apply(server Server) (interface{}, error)
+	Command
 	NodeName() string
 }
 

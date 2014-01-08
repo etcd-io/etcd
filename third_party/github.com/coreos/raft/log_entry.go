@@ -17,11 +17,11 @@ type LogEntry struct {
 	CommandName string
 	Command     []byte
 	Position    int64 // position in the log file
-	commit      chan bool
+	event       *ev
 }
 
 // Creates a new log entry associated with a log.
-func newLogEntry(log *Log, index uint64, term uint64, command Command) (*LogEntry, error) {
+func newLogEntry(log *Log, event *ev, index uint64, term uint64, command Command) (*LogEntry, error) {
 	var buf bytes.Buffer
 	var commandName string
 	if command != nil {
@@ -41,7 +41,7 @@ func newLogEntry(log *Log, index uint64, term uint64, command Command) (*LogEntr
 		Term:        term,
 		CommandName: commandName,
 		Command:     buf.Bytes(),
-		commit:      make(chan bool, 5),
+		event:       event,
 	}
 
 	return e, nil

@@ -1,6 +1,7 @@
 package raft
 
 import (
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"strconv"
@@ -44,7 +45,10 @@ func TestServerRequestVoteDeniedForStaleTerm(t *testing.T) {
 		t.Fatalf("Server %s unable to join: %v", s.Name(), err)
 	}
 
+	s.(*server).mutex.Lock()
 	s.(*server).currentTerm = 2
+	s.(*server).mutex.Unlock()
+
 	defer s.Stop()
 	resp := s.RequestVote(newRequestVoteRequest(1, "foo", 1, 0))
 	if resp.Term != 2 || resp.VoteGranted {
@@ -64,7 +68,9 @@ func TestServerRequestVoteDeniedIfAlreadyVoted(t *testing.T) {
 		t.Fatalf("Server %s unable to join: %v", s.Name(), err)
 	}
 
+	s.(*server).mutex.Lock()
 	s.(*server).currentTerm = 2
+	s.(*server).mutex.Unlock()
 	defer s.Stop()
 	resp := s.RequestVote(newRequestVoteRequest(2, "foo", 1, 0))
 	if resp.Term != 2 || !resp.VoteGranted {
@@ -87,7 +93,9 @@ func TestServerRequestVoteApprovedIfAlreadyVotedInOlderTerm(t *testing.T) {
 
 	time.Sleep(time.Millisecond * 100)
 
+	s.(*server).mutex.Lock()
 	s.(*server).currentTerm = 2
+	s.(*server).mutex.Unlock()
 	defer s.Stop()
 	resp := s.RequestVote(newRequestVoteRequest(2, "foo", 2, 1))
 	if resp.Term != 2 || !resp.VoteGranted || s.VotedFor() != "foo" {
@@ -103,9 +111,9 @@ func TestServerRequestVoteApprovedIfAlreadyVotedInOlderTerm(t *testing.T) {
 // Ensure that a vote request is denied if the log is out of date.
 func TestServerRequestVoteDenyIfCandidateLogIsBehind(t *testing.T) {
 	tmpLog := newLog()
-	e0, _ := newLogEntry(tmpLog, 1, 1, &testCommand1{Val: "foo", I: 20})
-	e1, _ := newLogEntry(tmpLog, 2, 1, &testCommand2{X: 100})
-	e2, _ := newLogEntry(tmpLog, 3, 2, &testCommand1{Val: "bar", I: 0})
+	e0, _ := newLogEntry(tmpLog, nil, 1, 1, &testCommand1{Val: "foo", I: 20})
+	e1, _ := newLogEntry(tmpLog, nil, 2, 1, &testCommand2{X: 100})
+	e2, _ := newLogEntry(tmpLog, nil, 3, 2, &testCommand1{Val: "bar", I: 0})
 	s := newTestServerWithLog("1", &testTransporter{}, []*LogEntry{e0, e1, e2})
 
 	// start as a follower with term 2 and index 3
@@ -143,7 +151,7 @@ func TestServerRequestVoteDenyIfCandidateLogIsBehind(t *testing.T) {
 
 // // Ensure that we can self-promote a server to candidate, obtain votes and become a fearless leader.
 func TestServerPromoteSelf(t *testing.T) {
-	e0, _ := newLogEntry(newLog(), 1, 1, &testCommand1{Val: "foo", I: 20})
+	e0, _ := newLogEntry(newLog(), nil, 1, 1, &testCommand1{Val: "foo", I: 20})
 	s := newTestServerWithLog("1", &testTransporter{}, []*LogEntry{e0})
 
 	// start as a follower
@@ -196,7 +204,7 @@ func TestServerAppendEntries(t *testing.T) {
 	defer s.Stop()
 
 	// Append single entry.
-	e, _ := newLogEntry(nil, 1, 1, &testCommand1{Val: "foo", I: 10})
+	e, _ := newLogEntry(nil, nil, 1, 1, &testCommand1{Val: "foo", I: 10})
 	entries := []*LogEntry{e}
 	resp := s.AppendEntries(newAppendEntriesRequest(1, 0, 0, 0, "ldr", entries))
 	if resp.Term != 1 || !resp.Success {
@@ -207,8 +215,8 @@ func TestServerAppendEntries(t *testing.T) {
 	}
 
 	// Append multiple entries + commit the last one.
-	e1, _ := newLogEntry(nil, 2, 1, &testCommand1{Val: "bar", I: 20})
-	e2, _ := newLogEntry(nil, 3, 1, &testCommand1{Val: "baz", I: 30})
+	e1, _ := newLogEntry(nil, nil, 2, 1, &testCommand1{Val: "bar", I: 20})
+	e2, _ := newLogEntry(nil, nil, 3, 1, &testCommand1{Val: "baz", I: 30})
 	entries = []*LogEntry{e1, e2}
 	resp = s.AppendEntries(newAppendEntriesRequest(1, 1, 1, 1, "ldr", entries))
 	if resp.Term != 1 || !resp.Success {
@@ -235,10 +243,12 @@ func TestServerAppendEntriesWithStaleTermsAreRejected(t *testing.T) {
 	s.Start()
 
 	defer s.Stop()
+	s.(*server).mutex.Lock()
 	s.(*server).currentTerm = 2
+	s.(*server).mutex.Unlock()
 
 	// Append single entry.
-	e, _ := newLogEntry(nil, 1, 1, &testCommand1{Val: "foo", I: 10})
+	e, _ := newLogEntry(nil, nil, 1, 1, &testCommand1{Val: "foo", I: 10})
 	entries := []*LogEntry{e}
 	resp := s.AppendEntries(newAppendEntriesRequest(1, 0, 0, 0, "ldr", entries))
 	if resp.Term != 2 || resp.Success {
@@ -256,8 +266,8 @@ func TestServerAppendEntriesRejectedIfAlreadyCommitted(t *testing.T) {
 	defer s.Stop()
 
 	// Append single entry + commit.
-	e1, _ := newLogEntry(nil, 1, 1, &testCommand1{Val: "foo", I: 10})
-	e2, _ := newLogEntry(nil, 2, 1, &testCommand1{Val: "foo", I: 15})
+	e1, _ := newLogEntry(nil, nil, 1, 1, &testCommand1{Val: "foo", I: 10})
+	e2, _ := newLogEntry(nil, nil, 2, 1, &testCommand1{Val: "foo", I: 15})
 	entries := []*LogEntry{e1, e2}
 	resp := s.AppendEntries(newAppendEntriesRequest(1, 0, 0, 2, "ldr", entries))
 	if resp.Term != 1 || !resp.Success {
@@ -265,7 +275,7 @@ func TestServerAppendEntriesRejectedIfAlreadyCommitted(t *testing.T) {
 	}
 
 	// Append entry again (post-commit).
-	e, _ := newLogEntry(nil, 2, 1, &testCommand1{Val: "bar", I: 20})
+	e, _ := newLogEntry(nil, nil, 2, 1, &testCommand1{Val: "bar", I: 20})
 	entries = []*LogEntry{e}
 	resp = s.AppendEntries(newAppendEntriesRequest(1, 2, 1, 1, "ldr", entries))
 	if resp.Term != 1 || resp.Success {
@@ -279,9 +289,9 @@ func TestServerAppendEntriesOverwritesUncommittedEntries(t *testing.T) {
 	s.Start()
 	defer s.Stop()
 
-	entry1, _ := newLogEntry(nil, 1, 1, &testCommand1{Val: "foo", I: 10})
-	entry2, _ := newLogEntry(nil, 2, 1, &testCommand1{Val: "foo", I: 15})
-	entry3, _ := newLogEntry(nil, 2, 2, &testCommand1{Val: "bar", I: 20})
+	entry1, _ := newLogEntry(nil, nil, 1, 1, &testCommand1{Val: "foo", I: 10})
+	entry2, _ := newLogEntry(nil, nil, 2, 1, &testCommand1{Val: "foo", I: 15})
+	entry3, _ := newLogEntry(nil, nil, 2, 2, &testCommand1{Val: "bar", I: 20})
 
 	// Append single entry + commit.
 	entries := []*LogEntry{entry1, entry2}
@@ -328,13 +338,23 @@ func TestServerRecoverFromPreviousLogAndConf(t *testing.T) {
 		mutex.RLock()
 		target := servers[peer.Name]
 		mutex.RUnlock()
-		return target.RequestVote(req)
+
+		b, _ := json.Marshal(req)
+		clonedReq := &RequestVoteRequest{}
+		json.Unmarshal(b, clonedReq)
+
+		return target.RequestVote(clonedReq)
 	}
 	transporter.sendAppendEntriesRequestFunc = func(s Server, peer *Peer, req *AppendEntriesRequest) *AppendEntriesResponse {
 		mutex.RLock()
 		target := servers[peer.Name]
 		mutex.RUnlock()
-		return target.AppendEntries(req)
+
+		b, _ := json.Marshal(req)
+		clonedReq := &AppendEntriesRequest{}
+		json.Unmarshal(b, clonedReq)
+
+		return target.AppendEntries(clonedReq)
 	}
 
 	disTransporter := &testTransporter{}
@@ -359,7 +379,9 @@ func TestServerRecoverFromPreviousLogAndConf(t *testing.T) {
 	for _, name := range names {
 		s := newTestServer(name, transporter)
 
+		mutex.Lock()
 		servers[name] = s
+		mutex.Unlock()
 		paths[name] = s.Path()
 
 		if name == "1" {
@@ -474,13 +496,23 @@ func TestServerMultiNode(t *testing.T) {
 		mutex.RLock()
 		target := servers[peer.Name]
 		mutex.RUnlock()
-		return target.RequestVote(req)
+
+		b, _ := json.Marshal(req)
+		clonedReq := &RequestVoteRequest{}
+		json.Unmarshal(b, clonedReq)
+
+		return target.RequestVote(clonedReq)
 	}
 	transporter.sendAppendEntriesRequestFunc = func(s Server, peer *Peer, req *AppendEntriesRequest) *AppendEntriesResponse {
 		mutex.RLock()
 		target := servers[peer.Name]
 		mutex.RUnlock()
-		return target.AppendEntries(req)
+
+		b, _ := json.Marshal(req)
+		clonedReq := &AppendEntriesRequest{}
+		json.Unmarshal(b, clonedReq)
+
+		return target.AppendEntries(clonedReq)
 	}
 
 	disTransporter := &testTransporter{}

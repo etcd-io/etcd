@@ -5,6 +5,7 @@
 package ipv6_test
 
 import (
+	"bytes"
 	"code.google.com/p/go.net/ipv6"
 	"net"
 	"os"
@@ -64,24 +65,30 @@ func TestPacketConnReadWriteMulticastUDP(t *testing.T) {
 
 	cm := ipv6.ControlMessage{
 		TrafficClass: DiffServAF11 | CongestionExperienced,
+		Src:          net.IPv6loopback,
 		IfIndex:      ifi.Index,
 	}
-	cf := ipv6.FlagTrafficClass | ipv6.FlagHopLimit | ipv6.FlagInterface | ipv6.FlagPathMTU
+	cf := ipv6.FlagTrafficClass | ipv6.FlagHopLimit | ipv6.FlagSrc | ipv6.FlagDst | ipv6.FlagInterface | ipv6.FlagPathMTU
+	wb := []byte("HELLO-R-U-THERE")
 
 	for i, toggle := range []bool{true, false, true} {
 		if err := p.SetControlMessage(cf, toggle); err != nil {
 			t.Fatalf("ipv6.PacketConn.SetControlMessage failed: %v", err)
 		}
-		if err := p.SetDeadline(time.Now().Add(time.Millisecond * 200)); err != nil {
+		if err := p.SetDeadline(time.Now().Add(200 * time.Millisecond)); err != nil {
 			t.Fatalf("ipv6.PacketConn.SetDeadline failed: %v", err)
 		}
 		cm.HopLimit = i + 1
-		if _, err := p.WriteTo([]byte("HELLO-R-U-THERE"), &cm, dst); err != nil {
+		if n, err := p.WriteTo(wb, &cm, dst); err != nil {
 			t.Fatalf("ipv6.PacketConn.WriteTo failed: %v", err)
+		} else if n != len(wb) {
+			t.Fatalf("ipv6.PacketConn.WriteTo failed: short write: %v", n)
 		}
-		b := make([]byte, 128)
-		if _, cm, _, err := p.ReadFrom(b); err != nil {
+		rb := make([]byte, 128)
+		if n, cm, _, err := p.ReadFrom(rb); err != nil {
 			t.Fatalf("ipv6.PacketConn.ReadFrom failed: %v", err)
+		} else if !bytes.Equal(rb[:n], wb) {
+			t.Fatalf("got %v; expected %v", rb[:n], wb)
 		} else {
 			t.Logf("rcvd cmsg: %v", cm)
 		}
@@ -136,9 +143,10 @@ func TestPacketConnReadWriteMulticastICMP(t *testing.T) {
 
 	cm := ipv6.ControlMessage{
 		TrafficClass: DiffServAF11 | CongestionExperienced,
+		Src:          net.IPv6loopback,
 		IfIndex:      ifi.Index,
 	}
-	cf := ipv6.FlagTrafficClass | ipv6.FlagHopLimit | ipv6.FlagInterface | ipv6.FlagPathMTU
+	cf := ipv6.FlagTrafficClass | ipv6.FlagHopLimit | ipv6.FlagSrc | ipv6.FlagDst | ipv6.FlagInterface | ipv6.FlagPathMTU
 
 	var f ipv6.ICMPFilter
 	f.SetAll(true)
@@ -173,19 +181,21 @@ func TestPacketConnReadWriteMulticastICMP(t *testing.T) {
 		if err := p.SetControlMessage(cf, toggle); err != nil {
 			t.Fatalf("ipv6.PacketConn.SetControlMessage failed: %v", err)
 		}
-		if err := p.SetDeadline(time.Now().Add(time.Millisecond * 200)); err != nil {
+		if err := p.SetDeadline(time.Now().Add(200 * time.Millisecond)); err != nil {
 			t.Fatalf("ipv6.PacketConn.SetDeadline failed: %v", err)
 		}
 		cm.HopLimit = i + 1
-		if _, err := p.WriteTo(wb, &cm, dst); err != nil {
+		if n, err := p.WriteTo(wb, &cm, dst); err != nil {
 			t.Fatalf("ipv6.PacketConn.WriteTo failed: %v", err)
+		} else if n != len(wb) {
+			t.Fatalf("ipv6.PacketConn.WriteTo failed: short write: %v", n)
 		}
-		b := make([]byte, 128)
-		if n, cm, _, err := p.ReadFrom(b); err != nil {
+		rb := make([]byte, 128)
+		if n, cm, _, err := p.ReadFrom(rb); err != nil {
 			t.Fatalf("ipv6.PacketConn.ReadFrom failed: %v", err)
 		} else {
 			t.Logf("rcvd cmsg: %v", cm)
-			if m, err := parseICMPMessage(b[:n]); err != nil {
+			if m, err := parseICMPMessage(rb[:n]); err != nil {
 				t.Fatalf("parseICMPMessage failed: %v", err)
 			} else if m.Type != ipv6.ICMPTypeEchoReply || m.Code != 0 {
 				t.Fatalf("got type=%v, code=%v; expected type=%v, code=%v", m.Type, m.Code, ipv6.ICMPTypeEchoReply, 0)

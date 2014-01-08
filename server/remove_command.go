@@ -23,7 +23,9 @@ func (c *RemoveCommand) CommandName() string {
 }
 
 // Remove a server from the cluster
-func (c *RemoveCommand) Apply(server raft.Server) (interface{}, error) {
+func (c *RemoveCommand) Apply(cxt raft.Context) (interface{}, error) {
+	server := cxt.Server()
+
 	ps, _ := server.Context().(*PeerServer)
 
 	// Remove node from the shared registry.
@@ -51,7 +53,7 @@ func (c *RemoveCommand) Apply(server raft.Server) (interface{}, error) {
 		// and the node has sent out a join request in this
 		// start. It is sure that this node received a new remove
 		// command and need to be removed
-		if server.CommitIndex() > ps.joinIndex && ps.joinIndex != 0 {
+		if cxt.CommitIndex() > ps.joinIndex && ps.joinIndex != 0 {
 			log.Debugf("server [%s] is removed", server.Name())
 			os.Exit(0)
 		} else {
@@ -61,7 +63,7 @@ func (c *RemoveCommand) Apply(server raft.Server) (interface{}, error) {
 	}
 
 	b := make([]byte, 8)
-	binary.PutUvarint(b, server.CommitIndex())
+	binary.PutUvarint(b, cxt.CommitIndex())
 
 	return b, err
 }

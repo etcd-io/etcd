@@ -1,6 +1,7 @@
 package toml
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"reflect"
@@ -61,6 +62,53 @@ func TestDecode(t *testing.T) {
 	testf("Type of 'colors'? %s\n\n", md.Type("colors"))
 
 	testf("%v\n", val)
+}
+
+func TestDecodeEmbedded(t *testing.T) {
+	type Dog struct{ Name string }
+
+	tests := map[string]struct {
+		input       string
+		decodeInto  interface{}
+		wantDecoded interface{}
+	}{
+		"embedded struct": {
+			input:       `Name = "milton"`,
+			decodeInto:  &struct{ Dog }{},
+			wantDecoded: &struct{ Dog }{Dog{"milton"}},
+		},
+		"embedded non-nil pointer to struct": {
+			input:       `Name = "milton"`,
+			decodeInto:  &struct{ *Dog }{},
+			wantDecoded: &struct{ *Dog }{&Dog{"milton"}},
+		},
+		"embedded nil pointer to struct": {
+			input:       ``,
+			decodeInto:  &struct{ *Dog }{},
+			wantDecoded: &struct{ *Dog }{nil},
+		},
+	}
+
+	for label, test := range tests {
+		_, err := Decode(test.input, test.decodeInto)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		want, got := jsonstr(test.wantDecoded), jsonstr(test.decodeInto)
+		if want != got {
+			t.Errorf("%s: want decoded == %+v, got %+v", label, want, got)
+		}
+	}
+}
+
+// jsonstr allows comparison of deeply nested structs with pointer members.
+func jsonstr(o interface{}) string {
+	s, err := json.MarshalIndent(o, "", "  ")
+	if err != nil {
+		panic(err.Error())
+	}
+	return string(s)
 }
 
 var tomlTableArrays = `
@@ -124,8 +172,6 @@ tOpdate = 2006-01-02T15:04:05Z
 tOparray = [ "array" ]
 Match = "i should be in Match only"
 MatcH = "i should be in MatcH only"
-Field = "neat"
-FielD = "messy"
 once = "just once"
 [nEst.eD]
 nEstedString = "another string"
@@ -140,7 +186,6 @@ type Insensitive struct {
 	TopArray  []string
 	Match     string
 	MatcH     string
-	Field     string
 	Once      string
 	OncE      string
 	Nest      InsensitiveNest
@@ -168,9 +213,8 @@ func TestCase(t *testing.T) {
 		TopArray:  []string{"array"},
 		MatcH:     "i should be in MatcH only",
 		Match:     "i should be in Match only",
-		Field:     "neat", // encoding/json would store "messy" here
 		Once:      "just once",
-		OncE:      "just once", // wait, what?
+		OncE:      "",
 		Nest: InsensitiveNest{
 			Ed: InsensitiveEd{NestedString: "another string"},
 		},
@@ -335,9 +379,50 @@ ip = "10.0.0.2"
 		fmt.Printf("Ports: %v\n", s.Config.Ports)
 	}
 
-	// // Output:
+	// Output:
 	// Server: alpha (ip: 10.0.0.1) in Toronto created on 1987-07-05
 	// Ports: [8001 8002]
 	// Server: beta (ip: 10.0.0.2) in New Jersey created on 1887-01-05
 	// Ports: [9001 9002]
+}
+
+type duration struct {
+	time.Duration
+}
+
+func (d *duration) UnmarshalText(text []byte) error {
+	var err error
+	d.Duration, err = time.ParseDuration(string(text))
+	return err
+}
+
+// Example Unmarshaler blah blah.
+func ExampleUnmarshaler() {
+	blob := `
+[[song]]
+name = "Thunder Road"
+duration = "4m49s"
+
+[[song]]
+name = "Stairway to Heaven"
+duration = "8m03s"
+`
+	type song struct {
+		Name     string
+		Duration duration
+	}
+	type songs struct {
+		Song []song
+	}
+	var favorites songs
+	if _, err := Decode(blob, &favorites); err != nil {
+		log.Fatal(err)
+	}
+
+	for _, s := range favorites.Song {
+		fmt.Printf("%s (%s)\n", s.Name, s.Duration)
+	}
+	// Output:
+	// Thunder Road (4m49s)
+	// Stairway to Heaven (8m3s)
 }

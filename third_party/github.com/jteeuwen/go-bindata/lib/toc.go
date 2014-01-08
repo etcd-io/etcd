@@ -21,7 +21,8 @@ func CreateTOC(dir, pkgname string) error {
 // After startup of the program, all generated data files will
 // put themselves in this map. The key is the full filename, as
 // supplied to go-bindata.
-var go_bindata = make(map[string]func() []byte)`, pkgname)
+var go_bindata = make(map[string]func() []byte)
+`, pkgname)
 
 	return ioutil.WriteFile(file, []byte(code), 0600)
 }
@@ -31,7 +32,6 @@ var go_bindata = make(map[string]func() []byte)`, pkgname)
 func WriteTOCInit(output io.Writer, filename, prefix, funcname string) {
 	filename = strings.Replace(filename, prefix, "", 1)
 	fmt.Fprintf(output, `
-
 func init() {
 	go_bindata[%q] = %s
 }

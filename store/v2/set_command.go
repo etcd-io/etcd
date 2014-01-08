@@ -26,7 +26,9 @@ func (c *SetCommand) CommandName() string {
 }
 
 // Create node
-func (c *SetCommand) Apply(server raft.Server) (interface{}, error) {
+func (c *SetCommand) Apply(cxt raft.Context) (interface{}, error) {
+	server := cxt.Server()
+
 	s, _ := server.StateMachine().(store.Store)
 
 	// create a new node or replace the old node.

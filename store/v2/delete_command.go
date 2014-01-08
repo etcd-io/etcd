@@ -23,7 +23,9 @@ func (c *DeleteCommand) CommandName() string {
 }
 
 // Delete the key
-func (c *DeleteCommand) Apply(server raft.Server) (interface{}, error) {
+func (c *DeleteCommand) Apply(cxt raft.Context) (interface{}, error) {
+	server := cxt.Server()
+
 	s, _ := server.StateMachine().(store.Store)
 
 	if c.Recursive {

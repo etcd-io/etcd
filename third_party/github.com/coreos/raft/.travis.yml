@@ -1,8 +1,10 @@
 language: go
 
 go:
-  - 1.1
+  - 1.1.2
+  - 1.2
 
 install:
+  - go get github.com/stretchr/testify/assert
   - make dependencies
 

@@ -159,6 +159,8 @@ func (p *parser) value(it item) (interface{}, tomlType) {
 	case itemInteger:
 		num, err := strconv.ParseInt(it.val, 10, 64)
 		if err != nil {
+			// See comment below for floats describing why we make a
+			// distinction between a bug and a user error.
 			if e, ok := err.(*strconv.NumError); ok &&
 				e.Err == strconv.ErrRange {
 
@@ -172,6 +174,13 @@ func (p *parser) value(it item) (interface{}, tomlType) {
 	case itemFloat:
 		num, err := strconv.ParseFloat(it.val, 64)
 		if err != nil {
+			// Distinguish float values. Normally, it'd be a bug if the lexer
+			// provides an invalid float, but it's possible that the float is
+			// out of range of valid values (which the lexer cannot determine).
+			// So mark the former as a bug but the latter as a legitimate user
+			// error.
+			//
+			// This is also true for integers.
 			if e, ok := err.(*strconv.NumError); ok &&
 				e.Err == strconv.ErrRange {
 
@@ -209,7 +218,8 @@ func (p *parser) value(it item) (interface{}, tomlType) {
 }
 
 // establishContext sets the current context of the parser,
-// where the context is the hash currently in scope.
+// where the context is either a hash or an array of hashes. Which one is
+// set depends on the value of the `array` parameter.
 //
 // Establishing the context also makes sure that the key isn't a duplicate, and
 // will create implicit hashes automatically.
@@ -248,10 +258,15 @@ func (p *parser) establishContext(key Key, array bool) {
 
 	p.context = keyContext
 	if array {
+		// If this is the first element for this array, then allocate a new
+		// list of tables for it.
 		k := key[len(key)-1]
 		if _, ok := hashContext[k]; !ok {
 			hashContext[k] = make([]map[string]interface{}, 0, 5)
 		}
+
+		// Add a new table. But make sure the key hasn't already been used
+		// for something else.
 		if hash, ok := hashContext[k].([]map[string]interface{}); ok {
 			hashContext[k] = append(hash, make(map[string]interface{}))
 		} else {
@@ -280,6 +295,8 @@ func (p *parser) setValue(key string, value interface{}) {
 		}
 		switch t := tmpHash.(type) {
 		case []map[string]interface{}:
+			// The context is a table of hashes. Pick the most recent table
+			// defined as the current hash.
 			hash = t[len(t)-1]
 		case map[string]interface{}:
 			hash = t
@@ -291,9 +308,17 @@ func (p *parser) setValue(key string, value interface{}) {
 	keyContext = append(keyContext, key)
 
 	if _, ok := hash[key]; ok {
-		// We need to do some fancy footwork here. If `hash[key]` was implcitly
-		// created AND `value` is a hash, then let this go through and stop
-		// tagging this table as implicit.
+		// Typically, if the given key has already been set, then we have
+		// to raise an error since duplicate keys are disallowed. However,
+		// it's possible that a key was previously defined implicitly. In this
+		// case, it is allowed to be redefined concretely. (See the
+		// `tests/valid/implicit-and-explicit-after.toml` test in `toml-test`.)
+		//
+		// But we have to make sure to stop marking it as an implicit. (So that
+		// another redefinition provokes an error.)
+		//
+		// Note that since it has already been defined (as a hash), we don't
+		// want to overwrite it. So our business is done.
 		if p.isImplicit(keyContext) {
 			p.removeImplicit(keyContext)
 			return
@@ -308,6 +333,9 @@ func (p *parser) setValue(key string, value interface{}) {
 
 // setType sets the type of a particular value at a given key.
 // It should be called immediately AFTER setValue.
+//
+// Note that if `key` is empty, then the type given will be applied to the
+// current context (which is either a table or an array of tables).
 func (p *parser) setType(key string, typ tomlType) {
 	keyContext := make(Key, 0, len(p.context)+1)
 	for _, k := range p.context {
@@ -377,9 +405,10 @@ func (p *parser) asciiEscapeToUnicode(s string) string {
 			"lexer claims it's OK: %s", s, err)
 	}
 
-	// I honestly don't understand how this works. I can't seem to find
-	// a way to make this fail. I figured this would fail on invalid UTF-8
-	// characters like U+DCFF, but it doesn't.
+	// BUG(burntsushi)
+	// I honestly don't understand how this works. I can't seem
+	// to find a way to make this fail. I figured this would fail on invalid
+	// UTF-8 characters like U+DCFF, but it doesn't.
 	r := string(rune(hex))
 	if !utf8.ValidString(r) {
 		p.panic("Escaped character '\\u%s' is not valid UTF-8.", s)

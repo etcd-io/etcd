@@ -62,7 +62,8 @@ func %s() []byte {
 	gz.Close()
 
 	return b.Bytes()
-}`)
+}
+`)
 }
 
 // input -> gzip -> gowriter -> output.
@@ -77,7 +78,8 @@ func %s() []byte {
 
 	fmt.Fprint(output, `
 	}
-}`)
+}
+`)
 }
 
 // input -> gzip -> gowriter -> output.

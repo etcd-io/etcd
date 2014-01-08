@@ -9,7 +9,7 @@ func TestAddChild(t *testing.T) {
 		c.Delete("nonexistentDir", true)
 	}()
 
-	c.SetDir("fooDir", 5)
+	c.CreateDir("fooDir", 5)
 
 	_, err := c.AddChild("fooDir", "v0", 5)
 	if err != nil {
@@ -44,7 +44,7 @@ func TestAddChildDir(t *testing.T) {
 		c.Delete("nonexistentDir", true)
 	}()
 
-	c.SetDir("fooDir", 5)
+	c.CreateDir("fooDir", 5)
 
 	_, err := c.AddChildDir("fooDir", 5)
 	if err != nil {
