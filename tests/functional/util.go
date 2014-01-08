@@ -134,7 +134,7 @@ func DestroyCluster(etcds []*os.Process) error {
 //
 func Monitor(size int, allowDeadNum int, leaderChan chan string, all chan bool, stop chan bool) {
 	leaderMap := make(map[int]string)
-	baseAddrFormat := "http://0.0.0.0:400%d"
+	baseAddrFormat := "http://127.0.0.1:400%d"
 
 	for {
 		knownLeader := "unknown"
