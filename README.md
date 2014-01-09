@@ -47,7 +47,7 @@ cd etcd
 ./build
 ```
 
-This will generate a binary in the base directory called `./etcd`.
+This will generate a binary called `./bin/etcd`.
 
 _NOTE_: you need go 1.1+. Please check your installation with
 
@@ -60,7 +60,7 @@ go version
 First start a single machine cluster of etcd:
 
 ```sh
-./etcd
+./bin/etcd
 ```
 
 This will bring up etcd listening on port 4001 for client communication and on port 7001 for server-to-server communication.

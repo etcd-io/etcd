@@ -1,27 +1,15 @@
-#!/bin/sh
-set -e
+#!/bin/sh -e
+go run third_party.go test -i ./store
+go run third_party.go test -v ./store
 
-if [ -z "$PKG" ]; then
-    PKG="./store ./server ./server/v2/tests ./mod/lock/v2/tests"
-fi
+go run third_party.go test -i ./server
+go run third_party.go test -v ./server
 
-if [ -z "$RUN" ]; then
-    RUN="."
-fi
+go run third_party.go test -i ./server/v2/tests
+go run third_party.go test -v ./server/v2/tests
 
-# Get GOPATH, etc from build
-. ./build
+go run third_party.go test -i ./mod/lock/v2/tests
+go run third_party.go test -v ./mod/lock/v2/tests
 
-# use right GOPATH
-export GOPATH="${PWD}"
-
-# Unit tests
-for i in $PKG
-do
-    go test -i $i
-    go test -v -test.run=$RUN $i
-done
-
-# Functional tests
-go test -i ./tests/functional
-ETCD_BIN_PATH=$(pwd)/etcd go test -v  -test.run=$RUN ./tests/functional
+go run third_party.go test -i ./tests/functional
+ETCD_BIN_PATH=$(pwd)/bin/etcd go run third_party.go test -v ./tests/functional
