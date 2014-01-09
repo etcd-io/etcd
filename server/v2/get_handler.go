@@ -80,7 +80,14 @@ func handleWatch(key string, recursive, stream bool, waitIndex string, w http.Re
 			case <-closeChan:
 				chunkWriter.Close()
 				return nil
-			case event := <-watcher.EventChan:
+			case event, ok := <-watcher.EventChan:
+				if !ok {
+					// If the channel is closed this may be an indication of
+					// that notifications are much more than we are able to
+					// send to the client in time. Then we simply end streaming.
+					return nil
+				}
+
 				b, _ := json.Marshal(event)
 				_, err := chunkWriter.Write(b)
 				if err != nil {

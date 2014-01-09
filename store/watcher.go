@@ -44,17 +44,15 @@ func (w *Watcher) notify(e *Event, originalPath bool, deleted bool) bool {
 	// For example a watcher is watching at "/foo/bar". And we deletes "/foo". The watcher
 	// should get notified even if "/foo" is not the path it is watching.
 	if (w.recursive || originalPath || deleted) && e.Index() >= w.sinceIndex {
+		// We cannot block here if the EventChan capacity is full, otherwise
+		// etcd will hang. EventChan capacity is full when the rate of
+		// notifications are higher than our send rate.
+		// If this happens, we close the channel.
 		select {
 		case w.EventChan <- e:
-
-		// the stream watcher might be slow
-		// but we cannot block here. blocking will lead the whole etcd system to hang.
-		// create a go-routine to handle the blocking case
 		default:
-			go func() {
-				// TODO add a warning here should be helpful
-				w.EventChan <- e
-			}()
+			// We have missed a notification. Close the channel to indicate this situation.
+			close(w.EventChan)
 		}
 		return true
 	}
