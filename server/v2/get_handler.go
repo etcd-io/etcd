@@ -55,7 +55,7 @@ func GetHandler(w http.ResponseWriter, req *http.Request, s Server) error {
 		}
 
 		// Start the watcher on the store.
-		eventChan, err := s.Store().Watch(key, recursive, sinceIndex)
+		watcher, err := s.Store().Watch(key, recursive, sinceIndex)
 		if err != nil {
 			return err
 		}
@@ -65,8 +65,9 @@ func GetHandler(w http.ResponseWriter, req *http.Request, s Server) error {
 
 		select {
 		case <-closeChan:
+			watcher.Remove()
 			return nil
-		case event = <-eventChan:
+		case event = <-watcher.EventChan:
 		}
 
 	} else { //get

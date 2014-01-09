@@ -16,15 +16,16 @@ limitations under the License.
 
 package store
 
-type watcher struct {
-	eventChan  chan *Event
+type Watcher struct {
+	EventChan  chan *Event
 	recursive  bool
 	sinceIndex uint64
+	remove     func()
 }
 
 // notify function notifies the watcher. If the watcher interests in the given path,
 // the function will return true.
-func (w *watcher) notify(e *Event, originalPath bool, deleted bool) bool {
+func (w *Watcher) notify(e *Event, originalPath bool, deleted bool) bool {
 	// watcher is interested the path in three cases and under one condition
 	// the condition is that the event happens after the watcher's sinceIndex
 
@@ -41,8 +42,19 @@ func (w *watcher) notify(e *Event, originalPath bool, deleted bool) bool {
 	// For example a watcher is watching at "/foo/bar". And we deletes "/foo". The watcher
 	// should get notified even if "/foo" is not the path it is watching.
 	if (w.recursive || originalPath || deleted) && e.Index() >= w.sinceIndex {
-		w.eventChan <- e
+		w.EventChan <- e
 		return true
 	}
 	return false
+}
+
+// Remove removes the watcher from watcherHub
+func (w *Watcher) Remove() {
+	if w.remove != nil {
+		w.remove()
+	} else {
+		// We attached a remove function to watcher
+		// Other pkg cannot change it, so this should not happen
+		panic("missing Watcher remove function")
+	}
 }
