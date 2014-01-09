@@ -26,7 +26,7 @@ configuration files.
 * `-cert-file` - The cert file of the client.
 * `-key-file` - The key file of the client.
 * `-config` - The path of the etcd config file. Defaults to `/etc/etcd/etcd.conf`.
-* `-cors-origins` - A comma separated white list of origins for cross-origin resource sharing.
+* `-cors` - A comma separated white list of origins for cross-origin resource sharing.
 * `-cpuprofile` - The path to a file to output cpu profile data. Enables cpu profiling when present.
 * `-data-dir` - The directory to store log and snapshot. Defaults to the current working directory.
 * `-max-result-buffer` - The max size of result buffer. Defaults to `1024`.
@@ -52,7 +52,7 @@ addr = "127.0.0.1:4001"
 bind_addr = "127.0.0.1:4001"
 ca_file = ""
 cert_file = ""
-cors_origins = []
+cors = []
 cpu_profile_file = ""
 data_dir = "."
 key_file = ""
