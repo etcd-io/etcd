@@ -53,7 +53,7 @@ type Store interface {
 	Delete(nodePath string, recursive, dir bool) (*Event, error)
 	CompareAndDelete(nodePath string, prevValue string, prevIndex uint64) (*Event, error)
 
-	NewWatcher(prefix string, recursive bool, sinceIndex uint64) (*Watcher, error)
+	Watch(prefix string, recursive bool, sinceIndex uint64) (*Watcher, error)
 
 	Save() ([]byte, error)
 	Recovery(state []byte) error
@@ -341,7 +341,7 @@ func (s *store) CompareAndDelete(nodePath string, prevValue string, prevIndex ui
 	return e, nil
 }
 
-func (s *store) NewWatcher(key string, recursive bool, sinceIndex uint64) (*Watcher, error) {
+func (s *store) Watch(key string, recursive bool, sinceIndex uint64) (*Watcher, error) {
 	key = path.Clean(path.Join("/", key))
 	nextIndex := s.CurrentIndex + 1
 
@@ -352,10 +352,10 @@ func (s *store) NewWatcher(key string, recursive bool, sinceIndex uint64) (*Watc
 	var err *etcdErr.Error
 
 	if sinceIndex == 0 {
-		w, err = s.WatcherHub.newWatcher(key, recursive, nextIndex)
+		w, err = s.WatcherHub.watch(key, recursive, nextIndex)
 
 	} else {
-		w, err = s.WatcherHub.newWatcher(key, recursive, sinceIndex)
+		w, err = s.WatcherHub.watch(key, recursive, sinceIndex)
 	}
 
 	if err != nil {

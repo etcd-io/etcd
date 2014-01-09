@@ -20,7 +20,7 @@ type Watcher struct {
 	EventChan  chan *Event
 	recursive  bool
 	sinceIndex uint64
-	Remove     func()
+	remove     func()
 }
 
 // notify function notifies the watcher. If the watcher interests in the given path,
@@ -46,4 +46,15 @@ func (w *Watcher) notify(e *Event, originalPath bool, deleted bool) bool {
 		return true
 	}
 	return false
+}
+
+// Remove removes the watcher from watcherHub
+func (w *Watcher) Remove() {
+	if w.remove != nil {
+		w.remove()
+	} else {
+		// We attached a remove function to watcher
+		// Other pkg cannot change it, so this should not happen
+		panic("missing Watcher remove function")
+	}
 }

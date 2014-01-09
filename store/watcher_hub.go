@@ -34,11 +34,11 @@ func newWatchHub(capacity int) *watcherHub {
 	}
 }
 
-// newWatcher function returns a watcher.
+// Watch function returns a watcher.
 // If recursive is true, the first change after index under key will be sent to the event channel of the watcher.
 // If recursive is false, the first change after index at key will be sent to the event channel of the watcher.
 // If index is zero, watch will start from the current index + 1.
-func (wh *watcherHub) newWatcher(key string, recursive bool, index uint64) (*Watcher, *etcdErr.Error) {
+func (wh *watcherHub) watch(key string, recursive bool, index uint64) (*Watcher, *etcdErr.Error) {
 	event, err := wh.EventHistory.scan(key, recursive, index)
 
 	if err != nil {
@@ -72,7 +72,7 @@ func (wh *watcherHub) newWatcher(key string, recursive bool, index uint64) (*Wat
 		wh.watchers[key] = l
 	}
 
-	w.Remove = func() {
+	w.remove = func() {
 		wh.mutex.Lock()
 		defer wh.mutex.Unlock()
 		l.Remove(elem)
