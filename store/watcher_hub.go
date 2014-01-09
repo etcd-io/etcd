@@ -38,7 +38,7 @@ func newWatchHub(capacity int) *watcherHub {
 // If recursive is true, the first change after index under key will be sent to the event channel of the watcher.
 // If recursive is false, the first change after index at key will be sent to the event channel of the watcher.
 // If index is zero, watch will start from the current index + 1.
-func (wh *watcherHub) watch(key string, recursive bool, index uint64) (*Watcher, *etcdErr.Error) {
+func (wh *watcherHub) watch(key string, recursive, stream bool, index uint64) (*Watcher, *etcdErr.Error) {
 	event, err := wh.EventHistory.scan(key, recursive, index)
 
 	if err != nil {
@@ -48,6 +48,7 @@ func (wh *watcherHub) watch(key string, recursive bool, index uint64) (*Watcher,
 	w := &Watcher{
 		EventChan:  make(chan *Event, 1), // use a buffered channel
 		recursive:  recursive,
+		stream:     stream,
 		sinceIndex: index,
 	}
 
@@ -73,12 +74,28 @@ func (wh *watcherHub) watch(key string, recursive bool, index uint64) (*Watcher,
 	}
 
 	w.remove = func() {
+		if w.removed { // avoid remove it twice
+			return
+		}
+
 		wh.mutex.Lock()
 		defer wh.mutex.Unlock()
+
+		w.removed = true
 		l.Remove(elem)
 		atomic.AddInt64(&wh.count, -1)
 		if l.Len() == 0 {
 			delete(wh.watchers, key)
+		}
+
+		// consume all items in the channel
+		// unblock all the waiting go routines created by watchHub
+		for {
+			select {
+			case <-w.EventChan:
+			default:
+				break
+			}
 		}
 	}
 
@@ -120,11 +137,13 @@ func (wh *watcherHub) notifyWatchers(e *Event, path string, deleted bool) {
 			w, _ := curr.Value.(*Watcher)
 
 			if w.notify(e, e.Node.Key == path, deleted) {
-				// if we successfully notify a watcher
-				// we need to remove the watcher from the list
-				// and decrease the counter
-				l.Remove(curr)
-				atomic.AddInt64(&wh.count, -1)
+				if !w.stream { // do not remove the stream watcher
+					// if we successfully notify a watcher
+					// we need to remove the watcher from the list
+					// and decrease the counter
+					l.Remove(curr)
+					atomic.AddInt64(&wh.count, -1)
+				}
 			}
 
 			curr = next // update current to the next element in the list

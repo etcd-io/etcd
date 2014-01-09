@@ -18,8 +18,10 @@ package store
 
 type Watcher struct {
 	EventChan  chan *Event
+	stream     bool
 	recursive  bool
 	sinceIndex uint64
+	removed    bool
 	remove     func()
 }
 
@@ -42,13 +44,25 @@ func (w *Watcher) notify(e *Event, originalPath bool, deleted bool) bool {
 	// For example a watcher is watching at "/foo/bar". And we deletes "/foo". The watcher
 	// should get notified even if "/foo" is not the path it is watching.
 	if (w.recursive || originalPath || deleted) && e.Index() >= w.sinceIndex {
-		w.EventChan <- e
+		select {
+		case w.EventChan <- e:
+
+		// the stream watcher might be slow
+		// but we cannot block here. blocking will lead the whole etcd system to hang.
+		// create a go-routine to handle the blocking case
+		default:
+			go func() {
+				// TODO add a warning here should be helpful
+				w.EventChan <- e
+			}()
+		}
 		return true
 	}
 	return false
 }
 
 // Remove removes the watcher from watcherHub
+// The actual remove function is guaranteed to only be executed once
 func (w *Watcher) Remove() {
 	if w.remove != nil {
 		w.remove()
