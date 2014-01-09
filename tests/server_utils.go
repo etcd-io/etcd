@@ -49,7 +49,7 @@ func RunServer(f func(*server.Server)) {
 	<-c
 
 	// Wait to make sure servers have started.
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(1000 * time.Millisecond)
 
 	// Execute the function passed in.
 	f(s)
