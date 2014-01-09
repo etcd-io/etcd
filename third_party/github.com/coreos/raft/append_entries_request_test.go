@@ -28,7 +28,7 @@ func createTestAppendEntriesRequest(entryCount int) (*AppendEntriesRequest, []by
 	entries := make([]*LogEntry, 0)
 	for i := 0; i < entryCount; i++ {
 		command := &DefaultJoinCommand{Name: "localhost:1000"}
-		entry, _ := newLogEntry(nil, 1, 2, command)
+		entry, _ := newLogEntry(nil, nil, 1, 2, command)
 		entries = append(entries, entry)
 	}
 	req := newAppendEntriesRequest(1, 1, 1, 1, "leader", entries)

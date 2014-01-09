@@ -734,7 +734,6 @@ func (z *Tokenizer) readCDATA() bool {
 			brackets = 0
 		}
 	}
-	panic("unreachable")
 }
 
 // startTagIn returns whether the start tag in z.buf[z.data.start:z.data.end]
@@ -934,13 +933,13 @@ func (z *Tokenizer) readTagAttrVal() {
 
 // Next scans the next token and returns its type.
 func (z *Tokenizer) Next() TokenType {
+	z.raw.start = z.raw.end
+	z.data.start = z.raw.end
+	z.data.end = z.raw.end
 	if z.err != nil {
 		z.tt = ErrorToken
 		return z.tt
 	}
-	z.raw.start = z.raw.end
-	z.data.start = z.raw.end
-	z.data.end = z.raw.end
 	if z.rawTag != "" {
 		if z.rawTag == "plaintext" {
 			// Read everything up to EOF.
@@ -1010,12 +1009,11 @@ loop:
 				break loop
 			}
 			if c == '>' {
-				// "</>" does not generate a token at all.
+				// "</>" does not generate a token at all. Generate an empty comment
+				// to allow passthrough clients to pick up the data using Raw.
 				// Reset the tokenizer state and start again.
-				z.raw.start = z.raw.end
-				z.data.start = z.raw.end
-				z.data.end = z.raw.end
-				continue loop
+				z.tt = CommentToken
+				return z.tt
 			}
 			if 'a' <= c && c <= 'z' || 'A' <= c && c <= 'Z' {
 				z.readTag(false)

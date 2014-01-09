@@ -20,8 +20,8 @@ func (c SyncCommand) CommandName() string {
 	return "etcd:sync"
 }
 
-func (c SyncCommand) Apply(server raft.Server) (interface{}, error) {
-	s, _ := server.StateMachine().(store.Store)
+func (c SyncCommand) Apply(context raft.Context) (interface{}, error) {
+	s, _ := context.Server().StateMachine().(store.Store)
 	s.DeleteExpiredKeys(c.Time)
 
 	return nil, nil

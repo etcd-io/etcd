@@ -43,7 +43,6 @@ func main() {
 }
 
 func translate(tomlData interface{}) interface{} {
-
 	switch orig := tomlData.(type) {
 	case map[string]interface{}:
 		typed := make(map[string]interface{}, len(orig))

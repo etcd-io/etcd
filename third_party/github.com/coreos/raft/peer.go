@@ -126,6 +126,8 @@ func (p *Peer) heartbeat(c chan bool) {
 
 	c <- true
 
+	ticker := time.Tick(p.heartbeatTimeout)
+
 	debugln("peer.heartbeat: ", p.Name, p.heartbeatTimeout)
 
 	for {
@@ -142,7 +144,7 @@ func (p *Peer) heartbeat(c chan bool) {
 				return
 			}
 
-		case <-time.After(p.heartbeatTimeout):
+		case <-ticker:
 			p.flush()
 		}
 	}
@@ -174,6 +176,7 @@ func (p *Peer) sendAppendEntriesRequest(req *AppendEntriesRequest) {
 
 	resp := p.server.Transporter().SendAppendEntriesRequest(p.server, p, req)
 	if resp == nil {
+		p.server.DispatchEvent(newEvent(HeartbeatTimeoutEventType, p, nil))
 		debugln("peer.flush.timeout: ", p.server.Name(), "->", p.Name)
 		return
 	}

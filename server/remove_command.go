@@ -23,8 +23,8 @@ func (c *RemoveCommand) CommandName() string {
 }
 
 // Remove a server from the cluster
-func (c *RemoveCommand) Apply(server raft.Server) (interface{}, error) {
-	ps, _ := server.Context().(*PeerServer)
+func (c *RemoveCommand) Apply(context raft.Context) (interface{}, error) {
+	ps, _ := context.Server().Context().(*PeerServer)
 
 	// Remove node from the shared registry.
 	err := ps.registry.Unregister(c.Name)
@@ -38,21 +38,21 @@ func (c *RemoveCommand) Apply(server raft.Server) (interface{}, error) {
 	}
 
 	// Remove peer in raft
-	err = server.RemovePeer(c.Name)
+	err = context.Server().RemovePeer(c.Name)
 	if err != nil {
 		log.Debugf("Unable to remove peer: %s (%v)", c.Name, err)
 		return []byte{0}, err
 	}
 
-	if c.Name == server.Name() {
+	if c.Name == context.Server().Name() {
 		// the removed node is this node
 
 		// if the node is not replaying the previous logs
 		// and the node has sent out a join request in this
 		// start. It is sure that this node received a new remove
 		// command and need to be removed
-		if server.CommitIndex() > ps.joinIndex && ps.joinIndex != 0 {
-			log.Debugf("server [%s] is removed", server.Name())
+		if context.CommitIndex() > ps.joinIndex && ps.joinIndex != 0 {
+			log.Debugf("server [%s] is removed", context.Server().Name())
 			os.Exit(0)
 		} else {
 			// else ignore remove
@@ -61,7 +61,7 @@ func (c *RemoveCommand) Apply(server raft.Server) (interface{}, error) {
 	}
 
 	b := make([]byte, 8)
-	binary.PutUvarint(b, server.CommitIndex())
+	binary.PutUvarint(b, context.CommitIndex())
 
 	return b, err
 }

@@ -8,6 +8,7 @@ dependencies:
 	go get -d .
 
 test:
+	go test -i ./...
 	go test -v ./...
 
 .PHONY: coverage dependencies test

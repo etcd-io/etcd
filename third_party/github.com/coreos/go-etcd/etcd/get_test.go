@@ -35,7 +35,7 @@ func TestGetAll(t *testing.T) {
 		c.Delete("fooDir", true)
 	}()
 
-	c.SetDir("fooDir", 5)
+	c.CreateDir("fooDir", 5)
 	c.Set("fooDir/k0", "v0", 5)
 	c.Set("fooDir/k1", "v1", 5)
 
@@ -73,7 +73,7 @@ func TestGetAll(t *testing.T) {
 	}
 
 	// Test the `recursive` option
-	c.SetDir("fooDir/childDir", 5)
+	c.CreateDir("fooDir/childDir", 5)
 	c.Set("fooDir/childDir/k2", "v2", 5)
 
 	// Return kv-pairs in sorted order
@@ -83,6 +83,11 @@ func TestGetAll(t *testing.T) {
 	result.Node.Expiration = nil
 	for i, _ := range result.Node.Nodes {
 		result.Node.Nodes[i].Expiration = nil
+		if result.Node.Nodes[i].Nodes != nil {
+			for j, _ := range result.Node.Nodes[i].Nodes {
+				result.Node.Nodes[i].Nodes[j].Expiration = nil
+			}
+		}
 	}
 
 	if err != nil {
@@ -95,22 +100,30 @@ func TestGetAll(t *testing.T) {
 			Dir: true,
 			Nodes: Nodes{
 				Node{
-					Key:   "/fooDir/childDir/k2",
-					Value: "v2",
-					TTL:   5,
+					Key:           "/fooDir/childDir/k2",
+					Value:         "v2",
+					TTL:           5,
+					ModifiedIndex: 34,
+					CreatedIndex:  34,
 				},
 			},
-			TTL: 5,
+			TTL:           5,
+			ModifiedIndex: 33,
+			CreatedIndex:  33,
 		},
 		Node{
-			Key:   "/fooDir/k0",
-			Value: "v0",
-			TTL:   5,
+			Key:           "/fooDir/k0",
+			Value:         "v0",
+			TTL:           5,
+			ModifiedIndex: 31,
+			CreatedIndex:  31,
 		},
 		Node{
-			Key:   "/fooDir/k1",
-			Value: "v1",
-			TTL:   5,
+			Key:           "/fooDir/k1",
+			Value:         "v1",
+			TTL:           5,
+			ModifiedIndex: 32,
+			CreatedIndex:  32,
 		},
 	}
 

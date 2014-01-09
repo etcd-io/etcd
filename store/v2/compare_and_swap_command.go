@@ -27,8 +27,8 @@ func (c *CompareAndSwapCommand) CommandName() string {
 }
 
 // Set the key-value pair if the current value of the key equals to the given prevValue
-func (c *CompareAndSwapCommand) Apply(server raft.Server) (interface{}, error) {
-	s, _ := server.StateMachine().(store.Store)
+func (c *CompareAndSwapCommand) Apply(context raft.Context) (interface{}, error) {
+	s, _ := context.Server().StateMachine().(store.Store)
 
 	e, err := s.CompareAndSwap(c.Key, c.PrevValue, c.PrevIndex, c.Value, c.ExpireTime)
 

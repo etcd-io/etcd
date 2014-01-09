@@ -24,8 +24,8 @@ func (c *UpdateCommand) CommandName() string {
 }
 
 // Create node
-func (c *UpdateCommand) Apply(server raft.Server) (interface{}, error) {
-	s, _ := server.StateMachine().(store.Store)
+func (c *UpdateCommand) Apply(context raft.Context) (interface{}, error) {
+	s, _ := context.Server().StateMachine().(store.Store)
 
 	e, err := s.Update(c.Key, c.Value, c.ExpireTime)
 

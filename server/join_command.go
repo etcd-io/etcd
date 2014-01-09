@@ -37,11 +37,11 @@ func (c *JoinCommand) CommandName() string {
 }
 
 // Join a server to the cluster
-func (c *JoinCommand) Apply(server raft.Server) (interface{}, error) {
-	ps, _ := server.Context().(*PeerServer)
+func (c *JoinCommand) Apply(context raft.Context) (interface{}, error) {
+	ps, _ := context.Server().Context().(*PeerServer)
 
 	b := make([]byte, 8)
-	binary.PutUvarint(b, server.CommitIndex())
+	binary.PutUvarint(b, context.CommitIndex())
 
 	// Make sure we're not getting a cached value from the registry.
 	ps.registry.Invalidate(c.Name)
@@ -54,14 +54,14 @@ func (c *JoinCommand) Apply(server raft.Server) (interface{}, error) {
 	// Check peer number in the cluster
 	if ps.registry.Count() == ps.MaxClusterSize {
 		log.Debug("Reject join request from ", c.Name)
-		return []byte{0}, etcdErr.NewError(etcdErr.EcodeNoMorePeer, "", server.CommitIndex())
+		return []byte{0}, etcdErr.NewError(etcdErr.EcodeNoMorePeer, "", context.CommitIndex())
 	}
 
 	// Add to shared peer registry.
 	ps.registry.Register(c.Name, c.RaftURL, c.EtcdURL)
 
 	// Add peer in raft
-	err := server.AddPeer(c.Name, "")
+	err := context.Server().AddPeer(c.Name, "")
 
 	// Add peer stats
 	if c.Name != ps.RaftServer().Name() {

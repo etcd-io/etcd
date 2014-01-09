@@ -14,8 +14,8 @@ import (
 // get issues a GET request
 func (c *Client) get(key string, options options) (*RawResponse, error) {
 	logger.Debugf("get %s [%s]", key, c.cluster.Leader)
+	p := keyToPath(key)
 
-	p := path.Join("keys", key)
 	// If consistency level is set to STRONG, append
 	// the `consistent` query string.
 	if c.config.Consistency == STRONG_CONSISTENCY {
@@ -42,7 +42,7 @@ func (c *Client) put(key string, value string, ttl uint64,
 	options options) (*RawResponse, error) {
 
 	logger.Debugf("put %s, %s, ttl: %d, [%s]", key, value, ttl, c.cluster.Leader)
-	p := path.Join("keys", key)
+	p := keyToPath(key)
 
 	str, err := options.toParameters(VALID_PUT_OPTIONS)
 	if err != nil {
@@ -62,7 +62,7 @@ func (c *Client) put(key string, value string, ttl uint64,
 // post issues a POST request
 func (c *Client) post(key string, value string, ttl uint64) (*RawResponse, error) {
 	logger.Debugf("post %s, %s, ttl: %d, [%s]", key, value, ttl, c.cluster.Leader)
-	p := path.Join("keys", key)
+	p := keyToPath(key)
 
 	resp, err := c.sendRequest("POST", p, buildValues(value, ttl))
 
@@ -76,8 +76,7 @@ func (c *Client) post(key string, value string, ttl uint64) (*RawResponse, error
 // delete issues a DELETE request
 func (c *Client) delete(key string, options options) (*RawResponse, error) {
 	logger.Debugf("delete %s [%s]", key, c.cluster.Leader)
-
-	p := path.Join("keys", key)
+	p := keyToPath(key)
 
 	str, err := options.toParameters(VALID_DELETE_OPTIONS)
 	if err != nil {
@@ -111,7 +110,8 @@ func (c *Client) sendRequest(method string, relativePath string,
 		trial++
 		logger.Debug("begin trail ", trial)
 		if trial > 2*len(c.cluster.Machines) {
-			return nil, fmt.Errorf("Cannot reach servers after %v time", trial)
+			return nil, newError(ErrCodeEtcdNotReachable,
+				"Tried to connect to each peer twice and failed", 0)
 		}
 
 		if method == "GET" && c.config.Consistency == WEAK_CONSISTENCY {
@@ -203,9 +203,7 @@ func (c *Client) handleResp(resp *http.Response) (bool, []byte) {
 	} else if code == http.StatusInternalServerError {
 		time.Sleep(time.Millisecond * 200)
 
-	} else if code == http.StatusOK ||
-		code == http.StatusCreated ||
-		code == http.StatusBadRequest {
+	} else if validHttpStatusCode[code] {
 		b, err := ioutil.ReadAll(resp.Body)
 
 		if err != nil {
@@ -248,4 +246,20 @@ func buildValues(value string, ttl uint64) url.Values {
 	}
 
 	return v
+}
+
+// convert key string to http path exclude version
+// for example: key[foo] -> path[keys/foo]
+// key[/] -> path[keys/]
+func keyToPath(key string) string {
+	p := path.Join("keys", key)
+
+	// corner case: if key is "/" or "//" ect
+	// path join will clear the tailing "/"
+	// we need to add it back
+	if p == "keys" {
+		p = "keys/"
+	}
+
+	return p
 }
