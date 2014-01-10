@@ -18,8 +18,10 @@ package store
 
 type Watcher struct {
 	EventChan  chan *Event
+	stream     bool
 	recursive  bool
 	sinceIndex uint64
+	removed    bool
 	remove     func()
 }
 
@@ -42,13 +44,23 @@ func (w *Watcher) notify(e *Event, originalPath bool, deleted bool) bool {
 	// For example a watcher is watching at "/foo/bar". And we deletes "/foo". The watcher
 	// should get notified even if "/foo" is not the path it is watching.
 	if (w.recursive || originalPath || deleted) && e.Index() >= w.sinceIndex {
-		w.EventChan <- e
+		// We cannot block here if the EventChan capacity is full, otherwise
+		// etcd will hang. EventChan capacity is full when the rate of
+		// notifications are higher than our send rate.
+		// If this happens, we close the channel.
+		select {
+		case w.EventChan <- e:
+		default:
+			// We have missed a notification. Close the channel to indicate this situation.
+			close(w.EventChan)
+		}
 		return true
 	}
 	return false
 }
 
 // Remove removes the watcher from watcherHub
+// The actual remove function is guaranteed to only be executed once
 func (w *Watcher) Remove() {
 	if w.remove != nil {
 		w.remove()
