@@ -87,16 +87,6 @@ func (wh *watcherHub) watch(key string, recursive, stream bool, index uint64) (*
 		if l.Len() == 0 {
 			delete(wh.watchers, key)
 		}
-
-		// consume all items in the channel
-		// unblock all the waiting go routines created by watchHub
-		for {
-			select {
-			case <-w.EventChan:
-			default:
-				break
-			}
-		}
 	}
 
 	atomic.AddInt64(&wh.count, 1)
