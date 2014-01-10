@@ -16,11 +16,11 @@ We use `-peer-addr` to specify server port and `-addr` to specify client port an
 **Note:** If you want to run etcd on an external IP address and still have access locally, you'll need to add `-bind-addr 0.0.0.0` so that it will listen on both external and localhost addresses.
 A similar argument `-peer-bind-addr` is used to setup the listening address for the server port.
 
-Let's join two more machines to this cluster using the `-peers` argument:
+Let's join two more machines to this cluster using the `-peers` argument. A single connection to any peer will allow a new machine to join, but multiple can be specified for greater resiliency.
 
 ```sh
-./etcd -peer-addr 127.0.0.1:7002 -addr 127.0.0.1:4002 -peers 127.0.0.1:7001 -data-dir machines/machine2 -name machine2
-./etcd -peer-addr 127.0.0.1:7003 -addr 127.0.0.1:4003 -peers 127.0.0.1:7001 -data-dir machines/machine3 -name machine3
+./etcd -peer-addr 127.0.0.1:7002 -addr 127.0.0.1:4002 -peers 127.0.0.1:7001,127.0.0.1:7003 -data-dir machines/machine2 -name machine2
+./etcd -peer-addr 127.0.0.1:7003 -addr 127.0.0.1:4003 -peers 127.0.0.1:7001,127.0.0.1:7002 -data-dir machines/machine3 -name machine3
 ```
 
 We can retrieve a list of machines in the cluster using the HTTP API:
