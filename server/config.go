@@ -67,6 +67,7 @@ type Config struct {
 	ShowVersion      bool
 	Verbose          bool `toml:"verbose" env:"ETCD_VERBOSE"`
 	VeryVerbose      bool `toml:"very_verbose" env:"ETCD_VERY_VERBOSE"`
+	VeryVeryVerbose  bool `toml:"very_very_verbose" env:"ETCD_VERY_VERY_VERBOSE"`
 	Peer             struct {
 		Addr     string `toml:"addr" env:"ETCD_PEER_ADDR"`
 		BindAddr string `toml:"bind_addr" env:"ETCD_PEER_BIND_ADDR"`
@@ -214,6 +215,7 @@ func (c *Config) LoadFlags(arguments []string) error {
 
 	f.BoolVar(&c.Verbose, "v", c.Verbose, "")
 	f.BoolVar(&c.VeryVerbose, "vv", c.Verbose, "")
+	f.BoolVar(&c.VeryVeryVerbose, "vvv", c.VeryVeryVerbose, "")
 
 	f.StringVar(&peers, "peers", "", "")
 	f.StringVar(&c.PeersFile, "peers-file", c.PeersFile, "")

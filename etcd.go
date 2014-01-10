@@ -43,7 +43,10 @@ func main() {
 	}
 
 	// Enable options.
-	if config.VeryVerbose {
+	if config.VeryVeryVerbose {
+		log.Verbose = true
+		raft.SetLogLevel(raft.Trace)
+	} else if config.VeryVerbose {
 		log.Verbose = true
 		raft.SetLogLevel(raft.Debug)
 	} else if config.Verbose {
