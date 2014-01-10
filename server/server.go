@@ -39,10 +39,11 @@ type Server struct {
 func New(name string, urlStr string, bindAddr string, tlsConf *TLSConfig, tlsInfo *TLSInfo, peerServer *PeerServer, registry *Registry, store store.Store) *Server {
 	r := mux.NewRouter()
 	cors := &corsHandler{router: r}
+	handler := &clientConnectionWatcher{cors}
 
 	s := &Server{
 		Server: http.Server{
-			Handler:   cors,
+			Handler:   handler,
 			TLSConfig: &tlsConf.Server,
 			Addr:      bindAddr,
 		},
