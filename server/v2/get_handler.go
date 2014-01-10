@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/http/httputil"
 	"net/url"
 	"strconv"
 
@@ -74,11 +73,9 @@ func handleWatch(key string, recursive, stream bool, waitIndex string, w http.Re
 		// watcher hub will not help to remove stream watcher
 		// so we need to remove here
 		defer watcher.Remove()
-		chunkWriter := httputil.NewChunkedWriter(w)
 		for {
 			select {
 			case <-closeChan:
-				chunkWriter.Close()
 				return nil
 			case event, ok := <-watcher.EventChan:
 				if !ok {
@@ -89,7 +86,7 @@ func handleWatch(key string, recursive, stream bool, waitIndex string, w http.Re
 				}
 
 				b, _ := json.Marshal(event)
-				_, err := chunkWriter.Write(b)
+				_, err := w.Write(b)
 				if err != nil {
 					return nil
 				}
