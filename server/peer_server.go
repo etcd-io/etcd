@@ -274,9 +274,10 @@ func (s *PeerServer) startTransport(scheme string, tlsConf tls.Config) error {
 	log.Infof("raft server [name %s, listen on %s, advertised url %s]", s.name, s.bindAddr, s.url)
 
 	router := mux.NewRouter()
+	handler := &clientConnectionWatcher{router}
 
 	s.httpServer = &http.Server{
-		Handler:   router,
+		Handler:   handler,
 		TLSConfig: &tlsConf,
 		Addr:      s.bindAddr,
 	}
