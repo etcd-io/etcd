@@ -191,7 +191,7 @@ func (s *Server) listenAndServe() error {
 	if addr == "" {
 		addr = ":http"
 	}
-	l, e := net.Listen("tcp", addr)
+	l, e := Listen("tcp", addr)
 	if e != nil {
 		return e
 	}
