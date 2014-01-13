@@ -24,7 +24,7 @@ Let’s set the first key-value pair to the datastore.
 In this case the key is `/message` and the value is `Hello world`.
 
 ```sh
-curl -L http://127.0.0.1:4001/v2/keys/message -X PUT -d value="Hello world"
+curl -L http://127.0.0.1:4001/v2/keys/message -XPUT -d value="Hello world"
 ```
 
 ```json
@@ -226,7 +226,7 @@ This is useful for ensuring you don't miss events between watch commands.
 Let's try to watch for the set command of index 7 again:
 
 ```sh
-curl -L http://127.0.0.1:4001/v2/keys/foo?wait=true\&waitIndex=7
+curl -L 'http://127.0.0.1:4001/v2/keys/foo?wait=true&waitIndex=7'
 ```
 
 The watch command returns immediately with the same response as previous.
@@ -241,7 +241,7 @@ An example use case is the [locking module][lockmod] which uses it to ensure cli
 Creating an in-order key is easy
 
 ```sh
-curl -X POST http://127.0.0.1:4001/v2/keys/queue -d value=Job1
+curl http://127.0.0.1:4001/v2/keys/queue -XPOST -d value=Job1
 ```
 
 ```json
@@ -260,7 +260,7 @@ If you create another entry some time later it is guaranteed to have a key name 
 Also note the key names use the global etcd index so the next key can be more than `previous + 1`.
 
 ```sh
-curl -X POST http://127.0.0.1:4001/v2/keys/queue -d value=Job2
+curl http://127.0.0.1:4001/v2/keys/queue -XPOST -d value=Job2
 ```
 
 ```json
@@ -278,7 +278,7 @@ curl -X POST http://127.0.0.1:4001/v2/keys/queue -d value=Job2
 To enumerate the in-order keys as a sorted list, use the "sorted" parameter.
 
 ```sh
-curl -s -X GET 'http://127.0.0.1:4001/v2/keys/queue?recursive=true&sorted=true'
+curl -s 'http://127.0.0.1:4001/v2/keys/queue?recursive=true&sorted=true'
 ```
 
 ```json
@@ -343,7 +343,7 @@ curl -L http://127.0.0.1:4001/v2/keys/dir -XPUT -d ttl=30 -d dir=true -d prevExi
 Keys that are under this directory work as usual, but when the directory expires a watcher on a key under the directory will get an expire event:
 
 ```sh
-curl -X GET http://127.0.0.1:4001/v2/keys/dir/asdf\?consistent\=true\&wait\=true
+curl 'http://127.0.0.1:4001/v2/keys/dir/asdf?consistent=true&wait=true'
 ```
 
 ```json
@@ -552,7 +552,7 @@ Now let's try to delete the directory `/foo_dir`.
 You can remove an empty directory using the `DELETE` verb and the `dir=true` parameter.
 
 ```sh
-curl -L -X DELETE 'http://127.0.0.1:4001/v2/keys/dir?dir=true'
+curl -L 'http://127.0.0.1:4001/v2/keys/dir?dir=true' -XDELETE
 ```
 ```json
 {
@@ -669,7 +669,7 @@ The leader has a view of the entire cluster and keeps track of two interesting s
 You can find grab these stastistics from the `/v2/stats/leader` endpoint:
 
 ```sh
-curl -L 127.0.0.1:4001/v2/stats/leader
+curl -L http://127.0.0.1:4001/v2/stats/leader
 ```
 
 ```json
@@ -725,7 +725,7 @@ Each node keeps a number of internal statistics:
 This is an example response from a follower machine:
 
 ```sh
-curl -L 127.0.0.1:4001/v2/stats/self
+curl -L http://127.0.0.1:4001/v2/stats/self
 ```
 
 ```json
@@ -747,7 +747,7 @@ curl -L 127.0.0.1:4001/v2/stats/self
 And this is an example response from a leader machine:
 
 ```sh
-curl -L 127.0.0.1:4001/v2/stats/self
+curl -L http://127.0.0.1:4001/v2/stats/self
 ```
 
 ```
@@ -774,7 +774,7 @@ Operations that modify the store's state like create, delete, set and update are
 Operations like get and watch are node local and will only be seen on this node.
 
 ```sh
-curl -L 127.0.0.1:4001/v2/stats/store
+curl -L http://127.0.0.1:4001/v2/stats/store
 ```
 
 ```json
