@@ -8,8 +8,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/coreos/go-etcd/etcd"
 	"github.com/gorilla/mux"
+	"github.com/coreos/go-etcd/etcd"
+	etcdErr "github.com/coreos/etcd/error"
 )
 
 // acquireHandler attempts to acquire a lock on the given key.
@@ -17,7 +18,7 @@ import (
 // The "value" parameter specifies a value to associate with the lock.
 // The "ttl" parameter specifies how long the lock will persist for.
 // The "timeout" parameter specifies how long the request should wait for the lock.
-func (h *handler) acquireHandler(w http.ResponseWriter, req *http.Request) {
+func (h *handler) acquireHandler(w http.ResponseWriter, req *http.Request) error {
 	h.client.SyncCluster()
 
 	// Setup connection watcher.
@@ -36,16 +37,14 @@ func (h *handler) acquireHandler(w http.ResponseWriter, req *http.Request) {
 	if req.FormValue("timeout") == "" {
 		timeout = -1
 	} else if timeout, err = strconv.Atoi(req.FormValue("timeout")); err != nil {
-		http.Error(w, "invalid timeout: " + req.FormValue("timeout"), http.StatusInternalServerError)
-		return
+		return etcdErr.NewError(etcdErr.EcodeTimeoutNaN, "Acquire", 0)
 	}
 	timeout = timeout + 1
 
 	// Parse TTL.
 	ttl, err := strconv.Atoi(req.FormValue("ttl"))
 	if err != nil {
-		http.Error(w, "invalid ttl: " + req.FormValue("ttl"), http.StatusInternalServerError)
-		return
+		return etcdErr.NewError(etcdErr.EcodeTTLNaN, "Acquire", 0)
 	}
 
 	// If node exists then just watch it. Otherwise create the node and watch it.
@@ -65,12 +64,14 @@ func (h *handler) acquireHandler(w http.ResponseWriter, req *http.Request) {
 	// Stop all goroutines.
 	close(stopChan)
 
-	// Write response.
+	// Check for an error.
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	} else {
-		w.Write([]byte(strconv.Itoa(index)))
+		return err
 	}
+
+	// Write response.
+	w.Write([]byte(strconv.Itoa(index)))
+	return nil
 }
 
 // createNode creates a new lock node and watches it until it is acquired or acquisition fails.
@@ -83,7 +84,7 @@ func (h *handler) createNode(keypath string, value string, ttl int, closeChan <-
 	// Create an incrementing id for the lock.
 	resp, err := h.client.AddChild(keypath, value, uint64(ttl))
 	if err != nil {
-		return 0, errors.New("acquire lock index error: " + err.Error())
+		return 0, err
 	}
 	indexpath := resp.Node.Key
 	index, _ := strconv.Atoi(path.Base(indexpath))
@@ -98,7 +99,7 @@ func (h *handler) createNode(keypath string, value string, ttl int, closeChan <-
 	if err != nil {
 		select {
 		case <-closeChan:
-			err = errors.New("acquire lock error: user interrupted")
+			err = errors.New("user interrupted")
 		default:
 		}
 	}
@@ -174,7 +175,7 @@ func (h *handler) watch(keypath string, index int, closeChan <- chan bool) error
 		if err == etcd.ErrWatchStoppedByUser {
 			return fmt.Errorf("lock watch closed")
 		} else if err != nil {
-			return fmt.Errorf("lock watch error:%s", err.Error())
+			return fmt.Errorf("lock watch error: %s", err.Error())
 		}
 	}
 }

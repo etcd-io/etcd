@@ -35,11 +35,16 @@ const (
 	EcodeRootROnly      = 107
 	EcodeDirNotEmpty    = 108
 
-	EcodeValueRequired      = 200
-	EcodePrevValueRequired  = 201
-	EcodeTTLNaN             = 202
-	EcodeIndexNaN           = 203
-	EcodeValueOrTTLRequired = 204
+	EcodeValueRequired        = 200
+	EcodePrevValueRequired    = 201
+	EcodeTTLNaN               = 202
+	EcodeIndexNaN             = 203
+	EcodeValueOrTTLRequired   = 204
+	EcodeTimeoutNaN           = 205
+	EcodeNameRequired         = 206
+	EcodeIndexOrValueRequired = 207
+	EcodeIndexValueMutex      = 208
+	EcodeInvalidField         = 209
 
 	EcodeRaftInternal = 300
 	EcodeLeaderElect  = 301
@@ -68,6 +73,11 @@ func init() {
 	errors[EcodeTTLNaN] = "The given TTL in POST form is not a number"
 	errors[EcodeIndexNaN] = "The given index in POST form is not a number"
 	errors[EcodeValueOrTTLRequired] = "Value or TTL is required in POST form"
+	errors[EcodeTimeoutNaN] = "The given timeout in POST form is not a number"
+	errors[EcodeNameRequired] = "Name is required in POST form"
+	errors[EcodeIndexOrValueRequired] = "Index or value is required"
+	errors[EcodeIndexValueMutex] = "Index and value cannot both be specified"
+	errors[EcodeInvalidField] = "Invalid field"
 
 	// raft related errors
 	errors[EcodeRaftInternal] = "Raft Internal Error"
