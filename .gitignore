@@ -1,5 +1,4 @@
 pkg/
-/server/release_version.go
 /go-bindata
 /machine*
 /bin
