@@ -46,38 +46,38 @@ var newFlagNameLookup = map[string]string{
 type Config struct {
 	SystemPath string
 
-	Addr             string `toml:"addr" env:"ETCD_ADDR"`
-	BindAddr         string `toml:"bind_addr" env:"ETCD_BIND_ADDR"`
-	CAFile           string `toml:"ca_file" env:"ETCD_CA_FILE"`
-	CertFile         string `toml:"cert_file" env:"ETCD_CERT_FILE"`
-	CPUProfileFile   string
-	CorsOrigins      []string `toml:"cors" env:"ETCD_CORS"`
-	DataDir          string   `toml:"data_dir" env:"ETCD_DATA_DIR"`
-	Force            bool
-	KeyFile          string   `toml:"key_file" env:"ETCD_KEY_FILE"`
-	Peers            []string `toml:"peers" env:"ETCD_PEERS"`
-	PeersFile        string   `toml:"peers_file" env:"ETCD_PEERS_FILE"`
-	MaxClusterSize   int      `toml:"max_cluster_size" env:"ETCD_MAX_CLUSTER_SIZE"`
-	MaxResultBuffer  int      `toml:"max_result_buffer" env:"ETCD_MAX_RESULT_BUFFER"`
-	MaxRetryAttempts int      `toml:"max_retry_attempts" env:"ETCD_MAX_RETRY_ATTEMPTS"`
-	MaxConcurrentConnections int `toml:"max_concurrent_connections" env:"ETCD_MAX_CONCURRENT_CONNECTIONS"`
-	MaxConcurrentPeerConnections int `toml:"max_concurrent_peer_connections" env:"ETCD_MAX_CONCURRENT_PEER_CONNECTIONS"`
-	Name             string   `toml:"name" env:"ETCD_NAME"`
-	Snapshot         bool     `toml:"snapshot" env:"ETCD_SNAPSHOT"`
-	SnapshotCount    int      `toml:"snapshot_count" env:"ETCD_SNAPSHOTCOUNT"`
-	ShowHelp         bool
-	ShowVersion      bool
-	Verbose          bool `toml:"verbose" env:"ETCD_VERBOSE"`
-	VeryVerbose      bool `toml:"very_verbose" env:"ETCD_VERY_VERBOSE"`
-	VeryVeryVerbose  bool `toml:"very_very_verbose" env:"ETCD_VERY_VERY_VERBOSE"`
-	Peer             struct {
-		Addr     string `toml:"addr" env:"ETCD_PEER_ADDR"`
-		BindAddr string `toml:"bind_addr" env:"ETCD_PEER_BIND_ADDR"`
-		CAFile   string `toml:"ca_file" env:"ETCD_PEER_CA_FILE"`
-		CertFile string `toml:"cert_file" env:"ETCD_PEER_CERT_FILE"`
-		KeyFile  string `toml:"key_file" env:"ETCD_PEER_KEY_FILE"`
-		HeartbeatTimeout int  `toml:"heartbeat_timeout" env:"ETCD_PEER_HEARTBEAT_TIMEOUT"`
-		ElectionTimeout  int  `toml:"election_timeout" env:"ETCD_PEER_ELECTION_TIMEOUT"`
+	Addr                         string `toml:"addr" env:"ETCD_ADDR"`
+	BindAddr                     string `toml:"bind_addr" env:"ETCD_BIND_ADDR"`
+	CAFile                       string `toml:"ca_file" env:"ETCD_CA_FILE"`
+	CertFile                     string `toml:"cert_file" env:"ETCD_CERT_FILE"`
+	CPUProfileFile               string
+	CorsOrigins                  []string `toml:"cors" env:"ETCD_CORS"`
+	DataDir                      string   `toml:"data_dir" env:"ETCD_DATA_DIR"`
+	Force                        bool
+	KeyFile                      string   `toml:"key_file" env:"ETCD_KEY_FILE"`
+	Peers                        []string `toml:"peers" env:"ETCD_PEERS"`
+	PeersFile                    string   `toml:"peers_file" env:"ETCD_PEERS_FILE"`
+	MaxClusterSize               int      `toml:"max_cluster_size" env:"ETCD_MAX_CLUSTER_SIZE"`
+	MaxResultBuffer              int      `toml:"max_result_buffer" env:"ETCD_MAX_RESULT_BUFFER"`
+	MaxRetryAttempts             int      `toml:"max_retry_attempts" env:"ETCD_MAX_RETRY_ATTEMPTS"`
+	MaxConcurrentConnections     int      `toml:"max_concurrent_connections" env:"ETCD_MAX_CONCURRENT_CONNECTIONS"`
+	MaxConcurrentPeerConnections int      `toml:"max_concurrent_peer_connections" env:"ETCD_MAX_CONCURRENT_PEER_CONNECTIONS"`
+	Name                         string   `toml:"name" env:"ETCD_NAME"`
+	Snapshot                     bool     `toml:"snapshot" env:"ETCD_SNAPSHOT"`
+	SnapshotCount                int      `toml:"snapshot_count" env:"ETCD_SNAPSHOTCOUNT"`
+	ShowHelp                     bool
+	ShowVersion                  bool
+	Verbose                      bool `toml:"verbose" env:"ETCD_VERBOSE"`
+	VeryVerbose                  bool `toml:"very_verbose" env:"ETCD_VERY_VERBOSE"`
+	VeryVeryVerbose              bool `toml:"very_very_verbose" env:"ETCD_VERY_VERY_VERBOSE"`
+	Peer                         struct {
+		Addr             string `toml:"addr" env:"ETCD_PEER_ADDR"`
+		BindAddr         string `toml:"bind_addr" env:"ETCD_PEER_BIND_ADDR"`
+		CAFile           string `toml:"ca_file" env:"ETCD_PEER_CA_FILE"`
+		CertFile         string `toml:"cert_file" env:"ETCD_PEER_CERT_FILE"`
+		KeyFile          string `toml:"key_file" env:"ETCD_PEER_KEY_FILE"`
+		HeartbeatTimeout int    `toml:"heartbeat_timeout" env:"ETCD_PEER_HEARTBEAT_TIMEOUT"`
+		ElectionTimeout  int    `toml:"election_timeout" env:"ETCD_PEER_ELECTION_TIMEOUT"`
 	}
 }
 

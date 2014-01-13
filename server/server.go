@@ -23,16 +23,16 @@ import (
 // This is the default implementation of the Server interface.
 type Server struct {
 	http.Server
-	peerServer  *PeerServer
-	registry    *Registry
-	listener    net.Listener
-	store       store.Store
-	name        string
-	url         string
-	tlsConf     *TLSConfig
-	tlsInfo     *TLSInfo
-	router      *mux.Router
-	corsHandler *corsHandler
+	peerServer               *PeerServer
+	registry                 *Registry
+	listener                 net.Listener
+	store                    store.Store
+	name                     string
+	url                      string
+	tlsConf                  *TLSConfig
+	tlsInfo                  *TLSInfo
+	router                   *mux.Router
+	corsHandler              *corsHandler
 	MaxConcurrentConnections int
 }
 

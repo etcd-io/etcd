@@ -25,26 +25,26 @@ const retryInterval = 10
 const ThresholdMonitorTimeout = 5 * time.Second
 
 type PeerServer struct {
-	raftServer       raft.Server
-	server           *Server
-	httpServer       *http.Server
-	listener         net.Listener
-	joinIndex        uint64
-	name             string
-	url              string
-	bindAddr         string
-	tlsConf          *TLSConfig
-	tlsInfo          *TLSInfo
-	followersStats   *raftFollowersStats
-	serverStats      *raftServerStats
-	registry         *Registry
-	store            store.Store
-	snapConf         *snapshotConf
-	MaxClusterSize   int
+	raftServer                   raft.Server
+	server                       *Server
+	httpServer                   *http.Server
+	listener                     net.Listener
+	joinIndex                    uint64
+	name                         string
+	url                          string
+	bindAddr                     string
+	tlsConf                      *TLSConfig
+	tlsInfo                      *TLSInfo
+	followersStats               *raftFollowersStats
+	serverStats                  *raftServerStats
+	registry                     *Registry
+	store                        store.Store
+	snapConf                     *snapshotConf
+	MaxClusterSize               int
 	MaxConcurrentPeerConnections int
-	RetryTimes       int
-	HeartbeatTimeout time.Duration
-	ElectionTimeout  time.Duration
+	RetryTimes                   int
+	HeartbeatTimeout             time.Duration
+	ElectionTimeout              time.Duration
 
 	closeChan            chan bool
 	timeoutThresholdChan chan interface{}
