@@ -60,6 +60,8 @@ type Config struct {
 	MaxClusterSize   int      `toml:"max_cluster_size" env:"ETCD_MAX_CLUSTER_SIZE"`
 	MaxResultBuffer  int      `toml:"max_result_buffer" env:"ETCD_MAX_RESULT_BUFFER"`
 	MaxRetryAttempts int      `toml:"max_retry_attempts" env:"ETCD_MAX_RETRY_ATTEMPTS"`
+	MaxConcurrentConnections int `toml:"max_concurrent_connections" env:"ETCD_MAX_CONCURRENT_CONNECTIONS"`
+	MaxConcurrentPeerConnections int `toml:"max_concurrent_peer_connections" env:"ETCD_MAX_CONCURRENT_PEER_CONNECTIONS"`
 	Name             string   `toml:"name" env:"ETCD_NAME"`
 	Snapshot         bool     `toml:"snapshot" env:"ETCD_SNAPSHOT"`
 	SnapshotCount    int      `toml:"snapshot_count" env:"ETCD_SNAPSHOTCOUNT"`
@@ -91,6 +93,8 @@ func NewConfig() *Config {
 	c.Peer.Addr = "127.0.0.1:7001"
 	c.Peer.HeartbeatTimeout = 0
 	c.Peer.ElectionTimeout = 0
+	c.MaxConcurrentConnections = 100
+	c.MaxConcurrentPeerConnections = 100
 	return c
 }
 
@@ -238,6 +242,8 @@ func (c *Config) LoadFlags(arguments []string) error {
 	f.IntVar(&c.MaxResultBuffer, "max-result-buffer", c.MaxResultBuffer, "")
 	f.IntVar(&c.MaxRetryAttempts, "max-retry-attempts", c.MaxRetryAttempts, "")
 	f.IntVar(&c.MaxClusterSize, "max-cluster-size", c.MaxClusterSize, "")
+	f.IntVar(&c.MaxConcurrentConnections, "max-concurrent-connections", c.MaxConcurrentConnections, "")
+	f.IntVar(&c.MaxConcurrentPeerConnections, "max-concurrent-peer-connections", c.MaxConcurrentPeerConnections, "")
 	f.IntVar(&c.Peer.HeartbeatTimeout, "peer-heartbeat-timeout", c.Peer.HeartbeatTimeout, "")
 	f.IntVar(&c.Peer.ElectionTimeout, "peer-election-timeout", c.Peer.ElectionTimeout, "")
 

@@ -33,6 +33,7 @@ type Server struct {
 	tlsInfo     *TLSInfo
 	router      *mux.Router
 	corsHandler *corsHandler
+	MaxConcurrentConnections int
 }
 
 // Creates a new Server.
@@ -191,7 +192,7 @@ func (s *Server) listenAndServe() error {
 	if addr == "" {
 		addr = ":http"
 	}
-	l, e := net.Listen("tcp", addr)
+	l, e := NewQueuedListener(addr, s.MaxConcurrentConnections)
 	if e != nil {
 		return e
 	}
