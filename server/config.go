@@ -89,8 +89,8 @@ func NewConfig() *Config {
 	c.MaxRetryAttempts = 3
 	c.SnapshotCount = 10000
 	c.Peer.Addr = "127.0.0.1:7001"
-	c.Peer.HeartbeatTimeout = 0
-	c.Peer.ElectionTimeout = 0
+	c.Peer.HeartbeatTimeout = defaultHeartbeatTimeout
+	c.Peer.ElectionTimeout = defaultElectionTimeout
 	return c
 }
 
