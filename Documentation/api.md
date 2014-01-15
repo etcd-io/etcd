@@ -658,6 +658,214 @@ curl -L http://127.0.0.1:4001/v2/keys/
 
 Here we see the `/message` key but our hidden `/_message` key is not returned.
 
+
+## Lock Module
+
+The lock module is used to serialize access to resources used by clients.
+Multiple clients can attempt to acquire a lock but only one can have it at a time.
+Once the lock is released, the next client waiting for the lock will receive it.
+
+
+### Acquiring a Lock
+
+To acquire a lock, simply send a `POST` request to the lock module with they lock name and TTL:
+
+```sh
+curl -L http://127.0.0.1:4001/mod/v2/lock/mylock -XPOST -d ttl=20
+```
+
+You will receive the lock index when you acquire the lock:
+
+```
+2
+```
+
+If the TTL is not specified or is not a number then you'll receive the following error:
+
+```json
+{
+    "errorCode": 202,
+    "message": "The given TTL in POST form is not a number",
+    "cause": "Acquire",
+}
+```
+
+If you specify a timeout that is not a number then you'll receive the following error:
+
+```json
+{
+    "errorCode": 205,
+    "message": "The given timeout in POST form is not a number",
+    "cause": "Acquire",
+}
+```
+
+
+### Renewing a Lock
+
+To extend the TTL of an already acquired lock, simply repeat your original request but with a `PUT` and the lock index instead:
+
+```sh
+curl -L http://127.0.0.1:4001/mod/v2/lock/mylock -XPUT -d index=5 -d ttl=20
+```
+
+If the index or value is not specified then you'll receive the following error:
+
+```json
+{
+    "errorCode": 207,
+    "message": "Index or value is required",
+    "cause": "Renew",
+}
+```
+
+If the index or value does not exist then you'll receive the following error with a `404 Not Found` HTTP code:
+
+```json
+{
+    "errorCode": 100,
+    "message": "Key not found",
+    "index": 1
+}
+```
+
+If the TTL is not specified or is not a number then you'll receive the following error:
+
+```json
+{
+    "errorCode": 202,
+    "message": "The given TTL in POST form is not a number",
+    "cause": "Renew",
+}
+```
+
+### Releasing a Lock
+
+When the client is finished with the lock, simply send a `DELETE` request to release the lock:
+
+```sh
+curl -L http://127.0.0.1:4001/mod/v2/lock/mylock -XDELETE -d index=5
+```
+
+If the index or value is not specified then you'll receive the following error:
+
+```json
+{
+    "errorCode": 207,
+    "message": "Index or value is required",
+    "cause": "Release",
+}
+```
+
+If the index and value are both specified then you'll receive the following error:
+
+```json
+{
+    "errorCode": 208,
+    "message": "Index and value cannot both be specified",
+    "cause": "Release",
+}
+```
+
+If the index or value does not exist then you'll receive the following error with a `404 Not Found` HTTP code:
+
+```json
+{
+    "errorCode": 100,
+    "message": "Key not found",
+    "index": 1
+}
+```
+
+### Retrieving a Lock
+
+To determine the current value or index of a lock, send a `GET` request to the lock.
+You can specify a `field` of `index` or `value`.
+The default is `value`.
+
+```sh
+curl -L http://127.0.0.1:4001/mod/v2/lock/mylock?field=index
+```
+
+Will return the current index:
+
+```sh
+2
+```
+
+If you specify a field other than `field` or `value` then you'll receive the following error:
+
+```json
+{
+    "errorCode": 209,
+    "message": "Invalid field",
+    "cause": "Get",
+}
+```
+
+
+## Leader Module
+
+The leader module wraps the lock module to provide a simple interface for electing a single leader in a cluster.
+
+
+### Setting the Leader
+
+A client can attempt to become leader by sending a `PUT` request to the leader module with the name of the leader to elect:
+
+```sh
+curl -L http://127.0.0.1:4001/mod/v2/leader/myclustername -XPUT -d ttl=300 -d name=foo.mydomain.com
+```
+
+You will receive a successful `200` HTTP response code when the leader is elected.
+
+If the name is not specified then you'll receive the following error:
+
+```json
+{
+    "errorCode": 206,
+    "message": "Name is required in POST form",
+    "cause": "Set",
+}
+```
+
+You can also receive any errors specified by the Lock module.
+
+
+### Retrieving the Current Leader
+
+A client can check to determine if there is a current leader by sending a `GET` request to the leader module:
+
+```sh
+curl -L http://127.0.0.1:4001/mod/v2/leader/myclustername
+```
+
+You will receive the name of the current leader:
+
+```sh
+foo.mydomain.com
+```
+
+
+### Relinquishing Leadership
+
+A client can give up leadership by sending a `DELETE` request with the leader name:
+
+```sh
+curl -L http://127.0.0.1:4001/mod/v2/leader/myclustername?name=foo.mydomain.com -XDELETE
+```
+
+If the name is not specified then you'll receive the following error:
+
+```json
+{
+    "errorCode": 206,
+    "message": "Name is required in POST form",
+    "cause": "Set",
+}
+```
+
+
 ## Statistics
 
 An etcd cluster keeps track of a number of stastics including latency, bandwidth and uptime.

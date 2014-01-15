@@ -5,11 +5,12 @@ import (
 	"path"
 
 	"github.com/gorilla/mux"
+	etcdErr "github.com/coreos/etcd/error"
 )
 
 // getIndexHandler retrieves the current lock index.
 // The "field" parameter specifies to read either the lock "index" or lock "value".
-func (h *handler) getIndexHandler(w http.ResponseWriter, req *http.Request) {
+func (h *handler) getIndexHandler(w http.ResponseWriter, req *http.Request) error {
 	h.client.SyncCluster()
 
 	vars := mux.Vars(req)
@@ -22,8 +23,7 @@ func (h *handler) getIndexHandler(w http.ResponseWriter, req *http.Request) {
 	// Read all indices.
 	resp, err := h.client.Get(keypath, true, true)
 	if err != nil {
-		http.Error(w, "read lock error: " + err.Error(), http.StatusInternalServerError)
-		return
+		return err
 	}
 	nodes := lockNodes{resp.Node.Nodes}
 
@@ -37,7 +37,9 @@ func (h *handler) getIndexHandler(w http.ResponseWriter, req *http.Request) {
 			w.Write([]byte(node.Value))
 
 		default:
-			http.Error(w, "read lock error: invalid field: " + field, http.StatusInternalServerError)
+			return etcdErr.NewError(etcdErr.EcodeInvalidField, "Get", 0)
 		}
 	}
+
+	return nil
 }

@@ -5,10 +5,11 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
+	etcdErr "github.com/coreos/etcd/error"
 )
 
 // releaseLockHandler deletes the lock.
-func (h *handler) releaseLockHandler(w http.ResponseWriter, req *http.Request) {
+func (h *handler) releaseLockHandler(w http.ResponseWriter, req *http.Request) error {
 	h.client.SyncCluster()
 
 	vars := mux.Vars(req)
@@ -18,34 +19,30 @@ func (h *handler) releaseLockHandler(w http.ResponseWriter, req *http.Request) {
 	index := req.FormValue("index")
 	value := req.FormValue("value")
 	if len(index) == 0 && len(value) == 0 {
-		http.Error(w, "release lock error: index or value required", http.StatusInternalServerError)
-		return
+		return etcdErr.NewError(etcdErr.EcodeIndexOrValueRequired, "Release", 0)
 	} else if len(index) != 0 && len(value) != 0 {
-		http.Error(w, "release lock error: index and value cannot both be specified", http.StatusInternalServerError)
-		return
+		return etcdErr.NewError(etcdErr.EcodeIndexValueMutex, "Release", 0)
 	}
 
 	// Look up index by value if index is missing.
 	if len(index) == 0 {
 		resp, err := h.client.Get(keypath, true, true)
 		if err != nil {
-			http.Error(w, "release lock index error: " + err.Error(), http.StatusInternalServerError)
-			return
+			return err
 		}
 		nodes := lockNodes{resp.Node.Nodes}
 		node, _ := nodes.FindByValue(value)
 		if node == nil {
-			http.Error(w, "release lock error: cannot find: " + value, http.StatusInternalServerError)
-			return
+			return etcdErr.NewError(etcdErr.EcodeKeyNotFound, "Release", 0)
 		}
 		index = path.Base(node.Key)
 	}
 
 	// Delete the lock.
-	_, err := h.client.Delete(path.Join(keypath, index), false)
-	if err != nil {
-		http.Error(w, "release lock error: " + err.Error(), http.StatusInternalServerError)
-		return
+	if _, err := h.client.Delete(path.Join(keypath, index), false); err != nil {
+		return err
 	}
+
+	return nil
 }
 

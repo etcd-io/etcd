@@ -5,6 +5,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/coreos/go-etcd/etcd"
+	etcdErr "github.com/coreos/etcd/error"
 )
 
 const prefix = "/_etcd/mod/lock"
@@ -22,9 +23,26 @@ func NewHandler(addr string) (http.Handler) {
 		client: etcd.NewClient([]string{addr}),
 	}
 	h.StrictSlash(false)
-	h.HandleFunc("/{key:.*}", h.getIndexHandler).Methods("GET")
-	h.HandleFunc("/{key:.*}", h.acquireHandler).Methods("POST")
-	h.HandleFunc("/{key:.*}", h.renewLockHandler).Methods("PUT")
-	h.HandleFunc("/{key:.*}", h.releaseLockHandler).Methods("DELETE")
+	h.handleFunc("/{key:.*}", h.getIndexHandler).Methods("GET")
+	h.handleFunc("/{key:.*}", h.acquireHandler).Methods("POST")
+	h.handleFunc("/{key:.*}", h.renewLockHandler).Methods("PUT")
+	h.handleFunc("/{key:.*}", h.releaseLockHandler).Methods("DELETE")
 	return h
+}
+
+func (h *handler) handleFunc(path string, f func(http.ResponseWriter, *http.Request) error) *mux.Route {
+	return h.Router.HandleFunc(path, func(w http.ResponseWriter, req *http.Request) {
+		if err := f(w, req); err != nil {
+			switch err := err.(type) {
+			case *etcdErr.Error:
+				w.Header().Set("Content-Type", "application/json")
+				err.Write(w)
+			case etcd.EtcdError:
+				w.Header().Set("Content-Type", "application/json")
+				etcdErr.NewError(err.ErrorCode, err.Cause, err.Index).Write(w)
+			default:
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+		}
+	})
 }

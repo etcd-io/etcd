@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
+	etcdErr "github.com/coreos/etcd/error"
 )
 
 // prefix is appended to the lock's prefix since the leader mod uses the lock mod.
@@ -27,8 +28,22 @@ func NewHandler(addr string) (http.Handler) {
 		addr: addr,
 	}
 	h.StrictSlash(false)
-	h.HandleFunc("/{key:.*}", h.getHandler).Methods("GET")
-	h.HandleFunc("/{key:.*}", h.setHandler).Methods("PUT")
-	h.HandleFunc("/{key:.*}", h.deleteHandler).Methods("DELETE")
+	h.handleFunc("/{key:.*}", h.getHandler).Methods("GET")
+	h.handleFunc("/{key:.*}", h.setHandler).Methods("PUT")
+	h.handleFunc("/{key:.*}", h.deleteHandler).Methods("DELETE")
 	return h
+}
+
+func (h *handler) handleFunc(path string, f func(http.ResponseWriter, *http.Request) error) *mux.Route {
+	return h.Router.HandleFunc(path, func(w http.ResponseWriter, req *http.Request) {
+		if err := f(w, req); err != nil {
+			switch err := err.(type) {
+			case *etcdErr.Error:
+				w.Header().Set("Content-Type", "application/json")
+				err.Write(w)
+			default:
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+		}
+	})
 }
