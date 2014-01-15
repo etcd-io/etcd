@@ -64,12 +64,10 @@ func binDir() string {
 	return path.Join(root, "bin")
 }
 
-// runEnv execs a command like a shell script piping everything to the parent's
+// run execs a command like a shell script piping everything to the parent's
 // stderr/stdout and uses the given environment.
-func runEnv(env []string, name string, arg ...string) *os.ProcessState {
+func run(name string, arg ...string) *os.ProcessState {
 	cmd := exec.Command(name, arg...)
-
-	cmd.Env = env
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -91,16 +89,6 @@ func runEnv(env []string, name string, arg ...string) *os.ProcessState {
 	cmd.Wait()
 
 	return cmd.ProcessState
-}
-
-// run calls runEnv with the GOPATH third_party packages.
-func run(name string, arg ...string) *os.ProcessState {
-	env := append(os.Environ(),
-		"GOPATH="+thirdPartyDir(),
-		"GOBIN="+binDir(),
-	)
-
-	return runEnv(env, name, arg...)
 }
 
 // setupProject does the initial setup of the third_party src directory
@@ -255,11 +243,8 @@ func bump(pkg, version string) {
 	}
 	defer os.RemoveAll(temp)
 
-	env := append(os.Environ(),
-		"GOPATH="+temp,
-	)
-
-	runEnv(env, "go", "get", "-u", "-d", pkg)
+	os.Setenv("GOPATH", temp)
+	run("go", "get", "-u", "-d", pkg)
 
 	for {
 		root := path.Join(temp, "src", pkg) // the temp installation root
@@ -308,7 +293,6 @@ func bump(pkg, version string) {
 // This is used by the bumpAll walk to bump all of the existing packages.
 func validPkg(pkg string) bool {
 	env := append(os.Environ(),
-		"GOPATH="+thirdPartyDir(),
 	)
 	cmd := exec.Command("go", "list", pkg)
 	cmd.Env = env
@@ -361,6 +345,10 @@ func bumpAll() {
 
 func main() {
 	log.SetFlags(0)
+
+	// third_party manages GOPATH, no one else
+	os.Setenv("GOPATH", thirdPartyDir())
+	os.Setenv("GOBIN", binDir())
 
 	if len(os.Args) <= 1 {
 		log.Fatalf("No command")
