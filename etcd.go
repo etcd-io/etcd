@@ -89,6 +89,8 @@ func main() {
 	ps := server.NewPeerServer(info.Name, config.DataDir, info.RaftURL, info.RaftListenHost, &peerTLSConfig, &info.RaftTLS, registry, store, config.SnapshotCount)
 	ps.MaxClusterSize = config.MaxClusterSize
 	ps.RetryTimes = config.MaxRetryAttempts
+	ps.MaxConcurrentPeerConnections = config.MaxConcurrentPeerConnections
+
 	if config.Peer.HeartbeatTimeout > 0 {
 		ps.HeartbeatTimeout = time.Duration(config.Peer.HeartbeatTimeout) * time.Millisecond
 	}
@@ -102,6 +104,7 @@ func main() {
 		panic(err)
 	}
 
+	s.MaxConcurrentConnections = config.MaxConcurrentConnections
 	ps.SetServer(s)
 
 	// Run peer server in separate thread while the client server blocks.

@@ -25,25 +25,26 @@ const retryInterval = 10
 const ThresholdMonitorTimeout = 5 * time.Second
 
 type PeerServer struct {
-	raftServer       raft.Server
-	server           *Server
-	httpServer       *http.Server
-	listener         net.Listener
-	joinIndex        uint64
-	name             string
-	url              string
-	bindAddr         string
-	tlsConf          *TLSConfig
-	tlsInfo          *TLSInfo
-	followersStats   *raftFollowersStats
-	serverStats      *raftServerStats
-	registry         *Registry
-	store            store.Store
-	snapConf         *snapshotConf
-	MaxClusterSize   int
-	RetryTimes       int
-	HeartbeatTimeout time.Duration
-	ElectionTimeout  time.Duration
+	raftServer                   raft.Server
+	server                       *Server
+	httpServer                   *http.Server
+	listener                     net.Listener
+	joinIndex                    uint64
+	name                         string
+	url                          string
+	bindAddr                     string
+	tlsConf                      *TLSConfig
+	tlsInfo                      *TLSInfo
+	followersStats               *raftFollowersStats
+	serverStats                  *raftServerStats
+	registry                     *Registry
+	store                        store.Store
+	snapConf                     *snapshotConf
+	MaxClusterSize               int
+	MaxConcurrentPeerConnections int
+	RetryTimes                   int
+	HeartbeatTimeout             time.Duration
+	ElectionTimeout              time.Duration
 
 	closeChan            chan bool
 	timeoutThresholdChan chan interface{}
@@ -183,12 +184,13 @@ func (s *PeerServer) listenAndServe() error {
 	if addr == "" {
 		addr = ":http"
 	}
-	l, e := net.Listen("tcp", addr)
+	tcp, e := NewQueuedListener(addr, s.MaxConcurrentPeerConnections)
 	if e != nil {
 		return e
 	}
-	s.listener = l
-	return s.httpServer.Serve(l)
+	listener := net.Listener(tcp)
+	s.listener = listener
+	return s.httpServer.Serve(listener)
 }
 
 // Overridden version of net/http added so we can manage the listener.
