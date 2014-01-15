@@ -8,5 +8,5 @@ ENV PATH /usr/local/go/bin:$PATH
 ADD . /opt/etcd
 RUN cd /opt/etcd && ./build
 EXPOSE 4001 7001
-ENTRYPOINT ["/opt/etcd/etcd"]
+ENTRYPOINT ["/opt/etcd/bin/etcd"]
 
