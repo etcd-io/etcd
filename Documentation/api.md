@@ -6,7 +6,7 @@ These examples will use a single machine cluster to show you the basics of the e
 Let's start etcd:
 
 ```sh
-./etcd -data-dir machine0 -name machine0
+./bin/etcd -data-dir machine0 -name machine0
 ```
 
 This will bring up etcd listening on port 4001 for client communication and on port 7001 for server-to-server communication.

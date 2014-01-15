@@ -1,27 +1,4 @@
-#!/bin/sh
-set -e
+#!/bin/sh -e
 
-ETCD_PACKAGE=github.com/coreos/etcd
-export GOPATH="${PWD}"
-SRC_DIR="$GOPATH/src"
-ETCD_DIR="$SRC_DIR/$ETCD_PACKAGE"
-
-ETCD_BASE=$(dirname "${ETCD_DIR}")
-if [ ! -d "${ETCD_BASE}" ]; then
-	mkdir -p "${ETCD_BASE}"
-fi
-
-if [ ! -h "${ETCD_DIR}" ]; then
-	ln -s ../../../ "${ETCD_DIR}"
-fi
-
-for i in third_party/*; do
-	if [ "$i" = "third_party/src" ]; then
-		continue
-	fi
-	cp -R "$i" src/
-done
-
-./scripts/release-version > server/release_version.go
-go build "${ETCD_PACKAGE}"
-go build -o etcdbench "${ETCD_PACKAGE}"/bench
+go run third_party.go install github.com/coreos/etcd
+go run third_party.go install github.com/coreos/etcd/bench
