@@ -49,7 +49,7 @@ cd etcd
 
 This will generate a binary in the base directory called `./etcd`.
 
-_NOTE_: you need go 1.1+. Please check your installation with
+_NOTE_: you need go 1.2+. Please check your installation with
 
 ```
 go version
