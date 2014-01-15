@@ -69,13 +69,13 @@ type Config struct {
 	VeryVerbose      bool `toml:"very_verbose" env:"ETCD_VERY_VERBOSE"`
 	VeryVeryVerbose  bool `toml:"very_very_verbose" env:"ETCD_VERY_VERY_VERBOSE"`
 	Peer             struct {
-		Addr     string `toml:"addr" env:"ETCD_PEER_ADDR"`
-		BindAddr string `toml:"bind_addr" env:"ETCD_PEER_BIND_ADDR"`
-		CAFile   string `toml:"ca_file" env:"ETCD_PEER_CA_FILE"`
-		CertFile string `toml:"cert_file" env:"ETCD_PEER_CERT_FILE"`
-		KeyFile  string `toml:"key_file" env:"ETCD_PEER_KEY_FILE"`
-		HeartbeatTimeout int  `toml:"heartbeat_timeout" env:"ETCD_PEER_HEARTBEAT_TIMEOUT"`
-		ElectionTimeout  int  `toml:"election_timeout" env:"ETCD_PEER_ELECTION_TIMEOUT"`
+		Addr             string `toml:"addr" env:"ETCD_PEER_ADDR"`
+		BindAddr         string `toml:"bind_addr" env:"ETCD_PEER_BIND_ADDR"`
+		CAFile           string `toml:"ca_file" env:"ETCD_PEER_CA_FILE"`
+		CertFile         string `toml:"cert_file" env:"ETCD_PEER_CERT_FILE"`
+		KeyFile          string `toml:"key_file" env:"ETCD_PEER_KEY_FILE"`
+		HeartbeatTimeout int    `toml:"heartbeat_timeout" env:"ETCD_PEER_HEARTBEAT_TIMEOUT"`
+		ElectionTimeout  int    `toml:"election_timeout" env:"ETCD_PEER_ELECTION_TIMEOUT"`
 	}
 }
 
@@ -89,8 +89,8 @@ func NewConfig() *Config {
 	c.MaxRetryAttempts = 3
 	c.SnapshotCount = 10000
 	c.Peer.Addr = "127.0.0.1:7001"
-	c.Peer.HeartbeatTimeout = 0
-	c.Peer.ElectionTimeout = 0
+	c.Peer.HeartbeatTimeout = defaultHeartbeatTimeout
+	c.Peer.ElectionTimeout = defaultElectionTimeout
 	return c
 }
 

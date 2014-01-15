@@ -62,7 +62,7 @@ type snapshotConf struct {
 	snapshotThr uint64
 }
 
-func NewPeerServer(name string, path string, url string, bindAddr string, tlsConf *TLSConfig, tlsInfo *TLSInfo, registry *Registry, store store.Store, snapshotCount int) *PeerServer {
+func NewPeerServer(name string, path string, url string, bindAddr string, tlsConf *TLSConfig, tlsInfo *TLSInfo, registry *Registry, store store.Store, snapshotCount int, heartbeatTimeout, electionTimeout time.Duration) *PeerServer {
 	s := &PeerServer{
 		name:     name,
 		url:      url,
@@ -85,8 +85,8 @@ func NewPeerServer(name string, path string, url string, bindAddr string, tlsCon
 				back: -1,
 			},
 		},
-		HeartbeatTimeout: defaultHeartbeatTimeout,
-		ElectionTimeout:  defaultElectionTimeout,
+		HeartbeatTimeout: heartbeatTimeout,
+		ElectionTimeout:  electionTimeout,
 
 		timeoutThresholdChan: make(chan interface{}, 1),
 	}
