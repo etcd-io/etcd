@@ -17,6 +17,7 @@ limitations under the License.
 package store
 
 import (
+	"encoding/json"
 	"fmt"
 	"math/rand"
 	"testing"
@@ -30,6 +31,24 @@ func BenchmarkStoreSet(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		_, err := s.Set(kvs[i][0], false, kvs[i][1], Permanent)
+		if err != nil {
+			panic(err)
+		}
+	}
+}
+
+func BenchmarkStoreSetWithJson(b *testing.B) {
+	s := newStore()
+	b.StopTimer()
+	kvs := generateNRandomKV(b.N)
+	b.StartTimer()
+
+	for i := 0; i < b.N; i++ {
+		resp, err := s.Set(kvs[i][0], false, kvs[i][1], Permanent)
+		if err != nil {
+			panic(err)
+		}
+		_, err = json.Marshal(resp)
 		if err != nil {
 			panic(err)
 		}
