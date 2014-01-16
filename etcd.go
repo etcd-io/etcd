@@ -103,11 +103,18 @@ func main() {
 	registry := server.NewRegistry(store)
 
 	// Create peer server.
-	heartbeatTimeout := time.Duration(config.Peer.HeartbeatTimeout) * time.Millisecond
-	electionTimeout := time.Duration(config.Peer.ElectionTimeout) * time.Millisecond
-	ps := server.NewPeerServer(info.Name, config.DataDir, info.RaftURL, info.RaftListenHost, &peerTLSConfig, &info.RaftTLS, registry, store, config.SnapshotCount, heartbeatTimeout, electionTimeout, &mb)
-	ps.MaxClusterSize = config.MaxClusterSize
-	ps.RetryTimes = config.MaxRetryAttempts
+	psConfig := server.PeerServerConfig{
+		Name: info.Name,
+		Path: config.DataDir,
+		URL: info.RaftURL,
+		BindAddr: info.RaftListenHost,
+		SnapshotCount: config.SnapshotCount,
+		HeartbeatTimeout: time.Duration(config.Peer.HeartbeatTimeout) * time.Millisecond,
+		ElectionTimeout: time.Duration(config.Peer.ElectionTimeout) * time.Millisecond,
+		MaxClusterSize: config.MaxClusterSize,
+		RetryTimes: config.MaxRetryAttempts,
+	}
+	ps := server.NewPeerServer(psConfig, &peerTLSConfig, &info.RaftTLS, registry, store, &mb)
 
 	// Create client server.
 	s := server.New(info.Name, info.EtcdURL, info.EtcdListenHost, &tlsConfig, &info.EtcdTLS, ps, registry, store, &mb)

@@ -27,8 +27,8 @@ type dialer func(network, addr string) (net.Conn, error)
 // whether the user give the server cert and key
 func newTransporter(scheme string, tlsConf tls.Config, peerServer *PeerServer) *transporter {
 	// names for each type of timeout, for the sake of clarity
-	dialTimeout := (3 * peerServer.HeartbeatTimeout) + peerServer.ElectionTimeout
-	responseHeaderTimeout := (3 * peerServer.HeartbeatTimeout) + peerServer.ElectionTimeout
+	dialTimeout := (3 * peerServer.Config.HeartbeatTimeout) + peerServer.Config.ElectionTimeout
+	responseHeaderTimeout := (3 * peerServer.Config.HeartbeatTimeout) + peerServer.Config.ElectionTimeout
 
 	t := transporter{}
 
@@ -227,7 +227,7 @@ func (t *transporter) Get(urlStr string) (*http.Response, *http.Request, error) 
 // Cancel the on fly HTTP transaction when timeout happens.
 func (t *transporter) CancelWhenTimeout(req *http.Request) {
 	go func() {
-		time.Sleep(t.peerServer.HeartbeatTimeout)
+		time.Sleep(t.peerServer.Config.HeartbeatTimeout)
 		t.transport.CancelRequest(req)
 	}()
 }

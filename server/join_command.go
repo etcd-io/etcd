@@ -52,7 +52,7 @@ func (c *JoinCommand) Apply(context raft.Context) (interface{}, error) {
 	}
 
 	// Check peer number in the cluster
-	if ps.registry.Count() == ps.MaxClusterSize {
+	if ps.registry.Count() == ps.Config.MaxClusterSize {
 		log.Debug("Reject join request from ", c.Name)
 		return []byte{0}, etcdErr.NewError(etcdErr.EcodeNoMorePeer, "", context.CommitIndex())
 	}

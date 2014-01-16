@@ -15,7 +15,7 @@ import (
 
 // Get all the current logs
 func (ps *PeerServer) GetLogHttpHandler(w http.ResponseWriter, req *http.Request) {
-	log.Debugf("[recv] GET %s/log", ps.url)
+	log.Debugf("[recv] GET %s/log", ps.Config.URL)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(ps.raftServer.LogEntries())
@@ -27,11 +27,11 @@ func (ps *PeerServer) VoteHttpHandler(w http.ResponseWriter, req *http.Request) 
 
 	if _, err := rvreq.Decode(req.Body); err != nil {
 		http.Error(w, "", http.StatusBadRequest)
-		log.Warnf("[recv] BADREQUEST %s/vote [%v]", ps.url, err)
+		log.Warnf("[recv] BADREQUEST %s/vote [%v]", ps.Config.URL, err)
 		return
 	}
 
-	log.Debugf("[recv] POST %s/vote [%s]", ps.url, rvreq.CandidateName)
+	log.Debugf("[recv] POST %s/vote [%s]", ps.Config.URL, rvreq.CandidateName)
 
 	resp := ps.raftServer.RequestVote(rvreq)
 
@@ -55,11 +55,11 @@ func (ps *PeerServer) AppendEntriesHttpHandler(w http.ResponseWriter, req *http.
 
 	if _, err := aereq.Decode(req.Body); err != nil {
 		http.Error(w, "", http.StatusBadRequest)
-		log.Warnf("[recv] BADREQUEST %s/log/append [%v]", ps.url, err)
+		log.Warnf("[recv] BADREQUEST %s/log/append [%v]", ps.Config.URL, err)
 		return
 	}
 
-	log.Debugf("[recv] POST %s/log/append [%d]", ps.url, len(aereq.Entries))
+	log.Debugf("[recv] POST %s/log/append [%d]", ps.Config.URL, len(aereq.Entries))
 
 	ps.serverStats.RecvAppendReq(aereq.LeaderName, int(req.ContentLength))
 
@@ -90,11 +90,11 @@ func (ps *PeerServer) SnapshotHttpHandler(w http.ResponseWriter, req *http.Reque
 
 	if _, err := ssreq.Decode(req.Body); err != nil {
 		http.Error(w, "", http.StatusBadRequest)
-		log.Warnf("[recv] BADREQUEST %s/snapshot [%v]", ps.url, err)
+		log.Warnf("[recv] BADREQUEST %s/snapshot [%v]", ps.Config.URL, err)
 		return
 	}
 
-	log.Debugf("[recv] POST %s/snapshot", ps.url)
+	log.Debugf("[recv] POST %s/snapshot", ps.Config.URL)
 
 	resp := ps.raftServer.RequestSnapshot(ssreq)
 
@@ -117,11 +117,11 @@ func (ps *PeerServer) SnapshotRecoveryHttpHandler(w http.ResponseWriter, req *ht
 
 	if _, err := ssrreq.Decode(req.Body); err != nil {
 		http.Error(w, "", http.StatusBadRequest)
-		log.Warnf("[recv] BADREQUEST %s/snapshotRecovery [%v]", ps.url, err)
+		log.Warnf("[recv] BADREQUEST %s/snapshotRecovery [%v]", ps.Config.URL, err)
 		return
 	}
 
-	log.Debugf("[recv] POST %s/snapshotRecovery", ps.url)
+	log.Debugf("[recv] POST %s/snapshotRecovery", ps.Config.URL)
 
 	resp := ps.raftServer.SnapshotRecoveryRequest(ssrreq)
 
@@ -140,7 +140,7 @@ func (ps *PeerServer) SnapshotRecoveryHttpHandler(w http.ResponseWriter, req *ht
 
 // Get the port that listening for etcd connecting of the server
 func (ps *PeerServer) EtcdURLHttpHandler(w http.ResponseWriter, req *http.Request) {
-	log.Debugf("[recv] Get %s/etcdURL/ ", ps.url)
+	log.Debugf("[recv] Get %s/etcdURL/ ", ps.Config.URL)
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(ps.server.URL()))
 }
@@ -195,21 +195,21 @@ func (ps *PeerServer) RemoveHttpHandler(w http.ResponseWriter, req *http.Request
 
 // Response to the name request
 func (ps *PeerServer) NameHttpHandler(w http.ResponseWriter, req *http.Request) {
-	log.Debugf("[recv] Get %s/name/ ", ps.url)
+	log.Debugf("[recv] Get %s/name/ ", ps.Config.URL)
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(ps.name))
+	w.Write([]byte(ps.Config.Name))
 }
 
 // Response to the name request
 func (ps *PeerServer) VersionHttpHandler(w http.ResponseWriter, req *http.Request) {
-	log.Debugf("[recv] Get %s/version/ ", ps.url)
+	log.Debugf("[recv] Get %s/version/ ", ps.Config.URL)
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(strconv.Itoa(ps.store.Version())))
 }
 
 // Checks whether a given version is supported.
 func (ps *PeerServer) VersionCheckHttpHandler(w http.ResponseWriter, req *http.Request) {
-	log.Debugf("[recv] Get %s%s ", ps.url, req.URL.Path)
+	log.Debugf("[recv] Get %s%s ", ps.Config.URL, req.URL.Path)
 	vars := mux.Vars(req)
 	version, _ := strconv.Atoi(vars["version"])
 	if version >= store.MinVersion() && version <= store.MaxVersion() {
@@ -221,7 +221,7 @@ func (ps *PeerServer) VersionCheckHttpHandler(w http.ResponseWriter, req *http.R
 
 // Upgrades the current store version to the next version.
 func (ps *PeerServer) UpgradeHttpHandler(w http.ResponseWriter, req *http.Request) {
-	log.Debugf("[recv] Get %s/version", ps.url)
+	log.Debugf("[recv] Get %s/version", ps.Config.URL)
 
 	// Check if upgrade is possible for all nodes.
 	if err := ps.Upgradable(); err != nil {

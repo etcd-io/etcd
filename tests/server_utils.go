@@ -26,8 +26,17 @@ func RunServer(f func(*server.Server)) {
 	store := store.New()
 	registry := server.NewRegistry(store)
 
-	ps := server.NewPeerServer(testName, path, "http://"+testRaftURL, testRaftURL, &server.TLSConfig{Scheme: "http"}, &server.TLSInfo{}, registry, store, testSnapshotCount, testHeartbeatTimeout, testElectionTimeout, nil)
-	ps.MaxClusterSize = 9
+	psConfig := server.PeerServerConfig{
+		Name: testName,
+		Path: path,
+		URL: "http://"+testRaftURL,
+		BindAddr: testRaftURL,
+		SnapshotCount: testSnapshotCount,
+		HeartbeatTimeout: testHeartbeatTimeout,
+		ElectionTimeout: testElectionTimeout,
+		MaxClusterSize: 9,
+	}
+	ps := server.NewPeerServer(psConfig, &server.TLSConfig{Scheme: "http"}, &server.TLSInfo{}, registry, store, nil)
 	s := server.New(testName, "http://"+testClientURL, testClientURL, &server.TLSConfig{Scheme: "http"}, &server.TLSInfo{}, ps, registry, store, nil)
 	ps.SetServer(s)
 
