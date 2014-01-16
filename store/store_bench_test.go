@@ -20,13 +20,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/rand"
+	"runtime"
 	"testing"
 )
 
 func BenchmarkStoreSet(b *testing.B) {
 	s := newStore()
 	b.StopTimer()
-	kvs := generateNRandomKV(b.N)
+	kvs, size := generateNRandomKV(b.N)
 	b.StartTimer()
 
 	for i := 0; i < b.N; i++ {
@@ -35,12 +36,18 @@ func BenchmarkStoreSet(b *testing.B) {
 			panic(err)
 		}
 	}
+
+	memStats := new(runtime.MemStats)
+	runtime.GC()
+	runtime.ReadMemStats(memStats)
+	fmt.Printf("\nAlloc: %vKB; Data: %vKB; Kvs: %v\n",
+		memStats.Alloc/1000, size/1000, b.N)
 }
 
 func BenchmarkStoreSetWithJson(b *testing.B) {
 	s := newStore()
 	b.StopTimer()
-	kvs := generateNRandomKV(b.N)
+	kvs, size := generateNRandomKV(b.N)
 	b.StartTimer()
 
 	for i := 0; i < b.N; i++ {
@@ -53,17 +60,29 @@ func BenchmarkStoreSetWithJson(b *testing.B) {
 			panic(err)
 		}
 	}
+
+	memStats := new(runtime.MemStats)
+	runtime.GC()
+	runtime.ReadMemStats(memStats)
+	fmt.Printf("\nAlloc: %vKB; Data: %vKB; Kvs: %v\n",
+		memStats.Alloc/1000, size/1000, b.N)
 }
 
-func generateNRandomKV(n int) [][]string {
+func generateNRandomKV(n int) ([][]string, uint64) {
+	var size uint64
 	kvs := make([][]string, n)
+	bytes := make([]byte, 128) //128Byte content
+	for i := range bytes {
+		bytes[i] = byte(rand.Int())
+	}
 
 	for i := 0; i < n; i++ {
 		kvs[i] = make([]string, 2)
 		kvs[i][0] = fmt.Sprintf("/%d/%d/%d",
 			rand.Int()%100, rand.Int()%100, rand.Int()%100)
-		kvs[i][1] = fmt.Sprint(i)
+		kvs[i][1] = string(bytes)
+		size = size + uint64(len(kvs[i][0])) + uint64(len(kvs[i][1]))
 	}
 
-	return kvs
+	return kvs, size
 }
