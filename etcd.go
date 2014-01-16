@@ -117,7 +117,12 @@ func main() {
 	ps := server.NewPeerServer(psConfig, &peerTLSConfig, &info.RaftTLS, registry, store, &mb)
 
 	// Create client server.
-	s := server.New(info.Name, info.EtcdURL, info.EtcdListenHost, &tlsConfig, &info.EtcdTLS, ps, registry, store, &mb)
+	sConfig := server.ServerConfig{
+		Name: info.Name,
+		URL: info.EtcdURL,
+		BindAddr: info.EtcdListenHost,
+	}
+	s := server.New(sConfig, &tlsConfig, &info.EtcdTLS, ps, registry, store, &mb)
 	if err := s.AllowOrigins(config.CorsOrigins); err != nil {
 		panic(err)
 	}

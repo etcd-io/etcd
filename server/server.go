@@ -22,15 +22,20 @@ import (
 	"github.com/gorilla/mux"
 )
 
+type ServerConfig struct {
+	Name     string
+	URL      string
+	BindAddr string
+}
+
 // This is the default implementation of the Server interface.
 type Server struct {
 	http.Server
+	Config      ServerConfig
 	peerServer  *PeerServer
 	registry    *Registry
 	listener    net.Listener
 	store       store.Store
-	name        string
-	url         string
 	tlsConf     *TLSConfig
 	tlsInfo     *TLSInfo
 	router      *mux.Router
@@ -39,20 +44,19 @@ type Server struct {
 }
 
 // Creates a new Server.
-func New(name string, urlStr string, bindAddr string, tlsConf *TLSConfig, tlsInfo *TLSInfo, peerServer *PeerServer, registry *Registry, store store.Store, mb *metrics.Bucket) *Server {
+func New(sConfig ServerConfig, tlsConf *TLSConfig, tlsInfo *TLSInfo, peerServer *PeerServer, registry *Registry, store store.Store, mb *metrics.Bucket) *Server {
 	r := mux.NewRouter()
 	cors := &corsHandler{router: r}
 
 	s := &Server{
+		Config: sConfig,
 		Server: http.Server{
 			Handler:   cors,
 			TLSConfig: &tlsConf.Server,
-			Addr:      bindAddr,
+			Addr:      sConfig.BindAddr,
 		},
-		name:        name,
 		store:       store,
 		registry:    registry,
-		url:         urlStr,
 		tlsConf:     tlsConf,
 		tlsInfo:     tlsInfo,
 		peerServer:  peerServer,
@@ -96,7 +100,7 @@ func (s *Server) Term() uint64 {
 
 // The server URL.
 func (s *Server) URL() string {
-	return s.url
+	return s.Config.URL
 }
 
 // Retrives the Peer URL for a given node name.
@@ -143,7 +147,7 @@ func (s *Server) installV2() {
 
 func (s *Server) installMod() {
 	r := s.router
-	r.PathPrefix("/mod").Handler(http.StripPrefix("/mod", mod.HttpHandler(s.url)))
+	r.PathPrefix("/mod").Handler(http.StripPrefix("/mod", mod.HttpHandler(s.Config.URL)))
 }
 
 func (s *Server) installDebug() {
@@ -176,7 +180,7 @@ func (s *Server) handleFunc(path string, f func(http.ResponseWriter, *http.Reque
 	// Wrap the standard HandleFunc interface to pass in the server reference.
 	return r.HandleFunc(path, func(w http.ResponseWriter, req *http.Request) {
 		// Log request.
-		log.Debugf("[recv] %s %s %s [%s]", req.Method, s.url, req.URL.Path, req.RemoteAddr)
+		log.Debugf("[recv] %s %s %s [%s]", req.Method, s.Config.URL, req.URL.Path, req.RemoteAddr)
 
 		// Execute handler function and return error if necessary.
 		if err := f(w, req); err != nil {
@@ -193,7 +197,7 @@ func (s *Server) handleFunc(path string, f func(http.ResponseWriter, *http.Reque
 
 // Start to listen and response etcd client command
 func (s *Server) ListenAndServe() error {
-	log.Infof("etcd server [name %s, listen on %s, advertised url %s]", s.name, s.Server.Addr, s.url)
+	log.Infof("etcd server [name %s, listen on %s, advertised url %s]", s.Config.Name, s.Server.Addr, s.Config.URL)
 
 	if s.tlsConf.Scheme == "http" {
 		return s.listenAndServe()
@@ -353,7 +357,7 @@ func (s *Server) GetLeaderHandler(w http.ResponseWriter, req *http.Request) erro
 
 // Handler to return all the known peers in the current cluster.
 func (s *Server) GetPeersHandler(w http.ResponseWriter, req *http.Request) error {
-	peers := s.registry.ClientURLs(s.peerServer.RaftServer().Leader(), s.name)
+	peers := s.registry.ClientURLs(s.peerServer.RaftServer().Leader(), s.Config.Name)
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(strings.Join(peers, ", ")))
 	return nil
