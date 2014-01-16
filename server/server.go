@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/http/pprof"
 	"strings"
 	"time"
 
@@ -62,6 +63,7 @@ func New(name string, urlStr string, bindAddr string, tlsConf *TLSConfig, tlsInf
 	s.installV1()
 	s.installV2()
 	s.installMod()
+	s.installDebug()
 
 	return s
 }
@@ -136,6 +138,14 @@ func (s *Server) installV2() {
 func (s *Server) installMod() {
 	r := s.router
 	r.PathPrefix("/mod").Handler(http.StripPrefix("/mod", mod.HttpHandler(s.url)))
+}
+
+func (s *Server) installDebug() {
+	s.router.HandleFunc("/debug/pprof", pprof.Index)
+	s.router.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+	s.router.HandleFunc("/debug/pprof/profile", pprof.Profile)
+	s.router.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+	s.router.HandleFunc("/debug/pprof/{name}", pprof.Index)
 }
 
 // Adds a v1 server handler to the router.
