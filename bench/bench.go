@@ -8,18 +8,21 @@ import (
 	"github.com/coreos/go-etcd/etcd"
 )
 
-func write(requests int, end chan int) {
-	client := etcd.NewClient(nil)
+func write(endpoint string, requests int, end chan int) {
+	client := etcd.NewClient([]string{endpoint})
 
 	for i := 0; i < requests; i++ {
 		key := strconv.Itoa(i)
-		client.Set(key, key, 0)
+		_, err := client.Set(key, key, 0)
+		if err != nil {
+			println(err.Error())
+		}
 	}
 	end <- 1
 }
 
-func watch(key string) {
-	client := etcd.NewClient(nil)
+func watch(endpoint string, key string) {
+	client := etcd.NewClient([]string{endpoint})
 
 	receiver := make(chan *etcd.Response)
 	go client.Watch(key, 0, true, receiver, nil)
@@ -34,6 +37,8 @@ func watch(key string) {
 }
 
 func main() {
+	endpoint := flag.String("endpoint", "http://127.0.0.1:4001/", "etcd HTTP endpoint")
+
 	rWrites := flag.Int("write-requests", 50000, "number of writes")
 	cWrites := flag.Int("concurrent-writes", 500, "number of concurrent writes")
 
@@ -43,12 +48,12 @@ func main() {
 
 	for i := 0; i < *watches; i++ {
 		key := strconv.Itoa(i)
-		go watch(key)
+		go watch(*endpoint, key)
 	}
 
 	wChan := make(chan int, *cWrites)
 	for i := 0; i < *cWrites; i++ {
-		go write((*rWrites / *cWrites), wChan)
+		go write(*endpoint, (*rWrites / *cWrites), wChan)
 	}
 
 	for i := 0; i < *cWrites; i++ {
