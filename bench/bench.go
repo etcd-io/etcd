@@ -13,7 +13,10 @@ func write(endpoint string, requests int, end chan int) {
 
 	for i := 0; i < requests; i++ {
 		key := strconv.Itoa(i)
-		client.Set(key, key, 0)
+		_, err := client.Set(key, key, 0)
+		if err != nil {
+			println(err.Error())
+		}
 	}
 	end <- 1
 }
