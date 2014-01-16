@@ -1,5 +1,6 @@
 #!/bin/bash
 SESSION=etcd-cluster
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 ulimit -n unlimited
 
@@ -9,12 +10,12 @@ tmux new-session -d -s $SESSION
 tmux new-window -t $SESSION:1 -n 'peers'
 tmux split-window -h
 tmux select-pane -t 0
-tmux send-keys "./bin/etcd -s 127.0.0.1:7001 -c 127.0.0.1:4001 -d peer1 -n peer1" C-m
+tmux send-keys "${DIR}/../bin/etcd -peer-addr 127.0.0.1:7001 -addr 127.0.0.1:4001 -data-dir peer1 -name peer1" C-m
 
 for i in 2 3; do
 	tmux select-pane -t 0
 	tmux split-window -v
-	tmux send-keys "./bin/etcd -cors='*' -s 127.0.0.1:700${i} -c 127.0.0.1:400${i} -C 127.0.0.1:7001 -d peer${i} -n peer${i}" C-m
+	tmux send-keys "${DIR}/../bin/etcd -cors='*' -peer-addr 127.0.0.1:700${i} -addr 127.0.0.1:400${i} -peers 127.0.0.1:7001 -data-dir peer${i} -name peer${i}" C-m
 done
 
 # Attach to session
