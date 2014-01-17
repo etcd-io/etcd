@@ -19,9 +19,7 @@ package log
 
 import (
 	"fmt"
-	"github.com/coreos/go-systemd/journal"
 	"io"
-	"strings"
 	"sync"
 )
 
@@ -69,49 +67,6 @@ func WriterSink(out io.Writer, format string, fields []string) Sink {
 	}
 }
 
-type journalSink struct{}
-
-func (sink *journalSink) Log(fields Fields) {
-	message := fields["message"].(string)
-	priority := toJournalPriority(fields["priority"].(Priority))
-	journalFields := make(map[string]string)
-	for k, v := range fields {
-		if k == "message" || k == "priority" {
-			continue
-		}
-		journalFields[strings.ToUpper(k)] = fmt.Sprint(v)
-	}
-	journal.Send(message, priority, journalFields)
-}
-
-func toJournalPriority(priority Priority) journal.Priority {
-	switch priority {
-	case PriEmerg:
-		return journal.PriEmerg
-	case PriAlert:
-		return journal.PriAlert
-	case PriCrit:
-		return journal.PriCrit
-	case PriErr:
-		return journal.PriErr
-	case PriWarning:
-		return journal.PriWarning
-	case PriNotice:
-		return journal.PriNotice
-	case PriInfo:
-		return journal.PriInfo
-	case PriDebug:
-		return journal.PriDebug
-
-	default:
-		return journal.PriErr
-	}
-}
-
-func JournalSink() Sink {
-	return &journalSink{}
-}
-
 type combinedSink struct {
 	sinks []Sink
 }
@@ -119,18 +74,6 @@ type combinedSink struct {
 func (sink *combinedSink) Log(fields Fields) {
 	for _, s := range sink.sinks {
 		s.Log(fields)
-	}
-}
-
-func CombinedSink(writer io.Writer, format string, fields []string) Sink {
-	sinks := make([]Sink, 0)
-	sinks = append(sinks, WriterSink(writer, format, fields))
-	if journal.Enabled() {
-		sinks = append(sinks, JournalSink())
-	}
-
-	return &combinedSink{
-		sinks: sinks,
 	}
 }
 

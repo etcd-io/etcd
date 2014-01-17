@@ -1,4 +1,7 @@
+// +build windows
+
 package log
+
 // Copyright 2013, CoreOS, Inc. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,39 +19,15 @@ package log
 // author: David Fisher <ddf1991@gmail.com>
 // based on previous package by: Cong Ding <dinggnu@gmail.com>
 
-type Priority int
-
-const (
-	PriEmerg Priority = iota
-	PriAlert
-	PriCrit
-	PriErr
-	PriWarning
-	PriNotice
-	PriInfo
-	PriDebug
+import (
+	"io"
 )
 
-func (priority Priority) String() string {
-	switch priority {
-	case PriEmerg:
-		return "EMERGENCY"
-	case PriAlert:
-		return "ALERT"
-	case PriCrit:
-		return "CRITICAL"
-	case PriErr:
-		return "ERROR"
-	case PriWarning:
-		return "WARNING"
-	case PriNotice:
-		return "NOTICE"
-	case PriInfo:
-		return "INFO"
-	case PriDebug:
-		return "DEBUG"
+func CombinedSink(writer io.Writer, format string, fields []string) Sink {
+	sinks := make([]Sink, 0)
+	sinks = append(sinks, WriterSink(writer, format, fields))
 
-	default:
-		return "UNKNOWN"
+	return &combinedSink{
+		sinks: sinks,
 	}
 }
