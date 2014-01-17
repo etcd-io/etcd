@@ -15,7 +15,7 @@ tmux send-keys "${DIR}/../bin/etcd -peer-addr 127.0.0.1:7001 -addr 127.0.0.1:400
 for i in 2 3; do
 	tmux select-pane -t 0
 	tmux split-window -v
-	tmux send-keys "../bin/etcd -cors='*' -peer-addr 127.0.0.1:700${i} -addr 127.0.0.1:400${i} -peers 127.0.0.1:7001 -data-dir peer${i} -name peer${i}" C-m
+	tmux send-keys "${DIR}/../bin/etcd -cors='*' -peer-addr 127.0.0.1:700${i} -addr 127.0.0.1:400${i} -peers 127.0.0.1:7001 -data-dir peer${i} -name peer${i}" C-m
 done
 
 # Attach to session
