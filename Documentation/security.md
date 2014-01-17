@@ -1,11 +1,4 @@
----
-layout: docs
-title: Reading and Writing over HTTPS
-category: distributed_configuration
-sub_category: reading_writing
-forkurl: https://github.com/coreos/etcd/blob/master/Documentation/security.md
-weight: 8
----
+# Reading and Writing over HTTPS
 
 ## Transport Security with HTTPS
 
