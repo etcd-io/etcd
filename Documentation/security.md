@@ -1,6 +1,13 @@
-## Advanced Usage
+---
+layout: docs
+title: Reading and Writing over HTTPS
+category: distributed_configuration
+sub_category: reading_writing
+forkurl: https://github.com/coreos/etcd/blob/master/Documentation/security.md
+weight: 8
+---
 
-### Transport security with HTTPS
+## Transport Security with HTTPS
 
 Etcd supports SSL/TLS and client cert authentication for clients to server, as well as server to server communication.
 
@@ -53,7 +60,7 @@ And also the response from the etcd server:
 ```
 
 
-### Authentication with HTTPS client certificates
+## Authentication with HTTPS Client Certificates
 
 We can also do authentication using CA certs.
 The clients will provide their cert to the server and the server will check whether the cert is signed by the CA and decide whether to serve the request.
