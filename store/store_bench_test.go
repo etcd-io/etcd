@@ -24,30 +24,34 @@ import (
 	"testing"
 )
 
-func BenchmarkStoreSet(b *testing.B) {
-	s := newStore()
-	b.StopTimer()
-	kvs, size := generateNRandomKV(b.N)
-	b.StartTimer()
-
-	for i := 0; i < b.N; i++ {
-		_, err := s.Set(kvs[i][0], false, kvs[i][1], Permanent)
-		if err != nil {
-			panic(err)
-		}
-	}
-
-	memStats := new(runtime.MemStats)
-	runtime.GC()
-	runtime.ReadMemStats(memStats)
-	fmt.Printf("\nAlloc: %vKB; Data: %vKB; Kvs: %v\n",
-		memStats.Alloc/1000, size/1000, b.N)
+func BenchmarkStoreSet128Bytes(b *testing.B) {
+	benchStoreSet(b, 128, nil)
 }
 
-func BenchmarkStoreSetWithJson(b *testing.B) {
+func BenchmarkStoreSet1024Bytes(b *testing.B) {
+	benchStoreSet(b, 1024, nil)
+}
+
+func BenchmarkStoreSet4096Bytes(b *testing.B) {
+	benchStoreSet(b, 4096, nil)
+}
+
+func BenchmarkStoreSetWithJson128Bytes(b *testing.B) {
+	benchStoreSet(b, 128, json.Marshal)
+}
+
+func BenchmarkStoreSetWithJson1024Bytes(b *testing.B) {
+	benchStoreSet(b, 1024, json.Marshal)
+}
+
+func BenchmarkStoreSetWithJson4096Bytes(b *testing.B) {
+	benchStoreSet(b, 4096, json.Marshal)
+}
+
+func benchStoreSet(b *testing.B, valueSize int, process func(interface{}) ([]byte, error)) {
 	s := newStore()
 	b.StopTimer()
-	kvs, size := generateNRandomKV(b.N)
+	kvs, size := generateNRandomKV(b.N, valueSize)
 	b.StartTimer()
 
 	for i := 0; i < b.N; i++ {
@@ -55,23 +59,27 @@ func BenchmarkStoreSetWithJson(b *testing.B) {
 		if err != nil {
 			panic(err)
 		}
-		_, err = json.Marshal(resp)
-		if err != nil {
-			panic(err)
+
+		if process != nil {
+			_, err = process(resp)
+			if err != nil {
+				panic(err)
+			}
 		}
 	}
 
+	b.StopTimer()
 	memStats := new(runtime.MemStats)
 	runtime.GC()
 	runtime.ReadMemStats(memStats)
-	fmt.Printf("\nAlloc: %vKB; Data: %vKB; Kvs: %v\n",
-		memStats.Alloc/1000, size/1000, b.N)
+	fmt.Printf("\nAlloc: %vKB; Data: %vKB; Kvs: %v; Alloc/Data:%v\n",
+		memStats.Alloc/1000, size/1000, b.N, memStats.Alloc/size)
 }
 
-func generateNRandomKV(n int) ([][]string, uint64) {
+func generateNRandomKV(n int, valueSize int) ([][]string, uint64) {
 	var size uint64
 	kvs := make([][]string, n)
-	bytes := make([]byte, 128) //128Byte content
+	bytes := make([]byte, valueSize)
 	for i := range bytes {
 		bytes[i] = byte(rand.Int())
 	}
