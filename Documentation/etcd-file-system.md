@@ -5,13 +5,13 @@
 ![alt text](./img/etcd_fs_structure.jpg "etcd file system structure")
 
 ## Node
-In **Etcd**, the **Node** is the rudimentary element constructing the whole.
-Currently **Etcd** file system is comprised in a Unix-like way of files and directories, and they are two kinds of nodes different in:
+In **etcd**, the **node** is the base from which the filesystem is constructed.
+**etcd**'s file system is Unix-like with two kinds of nodes: file and directories.
 
-- **File Node** has data associated with it.
-- **Directory Node** has children nodes associated with it.
+- A **file node** has data associated with it.
+- A **directory node** has child nodes associated with it.
 
-Besides the file and directory difference, all nodes have common attributes and operations as follows:
+All nodes, regardless of type, have the following attributes and operations:
 
 ### Attributes:
 - **Expiration Time** [optional]
@@ -20,7 +20,7 @@ Besides the file and directory difference, all nodes have common attributes and 
 
 - **ACL**
 
-  The path of access control list of the node.
+  The path to the node's access control list.
 
 ### Operation:
 - **Get** (path, recursive, sorted)
@@ -55,7 +55,7 @@ Besides the file and directory difference, all nodes have common attributes and 
 - **TestAndSet** (path, prevValue [prevIndex], value, ttl)
 
   Atomic *test and set* value to a file. If test succeeds, this operation will change the previous value of the file to the given value.
-    - If the prevValue is given, it will test against previous value of 
+    - If the prevValue is given, it will test against previous value of
     the node.
     - If the prevValue is empty, it will test if the node is not existing.
     - If the prevValue is not empty, it will test if the prevValue is equal to the current value of the file.
@@ -69,7 +69,7 @@ Besides the file and directory difference, all nodes have common attributes and 
 
 ### Theory
 Etcd exports a Unix-like file system interface consisting of files and directories, collectively called nodes.
-Each node has various meta-data, including three names of access control lists used to control reading, writing and changing (change ACL names for the node).
+Each node has various meta-data, including three names of the access control lists used to control reading, writing and changing (change ACL names for the node).
 
 We are storing the ACL names for nodes under a special *ACL* directory.
 Each node has ACL name corresponding to one file within *ACL* dir.
