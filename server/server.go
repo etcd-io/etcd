@@ -26,27 +26,28 @@ type ServerConfig struct {
 	Name     string
 	URL      string
 	BindAddr string
+	CORS     *corsInfo
 }
 
 // This is the default implementation of the Server interface.
 type Server struct {
 	http.Server
-	Config      ServerConfig
-	peerServer  *PeerServer
-	registry    *Registry
-	listener    net.Listener
-	store       store.Store
-	tlsConf     *TLSConfig
-	tlsInfo     *TLSInfo
-	router      *mux.Router
-	corsHandler *corsHandler
+	Config         ServerConfig
+	peerServer     *PeerServer
+	registry       *Registry
+	listener       net.Listener
+	store          store.Store
+	tlsConf        *TLSConfig
+	tlsInfo        *TLSInfo
+	router         *mux.Router
+	corsMiddleware *corsHTTPMiddleware
 	metrics     *metrics.Bucket
 }
 
 // Creates a new Server.
 func New(sConfig ServerConfig, tlsConf *TLSConfig, tlsInfo *TLSInfo, peerServer *PeerServer, registry *Registry, store store.Store, mb *metrics.Bucket) *Server {
 	r := mux.NewRouter()
-	cors := &corsHandler{router: r}
+	cors := &corsHTTPMiddleware{r, sConfig.CORS}
 
 	s := &Server{
 		Config: sConfig,
@@ -61,7 +62,7 @@ func New(sConfig ServerConfig, tlsConf *TLSConfig, tlsInfo *TLSInfo, peerServer 
 		tlsInfo:     tlsInfo,
 		peerServer:  peerServer,
 		router:      r,
-		corsHandler: cors,
+		corsMiddleware: cors,
 		metrics:     mb,
 	}
 
@@ -324,16 +325,6 @@ func (s *Server) Dispatch(c raft.Command, w http.ResponseWriter, req *http.Reque
 
 		return nil
 	}
-}
-
-// OriginAllowed determines whether the server will allow a given CORS origin.
-func (s *Server) OriginAllowed(origin string) bool {
-	return s.corsHandler.OriginAllowed(origin)
-}
-
-// AllowOrigins sets a comma-delimited list of origins that are allowed.
-func (s *Server) AllowOrigins(origins []string) error {
-	return s.corsHandler.AllowOrigins(origins)
 }
 
 // Handler to return the current version of etcd.

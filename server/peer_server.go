@@ -35,6 +35,7 @@ type PeerServerConfig struct {
 	ElectionTimeout  time.Duration
 	MaxClusterSize   int
 	RetryTimes       int
+	CORS             *corsInfo
 }
 
 type PeerServer struct {

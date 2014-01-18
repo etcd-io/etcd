@@ -150,9 +150,9 @@ func (ps *PeerServer) JoinHttpHandler(w http.ResponseWriter, req *http.Request) 
 	command := &JoinCommand{}
 
 	// Write CORS header.
-	if ps.server.OriginAllowed("*") {
+	if ps.Config.CORS.OriginAllowed("*") {
 		w.Header().Add("Access-Control-Allow-Origin", "*")
-	} else if ps.server.OriginAllowed(req.Header.Get("Origin")) {
+	} else if ps.Config.CORS.OriginAllowed(req.Header.Get("Origin")) {
 		w.Header().Add("Access-Control-Allow-Origin", req.Header.Get("Origin"))
 	}
 

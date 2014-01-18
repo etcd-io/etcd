@@ -98,6 +98,12 @@ func main() {
 		}
 	}
 
+	// Retrieve CORS configuration
+	corsInfo, err := server.NewCORSInfo(config.CorsOrigins)
+	if err != nil {
+		log.Fatal("CORS:", err)
+	}
+
 	// Create etcd key-value store and registry.
 	store := store.New()
 	registry := server.NewRegistry(store)
@@ -113,6 +119,7 @@ func main() {
 		ElectionTimeout: time.Duration(config.Peer.ElectionTimeout) * time.Millisecond,
 		MaxClusterSize: config.MaxClusterSize,
 		RetryTimes: config.MaxRetryAttempts,
+		CORS: corsInfo,
 	}
 	ps := server.NewPeerServer(psConfig, &peerTLSConfig, &info.RaftTLS, registry, store, &mb)
 
@@ -121,11 +128,9 @@ func main() {
 		Name: info.Name,
 		URL: info.EtcdURL,
 		BindAddr: info.EtcdListenHost,
+		CORS: corsInfo,
 	}
 	s := server.New(sConfig, &tlsConfig, &info.EtcdTLS, ps, registry, store, &mb)
-	if err := s.AllowOrigins(config.CorsOrigins); err != nil {
-		panic(err)
-	}
 
 	if config.Trace() {
 		s.EnableTracing()

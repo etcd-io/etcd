@@ -25,6 +25,7 @@ func RunServer(f func(*server.Server)) {
 
 	store := store.New()
 	registry := server.NewRegistry(store)
+	corsInfo, _ := server.NewCORSInfo([]string{})
 
 	psConfig := server.PeerServerConfig{
 		Name: testName,
@@ -35,6 +36,7 @@ func RunServer(f func(*server.Server)) {
 		HeartbeatTimeout: testHeartbeatTimeout,
 		ElectionTimeout: testElectionTimeout,
 		MaxClusterSize: 9,
+		CORS: corsInfo,
 	}
 	ps := server.NewPeerServer(psConfig, &server.TLSConfig{Scheme: "http"}, &server.TLSInfo{}, registry, store, nil)
 
@@ -42,6 +44,7 @@ func RunServer(f func(*server.Server)) {
 		Name: testName,
 		URL: "http://"+testClientURL,
 		BindAddr: testClientURL,
+		CORS: corsInfo,
 	}
 	s := server.New(sConfig, &server.TLSConfig{Scheme: "http"}, &server.TLSInfo{}, ps, registry, store, nil)
 
