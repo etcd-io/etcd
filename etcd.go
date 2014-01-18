@@ -111,25 +111,25 @@ func main() {
 
 	// Create peer server.
 	psConfig := server.PeerServerConfig{
-		Name: info.Name,
-		Path: config.DataDir,
-		URL: info.RaftURL,
-		BindAddr: info.RaftListenHost,
-		SnapshotCount: config.SnapshotCount,
+		Name:             info.Name,
+		Path:             config.DataDir,
+		URL:              info.RaftURL,
+		BindAddr:         info.RaftListenHost,
+		SnapshotCount:    config.SnapshotCount,
 		HeartbeatTimeout: time.Duration(config.Peer.HeartbeatTimeout) * time.Millisecond,
-		ElectionTimeout: time.Duration(config.Peer.ElectionTimeout) * time.Millisecond,
-		MaxClusterSize: config.MaxClusterSize,
-		RetryTimes: config.MaxRetryAttempts,
-		CORS: corsInfo,
+		ElectionTimeout:  time.Duration(config.Peer.ElectionTimeout) * time.Millisecond,
+		MaxClusterSize:   config.MaxClusterSize,
+		RetryTimes:       config.MaxRetryAttempts,
+		CORS:             corsInfo,
 	}
 	ps := server.NewPeerServer(psConfig, &peerTLSConfig, &info.RaftTLS, registry, store, &mb)
 
 	// Create client server.
 	sConfig := server.ServerConfig{
-		Name: info.Name,
-		URL: info.EtcdURL,
+		Name:     info.Name,
+		URL:      info.EtcdURL,
 		BindAddr: info.EtcdListenHost,
-		CORS: corsInfo,
+		CORS:     corsInfo,
 	}
 	s := server.New(sConfig, &tlsConfig, &info.EtcdTLS, ps, registry, store, &mb)
 

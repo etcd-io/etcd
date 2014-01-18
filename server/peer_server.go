@@ -40,19 +40,19 @@ type PeerServerConfig struct {
 }
 
 type PeerServer struct {
-	Config			 PeerServerConfig
-	raftServer       raft.Server
-	server           *Server
-	httpServer       *http.Server
-	listener         net.Listener
-	joinIndex        uint64
-	tlsConf          *TLSConfig
-	tlsInfo          *TLSInfo
-	followersStats   *raftFollowersStats
-	serverStats      *raftServerStats
-	registry         *Registry
-	store            store.Store
-	snapConf         *snapshotConf
+	Config         PeerServerConfig
+	raftServer     raft.Server
+	server         *Server
+	httpServer     *http.Server
+	listener       net.Listener
+	joinIndex      uint64
+	tlsConf        *TLSConfig
+	tlsInfo        *TLSInfo
+	followersStats *raftFollowersStats
+	serverStats    *raftServerStats
+	registry       *Registry
+	store          store.Store
+	snapConf       *snapshotConf
 
 	closeChan            chan bool
 	timeoutThresholdChan chan interface{}
