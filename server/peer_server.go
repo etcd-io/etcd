@@ -122,6 +122,8 @@ func NewPeerServer(name string, path string, url string, bindAddr string, tlsCon
 	s.raftServer.AddEventListener(raft.HeartbeatTimeoutEventType, s.raftEventLogger)
 	s.raftServer.AddEventListener(raft.ElectionTimeoutThresholdEventType, s.raftEventLogger)
 
+	s.raftServer.AddEventListener(raft.HeartbeatEventType, s.recordMetricEvent)
+
 	return s
 }
 
@@ -497,6 +499,12 @@ func (s *PeerServer) raftEventLogger(event raft.Event) {
 		}
 
 	}
+}
+
+func (s *PeerServer) recordMetricEvent(event raft.Event) {
+	name := fmt.Sprintf("raft.event.%s", event.Type())
+	value := event.Value().(time.Duration)
+	(*s.metrics).Timer(name).Update(value)
 }
 
 func (s *PeerServer) monitorSnapshot() {
