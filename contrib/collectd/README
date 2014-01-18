@@ -1,0 +1,20 @@
+We're going to use Docker to build a chroot env that can be run with systemd-nspawn since I cannot figure out how to run
+a container using docker in the global network namespace.
+
+1. Build the collectd image using docker
+docker build -t collectd .
+
+2. Run the container (since we have to run it to export it...)
+COLLECTD_CONTAINER=`docker run -name collectd-tmp -d collectd`
+
+3. Export then kill the container
+docker export collectd-tmp > /tmp/collectd.tar
+
+4. Kill the temporary container
+docker kill $COLLECTD_CONTAINER
+
+5. Unpack the tar archive
+mkdir -p /tmp/collectd && tar -xvf /tmp/collectd.tar -C /tmp/collectd/
+
+6. Run collectd with systemd-nspawn - replace the COLLECTD_* env vars with your parameters!
+sudo systemd-run --unit collectd systemd-nspawn -D /tmp/collectd /bin/bash -c "COLLECTD_GRAPHITE_HOSTNAME=172.31.13.241 COLLECTD_LOCAL_HOSTNAME=node1 /bin/collectd-wrapper"
