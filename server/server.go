@@ -12,6 +12,7 @@ import (
 
 	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/log"
+	"github.com/coreos/etcd/metrics"
 	"github.com/coreos/etcd/mod"
 	"github.com/coreos/etcd/server/v1"
 	"github.com/coreos/etcd/server/v2"
@@ -34,10 +35,11 @@ type Server struct {
 	tlsInfo     *TLSInfo
 	router      *mux.Router
 	corsHandler *corsHandler
+	metrics     *metrics.Bucket
 }
 
 // Creates a new Server.
-func New(name string, urlStr string, bindAddr string, tlsConf *TLSConfig, tlsInfo *TLSInfo, peerServer *PeerServer, registry *Registry, store store.Store) *Server {
+func New(name string, urlStr string, bindAddr string, tlsConf *TLSConfig, tlsInfo *TLSInfo, peerServer *PeerServer, registry *Registry, store store.Store, mb *metrics.Bucket) *Server {
 	r := mux.NewRouter()
 	cors := &corsHandler{router: r}
 
@@ -56,6 +58,7 @@ func New(name string, urlStr string, bindAddr string, tlsConf *TLSConfig, tlsInf
 		peerServer:  peerServer,
 		router:      r,
 		corsHandler: cors,
+		metrics:     mb,
 	}
 
 	// Install the routes.
@@ -63,9 +66,12 @@ func New(name string, urlStr string, bindAddr string, tlsConf *TLSConfig, tlsInf
 	s.installV1()
 	s.installV2()
 	s.installMod()
-	s.installDebug()
 
 	return s
+}
+
+func (s *Server) EnableTracing() {
+	s.installDebug()
 }
 
 // The current state of the server in the cluster.
@@ -141,6 +147,7 @@ func (s *Server) installMod() {
 }
 
 func (s *Server) installDebug() {
+	s.handleFunc("/debug/metrics", s.GetMetricsHandler).Methods("GET")
 	s.router.HandleFunc("/debug/pprof", pprof.Index)
 	s.router.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
 	s.router.HandleFunc("/debug/pprof/profile", pprof.Profile)
@@ -400,5 +407,11 @@ func (s *Server) SpeedTestHandler(w http.ResponseWriter, req *http.Request) erro
 
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("speed test success"))
+	return nil
+}
+
+// Retrieves metrics from bucket
+func (s *Server) GetMetricsHandler(w http.ResponseWriter, req *http.Request) error {
+	(*s.metrics).Dump(w)
 	return nil
 }

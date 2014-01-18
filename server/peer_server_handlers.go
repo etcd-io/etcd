@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"time"
 
 	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/log"
@@ -49,6 +50,7 @@ func (ps *PeerServer) VoteHttpHandler(w http.ResponseWriter, req *http.Request) 
 
 // Response to append entries request
 func (ps *PeerServer) AppendEntriesHttpHandler(w http.ResponseWriter, req *http.Request) {
+	start := time.Now()
 	aereq := &raft.AppendEntriesRequest{}
 
 	if _, err := aereq.Decode(req.Body); err != nil {
@@ -78,6 +80,8 @@ func (ps *PeerServer) AppendEntriesHttpHandler(w http.ResponseWriter, req *http.
 		http.Error(w, "", http.StatusInternalServerError)
 		return
 	}
+
+	(*ps.metrics).Timer("timer.appendentries.handle").UpdateSince(start)
 }
 
 // Response to recover from snapshot request
