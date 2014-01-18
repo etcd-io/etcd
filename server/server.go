@@ -10,6 +10,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/coreos/raft"
+	"github.com/gorilla/mux"
+
 	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/log"
 	"github.com/coreos/etcd/metrics"
@@ -18,8 +21,6 @@ import (
 	"github.com/coreos/etcd/server/v2"
 	"github.com/coreos/etcd/store"
 	_ "github.com/coreos/etcd/store/v2"
-	"github.com/coreos/raft"
-	"github.com/gorilla/mux"
 )
 
 type ServerConfig struct {

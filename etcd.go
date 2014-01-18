@@ -22,11 +22,12 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/coreos/raft"
+
 	"github.com/coreos/etcd/log"
 	"github.com/coreos/etcd/metrics"
 	"github.com/coreos/etcd/server"
 	"github.com/coreos/etcd/store"
-	"github.com/coreos/raft"
 )
 
 func main() {

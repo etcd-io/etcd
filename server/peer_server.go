@@ -13,12 +13,13 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/coreos/raft"
+	"github.com/gorilla/mux"
+
 	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/log"
 	"github.com/coreos/etcd/metrics"
 	"github.com/coreos/etcd/store"
-	"github.com/coreos/raft"
-	"github.com/gorilla/mux"
 )
 
 const retryInterval = 10
