@@ -37,7 +37,7 @@ func watch(endpoint string, key string) {
 }
 
 func main() {
-	endpoint := flag.String("endpoint", "http://127.0.0.1:4001/", "etcd HTTP endpoint")
+	endpoint := flag.String("endpoint", "http://127.0.0.1:4001", "etcd HTTP endpoint")
 
 	rWrites := flag.Int("write-requests", 50000, "number of writes")
 	cWrites := flag.Int("concurrent-writes", 500, "number of concurrent writes")
