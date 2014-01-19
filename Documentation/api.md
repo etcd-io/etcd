@@ -11,7 +11,7 @@ Let's start etcd:
 
 This will bring up etcd listening on port 4001 for client communication and on port 7001 for server-to-server communication.
 The `-data-dir machine0` argument tells etcd to write machine configuration, logs and snapshots to the `./machine0/` directory.
-The `-name machine` tells the rest of the cluster that this machine is named machine0.
+The `-name machine0` tells the rest of the cluster that this machine is named machine0.
 
 ## Key Space Operations
 
