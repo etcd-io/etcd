@@ -110,6 +110,16 @@ func main() {
 	store := store.New()
 	registry := server.NewRegistry(store)
 
+	// Create stats objects
+	followersStats := server.NewRaftFollowersStats(info.Name)
+	serverStats := server.NewRaftServerStats(info.Name)
+
+	// Calculate all of our timeouts
+	heartbeatTimeout := time.Duration(config.Peer.HeartbeatTimeout) * time.Millisecond
+	electionTimeout :=  time.Duration(config.Peer.ElectionTimeout) * time.Millisecond
+	dialTimeout := (3 * heartbeatTimeout) + electionTimeout
+	responseHeaderTimeout := (3 * heartbeatTimeout) + electionTimeout
+
 	// Create peer server.
 	psConfig := server.PeerServerConfig{
 		Name:             info.Name,
@@ -117,13 +127,11 @@ func main() {
 		Scheme:           peerTLSConfig.Scheme,
 		URL:              info.RaftURL,
 		SnapshotCount:    config.SnapshotCount,
-		HeartbeatTimeout: time.Duration(config.Peer.HeartbeatTimeout) * time.Millisecond,
-		ElectionTimeout:  time.Duration(config.Peer.ElectionTimeout) * time.Millisecond,
 		MaxClusterSize:   config.MaxClusterSize,
 		RetryTimes:       config.MaxRetryAttempts,
 		CORS:             corsInfo,
 	}
-	ps := server.NewPeerServer(psConfig, &peerTLSConfig, &info.RaftTLS, registry, store, &mb)
+	ps := server.NewPeerServer(psConfig, registry, store, &mb, followersStats, serverStats)
 
 	var psListener net.Listener
 	if psConfig.Scheme == "https" {
@@ -134,6 +142,16 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
+	// Create Raft transporter and server
+	raftTransporter := server.NewTransporter(peerTLSConfig.Scheme, peerTLSConfig.Client, followersStats, serverStats, registry, heartbeatTimeout, dialTimeout, responseHeaderTimeout)
+	raftServer, err := raft.NewServer(info.Name, config.DataDir, raftTransporter, store, ps, "")
+	if err != nil {
+		log.Fatal(err)
+	}
+	raftServer.SetElectionTimeout(electionTimeout)
+	raftServer.SetHeartbeatTimeout(heartbeatTimeout)
+	ps.SetRaftServer(raftServer)
 
 	// Create client server.
 	sConfig := server.ServerConfig{

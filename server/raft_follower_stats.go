@@ -10,7 +10,7 @@ type raftFollowersStats struct {
 	Followers map[string]*raftFollowerStats `json:"followers"`
 }
 
-func newRaftFollowersStats(name string) *raftFollowersStats {
+func NewRaftFollowersStats(name string) *raftFollowersStats {
 	return &raftFollowersStats{
 		Leader:    name,
 		Followers: make(map[string]*raftFollowerStats),

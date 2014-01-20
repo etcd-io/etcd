@@ -43,8 +43,6 @@ type PeerServer struct {
 	raftServer     raft.Server
 	server         *Server
 	joinIndex      uint64
-	tlsConf        *TLSConfig
-	tlsInfo        *TLSInfo
 	followersStats *raftFollowersStats
 	serverStats    *raftServerStats
 	registry       *Registry
@@ -72,9 +70,7 @@ type snapshotConf struct {
 	snapshotThr uint64
 }
 
-func NewPeerServer(psConfig PeerServerConfig, tlsConf *TLSConfig, tlsInfo *TLSInfo, registry *Registry, store store.Store, mb *metrics.Bucket) *PeerServer {
-	followersStats := newRaftFollowersStats(psConfig.Name)
-	serverStats := newRaftServerStats(psConfig.Name)
+func NewPeerServer(psConfig PeerServerConfig, registry *Registry, store store.Store, mb *metrics.Bucket, followersStats *raftFollowersStats, serverStats *raftServerStats) *PeerServer {
 	s := &PeerServer{
 		Config: psConfig,
 		registry: registry,
@@ -86,37 +82,28 @@ func NewPeerServer(psConfig PeerServerConfig, tlsConf *TLSConfig, tlsInfo *TLSIn
 
 		metrics: mb,
 	}
+	return s
+}
 
-	// Create transporter for raft
-	dialTimeout := (3 * psConfig.HeartbeatTimeout) + psConfig.ElectionTimeout
-	responseHeaderTimeout := (3 * psConfig.HeartbeatTimeout) + psConfig.ElectionTimeout
-	raftTransporter := newTransporter(psConfig.Scheme, tlsConf.Client, followersStats, serverStats, registry, psConfig.HeartbeatTimeout, dialTimeout, responseHeaderTimeout)
-
-	// Create raft server
-	raftServer, err := raft.NewServer(psConfig.Name, psConfig.Path, raftTransporter, s.store, s, "")
-	if err != nil {
-		log.Fatal(err)
-	}
-
+func (s *PeerServer) SetRaftServer(raftServer raft.Server) {
 	s.snapConf = &snapshotConf{
 		checkingInterval: time.Second * 3,
 		// this is not accurate, we will update raft to provide an api
 		lastIndex:   raftServer.CommitIndex(),
-		snapshotThr: uint64(psConfig.SnapshotCount),
+		snapshotThr: uint64(s.Config.SnapshotCount),
 	}
 
+	raftServer.AddEventListener(raft.StateChangeEventType, s.raftEventLogger)
+	raftServer.AddEventListener(raft.LeaderChangeEventType, s.raftEventLogger)
+	raftServer.AddEventListener(raft.TermChangeEventType, s.raftEventLogger)
+	raftServer.AddEventListener(raft.AddPeerEventType, s.raftEventLogger)
+	raftServer.AddEventListener(raft.RemovePeerEventType, s.raftEventLogger)
+	raftServer.AddEventListener(raft.HeartbeatTimeoutEventType, s.raftEventLogger)
+	raftServer.AddEventListener(raft.ElectionTimeoutThresholdEventType, s.raftEventLogger)
+
+	raftServer.AddEventListener(raft.HeartbeatEventType, s.recordMetricEvent)
+
 	s.raftServer = raftServer
-	s.raftServer.AddEventListener(raft.StateChangeEventType, s.raftEventLogger)
-	s.raftServer.AddEventListener(raft.LeaderChangeEventType, s.raftEventLogger)
-	s.raftServer.AddEventListener(raft.TermChangeEventType, s.raftEventLogger)
-	s.raftServer.AddEventListener(raft.AddPeerEventType, s.raftEventLogger)
-	s.raftServer.AddEventListener(raft.RemovePeerEventType, s.raftEventLogger)
-	s.raftServer.AddEventListener(raft.HeartbeatTimeoutEventType, s.raftEventLogger)
-	s.raftServer.AddEventListener(raft.ElectionTimeoutThresholdEventType, s.raftEventLogger)
-
-	s.raftServer.AddEventListener(raft.HeartbeatEventType, s.recordMetricEvent)
-
-	return s
 }
 
 // Start the raft server
@@ -131,9 +118,6 @@ func (s *PeerServer) Serve(listener net.Listener, snapshot bool, cluster []strin
 			log.Debug(err)
 		}
 	}
-
-	s.raftServer.SetElectionTimeout(s.Config.ElectionTimeout)
-	s.raftServer.SetHeartbeatTimeout(s.Config.HeartbeatTimeout)
 
 	s.raftServer.Start()
 

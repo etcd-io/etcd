@@ -29,7 +29,7 @@ type raftServerStats struct {
 	recvRateQueue *statsQueue
 }
 
-func newRaftServerStats(name string) *raftServerStats {
+func NewRaftServerStats(name string) *raftServerStats {
 	return &raftServerStats{
 		Name:      name,
 		StartTime: time.Now(),
