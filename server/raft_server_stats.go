@@ -29,6 +29,19 @@ type raftServerStats struct {
 	recvRateQueue *statsQueue
 }
 
+func newRaftServerStats(name string) *raftServerStats {
+	return &raftServerStats{
+		Name:      name,
+		StartTime: time.Now(),
+		sendRateQueue: &statsQueue{
+			back: -1,
+		},
+		recvRateQueue: &statsQueue{
+			back: -1,
+		},
+	}
+}
+
 func (ss *raftServerStats) RecvAppendReq(leaderName string, pkgSize int) {
 	ss.State = raft.Follower
 	if leaderName != ss.LeaderInfo.Name {

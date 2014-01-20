@@ -75,23 +75,11 @@ type snapshotConf struct {
 func NewPeerServer(psConfig PeerServerConfig, tlsConf *TLSConfig, tlsInfo *TLSInfo, registry *Registry, store store.Store, mb *metrics.Bucket) *PeerServer {
 	s := &PeerServer{
 		Config: psConfig,
-
 		registry: registry,
 		store:    store,
-		followersStats: &raftFollowersStats{
-			Leader:    psConfig.Name,
-			Followers: make(map[string]*raftFollowerStats),
-		},
-		serverStats: &raftServerStats{
-			Name:      psConfig.Name,
-			StartTime: time.Now(),
-			sendRateQueue: &statsQueue{
-				back: -1,
-			},
-			recvRateQueue: &statsQueue{
-				back: -1,
-			},
-		},
+
+		followersStats: newRaftFollowersStats(psConfig.Name),
+		serverStats: newRaftServerStats(psConfig.Name),
 
 		timeoutThresholdChan: make(chan interface{}, 1),
 
