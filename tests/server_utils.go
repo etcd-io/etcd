@@ -31,7 +31,7 @@ func RunServer(f func(*server.Server)) {
 		Name: testName,
 		Path: path,
 		URL: "http://"+testRaftURL,
-		BindAddr: testRaftURL,
+		Scheme: "http",
 		SnapshotCount: testSnapshotCount,
 		HeartbeatTimeout: testHeartbeatTimeout,
 		ElectionTimeout: testElectionTimeout,
@@ -39,6 +39,10 @@ func RunServer(f func(*server.Server)) {
 		CORS: corsInfo,
 	}
 	ps := server.NewPeerServer(psConfig, &server.TLSConfig{Scheme: "http"}, &server.TLSInfo{}, registry, store, nil)
+	psListener, err := server.NewListener(testRaftURL)
+	if err != nil {
+		panic(err)
+	}
 
 	sConfig := server.ServerConfig{
 		Name: testName,
@@ -57,7 +61,7 @@ func RunServer(f func(*server.Server)) {
 	c := make(chan bool)
 	go func() {
 		c <- true
-		ps.ListenAndServe(false, []string{})
+		ps.Serve(psListener, false, []string{})
 	}()
 	<-c
 

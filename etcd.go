@@ -114,8 +114,8 @@ func main() {
 	psConfig := server.PeerServerConfig{
 		Name:             info.Name,
 		Path:             config.DataDir,
+		Scheme:           peerTLSConfig.Scheme,
 		URL:              info.RaftURL,
-		BindAddr:         info.RaftListenHost,
 		SnapshotCount:    config.SnapshotCount,
 		HeartbeatTimeout: time.Duration(config.Peer.HeartbeatTimeout) * time.Millisecond,
 		ElectionTimeout:  time.Duration(config.Peer.ElectionTimeout) * time.Millisecond,
@@ -124,6 +124,16 @@ func main() {
 		CORS:             corsInfo,
 	}
 	ps := server.NewPeerServer(psConfig, &peerTLSConfig, &info.RaftTLS, registry, store, &mb)
+
+	var psListener net.Listener
+	if psConfig.Scheme == "https" {
+		psListener, err = server.NewTLSListener(info.RaftListenHost, info.RaftTLS.CertFile, info.RaftTLS.KeyFile)
+	} else {
+		psListener, err = server.NewListener(info.RaftListenHost)
+	}
+	if err != nil {
+		panic(err)
+	}
 
 	// Create client server.
 	sConfig := server.ServerConfig{
@@ -151,7 +161,7 @@ func main() {
 
 	// Run peer server in separate thread while the client server blocks.
 	go func() {
-		log.Fatal(ps.ListenAndServe(config.Snapshot, config.Peers))
+		log.Fatal(ps.Serve(psListener, config.Snapshot, config.Peers))
 	}()
 	log.Fatal(s.Serve(sListener))
 }
