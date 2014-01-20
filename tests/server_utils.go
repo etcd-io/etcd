@@ -43,10 +43,13 @@ func RunServer(f func(*server.Server)) {
 	sConfig := server.ServerConfig{
 		Name: testName,
 		URL: "http://"+testClientURL,
-		BindAddr: testClientURL,
 		CORS: corsInfo,
 	}
-	s := server.New(sConfig, &server.TLSConfig{Scheme: "http"}, &server.TLSInfo{}, ps, registry, store, nil)
+	s := server.New(sConfig, ps, registry, store, nil)
+	sListener, err := server.NewListener(testClientURL)
+	if err != nil {
+		panic(err)
+	}
 
 	ps.SetServer(s)
 
@@ -61,7 +64,7 @@ func RunServer(f func(*server.Server)) {
 	// Start up etcd server.
 	go func() {
 		c <- true
-		s.ListenAndServe()
+		s.Serve(sListener)
 	}()
 	<-c
 

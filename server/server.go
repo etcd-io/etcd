@@ -1,7 +1,6 @@
 package server
 
 import (
-	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -24,10 +23,9 @@ import (
 )
 
 type ServerConfig struct {
-	Name     string
-	URL      string
-	BindAddr string
-	CORS     *corsInfo
+	Name string
+	URL  string
+	CORS *corsInfo
 }
 
 // This is the default implementation of the Server interface.
@@ -36,31 +34,25 @@ type Server struct {
 	Config         ServerConfig
 	peerServer     *PeerServer
 	registry       *Registry
-	listener       net.Listener
 	store          store.Store
-	tlsConf        *TLSConfig
-	tlsInfo        *TLSInfo
 	router         *mux.Router
 	corsMiddleware *corsHTTPMiddleware
 	metrics     *metrics.Bucket
+	listener net.Listener
 }
 
 // Creates a new Server.
-func New(sConfig ServerConfig, tlsConf *TLSConfig, tlsInfo *TLSInfo, peerServer *PeerServer, registry *Registry, store store.Store, mb *metrics.Bucket) *Server {
+func New(sConfig ServerConfig, peerServer *PeerServer, registry *Registry, store store.Store, mb *metrics.Bucket) *Server {
 	r := mux.NewRouter()
 	cors := &corsHTTPMiddleware{r, sConfig.CORS}
 
 	s := &Server{
 		Config: sConfig,
 		Server: http.Server{
-			Handler:   cors,
-			TLSConfig: &tlsConf.Server,
-			Addr:      sConfig.BindAddr,
+			Handler: cors,
 		},
 		store:          store,
 		registry:       registry,
-		tlsConf:        tlsConf,
-		tlsInfo:        tlsInfo,
 		peerServer:     peerServer,
 		router:         r,
 		corsMiddleware: cors,
@@ -198,59 +190,10 @@ func (s *Server) handleFunc(path string, f func(http.ResponseWriter, *http.Reque
 }
 
 // Start to listen and response etcd client command
-func (s *Server) ListenAndServe() error {
-	log.Infof("etcd server [name %s, listen on %s, advertised url %s]", s.Config.Name, s.Server.Addr, s.Config.URL)
-
-	if s.tlsConf.Scheme == "http" {
-		return s.listenAndServe()
-	} else {
-		return s.listenAndServeTLS(s.tlsInfo.CertFile, s.tlsInfo.KeyFile)
-	}
-}
-
-// Overridden version of net/http added so we can manage the listener.
-func (s *Server) listenAndServe() error {
-	addr := s.Server.Addr
-	if addr == "" {
-		addr = ":http"
-	}
-	l, e := net.Listen("tcp", addr)
-	if e != nil {
-		return e
-	}
-	s.listener = l
-	return s.Server.Serve(l)
-}
-
-// Overridden version of net/http added so we can manage the listener.
-func (s *Server) listenAndServeTLS(certFile, keyFile string) error {
-	addr := s.Server.Addr
-	if addr == "" {
-		addr = ":https"
-	}
-	config := &tls.Config{}
-	if s.Server.TLSConfig != nil {
-		*config = *s.Server.TLSConfig
-	}
-	if config.NextProtos == nil {
-		config.NextProtos = []string{"http/1.1"}
-	}
-
-	var err error
-	config.Certificates = make([]tls.Certificate, 1)
-	config.Certificates[0], err = tls.LoadX509KeyPair(certFile, keyFile)
-	if err != nil {
-		return err
-	}
-
-	conn, err := net.Listen("tcp", addr)
-	if err != nil {
-		return err
-	}
-
-	tlsListener := tls.NewListener(conn, config)
-	s.listener = tlsListener
-	return s.Server.Serve(tlsListener)
+func (s *Server) Serve(listener net.Listener) error {
+	log.Infof("etcd server [name %s, listen on %s, advertised url %s]", s.Config.Name, listener.Addr(), s.Config.URL)
+	s.listener = listener
+	return s.Server.Serve(listener)
 }
 
 // Stops the server.

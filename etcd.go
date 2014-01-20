@@ -18,6 +18,7 @@ package main
 
 import (
 	"fmt"
+	"net"
 	"os"
 	"runtime"
 	"time"
@@ -128,13 +129,22 @@ func main() {
 	sConfig := server.ServerConfig{
 		Name:     info.Name,
 		URL:      info.EtcdURL,
-		BindAddr: info.EtcdListenHost,
 		CORS:     corsInfo,
 	}
-	s := server.New(sConfig, &tlsConfig, &info.EtcdTLS, ps, registry, store, &mb)
+	s := server.New(sConfig, ps, registry, store, &mb)
 
 	if config.Trace() {
 		s.EnableTracing()
+	}
+
+	var sListener net.Listener
+	if tlsConfig.Scheme == "https" {
+		sListener, err = server.NewTLSListener(info.EtcdListenHost, info.EtcdTLS.CertFile, info.EtcdTLS.KeyFile)
+	} else {
+		sListener, err = server.NewListener(info.EtcdListenHost)
+	}
+	if err != nil {
+		panic(err)
 	}
 
 	ps.SetServer(s)
@@ -143,5 +153,5 @@ func main() {
 	go func() {
 		log.Fatal(ps.ListenAndServe(config.Snapshot, config.Peers))
 	}()
-	log.Fatal(s.ListenAndServe())
+	log.Fatal(s.Serve(sListener))
 }
