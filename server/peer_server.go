@@ -87,7 +87,9 @@ func NewPeerServer(psConfig PeerServerConfig, tlsConf *TLSConfig, tlsInfo *TLSIn
 	}
 
 	// Create transporter for raft
-	raftTransporter := newTransporter(tlsConf.Scheme, tlsConf.Client, s)
+	dialTimeout := (3 * psConfig.HeartbeatTimeout) + psConfig.ElectionTimeout
+	responseHeaderTimeout := (3 * psConfig.HeartbeatTimeout) + psConfig.ElectionTimeout
+	raftTransporter := newTransporter(psConfig.Scheme, tlsConf.Client, s, psConfig.HeartbeatTimeout, dialTimeout, responseHeaderTimeout)
 
 	// Create raft server
 	raftServer, err := raft.NewServer(psConfig.Name, psConfig.Path, raftTransporter, s.store, s, "")
