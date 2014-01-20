@@ -113,7 +113,19 @@ func (n *node) Write(value string, index uint64) *etcdErr.Error {
 
 func (n *node) ExpirationAndTTL() (*time.Time, int64) {
 	if !n.IsPermanent() {
-		return &n.ExpireTime, int64(n.ExpireTime.Sub(time.Now())/time.Second) + 1
+		/* compute ttl as:
+		   ceiling( (expireTime - timeNow) / nanosecondsPerSecond )
+		   which ranges from 1..n
+		   rather than as:
+		   ( (expireTime - timeNow) / nanosecondsPerSecond ) + 1
+		   which ranges 1..n+1
+		*/
+		ttlN := n.ExpireTime.Sub(time.Now())
+		ttl := ttlN / time.Second
+		if (ttlN % time.Second) > 0 {
+			ttl++
+		}
+		return &n.ExpireTime, int64(ttl)
 	}
 	return nil, 0
 }
