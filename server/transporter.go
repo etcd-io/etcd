@@ -16,10 +16,12 @@ import (
 // Transporter layer for communication between raft nodes
 type transporter struct {
 	requestTimeout time.Duration
+	followersStats *raftFollowersStats
+	serverStats    *raftServerStats
+	registry       *Registry
 
-	peerServer *PeerServer
-	client     *http.Client
-	transport  *http.Transport
+	client    *http.Client
+	transport *http.Transport
 }
 
 type dialer func(network, addr string) (net.Conn, error)
@@ -27,7 +29,7 @@ type dialer func(network, addr string) (net.Conn, error)
 // Create transporter using by raft server
 // Create http or https transporter based on
 // whether the user give the server cert and key
-func newTransporter(scheme string, tlsConf tls.Config, peerServer *PeerServer, dialTimeout, requestTimeout, responseHeaderTimeout time.Duration) *transporter {
+func newTransporter(scheme string, tlsConf tls.Config, followersStats *raftFollowersStats, serverStats *raftServerStats, registry *Registry, dialTimeout, requestTimeout, responseHeaderTimeout time.Duration) *transporter {
 	tr := &http.Transport{
 		Dial: func(network, addr string) (net.Conn, error) {
 			return net.DialTimeout(network, addr, dialTimeout)
@@ -41,10 +43,12 @@ func newTransporter(scheme string, tlsConf tls.Config, peerServer *PeerServer, d
 	}
 
 	t := transporter{
-		client: &http.Client{Transport: tr},
-		transport: tr,
-		peerServer: peerServer,
+		client:         &http.Client{Transport: tr},
+		transport:      tr,
 		requestTimeout: requestTimeout,
+		followersStats: followersStats,
+		serverStats:    serverStats,
+		registry:       registry,
 	}
 
 	return &t
@@ -61,18 +65,18 @@ func (t *transporter) SendAppendEntriesRequest(server raft.Server, peer *raft.Pe
 
 	size := b.Len()
 
-	t.peerServer.serverStats.SendAppendReq(size)
+	t.serverStats.SendAppendReq(size)
 
-	u, _ := t.peerServer.registry.PeerURL(peer.Name)
+	u, _ := t.registry.PeerURL(peer.Name)
 
 	log.Debugf("Send LogEntries to %s ", u)
 
-	thisFollowerStats, ok := t.peerServer.followersStats.Followers[peer.Name]
+	thisFollowerStats, ok := t.followersStats.Followers[peer.Name]
 
 	if !ok { //this is the first time this follower has been seen
 		thisFollowerStats = &raftFollowerStats{}
 		thisFollowerStats.Latency.Minimum = 1 << 63
-		t.peerServer.followersStats.Followers[peer.Name] = thisFollowerStats
+		t.followersStats.Followers[peer.Name] = thisFollowerStats
 	}
 
 	start := time.Now()
@@ -118,7 +122,7 @@ func (t *transporter) SendVoteRequest(server raft.Server, peer *raft.Peer, req *
 		return nil
 	}
 
-	u, _ := t.peerServer.registry.PeerURL(peer.Name)
+	u, _ := t.registry.PeerURL(peer.Name)
 	log.Debugf("Send Vote from %s to %s", server.Name(), u)
 
 	resp, httpRequest, err := t.Post(fmt.Sprintf("%s/vote", u), &b)
@@ -151,7 +155,7 @@ func (t *transporter) SendSnapshotRequest(server raft.Server, peer *raft.Peer, r
 		return nil
 	}
 
-	u, _ := t.peerServer.registry.PeerURL(peer.Name)
+	u, _ := t.registry.PeerURL(peer.Name)
 	log.Debugf("Send Snapshot Request from %s to %s", server.Name(), u)
 
 	resp, httpRequest, err := t.Post(fmt.Sprintf("%s/snapshot", u), &b)
@@ -184,7 +188,7 @@ func (t *transporter) SendSnapshotRecoveryRequest(server raft.Server, peer *raft
 		return nil
 	}
 
-	u, _ := t.peerServer.registry.PeerURL(peer.Name)
+	u, _ := t.registry.PeerURL(peer.Name)
 	log.Debugf("Send Snapshot Recovery from %s to %s", server.Name(), u)
 
 	resp, httpRequest, err := t.Post(fmt.Sprintf("%s/snapshotRecovery", u), &b)

@@ -73,13 +73,14 @@ type snapshotConf struct {
 }
 
 func NewPeerServer(psConfig PeerServerConfig, tlsConf *TLSConfig, tlsInfo *TLSInfo, registry *Registry, store store.Store, mb *metrics.Bucket) *PeerServer {
+	followersStats := newRaftFollowersStats(psConfig.Name)
+	serverStats := newRaftServerStats(psConfig.Name)
 	s := &PeerServer{
 		Config: psConfig,
 		registry: registry,
 		store:    store,
-
-		followersStats: newRaftFollowersStats(psConfig.Name),
-		serverStats: newRaftServerStats(psConfig.Name),
+		followersStats: followersStats,
+		serverStats: serverStats,
 
 		timeoutThresholdChan: make(chan interface{}, 1),
 
@@ -89,7 +90,7 @@ func NewPeerServer(psConfig PeerServerConfig, tlsConf *TLSConfig, tlsInfo *TLSIn
 	// Create transporter for raft
 	dialTimeout := (3 * psConfig.HeartbeatTimeout) + psConfig.ElectionTimeout
 	responseHeaderTimeout := (3 * psConfig.HeartbeatTimeout) + psConfig.ElectionTimeout
-	raftTransporter := newTransporter(psConfig.Scheme, tlsConf.Client, s, psConfig.HeartbeatTimeout, dialTimeout, responseHeaderTimeout)
+	raftTransporter := newTransporter(psConfig.Scheme, tlsConf.Client, followersStats, serverStats, registry, psConfig.HeartbeatTimeout, dialTimeout, responseHeaderTimeout)
 
 	// Create raft server
 	raftServer, err := raft.NewServer(psConfig.Name, psConfig.Path, raftTransporter, s.store, s, "")
