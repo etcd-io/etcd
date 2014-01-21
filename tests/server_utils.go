@@ -70,14 +70,14 @@ func RunServer(f func(*server.Server)) {
 	go func() {
 		c <- true
 		ps.Start(false, []string{})
-		http.Serve(psListener, ps)
+		http.Serve(psListener, ps.HTTPHandler())
 	}()
 	<-c
 
 	// Start up etcd server.
 	go func() {
 		c <- true
-		http.Serve(sListener, s)
+		http.Serve(sListener, s.HTTPHandler())
 	}()
 	<-c
 

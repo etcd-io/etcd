@@ -45,8 +45,6 @@ func New(name, url string, peerServer *PeerServer, registry *Registry, store sto
 		metrics:     mb,
 	}
 
-	s.handler = s.buildHTTPHandler()
-
 	return s
 }
 
@@ -169,7 +167,7 @@ func (s *Server) handleFunc(r *mux.Router, path string, f func(http.ResponseWrit
 	})
 }
 
-func (s *Server) buildHTTPHandler() http.Handler {
+func (s *Server) HTTPHandler() http.Handler {
 	router := mux.NewRouter()
 
 	// Install the routes.
@@ -183,10 +181,6 @@ func (s *Server) buildHTTPHandler() http.Handler {
 	}
 
 	return router
-}
-
-func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	s.handler.ServeHTTP(w, r)
 }
 
 // Dispatch command to the current leader

@@ -35,7 +35,6 @@ type PeerServerConfig struct {
 
 type PeerServer struct {
 	Config         PeerServerConfig
-	handler        http.Handler
 	raftServer     raft.Server
 	server         *Server
 	joinIndex      uint64
@@ -76,8 +75,6 @@ func NewPeerServer(psConfig PeerServerConfig, registry *Registry, store store.St
 
 		metrics: mb,
 	}
-
-	s.handler = s.buildHTTPHandler()
 
 	return s
 }
@@ -164,7 +161,7 @@ func (s *PeerServer) Stop() {
 	}
 }
 
-func (s *PeerServer) buildHTTPHandler() http.Handler {
+func (s *PeerServer) HTTPHandler() http.Handler {
 	router := mux.NewRouter()
 
 	// internal commands
@@ -182,10 +179,6 @@ func (s *PeerServer) buildHTTPHandler() http.Handler {
 	router.HandleFunc("/etcdURL", s.EtcdURLHttpHandler)
 
 	return router
-}
-
-func (s *PeerServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	s.handler.ServeHTTP(w, r)
 }
 
 // Retrieves the underlying Raft server.

@@ -180,11 +180,11 @@ func main() {
 	// Run peer server in separate thread while the client server blocks.
 	go func() {
 		log.Infof("raft server [name %s, listen on %s, advertised url %s]", ps.Config.Name, psListener.Addr(), ps.Config.URL)
-		sHTTP := &ehttp.CORSHandler{ps, corsInfo}
+		sHTTP := &ehttp.CORSHandler{ps.HTTPHandler(), corsInfo}
 		log.Fatal(http.Serve(psListener, sHTTP))
 	}()
 
 	log.Infof("etcd server [name %s, listen on %s, advertised url %s]", s.Name, sListener.Addr(), s.URL())
-	sHTTP := &ehttp.CORSHandler{s, corsInfo}
+	sHTTP := &ehttp.CORSHandler{s.HTTPHandler(), corsInfo}
 	log.Fatal(http.Serve(sListener, sHTTP))
 }
