@@ -99,6 +99,84 @@ func BenchmarkStoreDelete(b *testing.B) {
 		memStats.Alloc/1000, setMemStats.Alloc/1000, deleteMemStats.Alloc/1000)
 }
 
+func BenchmarkWatch(b *testing.B) {
+	b.StopTimer()
+	s := newStore()
+	kvs, _ := generateNRandomKV(b.N, 128)
+	b.StartTimer()
+
+	memStats := new(runtime.MemStats)
+	runtime.GC()
+	runtime.ReadMemStats(memStats)
+
+	for i := 0; i < b.N; i++ {
+		w, _ := s.Watch(kvs[i][0], false, false, 0)
+
+		e := newEvent("set", kvs[i][0], uint64(i+1), uint64(i+1))
+		s.WatcherHub.notify(e)
+		<-w.EventChan
+		s.CurrentIndex++
+	}
+
+	s.WatcherHub.EventHistory = nil
+	afterMemStats := new(runtime.MemStats)
+	runtime.GC()
+	runtime.ReadMemStats(afterMemStats)
+	fmt.Printf("\nBefore Alloc: %v; After Alloc: %v\n",
+		memStats.Alloc/1000, afterMemStats.Alloc/1000)
+}
+
+func BenchmarkWatchWithSet(b *testing.B) {
+	b.StopTimer()
+	s := newStore()
+	kvs, _ := generateNRandomKV(b.N, 128)
+	b.StartTimer()
+
+	for i := 0; i < b.N; i++ {
+		w, _ := s.Watch(kvs[i][0], false, false, 0)
+
+		s.Set(kvs[i][0], false, "test", Permanent)
+		<-w.EventChan
+	}
+}
+
+func BenchmarkWatchWithSetBatch(b *testing.B) {
+	b.StopTimer()
+	s := newStore()
+	kvs, _ := generateNRandomKV(b.N, 128)
+	b.StartTimer()
+
+	watchers := make([]*Watcher, b.N)
+
+	for i := 0; i < b.N; i++ {
+		watchers[i], _ = s.Watch(kvs[i][0], false, false, 0)
+	}
+
+	for i := 0; i < b.N; i++ {
+		s.Set(kvs[i][0], false, "test", Permanent)
+	}
+
+	for i := 0; i < b.N; i++ {
+		<-watchers[i].EventChan
+	}
+
+}
+
+func BenchmarkWatchOneKey(b *testing.B) {
+	s := newStore()
+	watchers := make([]*Watcher, b.N)
+
+	for i := 0; i < b.N; i++ {
+		watchers[i], _ = s.Watch("/foo", false, false, 0)
+	}
+
+	s.Set("/foo", false, "", Permanent)
+
+	for i := 0; i < b.N; i++ {
+		<-watchers[i].EventChan
+	}
+}
+
 func benchStoreSet(b *testing.B, valueSize int, process func(interface{}) ([]byte, error)) {
 	s := newStore()
 	b.StopTimer()
