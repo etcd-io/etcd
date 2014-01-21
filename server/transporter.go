@@ -29,17 +29,12 @@ type dialer func(network, addr string) (net.Conn, error)
 // Create transporter using by raft server
 // Create http or https transporter based on
 // whether the user give the server cert and key
-func NewTransporter(scheme string, tlsConf tls.Config, followersStats *raftFollowersStats, serverStats *raftServerStats, registry *Registry, dialTimeout, requestTimeout, responseHeaderTimeout time.Duration) *transporter {
+func NewTransporter(followersStats *raftFollowersStats, serverStats *raftServerStats, registry *Registry, dialTimeout, requestTimeout, responseHeaderTimeout time.Duration) *transporter {
 	tr := &http.Transport{
 		Dial: func(network, addr string) (net.Conn, error) {
 			return net.DialTimeout(network, addr, dialTimeout)
 		},
 		ResponseHeaderTimeout: responseHeaderTimeout,
-	}
-
-	if scheme == "https" {
-		tr.TLSClientConfig = &tlsConf
-		tr.DisableCompression = true
 	}
 
 	t := transporter{
@@ -52,6 +47,11 @@ func NewTransporter(scheme string, tlsConf tls.Config, followersStats *raftFollo
 	}
 
 	return &t
+}
+
+func (t *transporter) SetTLSConfig(tlsConf tls.Config) {
+	t.transport.TLSClientConfig = &tlsConf
+	t.transport.DisableCompression = true
 }
 
 // Sends AppendEntries RPCs to a peer when the server is the leader.

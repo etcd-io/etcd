@@ -46,10 +46,9 @@ func RunServer(f func(*server.Server)) {
 	}
 
 	// Create Raft transporter and server
-	tls := &server.TLSConfig{Scheme: "http"}
 	dialTimeout := (3 * testHeartbeatTimeout) + testElectionTimeout
 	responseHeaderTimeout := (3 * testHeartbeatTimeout) + testElectionTimeout
-	raftTransporter := server.NewTransporter(tls.Scheme, tls.Client, followersStats, serverStats, registry,	testHeartbeatTimeout, dialTimeout, responseHeaderTimeout)
+	raftTransporter := server.NewTransporter(followersStats, serverStats, registry,	testHeartbeatTimeout, dialTimeout, responseHeaderTimeout)
 	raftServer, err := raft.NewServer(testName, path, raftTransporter, store, ps, "")
 	if err != nil {
 		panic(err)

@@ -144,7 +144,10 @@ func main() {
 	}
 
 	// Create Raft transporter and server
-	raftTransporter := server.NewTransporter(peerTLSConfig.Scheme, peerTLSConfig.Client, followersStats, serverStats, registry, heartbeatTimeout, dialTimeout, responseHeaderTimeout)
+	raftTransporter := server.NewTransporter(followersStats, serverStats, registry, heartbeatTimeout, dialTimeout, responseHeaderTimeout)
+	if psConfig.Scheme == "https" {
+		raftTransporter.SetTLSConfig(peerTLSConfig.Client)
+	}
 	raftServer, err := raft.NewServer(info.Name, config.DataDir, raftTransporter, store, ps, "")
 	if err != nil {
 		log.Fatal(err)
