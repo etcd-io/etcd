@@ -125,7 +125,6 @@ func main() {
 	// Create peer server.
 	psConfig := server.PeerServerConfig{
 		Name:             info.Name,
-		Path:             config.DataDir,
 		Scheme:           peerTLSConfig.Scheme,
 		URL:              info.RaftURL,
 		SnapshotCount:    config.SnapshotCount,

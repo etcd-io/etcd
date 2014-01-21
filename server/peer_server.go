@@ -26,7 +26,6 @@ const ThresholdMonitorTimeout = 5 * time.Second
 
 type PeerServerConfig struct {
 	Name             string
-	Path             string
 	Scheme           string
 	URL              string
 	SnapshotCount    int

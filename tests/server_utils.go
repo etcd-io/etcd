@@ -34,7 +34,6 @@ func RunServer(f func(*server.Server)) {
 
 	psConfig := server.PeerServerConfig{
 		Name: testName,
-		Path: path,
 		URL: "http://"+testRaftURL,
 		Scheme: "http",
 		SnapshotCount: testSnapshotCount,
