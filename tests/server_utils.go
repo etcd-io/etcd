@@ -2,6 +2,7 @@ package tests
 
 import (
 	"io/ioutil"
+	"net/http"
 	"os"
 	"time"
 
@@ -27,7 +28,6 @@ func RunServer(f func(*server.Server)) {
 
 	store := store.New()
 	registry := server.NewRegistry(store)
-	corsInfo, _ := server.NewCORSInfo([]string{})
 
 	serverStats := server.NewRaftServerStats(testName)
 	followersStats := server.NewRaftFollowersStats(testName)
@@ -39,7 +39,6 @@ func RunServer(f func(*server.Server)) {
 		Scheme: "http",
 		SnapshotCount: testSnapshotCount,
 		MaxClusterSize: 9,
-		CORS: corsInfo,
 	}
 	ps := server.NewPeerServer(psConfig, registry, store, nil, followersStats, serverStats)
 	psListener, err := server.NewListener(testRaftURL)
@@ -63,7 +62,6 @@ func RunServer(f func(*server.Server)) {
 	sConfig := server.ServerConfig{
 		Name: testName,
 		URL: "http://"+testClientURL,
-		CORS: corsInfo,
 	}
 	s := server.New(sConfig, ps, registry, store, nil)
 	sListener, err := server.NewListener(testClientURL)
@@ -77,14 +75,15 @@ func RunServer(f func(*server.Server)) {
 	c := make(chan bool)
 	go func() {
 		c <- true
-		ps.Serve(psListener, false, []string{})
+		ps.Start(false, []string{})
+		http.Serve(psListener, ps)
 	}()
 	<-c
 
 	// Start up etcd server.
 	go func() {
 		c <- true
-		s.Serve(sListener)
+		http.Serve(sListener, s)
 	}()
 	<-c
 
@@ -95,6 +94,7 @@ func RunServer(f func(*server.Server)) {
 	f(s)
 
 	// Clean up servers.
-	ps.Close()
-	s.Close()
+	ps.Stop()
+	psListener.Close()
+	sListener.Close()
 }

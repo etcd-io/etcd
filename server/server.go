@@ -3,7 +3,6 @@ package server
 import (
 	"encoding/json"
 	"fmt"
-	"net"
 	"net/http"
 	"net/http/pprof"
 	"strings"
@@ -30,12 +29,11 @@ type ServerConfig struct {
 // This is the default implementation of the Server interface.
 type Server struct {
 	Config         ServerConfig
+	handler        http.Handler
 	peerServer     *PeerServer
 	registry       *Registry
 	store          store.Store
 	metrics        *metrics.Bucket
-
-	listener net.Listener
 
 	trace          bool
 }
@@ -49,6 +47,8 @@ func New(sConfig ServerConfig, peerServer *PeerServer, registry *Registry, store
 		peerServer:     peerServer,
 		metrics:     mb,
 	}
+
+	s.handler = s.buildHTTPHandler()
 
 	return s
 }
@@ -172,7 +172,7 @@ func (s *Server) handleFunc(r *mux.Router, path string, f func(http.ResponseWrit
 	})
 }
 
-func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (s *Server) buildHTTPHandler() http.Handler {
 	router := mux.NewRouter()
 
 	// Install the routes.
@@ -185,15 +185,11 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		s.installDebug(router)
 	}
 
-	router.ServeHTTP(w, r)
+	return router
 }
 
-// Stops the server.
-func (s *Server) Close() {
-	if s.listener != nil {
-		s.listener.Close()
-		s.listener = nil
-	}
+func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	s.handler.ServeHTTP(w, r)
 }
 
 // Dispatch command to the current leader

@@ -26,6 +26,7 @@ import (
 
 	"github.com/coreos/raft"
 
+	ehttp "github.com/coreos/etcd/http"
 	"github.com/coreos/etcd/log"
 	"github.com/coreos/etcd/metrics"
 	"github.com/coreos/etcd/server"
@@ -102,7 +103,7 @@ func main() {
 	}
 
 	// Retrieve CORS configuration
-	corsInfo, err := server.NewCORSInfo(config.CorsOrigins)
+	corsInfo, err := ehttp.NewCORSInfo(config.CorsOrigins)
 	if err != nil {
 		log.Fatal("CORS:", err)
 	}
@@ -130,7 +131,6 @@ func main() {
 		SnapshotCount:    config.SnapshotCount,
 		MaxClusterSize:   config.MaxClusterSize,
 		RetryTimes:       config.MaxRetryAttempts,
-		CORS:             corsInfo,
 	}
 	ps := server.NewPeerServer(psConfig, registry, store, &mb, followersStats, serverStats)
 
@@ -177,12 +177,16 @@ func main() {
 
 	ps.SetServer(s)
 
+	ps.Start(config.Snapshot, config.Peers)
+
 	// Run peer server in separate thread while the client server blocks.
 	go func() {
-		log.Fatal(ps.Serve(psListener, config.Snapshot, config.Peers))
+		log.Infof("raft server [name %s, listen on %s, advertised url %s]", ps.Config.Name, psListener.Addr(), ps.Config.URL)
+		sHTTP := &ehttp.CORSHandler{ps, corsInfo}
+		log.Fatal(http.Serve(psListener, sHTTP))
 	}()
 
 	log.Infof("etcd server [name %s, listen on %s, advertised url %s]", s.Config.Name, sListener.Addr(), s.Config.URL)
-	sHTTP := &server.CORSHTTPMiddleware{s, corsInfo}
+	sHTTP := &ehttp.CORSHandler{s, corsInfo}
 	log.Fatal(http.Serve(sListener, sHTTP))
 }

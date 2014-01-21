@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"net"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -35,11 +34,11 @@ type PeerServerConfig struct {
 	ElectionTimeout  time.Duration
 	MaxClusterSize   int
 	RetryTimes       int
-	CORS             *corsInfo
 }
 
 type PeerServer struct {
 	Config         PeerServerConfig
+	handler        http.Handler
 	raftServer     raft.Server
 	server         *Server
 	joinIndex      uint64
@@ -48,8 +47,6 @@ type PeerServer struct {
 	registry       *Registry
 	store          store.Store
 	snapConf       *snapshotConf
-
-	listener net.Listener
 
 	closeChan            chan bool
 	timeoutThresholdChan chan interface{}
@@ -82,6 +79,9 @@ func NewPeerServer(psConfig PeerServerConfig, registry *Registry, store store.St
 
 		metrics: mb,
 	}
+
+	s.handler = s.buildHTTPHandler()
+
 	return s
 }
 
@@ -107,7 +107,7 @@ func (s *PeerServer) SetRaftServer(raftServer raft.Server) {
 }
 
 // Start the raft server
-func (s *PeerServer) Serve(listener net.Listener, snapshot bool, cluster []string) error {
+func (s *PeerServer) Start(snapshot bool, cluster []string) error {
 	// LoadSnapshot
 	if snapshot {
 		err := s.raftServer.LoadSnapshot()
@@ -157,8 +157,18 @@ func (s *PeerServer) Serve(listener net.Listener, snapshot bool, cluster []strin
 		go s.monitorSnapshot()
 	}
 
+	return nil
+}
+
+func (s *PeerServer) Stop() {
+	if s.closeChan != nil {
+		close(s.closeChan)
+		s.closeChan = nil
+	}
+}
+
+func (s *PeerServer) buildHTTPHandler() http.Handler {
 	router := mux.NewRouter()
-	httpServer := &http.Server{Handler: router}
 
 	// internal commands
 	router.HandleFunc("/name", s.NameHttpHandler)
@@ -174,21 +184,11 @@ func (s *PeerServer) Serve(listener net.Listener, snapshot bool, cluster []strin
 	router.HandleFunc("/snapshotRecovery", s.SnapshotRecoveryHttpHandler)
 	router.HandleFunc("/etcdURL", s.EtcdURLHttpHandler)
 
-	s.listener = listener
-	log.Infof("raft server [name %s, listen on %s, advertised url %s]", s.Config.Name, listener.Addr(), s.Config.URL)
-	httpServer.Serve(listener)
-	return nil
+	return router
 }
 
-func (s *PeerServer) Close() {
-	if s.closeChan != nil {
-		close(s.closeChan)
-		s.closeChan = nil
-	}
-	if s.listener != nil {
-		s.listener.Close()
-		s.listener = nil
-	}
+func (s *PeerServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	s.handler.ServeHTTP(w, r)
 }
 
 // Retrieves the underlying Raft server.

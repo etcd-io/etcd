@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package server
+package http
 
 import (
 	"fmt"
@@ -22,9 +22,9 @@ import (
 	"net/url"
 )
 
-type corsInfo map[string]bool
+type CORSInfo map[string]bool
 
-func NewCORSInfo(origins []string) (*corsInfo, error) {
+func NewCORSInfo(origins []string) (*CORSInfo, error) {
 	// Construct a lookup of all origins.
 	m := make(map[string]bool)
 	for _, v := range origins {
@@ -36,29 +36,29 @@ func NewCORSInfo(origins []string) (*corsInfo, error) {
 		m[v] = true
 	}
 
-	info := corsInfo(m)
+	info := CORSInfo(m)
 	return &info, nil
 }
 
 // OriginAllowed determines whether the server will allow a given CORS origin.
-func (c corsInfo) OriginAllowed(origin string) bool {
+func (c CORSInfo) OriginAllowed(origin string) bool {
 	return c["*"] || c[origin]
 }
 
-type CORSHTTPMiddleware struct {
+type CORSHandler struct {
 	Handler http.Handler
-	Info    *corsInfo
+	Info    *CORSInfo
 }
 
 // addHeader adds the correct cors headers given an origin
-func (h *CORSHTTPMiddleware) addHeader(w http.ResponseWriter, origin string) {
+func (h *CORSHandler) addHeader(w http.ResponseWriter, origin string) {
 	w.Header().Add("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
 	w.Header().Add("Access-Control-Allow-Origin", origin)
 }
 
 // ServeHTTP adds the correct CORS headers based on the origin and returns immediatly
 // with a 200 OK if the method is OPTIONS.
-func (h *CORSHTTPMiddleware) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+func (h *CORSHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	// Write CORS header.
 	if h.Info.OriginAllowed("*") {
 		h.addHeader(w, "*")

@@ -149,13 +149,6 @@ func (ps *PeerServer) EtcdURLHttpHandler(w http.ResponseWriter, req *http.Reques
 func (ps *PeerServer) JoinHttpHandler(w http.ResponseWriter, req *http.Request) {
 	command := &JoinCommand{}
 
-	// Write CORS header.
-	if ps.Config.CORS.OriginAllowed("*") {
-		w.Header().Add("Access-Control-Allow-Origin", "*")
-	} else if ps.Config.CORS.OriginAllowed(req.Header.Get("Origin")) {
-		w.Header().Add("Access-Control-Allow-Origin", req.Header.Get("Origin"))
-	}
-
 	err := decodeJsonRequest(req, command)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
