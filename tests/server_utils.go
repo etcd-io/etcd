@@ -59,11 +59,7 @@ func RunServer(f func(*server.Server)) {
 	raftServer.SetHeartbeatTimeout(testHeartbeatTimeout)
 	ps.SetRaftServer(raftServer)
 
-	sConfig := server.ServerConfig{
-		Name: testName,
-		URL: "http://"+testClientURL,
-	}
-	s := server.New(sConfig, ps, registry, store, nil)
+	s := server.New(testName, "http://"+testClientURL, ps, registry, store, nil)
 	sListener, err := server.NewListener(testClientURL)
 	if err != nil {
 		panic(err)

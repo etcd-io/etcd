@@ -155,11 +155,7 @@ func main() {
 	ps.SetRaftServer(raftServer)
 
 	// Create client server.
-	sConfig := server.ServerConfig{
-		Name:     info.Name,
-		URL:      info.EtcdURL,
-	}
-	s := server.New(sConfig, ps, registry, store, &mb)
+	s := server.New(info.Name, info.EtcdURL, ps, registry, store, &mb)
 
 	if config.Trace() {
 		s.EnableTracing()
@@ -186,7 +182,7 @@ func main() {
 		log.Fatal(http.Serve(psListener, sHTTP))
 	}()
 
-	log.Infof("etcd server [name %s, listen on %s, advertised url %s]", s.Config.Name, sListener.Addr(), s.Config.URL)
+	log.Infof("etcd server [name %s, listen on %s, advertised url %s]", s.Name, sListener.Addr(), s.URL())
 	sHTTP := &ehttp.CORSHandler{s, corsInfo}
 	log.Fatal(http.Serve(sListener, sHTTP))
 }

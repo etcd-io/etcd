@@ -21,30 +21,27 @@ import (
 	_ "github.com/coreos/etcd/store/v2"
 )
 
-type ServerConfig struct {
-	Name string
-	URL  string
-}
-
 // This is the default implementation of the Server interface.
 type Server struct {
-	Config         ServerConfig
-	handler        http.Handler
-	peerServer     *PeerServer
-	registry       *Registry
-	store          store.Store
+	Name       string
+	url        string
+	handler    http.Handler
+	peerServer *PeerServer
+	registry   *Registry
+	store      store.Store
 	metrics        *metrics.Bucket
 
 	trace          bool
 }
 
 // Creates a new Server.
-func New(sConfig ServerConfig, peerServer *PeerServer, registry *Registry, store store.Store, mb *metrics.Bucket) *Server {
+func New(name, url string, peerServer *PeerServer, registry *Registry, store store.Store, mb *metrics.Bucket) *Server {
 	s := &Server{
-		Config:         sConfig,
-		store:          store,
-		registry:       registry,
-		peerServer:     peerServer,
+		Name:       name,
+		url:        url,
+		store:      store,
+		registry:   registry,
+		peerServer: peerServer,
 		metrics:     mb,
 	}
 
@@ -79,7 +76,7 @@ func (s *Server) Term() uint64 {
 
 // The server URL.
 func (s *Server) URL() string {
-	return s.Config.URL
+	return s.url
 }
 
 // Retrives the Peer URL for a given node name.
@@ -125,7 +122,7 @@ func (s *Server) installV2(r *mux.Router) {
 }
 
 func (s *Server) installMod(r *mux.Router) {
-	r.PathPrefix("/mod").Handler(http.StripPrefix("/mod", mod.HttpHandler(s.Config.URL)))
+	r.PathPrefix("/mod").Handler(http.StripPrefix("/mod", mod.HttpHandler(s.URL())))
 }
 
 func (s *Server) installDebug(r *mux.Router) {
@@ -157,7 +154,7 @@ func (s *Server) handleFunc(r *mux.Router, path string, f func(http.ResponseWrit
 	// Wrap the standard HandleFunc interface to pass in the server reference.
 	return r.HandleFunc(path, func(w http.ResponseWriter, req *http.Request) {
 		// Log request.
-		log.Debugf("[recv] %s %s %s [%s]", req.Method, s.Config.URL, req.URL.Path, req.RemoteAddr)
+		log.Debugf("[recv] %s %s %s [%s]", req.Method, s.URL(), req.URL.Path, req.RemoteAddr)
 
 		// Execute handler function and return error if necessary.
 		if err := f(w, req); err != nil {
@@ -280,7 +277,7 @@ func (s *Server) GetLeaderHandler(w http.ResponseWriter, req *http.Request) erro
 
 // Handler to return all the known peers in the current cluster.
 func (s *Server) GetPeersHandler(w http.ResponseWriter, req *http.Request) error {
-	peers := s.registry.ClientURLs(s.peerServer.RaftServer().Leader(), s.Config.Name)
+	peers := s.registry.ClientURLs(s.peerServer.RaftServer().Leader(), s.Name)
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(strings.Join(peers, ", ")))
 	return nil
