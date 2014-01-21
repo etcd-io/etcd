@@ -19,9 +19,11 @@ package main
 import (
 	"fmt"
 	"os"
+	"runtime"
 	"time"
 
 	"github.com/coreos/etcd/log"
+	"github.com/coreos/etcd/metrics"
 	"github.com/coreos/etcd/server"
 	"github.com/coreos/etcd/store"
 	"github.com/coreos/raft"
@@ -81,6 +83,21 @@ func main() {
 		log.Fatal("Peer TLS:", err)
 	}
 
+	var mbName string
+	if config.Trace() {
+		mbName = config.MetricsBucketName()
+		runtime.SetBlockProfileRate(1)
+	}
+
+	mb := metrics.NewBucket(mbName)
+
+	if config.GraphiteHost != "" {
+		err := mb.Publish(config.GraphiteHost)
+		if err != nil {
+			panic(err)
+		}
+	}
+
 	// Create etcd key-value store and registry.
 	store := store.New()
 	registry := server.NewRegistry(store)
@@ -88,14 +105,18 @@ func main() {
 	// Create peer server.
 	heartbeatTimeout := time.Duration(config.Peer.HeartbeatTimeout) * time.Millisecond
 	electionTimeout := time.Duration(config.Peer.ElectionTimeout) * time.Millisecond
-	ps := server.NewPeerServer(info.Name, config.DataDir, info.RaftURL, info.RaftListenHost, &peerTLSConfig, &info.RaftTLS, registry, store, config.SnapshotCount, heartbeatTimeout, electionTimeout)
+	ps := server.NewPeerServer(info.Name, config.DataDir, info.RaftURL, info.RaftListenHost, &peerTLSConfig, &info.RaftTLS, registry, store, config.SnapshotCount, heartbeatTimeout, electionTimeout, &mb)
 	ps.MaxClusterSize = config.MaxClusterSize
 	ps.RetryTimes = config.MaxRetryAttempts
 
 	// Create client server.
-	s := server.New(info.Name, info.EtcdURL, info.EtcdListenHost, &tlsConfig, &info.EtcdTLS, ps, registry, store)
+	s := server.New(info.Name, info.EtcdURL, info.EtcdListenHost, &tlsConfig, &info.EtcdTLS, ps, registry, store, &mb)
 	if err := s.AllowOrigins(config.CorsOrigins); err != nil {
 		panic(err)
+	}
+
+	if config.Trace() {
+		s.EnableTracing()
 	}
 
 	ps.SetServer(s)

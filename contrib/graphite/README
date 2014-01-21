@@ -1,0 +1,7 @@
+Running graphite under Docker is straightforward:
+
+1. Build the graphite image using Docker
+docker build -t graphite .
+
+2. Run a graphite container. Be sure to replace the $IP field with the IP address at which you wish to expose your graphite web service.
+docker run -p $IP:8080:80 -p $IP:2003:2003 -d graphite

@@ -501,7 +501,19 @@ func TestServerMultiNode(t *testing.T) {
 		clonedReq := &RequestVoteRequest{}
 		json.Unmarshal(b, clonedReq)
 
-		return target.RequestVote(clonedReq)
+		c := make(chan *RequestVoteResponse)
+
+		go func() {
+			c <- target.RequestVote(clonedReq)
+		}()
+
+		select {
+		case resp := <-c:
+			return resp
+		case <-time.After(time.Millisecond * 200):
+			return nil
+		}
+
 	}
 	transporter.sendAppendEntriesRequestFunc = func(s Server, peer *Peer, req *AppendEntriesRequest) *AppendEntriesResponse {
 		mutex.RLock()
@@ -512,7 +524,18 @@ func TestServerMultiNode(t *testing.T) {
 		clonedReq := &AppendEntriesRequest{}
 		json.Unmarshal(b, clonedReq)
 
-		return target.AppendEntries(clonedReq)
+		c := make(chan *AppendEntriesResponse)
+
+		go func() {
+			c <- target.AppendEntries(clonedReq)
+		}()
+
+		select {
+		case resp := <-c:
+			return resp
+		case <-time.After(time.Millisecond * 200):
+			return nil
+		}
 	}
 
 	disTransporter := &testTransporter{}

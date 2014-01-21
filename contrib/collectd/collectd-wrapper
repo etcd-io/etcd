@@ -1,0 +1,16 @@
+#!/bin/bash
+
+cat /etc/collectd/collectd.conf.tmpl > /etc/collectd/collectd.conf
+
+cat << EOF >> /etc/collectd/collectd.conf
+Hostname "${COLLECTD_LOCAL_HOSTNAME}"
+
+<Plugin write_graphite>
+    <Carbon>
+        Host "${COLLECTD_GRAPHITE_HOSTNAME}"
+        Port "2003"
+    </Carbon>
+</Plugin>
+EOF
+
+collectd -C /etc/collectd/collectd.conf -f

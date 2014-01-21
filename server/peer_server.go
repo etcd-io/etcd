@@ -15,6 +15,7 @@ import (
 
 	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/log"
+	"github.com/coreos/etcd/metrics"
 	"github.com/coreos/etcd/store"
 	"github.com/coreos/raft"
 	"github.com/gorilla/mux"
@@ -47,6 +48,8 @@ type PeerServer struct {
 
 	closeChan            chan bool
 	timeoutThresholdChan chan interface{}
+
+	metrics *metrics.Bucket
 }
 
 // TODO: find a good policy to do snapshot
@@ -62,7 +65,8 @@ type snapshotConf struct {
 	snapshotThr uint64
 }
 
-func NewPeerServer(name string, path string, url string, bindAddr string, tlsConf *TLSConfig, tlsInfo *TLSInfo, registry *Registry, store store.Store, snapshotCount int, heartbeatTimeout, electionTimeout time.Duration) *PeerServer {
+func NewPeerServer(name string, path string, url string, bindAddr string, tlsConf *TLSConfig, tlsInfo *TLSInfo, registry *Registry, store store.Store, snapshotCount int, heartbeatTimeout, electionTimeout time.Duration, mb *metrics.Bucket) *PeerServer {
+
 	s := &PeerServer{
 		name:     name,
 		url:      url,
@@ -89,6 +93,8 @@ func NewPeerServer(name string, path string, url string, bindAddr string, tlsCon
 		ElectionTimeout:  electionTimeout,
 
 		timeoutThresholdChan: make(chan interface{}, 1),
+
+		metrics: mb,
 	}
 
 	// Create transporter for raft
@@ -115,6 +121,8 @@ func NewPeerServer(name string, path string, url string, bindAddr string, tlsCon
 	s.raftServer.AddEventListener(raft.RemovePeerEventType, s.raftEventLogger)
 	s.raftServer.AddEventListener(raft.HeartbeatTimeoutEventType, s.raftEventLogger)
 	s.raftServer.AddEventListener(raft.ElectionTimeoutThresholdEventType, s.raftEventLogger)
+
+	s.raftServer.AddEventListener(raft.HeartbeatEventType, s.recordMetricEvent)
 
 	return s
 }
@@ -491,6 +499,12 @@ func (s *PeerServer) raftEventLogger(event raft.Event) {
 		}
 
 	}
+}
+
+func (s *PeerServer) recordMetricEvent(event raft.Event) {
+	name := fmt.Sprintf("raft.event.%s", event.Type())
+	value := event.Value().(time.Duration)
+	(*s.metrics).Timer(name).Update(value)
 }
 
 func (s *PeerServer) monitorSnapshot() {

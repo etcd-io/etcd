@@ -77,6 +77,8 @@ type Config struct {
 		HeartbeatTimeout int    `toml:"heartbeat_timeout" env:"ETCD_PEER_HEARTBEAT_TIMEOUT"`
 		ElectionTimeout  int    `toml:"election_timeout" env:"ETCD_PEER_ELECTION_TIMEOUT"`
 	}
+	strTrace     string `toml:"trace" env:"ETCD_TRACE"`
+	GraphiteHost string `toml:"graphite_host" env:"ETCD_GRAPHITE_HOST"`
 }
 
 // NewConfig returns a Config initialized with default values.
@@ -246,6 +248,9 @@ func (c *Config) LoadFlags(arguments []string) error {
 	f.BoolVar(&c.Snapshot, "snapshot", c.Snapshot, "")
 	f.IntVar(&c.SnapshotCount, "snapshot-count", c.SnapshotCount, "")
 	f.StringVar(&c.CPUProfileFile, "cpuprofile", "", "")
+
+	f.StringVar(&c.strTrace, "trace", "", "")
+	f.StringVar(&c.GraphiteHost, "graphite-host", "", "")
 
 	// BEGIN IGNORED FLAGS
 	f.StringVar(&path, "config", "", "")
@@ -451,6 +456,17 @@ func (c *Config) PeerTLSInfo() TLSInfo {
 // PeerTLSConfig generates the TLS configuration for the peer server.
 func (c *Config) PeerTLSConfig() (TLSConfig, error) {
 	return c.PeerTLSInfo().Config()
+}
+
+// MetricsBucketName generates the name that should be used for a
+// corresponding MetricsBucket object
+func (c *Config) MetricsBucketName() string {
+	return fmt.Sprintf("etcd.%s", c.Name)
+}
+
+// Trace determines if any trace-level information should be emitted
+func (c *Config) Trace() bool {
+	return c.strTrace == "*"
 }
 
 // sanitizeURL will cleanup a host string in the format hostname[:port] and
