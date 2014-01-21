@@ -22,9 +22,7 @@ import (
 	"net/url"
 )
 
-type corsInfo struct {
-	origins map[string]bool
-}
+type corsInfo map[string]bool
 
 func NewCORSInfo(origins []string) (*corsInfo, error) {
 	// Construct a lookup of all origins.
@@ -38,12 +36,13 @@ func NewCORSInfo(origins []string) (*corsInfo, error) {
 		m[v] = true
 	}
 
-	return &corsInfo{m}, nil
+	info := corsInfo(m)
+	return &info, nil
 }
 
 // OriginAllowed determines whether the server will allow a given CORS origin.
-func (c *corsInfo) OriginAllowed(origin string) bool {
-	return c.origins["*"] || c.origins[origin]
+func (c corsInfo) OriginAllowed(origin string) bool {
+	return c["*"] || c[origin]
 }
 
 type corsHTTPMiddleware struct {
