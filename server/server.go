@@ -25,51 +25,36 @@ import (
 type ServerConfig struct {
 	Name string
 	URL  string
-	CORS *corsInfo
 }
 
 // This is the default implementation of the Server interface.
 type Server struct {
-	http.Server
 	Config         ServerConfig
 	peerServer     *PeerServer
 	registry       *Registry
 	store          store.Store
-	router         *mux.Router
-	corsMiddleware *corsHTTPMiddleware
-	metrics     *metrics.Bucket
+	metrics        *metrics.Bucket
+
 	listener net.Listener
+
+	trace          bool
 }
 
 // Creates a new Server.
 func New(sConfig ServerConfig, peerServer *PeerServer, registry *Registry, store store.Store, mb *metrics.Bucket) *Server {
-	r := mux.NewRouter()
-	cors := &corsHTTPMiddleware{r, sConfig.CORS}
-
 	s := &Server{
-		Config: sConfig,
-		Server: http.Server{
-			Handler: cors,
-		},
+		Config:         sConfig,
 		store:          store,
 		registry:       registry,
 		peerServer:     peerServer,
-		router:         r,
-		corsMiddleware: cors,
 		metrics:     mb,
 	}
-
-	// Install the routes.
-	s.handleFunc("/version", s.GetVersionHandler).Methods("GET")
-	s.installV1()
-	s.installV2()
-	s.installMod()
 
 	return s
 }
 
 func (s *Server) EnableTracing() {
-	s.installDebug()
+	s.trace = true
 }
 
 // The current state of the server in the cluster.
@@ -112,64 +97,62 @@ func (s *Server) Store() store.Store {
 	return s.store
 }
 
-func (s *Server) installV1() {
-	s.handleFuncV1("/v1/keys/{key:.*}", v1.GetKeyHandler).Methods("GET")
-	s.handleFuncV1("/v1/keys/{key:.*}", v1.SetKeyHandler).Methods("POST", "PUT")
-	s.handleFuncV1("/v1/keys/{key:.*}", v1.DeleteKeyHandler).Methods("DELETE")
-	s.handleFuncV1("/v1/watch/{key:.*}", v1.WatchKeyHandler).Methods("GET", "POST")
-	s.handleFunc("/v1/leader", s.GetLeaderHandler).Methods("GET")
-	s.handleFunc("/v1/machines", s.GetPeersHandler).Methods("GET")
-	s.handleFunc("/v1/peers", s.GetPeersHandler).Methods("GET")
-	s.handleFunc("/v1/stats/self", s.GetStatsHandler).Methods("GET")
-	s.handleFunc("/v1/stats/leader", s.GetLeaderStatsHandler).Methods("GET")
-	s.handleFunc("/v1/stats/store", s.GetStoreStatsHandler).Methods("GET")
+func (s *Server) installV1(r *mux.Router) {
+	s.handleFuncV1(r, "/v1/keys/{key:.*}", v1.GetKeyHandler).Methods("GET")
+	s.handleFuncV1(r, "/v1/keys/{key:.*}", v1.SetKeyHandler).Methods("POST", "PUT")
+	s.handleFuncV1(r, "/v1/keys/{key:.*}", v1.DeleteKeyHandler).Methods("DELETE")
+	s.handleFuncV1(r, "/v1/watch/{key:.*}", v1.WatchKeyHandler).Methods("GET", "POST")
+	s.handleFunc(r, "/v1/leader", s.GetLeaderHandler).Methods("GET")
+	s.handleFunc(r, "/v1/machines", s.GetPeersHandler).Methods("GET")
+	s.handleFunc(r, "/v1/peers", s.GetPeersHandler).Methods("GET")
+	s.handleFunc(r, "/v1/stats/self", s.GetStatsHandler).Methods("GET")
+	s.handleFunc(r, "/v1/stats/leader", s.GetLeaderStatsHandler).Methods("GET")
+	s.handleFunc(r, "/v1/stats/store", s.GetStoreStatsHandler).Methods("GET")
 }
 
-func (s *Server) installV2() {
-	s.handleFuncV2("/v2/keys/{key:.*}", v2.GetHandler).Methods("GET")
-	s.handleFuncV2("/v2/keys/{key:.*}", v2.PostHandler).Methods("POST")
-	s.handleFuncV2("/v2/keys/{key:.*}", v2.PutHandler).Methods("PUT")
-	s.handleFuncV2("/v2/keys/{key:.*}", v2.DeleteHandler).Methods("DELETE")
-	s.handleFunc("/v2/leader", s.GetLeaderHandler).Methods("GET")
-	s.handleFunc("/v2/machines", s.GetPeersHandler).Methods("GET")
-	s.handleFunc("/v2/peers", s.GetPeersHandler).Methods("GET")
-	s.handleFunc("/v2/stats/self", s.GetStatsHandler).Methods("GET")
-	s.handleFunc("/v2/stats/leader", s.GetLeaderStatsHandler).Methods("GET")
-	s.handleFunc("/v2/stats/store", s.GetStoreStatsHandler).Methods("GET")
-	s.handleFunc("/v2/speedTest", s.SpeedTestHandler).Methods("GET")
+func (s *Server) installV2(r *mux.Router) {
+	s.handleFuncV2(r, "/v2/keys/{key:.*}", v2.GetHandler).Methods("GET")
+	s.handleFuncV2(r, "/v2/keys/{key:.*}", v2.PostHandler).Methods("POST")
+	s.handleFuncV2(r, "/v2/keys/{key:.*}", v2.PutHandler).Methods("PUT")
+	s.handleFuncV2(r, "/v2/keys/{key:.*}", v2.DeleteHandler).Methods("DELETE")
+	s.handleFunc(r, "/v2/leader", s.GetLeaderHandler).Methods("GET")
+	s.handleFunc(r, "/v2/machines", s.GetPeersHandler).Methods("GET")
+	s.handleFunc(r, "/v2/peers", s.GetPeersHandler).Methods("GET")
+	s.handleFunc(r, "/v2/stats/self", s.GetStatsHandler).Methods("GET")
+	s.handleFunc(r, "/v2/stats/leader", s.GetLeaderStatsHandler).Methods("GET")
+	s.handleFunc(r, "/v2/stats/store", s.GetStoreStatsHandler).Methods("GET")
+	s.handleFunc(r, "/v2/speedTest", s.SpeedTestHandler).Methods("GET")
 }
 
-func (s *Server) installMod() {
-	r := s.router
+func (s *Server) installMod(r *mux.Router) {
 	r.PathPrefix("/mod").Handler(http.StripPrefix("/mod", mod.HttpHandler(s.Config.URL)))
 }
 
-func (s *Server) installDebug() {
-	s.handleFunc("/debug/metrics", s.GetMetricsHandler).Methods("GET")
-	s.router.HandleFunc("/debug/pprof", pprof.Index)
-	s.router.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
-	s.router.HandleFunc("/debug/pprof/profile", pprof.Profile)
-	s.router.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
-	s.router.HandleFunc("/debug/pprof/{name}", pprof.Index)
+func (s *Server) installDebug(r *mux.Router) {
+	s.handleFunc(r, "/debug/metrics", s.GetMetricsHandler).Methods("GET")
+	r.HandleFunc("/debug/pprof", pprof.Index)
+	r.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+	r.HandleFunc("/debug/pprof/profile", pprof.Profile)
+	r.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+	r.HandleFunc("/debug/pprof/{name}", pprof.Index)
 }
 
 // Adds a v1 server handler to the router.
-func (s *Server) handleFuncV1(path string, f func(http.ResponseWriter, *http.Request, v1.Server) error) *mux.Route {
-	return s.handleFunc(path, func(w http.ResponseWriter, req *http.Request) error {
+func (s *Server) handleFuncV1(r *mux.Router, path string, f func(http.ResponseWriter, *http.Request, v1.Server) error) *mux.Route {
+	return s.handleFunc(r, path, func(w http.ResponseWriter, req *http.Request) error {
 		return f(w, req, s)
 	})
 }
 
 // Adds a v2 server handler to the router.
-func (s *Server) handleFuncV2(path string, f func(http.ResponseWriter, *http.Request, v2.Server) error) *mux.Route {
-	return s.handleFunc(path, func(w http.ResponseWriter, req *http.Request) error {
+func (s *Server) handleFuncV2(r *mux.Router, path string, f func(http.ResponseWriter, *http.Request, v2.Server) error) *mux.Route {
+	return s.handleFunc(r, path, func(w http.ResponseWriter, req *http.Request) error {
 		return f(w, req, s)
 	})
 }
 
 // Adds a server handler to the router.
-func (s *Server) handleFunc(path string, f func(http.ResponseWriter, *http.Request) error) *mux.Route {
-	r := s.router
+func (s *Server) handleFunc(r *mux.Router, path string, f func(http.ResponseWriter, *http.Request) error) *mux.Route {
 
 	// Wrap the standard HandleFunc interface to pass in the server reference.
 	return r.HandleFunc(path, func(w http.ResponseWriter, req *http.Request) {
@@ -189,11 +172,20 @@ func (s *Server) handleFunc(path string, f func(http.ResponseWriter, *http.Reque
 	})
 }
 
-// Start to listen and response etcd client command
-func (s *Server) Serve(listener net.Listener) error {
-	log.Infof("etcd server [name %s, listen on %s, advertised url %s]", s.Config.Name, listener.Addr(), s.Config.URL)
-	s.listener = listener
-	return s.Server.Serve(listener)
+func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	router := mux.NewRouter()
+
+	// Install the routes.
+	s.handleFunc(router, "/version", s.GetVersionHandler).Methods("GET")
+	s.installV1(router)
+	s.installV2(router)
+	s.installMod(router)
+
+	if s.trace {
+		s.installDebug(router)
+	}
+
+	router.ServeHTTP(w, r)
 }
 
 // Stops the server.

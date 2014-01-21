@@ -19,6 +19,7 @@ package main
 import (
 	"fmt"
 	"net"
+	"net/http"
 	"os"
 	"runtime"
 	"time"
@@ -157,7 +158,6 @@ func main() {
 	sConfig := server.ServerConfig{
 		Name:     info.Name,
 		URL:      info.EtcdURL,
-		CORS:     corsInfo,
 	}
 	s := server.New(sConfig, ps, registry, store, &mb)
 
@@ -181,5 +181,8 @@ func main() {
 	go func() {
 		log.Fatal(ps.Serve(psListener, config.Snapshot, config.Peers))
 	}()
-	log.Fatal(s.Serve(sListener))
+
+	log.Infof("etcd server [name %s, listen on %s, advertised url %s]", s.Config.Name, sListener.Addr(), s.Config.URL)
+	sHTTP := &server.CORSHTTPMiddleware{s, corsInfo}
+	log.Fatal(http.Serve(sListener, sHTTP))
 }

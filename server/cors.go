@@ -45,24 +45,24 @@ func (c corsInfo) OriginAllowed(origin string) bool {
 	return c["*"] || c[origin]
 }
 
-type corsHTTPMiddleware struct {
-	next   http.Handler
-	info   *corsInfo
+type CORSHTTPMiddleware struct {
+	Handler http.Handler
+	Info    *corsInfo
 }
 
 // addHeader adds the correct cors headers given an origin
-func (h *corsHTTPMiddleware) addHeader(w http.ResponseWriter, origin string) {
+func (h *CORSHTTPMiddleware) addHeader(w http.ResponseWriter, origin string) {
 	w.Header().Add("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
 	w.Header().Add("Access-Control-Allow-Origin", origin)
 }
 
 // ServeHTTP adds the correct CORS headers based on the origin and returns immediatly
 // with a 200 OK if the method is OPTIONS.
-func (h *corsHTTPMiddleware) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+func (h *CORSHTTPMiddleware) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	// Write CORS header.
-	if h.info.OriginAllowed("*") {
+	if h.Info.OriginAllowed("*") {
 		h.addHeader(w, "*")
-	} else if origin := req.Header.Get("Origin"); h.info.OriginAllowed(origin) {
+	} else if origin := req.Header.Get("Origin"); h.Info.OriginAllowed(origin) {
 		h.addHeader(w, origin)
 	}
 
@@ -71,5 +71,5 @@ func (h *corsHTTPMiddleware) ServeHTTP(w http.ResponseWriter, req *http.Request)
 		return
 	}
 
-	h.next.ServeHTTP(w, req)
+	h.Handler.ServeHTTP(w, req)
 }
