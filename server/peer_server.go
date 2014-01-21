@@ -30,8 +30,6 @@ type PeerServerConfig struct {
 	Scheme           string
 	URL              string
 	SnapshotCount    int
-	HeartbeatTimeout time.Duration
-	ElectionTimeout  time.Duration
 	MaxClusterSize   int
 	RetryTimes       int
 }
