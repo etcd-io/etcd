@@ -52,7 +52,7 @@ func (ss *Snapshot) save() error {
 		return err
 	}
 
-	// force the change writting to disk
+	// force the change writing to disk
 	file.Sync()
 	return err
 }
