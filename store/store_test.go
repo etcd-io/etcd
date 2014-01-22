@@ -499,12 +499,15 @@ func TestStoreWatchCreate(t *testing.T) {
 	assert.Nil(t, e, "")
 }
 
-// Ensure that the store doesn't see hidden key creations.
+// Ensure that the store can watch for hidden keys as long as it's an exact path match.
 func TestStoreWatchCreateWithHiddenKey(t *testing.T) {
 	s := newStore()
 	w, _ := s.Watch("/_foo", false, false, 0)
 	s.Create("/_foo", false, "bar", false, Permanent)
 	e := nbselect(w.EventChan)
+	assert.Equal(t, e.Action, "create", "")
+	assert.Equal(t, e.Node.Key, "/_foo", "")
+	e = nbselect(w.EventChan)
 	assert.Nil(t, e, "")
 }
 
@@ -518,7 +521,7 @@ func TestStoreWatchRecursiveCreate(t *testing.T) {
 	assert.Equal(t, e.Node.Key, "/foo/bar", "")
 }
 
-// Ensure that the store can watch for recursive key creation.
+// Ensure that the store doesn't see hidden key creates without an exact path match in recursive mode.
 func TestStoreWatchRecursiveCreateWithHiddenKey(t *testing.T) {
 	s := newStore()
 	w, _ := s.Watch("/foo", true, false, 0)
@@ -545,6 +548,9 @@ func TestStoreWatchUpdateWithHiddenKey(t *testing.T) {
 	w, _ := s.Watch("/_foo", false, false, 0)
 	s.Update("/_foo", "baz", Permanent)
 	e := nbselect(w.EventChan)
+	assert.Equal(t, e.Action, "update", "")
+	assert.Equal(t, e.Node.Key, "/_foo", "")
+	e = nbselect(w.EventChan)
 	assert.Nil(t, e, "")
 }
 
@@ -559,7 +565,7 @@ func TestStoreWatchRecursiveUpdate(t *testing.T) {
 	assert.Equal(t, e.Node.Key, "/foo/bar", "")
 }
 
-// Ensure that the store doesn't get recursive key updates for hidden keys.
+// Ensure that the store doesn't see hidden key updates without an exact path match in recursive mode.
 func TestStoreWatchRecursiveUpdateWithHiddenKey(t *testing.T) {
 	s := newStore()
 	s.Create("/foo/_bar", false, "baz", false, Permanent)
@@ -580,13 +586,16 @@ func TestStoreWatchDelete(t *testing.T) {
 	assert.Equal(t, e.Node.Key, "/foo", "")
 }
 
-// Ensure that the store doesn't see hidden key deletions.
+// Ensure that the store can watch for key deletions.
 func TestStoreWatchDeleteWithHiddenKey(t *testing.T) {
 	s := newStore()
 	s.Create("/_foo", false, "bar", false, Permanent)
-	w, _ := s.Watch("/foo", false, false, 0)
+	w, _ := s.Watch("/_foo", false, false, 0)
 	s.Delete("/_foo", false, false)
 	e := nbselect(w.EventChan)
+	assert.Equal(t, e.Action, "delete", "")
+	assert.Equal(t, e.Node.Key, "/_foo", "")
+	e = nbselect(w.EventChan)
 	assert.Nil(t, e, "")
 }
 
@@ -601,7 +610,7 @@ func TestStoreWatchRecursiveDelete(t *testing.T) {
 	assert.Equal(t, e.Node.Key, "/foo/bar", "")
 }
 
-// Ensure that the store can watch for recursive key deletions.
+// Ensure that the store doesn't see hidden key deletes without an exact path match in recursive mode.
 func TestStoreWatchRecursiveDeleteWithHiddenKey(t *testing.T) {
 	s := newStore()
 	s.Create("/foo/_bar", false, "baz", false, Permanent)

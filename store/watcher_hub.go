@@ -126,7 +126,8 @@ func (wh *watcherHub) notifyWatchers(e *Event, nodePath string, deleted bool) {
 
 			w, _ := curr.Value.(*Watcher)
 
-			if !isHidden(nodePath) && w.notify(e, e.Node.Key == nodePath, deleted) {
+			originalPath := (e.Node.Key == nodePath)
+			if (originalPath || !isHidden(e.Node.Key)) && w.notify(e, originalPath, deleted) {
 				if !w.stream { // do not remove the stream watcher
 					// if we successfully notify a watcher
 					// we need to remove the watcher from the list
