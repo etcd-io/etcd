@@ -43,6 +43,9 @@
 **Erlang libraries**
 
 - [marshall-lee/etcd.erl](https://github.com/marshall-lee/etcd.erl)
+- 
+**.Net Libraries**
+-[drusellers/etcetera](https://github.com/drusellers/etcetera)
 
 A detailed recap of client functionalities can be found in the [clients compatibility matrix][clients-matrix.md].
 
