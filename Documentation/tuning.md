@@ -3,6 +3,8 @@
 The default settings in etcd should work well for installations on a local network where the average network latency is low.
 However, when using etcd across multiple data centers or over networks with high latency you may need to tweak the heartbeat and election timeout settings.
 
+### Timeouts
+
 The underlying distributed consensus protocol relies on two separate timeouts to ensure that nodes can handoff leadership if one stalls or goes offline.
 The first timeout is called the *Heartbeat Timeout*.
 This is the frequency with which the leader will notify followers that it is still the leader.
@@ -43,3 +45,48 @@ election_timeout = 100
 ```
 
 The values are specified in milliseconds.
+
+
+### Enabling Snapshots
+
+By default, the Raft protocol appends all etcd changes to a log file.
+This works well for smaller installations but etcd clusters that are heavily used can see the log grow significantly in size.
+
+Snapshots provide a way for etcd to compact the log by saving the current state of the system and removing old logs.
+You can enable snapshotting by adding the following to your command line:
+
+```sh
+# Command line arguments:
+$ etcd -snapshot
+
+# Environment variables:
+$ ETCD_SNAPSHOT=true etcd
+```
+
+You can also enable snapshotting within the configuration file:
+
+```toml
+snapshot = true
+```
+
+
+### Additional Snapshot Tuning
+
+Creating snapshots can be expensive so they're only created after a given number of changes to etcd.
+By default, snapshots will be made after every 10,000 changes.
+If etcd's memory usage and disk usage are too high, you can lower the snapshot threshold by setting the following on the command line:
+
+```sh
+# Command line arguments:
+$ etcd -snapshot -snapshot-count=5000
+
+# Environment variables:
+$ ETCD_SNAPSHOT=true ETCD_SNAPSHOT_COUNT=5000 etcd
+```
+
+Or you can change the setting in the configuration file:
+
+```toml
+snapshot = true
+snapshot_count = 5000
+```
