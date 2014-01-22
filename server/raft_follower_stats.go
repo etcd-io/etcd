@@ -10,6 +10,13 @@ type raftFollowersStats struct {
 	Followers map[string]*raftFollowerStats `json:"followers"`
 }
 
+func NewRaftFollowersStats(name string) *raftFollowersStats {
+	return &raftFollowersStats{
+		Leader:    name,
+		Followers: make(map[string]*raftFollowerStats),
+	}
+}
+
 type raftFollowerStats struct {
 	Latency struct {
 		Current           float64 `json:"current"`

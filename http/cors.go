@@ -14,56 +14,55 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package server
+package http
 
 import (
 	"fmt"
 	"net/http"
 	"net/url"
-
-	"github.com/gorilla/mux"
 )
 
-type corsHandler struct {
-	router      *mux.Router
-	corsOrigins map[string]bool
-}
+type CORSInfo map[string]bool
 
-// AllowOrigins sets a comma-delimited list of origins that are allowed.
-func (s *corsHandler) AllowOrigins(origins []string) error {
+func NewCORSInfo(origins []string) (*CORSInfo, error) {
 	// Construct a lookup of all origins.
 	m := make(map[string]bool)
 	for _, v := range origins {
 		if v != "*" {
 			if _, err := url.Parse(v); err != nil {
-				return fmt.Errorf("Invalid CORS origin: %s", err)
+				return nil, fmt.Errorf("Invalid CORS origin: %s", err)
 			}
 		}
 		m[v] = true
 	}
-	s.corsOrigins = m
 
-	return nil
+	info := CORSInfo(m)
+	return &info, nil
 }
 
 // OriginAllowed determines whether the server will allow a given CORS origin.
-func (c *corsHandler) OriginAllowed(origin string) bool {
-	return c.corsOrigins["*"] || c.corsOrigins[origin]
+func (c CORSInfo) OriginAllowed(origin string) bool {
+	return c["*"] || c[origin]
+}
+
+type CORSHandler struct {
+	Handler http.Handler
+	Info    *CORSInfo
 }
 
 // addHeader adds the correct cors headers given an origin
-func (h *corsHandler) addHeader(w http.ResponseWriter, origin string) {
+func (h *CORSHandler) addHeader(w http.ResponseWriter, origin string) {
 	w.Header().Add("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
 	w.Header().Add("Access-Control-Allow-Origin", origin)
 }
 
 // ServeHTTP adds the correct CORS headers based on the origin and returns immediatly
 // with a 200 OK if the method is OPTIONS.
-func (h *corsHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+func (h *CORSHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	// Write CORS header.
-	if h.OriginAllowed("*") {
+	if h.Info.OriginAllowed("*") {
 		h.addHeader(w, "*")
-	} else if origin := req.Header.Get("Origin"); h.OriginAllowed(origin) {
+	} else if origin := req.Header.Get("Origin"); h.Info.OriginAllowed(origin) {
 		h.addHeader(w, origin)
 	}
 
@@ -72,5 +71,5 @@ func (h *corsHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	h.router.ServeHTTP(w, req)
+	h.Handler.ServeHTTP(w, req)
 }

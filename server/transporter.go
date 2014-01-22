@@ -15,9 +15,13 @@ import (
 
 // Transporter layer for communication between raft nodes
 type transporter struct {
-	client     *http.Client
-	transport  *http.Transport
-	peerServer *PeerServer
+	requestTimeout time.Duration
+	followersStats *raftFollowersStats
+	serverStats    *raftServerStats
+	registry       *Registry
+
+	client    *http.Client
+	transport *http.Transport
 }
 
 type dialer func(network, addr string) (net.Conn, error)
@@ -25,13 +29,7 @@ type dialer func(network, addr string) (net.Conn, error)
 // Create transporter using by raft server
 // Create http or https transporter based on
 // whether the user give the server cert and key
-func newTransporter(scheme string, tlsConf tls.Config, peerServer *PeerServer) *transporter {
-	// names for each type of timeout, for the sake of clarity
-	dialTimeout := (3 * peerServer.HeartbeatTimeout) + peerServer.ElectionTimeout
-	responseHeaderTimeout := (3 * peerServer.HeartbeatTimeout) + peerServer.ElectionTimeout
-
-	t := transporter{}
-
+func NewTransporter(followersStats *raftFollowersStats, serverStats *raftServerStats, registry *Registry, dialTimeout, requestTimeout, responseHeaderTimeout time.Duration) *transporter {
 	tr := &http.Transport{
 		Dial: func(network, addr string) (net.Conn, error) {
 			return net.DialTimeout(network, addr, dialTimeout)
@@ -39,16 +37,21 @@ func newTransporter(scheme string, tlsConf tls.Config, peerServer *PeerServer) *
 		ResponseHeaderTimeout: responseHeaderTimeout,
 	}
 
-	if scheme == "https" {
-		tr.TLSClientConfig = &tlsConf
-		tr.DisableCompression = true
+	t := transporter{
+		client:         &http.Client{Transport: tr},
+		transport:      tr,
+		requestTimeout: requestTimeout,
+		followersStats: followersStats,
+		serverStats:    serverStats,
+		registry:       registry,
 	}
 
-	t.client = &http.Client{Transport: tr}
-	t.transport = tr
-	t.peerServer = peerServer
-
 	return &t
+}
+
+func (t *transporter) SetTLSConfig(tlsConf tls.Config) {
+	t.transport.TLSClientConfig = &tlsConf
+	t.transport.DisableCompression = true
 }
 
 // Sends AppendEntries RPCs to a peer when the server is the leader.
@@ -62,18 +65,18 @@ func (t *transporter) SendAppendEntriesRequest(server raft.Server, peer *raft.Pe
 
 	size := b.Len()
 
-	t.peerServer.serverStats.SendAppendReq(size)
+	t.serverStats.SendAppendReq(size)
 
-	u, _ := t.peerServer.registry.PeerURL(peer.Name)
+	u, _ := t.registry.PeerURL(peer.Name)
 
 	log.Debugf("Send LogEntries to %s ", u)
 
-	thisFollowerStats, ok := t.peerServer.followersStats.Followers[peer.Name]
+	thisFollowerStats, ok := t.followersStats.Followers[peer.Name]
 
 	if !ok { //this is the first time this follower has been seen
 		thisFollowerStats = &raftFollowerStats{}
 		thisFollowerStats.Latency.Minimum = 1 << 63
-		t.peerServer.followersStats.Followers[peer.Name] = thisFollowerStats
+		t.followersStats.Followers[peer.Name] = thisFollowerStats
 	}
 
 	start := time.Now()
@@ -119,7 +122,7 @@ func (t *transporter) SendVoteRequest(server raft.Server, peer *raft.Peer, req *
 		return nil
 	}
 
-	u, _ := t.peerServer.registry.PeerURL(peer.Name)
+	u, _ := t.registry.PeerURL(peer.Name)
 	log.Debugf("Send Vote from %s to %s", server.Name(), u)
 
 	resp, httpRequest, err := t.Post(fmt.Sprintf("%s/vote", u), &b)
@@ -152,7 +155,7 @@ func (t *transporter) SendSnapshotRequest(server raft.Server, peer *raft.Peer, r
 		return nil
 	}
 
-	u, _ := t.peerServer.registry.PeerURL(peer.Name)
+	u, _ := t.registry.PeerURL(peer.Name)
 	log.Debugf("Send Snapshot Request from %s to %s", server.Name(), u)
 
 	resp, httpRequest, err := t.Post(fmt.Sprintf("%s/snapshot", u), &b)
@@ -185,7 +188,7 @@ func (t *transporter) SendSnapshotRecoveryRequest(server raft.Server, peer *raft
 		return nil
 	}
 
-	u, _ := t.peerServer.registry.PeerURL(peer.Name)
+	u, _ := t.registry.PeerURL(peer.Name)
 	log.Debugf("Send Snapshot Recovery from %s to %s", server.Name(), u)
 
 	resp, httpRequest, err := t.Post(fmt.Sprintf("%s/snapshotRecovery", u), &b)
@@ -227,7 +230,7 @@ func (t *transporter) Get(urlStr string) (*http.Response, *http.Request, error) 
 // Cancel the on fly HTTP transaction when timeout happens.
 func (t *transporter) CancelWhenTimeout(req *http.Request) {
 	go func() {
-		time.Sleep(t.peerServer.HeartbeatTimeout)
+		time.Sleep(t.requestTimeout)
 		t.transport.CancelRequest(req)
 	}()
 }

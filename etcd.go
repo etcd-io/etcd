@@ -18,15 +18,19 @@ package main
 
 import (
 	"fmt"
+	"net"
+	"net/http"
 	"os"
 	"runtime"
 	"time"
 
+	"github.com/coreos/raft"
+
+	ehttp "github.com/coreos/etcd/http"
 	"github.com/coreos/etcd/log"
 	"github.com/coreos/etcd/metrics"
 	"github.com/coreos/etcd/server"
 	"github.com/coreos/etcd/store"
-	"github.com/coreos/raft"
 )
 
 func main() {
@@ -98,32 +102,89 @@ func main() {
 		}
 	}
 
+	// Retrieve CORS configuration
+	corsInfo, err := ehttp.NewCORSInfo(config.CorsOrigins)
+	if err != nil {
+		log.Fatal("CORS:", err)
+	}
+
 	// Create etcd key-value store and registry.
 	store := store.New()
 	registry := server.NewRegistry(store)
 
-	// Create peer server.
-	heartbeatTimeout := time.Duration(config.Peer.HeartbeatTimeout) * time.Millisecond
-	electionTimeout := time.Duration(config.Peer.ElectionTimeout) * time.Millisecond
-	ps := server.NewPeerServer(info.Name, config.DataDir, info.RaftURL, info.RaftListenHost, &peerTLSConfig, &info.RaftTLS, registry, store, config.SnapshotCount, heartbeatTimeout, electionTimeout, &mb)
-	ps.MaxClusterSize = config.MaxClusterSize
-	ps.RetryTimes = config.MaxRetryAttempts
+	// Create stats objects
+	followersStats := server.NewRaftFollowersStats(info.Name)
+	serverStats := server.NewRaftServerStats(info.Name)
 
-	// Create client server.
-	s := server.New(info.Name, info.EtcdURL, info.EtcdListenHost, &tlsConfig, &info.EtcdTLS, ps, registry, store, &mb)
-	if err := s.AllowOrigins(config.CorsOrigins); err != nil {
+	// Calculate all of our timeouts
+	heartbeatTimeout := time.Duration(config.Peer.HeartbeatTimeout) * time.Millisecond
+	electionTimeout :=  time.Duration(config.Peer.ElectionTimeout) * time.Millisecond
+	dialTimeout := (3 * heartbeatTimeout) + electionTimeout
+	responseHeaderTimeout := (3 * heartbeatTimeout) + electionTimeout
+
+	// Create peer server.
+	psConfig := server.PeerServerConfig{
+		Name:             info.Name,
+		Scheme:           peerTLSConfig.Scheme,
+		URL:              info.RaftURL,
+		SnapshotCount:    config.SnapshotCount,
+		MaxClusterSize:   config.MaxClusterSize,
+		RetryTimes:       config.MaxRetryAttempts,
+	}
+	ps := server.NewPeerServer(psConfig, registry, store, &mb, followersStats, serverStats)
+
+	var psListener net.Listener
+	if psConfig.Scheme == "https" {
+		psListener, err = server.NewTLSListener(info.RaftListenHost, info.RaftTLS.CertFile, info.RaftTLS.KeyFile)
+	} else {
+		psListener, err = server.NewListener(info.RaftListenHost)
+	}
+	if err != nil {
 		panic(err)
 	}
+
+	// Create Raft transporter and server
+	raftTransporter := server.NewTransporter(followersStats, serverStats, registry, heartbeatTimeout, dialTimeout, responseHeaderTimeout)
+	if psConfig.Scheme == "https" {
+		raftTransporter.SetTLSConfig(peerTLSConfig.Client)
+	}
+	raftServer, err := raft.NewServer(info.Name, config.DataDir, raftTransporter, store, ps, "")
+	if err != nil {
+		log.Fatal(err)
+	}
+	raftServer.SetElectionTimeout(electionTimeout)
+	raftServer.SetHeartbeatTimeout(heartbeatTimeout)
+	ps.SetRaftServer(raftServer)
+
+	// Create client server.
+	s := server.New(info.Name, info.EtcdURL, ps, registry, store, &mb)
 
 	if config.Trace() {
 		s.EnableTracing()
 	}
 
+	var sListener net.Listener
+	if tlsConfig.Scheme == "https" {
+		sListener, err = server.NewTLSListener(info.EtcdListenHost, info.EtcdTLS.CertFile, info.EtcdTLS.KeyFile)
+	} else {
+		sListener, err = server.NewListener(info.EtcdListenHost)
+	}
+	if err != nil {
+		panic(err)
+	}
+
 	ps.SetServer(s)
+
+	ps.Start(config.Snapshot, config.Peers)
 
 	// Run peer server in separate thread while the client server blocks.
 	go func() {
-		log.Fatal(ps.ListenAndServe(config.Snapshot, config.Peers))
+		log.Infof("raft server [name %s, listen on %s, advertised url %s]", ps.Config.Name, psListener.Addr(), ps.Config.URL)
+		sHTTP := &ehttp.CORSHandler{ps.HTTPHandler(), corsInfo}
+		log.Fatal(http.Serve(psListener, sHTTP))
 	}()
-	log.Fatal(s.ListenAndServe())
+
+	log.Infof("etcd server [name %s, listen on %s, advertised url %s]", s.Name, sListener.Addr(), s.URL())
+	sHTTP := &ehttp.CORSHandler{s.HTTPHandler(), corsInfo}
+	log.Fatal(http.Serve(sListener, sHTTP))
 }
