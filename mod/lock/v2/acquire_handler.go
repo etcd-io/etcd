@@ -146,14 +146,17 @@ func (h *handler) ttlKeepAlive(k string, value string, ttl int, stopChan chan bo
 func (h *handler) watch(keypath string, index int, closeChan <- chan bool) error {
 	// Wrap close chan so we can pass it to Client.Watch().
 	stopWatchChan := make(chan bool)
+	stopWrapChan := make(chan bool)
 	go func() {
 		select {
 		case <- closeChan:
 			stopWatchChan <- true
+		case <- stopWrapChan:
+			stopWatchChan <- true
 		case <- stopWatchChan:
 		}
 	}()
-	defer close(stopWatchChan)
+	defer close(stopWrapChan)
 
 	for {
 		// Read all nodes for the lock.
