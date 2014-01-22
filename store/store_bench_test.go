@@ -19,7 +19,6 @@ package store
 import (
 	"encoding/json"
 	"fmt"
-	"math/rand"
 	"runtime"
 	"testing"
 )
@@ -210,14 +209,10 @@ func generateNRandomKV(n int, valueSize int) ([][]string, uint64) {
 	var size uint64
 	kvs := make([][]string, n)
 	bytes := make([]byte, valueSize)
-	for i := range bytes {
-		bytes[i] = byte(rand.Int())
-	}
 
 	for i := 0; i < n; i++ {
 		kvs[i] = make([]string, 2)
-		kvs[i][0] = fmt.Sprintf("/%d/%d/%d",
-			rand.Int()%100, rand.Int()%100, rand.Int()%100)
+		kvs[i][0] = fmt.Sprintf("/%010d/%010d/%010d", n, n, n)
 		kvs[i][1] = string(bytes)
 		size = size + uint64(len(kvs[i][0])) + uint64(len(kvs[i][1]))
 	}
