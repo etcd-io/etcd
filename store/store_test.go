@@ -528,6 +528,13 @@ func TestStoreWatchRecursiveCreateWithHiddenKey(t *testing.T) {
 	s.Create("/foo/_bar", false, "baz", false, Permanent)
 	e := nbselect(w.EventChan)
 	assert.Nil(t, e, "")
+	w, _ = s.Watch("/foo", true, false, 0)
+	s.Create("/foo/_baz", true, "", false, Permanent)
+	e = nbselect(w.EventChan)
+	assert.Nil(t, e, "")
+	s.Create("/foo/_baz/quux", false, "quux", false, Permanent)
+	e = nbselect(w.EventChan)
+	assert.Nil(t, e, "")
 }
 
 // Ensure that the store can watch for key updates.
