@@ -290,6 +290,7 @@ func (s *store) Delete(nodePath string, dir, recursive bool) (*Event, error) {
 	s.CurrentIndex++
 
 	s.WatcherHub.notify(e)
+
 	s.Stats.Inc(DeleteSuccess)
 
 	return e, nil
@@ -514,6 +515,7 @@ func (s *store) internalCreate(nodePath string, dir bool, value string, unique, 
 	s.CurrentIndex = nextIndex
 
 	s.WatcherHub.notify(e)
+
 	return e, nil
 }
 
@@ -568,6 +570,7 @@ func (s *store) DeleteExpiredKeys(cutoff time.Time) {
 		node.Remove(true, true, callback)
 
 		s.Stats.Inc(ExpireCount)
+
 		s.WatcherHub.notify(e)
 	}
 

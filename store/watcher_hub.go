@@ -113,11 +113,11 @@ func (wh *watcherHub) notify(e *Event) {
 	}
 }
 
-func (wh *watcherHub) notifyWatchers(e *Event, path string, deleted bool) {
+func (wh *watcherHub) notifyWatchers(e *Event, nodePath string, deleted bool) {
 	wh.mutex.Lock()
 	defer wh.mutex.Unlock()
 
-	l, ok := wh.watchers[path]
+	l, ok := wh.watchers[nodePath]
 	if ok {
 		curr := l.Front()
 
@@ -126,7 +126,8 @@ func (wh *watcherHub) notifyWatchers(e *Event, path string, deleted bool) {
 
 			w, _ := curr.Value.(*Watcher)
 
-			if w.notify(e, e.Node.Key == path, deleted) {
+			originalPath := (e.Node.Key == nodePath)
+			if (originalPath || !isHidden(e.Node.Key)) && w.notify(e, originalPath, deleted) {
 				if !w.stream { // do not remove the stream watcher
 					// if we successfully notify a watcher
 					// we need to remove the watcher from the list
@@ -142,7 +143,7 @@ func (wh *watcherHub) notifyWatchers(e *Event, path string, deleted bool) {
 		if l.Len() == 0 {
 			// if we have notified all watcher in the list
 			// we can delete the list
-			delete(wh.watchers, path)
+			delete(wh.watchers, nodePath)
 		}
 	}
 }
@@ -155,4 +156,10 @@ func (wh *watcherHub) clone() *watcherHub {
 	return &watcherHub{
 		EventHistory: clonedHistory,
 	}
+}
+
+// isHidden checks to see if this path is considered hidden i.e. the
+// last element is hidden or it's within a hidden directory
+func isHidden(nodePath string) bool {
+	return strings.Contains(nodePath, "/_")
 }
