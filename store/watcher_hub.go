@@ -158,13 +158,8 @@ func (wh *watcherHub) clone() *watcherHub {
 	}
 }
 
-// isHidden checks if a path has a hidden key.  since we don't get the Node
-// object for notifyWatchers, we have to duplicate it here. consolidate me?
+// isHidden checks to see if this path is considered hidden i.e. the
+// last element is hidden or it's within a hidden directory
 func isHidden(nodePath string) bool {
-	_, name := path.Split(nodePath)
-	if name == "" {
-		return false
-	}
-
-	return name[0] == '_'
+	return strings.Contains(nodePath, "/_")
 }
