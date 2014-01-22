@@ -113,11 +113,11 @@ func (wh *watcherHub) notify(e *Event) {
 	}
 }
 
-func (wh *watcherHub) notifyWatchers(e *Event, path string, deleted bool) {
+func (wh *watcherHub) notifyWatchers(e *Event, nodePath string, deleted bool) {
 	wh.mutex.Lock()
 	defer wh.mutex.Unlock()
 
-	l, ok := wh.watchers[path]
+	l, ok := wh.watchers[nodePath]
 	if ok {
 		curr := l.Front()
 
@@ -126,7 +126,7 @@ func (wh *watcherHub) notifyWatchers(e *Event, path string, deleted bool) {
 
 			w, _ := curr.Value.(*Watcher)
 
-			if w.notify(e, e.Node.Key == path, deleted) {
+			if !isHidden(nodePath) && w.notify(e, e.Node.Key == nodePath, deleted) {
 				if !w.stream { // do not remove the stream watcher
 					// if we successfully notify a watcher
 					// we need to remove the watcher from the list
@@ -142,7 +142,7 @@ func (wh *watcherHub) notifyWatchers(e *Event, path string, deleted bool) {
 		if l.Len() == 0 {
 			// if we have notified all watcher in the list
 			// we can delete the list
-			delete(wh.watchers, path)
+			delete(wh.watchers, nodePath)
 		}
 	}
 }
@@ -155,4 +155,15 @@ func (wh *watcherHub) clone() *watcherHub {
 	return &watcherHub{
 		EventHistory: clonedHistory,
 	}
+}
+
+// isHidden checks if a path has a hidden key.  since we don't get the Node
+// object for notifyWatchers, we have to duplicate it here. consolidate me?
+func isHidden(nodePath string) bool {
+	_, name := path.Split(nodePath)
+	if name == "" {
+		return false
+	}
+
+	return name[0] == '_'
 }

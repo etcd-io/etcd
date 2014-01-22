@@ -289,7 +289,10 @@ func (s *store) Delete(nodePath string, dir, recursive bool) (*Event, error) {
 	// update etcd index
 	s.CurrentIndex++
 
-	s.WatcherHub.notify(e)
+	if !n.IsHidden() {
+		s.WatcherHub.notify(e)
+	}
+
 	s.Stats.Inc(DeleteSuccess)
 
 	return e, nil
@@ -429,7 +432,9 @@ func (s *store) Update(nodePath string, newValue string, expireTime time.Time) (
 
 	eNode.Expiration, eNode.TTL = n.ExpirationAndTTL()
 
-	s.WatcherHub.notify(e)
+	if !n.IsHidden() {
+		s.WatcherHub.notify(e)
+	}
 
 	s.Stats.Inc(UpdateSuccess)
 
@@ -513,7 +518,10 @@ func (s *store) internalCreate(nodePath string, dir bool, value string, unique, 
 
 	s.CurrentIndex = nextIndex
 
-	s.WatcherHub.notify(e)
+	if !n.IsHidden() {
+		s.WatcherHub.notify(e)
+	}
+
 	return e, nil
 }
 
@@ -568,7 +576,10 @@ func (s *store) DeleteExpiredKeys(cutoff time.Time) {
 		node.Remove(true, true, callback)
 
 		s.Stats.Inc(ExpireCount)
-		s.WatcherHub.notify(e)
+
+		if !node.IsHidden() {
+			s.WatcherHub.notify(e)
+		}
 	}
 
 }
