@@ -232,8 +232,8 @@ func TestStoreUpdateFailsIfDirectory(t *testing.T) {
 	s.Create("/foo", true, "", false, Permanent)
 	e, _err := s.Update("/foo", "baz", Permanent)
 	err := _err.(*etcdErr.Error)
-	assert.Equal(t, err.ErrorCode, etcdErr.EcodeNoValueOnDir, "")
-	assert.Equal(t, err.Message, "Cannot set value on directory", "")
+	assert.Equal(t, err.ErrorCode, etcdErr.EcodeNotFile, "")
+	assert.Equal(t, err.Message, "Not a file", "")
 	assert.Equal(t, err.Cause, "/foo", "")
 	assert.Nil(t, e, "")
 }

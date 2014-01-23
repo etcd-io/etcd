@@ -21,7 +21,6 @@ Error code corresponding strerror
         EcodeNotDir         = 104
         EcodeNodeExist      = 105
         EcodeKeyIsPreserved = 106
-        EcodeNoValueOnDir   = 109
 
         EcodeValueRequired     = 200
         EcodePrevValueRequired = 201
@@ -43,7 +42,6 @@ Error code corresponding strerror
     errors[104] = "Not A Directory"
     errors[105] = "Already exists" // create
     errors[106] = "The prefix of given key is a keyword in etcd"
-    errors[109] = "Cannot set value on directory"
 
     // Post form related errors
     errors[200] = "Value is Required in POST form"

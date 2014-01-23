@@ -34,7 +34,6 @@ const (
 	EcodeKeyIsPreserved = 106
 	EcodeRootROnly      = 107
 	EcodeDirNotEmpty    = 108
-	EcodeNoValueOnDir   = 109
 
 	EcodeValueRequired        = 200
 	EcodePrevValueRequired    = 201
@@ -67,7 +66,6 @@ func init() {
 	errors[EcodeRootROnly] = "Root is read only"
 	errors[EcodeKeyIsPreserved] = "The prefix of given key is a keyword in etcd"
 	errors[EcodeDirNotEmpty] = "Directory not empty"
-	errors[EcodeNoValueOnDir] = "Cannot set value on directory"
 
 	// Post form related errors
 	errors[EcodeValueRequired] = "Value is Required in POST form"
@@ -128,7 +126,7 @@ func (e Error) Write(w http.ResponseWriter) {
 	switch e.ErrorCode {
 	case EcodeKeyNotFound:
 		status = http.StatusNotFound
-	case EcodeNotFile, EcodeDirNotEmpty, EcodeNoValueOnDir:
+	case EcodeNotFile, EcodeDirNotEmpty:
 		status = http.StatusForbidden
 	case EcodeTestFailed, EcodeNodeExist:
 		status = http.StatusPreconditionFailed

@@ -102,7 +102,7 @@ func (n *node) Read() (string, *etcdErr.Error) {
 // If the receiver node is a directory, a "Not A File" error will be returned.
 func (n *node) Write(value string, index uint64) *etcdErr.Error {
 	if n.IsDir() {
-		return etcdErr.NewError(etcdErr.EcodeNoValueOnDir, "", n.store.Index())
+		return etcdErr.NewError(etcdErr.EcodeNotFile, "", n.store.Index())
 	}
 
 	n.Value = value

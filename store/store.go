@@ -419,7 +419,7 @@ func (s *store) Update(nodePath string, newValue string, expireTime time.Time) (
 	if n.IsDir() && len(newValue) != 0 {
 		// if the node is a directory, we cannot update value to non-empty
 		s.Stats.Inc(UpdateFail)
-		return nil, etcdErr.NewError(etcdErr.EcodeNoValueOnDir, nodePath, currIndex)
+		return nil, etcdErr.NewError(etcdErr.EcodeNotFile, nodePath, currIndex)
 	}
 
 	n.Write(newValue, nextIndex)
@@ -481,7 +481,7 @@ func (s *store) internalCreate(nodePath string, dir bool, value string, unique, 
 	if n != nil {
 		if replace {
 			if n.IsDir() {
-				return nil, etcdErr.NewError(etcdErr.EcodeNoValueOnDir, nodePath, currIndex)
+				return nil, etcdErr.NewError(etcdErr.EcodeNotFile, nodePath, currIndex)
 			}
 			e.PrevNode = n.Repr(false, false)
 
