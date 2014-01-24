@@ -412,14 +412,25 @@ func (s *PeerServer) recordMetricEvent(event raft.Event) {
 	(*s.metrics).Timer(name).Update(value)
 }
 
+// logSnapshot logs about the snapshot that was taken.
+func (s *PeerServer) logSnapshot(err error, currentIndex, count uint64) {
+	info := fmt.Sprintf("%s: snapshot of %d events at index %d", s.Config.Name, count, currentIndex)
+
+	if err != nil {
+		log.Infof("%s attempted and failed: %v", info, err)
+	} else {
+		log.Infof("%s completed", info)
+	}
+}
+
 func (s *PeerServer) monitorSnapshot() {
 	for {
 		time.Sleep(s.snapConf.checkingInterval)
 		currentIndex := s.RaftServer().CommitIndex()
-
 		count := currentIndex - s.snapConf.lastIndex
 		if uint64(count) > s.snapConf.snapshotThr {
-			s.raftServer.TakeSnapshot()
+			err := s.raftServer.TakeSnapshot()
+			s.logSnapshot(err, currentIndex, count)
 			s.snapConf.lastIndex = currentIndex
 		}
 	}
