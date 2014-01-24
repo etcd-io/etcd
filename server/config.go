@@ -89,6 +89,7 @@ func NewConfig() *Config {
 	c.MaxClusterSize = 9
 	c.MaxResultBuffer = 1024
 	c.MaxRetryAttempts = 3
+	c.Snapshot = true
 	c.SnapshotCount = 10000
 	c.Peer.Addr = "127.0.0.1:7001"
 	c.Peer.HeartbeatTimeout = defaultHeartbeatTimeout

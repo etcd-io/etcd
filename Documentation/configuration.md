@@ -37,7 +37,7 @@ configuration files.
 * `-peer-ca-file` - The path of the CAFile. Enables client/peer cert authentication when present.
 * `-peer-cert-file` - The cert file of the server.
 * `-peer-key-file` - The key file of the server.
-* `-snapshot` - Open or close snapshot. Defaults to `false`.
+* `-snapshot=false` - Disable log snapshots. Defaults to `true`.
 * `-v` - Enable verbose logging. Defaults to `false`.
 * `-vv` - Enable very verbose logging. Defaults to `false`.
 * `-version` - Print the version and exit.

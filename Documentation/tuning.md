@@ -47,30 +47,16 @@ election_timeout = 100
 The values are specified in milliseconds.
 
 
-### Enabling Snapshots
+### Snapshots
 
-By default, the Raft protocol appends all etcd changes to a log file.
-This works well for smaller installations but etcd clusters that are heavily used can see the log grow significantly in size.
+etcd appends all key changes to a log file.
+This log grows forever and is a complete linear history of every change made to the keys.
+A complete history works well for lightly used clusters but clusters that are heavily used would carry around a large log.
 
-Snapshots provide a way for etcd to compact the log by saving the current state of the system and removing old logs.
-You can enable snapshotting by adding the following to your command line:
+To avoid having a huge log etcd makes periodic snapshots.
+These snapshots provide a way for etcd to compact the log by saving the current state of the system and removing old logs.
 
-```sh
-# Command line arguments:
-$ etcd -snapshot
-
-# Environment variables:
-$ ETCD_SNAPSHOT=true etcd
-```
-
-You can also enable snapshotting within the configuration file:
-
-```toml
-snapshot = true
-```
-
-
-### Additional Snapshot Tuning
+### Snapshot Tuning
 
 Creating snapshots can be expensive so they're only created after a given number of changes to etcd.
 By default, snapshots will be made after every 10,000 changes.
@@ -78,15 +64,30 @@ If etcd's memory usage and disk usage are too high, you can lower the snapshot t
 
 ```sh
 # Command line arguments:
-$ etcd -snapshot -snapshot-count=5000
+$ etcd -snapshot-count=5000
 
 # Environment variables:
-$ ETCD_SNAPSHOT=true ETCD_SNAPSHOT_COUNT=5000 etcd
+$ ETCD_SNAPSHOT_COUNT=5000 etcd
 ```
 
 Or you can change the setting in the configuration file:
 
 ```toml
-snapshot = true
 snapshot_count = 5000
+```
+
+You can also disable snapshotting by adding the following to your command line:
+
+```sh
+# Command line arguments:
+$ etcd -snapshot false
+
+# Environment variables:
+$ ETCD_SNAPSHOT=false etcd
+```
+
+You can also enable snapshotting within the configuration file:
+
+```toml
+snapshot = false
 ```
