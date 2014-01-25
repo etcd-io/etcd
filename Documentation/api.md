@@ -9,18 +9,19 @@ Let's start etcd:
 ./bin/etcd -data-dir machine0 -name machine0
 ```
 
-This will bring up etcd listening on port 4001 for client communication and on port 7001 for server-to-server communication.
+This will bring up etcd listening on default ports (4001 for client communication and 7001 for server-to-server communication).
 The `-data-dir machine0` argument tells etcd to write machine configuration, logs and snapshots to the `./machine0/` directory.
 The `-name machine0` tells the rest of the cluster that this machine is named machine0.
 
 ## Key Space Operations
 
-The primary API of etcd is hierarchical key space.
-There are directories and keys which are generically referred to as "nodes".
+The primary API of etcd is a hierarchical key space.
+The key space consists of directories and keys which are generically referred to as "nodes".
+
 
 ### Setting the value to a key
 
-Let’s set the first key-value pair to the datastore.
+Let’s set the first key-value pair in the datastore.
 In this case the key is `/message` and the value is `Hello world`.
 
 ```sh
@@ -44,17 +45,17 @@ The response object contains several attributes:
 1. `action`: the action of the request that was just made.
 The request attempted to modify `node.value` via a `PUT` HTTP request, thus the value of action is `set`.
 
-2. `node.key`: the HTTP path the to which the request was made.
+2. `node.key`: the HTTP path to which the request was made.
 We set `/message` to `Hello world`, so the key field is `/message`.
-Etcd uses a file-system-like structure to represent the key-value pairs, therefore all keys start with `/`.
+etcd uses a file-system-like structure to represent the key-value pairs, therefore all keys start with `/`.
 
 3. `node.value`: the value of the key after resolving the request.
 In this case, a successful request was made that attempted to change the node's value to `Hello world`.
 
 4. `node.createdIndex`: an index is a unique, monotonically-incrementing integer created for each change to etcd.
-This specific index reflects at which point in the etcd state machine a given key was created.
+This specific index reflects the point in the etcd state machine at which a given key was created.
 You may notice that in this example the index is `2` even though it is the first request you sent to the server.
-This is because there are internal commands that also change the state behind the scenes like adding and syncing servers.
+This is because there are internal commands that also change the state behind the scenes, like adding and syncing servers.
 
 5. `node.modifiedIndex`: like `node.createdIndex`, this attribute is also an etcd index.
 Actions that cause the value to change include `set`, `delete`, `update`, `create` and `compareAndSwap`.
@@ -63,7 +64,7 @@ Since the `get` and `watch` commands do not change state in the store, they do n
 
 ### Response Headers
 
-etcd includes a few HTTP headers that provide global information about the etcd cluster that serviced a request:
+etcd includes a few HTTP headers in responses that provide global information about the etcd cluster that serviced a request:
 
 ```
 X-Etcd-Index: 35
@@ -73,9 +74,10 @@ X-Raft-Term: 0
 
 - `X-Etcd-Index` is the current etcd index as explained above.
 - `X-Raft-Index` is similar to the etcd index but is for the underlying raft protocol
-- `X-Raft-Term` this number will increase when an etcd master election happens. If this number is increasing rapdily you may need to tune the election timeout. See the [tuning][tuning] section for details.
+- `X-Raft-Term` is an integer that will increase whenever an etcd master election happens in the cluster. If this number is increasing rapidly, you may need to tune the election timeout. See the [tuning][tuning] section for details.
 
 [tuning]: #tuning
+
 
 ### Get the value of a key
 
@@ -118,6 +120,7 @@ curl -L http://127.0.0.1:4001/v2/keys/message -XPUT -d value="Hello etcd"
 }
 ```
 
+
 ### Deleting a key
 
 You can remove the `/message` key with a `DELETE` request:
@@ -141,7 +144,7 @@ curl -L http://127.0.0.1:4001/v2/keys/message -XDELETE
 ### Using key TTL
 
 Keys in etcd can be set to expire after a specified number of seconds.
-You can do this by setting a TTL (time to live) on the key when send a `PUT` request:
+You can do this by setting a TTL (time to live) on the key when sending a `PUT` request:
 
 ```sh
 curl -L http://127.0.0.1:4001/v2/keys/foo -XPUT -d value=bar -d ttl=5
@@ -163,11 +166,11 @@ curl -L http://127.0.0.1:4001/v2/keys/foo -XPUT -d value=bar -d ttl=5
 
 Note the two new fields in response:
 
-1. The `expiration` is the time that this key will expire and be deleted.
+1. The `expiration` is the time at which this key will expire and be deleted.
 
-2. The `ttl` is the time to live for the key, in seconds.
+2. The `ttl` is the specified time to live for the key, in seconds.
 
-_NOTE_: Keys can only be expired by a cluster leader so if a machine gets disconnected from the cluster, its keys will not expire until it rejoins.
+_NOTE_: Keys can only be expired by a cluster leader, so if a machine gets disconnected from the cluster, its keys will not expire until it rejoins.
 
 Now you can try to get the key by sending a `GET` request:
 
@@ -175,7 +178,7 @@ Now you can try to get the key by sending a `GET` request:
 curl -L http://127.0.0.1:4001/v2/keys/foo
 ```
 
-If the TTL has expired, the key will be deleted, and you will be returned a 100.
+If the TTL has expired, the key will have been deleted, and you will be returned a 100.
 
 ```json
 {
@@ -186,12 +189,13 @@ If the TTL has expired, the key will be deleted, and you will be returned a 100.
 }
 ```
 
+
 ### Waiting for a change
 
 We can watch for a change on a key and receive a notification by using long polling.
 This also works for child keys by passing `recursive=true` in curl.
 
-In one terminal, we send a get request with `wait=true` :
+In one terminal, we send a `GET` with `wait=true` :
 
 ```sh
 curl -L http://127.0.0.1:4001/v2/keys/foo?wait=true
@@ -205,7 +209,7 @@ In another terminal, we set a key `/foo` with value `bar`:
 curl -L http://127.0.0.1:4001/v2/keys/foo -XPUT -d value=bar
 ```
 
-The first terminal should get the notification and return with the same response as the set request.
+The first terminal should get the notification and return with the same response as the set request:
 
 ```json
 {
@@ -220,7 +224,7 @@ The first terminal should get the notification and return with the same response
 ```
 
 However, the watch command can do more than this.
-Using the the index we can watch for commands that has happened in the past.
+Using the index, we can watch for commands that have happened in the past.
 This is useful for ensuring you don't miss events between watch commands.
 
 Let's try to watch for the set command of index 7 again:
@@ -229,16 +233,16 @@ Let's try to watch for the set command of index 7 again:
 curl -L 'http://127.0.0.1:4001/v2/keys/foo?wait=true&waitIndex=7'
 ```
 
-The watch command returns immediately with the same response as previous.
+The watch command returns immediately with the same response as previously.
 
 
 ### Atomically Creating In-Order Keys
 
-Using the `POST` on a directory you can create keys with key names that are created in-order.
-This can be used in a variety of useful patterns like implementing queues of keys that need to be processed in strict order.
+Using `POST` on a directory, you can create keys with key names that are created in-order.
+This can be used in a variety of useful patterns, like implementing queues of keys which need to be processed in strict order.
 An example use case is the [locking module][lockmod] which uses it to ensure clients get fair access to a mutex.
 
-Creating an in-order key is easy
+Creating an in-order key is easy:
 
 ```sh
 curl http://127.0.0.1:4001/v2/keys/queue -XPOST -d value=Job1
@@ -256,8 +260,8 @@ curl http://127.0.0.1:4001/v2/keys/queue -XPOST -d value=Job1
 }
 ```
 
-If you create another entry some time later it is guaranteed to have a key name that is greater than the previous key.
-Also note the key names use the global etcd index so the next key can be more than `previous + 1`.
+If you create another entry some time later, it is guaranteed to have a key name that is greater than the previous key.
+Also note the key names use the global etcd index, so the next key can be more than `previous + 1`.
 
 ```sh
 curl http://127.0.0.1:4001/v2/keys/queue -XPOST -d value=Job2
@@ -333,14 +337,14 @@ curl -L http://127.0.0.1:4001/v2/keys/dir -XPUT -d ttl=30 -d dir=true
 }
 ```
 
-The directories TTL can be refreshed by making an update.
+The directory's TTL can be refreshed by making an update.
 You can do this by making a PUT with `prevExist=true` and a new TTL.
 
 ```sh
 curl -L http://127.0.0.1:4001/v2/keys/dir -XPUT -d ttl=30 -d dir=true -d prevExist=true
 ```
 
-Keys that are under this directory work as usual, but when the directory expires a watcher on a key under the directory will get an expire event:
+Keys that are under this directory work as usual, but when the directory expires, a watcher on a key under the directory will get an expire event:
 
 ```sh
 curl 'http://127.0.0.1:4001/v2/keys/dir/asdf?consistent=true&wait=true'
@@ -357,9 +361,10 @@ curl 'http://127.0.0.1:4001/v2/keys/dir/asdf?consistent=true&wait=true'
 }
 ```
 
+
 ### Atomic Compare-and-Swap
 
-Etcd can be used as a centralized coordination service in a cluster and `CompareAndSwap` (CAS) is the most basic operation used to build a distributed lock service.
+etcd can be used as a centralized coordination service in a cluster, and `CompareAndSwap` (CAS) is the most basic operation used to build a distributed lock service.
 
 This command will set the value of a key only if the client-provided conditions are equal to the current conditions.
 
@@ -369,7 +374,7 @@ The current comparable conditions are:
 
 2. `prevIndex` - checks the previous index of the key.
 
-3. `prevExist` - checks existence of the key: if `prevExist` is true, it is a  `update` request; if prevExist is `false`, it is a `create` request.
+3. `prevExist` - checks existence of the key: if `prevExist` is true, it is an `update` request; if prevExist is `false`, it is a `create` request.
 
 Here is a simple example.
 Let's create a key-value pair first: `foo=one`.
@@ -378,7 +383,7 @@ Let's create a key-value pair first: `foo=one`.
 curl -L http://127.0.0.1:4001/v2/keys/foo -XPUT -d value=one
 ```
 
-Let's try some invalid `CompareAndSwap` commands first.
+Now let's try some invalid `CompareAndSwap` commands.
 
 Trying to set this existing key with `prevExist=false` fails as expected:
 ```sh
@@ -396,7 +401,7 @@ The error code explains the problem:
 }
 ```
 
-Now lets provide a `prevValue` parameter:
+Now let's provide a `prevValue` parameter:
 
 ```sh
 curl -L http://127.0.0.1:4001/v2/keys/foo?prevValue=two -XPUT -d value=three
@@ -421,7 +426,7 @@ Let's try a valid condition:
 curl -L http://127.0.0.1:4001/v2/keys/foo?prevValue=one -XPUT -d value=two
 ```
 
-The response should be
+The response should be:
 
 ```json
 {
@@ -437,12 +442,13 @@ The response should be
 
 We successfully changed the value from "one" to "two" since we gave the correct previous value.
 
+
 ### Creating Directories
 
-In most cases directories for a key are automatically created.
-But, there are cases where you will want to create a directory or remove one.
+In most cases, directories for a key are automatically created.
+But there are cases where you will want to create a directory or remove one.
 
-Creating a directory is just like a key only you cannot provide a value and must add the `dir=true` parameter.
+Creating a directory is just like a key except you cannot provide a value and must add the `dir=true` parameter.
 
 ```sh
 curl -L http://127.0.0.1:4001/v2/keys/dir -XPUT -d dir=true
@@ -458,6 +464,7 @@ curl -L http://127.0.0.1:4001/v2/keys/dir -XPUT -d dir=true
     }
 }
 ```
+
 
 ### Listing a directory
 
@@ -584,6 +591,7 @@ curl -L http://127.0.0.1:4001/v2/keys/dir?recursive=true -XDELETE
 }
 ```
 
+
 ### Creating a hidden node
 
 We can create a hidden key-value pair or directory by add a `_` prefix.
@@ -606,7 +614,6 @@ curl -L http://127.0.0.1:4001/v2/keys/_message -XPUT -d value="Hello hidden worl
     }
 }
 ```
-
 
 Next we'll add a regular key named `/message`:
 
@@ -668,7 +675,7 @@ Once the lock is released, the next client waiting for the lock will receive it.
 
 ### Acquiring a Lock
 
-To acquire a lock, simply send a `POST` request to the lock module with they lock name and TTL:
+To acquire a lock, simply send a `POST` request to the lock module with the lock name and TTL:
 
 ```sh
 curl -L http://127.0.0.1:4001/mod/v2/lock/mylock -XPOST -d ttl=20
@@ -739,6 +746,7 @@ If the TTL is not specified or is not a number then you'll receive the following
 }
 ```
 
+
 ### Releasing a Lock
 
 When the client is finished with the lock, simply send a `DELETE` request to release the lock:
@@ -776,6 +784,7 @@ If the index or value does not exist then you'll receive the following error wit
     "index": 1
 }
 ```
+
 
 ### Retrieving a Lock
 
@@ -868,13 +877,14 @@ If the name is not specified then you'll receive the following error:
 
 ## Statistics
 
-An etcd cluster keeps track of a number of stastics including latency, bandwidth and uptime.
-These statistics are used in the `/mod/dashboard` to generate tables and graphs about the cluster state.
+An etcd cluster keeps track of a number of statistics including latency, bandwidth and uptime.
+These statistics are used in the `/mod/dashboard` endpoint to generate tables and graphs about the cluster state.
+
 
 ### Leader Statistics
 
-The leader has a view of the entire cluster and keeps track of two interesting statistics: latency to each peer in the cluster and the number of failed and successful Raft RPC requests.
-You can find grab these stastistics from the `/v2/stats/leader` endpoint:
+The leader has a view of the entire cluster and keeps track of two interesting statistics: latency to each peer in the cluster, and the number of failed and successful Raft RPC requests.
+You can grab these statistics from the `/v2/stats/leader` endpoint:
 
 ```sh
 curl -L http://127.0.0.1:4001/v2/stats/leader
@@ -913,6 +923,7 @@ curl -L http://127.0.0.1:4001/v2/stats/leader
     "leader": "etcd-node2"
 }
 ```
+
 
 ### Self Statistics
 
@@ -973,6 +984,7 @@ curl -L http://127.0.0.1:4001/v2/stats/self
     "state": "leader"
 }
 ```
+
 
 ### Store Statistics
 
