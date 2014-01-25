@@ -19,7 +19,7 @@ The primary API of etcd is a hierarchical key space.
 The key space consists of directories and keys which are generically referred to as "nodes".
 
 
-### Setting the value to a key
+### Setting the value of a key
 
 Let’s set the first key-value pair in the datastore.
 In this case the key is `/message` and the value is `Hello world`.
