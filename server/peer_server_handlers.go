@@ -7,8 +7,10 @@ import (
 	"time"
 
 	etcdErr "github.com/coreos/etcd/error"
+	uhttp "github.com/coreos/etcd/pkg/http"
 	"github.com/coreos/etcd/log"
 	"github.com/coreos/etcd/store"
+
 	"github.com/coreos/etcd/third_party/github.com/coreos/raft"
 	"github.com/coreos/etcd/third_party/github.com/gorilla/mux"
 )
@@ -149,7 +151,7 @@ func (ps *PeerServer) EtcdURLHttpHandler(w http.ResponseWriter, req *http.Reques
 func (ps *PeerServer) JoinHttpHandler(w http.ResponseWriter, req *http.Request) {
 	command := &JoinCommand{}
 
-	err := decodeJsonRequest(req, command)
+	err := uhttp.DecodeJsonRequest(req, command)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
