@@ -1,4 +1,4 @@
-package server
+package config
 
 import (
 	"encoding/json"
@@ -15,6 +15,8 @@ import (
 
 	"github.com/coreos/etcd/third_party/github.com/BurntSushi/toml"
 	"github.com/coreos/etcd/log"
+	"github.com/coreos/etcd/server"
+	ustrings "github.com/coreos/etcd/pkg/strings"
 )
 
 // The default location for the etcd configuration file.
@@ -82,8 +84,8 @@ type Config struct {
 	GraphiteHost	string	`toml:"graphite_host" env:"ETCD_GRAPHITE_HOST"`
 }
 
-// NewConfig returns a Config initialized with default values.
-func NewConfig() *Config {
+// New returns a Config initialized with default values.
+func New() *Config {
 	c := new(Config)
 	c.SystemPath = DefaultSystemConfigPath
 	c.Addr = "127.0.0.1:4001"
@@ -197,7 +199,7 @@ func (c *Config) loadEnv(target interface{}) error {
 		case reflect.String:
 			value.Field(i).SetString(v)
 		case reflect.Slice:
-			value.Field(i).Set(reflect.ValueOf(trimsplit(v, ",")))
+			value.Field(i).Set(reflect.ValueOf(ustrings.TrimSplit(v, ",")))
 		}
 	}
 	return nil
@@ -293,10 +295,10 @@ func (c *Config) LoadFlags(arguments []string) error {
 
 	// Convert some parameters to lists.
 	if peers != "" {
-		c.Peers = trimsplit(peers, ",")
+		c.Peers = ustrings.TrimSplit(peers, ",")
 	}
 	if cors != "" {
-		c.CorsOrigins = trimsplit(cors, ",")
+		c.CorsOrigins = ustrings.TrimSplit(cors, ",")
 	}
 
 	return nil
@@ -312,7 +314,7 @@ func (c *Config) LoadPeersFile() error {
 	if err != nil {
 		return fmt.Errorf("Peers file error: %s", err)
 	}
-	c.Peers = trimsplit(string(b), ",")
+	c.Peers = ustrings.TrimSplit(string(b), ",")
 
 	return nil
 }
@@ -355,8 +357,8 @@ func (c *Config) Reset() error {
 }
 
 // Reads the info file from the file system or initializes it based on the config.
-func (c *Config) Info() (*Info, error) {
-	info := &Info{}
+func (c *Config) Info() (*server.Info, error) {
+	info := &server.Info{}
 	path := filepath.Join(c.DataDir, "info")
 
 	// Open info file and read it out.
@@ -434,8 +436,8 @@ func (c *Config) Sanitize() error {
 }
 
 // TLSInfo retrieves a TLSInfo object for the client server.
-func (c *Config) TLSInfo() TLSInfo {
-	return TLSInfo{
+func (c *Config) TLSInfo() server.TLSInfo {
+	return server.TLSInfo{
 		CAFile:		c.CAFile,
 		CertFile:	c.CertFile,
 		KeyFile:	c.KeyFile,
@@ -443,13 +445,13 @@ func (c *Config) TLSInfo() TLSInfo {
 }
 
 // ClientTLSConfig generates the TLS configuration for the client server.
-func (c *Config) TLSConfig() (TLSConfig, error) {
+func (c *Config) TLSConfig() (server.TLSConfig, error) {
 	return c.TLSInfo().Config()
 }
 
 // PeerTLSInfo retrieves a TLSInfo object for the peer server.
-func (c *Config) PeerTLSInfo() TLSInfo {
-	return TLSInfo{
+func (c *Config) PeerTLSInfo() server.TLSInfo {
+	return server.TLSInfo{
 		CAFile:		c.Peer.CAFile,
 		CertFile:	c.Peer.CertFile,
 		KeyFile:	c.Peer.KeyFile,
@@ -457,7 +459,7 @@ func (c *Config) PeerTLSInfo() TLSInfo {
 }
 
 // PeerTLSConfig generates the TLS configuration for the peer server.
-func (c *Config) PeerTLSConfig() (TLSConfig, error) {
+func (c *Config) PeerTLSConfig() (server.TLSConfig, error) {
 	return c.PeerTLSInfo().Config()
 }
 

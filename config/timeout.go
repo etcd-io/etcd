@@ -1,4 +1,4 @@
-package server
+package config
 
 const (
 	// The amount of time (in ms) to elapse without a heartbeat before becoming a candidate
