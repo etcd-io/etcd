@@ -26,6 +26,7 @@ Options:
   -vv               Enabled very verbose logging.
 
 Cluster Configuration Options:
+  -bootstrap-url=<url>            URL to use for bootstrapping the peer list.
   -peers-file=<path>              Path to a file containing the peer list.
   -peers=<host:port>,<host:port>  Comma-separated list of peers. The members
                                   should match the peer's '-peer-addr' flag.

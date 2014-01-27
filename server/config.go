@@ -48,6 +48,7 @@ type Config struct {
 
 	Addr			string	`toml:"addr" env:"ETCD_ADDR"`
 	BindAddr		string	`toml:"bind_addr" env:"ETCD_BIND_ADDR"`
+	BootstrapURL     string `toml:"bootstrap_url" env:"ETCD_BOOTSTRAP_URL"`
 	CAFile			string	`toml:"ca_file" env:"ETCD_CA_FILE"`
 	CertFile		string	`toml:"cert_file" env:"ETCD_CERT_FILE"`
 	CPUProfileFile		string
@@ -225,6 +226,7 @@ func (c *Config) LoadFlags(arguments []string) error {
 
 	f.StringVar(&c.Name, "name", c.Name, "")
 	f.StringVar(&c.Addr, "addr", c.Addr, "")
+	f.StringVar(&c.BootstrapURL, "bootstrap-url", c.BootstrapURL, "")
 	f.StringVar(&c.BindAddr, "bind-addr", c.BindAddr, "")
 	f.StringVar(&c.Peer.Addr, "peer-addr", c.Peer.Addr, "")
 	f.StringVar(&c.Peer.BindAddr, "peer-bind-addr", c.Peer.BindAddr, "")
