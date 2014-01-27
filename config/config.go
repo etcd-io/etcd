@@ -14,6 +14,8 @@ import (
 	"strings"
 
 	"github.com/coreos/etcd/third_party/github.com/BurntSushi/toml"
+
+	"github.com/coreos/etcd/bootstrap"
 	"github.com/coreos/etcd/log"
 	"github.com/coreos/etcd/server"
 	ustrings "github.com/coreos/etcd/pkg/strings"
@@ -134,6 +136,12 @@ func (c *Config) Load(arguments []string) error {
 	// Loads peers if a peer file was specified.
 	if err := c.LoadPeersFile(); err != nil {
 		return err
+	}
+
+	if c.BootstrapURL != "" {
+		if err := bootstrap.Do(c.BootstrapURL); err != nil {
+			return nil
+		}
 	}
 
 	// Sanitize all the input fields.
