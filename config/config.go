@@ -15,10 +15,10 @@ import (
 
 	"github.com/coreos/etcd/third_party/github.com/BurntSushi/toml"
 
-	"github.com/coreos/etcd/bootstrap"
+	"github.com/coreos/etcd/discovery"
 	"github.com/coreos/etcd/log"
-	"github.com/coreos/etcd/server"
 	ustrings "github.com/coreos/etcd/pkg/strings"
+	"github.com/coreos/etcd/server"
 )
 
 // The default location for the etcd configuration file.
@@ -52,12 +52,12 @@ type Config struct {
 
 	Addr			string	`toml:"addr" env:"ETCD_ADDR"`
 	BindAddr		string	`toml:"bind_addr" env:"ETCD_BIND_ADDR"`
-	BootstrapURL     string `toml:"bootstrap_url" env:"ETCD_BOOTSTRAP_URL"`
 	CAFile			string	`toml:"ca_file" env:"ETCD_CA_FILE"`
 	CertFile		string	`toml:"cert_file" env:"ETCD_CERT_FILE"`
 	CPUProfileFile		string
 	CorsOrigins		[]string	`toml:"cors" env:"ETCD_CORS"`
 	DataDir			string		`toml:"data_dir" env:"ETCD_DATA_DIR"`
+	Discovery     string `toml:"discovery" env:"ETCD_DISCOVERY"`
 	Force			bool
 	KeyFile			string		`toml:"key_file" env:"ETCD_KEY_FILE"`
 	Peers			[]string	`toml:"peers" env:"ETCD_PEERS"`
@@ -138,15 +138,28 @@ func (c *Config) Load(arguments []string) error {
 		return err
 	}
 
-	if c.BootstrapURL != "" {
-		if err := bootstrap.Do(c.BootstrapURL); err != nil {
-			return nil
-		}
-	}
-
 	// Sanitize all the input fields.
 	if err := c.Sanitize(); err != nil {
 		return fmt.Errorf("sanitize: %v", err)
+	}
+
+	// Attempt cluster discovery
+	if c.Discovery != "" {
+		p, err := discovery.Do(c.Discovery, c.Name, c.Peer.Addr)
+		if err != nil {
+			log.Fatalf("Bootstrapping encountered an unexpected error: %v", err)
+		}
+
+		for i := range p {
+			// Strip the scheme off of the peer if it has one
+			// TODO(bp): clean this up!
+			purl, err := url.Parse(p[i])
+			if err == nil {
+				p[i] = purl.Host
+			}
+		}
+
+		c.Peers = p
 	}
 
 	// Force remove server configuration if specified.
@@ -236,7 +249,7 @@ func (c *Config) LoadFlags(arguments []string) error {
 
 	f.StringVar(&c.Name, "name", c.Name, "")
 	f.StringVar(&c.Addr, "addr", c.Addr, "")
-	f.StringVar(&c.BootstrapURL, "bootstrap-url", c.BootstrapURL, "")
+	f.StringVar(&c.Discovery, "discovery", c.Discovery, "")
 	f.StringVar(&c.BindAddr, "bind-addr", c.BindAddr, "")
 	f.StringVar(&c.Peer.Addr, "peer-addr", c.Peer.Addr, "")
 	f.StringVar(&c.Peer.BindAddr, "peer-bind-addr", c.Peer.BindAddr, "")
