@@ -1,6 +1,7 @@
 package store
 
 import (
+	"sort"
 	"time"
 )
 
@@ -17,6 +18,40 @@ type NodeExtern struct {
 	Nodes         NodeExterns `json:"nodes,omitempty"`
 	ModifiedIndex uint64      `json:"modifiedIndex,omitempty"`
 	CreatedIndex  uint64      `json:"createdIndex,omitempty"`
+}
+
+func (eNode *NodeExtern) loadInternalNode(n *node, recursive, sorted bool) {
+	if n.IsDir() { // node is a directory
+		eNode.Dir = true
+
+		children, _ := n.List()
+		eNode.Nodes = make(NodeExterns, len(children))
+
+		// we do not use the index in the children slice directly
+		// we need to skip the hidden one
+		i := 0
+
+		for _, child := range children {
+			if child.IsHidden() { // get will not return hidden nodes
+				continue
+			}
+
+			eNode.Nodes[i] = child.Repr(recursive, sorted)
+			i++
+		}
+
+		// eliminate hidden nodes
+		eNode.Nodes = eNode.Nodes[:i]
+
+		if sorted {
+			sort.Sort(eNode.Nodes)
+		}
+
+	} else { // node is a file
+		eNode.Value, _ = n.Read()
+	}
+
+	eNode.Expiration, eNode.TTL = n.ExpirationAndTTL()
 }
 
 type NodeExterns []*NodeExtern
