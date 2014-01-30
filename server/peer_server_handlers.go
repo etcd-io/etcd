@@ -71,7 +71,7 @@ func (ps *PeerServer) AppendEntriesHttpHandler(w http.ResponseWriter, req *http.
 		return
 	}
 
-	if !resp.Success {
+	if !resp.Success() {
 		log.Debugf("[Append Entry] Step back")
 	}
 
