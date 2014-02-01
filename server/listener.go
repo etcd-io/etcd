@@ -16,11 +16,15 @@ func NewListener(addr string) (net.Listener, error) {
 	return l, nil
 }
 
-func NewTLSListener(addr, certFile, keyFile string) (net.Listener, error) {
+func NewTLSListener(config *tls.Config, addr, certFile, keyFile string) (net.Listener, error) {
 	if addr == "" {
 		addr = ":https"
 	}
-	config := &tls.Config{}
+
+	if config == nil {
+		config = &tls.Config{}
+	}
+
 	config.NextProtos = []string{"http/1.1"}
 
 	var err error

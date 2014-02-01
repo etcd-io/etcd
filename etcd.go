@@ -135,7 +135,7 @@ func main() {
 
 	var psListener net.Listener
 	if psConfig.Scheme == "https" {
-		psListener, err = server.NewTLSListener(info.RaftListenHost, info.RaftTLS.CertFile, info.RaftTLS.KeyFile)
+		psListener, err = server.NewTLSListener(&tlsConfig.Server, info.RaftListenHost, info.RaftTLS.CertFile, info.RaftTLS.KeyFile)
 	} else {
 		psListener, err = server.NewListener(info.RaftListenHost)
 	}
@@ -165,7 +165,7 @@ func main() {
 
 	var sListener net.Listener
 	if tlsConfig.Scheme == "https" {
-		sListener, err = server.NewTLSListener(info.EtcdListenHost, info.EtcdTLS.CertFile, info.EtcdTLS.KeyFile)
+		sListener, err = server.NewTLSListener(&tlsConfig.Server, info.EtcdListenHost, info.EtcdTLS.CertFile, info.EtcdTLS.KeyFile)
 	} else {
 		sListener, err = server.NewListener(info.EtcdListenHost)
 	}
