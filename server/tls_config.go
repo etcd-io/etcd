@@ -6,7 +6,7 @@ import (
 
 // TLSConfig holds the TLS configuration.
 type TLSConfig struct {
-	Scheme string
-	Server tls.Config
-	Client tls.Config
+	Scheme string     // http or https
+	Server tls.Config // Used by the Raft or etcd Server transporter.
+	Client tls.Config // Used by the Raft peer client.
 }
