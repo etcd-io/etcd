@@ -24,7 +24,7 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/coreos/raft"
+	"github.com/coreos/etcd/third_party/github.com/coreos/raft"
 
 	ehttp "github.com/coreos/etcd/http"
 	"github.com/coreos/etcd/log"

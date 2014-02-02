@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/gorilla/mux"
+	"github.com/coreos/etcd/third_party/github.com/gorilla/mux"
 )
 
 // Retrieves the value for a given key.

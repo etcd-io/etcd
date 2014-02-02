@@ -6,25 +6,25 @@ import (
 	"sync"
 	"time"
 
-	gometrics "github.com/rcrowley/go-metrics"
+	gometrics "github.com/coreos/etcd/third_party/github.com/rcrowley/go-metrics"
 )
 
 const (
 	// RuntimeMemStatsSampleInterval is the interval in seconds at which the
 	// Go runtime's memory statistics will be gathered.
-	RuntimeMemStatsSampleInterval = time.Duration(2) * time.Second
+	RuntimeMemStatsSampleInterval	= time.Duration(2) * time.Second
 
 	// GraphitePublishInterval is the interval in seconds at which all
 	// gathered statistics will be published to a Graphite endpoint.
-	GraphitePublishInterval = time.Duration(2) * time.Second
+	GraphitePublishInterval	= time.Duration(2) * time.Second
 )
 
 type standardBucket struct {
 	sync.Mutex
-	name     string
-	registry gometrics.Registry
-	timers   map[string]Timer
-	gauges   map[string]Gauge
+	name		string
+	registry	gometrics.Registry
+	timers		map[string]Timer
+	gauges		map[string]Gauge
 }
 
 func newStandardBucket(name string) standardBucket {
@@ -34,10 +34,10 @@ func newStandardBucket(name string) standardBucket {
 	go gometrics.CaptureRuntimeMemStats(registry, RuntimeMemStatsSampleInterval)
 
 	return standardBucket{
-		name:     name,
-		registry: registry,
-		timers:   make(map[string]Timer),
-		gauges:   make(map[string]Gauge),
+		name:		name,
+		registry:	registry,
+		timers:		make(map[string]Timer),
+		gauges:		make(map[string]Gauge),
 	}
 }
 

@@ -5,7 +5,7 @@ import (
 
 	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/log"
-	"github.com/coreos/raft"
+	"github.com/coreos/etcd/third_party/github.com/coreos/raft"
 )
 
 func init() {
@@ -14,20 +14,20 @@ func init() {
 
 // The JoinCommand adds a node to the cluster.
 type JoinCommand struct {
-	MinVersion int    `json:"minVersion"`
-	MaxVersion int    `json:"maxVersion"`
-	Name       string `json:"name"`
-	RaftURL    string `json:"raftURL"`
-	EtcdURL    string `json:"etcdURL"`
+	MinVersion	int	`json:"minVersion"`
+	MaxVersion	int	`json:"maxVersion"`
+	Name		string	`json:"name"`
+	RaftURL		string	`json:"raftURL"`
+	EtcdURL		string	`json:"etcdURL"`
 }
 
 func NewJoinCommand(minVersion int, maxVersion int, name, raftUrl, etcdUrl string) *JoinCommand {
 	return &JoinCommand{
-		MinVersion: minVersion,
-		MaxVersion: maxVersion,
-		Name:       name,
-		RaftURL:    raftUrl,
-		EtcdURL:    etcdUrl,
+		MinVersion:	minVersion,
+		MaxVersion:	maxVersion,
+		Name:		name,
+		RaftURL:	raftUrl,
+		EtcdURL:	etcdUrl,
 	}
 }
 

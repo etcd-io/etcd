@@ -9,8 +9,8 @@ import (
 	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/log"
 	"github.com/coreos/etcd/store"
-	"github.com/coreos/raft"
-	"github.com/gorilla/mux"
+	"github.com/coreos/etcd/third_party/github.com/coreos/raft"
+	"github.com/coreos/etcd/third_party/github.com/gorilla/mux"
 )
 
 // Get all the current logs

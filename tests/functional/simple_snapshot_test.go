@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/go-etcd/etcd"
+	"github.com/coreos/etcd/third_party/github.com/coreos/go-etcd/etcd"
 )
 
 // This test creates a single node and then set a value to it to trigger snapshot

@@ -5,7 +5,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/BurntSushi/toml"
+	"github.com/coreos/etcd/third_party/github.com/BurntSushi/toml"
 	"github.com/stretchr/testify/assert"
 )
 

@@ -9,8 +9,8 @@ import (
 	"time"
 
 	etcdErr "github.com/coreos/etcd/error"
-	"github.com/coreos/go-etcd/etcd"
-	"github.com/gorilla/mux"
+	"github.com/coreos/etcd/third_party/github.com/coreos/go-etcd/etcd"
+	"github.com/coreos/etcd/third_party/github.com/gorilla/mux"
 )
 
 // acquireHandler attempts to acquire a lock on the given key.

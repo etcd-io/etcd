@@ -5,7 +5,7 @@ import (
 
 	"github.com/coreos/etcd/log"
 	"github.com/coreos/etcd/store"
-	"github.com/coreos/raft"
+	"github.com/coreos/etcd/third_party/github.com/coreos/raft"
 )
 
 func init() {
@@ -14,11 +14,11 @@ func init() {
 
 // The CompareAndSwap performs a conditional update on a key in the store.
 type CompareAndSwapCommand struct {
-	Key        string    `json:"key"`
-	Value      string    `json:"value"`
-	ExpireTime time.Time `json:"expireTime"`
-	PrevValue  string    `json:"prevValue"`
-	PrevIndex  uint64    `json:"prevIndex"`
+	Key		string		`json:"key"`
+	Value		string		`json:"value"`
+	ExpireTime	time.Time	`json:"expireTime"`
+	PrevValue	string		`json:"prevValue"`
+	PrevIndex	uint64		`json:"prevIndex"`
 }
 
 // The name of the testAndSet command in the log

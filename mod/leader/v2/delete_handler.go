@@ -7,7 +7,7 @@ import (
 	"net/url"
 
 	etcdErr "github.com/coreos/etcd/error"
-	"github.com/gorilla/mux"
+	"github.com/coreos/etcd/third_party/github.com/gorilla/mux"
 )
 
 // deleteHandler remove a given leader.

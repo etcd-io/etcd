@@ -3,7 +3,7 @@ package metrics
 import (
 	"io"
 
-	gometrics "github.com/rcrowley/go-metrics"
+	gometrics "github.com/coreos/etcd/third_party/github.com/rcrowley/go-metrics"
 )
 
 type nilBucket struct{}

@@ -8,7 +8,7 @@ import (
 	"github.com/coreos/etcd/mod/dashboard"
 	leader2 "github.com/coreos/etcd/mod/leader/v2"
 	lock2 "github.com/coreos/etcd/mod/lock/v2"
-	"github.com/gorilla/mux"
+	"github.com/coreos/etcd/third_party/github.com/gorilla/mux"
 )
 
 var ServeMux *http.Handler

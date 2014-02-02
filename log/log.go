@@ -1,7 +1,7 @@
 package log
 
 import (
-	golog "github.com/coreos/go-log/log"
+	golog "github.com/coreos/etcd/third_party/github.com/coreos/go-log/log"
 	"os"
 )
 

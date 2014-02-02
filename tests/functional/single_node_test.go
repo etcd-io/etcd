@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/go-etcd/etcd"
+	"github.com/coreos/etcd/third_party/github.com/coreos/go-etcd/etcd"
 )
 
 // Create a single node and try to set value
