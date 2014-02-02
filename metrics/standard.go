@@ -19,7 +19,6 @@ const (
 	GraphitePublishInterval = time.Duration(2) * time.Second
 )
 
-
 type standardBucket struct {
 	sync.Mutex
 	name     string

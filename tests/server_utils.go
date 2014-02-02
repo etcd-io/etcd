@@ -33,10 +33,10 @@ func RunServer(f func(*server.Server)) {
 	followersStats := server.NewRaftFollowersStats(testName)
 
 	psConfig := server.PeerServerConfig{
-		Name: testName,
-		URL: "http://"+testRaftURL,
-		Scheme: "http",
-		SnapshotCount: testSnapshotCount,
+		Name:           testName,
+		URL:            "http://" + testRaftURL,
+		Scheme:         "http",
+		SnapshotCount:  testSnapshotCount,
 		MaxClusterSize: 9,
 	}
 	ps := server.NewPeerServer(psConfig, registry, store, nil, followersStats, serverStats)
@@ -48,7 +48,7 @@ func RunServer(f func(*server.Server)) {
 	// Create Raft transporter and server
 	dialTimeout := (3 * testHeartbeatTimeout) + testElectionTimeout
 	responseHeaderTimeout := (3 * testHeartbeatTimeout) + testElectionTimeout
-	raftTransporter := server.NewTransporter(followersStats, serverStats, registry,	testHeartbeatTimeout, dialTimeout, responseHeaderTimeout)
+	raftTransporter := server.NewTransporter(followersStats, serverStats, registry, testHeartbeatTimeout, dialTimeout, responseHeaderTimeout)
 	raftServer, err := raft.NewServer(testName, path, raftTransporter, store, ps, "")
 	if err != nil {
 		panic(err)

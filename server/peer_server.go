@@ -25,12 +25,12 @@ const retryInterval = 10
 const ThresholdMonitorTimeout = 5 * time.Second
 
 type PeerServerConfig struct {
-	Name             string
-	Scheme           string
-	URL              string
-	SnapshotCount    int
-	MaxClusterSize   int
-	RetryTimes       int
+	Name           string
+	Scheme         string
+	URL            string
+	SnapshotCount  int
+	MaxClusterSize int
+	RetryTimes     int
 }
 
 type PeerServer struct {
@@ -65,11 +65,11 @@ type snapshotConf struct {
 
 func NewPeerServer(psConfig PeerServerConfig, registry *Registry, store store.Store, mb *metrics.Bucket, followersStats *raftFollowersStats, serverStats *raftServerStats) *PeerServer {
 	s := &PeerServer{
-		Config: psConfig,
-		registry: registry,
-		store:    store,
+		Config:         psConfig,
+		registry:       registry,
+		store:          store,
 		followersStats: followersStats,
-		serverStats: serverStats,
+		serverStats:    serverStats,
 
 		timeoutThresholdChan: make(chan interface{}, 1),
 

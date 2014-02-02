@@ -2,8 +2,8 @@ package v2
 
 import (
 	"fmt"
-	"testing"
 	"net/http"
+	"testing"
 
 	"github.com/coreos/etcd/server"
 	"github.com/coreos/etcd/tests"

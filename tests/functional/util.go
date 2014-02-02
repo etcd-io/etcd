@@ -100,7 +100,7 @@ func CreateCluster(size int, procAttr *os.ProcAttr, ssl bool) ([][]string, []*os
 
 	etcds := make([]*os.Process, size)
 
-	for i, _ := range etcds {
+	for i := range etcds {
 		var err error
 		etcds[i], err = os.StartProcess(EtcdBinPath, append(argGroup[i], "-f"), procAttr)
 		if err != nil {

@@ -51,7 +51,7 @@ func TestKillRandom(t *testing.T) {
 
 		}
 
-		for num, _ := range toKill {
+		for num := range toKill {
 			err := etcds[num].Kill()
 			if err != nil {
 				panic(err)
@@ -63,7 +63,7 @@ func TestKillRandom(t *testing.T) {
 
 		<-leaderChan
 
-		for num, _ := range toKill {
+		for num := range toKill {
 			etcds[num], err = os.StartProcess(EtcdBinPath, argGroup[num], procAttr)
 		}
 

@@ -33,7 +33,6 @@ func scripts_browser_scripts_js() []byte {
 	return buf.Bytes()
 }
 
-
 func init() {
 	go_bindata["/scripts/browser-scripts.js"] = scripts_browser_scripts_js
 }

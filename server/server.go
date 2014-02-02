@@ -29,9 +29,9 @@ type Server struct {
 	peerServer *PeerServer
 	registry   *Registry
 	store      store.Store
-	metrics        *metrics.Bucket
+	metrics    *metrics.Bucket
 
-	trace          bool
+	trace bool
 }
 
 // Creates a new Server.
@@ -42,7 +42,7 @@ func New(name, url string, peerServer *PeerServer, registry *Registry, store sto
 		store:      store,
 		registry:   registry,
 		peerServer: peerServer,
-		metrics:     mb,
+		metrics:    mb,
 	}
 
 	return s

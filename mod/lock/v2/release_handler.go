@@ -1,11 +1,11 @@
 package v2
 
 import (
-	"path"
 	"net/http"
+	"path"
 
-	"github.com/gorilla/mux"
 	etcdErr "github.com/coreos/etcd/error"
+	"github.com/gorilla/mux"
 )
 
 // releaseLockHandler deletes the lock.
@@ -45,4 +45,3 @@ func (h *handler) releaseLockHandler(w http.ResponseWriter, req *http.Request) e
 
 	return nil
 }
-

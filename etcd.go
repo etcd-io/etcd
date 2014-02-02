@@ -118,18 +118,18 @@ func main() {
 
 	// Calculate all of our timeouts
 	heartbeatTimeout := time.Duration(config.Peer.HeartbeatTimeout) * time.Millisecond
-	electionTimeout :=  time.Duration(config.Peer.ElectionTimeout) * time.Millisecond
+	electionTimeout := time.Duration(config.Peer.ElectionTimeout) * time.Millisecond
 	dialTimeout := (3 * heartbeatTimeout) + electionTimeout
 	responseHeaderTimeout := (3 * heartbeatTimeout) + electionTimeout
 
 	// Create peer server.
 	psConfig := server.PeerServerConfig{
-		Name:             info.Name,
-		Scheme:           peerTLSConfig.Scheme,
-		URL:              info.RaftURL,
-		SnapshotCount:    config.SnapshotCount,
-		MaxClusterSize:   config.MaxClusterSize,
-		RetryTimes:       config.MaxRetryAttempts,
+		Name:           info.Name,
+		Scheme:         peerTLSConfig.Scheme,
+		URL:            info.RaftURL,
+		SnapshotCount:  config.SnapshotCount,
+		MaxClusterSize: config.MaxClusterSize,
+		RetryTimes:     config.MaxRetryAttempts,
 	}
 	ps := server.NewPeerServer(psConfig, registry, store, &mb, followersStats, serverStats)
 

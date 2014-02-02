@@ -1,12 +1,12 @@
 package v2
 
 import (
-	"path"
 	"net/http"
+	"path"
 	"strconv"
 
-	"github.com/gorilla/mux"
 	etcdErr "github.com/coreos/etcd/error"
+	"github.com/gorilla/mux"
 )
 
 // renewLockHandler attempts to update the TTL on an existing lock.

@@ -66,8 +66,6 @@ func TestModLeaderRenew(t *testing.T) {
 	})
 }
 
-
-
 func testSetLeader(s *server.Server, key string, name string, ttl int) (string, int, error) {
 	resp, err := tests.PutForm(fmt.Sprintf("%s/mod/v2/leader/%s?name=%s&ttl=%d", s.URL(), key, name, ttl), nil)
 	ret := tests.ReadBody(resp)

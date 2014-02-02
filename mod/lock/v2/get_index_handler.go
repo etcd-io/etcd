@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"path"
 
-	"github.com/gorilla/mux"
 	etcdErr "github.com/coreos/etcd/error"
+	"github.com/gorilla/mux"
 )
 
 // getIndexHandler retrieves the current lock index.

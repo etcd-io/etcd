@@ -8,9 +8,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/gorilla/mux"
-	"github.com/coreos/go-etcd/etcd"
 	etcdErr "github.com/coreos/etcd/error"
+	"github.com/coreos/go-etcd/etcd"
+	"github.com/gorilla/mux"
 )
 
 // acquireHandler attempts to acquire a lock on the given key.
@@ -75,7 +75,7 @@ func (h *handler) acquireHandler(w http.ResponseWriter, req *http.Request) error
 }
 
 // createNode creates a new lock node and watches it until it is acquired or acquisition fails.
-func (h *handler) createNode(keypath string, value string, ttl int, closeChan <- chan bool, stopChan chan bool) (int, error) {
+func (h *handler) createNode(keypath string, value string, ttl int, closeChan <-chan bool, stopChan chan bool) (int, error) {
 	// Default the value to "-" if it is blank.
 	if len(value) == 0 {
 		value = "-"
@@ -133,7 +133,7 @@ func (h *handler) findExistingNode(keypath string, value string) (*etcd.Node, in
 func (h *handler) ttlKeepAlive(k string, value string, ttl int, stopChan chan bool) {
 	for {
 		select {
-		case <-time.After(time.Duration(ttl / 2) * time.Second):
+		case <-time.After(time.Duration(ttl/2) * time.Second):
 			h.client.Update(k, value, uint64(ttl))
 		case <-stopChan:
 			return
@@ -143,14 +143,14 @@ func (h *handler) ttlKeepAlive(k string, value string, ttl int, stopChan chan bo
 
 // watch continuously waits for a given lock index to be acquired or until lock fails.
 // Returns a boolean indicating success.
-func (h *handler) watch(keypath string, index int, closeChan <- chan bool) error {
+func (h *handler) watch(keypath string, index int, closeChan <-chan bool) error {
 	// Wrap close chan so we can pass it to Client.Watch().
 	stopWatchChan := make(chan bool)
 	go func() {
 		select {
-		case <- closeChan:
+		case <-closeChan:
 			stopWatchChan <- true
-		case <- stopWatchChan:
+		case <-stopWatchChan:
 		}
 	}()
 	defer close(stopWatchChan)

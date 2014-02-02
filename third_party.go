@@ -292,8 +292,7 @@ func bump(pkg, version string) {
 // validPkg uses go list to decide if the given path is a valid go package.
 // This is used by the bumpAll walk to bump all of the existing packages.
 func validPkg(pkg string) bool {
-	env := append(os.Environ(),
-	)
+	env := append(os.Environ())
 	cmd := exec.Command("go", "list", pkg)
 	cmd.Env = env
 
