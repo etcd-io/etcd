@@ -10,7 +10,7 @@ package etcd
 // then everything under the directory (including all child directories)
 // will be deleted.
 func (c *Client) Delete(key string, recursive bool) (*Response, error) {
-	raw, err := c.DeleteRaw(key, recursive, false)
+	raw, err := c.RawDelete(key, recursive, false)
 
 	if err != nil {
 		return nil, err
@@ -21,7 +21,7 @@ func (c *Client) Delete(key string, recursive bool) (*Response, error) {
 
 // DeleteDir deletes an empty directory or a key value pair
 func (c *Client) DeleteDir(key string) (*Response, error) {
-	raw, err := c.DeleteRaw(key, false, true)
+	raw, err := c.RawDelete(key, false, true)
 
 	if err != nil {
 		return nil, err
@@ -30,7 +30,7 @@ func (c *Client) DeleteDir(key string) (*Response, error) {
 	return raw.toResponse()
 }
 
-func (c *Client) DeleteRaw(key string, recursive bool, dir bool) (*RawResponse, error) {
+func (c *Client) RawDelete(key string, recursive bool, dir bool) (*RawResponse, error) {
 	ops := options{
 		"recursive": recursive,
 		"dir":       dir,

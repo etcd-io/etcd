@@ -1,28 +1,53 @@
 package etcd
 
 import (
-	"os"
-
-	"github.com/coreos/etcd/third_party/github.com/coreos/go-log/log"
+	"io/ioutil"
+	"log"
+	"strings"
 )
 
-var logger *log.Logger
+type Logger interface {
+	Debug(args ...interface{})
+	Debugf(fmt string, args ...interface{})
+	Warning(args ...interface{})
+	Warningf(fmt string, args ...interface{})
+}
+
+var logger Logger
+
+func SetLogger(log Logger) {
+	logger = log
+}
+
+func GetLogger() Logger {
+	return logger
+}
+
+type defaultLogger struct {
+	log *log.Logger
+}
+
+func (p *defaultLogger) Debug(args ...interface{}) {
+	p.log.Println(args)
+}
+
+func (p *defaultLogger) Debugf(fmt string, args ...interface{}) {
+	// Append newline if necessary
+	if !strings.HasSuffix(fmt, "\n") {
+		fmt = fmt + "\n"
+	}
+	p.log.Printf(fmt, args)
+}
+
+func (p *defaultLogger) Warning(args ...interface{}) {
+	p.Debug(args)
+}
+
+func (p *defaultLogger) Warningf(fmt string, args ...interface{}) {
+	p.Debugf(fmt, args)
+}
 
 func init() {
-	setLogger(log.PriErr)
-}
-
-func OpenDebug() {
-	setLogger(log.PriDebug)
-}
-
-func CloseDebug() {
-	setLogger(log.PriErr)
-}
-
-func setLogger(priority log.Priority) {
-	logger = log.NewSimple(
-		log.PriorityFilter(
-			priority,
-			log.WriterSink(os.Stdout, log.BasicFormat, log.BasicFields)))
+	// Default logger uses the go default log.
+	SetLogger(&defaultLogger{log.New(ioutil.Discard, "go-etcd", log.LstdFlags)})
 }

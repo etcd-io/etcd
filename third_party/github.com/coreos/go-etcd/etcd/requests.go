@@ -13,9 +13,6 @@ import (
 
 // get issues a GET request
 func (c *Client) get(key string, options options) (*RawResponse, error) {
-	logger.Debugf("get %s [%s]", key, c.cluster.Leader)
-	p := keyToPath(key)
-
 	// If consistency level is set to STRONG, append
 	// the `consistent` query string.
 	if c.config.Consistency == STRONG_CONSISTENCY {
@@ -26,9 +23,8 @@ func (c *Client) get(key string, options options) (*RawResponse, error) {
 	if err != nil {
 		return nil, err
 	}
-	p += str
 
-	resp, err := c.sendRequest("GET", p, nil)
+	resp, err := c.sendKeyRequest("GET", key, str, nil)
 
 	if err != nil {
 		return nil, err
@@ -41,16 +37,12 @@ func (c *Client) get(key string, options options) (*RawResponse, error) {
 func (c *Client) put(key string, value string, ttl uint64,
 	options options) (*RawResponse, error) {
 
-	logger.Debugf("put %s, %s, ttl: %d, [%s]", key, value, ttl, c.cluster.Leader)
-	p := keyToPath(key)
-
 	str, err := options.toParameters(VALID_PUT_OPTIONS)
 	if err != nil {
 		return nil, err
 	}
-	p += str
 
-	resp, err := c.sendRequest("PUT", p, buildValues(value, ttl))
+	resp, err := c.sendKeyRequest("PUT", key, str, buildValues(value, ttl))
 
 	if err != nil {
 		return nil, err
@@ -61,10 +53,7 @@ func (c *Client) put(key string, value string, ttl uint64,
 
 // post issues a POST request
 func (c *Client) post(key string, value string, ttl uint64) (*RawResponse, error) {
-	logger.Debugf("post %s, %s, ttl: %d, [%s]", key, value, ttl, c.cluster.Leader)
-	p := keyToPath(key)
-
-	resp, err := c.sendRequest("POST", p, buildValues(value, ttl))
+	resp, err := c.sendKeyRequest("POST", key, "", buildValues(value, ttl))
 
 	if err != nil {
 		return nil, err
@@ -75,16 +64,12 @@ func (c *Client) post(key string, value string, ttl uint64) (*RawResponse, error
 
 // delete issues a DELETE request
 func (c *Client) delete(key string, options options) (*RawResponse, error) {
-	logger.Debugf("delete %s [%s]", key, c.cluster.Leader)
-	p := keyToPath(key)
-
 	str, err := options.toParameters(VALID_DELETE_OPTIONS)
 	if err != nil {
 		return nil, err
 	}
-	p += str
 
-	resp, err := c.sendRequest("DELETE", p, nil)
+	resp, err := c.sendKeyRequest("DELETE", key, str, nil)
 
 	if err != nil {
 		return nil, err
@@ -93,8 +78,8 @@ func (c *Client) delete(key string, options options) (*RawResponse, error) {
 	return resp, nil
 }
 
-// sendRequest sends a HTTP request and returns a Response as defined by etcd
-func (c *Client) sendRequest(method string, relativePath string,
+// sendKeyRequest sends a HTTP request and returns a Response as defined by etcd
+func (c *Client) sendKeyRequest(method string, key string, params string,
 	values url.Values) (*RawResponse, error) {
 
 	var req *http.Request
@@ -104,6 +89,11 @@ func (c *Client) sendRequest(method string, relativePath string,
 	var b []byte
 
 	trial := 0
+
+	logger.Debugf("%s %s %s [%s]", method, key, params, c.cluster.Leader)
+
+	// Build the request path if no prefix exists
+	relativePath := path.Join(c.keyPrefix, key) + params
 
 	// if we connect to a follower, we will retry until we found a leader
 	for {
@@ -146,7 +136,8 @@ func (c *Client) sendRequest(method string, relativePath string,
 
 		// network error, change a machine!
 		if resp, err = c.httpClient.Do(req); err != nil {
-			c.switchLeader(trial % len(c.cluster.Machines))
+			logger.Debug("network error: ", err.Error())
+			c.cluster.switchLeader(trial % len(c.cluster.Machines))
 			time.Sleep(time.Millisecond * 200)
 			continue
 		}
@@ -195,7 +186,7 @@ func (c *Client) handleResp(resp *http.Response) (bool, []byte) {
 		if err != nil {
 			logger.Warning(err)
 		} else {
-			c.updateLeader(u)
+			c.cluster.updateLeaderFromURL(u)
 		}
 
 		return false, nil
@@ -219,18 +210,14 @@ func (c *Client) handleResp(resp *http.Response) (bool, []byte) {
 
 func (c *Client) getHttpPath(random bool, s ...string) string {
 	var machine string
+
 	if random {
 		machine = c.cluster.Machines[rand.Intn(len(c.cluster.Machines))]
 	} else {
 		machine = c.cluster.Leader
 	}
 
-	fullPath := machine + "/" + version
-	for _, seg := range s {
-		fullPath = fullPath + "/" + seg
-	}
-
-	return fullPath
+	return machine + "/" + strings.Join(s, "/")
 }
 
 // buildValues builds a url.Values map according to the given value and ttl
@@ -249,17 +236,14 @@ func buildValues(value string, ttl uint64) url.Values {
 }
 
 // convert key string to http path exclude version
-// for example: key[foo] -> path[keys/foo]
-// key[/] -> path[keys/]
+// for example: key[foo] -> path[foo]
+// key[] -> path[/]
 func keyToPath(key string) string {
-	p := path.Join("keys", key)
+	clean := path.Clean(key)
 
-	// corner case: if key is "/" or "//" ect
-	// path join will clear the tailing "/"
-	// we need to add it back
-	if p == "keys" {
-		p = "keys/"
+	if clean == "" || clean == "." {
+		return "/"
 	}
 
-	return p
+	return clean
 }

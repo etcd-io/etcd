@@ -5,6 +5,26 @@ import (
 	"testing"
 )
 
+// cleanNode scrubs Expiration, ModifiedIndex and CreatedIndex of a node.
+func cleanNode(n *Node) {
+	n.Expiration = nil
+	n.ModifiedIndex = 0
+	n.CreatedIndex = 0
+}
+
+// cleanResult scrubs a result object two levels deep of Expiration,
+// ModifiedIndex and CreatedIndex.
+func cleanResult(result *Response) {
+	//  TODO(philips): make this recursive.
+	cleanNode(result.Node)
+	for i, _ := range result.Node.Nodes {
+		cleanNode(&result.Node.Nodes[i])
+		for j, _ := range result.Node.Nodes[i].Nodes {
+			cleanNode(&result.Node.Nodes[i].Nodes[j])
+		}
+	}
+}
+
 func TestGet(t *testing.T) {
 	c := NewClient(nil)
 	defer func() {
@@ -48,25 +68,18 @@ func TestGetAll(t *testing.T) {
 
 	expected := Nodes{
 		Node{
-			Key:           "/fooDir/k0",
-			Value:         "v0",
-			TTL:           5,
-			ModifiedIndex: 31,
-			CreatedIndex:  31,
+			Key:   "/fooDir/k0",
+			Value: "v0",
+			TTL:   5,
 		},
 		Node{
-			Key:           "/fooDir/k1",
-			Value:         "v1",
-			TTL:           5,
-			ModifiedIndex: 32,
-			CreatedIndex:  32,
+			Key:   "/fooDir/k1",
+			Value: "v1",
+			TTL:   5,
 		},
 	}
 
-	// do not check expiration time, too hard to fake
-	for i, _ := range result.Node.Nodes {
-		result.Node.Nodes[i].Expiration = nil
-	}
+	cleanResult(result)
 
 	if !reflect.DeepEqual(result.Node.Nodes, expected) {
 		t.Fatalf("(actual) %v != (expected) %v", result.Node.Nodes, expected)
@@ -79,16 +92,7 @@ func TestGetAll(t *testing.T) {
 	// Return kv-pairs in sorted order
 	result, err = c.Get("fooDir", true, true)
 
-	// do not check expiration time, too hard to fake
-	result.Node.Expiration = nil
-	for i, _ := range result.Node.Nodes {
-		result.Node.Nodes[i].Expiration = nil
-		if result.Node.Nodes[i].Nodes != nil {
-			for j, _ := range result.Node.Nodes[i].Nodes {
-				result.Node.Nodes[i].Nodes[j].Expiration = nil
-			}
-		}
-	}
+	cleanResult(result)
 
 	if err != nil {
 		t.Fatal(err)
@@ -100,32 +104,26 @@ func TestGetAll(t *testing.T) {
 			Dir: true,
 			Nodes: Nodes{
 				Node{
-					Key:           "/fooDir/childDir/k2",
-					Value:         "v2",
-					TTL:           5,
-					ModifiedIndex: 34,
-					CreatedIndex:  34,
+					Key:   "/fooDir/childDir/k2",
+					Value: "v2",
+					TTL:   5,
 				},
 			},
-			TTL:           5,
-			ModifiedIndex: 33,
-			CreatedIndex:  33,
+			TTL: 5,
 		},
 		Node{
-			Key:           "/fooDir/k0",
-			Value:         "v0",
-			TTL:           5,
-			ModifiedIndex: 31,
-			CreatedIndex:  31,
+			Key:   "/fooDir/k0",
+			Value: "v0",
+			TTL:   5,
 		},
 		Node{
-			Key:           "/fooDir/k1",
-			Value:         "v1",
-			TTL:           5,
-			ModifiedIndex: 32,
-			CreatedIndex:  32,
+			Key:   "/fooDir/k1",
+			Value: "v1",
+			TTL:   5,
 		},
 	}
+
+	cleanResult(result)
 
 	if !reflect.DeepEqual(result.Node.Nodes, expected) {
 		t.Fatalf("(actual) %v != (expected) %v", result.Node.Nodes, expected)

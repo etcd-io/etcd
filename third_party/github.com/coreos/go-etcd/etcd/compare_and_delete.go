@@ -2,9 +2,8 @@ package etcd
 
 import "fmt"
 
-func (c *Client) CompareAndSwap(key string, value string, ttl uint64,
-	prevValue string, prevIndex uint64) (*Response, error) {
-	raw, err := c.RawCompareAndSwap(key, value, ttl, prevValue, prevIndex)
+func (c *Client) CompareAndDelete(key string, prevValue string, prevIndex uint64) (*Response, error) {
+	raw, err := c.RawCompareAndDelete(key, prevValue, prevIndex)
 	if err != nil {
 		return nil, err
 	}
@@ -12,8 +11,7 @@ func (c *Client) CompareAndSwap(key string, value string, ttl uint64,
 	return raw.toResponse()
 }
 
-func (c *Client) RawCompareAndSwap(key string, value string, ttl uint64,
-	prevValue string, prevIndex uint64) (*RawResponse, error) {
+func (c *Client) RawCompareAndDelete(key string, prevValue string, prevIndex uint64) (*RawResponse, error) {
 	if prevValue == "" && prevIndex == 0 {
 		return nil, fmt.Errorf("You must give either prevValue or prevIndex.")
 	}
@@ -26,7 +24,7 @@ func (c *Client) RawCompareAndSwap(key string, value string, ttl uint64,
 		options["prevIndex"] = prevIndex
 	}
 
-	raw, err := c.put(key, value, ttl, options)
+	raw, err := c.delete(key, options)
 
 	if err != nil {
 		return nil, err

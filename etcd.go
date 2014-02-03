@@ -26,8 +26,8 @@ import (
 
 	"github.com/coreos/etcd/third_party/github.com/coreos/raft"
 
-	ehttp "github.com/coreos/etcd/http"
 	"github.com/coreos/etcd/config"
+	ehttp "github.com/coreos/etcd/http"
 	"github.com/coreos/etcd/log"
 	"github.com/coreos/etcd/metrics"
 	"github.com/coreos/etcd/server"

@@ -36,6 +36,8 @@ var (
 	VALID_DELETE_OPTIONS = validOptions{
 		"recursive": reflect.Bool,
 		"dir":       reflect.Bool,
+		"prevValue": reflect.String,
+		"prevIndex": reflect.Uint64,
 	}
 )
 
