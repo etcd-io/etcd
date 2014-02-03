@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"runtime"
+	"strings"
 	"testing"
 )
 
@@ -51,7 +52,7 @@ func BenchmarkStoreDelete(b *testing.B) {
 	b.StopTimer()
 
 	s := newStore()
-	kvs, _ := generateNRandomKV(b.N, 128)
+	kvs, _ := generateNKV(b.N, 128)
 
 	memStats := new(runtime.MemStats)
 	runtime.GC()
@@ -101,7 +102,7 @@ func BenchmarkStoreDelete(b *testing.B) {
 func BenchmarkWatch(b *testing.B) {
 	b.StopTimer()
 	s := newStore()
-	kvs, _ := generateNRandomKV(b.N, 128)
+	kvs, _ := generateNKV(b.N, 128)
 	b.StartTimer()
 
 	memStats := new(runtime.MemStats)
@@ -128,7 +129,7 @@ func BenchmarkWatch(b *testing.B) {
 func BenchmarkWatchWithSet(b *testing.B) {
 	b.StopTimer()
 	s := newStore()
-	kvs, _ := generateNRandomKV(b.N, 128)
+	kvs, _ := generateNKV(b.N, 128)
 	b.StartTimer()
 
 	for i := 0; i < b.N; i++ {
@@ -142,7 +143,7 @@ func BenchmarkWatchWithSet(b *testing.B) {
 func BenchmarkWatchWithSetBatch(b *testing.B) {
 	b.StopTimer()
 	s := newStore()
-	kvs, _ := generateNRandomKV(b.N, 128)
+	kvs, _ := generateNKV(b.N, 128)
 	b.StartTimer()
 
 	watchers := make([]*Watcher, b.N)
@@ -158,7 +159,6 @@ func BenchmarkWatchWithSetBatch(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		<-watchers[i].EventChan
 	}
-
 }
 
 func BenchmarkWatchOneKey(b *testing.B) {
@@ -179,7 +179,7 @@ func BenchmarkWatchOneKey(b *testing.B) {
 func benchStoreSet(b *testing.B, valueSize int, process func(interface{}) ([]byte, error)) {
 	s := newStore()
 	b.StopTimer()
-	kvs, size := generateNRandomKV(b.N, valueSize)
+	kvs, size := generateNKV(b.N, valueSize)
 	b.StartTimer()
 
 	for i := 0; i < b.N; i++ {
@@ -205,14 +205,19 @@ func benchStoreSet(b *testing.B, valueSize int, process func(interface{}) ([]byt
 		memStats.Alloc/1000, size/1000, b.N, memStats.Alloc/size)
 }
 
-func generateNRandomKV(n int, valueSize int) ([][]string, uint64) {
+func generateNKV(n int, valueSize int) ([][]string, uint64) {
+	return generateNKVWithDepth(n, valueSize, 3)
+}
+
+// generateNKVWithDepth generates n KV pairs with value's size == valueSize, key's depth == depth
+func generateNKVWithDepth(n, valueSize, depth int) ([][]string, uint64) {
 	var size uint64
 	kvs := make([][]string, n)
 	bytes := make([]byte, valueSize)
 
 	for i := 0; i < n; i++ {
 		kvs[i] = make([]string, 2)
-		kvs[i][0] = fmt.Sprintf("/%010d/%010d/%010d", n, n, n)
+		kvs[i][0] = strings.Repeat(fmt.Sprintf("/%010d", i), depth)
 		kvs[i][1] = string(bytes)
 		size = size + uint64(len(kvs[i][0])) + uint64(len(kvs[i][1]))
 	}
