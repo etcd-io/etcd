@@ -1,6 +1,6 @@
 #!/bin/sh -e
 
-source ./build
+. ./build
 
 go test -i ./store
 go test -v ./store
