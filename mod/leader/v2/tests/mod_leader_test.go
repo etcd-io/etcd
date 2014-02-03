@@ -7,7 +7,7 @@ import (
 
 	"github.com/coreos/etcd/server"
 	"github.com/coreos/etcd/tests"
-	"github.com/stretchr/testify/assert"
+	"github.com/coreos/etcd/third_party/github.com/stretchr/testify/assert"
 )
 
 // Ensure that a leader can be set and read.
@@ -65,8 +65,6 @@ func TestModLeaderRenew(t *testing.T) {
 		assert.Equal(t, body, "xxx")
 	})
 }
-
-
 
 func testSetLeader(s *server.Server, key string, name string, ttl int) (string, int, error) {
 	resp, err := tests.PutForm(fmt.Sprintf("%s/mod/v2/leader/%s?name=%s&ttl=%d", s.URL(), key, name, ttl), nil)

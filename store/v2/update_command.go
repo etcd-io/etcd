@@ -3,7 +3,7 @@ package v2
 import (
 	"github.com/coreos/etcd/log"
 	"github.com/coreos/etcd/store"
-	"github.com/coreos/raft"
+	"github.com/coreos/etcd/third_party/github.com/coreos/raft"
 	"time"
 )
 
@@ -13,9 +13,9 @@ func init() {
 
 // Update command
 type UpdateCommand struct {
-	Key        string    `json:"key"`
-	Value      string    `json:"value"`
-	ExpireTime time.Time `json:"expireTime"`
+	Key		string		`json:"key"`
+	Value		string		`json:"value"`
+	ExpireTime	time.Time	`json:"expireTime"`
 }
 
 // The name of the update command in the log

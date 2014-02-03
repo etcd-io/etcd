@@ -1,7 +1,7 @@
 package v1
 
 import (
-	"github.com/gorilla/mux"
+	"github.com/coreos/etcd/third_party/github.com/gorilla/mux"
 	"net/http"
 )
 

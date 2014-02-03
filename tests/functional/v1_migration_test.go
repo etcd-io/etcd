@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/tests"
-	"github.com/stretchr/testify/assert"
+	"github.com/coreos/etcd/third_party/github.com/stretchr/testify/assert"
 )
 
 // Ensure that we can start a v2 node from the log of a v1 node.

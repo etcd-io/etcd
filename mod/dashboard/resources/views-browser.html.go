@@ -33,7 +33,6 @@ func views_browser_html() []byte {
 	return buf.Bytes()
 }
 
-
 func init() {
 	go_bindata["/views/browser.html"] = views_browser_html
 }

@@ -6,15 +6,15 @@ import (
 	"path"
 
 	"github.com/coreos/etcd/mod/dashboard"
-	lock2 "github.com/coreos/etcd/mod/lock/v2"
 	leader2 "github.com/coreos/etcd/mod/leader/v2"
-	"github.com/gorilla/mux"
+	lock2 "github.com/coreos/etcd/mod/lock/v2"
+	"github.com/coreos/etcd/third_party/github.com/gorilla/mux"
 )
 
 var ServeMux *http.Handler
 
 func addSlash(w http.ResponseWriter, req *http.Request) {
-	http.Redirect(w, req, path.Join("mod", req.URL.Path) + "/", 302)
+	http.Redirect(w, req, path.Join("mod", req.URL.Path)+"/", 302)
 	return
 }
 

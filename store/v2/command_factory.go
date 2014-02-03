@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/store"
-	"github.com/coreos/raft"
+	"github.com/coreos/etcd/third_party/github.com/coreos/raft"
 )
 
 func init() {
@@ -28,59 +28,59 @@ func (f *CommandFactory) CreateUpgradeCommand() raft.Command {
 // CreateSetCommand creates a version 2 command to set a key to a given value in the store.
 func (f *CommandFactory) CreateSetCommand(key string, dir bool, value string, expireTime time.Time) raft.Command {
 	return &SetCommand{
-		Key:        key,
-		Value:      value,
-		ExpireTime: expireTime,
-		Dir:        dir,
+		Key:		key,
+		Value:		value,
+		ExpireTime:	expireTime,
+		Dir:		dir,
 	}
 }
 
 // CreateCreateCommand creates a version 2 command to create a new key in the store.
 func (f *CommandFactory) CreateCreateCommand(key string, dir bool, value string, expireTime time.Time, unique bool) raft.Command {
 	return &CreateCommand{
-		Key:        key,
-		Value:      value,
-		ExpireTime: expireTime,
-		Unique:     unique,
-		Dir:        dir,
+		Key:		key,
+		Value:		value,
+		ExpireTime:	expireTime,
+		Unique:		unique,
+		Dir:		dir,
 	}
 }
 
 // CreateUpdateCommand creates a version 2 command to update a key to a given value in the store.
 func (f *CommandFactory) CreateUpdateCommand(key string, value string, expireTime time.Time) raft.Command {
 	return &UpdateCommand{
-		Key:        key,
-		Value:      value,
-		ExpireTime: expireTime,
+		Key:		key,
+		Value:		value,
+		ExpireTime:	expireTime,
 	}
 }
 
 // CreateDeleteCommand creates a version 2 command to delete a key from the store.
 func (f *CommandFactory) CreateDeleteCommand(key string, dir, recursive bool) raft.Command {
 	return &DeleteCommand{
-		Key:       key,
-		Recursive: recursive,
-		Dir:       dir,
+		Key:		key,
+		Recursive:	recursive,
+		Dir:		dir,
 	}
 }
 
 // CreateCompareAndSwapCommand creates a version 2 command to conditionally set a key in the store.
 func (f *CommandFactory) CreateCompareAndSwapCommand(key string, value string, prevValue string, prevIndex uint64, expireTime time.Time) raft.Command {
 	return &CompareAndSwapCommand{
-		Key:        key,
-		Value:      value,
-		PrevValue:  prevValue,
-		PrevIndex:  prevIndex,
-		ExpireTime: expireTime,
+		Key:		key,
+		Value:		value,
+		PrevValue:	prevValue,
+		PrevIndex:	prevIndex,
+		ExpireTime:	expireTime,
 	}
 }
 
 // CreateCompareAndDeleteCommand creates a version 2 command to conditionally delete a key from the store.
 func (f *CommandFactory) CreateCompareAndDeleteCommand(key string, prevValue string, prevIndex uint64) raft.Command {
 	return &CompareAndDeleteCommand{
-		Key:       key,
-		PrevValue: prevValue,
-		PrevIndex: prevIndex,
+		Key:		key,
+		PrevValue:	prevValue,
+		PrevIndex:	prevIndex,
 	}
 }
 

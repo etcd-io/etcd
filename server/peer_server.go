@@ -11,8 +11,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/coreos/raft"
-	"github.com/gorilla/mux"
+	"github.com/coreos/etcd/third_party/github.com/coreos/raft"
+	"github.com/coreos/etcd/third_party/github.com/gorilla/mux"
 
 	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/log"
@@ -25,55 +25,55 @@ const retryInterval = 10
 const ThresholdMonitorTimeout = 5 * time.Second
 
 type PeerServerConfig struct {
-	Name             string
-	Scheme           string
-	URL              string
-	SnapshotCount    int
-	MaxClusterSize   int
-	RetryTimes       int
+	Name		string
+	Scheme		string
+	URL		string
+	SnapshotCount	int
+	MaxClusterSize	int
+	RetryTimes	int
 }
 
 type PeerServer struct {
-	Config         PeerServerConfig
-	raftServer     raft.Server
-	server         *Server
-	joinIndex      uint64
-	followersStats *raftFollowersStats
-	serverStats    *raftServerStats
-	registry       *Registry
-	store          store.Store
-	snapConf       *snapshotConf
+	Config		PeerServerConfig
+	raftServer	raft.Server
+	server		*Server
+	joinIndex	uint64
+	followersStats	*raftFollowersStats
+	serverStats	*raftServerStats
+	registry	*Registry
+	store		store.Store
+	snapConf	*snapshotConf
 
-	closeChan            chan bool
-	timeoutThresholdChan chan interface{}
+	closeChan		chan bool
+	timeoutThresholdChan	chan interface{}
 
-	metrics *metrics.Bucket
+	metrics	*metrics.Bucket
 }
 
 // TODO: find a good policy to do snapshot
 type snapshotConf struct {
 	// Etcd will check if snapshot is need every checkingInterval
-	checkingInterval time.Duration
+	checkingInterval	time.Duration
 
 	// The index when the last snapshot happened
-	lastIndex uint64
+	lastIndex	uint64
 
 	// If the incremental number of index since the last snapshot
 	// exceeds the snapshot Threshold, etcd will do a snapshot
-	snapshotThr uint64
+	snapshotThr	uint64
 }
 
 func NewPeerServer(psConfig PeerServerConfig, registry *Registry, store store.Store, mb *metrics.Bucket, followersStats *raftFollowersStats, serverStats *raftServerStats) *PeerServer {
 	s := &PeerServer{
-		Config: psConfig,
-		registry: registry,
-		store:    store,
-		followersStats: followersStats,
-		serverStats: serverStats,
+		Config:		psConfig,
+		registry:	registry,
+		store:		store,
+		followersStats:	followersStats,
+		serverStats:	serverStats,
 
-		timeoutThresholdChan: make(chan interface{}, 1),
+		timeoutThresholdChan:	make(chan interface{}, 1),
 
-		metrics: mb,
+		metrics:	mb,
 	}
 
 	return s
@@ -81,10 +81,10 @@ func NewPeerServer(psConfig PeerServerConfig, registry *Registry, store store.St
 
 func (s *PeerServer) SetRaftServer(raftServer raft.Server) {
 	s.snapConf = &snapshotConf{
-		checkingInterval: time.Second * 3,
+		checkingInterval:	time.Second * 3,
 		// this is not accurate, we will update raft to provide an api
-		lastIndex:   raftServer.CommitIndex(),
-		snapshotThr: uint64(s.Config.SnapshotCount),
+		lastIndex:	raftServer.CommitIndex(),
+		snapshotThr:	uint64(s.Config.SnapshotCount),
 	}
 
 	raftServer.AddEventListener(raft.StateChangeEventType, s.raftEventLogger)

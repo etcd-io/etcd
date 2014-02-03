@@ -5,7 +5,7 @@ import (
 	"strconv"
 
 	etcdErr "github.com/coreos/etcd/error"
-	"github.com/gorilla/mux"
+	"github.com/coreos/etcd/third_party/github.com/gorilla/mux"
 )
 
 func DeleteHandler(w http.ResponseWriter, req *http.Request, s Server) error {

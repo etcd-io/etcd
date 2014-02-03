@@ -3,7 +3,7 @@ package v2
 import (
 	"github.com/coreos/etcd/log"
 	"github.com/coreos/etcd/store"
-	"github.com/coreos/raft"
+	"github.com/coreos/etcd/third_party/github.com/coreos/raft"
 )
 
 func init() {
@@ -12,9 +12,9 @@ func init() {
 
 // The DeleteCommand removes a key from the Store.
 type DeleteCommand struct {
-	Key       string `json:"key"`
-	Recursive bool   `json:"recursive"`
-	Dir       bool   `json:"dir"`
+	Key		string	`json:"key"`
+	Recursive	bool	`json:"recursive"`
+	Dir		bool	`json:"dir"`
 }
 
 // The name of the delete command in the log

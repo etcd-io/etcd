@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/coreos/raft"
-	"github.com/gorilla/mux"
+	"github.com/coreos/etcd/third_party/github.com/coreos/raft"
+	"github.com/coreos/etcd/third_party/github.com/gorilla/mux"
 
 	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/log"
@@ -23,26 +23,26 @@ import (
 
 // This is the default implementation of the Server interface.
 type Server struct {
-	Name       string
-	url        string
-	handler    http.Handler
-	peerServer *PeerServer
-	registry   *Registry
-	store      store.Store
-	metrics        *metrics.Bucket
+	Name		string
+	url		string
+	handler		http.Handler
+	peerServer	*PeerServer
+	registry	*Registry
+	store		store.Store
+	metrics		*metrics.Bucket
 
-	trace          bool
+	trace	bool
 }
 
 // Creates a new Server.
 func New(name, url string, peerServer *PeerServer, registry *Registry, store store.Store, mb *metrics.Bucket) *Server {
 	s := &Server{
-		Name:       name,
-		url:        url,
-		store:      store,
-		registry:   registry,
-		peerServer: peerServer,
-		metrics:     mb,
+		Name:		name,
+		url:		url,
+		store:		store,
+		registry:	registry,
+		peerServer:	peerServer,
+		metrics:	mb,
 	}
 
 	return s

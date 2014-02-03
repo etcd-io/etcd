@@ -33,7 +33,6 @@ func index_html() []byte {
 	return buf.Bytes()
 }
 
-
 func init() {
 	go_bindata["/index.html"] = index_html
 }

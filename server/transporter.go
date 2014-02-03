@@ -10,18 +10,18 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/log"
-	"github.com/coreos/raft"
+	"github.com/coreos/etcd/third_party/github.com/coreos/raft"
 )
 
 // Transporter layer for communication between raft nodes
 type transporter struct {
-	requestTimeout time.Duration
-	followersStats *raftFollowersStats
-	serverStats    *raftServerStats
-	registry       *Registry
+	requestTimeout	time.Duration
+	followersStats	*raftFollowersStats
+	serverStats	*raftServerStats
+	registry	*Registry
 
-	client    *http.Client
-	transport *http.Transport
+	client		*http.Client
+	transport	*http.Transport
 }
 
 type dialer func(network, addr string) (net.Conn, error)
@@ -34,16 +34,16 @@ func NewTransporter(followersStats *raftFollowersStats, serverStats *raftServerS
 		Dial: func(network, addr string) (net.Conn, error) {
 			return net.DialTimeout(network, addr, dialTimeout)
 		},
-		ResponseHeaderTimeout: responseHeaderTimeout,
+		ResponseHeaderTimeout:	responseHeaderTimeout,
 	}
 
 	t := transporter{
-		client:         &http.Client{Transport: tr},
-		transport:      tr,
-		requestTimeout: requestTimeout,
-		followersStats: followersStats,
-		serverStats:    serverStats,
-		registry:       registry,
+		client:		&http.Client{Transport: tr},
+		transport:	tr,
+		requestTimeout:	requestTimeout,
+		followersStats:	followersStats,
+		serverStats:	serverStats,
+		registry:	registry,
 	}
 
 	return &t
@@ -73,7 +73,7 @@ func (t *transporter) SendAppendEntriesRequest(server raft.Server, peer *raft.Pe
 
 	thisFollowerStats, ok := t.followersStats.Followers[peer.Name]
 
-	if !ok { //this is the first time this follower has been seen
+	if !ok {	//this is the first time this follower has been seen
 		thisFollowerStats = &raftFollowerStats{}
 		thisFollowerStats.Latency.Minimum = 1 << 63
 		t.followersStats.Followers[peer.Name] = thisFollowerStats

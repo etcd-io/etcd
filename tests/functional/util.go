@@ -18,7 +18,7 @@ package test
 
 import (
 	"fmt"
-	"github.com/coreos/go-etcd/etcd"
+	"github.com/coreos/etcd/third_party/github.com/coreos/go-etcd/etcd"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -100,7 +100,7 @@ func CreateCluster(size int, procAttr *os.ProcAttr, ssl bool) ([][]string, []*os
 
 	etcds := make([]*os.Process, size)
 
-	for i, _ := range etcds {
+	for i := range etcds {
 		var err error
 		etcds[i], err = os.StartProcess(EtcdBinPath, append(argGroup[i], "-f"), procAttr)
 		if err != nil {

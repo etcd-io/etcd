@@ -6,7 +6,7 @@ import (
 	"strconv"
 
 	etcdErr "github.com/coreos/etcd/error"
-	"github.com/gorilla/mux"
+	"github.com/coreos/etcd/third_party/github.com/gorilla/mux"
 )
 
 // Watches a given key prefix for changes.

@@ -6,19 +6,19 @@ import (
 	"os"
 	"time"
 
-	"github.com/coreos/raft"
+	"github.com/coreos/etcd/third_party/github.com/coreos/raft"
 
 	"github.com/coreos/etcd/server"
 	"github.com/coreos/etcd/store"
 )
 
 const (
-	testName             = "ETCDTEST"
-	testClientURL        = "localhost:4401"
-	testRaftURL          = "localhost:7701"
-	testSnapshotCount    = 10000
-	testHeartbeatTimeout = time.Duration(50) * time.Millisecond
-	testElectionTimeout  = time.Duration(200) * time.Millisecond
+	testName		= "ETCDTEST"
+	testClientURL		= "localhost:4401"
+	testRaftURL		= "localhost:7701"
+	testSnapshotCount	= 10000
+	testHeartbeatTimeout	= time.Duration(50) * time.Millisecond
+	testElectionTimeout	= time.Duration(200) * time.Millisecond
 )
 
 // Starts a server in a temporary directory.
@@ -33,11 +33,11 @@ func RunServer(f func(*server.Server)) {
 	followersStats := server.NewRaftFollowersStats(testName)
 
 	psConfig := server.PeerServerConfig{
-		Name: testName,
-		URL: "http://"+testRaftURL,
-		Scheme: "http",
-		SnapshotCount: testSnapshotCount,
-		MaxClusterSize: 9,
+		Name:		testName,
+		URL:		"http://" + testRaftURL,
+		Scheme:		"http",
+		SnapshotCount:	testSnapshotCount,
+		MaxClusterSize:	9,
 	}
 	ps := server.NewPeerServer(psConfig, registry, store, nil, followersStats, serverStats)
 	psListener, err := server.NewListener(testRaftURL)
@@ -48,7 +48,7 @@ func RunServer(f func(*server.Server)) {
 	// Create Raft transporter and server
 	dialTimeout := (3 * testHeartbeatTimeout) + testElectionTimeout
 	responseHeaderTimeout := (3 * testHeartbeatTimeout) + testElectionTimeout
-	raftTransporter := server.NewTransporter(followersStats, serverStats, registry,	testHeartbeatTimeout, dialTimeout, responseHeaderTimeout)
+	raftTransporter := server.NewTransporter(followersStats, serverStats, registry, testHeartbeatTimeout, dialTimeout, responseHeaderTimeout)
 	raftServer, err := raft.NewServer(testName, path, raftTransporter, store, ps, "")
 	if err != nil {
 		panic(err)

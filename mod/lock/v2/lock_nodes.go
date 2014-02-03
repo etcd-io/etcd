@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strconv"
 
-	"github.com/coreos/go-etcd/etcd"
+	"github.com/coreos/etcd/third_party/github.com/coreos/go-etcd/etcd"
 )
 
 // lockNodes is a wrapper for go-etcd's Nodes to allow for sorting by numeric key.

@@ -5,7 +5,7 @@ import (
 	"log"
 	"strconv"
 
-	"github.com/coreos/go-etcd/etcd"
+	"github.com/coreos/etcd/third_party/github.com/coreos/go-etcd/etcd"
 )
 
 func write(endpoint string, requests int, end chan int) {

@@ -7,7 +7,7 @@ import (
 
 	"github.com/coreos/etcd/server"
 	"github.com/coreos/etcd/tests"
-	"github.com/stretchr/testify/assert"
+	"github.com/coreos/etcd/third_party/github.com/stretchr/testify/assert"
 )
 
 // Ensure that a lock can be acquired and released.
@@ -52,7 +52,7 @@ func TestModLockBlockUntilAcquire(t *testing.T) {
 			assert.Equal(t, body, "2")
 			c <- true
 		}()
-		<- c
+		<-c
 
 		// Acquire lock #2.
 		waiting := true
@@ -64,7 +64,7 @@ func TestModLockBlockUntilAcquire(t *testing.T) {
 			assert.Equal(t, body, "4")
 			waiting = false
 		}()
-		<- c
+		<-c
 
 		time.Sleep(1 * time.Second)
 
@@ -114,7 +114,7 @@ func TestModLockExpireAndRelease(t *testing.T) {
 			assert.Equal(t, body, "2")
 			c <- true
 		}()
-		<- c
+		<-c
 
 		// Acquire lock #2.
 		go func() {
@@ -124,7 +124,7 @@ func TestModLockExpireAndRelease(t *testing.T) {
 			assert.Equal(t, status, 200)
 			assert.Equal(t, body, "4")
 		}()
-		<- c
+		<-c
 
 		time.Sleep(1 * time.Second)
 
@@ -214,8 +214,6 @@ func TestModLockAcquireAndReleaseByValue(t *testing.T) {
 		assert.Equal(t, body, "")
 	})
 }
-
-
 
 func testAcquireLock(s *server.Server, key string, value string, ttl int) (string, int, error) {
 	resp, err := tests.PostForm(fmt.Sprintf("%s/mod/v2/lock/%s?value=%s&ttl=%d", s.URL(), key, value, ttl), nil)

@@ -1,4 +1,12 @@
 #!/bin/sh -e
 
-go run third_party.go install github.com/coreos/etcd
-go run third_party.go install github.com/coreos/etcd/bench
+if [ ! -h src/github.com/coreos/etcd ]; then
+	mkdir -p src/github.com/coreos/
+	ln -s ../../.. src/github.com/coreos/etcd
+fi
+
+export GOBIN=${PWD}/bin
+export GOPATH=${PWD}
+
+go install github.com/coreos/etcd
+go install github.com/coreos/etcd/bench
