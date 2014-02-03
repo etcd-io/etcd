@@ -7,7 +7,7 @@ import (
 
 	"github.com/coreos/etcd/server"
 	"github.com/coreos/etcd/tests"
-	"github.com/stretchr/testify/assert"
+	"github.com/coreos/etcd/third_party/github.com/stretchr/testify/assert"
 )
 
 // Ensure that a lock can be acquired and released.

@@ -7,7 +7,7 @@ import (
 
 	"github.com/coreos/etcd/server"
 	"github.com/coreos/etcd/tests"
-	"github.com/stretchr/testify/assert"
+	"github.com/coreos/etcd/third_party/github.com/stretchr/testify/assert"
 )
 
 // Ensures a unique value is added to the key's children.
