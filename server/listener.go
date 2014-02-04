@@ -16,22 +16,9 @@ func NewListener(addr string) (net.Listener, error) {
 	return l, nil
 }
 
-func NewTLSListener(config *tls.Config, addr, certFile, keyFile string) (net.Listener, error) {
+func NewTLSListener(addr string, cfg *tls.Config) (net.Listener, error) {
 	if addr == "" {
 		addr = ":https"
-	}
-
-	if config == nil {
-		config = &tls.Config{}
-	}
-
-	config.NextProtos = []string{"http/1.1"}
-
-	var err error
-	config.Certificates = make([]tls.Certificate, 1)
-	config.Certificates[0], err = tls.LoadX509KeyPair(certFile, keyFile)
-	if err != nil {
-		return nil, err
 	}
 
 	conn, err := net.Listen("tcp", addr)
@@ -39,5 +26,5 @@ func NewTLSListener(config *tls.Config, addr, certFile, keyFile string) (net.Lis
 		return nil, err
 	}
 
-	return tls.NewListener(conn, config), nil
+	return tls.NewListener(conn, cfg), nil
 }

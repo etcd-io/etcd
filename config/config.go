@@ -393,24 +393,16 @@ func (c *Config) Reset() error {
 
 // Sanitize cleans the input fields.
 func (c *Config) Sanitize() error {
-	tlsConfig, err := c.TLSConfig()
-	if err != nil {
-		return err
-	}
-
-	peerTlsConfig, err := c.PeerTLSConfig()
-	if err != nil {
-		return err
-	}
+	var err error
 
 	// Sanitize the URLs first.
-	if c.Addr, err = sanitizeURL(c.Addr, tlsConfig.Scheme); err != nil {
+	if c.Addr, err = sanitizeURL(c.Addr, c.EtcdTLSInfo().Scheme()); err != nil {
 		return fmt.Errorf("Advertised URL: %s", err)
 	}
 	if c.BindAddr, err = sanitizeBindAddr(c.BindAddr, c.Addr); err != nil {
 		return fmt.Errorf("Listen Host: %s", err)
 	}
-	if c.Peer.Addr, err = sanitizeURL(c.Peer.Addr, peerTlsConfig.Scheme); err != nil {
+	if c.Peer.Addr, err = sanitizeURL(c.Peer.Addr, c.PeerTLSInfo().Scheme()); err != nil {
 		return fmt.Errorf("Peer Advertised URL: %s", err)
 	}
 	if c.Peer.BindAddr, err = sanitizeBindAddr(c.Peer.BindAddr, c.Peer.Addr); err != nil {
@@ -430,32 +422,22 @@ func (c *Config) Sanitize() error {
 	return nil
 }
 
-// TLSInfo retrieves a TLSInfo object for the client server.
-func (c *Config) TLSInfo() server.TLSInfo {
+// EtcdTLSInfo retrieves a TLSInfo object for the etcd server
+func (c *Config) EtcdTLSInfo() server.TLSInfo {
 	return server.TLSInfo{
-		CAFile:   c.CAFile,
-		CertFile: c.CertFile,
-		KeyFile:  c.KeyFile,
+		CAFile:		c.CAFile,
+		CertFile:	c.CertFile,
+		KeyFile:	c.KeyFile,
 	}
 }
 
-// ClientTLSConfig generates the TLS configuration for the client server.
-func (c *Config) TLSConfig() (server.TLSConfig, error) {
-	return c.TLSInfo().Config()
-}
-
-// PeerTLSInfo retrieves a TLSInfo object for the peer server.
+// PeerRaftInfo retrieves a TLSInfo object for the peer server.
 func (c *Config) PeerTLSInfo() server.TLSInfo {
 	return server.TLSInfo{
-		CAFile:   c.Peer.CAFile,
-		CertFile: c.Peer.CertFile,
-		KeyFile:  c.Peer.KeyFile,
+		CAFile:		c.Peer.CAFile,
+		CertFile:	c.Peer.CertFile,
+		KeyFile:	c.Peer.KeyFile,
 	}
-}
-
-// PeerTLSConfig generates the TLS configuration for the peer server.
-func (c *Config) PeerTLSConfig() (server.TLSConfig, error) {
-	return c.PeerTLSInfo().Config()
 }
 
 // MetricsBucketName generates the name that should be used for a

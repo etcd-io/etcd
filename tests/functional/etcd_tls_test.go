@@ -162,6 +162,8 @@ func startServer(extra []string) (*os.Process, error) {
 	cmd := []string{"etcd",	"-f", "-data-dir=/tmp/node1", "-name=node1"}
 	cmd = append(cmd, extra...)
 
+	println(strings.Join(cmd, " "))
+
 	return os.StartProcess(EtcdBinPath, cmd, procAttr)
 }
 

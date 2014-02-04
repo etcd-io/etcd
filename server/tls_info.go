@@ -15,62 +15,88 @@ type TLSInfo struct {
 	CAFile   string `json:"CAFile"`
 }
 
-// Generates a TLS configuration from the given files.
-func (info TLSInfo) Config() (TLSConfig, error) {
-	var t TLSConfig
-	t.Scheme = "http"
-
-	// If the user do not specify key file, cert file and CA file, the type will be HTTP
-	if info.KeyFile == "" && info.CertFile == "" && info.CAFile == "" {
-		return t, nil
+func (info TLSInfo) Scheme() string {
+	if info.KeyFile != "" && info.CertFile != "" {
+		return "https"
+	} else {
+		return "http"
 	}
+}
 
+// Generates a tls.Config object for a server from the given files.
+func (info TLSInfo) ServerConfig() (*tls.Config, error) {
 	// Both the key and cert must be present.
 	if info.KeyFile == "" || info.CertFile == "" {
-		return t, fmt.Errorf("KeyFile and CertFile must both be present[key: %v, cert: %v]", info.KeyFile, info.CertFile)
+		return nil, fmt.Errorf("KeyFile and CertFile must both be present[key: %v, cert: %v]", info.KeyFile, info.CertFile)
+	}
+
+	var cfg tls.Config
+
+	tlsCert, err := tls.LoadX509KeyPair(info.CertFile, info.KeyFile)
+	if err != nil {
+		return nil, err
+	}
+
+	cfg.Certificates = []tls.Certificate{tlsCert}
+
+	if info.CAFile != "" {
+		cfg.ClientAuth = tls.RequireAndVerifyClientCert
+		cp, err := newCertPool(info.CAFile)
+		if err != nil {
+			return nil, err
+		}
+
+		cfg.RootCAs = cp
+		cfg.ClientCAs = cp
+	} else {
+		cfg.ClientAuth = tls.NoClientCert
+	}
+
+	return &cfg, nil
+}
+
+// Generates a tls.Config object for a client from the given files.
+func (info TLSInfo) ClientConfig() (*tls.Config, error) {
+	var cfg tls.Config
+
+	if info.KeyFile == "" || info.CertFile == "" {
+		return &cfg, nil
 	}
 
 	tlsCert, err := tls.LoadX509KeyPair(info.CertFile, info.KeyFile)
 	if err != nil {
-		return t, err
+		return nil, err
 	}
 
-	t.Scheme = "https"
-	t.Server.ClientAuth, t.Server.ClientCAs, err = newCertPool(info.CAFile)
-	if err != nil {
-		return t, err
+	cfg.Certificates = []tls.Certificate{tlsCert}
+
+	if info.CAFile != "" {
+		cp, err := newCertPool(info.CAFile)
+		if err != nil {
+			return nil, err
+		}
+
+		cfg.RootCAs = cp
 	}
 
-	// The client should trust the RootCA that the Server uses since
-	// everyone is a peer in the network.
-	t.Client.Certificates = []tls.Certificate{tlsCert}
-	t.Client.RootCAs = t.Server.ClientCAs
-
-	return t, nil
+	return &cfg, nil
 }
 
-// newCertPool creates x509 certPool and corresponding Auth Type.
-// If the given CAfile is valid, add the cert into the pool and verify the clients'
-// certs against the cert in the pool.
-// If the given CAfile is empty, do not verify the clients' cert.
-// If the given CAfile is not valid, fatal.
-func newCertPool(CAFile string) (tls.ClientAuthType, *x509.CertPool, error) {
-	if CAFile == "" {
-		return tls.NoClientCert, nil, nil
-	}
+// newCertPool creates x509 certPool with provided CA file
+func newCertPool(CAFile string) (*x509.CertPool, error) {
 	pemByte, err := ioutil.ReadFile(CAFile)
 	if err != nil {
-		return 0, nil, err
+		return nil, err
 	}
 
 	block, pemByte := pem.Decode(pemByte)
 	cert, err := x509.ParseCertificate(block.Bytes)
 	if err != nil {
-		return 0, nil, err
+		return nil, err
 	}
 
 	certPool := x509.NewCertPool()
 	certPool.AddCert(cert)
 
-	return tls.RequireAndVerifyClientCert, certPool, nil
+	return certPool, nil
 }
