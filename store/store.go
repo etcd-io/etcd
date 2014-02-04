@@ -102,7 +102,7 @@ func (s *store) CommandFactory() CommandFactory {
 	return GetCommandFactory(s.Version())
 }
 
-// Get function returns a get event.
+// Get returns a get event.
 // If recursive is true, it will return all the content under the node path.
 // If sorted is true, it will sort the content by keys.
 func (s *store) Get(nodePath string, recursive, sorted bool) (*Event, error) {
@@ -158,7 +158,7 @@ func (s *store) Get(nodePath string, recursive, sorted bool) (*Event, error) {
 	return e, nil
 }
 
-// Create function creates the node at nodePath. Create will help to create intermediate directories with no ttl.
+// Create creates the node at nodePath. Create will help to create intermediate directories with no ttl.
 // If the node has already existed, create will fail.
 // If any node on the path is a file, create will fail.
 func (s *store) Create(nodePath string, dir bool, value string, unique bool, expireTime time.Time) (*Event, error) {
@@ -175,7 +175,7 @@ func (s *store) Create(nodePath string, dir bool, value string, unique bool, exp
 	return e, err
 }
 
-// Set function creates or replace the node at nodePath.
+// Set creates or replace the node at nodePath.
 func (s *store) Set(nodePath string, dir bool, value string, expireTime time.Time) (*Event, error) {
 	s.worldLock.Lock()
 	defer s.worldLock.Unlock()
@@ -241,7 +241,7 @@ func (s *store) CompareAndSwap(nodePath string, prevValue string, prevIndex uint
 	return e, nil
 }
 
-// Delete function deletes the node at the given path.
+// Delete deletes the node at the given path.
 // If the node is a directory, recursive must be true to delete it.
 func (s *store) Delete(nodePath string, dir, recursive bool) (*Event, error) {
 	nodePath = path.Clean(path.Join("/", nodePath))
@@ -368,7 +368,7 @@ func (s *store) Watch(key string, recursive, stream bool, sinceIndex uint64) (*W
 	return w, nil
 }
 
-// walk function walks all the nodePath and apply the walkFunc on each directory
+// walk walks all the nodePath and apply the walkFunc on each directory
 func (s *store) walk(nodePath string, walkFunc func(prev *node, component string) (*node, *etcdErr.Error)) (*node, *etcdErr.Error) {
 	components := strings.Split(nodePath, "/")
 
@@ -390,7 +390,7 @@ func (s *store) walk(nodePath string, walkFunc func(prev *node, component string
 	return curr, nil
 }
 
-// Update function updates the value/ttl of the node.
+// Update updates the value/ttl of the node.
 // If the node is a file, the value and the ttl can be updated.
 // If the node is a directory, only the ttl can be updated.
 func (s *store) Update(nodePath string, newValue string, expireTime time.Time) (*Event, error) {
@@ -519,7 +519,7 @@ func (s *store) internalCreate(nodePath string, dir bool, value string, unique, 
 	return e, nil
 }
 
-// InternalGet function get the node of the given nodePath.
+// InternalGet gets the node of the given nodePath.
 func (s *store) internalGet(nodePath string) (*node, *etcdErr.Error) {
 	nodePath = path.Clean(path.Join("/", nodePath))
 
@@ -576,7 +576,7 @@ func (s *store) DeleteExpiredKeys(cutoff time.Time) {
 
 }
 
-// checkDir function will check whether the component is a directory under parent node.
+// checkDir will check whether the component is a directory under parent node.
 // If it is a directory, this function will return the pointer to that node.
 // If it does not exist, this function will create a new directory and return the pointer to that node.
 // If it is a file, this function will return error.
@@ -598,9 +598,9 @@ func (s *store) checkDir(parent *node, dirName string) (*node, *etcdErr.Error) {
 	return n, nil
 }
 
-// Save function saves the static state of the store system.
-// Save function will not be able to save the state of watchers.
-// Save function will not save the parent field of the node. Or there will
+// Save saves the static state of the store system.
+// It will not be able to save the state of watchers.
+// It will not save the parent field of the node. Or there will
 // be cyclic dependencies issue for the json package.
 func (s *store) Save() ([]byte, error) {
 	s.worldLock.Lock()
@@ -623,10 +623,10 @@ func (s *store) Save() ([]byte, error) {
 	return b, nil
 }
 
-// recovery function recovery the store system from a static state.
-// It needs to recovery the parent field of the nodes.
+// Recovery recovers the store system from a static state
+// It needs to recover the parent field of the nodes.
 // It needs to delete the expired nodes since the saved time and also
-// need to create monitor go routines.
+// needs to create monitoring go routines.
 func (s *store) Recovery(state []byte) error {
 	s.worldLock.Lock()
 	defer s.worldLock.Unlock()
