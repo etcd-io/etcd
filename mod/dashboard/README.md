@@ -22,6 +22,8 @@ bower install
 
 ### View in Browser
 
+run `export ETCD_DASHBOARD_DIR=/absolute/path/to/coreos/etcd/mod/dashboard/app`  
+
 Run etcd like you normally would and afterward browse to:
 
 http://localhost:4001/mod/dashboard/

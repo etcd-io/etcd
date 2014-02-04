@@ -1,19 +1,7 @@
 'use strict';
 
-angular.module('etcdStats', ['ngRoute', 'etcd'])
 
-.config(['$routeProvider', function ($routeProvider) {
-  $routeProvider
-    .when('/', {
-      templateUrl: 'views/stats.html',
-      controller: 'StatsCtrl'
-    })
-    .otherwise({
-      templateUrl: 'views/stats.html',
-      controller: 'StatsCtrl'
-    });
-}])
-
+angular.module('etcdControlPanel')
 .controller('StatsCtrl', ['$scope', 'EtcdV2', 'statsVega', function ($scope, EtcdV2, statsVega) {
   $scope.graphContainer = '#latency';
   $scope.graphVisibility = 'etcd-graph-show';
