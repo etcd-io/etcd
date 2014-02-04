@@ -6,6 +6,7 @@ import (
 	"time"
 
 	etcdErr "github.com/coreos/etcd/error"
+	ustrings "github.com/coreos/etcd/pkg/strings"
 )
 
 var Permanent time.Time
@@ -284,9 +285,11 @@ func (n *node) Repr(recurisive, sorted bool) *NodeExtern {
 		return node
 	}
 
+	// since n.Value could be changed later, so we need to copy the value out
+	value := ustrings.Clone(n.Value)
 	node := &NodeExtern{
 		Key:           n.Path,
-		Value:         n.Value,
+		Value:         &value,
 		ModifiedIndex: n.ModifiedIndex,
 		CreatedIndex:  n.CreatedIndex,
 	}

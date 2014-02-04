@@ -26,6 +26,7 @@ import (
 	"time"
 
 	etcdErr "github.com/coreos/etcd/error"
+	ustrings "github.com/coreos/etcd/pkg/strings"
 )
 
 // The default version to set when the store is first initialized.
@@ -223,7 +224,9 @@ func (s *store) CompareAndSwap(nodePath string, prevValue string, prevIndex uint
 	n.Write(value, s.CurrentIndex)
 	n.UpdateTTL(expireTime)
 
-	eNode.Value = value
+	// copy the value for safety
+	valueCopy := ustrings.Clone(value)
+	eNode.Value = &valueCopy
 	eNode.Expiration, eNode.TTL = n.ExpirationAndTTL()
 
 	s.WatcherHub.notify(e)
@@ -413,7 +416,10 @@ func (s *store) Update(nodePath string, newValue string, expireTime time.Time) (
 	}
 
 	n.Write(newValue, nextIndex)
-	eNode.Value = newValue
+
+	// copy the value for safety
+	newValueCopy := ustrings.Clone(newValue)
+	eNode.Value = &newValueCopy
 
 	// update ttl
 	n.UpdateTTL(expireTime)
@@ -482,7 +488,9 @@ func (s *store) internalCreate(nodePath string, dir bool, value string, unique, 
 	}
 
 	if !dir { // create file
-		eNode.Value = value
+		// copy the value for safety
+		valueCopy := ustrings.Clone(value)
+		eNode.Value = &valueCopy
 
 		n = newKV(s, nodePath, value, nextIndex, d, "", expireTime)
 

@@ -10,8 +10,8 @@ import (
 // PrevValue is the previous value of the node
 // TTL is time to live in second
 type NodeExtern struct {
-	Key           string      `json:"key, omitempty"`
-	Value         string      `json:"value,omitempty"`
+	Key           string      `json:"key,omitempty"`
+	Value         *string     `json:"value,omitempty"`
 	Dir           bool        `json:"dir,omitempty"`
 	Expiration    *time.Time  `json:"expiration,omitempty"`
 	TTL           int64       `json:"ttl,omitempty"`
@@ -48,7 +48,8 @@ func (eNode *NodeExtern) loadInternalNode(n *node, recursive, sorted bool) {
 		}
 
 	} else { // node is a file
-		eNode.Value, _ = n.Read()
+		value, _ := n.Read()
+		eNode.Value = &value
 	}
 
 	eNode.Expiration, eNode.TTL = n.ExpirationAndTTL()

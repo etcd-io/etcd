@@ -64,7 +64,7 @@ func (event *Event) Response(currentIndex uint64) interface{} {
 		}
 
 		if response.Action == Set {
-			if response.PrevValue == "" {
+			if response.PrevValue == nil {
 				response.NewKey = true
 			}
 		}

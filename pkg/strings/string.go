@@ -14,3 +14,10 @@ func TrimSplit(s, sep string) []string {
 	}
 	return trimmed
 }
+
+// Clone returns a copy of the string, so that we can safely point to the
+// copy without worrying about changes via pointers.
+func Clone(s string) string {
+	stringCopy := s
+	return stringCopy
+}

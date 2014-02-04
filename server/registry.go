@@ -168,7 +168,7 @@ func (r *Registry) load(name string) {
 	}
 
 	// Parse as a query string.
-	m, err := url.ParseQuery(e.Node.Value)
+	m, err := url.ParseQuery(*e.Node.Value)
 	if err != nil {
 		panic(fmt.Sprintf("Failed to parse peers entry: %s", name))
 	}
