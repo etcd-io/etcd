@@ -16,7 +16,7 @@
     </a>
     <a class="etcd-add" ng-click="add()"><img src="img/add.svg"/></a>
     <div class="etcd-browser-path">
-      <input type="text" ng-model="etcdPath" ng-enter="syncLocation()" tabindex="888" />
+      <input type="text" ng-model="inputPath" ng-enter="onEnter()" tabindex="888" />
     </div>
     <button class="etcd-button etcd-button-small etcd-button-primary etcd-save" ng-click="saveData()">Save</button>
   </div>
@@ -33,7 +33,9 @@
       </thead>
       <tbody>
         <tr ng-repeat="key in list | orderBy:'key'">
-          <td><a ng-class="{true:'directory'}[key.dir]" ng-click="setActiveKey(key.key)" highlight>{{key.key}}</a></td>
+          <td>
+            <highlight ng-class="{true:'directory'}[key.dir]" ng-click="setActiveKey(key.key)" highlight-base="etcdPath" highlight-current="key.key">{{key.key}}</highlight>
+          </td>
           <td ng-switch on="!!key.expiration" class="etcd-ttl">
             <div ng-switch-when="true"><time relative datetime="{{key.expiration.substring(0, key.expiration.lastIndexOf('-'))}}"></time></div>
             <div ng-switch-default class="etcd-ttl-none">&mdash;</div>
@@ -41,7 +43,7 @@
           <td>
             <div class="etcd-actions">
               <div ng-switch on="!!key.dir">
-                <img class="etcd-delete" src="img/delete.svg" ng-switch-when="false" ng-click="deleteKey()" />
+                <img class="etcd-delete" src="img/delete.svg" ng-switch-when="false" ng-click="deleteKey(key.key)" />
                 <div ng-switch-when="true"></div>
               </div>
             </div>

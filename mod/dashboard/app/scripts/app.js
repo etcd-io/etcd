@@ -27,10 +27,10 @@ app.config(function($routeProvider, $locationProvider, urlPrefix) {
       controller: 'HomeCtrl',
       templateUrl: prefixUrl('/views/home.html')
     })
-    //.when(prefixUrl('/stats'), {
-      //controller: 'StatsCtrl',
-      //templateUrl: prefixUrl('/views/stats.html')
-    //})
+    .when(prefixUrl('/stats'), {
+      controller: 'StatsCtrl',
+      templateUrl: prefixUrl('/views/stats.html')
+    })
     .when(prefixUrl('/browser'), {
       controller: 'BrowserCtrl',
       templateUrl: prefixUrl('/views/browser.html')

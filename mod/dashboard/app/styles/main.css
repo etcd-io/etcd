@@ -1,9 +1,14 @@
+html {
+  height: 100%;
+}
+
 body {
   background: #fafafa;
   font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
   color: #333;
   padding: 30px;
   margin: 0px;
+  height: 100%;
 }
 h1 {
     font-family: "Source Sans Pro", "Helvetica Neue", Helvetica, Arial, sans-serif;

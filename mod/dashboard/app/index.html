@@ -19,16 +19,16 @@
   <body>
     <h1>etcd Dashboard</h1>
 
-    <div ng-view></div>
+    <div id="view-container" ng-view></div>
 
     <div id="footer">
-      <div id="powered-by">Powered by <a href="https://github.com/coreos/etcd">etcd</a></div>
+      <div id="powered-by" class="text-center">Powered by <a href="https://github.com/coreos/etcd">etcd</a></div>
       <div id="coreos-logo">
         <a href="http://coreos.com"><img src="img/logo.svg"/></a>
       </div>
     </div>
 
-    <!-- build:js scripts/stats-modules.js -->
+    <!-- build:js scripts/modules.js -->
     <script src="bower_components/jquery/jquery.js"></script>
     <script src="bower_components/angular/angular.js"></script>
     <script src="bower_components/angular-resource/angular-resource.js"></script>
@@ -41,6 +41,7 @@
     <script src="bower_components/moment/moment.js"></script>
     <!-- endbuild -->
 
+    <!-- build:js({.tmp,app}) scripts/app.js -->
     <script src="scripts/app.js"></script>
     <script src="scripts/controllers/root.js"></script>
     <script src="scripts/directives.js"></script>
@@ -52,11 +53,9 @@
     <script src="scripts/common/services/prefix-url.js"></script>
     <script src="scripts/common/directives/highlight.js"></script>
     <script src="scripts/common/directives/enter.js"></script>
-
-    <!-- build:js({.tmp,app}) scripts/stats-scripts.js -->
     <script src="scripts/vega.js"></script>
     <script src="scripts/common/services/etcd.js"></script>
-    <!--<script src="scripts/controllers/stats.js"></script>-->
+    <script src="scripts/controllers/stats.js"></script>
     <!-- endbuild -->
 
   </body>

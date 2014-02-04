@@ -1,22 +1,39 @@
 'use strict';
 
 angular.module('etcdControlPanel')
-.controller('BrowserCtrl', function ($scope, $location, $window, EtcdV2, keyPrefix, $, _, moment) {
+.controller('BrowserCtrl', function ($scope, $window, EtcdV2, keyPrefix, $, _, moment) {
   $scope.save = 'etcd-save-hide';
   $scope.preview = 'etcd-preview-hide';
   $scope.enableBack = true;
   $scope.writingNew = false;
-  $scope.key = '';
+  $scope.key = null;
   $scope.list = [];
 
   // etcdPath is the path to the key that is currenly being looked at.
   $scope.etcdPath = keyPrefix;
+  $scope.inputPath = keyPrefix;
+
+  $scope.resetInputPath = function() {
+    $scope.inputPath = $scope.etcdPath;
+  };
 
   $scope.setActiveKey = function(key) {
     $scope.etcdPath = keyPrefix + _.str.trim(key, '/');
+    $scope.resetInputPath();
   };
 
-  $scope.$watch('etcdPath', function() {
+  $scope.stripPrefix = function(path) {
+    return _.str.strRight(path, keyPrefix);
+  };
+
+  $scope.onEnter = function() {
+    var path = $scope.stripPrefix($scope.inputPath);
+    if (path !== '') {
+      $scope.setActiveKey(path);
+    }
+  };
+
+  $scope.updateCurrentKey = function() {
     function etcdPathKey() {
       return pathKey($scope.etcdPath);
     }
@@ -28,7 +45,6 @@ angular.module('etcdControlPanel')
       }
       return parts[1];
     }
-
     // Notify everyone of the update
     localStorage.setItem('etcdPath', $scope.etcdPath);
     $scope.enableBack = true;
@@ -36,9 +52,10 @@ angular.module('etcdControlPanel')
     if ($scope.etcdPath === keyPrefix) {
       $scope.enableBack = false;
     }
-
     $scope.key = EtcdV2.getKey(etcdPathKey($scope.etcdPath));
-  });
+  };
+
+  $scope.$watch('etcdPath', $scope.updateCurrentKey);
 
   $scope.$watch('key', function() {
     if ($scope.writingNew === true) {
@@ -68,20 +85,18 @@ angular.module('etcdControlPanel')
   //back button click
   $scope.back = function() {
     $scope.etcdPath = $scope.key.getParent().path();
-    //$scope.syncLocation();
+    $scope.resetInputPath();
     $scope.preview = 'etcd-preview-hide';
     $scope.writingNew = false;
   };
-
-  //$scope.syncLocation = function() {
-    //$location.path($scope.etcdPath);
-  //};
 
   $scope.showSave = function() {
     $scope.save = 'etcd-save-reveal';
   };
 
   $scope.saveData = function() {
+    $scope.setActiveKey($scope.stripPrefix($scope.inputPath));
+    $scope.updateCurrentKey();
     // TODO: fixup etcd to allow for empty values
     $scope.key.set($scope.singleValue || ' ').then(function(response) {
       $scope.save = 'etcd-save-hide';
@@ -93,7 +108,9 @@ angular.module('etcdControlPanel')
     });
   };
 
-  $scope.deleteKey = function() {
+  $scope.deleteKey = function(key) {
+    $scope.setActiveKey(key);
+    $scope.updateCurrentKey();
     $scope.key.deleteKey().then(function(response) {
       //TODO: remove loader
       $scope.save = 'etcd-save-hide';
@@ -128,9 +145,9 @@ angular.module('etcdControlPanel')
     return $($window).height();
   };
 
-  $scope.$watch($scope.getHeight, function() {
-    $('.etcd-body').css('height', $scope.getHeight()-45);
-  });
+  //$scope.$watch($scope.getHeight, function() {
+    ////$('.etcd-container.etcd-browser etcd-body').css('height', $scope.getHeight()-45);
+  //});
 
   $window.onresize = function(){
     $scope.$apply();

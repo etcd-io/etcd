@@ -16,6 +16,8 @@ body {
   -webkit-user-select: none;
   -moz-user-select: none;
   -ms-user-select: none;
+  margin: 20px 0;
+  height: 100%;
 }
 
 a {
@@ -167,8 +169,7 @@ h2 {
   top: 0px;
   left: 0px;
   position: relative;
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: hidden;
   height: 100%;
   width: 100%;
   box-sizing: border-box;

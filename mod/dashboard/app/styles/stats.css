@@ -1,8 +1,10 @@
-.etcd-stats {
-  width: 100%; height: 400px;
+.etcd-container.etcd-stats {
+  width: 100%;
+  height: 500px;
 }
 
-.etcd-container.etcd-stats {
+.home-container .etcd-container.etcd-stats {
+  height: 400px;
 }
 
 .etcd-container.etcd-stats h2 {

@@ -1,4 +1,10 @@
 .etcd-container.etcd-browser {
+  width: 100%;
+  height: 500px;
+}
+
+.home-container .etcd-container.etcd-browser {
+  height: 400px;
 }
 
 .etcd-container.etcd-browser .etcd-header {
