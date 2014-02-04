@@ -1,14 +1,14 @@
 # Discovery Protocol
 
-Starting an etcd cluster initially can be painful since each machine needs to know of at least one live machine in the cluster. If you are trying to bring up a cluster all at once, say using an AWS cloud formation, you also need to coordinate who will be the initial cluster leader. The discovery protocol helps you by providing a way to discover the peers in a new etcd cluster using another already running etcd cluster.
+Starting a new etcd cluster can be painful since each machine needs to know of at least one live machine in the cluster. If you are trying to bring up a new cluster all at once, say using an AWS cloud formation, you also need to coordinate who will be the initial cluster leader. The discovery protocol uses an existing running etcd cluster to start a second etcd cluster.
 
-To use this protocol you add the command line flag `-discovery` to your etcd args. In this example we will use `http://example.com/v2/keys/_etcd/registry` as the URL prefix.
+To use this feature you add the command line flag `-discovery` to your etcd args. In this example we will use `http://example.com/v2/keys/_etcd/registry` as the URL prefix.
 
 ## The Protocol
 
 By convention the etcd discovery protocol uses the key prefix `_etcd/registry`. A full URL to the keyspace will be `http://example.com/v2/keys/_etcd/registry`.
 
-## Creating a New Cluster
+### Creating a New Cluster
 
 Generate a unique token that will identify the new cluster and create a key called "_state". If you get a `201 Created` back then your key is unused and you can proceed with cluster creation. If the return value is `412 Precondition Failed` then you will need to create a new token.
 
@@ -17,7 +17,7 @@ UUID=$(uuidgen)
 curl -X PUT "http://example.com/v2/keys/_etcd/registry/${UUID}/_state?prevExist=false" -d value=init
 ```
 
-## Bringing up Machines
+### Bringing up Machines
 
 Now that you have your cluster ID you can start bringing up machines. Every machine will follow this protocol internally in etcd if given a `-discovery`.
 
@@ -29,7 +29,7 @@ The first thing etcd must do is register your machine. This is done by using the
 curl -X PUT "http://example.com/v2/keys/_etcd/registry/${UUID}/${etcd_machine_name}?ttl=604800" -d value=${peer_addr}
 ```
 
-### Figuring out your Peers
+### Discovering Peers
 
 Now that this etcd machine is registered it must discover its peers.
 

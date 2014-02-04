@@ -6,13 +6,13 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/coreos/etcd/third_party/github.com/coreos/raft"
+	"github.com/coreos/etcd/third_party/github.com/gorilla/mux"
+
 	etcdErr "github.com/coreos/etcd/error"
 	uhttp "github.com/coreos/etcd/pkg/http"
 	"github.com/coreos/etcd/log"
 	"github.com/coreos/etcd/store"
-
-	"github.com/coreos/etcd/third_party/github.com/coreos/raft"
-	"github.com/coreos/etcd/third_party/github.com/gorilla/mux"
 )
 
 // Get all the current logs

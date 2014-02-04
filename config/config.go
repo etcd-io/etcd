@@ -145,21 +145,9 @@ func (c *Config) Load(arguments []string) error {
 
 	// Attempt cluster discovery
 	if c.Discovery != "" {
-		p, err := discovery.Do(c.Discovery, c.Name, c.Peer.Addr)
-		if err != nil {
-			log.Fatalf("Bootstrapping encountered an unexpected error: %v", err)
+		if err := c.handleDiscovery(); err != nil {
+			return err
 		}
-
-		for i := range p {
-			// Strip the scheme off of the peer if it has one
-			// TODO(bp): clean this up!
-			purl, err := url.Parse(p[i])
-			if err == nil {
-				p[i] = purl.Host
-			}
-		}
-
-		c.Peers = p
 	}
 
 	// Force remove server configuration if specified.
@@ -223,6 +211,36 @@ func (c *Config) loadEnv(target interface{}) error {
 			value.Field(i).Set(reflect.ValueOf(ustrings.TrimSplit(v, ",")))
 		}
 	}
+	return nil
+}
+
+func (c *Config) handleDiscovery() error {
+	p, err := discovery.Do(c.Discovery, c.Name, c.Peer.Addr)
+
+	// This is fatal, discovery encountered an unexpected error
+	// and we have no peer list.
+	if err != nil && len(c.Peers) == 0 {
+		log.Fatalf("Discovery failed and a backup peer list wasn't provided: %v", err)
+		return err
+	}
+
+	// Warn about errors coming from discovery, this isn't fatal
+	// since the user might have provided a peer list elsewhere.
+	if err != nil {
+		log.Warnf("Discovery encountered an error but a backup peer list (%v) was provided: %v", c.Peers, err)
+	}
+
+	for i := range p {
+		// Strip the scheme off of the peer if it has one
+		// TODO(bp): clean this up!
+		purl, err := url.Parse(p[i])
+		if err == nil {
+			p[i] = purl.Host
+		}
+	}
+
+	c.Peers = p
+
 	return nil
 }
 
