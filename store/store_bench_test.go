@@ -176,6 +176,122 @@ func BenchmarkWatchOneKey(b *testing.B) {
 	}
 }
 
+// Benchmark store.Save() with 100 KVs
+func BenchmarkSaveLight(b *testing.B) {
+	s := newStoreWithKV(100, 128, 1024, 3, 10)
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		if _, err := s.Save(); err != nil {
+			panic(err)
+		}
+	}
+}
+
+// Benchmark store.Save() with 1000 KVs
+func BenchmarkSaveMedium(b *testing.B) {
+	s := newStoreWithKV(1000, 128, 1024, 3, 10)
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		if _, err := s.Save(); err != nil {
+			panic(err)
+		}
+	}
+}
+
+// Benchmark store.Save() with 10000 KVs
+func BenchmarkSaveHeavy(b *testing.B) {
+	s := newStoreWithKV(10000, 128, 1024, 3, 10)
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		if _, err := s.Save(); err != nil {
+			panic(err)
+		}
+	}
+}
+
+// Benchmark store.Save() with 100000 KVs
+func BenchmarkSaveUltraHeavy(b *testing.B) {
+	s := newStoreWithKV(100000, 128, 1024, 3, 10)
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		if _, err := s.Save(); err != nil {
+			panic(err)
+		}
+	}
+}
+
+// Benchmark store.Recovery() with 100 KVs
+func BenchmarkRecoveryLight(b *testing.B) {
+	s := newStoreWithKV(100, 128, 1024, 3, 10)
+	bs, err := s.Save()
+	if err != nil {
+		panic(err)
+	}
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		if err := s.Recovery(bs); err != nil {
+			panic(err)
+		}
+	}
+}
+
+// Benchmark store.Recovery() with 1000 KVs
+func BenchmarkRecoveryMedium(b *testing.B) {
+	s := newStoreWithKV(1000, 128, 1024, 3, 10)
+	bs, err := s.Save()
+	if err != nil {
+		panic(err)
+	}
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		if err := s.Recovery(bs); err != nil {
+			panic(err)
+		}
+	}
+}
+
+// Benchmark store.Recovery() with 10000 KVs
+func BenchmarkRecoveryHeavy(b *testing.B) {
+	s := newStoreWithKV(10000, 128, 1024, 3, 10)
+	bs, err := s.Save()
+	if err != nil {
+		panic(err)
+	}
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		if err := s.Recovery(bs); err != nil {
+			panic(err)
+		}
+	}
+}
+
+// Benchmark store.Recovery() with 100000 KVs
+func BenchmarkRecoveryUltraHeavy(b *testing.B) {
+	s := newStoreWithKV(100000, 128, 1024, 3, 10)
+	bs, err := s.Save()
+	if err != nil {
+		panic(err)
+	}
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		if err := s.Recovery(bs); err != nil {
+			panic(err)
+		}
+	}
+}
+
 func benchStoreSet(b *testing.B, valueSize int, process func(interface{}) ([]byte, error)) {
 	s := newStore()
 	b.StopTimer()
@@ -221,6 +337,34 @@ func generateNKVWithDepth(n, valueSize, depth int) ([][]string, uint64) {
 		kvs[i][1] = string(bytes)
 		size = size + uint64(len(kvs[i][0])) + uint64(len(kvs[i][1]))
 	}
-
 	return kvs, size
+}
+
+// newStoreWithKV creates a new store instance with n KV pairs of 3 types:
+//
+// short depth - short values.
+// medium depth - medium values.
+// long depth - long values.
+//
+// And they have uniform distribution.
+func newStoreWithKV(n, minValueSize, maxValueSize, minDepth, maxDepth int) *store {
+	minDepth, maxDepth = minDepth-1, maxDepth-1
+	s := newStore()
+
+	kvGroup := make([][][]string, 3)
+	// create three types of KV pairs
+	kvGroup[0], _ = generateNKVWithDepth(n/3, maxValueSize, maxDepth)
+	kvGroup[1], _ = generateNKVWithDepth(n/3, (minValueSize+maxValueSize+1)/2, (minDepth+maxDepth+1)/2+1)
+	kvGroup[2], _ = generateNKVWithDepth(n/3, minValueSize, minDepth)
+
+	// set KV pairs
+	for _, kvs := range kvGroup {
+		for _, kv := range kvs {
+			_, err := s.Set(kv[0]+"/foo", false, kv[1], Permanent)
+			if err != nil {
+				panic(err)
+			}
+		}
+	}
+	return s
 }
