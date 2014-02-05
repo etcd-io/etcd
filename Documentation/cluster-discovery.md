@@ -43,4 +43,3 @@ The Discovery API submits the `-peer-addr` of each etcd instance to the configur
 ## Stale Peers
 
 The discovery API will automatically clean up the address of a stale peer that is no longer part of the cluster. The TTL for this process is a week, which should be long enough to handle any extremely long outage you may encounter. There is no harm in having stale peers in the list until they are cleaned up, since an etcd instance only needs to connect to one valid peer in the cluster to join.
-
