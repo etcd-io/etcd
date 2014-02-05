@@ -79,4 +79,10 @@ Using this information you can connect to the rest of the peers in the cluster.
 
 ### Heartbeating
 
-At this point you will want to heartbeat your registration URL every few hours. This will be done via a Go routine inside of etcd.
+At this point etcd will start heart beating to your registration URL. The
+protocol uses a heartbeat so permanently deleted nodes get slowly removed from
+the discovery information cluster.
+
+The heartbeat interval is about once per day and the TTL is one week. This
+should give a sufficiently wide window to protect against a discovery service
+taking a temporary outage yet provide adequate cleanup.
