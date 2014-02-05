@@ -1,4 +1,4 @@
-# How to contribute
+# How to Contribute
 
 CoreOS projects are Apache 2.0 licensed and accept contributions via Github
 pull requests.  This document outlines some of the conventions on commit
@@ -52,7 +52,7 @@ By making a contribution to this project, I certify that:
 ```
 
 
-# Email and chat
+# Email and Chat
 
 - Email: [coreos-dev](https://groups.google.com/forum/#!forum/coreos-dev)
 - IRC: #[coreos](irc://irc.freenode.org:6667/#coreos) IRC channel on freenode.org
@@ -62,7 +62,7 @@ By making a contribution to this project, I certify that:
 - Fork the repository on GitHub
 - Read the README.md for build instructions
 
-## Contribution flow
+## Contribution Flow
 
 This is a rough outline of what a contributor's workflow looks like:
 
@@ -74,7 +74,7 @@ This is a rough outline of what a contributor's workflow looks like:
 
 Thanks for you contributions!
 
-### Format of the commit message
+### Format of the Commit Message
 
 We follow a rough convention for commit messages borrowed from Angularjs. This
 is an example of a commit:
@@ -101,7 +101,7 @@ second line is always blank and other lines should be wrapped at 80 characters.
 This allows the message to be easier to read on github as well as in various
 git tools.
 
-### Subject line
+### Subject Line
 
 The subject line contains succinct description of the change.
 
@@ -118,7 +118,7 @@ The subject line contains succinct description of the change.
 
 Scopes could be anything specifying place of the commit change. For example store, api, etc.
 
-### More details on commits
+### More Details on Commits
 
 For more details see the [angularjs commit style
 guide](https://docs.google.com/a/coreos.com/document/d/1QrDFcIiPjSLDn3EL15IJygNPiHORgU1_OOAqWjiDU5Y/edit#).
