@@ -52,7 +52,7 @@ Other Options:
   -max-result-buffer   Max size of the result buffer.
   -max-retry-attempts  Number of times a node will try to join a cluster.
   -max-cluster-size    Maximum number of nodes in the cluster.
-  -snapshot            Open or close the snapshot.
+  -snapshot=false      Disable log snapshots
   -snapshot-count      Number of transactions before issuing a snapshot.
 `
 
