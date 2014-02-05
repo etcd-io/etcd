@@ -209,7 +209,7 @@ func (s *PeerServer) startAsFollower(cluster []string) {
 		if ok {
 			return
 		}
-		log.Warnf("cannot join to cluster via given peers, retry in %d seconds", retryInterval)
+		log.Warnf("Unable to join the cluster using any of the peers %v. Retrying in %d seconds", cluster, retryInterval)
 		time.Sleep(time.Second * retryInterval)
 	}
 
@@ -266,17 +266,18 @@ func (s *PeerServer) joinCluster(cluster []string) bool {
 
 		err := s.joinByPeer(s.raftServer, peer, s.Config.Scheme)
 		if err == nil {
-			log.Debugf("%s success join to the cluster via peer %s", s.Config.Name, peer)
+			log.Debugf("%s joined the cluster via peer %s", s.Config.Name, peer)
 			return true
 
-		} else {
-			if _, ok := err.(etcdErr.Error); ok {
-				log.Fatal(err)
-			}
-
-			log.Debugf("cannot join to cluster via peer %s %s", peer, err)
 		}
+
+		if _, ok := err.(etcdErr.Error); ok {
+			log.Fatal(err)
+		}
+
+		log.Warnf("Attempt to join via %s failed: %s", peer, err)
 	}
+
 	return false
 }
 

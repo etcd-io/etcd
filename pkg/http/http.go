@@ -1,4 +1,4 @@
-package server
+package http
 
 import (
 	"encoding/json"
@@ -6,12 +6,11 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"strings"
 
 	"github.com/coreos/etcd/log"
 )
 
-func decodeJsonRequest(req *http.Request, data interface{}) error {
+func DecodeJsonRequest(req *http.Request, data interface{}) error {
 	decoder := json.NewDecoder(req.Body)
 	if err := decoder.Decode(&data); err != nil && err != io.EOF {
 		log.Warnf("Malformed json request: %v", err)
@@ -20,7 +19,7 @@ func decodeJsonRequest(req *http.Request, data interface{}) error {
 	return nil
 }
 
-func redirect(hostname string, w http.ResponseWriter, req *http.Request) {
+func Redirect(hostname string, w http.ResponseWriter, req *http.Request) {
 	originalURL := req.URL
 	redirectURL, _ := url.Parse(hostname)
 
@@ -31,15 +30,4 @@ func redirect(hostname string, w http.ResponseWriter, req *http.Request) {
 
 	log.Debugf("Redirect to %s", redirectURL.String())
 	http.Redirect(w, req, redirectURL.String(), http.StatusTemporaryRedirect)
-}
-
-// trimsplit slices s into all substrings separated by sep and returns a
-// slice of the substrings between the separator with all leading and trailing
-// white space removed, as defined by Unicode.
-func trimsplit(s, sep string) []string {
-	trimmed := strings.Split(s, sep)
-	for i := range trimmed {
-		trimmed[i] = strings.TrimSpace(trimmed[i])
-	}
-	return trimmed
 }

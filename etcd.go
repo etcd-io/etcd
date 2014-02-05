@@ -26,6 +26,7 @@ import (
 
 	"github.com/coreos/etcd/third_party/github.com/coreos/raft"
 
+	"github.com/coreos/etcd/config"
 	ehttp "github.com/coreos/etcd/http"
 	"github.com/coreos/etcd/log"
 	"github.com/coreos/etcd/metrics"
@@ -35,7 +36,7 @@ import (
 
 func main() {
 	// Load configuration.
-	var config = server.NewConfig()
+	var config = config.New()
 	if err := config.Load(os.Args[1:]); err != nil {
 		fmt.Println(server.Usage() + "\n")
 		fmt.Println(err.Error() + "\n")

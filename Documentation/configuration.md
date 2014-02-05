@@ -19,6 +19,7 @@ configuration files.
 ### Optional
 
 * `-addr` - The advertised public hostname:port for client communication. Defaults to `127.0.0.1:4001`.
+* `-discovery` - A URL to use for discovering the peer list. (i.e `"https://discovery.etcd.io/your-unique-key"`).
 * `-bind-addr` - The listening hostname for client communication. Defaults to advertised ip.
 * `-peers` - A comma separated list of peers in the cluster (i.e `"203.0.113.101:7001,203.0.113.102:7001"`).
 * `-peers-file` - The file path containing a comma separated list of peers in the cluster.

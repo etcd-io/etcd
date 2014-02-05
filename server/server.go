@@ -15,6 +15,7 @@ import (
 	"github.com/coreos/etcd/log"
 	"github.com/coreos/etcd/metrics"
 	"github.com/coreos/etcd/mod"
+	uhttp "github.com/coreos/etcd/pkg/http"
 	"github.com/coreos/etcd/server/v1"
 	"github.com/coreos/etcd/server/v2"
 	"github.com/coreos/etcd/store"
@@ -244,7 +245,7 @@ func (s *Server) Dispatch(c raft.Command, w http.ResponseWriter, req *http.Reque
 		default:
 			url, _ = ps.registry.ClientURL(leader)
 		}
-		redirect(url, w, req)
+		uhttp.Redirect(url, w, req)
 
 		return nil
 	}
@@ -295,7 +296,7 @@ func (s *Server) GetLeaderStatsHandler(w http.ResponseWriter, req *http.Request)
 		return etcdErr.NewError(300, "", s.Store().Index())
 	}
 	hostname, _ := s.registry.ClientURL(leader)
-	redirect(hostname, w, req)
+	uhttp.Redirect(hostname, w, req)
 	return nil
 }
 

@@ -14,7 +14,9 @@ import (
 func TestSync(t *testing.T) {
 	fmt.Println("Make sure there are three nodes at 0.0.0.0:4001-4003")
 
-	c := NewClient(nil)
+	// Explicit trailing slash to ensure this doesn't reproduce:
+	// https://github.com/coreos/go-etcd/issues/82
+	c := NewClient([]string{"http://127.0.0.1:4001/"})
 
 	success := c.SyncCluster()
 	if !success {
@@ -79,7 +81,7 @@ func TestPersistence(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	c2, err := NewClientFile("config.json")
+	c2, err := NewClientFromFile("config.json")
 	if err != nil {
 		t.Fatal(err)
 	}

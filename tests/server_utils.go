@@ -8,6 +8,7 @@ import (
 
 	"github.com/coreos/etcd/third_party/github.com/coreos/raft"
 
+	"github.com/coreos/etcd/metrics"
 	"github.com/coreos/etcd/server"
 	"github.com/coreos/etcd/store"
 )
@@ -39,7 +40,10 @@ func RunServer(f func(*server.Server)) {
 		SnapshotCount:	testSnapshotCount,
 		MaxClusterSize:	9,
 	}
-	ps := server.NewPeerServer(psConfig, registry, store, nil, followersStats, serverStats)
+
+	mb := metrics.NewBucket("")
+
+	ps := server.NewPeerServer(psConfig, registry, store, &mb, followersStats, serverStats)
 	psListener, err := server.NewListener(testRaftURL)
 	if err != nil {
 		panic(err)

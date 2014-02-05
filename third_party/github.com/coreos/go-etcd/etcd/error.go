@@ -36,9 +36,13 @@ func newError(errorCode int, cause string, index uint64) *EtcdError {
 }
 
 func handleError(b []byte) error {
-	var err EtcdError
+	etcdErr := new(EtcdError)
 
-	json.Unmarshal(b, &err)
+	err := json.Unmarshal(b, etcdErr)
+	if err != nil {
+		logger.Warningf("cannot unmarshal etcd error: %v", err)
+		return err
+	}
 
-	return err
+	return etcdErr
 }
