@@ -10,11 +10,10 @@ By convention the etcd discovery protocol uses the key prefix `_etcd/registry`. 
 
 ### Creating a New Cluster
 
-Generate a unique token that will identify the new cluster and create a key called "_state". If you get a `201 Created` back then your key is unused and you can proceed with cluster creation. If the return value is `412 Precondition Failed` then you will need to create a new token.
+Generate a unique token that will identify the new cluster. This will be used as a key prefix in the following steps. An easy way to do this is to use uuidgen:
 
 ```
 UUID=$(uuidgen)
-curl -X PUT "http://example.com/v2/keys/_etcd/registry/${UUID}/_state?prevExist=false" -d value=init
 ```
 
 ### Bringing up Machines
@@ -33,10 +32,10 @@ curl -X PUT "http://example.com/v2/keys/_etcd/registry/${UUID}/${etcd_machine_na
 
 Now that this etcd machine is registered it must discover its peers.
 
-But, the tricky bit of starting a new cluster is that one machine needs to assume the initial role of leader and will have no peers. To figure out if another machine has already started the cluster etcd needs to update the `_state` key from "init" to "started":
+But, the tricky bit of starting a new cluster is that one machine needs to assume the initial role of leader and will have no peers. To figure out if another machine has already started the cluster etcd needs to create the `_state` key and set its value to "started":
 
 ```
-curl -X PUT "http://example.com/v2/keys/_etcd/registry/${UUID}/_state?prevValue=init" -d value=started
+curl -X PUT "http://example.com/v2/keys/_etcd/registry/${UUID}/_state?prevExist=false" -d value=started
 ```
 
 If this returns a `200 OK` response then this machine is the initial leader and should start with no peers configured. If, however, this returns a `412 Precondition Failed` then you need to find all of the registered peers:

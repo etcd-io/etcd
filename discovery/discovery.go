@@ -8,13 +8,13 @@ import (
 	"strings"
 	"time"
 
+	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/log"
 	"github.com/coreos/etcd/third_party/github.com/coreos/go-etcd/etcd"
 )
 
 const (
 	stateKey     = "_state"
-	initState    = "init"
 	startedState = "started"
 	defaultTTL   = 604800 // One week TTL
 )
@@ -71,11 +71,11 @@ func (d *Discoverer) Do(discoveryURL string, name string, peer string) (peers []
 	go d.startHeartbeat()
 
 	// Attempt to take the leadership role, if there is no error we are it!
-	resp, err := d.client.CompareAndSwap(path.Join(d.prefix, stateKey), startedState, 0, initState, 0)
+	resp, err := d.client.Create(path.Join(d.prefix, stateKey), startedState, 0)
 
 	// Bail out on unexpected errors
 	if err != nil {
-		if etcdErr, ok := err.(*etcd.EtcdError); !ok || etcdErr.ErrorCode != 101 {
+		if clientErr, ok := err.(*etcd.EtcdError); !ok || clientErr.ErrorCode != etcdErr.EcodeNodeExist {
 			return nil, err
 		}
 	}
@@ -83,7 +83,7 @@ func (d *Discoverer) Do(discoveryURL string, name string, peer string) (peers []
 	// If we got a response then the CAS was successful, we are leader
 	if resp != nil && resp.Node.Value == startedState {
 		// We are the leader, we have no peers
-		log.Infof("Discovery was in the 'init' state this machine is the initial leader.")
+		log.Infof("Discovery _state was empty, so this machine is the initial leader.")
 		return nil, nil
 	}
 

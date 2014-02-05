@@ -93,11 +93,6 @@ func TestDiscoveryDownWithBackupPeers(t *testing.T) {
 // registers as the first peer.
 func TestDiscoveryFirstPeer(t *testing.T) {
 	etcdtest.RunServer(func(s *server.Server) {
-		v := url.Values{}
-		v.Set("value", "init")
-		resp, err := etcdtest.PutForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/_etcd/registry/2/_state"), v)
-		assert.Equal(t, resp.StatusCode, http.StatusCreated)
-
 		proc, err := startServer([]string{"-discovery", s.URL() + "/v2/keys/_etcd/registry/2"})
 		if err != nil {
 			t.Fatal(err.Error())
@@ -211,10 +206,16 @@ func TestDiscoverySecondPeerUp(t *testing.T) {
 		}
 
 		// TODO(bp): need to have a better way of knowing a machine is up
-		time.Sleep(1 * time.Second)
+		for i := 0; i < 10; i++ {
+			time.Sleep(1 * time.Second)
 
-		etcdc := goetcd.NewClient(nil)
-		_, err = etcdc.Set("foobar", "baz", 0)
+			etcdc := goetcd.NewClient(nil)
+			_, err = etcdc.Set("foobar", "baz", 0)
+			if err == nil {
+				break
+			}
+		}
+
 		if err != nil {
 			t.Fatal(err.Error())
 		}
