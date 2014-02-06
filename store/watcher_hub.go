@@ -161,6 +161,11 @@ func (wh *watcherHub) clone() *watcherHub {
 // isHidden checks to see if key path is considered hidden to watch path i.e. the
 // last element is hidden or it's within a hidden directory
 func isHidden(watchPath, keyPath string) bool {
+	// When deleting a directory, watchPath might be deeper than the actual keyPath
+	// For example, when deleting /foo we also need to notify watchers on /foo/bar.
+	if len(watchPath) > len(keyPath) {
+		return false
+	}
 	// if watch path is just a "/", after path will start without "/"
 	// add a "/" to deal with the special case when watchPath is "/"
 	afterPath := path.Clean("/" + keyPath[len(watchPath):])
