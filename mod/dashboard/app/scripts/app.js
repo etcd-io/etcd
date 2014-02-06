@@ -8,7 +8,8 @@ var app = angular.module('etcdControlPanel', [
   'timeRelative',
   'underscore',
   'jquery',
-  'moment'
+  'moment',
+  'vg'
 ]);
 
 app.constant('urlPrefix', '/mod/dashboard');

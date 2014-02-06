@@ -104,7 +104,7 @@ angular.module('etcdControlPanel')
       $scope.back();
       $scope.writingNew = false;
     }, function (response) {
-      $scope.showSaveError(data.message);
+      $scope.showSaveError(response.message);
     });
   };
 

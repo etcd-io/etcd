@@ -8,6 +8,10 @@ angular.module('jquery', []).factory('$', function($window) {
   return $window.$;
 });
 
+angular.module('vg', []).factory('vg', function($window) {
+  return $window.vg;
+});
+
 angular.module('moment', []).factory('moment', function($window) {
 
   $window.moment.lang('en', {

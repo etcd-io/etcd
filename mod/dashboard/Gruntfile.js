@@ -174,7 +174,7 @@ module.exports = function (grunt) {
             options: {
                 dest: '<%= yeoman.dist %>'
             },
-            html: ['<%= yeoman.app %>/**/*.html']
+            html: ['<%= yeoman.app %>/index.html']
         },
         usemin: {
             options: {
@@ -240,6 +240,14 @@ module.exports = function (grunt) {
                 }]
             }
         },
+
+        ngmin: {
+          dist: {
+            src: '.tmp/concat/scripts/app.js',
+            dest: '.tmp/concat/scripts/app.js'
+          }
+        },
+
         // Put files not handled in other tasks here
         copy: {
             dist: {
@@ -251,10 +259,10 @@ module.exports = function (grunt) {
                     src: [
                         '*.{ico,png,txt}',
                         '.htaccess',
-                        'images/{,*/}*.{webp,gif}',
+                        'images/{,*/}*.{webp,gif,svg}',
                         'styles/fonts/{,*/}*.*',
                         'views/*.*',
-                        'index.html',
+                        //'index.html',
                         'bower_components/sass-bootstrap/fonts/*.*'
                     ]
                 }]
@@ -286,7 +294,7 @@ module.exports = function (grunt) {
                 'copy:styles'
             ],
             dist: [
-                'compass',
+                //'compass',
                 'copy:styles',
                 'imagemin',
                 'svgmin',
@@ -327,13 +335,15 @@ module.exports = function (grunt) {
 
     grunt.registerTask('build', [
         'clean:dist',
+        'jshint',
         'useminPrepare',
         'concurrent:dist',
         'autoprefixer',
         'concat',
         'cssmin',
-        'uglify',
+        'ngmin',
         'usemin',
+        'uglify',
         'copy:dist'
     ]);
 

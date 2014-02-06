@@ -2,7 +2,7 @@
 
 
 angular.module('etcdControlPanel')
-.controller('StatsCtrl', function ($scope, $rootScope, $interval, EtcdV2, statsVega) {
+.controller('StatsCtrl', function ($scope, $rootScope, $interval, EtcdV2, statsVega, vg) {
   $scope.graphContainer = '#latency';
   $scope.graphVisibility = 'etcd-graph-show';
   $scope.tableVisibility = 'etcd-table-hide';
@@ -30,10 +30,14 @@ angular.module('etcdControlPanel')
       });
       //sort array so peers don't jump when output
       $scope.peers.sort(function(a, b){
-          if(a.name < b.name) return -1;
-          if(a.name > b.name) return 1;
+          if(a.name < b.name) {
+            return -1;
+          }
+          if(a.name > b.name) {
+            return 1;
+          }
           return 0;
-      });
+        });
       drawGraph();
     });
   }

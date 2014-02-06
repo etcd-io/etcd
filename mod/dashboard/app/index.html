@@ -9,11 +9,13 @@
     <meta name="viewport" content="width=device-width">
     <link href="http://fonts.googleapis.com/css?family=Source+Sans+Pro:200,300,400,400italic,600,700,900" rel="stylesheet" type="text/css">
     <link href="http://fonts.googleapis.com/css?family=Source+Code+Pro:400,500,600,700" rel="stylesheet" type="text/css">
+    <!-- build:css styles/styles.css -->
     <link rel="stylesheet" href="styles/bootstrap.css">
     <link rel="stylesheet" href="styles/main.css">
     <link rel="stylesheet" href="styles/browser.css">
     <link rel="stylesheet" href="styles/stats.css">
     <link rel="stylesheet" href="styles/etcd-widgets.css">
+    <!-- endbuild -->
   </head>
 
   <body>
@@ -24,7 +26,7 @@
     <div id="footer">
       <div id="powered-by" class="text-center">Powered by <a href="https://github.com/coreos/etcd">etcd</a></div>
       <div id="coreos-logo">
-        <a href="http://coreos.com"><img src="img/logo.svg"/></a>
+        <a href="http://coreos.com"><img src="images/logo.svg"/></a>
       </div>
     </div>
 
@@ -39,21 +41,21 @@
     <script src="bower_components/underscore/underscore.js"></script>
     <script src="bower_components/underscore.string/lib/underscore.string.js"></script>
     <script src="bower_components/moment/moment.js"></script>
+    <script src="scripts/vega.js"></script>
+    <script src="scripts/ng-time-relative.min.js"></script>
     <!-- endbuild -->
 
-    <!-- build:js({.tmp,app}) scripts/app.js -->
+    <!-- build:js scripts/app.js -->
     <script src="scripts/app.js"></script>
     <script src="scripts/controllers/root.js"></script>
     <script src="scripts/directives.js"></script>
     <script src="scripts/shims.js"></script>
     <script src="scripts/controllers/home.js"></script>
     <script src="scripts/controllers/browser.js"></script>
-    <script src="scripts/ng-time-relative.min.js"></script>
     <script src="scripts/common/services/etcd.js"></script>
     <script src="scripts/common/services/prefix-url.js"></script>
     <script src="scripts/common/directives/highlight.js"></script>
     <script src="scripts/common/directives/enter.js"></script>
-    <script src="scripts/vega.js"></script>
     <script src="scripts/common/services/etcd.js"></script>
     <script src="scripts/controllers/stats.js"></script>
     <!-- endbuild -->
