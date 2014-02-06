@@ -8,7 +8,7 @@ Starting an etcd cluster can be painful since each node needs to know of another
 
 ### Create a Token
 
-To use the discovery API, you must first create a token for your etcd cluster. Visit https://discovery.etcd.io/new to create a new token.
+To use the discovery API, you must first create a token for your etcd cluster. Visit [https://discovery.etcd.io/new](https://discovery.etcd.io/new) to create a new token.
 
 You can inspect the list of peers by viewing `https://discovery.etcd.io/<token>`.
 
@@ -26,7 +26,7 @@ TOKEN=$(curl https://discovery.etcd.io/new)
 
 ## Running Your Own Discovery Endpoint
 
-The discovery API communicates with a separate etcd cluster to store and retrieve the list of peers. CoreOS provides https://discovery.etcd.io as a free service, but you can easily run your own etcd cluster for this purpose. Here's an example using an etcd cluster located at `10.10.10.10:4001`:
+The discovery API communicates with a separate etcd cluster to store and retrieve the list of peers. CoreOS provides [https://discovery.etcd.io](https://discovery.etcd.io) as a free service, but you can easily run your own etcd cluster for this purpose. Here's an example using an etcd cluster located at `10.10.10.10:4001`:
 
 ```
 TOKEN="testcluster"
