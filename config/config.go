@@ -1,7 +1,6 @@
 package config
 
 import (
-	"encoding/json"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -379,9 +378,6 @@ func (c *Config) NameFromHostname() {
 
 // Reset removes all server configuration files.
 func (c *Config) Reset() error {
-	if err := os.RemoveAll(filepath.Join(c.DataDir, "info")); err != nil {
-		return err
-	}
 	if err := os.RemoveAll(filepath.Join(c.DataDir, "log")); err != nil {
 		return err
 	}
@@ -393,46 +389,6 @@ func (c *Config) Reset() error {
 	}
 
 	return nil
-}
-
-// Reads the info file from the file system or initializes it based on the config.
-func (c *Config) Info() (*server.Info, error) {
-	info := &server.Info{}
-	path := filepath.Join(c.DataDir, "info")
-
-	// Open info file and read it out.
-	f, err := os.Open(path)
-	if err != nil && !os.IsNotExist(err) {
-		return nil, err
-	} else if f != nil {
-		defer f.Close()
-		if err := json.NewDecoder(f).Decode(&info); err != nil {
-			return nil, err
-		}
-		return info, nil
-	}
-
-	// If the file doesn't exist then initialize it.
-	info.Name = strings.TrimSpace(c.Name)
-	info.EtcdURL = c.Addr
-	info.EtcdListenHost = c.BindAddr
-	info.RaftURL = c.Peer.Addr
-	info.RaftListenHost = c.Peer.BindAddr
-	info.EtcdTLS = c.TLSInfo()
-	info.RaftTLS = c.PeerTLSInfo()
-
-	// Write to file.
-	f, err = os.Create(path)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-
-	if err := json.NewEncoder(f).Encode(info); err != nil {
-		return nil, err
-	}
-
-	return info, nil
 }
 
 // Sanitize cleans the input fields.
