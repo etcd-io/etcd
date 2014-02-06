@@ -127,7 +127,7 @@ func (wh *watcherHub) notifyWatchers(e *Event, nodePath string, deleted bool) {
 			w, _ := curr.Value.(*Watcher)
 
 			originalPath := (e.Node.Key == nodePath)
-			if (originalPath || !isHidden(e.Node.Key)) && w.notify(e, originalPath, deleted) {
+			if (originalPath || !isHidden(nodePath, e.Node.Key)) && w.notify(e, originalPath, deleted) {
 				if !w.stream { // do not remove the stream watcher
 					// if we successfully notify a watcher
 					// we need to remove the watcher from the list
@@ -158,8 +158,9 @@ func (wh *watcherHub) clone() *watcherHub {
 	}
 }
 
-// isHidden checks to see if this path is considered hidden i.e. the
+// isHidden checks to see if key path is considered hidden to watch path i.e. the
 // last element is hidden or it's within a hidden directory
-func isHidden(nodePath string) bool {
-	return strings.Contains(nodePath, "/_")
+func isHidden(watchPath, keyPath string) bool {
+	afterPath := path.Clean("/" + keyPath[len(watchPath):])
+	return strings.Contains(afterPath, "/_")
 }

@@ -782,6 +782,19 @@ func TestStoreWatchExpireWithHiddenKey(t *testing.T) {
 	assert.Equal(t, e.Node.Key, "/foofoo", "")
 }
 
+// Ensure that the store does see hidden key creates if watching deeper than a hidden key in recursive mode.
+func TestStoreWatchRecursiveCreateDeeperThanHiddenKey(t *testing.T) {
+	s := newStore()
+	w, _ := s.Watch("/_foo/bar", true, false, 0)
+	s.Create("/_foo/bar/baz", false, "baz", false, Permanent)
+
+	e := nbselect(w.EventChan)
+	// The NotNil assertion currently fails
+	assert.NotNil(t, e, "")
+	assert.Equal(t, e.Action, "create", "")
+	assert.Equal(t, e.Node.Key, "/_foo/bar/baz", "")
+}
+
 // Performs a non-blocking select on an event channel.
 func nbselect(c <-chan *Event) *Event {
 	select {
