@@ -789,7 +789,6 @@ func TestStoreWatchRecursiveCreateDeeperThanHiddenKey(t *testing.T) {
 	s.Create("/_foo/bar/baz", false, "baz", false, Permanent)
 
 	e := nbselect(w.EventChan)
-	// The NotNil assertion currently fails
 	assert.NotNil(t, e, "")
 	assert.Equal(t, e.Action, "create", "")
 	assert.Equal(t, e.Node.Key, "/_foo/bar/baz", "")
