@@ -40,4 +40,13 @@ func TestIsHidden(t *testing.T) {
 	if !hidden {
 		t.Fatalf("%v should be hidden to %v\n", key, watch)
 	}
+
+	// watch at "/_foo/foo"
+	// key is "/_foo"
+	watch = "_foo/foo"
+	key = "/_foo/"
+	hidden = isHidden(watch, key)
+	if hidden {
+		t.Fatalf("%v should not be hidden to %v\n", key, watch)
+	}
 }
