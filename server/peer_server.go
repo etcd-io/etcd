@@ -158,6 +158,7 @@ func (s *PeerServer) Stop() {
 		close(s.closeChan)
 		s.closeChan = nil
 	}
+	s.raftServer.Stop()
 }
 
 func (s *PeerServer) HTTPHandler() http.Handler {
