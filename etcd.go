@@ -122,6 +122,7 @@ func main() {
 		SnapshotCount:  config.SnapshotCount,
 		MaxClusterSize: config.MaxClusterSize,
 		RetryTimes:     config.MaxRetryAttempts,
+		RetryInterval:  config.RetryInterval,
 	}
 	ps := server.NewPeerServer(psConfig, registry, store, &mb, followersStats, serverStats)
 
