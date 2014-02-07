@@ -113,6 +113,9 @@ func TestConfigEnv(t *testing.T) {
 	assert.Equal(t, c.Peer.CertFile, "/tmp/peer/file.cert", "")
 	assert.Equal(t, c.Peer.KeyFile, "/tmp/peer/file.key", "")
 	assert.Equal(t, c.Peer.BindAddr, "127.0.0.1:7003", "")
+
+	// Clear this as it will mess up other tests
+	os.Setenv("ETCD_DISCOVERY", "")
 }
 
 // Ensures that the "help" flag can be parsed.
