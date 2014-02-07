@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"path"
-	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -119,39 +118,7 @@ func (s *store) Get(nodePath string, recursive, sorted bool) (*Event, error) {
 	}
 
 	e := newEvent(Get, nodePath, n.ModifiedIndex, n.CreatedIndex)
-	eNode := e.Node
-
-	if n.IsDir() { // node is a directory
-		eNode.Dir = true
-
-		children, _ := n.List()
-		eNode.Nodes = make(NodeExterns, len(children))
-
-		// we do not use the index in the children slice directly
-		// we need to skip the hidden one
-		i := 0
-
-		for _, child := range children {
-			if child.IsHidden() { // get will not return hidden nodes
-				continue
-			}
-
-			eNode.Nodes[i] = child.Repr(recursive, sorted)
-			i++
-		}
-
-		// eliminate hidden nodes
-		eNode.Nodes = eNode.Nodes[:i]
-
-		if sorted {
-			sort.Sort(eNode.Nodes)
-		}
-
-	} else { // node is a file
-		eNode.Value, _ = n.Read()
-	}
-
-	eNode.Expiration, eNode.TTL = n.ExpirationAndTTL()
+	e.Node.loadInternalNode(n, recursive, sorted)
 
 	s.Stats.Inc(GetSuccess)
 
@@ -177,17 +144,40 @@ func (s *store) Create(nodePath string, dir bool, value string, unique bool, exp
 
 // Set creates or replace the node at nodePath.
 func (s *store) Set(nodePath string, dir bool, value string, expireTime time.Time) (*Event, error) {
+	var err error
+
 	s.worldLock.Lock()
 	defer s.worldLock.Unlock()
-	e, err := s.internalCreate(nodePath, dir, value, false, true, expireTime, Set)
 
-	if err == nil {
-		s.Stats.Inc(SetSuccess)
-	} else {
-		s.Stats.Inc(SetFail)
+	defer func() {
+		if err == nil {
+			s.Stats.Inc(SetSuccess)
+		} else {
+			s.Stats.Inc(SetFail)
+		}
+	}()
+
+	// Get prevNode value
+	n, getErr := s.internalGet(nodePath)
+	if getErr != nil && getErr.ErrorCode != etcdErr.EcodeKeyNotFound {
+		err = getErr
+		return nil, err
 	}
 
-	return e, err
+	// Set new value
+	e, err := s.internalCreate(nodePath, dir, value, false, true, expireTime, Set)
+	if err != nil {
+		return nil, err
+	}
+
+	// Put prevNode into event
+	if getErr == nil {
+		prev := newEvent(Get, nodePath, n.ModifiedIndex, n.CreatedIndex)
+		prev.Node.loadInternalNode(n, false, false)
+		e.PrevNode = prev.Node
+	}
+
+	return e, nil
 }
 
 func (s *store) CompareAndSwap(nodePath string, prevValue string, prevIndex uint64,
