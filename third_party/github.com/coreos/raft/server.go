@@ -33,8 +33,11 @@ const (
 )
 
 const (
-	DefaultHeartbeatTimeout = 50 * time.Millisecond
-	DefaultElectionTimeout  = 150 * time.Millisecond
+	// DefaultHeartbeatInterval is the interval that the leader will send
+	// AppendEntriesRequests to followers to maintain leadership.
+	DefaultHeartbeatInterval = 50 * time.Millisecond
+
+	DefaultElectionTimeout = 150 * time.Millisecond
 )
 
 // ElectionTimeoutThresholdPercent specifies the threshold at which the server
@@ -82,8 +85,8 @@ type Server interface {
 	GetState() string
 	ElectionTimeout() time.Duration
 	SetElectionTimeout(duration time.Duration)
-	HeartbeatTimeout() time.Duration
-	SetHeartbeatTimeout(duration time.Duration)
+	HeartbeatInterval() time.Duration
+	SetHeartbeatInterval(duration time.Duration)
 	Transporter() Transporter
 	SetTransporter(t Transporter)
 	AppendEntries(req *AppendEntriesRequest) *AppendEntriesResponse
@@ -119,10 +122,10 @@ type server struct {
 	mutex      sync.RWMutex
 	syncedPeer map[string]bool
 
-	stopped          chan bool
-	c                chan *ev
-	electionTimeout  time.Duration
-	heartbeatTimeout time.Duration
+	stopped           chan bool
+	c                 chan *ev
+	electionTimeout   time.Duration
+	heartbeatInterval time.Duration
 
 	currentSnapshot         *Snapshot
 	lastSnapshot            *Snapshot
@@ -170,7 +173,7 @@ func NewServer(name string, path string, transporter Transporter, stateMachine S
 		stopped:                 make(chan bool),
 		c:                       make(chan *ev, 256),
 		electionTimeout:         DefaultElectionTimeout,
-		heartbeatTimeout:        DefaultHeartbeatTimeout,
+		heartbeatInterval:       DefaultHeartbeatInterval,
 		maxLogEntriesPerRequest: MaxLogEntriesPerRequest,
 		connectionString:        connectionString,
 	}
@@ -378,20 +381,20 @@ func (s *server) SetElectionTimeout(duration time.Duration) {
 //--------------------------------------
 
 // Retrieves the heartbeat timeout.
-func (s *server) HeartbeatTimeout() time.Duration {
+func (s *server) HeartbeatInterval() time.Duration {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
-	return s.heartbeatTimeout
+	return s.heartbeatInterval
 }
 
 // Sets the heartbeat timeout.
-func (s *server) SetHeartbeatTimeout(duration time.Duration) {
+func (s *server) SetHeartbeatInterval(duration time.Duration) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	s.heartbeatTimeout = duration
+	s.heartbeatInterval = duration
 	for _, peer := range s.peers {
-		peer.setHeartbeatTimeout(duration)
+		peer.setHeartbeatInterval(duration)
 	}
 }
 
@@ -495,6 +498,14 @@ func (s *server) setCurrentTerm(term uint64, leaderName string, append bool) {
 	prevLeader := s.leader
 
 	if term > s.currentTerm {
+		// stop heartbeats before step-down
+		if s.state == Leader {
+			s.mutex.Unlock()
+			for _, peer := range s.peers {
+				peer.stopHeartbeat(false)
+			}
+			s.mutex.Lock()
+		}
 		// update the term and clear vote for
 		s.state = Follower
 		s.currentTerm = term
@@ -599,7 +610,7 @@ func (s *server) followerLoop() {
 	electionTimeout := s.ElectionTimeout()
 	timeoutChan := afterBetween(s.ElectionTimeout(), s.ElectionTimeout()*2)
 
-	for {
+	for s.State() == Follower {
 		var err error
 		update := false
 		select {
@@ -654,11 +665,6 @@ func (s *server) followerLoop() {
 			since = time.Now()
 			timeoutChan = afterBetween(s.ElectionTimeout(), s.ElectionTimeout()*2)
 		}
-
-		// Exit loop on state change.
-		if s.State() != Follower {
-			break
-		}
 	}
 }
 
@@ -673,7 +679,7 @@ func (s *server) candidateLoop() {
 		s.DispatchEvent(newEvent(LeaderChangeEventType, s.leader, prevLeader))
 	}
 
-	for {
+	for s.State() == Candidate {
 		// Increment current term, vote for self.
 		s.currentTerm++
 		s.votedFor = s.name
@@ -741,12 +747,6 @@ func (s *server) candidateLoop() {
 				break
 			}
 		}
-
-		// break when we are not candidate
-		if s.State() != Candidate {
-			break
-		}
-
 		// continue when timeout happened
 	}
 }
@@ -763,14 +763,22 @@ func (s *server) leaderLoop() {
 		peer.startHeartbeat()
 	}
 
+	// Commit a NOP after the server becomes leader. From the Raft paper:
+	// "Upon election: send initial empty AppendEntries RPCs (heartbeat) to
+	// each server; repeat during idle periods to prevent election timeouts
+	// (§5.2)". The heartbeats started above do the "idle" period work.
 	go s.Do(NOPCommand{})
 
 	// Begin to collect response from followers
-	for {
+	for s.State() == Leader {
 		var err error
 		select {
 		case e := <-s.c:
 			if e.target == &stopValue {
+				// Stop all peers before stop
+				for _, peer := range s.peers {
+					peer.stopHeartbeat(false)
+				}
 				s.setState(Stopped)
 			} else {
 				switch req := e.target.(type) {
@@ -789,16 +797,6 @@ func (s *server) leaderLoop() {
 			// Callback to event.
 			e.c <- err
 		}
-
-		// Exit loop on state change.
-		if s.State() != Leader {
-			break
-		}
-	}
-
-	// Stop all peers.
-	for _, peer := range s.peers {
-		peer.stopHeartbeat(false)
 	}
 
 	s.syncedPeer = nil
@@ -807,7 +805,7 @@ func (s *server) leaderLoop() {
 func (s *server) snapshotLoop() {
 	s.setState(Snapshotting)
 
-	for {
+	for s.State() == Snapshotting {
 		var err error
 
 		e := <-s.c
@@ -828,11 +826,6 @@ func (s *server) snapshotLoop() {
 		}
 		// Callback to event.
 		e.c <- err
-
-		// Exit loop on state change.
-		if s.State() != Snapshotting {
-			break
-		}
 	}
 }
 
@@ -924,15 +917,14 @@ func (s *server) processAppendEntriesRequest(req *AppendEntriesRequest) (*Append
 // processed when the server is a leader. Responses received during other
 // states are dropped.
 func (s *server) processAppendEntriesResponse(resp *AppendEntriesResponse) {
-
 	// If we find a higher term then change to a follower and exit.
-	if resp.Term > s.Term() {
-		s.setCurrentTerm(resp.Term, "", false)
+	if resp.Term() > s.Term() {
+		s.setCurrentTerm(resp.Term(), "", false)
 		return
 	}
 
 	// panic response if it's not successful.
-	if !resp.Success {
+	if !resp.Success() {
 		return
 	}
 
@@ -1029,7 +1021,7 @@ func (s *server) AddPeer(name string, connectiongString string) error {
 
 	// Skip the Peer if it has the same name as the Server
 	if s.name != name {
-		peer := newPeer(s, name, connectiongString, s.heartbeatTimeout)
+		peer := newPeer(s, name, connectiongString, s.heartbeatInterval)
 
 		if s.State() == Leader {
 			peer.startHeartbeat()
@@ -1079,57 +1071,48 @@ func (s *server) RemovePeer(name string) error {
 //--------------------------------------
 
 func (s *server) TakeSnapshot() error {
-	//TODO put a snapshot mutex
+	// TODO: put a snapshot mutex
 	s.debugln("take Snapshot")
+
+	// Exit if the server is currently creating a snapshot.
 	if s.currentSnapshot != nil {
 		return errors.New("handling snapshot")
 	}
 
+	// Exit if there are no logs yet in the system.
 	lastIndex, lastTerm := s.log.commitInfo()
-
+	path := s.SnapshotPath(lastIndex, lastTerm)
 	if lastIndex == 0 {
 		return errors.New("No logs")
 	}
 
-	path := s.SnapshotPath(lastIndex, lastTerm)
-
 	var state []byte
 	var err error
-
 	if s.stateMachine != nil {
 		state, err = s.stateMachine.Save()
-
 		if err != nil {
 			return err
 		}
-
 	} else {
 		state = []byte{0}
 	}
 
-	peers := make([]*Peer, len(s.peers)+1)
-
-	i := 0
+	// Clone the list of peers.
+	peers := make([]*Peer, 0, len(s.peers)+1)
 	for _, peer := range s.peers {
-		peers[i] = peer.clone()
-		i++
+		peers = append(peers, peer.clone())
 	}
+	peers = append(peers, &Peer{Name: s.Name(), ConnectionString: s.connectionString})
 
-	peers[i] = &Peer{
-		Name:             s.Name(),
-		ConnectionString: s.connectionString,
-	}
-
+	// Attach current snapshot and save it to disk.
 	s.currentSnapshot = &Snapshot{lastIndex, lastTerm, peers, state, path}
-
 	s.saveSnapshot()
 
-	// We keep some log entries after the snapshot
-	// We do not want to send the whole snapshot
-	// to the slightly slow machines
+	// We keep some log entries after the snapshot.
+	// We do not want to send the whole snapshot to the slightly slow machines
 	if lastIndex-s.log.startIndex > NumberOfLogEntriesAfterSnapshot {
 		compactIndex := lastIndex - NumberOfLogEntriesAfterSnapshot
-		compactTerm := s.log.getEntry(compactIndex).Term
+		compactTerm := s.log.getEntry(compactIndex).Term()
 		s.log.compact(compactIndex, compactTerm)
 	}
 
@@ -1138,25 +1121,25 @@ func (s *server) TakeSnapshot() error {
 
 // Retrieves the log path for the server.
 func (s *server) saveSnapshot() error {
-
 	if s.currentSnapshot == nil {
 		return errors.New("no snapshot to save")
 	}
 
-	err := s.currentSnapshot.save()
-
-	if err != nil {
+	// Write snapshot to disk.
+	if err := s.currentSnapshot.save(); err != nil {
 		return err
 	}
 
+	// Swap the current and last snapshots.
 	tmp := s.lastSnapshot
 	s.lastSnapshot = s.currentSnapshot
 
-	// delete the previous snapshot if there is any change
+	// Delete the previous snapshot if there is any change
 	if tmp != nil && !(tmp.LastIndex == s.lastSnapshot.LastIndex && tmp.LastTerm == s.lastSnapshot.LastTerm) {
 		tmp.remove()
 	}
 	s.currentSnapshot = nil
+
 	return nil
 }
 
@@ -1172,18 +1155,16 @@ func (s *server) RequestSnapshot(req *SnapshotRequest) *SnapshotResponse {
 }
 
 func (s *server) processSnapshotRequest(req *SnapshotRequest) *SnapshotResponse {
-
 	// If the follower’s log contains an entry at the snapshot’s last index with a term
-	// that matches the snapshot’s last term
-	// Then the follower already has all the information found in the snapshot
-	// and can reply false
-
+	// that matches the snapshot’s last term, then the follower already has all the
+	// information found in the snapshot and can reply false.
 	entry := s.log.getEntry(req.LastIndex)
 
-	if entry != nil && entry.Term == req.LastTerm {
+	if entry != nil && entry.Term() == req.LastTerm {
 		return newSnapshotResponse(false)
 	}
 
+	// Update state.
 	s.setState(Snapshotting)
 
 	return newSnapshotResponse(true)
@@ -1196,29 +1177,26 @@ func (s *server) SnapshotRecoveryRequest(req *SnapshotRecoveryRequest) *Snapshot
 }
 
 func (s *server) processSnapshotRecoveryRequest(req *SnapshotRecoveryRequest) *SnapshotRecoveryResponse {
+	// Recover state sent from request.
+	if err := s.stateMachine.Recovery(req.State); err != nil {
+		return newSnapshotRecoveryResponse(req.LastTerm, false, req.LastIndex)
+	}
 
-	s.stateMachine.Recovery(req.State)
-
-	// clear the peer map
+	// Recover the cluster configuration.
 	s.peers = make(map[string]*Peer)
-
-	// recovery the cluster configuration
 	for _, peer := range req.Peers {
 		s.AddPeer(peer.Name, peer.ConnectionString)
 	}
 
-	//update term and index
+	// Update log state.
 	s.currentTerm = req.LastTerm
-
 	s.log.updateCommitIndex(req.LastIndex)
 
-	snapshotPath := s.SnapshotPath(req.LastIndex, req.LastTerm)
-
-	s.currentSnapshot = &Snapshot{req.LastIndex, req.LastTerm, req.Peers, req.State, snapshotPath}
-
+	// Create local snapshot.
+	s.currentSnapshot = &Snapshot{req.LastIndex, req.LastTerm, req.Peers, req.State, s.SnapshotPath(req.LastIndex, req.LastTerm)}
 	s.saveSnapshot()
 
-	// clear the previous log entries
+	// Clear the previous log entries.
 	s.log.compact(req.LastIndex, req.LastTerm)
 
 	return newSnapshotRecoveryResponse(req.LastTerm, true, req.LastIndex)
@@ -1227,79 +1205,75 @@ func (s *server) processSnapshotRecoveryRequest(req *SnapshotRecoveryRequest) *S
 
 // Load a snapshot at restart
 func (s *server) LoadSnapshot() error {
+	// Open snapshot/ directory.
 	dir, err := os.OpenFile(path.Join(s.path, "snapshot"), os.O_RDONLY, 0)
 	if err != nil {
-
 		return err
 	}
 
+	// Retrieve a list of all snapshots.
 	filenames, err := dir.Readdirnames(-1)
-
 	if err != nil {
 		dir.Close()
 		panic(err)
 	}
-
 	dir.Close()
+
 	if len(filenames) == 0 {
 		return errors.New("no snapshot")
 	}
 
-	// not sure how many snapshot we should keep
+	// Grab the latest snapshot.
 	sort.Strings(filenames)
 	snapshotPath := path.Join(s.path, "snapshot", filenames[len(filenames)-1])
 
-	// should not fail
+	// Read snapshot data.
 	file, err := os.OpenFile(snapshotPath, os.O_RDONLY, 0)
-	defer file.Close()
 	if err != nil {
-		panic(err)
+		return err
+	}
+	defer file.Close()
+
+	// Check checksum.
+	var checksum uint32
+	n, err := fmt.Fscanf(file, "%08x\n", &checksum)
+	if err != nil {
+		return err
+	} else if n != 1 {
+		return errors.New("Bad snapshot file")
 	}
 
-	// TODO check checksum first
-
-	var snapshotBytes []byte
-	var checksum uint32
-
-	n, err := fmt.Fscanf(file, "%08x\n", &checksum)
-
+	// Load remaining snapshot contents.
+	b, err := ioutil.ReadAll(file)
 	if err != nil {
 		return err
 	}
 
-	if n != 1 {
-		return errors.New("Bad snapshot file")
-	}
-
-	snapshotBytes, _ = ioutil.ReadAll(file)
-	s.debugln(string(snapshotBytes))
-
 	// Generate checksum.
-	byteChecksum := crc32.ChecksumIEEE(snapshotBytes)
-
+	byteChecksum := crc32.ChecksumIEEE(b)
 	if uint32(checksum) != byteChecksum {
 		s.debugln(checksum, " ", byteChecksum)
 		return errors.New("bad snapshot file")
 	}
 
-	err = json.Unmarshal(snapshotBytes, &s.lastSnapshot)
-
-	if err != nil {
+	// Decode snapshot.
+	if err = json.Unmarshal(b, &s.lastSnapshot); err != nil {
 		s.debugln("unmarshal error: ", err)
 		return err
 	}
 
-	err = s.stateMachine.Recovery(s.lastSnapshot.State)
-
-	if err != nil {
+	// Recover snapshot into state machine.
+	if err = s.stateMachine.Recovery(s.lastSnapshot.State); err != nil {
 		s.debugln("recovery error: ", err)
 		return err
 	}
 
+	// Recover cluster configuration.
 	for _, peer := range s.lastSnapshot.Peers {
 		s.AddPeer(peer.Name, peer.ConnectionString)
 	}
 
+	// Update log state.
 	s.log.startTerm = s.lastSnapshot.LastTerm
 	s.log.startIndex = s.lastSnapshot.LastIndex
 	s.log.updateCommitIndex(s.lastSnapshot.LastIndex)

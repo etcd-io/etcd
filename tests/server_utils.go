@@ -59,7 +59,7 @@ func RunServer(f func(*server.Server)) {
 		panic(err)
 	}
 	raftServer.SetElectionTimeout(testElectionTimeout)
-	raftServer.SetHeartbeatTimeout(testHeartbeatTimeout)
+	raftServer.SetHeartbeatInterval(testHeartbeatTimeout)
 	ps.SetRaftServer(raftServer)
 
 	s := server.New(testName, "http://"+testClientURL, ps, registry, store, nil)

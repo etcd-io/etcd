@@ -69,7 +69,6 @@ func RegisterCommand(command Command) {
 		panic(fmt.Sprintf("raft: Cannot register nil"))
 	} else if commandTypes[command.CommandName()] != nil {
 		panic(fmt.Sprintf("raft: Duplicate registration: %s", command.CommandName()))
-		return
 	}
 	commandTypes[command.CommandName()] = command
 }

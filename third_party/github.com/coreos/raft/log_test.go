@@ -74,13 +74,13 @@ func TestLogExistingLog(t *testing.T) {
 	if len(log.entries) != 3 {
 		t.Fatalf("Expected 3 entries, got %d", len(log.entries))
 	}
-	if log.entries[0].Index != 1 || log.entries[0].Term != 1 {
+	if log.entries[0].Index() != 1 || log.entries[0].Term() != 1 {
 		t.Fatalf("Unexpected entry[0]: %v", log.entries[0])
 	}
-	if log.entries[1].Index != 2 || log.entries[1].Term != 1 {
+	if log.entries[1].Index() != 2 || log.entries[1].Term() != 1 {
 		t.Fatalf("Unexpected entry[1]: %v", log.entries[1])
 	}
-	if log.entries[2].Index != 3 || log.entries[2].Term != 2 {
+	if log.entries[2].Index() != 3 || log.entries[2].Term() != 2 {
 		t.Fatalf("Unexpected entry[2]: %v", log.entries[2])
 	}
 }
@@ -143,13 +143,13 @@ func TestLogRecovery(t *testing.T) {
 	if len(log.entries) != 3 {
 		t.Fatalf("Expected 3 entries, got %d", len(log.entries))
 	}
-	if log.entries[0].Index != 1 || log.entries[0].Term != 1 {
+	if log.entries[0].Index() != 1 || log.entries[0].Term() != 1 {
 		t.Fatalf("Unexpected entry[0]: %v", log.entries[0])
 	}
-	if log.entries[1].Index != 2 || log.entries[1].Term != 1 {
+	if log.entries[1].Index() != 2 || log.entries[1].Term() != 1 {
 		t.Fatalf("Unexpected entry[1]: %v", log.entries[1])
 	}
-	if log.entries[2].Index != 3 || log.entries[2].Term != 2 {
+	if log.entries[2].Index() != 3 || log.entries[2].Term() != 2 {
 		t.Fatalf("Unexpected entry[2]: %v", log.entries[2])
 	}
 }
@@ -220,13 +220,13 @@ func TestLogTruncate(t *testing.T) {
 	if len(log.entries) != 3 {
 		t.Fatalf("Expected 3 entries, got %d", len(log.entries))
 	}
-	if log.entries[0].Index != 1 || log.entries[0].Term != 1 {
+	if log.entries[0].Index() != 1 || log.entries[0].Term() != 1 {
 		t.Fatalf("Unexpected entry[0]: %v", log.entries[0])
 	}
-	if log.entries[1].Index != 2 || log.entries[1].Term != 1 {
+	if log.entries[1].Index() != 2 || log.entries[1].Term() != 1 {
 		t.Fatalf("Unexpected entry[1]: %v", log.entries[1])
 	}
-	if log.entries[2].Index != 3 || log.entries[2].Term != 2 {
+	if log.entries[2].Index() != 3 || log.entries[2].Term() != 2 {
 		t.Fatalf("Unexpected entry[2]: %v", log.entries[2])
 	}
 }

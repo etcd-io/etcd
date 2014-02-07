@@ -43,7 +43,7 @@ func runTestHttpServers(t *testing.T, servers *[]Server, transporter *HTTPTransp
 
 		// Create raft server.
 		server := newTestServer(fmt.Sprintf("localhost:%d", port), transporter)
-		server.SetHeartbeatTimeout(testHeartbeatTimeout)
+		server.SetHeartbeatInterval(testHeartbeatInterval)
 		server.SetElectionTimeout(testElectionTimeout)
 		server.Start()
 
@@ -74,7 +74,7 @@ func runTestHttpServers(t *testing.T, servers *[]Server, transporter *HTTPTransp
 	}
 
 	// Wait for configuration to propagate.
-	time.Sleep(testHeartbeatTimeout * 2)
+	time.Sleep(testHeartbeatInterval * 2)
 
 	// Execute all the callbacks at the same time.
 	for _i, _f := range callbacks {
@@ -101,7 +101,7 @@ func BenchmarkSpeed(b *testing.B) {
 
 		// Create raft server.
 		server := newTestServer(fmt.Sprintf("localhost:%d", port), transporter)
-		server.SetHeartbeatTimeout(testHeartbeatTimeout)
+		server.SetHeartbeatInterval(testHeartbeatInterval)
 		server.SetElectionTimeout(testElectionTimeout)
 		server.Start()
 
@@ -131,7 +131,7 @@ func BenchmarkSpeed(b *testing.B) {
 	c := make(chan bool)
 
 	// Wait for configuration to propagate.
-	time.Sleep(testHeartbeatTimeout * 2)
+	time.Sleep(testHeartbeatInterval * 2)
 
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
