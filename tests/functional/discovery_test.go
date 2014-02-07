@@ -24,7 +24,6 @@ type garbageHandler struct {
 
 func (g *garbageHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, "Hello, client")
-	println("HI")
 	if r.URL.String() != "/v2/keys/_etcd/registry/1/node1" {
 		g.t.Fatalf("Unexpected web request")
 	}
