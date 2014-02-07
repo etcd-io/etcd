@@ -17,7 +17,7 @@ tmux split-window -h
 tmux select-pane -t 0
 tmux send-keys "${DIR}/../bin/etcd -peer-addr 127.0.0.1:7001 -addr 127.0.0.1:4001 -data-dir peer1 -name peer1 ${peer_args}" C-m
 
-if [ -n "${peer_args}" ]; then
+if [ -z "${peer_args}" ]; then
 	peer_args="-peers 127.0.0.1:7001"
 fi
 
