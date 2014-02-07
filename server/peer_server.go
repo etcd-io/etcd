@@ -20,17 +20,16 @@ import (
 	"github.com/coreos/etcd/store"
 )
 
-const retryInterval = 10
-
 const ThresholdMonitorTimeout = 5 * time.Second
 
 type PeerServerConfig struct {
-	Name		string
-	Scheme		string
-	URL		string
-	SnapshotCount	int
-	MaxClusterSize	int
-	RetryTimes	int
+	Name           string
+	Scheme         string
+	URL            string
+	SnapshotCount  int
+	MaxClusterSize int
+	RetryTimes     int
+	RetryInterval  float64
 }
 
 type PeerServer struct {
@@ -159,6 +158,7 @@ func (s *PeerServer) Stop() {
 		close(s.closeChan)
 		s.closeChan = nil
 	}
+	s.raftServer.Stop()
 }
 
 func (s *PeerServer) HTTPHandler() http.Handler {
@@ -209,8 +209,8 @@ func (s *PeerServer) startAsFollower(cluster []string) {
 		if ok {
 			return
 		}
-		log.Warnf("Unable to join the cluster using any of the peers %v. Retrying in %d seconds", cluster, retryInterval)
-		time.Sleep(time.Second * retryInterval)
+		log.Warnf("Unable to join the cluster using any of the peers %v. Retrying in %.1f seconds", cluster, s.Config.RetryInterval)
+		time.Sleep(time.Second * time.Duration(s.Config.RetryInterval))
 	}
 
 	log.Fatalf("Cannot join the cluster via given peers after %x retries", s.Config.RetryTimes)

@@ -64,6 +64,7 @@ type Config struct {
 	MaxClusterSize   int      `toml:"max_cluster_size" env:"ETCD_MAX_CLUSTER_SIZE"`
 	MaxResultBuffer  int      `toml:"max_result_buffer" env:"ETCD_MAX_RESULT_BUFFER"`
 	MaxRetryAttempts int      `toml:"max_retry_attempts" env:"ETCD_MAX_RETRY_ATTEMPTS"`
+	RetryInterval    float64  `toml:"retry_interval" env:"ETCD_RETRY_INTERVAL"`
 	Name             string   `toml:"name" env:"ETCD_NAME"`
 	Snapshot         bool     `toml:"snapshot" env:"ETCD_SNAPSHOT"`
 	SnapshotCount    int      `toml:"snapshot_count" env:"ETCD_SNAPSHOTCOUNT"`
@@ -93,6 +94,7 @@ func New() *Config {
 	c.MaxClusterSize = 9
 	c.MaxResultBuffer = 1024
 	c.MaxRetryAttempts = 3
+	c.RetryInterval = 10.0
 	c.Snapshot = true
 	c.SnapshotCount = 10000
 	c.Peer.Addr = "127.0.0.1:7001"
@@ -282,6 +284,7 @@ func (c *Config) LoadFlags(arguments []string) error {
 	f.StringVar(&c.DataDir, "data-dir", c.DataDir, "")
 	f.IntVar(&c.MaxResultBuffer, "max-result-buffer", c.MaxResultBuffer, "")
 	f.IntVar(&c.MaxRetryAttempts, "max-retry-attempts", c.MaxRetryAttempts, "")
+	f.Float64Var(&c.RetryInterval, "retry-interval", c.RetryInterval, "")
 	f.IntVar(&c.MaxClusterSize, "max-cluster-size", c.MaxClusterSize, "")
 	f.IntVar(&c.Peer.HeartbeatTimeout, "peer-heartbeat-timeout", c.Peer.HeartbeatTimeout, "")
 	f.IntVar(&c.Peer.ElectionTimeout, "peer-election-timeout", c.Peer.ElectionTimeout, "")
@@ -393,24 +396,16 @@ func (c *Config) Reset() error {
 
 // Sanitize cleans the input fields.
 func (c *Config) Sanitize() error {
-	tlsConfig, err := c.TLSConfig()
-	if err != nil {
-		return err
-	}
-
-	peerTlsConfig, err := c.PeerTLSConfig()
-	if err != nil {
-		return err
-	}
+	var err error
 
 	// Sanitize the URLs first.
-	if c.Addr, err = sanitizeURL(c.Addr, tlsConfig.Scheme); err != nil {
+	if c.Addr, err = sanitizeURL(c.Addr, c.EtcdTLSInfo().Scheme()); err != nil {
 		return fmt.Errorf("Advertised URL: %s", err)
 	}
 	if c.BindAddr, err = sanitizeBindAddr(c.BindAddr, c.Addr); err != nil {
 		return fmt.Errorf("Listen Host: %s", err)
 	}
-	if c.Peer.Addr, err = sanitizeURL(c.Peer.Addr, peerTlsConfig.Scheme); err != nil {
+	if c.Peer.Addr, err = sanitizeURL(c.Peer.Addr, c.PeerTLSInfo().Scheme()); err != nil {
 		return fmt.Errorf("Peer Advertised URL: %s", err)
 	}
 	if c.Peer.BindAddr, err = sanitizeBindAddr(c.Peer.BindAddr, c.Peer.Addr); err != nil {
@@ -430,32 +425,22 @@ func (c *Config) Sanitize() error {
 	return nil
 }
 
-// TLSInfo retrieves a TLSInfo object for the client server.
-func (c *Config) TLSInfo() server.TLSInfo {
+// EtcdTLSInfo retrieves a TLSInfo object for the etcd server
+func (c *Config) EtcdTLSInfo() server.TLSInfo {
 	return server.TLSInfo{
-		CAFile:   c.CAFile,
-		CertFile: c.CertFile,
-		KeyFile:  c.KeyFile,
+		CAFile:		c.CAFile,
+		CertFile:	c.CertFile,
+		KeyFile:	c.KeyFile,
 	}
 }
 
-// ClientTLSConfig generates the TLS configuration for the client server.
-func (c *Config) TLSConfig() (server.TLSConfig, error) {
-	return c.TLSInfo().Config()
-}
-
-// PeerTLSInfo retrieves a TLSInfo object for the peer server.
+// PeerRaftInfo retrieves a TLSInfo object for the peer server.
 func (c *Config) PeerTLSInfo() server.TLSInfo {
 	return server.TLSInfo{
-		CAFile:   c.Peer.CAFile,
-		CertFile: c.Peer.CertFile,
-		KeyFile:  c.Peer.KeyFile,
+		CAFile:		c.Peer.CAFile,
+		CertFile:	c.Peer.CertFile,
+		KeyFile:	c.Peer.KeyFile,
 	}
-}
-
-// PeerTLSConfig generates the TLS configuration for the peer server.
-func (c *Config) PeerTLSConfig() (server.TLSConfig, error) {
-	return c.PeerTLSInfo().Config()
 }
 
 // MetricsBucketName generates the name that should be used for a

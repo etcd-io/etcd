@@ -24,7 +24,6 @@ type garbageHandler struct {
 
 func (g *garbageHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, "Hello, client")
-	println("HI")
 	if r.URL.String() != "/v2/keys/_etcd/registry/1/node1" {
 		g.t.Fatalf("Unexpected web request")
 	}
@@ -144,7 +143,7 @@ func TestDiscoverySecondPeerFirstNoResponse(t *testing.T) {
 		resp, err = etcdtest.PutForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/_etcd/registry/2/ETCDTEST"), v)
 		assert.Equal(t, resp.StatusCode, http.StatusCreated)
 
-		proc, err := startServer([]string{"-discovery", s.URL() + "/v2/keys/_etcd/registry/2"})
+		proc, err := startServer([]string{"-retry-interval", "0.2", "-discovery", s.URL() + "/v2/keys/_etcd/registry/2"})
 		if err != nil {
 			t.Fatal(err.Error())
 		}
@@ -152,7 +151,7 @@ func TestDiscoverySecondPeerFirstNoResponse(t *testing.T) {
 
 		// TODO(bp): etcd will take 30 seconds to shutdown, figure this
 		// out instead
-		time.Sleep(35 * time.Second)
+		time.Sleep(1 * time.Second)
 
 		client := http.Client{}
 		_, err = client.Get("/")
@@ -177,16 +176,11 @@ func TestDiscoverySecondPeerUp(t *testing.T) {
 		}
 
 		wc := goetcd.NewClient([]string{s.URL()})
-		_, err = wc.Set("test", "0", 0)
+		testResp, err := wc.Set("test", "0", 0)
 
 		if err != nil {
 			t.Fatalf("Couldn't set a test key on the leader %v", err)
 		}
-
-		receiver := make(chan *goetcd.Response)
-		stop := make(chan bool)
-
-		go wc.Watch("_etcd/registry/3/node1", 0, false, receiver, stop)
 
 		v = url.Values{}
 		v.Set("value", u)
@@ -199,10 +193,10 @@ func TestDiscoverySecondPeerUp(t *testing.T) {
 		}
 		defer stopServer(proc)
 
-		// Test to ensure the machine registered iteslf
-		watchResp := <-receiver
-		if watchResp.Node.Value != "http://127.0.0.1:7001" {
-			t.Fatalf("Second peer didn't register! %s", watchResp.Node.Value)
+		watch := fmt.Sprintf("%s%s%d", s.URL(), "/v2/keys/_etcd/registry/3/node1?wait=true&waitIndex=", testResp.EtcdIndex)
+		resp, err = http.Get(watch)
+		if err != nil {
+			t.Fatal(err.Error())
 		}
 
 		// TODO(bp): need to have a better way of knowing a machine is up
