@@ -116,10 +116,18 @@ curl -L http://127.0.0.1:4001/v2/keys/message -XPUT -d value="Hello etcd"
         "key": "/message",
         "modifiedIndex": 3,
         "value": "Hello etcd"
+    },
+    "prevNode": {
+    	"createdIndex":2
+    	"key": "/message",
+    	"value": "Hello world",
+    	"modifiedIndex": 2,
+    
     }
 }
 ```
 
+Here we introduce a new field: `prevNode`. The `prevNode` field represents what the state of a given node was before resolving the request at hand. The `prevNode` field follows the same format as the `node`, and is omitted in the event that there was no previous state for a given node.
 
 ### Deleting a key
 
@@ -136,6 +144,12 @@ curl -L http://127.0.0.1:4001/v2/keys/message -XDELETE
         "createdIndex": 3,
         "key": "/message",
         "modifiedIndex": 4
+    },
+    "prevNode": {
+    	"key": "/message",
+    	"value": "Hello etcd",
+    	"modifiedIndex": 3,
+    	"createdIndex": 3
     }
 }
 ```
@@ -218,6 +232,12 @@ The first terminal should get the notification and return with the same response
         "createdIndex": 7,
         "key": "/foo",
         "modifiedIndex": 7,
+        "value": "bar"
+    },
+    "prevNode": {
+        "createdIndex": 6,
+        "key": "/foo",
+        "modifiedIndex": 6,
         "value": "bar"
     }
 }
@@ -352,12 +372,19 @@ curl 'http://127.0.0.1:4001/v2/keys/dir/asdf?consistent=true&wait=true'
 
 ```json
 {
-    "action": "expire",
-    "node": {
-        "createdIndex": 8,
-        "key": "/dir",
-        "modifiedIndex": 15
-    }
+	"action": "expire",
+	"node": {
+		"createdIndex": 8,
+		"key": "/dir",
+		"modifiedIndex": 15
+	},
+	"prevNode": {
+		"createdIndex":8,
+		"key": "/dir",
+		"dir":true,
+		"modifiedIndex": 17,
+		"expiration":"2013-12-11T10:39:35.689275857-08:00"
+	},
 }
 ```
 
@@ -436,6 +463,12 @@ The response should be:
         "key": "/foo",
         "modifiedIndex": 9,
         "value": "two"
+    },
+    "prevNode": {
+    	"createdIndex":8,
+    	"key": "/foo",
+    	"modifiedIndex": 8,
+    	"value": "one"
     }
 }
 ```
@@ -559,7 +592,7 @@ Now let's try to delete the directory `/foo_dir`.
 You can remove an empty directory using the `DELETE` verb and the `dir=true` parameter.
 
 ```sh
-curl -L 'http://127.0.0.1:4001/v2/keys/dir?dir=true' -XDELETE
+curl -L 'http://127.0.0.1:4001/v2/keys/foo_dir?dir=true' -XDELETE
 ```
 ```json
 {
@@ -567,8 +600,14 @@ curl -L 'http://127.0.0.1:4001/v2/keys/dir?dir=true' -XDELETE
     "node": {
         "createdIndex": 30,
         "dir": true,
-        "key": "/dir",
+        "key": "/foo_dir",
         "modifiedIndex": 31
+    },
+    "prevNode": {
+    	"createdIndex": 30,
+    	"key": "/foo_dir",
+    	"dir": true,
+    	"modifiedIndex": 30
     }
 }
 ```
@@ -587,6 +626,12 @@ curl -L http://127.0.0.1:4001/v2/keys/dir?recursive=true -XDELETE
         "dir": true,
         "key": "/dir",
         "modifiedIndex": 11
+    },
+    "prevNode": {
+    	"createdIndex": 10,
+    	"dir": true,
+    	"key": "/dir",
+    	"modifiedIndex": 10
     }
 }
 ```
