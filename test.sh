@@ -2,6 +2,9 @@
 
 . ./build
 
+go test -i ./http
+go test -v ./http
+
 go test -i ./store
 go test -v ./store
 
