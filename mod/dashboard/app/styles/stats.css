@@ -1,0 +1,144 @@
+.etcd-container.etcd-stats {
+  width: 100%;
+  height: 500px;
+}
+
+.home-container .etcd-container.etcd-stats {
+  height: 400px;
+}
+
+.etcd-container.etcd-stats h2 {
+  margin-top: -7px;
+}
+
+.etcd-container.etcd-stats table .etcd-latency {
+  width: 50%;
+}
+
+.etcd-container.etcd-stats .etcd-list {
+  position: absolute;
+  left: 100%;
+  min-height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  top: 0px;
+  box-sizing: border-box;
+  -moz-box-sizing: border-box;
+  background-color: #fff;
+  width: 100%;
+  border-left: 1px solid #ddd;
+}
+
+.etcd-container.etcd-stats .etcd-list .etcd-square {
+  height: 10px;
+  width: 10px;
+  display: inline-block;
+  margin-right: 5px;
+}
+
+.etcd-container.etcd-stats .etcd-list .etcd-square-red {
+  background-color: #c40022;
+}
+
+.etcd-container.etcd-stats .etcd-list .etcd-square-orange {
+  background-color: #FFC000;
+}
+
+.etcd-container.etcd-stats .etcd-list .etcd-square-green {
+  background-color: #00DB24;
+}
+
+.etcd-container.etcd-stats .etcd-list .etcd-peer-type {
+  color: #999;
+  padding-left: 3px;
+  font-size: 13px;
+  line-height: 100%;
+}
+
+.etcd-container.etcd-stats .etcd-list .etcd-latency-value {
+  display: inline-block;
+}
+
+.etcd-container.etcd-stats .etcd-graph {
+  box-sizing: border-box;
+  -moz-box-sizing: border-box;
+  position: absolute;
+  top: 0px;
+  bottom: 0px;
+  left: 0px;
+  right: 0px;
+  padding: 20px;
+}
+
+.etcd-container.etcd-stats .etcd-graph .etcd-graph-container {
+  position: absolute;
+  top: 60px;
+  bottom: 20px;
+  left: 20px;
+  right: 20px;
+  box-sizing: border-box;
+  -moz-box-sizing: border-box;
+}
+
+
+/* Single Column Positioning */
+@media (max-width: 700px) {
+  .etcd-container.etcd-stats .etcd-list {
+    width: 100%;
+    left: 100%;
+  }
+
+  .etcd-container.etcd-stats .etcd-graph {
+    left: 0%;
+  }
+
+  .etcd-container.etcd-stats.etcd-table-reveal .etcd-graph {
+    left: -100%;
+    transition-property: all;
+      transition-duration: 250ms;
+      transition-timing-function: ease-in-out;
+  }
+  .etcd-container.etcd-stats.etcd-table-hide .etcd-graph {
+    left: 0%;
+    transition-property: all;
+      transition-duration: 250ms;
+      transition-timing-function: ease-in-out;
+
+  }
+  .etcd-container.etcd-stats.etcd-table-hide .etcd-format-selector .etcd-selector-graph svg * {
+    fill: #428bca;
+  }
+
+  .etcd-container.etcd-stats.etcd-table-hide .etcd-list {
+    left: 100%;
+    transition-property: all;
+      transition-duration: 250ms;
+      transition-timing-function: ease-in-out;
+  }
+  .etcd-container.etcd-stats.etcd-table-reveal .etcd-list {
+    left: 0%;
+    transition-property: all;
+      transition-duration: 250ms;
+      transition-timing-function: ease-in-out;
+  }
+  .etcd-container.etcd-stats.etcd-table-reveal .etcd-format-selector .etcd-selector-table svg * {
+    fill: #428bca;
+  }
+}
+
+/* Double Column Positioning */
+@media (min-width: 700px) {
+  .etcd-container.etcd-stats .etcd-list {
+    width: 50%;
+    left: 50%;
+  }
+
+  .etcd-container.etcd-stats .etcd-graph {
+    left: 0%;
+    width: 50%;
+  }
+
+  .etcd-container.etcd-stats .etcd-format-selector {
+    display: none;
+  }
+}

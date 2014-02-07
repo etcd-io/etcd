@@ -1,20 +1,8 @@
 'use strict';
 
-angular.module('etcdStats', ['ngRoute', 'etcd'])
 
-.config(['$routeProvider', function ($routeProvider) {
-  $routeProvider
-    .when('/', {
-      templateUrl: 'views/stats.html',
-      controller: 'StatsCtrl'
-    })
-    .otherwise({
-      templateUrl: 'views/stats.html',
-      controller: 'StatsCtrl'
-    });
-}])
-
-.controller('StatsCtrl', ['$scope', 'EtcdV2', 'statsVega', function ($scope, EtcdV2, statsVega) {
+angular.module('etcdControlPanel')
+.controller('StatsCtrl', function ($scope, $rootScope, $interval, EtcdV2, statsVega, vg) {
   $scope.graphContainer = '#latency';
   $scope.graphVisibility = 'etcd-graph-show';
   $scope.tableVisibility = 'etcd-table-hide';
@@ -42,10 +30,14 @@ angular.module('etcdStats', ['ngRoute', 'etcd'])
       });
       //sort array so peers don't jump when output
       $scope.peers.sort(function(a, b){
-          if(a.name < b.name) return -1;
-          if(a.name > b.name) return 1;
+          if(a.name < b.name) {
+            return -1;
+          }
+          if(a.name > b.name) {
+            return 1;
+          }
           return 0;
-      });
+        });
       drawGraph();
     });
   }
@@ -86,10 +78,10 @@ angular.module('etcdStats', ['ngRoute', 'etcd'])
   $scope.getWidth = function() {
     return $(window).width();
   };
-  $scope.$watch($scope.getHeight, function() {
-    $('.etcd-body').css('height', $scope.getHeight()-5);
-    readStats();
-  });
+  //$scope.$watch($scope.getHeight, function() {
+    ////$('.etcd-container.etcd-stats .etcd-body').css('height', $scope.getHeight()-5);
+    //readStats();
+  //});
   $scope.$watch($scope.getWidth, function() {
     readStats();
   });
@@ -97,12 +89,31 @@ angular.module('etcdStats', ['ngRoute', 'etcd'])
     $scope.$apply();
   };
 
-  // Update the graphs live
-  setInterval(function() {
-    readStats();
-    $scope.$apply();
-  }, 500);
-}])
+  $scope.pollPromise = null;
+
+  $scope.startPolling = function() {
+    // Update the graphs live
+    if ($scope.pollPromise) {
+      return;
+    }
+    $scope.pollPromise = $interval(function() {
+      readStats();
+    }, 500);
+  };
+
+  $scope.stopPolling = function() {
+    $interval.cancel($scope.pollPromise);
+    $scope.pollPromise = null;
+  };
+
+  // Stop polling when navigating away from a view with this controller.
+  $rootScope.$on('$routeChangeStart', function () {
+    $scope.stopPolling();
+  });
+
+  $scope.startPolling();
+
+})
 
 
 /* statsVega returns the vega configuration for the stats dashboard */

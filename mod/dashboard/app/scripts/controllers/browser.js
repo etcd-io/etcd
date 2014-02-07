@@ -1,33 +1,39 @@
 'use strict';
 
-angular.module('etcdBrowser', ['ngRoute', 'etcd', 'timeRelative'])
-
-.constant('keyPrefix', '/v2/keys/')
-
-.config(['$routeProvider', 'keyPrefix', function ($routeProvider, keyPrefix) {
-  //read localstorage
-  var previousPath = localStorage.getItem('etcd_path');
-
-  $routeProvider
-    .when('/', {
-      redirectTo: keyPrefix
-    })
-    .otherwise({
-      templateUrl: 'views/browser.html',
-      controller: 'MainCtrl'
-    });
-}])
-
-.controller('MainCtrl', ['$scope', '$location', 'EtcdV2', 'keyPrefix', function ($scope, $location, EtcdV2, keyPrefix) {
+angular.module('etcdControlPanel')
+.controller('BrowserCtrl', function ($scope, $window, EtcdV2, keyPrefix, $, _, moment) {
   $scope.save = 'etcd-save-hide';
   $scope.preview = 'etcd-preview-hide';
   $scope.enableBack = true;
   $scope.writingNew = false;
+  $scope.key = null;
+  $scope.list = [];
 
   // etcdPath is the path to the key that is currenly being looked at.
-  $scope.etcdPath = $location.path();
+  $scope.etcdPath = keyPrefix;
+  $scope.inputPath = keyPrefix;
 
-  $scope.$watch('etcdPath', function() {
+  $scope.resetInputPath = function() {
+    $scope.inputPath = $scope.etcdPath;
+  };
+
+  $scope.setActiveKey = function(key) {
+    $scope.etcdPath = keyPrefix + _.str.trim(key, '/');
+    $scope.resetInputPath();
+  };
+
+  $scope.stripPrefix = function(path) {
+    return _.str.strRight(path, keyPrefix);
+  };
+
+  $scope.onEnter = function() {
+    var path = $scope.stripPrefix($scope.inputPath);
+    if (path !== '') {
+      $scope.setActiveKey(path);
+    }
+  };
+
+  $scope.updateCurrentKey = function() {
     function etcdPathKey() {
       return pathKey($scope.etcdPath);
     }
@@ -39,17 +45,17 @@ angular.module('etcdBrowser', ['ngRoute', 'etcd', 'timeRelative'])
       }
       return parts[1];
     }
-
     // Notify everyone of the update
     localStorage.setItem('etcdPath', $scope.etcdPath);
     $scope.enableBack = true;
     //disable back button if at root (/v2/keys/)
-    if($scope.etcdPath === keyPrefix) {
+    if ($scope.etcdPath === keyPrefix) {
       $scope.enableBack = false;
     }
-
     $scope.key = EtcdV2.getKey(etcdPathKey($scope.etcdPath));
-  });
+  };
+
+  $scope.$watch('etcdPath', $scope.updateCurrentKey);
 
   $scope.$watch('key', function() {
     if ($scope.writingNew === true) {
@@ -63,7 +69,7 @@ angular.module('etcdBrowser', ['ngRoute', 'etcd', 'timeRelative'])
         $scope.list = data.node.nodes;
         $scope.preview = 'etcd-preview-hide';
       } else {
-        $scope.singleValue = data.value;
+        $scope.singleValue = data.node.value;
         $scope.preview = 'etcd-preview-reveal';
         $scope.key.getParent().get().success(function(data) {
           $scope.list = data.node.nodes;
@@ -79,13 +85,9 @@ angular.module('etcdBrowser', ['ngRoute', 'etcd', 'timeRelative'])
   //back button click
   $scope.back = function() {
     $scope.etcdPath = $scope.key.getParent().path();
-    $scope.syncLocation();
+    $scope.resetInputPath();
     $scope.preview = 'etcd-preview-hide';
     $scope.writingNew = false;
-  };
-
-  $scope.syncLocation = function() {
-    $location.path($scope.etcdPath);
   };
 
   $scope.showSave = function() {
@@ -93,6 +95,8 @@ angular.module('etcdBrowser', ['ngRoute', 'etcd', 'timeRelative'])
   };
 
   $scope.saveData = function() {
+    $scope.setActiveKey($scope.stripPrefix($scope.inputPath));
+    $scope.updateCurrentKey();
     // TODO: fixup etcd to allow for empty values
     $scope.key.set($scope.singleValue || ' ').then(function(response) {
       $scope.save = 'etcd-save-hide';
@@ -100,11 +104,13 @@ angular.module('etcdBrowser', ['ngRoute', 'etcd', 'timeRelative'])
       $scope.back();
       $scope.writingNew = false;
     }, function (response) {
-      $scope.showSaveError(data.message);
+      $scope.showSaveError(response.message);
     });
   };
 
-  $scope.deleteKey = function() {
+  $scope.deleteKey = function(key) {
+    $scope.setActiveKey(key);
+    $scope.updateCurrentKey();
     $scope.key.deleteKey().then(function(response) {
       //TODO: remove loader
       $scope.save = 'etcd-save-hide';
@@ -136,56 +142,15 @@ angular.module('etcdBrowser', ['ngRoute', 'etcd', 'timeRelative'])
   };
 
   $scope.getHeight = function() {
-    return $(window).height();
+    return $($window).height();
   };
-  $scope.$watch($scope.getHeight, function() {
-    $('.etcd-body').css('height', $scope.getHeight()-45);
-  });
-  window.onresize = function(){
+
+  //$scope.$watch($scope.getHeight, function() {
+    ////$('.etcd-container.etcd-browser etcd-body').css('height', $scope.getHeight()-45);
+  //});
+
+  $window.onresize = function(){
     $scope.$apply();
   };
 
-}])
-
-.directive('ngEnter', function() {
-  return function(scope, element, attrs) {
-    element.bind('keydown keypress', function(event) {
-      if(event.which === 13) {
-        scope.$apply(function(){
-          scope.$eval(attrs.ngEnter);
-        });
-
-        event.preventDefault();
-      }
-    });
-  };
-})
-
-.directive('highlight', function() {
-  return {
-    restrict: 'A',
-    link: function(scope, element, attrs) {
-      if('#' + scope.etcdPath === attrs.href) {
-        element.parent().parent().addClass('etcd-selected');
-      }
-    }
-  };
-});
-
-moment.lang('en', {
-  relativeTime : {
-    future: 'Expires in %s',
-    past:   'Expired %s ago',
-    s:  'seconds',
-    m:  'a minute',
-    mm: '%d minutes',
-    h:  'an hour',
-    hh: '%d hours',
-    d:  'a day',
-    dd: '%d days',
-    M:  'a month',
-    MM: '%d months',
-    y:  'a year',
-    yy: '%d years'
-  }
 });

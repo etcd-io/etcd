@@ -1,22 +1,56 @@
+html {
+  height: 100%;
+}
+
 body {
-    background: #fafafa;
-    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-    color: #333;
+  background: #fafafa;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  color: #333;
+  padding: 30px;
+  margin: 0px;
+  height: 100%;
+}
+h1 {
+    font-family: "Source Sans Pro", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-weight: 400;
+    margin: 0px 0px 20px 0px;
+    padding: 0px;
 }
 
-.hero-unit {
-    margin: 50px auto 0 auto;
-    width: 300px;
-    font-size: 18px;
-    font-weight: 200;
-    line-height: 30px;
-    background-color: #eee;
-    border-radius: 6px;
-    padding: 60px;
+a {
+    color: #1e6ec1;
+    text-decoration: none;
 }
 
-.hero-unit h1 {
-    font-size: 60px;
-    line-height: 1;
-    letter-spacing: -1px;
+a:hover {
+    text-decoration: underline;
+}
+
+#footer {
+    width: 100%;
+    font-family: "Source Sans Pro", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    margin-top: 20px;
+}
+
+#coreos-logo {
+    margin: 10px auto 0 auto;
+    height: 30px;
+    width: 80px;
+}
+
+#coreos-logo svg {
+    fill: #999;
+    MAX-WIDTH: 100PX;
+    DISPLAY: INLINE-BLOCK;
+    VERTICAL-ALIGN: MIDDLE;
+}
+
+#POWERED-BY {
+    FONT-SIZE: 12PX;
+    COLOR: #333;
+    WIDTH: 100%;
+    DISPLAY: INLINE-BLOCK;
+    VERTICAL-ALIGN: MIDDLE;
+    LINE-HEIGHT: 190%;
+    TEXT-ALIGN: CENTER;
 }

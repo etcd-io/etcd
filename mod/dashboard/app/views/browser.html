@@ -1,99 +1,73 @@
-<div class="etcd-container etcd-browser {{columns}} {{preview}} {{save}}">
-    <!--
-    <div class="etcd-popover etcd-popover-error">
-        <div class="etcd-popover-notch"></div>
-        <div class="etcd-popover-content">
-            Overwrite this value?
-        </div>
-        <div class="etcd-popover-confirm">
-            <button class="etcd-button etcd-button-small etcd-button-primary etcd-confirm">Overwrite</button>
-        </div>
-    </div>
-    -->
-    <div class="etcd-popover etcd-popover-error" id="etcd-save-error">
-        <div class="etcd-popover-notch"></div>
-        <div class="etcd-popover-content">
-            Error:
-        </div>
-    </div>
-    <div class="etcd-popover etcd-popover-error" id="etcd-browse-error">
-        <div class="etcd-popover-notch"></div>
-        <div class="etcd-popover-content">
-            Error: 
-        </div>
-    </div>
-    <div class="etcd-header solid">
-        <a class="etcd-back" ng-click="back()" ng-class="{false:'etcd-disabled'}[enableBack]">
-            <svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
-            preserveAspectRatio="xMinYMin" viewBox="0 0 73.356 61" enable-background="new 0 0 73.356 61" xml:space="preserve">
-            <path d="M5.27,33.226l22.428,22.428c1.562,1.562,4.095,1.562,5.657,0c1.562-1.562,1.562-4.095,0-5.657L17.77,34.413h48.514
-            c2.209,0,4-1.791,4-4s-1.791-4-4-4H17.749l15.604-15.582c1.563-1.561,1.565-4.094,0.004-5.657C32.576,4.391,31.552,4,30.527,4
-            c-1.023,0-2.046,0.39-2.827,1.169L5.272,27.567c-0.751,0.75-1.173,1.768-1.173,2.829C4.098,31.458,4.52,32.476,5.27,33.226z"/>
-            </svg>
-        </a>
-        <a class="etcd-add">
+<div ng-controller="BrowserCtrl" class="etcd-container etcd-browser {{columns}} {{preview}} {{save}}">
 
-            <svg version="1.1" ng-click="add()" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
-			preserveAspectRatio="xMinYMin" viewBox="0 0 72.556 61" enable-background="new 0 0 72.556 61" xml:space="preserve">
-			<path d="M34.521,8v11.088v23v10.737c0,2.209,1.791,4,4,4c2.209,0,4-1.791,4-4V42.067V19.109V8c0-2.209-1.791-4-4-4
-			C36.312,4,34.521,5.791,34.521,8z"/>
-			<path d="M16.109,34.412h11.088h23h10.737c2.209,0,4-1.791,4-4c0-2.209-1.791-4-4-4H50.175H27.217H16.109c-2.209,0-4,1.791-4,4
-			C12.109,32.621,13.9,34.412,16.109,34.412z"/>
-			</svg>
-        </a>
-        <div class="etcd-browser-path">
-            <input type="text" ng-model="etcdPath" ng-enter="syncLocation()" tabindex="888" />
-        </div>
-        <button class="etcd-button etcd-button-small etcd-button-primary etcd-save" ng-click="saveData()">Save</button>
+  <div class="etcd-popover etcd-popover-error" id="etcd-save-error">
+    <div class="etcd-popover-notch"></div>
+    <div class="etcd-popover-content">Error:</div>
+  </div>
+
+  <div class="etcd-popover etcd-popover-error" id="etcd-browse-error">
+    <div class="etcd-popover-notch"></div>
+    <div class="etcd-popover-content">Error:</div>
+  </div>
+
+  <div class="etcd-header solid">
+    <a class="etcd-back" ng-click="back()" ng-class="{false:'etcd-disabled'}[enableBack]">
+      <img src="images/back.svg"/>
+    </a>
+    <a class="etcd-add" ng-click="add()"><img src="images/add.svg"/></a>
+    <div class="etcd-browser-path">
+      <input type="text" ng-model="inputPath" ng-enter="onEnter()" tabindex="888" />
     </div>
-    <div class="etcd-body">
-        <div class="etcd-list">
-            <table cellpadding="0" cellspacing="0">
-			<thead>
-			    <td class="etcd-name-header">Name</td>
-			    <td class="etcd-ttl-header">TTL</td>
-			    <td class="etcd-actions-header">&nbsp</td>
-			</thead>
-			<tbody>
-			    <tr ng-repeat="key in list | orderBy:'key'">
-			        <td><a ng-class="{true:'directory'}[key.dir]" href="#/v2/keys{{key.key}}" highlight>{{key.key}}</a></td>
-			        <td ng-switch on="!!key.expiration" class="etcd-ttl">
-					    <div ng-switch-when="true"><time relative datetime="{{key.expiration.substring(0, key.expiration.lastIndexOf('-'))}}"></time></div>
-					    <div ng-switch-default class="etcd-ttl-none">&mdash;</div>
-					</td>
-			        <td>
-			            <div class="etcd-actions">
-			                <div class="etcd-delete" ng-switch on="!!key.dir">
-			                    <svg ng-switch-when="false" ng-click="deleteKey()" version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
-			                    x="0px" y="0px" preserveAspectRatio="xMinYMin" viewBox="0 0 76.143 61" enable-background="new 0 0 76.143 61" xml:space="preserve">
-			                    <path d="M49.41,13.505l-6.035,6.035L27.112,35.803l-6.035,6.035c-1.562,1.562-1.562,4.095,0,5.657c1.562,1.562,4.095,1.562,5.657,0
-			                    l6.05-6.05l16.234-16.234l6.05-6.05c1.562-1.562,1.562-4.095,0-5.657C53.505,11.943,50.972,11.943,49.41,13.505z"/>
-			                    <path d="M21.077,19.162l6.035,6.035L43.375,41.46l6.035,6.035c1.562,1.562,4.095,1.562,5.657,0c1.562-1.562,1.562-4.095,0-5.657
-			                    l-6.05-6.05L32.783,19.555l-6.05-6.05c-1.562-1.562-4.095-1.562-5.657,0C19.515,15.067,19.515,17.6,21.077,19.162z"/>
-			                    </svg>
-			                    <div ng-switch-when="true"></div>
-			                </div>
-			            </div>
-			        </td>
-			    </tr>
-			</tbody>
-			</table>
-        </div>
-        <div class="etcd-preview">
-            <textarea placeholder="Enter a key name above and the value here" ng-model="singleValue" tabindex="888" ng-change="showSave()">
-            </textarea>
-            <div class="etcd-empty">
-                <div class="etcd-empty-message">{{preview_message}}</div>
+    <button class="etcd-button etcd-button-small etcd-button-primary etcd-save" ng-click="saveData()">Save</button>
+  </div>
+
+
+  <div class="etcd-body">
+
+    <div class="etcd-list">
+      <table cellpadding="0" cellspacing="0">
+      <thead>
+        <td class="etcd-name-header">Name</td>
+        <td class="etcd-ttl-header">TTL</td>
+        <td class="etcd-actions-header">&nbsp;</td>
+      </thead>
+      <tbody>
+        <tr ng-repeat="key in list | orderBy:'key'">
+          <td>
+            <highlight ng-class="{true:'directory'}[key.dir]" ng-click="setActiveKey(key.key)" highlight-base="etcdPath" highlight-current="key.key">{{key.key}}</highlight>
+          </td>
+          <td ng-switch on="!!key.expiration" class="etcd-ttl">
+            <div ng-switch-when="true"><time relative datetime="{{key.expiration.substring(0, key.expiration.lastIndexOf('-'))}}"></time></div>
+            <div ng-switch-default class="etcd-ttl-none">&mdash;</div>
+          </td>
+          <td>
+            <div class="etcd-actions">
+              <div ng-switch on="!!key.dir">
+                <img class="etcd-delete" src="images/delete.svg" ng-switch-when="false" ng-click="deleteKey(key.key)" />
+                <div ng-switch-when="true"></div>
+              </div>
             </div>
-            <div class="etcd-dialog">
-                <div class="etcd-dialog-message">
-                    Save and replicate this change?
-                </div>
-                <div class="etcd-dialog-buttons">
-                    <button class="etcd-button etcd-button-primary">Save Changes</button>
-                    <a href="javascript:void(0);">Cancel</a>
-                </div>
-            </div>
-        </div>
+          </td>
+        </tr>
+      </tbody>
+      </table>
     </div>
+
+    <div class="etcd-preview">
+      <textarea placeholder="Enter a key name above and the value here" ng-model="singleValue" tabindex="888" ng-change="showSave()"></textarea>
+      <div class="etcd-empty">
+        <div class="etcd-empty-message">{{preview_message}}</div>
+      </div>
+      <div class="etcd-dialog">
+        <div class="etcd-dialog-message">Save and replicate this change?</div>
+          <div class="etcd-dialog-buttons">
+            <button class="etcd-button etcd-button-primary">Save Changes</button>
+            <a href="javascript:void(0);">Cancel</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
 </div>

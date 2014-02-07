@@ -12,11 +12,11 @@
     "angular-cookies": "~1.2.0-rc.2",
     "angular-sanitize": "~1.2.0-rc.2",
     "d3": "~3.3.6",
-    "moment": "~2.3.0"
+    "moment": "~2.3.0",
+    "underscore.string": "~2.3.3"
   },
   "devDependencies": {
     "angular-mocks": "~1.2.0-rc.2",
-    "angular-scenario": "~1.2.0-rc.2",
     "underscore": "~1.5.2"
   }
 }
