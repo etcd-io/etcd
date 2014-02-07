@@ -16,7 +16,7 @@ import (
 const RegistryPeerKey = "/_etcd/machines"
 
 // The location of the proxy URL data.
-const RegistryProxyKey = "/_etcd/machines"
+const RegistryProxyKey = "/_etcd/proxies"
 
 // The Registry stores URL information for nodes.
 type Registry struct {
@@ -104,6 +104,25 @@ func (r *Registry) count(key string) int {
 	}
 	return len(e.Node.Nodes)
 }
+
+// PeerExists checks if a peer with the given name exists.
+func (r *Registry) PeerExists(name string) bool {
+	return r.exists(RegistryPeerKey, name)
+}
+
+// ProxyExists checks if a proxy with the given name exists.
+func (r *Registry) ProxyExists(name string) bool {
+	return r.exists(RegistryProxyKey, name)
+}
+
+func (r *Registry) exists(key, name string) bool {
+	e, err := r.store.Get(path.Join(key, name), false, false)
+	if err != nil {
+		return false
+	}
+	return (e.Node != nil)
+}
+
 
 // Retrieves the client URL for a given node by name.
 func (r *Registry) ClientURL(name string) (string, bool) {

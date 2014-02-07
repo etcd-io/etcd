@@ -26,6 +26,11 @@ func (c *RemoveCommand) CommandName() string {
 func (c *RemoveCommand) Apply(context raft.Context) (interface{}, error) {
 	ps, _ := context.Server().Context().(*PeerServer)
 
+	// If this is a proxy then remove it and exit.
+	if ps.registry.ProxyExists(c.Name) {
+		return []byte{0}, ps.registry.UnregisterProxy(c.Name)
+	}
+
 	// Remove node from the shared registry.
 	err := ps.registry.UnregisterPeer(c.Name)
 
