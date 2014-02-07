@@ -1,4 +1,15 @@
-v0.2
+v0.3.0
+* Add Compare-and-Delete support.
+* Added prevNode to response objects.
+* Added Discovery API.
+* Add tracing and debug endpoints (Documentation/debugging.md).
+* Improved logging of cluster events.
+* go get github.com/coreos/etcd works.
+* info file is no longer used.
+* Snapshots are on by default.
+* Statistics APIs documented.
+
+v0.2.0
 * Support directory creation and removal.
 * Add Compare-and-Swap (CAS) support.
 * Support recursive GETs.
