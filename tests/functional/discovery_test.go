@@ -177,16 +177,11 @@ func TestDiscoverySecondPeerUp(t *testing.T) {
 		}
 
 		wc := goetcd.NewClient([]string{s.URL()})
-		_, err = wc.Set("test", "0", 0)
+		testResp, err := wc.Set("test", "0", 0)
 
 		if err != nil {
 			t.Fatalf("Couldn't set a test key on the leader %v", err)
 		}
-
-		receiver := make(chan *goetcd.Response)
-		stop := make(chan bool)
-
-		go wc.Watch("_etcd/registry/3/node1", 0, false, receiver, stop)
 
 		v = url.Values{}
 		v.Set("value", u)
@@ -199,10 +194,10 @@ func TestDiscoverySecondPeerUp(t *testing.T) {
 		}
 		defer stopServer(proc)
 
-		// Test to ensure the machine registered iteslf
-		watchResp := <-receiver
-		if watchResp.Node.Value != "http://127.0.0.1:7001" {
-			t.Fatalf("Second peer didn't register! %s", watchResp.Node.Value)
+		watch := fmt.Sprintf("%s%s%d", s.URL(), "/v2/keys/_etcd/registry/3/node1?wait=true&waitIndex=", testResp.EtcdIndex)
+		resp, err = http.Get(watch)
+		if err != nil {
+			t.Fatal(err.Error())
 		}
 
 		// TODO(bp): need to have a better way of knowing a machine is up
