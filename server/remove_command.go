@@ -27,7 +27,7 @@ func (c *RemoveCommand) Apply(context raft.Context) (interface{}, error) {
 	ps, _ := context.Server().Context().(*PeerServer)
 
 	// Remove node from the shared registry.
-	err := ps.registry.Unregister(c.Name)
+	err := ps.registry.UnregisterPeer(c.Name)
 
 	// Delete from stats
 	delete(ps.followersStats.Followers, c.Name)
