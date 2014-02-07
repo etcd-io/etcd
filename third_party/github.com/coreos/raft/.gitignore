@@ -22,3 +22,4 @@ _testmain.go
 *.exe
 
 coverage.html
+coverprofile.out

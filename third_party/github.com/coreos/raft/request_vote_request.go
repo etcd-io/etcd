@@ -1,10 +1,11 @@
 package raft
 
 import (
-	"github.com/coreos/etcd/third_party/code.google.com/p/goprotobuf/proto"
-	"github.com/coreos/etcd/third_party/github.com/coreos/raft/protobuf"
 	"io"
 	"io/ioutil"
+
+	"github.com/coreos/etcd/third_party/code.google.com/p/gogoprotobuf/proto"
+	"github.com/coreos/etcd/third_party/github.com/coreos/raft/protobuf"
 )
 
 // The request sent to a server to vote for a candidate to become a leader.
@@ -29,7 +30,7 @@ func newRequestVoteRequest(term uint64, candidateName string, lastLogIndex uint6
 // Encodes the RequestVoteRequest to a buffer. Returns the number of bytes
 // written and any error that may have occurred.
 func (req *RequestVoteRequest) Encode(w io.Writer) (int, error) {
-	pb := &protobuf.ProtoRequestVoteRequest{
+	pb := &protobuf.RequestVoteRequest{
 		Term:		proto.Uint64(req.Term),
 		LastLogIndex:	proto.Uint64(req.LastLogIndex),
 		LastLogTerm:	proto.Uint64(req.LastLogTerm),
@@ -54,7 +55,7 @@ func (req *RequestVoteRequest) Decode(r io.Reader) (int, error) {
 
 	totalBytes := len(data)
 
-	pb := &protobuf.ProtoRequestVoteRequest{}
+	pb := &protobuf.RequestVoteRequest{}
 	if err = proto.Unmarshal(data, pb); err != nil {
 		return -1, err
 	}

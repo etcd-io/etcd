@@ -8,8 +8,8 @@ import (
 )
 
 const (
-	testHeartbeatTimeout = 50 * time.Millisecond
-	testElectionTimeout  = 200 * time.Millisecond
+	testHeartbeatInterval = 50 * time.Millisecond
+	testElectionTimeout   = 200 * time.Millisecond
 )
 
 const (
@@ -115,7 +115,7 @@ func newTestCluster(names []string, transporter Transporter, lookup map[string]S
 		lookup[name] = server
 	}
 	for _, server := range servers {
-		server.SetHeartbeatTimeout(testHeartbeatTimeout)
+		server.SetHeartbeatInterval(testHeartbeatInterval)
 		server.Start()
 		for _, peer := range servers {
 			server.AddPeer(peer.Name(), "")

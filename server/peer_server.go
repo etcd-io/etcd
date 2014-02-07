@@ -91,7 +91,7 @@ func (s *PeerServer) SetRaftServer(raftServer raft.Server) {
 	raftServer.AddEventListener(raft.TermChangeEventType, s.raftEventLogger)
 	raftServer.AddEventListener(raft.AddPeerEventType, s.raftEventLogger)
 	raftServer.AddEventListener(raft.RemovePeerEventType, s.raftEventLogger)
-	raftServer.AddEventListener(raft.HeartbeatTimeoutEventType, s.raftEventLogger)
+	raftServer.AddEventListener(raft.HeartbeatIntervalEventType, s.raftEventLogger)
 	raftServer.AddEventListener(raft.ElectionTimeoutThresholdEventType, s.raftEventLogger)
 
 	raftServer.AddEventListener(raft.HeartbeatEventType, s.recordMetricEvent)
@@ -392,7 +392,7 @@ func (s *PeerServer) raftEventLogger(event raft.Event) {
 		log.Infof("%s: peer added: '%v'", s.Config.Name, value)
 	case raft.RemovePeerEventType:
 		log.Infof("%s: peer removed: '%v'", s.Config.Name, value)
-	case raft.HeartbeatTimeoutEventType:
+	case raft.HeartbeatIntervalEventType:
 		var name = "<unknown>"
 		if peer, ok := value.(*raft.Peer); ok {
 			name = peer.Name

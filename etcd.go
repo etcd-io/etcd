@@ -158,7 +158,7 @@ func main() {
 		log.Fatal(err)
 	}
 	raftServer.SetElectionTimeout(electionTimeout)
-	raftServer.SetHeartbeatTimeout(heartbeatTimeout)
+	raftServer.SetHeartbeatInterval(heartbeatTimeout)
 	ps.SetRaftServer(raftServer)
 
 	// Create etcd server

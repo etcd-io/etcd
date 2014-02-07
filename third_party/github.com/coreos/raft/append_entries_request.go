@@ -1,10 +1,11 @@
 package raft
 
 import (
-	"github.com/coreos/etcd/third_party/code.google.com/p/goprotobuf/proto"
-	"github.com/coreos/etcd/third_party/github.com/coreos/raft/protobuf"
 	"io"
 	"io/ioutil"
+
+	"github.com/coreos/etcd/third_party/code.google.com/p/gogoprotobuf/proto"
+	"github.com/coreos/etcd/third_party/github.com/coreos/raft/protobuf"
 )
 
 // The request sent to a server to append entries to the log.
@@ -14,43 +15,38 @@ type AppendEntriesRequest struct {
 	PrevLogTerm	uint64
 	CommitIndex	uint64
 	LeaderName	string
-	Entries		[]*LogEntry
+	Entries		[]*protobuf.LogEntry
 }
 
 // Creates a new AppendEntries request.
-func newAppendEntriesRequest(term uint64, prevLogIndex uint64, prevLogTerm uint64, commitIndex uint64, leaderName string, entries []*LogEntry) *AppendEntriesRequest {
+func newAppendEntriesRequest(term uint64, prevLogIndex uint64, prevLogTerm uint64,
+	commitIndex uint64, leaderName string, entries []*LogEntry) *AppendEntriesRequest {
+	pbEntries := make([]*protobuf.LogEntry, len(entries))
+
+	for i := range entries {
+		pbEntries[i] = entries[i].pb
+	}
+
 	return &AppendEntriesRequest{
 		Term:		term,
 		PrevLogIndex:	prevLogIndex,
 		PrevLogTerm:	prevLogTerm,
 		CommitIndex:	commitIndex,
 		LeaderName:	leaderName,
-		Entries:	entries,
+		Entries:	pbEntries,
 	}
 }
 
 // Encodes the AppendEntriesRequest to a buffer. Returns the number of bytes
 // written and any error that may have occurred.
 func (req *AppendEntriesRequest) Encode(w io.Writer) (int, error) {
-
-	protoEntries := make([]*protobuf.ProtoAppendEntriesRequest_ProtoLogEntry, len(req.Entries))
-
-	for i, entry := range req.Entries {
-		protoEntries[i] = &protobuf.ProtoAppendEntriesRequest_ProtoLogEntry{
-			Index:		proto.Uint64(entry.Index),
-			Term:		proto.Uint64(entry.Term),
-			CommandName:	proto.String(entry.CommandName),
-			Command:	entry.Command,
-		}
-	}
-
-	pb := &protobuf.ProtoAppendEntriesRequest{
+	pb := &protobuf.AppendEntriesRequest{
 		Term:		proto.Uint64(req.Term),
 		PrevLogIndex:	proto.Uint64(req.PrevLogIndex),
 		PrevLogTerm:	proto.Uint64(req.PrevLogTerm),
 		CommitIndex:	proto.Uint64(req.CommitIndex),
 		LeaderName:	proto.String(req.LeaderName),
-		Entries:	protoEntries,
+		Entries:	req.Entries,
 	}
 
 	p, err := proto.Marshal(pb)
@@ -70,9 +66,7 @@ func (req *AppendEntriesRequest) Decode(r io.Reader) (int, error) {
 		return -1, err
 	}
 
-	totalBytes := len(data)
-
-	pb := &protobuf.ProtoAppendEntriesRequest{}
+	pb := new(protobuf.AppendEntriesRequest)
 	if err := proto.Unmarshal(data, pb); err != nil {
 		return -1, err
 	}
@@ -82,17 +76,7 @@ func (req *AppendEntriesRequest) Decode(r io.Reader) (int, error) {
 	req.PrevLogTerm = pb.GetPrevLogTerm()
 	req.CommitIndex = pb.GetCommitIndex()
 	req.LeaderName = pb.GetLeaderName()
+	req.Entries = pb.GetEntries()
 
-	req.Entries = make([]*LogEntry, len(pb.Entries))
-
-	for i, entry := range pb.Entries {
-		req.Entries[i] = &LogEntry{
-			Index:		entry.GetIndex(),
-			Term:		entry.GetTerm(),
-			CommandName:	entry.GetCommandName(),
-			Command:	entry.Command,
-		}
-	}
-
-	return totalBytes, nil
+	return len(data), nil
 }

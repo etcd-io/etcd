@@ -3,7 +3,7 @@ package raft
 import (
 	"testing"
 
-	"github.com/coreos/etcd/third_party/github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/assert"
 )
 
 // Ensure that we can listen and dispatch events.

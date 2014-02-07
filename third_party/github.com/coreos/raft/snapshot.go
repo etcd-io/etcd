@@ -1,64 +1,61 @@
 package raft
 
 import (
-	//"bytes"
 	"encoding/json"
 	"fmt"
 	"hash/crc32"
 	"os"
 )
 
-//------------------------------------------------------------------------------
-//
-// Typedefs
-//
-//------------------------------------------------------------------------------
-
-// the in memory SnapShot struct
-// TODO add cluster configuration
+// Snapshot represents an in-memory representation of the current state of the system.
 type Snapshot struct {
 	LastIndex uint64 `json:"lastIndex"`
 	LastTerm  uint64 `json:"lastTerm"`
-	// cluster configuration.
+
+	// Cluster configuration.
 	Peers []*Peer `json:"peers"`
 	State []byte  `json:"state"`
 	Path  string  `json:"path"`
 }
 
-// Save the snapshot to a file
+// save writes the snapshot to file.
 func (ss *Snapshot) save() error {
-	// Write machine state to temporary buffer.
-
-	// open file
+	// Open the file for writing.
 	file, err := os.OpenFile(ss.Path, os.O_CREATE|os.O_WRONLY, 0600)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
 
+	// Serialize to JSON.
+	b, err := json.Marshal(ss)
 	if err != nil {
 		return err
 	}
 
-	defer file.Close()
-
-	b, err := json.Marshal(ss)
-
-	// Generate checksum.
+	// Generate checksum and write it to disk.
 	checksum := crc32.ChecksumIEEE(b)
-
-	// Write snapshot with checksum.
 	if _, err = fmt.Fprintf(file, "%08x\n", checksum); err != nil {
 		return err
 	}
 
+	// Write the snapshot to disk.
 	if _, err = file.Write(b); err != nil {
 		return err
 	}
 
-	// force the change writing to disk
-	file.Sync()
-	return err
+	// Ensure that the snapshot has been flushed to disk before continuing.
+	if err := file.Sync(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
-// remove the file of the snapshot
+// remove deletes the snapshot file.
 func (ss *Snapshot) remove() error {
-	err := os.Remove(ss.Path)
-	return err
+	if err := os.Remove(ss.Path); err != nil {
+		return err
+	}
+	return nil
 }
