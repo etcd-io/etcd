@@ -3,6 +3,7 @@
 **Tools**
 
 - [etcdctl](https://github.com/coreos/etcdctl) - A command line client for etcd
+- [etcd-dump](https://npmjs.org/package/etcd-dump) - Command line utility for dumping/restoring etcd.
 
 **Go libraries**
 
