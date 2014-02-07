@@ -144,7 +144,7 @@ func TestDiscoverySecondPeerFirstNoResponse(t *testing.T) {
 		resp, err = etcdtest.PutForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/_etcd/registry/2/ETCDTEST"), v)
 		assert.Equal(t, resp.StatusCode, http.StatusCreated)
 
-		proc, err := startServer([]string{"-discovery", s.URL() + "/v2/keys/_etcd/registry/2"})
+		proc, err := startServer([]string{"-retry-interval", "0.2", "-discovery", s.URL() + "/v2/keys/_etcd/registry/2"})
 		if err != nil {
 			t.Fatal(err.Error())
 		}
@@ -152,7 +152,7 @@ func TestDiscoverySecondPeerFirstNoResponse(t *testing.T) {
 
 		// TODO(bp): etcd will take 30 seconds to shutdown, figure this
 		// out instead
-		time.Sleep(35 * time.Second)
+		time.Sleep(1 * time.Second)
 
 		client := http.Client{}
 		_, err = client.Get("/")
