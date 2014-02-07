@@ -15,6 +15,7 @@ import (
 	"github.com/coreos/etcd/log"
 	"github.com/coreos/etcd/metrics"
 	"github.com/coreos/etcd/mod"
+	ehttp "github.com/coreos/etcd/http"
 	uhttp "github.com/coreos/etcd/pkg/http"
 	"github.com/coreos/etcd/server/v1"
 	"github.com/coreos/etcd/server/v2"
@@ -107,17 +108,20 @@ func (s *Server) installV1(r *mux.Router) {
 }
 
 func (s *Server) installV2(r *mux.Router) {
-	s.handleFuncV2(r, "/v2/keys/{key:.*}", v2.GetHandler).Methods("GET")
-	s.handleFuncV2(r, "/v2/keys/{key:.*}", v2.PostHandler).Methods("POST")
-	s.handleFuncV2(r, "/v2/keys/{key:.*}", v2.PutHandler).Methods("PUT")
-	s.handleFuncV2(r, "/v2/keys/{key:.*}", v2.DeleteHandler).Methods("DELETE")
-	s.handleFunc(r, "/v2/leader", s.GetLeaderHandler).Methods("GET")
-	s.handleFunc(r, "/v2/machines", s.GetPeersHandler).Methods("GET")
-	s.handleFunc(r, "/v2/peers", s.GetPeersHandler).Methods("GET")
-	s.handleFunc(r, "/v2/stats/self", s.GetStatsHandler).Methods("GET")
-	s.handleFunc(r, "/v2/stats/leader", s.GetLeaderStatsHandler).Methods("GET")
-	s.handleFunc(r, "/v2/stats/store", s.GetStoreStatsHandler).Methods("GET")
-	s.handleFunc(r, "/v2/speedTest", s.SpeedTestHandler).Methods("GET")
+	r2 := mux.NewRouter()
+	r.PathPrefix("/v2").Handler(ehttp.NewLowerQueryParamsHandler(r2))
+
+	s.handleFuncV2(r2, "/v2/keys/{key:.*}", v2.GetHandler).Methods("GET")
+	s.handleFuncV2(r2, "/v2/keys/{key:.*}", v2.PostHandler).Methods("POST")
+	s.handleFuncV2(r2, "/v2/keys/{key:.*}", v2.PutHandler).Methods("PUT")
+	s.handleFuncV2(r2, "/v2/keys/{key:.*}", v2.DeleteHandler).Methods("DELETE")
+	s.handleFunc(r2, "/v2/leader", s.GetLeaderHandler).Methods("GET")
+	s.handleFunc(r2, "/v2/machines", s.GetPeersHandler).Methods("GET")
+	s.handleFunc(r2, "/v2/peers", s.GetPeersHandler).Methods("GET")
+	s.handleFunc(r2, "/v2/stats/self", s.GetStatsHandler).Methods("GET")
+	s.handleFunc(r2, "/v2/stats/leader", s.GetLeaderStatsHandler).Methods("GET")
+	s.handleFunc(r2, "/v2/stats/store", s.GetStoreStatsHandler).Methods("GET")
+	s.handleFunc(r2, "/v2/speedTest", s.SpeedTestHandler).Methods("GET")
 }
 
 func (s *Server) installMod(r *mux.Router) {
