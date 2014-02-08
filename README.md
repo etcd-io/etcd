@@ -1,6 +1,6 @@
 # etcd
 
-README version 0.2.0
+README version 0.3.0
 
 [![Build Status](https://drone.io/github.com/coreos/etcd/status.png)](https://drone.io/github.com/coreos/etcd/latest)
 
