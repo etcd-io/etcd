@@ -20,8 +20,8 @@ Here's a full example:
 
 ```
 TOKEN=$(curl https://discovery.etcd.io/new)
-./etcd -name instance1 -peer-addr 10.1.2.3:7001 -addr 10.1.2.3:4001 -discovery https://discovery.etcd.io/$TOKEN
-./etcd -name instance2 -peer-addr 10.1.2.4:7002 -addr 10.1.2.4:4002 -discovery https://discovery.etcd.io/$TOKEN
+./etcd -name instance1 -peer-addr 10.1.2.3:7001 -addr 10.1.2.3:4001 -discovery $TOKEN
+./etcd -name instance2 -peer-addr 10.1.2.4:7002 -addr 10.1.2.4:4002 -discovery $TOKEN
 ```
 
 ## Running Your Own Discovery Endpoint
