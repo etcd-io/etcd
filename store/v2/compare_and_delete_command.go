@@ -12,9 +12,9 @@ func init() {
 
 // The CompareAndDelete performs a conditional delete on a key in the store.
 type CompareAndDeleteCommand struct {
-	Key		string	`json:"key"`
-	PrevValue	string	`json:"prevValue"`
-	PrevIndex	uint64	`json:"prevIndex"`
+	Key       string `json:"key"`
+	PrevValue string `json:"prevValue"`
+	PrevIndex uint64 `json:"prevIndex"`
 }
 
 // The name of the compareAndDelete command in the log
