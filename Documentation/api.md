@@ -399,7 +399,7 @@ The current comparable conditions are:
 
 1. `prevValue` - checks the previous value of the key.
 
-2. `prevIndex` - checks the previous index of the key.
+2. `prevIndex` - checks the previous modifiedIndex of the key.
 
 3. `prevExist` - checks existence of the key: if `prevExist` is true, it is an `update` request; if prevExist is `false`, it is a `create` request.
 
