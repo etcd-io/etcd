@@ -58,7 +58,7 @@ You may notice that in this example the index is `2` even though it is the first
 This is because there are internal commands that also change the state behind the scenes, like adding and syncing servers.
 
 5. `node.modifiedIndex`: like `node.createdIndex`, this attribute is also an etcd index.
-Actions that cause the value to change include `set`, `delete`, `update`, `create` and `compareAndSwap`.
+Actions that cause the value to change include `set`, `delete`, `update`, `create`, `compareAndSwap` and `compareAndDelete`.
 Since the `get` and `watch` commands do not change state in the store, they do not change the value of `node.modifiedIndex`.
 
 
@@ -399,7 +399,7 @@ The current comparable conditions are:
 
 1. `prevValue` - checks the previous value of the key.
 
-2. `prevIndex` - checks the previous index of the key.
+2. `prevIndex` - checks the previous modifiedIndex of the key.
 
 3. `prevExist` - checks existence of the key: if `prevExist` is true, it is an `update` request; if prevExist is `false`, it is a `create` request.
 
@@ -475,6 +475,79 @@ The response should be:
 
 We successfully changed the value from "one" to "two" since we gave the correct previous value.
 
+### Atomic Compare-and-Delete
+
+This command will delete a key only if the client-provided conditions are equal to the current conditions.
+
+The current comparable conditions are:
+
+1. `prevValue` - checks the previous value of the key.
+
+2. `prevIndex` - checks the previous modifiedIndex of the key.
+
+Here is a simple example. Let's first create a key: `foo=one`.
+
+```sh
+curl -L http://127.0.0.1:4001/v2/keys/foo -XPUT -d value=one
+```
+
+Now let's try some `CompareAndDelete` commands.
+
+Trying to delete the key with `prevValue=two` fails as expected:
+```sh
+curl -L http://127.0.0.1:4001/v2/keys/foo?prevValue=two -XDELETE
+```
+
+The error code explains the problem:
+
+```json
+{
+	"errorCode": 101,
+	"message": "Compare failed",
+	"cause": "[two != one] [0 != 8]",
+	"index": 8
+}
+```
+
+As does a `CompareAndDelete` with a mismatched `prevIndex`:
+
+```sh
+curl -L http://127.0.0.1:4001/v2/keys/foo?prevIndex=1 -XDELETE
+```
+
+```json
+{
+	"errorCode": 101,
+	"message": "Compare failed",
+	"cause": "[ != one] [1 != 8]",
+	"index": 8
+}
+```
+
+And now a valid `prevValue` condition:
+
+```sh
+curl -L http://127.0.0.1:4001/v2/keys/foo?prevValue=one -XDELETE
+```
+
+The successful response will look something like:
+
+```json
+{
+	"action": "compareAndDelete",
+	"node": {
+		"key": "/foo",
+		"modifiedIndex": 9,
+		"createdIndex": 8
+	},
+	"prevNode": {
+		"key": "/foo",
+		"value": "one",
+		"modifiedIndex": 8,
+		"createdIndex": 8
+	}
+}
+```
 
 ### Creating Directories
 
