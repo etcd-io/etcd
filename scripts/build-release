@@ -47,5 +47,9 @@ for i in darwin windows linux; do
 	package etcd ${TARGET}
 	package etcdctl ${TARGET}
 
-	tar cvvfz ${TARGET}.tar.gz ${TARGET}
+	if [ ${GOOS} == "linux" ]; then
+		tar cvvfz ${TARGET}.tar.gz ${TARGET}
+	else
+		zip -r ${TARGET}.zip ${TARGET}
+	fi
 done
