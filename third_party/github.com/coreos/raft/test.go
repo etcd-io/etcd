@@ -42,7 +42,7 @@ func setupLog(entries []*LogEntry) (*Log, string) {
 	f, _ := ioutil.TempFile("", "raft-log-")
 
 	for _, entry := range entries {
-		entry.encode(f)
+		entry.Encode(f)
 	}
 	err := f.Close()
 
@@ -51,7 +51,7 @@ func setupLog(entries []*LogEntry) (*Log, string) {
 	}
 
 	log := newLog()
-	log.ApplyFunc = func(c Command) (interface{}, error) {
+	log.ApplyFunc = func(e *LogEntry, c Command) (interface{}, error) {
 		return nil, nil
 	}
 	if err := log.open(f.Name()); err != nil {
@@ -95,7 +95,7 @@ func newTestServerWithLog(name string, transporter Transporter, entries []*LogEn
 	}
 
 	for _, entry := range entries {
-		entry.encode(f)
+		entry.Encode(f)
 	}
 	f.Close()
 	return server

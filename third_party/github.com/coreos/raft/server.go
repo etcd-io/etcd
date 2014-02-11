@@ -180,7 +180,11 @@ func NewServer(name string, path string, transporter Transporter, stateMachine S
 	s.eventDispatcher = newEventDispatcher(s)
 
 	// Setup apply function.
-	s.log.ApplyFunc = func(c Command) (interface{}, error) {
+	s.log.ApplyFunc = func(e *LogEntry, c Command) (interface{}, error) {
+		// Dispatch commit event.
+		s.DispatchEvent(newEvent(CommitEventType, e, nil))
+
+		// Apply command to the state machine.
 		switch c := c.(type) {
 		case CommandApply:
 			return c.Apply(&context{
