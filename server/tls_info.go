@@ -84,19 +84,23 @@ func (info TLSInfo) ClientConfig() (*tls.Config, error) {
 
 // newCertPool creates x509 certPool with provided CA file
 func newCertPool(CAFile string) (*x509.CertPool, error) {
+	certPool := x509.NewCertPool()
 	pemByte, err := ioutil.ReadFile(CAFile)
 	if err != nil {
 		return nil, err
 	}
 
-	block, pemByte := pem.Decode(pemByte)
-	cert, err := x509.ParseCertificate(block.Bytes)
-	if err != nil {
-		return nil, err
+	for {
+		var block *pem.Block
+		block, pemByte = pem.Decode(pemByte)
+		if block == nil {
+			return certPool, nil
+		}
+		cert, err := x509.ParseCertificate(block.Bytes)
+		if err != nil {
+			return nil, err
+		}
+		certPool.AddCert(cert)
 	}
 
-	certPool := x509.NewCertPool()
-	certPool.AddCert(cert)
-
-	return certPool, nil
 }
