@@ -58,7 +58,7 @@ You may notice that in this example the index is `2` even though it is the first
 This is because there are internal commands that also change the state behind the scenes, like adding and syncing servers.
 
 5. `node.modifiedIndex`: like `node.createdIndex`, this attribute is also an etcd index.
-Actions that cause the value to change include `set`, `delete`, `update`, `create` and `compareAndSwap`.
+Actions that cause the value to change include `set`, `delete`, `update`, `create`, `compareAndSwap` and `compareAndDelete`.
 Since the `get` and `watch` commands do not change state in the store, they do not change the value of `node.modifiedIndex`.
 
 
@@ -116,10 +116,18 @@ curl -L http://127.0.0.1:4001/v2/keys/message -XPUT -d value="Hello etcd"
         "key": "/message",
         "modifiedIndex": 3,
         "value": "Hello etcd"
+    },
+    "prevNode": {
+    	"createdIndex":2
+    	"key": "/message",
+    	"value": "Hello world",
+    	"modifiedIndex": 2,
+    
     }
 }
 ```
 
+Here we introduce a new field: `prevNode`. The `prevNode` field represents what the state of a given node was before resolving the request at hand. The `prevNode` field follows the same format as the `node`, and is omitted in the event that there was no previous state for a given node.
 
 ### Deleting a key
 
@@ -136,6 +144,12 @@ curl -L http://127.0.0.1:4001/v2/keys/message -XDELETE
         "createdIndex": 3,
         "key": "/message",
         "modifiedIndex": 4
+    },
+    "prevNode": {
+    	"key": "/message",
+    	"value": "Hello etcd",
+    	"modifiedIndex": 3,
+    	"createdIndex": 3
     }
 }
 ```
@@ -218,6 +232,12 @@ The first terminal should get the notification and return with the same response
         "createdIndex": 7,
         "key": "/foo",
         "modifiedIndex": 7,
+        "value": "bar"
+    },
+    "prevNode": {
+        "createdIndex": 6,
+        "key": "/foo",
+        "modifiedIndex": 6,
         "value": "bar"
     }
 }
@@ -352,12 +372,19 @@ curl 'http://127.0.0.1:4001/v2/keys/dir/asdf?consistent=true&wait=true'
 
 ```json
 {
-    "action": "expire",
-    "node": {
-        "createdIndex": 8,
-        "key": "/dir",
-        "modifiedIndex": 15
-    }
+	"action": "expire",
+	"node": {
+		"createdIndex": 8,
+		"key": "/dir",
+		"modifiedIndex": 15
+	},
+	"prevNode": {
+		"createdIndex":8,
+		"key": "/dir",
+		"dir":true,
+		"modifiedIndex": 17,
+		"expiration":"2013-12-11T10:39:35.689275857-08:00"
+	},
 }
 ```
 
@@ -372,7 +399,7 @@ The current comparable conditions are:
 
 1. `prevValue` - checks the previous value of the key.
 
-2. `prevIndex` - checks the previous index of the key.
+2. `prevIndex` - checks the previous modifiedIndex of the key.
 
 3. `prevExist` - checks existence of the key: if `prevExist` is true, it is an `update` request; if prevExist is `false`, it is a `create` request.
 
@@ -436,12 +463,91 @@ The response should be:
         "key": "/foo",
         "modifiedIndex": 9,
         "value": "two"
+    },
+    "prevNode": {
+    	"createdIndex":8,
+    	"key": "/foo",
+    	"modifiedIndex": 8,
+    	"value": "one"
     }
 }
 ```
 
 We successfully changed the value from "one" to "two" since we gave the correct previous value.
 
+### Atomic Compare-and-Delete
+
+This command will delete a key only if the client-provided conditions are equal to the current conditions.
+
+The current comparable conditions are:
+
+1. `prevValue` - checks the previous value of the key.
+
+2. `prevIndex` - checks the previous modifiedIndex of the key.
+
+Here is a simple example. Let's first create a key: `foo=one`.
+
+```sh
+curl -L http://127.0.0.1:4001/v2/keys/foo -XPUT -d value=one
+```
+
+Now let's try some `CompareAndDelete` commands.
+
+Trying to delete the key with `prevValue=two` fails as expected:
+```sh
+curl -L http://127.0.0.1:4001/v2/keys/foo?prevValue=two -XDELETE
+```
+
+The error code explains the problem:
+
+```json
+{
+	"errorCode": 101,
+	"message": "Compare failed",
+	"cause": "[two != one] [0 != 8]",
+	"index": 8
+}
+```
+
+As does a `CompareAndDelete` with a mismatched `prevIndex`:
+
+```sh
+curl -L http://127.0.0.1:4001/v2/keys/foo?prevIndex=1 -XDELETE
+```
+
+```json
+{
+	"errorCode": 101,
+	"message": "Compare failed",
+	"cause": "[ != one] [1 != 8]",
+	"index": 8
+}
+```
+
+And now a valid `prevValue` condition:
+
+```sh
+curl -L http://127.0.0.1:4001/v2/keys/foo?prevValue=one -XDELETE
+```
+
+The successful response will look something like:
+
+```json
+{
+	"action": "compareAndDelete",
+	"node": {
+		"key": "/foo",
+		"modifiedIndex": 9,
+		"createdIndex": 8
+	},
+	"prevNode": {
+		"key": "/foo",
+		"value": "one",
+		"modifiedIndex": 8,
+		"createdIndex": 8
+	}
+}
+```
 
 ### Creating Directories
 
@@ -559,7 +665,7 @@ Now let's try to delete the directory `/foo_dir`.
 You can remove an empty directory using the `DELETE` verb and the `dir=true` parameter.
 
 ```sh
-curl -L 'http://127.0.0.1:4001/v2/keys/dir?dir=true' -XDELETE
+curl -L 'http://127.0.0.1:4001/v2/keys/foo_dir?dir=true' -XDELETE
 ```
 ```json
 {
@@ -567,8 +673,14 @@ curl -L 'http://127.0.0.1:4001/v2/keys/dir?dir=true' -XDELETE
     "node": {
         "createdIndex": 30,
         "dir": true,
-        "key": "/dir",
+        "key": "/foo_dir",
         "modifiedIndex": 31
+    },
+    "prevNode": {
+    	"createdIndex": 30,
+    	"key": "/foo_dir",
+    	"dir": true,
+    	"modifiedIndex": 30
     }
 }
 ```
@@ -587,6 +699,12 @@ curl -L http://127.0.0.1:4001/v2/keys/dir?recursive=true -XDELETE
         "dir": true,
         "key": "/dir",
         "modifiedIndex": 11
+    },
+    "prevNode": {
+    	"createdIndex": 10,
+    	"dir": true,
+    	"key": "/dir",
+    	"modifiedIndex": 10
     }
 }
 ```
@@ -936,8 +1054,8 @@ Each node keeps a number of internal statistics:
 - `recvBandwidthRate`: number of bytes per second this node is receiving (follower only)
 - `recvPkgRate`: number of requests per second this node is receiving (follower only)
 - `sendAppendRequestCnt`: number of requests that this node has sent
-- `sendBandwidthRate`: number of bytes per second this node is receiving (leader only)
-- `sendPkgRate`: number of requests per second this node is receiving (leader only)
+- `sendBandwidthRate`: number of bytes per second this node is receiving (leader only). This value is undefined on single machine clusters.
+- `sendPkgRate`: number of requests per second this node is receiving (leader only). This value is undefined on single machine clusters.
 - `state`: either leader or folower
 - `startTime`: the time when this node was started
 

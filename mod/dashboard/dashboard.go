@@ -24,9 +24,9 @@ func memoryFileServer(w http.ResponseWriter, req *http.Request) {
 		file = file + ".html"
 	}
 	upath = path.Join(dir, file)
-	b, ok := resources.File("/" + upath)
+	b, err := resources.Asset(upath)
 
-	if ok == false {
+	if err != nil {
 		http.Error(w, upath+": File not found", http.StatusNotFound)
 		return
 	}

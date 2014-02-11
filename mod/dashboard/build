@@ -8,10 +8,11 @@ npm install
 bower install
 grunt build
 
-export GOPATH="${DIR}/../../"
+go get github.com/jteeuwen/go-bindata/...
 
-for i in `find dist -type f`; do
-	file=$(echo $i | sed 's#dist/##g' | sed 's#/#-#g')
-	go build github.com/jteeuwen/go-bindata
-	./go-bindata -nomemcopy -pkg "resources" -toc -out resources/$file.go -prefix dist $i
+dirs=
+for i in `find dist -type d`; do
+	dirs="${dirs} ${i}"
 done
+
+${GOPATH}/bin/go-bindata -nomemcopy -pkg "resources" -o resources/resources.go -prefix dist ${dirs}

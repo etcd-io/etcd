@@ -23,17 +23,33 @@ function package {
 	proj=${1}
 	target=${2}
 
-	cp ${proj}/${proj} ${target}
+	ccdir="${proj}/bin/${GOOS}_${GOARCH}"
+	if [ -d ${ccdir} ]; then
+		cp ${ccdir}/${proj}* ${target}
+	else
+		cp ${proj}/bin/${proj} ${target}
+	fi
+
 	cp ${proj}/README.md ${target}/README-${proj}.md
 }
 
-build etcd ${VER}
-build etcdctl ${VER}
 
-TARGET="etcd-$VER-$(uname -s)-$(uname -m)"
-mkdir ${TARGET}
+for i in darwin windows linux; do
+	export GOOS=${i}
+	export GOARCH="amd64"
 
-package etcd ${TARGET}
-package etcdctl ${TARGET}
+	build etcd ${VER}
+	build etcdctl ${VER}
 
-tar cvvfz ${TARGET}.tar.gz ${TARGET}
+	TARGET="etcd-${VER}-${GOOS}-${GOARCH}"
+	mkdir ${TARGET}
+
+	package etcd ${TARGET}
+	package etcdctl ${TARGET}
+
+	if [ ${GOOS} == "linux" ]; then
+		tar cvvfz ${TARGET}.tar.gz ${TARGET}
+	else
+		zip -r ${TARGET}.zip ${TARGET}
+	fi
+done

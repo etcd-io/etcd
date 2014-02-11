@@ -1,6 +1,6 @@
 # etcd
 
-README version 0.2.0
+README version 0.3.0
 
 [![Build Status](https://drone.io/github.com/coreos/etcd/status.png)](https://drone.io/github.com/coreos/etcd/latest)
 
@@ -19,14 +19,6 @@ Or feel free to just use curl, as in the examples below.
 
 [raft]: https://github.com/coreos/go-raft
 [etcdctl]: http://github.com/coreos/etcdctl/
-
-## Contact
-
-- Mailing list: http://coreos.com/lists/etcd-dev/
-- IRC: #coreos on irc.freenode.net
-- Planning/Roadmap: https://trello.com/b/OiEbU547/etcd
-- Bugs: https://github.com/coreos/etcd/issues
-
 
 ## Getting Started
 
@@ -91,6 +83,13 @@ You have successfully started an etcd on a single machine and written a key to t
 [modules.md]: https://github.com/coreos/etcd/blob/master/Documentation/modules.md
 [security.md]: https://github.com/coreos/etcd/blob/master/Documentation/security.md
 [tuning.md]: https://github.com/coreos/etcd/blob/master/Documentation/tuning.md
+
+## Contact
+
+- Mailing list: http://coreos.com/lists/etcd-dev/
+- IRC: #coreos on irc.freenode.net
+- Planning/Roadmap: https://trello.com/b/OiEbU547/etcd
+- Bugs: https://github.com/coreos/etcd/issues
 
 ## Contributing
 
