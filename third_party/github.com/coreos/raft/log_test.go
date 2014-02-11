@@ -21,7 +21,7 @@ import (
 func TestLogNewLog(t *testing.T) {
 	path := getLogPath()
 	log := newLog()
-	log.ApplyFunc = func(c Command) (interface{}, error) {
+	log.ApplyFunc = func(e *LogEntry, c Command) (interface{}, error) {
 		return nil, nil
 	}
 	if err := log.open(path); err != nil {
@@ -119,13 +119,13 @@ func TestLogRecovery(t *testing.T) {
 	e1, _ := newLogEntry(tmpLog, nil, 2, 1, &testCommand2{X: 100})
 	f, _ := ioutil.TempFile("", "raft-log-")
 
-	e0.encode(f)
-	e1.encode(f)
+	e0.Encode(f)
+	e1.Encode(f)
 	f.WriteString("CORRUPT!")
 	f.Close()
 
 	log := newLog()
-	log.ApplyFunc = func(c Command) (interface{}, error) {
+	log.ApplyFunc = func(e *LogEntry, c Command) (interface{}, error) {
 		return nil, nil
 	}
 	if err := log.open(f.Name()); err != nil {

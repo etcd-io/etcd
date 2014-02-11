@@ -23,6 +23,25 @@ func TestDispatchEvent(t *testing.T) {
 	assert.Equal(t, 11, count)
 }
 
+// Ensure that we can add and remove a listener.
+func TestRemoveEventListener(t *testing.T) {
+	var count int
+	f0 := func(e Event) {
+		count += 1
+	}
+	f1 := func(e Event) {
+		count += 10
+	}
+
+	dispatcher := newEventDispatcher(nil)
+	dispatcher.AddEventListener("foo", f0)
+	dispatcher.AddEventListener("foo", f1)
+	dispatcher.DispatchEvent(&event{typ: "foo"})
+	dispatcher.RemoveEventListener("foo", f0)
+	dispatcher.DispatchEvent(&event{typ: "foo"})
+	assert.Equal(t, 21, count)
+}
+
 // Ensure that event is properly passed to listener.
 func TestEventListener(t *testing.T) {
 	dispatcher := newEventDispatcher("X")
