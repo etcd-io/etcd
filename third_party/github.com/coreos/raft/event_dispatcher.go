@@ -1,6 +1,7 @@
 package raft
 
 import (
+	"reflect"
 	"sync"
 )
 
@@ -31,6 +32,23 @@ func (d *eventDispatcher) AddEventListener(typ string, listener EventListener) {
 	d.Lock()
 	defer d.Unlock()
 	d.listeners[typ] = append(d.listeners[typ], listener)
+}
+
+// RemoveEventListener removes a listener function for a given event type.
+func (d *eventDispatcher) RemoveEventListener(typ string, listener EventListener) {
+	d.Lock()
+	defer d.Unlock()
+
+	// Grab a reference to the function pointer once.
+	ptr := reflect.ValueOf(listener).Pointer()
+
+	// Find listener by pointer and remove it.
+	listeners := d.listeners[typ]
+	for i, l := range listeners {
+		if reflect.ValueOf(l).Pointer() == ptr {
+			d.listeners[typ] = append(listeners[:i], listeners[i+1:]...)
+		}
+	}
 }
 
 // DispatchEvent dispatches an event.

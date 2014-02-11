@@ -4,6 +4,7 @@ const (
 	StateChangeEventType  = "stateChange"
 	LeaderChangeEventType = "leaderChange"
 	TermChangeEventType   = "termChange"
+	CommitEventType   = "commit"
 	AddPeerEventType      = "addPeer"
 	RemovePeerEventType   = "removePeer"
 
