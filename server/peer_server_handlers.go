@@ -23,6 +23,47 @@ func (ps *PeerServer) GetLogHttpHandler(w http.ResponseWriter, req *http.Request
 	json.NewEncoder(w).Encode(ps.raftServer.LogEntries())
 }
 
+// Retrieve a continuous stream of committed log entries. This is used by proxy nodes.
+func (ps *PeerServer) CommittedLogHttpHandler(w http.ResponseWriter, req *http.Request) {
+	log.Debugf("[recv] GET %s/log/committed", ps.Config.URL)
+	w.Header().Set("Content-Type", "application/octet-stream")
+	w.WriteHeader(http.StatusOK)
+
+	// Attach a listener to the Raft server to get all the committed entries.
+	var c := make(chan *raft.LogEntry, 4096)
+	var overflowChan := make(chan bool)
+	var fn := func(event raft.Event) {
+		select {
+		case c <- event.Value().(*raft.LogEntry):
+		default:
+			// If the receiver channel is full then exit so we don't block Raft.
+			overflowChan <- true
+		}
+		
+	}
+	ps.raftServer.AddEventListener(raft.CommitEventType, fn)
+	defer ps.raftServer.RemoveEventListener(raft.CommitEventType, fn)
+
+	// Write entries to the output stream as they are committed.
+	closeNotifier, _ := w.(http.CloseNotifier)
+	for {
+		select {
+		case entry := <- c:
+			if _, err := entry.encode(); err != nil {
+				return
+			}
+		case <-closeNotifier.CloseNotify():
+			return
+		case <-overflowChan:
+			return
+		}
+	}
+
+
+	// TODO(benbjohnson): Send snapshot down first.
+	json.NewEncoder(w).Encode(ps.raftServer.LogEntries())
+}
+
 // Response to vote request
 func (ps *PeerServer) VoteHttpHandler(w http.ResponseWriter, req *http.Request) {
 	rvreq := &raft.RequestVoteRequest{}

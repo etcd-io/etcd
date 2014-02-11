@@ -174,6 +174,7 @@ func (s *PeerServer) HTTPHandler() http.Handler {
 	router.HandleFunc("/vote", s.VoteHttpHandler)
 	router.HandleFunc("/log", s.GetLogHttpHandler)
 	router.HandleFunc("/log/append", s.AppendEntriesHttpHandler)
+	router.HandleFunc("/log/committed", s.CommittedLogHttpHandler)
 	router.HandleFunc("/snapshot", s.SnapshotHttpHandler)
 	router.HandleFunc("/snapshotRecovery", s.SnapshotRecoveryHttpHandler)
 	router.HandleFunc("/etcdURL", s.EtcdURLHttpHandler)
