@@ -17,7 +17,7 @@ Etcd is written in Go and uses the [Raft][raft] consensus algorithm to manage a 
 See [etcdctl][etcdctl] for a simple command line client.
 Or feel free to just use curl, as in the examples below.
 
-[raft]: https://github.com/coreos/go-raft
+[raft]: http://raftconsensus.github.io/
 [etcdctl]: http://github.com/coreos/etcdctl/
 
 ## Getting Started
