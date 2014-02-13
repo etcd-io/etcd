@@ -111,6 +111,59 @@ func TestDiscoveryNoWithBackupPeers(t *testing.T) {
 	})
 }
 
+// TestDiscoveryDownNoBackupPeersWithDataDir ensures that etcd runs if it is
+// started with a bad discovery URL, no backups and valid data dir.
+func TestDiscoveryDownNoBackupPeersWithDataDir(t *testing.T) {
+	etcdtest.RunServer(func(s *server.Server) {
+		u, ok := s.PeerHost("ETCDTEST")
+		if !ok {
+			t.Fatalf("Couldn't find the URL")
+		}
+
+		// run etcd and connect to ETCDTEST server
+		proc, err := startServer([]string{"-peers", u})
+		if err != nil {
+			t.Fatal(err.Error())
+		}
+
+		// check it runs well
+		client := http.Client{}
+		err = assertServerFunctional(client, "http")
+		if err != nil {
+			t.Fatal(err.Error())
+		}
+
+		// stop etcd, and leave valid data dir for later usage
+		stopServer(proc)
+
+		g := garbageHandler{t: t}
+		ts := httptest.NewServer(&g)
+		defer ts.Close()
+
+		discover := ts.URL + "/v2/keys/_etcd/registry/1"
+		// connect to ETCDTEST server again with previous data dir
+		proc, err = startServerWithDataDir([]string{"-discovery", discover})
+		if err != nil {
+			t.Fatal(err.Error())
+		}
+		defer stopServer(proc)
+
+		// TODO(yichengq): it needs some time to do leader election
+		// improve to get rid of it
+		time.Sleep(1 * time.Second)
+
+		client = http.Client{}
+		err = assertServerFunctional(client, "http")
+		if err != nil {
+			t.Fatal(err.Error())
+		}
+
+		if !g.success {
+			t.Fatal("Discovery server never called")
+		}
+	})
+}
+
 // TestDiscoveryFirstPeer ensures that etcd starts as the leader if it
 // registers as the first peer.
 func TestDiscoveryFirstPeer(t *testing.T) {

@@ -76,7 +76,7 @@ func RunServer(f func(*server.Server)) {
 	c := make(chan bool)
 	go func() {
 		c <- true
-		ps.Start(false, []string{})
+		ps.Start(false, "", []string{})
 		h := waitHandler{w, ps.HTTPHandler()}
 		http.Serve(psListener, &h)
 	}()

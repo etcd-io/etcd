@@ -167,6 +167,18 @@ func startServer(extra []string) (*os.Process, error) {
 	return os.StartProcess(EtcdBinPath, cmd, procAttr)
 }
 
+func startServerWithDataDir(extra []string) (*os.Process, error) {
+	procAttr := new(os.ProcAttr)
+	procAttr.Files = []*os.File{nil, os.Stdout, os.Stderr}
+
+	cmd := []string{"etcd",	"-data-dir=/tmp/node1", "-name=node1"}
+	cmd = append(cmd, extra...)
+
+	println(strings.Join(cmd, " "))
+
+	return os.StartProcess(EtcdBinPath, cmd, procAttr)
+}
+
 func stopServer(proc *os.Process) {
 	err := proc.Kill()
 	if err != nil {
@@ -194,7 +206,8 @@ func assertServerFunctional(client http.Client, scheme string) error {
 		}
 
 		if err == nil {
-			if resp.StatusCode != 201 {
+			// Internal error may mean that servers are in leader election
+			if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusInternalServerError {
 				return errors.New(fmt.Sprintf("resp.StatusCode == %s", resp.Status))
 			} else {
 				return nil
@@ -202,7 +215,7 @@ func assertServerFunctional(client http.Client, scheme string) error {
 		}
 	}
 
-	return errors.New("etcd server was not reachable in time")
+	return errors.New("etcd server was not reachable in time / had internal error")
 }
 
 func assertServerNotFunctional(client http.Client, scheme string) error {
