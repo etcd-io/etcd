@@ -86,7 +86,7 @@ $ etcd -snapshot false
 $ ETCD_SNAPSHOT=false etcd
 ```
 
-You can also enable snapshotting within the configuration file:
+You can also disable snapshotting within the configuration file:
 
 ```toml
 snapshot = false
