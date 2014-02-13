@@ -79,6 +79,11 @@ func (s *Server) URL() string {
 	return s.url
 }
 
+// Returns the host part of Peer URL for a given node name.
+func (s *Server) PeerHost(name string) (string, bool) {
+	return s.registry.PeerHost(name)
+}
+
 // Retrives the Peer URL for a given node name.
 func (s *Server) PeerURL(name string) (string, bool) {
 	return s.registry.PeerURL(name)

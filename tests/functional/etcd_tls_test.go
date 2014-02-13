@@ -183,6 +183,16 @@ func assertServerFunctional(client http.Client, scheme string) error {
 		time.Sleep(1 * time.Second)
 
 		resp, err := client.PostForm(path, fields)
+		// If the status is Temporary Redirect, we should follow the
+		// new location, because the request did not go to the leader yet.
+		// TODO(yichengq): the difference between Temporary Redirect(307)
+		// and Created(201) could distinguish between leader and followers
+		for err == nil && resp.StatusCode == http.StatusTemporaryRedirect {
+			loc, _ := resp.Location()
+			newPath := loc.String()
+			resp, err = client.PostForm(newPath, fields)
+		}
+
 		if err == nil {
 			if resp.StatusCode != 201 {
 				return errors.New(fmt.Sprintf("resp.StatusCode == %s", resp.Status))

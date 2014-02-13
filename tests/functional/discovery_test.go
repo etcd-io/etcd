@@ -65,7 +65,7 @@ func TestDiscoveryDownWithBackupPeers(t *testing.T) {
 		defer ts.Close()
 
 		discover := ts.URL + "/v2/keys/_etcd/registry/1"
-		u, ok := s.PeerURL("ETCDTEST")
+		u, ok := s.PeerHost("ETCDTEST")
 		if !ok {
 			t.Fatalf("Couldn't find the URL")
 		}
@@ -84,6 +84,29 @@ func TestDiscoveryDownWithBackupPeers(t *testing.T) {
 
 		if !g.success {
 			t.Fatal("Discovery server never called")
+		}
+	})
+}
+
+// TestDiscoveryNoWithBackupPeers ensures that etcd runs if it is started with
+// no discovery URL and a peer list.
+func TestDiscoveryNoWithBackupPeers(t *testing.T) {
+	etcdtest.RunServer(func(s *server.Server) {
+		u, ok := s.PeerHost("ETCDTEST")
+		if !ok {
+			t.Fatalf("Couldn't find the URL")
+		}
+		proc, err := startServer([]string{"-peers", u})
+
+		if err != nil {
+			t.Fatal(err.Error())
+		}
+		defer stopServer(proc)
+
+		client := http.Client{}
+		err = assertServerFunctional(client, "http")
+		if err != nil {
+			t.Fatal(err.Error())
 		}
 	})
 }
