@@ -103,6 +103,7 @@ type Server interface {
 	TakeSnapshot() error
 	LoadSnapshot() error
 	AddEventListener(string, EventListener)
+	RemoveEventListener(string, EventListener)
 }
 
 type server struct {

@@ -1,7 +1,10 @@
 package server
 
 import (
+	"bytes"
+	"encoding/binary"
 	"encoding/json"
+	"io"
 	"net/http"
 	"strconv"
 	"time"
@@ -15,6 +18,11 @@ import (
 	"github.com/coreos/etcd/store"
 )
 
+const (
+	logEntryStreamType = 1
+	snapshotStreamType = 2
+)
+
 // Get all the current logs
 func (ps *PeerServer) GetLogHttpHandler(w http.ResponseWriter, req *http.Request) {
 	log.Debugf("[recv] GET %s/log", ps.Config.URL)
@@ -24,44 +32,80 @@ func (ps *PeerServer) GetLogHttpHandler(w http.ResponseWriter, req *http.Request
 }
 
 // Retrieve a continuous stream of committed log entries. This is used by proxy nodes.
+//
+// The stream first sends down a snapshot if the last log index provided by the
+// client is older than what is available in the log. Then an unbounded stream 
+// of committed log entries will follow.
+//
+// Each entry in the stream starts with a 1-byte type, a 4-byte size, and then
+// an arbitrarily long data section.
 func (ps *PeerServer) CommittedLogHttpHandler(w http.ResponseWriter, req *http.Request) {
+	flusher := w.(http.Flusher)
+
 	log.Debugf("[recv] GET %s/log/committed", ps.Config.URL)
 	w.Header().Set("Content-Type", "application/octet-stream")
 	w.WriteHeader(http.StatusOK)
 
+	// Retrieve the latest index the client already has.
+	index, _ := strconv.Atoi(req.FormValue("index"))
+
 	// Attach a listener to the Raft server to get all the committed entries.
-	var c := make(chan *raft.LogEntry, 4096)
-	var overflowChan := make(chan bool)
-	var fn := func(event raft.Event) {
+	var c = make(chan *raft.LogEntry, 4096)
+	var overflowChan = make(chan bool)
+	var fn = func(event raft.Event) {
 		select {
 		case c <- event.Value().(*raft.LogEntry):
 		default:
 			// If the receiver channel is full then exit so we don't block Raft.
 			overflowChan <- true
 		}
-		
 	}
 	ps.raftServer.AddEventListener(raft.CommitEventType, fn)
 	defer ps.raftServer.RemoveEventListener(raft.CommitEventType, fn)
+
+	// TODO(benbjohnson): Send snapshot down first.
+
+	// Send log entries.
+	for _, entry := range ps.raftServer.LogEntries() {
+		if int(entry.Index()) > index {
+			if err := writeCommittedLogEntry(w, entry); err != nil {
+				log.Warnf("Committed Log Error(1): %v", err)
+				return
+			}
+			index = int(entry.Index())
+		}
+	}
+	flusher.Flush()
 
 	// Write entries to the output stream as they are committed.
 	closeNotifier, _ := w.(http.CloseNotifier)
 	for {
 		select {
 		case entry := <- c:
-			if _, err := entry.encode(); err != nil {
-				return
+			if int(entry.Index()) > index {
+				if err := writeCommittedLogEntry(w, entry); err != nil {
+					log.Warnf("Committed Log Error(2): %v", err)
+					return
+				}
+				flusher.Flush()
 			}
 		case <-closeNotifier.CloseNotify():
 			return
 		case <-overflowChan:
+			flusher.Flush()
 			return
 		}
 	}
+}
 
+func writeCommittedLogEntry(w io.Writer, e *raft.LogEntry) error {
+	var buf bytes.Buffer
+	e.Encode(&buf)
 
-	// TODO(benbjohnson): Send snapshot down first.
-	json.NewEncoder(w).Encode(ps.raftServer.LogEntries())
+	binary.Write(w, binary.BigEndian, uint8(logEntryStreamType))
+	binary.Write(w, binary.BigEndian, uint64(buf.Len()))
+	_, err := buf.WriteTo(w)
+	return err
 }
 
 // Response to vote request
