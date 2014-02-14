@@ -65,7 +65,7 @@ angular.module('etcdControlPanel')
       //hide any errors
       $('#etcd-browse-error').hide();
       // Looking at a directory if we got an array
-      if (data.dir === true) {
+      if (data.node.dir === true) {
         $scope.list = data.node.nodes;
         $scope.preview = 'etcd-preview-hide';
       } else {
