@@ -104,6 +104,7 @@ type Server interface {
 	LoadSnapshot() error
 	AddEventListener(string, EventListener)
 	RemoveEventListener(string, EventListener)
+	CreateContext(currentTerm, currentIndex, commitIndex uint64) Context
 }
 
 type server struct {
@@ -188,12 +189,7 @@ func NewServer(name string, path string, transporter Transporter, stateMachine S
 		// Apply command to the state machine.
 		switch c := c.(type) {
 		case CommandApply:
-			return c.Apply(&context{
-				server:       s,
-				currentTerm:  s.currentTerm,
-				currentIndex: s.log.internalCurrentIndex(),
-				commitIndex:  s.log.commitIndex,
-			})
+			return c.Apply(s.CreateContext(s.currentTerm, s.log.internalCurrentIndex(), s.log.commitIndex))
 		case deprecatedCommandApply:
 			return c.Apply(s)
 		default:
@@ -345,6 +341,15 @@ func (s *server) GetState() string {
 // Check if the server is promotable
 func (s *server) promotable() bool {
 	return s.log.currentIndex() > 0
+}
+
+func (s *server) CreateContext(currentTerm, currentIndex, commitIndex uint64) Context {
+	return &context{
+		server:       s,
+		currentTerm:  currentTerm,
+		currentIndex: currentIndex,
+		commitIndex:  commitIndex,
+	}
 }
 
 //--------------------------------------

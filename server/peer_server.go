@@ -5,7 +5,9 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
+	"math/rand"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -42,8 +44,10 @@ type PeerServer struct {
 	registry	*Registry
 	store		store.Store
 	snapConf	*snapshotConf
+	isProxy     bool
 
 	closeChan		chan bool
+	proxyStopChan	chan bool
 	timeoutThresholdChan	chan interface{}
 
 	metrics	*metrics.Bucket
@@ -144,6 +148,10 @@ func (s *PeerServer) Start(snapshot bool, cluster []string) error {
 
 	go s.monitorSync()
 	go s.monitorTimeoutThreshold(s.closeChan)
+	
+	if s.isProxy {
+		s.startProxy(cluster, s.closeChan)
+	}
 
 	// open the snapshot
 	if snapshot {
@@ -317,8 +325,18 @@ func (s *PeerServer) joinByPeer(server raft.Server, peer string, scheme string) 
 			t.CancelWhenTimeout(req)
 
 			if resp.StatusCode == http.StatusOK {
-				b, _ := ioutil.ReadAll(resp.Body)
-				s.joinIndex, _ = binary.Uvarint(b)
+				s.joinIndex, _ = binary.ReadUvarint(resp.Body.(io.ByteReader))
+				
+				// Determine whether the server joined as a proxy or peer.
+				var isPeer uint64
+				if isPeer, err = binary.ReadUvarint(resp.Body.(io.ByteReader)); err == io.EOF {
+					isPeer = 1
+				} else if err != nil {
+					log.Debugf("Error reading peer join state: %v", err)
+					return err
+				}
+				s.isProxy = (isPeer == 0)
+
 				return nil
 			}
 			if resp.StatusCode == http.StatusTemporaryRedirect {
@@ -462,5 +480,88 @@ func (s *PeerServer) monitorTimeoutThreshold(closeChan chan bool) {
 		}
 
 		time.Sleep(ThresholdMonitorTimeout)
+	}
+}
+
+// startProxy initializes the proxy goroutine.
+func (s *PeerServer) startProxy(cluster []string, closeChan chan bool) {
+	s.stopProxy()
+	s.proxyStopChan = make(chan bool)
+	go s.proxy(cluster, closeChan, s.proxyStopChan)
+}
+
+// stopProxy closes an existing proxy goroutine.
+func (s *PeerServer) stopProxy() {
+	if s.proxyStopChan != nil {
+		close(s.proxyStopChan)
+		s.proxyStopChan = nil
+	}
+}
+
+// proxy manages the retrieval and processing of commands through the
+// committed log endpoint.
+func (s *PeerServer) proxy(cluster []string, closeChan chan bool, proxyStopChan chan bool) {
+	for {
+		if !s.isProxy {
+			return
+		}
+
+		// TODO(benbjohnson): Initialize the state machine.
+
+		// Randomly choose a peer server.
+		peer := cluster[rand.Intn(len(cluster))]
+		url := (&url.URL{Host: peer, Scheme: s.Config.Scheme, Path: "/log/committed"}).String()
+
+		// Attach to the peer's committed log and begin streaming.
+		req, _ := http.NewRequest("GET", url, nil)
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			continue
+		}
+
+		// Begin reading from proxy and applying the committed log.
+		s.streamProxy(req, resp, closeChan, proxyStopChan)
+	}
+}
+
+// streamProxy manages the stream of a single connection to a peer.
+// If the peer is disconnected then the function exits.
+func (s *PeerServer) streamProxy(req *http.Request, resp *http.Response, closeChan chan bool, proxyStopChan chan bool) error {
+	// Monitor close channels and stop the streaming request if needed.
+	var c = make(chan bool)
+	defer close(c)
+	go func() {
+		select {
+		case <-c:
+		case <-closeChan:
+		case <-proxyStopChan:
+		}
+		http.DefaultTransport.(*http.Transport).CancelRequest(req)
+	}()
+
+	// Loop over stream and parse the commands.
+	for {
+		var typ uint8
+		var size uint64
+		binary.Read(resp.Body, binary.BigEndian, &typ)
+		binary.Read(resp.Body, binary.BigEndian, &size)
+
+		switch typ {
+		case logEntryStreamType:
+			// Read entry.
+			var entry raft.LogEntry
+			if _, err := entry.Decode(resp.Body); err != nil {
+				return err
+			}
+
+			// Deserialize command.
+			command, err := raft.NewCommand(entry.CommandName(), entry.Command())
+			if err != nil {
+				return err
+			}
+
+			// Apply the command to the state machine.
+			command.(raft.CommandApply).Apply(s.raftServer.CreateContext(0, entry.Index(), entry.Index()))
+		}
 	}
 }

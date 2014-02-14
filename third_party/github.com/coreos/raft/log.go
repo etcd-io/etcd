@@ -175,7 +175,7 @@ func (l *Log) open(path string) error {
 			// Append entry.
 			l.entries = append(l.entries, entry)
 			if entry.Index() <= l.commitIndex {
-				command, err := newCommand(entry.CommandName(), entry.Command())
+				command, err := NewCommand(entry.CommandName(), entry.Command())
 				if err != nil {
 					continue
 				}
@@ -362,7 +362,7 @@ func (l *Log) setCommitIndex(index uint64) error {
 		l.commitIndex = entry.Index()
 
 		// Decode the command.
-		command, err := newCommand(entry.CommandName(), entry.Command())
+		command, err := NewCommand(entry.CommandName(), entry.Command())
 		if err != nil {
 			return err
 		}

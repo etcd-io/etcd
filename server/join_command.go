@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bytes"
 	"encoding/binary"
 
 	"github.com/coreos/etcd/third_party/github.com/coreos/raft"
@@ -38,21 +39,25 @@ func (c *JoinCommand) CommandName() string {
 func (c *JoinCommand) Apply(context raft.Context) (interface{}, error) {
 	ps, _ := context.Server().Context().(*PeerServer)
 
+	var buf bytes.Buffer
 	b := make([]byte, 8)
-	binary.PutUvarint(b, context.CommitIndex())
+	n := binary.PutUvarint(b, context.CommitIndex())
+	buf.Write(b[:n])
 
 	// Make sure we're not getting a cached value from the registry.
 	ps.registry.Invalidate(c.Name)
 
 	// Check if the join command is from a previous peer, who lost all its previous log.
 	if _, ok := ps.registry.ClientURL(c.Name); ok {
-		return b, nil
+		binary.Write(&buf, binary.BigEndian, uint8(1))
+		return buf.Bytes(), nil
 	}
 
 	// Add proxies to a separate list and avoid Raft entirely.
 	if ps.registry.PeerCount() >= ps.Config.MaxClusterSize {
 		ps.registry.RegisterProxy(c.Name, c.RaftURL, c.EtcdURL)
-		return b, nil
+		binary.Write(&buf, binary.BigEndian, uint8(0)) // Mark as proxy.
+		return buf.Bytes(), nil
 	}
 
 	// Add to shared peer registry.
@@ -67,7 +72,8 @@ func (c *JoinCommand) Apply(context raft.Context) (interface{}, error) {
 		ps.followersStats.Followers[c.Name].Latency.Minimum = 1 << 63
 	}
 
-	return b, err
+	binary.Write(&buf, binary.BigEndian, uint8(1)) // Mark as peer.
+	return buf.Bytes(), err
 }
 
 func (c *JoinCommand) NodeName() string {
