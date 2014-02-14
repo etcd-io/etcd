@@ -563,7 +563,13 @@ func (s *PeerServer) streamProxy(req *http.Request, resp *http.Response, closeCh
 			}
 
 			// Apply the command to the state machine.
-			command.(raft.CommandApply).Apply(s.raftServer.CreateContext(0, entry.Index(), entry.Index()))
+			if c, ok := command.(raft.CommandApply); ok {
+				c.Apply(s.raftServer.CreateContext(0, entry.Index(), entry.Index()))
+			} else {
+				if _, ok := command.(*raft.NOPCommand); !ok {
+					panic("cannot execute proxy command: " + entry.CommandName())
+				}
+			}
 		}
 	}
 }
