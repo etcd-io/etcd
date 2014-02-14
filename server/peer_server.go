@@ -2,6 +2,7 @@ package server
 
 import (
 	"bytes"
+	"bufio"
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
@@ -325,11 +326,12 @@ func (s *PeerServer) joinByPeer(server raft.Server, peer string, scheme string) 
 			t.CancelWhenTimeout(req)
 
 			if resp.StatusCode == http.StatusOK {
-				s.joinIndex, _ = binary.ReadUvarint(resp.Body.(io.ByteReader))
+				r := bufio.NewReader(resp.Body)
+				s.joinIndex, _ = binary.ReadUvarint(r)
 				
 				// Determine whether the server joined as a proxy or peer.
 				var isPeer uint64
-				if isPeer, err = binary.ReadUvarint(resp.Body.(io.ByteReader)); err == io.EOF {
+				if isPeer, err = binary.ReadUvarint(r); err == io.EOF {
 					isPeer = 1
 				} else if err != nil {
 					log.Debugf("Error reading peer join state: %v", err)

@@ -43,7 +43,7 @@ func main() {
 		fmt.Println(err.Error() + "\n")
 		os.Exit(1)
 	} else if config.ShowVersion {
-		fmt.Println(server.ReleaseVersion)
+		fmt.Println("etcd version", server.ReleaseVersion)
 		os.Exit(0)
 	} else if config.ShowHelp {
 		fmt.Println(server.Usage() + "\n")

@@ -56,6 +56,7 @@ cert_file = ""
 cors = []
 cpu_profile_file = ""
 data_dir = "."
+discovery = "http://etcd.local:4001/v2/keys/_etcd/registry/examplecluster"
 key_file = ""
 peers = []
 peers_file = ""
@@ -85,6 +86,7 @@ key_file = ""
  * `ETCD_CONFIG`
  * `ETCD_CPU_PROFILE_FILE`
  * `ETCD_DATA_DIR`
+ * `ETCD_DISCOVERY`
  * `ETCD_KEY_FILE`
  * `ETCD_PEERS`
  * `ETCD_PEERS_FILE`
