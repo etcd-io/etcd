@@ -130,7 +130,7 @@ func CreateCluster(size int, procAttr *os.ProcAttr, ssl bool) ([][]string, []*os
 		// which slows tests way down and some of them fail.
 		if i == 0 {
 			client := buildClient()
-			err = WaitServerUp("127.0.0.1:4001", client, "http")
+			err = WaitForServer("127.0.0.1:4001", client, "http")
 			if err != nil {
 				return nil, nil, err
 			}
