@@ -26,7 +26,7 @@ func templateTestSimpleMultiNode(t *testing.T, tls bool) {
 	_, etcds, err := CreateCluster(clusterSize, procAttr, tls)
 
 	if err != nil {
-		t.Fatal("cannot create cluster")
+		t.Fatalf("cannot create cluster: %v", err)
 	}
 
 	defer DestroyCluster(etcds)
@@ -35,29 +35,30 @@ func templateTestSimpleMultiNode(t *testing.T, tls bool) {
 
 	c := etcd.NewClient(nil)
 
-	c.SyncCluster()
+	if c.SyncCluster() == false {
+		t.Fatal("Cannot sync cluster!")
+	}
 
 	// Test Set
 	result, err := c.Set("foo", "bar", 100)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	node := result.Node
-
-	if err != nil || node.Key != "/foo" || node.Value != "bar" || node.TTL < 95 {
-		if err != nil {
-			t.Fatal(err)
-		}
-
+	if node.Key != "/foo" || node.Value != "bar" || node.TTL < 95 {
 		t.Fatalf("Set 1 failed with %s %s %v", node.Key, node.Value, node.TTL)
 	}
 
 	time.Sleep(time.Second)
 
 	result, err = c.Set("foo", "bar", 100)
-	node = result.Node
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	if err != nil || node.Key != "/foo" || node.Value != "bar" || node.TTL < 95 {
-		if err != nil {
-			t.Fatal(err)
-		}
+	node = result.Node
+	if node.Key != "/foo" || node.Value != "bar" || node.TTL < 95 {
 		t.Fatalf("Set 2 failed with %s %s %v", node.Key, node.Value, node.TTL)
 	}
 
