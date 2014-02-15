@@ -21,6 +21,7 @@ type Watcher struct {
 	stream     bool
 	recursive  bool
 	sinceIndex uint64
+	hub        *watcherHub
 	removed    bool
 	remove     func()
 }
@@ -51,8 +52,9 @@ func (w *Watcher) notify(e *Event, originalPath bool, deleted bool) bool {
 		select {
 		case w.EventChan <- e:
 		default:
-			// We have missed a notification. Close the channel to indicate this situation.
-			close(w.EventChan)
+			// We have missed a notification. Remove the watcher.
+			// Removing the watcher also closes the EventChan.
+			w.remove()
 		}
 		return true
 	}
@@ -62,11 +64,9 @@ func (w *Watcher) notify(e *Event, originalPath bool, deleted bool) bool {
 // Remove removes the watcher from watcherHub
 // The actual remove function is guaranteed to only be executed once
 func (w *Watcher) Remove() {
-	if w.remove != nil {
-		w.remove()
-	} else {
-		// We attached a remove function to watcher
-		// Other pkg cannot change it, so this should not happen
-		panic("missing Watcher remove function")
-	}
+	w.hub.mutex.Lock()
+	defer w.hub.mutex.Unlock()
+
+	close(w.EventChan)
+	w.remove()
 }
