@@ -50,6 +50,7 @@ func (wh *watcherHub) watch(key string, recursive, stream bool, index uint64) (*
 		recursive:  recursive,
 		stream:     stream,
 		sinceIndex: index,
+		hub:        wh,
 	}
 
 	if event != nil {
@@ -77,10 +78,6 @@ func (wh *watcherHub) watch(key string, recursive, stream bool, index uint64) (*
 		if w.removed { // avoid remove it twice
 			return
 		}
-
-		wh.mutex.Lock()
-		defer wh.mutex.Unlock()
-
 		w.removed = true
 		l.Remove(elem)
 		atomic.AddInt64(&wh.count, -1)
