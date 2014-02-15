@@ -35,7 +35,7 @@ type CommandEncoder interface {
 }
 
 // Creates a new instance of a command by name.
-func newCommand(name string, data []byte) (Command, error) {
+func NewCommand(name string, data []byte) (Command, error) {
 	// Find the registered command.
 	command := commandTypes[name]
 	if command == nil {

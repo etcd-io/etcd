@@ -97,6 +97,7 @@ func (e *LogEntry) Decode(r io.Reader) (int, error) {
 		return -1, err
 	}
 
+	e.pb = &protobuf.LogEntry{}
 	if err = proto.Unmarshal(data, e.pb); err != nil {
 		return -1, err
 	}

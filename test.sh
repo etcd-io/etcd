@@ -14,6 +14,9 @@ go test -v ./server
 go test -i ./config
 go test -v ./config
 
+go test -i ./server/tests
+go test -v ./server/tests
+
 go test -i ./server/v1/tests
 go test -v ./server/v1/tests
 
