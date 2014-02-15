@@ -17,6 +17,7 @@ limitations under the License.
 package test
 
 import (
+	"errors"
 	"fmt"
 	"github.com/coreos/etcd/third_party/github.com/coreos/go-etcd/etcd"
 	"io/ioutil"
@@ -69,6 +70,23 @@ func Set(stop chan bool) {
 	stop <- true
 }
 
+func WaitForServer(host string, client http.Client, scheme string) error {
+	path := fmt.Sprintf("%s://%s/v2/keys/", scheme, host)
+
+	var resp *http.Response
+	var err error
+	for i := 0; i < 10; i++ {
+		time.Sleep(1 * time.Second)
+
+		resp, err = client.Get(path)
+		if err == nil && resp.StatusCode == 200 {
+			return nil
+		}
+	}
+
+	return errors.New(fmt.Sprintf("etcd server was not reachable in a long time, last-time response and error: %v; %v", resp, err))
+}
+
 // Create a cluster of etcd nodes
 func CreateCluster(size int, procAttr *os.ProcAttr, ssl bool) ([][]string, []*os.Process, error) {
 	argGroup := make([][]string, size)
@@ -107,12 +125,15 @@ func CreateCluster(size int, procAttr *os.ProcAttr, ssl bool) ([][]string, []*os
 			return nil, nil, err
 		}
 
-		// TODOBP: Change this sleep to wait until the master is up.
 		// The problem is that if the master isn't up then the children
 		// have to retry. This retry can take upwards of 15 seconds
 		// which slows tests way down and some of them fail.
 		if i == 0 {
-			time.Sleep(time.Second * 2)
+			client := buildClient()
+			err = WaitServerUp("127.0.0.1:4001", client, "http")
+			if err != nil {
+				return nil, nil, err
+			}
 		}
 	}
 
