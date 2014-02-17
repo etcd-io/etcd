@@ -94,6 +94,18 @@ func (r *Registry) clientURL(name string) (string, bool) {
 	return "", false
 }
 
+// TODO(yichengq): have all of the code use a full URL with scheme
+// and remove this method
+// PeerHost retrieves the host part of peer URL for a given node by name.
+func (r *Registry) PeerHost(name string) (string, bool) {
+	rawurl, ok := r.PeerURL(name)
+	if ok {
+		u, _ := url.Parse(rawurl)
+		return u.Host, ok
+	}
+	return rawurl, ok
+}
+
 // Retrieves the peer URL for a given node by name.
 func (r *Registry) PeerURL(name string) (string, bool) {
 	r.Lock()

@@ -187,7 +187,7 @@ func main() {
 	}
 
 	ps.SetServer(s)
-	ps.Start(config.Snapshot, config.Peers)
+	ps.Start(config.Snapshot, config.Discovery, config.Peers)
 
 	go func() {
 		log.Infof("peer server [name %s, listen on %s, advertised url %s]", ps.Config.Name, psListener.Addr(), ps.Config.URL)

@@ -14,6 +14,7 @@ import (
 	"github.com/coreos/etcd/third_party/github.com/coreos/raft"
 	"github.com/coreos/etcd/third_party/github.com/gorilla/mux"
 
+	"github.com/coreos/etcd/discovery"
 	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/log"
 	"github.com/coreos/etcd/metrics"
@@ -99,8 +100,100 @@ func (s *PeerServer) SetRaftServer(raftServer raft.Server) {
 	s.raftServer = raftServer
 }
 
+// Helper function to do discovery and return results in expected format
+func (s *PeerServer) handleDiscovery(discoverURL string) (peers []string, err error) {
+	peers, err = discovery.Do(discoverURL, s.Config.Name, s.Config.URL)
+
+	// Warn about errors coming from discovery, this isn't fatal
+	// since the user might have provided a peer list elsewhere,
+	// or there is some log in data dir.
+	if err != nil {
+		log.Warnf("Discovery encountered an error: %v", err)
+		return
+	}
+
+	for i := range peers {
+		// Strip the scheme off of the peer if it has one
+		// TODO(bp): clean this up!
+		purl, err := url.Parse(peers[i])
+		if err == nil {
+			peers[i] = purl.Host
+		}
+	}
+
+	log.Infof("Discovery fetched back peer list: %v", peers)
+
+	return
+}
+
+// Try all possible ways to find clusters to join
+// Include -discovery, -peers and log data in -data-dir
+//
+// Peer discovery follows this order:
+// 1. -discovery
+// 2. -peers
+// 3. previous peers in -data-dir
+func (s *PeerServer) findCluster(discoverURL string, peers []string) {
+	// Attempt cluster discovery
+	toDiscover := discoverURL != ""
+	if toDiscover {
+		discoverPeers, discoverErr := s.handleDiscovery(discoverURL)
+		// It is registered in discover url
+		if discoverErr == nil {
+			// start as a leader in a new cluster
+			if len(discoverPeers) == 0 {
+				log.Debug("This peer is starting a brand new cluster based on discover URL.")
+				s.startAsLeader()
+			} else {
+				s.startAsFollower(discoverPeers)
+			}
+			return
+		}
+	}
+
+	hasPeerList := len(peers) > 0
+	// if there is log in data dir, append previous peers to peers in config
+	// to find cluster
+	prevPeers := s.registry.PeerURLs(s.raftServer.Leader(), s.Config.Name)
+	for i := 0; i < len(prevPeers); i++ {
+		u, err := url.Parse(prevPeers[i])
+		if err != nil {
+			log.Debug("rejoin cannot parse url: ", err)
+		}
+		prevPeers[i] = u.Host
+	}
+	peers = append(peers, prevPeers...)
+
+	// if there is backup peer lists, use it to find cluster
+	if len(peers) > 0 {
+		ok := s.joinCluster(peers)
+		if !ok {
+			log.Warn("No living peers are found!")
+		} else {
+			log.Debugf("%s restart as a follower based on peers[%v]", s.Config.Name)
+			return
+		}
+	}
+
+	if !s.raftServer.IsLogEmpty() {
+		log.Debug("Entire cluster is down! %v will restart the cluster.", s.Config.Name)
+		return
+	}
+
+	if toDiscover {
+		log.Fatalf("Discovery failed, no available peers in backup list, and no log data")
+	}
+
+	if hasPeerList {
+		log.Fatalf("No available peers in backup list, and no log data")
+	}
+
+	log.Infof("This peer is starting a brand new cluster now.")
+	s.startAsLeader()
+}
+
 // Start the raft server
-func (s *PeerServer) Start(snapshot bool, cluster []string) error {
+func (s *PeerServer) Start(snapshot bool, discoverURL string, peers []string) error {
 	// LoadSnapshot
 	if snapshot {
 		err := s.raftServer.LoadSnapshot()
@@ -114,31 +207,7 @@ func (s *PeerServer) Start(snapshot bool, cluster []string) error {
 
 	s.raftServer.Start()
 
-	if s.raftServer.IsLogEmpty() {
-		// start as a leader in a new cluster
-		if len(cluster) == 0 {
-			s.startAsLeader()
-		} else {
-			s.startAsFollower(cluster)
-		}
-
-	} else {
-		// Rejoin the previous cluster
-		cluster = s.registry.PeerURLs(s.raftServer.Leader(), s.Config.Name)
-		for i := 0; i < len(cluster); i++ {
-			u, err := url.Parse(cluster[i])
-			if err != nil {
-				log.Debug("rejoin cannot parse url: ", err)
-			}
-			cluster[i] = u.Host
-		}
-		ok := s.joinCluster(cluster)
-		if !ok {
-			log.Warn("the entire cluster is down! this peer will restart the cluster.")
-		}
-
-		log.Debugf("%s restart as a follower", s.Config.Name)
-	}
+	s.findCluster(discoverURL, peers)
 
 	s.closeChan = make(chan bool)
 
@@ -209,7 +278,7 @@ func (s *PeerServer) startAsFollower(cluster []string) {
 		if ok {
 			return
 		}
-		log.Warnf("Unable to join the cluster using any of the peers %v. Retrying in %.1f seconds", cluster, s.Config.RetryInterval)
+		log.Warnf("%v is unable to join the cluster using any of the peers %v at %dth time. Retrying in %.1f seconds", s.Config.Name, cluster, i, s.Config.RetryInterval)
 		time.Sleep(time.Second * time.Duration(s.Config.RetryInterval))
 	}
 
