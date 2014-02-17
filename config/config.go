@@ -25,24 +25,25 @@ const DefaultSystemConfigPath = "/etc/etcd/etcd.conf"
 
 // A lookup of deprecated flags to their new flag name.
 var newFlagNameLookup = map[string]string{
-	"C":             "peers",
-	"CF":            "peers-file",
-	"n":             "name",
-	"c":             "addr",
-	"cl":            "bind-addr",
-	"s":             "peer-addr",
-	"sl":            "peer-bind-addr",
-	"d":             "data-dir",
-	"m":             "max-result-buffer",
-	"r":             "max-retry-attempts",
-	"maxsize":       "max-cluster-size",
-	"clientCAFile":  "ca-file",
-	"clientCert":    "cert-file",
-	"clientKey":     "key-file",
-	"serverCAFile":  "peer-ca-file",
-	"serverCert":    "peer-cert-file",
-	"serverKey":     "peer-key-file",
-	"snapshotCount": "snapshot-count",
+	"C":                      "peers",
+	"CF":                     "peers-file",
+	"n":                      "name",
+	"c":                      "addr",
+	"cl":                     "bind-addr",
+	"s":                      "peer-addr",
+	"sl":                     "peer-bind-addr",
+	"d":                      "data-dir",
+	"m":                      "max-result-buffer",
+	"r":                      "max-retry-attempts",
+	"maxsize":                "max-cluster-size",
+	"clientCAFile":           "ca-file",
+	"clientCert":             "cert-file",
+	"clientKey":              "key-file",
+	"serverCAFile":           "peer-ca-file",
+	"serverCert":             "peer-cert-file",
+	"serverKey":              "peer-key-file",
+	"snapshotCount":          "snapshot-count",
+	"peer-heartbeat-timeout": "peer-heartbeat-interval",
 }
 
 // Config represents the server configuration.
@@ -74,13 +75,13 @@ type Config struct {
 	VeryVerbose      bool `toml:"very_verbose" env:"ETCD_VERY_VERBOSE"`
 	VeryVeryVerbose  bool `toml:"very_very_verbose" env:"ETCD_VERY_VERY_VERBOSE"`
 	Peer             struct {
-		Addr             string `toml:"addr" env:"ETCD_PEER_ADDR"`
-		BindAddr         string `toml:"bind_addr" env:"ETCD_PEER_BIND_ADDR"`
-		CAFile           string `toml:"ca_file" env:"ETCD_PEER_CA_FILE"`
-		CertFile         string `toml:"cert_file" env:"ETCD_PEER_CERT_FILE"`
-		KeyFile          string `toml:"key_file" env:"ETCD_PEER_KEY_FILE"`
-		HeartbeatTimeout int    `toml:"heartbeat_timeout" env:"ETCD_PEER_HEARTBEAT_TIMEOUT"`
-		ElectionTimeout  int    `toml:"election_timeout" env:"ETCD_PEER_ELECTION_TIMEOUT"`
+		Addr              string `toml:"addr" env:"ETCD_PEER_ADDR"`
+		BindAddr          string `toml:"bind_addr" env:"ETCD_PEER_BIND_ADDR"`
+		CAFile            string `toml:"ca_file" env:"ETCD_PEER_CA_FILE"`
+		CertFile          string `toml:"cert_file" env:"ETCD_PEER_CERT_FILE"`
+		KeyFile           string `toml:"key_file" env:"ETCD_PEER_KEY_FILE"`
+		HeartbeatInterval int    `toml:"heartbeat_interval" env:"ETCD_PEER_HEARTBEAT_INTERVAL"`
+		ElectionTimeout   int    `toml:"election_timeout" env:"ETCD_PEER_ELECTION_TIMEOUT"`
 	}
 	strTrace     string `toml:"trace" env:"ETCD_TRACE"`
 	GraphiteHost string `toml:"graphite_host" env:"ETCD_GRAPHITE_HOST"`
@@ -98,7 +99,7 @@ func New() *Config {
 	c.Snapshot = true
 	c.SnapshotCount = 10000
 	c.Peer.Addr = "127.0.0.1:7001"
-	c.Peer.HeartbeatTimeout = defaultHeartbeatTimeout
+	c.Peer.HeartbeatInterval = defaultHeartbeatInterval
 	c.Peer.ElectionTimeout = defaultElectionTimeout
 	return c
 }
@@ -286,7 +287,7 @@ func (c *Config) LoadFlags(arguments []string) error {
 	f.IntVar(&c.MaxRetryAttempts, "max-retry-attempts", c.MaxRetryAttempts, "")
 	f.Float64Var(&c.RetryInterval, "retry-interval", c.RetryInterval, "")
 	f.IntVar(&c.MaxClusterSize, "max-cluster-size", c.MaxClusterSize, "")
-	f.IntVar(&c.Peer.HeartbeatTimeout, "peer-heartbeat-timeout", c.Peer.HeartbeatTimeout, "")
+	f.IntVar(&c.Peer.HeartbeatInterval, "peer-heartbeat-interval", c.Peer.HeartbeatInterval, "")
 	f.IntVar(&c.Peer.ElectionTimeout, "peer-election-timeout", c.Peer.ElectionTimeout, "")
 
 	f.StringVar(&cors, "cors", "", "")
@@ -321,6 +322,7 @@ func (c *Config) LoadFlags(arguments []string) error {
 	f.IntVar(&c.MaxRetryAttempts, "r", c.MaxRetryAttempts, "(deprecated)")
 	f.IntVar(&c.MaxClusterSize, "maxsize", c.MaxClusterSize, "(deprecated)")
 	f.IntVar(&c.SnapshotCount, "snapshotCount", c.SnapshotCount, "(deprecated)")
+	f.IntVar(&c.Peer.HeartbeatInterval, "peer-heartbeat-timeout", c.Peer.HeartbeatInterval, "(deprecated)")
 	// END DEPRECATED FLAGS
 
 	if err := f.Parse(arguments); err != nil {
@@ -428,18 +430,18 @@ func (c *Config) Sanitize() error {
 // EtcdTLSInfo retrieves a TLSInfo object for the etcd server
 func (c *Config) EtcdTLSInfo() server.TLSInfo {
 	return server.TLSInfo{
-		CAFile:		c.CAFile,
-		CertFile:	c.CertFile,
-		KeyFile:	c.KeyFile,
+		CAFile:   c.CAFile,
+		CertFile: c.CertFile,
+		KeyFile:  c.KeyFile,
 	}
 }
 
 // PeerRaftInfo retrieves a TLSInfo object for the peer server.
 func (c *Config) PeerTLSInfo() server.TLSInfo {
 	return server.TLSInfo{
-		CAFile:		c.Peer.CAFile,
-		CertFile:	c.Peer.CertFile,
-		KeyFile:	c.Peer.KeyFile,
+		CAFile:   c.Peer.CAFile,
+		CertFile: c.Peer.CertFile,
+		KeyFile:  c.Peer.KeyFile,
 	}
 }
 

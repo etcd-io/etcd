@@ -44,8 +44,8 @@ Peer Communication Options:
   -peer-ca-file=<path>    Path to the peer CA file.
   -peer-cert-file=<path>  Path to the peer cert file.
   -peer-key-file=<path>   Path to the peer key file.
-  -peer-heartbeat-timeout=<time>
-                          Time (in milliseconds) for a heartbeat to timeout.
+  -peer-heartbeat-interval=<time>
+                          Time (in milliseconds) of a heartbeat interval.
   -peer-election-timeout=<time>
                           Time (in milliseconds) for an election to timeout.
 
