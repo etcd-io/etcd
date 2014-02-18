@@ -6,11 +6,11 @@ import (
 
 // The response from the store to the user who issue a command
 type Response struct {
-	Action    string `json:"action"`
-	Key       string `json:"key"`
-	Dir       bool   `json:"dir,omitempty"`
-	PrevValue string `json:"prevValue,omitempty"`
-	Value     string `json:"value,omitempty"`
+	Action    string  `json:"action"`
+	Key       string  `json:"key"`
+	Dir       bool    `json:"dir,omitempty"`
+	PrevValue *string `json:"prevValue,omitempty"`
+	Value     *string `json:"value,omitempty"`
 
 	// If the key did not exist before the action,
 	// this field should be set to true

@@ -32,7 +32,7 @@ func TestStoreGetValue(t *testing.T) {
 	assert.Nil(t, err, "")
 	assert.Equal(t, e.Action, "get", "")
 	assert.Equal(t, e.Node.Key, "/foo", "")
-	assert.Equal(t, e.Node.Value, "bar", "")
+	assert.Equal(t, *e.Node.Value, "bar", "")
 }
 
 // Ensure that the store can recrusively retrieve a directory listing.
@@ -52,16 +52,16 @@ func TestStoreGetDirectory(t *testing.T) {
 	assert.Equal(t, e.Node.Key, "/foo", "")
 	assert.Equal(t, len(e.Node.Nodes), 2, "")
 	assert.Equal(t, e.Node.Nodes[0].Key, "/foo/bar", "")
-	assert.Equal(t, e.Node.Nodes[0].Value, "X", "")
+	assert.Equal(t, *e.Node.Nodes[0].Value, "X", "")
 	assert.Equal(t, e.Node.Nodes[0].Dir, false, "")
 	assert.Equal(t, e.Node.Nodes[1].Key, "/foo/baz", "")
 	assert.Equal(t, e.Node.Nodes[1].Dir, true, "")
 	assert.Equal(t, len(e.Node.Nodes[1].Nodes), 2, "")
 	assert.Equal(t, e.Node.Nodes[1].Nodes[0].Key, "/foo/baz/bat", "")
-	assert.Equal(t, e.Node.Nodes[1].Nodes[0].Value, "Y", "")
+	assert.Equal(t, *e.Node.Nodes[1].Nodes[0].Value, "Y", "")
 	assert.Equal(t, e.Node.Nodes[1].Nodes[0].Dir, false, "")
 	assert.Equal(t, e.Node.Nodes[1].Nodes[1].Key, "/foo/baz/ttl", "")
-	assert.Equal(t, e.Node.Nodes[1].Nodes[1].Value, "Y", "")
+	assert.Equal(t, *e.Node.Nodes[1].Nodes[1].Value, "Y", "")
 	assert.Equal(t, e.Node.Nodes[1].Nodes[1].Dir, false, "")
 	assert.Equal(t, e.Node.Nodes[1].Nodes[1].TTL, 3, "")
 }
@@ -93,7 +93,7 @@ func TestSet(t *testing.T) {
 	assert.Equal(t, e.Action, "set", "")
 	assert.Equal(t, e.Node.Key, "/foo", "")
 	assert.False(t, e.Node.Dir, "")
-	assert.Equal(t, e.Node.Value, "", "")
+	assert.Equal(t, *e.Node.Value, "", "")
 	assert.Nil(t, e.Node.Nodes, "")
 	assert.Nil(t, e.Node.Expiration, "")
 	assert.Equal(t, e.Node.TTL, 0, "")
@@ -105,7 +105,7 @@ func TestSet(t *testing.T) {
 	assert.Equal(t, e.Action, "set", "")
 	assert.Equal(t, e.Node.Key, "/foo", "")
 	assert.False(t, e.Node.Dir, "")
-	assert.Equal(t, e.Node.Value, "bar", "")
+	assert.Equal(t, *e.Node.Value, "bar", "")
 	assert.Nil(t, e.Node.Nodes, "")
 	assert.Nil(t, e.Node.Expiration, "")
 	assert.Equal(t, e.Node.TTL, 0, "")
@@ -113,7 +113,7 @@ func TestSet(t *testing.T) {
 	// check prevNode
 	assert.NotNil(t, e.PrevNode, "")
 	assert.Equal(t, e.PrevNode.Key, "/foo", "")
-	assert.Equal(t, e.PrevNode.Value, "", "")
+	assert.Equal(t, *e.PrevNode.Value, "", "")
 	assert.Equal(t, e.PrevNode.ModifiedIndex, uint64(1), "")
 	// Set /foo="baz" (for testing prevNode)
 	e, err = s.Set("/foo", false, "baz", Permanent)
@@ -121,7 +121,7 @@ func TestSet(t *testing.T) {
 	assert.Equal(t, e.Action, "set", "")
 	assert.Equal(t, e.Node.Key, "/foo", "")
 	assert.False(t, e.Node.Dir, "")
-	assert.Equal(t, e.Node.Value, "baz", "")
+	assert.Equal(t, *e.Node.Value, "baz", "")
 	assert.Nil(t, e.Node.Nodes, "")
 	assert.Nil(t, e.Node.Expiration, "")
 	assert.Equal(t, e.Node.TTL, 0, "")
@@ -129,7 +129,7 @@ func TestSet(t *testing.T) {
 	// check prevNode
 	assert.NotNil(t, e.PrevNode, "")
 	assert.Equal(t, e.PrevNode.Key, "/foo", "")
-	assert.Equal(t, e.PrevNode.Value, "bar", "")
+	assert.Equal(t, *e.PrevNode.Value, "bar", "")
 	assert.Equal(t, e.PrevNode.ModifiedIndex, uint64(2), "")
 
 	// Set /dir as a directory
@@ -138,7 +138,7 @@ func TestSet(t *testing.T) {
 	assert.Equal(t, e.Action, "set", "")
 	assert.Equal(t, e.Node.Key, "/dir", "")
 	assert.True(t, e.Node.Dir, "")
-	assert.Equal(t, e.Node.Value, "", "")
+	assert.Nil(t, e.Node.Value)
 	assert.Nil(t, e.Node.Nodes, "")
 	assert.Nil(t, e.Node.Expiration, "")
 	assert.Equal(t, e.Node.TTL, 0, "")
@@ -154,7 +154,7 @@ func TestStoreCreateValue(t *testing.T) {
 	assert.Equal(t, e.Action, "create", "")
 	assert.Equal(t, e.Node.Key, "/foo", "")
 	assert.False(t, e.Node.Dir, "")
-	assert.Equal(t, e.Node.Value, "bar", "")
+	assert.Equal(t, *e.Node.Value, "bar", "")
 	assert.Nil(t, e.Node.Nodes, "")
 	assert.Nil(t, e.Node.Expiration, "")
 	assert.Equal(t, e.Node.TTL, 0, "")
@@ -166,7 +166,7 @@ func TestStoreCreateValue(t *testing.T) {
 	assert.Equal(t, e.Action, "create", "")
 	assert.Equal(t, e.Node.Key, "/empty", "")
 	assert.False(t, e.Node.Dir, "")
-	assert.Equal(t, e.Node.Value, "", "")
+	assert.Equal(t, *e.Node.Value, "", "")
 	assert.Nil(t, e.Node.Nodes, "")
 	assert.Nil(t, e.Node.Expiration, "")
 	assert.Equal(t, e.Node.TTL, 0, "")
@@ -211,17 +211,17 @@ func TestStoreUpdateValue(t *testing.T) {
 	assert.Equal(t, e.Action, "update", "")
 	assert.Equal(t, e.Node.Key, "/foo", "")
 	assert.False(t, e.Node.Dir, "")
-	assert.Equal(t, e.Node.Value, "baz", "")
+	assert.Equal(t, *e.Node.Value, "baz", "")
 	assert.Equal(t, e.Node.TTL, 0, "")
 	assert.Equal(t, e.Node.ModifiedIndex, uint64(2), "")
 	// check prevNode
 	assert.Equal(t, e.PrevNode.Key, "/foo", "")
-	assert.Equal(t, e.PrevNode.Value, "bar", "")
+	assert.Equal(t, *e.PrevNode.Value, "bar", "")
 	assert.Equal(t, e.PrevNode.TTL, 0, "")
 	assert.Equal(t, e.PrevNode.ModifiedIndex, uint64(1), "")
 
 	e, _ = s.Get("/foo", false, false)
-	assert.Equal(t, e.Node.Value, "baz", "")
+	assert.Equal(t, *e.Node.Value, "baz", "")
 
 	// update /foo=""
 	e, err = s.Update("/foo", "", Permanent)
@@ -229,17 +229,17 @@ func TestStoreUpdateValue(t *testing.T) {
 	assert.Equal(t, e.Action, "update", "")
 	assert.Equal(t, e.Node.Key, "/foo", "")
 	assert.False(t, e.Node.Dir, "")
-	assert.Equal(t, e.Node.Value, "", "")
+	assert.Equal(t, *e.Node.Value, "", "")
 	assert.Equal(t, e.Node.TTL, 0, "")
 	assert.Equal(t, e.Node.ModifiedIndex, uint64(3), "")
 	// check prevNode
 	assert.Equal(t, e.PrevNode.Key, "/foo", "")
-	assert.Equal(t, e.PrevNode.Value, "baz", "")
+	assert.Equal(t, *e.PrevNode.Value, "baz", "")
 	assert.Equal(t, e.PrevNode.TTL, 0, "")
 	assert.Equal(t, e.PrevNode.ModifiedIndex, uint64(2), "")
 
 	e, _ = s.Get("/foo", false, false)
-	assert.Equal(t, e.Node.Value, "", "")
+	assert.Equal(t, *e.Node.Value, "", "")
 }
 
 // Ensure that the store cannot update a directory.
@@ -267,7 +267,7 @@ func TestStoreUpdateValueTTL(t *testing.T) {
 	s.Create("/foo", false, "bar", false, Permanent)
 	_, err := s.Update("/foo", "baz", time.Now().Add(500*time.Millisecond))
 	e, _ := s.Get("/foo", false, false)
-	assert.Equal(t, e.Node.Value, "baz", "")
+	assert.Equal(t, *e.Node.Value, "baz", "")
 
 	time.Sleep(600 * time.Millisecond)
 	e, err = s.Get("/foo", false, false)
@@ -289,7 +289,7 @@ func TestStoreUpdateDirTTL(t *testing.T) {
 	s.Create("/foo/bar", false, "baz", false, Permanent)
 	_, err := s.Update("/foo", "", time.Now().Add(500*time.Millisecond))
 	e, _ := s.Get("/foo/bar", false, false)
-	assert.Equal(t, e.Node.Value, "baz", "")
+	assert.Equal(t, *e.Node.Value, "baz", "")
 
 	time.Sleep(600 * time.Millisecond)
 	e, err = s.Get("/foo/bar", false, false)
@@ -307,7 +307,7 @@ func TestStoreDeleteValue(t *testing.T) {
 	// check pervNode
 	assert.NotNil(t, e.PrevNode, "")
 	assert.Equal(t, e.PrevNode.Key, "/foo", "")
-	assert.Equal(t, e.PrevNode.Value, "bar", "")
+	assert.Equal(t, *e.PrevNode.Value, "bar", "")
 }
 
 // Ensure that the store can delete a directory if recursive is specified.
@@ -384,7 +384,7 @@ func TestStoreCompareAndDeletePrevValue(t *testing.T) {
 	// check pervNode
 	assert.NotNil(t, e.PrevNode, "")
 	assert.Equal(t, e.PrevNode.Key, "/foo", "")
-	assert.Equal(t, e.PrevNode.Value, "bar", "")
+	assert.Equal(t, *e.PrevNode.Value, "bar", "")
 	assert.Equal(t, e.PrevNode.ModifiedIndex, uint64(1), "")
 	assert.Equal(t, e.PrevNode.CreatedIndex, uint64(1), "")
 }
@@ -398,7 +398,7 @@ func TestStoreCompareAndDeletePrevValueFailsIfNotMatch(t *testing.T) {
 	assert.Equal(t, err.Message, "Compare failed", "")
 	assert.Nil(t, e, "")
 	e, _ = s.Get("/foo", false, false)
-	assert.Equal(t, e.Node.Value, "bar", "")
+	assert.Equal(t, *e.Node.Value, "bar", "")
 }
 
 func TestStoreCompareAndDeletePrevIndex(t *testing.T) {
@@ -410,7 +410,7 @@ func TestStoreCompareAndDeletePrevIndex(t *testing.T) {
 	// check pervNode
 	assert.NotNil(t, e.PrevNode, "")
 	assert.Equal(t, e.PrevNode.Key, "/foo", "")
-	assert.Equal(t, e.PrevNode.Value, "bar", "")
+	assert.Equal(t, *e.PrevNode.Value, "bar", "")
 	assert.Equal(t, e.PrevNode.ModifiedIndex, uint64(1), "")
 	assert.Equal(t, e.PrevNode.CreatedIndex, uint64(1), "")
 }
@@ -425,7 +425,7 @@ func TestStoreCompareAndDeletePrevIndexFailsIfNotMatch(t *testing.T) {
 	assert.Equal(t, err.Message, "Compare failed", "")
 	assert.Nil(t, e, "")
 	e, _ = s.Get("/foo", false, false)
-	assert.Equal(t, e.Node.Value, "bar", "")
+	assert.Equal(t, *e.Node.Value, "bar", "")
 }
 
 // Ensure that the store cannot delete a directory.
@@ -445,16 +445,16 @@ func TestStoreCompareAndSwapPrevValue(t *testing.T) {
 	e, err := s.CompareAndSwap("/foo", "bar", 0, "baz", Permanent)
 	assert.Nil(t, err, "")
 	assert.Equal(t, e.Action, "compareAndSwap", "")
-	assert.Equal(t, e.Node.Value, "baz", "")
+	assert.Equal(t, *e.Node.Value, "baz", "")
 	// check pervNode
 	assert.NotNil(t, e.PrevNode, "")
 	assert.Equal(t, e.PrevNode.Key, "/foo", "")
-	assert.Equal(t, e.PrevNode.Value, "bar", "")
+	assert.Equal(t, *e.PrevNode.Value, "bar", "")
 	assert.Equal(t, e.PrevNode.ModifiedIndex, uint64(1), "")
 	assert.Equal(t, e.PrevNode.CreatedIndex, uint64(1), "")
 
 	e, _ = s.Get("/foo", false, false)
-	assert.Equal(t, e.Node.Value, "baz", "")
+	assert.Equal(t, *e.Node.Value, "baz", "")
 }
 
 // Ensure that the store cannot conditionally update a key if it has the wrong previous value.
@@ -467,7 +467,7 @@ func TestStoreCompareAndSwapPrevValueFailsIfNotMatch(t *testing.T) {
 	assert.Equal(t, err.Message, "Compare failed", "")
 	assert.Nil(t, e, "")
 	e, _ = s.Get("/foo", false, false)
-	assert.Equal(t, e.Node.Value, "bar", "")
+	assert.Equal(t, *e.Node.Value, "bar", "")
 }
 
 // Ensure that the store can conditionally update a key if it has a previous index.
@@ -477,16 +477,16 @@ func TestStoreCompareAndSwapPrevIndex(t *testing.T) {
 	e, err := s.CompareAndSwap("/foo", "", 1, "baz", Permanent)
 	assert.Nil(t, err, "")
 	assert.Equal(t, e.Action, "compareAndSwap", "")
-	assert.Equal(t, e.Node.Value, "baz", "")
+	assert.Equal(t, *e.Node.Value, "baz", "")
 	// check pervNode
 	assert.NotNil(t, e.PrevNode, "")
 	assert.Equal(t, e.PrevNode.Key, "/foo", "")
-	assert.Equal(t, e.PrevNode.Value, "bar", "")
+	assert.Equal(t, *e.PrevNode.Value, "bar", "")
 	assert.Equal(t, e.PrevNode.ModifiedIndex, uint64(1), "")
 	assert.Equal(t, e.PrevNode.CreatedIndex, uint64(1), "")
 
 	e, _ = s.Get("/foo", false, false)
-	assert.Equal(t, e.Node.Value, "baz", "")
+	assert.Equal(t, *e.Node.Value, "baz", "")
 }
 
 // Ensure that the store cannot conditionally update a key if it has the wrong previous index.
@@ -499,7 +499,7 @@ func TestStoreCompareAndSwapPrevIndexFailsIfNotMatch(t *testing.T) {
 	assert.Equal(t, err.Message, "Compare failed", "")
 	assert.Nil(t, e, "")
 	e, _ = s.Get("/foo", false, false)
-	assert.Equal(t, e.Node.Value, "bar", "")
+	assert.Equal(t, *e.Node.Value, "bar", "")
 }
 
 // Ensure that the store can watch for key creation.
@@ -627,7 +627,7 @@ func TestStoreWatchStream(t *testing.T) {
 	e := nbselect(w.EventChan)
 	assert.Equal(t, e.Action, "create", "")
 	assert.Equal(t, e.Node.Key, "/foo", "")
-	assert.Equal(t, e.Node.Value, "bar", "")
+	assert.Equal(t, *e.Node.Value, "bar", "")
 	e = nbselect(w.EventChan)
 	assert.Nil(t, e, "")
 	// second modification
@@ -635,7 +635,7 @@ func TestStoreWatchStream(t *testing.T) {
 	e = nbselect(w.EventChan)
 	assert.Equal(t, e.Action, "update", "")
 	assert.Equal(t, e.Node.Key, "/foo", "")
-	assert.Equal(t, e.Node.Value, "baz", "")
+	assert.Equal(t, *e.Node.Value, "baz", "")
 	e = nbselect(w.EventChan)
 	assert.Nil(t, e, "")
 }
@@ -653,11 +653,11 @@ func TestStoreRecover(t *testing.T) {
 
 	e, err := s.Get("/foo/x", false, false)
 	assert.Nil(t, err, "")
-	assert.Equal(t, e.Node.Value, "bar", "")
+	assert.Equal(t, *e.Node.Value, "bar", "")
 
 	e, err = s.Get("/foo/y", false, false)
 	assert.Nil(t, err, "")
-	assert.Equal(t, e.Node.Value, "baz", "")
+	assert.Equal(t, *e.Node.Value, "baz", "")
 }
 
 // Ensure that the store can recover from a previously saved state that includes an expiring key.
@@ -691,7 +691,7 @@ func TestStoreRecoverWithExpiration(t *testing.T) {
 
 	e, err := s.Get("/foo/x", false, false)
 	assert.Nil(t, err, "")
-	assert.Equal(t, e.Node.Value, "bar", "")
+	assert.Equal(t, *e.Node.Value, "bar", "")
 
 	e, err = s.Get("/foo/y", false, false)
 	assert.NotNil(t, err, "")

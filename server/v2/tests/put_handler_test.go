@@ -329,3 +329,18 @@ func TestV2SetKeyCASWithMissingValueFails(t *testing.T) {
 		assert.Equal(t, body["cause"], "CompareAndSwap", "")
 	})
 }
+
+// Ensure that we can set an empty value
+//
+//   $ curl -X PUT localhost:4001/v2/keys/foo/bar -d value=
+//
+func TestV2SetKeyCASWithEmptyValueSuccess(t *testing.T) {
+	tests.RunServer(func(s *server.Server) {
+		v := url.Values{}
+		v.Set("value", "")
+		resp, _ := tests.PutForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo/bar"), v)
+		assert.Equal(t, resp.StatusCode, http.StatusCreated)
+		body := tests.ReadBody(resp)
+		assert.Equal(t, string(body), `{"action":"set","node":{"key":"/foo/bar","value":"","modifiedIndex":2,"createdIndex":2}}`)
+	})
+}
