@@ -122,5 +122,11 @@ func writeHeaders(w http.ResponseWriter, s Server) {
 	w.Header().Add("X-Etcd-Index", fmt.Sprint(s.Store().Index()))
 	w.Header().Add("X-Raft-Index", fmt.Sprint(s.CommitIndex()))
 	w.Header().Add("X-Raft-Term", fmt.Sprint(s.Term()))
+	if url, ok := s.ClientURL(s.Leader()); ok {
+		w.Header().Set("X-Leader-Client-URL", url)
+	}
+	if url, ok := s.PeerURL(s.Leader()); ok {
+		w.Header().Set("X-Leader-Peer-URL", url)
+	}
 	w.WriteHeader(http.StatusOK)
 }

@@ -188,6 +188,23 @@ func (ps *PeerServer) RemoveHttpHandler(w http.ResponseWriter, req *http.Request
 	ps.server.Dispatch(command, w, req)
 }
 
+// Returns a JSON-encoded cluster configuration.
+func (ps *PeerServer) getClusterConfigHttpHandler(w http.ResponseWriter, req *http.Request) {
+	json.NewEncoder(w).Encode(&ps.clusterConfig)
+}
+
+// Updates the cluster configuration.
+func (ps *PeerServer) setClusterConfigHttpHandler(w http.ResponseWriter, req *http.Request) {
+	c := &SetClusterConfigCommand{Config:&ClusterConfig{}}
+	if err := json.NewDecoder(req.Body).Decode(&c.Config); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	log.Debugf("[recv] Update Cluster Config Request")
+	ps.server.Dispatch(c, w, req)
+}
+
 // Response to the name request
 func (ps *PeerServer) NameHttpHandler(w http.ResponseWriter, req *http.Request) {
 	log.Debugf("[recv] Get %s/name/ ", ps.Config.URL)

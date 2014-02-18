@@ -2,12 +2,16 @@ package server
 
 import (
 	"bytes"
+	"bufio"
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
+	"math/rand"
 	"net/http"
 	"net/url"
+	"sort"
 	"strconv"
 	"time"
 
@@ -22,19 +26,20 @@ import (
 )
 
 const ThresholdMonitorTimeout = 5 * time.Second
+const ActiveMonitorTimeout = 5 * time.Second
 
 type PeerServerConfig struct {
 	Name           string
 	Scheme         string
 	URL            string
 	SnapshotCount  int
-	MaxClusterSize int
 	RetryTimes     int
 	RetryInterval  float64
 }
 
 type PeerServer struct {
 	Config		PeerServerConfig
+	clusterConfig	*ClusterConfig
 	raftServer	raft.Server
 	server		*Server
 	joinIndex	uint64
@@ -43,9 +48,13 @@ type PeerServer struct {
 	registry	*Registry
 	store		store.Store
 	snapConf	*snapshotConf
+	mode        Mode
 
 	closeChan		chan bool
 	timeoutThresholdChan	chan interface{}
+
+	proxyPeerURL string
+	proxyClientURL string
 
 	metrics	*metrics.Bucket
 }
@@ -66,6 +75,7 @@ type snapshotConf struct {
 func NewPeerServer(psConfig PeerServerConfig, registry *Registry, store store.Store, mb *metrics.Bucket, followersStats *raftFollowersStats, serverStats *raftServerStats) *PeerServer {
 	s := &PeerServer{
 		Config:		psConfig,
+		clusterConfig: NewClusterConfig(),
 		registry:	registry,
 		store:		store,
 		followersStats:	followersStats,
@@ -98,6 +108,50 @@ func (s *PeerServer) SetRaftServer(raftServer raft.Server) {
 	raftServer.AddEventListener(raft.HeartbeatEventType, s.recordMetricEvent)
 
 	s.raftServer = raftServer
+}
+
+// Mode retrieves the current mode of the server.
+func (s *PeerServer) Mode() Mode {
+	return s.mode
+}
+
+// SetMode updates the current mode of the server.
+// Switching to a peer mode will start the Raft server.
+// Switching to a proxy mode will stop the Raft server.
+func (s *PeerServer) SetMode(mode Mode) {
+	s.mode = mode
+
+	switch mode {
+	case PeerMode:
+		if s.raftServer.Running() {
+			s.raftServer.Start()
+		}
+	case ProxyMode:
+		if !s.raftServer.Running() {
+			s.raftServer.Stop()
+		}
+	}
+}
+
+// ClusterConfig retrieves the current cluster configuration.
+func (s *PeerServer) ClusterConfig() *ClusterConfig {
+	return s.clusterConfig
+}
+
+// SetClusterConfig updates the current cluster configuration.
+// Adjusting the active size will 
+func (s *PeerServer) SetClusterConfig(c *ClusterConfig) error {
+	prevActiveSize := s.clusterConfig.ActiveSize
+	s.clusterConfig = c
+
+	// Validate configuration.
+	if c.ActiveSize < 1 {
+		return etcdErr.NewError(etcdErr.EcodeInvalidActiveSize, "Post", 0)
+	} else if c.PromoteDelay < 0 {
+		return etcdErr.NewError(etcdErr.EcodeInvalidPromoteDelay, "Post", 0)
+	}
+
+	return nil
 }
 
 // Helper function to do discovery and return results in expected format
@@ -213,6 +267,7 @@ func (s *PeerServer) Start(snapshot bool, discoverURL string, peers []string) er
 
 	go s.monitorSync()
 	go s.monitorTimeoutThreshold(s.closeChan)
+	go s.monitorActive(s.closeChan)
 
 	// open the snapshot
 	if snapshot {
@@ -240,6 +295,8 @@ func (s *PeerServer) HTTPHandler() http.Handler {
 	router.HandleFunc("/upgrade", s.UpgradeHttpHandler)
 	router.HandleFunc("/join", s.JoinHttpHandler)
 	router.HandleFunc("/remove/{name:.+}", s.RemoveHttpHandler)
+	router.HandleFunc("/config", s.getClusterConfigHttpHandler).Methods("GET")
+	router.HandleFunc("/config", s.setClusterConfigHttpHandler).Methods("POST")
 	router.HandleFunc("/vote", s.VoteHttpHandler)
 	router.HandleFunc("/log", s.GetLogHttpHandler)
 	router.HandleFunc("/log/append", s.AppendEntriesHttpHandler)
@@ -385,8 +442,30 @@ func (s *PeerServer) joinByPeer(server raft.Server, peer string, scheme string) 
 			t.CancelWhenTimeout(req)
 
 			if resp.StatusCode == http.StatusOK {
-				b, _ := ioutil.ReadAll(resp.Body)
-				s.joinIndex, _ = binary.Uvarint(b)
+				r := bufio.NewReader(resp.Body)
+				s.joinIndex, _ = binary.ReadUvarint(r)
+				
+				// Determine whether the server joined as a proxy or peer.
+				var mode uint64
+				if mode, err = binary.ReadUvarint(r); err == io.EOF {
+					mode = 0
+				} else if err != nil {
+					log.Debugf("Error reading join mode: %v", err)
+					return err
+				}
+
+				switch mode {
+				case 0:
+					s.SetMode(PeerMode)
+				case 1:
+					s.SetMode(ProxyMode)
+					s.proxyClientURL = resp.Header.Get("X-Leader-Client-URL")
+					s.proxyPeerURL = resp.Header.Get("X-Leader-Peer-URL")
+				default:
+					log.Debugf("Invalid join mode: %v", err)
+					return fmt.Errorf("Invalid join mode (%d): %v", mode, err)
+				}
+
 				return nil
 			}
 			if resp.StatusCode == http.StatusTemporaryRedirect {
@@ -532,3 +611,52 @@ func (s *PeerServer) monitorTimeoutThreshold(closeChan chan bool) {
 		time.Sleep(ThresholdMonitorTimeout)
 	}
 }
+
+// monitorActive periodically checks the status of cluster nodes and swaps them
+// out for proxies as needed.
+func (s *PeerServer) monitorActive(closeChan chan bool) {
+	for {
+		select {
+		case <- time.After(ActiveMonitorTimeout):
+		case <-closeChan:
+			return
+		}
+
+		// Ignore while this peer is not a leader.
+		if s.raftServer.State() != raft.Leader {
+			continue
+		}
+
+		// Retrieve target active size and actual active size.
+		activeSize := s.ClusterConfig().ActiveSize
+		peerCount := s.registry.PeerCount()
+		proxies := s.registry.Proxies()
+		peers := s.registry.Peers()
+		if index := sort.SearchStrings(peers, s.Config.Name); index < len(peers) && peers[index] == s.Config.Name {
+			peers = append(peers[:index], peers[index+1:]...)
+		}
+
+		// If we have more active nodes than we should then demote.
+		if peerCount > activeSize {
+			peer := peers[rand.Intn(len(peers))]
+			if _, err := s.raftServer.Do(&RemoveCommand{Name: peer}); err != nil {
+				log.Infof("%s: warning: demotion error: %v", s.Config.Name, err)
+			}
+			continue
+		}
+	}
+}
+
+
+// Mode represents whether the server is an active peer or if the server is 
+// simply acting as a proxy.
+type Mode string
+
+const (
+	// PeerMode is when the server is an active node in Raft.
+	PeerMode  = Mode("peer")
+
+	// ProxyMode is when the server is an inactive, request-forwarding node.
+	ProxyMode = Mode("proxy")
+)
+
