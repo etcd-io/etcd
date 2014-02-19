@@ -109,10 +109,10 @@ func main() {
 	serverStats := server.NewRaftServerStats(config.Name)
 
 	// Calculate all of our timeouts
-	heartbeatTimeout := time.Duration(config.Peer.HeartbeatTimeout) * time.Millisecond
+	heartbeatInterval := time.Duration(config.Peer.HeartbeatInterval) * time.Millisecond
 	electionTimeout := time.Duration(config.Peer.ElectionTimeout) * time.Millisecond
-	dialTimeout := (3 * heartbeatTimeout) + electionTimeout
-	responseHeaderTimeout := (3 * heartbeatTimeout) + electionTimeout
+	dialTimeout := (3 * heartbeatInterval) + electionTimeout
+	responseHeaderTimeout := (3 * heartbeatInterval) + electionTimeout
 
 	// Create peer server
 	psConfig := server.PeerServerConfig{
@@ -145,7 +145,7 @@ func main() {
 	}
 
 	// Create raft transporter and server
-	raftTransporter := server.NewTransporter(followersStats, serverStats, registry, heartbeatTimeout, dialTimeout, responseHeaderTimeout)
+	raftTransporter := server.NewTransporter(followersStats, serverStats, registry, heartbeatInterval, dialTimeout, responseHeaderTimeout)
 	if psConfig.Scheme == "https" {
 		raftClientTLSConfig, err := config.PeerTLSInfo().ClientConfig()
 		if err != nil {
@@ -158,7 +158,7 @@ func main() {
 		log.Fatal(err)
 	}
 	raftServer.SetElectionTimeout(electionTimeout)
-	raftServer.SetHeartbeatInterval(heartbeatTimeout)
+	raftServer.SetHeartbeatInterval(heartbeatInterval)
 	ps.SetRaftServer(raftServer)
 
 	// Create etcd server
