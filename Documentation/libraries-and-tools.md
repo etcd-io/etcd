@@ -48,6 +48,10 @@
 **.Net Libraries**
 -[drusellers/etcetera](https://github.com/drusellers/etcetera)
 
+**Haskell libraries**
+
+- [wereHamster/etcd-hs](https://github.com/wereHamster/etcd-hs)
+
 A detailed recap of client functionalities can be found in the [clients compatibility matrix][clients-matrix.md].
 
 [clients-matrix.md]: https://github.com/coreos/etcd/blob/master/Documentation/clients-matrix.md
@@ -77,3 +81,4 @@ A detailed recap of client functionalities can be found in the [clients compatib
 - [mattn/etcdenv](https://github.com/mattn/etcdenv) - "env" shebang with etcd integration
 - [kelseyhightower/confd](https://github.com/kelseyhightower/confd) - Manage local app config files using templates and data from etcd
 - [configdb](https://git.autistici.org/ai/configdb/tree/master) - A REST relational abstraction on top of arbitrary database backends, aimed at storing configs and inventories.
+- [scrz](https://github.com/scrz/scrz) - Container manager, stores configuration in etcd.
