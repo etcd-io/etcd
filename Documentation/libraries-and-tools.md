@@ -46,7 +46,8 @@
 - [marshall-lee/etcd.erl](https://github.com/marshall-lee/etcd.erl)
 
 **.Net Libraries**
--[drusellers/etcetera](https://github.com/drusellers/etcetera)
+
+- [drusellers/etcetera](https://github.com/drusellers/etcetera)
 
 **Haskell libraries**
 
