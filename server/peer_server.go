@@ -164,6 +164,19 @@ func (s *PeerServer) findCluster(discoverURL string, peers []string) {
 	}
 	peers = append(peers, prevPeers...)
 
+	// Remove its own peer address from the peer list to join
+	u, err := url.Parse(s.Config.URL)
+	if err != nil {
+		log.Fatalf("cannot parse peer address %v: %v", s.Config.URL, err)
+	}
+	filteredPeers := make([]string, 0)
+	for _, v := range peers {
+		if v != u.Host {
+			filteredPeers = append(filteredPeers, v)
+		}
+	}
+	peers = filteredPeers
+
 	// if there is backup peer lists, use it to find cluster
 	if len(peers) > 0 {
 		ok := s.joinCluster(peers)
