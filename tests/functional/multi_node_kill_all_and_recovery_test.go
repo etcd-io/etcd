@@ -14,6 +14,10 @@ func TestMultiNodeKillAllAndRecovery(t *testing.T) {
 	procAttr := new(os.ProcAttr)
 	procAttr.Files = []*os.File{nil, os.Stdout, os.Stderr}
 
+	stop := make(chan bool)
+	leaderChan := make(chan string, 1)
+	all := make(chan bool, 1)
+
 	clusterSize := 5
 	argGroup, etcds, err := CreateCluster(clusterSize, procAttr, false)
 	defer DestroyCluster(etcds)
@@ -24,9 +28,12 @@ func TestMultiNodeKillAllAndRecovery(t *testing.T) {
 
 	c := etcd.NewClient(nil)
 
-	c.SyncCluster()
+	go Monitor(clusterSize, clusterSize, leaderChan, all, stop)
+	<-all
+	<-leaderChan
+	stop <-true
 
-	time.Sleep(time.Second)
+	c.SyncCluster()
 
 	// send 10 commands
 	for i := 0; i < 10; i++ {
@@ -44,9 +51,9 @@ func TestMultiNodeKillAllAndRecovery(t *testing.T) {
 
 	time.Sleep(time.Second)
 
-	stop := make(chan bool)
-	leaderChan := make(chan string, 1)
-	all := make(chan bool, 1)
+	stop = make(chan bool)
+	leaderChan = make(chan string, 1)
+	all = make(chan bool, 1)
 
 	time.Sleep(time.Second)
 
