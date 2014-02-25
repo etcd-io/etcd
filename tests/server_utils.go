@@ -39,7 +39,6 @@ func RunServer(f func(*server.Server)) {
 		URL:		"http://" + testRaftURL,
 		Scheme:		"http",
 		SnapshotCount:	testSnapshotCount,
-		MaxClusterSize:	9,
 	}
 
 	mb := metrics.NewBucket("")

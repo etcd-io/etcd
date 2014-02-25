@@ -60,7 +60,6 @@ type Config struct {
 	KeyFile          string   `toml:"key_file" env:"ETCD_KEY_FILE"`
 	Peers            []string `toml:"peers" env:"ETCD_PEERS"`
 	PeersFile        string   `toml:"peers_file" env:"ETCD_PEERS_FILE"`
-	MaxClusterSize   int      `toml:"max_cluster_size" env:"ETCD_MAX_CLUSTER_SIZE"`
 	MaxResultBuffer  int      `toml:"max_result_buffer" env:"ETCD_MAX_RESULT_BUFFER"`
 	MaxRetryAttempts int      `toml:"max_retry_attempts" env:"ETCD_MAX_RETRY_ATTEMPTS"`
 	RetryInterval    float64  `toml:"retry_interval" env:"ETCD_RETRY_INTERVAL"`
@@ -90,7 +89,6 @@ func New() *Config {
 	c := new(Config)
 	c.SystemPath = DefaultSystemConfigPath
 	c.Addr = "127.0.0.1:4001"
-	c.MaxClusterSize = 9
 	c.MaxResultBuffer = 1024
 	c.MaxRetryAttempts = 3
 	c.RetryInterval = 10.0
@@ -247,7 +245,6 @@ func (c *Config) LoadFlags(arguments []string) error {
 	f.IntVar(&c.MaxResultBuffer, "max-result-buffer", c.MaxResultBuffer, "")
 	f.IntVar(&c.MaxRetryAttempts, "max-retry-attempts", c.MaxRetryAttempts, "")
 	f.Float64Var(&c.RetryInterval, "retry-interval", c.RetryInterval, "")
-	f.IntVar(&c.MaxClusterSize, "max-cluster-size", c.MaxClusterSize, "")
 	f.IntVar(&c.Peer.HeartbeatTimeout, "peer-heartbeat-timeout", c.Peer.HeartbeatTimeout, "")
 	f.IntVar(&c.Peer.ElectionTimeout, "peer-election-timeout", c.Peer.ElectionTimeout, "")
 
@@ -281,7 +278,6 @@ func (c *Config) LoadFlags(arguments []string) error {
 	f.StringVar(&c.DataDir, "d", c.DataDir, "(deprecated)")
 	f.IntVar(&c.MaxResultBuffer, "m", c.MaxResultBuffer, "(deprecated)")
 	f.IntVar(&c.MaxRetryAttempts, "r", c.MaxRetryAttempts, "(deprecated)")
-	f.IntVar(&c.MaxClusterSize, "maxsize", c.MaxClusterSize, "(deprecated)")
 	f.IntVar(&c.SnapshotCount, "snapshotCount", c.SnapshotCount, "(deprecated)")
 	// END DEPRECATED FLAGS
 

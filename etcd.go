@@ -120,7 +120,6 @@ func main() {
 		Scheme:         config.PeerTLSInfo().Scheme(),
 		URL:            config.Peer.Addr,
 		SnapshotCount:  config.SnapshotCount,
-		MaxClusterSize: config.MaxClusterSize,
 		RetryTimes:     config.MaxRetryAttempts,
 		RetryInterval:  config.RetryInterval,
 	}

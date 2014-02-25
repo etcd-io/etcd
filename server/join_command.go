@@ -62,6 +62,11 @@ func (c *JoinCommand) Apply(context raft.Context) (interface{}, error) {
 		return buf.Bytes(), nil
 	}
 
+	// Remove it as a proxy if it is one.
+	if ps.registry.ProxyExists(c.Name) {
+		ps.registry.UnregisterProxy(c.Name)
+	}
+
 	// Add to shared peer registry.
 	ps.registry.RegisterPeer(c.Name, c.RaftURL, c.EtcdURL)
 

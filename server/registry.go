@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"path"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 
@@ -48,6 +49,7 @@ func (r *Registry) Peers() []string {
 	for name, _ := range r.peers {
 		names = append(names, name)
 	}
+	sort.Sort(sort.StringSlice(names))
 	return names
 }
 
@@ -57,6 +59,7 @@ func (r *Registry) Proxies() []string {
 	for name, _ := range r.proxies {
 		names = append(names, name)
 	}
+	sort.Sort(sort.StringSlice(names))
 	return names
 }
 
@@ -70,7 +73,11 @@ func (r *Registry) RegisterPeer(name string, peerURL string, machURL string) err
 // RegisterProxy adds a proxy to the registry.
 func (r *Registry) RegisterProxy(name string, peerURL string, machURL string) error {
 	// TODO(benbjohnson): Disallow proxies that are already peers.
-	return r.register(RegistryProxyKey, name, peerURL, machURL)
+	if err := r.register(RegistryProxyKey, name, peerURL, machURL); err != nil {
+		return err
+	}
+	r.proxies[name] = r.load(RegistryProxyKey, name)
+	return nil
 }
 
 func (r *Registry) register(key, name string, peerURL string, machURL string) error {
@@ -153,7 +160,9 @@ func (r *Registry) ClientURL(name string) (string, bool) {
 
 func (r *Registry) clientURL(key, name string) (string, bool) {
 	if r.peers[name] == nil {
-		r.peers[name] = r.load(key, name)
+		if node := r.load(key, name); node != nil {
+			r.peers[name] = node
+		}
 	}
 
 	if node := r.peers[name]; node != nil {
@@ -184,7 +193,9 @@ func (r *Registry) PeerURL(name string) (string, bool) {
 
 func (r *Registry) peerURL(key, name string) (string, bool) {
 	if r.peers[name] == nil {
-		r.peers[name] = r.load(key, name)
+		if node := r.load(key, name); node != nil {
+			r.peers[name] = node
+		}
 	}
 
 	if node := r.peers[name]; node != nil {
@@ -203,7 +214,9 @@ func (r *Registry) ProxyClientURL(name string) (string, bool) {
 
 func (r *Registry) proxyClientURL(key, name string) (string, bool) {
 	if r.proxies[name] == nil {
-		r.proxies[name] = r.load(key, name)
+		if node := r.load(key, name); node != nil {
+			r.proxies[name] = node
+		}
 	}
 	if node := r.proxies[name]; node != nil {
 		return node.url, true
@@ -215,12 +228,14 @@ func (r *Registry) proxyClientURL(key, name string) (string, bool) {
 func (r *Registry) ProxyPeerURL(name string) (string, bool) {
 	r.Lock()
 	defer r.Unlock()
-	return r.proxyPeerURL(RegistryProxyKey,name)
+	return r.proxyPeerURL(RegistryProxyKey, name)
 }
 
 func (r *Registry) proxyPeerURL(key, name string) (string, bool) {
 	if r.proxies[name] == nil {
-		r.proxies[name] = r.load(key, name)
+		if node := r.load(key, name); node != nil {
+			r.proxies[name] = node
+		}
 	}
 	if node := r.proxies[name]; node != nil {
 		return node.peerURL, true
@@ -278,7 +293,7 @@ func (r *Registry) load(key, name string) *node {
 	}
 
 	// Retrieve from store.
-	e, err := r.store.Get(path.Join(RegistryPeerKey, name), false, false)
+	e, err := r.store.Get(path.Join(key, name), false, false)
 	if err != nil {
 		return nil
 	}

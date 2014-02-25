@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/json"
 	"net/http"
+	"net/url"
 	"strconv"
 	"time"
 
@@ -169,6 +170,25 @@ func (ps *PeerServer) JoinHttpHandler(w http.ResponseWriter, req *http.Request) 
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 	}
+}
+
+// Attempt to rejoin the cluster as a peer.
+func (ps *PeerServer) PromoteHttpHandler(w http.ResponseWriter, req *http.Request) {
+	log.Infof("%s attempting to promote in cluster: %s", ps.Config.Name, ps.proxyPeerURL)
+	url, err := url.Parse(ps.proxyPeerURL)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	err = ps.joinByPeer(ps.raftServer, url.Host, ps.Config.Scheme)
+	if err != nil {
+		log.Infof("%s error while promoting: %v", ps.Config.Name, err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	log.Infof("%s promoted in the cluster", ps.Config.Name)
+	w.WriteHeader(http.StatusOK)
 }
 
 // Response to remove request

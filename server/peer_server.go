@@ -141,7 +141,6 @@ func (s *PeerServer) ClusterConfig() *ClusterConfig {
 // SetClusterConfig updates the current cluster configuration.
 // Adjusting the active size will 
 func (s *PeerServer) SetClusterConfig(c *ClusterConfig) error {
-	prevActiveSize := s.clusterConfig.ActiveSize
 	s.clusterConfig = c
 
 	// Validate configuration.
@@ -294,9 +293,10 @@ func (s *PeerServer) HTTPHandler() http.Handler {
 	router.HandleFunc("/version/{version:[0-9]+}/check", s.VersionCheckHttpHandler)
 	router.HandleFunc("/upgrade", s.UpgradeHttpHandler)
 	router.HandleFunc("/join", s.JoinHttpHandler)
+	router.HandleFunc("/promote", s.PromoteHttpHandler).Methods("POST")
 	router.HandleFunc("/remove/{name:.+}", s.RemoveHttpHandler)
 	router.HandleFunc("/config", s.getClusterConfigHttpHandler).Methods("GET")
-	router.HandleFunc("/config", s.setClusterConfigHttpHandler).Methods("POST")
+	router.HandleFunc("/config", s.setClusterConfigHttpHandler).Methods("PUT")
 	router.HandleFunc("/vote", s.VoteHttpHandler)
 	router.HandleFunc("/log", s.GetLogHttpHandler)
 	router.HandleFunc("/log/append", s.AppendEntriesHttpHandler)
@@ -632,15 +632,42 @@ func (s *PeerServer) monitorActive(closeChan chan bool) {
 		peerCount := s.registry.PeerCount()
 		proxies := s.registry.Proxies()
 		peers := s.registry.Peers()
+		fmt.Println("active.3»", peers)
 		if index := sort.SearchStrings(peers, s.Config.Name); index < len(peers) && peers[index] == s.Config.Name {
 			peers = append(peers[:index], peers[index+1:]...)
 		}
 
+		fmt.Println("active.1»", activeSize, peerCount)
+		fmt.Println("active.2»", proxies)
+
 		// If we have more active nodes than we should then demote.
 		if peerCount > activeSize {
 			peer := peers[rand.Intn(len(peers))]
+			fmt.Println("active.demote»", peer)
 			if _, err := s.raftServer.Do(&RemoveCommand{Name: peer}); err != nil {
 				log.Infof("%s: warning: demotion error: %v", s.Config.Name, err)
+			}
+			continue
+		}
+
+		// If we don't have enough active nodes then try to promote a proxy.
+		if peerCount < activeSize && len(proxies) > 0 {
+			proxy := proxies[rand.Intn(len(proxies))]
+			proxyPeerURL, _ := s.registry.ProxyPeerURL(proxy)
+			log.Infof("%s: promoting: %v (%s)", s.Config.Name, proxy, proxyPeerURL)
+
+			// Notify proxy to promote itself.
+			client := &http.Client{
+				Transport: &http.Transport{
+					DisableKeepAlives: false,
+					ResponseHeaderTimeout: ActiveMonitorTimeout,
+				},
+			}
+			resp, err := client.Post(fmt.Sprintf("%s/promote", proxyPeerURL), "application/json", nil)
+			if err != nil {
+				log.Infof("%s: warning: promotion error: %v", s.Config.Name, err)
+			} else if resp.StatusCode != http.StatusOK {
+				log.Infof("%s: warning: promotion failure: %v", s.Config.Name, resp.StatusCode)
 			}
 			continue
 		}

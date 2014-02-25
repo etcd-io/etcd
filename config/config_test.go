@@ -51,7 +51,6 @@ func TestConfigTOML(t *testing.T) {
 	assert.Equal(t, c.BindAddr, "127.0.0.1:4003", "")
 	assert.Equal(t, c.Peers, []string{"coreos.com:4001", "coreos.com:4002"}, "")
 	assert.Equal(t, c.PeersFile, "/tmp/peers", "")
-	assert.Equal(t, c.MaxClusterSize, 10, "")
 	assert.Equal(t, c.MaxResultBuffer, 512, "")
 	assert.Equal(t, c.MaxRetryAttempts, 5, "")
 	assert.Equal(t, c.Name, "test-name", "")
@@ -101,7 +100,6 @@ func TestConfigEnv(t *testing.T) {
 	assert.Equal(t, c.BindAddr, "127.0.0.1:4003", "")
 	assert.Equal(t, c.Peers, []string{"coreos.com:4001", "coreos.com:4002"}, "")
 	assert.Equal(t, c.PeersFile, "/tmp/peers", "")
-	assert.Equal(t, c.MaxClusterSize, 10, "")
 	assert.Equal(t, c.MaxResultBuffer, 512, "")
 	assert.Equal(t, c.MaxRetryAttempts, 5, "")
 	assert.Equal(t, c.Name, "test-name", "")
@@ -279,21 +277,6 @@ func TestConfigPeersFileFlag(t *testing.T) {
 	c := New()
 	assert.Nil(t, c.LoadFlags([]string{"-peers-file", "/tmp/peers"}), "")
 	assert.Equal(t, c.PeersFile, "/tmp/peers", "")
-}
-
-// Ensures that the Max Cluster Size can be parsed from the environment.
-func TestConfigMaxClusterSizeEnv(t *testing.T) {
-	withEnv("ETCD_MAX_CLUSTER_SIZE", "5", func(c *Config) {
-		assert.Nil(t, c.LoadEnv(), "")
-		assert.Equal(t, c.MaxClusterSize, 5, "")
-	})
-}
-
-// Ensures that a the Max Cluster Size flag can be parsed.
-func TestConfigMaxClusterSizeFlag(t *testing.T) {
-	c := New()
-	assert.Nil(t, c.LoadFlags([]string{"-max-cluster-size", "5"}), "")
-	assert.Equal(t, c.MaxClusterSize, 5, "")
 }
 
 // Ensures that the Max Result Buffer can be parsed from the environment.
@@ -598,26 +581,6 @@ func TestConfigDeprecatedPeersFileFlag(t *testing.T) {
 		assert.Equal(t, c.PeersFile, "/tmp/machines", "")
 	})
 	assert.Equal(t, stderr, "[deprecated] use -peers-file, not -CF\n", "")
-}
-
-func TestConfigDeprecatedMaxClusterSizeFlag(t *testing.T) {
-	_, stderr := capture(func() {
-		c := New()
-		err := c.LoadFlags([]string{"-maxsize", "5"})
-		assert.NoError(t, err)
-		assert.Equal(t, c.MaxClusterSize, 5, "")
-	})
-	assert.Equal(t, stderr, "[deprecated] use -max-cluster-size, not -maxsize\n", "")
-}
-
-func TestConfigDeprecatedMaxResultBufferFlag(t *testing.T) {
-	_, stderr := capture(func() {
-		c := New()
-		err := c.LoadFlags([]string{"-m", "512"})
-		assert.NoError(t, err)
-		assert.Equal(t, c.MaxResultBuffer, 512, "")
-	})
-	assert.Equal(t, stderr, "[deprecated] use -max-result-buffer, not -m\n", "")
 }
 
 func TestConfigDeprecatedMaxRetryAttemptsFlag(t *testing.T) {

@@ -21,7 +21,7 @@ type ClusterConfig struct {
 
 	// PromoteDelay is the amount of time, in seconds, after a node is
 	// unreachable that it will be swapped out for a proxy node, if available.
-	PromoteDelay int `json:"PromoteDelay"`
+	PromoteDelay int `json:"promoteDelay"`
 }
 
 // NewClusterConfig returns a cluster configuration with default settings.
