@@ -783,6 +783,28 @@ curl -L http://127.0.0.1:4001/v2/keys/
 
 Here we see the `/message` key but our hidden `/_message` key is not returned.
 
+### Setting a key from a file
+
+You can also use etcd to store small configuration files, json documents, XML documents, etc directly.
+For example you can use curl to upload a simple text file and encode it:
+
+```
+echo "Hello\nWorld" > afile.txt
+curl -L http://127.0.0.1:4001/v2/keys/afile -XPUT --data-urlencode value@afile.txt
+```
+
+```json
+{
+    "action": "get",
+    "node": {
+        "createdIndex": 2,
+        "key": "/afile",
+        "modifiedIndex": 2,
+        "value": "Hello\nWorld\n"
+    }
+}
+```
+
 ### Read Consistency
 
 Followers in a cluster can be behind the leader in their copy of the keyspace.
