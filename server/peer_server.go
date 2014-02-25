@@ -26,7 +26,7 @@ import (
 )
 
 const ThresholdMonitorTimeout = 5 * time.Second
-const ActiveMonitorTimeout = 5 * time.Second
+const ActiveMonitorTimeout = 1 * time.Second
 
 type PeerServerConfig struct {
 	Name           string
@@ -644,7 +644,7 @@ func (s *PeerServer) monitorActive(closeChan chan bool) {
 		if peerCount > activeSize {
 			peer := peers[rand.Intn(len(peers))]
 			fmt.Println("active.demote»", peer)
-			if _, err := s.raftServer.Do(&RemoveCommand{Name: peer}); err != nil {
+			if _, err := s.raftServer.Do(&DemoteCommand{Name: peer}); err != nil {
 				log.Infof("%s: warning: demotion error: %v", s.Config.Name, err)
 			}
 			continue

@@ -45,7 +45,10 @@ func TestProxy(t *testing.T) {
 		}
 	}
 
-	time.Sleep(server.ActiveMonitorTimeout + (1 * time.Second))
+	// Verify that we have one proxy.
+	result, err := c.Get("_etcd/proxies", false, true)
+	assert.NoError(t, err)
+	assert.Equal(t, len(result.Node.Nodes), 1)
 
 	// Reconfigure with larger active size (10 nodes) and wait for promotion.
 	resp, _ := tests.Put("http://localhost:7001/config", "application/json", bytes.NewBufferString(`{"activeSize":10, "promoteDelay":1800}`))
@@ -56,6 +59,26 @@ func TestProxy(t *testing.T) {
 	time.Sleep(server.ActiveMonitorTimeout + (1 * time.Second))
 
 	// Verify that the proxy node is now a peer.
-	fmt.Println("CHECK!")
-	time.Sleep(30 * time.Second)
+	result, err = c.Get("_etcd/proxies", false, true)
+	assert.NoError(t, err)
+	assert.Equal(t, len(result.Node.Nodes), 0)
+
+	// Reconfigure with a smaller active size (8 nodes).
+	resp, _ = tests.Put("http://localhost:7001/config", "application/json", bytes.NewBufferString(`{"activeSize":8, "promoteDelay":1800}`))
+	if !assert.Equal(t, resp.StatusCode, 200) {
+		t.FailNow()
+	}
+
+	// Wait for two monitor cycles before checking for demotion.
+	time.Sleep((2 * server.ActiveMonitorTimeout) + (1 * time.Second))
+
+	// Verify that we now have eight peers.
+	result, err = c.Get("_etcd/machines", false, true)
+	assert.NoError(t, err)
+	assert.Equal(t, len(result.Node.Nodes), 8)
+
+	// Verify that we now have two proxies.
+	result, err = c.Get("_etcd/proxies", false, true)
+	assert.NoError(t, err)
+	assert.Equal(t, len(result.Node.Nodes), 2)
 }
