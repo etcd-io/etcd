@@ -2,8 +2,6 @@
 
 README version 0.3.0
 
-[![Build Status](https://drone.io/github.com/coreos/etcd/status.png)](https://drone.io/github.com/coreos/etcd/latest)
-
 A highly-available key value store for shared configuration and service discovery.
 etcd is inspired by zookeeper and doozer, with a focus on:
 
