@@ -9,8 +9,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/coreos/etcd/log"
 	"github.com/coreos/etcd/third_party/github.com/coreos/raft"
+	httpclient "github.com/coreos/etcd/third_party/github.com/mreiferson/go-httpclient"
+
+	"github.com/coreos/etcd/log"
 )
 
 // Transporter layer for communication between raft nodes
@@ -21,7 +23,7 @@ type transporter struct {
 	registry	*Registry
 
 	client		*http.Client
-	transport	*http.Transport
+	transport	*httpclient.Transport
 }
 
 type dialer func(network, addr string) (net.Conn, error)
@@ -30,11 +32,15 @@ type dialer func(network, addr string) (net.Conn, error)
 // Create http or https transporter based on
 // whether the user give the server cert and key
 func NewTransporter(followersStats *raftFollowersStats, serverStats *raftServerStats, registry *Registry, dialTimeout, requestTimeout, responseHeaderTimeout time.Duration) *transporter {
-	tr := &http.Transport{
-		Dial: func(network, addr string) (net.Conn, error) {
-			return net.DialTimeout(network, addr, dialTimeout)
-		},
+	tr := &httpclient.Transport{
 		ResponseHeaderTimeout:	responseHeaderTimeout,
+		// This is a workaround for Transport.CancelRequest doesn't work on
+		// HTTPS connections blocked. The patch for it is in progress,
+		// and would be available in Go1.3
+		// More: https://codereview.appspot.com/69280043/
+		ConnectTimeout: dialTimeout,
+		RequestTimeout: dialTimeout + responseHeaderTimeout,
+		ReadWriteTimeout: responseHeaderTimeout,
 	}
 
 	t := transporter{
