@@ -77,7 +77,7 @@ Unless overridden, a node naturally inherits the ACL names of its parent directo
 
 For each ACL name, it has three children: *R (Reading)*, *W (Writing)*, *C (Changing)*
 
-Each permission is also a node. Under the node it contains the users who have this permission for the file refering to this ACL name.
+Each permission is also a node. Under the node it contains the users who have this permission for the file referring to this ACL name.
 
 ### Example
 [TODO]

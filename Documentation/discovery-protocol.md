@@ -20,7 +20,7 @@ UUID=$(uuidgen)
 
 Now that you have your cluster ID you can start bringing up machines. Every machine will follow this protocol internally in etcd if given a `-discovery`.
 
-### Registering your Machine 
+### Registering your Machine
 
 The first thing etcd must do is register your machine. This is done by using the machine name (from the `-name` arg) and posting it with a long TTL to the given key.
 

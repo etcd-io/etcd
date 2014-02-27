@@ -26,7 +26,7 @@ coreos­etcdctl­0.2.0           Simple commandline client for et
 r@fbsd­10:/ #
 ```
 
-5. You’re ready to use etcd and etcdctl! For more information about using pkgng, plese
+5. You’re ready to use etcd and etcdctl! For more information about using pkgng, please
 see: http://www.freebsd.org/doc/handbook/pkgng­intro.html
  
 ### Using ports system
@@ -37,7 +37,7 @@ may take some time depending on your hardware and network connection)
 2. Build etcd with `cd /usr/ports/devel/etcd && make install clean`, you
 will get an option to build and install documentation and etcdctl with it.
 
-3. If you havent install it with etcdctl, and you would like to install it later, you can build it
+3. If you haven't installed it with etcdctl, and you would like to install it later, you can build it
 with `cd /usr/ports/devel/etcdctl && make install clean`
 
 4. Verify successful installation with `pkg info | grep etcd` and you should get:
@@ -55,8 +55,8 @@ please see: https://www.freebsd.org/doc/handbook/ports­using.html
 
 ## Issues
 
-If you find any issues with the build/install procedure or you’ve found a problem that
-you’ve verified is local to FreeBSD version only (for example, by not being able to
+If you find any issues with the build/install procedure or you've found a problem that
+you've verified is local to FreeBSD version only (for example, by not being able to
 reproduce it on any other platform, like OSX or Linux), please sent a
 problem report using this page for more
 information: http://www.freebsd.org/send­pr.html
