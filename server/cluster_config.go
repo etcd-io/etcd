@@ -27,7 +27,7 @@ type ClusterConfig struct {
 // NewClusterConfig returns a cluster configuration with default settings.
 func NewClusterConfig() *ClusterConfig {
 	return &ClusterConfig{
-		ActiveSize: DefaultActiveSize,
+		ActiveSize:   DefaultActiveSize,
 		PromoteDelay: DefaultPromoteDelay,
 	}
 }

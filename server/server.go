@@ -12,10 +12,10 @@ import (
 	"github.com/coreos/etcd/third_party/github.com/gorilla/mux"
 
 	etcdErr "github.com/coreos/etcd/error"
+	ehttp "github.com/coreos/etcd/http"
 	"github.com/coreos/etcd/log"
 	"github.com/coreos/etcd/metrics"
 	"github.com/coreos/etcd/mod"
-	ehttp "github.com/coreos/etcd/http"
 	uhttp "github.com/coreos/etcd/pkg/http"
 	"github.com/coreos/etcd/server/v1"
 	"github.com/coreos/etcd/server/v2"
@@ -25,26 +25,26 @@ import (
 
 // This is the default implementation of the Server interface.
 type Server struct {
-	Name		string
-	url		string
-	handler		http.Handler
-	peerServer	*PeerServer
-	registry	*Registry
-	store		store.Store
-	metrics		*metrics.Bucket
+	Name       string
+	url        string
+	handler    http.Handler
+	peerServer *PeerServer
+	registry   *Registry
+	store      store.Store
+	metrics    *metrics.Bucket
 
-	trace	bool
+	trace bool
 }
 
 // Creates a new Server.
 func New(name, url string, peerServer *PeerServer, registry *Registry, store store.Store, mb *metrics.Bucket) *Server {
 	s := &Server{
-		Name:		name,
-		url:		url,
-		store:		store,
-		registry:	registry,
-		peerServer:	peerServer,
-		metrics:	mb,
+		Name:       name,
+		url:        url,
+		store:      store,
+		registry:   registry,
+		peerServer: peerServer,
+		metrics:    mb,
 	}
 
 	return s

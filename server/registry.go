@@ -22,8 +22,8 @@ const RegistryProxyKey = "/_etcd/proxies"
 // The Registry stores URL information for nodes.
 type Registry struct {
 	sync.Mutex
-	store store.Store
-	peers map[string]*node
+	store   store.Store
+	peers   map[string]*node
 	proxies map[string]*node
 }
 
@@ -37,13 +37,13 @@ type node struct {
 // Creates a new Registry.
 func NewRegistry(s store.Store) *Registry {
 	return &Registry{
-		store: s,
-		peers: make(map[string]*node),
+		store:   s,
+		peers:   make(map[string]*node),
 		proxies: make(map[string]*node),
 	}
 }
 
-// Peers returns a list of peer names.
+// Peers returns a list of cached peer names.
 func (r *Registry) Peers() []string {
 	names := make([]string, 0, len(r.peers))
 	for name, _ := range r.peers {
@@ -53,7 +53,7 @@ func (r *Registry) Peers() []string {
 	return names
 }
 
-// Proxies returns a list of proxy names.
+// Proxies returns a list of cached proxy names.
 func (r *Registry) Proxies() []string {
 	names := make([]string, 0, len(r.proxies))
 	for name, _ := range r.proxies {
@@ -62,7 +62,6 @@ func (r *Registry) Proxies() []string {
 	sort.Sort(sort.StringSlice(names))
 	return names
 }
-
 
 // RegisterPeer adds a peer to the registry.
 func (r *Registry) RegisterPeer(name string, peerURL string, machURL string) error {
@@ -150,7 +149,6 @@ func (r *Registry) exists(key, name string) bool {
 	return (e.Node != nil)
 }
 
-
 // Retrieves the client URL for a given node by name.
 func (r *Registry) ClientURL(name string) (string, bool) {
 	r.Lock()
@@ -188,7 +186,7 @@ func (r *Registry) PeerHost(name string) (string, bool) {
 func (r *Registry) PeerURL(name string) (string, bool) {
 	r.Lock()
 	defer r.Unlock()
-	return r.peerURL(RegistryPeerKey,name)
+	return r.peerURL(RegistryPeerKey, name)
 }
 
 func (r *Registry) peerURL(key, name string) (string, bool) {

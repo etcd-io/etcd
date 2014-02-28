@@ -46,4 +46,3 @@ func (c *DemoteCommand) Apply(context raft.Context) (interface{}, error) {
 func (c *DemoteCommand) NodeName() string {
 	return c.Name
 }
-

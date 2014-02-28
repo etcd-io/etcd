@@ -13,21 +13,30 @@ func init() {
 }
 
 // The JoinCommand adds a node to the cluster.
+//
+// The command returns two values back to binary format.
+// The first value is a Uvarint representing the the join_index.
+// The second value is a single byte flag representing whether the joining
+// node is a peer (0) or a proxy (1).
+//
+//     8 bytes      |   1 byte
+//     join_index   |  join_mode
+//
 type JoinCommand struct {
-	MinVersion	int	`json:"minVersion"`
-	MaxVersion	int	`json:"maxVersion"`
-	Name		string	`json:"name"`
-	RaftURL		string	`json:"raftURL"`
-	EtcdURL		string	`json:"etcdURL"`
+	MinVersion int    `json:"minVersion"`
+	MaxVersion int    `json:"maxVersion"`
+	Name       string `json:"name"`
+	RaftURL    string `json:"raftURL"`
+	EtcdURL    string `json:"etcdURL"`
 }
 
 func NewJoinCommand(minVersion int, maxVersion int, name, raftUrl, etcdUrl string) *JoinCommand {
 	return &JoinCommand{
-		MinVersion:	minVersion,
-		MaxVersion:	maxVersion,
-		Name:		name,
-		RaftURL:	raftUrl,
-		EtcdURL:	etcdUrl,
+		MinVersion: minVersion,
+		MaxVersion: maxVersion,
+		Name:       name,
+		RaftURL:    raftUrl,
+		EtcdURL:    etcdUrl,
 	}
 }
 

@@ -49,12 +49,12 @@ const (
 	EcodeRaftInternal = 300
 	EcodeLeaderElect  = 301
 
-	EcodeWatcherCleared    = 400
-	EcodeEventIndexCleared = 401
-	EcodeProxyInternal = 402
-	EcodeInvalidActiveSize = 403
+	EcodeWatcherCleared      = 400
+	EcodeEventIndexCleared   = 401
+	EcodeProxyInternal       = 402
+	EcodeInvalidActiveSize   = 403
 	EcodeInvalidPromoteDelay = 404
-	EcodePromoteError = 405
+	EcodePromoteError        = 405
 )
 
 func init() {

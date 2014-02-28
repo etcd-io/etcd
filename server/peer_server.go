@@ -1,8 +1,8 @@
 package server
 
 import (
-	"bytes"
 	"bufio"
+	"bytes"
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
@@ -27,63 +27,64 @@ import (
 
 const ThresholdMonitorTimeout = 5 * time.Second
 const ActiveMonitorTimeout = 1 * time.Second
+const PeerActivityMonitorTimeout = 1 * time.Second
 
 type PeerServerConfig struct {
-	Name           string
-	Scheme         string
-	URL            string
-	SnapshotCount  int
-	RetryTimes     int
-	RetryInterval  float64
+	Name          string
+	Scheme        string
+	URL           string
+	SnapshotCount int
+	RetryTimes    int
+	RetryInterval float64
 }
 
 type PeerServer struct {
-	Config		PeerServerConfig
-	clusterConfig	*ClusterConfig
-	raftServer	raft.Server
-	server		*Server
-	joinIndex	uint64
-	followersStats	*raftFollowersStats
-	serverStats	*raftServerStats
-	registry	*Registry
-	store		store.Store
-	snapConf	*snapshotConf
-	mode        Mode
+	Config         PeerServerConfig
+	clusterConfig  *ClusterConfig
+	raftServer     raft.Server
+	server         *Server
+	joinIndex      uint64
+	followersStats *raftFollowersStats
+	serverStats    *raftServerStats
+	registry       *Registry
+	store          store.Store
+	snapConf       *snapshotConf
+	mode           Mode
 
-	closeChan		chan bool
-	timeoutThresholdChan	chan interface{}
+	closeChan            chan bool
+	timeoutThresholdChan chan interface{}
 
-	proxyPeerURL string
+	proxyPeerURL   string
 	proxyClientURL string
 
-	metrics	*metrics.Bucket
+	metrics *metrics.Bucket
 }
 
 // TODO: find a good policy to do snapshot
 type snapshotConf struct {
 	// Etcd will check if snapshot is need every checkingInterval
-	checkingInterval	time.Duration
+	checkingInterval time.Duration
 
 	// The index when the last snapshot happened
-	lastIndex	uint64
+	lastIndex uint64
 
 	// If the incremental number of index since the last snapshot
 	// exceeds the snapshot Threshold, etcd will do a snapshot
-	snapshotThr	uint64
+	snapshotThr uint64
 }
 
 func NewPeerServer(psConfig PeerServerConfig, registry *Registry, store store.Store, mb *metrics.Bucket, followersStats *raftFollowersStats, serverStats *raftServerStats) *PeerServer {
 	s := &PeerServer{
-		Config:		psConfig,
-		clusterConfig: NewClusterConfig(),
-		registry:	registry,
-		store:		store,
-		followersStats:	followersStats,
-		serverStats:	serverStats,
+		Config:         psConfig,
+		clusterConfig:  NewClusterConfig(),
+		registry:       registry,
+		store:          store,
+		followersStats: followersStats,
+		serverStats:    serverStats,
 
-		timeoutThresholdChan:	make(chan interface{}, 1),
+		timeoutThresholdChan: make(chan interface{}, 1),
 
-		metrics:	mb,
+		metrics: mb,
 	}
 
 	return s
@@ -91,10 +92,10 @@ func NewPeerServer(psConfig PeerServerConfig, registry *Registry, store store.St
 
 func (s *PeerServer) SetRaftServer(raftServer raft.Server) {
 	s.snapConf = &snapshotConf{
-		checkingInterval:	time.Second * 3,
+		checkingInterval: time.Second * 3,
 		// this is not accurate, we will update raft to provide an api
-		lastIndex:	raftServer.CommitIndex(),
-		snapshotThr:	uint64(s.Config.SnapshotCount),
+		lastIndex:   raftServer.CommitIndex(),
+		snapshotThr: uint64(s.Config.SnapshotCount),
 	}
 
 	raftServer.AddEventListener(raft.StateChangeEventType, s.raftEventLogger)
@@ -267,6 +268,7 @@ func (s *PeerServer) Start(snapshot bool, discoverURL string, peers []string) er
 	go s.monitorSync()
 	go s.monitorTimeoutThreshold(s.closeChan)
 	go s.monitorActive(s.closeChan)
+	go s.monitorPeerActivity(s.closeChan)
 
 	// open the snapshot
 	if snapshot {
@@ -444,7 +446,7 @@ func (s *PeerServer) joinByPeer(server raft.Server, peer string, scheme string) 
 			if resp.StatusCode == http.StatusOK {
 				r := bufio.NewReader(resp.Body)
 				s.joinIndex, _ = binary.ReadUvarint(r)
-				
+
 				// Determine whether the server joined as a proxy or peer.
 				var mode uint64
 				if mode, err = binary.ReadUvarint(r); err == io.EOF {
@@ -617,7 +619,7 @@ func (s *PeerServer) monitorTimeoutThreshold(closeChan chan bool) {
 func (s *PeerServer) monitorActive(closeChan chan bool) {
 	for {
 		select {
-		case <- time.After(ActiveMonitorTimeout):
+		case <-time.After(ActiveMonitorTimeout):
 		case <-closeChan:
 			return
 		}
@@ -632,18 +634,13 @@ func (s *PeerServer) monitorActive(closeChan chan bool) {
 		peerCount := s.registry.PeerCount()
 		proxies := s.registry.Proxies()
 		peers := s.registry.Peers()
-		fmt.Println("active.3»", peers)
 		if index := sort.SearchStrings(peers, s.Config.Name); index < len(peers) && peers[index] == s.Config.Name {
 			peers = append(peers[:index], peers[index+1:]...)
 		}
 
-		fmt.Println("active.1»", activeSize, peerCount)
-		fmt.Println("active.2»", proxies)
-
 		// If we have more active nodes than we should then demote.
 		if peerCount > activeSize {
 			peer := peers[rand.Intn(len(peers))]
-			fmt.Println("active.demote»", peer)
 			if _, err := s.raftServer.Do(&DemoteCommand{Name: peer}); err != nil {
 				log.Infof("%s: warning: demotion error: %v", s.Config.Name, err)
 			}
@@ -652,28 +649,64 @@ func (s *PeerServer) monitorActive(closeChan chan bool) {
 
 		// If we don't have enough active nodes then try to promote a proxy.
 		if peerCount < activeSize && len(proxies) > 0 {
-			proxy := proxies[rand.Intn(len(proxies))]
-			proxyPeerURL, _ := s.registry.ProxyPeerURL(proxy)
-			log.Infof("%s: promoting: %v (%s)", s.Config.Name, proxy, proxyPeerURL)
+		loop:
+			for _, i := range rand.Perm(len(proxies)) {
+				proxy := proxies[i]
+				proxyPeerURL, _ := s.registry.ProxyPeerURL(proxy)
+				log.Infof("%s: attempting to promote: %v (%s)", s.Config.Name, proxy, proxyPeerURL)
 
-			// Notify proxy to promote itself.
-			client := &http.Client{
-				Transport: &http.Transport{
-					DisableKeepAlives: false,
-					ResponseHeaderTimeout: ActiveMonitorTimeout,
-				},
+				// Notify proxy to promote itself.
+				client := &http.Client{
+					Transport: &http.Transport{
+						DisableKeepAlives:     false,
+						ResponseHeaderTimeout: ActiveMonitorTimeout,
+					},
+				}
+				resp, err := client.Post(fmt.Sprintf("%s/promote", proxyPeerURL), "application/json", nil)
+				if err != nil {
+					log.Infof("%s: warning: promotion error: %v", s.Config.Name, err)
+					continue
+				} else if resp.StatusCode != http.StatusOK {
+					log.Infof("%s: warning: promotion failure: %v", s.Config.Name, resp.StatusCode)
+					continue
+				}
+				break loop
 			}
-			resp, err := client.Post(fmt.Sprintf("%s/promote", proxyPeerURL), "application/json", nil)
-			if err != nil {
-				log.Infof("%s: warning: promotion error: %v", s.Config.Name, err)
-			} else if resp.StatusCode != http.StatusOK {
-				log.Infof("%s: warning: promotion failure: %v", s.Config.Name, resp.StatusCode)
-			}
-			continue
 		}
 	}
 }
 
+// monitorPeerActivity periodically checks for dead nodes and demotes them.
+func (s *PeerServer) monitorPeerActivity(closeChan chan bool) {
+	for {
+		select {
+		case <-time.After(PeerActivityMonitorTimeout):
+		case <-closeChan:
+			return
+		}
+
+		// Ignore while this peer is not a leader.
+		if s.raftServer.State() != raft.Leader {
+			continue
+		}
+
+		// Check last activity for all peers.
+		now := time.Now()
+		promoteDelay := time.Duration(s.ClusterConfig().PromoteDelay) * time.Second
+		peers := s.raftServer.Peers()
+		for _, peer := range peers {
+			// If the last response from the peer is longer than the promote delay
+			// then automatically demote the peer.
+			if !peer.LastActivity().IsZero() && now.Sub(peer.LastActivity()) > promoteDelay {
+				log.Infof("%s: demoting node: %v; last activity %v ago", s.Config.Name, peer.Name, now.Sub(peer.LastActivity()))
+				if _, err := s.raftServer.Do(&DemoteCommand{Name: peer.Name}); err != nil {
+					log.Infof("%s: warning: autodemotion error: %v", s.Config.Name, err)
+				}
+				continue
+			}
+		}
+	}
+}
 
 // Mode represents whether the server is an active peer or if the server is 
 // simply acting as a proxy.
@@ -681,9 +714,8 @@ type Mode string
 
 const (
 	// PeerMode is when the server is an active node in Raft.
-	PeerMode  = Mode("peer")
+	PeerMode = Mode("peer")
 
 	// ProxyMode is when the server is an inactive, request-forwarding node.
 	ProxyMode = Mode("proxy")
 )
-

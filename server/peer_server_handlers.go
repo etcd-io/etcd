@@ -11,8 +11,8 @@ import (
 	"github.com/coreos/etcd/third_party/github.com/gorilla/mux"
 
 	etcdErr "github.com/coreos/etcd/error"
-	uhttp "github.com/coreos/etcd/pkg/http"
 	"github.com/coreos/etcd/log"
+	uhttp "github.com/coreos/etcd/pkg/http"
 	"github.com/coreos/etcd/store"
 )
 
@@ -215,7 +215,7 @@ func (ps *PeerServer) getClusterConfigHttpHandler(w http.ResponseWriter, req *ht
 
 // Updates the cluster configuration.
 func (ps *PeerServer) setClusterConfigHttpHandler(w http.ResponseWriter, req *http.Request) {
-	c := &SetClusterConfigCommand{Config:&ClusterConfig{}}
+	c := &SetClusterConfigCommand{Config: &ClusterConfig{}}
 	if err := json.NewDecoder(req.Body).Decode(&c.Config); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
