@@ -9,8 +9,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/coreos/etcd/log"
 	"github.com/coreos/etcd/third_party/github.com/coreos/raft"
+	httpclient "github.com/coreos/etcd/third_party/github.com/mreiferson/go-httpclient"
+
+	"github.com/coreos/etcd/log"
 )
 
 // Transporter layer for communication between raft nodes
@@ -21,7 +23,7 @@ type transporter struct {
 	registry	*Registry
 
 	client		*http.Client
-	transport	*http.Transport
+	transport	*httpclient.Transport
 }
 
 type dialer func(network, addr string) (net.Conn, error)
@@ -30,11 +32,15 @@ type dialer func(network, addr string) (net.Conn, error)
 // Create http or https transporter based on
 // whether the user give the server cert and key
 func NewTransporter(followersStats *raftFollowersStats, serverStats *raftServerStats, registry *Registry, dialTimeout, requestTimeout, responseHeaderTimeout time.Duration) *transporter {
-	tr := &http.Transport{
-		Dial: func(network, addr string) (net.Conn, error) {
-			return net.DialTimeout(network, addr, dialTimeout)
-		},
+	tr := &httpclient.Transport{
 		ResponseHeaderTimeout:	responseHeaderTimeout,
+		// This is a workaround for Transport.CancelRequest doesn't work on
+		// HTTPS connections blocked. The patch for it is in progress,
+		// and would be available in Go1.3
+		// More: https://codereview.appspot.com/69280043/
+		ConnectTimeout: dialTimeout,
+		RequestTimeout: dialTimeout + responseHeaderTimeout,
+		ReadWriteTimeout: responseHeaderTimeout,
 	}
 
 	t := transporter{
@@ -81,7 +87,7 @@ func (t *transporter) SendAppendEntriesRequest(server raft.Server, peer *raft.Pe
 
 	start := time.Now()
 
-	resp, httpRequest, err := t.Post(fmt.Sprintf("%s/log/append", u), &b)
+	resp, _, err := t.Post(fmt.Sprintf("%s/log/append", u), &b)
 
 	end := time.Now()
 
@@ -99,8 +105,6 @@ func (t *transporter) SendAppendEntriesRequest(server raft.Server, peer *raft.Pe
 
 	if resp != nil {
 		defer resp.Body.Close()
-
-		t.CancelWhenTimeout(httpRequest)
 
 		aeresp := &raft.AppendEntriesResponse{}
 		if _, err = aeresp.Decode(resp.Body); err != nil && err != io.EOF {
@@ -125,7 +129,7 @@ func (t *transporter) SendVoteRequest(server raft.Server, peer *raft.Peer, req *
 	u, _ := t.registry.PeerURL(peer.Name)
 	log.Debugf("Send Vote from %s to %s", server.Name(), u)
 
-	resp, httpRequest, err := t.Post(fmt.Sprintf("%s/vote", u), &b)
+	resp, _, err := t.Post(fmt.Sprintf("%s/vote", u), &b)
 
 	if err != nil {
 		log.Debugf("Cannot send VoteRequest to %s : %s", u, err)
@@ -133,8 +137,6 @@ func (t *transporter) SendVoteRequest(server raft.Server, peer *raft.Peer, req *
 
 	if resp != nil {
 		defer resp.Body.Close()
-
-		t.CancelWhenTimeout(httpRequest)
 
 		rvrsp := &raft.RequestVoteResponse{}
 		if _, err = rvrsp.Decode(resp.Body); err != nil && err != io.EOF {
@@ -158,7 +160,7 @@ func (t *transporter) SendSnapshotRequest(server raft.Server, peer *raft.Peer, r
 	u, _ := t.registry.PeerURL(peer.Name)
 	log.Debugf("Send Snapshot Request from %s to %s", server.Name(), u)
 
-	resp, httpRequest, err := t.Post(fmt.Sprintf("%s/snapshot", u), &b)
+	resp, _, err := t.Post(fmt.Sprintf("%s/snapshot", u), &b)
 
 	if err != nil {
 		log.Debugf("Cannot send Snapshot Request to %s : %s", u, err)
@@ -166,8 +168,6 @@ func (t *transporter) SendSnapshotRequest(server raft.Server, peer *raft.Peer, r
 
 	if resp != nil {
 		defer resp.Body.Close()
-
-		t.CancelWhenTimeout(httpRequest)
 
 		ssrsp := &raft.SnapshotResponse{}
 		if _, err = ssrsp.Decode(resp.Body); err != nil && err != io.EOF {
@@ -191,7 +191,7 @@ func (t *transporter) SendSnapshotRecoveryRequest(server raft.Server, peer *raft
 	u, _ := t.registry.PeerURL(peer.Name)
 	log.Debugf("Send Snapshot Recovery from %s to %s", server.Name(), u)
 
-	resp, httpRequest, err := t.Post(fmt.Sprintf("%s/snapshotRecovery", u), &b)
+	resp, _, err := t.Post(fmt.Sprintf("%s/snapshotRecovery", u), &b)
 
 	if err != nil {
 		log.Debugf("Cannot send Snapshot Recovery to %s : %s", u, err)
@@ -199,8 +199,6 @@ func (t *transporter) SendSnapshotRecoveryRequest(server raft.Server, peer *raft
 
 	if resp != nil {
 		defer resp.Body.Close()
-
-		t.CancelWhenTimeout(httpRequest)
 
 		ssrrsp := &raft.SnapshotRecoveryResponse{}
 		if _, err = ssrrsp.Decode(resp.Body); err != nil && err != io.EOF {
@@ -225,12 +223,4 @@ func (t *transporter) Get(urlStr string) (*http.Response, *http.Request, error) 
 	req, _ := http.NewRequest("GET", urlStr, nil)
 	resp, err := t.client.Do(req)
 	return resp, req, err
-}
-
-// Cancel the on fly HTTP transaction when timeout happens.
-func (t *transporter) CancelWhenTimeout(req *http.Request) {
-	go func() {
-		time.Sleep(t.requestTimeout)
-		t.transport.CancelRequest(req)
-	}()
 }
