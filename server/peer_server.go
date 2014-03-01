@@ -300,13 +300,12 @@ func (s *PeerServer) startAsFollower(cluster []string) {
 
 // getVersion fetches the peer version of a cluster.
 func getVersion(t *transporter, versionURL url.URL) (int, error) {
-	resp, req, err := t.Get(versionURL.String())
+	resp, _, err := t.Get(versionURL.String())
 	if err != nil {
 		return 0, err
 	}
 	defer resp.Body.Close()
 
-	t.CancelWhenTimeout(req)
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return 0, err
@@ -386,7 +385,7 @@ func (s *PeerServer) joinByPeer(server raft.Server, peer string, scheme string) 
 
 	log.Debugf("Send Join Request to %s", joinURL.String())
 
-	resp, req, err := t.Post(joinURL.String(), &b)
+	resp, _, err := t.Post(joinURL.String(), &b)
 
 	for {
 		if err != nil {
@@ -394,8 +393,6 @@ func (s *PeerServer) joinByPeer(server raft.Server, peer string, scheme string) 
 		}
 		if resp != nil {
 			defer resp.Body.Close()
-
-			t.CancelWhenTimeout(req)
 
 			if resp.StatusCode == http.StatusOK {
 				b, _ := ioutil.ReadAll(resp.Body)
@@ -406,7 +403,7 @@ func (s *PeerServer) joinByPeer(server raft.Server, peer string, scheme string) 
 				address := resp.Header.Get("Location")
 				log.Debugf("Send Join Request to %s", address)
 				json.NewEncoder(&b).Encode(NewJoinCommand(store.MinVersion(), store.MaxVersion(), server.Name(), s.Config.URL, s.server.URL()))
-				resp, req, err = t.Post(address, &b)
+				resp, _, err = t.Post(address, &b)
 
 			} else if resp.StatusCode == http.StatusBadRequest {
 				log.Debug("Reach max number peers in the cluster")
