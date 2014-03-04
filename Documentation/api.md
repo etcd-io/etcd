@@ -21,7 +21,7 @@ The key space consists of directories and keys which are generically referred to
 
 ### Setting the value of a key
 
-Let’s set the first key-value pair in the datastore.
+Let's set the first key-value pair in the datastore.
 In this case the key is `/message` and the value is `Hello world`.
 
 ```sh
@@ -122,7 +122,6 @@ curl -L http://127.0.0.1:4001/v2/keys/message -XPUT -d value="Hello etcd"
     	"key": "/message",
     	"value": "Hello world",
     	"modifiedIndex": 2,
-    
     }
 }
 ```
@@ -1089,7 +1088,7 @@ Each node keeps a number of internal statistics:
 - `sendAppendRequestCnt`: number of requests that this node has sent
 - `sendBandwidthRate`: number of bytes per second this node is receiving (leader only). This value is undefined on single machine clusters.
 - `sendPkgRate`: number of requests per second this node is receiving (leader only). This value is undefined on single machine clusters.
-- `state`: either leader or folower
+- `state`: either leader or follower
 - `startTime`: the time when this node was started
 
 This is an example response from a follower machine:

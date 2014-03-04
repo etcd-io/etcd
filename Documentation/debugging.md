@@ -44,10 +44,10 @@ See an [example collectd deploy script](https://github.com/coreos/etcd/contrib/c
 ## Profiling
 
 etcd exposes profiling information from the Go pprof package over HTTP.
-The basic browseable interface is served by etcd at the `/debug/pprof` HTTP endpoint (i.e. `http://127.0.0.1:4001/debug/pprof`).
+The basic browsable interface is served by etcd at the `/debug/pprof` HTTP endpoint (i.e. `http://127.0.0.1:4001/debug/pprof`).
 For more information on using profiling tools, see http://blog.golang.org/profiling-go-programs.
 
-**NOTE**: In the following examples you need to ensure that the `./bin/etcd` is identical to the `./bin/etcd` that you are targetting (same git hash, arch, platform, etc).
+**NOTE**: In the following examples you need to ensure that the `./bin/etcd` is identical to the `./bin/etcd` that you are targeting (same git hash, arch, platform, etc).
 
 #### Heap memory profile
 
