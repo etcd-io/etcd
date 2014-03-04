@@ -1,6 +1,8 @@
 package server
 
 import (
+	"fmt"
+
 	"github.com/coreos/etcd/log"
 	"github.com/coreos/etcd/third_party/github.com/coreos/raft"
 )
@@ -22,6 +24,11 @@ func (c *DemoteCommand) CommandName() string {
 // Apply executes the command.
 func (c *DemoteCommand) Apply(context raft.Context) (interface{}, error) {
 	ps, _ := context.Server().Context().(*PeerServer)
+
+	// Ignore this command if there is no peer.
+	if !ps.registry.PeerExists(c.Name) {
+		return nil, fmt.Errorf("peer does not exist: %s", c.Name)
+	}
 
 	// Save URLs.
 	clientURL, _ := ps.registry.ClientURL(c.Name)
