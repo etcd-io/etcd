@@ -93,6 +93,7 @@ func init() {
 	errors[EcodeProxyInternal] = "Proxy Internal Error"
 	errors[EcodeInvalidActiveSize] = "Invalid active size"
 	errors[EcodeInvalidPromoteDelay] = "Proxy promote delay"
+	errors[EcodePromoteError] = "Proxy promotion error"
 
 }
 

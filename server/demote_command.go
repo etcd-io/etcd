@@ -43,7 +43,7 @@ func (c *DemoteCommand) Apply(context raft.Context) (interface{}, error) {
 	// Update mode if this change applies to this server.
 	if c.Name == ps.Config.Name {
 		log.Infof("Set mode after demotion: %s", c.Name)
-		ps.SetMode(ProxyMode)
+		ps.setMode(ProxyMode)
 	}
 
 	return nil, nil
