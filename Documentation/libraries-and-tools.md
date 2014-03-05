@@ -49,6 +49,10 @@
 
 - [drusellers/etcetera](https://github.com/drusellers/etcetera)
 
+**PHP Libraries**
+
+- [linkorb/etcd-php](https://github.com/linkorb/etcd-php)
+
 **Haskell libraries**
 
 - [wereHamster/etcd-hs](https://github.com/wereHamster/etcd-hs)
