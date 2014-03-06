@@ -30,9 +30,9 @@ Thanks for you contributions!
 
 ### Code style
 
-Code style suggested by Golang community is adopted in etcd. See [style doc](https://code.google.com/p/go-wiki/wiki/Style) for details.
+The coding style suggested by the Golang community is used in etcd. See [style doc](https://code.google.com/p/go-wiki/wiki/Style) for details.
 
-Follow on good code style makes etcd easy to review, maintain and develop.
+Please follow this style to make etcd easy to review, maintain and develop.
 
 ### Format of the commit message
 
