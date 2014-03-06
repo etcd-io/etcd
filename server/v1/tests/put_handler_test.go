@@ -151,7 +151,7 @@ func TestV1SetKeyCASOnValueFail(t *testing.T) {
 		body := tests.ReadBodyJSON(resp)
 		assert.Equal(t, body["errorCode"], 101, "")
 		assert.Equal(t, body["message"], "Compare failed", "")
-		assert.Equal(t, body["cause"], "[AAA != XXX] [0 != 2]", "")
+		assert.Equal(t, body["cause"], "[AAA != XXX]", "")
 		assert.Equal(t, body["index"], 2, "")
 	})
 }
