@@ -227,6 +227,50 @@ func (ps *PeerServer) setClusterConfigHttpHandler(w http.ResponseWriter, req *ht
 	json.NewEncoder(w).Encode(&ps.clusterConfig)
 }
 
+// Retrieves a list of peers and proxies.
+func (ps *PeerServer) getMachinesHttpHandler(w http.ResponseWriter, req *http.Request) {
+	machines := make([]*machineMessage, 0)
+	for _, name := range ps.registry.Peers() {
+		machines = append(machines, ps.getMachineMessage(name))
+	}
+	for _, name := range ps.registry.Proxies() {
+		machines = append(machines, ps.getMachineMessage(name))
+	}
+	json.NewEncoder(w).Encode(&machines)
+}
+
+// Retrieve single peer or proxy.
+func (ps *PeerServer) getMachineHttpHandler(w http.ResponseWriter, req *http.Request) {
+	vars := mux.Vars(req)
+	json.NewEncoder(w).Encode(ps.getMachineMessage(vars["name"]))
+}
+
+func (ps *PeerServer) getMachineMessage(name string) *machineMessage {
+	if ps.registry.PeerExists(name) {
+		clientURL, _ := ps.registry.ClientURL(name)
+		peerURL, _ := ps.registry.PeerURL(name)
+		return &machineMessage{
+			Name:      name,
+			Mode:      PeerMode,
+			ClientURL: clientURL,
+			PeerURL:   peerURL,
+		}
+	}
+
+	if ps.registry.ProxyExists(name) {
+		clientURL, _ := ps.registry.ProxyClientURL(name)
+		peerURL, _ := ps.registry.ProxyPeerURL(name)
+		return &machineMessage{
+			Name:      name,
+			Mode:      ProxyMode,
+			ClientURL: clientURL,
+			PeerURL:   peerURL,
+		}
+	}
+
+	return nil
+}
+
 // Response to the name request
 func (ps *PeerServer) NameHttpHandler(w http.ResponseWriter, req *http.Request) {
 	log.Debugf("[recv] Get %s/name/ ", ps.Config.URL)
@@ -271,4 +315,12 @@ func (ps *PeerServer) UpgradeHttpHandler(w http.ResponseWriter, req *http.Reques
 	}
 
 	w.WriteHeader(http.StatusOK)
+}
+
+// machineMessage represents information about a peer or proxy in the registry.
+type machineMessage struct {
+	Name      string `json:"name"`
+	Mode      Mode   `json:"mode"`
+	ClientURL string `json:"clientURL"`
+	PeerURL   string `json:"peerURL"`
 }

@@ -300,6 +300,8 @@ func (s *PeerServer) HTTPHandler() http.Handler {
 	router.HandleFunc("/remove/{name:.+}", s.RemoveHttpHandler)
 	router.HandleFunc("/config", s.getClusterConfigHttpHandler).Methods("GET")
 	router.HandleFunc("/config", s.setClusterConfigHttpHandler).Methods("PUT")
+	router.HandleFunc("/machines", s.getMachinesHttpHandler).Methods("GET")
+	router.HandleFunc("/machines/{name}", s.getMachineHttpHandler).Methods("GET")
 	router.HandleFunc("/vote", s.VoteHttpHandler)
 	router.HandleFunc("/log", s.GetLogHttpHandler)
 	router.HandleFunc("/log/append", s.AppendEntriesHttpHandler)

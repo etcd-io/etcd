@@ -36,7 +36,7 @@ func TestProxy(t *testing.T) {
 
 	// Check that all peers and proxies have the value.
 	for i, _ := range etcds {
-		resp, err := tests.Get(fmt.Sprintf("http://localhost:%d/v2/keys/foo", 4000 + (i+1)))
+		resp, err := tests.Get(fmt.Sprintf("http://localhost:%d/v2/keys/foo", 4000+(i+1)))
 		if assert.NoError(t, err) {
 			body := tests.ReadBodyJSON(resp)
 			if node, _ := body["node"].(map[string]interface{}); assert.NotNil(t, node) {
