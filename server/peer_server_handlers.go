@@ -223,6 +223,8 @@ func (ps *PeerServer) setClusterConfigHttpHandler(w http.ResponseWriter, req *ht
 
 	log.Debugf("[recv] Update Cluster Config Request")
 	ps.server.Dispatch(c, w, req)
+
+	json.NewEncoder(w).Encode(&ps.clusterConfig)
 }
 
 // Response to the name request
