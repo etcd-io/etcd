@@ -25,9 +25,25 @@ import (
 	"github.com/coreos/etcd/store"
 )
 
-const ThresholdMonitorTimeout = 5 * time.Second
-const ActiveMonitorTimeout = 1 * time.Second
-const PeerActivityMonitorTimeout = 1 * time.Second
+const (
+	// ThresholdMonitorTimeout is the time between log notifications that the
+	// Raft heartbeat is too close to the election timeout.
+	ThresholdMonitorTimeout = 5 * time.Second
+
+	// ActiveMonitorTimeout is the time between checks on the active size of
+	// the cluster. If the active size is different than the actual size then
+	// etcd attempts to promote/demote to bring it to the correct number.
+	ActiveMonitorTimeout = 1 * time.Second
+
+	// PeerActivityMonitorTimeout is the time between checks for dead nodes in
+	// the cluster.
+	PeerActivityMonitorTimeout = 1 * time.Second
+)
+
+const (
+	peerModeFlag  = 0
+	proxyModeFlag = 1
+)
 
 type PeerServerConfig struct {
 	Name          string
@@ -268,7 +284,7 @@ func (s *PeerServer) Start(snapshot bool, discoverURL string, peers []string) er
 
 	go s.monitorSync()
 	go s.monitorTimeoutThreshold(s.closeChan)
-	go s.monitorActive(s.closeChan)
+	go s.monitorActiveSize(s.closeChan)
 	go s.monitorPeerActivity(s.closeChan)
 
 	// open the snapshot
@@ -453,16 +469,16 @@ func (s *PeerServer) joinByPeer(server raft.Server, peer string, scheme string) 
 				// Determine whether the server joined as a proxy or peer.
 				var mode uint64
 				if mode, err = binary.ReadUvarint(r); err == io.EOF {
-					mode = 0
+					mode = peerModeFlag
 				} else if err != nil {
 					log.Debugf("Error reading join mode: %v", err)
 					return err
 				}
 
 				switch mode {
-				case 0:
+				case peerModeFlag:
 					s.setMode(PeerMode)
-				case 1:
+				case proxyModeFlag:
 					s.setMode(ProxyMode)
 					s.proxyClientURL = resp.Header.Get("X-Leader-Client-URL")
 					s.proxyPeerURL = resp.Header.Get("X-Leader-Peer-URL")
@@ -617,9 +633,9 @@ func (s *PeerServer) monitorTimeoutThreshold(closeChan chan bool) {
 	}
 }
 
-// monitorActive has the leader periodically check the status of cluster nodes
-// and swaps them out for proxies as needed.
-func (s *PeerServer) monitorActive(closeChan chan bool) {
+// monitorActiveSize has the leader periodically check the status of cluster
+// nodes and swaps them out for proxies as needed.
+func (s *PeerServer) monitorActiveSize(closeChan chan bool) {
 	for {
 		select {
 		case <-time.After(ActiveMonitorTimeout):

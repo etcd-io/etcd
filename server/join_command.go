@@ -20,6 +20,7 @@ func init() {
 //     8 bytes      |  1 byte
 //     join_index   |  join_mode
 //
+// This binary protocol is for backward compatibility.
 type JoinCommand struct {
 	MinVersion int    `json:"minVersion"`
 	MaxVersion int    `json:"maxVersion"`
@@ -57,7 +58,7 @@ func (c *JoinCommand) Apply(context raft.Context) (interface{}, error) {
 
 	// Check if the join command is from a previous peer, who lost all its previous log.
 	if _, ok := ps.registry.ClientURL(c.Name); ok {
-		binary.Write(&buf, binary.BigEndian, uint8(0)) // Mark as peer.
+		binary.Write(&buf, binary.BigEndian, uint8(peerModeFlag)) // Mark as peer.
 		return buf.Bytes(), nil
 	}
 
@@ -65,7 +66,7 @@ func (c *JoinCommand) Apply(context raft.Context) (interface{}, error) {
 	if ps.registry.PeerCount() >= ps.ClusterConfig().ActiveSize {
 		log.Debug("Join as proxy ", c.Name)
 		ps.registry.RegisterProxy(c.Name, c.RaftURL, c.EtcdURL)
-		binary.Write(&buf, binary.BigEndian, uint8(1)) // Mark as proxy.
+		binary.Write(&buf, binary.BigEndian, uint8(proxyModeFlag)) // Mark as proxy.
 		return buf.Bytes(), nil
 	}
 
@@ -86,7 +87,7 @@ func (c *JoinCommand) Apply(context raft.Context) (interface{}, error) {
 		ps.followersStats.Followers[c.Name].Latency.Minimum = 1 << 63
 	}
 
-	binary.Write(&buf, binary.BigEndian, uint8(0)) // Mark as peer.
+	binary.Write(&buf, binary.BigEndian, uint8(peerModeFlag)) // Mark as peer.
 	return buf.Bytes(), err
 }
 
