@@ -8,8 +8,14 @@ const (
 	// DefaultActiveSize is the default number of active followers allowed.
 	DefaultActiveSize = 9
 
+	// MinActiveSize is the minimum active size allowed.
+	MinActiveSize = 3
+
 	// DefaultPromoteDelay is the default elapsed time before promotion.
 	DefaultPromoteDelay = int((30 * time.Minute) / time.Second)
+
+	// MinPromoteDelay is the minimum promote delay allowed.
+	MinPromoteDelay = int((2 * time.Second) / time.Second)
 )
 
 // ClusterConfig represents cluster-wide configuration settings.

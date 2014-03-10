@@ -158,17 +158,16 @@ func (s *PeerServer) ClusterConfig() *ClusterConfig {
 // SetClusterConfig updates the current cluster configuration.
 // Adjusting the active size will cause the PeerServer to demote peers or
 // promote proxies to match the new size.
-func (s *PeerServer) SetClusterConfig(c *ClusterConfig) error {
-	// Validate configuration.
-	if c.ActiveSize < 1 {
-		return etcdErr.NewError(etcdErr.EcodeInvalidActiveSize, "Post", 0)
-	} else if c.PromoteDelay < 0 {
-		return etcdErr.NewError(etcdErr.EcodeInvalidPromoteDelay, "Post", 0)
+func (s *PeerServer) SetClusterConfig(c *ClusterConfig) {
+	// Set minimums.
+	if c.ActiveSize < MinActiveSize {
+		c.ActiveSize = MinActiveSize
+	}
+	if c.PromoteDelay < MinPromoteDelay {
+		c.PromoteDelay = MinPromoteDelay
 	}
 
 	s.clusterConfig = c
-
-	return nil
 }
 
 // Helper function to do discovery and return results in expected format

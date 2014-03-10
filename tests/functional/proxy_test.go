@@ -106,8 +106,8 @@ func TestProxyAutoPromote(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, len(result.Node.Nodes), 1)
 
-	// Reconfigure with a short promote delay (1 second).
-	resp, _ := tests.Put("http://localhost:7001/config", "application/json", bytes.NewBufferString(`{"activeSize":9, "promoteDelay":1}`))
+	// Reconfigure with a short promote delay (2 second).
+	resp, _ := tests.Put("http://localhost:7001/config", "application/json", bytes.NewBufferString(`{"activeSize":9, "promoteDelay":2}`))
 	if !assert.Equal(t, resp.StatusCode, 200) {
 		t.FailNow()
 	}
@@ -121,10 +121,10 @@ func TestProxyAutoPromote(t *testing.T) {
 	etcd.Release()
 
 	// Wait for it to get dropped.
-	time.Sleep(server.PeerActivityMonitorTimeout + (1 * time.Second))
+	time.Sleep(server.PeerActivityMonitorTimeout + (2 * time.Second))
 
 	// Wait for the proxy to be promoted.
-	time.Sleep(server.ActiveMonitorTimeout + (1 * time.Second))
+	time.Sleep(server.ActiveMonitorTimeout + (2 * time.Second))
 
 	// Verify that we have 9 peers.
 	result, err = c.Get("_etcd/machines", true, true)

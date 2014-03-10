@@ -21,5 +21,6 @@ func (c *SetClusterConfigCommand) CommandName() string {
 // Apply updates the cluster configuration.
 func (c *SetClusterConfigCommand) Apply(context raft.Context) (interface{}, error) {
 	ps, _ := context.Server().Context().(*PeerServer)
-	return nil, ps.SetClusterConfig(c.Config)
+	ps.SetClusterConfig(c.Config)
+	return nil, nil
 }
