@@ -132,7 +132,7 @@ func (s *store) Get(nodePath string, recursive, sorted bool) (*Event, error) {
 func (s *store) Create(nodePath string, dir bool, value string, unique bool, expireTime time.Time) (*Event, error) {
 	s.worldLock.Lock()
 	defer s.worldLock.Unlock()
-	e, err := s.internalCreate(nodePath, dir, value, unique, false, expireTime, Create)
+	e, err := s.internalCreate(nodePath, dir, value, unique, false, expireTime, Create, nil)
 
 	if err == nil {
 		s.Stats.Inc(CreateSuccess)
@@ -165,17 +165,18 @@ func (s *store) Set(nodePath string, dir bool, value string, expireTime time.Tim
 		return nil, err
 	}
 
-	// Set new value
-	e, err := s.internalCreate(nodePath, dir, value, false, true, expireTime, Set)
-	if err != nil {
-		return nil, err
-	}
-
 	// Put prevNode into event
+	var prevNode *NodeExtern
 	if getErr == nil {
 		prev := newEvent(Get, nodePath, n.ModifiedIndex, n.CreatedIndex)
 		prev.Node.loadInternalNode(n, false, false)
-		e.PrevNode = prev.Node
+		prevNode = prev.Node
+	}
+
+	// Set new value
+	e, err := s.internalCreate(nodePath, dir, value, false, true, expireTime, Set, prevNode)
+	if err != nil {
+		return nil, err
 	}
 
 	return e, nil
@@ -436,7 +437,7 @@ func (s *store) Update(nodePath string, newValue string, expireTime time.Time) (
 }
 
 func (s *store) internalCreate(nodePath string, dir bool, value string, unique, replace bool,
-	expireTime time.Time, action string) (*Event, error) {
+	expireTime time.Time, action string, prevNode *NodeExtern) (*Event, error) {
 
 	currIndex, nextIndex := s.CurrentIndex, s.CurrentIndex+1
 
@@ -508,6 +509,11 @@ func (s *store) internalCreate(nodePath string, dir bool, value string, unique, 
 		s.ttlKeyHeap.push(n)
 
 		eNode.Expiration, eNode.TTL = n.ExpirationAndTTL()
+	}
+
+	// Set previous node if passed in.
+	if prevNode != nil {
+		e.PrevNode = prevNode
 	}
 
 	s.CurrentIndex = nextIndex

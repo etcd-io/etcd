@@ -225,6 +225,8 @@ func (s *server) Path() string {
 
 // The name of the current leader.
 func (s *server) Leader() string {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
 	return s.leader
 }
 
@@ -677,10 +679,12 @@ func (s *server) candidateLoop() {
 	lastLogIndex, lastLogTerm := s.log.lastInfo()
 
 	// Clear leader value.
+	s.mutex.Lock()
 	prevLeader := s.leader
 	s.leader = ""
-	if prevLeader != s.leader {
-		s.DispatchEvent(newEvent(LeaderChangeEventType, s.leader, prevLeader))
+	s.mutex.Unlock()
+	if prevLeader != "" {
+		s.DispatchEvent(newEvent(LeaderChangeEventType, "", prevLeader))
 	}
 
 	for s.State() == Candidate {
