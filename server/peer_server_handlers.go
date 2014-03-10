@@ -215,12 +215,27 @@ func (ps *PeerServer) getClusterConfigHttpHandler(w http.ResponseWriter, req *ht
 
 // Updates the cluster configuration.
 func (ps *PeerServer) setClusterConfigHttpHandler(w http.ResponseWriter, req *http.Request) {
-	c := &SetClusterConfigCommand{Config: &ClusterConfig{}}
-	if err := json.NewDecoder(req.Body).Decode(&c.Config); err != nil {
+	// Decode map.
+	m := make(map[string]interface{})
+	if err := json.NewDecoder(req.Body).Decode(&m); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
+	// Copy config and update fields passed in.
+	config := &ClusterConfig{
+		ActiveSize:   ps.clusterConfig.ActiveSize,
+		PromoteDelay: ps.clusterConfig.PromoteDelay,
+	}
+	if activeSize, ok := m["activeSize"].(float64); ok {
+		config.ActiveSize = int(activeSize)
+	}
+	if promoteDelay, ok := m["promoteDelay"].(float64); ok {
+		config.PromoteDelay = int(promoteDelay)
+	}
+
+	// Issue command to update.
+	c := &SetClusterConfigCommand{Config: config}
 	log.Debugf("[recv] Update Cluster Config Request")
 	ps.server.Dispatch(c, w, req)
 
