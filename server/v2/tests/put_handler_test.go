@@ -239,7 +239,7 @@ func TestV2SetKeyCASOnIndexFail(t *testing.T) {
 		body := tests.ReadBodyJSON(resp)
 		assert.Equal(t, body["errorCode"], 101, "")
 		assert.Equal(t, body["message"], "Compare failed", "")
-		assert.Equal(t, body["cause"], "[ != XXX] [10 != 2]", "")
+		assert.Equal(t, body["cause"], "[10 != 2]", "")
 		assert.Equal(t, body["index"], 2, "")
 	})
 }
@@ -307,7 +307,7 @@ func TestV2SetKeyCASOnValueFail(t *testing.T) {
 		body := tests.ReadBodyJSON(resp)
 		assert.Equal(t, body["errorCode"], 101, "")
 		assert.Equal(t, body["message"], "Compare failed", "")
-		assert.Equal(t, body["cause"], "[AAA != XXX] [0 != 2]", "")
+		assert.Equal(t, body["cause"], "[AAA != XXX]", "")
 		assert.Equal(t, body["index"], 2, "")
 	})
 }
@@ -327,6 +327,84 @@ func TestV2SetKeyCASWithMissingValueFails(t *testing.T) {
 		assert.Equal(t, body["errorCode"], 201, "")
 		assert.Equal(t, body["message"], "PrevValue is Required in POST form", "")
 		assert.Equal(t, body["cause"], "CompareAndSwap", "")
+	})
+}
+
+// Ensures that a key is not set if both previous value and index do not match.
+//
+//   $ curl -X PUT localhost:4001/v2/keys/foo/bar -d value=XXX
+//   $ curl -X PUT localhost:4001/v2/keys/foo/bar -d value=YYY -d prevValue=AAA -d prevIndex=3
+//
+func TestV2SetKeyCASOnValueAndIndexFail(t *testing.T) {
+	tests.RunServer(func(s *server.Server) {
+		v := url.Values{}
+		v.Set("value", "XXX")
+		fullURL := fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo/bar")
+		resp, _ := tests.PutForm(fullURL, v)
+		assert.Equal(t, resp.StatusCode, http.StatusCreated)
+		tests.ReadBody(resp)
+		v.Set("value", "YYY")
+		v.Set("prevValue", "AAA")
+		v.Set("prevIndex", "3")
+		resp, _ = tests.PutForm(fullURL, v)
+		assert.Equal(t, resp.StatusCode, http.StatusPreconditionFailed)
+		body := tests.ReadBodyJSON(resp)
+		assert.Equal(t, body["errorCode"], 101, "")
+		assert.Equal(t, body["message"], "Compare failed", "")
+		assert.Equal(t, body["cause"], "[AAA != XXX] [3 != 2]", "")
+		assert.Equal(t, body["index"], 2, "")
+	})
+}
+
+// Ensures that a key is not set if previous value match but index does not.
+//
+//   $ curl -X PUT localhost:4001/v2/keys/foo/bar -d value=XXX
+//   $ curl -X PUT localhost:4001/v2/keys/foo/bar -d value=YYY -d prevValue=XXX -d prevIndex=3
+//
+func TestV2SetKeyCASOnValueMatchAndIndexFail(t *testing.T) {
+	tests.RunServer(func(s *server.Server) {
+		v := url.Values{}
+		v.Set("value", "XXX")
+		fullURL := fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo/bar")
+		resp, _ := tests.PutForm(fullURL, v)
+		assert.Equal(t, resp.StatusCode, http.StatusCreated)
+		tests.ReadBody(resp)
+		v.Set("value", "YYY")
+		v.Set("prevValue", "XXX")
+		v.Set("prevIndex", "3")
+		resp, _ = tests.PutForm(fullURL, v)
+		assert.Equal(t, resp.StatusCode, http.StatusPreconditionFailed)
+		body := tests.ReadBodyJSON(resp)
+		assert.Equal(t, body["errorCode"], 101, "")
+		assert.Equal(t, body["message"], "Compare failed", "")
+		assert.Equal(t, body["cause"], "[3 != 2]", "")
+		assert.Equal(t, body["index"], 2, "")
+	})
+}
+
+// Ensures that a key is not set if previous index matches but value does not.
+//
+//   $ curl -X PUT localhost:4001/v2/keys/foo/bar -d value=XXX
+//   $ curl -X PUT localhost:4001/v2/keys/foo/bar -d value=YYY -d prevValue=AAA -d prevIndex=2
+//
+func TestV2SetKeyCASOnIndexMatchAndValueFail(t *testing.T) {
+	tests.RunServer(func(s *server.Server) {
+		v := url.Values{}
+		v.Set("value", "XXX")
+		fullURL := fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo/bar")
+		resp, _ := tests.PutForm(fullURL, v)
+		assert.Equal(t, resp.StatusCode, http.StatusCreated)
+		tests.ReadBody(resp)
+		v.Set("value", "YYY")
+		v.Set("prevValue", "AAA")
+		v.Set("prevIndex", "2")
+		resp, _ = tests.PutForm(fullURL, v)
+		assert.Equal(t, resp.StatusCode, http.StatusPreconditionFailed)
+		body := tests.ReadBodyJSON(resp)
+		assert.Equal(t, body["errorCode"], 101, "")
+		assert.Equal(t, body["message"], "Compare failed", "")
+		assert.Equal(t, body["cause"], "[AAA != XXX]", "")
+		assert.Equal(t, body["index"], 2, "")
 	})
 }
 
