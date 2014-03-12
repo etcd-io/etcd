@@ -15,15 +15,21 @@ import (
 	"github.com/coreos/etcd/log"
 )
 
+const (
+	snapshotTimeout = time.Second * 120
+)
+
 // Transporter layer for communication between raft nodes
 type transporter struct {
-	requestTimeout	time.Duration
-	followersStats	*raftFollowersStats
-	serverStats	*raftServerStats
-	registry	*Registry
+	requestTimeout time.Duration
+	followersStats *raftFollowersStats
+	serverStats    *raftServerStats
+	registry       *Registry
 
-	client		*http.Client
-	transport	*httpclient.Transport
+	client            *http.Client
+	transport         *httpclient.Transport
+	snapshotClient    *http.Client
+	snapshotTransport *httpclient.Transport
 }
 
 type dialer func(network, addr string) (net.Conn, error)
@@ -33,23 +39,37 @@ type dialer func(network, addr string) (net.Conn, error)
 // whether the user give the server cert and key
 func NewTransporter(followersStats *raftFollowersStats, serverStats *raftServerStats, registry *Registry, dialTimeout, requestTimeout, responseHeaderTimeout time.Duration) *transporter {
 	tr := &httpclient.Transport{
-		ResponseHeaderTimeout:	responseHeaderTimeout,
+		ResponseHeaderTimeout: responseHeaderTimeout,
 		// This is a workaround for Transport.CancelRequest doesn't work on
 		// HTTPS connections blocked. The patch for it is in progress,
 		// and would be available in Go1.3
 		// More: https://codereview.appspot.com/69280043/
-		ConnectTimeout: dialTimeout,
-		RequestTimeout: dialTimeout + responseHeaderTimeout,
+		ConnectTimeout:   dialTimeout,
+		RequestTimeout:   dialTimeout + responseHeaderTimeout,
 		ReadWriteTimeout: responseHeaderTimeout,
 	}
 
+	// Sending snapshot might take a long time so we use a different HTTP transporter
+	// Timeout is set to 120s (Around 100MB if the bandwidth is 10Mbits/s)
+	// This timeout is not calculated by heartbeat time.
+	// TODO(xiangl1) we can actually calculate the max bandwidth if we know
+	// average RTT.
+	// It should be equal to (TCP max window size/RTT).
+	sTr := &httpclient.Transport{
+		ConnectTimeout:   dialTimeout,
+		RequestTimeout:   snapshotTimeout,
+		ReadWriteTimeout: snapshotTimeout,
+	}
+
 	t := transporter{
-		client:		&http.Client{Transport: tr},
-		transport:	tr,
-		requestTimeout:	requestTimeout,
-		followersStats:	followersStats,
-		serverStats:	serverStats,
-		registry:	registry,
+		client:            &http.Client{Transport: tr},
+		transport:         tr,
+		snapshotClient:    &http.Client{Transport: sTr},
+		snapshotTransport: sTr,
+		requestTimeout:    requestTimeout,
+		followersStats:    followersStats,
+		serverStats:       serverStats,
+		registry:          registry,
 	}
 
 	return &t
@@ -58,6 +78,9 @@ func NewTransporter(followersStats *raftFollowersStats, serverStats *raftServerS
 func (t *transporter) SetTLSConfig(tlsConf tls.Config) {
 	t.transport.TLSClientConfig = &tlsConf
 	t.transport.DisableCompression = true
+
+	t.snapshotTransport.TLSClientConfig = &tlsConf
+	t.snapshotTransport.DisableCompression = true
 }
 
 // Sends AppendEntries RPCs to a peer when the server is the leader.
@@ -79,7 +102,7 @@ func (t *transporter) SendAppendEntriesRequest(server raft.Server, peer *raft.Pe
 
 	thisFollowerStats, ok := t.followersStats.Followers[peer.Name]
 
-	if !ok {	//this is the first time this follower has been seen
+	if !ok { //this is the first time this follower has been seen
 		thisFollowerStats = &raftFollowerStats{}
 		thisFollowerStats.Latency.Minimum = 1 << 63
 		t.followersStats.Followers[peer.Name] = thisFollowerStats
@@ -191,7 +214,7 @@ func (t *transporter) SendSnapshotRecoveryRequest(server raft.Server, peer *raft
 	u, _ := t.registry.PeerURL(peer.Name)
 	log.Debugf("Send Snapshot Recovery from %s to %s", server.Name(), u)
 
-	resp, _, err := t.Post(fmt.Sprintf("%s/snapshotRecovery", u), &b)
+	resp, err := t.PostSnapshot(fmt.Sprintf("%s/snapshotRecovery", u), &b)
 
 	if err != nil {
 		log.Debugf("Cannot send Snapshot Recovery to %s : %s", u, err)
@@ -223,4 +246,10 @@ func (t *transporter) Get(urlStr string) (*http.Response, *http.Request, error) 
 	req, _ := http.NewRequest("GET", urlStr, nil)
 	resp, err := t.client.Do(req)
 	return resp, req, err
+}
+
+// PostSnapshot posts a json format snapshot to the given url
+// The underlying HTTP transport has a minute level timeout
+func (t *transporter) PostSnapshot(url string, body io.Reader) (*http.Response, error) {
+	return t.snapshotClient.Post(url, "application/json", body)
 }
