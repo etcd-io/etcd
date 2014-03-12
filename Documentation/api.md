@@ -437,14 +437,15 @@ This will try to compare the previous value of the key and the previous value we
 
 ```json
 {
-    "cause": "[two != one] [0 != 8]",
+    "cause": "[two != one]",
     "errorCode": 101,
     "index": 8,
     "message": "Test Failed"
 }
 ```
 
-which means `CompareAndSwap` failed.
+which means `CompareAndSwap` failed. `cause` explains why the test failed.
+Note: the condition prevIndex=0 always passes.
 
 Let's try a valid condition:
 
@@ -503,7 +504,7 @@ The error code explains the problem:
 {
 	"errorCode": 101,
 	"message": "Compare failed",
-	"cause": "[two != one] [0 != 8]",
+	"cause": "[two != one]",
 	"index": 8
 }
 ```
@@ -518,7 +519,7 @@ curl -L http://127.0.0.1:4001/v2/keys/foo?prevIndex=1 -XDELETE
 {
 	"errorCode": 101,
 	"message": "Compare failed",
-	"cause": "[ != one] [1 != 8]",
+	"cause": "[1 != 8]",
 	"index": 8
 }
 ```
