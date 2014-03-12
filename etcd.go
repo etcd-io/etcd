@@ -187,13 +187,14 @@ func main() {
 	}
 
 	ps.SetServer(s)
-	ps.Start(config.Snapshot, config.Discovery, config.Peers)
 
 	go func() {
 		log.Infof("peer server [name %s, listen on %s, advertised url %s]", ps.Config.Name, psListener.Addr(), ps.Config.URL)
 		sHTTP := &ehttp.CORSHandler{ps.HTTPHandler(), corsInfo}
 		log.Fatal(http.Serve(psListener, sHTTP))
 	}()
+
+	ps.Start(config.Snapshot, config.Discovery, config.Peers)
 
 	log.Infof("etcd server [name %s, listen on %s, advertised url %s]", s.Name, sListener.Addr(), s.URL())
 	sHTTP := &ehttp.CORSHandler{s.HTTPHandler(), corsInfo}
