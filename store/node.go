@@ -191,13 +191,16 @@ func (n *node) Add(child *node) *etcdErr.Error {
 	}
 
 	n.Children[name] = child
+	n.ModifiedIndex = n.store.CurrentIndex + 1
 
 	return nil
 }
 
 // Remove function remove the node.
+// It checks if we can safely remove the node according to dir and recursive flag.
+// It calls removeHelper function to remove the node itself.
+// It updates the parents modified index.
 func (n *node) Remove(dir, recursive bool, callback func(path string)) *etcdErr.Error {
-
 	if n.IsDir() {
 		if !dir {
 			// cannot delete a directory without recursive set to true
@@ -211,6 +214,19 @@ func (n *node) Remove(dir, recursive bool, callback func(path string)) *etcdErr.
 		}
 	}
 
+	if err := n.RemoveHelper(callback); err != nil {
+		return err
+	}
+
+	n.Parent.ModifiedIndex = n.store.CurrentIndex + 1
+
+	return nil
+}
+
+// RemoveHelper is a helper function for remove node.
+// If node is a key-value pair, we do a simple remove operation.
+// If node is a directory, we recursively call removeHelper to remove all its children.
+func (n *node) RemoveHelper(callback func(path string)) *etcdErr.Error {
 	if !n.IsDir() { // key-value pair
 		_, name := path.Split(n.Path)
 
@@ -231,7 +247,7 @@ func (n *node) Remove(dir, recursive bool, callback func(path string)) *etcdErr.
 	}
 
 	for _, child := range n.Children { // delete all children
-		child.Remove(true, true, callback)
+		child.RemoveHelper(callback)
 	}
 
 	// delete self
