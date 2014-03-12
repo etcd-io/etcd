@@ -117,8 +117,8 @@ func TestTLSUnauthenticatedClient(t *testing.T) {
 	defer stopServer(proc)
 
 	cacertfile := "../../fixtures/ca/ca.crt"
-	certfile := "../../fixtures/ca/broken/server.crt"
-	keyfile := "../../fixtures/ca/broken/server.key.insecure"
+	certfile := "../../fixtures/ca/broken_server.crt"
+	keyfile := "../../fixtures/ca/broken_server.key.insecure"
 
 	cert, err := tls.LoadX509KeyPair(certfile, keyfile)
 	if err != nil {

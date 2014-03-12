@@ -1,21 +1,13 @@
-Testing x509 certs for etcd
+The steps to regenerate this CA:
 
-The passphrases for the keys are `asdf`.
+1. Get etcd-ca source code and generate binary.
 
-# Make the CA cert
-openssl genrsa -des3 -out ca.key 4096
-openssl req -new -x509 -days 365 -key ca.key -out ca.crt  -config openssl.cnf -extensions v3_ca
+$ go get github.com/coreos/etcd-ca
 
-# Make server cert and signing request
-openssl genrsa -des3 -out server.key 4096
-openssl req -new -key server.key -out server.csr  -config openssl.cnf
+2. Run generate_testing_certs.sh with etcd-ca binary location.
 
-# Sign the server csr and generate a crt
-openssl x509 -req -days 365 -in server.csr -CA ca.crt -CAkey ca.key -set_serial 01 -out server.crt -extfile openssl.cnf -extensions v3_req
+$ ./generate_testing_certs.sh
 
-# Output unencrypted server key
-openssl rsa -in server.key -out server.key.insecure
+Details about generation are in the generate_testing_certs.sh script.
 
-# Output "raw" public key from server crt
-openssl x509 -pubkey -noout -in server.crt > server.pub
-
+3. Check current directory to see regenerated files.
