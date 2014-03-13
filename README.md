@@ -45,6 +45,10 @@ _NOTE_: you need go 1.2+. Please check your installation with
 go version
 ```
 
+See the [development tools documentation][development-tools.md] for alternative build methods like using Vagrant.
+
+[development-tools.md]: https://github.com/coreos/etcd/blob/master/Documentation/development-tools.md
+
 ### Running
 
 First start a single machine cluster of etcd:
