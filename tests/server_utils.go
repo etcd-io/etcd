@@ -15,12 +15,12 @@ import (
 )
 
 const (
-	testName		= "ETCDTEST"
-	testClientURL		= "localhost:4401"
-	testRaftURL		= "localhost:7701"
-	testSnapshotCount	= 10000
-	testHeartbeatInterval	= time.Duration(50) * time.Millisecond
-	testElectionTimeout	= time.Duration(200) * time.Millisecond
+	testName              = "ETCDTEST"
+	testClientURL         = "localhost:4401"
+	testRaftURL           = "localhost:7701"
+	testSnapshotCount     = 10000
+	testHeartbeatInterval = time.Duration(50) * time.Millisecond
+	testElectionTimeout   = time.Duration(200) * time.Millisecond
 )
 
 // Starts a server in a temporary directory.
@@ -35,20 +35,17 @@ func RunServer(f func(*server.Server)) {
 	followersStats := server.NewRaftFollowersStats(testName)
 
 	psConfig := server.PeerServerConfig{
-		Name:		testName,
-		URL:		"http://" + testRaftURL,
-		Scheme:		"http",
-		SnapshotCount:	testSnapshotCount,
-		MaxClusterSize:	9,
+		Name:           testName,
+		URL:            "http://" + testRaftURL,
+		Scheme:         "http",
+		SnapshotCount:  testSnapshotCount,
+		MaxClusterSize: 9,
 	}
 
 	mb := metrics.NewBucket("")
 
 	ps := server.NewPeerServer(psConfig, registry, store, &mb, followersStats, serverStats)
-	psListener, err := server.NewListener(testRaftURL)
-	if err != nil {
-		panic(err)
-	}
+	psListener := server.NewListener("http", testRaftURL, nil)
 
 	// Create Raft transporter and server
 	dialTimeout := (3 * testHeartbeatInterval) + testElectionTimeout
@@ -63,10 +60,7 @@ func RunServer(f func(*server.Server)) {
 	ps.SetRaftServer(raftServer)
 
 	s := server.New(testName, "http://"+testClientURL, ps, registry, store, nil)
-	sListener, err := server.NewListener(testClientURL)
-	if err != nil {
-		panic(err)
-	}
+	sListener := server.NewListener("http", testClientURL, nil)
 
 	ps.SetServer(s)
 
@@ -104,16 +98,16 @@ func RunServer(f func(*server.Server)) {
 }
 
 type waitHandler struct {
-        wg *sync.WaitGroup
-        handler http.Handler
+	wg      *sync.WaitGroup
+	handler http.Handler
 }
 
-func (h *waitHandler) ServeHTTP(w http.ResponseWriter, r *http.Request){
-        h.wg.Add(1)
-        defer h.wg.Done()
-        h.handler.ServeHTTP(w, r)
+func (h *waitHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	h.wg.Add(1)
+	defer h.wg.Done()
+	h.handler.ServeHTTP(w, r)
 
-        //important to flush before decrementing the wait group.
-        //we won't get a chance to once main() ends.
-        w.(http.Flusher).Flush()
+	//important to flush before decrementing the wait group.
+	//we won't get a chance to once main() ends.
+	w.(http.Flusher).Flush()
 }
