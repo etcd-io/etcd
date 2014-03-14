@@ -34,46 +34,46 @@ type PeerServerConfig struct {
 }
 
 type PeerServer struct {
-	Config		PeerServerConfig
-	raftServer	raft.Server
-	server		*Server
-	joinIndex	uint64
-	followersStats	*raftFollowersStats
-	serverStats	*raftServerStats
-	registry	*Registry
-	store		store.Store
-	snapConf	*snapshotConf
+	Config         PeerServerConfig
+	raftServer     raft.Server
+	server         *Server
+	joinIndex      uint64
+	followersStats *raftFollowersStats
+	serverStats    *raftServerStats
+	registry       *Registry
+	store          store.Store
+	snapConf       *snapshotConf
 
-	closeChan		chan bool
-	timeoutThresholdChan	chan interface{}
+	closeChan            chan bool
+	timeoutThresholdChan chan interface{}
 
-	metrics	*metrics.Bucket
+	metrics *metrics.Bucket
 }
 
 // TODO: find a good policy to do snapshot
 type snapshotConf struct {
 	// Etcd will check if snapshot is need every checkingInterval
-	checkingInterval	time.Duration
+	checkingInterval time.Duration
 
 	// The index when the last snapshot happened
-	lastIndex	uint64
+	lastIndex uint64
 
 	// If the incremental number of index since the last snapshot
 	// exceeds the snapshot Threshold, etcd will do a snapshot
-	snapshotThr	uint64
+	snapshotThr uint64
 }
 
 func NewPeerServer(psConfig PeerServerConfig, registry *Registry, store store.Store, mb *metrics.Bucket, followersStats *raftFollowersStats, serverStats *raftServerStats) *PeerServer {
 	s := &PeerServer{
-		Config:		psConfig,
-		registry:	registry,
-		store:		store,
-		followersStats:	followersStats,
-		serverStats:	serverStats,
+		Config:         psConfig,
+		registry:       registry,
+		store:          store,
+		followersStats: followersStats,
+		serverStats:    serverStats,
 
-		timeoutThresholdChan:	make(chan interface{}, 1),
+		timeoutThresholdChan: make(chan interface{}, 1),
 
-		metrics:	mb,
+		metrics: mb,
 	}
 
 	return s
@@ -81,10 +81,10 @@ func NewPeerServer(psConfig PeerServerConfig, registry *Registry, store store.St
 
 func (s *PeerServer) SetRaftServer(raftServer raft.Server) {
 	s.snapConf = &snapshotConf{
-		checkingInterval:	time.Second * 3,
+		checkingInterval: time.Second * 3,
 		// this is not accurate, we will update raft to provide an api
-		lastIndex:	raftServer.CommitIndex(),
-		snapshotThr:	uint64(s.Config.SnapshotCount),
+		lastIndex:   raftServer.CommitIndex(),
+		snapshotThr: uint64(s.Config.SnapshotCount),
 	}
 
 	raftServer.AddEventListener(raft.StateChangeEventType, s.raftEventLogger)
@@ -134,75 +134,64 @@ func (s *PeerServer) handleDiscovery(discoverURL string) (peers []string, err er
 // 2. -peers
 // 3. previous peers in -data-dir
 func (s *PeerServer) findCluster(discoverURL string, peers []string) {
+	name := s.Config.Name
+	isNewNode := s.raftServer.IsLogEmpty()
+	isNewLeader := (len(peers) == 0) && isNewNode
+
 	// Attempt cluster discovery
-	toDiscover := discoverURL != ""
-	if toDiscover {
+	if discoverURL != "" {
 		discoverPeers, discoverErr := s.handleDiscovery(discoverURL)
 		// It is registered in discover url
 		if discoverErr == nil {
 			// start as a leader in a new cluster
 			if len(discoverPeers) == 0 {
-				log.Debug("This peer is starting a brand new cluster based on discover URL.")
+				log.Debug("[%s] is starting a new cluster via discover service", name)
 				s.startAsLeader()
 			} else {
-				s.startAsFollower(discoverPeers)
+				log.Debug("[%s] is joining a cluster %v via discover service", name, discoverPeers)
+				if err := s.startAsFollower(discoverPeers); err != nil {
+					log.Fatal(err)
+				}
 			}
 			return
 		}
-	}
+		log.Warnf("[%s] failed to connect discovery service[%v]: %v", name, discoverURL, discoverErr)
 
-	hasPeerList := len(peers) > 0
-	// if there is log in data dir, append previous peers to peers in config
-	// to find cluster
-	prevPeers := s.registry.PeerURLs(s.raftServer.Leader(), s.Config.Name)
-	for i := 0; i < len(prevPeers); i++ {
-		u, err := url.Parse(prevPeers[i])
-		if err != nil {
-			log.Debug("rejoin cannot parse url: ", err)
-		}
-		prevPeers[i] = u.Host
-	}
-	peers = append(peers, prevPeers...)
-
-	// Remove its own peer address from the peer list to join
-	u, err := url.Parse(s.Config.URL)
-	if err != nil {
-		log.Fatalf("cannot parse peer address %v: %v", s.Config.URL, err)
-	}
-	filteredPeers := make([]string, 0)
-	for _, v := range peers {
-		if v != u.Host {
-			filteredPeers = append(filteredPeers, v)
+		if isNewLeader {
+			log.Fatalf("[%s] new leader must register itself to discovery service as required", name)
 		}
 	}
-	peers = filteredPeers
 
-	// if there is backup peer lists, use it to find cluster
-	if len(peers) > 0 {
-		ok := s.joinCluster(peers)
-		if !ok {
-			log.Warn("No living peers are found!")
-		} else {
-			log.Debugf("%s restart as a follower based on peers[%v]", s.Config.Name)
+	// handle new node
+	if isNewNode {
+		if isNewLeader {
+			log.Infof("[%s] is starting a new cluster.", s.Config.Name)
+			s.startAsLeader()
 			return
 		}
-	}
 
-	if !s.raftServer.IsLogEmpty() {
-		log.Debug("Entire cluster is down! %v will restart the cluster.", s.Config.Name)
+		if err := s.startAsFollower(peers); err != nil {
+			log.Fatalf("[%s] cannot connect to existing cluster %v", name, peers)
+		}
 		return
 	}
 
-	if toDiscover {
-		log.Fatalf("Discovery failed, no available peers in backup list, and no log data")
+	// handle old node
+	knownPeers := s.getKnownPeers()
+	peers = s.removeSelfFromList(append(peers, knownPeers...))
+
+	// if there is backup peer lists, use it to find cluster
+	if len(peers) > 0 {
+		if s.joinCluster(peers) {
+			log.Debugf("[%s] join to the previous cluster %v", name, peers)
+			return
+		}
+
+		log.Warnf("[%s] cannot connect to previous cluster %v", name, peers)
 	}
 
-	if hasPeerList {
-		log.Fatalf("No available peers in backup list, and no log data")
-	}
-
-	log.Infof("This peer is starting a brand new cluster now.")
-	s.startAsLeader()
+	log.Debugf("[%v] is restarting the cluster %v", name, peers)
+	return
 }
 
 // Start the raft server
@@ -284,18 +273,18 @@ func (s *PeerServer) startAsLeader() {
 	log.Debugf("%s start as a leader", s.Config.Name)
 }
 
-func (s *PeerServer) startAsFollower(cluster []string) {
+func (s *PeerServer) startAsFollower(cluster []string) error {
 	// start as a follower in a existing cluster
 	for i := 0; i < s.Config.RetryTimes; i++ {
 		ok := s.joinCluster(cluster)
 		if ok {
-			return
+			return nil
 		}
 		log.Warnf("%v is unable to join the cluster using any of the peers %v at %dth time. Retrying in %.1f seconds", s.Config.Name, cluster, i, s.Config.RetryInterval)
 		time.Sleep(time.Second * time.Duration(s.Config.RetryInterval))
 	}
 
-	log.Fatalf("Cannot join the cluster via given peers after %x retries", s.Config.RetryTimes)
+	return fmt.Errorf("Cannot join the cluster via given peers after %x retries", s.Config.RetryTimes)
 }
 
 // getVersion fetches the peer version of a cluster.
@@ -417,6 +406,35 @@ func (s *PeerServer) joinByPeer(server raft.Server, peer string, scheme string) 
 		}
 
 	}
+}
+
+// getKnownPeers gets the previous peers from log
+func (s *PeerServer) getKnownPeers() []string {
+	peers := s.registry.PeerURLs(s.raftServer.Leader(), s.Config.Name)
+	for i := range peers {
+		u, err := url.Parse(peers[i])
+		if err != nil {
+			log.Debug("getPrevPeers cannot parse url %v", peers[i])
+		}
+		peers[i] = u.Host
+	}
+	return peers
+}
+
+// removeSelfFromList removes url of the peerServer from the peer list
+func (s *PeerServer) removeSelfFromList(peers []string) []string {
+	// Remove its own peer address from the peer list to join
+	u, err := url.Parse(s.Config.URL)
+	if err != nil {
+		log.Fatalf("removeSelfFromList cannot parse peer address %v", s.Config.URL)
+	}
+	newPeers := make([]string, 0)
+	for _, v := range peers {
+		if v != u.Host {
+			newPeers = append(newPeers, v)
+		}
+	}
+	return newPeers
 }
 
 func (s *PeerServer) Stats() []byte {
