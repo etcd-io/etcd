@@ -390,8 +390,8 @@ func (c *Config) Sanitize() error {
 }
 
 // EtcdTLSInfo retrieves a TLSInfo object for the etcd server
-func (c *Config) EtcdTLSInfo() server.TLSInfo {
-	return server.TLSInfo{
+func (c *Config) EtcdTLSInfo() *server.TLSInfo {
+	return &server.TLSInfo{
 		CAFile:   c.CAFile,
 		CertFile: c.CertFile,
 		KeyFile:  c.KeyFile,
@@ -399,8 +399,8 @@ func (c *Config) EtcdTLSInfo() server.TLSInfo {
 }
 
 // PeerRaftInfo retrieves a TLSInfo object for the peer server.
-func (c *Config) PeerTLSInfo() server.TLSInfo {
-	return server.TLSInfo{
+func (c *Config) PeerTLSInfo() *server.TLSInfo {
+	return &server.TLSInfo{
 		CAFile:   c.Peer.CAFile,
 		CertFile: c.Peer.CertFile,
 		KeyFile:  c.Peer.KeyFile,
