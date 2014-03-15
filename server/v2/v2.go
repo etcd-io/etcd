@@ -9,7 +9,7 @@ import (
 // The Server interface provides all the methods required for the v2 API.
 type Server interface {
 	State() string
-	Leader() string
+	Leader() (string, error)
 	CommitIndex() uint64
 	Term() uint64
 	PeerURL(string) (string, bool)

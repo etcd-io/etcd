@@ -12,10 +12,10 @@ import (
 	"github.com/coreos/etcd/third_party/github.com/gorilla/mux"
 
 	etcdErr "github.com/coreos/etcd/error"
+	ehttp "github.com/coreos/etcd/http"
 	"github.com/coreos/etcd/log"
 	"github.com/coreos/etcd/metrics"
 	"github.com/coreos/etcd/mod"
-	ehttp "github.com/coreos/etcd/http"
 	uhttp "github.com/coreos/etcd/pkg/http"
 	"github.com/coreos/etcd/server/v1"
 	"github.com/coreos/etcd/server/v2"
@@ -25,26 +25,26 @@ import (
 
 // This is the default implementation of the Server interface.
 type Server struct {
-	Name		string
-	url		string
-	handler		http.Handler
-	peerServer	*PeerServer
-	registry	*Registry
-	store		store.Store
-	metrics		*metrics.Bucket
+	Name       string
+	url        string
+	handler    http.Handler
+	peerServer *PeerServer
+	registry   *Registry
+	store      store.Store
+	metrics    *metrics.Bucket
 
-	trace	bool
+	trace bool
 }
 
 // Creates a new Server.
 func New(name, url string, peerServer *PeerServer, registry *Registry, store store.Store, mb *metrics.Bucket) *Server {
 	s := &Server{
-		Name:		name,
-		url:		url,
-		store:		store,
-		registry:	registry,
-		peerServer:	peerServer,
-		metrics:	mb,
+		Name:       name,
+		url:        url,
+		store:      store,
+		registry:   registry,
+		peerServer: peerServer,
+		metrics:    mb,
 	}
 
 	return s
@@ -60,8 +60,12 @@ func (s *Server) State() string {
 }
 
 // The node name of the leader in the cluster.
-func (s *Server) Leader() string {
-	return s.peerServer.RaftServer().Leader()
+func (s *Server) Leader() (string, error) {
+	leader := s.peerServer.RaftServer().Leader()
+	if leader == "" {
+		return "", etcdErr.NewError(etcdErr.EcodeRaftInternal, "No leader available", s.Store().Index())
+	}
+	return leader, nil
 }
 
 // The current Raft committed index.
@@ -203,7 +207,7 @@ func (s *Server) Dispatch(c raft.Command, w http.ResponseWriter, req *http.Reque
 		}
 
 		if result == nil {
-			return etcdErr.NewError(300, "Empty result from raft", s.Store().Index())
+			return etcdErr.NewError(etcdErr.EcodeRaftInternal, "Empty result from raft", s.Store().Index())
 		}
 
 		// response for raft related commands[join/remove]
@@ -240,11 +244,9 @@ func (s *Server) Dispatch(c raft.Command, w http.ResponseWriter, req *http.Reque
 		return nil
 
 	} else {
-		leader := ps.raftServer.Leader()
-
-		// No leader available.
-		if leader == "" {
-			return etcdErr.NewError(300, "", s.Store().Index())
+		leader, err := s.Leader()
+		if err != nil {
+			return err
 		}
 
 		var url string
@@ -269,9 +271,9 @@ func (s *Server) GetVersionHandler(w http.ResponseWriter, req *http.Request) err
 
 // Handler to return the current leader's raft address
 func (s *Server) GetLeaderHandler(w http.ResponseWriter, req *http.Request) error {
-	leader := s.peerServer.RaftServer().Leader()
-	if leader == "" {
-		return etcdErr.NewError(etcdErr.EcodeLeaderElect, "", s.Store().Index())
+	leader, err := s.Leader()
+	if err != nil {
+		return err
 	}
 	w.WriteHeader(http.StatusOK)
 	url, _ := s.registry.PeerURL(leader)
@@ -281,7 +283,11 @@ func (s *Server) GetLeaderHandler(w http.ResponseWriter, req *http.Request) erro
 
 // Handler to return all the known peers in the current cluster.
 func (s *Server) GetPeersHandler(w http.ResponseWriter, req *http.Request) error {
-	peers := s.registry.ClientURLs(s.peerServer.RaftServer().Leader(), s.Name)
+	leader, err := s.Leader()
+	if err != nil {
+		return err
+	}
+	peers := s.registry.ClientURLs(leader, s.Name)
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(strings.Join(peers, ", ")))
 	return nil
@@ -300,9 +306,9 @@ func (s *Server) GetLeaderStatsHandler(w http.ResponseWriter, req *http.Request)
 		return nil
 	}
 
-	leader := s.peerServer.RaftServer().Leader()
-	if leader == "" {
-		return etcdErr.NewError(300, "", s.Store().Index())
+	leader, err := s.Leader()
+	if err != nil {
+		return err
 	}
 	hostname, _ := s.registry.ClientURL(leader)
 	uhttp.Redirect(hostname, w, req)
