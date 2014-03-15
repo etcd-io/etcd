@@ -29,6 +29,9 @@ The latest release and setup instructions are available at [Github][github-relea
 
 ### Building
 
+For fast start, check [development tools documentation][development-tools.md]
+[development-tools.md]: https://github.com/coreos/etcd/blob/master/Documentation/development-tools.md
+
 You can build etcd from source:
 
 ```sh
