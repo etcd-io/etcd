@@ -7,6 +7,7 @@ Etcd supports SSL/TLS and client cert authentication for clients to server, as w
 First, you need to have a CA cert `clientCA.crt` and signed key pair `client.crt`, `client.key`.
 This site has a good reference for how to generate self-signed key pairs:
 http://www.g-loaded.eu/2005/11/10/be-your-own-ca/
+Or you could use [etcd-ca](https://github.com/coreos/etcd-ca) to generate certs and keys.
 
 For testing you can use the certificates in the `fixtures/ca` directory.
 
