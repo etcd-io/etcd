@@ -4,8 +4,14 @@ import (
 	"flag"
 	"log"
 	"strconv"
+	"time"
 
 	"github.com/coreos/etcd/third_party/github.com/coreos/go-etcd/etcd"
+)
+
+var (
+	// output debug to log
+	verbose *bool
 )
 
 func write(endpoint string, requests int, end chan int) {
@@ -27,7 +33,9 @@ func watch(endpoint string, key string) {
 	receiver := make(chan *etcd.Response)
 	go client.Watch(key, 0, true, receiver, nil)
 
-	log.Printf("watching: %s", key)
+	if *verbose {
+		log.Printf("watching: %s", key)
+	}
 
 	received := 0
 	for {
@@ -41,11 +49,15 @@ func main() {
 
 	rWrites := flag.Int("write-requests", 50000, "number of writes")
 	cWrites := flag.Int("concurrent-writes", 500, "number of concurrent writes")
-
-	watches := flag.Int("watches", 500, "number of writes")
+	watches := flag.Int("watches", 500, "number of concurrent watches")
+	verbose = flag.Bool("verbose", false, "output debug info")
 
 	flag.Parse()
 
+	log.Printf("Benchmarking %v", *endpoint)
+	log.Printf("%v writes with %v concurrent writers and %v watches", *rWrites, *cWrites, *watches)
+
+	t := time.Now()
 	for i := 0; i < *watches; i++ {
 		key := strconv.Itoa(i)
 		go watch(*endpoint, key)
@@ -58,6 +70,10 @@ func main() {
 
 	for i := 0; i < *cWrites; i++ {
 		<-wChan
-		log.Printf("Completed %d writes", (*rWrites / *cWrites))
+		if *verbose {
+			log.Printf("Completed %d writes", (*rWrites / *cWrites))
+		}
 	}
+
+	log.Printf("Took %v", time.Now().Sub(t))
 }
