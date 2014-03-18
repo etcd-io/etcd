@@ -1,12 +1,9 @@
 package server
 
 import (
-	"bufio"
 	"bytes"
-	"encoding/binary"
 	"encoding/json"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"math/rand"
 	"net/http"
@@ -313,16 +310,19 @@ func (s *PeerServer) HTTPHandler() http.Handler {
 	router.HandleFunc("/join", s.JoinHttpHandler)
 	router.HandleFunc("/promote", s.PromoteHttpHandler).Methods("POST")
 	router.HandleFunc("/remove/{name:.+}", s.RemoveHttpHandler)
-	router.HandleFunc("/config", s.getClusterConfigHttpHandler).Methods("GET")
-	router.HandleFunc("/config", s.setClusterConfigHttpHandler).Methods("PUT")
-	router.HandleFunc("/machines", s.getMachinesHttpHandler).Methods("GET")
-	router.HandleFunc("/machines/{name}", s.getMachineHttpHandler).Methods("GET")
 	router.HandleFunc("/vote", s.VoteHttpHandler)
 	router.HandleFunc("/log", s.GetLogHttpHandler)
 	router.HandleFunc("/log/append", s.AppendEntriesHttpHandler)
 	router.HandleFunc("/snapshot", s.SnapshotHttpHandler)
 	router.HandleFunc("/snapshotRecovery", s.SnapshotRecoveryHttpHandler)
 	router.HandleFunc("/etcdURL", s.EtcdURLHttpHandler)
+
+	router.HandleFunc("/v2/admin/config", s.getClusterConfigHttpHandler).Methods("GET")
+	router.HandleFunc("/v2/admin/config", s.setClusterConfigHttpHandler).Methods("PUT")
+	router.HandleFunc("/v2/admin/machines", s.getMachinesHttpHandler).Methods("GET")
+	router.HandleFunc("/v2/admin/machines/{name}", s.getMachineHttpHandler).Methods("GET")
+	router.HandleFunc("/v2/admin/machines/{name}", s.addMachineHttpHandler).Methods("PUT")
+	router.HandleFunc("/v2/admin/machines/{name}", s.removeMachineHttpHandler).Methods("DELETE")
 
 	return router
 }
@@ -340,7 +340,14 @@ func (s *PeerServer) SetServer(server *Server) {
 func (s *PeerServer) startAsLeader() {
 	// leader need to join self as a peer
 	for {
-		_, err := s.raftServer.Do(NewJoinCommand(store.MinVersion(), store.MaxVersion(), s.raftServer.Name(), s.Config.URL, s.server.URL()))
+		c := &JoinCommandV1{
+			MinVersion: store.MinVersion(),
+			MaxVersion: store.MaxVersion(),
+			Name:       s.raftServer.Name(),
+			RaftURL:    s.Config.URL,
+			EtcdURL:    s.server.URL(),
+		}
+		_, err := s.raftServer.Do(c)
 		if err == nil {
 			break
 		}
@@ -429,8 +436,6 @@ func (s *PeerServer) joinCluster(cluster []string) bool {
 
 // Send join requests to peer.
 func (s *PeerServer) joinByPeer(server raft.Server, peer string, scheme string) error {
-	var b bytes.Buffer
-
 	// t must be ok
 	t, _ := server.Transporter().(*transporter)
 
@@ -444,14 +449,21 @@ func (s *PeerServer) joinByPeer(server raft.Server, peer string, scheme string) 
 		return fmt.Errorf("Unable to join: cluster version is %d; version compatibility is %d - %d", version, store.MinVersion(), store.MaxVersion())
 	}
 
-	json.NewEncoder(&b).Encode(NewJoinCommand(store.MinVersion(), store.MaxVersion(), server.Name(), s.Config.URL, s.server.URL()))
+	var b bytes.Buffer
+	c := &JoinCommandV2{
+		MinVersion: store.MinVersion(),
+		MaxVersion: store.MaxVersion(),
+		Name:       server.Name(),
+		PeerURL:    s.Config.URL,
+		ClientURL:  s.server.URL(),
+	}
+	json.NewEncoder(&b).Encode(c)
 
-	joinURL := url.URL{Host: peer, Scheme: scheme, Path: "/join"}
-
+	joinURL := url.URL{Host: peer, Scheme: scheme, Path: "/v2/admin/machines/" + server.Name()}
 	log.Debugf("Send Join Request to %s", joinURL.String())
 
-	resp, req, err := t.Post(joinURL.String(), &b)
-
+	req, _ := http.NewRequest("PUT", joinURL.String(), &b)
+	resp, err := t.client.Do(req)
 	for {
 		if err != nil {
 			return fmt.Errorf("Unable to join: %v", err)
@@ -462,28 +474,17 @@ func (s *PeerServer) joinByPeer(server raft.Server, peer string, scheme string) 
 			t.CancelWhenTimeout(req)
 
 			if resp.StatusCode == http.StatusOK {
-				r := bufio.NewReader(resp.Body)
-				s.joinIndex, _ = binary.ReadUvarint(r)
-
-				// Determine whether the server joined as a proxy or peer.
-				var mode uint64
-				if mode, err = binary.ReadUvarint(r); err == io.EOF {
-					mode = peerModeFlag
-				} else if err != nil {
-					log.Debugf("Error reading join mode: %v", err)
+				var msg joinMessageV2
+				if err := json.NewDecoder(resp.Body).Decode(&msg); err != nil {
+					log.Debugf("Error reading join response: %v", err)
 					return err
 				}
+				s.joinIndex = msg.CommitIndex
+				s.setMode(msg.Mode)
 
-				switch mode {
-				case peerModeFlag:
-					s.setMode(PeerMode)
-				case proxyModeFlag:
-					s.setMode(ProxyMode)
+				if msg.Mode == ProxyMode {
 					s.proxyClientURL = resp.Header.Get("X-Leader-Client-URL")
 					s.proxyPeerURL = resp.Header.Get("X-Leader-Peer-URL")
-				default:
-					log.Debugf("Invalid join mode: %v", err)
-					return fmt.Errorf("Invalid join mode (%d): %v", mode, err)
 				}
 
 				return nil
@@ -491,7 +492,14 @@ func (s *PeerServer) joinByPeer(server raft.Server, peer string, scheme string) 
 			if resp.StatusCode == http.StatusTemporaryRedirect {
 				address := resp.Header.Get("Location")
 				log.Debugf("Send Join Request to %s", address)
-				json.NewEncoder(&b).Encode(NewJoinCommand(store.MinVersion(), store.MaxVersion(), server.Name(), s.Config.URL, s.server.URL()))
+				c := &JoinCommandV1{
+					MinVersion: store.MinVersion(),
+					MaxVersion: store.MaxVersion(),
+					Name:       server.Name(),
+					RaftURL:    s.Config.URL,
+					EtcdURL:    s.server.URL(),
+				}
+				json.NewEncoder(&b).Encode(c)
 				resp, req, err = t.Post(address, &b)
 
 			} else if resp.StatusCode == http.StatusBadRequest {

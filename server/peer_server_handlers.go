@@ -150,16 +150,14 @@ func (ps *PeerServer) EtcdURLHttpHandler(w http.ResponseWriter, req *http.Reques
 
 // Response to the join request
 func (ps *PeerServer) JoinHttpHandler(w http.ResponseWriter, req *http.Request) {
-	command := &JoinCommand{}
-
-	err := uhttp.DecodeJsonRequest(req, command)
-	if err != nil {
+	command := &JoinCommandV1{}
+	if err := uhttp.DecodeJsonRequest(req, command); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	log.Debugf("Receive Join Request from %s", command.Name)
-	err = ps.server.Dispatch(command, w, req)
+	err := ps.server.Dispatch(command, w, req)
 
 	// Return status.
 	if err != nil {
@@ -199,7 +197,7 @@ func (ps *PeerServer) RemoveHttpHandler(w http.ResponseWriter, req *http.Request
 	}
 
 	vars := mux.Vars(req)
-	command := &RemoveCommand{
+	command := &RemoveCommandV1{
 		Name: vars["name"],
 	}
 
@@ -284,6 +282,33 @@ func (ps *PeerServer) getMachineMessage(name string) *machineMessage {
 	}
 
 	return nil
+}
+
+// Adds a machine to the cluster.
+func (ps *PeerServer) addMachineHttpHandler(w http.ResponseWriter, req *http.Request) {
+	c := &JoinCommandV2{}
+	if err := uhttp.DecodeJsonRequest(req, c); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	log.Debugf("Receive Join Request (v2) from %s", c.Name)
+	if err := ps.server.Dispatch(c, w, req); err != nil {
+		if etcdErr, ok := err.(*etcdErr.Error); ok {
+			log.Debug("Return error: ", (*etcdErr).Error())
+			etcdErr.Write(w)
+		} else {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+	}
+}
+
+// Removes a machine from the cluster.
+func (ps *PeerServer) removeMachineHttpHandler(w http.ResponseWriter, req *http.Request) {
+	vars := mux.Vars(req)
+	c := &RemoveCommandV2{Name: vars["name"]}
+	log.Debugf("[recv] Remove Request [%s]", c.Name)
+	ps.server.Dispatch(c, w, req)
 }
 
 // Response to the name request

@@ -477,6 +477,7 @@ func (s *server) Stop() {
 	// make sure the server has stopped before we close the log
 	<-s.stopped
 	s.log.close()
+	s.state = Stopped
 }
 
 // Checks if the server is currently running.

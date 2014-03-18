@@ -1,27 +1,22 @@
 package server
 
 import (
-	"bytes"
 	"encoding/binary"
+	"encoding/json"
 
+	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/log"
 	"github.com/coreos/etcd/third_party/github.com/coreos/raft"
 )
 
 func init() {
-	raft.RegisterCommand(&JoinCommand{})
+	raft.RegisterCommand(&JoinCommandV1{})
+	raft.RegisterCommand(&JoinCommandV2{})
 }
 
-// The JoinCommand adds a node to the cluster.
-//
-// The command returns the join_index (Uvarint) and peer flag (peer=0, proxy=1)
-// in following binary format:
-//
-//     8 bytes      |  1 byte
-//     join_index   |  join_mode
-//
-// This binary protocol is for backward compatibility.
-type JoinCommand struct {
+// JoinCommandV1 represents a request to join the cluster.
+// The command returns the join_index (Uvarint).
+type JoinCommandV1 struct {
 	MinVersion int    `json:"minVersion"`
 	MaxVersion int    `json:"maxVersion"`
 	Name       string `json:"name"`
@@ -29,50 +24,30 @@ type JoinCommand struct {
 	EtcdURL    string `json:"etcdURL"`
 }
 
-func NewJoinCommand(minVersion int, maxVersion int, name, raftUrl, etcdUrl string) *JoinCommand {
-	return &JoinCommand{
-		MinVersion: minVersion,
-		MaxVersion: maxVersion,
-		Name:       name,
-		RaftURL:    raftUrl,
-		EtcdURL:    etcdUrl,
-	}
-}
-
 // The name of the join command in the log
-func (c *JoinCommand) CommandName() string {
+func (c *JoinCommandV1) CommandName() string {
 	return "etcd:join"
 }
 
 // Join a server to the cluster
-func (c *JoinCommand) Apply(context raft.Context) (interface{}, error) {
+func (c *JoinCommandV1) Apply(context raft.Context) (interface{}, error) {
 	ps, _ := context.Server().Context().(*PeerServer)
 
-	var buf bytes.Buffer
 	b := make([]byte, 8)
-	n := binary.PutUvarint(b, context.CommitIndex())
-	buf.Write(b[:n])
+	binary.PutUvarint(b, context.CommitIndex())
 
 	// Make sure we're not getting a cached value from the registry.
 	ps.registry.Invalidate(c.Name)
 
 	// Check if the join command is from a previous peer, who lost all its previous log.
 	if _, ok := ps.registry.ClientURL(c.Name); ok {
-		binary.Write(&buf, binary.BigEndian, uint8(peerModeFlag)) // Mark as peer.
-		return buf.Bytes(), nil
+		return b, nil
 	}
 
 	// Check peer number in the cluster
 	if ps.registry.PeerCount() >= ps.ClusterConfig().ActiveSize {
-		log.Debug("Join as proxy ", c.Name)
-		ps.registry.RegisterProxy(c.Name, c.RaftURL, c.EtcdURL)
-		binary.Write(&buf, binary.BigEndian, uint8(proxyModeFlag)) // Mark as proxy.
-		return buf.Bytes(), nil
-	}
-
-	// Remove it as a proxy if it is one.
-	if ps.registry.ProxyExists(c.Name) {
-		ps.registry.UnregisterProxy(c.Name)
+		log.Debug("Reject join request from ", c.Name)
+		return []byte{0}, etcdErr.NewError(etcdErr.EcodeNoMorePeer, "", context.CommitIndex())
 	}
 
 	// Add to shared peer registry.
@@ -87,10 +62,79 @@ func (c *JoinCommand) Apply(context raft.Context) (interface{}, error) {
 		ps.followersStats.Followers[c.Name].Latency.Minimum = 1 << 63
 	}
 
-	binary.Write(&buf, binary.BigEndian, uint8(peerModeFlag)) // Mark as peer.
-	return buf.Bytes(), err
+	return b, err
 }
 
-func (c *JoinCommand) NodeName() string {
+func (c *JoinCommandV1) NodeName() string {
 	return c.Name
+}
+
+// JoinCommandV2 represents a request to join the cluster.
+type JoinCommandV2 struct {
+	MinVersion int    `json:"minVersion"`
+	MaxVersion int    `json:"maxVersion"`
+	Name       string `json:"name"`
+	PeerURL    string `json:"peerURL"`
+	ClientURL  string `json:"clientURL"`
+}
+
+// CommandName returns the name of the command in the Raft log.
+func (c *JoinCommandV2) CommandName() string {
+	return "etcd:v2:join"
+}
+
+// Apply attempts to join a machine to the cluster.
+func (c *JoinCommandV2) Apply(context raft.Context) (interface{}, error) {
+	ps, _ := context.Server().Context().(*PeerServer)
+	var msg = joinMessageV2{
+		Mode:        PeerMode,
+		CommitIndex: context.CommitIndex(),
+	}
+
+	// Make sure we're not getting a cached value from the registry.
+	ps.registry.Invalidate(c.Name)
+
+	// Check if the join command is from a previous peer, who lost all its previous log.
+	if _, ok := ps.registry.ClientURL(c.Name); ok {
+		return json.Marshal(msg)
+	}
+
+	// Check peer number in the cluster.
+	if ps.registry.PeerCount() >= ps.ClusterConfig().ActiveSize {
+		log.Debug("Join as proxy ", c.Name)
+		ps.registry.RegisterProxy(c.Name, c.PeerURL, c.ClientURL)
+		msg.Mode = ProxyMode
+		return json.Marshal(msg)
+	}
+
+	// Remove it as a proxy if it is one.
+	if ps.registry.ProxyExists(c.Name) {
+		ps.registry.UnregisterProxy(c.Name)
+	}
+
+	// Add to shared peer registry.
+	ps.registry.RegisterPeer(c.Name, c.PeerURL, c.ClientURL)
+
+	// Add peer in raft
+	if err := context.Server().AddPeer(c.Name, ""); err != nil {
+		b, _ := json.Marshal(msg)
+		return b, err
+	}
+
+	// Add peer stats
+	if c.Name != ps.RaftServer().Name() {
+		ps.followersStats.Followers[c.Name] = &raftFollowerStats{}
+		ps.followersStats.Followers[c.Name].Latency.Minimum = 1 << 63
+	}
+
+	return json.Marshal(msg)
+}
+
+func (c *JoinCommandV2) NodeName() string {
+	return c.Name
+}
+
+type joinMessageV2 struct {
+	CommitIndex uint64 `json:"commitIndex"`
+	Mode        Mode   `json:"mode"`
 }

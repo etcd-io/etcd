@@ -65,13 +65,15 @@ func (r *Registry) Proxies() []string {
 
 // RegisterPeer adds a peer to the registry.
 func (r *Registry) RegisterPeer(name string, peerURL string, machURL string) error {
-	// TODO(benbjohnson): Disallow peers that are already proxies.
-	return r.register(RegistryPeerKey, name, peerURL, machURL)
+	if err := r.register(RegistryPeerKey, name, peerURL, machURL); err != nil {
+		return err
+	}
+	r.peers[name] = r.load(RegistryPeerKey, name)
+	return nil
 }
 
 // RegisterProxy adds a proxy to the registry.
 func (r *Registry) RegisterProxy(name string, peerURL string, machURL string) error {
-	// TODO(benbjohnson): Disallow proxies that are already peers.
 	if err := r.register(RegistryProxyKey, name, peerURL, machURL); err != nil {
 		return err
 	}

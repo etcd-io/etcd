@@ -34,16 +34,31 @@ func (c *DemoteCommand) Apply(context raft.Context) (interface{}, error) {
 	clientURL, _ := ps.registry.ClientURL(c.Name)
 	peerURL, _ := ps.registry.PeerURL(c.Name)
 
-	// Perform a removal.
-	(&RemoveCommand{Name: c.Name}).Apply(context)
+	// Remove node from the shared registry.
+	err := ps.registry.UnregisterPeer(c.Name)
+	if err != nil {
+		log.Debugf("Demote peer %s: Error while unregistering (%v)", c.Name, err)
+		return nil, err
+	}
+
+	// Delete from stats
+	delete(ps.followersStats.Followers, c.Name)
+
+	// Remove peer in raft
+	err = context.Server().RemovePeer(c.Name)
+	if err != nil {
+		log.Debugf("Demote peer %s: (%v)", c.Name, err)
+		return nil, err
+	}
 
 	// Register node as a proxy.
 	ps.registry.RegisterProxy(c.Name, peerURL, clientURL)
 
 	// Update mode if this change applies to this server.
 	if c.Name == ps.Config.Name {
-		log.Infof("Set mode after demotion: %s", c.Name)
-		ps.setMode(ProxyMode)
+		log.Infof("Demote peer %s: Set mode to proxy with %s", c.Name, ps.server.Leader())
+		ps.proxyPeerURL, _ = ps.registry.PeerURL(ps.server.Leader())
+		go ps.setMode(ProxyMode)
 	}
 
 	return nil, nil

@@ -51,7 +51,7 @@ func TestProxy(t *testing.T) {
 	assert.Equal(t, len(result.Node.Nodes), 1)
 
 	// Reconfigure with larger active size (10 nodes) and wait for promotion.
-	resp, _ := tests.Put("http://localhost:7001/config", "application/json", bytes.NewBufferString(`{"activeSize":10, "promoteDelay":1800}`))
+	resp, _ := tests.Put("http://localhost:7001/v2/admin/config", "application/json", bytes.NewBufferString(`{"activeSize":10, "promoteDelay":1800}`))
 	if !assert.Equal(t, resp.StatusCode, 200) {
 		t.FailNow()
 	}
@@ -64,7 +64,7 @@ func TestProxy(t *testing.T) {
 	assert.Equal(t, len(result.Node.Nodes), 0)
 
 	// Reconfigure with a smaller active size (8 nodes).
-	resp, _ = tests.Put("http://localhost:7001/config", "application/json", bytes.NewBufferString(`{"activeSize":8, "promoteDelay":1800}`))
+	resp, _ = tests.Put("http://localhost:7001/v2/admin/config", "application/json", bytes.NewBufferString(`{"activeSize":8, "promoteDelay":1800}`))
 	if !assert.Equal(t, resp.StatusCode, 200) {
 		t.FailNow()
 	}
@@ -107,7 +107,7 @@ func TestProxyAutoPromote(t *testing.T) {
 	assert.Equal(t, len(result.Node.Nodes), 1)
 
 	// Reconfigure with a short promote delay (2 second).
-	resp, _ := tests.Put("http://localhost:7001/config", "application/json", bytes.NewBufferString(`{"activeSize":9, "promoteDelay":2}`))
+	resp, _ := tests.Put("http://localhost:7001/v2/admin/config", "application/json", bytes.NewBufferString(`{"activeSize":9, "promoteDelay":2}`))
 	if !assert.Equal(t, resp.StatusCode, 200) {
 		t.FailNow()
 	}
