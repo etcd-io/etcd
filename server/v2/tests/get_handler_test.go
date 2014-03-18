@@ -90,17 +90,15 @@ func TestV2GetKeyRecursively(t *testing.T) {
 //
 func TestV2WatchKey(t *testing.T) {
 	tests.RunServer(func(s *server.Server) {
-		var body map[string]interface{}
+		var watchResp *http.Response
 		c := make(chan bool)
 		go func() {
-			resp, _ := tests.Get(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo/bar?wait=true"))
-			body = tests.ReadBodyJSON(resp)
+			watchResp, _ = tests.Get(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo/bar?wait=true"))
 			c <- true
 		}()
 
 		// Make sure response didn't fire early.
 		time.Sleep(1 * time.Millisecond)
-		assert.Nil(t, body, "")
 
 		// Set a value.
 		v := url.Values{}
@@ -118,6 +116,7 @@ func TestV2WatchKey(t *testing.T) {
 			t.Fatal("cannot get watch result")
 		}
 
+		body := tests.ReadBodyJSON(watchResp)
 		assert.NotNil(t, body, "")
 		assert.Equal(t, body["action"], "set", "")
 
