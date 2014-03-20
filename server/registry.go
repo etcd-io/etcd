@@ -164,6 +164,8 @@ func (r *Registry) urls(leaderName, selfName string, url func(name string) (stri
 
 // Removes a node from the cache.
 func (r *Registry) Invalidate(name string) {
+	r.Lock()
+	defer r.Unlock()
 	delete(r.nodes, name)
 }
 

@@ -12,8 +12,8 @@ import (
 
 	"github.com/coreos/etcd/third_party/github.com/stretchr/testify/assert"
 
-	etcdtest "github.com/coreos/etcd/tests"
 	"github.com/coreos/etcd/server"
+	etcdtest "github.com/coreos/etcd/tests"
 	goetcd "github.com/coreos/etcd/third_party/github.com/coreos/go-etcd/etcd"
 )
 
@@ -50,6 +50,7 @@ func TestDiscoveryDownNoBackupPeers(t *testing.T) {
 	if err != nil {
 		t.Fatal(err.Error())
 	}
+	ts.Close()
 
 	if !g.success {
 		t.Fatal("Discovery server never called")
