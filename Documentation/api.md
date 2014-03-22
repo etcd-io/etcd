@@ -118,7 +118,7 @@ curl -L http://127.0.0.1:4001/v2/keys/message -XPUT -d value="Hello etcd"
         "value": "Hello etcd"
     },
     "prevNode": {
-    	"createdIndex":2
+    	"createdIndex": 2
     	"key": "/message",
     	"value": "Hello world",
     	"modifiedIndex": 2,
@@ -378,11 +378,11 @@ curl 'http://127.0.0.1:4001/v2/keys/dir/asdf?consistent=true&wait=true'
 		"modifiedIndex": 15
 	},
 	"prevNode": {
-		"createdIndex":8,
+		"createdIndex": 8,
 		"key": "/dir",
 		"dir":true,
 		"modifiedIndex": 17,
-		"expiration":"2013-12-11T10:39:35.689275857-08:00"
+		"expiration": "2013-12-11T10:39:35.689275857-08:00"
 	},
 }
 ```
@@ -465,7 +465,7 @@ The response should be:
         "value": "two"
     },
     "prevNode": {
-    	"createdIndex":8,
+    	"createdIndex": 8,
     	"key": "/foo",
     	"modifiedIndex": 8,
     	"value": "one"
@@ -1120,7 +1120,7 @@ And this is an example response from a leader machine:
 curl -L http://127.0.0.1:4001/v2/stats/self
 ```
 
-```
+```json
 {
     "leaderInfo": {
         "leader": "machine0",
