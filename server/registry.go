@@ -58,7 +58,7 @@ func (r *Registry) Unregister(name string) error {
 	defer r.Unlock()
 
 	// Remove from cache.
-	// delete(r.nodes, name)
+	r.Invalidate(name)
 
 	// Remove the key from the store.
 	_, err := r.store.Delete(path.Join(RegistryKey, name), false, false)
