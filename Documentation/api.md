@@ -903,7 +903,7 @@ If the TTL is not specified or is not a number then you'll receive the following
 When the client is finished with the lock, simply send a `DELETE` request to release the lock:
 
 ```sh
-curl -L http://127.0.0.1:4001/mod/v2/lock/mylock -XDELETE -d index=5
+curl -L http://127.0.0.1:4001/mod/v2/lock/mylock?index=5 -XDELETE
 ```
 
 If the index or value is not specified then you'll receive the following error:
@@ -953,7 +953,7 @@ Will return the current index:
 2
 ```
 
-If you specify a field other than `field` or `value` then you'll receive the following error:
+If you specify a field other than `index` or `value` then you'll receive the following error:
 
 ```json
 {
