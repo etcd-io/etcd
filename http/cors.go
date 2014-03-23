@@ -72,4 +72,7 @@ func (h *CORSHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 
 	h.Handler.ServeHTTP(w, req)
+
+	// Flush before leaving to send out all data.
+	w.(http.Flusher).Flush()
 }
