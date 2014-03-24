@@ -1,6 +1,7 @@
 package test
 
 import (
+	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -31,7 +32,7 @@ func TestMultiNodeKillAllAndRecovery(t *testing.T) {
 	go Monitor(clusterSize, clusterSize, leaderChan, all, stop)
 	<-all
 	<-leaderChan
-	stop <-true
+	stop <- true
 
 	c.SyncCluster()
 
@@ -100,7 +101,7 @@ func TestTLSMultiNodeKillAllAndRecovery(t *testing.T) {
 	go Monitor(clusterSize, clusterSize, leaderChan, all, stop)
 	<-all
 	<-leaderChan
-	stop <-true
+	stop <- true
 
 	c.SyncCluster()
 
@@ -128,6 +129,13 @@ func TestTLSMultiNodeKillAllAndRecovery(t *testing.T) {
 
 	for i := 0; i < clusterSize; i++ {
 		etcds[i], err = os.StartProcess(EtcdBinPath, argGroup[i], procAttr)
+		client := buildClient()
+		addr := fmt.Sprintf("127.0.0.1:400%d", i+1)
+
+		err = WaitForServer(addr, client, "http")
+		if err != nil {
+			t.Fatal("cannot reach node%d", i)
+		}
 	}
 
 	go Monitor(clusterSize, 1, leaderChan, all, stop)

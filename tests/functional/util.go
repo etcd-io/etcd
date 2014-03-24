@@ -128,9 +128,11 @@ func CreateCluster(size int, procAttr *os.ProcAttr, ssl bool) ([][]string, []*os
 		// The problem is that if the master isn't up then the children
 		// have to retry. This retry can take upwards of 15 seconds
 		// which slows tests way down and some of them fail.
-		if i == 0 {
+		if i == 0 || ssl {
 			client := buildClient()
-			err = WaitForServer("127.0.0.1:4001", client, "http")
+			addr := fmt.Sprintf("127.0.0.1:400%d", i+1)
+
+			err = WaitForServer(addr, client, "http")
 			if err != nil {
 				return nil, nil, err
 			}

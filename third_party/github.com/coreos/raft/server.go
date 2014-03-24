@@ -1056,7 +1056,7 @@ func (s *server) RemovePeer(name string) error {
 
 		// Stop peer and remove it.
 		if s.State() == Leader {
-			peer.stopHeartbeat(true)
+			go peer.stopHeartbeat(true)
 		}
 
 		delete(s.peers, name)
