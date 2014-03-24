@@ -9,6 +9,14 @@ import (
 	ustrings "github.com/coreos/etcd/pkg/strings"
 )
 
+// explanations of Compare function result
+const (
+	CompareMatch         = 0
+	CompareIndexNotMatch = 1
+	CompareValueNotMatch = 2
+	CompareNotMatch      = 3
+)
+
 var Permanent time.Time
 
 // node is the basic element in the store system.
@@ -321,11 +329,23 @@ func (n *node) UpdateTTL(expireTime time.Time) {
 	}
 }
 
-func (n *node) Compare(prevValue string, prevIndex uint64) bool {
-	compareValue := (prevValue == "" || n.Value == prevValue)
-	compareIndex := (prevIndex == 0 || n.ModifiedIndex == prevIndex)
-
-	return compareValue && compareIndex
+// Compare function compares node index and value with provided ones.
+// second result value explains result and equals to one of Compare.. constants
+func (n *node) Compare(prevValue string, prevIndex uint64) (ok bool, which int) {
+	indexMatch := (prevIndex == 0 || n.ModifiedIndex == prevIndex)
+	valueMatch := (prevValue == "" || n.Value == prevValue)
+	ok = valueMatch && indexMatch
+	switch {
+	case valueMatch && indexMatch:
+		which = CompareMatch
+	case indexMatch && !valueMatch:
+		which = CompareValueNotMatch
+	case valueMatch && !indexMatch:
+		which = CompareIndexNotMatch
+	default:
+		which = CompareNotMatch
+	}
+	return
 }
 
 // Clone function clone the node recursively and return the new node.

@@ -28,6 +28,12 @@ This is a rough outline of what a contributor's workflow looks like:
 
 Thanks for you contributions!
 
+### Code style
+
+The coding style suggested by the Golang community is used in etcd. See [style doc](https://code.google.com/p/go-wiki/wiki/Style) for details.
+
+Please follow this style to make etcd easy to review, maintain and develop.
+
 ### Format of the commit message
 
 etcd follow a rough convention for commit messages borrowed from Angularjs.

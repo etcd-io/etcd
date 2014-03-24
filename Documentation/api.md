@@ -21,7 +21,7 @@ The key space consists of directories and keys which are generically referred to
 
 ### Setting the value of a key
 
-Let’s set the first key-value pair in the datastore.
+Let's set the first key-value pair in the datastore.
 In this case the key is `/message` and the value is `Hello world`.
 
 ```sh
@@ -118,11 +118,10 @@ curl -L http://127.0.0.1:4001/v2/keys/message -XPUT -d value="Hello etcd"
         "value": "Hello etcd"
     },
     "prevNode": {
-    	"createdIndex":2
+    	"createdIndex": 2
     	"key": "/message",
     	"value": "Hello world",
     	"modifiedIndex": 2,
-    
     }
 }
 ```
@@ -379,11 +378,11 @@ curl 'http://127.0.0.1:4001/v2/keys/dir/asdf?consistent=true&wait=true'
 		"modifiedIndex": 15
 	},
 	"prevNode": {
-		"createdIndex":8,
+		"createdIndex": 8,
 		"key": "/dir",
 		"dir":true,
 		"modifiedIndex": 17,
-		"expiration":"2013-12-11T10:39:35.689275857-08:00"
+		"expiration": "2013-12-11T10:39:35.689275857-08:00"
 	},
 }
 ```
@@ -438,14 +437,15 @@ This will try to compare the previous value of the key and the previous value we
 
 ```json
 {
-    "cause": "[two != one] [0 != 8]",
+    "cause": "[two != one]",
     "errorCode": 101,
     "index": 8,
     "message": "Test Failed"
 }
 ```
 
-which means `CompareAndSwap` failed.
+which means `CompareAndSwap` failed. `cause` explains why the test failed.
+Note: the condition prevIndex=0 always passes.
 
 Let's try a valid condition:
 
@@ -465,7 +465,7 @@ The response should be:
         "value": "two"
     },
     "prevNode": {
-    	"createdIndex":8,
+    	"createdIndex": 8,
     	"key": "/foo",
     	"modifiedIndex": 8,
     	"value": "one"
@@ -504,7 +504,7 @@ The error code explains the problem:
 {
 	"errorCode": 101,
 	"message": "Compare failed",
-	"cause": "[two != one] [0 != 8]",
+	"cause": "[two != one]",
 	"index": 8
 }
 ```
@@ -519,7 +519,7 @@ curl -L http://127.0.0.1:4001/v2/keys/foo?prevIndex=1 -XDELETE
 {
 	"errorCode": 101,
 	"message": "Compare failed",
-	"cause": "[ != one] [1 != 8]",
+	"cause": "[1 != 8]",
 	"index": 8
 }
 ```
@@ -783,6 +783,39 @@ curl -L http://127.0.0.1:4001/v2/keys/
 
 Here we see the `/message` key but our hidden `/_message` key is not returned.
 
+### Setting a key from a file
+
+You can also use etcd to store small configuration files, json documents, XML documents, etc directly.
+For example you can use curl to upload a simple text file and encode it:
+
+```
+echo "Hello\nWorld" > afile.txt
+curl -L http://127.0.0.1:4001/v2/keys/afile -XPUT --data-urlencode value@afile.txt
+```
+
+```json
+{
+    "action": "get",
+    "node": {
+        "createdIndex": 2,
+        "key": "/afile",
+        "modifiedIndex": 2,
+        "value": "Hello\nWorld\n"
+    }
+}
+```
+
+### Read Consistency
+
+Followers in a cluster can be behind the leader in their copy of the keyspace.
+If your application wants or needs the most up-to-date version of a key then it should ensure it reads from the current leader.
+By using the `consistent=true` flag in your GET requests, etcd will make sure you are talking to the current master.
+
+As an example of how a machine can be behind the leader let's start with a three machine cluster: L, F1, and F2.
+A client makes a write to L and F1 acknowledges the request.
+The client is told the write was successful and the keyspace is updated.
+Meanwhile F2 has partitioned from the network and will have an out-of-date version of the keyspace until the partition resolves.
+Since F2 missed the most recent write, a client reading from F2 will have an out-of-date version of the keyspace.
 
 ## Lock Module
 
@@ -1056,7 +1089,7 @@ Each node keeps a number of internal statistics:
 - `sendAppendRequestCnt`: number of requests that this node has sent
 - `sendBandwidthRate`: number of bytes per second this node is receiving (leader only). This value is undefined on single machine clusters.
 - `sendPkgRate`: number of requests per second this node is receiving (leader only). This value is undefined on single machine clusters.
-- `state`: either leader or folower
+- `state`: either leader or follower
 - `startTime`: the time when this node was started
 
 This is an example response from a follower machine:
@@ -1087,7 +1120,7 @@ And this is an example response from a leader machine:
 curl -L http://127.0.0.1:4001/v2/stats/self
 ```
 
-```
+```json
 {
     "leaderInfo": {
         "leader": "machine0",

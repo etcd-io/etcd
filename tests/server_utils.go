@@ -15,12 +15,12 @@ import (
 )
 
 const (
-	testName             = "ETCDTEST"
-	testClientURL        = "localhost:4401"
-	testRaftURL          = "localhost:7701"
-	testSnapshotCount    = 10000
-	testHeartbeatTimeout = time.Duration(50) * time.Millisecond
-	testElectionTimeout  = time.Duration(200) * time.Millisecond
+	testName              = "ETCDTEST"
+	testClientURL         = "localhost:4401"
+	testRaftURL           = "localhost:7701"
+	testSnapshotCount     = 10000
+	testHeartbeatInterval = time.Duration(50) * time.Millisecond
+	testElectionTimeout   = time.Duration(200) * time.Millisecond
 )
 
 // Starts a server in a temporary directory.
@@ -44,28 +44,22 @@ func RunServer(f func(*server.Server)) {
 	mb := metrics.NewBucket("")
 
 	ps := server.NewPeerServer(psConfig, registry, store, &mb, followersStats, serverStats)
-	psListener, err := server.NewListener(testRaftURL)
-	if err != nil {
-		panic(err)
-	}
+	psListener := server.NewListener("http", testRaftURL, nil)
 
 	// Create Raft transporter and server
-	dialTimeout := (3 * testHeartbeatTimeout) + testElectionTimeout
-	responseHeaderTimeout := (3 * testHeartbeatTimeout) + testElectionTimeout
-	raftTransporter := server.NewTransporter(followersStats, serverStats, registry, testHeartbeatTimeout, dialTimeout, responseHeaderTimeout)
+	dialTimeout := (3 * testHeartbeatInterval) + testElectionTimeout
+	responseHeaderTimeout := (3 * testHeartbeatInterval) + testElectionTimeout
+	raftTransporter := server.NewTransporter(followersStats, serverStats, registry, testHeartbeatInterval, dialTimeout, responseHeaderTimeout)
 	raftServer, err := raft.NewServer(testName, path, raftTransporter, store, ps, "")
 	if err != nil {
 		panic(err)
 	}
 	raftServer.SetElectionTimeout(testElectionTimeout)
-	raftServer.SetHeartbeatInterval(testHeartbeatTimeout)
+	raftServer.SetHeartbeatInterval(testHeartbeatInterval)
 	ps.SetRaftServer(raftServer)
 
 	s := server.New(testName, "http://"+testClientURL, ps, registry, store, nil)
-	sListener, err := server.NewListener(testClientURL)
-	if err != nil {
-		panic(err)
-	}
+	sListener := server.NewListener("http", testClientURL, nil)
 
 	ps.SetServer(s)
 

@@ -165,22 +165,17 @@ func (h *handler) watch(keypath string, index int, closeChan <-chan bool) error 
 			return fmt.Errorf("lock watch lookup error: %s", err.Error())
 		}
 		nodes := lockNodes{resp.Node.Nodes}
-		prevIndex := nodes.PrevIndex(index)
+		prevIndex, modifiedIndex := nodes.PrevIndex(index)
 
 		// If there is no previous index then we have the lock.
 		if prevIndex == 0 {
 			return nil
 		}
 
-		// Watch previous index until it's gone.
-		waitIndex := resp.Node.ModifiedIndex
+		// Wait from the last modification of the node.
+		waitIndex := modifiedIndex + 1
 
-		// Since event store has only 1000 histories we should use first node's CreatedIndex if available
-		if firstNode := nodes.First(); firstNode != nil {
-			waitIndex = firstNode.CreatedIndex
-		}
-
-		_, err = h.client.Watch(path.Join(keypath, strconv.Itoa(prevIndex)), waitIndex, false, nil, stopWatchChan)
+		resp, err = h.client.Watch(path.Join(keypath, strconv.Itoa(prevIndex)), uint64(waitIndex), false, nil, stopWatchChan)
 		if err == etcd.ErrWatchStoppedByUser {
 			return fmt.Errorf("lock watch closed")
 		} else if err != nil {

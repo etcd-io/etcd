@@ -26,7 +26,7 @@ Advantages
 
 Disadvantages
 
-- Follower knows better what versions of the interal protocol it can talk than the leader
+- Follower knows better what versions of the internal protocol it can talk than the leader
 
 
 ### Follower Controlled

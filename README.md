@@ -2,8 +2,6 @@
 
 README version 0.3.0
 
-[![Build Status](https://drone.io/github.com/coreos/etcd/status.png)](https://drone.io/github.com/coreos/etcd/latest)
-
 A highly-available key value store for shared configuration and service discovery.
 etcd is inspired by zookeeper and doozer, with a focus on:
 
@@ -46,6 +44,10 @@ _NOTE_: you need go 1.2+. Please check your installation with
 ```
 go version
 ```
+
+See the [development tools documentation][development-tools.md] for alternative build methods like using Vagrant.
+
+[development-tools.md]: https://github.com/coreos/etcd/blob/master/Documentation/development-tools.md
 
 ### Running
 

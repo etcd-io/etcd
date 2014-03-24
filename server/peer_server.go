@@ -231,6 +231,19 @@ func (s *PeerServer) findCluster(discoverURL string, peers []string) {
 	}
 	peers = append(peers, prevPeers...)
 
+	// Remove its own peer address from the peer list to join
+	u, err := url.Parse(s.Config.URL)
+	if err != nil {
+		log.Fatalf("cannot parse peer address %v: %v", s.Config.URL, err)
+	}
+	filteredPeers := make([]string, 0)
+	for _, v := range peers {
+		if v != u.Host {
+			filteredPeers = append(filteredPeers, v)
+		}
+	}
+	peers = filteredPeers
+
 	// if there is backup peer lists, use it to find cluster
 	if len(peers) > 0 {
 		ok := s.joinCluster(peers)
@@ -371,13 +384,12 @@ func (s *PeerServer) startAsFollower(cluster []string) {
 
 // getVersion fetches the peer version of a cluster.
 func getVersion(t *transporter, versionURL url.URL) (int, error) {
-	resp, req, err := t.Get(versionURL.String())
+	resp, _, err := t.Get(versionURL.String())
 	if err != nil {
 		return 0, err
 	}
 	defer resp.Body.Close()
 
-	t.CancelWhenTimeout(req)
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return 0, err
@@ -460,10 +472,11 @@ func (s *PeerServer) joinByPeer(server raft.Server, peer string, scheme string) 
 	json.NewEncoder(&b).Encode(c)
 
 	joinURL := url.URL{Host: peer, Scheme: scheme, Path: "/v2/admin/machines/" + server.Name()}
-	log.Debugf("Send Join Request to %s", joinURL.String())
+	log.Infof("Send Join Request to %s", joinURL.String())
 
 	req, _ := http.NewRequest("PUT", joinURL.String(), &b)
 	resp, err := t.client.Do(req)
+
 	for {
 		if err != nil {
 			return fmt.Errorf("Unable to join: %v", err)
@@ -471,8 +484,7 @@ func (s *PeerServer) joinByPeer(server raft.Server, peer string, scheme string) 
 		if resp != nil {
 			defer resp.Body.Close()
 
-			t.CancelWhenTimeout(req)
-
+			log.Infof("»»»» %d", resp.StatusCode)
 			if resp.StatusCode == http.StatusOK {
 				var msg joinMessageV2
 				if err := json.NewDecoder(resp.Body).Decode(&msg); err != nil {
@@ -500,7 +512,7 @@ func (s *PeerServer) joinByPeer(server raft.Server, peer string, scheme string) 
 					EtcdURL:    s.server.URL(),
 				}
 				json.NewEncoder(&b).Encode(c)
-				resp, req, err = t.Post(address, &b)
+				resp, _, err = t.Post(address, &b)
 
 			} else if resp.StatusCode == http.StatusBadRequest {
 				log.Debug("Reach max number peers in the cluster")

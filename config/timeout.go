@@ -5,5 +5,5 @@ const (
 	defaultElectionTimeout = 200
 
 	// The frequency (in ms) by which heartbeats are sent to followers.
-	defaultHeartbeatTimeout = 50
+	defaultHeartbeatInterval = 50
 )

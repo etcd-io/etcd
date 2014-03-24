@@ -14,7 +14,7 @@ a new cluster. We assume the user doesn't want to start a brand new cluster with
 
 ## Logical Workflow
 
-Start a etcd machine:
+Start an etcd machine:
 
 ```
 If discovery url is given:
