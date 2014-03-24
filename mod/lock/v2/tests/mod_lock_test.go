@@ -215,8 +215,63 @@ func TestModLockAcquireAndReleaseByValue(t *testing.T) {
 	})
 }
 
+// Ensure that a lock honours the timeout option
+func TestModLockAcquireTimeout(t *testing.T) {
+	tests.RunServer(func(s *server.Server) {
+		c := make(chan bool)
+
+		// Acquire lock #1.
+		go func() {
+			body, status, err := testAcquireLock(s, "foo", "first", 10)
+			assert.NoError(t, err)
+			assert.Equal(t, status, 200)
+			assert.Equal(t, body, "2")
+			c <- true
+		}()
+		<-c
+
+		// Attempt to acquire lock #2, timing out after 1s.
+		waiting := true
+		go func() {
+			c <- true
+			_, status, err := testAcquireLockWithTimeout(s, "foo", "second", 10, 1)
+			assert.NoError(t, err)
+			assert.Equal(t, status, 500)
+			waiting = false
+		}()
+		<-c
+
+		time.Sleep(5 * time.Second)
+
+		// Check that we have the lock #1.
+		body, status, err := testGetLockIndex(s, "foo")
+		assert.NoError(t, err)
+		assert.Equal(t, status, 200)
+		assert.Equal(t, body, "2")
+
+		// Check that we are not still waiting for lock #2.
+		assert.Equal(t, waiting, false)
+
+		// Release lock #1.
+		_, status, err = testReleaseLock(s, "foo", "2", "")
+		assert.NoError(t, err)
+		assert.Equal(t, status, 200)
+
+		// Check that we have no lock.
+		body, status, err = testGetLockIndex(s, "foo")
+		assert.NoError(t, err)
+		assert.Equal(t, status, 200)
+	})
+}
+
 func testAcquireLock(s *server.Server, key string, value string, ttl int) (string, int, error) {
 	resp, err := tests.PostForm(fmt.Sprintf("%s/mod/v2/lock/%s?value=%s&ttl=%d", s.URL(), key, value, ttl), nil)
+	ret := tests.ReadBody(resp)
+	return string(ret), resp.StatusCode, err
+}
+
+func testAcquireLockWithTimeout(s *server.Server, key string, value string, ttl int, timeout int) (string, int, error) {
+	resp, err := tests.PostForm(fmt.Sprintf("%s/mod/v2/lock/%s?value=%s&ttl=%d&timeout=%d", s.URL(), key, value, ttl, timeout), nil)
 	ret := tests.ReadBody(resp)
 	return string(ret), resp.StatusCode, err
 }
