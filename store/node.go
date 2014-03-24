@@ -252,7 +252,7 @@ func (n *node) Remove(dir, recursive bool, callback func(path string)) *etcdErr.
 	return nil
 }
 
-func (n *node) Repr(recurisive, sorted bool) *NodeExtern {
+func (n *node) Repr(recursive, sorted bool) *NodeExtern {
 	if n.IsDir() {
 		node := &NodeExtern{
 			Key:           n.Path,
@@ -262,7 +262,7 @@ func (n *node) Repr(recurisive, sorted bool) *NodeExtern {
 		}
 		node.Expiration, node.TTL = n.ExpirationAndTTL()
 
-		if !recurisive {
+		if !recursive {
 			return node
 		}
 
@@ -279,7 +279,7 @@ func (n *node) Repr(recurisive, sorted bool) *NodeExtern {
 				continue
 			}
 
-			node.Nodes[i] = child.Repr(recurisive, sorted)
+			node.Nodes[i] = child.Repr(recursive, sorted)
 
 			i++
 		}
