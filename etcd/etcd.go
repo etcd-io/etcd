@@ -17,6 +17,7 @@ limitations under the License.
 package etcd
 
 import (
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -36,11 +37,13 @@ import (
 )
 
 type Etcd struct {
-	Config     *config.Config     // etcd config
-	Store      store.Store        // data store
-	Registry   *server.Registry   // stores URL information for nodes
-	Server     *server.Server     // http server, runs on 4001 by default
-	PeerServer *server.PeerServer // peer server, runs on 7001 by default
+	Config       *config.Config     // etcd config
+	Store        store.Store        // data store
+	Registry     *server.Registry   // stores URL information for nodes
+	Server       *server.Server     // http server, runs on 4001 by default
+	PeerServer   *server.PeerServer // peer server, runs on 7001 by default
+	listener     net.Listener       // Listener for Server
+	peerListener net.Listener       // Listener for PeerServer
 }
 
 // New returns a new Etcd instance.
@@ -179,14 +182,19 @@ func (e *Etcd) Run() {
 		// the cluster could be out of work as long as the two nodes cannot transfer messages.
 		e.PeerServer.Start(e.Config.Snapshot, e.Config.Discovery, e.Config.Peers)
 		log.Infof("peer server [name %s, listen on %s, advertised url %s]", e.PeerServer.Config.Name, e.Config.Peer.BindAddr, e.PeerServer.Config.URL)
-		l := server.NewListener(psConfig.Scheme, e.Config.Peer.BindAddr, e.Config.PeerTLSInfo())
+		e.peerListener = server.NewListener(psConfig.Scheme, e.Config.Peer.BindAddr, e.Config.PeerTLSInfo())
 
 		sHTTP := &ehttp.CORSHandler{e.PeerServer.HTTPHandler(), corsInfo}
-		log.Fatal(http.Serve(l, sHTTP))
+		log.Fatal(http.Serve(e.peerListener, sHTTP))
 	}()
 
 	log.Infof("etcd server [name %s, listen on %s, advertised url %s]", e.Server.Name, e.Config.BindAddr, e.Server.URL())
-	l := server.NewListener(e.Config.EtcdTLSInfo().Scheme(), e.Config.BindAddr, e.Config.EtcdTLSInfo())
+	e.listener = server.NewListener(e.Config.EtcdTLSInfo().Scheme(), e.Config.BindAddr, e.Config.EtcdTLSInfo())
 	sHTTP := &ehttp.CORSHandler{e.Server.HTTPHandler(), corsInfo}
-	log.Fatal(http.Serve(l, sHTTP))
+	log.Fatal(http.Serve(e.listener, sHTTP))
+}
+
+func (e *Etcd) Close() {
+	e.listener.Close()
+	e.peerListener.Close()
 }
