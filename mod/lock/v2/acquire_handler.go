@@ -94,10 +94,7 @@ func (h *handler) acquireHandler(w http.ResponseWriter, req *http.Request) error
 	// Return on error, deleting our lock request on the way
 	if err != nil {
 		if index > 0 {
-			fmt.Printf("Removing lock request: (%s)\n", indexpath)
 			h.client.Delete(indexpath, false)
-		} else {
-			fmt.Printf("Index is 0, so not removing it (%s)\n", indexpath)
 		}
 		return err
 	}
@@ -239,7 +236,6 @@ func (h *handler) watch(keypath string, index int, closeChan <-chan bool) error 
 		} else if err != nil {
 			return fmt.Errorf("lock watch error: %s", err.Error())
 		}
-		fmt.Printf("Acquired lock (index: %d)\n", waitIndex)
 		return nil
 	}
 }
