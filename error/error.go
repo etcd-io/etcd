@@ -49,8 +49,12 @@ const (
 	EcodeRaftInternal = 300
 	EcodeLeaderElect  = 301
 
-	EcodeWatcherCleared    = 400
-	EcodeEventIndexCleared = 401
+	EcodeWatcherCleared      = 400
+	EcodeEventIndexCleared   = 401
+	EcodeProxyInternal       = 402
+	EcodeInvalidActiveSize   = 403
+	EcodeInvalidPromoteDelay = 404
+	EcodePromoteError        = 405
 )
 
 func init() {
@@ -86,6 +90,10 @@ func init() {
 	// etcd related errors
 	errors[EcodeWatcherCleared] = "watcher is cleared due to etcd recovery"
 	errors[EcodeEventIndexCleared] = "The event in requested index is outdated and cleared"
+	errors[EcodeProxyInternal] = "Proxy Internal Error"
+	errors[EcodeInvalidActiveSize] = "Invalid active size"
+	errors[EcodeInvalidPromoteDelay] = "Proxy promote delay"
+	errors[EcodePromoteError] = "Proxy promotion error"
 
 }
 

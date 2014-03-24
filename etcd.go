@@ -24,7 +24,7 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/coreos/etcd/third_party/github.com/coreos/raft"
+	"github.com/coreos/etcd/third_party/github.com/goraft/raft"
 
 	"github.com/coreos/etcd/config"
 	ehttp "github.com/coreos/etcd/http"
@@ -115,13 +115,12 @@ func main() {
 
 	// Create peer server
 	psConfig := server.PeerServerConfig{
-		Name:           config.Name,
-		Scheme:         config.PeerTLSInfo().Scheme(),
-		URL:            config.Peer.Addr,
-		SnapshotCount:  config.SnapshotCount,
-		MaxClusterSize: config.MaxClusterSize,
-		RetryTimes:     config.MaxRetryAttempts,
-		RetryInterval:  config.RetryInterval,
+		Name:          config.Name,
+		Scheme:        config.PeerTLSInfo().Scheme(),
+		URL:           config.Peer.Addr,
+		SnapshotCount: config.SnapshotCount,
+		RetryTimes:    config.MaxRetryAttempts,
+		RetryInterval: config.RetryInterval,
 	}
 	ps := server.NewPeerServer(psConfig, registry, store, &mb, followersStats, serverStats)
 

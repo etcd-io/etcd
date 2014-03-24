@@ -30,7 +30,7 @@ func ReadBodyJSON(resp *http.Response) map[string]interface{} {
 	m := make(map[string]interface{})
 	b := ReadBody(resp)
 	if err := json.Unmarshal(b, &m); err != nil {
-		panic(fmt.Sprintf("HTTP body JSON parse error: %v", err))
+		panic(fmt.Sprintf("HTTP body JSON parse error: %v: %s", err, string(b)))
 	}
 	return m
 }

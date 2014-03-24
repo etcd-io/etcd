@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/coreos/etcd/third_party/github.com/coreos/raft"
+	"github.com/coreos/etcd/third_party/github.com/goraft/raft"
 )
 
 // A lookup of factories by version.

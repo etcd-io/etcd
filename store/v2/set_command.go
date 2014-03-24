@@ -5,7 +5,7 @@ import (
 
 	"github.com/coreos/etcd/log"
 	"github.com/coreos/etcd/store"
-	"github.com/coreos/etcd/third_party/github.com/coreos/raft"
+	"github.com/coreos/etcd/third_party/github.com/goraft/raft"
 )
 
 func init() {
@@ -14,10 +14,10 @@ func init() {
 
 // Create command
 type SetCommand struct {
-	Key		string		`json:"key"`
-	Value		string		`json:"value"`
-	ExpireTime	time.Time	`json:"expireTime"`
-	Dir		bool		`json:"dir"`
+	Key        string    `json:"key"`
+	Value      string    `json:"value"`
+	ExpireTime time.Time `json:"expireTime"`
+	Dir        bool      `json:"dir"`
 }
 
 // The name of the create command in the log

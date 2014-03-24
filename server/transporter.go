@@ -9,10 +9,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/coreos/etcd/third_party/github.com/coreos/raft"
-	httpclient "github.com/coreos/etcd/third_party/github.com/mreiferson/go-httpclient"
-
 	"github.com/coreos/etcd/log"
+	"github.com/coreos/etcd/third_party/github.com/goraft/raft"
+	httpclient "github.com/coreos/etcd/third_party/github.com/mreiferson/go-httpclient"
 )
 
 const (

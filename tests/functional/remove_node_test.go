@@ -25,7 +25,7 @@ func TestRemoveNode(t *testing.T) {
 
 	c.SyncCluster()
 
-	rmReq, _ := http.NewRequest("DELETE", "http://127.0.0.1:7001/remove/node3", nil)
+	rmReq, _ := http.NewRequest("DELETE", "http://127.0.0.1:7001/v2/admin/machines/node3", nil)
 
 	client := &http.Client{}
 	for i := 0; i < 2; i++ {

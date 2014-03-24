@@ -4,14 +4,14 @@ import (
 	"net/http"
 
 	"github.com/coreos/etcd/store"
-	"github.com/coreos/etcd/third_party/github.com/coreos/raft"
+	"github.com/coreos/etcd/third_party/github.com/goraft/raft"
 	"github.com/stretchr/testify/mock"
 )
 
 // A mock Server for the v2 handlers.
 type ServerV2 struct {
 	mock.Mock
-	store	store.Store
+	store store.Store
 }
 
 func NewServerV2(store store.Store) *ServerV2 {
