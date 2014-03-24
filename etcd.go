@@ -18,26 +18,14 @@ package main
 
 import (
 	"fmt"
-	"net/http"
 	"os"
-	"path/filepath"
-	"runtime"
-	"time"
-
-	goetcd "github.com/coreos/etcd/third_party/github.com/coreos/go-etcd/etcd"
-	golog "github.com/coreos/etcd/third_party/github.com/coreos/go-log/log"
-	"github.com/coreos/etcd/third_party/github.com/goraft/raft"
 
 	"github.com/coreos/etcd/config"
-	ehttp "github.com/coreos/etcd/http"
-	"github.com/coreos/etcd/log"
-	"github.com/coreos/etcd/metrics"
+	"github.com/coreos/etcd/etcd"
 	"github.com/coreos/etcd/server"
-	"github.com/coreos/etcd/store"
 )
 
 func main() {
-	// Load configuration.
 	var config = config.New()
 	if err := config.Load(os.Args[1:]); err != nil {
 		fmt.Println(server.Usage() + "\n")
@@ -51,138 +39,6 @@ func main() {
 		os.Exit(0)
 	}
 
-	// Enable options.
-	if config.VeryVeryVerbose {
-		log.Verbose = true
-		raft.SetLogLevel(raft.Trace)
-		goetcd.SetLogger(
-			golog.New(
-				"go-etcd",
-				false,
-				golog.CombinedSink(
-					os.Stdout,
-					"[%s] %s %-9s | %s\n",
-					[]string{"prefix", "time", "priority", "message"},
-				),
-			),
-		)
-	} else if config.VeryVerbose {
-		log.Verbose = true
-		raft.SetLogLevel(raft.Debug)
-	} else if config.Verbose {
-		log.Verbose = true
-	}
-	if config.CPUProfileFile != "" {
-		profile(config.CPUProfileFile)
-	}
-
-	if config.DataDir == "" {
-		log.Fatal("The data dir was not set and could not be guessed from machine name")
-	}
-
-	// Create data directory if it doesn't already exist.
-	if err := os.MkdirAll(config.DataDir, 0744); err != nil {
-		log.Fatalf("Unable to create path: %s", err)
-	}
-
-	// Warn people if they have an info file
-	info := filepath.Join(config.DataDir, "info")
-	if _, err := os.Stat(info); err == nil {
-		log.Warnf("All cached configuration is now ignored. The file %s can be removed.", info)
-	}
-
-	var mbName string
-	if config.Trace() {
-		mbName = config.MetricsBucketName()
-		runtime.SetBlockProfileRate(1)
-	}
-
-	mb := metrics.NewBucket(mbName)
-
-	if config.GraphiteHost != "" {
-		err := mb.Publish(config.GraphiteHost)
-		if err != nil {
-			panic(err)
-		}
-	}
-
-	// Retrieve CORS configuration
-	corsInfo, err := ehttp.NewCORSInfo(config.CorsOrigins)
-	if err != nil {
-		log.Fatal("CORS:", err)
-	}
-
-	// Create etcd key-value store and registry.
-	store := store.New()
-	registry := server.NewRegistry(store)
-
-	// Create stats objects
-	followersStats := server.NewRaftFollowersStats(config.Name)
-	serverStats := server.NewRaftServerStats(config.Name)
-
-	// Calculate all of our timeouts
-	heartbeatInterval := time.Duration(config.Peer.HeartbeatInterval) * time.Millisecond
-	electionTimeout := time.Duration(config.Peer.ElectionTimeout) * time.Millisecond
-	dialTimeout := (3 * heartbeatInterval) + electionTimeout
-	responseHeaderTimeout := (3 * heartbeatInterval) + electionTimeout
-
-	// Create peer server
-	psConfig := server.PeerServerConfig{
-		Name:          config.Name,
-		Scheme:        config.PeerTLSInfo().Scheme(),
-		URL:           config.Peer.Addr,
-		SnapshotCount: config.SnapshotCount,
-		RetryTimes:    config.MaxRetryAttempts,
-		RetryInterval: config.RetryInterval,
-	}
-	ps := server.NewPeerServer(psConfig, registry, store, &mb, followersStats, serverStats)
-
-	// Create raft transporter and server
-	raftTransporter := server.NewTransporter(followersStats, serverStats, registry, heartbeatInterval, dialTimeout, responseHeaderTimeout)
-	if psConfig.Scheme == "https" {
-		raftClientTLSConfig, err := config.PeerTLSInfo().ClientConfig()
-		if err != nil {
-			log.Fatal("raft client TLS error: ", err)
-		}
-		raftTransporter.SetTLSConfig(*raftClientTLSConfig)
-	}
-	raftServer, err := raft.NewServer(config.Name, config.DataDir, raftTransporter, store, ps, "")
-	if err != nil {
-		log.Fatal(err)
-	}
-	raftServer.SetElectionTimeout(electionTimeout)
-	raftServer.SetHeartbeatInterval(heartbeatInterval)
-	ps.SetRaftServer(raftServer)
-
-	// Create etcd server
-	s := server.New(config.Name, config.Addr, ps, registry, store, &mb)
-
-	if config.Trace() {
-		s.EnableTracing()
-	}
-
-	ps.SetServer(s)
-
-	// Generating config could be slow.
-	// Put it here to make listen happen immediately after peer-server starting.
-	peerTLSConfig := server.TLSServerConfig(config.PeerTLSInfo())
-	etcdTLSConfig := server.TLSServerConfig(config.EtcdTLSInfo())
-
-	go func() {
-		// Starting peer server should be followed close by listening on its port
-		// If not, it may leave many requests unaccepted, or cannot receive heartbeat from the cluster.
-		// One severe problem caused if failing receiving heartbeats is when the second node joins one-node cluster,
-		// the cluster could be out of work as long as the two nodes cannot transfer messages.
-		ps.Start(config.Snapshot, config.Discovery, config.Peers)
-		log.Infof("peer server [name %s, listen on %s, advertised url %s]", ps.Config.Name, config.Peer.BindAddr, ps.Config.URL)
-		l := server.NewListener(psConfig.Scheme, config.Peer.BindAddr, peerTLSConfig)
-
-		sHTTP := &ehttp.CORSHandler{ps.HTTPHandler(), corsInfo}
-		log.Fatal(http.Serve(l, sHTTP))
-	}()
-
-	log.Infof("etcd server [name %s, listen on %s, advertised url %s]", s.Name, config.BindAddr, s.URL())
-	l := server.NewListener(config.EtcdTLSInfo().Scheme(), config.BindAddr, etcdTLSConfig)
-	sHTTP := &ehttp.CORSHandler{s.HTTPHandler(), corsInfo}
-	log.Fatal(http.Serve(l, sHTTP))
+	var etcd = etcd.New(config)
+	etcd.Run()
 }
