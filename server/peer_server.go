@@ -200,6 +200,8 @@ func (s *PeerServer) handleDiscovery(discoverURL string) (peers []string, err er
 // 1. -discovery
 // 2. -peers
 // 3. previous peers in -data-dir
+// RaftServer should be started as late as possible. Current implementation
+// to start it is not that good, and will be refactored in #627.
 func (s *PeerServer) findCluster(discoverURL string, peers []string) {
 	// Attempt cluster discovery
 	toDiscover := discoverURL != ""
@@ -250,6 +252,7 @@ func (s *PeerServer) findCluster(discoverURL string, peers []string) {
 		if !ok {
 			log.Warn("No living peers are found!")
 		} else {
+			s.raftServer.Start()
 			log.Debugf("%s restart as a follower based on peers[%v]", s.Config.Name)
 			return
 		}
@@ -257,6 +260,7 @@ func (s *PeerServer) findCluster(discoverURL string, peers []string) {
 
 	if !s.raftServer.IsLogEmpty() {
 		log.Debug("Entire cluster is down! %v will restart the cluster.", s.Config.Name)
+		s.raftServer.Start()
 		return
 	}
 
@@ -285,7 +289,7 @@ func (s *PeerServer) Start(snapshot bool, discoverURL string, peers []string) er
 		}
 	}
 
-	s.raftServer.Start()
+	s.raftServer.Init()
 
 	s.findCluster(discoverURL, peers)
 
@@ -351,6 +355,7 @@ func (s *PeerServer) SetServer(server *Server) {
 }
 
 func (s *PeerServer) startAsLeader() {
+	s.raftServer.Start()
 	// leader need to join self as a peer
 	for {
 		c := &JoinCommandV1{
@@ -373,6 +378,7 @@ func (s *PeerServer) startAsFollower(cluster []string) {
 	for i := 0; i < s.Config.RetryTimes; i++ {
 		ok := s.joinCluster(cluster)
 		if ok {
+			s.raftServer.Start()
 			return
 		}
 		log.Warnf("%v is unable to join the cluster using any of the peers %v at %dth time. Retrying in %.1f seconds", s.Config.Name, cluster, i, s.Config.RetryInterval)
