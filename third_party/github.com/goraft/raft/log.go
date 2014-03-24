@@ -8,7 +8,7 @@ import (
 	"os"
 	"sync"
 
-	"github.com/coreos/etcd/third_party/github.com/coreos/raft/protobuf"
+	"github.com/coreos/etcd/third_party/github.com/goraft/raft/protobuf"
 )
 
 //------------------------------------------------------------------------------

@@ -3,7 +3,7 @@ package server
 import (
 	"time"
 
-	"github.com/coreos/etcd/third_party/github.com/coreos/raft"
+	"github.com/coreos/etcd/third_party/github.com/goraft/raft"
 )
 
 type raftServerStats struct {

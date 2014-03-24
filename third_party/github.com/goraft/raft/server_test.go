@@ -139,6 +139,47 @@ func TestServerRequestVoteDenyIfCandidateLogIsBehind(t *testing.T) {
 	}
 }
 
+func TestProcessVoteResponse(t *testing.T) {
+	// server Term: 0, status: Leader
+	// response Term : 1, granted
+	// Expectation: not success
+	// Server Term 1 status:Leader
+	server := &server{}
+	server.eventDispatcher = newEventDispatcher(server)
+	server.currentTerm = 0
+	server.state = Leader
+	response := &RequestVoteResponse{
+		VoteGranted: true,
+		Term:        1,
+	}
+	if success := server.processVoteResponse(response); success {
+		t.Fatal("Process should fail if the resp's term is larger than server's")
+	}
+	if server.state != Follower {
+		t.Fatal("Server should stepdown")
+	}
+
+	// server Term: 1, status: Follower
+	// response Term: 2, granted
+	// Expectation: not success
+	response.Term = 2
+	if success := server.processVoteResponse(response); success {
+		t.Fatal("Process should fail if the resp's term is larger than server's")
+	}
+	if server.state != Follower {
+		t.Fatal("Server should still be Follower")
+	}
+
+	server.currentTerm = 2
+	// server Term: 2, status: Follower
+	// response Term: 2
+	// Expectation: success
+	if success := server.processVoteResponse(response); !success {
+		t.Fatal("Process should success if the server's term is larger than resp's")
+	}
+
+}
+
 // //--------------------------------------
 // // Promotion
 // //--------------------------------------

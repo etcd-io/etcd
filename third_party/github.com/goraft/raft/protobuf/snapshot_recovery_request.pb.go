@@ -33,16 +33,16 @@ var _ = &json.SyntaxError{}
 var _ = math.Inf
 
 type SnapshotRecoveryRequest struct {
-	LeaderName		*string				`protobuf:"bytes,1,req" json:"LeaderName,omitempty"`
-	LastIndex		*uint64				`protobuf:"varint,2,req" json:"LastIndex,omitempty"`
-	LastTerm		*uint64				`protobuf:"varint,3,req" json:"LastTerm,omitempty"`
-	Peers			[]*SnapshotRecoveryRequest_Peer	`protobuf:"bytes,4,rep" json:"Peers,omitempty"`
-	State			[]byte				`protobuf:"bytes,5,req" json:"State,omitempty"`
-	XXX_unrecognized	[]byte				`json:"-"`
+	LeaderName       *string                         `protobuf:"bytes,1,req" json:"LeaderName,omitempty"`
+	LastIndex        *uint64                         `protobuf:"varint,2,req" json:"LastIndex,omitempty"`
+	LastTerm         *uint64                         `protobuf:"varint,3,req" json:"LastTerm,omitempty"`
+	Peers            []*SnapshotRecoveryRequest_Peer `protobuf:"bytes,4,rep" json:"Peers,omitempty"`
+	State            []byte                          `protobuf:"bytes,5,req" json:"State,omitempty"`
+	XXX_unrecognized []byte                          `json:"-"`
 }
 
-func (m *SnapshotRecoveryRequest) Reset()	{ *m = SnapshotRecoveryRequest{} }
-func (*SnapshotRecoveryRequest) ProtoMessage()	{}
+func (m *SnapshotRecoveryRequest) Reset()      { *m = SnapshotRecoveryRequest{} }
+func (*SnapshotRecoveryRequest) ProtoMessage() {}
 
 func (m *SnapshotRecoveryRequest) GetLeaderName() string {
 	if m != nil && m.LeaderName != nil {
@@ -80,13 +80,13 @@ func (m *SnapshotRecoveryRequest) GetState() []byte {
 }
 
 type SnapshotRecoveryRequest_Peer struct {
-	Name			*string	`protobuf:"bytes,1,req" json:"Name,omitempty"`
-	ConnectionString	*string	`protobuf:"bytes,2,req" json:"ConnectionString,omitempty"`
-	XXX_unrecognized	[]byte	`json:"-"`
+	Name             *string `protobuf:"bytes,1,req" json:"Name,omitempty"`
+	ConnectionString *string `protobuf:"bytes,2,req" json:"ConnectionString,omitempty"`
+	XXX_unrecognized []byte  `json:"-"`
 }
 
-func (m *SnapshotRecoveryRequest_Peer) Reset()		{ *m = SnapshotRecoveryRequest_Peer{} }
-func (*SnapshotRecoveryRequest_Peer) ProtoMessage()	{}
+func (m *SnapshotRecoveryRequest_Peer) Reset()      { *m = SnapshotRecoveryRequest_Peer{} }
+func (*SnapshotRecoveryRequest_Peer) ProtoMessage() {}
 
 func (m *SnapshotRecoveryRequest_Peer) GetName() string {
 	if m != nil && m.Name != nil {

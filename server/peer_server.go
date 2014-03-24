@@ -12,7 +12,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/coreos/etcd/third_party/github.com/coreos/raft"
+	"github.com/coreos/etcd/third_party/github.com/goraft/raft"
 	"github.com/coreos/etcd/third_party/github.com/gorilla/mux"
 
 	"github.com/coreos/etcd/discovery"

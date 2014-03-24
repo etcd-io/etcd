@@ -7,7 +7,7 @@ import (
 
 	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/store"
-	"github.com/coreos/etcd/third_party/github.com/coreos/raft"
+	"github.com/coreos/etcd/third_party/github.com/goraft/raft"
 	"github.com/coreos/etcd/third_party/github.com/gorilla/mux"
 )
 

@@ -1,7 +1,7 @@
 package server
 
 import (
-	"github.com/coreos/etcd/third_party/github.com/coreos/raft"
+	"github.com/coreos/etcd/third_party/github.com/goraft/raft"
 )
 
 func init() {

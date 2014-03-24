@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/coreos/etcd/third_party/github.com/coreos/raft"
+	"github.com/coreos/etcd/third_party/github.com/goraft/raft"
 
 	"github.com/coreos/etcd/metrics"
 	"github.com/coreos/etcd/server"
@@ -15,12 +15,12 @@ import (
 )
 
 const (
-	testName		= "ETCDTEST"
-	testClientURL		= "localhost:4401"
-	testRaftURL		= "localhost:7701"
-	testSnapshotCount	= 10000
-	testHeartbeatTimeout	= time.Duration(50) * time.Millisecond
-	testElectionTimeout	= time.Duration(200) * time.Millisecond
+	testName             = "ETCDTEST"
+	testClientURL        = "localhost:4401"
+	testRaftURL          = "localhost:7701"
+	testSnapshotCount    = 10000
+	testHeartbeatTimeout = time.Duration(50) * time.Millisecond
+	testElectionTimeout  = time.Duration(200) * time.Millisecond
 )
 
 // Starts a server in a temporary directory.
@@ -35,10 +35,10 @@ func RunServer(f func(*server.Server)) {
 	followersStats := server.NewRaftFollowersStats(testName)
 
 	psConfig := server.PeerServerConfig{
-		Name:		testName,
-		URL:		"http://" + testRaftURL,
-		Scheme:		"http",
-		SnapshotCount:	testSnapshotCount,
+		Name:          testName,
+		URL:           "http://" + testRaftURL,
+		Scheme:        "http",
+		SnapshotCount: testSnapshotCount,
 	}
 
 	mb := metrics.NewBucket("")
@@ -103,16 +103,16 @@ func RunServer(f func(*server.Server)) {
 }
 
 type waitHandler struct {
-        wg *sync.WaitGroup
-        handler http.Handler
+	wg      *sync.WaitGroup
+	handler http.Handler
 }
 
-func (h *waitHandler) ServeHTTP(w http.ResponseWriter, r *http.Request){
-        h.wg.Add(1)
-        defer h.wg.Done()
-        h.handler.ServeHTTP(w, r)
+func (h *waitHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	h.wg.Add(1)
+	defer h.wg.Done()
+	h.handler.ServeHTTP(w, r)
 
-        //important to flush before decrementing the wait group.
-        //we won't get a chance to once main() ends.
-        w.(http.Flusher).Flush()
+	//important to flush before decrementing the wait group.
+	//we won't get a chance to once main() ends.
+	w.(http.Flusher).Flush()
 }

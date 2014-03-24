@@ -68,11 +68,6 @@ func (p *Peer) setPrevLogIndex(value uint64) {
 	p.prevLogIndex = value
 }
 
-// LastActivity returns the last time any response was received from the peer.
-func (p *Peer) LastActivity() time.Time {
-	return p.lastActivity
-}
-
 //------------------------------------------------------------------------------
 //
 // Methods
@@ -94,6 +89,11 @@ func (p *Peer) startHeartbeat() {
 // Stops the peer heartbeat.
 func (p *Peer) stopHeartbeat(flush bool) {
 	p.stopChan <- flush
+}
+
+// LastActivity returns the last time any response was received from the peer.
+func (p *Peer) LastActivity() time.Time {
+	return p.lastActivity
 }
 
 //--------------------------------------
@@ -160,7 +160,7 @@ func (p *Peer) flush() {
 	if entries != nil {
 		p.sendAppendEntriesRequest(newAppendEntriesRequest(term, prevLogIndex, prevLogTerm, p.server.log.CommitIndex(), p.server.name, entries))
 	} else {
-		p.sendSnapshotRequest(newSnapshotRequest(p.server.name, p.server.lastSnapshot))
+		p.sendSnapshotRequest(newSnapshotRequest(p.server.name, p.server.snapshot))
 	}
 }
 
@@ -263,7 +263,7 @@ func (p *Peer) sendSnapshotRequest(req *SnapshotRequest) {
 
 // Sends an Snapshot Recovery request to the peer through the transport.
 func (p *Peer) sendSnapshotRecoveryRequest() {
-	req := newSnapshotRecoveryRequest(p.server.name, p.server.lastSnapshot)
+	req := newSnapshotRecoveryRequest(p.server.name, p.server.snapshot)
 	debugln("peer.snap.recovery.send: ", p.Name)
 	resp := p.server.Transporter().SendSnapshotRecoveryRequest(p.server, p, req)
 

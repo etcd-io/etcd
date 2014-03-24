@@ -33,15 +33,15 @@ var _ = &json.SyntaxError{}
 var _ = math.Inf
 
 type RequestVoteRequest struct {
-	Term			*uint64	`protobuf:"varint,1,req" json:"Term,omitempty"`
-	LastLogIndex		*uint64	`protobuf:"varint,2,req" json:"LastLogIndex,omitempty"`
-	LastLogTerm		*uint64	`protobuf:"varint,3,req" json:"LastLogTerm,omitempty"`
-	CandidateName		*string	`protobuf:"bytes,4,req" json:"CandidateName,omitempty"`
-	XXX_unrecognized	[]byte	`json:"-"`
+	Term             *uint64 `protobuf:"varint,1,req" json:"Term,omitempty"`
+	LastLogIndex     *uint64 `protobuf:"varint,2,req" json:"LastLogIndex,omitempty"`
+	LastLogTerm      *uint64 `protobuf:"varint,3,req" json:"LastLogTerm,omitempty"`
+	CandidateName    *string `protobuf:"bytes,4,req" json:"CandidateName,omitempty"`
+	XXX_unrecognized []byte  `json:"-"`
 }
 
-func (m *RequestVoteRequest) Reset()		{ *m = RequestVoteRequest{} }
-func (*RequestVoteRequest) ProtoMessage()	{}
+func (m *RequestVoteRequest) Reset()      { *m = RequestVoteRequest{} }
+func (*RequestVoteRequest) ProtoMessage() {}
 
 func (m *RequestVoteRequest) GetTerm() uint64 {
 	if m != nil && m.Term != nil {

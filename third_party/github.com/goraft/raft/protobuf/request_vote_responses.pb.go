@@ -33,13 +33,13 @@ var _ = &json.SyntaxError{}
 var _ = math.Inf
 
 type RequestVoteResponse struct {
-	Term			*uint64	`protobuf:"varint,1,req" json:"Term,omitempty"`
-	VoteGranted		*bool	`protobuf:"varint,2,req" json:"VoteGranted,omitempty"`
-	XXX_unrecognized	[]byte	`json:"-"`
+	Term             *uint64 `protobuf:"varint,1,req" json:"Term,omitempty"`
+	VoteGranted      *bool   `protobuf:"varint,2,req" json:"VoteGranted,omitempty"`
+	XXX_unrecognized []byte  `json:"-"`
 }
 
-func (m *RequestVoteResponse) Reset()		{ *m = RequestVoteResponse{} }
-func (*RequestVoteResponse) ProtoMessage()	{}
+func (m *RequestVoteResponse) Reset()      { *m = RequestVoteResponse{} }
+func (*RequestVoteResponse) ProtoMessage() {}
 
 func (m *RequestVoteResponse) GetTerm() uint64 {
 	if m != nil && m.Term != nil {

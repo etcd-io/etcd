@@ -33,14 +33,14 @@ var _ = &json.SyntaxError{}
 var _ = math.Inf
 
 type SnapshotRequest struct {
-	LeaderName		*string	`protobuf:"bytes,1,req" json:"LeaderName,omitempty"`
-	LastIndex		*uint64	`protobuf:"varint,2,req" json:"LastIndex,omitempty"`
-	LastTerm		*uint64	`protobuf:"varint,3,req" json:"LastTerm,omitempty"`
-	XXX_unrecognized	[]byte	`json:"-"`
+	LeaderName       *string `protobuf:"bytes,1,req" json:"LeaderName,omitempty"`
+	LastIndex        *uint64 `protobuf:"varint,2,req" json:"LastIndex,omitempty"`
+	LastTerm         *uint64 `protobuf:"varint,3,req" json:"LastTerm,omitempty"`
+	XXX_unrecognized []byte  `json:"-"`
 }
 
-func (m *SnapshotRequest) Reset()	{ *m = SnapshotRequest{} }
-func (*SnapshotRequest) ProtoMessage()	{}
+func (m *SnapshotRequest) Reset()      { *m = SnapshotRequest{} }
+func (*SnapshotRequest) ProtoMessage() {}
 
 func (m *SnapshotRequest) GetLeaderName() string {
 	if m != nil && m.LeaderName != nil {

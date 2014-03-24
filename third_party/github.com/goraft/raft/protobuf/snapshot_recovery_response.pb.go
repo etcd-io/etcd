@@ -33,14 +33,14 @@ var _ = &json.SyntaxError{}
 var _ = math.Inf
 
 type SnapshotRecoveryResponse struct {
-	Term			*uint64	`protobuf:"varint,1,req" json:"Term,omitempty"`
-	Success			*bool	`protobuf:"varint,2,req" json:"Success,omitempty"`
-	CommitIndex		*uint64	`protobuf:"varint,3,req" json:"CommitIndex,omitempty"`
-	XXX_unrecognized	[]byte	`json:"-"`
+	Term             *uint64 `protobuf:"varint,1,req" json:"Term,omitempty"`
+	Success          *bool   `protobuf:"varint,2,req" json:"Success,omitempty"`
+	CommitIndex      *uint64 `protobuf:"varint,3,req" json:"CommitIndex,omitempty"`
+	XXX_unrecognized []byte  `json:"-"`
 }
 
-func (m *SnapshotRecoveryResponse) Reset()	{ *m = SnapshotRecoveryResponse{} }
-func (*SnapshotRecoveryResponse) ProtoMessage()	{}
+func (m *SnapshotRecoveryResponse) Reset()      { *m = SnapshotRecoveryResponse{} }
+func (*SnapshotRecoveryResponse) ProtoMessage() {}
 
 func (m *SnapshotRecoveryResponse) GetTerm() uint64 {
 	if m != nil && m.Term != nil {

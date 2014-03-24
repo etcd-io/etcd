@@ -33,12 +33,12 @@ var _ = &json.SyntaxError{}
 var _ = math.Inf
 
 type SnapshotResponse struct {
-	Success			*bool	`protobuf:"varint,1,req" json:"Success,omitempty"`
-	XXX_unrecognized	[]byte	`json:"-"`
+	Success          *bool  `protobuf:"varint,1,req" json:"Success,omitempty"`
+	XXX_unrecognized []byte `json:"-"`
 }
 
-func (m *SnapshotResponse) Reset()	{ *m = SnapshotResponse{} }
-func (*SnapshotResponse) ProtoMessage()	{}
+func (m *SnapshotResponse) Reset()      { *m = SnapshotResponse{} }
+func (*SnapshotResponse) ProtoMessage() {}
 
 func (m *SnapshotResponse) GetSuccess() bool {
 	if m != nil && m.Success != nil {

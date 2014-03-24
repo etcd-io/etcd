@@ -7,15 +7,15 @@ import (
 	"io"
 
 	"github.com/coreos/etcd/third_party/code.google.com/p/gogoprotobuf/proto"
-	"github.com/coreos/etcd/third_party/github.com/coreos/raft/protobuf"
+	"github.com/coreos/etcd/third_party/github.com/goraft/raft/protobuf"
 )
 
 // A log entry stores a single item in the log.
 type LogEntry struct {
-	pb		*protobuf.LogEntry
-	Position	int64	// position in the log file
-	log		*Log
-	event		*ev
+	pb       *protobuf.LogEntry
+	Position int64 // position in the log file
+	log      *Log
+	event    *ev
 }
 
 // Creates a new log entry associated with a log.
@@ -34,16 +34,16 @@ func newLogEntry(log *Log, event *ev, index uint64, term uint64, command Command
 	}
 
 	pb := &protobuf.LogEntry{
-		Index:		proto.Uint64(index),
-		Term:		proto.Uint64(term),
-		CommandName:	proto.String(commandName),
-		Command:	buf.Bytes(),
+		Index:       proto.Uint64(index),
+		Term:        proto.Uint64(term),
+		CommandName: proto.String(commandName),
+		Command:     buf.Bytes(),
 	}
 
 	e := &LogEntry{
-		pb:	pb,
-		log:	log,
-		event:	event,
+		pb:    pb,
+		log:   log,
+		event: event,
 	}
 
 	return e, nil
@@ -91,7 +91,7 @@ func (e *LogEntry) Decode(r io.Reader) (int, error) {
 	}
 
 	data := make([]byte, length)
-	_, err = r.Read(data)
+	_, err = io.ReadFull(r, data)
 
 	if err != nil {
 		return -1, err

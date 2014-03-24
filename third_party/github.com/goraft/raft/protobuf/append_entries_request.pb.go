@@ -33,17 +33,17 @@ var _ = &json.SyntaxError{}
 var _ = math.Inf
 
 type AppendEntriesRequest struct {
-	Term			*uint64		`protobuf:"varint,1,req" json:"Term,omitempty"`
-	PrevLogIndex		*uint64		`protobuf:"varint,2,req" json:"PrevLogIndex,omitempty"`
-	PrevLogTerm		*uint64		`protobuf:"varint,3,req" json:"PrevLogTerm,omitempty"`
-	CommitIndex		*uint64		`protobuf:"varint,4,req" json:"CommitIndex,omitempty"`
-	LeaderName		*string		`protobuf:"bytes,5,req" json:"LeaderName,omitempty"`
-	Entries			[]*LogEntry	`protobuf:"bytes,6,rep" json:"Entries,omitempty"`
-	XXX_unrecognized	[]byte		`json:"-"`
+	Term             *uint64     `protobuf:"varint,1,req" json:"Term,omitempty"`
+	PrevLogIndex     *uint64     `protobuf:"varint,2,req" json:"PrevLogIndex,omitempty"`
+	PrevLogTerm      *uint64     `protobuf:"varint,3,req" json:"PrevLogTerm,omitempty"`
+	CommitIndex      *uint64     `protobuf:"varint,4,req" json:"CommitIndex,omitempty"`
+	LeaderName       *string     `protobuf:"bytes,5,req" json:"LeaderName,omitempty"`
+	Entries          []*LogEntry `protobuf:"bytes,6,rep" json:"Entries,omitempty"`
+	XXX_unrecognized []byte      `json:"-"`
 }
 
-func (m *AppendEntriesRequest) Reset()		{ *m = AppendEntriesRequest{} }
-func (*AppendEntriesRequest) ProtoMessage()	{}
+func (m *AppendEntriesRequest) Reset()      { *m = AppendEntriesRequest{} }
+func (*AppendEntriesRequest) ProtoMessage() {}
 
 func (m *AppendEntriesRequest) GetTerm() uint64 {
 	if m != nil && m.Term != nil {

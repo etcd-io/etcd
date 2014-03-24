@@ -16,13 +16,13 @@ func TestSnapshot(t *testing.T) {
 		s.Do(&testCommand1{})
 		err := s.TakeSnapshot()
 		assert.NoError(t, err)
-		assert.Equal(t, s.(*server).lastSnapshot.LastIndex, uint64(2))
+		assert.Equal(t, s.(*server).snapshot.LastIndex, uint64(2))
 
 		// Repeat to make sure new snapshot gets created.
 		s.Do(&testCommand1{})
 		err = s.TakeSnapshot()
 		assert.NoError(t, err)
-		assert.Equal(t, s.(*server).lastSnapshot.LastIndex, uint64(4))
+		assert.Equal(t, s.(*server).snapshot.LastIndex, uint64(4))
 
 		// Restart server.
 		s.Stop()

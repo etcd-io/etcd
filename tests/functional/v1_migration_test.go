@@ -37,7 +37,7 @@ func TestV1SoloMigration(t *testing.T) {
 	args := []string{"etcd", fmt.Sprintf("-data-dir=%s", nodepath)}
 	args = append(args, "-addr", "127.0.0.1:4001")
 	args = append(args, "-peer-addr", "127.0.0.1:7001")
-	args = append(args, "-name", "v1")
+	args = append(args, "-name", "node0")
 	process, err := os.StartProcess(EtcdBinPath, args, procAttr)
 	if err != nil {
 		t.Fatal("start process failed:" + err.Error())
