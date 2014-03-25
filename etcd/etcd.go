@@ -171,11 +171,6 @@ func (e *Etcd) Run() {
 		e.Server.EnableTracing()
 	}
 
-	// An error string equivalent to net.errClosing for using with
-	// http.Serve() during server shutdown. Need to re-declare
-	// here because it is not exported by "net" package.
-	const errClosing = "use of closed network connection"
-
 	e.PeerServer.SetServer(e.Server)
 
 	// Generating config could be slow.
@@ -184,7 +179,17 @@ func (e *Etcd) Run() {
 	etcdTLSConfig := server.TLSServerConfig(e.Config.EtcdTLSInfo())
 
 	log.Infof("peer server [name %s, listen on %s, advertised url %s]", e.PeerServer.Config.Name, e.Config.Peer.BindAddr, e.PeerServer.Config.URL)
-	e.peerListener = server.NewListener(psConfig.Scheme, e.Config.Peer.BindAddr, e.Config.PeerTLSInfo())
+	e.peerListener = server.NewListener(psConfig.Scheme, e.Config.Peer.BindAddr, peerTLSConfig)
+
+	log.Infof("etcd server [name %s, listen on %s, advertised url %s]", e.Server.Name, e.Config.BindAddr, e.Server.URL())
+	e.listener = server.NewListener(e.Config.EtcdTLSInfo().Scheme(), e.Config.BindAddr, etcdTLSConfig)
+
+	close(e.readyC) // etcd server is ready to accept connections, notify waiters.
+
+	// An error string equivalent to net.errClosing for using with
+	// http.Serve() during server shutdown. Need to re-declare
+	// here because it is not exported by "net" package.
+	const errClosing = "use of closed network connection"
 
 	peerServerClosed := make(chan bool)
 	go func() {
@@ -194,7 +199,7 @@ func (e *Etcd) Run() {
 		// the cluster could be out of work as long as the two nodes cannot transfer messages.
 		e.PeerServer.Start(e.Config.Snapshot, e.Config.Discovery, e.Config.Peers)
 		log.Infof("peer server [name %s, listen on %s, advertised url %s]", e.PeerServer.Config.Name, e.Config.Peer.BindAddr, e.PeerServer.Config.URL)
-		e.peerListener = server.NewListener(psConfig.Scheme, e.Config.Peer.BindAddr, e.Config.PeerTLSInfo())
+		e.peerListener = server.NewListener(psConfig.Scheme, e.Config.Peer.BindAddr, peerTLSConfig)
 
 		sHTTP := &ehttp.CORSHandler{e.PeerServer.HTTPHandler(), corsInfo}
 		if err = http.Serve(e.peerListener, sHTTP); err != nil {
@@ -204,11 +209,6 @@ func (e *Etcd) Run() {
 		}
 		close(peerServerClosed)
 	}()
-
-	log.Infof("etcd server [name %s, listen on %s, advertised url %s]", e.Server.Name, e.Config.BindAddr, e.Server.URL())
-	e.listener = server.NewListener(e.Config.EtcdTLSInfo().Scheme(), e.Config.BindAddr, etcdTLSConfig)
-
-	close(e.readyC) // etcd server is ready to accept connections, notify waiters.
 
 	sHTTP := &ehttp.CORSHandler{e.Server.HTTPHandler(), corsInfo}
 	if err = http.Serve(e.listener, sHTTP); err != nil {
