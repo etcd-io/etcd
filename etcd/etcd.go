@@ -223,8 +223,8 @@ func (e *Etcd) Run() {
 }
 
 func (e *Etcd) Stop() {
-	e.listener.Close()
 	e.peerListener.Close()
+	e.listener.Close()
 }
 
 func (e *Etcd) StopNotify() chan bool {
