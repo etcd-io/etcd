@@ -185,6 +185,9 @@ func (e *Etcd) Run() {
 	peerTLSConfig := server.TLSServerConfig(e.Config.PeerTLSInfo())
 	etcdTLSConfig := server.TLSServerConfig(e.Config.EtcdTLSInfo())
 
+	log.Infof("peer server [name %s, listen on %s, advertised url %s]", e.PeerServer.Config.Name, e.Config.Peer.BindAddr, e.PeerServer.Config.URL)
+	e.peerListener = server.NewListener(psConfig.Scheme, e.Config.Peer.BindAddr, e.Config.PeerTLSInfo())
+
 	peerServerClosed := make(chan bool)
 	go func() {
 		// Starting peer server should be followed close by listening on its port
@@ -205,7 +208,7 @@ func (e *Etcd) Run() {
 	}()
 
 	log.Infof("etcd server [name %s, listen on %s, advertised url %s]", e.Server.Name, e.Config.BindAddr, e.Server.URL())
-	e.listener = server.NewListener(e.Config.EtcdTLSInfo().Scheme(), e.Config.BindAddr, e.Config.EtcdTLSInfo())
+	e.listener = server.NewListener(e.Config.EtcdTLSInfo().Scheme(), e.Config.BindAddr, etcdTLSConfig)
 
 	close(e.readyC) // etcd server is ready to accept connections, notify waiters.
 
