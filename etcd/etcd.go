@@ -46,7 +46,7 @@ type Etcd struct {
 	listener     net.Listener       // Listener for Server
 	peerListener net.Listener       // Listener for PeerServer
 	readyC       chan bool          // To signal when server is ready to accept connections
-	closeC       chan bool          // To signal when etcd is closed with Close() method
+	stopC        chan bool          // To signal when etcd is stopped with Stop() method
 }
 
 // New returns a new Etcd instance.
@@ -57,7 +57,7 @@ func New(c *config.Config) *Etcd {
 	return &Etcd{
 		Config: c,
 		readyC: make(chan bool),
-		closeC: make(chan bool),
+		stopC:  make(chan bool),
 	}
 }
 
@@ -217,18 +217,18 @@ func (e *Etcd) Run() {
 	}
 
 	<-peerServerClosed
-	close(e.closeC) // etcd instance is closed, notify waiters.
+	close(e.stopC) // etcd instance is stopped, notify waiters.
 
-	log.Infof("etcd instance is closed [name %s]", e.Config.Name)
+	log.Infof("etcd instance is stopped [name %s]", e.Config.Name)
 }
 
-func (e *Etcd) Close() {
+func (e *Etcd) Stop() {
 	e.listener.Close()
 	e.peerListener.Close()
 }
 
-func (e *Etcd) CloseNotify() chan bool {
-	return e.closeC
+func (e *Etcd) StopNotify() chan bool {
+	return e.stopC
 }
 
 func (e *Etcd) ReadyNotify() chan bool {
