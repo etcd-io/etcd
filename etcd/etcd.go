@@ -226,6 +226,7 @@ func (e *Etcd) Run() {
 }
 
 func (e *Etcd) Stop() {
+	e.PeerServer.Stop()
 	e.peerListener.Close()
 	e.listener.Close()
 }
