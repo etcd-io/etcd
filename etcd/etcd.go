@@ -59,7 +59,7 @@ func New(c *config.Config) *Etcd {
 	}
 }
 
-// Run etcd.
+// Run the etcd instance.
 func (e *Etcd) Run() {
 	// Enable options.
 	if e.Config.VeryVeryVerbose {
@@ -221,12 +221,17 @@ func (e *Etcd) Run() {
 	log.Infof("etcd instance is stopped [name %s]", e.Config.Name)
 }
 
+// Stop the etcd instance.
+//
+// TODO Shutdown gracefully.
 func (e *Etcd) Stop() {
 	e.PeerServer.Stop()
 	e.peerListener.Close()
 	e.listener.Close()
 }
 
+// ReadyNotify returns a channel that is going to be closed
+// when the etcd instance is ready to accept connections.
 func (e *Etcd) ReadyNotify() chan bool {
 	return e.readyC
 }
