@@ -11,7 +11,7 @@ import (
 func TestVersionCheck(t *testing.T) {
 	procAttr := new(os.ProcAttr)
 	procAttr.Files = []*os.File{nil, os.Stdout, os.Stderr}
-	args := []string{"etcd", "-name=node1", "-f", "-data-dir=/tmp/version_check"}
+	args := []string{"etcd", "-name=node1", "-f", "-data-dir=tmp/version_check"}
 
 	process, err := os.StartProcess(EtcdBinPath, args, procAttr)
 	if err != nil {

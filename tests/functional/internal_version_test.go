@@ -31,7 +31,7 @@ func TestInternalVersion(t *testing.T) {
 
 	procAttr := new(os.ProcAttr)
 	procAttr.Files = []*os.File{nil, os.Stdout, os.Stderr}
-	args := []string{"etcd", "-name=node1", "-f", "-data-dir=/tmp/node1", "-peers=" + fakeURL.Host}
+	args := []string{"etcd", "-name=node1", "-f", "-data-dir=tmp/node1", "-peers=" + fakeURL.Host}
 
 	process, err := os.StartProcess(EtcdBinPath, args, procAttr)
 	if err != nil {
