@@ -22,7 +22,42 @@ import (
 	"net/http"
 )
 
-var errors map[int]string
+var errors = map[int]string{
+	// command related errors
+	EcodeKeyNotFound:    "Key not found",
+	EcodeTestFailed:     "Compare failed", //test and set
+	EcodeNotFile:        "Not a file",
+	EcodeNoMorePeer:     "Reached the max number of peers in the cluster",
+	EcodeNotDir:         "Not a directory",
+	EcodeNodeExist:      "Key already exists", // create
+	EcodeRootROnly:      "Root is read only",
+	EcodeKeyIsPreserved: "The prefix of given key is a keyword in etcd",
+	EcodeDirNotEmpty:    "Directory not empty",
+
+	// Post form related errors
+	EcodeValueRequired:        "Value is Required in POST form",
+	EcodePrevValueRequired:    "PrevValue is Required in POST form",
+	EcodeTTLNaN:               "The given TTL in POST form is not a number",
+	EcodeIndexNaN:             "The given index in POST form is not a number",
+	EcodeValueOrTTLRequired:   "Value or TTL is required in POST form",
+	EcodeTimeoutNaN:           "The given timeout in POST form is not a number",
+	EcodeNameRequired:         "Name is required in POST form",
+	EcodeIndexOrValueRequired: "Index or value is required",
+	EcodeIndexValueMutex:      "Index and value cannot both be specified",
+	EcodeInvalidField:         "Invalid field",
+
+	// raft related errors
+	EcodeRaftInternal: "Raft Internal Error",
+	EcodeLeaderElect:  "During Leader Election",
+
+	// etcd related errors
+	EcodeWatcherCleared:      "watcher is cleared due to etcd recovery",
+	EcodeEventIndexCleared:   "The event in requested index is outdated and cleared",
+	EcodeProxyInternal:       "Proxy Internal Error",
+	EcodeInvalidActiveSize:   "Invalid active size",
+	EcodeInvalidPromoteDelay: "Proxy promote delay",
+	EcodePromoteError:        "Proxy promotion error",
+}
 
 const (
 	EcodeKeyNotFound    = 100
@@ -56,46 +91,6 @@ const (
 	EcodeInvalidPromoteDelay = 404
 	EcodePromoteError        = 405
 )
-
-func init() {
-	errors = make(map[int]string)
-
-	// command related errors
-	errors[EcodeKeyNotFound] = "Key not found"
-	errors[EcodeTestFailed] = "Compare failed" //test and set
-	errors[EcodeNotFile] = "Not a file"
-	errors[EcodeNoMorePeer] = "Reached the max number of peers in the cluster"
-	errors[EcodeNotDir] = "Not a directory"
-	errors[EcodeNodeExist] = "Key already exists" // create
-	errors[EcodeRootROnly] = "Root is read only"
-	errors[EcodeKeyIsPreserved] = "The prefix of given key is a keyword in etcd"
-	errors[EcodeDirNotEmpty] = "Directory not empty"
-
-	// Post form related errors
-	errors[EcodeValueRequired] = "Value is Required in POST form"
-	errors[EcodePrevValueRequired] = "PrevValue is Required in POST form"
-	errors[EcodeTTLNaN] = "The given TTL in POST form is not a number"
-	errors[EcodeIndexNaN] = "The given index in POST form is not a number"
-	errors[EcodeValueOrTTLRequired] = "Value or TTL is required in POST form"
-	errors[EcodeTimeoutNaN] = "The given timeout in POST form is not a number"
-	errors[EcodeNameRequired] = "Name is required in POST form"
-	errors[EcodeIndexOrValueRequired] = "Index or value is required"
-	errors[EcodeIndexValueMutex] = "Index and value cannot both be specified"
-	errors[EcodeInvalidField] = "Invalid field"
-
-	// raft related errors
-	errors[EcodeRaftInternal] = "Raft Internal Error"
-	errors[EcodeLeaderElect] = "During Leader Election"
-
-	// etcd related errors
-	errors[EcodeWatcherCleared] = "watcher is cleared due to etcd recovery"
-	errors[EcodeEventIndexCleared] = "The event in requested index is outdated and cleared"
-	errors[EcodeProxyInternal] = "Proxy Internal Error"
-	errors[EcodeInvalidActiveSize] = "Invalid active size"
-	errors[EcodeInvalidPromoteDelay] = "Proxy promote delay"
-	errors[EcodePromoteError] = "Proxy promotion error"
-
-}
 
 type Error struct {
 	ErrorCode int    `json:"errorCode"`
