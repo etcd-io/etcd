@@ -22,8 +22,8 @@ func TLSServerConfig(info *TLSInfo) *tls.Config {
 }
 
 // NewListener creates a net.Listener
+// If the given scheme is "https", it will use TLS config to set listener.
 // If any error happens, this function will call log.Fatal
-// This function does listening only and finishes quickly.
 func NewListener(scheme, addr string, cfg *tls.Config) net.Listener {
 	if scheme == "https" {
 		l, err := newTLSListener(addr, cfg)
