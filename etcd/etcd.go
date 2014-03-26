@@ -233,6 +233,6 @@ func (e *Etcd) Stop() {
 
 // ReadyNotify returns a channel that is going to be closed
 // when the etcd instance is ready to accept connections.
-func (e *Etcd) ReadyNotify() chan bool {
+func (e *Etcd) ReadyNotify() <-chan bool {
 	return e.readyC
 }
