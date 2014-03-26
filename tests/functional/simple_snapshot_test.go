@@ -14,7 +14,7 @@ import (
 func TestSimpleSnapshot(t *testing.T) {
 	procAttr := new(os.ProcAttr)
 	procAttr.Files = []*os.File{nil, os.Stdout, os.Stderr}
-	args := []string{"etcd", "-name=node1", "-data-dir=/tmp/node1", "-snapshot=true", "-snapshot-count=500"}
+	args := []string{"etcd", "-name=node1", "-data-dir=tmp/node1", "-snapshot=true", "-snapshot-count=500"}
 
 	process, err := os.StartProcess(EtcdBinPath, append(args, "-f"), procAttr)
 	if err != nil {
@@ -44,7 +44,7 @@ func TestSimpleSnapshot(t *testing.T) {
 	// wait for a snapshot interval
 	time.Sleep(3 * time.Second)
 
-	snapshots, err := ioutil.ReadDir("/tmp/node1/snapshot")
+	snapshots, err := ioutil.ReadDir("tmp/node1/snapshot")
 
 	if err != nil {
 		t.Fatal("list snapshot failed:" + err.Error())
@@ -77,7 +77,7 @@ func TestSimpleSnapshot(t *testing.T) {
 	// wait for a snapshot interval
 	time.Sleep(3 * time.Second)
 
-	snapshots, err = ioutil.ReadDir("/tmp/node1/snapshot")
+	snapshots, err = ioutil.ReadDir("tmp/node1/snapshot")
 
 	if err != nil {
 		t.Fatal("list snapshot failed:" + err.Error())

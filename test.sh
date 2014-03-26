@@ -5,6 +5,9 @@
 go test -i ./http
 go test -v ./http
 
+mkdir -p tmp
+ln -sf ../../tmp tests/functional/tmp
+
 go test -i ./store
 go test -v ./store
 

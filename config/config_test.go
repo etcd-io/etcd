@@ -13,16 +13,16 @@ import (
 func TestConfigTOML(t *testing.T) {
 	content := `
 		addr = "127.0.0.1:4002"
-		ca_file = "/tmp/file.ca"
-		cert_file = "/tmp/file.cert"
+		ca_file = "tmp/file.ca"
+		cert_file = "tmp/file.cert"
 		cors = ["*"]
 		cpu_profile_file = "XXX"
-		data_dir = "/tmp/data"
+		data_dir = "tmp/data"
 		discovery = "http://example.com/foobar"
-		key_file = "/tmp/file.key"
+		key_file = "tmp/file.key"
 		bind_addr = "127.0.0.1:4003"
 		peers = ["coreos.com:4001", "coreos.com:4002"]
-		peers_file = "/tmp/peers"
+		peers_file = "tmp/peers"
 		max_cluster_size = 10
 		max_result_buffer = 512
 		max_retry_attempts = 5
@@ -33,24 +33,24 @@ func TestConfigTOML(t *testing.T) {
 
 		[peer]
 		addr = "127.0.0.1:7002"
-		ca_file = "/tmp/peer/file.ca"
-		cert_file = "/tmp/peer/file.cert"
-		key_file = "/tmp/peer/file.key"
+		ca_file = "tmp/peer/file.ca"
+		cert_file = "tmp/peer/file.cert"
+		key_file = "tmp/peer/file.key"
 		bind_addr = "127.0.0.1:7003"
 	`
 	c := New()
 	_, err := toml.Decode(content, &c)
 	assert.Nil(t, err, "")
 	assert.Equal(t, c.Addr, "127.0.0.1:4002", "")
-	assert.Equal(t, c.CAFile, "/tmp/file.ca", "")
-	assert.Equal(t, c.CertFile, "/tmp/file.cert", "")
+	assert.Equal(t, c.CAFile, "tmp/file.ca", "")
+	assert.Equal(t, c.CertFile, "tmp/file.cert", "")
 	assert.Equal(t, c.CorsOrigins, []string{"*"}, "")
-	assert.Equal(t, c.DataDir, "/tmp/data", "")
+	assert.Equal(t, c.DataDir, "tmp/data", "")
 	assert.Equal(t, c.Discovery, "http://example.com/foobar", "")
-	assert.Equal(t, c.KeyFile, "/tmp/file.key", "")
+	assert.Equal(t, c.KeyFile, "tmp/file.key", "")
 	assert.Equal(t, c.BindAddr, "127.0.0.1:4003", "")
 	assert.Equal(t, c.Peers, []string{"coreos.com:4001", "coreos.com:4002"}, "")
-	assert.Equal(t, c.PeersFile, "/tmp/peers", "")
+	assert.Equal(t, c.PeersFile, "tmp/peers", "")
 	assert.Equal(t, c.MaxResultBuffer, 512, "")
 	assert.Equal(t, c.MaxRetryAttempts, 5, "")
 	assert.Equal(t, c.Name, "test-name", "")
@@ -58,24 +58,24 @@ func TestConfigTOML(t *testing.T) {
 	assert.Equal(t, c.Verbose, true, "")
 	assert.Equal(t, c.VeryVerbose, true, "")
 	assert.Equal(t, c.Peer.Addr, "127.0.0.1:7002", "")
-	assert.Equal(t, c.Peer.CAFile, "/tmp/peer/file.ca", "")
-	assert.Equal(t, c.Peer.CertFile, "/tmp/peer/file.cert", "")
-	assert.Equal(t, c.Peer.KeyFile, "/tmp/peer/file.key", "")
+	assert.Equal(t, c.Peer.CAFile, "tmp/peer/file.ca", "")
+	assert.Equal(t, c.Peer.CertFile, "tmp/peer/file.cert", "")
+	assert.Equal(t, c.Peer.KeyFile, "tmp/peer/file.key", "")
 	assert.Equal(t, c.Peer.BindAddr, "127.0.0.1:7003", "")
 }
 
 // Ensures that a configuration can be retrieved from environment variables.
 func TestConfigEnv(t *testing.T) {
-	os.Setenv("ETCD_CA_FILE", "/tmp/file.ca")
-	os.Setenv("ETCD_CERT_FILE", "/tmp/file.cert")
+	os.Setenv("ETCD_CA_FILE", "tmp/file.ca")
+	os.Setenv("ETCD_CERT_FILE", "tmp/file.cert")
 	os.Setenv("ETCD_CPU_PROFILE_FILE", "XXX")
 	os.Setenv("ETCD_CORS", "localhost:4001,localhost:4002")
-	os.Setenv("ETCD_DATA_DIR", "/tmp/data")
+	os.Setenv("ETCD_DATA_DIR", "tmp/data")
 	os.Setenv("ETCD_DISCOVERY", "http://example.com/foobar")
-	os.Setenv("ETCD_KEY_FILE", "/tmp/file.key")
+	os.Setenv("ETCD_KEY_FILE", "tmp/file.key")
 	os.Setenv("ETCD_BIND_ADDR", "127.0.0.1:4003")
 	os.Setenv("ETCD_PEERS", "coreos.com:4001,coreos.com:4002")
-	os.Setenv("ETCD_PEERS_FILE", "/tmp/peers")
+	os.Setenv("ETCD_PEERS_FILE", "tmp/peers")
 	os.Setenv("ETCD_MAX_CLUSTER_SIZE", "10")
 	os.Setenv("ETCD_MAX_RESULT_BUFFER", "512")
 	os.Setenv("ETCD_MAX_RETRY_ATTEMPTS", "5")
@@ -84,22 +84,22 @@ func TestConfigEnv(t *testing.T) {
 	os.Setenv("ETCD_VERBOSE", "1")
 	os.Setenv("ETCD_VERY_VERBOSE", "yes")
 	os.Setenv("ETCD_PEER_ADDR", "127.0.0.1:7002")
-	os.Setenv("ETCD_PEER_CA_FILE", "/tmp/peer/file.ca")
-	os.Setenv("ETCD_PEER_CERT_FILE", "/tmp/peer/file.cert")
-	os.Setenv("ETCD_PEER_KEY_FILE", "/tmp/peer/file.key")
+	os.Setenv("ETCD_PEER_CA_FILE", "tmp/peer/file.ca")
+	os.Setenv("ETCD_PEER_CERT_FILE", "tmp/peer/file.cert")
+	os.Setenv("ETCD_PEER_KEY_FILE", "tmp/peer/file.key")
 	os.Setenv("ETCD_PEER_BIND_ADDR", "127.0.0.1:7003")
 
 	c := New()
 	c.LoadEnv()
-	assert.Equal(t, c.CAFile, "/tmp/file.ca", "")
-	assert.Equal(t, c.CertFile, "/tmp/file.cert", "")
+	assert.Equal(t, c.CAFile, "tmp/file.ca", "")
+	assert.Equal(t, c.CertFile, "tmp/file.cert", "")
 	assert.Equal(t, c.CorsOrigins, []string{"localhost:4001", "localhost:4002"}, "")
-	assert.Equal(t, c.DataDir, "/tmp/data", "")
+	assert.Equal(t, c.DataDir, "tmp/data", "")
 	assert.Equal(t, c.Discovery, "http://example.com/foobar", "")
-	assert.Equal(t, c.KeyFile, "/tmp/file.key", "")
+	assert.Equal(t, c.KeyFile, "tmp/file.key", "")
 	assert.Equal(t, c.BindAddr, "127.0.0.1:4003", "")
 	assert.Equal(t, c.Peers, []string{"coreos.com:4001", "coreos.com:4002"}, "")
-	assert.Equal(t, c.PeersFile, "/tmp/peers", "")
+	assert.Equal(t, c.PeersFile, "tmp/peers", "")
 	assert.Equal(t, c.MaxResultBuffer, 512, "")
 	assert.Equal(t, c.MaxRetryAttempts, 5, "")
 	assert.Equal(t, c.Name, "test-name", "")
@@ -107,9 +107,9 @@ func TestConfigEnv(t *testing.T) {
 	assert.Equal(t, c.Verbose, true, "")
 	assert.Equal(t, c.VeryVerbose, true, "")
 	assert.Equal(t, c.Peer.Addr, "127.0.0.1:7002", "")
-	assert.Equal(t, c.Peer.CAFile, "/tmp/peer/file.ca", "")
-	assert.Equal(t, c.Peer.CertFile, "/tmp/peer/file.cert", "")
-	assert.Equal(t, c.Peer.KeyFile, "/tmp/peer/file.key", "")
+	assert.Equal(t, c.Peer.CAFile, "tmp/peer/file.ca", "")
+	assert.Equal(t, c.Peer.CertFile, "tmp/peer/file.cert", "")
+	assert.Equal(t, c.Peer.KeyFile, "tmp/peer/file.key", "")
 	assert.Equal(t, c.Peer.BindAddr, "127.0.0.1:7003", "")
 
 	// Clear this as it will mess up other tests
@@ -168,47 +168,47 @@ func TestConfigAddrFlag(t *testing.T) {
 
 // Ensures that a the CA file can be parsed from the environment.
 func TestConfigCAFileEnv(t *testing.T) {
-	withEnv("ETCD_CA_FILE", "/tmp/file.ca", func(c *Config) {
+	withEnv("ETCD_CA_FILE", "tmp/file.ca", func(c *Config) {
 		assert.Nil(t, c.LoadEnv(), "")
-		assert.Equal(t, c.CAFile, "/tmp/file.ca", "")
+		assert.Equal(t, c.CAFile, "tmp/file.ca", "")
 	})
 }
 
 // Ensures that a the CA file flag can be parsed.
 func TestConfigCAFileFlag(t *testing.T) {
 	c := New()
-	assert.Nil(t, c.LoadFlags([]string{"-ca-file", "/tmp/file.ca"}), "")
-	assert.Equal(t, c.CAFile, "/tmp/file.ca", "")
+	assert.Nil(t, c.LoadFlags([]string{"-ca-file", "tmp/file.ca"}), "")
+	assert.Equal(t, c.CAFile, "tmp/file.ca", "")
 }
 
 // Ensures that a the CA file can be parsed from the environment.
 func TestConfigCertFileEnv(t *testing.T) {
-	withEnv("ETCD_CERT_FILE", "/tmp/file.cert", func(c *Config) {
+	withEnv("ETCD_CERT_FILE", "tmp/file.cert", func(c *Config) {
 		assert.Nil(t, c.LoadEnv(), "")
-		assert.Equal(t, c.CertFile, "/tmp/file.cert", "")
+		assert.Equal(t, c.CertFile, "tmp/file.cert", "")
 	})
 }
 
 // Ensures that a the Cert file flag can be parsed.
 func TestConfigCertFileFlag(t *testing.T) {
 	c := New()
-	assert.Nil(t, c.LoadFlags([]string{"-cert-file", "/tmp/file.cert"}), "")
-	assert.Equal(t, c.CertFile, "/tmp/file.cert", "")
+	assert.Nil(t, c.LoadFlags([]string{"-cert-file", "tmp/file.cert"}), "")
+	assert.Equal(t, c.CertFile, "tmp/file.cert", "")
 }
 
 // Ensures that a the Key file can be parsed from the environment.
 func TestConfigKeyFileEnv(t *testing.T) {
-	withEnv("ETCD_KEY_FILE", "/tmp/file.key", func(c *Config) {
+	withEnv("ETCD_KEY_FILE", "tmp/file.key", func(c *Config) {
 		assert.Nil(t, c.LoadEnv(), "")
-		assert.Equal(t, c.KeyFile, "/tmp/file.key", "")
+		assert.Equal(t, c.KeyFile, "tmp/file.key", "")
 	})
 }
 
 // Ensures that a the Key file flag can be parsed.
 func TestConfigKeyFileFlag(t *testing.T) {
 	c := New()
-	assert.Nil(t, c.LoadFlags([]string{"-key-file", "/tmp/file.key"}), "")
-	assert.Equal(t, c.KeyFile, "/tmp/file.key", "")
+	assert.Nil(t, c.LoadFlags([]string{"-key-file", "tmp/file.key"}), "")
+	assert.Equal(t, c.KeyFile, "tmp/file.key", "")
 }
 
 // Ensures that a the Listen Host can be parsed from the environment.
@@ -266,17 +266,17 @@ func TestConfigPeersFlag(t *testing.T) {
 
 // Ensures that the Peers File can be parsed from the environment.
 func TestConfigPeersFileEnv(t *testing.T) {
-	withEnv("ETCD_PEERS_FILE", "/tmp/peers", func(c *Config) {
+	withEnv("ETCD_PEERS_FILE", "tmp/peers", func(c *Config) {
 		assert.Nil(t, c.LoadEnv(), "")
-		assert.Equal(t, c.PeersFile, "/tmp/peers", "")
+		assert.Equal(t, c.PeersFile, "tmp/peers", "")
 	})
 }
 
 // Ensures that a the Peers File flag can be parsed.
 func TestConfigPeersFileFlag(t *testing.T) {
 	c := New()
-	assert.Nil(t, c.LoadFlags([]string{"-peers-file", "/tmp/peers"}), "")
-	assert.Equal(t, c.PeersFile, "/tmp/peers", "")
+	assert.Nil(t, c.LoadFlags([]string{"-peers-file", "tmp/peers"}), "")
+	assert.Equal(t, c.PeersFile, "tmp/peers", "")
 }
 
 // Ensures that the Max Result Buffer can be parsed from the environment.
@@ -404,47 +404,47 @@ func TestConfigPeerAddrFlag(t *testing.T) {
 
 // Ensures that the Peer CA File can be parsed from the environment.
 func TestConfigPeerCAFileEnv(t *testing.T) {
-	withEnv("ETCD_PEER_CA_FILE", "/tmp/peer/file.ca", func(c *Config) {
+	withEnv("ETCD_PEER_CA_FILE", "tmp/peer/file.ca", func(c *Config) {
 		assert.Nil(t, c.LoadEnv(), "")
-		assert.Equal(t, c.Peer.CAFile, "/tmp/peer/file.ca", "")
+		assert.Equal(t, c.Peer.CAFile, "tmp/peer/file.ca", "")
 	})
 }
 
 // Ensures that a the Peer CA file flag can be parsed.
 func TestConfigPeerCAFileFlag(t *testing.T) {
 	c := New()
-	assert.Nil(t, c.LoadFlags([]string{"-peer-ca-file", "/tmp/peer/file.ca"}), "")
-	assert.Equal(t, c.Peer.CAFile, "/tmp/peer/file.ca", "")
+	assert.Nil(t, c.LoadFlags([]string{"-peer-ca-file", "tmp/peer/file.ca"}), "")
+	assert.Equal(t, c.Peer.CAFile, "tmp/peer/file.ca", "")
 }
 
 // Ensures that the Peer Cert File can be parsed from the environment.
 func TestConfigPeerCertFileEnv(t *testing.T) {
-	withEnv("ETCD_PEER_CERT_FILE", "/tmp/peer/file.cert", func(c *Config) {
+	withEnv("ETCD_PEER_CERT_FILE", "tmp/peer/file.cert", func(c *Config) {
 		assert.Nil(t, c.LoadEnv(), "")
-		assert.Equal(t, c.Peer.CertFile, "/tmp/peer/file.cert", "")
+		assert.Equal(t, c.Peer.CertFile, "tmp/peer/file.cert", "")
 	})
 }
 
 // Ensures that a the Cert file flag can be parsed.
 func TestConfigPeerCertFileFlag(t *testing.T) {
 	c := New()
-	assert.Nil(t, c.LoadFlags([]string{"-peer-cert-file", "/tmp/peer/file.cert"}), "")
-	assert.Equal(t, c.Peer.CertFile, "/tmp/peer/file.cert", "")
+	assert.Nil(t, c.LoadFlags([]string{"-peer-cert-file", "tmp/peer/file.cert"}), "")
+	assert.Equal(t, c.Peer.CertFile, "tmp/peer/file.cert", "")
 }
 
 // Ensures that the Peer Key File can be parsed from the environment.
 func TestConfigPeerKeyFileEnv(t *testing.T) {
-	withEnv("ETCD_PEER_KEY_FILE", "/tmp/peer/file.key", func(c *Config) {
+	withEnv("ETCD_PEER_KEY_FILE", "tmp/peer/file.key", func(c *Config) {
 		assert.Nil(t, c.LoadEnv(), "")
-		assert.Equal(t, c.Peer.KeyFile, "/tmp/peer/file.key", "")
+		assert.Equal(t, c.Peer.KeyFile, "tmp/peer/file.key", "")
 	})
 }
 
 // Ensures that a the Peer Key file flag can be parsed.
 func TestConfigPeerKeyFileFlag(t *testing.T) {
 	c := New()
-	assert.Nil(t, c.LoadFlags([]string{"-peer-key-file", "/tmp/peer/file.key"}), "")
-	assert.Equal(t, c.Peer.KeyFile, "/tmp/peer/file.key", "")
+	assert.Nil(t, c.LoadFlags([]string{"-peer-key-file", "tmp/peer/file.key"}), "")
+	assert.Equal(t, c.Peer.KeyFile, "tmp/peer/file.key", "")
 }
 
 // Ensures that the Peer Listen Host can be parsed from the environment.
@@ -536,9 +536,9 @@ func TestConfigDeprecatedBindAddrFlag(t *testing.T) {
 func TestConfigDeprecatedCAFileFlag(t *testing.T) {
 	_, stderr := capture(func() {
 		c := New()
-		err := c.LoadFlags([]string{"-clientCAFile", "/tmp/file.ca"})
+		err := c.LoadFlags([]string{"-clientCAFile", "tmp/file.ca"})
 		assert.NoError(t, err)
-		assert.Equal(t, c.CAFile, "/tmp/file.ca", "")
+		assert.Equal(t, c.CAFile, "tmp/file.ca", "")
 	})
 	assert.Equal(t, stderr, "[deprecated] use -ca-file, not -clientCAFile\n", "")
 }
@@ -546,9 +546,9 @@ func TestConfigDeprecatedCAFileFlag(t *testing.T) {
 func TestConfigDeprecatedCertFileFlag(t *testing.T) {
 	_, stderr := capture(func() {
 		c := New()
-		err := c.LoadFlags([]string{"-clientCert", "/tmp/file.cert"})
+		err := c.LoadFlags([]string{"-clientCert", "tmp/file.cert"})
 		assert.NoError(t, err)
-		assert.Equal(t, c.CertFile, "/tmp/file.cert", "")
+		assert.Equal(t, c.CertFile, "tmp/file.cert", "")
 	})
 	assert.Equal(t, stderr, "[deprecated] use -cert-file, not -clientCert\n", "")
 }
@@ -556,9 +556,9 @@ func TestConfigDeprecatedCertFileFlag(t *testing.T) {
 func TestConfigDeprecatedKeyFileFlag(t *testing.T) {
 	_, stderr := capture(func() {
 		c := New()
-		err := c.LoadFlags([]string{"-clientKey", "/tmp/file.key"})
+		err := c.LoadFlags([]string{"-clientKey", "tmp/file.key"})
 		assert.NoError(t, err)
-		assert.Equal(t, c.KeyFile, "/tmp/file.key", "")
+		assert.Equal(t, c.KeyFile, "tmp/file.key", "")
 	})
 	assert.Equal(t, stderr, "[deprecated] use -key-file, not -clientKey\n", "")
 }
@@ -576,9 +576,9 @@ func TestConfigDeprecatedPeersFlag(t *testing.T) {
 func TestConfigDeprecatedPeersFileFlag(t *testing.T) {
 	_, stderr := capture(func() {
 		c := New()
-		err := c.LoadFlags([]string{"-CF", "/tmp/machines"})
+		err := c.LoadFlags([]string{"-CF", "tmp/machines"})
 		assert.NoError(t, err)
-		assert.Equal(t, c.PeersFile, "/tmp/machines", "")
+		assert.Equal(t, c.PeersFile, "tmp/machines", "")
 	})
 	assert.Equal(t, stderr, "[deprecated] use -peers-file, not -CF\n", "")
 }
@@ -626,9 +626,9 @@ func TestConfigDeprecatedPeerBindAddrFlag(t *testing.T) {
 func TestConfigDeprecatedPeerCAFileFlag(t *testing.T) {
 	_, stderr := capture(func() {
 		c := New()
-		err := c.LoadFlags([]string{"-serverCAFile", "/tmp/peer/file.ca"})
+		err := c.LoadFlags([]string{"-serverCAFile", "tmp/peer/file.ca"})
 		assert.NoError(t, err)
-		assert.Equal(t, c.Peer.CAFile, "/tmp/peer/file.ca", "")
+		assert.Equal(t, c.Peer.CAFile, "tmp/peer/file.ca", "")
 	})
 	assert.Equal(t, stderr, "[deprecated] use -peer-ca-file, not -serverCAFile\n", "")
 }
@@ -636,9 +636,9 @@ func TestConfigDeprecatedPeerCAFileFlag(t *testing.T) {
 func TestConfigDeprecatedPeerCertFileFlag(t *testing.T) {
 	_, stderr := capture(func() {
 		c := New()
-		err := c.LoadFlags([]string{"-serverCert", "/tmp/peer/file.cert"})
+		err := c.LoadFlags([]string{"-serverCert", "tmp/peer/file.cert"})
 		assert.NoError(t, err)
-		assert.Equal(t, c.Peer.CertFile, "/tmp/peer/file.cert", "")
+		assert.Equal(t, c.Peer.CertFile, "tmp/peer/file.cert", "")
 	})
 	assert.Equal(t, stderr, "[deprecated] use -peer-cert-file, not -serverCert\n", "")
 }
@@ -646,9 +646,9 @@ func TestConfigDeprecatedPeerCertFileFlag(t *testing.T) {
 func TestConfigDeprecatedPeerKeyFileFlag(t *testing.T) {
 	_, stderr := capture(func() {
 		c := New()
-		err := c.LoadFlags([]string{"-serverKey", "/tmp/peer/file.key"})
+		err := c.LoadFlags([]string{"-serverKey", "tmp/peer/file.key"})
 		assert.NoError(t, err)
-		assert.Equal(t, c.Peer.KeyFile, "/tmp/peer/file.key", "")
+		assert.Equal(t, c.Peer.KeyFile, "tmp/peer/file.key", "")
 	})
 	assert.Equal(t, stderr, "[deprecated] use -peer-key-file, not -serverKey\n", "")
 }

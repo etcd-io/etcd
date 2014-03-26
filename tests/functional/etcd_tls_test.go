@@ -159,7 +159,7 @@ func startServer(extra []string) (*os.Process, error) {
 	procAttr := new(os.ProcAttr)
 	procAttr.Files = []*os.File{nil, os.Stdout, os.Stderr}
 
-	cmd := []string{"etcd",	"-f", "-data-dir=/tmp/node1", "-name=node1"}
+	cmd := []string{"etcd",	"-f", "-data-dir=tmp/node1", "-name=node1"}
 	cmd = append(cmd, extra...)
 
 	println(strings.Join(cmd, " "))
