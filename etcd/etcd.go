@@ -82,6 +82,7 @@ func (e *Etcd) Run() {
 	} else if e.Config.Verbose {
 		log.Verbose = true
 	}
+
 	if e.Config.CPUProfileFile != "" {
 		profile(e.Config.CPUProfileFile)
 	}
