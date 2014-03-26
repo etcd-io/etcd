@@ -272,6 +272,24 @@ func (s *PeerServer) findCluster(discoverURL string, peers []string) {
 	s.startAsLeader()
 }
 
+// Check if the name is new, but the url has existed
+// If so, some node reconnects to the cluster with different name, which is not allowed.
+func (s *PeerServer) CheckSanity() {
+	if _, ok := s.registry.ClientURL(s.Config.Name); ok {
+		return
+	}
+
+	peerURLs := s.registry.PeerURLs(s.raftServer.Leader(), s.Config.Name)
+	for _, peerURL := range peerURLs {
+		if peerURL == s.Config.URL {
+			log.Fatalf("%v tries to join the cluster with existing URL %v", s.Config.Name, s.Config.URL)
+			return
+		}
+	}
+
+	return
+}
+
 // Start the raft server
 func (s *PeerServer) Start(snapshot bool, discoverURL string, peers []string) error {
 	// LoadSnapshot
@@ -286,6 +304,8 @@ func (s *PeerServer) Start(snapshot bool, discoverURL string, peers []string) er
 	}
 
 	s.raftServer.Start()
+
+	s.CheckSanity()
 
 	s.findCluster(discoverURL, peers)
 
