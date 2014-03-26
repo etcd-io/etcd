@@ -4,3 +4,4 @@
 /bin
 /src
 .vagrant
+*.etcd
