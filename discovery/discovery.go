@@ -75,9 +75,12 @@ func (d *Discoverer) Do(discoveryURL string, name string, peer string) (peers []
 
 	// Bail out on unexpected errors
 	if err != nil {
-		if clientErr, ok := err.(*etcd.EtcdError); !ok || clientErr.ErrorCode != etcdErr.EcodeNodeExist {
-			return nil, err
+		if e, ok := err.(*etcd.EtcdError); ok {
+			if e.ErrorCode != etcdErr.EcodeNodeExist {
+				return nil, err
+			}
 		}
+		return nil, err
 	}
 
 	// If we got a response then the CAS was successful, we are leader
