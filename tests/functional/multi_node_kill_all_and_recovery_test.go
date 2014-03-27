@@ -80,6 +80,8 @@ func TestMultiNodeKillAllAndRecovery(t *testing.T) {
 // TestTLSMultiNodeKillAllAndRecovery create a five nodes
 // then kill all the nodes and restart
 func TestTLSMultiNodeKillAllAndRecovery(t *testing.T) {
+	t.Skip("awaiting fix")
+
 	procAttr := new(os.ProcAttr)
 	procAttr.Files = []*os.File{nil, os.Stdout, os.Stderr}
 
