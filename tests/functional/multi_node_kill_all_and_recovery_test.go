@@ -31,7 +31,7 @@ func TestMultiNodeKillAllAndRecovery(t *testing.T) {
 	go Monitor(clusterSize, clusterSize, leaderChan, all, stop)
 	<-all
 	<-leaderChan
-	stop <-true
+	stop <- true
 
 	c.SyncCluster()
 
@@ -102,7 +102,7 @@ func TestTLSMultiNodeKillAllAndRecovery(t *testing.T) {
 	go Monitor(clusterSize, clusterSize, leaderChan, all, stop)
 	<-all
 	<-leaderChan
-	stop <-true
+	stop <- true
 
 	c.SyncCluster()
 

@@ -12,8 +12,8 @@ import (
 
 	"github.com/coreos/etcd/third_party/github.com/stretchr/testify/assert"
 
-	etcdtest "github.com/coreos/etcd/tests"
 	"github.com/coreos/etcd/server"
+	etcdtest "github.com/coreos/etcd/tests"
 	goetcd "github.com/coreos/etcd/third_party/github.com/coreos/go-etcd/etcd"
 )
 
@@ -294,7 +294,7 @@ func TestDiscoverySecondPeerUp(t *testing.T) {
 
 func assertServerNotUp(client http.Client, scheme string) error {
 	path := fmt.Sprintf("%s://127.0.0.1:4001/v2/keys/foo", scheme)
-	fields := url.Values(map[string][]string{"value": []string{"bar"}})
+	fields := url.Values(map[string][]string{"value": {"bar"}})
 
 	for i := 0; i < 10; i++ {
 		time.Sleep(1 * time.Second)

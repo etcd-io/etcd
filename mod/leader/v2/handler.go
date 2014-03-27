@@ -13,19 +13,19 @@ const prefix = "/_mod/leader"
 // handler manages the leader HTTP request.
 type handler struct {
 	*mux.Router
-	client		*http.Client
-	transport	*http.Transport
-	addr		string
+	client    *http.Client
+	transport *http.Transport
+	addr      string
 }
 
 // NewHandler creates an HTTP handler that can be registered on a router.
 func NewHandler(addr string) http.Handler {
 	transport := &http.Transport{DisableKeepAlives: false}
 	h := &handler{
-		Router:		mux.NewRouter(),
-		client:		&http.Client{Transport: transport},
-		transport:	transport,
-		addr:		addr,
+		Router:    mux.NewRouter(),
+		client:    &http.Client{Transport: transport},
+		transport: transport,
+		addr:      addr,
 	}
 	h.StrictSlash(false)
 	h.handleFunc("/{key:.*}", h.getHandler).Methods("GET")

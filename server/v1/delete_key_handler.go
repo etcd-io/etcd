@@ -1,8 +1,9 @@
 package v1
 
 import (
-	"github.com/coreos/etcd/third_party/github.com/gorilla/mux"
 	"net/http"
+
+	"github.com/coreos/etcd/third_party/github.com/gorilla/mux"
 )
 
 // Removes a key from the store.

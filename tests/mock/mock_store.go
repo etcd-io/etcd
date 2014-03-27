@@ -1,9 +1,10 @@
 package mock
 
 import (
+	"time"
+
 	"github.com/coreos/etcd/store"
 	"github.com/stretchr/testify/mock"
-	"time"
 )
 
 // A mock Store object used for testing.

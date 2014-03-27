@@ -1,8 +1,9 @@
 package log
 
 import (
-	golog "github.com/coreos/etcd/third_party/github.com/coreos/go-log/log"
 	"os"
+
+	golog "github.com/coreos/etcd/third_party/github.com/coreos/go-log/log"
 )
 
 // The Verbose flag turns on verbose logging.

@@ -1,12 +1,12 @@
 package resources
 
 import (
-    "bytes"
-    "compress/gzip"
-    "fmt"
-    "io"
-    "reflect"
-    "unsafe"
+	"bytes"
+	"compress/gzip"
+	"fmt"
+	"io"
+	"reflect"
+	"unsafe"
 )
 
 func bindata_read(data, name string) ([]byte, error) {
@@ -133,7 +133,6 @@ func views_stats_html() ([]byte, error) {
 	)
 }
 
-
 // Asset loads and returns the asset for the given name.
 // It returns an error if the asset could not be found or
 // could not be loaded.
@@ -145,17 +144,16 @@ func Asset(name string) ([]byte, error) {
 }
 
 // _bindata is a table, holding each asset generator, mapped to its name.
-var _bindata = map[string] func() ([]byte, error) {
-	"index.html": index_html,
-	"images/add.svg": images_add_svg,
-	"images/back.svg": images_back_svg,
-	"images/delete.svg": images_delete_svg,
-	"images/logo.svg": images_logo_svg,
-	"scripts/app.js": scripts_app_js,
+var _bindata = map[string]func() ([]byte, error){
+	"index.html":         index_html,
+	"images/add.svg":     images_add_svg,
+	"images/back.svg":    images_back_svg,
+	"images/delete.svg":  images_delete_svg,
+	"images/logo.svg":    images_logo_svg,
+	"scripts/app.js":     scripts_app_js,
 	"scripts/modules.js": scripts_modules_js,
-	"styles/styles.css": styles_styles_css,
+	"styles/styles.css":  styles_styles_css,
 	"views/browser.html": views_browser_html,
-	"views/home.html": views_home_html,
-	"views/stats.html": views_stats_html,
-
+	"views/home.html":    views_home_html,
+	"views/stats.html":   views_stats_html,
 }
