@@ -149,18 +149,27 @@ func main() {
 	}
 
 	ps.SetServer(s)
-	ps.Start(config.Snapshot, config.Discovery, config.Peers)
+
+	// Generating config could be slow.
+	// Put it here to make listen happen immediately after peer-server starting.
+	peerTLSConfig := server.TLSServerConfig(config.PeerTLSInfo())
+	etcdTLSConfig := server.TLSServerConfig(config.EtcdTLSInfo())
 
 	go func() {
+		// Starting peer server should be followed close by listening on its port
+		// If not, it may leave many requests unaccepted, or cannot receive heartbeat from the cluster.
+		// One severe problem caused if failing receiving heartbeats is when the second node joins one-node cluster,
+		// the cluster could be out of work as long as the two nodes cannot transfer messages.
+		ps.Start(config.Snapshot, config.Discovery, config.Peers)
 		log.Infof("peer server [name %s, listen on %s, advertised url %s]", ps.Config.Name, config.Peer.BindAddr, ps.Config.URL)
-		l := server.NewListener(psConfig.Scheme, config.Peer.BindAddr, config.PeerTLSInfo())
+		l := server.NewListener(psConfig.Scheme, config.Peer.BindAddr, peerTLSConfig)
 
 		sHTTP := &ehttp.CORSHandler{ps.HTTPHandler(), corsInfo}
 		log.Fatal(http.Serve(l, sHTTP))
 	}()
 
 	log.Infof("etcd server [name %s, listen on %s, advertised url %s]", s.Name, config.BindAddr, s.URL())
-	l := server.NewListener(config.EtcdTLSInfo().Scheme(), config.BindAddr, config.EtcdTLSInfo())
+	l := server.NewListener(config.EtcdTLSInfo().Scheme(), config.BindAddr, etcdTLSConfig)
 	sHTTP := &ehttp.CORSHandler{s.HTTPHandler(), corsInfo}
 	log.Fatal(http.Serve(l, sHTTP))
 }

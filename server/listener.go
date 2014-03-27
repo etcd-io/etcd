@@ -7,16 +7,25 @@ import (
 	"github.com/coreos/etcd/log"
 )
 
-// NewListener creates a net.Listener
-// If the given scheme is "https", it will generate TLS configuration based on TLSInfo.
+// TLSServerConfig generates tls configuration based on TLSInfo
 // If any error happens, this function will call log.Fatal
-func NewListener(scheme, addr string, tlsInfo *TLSInfo) net.Listener {
-	if scheme == "https" {
-		cfg, err := tlsInfo.ServerConfig()
-		if err != nil {
-			log.Fatal("TLS info error: ", err)
-		}
+func TLSServerConfig(info *TLSInfo) *tls.Config {
+	if info.KeyFile == "" || info.CertFile == "" {
+		return nil
+	}
 
+	cfg, err := info.ServerConfig()
+	if err != nil {
+		log.Fatal("TLS info error: ", err)
+	}
+	return cfg
+}
+
+// NewListener creates a net.Listener
+// If the given scheme is "https", it will use TLS config to set listener.
+// If any error happens, this function will call log.Fatal
+func NewListener(scheme, addr string, cfg *tls.Config) net.Listener {
+	if scheme == "https" {
 		l, err := newTLSListener(addr, cfg)
 		if err != nil {
 			log.Fatal("Failed to create TLS listener: ", err)
