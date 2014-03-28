@@ -46,7 +46,7 @@ func NewRegistry(s store.Store) *Registry {
 // Peers returns a list of cached peer names.
 func (r *Registry) Peers() []string {
 	names := make([]string, 0, len(r.peers))
-	for name, _ := range r.peers {
+	for name := range r.peers {
 		names = append(names, name)
 	}
 	sort.Sort(sort.StringSlice(names))
@@ -56,7 +56,7 @@ func (r *Registry) Peers() []string {
 // Proxies returns a list of cached proxy names.
 func (r *Registry) Proxies() []string {
 	names := make([]string, 0, len(r.proxies))
-	for name, _ := range r.proxies {
+	for name := range r.proxies {
 		names = append(names, name)
 	}
 	sort.Sort(sort.StringSlice(names))

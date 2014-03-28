@@ -145,7 +145,6 @@ func TestTLSUnauthenticatedClient(t *testing.T) {
 	}
 }
 
-
 func buildClient() http.Client {
 	return http.Client{}
 }
@@ -159,7 +158,7 @@ func startServer(extra []string) (*os.Process, error) {
 	procAttr := new(os.ProcAttr)
 	procAttr.Files = []*os.File{nil, os.Stdout, os.Stderr}
 
-	cmd := []string{"etcd",	"-f", "-data-dir=/tmp/node1", "-name=node1"}
+	cmd := []string{"etcd", "-f", "-data-dir=/tmp/node1", "-name=node1"}
 	cmd = append(cmd, extra...)
 
 	println(strings.Join(cmd, " "))
@@ -171,7 +170,7 @@ func startServerWithDataDir(extra []string) (*os.Process, error) {
 	procAttr := new(os.ProcAttr)
 	procAttr.Files = []*os.File{nil, os.Stdout, os.Stderr}
 
-	cmd := []string{"etcd",	"-data-dir=/tmp/node1", "-name=node1"}
+	cmd := []string{"etcd", "-data-dir=/tmp/node1", "-name=node1"}
 	cmd = append(cmd, extra...)
 
 	println(strings.Join(cmd, " "))
@@ -189,7 +188,7 @@ func stopServer(proc *os.Process) {
 
 func assertServerFunctional(client http.Client, scheme string) error {
 	path := fmt.Sprintf("%s://127.0.0.1:4001/v2/keys/foo", scheme)
-	fields := url.Values(map[string][]string{"value": []string{"bar"}})
+	fields := url.Values(map[string][]string{"value": {"bar"}})
 
 	for i := 0; i < 10; i++ {
 		time.Sleep(1 * time.Second)
@@ -220,7 +219,7 @@ func assertServerFunctional(client http.Client, scheme string) error {
 
 func assertServerNotFunctional(client http.Client, scheme string) error {
 	path := fmt.Sprintf("%s://127.0.0.1:4001/v2/keys/foo", scheme)
-	fields := url.Values(map[string][]string{"value": []string{"bar"}})
+	fields := url.Values(map[string][]string{"value": {"bar"}})
 
 	for i := 0; i < 10; i++ {
 		time.Sleep(1 * time.Second)

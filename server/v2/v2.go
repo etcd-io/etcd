@@ -1,9 +1,10 @@
 package v2
 
 import (
+	"net/http"
+
 	"github.com/coreos/etcd/store"
 	"github.com/coreos/etcd/third_party/github.com/goraft/raft"
-	"net/http"
 )
 
 // The Server interface provides all the methods required for the v2 API.
