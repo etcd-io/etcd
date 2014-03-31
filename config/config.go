@@ -49,32 +49,36 @@ var newFlagNameLookup = map[string]string{
 type Config struct {
 	SystemPath string
 
-	Addr             string `toml:"addr" env:"ETCD_ADDR"`
-	BindAddr         string `toml:"bind_addr" env:"ETCD_BIND_ADDR"`
-	CAFile           string `toml:"ca_file" env:"ETCD_CA_FILE"`
-	CertFile         string `toml:"cert_file" env:"ETCD_CERT_FILE"`
-	CPUProfileFile   string
-	CorsOrigins      []string `toml:"cors" env:"ETCD_CORS"`
-	DataDir          string   `toml:"data_dir" env:"ETCD_DATA_DIR"`
-	Discovery        string   `toml:"discovery" env:"ETCD_DISCOVERY"`
-	Force            bool
-	KeyFile          string   `toml:"key_file" env:"ETCD_KEY_FILE"`
-	Peers            []string `toml:"peers" env:"ETCD_PEERS"`
-	PeersFile        string   `toml:"peers_file" env:"ETCD_PEERS_FILE"`
-	MaxResultBuffer  int      `toml:"max_result_buffer" env:"ETCD_MAX_RESULT_BUFFER"`
-	MaxRetryAttempts int      `toml:"max_retry_attempts" env:"ETCD_MAX_RETRY_ATTEMPTS"`
-	RetryInterval    float64  `toml:"retry_interval" env:"ETCD_RETRY_INTERVAL"`
-	Name             string   `toml:"name" env:"ETCD_NAME"`
-	Snapshot         bool     `toml:"snapshot" env:"ETCD_SNAPSHOT"`
-	SnapshotCount    int      `toml:"snapshot_count" env:"ETCD_SNAPSHOTCOUNT"`
-	ShowHelp         bool
-	ShowVersion      bool
-	Verbose          bool `toml:"verbose" env:"ETCD_VERBOSE"`
-	VeryVerbose      bool `toml:"very_verbose" env:"ETCD_VERY_VERBOSE"`
-	VeryVeryVerbose  bool `toml:"very_very_verbose" env:"ETCD_VERY_VERY_VERBOSE"`
-	Peer             struct {
+	Addr              string `toml:"addr" env:"ETCD_ADDR"`
+	SanitizedAddr     string
+	BindAddr          string `toml:"bind_addr" env:"ETCD_BIND_ADDR"`
+	SanitizedBindAddr string
+	CAFile            string `toml:"ca_file" env:"ETCD_CA_FILE"`
+	CertFile          string `toml:"cert_file" env:"ETCD_CERT_FILE"`
+	CPUProfileFile    string
+	CorsOrigins       []string `toml:"cors" env:"ETCD_CORS"`
+	DataDir           string   `toml:"data_dir" env:"ETCD_DATA_DIR"`
+	Discovery         string   `toml:"discovery" env:"ETCD_DISCOVERY"`
+	Force             bool
+	KeyFile           string   `toml:"key_file" env:"ETCD_KEY_FILE"`
+	Peers             []string `toml:"peers" env:"ETCD_PEERS"`
+	PeersFile         string   `toml:"peers_file" env:"ETCD_PEERS_FILE"`
+	MaxResultBuffer   int      `toml:"max_result_buffer" env:"ETCD_MAX_RESULT_BUFFER"`
+	MaxRetryAttempts  int      `toml:"max_retry_attempts" env:"ETCD_MAX_RETRY_ATTEMPTS"`
+	RetryInterval     float64  `toml:"retry_interval" env:"ETCD_RETRY_INTERVAL"`
+	Name              string   `toml:"name" env:"ETCD_NAME"`
+	Snapshot          bool     `toml:"snapshot" env:"ETCD_SNAPSHOT"`
+	SnapshotCount     int      `toml:"snapshot_count" env:"ETCD_SNAPSHOTCOUNT"`
+	ShowHelp          bool
+	ShowVersion       bool
+	Verbose           bool `toml:"verbose" env:"ETCD_VERBOSE"`
+	VeryVerbose       bool `toml:"very_verbose" env:"ETCD_VERY_VERBOSE"`
+	VeryVeryVerbose   bool `toml:"very_very_verbose" env:"ETCD_VERY_VERY_VERBOSE"`
+	Peer              struct {
 		Addr              string `toml:"addr" env:"ETCD_PEER_ADDR"`
+		SanitizedAddr     string
 		BindAddr          string `toml:"bind_addr" env:"ETCD_PEER_BIND_ADDR"`
+		SanitizedBindAddr string
 		CAFile            string `toml:"ca_file" env:"ETCD_PEER_CA_FILE"`
 		CertFile          string `toml:"cert_file" env:"ETCD_PEER_CERT_FILE"`
 		KeyFile           string `toml:"key_file" env:"ETCD_PEER_KEY_FILE"`
@@ -349,16 +353,16 @@ func (c *Config) Sanitize() error {
 	var err error
 
 	// Sanitize the URLs first.
-	if c.Addr, err = sanitizeURL(c.Addr, c.EtcdTLSInfo().Scheme()); err != nil {
+	if c.SanitizedAddr, err = sanitizeURL(c.Addr, c.EtcdTLSInfo().Scheme()); err != nil {
 		return fmt.Errorf("Advertised URL: %s", err)
 	}
-	if c.BindAddr, err = sanitizeBindAddr(c.BindAddr, c.Addr); err != nil {
+	if c.SanitizedBindAddr, err = sanitizeBindAddr(c.BindAddr, c.SanitizedAddr); err != nil {
 		return fmt.Errorf("Listen Host: %s", err)
 	}
-	if c.Peer.Addr, err = sanitizeURL(c.Peer.Addr, c.PeerTLSInfo().Scheme()); err != nil {
+	if c.Peer.SanitizedAddr, err = sanitizeURL(c.Peer.Addr, c.PeerTLSInfo().Scheme()); err != nil {
 		return fmt.Errorf("Peer Advertised URL: %s", err)
 	}
-	if c.Peer.BindAddr, err = sanitizeBindAddr(c.Peer.BindAddr, c.Peer.Addr); err != nil {
+	if c.Peer.SanitizedBindAddr, err = sanitizeBindAddr(c.Peer.BindAddr, c.Peer.SanitizedAddr); err != nil {
 		return fmt.Errorf("Peer Listen Host: %s", err)
 	}
 

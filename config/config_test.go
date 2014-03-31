@@ -239,7 +239,7 @@ func TestConfigBindAddrInheritPort(t *testing.T) {
 	c := New()
 	assert.Nil(t, c.LoadFlags([]string{"-addr", "127.0.0.1:4009", "-bind-addr", "127.0.0.1"}), "")
 	assert.Nil(t, c.Sanitize())
-	assert.Equal(t, c.BindAddr, "127.0.0.1:4009", "")
+	assert.Equal(t, c.SanitizedBindAddr, "127.0.0.1:4009", "")
 }
 
 // Ensures that a port only argument errors out
@@ -479,7 +479,8 @@ func TestConfigCustomConfigOverrideSystemConfig(t *testing.T) {
 			c := New()
 			c.SystemPath = p1
 			assert.Nil(t, c.Load([]string{"-config", p2}), "")
-			assert.Equal(t, c.Addr, "http://127.0.0.1:6000", "")
+			assert.Nil(t, c.Sanitize(), "")
+			assert.Equal(t, c.SanitizedAddr, "http://127.0.0.1:6000", "")
 		})
 	})
 }
@@ -494,7 +495,8 @@ func TestConfigEnvVarOverrideCustomConfig(t *testing.T) {
 		c := New()
 		c.SystemPath = ""
 		assert.Nil(t, c.Load([]string{"-config", path}), "")
-		assert.Equal(t, c.Peer.Addr, "http://127.0.0.1:8000", "")
+		assert.Nil(t, c.Sanitize(), "")
+		assert.Equal(t, c.Peer.SanitizedAddr, "http://127.0.0.1:8000", "")
 	})
 }
 
@@ -506,7 +508,8 @@ func TestConfigCLIArgsOverrideEnvVar(t *testing.T) {
 	c := New()
 	c.SystemPath = ""
 	assert.Nil(t, c.Load([]string{"-addr", "127.0.0.1:2000"}), "")
-	assert.Equal(t, c.Addr, "http://127.0.0.1:2000", "")
+	assert.Nil(t, c.Sanitize(), "")
+	assert.Equal(t, c.SanitizedAddr, "http://127.0.0.1:2000", "")
 }
 
 //--------------------------------------
