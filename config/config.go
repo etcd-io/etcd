@@ -137,16 +137,6 @@ func (c *Config) Load(arguments []string) error {
 		return err
 	}
 
-	// Sanitize all the input fields.
-	if err := c.Sanitize(); err != nil {
-		return fmt.Errorf("sanitize: %v", err)
-	}
-
-	// Force remove server configuration if specified.
-	if c.Force {
-		c.Reset()
-	}
-
 	return nil
 }
 
