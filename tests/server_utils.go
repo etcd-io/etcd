@@ -1,17 +1,18 @@
 package tests
 
 import (
+	"fmt"
 	"io/ioutil"
+	"net"
 	"net/http"
-	"os"
+	"strconv"
 	"sync"
 	"time"
 
-	"github.com/coreos/etcd/third_party/github.com/goraft/raft"
-
-	"github.com/coreos/etcd/metrics"
+	"github.com/coreos/etcd/boot"
+	"github.com/coreos/etcd/config"
+	"github.com/coreos/etcd/log"
 	"github.com/coreos/etcd/server"
-	"github.com/coreos/etcd/store"
 )
 
 const (
@@ -19,94 +20,302 @@ const (
 	testClientURL         = "localhost:4401"
 	testRaftURL           = "localhost:7701"
 	testSnapshotCount     = 10000
-	testHeartbeatInterval = time.Duration(50) * time.Millisecond
-	testElectionTimeout   = time.Duration(200) * time.Millisecond
+	testHeartbeatInterval = 50
+	testElectionTimeout   = 200
 )
 
-// Starts a server in a temporary directory.
-func RunServer(f func(*server.Server)) {
-	path, _ := ioutil.TempDir("", "etcd-")
-	defer os.RemoveAll(path)
+var (
+	client = http.Client{
+		Transport: &http.Transport{
+			Dial: dialTimeoutFast,
+			// Reject cached result
+			DisableKeepAlives: true,
+		},
+	}
+)
 
-	store := store.New()
-	registry := server.NewRegistry(store)
+type Instance struct {
+	Conf       *config.Config
+	Server     *server.Server
+	firstStart bool
+	stop       func()
+	wait       func()
+}
 
-	serverStats := server.NewRaftServerStats(testName)
-	followersStats := server.NewRaftFollowersStats(testName)
+func NewInstance() *Instance {
+	c := config.New()
+	c.DataDir = "/tmp/node"
+	c.Name = "node"
+	return &Instance{Conf: c, firstStart: true}
+}
 
-	psConfig := server.PeerServerConfig{
-		Name:          testName,
-		URL:           "http://" + testRaftURL,
-		Scheme:        "http",
-		SnapshotCount: testSnapshotCount,
+func NewTLSInstance() *Instance {
+	i := NewInstance()
+	i.Conf.CertFile = "../../fixtures/ca/server.crt"
+	i.Conf.KeyFile = "../../fixtures/ca/server.key.insecure"
+	return i
+}
+
+func NewTLSAuthInstance() *Instance {
+	i := NewTLSInstance()
+	i.Conf.CAFile = "../../fixtures/ca/ca.crt"
+	return i
+}
+
+func NewOldInstance() *Instance {
+	i := NewInstance()
+	i.firstStart = false
+	return i
+}
+
+// Start starts the instance, and ensures that it is serving
+// It will ignore log data if the instance starts at the first time.
+func (i *Instance) Start() error {
+	// TODO(yichengq): delete this later.
+	// If the http `Serve` is restarted too fast, it may happen that it
+	// uses old http handlers. This may disturb the new
+	// instance running by receiving(intercepting) messages.
+	// More details could be review here: https://github.com/unihorn/etcd/commits/http-handler-bug-maybe
+	// It is still under research, and not fully verified.
+	// It would be resolved here by ensuring all goroutines are stopped for each test later.
+	time.Sleep(time.Second)
+
+	if i.firstStart {
+		// Remove old data at the first start
+		oldForce := i.Conf.Force
+		i.Conf.Force = true
+		defer func() {
+			i.Conf.Force = oldForce
+			i.firstStart = false
+		}()
 	}
 
-	mb := metrics.NewBucket("")
-
-	ps := server.NewPeerServer(psConfig, registry, store, &mb, followersStats, serverStats)
-	psListener := server.NewListener("http", testRaftURL, nil)
-
-	// Create Raft transporter and server
-	dialTimeout := (3 * testHeartbeatInterval) + testElectionTimeout
-	responseHeaderTimeout := (3 * testHeartbeatInterval) + testElectionTimeout
-	raftTransporter := server.NewTransporter(followersStats, serverStats, registry, testHeartbeatInterval, dialTimeout, responseHeaderTimeout)
-	raftServer, err := raft.NewServer(testName, path, raftTransporter, store, ps, "")
+	var err error
+	i.Server, i.stop, i.wait, _, err = boot.Start(i.Conf)
 	if err != nil {
-		panic(err)
+		return err
 	}
-	raftServer.SetElectionTimeout(testElectionTimeout)
-	raftServer.SetHeartbeatInterval(testHeartbeatInterval)
-	ps.SetRaftServer(raftServer)
+	// make sure that it is serving now
+	// TODO(yichengq): Do actual check instead of sleep. Fix it later.
+	time.Sleep(10 * time.Millisecond)
+	return nil
+}
 
-	s := server.New(testName, "http://"+testClientURL, ps, registry, store, nil)
-	sListener := server.NewListener("http", testClientURL, nil)
+// Stop stops the instance.
+func (i *Instance) Stop() {
+	if i.stop != nil {
+		i.stop()
+		i.stop = nil
+		i.wait = nil
+	}
+}
 
-	ps.SetServer(s)
+// Wait waits the instance to stop.
+func (i *Instance) Wait() {
+	if i.wait != nil {
+		i.wait()
+		i.stop = nil
+		i.wait = nil
+	}
+}
 
-	w := &sync.WaitGroup{}
+func GetLeader(i *Instance) (string, error) {
 
-	// Start up peer server.
-	c := make(chan bool)
-	go func() {
-		c <- true
-		ps.Start(false, "", []string{})
-		h := waitHandler{w, ps.HTTPHandler()}
-		http.Serve(psListener, &h)
-	}()
-	<-c
+	resp, err := client.Get(i.Server.URL() + "/v1/leader")
 
-	// Start up etcd server.
-	go func() {
-		c <- true
-		h := waitHandler{w, s.HTTPHandler()}
-		http.Serve(sListener, &h)
-	}()
-	<-c
+	if err != nil {
+		return "", err
+	}
 
-	// Wait to make sure servers have started.
-	time.Sleep(50 * time.Millisecond)
+	if resp.StatusCode != http.StatusOK {
+		resp.Body.Close()
+		return "", fmt.Errorf("no leader")
+	}
+
+	b, err := ioutil.ReadAll(resp.Body)
+
+	resp.Body.Close()
+
+	if err != nil {
+		return "", err
+	}
+
+	return string(b), nil
+}
+
+// Starts a new server.
+func RunServer(f func(*server.Server)) {
+	i := NewInstance()
+	c := i.Conf
+
+	c.Addr = testClientURL
+	c.Name = testName
+	c.Peer.Addr = testRaftURL
+
+	c.Peer.HeartbeatInterval = testHeartbeatInterval
+	c.Peer.ElectionTimeout = testElectionTimeout
+	c.SnapshotCount = testSnapshotCount
+
+	i.Start()
 
 	// Execute the function passed in.
-	f(s)
+	f(i.Server)
 
-	// Clean up servers.
-	ps.Stop()
-	psListener.Close()
-	sListener.Close()
-	w.Wait()
+	i.Stop()
 }
 
-type waitHandler struct {
-	wg      *sync.WaitGroup
-	handler http.Handler
+type Cluster struct {
+	Size      int
+	Instances []*Instance
+	client    *http.Client
 }
 
-func (h *waitHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	h.wg.Add(1)
-	defer h.wg.Done()
-	h.handler.ServeHTTP(w, r)
+// Create a cluster of etcd nodes
+func NewCluster(size int, ssl bool) *Cluster {
+	if size <= 0 {
+		return nil
+	}
+	instances := make([]*Instance, size)
 
-	//important to flush before decrementing the wait group.
-	//we won't get a chance to once main() ends.
-	w.(http.Flusher).Flush()
+	for i := 0; i < size; i++ {
+		strI := strconv.Itoa(i + 1)
+		instances[i] = NewInstance()
+		c := instances[i].Conf
+		c.DataDir = "/tmp/node" + strI
+		c.Name = "node" + strI
+		c.Addr = fmt.Sprintf("127.0.0.1:%d", 4001+i)
+		c.Peer.Addr = fmt.Sprintf("127.0.0.1:%d", 7001+i)
+		if i == 0 {
+			if ssl {
+				c.Peer.CAFile = "../../fixtures/ca/ca.crt"
+				c.Peer.CertFile = "../../fixtures/ca/server.crt"
+				c.Peer.KeyFile = "../../fixtures/ca/server.key.insecure"
+			}
+		} else {
+			c.Peers = []string{"127.0.0.1:7001"}
+			if ssl {
+				c.Peer.CAFile = "../../fixtures/ca/ca.crt"
+				c.Peer.CertFile = "../../fixtures/ca/server2.crt"
+				c.Peer.KeyFile = "../../fixtures/ca/server2.key.insecure"
+			}
+		}
+	}
+
+	return &Cluster{Size: size, Instances: instances}
+}
+
+// Start all the nodes in the cluster
+func (c *Cluster) Start() bool {
+	ok := true
+	wg := &sync.WaitGroup{}
+
+	for index, i := range c.Instances {
+		// The problem is that if the master isn't up then the children
+		// have to retry. This retry can take upwards of 15 seconds
+		// which slows tests way down and some of them fail.
+		if index == 0 {
+			if err := i.Start(); err != nil {
+				log.Warn(err)
+				ok = false
+			}
+			continue
+		}
+		wg.Add(1)
+		go func(i *Instance) {
+			if err := i.Start(); err != nil {
+				log.Warn(err)
+				ok = false
+			}
+			wg.Done()
+		}(i)
+	}
+
+	wg.Wait()
+	return ok
+}
+
+// Stop all the nodes in the cluster
+func (c *Cluster) Stop() {
+	wg := &sync.WaitGroup{}
+	for _, i := range c.Instances {
+		wg.Add(1)
+		go func(i *Instance) {
+			i.Stop()
+			wg.Done()
+		}(i)
+	}
+	wg.Wait()
+}
+
+func (c *Cluster) StartOne(index int) error {
+	return c.Instances[index].Start()
+}
+
+func (c *Cluster) StopOne(index int) {
+	c.Instances[index].Stop()
+}
+
+func (c *Cluster) WaitOne(index int) {
+	c.Instances[index].Wait()
+}
+
+func (c *Cluster) Monitor(allowDeadNum int, leaderChan chan string, all chan bool, stop chan bool) {
+	leaderMap := make(map[int]string)
+
+	for {
+		knownLeader := "unknown"
+		dead := 0
+		var i int
+
+		for i = 0; i < c.Size; i++ {
+			leader, err := GetLeader(c.Instances[i])
+
+			if err == nil {
+				leaderMap[i] = leader
+
+				if knownLeader == "unknown" {
+					knownLeader = leader
+				} else {
+					if leader != knownLeader {
+						break
+					}
+
+				}
+
+			} else {
+				dead++
+				if dead > allowDeadNum {
+					break
+				}
+			}
+
+		}
+
+		if i == c.Size {
+			select {
+			case <-stop:
+				return
+			case <-leaderChan:
+				leaderChan <- knownLeader
+			default:
+				leaderChan <- knownLeader
+			}
+
+		}
+		if dead == 0 {
+			select {
+			case <-all:
+				all <- true
+			default:
+				all <- true
+			}
+		}
+
+		time.Sleep(time.Millisecond * 10)
+	}
+}
+
+// Dial with timeout
+func dialTimeoutFast(network, addr string) (net.Conn, error) {
+	return net.DialTimeout(network, addr, time.Millisecond*10)
 }
