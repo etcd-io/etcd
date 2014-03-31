@@ -24,6 +24,8 @@ import (
 	"runtime"
 	"time"
 
+	goetcd "github.com/coreos/etcd/third_party/github.com/coreos/go-etcd/etcd"
+	golog "github.com/coreos/etcd/third_party/github.com/coreos/go-log/log"
 	"github.com/coreos/etcd/third_party/github.com/goraft/raft"
 
 	"github.com/coreos/etcd/config"
@@ -53,6 +55,17 @@ func main() {
 	if config.VeryVeryVerbose {
 		log.Verbose = true
 		raft.SetLogLevel(raft.Trace)
+		goetcd.SetLogger(
+			golog.New(
+				"go-etcd",
+				false,
+				golog.CombinedSink(
+					os.Stdout,
+					"[%s] %s %-9s | %s\n",
+					[]string{"prefix", "time", "priority", "message"},
+				),
+			),
+		)
 	} else if config.VeryVerbose {
 		log.Verbose = true
 		raft.SetLogLevel(raft.Debug)
