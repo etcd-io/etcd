@@ -6,7 +6,7 @@ Starting an etcd cluster can be painful since each node needs to know of another
 
 Peer discovery for etcd is processed by `-discovery`, `-peers` and lastly log data in `-data-dir`. For more information see the [discovery design][discovery-design].
 
-Please note - at least 3 nodes are required for cluster durability.
+Please note - at least 3 nodes are required for cluster availability.
 
 ## Using discovery.etcd.io
 
