@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 )
 
 // Creates a new HTTP client with KeepAlive disabled.
@@ -70,5 +71,16 @@ func send(method string, url string, bodyType string, body io.Reader) (*http.Res
 		return nil, err
 	}
 	req.Header.Set("Content-Type", bodyType)
-	return c.Do(req)
+
+	var resp *http.Response
+	// do requests several times to avoid internal error, e.g., leader election
+	// This should be replaced by go-etcd later.
+	for i := 0; i < 3; i++ {
+		resp, err = c.Do(req)
+		if err == nil {
+			return resp, err
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	return resp, err
 }
