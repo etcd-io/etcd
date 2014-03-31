@@ -6,6 +6,8 @@ Starting an etcd cluster can be painful since each node needs to know of another
 
 Peer discovery for etcd is processed by `-discovery`, `-peers` and lastly log data in `-data-dir`. For more information see the [discovery design][discovery-design].
 
+Please note - at least 3 nodes are required for cluster availability.
+
 ## Using discovery.etcd.io
 
 ### Create a Token
@@ -24,6 +26,7 @@ Here's a full example:
 TOKEN=$(curl https://discovery.etcd.io/new)
 ./etcd -name instance1 -peer-addr 10.1.2.3:7001 -addr 10.1.2.3:4001 -discovery $TOKEN
 ./etcd -name instance2 -peer-addr 10.1.2.4:7002 -addr 10.1.2.4:4002 -discovery $TOKEN
+./etcd -name instance3 -peer-addr 10.1.2.5:7002 -addr 10.1.2.5:4002 -discovery $TOKEN
 ```
 
 ## Running Your Own Discovery Endpoint
@@ -34,6 +37,7 @@ The discovery API communicates with a separate etcd cluster to store and retriev
 TOKEN="testcluster"
 ./etcd -name instance1 -peer-addr 10.1.2.3:7001 -addr 10.1.2.3:4001 -discovery http://10.10.10.10:4001/v2/keys/$TOKEN
 ./etcd -name instance2 -peer-addr 10.1.2.4:7002 -addr 10.1.2.4:4002 -discovery http://10.10.10.10:4001/v2/keys/$TOKEN
+./etcd -name instance3 -peer-addr 10.1.2.5:7002 -addr 10.1.2.5:4002 -discovery http://10.10.10.10:4001/v2/keys/$TOKEN
 ```
 
 If you're interested in how to discovery API works behind the scenes, read about the [Discovery Protocol](https://github.com/coreos/etcd/blob/master/Documentation/discovery-protocol.md).
