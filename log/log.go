@@ -6,10 +6,29 @@ import (
 )
 
 // The Verbose flag turns on verbose logging.
-var Verbose bool = false
+var (
+	Verbose bool = false
+	logger Logger = golog.New("etcd", false,
+		golog.CombinedSink(os.Stdout, "[%s] %s %-9s | %s\n", []string{"prefix", "time", "priority", "message"}))
+)
 
-var logger *golog.Logger = golog.New("etcd", false,
-	golog.CombinedSink(os.Stdout, "[%s] %s %-9s | %s\n", []string{"prefix", "time", "priority", "message"}))
+type Logger interface {
+	Infof(format string, v ...interface{})
+	Debugf(format string, v ...interface{})
+	Debug(v ...interface{})
+	Warningf(format string, v ...interface{})
+	Warning(v ...interface{})
+	Fatalf(format string, v ...interface{})
+	Fatalln(v ...interface{})
+}
+
+func SetLogger(l Logger) {
+	logger = l
+}
+
+func GetLogger() Logger {
+	return logger
+}
 
 func Infof(format string, v ...interface{}) {
 	logger.Infof(format, v...)
