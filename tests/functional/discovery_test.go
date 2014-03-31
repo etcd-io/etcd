@@ -10,11 +10,11 @@ import (
 	"testing"
 	"time"
 
+	goetcd "github.com/coreos/etcd/third_party/github.com/coreos/go-etcd/etcd"
 	"github.com/coreos/etcd/third_party/github.com/stretchr/testify/assert"
 
-	etcdtest "github.com/coreos/etcd/tests"
 	"github.com/coreos/etcd/server"
-	goetcd "github.com/coreos/etcd/third_party/github.com/coreos/go-etcd/etcd"
+	etcdtest "github.com/coreos/etcd/tests"
 )
 
 type garbageHandler struct {
@@ -24,7 +24,7 @@ type garbageHandler struct {
 
 func (g *garbageHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, "Hello, client")
-	if r.URL.String() != "/v2/keys/_etcd/registry/1/node1" {
+	if r.URL.String() != "/v2/keys/_etcd/registry/1/node" {
 		g.t.Fatalf("Unexpected web request")
 	}
 	g.success = true
@@ -37,16 +37,16 @@ func TestDiscoveryDownNoBackupPeers(t *testing.T) {
 	ts := httptest.NewServer(&g)
 	defer ts.Close()
 
-	discover := ts.URL + "/v2/keys/_etcd/registry/1"
-	proc, err := startServer([]string{"-discovery", discover})
-
-	if err != nil {
-		t.Fatal(err.Error())
+	i := etcdtest.NewInstance()
+	i.Conf.Discovery = ts.URL + "/v2/keys/_etcd/registry/1"
+	// It should fail here due to discovery failure.
+	if !assert.Panics(t, func() { i.Start() }) {
+		t.Fatal("Expect start panic")
 	}
-	defer stopServer(proc)
+	defer i.Stop()
 
 	client := http.Client{}
-	err = assertServerNotUp(client, "http")
+	err := assertServerNotUp(client, "http")
 	if err != nil {
 		t.Fatal(err.Error())
 	}
@@ -64,20 +64,21 @@ func TestDiscoveryDownWithBackupPeers(t *testing.T) {
 		ts := httptest.NewServer(&g)
 		defer ts.Close()
 
-		discover := ts.URL + "/v2/keys/_etcd/registry/1"
+		i := etcdtest.NewInstance()
+		i.Conf.Discovery = ts.URL + "/v2/keys/_etcd/registry/1"
 		u, ok := s.PeerHost("ETCDTEST")
 		if !ok {
 			t.Fatalf("Couldn't find the URL")
 		}
-		proc, err := startServer([]string{"-discovery", discover, "-peers", u})
+		i.Conf.Peers = []string{u}
 
-		if err != nil {
-			t.Fatal(err.Error())
+		if err := i.Start(); err != nil {
+			t.Fatal(err)
 		}
-		defer stopServer(proc)
+		defer i.Stop()
 
 		client := http.Client{}
-		err = assertServerFunctional(client, "http")
+		err := assertServerFunctional(client, "http")
 		if err != nil {
 			t.Fatal(err.Error())
 		}
@@ -92,19 +93,20 @@ func TestDiscoveryDownWithBackupPeers(t *testing.T) {
 // no discovery URL and a peer list.
 func TestDiscoveryNoWithBackupPeers(t *testing.T) {
 	etcdtest.RunServer(func(s *server.Server) {
+		i := etcdtest.NewInstance()
 		u, ok := s.PeerHost("ETCDTEST")
 		if !ok {
 			t.Fatalf("Couldn't find the URL")
 		}
-		proc, err := startServer([]string{"-peers", u})
+		i.Conf.Peers = []string{u}
 
-		if err != nil {
-			t.Fatal(err.Error())
+		if err := i.Start(); err != nil {
+			t.Fatal(err)
 		}
-		defer stopServer(proc)
+		defer i.Stop()
 
 		client := http.Client{}
-		err = assertServerFunctional(client, "http")
+		err := assertServerFunctional(client, "http")
 		if err != nil {
 			t.Fatal(err.Error())
 		}
@@ -115,38 +117,37 @@ func TestDiscoveryNoWithBackupPeers(t *testing.T) {
 // started with a bad discovery URL, no backups and valid data dir.
 func TestDiscoveryDownNoBackupPeersWithDataDir(t *testing.T) {
 	etcdtest.RunServer(func(s *server.Server) {
+		// run etcd and connect to ETCDTEST server
+		i := etcdtest.NewInstance()
 		u, ok := s.PeerHost("ETCDTEST")
 		if !ok {
 			t.Fatalf("Couldn't find the URL")
 		}
-
-		// run etcd and connect to ETCDTEST server
-		proc, err := startServer([]string{"-peers", u})
-		if err != nil {
-			t.Fatal(err.Error())
+		i.Conf.Peers = []string{u}
+		if err := i.Start(); err != nil {
+			t.Fatal(err)
 		}
 
 		// check it runs well
 		client := http.Client{}
-		err = assertServerFunctional(client, "http")
+		err := assertServerFunctional(client, "http")
 		if err != nil {
 			t.Fatal(err.Error())
 		}
 
 		// stop etcd, and leave valid data dir for later usage
-		stopServer(proc)
+		i.Stop()
 
 		g := garbageHandler{t: t}
 		ts := httptest.NewServer(&g)
 		defer ts.Close()
 
-		discover := ts.URL + "/v2/keys/_etcd/registry/1"
 		// connect to ETCDTEST server again with previous data dir
-		proc, err = startServerWithDataDir([]string{"-discovery", discover})
-		if err != nil {
-			t.Fatal(err.Error())
+		i.Conf.Discovery = ts.URL + "/v2/keys/_etcd/registry/1"
+		if err := i.Start(); err != nil {
+			t.Fatal(err)
 		}
-		defer stopServer(proc)
+		defer i.Stop()
 
 		// TODO(yichengq): it needs some time to do leader election
 		// improve to get rid of it
@@ -168,14 +169,15 @@ func TestDiscoveryDownNoBackupPeersWithDataDir(t *testing.T) {
 // registers as the first peer.
 func TestDiscoveryFirstPeer(t *testing.T) {
 	etcdtest.RunServer(func(s *server.Server) {
-		proc, err := startServer([]string{"-discovery", s.URL() + "/v2/keys/_etcd/registry/2"})
-		if err != nil {
-			t.Fatal(err.Error())
+		i := etcdtest.NewInstance()
+		i.Conf.Discovery = s.URL() + "/v2/keys/_etcd/registry/2"
+		if err := i.Start(); err != nil {
+			t.Fatal(err)
 		}
-		defer stopServer(proc)
+		defer i.Stop()
 
 		client := http.Client{}
-		err = assertServerFunctional(client, "http")
+		err := assertServerFunctional(client, "http")
 		if err != nil {
 			t.Fatal(err.Error())
 		}
@@ -191,11 +193,12 @@ func TestDiscoverySecondPeerFirstDown(t *testing.T) {
 		resp, err := etcdtest.PutForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/_etcd/registry/2/_state"), v)
 		assert.Equal(t, resp.StatusCode, http.StatusCreated)
 
-		proc, err := startServer([]string{"-discovery", s.URL() + "/v2/keys/_etcd/registry/2"})
-		if err != nil {
-			t.Fatal(err.Error())
+		i := etcdtest.NewInstance()
+		i.Conf.Discovery = s.URL() + "/v2/keys/_etcd/registry/2"
+		if !assert.Panics(t, func() { i.Start() }) {
+			t.Fatal("Expect start panic")
 		}
-		defer stopServer(proc)
+		defer i.Stop()
 
 		client := http.Client{}
 		err = assertServerNotUp(client, "http")
@@ -219,11 +222,13 @@ func TestDiscoverySecondPeerFirstNoResponse(t *testing.T) {
 		resp, err = etcdtest.PutForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/_etcd/registry/2/ETCDTEST"), v)
 		assert.Equal(t, resp.StatusCode, http.StatusCreated)
 
-		proc, err := startServer([]string{"-retry-interval", "0.2", "-discovery", s.URL() + "/v2/keys/_etcd/registry/2"})
-		if err != nil {
-			t.Fatal(err.Error())
+		i := etcdtest.NewInstance()
+		i.Conf.Discovery = s.URL() + "/v2/keys/_etcd/registry/2"
+		i.Conf.RetryInterval = 0.2
+		if !assert.Panics(t, func() { i.Start() }) {
+			t.Fatal("Expect start panic")
 		}
-		defer stopServer(proc)
+		defer i.Stop()
 
 		// TODO(bp): etcd will take 30 seconds to shutdown, figure this
 		// out instead
@@ -263,13 +268,14 @@ func TestDiscoverySecondPeerUp(t *testing.T) {
 		resp, err = etcdtest.PutForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/_etcd/registry/3/ETCDTEST"), v)
 		assert.Equal(t, resp.StatusCode, http.StatusCreated)
 
-		proc, err := startServer([]string{"-discovery", s.URL() + "/v2/keys/_etcd/registry/3"})
-		if err != nil {
-			t.Fatal(err.Error())
+		i := etcdtest.NewInstance()
+		i.Conf.Discovery = s.URL() + "/v2/keys/_etcd/registry/3"
+		if err := i.Start(); err != nil {
+			t.Fatal(err)
 		}
-		defer stopServer(proc)
+		defer i.Stop()
 
-		watch := fmt.Sprintf("%s%s%d", s.URL(), "/v2/keys/_etcd/registry/3/node1?wait=true&waitIndex=", testResp.EtcdIndex)
+		watch := fmt.Sprintf("%s%s%d", s.URL(), "/v2/keys/_etcd/registry/3/node?wait=true&waitIndex=", testResp.EtcdIndex)
 		resp, err = http.Get(watch)
 		if err != nil {
 			t.Fatal(err.Error())

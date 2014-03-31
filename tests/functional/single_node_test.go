@@ -1,25 +1,21 @@
 package test
 
 import (
-	"os"
 	"testing"
 	"time"
 
 	"github.com/coreos/etcd/third_party/github.com/coreos/go-etcd/etcd"
+
+	etcdtest "github.com/coreos/etcd/tests"
 )
 
 // Create a single node and try to set value
 func TestSingleNode(t *testing.T) {
-	procAttr := new(os.ProcAttr)
-	procAttr.Files = []*os.File{nil, os.Stdout, os.Stderr}
-	args := []string{"etcd", "-name=node1", "-f", "-data-dir=/tmp/node1"}
-
-	process, err := os.StartProcess(EtcdBinPath, args, procAttr)
-	if err != nil {
-		t.Fatal("start process failed:" + err.Error())
-		return
+	i := etcdtest.NewInstance()
+	if err := i.Start(); err != nil {
+		t.Fatal("cannot start etcd")
 	}
-	defer process.Kill()
+	defer i.Stop()
 
 	time.Sleep(time.Second)
 

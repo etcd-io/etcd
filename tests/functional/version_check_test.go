@@ -2,23 +2,19 @@ package test
 
 import (
 	"net/http"
-	"os"
 	"testing"
 	"time"
+
+	etcdtest "github.com/coreos/etcd/tests"
 )
 
 // Ensure that a node can reply to a version check appropriately.
 func TestVersionCheck(t *testing.T) {
-	procAttr := new(os.ProcAttr)
-	procAttr.Files = []*os.File{nil, os.Stdout, os.Stderr}
-	args := []string{"etcd", "-name=node1", "-f", "-data-dir=/tmp/version_check"}
-
-	process, err := os.StartProcess(EtcdBinPath, args, procAttr)
-	if err != nil {
-		t.Fatal("start process failed:" + err.Error())
-		return
+	i := etcdtest.NewInstance()
+	if err := i.Start(); err != nil {
+		t.Fatal("cannot start etcd")
 	}
-	defer process.Kill()
+	defer i.Stop()
 
 	time.Sleep(time.Second)
 

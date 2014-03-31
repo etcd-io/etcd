@@ -3,12 +3,11 @@ package test
 import (
 	"bytes"
 	"fmt"
-	"os"
 	"testing"
 	"time"
 
 	"github.com/coreos/etcd/server"
-	"github.com/coreos/etcd/tests"
+	etcdtest "github.com/coreos/etcd/tests"
 	"github.com/coreos/etcd/third_party/github.com/coreos/go-etcd/etcd"
 	"github.com/coreos/etcd/third_party/github.com/stretchr/testify/assert"
 )
@@ -16,13 +15,10 @@ import (
 // Create a full cluster and then add extra an extra proxy node.
 func TestProxy(t *testing.T) {
 	clusterSize := 10 // DefaultActiveSize + 1
-	_, etcds, err := CreateCluster(clusterSize, &os.ProcAttr{Files: []*os.File{nil, os.Stdout, os.Stderr}}, false)
-	assert.NoError(t, err)
-	defer DestroyCluster(etcds)
-
-	if err != nil {
-		t.Fatal("cannot create cluster")
-	}
+	cluster := etcdtest.NewCluster(clusterSize, false)
+	ok := cluster.Start()
+	assert.True(t, ok)
+	defer cluster.Stop()
 
 	c := etcd.NewClient(nil)
 	c.SyncCluster()
@@ -35,10 +31,10 @@ func TestProxy(t *testing.T) {
 	time.Sleep(time.Second)
 
 	// Check that all peers and proxies have the value.
-	for i, _ := range etcds {
-		resp, err := tests.Get(fmt.Sprintf("http://localhost:%d/v2/keys/foo", 4000+(i+1)))
+	for i := 0; i < clusterSize; i++ {
+		resp, err := etcdtest.Get(fmt.Sprintf("http://localhost:%d/v2/keys/foo", 4000+(i+1)))
 		if assert.NoError(t, err) {
-			body := tests.ReadBodyJSON(resp)
+			body := etcdtest.ReadBodyJSON(resp)
 			if node, _ := body["node"].(map[string]interface{}); assert.NotNil(t, node) {
 				assert.Equal(t, node["value"], "bar")
 			}
@@ -51,7 +47,7 @@ func TestProxy(t *testing.T) {
 	assert.Equal(t, len(result.Node.Nodes), 1)
 
 	// Reconfigure with larger active size (10 nodes) and wait for promotion.
-	resp, _ := tests.Put("http://localhost:7001/v2/admin/config", "application/json", bytes.NewBufferString(`{"activeSize":10, "promoteDelay":1800}`))
+	resp, _ := etcdtest.Put("http://localhost:7001/v2/admin/config", "application/json", bytes.NewBufferString(`{"activeSize":10, "promoteDelay":1800}`))
 	if !assert.Equal(t, resp.StatusCode, 200) {
 		t.FailNow()
 	}
@@ -64,7 +60,7 @@ func TestProxy(t *testing.T) {
 	assert.Equal(t, len(result.Node.Nodes), 0)
 
 	// Reconfigure with a smaller active size (8 nodes).
-	resp, _ = tests.Put("http://localhost:7001/v2/admin/config", "application/json", bytes.NewBufferString(`{"activeSize":8, "promoteDelay":1800}`))
+	resp, _ = etcdtest.Put("http://localhost:7001/v2/admin/config", "application/json", bytes.NewBufferString(`{"activeSize":8, "promoteDelay":1800}`))
 	if !assert.Equal(t, resp.StatusCode, 200) {
 		t.FailNow()
 	}
@@ -86,15 +82,10 @@ func TestProxy(t *testing.T) {
 // Create a full cluster, disconnect a peer, wait for autodemotion, wait for autopromotion.
 func TestProxyAutoPromote(t *testing.T) {
 	clusterSize := 10 // DefaultActiveSize + 1
-	_, etcds, err := CreateCluster(clusterSize, &os.ProcAttr{Files: []*os.File{nil, os.Stdout, os.Stderr}}, false)
-	if err != nil {
-		t.Fatal("cannot create cluster")
-	}
-	defer func() {
-		// Wrap this in a closure so that it picks up the updated version of
-		// the "etcds" variable.
-		DestroyCluster(etcds)
-	}()
+	cluster := etcdtest.NewCluster(clusterSize, false)
+	ok := cluster.Start()
+	assert.True(t, ok)
+	defer cluster.Stop()
 
 	c := etcd.NewClient(nil)
 	c.SyncCluster()
@@ -107,18 +98,13 @@ func TestProxyAutoPromote(t *testing.T) {
 	assert.Equal(t, len(result.Node.Nodes), 1)
 
 	// Reconfigure with a short promote delay (2 second).
-	resp, _ := tests.Put("http://localhost:7001/v2/admin/config", "application/json", bytes.NewBufferString(`{"activeSize":9, "promoteDelay":2}`))
+	resp, _ := etcdtest.Put("http://localhost:7001/v2/admin/config", "application/json", bytes.NewBufferString(`{"activeSize":9, "promoteDelay":2}`))
 	if !assert.Equal(t, resp.StatusCode, 200) {
 		t.FailNow()
 	}
 
 	// Remove peer.
-	etcd := etcds[1]
-	etcds = append(etcds[:1], etcds[2:]...)
-	if err := etcd.Kill(); err != nil {
-		panic(err.Error())
-	}
-	etcd.Release()
+	cluster.StopOne(1)
 
 	// Wait for it to get dropped.
 	time.Sleep(server.PeerActivityMonitorTimeout + (2 * time.Second))

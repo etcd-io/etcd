@@ -1,37 +1,34 @@
 package test
 
 import (
-	"os"
 	"testing"
 	"time"
 
 	"github.com/coreos/etcd/third_party/github.com/coreos/go-etcd/etcd"
+
+	etcdtest "github.com/coreos/etcd/tests"
 )
 
 // Create a five nodes
 // Kill all the nodes and restart
 func TestMultiNodeKillAllAndRecovery(t *testing.T) {
-	procAttr := new(os.ProcAttr)
-	procAttr.Files = []*os.File{nil, os.Stdout, os.Stderr}
-
 	stop := make(chan bool)
 	leaderChan := make(chan string, 1)
 	all := make(chan bool, 1)
 
 	clusterSize := 5
-	argGroup, etcds, err := CreateCluster(clusterSize, procAttr, false)
-	defer DestroyCluster(etcds)
-
-	if err != nil {
-		t.Fatal("cannot create cluster")
+	cluster := etcdtest.NewCluster(clusterSize, false)
+	if !cluster.Start() {
+		t.Fatal("cannot start cluster")
 	}
+	defer cluster.Stop()
 
 	c := etcd.NewClient(nil)
 
-	go Monitor(clusterSize, clusterSize, leaderChan, all, stop)
+	go cluster.Monitor(clusterSize, leaderChan, all, stop)
 	<-all
 	<-leaderChan
-	stop <-true
+	stop <- true
 
 	c.SyncCluster()
 
@@ -47,7 +44,7 @@ func TestMultiNodeKillAllAndRecovery(t *testing.T) {
 	time.Sleep(time.Second)
 
 	// kill all
-	DestroyCluster(etcds)
+	cluster.Stop()
 
 	time.Sleep(time.Second)
 
@@ -57,11 +54,9 @@ func TestMultiNodeKillAllAndRecovery(t *testing.T) {
 
 	time.Sleep(time.Second)
 
-	for i := 0; i < clusterSize; i++ {
-		etcds[i], err = os.StartProcess(EtcdBinPath, argGroup[i], procAttr)
-	}
+	cluster.Start()
 
-	go Monitor(clusterSize, 1, leaderChan, all, stop)
+	go cluster.Monitor(1, leaderChan, all, stop)
 
 	<-all
 	<-leaderChan
@@ -80,29 +75,23 @@ func TestMultiNodeKillAllAndRecovery(t *testing.T) {
 // TestTLSMultiNodeKillAllAndRecovery create a five nodes
 // then kill all the nodes and restart
 func TestTLSMultiNodeKillAllAndRecovery(t *testing.T) {
-	t.Skip("awaiting fix")
-
-	procAttr := new(os.ProcAttr)
-	procAttr.Files = []*os.File{nil, os.Stdout, os.Stderr}
-
 	stop := make(chan bool)
 	leaderChan := make(chan string, 1)
 	all := make(chan bool, 1)
 
 	clusterSize := 5
-	argGroup, etcds, err := CreateCluster(clusterSize, procAttr, true)
-	defer DestroyCluster(etcds)
-
-	if err != nil {
-		t.Fatal("cannot create cluster")
+	cluster := etcdtest.NewCluster(clusterSize, false)
+	if !cluster.Start() {
+		t.Fatal("cannot start cluster")
 	}
+	defer cluster.Stop()
 
 	c := etcd.NewClient(nil)
 
-	go Monitor(clusterSize, clusterSize, leaderChan, all, stop)
+	go cluster.Monitor(clusterSize, leaderChan, all, stop)
 	<-all
 	<-leaderChan
-	stop <-true
+	stop <- true
 
 	c.SyncCluster()
 
@@ -118,7 +107,7 @@ func TestTLSMultiNodeKillAllAndRecovery(t *testing.T) {
 	time.Sleep(time.Second)
 
 	// kill all
-	DestroyCluster(etcds)
+	cluster.Stop()
 
 	time.Sleep(time.Second)
 
@@ -128,11 +117,9 @@ func TestTLSMultiNodeKillAllAndRecovery(t *testing.T) {
 
 	time.Sleep(time.Second)
 
-	for i := 0; i < clusterSize; i++ {
-		etcds[i], err = os.StartProcess(EtcdBinPath, argGroup[i], procAttr)
-	}
+	cluster.Start()
 
-	go Monitor(clusterSize, 1, leaderChan, all, stop)
+	go cluster.Monitor(1, leaderChan, all, stop)
 
 	<-all
 	<-leaderChan

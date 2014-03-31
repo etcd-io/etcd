@@ -3,27 +3,23 @@ package test
 import (
 	"fmt"
 	"math/rand"
-	"os"
 	"testing"
 	"time"
 
 	"github.com/coreos/etcd/third_party/github.com/coreos/go-etcd/etcd"
+
+	etcdtest "github.com/coreos/etcd/tests"
 )
 
 // Create a five nodes
 // Randomly kill one of the node and keep on sending set command to the cluster
 func TestMultiNodeKillOne(t *testing.T) {
-	procAttr := new(os.ProcAttr)
-	procAttr.Files = []*os.File{nil, os.Stdout, os.Stderr}
-
 	clusterSize := 5
-	argGroup, etcds, err := CreateCluster(clusterSize, procAttr, false)
-
-	if err != nil {
-		t.Fatal("cannot create cluster")
+	cluster := etcdtest.NewCluster(clusterSize, false)
+	if !cluster.Start() {
+		t.Fatal("cannot start cluster")
 	}
-
-	defer DestroyCluster(etcds)
+	defer cluster.Stop()
 
 	time.Sleep(2 * time.Second)
 
@@ -40,13 +36,11 @@ func TestMultiNodeKillOne(t *testing.T) {
 		fmt.Println("kill node", num+1)
 
 		// kill
-		etcds[num].Kill()
-		etcds[num].Release()
+		cluster.StopOne(num)
 		time.Sleep(time.Second)
 
 		// restart
-		etcds[num], err = os.StartProcess(EtcdBinPath, argGroup[num], procAttr)
-		if err != nil {
+		if err := cluster.StartOne(num); err != nil {
 			panic(err)
 		}
 		time.Sleep(time.Second)

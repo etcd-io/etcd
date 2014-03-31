@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/etcd/tests"
+	etcdtest "github.com/coreos/etcd/tests"
 	"github.com/coreos/etcd/third_party/github.com/stretchr/testify/assert"
 )
 
@@ -31,24 +31,20 @@ func TestV1SoloMigration(t *testing.T) {
 		panic("Fixture initialization error:" + err.Error())
 	}
 
-	procAttr := new(os.ProcAttr)
-	procAttr.Files = []*os.File{nil, os.Stdout, os.Stderr}
-
-	args := []string{"etcd", fmt.Sprintf("-data-dir=%s", nodepath)}
-	args = append(args, "-addr", "127.0.0.1:4001")
-	args = append(args, "-peer-addr", "127.0.0.1:7001")
-	args = append(args, "-name", "node0")
-	process, err := os.StartProcess(EtcdBinPath, args, procAttr)
-	if err != nil {
-		t.Fatal("start process failed:" + err.Error())
-		return
+	i := etcdtest.NewOldInstance()
+	i.Conf.DataDir = nodepath
+	i.Conf.Addr = "127.0.0.1:4001"
+	i.Conf.Peer.Addr = "127.0.0.1:7001"
+	i.Conf.Name = "node0"
+	if err := i.Start(); err != nil {
+		t.Fatal("cannot start etcd")
 	}
-	defer process.Kill()
+	defer i.Stop()
 	time.Sleep(time.Second)
 
 	// Ensure deleted message is removed.
-	resp, err := tests.Get("http://localhost:4001/v2/keys/message")
-	tests.ReadBody(resp)
+	resp, err := etcdtest.Get("http://localhost:4001/v2/keys/message")
+	etcdtest.ReadBody(resp)
 	assert.Nil(t, err, "")
 	assert.Equal(t, resp.StatusCode, 200, "")
 }
@@ -60,7 +56,7 @@ func TestV1ClusterMigration(t *testing.T) {
 	defer os.RemoveAll(path)
 
 	nodes := []string{"node0", "node2"}
-	for i, node := range nodes {
+	for idx, node := range nodes {
 		nodepath := filepath.Join(path, node)
 		fixturepath, _ := filepath.Abs(filepath.Join("../fixtures/v1.cluster/", node))
 		fmt.Println("FIXPATH  =", fixturepath)
@@ -74,32 +70,28 @@ func TestV1ClusterMigration(t *testing.T) {
 			panic("Fixture initialization error:" + err.Error())
 		}
 
-		procAttr := new(os.ProcAttr)
-		procAttr.Files = []*os.File{nil, os.Stdout, os.Stderr}
-
-		args := []string{"etcd", fmt.Sprintf("-data-dir=%s", nodepath)}
-		args = append(args, "-addr", fmt.Sprintf("127.0.0.1:%d", 4001+i))
-		args = append(args, "-peer-addr", fmt.Sprintf("127.0.0.1:%d", 7001+i))
-		args = append(args, "-name", node)
-		process, err := os.StartProcess(EtcdBinPath, args, procAttr)
-		if err != nil {
-			t.Fatal("start process failed:" + err.Error())
-			return
+		i := etcdtest.NewOldInstance()
+		i.Conf.DataDir = nodepath
+		i.Conf.Addr = fmt.Sprintf("127.0.0.1:%d", 4001+idx)
+		i.Conf.Peer.Addr = fmt.Sprintf("127.0.0.1:%d", 7001+idx)
+		i.Conf.Name = node
+		if err := i.Start(); err != nil {
+			t.Fatal("cannot start etcd")
 		}
-		defer process.Kill()
+		defer i.Stop()
 		time.Sleep(time.Second)
 	}
 
 	// Ensure deleted message is removed.
-	resp, err := tests.Get("http://localhost:4001/v2/keys/message")
-	body := tests.ReadBody(resp)
+	resp, err := etcdtest.Get("http://localhost:4001/v2/keys/message")
+	body := etcdtest.ReadBody(resp)
 	assert.Nil(t, err, "")
 	assert.Equal(t, resp.StatusCode, http.StatusNotFound)
 	assert.Equal(t, string(body), `{"errorCode":100,"message":"Key not found","cause":"/message","index":11}`+"\n")
 
 	// Ensure TTL'd message is removed.
-	resp, err = tests.Get("http://localhost:4001/v2/keys/foo")
-	body = tests.ReadBody(resp)
+	resp, err = etcdtest.Get("http://localhost:4001/v2/keys/foo")
+	body = etcdtest.ReadBody(resp)
 	assert.Nil(t, err, "")
 	assert.Equal(t, resp.StatusCode, 200, "")
 	assert.Equal(t, string(body), `{"action":"get","node":{"key":"/foo","value":"one","modifiedIndex":9,"createdIndex":9}}`)

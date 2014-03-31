@@ -2,9 +2,10 @@ package test
 
 import (
 	"net/http"
-	"os"
 	"testing"
 	"time"
+
+	etcdtest "github.com/coreos/etcd/tests"
 )
 
 func BenchmarkEtcdDirectCall(b *testing.B) {
@@ -16,13 +17,9 @@ func BenchmarkEtcdDirectCallTls(b *testing.B) {
 }
 
 func templateBenchmarkEtcdDirectCall(b *testing.B, tls bool) {
-	procAttr := new(os.ProcAttr)
-	procAttr.Files = []*os.File{nil, os.Stdout, os.Stderr}
-
-	clusterSize := 3
-	_, etcds, _ := CreateCluster(clusterSize, procAttr, tls)
-
-	defer DestroyCluster(etcds)
+	cluster := etcdtest.NewCluster(3, tls)
+	cluster.Start()
+	defer cluster.Stop()
 
 	time.Sleep(time.Second)
 

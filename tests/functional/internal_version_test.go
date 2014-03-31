@@ -5,9 +5,12 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"os"
 	"testing"
 	"time"
+
+	"github.com/coreos/etcd/third_party/github.com/stretchr/testify/assert"
+
+	etcdtest "github.com/coreos/etcd/tests"
 )
 
 // Ensure that etcd does not come up if the internal raft versions do not match.
@@ -29,20 +32,15 @@ func TestInternalVersion(t *testing.T) {
 
 	fakeURL, _ := url.Parse(ts.URL)
 
-	procAttr := new(os.ProcAttr)
-	procAttr.Files = []*os.File{nil, os.Stdout, os.Stderr}
-	args := []string{"etcd", "-name=node1", "-f", "-data-dir=/tmp/node1", "-peers=" + fakeURL.Host}
-
-	process, err := os.StartProcess(EtcdBinPath, args, procAttr)
-	if err != nil {
-		t.Fatal("start process failed:" + err.Error())
-		return
+	i := etcdtest.NewInstance()
+	i.Conf.Peers = []string{fakeURL.Host}
+	if !assert.Panics(t, func() { i.Start() }) {
+		t.Fatal("Expect start panic")
 	}
 
 	time.Sleep(time.Second)
-	process.Kill()
 
-	_, err = http.Get("http://127.0.0.1:4001")
+	_, err := http.Get("http://127.0.0.1:4001")
 	if err == nil {
 		t.Fatal("etcd node should not be up")
 		return

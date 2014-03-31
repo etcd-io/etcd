@@ -8,23 +8,24 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"os"
 	"strings"
 	"testing"
 	"time"
+
+	etcdtest "github.com/coreos/etcd/tests"
 )
 
 // TestTLSOff asserts that non-TLS-encrypted communication between the
 // etcd server and an unauthenticated client works
 func TestTLSOff(t *testing.T) {
-	proc, err := startServer([]string{})
-	if err != nil {
-		t.Fatal(err.Error())
+	i := etcdtest.NewInstance()
+	if err := i.Start(); err != nil {
+		t.Fatal(err)
 	}
-	defer stopServer(proc)
+	defer i.Stop()
 
 	client := buildClient()
-	err = assertServerFunctional(client, "http")
+	err := assertServerFunctional(client, "http")
 	if err != nil {
 		t.Fatal(err.Error())
 	}
@@ -33,14 +34,11 @@ func TestTLSOff(t *testing.T) {
 // TestTLSAnonymousClient asserts that TLS-encrypted communication between the etcd
 // server and an anonymous client works
 func TestTLSAnonymousClient(t *testing.T) {
-	proc, err := startServer([]string{
-		"-cert-file=../../fixtures/ca/server.crt",
-		"-key-file=../../fixtures/ca/server.key.insecure",
-	})
-	if err != nil {
-		t.Fatal(err.Error())
+	i := etcdtest.NewTLSInstance()
+	if err := i.Start(); err != nil {
+		t.Fatal(err)
 	}
-	defer stopServer(proc)
+	defer i.Stop()
 
 	cacertfile := "../../fixtures/ca/ca.crt"
 
@@ -64,15 +62,11 @@ func TestTLSAnonymousClient(t *testing.T) {
 // TestTLSAuthenticatedClient asserts that TLS-encrypted communication
 // between the etcd server and an authenticated client works
 func TestTLSAuthenticatedClient(t *testing.T) {
-	proc, err := startServer([]string{
-		"-cert-file=../../fixtures/ca/server.crt",
-		"-key-file=../../fixtures/ca/server.key.insecure",
-		"-ca-file=../../fixtures/ca/ca.crt",
-	})
-	if err != nil {
-		t.Fatal(err.Error())
+	i := etcdtest.NewTLSAuthInstance()
+	if err := i.Start(); err != nil {
+		t.Fatal(err)
 	}
-	defer stopServer(proc)
+	defer i.Stop()
 
 	cacertfile := "../../fixtures/ca/ca.crt"
 	certfile := "../../fixtures/ca/server2.crt"
@@ -106,15 +100,11 @@ func TestTLSAuthenticatedClient(t *testing.T) {
 // TestTLSUnathenticatedClient asserts that TLS-encrypted communication
 // between the etcd server and an unauthenticated client fails
 func TestTLSUnauthenticatedClient(t *testing.T) {
-	proc, err := startServer([]string{
-		"-cert-file=../../fixtures/ca/server.crt",
-		"-key-file=../../fixtures/ca/server.key.insecure",
-		"-ca-file=../../fixtures/ca/ca.crt",
-	})
-	if err != nil {
-		t.Fatal(err.Error())
+	i := etcdtest.NewTLSAuthInstance()
+	if err := i.Start(); err != nil {
+		t.Fatal(err)
 	}
-	defer stopServer(proc)
+	defer i.Stop()
 
 	cacertfile := "../../fixtures/ca/ca.crt"
 	certfile := "../../fixtures/ca/broken_server.crt"
@@ -145,7 +135,6 @@ func TestTLSUnauthenticatedClient(t *testing.T) {
 	}
 }
 
-
 func buildClient() http.Client {
 	return http.Client{}
 }
@@ -153,38 +142,6 @@ func buildClient() http.Client {
 func buildTLSClient(tlsConf *tls.Config) http.Client {
 	tr := http.Transport{TLSClientConfig: tlsConf}
 	return http.Client{Transport: &tr}
-}
-
-func startServer(extra []string) (*os.Process, error) {
-	procAttr := new(os.ProcAttr)
-	procAttr.Files = []*os.File{nil, os.Stdout, os.Stderr}
-
-	cmd := []string{"etcd",	"-f", "-data-dir=/tmp/node1", "-name=node1"}
-	cmd = append(cmd, extra...)
-
-	println(strings.Join(cmd, " "))
-
-	return os.StartProcess(EtcdBinPath, cmd, procAttr)
-}
-
-func startServerWithDataDir(extra []string) (*os.Process, error) {
-	procAttr := new(os.ProcAttr)
-	procAttr.Files = []*os.File{nil, os.Stdout, os.Stderr}
-
-	cmd := []string{"etcd",	"-data-dir=/tmp/node1", "-name=node1"}
-	cmd = append(cmd, extra...)
-
-	println(strings.Join(cmd, " "))
-
-	return os.StartProcess(EtcdBinPath, cmd, procAttr)
-}
-
-func stopServer(proc *os.Process) {
-	err := proc.Kill()
-	if err != nil {
-		panic(err.Error())
-	}
-	proc.Release()
 }
 
 func assertServerFunctional(client http.Client, scheme string) error {

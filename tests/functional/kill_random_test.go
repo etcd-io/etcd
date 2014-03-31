@@ -3,25 +3,21 @@ package test
 import (
 	"fmt"
 	"math/rand"
-	"os"
 	"testing"
 	"time"
+
+	etcdtest "github.com/coreos/etcd/tests"
 )
 
 // TestKillRandom kills random peers in the cluster and
 // restart them after all other peers agree on the same leader
 func TestKillRandom(t *testing.T) {
-	procAttr := new(os.ProcAttr)
-	procAttr.Files = []*os.File{nil, os.Stdout, os.Stderr}
-
 	clusterSize := 9
-	argGroup, etcds, err := CreateCluster(clusterSize, procAttr, false)
-
-	if err != nil {
-		t.Fatal("cannot create cluster")
+	cluster := etcdtest.NewCluster(clusterSize, false)
+	if !cluster.Start() {
+		t.Fatal("cannot start cluster")
 	}
-
-	defer DestroyCluster(etcds)
+	defer cluster.Stop()
 
 	stop := make(chan bool)
 	leaderChan := make(chan string, 1)
@@ -29,7 +25,7 @@ func TestKillRandom(t *testing.T) {
 
 	time.Sleep(3 * time.Second)
 
-	go Monitor(clusterSize, 4, leaderChan, all, stop)
+	go cluster.Monitor(4, leaderChan, all, stop)
 
 	toKill := make(map[int]bool)
 
@@ -52,11 +48,7 @@ func TestKillRandom(t *testing.T) {
 		}
 
 		for num := range toKill {
-			err := etcds[num].Kill()
-			if err != nil {
-				panic(err)
-			}
-			etcds[num].Wait()
+			cluster.StopOne(num)
 		}
 
 		time.Sleep(1 * time.Second)
@@ -64,7 +56,7 @@ func TestKillRandom(t *testing.T) {
 		<-leaderChan
 
 		for num := range toKill {
-			etcds[num], err = os.StartProcess(EtcdBinPath, argGroup[num], procAttr)
+			cluster.StartOne(num)
 		}
 
 		toKill = make(map[int]bool)

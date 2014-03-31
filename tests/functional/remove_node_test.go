@@ -3,21 +3,22 @@ package test
 import (
 	"fmt"
 	"net/http"
-	"os"
 	"testing"
 	"time"
 
 	"github.com/coreos/etcd/third_party/github.com/coreos/go-etcd/etcd"
+
+	etcdtest "github.com/coreos/etcd/tests"
 )
 
 // remove the node and node rejoin with previous log
 func TestRemoveNode(t *testing.T) {
-	procAttr := new(os.ProcAttr)
-	procAttr.Files = []*os.File{nil, os.Stdout, os.Stderr}
-
 	clusterSize := 3
-	argGroup, etcds, _ := CreateCluster(clusterSize, procAttr, false)
-	defer DestroyCluster(etcds)
+	cluster := etcdtest.NewCluster(clusterSize, false)
+	if !cluster.Start() {
+		t.Fatal("cannot start cluster")
+	}
+	defer cluster.Stop()
 
 	time.Sleep(time.Second)
 
@@ -33,7 +34,7 @@ func TestRemoveNode(t *testing.T) {
 			client.Do(rmReq)
 
 			fmt.Println("send remove to node3 and wait for its exiting")
-			etcds[2].Wait()
+			cluster.WaitOne(2)
 
 			resp, err := c.Get("_etcd/machines", false, false)
 
@@ -47,11 +48,12 @@ func TestRemoveNode(t *testing.T) {
 
 			if i == 1 {
 				// rejoin with log
-				etcds[2], err = os.StartProcess(EtcdBinPath, argGroup[2], procAttr)
+				cluster.Instances[2].Conf.Force = false
 			} else {
 				// rejoin without log
-				etcds[2], err = os.StartProcess(EtcdBinPath, append(argGroup[2], "-f"), procAttr)
+				cluster.Instances[2].Conf.Force = true
 			}
+			cluster.StartOne(2)
 
 			if err != nil {
 				panic(err)
@@ -72,9 +74,8 @@ func TestRemoveNode(t *testing.T) {
 
 		// first kill the node, then remove it, then add it back
 		for i := 0; i < 2; i++ {
-			etcds[2].Kill()
 			fmt.Println("kill node3 and wait for its exiting")
-			etcds[2].Wait()
+			cluster.StopOne(2)
 
 			client.Do(rmReq)
 
@@ -90,11 +91,12 @@ func TestRemoveNode(t *testing.T) {
 
 			if i == 1 {
 				// rejoin with log
-				etcds[2], err = os.StartProcess(EtcdBinPath, append(argGroup[2]), procAttr)
+				cluster.Instances[2].Conf.Force = false
 			} else {
 				// rejoin without log
-				etcds[2], err = os.StartProcess(EtcdBinPath, append(argGroup[2], "-f"), procAttr)
+				cluster.Instances[2].Conf.Force = true
 			}
+			cluster.StartOne(2)
 
 			if err != nil {
 				panic(err)

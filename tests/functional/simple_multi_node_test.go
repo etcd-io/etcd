@@ -1,11 +1,12 @@
 package test
 
 import (
-	"os"
 	"testing"
 	"time"
 
 	"github.com/coreos/etcd/third_party/github.com/coreos/go-etcd/etcd"
+
+	etcdtest "github.com/coreos/etcd/tests"
 )
 
 func TestSimpleMultiNode(t *testing.T) {
@@ -18,18 +19,12 @@ func TestSimpleMultiNodeTls(t *testing.T) {
 
 // Create a three nodes and try to set value
 func templateTestSimpleMultiNode(t *testing.T, tls bool) {
-	procAttr := new(os.ProcAttr)
-	procAttr.Files = []*os.File{nil, os.Stdout, os.Stderr}
-
 	clusterSize := 3
-
-	_, etcds, err := CreateCluster(clusterSize, procAttr, tls)
-
-	if err != nil {
-		t.Fatalf("cannot create cluster: %v", err)
+	cluster := etcdtest.NewCluster(clusterSize, tls)
+	if !cluster.Start() {
+		t.Fatal("cannot start cluster")
 	}
-
-	defer DestroyCluster(etcds)
+	defer cluster.Stop()
 
 	time.Sleep(time.Second)
 

@@ -2,25 +2,24 @@ package test
 
 import (
 	"io/ioutil"
-	"os"
 	"strconv"
 	"testing"
 	"time"
 
 	"github.com/coreos/etcd/third_party/github.com/coreos/go-etcd/etcd"
+
+	etcdtest "github.com/coreos/etcd/tests"
 )
 
 // This test creates a single node and then set a value to it to trigger snapshot
 func TestSimpleSnapshot(t *testing.T) {
-	procAttr := new(os.ProcAttr)
-	procAttr.Files = []*os.File{nil, os.Stdout, os.Stderr}
-	args := []string{"etcd", "-name=node1", "-data-dir=/tmp/node1", "-snapshot=true", "-snapshot-count=500"}
-
-	process, err := os.StartProcess(EtcdBinPath, append(args, "-f"), procAttr)
-	if err != nil {
-		t.Fatal("start process failed:" + err.Error())
+	i := etcdtest.NewInstance()
+	i.Conf.Snapshot = true
+	i.Conf.SnapshotCount = 500
+	if err := i.Start(); err != nil {
+		t.Fatal("cannot start etcd")
 	}
-	defer process.Kill()
+	defer i.Stop()
 
 	time.Sleep(time.Second)
 
@@ -44,7 +43,7 @@ func TestSimpleSnapshot(t *testing.T) {
 	// wait for a snapshot interval
 	time.Sleep(3 * time.Second)
 
-	snapshots, err := ioutil.ReadDir("/tmp/node1/snapshot")
+	snapshots, err := ioutil.ReadDir("/tmp/node/snapshot")
 
 	if err != nil {
 		t.Fatal("list snapshot failed:" + err.Error())
@@ -77,7 +76,7 @@ func TestSimpleSnapshot(t *testing.T) {
 	// wait for a snapshot interval
 	time.Sleep(3 * time.Second)
 
-	snapshots, err = ioutil.ReadDir("/tmp/node1/snapshot")
+	snapshots, err = ioutil.ReadDir("/tmp/node/snapshot")
 
 	if err != nil {
 		t.Fatal("list snapshot failed:" + err.Error())
