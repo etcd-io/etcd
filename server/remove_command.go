@@ -3,7 +3,6 @@ package server
 import (
 	"encoding/binary"
 	"encoding/json"
-	"os"
 
 	"github.com/coreos/etcd/log"
 	"github.com/coreos/etcd/third_party/github.com/goraft/raft"
@@ -60,7 +59,9 @@ func (c *RemoveCommandV1) Apply(context raft.Context) (interface{}, error) {
 		// command and need to be removed
 		if context.CommitIndex() > ps.joinIndex && ps.joinIndex != 0 {
 			log.Debugf("server [%s] is removed", context.Server().Name())
-			os.Exit(0)
+			if ps.removedChan != nil {
+				close(ps.removedChan)
+			}
 		} else {
 			// else ignore remove
 			log.Debugf("ignore previous remove command.")
@@ -122,7 +123,9 @@ func (c *RemoveCommandV2) Apply(context raft.Context) (interface{}, error) {
 		// command and need to be removed
 		if context.CommitIndex() > ps.joinIndex && ps.joinIndex != 0 {
 			log.Debugf("server [%s] is removed", context.Server().Name())
-			os.Exit(0)
+			if ps.removedChan != nil {
+				close(ps.removedChan)
+			}
 		} else {
 			// else ignore remove
 			log.Debugf("ignore previous remove command.")

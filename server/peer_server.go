@@ -65,6 +65,7 @@ type PeerServer struct {
 	mode           Mode
 
 	closeChan            chan bool
+	removedChan          chan bool
 	timeoutThresholdChan chan interface{}
 
 	proxyPeerURL   string
@@ -291,6 +292,8 @@ func (s *PeerServer) Start(snapshot bool, discoverURL string, peers []string) er
 
 	s.raftServer.Init()
 
+	s.removedChan = make(chan bool)
+
 	s.findCluster(discoverURL, peers)
 
 	s.closeChan = make(chan bool)
@@ -308,12 +311,19 @@ func (s *PeerServer) Start(snapshot bool, discoverURL string, peers []string) er
 	return nil
 }
 
+func (s *PeerServer) RemoveNotify() <-chan bool {
+	return s.removedChan
+}
+
 func (s *PeerServer) Stop() {
 	if s.closeChan != nil {
 		close(s.closeChan)
 		s.closeChan = nil
 	}
-	s.raftServer.Stop()
+	// Raft server doesn't run in proxy mode
+	if s.raftServer.Running() {
+		s.raftServer.Stop()
+	}
 }
 
 func (s *PeerServer) HTTPHandler() http.Handler {
