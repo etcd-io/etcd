@@ -61,6 +61,16 @@ func New(c *config.Config) *Etcd {
 
 // Run the etcd instance.
 func (e *Etcd) Run() {
+	// Sanitize all the input fields.
+	if err := e.Config.Sanitize(); err != nil {
+		log.Fatalf("failed sanitizing configuration: %v", err)
+	}
+
+	// Force remove server configuration if specified.
+	if e.Config.Force {
+		e.Config.Reset()
+	}
+
 	// Enable options.
 	if e.Config.VeryVeryVerbose {
 		log.Verbose = true
