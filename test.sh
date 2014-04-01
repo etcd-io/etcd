@@ -24,4 +24,4 @@ go test -i ./mod/lock/v2/tests
 go test -v ./mod/lock/v2/tests
 
 go test -i ./tests/functional
-ETCD_BIN_PATH=$(pwd)/bin/etcd go test -v ./tests/functional
+ETCD_BIN_PATH=$(pwd)/bin/etcd go test -v ./tests/functional -race

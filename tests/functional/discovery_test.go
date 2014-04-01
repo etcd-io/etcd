@@ -50,6 +50,7 @@ func TestDiscoveryDownNoBackupPeers(t *testing.T) {
 	if err != nil {
 		t.Fatal(err.Error())
 	}
+	ts.Close()
 
 	if !g.success {
 		t.Fatal("Discovery server never called")

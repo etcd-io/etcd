@@ -47,6 +47,7 @@ func TestInternalVersion(t *testing.T) {
 		t.Fatal("etcd node should not be up")
 		return
 	}
+	ts.Close()
 
 	if checkedVersion == false {
 		t.Fatal("etcd did not check the version")
