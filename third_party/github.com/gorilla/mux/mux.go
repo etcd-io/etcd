@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"path"
+	"strings"
 
 	"github.com/coreos/etcd/third_party/github.com/gorilla/context"
 )
@@ -60,11 +61,28 @@ func (r *Router) Match(req *http.Request, match *RouteMatch) bool {
 	return false
 }
 
+// rawPath returns encoded form URL
+func rawPath(path string) string {
+	if path == "*" {
+		return path
+	}
+	i := strings.Index(path, "?")
+	if i < 0 {
+		return path
+	}
+	return path[0:i]
+}
+
 // ServeHTTP dispatches the handler registered in the matched route.
 //
 // When there is a match, the route variables can be retrieved calling
 // mux.Vars(request).
 func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	// URL.Path field is stored in decoded form: /%47%6f%2f becomes /Go/ as default.
+	// But this is a bad thing for etcd, because it cannot handle key with %.
+	// Use raw path here instead to resolve the problem.
+	req.URL.Path = rawPath(req.RequestURI)
+
 	// Clean path to canonical form and redirect.
 	if p := cleanPath(req.URL.Path); p != req.URL.Path {
 
