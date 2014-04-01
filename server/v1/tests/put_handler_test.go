@@ -29,6 +29,23 @@ func TestV1SetKey(t *testing.T) {
 	})
 }
 
+// Ensures that a key is set to a given value.
+//
+//   $ curl -X PUT localhost:4001/v1/keys/foo%2Ffoo/bar -d value=XXX
+//
+func TestV1SetURLEncodedKey(t *testing.T) {
+	tests.RunServer(func(s *server.Server) {
+		v := url.Values{}
+		v.Set("value", "XXX")
+		resp, err := tests.PutForm(fmt.Sprintf("%s%s", s.URL(), "/v1/keys/foo%2Ffoo/bar"), v)
+		assert.Equal(t, resp.StatusCode, http.StatusOK)
+		body := tests.ReadBody(resp)
+		assert.Nil(t, err, "")
+
+		assert.Equal(t, string(body), `{"action":"set","key":"/foo/foo/bar","value":"XXX","newKey":true,"index":2}`, "")
+	})
+}
+
 // Ensures that a time-to-live is added to a key.
 //
 //   $ curl -X PUT localhost:4001/v1/keys/foo/bar -d value=XXX -d ttl=20

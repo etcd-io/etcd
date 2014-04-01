@@ -29,3 +29,22 @@ func TestV1DeleteKey(t *testing.T) {
 		assert.Equal(t, string(body), `{"action":"delete","key":"/foo/bar","prevValue":"XXX","index":3}`, "")
 	})
 }
+
+// Ensures that a key is deleted.
+//
+//   $ curl -X PUT localhost:4001/v1/keys/foo%2Ffoo/bar -d value=XXX
+//   $ curl -X DELETE localhost:4001/v1/keys/foo%2Ffoo/bar
+//
+func TestV1DeleteURLEncodedKey(t *testing.T) {
+	tests.RunServer(func(s *server.Server) {
+		v := url.Values{}
+		v.Set("value", "XXX")
+		resp, err := tests.PutForm(fmt.Sprintf("%s%s", s.URL(), "/v1/keys/foo%2Ffoo/bar"), v)
+		tests.ReadBody(resp)
+		resp, err = tests.DeleteForm(fmt.Sprintf("%s%s", s.URL(), "/v1/keys/foo%2Ffoo/bar"), url.Values{})
+		assert.Equal(t, resp.StatusCode, http.StatusOK)
+		body := tests.ReadBody(resp)
+		assert.Nil(t, err, "")
+		assert.Equal(t, string(body), `{"action":"delete","key":"/foo/foo/bar","prevValue":"XXX","index":3}`, "")
+	})
+}
