@@ -488,9 +488,6 @@ func (s *store) internalCreate(nodePath string, dir bool, value string, unique, 
 	// force will try to replace a existing file
 	if n != nil {
 		if replace {
-			if n.IsDir() {
-				return nil, etcdErr.NewError(etcdErr.EcodeNotFile, nodePath, currIndex)
-			}
 			e.PrevNode = n.Repr(false, false)
 
 			n.Remove(false, false, nil)
