@@ -33,8 +33,8 @@ The v2 API has a lot of features, we will categorize them in a few categories:
 | --- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
 | **HTTPS Auth**    | Y | Y | Y | Y | Y | Y | - | - | - | - | - |
 | **Reconnect**     | Y | - | Y | Y | - | - | - | Y | - | - | - |
-| **Mod/Lock**      | Y | - | Y | Y | - | - | - | - | - | - | - |
-| **Mod/Leader**    | Y | - | - | Y | - | - | - | - | - | - | - |
+| **Mod/Lock**      | - | - | Y | Y | - | - | - | - | - | - | - |
+| **Mod/Leader**    | - | - | - | Y | - | - | - | - | - | - | - |
 | **GET Features**  | F | B | F | F | F | F | F | B | F | G | F |
 | **PUT Features**  | F | B | F | F | F | F | F | G | F | G | F |
 | **POST Features** | F | - | F | F | - | F | F | - | - | - | F |
