@@ -232,6 +232,8 @@ func (s *server) Path() string {
 
 // The name of the current leader.
 func (s *server) Leader() string {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
 	return s.leader
 }
 
@@ -692,10 +694,12 @@ func (s *server) followerLoop() {
 // The event loop that is run when the server is in a Candidate state.
 func (s *server) candidateLoop() {
 	// Clear leader value.
+	s.mutex.Lock()
 	prevLeader := s.leader
 	s.leader = ""
-	if prevLeader != s.leader {
-		s.DispatchEvent(newEvent(LeaderChangeEventType, s.leader, prevLeader))
+	s.mutex.Unlock()
+	if prevLeader != "" {
+		s.DispatchEvent(newEvent(LeaderChangeEventType, "", prevLeader))
 	}
 
 	lastLogIndex, lastLogTerm := s.log.lastInfo()
