@@ -7,6 +7,12 @@ fi
 
 export GOBIN=${PWD}/bin
 export GOPATH=${PWD}
+export GOFMTPATH="./bench ./config ./discovery ./error etcd.go ./http ./log ./machines ./metrics ./mod profile.go ./server ./store ./tests"
+
+# Don't surprise user by formatting their codes by stealth
+if [ "$1" == "--fmt" ]; then
+	gofmt -s -w -l $GOFMTPATH
+fi
 
 go install github.com/coreos/etcd
 go install github.com/coreos/etcd/bench

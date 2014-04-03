@@ -2,6 +2,13 @@
 
 . ./build
 
+fmtRes=`gofmt -l $GOFMTPATH`
+if [ "$fmtRes" != "" ]; then
+	echo "Failed to pass golang format checking."
+	echo "Please gofmt modified go files, or run './build --fmt'."
+	exit 1
+fi
+
 go test -i ./http
 go test -v ./http
 
