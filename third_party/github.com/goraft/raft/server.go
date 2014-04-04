@@ -358,8 +358,8 @@ func (s *server) promotable() bool {
 
 // Retrieves the number of member servers in the consensus.
 func (s *server) MemberCount() int {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
 	return len(s.peers) + 1
 }
 
@@ -468,8 +468,10 @@ func (s *server) Init() error {
 		return fmt.Errorf("raft.Server: Server already running[%v]", s.state)
 	}
 
-	// server has been initialized or server was stopped after initialized
-	if s.state == Initialized || !s.log.isEmpty() {
+	// Server has been initialized or server was stopped after initialized
+	// If log has been initialized, we know that the server was stopped after
+	// running.
+	if s.state == Initialized || s.log.initialized {
 		s.state = Initialized
 		return nil
 	}
@@ -501,13 +503,17 @@ func (s *server) Init() error {
 
 // Shuts down the server.
 func (s *server) Stop() {
+	if s.State() == Stopped {
+		return
+	}
+
 	stop := make(chan bool)
 	s.stopped <- stop
-	s.state = Stopped
 
 	// make sure the server has stopped before we close the log
 	<-stop
 	s.log.close()
+	s.setState(Stopped)
 }
 
 // Checks if the server is currently running.
@@ -527,8 +533,6 @@ func (s *server) updateCurrentTerm(term uint64, leaderName string) {
 	_assert(term > s.currentTerm,
 		"upadteCurrentTerm: update is called when term is not larger than currentTerm")
 
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
 	// Store previous values temporarily.
 	prevTerm := s.currentTerm
 	prevLeader := s.leader
@@ -536,21 +540,20 @@ func (s *server) updateCurrentTerm(term uint64, leaderName string) {
 	// set currentTerm = T, convert to follower (§5.1)
 	// stop heartbeats before step-down
 	if s.state == Leader {
-		s.mutex.Unlock()
 		for _, peer := range s.peers {
 			peer.stopHeartbeat(false)
 		}
-		s.mutex.Lock()
 	}
 	// update the term and clear vote for
 	if s.state != Follower {
-		s.mutex.Unlock()
 		s.setState(Follower)
-		s.mutex.Lock()
 	}
+
+	s.mutex.Lock()
 	s.currentTerm = term
 	s.leader = leaderName
 	s.votedFor = ""
+	s.mutex.Unlock()
 
 	// Dispatch change events.
 	s.DispatchEvent(newEvent(TermChangeEventType, s.currentTerm, prevTerm))
@@ -580,9 +583,9 @@ func (s *server) updateCurrentTerm(term uint64, leaderName string) {
 func (s *server) loop() {
 	defer s.debugln("server.loop.end")
 
-	for s.state != Stopped {
-		state := s.State()
+	state := s.State()
 
+	for state != Stopped {
 		s.debugln("server.loop.run ", state)
 		switch state {
 		case Follower:
@@ -594,6 +597,7 @@ func (s *server) loop() {
 		case Snapshotting:
 			s.snapshotLoop()
 		}
+		state = s.State()
 	}
 }
 
@@ -903,9 +907,9 @@ func (s *server) processAppendEntriesRequest(req *AppendEntriesRequest) (*Append
 	}
 
 	if req.Term == s.currentTerm {
-		_assert(s.state != Leader, "leader.elected.at.same.term.%d\n", s.currentTerm)
+		_assert(s.State() != Leader, "leader.elected.at.same.term.%d\n", s.currentTerm)
 		// change state to follower
-		s.state = Follower
+		s.setState(Follower)
 		// discover new leader when candidate
 		// save leader name when follower
 		s.leader = req.LeaderName

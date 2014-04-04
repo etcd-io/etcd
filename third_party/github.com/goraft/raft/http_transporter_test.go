@@ -11,7 +11,7 @@ import (
 
 // Ensure that we can start several servers and have them communicate.
 func TestHTTPTransporter(t *testing.T) {
-	transporter := NewHTTPTransporter("/raft")
+	transporter := NewHTTPTransporter("/raft", testElectionTimeout)
 	transporter.DisableKeepAlives = true
 
 	servers := []Server{}
@@ -91,7 +91,7 @@ func runTestHttpServers(t *testing.T, servers *[]Server, transporter *HTTPTransp
 
 func BenchmarkSpeed(b *testing.B) {
 
-	transporter := NewHTTPTransporter("/raft")
+	transporter := NewHTTPTransporter("/raft", testElectionTimeout)
 	transporter.DisableKeepAlives = true
 
 	servers := []Server{}
