@@ -2,6 +2,7 @@ package raft
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -26,11 +27,43 @@ func TestSnapshot(t *testing.T) {
 
 		// Restart server.
 		s.Stop()
-		s.Start()
-
 		// Recover from snapshot.
 		err = s.LoadSnapshot()
 		assert.NoError(t, err)
+		s.Start()
+	})
+}
+
+// Ensure that a new server can recover from previous snapshot with log
+func TestSnapshotRecovery(t *testing.T) {
+	runServerWithMockStateMachine(Leader, func(s Server, m *mock.Mock) {
+		m.On("Save").Return([]byte("foo"), nil)
+		m.On("Recovery", []byte("foo")).Return(nil)
+
+		s.Do(&testCommand1{})
+		err := s.TakeSnapshot()
+		assert.NoError(t, err)
+		assert.Equal(t, s.(*server).snapshot.LastIndex, uint64(2))
+
+		// Repeat to make sure new snapshot gets created.
+		s.Do(&testCommand1{})
+
+		// Stop the old server
+		s.Stop()
+
+		// create a new server with previous log and snapshot
+		newS, err := NewServer("1", s.Path(), &testTransporter{}, s.StateMachine(), nil, "")
+		// Recover from snapshot.
+		err = newS.LoadSnapshot()
+		assert.NoError(t, err)
+
+		newS.Start()
+		defer newS.Stop()
+
+		// wait for it to become leader
+		time.Sleep(time.Second)
+		// ensure server load the previous log
+		assert.Equal(t, len(newS.LogEntries()), 3, "")
 	})
 }
 

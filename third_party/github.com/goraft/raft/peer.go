@@ -17,10 +17,10 @@ type Peer struct {
 	Name              string `json:"name"`
 	ConnectionString  string `json:"connectionString"`
 	prevLogIndex      uint64
-	mutex             sync.RWMutex
 	stopChan          chan bool
 	heartbeatInterval time.Duration
 	lastActivity      time.Time
+	sync.RWMutex
 }
 
 //------------------------------------------------------------------------------
@@ -56,16 +56,22 @@ func (p *Peer) setHeartbeatInterval(duration time.Duration) {
 
 // Retrieves the previous log index.
 func (p *Peer) getPrevLogIndex() uint64 {
-	p.mutex.RLock()
-	defer p.mutex.RUnlock()
+	p.RLock()
+	defer p.RUnlock()
 	return p.prevLogIndex
 }
 
 // Sets the previous log index.
 func (p *Peer) setPrevLogIndex(value uint64) {
-	p.mutex.Lock()
-	defer p.mutex.Unlock()
+	p.Lock()
+	defer p.Unlock()
 	p.prevLogIndex = value
+}
+
+func (p *Peer) setLastActivity(now time.Time) {
+	p.Lock()
+	defer p.Unlock()
+	p.lastActivity = now
 }
 
 //------------------------------------------------------------------------------
@@ -93,6 +99,8 @@ func (p *Peer) stopHeartbeat(flush bool) {
 
 // LastActivity returns the last time any response was received from the peer.
 func (p *Peer) LastActivity() time.Time {
+	p.RLock()
+	defer p.RUnlock()
 	return p.lastActivity
 }
 
@@ -103,8 +111,8 @@ func (p *Peer) LastActivity() time.Time {
 // Clones the state of the peer. The clone is not attached to a server and
 // the heartbeat timer will not exist.
 func (p *Peer) clone() *Peer {
-	p.mutex.Lock()
-	defer p.mutex.Unlock()
+	p.Lock()
+	defer p.Unlock()
 	return &Peer{
 		Name:             p.Name,
 		ConnectionString: p.ConnectionString,
@@ -181,9 +189,9 @@ func (p *Peer) sendAppendEntriesRequest(req *AppendEntriesRequest) {
 	}
 	traceln("peer.append.resp: ", p.server.Name(), "<-", p.Name)
 
+	p.setLastActivity(time.Now())
 	// If successful then update the previous log index.
-	p.mutex.Lock()
-	p.lastActivity = time.Now()
+	p.Lock()
 	if resp.Success() {
 		if len(req.Entries) > 0 {
 			p.prevLogIndex = req.Entries[len(req.Entries)-1].GetIndex()
@@ -229,7 +237,7 @@ func (p *Peer) sendAppendEntriesRequest(req *AppendEntriesRequest) {
 			debugln("peer.append.resp.decrement: ", p.Name, "; idx =", p.prevLogIndex)
 		}
 	}
-	p.mutex.Unlock()
+	p.Unlock()
 
 	// Attach the peer to resp, thus server can know where it comes from
 	resp.peer = p.Name
@@ -251,7 +259,8 @@ func (p *Peer) sendSnapshotRequest(req *SnapshotRequest) {
 
 	// If successful, the peer should have been to snapshot state
 	// Send it the snapshot!
-	p.lastActivity = time.Now()
+	p.setLastActivity(time.Now())
+
 	if resp.Success {
 		p.sendSnapshotRecoveryRequest()
 	} else {
@@ -272,7 +281,7 @@ func (p *Peer) sendSnapshotRecoveryRequest() {
 		return
 	}
 
-	p.lastActivity = time.Now()
+	p.setLastActivity(time.Now())
 	if resp.Success {
 		p.prevLogIndex = req.LastIndex
 	} else {
@@ -293,7 +302,7 @@ func (p *Peer) sendVoteRequest(req *RequestVoteRequest, c chan *RequestVoteRespo
 	req.peer = p
 	if resp := p.server.Transporter().SendVoteRequest(p.server, p, req); resp != nil {
 		debugln("peer.vote.recv: ", p.server.Name(), "<-", p.Name)
-		p.lastActivity = time.Now()
+		p.setLastActivity(time.Now())
 		resp.peer = p
 		c <- resp
 	} else {
