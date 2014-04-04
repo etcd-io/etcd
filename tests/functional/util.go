@@ -129,9 +129,19 @@ func CreateCluster(size int, procAttr *os.ProcAttr, ssl bool) ([][]string, []*os
 		// The problem is that if the master isn't up then the children
 		// have to retry. This retry can take upwards of 15 seconds
 		// which slows tests way down and some of them fail.
-		if i == 0 {
+		//
+		// Waiting for each server to start when ssl is a workaround.
+		// Autotest machines are dramatically slow, and it could spend
+		// several seconds to build TSL connections between servers. That
+		// is extremely terribe when the second machine joins the cluster
+		// because the cluster is out of work at this time. The guy
+		// tries to join during this time will fail, and current implementation
+		// makes it fail after just one-time try(bug in #661). This
+		// makes the cluster start with N-1 machines.
+		// TODO(yichengq): It should be fixed.
+		if i == 0 || ssl {
 			client := buildClient()
-			err = WaitForServer("127.0.0.1:4001", client, "http")
+			err = WaitForServer("127.0.0.1:400"+strconv.Itoa(i+1), client, "http")
 			if err != nil {
 				return nil, nil, err
 			}
