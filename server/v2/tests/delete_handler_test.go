@@ -30,6 +30,25 @@ func TestV2DeleteKey(t *testing.T) {
 	})
 }
 
+// Ensures that a key is deleted.
+//
+//   $ curl -X PUT localhost:4001/v2/keys/foo%2Ffoo/bar -d value=XXX
+//   $ curl -X DELETE localhost:4001/v2/keys/foo%2Ffoo/bar
+//
+func TestV2DeleteURLEncodedKey(t *testing.T) {
+	tests.RunServer(func(s *server.Server) {
+		v := url.Values{}
+		v.Set("value", "XXX")
+		resp, err := tests.PutForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo%2Ffoo/bar"), v)
+		tests.ReadBody(resp)
+		resp, err = tests.DeleteForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo%2Ffoo/bar"), url.Values{})
+		assert.Equal(t, resp.StatusCode, http.StatusOK)
+		body := tests.ReadBody(resp)
+		assert.Nil(t, err, "")
+		assert.Equal(t, string(body), `{"action":"delete","node":{"key":"/foo/foo/bar","modifiedIndex":3,"createdIndex":2},"prevNode":{"key":"/foo/foo/bar","value":"XXX","modifiedIndex":2,"createdIndex":2}}`, "")
+	})
+}
+
 // Ensures that an empty directory is deleted when dir is set.
 //
 //   $ curl -X PUT localhost:4001/v2/keys/foo?dir=true

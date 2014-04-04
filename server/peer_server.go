@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/third_party/github.com/goraft/raft"
-	"github.com/coreos/etcd/third_party/github.com/gorilla/mux"
 
 	"github.com/coreos/etcd/discovery"
 	etcdErr "github.com/coreos/etcd/error"
@@ -317,7 +316,7 @@ func (s *PeerServer) Stop() {
 }
 
 func (s *PeerServer) HTTPHandler() http.Handler {
-	router := mux.NewRouter()
+	router := NewRouter()
 
 	// internal commands
 	router.HandleFunc("/name", s.NameHttpHandler)

@@ -99,7 +99,7 @@ func (s *Server) Store() store.Store {
 	return s.store
 }
 
-func (s *Server) installV1(r *mux.Router) {
+func (s *Server) installV1(r *Router) {
 	s.handleFuncV1(r, "/v1/keys/{key:.*}", v1.GetKeyHandler).Methods("GET")
 	s.handleFuncV1(r, "/v1/keys/{key:.*}", v1.SetKeyHandler).Methods("POST", "PUT")
 	s.handleFuncV1(r, "/v1/keys/{key:.*}", v1.DeleteKeyHandler).Methods("DELETE")
@@ -112,8 +112,8 @@ func (s *Server) installV1(r *mux.Router) {
 	s.handleFunc(r, "/v1/stats/store", s.GetStoreStatsHandler).Methods("GET")
 }
 
-func (s *Server) installV2(r *mux.Router) {
-	r2 := mux.NewRouter()
+func (s *Server) installV2(r *Router) {
+	r2 := NewRouter()
 	r.PathPrefix("/v2").Handler(ehttp.NewLowerQueryParamsHandler(r2))
 
 	s.handleFuncV2(r2, "/v2/keys/{key:.*}", v2.GetHandler).Methods("GET")
@@ -129,11 +129,11 @@ func (s *Server) installV2(r *mux.Router) {
 	s.handleFunc(r2, "/v2/speedTest", s.SpeedTestHandler).Methods("GET")
 }
 
-func (s *Server) installMod(r *mux.Router) {
+func (s *Server) installMod(r *Router) {
 	r.PathPrefix("/mod").Handler(http.StripPrefix("/mod", mod.HttpHandler(s.URL())))
 }
 
-func (s *Server) installDebug(r *mux.Router) {
+func (s *Server) installDebug(r *Router) {
 	s.handleFunc(r, "/debug/metrics", s.GetMetricsHandler).Methods("GET")
 	r.HandleFunc("/debug/pprof", pprof.Index)
 	r.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
@@ -143,21 +143,21 @@ func (s *Server) installDebug(r *mux.Router) {
 }
 
 // Adds a v1 server handler to the router.
-func (s *Server) handleFuncV1(r *mux.Router, path string, f func(http.ResponseWriter, *http.Request, v1.Server) error) *mux.Route {
+func (s *Server) handleFuncV1(r *Router, path string, f func(http.ResponseWriter, *http.Request, v1.Server) error) *mux.Route {
 	return s.handleFunc(r, path, func(w http.ResponseWriter, req *http.Request) error {
 		return f(w, req, s)
 	})
 }
 
 // Adds a v2 server handler to the router.
-func (s *Server) handleFuncV2(r *mux.Router, path string, f func(http.ResponseWriter, *http.Request, v2.Server) error) *mux.Route {
+func (s *Server) handleFuncV2(r *Router, path string, f func(http.ResponseWriter, *http.Request, v2.Server) error) *mux.Route {
 	return s.handleFunc(r, path, func(w http.ResponseWriter, req *http.Request) error {
 		return f(w, req, s)
 	})
 }
 
 // Adds a server handler to the router.
-func (s *Server) handleFunc(r *mux.Router, path string, f func(http.ResponseWriter, *http.Request) error) *mux.Route {
+func (s *Server) handleFunc(r *Router, path string, f func(http.ResponseWriter, *http.Request) error) *mux.Route {
 
 	// Wrap the standard HandleFunc interface to pass in the server reference.
 	return r.HandleFunc(path, func(w http.ResponseWriter, req *http.Request) {
@@ -189,7 +189,7 @@ func (s *Server) handleFunc(r *mux.Router, path string, f func(http.ResponseWrit
 }
 
 func (s *Server) HTTPHandler() http.Handler {
-	router := mux.NewRouter()
+	router := NewRouter()
 
 	// Install the routes.
 	s.handleFunc(router, "/version", s.GetVersionHandler).Methods("GET")
