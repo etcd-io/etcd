@@ -2,6 +2,7 @@ package test
 
 import (
 	"os"
+	"strconv"
 	"testing"
 	"time"
 
@@ -128,6 +129,12 @@ func TestTLSMultiNodeKillAllAndRecovery(t *testing.T) {
 
 	for i := 0; i < clusterSize; i++ {
 		etcds[i], err = os.StartProcess(EtcdBinPath, argGroup[i], procAttr)
+		// See util.go for the reason to wait for server
+		client := buildClient()
+		err = WaitForServer("127.0.0.1:400"+strconv.Itoa(i+1), client, "http")
+		if err != nil {
+			t.Fatalf("node start error: %s", err)
+		}
 	}
 
 	go Monitor(clusterSize, 1, leaderChan, all, stop)

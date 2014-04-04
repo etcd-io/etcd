@@ -7,10 +7,10 @@ fi
 
 export GOBIN=${PWD}/bin
 export GOPATH=${PWD}
-export GOFMTPATH="./bench ./config ./discovery ./etcd ./error ./http ./log ./machines main.go ./metrics ./mod ./server ./store ./tests"
+export GOFMTPATH="./bench ./config ./discovery ./etcd ./error ./http ./log main.go ./metrics ./mod ./server ./store ./tests"
 
 # Don't surprise user by formatting their codes by stealth
-if [ "$1" == "--fmt" ]; then
+if [ "--fmt" = "$1" ]; then
 	gofmt -s -w -l $GOFMTPATH
 fi
 
