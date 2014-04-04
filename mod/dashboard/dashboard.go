@@ -23,6 +23,9 @@ func memoryFileServer(w http.ResponseWriter, req *http.Request) {
 	if file == "browser" || file == "stats" {
 		file = file + ".html"
 	}
+	if len(file) > 4 && file[len(file)-4:] == ".svg" {
+		w.Header().Set("Content-Type", "image/svg+xml")
+	}
 	upath = path.Join(dir, file)
 	b, err := resources.Asset(upath)
 
