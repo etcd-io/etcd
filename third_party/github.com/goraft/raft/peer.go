@@ -88,7 +88,12 @@ func (p *Peer) setLastActivity(now time.Time) {
 func (p *Peer) startHeartbeat() {
 	p.stopChan = make(chan bool)
 	c := make(chan bool)
-	go p.heartbeat(c)
+
+	p.server.routineGroup.Add(1)
+	go func() {
+		defer p.server.routineGroup.Done()
+		p.heartbeat(c)
+	}()
 	<-c
 }
 
