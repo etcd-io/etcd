@@ -35,6 +35,10 @@ func ReadBodyJSON(resp *http.Response) map[string]interface{} {
 	return m
 }
 
+func Head(url string) (*http.Response, error) {
+	return send("HEAD", url, "application/json", nil)
+}
+
 func Get(url string) (*http.Response, error) {
 	return send("GET", url, "application/json", nil)
 }
