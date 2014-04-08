@@ -142,20 +142,9 @@ func (s *Server) installDebug(r *mux.Router) {
 	r.HandleFunc("/debug/pprof/{name}", pprof.Index)
 }
 
-type HEADResponseWriter struct {
-	http.ResponseWriter
-}
-
-func (w *HEADResponseWriter) Write([]byte) (int, error) {
-	return 0, nil
-}
-
 // Adds a v1 server handler to the router.
 func (s *Server) handleFuncV1(r *mux.Router, path string, f func(http.ResponseWriter, *http.Request, v1.Server) error) *mux.Route {
 	return s.handleFunc(r, path, func(w http.ResponseWriter, req *http.Request) error {
-		if req.Method == "HEAD" {
-			w = &HEADResponseWriter{w}
-		}
 		return f(w, req, s)
 	})
 }
@@ -163,11 +152,16 @@ func (s *Server) handleFuncV1(r *mux.Router, path string, f func(http.ResponseWr
 // Adds a v2 server handler to the router.
 func (s *Server) handleFuncV2(r *mux.Router, path string, f func(http.ResponseWriter, *http.Request, v2.Server) error) *mux.Route {
 	return s.handleFunc(r, path, func(w http.ResponseWriter, req *http.Request) error {
-		if req.Method == "HEAD" {
-			w = &HEADResponseWriter{w}
-		}
 		return f(w, req, s)
 	})
+}
+
+type HEADResponseWriter struct {
+	http.ResponseWriter
+}
+
+func (w *HEADResponseWriter) Write([]byte) (int, error) {
+	return 0, nil
 }
 
 // Adds a server handler to the router.
