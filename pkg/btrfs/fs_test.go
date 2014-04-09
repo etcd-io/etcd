@@ -1,4 +1,4 @@
-package fs
+package btrfs
 
 import (
 	"io/ioutil"

@@ -33,7 +33,7 @@ import (
 	ehttp "github.com/coreos/etcd/http"
 	"github.com/coreos/etcd/log"
 	"github.com/coreos/etcd/metrics"
-	"github.com/coreos/etcd/pkg/fs"
+	"github.com/coreos/etcd/pkg/btrfs"
 	"github.com/coreos/etcd/server"
 	"github.com/coreos/etcd/store"
 )
@@ -104,8 +104,8 @@ func (e *Etcd) Run() {
 	}
 
 	// Set NOCOW for data directory in btrfs
-	if fs.IsBtrfs(e.Config.DataDir) {
-		fs.SetNOCOWDir(e.Config.DataDir)
+	if btrfs.IsBtrfs(e.Config.DataDir) {
+		btrfs.SetNOCOWDir(e.Config.DataDir)
 	}
 
 	var mbName string
