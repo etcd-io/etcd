@@ -103,7 +103,7 @@ func (s *Server) installV1(r *mux.Router) {
 	s.handleFuncV1(r, "/v1/keys/{key:.*}", v1.GetKeyHandler).Methods("GET", "HEAD")
 	s.handleFuncV1(r, "/v1/keys/{key:.*}", v1.SetKeyHandler).Methods("POST", "PUT")
 	s.handleFuncV1(r, "/v1/keys/{key:.*}", v1.DeleteKeyHandler).Methods("DELETE")
-	s.handleFuncV1(r, "/v1/watch/{key:.*}", v1.WatchKeyHandler).Methods("GET", "POST")
+	s.handleFuncV1(r, "/v1/watch/{key:.*}", v1.WatchKeyHandler).Methods("GET", "HEAD", "POST")
 	s.handleFunc(r, "/v1/leader", s.GetLeaderHandler).Methods("GET", "HEAD")
 	s.handleFunc(r, "/v1/machines", s.GetPeersHandler).Methods("GET", "HEAD")
 	s.handleFunc(r, "/v1/peers", s.GetPeersHandler).Methods("GET", "HEAD")

@@ -32,9 +32,11 @@ func WatchKeyHandler(w http.ResponseWriter, req *http.Request, s Server) error {
 	event := <-watcher.EventChan
 
 	// Convert event to a response and write to client.
-	b, _ := json.Marshal(event.Response(s.Store().Index()))
 	w.WriteHeader(http.StatusOK)
+	if req.Method == "HEAD" {
+		return nil
+	}
+	b, _ := json.Marshal(event.Response(s.Store().Index()))
 	w.Write(b)
-
 	return nil
 }
