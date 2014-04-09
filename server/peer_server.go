@@ -19,7 +19,6 @@ import (
 	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/log"
 	"github.com/coreos/etcd/metrics"
-	"github.com/coreos/etcd/pkg/fs"
 	"github.com/coreos/etcd/store"
 )
 
@@ -291,11 +290,6 @@ func (s *PeerServer) Start(snapshot bool, discoverURL string, peers []string) er
 	}
 
 	s.raftServer.Init()
-
-	// Set NOCOW for data directory in btrfs
-	if fs.IsBtrfs(s.raftServer.LogPath()) {
-		fs.SetNOCOW(s.raftServer.LogPath())
-	}
 
 	s.findCluster(discoverURL, peers)
 
