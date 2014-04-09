@@ -21,7 +21,8 @@ const (
 
 // IsBtrfs checks whether the file is in btrfs
 func IsBtrfs(path string) bool {
-	// btrfs is developed on linux only
+	// btrfs is linux-only filesystem
+	// exit on other platforms
 	if runtime.GOOS != "linux" {
 		return false
 	}
@@ -56,5 +57,5 @@ func SetNOCOW(path string) {
 		log.Warnf("Failed to set file flags: %v", errno.Error())
 		return
 	}
-	log.Infof("Set NOCOW to path %v succeed", path)
+	log.Infof("Set NOCOW to path %v succeeded", path)
 }
