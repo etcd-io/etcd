@@ -105,7 +105,7 @@ func (e *Etcd) Run() {
 
 	// Set NOCOW for data directory in btrfs
 	if fs.IsBtrfs(e.Config.DataDir) {
-		fs.SetNOCOW(e.Config.DataDir)
+		fs.SetNOCOWDir(e.Config.DataDir)
 	}
 
 	var mbName string
