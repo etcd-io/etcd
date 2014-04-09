@@ -176,3 +176,27 @@ func TestV1WatchKeyWithIndex(t *testing.T) {
 		assert.Equal(t, body["index"], 3, "")
 	})
 }
+
+// Ensures that HEAD works.
+//
+//   $ curl -I localhost:4001/v1/keys/foo/bar -> fail
+//   $ curl -X PUT localhost:4001/v1/keys/foo/bar -d value=XXX
+//   $ curl -I localhost:4001/v1/keys/foo/bar
+//
+func TestV1HeadKey(t *testing.T) {
+	tests.RunServer(func(s *server.Server) {
+		v := url.Values{}
+		v.Set("value", "XXX")
+		fullURL := fmt.Sprintf("%s%s", s.URL(), "/v1/keys/foo/bar")
+		resp, _ := tests.Get(fullURL)
+		assert.Equal(t, resp.StatusCode, http.StatusNotFound)
+		assert.Equal(t, resp.ContentLength, -1)
+
+		resp, _ = tests.PutForm(fullURL, v)
+		tests.ReadBody(resp)
+
+		resp, _ = tests.Get(fullURL)
+		assert.Equal(t, resp.StatusCode, http.StatusOK)
+		assert.Equal(t, resp.ContentLength, -1)
+	})
+}

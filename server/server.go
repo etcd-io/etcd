@@ -100,33 +100,33 @@ func (s *Server) Store() store.Store {
 }
 
 func (s *Server) installV1(r *mux.Router) {
-	s.handleFuncV1(r, "/v1/keys/{key:.*}", v1.GetKeyHandler).Methods("GET")
+	s.handleFuncV1(r, "/v1/keys/{key:.*}", v1.GetKeyHandler).Methods("GET", "HEAD")
 	s.handleFuncV1(r, "/v1/keys/{key:.*}", v1.SetKeyHandler).Methods("POST", "PUT")
 	s.handleFuncV1(r, "/v1/keys/{key:.*}", v1.DeleteKeyHandler).Methods("DELETE")
-	s.handleFuncV1(r, "/v1/watch/{key:.*}", v1.WatchKeyHandler).Methods("GET", "POST")
-	s.handleFunc(r, "/v1/leader", s.GetLeaderHandler).Methods("GET")
-	s.handleFunc(r, "/v1/machines", s.GetPeersHandler).Methods("GET")
-	s.handleFunc(r, "/v1/peers", s.GetPeersHandler).Methods("GET")
-	s.handleFunc(r, "/v1/stats/self", s.GetStatsHandler).Methods("GET")
-	s.handleFunc(r, "/v1/stats/leader", s.GetLeaderStatsHandler).Methods("GET")
-	s.handleFunc(r, "/v1/stats/store", s.GetStoreStatsHandler).Methods("GET")
+	s.handleFuncV1(r, "/v1/watch/{key:.*}", v1.WatchKeyHandler).Methods("GET", "HEAD", "POST")
+	s.handleFunc(r, "/v1/leader", s.GetLeaderHandler).Methods("GET", "HEAD")
+	s.handleFunc(r, "/v1/machines", s.GetPeersHandler).Methods("GET", "HEAD")
+	s.handleFunc(r, "/v1/peers", s.GetPeersHandler).Methods("GET", "HEAD")
+	s.handleFunc(r, "/v1/stats/self", s.GetStatsHandler).Methods("GET", "HEAD")
+	s.handleFunc(r, "/v1/stats/leader", s.GetLeaderStatsHandler).Methods("GET", "HEAD")
+	s.handleFunc(r, "/v1/stats/store", s.GetStoreStatsHandler).Methods("GET", "HEAD")
 }
 
 func (s *Server) installV2(r *mux.Router) {
 	r2 := mux.NewRouter()
 	r.PathPrefix("/v2").Handler(ehttp.NewLowerQueryParamsHandler(r2))
 
-	s.handleFuncV2(r2, "/v2/keys/{key:.*}", v2.GetHandler).Methods("GET")
+	s.handleFuncV2(r2, "/v2/keys/{key:.*}", v2.GetHandler).Methods("GET", "HEAD")
 	s.handleFuncV2(r2, "/v2/keys/{key:.*}", v2.PostHandler).Methods("POST")
 	s.handleFuncV2(r2, "/v2/keys/{key:.*}", v2.PutHandler).Methods("PUT")
 	s.handleFuncV2(r2, "/v2/keys/{key:.*}", v2.DeleteHandler).Methods("DELETE")
-	s.handleFunc(r2, "/v2/leader", s.GetLeaderHandler).Methods("GET")
-	s.handleFunc(r2, "/v2/machines", s.GetPeersHandler).Methods("GET")
-	s.handleFunc(r2, "/v2/peers", s.GetPeersHandler).Methods("GET")
-	s.handleFunc(r2, "/v2/stats/self", s.GetStatsHandler).Methods("GET")
-	s.handleFunc(r2, "/v2/stats/leader", s.GetLeaderStatsHandler).Methods("GET")
-	s.handleFunc(r2, "/v2/stats/store", s.GetStoreStatsHandler).Methods("GET")
-	s.handleFunc(r2, "/v2/speedTest", s.SpeedTestHandler).Methods("GET")
+	s.handleFunc(r2, "/v2/leader", s.GetLeaderHandler).Methods("GET", "HEAD")
+	s.handleFunc(r2, "/v2/machines", s.GetPeersHandler).Methods("GET", "HEAD")
+	s.handleFunc(r2, "/v2/peers", s.GetPeersHandler).Methods("GET", "HEAD")
+	s.handleFunc(r2, "/v2/stats/self", s.GetStatsHandler).Methods("GET", "HEAD")
+	s.handleFunc(r2, "/v2/stats/leader", s.GetLeaderStatsHandler).Methods("GET", "HEAD")
+	s.handleFunc(r2, "/v2/stats/store", s.GetStoreStatsHandler).Methods("GET", "HEAD")
+	s.handleFunc(r2, "/v2/speedTest", s.SpeedTestHandler).Methods("GET", "HEAD")
 }
 
 func (s *Server) installMod(r *mux.Router) {
@@ -134,7 +134,7 @@ func (s *Server) installMod(r *mux.Router) {
 }
 
 func (s *Server) installDebug(r *mux.Router) {
-	s.handleFunc(r, "/debug/metrics", s.GetMetricsHandler).Methods("GET")
+	s.handleFunc(r, "/debug/metrics", s.GetMetricsHandler).Methods("GET", "HEAD")
 	r.HandleFunc("/debug/pprof", pprof.Index)
 	r.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
 	r.HandleFunc("/debug/pprof/profile", pprof.Profile)
@@ -156,11 +156,23 @@ func (s *Server) handleFuncV2(r *mux.Router, path string, f func(http.ResponseWr
 	})
 }
 
+type HEADResponseWriter struct {
+	http.ResponseWriter
+}
+
+func (w *HEADResponseWriter) Write([]byte) (int, error) {
+	return 0, nil
+}
+
 // Adds a server handler to the router.
 func (s *Server) handleFunc(r *mux.Router, path string, f func(http.ResponseWriter, *http.Request) error) *mux.Route {
 
 	// Wrap the standard HandleFunc interface to pass in the server reference.
 	return r.HandleFunc(path, func(w http.ResponseWriter, req *http.Request) {
+		if req.Method == "HEAD" {
+			w = &HEADResponseWriter{w}
+		}
+
 		// Log request.
 		log.Debugf("[recv] %s %s %s [%s]", req.Method, s.URL(), req.URL.Path, req.RemoteAddr)
 

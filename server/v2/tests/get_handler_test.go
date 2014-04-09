@@ -229,3 +229,27 @@ func TestV2WatchKeyInDir(t *testing.T) {
 		assert.Equal(t, node["key"], "/keyindir", "")
 	})
 }
+
+// Ensures that HEAD could work.
+//
+//   $ curl -I localhost:4001/v2/keys/foo/bar -> fail
+//   $ curl -X PUT localhost:4001/v2/keys/foo/bar -d value=XXX
+//   $ curl -I localhost:4001/v2/keys/foo/bar
+//
+func TestV2HeadKey(t *testing.T) {
+	tests.RunServer(func(s *server.Server) {
+		v := url.Values{}
+		v.Set("value", "XXX")
+		fullURL := fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo/bar")
+		resp, _ := tests.Head(fullURL)
+		assert.Equal(t, resp.StatusCode, http.StatusNotFound)
+		assert.Equal(t, resp.ContentLength, -1)
+
+		resp, _ = tests.PutForm(fullURL, v)
+		tests.ReadBody(resp)
+
+		resp, _ = tests.Head(fullURL)
+		assert.Equal(t, resp.StatusCode, http.StatusOK)
+		assert.Equal(t, resp.ContentLength, -1)
+	})
+}
