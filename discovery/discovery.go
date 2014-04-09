@@ -112,7 +112,7 @@ func (d *Discoverer) findPeers() (peers []string, err error) {
 	}
 
 	if len(peers) == 0 {
-		return nil, errors.New("Discovery found an initialized cluster but no peers are registered.")
+		return nil, errors.New("Discovery found an initialized cluster but no reachable peers are registered.")
 	}
 
 	log.Infof("Discovery found peers %v", peers)
