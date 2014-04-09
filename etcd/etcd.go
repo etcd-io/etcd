@@ -33,6 +33,7 @@ import (
 	ehttp "github.com/coreos/etcd/http"
 	"github.com/coreos/etcd/log"
 	"github.com/coreos/etcd/metrics"
+	"github.com/coreos/etcd/pkg/fs"
 	"github.com/coreos/etcd/server"
 	"github.com/coreos/etcd/store"
 )
@@ -100,6 +101,11 @@ func (e *Etcd) Run() {
 	info := filepath.Join(e.Config.DataDir, "info")
 	if _, err := os.Stat(info); err == nil {
 		log.Warnf("All cached configuration is now ignored. The file %s can be removed.", info)
+	}
+
+	// Set NOCOW for data directory in btrfs
+	if fs.IsBtrfs(e.Config.DataDir) {
+		fs.SetNOCOW(e.Config.DataDir)
 	}
 
 	var mbName string
