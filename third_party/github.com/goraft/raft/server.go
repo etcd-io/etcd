@@ -934,8 +934,13 @@ func (s *server) processAppendEntriesRequest(req *AppendEntriesRequest) (*Append
 
 	if req.Term == s.currentTerm {
 		_assert(s.State() != Leader, "leader.elected.at.same.term.%d\n", s.currentTerm)
-		// change state to follower
-		s.setState(Follower)
+
+		// step-down to follower when it is a candidate
+		if s.state == Candidate {
+			// change state to follower
+			s.setState(Follower)
+		}
+
 		// discover new leader when candidate
 		// save leader name when follower
 		s.leader = req.LeaderName
