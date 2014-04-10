@@ -1,0 +1,26 @@
+@import "shared";
+
+//  override to change the default
+$default-background-size: 100% auto !default;
+
+// Set the size of background images using px, width and height, or percentages.
+// Currently supported in: Opera, Gecko, Webkit.
+//
+// * percentages are relative to the background-origin (default = padding-box)
+// * mixin defaults to: `$default-background-size`
+@mixin background-size(
+  $size-1: $default-background-size,
+  $size-2: false,
+  $size-3: false,
+  $size-4: false,
+  $size-5: false,
+  $size-6: false,
+  $size-7: false,
+  $size-8: false,
+  $size-9: false,
+  $size-10: false
+) {
+  $size-1: if(type-of($size-1) == string, unquote($size-1), $size-1);
+  $sizes: compact($size-1, $size-2, $size-3, $size-4, $size-5, $size-6, $size-7, $size-8, $size-9, $size-10);
+  @include experimental(background-size, $sizes, -moz, -webkit, -o, not -ms, not -khtml);
+}

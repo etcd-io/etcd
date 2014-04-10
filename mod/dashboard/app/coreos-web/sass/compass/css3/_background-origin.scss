@@ -1,0 +1,42 @@
+// Override `$default-background-origin` to change the default.
+
+@import "shared";
+
+$default-background-origin: content-box !default;
+
+// Position the background off the edge of the padding, border or content
+//
+// * Possible values:
+//   * `padding-box`
+//   * `border-box`
+//   * `content-box`
+// * browser defaults to `padding-box`
+// * mixin defaults to `content-box`
+
+
+@mixin background-origin($origin: $default-background-origin) {
+  $origin: unquote($origin);
+  // webkit and mozilla use the deprecated short [border | padding | content]
+  $deprecated: $origin;
+  @if $origin == padding-box { $deprecated: padding; }
+  @if $origin == border-box  { $deprecated: border;  }
+  @if $origin == content-box { $deprecated: content; }
+
+  // Support for webkit and mozilla's use of the deprecated short form
+  @include experimental(background-origin, $deprecated,
+    -moz,
+    -webkit,
+    not -o,
+    not -ms,
+    not -khtml,
+    not official
+  );
+  @include experimental(background-origin, $origin,
+    not -moz,
+    not -webkit,
+    -o,
+    -ms,
+    -khtml,
+    official
+  );
+}

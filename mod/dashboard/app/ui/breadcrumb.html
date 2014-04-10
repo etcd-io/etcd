@@ -1,0 +1,11 @@
+<ol class="breadcrumb ed-m-breadcrumb">
+  <li>
+    <a ng-if="pathParts.length" ng-click="goToRoot()" class="fa fa-home" href="#"></a>
+    <span ng-if="!pathParts.length" class="fa fa-home"></span>
+  </li>
+  <li ng-repeat="part in pathParts"
+    ng-class="{'active': $last}">
+    <a ng-if="!$last" ng-click="onClick(part)" href="#">{{part.name}}</a>
+    <span ng-if="$last">{{part.name}}</span>
+  </li>
+</ol>

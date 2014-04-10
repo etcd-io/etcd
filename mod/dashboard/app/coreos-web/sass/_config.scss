@@ -1,0 +1,48 @@
+/**
+ * Site-wide variables go here.
+ */
+
+// Configure static paths.
+@import "path-config";
+
+/* LAYOUT DIMENSIONS */
+$height-footer: 40px;
+
+/* MEDIA QUERY BREAKPOITNS */
+$screen-xs:     480px !default;
+$screen-xs-min: $screen-xs !default;
+$screen-sm:     768px !default;
+$screen-sm-min: $screen-sm !default;
+$screen-md:     992px !default;
+$screen-md-min: $screen-md !default;
+$screen-lg:     1200px !default;
+$screen-lg-min: $screen-lg !default;
+
+/* THEME COLORS */
+$color-bg-primary: $white;
+$color-bg-mute: $gray-lightest;
+$color-bg-highlight: $highlight;
+$color-icon-light: $white;
+$color-icon-dark: $black;
+$color-text-light: $white;
+$color-text-muted: $gray;
+$color-border: $gray-lighter;
+$color-bg-translucent-dark: $translucent-black;
+$color-table-header: $gray;
+$color-table-active: $blue-bg;
+$color-table-border: $gray-lighter;
+$color-footer-icons: $blue-dark;
+$color-header-toggle: $gray-darker;
+$color-message-error-bg: $red-dark;
+$color-message-info-bg: $blue-dark;
+$color-cog-active: $blue-dark;
+$color-inline-loader: $blue;
+
+/* Fonts */
+$font-family-primary: 'Source Sans Pro', Helvetica, sans-serif;
+$font-size-base: 16px;
+$font-size-xs: 80%;
+$font-size-sm: 85%;
+$font-size-md: 90%;
+$font-size-lg: 110%;
+$font-size-xl: 120%;

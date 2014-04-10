@@ -1,0 +1,23 @@
+@import "shared";
+
+// Provides cross-browser support for the upcoming (?) css3 filter property.
+//
+// Each filter argument should adhere to the standard css3 syntax for the
+// filter property.
+@mixin filter (
+  $filter-1,
+  $filter-2 : false,
+  $filter-3 : false,
+  $filter-4 : false,
+  $filter-5 : false,
+  $filter-6 : false,
+  $filter-7 : false,
+  $filter-8 : false,
+  $filter-9 : false,
+  $filter-10: false
+) {
+  $filter : compact($filter-1, $filter-2, $filter-3, $filter-4, $filter-5, $filter-6, $filter-7, $filter-8, $filter-9, $filter-10);
+  @include experimental(filter, $filter,
+    -moz, -webkit, not -o, not -ms, not -khtml, official
+  );
+}

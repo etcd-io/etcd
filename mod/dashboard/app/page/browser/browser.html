@@ -1,0 +1,56 @@
+<div class="ed-p-browser">
+
+  <co-nav-title title="Browser">
+    <a ng-click="openCreateModal()" href="#" class="co-m-primary-action">
+      <co-svg class="co-img-icon co-img-icon-light" src="/coreos.svg/icon-add.svg"></co-svg>Create Node</a>
+  </co-nav-title>
+
+  <div class="panel co-m-panel co-fx-box-shadow-heavy">
+    <div class="panel-body">
+
+      <div class="row">
+        <div class="col-lg-12 col-md-12 col-sm-12">
+
+          <co-breadcrumb callback="breadcrumbCallback({path: path})" path="currPath"></co-breadcrumb>
+
+          <table class="table table-hover co-m-table ed-m-node-table">
+            <thead>
+              <tr>
+                <th class="ed-m-node-table__cog-col">&nbsp;</th>
+                <th>Key</th>
+                <th class="ed-m-node-table__value-col">Value</th>
+                <th class="ed-m-node-table__ttl-col">TTL</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr ng-repeat="node in currNode.nodes | orderBy:'key' track by node.key"
+                ng-class="{'ed-m-node-table__node-row': !node.dir}"
+                ng-click="rowClick(node)"
+                class="co-m-table-interact-entire-element">
+                <td>
+                  <ed-node-cog node="node"></ed-node-cog>
+                </td>
+                <td>
+                  <a class="co-m-table__constrain-content" ng-if="node.dir" href="#">{{truncateKey(node.key)}}</a>
+                  <span class="co-m-table__constrain-content" ng-if="!node.dir">{{truncateKey(node.key)}}</span>
+                </td>
+                <td>
+                  <div class="co-m-table__constrain-content">
+                    <span co-highlight="node.value">{{node.value || '--'}}</span>
+                  </div>
+                </td>
+                <td>
+                  <span co-highlight="node.ttl">{{node.ttl || '--'}}</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+</div>

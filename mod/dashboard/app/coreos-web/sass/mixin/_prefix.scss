@@ -1,0 +1,9 @@
+// Generic mixin to apply vendor prefixes an arbitrary CSS properties.
+
+@mixin co-x-prefix($property, $value) {
+  #{$property}: $value;
+  -webkit-#{$property}: $value;
+  -moz-#{$property}: $value;
+  -ms-#{$property}: $value;
+  -o-#{$property}: $value;
+}

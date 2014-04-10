@@ -1,0 +1,33 @@
+@mixin outer-table-borders($width: 2px, $color: black) {
+  border: $width solid $color;
+  thead {
+    th {
+      border-bottom: $width solid $color; } }
+  tfoot {
+    th, td {
+      border-top: $width solid $color; } }
+  th {
+    &:first-child {
+      border-right: $width solid $color; } } }
+
+@mixin inner-table-borders($width: 2px, $color: black) {
+  th, td {
+    border: {
+      right: $width solid $color;
+      bottom: $width solid $color;
+      left-width: 0px;
+      top-width: 0px; };
+    &:last-child,
+    &.last {
+      border-right-width: 0px; } }
+
+// IE8 ignores rules that are included on the same line as :last-child
+// see http://www.richardscarrott.co.uk/posts/view/ie8-last-child-bug for details
+
+  tbody, tfoot {
+    tr:last-child {
+      th, td {
+        border-bottom-width: 0px; } }
+    tr.last {
+      th, td {
+        border-bottom-width: 0px; } } } }

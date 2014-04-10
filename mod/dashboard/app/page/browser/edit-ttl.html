@@ -1,0 +1,33 @@
+<div class="ed-p-edit-ttl">
+  <form ng-controller="EditTtlFormCtrl" ng-submit="submit()" name="form" role="form">
+
+    <div class="modal-header">
+      <h4 class="modal-title">Modify TTL</h4>
+    </div>
+
+    <div class="modal-body">
+      <div class="row form-row">
+        <div class="col-sm-2">
+          <label for="ed-p-edit-ttl__ttl" class="control-label">TTL</label>
+        </div>
+        <div class="col-sm-10">
+          <input name="ttl"
+            id="ed-p-edit-ttl__ttl"
+            type="number"
+            class="form-control ed-m-number-input"
+            min="0"
+            ng-blur="form.ttl.blur = true"
+            ng-model="fields.ttl"/>
+            Seconds
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-footer" co-btn-bar complete-promise="requestPromise">
+      <co-error-message formatter="etcdApi" promise="requestPromise"></co-error-message>
+      <button type="submit" class="btn btn-primary">Save</button>
+      <button type="button" ng-click="cancel()" class="btn btn-link">Cancel</button>
+    </div>
+
+  </form>
+</div>
