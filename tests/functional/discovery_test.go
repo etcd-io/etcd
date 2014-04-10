@@ -292,6 +292,53 @@ func TestDiscoverySecondPeerUp(t *testing.T) {
 	})
 }
 
+// TestDiscoveryRestart ensures that a discovery cluster could be restarted.
+func TestDiscoveryRestart(t *testing.T) {
+	etcdtest.RunServer(func(s *server.Server) {
+		proc, err := startServer([]string{"-discovery", s.URL() + "/v2/keys/_etcd/registry/4"})
+		if err != nil {
+			t.Fatal(err.Error())
+		}
+
+		client := http.Client{}
+		err = assertServerFunctional(client, "http")
+		if err != nil {
+			t.Fatal(err.Error())
+		}
+
+		proc2, err := startServer2([]string{"-discovery", s.URL() + "/v2/keys/_etcd/registry/4", "-addr", "127.0.0.1:4002", "-peer-addr", "127.0.0.1:7002"})
+		if err != nil {
+			t.Fatal(err.Error())
+		}
+
+		err = assertServerFunctional(client, "http")
+		if err != nil {
+			t.Fatal(err.Error())
+		}
+
+		stopServer(proc)
+		stopServer(proc2)
+
+		proc, err = startServerWithDataDir([]string{"-discovery", s.URL() + "/v2/keys/_etcd/registry/4"})
+		if err != nil {
+			t.Fatal(err.Error())
+		}
+		proc2, err = startServer2WithDataDir([]string{"-discovery", s.URL() + "/v2/keys/_etcd/registry/4", "-addr", "127.0.0.1:4002", "-peer-addr", "127.0.0.1:7002"})
+		if err != nil {
+			t.Fatal(err.Error())
+		}
+
+		err = assertServerFunctional(client, "http")
+		if err != nil {
+			t.Fatal(err.Error())
+		}
+
+		stopServer(proc)
+		stopServer(proc2)
+	})
+}
+
+
 func assertServerNotUp(client http.Client, scheme string) error {
 	path := fmt.Sprintf("%s://127.0.0.1:4001/v2/keys/foo", scheme)
 	fields := url.Values(map[string][]string{"value": {"bar"}})
