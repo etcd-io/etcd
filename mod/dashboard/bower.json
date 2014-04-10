@@ -1,0 +1,19 @@
+{
+  "name": "etcd-dashboard",
+  "version": "2.0.0",
+  "dependencies": {
+    "angular": "latest",
+    "angular-resource": "latest",
+    "angular-route": "latest",
+    "angular-bootstrap": "latest",
+    "underscore": "latest",
+    "underscore.string": "latest",
+    "jquery": "latest",
+    "d3": "latest",
+    "angular-animate": "latest",
+    "font-awesome": "~4.0.3"
+  },
+  "devDependencies": {
+    "angular-mocks": "latest"
+  }
+}

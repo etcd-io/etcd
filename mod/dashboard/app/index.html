@@ -1,63 +1,68 @@
 <!DOCTYPE html>
+<html lang="en" class="no-js" ng-app="etcd.dashboard">
 
-<html class="no-js" ng-app="etcdControlPanel" ng-controller="RootCtrl">
-  <head>
+  <head co-favicons>
     <meta charset="utf-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <title>etcd dashboard</title>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <title co-title co-title-suffix=" · etcd">etcd</title>
     <meta name="description" content="">
-    <meta name="viewport" content="width=device-width">
-    <link href="//fonts.googleapis.com/css?family=Source+Sans+Pro:200,300,400,400italic,600,700,900" rel="stylesheet" type="text/css">
-    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro:400,500,600,700" rel="stylesheet" type="text/css">
-    <!-- build:css styles/styles.css -->
-    <link rel="stylesheet" href="styles/bootstrap.css">
-    <link rel="stylesheet" href="styles/main.css">
-    <link rel="stylesheet" href="styles/browser.css">
-    <link rel="stylesheet" href="styles/stats.css">
-    <link rel="stylesheet" href="styles/etcd-widgets.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- build:css /cp/static/main.css -->
+    <link rel="stylesheet" href="/mod/dashboard/static/coreos-web/coreos.css">
+    <link rel="stylesheet" href="/mod/dashboard/static/compiled/main.css">
     <!-- endbuild -->
   </head>
 
-  <body>
-    <h1>etcd Dashboard</h1>
+  <body class="co-img-bg-hexagons">
 
-    <div id="view-container" ng-view></div>
+    <co-footer-wrapper ng-cloak>
+      <co-navbar>
+        <ul class="nav navbar-nav">
+          <co-navbar-link href="/mod/dashboard/browser">Browser</co-navbar-link>
+          <co-navbar-link href="/mod/dashboard/stats">Stats</co-navbar-link>
+        </ul>
+      </co-navbar>
+      <div id="co-l-view-container" class="container" ng-view></div>
+    </co-footer-wrapper>
 
-    <div id="footer">
-      <div id="powered-by" class="text-center">Powered by <a href="https://github.com/coreos/etcd" tabindex="-1">etcd</a></div>
-      <div id="coreos-logo">
-        <a href="http://coreos.com" tabindex="-1"><img src="images/logo.svg"/></a>
-      </div>
-    </div>
+    <co-footer>
+      <co-footer-link href="https://coreos.com/docs" icon-class="fa fa-book">Documentation</co-footer-link>
+      <co-footer-link href="irc://irc.freenode.org:6667/#coreos/" icon-class="fa fa-comment">IRC #coreos</co-footer-link>
+    </co-footer>
 
-    <!-- build:js scripts/modules.js -->
-    <script src="bower_components/jquery/jquery.js"></script>
-    <script src="bower_components/angular/angular.js"></script>
-    <script src="bower_components/angular-resource/angular-resource.js"></script>
-    <script src="bower_components/angular-route/angular-route.js"></script>
-    <script src="bower_components/angular-cookies/angular-cookies.js"></script>
-    <script src="bower_components/angular-sanitize/angular-sanitize.js"></script>
-    <script src="bower_components/d3/d3.js"></script>
-    <script src="bower_components/underscore/underscore.js"></script>
-    <script src="bower_components/underscore.string/lib/underscore.string.js"></script>
-    <script src="bower_components/moment/moment.js"></script>
-    <script src="scripts/vega.js"></script>
-    <script src="scripts/ng-time-relative.min.js"></script>
+    <co-toast></co-toast>
+
+    <!-- build:js /cp/static/deps.js -->
+    <script src="/mod/dashboard/static/bower_components/jquery/dist/jquery.js"></script>
+    <script src="/mod/dashboard/static/bower_components/angular/angular.js"></script>
+    <script src="/mod/dashboard/static/bower_components/angular-route/angular-route.js"></script>
+    <script src="/mod/dashboard/static/bower_components/angular-resource/angular-resource.js"></script>
+    <script src="/mod/dashboard/static/bower_components/angular-animate/angular-animate.js"></script>
+    <script src="/mod/dashboard/static/bower_components/angular-bootstrap/ui-bootstrap-tpls.js"></script>
+    <script src="/mod/dashboard/static/bower_components/underscore/underscore.js"></script>
+    <script src="/mod/dashboard/static/bower_components/underscore.string/lib/underscore.string.js"></script>
+    <script src="/mod/dashboard/static/bower_components/d3/d3.js"></script>
+    <script src="/mod/dashboard/static/coreos-web/coreos.js"></script>
+    <script src="/mod/dashboard/static/vega.js"></script>
     <!-- endbuild -->
 
-    <!-- build:js scripts/app.js -->
-    <script src="scripts/app.js"></script>
-    <script src="scripts/controllers/root.js"></script>
-    <script src="scripts/directives.js"></script>
-    <script src="scripts/shims.js"></script>
-    <script src="scripts/controllers/home.js"></script>
-    <script src="scripts/controllers/browser.js"></script>
-    <script src="scripts/common/services/etcd.js"></script>
-    <script src="scripts/common/services/prefix-url.js"></script>
-    <script src="scripts/common/directives/highlight.js"></script>
-    <script src="scripts/common/directives/enter.js"></script>
-    <script src="scripts/common/services/etcd.js"></script>
-    <script src="scripts/controllers/stats.js"></script>
+    <!-- build:js /cp/static/app.js -->
+    <script src="/mod/dashboard/static/compiled/views.js"></script>
+    <script src="/mod/dashboard/static/etcd-dashboard.js"></script>
+    <script src="/mod/dashboard/static/module/etcd-api.js"></script>
+    <script src="/mod/dashboard/static/module/path.js"></script>
+    <script src="/mod/dashboard/static/module/etcd-event.js"></script>
+    <script src="/mod/dashboard/static/page/browser/browser-ctrl.js"></script>
+    <script src="/mod/dashboard/static/page/browser/create-node-ctrl.js"></script>
+    <script src="/mod/dashboard/static/page/browser/edit-node-ctrl.js"></script>
+    <script src="/mod/dashboard/static/page/browser/node-info-ctrl.js"></script>
+    <script src="/mod/dashboard/static/page/browser/edit-ttl-ctrl.js"></script>
+    <script src="/mod/dashboard/static/page/stats/stats-ctrl.js"></script>
+    <script src="/mod/dashboard/static/page/stats/stats-detail-ctrl.js"></script>
+    <script src="/mod/dashboard/static/ui/breadcrumb.js"></script>
+    <script src="/mod/dashboard/static/ui/node-cog.js"></script>
+    <script src="/mod/dashboard/static/ui/graph-config.js"></script>
+    <script src="/mod/dashboard/static/ui/latency-graph.js"></script>
     <!-- endbuild -->
 
   </body>

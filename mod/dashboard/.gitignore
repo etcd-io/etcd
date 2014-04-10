@@ -1,0 +1,6 @@
+/go-bindata
+node_modules
+dist
+.tmp
+app/compiled
+app/bower_components

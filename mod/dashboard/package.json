@@ -1,0 +1,28 @@
+{
+  "name": "etcd-dashboard",
+  "version": "2.0.0",
+  "dependencies": {},
+  "devDependencies": {
+    "config": "~0.4.35",
+    "grunt": "latest",
+    "grunt-contrib-clean": "latest",
+    "grunt-contrib-copy": "latest",
+    "grunt-contrib-concat": "latest",
+    "grunt-contrib-jshint": "0.8.0",
+    "grunt-contrib-uglify": "latest",
+    "grunt-contrib-cssmin": "latest",
+    "grunt-contrib-watch": "latest",
+    "grunt-usemin": "latest",
+    "grunt-karma": "~0.8.0",
+    "karma-jasmine": "~0.1.5",
+    "grunt-ngmin": "latest",
+    "grunt-html2js": "latest",
+    "grunt-concurrent": "~0.4.3",
+    "matchdep": "latest",
+    "grunt-sass": "~0.11.0",
+    "karma-chrome-launcher": "~0.1.2"
+  },
+  "engines": {
+    "node": ">=0.10.0"
+  }
+}
