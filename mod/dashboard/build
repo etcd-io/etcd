@@ -1,0 +1,18 @@
+#!/bin/bash -e
+
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+cd ${DIR}
+git clean -x -f dist
+
+npm install
+bower install
+grunt build
+
+go get github.com/jteeuwen/go-bindata/...
+
+dirs=
+for i in `find dist -type d`; do
+	dirs="${dirs} ${i}"
+done
+
+${GOPATH}/bin/go-bindata -nomemcopy -pkg "resources" -o resources/resources.go -prefix dist ${dirs}
