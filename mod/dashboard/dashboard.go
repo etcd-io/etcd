@@ -35,6 +35,10 @@ func memoryFileServer(w http.ResponseWriter, req *http.Request) {
 	return
 }
 
+func getDashDir() string {
+	return os.Getenv("ETCD_DASHBOARD_DIR")
+}
+
 // DashboardHttpHandler either uses the compiled in virtual filesystem for the
 // dashboard assets or if ETCD_DASHBOARD_DIR is set uses that as the source of
 // assets.
@@ -42,11 +46,18 @@ func HttpHandler() (handler http.Handler) {
 	handler = http.HandlerFunc(memoryFileServer)
 
 	// Serve the dashboard from a filesystem if the magic env variable is enabled
-	dashDir := os.Getenv("ETCD_DASHBOARD_DIR")
+	dashDir := getDashDir()
 	if len(dashDir) != 0 {
 		log.Debugf("Using dashboard directory %s", dashDir)
 		handler = http.FileServer(http.Dir(dashDir))
 	}
 
 	return handler
+}
+
+// Always returns the index.html page.
+func IndexPage(w http.ResponseWriter, req *http.Request) {
+	dashDir := getDashDir()
+	http.ServeFile(w, req, path.Join(dashDir, "index.html"))
+	return
 }

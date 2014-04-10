@@ -21,7 +21,9 @@ func addSlash(w http.ResponseWriter, req *http.Request) {
 func HttpHandler(addr string) http.Handler {
 	r := mux.NewRouter()
 	r.HandleFunc("/dashboard", addSlash)
-	r.PathPrefix("/dashboard/").Handler(http.StripPrefix("/dashboard/", dashboard.HttpHandler()))
+
+	r.PathPrefix("/dashboard/static/").Handler(http.StripPrefix("/dashboard/static/", dashboard.HttpHandler()))
+	r.HandleFunc("/dashboard{path:.*}", dashboard.IndexPage)
 
 	r.PathPrefix("/v2/lock").Handler(http.StripPrefix("/v2/lock", lock2.NewHandler(addr)))
 	r.PathPrefix("/v2/leader").Handler(http.StripPrefix("/v2/leader", leader2.NewHandler(addr)))
