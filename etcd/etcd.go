@@ -103,11 +103,6 @@ func (e *Etcd) Run() {
 		log.Warnf("All cached configuration is now ignored. The file %s can be removed.", info)
 	}
 
-	// Set NOCOW for data directory in btrfs
-	if btrfs.IsBtrfs(e.Config.DataDir) {
-		btrfs.SetNOCOWDir(e.Config.DataDir)
-	}
-
 	var mbName string
 	if e.Config.Trace() {
 		mbName = e.Config.MetricsBucketName()
