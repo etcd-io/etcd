@@ -6,17 +6,23 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"sync"
 	"testing"
 	"time"
 )
 
 // Ensure that etcd does not come up if the internal raft versions do not match.
 func TestInternalVersion(t *testing.T) {
+	var mu sync.Mutex
+
 	checkedVersion := false
 	testMux := http.NewServeMux()
 
 	testMux.HandleFunc("/version", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, "This is not a version number")
+		mu.Lock()
+		defer mu.Unlock()
+
 		checkedVersion = true
 	})
 
@@ -48,6 +54,8 @@ func TestInternalVersion(t *testing.T) {
 		return
 	}
 
+	mu.Lock()
+	defer mu.Unlock()
 	if checkedVersion == false {
 		t.Fatal("etcd did not check the version")
 		return
