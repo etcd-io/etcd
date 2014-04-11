@@ -194,6 +194,42 @@ func TestV2UpdateKeyFailOnMissingDirectory(t *testing.T) {
 	})
 }
 
+// Ensures that a key could update TTL.
+//
+//   $ curl -X PUT localhost:4001/v2/keys/foo -d value=XXX
+//   $ curl -X PUT localhost:4001/v2/keys/foo -d value=XXX -d ttl=1000 -d prevExist=true
+//   $ curl -X PUT localhost:4001/v2/keys/foo -d value=XXX -d ttl= -d prevExist=true
+//
+func TestV2UpdateKeySuccessWithTTL(t *testing.T) {
+	tests.RunServer(func(s *server.Server) {
+		v := url.Values{}
+		v.Set("value", "XXX")
+		resp, _ := tests.PutForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo"), v)
+		assert.Equal(t, resp.StatusCode, http.StatusCreated)
+		node := (tests.ReadBodyJSON(resp)["node"]).(map[string]interface{})
+		createdIndex := node["createdIndex"]
+
+		v.Set("ttl", "1000")
+		v.Set("prevExist", "true")
+		resp, _ = tests.PutForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo"), v)
+		assert.Equal(t, resp.StatusCode, http.StatusOK)
+		node = (tests.ReadBodyJSON(resp)["node"]).(map[string]interface{})
+		assert.Equal(t, node["value"], "XXX", "")
+		assert.Equal(t, node["ttl"], 1000, "")
+		assert.NotEqual(t, node["expiration"], "", "")
+		assert.Equal(t, node["createdIndex"], createdIndex, "")
+
+		v.Del("ttl")
+		resp, _ = tests.PutForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo"), v)
+		assert.Equal(t, resp.StatusCode, http.StatusOK)
+		node = (tests.ReadBodyJSON(resp)["node"]).(map[string]interface{})
+		assert.Equal(t, node["value"], "XXX", "")
+		assert.Equal(t, node["ttl"], nil, "")
+		assert.Equal(t, node["expiration"], nil, "")
+		assert.Equal(t, node["createdIndex"], createdIndex, "")
+	})
+}
+
 // Ensures that a key is set only if the previous index matches.
 //
 //   $ curl -X PUT localhost:4001/v2/keys/foo/bar -d value=XXX
