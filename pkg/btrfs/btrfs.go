@@ -1,6 +1,7 @@
 package btrfs
 
 import (
+	"fmt"
 	"os"
 	"runtime"
 	"syscall"
@@ -39,33 +40,31 @@ func IsBtrfs(path string) bool {
 	return true
 }
 
-// SetNOCOWDir sets NOCOW flag for the directory
-func SetNOCOWDir(path string) error {
+// SetNOCOWFile sets NOCOW flag for file
+func SetNOCOWFile(path string) error {
 	file, err := os.Open(path)
 	if err != nil {
-		log.Warnf("Failed to open %v: %v", path, err)
 		return err
 	}
 	defer file.Close()
 
 	fileinfo, err := file.Stat()
 	if err != nil {
-		log.Warnf("Failed to stat %v: %v", path, err)
 		return err
 	}
-	if !fileinfo.IsDir() {
-		log.Infof("Skip NOCOW setting for non directory")
-		return nil
+	if fileinfo.IsDir() {
+		return fmt.Errorf("skip directory")
+	}
+	if fileinfo.Size() != 0 {
+		return fmt.Errorf("skip nonempty file")
 	}
 
 	var attr int
 	if _, _, errno := syscall.Syscall(syscall.SYS_IOCTL, file.Fd(), FS_IOC_GETFLAGS, uintptr(unsafe.Pointer(&attr))); errno != 0 {
-		log.Warnf("Failed to get file flags: %v", errno.Error())
 		return errno
 	}
 	attr |= FS_NOCOW_FL
 	if _, _, errno := syscall.Syscall(syscall.SYS_IOCTL, file.Fd(), FS_IOC_SETFLAGS, uintptr(unsafe.Pointer(&attr))); errno != 0 {
-		log.Warnf("Failed to set file flags: %v", errno.Error())
 		return errno
 	}
 	log.Infof("Set NOCOW to path %v succeeded", path)

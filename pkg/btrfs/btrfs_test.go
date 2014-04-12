@@ -9,14 +9,16 @@ import (
 )
 
 func TestSetNOCOW(t *testing.T) {
-	name, err := ioutil.TempDir(".", "etcdtest")
+	f, err := ioutil.TempFile(".", "etcdtest")
 	if err != nil {
 		t.Fatal("Failed creating temp dir")
 	}
+	name := f.Name()
+	f.Close()
 	defer os.Remove(name)
 
 	if IsBtrfs(name) {
-		SetNOCOWDir(name)
+		SetNOCOWFile(name)
 		cmd := exec.Command("lsattr", name)
 		out, err := cmd.Output()
 		if err != nil {

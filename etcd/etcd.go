@@ -33,7 +33,6 @@ import (
 	ehttp "github.com/coreos/etcd/http"
 	"github.com/coreos/etcd/log"
 	"github.com/coreos/etcd/metrics"
-	"github.com/coreos/etcd/pkg/btrfs"
 	"github.com/coreos/etcd/server"
 	"github.com/coreos/etcd/store"
 )

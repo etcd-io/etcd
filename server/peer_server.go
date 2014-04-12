@@ -294,7 +294,9 @@ func (s *PeerServer) Start(snapshot bool, discoverURL string, peers []string) er
 
 	// Set NOCOW for data directory in btrfs
 	if btrfs.IsBtrfs(s.raftServer.LogPath()) {
-		btrfs.SetNOCOW(s.raftServer.LogPath())
+		if err := btrfs.SetNOCOWFile(s.raftServer.LogPath()); err != nil {
+			log.Warnf("Failed setting NOCOW: %v", err)
+		}
 	}
 
 	s.findCluster(discoverURL, peers)
