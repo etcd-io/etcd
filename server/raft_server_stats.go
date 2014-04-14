@@ -1,6 +1,7 @@
 package server
 
 import (
+	"sync"
 	"time"
 
 	"github.com/coreos/etcd/third_party/github.com/goraft/raft"
@@ -27,6 +28,8 @@ type raftServerStats struct {
 
 	sendRateQueue *statsQueue
 	recvRateQueue *statsQueue
+
+	sync.Mutex
 }
 
 func NewRaftServerStats(name string) *raftServerStats {
@@ -43,6 +46,9 @@ func NewRaftServerStats(name string) *raftServerStats {
 }
 
 func (ss *raftServerStats) RecvAppendReq(leaderName string, pkgSize int) {
+	ss.Lock()
+	defer ss.Unlock()
+
 	ss.State = raft.Follower
 	if leaderName != ss.LeaderInfo.Name {
 		ss.LeaderInfo.Name = leaderName
@@ -54,6 +60,9 @@ func (ss *raftServerStats) RecvAppendReq(leaderName string, pkgSize int) {
 }
 
 func (ss *raftServerStats) SendAppendReq(pkgSize int) {
+	ss.Lock()
+	defer ss.Unlock()
+
 	now := time.Now()
 
 	if ss.State != raft.Leader {

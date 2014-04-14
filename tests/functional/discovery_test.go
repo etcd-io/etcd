@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -20,6 +21,7 @@ import (
 type garbageHandler struct {
 	t       *testing.T
 	success bool
+	sync.Mutex
 }
 
 func (g *garbageHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -27,6 +29,9 @@ func (g *garbageHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.URL.String() != "/v2/keys/_etcd/registry/1/node1" {
 		g.t.Fatalf("Unexpected web request")
 	}
+	g.Lock()
+	defer g.Unlock()
+
 	g.success = true
 }
 
@@ -51,6 +56,8 @@ func TestDiscoveryDownNoBackupPeers(t *testing.T) {
 		t.Fatal(err.Error())
 	}
 
+	g.Lock()
+	defer g.Unlock()
 	if !g.success {
 		t.Fatal("Discovery server never called")
 	}
@@ -82,6 +89,8 @@ func TestDiscoveryDownWithBackupPeers(t *testing.T) {
 			t.Fatal(err.Error())
 		}
 
+		g.Lock()
+		defer g.Unlock()
 		if !g.success {
 			t.Fatal("Discovery server never called")
 		}
