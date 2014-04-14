@@ -1,12 +1,12 @@
 #!/bin/sh -e
 
-if [ ! -h src/github.com/coreos/etcd ]; then
-	mkdir -p src/github.com/coreos/
-	ln -s ../../.. src/github.com/coreos/etcd
+if [ ! -h gopath/src/github.com/coreos/etcd ]; then
+	mkdir -p gopath/src/github.com/coreos/
+	ln -s ../../../.. gopath/src/github.com/coreos/etcd
 fi
 
 export GOBIN=${PWD}/bin
-export GOPATH=${PWD}
+export GOPATH=${PWD}/gopath
 export GOFMTPATH="./bench ./config ./discovery ./etcd ./error ./http ./log main.go ./metrics ./mod ./server ./store ./tests"
 
 # Don't surprise user by formatting their codes by stealth

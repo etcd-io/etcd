@@ -1,7 +1,6 @@
-/pkg
+/gopath
 /go-bindata
 /machine*
 /bin
-/src
 .vagrant
 *.etcd
