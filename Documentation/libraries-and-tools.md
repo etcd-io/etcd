@@ -88,3 +88,4 @@ A detailed recap of client functionalities can be found in the [clients compatib
 - [kelseyhightower/confd](https://github.com/kelseyhightower/confd) - Manage local app config files using templates and data from etcd
 - [configdb](https://git.autistici.org/ai/configdb/tree/master) - A REST relational abstraction on top of arbitrary database backends, aimed at storing configs and inventories.
 - [scrz](https://github.com/scrz/scrz) - Container manager, stores configuration in etcd.
+- [fleet](https://github.com/coreos/fleet) - Distributed init system
