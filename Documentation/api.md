@@ -202,6 +202,32 @@ If the TTL has expired, the key will have been deleted, and you will be returned
 }
 ```
 
+The TTL could be unset to avoid expiration through update operation:
+
+```sh
+curl -L http://127.0.0.1:4001/v2/keys/foo -XPUT -d value=bar -d ttl= -d prevExist=true
+```
+
+```json
+{
+    "action": "update",
+    "node": {
+        "createdIndex": 5,
+        "key": "/foo",
+        "modifiedIndex": 6,
+        "value": "bar"
+    }
+    "prevNode": {
+        "createdIndex": 5,
+        "expiration": "2013-12-04T12:01:21.874888581-08:00",
+        "key": "/foo",
+        "modifiedIndex": 5,
+        "ttl": 3,
+        "value": "bar"
+    }
+}
+```
+
 
 ### Waiting for a change
 
