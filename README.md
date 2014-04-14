@@ -20,6 +20,8 @@ Or feel free to just use curl, as in the examples below.
 [raft]: http://raftconsensus.github.io/
 [etcdctl]: http://github.com/coreos/etcdctl/
 
+If you're considering etcd for production use, please see: [production-ready.md](./Documentation/production-ready.md)
+
 ## Getting Started
 
 ### Getting etcd
