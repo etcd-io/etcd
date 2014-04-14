@@ -45,7 +45,7 @@ type Etcd struct {
 	PeerServer   *server.PeerServer // peer server, runs on 7001 by default
 	listener     net.Listener       // Listener for Server
 	peerListener net.Listener       // Listener for PeerServer
-	readyC       chan bool          // To signal when server is ready to accept connections
+	ReadyC       chan bool          // To signal when server is ready to accept connections
 }
 
 // New returns a new Etcd instance.
@@ -55,7 +55,7 @@ func New(c *config.Config) *Etcd {
 	}
 	return &Etcd{
 		Config: c,
-		readyC: make(chan bool),
+		ReadyC: make(chan bool),
 	}
 }
 
@@ -182,8 +182,6 @@ func (e *Etcd) Run() {
 	log.Infof("etcd server [name %s, listen on %s, advertised url %s]", e.Server.Name, e.Config.BindAddr, e.Server.URL())
 	e.listener = server.NewListener(e.Config.EtcdTLSInfo().Scheme(), e.Config.BindAddr, etcdTLSConfig)
 
-	close(e.readyC) // etcd server is ready to accept connections, notify waiters.
-
 	// An error string equivalent to net.errClosing for using with
 	// http.Serve() during server shutdown. Need to re-declare
 	// here because it is not exported by "net" package.
@@ -215,6 +213,8 @@ func (e *Etcd) Run() {
 			log.Fatal(err)
 		}
 	}
+
+	close(e.ReadyC) // etcd server is ready to accept connections, notify waiters.
 
 	<-peerServerClosed
 	log.Infof("etcd instance is stopped [name %s]", e.Config.Name)
