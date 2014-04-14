@@ -1,0 +1,28 @@
+<div class="ed-p-stats-info">
+
+  <div class="modal-header">
+    <h4 class="modal-title">Peer Stats</h4>
+  </div>
+
+  <div class="modal-body">
+    <table id="ed-m-property-table" class="table">
+      <thead>
+        <tr>
+          <th>property</th>
+          <th>value</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr ng-repeat="key in objectKeys | orderBy:identityFn">
+          <td>{{key}}</td>
+          <td>{{stats[key]}}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="modal-footer">
+    <button type="button" ng-click="close()" class="btn btn-primary">Close</button>
+  </div>
+
+</div>

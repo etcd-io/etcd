@@ -121,7 +121,8 @@ module.exports = function(grunt) {
         files: {
           src: [
             '<%= config.appPath %>/*.js',
-            '<%= config.appPath %>/{module,page}**/*.js'
+            '<%= config.appPath %>/{module,page}**/*.js',
+            '!<%= config.appPath %>/vega.js'
           ]
         }
       }

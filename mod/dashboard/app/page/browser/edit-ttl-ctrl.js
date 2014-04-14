@@ -2,13 +2,13 @@
 
 angular.module('etcd.page')
 .controller('EditTtlCtrl', function($scope, $rootScope, $modalInstance, _,
-      ETCD_EVENT, nodeSvc, node) {
+      ETCD_EVENT, etcdApiSvc, node) {
 
   $scope.node = node;
 
   $scope.save = function(ttl) {
     node.ttl = ttl;
-    $scope.requestPromise = nodeSvc.save(node)
+    $scope.requestPromise = etcdApiSvc.save(node)
     .then(function() {
       $rootScope.$broadcast(ETCD_EVENT.NODE_CHANGED, node);
       $modalInstance.close(node);

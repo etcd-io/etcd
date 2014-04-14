@@ -2,7 +2,7 @@
 
 angular.module('etcd.page')
 .controller('CreateNodeCtrl', function($scope, $rootScope, $modalInstance, _,
-      ETCD_EVENT, nodeSvc, pathSvc, key) {
+      ETCD_EVENT, etcdApiSvc, pathSvc, key) {
 
   $scope.key = key;
   if (key === '/') {
@@ -12,7 +12,7 @@ angular.module('etcd.page')
   }
 
   $scope.save = function(node) {
-    $scope.requestPromise = nodeSvc.create(node)
+    $scope.requestPromise = etcdApiSvc.create(node)
     .then(function() {
       $rootScope.$broadcast(ETCD_EVENT.NODE_CHANGED, node);
       $modalInstance.close(node);

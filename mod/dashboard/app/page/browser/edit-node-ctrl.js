@@ -2,14 +2,14 @@
 
 angular.module('etcd.page')
 .controller('EditNodeCtrl', function($scope, $rootScope, $modalInstance, _,
-      ETCD_EVENT, nodeSvc, pathSvc, node) {
+      ETCD_EVENT, etcdApiSvc, pathSvc, node) {
 
   $scope.node = node;
 
   $scope.displayKey = pathSvc.truncate(node.key, 50) + '/'
 
   $scope.save = function(node) {
-    $scope.requestPromise = nodeSvc.save(node)
+    $scope.requestPromise = etcdApiSvc.save(node)
     .then(function() {
       $rootScope.$broadcast(ETCD_EVENT.NODE_CHANGED, node);
       $modalInstance.close(node);

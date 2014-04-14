@@ -1,0 +1,30 @@
+.ed-p-stats {
+  .panel-body {
+    padding: 30px;
+  }
+}
+
+.ed-m-square-status {
+  height: 10px;
+  width: 10px;
+  display: inline-block;
+  margin-right: 5px;
+
+  &.ed-m-square-status--green {
+    background-color: #00DB24;
+  }
+
+  &.ed-m-square-status--orange {
+    background-color: #FFC000;
+  }
+
+  &.ed-m-square-status--red {
+    background-color: #c40022;
+  }
+}
+
+.ed-p-stats__leader-container {
+  padding-bottom: 20px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid #999;
+}

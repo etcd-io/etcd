@@ -6,7 +6,7 @@
 'use strict';
 
 angular.module('etcd.module')
-.factory('nodeSvc', function($http, $q, $, _, pathSvc, toastSvc) {
+.factory('etcdApiSvc', function($http, $q, $, _, pathSvc) {
 
   function createNode(node) {
     var payload  = {
@@ -78,22 +78,48 @@ angular.module('etcd.module')
   }
 
   function fetchStat(name) {
-    return $http.get(pathSvc.getStatFullKeyPath(name));
+    return $http.get(pathSvc.getStatFullKeyPath(name), {
+      supressNotifications: true
+    });
+  }
+
+  function getPeerUri(peerName) {
+    return fetchNode('/_etcd/machines/' + peerName)
+    .then(function(peerInfo) {
+      var data = decodeURIComponent(peerInfo.value);
+      data = data.replace(/&/g, '\",\"').replace(/=/g,'\":\"');
+      data = JSON.parse('{"' + data + '"}');
+      return data.etcd;
+    });
   }
 
   function getLeaderUri() {
-    return fetchStat('leader')
-    .then(function(resp) {
-      return fetchNode('/_etcd/machines/' + resp.data.leader)
-      .then(function(leaderNode) {
-        var data = decodeURIComponent(leaderNode.value);
-        data = data.replace(/&/g, '\",\"').replace(/=/g,'\":\"');
-        data = JSON.parse('{"' + data + '"}');
-        return data.etcd;
+    return fetchLeaderStats()
+    .then(function(stats) {
+      return getPeerUri(stats.leaderName);
+    });
+  }
+
+  function fetchPeerDetailStats(peerName) {
+    return getPeerUri(peerName).then(function(peerUri) {
+      return $http.get(peerUri + pathSvc.getStatFullKeyPath('self'))
+      .then(function(resp) {
+        return resp.data;
       });
-    })
-    .catch(function() {
-      toastSvc.error('Error fetching leader.');
+    });
+  }
+
+  function fetchLeaderStats() {
+    return fetchStat('leader').then(function(resp) {
+      var result = {
+        followers: [],
+        leaderName: resp.data.leader
+      };
+      _.each(resp.data.followers, function(value, key) {
+        value.name = key;
+        result.followers.push(value);
+      });
+      return result;
     });
   }
 
@@ -101,6 +127,10 @@ angular.module('etcd.module')
     fetch: fetchNode,
 
     fetchStat: fetchStat,
+
+    fetchLeaderStats: fetchLeaderStats,
+
+    fetchPeerDetailStats: fetchPeerDetailStats,
 
     getLeaderUri: getLeaderUri,
 

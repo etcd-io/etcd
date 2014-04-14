@@ -1,7 +1,7 @@
 'use strict';
 
 angular.module('etcd.ui')
-.directive('edNodeCog', function($modal, $rootScope, nodeSvc, toastSvc,
+.directive('edNodeCog', function($modal, $rootScope, etcdApiSvc, toastSvc,
       ETCD_EVENT) {
 
   return {
@@ -48,7 +48,7 @@ angular.module('etcd.ui')
                 btnText: d3.functor('Delete'),
                 errorFormatter: d3.functor('etcdApi'),
                 executeFn: _.identity.bind(null, function() {
-                  return nodeSvc.delete($scope.node)
+                  return etcdApiSvc.delete($scope.node)
                   .then(function() {
                     $rootScope.$broadcast(ETCD_EVENT.NODE_DELETED, $scope.node);
                   });

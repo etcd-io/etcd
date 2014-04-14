@@ -1,7 +1,7 @@
 'use strict';
 
 angular.module('etcd.page')
-.controller('BrowserCtrl', function($scope, $modal, nodeSvc, pathSvc,
+.controller('BrowserCtrl', function($scope, $modal, etcdApiSvc, pathSvc,
       ETCD_EVENT, d3, pollerSvc) {
 
   $scope.currPath = '/';
@@ -60,7 +60,7 @@ angular.module('etcd.page')
   };
 
   $scope.fetchNode = function() {
-    return nodeSvc.fetch($scope.currPath)
+    return etcdApiSvc.fetch($scope.currPath)
     .then(function(node) {
       $scope.currNode = node;
     });

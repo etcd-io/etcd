@@ -91,7 +91,7 @@ etcdDashboard.config(function($routeProvider, $locationProvider, $httpProvider,
 
   // Show toast for any non-suppressed http response errors.
   $rootScope.$on(CORE_EVENT.RESP_ERROR, function(e, rejection) {
-    var errorMsg = 'An error occurred';
+    var errorMsg = 'Request Error';
     if (rejection.data && rejection.data.message) {
       errorMsg = rejection.data.message;
     }
