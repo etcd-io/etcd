@@ -568,8 +568,7 @@ func (s *store) DeleteExpiredKeys(cutoff time.Time) {
 			break
 		}
 
-		s.CurrentIndex++
-		e := newEvent(Expire, node.Path, s.CurrentIndex, node.CreatedIndex)
+		e := newEvent(Expire, node.Path, s.CurrentIndex+1, node.CreatedIndex)
 		e.PrevNode = node.Repr(false, false)
 
 		callback := func(path string) { // notify function
@@ -579,6 +578,8 @@ func (s *store) DeleteExpiredKeys(cutoff time.Time) {
 
 		s.ttlKeyHeap.pop()
 		node.Remove(true, true, callback)
+
+		s.CurrentIndex++
 
 		s.Stats.Inc(ExpireCount)
 

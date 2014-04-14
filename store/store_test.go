@@ -339,7 +339,6 @@ func TestStoreDeleteDiretory(t *testing.T) {
 	e, err = s.Delete("/foo", false, true)
 	assert.Nil(t, err, "")
 	assert.Equal(t, e.Action, "delete", "")
-
 }
 
 // Ensure that the store cannot delete a directory if both of recursive
@@ -808,6 +807,84 @@ func TestStoreWatchRecursiveCreateDeeperThanHiddenKey(t *testing.T) {
 	assert.NotNil(t, e, "")
 	assert.Equal(t, e.Action, "create", "")
 	assert.Equal(t, e.Node.Key, "/_foo/bar/baz", "")
+}
+
+// Ensure that the directory modifiedIndex get updated when:
+// 1. create a new node just under the directory
+// 2. delete a node just under the directory
+// 3. expire a node just under the directory
+// not get update when:
+// 1. update a node just under the directory
+// 2. create a new node its child directory
+// 3. delete a node under its child directory
+// 4. expire a node under its child directory
+func TestStoreParentModifiedIndex(t *testing.T) {
+	s := newStore()
+	stopChan := make(chan bool)
+	defer func() {
+		stopChan <- true
+	}()
+	go mockSyncService(s.DeleteExpiredKeys, stopChan)
+
+	e, _ := s.Create("/foo", true, "", false, Permanent)
+
+	want := e.Index() + 1
+	s.Create("/foo/bar", false, "test", false, Permanent)
+	e, _ = s.Get("/foo", false, false)
+	got := e.Node.ModifiedIndex
+	if got != want {
+		t.Errorf("ModifiedIndex(Create) = %d; want %d", got, want)
+	}
+
+	want = want + 1
+	s.Delete("/foo/bar", false, false)
+	e, _ = s.Get("/foo", false, false)
+	got = e.Node.ModifiedIndex
+	if got != want {
+		t.Errorf("ModifiedIndex(Delete) = %d; want %d", got, want)
+	}
+
+	want = want + 2 // a create then a expire
+	s.Create("/foo/bar", false, "test", false, time.Now().Add(100*time.Millisecond))
+	time.Sleep(1 * time.Second)
+	e, _ = s.Get("/foo", false, false)
+	got = e.Node.ModifiedIndex
+	if got != want {
+		t.Errorf("ModifiedIndex(Expire) = %d; want %d", got, want)
+	}
+
+	want = want + 1 // a create
+	s.Create("/foo/bar", false, "test", false, Permanent)
+	s.Update("/foo/bar", "testtest", Permanent)
+	e, _ = s.Get("/foo", false, false)
+	got = e.Node.ModifiedIndex
+	if got != want {
+		t.Errorf("ModifiedIndex(Update) = %d; want %d", got, want)
+	}
+
+	want = s.CurrentIndex + 1 // a create directory
+	s.Create("/foo/foo", true, "", false, Permanent)
+	s.Create("/foo/foo/bar", false, "test", false, Permanent)
+	e, _ = s.Get("/foo", false, false)
+	got = e.Node.ModifiedIndex
+	if got != want {
+		t.Errorf("ModifiedIndex(CreateUnderDirectory) = %d; want %d", got, want)
+	}
+
+	s.Delete("/foo/foo/bar", false, false)
+	e, _ = s.Get("/foo", false, false)
+	got = e.Node.ModifiedIndex
+	if got != want {
+		t.Errorf("ModifiedIndex(DeleteUnderDirectory) = %d; want %d", got, want)
+	}
+
+	s.Create("/foo/foo/bar", false, "test", false, time.Now().Add(100*time.Millisecond))
+	time.Sleep(1 * time.Second)
+	e, _ = s.Get("/foo", false, false)
+	got = e.Node.ModifiedIndex
+	if got != want {
+		t.Errorf("ModifiedIndex(ExpireUnderDirectory) = %d; want %d", got, want)
+	}
 }
 
 // Ensure that slow consumers are handled properly.
