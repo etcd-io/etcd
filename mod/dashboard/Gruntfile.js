@@ -1,5 +1,7 @@
 'use strict';
 
+var util = require('util');
+
 module.exports = function(grunt) {
   /*jshint maxstatements:false */
 
@@ -37,7 +39,10 @@ module.exports = function(grunt) {
 
     concurrent: {
       dev: {
-        tasks: ['watch', /*'test-watch'*/],
+        tasks: [
+          'watch',
+          //'test-watch'
+        ],
         options: {
           logConcurrentOutput: true
         }
@@ -194,6 +199,17 @@ module.exports = function(grunt) {
           dest: '<%= config.distPath %>/img'
         }]
       },
+      'coreos-web': {
+        files: [{
+          cwd: '<%= config.appPath %>/coreos-web',
+          expand: true,
+          src: [
+            'fonts/*',
+            'img/*'
+          ],
+          dest: '<%= config.distPath %>/coreos-web'
+        }]
+      },
       'dist-static': {
         files: [
           {
@@ -229,7 +245,7 @@ module.exports = function(grunt) {
   grunt.registerTask('clean-paths', 'clean up resource paths', function() {
     grunt.log.writeln('cleaning paths...');
     function clean(path) {
-      return path.replace('cp/static/', '');
+      return path.replace('mod/dashboard/static/', '');
     }
     ['concat', 'uglify', 'cssmin'].forEach(function(task) {
       var config = grunt.config(task);
@@ -261,7 +277,7 @@ module.exports = function(grunt) {
 
   grunt.registerTask('dev', [
     'clean',
-    //'jshint',
+    'jshint',
     'views',
     'sass',
     'concurrent:dev'
@@ -271,7 +287,7 @@ module.exports = function(grunt) {
     'clean',
     'jshint',
     'views',
-    'test',
+    //'test',
     'sass',
     'useminPrepare',
     'clean-paths',
@@ -283,7 +299,8 @@ module.exports = function(grunt) {
     'usemin',
     'copy:dist-static',
     'clean:dist-static',
-    'copy:images'
+    'copy:images',
+    'copy:coreos-web'
   ]);
 
   grunt.registerTask('default', ['build']);
