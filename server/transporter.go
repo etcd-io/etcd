@@ -247,6 +247,13 @@ func (t *transporter) Get(urlStr string) (*http.Response, *http.Request, error) 
 	return resp, req, err
 }
 
+// Send server side PUT request
+func (t *transporter) Put(urlStr string, body io.Reader) (*http.Response, *http.Request, error) {
+	req, _ := http.NewRequest("PUT", urlStr, body)
+	resp, err := t.client.Do(req)
+	return resp, req, err
+}
+
 // PostSnapshot posts a json format snapshot to the given url
 // The underlying HTTP transport has a minute level timeout
 func (t *transporter) PostSnapshot(url string, body io.Reader) (*http.Response, error) {

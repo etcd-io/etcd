@@ -510,15 +510,15 @@ func (s *PeerServer) joinByPeer(server raft.Server, peer string, scheme string) 
 			if resp.StatusCode == http.StatusTemporaryRedirect {
 				address := resp.Header.Get("Location")
 				log.Debugf("Send Join Request to %s", address)
-				c := &JoinCommandV1{
+				c := &JoinCommandV2{
 					MinVersion: store.MinVersion(),
 					MaxVersion: store.MaxVersion(),
 					Name:       server.Name(),
-					RaftURL:    s.Config.URL,
-					EtcdURL:    s.server.URL(),
+					PeerURL:    s.Config.URL,
+					ClientURL:  s.server.URL(),
 				}
 				json.NewEncoder(&b).Encode(c)
-				resp, _, err = t.Post(address, &b)
+				resp, _, err = t.Put(address, &b)
 
 			} else if resp.StatusCode == http.StatusBadRequest {
 				log.Debug("Reach max number peers in the cluster")
