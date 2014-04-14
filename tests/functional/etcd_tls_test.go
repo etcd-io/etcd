@@ -166,11 +166,36 @@ func startServer(extra []string) (*os.Process, error) {
 	return os.StartProcess(EtcdBinPath, cmd, procAttr)
 }
 
+// TODO(yichengq): refactor these helper functions in #645
+func startServer2(extra []string) (*os.Process, error) {
+	procAttr := new(os.ProcAttr)
+	procAttr.Files = []*os.File{nil, os.Stdout, os.Stderr}
+
+	cmd := []string{"etcd", "-f", "-data-dir=/tmp/node2", "-name=node2"}
+	cmd = append(cmd, extra...)
+
+	fmt.Println(strings.Join(cmd, " "))
+
+	return os.StartProcess(EtcdBinPath, cmd, procAttr)
+}
+
 func startServerWithDataDir(extra []string) (*os.Process, error) {
 	procAttr := new(os.ProcAttr)
 	procAttr.Files = []*os.File{nil, os.Stdout, os.Stderr}
 
 	cmd := []string{"etcd", "-data-dir=/tmp/node1", "-name=node1"}
+	cmd = append(cmd, extra...)
+
+	fmt.Println(strings.Join(cmd, " "))
+
+	return os.StartProcess(EtcdBinPath, cmd, procAttr)
+}
+
+func startServer2WithDataDir(extra []string) (*os.Process, error) {
+	procAttr := new(os.ProcAttr)
+	procAttr.Files = []*os.File{nil, os.Stdout, os.Stderr}
+
+	cmd := []string{"etcd", "-data-dir=/tmp/node2", "-name=node2"}
 	cmd = append(cmd, extra...)
 
 	println(strings.Join(cmd, " "))
