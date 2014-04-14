@@ -310,6 +310,7 @@ func (n *node) UpdateTTL(expireTime time.Time) {
 	if !n.IsPermanent() {
 		if expireTime.IsZero() {
 			// from ttl to permanent
+			n.ExpireTime = expireTime
 			// remove from ttl heap
 			n.store.ttlKeyHeap.remove(n)
 		} else {
