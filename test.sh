@@ -2,6 +2,9 @@
 
 . ./build
 
+go test -i ./etcd
+go test -v ./etcd -race
+
 go test -i ./http
 go test -v ./http -race
 

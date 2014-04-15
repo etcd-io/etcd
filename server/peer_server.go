@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"sort"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/coreos/etcd/third_party/github.com/goraft/raft"
@@ -72,6 +73,7 @@ type PeerServer struct {
 	proxyClientURL string
 
 	metrics *metrics.Bucket
+	sync.Mutex
 }
 
 // TODO: find a good policy to do snapshot
@@ -257,6 +259,9 @@ func (s *PeerServer) findCluster(discoverURL string, peers []string) {
 
 // Start the raft server
 func (s *PeerServer) Start(snapshot bool, discoverURL string, peers []string) error {
+	s.Lock()
+	defer s.Unlock()
+
 	// LoadSnapshot
 	if snapshot {
 		err := s.raftServer.LoadSnapshot()
@@ -295,6 +300,9 @@ func (s *PeerServer) Start(snapshot bool, discoverURL string, peers []string) er
 }
 
 func (s *PeerServer) Stop() {
+	s.Lock()
+	defer s.Unlock()
+
 	if s.closeChan != nil {
 		close(s.closeChan)
 		s.closeChan = nil
