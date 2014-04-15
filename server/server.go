@@ -207,7 +207,9 @@ func (s *Server) HTTPHandler() http.Handler {
 	s.handleFunc(router, "/version", s.GetVersionHandler).Methods("GET")
 	s.installV1(router)
 	s.installV2(router)
-	s.installMod(router)
+	// Mod is deprecated temporariy due to its unstable state.
+	// It would be added back later.
+	// s.installMod(router)
 
 	if s.trace {
 		s.installDebug(router)
