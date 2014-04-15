@@ -134,8 +134,14 @@ func (e *Etcd) Run() {
 	// Calculate all of our timeouts
 	heartbeatInterval := time.Duration(e.Config.Peer.HeartbeatInterval) * time.Millisecond
 	electionTimeout := time.Duration(e.Config.Peer.ElectionTimeout) * time.Millisecond
-	dialTimeout := (3 * heartbeatInterval) + electionTimeout
-	responseHeaderTimeout := (3 * heartbeatInterval) + electionTimeout
+	// TODO(yichengq): constant 1000 is a hack here. The reason to use this
+	// is to ensure etcd instances could start successfully at the same time.
+	// Current problem for the failure comes from the lag between join command
+	// execution and join success.
+	// Fix it later. It should be removed when proper method is found and
+	// enough tests are provided.
+	dialTimeout := (3 * heartbeatInterval) + electionTimeout + 1000
+	responseHeaderTimeout := (3 * heartbeatInterval) + electionTimeout + 1000
 
 	// Create peer server
 	psConfig := server.PeerServerConfig{
