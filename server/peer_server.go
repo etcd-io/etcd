@@ -366,7 +366,7 @@ func (s *PeerServer) startAsFollower(cluster []string, retryTimes int) error {
 		if ok {
 			break
 		}
-		if i == retryTimes - 1 {
+		if i == retryTimes-1 {
 			return fmt.Errorf("Cannot join the cluster via given peers after %x retries", s.Config.RetryTimes)
 		}
 		log.Warnf("%v is unable to join the cluster using any of the peers %v at %dth time. Retrying in %.1f seconds", s.Config.Name, cluster, i, s.Config.RetryInterval)
