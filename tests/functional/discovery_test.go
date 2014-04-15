@@ -347,7 +347,6 @@ func TestDiscoveryRestart(t *testing.T) {
 	})
 }
 
-
 func assertServerNotUp(client http.Client, scheme string) error {
 	path := fmt.Sprintf("%s://127.0.0.1:4001/v2/keys/foo", scheme)
 	fields := url.Values(map[string][]string{"value": {"bar"}})
