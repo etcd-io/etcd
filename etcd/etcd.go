@@ -19,6 +19,7 @@ package etcd
 import (
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -137,6 +138,18 @@ func (e *Etcd) Run() {
 	dialTimeout := (3 * heartbeatInterval) + electionTimeout
 	responseHeaderTimeout := (3 * heartbeatInterval) + electionTimeout
 
+	// Load TLS config
+	peerTLSConfig := server.TLSServerConfig(e.Config.PeerTLSInfo())
+	etcdTLSConfig := server.TLSServerConfig(e.Config.EtcdTLSInfo())
+
+	// Create listeners
+	e.listener = server.NewListener(e.Config.EtcdTLSInfo().Scheme(), &e.Config.BindAddr, etcdTLSConfig)
+	e.peerListener = server.NewListener(e.Config.PeerTLSInfo().Scheme(), &e.Config.Peer.BindAddr, peerTLSConfig)
+
+	// Rewrite any client url "0" ports with the BindAddr port
+	rewritePort(&e.Config.Addr, e.Config.BindAddr)
+	rewritePort(&e.Config.Peer.Addr, e.Config.Peer.BindAddr)
+
 	// Create peer server
 	psConfig := server.PeerServerConfig{
 		Name:          e.Config.Name,
@@ -174,14 +187,6 @@ func (e *Etcd) Run() {
 
 	e.PeerServer.SetServer(e.Server)
 
-	// Generating config could be slow.
-	// Put it here to make listen happen immediately after peer-server starting.
-	peerTLSConfig := server.TLSServerConfig(e.Config.PeerTLSInfo())
-	etcdTLSConfig := server.TLSServerConfig(e.Config.EtcdTLSInfo())
-
-	log.Infof("etcd server [name %s, listen on %s, advertised url %s]", e.Server.Name, e.Config.BindAddr, e.Server.URL())
-	e.listener = server.NewListener(e.Config.EtcdTLSInfo().Scheme(), e.Config.BindAddr, etcdTLSConfig)
-
 	// An error string equivalent to net.errClosing for using with
 	// http.Serve() during server shutdown. Need to re-declare
 	// here because it is not exported by "net" package.
@@ -195,11 +200,9 @@ func (e *Etcd) Run() {
 		// the cluster could be out of work as long as the two nodes cannot transfer messages.
 		e.PeerServer.Start(e.Config.Snapshot, e.Config.Discovery, e.Config.Peers)
 
-		log.Infof("peer server [name %s, listen on %s, advertised url %s]", e.PeerServer.Config.Name, e.Config.Peer.BindAddr, e.PeerServer.Config.URL)
-		e.peerListener = server.NewListener(psConfig.Scheme, e.Config.Peer.BindAddr, peerTLSConfig)
-
 		close(e.readyC) // etcd server is ready to accept connections, notify waiters.
 
+		log.Infof("peer server [name %s, listen on %s, advertised url %s]", e.PeerServer.Config.Name, e.Config.Peer.BindAddr, e.PeerServer.Config.URL)
 		sHTTP := &ehttp.CORSHandler{e.PeerServer.HTTPHandler(), corsInfo}
 		if err := http.Serve(e.peerListener, sHTTP); err != nil {
 			if !strings.Contains(err.Error(), errClosing) {
@@ -209,6 +212,7 @@ func (e *Etcd) Run() {
 		close(peerServerClosed)
 	}()
 
+	log.Infof("etcd server [name %s, listen on %s, advertised url %s]", e.Server.Name, e.Config.BindAddr, e.Server.URL())
 	sHTTP := &ehttp.CORSHandler{e.Server.HTTPHandler(), corsInfo}
 	if err := http.Serve(e.listener, sHTTP); err != nil {
 		if !strings.Contains(err.Error(), errClosing) {
@@ -233,4 +237,18 @@ func (e *Etcd) Stop() {
 // when the etcd instance is ready to accept connections.
 func (e *Etcd) ReadyNotify() <-chan bool {
 	return e.readyC
+}
+
+// rewritePort changes the URL port to that of the given
+// bind port, if URL port is "0"
+func rewritePort(addr *string, bindAddr string) {
+	// ignore errors assuming these values have gone through config.Sanitize()
+	p, _ := url.Parse(*addr)
+
+	host, port, _ := net.SplitHostPort(p.Host)
+	if port == "0" {
+		_, bport, _ := net.SplitHostPort(bindAddr)
+		p.Host = net.JoinHostPort(host, bport)
+		*addr = p.String()
+	}
 }

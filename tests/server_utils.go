@@ -16,8 +16,6 @@ import (
 
 const (
 	testName              = "ETCDTEST"
-	testClientURL         = "localhost:4401"
-	testRaftURL           = "localhost:7701"
 	testSnapshotCount     = 10000
 	testHeartbeatInterval = time.Duration(50) * time.Millisecond
 	testElectionTimeout   = time.Duration(200) * time.Millisecond
@@ -25,6 +23,9 @@ const (
 
 // Starts a server in a temporary directory.
 func RunServer(f func(*server.Server)) {
+	testClientURL := "localhost:0"
+	testRaftURL := "localhost:0"
+
 	path, _ := ioutil.TempDir("", "etcd-")
 	defer os.RemoveAll(path)
 
@@ -33,6 +34,8 @@ func RunServer(f func(*server.Server)) {
 
 	serverStats := server.NewRaftServerStats(testName)
 	followersStats := server.NewRaftFollowersStats(testName)
+
+	psListener := server.NewListener("http", &testRaftURL, nil)
 
 	psConfig := server.PeerServerConfig{
 		Name:          testName,
@@ -44,7 +47,6 @@ func RunServer(f func(*server.Server)) {
 	mb := metrics.NewBucket("")
 
 	ps := server.NewPeerServer(psConfig, registry, store, &mb, followersStats, serverStats)
-	psListener := server.NewListener("http", testRaftURL, nil)
 
 	// Create Raft transporter and server
 	dialTimeout := (3 * testHeartbeatInterval) + testElectionTimeout
@@ -58,8 +60,8 @@ func RunServer(f func(*server.Server)) {
 	raftServer.SetHeartbeatInterval(testHeartbeatInterval)
 	ps.SetRaftServer(raftServer)
 
+	sListener := server.NewListener("http", &testClientURL, nil)
 	s := server.New(testName, "http://"+testClientURL, ps, registry, store, nil)
-	sListener := server.NewListener("http", testClientURL, nil)
 
 	ps.SetServer(s)
 

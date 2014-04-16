@@ -2,6 +2,7 @@ package server
 
 import (
 	"crypto/tls"
+	"fmt"
 	"net"
 
 	"github.com/coreos/etcd/log"
@@ -24,19 +25,28 @@ func TLSServerConfig(info *TLSInfo) *tls.Config {
 // NewListener creates a net.Listener
 // If the given scheme is "https", it will use TLS config to set listener.
 // If any error happens, this function will call log.Fatal
-func NewListener(scheme, addr string, cfg *tls.Config) net.Listener {
+// If addr port is "0", addr will be rewritten with the port chosen by the OS.
+func NewListener(scheme string, addr *string, cfg *tls.Config) net.Listener {
+	var l net.Listener
+	var err error
+
 	if scheme == "https" {
-		l, err := newTLSListener(addr, cfg)
+		l, err = newTLSListener(*addr, cfg)
 		if err != nil {
 			log.Fatal("Failed to create TLS listener: ", err)
 		}
-		return l
+	} else {
+		l, err = newListener(*addr)
+		if err != nil {
+			log.Fatal("Failed to create listener: ", err)
+		}
 	}
 
-	l, err := newListener(addr)
-	if err != nil {
-		log.Fatal("Failed to create listener: ", err)
+	host, port, _ := net.SplitHostPort(*addr)
+	if port == "0" {
+		*addr = fmt.Sprintf("%s:%d", host, l.Addr().(*net.TCPAddr).Port)
 	}
+
 	return l
 }
 
