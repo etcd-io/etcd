@@ -22,8 +22,8 @@ const RegistryStandbyKey = "/_etcd/standbys"
 // The Registry stores URL information for nodes.
 type Registry struct {
 	sync.Mutex
-	store   store.Store
-	peers   map[string]*node
+	store    store.Store
+	peers    map[string]*node
 	standbys map[string]*node
 }
 
@@ -37,8 +37,8 @@ type node struct {
 // Creates a new Registry.
 func NewRegistry(s store.Store) *Registry {
 	return &Registry{
-		store:   s,
-		peers:   make(map[string]*node),
+		store:    s,
+		peers:    make(map[string]*node),
 		standbys: make(map[string]*node),
 	}
 }
