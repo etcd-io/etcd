@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"net"
 	"net/url"
 	"os"
@@ -11,6 +12,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/coreos/etcd/third_party/github.com/BurntSushi/toml"
 
@@ -98,6 +100,9 @@ func New() *Config {
 	c.Peer.Addr = "127.0.0.1:7001"
 	c.Peer.HeartbeatInterval = defaultHeartbeatInterval
 	c.Peer.ElectionTimeout = defaultElectionTimeout
+	rand.Seed(time.Now().UTC().UnixNano())
+	// Make maximum twice as minimum.
+	c.RetryInterval = float64(50+rand.Int()%50) * defaultHeartbeatInterval / 1000
 	return c
 }
 

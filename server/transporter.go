@@ -20,7 +20,6 @@ const (
 
 // Transporter layer for communication between raft nodes
 type transporter struct {
-	requestTimeout time.Duration
 	followersStats *raftFollowersStats
 	serverStats    *raftServerStats
 	registry       *Registry
@@ -43,9 +42,8 @@ func NewTransporter(followersStats *raftFollowersStats, serverStats *raftServerS
 		// HTTPS connections blocked. The patch for it is in progress,
 		// and would be available in Go1.3
 		// More: https://codereview.appspot.com/69280043/
-		ConnectTimeout:   dialTimeout,
-		RequestTimeout:   dialTimeout + responseHeaderTimeout,
-		ReadWriteTimeout: responseHeaderTimeout,
+		ConnectTimeout: dialTimeout,
+		RequestTimeout: requestTimeout,
 	}
 
 	// Sending snapshot might take a long time so we use a different HTTP transporter
@@ -55,9 +53,8 @@ func NewTransporter(followersStats *raftFollowersStats, serverStats *raftServerS
 	// average RTT.
 	// It should be equal to (TCP max window size/RTT).
 	sTr := &httpclient.Transport{
-		ConnectTimeout:   dialTimeout,
-		RequestTimeout:   snapshotTimeout,
-		ReadWriteTimeout: snapshotTimeout,
+		ConnectTimeout: dialTimeout,
+		RequestTimeout: snapshotTimeout,
 	}
 
 	t := transporter{
@@ -65,7 +62,6 @@ func NewTransporter(followersStats *raftFollowersStats, serverStats *raftServerS
 		transport:         tr,
 		snapshotClient:    &http.Client{Transport: sTr},
 		snapshotTransport: sTr,
-		requestTimeout:    requestTimeout,
 		followersStats:    followersStats,
 		serverStats:       serverStats,
 		registry:          registry,
