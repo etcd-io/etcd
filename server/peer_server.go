@@ -40,7 +40,7 @@ const (
 )
 
 const (
-	peerModeFlag  = 0
+	peerModeFlag    = 0
 	standbyModeFlag = 1
 )
 
