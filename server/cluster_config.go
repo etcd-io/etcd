@@ -22,11 +22,11 @@ const (
 // These settings can only be changed through Raft.
 type ClusterConfig struct {
 	// ActiveSize is the maximum number of node that can join as Raft followers.
-	// Nodes that join the cluster after the limit is reached are proxies.
+	// Nodes that join the cluster after the limit is reached are standbys.
 	ActiveSize int `json:"activeSize"`
 
 	// PromoteDelay is the amount of time, in seconds, after a node is
-	// unreachable that it will be swapped out for a proxy node, if available.
+	// unreachable that it will be swapped out for a standby node, if available.
 	PromoteDelay int `json:"promoteDelay"`
 }
 

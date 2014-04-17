@@ -172,8 +172,8 @@ func (ps *PeerServer) JoinHttpHandler(w http.ResponseWriter, req *http.Request) 
 
 // Attempt to rejoin the cluster as a peer.
 func (ps *PeerServer) PromoteHttpHandler(w http.ResponseWriter, req *http.Request) {
-	log.Infof("%s attempting to promote in cluster: %s", ps.Config.Name, ps.proxyPeerURL)
-	url, err := url.Parse(ps.proxyPeerURL)
+	log.Infof("%s attempting to promote in cluster: %s", ps.Config.Name, ps.standbyPeerURL)
+	url, err := url.Parse(ps.standbyPeerURL)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -240,19 +240,19 @@ func (ps *PeerServer) setClusterConfigHttpHandler(w http.ResponseWriter, req *ht
 	json.NewEncoder(w).Encode(&ps.clusterConfig)
 }
 
-// Retrieves a list of peers and proxies.
+// Retrieves a list of peers and standbys.
 func (ps *PeerServer) getMachinesHttpHandler(w http.ResponseWriter, req *http.Request) {
 	machines := make([]*machineMessage, 0)
 	for _, name := range ps.registry.Peers() {
 		machines = append(machines, ps.getMachineMessage(name))
 	}
-	for _, name := range ps.registry.Proxies() {
+	for _, name := range ps.registry.Standbys() {
 		machines = append(machines, ps.getMachineMessage(name))
 	}
 	json.NewEncoder(w).Encode(&machines)
 }
 
-// Retrieve single peer or proxy.
+// Retrieve single peer or standby.
 func (ps *PeerServer) getMachineHttpHandler(w http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	json.NewEncoder(w).Encode(ps.getMachineMessage(vars["name"]))
@@ -270,12 +270,12 @@ func (ps *PeerServer) getMachineMessage(name string) *machineMessage {
 		}
 	}
 
-	if ps.registry.ProxyExists(name) {
-		clientURL, _ := ps.registry.ProxyClientURL(name)
-		peerURL, _ := ps.registry.ProxyPeerURL(name)
+	if ps.registry.StandbyExists(name) {
+		clientURL, _ := ps.registry.StandbyClientURL(name)
+		peerURL, _ := ps.registry.StandbyPeerURL(name)
 		return &machineMessage{
 			Name:      name,
-			Mode:      ProxyMode,
+			Mode:      StandbyMode,
 			ClientURL: clientURL,
 			PeerURL:   peerURL,
 		}
@@ -357,7 +357,7 @@ func (ps *PeerServer) UpgradeHttpHandler(w http.ResponseWriter, req *http.Reques
 	w.WriteHeader(http.StatusOK)
 }
 
-// machineMessage represents information about a peer or proxy in the registry.
+// machineMessage represents information about a peer or standby in the registry.
 type machineMessage struct {
 	Name      string `json:"name"`
 	Mode      Mode   `json:"mode"`

@@ -13,8 +13,8 @@ import (
 	"github.com/coreos/etcd/third_party/github.com/stretchr/testify/assert"
 )
 
-// Create a full cluster and then add extra an extra proxy node.
-func TestProxy(t *testing.T) {
+// Create a full cluster and then add extra an extra standby node.
+func TestStandby(t *testing.T) {
 	clusterSize := 10 // DefaultActiveSize + 1
 	_, etcds, err := CreateCluster(clusterSize, &os.ProcAttr{Files: []*os.File{nil, os.Stdout, os.Stderr}}, false)
 	assert.NoError(t, err)
@@ -34,7 +34,7 @@ func TestProxy(t *testing.T) {
 	}
 	time.Sleep(time.Second)
 
-	// Check that all peers and proxies have the value.
+	// Check that all peers and standbys have the value.
 	for i := range etcds {
 		resp, err := tests.Get(fmt.Sprintf("http://localhost:%d/v2/keys/foo", 4000+(i+1)))
 		if assert.NoError(t, err) {
@@ -45,8 +45,8 @@ func TestProxy(t *testing.T) {
 		}
 	}
 
-	// Verify that we have one proxy.
-	result, err := c.Get("_etcd/proxies", false, true)
+	// Verify that we have one standby.
+	result, err := c.Get("_etcd/standbys", false, true)
 	assert.NoError(t, err)
 	assert.Equal(t, len(result.Node.Nodes), 1)
 
@@ -58,8 +58,8 @@ func TestProxy(t *testing.T) {
 
 	time.Sleep(server.ActiveMonitorTimeout + (1 * time.Second))
 
-	// Verify that the proxy node is now a peer.
-	result, err = c.Get("_etcd/proxies", false, true)
+	// Verify that the standby node is now a peer.
+	result, err = c.Get("_etcd/standbys", false, true)
 	assert.NoError(t, err)
 	assert.Equal(t, len(result.Node.Nodes), 0)
 
@@ -77,14 +77,14 @@ func TestProxy(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, len(result.Node.Nodes), 8)
 
-	// Verify that we now have two proxies.
-	result, err = c.Get("_etcd/proxies", false, true)
+	// Verify that we now have two standbys.
+	result, err = c.Get("_etcd/standbys", false, true)
 	assert.NoError(t, err)
 	assert.Equal(t, len(result.Node.Nodes), 2)
 }
 
 // Create a full cluster, disconnect a peer, wait for autodemotion, wait for autopromotion.
-func TestProxyAutoPromote(t *testing.T) {
+func TestStandbyAutoPromote(t *testing.T) {
 	clusterSize := 10 // DefaultActiveSize + 1
 	_, etcds, err := CreateCluster(clusterSize, &os.ProcAttr{Files: []*os.File{nil, os.Stdout, os.Stderr}}, false)
 	if err != nil {
@@ -101,8 +101,8 @@ func TestProxyAutoPromote(t *testing.T) {
 
 	time.Sleep(1 * time.Second)
 
-	// Verify that we have one proxy.
-	result, err := c.Get("_etcd/proxies", false, true)
+	// Verify that we have one standby.
+	result, err := c.Get("_etcd/standbys", false, true)
 	assert.NoError(t, err)
 	assert.Equal(t, len(result.Node.Nodes), 1)
 
@@ -123,7 +123,7 @@ func TestProxyAutoPromote(t *testing.T) {
 	// Wait for it to get dropped.
 	time.Sleep(server.PeerActivityMonitorTimeout + (2 * time.Second))
 
-	// Wait for the proxy to be promoted.
+	// Wait for the standby to be promoted.
 	time.Sleep(server.ActiveMonitorTimeout + (2 * time.Second))
 
 	// Verify that we have 9 peers.
@@ -135,10 +135,10 @@ func TestProxyAutoPromote(t *testing.T) {
 	result, err = c.Get("_etcd/machines/node10", false, false)
 	assert.NoError(t, err)
 
-	// Verify that there are no more proxies.
-	result, err = c.Get("_etcd/proxies", false, true)
+	// Verify that there are no more standbys.
+	result, err = c.Get("_etcd/standbys", false, true)
 	assert.NoError(t, err)
 	if assert.Equal(t, len(result.Node.Nodes), 1) {
-		assert.Equal(t, result.Node.Nodes[0].Key, "/_etcd/proxies/node2")
+		assert.Equal(t, result.Node.Nodes[0].Key, "/_etcd/standbys/node2")
 	}
 }

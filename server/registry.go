@@ -16,15 +16,15 @@ import (
 // The location of the peer URL data.
 const RegistryPeerKey = "/_etcd/machines"
 
-// The location of the proxy URL data.
-const RegistryProxyKey = "/_etcd/proxies"
+// The location of the standby URL data.
+const RegistryStandbyKey = "/_etcd/standbys"
 
 // The Registry stores URL information for nodes.
 type Registry struct {
 	sync.Mutex
 	store   store.Store
 	peers   map[string]*node
-	proxies map[string]*node
+	standbys map[string]*node
 }
 
 // The internal storage format of the registry.
@@ -39,7 +39,7 @@ func NewRegistry(s store.Store) *Registry {
 	return &Registry{
 		store:   s,
 		peers:   make(map[string]*node),
-		proxies: make(map[string]*node),
+		standbys: make(map[string]*node),
 	}
 }
 
@@ -56,13 +56,13 @@ func (r *Registry) Peers() []string {
 	return names
 }
 
-// Proxies returns a list of cached proxy names.
-func (r *Registry) Proxies() []string {
+// Standbys returns a list of cached standby names.
+func (r *Registry) Standbys() []string {
 	r.Lock()
 	defer r.Unlock()
 
-	names := make([]string, 0, len(r.proxies))
-	for name := range r.proxies {
+	names := make([]string, 0, len(r.standbys))
+	for name := range r.standbys {
 		names = append(names, name)
 	}
 	sort.Sort(sort.StringSlice(names))
@@ -81,15 +81,15 @@ func (r *Registry) RegisterPeer(name string, peerURL string, machURL string) err
 	return nil
 }
 
-// RegisterProxy adds a proxy to the registry.
-func (r *Registry) RegisterProxy(name string, peerURL string, machURL string) error {
-	if err := r.register(RegistryProxyKey, name, peerURL, machURL); err != nil {
+// RegisterStandby adds a standby to the registry.
+func (r *Registry) RegisterStandby(name string, peerURL string, machURL string) error {
+	if err := r.register(RegistryStandbyKey, name, peerURL, machURL); err != nil {
 		return err
 	}
 
 	r.Lock()
 	defer r.Unlock()
-	r.proxies[name] = r.load(RegistryProxyKey, name)
+	r.standbys[name] = r.load(RegistryStandbyKey, name)
 	return nil
 }
 
@@ -108,9 +108,9 @@ func (r *Registry) UnregisterPeer(name string) error {
 	return r.unregister(RegistryPeerKey, name)
 }
 
-// UnregisterProxy removes a proxy from the registry.
-func (r *Registry) UnregisterProxy(name string) error {
-	return r.unregister(RegistryProxyKey, name)
+// UnregisterStandby removes a standby from the registry.
+func (r *Registry) UnregisterStandby(name string) error {
+	return r.unregister(RegistryStandbyKey, name)
 }
 
 func (r *Registry) unregister(key, name string) error {
@@ -125,9 +125,9 @@ func (r *Registry) PeerCount() int {
 	return r.count(RegistryPeerKey)
 }
 
-// ProxyCount returns the number of proxies in the cluster.
-func (r *Registry) ProxyCount() int {
-	return r.count(RegistryProxyKey)
+// StandbyCount returns the number of standbys in the cluster.
+func (r *Registry) StandbyCount() int {
+	return r.count(RegistryStandbyKey)
 }
 
 // Returns the number of nodes in the cluster.
@@ -144,9 +144,9 @@ func (r *Registry) PeerExists(name string) bool {
 	return r.exists(RegistryPeerKey, name)
 }
 
-// ProxyExists checks if a proxy with the given name exists.
-func (r *Registry) ProxyExists(name string) bool {
-	return r.exists(RegistryProxyKey, name)
+// StandbyExists checks if a standby with the given name exists.
+func (r *Registry) StandbyExists(name string) bool {
+	return r.exists(RegistryStandbyKey, name)
 }
 
 func (r *Registry) exists(key, name string) bool {
@@ -211,39 +211,39 @@ func (r *Registry) peerURL(key, name string) (string, bool) {
 	return "", false
 }
 
-// Retrieves the client URL for a given proxy by name.
-func (r *Registry) ProxyClientURL(name string) (string, bool) {
+// Retrieves the client URL for a given standby by name.
+func (r *Registry) StandbyClientURL(name string) (string, bool) {
 	r.Lock()
 	defer r.Unlock()
-	return r.proxyClientURL(RegistryProxyKey, name)
+	return r.standbyClientURL(RegistryStandbyKey, name)
 }
 
-func (r *Registry) proxyClientURL(key, name string) (string, bool) {
-	if r.proxies[name] == nil {
+func (r *Registry) standbyClientURL(key, name string) (string, bool) {
+	if r.standbys[name] == nil {
 		if node := r.load(key, name); node != nil {
-			r.proxies[name] = node
+			r.standbys[name] = node
 		}
 	}
-	if node := r.proxies[name]; node != nil {
+	if node := r.standbys[name]; node != nil {
 		return node.url, true
 	}
 	return "", false
 }
 
-// Retrieves the peer URL for a given proxy by name.
-func (r *Registry) ProxyPeerURL(name string) (string, bool) {
+// Retrieves the peer URL for a given standby by name.
+func (r *Registry) StandbyPeerURL(name string) (string, bool) {
 	r.Lock()
 	defer r.Unlock()
-	return r.proxyPeerURL(RegistryProxyKey, name)
+	return r.standbyPeerURL(RegistryStandbyKey, name)
 }
 
-func (r *Registry) proxyPeerURL(key, name string) (string, bool) {
-	if r.proxies[name] == nil {
+func (r *Registry) standbyPeerURL(key, name string) (string, bool) {
+	if r.standbys[name] == nil {
 		if node := r.load(key, name); node != nil {
-			r.proxies[name] = node
+			r.standbys[name] = node
 		}
 	}
-	if node := r.proxies[name]; node != nil {
+	if node := r.standbys[name]; node != nil {
 		return node.peerURL, true
 	}
 	return "", false
@@ -292,7 +292,7 @@ func (r *Registry) Invalidate(name string) {
 	defer r.Unlock()
 
 	delete(r.peers, name)
-	delete(r.proxies, name)
+	delete(r.standbys, name)
 }
 
 // Loads the given node by name from the store into the cache.

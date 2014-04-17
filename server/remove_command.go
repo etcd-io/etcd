@@ -28,9 +28,9 @@ func (c *RemoveCommandV1) CommandName() string {
 func (c *RemoveCommandV1) Apply(context raft.Context) (interface{}, error) {
 	ps, _ := context.Server().Context().(*PeerServer)
 
-	// If this is a proxy then remove it and exit.
-	if ps.registry.ProxyExists(c.Name) {
-		return []byte{0}, ps.registry.UnregisterProxy(c.Name)
+	// If this is a standby then remove it and exit.
+	if ps.registry.StandbyExists(c.Name) {
+		return []byte{0}, ps.registry.UnregisterStandby(c.Name)
 	}
 
 	// Remove node from the shared registry.
@@ -88,9 +88,9 @@ func (c *RemoveCommandV2) Apply(context raft.Context) (interface{}, error) {
 	ps, _ := context.Server().Context().(*PeerServer)
 	ret, _ := json.Marshal(removeMessageV2{CommitIndex: context.CommitIndex()})
 
-	// If this is a proxy then remove it and exit.
-	if ps.registry.ProxyExists(c.Name) {
-		if err := ps.registry.UnregisterProxy(c.Name); err != nil {
+	// If this is a standby then remove it and exit.
+	if ps.registry.StandbyExists(c.Name) {
+		if err := ps.registry.UnregisterStandby(c.Name); err != nil {
 			return nil, err
 		}
 		return ret, nil

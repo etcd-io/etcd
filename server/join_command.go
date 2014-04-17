@@ -101,15 +101,15 @@ func (c *JoinCommandV2) Apply(context raft.Context) (interface{}, error) {
 
 	// Check peer number in the cluster.
 	if ps.registry.PeerCount() >= ps.ClusterConfig().ActiveSize {
-		log.Debug("Join as proxy ", c.Name)
-		ps.registry.RegisterProxy(c.Name, c.PeerURL, c.ClientURL)
-		msg.Mode = ProxyMode
+		log.Debug("Join as standby ", c.Name)
+		ps.registry.RegisterStandby(c.Name, c.PeerURL, c.ClientURL)
+		msg.Mode = StandbyMode
 		return json.Marshal(msg)
 	}
 
-	// Remove it as a proxy if it is one.
-	if ps.registry.ProxyExists(c.Name) {
-		ps.registry.UnregisterProxy(c.Name)
+	// Remove it as a standby if it is one.
+	if ps.registry.StandbyExists(c.Name) {
+		ps.registry.UnregisterStandby(c.Name)
 	}
 
 	// Add to shared peer registry.
