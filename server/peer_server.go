@@ -41,7 +41,7 @@ const (
 
 const (
 	peerModeFlag  = 0
-	proxyModeFlag = 1
+	standbyModeFlag = 1
 )
 
 type PeerServerConfig struct {
@@ -69,8 +69,8 @@ type PeerServer struct {
 	closeChan            chan bool
 	timeoutThresholdChan chan interface{}
 
-	proxyPeerURL   string
-	proxyClientURL string
+	standbyPeerURL   string
+	standbyClientURL string
 
 	metrics *metrics.Bucket
 	sync.Mutex
@@ -134,7 +134,7 @@ func (s *PeerServer) Mode() Mode {
 
 // SetMode updates the current mode of the server.
 // Switching to a peer mode will start the Raft server.
-// Switching to a proxy mode will stop the Raft server.
+// Switching to a standby mode will stop the Raft server.
 func (s *PeerServer) setMode(mode Mode) {
 	s.mode = mode
 
@@ -143,7 +143,7 @@ func (s *PeerServer) setMode(mode Mode) {
 		if !s.raftServer.Running() {
 			s.raftServer.Start()
 		}
-	case ProxyMode:
+	case StandbyMode:
 		if s.raftServer.Running() {
 			s.raftServer.Stop()
 		}
@@ -157,7 +157,7 @@ func (s *PeerServer) ClusterConfig() *ClusterConfig {
 
 // SetClusterConfig updates the current cluster configuration.
 // Adjusting the active size will cause the PeerServer to demote peers or
-// promote proxies to match the new size.
+// promote standbys to match the new size.
 func (s *PeerServer) SetClusterConfig(c *ClusterConfig) {
 	// Set minimums.
 	if c.ActiveSize < MinActiveSize {
@@ -552,9 +552,9 @@ func (s *PeerServer) joinByPeer(server raft.Server, peer string, scheme string) 
 				s.joinIndex = msg.CommitIndex
 				s.setMode(msg.Mode)
 
-				if msg.Mode == ProxyMode {
-					s.proxyClientURL = resp.Header.Get("X-Leader-Client-URL")
-					s.proxyPeerURL = resp.Header.Get("X-Leader-Peer-URL")
+				if msg.Mode == StandbyMode {
+					s.standbyClientURL = resp.Header.Get("X-Leader-Client-URL")
+					s.standbyPeerURL = resp.Header.Get("X-Leader-Peer-URL")
 				}
 
 				return nil
@@ -711,7 +711,7 @@ func (s *PeerServer) monitorTimeoutThreshold(closeChan chan bool) {
 }
 
 // monitorActiveSize has the leader periodically check the status of cluster
-// nodes and swaps them out for proxies as needed.
+// nodes and swaps them out for standbys as needed.
 func (s *PeerServer) monitorActiveSize(closeChan chan bool) {
 	for {
 		select {
@@ -728,7 +728,7 @@ func (s *PeerServer) monitorActiveSize(closeChan chan bool) {
 		// Retrieve target active size and actual active size.
 		activeSize := s.ClusterConfig().ActiveSize
 		peerCount := s.registry.PeerCount()
-		proxies := s.registry.Proxies()
+		standbys := s.registry.Standbys()
 		peers := s.registry.Peers()
 		if index := sort.SearchStrings(peers, s.Config.Name); index < len(peers) && peers[index] == s.Config.Name {
 			peers = append(peers[:index], peers[index+1:]...)
@@ -744,22 +744,22 @@ func (s *PeerServer) monitorActiveSize(closeChan chan bool) {
 			continue
 		}
 
-		// If we don't have enough active nodes then try to promote a proxy.
-		if peerCount < activeSize && len(proxies) > 0 {
+		// If we don't have enough active nodes then try to promote a standby.
+		if peerCount < activeSize && len(standbys) > 0 {
 		loop:
-			for _, i := range rand.Perm(len(proxies)) {
-				proxy := proxies[i]
-				proxyPeerURL, _ := s.registry.ProxyPeerURL(proxy)
-				log.Infof("%s: attempting to promote: %v (%s)", s.Config.Name, proxy, proxyPeerURL)
+			for _, i := range rand.Perm(len(standbys)) {
+				standby := standbys[i]
+				standbyPeerURL, _ := s.registry.StandbyPeerURL(standby)
+				log.Infof("%s: attempting to promote: %v (%s)", s.Config.Name, standby, standbyPeerURL)
 
-				// Notify proxy to promote itself.
+				// Notify standby to promote itself.
 				client := &http.Client{
 					Transport: &http.Transport{
 						DisableKeepAlives:     false,
 						ResponseHeaderTimeout: ActiveMonitorTimeout,
 					},
 				}
-				resp, err := client.Post(fmt.Sprintf("%s/promote", proxyPeerURL), "application/json", nil)
+				resp, err := client.Post(fmt.Sprintf("%s/promote", standbyPeerURL), "application/json", nil)
 				if err != nil {
 					log.Infof("%s: warning: promotion error: %v", s.Config.Name, err)
 					continue
@@ -806,13 +806,13 @@ func (s *PeerServer) monitorPeerActivity(closeChan chan bool) {
 }
 
 // Mode represents whether the server is an active peer or if the server is
-// simply acting as a proxy.
+// simply acting as a standby.
 type Mode string
 
 const (
 	// PeerMode is when the server is an active node in Raft.
 	PeerMode = Mode("peer")
 
-	// ProxyMode is when the server is an inactive, request-forwarding node.
-	ProxyMode = Mode("proxy")
+	// StandbyMode is when the server is an inactive, request-forwarding node.
+	StandbyMode = Mode("standby")
 )

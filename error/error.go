@@ -53,10 +53,10 @@ var errors = map[int]string{
 	// etcd related errors
 	EcodeWatcherCleared:      "watcher is cleared due to etcd recovery",
 	EcodeEventIndexCleared:   "The event in requested index is outdated and cleared",
-	EcodeProxyInternal:       "Proxy Internal Error",
+	EcodeStandbyInternal:     "Standby Internal Error",
 	EcodeInvalidActiveSize:   "Invalid active size",
-	EcodeInvalidPromoteDelay: "Proxy promote delay",
-	EcodePromoteError:        "Proxy promotion error",
+	EcodeInvalidPromoteDelay: "Standby promote delay",
+	EcodePromoteError:        "Standby promotion error",
 }
 
 const (
@@ -86,7 +86,7 @@ const (
 
 	EcodeWatcherCleared      = 400
 	EcodeEventIndexCleared   = 401
-	EcodeProxyInternal       = 402
+	EcodeStandbyInternal     = 402
 	EcodeInvalidActiveSize   = 403
 	EcodeInvalidPromoteDelay = 404
 	EcodePromoteError        = 405

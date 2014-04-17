@@ -11,7 +11,7 @@ func init() {
 	raft.RegisterCommand(&DemoteCommand{})
 }
 
-// DemoteCommand represents a command to change a peer to a proxy.
+// DemoteCommand represents a command to change a peer to a standby.
 type DemoteCommand struct {
 	Name string `json:"name"`
 }
@@ -51,14 +51,14 @@ func (c *DemoteCommand) Apply(context raft.Context) (interface{}, error) {
 		return nil, err
 	}
 
-	// Register node as a proxy.
-	ps.registry.RegisterProxy(c.Name, peerURL, clientURL)
+	// Register node as a standby.
+	ps.registry.RegisterStandby(c.Name, peerURL, clientURL)
 
 	// Update mode if this change applies to this server.
 	if c.Name == ps.Config.Name {
-		log.Infof("Demote peer %s: Set mode to proxy with %s", c.Name, ps.server.Leader())
-		ps.proxyPeerURL, _ = ps.registry.PeerURL(ps.server.Leader())
-		go ps.setMode(ProxyMode)
+		log.Infof("Demote peer %s: Set mode to standby with %s", c.Name, ps.server.Leader())
+		ps.standbyPeerURL, _ = ps.registry.PeerURL(ps.server.Leader())
+		go ps.setMode(StandbyMode)
 	}
 
 	return nil, nil
