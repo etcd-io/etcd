@@ -103,6 +103,13 @@ curl -L http://127.0.0.1:4001/v2/keys/foo -XPUT -d value=bar
 }
 ```
 
+### Rejoining to the Cluster
+
+If one machine disconnects from the cluster, it could rejoin the cluster automatically when the communication is recovered.
+
+If one machine is killed, it could rejoin the cluster when started with old name. If the peer address is changed, etcd will treat the new peer address as the refreshed one, which benefits instance migration, or virtual machine boot with different IP.
+
+**Note:** For now, it is user responsibility to ensure that the machine doesn't join the cluster that has the member with the same name. Or unexpected error will happen. It would be improved sooner or later.
 
 ### Killing Nodes in the Cluster
 

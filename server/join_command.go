@@ -29,6 +29,17 @@ func (c *JoinCommandV1) CommandName() string {
 	return "etcd:join"
 }
 
+func (c *JoinCommandV1) updatePeerURL(ps *PeerServer) error {
+	log.Debugf("Update peer URL of %v to %v", c.Name, c.RaftURL)
+	if err := ps.registry.UpdatePeerURL(c.Name, c.RaftURL); err != nil {
+		log.Debugf("Error while updating in registry: %s (%v)", c.Name, err)
+		return err
+	}
+	// Flush commit index, so raft will replay to here when restarted
+	ps.raftServer.FlushCommitIndex()
+	return nil
+}
+
 // Join a server to the cluster
 func (c *JoinCommandV1) Apply(context raft.Context) (interface{}, error) {
 	ps, _ := context.Server().Context().(*PeerServer)
@@ -40,7 +51,15 @@ func (c *JoinCommandV1) Apply(context raft.Context) (interface{}, error) {
 	ps.registry.Invalidate(c.Name)
 
 	// Check if the join command is from a previous peer, who lost all its previous log.
-	if _, ok := ps.registry.ClientURL(c.Name); ok {
+	if peerURL, ok := ps.registry.PeerURL(c.Name); ok {
+		// If previous node restarts with different peer URL,
+		// update its information.
+		if peerURL != c.RaftURL {
+			log.Infof("Rejoin with %v instead of %v from %v", c.RaftURL, peerURL, c.Name)
+			if err := c.updatePeerURL(ps); err != nil {
+				return []byte{0}, err
+			}
+		}
 		return b, nil
 	}
 
@@ -83,6 +102,17 @@ func (c *JoinCommandV2) CommandName() string {
 	return "etcd:v2:join"
 }
 
+func (c *JoinCommandV2) updatePeerURL(ps *PeerServer) error {
+	log.Debugf("Update peer URL of %v to %v", c.Name, c.PeerURL)
+	if err := ps.registry.UpdatePeerURL(c.Name, c.PeerURL); err != nil {
+		log.Debugf("Error while updating in registry: %s (%v)", c.Name, err)
+		return err
+	}
+	// Flush commit index, so raft will replay to here when restart
+	ps.raftServer.FlushCommitIndex()
+	return nil
+}
+
 // Apply attempts to join a machine to the cluster.
 func (c *JoinCommandV2) Apply(context raft.Context) (interface{}, error) {
 	ps, _ := context.Server().Context().(*PeerServer)
@@ -95,7 +125,15 @@ func (c *JoinCommandV2) Apply(context raft.Context) (interface{}, error) {
 	ps.registry.Invalidate(c.Name)
 
 	// Check if the join command is from a previous peer, who lost all its previous log.
-	if _, ok := ps.registry.ClientURL(c.Name); ok {
+	if peerURL, ok := ps.registry.PeerURL(c.Name); ok {
+		// If previous node restarts with different peer URL,
+		// update its information.
+		if peerURL != c.PeerURL {
+			log.Infof("Rejoin with %v instead of %v from %v", c.PeerURL, peerURL, c.Name)
+			if err := c.updatePeerURL(ps); err != nil {
+				return []byte{0}, err
+			}
+		}
 		return json.Marshal(msg)
 	}
 

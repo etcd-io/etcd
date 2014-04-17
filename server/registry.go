@@ -103,6 +103,25 @@ func (r *Registry) register(key, name string, peerURL string, machURL string) er
 	return err
 }
 
+// UpdatePeerURL updates peer URL in registry
+func (r *Registry) UpdatePeerURL(name string, peerURL string) error {
+	r.Lock()
+	defer r.Unlock()
+
+	machURL, _ := r.clientURL(RegistryPeerKey, name)
+	// Write data to store.
+	key := path.Join(RegistryPeerKey, name)
+	v := url.Values{}
+	v.Set("raft", peerURL)
+	v.Set("etcd", machURL)
+	_, err := r.store.Update(key, v.Encode(), store.Permanent)
+
+	// Invalidate outdated cache.
+	r.invalidate(name)
+	log.Debugf("Update PeerURL: %s", name)
+	return err
+}
+
 // UnregisterPeer removes a peer from the registry.
 func (r *Registry) UnregisterPeer(name string) error {
 	return r.unregister(RegistryPeerKey, name)
@@ -290,7 +309,10 @@ func (r *Registry) urls(key, leaderName, selfName string, url func(key, name str
 func (r *Registry) Invalidate(name string) {
 	r.Lock()
 	defer r.Unlock()
+	r.invalidate(name)
+}
 
+func (r *Registry) invalidate(name string) {
 	delete(r.peers, name)
 	delete(r.standbys, name)
 }
