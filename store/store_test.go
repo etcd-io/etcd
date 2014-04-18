@@ -287,8 +287,9 @@ func TestStoreUpdateDirTTL(t *testing.T) {
 
 	s.Create("/foo", true, "", false, Permanent)
 	s.Create("/foo/bar", false, "baz", false, Permanent)
-	_, err := s.Update("/foo", "", time.Now().Add(500*time.Millisecond))
-	e, _ := s.Get("/foo/bar", false, false)
+	e, err := s.Update("/foo", "", time.Now().Add(500*time.Millisecond))
+	assert.Equal(t, e.Node.Dir, true, "")
+	e, _ = s.Get("/foo/bar", false, false)
 	assert.Equal(t, *e.Node.Value, "baz", "")
 
 	time.Sleep(600 * time.Millisecond)

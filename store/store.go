@@ -432,9 +432,13 @@ func (s *store) Update(nodePath string, newValue string, expireTime time.Time) (
 
 	n.Write(newValue, nextIndex)
 
-	// copy the value for safety
-	newValueCopy := ustrings.Clone(newValue)
-	eNode.Value = &newValueCopy
+	if n.IsDir() {
+		eNode.Dir = true
+	} else {
+		// copy the value for safety
+		newValueCopy := ustrings.Clone(newValue)
+		eNode.Value = &newValueCopy
+	}
 
 	// update ttl
 	n.UpdateTTL(expireTime)
