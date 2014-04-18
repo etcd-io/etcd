@@ -843,11 +843,13 @@ The client is told the write was successful and the keyspace is updated.
 Meanwhile F2 has partitioned from the network and will have an out-of-date version of the keyspace until the partition resolves.
 Since F2 missed the most recent write, a client reading from F2 will have an out-of-date version of the keyspace.
 
-## Lock Module
+## Lock Module (*Deprecated*)
 
 The lock module is used to serialize access to resources used by clients.
 Multiple clients can attempt to acquire a lock but only one can have it at a time.
 Once the lock is released, the next client waiting for the lock will receive it.
+
+**Warning:** This module is deprecated at v0.4. See [Modules][modules] for more details.
 
 
 ### Acquiring a Lock
@@ -990,9 +992,12 @@ If you specify a field other than `index` or `value` then you'll receive the fol
 ```
 
 
-## Leader Module
+## Leader Module (*Deprecated*)
 
 The leader module wraps the lock module to provide a simple interface for electing a single leader in a cluster.
+
+**Warning:** This module is deprecated at v0.4. See [Modules][modules] for more details.
+[modules]: https://github.com/coreos/etcd/blob/master/Documentation/modules.md
 
 
 ### Setting the Leader

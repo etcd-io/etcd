@@ -23,8 +23,9 @@ go test -v ./server/v1/tests -race
 go test -i ./server/v2/tests
 go test -v ./server/v2/tests -race
 
-go test -i ./mod/lock/v2/tests
-go test -v ./mod/lock/v2/tests
+# Mod is deprecated temporarily.
+# go test -i ./mod/lock/v2/tests
+# go test -v ./mod/lock/v2/tests
 
 go test -i ./pkg/btrfs
 go test -v ./pkg/btrfs
