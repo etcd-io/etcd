@@ -178,12 +178,12 @@ func (s *Server) handleFunc(r *mux.Router, path string, f func(http.ResponseWrit
 
 		// Forward request along if the server is a standby.
 		if s.peerServer.Mode() == StandbyMode {
-			if s.peerServer.standbyClientURL == "" {
+			if s.peerServer.standbyConfig.LeaderClientURL == "" {
 				w.Header().Set("Content-Type", "application/json")
 				etcdErr.NewError(402, "", 0).Write(w)
 				return
 			}
-			uhttp.Redirect(s.peerServer.standbyClientURL, w, req)
+			uhttp.Redirect(s.peerServer.standbyConfig.LeaderClientURL, w, req)
 			return
 		}
 

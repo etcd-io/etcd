@@ -268,6 +268,16 @@ func (r *Registry) standbyPeerURL(key, name string) (string, bool) {
 	return "", false
 }
 
+// Retrieves the Client URLs for standby nodes.
+func (r *Registry) StandbyClientURLs(selfName string) []string {
+	return r.urls(RegistryStandbyKey, "", selfName, r.standbyClientURL)
+}
+
+// Retrieves the Peer URLs for standby nodes.
+func (r *Registry) StandbyPeerURLs(selfName string) []string {
+	return r.urls(RegistryStandbyKey, "", selfName, r.standbyPeerURL)
+}
+
 // Retrieves the Client URLs for all nodes.
 func (r *Registry) ClientURLs(leaderName, selfName string) []string {
 	return r.urls(RegistryPeerKey, leaderName, selfName, r.clientURL)
