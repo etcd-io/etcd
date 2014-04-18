@@ -66,7 +66,7 @@ func (c *JoinCommandV1) Apply(context raft.Context) (interface{}, error) {
 	// Check if the join command adds an instance that collides with existing one on peer URL.
 	peerURLs := ps.registry.PeerURLs(ps.raftServer.Leader(), c.Name)
 	for _, peerURL := range peerURLs {
-		if peerURL == c.EtcdURL {
+		if peerURL == c.RaftURL {
 			log.Warnf("%v tries to join the cluster with existing URL %v", c.Name, c.EtcdURL)
 			return []byte{0}, etcdErr.NewError(etcdErr.EcodeExistingPeerAddr, c.EtcdURL, context.CommitIndex())
 		}
