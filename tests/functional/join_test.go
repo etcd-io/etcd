@@ -34,6 +34,6 @@ func TestJoinThroughFollower(t *testing.T) {
 		t.Fatal("failed getting leader from node3:", err)
 	}
 	if leader != "http://127.0.0.1:7001" {
-		t.Fatal("expect http://127.0.0.1:7001 instead of", leader)
+		t.Fatal("expect=http://127.0.0.1:7001 got=", leader)
 	}
 }
