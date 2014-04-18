@@ -3,8 +3,11 @@
 etcd has a number of modules that are built on top of the core etcd API.
 These modules provide things like dashboards, locks and leader election.
 
-**Warning**: Modules is deprecated from v0.4, and is expected to be added back in the near future.
-For now, we are choosing to focus on raft algorithm and etcd core to make sure that it works correctly and fast. And it is time consuming to maintain these modules in this period, given that etcd's API changes from time to time. Moreover, the lock module has some unfixed bugs, which may mislead users. But we also notice that these modules are popular and useful, and plan to add them back with full functionality as soon as possible.
+**Warning**: Modules are deprecated from v0.4 until we have a solid base we can apply them back onto.
+For now, we are choosing to focus on raft algorithm and core etcd to make sure that it works correctly and fast.
+And it is time consuming to maintain these modules in this period, given that etcd's API changes from time to time.
+Moreover, the lock module has some unfixed bugs, which may mislead users.
+But we also notice that these modules are popular and useful, and plan to add them back with full functionality as soon as possible.
 
 ### Dashboard
 
