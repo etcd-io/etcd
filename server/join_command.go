@@ -63,6 +63,15 @@ func (c *JoinCommandV1) Apply(context raft.Context) (interface{}, error) {
 		return b, nil
 	}
 
+	// Check if the join command adds an instance that collides with existing one on peer URL.
+	peerURLs := ps.registry.PeerURLs(ps.raftServer.Leader(), c.Name)
+	for _, peerURL := range peerURLs {
+		if peerURL == c.RaftURL {
+			log.Warnf("%v tries to join the cluster with existing URL %v", c.Name, c.EtcdURL)
+			return []byte{0}, etcdErr.NewError(etcdErr.EcodeExistingPeerAddr, c.EtcdURL, context.CommitIndex())
+		}
+	}
+
 	// Check peer number in the cluster
 	if ps.registry.PeerCount() >= ps.ClusterConfig().ActiveSize {
 		log.Debug("Reject join request from ", c.Name)
@@ -135,6 +144,15 @@ func (c *JoinCommandV2) Apply(context raft.Context) (interface{}, error) {
 			}
 		}
 		return json.Marshal(msg)
+	}
+
+	// Check if the join command adds an instance that collides with existing one on peer URL.
+	peerURLs := ps.registry.PeerURLs(ps.raftServer.Leader(), c.Name)
+	for _, peerURL := range peerURLs {
+		if peerURL == c.PeerURL {
+			log.Warnf("%v tries to join the cluster with existing URL %v", c.Name, c.PeerURL)
+			return []byte{0}, etcdErr.NewError(etcdErr.EcodeExistingPeerAddr, c.PeerURL, context.CommitIndex())
+		}
 	}
 
 	// Check peer number in the cluster.

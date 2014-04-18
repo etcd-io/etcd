@@ -154,6 +154,9 @@ func CreateCluster(size int, procAttr *os.ProcAttr, ssl bool) ([][]string, []*os
 // Destroy all the nodes in the cluster
 func DestroyCluster(etcds []*os.Process) error {
 	for _, etcd := range etcds {
+		if etcd == nil {
+			continue
+		}
 		err := etcd.Kill()
 		if err != nil {
 			panic(err.Error())

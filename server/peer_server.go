@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -187,6 +188,12 @@ func (s *PeerServer) findCluster(discoverURL string, peers []string) {
 
 	// Try its best to find possible peers, and connect with them.
 	if !isNewNode {
+		// It is not allowed to join the cluster with existing peer address
+		// This prevents old node joining with different name by mistake.
+		if !s.checkPeerAddressNonconflict() {
+			log.Fatalf("%v is not allowed to join the cluster with existing URL %v", s.Config.Name, s.Config.URL)
+		}
+
 		// Take old nodes into account.
 		allPeers := s.getKnownPeers()
 		// Discover registered peers.
@@ -426,6 +433,25 @@ func (s *PeerServer) Upgradable() error {
 	return nil
 }
 
+// checkPeerAddressNonconflict checks whether the peer address has existed with different name.
+func (s *PeerServer) checkPeerAddressNonconflict() bool {
+	// there exists the (name, peer address) pair
+	if peerURL, ok := s.registry.PeerURL(s.Config.Name); ok {
+		if peerURL == s.Config.URL {
+			return true
+		}
+	}
+
+	// check all existing peer addresses
+	peerURLs := s.registry.PeerURLs(s.raftServer.Leader(), s.Config.Name)
+	for _, peerURL := range peerURLs {
+		if peerURL == s.Config.URL {
+			return false
+		}
+	}
+	return true
+}
+
 // Helper function to do discovery and return results in expected format
 func (s *PeerServer) handleDiscovery(discoverURL string) (peers []string, err error) {
 	peers, err = discovery.Do(discoverURL, s.Config.Name, s.Config.URL)
@@ -455,6 +481,8 @@ func (s *PeerServer) handleDiscovery(discoverURL string) (peers []string, err er
 // getKnownPeers gets the previous peers from log
 func (s *PeerServer) getKnownPeers() []string {
 	peers := s.registry.PeerURLs(s.raftServer.Leader(), s.Config.Name)
+	log.Infof("Peer URLs in log: %s / %s (%s)", s.raftServer.Leader(), s.Config.Name, strings.Join(peers, ","))
+
 	for i := range peers {
 		u, err := url.Parse(peers[i])
 		if err != nil {

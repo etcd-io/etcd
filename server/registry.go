@@ -300,8 +300,7 @@ func (r *Registry) urls(key, leaderName, selfName string, url func(key, name str
 		}
 	}
 
-	log.Infof("URLs: %s: %s / %s (%s)", key, leaderName, selfName, strings.Join(urls, ","))
-
+	log.Debugf("URLs: %s: %s / %s (%s)", key, leaderName, selfName, strings.Join(urls, ","))
 	return urls
 }
 

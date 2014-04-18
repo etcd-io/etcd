@@ -146,3 +146,48 @@ func TestReplaceWithDifferentPeerAddress(t *testing.T) {
 		t.Fatal("Failed to set value in etcd cluster")
 	}
 }
+
+// Create a five-node cluster
+// Let the sixth instance join with different name and existing peer address
+func TestRejoinWithDifferentName(t *testing.T) {
+	procAttr := new(os.ProcAttr)
+	procAttr.Files = []*os.File{nil, os.Stdout, os.Stderr}
+
+	clusterSize := 5
+	argGroup, etcds, err := CreateCluster(clusterSize, procAttr, false)
+
+	if err != nil {
+		t.Fatal("cannot create cluster")
+	}
+
+	defer DestroyCluster(etcds)
+
+	time.Sleep(2 * time.Second)
+
+	num := rand.Int() % clusterSize
+	fmt.Println("join node 6 that collides with node", num+1)
+
+	// kill
+	etcds[num].Kill()
+	etcds[num].Release()
+	time.Sleep(time.Second)
+
+	for i := 0; i < 2; i++ {
+		// restart
+		if i == 0 {
+			etcds[num], err = os.StartProcess(EtcdBinPath, append(argGroup[num], "-name=node6", "-peers=127.0.0.1:7002"), procAttr)
+		} else {
+			etcds[num], err = os.StartProcess(EtcdBinPath, append(argGroup[num], "-f", "-name=node6", "-peers=127.0.0.1:7002"), procAttr)
+		}
+		if err != nil {
+			t.Fatal("failed to start process:", err)
+		}
+
+		timer := time.AfterFunc(10*time.Second, func() {
+			t.Fatal("new etcd should fail immediately")
+		})
+		etcds[num].Wait()
+		etcds[num] = nil
+		timer.Stop()
+	}
+}
