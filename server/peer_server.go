@@ -333,8 +333,8 @@ func (s *PeerServer) HTTPHandler() http.Handler {
 	router.HandleFunc("/snapshotRecovery", s.SnapshotRecoveryHttpHandler)
 	router.HandleFunc("/etcdURL", s.EtcdURLHttpHandler)
 
-	router.HandleFunc("/v2/admin/config", s.getClusterConfigHttpHandler).Methods("GET")
-	router.HandleFunc("/v2/admin/config", s.setClusterConfigHttpHandler).Methods("PUT")
+	router.HandleFunc("/v2/admin/config/cluster", s.getClusterConfigHttpHandler).Methods("GET")
+	router.HandleFunc("/v2/admin/config/cluster", s.setClusterConfigHttpHandler).Methods("PUT")
 	router.HandleFunc("/v2/admin/config/standby", s.getStandbyConfigHttpHandler).Methods("GET")
 	router.HandleFunc("/v2/admin/config/standby", s.setStandbyConfigHttpHandler).Methods("PUT")
 	router.HandleFunc("/v2/admin/machines", s.getMachinesHttpHandler).Methods("GET")
@@ -628,8 +628,8 @@ func (s *PeerServer) noticeStandbys() {
 	t, _ := s.raftServer.Transporter().(*transporter)
 	c := &StandbyConfig{
 		LeaderClientURL: s.server.url,
-		LeaderPeerURL: s.Config.URL,
-		Term: s.raftServer.Term(),
+		LeaderPeerURL:   s.Config.URL,
+		Term:            s.raftServer.Term(),
 	}
 
 	for _, peerURL := range s.registry.StandbyPeerURLs(s.Config.Name) {
