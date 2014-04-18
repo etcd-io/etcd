@@ -147,7 +147,7 @@ func TestReplaceWithDifferentPeerAddress(t *testing.T) {
 	}
 }
 
-// Create a five nodes
+// Create a five-node cluster
 // Let the sixth instance join with different name and existing peer address
 func TestRejoinWithDifferentName(t *testing.T) {
 	procAttr := new(os.ProcAttr)
@@ -180,7 +180,7 @@ func TestRejoinWithDifferentName(t *testing.T) {
 			etcds[num], err = os.StartProcess(EtcdBinPath, append(argGroup[num], "-f", "-name=node6", "-peers=127.0.0.1:7002"), procAttr)
 		}
 		if err != nil {
-			t.Fatal("fail starting etcd:", err)
+			t.Fatal("failed to start process:", err)
 		}
 
 		timer := time.AfterFunc(10*time.Second, func() {
