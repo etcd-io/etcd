@@ -1,0 +1,12 @@
+#!/bin/bash -e
+
+echo "installing global node modules..."
+sudo npm install -g jshint bower grunt-cli
+
+echo "installing local node modules..."
+npm install
+
+echo "installing bower client modules..."
+bower --allow-root install
+
+echo "done"

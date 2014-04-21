@@ -1,0 +1,46 @@
+@mixin co-x-animation(
+  $name,
+  $duration: 1s,
+  $timingFunction: linear,
+  $delay: 0,
+  $direction: normal,
+  $iterationCount: 1,
+  $fillMode: forwards,
+  $playState: running) {
+
+  animation-name: $name;
+  animation-duration: $duration;
+  animation-timing-function: $timingFunction;
+  animation-delay: $delay;
+  animation-direction: $direction;
+  animation-iteration-count: $iterationCount;
+  animation-fill-mode: $fillMode;
+  animation-play-state: $playState;
+
+  -webkit-animation-name: $name;
+  -webkit-animation-duration: $duration;
+  -webkit-animation-timing-function: $timingFunction;
+  -webkit-animation-delay: $delay;
+  -webkit-animation-direction: $direction;
+  -webkit-animation-iteration-count: $iterationCount;
+  -webkit-animation-fill-mode: $fillMode;
+  -webkit-animation-play-state: $playState;
+
+  -moz-animation-name: $name;
+  -moz-animation-duration: $duration;
+  -moz-animation-timing-function: $timingFunction;
+  -moz-animation-delay: $delay;
+  -moz-animation-direction: $direction;
+  -moz-animation-iteration-count: $iterationCount;
+  -moz-animation-fill-mode: $fillMode;
+  -moz-animation-play-state: $playState;
+}
+
+@mixin co-x-animation-transform-origin(
+  $x: 50%,
+  $y: 50%) {
+  -webkit-transform-origin: $x $y;
+  -moz-transform-origin: $x $y;
+  -ms-transform-origin: $x $y;
+  -o-transform-origin: $x $y;
+}

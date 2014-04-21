@@ -1,0 +1,64 @@
+<div class="ed-p-stats">
+  <co-nav-title title="Stats"></co-nav-title>
+  <div class="row">
+
+
+    <div class="col-lg-6 col-md-6 col-sm-6 col-xs-12">
+      <div class="panel co-m-panel co-fx-box-shadow-heavy">
+        <div class="panel-body">
+          <h2>Peer Latency</h2>
+          <co-latency-graph peer-data="followers"></co-latency-graph>
+        </div>
+      </div>
+    </div>
+
+
+
+    <div class="col-lg-6 col-md-6 col-sm-6 col-xs-12">
+      <div class="panel co-m-panel co-fx-box-shadow-heavy">
+        <div class="panel-body">
+          <div class="ed-p-stats__leader-container">
+            <h2>Leader</h2>
+            <dl>
+              <dt>Name</dt>
+              <dd><a ng-bind="leader.name" ng-click="openDetailModal(leader.name)" href="#"></a></dl>
+              <dt>Uptime</dt>
+              <dd ng-bind="leader.uptime"></dd>
+            </dl>
+          </div>
+
+          <h2>Followers</h2>
+          <table class="table co-m-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Latency</th>
+                <th>Raft Requests</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr ng-repeat="follower in followers | orderBy:'name' track by follower.name">
+                <td>
+                  <a href="#" ng-click="openDetailModal(follower.name)" ng-bind="follower.name"></a>
+                </td>
+                <td>
+                  <div class="ed-m-square-status" ng-class="getSquareStatusClass(follower)"></div>
+                  <span>{{follower.latency.current | number:1 }} ms</span>
+                </td>
+                <td>
+                  <span ng-highlight="follower.counts.fail">{{follower.counts.fail}} failures</span>,
+                  <span>{{follower.counts.success}} successes</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+        </div>
+      </div>
+    </div>
+
+
+
+
+  </div>
+</div>

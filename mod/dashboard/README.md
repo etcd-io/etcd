@@ -4,26 +4,38 @@
 
 If you'd like to contribute to the etcd dashboard mod, follow these instructions. For contributing to the rest of etcd, see the contributing document in the root of the repository.
 
-### Install yeoman
+### Install Dependencies
 
-http://yeoman.io/
+Requires nodejs.  
 
-### Install NPM locally
+Run all commands from within the `/mod/dashboard` directory.  
+
+run `./setup` to install npm modules and bower front-end dependencies.
+
+To run a non-compiled development version of the dashboard:  
+
+Continually compile html templates, sass/css, and run unit tests.
 
 ```
-npm install
+grunt dev
 ```
 
-### Install Bower Components
+Export an environment varible to notify etcd of the dashboard source code location:  
 
 ```
-bower install
+export ETCD_DASHBOARD_DIR=./mod/dashboard/app
 ```
 
-### View in Browser
+Run local etc as usual (be sure to include the cors flag).  
 
-run `export ETCD_DASHBOARD_DIR=/absolute/path/to/coreos/etcd/mod/dashboard/app`  
+```
+// from etcd root dir  
+./bin/etcd -cors="*"  
+```
 
-Run etcd like you normally would and afterward browse to:
+Alternatively, build the optimized production-build version of the website and run etcd as above:  
 
-http://localhost:4001/mod/dashboard/
+```
+grunt  
+export ETCD_DASHBOARD_DIR=./mod/dashboard/dist  
+```

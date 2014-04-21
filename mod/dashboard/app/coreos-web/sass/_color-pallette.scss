@@ -1,0 +1,51 @@
+/* COLORS */
+$red:           rgba(240,76,92,1);
+$red-light:     lighten($red, 15%);
+$red-lighter:   lighten($red, 30%);
+$red-dark:      darken($red, 15%);
+$red-darker:    darken($red, 30%);
+
+$orange:        rgba(240,142,78,1);
+$orange-light:  lighten($orange, 15%);
+$orange-lighter:lighten($orange, 30%);
+$orange-dark:   darken($orange, 15%);
+$orange-darker: darken($orange, 30%);
+
+$yellow:        rgba(242,232,82,1);
+$yellow-light:  lighten($yellow, 15%);
+$yellow-lighter:lighten($yellow, 30%);
+$yellow-dark:   darken($yellow, 15%);
+$yellow-darker: darken($yellow, 30%);
+
+$green:         rgba(110,198,84,1);
+$green-light:   lighten($green, 15%);
+$green-lighter: lighten($green, 30%);
+$green-dark:    darken($green, 15%);
+$green-darker:  darken($green, 30%);
+
+$blue:          rgba(65,158,218,1);
+$blue-light:    lighten($blue, 15%);
+$blue-lighter:  lighten($blue, 30%);
+$blue-bg:       #EAF3FF;
+$blue-dark:     darken($blue, 15%);
+$blue-darker:   darken($blue, 30%);
+
+$purple:        rgba(159,104,164,1);
+$purple-light:  lighten($purple, 15%);
+$purple-lighter:lighten($purple, 30%);
+$purple-dark:   darken($purple, 15%);
+$purple-darker: darken($purple, 30%);
+
+$gray:          #999;
+$gray-light:    #ccc;
+$gray-lighter:  #eee;
+$gray-lightest: #f5f5f5;
+$gray-dark:     #666;
+$gray-darker:   #333;
+
+$black:         rgba(0,0,0,1);
+$white:         rgba(255,255,255,1);
+
+$highlight: rgba(255, 250, 170, 0.5);
+$translucent-black: rgba(33, 33, 33, 0.95);
+

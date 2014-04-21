@@ -1,0 +1,25 @@
+/* COREOS-WEB MODULES */
+
+// Configuration
+@import "color-pallette";
+@import "config";
+
+// Mixins
+@import "mixin/media-query";
+@import "mixin/keyframes";
+@import "mixin/animation";
+@import "mixin/custom-font";
+@import "mixin/prefix";
+
+
+/* ETCD DASHBOARD MODULES */
+
+// UI Modules
+@import "ui/breadcrumb";
+@import "ui/latency-graph";
+
+// Pages
+@import "page/browser/browser";
+@import "page/browser/edit-node";
+@import "page/browser/node-info";
+@import "page/stats/stats";

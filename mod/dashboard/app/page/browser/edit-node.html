@@ -1,0 +1,54 @@
+<div class="ed-p-edit-node">
+  <form ng-controller="EditNodeFormCtrl" ng-submit="submit()" name="form" role="form">
+
+    <div class="modal-header">
+      <h4 class="modal-title">Modify Node</h4>
+    </div>
+
+    <div class="modal-body">
+      <div class="row form-row">
+        <div class="col-sm-2">
+          <label for="ed-p-edit-node__key" class="control-label">Key</label>
+        </div>
+        <div class="col-sm-10 input-group">
+          <kbd ng-bind="displayKey" id="ed-p-edit-node__key"></kbd>
+        </div>
+      </div>
+      <div class="row form-row">
+        <div class="col-sm-2">
+          <label for="ed-p-edit-node__value" class="control-label">Value</label>
+        </div>
+        <div class="col-sm-10">
+          <textarea ng-model="fields.value"
+            spellcheck="false"
+            rows="5"
+            name="value"
+            id="ed-p-edit-node__value"
+            class="form-control"></textarea>
+        </div>
+      </div>
+      <div class="row form-row">
+        <div class="col-sm-2">
+          <label for="ed-p-edit-node__ttl" class="control-label">TTL</label>
+        </div>
+        <div class="col-sm-10">
+          <input name="ttl"
+            id="ed-p-edit-node__ttl"
+            type="number"
+            class="form-control ed-m-number-input"
+            min="0"
+            ng-blur="form.ttl.blur = true"
+            ng-model="fields.ttl"/>
+            Seconds
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-footer" co-btn-bar complete-promise="requestPromise">
+      <co-error-message formatter="etcdApi" promise="requestPromise"></co-error-message>
+      <button type="submit" class="btn btn-primary">Save</button>
+      <button type="button" ng-click="cancel()" class="btn btn-link">Cancel</button>
+    </div>
+
+  </form>
+</div>

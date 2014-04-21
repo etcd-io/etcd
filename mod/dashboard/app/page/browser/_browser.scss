@@ -1,0 +1,30 @@
+.ed-p-browser {
+  .panel-body {
+    padding: 30px;
+  }
+
+  .ed-m-node-table > thead > tr > th {
+    border: none;
+  }
+
+  .ed-m-node-table__ttl-col {
+    width: 80px;
+  }
+
+  .ed-m-node-table__cog-col {
+    width: 32px;
+  }
+
+  .ed-m-node-table__value-col {
+    width: 50%;
+  }
+
+  .ed-m-node-table__node-row:hover {
+    cursor: default;
+  }
+}
+
+.ed-m-number-input {
+  display: inline-block;
+  margin-right: 10px;
+}

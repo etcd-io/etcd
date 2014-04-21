@@ -1,6 +1,6 @@
+/go-bindata
 node_modules
 dist
 .tmp
-.sass-cache
+app/compiled
 app/bower_components
-/go-bindata

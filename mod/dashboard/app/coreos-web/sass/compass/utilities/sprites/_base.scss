@@ -1,0 +1,66 @@
+// Determines those states for which you want to enable magic sprite selectors
+$sprite-selectors: hover, target, active !default;
+
+// Set the width and height of an element to the original
+// dimensions of an image before it was included in the sprite.
+@mixin sprite-dimensions($map, $sprite) {
+  height: image-height(sprite-file($map, $sprite));
+  width: image-width(sprite-file($map, $sprite));
+}
+
+// Set the background position of the given sprite `$map` to display the
+// sprite of the given `$sprite` name. You can move the image relative to its
+// natural position by passing `$offset-x` and `$offset-y`.
+@mixin sprite-background-position($map, $sprite, $offset-x: 0, $offset-y: 0) {
+  background-position: sprite-position($map, $sprite, $offset-x, $offset-y);  
+}
+
+
+// Determines if you want to include magic selectors in your sprites
+$disable-magic-sprite-selectors:false !default;
+
+// Include the position and (optionally) dimensions of this `$sprite`
+// in the given sprite `$map`. The sprite url should come from either a base
+// class or you can specify the `sprite-url` explicitly like this:
+//
+//     background: $map no-repeat;
+@mixin sprite($map, $sprite, $dimensions: false, $offset-x: 0, $offset-y: 0) {
+  @include sprite-background-position($map, $sprite, $offset-x, $offset-y);
+  @if $dimensions {
+    @include sprite-dimensions($map, $sprite);
+  }
+  @if not $disable-magic-sprite-selectors {
+    @include sprite-selectors($map, $sprite, $sprite, $offset-x, $offset-y);
+  }
+}
+
+// Include the selectors for the `$sprite` given the `$map` and the 
+// `$full-sprite-name`
+// @private
+@mixin sprite-selectors($map, $sprite-name, $full-sprite-name, $offset-x: 0, $offset-y: 0) {
+  @each $selector in $sprite-selectors {
+    @if sprite_has_selector($map, $sprite-name, $selector) {
+      &:#{$selector}, &.#{$full-sprite-name}_#{$selector}, &.#{$full-sprite-name}-#{$selector} {
+          @include sprite-background-position($map, "#{$sprite-name}_#{$selector}", $offset-x, $offset-y);
+      }
+    }
+  }
+}
+
+// Generates a class for each space separated name in `$sprite-names`.
+// The class will be of the form .<map-name>-<sprite-name>.
+//
+// If a base class is provided, then each class will extend it.
+//
+// If `$dimensions` is `true`, the sprite dimensions will specified.
+@mixin sprites($map, $sprite-names, $base-class: false, $dimensions: false, $prefix: sprite-map-name($map), $offset-x: 0, $offset-y: 0) {
+  @each $sprite-name in $sprite-names {
+    @if sprite_does_not_have_parent($map, $sprite-name) {
+      $full-sprite-name: "#{$prefix}-#{$sprite-name}";
+      .#{$full-sprite-name} {
+        @if $base-class { @extend #{$base-class}; }
+        @include sprite($map, $sprite-name, $dimensions, $offset-x, $offset-y);
+      }
+    }
+  }
+}

@@ -1,22 +1,19 @@
 {
-  "name": "etcdDashboard",
-  "version": "0.0.0",
+  "name": "etcd-dashboard",
+  "version": "2.0.0",
   "dependencies": {
-    "angular": "~1.2.0-rc.2",
-    "json3": "~3.2.4",
-    "jquery": "~1.9.1",
-    "bootstrap-sass": "~2.3.1",
-    "es5-shim": "~2.0.8",
-    "angular-route": "~1.2.0-rc.2",
-    "angular-resource": "~1.2.0-rc.2",
-    "angular-cookies": "~1.2.0-rc.2",
-    "angular-sanitize": "~1.2.0-rc.2",
-    "d3": "~3.3.6",
-    "moment": "~2.3.0",
-    "underscore.string": "~2.3.3"
+    "angular": "latest",
+    "angular-resource": "latest",
+    "angular-route": "latest",
+    "angular-bootstrap": "latest",
+    "underscore": "latest",
+    "underscore.string": "latest",
+    "jquery": "latest",
+    "d3": "latest",
+    "angular-animate": "latest",
+    "font-awesome": "~4.0.3"
   },
   "devDependencies": {
-    "angular-mocks": "~1.2.0-rc.2",
-    "underscore": "~1.5.2"
+    "angular-mocks": "latest"
   }
 }
