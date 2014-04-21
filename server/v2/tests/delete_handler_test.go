@@ -30,6 +30,30 @@ func TestV2DeleteKey(t *testing.T) {
 	})
 }
 
+// Ensures that a key is deleted when 'dir' is not specified or false
+//
+//   $ curl -X PUT localhost:4001/v2/keys/foo/bar -d value=XXX
+//   $ curl -X DELETE localhost:4001/v2/keys/foo/bar?dir=true -> fail
+//   $ curl -X DELETE localhost:4001/v2/keys/foo/bar?dir=false
+//
+func TestV2DeleteKeyAsDirectory(t *testing.T) {
+	tests.RunServer(func(s *server.Server) {
+		v := url.Values{}
+		v.Set("value", "XXX")
+		resp, err := tests.PutForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo/bar"), v)
+		tests.ReadBody(resp)
+		resp, err = tests.DeleteForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo/bar?dir=true"), url.Values{})
+		assert.Equal(t, resp.StatusCode, http.StatusForbidden)
+		bodyJson := tests.ReadBodyJSON(resp)
+		assert.Equal(t, bodyJson["errorCode"], 104, "")
+		resp, err = tests.DeleteForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo/bar?dir=false"), url.Values{})
+		assert.Equal(t, resp.StatusCode, http.StatusOK)
+		body := tests.ReadBody(resp)
+		assert.Nil(t, err, "")
+		assert.Equal(t, string(body), `{"action":"delete","node":{"key":"/foo/bar","modifiedIndex":3,"createdIndex":2},"prevNode":{"key":"/foo/bar","value":"XXX","modifiedIndex":2,"createdIndex":2}}`, "")
+	})
+}
+
 // Ensures that an empty directory is deleted when dir is set.
 //
 //   $ curl -X PUT localhost:4001/v2/keys/foo?dir=true
@@ -52,7 +76,7 @@ func TestV2DeleteEmptyDirectory(t *testing.T) {
 	})
 }
 
-// Ensures that a not-empty directory is deleted when dir is set.
+// Ensures that a not-empty directory is deleted when dir and recursive is set.
 //
 //   $ curl -X PUT localhost:4001/v2/keys/foo/bar?dir=true
 //   $ curl -X DELETE localhost:4001/v2/keys/foo?dir=true ->fail
@@ -84,6 +108,33 @@ func TestV2DeleteDirectoryRecursiveImpliesDir(t *testing.T) {
 		resp, err := tests.PutForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo?dir=true"), url.Values{})
 		tests.ReadBody(resp)
 		resp, err = tests.DeleteForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo?recursive=true"), url.Values{})
+		assert.Equal(t, resp.StatusCode, http.StatusOK)
+		body := tests.ReadBody(resp)
+		assert.Nil(t, err, "")
+		assert.Equal(t, string(body), `{"action":"delete","node":{"key":"/foo","dir":true,"modifiedIndex":3,"createdIndex":2},"prevNode":{"key":"/foo","dir":true,"modifiedIndex":2,"createdIndex":2}}`, "")
+	})
+}
+
+// Ensures that prevIndex / prevValue are invalid for for directory deletion
+//
+//   $ curl -X PUT localhost:4001/v2/keys/foo?dir=true
+//   $ curl -X DELETE localhost:4001/v2/keys/foo?prevValue=X -> fail
+//   $ curl -X DELETE localhost:4001/v2/keys/foo?prevIndex=0 -> fail
+//   $ curl -X DELETE localhost:4001/v2/keys/foo?dir=true
+//
+func TestV2DeleteDirectoryRejectPrevArguments(t *testing.T) {
+	tests.RunServer(func(s *server.Server) {
+		resp, err := tests.PutForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo?dir=true"), url.Values{})
+		tests.ReadBody(resp)
+		resp, err = tests.DeleteForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo?prevValue=X"), url.Values{})
+		assert.Equal(t, resp.StatusCode, http.StatusForbidden)
+		bodyJson := tests.ReadBodyJSON(resp)
+		assert.Equal(t, bodyJson["errorCode"], 102, "")
+		resp, err = tests.DeleteForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo?prevIndex=0"), url.Values{})
+		assert.Equal(t, resp.StatusCode, http.StatusForbidden)
+		bodyJson = tests.ReadBodyJSON(resp)
+		assert.Equal(t, bodyJson["errorCode"], 102, "")
+		resp, err = tests.DeleteForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo?dir=true"), url.Values{})
 		assert.Equal(t, resp.StatusCode, http.StatusOK)
 		body := tests.ReadBody(resp)
 		assert.Nil(t, err, "")
