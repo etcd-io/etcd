@@ -1,12 +1,12 @@
 package resources
 
 import (
-    "bytes"
-    "compress/gzip"
-    "fmt"
-    "io"
-    "reflect"
-    "unsafe"
+	"bytes"
+	"compress/gzip"
+	"fmt"
+	"io"
+	"reflect"
+	"unsafe"
 )
 
 func bindata_read(data, name string) ([]byte, error) {
@@ -430,7 +430,6 @@ func coreos_web_img_xyz_grid_png() ([]byte, error) {
 	)
 }
 
-
 // Asset loads and returns the asset for the given name.
 // It returns an error if the asset could not be found or
 // could not be loaded.
@@ -442,50 +441,49 @@ func Asset(name string) ([]byte, error) {
 }
 
 // _bindata is a table, holding each asset generator, mapped to its name.
-var _bindata = map[string] func() ([]byte, error) {
-	"app.js": app_js,
-	"deps.js": deps_js,
+var _bindata = map[string]func() ([]byte, error){
+	"app.js":     app_js,
+	"deps.js":    deps_js,
 	"index.html": index_html,
-	"main.css": main_css,
-	"coreos-web/fonts/fontawesome-webfont.eot": coreos_web_fonts_fontawesome_webfont_eot,
-	"coreos-web/fonts/fontawesome-webfont.svg": coreos_web_fonts_fontawesome_webfont_svg,
-	"coreos-web/fonts/fontawesome-webfont.ttf": coreos_web_fonts_fontawesome_webfont_ttf,
-	"coreos-web/fonts/fontawesome-webfont.woff": coreos_web_fonts_fontawesome_webfont_woff,
-	"coreos-web/fonts/FontAwesome.otf": coreos_web_fonts_fontawesome_otf,
-	"coreos-web/fonts/glyphicons-halflings-regular.eot": coreos_web_fonts_glyphicons_halflings_regular_eot,
-	"coreos-web/fonts/glyphicons-halflings-regular.svg": coreos_web_fonts_glyphicons_halflings_regular_svg,
-	"coreos-web/fonts/glyphicons-halflings-regular.ttf": coreos_web_fonts_glyphicons_halflings_regular_ttf,
-	"coreos-web/fonts/glyphicons-halflings-regular.woff": coreos_web_fonts_glyphicons_halflings_regular_woff,
-	"coreos-web/fonts/sourcesanspro-bold-webfont.eot": coreos_web_fonts_sourcesanspro_bold_webfont_eot,
-	"coreos-web/fonts/sourcesanspro-bold-webfont.svg": coreos_web_fonts_sourcesanspro_bold_webfont_svg,
-	"coreos-web/fonts/sourcesanspro-bold-webfont.ttf": coreos_web_fonts_sourcesanspro_bold_webfont_ttf,
-	"coreos-web/fonts/sourcesanspro-bold-webfont.woff": coreos_web_fonts_sourcesanspro_bold_webfont_woff,
-	"coreos-web/fonts/sourcesanspro-extralight-webfont.eot": coreos_web_fonts_sourcesanspro_extralight_webfont_eot,
-	"coreos-web/fonts/sourcesanspro-extralight-webfont.svg": coreos_web_fonts_sourcesanspro_extralight_webfont_svg,
-	"coreos-web/fonts/sourcesanspro-extralight-webfont.ttf": coreos_web_fonts_sourcesanspro_extralight_webfont_ttf,
+	"main.css":   main_css,
+	"coreos-web/fonts/fontawesome-webfont.eot":               coreos_web_fonts_fontawesome_webfont_eot,
+	"coreos-web/fonts/fontawesome-webfont.svg":               coreos_web_fonts_fontawesome_webfont_svg,
+	"coreos-web/fonts/fontawesome-webfont.ttf":               coreos_web_fonts_fontawesome_webfont_ttf,
+	"coreos-web/fonts/fontawesome-webfont.woff":              coreos_web_fonts_fontawesome_webfont_woff,
+	"coreos-web/fonts/FontAwesome.otf":                       coreos_web_fonts_fontawesome_otf,
+	"coreos-web/fonts/glyphicons-halflings-regular.eot":      coreos_web_fonts_glyphicons_halflings_regular_eot,
+	"coreos-web/fonts/glyphicons-halflings-regular.svg":      coreos_web_fonts_glyphicons_halflings_regular_svg,
+	"coreos-web/fonts/glyphicons-halflings-regular.ttf":      coreos_web_fonts_glyphicons_halflings_regular_ttf,
+	"coreos-web/fonts/glyphicons-halflings-regular.woff":     coreos_web_fonts_glyphicons_halflings_regular_woff,
+	"coreos-web/fonts/sourcesanspro-bold-webfont.eot":        coreos_web_fonts_sourcesanspro_bold_webfont_eot,
+	"coreos-web/fonts/sourcesanspro-bold-webfont.svg":        coreos_web_fonts_sourcesanspro_bold_webfont_svg,
+	"coreos-web/fonts/sourcesanspro-bold-webfont.ttf":        coreos_web_fonts_sourcesanspro_bold_webfont_ttf,
+	"coreos-web/fonts/sourcesanspro-bold-webfont.woff":       coreos_web_fonts_sourcesanspro_bold_webfont_woff,
+	"coreos-web/fonts/sourcesanspro-extralight-webfont.eot":  coreos_web_fonts_sourcesanspro_extralight_webfont_eot,
+	"coreos-web/fonts/sourcesanspro-extralight-webfont.svg":  coreos_web_fonts_sourcesanspro_extralight_webfont_svg,
+	"coreos-web/fonts/sourcesanspro-extralight-webfont.ttf":  coreos_web_fonts_sourcesanspro_extralight_webfont_ttf,
 	"coreos-web/fonts/sourcesanspro-extralight-webfont.woff": coreos_web_fonts_sourcesanspro_extralight_webfont_woff,
-	"coreos-web/fonts/sourcesanspro-light-webfont.eot": coreos_web_fonts_sourcesanspro_light_webfont_eot,
-	"coreos-web/fonts/sourcesanspro-light-webfont.svg": coreos_web_fonts_sourcesanspro_light_webfont_svg,
-	"coreos-web/fonts/sourcesanspro-light-webfont.ttf": coreos_web_fonts_sourcesanspro_light_webfont_ttf,
-	"coreos-web/fonts/sourcesanspro-light-webfont.woff": coreos_web_fonts_sourcesanspro_light_webfont_woff,
-	"coreos-web/fonts/sourcesanspro-regular-webfont.eot": coreos_web_fonts_sourcesanspro_regular_webfont_eot,
-	"coreos-web/fonts/sourcesanspro-regular-webfont.svg": coreos_web_fonts_sourcesanspro_regular_webfont_svg,
-	"coreos-web/fonts/sourcesanspro-regular-webfont.ttf": coreos_web_fonts_sourcesanspro_regular_webfont_ttf,
-	"coreos-web/fonts/sourcesanspro-regular-webfont.woff": coreos_web_fonts_sourcesanspro_regular_webfont_woff,
-	"coreos-web/img/apple-touch-icon-114-precomposed.png": coreos_web_img_apple_touch_icon_114_precomposed_png,
-	"coreos-web/img/apple-touch-icon-144-precomposed.png": coreos_web_img_apple_touch_icon_144_precomposed_png,
-	"coreos-web/img/apple-touch-icon-57-precomposed.png": coreos_web_img_apple_touch_icon_57_precomposed_png,
-	"coreos-web/img/apple-touch-icon-72-precomposed.png": coreos_web_img_apple_touch_icon_72_precomposed_png,
-	"coreos-web/img/favicon.png": coreos_web_img_favicon_png,
-	"coreos-web/img/globe-only.svg": coreos_web_img_globe_only_svg,
-	"coreos-web/img/google-plus.png": coreos_web_img_google_plus_png,
-	"coreos-web/img/hexagons.png": coreos_web_img_hexagons_png,
-	"coreos-web/img/icon-add.svg": coreos_web_img_icon_add_svg,
-	"coreos-web/img/icon-back.svg": coreos_web_img_icon_back_svg,
-	"coreos-web/img/icon-delete.svg": coreos_web_img_icon_delete_svg,
-	"coreos-web/img/icon-reboot.svg": coreos_web_img_icon_reboot_svg,
-	"coreos-web/img/icon-right-arrow.svg": coreos_web_img_icon_right_arrow_svg,
-	"coreos-web/img/logo.svg": coreos_web_img_logo_svg,
-	"coreos-web/img/xyz-grid.png": coreos_web_img_xyz_grid_png,
-
+	"coreos-web/fonts/sourcesanspro-light-webfont.eot":       coreos_web_fonts_sourcesanspro_light_webfont_eot,
+	"coreos-web/fonts/sourcesanspro-light-webfont.svg":       coreos_web_fonts_sourcesanspro_light_webfont_svg,
+	"coreos-web/fonts/sourcesanspro-light-webfont.ttf":       coreos_web_fonts_sourcesanspro_light_webfont_ttf,
+	"coreos-web/fonts/sourcesanspro-light-webfont.woff":      coreos_web_fonts_sourcesanspro_light_webfont_woff,
+	"coreos-web/fonts/sourcesanspro-regular-webfont.eot":     coreos_web_fonts_sourcesanspro_regular_webfont_eot,
+	"coreos-web/fonts/sourcesanspro-regular-webfont.svg":     coreos_web_fonts_sourcesanspro_regular_webfont_svg,
+	"coreos-web/fonts/sourcesanspro-regular-webfont.ttf":     coreos_web_fonts_sourcesanspro_regular_webfont_ttf,
+	"coreos-web/fonts/sourcesanspro-regular-webfont.woff":    coreos_web_fonts_sourcesanspro_regular_webfont_woff,
+	"coreos-web/img/apple-touch-icon-114-precomposed.png":    coreos_web_img_apple_touch_icon_114_precomposed_png,
+	"coreos-web/img/apple-touch-icon-144-precomposed.png":    coreos_web_img_apple_touch_icon_144_precomposed_png,
+	"coreos-web/img/apple-touch-icon-57-precomposed.png":     coreos_web_img_apple_touch_icon_57_precomposed_png,
+	"coreos-web/img/apple-touch-icon-72-precomposed.png":     coreos_web_img_apple_touch_icon_72_precomposed_png,
+	"coreos-web/img/favicon.png":                             coreos_web_img_favicon_png,
+	"coreos-web/img/globe-only.svg":                          coreos_web_img_globe_only_svg,
+	"coreos-web/img/google-plus.png":                         coreos_web_img_google_plus_png,
+	"coreos-web/img/hexagons.png":                            coreos_web_img_hexagons_png,
+	"coreos-web/img/icon-add.svg":                            coreos_web_img_icon_add_svg,
+	"coreos-web/img/icon-back.svg":                           coreos_web_img_icon_back_svg,
+	"coreos-web/img/icon-delete.svg":                         coreos_web_img_icon_delete_svg,
+	"coreos-web/img/icon-reboot.svg":                         coreos_web_img_icon_reboot_svg,
+	"coreos-web/img/icon-right-arrow.svg":                    coreos_web_img_icon_right_arrow_svg,
+	"coreos-web/img/logo.svg":                                coreos_web_img_logo_svg,
+	"coreos-web/img/xyz-grid.png":                            coreos_web_img_xyz_grid_png,
 }
