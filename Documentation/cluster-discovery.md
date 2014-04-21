@@ -2,9 +2,9 @@
 
 ## Overview
 
-Starting an etcd cluster can be painful since each node needs to know of another node in the cluster to get started. If you are trying to bring up a cluster all at once, say using a cloud formation, you also need to coordinate who will be the initial cluster leader. The discovery protocol helps you by providing an automated way to discover other existing peers in a cluster.
+Starting an etcd cluster requires that each node knows another in the cluster. If you are trying to bring up a cluster all at once, say using a cloud formation, you also need to coordinate who will be the initial cluster leader. The discovery protocol helps you by providing an automated way to discover other existing peers in a cluster.
 
-Peer discovery for etcd is processed by `-discovery`, `-peers` and lastly log data in `-data-dir`. For more information see the [discovery design][discovery-design].
+For more information on how etcd can locate the cluster, see the [finding the cluster][cluster-finding] documentation.
 
 Please note - at least 3 nodes are required for [cluster availability][optimal-cluster-size].
 
@@ -52,4 +52,4 @@ The Discovery API submits the `-peer-addr` of each etcd instance to the configur
 
 The discovery API will automatically clean up the address of a stale peer that is no longer part of the cluster. The TTL for this process is a week, which should be long enough to handle any extremely long outage you may encounter. There is no harm in having stale peers in the list until they are cleaned up, since an etcd instance only needs to connect to one valid peer in the cluster to join.
 
-[discovery-design]: https://github.com/coreos/etcd/blob/master/Documentation/design/discovery.md
+[discovery-design]: https://github.com/coreos/etcd/blob/master/Documentation/design/cluster-finding.md
