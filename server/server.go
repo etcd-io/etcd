@@ -276,9 +276,9 @@ func (s *Server) Dispatch(c raft.Command, w http.ResponseWriter, req *http.Reque
 
 	var url string
 	switch c.(type) {
-	case *JoinCommandV1, *RemoveCommandV1:
-		url, _ = ps.registry.PeerURL(leader)
-	case *JoinCommandV2, *RemoveCommandV2:
+	case *JoinCommandV1, *RemoveCommandV1,
+		*JoinCommandV2, *RemoveCommandV2,
+		*SetClusterConfigCommand:
 		url, _ = ps.registry.PeerURL(leader)
 	default:
 		url, _ = ps.registry.ClientURL(leader)
