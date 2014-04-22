@@ -131,7 +131,7 @@ func (e Error) Write(w http.ResponseWriter) {
 	switch e.ErrorCode {
 	case EcodeKeyNotFound:
 		status = http.StatusNotFound
-	case EcodeNotFile, EcodeDirNotEmpty, EcodeNotDir:
+	case EcodeNotFile, EcodeDirNotEmpty:
 		status = http.StatusForbidden
 	case EcodeTestFailed, EcodeNodeExist:
 		status = http.StatusPreconditionFailed
