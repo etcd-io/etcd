@@ -280,10 +280,6 @@ func (s *store) Delete(nodePath string, dir, recursive bool) (*Event, error) {
 
 	if n.IsDir() {
 		eNode.Dir = true
-	} else {
-		if dir {
-			return nil, etcdErr.NewError(etcdErr.EcodeNotDir, n.Path, s.Index())
-		}
 	}
 
 	callback := func(path string) { // notify function
