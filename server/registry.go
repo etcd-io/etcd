@@ -1,6 +1,7 @@
 package server
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"path"
@@ -9,6 +10,7 @@ import (
 	"strings"
 	"sync"
 
+	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/log"
 	"github.com/coreos/etcd/store"
 )
@@ -18,6 +20,9 @@ const RegistryPeerKey = "/_etcd/machines"
 
 // The location of the standby URL data.
 const RegistryStandbyKey = "/_etcd/standbys"
+
+// The location of cluster config.
+const RegistryClusterConfigKey = "/_etcd/config"
 
 // The Registry stores URL information for nodes.
 type Registry struct {
@@ -100,6 +105,14 @@ func (r *Registry) register(key, name string, peerURL string, machURL string) er
 	v.Set("etcd", machURL)
 	_, err := r.store.Create(path.Join(key, name), false, v.Encode(), false, store.Permanent)
 	log.Debugf("Register: %s", name)
+	return err
+}
+
+// RegisterClusterConfig register cluster config to the registry.
+func (r *Registry) RegisterClusterConfig(c *ClusterConfig) error {
+	b, _ := json.Marshal(c)
+	_, err := r.store.Set(RegistryClusterConfigKey, false, string(b), store.Permanent)
+	log.Debugf("Register cluster config: %v", c)
 	return err
 }
 
@@ -339,4 +352,21 @@ func (r *Registry) load(key, name string) *node {
 		url:     m["etcd"][0],
 		peerURL: m["raft"][0],
 	}
+}
+
+// ClusterConfig gets cluster config from registry
+func (r *Registry) ClusterConfig() *ClusterConfig {
+	e, err := r.store.Get(RegistryClusterConfigKey, false, false)
+	if err != nil {
+		if err.(*etcdErr.Error).ErrorCode == etcdErr.EcodeKeyNotFound {
+			return NewClusterConfig()
+		}
+		panic("Failed to get cluster config key")
+	}
+
+	var c ClusterConfig
+	if err = json.Unmarshal([]byte(*e.Node.Value), &c); err != nil {
+		panic("Failed to unmarshal cluster config")
+	}
+	return &c
 }
