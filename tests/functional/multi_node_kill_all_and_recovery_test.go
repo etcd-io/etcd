@@ -73,8 +73,8 @@ func TestMultiNodeKillAllAndRecovery(t *testing.T) {
 		t.Fatalf("Recovery error: %s", err)
 	}
 
-	if result.Node.ModifiedIndex != 16 {
-		t.Fatalf("recovery failed! [%d/16]", result.Node.ModifiedIndex)
+	if result.Node.ModifiedIndex != 17 {
+		t.Fatalf("recovery failed! [%d/17]", result.Node.ModifiedIndex)
 	}
 }
 
@@ -148,7 +148,7 @@ func TestTLSMultiNodeKillAllAndRecovery(t *testing.T) {
 		t.Fatalf("Recovery error: %s", err)
 	}
 
-	if result.Node.ModifiedIndex != 16 {
-		t.Fatalf("recovery failed! [%d/16]", result.Node.ModifiedIndex)
+	if result.Node.ModifiedIndex != 17 {
+		t.Fatalf("recovery failed! [%d/17]", result.Node.ModifiedIndex)
 	}
 }

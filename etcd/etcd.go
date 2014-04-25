@@ -227,7 +227,7 @@ func (e *Etcd) startPeerMode(isNewCluster bool) {
 		e.PeerServer.Start(e.Config.Snapshot)
 
 		if isNewCluster {
-			e.PeerServer.DoSelfJoinCommand()
+			e.PeerServer.InitNewCluster()
 		}
 
 		go func() {

@@ -34,6 +34,9 @@ const (
 	// PeerActivityMonitorTimeout is the time between checks for dead nodes in
 	// the cluster.
 	PeerActivityMonitorTimeout = 1 * time.Second
+
+	// The location of cluster config in key space.
+	ClusterConfigKey = "/_etcd/config"
 )
 
 type PeerServerConfig struct {
@@ -48,7 +51,6 @@ type PeerServerConfig struct {
 type PeerServer struct {
 	Config         PeerServerConfig
 	client         *Client
-	clusterConfig  *ClusterConfig
 	raftServer     raft.Server
 	server         *Server
 	joinIndex      uint64
@@ -84,7 +86,6 @@ type snapshotConf struct {
 func NewPeerServer(psConfig PeerServerConfig, registry *Registry, store store.Store, mb *metrics.Bucket, followersStats *raftFollowersStats, serverStats *raftServerStats) *PeerServer {
 	s := &PeerServer{
 		Config:         psConfig,
-		clusterConfig:  NewClusterConfig(),
 		registry:       registry,
 		store:          store,
 		followersStats: followersStats,
@@ -142,26 +143,6 @@ func (s *PeerServer) SetRaftServer(raftServer raft.Server, snapshot bool) {
 			log.Warnf("Failed setting NOCOW: %v", err)
 		}
 	}
-}
-
-// ClusterConfig retrieves the current cluster configuration.
-func (s *PeerServer) ClusterConfig() *ClusterConfig {
-	return s.clusterConfig
-}
-
-// SetClusterConfig updates the current cluster configuration.
-// Adjusting the active size will cause the PeerServer to demote peers or
-// promote standbys to match the new size.
-func (s *PeerServer) SetClusterConfig(c *ClusterConfig) {
-	// Set minimums.
-	if c.ActiveSize < MinActiveSize {
-		c.ActiveSize = MinActiveSize
-	}
-	if c.PromoteDelay < MinPromoteDelay {
-		c.PromoteDelay = MinPromoteDelay
-	}
-
-	s.clusterConfig = c
 }
 
 // Try all possible ways to find clusters to join
@@ -350,6 +331,39 @@ func (s *PeerServer) HTTPHandler() http.Handler {
 	return router
 }
 
+// ClusterConfig retrieves the current cluster configuration.
+func (s *PeerServer) ClusterConfig() *ClusterConfig {
+	e, err := s.store.Get(ClusterConfigKey, false, false)
+	if err != nil {
+		log.Warnf("failed getting cluster config key: %v", err)
+		return NewClusterConfig()
+	}
+
+	var c ClusterConfig
+	if err = json.Unmarshal([]byte(*e.Node.Value), &c); err != nil {
+		log.Warnf("failed unmarshaling cluster config: %v", err)
+		return NewClusterConfig()
+	}
+	return &c
+}
+
+// SetClusterConfig updates the current cluster configuration.
+// Adjusting the active size will cause the PeerServer to demote peers or
+// promote standbys to match the new size.
+func (s *PeerServer) SetClusterConfig(c *ClusterConfig) {
+	// Set minimums.
+	if c.ActiveSize < MinActiveSize {
+		c.ActiveSize = MinActiveSize
+	}
+	if c.PromoteDelay < MinPromoteDelay {
+		c.PromoteDelay = MinPromoteDelay
+	}
+
+	log.Debugf("set cluster config as %v", c)
+	b, _ := json.Marshal(c)
+	s.store.Set(ClusterConfigKey, false, string(b), store.Permanent)
+}
+
 // Retrieves the underlying Raft server.
 func (s *PeerServer) RaftServer() raft.Server {
 	return s.raftServer
@@ -360,21 +374,28 @@ func (s *PeerServer) SetServer(server *Server) {
 	s.server = server
 }
 
-func (s *PeerServer) DoSelfJoinCommand() {
+func (s *PeerServer) InitNewCluster() {
 	// leader need to join self as a peer
+	s.doCommand(&JoinCommandV2{
+		MinVersion: store.MinVersion(),
+		MaxVersion: store.MaxVersion(),
+		Name:       s.raftServer.Name(),
+		PeerURL:    s.Config.URL,
+		ClientURL:  s.server.URL(),
+	})
+	log.Debugf("%s start as a leader", s.Config.Name)
+
+	conf := NewClusterConfig()
+	s.doCommand(&SetClusterConfigCommand{Config: conf})
+	log.Debugf("%s sets cluster config as %v", s.Config.Name, conf)
+}
+
+func (s *PeerServer) doCommand(cmd raft.Command) {
 	for {
-		c := &JoinCommandV2{
-			MinVersion: store.MinVersion(),
-			MaxVersion: store.MaxVersion(),
-			Name:       s.raftServer.Name(),
-			PeerURL:    s.Config.URL,
-			ClientURL:  s.server.URL(),
-		}
-		if _, err := s.raftServer.Do(c); err == nil {
+		if _, err := s.raftServer.Do(cmd); err == nil {
 			break
 		}
 	}
-	log.Debugf("%s start as a leader", s.Config.Name)
 }
 
 func (s *PeerServer) startAsFollower(cluster []string, retryTimes int) error {
@@ -385,7 +406,7 @@ func (s *PeerServer) startAsFollower(cluster []string, retryTimes int) error {
 			break
 		}
 		if i == retryTimes-1 {
-			return fmt.Errorf("Cannot join the cluster via given peers after %x retries", s.Config.RetryTimes)
+			return fmt.Errorf("Cannot join the cluster via given peers after %x retries", retryTimes)
 		}
 		log.Warnf("%v is unable to join the cluster using any of the peers %v at %dth time. Retrying in %.1f seconds", s.Config.Name, cluster, i, s.Config.RetryInterval)
 		time.Sleep(time.Second * time.Duration(s.Config.RetryInterval))

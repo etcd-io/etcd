@@ -116,7 +116,9 @@ func applyJoin(c *JoinCommandV2, context raft.Context) (*joinResponseV2, error) 
 	}
 
 	// Check peer number in the cluster
-	if ps.registry.Count() >= ps.ClusterConfig().ActiveSize {
+	count := ps.registry.Count()
+	// ClusterConfig doesn't init until first machine is added
+	if count > 0 && count >= ps.ClusterConfig().ActiveSize {
 		log.Debug("Reject join request from ", c.Name)
 		return nil, etcdErr.NewError(etcdErr.EcodeNoMorePeer, "", context.CommitIndex())
 	}

@@ -188,7 +188,7 @@ func (ps *PeerServer) RemoveHttpHandler(w http.ResponseWriter, req *http.Request
 
 // Returns a JSON-encoded cluster configuration.
 func (ps *PeerServer) getClusterConfigHttpHandler(w http.ResponseWriter, req *http.Request) {
-	json.NewEncoder(w).Encode(&ps.clusterConfig)
+	json.NewEncoder(w).Encode(ps.ClusterConfig())
 }
 
 // Updates the cluster configuration.
@@ -201,10 +201,7 @@ func (ps *PeerServer) setClusterConfigHttpHandler(w http.ResponseWriter, req *ht
 	}
 
 	// Copy config and update fields passed in.
-	config := &ClusterConfig{
-		ActiveSize:   ps.clusterConfig.ActiveSize,
-		PromoteDelay: ps.clusterConfig.PromoteDelay,
-	}
+	config := ps.ClusterConfig()
 	if activeSize, ok := m["activeSize"].(float64); ok {
 		config.ActiveSize = int(activeSize)
 	}
@@ -217,7 +214,7 @@ func (ps *PeerServer) setClusterConfigHttpHandler(w http.ResponseWriter, req *ht
 	log.Debugf("[recv] Update Cluster Config Request")
 	ps.server.Dispatch(c, w, req)
 
-	json.NewEncoder(w).Encode(&ps.clusterConfig)
+	json.NewEncoder(w).Encode(ps.ClusterConfig())
 }
 
 // Retrieves a list of peers and standbys.

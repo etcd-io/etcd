@@ -26,7 +26,7 @@ func TestV2DeleteKey(t *testing.T) {
 		assert.Equal(t, resp.StatusCode, http.StatusOK)
 		body := tests.ReadBody(resp)
 		assert.Nil(t, err, "")
-		assert.Equal(t, string(body), `{"action":"delete","node":{"key":"/foo/bar","modifiedIndex":3,"createdIndex":2},"prevNode":{"key":"/foo/bar","value":"XXX","modifiedIndex":2,"createdIndex":2}}`, "")
+		assert.Equal(t, string(body), `{"action":"delete","node":{"key":"/foo/bar","modifiedIndex":4,"createdIndex":3},"prevNode":{"key":"/foo/bar","value":"XXX","modifiedIndex":3,"createdIndex":3}}`, "")
 	})
 }
 
@@ -48,7 +48,7 @@ func TestV2DeleteEmptyDirectory(t *testing.T) {
 		assert.Equal(t, resp.StatusCode, http.StatusOK)
 		body := tests.ReadBody(resp)
 		assert.Nil(t, err, "")
-		assert.Equal(t, string(body), `{"action":"delete","node":{"key":"/foo","dir":true,"modifiedIndex":3,"createdIndex":2},"prevNode":{"key":"/foo","dir":true,"modifiedIndex":2,"createdIndex":2}}`, "")
+		assert.Equal(t, string(body), `{"action":"delete","node":{"key":"/foo","dir":true,"modifiedIndex":4,"createdIndex":3},"prevNode":{"key":"/foo","dir":true,"modifiedIndex":3,"createdIndex":3}}`, "")
 	})
 }
 
@@ -70,7 +70,7 @@ func TestV2DeleteNonEmptyDirectory(t *testing.T) {
 		assert.Equal(t, resp.StatusCode, http.StatusOK)
 		body := tests.ReadBody(resp)
 		assert.Nil(t, err, "")
-		assert.Equal(t, string(body), `{"action":"delete","node":{"key":"/foo","dir":true,"modifiedIndex":3,"createdIndex":2},"prevNode":{"key":"/foo","dir":true,"modifiedIndex":2,"createdIndex":2}}`, "")
+		assert.Equal(t, string(body), `{"action":"delete","node":{"key":"/foo","dir":true,"modifiedIndex":4,"createdIndex":3},"prevNode":{"key":"/foo","dir":true,"modifiedIndex":3,"createdIndex":3}}`, "")
 	})
 }
 
@@ -87,14 +87,14 @@ func TestV2DeleteDirectoryRecursiveImpliesDir(t *testing.T) {
 		assert.Equal(t, resp.StatusCode, http.StatusOK)
 		body := tests.ReadBody(resp)
 		assert.Nil(t, err, "")
-		assert.Equal(t, string(body), `{"action":"delete","node":{"key":"/foo","dir":true,"modifiedIndex":3,"createdIndex":2},"prevNode":{"key":"/foo","dir":true,"modifiedIndex":2,"createdIndex":2}}`, "")
+		assert.Equal(t, string(body), `{"action":"delete","node":{"key":"/foo","dir":true,"modifiedIndex":4,"createdIndex":3},"prevNode":{"key":"/foo","dir":true,"modifiedIndex":3,"createdIndex":3}}`, "")
 	})
 }
 
 // Ensures that a key is deleted if the previous index matches
 //
 //   $ curl -X PUT localhost:4001/v2/keys/foo -d value=XXX
-//   $ curl -X DELETE localhost:4001/v2/keys/foo?prevIndex=2
+//   $ curl -X DELETE localhost:4001/v2/keys/foo?prevIndex=3
 //
 func TestV2DeleteKeyCADOnIndexSuccess(t *testing.T) {
 	tests.RunServer(func(s *server.Server) {
@@ -102,14 +102,14 @@ func TestV2DeleteKeyCADOnIndexSuccess(t *testing.T) {
 		v.Set("value", "XXX")
 		resp, err := tests.PutForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo"), v)
 		tests.ReadBody(resp)
-		resp, err = tests.DeleteForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo?prevIndex=2"), url.Values{})
+		resp, err = tests.DeleteForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo?prevIndex=3"), url.Values{})
 		assert.Nil(t, err, "")
 		body := tests.ReadBodyJSON(resp)
 		assert.Equal(t, body["action"], "compareAndDelete", "")
 
 		node := body["node"].(map[string]interface{})
 		assert.Equal(t, node["key"], "/foo", "")
-		assert.Equal(t, node["modifiedIndex"], 3, "")
+		assert.Equal(t, node["modifiedIndex"], 4, "")
 	})
 }
 
@@ -164,7 +164,7 @@ func TestV2DeleteKeyCADOnValueSuccess(t *testing.T) {
 		assert.Equal(t, body["action"], "compareAndDelete", "")
 
 		node := body["node"].(map[string]interface{})
-		assert.Equal(t, node["modifiedIndex"], 3, "")
+		assert.Equal(t, node["modifiedIndex"], 4, "")
 	})
 }
 
