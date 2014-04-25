@@ -54,6 +54,12 @@ type PeerServerConfig struct {
 	RetryInterval float64
 }
 
+type StandbyConfig struct {
+	LeaderPeerURL   string
+	LeaderClientURL string
+	Term            uint64
+}
+
 type PeerServer struct {
 	Config         PeerServerConfig
 	clusterConfig  *ClusterConfig
@@ -70,8 +76,7 @@ type PeerServer struct {
 	closeChan            chan bool
 	timeoutThresholdChan chan interface{}
 
-	standbyPeerURL   string
-	standbyClientURL string
+	standbyConfig StandbyConfig
 
 	metrics *metrics.Bucket
 	sync.Mutex
@@ -335,8 +340,10 @@ func (s *PeerServer) HTTPHandler() http.Handler {
 	router.HandleFunc("/snapshotRecovery", s.SnapshotRecoveryHttpHandler)
 	router.HandleFunc("/etcdURL", s.EtcdURLHttpHandler)
 
-	router.HandleFunc("/v2/admin/config", s.getClusterConfigHttpHandler).Methods("GET")
-	router.HandleFunc("/v2/admin/config", s.setClusterConfigHttpHandler).Methods("PUT")
+	router.HandleFunc("/v2/admin/config/cluster", s.getClusterConfigHttpHandler).Methods("GET")
+	router.HandleFunc("/v2/admin/config/cluster", s.setClusterConfigHttpHandler).Methods("PUT")
+	router.HandleFunc("/v2/admin/config/standby", s.getStandbyConfigHttpHandler).Methods("GET")
+	router.HandleFunc("/v2/admin/config/standby", s.setStandbyConfigHttpHandler).Methods("PUT")
 	router.HandleFunc("/v2/admin/machines", s.getMachinesHttpHandler).Methods("GET")
 	router.HandleFunc("/v2/admin/machines/{name}", s.getMachineHttpHandler).Methods("GET")
 	router.HandleFunc("/v2/admin/machines/{name}", s.addMachineHttpHandler).Methods("PUT")
@@ -581,8 +588,9 @@ func (s *PeerServer) joinByPeer(server raft.Server, peer string, scheme string) 
 				s.setMode(msg.Mode)
 
 				if msg.Mode == StandbyMode {
-					s.standbyClientURL = resp.Header.Get("X-Leader-Client-URL")
-					s.standbyPeerURL = resp.Header.Get("X-Leader-Peer-URL")
+					s.standbyConfig.LeaderPeerURL = resp.Header.Get("X-Leader-Peer-URL")
+					s.standbyConfig.LeaderClientURL = resp.Header.Get("X-Leader-Client-URL")
+					s.standbyConfig.Term, _ = strconv.ParseUint(resp.Header.Get("X-Raft-Term"), 10, 64)
 				}
 
 				return nil
@@ -644,6 +652,33 @@ func (s *PeerServer) PeerStats() []byte {
 	return nil
 }
 
+func (s *PeerServer) noticeStandbys() {
+	t, _ := s.raftServer.Transporter().(*transporter)
+	c := &StandbyConfig{
+		LeaderClientURL: s.server.url,
+		LeaderPeerURL:   s.Config.URL,
+		Term:            s.raftServer.Term(),
+	}
+
+	for _, peerURL := range s.registry.StandbyPeerURLs(s.Config.Name) {
+		url, err := url.Parse(peerURL)
+		if err != nil {
+			log.Infof("Failed parsing standby %v: %v", peerURL, err)
+			continue
+		}
+		url.Path = "/v2/admin/config/standby"
+		var b bytes.Buffer
+		json.NewEncoder(&b).Encode(c)
+		req, _ := http.NewRequest("PUT", url.String(), &b)
+		go func(req *http.Request) {
+			resp, err := t.client.Do(req)
+			if err != nil || resp.StatusCode != http.StatusOK {
+				log.Infof("Failed noticing standby %v: %v, %v", peerURL, resp, err)
+			}
+		}(req)
+	}
+}
+
 // raftEventLogger converts events from the Raft server into log messages.
 func (s *PeerServer) raftEventLogger(event raft.Event) {
 	value := event.Value()
@@ -662,6 +697,9 @@ func (s *PeerServer) raftEventLogger(event raft.Event) {
 		log.Infof("%s: term #%v started.", s.Config.Name, value)
 	case raft.LeaderChangeEventType:
 		log.Infof("%s: leader changed from '%v' to '%v'.", s.Config.Name, prevValue, value)
+		if value == s.Config.Name {
+			go s.noticeStandbys()
+		}
 	case raft.AddPeerEventType:
 		log.Infof("%s: peer added: '%v'", s.Config.Name, value)
 	case raft.RemovePeerEventType:

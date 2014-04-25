@@ -172,8 +172,8 @@ func (ps *PeerServer) JoinHttpHandler(w http.ResponseWriter, req *http.Request) 
 
 // Attempt to rejoin the cluster as a peer.
 func (ps *PeerServer) PromoteHttpHandler(w http.ResponseWriter, req *http.Request) {
-	log.Infof("%s attempting to promote in cluster: %s", ps.Config.Name, ps.standbyPeerURL)
-	url, err := url.Parse(ps.standbyPeerURL)
+	log.Infof("%s attempting to promote in cluster: %s", ps.Config.Name, ps.standbyConfig.LeaderPeerURL)
+	url, err := url.Parse(ps.standbyConfig.LeaderPeerURL)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -238,6 +238,32 @@ func (ps *PeerServer) setClusterConfigHttpHandler(w http.ResponseWriter, req *ht
 	ps.server.Dispatch(c, w, req)
 
 	json.NewEncoder(w).Encode(&ps.clusterConfig)
+}
+
+func (ps *PeerServer) getStandbyConfigHttpHandler(w http.ResponseWriter, req *http.Request) {
+	if ps.Mode() != StandbyMode {
+		http.Error(w, "Not in standby mode", http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(w).Encode(&ps.standbyConfig)
+}
+
+func (ps *PeerServer) setStandbyConfigHttpHandler(w http.ResponseWriter, req *http.Request) {
+	if ps.Mode() != StandbyMode {
+		http.Error(w, "Not in standby mode", http.StatusInternalServerError)
+		return
+	}
+
+	log.Debugf("[recv] Update Standby Config Request")
+	c := &StandbyConfig{}
+	if err := json.NewDecoder(req.Body).Decode(&c); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	ps.standbyConfig = *c
+
+	json.NewEncoder(w).Encode(&ps.standbyConfig)
 }
 
 // Retrieves a list of peers and standbys.

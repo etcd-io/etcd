@@ -16,12 +16,12 @@ func TestClusterConfig(t *testing.T) {
 	assert.NoError(t, err)
 	defer DestroyCluster(etcds)
 
-	resp, _ := tests.Put("http://localhost:7001/v2/admin/config", "application/json", bytes.NewBufferString(`{"activeSize":3, "promoteDelay":60}`))
+	resp, _ := tests.Put("http://localhost:7001/v2/admin/config/cluster", "application/json", bytes.NewBufferString(`{"activeSize":3, "promoteDelay":60}`))
 	assert.Equal(t, resp.StatusCode, 200)
 
 	time.Sleep(1 * time.Second)
 
-	resp, _ = tests.Get("http://localhost:7002/v2/admin/config")
+	resp, _ = tests.Get("http://localhost:7002/v2/admin/config/cluster")
 	body := tests.ReadBodyJSON(resp)
 	assert.Equal(t, resp.StatusCode, 200)
 	assert.Equal(t, body["activeSize"], 3)

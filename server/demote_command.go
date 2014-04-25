@@ -57,7 +57,8 @@ func (c *DemoteCommand) Apply(context raft.Context) (interface{}, error) {
 	// Update mode if this change applies to this server.
 	if c.Name == ps.Config.Name {
 		log.Infof("Demote peer %s: Set mode to standby with %s", c.Name, ps.server.Leader())
-		ps.standbyPeerURL, _ = ps.registry.PeerURL(ps.server.Leader())
+		ps.standbyConfig.LeaderPeerURL, _ = ps.registry.PeerURL(ps.server.Leader())
+		ps.standbyConfig.LeaderClientURL, _ = ps.registry.ClientURL(ps.server.Leader())
 		go ps.setMode(StandbyMode)
 	}
 
