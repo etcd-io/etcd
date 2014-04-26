@@ -47,7 +47,7 @@ func TestMultiNodeKillOne(t *testing.T) {
 		// restart
 		etcds[num], err = os.StartProcess(EtcdBinPath, argGroup[num], procAttr)
 		if err != nil {
-			panic(err)
+			t.Fatal(err)
 		}
 		time.Sleep(time.Second)
 	}

@@ -54,7 +54,7 @@ func TestKillRandom(t *testing.T) {
 		for num := range toKill {
 			err := etcds[num].Kill()
 			if err != nil {
-				panic(err)
+				t.Fatal(err)
 			}
 			etcds[num].Wait()
 		}

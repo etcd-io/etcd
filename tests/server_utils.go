@@ -52,7 +52,7 @@ func RunServer(f func(*server.Server)) {
 	raftTransporter := server.NewTransporter(followersStats, serverStats, registry, testHeartbeatInterval, dialTimeout, responseHeaderTimeout)
 	raftServer, err := raft.NewServer(testName, path, raftTransporter, store, ps, "")
 	if err != nil {
-		panic(err)
+		panic("error creating new raft server:" + err.Error())
 	}
 	raftServer.SetElectionTimeout(testElectionTimeout)
 	raftServer.SetHeartbeatInterval(testHeartbeatInterval)

@@ -159,7 +159,7 @@ func DestroyCluster(etcds []*os.Process) error {
 		}
 		err := etcd.Kill()
 		if err != nil {
-			panic(err.Error())
+			panic("error attempting to kill etcd node:" + err.Error())
 		}
 		etcd.Release()
 	}

@@ -1,7 +1,6 @@
 package server
 
 import (
-	"fmt"
 	"net/url"
 	"path"
 	"path/filepath"
@@ -331,7 +330,7 @@ func (r *Registry) load(key, name string) *node {
 	// Parse as a query string.
 	m, err := url.ParseQuery(*e.Node.Value)
 	if err != nil {
-		panic(fmt.Sprintf("Failed to parse peers entry: %s", name))
+		log.Fatalf("Failed to parse peers entry: %s", name)
 	}
 
 	// Create node.

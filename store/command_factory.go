@@ -1,9 +1,9 @@
 package store
 
 import (
-	"fmt"
 	"time"
 
+	"github.com/coreos/etcd/log"
 	"github.com/coreos/etcd/third_party/github.com/goraft/raft"
 )
 
@@ -31,7 +31,7 @@ func RegisterCommandFactory(factory CommandFactory) {
 	version := factory.Version()
 
 	if GetCommandFactory(version) != nil {
-		panic(fmt.Sprintf("Command factory already registered for version: %d", factory.Version()))
+		log.Fatalf("Command factory already registered for version: %d", factory.Version())
 	}
 
 	factories[version] = factory

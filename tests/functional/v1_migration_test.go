@@ -28,7 +28,7 @@ func TestV1SoloMigration(t *testing.T) {
 	c := exec.Command("cp", "-rf", fixturepath, nodepath)
 	if out, err := c.CombinedOutput(); err != nil {
 		fmt.Println(">>>>>>\n", string(out), "<<<<<<")
-		panic("Fixture initialization error:" + err.Error())
+		t.Fatalf("Fixture initialization error:" + err.Error())
 	}
 
 	procAttr := new(os.ProcAttr)
@@ -71,7 +71,7 @@ func TestV1ClusterMigration(t *testing.T) {
 		c := exec.Command("cp", "-rf", fixturepath, nodepath)
 		if out, err := c.CombinedOutput(); err != nil {
 			fmt.Println(">>>>>>\n", string(out), "<<<<<<")
-			panic("Fixture initialization error:" + err.Error())
+			t.Fatalf("Fixture initialization error:" + err.Error())
 		}
 
 		procAttr := new(os.ProcAttr)
