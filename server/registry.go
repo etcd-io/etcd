@@ -82,6 +82,11 @@ func (r *Registry) RegisterPeer(name string, peerURL string, machURL string) err
 
 	r.Lock()
 	defer r.Unlock()
+	// Invalidate possible entry in standby mode.
+	// TODO(yichengq): Invalidating entry is rather weird, but this is a historic
+	// problem that I haven't digged into.
+	// For details: https://github.com/coreos/etcd/pull/640
+	delete(r.standbys, name)
 	r.peers[name] = r.load(RegistryPeerKey, name)
 	return nil
 }
@@ -94,6 +99,8 @@ func (r *Registry) RegisterStandby(name string, peerURL string, machURL string) 
 
 	r.Lock()
 	defer r.Unlock()
+	// TODO(yichengq): reasons as above.
+	delete(r.peers, name)
 	r.standbys[name] = r.load(RegistryStandbyKey, name)
 	return nil
 }
