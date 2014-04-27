@@ -290,19 +290,27 @@ func (r *Registry) standbyPeerURL(key, name string) (string, bool) {
 
 // Retrieves the Client URLs for all nodes.
 func (r *Registry) ClientURLs(leaderName, selfName string) []string {
+	r.Lock()
+	defer r.Unlock()
 	return r.urls(RegistryPeerKey, leaderName, selfName, r.clientURL)
 }
 
 // Retrieves the Peer URLs for all nodes.
 func (r *Registry) PeerURLs(leaderName, selfName string) []string {
+	r.Lock()
+	defer r.Unlock()
 	return r.urls(RegistryPeerKey, leaderName, selfName, r.peerURL)
+}
+
+// URLs retrieves client URLs and peer URLs for all nodes.
+func (r *Registry) URLs(leaderName, selfName string) ([]string, []string) {
+	r.Lock()
+	defer r.Unlock()
+	return r.urls(RegistryPeerKey, leaderName, selfName, r.clientURL), r.urls(RegistryPeerKey, leaderName, selfName, r.peerURL)
 }
 
 // Retrieves the URLs for all nodes using url function.
 func (r *Registry) urls(key, leaderName, selfName string, url func(key, name string) (string, bool)) []string {
-	r.Lock()
-	defer r.Unlock()
-
 	// Build list including the leader and self.
 	urls := make([]string, 0)
 	if url, _ := url(key, leaderName); len(url) > 0 {

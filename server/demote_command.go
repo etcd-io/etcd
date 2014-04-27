@@ -58,6 +58,11 @@ func (c *DemoteCommand) Apply(context raft.Context) (interface{}, error) {
 	if c.Name == ps.Config.Name {
 		log.Infof("Demote peer %s: Set mode to standby with %s", c.Name, ps.server.Leader())
 		ps.standbyPeerURL, _ = ps.registry.PeerURL(ps.server.Leader())
+		// TODO(yichengq): get rid of this workaround
+		// We set the mode explicitly here to ensure the mode has been
+		// set when the command is applied. This is important for log
+		// replay because it needs updated mode info to decide cluster finding.
+		ps.mode = StandbyMode
 		go ps.setMode(StandbyMode)
 	}
 
