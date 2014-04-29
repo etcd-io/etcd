@@ -1,6 +1,7 @@
 package server
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"path"
@@ -9,6 +10,7 @@ import (
 	"strings"
 	"sync"
 
+	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/log"
 	"github.com/coreos/etcd/store"
 )
@@ -18,6 +20,9 @@ const RegistryPeerKey = "/_etcd/machines"
 
 // The location of the standby URL data.
 const RegistryStandbyKey = "/_etcd/standbys"
+
+// The location of cluster config.
+const RegistryClusterConfigKey = "/_etcd/config"
 
 // The Registry stores URL information for nodes.
 type Registry struct {
@@ -77,6 +82,11 @@ func (r *Registry) RegisterPeer(name string, peerURL string, machURL string) err
 
 	r.Lock()
 	defer r.Unlock()
+	// Invalidate possible entry in standby mode.
+	// TODO(yichengq): Invalidating entry is rather weird, but this is a historic
+	// problem that I haven't digged into.
+	// For details: https://github.com/coreos/etcd/pull/640
+	delete(r.standbys, name)
 	r.peers[name] = r.load(RegistryPeerKey, name)
 	return nil
 }
@@ -89,6 +99,8 @@ func (r *Registry) RegisterStandby(name string, peerURL string, machURL string) 
 
 	r.Lock()
 	defer r.Unlock()
+	// TODO(yichengq): reasons as above.
+	delete(r.peers, name)
 	r.standbys[name] = r.load(RegistryStandbyKey, name)
 	return nil
 }
@@ -100,6 +112,14 @@ func (r *Registry) register(key, name string, peerURL string, machURL string) er
 	v.Set("etcd", machURL)
 	_, err := r.store.Create(path.Join(key, name), false, v.Encode(), false, store.Permanent)
 	log.Debugf("Register: %s", name)
+	return err
+}
+
+// RegisterClusterConfig register cluster config to the registry.
+func (r *Registry) RegisterClusterConfig(c *ClusterConfig) error {
+	b, _ := json.Marshal(c)
+	_, err := r.store.Set(RegistryClusterConfigKey, false, string(b), store.Permanent)
+	log.Debugf("Register cluster config: %v", c)
 	return err
 }
 
@@ -270,19 +290,27 @@ func (r *Registry) standbyPeerURL(key, name string) (string, bool) {
 
 // Retrieves the Client URLs for all nodes.
 func (r *Registry) ClientURLs(leaderName, selfName string) []string {
+	r.Lock()
+	defer r.Unlock()
 	return r.urls(RegistryPeerKey, leaderName, selfName, r.clientURL)
 }
 
 // Retrieves the Peer URLs for all nodes.
 func (r *Registry) PeerURLs(leaderName, selfName string) []string {
+	r.Lock()
+	defer r.Unlock()
 	return r.urls(RegistryPeerKey, leaderName, selfName, r.peerURL)
+}
+
+// URLs retrieves client URLs and peer URLs for all nodes.
+func (r *Registry) URLs(leaderName, selfName string) ([]string, []string) {
+	r.Lock()
+	defer r.Unlock()
+	return r.urls(RegistryPeerKey, leaderName, selfName, r.clientURL), r.urls(RegistryPeerKey, leaderName, selfName, r.peerURL)
 }
 
 // Retrieves the URLs for all nodes using url function.
 func (r *Registry) urls(key, leaderName, selfName string, url func(key, name string) (string, bool)) []string {
-	r.Lock()
-	defer r.Unlock()
-
 	// Build list including the leader and self.
 	urls := make([]string, 0)
 	if url, _ := url(key, leaderName); len(url) > 0 {
@@ -339,4 +367,21 @@ func (r *Registry) load(key, name string) *node {
 		url:     m["etcd"][0],
 		peerURL: m["raft"][0],
 	}
+}
+
+// ClusterConfig gets cluster config from registry
+func (r *Registry) ClusterConfig() *ClusterConfig {
+	e, err := r.store.Get(RegistryClusterConfigKey, false, false)
+	if err != nil {
+		if err.(*etcdErr.Error).ErrorCode == etcdErr.EcodeKeyNotFound {
+			return NewClusterConfig()
+		}
+		panic("Failed to get cluster config key")
+	}
+
+	var c ClusterConfig
+	if err = json.Unmarshal([]byte(*e.Node.Value), &c); err != nil {
+		panic("Failed to unmarshal cluster config")
+	}
+	return &c
 }

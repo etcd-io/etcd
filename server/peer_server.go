@@ -56,7 +56,6 @@ type PeerServerConfig struct {
 
 type PeerServer struct {
 	Config         PeerServerConfig
-	clusterConfig  *ClusterConfig
 	raftServer     raft.Server
 	server         *Server
 	joinIndex      uint64
@@ -93,11 +92,11 @@ type snapshotConf struct {
 func NewPeerServer(psConfig PeerServerConfig, registry *Registry, store store.Store, mb *metrics.Bucket, followersStats *raftFollowersStats, serverStats *raftServerStats) *PeerServer {
 	s := &PeerServer{
 		Config:         psConfig,
-		clusterConfig:  NewClusterConfig(),
 		registry:       registry,
 		store:          store,
 		followersStats: followersStats,
 		serverStats:    serverStats,
+		mode:           PeerMode,
 
 		timeoutThresholdChan: make(chan interface{}, 1),
 
@@ -153,7 +152,7 @@ func (s *PeerServer) setMode(mode Mode) {
 
 // ClusterConfig retrieves the current cluster configuration.
 func (s *PeerServer) ClusterConfig() *ClusterConfig {
-	return s.clusterConfig
+	return s.registry.ClusterConfig()
 }
 
 // SetClusterConfig updates the current cluster configuration.
@@ -168,7 +167,7 @@ func (s *PeerServer) SetClusterConfig(c *ClusterConfig) {
 		c.PromoteDelay = MinPromoteDelay
 	}
 
-	s.clusterConfig = c
+	s.registry.RegisterClusterConfig(c)
 }
 
 // Try all possible ways to find clusters to join
@@ -219,6 +218,14 @@ func (s *PeerServer) findCluster(discoverURL string, peers []string) {
 			}
 
 			log.Warnf("%s cannot connect to previous cluster %v", name, allPeers)
+		}
+
+		if s.mode == StandbyMode {
+			clients, peers := s.registry.URLs(s.raftServer.Leader(), s.Config.Name)
+			s.standbyClientURL = clients[0]
+			s.standbyPeerURL = peers[0]
+			log.Debugf("%s is restarting as standby node for %s", name, s.standbyPeerURL)
+			return
 		}
 
 		// TODO(yichengq): Think about the action that should be done
