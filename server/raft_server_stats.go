@@ -33,7 +33,7 @@ type raftServerStats struct {
 }
 
 func NewRaftServerStats(name string) *raftServerStats {
-	return &raftServerStats{
+	stats := &raftServerStats{
 		Name:      name,
 		StartTime: time.Now(),
 		sendRateQueue: &statsQueue{
@@ -43,6 +43,8 @@ func NewRaftServerStats(name string) *raftServerStats {
 			back: -1,
 		},
 	}
+	stats.LeaderInfo.startTime = time.Now()
+	return stats
 }
 
 func (ss *raftServerStats) RecvAppendReq(leaderName string, pkgSize int) {
