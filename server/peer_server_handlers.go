@@ -3,7 +3,6 @@ package server
 import (
 	"encoding/json"
 	"net/http"
-	"net/url"
 	"strconv"
 	"time"
 
@@ -150,7 +149,7 @@ func (ps *PeerServer) EtcdURLHttpHandler(w http.ResponseWriter, req *http.Reques
 
 // Response to the join request
 func (ps *PeerServer) JoinHttpHandler(w http.ResponseWriter, req *http.Request) {
-	command := &JoinCommandV1{}
+	command := &JoinCommand{}
 	if err := uhttp.DecodeJsonRequest(req, command); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -170,25 +169,6 @@ func (ps *PeerServer) JoinHttpHandler(w http.ResponseWriter, req *http.Request) 
 	}
 }
 
-// Attempt to rejoin the cluster as a peer.
-func (ps *PeerServer) PromoteHttpHandler(w http.ResponseWriter, req *http.Request) {
-	log.Infof("%s attempting to promote in cluster: %s", ps.Config.Name, ps.standbyPeerURL)
-	url, err := url.Parse(ps.standbyPeerURL)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	err = ps.joinByPeer(ps.raftServer, url.Host, ps.Config.Scheme)
-	if err != nil {
-		log.Infof("%s error while promoting: %v", ps.Config.Name, err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	log.Infof("%s promoted in the cluster", ps.Config.Name)
-	w.WriteHeader(http.StatusOK)
-}
-
 // Response to remove request
 func (ps *PeerServer) RemoveHttpHandler(w http.ResponseWriter, req *http.Request) {
 	if req.Method != "DELETE" {
@@ -197,7 +177,7 @@ func (ps *PeerServer) RemoveHttpHandler(w http.ResponseWriter, req *http.Request
 	}
 
 	vars := mux.Vars(req)
-	command := &RemoveCommandV1{
+	command := &RemoveCommand{
 		Name: vars["name"],
 	}
 
@@ -243,10 +223,7 @@ func (ps *PeerServer) setClusterConfigHttpHandler(w http.ResponseWriter, req *ht
 // Retrieves a list of peers and standbys.
 func (ps *PeerServer) getMachinesHttpHandler(w http.ResponseWriter, req *http.Request) {
 	machines := make([]*machineMessage, 0)
-	for _, name := range ps.registry.Peers() {
-		machines = append(machines, ps.getMachineMessage(name))
-	}
-	for _, name := range ps.registry.Standbys() {
+	for _, name := range ps.registry.Names() {
 		machines = append(machines, ps.getMachineMessage(name))
 	}
 	json.NewEncoder(w).Encode(&machines)
@@ -259,56 +236,17 @@ func (ps *PeerServer) getMachineHttpHandler(w http.ResponseWriter, req *http.Req
 }
 
 func (ps *PeerServer) getMachineMessage(name string) *machineMessage {
-	if ps.registry.PeerExists(name) {
-		clientURL, _ := ps.registry.ClientURL(name)
-		peerURL, _ := ps.registry.PeerURL(name)
-		return &machineMessage{
-			Name:      name,
-			Mode:      PeerMode,
-			ClientURL: clientURL,
-			PeerURL:   peerURL,
-		}
+	if !ps.registry.Exists(name) {
+		return nil
 	}
 
-	if ps.registry.StandbyExists(name) {
-		clientURL, _ := ps.registry.StandbyClientURL(name)
-		peerURL, _ := ps.registry.StandbyPeerURL(name)
-		return &machineMessage{
-			Name:      name,
-			Mode:      StandbyMode,
-			ClientURL: clientURL,
-			PeerURL:   peerURL,
-		}
+	clientURL, _ := ps.registry.ClientURL(name)
+	peerURL, _ := ps.registry.PeerURL(name)
+	return &machineMessage{
+		Name:      name,
+		ClientURL: clientURL,
+		PeerURL:   peerURL,
 	}
-
-	return nil
-}
-
-// Adds a machine to the cluster.
-func (ps *PeerServer) addMachineHttpHandler(w http.ResponseWriter, req *http.Request) {
-	c := &JoinCommandV2{}
-	if err := uhttp.DecodeJsonRequest(req, c); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	log.Debugf("Receive Join Request (v2) from %s", c.Name)
-	if err := ps.server.Dispatch(c, w, req); err != nil {
-		if etcdErr, ok := err.(*etcdErr.Error); ok {
-			log.Debug("Return error: ", (*etcdErr).Error())
-			etcdErr.Write(w)
-		} else {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
-	}
-}
-
-// Removes a machine from the cluster.
-func (ps *PeerServer) removeMachineHttpHandler(w http.ResponseWriter, req *http.Request) {
-	vars := mux.Vars(req)
-	c := &RemoveCommandV2{Name: vars["name"]}
-	log.Debugf("[recv] Remove Request [%s]", c.Name)
-	ps.server.Dispatch(c, w, req)
 }
 
 // Response to the name request
@@ -360,7 +298,6 @@ func (ps *PeerServer) UpgradeHttpHandler(w http.ResponseWriter, req *http.Reques
 // machineMessage represents information about a peer or standby in the registry.
 type machineMessage struct {
 	Name      string `json:"name"`
-	Mode      Mode   `json:"mode"`
 	ClientURL string `json:"clientURL"`
 	PeerURL   string `json:"peerURL"`
 }

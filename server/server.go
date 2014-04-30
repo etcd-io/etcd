@@ -176,17 +176,6 @@ func (s *Server) handleFunc(r *mux.Router, path string, f func(http.ResponseWrit
 		// Log request.
 		log.Debugf("[recv] %s %s %s [%s]", req.Method, s.URL(), req.URL.Path, req.RemoteAddr)
 
-		// Forward request along if the server is a standby.
-		if s.peerServer.Mode() == StandbyMode {
-			if s.peerServer.standbyClientURL == "" {
-				w.Header().Set("Content-Type", "application/json")
-				etcdErr.NewError(402, "", 0).Write(w)
-				return
-			}
-			uhttp.Redirect(s.peerServer.standbyClientURL, w, req)
-			return
-		}
-
 		// Execute handler function and return error if necessary.
 		if err := f(w, req); err != nil {
 			if etcdErr, ok := err.(*etcdErr.Error); ok {
@@ -231,9 +220,6 @@ func (s *Server) Dispatch(c raft.Command, w http.ResponseWriter, req *http.Reque
 			return etcdErr.NewError(300, "Empty result from raft", s.Store().Index())
 		}
 
-		w.Header().Set("X-Leader-Client-URL", s.url)
-		w.Header().Set("X-Leader-Peer-URL", ps.Config.URL)
-
 		// response for raft related commands[join/remove]
 		if b, ok := result.([]byte); ok {
 			w.WriteHeader(http.StatusOK)
@@ -276,8 +262,7 @@ func (s *Server) Dispatch(c raft.Command, w http.ResponseWriter, req *http.Reque
 
 	var url string
 	switch c.(type) {
-	case *JoinCommandV1, *RemoveCommandV1,
-		*JoinCommandV2, *RemoveCommandV2,
+	case *JoinCommand, *RemoveCommand,
 		*SetClusterConfigCommand:
 		url, _ = ps.registry.PeerURL(leader)
 	default:
