@@ -3,7 +3,6 @@ package server
 import (
 	"encoding/binary"
 	"encoding/json"
-	"os"
 
 	"github.com/coreos/etcd/log"
 	"github.com/coreos/etcd/third_party/github.com/goraft/raft"
@@ -92,7 +91,7 @@ func applyRemove(c *RemoveCommandV2, context raft.Context) (*removeResponseV2, e
 		// command and need to be removed
 		if context.CommitIndex() > ps.joinIndex && ps.joinIndex != 0 {
 			log.Debugf("server [%s] is removed", context.Server().Name())
-			os.Exit(0)
+			ps.AsyncRemove()
 		} else {
 			// else ignore remove
 			log.Debugf("ignore previous remove command.")
