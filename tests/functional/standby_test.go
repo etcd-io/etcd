@@ -15,6 +15,8 @@ import (
 
 // Create a full cluster and then add extra an extra standby node.
 func TestStandby(t *testing.T) {
+	t.Skip("functionality unimplemented")
+
 	clusterSize := 10 // DefaultActiveSize + 1
 	_, etcds, err := CreateCluster(clusterSize, &os.ProcAttr{Files: []*os.File{nil, os.Stdout, os.Stderr}}, false)
 	assert.NoError(t, err)
@@ -85,6 +87,8 @@ func TestStandby(t *testing.T) {
 
 // Create a full cluster, disconnect a peer, wait for autodemotion, wait for autopromotion.
 func TestStandbyAutoPromote(t *testing.T) {
+	t.Skip("functionality unimplemented")
+
 	clusterSize := 10 // DefaultActiveSize + 1
 	_, etcds, err := CreateCluster(clusterSize, &os.ProcAttr{Files: []*os.File{nil, os.Stdout, os.Stderr}}, false)
 	if err != nil {
