@@ -2,7 +2,6 @@ package server
 
 import (
 	"encoding/binary"
-	"os"
 
 	"github.com/coreos/etcd/log"
 	"github.com/coreos/etcd/third_party/github.com/goraft/raft"
@@ -65,7 +64,7 @@ func applyRemove(c *RemoveCommand, context raft.Context) (uint64, error) {
 		// command and need to be removed
 		if context.CommitIndex() > ps.joinIndex && ps.joinIndex != 0 {
 			log.Debugf("server [%s] is removed", context.Server().Name())
-			os.Exit(0)
+			ps.asyncRemove()
 		} else {
 			// else ignore remove
 			log.Debugf("ignore previous remove command.")

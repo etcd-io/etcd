@@ -62,6 +62,8 @@ type PeerServer struct {
 	store          store.Store
 	snapConf       *snapshotConf
 
+	stopNotify           chan bool
+	removeNotify         chan bool
 	closeChan            chan bool
 	routineGroup         sync.WaitGroup
 	timeoutThresholdChan chan interface{}
@@ -261,6 +263,8 @@ func (s *PeerServer) Start(snapshot bool, discoverURL string, peers []string) er
 
 	s.findCluster(discoverURL, peers)
 
+	s.stopNotify = make(chan bool)
+	s.removeNotify = make(chan bool)
 	s.closeChan = make(chan bool)
 
 	s.startRoutine(s.monitorSync)
@@ -279,13 +283,33 @@ func (s *PeerServer) Start(snapshot bool, discoverURL string, peers []string) er
 func (s *PeerServer) Stop() {
 	s.Lock()
 	defer s.Unlock()
-
-	if s.closeChan != nil {
-		close(s.closeChan)
-	}
+	close(s.closeChan)
+	// TODO(yichengq): it should also call async stop for raft server,
+	// but this functionality has not been implemented.
 	s.raftServer.Stop()
 	s.routineGroup.Wait()
-	s.closeChan = nil
+	close(s.stopNotify)
+}
+
+func (s *PeerServer) asyncRemove() {
+	s.Lock()
+	close(s.closeChan)
+	// TODO(yichengq): it should also call async stop for raft server,
+	// but this functionality has not been implemented.
+	go func() {
+		defer s.Unlock()
+		s.raftServer.Stop()
+		s.routineGroup.Wait()
+		close(s.removeNotify)
+	}()
+}
+
+func (s *PeerServer) StopNotify() <-chan bool {
+	return s.stopNotify
+}
+
+func (s *PeerServer) RemoveNotify() <-chan bool {
+	return s.removeNotify
 }
 
 func (s *PeerServer) HTTPHandler() http.Handler {
