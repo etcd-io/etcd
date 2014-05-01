@@ -48,7 +48,7 @@ func TestDiscoveryDownNoBackupPeers(t *testing.T) {
 	if err != nil {
 		t.Fatal(err.Error())
 	}
-	defer stopServer(proc, t)
+	defer stopServer(t, proc)
 
 	client := http.Client{}
 	err = assertServerNotUp(client, "http")
@@ -81,7 +81,7 @@ func TestDiscoveryDownWithBackupPeers(t *testing.T) {
 		if err != nil {
 			t.Fatal(err.Error())
 		}
-		defer stopServer(proc, t)
+		defer stopServer(t, proc)
 
 		client := http.Client{}
 		err = assertServerFunctional(client, "http")
@@ -110,7 +110,7 @@ func TestDiscoveryNoWithBackupPeers(t *testing.T) {
 		if err != nil {
 			t.Fatal(err.Error())
 		}
-		defer stopServer(proc, t)
+		defer stopServer(t, proc)
 
 		client := http.Client{}
 		err = assertServerFunctional(client, "http")
@@ -143,7 +143,7 @@ func TestDiscoveryDownNoBackupPeersWithDataDir(t *testing.T) {
 		}
 
 		// stop etcd, and leave valid data dir for later usage
-		stopServer(proc, t)
+		stopServer(t, proc)
 
 		g := garbageHandler{t: t}
 		ts := httptest.NewServer(&g)
@@ -155,7 +155,7 @@ func TestDiscoveryDownNoBackupPeersWithDataDir(t *testing.T) {
 		if err != nil {
 			t.Fatal(err.Error())
 		}
-		defer stopServer(proc, t)
+		defer stopServer(t, proc)
 
 		// TODO(yichengq): it needs some time to do leader election
 		// improve to get rid of it
@@ -181,7 +181,7 @@ func TestDiscoveryFirstPeer(t *testing.T) {
 		if err != nil {
 			t.Fatal(err.Error())
 		}
-		defer stopServer(proc, t)
+		defer stopServer(t, proc)
 
 		client := http.Client{}
 		err = assertServerFunctional(client, "http")
@@ -204,7 +204,7 @@ func TestDiscoverySecondPeerFirstDown(t *testing.T) {
 		if err != nil {
 			t.Fatal(err.Error())
 		}
-		defer stopServer(proc, t)
+		defer stopServer(t, proc)
 
 		client := http.Client{}
 		err = assertServerNotUp(client, "http")
@@ -232,7 +232,7 @@ func TestDiscoverySecondPeerFirstNoResponse(t *testing.T) {
 		if err != nil {
 			t.Fatal(err.Error())
 		}
-		defer stopServer(proc, t)
+		defer stopServer(t, proc)
 
 		// TODO(bp): etcd will take 30 seconds to shutdown, figure this
 		// out instead
@@ -276,7 +276,7 @@ func TestDiscoverySecondPeerUp(t *testing.T) {
 		if err != nil {
 			t.Fatal(err.Error())
 		}
-		defer stopServer(proc, t)
+		defer stopServer(t, proc)
 
 		watch := fmt.Sprintf("%s%s%d", s.URL(), "/v2/keys/_etcd/registry/3/node1?wait=true&waitIndex=", testResp.EtcdIndex)
 		resp, err = http.Get(watch)
@@ -325,8 +325,8 @@ func TestDiscoveryRestart(t *testing.T) {
 			t.Fatal(err.Error())
 		}
 
-		stopServer(proc, t)
-		stopServer(proc2, t)
+		stopServer(t, proc)
+		stopServer(t, proc2)
 
 		proc, err = startServerWithDataDir([]string{"-discovery", s.URL() + "/v2/keys/_etcd/registry/4"})
 		if err != nil {
@@ -342,8 +342,8 @@ func TestDiscoveryRestart(t *testing.T) {
 			t.Fatal(err.Error())
 		}
 
-		stopServer(proc, t)
-		stopServer(proc2, t)
+		stopServer(t, proc)
+		stopServer(t, proc2)
 	})
 }
 

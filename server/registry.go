@@ -330,7 +330,7 @@ func (r *Registry) load(key, name string) *node {
 	// Parse as a query string.
 	m, err := url.ParseQuery(*e.Node.Value)
 	if err != nil {
-		log.Fatalf("Failed to parse peers entry: %s", name)
+		log.Panicf("Failed to parse peers entry: %s", name)
 	}
 
 	// Create node.

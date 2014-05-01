@@ -60,7 +60,7 @@ func BenchmarkStoreDelete(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		_, err := s.Set(kvs[i][0], false, kvs[i][1], Permanent)
 		if err != nil {
-			b.Error(err)
+			b.Fatal(err)
 		}
 	}
 

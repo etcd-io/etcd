@@ -21,7 +21,7 @@ func TestTLSOff(t *testing.T) {
 	if err != nil {
 		t.Fatal(err.Error())
 	}
-	defer stopServer(proc, t)
+	defer stopServer(t, proc)
 
 	client := buildClient()
 	err = assertServerFunctional(client, "http")
@@ -40,7 +40,7 @@ func TestTLSAnonymousClient(t *testing.T) {
 	if err != nil {
 		t.Fatal(err.Error())
 	}
-	defer stopServer(proc, t)
+	defer stopServer(t, proc)
 
 	cacertfile := "../../fixtures/ca/ca.crt"
 
@@ -72,7 +72,7 @@ func TestTLSAuthenticatedClient(t *testing.T) {
 	if err != nil {
 		t.Fatal(err.Error())
 	}
-	defer stopServer(proc, t)
+	defer stopServer(t, proc)
 
 	cacertfile := "../../fixtures/ca/ca.crt"
 	certfile := "../../fixtures/ca/server2.crt"
@@ -114,7 +114,7 @@ func TestTLSUnauthenticatedClient(t *testing.T) {
 	if err != nil {
 		t.Fatal(err.Error())
 	}
-	defer stopServer(proc, t)
+	defer stopServer(t, proc)
 
 	cacertfile := "../../fixtures/ca/ca.crt"
 	certfile := "../../fixtures/ca/broken_server.crt"
@@ -122,7 +122,7 @@ func TestTLSUnauthenticatedClient(t *testing.T) {
 
 	cert, err := tls.LoadX509KeyPair(certfile, keyfile)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	cp := x509.NewCertPool()
@@ -203,7 +203,7 @@ func startServer2WithDataDir(extra []string) (*os.Process, error) {
 	return os.StartProcess(EtcdBinPath, cmd, procAttr)
 }
 
-func stopServer(proc *os.Process, t *testing.T) {
+func stopServer(t *testing.T, proc *os.Process) {
 	err := proc.Kill()
 	if err != nil {
 		t.Error(err.Error())

@@ -113,7 +113,7 @@ func (e *Etcd) Run() {
 	if e.Config.GraphiteHost != "" {
 		err := mb.Publish(e.Config.GraphiteHost)
 		if err != nil {
-			log.Fatal("Graphite: ", err)
+			log.Panicf("Graphite: %s", err)
 		}
 	}
 
