@@ -80,7 +80,7 @@ func TestRejoinWithDifferentPeerAddress(t *testing.T) {
 		// restart
 		etcds[num], err = os.StartProcess(EtcdBinPath, argGroup[num], procAttr)
 		if err != nil {
-			panic(err)
+			t.Fatal(err)
 		}
 		time.Sleep(time.Second)
 	}
@@ -132,7 +132,7 @@ func TestReplaceWithDifferentPeerAddress(t *testing.T) {
 		// restart
 		newEtcd, err := os.StartProcess(EtcdBinPath, append(argGroup[num], "-f"), procAttr)
 		if err != nil {
-			panic(err)
+			t.Fatal(err)
 		}
 
 		etcds[num].Wait()

@@ -113,7 +113,7 @@ func (e *Etcd) Run() {
 	if e.Config.GraphiteHost != "" {
 		err := mb.Publish(e.Config.GraphiteHost)
 		if err != nil {
-			panic(err)
+			log.Panicf("Graphite: %s", err)
 		}
 	}
 
@@ -165,7 +165,7 @@ func (e *Etcd) Run() {
 	}
 	raftServer, err := raft.NewServer(e.Config.Name, e.Config.DataDir, raftTransporter, e.Store, e.PeerServer, "")
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("raft server error: ", err)
 	}
 	raftServer.SetElectionTimeout(electionTimeout)
 	raftServer.SetHeartbeatInterval(heartbeatInterval)

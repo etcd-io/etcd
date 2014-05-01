@@ -41,7 +41,7 @@ func TestMultiNodeKillAllAndRecovery(t *testing.T) {
 		// Test Set
 		_, err := c.Set("foo", "bar", 0)
 		if err != nil {
-			panic(err)
+			t.Fatal(err)
 		}
 	}
 
@@ -110,7 +110,7 @@ func TestTLSMultiNodeKillAllAndRecovery(t *testing.T) {
 		// Test Set
 		_, err := c.Set("foo", "bar", 0)
 		if err != nil {
-			panic(err)
+			t.Fatal(err)
 		}
 	}
 

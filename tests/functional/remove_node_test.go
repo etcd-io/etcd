@@ -38,7 +38,7 @@ func TestRemoveNode(t *testing.T) {
 			resp, err := c.Get("_etcd/machines", false, false)
 
 			if err != nil {
-				panic(err)
+				t.Fatal(err)
 			}
 
 			if len(resp.Node.Nodes) != 2 {
@@ -54,7 +54,7 @@ func TestRemoveNode(t *testing.T) {
 			}
 
 			if err != nil {
-				panic(err)
+				t.Fatal(err)
 			}
 
 			time.Sleep(time.Second)
@@ -62,7 +62,7 @@ func TestRemoveNode(t *testing.T) {
 			resp, err = c.Get("_etcd/machines", false, false)
 
 			if err != nil {
-				panic(err)
+				t.Fatal(err)
 			}
 
 			if len(resp.Node.Nodes) != 3 {
@@ -81,7 +81,7 @@ func TestRemoveNode(t *testing.T) {
 			resp, err := c.Get("_etcd/machines", false, false)
 
 			if err != nil {
-				panic(err)
+				t.Fatal(err)
 			}
 
 			if len(resp.Node.Nodes) != 2 {
@@ -97,7 +97,7 @@ func TestRemoveNode(t *testing.T) {
 			}
 
 			if err != nil {
-				panic(err)
+				t.Fatal(err)
 			}
 
 			time.Sleep(time.Second)
@@ -105,7 +105,7 @@ func TestRemoveNode(t *testing.T) {
 			resp, err = c.Get("_etcd/machines", false, false)
 
 			if err != nil {
-				panic(err)
+				t.Fatal(err)
 			}
 
 			if len(resp.Node.Nodes) != 3 {

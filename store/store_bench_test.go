@@ -60,7 +60,7 @@ func BenchmarkStoreDelete(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		_, err := s.Set(kvs[i][0], false, kvs[i][1], Permanent)
 		if err != nil {
-			panic(err)
+			b.Fatal(err)
 		}
 	}
 
@@ -79,13 +79,13 @@ func BenchmarkStoreDelete(b *testing.B) {
 	// clean up
 	e, err := s.Get("/", false, false)
 	if err != nil {
-		panic(err)
+		b.Fatal(err)
 	}
 
 	for _, n := range e.Node.Nodes {
 		_, err := s.Delete(n.Key, true, true)
 		if err != nil {
-			panic(err)
+			b.Fatal(err)
 		}
 	}
 	s.WatcherHub.EventHistory = nil
@@ -185,13 +185,13 @@ func benchStoreSet(b *testing.B, valueSize int, process func(interface{}) ([]byt
 	for i := 0; i < b.N; i++ {
 		resp, err := s.Set(kvs[i][0], false, kvs[i][1], Permanent)
 		if err != nil {
-			panic(err)
+			b.Fatal(err)
 		}
 
 		if process != nil {
 			_, err = process(resp)
 			if err != nil {
-				panic(err)
+				b.Fatal(err)
 			}
 		}
 	}

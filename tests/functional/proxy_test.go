@@ -30,7 +30,7 @@ func TestStandby(t *testing.T) {
 	// Set key.
 	time.Sleep(time.Second)
 	if _, err := c.Set("foo", "bar", 0); err != nil {
-		panic(err)
+		t.Fatal(err)
 	}
 	time.Sleep(time.Second)
 
@@ -116,7 +116,7 @@ func TestStandbyAutoPromote(t *testing.T) {
 	etcd := etcds[1]
 	etcds = append(etcds[:1], etcds[2:]...)
 	if err := etcd.Kill(); err != nil {
-		panic(err.Error())
+		t.Fatal(err.Error())
 	}
 	etcd.Release()
 

@@ -43,3 +43,7 @@ func Fatalf(format string, v ...interface{}) {
 func Fatal(v ...interface{}) {
 	logger.Fatalln(v...)
 }
+
+func Panicf(format string, v ...interface{}) {
+	logger.Panicf(format, v)
+}

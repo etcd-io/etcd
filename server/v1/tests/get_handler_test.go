@@ -62,7 +62,7 @@ func TestV1GetKeyDir(t *testing.T) {
 		body := tests.ReadBody(resp)
 		nodes := make([]interface{}, 0)
 		if err := json.Unmarshal(body, &nodes); err != nil {
-			panic(fmt.Sprintf("HTTP body JSON parse error: %v", err))
+			t.Errorf("HTTP body JSON parse error: %v", err)
 		}
 		assert.Equal(t, len(nodes), 2, "")
 
