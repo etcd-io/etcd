@@ -31,7 +31,7 @@ func RegisterCommandFactory(factory CommandFactory) {
 	version := factory.Version()
 
 	if GetCommandFactory(version) != nil {
-		log.Fatalf("Command factory already registered for version: %d", factory.Version())
+		log.Panicf("Command factory already registered for version: %d", factory.Version())
 	}
 
 	factories[version] = factory
