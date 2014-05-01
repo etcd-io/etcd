@@ -68,10 +68,10 @@ Standby loop:
 Fetch machine info
 If cannot match version:
   return false
-If active size <= peer count:
-  return false
 If it has existed in the cluster:
   return true
+If active size <= peer count:
+  return false
 If join request fails:
   return false
 return true

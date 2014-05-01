@@ -224,7 +224,9 @@ func (ps *PeerServer) setClusterConfigHttpHandler(w http.ResponseWriter, req *ht
 func (ps *PeerServer) getMachinesHttpHandler(w http.ResponseWriter, req *http.Request) {
 	machines := make([]*machineMessage, 0)
 	for _, name := range ps.registry.Names() {
-		machines = append(machines, ps.getMachineMessage(name))
+		if msg := ps.getMachineMessage(name); msg != nil {
+			machines = append(machines, msg)
+		}
 	}
 	json.NewEncoder(w).Encode(&machines)
 }

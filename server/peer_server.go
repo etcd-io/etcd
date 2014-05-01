@@ -523,10 +523,44 @@ func (s *PeerServer) joinByPeer(server raft.Server, peer string, scheme string) 
 	// Our version must match the leaders version
 	version, err := s.client.GetVersion(u)
 	if err != nil {
-		return fmt.Errorf("Error during join version check: %v", err)
+		log.Debugf("fail checking join version")
+		return err
 	}
 	if version < store.MinVersion() || version > store.MaxVersion() {
-		return fmt.Errorf("Unable to join: cluster version is %d; version compatibility is %d - %d", version, store.MinVersion(), store.MaxVersion())
+		log.Infof("fail passing version compatibility(%d-%d) using %d", store.MinVersion(), store.MaxVersion(), version)
+		return fmt.Errorf("incompatible version")
+	}
+
+	// Fetch current peer list
+	machines, err := s.client.GetMachines(u)
+	if err != nil {
+		log.Debugf("fail getting machine messages")
+		return err
+	}
+	exist := false
+	for _, machine := range machines {
+		if machine.Name == server.Name() {
+			exist = true
+			// TODO(yichengq): cannot set join index for it.
+			// Need discussion about the best way to do it.
+			//
+			// if machine.PeerURL == s.Config.URL {
+			// 	log.Infof("has joined the cluster(%v) before", machines)
+			// 	return nil
+			// }
+			break
+		}
+	}
+
+	// Fetch cluster config to see whether exists some place.
+	clusterConfig, err := s.client.GetClusterConfig(u)
+	if err != nil {
+		log.Debugf("fail getting cluster config")
+		return err
+	}
+	if !exist && clusterConfig.ActiveSize <= len(machines) {
+		log.Infof("stop joining because the cluster is full with %d nodes", len(machines))
+		return fmt.Errorf("out of quota")
 	}
 
 	joinResp, err := s.client.AddMachine(u,
@@ -538,10 +572,11 @@ func (s *PeerServer) joinByPeer(server raft.Server, peer string, scheme string) 
 			ClientURL:  s.server.URL(),
 		})
 	if err != nil {
+		log.Debugf("fail on join request")
 		return err
 	}
-
 	s.joinIndex = joinResp.CommitIndex
+
 	return nil
 }
 
