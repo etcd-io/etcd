@@ -1,16 +1,12 @@
 package server
 
 import (
-	"bytes"
-	"encoding/binary"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"math/rand"
 	"net/http"
 	"net/url"
 	"sort"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -52,6 +48,7 @@ type PeerServerConfig struct {
 
 type PeerServer struct {
 	Config         PeerServerConfig
+	client         *Client
 	clusterConfig  *ClusterConfig
 	raftServer     raft.Server
 	server         *Server
@@ -250,6 +247,11 @@ func (s *PeerServer) Start(snapshot bool, discoverURL string, peers []string) er
 		}
 	}
 
+	// TODO(yichengq): client for HTTP API usage could use transport other
+	// than the raft one. The transport should have longer timeout because
+	// it doesn't have fault tolerance of raft protocol.
+	s.client = NewClient(s.raftServer.Transporter().(*transporter).transport)
+
 	s.raftServer.Init()
 
 	// Set NOCOW for data directory in btrfs
@@ -359,24 +361,6 @@ func (s *PeerServer) startAsFollower(cluster []string, retryTimes int) error {
 	return nil
 }
 
-// getVersion fetches the peer version of a cluster.
-func getVersion(t *transporter, versionURL url.URL) (int, error) {
-	resp, _, err := t.Get(versionURL.String())
-	if err != nil {
-		return 0, err
-	}
-	defer resp.Body.Close()
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return 0, err
-	}
-
-	// Parse version number.
-	version, _ := strconv.Atoi(string(body))
-	return version, nil
-}
-
 // Upgradable checks whether all peers in a cluster support an upgrade to the next store version.
 func (s *PeerServer) Upgradable() error {
 	nextVersion := s.store.Version() + 1
@@ -386,13 +370,12 @@ func (s *PeerServer) Upgradable() error {
 			return fmt.Errorf("PeerServer: Cannot parse URL: '%s' (%s)", peerURL, err)
 		}
 
-		t, _ := s.raftServer.Transporter().(*transporter)
-		checkURL := (&url.URL{Host: u.Host, Scheme: s.Config.Scheme, Path: fmt.Sprintf("/version/%d/check", nextVersion)}).String()
-		resp, _, err := t.Get(checkURL)
+		url := (&url.URL{Host: u.Host, Scheme: s.Config.Scheme}).String()
+		ok, err := s.client.CheckVersion(url, nextVersion)
 		if err != nil {
-			return fmt.Errorf("PeerServer: Cannot check version compatibility: %s", u.Host)
+			return err
 		}
-		if resp.StatusCode != 200 {
+		if !ok {
 			return fmt.Errorf("PeerServer: Version %d is not compatible with peer: %s", nextVersion, u.Host)
 		}
 	}
@@ -501,12 +484,10 @@ func (s *PeerServer) joinCluster(cluster []string) bool {
 
 // Send join requests to peer.
 func (s *PeerServer) joinByPeer(server raft.Server, peer string, scheme string) error {
-	// t must be ok
-	t, _ := server.Transporter().(*transporter)
+	u := (&url.URL{Host: peer, Scheme: scheme}).String()
 
 	// Our version must match the leaders version
-	versionURL := url.URL{Host: peer, Scheme: scheme, Path: "/version"}
-	version, err := getVersion(t, versionURL)
+	version, err := s.client.GetVersion(u)
 	if err != nil {
 		return fmt.Errorf("Error during join version check: %v", err)
 	}
@@ -514,60 +495,20 @@ func (s *PeerServer) joinByPeer(server raft.Server, peer string, scheme string) 
 		return fmt.Errorf("Unable to join: cluster version is %d; version compatibility is %d - %d", version, store.MinVersion(), store.MaxVersion())
 	}
 
-	var b bytes.Buffer
-	c := &JoinCommand{
-		MinVersion: store.MinVersion(),
-		MaxVersion: store.MaxVersion(),
-		Name:       server.Name(),
-		RaftURL:    s.Config.URL,
-		EtcdURL:    s.server.URL(),
+	joinIndex, err := s.client.AddMachine(u,
+		&JoinCommand{
+			MinVersion: store.MinVersion(),
+			MaxVersion: store.MaxVersion(),
+			Name:       server.Name(),
+			RaftURL:    s.Config.URL,
+			EtcdURL:    s.server.URL(),
+		})
+	if err != nil {
+		return err
 	}
-	json.NewEncoder(&b).Encode(c)
 
-	joinURL := url.URL{Host: peer, Scheme: scheme, Path: "/join"}
-	log.Infof("Send Join Request to %s", joinURL.String())
-
-	req, _ := http.NewRequest("PUT", joinURL.String(), &b)
-	resp, err := t.client.Do(req)
-
-	for {
-		if err != nil {
-			return fmt.Errorf("Unable to join: %v", err)
-		}
-		if resp != nil {
-			defer resp.Body.Close()
-
-			log.Infof("»»»» %d", resp.StatusCode)
-			if resp.StatusCode == http.StatusOK {
-				b, _ := ioutil.ReadAll(resp.Body)
-				s.joinIndex, _ = binary.Uvarint(b)
-				return nil
-			}
-			if resp.StatusCode == http.StatusTemporaryRedirect {
-				address := resp.Header.Get("Location")
-				log.Debugf("Send Join Request to %s", address)
-				c := &JoinCommand{
-					MinVersion: store.MinVersion(),
-					MaxVersion: store.MaxVersion(),
-					Name:       server.Name(),
-					RaftURL:    s.Config.URL,
-					EtcdURL:    s.server.URL(),
-				}
-				json.NewEncoder(&b).Encode(c)
-				resp, _, err = t.Put(address, &b)
-
-			} else if resp.StatusCode == http.StatusBadRequest {
-				log.Debug("Reach max number peers in the cluster")
-				decoder := json.NewDecoder(resp.Body)
-				err := &etcdErr.Error{}
-				decoder.Decode(err)
-				return *err
-			} else {
-				return fmt.Errorf("Unable to join")
-			}
-		}
-
-	}
+	s.joinIndex = joinIndex
+	return nil
 }
 
 func (s *PeerServer) Stats() []byte {
