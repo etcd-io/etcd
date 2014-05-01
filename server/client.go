@@ -60,6 +60,32 @@ func (c *Client) GetVersion(url string) (int, *etcdErr.Error) {
 	return version, nil
 }
 
+func (c *Client) GetMachines(url string) ([]*machineMessage, *etcdErr.Error) {
+	resp, err := c.Get(url + "/v2/admin/machines")
+	if err != nil {
+		return nil, clientError(err)
+	}
+
+	msgs := new([]*machineMessage)
+	if uerr := c.parseJSONResponse(resp, msgs); uerr != nil {
+		return nil, uerr
+	}
+	return *msgs, nil
+}
+
+func (c *Client) GetClusterConfig(url string) (*ClusterConfig, *etcdErr.Error) {
+	resp, err := c.Get(url + "/v2/admin/config")
+	if err != nil {
+		return nil, clientError(err)
+	}
+
+	config := new(ClusterConfig)
+	if uerr := c.parseJSONResponse(resp, config); uerr != nil {
+		return nil, uerr
+	}
+	return config, nil
+}
+
 // AddMachine adds machine to the cluster.
 // The first return value is the commit index of join command.
 func (c *Client) AddMachine(url string, cmd *JoinCommand) (uint64, *etcdErr.Error) {
