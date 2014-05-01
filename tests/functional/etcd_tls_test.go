@@ -47,7 +47,7 @@ func TestTLSAnonymousClient(t *testing.T) {
 	cp := x509.NewCertPool()
 	bytes, err := ioutil.ReadFile(cacertfile)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 	cp.AppendCertsFromPEM(bytes)
 
@@ -80,13 +80,13 @@ func TestTLSAuthenticatedClient(t *testing.T) {
 
 	cert, err := tls.LoadX509KeyPair(certfile, keyfile)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	cp := x509.NewCertPool()
 	bytes, err := ioutil.ReadFile(cacertfile)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 	cp.AppendCertsFromPEM(bytes)
 
@@ -206,7 +206,7 @@ func startServer2WithDataDir(extra []string) (*os.Process, error) {
 func stopServer(t *testing.T, proc *os.Process) {
 	err := proc.Kill()
 	if err != nil {
-		t.Error(err.Error())
+		t.Fatal(err.Error())
 	}
 	proc.Release()
 }

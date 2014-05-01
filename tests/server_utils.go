@@ -9,6 +9,7 @@ import (
 
 	"github.com/coreos/etcd/third_party/github.com/goraft/raft"
 
+	"github.com/coreos/etcd/log"
 	"github.com/coreos/etcd/metrics"
 	"github.com/coreos/etcd/server"
 	"github.com/coreos/etcd/store"
@@ -52,7 +53,7 @@ func RunServer(f func(*server.Server)) {
 	raftTransporter := server.NewTransporter(followersStats, serverStats, registry, testHeartbeatInterval, dialTimeout, responseHeaderTimeout)
 	raftServer, err := raft.NewServer(testName, path, raftTransporter, store, ps, "")
 	if err != nil {
-		panic("error creating new raft server:" + err.Error())
+		log.Panicf("error creating new raft server: %s", err.Error())
 	}
 	raftServer.SetElectionTimeout(testElectionTimeout)
 	raftServer.SetHeartbeatInterval(testHeartbeatInterval)
