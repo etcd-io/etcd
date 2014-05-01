@@ -58,6 +58,9 @@ var errors = map[int]string{
 	EcodeInvalidActiveSize:   "Invalid active size",
 	EcodeInvalidPromoteDelay: "Standby promote delay",
 	EcodePromoteError:        "Standby promotion error",
+
+	// client related errors
+	EcodeClientInternal: "Client Internal Error",
 }
 
 const (
@@ -92,6 +95,8 @@ const (
 	EcodeInvalidActiveSize   = 403
 	EcodeInvalidPromoteDelay = 404
 	EcodePromoteError        = 405
+
+	EcodeClientInternal = 500
 )
 
 type Error struct {
@@ -116,7 +121,7 @@ func Message(code int) string {
 
 // Only for error interface
 func (e Error) Error() string {
-	return e.Message
+	return e.Message + " (" + e.Cause + ")"
 }
 
 func (e Error) toJsonString() string {
