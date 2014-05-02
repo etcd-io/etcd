@@ -16,7 +16,7 @@ func TestClusterConfigSet(t *testing.T) {
 	assert.NoError(t, err)
 	defer DestroyCluster(etcds)
 
-	resp, _ := tests.Put("http://localhost:7001/v2/admin/config", "application/json", bytes.NewBufferString(`{"activeSize":3, "promoteDelay":60}`))
+	resp, _ := tests.Put("http://localhost:7001/v2/admin/config", "application/json", bytes.NewBufferString(`{"activeSize":3, "removeDelay":60}`))
 	assert.Equal(t, resp.StatusCode, 200)
 
 	time.Sleep(1 * time.Second)
@@ -25,7 +25,7 @@ func TestClusterConfigSet(t *testing.T) {
 	body := tests.ReadBodyJSON(resp)
 	assert.Equal(t, resp.StatusCode, 200)
 	assert.Equal(t, body["activeSize"], 3)
-	assert.Equal(t, body["promoteDelay"], 60)
+	assert.Equal(t, body["removeDelay"], 60)
 }
 
 // Ensure that the cluster configuration can be reloaded.
@@ -35,7 +35,7 @@ func TestClusterConfigReload(t *testing.T) {
 	assert.NoError(t, err)
 	defer DestroyCluster(etcds)
 
-	resp, _ := tests.Put("http://localhost:7001/v2/admin/config", "application/json", bytes.NewBufferString(`{"activeSize":3, "promoteDelay":60}`))
+	resp, _ := tests.Put("http://localhost:7001/v2/admin/config", "application/json", bytes.NewBufferString(`{"activeSize":3, "removeDelay":60}`))
 	assert.Equal(t, resp.StatusCode, 200)
 
 	time.Sleep(1 * time.Second)
@@ -44,7 +44,7 @@ func TestClusterConfigReload(t *testing.T) {
 	body := tests.ReadBodyJSON(resp)
 	assert.Equal(t, resp.StatusCode, 200)
 	assert.Equal(t, body["activeSize"], 3)
-	assert.Equal(t, body["promoteDelay"], 60)
+	assert.Equal(t, body["removeDelay"], 60)
 
 	// kill all
 	DestroyCluster(etcds)
@@ -59,5 +59,5 @@ func TestClusterConfigReload(t *testing.T) {
 	body = tests.ReadBodyJSON(resp)
 	assert.Equal(t, resp.StatusCode, 200)
 	assert.Equal(t, body["activeSize"], 3)
-	assert.Equal(t, body["promoteDelay"], 60)
+	assert.Equal(t, body["removeDelay"], 60)
 }

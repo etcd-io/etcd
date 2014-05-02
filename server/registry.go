@@ -5,7 +5,6 @@ import (
 	"net/url"
 	"path"
 	"path/filepath"
-	"sort"
 	"strings"
 	"sync"
 
@@ -36,19 +35,6 @@ func NewRegistry(s store.Store) *Registry {
 		store: s,
 		peers: make(map[string]*node),
 	}
-}
-
-// Names returns a list of cached peer names.
-func (r *Registry) Names() []string {
-	r.Lock()
-	defer r.Unlock()
-
-	names := make([]string, 0, len(r.peers))
-	for name := range r.peers {
-		names = append(names, name)
-	}
-	sort.Sort(sort.StringSlice(names))
-	return names
 }
 
 // Register adds a peer to the registry.
@@ -165,6 +151,15 @@ func (r *Registry) UpdatePeerURL(name string, peerURL string) error {
 	// Invalidate outdated cache.
 	r.invalidate(name)
 	return nil
+}
+
+func (r *Registry) name(key, name string) (string, bool) {
+	return name, true
+}
+
+// Names returns a list of cached peer names.
+func (r *Registry) Names() []string {
+	return r.urls(RegistryKey, "", "", r.name)
 }
 
 // Retrieves the Client URLs for all nodes.

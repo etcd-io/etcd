@@ -11,11 +11,17 @@ const (
 	// MinActiveSize is the minimum active size allowed.
 	MinActiveSize = 3
 
-	// DefaultPromoteDelay is the default elapsed time before promotion.
-	DefaultPromoteDelay = int((30 * time.Minute) / time.Second)
+	// DefaultRemoveDelay is the default elapsed time before promotion.
+	DefaultRemoveDelay = int((30 * time.Minute) / time.Second)
 
-	// MinPromoteDelay is the minimum promote delay allowed.
-	MinPromoteDelay = int((2 * time.Second) / time.Second)
+	// MinRemoveDelay is the minimum promote delay allowed.
+	MinRemoveDelay = int((2 * time.Second) / time.Second)
+
+	// DefaultSyncClusterInterval is the default interval for cluster sync.
+	DefaultSyncClusterInterval = int((30 * time.Minute) / time.Second)
+
+	// MinSyncClusterInterval is the minimum sync interval allowed.
+	MinSyncClusterInterval = int((1 * time.Second) / time.Second)
 )
 
 // ClusterConfig represents cluster-wide configuration settings.
@@ -25,15 +31,20 @@ type ClusterConfig struct {
 	// Nodes that join the cluster after the limit is reached are standbys.
 	ActiveSize int `json:"activeSize"`
 
-	// PromoteDelay is the amount of time, in seconds, after a node is
-	// unreachable that it will be swapped out for a standby node, if available.
-	PromoteDelay int `json:"promoteDelay"`
+	// RemoveDelay is the amount of time, in seconds, after a node is
+	// unreachable that it will be swapped out as a standby node.
+	RemoveDelay int `json:"removeDelay"`
+
+	// SyncClusterInterval is the amount of time, in seconds, between
+	// cluster sync when it runs in standby mode.
+	SyncClusterInterval int `json:"syncClusterInterval"`
 }
 
 // NewClusterConfig returns a cluster configuration with default settings.
 func NewClusterConfig() *ClusterConfig {
 	return &ClusterConfig{
-		ActiveSize:   DefaultActiveSize,
-		PromoteDelay: DefaultPromoteDelay,
+		ActiveSize:          DefaultActiveSize,
+		RemoveDelay:         DefaultRemoveDelay,
+		SyncClusterInterval: DefaultSyncClusterInterval,
 	}
 }

@@ -205,8 +205,11 @@ func (ps *PeerServer) setClusterConfigHttpHandler(w http.ResponseWriter, req *ht
 	if activeSize, ok := m["activeSize"].(float64); ok {
 		config.ActiveSize = int(activeSize)
 	}
-	if promoteDelay, ok := m["promoteDelay"].(float64); ok {
-		config.PromoteDelay = int(promoteDelay)
+	if removeDelay, ok := m["removeDelay"].(float64); ok {
+		config.RemoveDelay = int(removeDelay)
+	}
+	if syncClusterInterval, ok := m["syncClusterInterval"].(float64); ok {
+		config.SyncClusterInterval = int(syncClusterInterval)
 	}
 
 	// Issue command to update.
@@ -218,13 +221,26 @@ func (ps *PeerServer) setClusterConfigHttpHandler(w http.ResponseWriter, req *ht
 }
 
 // Retrieves a list of peers and standbys.
+// If leader exists, it is at the first place.
 func (ps *PeerServer) getMachinesHttpHandler(w http.ResponseWriter, req *http.Request) {
 	machines := make([]*machineMessage, 0)
+
+	leader := ps.RaftServer().Leader()
+	if leader != "" {
+		if msg := ps.getMachineMessage(leader); msg != nil {
+			machines = append(machines, msg)
+		}
+	}
+
 	for _, name := range ps.registry.Names() {
+		if name == leader {
+			continue
+		}
 		if msg := ps.getMachineMessage(name); msg != nil {
 			machines = append(machines, msg)
 		}
 	}
+
 	json.NewEncoder(w).Encode(&machines)
 }
 

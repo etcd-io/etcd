@@ -90,6 +90,9 @@ func TestV2GetKeyRecursively(t *testing.T) {
 //
 func TestV2WatchKey(t *testing.T) {
 	tests.RunServer(func(s *server.Server) {
+		// wait some time to ensure the server is working
+		time.Sleep(10 * time.Millisecond)
+
 		var watchResp *http.Response
 		c := make(chan bool)
 		go func() {

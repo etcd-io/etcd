@@ -103,6 +103,9 @@ func applyJoin(c *JoinCommandV2, context raft.Context) (*joinResponseV2, error) 
 				return nil, err
 			}
 		}
+		if c.Name == context.Server().Name() {
+			ps.standbyModeInLog = false
+		}
 		return msg, nil
 	}
 
@@ -137,6 +140,9 @@ func applyJoin(c *JoinCommandV2, context raft.Context) (*joinResponseV2, error) 
 		ps.followersStats.Followers[c.Name].Latency.Minimum = 1 << 63
 	}
 
+	if c.Name == context.Server().Name() {
+		ps.standbyModeInLog = false
+	}
 	return msg, nil
 }
 

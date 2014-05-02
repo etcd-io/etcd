@@ -91,10 +91,11 @@ func applyRemove(c *RemoveCommandV2, context raft.Context) (*removeResponseV2, e
 		// command and need to be removed
 		if context.CommitIndex() > ps.joinIndex && ps.joinIndex != 0 {
 			log.Debugf("server [%s] is removed", context.Server().Name())
-			ps.AsyncRemove()
+			ps.asyncRemove()
 		} else {
 			// else ignore remove
 			log.Debugf("ignore previous remove command.")
+			ps.standbyModeInLog = true
 		}
 	}
 	return msg, nil

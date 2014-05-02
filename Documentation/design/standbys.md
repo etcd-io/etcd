@@ -42,16 +42,12 @@ Else:
 Peer loop:
   Start peer mode
   If running:
-    If it creates a brand new cluster:
-      Commit join command of itself
-    Serve requests
     Wait for stop
   Goto standby loop
 
 Standby loop:
   Start standby mode
   If running:
-    Serve requests
     Wait for stop
   Goto peer loop
 ```
