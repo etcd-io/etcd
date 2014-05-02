@@ -33,10 +33,8 @@ After each interval, Standbys synchronization information with cluster.
 #### Main logic
 
 ```
-Send join requests to possible peers
-If succeed to join/create cluster:
-  Goto peer loop
-Else if log doesn't specify the instance was removed:
+Find cluster as required
+If valid to start peer server:
   Goto peer loop
 Else:
   Goto standby loop
@@ -59,7 +57,7 @@ Standby loop:
 ```
 
 
-#### [Possible peers discover logic][discovery.md]
+#### [Find cluster logic][discovery.md]
 
 
 #### Join request logic:

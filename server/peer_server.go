@@ -15,7 +15,6 @@ import (
 	"github.com/coreos/etcd/third_party/github.com/gorilla/mux"
 
 	"github.com/coreos/etcd/discovery"
-	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/log"
 	"github.com/coreos/etcd/metrics"
 	"github.com/coreos/etcd/pkg/btrfs"
@@ -99,7 +98,7 @@ func NewPeerServer(psConfig PeerServerConfig, registry *Registry, store store.St
 	return s
 }
 
-func (s *PeerServer) SetRaftServer(raftServer raft.Server) {
+func (s *PeerServer) SetRaftServer(raftServer raft.Server, snapshot bool) {
 	s.snapConf = &snapshotConf{
 		checkingInterval: time.Second * 3,
 		// this is not accurate, we will update raft to provide an api
@@ -118,6 +117,31 @@ func (s *PeerServer) SetRaftServer(raftServer raft.Server) {
 	raftServer.AddEventListener(raft.HeartbeatEventType, s.recordMetricEvent)
 
 	s.raftServer = raftServer
+
+	// LoadSnapshot
+	if snapshot {
+		err := s.raftServer.LoadSnapshot()
+
+		if err == nil {
+			log.Debugf("%s finished load snapshot", s.Config.Name)
+		} else {
+			log.Debug(err)
+		}
+	}
+
+	// TODO(yichengq): client for HTTP API usage could use transport other
+	// than the raft one. The transport should have longer timeout because
+	// it doesn't have fault tolerance of raft protocol.
+	s.client = NewClient(s.raftServer.Transporter().(*transporter).transport)
+
+	s.raftServer.Init()
+
+	// Set NOCOW for data directory in btrfs
+	if btrfs.IsBtrfs(s.raftServer.LogPath()) {
+		if err := btrfs.SetNOCOWFile(s.raftServer.LogPath()); err != nil {
+			log.Warnf("Failed setting NOCOW: %v", err)
+		}
+	}
 }
 
 // ClusterConfig retrieves the current cluster configuration.
@@ -147,11 +171,7 @@ func (s *PeerServer) SetClusterConfig(c *ClusterConfig) {
 // 1. previous peers in -data-dir
 // 2. -discovery
 // 3. -peers
-//
-// TODO(yichengq): RaftServer should be started as late as possible.
-// Current implementation to start it is not that good,
-// and should be refactored later.
-func (s *PeerServer) findCluster(discoverURL string, peers []string) {
+func (s *PeerServer) FindCluster(discoverURL string, peers []string) (isNewCluster bool, err error) {
 	name := s.Config.Name
 	isNewNode := s.raftServer.IsLogEmpty()
 
@@ -160,7 +180,8 @@ func (s *PeerServer) findCluster(discoverURL string, peers []string) {
 		// It is not allowed to join the cluster with existing peer address
 		// This prevents old node joining with different name by mistake.
 		if !s.checkPeerAddressNonconflict() {
-			log.Fatalf("%v is not allowed to join the cluster with existing URL %v", s.Config.Name, s.Config.URL)
+			err = fmt.Errorf("%v is not allowed to join the cluster with existing URL %v", s.Config.Name, s.Config.URL)
+			return
 		}
 
 		// Take old nodes into account.
@@ -182,17 +203,16 @@ func (s *PeerServer) findCluster(discoverURL string, peers []string) {
 			// current cluster. It should wait if the cluster is under
 			// leader election, or the node with changed IP cannot join
 			// the cluster then.
-			if err := s.startAsFollower(allPeers, 1); err == nil {
+			if err = s.startAsFollower(allPeers, 1); err == nil {
 				log.Debugf("%s joins to the previous cluster %v", name, allPeers)
 				return
 			}
-
-			log.Warnf("%s cannot connect to previous cluster %v", name, allPeers)
+			log.Warnf("%s cannot connect to previous cluster %v: %v", name, allPeers, err)
+			err = nil
 		}
 
 		// TODO(yichengq): Think about the action that should be done
 		// if it cannot connect any of the previous known node.
-		s.raftServer.Start()
 		log.Debugf("%s is restarting the cluster %v", name, allPeers)
 		return
 	}
@@ -204,70 +224,51 @@ func (s *PeerServer) findCluster(discoverURL string, peers []string) {
 		if discoverErr == nil {
 			// start as a leader in a new cluster
 			if len(discoverPeers) == 0 {
+				isNewCluster = true
 				log.Debugf("%s is starting a new cluster via discover service", name)
-				s.startAsLeader()
-			} else {
-				log.Debugf("%s is joining a cluster %v via discover service", name, discoverPeers)
-				if err := s.startAsFollower(discoverPeers, s.Config.RetryTimes); err != nil {
-					log.Fatal(err)
-				}
+				return
 			}
+
+			log.Debugf("%s is joining a cluster %v via discover service", name, discoverPeers)
+			if err = s.startAsFollower(discoverPeers, s.Config.RetryTimes); err != nil {
+				log.Warnf("%s cannot connect to existing cluster %v", name, discoverPeers)
+				return
+			}
+
 			return
 		}
 		log.Warnf("%s failed to connect discovery service[%v]: %v", name, discoverURL, discoverErr)
 
 		if len(peers) == 0 {
-			log.Fatalf("%s, the new leader, must register itself to discovery service as required", name)
+			err = fmt.Errorf("%s, the new instance, must register itself to discovery service as required", name)
+			return
 		}
 	}
 
 	if len(peers) > 0 {
-		if err := s.startAsFollower(peers, s.Config.RetryTimes); err != nil {
-			log.Fatalf("%s cannot connect to existing cluster %v", name, peers)
+		log.Debugf("%s is joining peers %v from -peers flag", name, peers)
+		if err = s.startAsFollower(peers, s.Config.RetryTimes); err != nil {
+			log.Warnf("%s cannot connect to existing peers %v", name, peers)
+			return
 		}
 		return
 	}
 
+	isNewCluster = true
 	log.Infof("%s is starting a new cluster.", s.Config.Name)
-	s.startAsLeader()
 	return
 }
 
 // Start the raft server
-func (s *PeerServer) Start(snapshot bool, discoverURL string, peers []string) error {
+func (s *PeerServer) Start(snapshot bool) error {
 	s.Lock()
 	defer s.Unlock()
-
-	// LoadSnapshot
-	if snapshot {
-		err := s.raftServer.LoadSnapshot()
-
-		if err == nil {
-			log.Debugf("%s finished load snapshot", s.Config.Name)
-		} else {
-			log.Debug(err)
-		}
-	}
-
-	// TODO(yichengq): client for HTTP API usage could use transport other
-	// than the raft one. The transport should have longer timeout because
-	// it doesn't have fault tolerance of raft protocol.
-	s.client = NewClient(s.raftServer.Transporter().(*transporter).transport)
-
-	s.raftServer.Init()
-
-	// Set NOCOW for data directory in btrfs
-	if btrfs.IsBtrfs(s.raftServer.LogPath()) {
-		if err := btrfs.SetNOCOWFile(s.raftServer.LogPath()); err != nil {
-			log.Warnf("Failed setting NOCOW: %v", err)
-		}
-	}
-
-	s.findCluster(discoverURL, peers)
 
 	s.stopNotify = make(chan bool)
 	s.removeNotify = make(chan bool)
 	s.closeChan = make(chan bool)
+
+	s.raftServer.Start()
 
 	s.daemon(s.monitorSync)
 	s.daemon(s.monitorTimeoutThreshold)
@@ -359,8 +360,7 @@ func (s *PeerServer) SetServer(server *Server) {
 	s.server = server
 }
 
-func (s *PeerServer) startAsLeader() {
-	s.raftServer.Start()
+func (s *PeerServer) DoSelfJoinCommand() {
 	// leader need to join self as a peer
 	for {
 		c := &JoinCommandV2{
@@ -391,7 +391,6 @@ func (s *PeerServer) startAsFollower(cluster []string, retryTimes int) error {
 		time.Sleep(time.Second * time.Duration(s.Config.RetryInterval))
 	}
 
-	s.raftServer.Start()
 	return nil
 }
 
@@ -482,11 +481,12 @@ func (s *PeerServer) removeSelfFromList(peers []string) []string {
 	// Remove its own peer address from the peer list to join
 	u, err := url.Parse(s.Config.URL)
 	if err != nil {
-		log.Fatalf("removeSelfFromList cannot parse peer address %v", s.Config.URL)
+		log.Warnf("failed parsing self peer address %v", s.Config.URL)
+		u = nil
 	}
 	newPeers := make([]string, 0)
 	for _, v := range peers {
-		if v != u.Host {
+		if u == nil || v != u.Host {
 			newPeers = append(newPeers, v)
 		}
 	}
@@ -506,11 +506,7 @@ func (s *PeerServer) joinCluster(cluster []string) bool {
 
 		}
 
-		if _, ok := err.(etcdErr.Error); ok {
-			log.Fatal(err)
-		}
-
-		log.Warnf("Attempt to join via %s failed: %s", peer, err)
+		log.Infof("%s attempted to join via %s failed: %s", s.Config.Name, peer, err)
 	}
 
 	return false

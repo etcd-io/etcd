@@ -43,9 +43,10 @@ type Etcd struct {
 	Registry     *server.Registry   // stores URL information for nodes
 	Server       *server.Server     // http server, runs on 4001 by default
 	PeerServer   *server.PeerServer // peer server, runs on 7001 by default
-	listener     net.Listener       // Listener for Server
-	peerListener net.Listener       // Listener for PeerServer
-	readyC       chan bool          // To signal when server is ready to accept connections
+	corsInfo     *ehttp.CORSInfo
+	listener     net.Listener // Listener for Server
+	peerListener net.Listener // Listener for PeerServer
+	readyC       chan bool    // To signal when server is ready to accept connections
 }
 
 // New returns a new Etcd instance.
@@ -128,7 +129,8 @@ func (e *Etcd) Run() {
 	}
 
 	// Retrieve CORS configuration
-	corsInfo, err := ehttp.NewCORSInfo(e.Config.CorsOrigins)
+	var err error
+	e.corsInfo, err = ehttp.NewCORSInfo(e.Config.CorsOrigins)
 	if err != nil {
 		log.Fatal("CORS:", err)
 	}
@@ -179,7 +181,7 @@ func (e *Etcd) Run() {
 	}
 	raftServer.SetElectionTimeout(electionTimeout)
 	raftServer.SetHeartbeatInterval(heartbeatInterval)
-	e.PeerServer.SetRaftServer(raftServer)
+	e.PeerServer.SetRaftServer(raftServer, e.Config.Snapshot)
 
 	// Create etcd server
 	e.Server = server.New(e.Config.Name, e.Config.Addr, e.PeerServer, e.Registry, e.Store, &mb)
@@ -195,9 +197,26 @@ func (e *Etcd) Run() {
 	peerTLSConfig := server.TLSServerConfig(e.Config.PeerTLSInfo())
 	etcdTLSConfig := server.TLSServerConfig(e.Config.EtcdTLSInfo())
 
+	isNewCluster, err := e.PeerServer.FindCluster(e.Config.Discovery, e.Config.Peers)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	log.Infof("etcd server [name %s, listen on %s, advertised url %s]", e.Server.Name, e.Config.BindAddr, e.Server.URL())
 	e.listener = server.NewListener(e.Config.EtcdTLSInfo().Scheme(), e.Config.BindAddr, etcdTLSConfig)
+	log.Infof("peer server [name %s, listen on %s, advertised url %s]", e.PeerServer.Config.Name, e.Config.Peer.BindAddr, e.PeerServer.Config.URL)
+	e.peerListener = server.NewListener(psConfig.Scheme, e.Config.Peer.BindAddr, peerTLSConfig)
 
+	e.startPeerMode(isNewCluster)
+}
+
+// Note: Starting peer server should be followed close by listening on its port
+// If not, it may leave many requests unaccepted, or cannot receive heartbeat from the cluster.
+// One severe problem caused if failing receiving heartbeats is when the second node joins one-node cluster,
+// the cluster could be out of work as long as the two nodes cannot transfer messages.
+//
+// Note: Peer server should be started quickly after join request success.
+func (e *Etcd) startPeerMode(isNewCluster bool) {
 	// An error string equivalent to net.errClosing for using with
 	// http.Serve() during server shutdown. Need to re-declare
 	// here because it is not exported by "net" package.
@@ -205,11 +224,11 @@ func (e *Etcd) Run() {
 
 	peerServerClosed := make(chan bool)
 	go func() {
-		// Starting peer server should be followed close by listening on its port
-		// If not, it may leave many requests unaccepted, or cannot receive heartbeat from the cluster.
-		// One severe problem caused if failing receiving heartbeats is when the second node joins one-node cluster,
-		// the cluster could be out of work as long as the two nodes cannot transfer messages.
-		e.PeerServer.Start(e.Config.Snapshot, e.Config.Discovery, e.Config.Peers)
+		e.PeerServer.Start(e.Config.Snapshot)
+
+		if isNewCluster {
+			e.PeerServer.DoSelfJoinCommand()
+		}
 
 		go func() {
 			select {
@@ -219,12 +238,12 @@ func (e *Etcd) Run() {
 			}
 		}()
 
-		log.Infof("peer server [name %s, listen on %s, advertised url %s]", e.PeerServer.Config.Name, e.Config.Peer.BindAddr, e.PeerServer.Config.URL)
-		e.peerListener = server.NewListener(psConfig.Scheme, e.Config.Peer.BindAddr, peerTLSConfig)
+		// wait some time to ensure server start
+		time.Sleep(10 * time.Millisecond)
+		// etcd server is ready to accept connections, notify waiters.
+		close(e.readyC)
 
-		close(e.readyC) // etcd server is ready to accept connections, notify waiters.
-
-		sHTTP := &ehttp.CORSHandler{e.PeerServer.HTTPHandler(), corsInfo}
+		sHTTP := &ehttp.CORSHandler{e.PeerServer.HTTPHandler(), e.corsInfo}
 		if err := http.Serve(e.peerListener, sHTTP); err != nil {
 			if !strings.Contains(err.Error(), errClosing) {
 				log.Fatal(err)
@@ -233,7 +252,7 @@ func (e *Etcd) Run() {
 		close(peerServerClosed)
 	}()
 
-	sHTTP := &ehttp.CORSHandler{e.Server.HTTPHandler(), corsInfo}
+	sHTTP := &ehttp.CORSHandler{e.Server.HTTPHandler(), e.corsInfo}
 	if err := http.Serve(e.listener, sHTTP); err != nil {
 		if !strings.Contains(err.Error(), errClosing) {
 			log.Fatal(err)
