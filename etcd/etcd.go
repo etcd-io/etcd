@@ -56,6 +56,7 @@ type Etcd struct {
 	peerListener net.Listener // Listener for PeerServer
 
 	mode        Mode
+	modeMutex   sync.Mutex
 	closeChan   chan bool
 	readyNotify chan bool // To signal when server is ready to accept connections
 	stopNotify  chan bool // To signal when server is stopped totally
@@ -247,17 +248,17 @@ func (e *Etcd) Run() {
 
 	if useStandbyMode {
 		e.StandbyServer.SyncCluster(possiblePeers)
-		e.mode = StandbyMode
+		e.setMode(StandbyMode)
 	} else {
-		e.mode = PeerMode
+		e.setMode(PeerMode)
 	}
 
 	log.Infof("etcd server [name %s, listen on %s, advertised url %s]", e.Server.Name, e.Config.BindAddr, e.Server.URL())
 	e.listener = server.NewListener(e.Config.EtcdTLSInfo().Scheme(), e.Config.BindAddr, etcdTLSConfig)
-	e.server = &http.Server{}
+	e.server = &http.Server{Handler: &ModeHandler{e, &ehttp.CORSHandler{e.Server.HTTPHandler(), e.corsInfo}, &ehttp.CORSHandler{e.StandbyServer.ClientHTTPHandler(), e.corsInfo}}}
 	log.Infof("peer server [name %s, listen on %s, advertised url %s]", e.PeerServer.Config.Name, e.Config.Peer.BindAddr, e.PeerServer.Config.URL)
 	e.peerListener = server.NewListener(e.Config.PeerTLSInfo().Scheme(), e.Config.Peer.BindAddr, peerTLSConfig)
-	e.peerServer = &http.Server{}
+	e.peerServer = &http.Server{Handler: &ModeHandler{e, &ehttp.CORSHandler{e.PeerServer.HTTPHandler(), e.corsInfo}, http.NotFoundHandler()}}
 
 	wg := sync.WaitGroup{}
 	wg.Add(2)
@@ -310,9 +311,6 @@ func (e *Etcd) Run() {
 func (e *Etcd) runPeerMode() {
 	e.PeerServer.Start(e.Config.Snapshot)
 
-	e.server.Handler = &ehttp.CORSHandler{e.Server.HTTPHandler(), e.corsInfo}
-	e.peerServer.Handler = &ehttp.CORSHandler{e.PeerServer.HTTPHandler(), e.corsInfo}
-
 	// etcd server is ready to accept connections, notify waiters.
 	select {
 	case <-e.readyNotify:
@@ -328,14 +326,11 @@ func (e *Etcd) runPeerMode() {
 	}
 
 	e.StandbyServer.SyncCluster(e.Registry.PeerURLs(e.PeerServer.RaftServer().Leader(), e.Config.Name))
-	e.mode = StandbyMode
+	e.setMode(StandbyMode)
 }
 
 func (e *Etcd) runStandbyMode() {
 	e.StandbyServer.Start()
-
-	e.server.Handler = &ehttp.CORSHandler{e.StandbyServer.ClientHTTPHandler(), e.corsInfo}
-	e.peerServer.Handler = http.NotFoundHandler()
 
 	// etcd server is ready to accept connections, notify waiters.
 	select {
@@ -365,7 +360,7 @@ func (e *Etcd) runStandbyMode() {
 	e.PeerServer.SetRaftServer(raftServer, e.Config.Snapshot)
 
 	e.PeerServer.SetJoinIndex(e.StandbyServer.JoinIndex())
-	e.mode = PeerMode
+	e.setMode(PeerMode)
 }
 
 // Stop the etcd instance.
@@ -382,6 +377,18 @@ func (e *Etcd) ReadyNotify() <-chan bool {
 	return e.readyNotify
 }
 
+func (e *Etcd) Mode() Mode {
+	e.modeMutex.Lock()
+	defer e.modeMutex.Unlock()
+	return e.mode
+}
+
+func (e *Etcd) setMode(m Mode) {
+	e.modeMutex.Lock()
+	defer e.modeMutex.Unlock()
+	e.mode = m
+}
+
 func isListenerClosing(err error) bool {
 	// An error string equivalent to net.errClosing for using with
 	// http.Serve() during server shutdown. Need to re-declare
@@ -389,6 +396,25 @@ func isListenerClosing(err error) bool {
 	const errClosing = "use of closed network connection"
 
 	return strings.Contains(err.Error(), errClosing)
+}
+
+type ModeGetter interface {
+	Mode() Mode
+}
+
+type ModeHandler struct {
+	ModeGetter
+	PeerModeHandler    http.Handler
+	StandbyModeHandler http.Handler
+}
+
+func (h *ModeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	switch h.Mode() {
+	case PeerMode:
+		h.PeerModeHandler.ServeHTTP(w, r)
+	case StandbyMode:
+		h.StandbyModeHandler.ServeHTTP(w, r)
+	}
 }
 
 type Mode int
