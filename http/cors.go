@@ -56,7 +56,7 @@ func (h *CORSHandler) addHeader(w http.ResponseWriter, origin string) {
 	w.Header().Add("Access-Control-Allow-Origin", origin)
 }
 
-// ServeHTTP adds the correct CORS headers based on the origin and returns immediatly
+// ServeHTTP adds the correct CORS headers based on the origin and returns immediately
 // with a 200 OK if the method is OPTIONS.
 func (h *CORSHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	// Write CORS header.
