@@ -205,7 +205,8 @@ func (e *Etcd) Run() {
 			select {
 			case <-e.PeerServer.StopNotify():
 			case <-e.PeerServer.RemoveNotify():
-				log.Fatal("peer server is removed")
+				log.Infof("peer server is removed")
+				os.Exit(0)
 			}
 		}()
 
