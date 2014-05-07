@@ -52,4 +52,8 @@ The Discovery API submits the `-peer-addr` of each etcd instance to the configur
 
 The discovery API will automatically clean up the address of a stale peer that is no longer part of the cluster. The TTL for this process is a week, which should be long enough to handle any extremely long outage you may encounter. There is no harm in having stale peers in the list until they are cleaned up, since an etcd instance only needs to connect to one valid peer in the cluster to join.
 
+## Caution of Old Discovery Endpoint
+
+A discovery URL identifies a single etcd cluster. When the machine with a new discovery URL starts the cluster, the discovery URL will be activated and record the machine metadata. If you destroy the whole cluster, by removing all the machines in a cloud formation, and attempt to bring the cluster back up with the same discovery URL, it will fail. This is intentionally designed because they cannot recover the killed cluster, considering none of the original members registered in the URL are left and they have lost their own log data.
+
 [discovery-design]: https://github.com/coreos/etcd/blob/master/Documentation/design/discovery.md
