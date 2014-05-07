@@ -64,6 +64,7 @@ type PeerServer struct {
 
 	stopNotify           chan bool
 	removeNotify         chan bool
+	started              bool
 	closeChan            chan bool
 	routineGroup         sync.WaitGroup
 	timeoutThresholdChan chan interface{}
@@ -240,6 +241,10 @@ func (s *PeerServer) findCluster(discoverURL string, peers []string) {
 func (s *PeerServer) Start(snapshot bool, discoverURL string, peers []string) error {
 	s.Lock()
 	defer s.Unlock()
+	if s.started {
+		return nil
+	}
+	s.started = true
 
 	// LoadSnapshot
 	if snapshot {
@@ -283,6 +288,11 @@ func (s *PeerServer) Start(snapshot bool, discoverURL string, peers []string) er
 func (s *PeerServer) Stop() {
 	s.Lock()
 	defer s.Unlock()
+	if !s.started {
+		return
+	}
+	s.started = false
+
 	close(s.closeChan)
 	// TODO(yichengq): it should also call async stop for raft server,
 	// but this functionality has not been implemented.
@@ -293,6 +303,12 @@ func (s *PeerServer) Stop() {
 
 func (s *PeerServer) asyncRemove() {
 	s.Lock()
+	if !s.started {
+		s.Unlock()
+		return
+	}
+	s.started = false
+
 	close(s.closeChan)
 	// TODO(yichengq): it should also call async stop for raft server,
 	// but this functionality has not been implemented.
