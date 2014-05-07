@@ -33,7 +33,7 @@ func init() {
 	defaultDiscoverer = &Discoverer{}
 }
 
-func (d *Discoverer) Do(discoveryURL string, name string, peer string, closeChan <-chan bool, daemon func(func())) (peers []string, err error) {
+func (d *Discoverer) Do(discoveryURL string, name string, peer string, closeChan <-chan bool, startRoutine func(func())) (peers []string, err error) {
 	d.name = name
 	d.peer = peer
 	d.discoveryURL = discoveryURL
@@ -68,7 +68,7 @@ func (d *Discoverer) Do(discoveryURL string, name string, peer string, closeChan
 
 	// Start the very slow heartbeat to the cluster now in anticipation
 	// that everything is going to go alright now
-	daemon(func() { d.startHeartbeat(closeChan) })
+	startRoutine(func() { d.startHeartbeat(closeChan) })
 
 	// Attempt to take the leadership role, if there is no error we are it!
 	resp, err := d.client.Create(path.Join(d.prefix, stateKey), startedState, 0)
@@ -143,6 +143,6 @@ func (d *Discoverer) heartbeat() error {
 	return err
 }
 
-func Do(discoveryURL string, name string, peer string, closeChan <-chan bool, daemon func(func())) ([]string, error) {
-	return defaultDiscoverer.Do(discoveryURL, name, peer, closeChan, daemon)
+func Do(discoveryURL string, name string, peer string, closeChan <-chan bool, startRoutine func(func())) ([]string, error) {
+	return defaultDiscoverer.Do(discoveryURL, name, peer, closeChan, startRoutine)
 }

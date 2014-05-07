@@ -287,14 +287,14 @@ func (s *PeerServer) Start(snapshot bool, discoverURL string, peers []string) er
 
 	s.closeChan = make(chan bool)
 
-	s.daemon(s.monitorSync)
-	s.daemon(s.monitorTimeoutThreshold)
-	s.daemon(s.monitorActiveSize)
-	s.daemon(s.monitorPeerActivity)
+	s.startRoutine(s.monitorSync)
+	s.startRoutine(s.monitorTimeoutThreshold)
+	s.startRoutine(s.monitorActiveSize)
+	s.startRoutine(s.monitorPeerActivity)
 
 	// open the snapshot
 	if snapshot {
-		s.daemon(s.monitorSnapshot)
+		s.startRoutine(s.monitorSnapshot)
 	}
 
 	return nil
@@ -430,7 +430,7 @@ func (s *PeerServer) Upgradable() error {
 
 // Helper function to do discovery and return results in expected format
 func (s *PeerServer) handleDiscovery(discoverURL string) (peers []string, err error) {
-	peers, err = discovery.Do(discoverURL, s.Config.Name, s.Config.URL, s.closeChan, s.daemon)
+	peers, err = discovery.Do(discoverURL, s.Config.Name, s.Config.URL, s.closeChan, s.startRoutine)
 
 	// Warn about errors coming from discovery, this isn't fatal
 	// since the user might have provided a peer list elsewhere,
@@ -672,7 +672,7 @@ func (s *PeerServer) logSnapshot(err error, currentIndex, count uint64) {
 	}
 }
 
-func (s *PeerServer) daemon(f func()) {
+func (s *PeerServer) startRoutine(f func()) {
 	s.routineGroup.Add(1)
 	go func() {
 		defer s.routineGroup.Done()
