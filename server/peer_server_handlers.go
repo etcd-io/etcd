@@ -223,8 +223,9 @@ func (ps *PeerServer) setClusterConfigHttpHandler(w http.ResponseWriter, req *ht
 // Retrieves a list of peers and standbys.
 func (ps *PeerServer) getMachinesHttpHandler(w http.ResponseWriter, req *http.Request) {
 	machines := make([]*machineMessage, 0)
+	leader := ps.raftServer.Leader()
 	for _, name := range ps.registry.Names() {
-		machines = append(machines, ps.getMachineMessage(name))
+		machines = append(machines, ps.getMachineMessage(name, leader))
 	}
 	json.NewEncoder(w).Encode(&machines)
 }
@@ -232,21 +233,27 @@ func (ps *PeerServer) getMachinesHttpHandler(w http.ResponseWriter, req *http.Re
 // Retrieve single peer or standby.
 func (ps *PeerServer) getMachineHttpHandler(w http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
-	json.NewEncoder(w).Encode(ps.getMachineMessage(vars["name"]))
+	m := ps.getMachineMessage(vars["name"], ps.raftServer.Leader())
+	json.NewEncoder(w).Encode(m)
 }
 
-func (ps *PeerServer) getMachineMessage(name string) *machineMessage {
+func (ps *PeerServer) getMachineMessage(name string, leader string) *machineMessage {
 	if !ps.registry.Exists(name) {
 		return nil
 	}
 
 	clientURL, _ := ps.registry.ClientURL(name)
 	peerURL, _ := ps.registry.PeerURL(name)
-	return &machineMessage{
+	msg := &machineMessage{
 		Name:      name,
+		State:     raft.Follower,
 		ClientURL: clientURL,
 		PeerURL:   peerURL,
 	}
+	if name == leader {
+		msg.State = raft.Leader
+	}
+	return msg
 }
 
 // Response to the name request
@@ -298,6 +305,7 @@ func (ps *PeerServer) UpgradeHttpHandler(w http.ResponseWriter, req *http.Reques
 // machineMessage represents information about a peer or standby in the registry.
 type machineMessage struct {
 	Name      string `json:"name"`
+	State     string `json:"state"`
 	ClientURL string `json:"clientURL"`
 	PeerURL   string `json:"peerURL"`
 }
