@@ -80,9 +80,10 @@ type snapshotConf struct {
 	snapshotThr uint64
 }
 
-func NewPeerServer(psConfig PeerServerConfig, registry *Registry, store store.Store, mb *metrics.Bucket, followersStats *raftFollowersStats, serverStats *raftServerStats) *PeerServer {
+func NewPeerServer(psConfig PeerServerConfig, client *Client, registry *Registry, store store.Store, mb *metrics.Bucket, followersStats *raftFollowersStats, serverStats *raftServerStats) *PeerServer {
 	s := &PeerServer{
 		Config:         psConfig,
+		client:         client,
 		clusterConfig:  NewClusterConfig(),
 		registry:       registry,
 		store:          store,
@@ -246,11 +247,6 @@ func (s *PeerServer) Start(snapshot bool, discoverURL string, peers []string) er
 			log.Debug(err)
 		}
 	}
-
-	// TODO(yichengq): client for HTTP API usage could use transport other
-	// than the raft one. The transport should have longer timeout because
-	// it doesn't have fault tolerance of raft protocol.
-	s.client = NewClient(s.raftServer.Transporter().(*transporter).transport)
 
 	s.raftServer.Init()
 
