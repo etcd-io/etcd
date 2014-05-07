@@ -81,6 +81,7 @@ You have successfully started an etcd on a single machine and written a key to t
 - Learn about the dashboard, lock and leader election [modules][modules].
 - Use TLS to [secure an etcd cluster][security].
 - [Tune etcd][tuning].
+- [Upgrade from old version][upgrade].
 
 [api]: https://github.com/coreos/etcd/blob/master/Documentation/api.md
 [clustering]: https://github.com/coreos/etcd/blob/master/Documentation/clustering.md
@@ -89,6 +90,7 @@ You have successfully started an etcd on a single machine and written a key to t
 [modules]: https://github.com/coreos/etcd/blob/master/Documentation/modules.md
 [security]: https://github.com/coreos/etcd/blob/master/Documentation/security.md
 [tuning]: https://github.com/coreos/etcd/blob/master/Documentation/tuning.md
+[upgrade]: https://github.com/coreos/etcd/blob/master/Documentation/upgrade.md
 
 ## Contact
 
