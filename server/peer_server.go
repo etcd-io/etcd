@@ -237,7 +237,8 @@ func (s *PeerServer) findCluster(discoverURL string, peers []string) {
 	return
 }
 
-// Start the raft server
+// Start starts the raft server.
+// The function assumes that join has been accepted successfully.
 func (s *PeerServer) Start(snapshot bool, discoverURL string, peers []string) error {
 	s.Lock()
 	defer s.Unlock()
@@ -285,6 +286,7 @@ func (s *PeerServer) Start(snapshot bool, discoverURL string, peers []string) er
 	return nil
 }
 
+// Stop stops the server gracefully.
 func (s *PeerServer) Stop() {
 	s.Lock()
 	defer s.Unlock()
@@ -301,6 +303,9 @@ func (s *PeerServer) Stop() {
 	close(s.stopNotify)
 }
 
+// asyncRemove stops the server in peer mode.
+// It is called to stop the server because it has been removed
+// from the cluster.
 func (s *PeerServer) asyncRemove() {
 	s.Lock()
 	if !s.started {
@@ -320,10 +325,13 @@ func (s *PeerServer) asyncRemove() {
 	}()
 }
 
+// StopNotify notifies the server is stopped.
 func (s *PeerServer) StopNotify() <-chan bool {
 	return s.stopNotify
 }
 
+// RemoveNotify notifies the server is removed from peer mode due to
+// removal from the cluster.
 func (s *PeerServer) RemoveNotify() <-chan bool {
 	return s.removeNotify
 }
