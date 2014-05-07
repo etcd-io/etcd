@@ -304,8 +304,11 @@ func (s *PeerServer) Stop() {
 }
 
 // asyncRemove stops the server in peer mode.
-// It is called to stop the server because it has been removed
+// It is called to stop the server internally when it has been removed
 // from the cluster.
+// The function triggers the stop action first to notice server that it
+// should not continue, and wait for its stop in separate goroutine because
+// the caller should also exit.
 func (s *PeerServer) asyncRemove() {
 	s.Lock()
 	if !s.started {
