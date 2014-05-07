@@ -59,6 +59,7 @@ type Etcd struct {
 	modeMutex   sync.Mutex
 	closeChan   chan bool
 	readyNotify chan bool // To signal when server is ready to accept connections
+	onceReady   sync.Once
 	stopNotify  chan bool // To signal when server is stopped totally
 }
 
@@ -312,11 +313,7 @@ func (e *Etcd) runPeerMode() {
 	e.PeerServer.Start(e.Config.Snapshot)
 
 	// etcd server is ready to accept connections, notify waiters.
-	select {
-	case <-e.readyNotify:
-	default:
-		close(e.readyNotify)
-	}
+	e.onceReady.Do(func() { close(e.readyNotify) })
 
 	select {
 	case <-e.closeChan:
@@ -333,11 +330,7 @@ func (e *Etcd) runStandbyMode() {
 	e.StandbyServer.Start()
 
 	// etcd server is ready to accept connections, notify waiters.
-	select {
-	case <-e.readyNotify:
-	default:
-		close(e.readyNotify)
-	}
+	e.onceReady.Do(func() { close(e.readyNotify) })
 
 	select {
 	case <-e.closeChan:
