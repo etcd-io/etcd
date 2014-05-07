@@ -26,6 +26,6 @@ func TestV1DeleteKey(t *testing.T) {
 		assert.Equal(t, resp.StatusCode, http.StatusOK)
 		body := tests.ReadBody(resp)
 		assert.Nil(t, err, "")
-		assert.Equal(t, string(body), `{"action":"delete","key":"/foo/bar","prevValue":"XXX","index":3}`, "")
+		assert.Equal(t, string(body), `{"action":"delete","key":"/foo/bar","prevValue":"XXX","index":4}`, "")
 	})
 }

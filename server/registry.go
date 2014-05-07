@@ -5,7 +5,6 @@ import (
 	"net/url"
 	"path"
 	"path/filepath"
-	"sort"
 	"strings"
 	"sync"
 
@@ -14,17 +13,13 @@ import (
 )
 
 // The location of the peer URL data.
-const RegistryPeerKey = "/_etcd/machines"
-
-// The location of the standby URL data.
-const RegistryStandbyKey = "/_etcd/standbys"
+const RegistryKey = "/_etcd/machines"
 
 // The Registry stores URL information for nodes.
 type Registry struct {
 	sync.Mutex
-	store    store.Store
-	peers    map[string]*node
-	standbys map[string]*node
+	store store.Store
+	peers map[string]*node
 }
 
 // The internal storage format of the registry.
@@ -37,139 +32,48 @@ type node struct {
 // Creates a new Registry.
 func NewRegistry(s store.Store) *Registry {
 	return &Registry{
-		store:    s,
-		peers:    make(map[string]*node),
-		standbys: make(map[string]*node),
+		store: s,
+		peers: make(map[string]*node),
 	}
 }
 
-// Peers returns a list of cached peer names.
-func (r *Registry) Peers() []string {
-	r.Lock()
-	defer r.Unlock()
-
-	names := make([]string, 0, len(r.peers))
-	for name := range r.peers {
-		names = append(names, name)
-	}
-	sort.Sort(sort.StringSlice(names))
-	return names
-}
-
-// Standbys returns a list of cached standby names.
-func (r *Registry) Standbys() []string {
-	r.Lock()
-	defer r.Unlock()
-
-	names := make([]string, 0, len(r.standbys))
-	for name := range r.standbys {
-		names = append(names, name)
-	}
-	sort.Sort(sort.StringSlice(names))
-	return names
-}
-
-// RegisterPeer adds a peer to the registry.
-func (r *Registry) RegisterPeer(name string, peerURL string, machURL string) error {
-	if err := r.register(RegistryPeerKey, name, peerURL, machURL); err != nil {
-		return err
-	}
-
-	r.Lock()
-	defer r.Unlock()
-	r.peers[name] = r.load(RegistryPeerKey, name)
-	return nil
-}
-
-// RegisterStandby adds a standby to the registry.
-func (r *Registry) RegisterStandby(name string, peerURL string, machURL string) error {
-	if err := r.register(RegistryStandbyKey, name, peerURL, machURL); err != nil {
-		return err
-	}
-
-	r.Lock()
-	defer r.Unlock()
-	r.standbys[name] = r.load(RegistryStandbyKey, name)
-	return nil
-}
-
-func (r *Registry) register(key, name string, peerURL string, machURL string) error {
+// Register adds a peer to the registry.
+func (r *Registry) Register(name string, peerURL string, machURL string) error {
 	// Write data to store.
 	v := url.Values{}
 	v.Set("raft", peerURL)
 	v.Set("etcd", machURL)
-	_, err := r.store.Create(path.Join(key, name), false, v.Encode(), false, store.Permanent)
 	log.Debugf("Register: %s", name)
-	return err
-}
+	if _, err := r.store.Create(path.Join(RegistryKey, name), false, v.Encode(), false, store.Permanent); err != nil {
+		return err
+	}
 
-// UpdatePeerURL updates peer URL in registry
-func (r *Registry) UpdatePeerURL(name string, peerURL string) error {
 	r.Lock()
 	defer r.Unlock()
-
-	machURL, _ := r.clientURL(RegistryPeerKey, name)
-	// Write data to store.
-	key := path.Join(RegistryPeerKey, name)
-	v := url.Values{}
-	v.Set("raft", peerURL)
-	v.Set("etcd", machURL)
-	_, err := r.store.Update(key, v.Encode(), store.Permanent)
-
-	// Invalidate outdated cache.
-	r.invalidate(name)
-	log.Debugf("Update PeerURL: %s", name)
-	return err
+	r.peers[name] = r.load(RegistryKey, name)
+	return nil
 }
 
-// UnregisterPeer removes a peer from the registry.
-func (r *Registry) UnregisterPeer(name string) error {
-	return r.unregister(RegistryPeerKey, name)
-}
-
-// UnregisterStandby removes a standby from the registry.
-func (r *Registry) UnregisterStandby(name string) error {
-	return r.unregister(RegistryStandbyKey, name)
-}
-
-func (r *Registry) unregister(key, name string) error {
+// Unregister removes a peer from the registry.
+func (r *Registry) Unregister(name string) error {
 	// Remove the key from the store.
-	_, err := r.store.Delete(path.Join(key, name), false, false)
 	log.Debugf("Unregister: %s", name)
+	_, err := r.store.Delete(path.Join(RegistryKey, name), false, false)
 	return err
 }
 
-// PeerCount returns the number of peers in the cluster.
-func (r *Registry) PeerCount() int {
-	return r.count(RegistryPeerKey)
-}
-
-// StandbyCount returns the number of standbys in the cluster.
-func (r *Registry) StandbyCount() int {
-	return r.count(RegistryStandbyKey)
-}
-
-// Returns the number of nodes in the cluster.
-func (r *Registry) count(key string) int {
-	e, err := r.store.Get(key, false, false)
+// Count returns the number of peers in the cluster.
+func (r *Registry) Count() int {
+	e, err := r.store.Get(RegistryKey, false, false)
 	if err != nil {
 		return 0
 	}
 	return len(e.Node.Nodes)
 }
 
-// PeerExists checks if a peer with the given name exists.
-func (r *Registry) PeerExists(name string) bool {
-	return r.exists(RegistryPeerKey, name)
-}
-
-// StandbyExists checks if a standby with the given name exists.
-func (r *Registry) StandbyExists(name string) bool {
-	return r.exists(RegistryStandbyKey, name)
-}
-
-func (r *Registry) exists(key, name string) bool {
-	e, err := r.store.Get(path.Join(key, name), false, false)
+// Exists checks if a peer with the given name exists.
+func (r *Registry) Exists(name string) bool {
+	e, err := r.store.Get(path.Join(RegistryKey, name), false, false)
 	if err != nil {
 		return false
 	}
@@ -180,18 +84,18 @@ func (r *Registry) exists(key, name string) bool {
 func (r *Registry) ClientURL(name string) (string, bool) {
 	r.Lock()
 	defer r.Unlock()
-	return r.clientURL(RegistryPeerKey, name)
+	return r.clientURL(RegistryKey, name)
 }
 
 func (r *Registry) clientURL(key, name string) (string, bool) {
 	if r.peers[name] == nil {
-		if node := r.load(key, name); node != nil {
-			r.peers[name] = node
+		if peer := r.load(key, name); peer != nil {
+			r.peers[name] = peer
 		}
 	}
 
-	if node := r.peers[name]; node != nil {
-		return node.url, true
+	if peer := r.peers[name]; peer != nil {
+		return peer.url, true
 	}
 
 	return "", false
@@ -213,69 +117,59 @@ func (r *Registry) PeerHost(name string) (string, bool) {
 func (r *Registry) PeerURL(name string) (string, bool) {
 	r.Lock()
 	defer r.Unlock()
-	return r.peerURL(RegistryPeerKey, name)
+	return r.peerURL(RegistryKey, name)
 }
 
 func (r *Registry) peerURL(key, name string) (string, bool) {
 	if r.peers[name] == nil {
-		if node := r.load(key, name); node != nil {
-			r.peers[name] = node
+		if peer := r.load(key, name); peer != nil {
+			r.peers[name] = peer
 		}
 	}
 
-	if node := r.peers[name]; node != nil {
-		return node.peerURL, true
+	if peer := r.peers[name]; peer != nil {
+		return peer.peerURL, true
 	}
 
 	return "", false
 }
 
-// Retrieves the client URL for a given standby by name.
-func (r *Registry) StandbyClientURL(name string) (string, bool) {
+// UpdatePeerURL updates peer URL in registry
+func (r *Registry) UpdatePeerURL(name string, peerURL string) error {
+	machURL, _ := r.clientURL(RegistryKey, name)
+	// Write data to store.
+	v := url.Values{}
+	v.Set("raft", peerURL)
+	v.Set("etcd", machURL)
+	log.Debugf("Update PeerURL: %s", name)
+	if _, err := r.store.Update(path.Join(RegistryKey, name), v.Encode(), store.Permanent); err != nil {
+		return err
+	}
+
 	r.Lock()
 	defer r.Unlock()
-	return r.standbyClientURL(RegistryStandbyKey, name)
+	// Invalidate outdated cache.
+	r.invalidate(name)
+	return nil
 }
 
-func (r *Registry) standbyClientURL(key, name string) (string, bool) {
-	if r.standbys[name] == nil {
-		if node := r.load(key, name); node != nil {
-			r.standbys[name] = node
-		}
-	}
-	if node := r.standbys[name]; node != nil {
-		return node.url, true
-	}
-	return "", false
+func (r *Registry) name(key, name string) (string, bool) {
+	return name, true
 }
 
-// Retrieves the peer URL for a given standby by name.
-func (r *Registry) StandbyPeerURL(name string) (string, bool) {
-	r.Lock()
-	defer r.Unlock()
-	return r.standbyPeerURL(RegistryStandbyKey, name)
-}
-
-func (r *Registry) standbyPeerURL(key, name string) (string, bool) {
-	if r.standbys[name] == nil {
-		if node := r.load(key, name); node != nil {
-			r.standbys[name] = node
-		}
-	}
-	if node := r.standbys[name]; node != nil {
-		return node.peerURL, true
-	}
-	return "", false
+// Names returns a list of cached peer names.
+func (r *Registry) Names() []string {
+	return r.urls(RegistryKey, "", "", r.name)
 }
 
 // Retrieves the Client URLs for all nodes.
 func (r *Registry) ClientURLs(leaderName, selfName string) []string {
-	return r.urls(RegistryPeerKey, leaderName, selfName, r.clientURL)
+	return r.urls(RegistryKey, leaderName, selfName, r.clientURL)
 }
 
 // Retrieves the Peer URLs for all nodes.
 func (r *Registry) PeerURLs(leaderName, selfName string) []string {
-	return r.urls(RegistryPeerKey, leaderName, selfName, r.peerURL)
+	return r.urls(RegistryKey, leaderName, selfName, r.peerURL)
 }
 
 // Retrieves the URLs for all nodes using url function.
@@ -313,7 +207,6 @@ func (r *Registry) Invalidate(name string) {
 
 func (r *Registry) invalidate(name string) {
 	delete(r.peers, name)
-	delete(r.standbys, name)
 }
 
 // Loads the given node by name from the store into the cache.

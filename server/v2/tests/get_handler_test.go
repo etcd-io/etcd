@@ -36,7 +36,7 @@ func TestV2GetKey(t *testing.T) {
 		node := body["node"].(map[string]interface{})
 		assert.Equal(t, node["key"], "/foo/bar", "")
 		assert.Equal(t, node["value"], "XXX", "")
-		assert.Equal(t, node["modifiedIndex"], 2, "")
+		assert.Equal(t, node["modifiedIndex"], 3, "")
 	})
 }
 
@@ -65,7 +65,7 @@ func TestV2GetKeyRecursively(t *testing.T) {
 		node := body["node"].(map[string]interface{})
 		assert.Equal(t, node["key"], "/foo", "")
 		assert.Equal(t, node["dir"], true, "")
-		assert.Equal(t, node["modifiedIndex"], 2, "")
+		assert.Equal(t, node["modifiedIndex"], 3, "")
 		assert.Equal(t, len(node["nodes"].([]interface{})), 2, "")
 
 		node0 := node["nodes"].([]interface{})[0].(map[string]interface{})
@@ -90,6 +90,9 @@ func TestV2GetKeyRecursively(t *testing.T) {
 //
 func TestV2WatchKey(t *testing.T) {
 	tests.RunServer(func(s *server.Server) {
+		// wait some time to ensure the server is working
+		time.Sleep(10 * time.Millisecond)
+
 		var watchResp *http.Response
 		c := make(chan bool)
 		go func() {
@@ -123,7 +126,7 @@ func TestV2WatchKey(t *testing.T) {
 		node := body["node"].(map[string]interface{})
 		assert.Equal(t, node["key"], "/foo/bar", "")
 		assert.Equal(t, node["value"], "XXX", "")
-		assert.Equal(t, node["modifiedIndex"], 2, "")
+		assert.Equal(t, node["modifiedIndex"], 3, "")
 	})
 }
 
@@ -138,7 +141,7 @@ func TestV2WatchKeyWithIndex(t *testing.T) {
 		var body map[string]interface{}
 		c := make(chan bool)
 		go func() {
-			resp, _ := tests.Get(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo/bar?wait=true&waitIndex=3"))
+			resp, _ := tests.Get(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo/bar?wait=true&waitIndex=4"))
 			body = tests.ReadBodyJSON(resp)
 			c <- true
 		}()
@@ -178,7 +181,7 @@ func TestV2WatchKeyWithIndex(t *testing.T) {
 		node := body["node"].(map[string]interface{})
 		assert.Equal(t, node["key"], "/foo/bar", "")
 		assert.Equal(t, node["value"], "YYY", "")
-		assert.Equal(t, node["modifiedIndex"], 3, "")
+		assert.Equal(t, node["modifiedIndex"], 4, "")
 	})
 }
 

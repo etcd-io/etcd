@@ -25,7 +25,7 @@ func TestV1SetKey(t *testing.T) {
 		body := tests.ReadBody(resp)
 		assert.Nil(t, err, "")
 
-		assert.Equal(t, string(body), `{"action":"set","key":"/foo/bar","value":"XXX","newKey":true,"index":2}`, "")
+		assert.Equal(t, string(body), `{"action":"set","key":"/foo/bar","value":"XXX","newKey":true,"index":3}`, "")
 	})
 }
 
@@ -127,7 +127,7 @@ func TestV1SetKeyCASOnValueSuccess(t *testing.T) {
 		body := tests.ReadBodyJSON(resp)
 		assert.Equal(t, body["action"], "testAndSet", "")
 		assert.Equal(t, body["value"], "YYY", "")
-		assert.Equal(t, body["index"], 3, "")
+		assert.Equal(t, body["index"], 4, "")
 	})
 }
 
@@ -152,6 +152,6 @@ func TestV1SetKeyCASOnValueFail(t *testing.T) {
 		assert.Equal(t, body["errorCode"], 101, "")
 		assert.Equal(t, body["message"], "Compare failed", "")
 		assert.Equal(t, body["cause"], "[AAA != XXX]", "")
-		assert.Equal(t, body["index"], 2, "")
+		assert.Equal(t, body["index"], 3, "")
 	})
 }
