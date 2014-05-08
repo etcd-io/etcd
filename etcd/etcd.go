@@ -28,6 +28,7 @@ import (
 	goetcd "github.com/coreos/etcd/third_party/github.com/coreos/go-etcd/etcd"
 	golog "github.com/coreos/etcd/third_party/github.com/coreos/go-log/log"
 	"github.com/coreos/etcd/third_party/github.com/goraft/raft"
+	httpclient "github.com/coreos/etcd/third_party/github.com/mreiferson/go-httpclient"
 
 	"github.com/coreos/etcd/config"
 	ehttp "github.com/coreos/etcd/http"
@@ -36,6 +37,14 @@ import (
 	"github.com/coreos/etcd/server"
 	"github.com/coreos/etcd/store"
 )
+
+// TODO(yichengq): constant extraTimeout is a hack.
+// Current problem is that there is big lag between join command
+// execution and join success.
+// Fix it later. It should be removed when proper method is found and
+// enough tests are provided. It is expected to be calculated from
+// heartbeatInterval and electionTimeout only.
+const extraTimeout = time.Duration(1000) * time.Millisecond
 
 type Etcd struct {
 	Config       *config.Config     // etcd config
@@ -144,14 +153,27 @@ func (e *Etcd) Run() {
 	// Calculate all of our timeouts
 	heartbeatInterval := time.Duration(e.Config.Peer.HeartbeatInterval) * time.Millisecond
 	electionTimeout := time.Duration(e.Config.Peer.ElectionTimeout) * time.Millisecond
-	// TODO(yichengq): constant 1000 is a hack here. The reason to use this
-	// is to ensure etcd instances could start successfully at the same time.
-	// Current problem for the failure comes from the lag between join command
-	// execution and join success.
-	// Fix it later. It should be removed when proper method is found and
-	// enough tests are provided.
-	dialTimeout := (3 * heartbeatInterval) + electionTimeout + 1000
-	responseHeaderTimeout := (3 * heartbeatInterval) + electionTimeout + 1000
+	dialTimeout := (3 * heartbeatInterval) + electionTimeout
+	responseHeaderTimeout := (3 * heartbeatInterval) + electionTimeout
+
+	clientTransporter := &httpclient.Transport{
+		ResponseHeaderTimeout: responseHeaderTimeout + extraTimeout,
+		// This is a workaround for Transport.CancelRequest doesn't work on
+		// HTTPS connections blocked. The patch for it is in progress,
+		// and would be available in Go1.3
+		// More: https://codereview.appspot.com/69280043/
+		ConnectTimeout: dialTimeout + extraTimeout,
+		RequestTimeout: responseHeaderTimeout + dialTimeout + 2*extraTimeout,
+	}
+	if e.Config.PeerTLSInfo().Scheme() == "https" {
+		clientTLSConfig, err := e.Config.PeerTLSInfo().ClientConfig()
+		if err != nil {
+			log.Fatal("client TLS error: ", err)
+		}
+		clientTransporter.TLSClientConfig = clientTLSConfig
+		clientTransporter.DisableCompression = true
+	}
+	client := server.NewClient(clientTransporter)
 
 	// Create peer server
 	psConfig := server.PeerServerConfig{
@@ -162,7 +184,7 @@ func (e *Etcd) Run() {
 		RetryTimes:    e.Config.MaxRetryAttempts,
 		RetryInterval: e.Config.RetryInterval,
 	}
-	e.PeerServer = server.NewPeerServer(psConfig, e.Registry, e.Store, &mb, followersStats, serverStats)
+	e.PeerServer = server.NewPeerServer(psConfig, client, e.Registry, e.Store, &mb, followersStats, serverStats)
 
 	// Create raft transporter and server
 	raftTransporter := server.NewTransporter(followersStats, serverStats, e.Registry, heartbeatInterval, dialTimeout, responseHeaderTimeout)

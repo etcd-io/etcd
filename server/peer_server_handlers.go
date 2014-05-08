@@ -225,7 +225,9 @@ func (ps *PeerServer) getMachinesHttpHandler(w http.ResponseWriter, req *http.Re
 	machines := make([]*machineMessage, 0)
 	leader := ps.raftServer.Leader()
 	for _, name := range ps.registry.Names() {
-		machines = append(machines, ps.getMachineMessage(name, leader))
+		if msg := ps.getMachineMessage(name, leader); msg != nil {
+			machines = append(machines, msg)
+		}
 	}
 	json.NewEncoder(w).Encode(&machines)
 }
