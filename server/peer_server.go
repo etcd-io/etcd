@@ -696,8 +696,8 @@ func (s *PeerServer) monitorActiveSize() {
 
 		// Retrieve target active size and actual active size.
 		activeSize := s.ClusterConfig().ActiveSize
-		peerCount := s.registry.Count()
 		peers := s.registry.Names()
+		peerCount := s.registry.Count()
 		if index := sort.SearchStrings(peers, s.Config.Name); index < len(peers) && peers[index] == s.Config.Name {
 			peers = append(peers[:index], peers[index+1:]...)
 		}
