@@ -90,6 +90,13 @@ func TestV2GetKeyRecursively(t *testing.T) {
 //
 func TestV2WatchKey(t *testing.T) {
 	tests.RunServer(func(s *server.Server) {
+		// There exists a little gap between etcd ready to serve and
+		// it actually serves the first request, which means the response
+		// delay could be a little bigger.
+		// This test is time sensitive, so it does one request to ensure
+		// that the server is working.
+		tests.Get(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo/bar"))
+
 		var watchResp *http.Response
 		c := make(chan bool)
 		go func() {
