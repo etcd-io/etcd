@@ -211,6 +211,15 @@ func (e *Etcd) Run() {
 		// the cluster could be out of work as long as the two nodes cannot transfer messages.
 		e.PeerServer.Start(e.Config.Snapshot, e.Config.Discovery, e.Config.Peers)
 
+		go func() {
+			select {
+			case <-e.PeerServer.StopNotify():
+			case <-e.PeerServer.RemoveNotify():
+				log.Infof("peer server is removed")
+				os.Exit(0)
+			}
+		}()
+
 		log.Infof("peer server [name %s, listen on %s, advertised url %s]", e.PeerServer.Config.Name, e.Config.Peer.BindAddr, e.PeerServer.Config.URL)
 		e.peerListener = server.NewListener(psConfig.Scheme, e.Config.Peer.BindAddr, peerTLSConfig)
 

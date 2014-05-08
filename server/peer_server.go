@@ -62,6 +62,9 @@ type PeerServer struct {
 	store          store.Store
 	snapConf       *snapshotConf
 
+	stopNotify           chan bool
+	removeNotify         chan bool
+	started              bool
 	closeChan            chan bool
 	routineGroup         sync.WaitGroup
 	timeoutThresholdChan chan interface{}
@@ -234,10 +237,15 @@ func (s *PeerServer) findCluster(discoverURL string, peers []string) {
 	return
 }
 
-// Start the raft server
+// Start starts the raft server.
+// The function assumes that join has been accepted successfully.
 func (s *PeerServer) Start(snapshot bool, discoverURL string, peers []string) error {
 	s.Lock()
 	defer s.Unlock()
+	if s.started {
+		return nil
+	}
+	s.started = true
 
 	// LoadSnapshot
 	if snapshot {
@@ -261,6 +269,8 @@ func (s *PeerServer) Start(snapshot bool, discoverURL string, peers []string) er
 
 	s.findCluster(discoverURL, peers)
 
+	s.stopNotify = make(chan bool)
+	s.removeNotify = make(chan bool)
 	s.closeChan = make(chan bool)
 
 	s.startRoutine(s.monitorSync)
@@ -276,16 +286,57 @@ func (s *PeerServer) Start(snapshot bool, discoverURL string, peers []string) er
 	return nil
 }
 
+// Stop stops the server gracefully.
 func (s *PeerServer) Stop() {
 	s.Lock()
 	defer s.Unlock()
-
-	if s.closeChan != nil {
-		close(s.closeChan)
+	if !s.started {
+		return
 	}
+	s.started = false
+
+	close(s.closeChan)
+	// TODO(yichengq): it should also call async stop for raft server,
+	// but this functionality has not been implemented.
 	s.raftServer.Stop()
 	s.routineGroup.Wait()
-	s.closeChan = nil
+	close(s.stopNotify)
+}
+
+// asyncRemove stops the server in peer mode.
+// It is called to stop the server internally when it has been removed
+// from the cluster.
+// The function triggers the stop action first to notice server that it
+// should not continue, and wait for its stop in separate goroutine because
+// the caller should also exit.
+func (s *PeerServer) asyncRemove() {
+	s.Lock()
+	if !s.started {
+		s.Unlock()
+		return
+	}
+	s.started = false
+
+	close(s.closeChan)
+	// TODO(yichengq): it should also call async stop for raft server,
+	// but this functionality has not been implemented.
+	go func() {
+		s.raftServer.Stop()
+		s.routineGroup.Wait()
+		close(s.removeNotify)
+		s.Unlock()
+	}()
+}
+
+// StopNotify notifies the server is stopped.
+func (s *PeerServer) StopNotify() <-chan bool {
+	return s.stopNotify
+}
+
+// RemoveNotify notifies the server is removed from peer mode due to
+// removal from the cluster.
+func (s *PeerServer) RemoveNotify() <-chan bool {
+	return s.removeNotify
 }
 
 func (s *PeerServer) HTTPHandler() http.Handler {
