@@ -38,7 +38,13 @@ import (
 	"github.com/coreos/etcd/store"
 )
 
-const extraTimeout = 1000
+// TODO(yichengq): constant extraTimeout is a hack.
+// Current problem is that there is big lag between join command
+// execution and join success.
+// Fix it later. It should be removed when proper method is found and
+// enough tests are provided. It is expected to be calculated from
+// heartbeatInterval and electionTimeout only.
+const extraTimeout = time.Duration(1000) * time.Millisecond
 
 type Etcd struct {
 	Config       *config.Config     // etcd config
@@ -140,12 +146,6 @@ func (e *Etcd) Run() {
 	dialTimeout := (3 * heartbeatInterval) + electionTimeout
 	responseHeaderTimeout := (3 * heartbeatInterval) + electionTimeout
 
-	// TODO(yichengq): constant extraTimeout is a hack here.
-	// Current problem is that there is big lag between join command
-	// execution and join success.
-	// Fix it later. It should be removed when proper method is found and
-	// enough tests are provided. It is expected to be calculated from
-	// heartbeatInterval and electionTimeout only.
 	clientTransporter := &httpclient.Transport{
 		ResponseHeaderTimeout: responseHeaderTimeout + extraTimeout,
 		// This is a workaround for Transport.CancelRequest doesn't work on

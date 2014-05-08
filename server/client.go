@@ -16,6 +16,8 @@ import (
 
 // Client sends various requests using HTTP API.
 // It is different from raft communication, and doesn't record anything in the log.
+// The argument url is required to contain scheme and host only, and
+// there is no trailing slash in it.
 // Public functions return "etcd/error".Error intentionally to figure out
 // etcd error code easily.
 // TODO(yichengq): It is similar to go-etcd. But it could have many efforts
@@ -55,7 +57,10 @@ func (c *Client) GetVersion(url string) (int, *etcdErr.Error) {
 	}
 
 	// Parse version number.
-	version, _ := strconv.Atoi(string(body))
+	version, err := strconv.Atoi(string(body))
+	if err != nil {
+		return 0, clientError(err)
+	}
 	return version, nil
 }
 

@@ -485,31 +485,21 @@ func (s *PeerServer) joinByPeer(server raft.Server, peer string, scheme string) 
 	// Our version must match the leaders version
 	version, err := s.client.GetVersion(u)
 	if err != nil {
-		log.Debugf("fail checking join version")
-		return err
+		return fmt.Errorf("fail checking join version: %v", err)
 	}
 	if version < store.MinVersion() || version > store.MaxVersion() {
-		log.Infof("fail passing version compatibility(%d-%d) using %d", store.MinVersion(), store.MaxVersion(), version)
-		return fmt.Errorf("incompatible version")
+		return fmt.Errorf("fail passing version compatibility(%d-%d) using %d", store.MinVersion(), store.MaxVersion(), version)
 	}
 
 	// Fetch current peer list
 	machines, err := s.client.GetMachines(u)
 	if err != nil {
-		log.Debugf("fail getting machine messages")
-		return err
+		return fmt.Errorf("fail getting machine messages: %v", err)
 	}
 	exist := false
 	for _, machine := range machines {
 		if machine.Name == server.Name() {
 			exist = true
-			// TODO(yichengq): cannot set join index for it.
-			// Need discussion about the best way to do it.
-			//
-			// if machine.PeerURL == s.Config.URL {
-			// 	log.Infof("has joined the cluster(%v) before", machines)
-			// 	return nil
-			// }
 			break
 		}
 	}
@@ -517,12 +507,10 @@ func (s *PeerServer) joinByPeer(server raft.Server, peer string, scheme string) 
 	// Fetch cluster config to see whether exists some place.
 	clusterConfig, err := s.client.GetClusterConfig(u)
 	if err != nil {
-		log.Debugf("fail getting cluster config")
-		return err
+		return fmt.Errorf("fail getting cluster config: %v", err)
 	}
 	if !exist && clusterConfig.ActiveSize <= len(machines) {
-		log.Infof("stop joining because the cluster is full with %d nodes", len(machines))
-		return fmt.Errorf("out of quota")
+		return fmt.Errorf("stop joining because the cluster is full with %d nodes", len(machines))
 	}
 
 	joinIndex, err := s.client.AddMachine(u,
@@ -534,8 +522,7 @@ func (s *PeerServer) joinByPeer(server raft.Server, peer string, scheme string) 
 			EtcdURL:    s.server.URL(),
 		})
 	if err != nil {
-		log.Debugf("fail on join request")
-		return err
+		return fmt.Errorf("fail on join request: %v", err)
 	}
 
 	s.joinIndex = joinIndex
