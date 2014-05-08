@@ -321,10 +321,10 @@ func (s *PeerServer) asyncRemove() {
 	// TODO(yichengq): it should also call async stop for raft server,
 	// but this functionality has not been implemented.
 	go func() {
-		defer s.Unlock()
 		s.raftServer.Stop()
 		s.routineGroup.Wait()
 		close(s.removeNotify)
+		s.Unlock()
 	}()
 }
 
