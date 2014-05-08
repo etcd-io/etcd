@@ -34,10 +34,6 @@ func TestRunStop(t *testing.T) {
 	config.Addr = "localhost:0"
 	config.Peer.Addr = "localhost:0"
 
-	if err := config.Sanitize(); err != nil {
-		t.Fatal(err)
-	}
-
 	etcd := New(config)
 	go etcd.Run()
 	<-etcd.ReadyNotify()
