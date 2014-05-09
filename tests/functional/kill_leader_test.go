@@ -114,10 +114,10 @@ func TestKillLeaderWithStandbys(t *testing.T) {
 	leader := "http://127.0.0.1:7001"
 
 	for i := 0; i < clusterSize; i++ {
-		fmt.Println("leader is ", leader)
+		t.Log("leader is ", leader)
 		port, _ := strconv.Atoi(strings.Split(leader, ":")[2])
 		num := port - 7001
-		fmt.Println("kill server ", num)
+		t.Log("kill server ", num)
 		etcds[num].Kill()
 		etcds[num].Release()
 

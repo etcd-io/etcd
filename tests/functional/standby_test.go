@@ -36,7 +36,7 @@ func TestStandby(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, len(result.Node.Nodes), 9)
 
-	fmt.Println("Reconfigure with a smaller active size")
+	t.Log("Reconfigure with a smaller active size")
 	resp, _ = tests.Put("http://localhost:7001/v2/admin/config", "application/json", bytes.NewBufferString(`{"activeSize":7, "syncInterval":1}`))
 	if !assert.Equal(t, resp.StatusCode, 200) {
 		t.FailNow()
@@ -50,7 +50,7 @@ func TestStandby(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, len(result.Node.Nodes), 7)
 
-	fmt.Println("Test the functionality of all servers")
+	t.Log("Test the functionality of all servers")
 	// Set key.
 	time.Sleep(time.Second)
 	if _, err := c.Set("foo", "bar", 0); err != nil {
@@ -69,7 +69,7 @@ func TestStandby(t *testing.T) {
 		}
 	}
 
-	fmt.Println("Reconfigure with larger active size and wait for join")
+	t.Log("Reconfigure with larger active size and wait for join")
 	resp, _ = tests.Put("http://localhost:7001/v2/admin/config", "application/json", bytes.NewBufferString(`{"activeSize":8, "syncInterval":1}`))
 	if !assert.Equal(t, resp.StatusCode, 200) {
 		t.FailNow()
@@ -106,7 +106,7 @@ func TestStandbyAutoJoin(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, len(result.Node.Nodes), 5)
 
-	// Reconfigure with a short promote delay (2 second).
+	// Reconfigure with a short remove delay (2 second).
 	resp, _ := tests.Put("http://localhost:7001/v2/admin/config", "application/json", bytes.NewBufferString(`{"activeSize":4, "removeDelay":2, "syncInterval":1}`))
 	if !assert.Equal(t, resp.StatusCode, 200) {
 		t.FailNow()
@@ -173,7 +173,7 @@ func TestStandbyGradualChange(t *testing.T) {
 				num++
 			}
 
-			fmt.Println("Reconfigure with active size", num)
+			t.Log("Reconfigure with active size", num)
 			resp, _ := tests.Put("http://localhost:7001/v2/admin/config", "application/json", bytes.NewBufferString(fmt.Sprintf(`{"activeSize":%d, "syncInterval":1}`, num)))
 			if !assert.Equal(t, resp.StatusCode, 200) {
 				t.FailNow()
@@ -191,7 +191,7 @@ func TestStandbyGradualChange(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, len(result.Node.Nodes), num)
 
-			fmt.Println("Test the functionality of all servers")
+			t.Log("Test the functionality of all servers")
 			// Set key.
 			if _, err := c.Set("foo", "bar", 0); err != nil {
 				panic(err)
@@ -241,7 +241,7 @@ func TestStandbyDramaticChange(t *testing.T) {
 				num += 6
 			}
 
-			fmt.Println("Reconfigure with active size", num)
+			t.Log("Reconfigure with active size", num)
 			resp, _ := tests.Put("http://localhost:7001/v2/admin/config", "application/json", bytes.NewBufferString(fmt.Sprintf(`{"activeSize":%d, "syncInterval":1}`, num)))
 			if !assert.Equal(t, resp.StatusCode, 200) {
 				t.FailNow()
@@ -259,7 +259,7 @@ func TestStandbyDramaticChange(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, len(result.Node.Nodes), num)
 
-			fmt.Println("Test the functionality of all servers")
+			t.Log("Test the functionality of all servers")
 			// Set key.
 			if _, err := c.Set("foo", "bar", 0); err != nil {
 				panic(err)

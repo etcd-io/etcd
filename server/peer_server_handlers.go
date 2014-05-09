@@ -221,7 +221,6 @@ func (ps *PeerServer) setClusterConfigHttpHandler(w http.ResponseWriter, req *ht
 }
 
 // Retrieves a list of peers and standbys.
-// If leader exists, it is at the first place.
 func (ps *PeerServer) getMachinesHttpHandler(w http.ResponseWriter, req *http.Request) {
 	machines := make([]*machineMessage, 0)
 	leader := ps.raftServer.Leader()

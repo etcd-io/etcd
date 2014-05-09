@@ -11,10 +11,10 @@ const (
 	// MinActiveSize is the minimum active size allowed.
 	MinActiveSize = 3
 
-	// DefaultRemoveDelay is the default elapsed time before promotion.
+	// DefaultRemoveDelay is the default elapsed time before removal.
 	DefaultRemoveDelay = int((30 * time.Minute) / time.Second)
 
-	// MinRemoveDelay is the minimum promote delay allowed.
+	// MinRemoveDelay is the minimum remove delay allowed.
 	MinRemoveDelay = int((2 * time.Second) / time.Second)
 
 	// DefaultSyncInterval is the default interval for cluster sync.

@@ -11,13 +11,13 @@ Standbys also act as standby nodes in the event that a peer node in the cluster 
 
 ## Configuration Parameters
 
-There are three configuration parameters used by standbys: active size, promotion delay and standby sync interval.
+There are three configuration parameters used by standbys: active size, remove delay and standby sync interval.
 
 The active size specifies a target size for the number of peers in the cluster.
 If there are not enough peers to meet the active size then, standbys will send join requests until the peer count is equal to the active size.
-If there are more peers than the target active size then peers are demoted to standbys by the leader.
+If there are more peers than the target active size then peers are removed by the leader and will become standbys.
 
-The promotion delay specifies how long the cluster should wait before removing a dead peer.
+The remove delay specifies how long the cluster should wait before removing a dead peer.
 By default this is 30 minutes.
 If a peer is inactive for 30 minutes then the peer is removed.
 
@@ -169,7 +169,7 @@ Loop:
   Sleep for some time
 
   For each peer:
-    If peer last activity time > promote delay:
+    If peer last activity time > remove delay:
       Remove the peer
       Goto Loop
 ```
@@ -200,7 +200,7 @@ Machines in standby mode always sync the cluster. If sync fails, it uses the fir
 
 Leader of the cluster lose the connection with the peer.
 
-When the time exceeds promotion delay, it removes the peer from the cluster.
+When the time exceeds remove delay, it removes the peer from the cluster.
 
 Machine in standby mode finds one available place of the cluster. It sends join request and joins the cluster.
 
@@ -224,7 +224,7 @@ No change for the cluster.
 
 ## Future Attack Plans
 
-1. Based on heartbeat miss and promotion delay, standby could adjust its next check time.
+1. Based on heartbeat miss and remove delay, standby could adjust its next check time.
 
 2. Preregister the promotion target when heartbeat miss happens.
 

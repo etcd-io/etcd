@@ -372,8 +372,8 @@ func (s *PeerServer) ClusterConfig() *ClusterConfig {
 }
 
 // SetClusterConfig updates the current cluster configuration.
-// Adjusting the active size will cause the PeerServer to demote peers or
-// promote standbys to match the new size.
+// Adjusting the active size will cause cluster to add or remove machines
+// to match the new size.
 func (s *PeerServer) SetClusterConfig(c *ClusterConfig) {
 	// Set minimums.
 	if c.ActiveSize < MinActiveSize {
@@ -820,7 +820,7 @@ func (s *PeerServer) monitorPeerActivity() {
 		removeDelay := time.Duration(s.ClusterConfig().RemoveDelay) * time.Second
 		peers := s.raftServer.Peers()
 		for _, peer := range peers {
-			// If the last response from the peer is longer than the promote delay
+			// If the last response from the peer is longer than the remove delay
 			// then automatically demote the peer.
 			if !peer.LastActivity().IsZero() && now.Sub(peer.LastActivity()) > removeDelay {
 				log.Infof("%s: removing node: %v; last activity %v ago", s.Config.Name, peer.Name, now.Sub(peer.LastActivity()))
