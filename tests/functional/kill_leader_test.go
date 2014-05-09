@@ -96,7 +96,7 @@ func TestKillLeaderWithStandbys(t *testing.T) {
 	c.SyncCluster()
 
 	// Reconfigure with a small active size.
-	resp, _ := tests.Put("http://localhost:7001/v2/admin/config", "application/json", bytes.NewBufferString(`{"activeSize":3, "removeDelay":2, "syncClusterInterval":1}`))
+	resp, _ := tests.Put("http://localhost:7001/v2/admin/config", "application/json", bytes.NewBufferString(`{"activeSize":3, "removeDelay":2, "syncInterval":1}`))
 	if !assert.Equal(t, resp.StatusCode, 200) {
 		t.FailNow()
 	}

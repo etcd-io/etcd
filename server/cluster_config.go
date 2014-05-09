@@ -17,11 +17,11 @@ const (
 	// MinRemoveDelay is the minimum promote delay allowed.
 	MinRemoveDelay = int((2 * time.Second) / time.Second)
 
-	// DefaultSyncClusterInterval is the default interval for cluster sync.
-	DefaultSyncClusterInterval = int((30 * time.Minute) / time.Second)
+	// DefaultSyncInterval is the default interval for cluster sync.
+	DefaultSyncInterval = int((30 * time.Minute) / time.Second)
 
-	// MinSyncClusterInterval is the minimum sync interval allowed.
-	MinSyncClusterInterval = int((1 * time.Second) / time.Second)
+	// MinSyncInterval is the minimum sync interval allowed.
+	MinSyncInterval = int((1 * time.Second) / time.Second)
 )
 
 // ClusterConfig represents cluster-wide configuration settings.
@@ -35,16 +35,16 @@ type ClusterConfig struct {
 	// unreachable that it will be swapped out as a standby node.
 	RemoveDelay int `json:"removeDelay"`
 
-	// SyncClusterInterval is the amount of time, in seconds, between
+	// SyncInterval is the amount of time, in seconds, between
 	// cluster sync when it runs in standby mode.
-	SyncClusterInterval int `json:"syncClusterInterval"`
+	SyncInterval int `json:"syncInterval"`
 }
 
 // NewClusterConfig returns a cluster configuration with default settings.
 func NewClusterConfig() *ClusterConfig {
 	return &ClusterConfig{
-		ActiveSize:          DefaultActiveSize,
-		RemoveDelay:         DefaultRemoveDelay,
-		SyncClusterInterval: DefaultSyncClusterInterval,
+		ActiveSize:   DefaultActiveSize,
+		RemoveDelay:  DefaultRemoveDelay,
+		SyncInterval: DefaultSyncInterval,
 	}
 }

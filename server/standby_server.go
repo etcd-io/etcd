@@ -15,7 +15,7 @@ import (
 	"github.com/coreos/etcd/store"
 )
 
-const UninitedSyncClusterInterval = time.Duration(5) * time.Second
+const UninitedSyncInterval = time.Duration(5) * time.Second
 
 type StandbyServerConfig struct {
 	Name       string
@@ -28,9 +28,9 @@ type StandbyServer struct {
 	Config StandbyServerConfig
 	client *Client
 
-	cluster             []*machineMessage
-	syncClusterInterval time.Duration
-	joinIndex           uint64
+	cluster      []*machineMessage
+	syncInterval time.Duration
+	joinIndex    uint64
 
 	removeNotify chan bool
 	started      bool
@@ -42,9 +42,9 @@ type StandbyServer struct {
 
 func NewStandbyServer(config StandbyServerConfig, client *Client) *StandbyServer {
 	return &StandbyServer{
-		Config:              config,
-		client:              client,
-		syncClusterInterval: UninitedSyncClusterInterval,
+		Config:       config,
+		client:       client,
+		syncInterval: UninitedSyncInterval,
 	}
 }
 
@@ -119,8 +119,8 @@ func (s *StandbyServer) SyncCluster(peers []string) error {
 	return nil
 }
 
-func (s *StandbyServer) SetSyncClusterInterval(second int) {
-	s.syncClusterInterval = time.Duration(second) * time.Second
+func (s *StandbyServer) SetSyncInterval(second int) {
+	s.syncInterval = time.Duration(second) * time.Second
 }
 
 func (s *StandbyServer) ClusterLeader() *machineMessage {
@@ -148,7 +148,7 @@ func (s *StandbyServer) redirectRequests(w http.ResponseWriter, r *http.Request)
 
 func (s *StandbyServer) monitorCluster() {
 	for {
-		timer := time.NewTimer(s.syncClusterInterval)
+		timer := time.NewTimer(s.syncInterval)
 		defer timer.Stop()
 		select {
 		case <-s.closeChan:
@@ -199,7 +199,7 @@ func (s *StandbyServer) syncCluster(peerURLs []string) error {
 		}
 
 		s.setCluster(machines)
-		s.SetSyncClusterInterval(config.SyncClusterInterval)
+		s.SetSyncInterval(config.SyncInterval)
 		return nil
 	}
 	return fmt.Errorf("unreachable cluster")

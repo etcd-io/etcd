@@ -29,7 +29,7 @@ func TestRemoveNode(t *testing.T) {
 
 	c.SyncCluster()
 
-	resp, _ := tests.Put("http://localhost:7001/v2/admin/config", "application/json", bytes.NewBufferString(`{"syncClusterInterval":1}`))
+	resp, _ := tests.Put("http://localhost:7001/v2/admin/config", "application/json", bytes.NewBufferString(`{"syncInterval":1}`))
 	if !assert.Equal(t, resp.StatusCode, 200) {
 		t.FailNow()
 	}

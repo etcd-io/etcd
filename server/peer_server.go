@@ -382,8 +382,8 @@ func (s *PeerServer) SetClusterConfig(c *ClusterConfig) {
 	if c.RemoveDelay < MinRemoveDelay {
 		c.RemoveDelay = MinRemoveDelay
 	}
-	if c.SyncClusterInterval < MinSyncClusterInterval {
-		c.SyncClusterInterval = MinSyncClusterInterval
+	if c.SyncInterval < MinSyncInterval {
+		c.SyncInterval = MinSyncInterval
 	}
 
 	log.Debugf("set cluster config as %v", c)

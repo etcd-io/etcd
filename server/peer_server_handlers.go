@@ -208,8 +208,8 @@ func (ps *PeerServer) setClusterConfigHttpHandler(w http.ResponseWriter, req *ht
 	if removeDelay, ok := m["removeDelay"].(float64); ok {
 		config.RemoveDelay = int(removeDelay)
 	}
-	if syncClusterInterval, ok := m["syncClusterInterval"].(float64); ok {
-		config.SyncClusterInterval = int(syncClusterInterval)
+	if syncInterval, ok := m["syncInterval"].(float64); ok {
+		config.SyncInterval = int(syncInterval)
 	}
 
 	// Issue command to update.

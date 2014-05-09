@@ -22,7 +22,7 @@ func TestStandby(t *testing.T) {
 	}
 	defer DestroyCluster(etcds)
 
-	resp, _ := tests.Put("http://localhost:7001/v2/admin/config", "application/json", bytes.NewBufferString(`{"syncClusterInterval":1}`))
+	resp, _ := tests.Put("http://localhost:7001/v2/admin/config", "application/json", bytes.NewBufferString(`{"syncInterval":1}`))
 	if !assert.Equal(t, resp.StatusCode, 200) {
 		t.FailNow()
 	}
@@ -37,7 +37,7 @@ func TestStandby(t *testing.T) {
 	assert.Equal(t, len(result.Node.Nodes), 9)
 
 	fmt.Println("Reconfigure with a smaller active size")
-	resp, _ = tests.Put("http://localhost:7001/v2/admin/config", "application/json", bytes.NewBufferString(`{"activeSize":7, "syncClusterInterval":1}`))
+	resp, _ = tests.Put("http://localhost:7001/v2/admin/config", "application/json", bytes.NewBufferString(`{"activeSize":7, "syncInterval":1}`))
 	if !assert.Equal(t, resp.StatusCode, 200) {
 		t.FailNow()
 	}
@@ -70,7 +70,7 @@ func TestStandby(t *testing.T) {
 	}
 
 	fmt.Println("Reconfigure with larger active size and wait for join")
-	resp, _ = tests.Put("http://localhost:7001/v2/admin/config", "application/json", bytes.NewBufferString(`{"activeSize":8, "syncClusterInterval":1}`))
+	resp, _ = tests.Put("http://localhost:7001/v2/admin/config", "application/json", bytes.NewBufferString(`{"activeSize":8, "syncInterval":1}`))
 	if !assert.Equal(t, resp.StatusCode, 200) {
 		t.FailNow()
 	}
@@ -107,7 +107,7 @@ func TestStandbyAutoJoin(t *testing.T) {
 	assert.Equal(t, len(result.Node.Nodes), 5)
 
 	// Reconfigure with a short promote delay (2 second).
-	resp, _ := tests.Put("http://localhost:7001/v2/admin/config", "application/json", bytes.NewBufferString(`{"activeSize":4, "removeDelay":2, "syncClusterInterval":1}`))
+	resp, _ := tests.Put("http://localhost:7001/v2/admin/config", "application/json", bytes.NewBufferString(`{"activeSize":4, "removeDelay":2, "syncInterval":1}`))
 	if !assert.Equal(t, resp.StatusCode, 200) {
 		t.FailNow()
 	}
@@ -174,7 +174,7 @@ func TestStandbyGradualChange(t *testing.T) {
 			}
 
 			fmt.Println("Reconfigure with active size", num)
-			resp, _ := tests.Put("http://localhost:7001/v2/admin/config", "application/json", bytes.NewBufferString(fmt.Sprintf(`{"activeSize":%d, "syncClusterInterval":1}`, num)))
+			resp, _ := tests.Put("http://localhost:7001/v2/admin/config", "application/json", bytes.NewBufferString(fmt.Sprintf(`{"activeSize":%d, "syncInterval":1}`, num)))
 			if !assert.Equal(t, resp.StatusCode, 200) {
 				t.FailNow()
 			}
@@ -242,7 +242,7 @@ func TestStandbyDramaticChange(t *testing.T) {
 			}
 
 			fmt.Println("Reconfigure with active size", num)
-			resp, _ := tests.Put("http://localhost:7001/v2/admin/config", "application/json", bytes.NewBufferString(fmt.Sprintf(`{"activeSize":%d, "syncClusterInterval":1}`, num)))
+			resp, _ := tests.Put("http://localhost:7001/v2/admin/config", "application/json", bytes.NewBufferString(fmt.Sprintf(`{"activeSize":%d, "syncInterval":1}`, num)))
 			if !assert.Equal(t, resp.StatusCode, 200) {
 				t.FailNow()
 			}
