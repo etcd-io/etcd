@@ -211,43 +211,26 @@ func (s *PeerServer) FindCluster(discoverURL string, peers []string) (toStart bo
 	// Attempt cluster discovery
 	if discoverURL != "" {
 		discoverPeers, discoverErr := s.handleDiscovery(discoverURL)
-		// It is registered in discover url
-		if discoverErr == nil {
-			// start as a leader in a new cluster
-			if len(discoverPeers) == 0 {
-				s.isNewCluster = true
-				log.Debugf("%s is starting a new cluster via discover service", name)
-				toStart = true
+		// It is not registered in discover url
+		if discoverErr != nil {
+			log.Warnf("%s failed to connect discovery service[%v]: %v", name, discoverURL, discoverErr)
+			if len(peers) == 0 {
+				err = fmt.Errorf("%s, the new instance, must register itself to discovery service as required", name)
 				return
 			}
-
+			log.Debugf("%s is joining peers %v from -peers flag", name, peers)
+		} else {
 			log.Debugf("%s is joining a cluster %v via discover service", name, discoverPeers)
-			if rejected, ierr := s.startAsFollower(discoverPeers, s.Config.RetryTimes); rejected {
-				log.Debugf("%s should work as standby for the cluster %v: %v", name, discoverPeers, ierr)
-				possiblePeers = discoverPeers
-			} else if ierr != nil {
-				log.Warnf("%s cannot connect to existing cluster %v: %v", name, discoverPeers, ierr)
-				err = ierr
-			} else {
-				toStart = true
-			}
-			return
-		}
-		log.Warnf("%s failed to connect discovery service[%v]: %v", name, discoverURL, discoverErr)
-
-		if len(peers) == 0 {
-			err = fmt.Errorf("%s, the new instance, must register itself to discovery service as required", name)
-			return
+			peers = discoverPeers
 		}
 	}
+	possiblePeers = peers
 
-	if len(peers) > 0 {
-		log.Debugf("%s is joining peers %v from -peers flag", name, peers)
-		if rejected, ierr := s.startAsFollower(peers, s.Config.RetryTimes); rejected {
-			log.Debugf("%s should work as standby for the cluster %v: %v", name, peers, ierr)
-			possiblePeers = peers
+	if len(possiblePeers) > 0 {
+		if rejected, ierr := s.startAsFollower(possiblePeers, s.Config.RetryTimes); rejected {
+			log.Debugf("%s should work as standby for the cluster %v: %v", name, possiblePeers, ierr)
 		} else if ierr != nil {
-			log.Warnf("%s cannot connect to existing peers %v: %v", name, peers, ierr)
+			log.Warnf("%s cannot connect to existing peers %v: %v", name, possiblePeers, ierr)
 			err = ierr
 		} else {
 			toStart = true
@@ -255,8 +238,9 @@ func (s *PeerServer) FindCluster(discoverURL string, peers []string) (toStart bo
 		return
 	}
 
+	// start as a leader in a new cluster
 	s.isNewCluster = true
-	log.Infof("%s is starting a new cluster.", s.Config.Name)
+	log.Infof("%s is starting a new cluster", s.Config.Name)
 	toStart = true
 	return
 }
