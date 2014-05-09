@@ -17,12 +17,12 @@ limitations under the License.
 package etcd
 
 import (
-	"net"
 	"net/http"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"time"
 
 	goetcd "github.com/coreos/etcd/third_party/github.com/coreos/go-etcd/etcd"
@@ -47,14 +47,23 @@ import (
 const extraTimeout = time.Duration(1000) * time.Millisecond
 
 type Etcd struct {
-	Config       *config.Config     // etcd config
-	Store        store.Store        // data store
-	Registry     *server.Registry   // stores URL information for nodes
-	Server       *server.Server     // http server, runs on 4001 by default
-	PeerServer   *server.PeerServer // peer server, runs on 7001 by default
-	listener     net.Listener       // Listener for Server
-	peerListener net.Listener       // Listener for PeerServer
-	readyC       chan bool          // To signal when server is ready to accept connections
+	Config *config.Config // etcd config
+
+	Store         store.Store        // data store
+	Registry      *server.Registry   // stores URL information for nodes
+	Server        *server.Server     // http server, runs on 4001 by default
+	PeerServer    *server.PeerServer // peer server, runs on 7001 by default
+	StandbyServer *server.StandbyServer
+
+	server     *http.Server
+	peerServer *http.Server
+
+	mode        Mode
+	modeMutex   sync.Mutex
+	closeChan   chan bool
+	readyNotify chan bool // To signal when server is ready to accept connections
+	onceReady   sync.Once
+	stopNotify  chan bool // To signal when server is stopped totally
 }
 
 // New returns a new Etcd instance.
@@ -63,8 +72,10 @@ func New(c *config.Config) *Etcd {
 		c = config.New()
 	}
 	return &Etcd{
-		Config: c,
-		readyC: make(chan bool),
+		Config:      c,
+		closeChan:   make(chan bool),
+		readyNotify: make(chan bool),
+		stopNotify:  make(chan bool),
 	}
 }
 
@@ -188,7 +199,7 @@ func (e *Etcd) Run() {
 
 	// Create raft transporter and server
 	raftTransporter := server.NewTransporter(followersStats, serverStats, e.Registry, heartbeatInterval, dialTimeout, responseHeaderTimeout)
-	if psConfig.Scheme == "https" {
+	if e.Config.PeerTLSInfo().Scheme() == "https" {
 		raftClientTLSConfig, err := e.Config.PeerTLSInfo().ClientConfig()
 		if err != nil {
 			log.Fatal("raft client TLS error: ", err)
@@ -201,7 +212,7 @@ func (e *Etcd) Run() {
 	}
 	raftServer.SetElectionTimeout(electionTimeout)
 	raftServer.SetHeartbeatInterval(heartbeatInterval)
-	e.PeerServer.SetRaftServer(raftServer)
+	e.PeerServer.SetRaftServer(raftServer, e.Config.Snapshot)
 
 	// Create etcd server
 	e.Server = server.New(e.Config.Name, e.Config.Addr, e.PeerServer, e.Registry, e.Store, &mb)
@@ -212,72 +223,179 @@ func (e *Etcd) Run() {
 
 	e.PeerServer.SetServer(e.Server)
 
+	// Create standby server
+	ssConfig := server.StandbyServerConfig{
+		Name:       e.Config.Name,
+		PeerScheme: e.Config.PeerTLSInfo().Scheme(),
+		PeerURL:    e.Config.Peer.Addr,
+		ClientURL:  e.Config.Addr,
+	}
+	e.StandbyServer = server.NewStandbyServer(ssConfig, client)
+
 	// Generating config could be slow.
 	// Put it here to make listen happen immediately after peer-server starting.
 	peerTLSConfig := server.TLSServerConfig(e.Config.PeerTLSInfo())
 	etcdTLSConfig := server.TLSServerConfig(e.Config.EtcdTLSInfo())
 
+	toStartPeerServer, possiblePeers, err := e.PeerServer.FindCluster(e.Config.Discovery, e.Config.Peers)
+	if err != nil {
+		log.Fatal(err)
+	}
+	if toStartPeerServer {
+		e.setMode(PeerMode)
+	} else {
+		e.StandbyServer.SyncCluster(possiblePeers)
+		e.setMode(StandbyMode)
+	}
+
+	serverHTTPHandler := &ehttp.CORSHandler{e.Server.HTTPHandler(), corsInfo}
+	peerServerHTTPHandler := &ehttp.CORSHandler{e.PeerServer.HTTPHandler(), corsInfo}
+	standbyServerHTTPHandler := &ehttp.CORSHandler{e.StandbyServer.ClientHTTPHandler(), corsInfo}
+
 	log.Infof("etcd server [name %s, listen on %s, advertised url %s]", e.Server.Name, e.Config.BindAddr, e.Server.URL())
-	e.listener = server.NewListener(e.Config.EtcdTLSInfo().Scheme(), e.Config.BindAddr, etcdTLSConfig)
+	listener := server.NewListener(e.Config.EtcdTLSInfo().Scheme(), e.Config.BindAddr, etcdTLSConfig)
+	e.server = &http.Server{Handler: &ModeHandler{e, serverHTTPHandler, standbyServerHTTPHandler}}
+	log.Infof("peer server [name %s, listen on %s, advertised url %s]", e.PeerServer.Config.Name, e.Config.Peer.BindAddr, e.PeerServer.Config.URL)
+	peerListener := server.NewListener(e.Config.PeerTLSInfo().Scheme(), e.Config.Peer.BindAddr, peerTLSConfig)
+	e.peerServer = &http.Server{Handler: &ModeHandler{e, peerServerHTTPHandler, http.NotFoundHandler()}}
 
-	// An error string equivalent to net.errClosing for using with
-	// http.Serve() during server shutdown. Need to re-declare
-	// here because it is not exported by "net" package.
-	const errClosing = "use of closed network connection"
-
-	peerServerClosed := make(chan bool)
+	wg := sync.WaitGroup{}
+	wg.Add(2)
 	go func() {
-		// Starting peer server should be followed close by listening on its port
-		// If not, it may leave many requests unaccepted, or cannot receive heartbeat from the cluster.
-		// One severe problem caused if failing receiving heartbeats is when the second node joins one-node cluster,
-		// the cluster could be out of work as long as the two nodes cannot transfer messages.
-		e.PeerServer.Start(e.Config.Snapshot, e.Config.Discovery, e.Config.Peers)
-
-		go func() {
-			select {
-			case <-e.PeerServer.StopNotify():
-			case <-e.PeerServer.RemoveNotify():
-				log.Infof("peer server is removed")
-				os.Exit(0)
-			}
-		}()
-
-		log.Infof("peer server [name %s, listen on %s, advertised url %s]", e.PeerServer.Config.Name, e.Config.Peer.BindAddr, e.PeerServer.Config.URL)
-		e.peerListener = server.NewListener(psConfig.Scheme, e.Config.Peer.BindAddr, peerTLSConfig)
-
-		close(e.readyC) // etcd server is ready to accept connections, notify waiters.
-
-		sHTTP := &ehttp.CORSHandler{e.PeerServer.HTTPHandler(), corsInfo}
-		if err := http.Serve(e.peerListener, sHTTP); err != nil {
-			if !strings.Contains(err.Error(), errClosing) {
+		<-e.readyNotify
+		defer wg.Done()
+		if err := e.server.Serve(listener); err != nil {
+			if !isListenerClosing(err) {
 				log.Fatal(err)
 			}
 		}
-		close(peerServerClosed)
+	}()
+	go func() {
+		<-e.readyNotify
+		defer wg.Done()
+		if err := e.peerServer.Serve(peerListener); err != nil {
+			if !isListenerClosing(err) {
+				log.Fatal(err)
+			}
+		}
 	}()
 
-	sHTTP := &ehttp.CORSHandler{e.Server.HTTPHandler(), corsInfo}
-	if err := http.Serve(e.listener, sHTTP); err != nil {
-		if !strings.Contains(err.Error(), errClosing) {
-			log.Fatal(err)
+	e.runServer()
+
+	listener.Close()
+	peerListener.Close()
+	wg.Wait()
+	log.Infof("etcd instance is stopped [name %s]", e.Config.Name)
+	close(e.stopNotify)
+}
+
+func (e *Etcd) runServer() {
+	var removeNotify <-chan bool
+	for {
+		if e.mode == PeerMode {
+			log.Infof("%v starts to run in peer mode", e.Config.Name)
+			// Starting peer server should be followed close by listening on its port
+			// If not, it may leave many requests unaccepted, or cannot receive heartbeat from the cluster.
+			// One severe problem caused if failing receiving heartbeats is when the second node joins one-node cluster,
+			// the cluster could be out of work as long as the two nodes cannot transfer messages.
+			e.PeerServer.Start(e.Config.Snapshot)
+			removeNotify = e.PeerServer.RemoveNotify()
+		} else {
+			log.Infof("%v starts to run in standby mode", e.Config.Name)
+			e.StandbyServer.Start()
+			removeNotify = e.StandbyServer.RemoveNotify()
+		}
+
+		// etcd server is ready to accept connections, notify waiters.
+		e.onceReady.Do(func() { close(e.readyNotify) })
+
+		select {
+		case <-e.closeChan:
+			e.PeerServer.Stop()
+			e.StandbyServer.Stop()
+			return
+		case <-removeNotify:
+		}
+
+		if e.mode == PeerMode {
+			peerURLs := e.Registry.PeerURLs(e.PeerServer.RaftServer().Leader(), e.Config.Name)
+			e.StandbyServer.SyncCluster(peerURLs)
+			e.setMode(StandbyMode)
+		} else {
+			// Generate new peer server here.
+			// TODO(yichengq): raft server cannot be started after stopped.
+			// It should be removed when raft restart is implemented.
+			heartbeatInterval := time.Duration(e.Config.Peer.HeartbeatInterval) * time.Millisecond
+			electionTimeout := time.Duration(e.Config.Peer.ElectionTimeout) * time.Millisecond
+			raftServer, err := raft.NewServer(e.Config.Name, e.Config.DataDir, e.PeerServer.RaftServer().Transporter(), e.Store, e.PeerServer, "")
+			if err != nil {
+				log.Fatal(err)
+			}
+			raftServer.SetElectionTimeout(electionTimeout)
+			raftServer.SetHeartbeatInterval(heartbeatInterval)
+			e.PeerServer.SetRaftServer(raftServer, e.Config.Snapshot)
+
+			e.PeerServer.SetJoinIndex(e.StandbyServer.JoinIndex())
+			e.setMode(PeerMode)
 		}
 	}
-
-	<-peerServerClosed
-	log.Infof("etcd instance is stopped [name %s]", e.Config.Name)
 }
 
 // Stop the etcd instance.
-//
-// TODO Shutdown gracefully.
 func (e *Etcd) Stop() {
-	e.PeerServer.Stop()
-	e.peerListener.Close()
-	e.listener.Close()
+	close(e.closeChan)
+	<-e.stopNotify
 }
 
 // ReadyNotify returns a channel that is going to be closed
 // when the etcd instance is ready to accept connections.
 func (e *Etcd) ReadyNotify() <-chan bool {
-	return e.readyC
+	return e.readyNotify
 }
+
+func (e *Etcd) Mode() Mode {
+	e.modeMutex.Lock()
+	defer e.modeMutex.Unlock()
+	return e.mode
+}
+
+func (e *Etcd) setMode(m Mode) {
+	e.modeMutex.Lock()
+	defer e.modeMutex.Unlock()
+	e.mode = m
+}
+
+func isListenerClosing(err error) bool {
+	// An error string equivalent to net.errClosing for using with
+	// http.Serve() during server shutdown. Need to re-declare
+	// here because it is not exported by "net" package.
+	const errClosing = "use of closed network connection"
+
+	return strings.Contains(err.Error(), errClosing)
+}
+
+type ModeGetter interface {
+	Mode() Mode
+}
+
+type ModeHandler struct {
+	ModeGetter
+	PeerModeHandler    http.Handler
+	StandbyModeHandler http.Handler
+}
+
+func (h *ModeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	switch h.Mode() {
+	case PeerMode:
+		h.PeerModeHandler.ServeHTTP(w, r)
+	case StandbyMode:
+		h.StandbyModeHandler.ServeHTTP(w, r)
+	}
+}
+
+type Mode int
+
+const (
+	PeerMode Mode = iota
+	StandbyMode
+)

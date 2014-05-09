@@ -61,6 +61,9 @@ func applyJoin(c *JoinCommand, context raft.Context) (uint64, error) {
 				return 0, err
 			}
 		}
+		if c.Name == context.Server().Name() {
+			ps.removedInLog = false
+		}
 		return commitIndex, nil
 	}
 
@@ -74,7 +77,9 @@ func applyJoin(c *JoinCommand, context raft.Context) (uint64, error) {
 	}
 
 	// Check peer number in the cluster
-	if ps.registry.Count() >= ps.ClusterConfig().ActiveSize {
+	count := ps.registry.Count()
+	// ClusterConfig doesn't init until first machine is added
+	if count > 0 && count >= ps.ClusterConfig().ActiveSize {
 		log.Debug("Reject join request from ", c.Name)
 		return 0, etcdErr.NewError(etcdErr.EcodeNoMorePeer, "", context.CommitIndex())
 	}
@@ -93,6 +98,9 @@ func applyJoin(c *JoinCommand, context raft.Context) (uint64, error) {
 		ps.followersStats.Followers[c.Name].Latency.Minimum = 1 << 63
 	}
 
+	if c.Name == context.Server().Name() {
+		ps.removedInLog = false
+	}
 	return commitIndex, nil
 }
 

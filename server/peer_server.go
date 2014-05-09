@@ -35,6 +35,9 @@ const (
 	// PeerActivityMonitorTimeout is the time between checks for dead nodes in
 	// the cluster.
 	PeerActivityMonitorTimeout = 1 * time.Second
+
+	// The location of cluster config in key space.
+	ClusterConfigKey = "/_etcd/config"
 )
 
 type PeerServerConfig struct {
@@ -49,17 +52,18 @@ type PeerServerConfig struct {
 type PeerServer struct {
 	Config         PeerServerConfig
 	client         *Client
-	clusterConfig  *ClusterConfig
 	raftServer     raft.Server
 	server         *Server
-	joinIndex      uint64
 	followersStats *raftFollowersStats
 	serverStats    *raftServerStats
 	registry       *Registry
 	store          store.Store
 	snapConf       *snapshotConf
 
-	stopNotify           chan bool
+	joinIndex    uint64
+	isNewCluster bool
+	removedInLog bool
+
 	removeNotify         chan bool
 	started              bool
 	closeChan            chan bool
@@ -87,7 +91,6 @@ func NewPeerServer(psConfig PeerServerConfig, client *Client, registry *Registry
 	s := &PeerServer{
 		Config:         psConfig,
 		client:         client,
-		clusterConfig:  NewClusterConfig(),
 		registry:       registry,
 		store:          store,
 		followersStats: followersStats,
@@ -101,7 +104,7 @@ func NewPeerServer(psConfig PeerServerConfig, client *Client, registry *Registry
 	return s
 }
 
-func (s *PeerServer) SetRaftServer(raftServer raft.Server) {
+func (s *PeerServer) SetRaftServer(raftServer raft.Server, snapshot bool) {
 	s.snapConf = &snapshotConf{
 		checkingInterval: time.Second * 3,
 		// this is not accurate, we will update raft to provide an api
@@ -120,130 +123,7 @@ func (s *PeerServer) SetRaftServer(raftServer raft.Server) {
 	raftServer.AddEventListener(raft.HeartbeatEventType, s.recordMetricEvent)
 
 	s.raftServer = raftServer
-}
-
-// ClusterConfig retrieves the current cluster configuration.
-func (s *PeerServer) ClusterConfig() *ClusterConfig {
-	return s.clusterConfig
-}
-
-// SetClusterConfig updates the current cluster configuration.
-// Adjusting the active size will cause the PeerServer to demote peers or
-// promote standbys to match the new size.
-func (s *PeerServer) SetClusterConfig(c *ClusterConfig) {
-	// Set minimums.
-	if c.ActiveSize < MinActiveSize {
-		c.ActiveSize = MinActiveSize
-	}
-	if c.PromoteDelay < MinPromoteDelay {
-		c.PromoteDelay = MinPromoteDelay
-	}
-
-	s.clusterConfig = c
-}
-
-// Try all possible ways to find clusters to join
-// Include log data in -data-dir, -discovery and -peers
-//
-// Peer discovery follows this order:
-// 1. previous peers in -data-dir
-// 2. -discovery
-// 3. -peers
-//
-// TODO(yichengq): RaftServer should be started as late as possible.
-// Current implementation to start it is not that good,
-// and should be refactored later.
-func (s *PeerServer) findCluster(discoverURL string, peers []string) {
-	name := s.Config.Name
-	isNewNode := s.raftServer.IsLogEmpty()
-
-	// Try its best to find possible peers, and connect with them.
-	if !isNewNode {
-		// It is not allowed to join the cluster with existing peer address
-		// This prevents old node joining with different name by mistake.
-		if !s.checkPeerAddressNonconflict() {
-			log.Fatalf("%v is not allowed to join the cluster with existing URL %v", s.Config.Name, s.Config.URL)
-		}
-
-		// Take old nodes into account.
-		allPeers := s.getKnownPeers()
-		// Discover registered peers.
-		// TODO(yichengq): It may mess up discoverURL if this is
-		// set wrong by mistake. This may need to refactor discovery
-		// module. Fix it later.
-		if discoverURL != "" {
-			discoverPeers, _ := s.handleDiscovery(discoverURL)
-			allPeers = append(allPeers, discoverPeers...)
-		}
-		allPeers = append(allPeers, peers...)
-		allPeers = s.removeSelfFromList(allPeers)
-
-		// If there is possible peer list, use it to find cluster.
-		if len(allPeers) > 0 {
-			// TODO(yichengq): joinCluster may fail if there's no leader for
-			// current cluster. It should wait if the cluster is under
-			// leader election, or the node with changed IP cannot join
-			// the cluster then.
-			if err := s.startAsFollower(allPeers, 1); err == nil {
-				log.Debugf("%s joins to the previous cluster %v", name, allPeers)
-				return
-			}
-
-			log.Warnf("%s cannot connect to previous cluster %v", name, allPeers)
-		}
-
-		// TODO(yichengq): Think about the action that should be done
-		// if it cannot connect any of the previous known node.
-		s.raftServer.Start()
-		log.Debugf("%s is restarting the cluster %v", name, allPeers)
-		return
-	}
-
-	// Attempt cluster discovery
-	if discoverURL != "" {
-		discoverPeers, discoverErr := s.handleDiscovery(discoverURL)
-		// It is registered in discover url
-		if discoverErr == nil {
-			// start as a leader in a new cluster
-			if len(discoverPeers) == 0 {
-				log.Debugf("%s is starting a new cluster via discover service", name)
-				s.startAsLeader()
-			} else {
-				log.Debugf("%s is joining a cluster %v via discover service", name, discoverPeers)
-				if err := s.startAsFollower(discoverPeers, s.Config.RetryTimes); err != nil {
-					log.Fatal(err)
-				}
-			}
-			return
-		}
-		log.Warnf("%s failed to connect discovery service[%v]: %v", name, discoverURL, discoverErr)
-
-		if len(peers) == 0 {
-			log.Fatalf("%s, the new leader, must register itself to discovery service as required", name)
-		}
-	}
-
-	if len(peers) > 0 {
-		if err := s.startAsFollower(peers, s.Config.RetryTimes); err != nil {
-			log.Fatalf("%s cannot connect to existing cluster %v", name, peers)
-		}
-		return
-	}
-
-	log.Infof("%s is starting a new cluster.", s.Config.Name)
-	s.startAsLeader()
-	return
-}
-
-// Start starts the raft server.
-// The function assumes that join has been accepted successfully.
-func (s *PeerServer) Start(snapshot bool, discoverURL string, peers []string) error {
-	s.Lock()
-	defer s.Unlock()
-	if s.started {
-		return nil
-	}
-	s.started = true
+	s.removedInLog = false
 
 	// LoadSnapshot
 	if snapshot {
@@ -264,12 +144,141 @@ func (s *PeerServer) Start(snapshot bool, discoverURL string, peers []string) er
 			log.Warnf("Failed setting NOCOW: %v", err)
 		}
 	}
+}
 
-	s.findCluster(discoverURL, peers)
+// Try all possible ways to find clusters to join
+// Include log data in -data-dir, -discovery and -peers
+//
+// Peer discovery follows this order:
+// 1. previous peers in -data-dir
+// 2. -discovery
+// 3. -peers
+func (s *PeerServer) FindCluster(discoverURL string, peers []string) (toStart bool, possiblePeers []string, err error) {
+	name := s.Config.Name
+	isNewNode := s.raftServer.IsLogEmpty()
 
-	s.stopNotify = make(chan bool)
+	// Try its best to find possible peers, and connect with them.
+	if !isNewNode {
+		// It is not allowed to join the cluster with existing peer address
+		// This prevents old node joining with different name by mistake.
+		if !s.checkPeerAddressNonconflict() {
+			err = fmt.Errorf("%v is not allowed to join the cluster with existing URL %v", s.Config.Name, s.Config.URL)
+			return
+		}
+
+		// Take old nodes into account.
+		possiblePeers = s.getKnownPeers()
+		// Discover registered peers.
+		// TODO(yichengq): It may mess up discoverURL if this is
+		// set wrong by mistake. This may need to refactor discovery
+		// module. Fix it later.
+		if discoverURL != "" {
+			discoverPeers, _ := s.handleDiscovery(discoverURL)
+			possiblePeers = append(possiblePeers, discoverPeers...)
+		}
+		possiblePeers = append(possiblePeers, peers...)
+		possiblePeers = s.removeSelfFromList(possiblePeers)
+
+		if s.removedInLog {
+			return
+		}
+
+		// If there is possible peer list, use it to find cluster.
+		if len(possiblePeers) > 0 {
+			// TODO(yichengq): joinCluster may fail if there's no leader for
+			// current cluster. It should wait if the cluster is under
+			// leader election, or the node with changed IP cannot join
+			// the cluster then.
+			if rejected, ierr := s.startAsFollower(possiblePeers, 1); rejected {
+				log.Debugf("%s should work as standby for the cluster %v: %v", name, possiblePeers, ierr)
+				return
+			} else if ierr != nil {
+				log.Warnf("%s cannot connect to previous cluster %v: %v", name, possiblePeers, ierr)
+			} else {
+				log.Debugf("%s joins to the previous cluster %v", name, possiblePeers)
+				toStart = true
+				return
+			}
+		}
+
+		// TODO(yichengq): Think about the action that should be done
+		// if it cannot connect any of the previous known node.
+		log.Debugf("%s is restarting the cluster %v", name, possiblePeers)
+		toStart = true
+		return
+	}
+
+	// Attempt cluster discovery
+	if discoverURL != "" {
+		discoverPeers, discoverErr := s.handleDiscovery(discoverURL)
+		// It is registered in discover url
+		if discoverErr == nil {
+			// start as a leader in a new cluster
+			if len(discoverPeers) == 0 {
+				s.isNewCluster = true
+				log.Debugf("%s is starting a new cluster via discover service", name)
+				toStart = true
+				return
+			}
+
+			log.Debugf("%s is joining a cluster %v via discover service", name, discoverPeers)
+			if rejected, ierr := s.startAsFollower(discoverPeers, s.Config.RetryTimes); rejected {
+				log.Debugf("%s should work as standby for the cluster %v: %v", name, discoverPeers, ierr)
+				possiblePeers = discoverPeers
+			} else if ierr != nil {
+				log.Warnf("%s cannot connect to existing cluster %v: %v", name, discoverPeers, ierr)
+				err = ierr
+			} else {
+				toStart = true
+			}
+			return
+		}
+		log.Warnf("%s failed to connect discovery service[%v]: %v", name, discoverURL, discoverErr)
+
+		if len(peers) == 0 {
+			err = fmt.Errorf("%s, the new instance, must register itself to discovery service as required", name)
+			return
+		}
+	}
+
+	if len(peers) > 0 {
+		log.Debugf("%s is joining peers %v from -peers flag", name, peers)
+		if rejected, ierr := s.startAsFollower(peers, s.Config.RetryTimes); rejected {
+			log.Debugf("%s should work as standby for the cluster %v: %v", name, peers, ierr)
+			possiblePeers = peers
+		} else if ierr != nil {
+			log.Warnf("%s cannot connect to existing peers %v: %v", name, peers, ierr)
+			err = ierr
+		} else {
+			toStart = true
+		}
+		return
+	}
+
+	s.isNewCluster = true
+	log.Infof("%s is starting a new cluster.", s.Config.Name)
+	toStart = true
+	return
+}
+
+// Start starts the raft server.
+// The function assumes that join has been accepted successfully.
+func (s *PeerServer) Start(snapshot bool) error {
+	s.Lock()
+	defer s.Unlock()
+	if s.started {
+		return nil
+	}
+	s.started = true
+
 	s.removeNotify = make(chan bool)
 	s.closeChan = make(chan bool)
+
+	s.raftServer.Start()
+	if s.isNewCluster {
+		s.InitNewCluster()
+		s.isNewCluster = false
+	}
 
 	s.startRoutine(s.monitorSync)
 	s.startRoutine(s.monitorTimeoutThreshold)
@@ -298,7 +307,6 @@ func (s *PeerServer) Stop() {
 	// but this functionality has not been implemented.
 	s.raftServer.Stop()
 	s.routineGroup.Wait()
-	close(s.stopNotify)
 }
 
 // asyncRemove stops the server in peer mode.
@@ -324,11 +332,6 @@ func (s *PeerServer) asyncRemove() {
 		close(s.removeNotify)
 		s.Unlock()
 	}()
-}
-
-// StopNotify notifies the server is stopped.
-func (s *PeerServer) StopNotify() <-chan bool {
-	return s.stopNotify
 }
 
 // RemoveNotify notifies the server is removed from peer mode due to
@@ -362,6 +365,48 @@ func (s *PeerServer) HTTPHandler() http.Handler {
 	return router
 }
 
+func (s *PeerServer) SetJoinIndex(joinIndex uint64) {
+	s.joinIndex = joinIndex
+}
+
+// ClusterConfig retrieves the current cluster configuration.
+func (s *PeerServer) ClusterConfig() *ClusterConfig {
+	e, err := s.store.Get(ClusterConfigKey, false, false)
+	// This is useful for backward compatibility because it doesn't
+	// set cluster config in older version.
+	if err != nil {
+		log.Debugf("failed getting cluster config key: %v", err)
+		return NewClusterConfig()
+	}
+
+	var c ClusterConfig
+	if err = json.Unmarshal([]byte(*e.Node.Value), &c); err != nil {
+		log.Debugf("failed unmarshaling cluster config: %v", err)
+		return NewClusterConfig()
+	}
+	return &c
+}
+
+// SetClusterConfig updates the current cluster configuration.
+// Adjusting the active size will cause the PeerServer to demote peers or
+// promote standbys to match the new size.
+func (s *PeerServer) SetClusterConfig(c *ClusterConfig) {
+	// Set minimums.
+	if c.ActiveSize < MinActiveSize {
+		c.ActiveSize = MinActiveSize
+	}
+	if c.RemoveDelay < MinRemoveDelay {
+		c.RemoveDelay = MinRemoveDelay
+	}
+	if c.SyncClusterInterval < MinSyncClusterInterval {
+		c.SyncClusterInterval = MinSyncClusterInterval
+	}
+
+	log.Debugf("set cluster config as %v", c)
+	b, _ := json.Marshal(c)
+	s.store.Set(ClusterConfigKey, false, string(b), store.Permanent)
+}
+
 // Retrieves the underlying Raft server.
 func (s *PeerServer) RaftServer() raft.Server {
 	return s.raftServer
@@ -372,40 +417,48 @@ func (s *PeerServer) SetServer(server *Server) {
 	s.server = server
 }
 
-func (s *PeerServer) startAsLeader() {
-	s.raftServer.Start()
+func (s *PeerServer) InitNewCluster() {
 	// leader need to join self as a peer
+	s.doCommand(&JoinCommand{
+		MinVersion: store.MinVersion(),
+		MaxVersion: store.MaxVersion(),
+		Name:       s.raftServer.Name(),
+		RaftURL:    s.Config.URL,
+		EtcdURL:    s.server.URL(),
+	})
+	log.Debugf("%s start as a leader", s.Config.Name)
+	s.joinIndex = 1
+
+	conf := NewClusterConfig()
+	s.doCommand(&SetClusterConfigCommand{Config: conf})
+	log.Debugf("%s sets cluster config as %v", s.Config.Name, conf)
+}
+
+func (s *PeerServer) doCommand(cmd raft.Command) {
 	for {
-		c := &JoinCommand{
-			MinVersion: store.MinVersion(),
-			MaxVersion: store.MaxVersion(),
-			Name:       s.raftServer.Name(),
-			RaftURL:    s.Config.URL,
-			EtcdURL:    s.server.URL(),
-		}
-		if _, err := s.raftServer.Do(c); err == nil {
+		if _, err := s.raftServer.Do(cmd); err == nil {
 			break
 		}
 	}
 	log.Debugf("%s start as a leader", s.Config.Name)
 }
 
-func (s *PeerServer) startAsFollower(cluster []string, retryTimes int) error {
+func (s *PeerServer) startAsFollower(cluster []string, retryTimes int) (bool, error) {
 	// start as a follower in a existing cluster
 	for i := 0; ; i++ {
-		ok := s.joinCluster(cluster)
-		if ok {
-			break
+		if rejected, err := s.joinCluster(cluster); rejected {
+			return true, err
+		} else if err == nil {
+			return false, nil
 		}
 		if i == retryTimes-1 {
-			return fmt.Errorf("Cannot join the cluster via given peers after %x retries", s.Config.RetryTimes)
+			break
 		}
-		log.Warnf("%v is unable to join the cluster using any of the peers %v at %dth time. Retrying in %.1f seconds", s.Config.Name, cluster, i, s.Config.RetryInterval)
+		log.Infof("%v is unable to join the cluster using any of the peers %v at %dth time. Retrying in %.1f seconds", s.Config.Name, cluster, i, s.Config.RetryInterval)
 		time.Sleep(time.Second * time.Duration(s.Config.RetryInterval))
+		continue
 	}
-
-	s.raftServer.Start()
-	return nil
+	return false, fmt.Errorf("fail joining the cluster via given peers after %x retries", retryTimes)
 }
 
 // Upgradable checks whether all peers in a cluster support an upgrade to the next store version.
@@ -483,7 +536,7 @@ func (s *PeerServer) getKnownPeers() []string {
 	for i := range peers {
 		u, err := url.Parse(peers[i])
 		if err != nil {
-			log.Debug("getPrevPeers cannot parse url %v", peers[i])
+			log.Debugf("getKnownPeers cannot parse url %v", peers[i])
 		}
 		peers[i] = u.Host
 	}
@@ -495,57 +548,55 @@ func (s *PeerServer) removeSelfFromList(peers []string) []string {
 	// Remove its own peer address from the peer list to join
 	u, err := url.Parse(s.Config.URL)
 	if err != nil {
-		log.Fatalf("removeSelfFromList cannot parse peer address %v", s.Config.URL)
+		log.Warnf("failed parsing self peer address %v", s.Config.URL)
+		u = nil
 	}
 	newPeers := make([]string, 0)
 	for _, v := range peers {
-		if v != u.Host {
+		if u == nil || v != u.Host {
 			newPeers = append(newPeers, v)
 		}
 	}
 	return newPeers
 }
 
-func (s *PeerServer) joinCluster(cluster []string) bool {
+func (s *PeerServer) joinCluster(cluster []string) (bool, error) {
 	for _, peer := range cluster {
 		if len(peer) == 0 {
 			continue
 		}
 
-		err := s.joinByPeer(s.raftServer, peer, s.Config.Scheme)
-		if err == nil {
-			log.Debugf("%s joined the cluster via peer %s", s.Config.Name, peer)
-			return true
-
+		if rejected, err := s.joinByPeer(s.raftServer, peer, s.Config.Scheme); rejected {
+			return true, fmt.Errorf("rejected by peer %s: %v", peer, err)
+		} else if err == nil {
+			log.Infof("%s joined the cluster via peer %s", s.Config.Name, peer)
+			return false, nil
+		} else {
+			log.Infof("%s attempted to join via %s failed: %v", s.Config.Name, peer, err)
 		}
-
-		if _, ok := err.(etcdErr.Error); ok {
-			log.Fatal(err)
-		}
-
-		log.Warnf("Attempt to join via %s failed: %s", peer, err)
 	}
 
-	return false
+	return false, fmt.Errorf("unreachable cluster")
 }
 
 // Send join requests to peer.
-func (s *PeerServer) joinByPeer(server raft.Server, peer string, scheme string) error {
+// The first return tells whether it is rejected by the cluster directly.
+func (s *PeerServer) joinByPeer(server raft.Server, peer string, scheme string) (bool, error) {
 	u := (&url.URL{Host: peer, Scheme: scheme}).String()
 
 	// Our version must match the leaders version
 	version, err := s.client.GetVersion(u)
 	if err != nil {
-		return fmt.Errorf("fail checking join version: %v", err)
+		return false, fmt.Errorf("fail checking join version: %v", err)
 	}
 	if version < store.MinVersion() || version > store.MaxVersion() {
-		return fmt.Errorf("fail passing version compatibility(%d-%d) using %d", store.MinVersion(), store.MaxVersion(), version)
+		return true, fmt.Errorf("fail passing version compatibility(%d-%d) using %d", store.MinVersion(), store.MaxVersion(), version)
 	}
 
 	// Fetch current peer list
 	machines, err := s.client.GetMachines(u)
 	if err != nil {
-		return fmt.Errorf("fail getting machine messages: %v", err)
+		return false, fmt.Errorf("fail getting machine messages: %v", err)
 	}
 	exist := false
 	for _, machine := range machines {
@@ -558,10 +609,10 @@ func (s *PeerServer) joinByPeer(server raft.Server, peer string, scheme string) 
 	// Fetch cluster config to see whether exists some place.
 	clusterConfig, err := s.client.GetClusterConfig(u)
 	if err != nil {
-		return fmt.Errorf("fail getting cluster config: %v", err)
+		return false, fmt.Errorf("fail getting cluster config: %v", err)
 	}
 	if !exist && clusterConfig.ActiveSize <= len(machines) {
-		return fmt.Errorf("stop joining because the cluster is full with %d nodes", len(machines))
+		return true, fmt.Errorf("stop joining because the cluster is full with %d nodes", len(machines))
 	}
 
 	joinIndex, err := s.client.AddMachine(u,
@@ -573,11 +624,11 @@ func (s *PeerServer) joinByPeer(server raft.Server, peer string, scheme string) 
 			EtcdURL:    s.server.URL(),
 		})
 	if err != nil {
-		return fmt.Errorf("fail on join request: %v", err)
+		return err.ErrorCode == etcdErr.EcodeNoMorePeer, fmt.Errorf("fail on join request: %v", err)
 	}
 
 	s.joinIndex = joinIndex
-	return nil
+	return false, nil
 }
 
 func (s *PeerServer) Stats() []byte {
@@ -748,7 +799,7 @@ func (s *PeerServer) monitorActiveSize() {
 		// Retrieve target active size and actual active size.
 		activeSize := s.ClusterConfig().ActiveSize
 		peers := s.registry.Names()
-		peerCount := s.registry.Count()
+		peerCount := len(peers)
 		if index := sort.SearchStrings(peers, s.Config.Name); index < len(peers) && peers[index] == s.Config.Name {
 			peers = append(peers[:index], peers[index+1:]...)
 		}
@@ -783,12 +834,12 @@ func (s *PeerServer) monitorPeerActivity() {
 
 		// Check last activity for all peers.
 		now := time.Now()
-		promoteDelay := time.Duration(s.ClusterConfig().PromoteDelay) * time.Second
+		removeDelay := time.Duration(s.ClusterConfig().RemoveDelay) * time.Second
 		peers := s.raftServer.Peers()
 		for _, peer := range peers {
 			// If the last response from the peer is longer than the promote delay
 			// then automatically demote the peer.
-			if !peer.LastActivity().IsZero() && now.Sub(peer.LastActivity()) > promoteDelay {
+			if !peer.LastActivity().IsZero() && now.Sub(peer.LastActivity()) > removeDelay {
 				log.Infof("%s: removing node: %v; last activity %v ago", s.Config.Name, peer.Name, now.Sub(peer.LastActivity()))
 				if _, err := s.raftServer.Do(&RemoveCommand{Name: peer.Name}); err != nil {
 					log.Infof("%s: warning: autodemotion error: %v", s.Config.Name, err)

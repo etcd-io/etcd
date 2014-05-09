@@ -68,6 +68,7 @@ func applyRemove(c *RemoveCommand, context raft.Context) (uint64, error) {
 		} else {
 			// else ignore remove
 			log.Debugf("ignore previous remove command.")
+			ps.removedInLog = true
 		}
 	}
 	return commitIndex, nil
