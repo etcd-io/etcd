@@ -298,7 +298,7 @@ func (e *Etcd) runServer() {
 			// If not, it may leave many requests unaccepted, or cannot receive heartbeat from the cluster.
 			// One severe problem caused if failing receiving heartbeats is when the second node joins one-node cluster,
 			// the cluster could be out of work as long as the two nodes cannot transfer messages.
-			e.PeerServer.Start(e.Config.Snapshot)
+			e.PeerServer.Start(e.Config.Snapshot, e.Config.ClusterConfig())
 			removeNotify = e.PeerServer.RemoveNotify()
 		} else {
 			log.Infof("%v starts to run in standby mode", e.Config.Name)

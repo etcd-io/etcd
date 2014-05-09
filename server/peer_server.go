@@ -247,7 +247,7 @@ func (s *PeerServer) FindCluster(discoverURL string, peers []string) (toStart bo
 
 // Start starts the raft server.
 // The function assumes that join has been accepted successfully.
-func (s *PeerServer) Start(snapshot bool) error {
+func (s *PeerServer) Start(snapshot bool, clusterConfig *ClusterConfig) error {
 	s.Lock()
 	defer s.Unlock()
 	if s.started {
@@ -260,7 +260,7 @@ func (s *PeerServer) Start(snapshot bool) error {
 
 	s.raftServer.Start()
 	if s.isNewCluster {
-		s.InitNewCluster()
+		s.InitNewCluster(clusterConfig)
 		s.isNewCluster = false
 	}
 
@@ -401,7 +401,7 @@ func (s *PeerServer) SetServer(server *Server) {
 	s.server = server
 }
 
-func (s *PeerServer) InitNewCluster() {
+func (s *PeerServer) InitNewCluster(clusterConfig *ClusterConfig) {
 	// leader need to join self as a peer
 	s.doCommand(&JoinCommand{
 		MinVersion: store.MinVersion(),
@@ -413,9 +413,8 @@ func (s *PeerServer) InitNewCluster() {
 	log.Debugf("%s start as a leader", s.Config.Name)
 	s.joinIndex = 1
 
-	conf := NewClusterConfig()
-	s.doCommand(&SetClusterConfigCommand{Config: conf})
-	log.Debugf("%s sets cluster config as %v", s.Config.Name, conf)
+	s.doCommand(&SetClusterConfigCommand{Config: clusterConfig})
+	log.Debugf("%s sets cluster config as %v", s.Config.Name, clusterConfig)
 }
 
 func (s *PeerServer) doCommand(cmd raft.Command) {

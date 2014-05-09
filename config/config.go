@@ -85,6 +85,11 @@ type Config struct {
 	}
 	strTrace     string `toml:"trace" env:"ETCD_TRACE"`
 	GraphiteHost string `toml:"graphite_host" env:"ETCD_GRAPHITE_HOST"`
+	Cluster      struct {
+		ActiveSize   int `toml:"active_size" env:"ETCD_CLUSTER_ACTIVE_SIZE"`
+		RemoveDelay  int `toml:"remove_delay" env:"ETCD_CLUSTER_REMOVE_DELAY"`
+		SyncInterval int `toml:"sync_interval" env:"ETCD_CLUSTER_SYNC_INTERVAL"`
+	}
 }
 
 // New returns a Config initialized with default values.
@@ -103,6 +108,9 @@ func New() *Config {
 	rand.Seed(time.Now().UTC().UnixNano())
 	// Make maximum twice as minimum.
 	c.RetryInterval = float64(50+rand.Int()%50) * defaultHeartbeatInterval / 1000
+	c.Cluster.ActiveSize = server.DefaultActiveSize
+	c.Cluster.RemoveDelay = server.DefaultRemoveDelay
+	c.Cluster.SyncInterval = server.DefaultSyncInterval
 	return c
 }
 
@@ -165,6 +173,9 @@ func (c *Config) LoadEnv() error {
 		return err
 	}
 	if err := c.loadEnv(&c.Peer); err != nil {
+		return err
+	}
+	if err := c.loadEnv(&c.Cluster); err != nil {
 		return err
 	}
 	return nil
@@ -252,6 +263,10 @@ func (c *Config) LoadFlags(arguments []string) error {
 
 	f.StringVar(&c.strTrace, "trace", "", "")
 	f.StringVar(&c.GraphiteHost, "graphite-host", "", "")
+
+	f.IntVar(&c.Cluster.ActiveSize, "cluster-active-size", c.Cluster.ActiveSize, "")
+	f.IntVar(&c.Cluster.RemoveDelay, "cluster-remove-delay", c.Cluster.RemoveDelay, "")
+	f.IntVar(&c.Cluster.SyncInterval, "cluster-sync-interval", c.Cluster.SyncInterval, "")
 
 	// BEGIN IGNORED FLAGS
 	f.StringVar(&path, "config", "", "")
@@ -407,6 +422,14 @@ func (c *Config) MetricsBucketName() string {
 // Trace determines if any trace-level information should be emitted
 func (c *Config) Trace() bool {
 	return c.strTrace == "*"
+}
+
+func (c *Config) ClusterConfig() *server.ClusterConfig {
+	return &server.ClusterConfig{
+		ActiveSize:   c.Cluster.ActiveSize,
+		RemoveDelay:  c.Cluster.RemoveDelay,
+		SyncInterval: c.Cluster.SyncInterval,
+	}
 }
 
 // sanitizeURL will cleanup a host string in the format hostname[:port] and
