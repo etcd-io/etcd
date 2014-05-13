@@ -12,13 +12,13 @@ const (
 	MinActiveSize = 3
 
 	// DefaultRemoveDelay is the default elapsed time before removal.
-	DefaultRemoveDelay = float64((30 * time.Minute) / time.Second)
+	DefaultRemoveDelay = float64((5 * time.Second) / time.Second)
 
 	// MinRemoveDelay is the minimum remove delay allowed.
 	MinRemoveDelay = float64((2 * time.Second) / time.Second)
 
 	// DefaultSyncInterval is the default interval for cluster sync.
-	DefaultSyncInterval = float64((30 * time.Minute) / time.Second)
+	DefaultSyncInterval = float64((5 * time.Second) / time.Second)
 
 	// MinSyncInterval is the minimum sync interval allowed.
 	MinSyncInterval = float64((1 * time.Second) / time.Second)
