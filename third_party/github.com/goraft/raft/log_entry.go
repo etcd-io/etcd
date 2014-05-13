@@ -29,7 +29,9 @@ func newLogEntry(log *Log, event *ev, index uint64, term uint64, command Command
 				return nil, err
 			}
 		} else {
-			json.NewEncoder(&buf).Encode(command)
+			if err := json.NewEncoder(&buf).Encode(command); err != nil {
+				return nil, err
+			}
 		}
 	}
 
