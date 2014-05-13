@@ -86,9 +86,9 @@ type Config struct {
 	strTrace     string `toml:"trace" env:"ETCD_TRACE"`
 	GraphiteHost string `toml:"graphite_host" env:"ETCD_GRAPHITE_HOST"`
 	Cluster      struct {
-		ActiveSize   int `toml:"active_size" env:"ETCD_CLUSTER_ACTIVE_SIZE"`
-		RemoveDelay  int `toml:"remove_delay" env:"ETCD_CLUSTER_REMOVE_DELAY"`
-		SyncInterval int `toml:"sync_interval" env:"ETCD_CLUSTER_SYNC_INTERVAL"`
+		ActiveSize   int     `toml:"active_size" env:"ETCD_CLUSTER_ACTIVE_SIZE"`
+		RemoveDelay  float64 `toml:"remove_delay" env:"ETCD_CLUSTER_REMOVE_DELAY"`
+		SyncInterval float64 `toml:"sync_interval" env:"ETCD_CLUSTER_SYNC_INTERVAL"`
 	}
 }
 
@@ -207,6 +207,12 @@ func (c *Config) loadEnv(target interface{}) error {
 			value.Field(i).SetString(v)
 		case reflect.Slice:
 			value.Field(i).Set(reflect.ValueOf(ustrings.TrimSplit(v, ",")))
+		case reflect.Float64:
+			newValue, err := strconv.ParseFloat(v, 64)
+			if err != nil {
+				return fmt.Errorf("Parse error: %s: %s", field.Tag.Get("env"), err)
+			}
+			value.Field(i).SetFloat(newValue)
 		}
 	}
 	return nil
@@ -265,8 +271,8 @@ func (c *Config) LoadFlags(arguments []string) error {
 	f.StringVar(&c.GraphiteHost, "graphite-host", "", "")
 
 	f.IntVar(&c.Cluster.ActiveSize, "cluster-active-size", c.Cluster.ActiveSize, "")
-	f.IntVar(&c.Cluster.RemoveDelay, "cluster-remove-delay", c.Cluster.RemoveDelay, "")
-	f.IntVar(&c.Cluster.SyncInterval, "cluster-sync-interval", c.Cluster.SyncInterval, "")
+	f.Float64Var(&c.Cluster.RemoveDelay, "cluster-remove-delay", c.Cluster.RemoveDelay, "")
+	f.Float64Var(&c.Cluster.SyncInterval, "cluster-sync-interval", c.Cluster.SyncInterval, "")
 
 	// BEGIN IGNORED FLAGS
 	f.StringVar(&path, "config", "", "")

@@ -817,7 +817,7 @@ func (s *PeerServer) monitorPeerActivity() {
 
 		// Check last activity for all peers.
 		now := time.Now()
-		removeDelay := time.Duration(s.ClusterConfig().RemoveDelay) * time.Second
+		removeDelay := time.Duration(int64(s.ClusterConfig().RemoveDelay * float64(time.Second)))
 		peers := s.raftServer.Peers()
 		for _, peer := range peers {
 			// If the last response from the peer is longer than the remove delay

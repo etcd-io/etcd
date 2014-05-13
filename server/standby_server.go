@@ -119,8 +119,8 @@ func (s *StandbyServer) SyncCluster(peers []string) error {
 	return nil
 }
 
-func (s *StandbyServer) SetSyncInterval(second int) {
-	s.syncInterval = time.Duration(second) * time.Second
+func (s *StandbyServer) SetSyncInterval(second float64) {
+	s.syncInterval = time.Duration(int64(second * float64(time.Second)))
 }
 
 func (s *StandbyServer) ClusterLeader() *machineMessage {

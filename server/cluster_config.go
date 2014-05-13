@@ -12,16 +12,16 @@ const (
 	MinActiveSize = 3
 
 	// DefaultRemoveDelay is the default elapsed time before removal.
-	DefaultRemoveDelay = int((30 * time.Minute) / time.Second)
+	DefaultRemoveDelay = float64((30 * time.Minute) / time.Second)
 
 	// MinRemoveDelay is the minimum remove delay allowed.
-	MinRemoveDelay = int((2 * time.Second) / time.Second)
+	MinRemoveDelay = float64((2 * time.Second) / time.Second)
 
 	// DefaultSyncInterval is the default interval for cluster sync.
-	DefaultSyncInterval = int((30 * time.Minute) / time.Second)
+	DefaultSyncInterval = float64((30 * time.Minute) / time.Second)
 
 	// MinSyncInterval is the minimum sync interval allowed.
-	MinSyncInterval = int((1 * time.Second) / time.Second)
+	MinSyncInterval = float64((1 * time.Second) / time.Second)
 )
 
 // ClusterConfig represents cluster-wide configuration settings.
@@ -33,11 +33,11 @@ type ClusterConfig struct {
 
 	// RemoveDelay is the amount of time, in seconds, after a node is
 	// unreachable that it will be swapped out as a standby node.
-	RemoveDelay int `json:"removeDelay"`
+	RemoveDelay float64 `json:"removeDelay"`
 
 	// SyncInterval is the amount of time, in seconds, between
 	// cluster sync when it runs in standby mode.
-	SyncInterval int `json:"syncInterval"`
+	SyncInterval float64 `json:"syncInterval"`
 }
 
 // NewClusterConfig returns a cluster configuration with default settings.
