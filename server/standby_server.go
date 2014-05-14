@@ -15,8 +15,6 @@ import (
 	"github.com/coreos/etcd/store"
 )
 
-const UninitedSyncInterval = time.Duration(5) * time.Second
-
 type StandbyServerConfig struct {
 	Name       string
 	PeerScheme string
@@ -44,7 +42,7 @@ func NewStandbyServer(config StandbyServerConfig, client *Client) *StandbyServer
 	return &StandbyServer{
 		Config:       config,
 		client:       client,
-		syncInterval: UninitedSyncInterval,
+		syncInterval: time.Duration(int64(DefaultSyncInterval * float64(time.Second))),
 	}
 }
 
@@ -209,7 +207,7 @@ func (s *StandbyServer) join(peer string) error {
 	// Our version must match the leaders version
 	version, err := s.client.GetVersion(peer)
 	if err != nil {
-		log.Debugf("fail checking join version")
+		log.Debugf("error getting peer version")
 		return err
 	}
 	if version < store.MinVersion() || version > store.MaxVersion() {
@@ -220,7 +218,7 @@ func (s *StandbyServer) join(peer string) error {
 	// Fetch cluster config to see whether exists some place.
 	clusterConfig, err := s.client.GetClusterConfig(peer)
 	if err != nil {
-		log.Debugf("fail getting cluster config")
+		log.Debugf("error getting cluster config")
 		return err
 	}
 	if clusterConfig.ActiveSize <= len(s.Cluster()) {
@@ -237,7 +235,7 @@ func (s *StandbyServer) join(peer string) error {
 			EtcdURL:    s.Config.ClientURL,
 		})
 	if err != nil {
-		log.Debugf("fail on join request")
+		log.Debugf("error on join request")
 		return err
 	}
 	s.joinIndex = commitIndex

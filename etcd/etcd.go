@@ -293,7 +293,7 @@ func (e *Etcd) runServer() {
 	var removeNotify <-chan bool
 	for {
 		if e.mode == PeerMode {
-			log.Infof("%v starts to run in peer mode", e.Config.Name)
+			log.Infof("%v starting in peer mode", e.Config.Name)
 			// Starting peer server should be followed close by listening on its port
 			// If not, it may leave many requests unaccepted, or cannot receive heartbeat from the cluster.
 			// One severe problem caused if failing receiving heartbeats is when the second node joins one-node cluster,
@@ -301,7 +301,7 @@ func (e *Etcd) runServer() {
 			e.PeerServer.Start(e.Config.Snapshot, e.Config.ClusterConfig())
 			removeNotify = e.PeerServer.RemoveNotify()
 		} else {
-			log.Infof("%v starts to run in standby mode", e.Config.Name)
+			log.Infof("%v starting in standby mode", e.Config.Name)
 			e.StandbyServer.Start()
 			removeNotify = e.StandbyServer.RemoveNotify()
 		}

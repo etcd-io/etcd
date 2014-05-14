@@ -14,7 +14,7 @@ Standbys also act as standby nodes in the event that a peer node in the cluster 
 There are three configuration parameters used by standbys: active size, remove delay and standby sync interval.
 
 The active size specifies a target size for the number of peers in the cluster.
-If there are not enough peers to meet the active size then, standbys will send join requests until the peer count is equal to the active size.
+If there are not enough peers to meet the active size, standbys will send join requests until the peer count is equal to the active size.
 If there are more peers than the target active size then peers are removed by the leader and will become standbys.
 
 The remove delay specifies how long the cluster should wait before removing a dead peer.
