@@ -27,7 +27,7 @@ type StandbyServer struct {
 	client *Client
 
 	cluster      []*machineMessage
-	syncInterval time.Duration
+	syncInterval float64
 	joinIndex    uint64
 
 	removeNotify chan bool
@@ -42,7 +42,7 @@ func NewStandbyServer(config StandbyServerConfig, client *Client) *StandbyServer
 	return &StandbyServer{
 		Config:       config,
 		client:       client,
-		syncInterval: time.Duration(int64(DefaultSyncInterval * float64(time.Second))),
+		syncInterval: DefaultSyncInterval,
 	}
 }
 
@@ -118,7 +118,7 @@ func (s *StandbyServer) SyncCluster(peers []string) error {
 }
 
 func (s *StandbyServer) SetSyncInterval(second float64) {
-	s.syncInterval = time.Duration(int64(second * float64(time.Second)))
+	s.syncInterval = second
 }
 
 func (s *StandbyServer) ClusterLeader() *machineMessage {
@@ -146,7 +146,7 @@ func (s *StandbyServer) redirectRequests(w http.ResponseWriter, r *http.Request)
 
 func (s *StandbyServer) monitorCluster() {
 	for {
-		timer := time.NewTimer(s.syncInterval)
+		timer := time.NewTimer(time.Duration(int64(s.syncInterval * float64(time.Second))))
 		defer timer.Stop()
 		select {
 		case <-s.closeChan:
