@@ -26,9 +26,9 @@ func TestV2CreateUnique(t *testing.T) {
 		assert.Equal(t, body["action"], "create", "")
 
 		node := body["node"].(map[string]interface{})
-		assert.Equal(t, node["key"], "/foo/bar/2", "")
+		assert.Equal(t, node["key"], "/foo/bar/3", "")
 		assert.Nil(t, node["dir"], "")
-		assert.Equal(t, node["modifiedIndex"], 2, "")
+		assert.Equal(t, node["modifiedIndex"], 3, "")
 
 		// Second POST should add next index to list.
 		resp, _ = tests.PostForm(fullURL, nil)
@@ -36,7 +36,7 @@ func TestV2CreateUnique(t *testing.T) {
 		body = tests.ReadBodyJSON(resp)
 
 		node = body["node"].(map[string]interface{})
-		assert.Equal(t, node["key"], "/foo/bar/3", "")
+		assert.Equal(t, node["key"], "/foo/bar/4", "")
 
 		// POST to a different key should add index to that list.
 		resp, _ = tests.PostForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo/baz"), nil)
@@ -44,6 +44,6 @@ func TestV2CreateUnique(t *testing.T) {
 		body = tests.ReadBodyJSON(resp)
 
 		node = body["node"].(map[string]interface{})
-		assert.Equal(t, node["key"], "/foo/baz/4", "")
+		assert.Equal(t, node["key"], "/foo/baz/5", "")
 	})
 }

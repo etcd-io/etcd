@@ -52,12 +52,11 @@ var errors = map[int]string{
 	EcodeLeaderElect:  "During Leader Election",
 
 	// etcd related errors
-	EcodeWatcherCleared:      "watcher is cleared due to etcd recovery",
-	EcodeEventIndexCleared:   "The event in requested index is outdated and cleared",
-	EcodeStandbyInternal:     "Standby Internal Error",
-	EcodeInvalidActiveSize:   "Invalid active size",
-	EcodeInvalidPromoteDelay: "Standby promote delay",
-	EcodePromoteError:        "Standby promotion error",
+	EcodeWatcherCleared:     "watcher is cleared due to etcd recovery",
+	EcodeEventIndexCleared:  "The event in requested index is outdated and cleared",
+	EcodeStandbyInternal:    "Standby Internal Error",
+	EcodeInvalidActiveSize:  "Invalid active size",
+	EcodeInvalidRemoveDelay: "Standby remove delay",
 
 	// client related errors
 	EcodeClientInternal: "Client Internal Error",
@@ -89,12 +88,11 @@ const (
 	EcodeRaftInternal = 300
 	EcodeLeaderElect  = 301
 
-	EcodeWatcherCleared      = 400
-	EcodeEventIndexCleared   = 401
-	EcodeStandbyInternal     = 402
-	EcodeInvalidActiveSize   = 403
-	EcodeInvalidPromoteDelay = 404
-	EcodePromoteError        = 405
+	EcodeWatcherCleared     = 400
+	EcodeEventIndexCleared  = 401
+	EcodeStandbyInternal    = 402
+	EcodeInvalidActiveSize  = 403
+	EcodeInvalidRemoveDelay = 404
 
 	EcodeClientInternal = 500
 )

@@ -1,6 +1,7 @@
 package test
 
 import (
+	"bytes"
 	"fmt"
 	"net/http"
 	"os"
@@ -8,6 +9,9 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/third_party/github.com/coreos/go-etcd/etcd"
+
+	"github.com/coreos/etcd/tests"
+	"github.com/coreos/etcd/third_party/github.com/stretchr/testify/assert"
 )
 
 // remove the node and node rejoin with previous log
@@ -25,6 +29,11 @@ func TestRemoveNode(t *testing.T) {
 
 	c.SyncCluster()
 
+	resp, _ := tests.Put("http://localhost:7001/v2/admin/config", "application/json", bytes.NewBufferString(`{"syncInterval":1}`))
+	if !assert.Equal(t, resp.StatusCode, 200) {
+		t.FailNow()
+	}
+
 	rmReq, _ := http.NewRequest("DELETE", "http://127.0.0.1:7001/remove/node3", nil)
 
 	client := &http.Client{}
@@ -33,7 +42,7 @@ func TestRemoveNode(t *testing.T) {
 			client.Do(rmReq)
 
 			fmt.Println("send remove to node3 and wait for its exiting")
-			etcds[2].Wait()
+			time.Sleep(100 * time.Millisecond)
 
 			resp, err := c.Get("_etcd/machines", false, false)
 
@@ -44,6 +53,9 @@ func TestRemoveNode(t *testing.T) {
 			if len(resp.Node.Nodes) != 2 {
 				t.Fatal("cannot remove peer")
 			}
+
+			etcds[2].Kill()
+			etcds[2].Wait()
 
 			if i == 1 {
 				// rejoin with log
@@ -57,7 +69,7 @@ func TestRemoveNode(t *testing.T) {
 				panic(err)
 			}
 
-			time.Sleep(time.Second)
+			time.Sleep(time.Second + time.Second)
 
 			resp, err = c.Get("_etcd/machines", false, false)
 

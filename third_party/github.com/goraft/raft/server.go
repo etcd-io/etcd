@@ -334,6 +334,8 @@ func (s *server) IsLogEmpty() bool {
 
 // A list of all the log entries. This should only be used for debugging purposes.
 func (s *server) LogEntries() []*LogEntry {
+	s.log.mutex.RLock()
+	defer s.log.mutex.RUnlock()
 	return s.log.entries
 }
 
@@ -471,7 +473,9 @@ func (s *server) Start() error {
 	return nil
 }
 
-// Init initializes the raft server
+// Init initializes the raft server.
+// If there is no previous log file under the given path, Init() will create an empty log file.
+// Otherwise, Init() will load in the log entries from the log file.
 func (s *server) Init() error {
 	if s.Running() {
 		return fmt.Errorf("raft.Server: Server already running[%v]", s.state)
@@ -613,6 +617,10 @@ func (s *server) loop() {
 // Sends an event to the event loop to be processed. The function will wait
 // until the event is actually processed before returning.
 func (s *server) send(value interface{}) (interface{}, error) {
+	if !s.Running() {
+		return nil, StopError
+	}
+
 	event := &ev{target: value, c: make(chan error, 1)}
 	select {
 	case s.c <- event:
@@ -628,6 +636,10 @@ func (s *server) send(value interface{}) (interface{}, error) {
 }
 
 func (s *server) sendAsync(value interface{}) {
+	if !s.Running() {
+		return
+	}
+
 	event := &ev{target: value, c: make(chan error, 1)}
 	// try a non-blocking send first
 	// in most cases, this should not be blocking

@@ -31,7 +31,7 @@ done
 tmux new-window -t $SESSION:2 -n 'proxy'
 tmux split-window -h
 tmux select-pane -t 0
-tmux send-keys "curl -XPUT -H \"Content-Type: application/json\" -d '{\"activeSize\":3, \"promoteDelay\":30}' http://127.0.0.1:7001/v2/admin/config" C-m
+tmux send-keys "curl -XPUT -H \"Content-Type: application/json\" -d '{\"activeSize\":3, \"removeDelay\":30}' http://127.0.0.1:7001/v2/admin/config" C-m
 
 for i in 4 5 6; do
 	tmux select-pane -t 0

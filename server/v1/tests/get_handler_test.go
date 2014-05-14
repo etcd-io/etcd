@@ -36,7 +36,7 @@ func TestV1GetKey(t *testing.T) {
 		assert.Equal(t, body["action"], "get", "")
 		assert.Equal(t, body["key"], "/foo/bar", "")
 		assert.Equal(t, body["value"], "XXX", "")
-		assert.Equal(t, body["index"], 2, "")
+		assert.Equal(t, body["index"], 3, "")
 	})
 }
 
@@ -124,7 +124,7 @@ func TestV1WatchKey(t *testing.T) {
 
 		assert.Equal(t, body["key"], "/foo/bar", "")
 		assert.Equal(t, body["value"], "XXX", "")
-		assert.Equal(t, body["index"], 2, "")
+		assert.Equal(t, body["index"], 3, "")
 	})
 }
 
@@ -140,7 +140,7 @@ func TestV1WatchKeyWithIndex(t *testing.T) {
 		c := make(chan bool)
 		go func() {
 			v := url.Values{}
-			v.Set("index", "3")
+			v.Set("index", "4")
 			resp, _ := tests.PostForm(fmt.Sprintf("%s%s", s.URL(), "/v1/watch/foo/bar"), v)
 			body = tests.ReadBodyJSON(resp)
 			c <- true
@@ -180,7 +180,7 @@ func TestV1WatchKeyWithIndex(t *testing.T) {
 
 		assert.Equal(t, body["key"], "/foo/bar", "")
 		assert.Equal(t, body["value"], "YYY", "")
-		assert.Equal(t, body["index"], 3, "")
+		assert.Equal(t, body["index"], 4, "")
 	})
 }
 

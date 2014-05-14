@@ -56,7 +56,9 @@ func newCommand(name string, data []byte) (Command, error) {
 				return nil, err
 			}
 		} else {
-			json.NewDecoder(bytes.NewReader(data)).Decode(copy)
+			if err := json.NewDecoder(bytes.NewReader(data)).Decode(copy); err != nil {
+				return nil, err
+			}
 		}
 	}
 

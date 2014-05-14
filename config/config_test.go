@@ -37,6 +37,11 @@ func TestConfigTOML(t *testing.T) {
 		cert_file = "/tmp/peer/file.cert"
 		key_file = "/tmp/peer/file.key"
 		bind_addr = "127.0.0.1:7003"
+
+		[cluster]
+		active_size = 5
+		remove_delay = 100.0
+		sync_interval = 10.0
 	`
 	c := New()
 	_, err := toml.Decode(content, &c)
@@ -62,6 +67,9 @@ func TestConfigTOML(t *testing.T) {
 	assert.Equal(t, c.Peer.CertFile, "/tmp/peer/file.cert", "")
 	assert.Equal(t, c.Peer.KeyFile, "/tmp/peer/file.key", "")
 	assert.Equal(t, c.Peer.BindAddr, "127.0.0.1:7003", "")
+	assert.Equal(t, c.Cluster.ActiveSize, 5, "")
+	assert.Equal(t, c.Cluster.RemoveDelay, 100.0, "")
+	assert.Equal(t, c.Cluster.SyncInterval, 10.0, "")
 }
 
 // Ensures that a configuration can be retrieved from environment variables.
@@ -88,6 +96,9 @@ func TestConfigEnv(t *testing.T) {
 	os.Setenv("ETCD_PEER_CERT_FILE", "/tmp/peer/file.cert")
 	os.Setenv("ETCD_PEER_KEY_FILE", "/tmp/peer/file.key")
 	os.Setenv("ETCD_PEER_BIND_ADDR", "127.0.0.1:7003")
+	os.Setenv("ETCD_CLUSTER_ACTIVE_SIZE", "5")
+	os.Setenv("ETCD_CLUSTER_REMOVE_DELAY", "100")
+	os.Setenv("ETCD_CLUSTER_SYNC_INTERVAL", "10")
 
 	c := New()
 	c.LoadEnv()
@@ -111,6 +122,9 @@ func TestConfigEnv(t *testing.T) {
 	assert.Equal(t, c.Peer.CertFile, "/tmp/peer/file.cert", "")
 	assert.Equal(t, c.Peer.KeyFile, "/tmp/peer/file.key", "")
 	assert.Equal(t, c.Peer.BindAddr, "127.0.0.1:7003", "")
+	assert.Equal(t, c.Cluster.ActiveSize, 5, "")
+	assert.Equal(t, c.Cluster.RemoveDelay, 100.0, "")
+	assert.Equal(t, c.Cluster.SyncInterval, 10.0, "")
 
 	// Clear this as it will mess up other tests
 	os.Setenv("ETCD_DISCOVERY", "")
@@ -468,6 +482,51 @@ func TestConfigPeerBindAddrFlag(t *testing.T) {
 	c := New()
 	assert.Nil(t, c.LoadFlags([]string{"-peer-bind-addr", "127.0.0.1:4003"}), "")
 	assert.Equal(t, c.Peer.BindAddr, "127.0.0.1:4003", "")
+}
+
+// Ensures that the cluster active size can be parsed from the environment.
+func TestConfigClusterActiveSizeEnv(t *testing.T) {
+	withEnv("ETCD_CLUSTER_ACTIVE_SIZE", "5", func(c *Config) {
+		assert.Nil(t, c.LoadEnv(), "")
+		assert.Equal(t, c.Cluster.ActiveSize, 5, "")
+	})
+}
+
+// Ensures that the cluster active size flag can be parsed.
+func TestConfigClusterActiveSizeFlag(t *testing.T) {
+	c := New()
+	assert.Nil(t, c.LoadFlags([]string{"-cluster-active-size", "5"}), "")
+	assert.Equal(t, c.Cluster.ActiveSize, 5, "")
+}
+
+// Ensures that the cluster remove delay can be parsed from the environment.
+func TestConfigClusterRemoveDelayEnv(t *testing.T) {
+	withEnv("ETCD_CLUSTER_REMOVE_DELAY", "100", func(c *Config) {
+		assert.Nil(t, c.LoadEnv(), "")
+		assert.Equal(t, c.Cluster.RemoveDelay, 100.0, "")
+	})
+}
+
+// Ensures that the cluster remove delay flag can be parsed.
+func TestConfigClusterRemoveDelayFlag(t *testing.T) {
+	c := New()
+	assert.Nil(t, c.LoadFlags([]string{"-cluster-remove-delay", "100"}), "")
+	assert.Equal(t, c.Cluster.RemoveDelay, 100.0, "")
+}
+
+// Ensures that the cluster sync interval can be parsed from the environment.
+func TestConfigClusterSyncIntervalEnv(t *testing.T) {
+	withEnv("ETCD_CLUSTER_SYNC_INTERVAL", "10", func(c *Config) {
+		assert.Nil(t, c.LoadEnv(), "")
+		assert.Equal(t, c.Cluster.SyncInterval, 10.0, "")
+	})
+}
+
+// Ensures that the cluster sync interval flag can be parsed.
+func TestConfigClusterSyncIntervalFlag(t *testing.T) {
+	c := New()
+	assert.Nil(t, c.LoadFlags([]string{"-cluster-sync-interval", "10"}), "")
+	assert.Equal(t, c.Cluster.SyncInterval, 10.0, "")
 }
 
 // Ensures that a system config field is overridden by a custom config field.

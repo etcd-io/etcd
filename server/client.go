@@ -30,7 +30,7 @@ func NewClient(transport http.RoundTripper) *Client {
 	return &Client{http.Client{Transport: transport}}
 }
 
-// CheckVersion checks whether the version is available.
+// CheckVersion returns true when the version check on the server returns 200.
 func (c *Client) CheckVersion(url string, version int) (bool, *etcdErr.Error) {
 	resp, err := c.Get(url + fmt.Sprintf("/version/%d/check", version))
 	if err != nil {
