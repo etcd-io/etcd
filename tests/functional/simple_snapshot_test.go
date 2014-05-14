@@ -56,7 +56,7 @@ func TestSnapshot(t *testing.T) {
 
 	index, _ := strconv.Atoi(snapshots[0].Name()[2:5])
 
-	if index < 503 || index > 515 {
+	if index < 503 || index > 516 {
 		t.Fatal("wrong name of snapshot :", snapshots[0].Name())
 	}
 
