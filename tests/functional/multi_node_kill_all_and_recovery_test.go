@@ -167,7 +167,7 @@ func TestMultiNodeKillAllAndRecoveryWithStandbys(t *testing.T) {
 	leaderChan := make(chan string, 1)
 	all := make(chan bool, 1)
 
-	clusterSize := 5
+	clusterSize := 15
 	argGroup, etcds, err := CreateCluster(clusterSize, procAttr, false)
 	defer DestroyCluster(etcds)
 
@@ -184,8 +184,8 @@ func TestMultiNodeKillAllAndRecoveryWithStandbys(t *testing.T) {
 
 	c.SyncCluster()
 
-	// Reconfigure with smaller active size (3 nodes) and wait for demotion.
-	resp, _ := tests.Put("http://localhost:7001/v2/admin/config", "application/json", bytes.NewBufferString(`{"activeSize":3}`))
+	// Reconfigure with smaller active size (7 nodes) and wait for remove.
+	resp, _ := tests.Put("http://localhost:7001/v2/admin/config", "application/json", bytes.NewBufferString(`{"activeSize":7}`))
 	if !assert.Equal(t, resp.StatusCode, 200) {
 		t.FailNow()
 	}
@@ -195,10 +195,10 @@ func TestMultiNodeKillAllAndRecoveryWithStandbys(t *testing.T) {
 	// Verify that there is three machines in peer mode.
 	result, err := c.Get("_etcd/machines", false, true)
 	assert.NoError(t, err)
-	assert.Equal(t, len(result.Node.Nodes), 3)
+	assert.Equal(t, len(result.Node.Nodes), 7)
 
-	// send 10 commands
-	for i := 0; i < 10; i++ {
+	// send set commands
+	for i := 0; i < 2*clusterSize; i++ {
 		// Test Set
 		_, err := c.Set("foo", "bar", 0)
 		if err != nil {
@@ -220,13 +220,13 @@ func TestMultiNodeKillAllAndRecoveryWithStandbys(t *testing.T) {
 	time.Sleep(time.Second)
 
 	for i := 0; i < clusterSize; i++ {
-		etcds[i], err = os.StartProcess(EtcdBinPath, argGroup[i], procAttr)
+		etcds[i], err = os.StartProcess(EtcdBinPath, append(argGroup[i], "-peers="), procAttr)
 	}
 
 	time.Sleep(2 * time.Second)
 
-	// send 10 commands
-	for i := 0; i < 10; i++ {
+	// send set commands
+	for i := 0; i < 2*clusterSize; i++ {
 		// Test Set
 		_, err := c.Set("foo", "bar", 0)
 		if err != nil {
@@ -234,8 +234,8 @@ func TestMultiNodeKillAllAndRecoveryWithStandbys(t *testing.T) {
 		}
 	}
 
-	// Verify that we have three machines.
+	// Verify that we have seven machines.
 	result, err = c.Get("_etcd/machines", false, true)
 	assert.NoError(t, err)
-	assert.Equal(t, len(result.Node.Nodes), 3)
+	assert.Equal(t, len(result.Node.Nodes), 7)
 }

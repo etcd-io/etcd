@@ -1,9 +1,12 @@
 package server
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -15,11 +18,14 @@ import (
 	"github.com/coreos/etcd/store"
 )
 
+const clusterInfoName = "cluster_info"
+
 type StandbyServerConfig struct {
 	Name       string
 	PeerScheme string
 	PeerURL    string
 	ClientURL  string
+	DataDir    string
 }
 
 type StandbyServer struct {
@@ -30,6 +36,9 @@ type StandbyServer struct {
 	syncInterval float64
 	joinIndex    uint64
 
+	file     *os.File
+	recorded bool
+
 	removeNotify chan bool
 	started      bool
 	closeChan    chan bool
@@ -38,12 +47,19 @@ type StandbyServer struct {
 	sync.Mutex
 }
 
-func NewStandbyServer(config StandbyServerConfig, client *Client) *StandbyServer {
-	return &StandbyServer{
+func NewStandbyServer(config StandbyServerConfig, client *Client) (*StandbyServer, error) {
+	s := &StandbyServer{
 		Config:       config,
 		client:       client,
 		syncInterval: DefaultSyncInterval,
 	}
+	if err := s.openClusterInfo(); err != nil {
+		return nil, fmt.Errorf("error open/create cluster info file: %v", err)
+	}
+	if clusterInfo, err := s.loadClusterInfo(); err == nil {
+		s.setCluster(clusterInfo)
+	}
+	return s, nil
 }
 
 func (s *StandbyServer) Start() {
@@ -75,6 +91,10 @@ func (s *StandbyServer) Stop() {
 
 	close(s.closeChan)
 	s.routineGroup.Wait()
+
+	if err := s.clearClusterInfo(); err != nil {
+		log.Warnf("error clearing cluster info for standby")
+	}
 }
 
 // RemoveNotify notifies the server is removed from standby mode and ready
@@ -85,6 +105,10 @@ func (s *StandbyServer) RemoveNotify() <-chan bool {
 
 func (s *StandbyServer) ClientHTTPHandler() http.Handler {
 	return http.HandlerFunc(s.redirectRequests)
+}
+
+func (s *StandbyServer) ClusterRecorded() bool {
+	return s.recorded
 }
 
 func (s *StandbyServer) Cluster() []string {
@@ -145,14 +169,18 @@ func (s *StandbyServer) redirectRequests(w http.ResponseWriter, r *http.Request)
 }
 
 func (s *StandbyServer) monitorCluster() {
+	first := true
 	for {
-		timer := time.NewTimer(time.Duration(int64(s.syncInterval * float64(time.Second))))
-		defer timer.Stop()
-		select {
-		case <-s.closeChan:
-			return
-		case <-timer.C:
+		if !first {
+			timer := time.NewTimer(time.Duration(int64(s.syncInterval * float64(time.Second))))
+			defer timer.Stop()
+			select {
+			case <-s.closeChan:
+				return
+			case <-timer.C:
+			}
 		}
+		first = false
 
 		if err := s.syncCluster(nil); err != nil {
 			log.Warnf("fail syncing cluster(%v): %v", s.Cluster(), err)
@@ -198,6 +226,9 @@ func (s *StandbyServer) syncCluster(peerURLs []string) error {
 
 		s.setCluster(machines)
 		s.SetSyncInterval(config.SyncInterval)
+		if err := s.saveClusterInfo(); err != nil {
+			log.Warnf("fail saving cluster info into disk: %v", err)
+		}
 		return nil
 	}
 	return fmt.Errorf("unreachable cluster")
@@ -251,4 +282,54 @@ func (s *StandbyServer) fullPeerURL(urlStr string) string {
 	}
 	u.Scheme = s.Config.PeerScheme
 	return u.String()
+}
+
+func (s *StandbyServer) openClusterInfo() error {
+	var err error
+	path := filepath.Join(s.Config.DataDir, clusterInfoName)
+	s.file, err = os.OpenFile(path, os.O_RDWR, 0600)
+	if err != nil {
+		if os.IsNotExist(err) {
+			s.file, err = os.OpenFile(path, os.O_WRONLY|os.O_CREATE, 0600)
+		}
+		return err
+	}
+	return nil
+}
+
+func (s *StandbyServer) loadClusterInfo() ([]*machineMessage, error) {
+	clusterInfo := make([]*machineMessage, 0)
+	if _, err := s.file.Seek(0, os.SEEK_SET); err != nil {
+		return nil, err
+	}
+	if err := json.NewDecoder(s.file).Decode(&clusterInfo); err != nil {
+		return nil, err
+	}
+	s.recorded = true
+	return clusterInfo, nil
+}
+
+func (s *StandbyServer) saveClusterInfo() error {
+	if err := s.clearClusterInfo(); err != nil {
+		return nil
+	}
+	if err := json.NewEncoder(s.file).Encode(s.cluster); err != nil {
+		return err
+	}
+	if err := s.file.Sync(); err != nil {
+		return err
+	}
+	s.recorded = true
+	return nil
+}
+
+func (s *StandbyServer) clearClusterInfo() error {
+	if _, err := s.file.Seek(0, os.SEEK_SET); err != nil {
+		return err
+	}
+	if err := s.file.Truncate(0); err != nil {
+		return err
+	}
+	s.recorded = false
+	return nil
 }
