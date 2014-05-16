@@ -34,7 +34,7 @@ func (mt messageType) String() string {
 var errNoLeader = errors.New("no leader")
 
 const (
-	stateFollower = iota
+	stateFollower stateType = iota
 	stateCandidate
 	stateLeader
 )
@@ -244,6 +244,7 @@ func (sm *stateMachine) step(m Message) {
 		sm.term++
 		sm.reset()
 		sm.state = stateCandidate
+		sm.vote = sm.addr
 		sm.poll(sm.addr, true)
 		for i := 0; i < sm.k; i++ {
 			if i == sm.addr {
