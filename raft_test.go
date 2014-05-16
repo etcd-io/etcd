@@ -51,12 +51,39 @@ func TestDualingCandidates(t *testing.T) {
 	t.Log("healing")
 	tt.heal()
 	tt.step(Message{To: 2, Type: msgHup})
-	if c.state != stateLeader {
-		t.Errorf("state = %s, want %s", c.state, stateLeader)
+
+	tests := []struct {
+		sm *stateMachine
+		state stateType
+		term int
+	}{
+		{a, stateFollower, 2},
+		{c, stateLeader, 2},
 	}
-	if g := c.term; g != 2 {
-		t.Errorf("term = %d, want %d", g, 2)
+
+	for i, tt := range tests {
+		if g := tt.sm.state; g != tt.state {
+			t.Errorf("#%d: state = %s, want %s", i, g, tt.state)
+		}
+		if g := tt.sm.term; g != tt.term {
+			t.Errorf("#%d: term = %d, want %d", i, g, tt.term)
+		}
 	}
+	if g := diffLogs(tt.logs(defaultLog)); g != nil {
+		for _, diff := range g {
+			t.Errorf("bag log:\n%s", diff)
+		}
+	}
+}
+
+func TestOldMessages(t *testing.T) {
+	tt := newNetwork(nil, nil, nil)
+	// make 0 leader @ term 3
+	tt.step(Message{To: 0, Type: msgHup})
+	tt.step(Message{To: 0, Type: msgHup})
+	tt.step(Message{To: 0, Type: msgHup})
+	// pretend we're an old leader trying to make progress
+	tt.step(Message{To: 0, Type: msgApp, Term: 1, Entries: []Entry{{Term: 1}}})
 	if g := diffLogs(tt.logs(defaultLog)); g != nil {
 		for _, diff := range g {
 			t.Errorf("bag log:\n%s", diff)
