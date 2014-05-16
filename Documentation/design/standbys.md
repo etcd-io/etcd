@@ -104,11 +104,10 @@ Loop:
 
   Sync cluster, and write cluster info into disk
 
-  If peer count < active size:
-    Send join request
-    If succeed:
-      Clear cluster info from disk
-      Return
+  Check active size and send join request if needed
+  If succeed:
+    Clear cluster info from disk
+    Return
 ```
 
 
