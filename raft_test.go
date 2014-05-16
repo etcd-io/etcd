@@ -6,6 +6,8 @@ import (
 	"testing"
 )
 
+var defaultLog = []Entry{{}}
+
 func TestLeaderElection(t *testing.T) {
 	tests := []struct {
 		network
@@ -31,24 +33,25 @@ func TestLeaderElection(t *testing.T) {
 }
 
 func TestProposal(t *testing.T) {
+	data := []byte("somedata")
+	successLog := []Entry{{}, {Term: 1, Data: data}}
+
 	tests := []struct {
 		network
-		success bool
+		log       []Entry
+		willpanic bool
 	}{
-		{newNetwork(nil, nil, nil), true},
-		{newNetwork(nil, nil, nopStepper), true},
-		{newNetwork(nil, nopStepper, nopStepper), false},
-		{newNetwork(nil, nopStepper, nopStepper, nil), false},
-		{newNetwork(nil, nopStepper, nopStepper, nil, nil), true},
+		{newNetwork(nil, nil, nil), successLog, false},
+		{newNetwork(nil, nil, nopStepper), successLog, false},
+		{newNetwork(nil, nopStepper, nopStepper), defaultLog, true},
+		{newNetwork(nil, nopStepper, nopStepper, nil), defaultLog, true},
+		{newNetwork(nil, nopStepper, nopStepper, nil, nil), successLog, false},
 	}
 
 	for i, tt := range tests {
 		step := stepperFunc(func(m Message) {
 			defer func() {
-				if !tt.success {
-					// not expected success implies there
-					// will be no known leader which will
-					// cause step to panic - swallow it.
+				if tt.willpanic {
 					e := recover()
 					if e != nil {
 						t.Logf("#%d: err: %s", i, e)
@@ -65,13 +68,7 @@ func TestProposal(t *testing.T) {
 		step(Message{To: 0, Type: msgHup})
 		step(Message{To: 0, Type: msgProp, Data: data})
 
-		w := []Entry{{}}
-		if tt.success {
-			w = append(w, Entry{Term: 1, Data: data})
-		}
-		ls := append([][]Entry{w}, tt.logs()...)
-
-		if g := diffLogs(ls); g != nil {
+		if g := diffLogs(tt.logs(tt.log)); g != nil {
 			for _, diff := range g {
 				t.Errorf("#%d: bag log:\n%s", i, diff)
 			}
@@ -84,12 +81,15 @@ func TestProposal(t *testing.T) {
 }
 
 func TestProposalByProxy(t *testing.T) {
+	data := []byte("somedata")
+	successLog := []Entry{{}, {Term: 1, Data: data}}
+
 	tests := []struct {
 		network
-		success bool
+		log []Entry
 	}{
-		{newNetwork(nil, nil, nil), true},
-		{newNetwork(nil, nil, nopStepper), true},
+		{newNetwork(nil, nil, nil), successLog},
+		{newNetwork(nil, nil, nopStepper), successLog},
 	}
 
 	for i, tt := range tests {
@@ -104,7 +104,7 @@ func TestProposalByProxy(t *testing.T) {
 		// propose via follower
 		step(Message{To: 1, Type: msgProp, Data: []byte("somedata")})
 
-		if g := diffLogs(tt.logs()); g != nil {
+		if g := diffLogs(tt.logs(tt.log)); g != nil {
 			for _, diff := range g {
 				t.Errorf("#%d: bag log:\n%s", i, diff)
 			}
@@ -140,8 +140,11 @@ func (nt network) step(m Message) {
 	nt[m.To].step(m)
 }
 
-func (nt network) logs() [][]Entry {
-	ls := make([][]Entry, len(nt))
+// logs returns all logs in nt prepended with want. If a node is not a
+// *stateMachine, its log will be nil.
+func (nt network) logs(want []Entry) [][]Entry {
+	ls := make([][]Entry, len(nt)+1)
+	ls[0] = want
 	for i, node := range nt {
 		if sm, ok := node.(*stateMachine); ok {
 			ls[i] = sm.log
