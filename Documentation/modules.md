@@ -50,7 +50,7 @@ curl -X POST http://127.0.0.1:4001/mod/v2/lock/customer1?ttl=60 -d value=bar -d 
 curl -X PUT http://127.0.0.1:4001/mod/v2/lock/customer1?ttl=60 -d index=2
 ```
 
-**Renew the TTL on the "customer1" lock for value "customer1"**
+**Renew the TTL on the "customer1" lock for value "bar"**
 
 ```sh
 curl -X PUT http://127.0.0.1:4001/mod/v2/lock/customer1?ttl=60 -d value=bar
