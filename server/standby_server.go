@@ -29,6 +29,7 @@ type StandbyServerConfig struct {
 }
 
 type standbyInfo struct {
+	Running      bool
 	Cluster      []*machineMessage
 	SyncInterval float64
 }
@@ -40,8 +41,7 @@ type StandbyServer struct {
 	standbyInfo
 	joinIndex uint64
 
-	file     *os.File
-	recorded bool
+	file *os.File
 
 	removeNotify chan bool
 	started      bool
@@ -80,6 +80,7 @@ func (s *StandbyServer) Start() {
 		defer s.routineGroup.Done()
 		s.monitorCluster()
 	}()
+	s.Running = true
 }
 
 // Stop stops the server gracefully.
@@ -97,6 +98,7 @@ func (s *StandbyServer) Stop() {
 	if err := s.clearStandbyInfo(); err != nil {
 		log.Warnf("error clearing cluster info for standby")
 	}
+	s.Running = false
 }
 
 // RemoveNotify notifies the server is removed from standby mode and ready
@@ -109,8 +111,8 @@ func (s *StandbyServer) ClientHTTPHandler() http.Handler {
 	return http.HandlerFunc(s.redirectRequests)
 }
 
-func (s *StandbyServer) ClusterRecorded() bool {
-	return s.recorded
+func (s *StandbyServer) IsRunning() bool {
+	return s.Running
 }
 
 func (s *StandbyServer) ClusterURLs() []string {
@@ -304,7 +306,6 @@ func (s *StandbyServer) loadStandbyInfo() ([]*machineMessage, error) {
 	if err := json.NewDecoder(s.file).Decode(&s.standbyInfo); err != nil {
 		return nil, err
 	}
-	s.recorded = true
 	return s.standbyInfo.Cluster, nil
 }
 
@@ -318,7 +319,6 @@ func (s *StandbyServer) saveStandbyInfo() error {
 	if err := s.file.Sync(); err != nil {
 		return err
 	}
-	s.recorded = true
 	return nil
 }
 
@@ -329,6 +329,5 @@ func (s *StandbyServer) clearStandbyInfo() error {
 	if err := s.file.Truncate(0); err != nil {
 		return err
 	}
-	s.recorded = false
 	return nil
 }

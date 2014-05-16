@@ -240,7 +240,7 @@ func (e *Etcd) Run() {
 	peerTLSConfig := server.TLSServerConfig(e.Config.PeerTLSInfo())
 	etcdTLSConfig := server.TLSServerConfig(e.Config.EtcdTLSInfo())
 
-	if !e.StandbyServer.ClusterRecorded() {
+	if !e.StandbyServer.IsRunning() {
 		startPeerServer, possiblePeers, err := e.PeerServer.FindCluster(e.Config.Discovery, e.Config.Peers)
 		if err != nil {
 			log.Fatal(err)
