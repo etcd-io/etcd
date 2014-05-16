@@ -105,6 +105,8 @@ func TestRemoveNode(t *testing.T) {
 
 			client.Do(rmReq)
 
+			time.Sleep(100 * time.Millisecond)
+
 			resp, err := c.Get("_etcd/machines", false, false)
 
 			if err != nil {
