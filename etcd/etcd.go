@@ -231,9 +231,7 @@ func (e *Etcd) Run() {
 		ClientURL:  e.Config.Addr,
 		DataDir:    e.Config.DataDir,
 	}
-	if e.StandbyServer, err = server.NewStandbyServer(ssConfig, client); err != nil {
-		log.Fatal("error new standby server:", err)
-	}
+	e.StandbyServer = server.NewStandbyServer(ssConfig, client)
 
 	// Generating config could be slow.
 	// Put it here to make listen happen immediately after peer-server starting.

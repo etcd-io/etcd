@@ -50,16 +50,16 @@ type StandbyServer struct {
 	sync.Mutex
 }
 
-func NewStandbyServer(config StandbyServerConfig, client *Client) (*StandbyServer, error) {
+func NewStandbyServer(config StandbyServerConfig, client *Client) *StandbyServer {
 	s := &StandbyServer{
 		Config:      config,
 		client:      client,
 		standbyInfo: standbyInfo{SyncInterval: DefaultSyncInterval},
 	}
 	if err := s.loadInfo(); err != nil {
-		return nil, fmt.Errorf("error load standby info file: %v", err)
+		log.Warnf("error load standby info file: %v", err)
 	}
-	return s, nil
+	return s
 }
 
 func (s *StandbyServer) Start() {
