@@ -53,9 +53,9 @@ func TestDualingCandidates(t *testing.T) {
 	tt.step(Message{To: 2, Type: msgHup})
 
 	tests := []struct {
-		sm *stateMachine
+		sm    *stateMachine
 		state stateType
-		term int
+		term  int
 	}{
 		{a, stateFollower, 2},
 		{c, stateLeader, 2},
@@ -69,7 +69,7 @@ func TestDualingCandidates(t *testing.T) {
 			t.Errorf("#%d: term = %d, want %d", i, g, tt.term)
 		}
 	}
-	if g := diffLogs(tt.logs(defaultLog)); g != nil {
+	if g := diffLogs(defaultLog, tt.logs()); g != nil {
 		for _, diff := range g {
 			t.Errorf("bag log:\n%s", diff)
 		}
@@ -84,7 +84,7 @@ func TestOldMessages(t *testing.T) {
 	tt.step(Message{To: 0, Type: msgHup})
 	// pretend we're an old leader trying to make progress
 	tt.step(Message{To: 0, Type: msgApp, Term: 1, Entries: []Entry{{Term: 1}}})
-	if g := diffLogs(tt.logs(defaultLog)); g != nil {
+	if g := diffLogs(defaultLog, tt.logs()); g != nil {
 		for _, diff := range g {
 			t.Errorf("bag log:\n%s", diff)
 		}
@@ -92,44 +92,51 @@ func TestOldMessages(t *testing.T) {
 }
 
 func TestProposal(t *testing.T) {
-	data := []byte("somedata")
-	successLog := []Entry{{}, {Term: 1, Data: data}}
-
 	tests := []struct {
 		*network
-		log       []Entry
-		willpanic bool
+		success bool
 	}{
-		{newNetwork(nil, nil, nil), successLog, false},
-		{newNetwork(nil, nil, nopStepper), successLog, false},
-		{newNetwork(nil, nopStepper, nopStepper), defaultLog, true},
-		{newNetwork(nil, nopStepper, nopStepper, nil), defaultLog, true},
-		{newNetwork(nil, nopStepper, nopStepper, nil, nil), successLog, false},
+		{newNetwork(nil, nil, nil), true},
+		{newNetwork(nil, nil, nopStepper), true},
+		{newNetwork(nil, nopStepper, nopStepper), false},
+		{newNetwork(nil, nopStepper, nopStepper, nil), false},
+		{newNetwork(nil, nopStepper, nopStepper, nil, nil), true},
 	}
 
 	for i, tt := range tests {
+		tt.tee = stepperFunc(func(m Message) {
+			t.Logf("#%d: m = %+v", i, m)
+		})
+
 		step := stepperFunc(func(m Message) {
 			defer func() {
-				if tt.willpanic {
+				// only recover is we expect it to panic so
+				// panics we don't expect go up.
+				if !tt.success {
 					e := recover()
 					if e != nil {
 						t.Logf("#%d: err: %s", i, e)
 					}
 				}
 			}()
-			t.Logf("#%d: m = %+v", i, m)
 			tt.step(m)
 		})
 
-		var data = []byte("somedata")
+		data := []byte("somedata")
 
 		// promote 0 the leader
 		step(Message{To: 0, Type: msgHup})
 		step(Message{To: 0, Type: msgProp, Data: data})
 
-		if g := diffLogs(tt.logs(tt.log)); g != nil {
+		var wantLog []Entry
+		if tt.success {
+			wantLog = []Entry{{}, {Term: 1, Data: data}}
+		} else {
+			wantLog = defaultLog
+		}
+		if g := diffLogs(wantLog, tt.logs()); g != nil {
 			for _, diff := range g {
-				t.Errorf("#%d: bag log:\n%s", i, diff)
+				t.Errorf("#%d: diff:%s", i, diff)
 			}
 		}
 		sm := tt.network.ss[0].(*stateMachine)
@@ -141,14 +148,9 @@ func TestProposal(t *testing.T) {
 
 func TestProposalByProxy(t *testing.T) {
 	data := []byte("somedata")
-	successLog := []Entry{{}, {Term: 1, Data: data}}
-
-	tests := []struct {
-		*network
-		log []Entry
-	}{
-		{newNetwork(nil, nil, nil), successLog},
-		{newNetwork(nil, nil, nopStepper), successLog},
+	tests := []*network{
+		newNetwork(nil, nil, nil),
+		newNetwork(nil, nil, nopStepper),
 	}
 
 	for i, tt := range tests {
@@ -162,15 +164,33 @@ func TestProposalByProxy(t *testing.T) {
 		// propose via follower
 		tt.step(Message{To: 1, Type: msgProp, Data: []byte("somedata")})
 
-		if g := diffLogs(tt.logs(tt.log)); g != nil {
+		wantLog := []Entry{{}, {Term: 1, Data: data}}
+		if g := diffLogs(wantLog, tt.logs()); g != nil {
 			for _, diff := range g {
-				t.Errorf("#%d: bag log:\n%s", i, diff)
+				t.Errorf("#%d: bad entry: %s", i, diff)
 			}
 		}
-		sm := tt.network.ss[0].(*stateMachine)
+		sm := tt.ss[0].(*stateMachine)
 		if g := sm.term; g != 1 {
 			t.Errorf("#%d: term = %d, want %d", i, g, 1)
 		}
+	}
+}
+
+func TestLogDiff(t *testing.T) {
+	a := []Entry{{}, {Term: 1}, {Term: 2}}
+	b := []Entry{{}, {Term: 1}, {Term: 2}}
+	c := []Entry{{}, {Term: 2}}
+	d := []Entry(nil)
+
+	w := []diff{
+		diff{1, []*Entry{{Term: 1}, {Term: 1}, {Term: 2}, nilLogEntry}},
+		diff{2, []*Entry{{Term: 2}, {Term: 2}, noEntry, nilLogEntry}},
+	}
+
+	if g := diffLogs(a, [][]Entry{b, c, d}); !reflect.DeepEqual(w, g) {
+		t.Errorf("g = %s", g)
+		t.Errorf("want %s", w)
 	}
 }
 
@@ -213,9 +233,8 @@ func (nt network) heal() {
 
 // logs returns all logs in nt prepended with want. If a node is not a
 // *stateMachine, its log will be nil.
-func (nt network) logs(want []Entry) [][]Entry {
-	ls := make([][]Entry, len(nt.ss)+1)
-	ls[0] = want
+func (nt network) logs() [][]Entry {
+	ls := make([][]Entry, len(nt.ss))
 	for i, node := range nt.ss {
 		if sm, ok := node.(*stateMachine); ok {
 			ls[i] = sm.log
@@ -229,17 +248,17 @@ type diff struct {
 	ents []*Entry // pointers so they can be nil for N/A
 }
 
-var naEntry = &Entry{}
-var nologEntry = &Entry{}
+var noEntry = &Entry{}
+var nilLogEntry = &Entry{}
 
 func (d diff) String() string {
 	s := fmt.Sprintf("[%d] ", d.i)
 	for i, e := range d.ents {
 		switch e {
-		case nologEntry:
-			s += fmt.Sprintf("<NL>")
-		case naEntry:
-			s += fmt.Sprintf("<N/A>")
+		case nilLogEntry:
+			s += fmt.Sprintf("o")
+		case noEntry:
+			s += fmt.Sprintf("-")
 		case nil:
 			s += fmt.Sprintf("<nil>")
 		default:
@@ -252,11 +271,12 @@ func (d diff) String() string {
 	return s
 }
 
-func diffLogs(logs [][]Entry) []diff {
+func diffLogs(base []Entry, logs [][]Entry) []diff {
 	var (
 		d   []diff
 		max int
 	)
+	logs = append([][]Entry{base}, logs...)
 	for _, log := range logs {
 		if l := len(log); l > max {
 			max = l
@@ -267,19 +287,19 @@ func diffLogs(logs [][]Entry) []diff {
 		found := false
 		for j, log := range logs {
 			if log == nil {
-				e[j] = nologEntry
+				e[j] = nilLogEntry
 				continue
 			}
 			if len(log) <= i {
-				e[j] = naEntry
+				e[j] = noEntry
 				found = true
 				continue
 			}
 			e[j] = &log[i]
 			if j > 0 {
 				switch prev := e[j-1]; {
-				case prev == nologEntry:
-				case prev == naEntry:
+				case prev == nilLogEntry:
+				case prev == noEntry:
 				case !reflect.DeepEqual(prev, e[j]):
 					found = true
 				}
