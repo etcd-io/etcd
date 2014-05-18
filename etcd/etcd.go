@@ -229,6 +229,7 @@ func (e *Etcd) Run() {
 		PeerScheme: e.Config.PeerTLSInfo().Scheme(),
 		PeerURL:    e.Config.Peer.Addr,
 		ClientURL:  e.Config.Addr,
+		DataDir:    e.Config.DataDir,
 	}
 	e.StandbyServer = server.NewStandbyServer(ssConfig, client)
 
@@ -237,14 +238,18 @@ func (e *Etcd) Run() {
 	peerTLSConfig := server.TLSServerConfig(e.Config.PeerTLSInfo())
 	etcdTLSConfig := server.TLSServerConfig(e.Config.EtcdTLSInfo())
 
-	startPeerServer, possiblePeers, err := e.PeerServer.FindCluster(e.Config.Discovery, e.Config.Peers)
-	if err != nil {
-		log.Fatal(err)
-	}
-	if startPeerServer {
-		e.setMode(PeerMode)
+	if !e.StandbyServer.IsRunning() {
+		startPeerServer, possiblePeers, err := e.PeerServer.FindCluster(e.Config.Discovery, e.Config.Peers)
+		if err != nil {
+			log.Fatal(err)
+		}
+		if startPeerServer {
+			e.setMode(PeerMode)
+		} else {
+			e.StandbyServer.SyncCluster(possiblePeers)
+			e.setMode(StandbyMode)
+		}
 	} else {
-		e.StandbyServer.SyncCluster(possiblePeers)
 		e.setMode(StandbyMode)
 	}
 

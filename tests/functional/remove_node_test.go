@@ -19,7 +19,7 @@ func TestRemoveNode(t *testing.T) {
 	procAttr := new(os.ProcAttr)
 	procAttr.Files = []*os.File{nil, os.Stdout, os.Stderr}
 
-	clusterSize := 3
+	clusterSize := 4
 	argGroup, etcds, _ := CreateCluster(clusterSize, procAttr, false)
 	defer DestroyCluster(etcds)
 
@@ -29,7 +29,7 @@ func TestRemoveNode(t *testing.T) {
 
 	c.SyncCluster()
 
-	resp, _ := tests.Put("http://localhost:7001/v2/admin/config", "application/json", bytes.NewBufferString(`{"syncInterval":1}`))
+	resp, _ := tests.Put("http://localhost:7001/v2/admin/config", "application/json", bytes.NewBufferString(`{"activeSize":4, "syncInterval":1}`))
 	if !assert.Equal(t, resp.StatusCode, 200) {
 		t.FailNow()
 	}
@@ -39,6 +39,11 @@ func TestRemoveNode(t *testing.T) {
 	client := &http.Client{}
 	for i := 0; i < 2; i++ {
 		for i := 0; i < 2; i++ {
+			r, _ := tests.Put("http://localhost:7001/v2/admin/config", "application/json", bytes.NewBufferString(`{"activeSize":3}`))
+			if !assert.Equal(t, r.StatusCode, 200) {
+				t.FailNow()
+			}
+
 			client.Do(rmReq)
 
 			fmt.Println("send remove to node3 and wait for its exiting")
@@ -50,7 +55,7 @@ func TestRemoveNode(t *testing.T) {
 				panic(err)
 			}
 
-			if len(resp.Node.Nodes) != 2 {
+			if len(resp.Node.Nodes) != 3 {
 				t.Fatal("cannot remove peer")
 			}
 
@@ -69,6 +74,11 @@ func TestRemoveNode(t *testing.T) {
 				panic(err)
 			}
 
+			r, _ = tests.Put("http://localhost:7001/v2/admin/config", "application/json", bytes.NewBufferString(`{"activeSize":4}`))
+			if !assert.Equal(t, r.StatusCode, 200) {
+				t.FailNow()
+			}
+
 			time.Sleep(time.Second + time.Second)
 
 			resp, err = c.Get("_etcd/machines", false, false)
@@ -77,18 +87,25 @@ func TestRemoveNode(t *testing.T) {
 				panic(err)
 			}
 
-			if len(resp.Node.Nodes) != 3 {
-				t.Fatalf("add peer fails #1 (%d != 3)", len(resp.Node.Nodes))
+			if len(resp.Node.Nodes) != 4 {
+				t.Fatalf("add peer fails #1 (%d != 4)", len(resp.Node.Nodes))
 			}
 		}
 
 		// first kill the node, then remove it, then add it back
 		for i := 0; i < 2; i++ {
+			r, _ := tests.Put("http://localhost:7001/v2/admin/config", "application/json", bytes.NewBufferString(`{"activeSize":3}`))
+			if !assert.Equal(t, r.StatusCode, 200) {
+				t.FailNow()
+			}
+
 			etcds[2].Kill()
 			fmt.Println("kill node3 and wait for its exiting")
 			etcds[2].Wait()
 
 			client.Do(rmReq)
+
+			time.Sleep(100 * time.Millisecond)
 
 			resp, err := c.Get("_etcd/machines", false, false)
 
@@ -96,7 +113,7 @@ func TestRemoveNode(t *testing.T) {
 				panic(err)
 			}
 
-			if len(resp.Node.Nodes) != 2 {
+			if len(resp.Node.Nodes) != 3 {
 				t.Fatal("cannot remove peer")
 			}
 
@@ -112,7 +129,12 @@ func TestRemoveNode(t *testing.T) {
 				panic(err)
 			}
 
-			time.Sleep(time.Second)
+			r, _ = tests.Put("http://localhost:7001/v2/admin/config", "application/json", bytes.NewBufferString(`{"activeSize":4}`))
+			if !assert.Equal(t, r.StatusCode, 200) {
+				t.FailNow()
+			}
+
+			time.Sleep(time.Second + time.Second)
 
 			resp, err = c.Get("_etcd/machines", false, false)
 
@@ -120,8 +142,8 @@ func TestRemoveNode(t *testing.T) {
 				panic(err)
 			}
 
-			if len(resp.Node.Nodes) != 3 {
-				t.Fatalf("add peer fails #2 (%d != 3)", len(resp.Node.Nodes))
+			if len(resp.Node.Nodes) != 4 {
+				t.Fatalf("add peer fails #2 (%d != 4)", len(resp.Node.Nodes))
 			}
 		}
 	}

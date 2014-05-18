@@ -33,6 +33,9 @@ After each interval, standbys synchronize information with cluster.
 #### Main logic
 
 ```
+If find existing standby cluster info:
+  Goto standby loop
+
 Find cluster as required
 If determine to start peer server:
   Goto peer loop
@@ -74,7 +77,6 @@ return true
 **Note**
 1. [TODO] The running mode cannot be determined by log, because the log may be outdated. But the log could be used to estimate its state.
 2. Even if sync cluster fails, it will restart still for recovery from full outage.
-3. [BUG] Possible peers from discover URL, peers flag and data dir could be outdated because standby machine doesn't record log. This could make reconnect fail if the whole cluster migrates to new address.
 
 
 #### Peer mode start logic
@@ -100,12 +102,12 @@ When removed from the cluster:
 Loop:
   Sleep for some time
 
-  Sync cluster
+  Sync cluster, and write cluster info into disk
 
-  If peer count < active size:
-    Send join request
-    If succeed:
-      Return
+  Check active size and send join request if needed
+  If succeed:
+    Clear cluster info from disk
+    Return
 ```
 
 
@@ -191,9 +193,6 @@ Machines with log data restart with join failure.
 Machines in peer mode recover heartbeat between each other.
 
 Machines in standby mode always sync the cluster. If sync fails, it uses the first address from data log as redirect target.
-
-**Note**
-1. [TODO] Machine which runs in standby mode and has no log data cannot be recovered. But it could join the cluster finally if it is restarted always.
 
 
 ### Kill one peer machine

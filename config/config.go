@@ -366,6 +366,9 @@ func (c *Config) Reset() error {
 	if err := os.RemoveAll(filepath.Join(c.DataDir, "snapshot")); err != nil {
 		return err
 	}
+	if err := os.RemoveAll(filepath.Join(c.DataDir, "standby_info")); err != nil {
+		return err
+	}
 
 	return nil
 }
