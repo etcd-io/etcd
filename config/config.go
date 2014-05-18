@@ -373,18 +373,19 @@ func (c *Config) Reset() error {
 // Sanitize cleans the input fields.
 func (c *Config) Sanitize() error {
 	var err error
+	var url *url.URL
 
 	// Sanitize the URLs first.
-	if c.Addr, err = sanitizeURL(c.Addr, c.EtcdTLSInfo().Scheme()); err != nil {
+	if c.Addr, url, err = sanitizeURL(c.Addr, c.EtcdTLSInfo().Scheme()); err != nil {
 		return fmt.Errorf("Advertised URL: %s", err)
 	}
-	if c.BindAddr, err = sanitizeBindAddr(c.BindAddr, c.Addr); err != nil {
+	if c.BindAddr, err = sanitizeBindAddr(c.BindAddr, url); err != nil {
 		return fmt.Errorf("Listen Host: %s", err)
 	}
-	if c.Peer.Addr, err = sanitizeURL(c.Peer.Addr, c.PeerTLSInfo().Scheme()); err != nil {
+	if c.Peer.Addr, url, err = sanitizeURL(c.Peer.Addr, c.PeerTLSInfo().Scheme()); err != nil {
 		return fmt.Errorf("Peer Advertised URL: %s", err)
 	}
-	if c.Peer.BindAddr, err = sanitizeBindAddr(c.Peer.BindAddr, c.Peer.Addr); err != nil {
+	if c.Peer.BindAddr, err = sanitizeBindAddr(c.Peer.BindAddr, url); err != nil {
 		return fmt.Errorf("Peer Listen Host: %s", err)
 	}
 
@@ -440,35 +441,30 @@ func (c *Config) ClusterConfig() *server.ClusterConfig {
 
 // sanitizeURL will cleanup a host string in the format hostname[:port] and
 // attach a schema.
-func sanitizeURL(host string, defaultScheme string) (string, error) {
+func sanitizeURL(host string, defaultScheme string) (string, *url.URL, error) {
 	// Blank URLs are fine input, just return it
 	if len(host) == 0 {
-		return host, nil
+		return host, &url.URL{}, nil
 	}
 
 	p, err := url.Parse(host)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 
 	// Make sure the host is in Host:Port format
 	_, _, err = net.SplitHostPort(host)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 
 	p = &url.URL{Host: host, Scheme: defaultScheme}
-	return p.String(), nil
+	return p.String(), p, nil
 }
 
 // sanitizeBindAddr cleans up the BindAddr parameter and appends a port
 // if necessary based on the advertised port.
-func sanitizeBindAddr(bindAddr string, addr string) (string, error) {
-	aurl, err := url.Parse(addr)
-	if err != nil {
-		return "", err
-	}
-
+func sanitizeBindAddr(bindAddr string, aurl *url.URL) (string, error) {
 	// If it is a valid host:port simply return with no further checks.
 	bhost, bport, err := net.SplitHostPort(bindAddr)
 	if err == nil && bhost != "" {
