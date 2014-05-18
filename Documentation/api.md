@@ -1197,3 +1197,39 @@ curl -L http://127.0.0.1:4001/v2/stats/store
     "watchers": 0
 }
 ```
+
+## Cluster Config
+
+The configuration endpoint manages shared cluster wide properties.
+
+### Set Cluster Config
+
+```sh
+curl -L http://127.0.0.1:7001/v2/admin/config -XPUT -d '{"activeSize":3, "promoteDelay":1800}'
+```
+
+```json
+{
+    "activeSize": 3,
+    "promoteDelay": 1800
+}
+```
+
+`activeSize` is the maximum number of peers that can join the cluster and participate in the consensus protocol.
+
+The size of cluster is controlled to be around a certain number. If it is not, it will promote standby-mode instances or demote peer-mode instances to make it happen.
+
+`promoteDelay` indicates the minimum length of delay that has been observed before promotion or demotion.
+
+### Get Cluster Config
+
+```sh
+curl -L http://127.0.0.1:7001/v2/admin/config
+```
+
+```json
+{
+    "activeSize": 3,
+    "promoteDelay": 1800
+}
+```
