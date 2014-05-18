@@ -179,6 +179,48 @@ func TestProposalByProxy(t *testing.T) {
 	}
 }
 
+func TestVote(t *testing.T) {
+	tests := []struct {
+		i, term int
+		w       int
+	}{
+		{0, 0, -1},
+		{0, 1, -1},
+		{0, 2, -1},
+		{0, 3, 2},
+
+		{1, 0, -1},
+		{1, 1, -1},
+		{1, 2, -1},
+		{1, 3, 2},
+
+		{2, 0, -1},
+		{2, 1, -1},
+		{2, 2, 2},
+		{2, 3, 2},
+
+		{3, 0, -1},
+		{3, 1, -1},
+		{3, 2, 2},
+		{3, 3, 2},
+	}
+
+	for i, tt := range tests {
+		called := false
+		sm := &stateMachine{log: []Entry{{}, {Term: 2}, {Term: 2}}}
+		sm.next = stepperFunc(func(m Message) {
+			called = true
+			if m.Index != tt.w {
+				t.Errorf("#%d, m.Index = %d, want %d", i, m.Index, tt.w)
+			}
+		})
+		sm.step(Message{Type: msgVote, Index: tt.i, LogTerm: tt.term})
+		if !called {
+			t.Fatal("#%d: not called", i)
+		}
+	}
+}
+
 func TestLogDiff(t *testing.T) {
 	a := []Entry{{}, {Term: 1}, {Term: 2}}
 	b := []Entry{{}, {Term: 1}, {Term: 2}}
