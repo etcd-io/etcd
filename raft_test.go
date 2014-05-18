@@ -18,6 +18,7 @@ func TestLeaderElection(t *testing.T) {
 		{newNetwork(nil, nopStepper, nopStepper), stateCandidate},
 		{newNetwork(nil, nopStepper, nopStepper, nil), stateCandidate},
 		{newNetwork(nil, nopStepper, nopStepper, nil, nil), stateLeader},
+		/// {newNetwork(nil, newPartNode(), falseVote()), stateFollower},
 	}
 
 	for i, tt := range tests {
@@ -33,15 +34,20 @@ func TestLeaderElection(t *testing.T) {
 }
 
 func TestDualingCandidates(t *testing.T) {
-	a := &stateMachine{
-		log:  []Entry{{}},
-		next: nopStepper, // field next is nil (partitioned)
-	}
-	c := &stateMachine{
-		log:  []Entry{{}},
-		next: nopStepper, // field next is nil (partitioned)
-	}
+	a := &stateMachine{log: defaultLog}
+	c := &stateMachine{log: defaultLog}
+
 	tt := newNetwork(a, nil, c)
+
+	heal := false
+	next := stepperFunc(func(m Message) {
+		if heal {
+			tt.step(m)
+		}
+	})
+	a.next = next
+	c.next = next
+
 	tt.tee = stepperFunc(func(m Message) {
 		t.Logf("m = %+v", m)
 	})
@@ -49,7 +55,7 @@ func TestDualingCandidates(t *testing.T) {
 	tt.step(Message{To: 2, Type: msgHup})
 
 	t.Log("healing")
-	tt.heal()
+	heal = true
 	tt.step(Message{To: 2, Type: msgHup})
 
 	tests := []struct {
@@ -255,6 +261,8 @@ func newNetwork(nodes ...stepper) *network {
 		case *stateMachine:
 			v.k = len(nodes)
 			v.addr = i
+		default:
+			nt.ss[i] = v
 		}
 	}
 	return nt
@@ -265,14 +273,6 @@ func (nt network) step(m Message) {
 		nt.tee.step(m)
 	}
 	nt.ss[m.To].step(m)
-}
-
-func (nt network) heal() {
-	for _, s := range nt.ss {
-		if sm, ok := s.(*stateMachine); ok {
-			sm.next = nt
-		}
-	}
 }
 
 // logs returns all logs in nt prepended with want. If a node is not a
@@ -367,3 +367,5 @@ type stepperFunc func(Message)
 func (f stepperFunc) step(m Message) { f(m) }
 
 var nopStepper = stepperFunc(func(Message) {})
+
+type nextStepperFunc func(Message, stepper)
