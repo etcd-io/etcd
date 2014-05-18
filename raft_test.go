@@ -18,7 +18,18 @@ func TestLeaderElection(t *testing.T) {
 		{newNetwork(nil, nopStepper, nopStepper), stateCandidate},
 		{newNetwork(nil, nopStepper, nopStepper, nil), stateCandidate},
 		{newNetwork(nil, nopStepper, nopStepper, nil, nil), stateLeader},
-		/// {newNetwork(nil, newPartNode(), falseVote()), stateFollower},
+
+		// three nodes are have logs further along than 0
+		{
+			newNetwork(
+				nil,
+				&stateMachine{log: []Entry{{}, {Term: 1}}},
+				&stateMachine{log: []Entry{{}, {Term: 2}}},
+				&stateMachine{log: []Entry{{}, {Term: 1}}},
+				nil,
+			),
+			stateFollower,
+		},
 	}
 
 	for i, tt := range tests {
@@ -261,6 +272,9 @@ func newNetwork(nodes ...stepper) *network {
 		case *stateMachine:
 			v.k = len(nodes)
 			v.addr = i
+			if v.next == nil {
+				v.next = nt
+			}
 		default:
 			nt.ss[i] = v
 		}
