@@ -224,7 +224,7 @@ func (sm *stateMachine) voteWorthy(i, term int) bool {
 	//              \/ /\ m.mlastLogTerm = LastTerm(log[i])
 	//                 /\ m.mlastLogIndex >= Len(log[i])
 	e := sm.log[sm.li()]
-	return term >= e.Term || (term == e.Term && i >= sm.li())
+	return term > e.Term || (term == e.Term && i >= sm.li())
 }
 
 func (sm *stateMachine) li() int {
