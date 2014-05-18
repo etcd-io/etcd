@@ -91,6 +91,8 @@ func TestOldMessages(t *testing.T) {
 	}
 }
 
+// TestOldMessagesReply - optimization - reply with new term.
+
 func TestProposal(t *testing.T) {
 	tests := []struct {
 		*network
