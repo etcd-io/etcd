@@ -191,12 +191,13 @@ func (sm *stateMachine) theN() int {
 	return -1
 }
 
-func (sm *stateMachine) maybeAdvanceCommit() int {
+func (sm *stateMachine) nextEnts() (ents []Entry) {
 	ci := sm.theN()
 	if ci > sm.commit {
+		ents = sm.log[sm.commit+1:ci]
 		sm.commit = ci
 	}
-	return sm.commit
+	return ents
 }
 
 func (sm *stateMachine) reset() {

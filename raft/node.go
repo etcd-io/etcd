@@ -29,3 +29,11 @@ func (n *Node) Step(m Message) {
 	defer n.lk.Unlock()
 	n.sm.Step(m)
 }
+
+// Next advances the commit index and returns any new
+// commitable entries.
+func (n *Node) Next() []Entry {
+	n.lk.Lock()
+	defer n.lk.Unlock()
+	return n.sm.nextEnts()
+}
