@@ -144,8 +144,6 @@ func (sm *stateMachine) poll(addr int, v bool) (granted int) {
 	return granted
 }
 
-var empty = Entry{}
-
 func (sm *stateMachine) append(after int, ents ...Entry) int {
 	sm.log = append(sm.log[:after+1], ents...)
 	return len(sm.log) - 1
