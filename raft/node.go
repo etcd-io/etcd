@@ -11,7 +11,7 @@ type Node struct {
 	sm *stateMachine
 }
 
-func New(k, addr int, next Interface) Interface {
+func New(k, addr int, next Interface) *Node {
 	n := &Node{
 		sm: newStateMachine(k, addr, next),
 	}
