@@ -194,7 +194,7 @@ func (sm *stateMachine) theN() int {
 func (sm *stateMachine) nextEnts() (ents []Entry) {
 	ci := sm.theN()
 	if ci > sm.commit {
-		ents = sm.log[sm.commit+1:ci]
+		ents = sm.log[sm.commit+1 : ci]
 		sm.commit = ci
 	}
 	return ents
