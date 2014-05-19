@@ -1,6 +1,7 @@
 package raft
 
 const (
+	RemovedEventType  = "removed"
 	StateChangeEventType  = "stateChange"
 	LeaderChangeEventType = "leaderChange"
 	TermChangeEventType   = "termChange"

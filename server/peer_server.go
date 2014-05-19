@@ -120,6 +120,8 @@ func (s *PeerServer) SetRaftServer(raftServer raft.Server, snapshot bool) {
 	raftServer.AddEventListener(raft.HeartbeatIntervalEventType, s.raftEventLogger)
 	raftServer.AddEventListener(raft.ElectionTimeoutThresholdEventType, s.raftEventLogger)
 
+	raftServer.AddEventListener(raft.RemovedEventType, s.removedEvent)
+
 	raftServer.AddEventListener(raft.HeartbeatEventType, s.recordMetricEvent)
 
 	s.raftServer = raftServer
@@ -642,6 +644,14 @@ func (s *PeerServer) PeerStats() []byte {
 		return b
 	}
 	return nil
+}
+
+// removedEvent handles the case where a machine has been removed from the
+// cluster and is notified when it tries to become a candidate.
+func (s *PeerServer) removedEvent(event raft.Event) {
+	// HACK(philips): we need to find a better notification for this.
+	log.Infof("removed during cluster re-configuration")
+	s.asyncRemove()
 }
 
 // raftEventLogger converts events from the Raft server into log messages.
