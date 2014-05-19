@@ -69,10 +69,6 @@ type Message struct {
 	Data     []byte
 }
 
-type stepper interface {
-	step(m Message)
-}
-
 type index struct {
 	match, next int
 }
@@ -112,13 +108,13 @@ type stateMachine struct {
 
 	votes map[int]bool
 
-	next stepper
+	next Interface
 
 	// the leader addr
 	lead int
 }
 
-func newStateMachine(k, addr int, next stepper) *stateMachine {
+func newStateMachine(k, addr int, next Interface) *stateMachine {
 	log := make([]Entry, 1, 1024)
 	sm := &stateMachine{k: k, addr: addr, next: next, log: log}
 	sm.reset()
@@ -160,7 +156,7 @@ func (sm *stateMachine) isLogOk(i, term int) bool {
 func (sm *stateMachine) send(m Message) {
 	m.From = sm.addr
 	m.Term = sm.term
-	sm.next.step(m)
+	sm.next.Step(m)
 }
 
 // sendAppend sends RRPC, with entries to all peers that are not up-to-date according to sm.mis.
@@ -236,7 +232,7 @@ func (sm *stateMachine) becomeFollower(term, lead int) {
 	sm.state = stateFollower
 }
 
-func (sm *stateMachine) step(m Message) {
+func (sm *stateMachine) Step(m Message) {
 	switch m.Type {
 	case msgHup:
 		sm.term++
