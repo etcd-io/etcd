@@ -300,7 +300,6 @@ func (sm *stateMachine) step(m Message) {
 	case stateCandidate:
 		switch m.Type {
 		case msgApp:
-			println("lost to appendEnts")
 			sm.becomeFollower(sm.term, m.From)
 			handleAppendEntries()
 		case msgVoteResp:
