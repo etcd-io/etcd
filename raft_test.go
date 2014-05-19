@@ -25,10 +25,22 @@ func TestLeaderElection(t *testing.T) {
 				nil,
 				&stateMachine{log: []Entry{{}, {Term: 1}}},
 				&stateMachine{log: []Entry{{}, {Term: 2}}},
-				&stateMachine{log: []Entry{{}, {Term: 1}}},
+				&stateMachine{log: []Entry{{}, {Term: 1}, {Term: 3}}},
 				nil,
 			),
 			stateFollower,
+		},
+
+		// logs converge
+		{
+			newNetwork(
+				&stateMachine{log: []Entry{{}, {Term: 1}}},
+				nil,
+				&stateMachine{log: []Entry{{}, {Term: 2}}},
+				&stateMachine{log: []Entry{{}, {Term: 1}}},
+				nil,
+			),
+			stateLeader,
 		},
 	}
 
