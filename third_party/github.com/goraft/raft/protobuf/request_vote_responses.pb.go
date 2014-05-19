@@ -35,11 +35,14 @@ var _ = math.Inf
 type RequestVoteResponse struct {
 	Term             *uint64 `protobuf:"varint,1,req" json:"Term,omitempty"`
 	VoteGranted      *bool   `protobuf:"varint,2,req" json:"VoteGranted,omitempty"`
+	Removed          *bool   `protobuf:"varint,3,opt,def=0" json:"Removed,omitempty"`
 	XXX_unrecognized []byte  `json:"-"`
 }
 
 func (m *RequestVoteResponse) Reset()      { *m = RequestVoteResponse{} }
 func (*RequestVoteResponse) ProtoMessage() {}
+
+const Default_RequestVoteResponse_Removed bool = false
 
 func (m *RequestVoteResponse) GetTerm() uint64 {
 	if m != nil && m.Term != nil {
@@ -53,6 +56,13 @@ func (m *RequestVoteResponse) GetVoteGranted() bool {
 		return *m.VoteGranted
 	}
 	return false
+}
+
+func (m *RequestVoteResponse) GetRemoved() bool {
+	if m != nil && m.Removed != nil {
+		return *m.Removed
+	}
+	return Default_RequestVoteResponse_Removed
 }
 
 func init() {
@@ -78,7 +88,7 @@ func (m *RequestVoteResponse) Unmarshal(data []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 0 {
-				return proto.ErrWrongType
+				return code_google_com_p_gogoprotobuf_proto8.ErrWrongType
 			}
 			var v uint64
 			for shift := uint(0); ; shift += 7 {
@@ -95,7 +105,7 @@ func (m *RequestVoteResponse) Unmarshal(data []byte) error {
 			m.Term = &v
 		case 2:
 			if wireType != 0 {
-				return proto.ErrWrongType
+				return code_google_com_p_gogoprotobuf_proto8.ErrWrongType
 			}
 			var v int
 			for shift := uint(0); ; shift += 7 {
@@ -111,6 +121,24 @@ func (m *RequestVoteResponse) Unmarshal(data []byte) error {
 			}
 			b := bool(v != 0)
 			m.VoteGranted = &b
+		case 3:
+			if wireType != 0 {
+				return code_google_com_p_gogoprotobuf_proto8.ErrWrongType
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if index >= l {
+					return io4.ErrUnexpectedEOF
+				}
+				b := data[index]
+				index++
+				v |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			b := bool(v != 0)
+			m.Removed = &b
 		default:
 			var sizeOfWire int
 			for {
@@ -125,6 +153,9 @@ func (m *RequestVoteResponse) Unmarshal(data []byte) error {
 			if err != nil {
 				return err
 			}
+			if (index + skippy) > l {
+				return io4.ErrUnexpectedEOF
+			}
 			m.XXX_unrecognized = append(m.XXX_unrecognized, data[index:index+skippy]...)
 			index += skippy
 		}
@@ -138,6 +169,7 @@ func (this *RequestVoteResponse) String() string {
 	s := strings8.Join([]string{`&RequestVoteResponse{`,
 		`Term:` + valueToStringRequestVoteResponses(this.Term) + `,`,
 		`VoteGranted:` + valueToStringRequestVoteResponses(this.VoteGranted) + `,`,
+		`Removed:` + valueToStringRequestVoteResponses(this.Removed) + `,`,
 		`XXX_unrecognized:` + fmt12.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
@@ -158,6 +190,9 @@ func (m *RequestVoteResponse) Size() (n int) {
 		n += 1 + sovRequestVoteResponses(uint64(*m.Term))
 	}
 	if m.VoteGranted != nil {
+		n += 2
+	}
+	if m.Removed != nil {
 		n += 2
 	}
 	if m.XXX_unrecognized != nil {
@@ -186,8 +221,12 @@ func NewPopulatedRequestVoteResponse(r randyRequestVoteResponses, easy bool) *Re
 	this.Term = &v1
 	v2 := bool(r.Intn(2) == 0)
 	this.VoteGranted = &v2
+	if r.Intn(10) != 0 {
+		v3 := bool(r.Intn(2) == 0)
+		this.Removed = &v3
+	}
 	if !easy && r.Intn(10) != 0 {
-		this.XXX_unrecognized = randUnrecognizedRequestVoteResponses(r, 3)
+		this.XXX_unrecognized = randUnrecognizedRequestVoteResponses(r, 4)
 	}
 	return this
 }
@@ -209,9 +248,9 @@ func randUTF8RuneRequestVoteResponses(r randyRequestVoteResponses) rune {
 	return res
 }
 func randStringRequestVoteResponses(r randyRequestVoteResponses) string {
-	v3 := r.Intn(100)
-	tmps := make([]rune, v3)
-	for i := 0; i < v3; i++ {
+	v4 := r.Intn(100)
+	tmps := make([]rune, v4)
+	for i := 0; i < v4; i++ {
 		tmps[i] = randUTF8RuneRequestVoteResponses(r)
 	}
 	return string(tmps)
@@ -288,6 +327,16 @@ func (m *RequestVoteResponse) MarshalTo(data []byte) (n int, err error) {
 		}
 		i++
 	}
+	if m.Removed != nil {
+		data[i] = 0x18
+		i++
+		if *m.Removed {
+			data[i] = 1
+		} else {
+			data[i] = 0
+		}
+		i++
+	}
 	if m.XXX_unrecognized != nil {
 		i += copy(data[i:], m.XXX_unrecognized)
 	}
@@ -324,7 +373,7 @@ func (this *RequestVoteResponse) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := strings9.Join([]string{`&protobuf.RequestVoteResponse{` + `Term:` + valueToGoStringRequestVoteResponses(this.Term, "uint64"), `VoteGranted:` + valueToGoStringRequestVoteResponses(this.VoteGranted, "bool"), `XXX_unrecognized:` + fmt13.Sprintf("%#v", this.XXX_unrecognized) + `}`}, ", ")
+	s := strings9.Join([]string{`&protobuf.RequestVoteResponse{` + `Term:` + valueToGoStringRequestVoteResponses(this.Term, "uint64"), `VoteGranted:` + valueToGoStringRequestVoteResponses(this.VoteGranted, "bool"), `Removed:` + valueToGoStringRequestVoteResponses(this.Removed, "bool"), `XXX_unrecognized:` + fmt13.Sprintf("%#v", this.XXX_unrecognized) + `}`}, ", ")
 	return s
 }
 func valueToGoStringRequestVoteResponses(v interface{}, typ string) string {
@@ -390,6 +439,15 @@ func (this *RequestVoteResponse) VerboseEqual(that interface{}) error {
 	} else if that1.VoteGranted != nil {
 		return fmt14.Errorf("VoteGranted this(%v) Not Equal that(%v)", this.VoteGranted, that1.VoteGranted)
 	}
+	if this.Removed != nil && that1.Removed != nil {
+		if *this.Removed != *that1.Removed {
+			return fmt14.Errorf("Removed this(%v) Not Equal that(%v)", *this.Removed, *that1.Removed)
+		}
+	} else if this.Removed != nil {
+		return fmt14.Errorf("this.Removed == nil && that.Removed != nil")
+	} else if that1.Removed != nil {
+		return fmt14.Errorf("Removed this(%v) Not Equal that(%v)", this.Removed, that1.Removed)
+	}
 	if !bytes4.Equal(this.XXX_unrecognized, that1.XXX_unrecognized) {
 		return fmt14.Errorf("XXX_unrecognized this(%v) Not Equal that(%v)", this.XXX_unrecognized, that1.XXX_unrecognized)
 	}
@@ -431,6 +489,15 @@ func (this *RequestVoteResponse) Equal(that interface{}) bool {
 	} else if this.VoteGranted != nil {
 		return false
 	} else if that1.VoteGranted != nil {
+		return false
+	}
+	if this.Removed != nil && that1.Removed != nil {
+		if *this.Removed != *that1.Removed {
+			return false
+		}
+	} else if this.Removed != nil {
+		return false
+	} else if that1.Removed != nil {
 		return false
 	}
 	if !bytes4.Equal(this.XXX_unrecognized, that1.XXX_unrecognized) {

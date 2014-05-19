@@ -86,7 +86,7 @@ func (m *SnapshotRecoveryResponse) Unmarshal(data []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 0 {
-				return proto.ErrWrongType
+				return code_google_com_p_gogoprotobuf_proto12.ErrWrongType
 			}
 			var v uint64
 			for shift := uint(0); ; shift += 7 {
@@ -103,7 +103,7 @@ func (m *SnapshotRecoveryResponse) Unmarshal(data []byte) error {
 			m.Term = &v
 		case 2:
 			if wireType != 0 {
-				return proto.ErrWrongType
+				return code_google_com_p_gogoprotobuf_proto12.ErrWrongType
 			}
 			var v int
 			for shift := uint(0); ; shift += 7 {
@@ -121,7 +121,7 @@ func (m *SnapshotRecoveryResponse) Unmarshal(data []byte) error {
 			m.Success = &b
 		case 3:
 			if wireType != 0 {
-				return proto.ErrWrongType
+				return code_google_com_p_gogoprotobuf_proto12.ErrWrongType
 			}
 			var v uint64
 			for shift := uint(0); ; shift += 7 {
@@ -149,6 +149,9 @@ func (m *SnapshotRecoveryResponse) Unmarshal(data []byte) error {
 			skippy, err := code_google_com_p_gogoprotobuf_proto12.Skip(data[index:])
 			if err != nil {
 				return err
+			}
+			if (index + skippy) > l {
+				return io6.ErrUnexpectedEOF
 			}
 			m.XXX_unrecognized = append(m.XXX_unrecognized, data[index:index+skippy]...)
 			index += skippy
