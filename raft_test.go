@@ -93,6 +93,40 @@ func TestDualingCandidates(t *testing.T) {
 	}
 }
 
+func TestCandidateConcede(t *testing.T) {
+	a := &stateMachine{log: defaultLog}
+
+	tt := newNetwork(a, nil, nil)
+	tt.tee = stepperFunc(func(m Message) {
+		t.Logf("m = %+v", m)
+	})
+
+	a.next = nopStepper
+
+	tt.step(Message{To: 0, Type: msgHup})
+	tt.step(Message{To: 2, Type: msgHup})
+
+	// heal the partition
+	a.next = tt
+
+	data := []byte("force follower")
+	// send a proposal to 2 to flush out a msgApp to 0
+	tt.step(Message{To: 2, Type: msgProp, Data: data})
+
+	if g := a.state; g != stateFollower {
+		t.Errorf("state = %s, want %s", g, stateFollower)
+	}
+	if g := a.term; g != 1 {
+		t.Errorf("term = %d, want %d", g, 1)
+	}
+	wantLog := []Entry{{}, {Term: 1, Data: data}}
+	if g := diffLogs(wantLog, tt.logs()); g != nil {
+		for _, diff := range g {
+			t.Errorf("bag log:\n%s", diff)
+		}
+	}
+}
+
 func TestOldMessages(t *testing.T) {
 	tt := newNetwork(nil, nil, nil)
 	// make 0 leader @ term 3
