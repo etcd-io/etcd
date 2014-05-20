@@ -126,6 +126,10 @@ The `v2` API responses should not change after the 0.2.0 release but new feature
 
 During the pre-v1.0.0 series of releases we may break the API as we fix bugs and get feedback.
 
+#### 32bit systems
+
+etcd has known issues on 32bit systems. We plan to address these issues after the 0.4 release.
+
 ### License
 
 etcd is under the Apache 2.0 license. See the [LICENSE](LICENSE) file for details.
