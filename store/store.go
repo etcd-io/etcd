@@ -199,14 +199,14 @@ func getCompareFailCause(n *node, which int, prevValue string, prevIndex uint64)
 func (s *store) CompareAndSwap(nodePath string, prevValue string, prevIndex uint64,
 	value string, expireTime time.Time) (*Event, error) {
 
+	s.worldLock.Lock()
+	defer s.worldLock.Unlock()
+
 	nodePath = path.Clean(path.Join("/", nodePath))
 	// we do not allow the user to change "/"
 	if nodePath == "/" {
 		return nil, etcdErr.NewError(etcdErr.EcodeRootROnly, "/", s.CurrentIndex)
 	}
-
-	s.worldLock.Lock()
-	defer s.worldLock.Unlock()
 
 	n, err := s.internalGet(nodePath)
 
@@ -252,14 +252,14 @@ func (s *store) CompareAndSwap(nodePath string, prevValue string, prevIndex uint
 // Delete deletes the node at the given path.
 // If the node is a directory, recursive must be true to delete it.
 func (s *store) Delete(nodePath string, dir, recursive bool) (*Event, error) {
+	s.worldLock.Lock()
+	defer s.worldLock.Unlock()
+
 	nodePath = path.Clean(path.Join("/", nodePath))
 	// we do not allow the user to change "/"
 	if nodePath == "/" {
 		return nil, etcdErr.NewError(etcdErr.EcodeRootROnly, "/", s.CurrentIndex)
 	}
-
-	s.worldLock.Lock()
-	defer s.worldLock.Unlock()
 
 	// recursive implies dir
 	if recursive == true {
@@ -350,11 +350,11 @@ func (s *store) CompareAndDelete(nodePath string, prevValue string, prevIndex ui
 }
 
 func (s *store) Watch(key string, recursive, stream bool, sinceIndex uint64) (*Watcher, error) {
-	key = path.Clean(path.Join("/", key))
-	nextIndex := s.CurrentIndex + 1
-
 	s.worldLock.RLock()
 	defer s.worldLock.RUnlock()
+
+	key = path.Clean(path.Join("/", key))
+	nextIndex := s.CurrentIndex + 1
 
 	var w *Watcher
 	var err *etcdErr.Error
@@ -402,14 +402,14 @@ func (s *store) walk(nodePath string, walkFunc func(prev *node, component string
 // If the node is a file, the value and the ttl can be updated.
 // If the node is a directory, only the ttl can be updated.
 func (s *store) Update(nodePath string, newValue string, expireTime time.Time) (*Event, error) {
+	s.worldLock.Lock()
+	defer s.worldLock.Unlock()
+
 	nodePath = path.Clean(path.Join("/", nodePath))
 	// we do not allow the user to change "/"
 	if nodePath == "/" {
 		return nil, etcdErr.NewError(etcdErr.EcodeRootROnly, "/", s.CurrentIndex)
 	}
-
-	s.worldLock.Lock()
-	defer s.worldLock.Unlock()
 
 	currIndex, nextIndex := s.CurrentIndex, s.CurrentIndex+1
 
