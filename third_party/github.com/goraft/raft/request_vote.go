@@ -22,6 +22,7 @@ type RequestVoteResponse struct {
 	peer        *Peer
 	Term        uint64
 	VoteGranted bool
+	Removed     bool
 }
 
 // Creates a new RequestVote request.
@@ -76,10 +77,11 @@ func (req *RequestVoteRequest) Decode(r io.Reader) (int, error) {
 }
 
 // Creates a new RequestVote response.
-func newRequestVoteResponse(term uint64, voteGranted bool) *RequestVoteResponse {
+func newRequestVoteResponse(term uint64, voteGranted bool, removed bool) *RequestVoteResponse {
 	return &RequestVoteResponse{
 		Term:        term,
 		VoteGranted: voteGranted,
+		Removed: removed,
 	}
 }
 
@@ -89,6 +91,7 @@ func (resp *RequestVoteResponse) Encode(w io.Writer) (int, error) {
 	pb := &protobuf.RequestVoteResponse{
 		Term:        proto.Uint64(resp.Term),
 		VoteGranted: proto.Bool(resp.VoteGranted),
+		Removed: proto.Bool(resp.Removed),
 	}
 
 	p, err := proto.Marshal(pb)
@@ -117,6 +120,7 @@ func (resp *RequestVoteResponse) Decode(r io.Reader) (int, error) {
 
 	resp.Term = pb.GetTerm()
 	resp.VoteGranted = pb.GetVoteGranted()
+	resp.Removed = pb.GetRemoved()
 
 	return totalBytes, nil
 }

@@ -121,6 +121,7 @@ type server struct {
 	log        *Log
 	leader     string
 	peers      map[string]*Peer
+	removed    map[string]*Peer
 	mutex      sync.RWMutex
 	syncedPeer map[string]bool
 
@@ -179,6 +180,7 @@ func NewServer(name string, path string, transporter Transporter, stateMachine S
 		context:                 ctx,
 		state:                   Stopped,
 		peers:                   make(map[string]*Peer),
+		removed:                 make(map[string]*Peer),
 		log:                     newLog(),
 		c:                       make(chan *ev, 256),
 		electionTimeout:         DefaultElectionTimeout,
@@ -544,7 +546,7 @@ func (s *server) Running() bool {
 // external term is found.
 func (s *server) updateCurrentTerm(term uint64, leaderName string) {
 	_assert(term > s.currentTerm,
-		"upadteCurrentTerm: update is called when term is not larger than currentTerm")
+		"updateCurrentTerm: update is called when term is not larger than currentTerm")
 
 	// Store previous values temporarily.
 	prevTerm := s.currentTerm
@@ -785,6 +787,11 @@ func (s *server) candidateLoop() {
 			if success := s.processVoteResponse(resp); success {
 				s.debugln("server.candidate.vote.granted: ", votesGranted)
 				votesGranted++
+			}
+
+			if resp.Removed {
+				s.debugln("got a removal notification, stopping")
+				s.DispatchEvent(newEvent(RemovedEventType, nil, nil))
 			}
 
 		case e := <-s.c:
@@ -1065,10 +1072,21 @@ func (s *server) RequestVote(req *RequestVoteRequest) *RequestVoteResponse {
 // Processes a "request vote" request.
 func (s *server) processRequestVoteRequest(req *RequestVoteRequest) (*RequestVoteResponse, bool) {
 
+	if p := s.removed[req.CandidateName]; p != nil {
+		go p.flush()
+		s.debugln("server.rv.deny.vote: removed peer")
+		return newRequestVoteResponse(s.currentTerm, false, true), false
+	}
+
+	if s.peers[req.CandidateName] == nil {
+		s.debugln("server.rv.deny.vote: unknown peer")
+		return newRequestVoteResponse(s.currentTerm, false, false), false
+	}
+
 	// If the request is coming from an old term then reject it.
 	if req.Term < s.Term() {
 		s.debugln("server.rv.deny.vote: cause stale term")
-		return newRequestVoteResponse(s.currentTerm, false), false
+		return newRequestVoteResponse(s.currentTerm, false, false), false
 	}
 
 	// If the term of the request peer is larger than this node, update the term
@@ -1079,7 +1097,7 @@ func (s *server) processRequestVoteRequest(req *RequestVoteRequest) (*RequestVot
 	} else if s.votedFor != "" && s.votedFor != req.CandidateName {
 		s.debugln("server.deny.vote: cause duplicate vote: ", req.CandidateName,
 			" already vote for ", s.votedFor)
-		return newRequestVoteResponse(s.currentTerm, false), false
+		return newRequestVoteResponse(s.currentTerm, false, false), false
 	}
 
 	// If the candidate's log is not at least as up-to-date as our last log then don't vote.
@@ -1088,14 +1106,14 @@ func (s *server) processRequestVoteRequest(req *RequestVoteRequest) (*RequestVot
 		s.debugln("server.deny.vote: cause out of date log: ", req.CandidateName,
 			"Index :[", lastIndex, "]", " [", req.LastLogIndex, "]",
 			"Term :[", lastTerm, "]", " [", req.LastLogTerm, "]")
-		return newRequestVoteResponse(s.currentTerm, false), false
+		return newRequestVoteResponse(s.currentTerm, false, false), false
 	}
 
 	// If we made it this far then cast a vote and reset our election time out.
 	s.debugln("server.rv.vote: ", s.name, " votes for", req.CandidateName, "at term", req.Term)
 	s.votedFor = req.CandidateName
 
-	return newRequestVoteResponse(s.currentTerm, true), true
+	return newRequestVoteResponse(s.currentTerm, true, false), true
 }
 
 //--------------------------------------
@@ -1109,6 +1127,10 @@ func (s *server) AddPeer(name string, connectiongString string) error {
 	// Do not allow peers to be added twice.
 	if s.peers[name] != nil {
 		return nil
+	}
+
+	if s.removed[name] != nil {
+		delete(s.removed, name)
 	}
 
 	// Skip the Peer if it has the same name as the Server
@@ -1159,6 +1181,7 @@ func (s *server) RemovePeer(name string) error {
 			}()
 		}
 
+		s.removed[name] = peer
 		delete(s.peers, name)
 
 		s.DispatchEvent(newEvent(RemovePeerEventType, name, nil))
