@@ -39,6 +39,7 @@ configuration files.
 * `-peer-cert-file` - The cert file of the server.
 * `-peer-key-file` - The key file of the server.
 * `-peer-election-timeout` - The number of milliseconds to wait before the leader is declared unhealthy.
+* `-peer-heartbeat-interval` - The number of milliseconds in between heartbeat requests
 * `-snapshot=false` - Disable log snapshots. Defaults to `true`.
 * `-v` - Enable verbose logging. Defaults to `false`.
 * `-vv` - Enable very verbose logging. Defaults to `false`.
