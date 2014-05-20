@@ -351,10 +351,11 @@ func (s *store) CompareAndDelete(nodePath string, prevValue string, prevIndex ui
 
 func (s *store) Watch(key string, recursive, stream bool, sinceIndex uint64) (*Watcher, error) {
 	key = path.Clean(path.Join("/", key))
-	nextIndex := s.CurrentIndex + 1
 
 	s.worldLock.RLock()
 	defer s.worldLock.RUnlock()
+
+	nextIndex := s.CurrentIndex + 1
 
 	var w *Watcher
 	var err *etcdErr.Error
