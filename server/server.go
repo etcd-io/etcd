@@ -99,6 +99,14 @@ func (s *Server) Store() store.Store {
 	return s.store
 }
 
+func (s *Server) SetRegistry(registry *Registry) {
+	s.registry = registry
+}
+
+func (s *Server) SetStore(store store.Store) {
+	s.store = store
+}
+
 func (s *Server) installV1(r *mux.Router) {
 	s.handleFuncV1(r, "/v1/keys/{key:.*}", v1.GetKeyHandler).Methods("GET", "HEAD")
 	s.handleFuncV1(r, "/v1/keys/{key:.*}", v1.SetKeyHandler).Methods("POST", "PUT")

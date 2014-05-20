@@ -327,6 +327,14 @@ func (e *Etcd) runServer() {
 			e.StandbyServer.SyncCluster(peerURLs)
 			e.setMode(StandbyMode)
 		} else {
+			// Create etcd key-value store and registry.
+			e.Store = store.New()
+			e.Registry = server.NewRegistry(e.Store)
+			e.PeerServer.SetStore(e.Store)
+			e.PeerServer.SetRegistry(e.Registry)
+			e.Server.SetStore(e.Store)
+			e.Server.SetRegistry(e.Registry)
+
 			// Generate new peer server here.
 			// TODO(yichengq): raft server cannot be started after stopped.
 			// It should be removed when raft restart is implemented.

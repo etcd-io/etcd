@@ -146,6 +146,14 @@ func (s *PeerServer) SetRaftServer(raftServer raft.Server, snapshot bool) {
 	}
 }
 
+func (s *PeerServer) SetRegistry(registry *Registry) {
+	s.registry = registry
+}
+
+func (s *PeerServer) SetStore(store store.Store) {
+	s.store = store
+}
+
 // Try all possible ways to find clusters to join
 // Include log data in -data-dir, -discovery and -peers
 //
