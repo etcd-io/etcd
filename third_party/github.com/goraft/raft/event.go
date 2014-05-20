@@ -4,9 +4,10 @@ const (
 	StateChangeEventType  = "stateChange"
 	LeaderChangeEventType = "leaderChange"
 	TermChangeEventType   = "termChange"
-	CommitEventType   = "commit"
+	CommitEventType       = "commit"
 	AddPeerEventType      = "addPeer"
 	RemovePeerEventType   = "removePeer"
+	RemovedEventType      = "removed"
 
 	HeartbeatIntervalEventType        = "heartbeatInterval"
 	ElectionTimeoutThresholdEventType = "electionTimeoutThreshold"
