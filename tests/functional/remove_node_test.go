@@ -3,8 +3,10 @@ package test
 import (
 	"bytes"
 	"fmt"
+	"math/rand"
 	"net/http"
 	"os"
+	"syscall"
 	"testing"
 	"time"
 
@@ -144,6 +146,83 @@ func TestRemoveNode(t *testing.T) {
 
 			if len(resp.Node.Nodes) != 4 {
 				t.Fatalf("add peer fails #2 (%d != 4)", len(resp.Node.Nodes))
+			}
+		}
+	}
+}
+
+func TestRemovePausedNode(t *testing.T) {
+	procAttr := new(os.ProcAttr)
+	procAttr.Files = []*os.File{nil, os.Stdout, os.Stderr}
+
+	clusterSize := 4
+	_, etcds, _ := CreateCluster(clusterSize, procAttr, false)
+	defer DestroyCluster(etcds)
+
+	time.Sleep(time.Second)
+
+	c := etcd.NewClient(nil)
+
+	c.SyncCluster()
+
+	r, _ := tests.Put("http://localhost:7001/v2/admin/config", "application/json", bytes.NewBufferString(`{"activeSize":3, "removeDelay":1, "syncInterval":1}`))
+	if !assert.Equal(t, r.StatusCode, 200) {
+		t.FailNow()
+	}
+	time.Sleep(2 * time.Second)
+
+	resp, err := c.Get("_etcd/machines", false, false)
+	if err != nil {
+		panic(err)
+	}
+	if len(resp.Node.Nodes) != 3 {
+		t.Fatal("cannot remove peer")
+	}
+
+	for i := 0; i < clusterSize; i++ {
+		// first pause the node, then remove it, then resume it
+		idx := rand.Int() % clusterSize
+
+		etcds[idx].Signal(syscall.SIGSTOP)
+		fmt.Printf("pause node%d and let standby node take its place\n", idx+1)
+		time.Sleep(4 * time.Second)
+
+		resp, err := c.Get("_etcd/machines", false, false)
+		if err != nil {
+			panic(err)
+		}
+		if len(resp.Node.Nodes) != 3 {
+			t.Fatal("cannot remove peer")
+		}
+		for i := 0; i < 3; i++ {
+			if resp.Node.Nodes[i].Key == fmt.Sprintf("node%d", idx+1) {
+				t.Fatal("node should be removed")
+			}
+		}
+
+		etcds[idx].Signal(syscall.SIGCONT)
+		// let it change its state to candidate at least
+		time.Sleep(time.Second)
+
+		stop := make(chan bool)
+		leaderChan := make(chan string, 1)
+		all := make(chan bool, 1)
+
+		go Monitor(clusterSize, clusterSize, leaderChan, all, stop)
+		<-all
+		<-leaderChan
+		stop <- true
+
+		resp, err = c.Get("_etcd/machines", false, false)
+		if err != nil {
+			panic(err)
+		}
+		if len(resp.Node.Nodes) != 3 {
+			t.Fatalf("add peer fails (%d != 3)", len(resp.Node.Nodes))
+		}
+		for i := 0; i < 3; i++ {
+			if resp.Node.Nodes[i].Key == fmt.Sprintf("node%d", idx+1) {
+				t.Fatal("node should be removed")
 			}
 		}
 	}

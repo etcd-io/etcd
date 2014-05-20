@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"hash/crc32"
 	"io/ioutil"
+	"math"
 	"os"
 	"path"
 	"sort"
@@ -1040,6 +1041,11 @@ func (s *server) processVoteResponse(resp *RequestVoteResponse) bool {
 		return true
 	}
 
+	if resp.Term == math.MaxUint64 {
+		s.debugln("got a removal notification, stopping")
+		s.DispatchEvent(newEvent(RemovedEventType, nil, nil))
+	}
+
 	if resp.Term > s.currentTerm {
 		s.debugln("server.candidate.vote.failed")
 		s.updateCurrentTerm(resp.Term, "")
@@ -1064,6 +1070,11 @@ func (s *server) RequestVote(req *RequestVoteRequest) *RequestVoteResponse {
 
 // Processes a "request vote" request.
 func (s *server) processRequestVoteRequest(req *RequestVoteRequest) (*RequestVoteResponse, bool) {
+	// Deny the vote quest if the candidate is not in the current cluster
+	if _, ok := s.peers[req.CandidateName]; !ok {
+		s.debugln("server.rv.deny.vote: unknown peer ", req.CandidateName)
+		return newRequestVoteResponse(math.MaxUint64, false), false
+	}
 
 	// If the request is coming from an old term then reject it.
 	if req.Term < s.Term() {
