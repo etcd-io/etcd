@@ -185,20 +185,8 @@ func TestRemovePausedNode(t *testing.T) {
 
 		etcds[idx].Signal(syscall.SIGSTOP)
 		fmt.Printf("pause node%d and let standby node take its place\n", idx+1)
-		time.Sleep(4 * time.Second)
 
-		resp, err := c.Get("_etcd/machines", false, false)
-		if err != nil {
-			panic(err)
-		}
-		if len(resp.Node.Nodes) != 3 {
-			t.Fatal("cannot remove peer")
-		}
-		for i := 0; i < 3; i++ {
-			if resp.Node.Nodes[i].Key == fmt.Sprintf("node%d", idx+1) {
-				t.Fatal("node should be removed")
-			}
-		}
+		time.Sleep(4 * time.Second)
 
 		etcds[idx].Signal(syscall.SIGCONT)
 		// let it change its state to candidate at least
