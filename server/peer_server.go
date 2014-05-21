@@ -626,7 +626,7 @@ func (s *PeerServer) joinByPeer(server raft.Server, peer string, scheme string) 
 }
 
 func (s *PeerServer) Stats() []byte {
-	s.serverStats.LeaderInfo.Uptime = time.Now().Sub(s.serverStats.LeaderInfo.startTime).String()
+	s.serverStats.LeaderInfo.Uptime = time.Now().Sub(s.serverStats.LeaderInfo.StartTime).String()
 
 	// TODO: register state listener to raft to change this field
 	// rather than compare the state each time Stats() is called.
