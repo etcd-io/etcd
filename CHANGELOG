@@ -1,3 +1,13 @@
+v0.4.0
+* Introduced standby mode
+* Added HEAD requests
+* Set logs NOCOW flag when BTRFS is detected to avoid fsync overhead
+* Fix all known data races, and pass Go race detector (TODO: re-run race detector)
+* Fixed timeouts when using HTTPS
+* Improved snapshot stability
+* Migration of machine names to new IPs
+* Updated peer discovery ordering
+
 v0.3.0
 * Add Compare-and-Delete support.
 * Added prevNode to response objects.
