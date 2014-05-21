@@ -1241,6 +1241,36 @@ curl -L http://127.0.0.1:7001/v2/admin/config
 At times you may want to manually remove a machine. Using the machines endpoint
 you can find and remove machines.
 
+First, list all the machines in the cluster.
+
+```sh
+curl -L http://127.0.0.1:7001/v2/admin/machines
+```
+```json
+[
+    {
+        "clientURL": "http://127.0.0.1:4001",
+        "name": "peer1",
+        "peerURL": "http://127.0.0.1:7001",
+        "state": "leader"
+    },
+    {
+        "clientURL": "http://127.0.0.1:4002",
+        "name": "peer2",
+        "peerURL": "http://127.0.0.1:7002",
+        "state": "follower"
+    },
+    {
+        "clientURL": "http://127.0.0.1:4003",
+        "name": "peer3",
+        "peerURL": "http://127.0.0.1:7003",
+        "state": "follower"
+    }
+]
+```
+
+Then take a closer look at the machine you want to remove.
+
 ```sh
 curl -L http://127.0.0.1:7001/v2/admin/machines/peer2
 ```
@@ -1253,6 +1283,8 @@ curl -L http://127.0.0.1:7001/v2/admin/machines/peer2
     "state": "follower"
 }
 ```
+
+And finally remove it.
 
 ```sh
 curl -L -XDELETE http://127.0.0.1:7001/v2/admin/machines/peer2
