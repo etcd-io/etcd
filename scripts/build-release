@@ -33,6 +33,8 @@ function package {
 	cp ${proj}/README.md ${target}/README-${proj}.md
 }
 
+mkdir release
+cd release
 
 for i in darwin windows linux; do
 	export GOOS=${i}
