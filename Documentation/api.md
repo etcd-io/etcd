@@ -1233,3 +1233,25 @@ curl -L http://127.0.0.1:7001/v2/admin/config
     "promoteDelay": 1800
 }
 ```
+
+## Remove Machines
+
+At times you may want to manually remove a machine. Using the machines endpoint
+you can find and remove machines.
+
+```sh
+curl -L http://127.0.0.1:7001/v2/admin/machines/peer2
+```
+
+```json
+{
+    "clientURL": "http://127.0.0.1:4002",
+    "name": "peer2",
+    "peerURL": "http://127.0.0.1:7002",
+    "state": "follower"
+}
+```
+
+```sh
+curl -L -XDELETE http://127.0.0.1:7001/v2/admin/machines/peer2
+```

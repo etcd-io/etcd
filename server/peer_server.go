@@ -355,6 +355,7 @@ func (s *PeerServer) HTTPHandler() http.Handler {
 	router.HandleFunc("/v2/admin/config", s.setClusterConfigHttpHandler).Methods("PUT")
 	router.HandleFunc("/v2/admin/machines", s.getMachinesHttpHandler).Methods("GET")
 	router.HandleFunc("/v2/admin/machines/{name}", s.getMachineHttpHandler).Methods("GET")
+	router.HandleFunc("/v2/admin/machines/{name}", s.RemoveHttpHandler).Methods("DELETE")
 
 	return router
 }
