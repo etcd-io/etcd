@@ -305,7 +305,7 @@ func (sm *stateMachine) Step(m Message) {
 				sm.lead = sm.addr
 				sm.sendAppend()
 			case len(sm.votes) - gr:
-				sm.state = stateFollower
+				sm.becomeFollower(sm.term, none)
 			}
 		}
 	case stateFollower:
