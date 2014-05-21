@@ -1205,21 +1205,22 @@ The configuration endpoint manages shared cluster wide properties.
 ### Set Cluster Config
 
 ```sh
-curl -L http://127.0.0.1:7001/v2/admin/config -XPUT -d '{"activeSize":3, "promoteDelay":1800}'
+curl -L http://127.0.0.1:7001/v2/admin/config -XPUT -d '{"activeSize":3, "removeDelay":1800,"syncInterval":5}'
 ```
 
 ```json
 {
     "activeSize": 3,
-    "promoteDelay": 1800
+    "removeDelay": 1800,
+    "syncInterval":5
 }
 ```
 
 `activeSize` is the maximum number of peers that can join the cluster and participate in the consensus protocol.
 
-The size of cluster is controlled to be around a certain number. If it is not, it will promote standby-mode instances or demote peer-mode instances to make it happen.
+The size of cluster is controlled to be around a certain number. If it is not, standby-mode instances will join or peer-mode instances will be removed to make it happen.
 
-`promoteDelay` indicates the minimum length of delay that has been observed before promotion or demotion.
+`removeDelay` indicates the minimum time that a machine has been observed to be unresponsive before it is removed from the cluster.
 
 ### Get Cluster Config
 
@@ -1230,7 +1231,8 @@ curl -L http://127.0.0.1:7001/v2/admin/config
 ```json
 {
     "activeSize": 3,
-    "promoteDelay": 1800
+    "removeDelay": 1800,
+    "syncInterval":5
 }
 ```
 
