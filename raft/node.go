@@ -20,7 +20,7 @@ func New(k, addr int, next Interface) *Node {
 
 // Propose asynchronously proposes data be applied to the underlying state machine.
 func (n *Node) Propose(data []byte) {
-	m := Message{Type: msgHup, Data: data}
+	m := Message{Type: msgProp, Data: data}
 	n.Step(m)
 }
 
