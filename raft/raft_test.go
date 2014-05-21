@@ -242,6 +242,41 @@ func TestProposalByProxy(t *testing.T) {
 	}
 }
 
+func TestTheN(t *testing.T) {
+	tests := []struct {
+		matches []int
+		logs    []Entry
+		smTerm  int
+		w       int
+	}{
+		// odd
+		{[]int{2, 1, 1}, []Entry{{}, {Term: 1}, {Term: 2}}, 1, 1},
+		{[]int{2, 1, 1}, []Entry{{}, {Term: 1}, {Term: 1}}, 2, -1},
+		{[]int{2, 1, 2}, []Entry{{}, {Term: 1}, {Term: 2}}, 2, 2},
+		{[]int{2, 1, 2}, []Entry{{}, {Term: 1}, {Term: 1}}, 2, -1},
+
+		// even
+		{[]int{2, 1, 1, 1}, []Entry{{}, {Term: 1}, {Term: 2}}, 1, 1},
+		{[]int{2, 1, 1, 1}, []Entry{{}, {Term: 1}, {Term: 1}}, 2, -1},
+		{[]int{2, 1, 1, 2}, []Entry{{}, {Term: 1}, {Term: 2}}, 1, 1},
+		{[]int{2, 1, 1, 2}, []Entry{{}, {Term: 1}, {Term: 1}}, 2, -1},
+		{[]int{2, 1, 2, 2}, []Entry{{}, {Term: 1}, {Term: 2}}, 2, 2},
+		{[]int{2, 1, 2, 2}, []Entry{{}, {Term: 1}, {Term: 1}}, 2, -1},
+	}
+
+	for i, tt := range tests {
+		ins := make([]*index, len(tt.matches))
+		for j := 0; j < len(ins); j++ {
+			ins[j] = &index{tt.matches[j], tt.matches[j] + 1}
+		}
+		sm := &stateMachine{log: tt.logs, ins: ins, k: len(ins), term: tt.smTerm}
+		g := sm.theN()
+		if g != tt.w {
+			t.Errorf("#%d: theN = %d, want %d", i, g, tt.w)
+		}
+	}
+}
+
 func TestVote(t *testing.T) {
 	tests := []struct {
 		i, term int
