@@ -182,12 +182,12 @@ func (sm *stateMachine) theN() int {
 	for i := range mis {
 		mis[i] = sm.ins[i].match
 	}
-	sort.Ints(mis)
-	for _, mi := range mis[sm.k/2+1:] {
-		if sm.log[mi].Term == sm.term {
-			return mi
-		}
+	sort.Sort(sort.Reverse(sort.IntSlice(mis)))
+	mci := mis[sm.q()-1]
+	if sm.log[mci].Term == sm.term {
+		return mci
 	}
+
 	return -1
 }
 
