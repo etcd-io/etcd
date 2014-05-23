@@ -108,15 +108,15 @@ type stateMachine struct {
 
 	votes map[int]bool
 
-	next Interface
+	msgs []Message
 
 	// the leader addr
 	lead int
 }
 
-func newStateMachine(k, addr int, next Interface) *stateMachine {
+func newStateMachine(k, addr int) *stateMachine {
 	log := make([]Entry, 1, 1024)
-	sm := &stateMachine{k: k, addr: addr, next: next, log: log}
+	sm := &stateMachine{k: k, addr: addr, log: log}
 	sm.reset()
 	return sm
 }
@@ -145,6 +145,14 @@ func (sm *stateMachine) append(after int, ents ...Entry) int {
 	return len(sm.log) - 1
 }
 
+func (sm *stateMachine) maybeAppend(index, logTerm int, ents ...Entry) bool {
+	if sm.isLogOk(index, logTerm) {
+		sm.append(index, ents...)
+		return true
+	}
+	return false
+}
+
 func (sm *stateMachine) isLogOk(i, term int) bool {
 	if i > sm.li() {
 		return false
@@ -152,11 +160,11 @@ func (sm *stateMachine) isLogOk(i, term int) bool {
 	return sm.log[i].Term == term
 }
 
-// send persists state to stable storage and then sends m over the network to m.To
+// send persists state to stable storage and then sends to its mailbox
 func (sm *stateMachine) send(m Message) {
 	m.From = sm.addr
 	m.Term = sm.term
-	sm.next.Step(m)
+	sm.msgs = append(sm.msgs, m)
 }
 
 // sendAppend sends RRPC, with entries to all peers that are not up-to-date according to sm.mis.
@@ -233,14 +241,39 @@ func (sm *stateMachine) becomeFollower(term, lead int) {
 	sm.state = stateFollower
 }
 
+func (sm *stateMachine) becomeCandidate() {
+	// TODO(xiangli) remove the panic when the raft implementation is stable
+	if sm.state == stateLeader {
+		panic("invalid transition [leader -> candidate]")
+	}
+	sm.reset()
+	sm.term++
+	sm.vote = sm.addr
+	sm.state = stateCandidate
+	sm.poll(sm.addr, true)
+}
+
+func (sm *stateMachine) becomeLeader() {
+	// TODO(xiangli) remove the panic when the raft implementation is stable
+	if sm.state == stateFollower {
+		panic("invalid transition [follower -> leader]")
+	}
+	sm.reset()
+	sm.lead = sm.addr
+	sm.state = stateLeader
+}
+
+func (sm *stateMachine) Msgs() []Message {
+	msgs := sm.msgs
+	sm.msgs = make([]Message, 0)
+
+	return msgs
+}
+
 func (sm *stateMachine) Step(m Message) {
 	switch m.Type {
 	case msgHup:
-		sm.term++
-		sm.reset()
-		sm.state = stateCandidate
-		sm.vote = sm.addr
-		sm.poll(sm.addr, true)
+		sm.becomeCandidate()
 		for i := 0; i < sm.k; i++ {
 			if i == sm.addr {
 				continue
@@ -301,8 +334,7 @@ func (sm *stateMachine) Step(m Message) {
 			gr := sm.poll(m.From, m.Index >= 0)
 			switch sm.q() {
 			case gr:
-				sm.state = stateLeader
-				sm.lead = sm.addr
+				sm.becomeLeader()
 				sm.sendAppend()
 			case len(sm.votes) - gr:
 				sm.becomeFollower(sm.term, none)
