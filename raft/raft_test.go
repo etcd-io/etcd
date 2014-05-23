@@ -23,9 +23,9 @@ func TestLeaderElection(t *testing.T) {
 		{
 			newNetwork(
 				nil,
-				&stateMachine{log: []Entry{{}, {Term: 1}}},
-				&stateMachine{log: []Entry{{}, {Term: 2}}},
-				&stateMachine{log: []Entry{{}, {Term: 1}, {Term: 3}}},
+				&nsm{stateMachine{log: []Entry{{}, {Term: 1}}}, nil},
+				&nsm{stateMachine{log: []Entry{{}, {Term: 2}}}, nil},
+				&nsm{stateMachine{log: []Entry{{}, {Term: 1}, {Term: 3}}}, nil},
 				nil,
 			),
 			stateFollower,
@@ -34,10 +34,10 @@ func TestLeaderElection(t *testing.T) {
 		// logs converge
 		{
 			newNetwork(
-				&stateMachine{log: []Entry{{}, {Term: 1}}},
+				&nsm{stateMachine{log: []Entry{{}, {Term: 1}}}, nil},
 				nil,
-				&stateMachine{log: []Entry{{}, {Term: 2}}},
-				&stateMachine{log: []Entry{{}, {Term: 1}}},
+				&nsm{stateMachine{log: []Entry{{}, {Term: 2}}}, nil},
+				&nsm{stateMachine{log: []Entry{{}, {Term: 1}}}, nil},
 				nil,
 			),
 			stateLeader,
@@ -46,7 +46,7 @@ func TestLeaderElection(t *testing.T) {
 
 	for i, tt := range tests {
 		tt.Step(Message{To: 0, Type: msgHup})
-		sm := tt.network.ss[0].(*stateMachine)
+		sm := tt.network.ss[0].(*nsm)
 		if sm.state != tt.state {
 			t.Errorf("#%d: state = %s, want %s", i, sm.state, tt.state)
 		}
@@ -57,8 +57,8 @@ func TestLeaderElection(t *testing.T) {
 }
 
 func TestDualingCandidates(t *testing.T) {
-	a := &stateMachine{log: defaultLog}
-	c := &stateMachine{log: defaultLog}
+	a := &nsm{stateMachine{log: defaultLog}, nil}
+	c := &nsm{stateMachine{log: defaultLog}, nil}
 
 	tt := newNetwork(a, nil, c)
 
@@ -82,7 +82,7 @@ func TestDualingCandidates(t *testing.T) {
 	tt.Step(Message{To: 2, Type: msgHup})
 
 	tests := []struct {
-		sm    *stateMachine
+		sm    *nsm
 		state stateType
 		term  int
 	}{
@@ -106,7 +106,7 @@ func TestDualingCandidates(t *testing.T) {
 }
 
 func TestCandidateConcede(t *testing.T) {
-	a := &stateMachine{log: defaultLog}
+	a := &nsm{stateMachine{log: defaultLog}, nil}
 
 	tt := newNetwork(a, nil, nil)
 	tt.tee = stepperFunc(func(m Message) {
@@ -143,7 +143,7 @@ func TestOldMessages(t *testing.T) {
 	tt := newNetwork(nil, nil, nil)
 	// make 0 leader @ term 3
 	tt.Step(Message{To: 0, Type: msgHup})
-	tt.Step(Message{To: 0, Type: msgHup})
+	tt.Step(Message{To: 1, Type: msgHup})
 	tt.Step(Message{To: 0, Type: msgHup})
 	// pretend we're an old leader trying to make progress
 	tt.Step(Message{To: 0, Type: msgApp, Term: 1, Entries: []Entry{{Term: 1}}})
@@ -204,7 +204,7 @@ func TestProposal(t *testing.T) {
 				t.Errorf("#%d: diff:%s", i, diff)
 			}
 		}
-		sm := tt.network.ss[0].(*stateMachine)
+		sm := tt.network.ss[0].(*nsm)
 		if g := sm.term; g != 1 {
 			t.Errorf("#%d: term = %d, want %d", i, g, 1)
 		}
@@ -235,7 +235,7 @@ func TestProposalByProxy(t *testing.T) {
 				t.Errorf("#%d: bad entry: %s", i, diff)
 			}
 		}
-		sm := tt.ss[0].(*stateMachine)
+		sm := tt.ss[0].(*nsm)
 		if g := sm.term; g != 1 {
 			t.Errorf("#%d: term = %d, want %d", i, g, 1)
 		}
@@ -305,7 +305,7 @@ func TestVote(t *testing.T) {
 
 	for i, tt := range tests {
 		called := false
-		sm := &stateMachine{log: []Entry{{}, {Term: 2}, {Term: 2}}}
+		sm := &nsm{stateMachine{log: []Entry{{}, {Term: 2}, {Term: 2}}}, nil}
 		sm.next = stepperFunc(func(m Message) {
 			called = true
 			if m.Index != tt.w {
@@ -315,6 +315,46 @@ func TestVote(t *testing.T) {
 		sm.Step(Message{Type: msgVote, Index: tt.i, LogTerm: tt.term})
 		if !called {
 			t.Fatal("#%d: not called", i)
+		}
+	}
+}
+
+func TestAllServerStepdown(t *testing.T) {
+	tests := []stateType{stateFollower, stateCandidate, stateLeader}
+
+	want := struct {
+		state stateType
+		term  int
+		index int
+	}{stateFollower, 3, 1}
+
+	tmsgTypes := [...]messageType{msgVote, msgApp}
+	tterm := 3
+
+	for i, tt := range tests {
+		sm := newStateMachine(3, 0)
+		switch tt {
+		case stateFollower:
+			sm.becomeFollower(1, 0)
+		case stateCandidate:
+			sm.becomeCandidate()
+		case stateLeader:
+			sm.becomeCandidate()
+			sm.becomeLeader()
+		}
+
+		for j, msgType := range tmsgTypes {
+			sm.Step(Message{Type: msgType, Term: tterm, LogTerm: tterm})
+
+			if sm.state != want.state {
+				t.Errorf("#%d.%d state = %v , want %v", i, j, sm.state, want.state)
+			}
+			if sm.term != want.term {
+				t.Errorf("#%d.%d term = %v , want %v", i, j, sm.term, want.term)
+			}
+			if len(sm.log) != want.index {
+				t.Errorf("#%d.%d index = %v , want %v", i, j, len(sm.log), want.index)
+			}
 		}
 	}
 }
@@ -349,8 +389,8 @@ func newNetwork(nodes ...Interface) *network {
 	for i, n := range nodes {
 		switch v := n.(type) {
 		case nil:
-			nt.ss[i] = newStateMachine(len(nodes), i, nt)
-		case *stateMachine:
+			nt.ss[i] = &nsm{*newStateMachine(len(nodes), i), nt}
+		case *nsm:
 			v.k = len(nodes)
 			v.addr = i
 			if v.next == nil {
@@ -375,7 +415,7 @@ func (nt network) Step(m Message) {
 func (nt network) logs() [][]Entry {
 	ls := make([][]Entry, len(nt.ss))
 	for i, node := range nt.ss {
-		if sm, ok := node.(*stateMachine); ok {
+		if sm, ok := node.(*nsm); ok {
 			ls[i] = sm.log
 		}
 	}
@@ -462,3 +502,16 @@ type stepperFunc func(Message)
 func (f stepperFunc) Step(m Message) { f(m) }
 
 var nopStepper = stepperFunc(func(Message) {})
+
+type nsm struct {
+	stateMachine
+	next Interface
+}
+
+func (n *nsm) Step(m Message) {
+	(&n.stateMachine).Step(m)
+	ms := n.Msgs()
+	for _, m := range ms {
+		n.next.Step(m)
+	}
+}

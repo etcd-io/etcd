@@ -13,7 +13,7 @@ type Node struct {
 
 func New(k, addr int, next Interface) *Node {
 	n := &Node{
-		sm: newStateMachine(k, addr, next),
+		sm: newStateMachine(k, addr),
 	}
 	return n
 }
