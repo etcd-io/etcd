@@ -104,7 +104,8 @@ type stateMachine struct {
 
 	state stateType
 
-	commit int
+	commit  int
+	applied int
 
 	votes map[int]bool
 
@@ -180,11 +181,12 @@ func (sm *stateMachine) sendAppend() {
 		m.Index = in.next - 1
 		m.LogTerm = sm.log[in.next-1].Term
 		m.Entries = sm.log[in.next:]
+		m.Commit = sm.commit
 		sm.send(m)
 	}
 }
 
-func (sm *stateMachine) theN() int {
+func (sm *stateMachine) maybeCommit() bool {
 	// TODO(bmizerany): optimize.. Currently naive
 	mis := make([]int, len(sm.ins))
 	for i := range mis {
@@ -192,18 +194,20 @@ func (sm *stateMachine) theN() int {
 	}
 	sort.Sort(sort.Reverse(sort.IntSlice(mis)))
 	mci := mis[sm.q()-1]
-	if sm.log[mci].Term == sm.term {
-		return mci
+
+	if mci > sm.commit && sm.log[mci].Term == sm.term {
+		sm.commit = mci
+		return true
 	}
 
-	return -1
+	return false
 }
 
+// nextEnts returns the appliable entries and updates the applied index
 func (sm *stateMachine) nextEnts() (ents []Entry) {
-	ci := sm.theN()
-	if ci > sm.commit {
-		ents = sm.log[sm.commit+1 : ci]
-		sm.commit = ci
+	if sm.commit > sm.applied {
+		ents = sm.log[sm.applied+1 : sm.commit+1]
+		sm.applied = sm.commit
 	}
 	return ents
 }
@@ -306,6 +310,7 @@ func (sm *stateMachine) Step(m Message) {
 
 	handleAppendEntries := func() {
 		if sm.isLogOk(m.Index, m.LogTerm) {
+			sm.commit = m.Commit
 			sm.append(m.Index, m.Entries...)
 			sm.send(Message{To: m.From, Type: msgAppResp, Index: sm.li()})
 		} else {
@@ -323,6 +328,9 @@ func (sm *stateMachine) Step(m Message) {
 				sm.sendAppend()
 			} else {
 				in.update(m.Index)
+				if sm.maybeCommit() {
+					sm.sendAppend()
+				}
 			}
 		}
 	case stateCandidate:

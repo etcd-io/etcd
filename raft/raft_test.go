@@ -1,6 +1,7 @@
 package raft
 
 import (
+	"bytes"
 	"fmt"
 	"reflect"
 	"testing"
@@ -52,6 +53,63 @@ func TestLeaderElection(t *testing.T) {
 		}
 		if g := sm.term; g != 1 {
 			t.Errorf("#%d: term = %d, want %d", i, g, 1)
+		}
+	}
+}
+
+func TestLogReplication(t *testing.T) {
+	tests := []struct {
+		*network
+		msgs    []Message
+		wcommit int
+	}{
+		{
+			newNetwork(nil, nil, nil),
+			[]Message{
+				Message{To: 0, Type: msgProp, Data: []byte("somedata")},
+			},
+			1,
+		},
+		{
+			newNetwork(nil, nil, nil),
+			[]Message{
+				Message{To: 0, Type: msgProp, Data: []byte("somedata")},
+				Message{To: 1, Type: msgHup},
+				Message{To: 1, Type: msgProp, Data: []byte("somedata")},
+			},
+			2,
+		},
+	}
+
+	for i, tt := range tests {
+		tt.tee = stepperFunc(func(m Message) {
+			t.Logf("#%d: m = %+v", i, m)
+		})
+		tt.Step(Message{To: 0, Type: msgHup})
+
+		for _, m := range tt.msgs {
+			tt.Step(m)
+		}
+
+		for j, ism := range tt.ss {
+			sm := ism.(*nsm)
+
+			if sm.commit != tt.wcommit {
+				t.Errorf("#%d.%d: commit = %d, want %d", i, j, sm.commit, tt.wcommit)
+			}
+
+			ents := sm.nextEnts()
+			props := make([]Message, 0)
+			for _, m := range tt.msgs {
+				if m.Type == msgProp {
+					props = append(props, m)
+				}
+			}
+			for k, m := range props {
+				if !bytes.Equal(ents[k].Data, m.Data) {
+					t.Errorf("#%d.%d: data = %d, want %d", i, j, ents[k].Data, m.Data)
+				}
+			}
 		}
 	}
 }
@@ -242,7 +300,7 @@ func TestProposalByProxy(t *testing.T) {
 	}
 }
 
-func TestTheN(t *testing.T) {
+func TestCommit(t *testing.T) {
 	tests := []struct {
 		matches []int
 		logs    []Entry
@@ -251,17 +309,17 @@ func TestTheN(t *testing.T) {
 	}{
 		// odd
 		{[]int{2, 1, 1}, []Entry{{}, {Term: 1}, {Term: 2}}, 1, 1},
-		{[]int{2, 1, 1}, []Entry{{}, {Term: 1}, {Term: 1}}, 2, -1},
+		{[]int{2, 1, 1}, []Entry{{}, {Term: 1}, {Term: 1}}, 2, 0},
 		{[]int{2, 1, 2}, []Entry{{}, {Term: 1}, {Term: 2}}, 2, 2},
-		{[]int{2, 1, 2}, []Entry{{}, {Term: 1}, {Term: 1}}, 2, -1},
+		{[]int{2, 1, 2}, []Entry{{}, {Term: 1}, {Term: 1}}, 2, 0},
 
 		// even
 		{[]int{2, 1, 1, 1}, []Entry{{}, {Term: 1}, {Term: 2}}, 1, 1},
-		{[]int{2, 1, 1, 1}, []Entry{{}, {Term: 1}, {Term: 1}}, 2, -1},
+		{[]int{2, 1, 1, 1}, []Entry{{}, {Term: 1}, {Term: 1}}, 2, 0},
 		{[]int{2, 1, 1, 2}, []Entry{{}, {Term: 1}, {Term: 2}}, 1, 1},
-		{[]int{2, 1, 1, 2}, []Entry{{}, {Term: 1}, {Term: 1}}, 2, -1},
+		{[]int{2, 1, 1, 2}, []Entry{{}, {Term: 1}, {Term: 1}}, 2, 0},
 		{[]int{2, 1, 2, 2}, []Entry{{}, {Term: 1}, {Term: 2}}, 2, 2},
-		{[]int{2, 1, 2, 2}, []Entry{{}, {Term: 1}, {Term: 1}}, 2, -1},
+		{[]int{2, 1, 2, 2}, []Entry{{}, {Term: 1}, {Term: 1}}, 2, 0},
 	}
 
 	for i, tt := range tests {
@@ -270,9 +328,9 @@ func TestTheN(t *testing.T) {
 			ins[j] = &index{tt.matches[j], tt.matches[j] + 1}
 		}
 		sm := &stateMachine{log: tt.logs, ins: ins, k: len(ins), term: tt.smTerm}
-		g := sm.theN()
-		if g != tt.w {
-			t.Errorf("#%d: theN = %d, want %d", i, g, tt.w)
+		sm.maybeCommit()
+		if g := sm.commit; g != tt.w {
+			t.Errorf("#%d: commit = %d, want %d", i, g, tt.w)
 		}
 	}
 }
