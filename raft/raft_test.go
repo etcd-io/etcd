@@ -345,37 +345,41 @@ func TestCommit(t *testing.T) {
 
 func TestVote(t *testing.T) {
 	tests := []struct {
+		state   stateType
 		i, term int
 		voteFor int
 		w       int
 	}{
-		{0, 0, none, -1},
-		{0, 1, none, -1},
-		{0, 2, none, -1},
-		{0, 3, none, 2},
+		{stateFollower, 0, 0, none, -1},
+		{stateFollower, 0, 1, none, -1},
+		{stateFollower, 0, 2, none, -1},
+		{stateFollower, 0, 3, none, 2},
 
-		{1, 0, none, -1},
-		{1, 1, none, -1},
-		{1, 2, none, -1},
-		{1, 3, none, 2},
+		{stateFollower, 1, 0, none, -1},
+		{stateFollower, 1, 1, none, -1},
+		{stateFollower, 1, 2, none, -1},
+		{stateFollower, 1, 3, none, 2},
 
-		{2, 0, none, -1},
-		{2, 1, none, -1},
-		{2, 2, none, 2},
-		{2, 3, none, 2},
+		{stateFollower, 2, 0, none, -1},
+		{stateFollower, 2, 1, none, -1},
+		{stateFollower, 2, 2, none, 2},
+		{stateFollower, 2, 3, none, 2},
 
-		{3, 0, none, -1},
-		{3, 1, none, -1},
-		{3, 2, none, 2},
-		{3, 3, none, 2},
+		{stateFollower, 3, 0, none, -1},
+		{stateFollower, 3, 1, none, -1},
+		{stateFollower, 3, 2, none, 2},
+		{stateFollower, 3, 3, none, 2},
 
-		{3, 2, 0, 2},
-		{3, 2, 1, -1},
+		{stateFollower, 3, 2, 1, 2},
+		{stateFollower, 3, 2, 0, -1},
+
+		{stateLeader, 3, 3, 0, -1},
+		{stateCandidate, 3, 3, 0, -1},
 	}
 
 	for i, tt := range tests {
 		called := false
-		sm := &nsm{stateMachine{vote: tt.voteFor, log: &log{ents: []Entry{{}, {Term: 2}, {Term: 2}}}}, nil}
+		sm := &nsm{stateMachine{state: tt.state, vote: tt.voteFor, log: &log{ents: []Entry{{}, {Term: 2}, {Term: 2}}}}, nil}
 
 		sm.next = stepperFunc(func(m Message) {
 			called = true
@@ -383,7 +387,7 @@ func TestVote(t *testing.T) {
 				t.Errorf("#%d, m.Index = %d, want %d", i, m.Index, tt.w)
 			}
 		})
-		sm.Step(Message{Type: msgVote, Index: tt.i, LogTerm: tt.term})
+		sm.Step(Message{Type: msgVote, From: 1, Index: tt.i, LogTerm: tt.term})
 		if !called {
 			t.Fatal("#%d: not called", i)
 		}
