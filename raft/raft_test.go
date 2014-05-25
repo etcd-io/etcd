@@ -441,6 +441,40 @@ func TestAllServerStepdown(t *testing.T) {
 	}
 }
 
+func TestLeaderAppResp(t *testing.T) {
+	tests := []struct {
+		index      int
+		wmsgNum    int
+		windex     int
+		wcommitted int
+	}{
+		{-1, 1, 1, 0}, // bad resp; leader does not commit; reply with log entries
+		{2, 2, 2, 2},  // good resp; leader commits; broadcast with commit index
+	}
+
+	for i, tt := range tests {
+		// sm term is 1 after it becomes the leader.
+		// thus the last log term must be 1 to be committed.
+		sm := &stateMachine{addr: 0, k: 3, log: &log{ents: []Entry{{}, {Term: 0}, {Term: 1}}}}
+		sm.becomeCandidate()
+		sm.becomeLeader()
+		sm.Step(Message{From: 1, Type: msgAppResp, Index: tt.index, Term: sm.term})
+		msgs := sm.Msgs()
+
+		if len(msgs) != tt.wmsgNum {
+			t.Errorf("#%d msgNum = %d, want %d", i, len(msgs), tt.wmsgNum)
+		}
+		for j, msg := range msgs {
+			if msg.Index != tt.windex {
+				t.Errorf("#%d.%d index = %d, want %d", i, j, msg.Index, tt.windex)
+			}
+			if msg.Commit != tt.wcommitted {
+				t.Errorf("#%d.%d commit = %d, want %d", i, j, msg.Commit, tt.wcommitted)
+			}
+		}
+	}
+}
+
 func TestLogDiff(t *testing.T) {
 	a := []Entry{{}, {Term: 1}, {Term: 2}}
 	b := []Entry{{}, {Term: 1}, {Term: 2}}
