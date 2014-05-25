@@ -146,14 +146,6 @@ func (sm *stateMachine) append(after int, ents ...Entry) int {
 	return len(sm.log) - 1
 }
 
-func (sm *stateMachine) maybeAppend(index, logTerm int, ents ...Entry) bool {
-	if sm.isLogOk(index, logTerm) {
-		sm.append(index, ents...)
-		return true
-	}
-	return false
-}
-
 func (sm *stateMachine) isLogOk(i, term int) bool {
 	if i > sm.li() {
 		return false
