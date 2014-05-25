@@ -186,6 +186,9 @@ func (sm *stateMachine) reset() {
 	sm.ins = make([]index, sm.k)
 	for i := range sm.ins {
 		sm.ins[i] = index{next: sm.log.lastIndex() + 1}
+		if i == sm.addr {
+			sm.ins[i].match = sm.log.lastIndex()
+		}
 	}
 }
 
