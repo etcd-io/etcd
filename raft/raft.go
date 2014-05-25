@@ -282,6 +282,8 @@ func (sm *stateMachine) Step(m Message) {
 					sm.sendAppend()
 				}
 			}
+		case msgVote:
+			sm.send(Message{To: m.From, Type: msgVoteResp, Index: -1})
 		}
 	case stateCandidate:
 		switch m.Type {
