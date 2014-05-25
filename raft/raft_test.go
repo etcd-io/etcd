@@ -346,32 +346,37 @@ func TestCommit(t *testing.T) {
 func TestVote(t *testing.T) {
 	tests := []struct {
 		i, term int
+		voteFor int
 		w       int
 	}{
-		{0, 0, -1},
-		{0, 1, -1},
-		{0, 2, -1},
-		{0, 3, 2},
+		{0, 0, none, -1},
+		{0, 1, none, -1},
+		{0, 2, none, -1},
+		{0, 3, none, 2},
 
-		{1, 0, -1},
-		{1, 1, -1},
-		{1, 2, -1},
-		{1, 3, 2},
+		{1, 0, none, -1},
+		{1, 1, none, -1},
+		{1, 2, none, -1},
+		{1, 3, none, 2},
 
-		{2, 0, -1},
-		{2, 1, -1},
-		{2, 2, 2},
-		{2, 3, 2},
+		{2, 0, none, -1},
+		{2, 1, none, -1},
+		{2, 2, none, 2},
+		{2, 3, none, 2},
 
-		{3, 0, -1},
-		{3, 1, -1},
-		{3, 2, 2},
-		{3, 3, 2},
+		{3, 0, none, -1},
+		{3, 1, none, -1},
+		{3, 2, none, 2},
+		{3, 3, none, 2},
+
+		{3, 2, 0, 2},
+		{3, 2, 1, -1},
 	}
 
 	for i, tt := range tests {
 		called := false
-		sm := &nsm{stateMachine{log: &log{ents: []Entry{{}, {Term: 2}, {Term: 2}}}}, nil}
+		sm := &nsm{stateMachine{vote: tt.voteFor, log: &log{ents: []Entry{{}, {Term: 2}, {Term: 2}}}}, nil}
+
 		sm.next = stepperFunc(func(m Message) {
 			called = true
 			if m.Index != tt.w {
