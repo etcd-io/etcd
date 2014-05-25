@@ -288,6 +288,8 @@ func (sm *stateMachine) Step(m Message) {
 		case msgApp:
 			sm.becomeFollower(sm.term, m.From)
 			handleAppendEntries()
+		case msgVote:
+			sm.send(Message{To: m.From, Type: msgVoteResp, Index: -1})
 		case msgVoteResp:
 			gr := sm.poll(m.From, m.Index >= 0)
 			switch sm.q() {
@@ -303,11 +305,18 @@ func (sm *stateMachine) Step(m Message) {
 		case msgApp:
 			handleAppendEntries()
 		case msgVote:
-			if sm.log.isUpToDate(m.Index, m.LogTerm) {
+			switch sm.vote {
+			case m.From:
 				sm.send(Message{To: m.From, Type: msgVoteResp, Index: sm.log.lastIndex()})
-			} else {
-				sm.send(Message{To: m.From, Type: msgVoteResp, Index: -1})
+				return
+			case none:
+				if sm.log.isUpToDate(m.Index, m.LogTerm) {
+					sm.vote = m.From
+					sm.send(Message{To: m.From, Type: msgVoteResp, Index: sm.log.lastIndex()})
+					return
+				}
 			}
+			sm.send(Message{To: m.From, Type: msgVoteResp, Index: -1})
 		}
 	}
 }
