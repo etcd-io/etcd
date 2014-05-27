@@ -7,8 +7,6 @@ import (
 	"testing"
 )
 
-var defaultLog = []Entry{{}}
-
 func TestLeaderElection(t *testing.T) {
 	tests := []struct {
 		*network
@@ -24,9 +22,9 @@ func TestLeaderElection(t *testing.T) {
 		{
 			newNetwork(
 				nil,
-				&nsm{stateMachine{log: []Entry{{}, {Term: 1}}}, nil},
-				&nsm{stateMachine{log: []Entry{{}, {Term: 2}}}, nil},
-				&nsm{stateMachine{log: []Entry{{}, {Term: 1}, {Term: 3}}}, nil},
+				&nsm{stateMachine{log: &log{ents: []Entry{{}, {Term: 1}}}}, nil},
+				&nsm{stateMachine{log: &log{ents: []Entry{{}, {Term: 2}}}}, nil},
+				&nsm{stateMachine{log: &log{ents: []Entry{{}, {Term: 1}, {Term: 3}}}}, nil},
 				nil,
 			),
 			stateFollower,
@@ -35,10 +33,10 @@ func TestLeaderElection(t *testing.T) {
 		// logs converge
 		{
 			newNetwork(
-				&nsm{stateMachine{log: []Entry{{}, {Term: 1}}}, nil},
+				&nsm{stateMachine{log: &log{ents: []Entry{{}, {Term: 1}}}}, nil},
 				nil,
-				&nsm{stateMachine{log: []Entry{{}, {Term: 2}}}, nil},
-				&nsm{stateMachine{log: []Entry{{}, {Term: 1}}}, nil},
+				&nsm{stateMachine{log: &log{ents: []Entry{{}, {Term: 2}}}}, nil},
+				&nsm{stateMachine{log: &log{ents: []Entry{{}, {Term: 1}}}}, nil},
 				nil,
 			),
 			stateLeader,
@@ -94,8 +92,8 @@ func TestLogReplication(t *testing.T) {
 		for j, ism := range tt.ss {
 			sm := ism.(*nsm)
 
-			if sm.commit != tt.wcommit {
-				t.Errorf("#%d.%d: commit = %d, want %d", i, j, sm.commit, tt.wcommit)
+			if sm.log.commit != tt.wcommit {
+				t.Errorf("#%d.%d: commit = %d, want %d", i, j, sm.log.commit, tt.wcommit)
 			}
 
 			ents := sm.nextEnts()
@@ -115,8 +113,8 @@ func TestLogReplication(t *testing.T) {
 }
 
 func TestDualingCandidates(t *testing.T) {
-	a := &nsm{stateMachine{log: defaultLog}, nil}
-	c := &nsm{stateMachine{log: defaultLog}, nil}
+	a := &nsm{stateMachine{log: defaultLog()}, nil}
+	c := &nsm{stateMachine{log: defaultLog()}, nil}
 
 	tt := newNetwork(a, nil, c)
 
@@ -156,7 +154,7 @@ func TestDualingCandidates(t *testing.T) {
 			t.Errorf("#%d: term = %d, want %d", i, g, tt.term)
 		}
 	}
-	if g := diffLogs(defaultLog, tt.logs()); g != nil {
+	if g := diffLogs(defaultLog().ents, tt.logs()); g != nil {
 		for _, diff := range g {
 			t.Errorf("bag log:\n%s", diff)
 		}
@@ -164,7 +162,7 @@ func TestDualingCandidates(t *testing.T) {
 }
 
 func TestCandidateConcede(t *testing.T) {
-	a := &nsm{stateMachine{log: defaultLog}, nil}
+	a := &nsm{stateMachine{log: defaultLog()}, nil}
 
 	tt := newNetwork(a, nil, nil)
 	tt.tee = stepperFunc(func(m Message) {
@@ -205,7 +203,7 @@ func TestOldMessages(t *testing.T) {
 	tt.Step(Message{To: 0, Type: msgHup})
 	// pretend we're an old leader trying to make progress
 	tt.Step(Message{To: 0, Type: msgApp, Term: 1, Entries: []Entry{{Term: 1}}})
-	if g := diffLogs(defaultLog, tt.logs()); g != nil {
+	if g := diffLogs(defaultLog().ents, tt.logs()); g != nil {
 		for _, diff := range g {
 			t.Errorf("bag log:\n%s", diff)
 		}
@@ -255,7 +253,7 @@ func TestProposal(t *testing.T) {
 		if tt.success {
 			wantLog = []Entry{{}, {Term: 1, Data: data}}
 		} else {
-			wantLog = defaultLog
+			wantLog = defaultLog().ents
 		}
 		if g := diffLogs(wantLog, tt.logs()); g != nil {
 			for _, diff := range g {
@@ -327,9 +325,9 @@ func TestCommit(t *testing.T) {
 		for j := 0; j < len(ins); j++ {
 			ins[j] = &index{tt.matches[j], tt.matches[j] + 1}
 		}
-		sm := &stateMachine{log: tt.logs, ins: ins, k: len(ins), term: tt.smTerm}
+		sm := &stateMachine{log: &log{ents: tt.logs}, ins: ins, k: len(ins), term: tt.smTerm}
 		sm.maybeCommit()
-		if g := sm.commit; g != tt.w {
+		if g := sm.log.commit; g != tt.w {
 			t.Errorf("#%d: commit = %d, want %d", i, g, tt.w)
 		}
 	}
@@ -363,7 +361,7 @@ func TestVote(t *testing.T) {
 
 	for i, tt := range tests {
 		called := false
-		sm := &nsm{stateMachine{log: []Entry{{}, {Term: 2}, {Term: 2}}}, nil}
+		sm := &nsm{stateMachine{log: &log{ents: []Entry{{}, {Term: 2}, {Term: 2}}}}, nil}
 		sm.next = stepperFunc(func(m Message) {
 			called = true
 			if m.Index != tt.w {
@@ -410,8 +408,8 @@ func TestAllServerStepdown(t *testing.T) {
 			if sm.term != want.term {
 				t.Errorf("#%d.%d term = %v , want %v", i, j, sm.term, want.term)
 			}
-			if len(sm.log) != want.index {
-				t.Errorf("#%d.%d index = %v , want %v", i, j, len(sm.log), want.index)
+			if len(sm.log.ents) != want.index {
+				t.Errorf("#%d.%d index = %v , want %v", i, j, len(sm.log.ents), want.index)
 			}
 		}
 	}
@@ -474,7 +472,7 @@ func (nt network) logs() [][]Entry {
 	ls := make([][]Entry, len(nt.ss))
 	for i, node := range nt.ss {
 		if sm, ok := node.(*nsm); ok {
-			ls[i] = sm.log
+			ls[i] = sm.log.ents
 		}
 	}
 	return ls
@@ -572,4 +570,8 @@ func (n *nsm) Step(m Message) {
 	for _, m := range ms {
 		n.next.Step(m)
 	}
+}
+
+func defaultLog() *log {
+	return &log{ents: []Entry{{}}}
 }
