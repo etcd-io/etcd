@@ -51,11 +51,6 @@ func (st stateType) String() string {
 	return stmap[int(st)]
 }
 
-type Entry struct {
-	Term int
-	Data []byte
-}
-
 type Message struct {
 	Type     messageType
 	To       int
@@ -98,14 +93,11 @@ type stateMachine struct {
 	vote int
 
 	// the log
-	log []Entry
+	log *log
 
 	ins []*index
 
 	state stateType
-
-	commit  int
-	applied int
 
 	votes map[int]bool
 
@@ -116,8 +108,7 @@ type stateMachine struct {
 }
 
 func newStateMachine(k, addr int) *stateMachine {
-	log := make([]Entry, 1, 1024)
-	sm := &stateMachine{k: k, addr: addr, log: log}
+	sm := &stateMachine{k: k, addr: addr, log: newLog()}
 	sm.reset()
 	return sm
 }
@@ -141,16 +132,8 @@ func (sm *stateMachine) poll(addr int, v bool) (granted int) {
 	return granted
 }
 
-func (sm *stateMachine) append(after int, ents ...Entry) int {
-	sm.log = append(sm.log[:after+1], ents...)
-	return len(sm.log) - 1
-}
-
 func (sm *stateMachine) isLogOk(i, term int) bool {
-	if i > sm.li() {
-		return false
-	}
-	return sm.log[i].Term == term
+	return sm.log.isOk(i, term)
 }
 
 // send persists state to stable storage and then sends to its mailbox
@@ -171,9 +154,9 @@ func (sm *stateMachine) sendAppend() {
 		m.Type = msgApp
 		m.To = i
 		m.Index = in.next - 1
-		m.LogTerm = sm.log[in.next-1].Term
-		m.Entries = sm.log[in.next:]
-		m.Commit = sm.commit
+		m.LogTerm = sm.log.term(in.next - 1)
+		m.Entries = sm.log.entries(in.next)
+		m.Commit = sm.log.commit
 		sm.send(m)
 	}
 }
@@ -187,8 +170,8 @@ func (sm *stateMachine) maybeCommit() bool {
 	sort.Sort(sort.Reverse(sort.IntSlice(mis)))
 	mci := mis[sm.q()-1]
 
-	if mci > sm.commit && sm.log[mci].Term == sm.term {
-		sm.commit = mci
+	if mci > sm.log.commit && sm.log.term(mci) == sm.term {
+		sm.log.commit = mci
 		return true
 	}
 
@@ -197,11 +180,7 @@ func (sm *stateMachine) maybeCommit() bool {
 
 // nextEnts returns the appliable entries and updates the applied index
 func (sm *stateMachine) nextEnts() (ents []Entry) {
-	if sm.commit > sm.applied {
-		ents = sm.log[sm.applied+1 : sm.commit+1]
-		sm.applied = sm.commit
-	}
-	return ents
+	return sm.log.nextEnts()
 }
 
 func (sm *stateMachine) reset() {
@@ -210,7 +189,7 @@ func (sm *stateMachine) reset() {
 	sm.votes = make(map[int]bool)
 	sm.ins = make([]*index, sm.k)
 	for i := range sm.ins {
-		sm.ins[i] = &index{next: len(sm.log)}
+		sm.ins[i] = &index{next: sm.log.len() + 1}
 	}
 }
 
@@ -219,15 +198,11 @@ func (sm *stateMachine) q() int {
 }
 
 func (sm *stateMachine) voteWorthy(i, term int) bool {
-	// LET logOk == \/ m.mlastLogTerm > LastTerm(log[i])
-	//              \/ /\ m.mlastLogTerm = LastTerm(log[i])
-	//                 /\ m.mlastLogIndex >= Len(log[i])
-	e := sm.log[sm.li()]
-	return term > e.Term || (term == e.Term && i >= sm.li())
+	return sm.log.isUpToDate(i, term)
 }
 
 func (sm *stateMachine) li() int {
-	return len(sm.log) - 1
+	return sm.log.len()
 }
 
 func (sm *stateMachine) becomeFollower(term, lead int) {
@@ -275,13 +250,13 @@ func (sm *stateMachine) Step(m Message) {
 				continue
 			}
 			lasti := sm.li()
-			sm.send(Message{To: i, Type: msgVote, Index: lasti, LogTerm: sm.log[lasti].Term})
+			sm.send(Message{To: i, Type: msgVote, Index: lasti, LogTerm: sm.log.term(lasti)})
 		}
 		return
 	case msgProp:
 		switch sm.lead {
 		case sm.addr:
-			sm.append(sm.li(), Entry{Term: sm.term, Data: m.Data})
+			sm.log.append(sm.log.len(), Entry{Term: sm.term, Data: m.Data})
 			sm.sendAppend()
 		case none:
 			panic("msgProp given without leader")
@@ -302,8 +277,8 @@ func (sm *stateMachine) Step(m Message) {
 
 	handleAppendEntries := func() {
 		if sm.isLogOk(m.Index, m.LogTerm) {
-			sm.commit = m.Commit
-			sm.append(m.Index, m.Entries...)
+			sm.log.commit = m.Commit
+			sm.log.append(m.Index, m.Entries...)
 			sm.send(Message{To: m.From, Type: msgAppResp, Index: sm.li()})
 		} else {
 			sm.send(Message{To: m.From, Type: msgAppResp, Index: -1})
