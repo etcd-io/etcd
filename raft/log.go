@@ -32,19 +32,19 @@ func (l *log) append(after int, ents ...Entry) int {
 	return len(l.ents) - 1
 }
 
-func (l *log) len() int {
+func (l *log) lastIndex() int {
 	return len(l.ents) - 1
 }
 
 func (l *log) term(i int) int {
-	if i > l.len() {
+	if i > l.lastIndex() {
 		return -1
 	}
 	return l.ents[i].Term
 }
 
 func (l *log) entries(i int) []Entry {
-	if i > l.len() {
+	if i > l.lastIndex() {
 		return nil
 	}
 	return l.ents[i:]
@@ -54,12 +54,12 @@ func (l *log) isUpToDate(i, term int) bool {
 	// LET upToDate == \/ m.mlastLogTerm > LastTerm(log[i])
 	//              \/ /\ m.mlastLogTerm = LastTerm(log[i])
 	//                 /\ m.mlastLogIndex >= Len(log[i])
-	e := l.ents[l.len()]
-	return term > e.Term || (term == e.Term && i >= l.len())
+	e := l.ents[l.lastIndex()]
+	return term > e.Term || (term == e.Term && i >= l.lastIndex())
 }
 
 func (l *log) matchTerm(i, term int) bool {
-	if i > l.len() {
+	if i > l.lastIndex() {
 		return false
 	}
 	return l.ents[i].Term == term
