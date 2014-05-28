@@ -52,9 +52,6 @@ func (l *log) entries(i int) []Entry {
 }
 
 func (l *log) isUpToDate(i, term int) bool {
-	// LET upToDate == \/ m.mlastLogTerm > LastTerm(log[i])
-	//              \/ /\ m.mlastLogTerm = LastTerm(log[i])
-	//                 /\ m.mlastLogIndex >= Len(log[i])
 	e := l.ents[l.lastIndex()]
 	return term > e.Term || (term == e.Term && i >= l.lastIndex())
 }
