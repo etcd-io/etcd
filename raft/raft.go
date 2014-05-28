@@ -204,7 +204,6 @@ func (sm *stateMachine) becomeCandidate() {
 	sm.term++
 	sm.vote = sm.addr
 	sm.state = stateCandidate
-	sm.poll(sm.addr, true)
 }
 
 func (sm *stateMachine) becomeLeader() {
@@ -228,6 +227,10 @@ func (sm *stateMachine) Step(m Message) {
 	switch m.Type {
 	case msgHup:
 		sm.becomeCandidate()
+		if sm.q() == sm.poll(sm.addr, true) {
+			sm.becomeLeader()
+			return
+		}
 		for i := 0; i < sm.k; i++ {
 			if i == sm.addr {
 				continue
