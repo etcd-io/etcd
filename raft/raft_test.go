@@ -379,7 +379,14 @@ func TestVote(t *testing.T) {
 
 	for i, tt := range tests {
 		called := false
-		sm := &nsm{stateMachine{state: tt.state, vote: tt.voteFor, log: &log{ents: []Entry{{}, {Term: 2}, {Term: 2}}}}, nil}
+		sm := &nsm{
+			stateMachine{
+				state: tt.state,
+				vote:  tt.voteFor,
+				log:   &log{ents: []Entry{{}, {Term: 2}, {Term: 2}}},
+			},
+			nil,
+		}
 
 		sm.next = stepperFunc(func(m Message) {
 			called = true
