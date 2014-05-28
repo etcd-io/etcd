@@ -19,9 +19,10 @@ func newLog() *log {
 	}
 }
 
-func (l *log) maybeAppend(index, logTerm int, ents ...Entry) bool {
+func (l *log) maybeAppend(index, logTerm, commit int, ents ...Entry) bool {
 	if l.matchTerm(index, logTerm) {
 		l.append(index, ents...)
+		l.commit = commit
 		return true
 	}
 	return false
