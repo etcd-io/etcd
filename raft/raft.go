@@ -166,12 +166,7 @@ func (sm *stateMachine) maybeCommit() bool {
 	sort.Sort(sort.Reverse(sort.IntSlice(mis)))
 	mci := mis[sm.q()-1]
 
-	if mci > sm.log.commit && sm.log.term(mci) == sm.term {
-		sm.log.commit = mci
-		return true
-	}
-
-	return false
+	return sm.log.maybeCommit(mci, sm.term)
 }
 
 // nextEnts returns the appliable entries and updates the applied index
