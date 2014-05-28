@@ -58,8 +58,8 @@ func TestLeaderElection(t *testing.T) {
 func TestLogReplication(t *testing.T) {
 	tests := []struct {
 		*network
-		msgs    []Message
-		wcommit int
+		msgs       []Message
+		wcommitted int
 	}{
 		{
 			newNetwork(nil, nil, nil),
@@ -92,8 +92,8 @@ func TestLogReplication(t *testing.T) {
 		for j, ism := range tt.ss {
 			sm := ism.(*nsm)
 
-			if sm.log.commit != tt.wcommit {
-				t.Errorf("#%d.%d: commit = %d, want %d", i, j, sm.log.commit, tt.wcommit)
+			if sm.log.committed != tt.wcommitted {
+				t.Errorf("#%d.%d: committed = %d, want %d", i, j, sm.log.committed, tt.wcommitted)
 			}
 
 			ents := sm.nextEnts()
@@ -327,8 +327,8 @@ func TestCommit(t *testing.T) {
 		}
 		sm := &stateMachine{log: &log{ents: tt.logs}, ins: ins, k: len(ins), term: tt.smTerm}
 		sm.maybeCommit()
-		if g := sm.log.commit; g != tt.w {
-			t.Errorf("#%d: commit = %d, want %d", i, g, tt.w)
+		if g := sm.log.committed; g != tt.w {
+			t.Errorf("#%d: committed = %d, want %d", i, g, tt.w)
 		}
 	}
 }

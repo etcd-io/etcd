@@ -152,7 +152,7 @@ func (sm *stateMachine) sendAppend() {
 		m.Index = in.next - 1
 		m.LogTerm = sm.log.term(in.next - 1)
 		m.Entries = sm.log.entries(in.next)
-		m.Commit = sm.log.commit
+		m.Commit = sm.log.committed
 		sm.send(m)
 	}
 }
