@@ -188,10 +188,6 @@ func (sm *stateMachine) q() int {
 	return sm.k/2 + 1
 }
 
-func (sm *stateMachine) voteWorthy(i, term int) bool {
-	return sm.log.isUpToDate(i, term)
-}
-
 func (sm *stateMachine) becomeFollower(term, lead int) {
 	sm.reset()
 	sm.term = term
@@ -305,7 +301,7 @@ func (sm *stateMachine) Step(m Message) {
 		case msgApp:
 			handleAppendEntries()
 		case msgVote:
-			if sm.voteWorthy(m.Index, m.LogTerm) {
+			if sm.log.isUpToDate(m.Index, m.LogTerm) {
 				sm.send(Message{To: m.From, Type: msgVoteResp, Index: sm.log.lastIndex()})
 			} else {
 				sm.send(Message{To: m.From, Type: msgVoteResp, Index: -1})
