@@ -13,7 +13,7 @@ type log struct {
 
 func newLog() *log {
 	return &log{
-		ents:    make([]Entry, 1, 1024),
+		ents:    make([]Entry, 1),
 		commit:  0,
 		applied: 0,
 	}
