@@ -307,18 +307,12 @@ func (sm *stateMachine) Step(m Message) {
 		case msgApp:
 			handleAppendEntries()
 		case msgVote:
-			switch sm.vote {
-			case m.From:
+			if (sm.vote == none || sm.vote == m.From) && sm.log.isUpToDate(m.Index, m.LogTerm) {
+				sm.vote = m.From
 				sm.send(Message{To: m.From, Type: msgVoteResp, Index: sm.log.lastIndex()})
-				return
-			case none:
-				if sm.log.isUpToDate(m.Index, m.LogTerm) {
-					sm.vote = m.From
-					sm.send(Message{To: m.From, Type: msgVoteResp, Index: sm.log.lastIndex()})
-					return
-				}
+			} else {
+				sm.send(Message{To: m.From, Type: msgVoteResp, Index: -1})
 			}
-			sm.send(Message{To: m.From, Type: msgVoteResp, Index: -1})
 		}
 	}
 }
