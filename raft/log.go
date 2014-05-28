@@ -6,23 +6,23 @@ type Entry struct {
 }
 
 type log struct {
-	ents    []Entry
-	commit  int
-	applied int
+	ents      []Entry
+	committed int
+	applied   int
 }
 
 func newLog() *log {
 	return &log{
-		ents:    make([]Entry, 1),
-		commit:  0,
-		applied: 0,
+		ents:      make([]Entry, 1),
+		committed: 0,
+		applied:   0,
 	}
 }
 
-func (l *log) maybeAppend(index, logTerm, commit int, ents ...Entry) bool {
+func (l *log) maybeAppend(index, logTerm, committed int, ents ...Entry) bool {
 	if l.matchTerm(index, logTerm) {
 		l.append(index, ents...)
-		l.commit = commit
+		l.committed = committed
 		return true
 	}
 	return false
@@ -64,8 +64,8 @@ func (l *log) matchTerm(i, term int) bool {
 }
 
 func (l *log) maybeCommit(maxIndex, term int) bool {
-	if maxIndex > l.commit && l.term(maxIndex) == term {
-		l.commit = maxIndex
+	if maxIndex > l.committed && l.term(maxIndex) == term {
+		l.committed = maxIndex
 		return true
 	}
 	return false
@@ -74,9 +74,9 @@ func (l *log) maybeCommit(maxIndex, term int) bool {
 // nextEnts returns all the avaliable entries for execution.
 // all the returned entries will be marked as applied.
 func (l *log) nextEnts() (ents []Entry) {
-	if l.commit > l.applied {
-		ents = l.ents[l.applied+1 : l.commit+1]
-		l.applied = l.commit
+	if l.committed > l.applied {
+		ents = l.ents[l.applied+1 : l.committed+1]
+		l.applied = l.committed
 	}
 	return ents
 }
