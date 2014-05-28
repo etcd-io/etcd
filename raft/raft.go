@@ -263,9 +263,7 @@ func (sm *stateMachine) Step(m Message) {
 	}
 
 	handleAppendEntries := func() {
-		if sm.log.matchTerm(m.Index, m.LogTerm) {
-			sm.log.commit = m.Commit
-			sm.log.append(m.Index, m.Entries...)
+		if sm.log.maybeAppend(m.Index, m.LogTerm, m.Commit, m.Entries...) {
 			sm.send(Message{To: m.From, Type: msgAppResp, Index: sm.log.lastIndex()})
 		} else {
 			sm.send(Message{To: m.From, Type: msgAppResp, Index: -1})
