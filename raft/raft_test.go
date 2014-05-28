@@ -112,6 +112,18 @@ func TestLogReplication(t *testing.T) {
 	}
 }
 
+func TestSingleNodeCommit(t *testing.T) {
+	tt := newNetwork(nil)
+	tt.Step(Message{To: 0, Type: msgHup})
+	tt.Step(Message{To: 0, Type: msgProp, Data: []byte("some data")})
+	tt.Step(Message{To: 0, Type: msgProp, Data: []byte("some data")})
+
+	sm := tt.ss[0].(*nsm)
+	if sm.log.committed != 2 {
+		t.Errorf("committed = %d, want %d", sm.log.committed, 2)
+	}
+}
+
 func TestDualingCandidates(t *testing.T) {
 	a := &nsm{stateMachine{log: defaultLog()}, nil}
 	c := &nsm{stateMachine{log: defaultLog()}, nil}
