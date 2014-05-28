@@ -71,6 +71,8 @@ func (l *log) maybeCommit(maxIndex, term int) bool {
 	return false
 }
 
+// nextEnts returns all the avaliable entries for execution.
+// all the returned entries will be marked as applied.
 func (l *log) nextEnts() (ents []Entry) {
 	if l.commit > l.applied {
 		ents = l.ents[l.applied+1 : l.commit+1]
