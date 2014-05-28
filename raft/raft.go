@@ -185,7 +185,7 @@ func (sm *stateMachine) reset() {
 	sm.votes = make(map[int]bool)
 	sm.ins = make([]*index, sm.k)
 	for i := range sm.ins {
-		sm.ins[i] = &index{next: sm.log.len() + 1}
+		sm.ins[i] = &index{next: sm.log.lastIndex() + 1}
 	}
 }
 
@@ -195,10 +195,6 @@ func (sm *stateMachine) q() int {
 
 func (sm *stateMachine) voteWorthy(i, term int) bool {
 	return sm.log.isUpToDate(i, term)
-}
-
-func (sm *stateMachine) li() int {
-	return sm.log.len()
 }
 
 func (sm *stateMachine) becomeFollower(term, lead int) {
@@ -245,14 +241,14 @@ func (sm *stateMachine) Step(m Message) {
 			if i == sm.addr {
 				continue
 			}
-			lasti := sm.li()
+			lasti := sm.log.lastIndex()
 			sm.send(Message{To: i, Type: msgVote, Index: lasti, LogTerm: sm.log.term(lasti)})
 		}
 		return
 	case msgProp:
 		switch sm.lead {
 		case sm.addr:
-			sm.log.append(sm.log.len(), Entry{Term: sm.term, Data: m.Data})
+			sm.log.append(sm.log.lastIndex(), Entry{Term: sm.term, Data: m.Data})
 			sm.sendAppend()
 		case none:
 			panic("msgProp given without leader")
@@ -275,7 +271,7 @@ func (sm *stateMachine) Step(m Message) {
 		if sm.log.matchTerm(m.Index, m.LogTerm) {
 			sm.log.commit = m.Commit
 			sm.log.append(m.Index, m.Entries...)
-			sm.send(Message{To: m.From, Type: msgAppResp, Index: sm.li()})
+			sm.send(Message{To: m.From, Type: msgAppResp, Index: sm.log.lastIndex()})
 		} else {
 			sm.send(Message{To: m.From, Type: msgAppResp, Index: -1})
 		}
@@ -317,7 +313,7 @@ func (sm *stateMachine) Step(m Message) {
 			handleAppendEntries()
 		case msgVote:
 			if sm.voteWorthy(m.Index, m.LogTerm) {
-				sm.send(Message{To: m.From, Type: msgVoteResp, Index: sm.li()})
+				sm.send(Message{To: m.From, Type: msgVoteResp, Index: sm.log.lastIndex()})
 			} else {
 				sm.send(Message{To: m.From, Type: msgVoteResp, Index: -1})
 			}
