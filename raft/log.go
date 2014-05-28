@@ -65,6 +65,14 @@ func (l *log) matchTerm(i, term int) bool {
 	return l.ents[i].Term == term
 }
 
+func (l *log) maybeCommit(maxIndex, term int) bool {
+	if maxIndex > l.commit && l.term(maxIndex) == term {
+		l.commit = maxIndex
+		return true
+	}
+	return false
+}
+
 func (l *log) nextEnts() (ents []Entry) {
 	if l.commit > l.applied {
 		ents = l.ents[l.applied+1 : l.commit+1]
