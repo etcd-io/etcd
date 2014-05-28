@@ -11,6 +11,7 @@ type messageType int
 
 const (
 	msgHup messageType = iota
+	msgBeat
 	msgProp
 	msgApp
 	msgAppResp
@@ -20,6 +21,7 @@ const (
 
 var mtmap = [...]string{
 	msgHup:      "msgHup",
+	msgBeat:     "msgBeat",
 	msgProp:     "msgProp",
 	msgApp:      "msgApp",
 	msgAppResp:  "msgAppResp",
@@ -247,6 +249,13 @@ func (sm *stateMachine) Step(m Message) {
 			sm.send(Message{To: i, Type: msgVote, Index: lasti, LogTerm: sm.log.term(lasti)})
 		}
 		return
+	case msgBeat:
+		if sm.state != stateLeader {
+			return
+		}
+		// todo(xiangli) broadcast append
+		// blocker github issue #13
+		sm.sendAppend()
 	case msgProp:
 		switch sm.lead {
 		case sm.addr:
