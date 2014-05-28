@@ -331,9 +331,9 @@ func TestCommit(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		ins := make([]*index, len(tt.matches))
+		ins := make([]index, len(tt.matches))
 		for j := 0; j < len(ins); j++ {
-			ins[j] = &index{tt.matches[j], tt.matches[j] + 1}
+			ins[j] = index{tt.matches[j], tt.matches[j] + 1}
 		}
 		sm := &stateMachine{log: &log{ents: tt.logs}, ins: ins, k: len(ins), term: tt.smTerm}
 		sm.maybeCommit()

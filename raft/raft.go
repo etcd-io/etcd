@@ -95,7 +95,7 @@ type stateMachine struct {
 	// the log
 	log *log
 
-	ins []*index
+	ins []index
 
 	state stateType
 
@@ -178,9 +178,9 @@ func (sm *stateMachine) reset() {
 	sm.lead = none
 	sm.vote = none
 	sm.votes = make(map[int]bool)
-	sm.ins = make([]*index, sm.k)
+	sm.ins = make([]index, sm.k)
 	for i := range sm.ins {
-		sm.ins[i] = &index{next: sm.log.lastIndex() + 1}
+		sm.ins[i] = index{next: sm.log.lastIndex() + 1}
 	}
 }
 
@@ -273,12 +273,11 @@ func (sm *stateMachine) Step(m Message) {
 	case stateLeader:
 		switch m.Type {
 		case msgAppResp:
-			in := sm.ins[m.From]
 			if m.Index < 0 {
-				in.decr()
+				sm.ins[m.From].decr()
 				sm.sendAppend()
 			} else {
-				in.update(m.Index)
+				sm.ins[m.From].update(m.Index)
 				if sm.maybeCommit() {
 					sm.sendAppend()
 				}
