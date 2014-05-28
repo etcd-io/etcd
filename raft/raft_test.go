@@ -195,6 +195,16 @@ func TestCandidateConcede(t *testing.T) {
 	}
 }
 
+func TestSingleNodeCandidate(t *testing.T) {
+	tt := newNetwork(nil)
+	tt.Step(Message{To: 0, Type: msgHup})
+
+	sm := tt.ss[0].(*nsm)
+	if sm.state != stateLeader {
+		t.Errorf("state = %d, want %d", sm.state, stateLeader)
+	}
+}
+
 func TestOldMessages(t *testing.T) {
 	tt := newNetwork(nil, nil, nil)
 	// make 0 leader @ term 3
