@@ -30,7 +30,7 @@ func (l *log) maybeAppend(index, logTerm, commit int, ents ...Entry) bool {
 
 func (l *log) append(after int, ents ...Entry) int {
 	l.ents = append(l.ents[:after+1], ents...)
-	return len(l.ents) - 1
+	return l.lastIndex()
 }
 
 func (l *log) lastIndex() int {
