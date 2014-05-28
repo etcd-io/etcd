@@ -20,7 +20,7 @@ func newLog() *log {
 }
 
 func (l *log) maybeAppend(index, logTerm int, ents ...Entry) bool {
-	if l.isOk(index, logTerm) {
+	if l.matchTerm(index, logTerm) {
 		l.append(index, ents...)
 		return true
 	}
@@ -58,7 +58,7 @@ func (l *log) isUpToDate(i, term int) bool {
 	return term > e.Term || (term == e.Term && i >= l.len())
 }
 
-func (l *log) isOk(i, term int) bool {
+func (l *log) matchTerm(i, term int) bool {
 	if i > l.len() {
 		return false
 	}

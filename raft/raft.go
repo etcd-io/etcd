@@ -132,10 +132,6 @@ func (sm *stateMachine) poll(addr int, v bool) (granted int) {
 	return granted
 }
 
-func (sm *stateMachine) isLogOk(i, term int) bool {
-	return sm.log.isOk(i, term)
-}
-
 // send persists state to stable storage and then sends to its mailbox
 func (sm *stateMachine) send(m Message) {
 	m.From = sm.addr
@@ -276,7 +272,7 @@ func (sm *stateMachine) Step(m Message) {
 	}
 
 	handleAppendEntries := func() {
-		if sm.isLogOk(m.Index, m.LogTerm) {
+		if sm.log.matchTerm(m.Index, m.LogTerm) {
 			sm.log.commit = m.Commit
 			sm.log.append(m.Index, m.Entries...)
 			sm.send(Message{To: m.From, Type: msgAppResp, Index: sm.li()})
