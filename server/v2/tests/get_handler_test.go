@@ -24,12 +24,15 @@ func TestV2GetKey(t *testing.T) {
 		v.Set("value", "XXX")
 		fullURL := fmt.Sprintf("%s%s", s.URL(), "/v2/keys/foo/bar")
 		resp, _ := tests.Get(fullURL)
+		assert.Equal(t, resp.Header.Get("Content-Type"), "application/json")
 		assert.Equal(t, resp.StatusCode, http.StatusNotFound)
 
 		resp, _ = tests.PutForm(fullURL, v)
+		assert.Equal(t, resp.Header.Get("Content-Type"), "application/json")
 		tests.ReadBody(resp)
 
 		resp, _ = tests.Get(fullURL)
+		assert.Equal(t, resp.Header.Get("Content-Type"), "application/json")
 		assert.Equal(t, resp.StatusCode, http.StatusOK)
 		body := tests.ReadBodyJSON(resp)
 		assert.Equal(t, body["action"], "get", "")
