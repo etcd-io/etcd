@@ -132,14 +132,14 @@ func (sm *stateMachine) poll(addr int, v bool) (granted int) {
 	return granted
 }
 
-// send persists state to stable storage and then sends to its mailbox
+// send persists state to stable storage and then sends to its mailbox.
 func (sm *stateMachine) send(m Message) {
 	m.From = sm.addr
 	m.Term = sm.term
 	sm.msgs = append(sm.msgs, m)
 }
 
-// sendAppend sends RRPC, with entries to the given peer
+// sendAppend sends RRPC, with entries to the given peer.
 func (sm *stateMachine) sendAppend(to int) {
 	in := sm.ins[to]
 	m := Message{}
