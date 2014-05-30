@@ -167,15 +167,3 @@ Etcd can also do internal server-to-server communication using SSL client certs.
 To do this just change the `-*-file` flags to `-peer-*-file`.
 
 If you are using SSL for server-to-server communication, you must use it on all instances of etcd.
-
-
-### What size cluster should I use?
-
-Every command the client sends to the master is broadcast to all of the followers.
-The command is not committed until the majority of the cluster peers receive that command.
-
-Because of this majority voting property, the ideal cluster should be kept small to keep speed up and be made up of an odd number of peers.
-
-Odd numbers are good because if you have 8 peers the majority will be 5 and if you have 9 peers the majority will still be 5.
-The result is that an 8 peer cluster can tolerate 3 peer failures and a 9 peer cluster can tolerate 4 machine failures.
-And in the best case when all 9 peers are responding the cluster will perform at the speed of the fastest 5 machines.
