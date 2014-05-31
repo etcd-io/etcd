@@ -313,7 +313,7 @@ func TestStandbyJoinMiss(t *testing.T) {
 	// Wait for a monitor cycle before checking for removal.
 	time.Sleep(server.ActiveMonitorTimeout + (1 * time.Second))
 
-	// Verify that we now have four peers.
+	// Verify that we now have one peer.
 	result, err = c.Get("_etcd/machines", false, true)
 	assert.NoError(t, err)
 	assert.Equal(t, len(result.Node.Nodes), 1)
