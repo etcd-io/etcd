@@ -36,8 +36,9 @@ type standbyInfo struct {
 }
 
 type StandbyServer struct {
-	Config StandbyServerConfig
-	client *Client
+	Config     StandbyServerConfig
+	client     *Client
+	raftServer raft.Server
 
 	standbyInfo
 	joinIndex uint64
@@ -60,6 +61,10 @@ func NewStandbyServer(config StandbyServerConfig, client *Client) *StandbyServer
 		log.Warnf("error load standby info file: %v", err)
 	}
 	return s
+}
+
+func (s *StandbyServer) SetRaftServer(raftServer raft.Server) {
+	s.raftServer = raftServer
 }
 
 func (s *StandbyServer) Start() {
@@ -237,7 +242,7 @@ func (s *StandbyServer) syncCluster(peerURLs []string) error {
 func (s *StandbyServer) join(peer string) error {
 	for _, url := range s.ClusterURLs() {
 		if s.Config.PeerURL == url {
-			s.joinIndex = 0
+			s.joinIndex = s.raftServer.CommitIndex()
 			return nil
 		}
 	}
