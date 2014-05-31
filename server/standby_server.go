@@ -235,6 +235,13 @@ func (s *StandbyServer) syncCluster(peerURLs []string) error {
 }
 
 func (s *StandbyServer) join(peer string) error {
+	for _, url := range s.ClusterURLs() {
+		if s.Config.PeerURL == url {
+			s.joinIndex = 0
+			return nil
+		}
+	}
+
 	// Our version must match the leaders version
 	version, err := s.client.GetVersion(peer)
 	if err != nil {

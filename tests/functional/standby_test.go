@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/server"
+	"github.com/coreos/etcd/store"
 	"github.com/coreos/etcd/tests"
 	"github.com/coreos/etcd/third_party/github.com/coreos/go-etcd/etcd"
 	"github.com/coreos/etcd/third_party/github.com/stretchr/testify/assert"
@@ -278,4 +279,62 @@ func TestStandbyDramaticChange(t *testing.T) {
 			}
 		}
 	}
+}
+
+func TestStandbyJoinMiss(t *testing.T) {
+	clusterSize := 2
+	_, etcds, err := CreateCluster(clusterSize, &os.ProcAttr{Files: []*os.File{nil, os.Stdout, os.Stderr}}, false)
+	if err != nil {
+		t.Fatal("cannot create cluster")
+	}
+	defer DestroyCluster(etcds)
+
+	c := etcd.NewClient(nil)
+	c.SyncCluster()
+
+	time.Sleep(1 * time.Second)
+
+	// Verify that we have two machines.
+	result, err := c.Get("_etcd/machines", false, true)
+	assert.NoError(t, err)
+	assert.Equal(t, len(result.Node.Nodes), clusterSize)
+
+	resp, _ := tests.Put("http://localhost:7001/v2/admin/config", "application/json", bytes.NewBufferString(`{"removeDelay":4, "syncInterval":4}`))
+	if !assert.Equal(t, resp.StatusCode, 200) {
+		t.FailNow()
+	}
+	time.Sleep(time.Second)
+
+	resp, _ = tests.Delete("http://localhost:7001/v2/admin/machines/node2", "application/json", nil)
+	if !assert.Equal(t, resp.StatusCode, 200) {
+		t.FailNow()
+	}
+
+	// Wait for a monitor cycle before checking for removal.
+	time.Sleep(server.ActiveMonitorTimeout + (1 * time.Second))
+
+	// Verify that we now have one peer.
+	result, err = c.Get("_etcd/machines", false, true)
+	assert.NoError(t, err)
+	assert.Equal(t, len(result.Node.Nodes), 1)
+
+	// Simulate the join failure
+	_, err = server.NewClient(nil).AddMachine("http://localhost:7001",
+		&server.JoinCommand{
+			MinVersion: store.MinVersion(),
+			MaxVersion: store.MaxVersion(),
+			Name:       "node2",
+			RaftURL:    "http://127.0.0.1:7002",
+			EtcdURL:    "http://127.0.0.1:4002",
+		})
+	assert.NoError(t, err)
+
+	time.Sleep(6 * time.Second)
+
+	go tests.Delete("http://localhost:7001/v2/admin/machines/node2", "application/json", nil)
+
+	time.Sleep(time.Second)
+	result, err = c.Get("_etcd/machines", false, true)
+	assert.NoError(t, err)
+	assert.Equal(t, len(result.Node.Nodes), 1)
 }
