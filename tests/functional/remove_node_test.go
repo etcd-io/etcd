@@ -169,7 +169,8 @@ func TestRemovePausedNode(t *testing.T) {
 	if !assert.Equal(t, r.StatusCode, 200) {
 		t.FailNow()
 	}
-	time.Sleep(2 * time.Second)
+	// Wait for standby instances to update its cluster config
+	time.Sleep(6 * time.Second)
 
 	resp, err := c.Get("_etcd/machines", false, false)
 	if err != nil {
