@@ -101,6 +101,8 @@ func TestTLSMultiNodeKillAllAndRecovery(t *testing.T) {
 		t.Fatal("cannot create cluster")
 	}
 
+	time.Sleep(time.Second)
+
 	c := etcd.NewClient(nil)
 
 	go Monitor(clusterSize, clusterSize, leaderChan, all, stop)
