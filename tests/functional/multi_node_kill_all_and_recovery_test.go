@@ -268,6 +268,12 @@ func TestMultiNodeKillAllAndRecoveryAndRemoveLeader(t *testing.T) {
 	<-leaderChan
 	stop <- true
 
+	// It needs some time to sync current commits and write it to disk.
+	// Or some instance may be restarted as a new peer, and we don't support
+	// to connect back the old cluster that doesn't have majority alive
+	// without log now.
+	time.Sleep(time.Second)
+
 	c.SyncCluster()
 
 	// kill all
