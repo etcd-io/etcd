@@ -143,5 +143,6 @@ func (e Error) Write(w http.ResponseWriter) {
 			status = http.StatusInternalServerError
 		}
 	}
-	http.Error(w, e.toJsonString(), status)
+	w.WriteHeader(status)
+	fmt.Fprintln(w, e.toJsonString())
 }
