@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"os"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -99,6 +100,8 @@ func TestTLSMultiNodeKillAllAndRecovery(t *testing.T) {
 	if err != nil {
 		t.Fatal("cannot create cluster")
 	}
+
+	time.Sleep(time.Second)
 
 	c := etcd.NewClient(nil)
 
@@ -238,4 +241,69 @@ func TestMultiNodeKillAllAndRecoveryWithStandbys(t *testing.T) {
 	result, err = c.Get("_etcd/machines", false, true)
 	assert.NoError(t, err)
 	assert.Equal(t, len(result.Node.Nodes), 7)
+}
+
+// Create a five nodes
+// Kill all the nodes and restart, then remove the leader
+func TestMultiNodeKillAllAndRecoveryAndRemoveLeader(t *testing.T) {
+	procAttr := new(os.ProcAttr)
+	procAttr.Files = []*os.File{nil, os.Stdout, os.Stderr}
+
+	stop := make(chan bool)
+	leaderChan := make(chan string, 1)
+	all := make(chan bool, 1)
+
+	clusterSize := 5
+	argGroup, etcds, err := CreateCluster(clusterSize, procAttr, false)
+	defer DestroyCluster(etcds)
+
+	if err != nil {
+		t.Fatal("cannot create cluster")
+	}
+
+	c := etcd.NewClient(nil)
+
+	go Monitor(clusterSize, clusterSize, leaderChan, all, stop)
+	<-all
+	<-leaderChan
+	stop <- true
+
+	c.SyncCluster()
+
+	// kill all
+	DestroyCluster(etcds)
+
+	time.Sleep(time.Second)
+
+	stop = make(chan bool)
+	leaderChan = make(chan string, 1)
+	all = make(chan bool, 1)
+
+	time.Sleep(time.Second)
+
+	for i := 0; i < clusterSize; i++ {
+		etcds[i], err = os.StartProcess(EtcdBinPath, argGroup[i], procAttr)
+	}
+
+	go Monitor(clusterSize, 1, leaderChan, all, stop)
+
+	<-all
+	leader := <-leaderChan
+
+	_, err = c.Set("foo", "bar", 0)
+	if err != nil {
+		t.Fatalf("Recovery error: %s", err)
+	}
+
+	port, _ := strconv.Atoi(strings.Split(leader, ":")[2])
+	num := port - 7000
+	resp, _ := tests.Delete(leader+"/v2/admin/machines/node"+strconv.Itoa(num), "application/json", nil)
+	if !assert.Equal(t, resp.StatusCode, 200) {
+		t.FailNow()
+	}
+
+	// check the old leader is in standby mode now
+	time.Sleep(time.Second)
+	resp, _ = tests.Get(leader + "/name")
+	assert.Equal(t, resp.StatusCode, 404)
 }

@@ -232,6 +232,7 @@ func (e *Etcd) Run() {
 		DataDir:    e.Config.DataDir,
 	}
 	e.StandbyServer = server.NewStandbyServer(ssConfig, client)
+	e.StandbyServer.SetRaftServer(raftServer)
 
 	// Generating config could be slow.
 	// Put it here to make listen happen immediately after peer-server starting.
@@ -347,6 +348,7 @@ func (e *Etcd) runServer() {
 			raftServer.SetElectionTimeout(electionTimeout)
 			raftServer.SetHeartbeatInterval(heartbeatInterval)
 			e.PeerServer.SetRaftServer(raftServer, e.Config.Snapshot)
+			e.StandbyServer.SetRaftServer(raftServer)
 
 			e.PeerServer.SetJoinIndex(e.StandbyServer.JoinIndex())
 			e.setMode(PeerMode)

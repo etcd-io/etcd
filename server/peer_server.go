@@ -214,6 +214,7 @@ func (s *PeerServer) FindCluster(discoverURL string, peers []string) (toStart bo
 		// TODO(yichengq): Think about the action that should be done
 		// if it cannot connect any of the previous known node.
 		log.Debugf("%s is restarting the cluster %v", name, possiblePeers)
+		s.SetJoinIndex(s.raftServer.CommitIndex())
 		toStart = true
 		return
 	}
