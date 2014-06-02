@@ -253,9 +253,7 @@ func (sm *stateMachine) Step(m Message) {
 		if sm.state != stateLeader {
 			return
 		}
-		// todo(xiangli) broadcast append
-		// blocker github issue #13
-		sm.sendAppend()
+		sm.bcastAppend()
 	case msgProp:
 		switch sm.lead {
 		case sm.addr:
