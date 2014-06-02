@@ -1,3 +1,8 @@
+v0.4.2
+* Improvements to the clustering documents
+* Set content-type properly on errors (#469)
+* Standbys re-join if they should be part of the cluster (#810, #815, #818)
+
 v0.4.1
 * Re-introduce DELETE on the machines endpoint
 * Document the machines endpoint
