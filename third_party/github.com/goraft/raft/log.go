@@ -168,9 +168,10 @@ func (l *Log) open(path string) error {
 			if err == io.EOF {
 				debugln("open.log.append: finish ")
 			} else {
-				if err = os.Truncate(path, readBytes); err != nil {
+				if err = l.file.Truncate(readBytes); err != nil {
 					return fmt.Errorf("raft.Log: Unable to recover: %v", err)
 				}
+				l.file.Seek(readBytes, os.SEEK_SET)
 			}
 			break
 		}
