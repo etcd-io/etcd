@@ -45,16 +45,17 @@ func TestLogReplication(t *testing.T) {
 		{
 			newNetwork(nil, nil, nil),
 			[]Message{
-				{To: 0, Type: msgProp, Data: []byte("somedata")},
+				{To: 0, Type: msgProp, Entries: []Entry{{Data: []byte("somedata")}}},
 			},
 			1,
 		},
 		{
 			newNetwork(nil, nil, nil),
 			[]Message{
-				{To: 0, Type: msgProp, Data: []byte("somedata")},
+
+				{To: 0, Type: msgProp, Entries: []Entry{{Data: []byte("somedata")}}},
 				{To: 1, Type: msgHup},
-				{To: 1, Type: msgProp, Data: []byte("somedata")},
+				{To: 1, Type: msgProp, Entries: []Entry{{Data: []byte("somedata")}}},
 			},
 			2,
 		},
@@ -82,8 +83,8 @@ func TestLogReplication(t *testing.T) {
 				}
 			}
 			for k, m := range props {
-				if !bytes.Equal(ents[k].Data, m.Data) {
-					t.Errorf("#%d.%d: data = %d, want %d", i, j, ents[k].Data, m.Data)
+				if !bytes.Equal(ents[k].Data, m.Entries[0].Data) {
+					t.Errorf("#%d.%d: data = %d, want %d", i, j, ents[k].Data, m.Entries[0].Data)
 				}
 			}
 		}
@@ -93,8 +94,8 @@ func TestLogReplication(t *testing.T) {
 func TestSingleNodeCommit(t *testing.T) {
 	tt := newNetwork(nil)
 	tt.send(Message{To: 0, Type: msgHup})
-	tt.send(Message{To: 0, Type: msgProp, Data: []byte("some data")})
-	tt.send(Message{To: 0, Type: msgProp, Data: []byte("some data")})
+	tt.send(Message{To: 0, Type: msgProp, Entries: []Entry{{Data: []byte("some data")}}})
+	tt.send(Message{To: 0, Type: msgProp, Entries: []Entry{{Data: []byte("some data")}}})
 
 	sm := tt.peers[0].(*stateMachine)
 	if sm.log.committed != 2 {
@@ -111,8 +112,8 @@ func TestCannotCommitWithoutNewTermEntry(t *testing.T) {
 	tt.cut(0, 3)
 	tt.cut(0, 4)
 
-	tt.send(Message{To: 0, Type: msgProp, Data: []byte("some data")})
-	tt.send(Message{To: 0, Type: msgProp, Data: []byte("some data")})
+	tt.send(Message{To: 0, Type: msgProp, Entries: []Entry{{Data: []byte("some data")}}})
+	tt.send(Message{To: 0, Type: msgProp, Entries: []Entry{{Data: []byte("some data")}}})
 
 	sm := tt.peers[0].(*stateMachine)
 	if sm.log.committed != 0 {
@@ -135,7 +136,7 @@ func TestCannotCommitWithoutNewTermEntry(t *testing.T) {
 
 	// after append a entry from the current term, all entries
 	// should be committed
-	tt.send(Message{To: 1, Type: msgProp, Data: []byte("some data")})
+	tt.send(Message{To: 1, Type: msgProp, Entries: []Entry{{Data: []byte("some data")}}})
 	if sm.log.committed != 3 {
 		t.Errorf("committed = %d, want %d", sm.log.committed, 3)
 	}
@@ -197,7 +198,7 @@ func TestCandidateConcede(t *testing.T) {
 
 	data := []byte("force follower")
 	// send a proposal to 2 to flush out a msgApp to 0
-	tt.send(Message{To: 2, Type: msgProp, Data: data})
+	tt.send(Message{To: 2, Type: msgProp, Entries: []Entry{{Data: data}}})
 
 	a := tt.peers[0].(*stateMachine)
 	if g := a.state; g != stateFollower {
@@ -284,7 +285,7 @@ func TestProposal(t *testing.T) {
 
 		// promote 0 the leader
 		send(Message{To: 0, Type: msgHup})
-		send(Message{To: 0, Type: msgProp, Data: data})
+		send(Message{To: 0, Type: msgProp, Entries: []Entry{{Data: data}}})
 
 		wantLog := newLog()
 		if tt.success {
@@ -320,7 +321,7 @@ func TestProposalByProxy(t *testing.T) {
 		tt.send(Message{To: 0, Type: msgHup})
 
 		// propose via follower
-		tt.send(Message{To: 1, Type: msgProp, Data: []byte("somedata")})
+		tt.send(Message{To: 1, Type: msgProp, Entries: []Entry{{Data: []byte("somedata")}}})
 
 		wantLog := &log{ents: []Entry{{}, {Term: 1, Data: data}}, committed: 1}
 		base := ltoa(wantLog)
@@ -488,6 +489,29 @@ func TestStateTransition(t *testing.T) {
 				t.Errorf("%d: lead = %d, want %d", i, sm.lead, tt.wlead)
 			}
 		}()
+	}
+}
+
+func TestConf(t *testing.T) {
+	sm := newStateMachine(0, []int{0})
+	sm.becomeCandidate()
+	sm.becomeLeader()
+
+	sm.Step(Message{Type: msgProp, Entries: []Entry{{Type: config}}})
+	if sm.log.lastIndex() != 1 {
+		t.Errorf("lastindex = %d, want %d", sm.log.lastIndex(), 1)
+	}
+	if !sm.pendingConf {
+		t.Errorf("pendingConf = %v, want %v", sm.pendingConf, true)
+	}
+	if sm.log.ents[1].Type != config {
+		t.Errorf("type = %d, want %d", sm.log.ents[1].Type, config)
+	}
+
+	// deny the second configuration change request if there is a pending one
+	sm.Step(Message{Type: msgProp, Entries: []Entry{{Type: config}}})
+	if sm.log.lastIndex() != 1 {
+		t.Errorf("lastindex = %d, want %d", sm.log.lastIndex(), 1)
 	}
 }
 

@@ -1,6 +1,12 @@
 package raft
 
+const (
+	normal int = iota
+	config
+)
+
 type Entry struct {
+	Type int
 	Term int
 	Data []byte
 }
