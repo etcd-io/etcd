@@ -84,3 +84,16 @@ func TestResetElapse(t *testing.T) {
 		}
 	}
 }
+
+func TestAdd(t *testing.T) {
+	n := New(0, []int{0}, defaultHeartbeat, defaultElection)
+
+	n.sm.becomeCandidate()
+	n.sm.becomeLeader()
+	n.Add(1)
+	n.Next()
+
+	if len(n.sm.ins) != 2 {
+		t.Errorf("k = %d, want 2", len(n.sm.ins))
+	}
+}
