@@ -33,7 +33,7 @@ func New(addr int, peer []int, heartbeat, election tick) *Node {
 
 // Propose asynchronously proposes data be applied to the underlying state machine.
 func (n *Node) Propose(data []byte) {
-	m := Message{Type: msgProp, Data: data}
+	m := Message{Type: msgProp, Entries: []Entry{{Data: data}}}
 	n.Step(m)
 }
 

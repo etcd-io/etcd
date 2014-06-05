@@ -63,7 +63,6 @@ type Message struct {
 	PrevTerm int
 	Entries  []Entry
 	Commit   int
-	Data     []byte
 }
 
 type index struct {
@@ -103,6 +102,9 @@ type stateMachine struct {
 
 	// the leader addr
 	lead int
+
+	// pending reconfiguration
+	pendingConf bool
 }
 
 func newStateMachine(addr int, peer []int) *stateMachine {
@@ -254,9 +256,23 @@ func (sm *stateMachine) Step(m Message) {
 		sm.bcastAppend()
 		return
 	case msgProp:
+		if len(m.Entries) != 1 {
+			panic("unexpected length(entries) of a msgProp")
+		}
+
 		switch sm.lead {
 		case sm.addr:
-			sm.log.append(sm.log.lastIndex(), Entry{Term: sm.term, Data: m.Data})
+			e := m.Entries[0]
+			if e.Type == config {
+				if sm.pendingConf {
+					// todo: deny
+					return
+				}
+				sm.pendingConf = true
+			}
+			e.Term = sm.term
+
+			sm.log.append(sm.log.lastIndex(), e)
 			sm.ins[sm.addr].update(sm.log.lastIndex())
 			sm.maybeCommit()
 			sm.bcastAppend()
