@@ -1,6 +1,8 @@
 package raft
 
-import "testing"
+import (
+	"testing"
+)
 
 const (
 	defaultHeartbeat = 1
@@ -8,17 +10,17 @@ const (
 )
 
 func TestTickMsgHub(t *testing.T) {
-	n := New(3, 0, defaultHeartbeat, defaultElection, nil)
-
-	called := false
-	n.next = stepperFunc(func(m Message) {
-		if m.Type == msgVote {
-			called = true
-		}
-	})
+	n := New(3, 0, defaultHeartbeat, defaultElection)
 
 	for i := 0; i < defaultElection+1; i++ {
 		n.Tick()
+	}
+
+	called := false
+	for _, m := range n.Msgs() {
+		if m.Type == msgVote {
+			called = true
+		}
 	}
 
 	if !called {
@@ -28,22 +30,24 @@ func TestTickMsgHub(t *testing.T) {
 
 func TestTickMsgBeat(t *testing.T) {
 	k := 3
-	n := New(k, 0, defaultHeartbeat, defaultElection, nil)
+	n := New(k, 0, defaultHeartbeat, defaultElection)
 
-	called := 0
-	n.next = stepperFunc(func(m Message) {
-		if m.Type == msgApp {
-			called++
-		}
+	n.Step(Message{Type: msgHup}) // become leader please
+	for _, m := range n.Msgs() {
 		if m.Type == msgVote {
 			n.Step(Message{From: 1, Type: msgVoteResp, Index: 1, Term: 1})
 		}
-	})
-
-	n.Step(Message{Type: msgHup}) // become leader please
+	}
 
 	for i := 0; i < defaultHeartbeat+1; i++ {
 		n.Tick()
+	}
+
+	called := 0
+	for _, m := range n.Msgs() {
+		if m.Type == msgApp {
+			called++
+		}
 	}
 
 	// becomeLeader -> k-1 append

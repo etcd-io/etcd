@@ -2,6 +2,7 @@ package raft
 
 type Interface interface {
 	Step(m Message)
+	Msgs() []Message
 }
 
 type tick int
@@ -14,18 +15,15 @@ type Node struct {
 	// elapsed ticks after the last reset
 	elapsed tick
 	sm      *stateMachine
-
-	next Interface
 }
 
-func New(k, addr int, heartbeat, election tick, next Interface) *Node {
+func New(k, addr int, heartbeat, election tick) *Node {
 	if election < heartbeat*3 {
 		panic("election is least three times as heartbeat [election: %d, heartbeat: %d]")
 	}
 
 	n := &Node{
 		sm:        newStateMachine(k, addr),
-		next:      next,
 		heartbeat: heartbeat,
 		election:  election,
 	}
@@ -39,10 +37,14 @@ func (n *Node) Propose(data []byte) {
 	n.Step(m)
 }
 
+func (n *Node) Msgs() []Message {
+	return n.sm.Msgs()
+}
+
 func (n *Node) Step(m Message) {
+	l := len(n.sm.msgs)
 	n.sm.Step(m)
-	ms := n.sm.Msgs()
-	for _, m := range ms {
+	for _, m := range n.sm.msgs[l:] {
 		// reset elapsed in two cases:
 		// msgAppResp -> heard from the leader of the same term
 		// msgVoteResp with grant -> heard from the candidate the node voted for
@@ -54,7 +56,6 @@ func (n *Node) Step(m Message) {
 				n.elapsed = 0
 			}
 		}
-		n.next.Step(m)
 	}
 }
 
