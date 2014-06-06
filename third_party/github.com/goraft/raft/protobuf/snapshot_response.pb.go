@@ -70,7 +70,7 @@ func (m *SnapshotResponse) Unmarshal(data []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 0 {
-				return proto.ErrWrongType
+				return code_google_com_p_gogoprotobuf_proto16.ErrWrongType
 			}
 			var v int
 			for shift := uint(0); ; shift += 7 {
@@ -99,6 +99,9 @@ func (m *SnapshotResponse) Unmarshal(data []byte) error {
 			skippy, err := code_google_com_p_gogoprotobuf_proto16.Skip(data[index:])
 			if err != nil {
 				return err
+			}
+			if (index + skippy) > l {
+				return io8.ErrUnexpectedEOF
 			}
 			m.XXX_unrecognized = append(m.XXX_unrecognized, data[index:index+skippy]...)
 			index += skippy
@@ -148,7 +151,6 @@ func sovSnapshotResponse(x uint64) (n int) {
 	return n
 }
 func sozSnapshotResponse(x uint64) (n int) {
-	return sovSnapshotResponse(uint64((x << 1) ^ uint64((int64(x) >> 63))))
 	return sovSnapshotResponse(uint64((x << 1) ^ uint64((int64(x) >> 63))))
 }
 func NewPopulatedSnapshotResponse(r randySnapshotResponse, easy bool) *SnapshotResponse {

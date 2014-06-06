@@ -86,7 +86,7 @@ func (m *SnapshotRequest) Unmarshal(data []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return proto.ErrWrongType
+				return code_google_com_p_gogoprotobuf_proto14.ErrWrongType
 			}
 			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
@@ -109,7 +109,7 @@ func (m *SnapshotRequest) Unmarshal(data []byte) error {
 			index = postIndex
 		case 2:
 			if wireType != 0 {
-				return proto.ErrWrongType
+				return code_google_com_p_gogoprotobuf_proto14.ErrWrongType
 			}
 			var v uint64
 			for shift := uint(0); ; shift += 7 {
@@ -126,7 +126,7 @@ func (m *SnapshotRequest) Unmarshal(data []byte) error {
 			m.LastIndex = &v
 		case 3:
 			if wireType != 0 {
-				return proto.ErrWrongType
+				return code_google_com_p_gogoprotobuf_proto14.ErrWrongType
 			}
 			var v uint64
 			for shift := uint(0); ; shift += 7 {
@@ -154,6 +154,9 @@ func (m *SnapshotRequest) Unmarshal(data []byte) error {
 			skippy, err := code_google_com_p_gogoprotobuf_proto14.Skip(data[index:])
 			if err != nil {
 				return err
+			}
+			if (index + skippy) > l {
+				return io7.ErrUnexpectedEOF
 			}
 			m.XXX_unrecognized = append(m.XXX_unrecognized, data[index:index+skippy]...)
 			index += skippy
@@ -212,7 +215,6 @@ func sovSnapshotRequest(x uint64) (n int) {
 	return n
 }
 func sozSnapshotRequest(x uint64) (n int) {
-	return sovSnapshotRequest(uint64((x << 1) ^ uint64((int64(x) >> 63))))
 	return sovSnapshotRequest(uint64((x << 1) ^ uint64((int64(x) >> 63))))
 }
 func NewPopulatedSnapshotRequest(r randySnapshotRequest, easy bool) *SnapshotRequest {
