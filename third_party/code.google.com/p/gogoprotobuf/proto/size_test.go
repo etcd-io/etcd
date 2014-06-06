@@ -58,8 +58,8 @@ func init() {
 }
 
 var SizeTests = []struct {
-	desc	string
-	pb	Message
+	desc string
+	pb   Message
 }{
 	{"empty", &pb.OtherMessage{}},
 	// Basic types.

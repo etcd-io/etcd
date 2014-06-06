@@ -44,37 +44,57 @@ import (
 	pb "./testdata"
 )
 
+// textMessage implements the methods that allow it to marshal and unmarshal
+// itself as text.
+type textMessage struct {
+}
+
+func (*textMessage) MarshalText() ([]byte, error) {
+	return []byte("custom"), nil
+}
+
+func (*textMessage) UnmarshalText(bytes []byte) error {
+	if string(bytes) != "custom" {
+		return errors.New("expected 'custom'")
+	}
+	return nil
+}
+
+func (*textMessage) Reset()         {}
+func (*textMessage) String() string { return "" }
+func (*textMessage) ProtoMessage()  {}
+
 func newTestMessage() *pb.MyMessage {
 	msg := &pb.MyMessage{
-		Count:	proto.Int32(42),
-		Name:	proto.String("Dave"),
-		Quote:	proto.String(`"I didn't want to go."`),
-		Pet:	[]string{"bunny", "kitty", "horsey"},
+		Count: proto.Int32(42),
+		Name:  proto.String("Dave"),
+		Quote: proto.String(`"I didn't want to go."`),
+		Pet:   []string{"bunny", "kitty", "horsey"},
 		Inner: &pb.InnerMessage{
-			Host:		proto.String("footrest.syd"),
-			Port:		proto.Int32(7001),
-			Connected:	proto.Bool(true),
+			Host:      proto.String("footrest.syd"),
+			Port:      proto.Int32(7001),
+			Connected: proto.Bool(true),
 		},
 		Others: []*pb.OtherMessage{
 			{
-				Key:	proto.Int64(0xdeadbeef),
-				Value:	[]byte{1, 65, 7, 12},
+				Key:   proto.Int64(0xdeadbeef),
+				Value: []byte{1, 65, 7, 12},
 			},
 			{
-				Weight:	proto.Float32(6.022),
+				Weight: proto.Float32(6.022),
 				Inner: &pb.InnerMessage{
-					Host:	proto.String("lesha.mtv"),
-					Port:	proto.Int32(8002),
+					Host: proto.String("lesha.mtv"),
+					Port: proto.Int32(8002),
 				},
 			},
 		},
-		Bikeshed:	pb.MyMessage_BLUE.Enum(),
+		Bikeshed: pb.MyMessage_BLUE.Enum(),
 		Somegroup: &pb.MyMessage_SomeGroup{
 			GroupField: proto.Int32(8),
 		},
 		// One normally wouldn't do this.
 		// This is an undeclared tag 13, as a varint (wire type 0) with value 4.
-		XXX_unrecognized:	[]byte{13<<3 | 0, 4},
+		XXX_unrecognized: []byte{13<<3 | 0, 4},
 	}
 	ext := &pb.Ext{
 		Data: proto.String("Big gobs for big rats"),
@@ -153,6 +173,16 @@ func TestMarshalText(t *testing.T) {
 	}
 }
 
+func TestMarshalTextCustomMessage(t *testing.T) {
+	buf := new(bytes.Buffer)
+	if err := proto.MarshalText(buf, &textMessage{}); err != nil {
+		t.Fatalf("proto.MarshalText: %v", err)
+	}
+	s := buf.String()
+	if s != "custom" {
+		t.Errorf("Got %q, expected %q", s, "custom")
+	}
+}
 func TestMarshalTextNil(t *testing.T) {
 	want := "<nil>"
 	tests := []proto.Message{nil, (*pb.MyMessage)(nil)}
@@ -250,8 +280,8 @@ func TestCompactText(t *testing.T) {
 
 func TestStringEscaping(t *testing.T) {
 	testCases := []struct {
-		in	*pb.Strings
-		out	string
+		in  *pb.Strings
+		out string
 	}{
 		{
 			// Test data from C++ test (TextFormatTest.StringEscape).
@@ -299,8 +329,8 @@ func TestStringEscaping(t *testing.T) {
 // This is a proxy for something like a nearly-full or imminently-failing disk,
 // or a network connection that is about to die.
 type limitedWriter struct {
-	b	bytes.Buffer
-	limit	int
+	b     bytes.Buffer
+	limit int
 }
 
 var outOfSpace = errors.New("proto: insufficient space")
@@ -337,8 +367,8 @@ func TestMarshalTextFailing(t *testing.T) {
 
 func TestFloats(t *testing.T) {
 	tests := []struct {
-		f	float64
-		want	string
+		f    float64
+		want string
 	}{
 		{0, "0"},
 		{4.7, "4.7"},

@@ -507,61 +507,61 @@ func TestReset(t *testing.T) {
 func TestEncodeDecode1(t *testing.T) {
 	pb := initGoTest(false)
 	overify(t, pb,
-		"0807"+	// field 1, encoding 0, value 7
-			"220d"+"0a056c6162656c120474797065"+	// field 4, encoding 2 (GoTestField)
-			"5001"+	// field 10, encoding 0, value 1
-			"5803"+	// field 11, encoding 0, value 3
-			"6006"+	// field 12, encoding 0, value 6
-			"6d20000000"+	// field 13, encoding 5, value 0x20
-			"714000000000000000"+	// field 14, encoding 1, value 0x40
-			"78a019"+	// field 15, encoding 0, value 0xca0 = 3232
-			"8001c032"+	// field 16, encoding 0, value 0x1940 = 6464
-			"8d0100004a45"+	// field 17, encoding 5, value 3232.0
-			"9101000000000040b940"+	// field 18, encoding 1, value 6464.0
-			"9a0106"+"737472696e67"+	// field 19, encoding 2, string "string"
-			"b304"+	// field 70, encoding 3, start group
-			"ba0408"+"7265717569726564"+	// field 71, encoding 2, string "required"
-			"b404"+	// field 70, encoding 4, end group
-			"aa0605"+"6279746573"+	// field 101, encoding 2, string "bytes"
-			"b0063f"+	// field 102, encoding 0, 0x3f zigzag32
-			"b8067f")	// field 103, encoding 0, 0x7f zigzag64
+		"0807"+ // field 1, encoding 0, value 7
+			"220d"+"0a056c6162656c120474797065"+ // field 4, encoding 2 (GoTestField)
+			"5001"+ // field 10, encoding 0, value 1
+			"5803"+ // field 11, encoding 0, value 3
+			"6006"+ // field 12, encoding 0, value 6
+			"6d20000000"+ // field 13, encoding 5, value 0x20
+			"714000000000000000"+ // field 14, encoding 1, value 0x40
+			"78a019"+ // field 15, encoding 0, value 0xca0 = 3232
+			"8001c032"+ // field 16, encoding 0, value 0x1940 = 6464
+			"8d0100004a45"+ // field 17, encoding 5, value 3232.0
+			"9101000000000040b940"+ // field 18, encoding 1, value 6464.0
+			"9a0106"+"737472696e67"+ // field 19, encoding 2, string "string"
+			"b304"+ // field 70, encoding 3, start group
+			"ba0408"+"7265717569726564"+ // field 71, encoding 2, string "required"
+			"b404"+ // field 70, encoding 4, end group
+			"aa0605"+"6279746573"+ // field 101, encoding 2, string "bytes"
+			"b0063f"+ // field 102, encoding 0, 0x3f zigzag32
+			"b8067f") // field 103, encoding 0, 0x7f zigzag64
 }
 
 // All required fields set, defaults provided.
 func TestEncodeDecode2(t *testing.T) {
 	pb := initGoTest(true)
 	overify(t, pb,
-		"0807"+	// field 1, encoding 0, value 7
-			"220d"+"0a056c6162656c120474797065"+	// field 4, encoding 2 (GoTestField)
-			"5001"+	// field 10, encoding 0, value 1
-			"5803"+	// field 11, encoding 0, value 3
-			"6006"+	// field 12, encoding 0, value 6
-			"6d20000000"+	// field 13, encoding 5, value 32
-			"714000000000000000"+	// field 14, encoding 1, value 64
-			"78a019"+	// field 15, encoding 0, value 3232
-			"8001c032"+	// field 16, encoding 0, value 6464
-			"8d0100004a45"+	// field 17, encoding 5, value 3232.0
-			"9101000000000040b940"+	// field 18, encoding 1, value 6464.0
-			"9a0106"+"737472696e67"+	// field 19, encoding 2 string "string"
-			"c00201"+	// field 40, encoding 0, value 1
-			"c80220"+	// field 41, encoding 0, value 32
-			"d00240"+	// field 42, encoding 0, value 64
-			"dd0240010000"+	// field 43, encoding 5, value 320
-			"e1028002000000000000"+	// field 44, encoding 1, value 640
-			"e8028019"+	// field 45, encoding 0, value 3200
-			"f0028032"+	// field 46, encoding 0, value 6400
-			"fd02e0659948"+	// field 47, encoding 5, value 314159.0
-			"81030000000050971041"+	// field 48, encoding 1, value 271828.0
-			"8a0310"+"68656c6c6f2c2022776f726c6421220a"+	// field 49, encoding 2 string "hello, \"world!\"\n"
-			"b304"+	// start group field 70 level 1
-			"ba0408"+"7265717569726564"+	// field 71, encoding 2, string "required"
-			"b404"+	// end group field 70 level 1
-			"aa0605"+"6279746573"+	// field 101, encoding 2 string "bytes"
-			"b0063f"+	// field 102, encoding 0, 0x3f zigzag32
-			"b8067f"+	// field 103, encoding 0, 0x7f zigzag64
-			"8a1907"+"4269676e6f7365"+	// field 401, encoding 2, string "Bignose"
-			"90193f"+	// field 402, encoding 0, value 63
-			"98197f")	// field 403, encoding 0, value 127
+		"0807"+ // field 1, encoding 0, value 7
+			"220d"+"0a056c6162656c120474797065"+ // field 4, encoding 2 (GoTestField)
+			"5001"+ // field 10, encoding 0, value 1
+			"5803"+ // field 11, encoding 0, value 3
+			"6006"+ // field 12, encoding 0, value 6
+			"6d20000000"+ // field 13, encoding 5, value 32
+			"714000000000000000"+ // field 14, encoding 1, value 64
+			"78a019"+ // field 15, encoding 0, value 3232
+			"8001c032"+ // field 16, encoding 0, value 6464
+			"8d0100004a45"+ // field 17, encoding 5, value 3232.0
+			"9101000000000040b940"+ // field 18, encoding 1, value 6464.0
+			"9a0106"+"737472696e67"+ // field 19, encoding 2 string "string"
+			"c00201"+ // field 40, encoding 0, value 1
+			"c80220"+ // field 41, encoding 0, value 32
+			"d00240"+ // field 42, encoding 0, value 64
+			"dd0240010000"+ // field 43, encoding 5, value 320
+			"e1028002000000000000"+ // field 44, encoding 1, value 640
+			"e8028019"+ // field 45, encoding 0, value 3200
+			"f0028032"+ // field 46, encoding 0, value 6400
+			"fd02e0659948"+ // field 47, encoding 5, value 314159.0
+			"81030000000050971041"+ // field 48, encoding 1, value 271828.0
+			"8a0310"+"68656c6c6f2c2022776f726c6421220a"+ // field 49, encoding 2 string "hello, \"world!\"\n"
+			"b304"+ // start group field 70 level 1
+			"ba0408"+"7265717569726564"+ // field 71, encoding 2, string "required"
+			"b404"+ // end group field 70 level 1
+			"aa0605"+"6279746573"+ // field 101, encoding 2 string "bytes"
+			"b0063f"+ // field 102, encoding 0, 0x3f zigzag32
+			"b8067f"+ // field 103, encoding 0, 0x7f zigzag64
+			"8a1907"+"4269676e6f7365"+ // field 401, encoding 2, string "Bignose"
+			"90193f"+ // field 402, encoding 0, value 63
+			"98197f") // field 403, encoding 0, value 127
 
 }
 
@@ -583,37 +583,37 @@ func TestEncodeDecode3(t *testing.T) {
 	pb.F_Sint64Defaulted = Int64(-64)
 
 	overify(t, pb,
-		"0807"+	// field 1, encoding 0, value 7
-			"220d"+"0a056c6162656c120474797065"+	// field 4, encoding 2 (GoTestField)
-			"5001"+	// field 10, encoding 0, value 1
-			"5803"+	// field 11, encoding 0, value 3
-			"6006"+	// field 12, encoding 0, value 6
-			"6d20000000"+	// field 13, encoding 5, value 32
-			"714000000000000000"+	// field 14, encoding 1, value 64
-			"78a019"+	// field 15, encoding 0, value 3232
-			"8001c032"+	// field 16, encoding 0, value 6464
-			"8d0100004a45"+	// field 17, encoding 5, value 3232.0
-			"9101000000000040b940"+	// field 18, encoding 1, value 6464.0
-			"9a0106"+"737472696e67"+	// field 19, encoding 2 string "string"
-			"c00201"+	// field 40, encoding 0, value 1
-			"c80220"+	// field 41, encoding 0, value 32
-			"d00240"+	// field 42, encoding 0, value 64
-			"dd0240010000"+	// field 43, encoding 5, value 320
-			"e1028002000000000000"+	// field 44, encoding 1, value 640
-			"e8028019"+	// field 45, encoding 0, value 3200
-			"f0028032"+	// field 46, encoding 0, value 6400
-			"fd02e0659948"+	// field 47, encoding 5, value 314159.0
-			"81030000000050971041"+	// field 48, encoding 1, value 271828.0
-			"8a0310"+"68656c6c6f2c2022776f726c6421220a"+	// field 49, encoding 2 string "hello, \"world!\"\n"
-			"b304"+	// start group field 70 level 1
-			"ba0408"+"7265717569726564"+	// field 71, encoding 2, string "required"
-			"b404"+	// end group field 70 level 1
-			"aa0605"+"6279746573"+	// field 101, encoding 2 string "bytes"
-			"b0063f"+	// field 102, encoding 0, 0x3f zigzag32
-			"b8067f"+	// field 103, encoding 0, 0x7f zigzag64
-			"8a1907"+"4269676e6f7365"+	// field 401, encoding 2, string "Bignose"
-			"90193f"+	// field 402, encoding 0, value 63
-			"98197f")	// field 403, encoding 0, value 127
+		"0807"+ // field 1, encoding 0, value 7
+			"220d"+"0a056c6162656c120474797065"+ // field 4, encoding 2 (GoTestField)
+			"5001"+ // field 10, encoding 0, value 1
+			"5803"+ // field 11, encoding 0, value 3
+			"6006"+ // field 12, encoding 0, value 6
+			"6d20000000"+ // field 13, encoding 5, value 32
+			"714000000000000000"+ // field 14, encoding 1, value 64
+			"78a019"+ // field 15, encoding 0, value 3232
+			"8001c032"+ // field 16, encoding 0, value 6464
+			"8d0100004a45"+ // field 17, encoding 5, value 3232.0
+			"9101000000000040b940"+ // field 18, encoding 1, value 6464.0
+			"9a0106"+"737472696e67"+ // field 19, encoding 2 string "string"
+			"c00201"+ // field 40, encoding 0, value 1
+			"c80220"+ // field 41, encoding 0, value 32
+			"d00240"+ // field 42, encoding 0, value 64
+			"dd0240010000"+ // field 43, encoding 5, value 320
+			"e1028002000000000000"+ // field 44, encoding 1, value 640
+			"e8028019"+ // field 45, encoding 0, value 3200
+			"f0028032"+ // field 46, encoding 0, value 6400
+			"fd02e0659948"+ // field 47, encoding 5, value 314159.0
+			"81030000000050971041"+ // field 48, encoding 1, value 271828.0
+			"8a0310"+"68656c6c6f2c2022776f726c6421220a"+ // field 49, encoding 2 string "hello, \"world!\"\n"
+			"b304"+ // start group field 70 level 1
+			"ba0408"+"7265717569726564"+ // field 71, encoding 2, string "required"
+			"b404"+ // end group field 70 level 1
+			"aa0605"+"6279746573"+ // field 101, encoding 2 string "bytes"
+			"b0063f"+ // field 102, encoding 0, 0x3f zigzag32
+			"b8067f"+ // field 103, encoding 0, 0x7f zigzag64
+			"8a1907"+"4269676e6f7365"+ // field 401, encoding 2, string "Bignose"
+			"90193f"+ // field 402, encoding 0, value 63
+			"98197f") // field 403, encoding 0, value 127
 
 }
 
@@ -639,56 +639,56 @@ func TestEncodeDecode4(t *testing.T) {
 	pb.Optionalgroup = initGoTest_OptionalGroup()
 
 	overify(t, pb,
-		"0807"+	// field 1, encoding 0, value 7
-			"1205"+"68656c6c6f"+	// field 2, encoding 2, string "hello"
-			"1807"+	// field 3, encoding 0, value 7
-			"220d"+"0a056c6162656c120474797065"+	// field 4, encoding 2 (GoTestField)
-			"320d"+"0a056c6162656c120474797065"+	// field 6, encoding 2 (GoTestField)
-			"5001"+	// field 10, encoding 0, value 1
-			"5803"+	// field 11, encoding 0, value 3
-			"6006"+	// field 12, encoding 0, value 6
-			"6d20000000"+	// field 13, encoding 5, value 32
-			"714000000000000000"+	// field 14, encoding 1, value 64
-			"78a019"+	// field 15, encoding 0, value 3232
-			"8001c032"+	// field 16, encoding 0, value 6464
-			"8d0100004a45"+	// field 17, encoding 5, value 3232.0
-			"9101000000000040b940"+	// field 18, encoding 1, value 6464.0
-			"9a0106"+"737472696e67"+	// field 19, encoding 2 string "string"
-			"f00101"+	// field 30, encoding 0, value 1
-			"f80120"+	// field 31, encoding 0, value 32
-			"800240"+	// field 32, encoding 0, value 64
-			"8d02a00c0000"+	// field 33, encoding 5, value 3232
-			"91024019000000000000"+	// field 34, encoding 1, value 6464
-			"9802a0dd13"+	// field 35, encoding 0, value 323232
-			"a002c0ba27"+	// field 36, encoding 0, value 646464
-			"ad0200000042"+	// field 37, encoding 5, value 32.0
-			"b1020000000000005040"+	// field 38, encoding 1, value 64.0
-			"ba0205"+"68656c6c6f"+	// field 39, encoding 2, string "hello"
-			"c00201"+	// field 40, encoding 0, value 1
-			"c80220"+	// field 41, encoding 0, value 32
-			"d00240"+	// field 42, encoding 0, value 64
-			"dd0240010000"+	// field 43, encoding 5, value 320
-			"e1028002000000000000"+	// field 44, encoding 1, value 640
-			"e8028019"+	// field 45, encoding 0, value 3200
-			"f0028032"+	// field 46, encoding 0, value 6400
-			"fd02e0659948"+	// field 47, encoding 5, value 314159.0
-			"81030000000050971041"+	// field 48, encoding 1, value 271828.0
-			"8a0310"+"68656c6c6f2c2022776f726c6421220a"+	// field 49, encoding 2 string "hello, \"world!\"\n"
-			"b304"+	// start group field 70 level 1
-			"ba0408"+"7265717569726564"+	// field 71, encoding 2, string "required"
-			"b404"+	// end group field 70 level 1
-			"d305"+	// start group field 90 level 1
-			"da0508"+"6f7074696f6e616c"+	// field 91, encoding 2, string "optional"
-			"d405"+	// end group field 90 level 1
-			"aa0605"+"6279746573"+	// field 101, encoding 2 string "bytes"
-			"b0063f"+	// field 102, encoding 0, 0x3f zigzag32
-			"b8067f"+	// field 103, encoding 0, 0x7f zigzag64
-			"ea1207"+"4269676e6f7365"+	// field 301, encoding 2, string "Bignose"
-			"f0123f"+	// field 302, encoding 0, value 63
-			"f8127f"+	// field 303, encoding 0, value 127
-			"8a1907"+"4269676e6f7365"+	// field 401, encoding 2, string "Bignose"
-			"90193f"+	// field 402, encoding 0, value 63
-			"98197f")	// field 403, encoding 0, value 127
+		"0807"+ // field 1, encoding 0, value 7
+			"1205"+"68656c6c6f"+ // field 2, encoding 2, string "hello"
+			"1807"+ // field 3, encoding 0, value 7
+			"220d"+"0a056c6162656c120474797065"+ // field 4, encoding 2 (GoTestField)
+			"320d"+"0a056c6162656c120474797065"+ // field 6, encoding 2 (GoTestField)
+			"5001"+ // field 10, encoding 0, value 1
+			"5803"+ // field 11, encoding 0, value 3
+			"6006"+ // field 12, encoding 0, value 6
+			"6d20000000"+ // field 13, encoding 5, value 32
+			"714000000000000000"+ // field 14, encoding 1, value 64
+			"78a019"+ // field 15, encoding 0, value 3232
+			"8001c032"+ // field 16, encoding 0, value 6464
+			"8d0100004a45"+ // field 17, encoding 5, value 3232.0
+			"9101000000000040b940"+ // field 18, encoding 1, value 6464.0
+			"9a0106"+"737472696e67"+ // field 19, encoding 2 string "string"
+			"f00101"+ // field 30, encoding 0, value 1
+			"f80120"+ // field 31, encoding 0, value 32
+			"800240"+ // field 32, encoding 0, value 64
+			"8d02a00c0000"+ // field 33, encoding 5, value 3232
+			"91024019000000000000"+ // field 34, encoding 1, value 6464
+			"9802a0dd13"+ // field 35, encoding 0, value 323232
+			"a002c0ba27"+ // field 36, encoding 0, value 646464
+			"ad0200000042"+ // field 37, encoding 5, value 32.0
+			"b1020000000000005040"+ // field 38, encoding 1, value 64.0
+			"ba0205"+"68656c6c6f"+ // field 39, encoding 2, string "hello"
+			"c00201"+ // field 40, encoding 0, value 1
+			"c80220"+ // field 41, encoding 0, value 32
+			"d00240"+ // field 42, encoding 0, value 64
+			"dd0240010000"+ // field 43, encoding 5, value 320
+			"e1028002000000000000"+ // field 44, encoding 1, value 640
+			"e8028019"+ // field 45, encoding 0, value 3200
+			"f0028032"+ // field 46, encoding 0, value 6400
+			"fd02e0659948"+ // field 47, encoding 5, value 314159.0
+			"81030000000050971041"+ // field 48, encoding 1, value 271828.0
+			"8a0310"+"68656c6c6f2c2022776f726c6421220a"+ // field 49, encoding 2 string "hello, \"world!\"\n"
+			"b304"+ // start group field 70 level 1
+			"ba0408"+"7265717569726564"+ // field 71, encoding 2, string "required"
+			"b404"+ // end group field 70 level 1
+			"d305"+ // start group field 90 level 1
+			"da0508"+"6f7074696f6e616c"+ // field 91, encoding 2, string "optional"
+			"d405"+ // end group field 90 level 1
+			"aa0605"+"6279746573"+ // field 101, encoding 2 string "bytes"
+			"b0063f"+ // field 102, encoding 0, 0x3f zigzag32
+			"b8067f"+ // field 103, encoding 0, 0x7f zigzag64
+			"ea1207"+"4269676e6f7365"+ // field 301, encoding 2, string "Bignose"
+			"f0123f"+ // field 302, encoding 0, value 63
+			"f8127f"+ // field 303, encoding 0, value 127
+			"8a1907"+"4269676e6f7365"+ // field 401, encoding 2, string "Bignose"
+			"90193f"+ // field 402, encoding 0, value 63
+			"98197f") // field 403, encoding 0, value 127
 
 }
 
@@ -712,71 +712,71 @@ func TestEncodeDecode5(t *testing.T) {
 	pb.Repeatedgroup = []*GoTest_RepeatedGroup{initGoTest_RepeatedGroup(), initGoTest_RepeatedGroup()}
 
 	overify(t, pb,
-		"0807"+	// field 1, encoding 0, value 7
-			"220d"+"0a056c6162656c120474797065"+	// field 4, encoding 2 (GoTestField)
-			"2a0d"+"0a056c6162656c120474797065"+	// field 5, encoding 2 (GoTestField)
-			"2a0d"+"0a056c6162656c120474797065"+	// field 5, encoding 2 (GoTestField)
-			"5001"+	// field 10, encoding 0, value 1
-			"5803"+	// field 11, encoding 0, value 3
-			"6006"+	// field 12, encoding 0, value 6
-			"6d20000000"+	// field 13, encoding 5, value 32
-			"714000000000000000"+	// field 14, encoding 1, value 64
-			"78a019"+	// field 15, encoding 0, value 3232
-			"8001c032"+	// field 16, encoding 0, value 6464
-			"8d0100004a45"+	// field 17, encoding 5, value 3232.0
-			"9101000000000040b940"+	// field 18, encoding 1, value 6464.0
-			"9a0106"+"737472696e67"+	// field 19, encoding 2 string "string"
-			"a00100"+	// field 20, encoding 0, value 0
-			"a00101"+	// field 20, encoding 0, value 1
-			"a80120"+	// field 21, encoding 0, value 32
-			"a80121"+	// field 21, encoding 0, value 33
-			"b00140"+	// field 22, encoding 0, value 64
-			"b00141"+	// field 22, encoding 0, value 65
-			"bd01a00c0000"+	// field 23, encoding 5, value 3232
-			"bd01050d0000"+	// field 23, encoding 5, value 3333
-			"c1014019000000000000"+	// field 24, encoding 1, value 6464
-			"c101a519000000000000"+	// field 24, encoding 1, value 6565
-			"c801a0dd13"+	// field 25, encoding 0, value 323232
-			"c80195ac14"+	// field 25, encoding 0, value 333333
-			"d001c0ba27"+	// field 26, encoding 0, value 646464
-			"d001b58928"+	// field 26, encoding 0, value 656565
-			"dd0100000042"+	// field 27, encoding 5, value 32.0
-			"dd0100000442"+	// field 27, encoding 5, value 33.0
-			"e1010000000000005040"+	// field 28, encoding 1, value 64.0
-			"e1010000000000405040"+	// field 28, encoding 1, value 65.0
-			"ea0105"+"68656c6c6f"+	// field 29, encoding 2, string "hello"
-			"ea0106"+"7361696c6f72"+	// field 29, encoding 2, string "sailor"
-			"c00201"+	// field 40, encoding 0, value 1
-			"c80220"+	// field 41, encoding 0, value 32
-			"d00240"+	// field 42, encoding 0, value 64
-			"dd0240010000"+	// field 43, encoding 5, value 320
-			"e1028002000000000000"+	// field 44, encoding 1, value 640
-			"e8028019"+	// field 45, encoding 0, value 3200
-			"f0028032"+	// field 46, encoding 0, value 6400
-			"fd02e0659948"+	// field 47, encoding 5, value 314159.0
-			"81030000000050971041"+	// field 48, encoding 1, value 271828.0
-			"8a0310"+"68656c6c6f2c2022776f726c6421220a"+	// field 49, encoding 2 string "hello, \"world!\"\n"
-			"b304"+	// start group field 70 level 1
-			"ba0408"+"7265717569726564"+	// field 71, encoding 2, string "required"
-			"b404"+	// end group field 70 level 1
-			"8305"+	// start group field 80 level 1
-			"8a0508"+"7265706561746564"+	// field 81, encoding 2, string "repeated"
-			"8405"+	// end group field 80 level 1
-			"8305"+	// start group field 80 level 1
-			"8a0508"+"7265706561746564"+	// field 81, encoding 2, string "repeated"
-			"8405"+	// end group field 80 level 1
-			"aa0605"+"6279746573"+	// field 101, encoding 2 string "bytes"
-			"b0063f"+	// field 102, encoding 0, 0x3f zigzag32
-			"b8067f"+	// field 103, encoding 0, 0x7f zigzag64
-			"ca0c03"+"626967"+	// field 201, encoding 2, string "big"
-			"ca0c04"+"6e6f7365"+	// field 201, encoding 2, string "nose"
-			"d00c40"+	// field 202, encoding 0, value 32
-			"d00c3f"+	// field 202, encoding 0, value -32
-			"d80c8001"+	// field 203, encoding 0, value 64
-			"d80c7f"+	// field 203, encoding 0, value -64
-			"8a1907"+"4269676e6f7365"+	// field 401, encoding 2, string "Bignose"
-			"90193f"+	// field 402, encoding 0, value 63
-			"98197f")	// field 403, encoding 0, value 127
+		"0807"+ // field 1, encoding 0, value 7
+			"220d"+"0a056c6162656c120474797065"+ // field 4, encoding 2 (GoTestField)
+			"2a0d"+"0a056c6162656c120474797065"+ // field 5, encoding 2 (GoTestField)
+			"2a0d"+"0a056c6162656c120474797065"+ // field 5, encoding 2 (GoTestField)
+			"5001"+ // field 10, encoding 0, value 1
+			"5803"+ // field 11, encoding 0, value 3
+			"6006"+ // field 12, encoding 0, value 6
+			"6d20000000"+ // field 13, encoding 5, value 32
+			"714000000000000000"+ // field 14, encoding 1, value 64
+			"78a019"+ // field 15, encoding 0, value 3232
+			"8001c032"+ // field 16, encoding 0, value 6464
+			"8d0100004a45"+ // field 17, encoding 5, value 3232.0
+			"9101000000000040b940"+ // field 18, encoding 1, value 6464.0
+			"9a0106"+"737472696e67"+ // field 19, encoding 2 string "string"
+			"a00100"+ // field 20, encoding 0, value 0
+			"a00101"+ // field 20, encoding 0, value 1
+			"a80120"+ // field 21, encoding 0, value 32
+			"a80121"+ // field 21, encoding 0, value 33
+			"b00140"+ // field 22, encoding 0, value 64
+			"b00141"+ // field 22, encoding 0, value 65
+			"bd01a00c0000"+ // field 23, encoding 5, value 3232
+			"bd01050d0000"+ // field 23, encoding 5, value 3333
+			"c1014019000000000000"+ // field 24, encoding 1, value 6464
+			"c101a519000000000000"+ // field 24, encoding 1, value 6565
+			"c801a0dd13"+ // field 25, encoding 0, value 323232
+			"c80195ac14"+ // field 25, encoding 0, value 333333
+			"d001c0ba27"+ // field 26, encoding 0, value 646464
+			"d001b58928"+ // field 26, encoding 0, value 656565
+			"dd0100000042"+ // field 27, encoding 5, value 32.0
+			"dd0100000442"+ // field 27, encoding 5, value 33.0
+			"e1010000000000005040"+ // field 28, encoding 1, value 64.0
+			"e1010000000000405040"+ // field 28, encoding 1, value 65.0
+			"ea0105"+"68656c6c6f"+ // field 29, encoding 2, string "hello"
+			"ea0106"+"7361696c6f72"+ // field 29, encoding 2, string "sailor"
+			"c00201"+ // field 40, encoding 0, value 1
+			"c80220"+ // field 41, encoding 0, value 32
+			"d00240"+ // field 42, encoding 0, value 64
+			"dd0240010000"+ // field 43, encoding 5, value 320
+			"e1028002000000000000"+ // field 44, encoding 1, value 640
+			"e8028019"+ // field 45, encoding 0, value 3200
+			"f0028032"+ // field 46, encoding 0, value 6400
+			"fd02e0659948"+ // field 47, encoding 5, value 314159.0
+			"81030000000050971041"+ // field 48, encoding 1, value 271828.0
+			"8a0310"+"68656c6c6f2c2022776f726c6421220a"+ // field 49, encoding 2 string "hello, \"world!\"\n"
+			"b304"+ // start group field 70 level 1
+			"ba0408"+"7265717569726564"+ // field 71, encoding 2, string "required"
+			"b404"+ // end group field 70 level 1
+			"8305"+ // start group field 80 level 1
+			"8a0508"+"7265706561746564"+ // field 81, encoding 2, string "repeated"
+			"8405"+ // end group field 80 level 1
+			"8305"+ // start group field 80 level 1
+			"8a0508"+"7265706561746564"+ // field 81, encoding 2, string "repeated"
+			"8405"+ // end group field 80 level 1
+			"aa0605"+"6279746573"+ // field 101, encoding 2 string "bytes"
+			"b0063f"+ // field 102, encoding 0, 0x3f zigzag32
+			"b8067f"+ // field 103, encoding 0, 0x7f zigzag64
+			"ca0c03"+"626967"+ // field 201, encoding 2, string "big"
+			"ca0c04"+"6e6f7365"+ // field 201, encoding 2, string "nose"
+			"d00c40"+ // field 202, encoding 0, value 32
+			"d00c3f"+ // field 202, encoding 0, value -32
+			"d80c8001"+ // field 203, encoding 0, value 64
+			"d80c7f"+ // field 203, encoding 0, value -64
+			"8a1907"+"4269676e6f7365"+ // field 401, encoding 2, string "Bignose"
+			"90193f"+ // field 402, encoding 0, value 63
+			"98197f") // field 403, encoding 0, value 127
 
 }
 
@@ -796,43 +796,43 @@ func TestEncodeDecode6(t *testing.T) {
 	pb.F_Sint64RepeatedPacked = []int64{64, -64}
 
 	overify(t, pb,
-		"0807"+	// field 1, encoding 0, value 7
-			"220d"+"0a056c6162656c120474797065"+	// field 4, encoding 2 (GoTestField)
-			"5001"+	// field 10, encoding 0, value 1
-			"5803"+	// field 11, encoding 0, value 3
-			"6006"+	// field 12, encoding 0, value 6
-			"6d20000000"+	// field 13, encoding 5, value 32
-			"714000000000000000"+	// field 14, encoding 1, value 64
-			"78a019"+	// field 15, encoding 0, value 3232
-			"8001c032"+	// field 16, encoding 0, value 6464
-			"8d0100004a45"+	// field 17, encoding 5, value 3232.0
-			"9101000000000040b940"+	// field 18, encoding 1, value 6464.0
-			"9a0106"+"737472696e67"+	// field 19, encoding 2 string "string"
-			"9203020001"+	// field 50, encoding 2, 2 bytes, value 0, value 1
-			"9a03022021"+	// field 51, encoding 2, 2 bytes, value 32, value 33
-			"a203024041"+	// field 52, encoding 2, 2 bytes, value 64, value 65
-			"aa0308"+	// field 53, encoding 2, 8 bytes
-			"a00c0000050d0000"+	// value 3232, value 3333
-			"b20310"+	// field 54, encoding 2, 16 bytes
-			"4019000000000000a519000000000000"+	// value 6464, value 6565
-			"ba0306"+	// field 55, encoding 2, 6 bytes
-			"a0dd1395ac14"+	// value 323232, value 333333
-			"c20306"+	// field 56, encoding 2, 6 bytes
-			"c0ba27b58928"+	// value 646464, value 656565
-			"ca0308"+	// field 57, encoding 2, 8 bytes
-			"0000004200000442"+	// value 32.0, value 33.0
-			"d20310"+	// field 58, encoding 2, 16 bytes
-			"00000000000050400000000000405040"+	// value 64.0, value 65.0
-			"b304"+	// start group field 70 level 1
-			"ba0408"+"7265717569726564"+	// field 71, encoding 2, string "required"
-			"b404"+	// end group field 70 level 1
-			"aa0605"+"6279746573"+	// field 101, encoding 2 string "bytes"
-			"b0063f"+	// field 102, encoding 0, 0x3f zigzag32
-			"b8067f"+	// field 103, encoding 0, 0x7f zigzag64
-			"b21f02"+	// field 502, encoding 2, 2 bytes
-			"403f"+	// value 32, value -32
-			"ba1f03"+	// field 503, encoding 2, 3 bytes
-			"80017f")	// value 64, value -64
+		"0807"+ // field 1, encoding 0, value 7
+			"220d"+"0a056c6162656c120474797065"+ // field 4, encoding 2 (GoTestField)
+			"5001"+ // field 10, encoding 0, value 1
+			"5803"+ // field 11, encoding 0, value 3
+			"6006"+ // field 12, encoding 0, value 6
+			"6d20000000"+ // field 13, encoding 5, value 32
+			"714000000000000000"+ // field 14, encoding 1, value 64
+			"78a019"+ // field 15, encoding 0, value 3232
+			"8001c032"+ // field 16, encoding 0, value 6464
+			"8d0100004a45"+ // field 17, encoding 5, value 3232.0
+			"9101000000000040b940"+ // field 18, encoding 1, value 6464.0
+			"9a0106"+"737472696e67"+ // field 19, encoding 2 string "string"
+			"9203020001"+ // field 50, encoding 2, 2 bytes, value 0, value 1
+			"9a03022021"+ // field 51, encoding 2, 2 bytes, value 32, value 33
+			"a203024041"+ // field 52, encoding 2, 2 bytes, value 64, value 65
+			"aa0308"+ // field 53, encoding 2, 8 bytes
+			"a00c0000050d0000"+ // value 3232, value 3333
+			"b20310"+ // field 54, encoding 2, 16 bytes
+			"4019000000000000a519000000000000"+ // value 6464, value 6565
+			"ba0306"+ // field 55, encoding 2, 6 bytes
+			"a0dd1395ac14"+ // value 323232, value 333333
+			"c20306"+ // field 56, encoding 2, 6 bytes
+			"c0ba27b58928"+ // value 646464, value 656565
+			"ca0308"+ // field 57, encoding 2, 8 bytes
+			"0000004200000442"+ // value 32.0, value 33.0
+			"d20310"+ // field 58, encoding 2, 16 bytes
+			"00000000000050400000000000405040"+ // value 64.0, value 65.0
+			"b304"+ // start group field 70 level 1
+			"ba0408"+"7265717569726564"+ // field 71, encoding 2, string "required"
+			"b404"+ // end group field 70 level 1
+			"aa0605"+"6279746573"+ // field 101, encoding 2 string "bytes"
+			"b0063f"+ // field 102, encoding 0, 0x3f zigzag32
+			"b8067f"+ // field 103, encoding 0, 0x7f zigzag64
+			"b21f02"+ // field 502, encoding 2, 2 bytes
+			"403f"+ // value 32, value -32
+			"ba1f03"+ // field 503, encoding 2, 3 bytes
+			"80017f") // value 64, value -64
 }
 
 // Test that we can encode empty bytes fields.
@@ -898,13 +898,13 @@ func TestSkippingUnrecognizedFields(t *testing.T) {
 
 	// Now new a GoSkipTest record.
 	skip := &GoSkipTest{
-		SkipInt32:	Int32(32),
-		SkipFixed32:	Uint32(3232),
-		SkipFixed64:	Uint64(6464),
-		SkipString:	String("skipper"),
+		SkipInt32:   Int32(32),
+		SkipFixed32: Uint32(3232),
+		SkipFixed64: Uint64(6464),
+		SkipString:  String("skipper"),
 		Skipgroup: &GoSkipTest_SkipGroup{
-			GroupInt32:	Int32(75),
-			GroupString:	String("wxyz"),
+			GroupInt32:  Int32(75),
+			GroupString: String("wxyz"),
 		},
 	}
 
@@ -944,8 +944,8 @@ func TestSkippingUnrecognizedFields(t *testing.T) {
 func TestSubmessageUnrecognizedFields(t *testing.T) {
 	nm := &NewMessage{
 		Nested: &NewMessage_Nested{
-			Name:		String("Nigel"),
-			FoodGroup:	String("carbs"),
+			Name:      String("Nigel"),
+			FoodGroup: String("carbs"),
 		},
 	}
 	b, err := Marshal(nm)
@@ -960,9 +960,9 @@ func TestSubmessageUnrecognizedFields(t *testing.T) {
 	}
 	exp := &OldMessage{
 		Nested: &OldMessage_Nested{
-			Name:	String("Nigel"),
+			Name: String("Nigel"),
 			// normal protocol buffer users should not do this
-			XXX_unrecognized:	[]byte("\x12\x05carbs"),
+			XXX_unrecognized: []byte("\x12\x05carbs"),
 		},
 	}
 	if !Equal(om, exp) {
@@ -999,7 +999,7 @@ func TestBigRepeated(t *testing.T) {
 	pb := initGoTest(true)
 
 	// Create the arrays
-	const N = 50	// Internally the library starts much smaller.
+	const N = 50 // Internally the library starts much smaller.
 	pb.Repeatedgroup = make([]*GoTest_RepeatedGroup, N)
 	pb.F_Sint64Repeated = make([]int64, N)
 	pb.F_Sint32Repeated = make([]int32, N)
@@ -1047,7 +1047,7 @@ func TestBigRepeated(t *testing.T) {
 
 	// Check the checkable values
 	for i := uint64(0); i < N; i++ {
-		if pbd.Repeatedgroup[i] == nil {	// TODO: more checking?
+		if pbd.Repeatedgroup[i] == nil { // TODO: more checking?
 			t.Error("pbd.Repeatedgroup bad")
 		}
 		var x uint64
@@ -1099,7 +1099,7 @@ func TestBigRepeated(t *testing.T) {
 		if pbd.F_BoolRepeated[i] != (i%2 == 0) {
 			t.Error("pbd.F_BoolRepeated bad", x, i)
 		}
-		if pbd.RepeatedField[i] == nil {	// TODO: more checking?
+		if pbd.RepeatedField[i] == nil { // TODO: more checking?
 			t.Error("pbd.RepeatedField bad")
 		}
 	}
@@ -1159,8 +1159,8 @@ func TestProto1RepeatedGroup(t *testing.T) {
 	pb := &MessageList{
 		Message: []*MessageList_Message{
 			{
-				Name:	String("blah"),
-				Count:	Int32(7),
+				Name:  String("blah"),
+				Count: Int32(7),
 			},
 			// NOTE: pb.Message[1] is a nil
 			nil,
@@ -1240,9 +1240,9 @@ type NNIMessage struct {
 	nni nonNillableInt
 }
 
-func (*NNIMessage) Reset()		{}
-func (*NNIMessage) String() string	{ return "" }
-func (*NNIMessage) ProtoMessage()	{}
+func (*NNIMessage) Reset()         {}
+func (*NNIMessage) String() string { return "" }
+func (*NNIMessage) ProtoMessage()  {}
 
 // A type that implements the Marshaler interface and is nillable.
 type nillableMessage struct {
@@ -1257,9 +1257,9 @@ type NMMessage struct {
 	nm *nillableMessage
 }
 
-func (*NMMessage) Reset()		{}
-func (*NMMessage) String() string	{ return "" }
-func (*NMMessage) ProtoMessage()	{}
+func (*NMMessage) Reset()         {}
+func (*NMMessage) String() string { return "" }
+func (*NMMessage) ProtoMessage()  {}
 
 // Verify a type that uses the Marshaler interface, but has a nil pointer.
 func TestNilMarshaler(t *testing.T) {
@@ -1273,7 +1273,7 @@ func TestNilMarshaler(t *testing.T) {
 	// Try a struct with a Marshaler field that is not nillable.
 	nnim := new(NNIMessage)
 	nnim.nni = 7
-	var _ Marshaler = nnim.nni	// verify it is truly a Marshaler
+	var _ Marshaler = nnim.nni // verify it is truly a Marshaler
 	if _, err := Marshal(nnim); err != nil {
 		t.Error("unexpected error marshaling nnim: ", err)
 	}
@@ -1286,23 +1286,23 @@ func TestAllSetDefaults(t *testing.T) {
 		F_Nan: Float32(1.7),
 	}
 	expected := &Defaults{
-		F_Bool:		Bool(true),
-		F_Int32:	Int32(32),
-		F_Int64:	Int64(64),
-		F_Fixed32:	Uint32(320),
-		F_Fixed64:	Uint64(640),
-		F_Uint32:	Uint32(3200),
-		F_Uint64:	Uint64(6400),
-		F_Float:	Float32(314159),
-		F_Double:	Float64(271828),
-		F_String:	String(`hello, "world!"` + "\n"),
-		F_Bytes:	[]byte("Bignose"),
-		F_Sint32:	Int32(-32),
-		F_Sint64:	Int64(-64),
-		F_Enum:		Defaults_GREEN.Enum(),
-		F_Pinf:		Float32(float32(math.Inf(1))),
-		F_Ninf:		Float32(float32(math.Inf(-1))),
-		F_Nan:		Float32(1.7),
+		F_Bool:    Bool(true),
+		F_Int32:   Int32(32),
+		F_Int64:   Int64(64),
+		F_Fixed32: Uint32(320),
+		F_Fixed64: Uint64(640),
+		F_Uint32:  Uint32(3200),
+		F_Uint64:  Uint64(6400),
+		F_Float:   Float32(314159),
+		F_Double:  Float64(271828),
+		F_String:  String(`hello, "world!"` + "\n"),
+		F_Bytes:   []byte("Bignose"),
+		F_Sint32:  Int32(-32),
+		F_Sint64:  Int64(-64),
+		F_Enum:    Defaults_GREEN.Enum(),
+		F_Pinf:    Float32(float32(math.Inf(1))),
+		F_Ninf:    Float32(float32(math.Inf(-1))),
+		F_Nan:     Float32(1.7),
 	}
 	SetDefaults(m)
 	if !Equal(m, expected) {
@@ -1323,16 +1323,16 @@ func TestSetDefaultsWithSetField(t *testing.T) {
 
 func TestSetDefaultsWithSubMessage(t *testing.T) {
 	m := &OtherMessage{
-		Key:	Int64(123),
+		Key: Int64(123),
 		Inner: &InnerMessage{
 			Host: String("gopher"),
 		},
 	}
 	expected := &OtherMessage{
-		Key:	Int64(123),
+		Key: Int64(123),
 		Inner: &InnerMessage{
-			Host:	String("gopher"),
-			Port:	Int32(4000),
+			Host: String("gopher"),
+			Port: Int32(4000),
 		},
 	}
 	SetDefaults(m)
@@ -1375,12 +1375,12 @@ func TestMaximumTagNumber(t *testing.T) {
 
 func TestJSON(t *testing.T) {
 	m := &MyMessage{
-		Count:	Int32(4),
-		Pet:	[]string{"bunny", "kitty"},
+		Count: Int32(4),
+		Pet:   []string{"bunny", "kitty"},
 		Inner: &InnerMessage{
 			Host: String("cauchy"),
 		},
-		Bikeshed:	MyMessage_GREEN.Enum(),
+		Bikeshed: MyMessage_GREEN.Enum(),
 	}
 	const expected = `{"count":4,"pet":["bunny","kitty"],"inner":{"host":"cauchy"},"bikeshed":1}`
 
@@ -1413,7 +1413,7 @@ func TestJSON(t *testing.T) {
 }
 
 func TestBadWireType(t *testing.T) {
-	b := []byte{7<<3 | 6}	// field 7, wire type 6
+	b := []byte{7<<3 | 6} // field 7, wire type 6
 	pb := new(OtherMessage)
 	if err := Unmarshal(b, pb); err == nil {
 		t.Errorf("Unmarshal did not fail")
@@ -1610,10 +1610,10 @@ func TestUnmarshalMergesMessages(t *testing.T) {
 	// If a nested message occurs twice in the input,
 	// the fields should be merged when decoding.
 	a := &OtherMessage{
-		Key:	Int64(123),
+		Key: Int64(123),
 		Inner: &InnerMessage{
-			Host:	String("polhode"),
-			Port:	Int32(1234),
+			Host: String("polhode"),
+			Port: Int32(1234),
 		},
 	}
 	aData, err := Marshal(a)
@@ -1621,10 +1621,10 @@ func TestUnmarshalMergesMessages(t *testing.T) {
 		t.Fatalf("Marshal(a): %v", err)
 	}
 	b := &OtherMessage{
-		Weight:	Float32(1.2),
+		Weight: Float32(1.2),
 		Inner: &InnerMessage{
-			Host:		String("herpolhode"),
-			Connected:	Bool(true),
+			Host:      String("herpolhode"),
+			Connected: Bool(true),
 		},
 	}
 	bData, err := Marshal(b)
@@ -1632,12 +1632,12 @@ func TestUnmarshalMergesMessages(t *testing.T) {
 		t.Fatalf("Marshal(b): %v", err)
 	}
 	want := &OtherMessage{
-		Key:	Int64(123),
-		Weight:	Float32(1.2),
+		Key:    Int64(123),
+		Weight: Float32(1.2),
 		Inner: &InnerMessage{
-			Host:		String("herpolhode"),
-			Port:		Int32(1234),
-			Connected:	Bool(true),
+			Host:      String("herpolhode"),
+			Port:      Int32(1234),
+			Connected: Bool(true),
 		},
 	}
 	got := new(OtherMessage)
@@ -1651,8 +1651,8 @@ func TestUnmarshalMergesMessages(t *testing.T) {
 
 func TestEncodingSizes(t *testing.T) {
 	tests := []struct {
-		m	Message
-		n	int
+		m Message
+		n int
 	}{
 		{&Defaults{F_Int32: Int32(math.MaxInt32)}, 6},
 		{&Defaults{F_Int32: Int32(math.MinInt32)}, 6},
@@ -1676,22 +1676,22 @@ func TestRequiredNotSetError(t *testing.T) {
 	pb.F_Int32Required = nil
 	pb.F_Int64Required = nil
 
-	expected := "0807" +	// field 1, encoding 0, value 7
-		"2206" + "120474797065" +	// field 4, encoding 2 (GoTestField)
-		"5001" +	// field 10, encoding 0, value 1
-		"6d20000000" +	// field 13, encoding 5, value 0x20
-		"714000000000000000" +	// field 14, encoding 1, value 0x40
-		"78a019" +	// field 15, encoding 0, value 0xca0 = 3232
-		"8001c032" +	// field 16, encoding 0, value 0x1940 = 6464
-		"8d0100004a45" +	// field 17, encoding 5, value 3232.0
-		"9101000000000040b940" +	// field 18, encoding 1, value 6464.0
-		"9a0106" + "737472696e67" +	// field 19, encoding 2, string "string"
-		"b304" +	// field 70, encoding 3, start group
-		"ba0408" + "7265717569726564" +	// field 71, encoding 2, string "required"
-		"b404" +	// field 70, encoding 4, end group
-		"aa0605" + "6279746573" +	// field 101, encoding 2, string "bytes"
-		"b0063f" +	// field 102, encoding 0, 0x3f zigzag32
-		"b8067f"	// field 103, encoding 0, 0x7f zigzag64
+	expected := "0807" + // field 1, encoding 0, value 7
+		"2206" + "120474797065" + // field 4, encoding 2 (GoTestField)
+		"5001" + // field 10, encoding 0, value 1
+		"6d20000000" + // field 13, encoding 5, value 0x20
+		"714000000000000000" + // field 14, encoding 1, value 0x40
+		"78a019" + // field 15, encoding 0, value 0xca0 = 3232
+		"8001c032" + // field 16, encoding 0, value 0x1940 = 6464
+		"8d0100004a45" + // field 17, encoding 5, value 3232.0
+		"9101000000000040b940" + // field 18, encoding 1, value 6464.0
+		"9a0106" + "737472696e67" + // field 19, encoding 2, string "string"
+		"b304" + // field 70, encoding 3, start group
+		"ba0408" + "7265717569726564" + // field 71, encoding 2, string "required"
+		"b404" + // field 70, encoding 4, end group
+		"aa0605" + "6279746573" + // field 101, encoding 2, string "bytes"
+		"b0063f" + // field 102, encoding 0, 0x3f zigzag32
+		"b8067f" // field 103, encoding 0, 0x7f zigzag64
 
 	o := old()
 	bytes, err := Marshal(pb)
@@ -1751,7 +1751,7 @@ func fuzzUnmarshal(t *testing.T, data []byte) {
 
 func testMsg() *GoTest {
 	pb := initGoTest(true)
-	const N = 1000	// Internally the library starts much smaller.
+	const N = 1000 // Internally the library starts much smaller.
 	pb.F_Int32Repeated = make([]int32, N)
 	pb.F_DoubleRepeated = make([]float64, N)
 	for i := 0; i < N; i++ {
@@ -1869,13 +1869,13 @@ func BenchmarkUnmarshalUnrecognizedFields(b *testing.B) {
 	b.StopTimer()
 	pb := initGoTestField()
 	skip := &GoSkipTest{
-		SkipInt32:	Int32(32),
-		SkipFixed32:	Uint32(3232),
-		SkipFixed64:	Uint64(6464),
-		SkipString:	String("skipper"),
+		SkipInt32:   Int32(32),
+		SkipFixed32: Uint32(3232),
+		SkipFixed64: Uint64(6464),
+		SkipString:  String("skipper"),
 		Skipgroup: &GoSkipTest_SkipGroup{
-			GroupInt32:	Int32(75),
-			GroupString:	String("wxyz"),
+			GroupInt32:  Int32(75),
+			GroupString: String("wxyz"),
 		},
 	}
 

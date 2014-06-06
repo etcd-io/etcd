@@ -85,9 +85,9 @@ func init() {
 }
 
 var EqualTests = []struct {
-	desc	string
-	a, b	Message
-	exp	bool
+	desc string
+	a, b Message
+	exp  bool
 }{
 	{"different types", &pb.GoEnum{}, &pb.GoTestField{}, false},
 	{"equal empty", &pb.GoEnum{}, &pb.GoEnum{}, true},
@@ -142,13 +142,13 @@ var EqualTests = []struct {
 	{
 		"message with group",
 		&pb.MyMessage{
-			Count:	Int32(1),
+			Count: Int32(1),
 			Somegroup: &pb.MyMessage_SomeGroup{
 				GroupField: Int32(5),
 			},
 		},
 		&pb.MyMessage{
-			Count:	Int32(1),
+			Count: Int32(1),
 			Somegroup: &pb.MyMessage_SomeGroup{
 				GroupField: Int32(5),
 			},

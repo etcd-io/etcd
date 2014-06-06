@@ -48,6 +48,13 @@ import (
 	"unicode/utf8"
 )
 
+// textUnmarshaler is implemented by Messages that can unmarshal themsleves.
+// It is identical to encoding.TextUnmarshaler, introduced in go 1.2,
+// which will eventually replace it.
+type textUnmarshaler interface {
+	UnmarshalText(text []byte) error
+}
+
 type ParseError struct {
 	Message string
 	Line    int // 1-based line number
@@ -686,6 +693,7 @@ func (p *textParser) readAny(v reflect.Value, props *Properties) *ParseError {
 		default:
 			return p.errorf("expected '{' or '<', found %q", tok.value)
 		}
+		// TODO: Handle nested messages which implement textUnmarshaler.
 		return p.readStruct(fv, terminator)
 	case reflect.Uint32:
 		if x, err := strconv.ParseUint(tok.value, 0, 32); err == nil {
@@ -704,6 +712,10 @@ func (p *textParser) readAny(v reflect.Value, props *Properties) *ParseError {
 // UnmarshalText reads a protocol buffer in Text format. UnmarshalText resets pb
 // before starting to unmarshal, so any existing data in pb is always removed.
 func UnmarshalText(s string, pb Message) error {
+	if um, ok := pb.(textUnmarshaler); ok {
+		err := um.UnmarshalText([]byte(s))
+		return err
+	}
 	pb.Reset()
 	v := reflect.ValueOf(pb)
 	if pe := newTextParser(s).readStruct(v.Elem(), ""); pe != nil {

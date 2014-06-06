@@ -51,10 +51,17 @@ func structPointer_InterfaceRef(p structPointer, f field, t reflect.Type) interf
 }
 
 func copyUintPtr(oldptr, newptr uintptr, size int) {
-	for j := 0; j < size; j++ {
-		oldb := (*byte)(unsafe.Pointer(oldptr + uintptr(j)))
-		*(*byte)(unsafe.Pointer(newptr + uintptr(j))) = *oldb
-	}
+	oldbytes := make([]byte, 0)
+	oldslice := (*reflect.SliceHeader)(unsafe.Pointer(&oldbytes))
+	oldslice.Data = oldptr
+	oldslice.Len = size
+	oldslice.Cap = size
+	newbytes := make([]byte, 0)
+	newslice := (*reflect.SliceHeader)(unsafe.Pointer(&newbytes))
+	newslice.Data = newptr
+	newslice.Len = size
+	newslice.Cap = size
+	copy(newbytes, oldbytes)
 }
 
 func structPointer_Copy(oldptr structPointer, newptr structPointer, size int) {

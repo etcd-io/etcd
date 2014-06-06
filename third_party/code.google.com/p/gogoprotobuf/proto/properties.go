@@ -575,9 +575,15 @@ func getPropertiesLocked(t reflect.Type) *StructProperties {
 		p.init(f.Type, name, f.Tag.Get("protobuf"), &f, false)
 
 		if f.Name == "XXX_extensions" { // special case
-			p.enc = (*Buffer).enc_map
-			p.dec = nil // not needed
-			p.size = size_map
+			if len(f.Tag.Get("protobuf")) > 0 {
+				p.enc = (*Buffer).enc_ext_slice_byte
+				p.dec = nil // not needed
+				p.size = size_ext_slice_byte
+			} else {
+				p.enc = (*Buffer).enc_map
+				p.dec = nil // not needed
+				p.size = size_map
+			}
 		}
 		if f.Name == "XXX_unrecognized" { // special case
 			prop.unrecField = toField(&f)

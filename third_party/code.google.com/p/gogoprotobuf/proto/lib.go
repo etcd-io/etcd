@@ -240,10 +240,8 @@ func GetStats() Stats { return stats }
 // the global functions Marshal and Unmarshal create a
 // temporary Buffer and are fine for most applications.
 type Buffer struct {
-	buf       []byte     // encode/decode byte stream
-	index     int        // write point
-	freelist  [10][]byte // list of available buffers
-	nfreelist int        // number of free buffers
+	buf   []byte // encode/decode byte stream
+	index int    // write point
 
 	// pools of basic types to amortize allocation.
 	bools   []bool
@@ -260,20 +258,11 @@ type Buffer struct {
 // NewBuffer allocates a new Buffer and initializes its internal data to
 // the contents of the argument slice.
 func NewBuffer(e []byte) *Buffer {
-	p := new(Buffer)
-	if e == nil {
-		e = p.bufalloc()
-	}
-	p.buf = e
-	p.index = 0
-	return p
+	return &Buffer{buf: e}
 }
 
 // Reset resets the Buffer, ready for marshaling a new protocol buffer.
 func (p *Buffer) Reset() {
-	if p.buf == nil {
-		p.buf = p.bufalloc()
-	}
 	p.buf = p.buf[0:0] // for reading/writing
 	p.index = 0        // for reading
 }
@@ -287,44 +276,6 @@ func (p *Buffer) SetBuf(s []byte) {
 
 // Bytes returns the contents of the Buffer.
 func (p *Buffer) Bytes() []byte { return p.buf }
-
-// Allocate a buffer for the Buffer.
-func (p *Buffer) bufalloc() []byte {
-	if p.nfreelist > 0 {
-		// reuse an old one
-		p.nfreelist--
-		s := p.freelist[p.nfreelist]
-		return s[0:0]
-	}
-	// make a new one
-	s := make([]byte, 0, 16)
-	return s
-}
-
-// Free (and remember in freelist) a byte buffer for the Buffer.
-func (p *Buffer) buffree(s []byte) {
-	if p.nfreelist < len(p.freelist) {
-		// Take next slot.
-		p.freelist[p.nfreelist] = s
-		p.nfreelist++
-		return
-	}
-
-	// Find the smallest.
-	besti := -1
-	bestl := len(s)
-	for i, b := range p.freelist {
-		if len(b) < bestl {
-			besti = i
-			bestl = len(b)
-		}
-	}
-
-	// Overwrite the smallest.
-	if besti >= 0 {
-		p.freelist[besti] = s
-	}
-}
 
 /*
  * Helper routines for simplifying the creation of optional fields of basic type.

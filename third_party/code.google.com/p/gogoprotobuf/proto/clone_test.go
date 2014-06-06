@@ -40,13 +40,13 @@ import (
 )
 
 var cloneTestMessage = &pb.MyMessage{
-	Count:	proto.Int32(42),
-	Name:	proto.String("Dave"),
-	Pet:	[]string{"bunny", "kitty", "horsey"},
+	Count: proto.Int32(42),
+	Name:  proto.String("Dave"),
+	Pet:   []string{"bunny", "kitty", "horsey"},
 	Inner: &pb.InnerMessage{
-		Host:		proto.String("niles"),
-		Port:		proto.Int32(9099),
-		Connected:	proto.Bool(true),
+		Host:      proto.String("niles"),
+		Port:      proto.Int32(9099),
+		Connected: proto.Bool(true),
 	},
 	Others: []*pb.OtherMessage{
 		{
@@ -56,7 +56,7 @@ var cloneTestMessage = &pb.MyMessage{
 	Somegroup: &pb.MyMessage_SomeGroup{
 		GroupField: proto.Int32(6),
 	},
-	RepBytes:	[][]byte{[]byte("sham"), []byte("wow")},
+	RepBytes: [][]byte{[]byte("sham"), []byte("wow")},
 }
 
 func init() {
@@ -99,17 +99,17 @@ var mergeTests = []struct {
 			Name: proto.String("Dave"),
 		},
 		want: &pb.MyMessage{
-			Count:	proto.Int32(42),
-			Name:	proto.String("Dave"),
+			Count: proto.Int32(42),
+			Name:  proto.String("Dave"),
 		},
 	},
 	{
 		src: &pb.MyMessage{
 			Inner: &pb.InnerMessage{
-				Host:		proto.String("hey"),
-				Connected:	proto.Bool(true),
+				Host:      proto.String("hey"),
+				Connected: proto.Bool(true),
 			},
-			Pet:	[]string{"horsey"},
+			Pet: []string{"horsey"},
 			Others: []*pb.OtherMessage{
 				{
 					Value: []byte("some bytes"),
@@ -118,10 +118,10 @@ var mergeTests = []struct {
 		},
 		dst: &pb.MyMessage{
 			Inner: &pb.InnerMessage{
-				Host:	proto.String("niles"),
-				Port:	proto.Int32(9099),
+				Host: proto.String("niles"),
+				Port: proto.Int32(9099),
 			},
-			Pet:	[]string{"bunny", "kitty"},
+			Pet: []string{"bunny", "kitty"},
 			Others: []*pb.OtherMessage{
 				{
 					Key: proto.Int64(31415926535),
@@ -134,11 +134,11 @@ var mergeTests = []struct {
 		},
 		want: &pb.MyMessage{
 			Inner: &pb.InnerMessage{
-				Host:		proto.String("hey"),
-				Connected:	proto.Bool(true),
-				Port:		proto.Int32(9099),
+				Host:      proto.String("hey"),
+				Connected: proto.Bool(true),
+				Port:      proto.Int32(9099),
 			},
-			Pet:	[]string{"bunny", "kitty", "horsey"},
+			Pet: []string{"bunny", "kitty", "horsey"},
 			Others: []*pb.OtherMessage{
 				{
 					Key: proto.Int64(31415926535),
@@ -158,13 +158,13 @@ var mergeTests = []struct {
 			Somegroup: &pb.MyMessage_SomeGroup{
 				GroupField: proto.Int32(6),
 			},
-			RepBytes:	[][]byte{[]byte("sham")},
+			RepBytes: [][]byte{[]byte("sham")},
 		},
 		want: &pb.MyMessage{
 			Somegroup: &pb.MyMessage_SomeGroup{
 				GroupField: proto.Int32(6),
 			},
-			RepBytes:	[][]byte{[]byte("sham"), []byte("wow")},
+			RepBytes: [][]byte{[]byte("sham"), []byte("wow")},
 		},
 	},
 }

@@ -221,6 +221,10 @@ func Marshal(pb Message) ([]byte, error) {
 	if err != nil && !state.shouldContinue(err, nil) {
 		return nil, err
 	}
+	if p.buf == nil && err == nil {
+		// Return a non-nil slice on success.
+		return []byte{}, nil
+	}
 	return p.buf, err
 }
 
@@ -400,23 +404,8 @@ func (o *Buffer) enc_struct_message(p *Properties, base structPointer) error {
 		return nil
 	}
 
-	// need the length before we can write out the message itself,
-	// so marshal into a separate byte buffer first.
-	obuf := o.buf
-	o.buf = o.bufalloc()
-
-	err := o.enc_struct(p.stype, p.sprop, structp)
-
-	nbuf := o.buf
-	o.buf = obuf
-	if err != nil && !state.shouldContinue(err, nil) {
-		o.buffree(nbuf)
-		return err
-	}
 	o.buf = append(o.buf, p.tagcode...)
-	o.EncodeRawBytes(nbuf)
-	o.buffree(nbuf)
-	return state.err
+	return o.enc_len_struct(p.stype, p.sprop, structp, &state)
 }
 
 func size_struct_message(p *Properties, base structPointer) int {
@@ -748,24 +737,14 @@ func (o *Buffer) enc_slice_struct_message(p *Properties, base structPointer) err
 			continue
 		}
 
-		obuf := o.buf
-		o.buf = o.bufalloc()
-
-		err := o.enc_struct(p.stype, p.sprop, structp)
-
-		nbuf := o.buf
-		o.buf = obuf
+		o.buf = append(o.buf, p.tagcode...)
+		err := o.enc_len_struct(p.stype, p.sprop, structp, &state)
 		if err != nil && !state.shouldContinue(err, nil) {
-			o.buffree(nbuf)
 			if err == ErrNil {
 				return ErrRepeatedHasNil
 			}
 			return err
 		}
-		o.buf = append(o.buf, p.tagcode...)
-		o.EncodeRawBytes(nbuf)
-
-		o.buffree(nbuf)
 	}
 	return state.err
 }
@@ -921,6 +900,36 @@ func size_struct(t reflect.Type, prop *StructProperties, base structPointer) (n 
 	}
 
 	return
+}
+
+var zeroes [20]byte // longer than any conceivable sizeVarint
+
+// Encode a struct, preceded by its encoded length (as a varint).
+func (o *Buffer) enc_len_struct(t reflect.Type, prop *StructProperties, base structPointer, state *errorState) error {
+	iLen := len(o.buf)
+	o.buf = append(o.buf, 0, 0, 0, 0) // reserve four bytes for length
+	iMsg := len(o.buf)
+	err := o.enc_struct(t, prop, base)
+	if err != nil && !state.shouldContinue(err, nil) {
+		return err
+	}
+	lMsg := len(o.buf) - iMsg
+	lLen := sizeVarint(uint64(lMsg))
+	switch x := lLen - (iMsg - iLen); {
+	case x > 0: // actual length is x bytes larger than the space we reserved
+		// Move msg x bytes right.
+		o.buf = append(o.buf, zeroes[:x]...)
+		copy(o.buf[iMsg+x:], o.buf[iMsg:iMsg+lMsg])
+	case x < 0: // actual length is x bytes smaller than the space we reserved
+		// Move msg x bytes left.
+		copy(o.buf[iMsg+x:], o.buf[iMsg:iMsg+lMsg])
+		o.buf = o.buf[:len(o.buf)+x] // x is negative
+	}
+	// Encode the length in the reserved space.
+	o.buf = o.buf[:iLen]
+	o.EncodeVarint(uint64(lMsg))
+	o.buf = o.buf[:len(o.buf)+lMsg]
+	return state.err
 }
 
 // errorState maintains the first error that occurs and updates that error
