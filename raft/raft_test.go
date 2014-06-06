@@ -438,6 +438,59 @@ func TestVote(t *testing.T) {
 	}
 }
 
+func TestStateTransition(t *testing.T) {
+	tests := []struct {
+		from   stateType
+		to     stateType
+		wallow bool
+		wterm  int
+		wlead  int
+	}{
+		{stateFollower, stateFollower, true, 1, none},
+		{stateFollower, stateCandidate, true, 1, none},
+		{stateFollower, stateLeader, false, -1, none},
+
+		{stateCandidate, stateFollower, true, 0, none},
+		{stateCandidate, stateCandidate, true, 1, none},
+		{stateCandidate, stateLeader, true, 0, 0},
+
+		{stateLeader, stateFollower, true, 1, none},
+		{stateLeader, stateCandidate, false, 1, none},
+		{stateLeader, stateLeader, true, 0, 0},
+	}
+
+	for i, tt := range tests {
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					if tt.wallow == true {
+						t.Errorf("%d: allow = %v, want %v", i, false, true)
+					}
+				}
+			}()
+
+			sm := newStateMachine(1, 0)
+			sm.state = tt.from
+
+			switch tt.to {
+			case stateFollower:
+				sm.becomeFollower(tt.wterm, tt.wlead)
+			case stateCandidate:
+				sm.becomeCandidate()
+			case stateLeader:
+				sm.becomeLeader()
+			}
+
+			if sm.term != tt.wterm {
+				t.Errorf("%d: term = %d, want %d", i, sm.term, tt.wterm)
+			}
+			if sm.lead != tt.wlead {
+				t.Errorf("%d: lead = %d, want %d", i, sm.lead, tt.wlead)
+			}
+		}()
+	}
+}
+
 func TestAllServerStepdown(t *testing.T) {
 	tests := []stateType{stateFollower, stateCandidate, stateLeader}
 
