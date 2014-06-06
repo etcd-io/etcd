@@ -565,6 +565,37 @@ func TestLeaderAppResp(t *testing.T) {
 	}
 }
 
+// tests the output of the statemachine when receiving msgBeat
+func TestRecvMsgBeat(t *testing.T) {
+	tests := []struct {
+		state stateType
+		wMsg  int
+	}{
+		{stateLeader, 2},
+		// candidate and follower should ignore msgBeat
+		{stateCandidate, 0},
+		{stateFollower, 0},
+	}
+
+	for i, tt := range tests {
+		sm := newStateMachine(3, 0)
+		sm.log = &log{ents: []Entry{{}, {Term: 0}, {Term: 1}}}
+		sm.term = 1
+		sm.state = tt.state
+		sm.Step(Message{Type: msgBeat})
+
+		msgs := sm.Msgs()
+		if len(msgs) != tt.wMsg {
+			t.Errorf("%d: len(msgs) = %d, want %d", i, len(msgs), tt.wMsg)
+		}
+		for _, m := range msgs {
+			if m.Type != msgApp {
+				t.Errorf("%d: msg.type = %v, want %v", m.Type, msgApp)
+			}
+		}
+	}
+}
+
 func ents(terms ...int) *stateMachine {
 	ents := []Entry{{}}
 	for _, term := range terms {
