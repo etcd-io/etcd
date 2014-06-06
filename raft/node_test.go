@@ -57,3 +57,30 @@ func TestTickMsgBeat(t *testing.T) {
 		t.Errorf("called = %v, want %v", called, w)
 	}
 }
+
+func TestResetElapse(t *testing.T) {
+	tests := []struct {
+		msg      Message
+		welapsed tick
+	}{
+		{Message{From: 0, To: 1, Type: msgApp, Term: 2, Entries: []Entry{{Term: 1}}}, 0},
+		{Message{From: 0, To: 1, Type: msgApp, Term: 1, Entries: []Entry{{Term: 1}}}, 1},
+		{Message{From: 0, To: 1, Type: msgVote, Term: 2}, 0},
+		{Message{From: 0, To: 1, Type: msgVote, Term: 1}, 1},
+	}
+
+	for i, tt := range tests {
+		n := New(3, 1, defaultHeartbeat, defaultElection)
+		n.sm.term = 2
+
+		n.Tick()
+		if n.elapsed != 1 {
+			t.Errorf("%d: elpased = %d, want %d", i, n.elapsed, 1)
+		}
+
+		n.Step(tt.msg)
+		if n.elapsed != tt.welapsed {
+			t.Errorf("%d: elpased = %d, want %d", i, n.elapsed, tt.welapsed)
+		}
+	}
+}
