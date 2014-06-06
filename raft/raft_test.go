@@ -348,6 +348,12 @@ func TestCommit(t *testing.T) {
 		smTerm  int
 		w       int
 	}{
+		// single
+		{[]int{1}, []Entry{{}, {Term: 1}}, 1, 1},
+		{[]int{1}, []Entry{{}, {Term: 1}}, 2, 0},
+		{[]int{2}, []Entry{{}, {Term: 1}, {Term: 2}}, 2, 2},
+		{[]int{1}, []Entry{{}, {Term: 2}}, 2, 1},
+
 		// odd
 		{[]int{2, 1, 1}, []Entry{{}, {Term: 1}, {Term: 2}}, 1, 1},
 		{[]int{2, 1, 1}, []Entry{{}, {Term: 1}, {Term: 1}}, 2, 0},
