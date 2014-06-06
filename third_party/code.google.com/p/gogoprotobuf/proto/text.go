@@ -79,6 +79,13 @@ type textWriter struct {
 	w        writer
 }
 
+// textMarshaler is implemented by Messages that can marshal themsleves.
+// It is identical to encoding.TextMarshaler, introduced in go 1.2,
+// which will eventually replace it.
+type textMarshaler interface {
+	MarshalText() (text []byte, err error)
+}
+
 func (w *textWriter) WriteString(s string) (n int, err error) {
 	if !strings.Contains(s, "\n") {
 		if !w.compact && w.complete {
@@ -366,7 +373,15 @@ func writeAny(w *textWriter, v reflect.Value, props *Properties) error {
 			}
 		}
 		w.indent()
-		if err := writeStruct(w, v); err != nil {
+		if tm, ok := v.Interface().(textMarshaler); ok {
+			text, err := tm.MarshalText()
+			if err != nil {
+				return err
+			}
+			if _, err = w.Write(text); err != nil {
+				return err
+			}
+		} else if err := writeStruct(w, v); err != nil {
 			return err
 		}
 		w.unindent()
@@ -555,7 +570,18 @@ func writeExtensions(w *textWriter, pv reflect.Value) error {
 	// Order the extensions by ID.
 	// This isn't strictly necessary, but it will give us
 	// canonical output, which will also make testing easier.
-	m := ep.ExtensionMap()
+	var m map[int32]Extension
+	if em, ok := ep.(extensionsMap); ok {
+		m = em.ExtensionMap()
+	} else if em, ok := ep.(extensionsBytes); ok {
+		eb := em.GetExtensions()
+		var err error
+		m, err = BytesToExtensionsMap(*eb)
+		if err != nil {
+			return err
+		}
+	}
+
 	ids := make([]int32, 0, len(m))
 	for id := range m {
 		ids = append(ids, id)
@@ -653,6 +679,19 @@ func marshalText(w io.Writer, pb Message, compact bool) error {
 		compact:  compact,
 	}
 
+	if tm, ok := pb.(textMarshaler); ok {
+		text, err := tm.MarshalText()
+		if err != nil {
+			return err
+		}
+		if _, err = aw.Write(text); err != nil {
+			return err
+		}
+		if bw != nil {
+			return bw.Flush()
+		}
+		return nil
+	}
 	// Dereference the received pointer so we don't have outer < and >.
 	v := reflect.Indirect(val)
 	if err := writeStruct(aw, v); err != nil {
@@ -666,7 +705,9 @@ func marshalText(w io.Writer, pb Message, compact bool) error {
 
 // MarshalText writes a given protocol buffer in text format.
 // The only errors returned are from w.
-func MarshalText(w io.Writer, pb Message) error { return marshalText(w, pb, false) }
+func MarshalText(w io.Writer, pb Message) error {
+	return marshalText(w, pb, false)
+}
 
 // MarshalTextString is the same as MarshalText, but returns the string directly.
 func MarshalTextString(pb Message) string {
