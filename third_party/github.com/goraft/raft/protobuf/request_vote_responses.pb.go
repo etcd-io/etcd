@@ -78,7 +78,7 @@ func (m *RequestVoteResponse) Unmarshal(data []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 0 {
-				return proto.ErrWrongType
+				return code_google_com_p_gogoprotobuf_proto8.ErrWrongType
 			}
 			var v uint64
 			for shift := uint(0); ; shift += 7 {
@@ -95,7 +95,7 @@ func (m *RequestVoteResponse) Unmarshal(data []byte) error {
 			m.Term = &v
 		case 2:
 			if wireType != 0 {
-				return proto.ErrWrongType
+				return code_google_com_p_gogoprotobuf_proto8.ErrWrongType
 			}
 			var v int
 			for shift := uint(0); ; shift += 7 {
@@ -124,6 +124,9 @@ func (m *RequestVoteResponse) Unmarshal(data []byte) error {
 			skippy, err := code_google_com_p_gogoprotobuf_proto8.Skip(data[index:])
 			if err != nil {
 				return err
+			}
+			if (index + skippy) > l {
+				return io4.ErrUnexpectedEOF
 			}
 			m.XXX_unrecognized = append(m.XXX_unrecognized, data[index:index+skippy]...)
 			index += skippy
@@ -177,7 +180,6 @@ func sovRequestVoteResponses(x uint64) (n int) {
 	return n
 }
 func sozRequestVoteResponses(x uint64) (n int) {
-	return sovRequestVoteResponses(uint64((x << 1) ^ uint64((int64(x) >> 63))))
 	return sovRequestVoteResponses(uint64((x << 1) ^ uint64((int64(x) >> 63))))
 }
 func NewPopulatedRequestVoteResponse(r randyRequestVoteResponses, easy bool) *RequestVoteResponse {

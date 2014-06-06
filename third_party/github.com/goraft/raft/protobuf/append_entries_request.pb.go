@@ -2,6 +2,23 @@
 // source: append_entries_request.proto
 // DO NOT EDIT!
 
+/*
+	Package protobuf is a generated protocol buffer package.
+
+	It is generated from these files:
+		append_entries_request.proto
+		append_entries_responses.proto
+		log_entry.proto
+		request_vote_request.proto
+		request_vote_responses.proto
+		snapshot_recovery_request.proto
+		snapshot_recovery_response.proto
+		snapshot_request.proto
+		snapshot_response.proto
+
+	It has these top-level messages:
+		AppendEntriesRequest
+*/
 package protobuf
 
 import proto "github.com/coreos/etcd/third_party/code.google.com/p/gogoprotobuf/proto"
@@ -110,7 +127,7 @@ func (m *AppendEntriesRequest) Unmarshal(data []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 0 {
-				return proto.ErrWrongType
+				return code_google_com_p_gogoprotobuf_proto2.ErrWrongType
 			}
 			var v uint64
 			for shift := uint(0); ; shift += 7 {
@@ -127,7 +144,7 @@ func (m *AppendEntriesRequest) Unmarshal(data []byte) error {
 			m.Term = &v
 		case 2:
 			if wireType != 0 {
-				return proto.ErrWrongType
+				return code_google_com_p_gogoprotobuf_proto2.ErrWrongType
 			}
 			var v uint64
 			for shift := uint(0); ; shift += 7 {
@@ -144,7 +161,7 @@ func (m *AppendEntriesRequest) Unmarshal(data []byte) error {
 			m.PrevLogIndex = &v
 		case 3:
 			if wireType != 0 {
-				return proto.ErrWrongType
+				return code_google_com_p_gogoprotobuf_proto2.ErrWrongType
 			}
 			var v uint64
 			for shift := uint(0); ; shift += 7 {
@@ -161,7 +178,7 @@ func (m *AppendEntriesRequest) Unmarshal(data []byte) error {
 			m.PrevLogTerm = &v
 		case 4:
 			if wireType != 0 {
-				return proto.ErrWrongType
+				return code_google_com_p_gogoprotobuf_proto2.ErrWrongType
 			}
 			var v uint64
 			for shift := uint(0); ; shift += 7 {
@@ -178,7 +195,7 @@ func (m *AppendEntriesRequest) Unmarshal(data []byte) error {
 			m.CommitIndex = &v
 		case 5:
 			if wireType != 2 {
-				return proto.ErrWrongType
+				return code_google_com_p_gogoprotobuf_proto2.ErrWrongType
 			}
 			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
@@ -201,7 +218,7 @@ func (m *AppendEntriesRequest) Unmarshal(data []byte) error {
 			index = postIndex
 		case 6:
 			if wireType != 2 {
-				return proto.ErrWrongType
+				return code_google_com_p_gogoprotobuf_proto2.ErrWrongType
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -235,6 +252,9 @@ func (m *AppendEntriesRequest) Unmarshal(data []byte) error {
 			skippy, err := code_google_com_p_gogoprotobuf_proto2.Skip(data[index:])
 			if err != nil {
 				return err
+			}
+			if (index + skippy) > l {
+				return io1.ErrUnexpectedEOF
 			}
 			m.XXX_unrecognized = append(m.XXX_unrecognized, data[index:index+skippy]...)
 			index += skippy
@@ -308,7 +328,6 @@ func sovAppendEntriesRequest(x uint64) (n int) {
 	return n
 }
 func sozAppendEntriesRequest(x uint64) (n int) {
-	return sovAppendEntriesRequest(uint64((x << 1) ^ uint64((int64(x) >> 63))))
 	return sovAppendEntriesRequest(uint64((x << 1) ^ uint64((int64(x) >> 63))))
 }
 func NewPopulatedAppendEntriesRequest(r randyAppendEntriesRequest, easy bool) *AppendEntriesRequest {
