@@ -259,7 +259,7 @@ func (sm *stateMachine) Step(m Message) {
 		case sm.addr:
 			sm.log.append(sm.log.lastIndex(), Entry{Term: sm.term, Data: m.Data})
 			sm.ins[sm.addr].update(sm.log.lastIndex())
-			sm.log.maybeCommit(sm.log.lastIndex(), sm.term)
+			sm.maybeCommit()
 			sm.bcastAppend()
 		case none:
 			panic("msgProp given without leader")
