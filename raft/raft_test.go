@@ -107,14 +107,9 @@ func TestCannotCommitWithoutNewTermEntry(t *testing.T) {
 	tt.send(Message{To: 0, Type: msgHup})
 
 	// 0 cannot reach 2,3,4
-	tt.drop(0, 2, 1.0)
-	tt.drop(2, 0, 1.0)
-
-	tt.drop(0, 3, 1.0)
-	tt.drop(3, 0, 1.0)
-
-	tt.drop(0, 4, 1.0)
-	tt.drop(4, 0, 1.0)
+	tt.cut(0, 2)
+	tt.cut(0, 3)
+	tt.cut(0, 4)
 
 	tt.send(Message{To: 0, Type: msgProp, Data: []byte("some data")})
 	tt.send(Message{To: 0, Type: msgProp, Data: []byte("some data")})
@@ -151,14 +146,12 @@ func TestDuelingCandidates(t *testing.T) {
 	c := newStateMachine(0, 0)
 
 	tt := newNetwork(a, nil, c)
-	tt.drop(0, 2, 1.0)
-	tt.drop(2, 0, 1.0)
+	tt.cut(0, 2)
 
 	tt.send(Message{To: 0, Type: msgHup})
 	tt.send(Message{To: 2, Type: msgHup})
 
-	tt.drop(0, 2, 0)
-	tt.drop(2, 0, 0)
+	tt.recover()
 	tt.send(Message{To: 2, Type: msgHup})
 
 	tests := []struct {
@@ -556,6 +549,11 @@ func (nw *network) send(msgs ...Message) {
 
 func (nw *network) drop(from, to int, perc float64) {
 	nw.dropm[connem{from, to}] = perc
+}
+
+func (nw *network) cut(one, other int) {
+	nw.drop(one, other, 1)
+	nw.drop(other, one, 1)
 }
 
 func (nw *network) isolate(addr int) {
