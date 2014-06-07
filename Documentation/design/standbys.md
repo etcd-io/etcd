@@ -18,8 +18,8 @@ If there are not enough peers to meet the active size, standbys will send join r
 If there are more peers than the target active size then peers are removed by the leader and will become standbys.
 
 The remove delay specifies how long the cluster should wait before removing a dead peer.
-By default this is 5 seconds.
-If a peer is inactive for 5 seconds then the peer is removed.
+By default this is 30 minutes.
+If a peer is inactive for 30 minutes then the peer is removed.
 
 The standby sync interval specifies the synchronization interval of standbys with the cluster.
 By default this is 5 seconds.

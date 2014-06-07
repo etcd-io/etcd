@@ -12,7 +12,7 @@ const (
 	MinActiveSize = 3
 
 	// DefaultRemoveDelay is the default elapsed time before removal.
-	DefaultRemoveDelay = float64((5 * time.Second) / time.Second)
+	DefaultRemoveDelay = float64((30 * time.Minute) / time.Second)
 
 	// MinRemoveDelay is the minimum remove delay allowed.
 	MinRemoveDelay = float64((2 * time.Second) / time.Second)
