@@ -1,3 +1,9 @@
+v0.4.3
+* Avoid panic() on truncated or unexpected log data (#834, #833)
+* Fix missing stats field (#807)
+* Lengthen default peer removal delay to 30mins (#835)
+* Reduce logging on heartbeat timeouts (#836)
+
 v0.4.2
 * Improvements to the clustering documents
 * Set content-type properly on errors (#469)
