@@ -700,7 +700,7 @@ func (s *PeerServer) raftEventLogger(event raft.Event) {
 	case raft.RemovePeerEventType:
 		log.Infof("%s: peer removed: '%v'", s.Config.Name, value)
 	case raft.HeartbeatIntervalEventType:
-		peer, ok := value.(*raft.Peer);
+		peer, ok := value.(*raft.Peer)
 		if !ok {
 			log.Warnf("%s: heatbeat timeout from unknown peer", s.Config.Name)
 			return
