@@ -97,3 +97,22 @@ func TestAdd(t *testing.T) {
 		t.Errorf("k = %d, want 2", len(n.sm.ins))
 	}
 }
+
+func TestRemove(t *testing.T) {
+	n := New(0, []int{0}, defaultHeartbeat, defaultElection)
+
+	n.sm.becomeCandidate()
+	n.sm.becomeLeader()
+	n.Add(1)
+	n.Next()
+	n.Remove(0)
+	n.Step(Message{Type: msgAppResp, From: 1, Term: 1, Index: 3})
+	n.Next()
+
+	if len(n.sm.ins) != 1 {
+		t.Errorf("k = %d, want 1", len(n.sm.ins))
+	}
+	if n.sm.addr != 0 {
+		t.Errorf("addr = %d, want 0", n.sm.addr)
+	}
+}
