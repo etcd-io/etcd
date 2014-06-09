@@ -355,3 +355,13 @@ func (sm *stateMachine) Step(m Message) {
 		}
 	}
 }
+
+func (sm *stateMachine) Add(addr int) {
+	sm.ins[addr] = &index{next: sm.log.lastIndex() + 1}
+	sm.pendingConf = false
+}
+
+func (sm *stateMachine) Remove(addr int) {
+	delete(sm.ins, addr)
+	sm.pendingConf = false
+}
