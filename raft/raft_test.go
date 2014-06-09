@@ -142,8 +142,8 @@ func TestCannotCommitWithoutNewTermEntry(t *testing.T) {
 }
 
 func TestDuelingCandidates(t *testing.T) {
-	a := newStateMachine(0, 0) // k, addr are set later
-	c := newStateMachine(0, 0)
+	a := newStateMachine(0, nil) // k, addr are set later
+	c := newStateMachine(0, nil)
 
 	tt := newNetwork(a, nil, c)
 	tt.cut(0, 2)
@@ -370,11 +370,11 @@ func TestCommit(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		ins := make([]index, len(tt.matches))
-		for j := 0; j < len(ins); j++ {
-			ins[j] = index{tt.matches[j], tt.matches[j] + 1}
+		ins := make(map[int]*index)
+		for j := 0; j < len(tt.matches); j++ {
+			ins[j] = &index{tt.matches[j], tt.matches[j] + 1}
 		}
-		sm := &stateMachine{log: &log{ents: tt.logs}, ins: ins, k: len(ins), term: tt.smTerm}
+		sm := &stateMachine{log: &log{ents: tt.logs}, ins: ins, term: tt.smTerm}
 		sm.maybeCommit()
 		if g := sm.log.committed; g != tt.w {
 			t.Errorf("#%d: committed = %d, want %d", i, g, tt.w)
@@ -469,7 +469,7 @@ func TestStateTransition(t *testing.T) {
 				}
 			}()
 
-			sm := newStateMachine(1, 0)
+			sm := newStateMachine(0, []int{0})
 			sm.state = tt.from
 
 			switch tt.to {
@@ -504,7 +504,7 @@ func TestAllServerStepdown(t *testing.T) {
 	tterm := 3
 
 	for i, tt := range tests {
-		sm := newStateMachine(3, 0)
+		sm := newStateMachine(0, []int{0, 1, 2})
 		switch tt {
 		case stateFollower:
 			sm.becomeFollower(1, 0)
@@ -545,7 +545,8 @@ func TestLeaderAppResp(t *testing.T) {
 	for i, tt := range tests {
 		// sm term is 1 after it becomes the leader.
 		// thus the last log term must be 1 to be committed.
-		sm := &stateMachine{addr: 0, k: 3, log: &log{ents: []Entry{{}, {Term: 0}, {Term: 1}}}}
+		sm := newStateMachine(0, []int{0, 1, 2})
+		sm.log = &log{ents: []Entry{{}, {Term: 0}, {Term: 1}}}
 		sm.becomeCandidate()
 		sm.becomeLeader()
 		sm.Step(Message{From: 1, Type: msgAppResp, Index: tt.index, Term: sm.term})
@@ -578,7 +579,7 @@ func TestRecvMsgBeat(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		sm := newStateMachine(3, 0)
+		sm := newStateMachine(0, []int{0, 1, 2})
 		sm.log = &log{ents: []Entry{{}, {Term: 0}, {Term: 1}}}
 		sm.term = 1
 		sm.state = tt.state
@@ -615,14 +616,23 @@ type network struct {
 // newNetwork initializes a network from peers. A nil node will be replaced
 // with a new *stateMachine. A *stateMachine will get its k, addr.
 func newNetwork(peers ...Interface) *network {
+	peerAddrs := make([]int, len(peers))
+	for i := range peers {
+		peerAddrs[i] = i
+	}
+
 	for addr, p := range peers {
 		switch v := p.(type) {
 		case nil:
-			sm := newStateMachine(len(peers), addr)
+			sm := newStateMachine(addr, peerAddrs)
 			peers[addr] = sm
 		case *stateMachine:
-			v.k = len(peers)
 			v.addr = addr
+			v.ins = make(map[int]*index)
+			for i := range peerAddrs {
+				v.ins[i] = &index{}
+			}
+			v.reset()
 		}
 	}
 	return &network{peers: peers, dropm: make(map[connem]float64)}

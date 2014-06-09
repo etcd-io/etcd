@@ -10,7 +10,7 @@ const (
 )
 
 func TestTickMsgHub(t *testing.T) {
-	n := New(3, 0, defaultHeartbeat, defaultElection)
+	n := New(0, []int{0, 1, 2}, defaultHeartbeat, defaultElection)
 
 	for i := 0; i < defaultElection+1; i++ {
 		n.Tick()
@@ -30,7 +30,7 @@ func TestTickMsgHub(t *testing.T) {
 
 func TestTickMsgBeat(t *testing.T) {
 	k := 3
-	n := New(k, 0, defaultHeartbeat, defaultElection)
+	n := New(0, []int{0, 1, 2}, defaultHeartbeat, defaultElection)
 
 	n.Step(Message{Type: msgHup}) // become leader please
 	for _, m := range n.Msgs() {
@@ -70,7 +70,7 @@ func TestResetElapse(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		n := New(3, 1, defaultHeartbeat, defaultElection)
+		n := New(0, []int{0, 1, 2}, defaultHeartbeat, defaultElection)
 		n.sm.term = 2
 
 		n.Tick()

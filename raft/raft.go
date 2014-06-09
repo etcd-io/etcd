@@ -82,10 +82,6 @@ func (in *index) decr() {
 }
 
 type stateMachine struct {
-	// k is the number of peers
-	k int
-
-	// addr is an integer representation of our address amoungst our peers. It is 0 <= addr < k.
 	addr int
 
 	// the term we are participating in at any time
@@ -97,7 +93,7 @@ type stateMachine struct {
 	// the log
 	log *log
 
-	ins []index
+	ins map[int]*index
 
 	state stateType
 
@@ -109,8 +105,11 @@ type stateMachine struct {
 	lead int
 }
 
-func newStateMachine(k, addr int) *stateMachine {
-	sm := &stateMachine{k: k, addr: addr, log: newLog()}
+func newStateMachine(addr int, peer []int) *stateMachine {
+	sm := &stateMachine{addr: addr, log: newLog(), ins: make(map[int]*index)}
+	for p := range peer {
+		sm.ins[p] = &index{}
+	}
 	sm.reset()
 	return sm
 }
@@ -156,7 +155,7 @@ func (sm *stateMachine) sendAppend(to int) {
 
 // bcastAppend sends RRPC, with entries to all peers that are not up-to-date according to sm.mis.
 func (sm *stateMachine) bcastAppend() {
-	for i := 0; i < sm.k; i++ {
+	for i := range sm.ins {
 		if i == sm.addr {
 			continue
 		}
@@ -185,9 +184,8 @@ func (sm *stateMachine) reset() {
 	sm.lead = none
 	sm.vote = none
 	sm.votes = make(map[int]bool)
-	sm.ins = make([]index, sm.k)
 	for i := range sm.ins {
-		sm.ins[i] = index{next: sm.log.lastIndex() + 1}
+		sm.ins[i] = &index{next: sm.log.lastIndex() + 1}
 		if i == sm.addr {
 			sm.ins[i].match = sm.log.lastIndex()
 		}
@@ -195,7 +193,7 @@ func (sm *stateMachine) reset() {
 }
 
 func (sm *stateMachine) q() int {
-	return sm.k/2 + 1
+	return len(sm.ins)/2 + 1
 }
 
 func (sm *stateMachine) becomeFollower(term, lead int) {
@@ -241,7 +239,7 @@ func (sm *stateMachine) Step(m Message) {
 			sm.becomeLeader()
 			return
 		}
-		for i := 0; i < sm.k; i++ {
+		for i := range sm.ins {
 			if i == sm.addr {
 				continue
 			}
