@@ -203,6 +203,7 @@ func (sm *stateMachine) becomeFollower(term, lead int) {
 	sm.term = term
 	sm.lead = lead
 	sm.state = stateFollower
+	sm.pendingConf = false
 }
 
 func (sm *stateMachine) becomeCandidate() {
@@ -224,6 +225,12 @@ func (sm *stateMachine) becomeLeader() {
 	sm.reset()
 	sm.lead = sm.addr
 	sm.state = stateLeader
+
+	for _, e := range sm.log.ents[sm.log.committed:] {
+		if e.Type == config {
+			sm.pendingConf = true
+		}
+	}
 }
 
 func (sm *stateMachine) Msgs() []Message {
