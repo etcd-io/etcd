@@ -13,7 +13,7 @@ type tick int
 
 type ConfigCmd struct {
 	Type string
-	Addr   int
+	Addr int
 }
 
 type Node struct {
@@ -28,16 +28,15 @@ type Node struct {
 	addr int
 }
 
-func New(addr int, peers []int, heartbeat, election tick) *Node {
+func New(addr int, heartbeat, election tick) *Node {
 	if election < heartbeat*3 {
 		panic("election is least three times as heartbeat [election: %d, heartbeat: %d]")
 	}
 
 	n := &Node{
-		sm:        newStateMachine(addr, peers),
 		heartbeat: heartbeat,
 		election:  election,
-		addr: addr,
+		addr:      addr,
 	}
 
 	return n
@@ -47,6 +46,23 @@ func New(addr int, peers []int, heartbeat, election tick) *Node {
 func (n *Node) Propose(data []byte) {
 	m := Message{Type: msgProp, Entries: []Entry{{Data: data}}}
 	n.Step(m)
+}
+
+func (n *Node) StartCluster() {
+	if n.sm != nil {
+		panic("node is started")
+	}
+	n.sm = newStateMachine(n.addr, []int{n.addr})
+	n.Step(Message{Type: msgHup})
+	n.Step(n.confMessage(&ConfigCmd{Type: "add", Addr: n.addr}))
+	n.Next()
+}
+
+func (n *Node) Start() {
+	if n.sm != nil {
+		panic("node is started")
+	}
+	n.sm = newStateMachine(n.addr, nil)
 }
 
 func (n *Node) Add(addr int) {
