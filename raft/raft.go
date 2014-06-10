@@ -107,9 +107,9 @@ type stateMachine struct {
 	pendingConf bool
 }
 
-func newStateMachine(addr int, peer []int) *stateMachine {
+func newStateMachine(addr int, peers []int) *stateMachine {
 	sm := &stateMachine{addr: addr, log: newLog(), ins: make(map[int]*index)}
-	for p := range peer {
+	for p := range peers {
 		sm.ins[p] = &index{}
 	}
 	sm.reset()

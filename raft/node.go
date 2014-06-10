@@ -17,13 +17,13 @@ type Node struct {
 	sm      *stateMachine
 }
 
-func New(addr int, peer []int, heartbeat, election tick) *Node {
+func New(addr int, peers []int, heartbeat, election tick) *Node {
 	if election < heartbeat*3 {
 		panic("election is least three times as heartbeat [election: %d, heartbeat: %d]")
 	}
 
 	n := &Node{
-		sm:        newStateMachine(addr, peer),
+		sm:        newStateMachine(addr, peers),
 		heartbeat: heartbeat,
 		election:  election,
 	}
