@@ -54,7 +54,7 @@ func (n *Node) StartCluster() {
 	}
 	n.sm = newStateMachine(n.addr, []int{n.addr})
 	n.Step(Message{Type: msgHup})
-	n.Step(n.confMessage(&ConfigCmd{Type: "add", Addr: n.addr}))
+	n.Step(n.newConfMessage(&ConfigCmd{Type: "add", Addr: n.addr}))
 	n.Next()
 }
 
@@ -66,11 +66,11 @@ func (n *Node) Start() {
 }
 
 func (n *Node) Add(addr int) {
-	n.Step(n.confMessage(&ConfigCmd{Type: "add", Addr: addr}))
+	n.Step(n.newConfMessage(&ConfigCmd{Type: "add", Addr: addr}))
 }
 
 func (n *Node) Remove(addr int) {
-	n.Step(n.confMessage(&ConfigCmd{Type: "remove", Addr: addr}))
+	n.Step(n.newConfMessage(&ConfigCmd{Type: "remove", Addr: addr}))
 }
 
 func (n *Node) Msgs() []Message {
@@ -96,12 +96,14 @@ func (n *Node) Step(m Message) {
 }
 
 // Next applies all available committed commands.
-func (n *Node) Next() {
+func (n *Node) Next() []Entry {
 	ents := n.sm.nextEnts()
+	nents := make([]Entry, 0)
 	for i := range ents {
 		switch ents[i].Type {
 		case normal:
 			// dispatch to the application state machine
+			nents = append(nents, ents[i])
 		case config:
 			c := new(ConfigCmd)
 			err := json.Unmarshal(ents[i].Data, c)
@@ -114,6 +116,7 @@ func (n *Node) Next() {
 			panic("unexpected entry type")
 		}
 	}
+	return nents
 }
 
 // Tick triggers the node to do a tick.
@@ -132,12 +135,12 @@ func (n *Node) Tick() {
 	}
 }
 
-func (n *Node) confMessage(c *ConfigCmd) Message {
+func (n *Node) newConfMessage(c *ConfigCmd) Message {
 	data, err := json.Marshal(c)
 	if err != nil {
 		panic(err)
 	}
-	return Message{Type: msgProp, Entries: []Entry{Entry{Type: config, Data: data}}}
+	return Message{Type: msgProp, To: n.addr, Entries: []Entry{Entry{Type: config, Data: data}}}
 }
 
 func (n *Node) updateConf(c *ConfigCmd) {
