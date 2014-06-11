@@ -254,6 +254,7 @@ func (sm *stateMachine) Step(m Message) {
 			return
 		}
 		sm.bcastAppend()
+		return
 	case msgProp:
 		switch sm.lead {
 		case sm.addr:
