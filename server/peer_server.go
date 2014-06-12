@@ -853,7 +853,7 @@ func (s *PeerServer) monitorActiveSize() {
 		// If we have more active nodes than we should then remove.
 		if peerCount > activeSize {
 			peer := peers[rand.Intn(len(peers))]
-			log.Infof("%s: removing: %v", s.Config.Name, peer)
+			log.Infof("%s: removing node: %v; peer number %d > expected size %d", s.Config.Name, peer, peerCount, activeSize)
 			if _, err := s.raftServer.Do(&RemoveCommand{Name: peer}); err != nil {
 				log.Infof("%s: warning: remove error: %v", s.Config.Name, err)
 			}
