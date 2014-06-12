@@ -2,6 +2,7 @@ package raft
 
 import (
 	"encoding/json"
+	golog "log"
 )
 
 type Interface interface {
@@ -11,9 +12,10 @@ type Interface interface {
 
 type tick int
 
-type ConfigCmd struct {
-	Type string
-	Addr int
+type Config struct {
+	NodeId    int
+	ClusterId int
+	Address   string
 }
 
 type Node struct {
@@ -54,7 +56,7 @@ func (n *Node) StartCluster() {
 	}
 	n.sm = newStateMachine(n.addr, []int{n.addr})
 	n.Step(Message{Type: msgHup})
-	n.Step(n.newConfMessage(&ConfigCmd{Type: "add", Addr: n.addr}))
+	n.Step(n.newConfMessage(configAdd, &Config{NodeId: n.addr}))
 	n.Next()
 }
 
@@ -66,11 +68,11 @@ func (n *Node) Start() {
 }
 
 func (n *Node) Add(addr int) {
-	n.Step(n.newConfMessage(&ConfigCmd{Type: "add", Addr: addr}))
+	n.Step(n.newConfMessage(configAdd, &Config{NodeId: addr}))
 }
 
 func (n *Node) Remove(addr int) {
-	n.Step(n.newConfMessage(&ConfigCmd{Type: "remove", Addr: addr}))
+	n.Step(n.newConfMessage(configRemove, &Config{NodeId: addr}))
 }
 
 func (n *Node) Msgs() []Message {
@@ -104,14 +106,20 @@ func (n *Node) Next() []Entry {
 		case normal:
 			// dispatch to the application state machine
 			nents = append(nents, ents[i])
-		case config:
-			c := new(ConfigCmd)
-			err := json.Unmarshal(ents[i].Data, c)
-			if err != nil {
-				// warning
+		case configAdd:
+			c := new(Config)
+			if err := json.Unmarshal(ents[i].Data, c); err != nil {
+				golog.Println(err)
 				continue
 			}
-			n.updateConf(c)
+			n.sm.Add(c.NodeId)
+		case configRemove:
+			c := new(Config)
+			if err := json.Unmarshal(ents[i].Data, c); err != nil {
+				golog.Println(err)
+				continue
+			}
+			n.sm.Remove(c.NodeId)
 		default:
 			panic("unexpected entry type")
 		}
@@ -135,21 +143,10 @@ func (n *Node) Tick() {
 	}
 }
 
-func (n *Node) newConfMessage(c *ConfigCmd) Message {
+func (n *Node) newConfMessage(t int, c *Config) Message {
 	data, err := json.Marshal(c)
 	if err != nil {
 		panic(err)
 	}
-	return Message{Type: msgProp, To: n.addr, Entries: []Entry{Entry{Type: config, Data: data}}}
-}
-
-func (n *Node) updateConf(c *ConfigCmd) {
-	switch c.Type {
-	case "add":
-		n.sm.Add(c.Addr)
-	case "remove":
-		n.sm.Remove(c.Addr)
-	default:
-		// warn
-	}
+	return Message{Type: msgProp, To: n.addr, Entries: []Entry{Entry{Type: t, Data: data}}}
 }
