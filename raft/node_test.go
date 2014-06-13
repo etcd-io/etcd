@@ -89,8 +89,8 @@ func TestResetElapse(t *testing.T) {
 }
 
 func TestStartCluster(t *testing.T) {
-	n := New(0, defaultHeartbeat, defaultElection)
-	n.StartCluster()
+	n := Dictate(New(0, defaultHeartbeat, defaultElection))
+	n.Next()
 
 	if len(n.sm.ins) != 1 {
 		t.Errorf("k = %d, want 1", len(n.sm.ins))
@@ -104,8 +104,8 @@ func TestStartCluster(t *testing.T) {
 }
 
 func TestAdd(t *testing.T) {
-	n := New(0, defaultHeartbeat, defaultElection)
-	n.StartCluster()
+	n := Dictate(New(0, defaultHeartbeat, defaultElection))
+	n.Next()
 	n.Add(1)
 	n.Next()
 
@@ -118,8 +118,8 @@ func TestAdd(t *testing.T) {
 }
 
 func TestRemove(t *testing.T) {
-	n := New(0, defaultHeartbeat, defaultElection)
-	n.StartCluster()
+	n := Dictate(New(0, defaultHeartbeat, defaultElection))
+	n.Next()
 	n.Add(1)
 	n.Next()
 	n.Remove(0)
