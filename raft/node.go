@@ -83,12 +83,9 @@ func (n *Node) Step(m Message) {
 // Next applies all available committed commands.
 func (n *Node) Next() []Entry {
 	ents := n.sm.nextEnts()
-	nents := make([]Entry, 0)
 	for i := range ents {
 		switch ents[i].Type {
 		case normal:
-			// dispatch to the application state machine
-			nents = append(nents, ents[i])
 		case configAdd:
 			c := new(config)
 			if err := json.Unmarshal(ents[i].Data, c); err != nil {
@@ -107,7 +104,7 @@ func (n *Node) Next() []Entry {
 			panic("unexpected entry type")
 		}
 	}
-	return nents
+	return ents
 }
 
 // Tick triggers the node to do a tick.
