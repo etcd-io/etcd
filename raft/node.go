@@ -53,8 +53,7 @@ func (n *Node) Id() int { return n.sm.id }
 func (n *Node) Propose(data []byte) { n.propose(normal, data) }
 
 func (n *Node) propose(t int, data []byte) {
-	m := Message{Type: msgProp, Entries: []Entry{{Type: t, Data: data}}}
-	n.Step(m)
+	n.Step(Message{Type: msgProp, Entries: []Entry{{Type: t, Data: data}}})
 }
 
 func (n *Node) Add(id int) { n.updateConf(configAdd, &config{NodeId: id}) }
