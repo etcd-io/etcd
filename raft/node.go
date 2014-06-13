@@ -50,14 +50,11 @@ func (n *Node) Propose(data []byte) {
 	n.Step(m)
 }
 
-func (n *Node) StartCluster() {
-	if n.sm != nil {
-		panic("node is started")
-	}
+func Dictate(n *Node) *Node {
 	n.sm = newStateMachine(n.addr, []int{n.addr})
 	n.Step(Message{Type: msgHup})
 	n.Step(n.newConfMessage(configAdd, &Config{NodeId: n.addr}))
-	n.Next()
+	return n
 }
 
 func (n *Node) Start() {
