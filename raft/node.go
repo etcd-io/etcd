@@ -18,13 +18,11 @@ type config struct {
 }
 
 type Node struct {
-	// election timeout and heartbeat timeout in tick
+	sm *stateMachine
+
+	elapsed   tick
 	election  tick
 	heartbeat tick
-
-	// elapsed ticks after the last reset
-	elapsed tick
-	sm      *stateMachine
 }
 
 func New(id int, heartbeat, election tick) *Node {
