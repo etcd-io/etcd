@@ -6,7 +6,7 @@ import (
 )
 
 type Interface interface {
-	Step(m Message)
+	Step(m Message) bool
 	Msgs() []Message
 }
 
@@ -60,9 +60,11 @@ func (n *Node) Remove(id int) { n.updateConf(configRemove, &config{NodeId: id}) 
 
 func (n *Node) Msgs() []Message { return n.sm.Msgs() }
 
-func (n *Node) Step(m Message) {
+func (n *Node) Step(m Message) bool {
 	l := len(n.sm.msgs)
-	n.sm.Step(m)
+	if !n.sm.Step(m) {
+		return false
+	}
 	for _, m := range n.sm.msgs[l:] {
 		// reset elapsed in two cases:
 		// msgAppResp -> heard from the leader of the same term
@@ -76,6 +78,7 @@ func (n *Node) Step(m Message) {
 			}
 		}
 	}
+	return true
 }
 
 // Next returns all the appliable entries

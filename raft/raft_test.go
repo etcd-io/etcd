@@ -742,7 +742,7 @@ type connem struct {
 
 type blackHole struct{}
 
-func (blackHole) Step(Message)    {}
-func (blackHole) Msgs() []Message { return nil }
+func (blackHole) Step(Message) bool { return true }
+func (blackHole) Msgs() []Message   { return nil }
 
 var nopStepper = &blackHole{}

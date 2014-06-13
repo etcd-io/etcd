@@ -240,13 +240,13 @@ func (sm *stateMachine) Msgs() []Message {
 	return msgs
 }
 
-func (sm *stateMachine) Step(m Message) {
+func (sm *stateMachine) Step(m Message) (ok bool) {
 	switch m.Type {
 	case msgHup:
 		sm.becomeCandidate()
 		if sm.q() == sm.poll(sm.id, true) {
 			sm.becomeLeader()
-			return
+			return true
 		}
 		for i := range sm.ins {
 			if i == sm.id {
@@ -255,10 +255,10 @@ func (sm *stateMachine) Step(m Message) {
 			lasti := sm.log.lastIndex()
 			sm.send(Message{To: i, Type: msgVote, Index: lasti, LogTerm: sm.log.term(lasti)})
 		}
-		return
+		return true
 	case msgBeat:
 		if sm.state != stateLeader {
-			return
+			return true
 		}
 		sm.bcastAppend()
 		return
@@ -272,8 +272,7 @@ func (sm *stateMachine) Step(m Message) {
 			e := m.Entries[0]
 			if e.Type == configAdd || e.Type == configRemove {
 				if sm.pendingConf {
-					// todo: deny
-					return
+					return false
 				}
 				sm.pendingConf = true
 			}
@@ -284,12 +283,13 @@ func (sm *stateMachine) Step(m Message) {
 			sm.maybeCommit()
 			sm.bcastAppend()
 		case none:
-			panic("msgProp given without leader")
+			// msgProp given without leader
+			return false
 		default:
 			m.To = sm.lead
 			sm.send(m)
 		}
-		return
+		return true
 	}
 
 	switch {
@@ -297,7 +297,7 @@ func (sm *stateMachine) Step(m Message) {
 		sm.becomeFollower(m.Term, m.From)
 	case m.Term < sm.term:
 		// ignore
-		return
+		return true
 	}
 
 	handleAppendEntries := func() {
@@ -354,6 +354,7 @@ func (sm *stateMachine) Step(m Message) {
 			}
 		}
 	}
+	return true
 }
 
 func (sm *stateMachine) add(id int) {
