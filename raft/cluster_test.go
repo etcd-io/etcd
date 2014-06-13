@@ -95,7 +95,6 @@ func buildCluster(size int) (nt *network, nodes []*Node) {
 	Dictate(nodes[0]).Next()
 	for i := 1; i < size; i++ {
 		nt.send(nodes[0].newConfMessage(configAdd, &Config{NodeId: i}))
-		nodes[i].Start()
 		for j := 0; j < i; j++ {
 			nodes[j].Next()
 		}
