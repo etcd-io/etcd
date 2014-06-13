@@ -80,7 +80,7 @@ func (n *Node) Step(m Message) {
 	}
 }
 
-// Next applies all available committed commands.
+// Next returns all the appliable entries
 func (n *Node) Next() []Entry {
 	ents := n.sm.nextEnts()
 	for i := range ents {
