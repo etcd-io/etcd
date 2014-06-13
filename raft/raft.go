@@ -356,12 +356,12 @@ func (sm *stateMachine) Step(m Message) {
 	}
 }
 
-func (sm *stateMachine) Add(id int) {
+func (sm *stateMachine) add(id int) {
 	sm.ins[id] = &index{next: sm.log.lastIndex() + 1}
 	sm.pendingConf = false
 }
 
-func (sm *stateMachine) Remove(id int) {
+func (sm *stateMachine) remove(id int) {
 	delete(sm.ins, id)
 	sm.pendingConf = false
 }
