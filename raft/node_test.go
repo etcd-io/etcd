@@ -9,7 +9,7 @@ const (
 	defaultElection  = 5
 )
 
-func TestTickMsgHub(t *testing.T) {
+func TestTickMsgHup(t *testing.T) {
 	n := New(0, defaultHeartbeat, defaultElection)
 	n.sm = newStateMachine(0, []int{0, 1, 2})
 
