@@ -357,12 +357,12 @@ func (sm *stateMachine) Step(m Message) (ok bool) {
 	return true
 }
 
-func (sm *stateMachine) add(id int) {
+func (sm *stateMachine) addNode(id int) {
 	sm.ins[id] = &index{next: sm.log.lastIndex() + 1}
 	sm.pendingConf = false
 }
 
-func (sm *stateMachine) remove(id int) {
+func (sm *stateMachine) removeNode(id int) {
 	delete(sm.ins, id)
 	sm.pendingConf = false
 }

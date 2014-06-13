@@ -93,14 +93,14 @@ func (n *Node) Next() []Entry {
 				golog.Println(err)
 				continue
 			}
-			n.sm.add(c.NodeId)
+			n.sm.addNode(c.NodeId)
 		case configRemove:
 			c := new(config)
 			if err := json.Unmarshal(ents[i].Data, c); err != nil {
 				golog.Println(err)
 				continue
 			}
-			n.sm.remove(c.NodeId)
+			n.sm.removeNode(c.NodeId)
 		default:
 			panic("unexpected entry type")
 		}
