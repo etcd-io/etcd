@@ -44,25 +44,23 @@ func New(id int, heartbeat, election tick) *Node {
 
 func Dictate(n *Node) *Node {
 	n.Step(Message{Type: msgHup})
-	n.Step(n.newConfMessage(configAdd, &Config{NodeId: n.Id()}))
+	n.Add(n.Id())
 	return n
 }
 
 func (n *Node) Id() int { return n.sm.id }
 
 // Propose asynchronously proposes data be applied to the underlying state machine.
-func (n *Node) Propose(data []byte) {
-	m := Message{Type: msgProp, Entries: []Entry{{Data: data}}}
+func (n *Node) Propose(data []byte) { n.propose(normal, data) }
+
+func (n *Node) propose(t int, data []byte) {
+	m := Message{Type: msgProp, Entries: []Entry{{Type: t, Data: data}}}
 	n.Step(m)
 }
 
-func (n *Node) Add(id int) {
-	n.Step(n.newConfMessage(configAdd, &Config{NodeId: id}))
-}
+func (n *Node) Add(id int) { n.updateConf(configAdd, &Config{NodeId: id}) }
 
-func (n *Node) Remove(id int) {
-	n.Step(n.newConfMessage(configRemove, &Config{NodeId: id}))
-}
+func (n *Node) Remove(id int) { n.updateConf(configRemove, &Config{NodeId: id}) }
 
 func (n *Node) Msgs() []Message {
 	return n.sm.Msgs()
@@ -132,10 +130,10 @@ func (n *Node) Tick() {
 	}
 }
 
-func (n *Node) newConfMessage(t int, c *Config) Message {
+func (n *Node) updateConf(t int, c *Config) {
 	data, err := json.Marshal(c)
 	if err != nil {
 		panic(err)
 	}
-	return Message{Type: msgProp, Entries: []Entry{Entry{Type: t, Data: data}}}
+	n.propose(t, data)
 }
