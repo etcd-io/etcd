@@ -12,9 +12,9 @@ type Interface interface {
 
 type tick int
 
-type Config struct {
-	NodeId    int
-	Address   string
+type config struct {
+	NodeId  int
+	Address string
 }
 
 type Node struct {
@@ -57,9 +57,9 @@ func (n *Node) propose(t int, data []byte) {
 	n.Step(m)
 }
 
-func (n *Node) Add(id int) { n.updateConf(configAdd, &Config{NodeId: id}) }
+func (n *Node) Add(id int) { n.updateConf(configAdd, &config{NodeId: id}) }
 
-func (n *Node) Remove(id int) { n.updateConf(configRemove, &Config{NodeId: id}) }
+func (n *Node) Remove(id int) { n.updateConf(configRemove, &config{NodeId: id}) }
 
 func (n *Node) Msgs() []Message {
 	return n.sm.Msgs()
@@ -93,14 +93,14 @@ func (n *Node) Next() []Entry {
 			// dispatch to the application state machine
 			nents = append(nents, ents[i])
 		case configAdd:
-			c := new(Config)
+			c := new(config)
 			if err := json.Unmarshal(ents[i].Data, c); err != nil {
 				golog.Println(err)
 				continue
 			}
 			n.sm.Add(c.NodeId)
 		case configRemove:
-			c := new(Config)
+			c := new(config)
 			if err := json.Unmarshal(ents[i].Data, c); err != nil {
 				golog.Println(err)
 				continue
@@ -129,7 +129,7 @@ func (n *Node) Tick() {
 	}
 }
 
-func (n *Node) updateConf(t int, c *Config) {
+func (n *Node) updateConf(t int, c *config) {
 	data, err := json.Marshal(c)
 	if err != nil {
 		panic(err)
