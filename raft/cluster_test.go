@@ -60,8 +60,8 @@ func TestBasicCluster(t *testing.T) {
 
 		for j := 0; j < tt.round; j++ {
 			for _, n := range nodes {
-				data := []byte{byte(n.addr)}
-				nt.send(Message{Type: msgProp, To: n.addr, Entries: []Entry{{Data: data}}})
+				data := []byte{byte(n.id)}
+				nt.send(Message{Type: msgProp, To: n.id, Entries: []Entry{{Data: data}}})
 
 				base := nodes[0].Next()
 				if len(base) != 1 {

@@ -143,7 +143,7 @@ func TestCannotCommitWithoutNewTermEntry(t *testing.T) {
 }
 
 func TestDuelingCandidates(t *testing.T) {
-	a := newStateMachine(0, nil) // k, addr are set later
+	a := newStateMachine(0, nil) // k, id are set later
 	c := newStateMachine(0, nil)
 
 	tt := newNetwork(a, nil, c)
@@ -638,20 +638,20 @@ type network struct {
 }
 
 // newNetwork initializes a network from peers. A nil node will be replaced
-// with a new *stateMachine. A *stateMachine will get its k, addr.
+// with a new *stateMachine. A *stateMachine will get its k, id.
 func newNetwork(peers ...Interface) *network {
 	peerAddrs := make([]int, len(peers))
 	for i := range peers {
 		peerAddrs[i] = i
 	}
 
-	for addr, p := range peers {
+	for id, p := range peers {
 		switch v := p.(type) {
 		case nil:
-			sm := newStateMachine(addr, peerAddrs)
-			peers[addr] = sm
+			sm := newStateMachine(id, peerAddrs)
+			peers[id] = sm
 		case *stateMachine:
-			v.addr = addr
+			v.id = id
 			v.ins = make(map[int]*index)
 			for i := range peerAddrs {
 				v.ins[i] = &index{}
@@ -680,11 +680,11 @@ func (nw *network) cut(one, other int) {
 	nw.drop(other, one, 1)
 }
 
-func (nw *network) isolate(addr int) {
+func (nw *network) isolate(id int) {
 	for i := 0; i < len(nw.peers); i++ {
-		if i != addr {
-			nw.drop(addr, i, 1.0)
-			nw.drop(i, addr, 1.0)
+		if i != id {
+			nw.drop(id, i, 1.0)
+			nw.drop(i, id, 1.0)
 		}
 	}
 }
