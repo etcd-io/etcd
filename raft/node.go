@@ -66,13 +66,12 @@ func (n *Node) Step(m Message) bool {
 		return false
 	}
 	for _, m := range n.sm.msgs[l:] {
-		// reset elapsed in two cases:
-		// msgAppResp -> heard from the leader of the same term
-		// msgVoteResp with grant -> heard from the candidate the node voted for
 		switch m.Type {
 		case msgAppResp:
+			// We just heard from the leader of the same term.
 			n.elapsed = 0
 		case msgVoteResp:
+			// We just heard from the candidate the node voted for.
 			if m.Index >= 0 {
 				n.elapsed = 0
 			}
