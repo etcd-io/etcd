@@ -60,9 +60,7 @@ func (n *Node) Add(id int) { n.updateConf(configAdd, &config{NodeId: id}) }
 
 func (n *Node) Remove(id int) { n.updateConf(configRemove, &config{NodeId: id}) }
 
-func (n *Node) Msgs() []Message {
-	return n.sm.Msgs()
-}
+func (n *Node) Msgs() []Message { return n.sm.Msgs() }
 
 func (n *Node) Step(m Message) {
 	l := len(n.sm.msgs)
