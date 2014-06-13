@@ -14,7 +14,6 @@ type tick int
 
 type Config struct {
 	NodeId    int
-	ClusterId int
 	Address   string
 }
 
