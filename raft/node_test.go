@@ -96,7 +96,7 @@ func TestStartCluster(t *testing.T) {
 		t.Errorf("k = %d, want 1", len(n.sm.ins))
 	}
 	if n.sm.id != 0 {
-		t.Errorf("addr = %d, want 0", n.sm.id)
+		t.Errorf("id = %d, want 0", n.sm.id)
 	}
 	if n.sm.state != stateLeader {
 		t.Errorf("state = %s, want %s", n.sm.state, stateLeader)
@@ -113,7 +113,7 @@ func TestAdd(t *testing.T) {
 		t.Errorf("k = %d, want 2", len(n.sm.ins))
 	}
 	if n.sm.id != 0 {
-		t.Errorf("addr = %d, want 0", n.sm.id)
+		t.Errorf("id = %d, want 0", n.sm.id)
 	}
 }
 
@@ -130,6 +130,6 @@ func TestRemove(t *testing.T) {
 		t.Errorf("k = %d, want 1", len(n.sm.ins))
 	}
 	if n.sm.id != 0 {
-		t.Errorf("addr = %d, want 0", n.sm.id)
+		t.Errorf("id = %d, want 0", n.sm.id)
 	}
 }
