@@ -515,6 +515,31 @@ func TestConf(t *testing.T) {
 	}
 }
 
+// Ensures that the new leader sets the pendingConf flag correctly according to
+// the uncommitted log entries
+func TestConfChangeLeader(t *testing.T) {
+	tests := []struct {
+		et       int
+		wPending bool
+	}{
+		{normal, false},
+		{configAdd, true},
+		{configRemove, true},
+	}
+
+	for i, tt := range tests {
+		sm := newStateMachine(0, []int{0})
+		sm.log = &log{ents: []Entry{{}, {Type: tt.et}}}
+
+		sm.becomeCandidate()
+		sm.becomeLeader()
+
+		if sm.pendingConf != tt.wPending {
+			t.Errorf("#%d: pendingConf = %v, want %v", i, sm.pendingConf, tt.wPending)
+		}
+	}
+}
+
 func TestAllServerStepdown(t *testing.T) {
 	tests := []stateType{stateFollower, stateCandidate, stateLeader}
 
