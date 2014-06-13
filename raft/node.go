@@ -26,8 +26,6 @@ type Node struct {
 	// elapsed ticks after the last reset
 	elapsed tick
 	sm      *stateMachine
-
-	id int
 }
 
 func New(id int, heartbeat, election tick) *Node {
@@ -38,7 +36,6 @@ func New(id int, heartbeat, election tick) *Node {
 	n := &Node{
 		heartbeat: heartbeat,
 		election:  election,
-		id:        id,
 		sm:        newStateMachine(id, []int{id}),
 	}
 
@@ -47,9 +44,11 @@ func New(id int, heartbeat, election tick) *Node {
 
 func Dictate(n *Node) *Node {
 	n.Step(Message{Type: msgHup})
-	n.Step(n.newConfMessage(configAdd, &Config{NodeId: n.id}))
+	n.Step(n.newConfMessage(configAdd, &Config{NodeId: n.Id()}))
 	return n
 }
+
+func (n *Node) Id() int { return n.sm.id }
 
 // Propose asynchronously proposes data be applied to the underlying state machine.
 func (n *Node) Propose(data []byte) {
@@ -138,5 +137,5 @@ func (n *Node) newConfMessage(t int, c *Config) Message {
 	if err != nil {
 		panic(err)
 	}
-	return Message{Type: msgProp, To: n.id, Entries: []Entry{Entry{Type: t, Data: data}}}
+	return Message{Type: msgProp, Entries: []Entry{Entry{Type: t, Data: data}}}
 }
