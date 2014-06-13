@@ -39,8 +39,15 @@ func New(addr int, heartbeat, election tick) *Node {
 		heartbeat: heartbeat,
 		election:  election,
 		addr:      addr,
+		sm:        newStateMachine(addr, []int{addr}),
 	}
 
+	return n
+}
+
+func Dictate(n *Node) *Node {
+	n.Step(Message{Type: msgHup})
+	n.Step(n.newConfMessage(configAdd, &Config{NodeId: n.addr}))
 	return n
 }
 
@@ -48,20 +55,6 @@ func New(addr int, heartbeat, election tick) *Node {
 func (n *Node) Propose(data []byte) {
 	m := Message{Type: msgProp, Entries: []Entry{{Data: data}}}
 	n.Step(m)
-}
-
-func Dictate(n *Node) *Node {
-	n.sm = newStateMachine(n.addr, []int{n.addr})
-	n.Step(Message{Type: msgHup})
-	n.Step(n.newConfMessage(configAdd, &Config{NodeId: n.addr}))
-	return n
-}
-
-func (n *Node) Start() {
-	if n.sm != nil {
-		panic("node is started")
-	}
-	n.sm = newStateMachine(n.addr, nil)
 }
 
 func (n *Node) Add(addr int) {
