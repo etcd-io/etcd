@@ -81,7 +81,7 @@ func (in *index) decr() {
 }
 
 type stateMachine struct {
-	addr int
+	id int
 
 	// the term we are participating in at any time
 	term int
@@ -100,15 +100,15 @@ type stateMachine struct {
 
 	msgs []Message
 
-	// the leader addr
+	// the leader id
 	lead int
 
 	// pending reconfiguration
 	pendingConf bool
 }
 
-func newStateMachine(addr int, peers []int) *stateMachine {
-	sm := &stateMachine{addr: addr, log: newLog(), ins: make(map[int]*index)}
+func newStateMachine(id int, peers []int) *stateMachine {
+	sm := &stateMachine{id: id, log: newLog(), ins: make(map[int]*index)}
 	for p := range peers {
 		sm.ins[p] = &index{}
 	}
@@ -123,9 +123,9 @@ func (sm *stateMachine) canStep(m Message) bool {
 	return true
 }
 
-func (sm *stateMachine) poll(addr int, v bool) (granted int) {
-	if _, ok := sm.votes[addr]; !ok {
-		sm.votes[addr] = v
+func (sm *stateMachine) poll(id int, v bool) (granted int) {
+	if _, ok := sm.votes[id]; !ok {
+		sm.votes[id] = v
 	}
 	for _, vv := range sm.votes {
 		if vv {
@@ -137,7 +137,7 @@ func (sm *stateMachine) poll(addr int, v bool) (granted int) {
 
 // send persists state to stable storage and then sends to its mailbox.
 func (sm *stateMachine) send(m Message) {
-	m.From = sm.addr
+	m.From = sm.id
 	m.Term = sm.term
 	sm.msgs = append(sm.msgs, m)
 }
@@ -158,7 +158,7 @@ func (sm *stateMachine) sendAppend(to int) {
 // bcastAppend sends RRPC, with entries to all peers that are not up-to-date according to sm.mis.
 func (sm *stateMachine) bcastAppend() {
 	for i := range sm.ins {
-		if i == sm.addr {
+		if i == sm.id {
 			continue
 		}
 		sm.sendAppend(i)
@@ -188,7 +188,7 @@ func (sm *stateMachine) reset() {
 	sm.votes = make(map[int]bool)
 	for i := range sm.ins {
 		sm.ins[i] = &index{next: sm.log.lastIndex() + 1}
-		if i == sm.addr {
+		if i == sm.id {
 			sm.ins[i].match = sm.log.lastIndex()
 		}
 	}
@@ -213,7 +213,7 @@ func (sm *stateMachine) becomeCandidate() {
 	}
 	sm.reset()
 	sm.term++
-	sm.vote = sm.addr
+	sm.vote = sm.id
 	sm.state = stateCandidate
 }
 
@@ -223,7 +223,7 @@ func (sm *stateMachine) becomeLeader() {
 		panic("invalid transition [follower -> leader]")
 	}
 	sm.reset()
-	sm.lead = sm.addr
+	sm.lead = sm.id
 	sm.state = stateLeader
 
 	for _, e := range sm.log.ents[sm.log.committed:] {
@@ -244,12 +244,12 @@ func (sm *stateMachine) Step(m Message) {
 	switch m.Type {
 	case msgHup:
 		sm.becomeCandidate()
-		if sm.q() == sm.poll(sm.addr, true) {
+		if sm.q() == sm.poll(sm.id, true) {
 			sm.becomeLeader()
 			return
 		}
 		for i := range sm.ins {
-			if i == sm.addr {
+			if i == sm.id {
 				continue
 			}
 			lasti := sm.log.lastIndex()
@@ -268,7 +268,7 @@ func (sm *stateMachine) Step(m Message) {
 		}
 
 		switch sm.lead {
-		case sm.addr:
+		case sm.id:
 			e := m.Entries[0]
 			if e.Type == configAdd || e.Type == configRemove {
 				if sm.pendingConf {
@@ -280,7 +280,7 @@ func (sm *stateMachine) Step(m Message) {
 			e.Term = sm.term
 
 			sm.log.append(sm.log.lastIndex(), e)
-			sm.ins[sm.addr].update(sm.log.lastIndex())
+			sm.ins[sm.id].update(sm.log.lastIndex())
 			sm.maybeCommit()
 			sm.bcastAppend()
 		case none:
@@ -356,12 +356,12 @@ func (sm *stateMachine) Step(m Message) {
 	}
 }
 
-func (sm *stateMachine) Add(addr int) {
-	sm.ins[addr] = &index{next: sm.log.lastIndex() + 1}
+func (sm *stateMachine) Add(id int) {
+	sm.ins[id] = &index{next: sm.log.lastIndex() + 1}
 	sm.pendingConf = false
 }
 
-func (sm *stateMachine) Remove(addr int) {
-	delete(sm.ins, addr)
+func (sm *stateMachine) Remove(id int) {
+	delete(sm.ins, id)
 	sm.pendingConf = false
 }

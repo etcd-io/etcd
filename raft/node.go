@@ -27,10 +27,10 @@ type Node struct {
 	elapsed tick
 	sm      *stateMachine
 
-	addr int
+	id int
 }
 
-func New(addr int, heartbeat, election tick) *Node {
+func New(id int, heartbeat, election tick) *Node {
 	if election < heartbeat*3 {
 		panic("election is least three times as heartbeat [election: %d, heartbeat: %d]")
 	}
@@ -38,8 +38,8 @@ func New(addr int, heartbeat, election tick) *Node {
 	n := &Node{
 		heartbeat: heartbeat,
 		election:  election,
-		addr:      addr,
-		sm:        newStateMachine(addr, []int{addr}),
+		id:        id,
+		sm:        newStateMachine(id, []int{id}),
 	}
 
 	return n
@@ -47,7 +47,7 @@ func New(addr int, heartbeat, election tick) *Node {
 
 func Dictate(n *Node) *Node {
 	n.Step(Message{Type: msgHup})
-	n.Step(n.newConfMessage(configAdd, &Config{NodeId: n.addr}))
+	n.Step(n.newConfMessage(configAdd, &Config{NodeId: n.id}))
 	return n
 }
 
@@ -57,12 +57,12 @@ func (n *Node) Propose(data []byte) {
 	n.Step(m)
 }
 
-func (n *Node) Add(addr int) {
-	n.Step(n.newConfMessage(configAdd, &Config{NodeId: addr}))
+func (n *Node) Add(id int) {
+	n.Step(n.newConfMessage(configAdd, &Config{NodeId: id}))
 }
 
-func (n *Node) Remove(addr int) {
-	n.Step(n.newConfMessage(configRemove, &Config{NodeId: addr}))
+func (n *Node) Remove(id int) {
+	n.Step(n.newConfMessage(configRemove, &Config{NodeId: id}))
 }
 
 func (n *Node) Msgs() []Message {
@@ -138,5 +138,5 @@ func (n *Node) newConfMessage(t int, c *Config) Message {
 	if err != nil {
 		panic(err)
 	}
-	return Message{Type: msgProp, To: n.addr, Entries: []Entry{Entry{Type: t, Data: data}}}
+	return Message{Type: msgProp, To: n.id, Entries: []Entry{Entry{Type: t, Data: data}}}
 }
