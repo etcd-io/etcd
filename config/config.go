@@ -36,7 +36,6 @@ var newFlagNameLookup = map[string]string{
 	"d":                      "data-dir",
 	"m":                      "max-result-buffer",
 	"r":                      "max-retry-attempts",
-	"maxsize":                "max-cluster-size",
 	"clientCAFile":           "ca-file",
 	"clientCert":             "cert-file",
 	"clientKey":              "key-file",

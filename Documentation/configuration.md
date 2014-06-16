@@ -31,7 +31,6 @@ configuration files.
 * `-cpuprofile` - The path to a file to output CPU profile data. Enables CPU profiling when present.
 * `-data-dir` - The directory to store log and snapshot. Defaults to the current working directory.
 * `-max-result-buffer` - The max size of result buffer. Defaults to `1024`.
-* `-max-cluster-size` - The max size of the cluster. Defaults to `9`.
 * `-max-retry-attempts` - The max retry attempts when trying to join a cluster. Defaults to `3`.
 * `-peer-addr` - The advertised public hostname:port for server communication. Defaults to `127.0.0.1:7001`.
 * `-peer-bind-addr` - The listening hostname for server communication. Defaults to advertised IP.
