@@ -25,7 +25,6 @@ const (
 )
 
 // ClusterConfig represents cluster-wide configuration settings.
-// These settings can only be changed through Raft.
 type ClusterConfig struct {
 	// ActiveSize is the maximum number of node that can join as Raft followers.
 	// Nodes that join the cluster after the limit is reached are standbys.

@@ -41,6 +41,9 @@ configuration files.
 * `-peer-election-timeout` - The number of milliseconds to wait before the leader is declared unhealthy.
 * `-peer-heartbeat-interval` - The number of milliseconds in between heartbeat requests
 * `-snapshot=false` - Disable log snapshots. Defaults to `true`.
+* `-cluster-active-size` - The number of expected peer-mode instances in the cluster. It is used only when the instance creates a new cluster.
+* `-cluster-remove-delay` - The delay before one node is removed from the cluster since it cannot be connected at all. It is used only when the instance creates a new cluster.
+* `-cluster-sync-interval` - The interval between synchronization for standby-mode instance with the cluster. It is used only when the instance creates a new cluster.
 * `-v` - Enable verbose logging. Defaults to `false`.
 * `-vv` - Enable very verbose logging. Defaults to `false`.
 * `-version` - Print the version and exit.
@@ -76,6 +79,11 @@ bind_addr = "127.0.0.1:7001"
 ca_file = ""
 cert_file = ""
 key_file = ""
+
+[cluster]
+active_size = 9
+remove_delay = 1800.0
+sync_interval = 5.0
 ```
 
 ## Environment Variables
@@ -105,3 +113,6 @@ key_file = ""
  * `ETCD_PEER_CERT_FILE`
  * `ETCD_PEER_KEY_FILE`
  * `ETCD_PEER_ELECTION_TIMEOUT`
+ * `ETCD_CLUSTER_ACTIVE_SIZE`
+ * `ETCD_CLUSTER_REMOVE_DELAY`
+ * `ETCD_CLUSTER_SYNC_INTERVAL`
