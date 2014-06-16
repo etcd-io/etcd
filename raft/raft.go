@@ -122,13 +122,6 @@ func newStateMachine(id int, peers []int) *stateMachine {
 	return sm
 }
 
-func (sm *stateMachine) canStep(m Message) bool {
-	if m.Type == msgProp {
-		return sm.lead != none
-	}
-	return true
-}
-
 func (sm *stateMachine) poll(id int, v bool) (granted int) {
 	if _, ok := sm.votes[id]; !ok {
 		sm.votes[id] = v
