@@ -118,7 +118,7 @@ func newStateMachine(id int, peers []int) *stateMachine {
 	for p := range peers {
 		sm.ins[p] = &index{}
 	}
-	sm.reset()
+	sm.reset(0)
 	return sm
 }
 
@@ -181,7 +181,8 @@ func (sm *stateMachine) nextEnts() (ents []Entry) {
 	return sm.log.nextEnts()
 }
 
-func (sm *stateMachine) reset() {
+func (sm *stateMachine) reset(term int) {
+	sm.term = term
 	sm.lead = none
 	sm.vote = none
 	sm.votes = make(map[int]bool)
@@ -198,8 +199,7 @@ func (sm *stateMachine) q() int {
 }
 
 func (sm *stateMachine) becomeFollower(term, lead int) {
-	sm.reset()
-	sm.term = term
+	sm.reset(term)
 	sm.lead = lead
 	sm.state = stateFollower
 	sm.pendingConf = false
@@ -210,8 +210,7 @@ func (sm *stateMachine) becomeCandidate() {
 	if sm.state == stateLeader {
 		panic("invalid transition [leader -> candidate]")
 	}
-	sm.reset()
-	sm.term++
+	sm.reset(sm.term + 1)
 	sm.vote = sm.id
 	sm.state = stateCandidate
 }
@@ -221,7 +220,7 @@ func (sm *stateMachine) becomeLeader() {
 	if sm.state == stateFollower {
 		panic("invalid transition [follower -> leader]")
 	}
-	sm.reset()
+	sm.reset(sm.term)
 	sm.lead = sm.id
 	sm.state = stateLeader
 

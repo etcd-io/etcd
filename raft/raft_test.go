@@ -653,7 +653,7 @@ func ents(terms ...int) *stateMachine {
 	}
 
 	sm := &stateMachine{log: &log{ents: ents}}
-	sm.reset()
+	sm.reset(0)
 	return sm
 }
 
@@ -681,7 +681,7 @@ func newNetwork(peers ...Interface) *network {
 			for i := range peerAddrs {
 				v.ins[i] = &index{}
 			}
-			v.reset()
+			v.reset(0)
 		}
 	}
 	return &network{peers: peers, dropm: make(map[connem]float64)}
