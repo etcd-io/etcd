@@ -1,6 +1,8 @@
 # Etcd Configuration
 
-Configuration options can be set in three places:
+## Node Configuration
+
+Individual node configuration options can be set in three places:
 
  1. Command line flags
  2. Environment variables
@@ -9,6 +11,16 @@ Configuration options can be set in three places:
 Options set on the command line take precedence over all other sources.
 Options set in environment variables take precedence over options set in
 configuration files.
+
+## Cluster Configuration
+
+Cluster-wide settings are configured via the `/config` admin endpoint and additionally in the configuration file. Values contained in the configuration file will seed the cluster setting with the provided value. After the cluster is running, only the admin endpoint is used.
+
+The full documentation is contained in the [API docs](https://github.com/coreos/etcd/blob/master/Documentation/api.md#cluster-config).
+
+* `activeSize` - the maximum number of peers that can participate in the consensus protocol. Other peers will join as standbys.
+* `removeDelay` - the minimum time in seconds that a machine has been observed to be unresponsive before it is removed from the cluster.
+* `syncInterval` - the amount of time in seconds between cluster sync when it runs in standby mode.
 
 ## Command Line Flags
 
