@@ -92,3 +92,4 @@ A detailed recap of client functionalities can be found in the [clients compatib
 - [fleet](https://github.com/coreos/fleet) - Distributed init system
 - [GoogleCloudPlatform/kubernetes](https://github.com/GoogleCloudPlatform/kubernetes) - Container cluster manager.
 - [mailgun/vulcand](https://github.com/mailgun/vulcand) - HTTP proxy that uses etcd as a configuration backend.
+- [duedil-ltd/discodns](https://github.com/duedil-ltd/discodns) - Simple DNS nameserver using etcd as a database for names and records.
