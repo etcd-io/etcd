@@ -29,16 +29,16 @@ The v2 API has a lot of features, we will categorize them in a few categories:
 
 ### Supported features matrix
 
-| Client| [go-etcd](https://github.com/coreos/go-etcd) | [jetcd](https://github.com/diwakergupta/jetcd) | [python-etcd](https://github.com/jplana/python-etcd) | [python-etcd-client](https://github.com/dsoprea/PythonEtcdClient) | [node-etcd](https://github.com/stianeikeland/node-etcd) | [nodejs-etcd](https://github.com/lavagetto/nodejs-etcd) | [etcd-ruby](https://github.com/ranjib/etcd-ruby) | [etcd-api](https://github.com/jdarcy/etcd-api) | [cetcd](https://github.com/dwwoelfel/cetcd) |  [clj-etcd](https://github.com/rthomas/clj-etcd) | [etcetera](https://github.com/drusellers/etcetera)| [Etcd.jl](https://github.com/forio/Etcd.jl) |
-| --- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **HTTPS Auth**    | Y | Y | Y | Y | Y | Y | - | - | - | - | - | - |
-| **Reconnect**     | Y | - | Y | Y | - | - | - | Y | - | - | - | - |
-| **Mod/Lock**      | - | - | Y | Y | - | - | - | - | - | - | - | Y |
-| **Mod/Leader**    | - | - | - | Y | - | - | - | - | - | - | - | Y |
-| **GET Features**  | F | B | F | F | F | F | F | B | F | G | F | F |
-| **PUT Features**  | F | B | F | F | F | F | F | G | F | G | F | F |
-| **POST Features** | F | - | F | F | - | F | F | - | - | - | F | F |
-| **DEL Features**  | F | B | F | F | F | F | F | B | G | B | F | F |
+| Client| [go-etcd](https://github.com/coreos/go-etcd) | [jetcd](https://github.com/diwakergupta/jetcd) | [python-etcd](https://github.com/jplana/python-etcd) | [python-etcd-client](https://github.com/dsoprea/PythonEtcdClient) | [node-etcd](https://github.com/stianeikeland/node-etcd) | [nodejs-etcd](https://github.com/lavagetto/nodejs-etcd) | [etcd-ruby](https://github.com/ranjib/etcd-ruby) | [etcd-api](https://github.com/jdarcy/etcd-api) | [cetcd](https://github.com/dwwoelfel/cetcd) |  [clj-etcd](https://github.com/rthomas/clj-etcd) | [etcetera](https://github.com/drusellers/etcetera)| [Etcd.jl](https://github.com/forio/Etcd.jl) | [p5-etcd](https://metacpan.org/release/Etcd)
+| --- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **HTTPS Auth**    | Y | Y | Y | Y | Y | Y | - | - | - | - | - | - | - |
+| **Reconnect**     | Y | - | Y | Y | - | - | - | Y | - | - | - | - | - |
+| **Mod/Lock**      | - | - | Y | Y | - | - | - | - | - | - | - | Y | - |
+| **Mod/Leader**    | - | - | - | Y | - | - | - | - | - | - | - | Y | - |
+| **GET Features**  | F | B | F | F | F | F | F | B | F | G | F | F | F |
+| **PUT Features**  | F | B | F | F | F | F | F | G | F | G | F | F | F |
+| **POST Features** | F | - | F | F | - | F | F | - | - | - | F | F | F |
+| **DEL Features**  | F | B | F | F | F | F | F | B | G | B | F | F | F |
 
 **Legend**
 
