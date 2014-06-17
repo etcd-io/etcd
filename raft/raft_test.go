@@ -427,12 +427,11 @@ func TestRecvMsgVote(t *testing.T) {
 		sm.Step(Message{Type: msgVote, From: 1, Index: tt.i, LogTerm: tt.term})
 
 		msgs := sm.Msgs()
-		if len(msgs) != 1 {
-			t.Errorf("#%d: len(msgs) = %d, want 1", i, len(msgs))
+		if g := len(msgs); g != 1 {
+			t.Errorf("#%d: len(msgs) = %d, want 1", i, g)
 			continue
 		}
-		g := msgs[0].Index
-		if g != tt.w {
+		if g := msgs[0].Index; g != tt.w {
 			t.Errorf("#%d, m.Index = %d, want %d", i, g, tt.w)
 		}
 	}
