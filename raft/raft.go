@@ -115,7 +115,7 @@ type stateMachine struct {
 
 func newStateMachine(id int, peers []int) *stateMachine {
 	sm := &stateMachine{id: id, log: newLog(), ins: make(map[int]*index)}
-	for p := range peers {
+	for _, p := range peers {
 		sm.ins[p] = &index{}
 	}
 	sm.reset(0)
@@ -166,9 +166,9 @@ func (sm *stateMachine) bcastAppend() {
 
 func (sm *stateMachine) maybeCommit() bool {
 	// TODO(bmizerany): optimize.. Currently naive
-	mis := make([]int, len(sm.ins))
-	for i := range mis {
-		mis[i] = sm.ins[i].match
+	mis := make([]int, 0, len(sm.ins))
+	for i := range sm.ins {
+		mis = append(mis, sm.ins[i].match)
 	}
 	sort.Sort(sort.Reverse(sort.IntSlice(mis)))
 	mci := mis[sm.q()-1]
