@@ -56,6 +56,9 @@ Other Options:
   -max-cluster-size    Maximum number of nodes in the cluster.
   -snapshot=false      Disable log snapshots
   -snapshot-count      Number of transactions before issuing a snapshot.
+  -cluster-active-size Number of active nodes in the cluster.
+  -cluster-remove-delay Seconds before one node is removed.
+  -cluster-sync-interval Seconds between synchronizations for standby mode.
 `
 
 // Usage returns the usage message for etcd.
