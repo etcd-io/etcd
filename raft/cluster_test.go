@@ -7,10 +7,24 @@ import (
 
 // TestBuildCluster ensures cluster with various size could be built.
 func TestBuildCluster(t *testing.T) {
-	tests := []int{1, 3, 5, 7, 9, 13, 51}
+	tests := []struct {
+		size int
+		ids  []int
+	}{
+		{1, nil},
+		{3, nil},
+		{5, nil},
+		{7, nil},
+		{9, nil},
+		{13, nil},
+		{51, nil},
+		{1, []int{1}},
+		{3, []int{1, 3, 5}},
+		{5, []int{1, 4, 7, 10, 13}},
+	}
 
 	for i, tt := range tests {
-		_, nodes := buildCluster(tt)
+		_, nodes := buildCluster(tt.size, tt.ids)
 
 		base := ltoa(nodes[0].sm.log)
 		for j, n := range nodes {
@@ -21,8 +35,12 @@ func TestBuildCluster(t *testing.T) {
 			}
 
 			// ensure same leader
-			if n.sm.lead != 0 {
-				t.Errorf("#%d.%d: lead = %d, want 0", i, j, n.sm.lead)
+			w := 0
+			if tt.ids != nil {
+				w = tt.ids[0]
+			}
+			if g := n.sm.lead; g != w {
+				t.Errorf("#%d.%d: lead = %d, want %d", i, j, g, w)
 			}
 
 			// ensure same peer map
@@ -31,8 +49,12 @@ func TestBuildCluster(t *testing.T) {
 				p[k] = struct{}{}
 			}
 			wp := map[int]struct{}{}
-			for k := 0; k < tt; k++ {
-				wp[k] = struct{}{}
+			for k := 0; k < tt.size; k++ {
+				if tt.ids != nil {
+					wp[tt.ids[k]] = struct{}{}
+				} else {
+					wp[k] = struct{}{}
+				}
 			}
 			if !reflect.DeepEqual(p, wp) {
 				t.Errorf("#%d.%d: peers = %+v, want %+v", i, j, p, wp)
@@ -56,7 +78,7 @@ func TestBasicCluster(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		nt, nodes := buildCluster(tt.size)
+		nt, nodes := buildCluster(tt.size, nil)
 
 		for j := 0; j < tt.round; j++ {
 			for _, n := range nodes {
@@ -83,11 +105,18 @@ func TestBasicCluster(t *testing.T) {
 
 // This function is full of heck now. It will go away when we finish our
 // network Interface, and ticker infrastructure.
-func buildCluster(size int) (nt *network, nodes []*Node) {
+func buildCluster(size int, ids []int) (nt *network, nodes []*Node) {
+	if ids == nil {
+		ids = make([]int, size)
+		for i := 0; i < size; i++ {
+			ids[i] = i
+		}
+	}
+
 	nodes = make([]*Node, size)
 	nis := make([]Interface, size)
 	for i := range nodes {
-		nodes[i] = New(i, defaultHeartbeat, defaultElection)
+		nodes[i] = New(ids[i], defaultHeartbeat, defaultElection)
 		nis[i] = nodes[i]
 	}
 	nt = newNetwork(nis...)
@@ -95,7 +124,7 @@ func buildCluster(size int) (nt *network, nodes []*Node) {
 	lead := dictate(nodes[0])
 	lead.Next()
 	for i := 1; i < size; i++ {
-		lead.Add(i, "")
+		lead.Add(ids[i], "")
 		nt.send(lead.Msgs()...)
 		for j := 0; j < i; j++ {
 			nodes[j].Next()
