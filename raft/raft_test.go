@@ -658,33 +658,43 @@ func ents(terms ...int) *stateMachine {
 }
 
 type network struct {
-	peers []Interface
+	peers map[int]Interface
 	dropm map[connem]float64
 }
 
-// newNetwork initializes a network from peers. A nil node will be replaced
-// with a new *stateMachine. A *stateMachine will get its k, id.
+// newNetwork initializes a network from peers.
+// A nil node will be replaced with a new *stateMachine.
+// A *stateMachine will get its k, id.
+// When using stateMachine, the address list is always [0, n).
 func newNetwork(peers ...Interface) *network {
-	peerAddrs := make([]int, len(peers))
-	for i := range peers {
-		peerAddrs[i] = i
+	size := len(peers)
+	defaultPeerAddrs := make([]int, size)
+	for i := 0; i < size; i++ {
+		defaultPeerAddrs[i] = i
 	}
+
+	npeers := make(map[int]Interface, size)
 
 	for id, p := range peers {
 		switch v := p.(type) {
 		case nil:
-			sm := newStateMachine(id, peerAddrs)
-			peers[id] = sm
+			sm := newStateMachine(id, defaultPeerAddrs)
+			npeers[id] = sm
 		case *stateMachine:
 			v.id = id
 			v.ins = make(map[int]*index)
-			for i := range peerAddrs {
+			for i := 0; i < size; i++ {
 				v.ins[i] = &index{}
 			}
 			v.reset(0)
+			npeers[id] = v
+		case *Node:
+			npeers[v.sm.id] = v
+		default:
+			npeers[id] = v
 		}
 	}
-	return &network{peers: peers, dropm: make(map[connem]float64)}
+	return &network{peers: npeers, dropm: make(map[connem]float64)}
 }
 
 func (nw *network) send(msgs ...Message) {
