@@ -56,9 +56,9 @@ func (n *Node) propose(t int, data []byte) {
 	n.Step(Message{Type: msgProp, Entries: []Entry{{Type: t, Data: data}}})
 }
 
-func (n *Node) Add(id int) { n.updateConf(ConfigAdd, &config{NodeId: id}) }
+func (n *Node) Add(id int) { n.updateConf(AddNode, &config{NodeId: id}) }
 
-func (n *Node) Remove(id int) { n.updateConf(ConfigRemove, &config{NodeId: id}) }
+func (n *Node) Remove(id int) { n.updateConf(RemoveNode, &config{NodeId: id}) }
 
 func (n *Node) Msgs() []Message { return n.sm.Msgs() }
 
@@ -88,14 +88,14 @@ func (n *Node) Next() []Entry {
 	for i := range ents {
 		switch ents[i].Type {
 		case Normal:
-		case ConfigAdd:
+		case AddNode:
 			c := new(config)
 			if err := json.Unmarshal(ents[i].Data, c); err != nil {
 				golog.Println(err)
 				continue
 			}
 			n.sm.addNode(c.NodeId)
-		case ConfigRemove:
+		case RemoveNode:
 			c := new(config)
 			if err := json.Unmarshal(ents[i].Data, c); err != nil {
 				golog.Println(err)
