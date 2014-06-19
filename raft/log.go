@@ -3,8 +3,8 @@ package raft
 const (
 	Normal int = iota
 
-	ConfigAdd
-	ConfigRemove
+	AddNode
+	RemoveNode
 )
 
 type Entry struct {
