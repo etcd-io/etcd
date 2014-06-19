@@ -47,6 +47,8 @@ func Dictate(n *Node) *Node {
 
 func (n *Node) Id() int { return n.sm.id }
 
+func (n *Node) HasLeader() bool { return n.sm.lead != none }
+
 // Propose asynchronously proposes data be applied to the underlying state machine.
 func (n *Node) Propose(data []byte) { n.propose(normal, data) }
 
