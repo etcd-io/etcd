@@ -13,6 +13,10 @@ type Entry struct {
 	Data []byte
 }
 
+func (e *Entry) isConfig() bool {
+	return e.Type == AddNode || e.Type == RemoveNode
+}
+
 type log struct {
 	ents      []Entry
 	committed int

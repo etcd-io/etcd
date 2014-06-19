@@ -227,7 +227,7 @@ func (sm *stateMachine) becomeLeader() {
 	sm.state = stateLeader
 
 	for _, e := range sm.log.ents[sm.log.committed:] {
-		if e.Type == AddNode || e.Type == RemoveNode {
+		if e.isConfig() {
 			sm.pendingConf = true
 		}
 	}
@@ -270,7 +270,7 @@ func (sm *stateMachine) Step(m Message) (ok bool) {
 		switch sm.lead {
 		case sm.id:
 			e := m.Entries[0]
-			if e.Type == AddNode || e.Type == RemoveNode {
+			if e.isConfig() {
 				if sm.pendingConf {
 					return false
 				}
