@@ -497,19 +497,19 @@ func TestConf(t *testing.T) {
 	sm.becomeCandidate()
 	sm.becomeLeader()
 
-	sm.Step(Message{Type: msgProp, Entries: []Entry{{Type: configAdd}}})
+	sm.Step(Message{Type: msgProp, Entries: []Entry{{Type: ConfigAdd}}})
 	if sm.log.lastIndex() != 1 {
 		t.Errorf("lastindex = %d, want %d", sm.log.lastIndex(), 1)
 	}
 	if !sm.pendingConf {
 		t.Errorf("pendingConf = %v, want %v", sm.pendingConf, true)
 	}
-	if sm.log.ents[1].Type != configAdd {
-		t.Errorf("type = %d, want %d", sm.log.ents[1].Type, configAdd)
+	if sm.log.ents[1].Type != ConfigAdd {
+		t.Errorf("type = %d, want %d", sm.log.ents[1].Type, ConfigAdd)
 	}
 
 	// deny the second configuration change request if there is a pending one
-	sm.Step(Message{Type: msgProp, Entries: []Entry{{Type: configAdd}}})
+	sm.Step(Message{Type: msgProp, Entries: []Entry{{Type: ConfigAdd}}})
 	if sm.log.lastIndex() != 1 {
 		t.Errorf("lastindex = %d, want %d", sm.log.lastIndex(), 1)
 	}
@@ -522,9 +522,9 @@ func TestConfChangeLeader(t *testing.T) {
 		et       int
 		wPending bool
 	}{
-		{normal, false},
-		{configAdd, true},
-		{configRemove, true},
+		{Normal, false},
+		{ConfigAdd, true},
+		{ConfigRemove, true},
 	}
 
 	for i, tt := range tests {

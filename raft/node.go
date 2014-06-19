@@ -50,15 +50,15 @@ func (n *Node) Id() int { return n.sm.id }
 func (n *Node) HasLeader() bool { return n.sm.lead != none }
 
 // Propose asynchronously proposes data be applied to the underlying state machine.
-func (n *Node) Propose(data []byte) { n.propose(normal, data) }
+func (n *Node) Propose(data []byte) { n.propose(Normal, data) }
 
 func (n *Node) propose(t int, data []byte) {
 	n.Step(Message{Type: msgProp, Entries: []Entry{{Type: t, Data: data}}})
 }
 
-func (n *Node) Add(id int) { n.updateConf(configAdd, &config{NodeId: id}) }
+func (n *Node) Add(id int) { n.updateConf(ConfigAdd, &config{NodeId: id}) }
 
-func (n *Node) Remove(id int) { n.updateConf(configRemove, &config{NodeId: id}) }
+func (n *Node) Remove(id int) { n.updateConf(ConfigRemove, &config{NodeId: id}) }
 
 func (n *Node) Msgs() []Message { return n.sm.Msgs() }
 
@@ -87,15 +87,15 @@ func (n *Node) Next() []Entry {
 	ents := n.sm.nextEnts()
 	for i := range ents {
 		switch ents[i].Type {
-		case normal:
-		case configAdd:
+		case Normal:
+		case ConfigAdd:
 			c := new(config)
 			if err := json.Unmarshal(ents[i].Data, c); err != nil {
 				golog.Println(err)
 				continue
 			}
 			n.sm.addNode(c.NodeId)
-		case configRemove:
+		case ConfigRemove:
 			c := new(config)
 			if err := json.Unmarshal(ents[i].Data, c); err != nil {
 				golog.Println(err)
