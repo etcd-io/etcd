@@ -36,6 +36,7 @@ var newFlagNameLookup = map[string]string{
 	"d":                      "data-dir",
 	"m":                      "max-result-buffer",
 	"r":                      "max-retry-attempts",
+	"maxsize":                "cluster-active-size",
 	"clientCAFile":           "ca-file",
 	"clientCert":             "cert-file",
 	"clientKey":              "key-file",
@@ -44,6 +45,7 @@ var newFlagNameLookup = map[string]string{
 	"serverKey":              "peer-key-file",
 	"snapshotCount":          "snapshot-count",
 	"peer-heartbeat-timeout": "peer-heartbeat-interval",
+	"max-cluster-size":       "cluster-active-size",
 }
 
 // Config represents the server configuration.
@@ -64,6 +66,7 @@ type Config struct {
 	PeersFile        string   `toml:"peers_file" env:"ETCD_PEERS_FILE"`
 	MaxResultBuffer  int      `toml:"max_result_buffer" env:"ETCD_MAX_RESULT_BUFFER"`
 	MaxRetryAttempts int      `toml:"max_retry_attempts" env:"ETCD_MAX_RETRY_ATTEMPTS"`
+	MaxClusterSize   int      `toml:"max_cluster_size" env:"ETCD_MAX_CLUSTER_SIZE"`
 	RetryInterval    float64  `toml:"retry_interval" env:"ETCD_RETRY_INTERVAL"`
 	Name             string   `toml:"name" env:"ETCD_NAME"`
 	Snapshot         bool     `toml:"snapshot" env:"ETCD_SNAPSHOT"`
@@ -296,6 +299,8 @@ func (c *Config) LoadFlags(arguments []string) error {
 	f.IntVar(&c.MaxRetryAttempts, "r", c.MaxRetryAttempts, "(deprecated)")
 	f.IntVar(&c.SnapshotCount, "snapshotCount", c.SnapshotCount, "(deprecated)")
 	f.IntVar(&c.Peer.HeartbeatInterval, "peer-heartbeat-timeout", c.Peer.HeartbeatInterval, "(deprecated)")
+	f.IntVar(&c.Cluster.ActiveSize, "max-cluster-size", c.Cluster.ActiveSize, "(deprecated)")
+	f.IntVar(&c.Cluster.ActiveSize, "maxsize", c.Cluster.ActiveSize, "(deprecated)")
 	// END DEPRECATED FLAGS
 
 	if err := f.Parse(arguments); err != nil {
