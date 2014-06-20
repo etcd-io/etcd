@@ -1,7 +1,7 @@
 ## Modules
 
 etcd has a number of modules that are built on top of the core etcd API.
-These modules provide things like dashboards, locks and leader election.
+These modules provide things like dashboards, locks and leader election (removed).
 
 **Warning**: Modules are deprecated from v0.4 until we have a solid base we can apply them back onto.
 For now, we are choosing to focus on raft algorithm and core etcd to make sure that it works correctly and fast.
@@ -81,7 +81,7 @@ curl -X DELETE http://127.0.0.1:4001/mod/v2/lock/customer1?value=bar
 ```
 
 
-### Leader Election
+### Leader Election (Deprecated and Removed in 0.4)
 
 The Leader Election module wraps the Lock module to allow clients to come to consensus on a single value.
 This is useful when you want one server to process at a time but allow other servers to fail over.

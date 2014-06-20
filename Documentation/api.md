@@ -843,13 +843,13 @@ The client is told the write was successful and the keyspace is updated.
 Meanwhile F2 has partitioned from the network and will have an out-of-date version of the keyspace until the partition resolves.
 Since F2 missed the most recent write, a client reading from F2 will have an out-of-date version of the keyspace.
 
-## Lock Module (*Deprecated*)
+## Lock Module (*Deprecated and Removed*)
 
 The lock module is used to serialize access to resources used by clients.
 Multiple clients can attempt to acquire a lock but only one can have it at a time.
 Once the lock is released, the next client waiting for the lock will receive it.
 
-**Warning:** This module is deprecated at v0.4. See [Modules][modules] for more details.
+**Warning:** This module is deprecated and removed at v0.4. See [Modules][modules] for more details.
 
 
 ### Acquiring a Lock
