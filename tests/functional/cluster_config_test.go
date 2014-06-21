@@ -25,6 +25,7 @@ func TestClusterConfigSet(t *testing.T) {
 	resp, _ = tests.Get("http://localhost:7002/v2/admin/config")
 	body := tests.ReadBodyJSON(resp)
 	assert.Equal(t, resp.StatusCode, 200)
+	assert.Equal(t, resp.Header.Get("Content-Type"), "application/json")
 	assert.Equal(t, body["activeSize"], 3)
 	assert.Equal(t, body["removeDelay"], 60)
 }
@@ -44,6 +45,7 @@ func TestClusterConfigReload(t *testing.T) {
 	resp, _ = tests.Get("http://localhost:7002/v2/admin/config")
 	body := tests.ReadBodyJSON(resp)
 	assert.Equal(t, resp.StatusCode, 200)
+	assert.Equal(t, resp.Header.Get("Content-Type"), "application/json")
 	assert.Equal(t, body["activeSize"], 3)
 	assert.Equal(t, body["removeDelay"], 60)
 
@@ -59,6 +61,7 @@ func TestClusterConfigReload(t *testing.T) {
 	resp, _ = tests.Get("http://localhost:7002/v2/admin/config")
 	body = tests.ReadBodyJSON(resp)
 	assert.Equal(t, resp.StatusCode, 200)
+	assert.Equal(t, resp.Header.Get("Content-Type"), "application/json")
 	assert.Equal(t, body["activeSize"], 3)
 	assert.Equal(t, body["removeDelay"], 60)
 }
@@ -76,6 +79,7 @@ func TestGetMachines(t *testing.T) {
 		t.FailNow()
 	}
 	assert.Equal(t, resp.StatusCode, 200)
+	assert.Equal(t, resp.Header.Get("Content-Type"), "application/json")
 	machines := make([]map[string]interface{}, 0)
 	b := tests.ReadBody(resp)
 	json.Unmarshal(b, &machines)
