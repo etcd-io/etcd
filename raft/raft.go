@@ -198,6 +198,13 @@ func (sm *stateMachine) q() int {
 	return len(sm.ins)/2 + 1
 }
 
+// promotable indicates whether state machine could be promoted.
+// New machine has to wait for the first log entry to be committed, or it will
+// always start as a one-node cluster.
+func (sm *stateMachine) promotable() bool {
+	return sm.log.committed != 0
+}
+
 func (sm *stateMachine) becomeFollower(term, lead int) {
 	sm.reset(term)
 	sm.lead = lead
