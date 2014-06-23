@@ -17,6 +17,14 @@ func GetHandler(w http.ResponseWriter, req *http.Request, s Server) error {
 	vars := mux.Vars(req)
 	key := "/" + vars["key"]
 
+	recursive := (req.FormValue("recursive") == "true")
+	sort := (req.FormValue("sorted") == "true")
+
+	if req.FormValue("quorum") == "true" {
+		c := s.Store().CommandFactory().CreateGetCommand(key, recursive, sort)
+		return s.Dispatch(c, w, req)
+	}
+
 	// Help client to redirect the request to the current leader
 	if req.FormValue("consistent") == "true" && s.State() != raft.Leader {
 		leader := s.Leader()
@@ -35,8 +43,6 @@ func GetHandler(w http.ResponseWriter, req *http.Request, s Server) error {
 		return nil
 	}
 
-	recursive := (req.FormValue("recursive") == "true")
-	sort := (req.FormValue("sorted") == "true")
 	waitIndex := req.FormValue("waitIndex")
 	stream := (req.FormValue("stream") == "true")
 

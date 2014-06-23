@@ -24,6 +24,7 @@ type CommandFactory interface {
 		prevIndex uint64, expireTime time.Time) raft.Command
 	CreateCompareAndDeleteCommand(key string, prevValue string, prevIndex uint64) raft.Command
 	CreateSyncCommand(now time.Time) raft.Command
+	CreateGetCommand(key string, recursive, sorted bool) raft.Command
 }
 
 // RegisterCommandFactory adds a command factory to the global registry.
