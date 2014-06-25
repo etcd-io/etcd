@@ -28,8 +28,8 @@ The other important cluster optimization is to always have an odd active cluster
 |--------------|------------|-------------------|
 | 1 peers      | 1 peers    | None              |
 | 3 peers      | 2 peers    | 1 peer            |
-| 4 peers      | 3 peers    | 2 peers           |
-| 5 peers      | 3 peers    | **3 peers**       |
+| 4 peers      | 3 peers    | 1 peer           |
+| 5 peers      | 3 peers    | **2 peers**       |
 | 6 peers      | 4 peers    | 2 peers           |
 | 7 peers      | 4 peers    | **3 peers**       |
 | 8 peers      | 5 peers    | 3 peers           |
