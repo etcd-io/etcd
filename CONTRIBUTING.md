@@ -30,47 +30,32 @@ The coding style suggested by the Golang community is used in etcd. See [style d
 
 Please follow this style to make etcd easy to review, maintain and develop.
 
-### Format of the commit message
+### Format of the Commit Message
 
-etcd follows a rough convention for commit messages borrowed from Angularjs. This is an example of a commit:
-
-```
-    feat(scripts/test-cluster): add a cluster test command
-
-    this uses tmux to setup a test cluster that you can easily kill and
-    start for debugging.
-```
-
-The format can be more formally described as follows:
+We follow a rough convention for commit messages that is designed to answer two
+questions: what changed and why. The subject line should feature the what and
+the body of the commit should describe the why.
 
 ```
-<type>(<scope>): <subject>
+scripts: add the test-cluster command
+
+this uses tmux to setup a test cluster that you can easily kill and
+start for debugging.
+
+Fixes #38
+```
+
+The format can be described more formally as follows:
+
+```
+<subsystem>: <what changed>
 <BLANK LINE>
-<body>
+<why this change was made>
 <BLANK LINE>
 <footer>
 ```
 
-The first line is the subject and should be no longer than 70 characters, the second line is always blank, and other lines should be wrapped at 80 characters.  This allows the message to be easier to read on github as well as
-in various git tools.
-
-### Subject line
-
-The subject line contains a succinct description of the change.
-
-### Allowed <type>s
-- feat (feature)
-- fix (bug fix)
-- docs (documentation)
-- style (formatting, missing semi colons, …)
-- refactor
-- test (when adding missing tests)
-- chore (maintain)
-
-### Allowed <scope>s
-
-Scopes can be anything specifying the place of the commit change within the repository. For example, "store", "API", etc.
-
-### More details on commits
-
-For more details see the [angularjs commit style guide](https://docs.google.com/a/coreos.com/document/d/1QrDFcIiPjSLDn3EL15IJygNPiHORgU1_OOAqWjiDU5Y/edit#).
+The first line is the subject and should be no longer than 70 characters, the
+second line is always blank, and other lines should be wrapped at 80 characters.
+This allows the message to be easier to read on GitHub as well as in various
+git tools.
