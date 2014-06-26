@@ -198,6 +198,13 @@ func (sm *stateMachine) q() int {
 	return len(sm.ins)/2 + 1
 }
 
+func (sm *stateMachine) appendEntry(e Entry) {
+	e.Term = sm.term
+	sm.log.append(sm.log.lastIndex(), e)
+	sm.ins[sm.id].update(sm.log.lastIndex())
+	sm.maybeCommit()
+}
+
 // promotable indicates whether state machine could be promoted.
 // New machine has to wait for the first log entry to be committed, or it will
 // always start as a one-node cluster.
@@ -236,6 +243,8 @@ func (sm *stateMachine) becomeLeader() {
 			sm.pendingConf = true
 		}
 	}
+
+	sm.appendEntry(Entry{Type: Normal, Data: nil})
 }
 
 func (sm *stateMachine) Msgs() []Message {
@@ -310,11 +319,7 @@ func stepLeader(sm *stateMachine, m Message) bool {
 			}
 			sm.pendingConf = true
 		}
-		e.Term = sm.term
-
-		sm.log.append(sm.log.lastIndex(), e)
-		sm.ins[sm.id].update(sm.log.lastIndex())
-		sm.maybeCommit()
+		sm.appendEntry(e)
 		sm.bcastAppend()
 	case msgAppResp:
 		if m.Index < 0 {
