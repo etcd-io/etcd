@@ -66,7 +66,6 @@ type Config struct {
 	PeersFile        string   `toml:"peers_file" env:"ETCD_PEERS_FILE"`
 	MaxResultBuffer  int      `toml:"max_result_buffer" env:"ETCD_MAX_RESULT_BUFFER"`
 	MaxRetryAttempts int      `toml:"max_retry_attempts" env:"ETCD_MAX_RETRY_ATTEMPTS"`
-	MaxClusterSize   int      `toml:"max_cluster_size" env:"ETCD_MAX_CLUSTER_SIZE"`
 	RetryInterval    float64  `toml:"retry_interval" env:"ETCD_RETRY_INTERVAL"`
 	Name             string   `toml:"name" env:"ETCD_NAME"`
 	Snapshot         bool     `toml:"snapshot" env:"ETCD_SNAPSHOT"`
