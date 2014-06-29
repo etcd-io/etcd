@@ -17,7 +17,6 @@
 
 **Python libraries**
 
-- [transitorykris/etcd-py](https://github.com/transitorykris/etcd-py)
 - [jplana/python-etcd](https://github.com/jplana/python-etcd) - Supports v2
 - [russellhaering/txetcd](https://github.com/russellhaering/txetcd) - a Twisted Python library
 - [cholcombe973/autodock](https://github.com/cholcombe973/autodock) - A docker deployment automation tool
