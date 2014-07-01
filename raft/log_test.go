@@ -85,6 +85,34 @@ func TestCompaction(t *testing.T) {
 	}
 }
 
+func TestLogRestore(t *testing.T) {
+	log := newLog()
+	for i := 0; i < 100; i++ {
+		log.append(i, Entry{Term: i + 1})
+	}
+
+	index := 1000
+	term := 1000
+	log.restore(index, term)
+
+	// only has the guard entry
+	if len(log.ents) != 1 {
+		t.Errorf("len = %d, want 0", len(log.ents))
+	}
+	if log.offset != index {
+		t.Errorf("offset = %d, want %d", log.offset, index)
+	}
+	if log.applied != index {
+		t.Errorf("applied = %d, want %d", log.applied, index)
+	}
+	if log.committed != index {
+		t.Errorf("comitted = %d, want %d", log.committed, index)
+	}
+	if log.term(index) != term {
+		t.Errorf("term = %d, want %d", log.term(index), term)
+	}
+}
+
 func TestIsOutOfBounds(t *testing.T) {
 	offset := 100
 	num := 100

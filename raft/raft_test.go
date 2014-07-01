@@ -2,7 +2,10 @@ package raft
 
 import (
 	"bytes"
+	"fmt"
 	"math/rand"
+	"reflect"
+	"sort"
 	"testing"
 )
 
@@ -708,6 +711,97 @@ func TestRecvMsgBeat(t *testing.T) {
 	}
 }
 
+func TestMaybeCompact(t *testing.T) {
+	tests := []struct {
+		snapshoter Snapshoter
+		applied    int
+		wCompact   bool
+	}{
+		{nil, defaultCompactThreshold + 1, false},
+		{new(logSnapshoter), defaultCompactThreshold - 1, false},
+		{new(logSnapshoter), defaultCompactThreshold + 1, true},
+	}
+
+	for i, tt := range tests {
+		sm := newStateMachine(0, []int{0, 1, 2})
+		sm.setSnapshoter(tt.snapshoter)
+		for i := 0; i < defaultCompactThreshold*2; i++ {
+			sm.log.append(i, Entry{Term: i + 1})
+		}
+		sm.log.applied = tt.applied
+		sm.log.committed = tt.applied
+
+		if g := sm.maybeCompact(); g != tt.wCompact {
+			t.Errorf("#%d: compact = %v, want %v", i, g, tt.wCompact)
+		}
+
+		if tt.wCompact {
+			s := sm.snapshoter.GetSnap()
+			if s.Index != tt.applied {
+				t.Errorf("#%d: snap.Index = %v, want %v", i, s.Index, tt.applied)
+			}
+			if s.Term != tt.applied {
+				t.Errorf("#%d: snap.Term = %v, want %v", i, s.Index, tt.applied)
+			}
+
+			w := sm.nodes()
+			sort.Ints(w)
+			sort.Ints(s.Nodes)
+			if !reflect.DeepEqual(s.Nodes, w) {
+				t.Errorf("#%d: snap.Nodes = %+v, want %+v", i, s.Nodes, w)
+			}
+		}
+	}
+}
+
+func TestRestore(t *testing.T) {
+	s := Snapshot{
+		Index: defaultCompactThreshold + 1,
+		Term:  defaultCompactThreshold + 1,
+		Nodes: []int{0, 1, 2},
+	}
+
+	tests := []struct {
+		snapshoter Snapshoter
+		wallow     bool
+	}{
+		{nil, false},
+		{new(logSnapshoter), true},
+	}
+
+	for i, tt := range tests {
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					if tt.wallow == true {
+						t.Errorf("%d: allow = %v, want %v", i, false, true)
+					}
+				}
+			}()
+
+			sm := newStateMachine(0, []int{0, 1})
+			sm.setSnapshoter(tt.snapshoter)
+			sm.restore(s)
+
+			if sm.log.lastIndex() != s.Index {
+				t.Errorf("#%d: log.lastIndex = %d, want %d", i, sm.log.lastIndex(), s.Index)
+			}
+			if sm.log.term(s.Index) != s.Term {
+				t.Errorf("#%d: log.lastTerm = %d, want %d", i, sm.log.term(s.Index), s.Term)
+			}
+			g := sm.nodes()
+			sort.Ints(g)
+			sort.Ints(s.Nodes)
+			if !reflect.DeepEqual(g, s.Nodes) {
+				t.Errorf("#%d: sm.Nodes = %+v, want %+v", i, g, s.Nodes)
+			}
+			if !reflect.DeepEqual(sm.snapshoter.GetSnap(), s) {
+				t.Errorf("%d: snapshoter.getSnap = %+v, want %+v", sm.snapshoter.GetSnap(), s)
+			}
+		}()
+	}
+}
+
 func ents(terms ...int) *stateMachine {
 	ents := []Entry{{}}
 	for _, term := range terms {
@@ -831,3 +925,22 @@ func (blackHole) Step(Message) bool { return true }
 func (blackHole) Msgs() []Message   { return nil }
 
 var nopStepper = &blackHole{}
+
+type logSnapshoter struct {
+	snapshot Snapshot
+}
+
+func (s *logSnapshoter) Snap(index, term int, nodes []int) {
+	s.snapshot = Snapshot{
+		Index: index,
+		Term:  term,
+		Nodes: nodes,
+		Data:  []byte(fmt.Sprintf("%d:%d", term, index)),
+	}
+}
+func (s *logSnapshoter) Restore(ss Snapshot) {
+	s.snapshot = ss
+}
+func (s *logSnapshoter) GetSnap() Snapshot {
+	return s.snapshot
+}
