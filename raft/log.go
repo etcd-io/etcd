@@ -69,6 +69,12 @@ func (l *log) term(i int) int {
 }
 
 func (l *log) entries(i int) []Entry {
+	// never send out the first entry
+	// first entry is only used for matching
+	// prevLogTerm
+	if i == l.offset {
+		panic("cannot return the first entry in log")
+	}
 	return l.slice(i, l.lastIndex()+1)
 }
 
@@ -116,7 +122,14 @@ func (l *log) compact(i int) int {
 }
 
 func (l *log) shouldCompact() bool {
-	return (l.committed - l.offset) > l.compactThreshold
+	return (l.applied - l.offset) > l.compactThreshold
+}
+
+func (l *log) restore(index, term int) {
+	l.ents = []Entry{{Term: term}}
+	l.committed = index
+	l.applied = index
+	l.offset = index
 }
 
 func (l *log) at(i int) *Entry {

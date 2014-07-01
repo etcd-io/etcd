@@ -111,6 +111,8 @@ type stateMachine struct {
 
 	// pending reconfiguration
 	pendingConf bool
+
+	snapshoter Snapshoter
 }
 
 func newStateMachine(id int, peers []int) *stateMachine {
@@ -120,6 +122,10 @@ func newStateMachine(id int, peers []int) *stateMachine {
 	}
 	sm.reset(0)
 	return sm
+}
+
+func (sm *stateMachine) setSnapshoter(snapshoter Snapshoter) {
+	sm.snapshoter = snapshoter
 }
 
 func (sm *stateMachine) poll(id int, v bool) (granted int) {
@@ -378,4 +384,43 @@ func stepFollower(sm *stateMachine, m Message) bool {
 		}
 	}
 	return true
+}
+
+// maybeCompact tries to compact the log. It calls the snapshoter to take a snapshot and
+// then compact the log up-to the index at which the snapshot was taken.
+func (sm *stateMachine) maybeCompact() bool {
+	if sm.snapshoter == nil || !sm.log.shouldCompact() {
+		return false
+	}
+	sm.snapshoter.Snap(sm.log.applied, sm.log.term(sm.log.applied), sm.nodes())
+	sm.log.compact(sm.log.applied)
+	return true
+}
+
+// restore recovers the statemachine from a snapshot. It restores the log and the
+// configuration of statemachine. It calls the snapshoter to restore from the given
+// snapshot.
+func (sm *stateMachine) restore(s Snapshot) {
+	if sm.snapshoter == nil {
+		panic("try to restore from snapshot, but snapshoter is nil")
+	}
+
+	sm.log.restore(s.Index, s.Term)
+	sm.ins = make(map[int]*index)
+	for _, n := range s.Nodes {
+		sm.ins[n] = &index{next: sm.log.lastIndex() + 1}
+		if n == sm.id {
+			sm.ins[n].match = sm.log.lastIndex()
+		}
+	}
+	sm.pendingConf = false
+	sm.snapshoter.Restore(s)
+}
+
+func (sm *stateMachine) nodes() []int {
+	nodes := make([]int, 0, len(sm.ins))
+	for k := range sm.ins {
+		nodes = append(nodes, k)
+	}
+	return nodes
 }
