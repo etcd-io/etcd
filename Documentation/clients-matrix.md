@@ -1,20 +1,6 @@
 # Client libraries support matrix for etcd
 
 As etcd features support is really uneven between client libraries, a compatibility matrix can be important.
-We will consider in detail only the features of clients supporting the v2 API. Clients still supporting the v1 API *only* are listed below.
-
-## v1-only clients
-
-Clients supporting only the API version 1
-
-- [justinsb/jetcd](https://github.com/justinsb/jetcd) Java
-- [transitorykris/etcd-py](https://github.com/transitorykris/etcd-py) Python
-- [russellhaering/txetcd](https://github.com/russellhaering/txetcd) Python
-- [iconara/etcd-rb](https://github.com/iconara/etcd-rb) Ruby
-- [jpfuentes2/etcd-ruby](https://github.com/jpfuentes2/etcd-ruby) Ruby
-- [aterreno/etcd-clojure](https://github.com/aterreno/etcd-clojure) Clojure
-- [marshall-lee/etcd.erl](https://github.com/marshall-lee/etcd.erl) Erlang
-
 
 ## v2 clients
 
@@ -44,3 +30,8 @@ The v2 API has a lot of features, we will categorize them in a few categories:
 
 **F**: Full support **G**: Good support **B**: Basic support
 **Y**: Feature supported  **-**: Feature not supported
+
+### Uncategorized clients
+
+- [justinsb/jetcd](https://github.com/justinsb/jetcd) Java
+- [russellhaering/txetcd](https://github.com/russellhaering/txetcd) Python
