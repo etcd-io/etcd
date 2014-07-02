@@ -120,9 +120,9 @@ curl -L http://127.0.0.1:4001/version
 
 #### API Versioning
 
-Clients are encouraged to use the `v2` API. The `v1` API will not change.
-
 The `v2` API responses should not change after the 0.2.0 release but new features will be added over time.
+
+The `v1` API has been deprecated and will not be supported anymore.
 
 During the pre-v1.0.0 series of releases we may break the API as we fix bugs and get feedback.
 
