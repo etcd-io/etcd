@@ -17,7 +17,6 @@ import (
 	"github.com/coreos/etcd/metrics"
 	"github.com/coreos/etcd/mod"
 	uhttp "github.com/coreos/etcd/pkg/http"
-	"github.com/coreos/etcd/server/v1"
 	"github.com/coreos/etcd/server/v2"
 	"github.com/coreos/etcd/store"
 	_ "github.com/coreos/etcd/store/v2"
@@ -108,16 +107,20 @@ func (s *Server) SetStore(store store.Store) {
 }
 
 func (s *Server) installV1(r *mux.Router) {
-	s.handleFuncV1(r, "/v1/keys/{key:.*}", v1.GetKeyHandler).Methods("GET", "HEAD")
-	s.handleFuncV1(r, "/v1/keys/{key:.*}", v1.SetKeyHandler).Methods("POST", "PUT")
-	s.handleFuncV1(r, "/v1/keys/{key:.*}", v1.DeleteKeyHandler).Methods("DELETE")
-	s.handleFuncV1(r, "/v1/watch/{key:.*}", v1.WatchKeyHandler).Methods("GET", "HEAD", "POST")
-	s.handleFunc(r, "/v1/leader", s.GetLeaderHandler).Methods("GET", "HEAD")
-	s.handleFunc(r, "/v1/machines", s.GetPeersHandler).Methods("GET", "HEAD")
-	s.handleFunc(r, "/v1/peers", s.GetPeersHandler).Methods("GET", "HEAD")
-	s.handleFunc(r, "/v1/stats/self", s.GetStatsHandler).Methods("GET", "HEAD")
-	s.handleFunc(r, "/v1/stats/leader", s.GetLeaderStatsHandler).Methods("GET", "HEAD")
-	s.handleFunc(r, "/v1/stats/store", s.GetStoreStatsHandler).Methods("GET", "HEAD")
+	r.HandleFunc("/v1/keys/{key:.*}", RequestForbidden).Methods("GET", "HEAD")
+	r.HandleFunc("/v1/keys/{key:.*}", RequestForbidden).Methods("POST", "PUT")
+	r.HandleFunc("/v1/keys/{key:.*}", RequestForbidden).Methods("DELETE")
+	r.HandleFunc("/v1/watch/{key:.*}", RequestForbidden).Methods("GET", "HEAD", "POST")
+	r.HandleFunc("/v1/leader", RequestForbidden).Methods("GET", "HEAD")
+	r.HandleFunc("/v1/machines", RequestForbidden).Methods("GET", "HEAD")
+	r.HandleFunc("/v1/peers", RequestForbidden).Methods("GET", "HEAD")
+	r.HandleFunc("/v1/stats/self", RequestForbidden).Methods("GET", "HEAD")
+	r.HandleFunc("/v1/stats/leader", RequestForbidden).Methods("GET", "HEAD")
+	r.HandleFunc("/v1/stats/store", RequestForbidden).Methods("GET", "HEAD")
+}
+
+func RequestForbidden(w http.ResponseWriter, r *http.Request) {
+	http.Error(w, "403 request forbidden", http.StatusForbidden)
 }
 
 func (s *Server) installV2(r *mux.Router) {
@@ -148,13 +151,6 @@ func (s *Server) installDebug(r *mux.Router) {
 	r.HandleFunc("/debug/pprof/profile", pprof.Profile)
 	r.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
 	r.HandleFunc("/debug/pprof/{name}", pprof.Index)
-}
-
-// Adds a v1 server handler to the router.
-func (s *Server) handleFuncV1(r *mux.Router, path string, f func(http.ResponseWriter, *http.Request, v1.Server) error) *mux.Route {
-	return s.handleFunc(r, path, func(w http.ResponseWriter, req *http.Request) error {
-		return f(w, req, s)
-	})
 }
 
 // Adds a v2 server handler to the router.
@@ -235,26 +231,20 @@ func (s *Server) Dispatch(c raft.Command, w http.ResponseWriter, req *http.Reque
 			return nil
 		}
 
-		var b []byte
-		if strings.HasPrefix(req.URL.Path, "/v1") {
-			b, _ = json.Marshal(result.(*store.Event).Response(0))
-			w.WriteHeader(http.StatusOK)
+		e, _ := result.(*store.Event)
+		b, _ := json.Marshal(e)
+
+		w.Header().Set("Content-Type", "application/json")
+		// etcd index should be the same as the event index
+		// which is also the last modified index of the node
+		w.Header().Add("X-Etcd-Index", fmt.Sprint(e.Index()))
+		w.Header().Add("X-Raft-Index", fmt.Sprint(s.CommitIndex()))
+		w.Header().Add("X-Raft-Term", fmt.Sprint(s.Term()))
+
+		if e.IsCreated() {
+			w.WriteHeader(http.StatusCreated)
 		} else {
-			e, _ := result.(*store.Event)
-			b, _ = json.Marshal(e)
-
-			w.Header().Set("Content-Type", "application/json")
-			// etcd index should be the same as the event index
-			// which is also the last modified index of the node
-			w.Header().Add("X-Etcd-Index", fmt.Sprint(e.Index()))
-			w.Header().Add("X-Raft-Index", fmt.Sprint(s.CommitIndex()))
-			w.Header().Add("X-Raft-Term", fmt.Sprint(s.Term()))
-
-			if e.IsCreated() {
-				w.WriteHeader(http.StatusCreated)
-			} else {
-				w.WriteHeader(http.StatusOK)
-			}
+			w.WriteHeader(http.StatusOK)
 		}
 
 		w.Write(b)
