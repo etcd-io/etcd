@@ -802,6 +802,92 @@ func TestRestore(t *testing.T) {
 	}
 }
 
+func TestProvideSnap(t *testing.T) {
+	s := Snapshot{
+		Index: defaultCompactThreshold + 1,
+		Term:  defaultCompactThreshold + 1,
+		Nodes: []int{0, 1},
+	}
+	sm := newStateMachine(0, []int{0})
+	sm.setSnapshoter(new(logSnapshoter))
+	// restore the statemachin from a snapshot
+	// so it has a compacted log and a snapshot
+	sm.restore(s)
+
+	sm.becomeCandidate()
+	sm.becomeLeader()
+
+	sm.Step(Message{Type: msgBeat})
+	msgs := sm.Msgs()
+	if len(msgs) != 1 {
+		t.Errorf("len(msgs) = %d, want 1", len(msgs))
+	}
+	m := msgs[0]
+	if m.Type != msgApp {
+		t.Errorf("m.Type = %v, want %v", m.Type, msgApp)
+	}
+
+	// force set the next of node 1, so that
+	// node 1 needs a snapshot
+	sm.ins[1].next = sm.log.offset
+
+	sm.Step(Message{Type: msgBeat})
+	msgs = sm.Msgs()
+	if len(msgs) != 1 {
+		t.Errorf("len(msgs) = %d, want 1", len(msgs))
+	}
+	m = msgs[0]
+	if m.Type != msgSnap {
+		t.Errorf("m.Type = %v, want %v", m.Type, msgSnap)
+	}
+}
+
+func TestRestoreFromSnapMsg(t *testing.T) {
+	s := Snapshot{
+		Index: defaultCompactThreshold + 1,
+		Term:  defaultCompactThreshold + 1,
+		Nodes: []int{0, 1},
+	}
+	m := Message{Type: msgSnap, From: 0, Term: 1, Snapshot: s}
+
+	sm := newStateMachine(1, []int{0, 1})
+	sm.setSnapshoter(new(logSnapshoter))
+	sm.Step(m)
+
+	if !reflect.DeepEqual(sm.snapshoter.GetSnap(), s) {
+		t.Errorf("snapshot = %+v, want %+v", sm.snapshoter.GetSnap(), s)
+	}
+}
+
+func TestSlowNodeRestore(t *testing.T) {
+	nt := newNetwork(nil, nil, nil)
+	nt.send(Message{To: 0, Type: msgHup})
+
+	nt.isolate(2)
+	for j := 0; j < defaultCompactThreshold+1; j++ {
+		nt.send(Message{To: 0, Type: msgProp, Entries: []Entry{{}}})
+	}
+	lead := nt.peers[0].(*stateMachine)
+	lead.nextEnts()
+	if !lead.maybeCompact() {
+		t.Errorf("compacted = false, want true")
+	}
+
+	nt.recover()
+	nt.send(Message{To: 0, Type: msgBeat})
+
+	follower := nt.peers[2].(*stateMachine)
+	if !reflect.DeepEqual(follower.snapshoter.GetSnap(), lead.snapshoter.GetSnap()) {
+		t.Errorf("follower.snap = %+v, want %+v", follower.snapshoter.GetSnap(), lead.snapshoter.GetSnap())
+	}
+
+	committed := follower.log.lastIndex()
+	nt.send(Message{To: 0, Type: msgProp, Entries: []Entry{{}}})
+	if follower.log.committed != committed+1 {
+		t.Errorf("follower.comitted = %d, want %d", follower.log.committed, committed+1)
+	}
+}
+
 func ents(terms ...int) *stateMachine {
 	ents := []Entry{{}}
 	for _, term := range terms {
@@ -836,6 +922,7 @@ func newNetwork(peers ...Interface) *network {
 		switch v := p.(type) {
 		case nil:
 			sm := newStateMachine(id, defaultPeerAddrs)
+			sm.setSnapshoter(new(logSnapshoter))
 			npeers[id] = sm
 		case *stateMachine:
 			v.id = id
