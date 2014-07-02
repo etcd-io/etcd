@@ -36,7 +36,7 @@ var newFlagNameLookup = map[string]string{
 	"d":                      "data-dir",
 	"m":                      "max-result-buffer",
 	"r":                      "max-retry-attempts",
-	"maxsize":                "max-cluster-size",
+	"maxsize":                "cluster-active-size",
 	"clientCAFile":           "ca-file",
 	"clientCert":             "cert-file",
 	"clientKey":              "key-file",
@@ -45,6 +45,7 @@ var newFlagNameLookup = map[string]string{
 	"serverKey":              "peer-key-file",
 	"snapshotCount":          "snapshot-count",
 	"peer-heartbeat-timeout": "peer-heartbeat-interval",
+	"max-cluster-size":       "cluster-active-size",
 }
 
 // Config represents the server configuration.
@@ -297,6 +298,8 @@ func (c *Config) LoadFlags(arguments []string) error {
 	f.IntVar(&c.MaxRetryAttempts, "r", c.MaxRetryAttempts, "(deprecated)")
 	f.IntVar(&c.SnapshotCount, "snapshotCount", c.SnapshotCount, "(deprecated)")
 	f.IntVar(&c.Peer.HeartbeatInterval, "peer-heartbeat-timeout", c.Peer.HeartbeatInterval, "(deprecated)")
+	f.IntVar(&c.Cluster.ActiveSize, "max-cluster-size", c.Cluster.ActiveSize, "(deprecated)")
+	f.IntVar(&c.Cluster.ActiveSize, "maxsize", c.Cluster.ActiveSize, "(deprecated)")
 	// END DEPRECATED FLAGS
 
 	if err := f.Parse(arguments); err != nil {
