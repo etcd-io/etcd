@@ -68,6 +68,7 @@ func handleWatch(key string, recursive, stream bool, waitIndex string, w http.Re
 	closeChan := cn.CloseNotify()
 
 	writeHeaders(w, s)
+	w.(http.Flusher).Flush()
 
 	if stream {
 		// watcher hub will not help to remove stream watcher
