@@ -27,9 +27,11 @@ func TestConfigTOML(t *testing.T) {
 		max_result_buffer = 512
 		max_retry_attempts = 5
 		name = "test-name"
+		http_read_timeout = 2.34
 		snapshot = true
 		verbose = true
 		very_verbose = true
+		http_write_timeout = 1.23
 
 		[peer]
 		addr = "127.0.0.1:7002"
@@ -52,6 +54,8 @@ func TestConfigTOML(t *testing.T) {
 	assert.Equal(t, c.CorsOrigins, []string{"*"}, "")
 	assert.Equal(t, c.DataDir, "/tmp/data", "")
 	assert.Equal(t, c.Discovery, "http://example.com/foobar", "")
+	assert.Equal(t, c.HTTPReadTimeout, 2.34, "")
+	assert.Equal(t, c.HTTPWriteTimeout, 1.23, "")
 	assert.Equal(t, c.KeyFile, "/tmp/file.key", "")
 	assert.Equal(t, c.BindAddr, "127.0.0.1:4003", "")
 	assert.Equal(t, c.Peers, []string{"coreos.com:4001", "coreos.com:4002"}, "")
@@ -80,6 +84,8 @@ func TestConfigEnv(t *testing.T) {
 	os.Setenv("ETCD_CORS", "localhost:4001,localhost:4002")
 	os.Setenv("ETCD_DATA_DIR", "/tmp/data")
 	os.Setenv("ETCD_DISCOVERY", "http://example.com/foobar")
+	os.Setenv("ETCD_HTTP_READ_TIMEOUT", "2.34")
+	os.Setenv("ETCD_HTTP_WRITE_TIMEOUT", "1.23")
 	os.Setenv("ETCD_KEY_FILE", "/tmp/file.key")
 	os.Setenv("ETCD_BIND_ADDR", "127.0.0.1:4003")
 	os.Setenv("ETCD_PEERS", "coreos.com:4001,coreos.com:4002")
@@ -107,6 +113,8 @@ func TestConfigEnv(t *testing.T) {
 	assert.Equal(t, c.CorsOrigins, []string{"localhost:4001", "localhost:4002"}, "")
 	assert.Equal(t, c.DataDir, "/tmp/data", "")
 	assert.Equal(t, c.Discovery, "http://example.com/foobar", "")
+	assert.Equal(t, c.HTTPReadTimeout, 2.34, "")
+	assert.Equal(t, c.HTTPWriteTimeout, 1.23, "")
 	assert.Equal(t, c.KeyFile, "/tmp/file.key", "")
 	assert.Equal(t, c.BindAddr, "127.0.0.1:4003", "")
 	assert.Equal(t, c.Peers, []string{"coreos.com:4001", "coreos.com:4002"}, "")
@@ -553,19 +561,12 @@ func TestConfigClusterRemoveDelayFlag(t *testing.T) {
 	assert.Equal(t, c.Cluster.RemoveDelay, 100.0, "")
 }
 
-// Ensures that the cluster sync interval can be parsed from the environment.
-func TestConfigClusterSyncIntervalEnv(t *testing.T) {
-	withEnv("ETCD_CLUSTER_SYNC_INTERVAL", "10", func(c *Config) {
-		assert.Nil(t, c.LoadEnv(), "")
-		assert.Equal(t, c.Cluster.SyncInterval, 10.0, "")
-	})
-}
-
-// Ensures that the cluster sync interval flag can be parsed.
 func TestConfigClusterSyncIntervalFlag(t *testing.T) {
 	c := New()
-	assert.Nil(t, c.LoadFlags([]string{"-cluster-sync-interval", "10"}), "")
-	assert.Equal(t, c.Cluster.SyncInterval, 10.0, "")
+	assert.Nil(t, c.LoadFlags([]string{"-http-read-timeout", "2.34"}), "")
+	assert.Equal(t, c.HTTPReadTimeout, 2.34, "")
+	assert.Nil(t, c.LoadFlags([]string{"-http-write-timeout", "1.23"}), "")
+	assert.Equal(t, c.HTTPWriteTimeout, 1.23, "")
 }
 
 // Ensures that a system config field is overridden by a custom config field.
