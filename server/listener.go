@@ -8,11 +8,6 @@ import (
 	"github.com/coreos/etcd/log"
 )
 
-const (
-	DefaultReadTimeout  = float64((5 * time.Minute) / time.Second)
-	DefaultWriteTimeout = float64((5 * time.Minute) / time.Second)
-)
-
 // TLSServerConfig generates tls configuration based on TLSInfo
 // If any error happens, this function will call log.Fatal
 func TLSServerConfig(info *TLSInfo) *tls.Config {

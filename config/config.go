@@ -18,7 +18,6 @@ import (
 
 	"github.com/coreos/etcd/log"
 	ustrings "github.com/coreos/etcd/pkg/strings"
-	"github.com/coreos/etcd/server"
 )
 
 // The default location for the etcd configuration file.
@@ -100,22 +99,22 @@ func New() *Config {
 	c := new(Config)
 	c.SystemPath = DefaultSystemConfigPath
 	c.Addr = "127.0.0.1:4001"
-	c.HTTPReadTimeout = server.DefaultReadTimeout
-	c.HTTPWriteTimeout = server.DefaultWriteTimeout
+	c.HTTPReadTimeout = DefaultReadTimeout
+	c.HTTPWriteTimeout = DefaultWriteTimeout
 	c.MaxResultBuffer = 1024
 	c.MaxRetryAttempts = 3
 	c.RetryInterval = 10.0
 	c.Snapshot = true
 	c.SnapshotCount = 10000
 	c.Peer.Addr = "127.0.0.1:7001"
-	c.Peer.HeartbeatInterval = defaultHeartbeatInterval
-	c.Peer.ElectionTimeout = defaultElectionTimeout
+	c.Peer.HeartbeatInterval = DefaultHeartbeatInterval
+	c.Peer.ElectionTimeout = DefaultElectionTimeout
 	rand.Seed(time.Now().UTC().UnixNano())
 	// Make maximum twice as minimum.
-	c.RetryInterval = float64(50+rand.Int()%50) * defaultHeartbeatInterval / 1000
-	c.Cluster.ActiveSize = server.DefaultActiveSize
-	c.Cluster.RemoveDelay = server.DefaultRemoveDelay
-	c.Cluster.SyncInterval = server.DefaultSyncInterval
+	c.RetryInterval = float64(50+rand.Int()%50) * DefaultHeartbeatInterval / 1000
+	c.Cluster.ActiveSize = DefaultActiveSize
+	c.Cluster.RemoveDelay = DefaultRemoveDelay
+	c.Cluster.SyncInterval = DefaultSyncInterval
 	return c
 }
 
@@ -386,8 +385,8 @@ func (c *Config) Sanitize() error {
 }
 
 // EtcdTLSInfo retrieves a TLSInfo object for the etcd server
-func (c *Config) EtcdTLSInfo() *server.TLSInfo {
-	return &server.TLSInfo{
+func (c *Config) EtcdTLSInfo() *TLSInfo {
+	return &TLSInfo{
 		CAFile:   c.CAFile,
 		CertFile: c.CertFile,
 		KeyFile:  c.KeyFile,
@@ -395,8 +394,8 @@ func (c *Config) EtcdTLSInfo() *server.TLSInfo {
 }
 
 // PeerRaftInfo retrieves a TLSInfo object for the peer server.
-func (c *Config) PeerTLSInfo() *server.TLSInfo {
-	return &server.TLSInfo{
+func (c *Config) PeerTLSInfo() *TLSInfo {
+	return &TLSInfo{
 		CAFile:   c.Peer.CAFile,
 		CertFile: c.Peer.CertFile,
 		KeyFile:  c.Peer.KeyFile,
@@ -414,8 +413,8 @@ func (c *Config) Trace() bool {
 	return c.strTrace == "*"
 }
 
-func (c *Config) ClusterConfig() *server.ClusterConfig {
-	return &server.ClusterConfig{
+func (c *Config) ClusterConfig() *ClusterConfig {
+	return &ClusterConfig{
 		ActiveSize:   c.Cluster.ActiveSize,
 		RemoveDelay:  c.Cluster.RemoveDelay,
 		SyncInterval: c.Cluster.SyncInterval,
