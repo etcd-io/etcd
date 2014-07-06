@@ -286,39 +286,9 @@ func (c *Config) LoadFlags(arguments []string) error {
 	f.StringVar(&path, "config", "", "")
 	// BEGIN IGNORED FLAGS
 
-	// BEGIN DEPRECATED FLAGS
-	f.StringVar(&peers, "C", "", "(deprecated)")
-	f.StringVar(&c.PeersFile, "CF", c.PeersFile, "(deprecated)")
-	f.StringVar(&c.Name, "n", c.Name, "(deprecated)")
-	f.StringVar(&c.Addr, "c", c.Addr, "(deprecated)")
-	f.StringVar(&c.BindAddr, "cl", c.BindAddr, "(deprecated)")
-	f.StringVar(&c.Peer.Addr, "s", c.Peer.Addr, "(deprecated)")
-	f.StringVar(&c.Peer.BindAddr, "sl", c.Peer.BindAddr, "(deprecated)")
-	f.StringVar(&c.Peer.CAFile, "serverCAFile", c.Peer.CAFile, "(deprecated)")
-	f.StringVar(&c.Peer.CertFile, "serverCert", c.Peer.CertFile, "(deprecated)")
-	f.StringVar(&c.Peer.KeyFile, "serverKey", c.Peer.KeyFile, "(deprecated)")
-	f.StringVar(&c.CAFile, "clientCAFile", c.CAFile, "(deprecated)")
-	f.StringVar(&c.CertFile, "clientCert", c.CertFile, "(deprecated)")
-	f.StringVar(&c.KeyFile, "clientKey", c.KeyFile, "(deprecated)")
-	f.StringVar(&c.DataDir, "d", c.DataDir, "(deprecated)")
-	f.IntVar(&c.MaxResultBuffer, "m", c.MaxResultBuffer, "(deprecated)")
-	f.IntVar(&c.MaxRetryAttempts, "r", c.MaxRetryAttempts, "(deprecated)")
-	f.IntVar(&c.SnapshotCount, "snapshotCount", c.SnapshotCount, "(deprecated)")
-	f.IntVar(&c.Peer.HeartbeatInterval, "peer-heartbeat-timeout", c.Peer.HeartbeatInterval, "(deprecated)")
-	f.IntVar(&c.Cluster.ActiveSize, "max-cluster-size", c.Cluster.ActiveSize, "(deprecated)")
-	f.IntVar(&c.Cluster.ActiveSize, "maxsize", c.Cluster.ActiveSize, "(deprecated)")
-	// END DEPRECATED FLAGS
-
 	if err := f.Parse(arguments); err != nil {
 		return err
 	}
-
-	// Print deprecation warnings on STDERR.
-	f.Visit(func(f *flag.Flag) {
-		if len(newFlagNameLookup[f.Name]) > 0 {
-			fmt.Fprintf(os.Stderr, "[deprecated] use -%s, not -%s\n", newFlagNameLookup[f.Name], f.Name)
-		}
-	})
 
 	// Convert some parameters to lists.
 	if peers != "" {
