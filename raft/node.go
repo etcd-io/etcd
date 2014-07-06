@@ -41,7 +41,17 @@ func New(id int64, heartbeat, election tick) *Node {
 
 func (n *Node) Id() int64 { return n.sm.id }
 
+func (n *Node) Index() int { return n.sm.log.lastIndex() }
+
+func (n *Node) Term() int { return n.sm.term }
+
+func (n *Node) Applied() int { return n.sm.log.applied }
+
 func (n *Node) HasLeader() bool { return n.sm.lead != none }
+
+func (n *Node) IsLeader() bool { return n.sm.lead == n.Id() }
+
+func (n *Node) Leader() int { return n.sm.lead }
 
 // Propose asynchronously proposes data be applied to the underlying state machine.
 func (n *Node) Propose(data []byte) { n.propose(Normal, data) }

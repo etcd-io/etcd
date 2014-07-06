@@ -1,0 +1,84 @@
+package etcd
+
+import (
+	"fmt"
+	"log"
+	"net/http"
+	"net/url"
+	"strings"
+
+	etcdErr "github.com/coreos/etcd/error"
+)
+
+func (s *Server) serveValue(w http.ResponseWriter, r *http.Request) error {
+	switch r.Method {
+	case "GET":
+		return s.GetHandler(w, r)
+	case "HEAD":
+		w = &HEADResponseWriter{w}
+		return s.GetHandler(w, r)
+	case "PUT":
+		return s.PutHandler(w, r)
+	case "POST":
+		return s.PostHandler(w, r)
+	case "DELETE":
+		return s.DeleteHandler(w, r)
+	}
+	return allow(w, "GET", "PUT", "POST", "DELETE", "HEAD")
+}
+
+type handlerErr func(w http.ResponseWriter, r *http.Request) error
+
+func (eh handlerErr) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	err := eh(w, r)
+	if err == nil {
+		return
+	}
+
+	if r.Method == "HEAD" {
+		w = &HEADResponseWriter{w}
+	}
+
+	if etcdErr, ok := err.(*etcdErr.Error); ok {
+		w.Header().Set("Content-Type", "application/json")
+		etcdErr.Write(w)
+		return
+	}
+
+	log.Println("http error", err)
+	http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+}
+
+func allow(w http.ResponseWriter, m ...string) error {
+	w.Header().Set("Allow", strings.Join(m, ","))
+	return nil
+}
+
+type HEADResponseWriter struct {
+	http.ResponseWriter
+}
+
+func (w *HEADResponseWriter) Write([]byte) (int, error) {
+	return 0, nil
+}
+
+func (s *Server) redirect(w http.ResponseWriter, r *http.Request, id int) error {
+	baseURL := s.t.urls[id]
+	if len(baseURL) == 0 {
+		log.Println("redirect cannot find node", id)
+		return fmt.Errorf("redirect cannot find node %d", id)
+	}
+
+	originalURL := r.URL
+	redirectURL, err := url.Parse(baseURL)
+	if err != nil {
+		log.Println("redirect cannot parse url:", err)
+		return fmt.Errorf("redirect cannot parse url: %v", err)
+	}
+
+	redirectURL.Path = originalURL.Path
+	redirectURL.RawQuery = originalURL.RawQuery
+	redirectURL.Fragment = originalURL.Fragment
+	http.Redirect(w, r, redirectURL.String(), http.StatusTemporaryRedirect)
+	return nil
+}
