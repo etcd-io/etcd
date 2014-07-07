@@ -43,6 +43,17 @@ func (s *Server) serveMachines(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
+func (s *Server) serveLeader(w http.ResponseWriter, r *http.Request) error {
+	if r.Method != "GET" {
+		return allow(w, "GET")
+	}
+	if laddr, ok := s.t.urls[s.node.Leader()]; ok {
+		w.Write([]byte(laddr))
+		return nil
+	}
+	return fmt.Errorf("no leader")
+}
+
 type handlerErr func(w http.ResponseWriter, r *http.Request) error
 
 func (eh handlerErr) ServeHTTP(w http.ResponseWriter, r *http.Request) {
