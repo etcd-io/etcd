@@ -8,6 +8,7 @@ import (
 	"path"
 	"time"
 
+	"github.com/coreos/etcd/config"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/store"
 )
@@ -24,6 +25,8 @@ const (
 )
 
 type Server struct {
+	config *config.Config
+
 	id           int
 	pubAddr      string
 	nodes        map[string]bool
@@ -40,14 +43,18 @@ type Server struct {
 	http.Handler
 }
 
-func New(id int, pubAddr string, nodes []string) *Server {
+func New(c *config.Config, id int) *Server {
+	if err := c.Sanitize(); err != nil {
+		log.Fatalf("failed sanitizing configuration: %v", err)
+	}
+
 	s := &Server{
+		config:       c,
 		id:           id,
-		pubAddr:      pubAddr,
+		pubAddr:      c.Addr,
 		nodes:        make(map[string]bool),
 		tickDuration: defaultTickDuration,
-
-		proposal: make(chan v2Proposal),
+		proposal:     make(chan v2Proposal),
 		node: &v2Raft{
 			Node:   raft.New(id, defaultHeartbeat, defaultElection),
 			result: make(map[wait]chan interface{}),
@@ -59,7 +66,7 @@ func New(id int, pubAddr string, nodes []string) *Server {
 		stop: make(chan struct{}),
 	}
 
-	for _, seed := range nodes {
+	for _, seed := range c.Peers {
 		s.nodes[seed] = true
 	}
 
@@ -75,12 +82,21 @@ func (s *Server) SetTick(d time.Duration) {
 	s.tickDuration = d
 }
 
+func (s *Server) Run() {
+	if len(s.config.Peers) == 0 {
+		s.Bootstrap()
+	} else {
+		s.Join()
+	}
+}
+
 func (s *Server) Stop() {
 	close(s.stop)
 	s.t.stop()
 }
 
 func (s *Server) Bootstrap() {
+	log.Println("starting a bootstrap node")
 	s.node.Campaign()
 	s.node.Add(s.id, s.pubAddr)
 	s.apply(s.node.Next())
@@ -88,6 +104,7 @@ func (s *Server) Bootstrap() {
 }
 
 func (s *Server) Join() {
+	log.Println("joining cluster via peers", s.config.Peers)
 	d, err := json.Marshal(&raft.Config{s.id, s.pubAddr})
 	if err != nil {
 		panic(err)
@@ -160,6 +177,7 @@ func (s *Server) apply(ents []raft.Entry) {
 				log.Println(err)
 				break
 			}
+			log.Printf("Add Node %x %v\n", cfg.NodeId, cfg.Addr)
 			s.nodes[cfg.Addr] = true
 			p := path.Join(nodePrefix, fmt.Sprint(cfg.NodeId))
 			s.Store.Set(p, false, cfg.Addr, store.Permanent)
