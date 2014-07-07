@@ -19,9 +19,10 @@ const (
 
 	defaultTickDuration = time.Millisecond * 100
 
-	nodePrefix = "/cfg/nodes"
+	v2machineKVPrefix = "/_etcd/machines"
+	v2Prefix          = "/v2/keys"
+
 	raftPrefix = "/raft"
-	v2Prefix   = "/v2/keys"
 )
 
 type Server struct {
@@ -179,7 +180,7 @@ func (s *Server) apply(ents []raft.Entry) {
 			}
 			log.Printf("Add Node %x %v\n", cfg.NodeId, cfg.Addr)
 			s.nodes[cfg.Addr] = true
-			p := path.Join(nodePrefix, fmt.Sprint(cfg.NodeId))
+			p := path.Join(v2machineKVPrefix, fmt.Sprint(cfg.NodeId))
 			s.Store.Set(p, false, cfg.Addr, store.Permanent)
 		default:
 			panic("unimplemented")
