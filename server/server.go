@@ -311,6 +311,7 @@ func (s *Server) GetPeersHandler(w http.ResponseWriter, req *http.Request) error
 
 // Retrieves stats on the Raft server.
 func (s *Server) GetStatsHandler(w http.ResponseWriter, req *http.Request) error {
+	w.Header().Set("Content-Type", "application/json")
 	w.Write(s.peerServer.Stats())
 	return nil
 }
@@ -318,6 +319,7 @@ func (s *Server) GetStatsHandler(w http.ResponseWriter, req *http.Request) error
 // Retrieves stats on the leader.
 func (s *Server) GetLeaderStatsHandler(w http.ResponseWriter, req *http.Request) error {
 	if s.peerServer.RaftServer().State() == raft.Leader {
+		w.Header().Set("Content-Type", "application/json")
 		w.Write(s.peerServer.PeerStats())
 		return nil
 	}
@@ -333,6 +335,7 @@ func (s *Server) GetLeaderStatsHandler(w http.ResponseWriter, req *http.Request)
 
 // Retrieves stats on the leader.
 func (s *Server) GetStoreStatsHandler(w http.ResponseWriter, req *http.Request) error {
+	w.Header().Set("Content-Type", "application/json")
 	w.Write(s.store.JsonStats())
 	return nil
 }
