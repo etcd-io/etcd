@@ -99,7 +99,7 @@ func (t *transporter) fetchAddr(seedurl string, id int) error {
 		return fmt.Errorf("cannot parse the url of the given seed")
 	}
 
-	u.Path = path.Join(v2Prefix, nodePrefix, fmt.Sprint(id))
+	u.Path = path.Join(v2Prefix, v2machineKVPrefix, fmt.Sprint(id))
 	resp, err := t.client.Get(u.String())
 	if err != nil {
 		return fmt.Errorf("cannot reach %v", u)

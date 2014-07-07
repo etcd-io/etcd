@@ -5,6 +5,8 @@ import (
 	"net/http/httptest"
 	"testing"
 	"time"
+
+	"github.com/coreos/etcd/config"
 )
 
 func TestMultipleNodes(t *testing.T) {
@@ -30,7 +32,9 @@ func buildCluster(number int) ([]*Server, []*httptest.Server) {
 	var seed string
 
 	for i := range es {
-		es[i] = New(i, "", []string{seed})
+		c := config.New()
+		c.Peers = []string{seed}
+		es[i] = New(c, i)
 		es[i].SetTick(time.Millisecond * 5)
 		hs[i] = httptest.NewServer(es[i])
 		es[i].pubAddr = hs[i].URL
@@ -41,7 +45,7 @@ func buildCluster(number int) ([]*Server, []*httptest.Server) {
 		} else {
 			// wait for the previous configuration change to be committed
 			// or this configuration request might be dropped
-			w, err := es[0].Watch(nodePrefix, true, false, uint64(i))
+			w, err := es[0].Watch(v2machineKVPrefix, true, false, uint64(i))
 			if err != nil {
 				panic(err)
 			}
@@ -56,12 +60,12 @@ func waitCluster(t *testing.T, es []*Server) {
 	n := len(es)
 	for i, e := range es {
 		for k := 1; k < n+1; k++ {
-			w, err := e.Watch(nodePrefix, true, false, uint64(k))
+			w, err := e.Watch(v2machineKVPrefix, true, false, uint64(k))
 			if err != nil {
 				panic(err)
 			}
 			v := <-w.EventChan
-			ww := fmt.Sprintf("%s/%d", nodePrefix, k-1)
+			ww := fmt.Sprintf("%s/%d", v2machineKVPrefix, k-1)
 			if v.Node.Key != ww {
 				t.Errorf("#%d path = %v, want %v", i, v.Node.Key, w)
 			}
