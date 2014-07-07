@@ -22,6 +22,7 @@ const (
 	v2machineKVPrefix = "/_etcd/machines"
 	v2Prefix          = "/v2/keys"
 	v2machinePrefix   = "/v2/machines"
+	v2LeaderPrefix    = "/v2/leader"
 
 	raftPrefix = "/raft"
 )
@@ -77,6 +78,7 @@ func New(c *config.Config, id int) *Server {
 	m.Handle(v2Prefix+"/", handlerErr(s.serveValue))
 	m.Handle("/raft", s.t)
 	m.Handle(v2machinePrefix, handlerErr(s.serveMachines))
+	m.Handle(v2LeaderPrefix, handlerErr(s.serveLeader))
 	s.Handler = m
 	return s
 }
