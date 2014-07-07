@@ -21,6 +21,7 @@ const (
 
 	v2machineKVPrefix = "/_etcd/machines"
 	v2Prefix          = "/v2/keys"
+	v2machinePrefix   = "/v2/machines"
 
 	raftPrefix = "/raft"
 )
@@ -73,8 +74,9 @@ func New(c *config.Config, id int) *Server {
 
 	m := http.NewServeMux()
 	//m.Handle("/HEAD", handlerErr(s.serveHead))
-	m.Handle("/", handlerErr(s.serveValue))
+	m.Handle(v2Prefix+"/", handlerErr(s.serveValue))
 	m.Handle("/raft", s.t)
+	m.Handle(v2machinePrefix, handlerErr(s.serveMachines))
 	s.Handler = m
 	return s
 }

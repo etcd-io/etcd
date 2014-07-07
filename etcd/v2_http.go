@@ -27,6 +27,22 @@ func (s *Server) serveValue(w http.ResponseWriter, r *http.Request) error {
 	return allow(w, "GET", "PUT", "POST", "DELETE", "HEAD")
 }
 
+func (s *Server) serveMachines(w http.ResponseWriter, r *http.Request) error {
+	if r.Method != "GET" {
+		return allow(w, "GET")
+	}
+	v, err := s.Store.Get(v2machineKVPrefix, false, false)
+	if err != nil {
+		panic(err)
+	}
+	ns := make([]string, len(v.Node.Nodes))
+	for i, n := range v.Node.Nodes {
+		ns[i] = *n.Value
+	}
+	w.Write([]byte(strings.Join(ns, ",")))
+	return nil
+}
+
 type handlerErr func(w http.ResponseWriter, r *http.Request) error
 
 func (eh handlerErr) ServeHTTP(w http.ResponseWriter, r *http.Request) {
