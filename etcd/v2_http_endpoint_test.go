@@ -1,12 +1,15 @@
 package etcd
 
 import (
+	"encoding/json"
 	"io/ioutil"
 	"net/http"
 	"reflect"
 	"sort"
 	"strings"
 	"testing"
+
+	"github.com/coreos/etcd/store"
 )
 
 func TestMachinesEndPoint(t *testing.T) {
@@ -72,6 +75,35 @@ func TestLeaderEndPoint(t *testing.T) {
 		if string(b) != w {
 			t.Errorf("leader = %v, want %v", string(b), w)
 		}
+	}
+
+	for i := range es {
+		es[len(es)-i-1].Stop()
+	}
+	for i := range hs {
+		hs[len(hs)-i-1].Close()
+	}
+	afterTest(t)
+}
+
+func TestStoreStatsEndPoint(t *testing.T) {
+	es, hs := buildCluster(1)
+	waitCluster(t, es)
+
+	resp, err := http.Get(hs[0].URL + v2StoreStatsPrefix)
+	if err != nil {
+		t.Errorf("%v", err)
+	}
+	stats := new(store.Stats)
+	d := json.NewDecoder(resp.Body)
+	err = d.Decode(stats)
+	resp.Body.Close()
+	if err != nil {
+		t.Errorf("%v", err)
+	}
+
+	if stats.SetSuccess != 1 {
+		t.Errorf("setSuccess = %d, want 1", stats.SetSuccess)
 	}
 
 	for i := range es {
