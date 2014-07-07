@@ -23,30 +23,6 @@ import (
 // The default location for the etcd configuration file.
 const DefaultSystemConfigPath = "/etc/etcd/etcd.conf"
 
-// A lookup of deprecated flags to their new flag name.
-var newFlagNameLookup = map[string]string{
-	"C":                      "peers",
-	"CF":                     "peers-file",
-	"n":                      "name",
-	"c":                      "addr",
-	"cl":                     "bind-addr",
-	"s":                      "peer-addr",
-	"sl":                     "peer-bind-addr",
-	"d":                      "data-dir",
-	"m":                      "max-result-buffer",
-	"r":                      "max-retry-attempts",
-	"maxsize":                "cluster-active-size",
-	"clientCAFile":           "ca-file",
-	"clientCert":             "cert-file",
-	"clientKey":              "key-file",
-	"serverCAFile":           "peer-ca-file",
-	"serverCert":             "peer-cert-file",
-	"serverKey":              "peer-key-file",
-	"snapshotCount":          "snapshot-count",
-	"peer-heartbeat-timeout": "peer-heartbeat-interval",
-	"max-cluster-size":       "cluster-active-size",
-}
-
 // Config represents the server configuration.
 type Config struct {
 	SystemPath string
