@@ -54,6 +54,12 @@ func (s *Server) serveLeader(w http.ResponseWriter, r *http.Request) error {
 	return fmt.Errorf("no leader")
 }
 
+func (s *Server) serveStoreStats(w http.ResponseWriter, req *http.Request) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(s.Store.JsonStats())
+	return nil
+}
+
 type handlerErr func(w http.ResponseWriter, r *http.Request) error
 
 func (eh handlerErr) ServeHTTP(w http.ResponseWriter, r *http.Request) {

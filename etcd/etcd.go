@@ -19,11 +19,12 @@ const (
 
 	defaultTickDuration = time.Millisecond * 100
 
-	v2machineKVPrefix = "/_etcd/machines"
-	v2Prefix          = "/v2/keys"
-	v2machinePrefix   = "/v2/machines"
-	v2peersPrefix     = "/v2/peers"
-	v2LeaderPrefix    = "/v2/leader"
+	v2machineKVPrefix  = "/_etcd/machines"
+	v2Prefix           = "/v2/keys"
+	v2machinePrefix    = "/v2/machines"
+	v2peersPrefix      = "/v2/peers"
+	v2LeaderPrefix     = "/v2/leader"
+	v2StoreStatsPrefix = "/v2/stats/store"
 
 	raftPrefix = "/raft"
 )
@@ -81,6 +82,7 @@ func New(c *config.Config, id int) *Server {
 	m.Handle(v2machinePrefix, handlerErr(s.serveMachines))
 	m.Handle(v2peersPrefix, handlerErr(s.serveMachines))
 	m.Handle(v2LeaderPrefix, handlerErr(s.serveLeader))
+	m.Handle(v2StoreStatsPrefix, handlerErr(s.serveStoreStats))
 	s.Handler = m
 	return s
 }
