@@ -260,10 +260,19 @@ func (e *Etcd) Run() {
 
 	log.Infof("etcd server [name %s, listen on %s, advertised url %s]", e.Server.Name, e.Config.BindAddr, e.Server.URL())
 	listener := server.NewListener(e.Config.EtcdTLSInfo().Scheme(), e.Config.BindAddr, etcdTLSConfig)
-	e.server = &http.Server{Handler: &ModeHandler{e, serverHTTPHandler, standbyServerHTTPHandler}}
+
+	e.server = &http.Server{Handler: &ModeHandler{e, serverHTTPHandler, standbyServerHTTPHandler},
+		ReadTimeout:  time.Duration(e.Config.HTTPReadTimeout) * time.Second,
+		WriteTimeout: time.Duration(e.Config.HTTPWriteTimeout) * time.Second,
+	}
+
 	log.Infof("peer server [name %s, listen on %s, advertised url %s]", e.PeerServer.Config.Name, e.Config.Peer.BindAddr, e.PeerServer.Config.URL)
 	peerListener := server.NewListener(e.Config.PeerTLSInfo().Scheme(), e.Config.Peer.BindAddr, peerTLSConfig)
-	e.peerServer = &http.Server{Handler: &ModeHandler{e, peerServerHTTPHandler, http.NotFoundHandler()}}
+
+	e.peerServer = &http.Server{Handler: &ModeHandler{e, peerServerHTTPHandler, http.NotFoundHandler()},
+		ReadTimeout:  time.Duration(server.DefaultReadTimeout) * time.Second,
+		WriteTimeout: time.Duration(server.DefaultWriteTimeout) * time.Second,
+	}
 
 	wg := sync.WaitGroup{}
 	wg.Add(2)

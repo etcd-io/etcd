@@ -3,8 +3,14 @@ package server
 import (
 	"crypto/tls"
 	"net"
+	"time"
 
 	"github.com/coreos/etcd/log"
+)
+
+const (
+	DefaultReadTimeout  = float64((5 * time.Minute) / time.Second)
+	DefaultWriteTimeout = float64((5 * time.Minute) / time.Second)
 )
 
 // TLSServerConfig generates tls configuration based on TLSInfo

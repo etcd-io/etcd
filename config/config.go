@@ -62,6 +62,8 @@ type Config struct {
 	Discovery        string   `toml:"discovery" env:"ETCD_DISCOVERY"`
 	Force            bool
 	KeyFile          string   `toml:"key_file" env:"ETCD_KEY_FILE"`
+	HTTPReadTimeout  float64  `toml:"http_read_timeout" env:"ETCD_HTTP_READ_TIMEOUT"`
+	HTTPWriteTimeout float64  `toml:"http_write_timeout" env:"ETCD_HTTP_WRITE_TIMEOUT"`
 	Peers            []string `toml:"peers" env:"ETCD_PEERS"`
 	PeersFile        string   `toml:"peers_file" env:"ETCD_PEERS_FILE"`
 	MaxResultBuffer  int      `toml:"max_result_buffer" env:"ETCD_MAX_RESULT_BUFFER"`
@@ -98,6 +100,8 @@ func New() *Config {
 	c := new(Config)
 	c.SystemPath = DefaultSystemConfigPath
 	c.Addr = "127.0.0.1:4001"
+	c.HTTPReadTimeout = server.DefaultReadTimeout
+	c.HTTPWriteTimeout = server.DefaultWriteTimeout
 	c.MaxResultBuffer = 1024
 	c.MaxRetryAttempts = 3
 	c.RetryInterval = 10.0
@@ -254,6 +258,9 @@ func (c *Config) LoadFlags(arguments []string) error {
 	f.StringVar(&c.Peer.CAFile, "peer-ca-file", c.Peer.CAFile, "")
 	f.StringVar(&c.Peer.CertFile, "peer-cert-file", c.Peer.CertFile, "")
 	f.StringVar(&c.Peer.KeyFile, "peer-key-file", c.Peer.KeyFile, "")
+
+	f.Float64Var(&c.HTTPReadTimeout, "http-read-timeout", c.HTTPReadTimeout, "")
+	f.Float64Var(&c.HTTPWriteTimeout, "http-write-timeout", c.HTTPReadTimeout, "")
 
 	f.StringVar(&c.DataDir, "data-dir", c.DataDir, "")
 	f.IntVar(&c.MaxResultBuffer, "max-result-buffer", c.MaxResultBuffer, "")

@@ -32,6 +32,8 @@ The full documentation is contained in the [API docs](https://github.com/coreos/
 
 * `-addr` - The advertised public hostname:port for client communication. Defaults to `127.0.0.1:4001`.
 * `-discovery` - A URL to use for discovering the peer list. (i.e `"https://discovery.etcd.io/your-unique-key"`).
+* `-http-read-timeout` - The number of seconds before an HTTP read operation is timed out.
+* `-http-write-timeout` - The number of seconds before an HTTP write operation is timed out.
 * `-bind-addr` - The listening hostname for client communication. Defaults to advertised IP.
 * `-peers` - A comma separated list of peers in the cluster (i.e `"203.0.113.101:7001,203.0.113.102:7001"`).
 * `-peers-file` - The file path containing a comma separated list of peers in the cluster.
@@ -73,6 +75,8 @@ cors = []
 cpu_profile_file = ""
 data_dir = "."
 discovery = "http://etcd.local:4001/v2/keys/_etcd/registry/examplecluster"
+http_read_timeout = 10
+http_write_timeout = 10
 key_file = ""
 peers = []
 peers_file = ""
@@ -108,6 +112,8 @@ sync_interval = 5.0
  * `ETCD_CPU_PROFILE_FILE`
  * `ETCD_DATA_DIR`
  * `ETCD_DISCOVERY`
+ * `ETCD_CLUSTER_HTTP_READ_TIMEOUT`
+ * `ETCD_CLUSTER_HTTP_WRITE_TIMEOUT`
  * `ETCD_KEY_FILE`
  * `ETCD_PEERS`
  * `ETCD_PEERS_FILE`
