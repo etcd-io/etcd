@@ -3,6 +3,8 @@ package etcd
 import (
 	"io/ioutil"
 	"net/http"
+	"reflect"
+	"sort"
 	"strings"
 	"testing"
 )
@@ -11,11 +13,10 @@ func TestMachinesEndPoint(t *testing.T) {
 	es, hs := buildCluster(3)
 	waitCluster(t, es)
 
-	us := make([]string, len(hs))
+	w := make([]string, len(hs))
 	for i := range hs {
-		us[i] = hs[i].URL
+		w[i] = hs[i].URL
 	}
-	w := strings.Join(us, ",")
 
 	for i := range hs {
 		r, err := http.Get(hs[i].URL + v2machinePrefix)
@@ -29,8 +30,10 @@ func TestMachinesEndPoint(t *testing.T) {
 			t.Errorf("%v", err)
 			break
 		}
-		if string(b) != w {
-			t.Errorf("machines = %v, want %v", string(b), w)
+		g := strings.Split(string(b), ",")
+		sort.Strings(g)
+		if !reflect.DeepEqual(w, g) {
+			t.Errorf("machines = %v, want %v", g, w)
 		}
 	}
 
