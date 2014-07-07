@@ -901,6 +901,8 @@ func TestV2GetKeyRecursively(t *testing.T) {
 	assert.Equal(t, node["modifiedIndex"], 2, "")
 	assert.Equal(t, len(node["nodes"].([]interface{})), 2, "")
 
+	// TODO(xiangli): fix the wrong assumption here.
+	// the order of nodes map cannot be determined.
 	node0 := node["nodes"].([]interface{})[0].(map[string]interface{})
 	assert.Equal(t, node0["key"], "/foo/x", "")
 	assert.Equal(t, node0["value"], "XXX", "")
