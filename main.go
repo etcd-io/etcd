@@ -1,9 +1,11 @@
 package main
 
 import (
+	"crypto/tls"
 	"fmt"
 	"log"
 	"math/rand"
+	"net"
 	"net/http"
 	"os"
 	"time"
@@ -25,12 +27,32 @@ func main() {
 	}
 
 	e := etcd.New(config, genId())
+	rTLS, rerr := config.PeerTLSInfo().ServerConfig()
+
 	go e.Run()
 
 	go func() {
-		if err := http.ListenAndServe(config.Peer.BindAddr, e.RaftHandler()); err != nil {
-			log.Fatal("system", err)
+		l, err := net.Listen("tcp", config.Peer.BindAddr)
+		if err != nil {
+			log.Fatal(err)
 		}
+		log.Println("raft server starts listening on", config.Peer.BindAddr)
+
+		switch config.PeerTLSInfo().Scheme() {
+		case "http":
+			log.Println("raft server starts serving HTTP")
+
+		case "https":
+			if rTLS == nil {
+				log.Fatal("failed to create raft tls:", rerr)
+			}
+			l = tls.NewListener(l, rTLS)
+			log.Println("raft server starts serving HTTPS")
+		default:
+			log.Fatal("unsupported http scheme", config.PeerTLSInfo().Scheme())
+		}
+
+		log.Fatal(http.Serve(l, e.RaftHandler()))
 	}()
 
 	if err := http.ListenAndServe(config.BindAddr, e); err != nil {

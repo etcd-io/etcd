@@ -14,7 +14,7 @@ func TestMultipleNodes(t *testing.T) {
 	tests := []int{1, 3, 5, 9, 11}
 
 	for _, tt := range tests {
-		es, hs := buildCluster(tt)
+		es, hs := buildCluster(tt, false)
 		waitCluster(t, es)
 		for i := range es {
 			es[len(es)-i-1].Stop()
@@ -26,7 +26,23 @@ func TestMultipleNodes(t *testing.T) {
 	afterTest(t)
 }
 
-func buildCluster(number int) ([]*Server, []*httptest.Server) {
+func TestMultipleTLSNodes(t *testing.T) {
+	tests := []int{1, 3, 5}
+
+	for _, tt := range tests {
+		es, hs := buildCluster(tt, true)
+		waitCluster(t, es)
+		for i := range es {
+			es[len(es)-i-1].Stop()
+		}
+		for i := range hs {
+			hs[len(hs)-i-1].Close()
+		}
+	}
+	afterTest(t)
+}
+
+func buildCluster(number int, tls bool) ([]*Server, []*httptest.Server) {
 	bootstrapper := 0
 	es := make([]*Server, number)
 	hs := make([]*httptest.Server, number)
@@ -42,7 +58,12 @@ func buildCluster(number int) ([]*Server, []*httptest.Server) {
 		m.Handle("/raft", es[i].t)
 		m.Handle("/raft/", es[i].t)
 
-		hs[i] = httptest.NewServer(m)
+		if tls {
+			hs[i] = httptest.NewTLSServer(m)
+		} else {
+			hs[i] = httptest.NewServer(m)
+		}
+
 		es[i].raftPubAddr = hs[i].URL
 		es[i].pubAddr = hs[i].URL
 

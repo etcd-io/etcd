@@ -1,6 +1,7 @@
 package etcd
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -54,6 +55,17 @@ func New(c *config.Config, id int64) *Server {
 		log.Fatalf("failed sanitizing configuration: %v", err)
 	}
 
+	tc := &tls.Config{
+		InsecureSkipVerify: true,
+	}
+	var err error
+	if c.PeerTLSInfo().Scheme() == "https" {
+		tc, err = c.PeerTLSInfo().ClientConfig()
+		if err != nil {
+			log.Fatal("failed to create raft transporter tls:", err)
+		}
+	}
+
 	s := &Server{
 		config:       c,
 		id:           id,
@@ -66,7 +78,7 @@ func New(c *config.Config, id int64) *Server {
 			Node:   raft.New(id, defaultHeartbeat, defaultElection),
 			result: make(map[wait]chan interface{}),
 		},
-		t: newTransporter(),
+		t: newTransporter(tc),
 
 		Store: store.New(),
 

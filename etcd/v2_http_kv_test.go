@@ -17,7 +17,7 @@ import (
 //   $ curl -X PUT localhost:4001/v2/keys/foo/bar?dir=true
 //
 func TestV2SetDirectory(t *testing.T) {
-	es, hs := buildCluster(1)
+	es, hs := buildCluster(1, false)
 	u := hs[0].URL
 	resp, err := PutForm(fmt.Sprintf("%s%s", u, "/v2/keys/foo?dir=true"), url.Values{})
 	assert.Equal(t, resp.StatusCode, http.StatusCreated)
@@ -34,7 +34,7 @@ func TestV2SetDirectory(t *testing.T) {
 //   $ curl -X PUT localhost:4001/v2/keys/foo/bar -d value=XXX -d ttl=20
 //
 func TestV2SetKeyWithTTL(t *testing.T) {
-	es, hs := buildCluster(1)
+	es, hs := buildCluster(1, false)
 	u := hs[0].URL
 	t0 := time.Now()
 	v := url.Values{}
@@ -59,7 +59,7 @@ func TestV2SetKeyWithTTL(t *testing.T) {
 //   $ curl -X PUT localhost:4001/v2/keys/foo/bar -d value=XXX -d ttl=bad_ttl
 //
 func TestV2SetKeyWithBadTTL(t *testing.T) {
-	es, hs := buildCluster(1)
+	es, hs := buildCluster(1, false)
 	u := hs[0].URL
 	v := url.Values{}
 	v.Set("value", "XXX")
@@ -80,7 +80,7 @@ func TestV2SetKeyWithBadTTL(t *testing.T) {
 //   $ curl -X PUT localhost:4001/v2/keys/foo/bar -d value=XXX -d prevExist=false
 //
 func TestV2CreateKeySuccess(t *testing.T) {
-	es, hs := buildCluster(1)
+	es, hs := buildCluster(1, false)
 	u := hs[0].URL
 	v := url.Values{}
 	v.Set("value", "XXX")
@@ -101,7 +101,7 @@ func TestV2CreateKeySuccess(t *testing.T) {
 //   $ curl -X PUT localhost:4001/v2/keys/foo/bar -d value=XXX -d prevExist=false -> fail
 //
 func TestV2CreateKeyFail(t *testing.T) {
-	es, hs := buildCluster(1)
+	es, hs := buildCluster(1, false)
 	u := hs[0].URL
 	v := url.Values{}
 	v.Set("value", "XXX")
@@ -127,7 +127,7 @@ func TestV2CreateKeyFail(t *testing.T) {
 //   $ curl -X PUT localhost:4001/v2/keys/foo/bar -d value=YYY -d prevExist=true
 //
 func TestV2UpdateKeySuccess(t *testing.T) {
-	es, hs := buildCluster(1)
+	es, hs := buildCluster(1, false)
 	u := hs[0].URL
 	v := url.Values{}
 
@@ -154,7 +154,7 @@ func TestV2UpdateKeySuccess(t *testing.T) {
 //   $ curl -X PUT localhost:4001/v2/keys/foo/bar -d value=XXX -d prevExist=true
 //
 func TestV2UpdateKeyFailOnValue(t *testing.T) {
-	es, hs := buildCluster(1)
+	es, hs := buildCluster(1, false)
 	u := hs[0].URL
 	v := url.Values{}
 	resp, _ := PutForm(fmt.Sprintf("%s%s", u, "/v2/keys/foo?dir=true"), v)
@@ -180,7 +180,7 @@ func TestV2UpdateKeyFailOnValue(t *testing.T) {
 //   $ curl -X PUT localhost:4001/v2/keys/foo/bar -d value=YYY -d prevExist=true -> fail
 //
 func TestV2UpdateKeyFailOnMissingDirectory(t *testing.T) {
-	es, hs := buildCluster(1)
+	es, hs := buildCluster(1, false)
 	u := hs[0].URL
 	v := url.Values{}
 	v.Set("value", "YYY")
@@ -210,7 +210,7 @@ func TestV2UpdateKeyFailOnMissingDirectory(t *testing.T) {
 //   $ curl -X PUT localhost:4001/v2/keys/foo -d value=XXX -d ttl= -d prevExist=true
 //
 func TestV2UpdateKeySuccessWithTTL(t *testing.T) {
-	es, hs := buildCluster(1)
+	es, hs := buildCluster(1, false)
 	u := hs[0].URL
 	v := url.Values{}
 	v.Set("value", "XXX")
@@ -248,7 +248,7 @@ func TestV2UpdateKeySuccessWithTTL(t *testing.T) {
 //   $ curl -X PUT localhost:4001/v2/keys/foo/bar -d value=YYY -d prevIndex=1
 //
 func TestV2SetKeyCASOnIndexSuccess(t *testing.T) {
-	es, hs := buildCluster(1)
+	es, hs := buildCluster(1, false)
 	u := hs[0].URL
 	v := url.Values{}
 	v.Set("value", "XXX")
@@ -277,7 +277,7 @@ func TestV2SetKeyCASOnIndexSuccess(t *testing.T) {
 //   $ curl -X PUT localhost:4001/v2/keys/foo/bar -d value=YYY -d prevIndex=10
 //
 func TestV2SetKeyCASOnIndexFail(t *testing.T) {
-	es, hs := buildCluster(1)
+	es, hs := buildCluster(1, false)
 	u := hs[0].URL
 	v := url.Values{}
 	v.Set("value", "XXX")
@@ -304,7 +304,7 @@ func TestV2SetKeyCASOnIndexFail(t *testing.T) {
 //   $ curl -X PUT localhost:4001/v2/keys/foo/bar -d value=YYY -d prevIndex=bad_index
 //
 func TestV2SetKeyCASWithInvalidIndex(t *testing.T) {
-	es, hs := buildCluster(1)
+	es, hs := buildCluster(1, false)
 	u := hs[0].URL
 	v := url.Values{}
 	v.Set("value", "YYY")
@@ -326,7 +326,7 @@ func TestV2SetKeyCASWithInvalidIndex(t *testing.T) {
 //   $ curl -X PUT localhost:4001/v2/keys/foo/bar -d value=YYY -d prevValue=XXX
 //
 func TestV2SetKeyCASOnValueSuccess(t *testing.T) {
-	es, hs := buildCluster(1)
+	es, hs := buildCluster(1, false)
 	u := hs[0].URL
 	v := url.Values{}
 	v.Set("value", "XXX")
@@ -354,7 +354,7 @@ func TestV2SetKeyCASOnValueSuccess(t *testing.T) {
 //   $ curl -X PUT localhost:4001/v2/keys/foo/bar -d value=YYY -d prevValue=AAA
 //
 func TestV2SetKeyCASOnValueFail(t *testing.T) {
-	es, hs := buildCluster(1)
+	es, hs := buildCluster(1, false)
 	u := hs[0].URL
 	v := url.Values{}
 	v.Set("value", "XXX")
@@ -381,7 +381,7 @@ func TestV2SetKeyCASOnValueFail(t *testing.T) {
 //   $ curl -X PUT localhost:4001/v2/keys/foo/bar -d value=XXX -d prevValue=
 //
 func TestV2SetKeyCASWithMissingValueFails(t *testing.T) {
-	es, hs := buildCluster(1)
+	es, hs := buildCluster(1, false)
 	u := hs[0].URL
 	v := url.Values{}
 	v.Set("value", "XXX")
@@ -403,7 +403,7 @@ func TestV2SetKeyCASWithMissingValueFails(t *testing.T) {
 //   $ curl -X PUT localhost:4001/v2/keys/foo/bar -d value=YYY -d prevValue=AAA -d prevIndex=4
 //
 func TestV2SetKeyCASOnValueAndIndexFail(t *testing.T) {
-	es, hs := buildCluster(1)
+	es, hs := buildCluster(1, false)
 	u := hs[0].URL
 	v := url.Values{}
 	v.Set("value", "XXX")
@@ -432,7 +432,7 @@ func TestV2SetKeyCASOnValueAndIndexFail(t *testing.T) {
 //   $ curl -X PUT localhost:4001/v2/keys/foo/bar -d value=YYY -d prevValue=XXX -d prevIndex=4
 //
 func TestV2SetKeyCASOnValueMatchAndIndexFail(t *testing.T) {
-	es, hs := buildCluster(1)
+	es, hs := buildCluster(1, false)
 	u := hs[0].URL
 	v := url.Values{}
 	v.Set("value", "XXX")
@@ -461,7 +461,7 @@ func TestV2SetKeyCASOnValueMatchAndIndexFail(t *testing.T) {
 //   $ curl -X PUT localhost:4001/v2/keys/foo/bar -d value=YYY -d prevValue=AAA -d prevIndex=3
 //
 func TestV2SetKeyCASOnIndexMatchAndValueFail(t *testing.T) {
-	es, hs := buildCluster(1)
+	es, hs := buildCluster(1, false)
 	u := hs[0].URL
 	v := url.Values{}
 	v.Set("value", "XXX")
@@ -489,7 +489,7 @@ func TestV2SetKeyCASOnIndexMatchAndValueFail(t *testing.T) {
 //   $ curl -X PUT localhost:4001/v2/keys/foo/bar -d value=
 //
 func TestV2SetKeyCASWithEmptyValueSuccess(t *testing.T) {
-	es, hs := buildCluster(1)
+	es, hs := buildCluster(1, false)
 	u := hs[0].URL
 	v := url.Values{}
 	v.Set("value", "")
@@ -503,7 +503,7 @@ func TestV2SetKeyCASWithEmptyValueSuccess(t *testing.T) {
 }
 
 func TestV2SetKey(t *testing.T) {
-	es, hs := buildCluster(1)
+	es, hs := buildCluster(1, false)
 	u := hs[0].URL
 
 	v := url.Values{}
@@ -521,7 +521,7 @@ func TestV2SetKey(t *testing.T) {
 }
 
 func TestV2SetKeyRedirect(t *testing.T) {
-	es, hs := buildCluster(3)
+	es, hs := buildCluster(3, false)
 	waitCluster(t, es)
 	u := hs[1].URL
 	ru := fmt.Sprintf("%s%s", hs[0].URL, "/v2/keys/foo/bar")
@@ -555,7 +555,7 @@ func TestV2SetKeyRedirect(t *testing.T) {
 //   $ curl -X DELETE localhost:4001/v2/keys/foo/bar
 //
 func TestV2DeleteKey(t *testing.T) {
-	es, hs := buildCluster(1)
+	es, hs := buildCluster(1, false)
 	u := hs[0].URL
 
 	v := url.Values{}
@@ -583,7 +583,7 @@ func TestV2DeleteKey(t *testing.T) {
 //   $ curl -X DELETE localhost:4001/v2/keys/foo?dir=true
 //
 func TestV2DeleteEmptyDirectory(t *testing.T) {
-	es, hs := buildCluster(1)
+	es, hs := buildCluster(1, false)
 	u := hs[0].URL
 
 	resp, err := PutForm(fmt.Sprintf("%s%s", u, "/v2/keys/foo?dir=true"), url.Values{})
@@ -611,7 +611,7 @@ func TestV2DeleteEmptyDirectory(t *testing.T) {
 //   $ curl -X DELETE localhost:4001/v2/keys/foo?dir=true&recursive=true
 //
 func TestV2DeleteNonEmptyDirectory(t *testing.T) {
-	es, hs := buildCluster(1)
+	es, hs := buildCluster(1, false)
 	u := hs[0].URL
 
 	resp, err := PutForm(fmt.Sprintf("%s%s", u, "/v2/keys/foo/bar?dir=true"), url.Values{})
@@ -637,7 +637,7 @@ func TestV2DeleteNonEmptyDirectory(t *testing.T) {
 //   $ curl -X DELETE localhost:4001/v2/keys/foo?recursive=true
 //
 func TestV2DeleteDirectoryRecursiveImpliesDir(t *testing.T) {
-	es, hs := buildCluster(1)
+	es, hs := buildCluster(1, false)
 	u := hs[0].URL
 
 	resp, err := PutForm(fmt.Sprintf("%s%s", u, "/v2/keys/foo?dir=true"), url.Values{})
@@ -659,7 +659,7 @@ func TestV2DeleteDirectoryRecursiveImpliesDir(t *testing.T) {
 //   $ curl -X DELETE localhost:4001/v2/keys/foo?prevIndex=3
 //
 func TestV2DeleteKeyCADOnIndexSuccess(t *testing.T) {
-	es, hs := buildCluster(1)
+	es, hs := buildCluster(1, false)
 	u := hs[0].URL
 
 	v := url.Values{}
@@ -686,7 +686,7 @@ func TestV2DeleteKeyCADOnIndexSuccess(t *testing.T) {
 //   $ curl -X DELETE localhost:4001/v2/keys/foo?prevIndex=100
 //
 func TestV2DeleteKeyCADOnIndexFail(t *testing.T) {
-	es, hs := buildCluster(1)
+	es, hs := buildCluster(1, false)
 	u := hs[0].URL
 
 	v := url.Values{}
@@ -709,7 +709,7 @@ func TestV2DeleteKeyCADOnIndexFail(t *testing.T) {
 //   $ curl -X DELETE localhost:4001/v2/keys/foo/bar?prevIndex=bad_index
 //
 func TestV2DeleteKeyCADWithInvalidIndex(t *testing.T) {
-	es, hs := buildCluster(1)
+	es, hs := buildCluster(1, false)
 	u := hs[0].URL
 
 	v := url.Values{}
@@ -731,7 +731,7 @@ func TestV2DeleteKeyCADWithInvalidIndex(t *testing.T) {
 //   $ curl -X DELETE localhost:4001/v2/keys/foo/bar?prevValue=XXX
 //
 func TestV2DeleteKeyCADOnValueSuccess(t *testing.T) {
-	es, hs := buildCluster(1)
+	es, hs := buildCluster(1, false)
 	u := hs[0].URL
 
 	v := url.Values{}
@@ -756,7 +756,7 @@ func TestV2DeleteKeyCADOnValueSuccess(t *testing.T) {
 //   $ curl -X DELETE localhost:4001/v2/keys/foo/bar?prevValue=YYY
 //
 func TestV2DeleteKeyCADOnValueFail(t *testing.T) {
-	es, hs := buildCluster(1)
+	es, hs := buildCluster(1, false)
 	u := hs[0].URL
 
 	v := url.Values{}
@@ -778,7 +778,7 @@ func TestV2DeleteKeyCADOnValueFail(t *testing.T) {
 //   $ curl -X DELETE localhost:4001/v2/keys/foo/bar?prevIndex=
 //
 func TestV2DeleteKeyCADWithInvalidValue(t *testing.T) {
-	es, hs := buildCluster(1)
+	es, hs := buildCluster(1, false)
 	u := hs[0].URL
 
 	v := url.Values{}
@@ -801,7 +801,7 @@ func TestV2DeleteKeyCADWithInvalidValue(t *testing.T) {
 //   $ curl -X POST localhost:4001/v2/keys/foo/baz
 //
 func TestV2CreateUnique(t *testing.T) {
-	es, hs := buildCluster(1)
+	es, hs := buildCluster(1, false)
 	u := hs[0].URL
 
 	// POST should add index to list.
@@ -843,7 +843,7 @@ func TestV2CreateUnique(t *testing.T) {
 //   $ curl localhost:4001/v2/keys/foo/bar
 //
 func TestV2GetKey(t *testing.T) {
-	es, hs := buildCluster(1)
+	es, hs := buildCluster(1, false)
 	u := hs[0].URL
 
 	v := url.Values{}
@@ -878,7 +878,7 @@ func TestV2GetKey(t *testing.T) {
 //   $ curl localhost:4001/v2/keys/foo -d recursive=true
 //
 func TestV2GetKeyRecursively(t *testing.T) {
-	es, hs := buildCluster(1)
+	es, hs := buildCluster(1, false)
 	u := hs[0].URL
 
 	v := url.Values{}
@@ -927,7 +927,7 @@ func TestV2GetKeyRecursively(t *testing.T) {
 //   $ curl -X PUT localhost:4001/v2/keys/foo/bar -d value=XXX
 //
 func TestV2WatchKey(t *testing.T) {
-	es, hs := buildCluster(1)
+	es, hs := buildCluster(1, false)
 	u := hs[0].URL
 
 	// There exists a little gap between etcd ready to serve and
@@ -985,7 +985,7 @@ func TestV2WatchKey(t *testing.T) {
 //   $ curl -X PUT localhost:4001/v2/keys/foo/bar -d value=YYY
 //
 func TestV2WatchKeyWithIndex(t *testing.T) {
-	es, hs := buildCluster(1)
+	es, hs := buildCluster(1, false)
 	u := hs[0].URL
 
 	var body map[string]interface{}
@@ -1044,7 +1044,7 @@ func TestV2WatchKeyWithIndex(t *testing.T) {
 //   $ curl -X PUT localhost:4001/v2/keys/keyindir/bar -d value=YYY
 //
 func TestV2WatchKeyInDir(t *testing.T) {
-	es, hs := buildCluster(1)
+	es, hs := buildCluster(1, false)
 	u := hs[0].URL
 
 	var body map[string]interface{}
@@ -1096,7 +1096,7 @@ func TestV2WatchKeyInDir(t *testing.T) {
 //   $ curl -I localhost:4001/v2/keys/foo/bar
 //
 func TestV2HeadKey(t *testing.T) {
-	es, hs := buildCluster(1)
+	es, hs := buildCluster(1, false)
 	u := hs[0].URL
 
 	v := url.Values{}
