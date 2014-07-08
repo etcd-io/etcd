@@ -23,3 +23,15 @@ func NewClusterConfig() *ClusterConfig {
 		SyncInterval: DefaultSyncInterval,
 	}
 }
+
+func (c *ClusterConfig) Sanitize() {
+	if c.ActiveSize < MinActiveSize {
+		c.ActiveSize = MinActiveSize
+	}
+	if c.RemoveDelay < MinRemoveDelay {
+		c.RemoveDelay = MinRemoveDelay
+	}
+	if c.SyncInterval < MinSyncInterval {
+		c.SyncInterval = MinSyncInterval
+	}
+}
