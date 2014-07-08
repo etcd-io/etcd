@@ -27,6 +27,9 @@ const (
 	v2LeaderPrefix     = "/v2/leader"
 	v2StoreStatsPrefix = "/v2/stats/store"
 
+	v2configKVPrefix    = "/_etcd/config"
+	v2adminConfigPrefix = "/v2/admin/config"
+
 	raftPrefix = "/raft"
 )
 
@@ -103,6 +106,7 @@ func New(c *config.Config, id int64) *Server {
 	m.Handle(v2peersPrefix, handlerErr(s.serveMachines))
 	m.Handle(v2LeaderPrefix, handlerErr(s.serveLeader))
 	m.Handle(v2StoreStatsPrefix, handlerErr(s.serveStoreStats))
+	m.Handle(v2adminConfigPrefix, handlerErr(s.serveAdminConfig))
 	s.Handler = m
 	return s
 }
@@ -113,6 +117,16 @@ func (s *Server) SetTick(d time.Duration) {
 
 func (s *Server) RaftHandler() http.Handler {
 	return s.t
+}
+
+func (s *Server) ClusterConfig() *config.ClusterConfig {
+	c := config.NewClusterConfig()
+	// This is used for backward compatibility because it doesn't
+	// set cluster config in older version.
+	if e, err := s.Get(v2configKVPrefix, false, false); err == nil {
+		json.Unmarshal([]byte(*e.Node.Value), c)
+	}
+	return c
 }
 
 func (s *Server) Run() {
