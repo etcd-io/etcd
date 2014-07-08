@@ -27,6 +27,12 @@ func main() {
 	e := etcd.New(config, genId())
 	go e.Run()
 
+	go func() {
+		if err := http.ListenAndServe(config.Peer.BindAddr, e.RaftHandler()); err != nil {
+			log.Fatal("system", err)
+		}
+	}()
+
 	if err := http.ListenAndServe(config.BindAddr, e); err != nil {
 		log.Fatal("system", err)
 	}

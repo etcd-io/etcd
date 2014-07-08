@@ -32,8 +32,9 @@ const (
 type Server struct {
 	config *config.Config
 
-	id           int
+	id           int64
 	pubAddr      string
+	raftPubAddr  string
 	nodes        map[string]bool
 	tickDuration time.Duration
 
@@ -48,7 +49,7 @@ type Server struct {
 	http.Handler
 }
 
-func New(c *config.Config, id int) *Server {
+func New(c *config.Config, id int64) *Server {
 	if err := c.Sanitize(); err != nil {
 		log.Fatalf("failed sanitizing configuration: %v", err)
 	}
@@ -57,6 +58,7 @@ func New(c *config.Config, id int) *Server {
 		config:       c,
 		id:           id,
 		pubAddr:      c.Addr,
+		raftPubAddr:  c.Peer.Addr,
 		nodes:        make(map[string]bool),
 		tickDuration: defaultTickDuration,
 		proposal:     make(chan v2Proposal),
@@ -78,7 +80,6 @@ func New(c *config.Config, id int) *Server {
 	m := http.NewServeMux()
 	//m.Handle("/HEAD", handlerErr(s.serveHead))
 	m.Handle(v2Prefix+"/", handlerErr(s.serveValue))
-	m.Handle("/raft", s.t)
 	m.Handle(v2machinePrefix, handlerErr(s.serveMachines))
 	m.Handle(v2peersPrefix, handlerErr(s.serveMachines))
 	m.Handle(v2LeaderPrefix, handlerErr(s.serveLeader))
@@ -89,6 +90,10 @@ func New(c *config.Config, id int) *Server {
 
 func (s *Server) SetTick(d time.Duration) {
 	s.tickDuration = d
+}
+
+func (s *Server) RaftHandler() http.Handler {
+	return s.t
 }
 
 func (s *Server) Run() {
@@ -107,14 +112,14 @@ func (s *Server) Stop() {
 func (s *Server) Bootstrap() {
 	log.Println("starting a bootstrap node")
 	s.node.Campaign()
-	s.node.Add(s.id, s.pubAddr)
+	s.node.Add(s.id, s.raftPubAddr, []byte(s.pubAddr))
 	s.apply(s.node.Next())
 	s.run()
 }
 
 func (s *Server) Join() {
 	log.Println("joining cluster via peers", s.config.Peers)
-	d, err := json.Marshal(&raft.Config{s.id, s.pubAddr})
+	d, err := json.Marshal(&raft.Config{s.id, s.raftPubAddr, []byte(s.pubAddr)})
 	if err != nil {
 		panic(err)
 	}
@@ -186,10 +191,10 @@ func (s *Server) apply(ents []raft.Entry) {
 				log.Println(err)
 				break
 			}
-			log.Printf("Add Node %x %v\n", cfg.NodeId, cfg.Addr)
+			log.Printf("Add Node %x %v %v\n", cfg.NodeId, cfg.Addr, string(cfg.Context))
 			s.nodes[cfg.Addr] = true
 			p := path.Join(v2machineKVPrefix, fmt.Sprint(cfg.NodeId))
-			s.Store.Set(p, false, cfg.Addr, store.Permanent)
+			s.Store.Set(p, false, fmt.Sprintf("raft=%v&etcd=%v", cfg.Addr, string(cfg.Context)), store.Permanent)
 		default:
 			panic("unimplemented")
 		}
@@ -223,7 +228,7 @@ func (s *Server) send(msgs []raft.Message) {
 	}
 }
 
-func (s *Server) fetchAddr(nodeId int) error {
+func (s *Server) fetchAddr(nodeId int64) error {
 	for seed := range s.nodes {
 		if err := s.t.fetchAddr(seed, nodeId); err == nil {
 			return nil

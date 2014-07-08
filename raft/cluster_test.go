@@ -124,7 +124,7 @@ func buildCluster(size int, ids []int64) (nt *network, nodes []*Node) {
 	lead := dictate(nodes[0])
 	lead.Next()
 	for i := 1; i < size; i++ {
-		lead.Add(ids[i], "")
+		lead.Add(ids[i], "", nil)
 		nt.send(lead.Msgs()...)
 		for j := 0; j < i; j++ {
 			nodes[j].Next()
