@@ -1,3 +1,9 @@
+v0.4.5
+* Flush headers immediatly on `wait=true` requests (#877)
+* Add `ETCD_HTTP_READ_TIMEOUT` and `ETCD_HTTP_WRITE_TIMEOUT` (#880)
+* Add `ETCDCTL_PEERS` configuration to etcdctl (#95)
+* etcdctl takes stdin for mk (#91)
+
 v0.4.4
 * Fix `--no-sync` flag in etcdctl (#83)
 * Improved logging for machine removal (#844)
