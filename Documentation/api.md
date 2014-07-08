@@ -13,6 +13,14 @@ This will bring up etcd listening on default ports (4001 for client communicatio
 The `-data-dir machine0` argument tells etcd to write machine configuration, logs and snapshots to the `./machine0/` directory.
 The `-name machine0` tells the rest of the cluster that this machine is named machine0.
 
+## Getting the etcd version
+
+The etcd version can be obtained from the `/version` endpoint.
+
+```sh
+curl -L http://127.0.0.1:4001/version
+```
+
 ## Key Space Operations
 
 The primary API of etcd is a hierarchical key space.
