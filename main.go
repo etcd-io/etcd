@@ -27,40 +27,40 @@ func main() {
 	}
 
 	e := etcd.New(config, genId())
-	rTLS, rerr := config.PeerTLSInfo().ServerConfig()
-
 	go e.Run()
 
 	go func() {
-		l, err := net.Listen("tcp", config.Peer.BindAddr)
-		if err != nil {
-			log.Fatal(err)
-		}
-		log.Println("raft server starts listening on", config.Peer.BindAddr)
-
-		switch config.PeerTLSInfo().Scheme() {
-		case "http":
-			log.Println("raft server starts serving HTTP")
-
-		case "https":
-			if rTLS == nil {
-				log.Fatal("failed to create raft tls:", rerr)
-			}
-			l = tls.NewListener(l, rTLS)
-			log.Println("raft server starts serving HTTPS")
-		default:
-			log.Fatal("unsupported http scheme", config.PeerTLSInfo().Scheme())
-		}
-
-		log.Fatal(http.Serve(l, e.RaftHandler()))
+		serve("raft", config.Peer.BindAddr, config.PeerTLSInfo(), e.RaftHandler())
 	}()
-
-	if err := http.ListenAndServe(config.BindAddr, e); err != nil {
-		log.Fatal("system", err)
-	}
+	serve("etcd", config.BindAddr, config.EtcdTLSInfo(), e)
 }
 
 func genId() int {
 	r := rand.New(rand.NewSource(int64(time.Now().Nanosecond())))
 	return r.Int()
+}
+
+func serve(who string, addr string, info *config.TLSInfo, handler http.Handler) {
+	t, terr := info.ServerConfig()
+	l, err := net.Listen("tcp", addr)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Printf("%v server starts listening on %v\n", who, addr)
+
+	switch info.Scheme() {
+	case "http":
+		log.Printf("%v server starts serving HTTP\n", who)
+
+	case "https":
+		if t == nil {
+			log.Fatalf("failed to create %v tls: %v\n", who, terr)
+		}
+		l = tls.NewListener(l, t)
+		log.Printf("%v server starts serving HTTPS\n", who)
+	default:
+		log.Fatal("unsupported http scheme", info.Scheme())
+	}
+
+	log.Fatal(http.Serve(l, handler))
 }
