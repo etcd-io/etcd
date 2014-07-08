@@ -13,7 +13,7 @@ import (
 )
 
 func TestMachinesEndPoint(t *testing.T) {
-	es, hs := buildCluster(3)
+	es, hs := buildCluster(3, false)
 	waitCluster(t, es)
 
 	w := make([]string, len(hs))
@@ -50,7 +50,7 @@ func TestMachinesEndPoint(t *testing.T) {
 }
 
 func TestLeaderEndPoint(t *testing.T) {
-	es, hs := buildCluster(3)
+	es, hs := buildCluster(3, false)
 	waitCluster(t, es)
 
 	us := make([]string, len(hs))
@@ -87,7 +87,7 @@ func TestLeaderEndPoint(t *testing.T) {
 }
 
 func TestStoreStatsEndPoint(t *testing.T) {
-	es, hs := buildCluster(1)
+	es, hs := buildCluster(1, false)
 	waitCluster(t, es)
 
 	resp, err := http.Get(hs[0].URL + v2StoreStatsPrefix)

@@ -2,6 +2,7 @@ package etcd
 
 import (
 	"bytes"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -31,8 +32,9 @@ type transporter struct {
 	*http.ServeMux
 }
 
-func newTransporter() *transporter {
+func newTransporter(tc *tls.Config) *transporter {
 	tr := new(http.Transport)
+	tr.TLSClientConfig = tc
 	c := &http.Client{Transport: tr}
 
 	t := &transporter{
