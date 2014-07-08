@@ -2,6 +2,7 @@ package etcd
 
 import (
 	"fmt"
+	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
@@ -34,9 +35,15 @@ func buildCluster(number int) ([]*Server, []*httptest.Server) {
 	for i := range es {
 		c := config.New()
 		c.Peers = []string{seed}
-		es[i] = New(c, i)
+		es[i] = New(c, int64(i))
 		es[i].SetTick(time.Millisecond * 5)
-		hs[i] = httptest.NewServer(es[i])
+		m := http.NewServeMux()
+		m.Handle("/", es[i])
+		m.Handle("/raft", es[i].t)
+		m.Handle("/raft/", es[i].t)
+
+		hs[i] = httptest.NewServer(m)
+		es[i].raftPubAddr = hs[i].URL
 		es[i].pubAddr = hs[i].URL
 
 		if i == bootstrapper {

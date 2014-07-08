@@ -10,10 +10,10 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"strconv"
 	"sync"
 
 	"github.com/coreos/etcd/raft"
-	"github.com/coreos/etcd/store"
 )
 
 var (
@@ -23,22 +23,27 @@ var (
 type transporter struct {
 	mu      sync.RWMutex
 	stopped bool
-	urls    map[int]string
+	urls    map[int64]string
 
 	recv   chan *raft.Message
 	client *http.Client
 	wg     sync.WaitGroup
+	*http.ServeMux
 }
 
 func newTransporter() *transporter {
 	tr := new(http.Transport)
 	c := &http.Client{Transport: tr}
 
-	return &transporter{
-		urls:   make(map[int]string),
+	t := &transporter{
+		urls:   make(map[int64]string),
 		recv:   make(chan *raft.Message, 512),
 		client: c,
 	}
+	t.ServeMux = http.NewServeMux()
+	t.ServeMux.HandleFunc("/raft/cfg/", t.serveCfg)
+	t.ServeMux.HandleFunc("/raft", t.serveRaft)
+	return t
 }
 
 func (t *transporter) stop() {
@@ -51,7 +56,7 @@ func (t *transporter) stop() {
 	tr.CloseIdleConnections()
 }
 
-func (t *transporter) set(nodeId int, rawurl string) error {
+func (t *transporter) set(nodeId int64, rawurl string) error {
 	u, err := url.Parse(rawurl)
 	if err != nil {
 		return err
@@ -63,7 +68,7 @@ func (t *transporter) set(nodeId int, rawurl string) error {
 	return nil
 }
 
-func (t *transporter) sendTo(nodeId int, data []byte) error {
+func (t *transporter) sendTo(nodeId int64, data []byte) error {
 	t.mu.RLock()
 	url := t.urls[nodeId]
 	t.mu.RUnlock()
@@ -93,13 +98,13 @@ func (t *transporter) send(addr string, data []byte) error {
 	return nil
 }
 
-func (t *transporter) fetchAddr(seedurl string, id int) error {
+func (t *transporter) fetchAddr(seedurl string, id int64) error {
 	u, err := url.Parse(seedurl)
 	if err != nil {
 		return fmt.Errorf("cannot parse the url of the given seed")
 	}
 
-	u.Path = path.Join(v2Prefix, v2machineKVPrefix, fmt.Sprint(id))
+	u.Path = path.Join("/raft/cfg", fmt.Sprint(id))
 	resp, err := t.client.Get(u.String())
 	if err != nil {
 		return fmt.Errorf("cannot reach %v", u)
@@ -111,19 +116,13 @@ func (t *transporter) fetchAddr(seedurl string, id int) error {
 		return fmt.Errorf("cannot reach %v", u)
 	}
 
-	event := new(store.Event)
-	err = json.Unmarshal(b, event)
-	if err != nil {
-		panic(fmt.Sprintf("fetchAddr: ", err))
-	}
-
-	if err := t.set(id, *event.Node.Value); err != nil {
+	if err := t.set(id, string(b)); err != nil {
 		return fmt.Errorf("cannot parse the url of node %d: %v", id, err)
 	}
 	return nil
 }
 
-func (t *transporter) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (t *transporter) serveRaft(w http.ResponseWriter, r *http.Request) {
 	msg := new(raft.Message)
 	if err := json.NewDecoder(r.Body).Decode(msg); err != nil {
 		log.Println(err)
@@ -139,4 +138,17 @@ func (t *transporter) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		// TODO(xiangli): not return 200.
 	}
 	return
+}
+
+func (t *transporter) serveCfg(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(r.URL.Path[len("/raft/cfg/"):], 10, 64)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if u, ok := t.urls[id]; ok {
+		w.Write([]byte(u))
+		return
+	}
+	http.Error(w, "Not Found", http.StatusNotFound)
 }
