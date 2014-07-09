@@ -89,3 +89,11 @@ func (f *CommandFactory) CreateSyncCommand(now time.Time) raft.Command {
 		Time: time.Now(),
 	}
 }
+
+func (f *CommandFactory) CreateGetCommand(key string, recursive, sorted bool) raft.Command {
+	return &GetCommand{
+		Key:       key,
+		Recursive: recursive,
+		Sorted:    sorted,
+	}
+}
