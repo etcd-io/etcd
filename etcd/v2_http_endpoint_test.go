@@ -3,6 +3,7 @@ package etcd
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"reflect"
@@ -217,6 +218,98 @@ func TestPutAdminConfigEndPoint(t *testing.T) {
 		}
 		afterTest(t)
 	}
+}
+
+func TestGetAdminMachineEndPoint(t *testing.T) {
+	es, hs := buildCluster(3, false)
+	waitCluster(t, es)
+
+	for i := range es {
+		for j := range hs {
+			name := fmt.Sprint(es[i].id)
+			r, err := http.Get(hs[j].URL + v2adminMachinesPrefix + name)
+			if err != nil {
+				t.Errorf("%v", err)
+				continue
+			}
+			if g := r.StatusCode; g != 200 {
+				t.Errorf("#%d on %d: status = %d, want %d", i, j, g, 200)
+			}
+			if g := r.Header.Get("Content-Type"); g != "application/json" {
+				t.Errorf("#%d on %d: ContentType = %d, want application/json", i, j, g)
+			}
+
+			m := new(machineMessage)
+			err = json.NewDecoder(r.Body).Decode(m)
+			r.Body.Close()
+			if err != nil {
+				t.Errorf("%v", err)
+				continue
+			}
+			wm := &machineMessage{
+				Name:      name,
+				State:     stateFollower,
+				ClientURL: hs[i].URL,
+				PeerURL:   hs[i].URL,
+			}
+			if i == 0 {
+				wm.State = stateLeader
+			}
+			if !reflect.DeepEqual(m, wm) {
+				t.Errorf("#%d on %d: body = %+v, want %+v", i, j, m, wm)
+			}
+		}
+	}
+
+	for i := range es {
+		es[len(es)-i-1].Stop()
+	}
+	for i := range hs {
+		hs[len(hs)-i-1].Close()
+	}
+	afterTest(t)
+}
+
+func TestGetAdminMachinesEndPoint(t *testing.T) {
+	es, hs := buildCluster(3, false)
+	waitCluster(t, es)
+
+	w := make([]*machineMessage, len(hs))
+	for i := range hs {
+		w[i] = &machineMessage{
+			Name:      fmt.Sprint(es[i].id),
+			State:     stateFollower,
+			ClientURL: hs[i].URL,
+			PeerURL:   hs[i].URL,
+		}
+	}
+	w[0].State = stateLeader
+
+	for i := range hs {
+		r, err := http.Get(hs[i].URL + v2adminMachinesPrefix)
+		if err != nil {
+			t.Errorf("%v", err)
+			continue
+		}
+		m := make([]*machineMessage, 0)
+		err = json.NewDecoder(r.Body).Decode(&m)
+		r.Body.Close()
+		if err != nil {
+			t.Errorf("%v", err)
+			continue
+		}
+		if !reflect.DeepEqual(m, w) {
+			t.Errorf("on %d: machines = %+v, want %+v", i, m, w)
+		}
+	}
+
+	for i := range es {
+		es[len(es)-i-1].Stop()
+	}
+	for i := range hs {
+		hs[len(hs)-i-1].Close()
+	}
+	afterTest(t)
 }
 
 // barrier ensures that all servers have made further progress on applied index
