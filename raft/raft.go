@@ -63,8 +63,8 @@ func (st stateType) String() string {
 
 type Message struct {
 	Type     messageType
-	To       int
-	From     int
+	To       int64
+	From     int64
 	Term     int
 	LogTerm  int
 	Index    int
@@ -90,27 +90,27 @@ func (in *index) decr() {
 }
 
 type stateMachine struct {
-	id int
+	id int64
 
 	// the term we are participating in at any time
 	term int
 
 	// who we voted for in term
-	vote int
+	vote int64
 
 	// the log
 	log *log
 
-	ins map[int]*index
+	ins map[int64]*index
 
 	state stateType
 
-	votes map[int]bool
+	votes map[int64]bool
 
 	msgs []Message
 
 	// the leader id
-	lead int
+	lead int64
 
 	// pending reconfiguration
 	pendingConf bool
@@ -118,8 +118,8 @@ type stateMachine struct {
 	snapshoter Snapshoter
 }
 
-func newStateMachine(id int, peers []int) *stateMachine {
-	sm := &stateMachine{id: id, log: newLog(), ins: make(map[int]*index)}
+func newStateMachine(id int64, peers []int64) *stateMachine {
+	sm := &stateMachine{id: id, log: newLog(), ins: make(map[int64]*index)}
 	for _, p := range peers {
 		sm.ins[p] = &index{}
 	}
@@ -131,7 +131,7 @@ func (sm *stateMachine) setSnapshoter(snapshoter Snapshoter) {
 	sm.snapshoter = snapshoter
 }
 
-func (sm *stateMachine) poll(id int, v bool) (granted int) {
+func (sm *stateMachine) poll(id int64, v bool) (granted int) {
 	if _, ok := sm.votes[id]; !ok {
 		sm.votes[id] = v
 	}
@@ -151,7 +151,7 @@ func (sm *stateMachine) send(m Message) {
 }
 
 // sendAppend sends RRPC, with entries to the given peer.
-func (sm *stateMachine) sendAppend(to int) {
+func (sm *stateMachine) sendAppend(to int64) {
 	in := sm.ins[to]
 	m := Message{}
 	m.To = to
@@ -199,7 +199,7 @@ func (sm *stateMachine) reset(term int) {
 	sm.term = term
 	sm.lead = none
 	sm.vote = none
-	sm.votes = make(map[int]bool)
+	sm.votes = make(map[int64]bool)
 	for i := range sm.ins {
 		sm.ins[i] = &index{next: sm.log.lastIndex() + 1}
 		if i == sm.id {
@@ -226,7 +226,7 @@ func (sm *stateMachine) promotable() bool {
 	return sm.log.committed != 0
 }
 
-func (sm *stateMachine) becomeFollower(term, lead int) {
+func (sm *stateMachine) becomeFollower(term int, lead int64) {
 	sm.reset(term)
 	sm.lead = lead
 	sm.state = stateFollower
@@ -311,12 +311,12 @@ func (sm *stateMachine) handleSnapshot(m Message) {
 	sm.send(Message{To: m.From, Type: msgAppResp, Index: sm.log.lastIndex()})
 }
 
-func (sm *stateMachine) addNode(id int) {
+func (sm *stateMachine) addNode(id int64) {
 	sm.ins[id] = &index{next: sm.log.lastIndex() + 1}
 	sm.pendingConf = false
 }
 
-func (sm *stateMachine) removeNode(id int) {
+func (sm *stateMachine) removeNode(id int64) {
 	delete(sm.ins, id)
 	sm.pendingConf = false
 }
@@ -424,7 +424,7 @@ func (sm *stateMachine) restore(s Snapshot) {
 	}
 
 	sm.log.restore(s.Index, s.Term)
-	sm.ins = make(map[int]*index)
+	sm.ins = make(map[int64]*index)
 	for _, n := range s.Nodes {
 		sm.ins[n] = &index{next: sm.log.lastIndex() + 1}
 		if n == sm.id {
@@ -445,8 +445,8 @@ func (sm *stateMachine) needSnapshot(i int) bool {
 	return false
 }
 
-func (sm *stateMachine) nodes() []int {
-	nodes := make([]int, 0, len(sm.ins))
+func (sm *stateMachine) nodes() []int64 {
+	nodes := make([]int64, 0, len(sm.ins))
 	for k := range sm.ins {
 		nodes = append(nodes, k)
 	}
