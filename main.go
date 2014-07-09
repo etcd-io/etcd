@@ -12,6 +12,7 @@ import (
 
 	"github.com/coreos/etcd/config"
 	"github.com/coreos/etcd/etcd"
+	ehttp "github.com/coreos/etcd/http"
 )
 
 func main() {
@@ -29,10 +30,15 @@ func main() {
 	e := etcd.New(config, genId())
 	go e.Run()
 
+	corsInfo, err := ehttp.NewCORSInfo(config.CorsOrigins)
+	if err != nil {
+		log.Fatal("cors:", err)
+	}
+
 	go func() {
-		serve("raft", config.Peer.BindAddr, config.PeerTLSInfo(), e.RaftHandler())
+		serve("raft", config.Peer.BindAddr, config.PeerTLSInfo(), corsInfo, e.RaftHandler())
 	}()
-	serve("etcd", config.BindAddr, config.EtcdTLSInfo(), e)
+	serve("etcd", config.BindAddr, config.EtcdTLSInfo(), corsInfo, e)
 }
 
 func genId() int {
@@ -40,15 +46,15 @@ func genId() int {
 	return r.Int()
 }
 
-func serve(who string, addr string, info *config.TLSInfo, handler http.Handler) {
-	t, terr := info.ServerConfig()
+func serve(who string, addr string, tinfo *config.TLSInfo, cinfo *ehttp.CORSInfo, handler http.Handler) {
+	t, terr := tinfo.ServerConfig()
 	l, err := net.Listen("tcp", addr)
 	if err != nil {
 		log.Fatal(err)
 	}
 	log.Printf("%v server starts listening on %v\n", who, addr)
 
-	switch info.Scheme() {
+	switch tinfo.Scheme() {
 	case "http":
 		log.Printf("%v server starts serving HTTP\n", who)
 
@@ -59,8 +65,9 @@ func serve(who string, addr string, info *config.TLSInfo, handler http.Handler) 
 		l = tls.NewListener(l, t)
 		log.Printf("%v server starts serving HTTPS\n", who)
 	default:
-		log.Fatal("unsupported http scheme", info.Scheme())
+		log.Fatal("unsupported http scheme", tinfo.Scheme())
 	}
 
-	log.Fatal(http.Serve(l, handler))
+	h := &ehttp.CORSHandler{handler, cinfo}
+	log.Fatal(http.Serve(l, h))
 }
