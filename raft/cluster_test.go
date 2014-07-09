@@ -9,7 +9,7 @@ import (
 func TestBuildCluster(t *testing.T) {
 	tests := []struct {
 		size int
-		ids  []int
+		ids  []int64
 	}{
 		{1, nil},
 		{3, nil},
@@ -18,9 +18,9 @@ func TestBuildCluster(t *testing.T) {
 		{9, nil},
 		{13, nil},
 		{51, nil},
-		{1, []int{1}},
-		{3, []int{1, 3, 5}},
-		{5, []int{1, 4, 7, 10, 13}},
+		{1, []int64{1}},
+		{3, []int64{1, 3, 5}},
+		{5, []int64{1, 4, 7, 10, 13}},
 	}
 
 	for i, tt := range tests {
@@ -35,7 +35,7 @@ func TestBuildCluster(t *testing.T) {
 			}
 
 			// ensure same leader
-			w := 0
+			var w int64
 			if tt.ids != nil {
 				w = tt.ids[0]
 			}
@@ -44,16 +44,16 @@ func TestBuildCluster(t *testing.T) {
 			}
 
 			// ensure same peer map
-			p := map[int]struct{}{}
+			p := map[int64]struct{}{}
 			for k := range n.sm.ins {
 				p[k] = struct{}{}
 			}
-			wp := map[int]struct{}{}
+			wp := map[int64]struct{}{}
 			for k := 0; k < tt.size; k++ {
 				if tt.ids != nil {
 					wp[tt.ids[k]] = struct{}{}
 				} else {
-					wp[k] = struct{}{}
+					wp[int64(k)] = struct{}{}
 				}
 			}
 			if !reflect.DeepEqual(p, wp) {
@@ -105,11 +105,11 @@ func TestBasicCluster(t *testing.T) {
 
 // This function is full of heck now. It will go away when we finish our
 // network Interface, and ticker infrastructure.
-func buildCluster(size int, ids []int) (nt *network, nodes []*Node) {
+func buildCluster(size int, ids []int64) (nt *network, nodes []*Node) {
 	if ids == nil {
-		ids = make([]int, size)
+		ids = make([]int64, size)
 		for i := 0; i < size; i++ {
-			ids[i] = i
+			ids[i] = int64(i)
 		}
 	}
 

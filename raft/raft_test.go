@@ -230,7 +230,7 @@ func TestDuelingCandidates(t *testing.T) {
 			t.Errorf("#%d: term = %d, want %d", i, g, tt.term)
 		}
 		base := ltoa(tt.log)
-		if sm, ok := nt.peers[i].(*stateMachine); ok {
+		if sm, ok := nt.peers[int64(i)].(*stateMachine); ok {
 			l := ltoa(sm.log)
 			if g := diffu(base, l); g != "" {
 				t.Errorf("#%d: diff:\n%s", i, g)
@@ -433,9 +433,9 @@ func TestCommit(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		ins := make(map[int]*index)
+		ins := make(map[int64]*index)
 		for j := 0; j < len(tt.matches); j++ {
-			ins[j] = &index{tt.matches[j], tt.matches[j] + 1}
+			ins[int64(j)] = &index{tt.matches[j], tt.matches[j] + 1}
 		}
 		sm := &stateMachine{log: &log{ents: tt.logs}, ins: ins, term: tt.smTerm}
 		sm.maybeCommit()
@@ -449,7 +449,7 @@ func TestRecvMsgVote(t *testing.T) {
 	tests := []struct {
 		state   stateType
 		i, term int
-		voteFor int
+		voteFor int64
 		w       int
 	}{
 		{stateFollower, 0, 0, none, -1},
@@ -505,7 +505,7 @@ func TestStateTransition(t *testing.T) {
 		to     stateType
 		wallow bool
 		wterm  int
-		wlead  int
+		wlead  int64
 	}{
 		{stateFollower, stateFollower, true, 1, none},
 		{stateFollower, stateCandidate, true, 1, none},
@@ -530,7 +530,7 @@ func TestStateTransition(t *testing.T) {
 				}
 			}()
 
-			sm := newStateMachine(0, []int{0})
+			sm := newStateMachine(0, []int64{0})
 			sm.state = tt.from
 
 			switch tt.to {
@@ -553,7 +553,7 @@ func TestStateTransition(t *testing.T) {
 }
 
 func TestConf(t *testing.T) {
-	sm := newStateMachine(0, []int{0})
+	sm := newStateMachine(0, []int64{0})
 	sm.becomeCandidate()
 	sm.becomeLeader()
 
@@ -588,7 +588,7 @@ func TestConfChangeLeader(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		sm := newStateMachine(0, []int{0})
+		sm := newStateMachine(0, []int64{0})
 		sm.log = &log{ents: []Entry{{}, {Type: tt.et}}}
 
 		sm.becomeCandidate()
@@ -617,7 +617,7 @@ func TestAllServerStepdown(t *testing.T) {
 	tterm := 3
 
 	for i, tt := range tests {
-		sm := newStateMachine(0, []int{0, 1, 2})
+		sm := newStateMachine(0, []int64{0, 1, 2})
 		switch tt.state {
 		case stateFollower:
 			sm.becomeFollower(1, 0)
@@ -658,7 +658,7 @@ func TestLeaderAppResp(t *testing.T) {
 	for i, tt := range tests {
 		// sm term is 1 after it becomes the leader.
 		// thus the last log term must be 1 to be committed.
-		sm := newStateMachine(0, []int{0, 1, 2})
+		sm := newStateMachine(0, []int64{0, 1, 2})
 		sm.log = &log{ents: []Entry{{}, {Term: 0}, {Term: 1}}}
 		sm.becomeCandidate()
 		sm.becomeLeader()
@@ -693,7 +693,7 @@ func TestRecvMsgBeat(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		sm := newStateMachine(0, []int{0, 1, 2})
+		sm := newStateMachine(0, []int64{0, 1, 2})
 		sm.log = &log{ents: []Entry{{}, {Term: 0}, {Term: 1}}}
 		sm.term = 1
 		sm.state = tt.state
@@ -723,7 +723,7 @@ func TestMaybeCompact(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		sm := newStateMachine(0, []int{0, 1, 2})
+		sm := newStateMachine(0, []int64{0, 1, 2})
 		sm.setSnapshoter(tt.snapshoter)
 		for i := 0; i < defaultCompactThreshold*2; i++ {
 			sm.log.append(i, Entry{Term: i + 1})
@@ -745,10 +745,12 @@ func TestMaybeCompact(t *testing.T) {
 			}
 
 			w := sm.nodes()
-			sort.Ints(w)
-			sort.Ints(s.Nodes)
-			if !reflect.DeepEqual(s.Nodes, w) {
-				t.Errorf("#%d: snap.Nodes = %+v, want %+v", i, s.Nodes, w)
+			sw := int64Slice(w)
+			sg := int64Slice(s.Nodes)
+			sort.Sort(sw)
+			sort.Sort(sg)
+			if !reflect.DeepEqual(sg, sw) {
+				t.Errorf("#%d: snap.Nodes = %+v, want %+v", i, sg, sw)
 			}
 		}
 	}
@@ -758,7 +760,7 @@ func TestRestore(t *testing.T) {
 	s := Snapshot{
 		Index: defaultCompactThreshold + 1,
 		Term:  defaultCompactThreshold + 1,
-		Nodes: []int{0, 1, 2},
+		Nodes: []int64{0, 1, 2},
 	}
 
 	tests := []struct {
@@ -779,7 +781,7 @@ func TestRestore(t *testing.T) {
 				}
 			}()
 
-			sm := newStateMachine(0, []int{0, 1})
+			sm := newStateMachine(0, []int64{0, 1})
 			sm.setSnapshoter(tt.snapshoter)
 			sm.restore(s)
 
@@ -789,11 +791,12 @@ func TestRestore(t *testing.T) {
 			if sm.log.term(s.Index) != s.Term {
 				t.Errorf("#%d: log.lastTerm = %d, want %d", i, sm.log.term(s.Index), s.Term)
 			}
-			g := sm.nodes()
-			sort.Ints(g)
-			sort.Ints(s.Nodes)
-			if !reflect.DeepEqual(g, s.Nodes) {
-				t.Errorf("#%d: sm.Nodes = %+v, want %+v", i, g, s.Nodes)
+			sg := int64Slice(sm.nodes())
+			sw := int64Slice(s.Nodes)
+			sort.Sort(sg)
+			sort.Sort(sw)
+			if !reflect.DeepEqual(sg, sw) {
+				t.Errorf("#%d: sm.Nodes = %+v, want %+v", i, sg, sw)
 			}
 			if !reflect.DeepEqual(sm.snapshoter.GetSnap(), s) {
 				t.Errorf("%d: snapshoter.getSnap = %+v, want %+v", sm.snapshoter.GetSnap(), s)
@@ -806,9 +809,9 @@ func TestProvideSnap(t *testing.T) {
 	s := Snapshot{
 		Index: defaultCompactThreshold + 1,
 		Term:  defaultCompactThreshold + 1,
-		Nodes: []int{0, 1},
+		Nodes: []int64{0, 1},
 	}
-	sm := newStateMachine(0, []int{0})
+	sm := newStateMachine(0, []int64{0})
 	sm.setSnapshoter(new(logSnapshoter))
 	// restore the statemachin from a snapshot
 	// so it has a compacted log and a snapshot
@@ -846,11 +849,11 @@ func TestRestoreFromSnapMsg(t *testing.T) {
 	s := Snapshot{
 		Index: defaultCompactThreshold + 1,
 		Term:  defaultCompactThreshold + 1,
-		Nodes: []int{0, 1},
+		Nodes: []int64{0, 1},
 	}
 	m := Message{Type: msgSnap, From: 0, Term: 1, Snapshot: s}
 
-	sm := newStateMachine(1, []int{0, 1})
+	sm := newStateMachine(1, []int64{0, 1})
 	sm.setSnapshoter(new(logSnapshoter))
 	sm.Step(m)
 
@@ -900,7 +903,7 @@ func ents(terms ...int) *stateMachine {
 }
 
 type network struct {
-	peers   map[int]Interface
+	peers   map[int64]Interface
 	dropm   map[connem]float64
 	ignorem map[messageType]bool
 }
@@ -911,31 +914,32 @@ type network struct {
 // When using stateMachine, the address list is always [0, n).
 func newNetwork(peers ...Interface) *network {
 	size := len(peers)
-	defaultPeerAddrs := make([]int, size)
+	defaultPeerAddrs := make([]int64, size)
 	for i := 0; i < size; i++ {
-		defaultPeerAddrs[i] = i
+		defaultPeerAddrs[i] = int64(i)
 	}
 
-	npeers := make(map[int]Interface, size)
+	npeers := make(map[int64]Interface, size)
 
 	for id, p := range peers {
+		nid := int64(id)
 		switch v := p.(type) {
 		case nil:
-			sm := newStateMachine(id, defaultPeerAddrs)
+			sm := newStateMachine(nid, defaultPeerAddrs)
 			sm.setSnapshoter(new(logSnapshoter))
-			npeers[id] = sm
+			npeers[nid] = sm
 		case *stateMachine:
-			v.id = id
-			v.ins = make(map[int]*index)
+			v.id = nid
+			v.ins = make(map[int64]*index)
 			for i := 0; i < size; i++ {
-				v.ins[i] = &index{}
+				v.ins[int64(i)] = &index{}
 			}
 			v.reset(0)
-			npeers[id] = v
+			npeers[nid] = v
 		case *Node:
 			npeers[v.sm.id] = v
 		default:
-			npeers[id] = v
+			npeers[nid] = v
 		}
 	}
 	return &network{
@@ -954,20 +958,21 @@ func (nw *network) send(msgs ...Message) {
 	}
 }
 
-func (nw *network) drop(from, to int, perc float64) {
+func (nw *network) drop(from, to int64, perc float64) {
 	nw.dropm[connem{from, to}] = perc
 }
 
-func (nw *network) cut(one, other int) {
+func (nw *network) cut(one, other int64) {
 	nw.drop(one, other, 1)
 	nw.drop(other, one, 1)
 }
 
-func (nw *network) isolate(id int) {
+func (nw *network) isolate(id int64) {
 	for i := 0; i < len(nw.peers); i++ {
-		if i != id {
-			nw.drop(id, i, 1.0)
-			nw.drop(i, id, 1.0)
+		nid := int64(i)
+		if nid != id {
+			nw.drop(id, nid, 1.0)
+			nw.drop(nid, id, 1.0)
 		}
 	}
 }
@@ -1003,7 +1008,7 @@ func (nw *network) filter(msgs []Message) []Message {
 }
 
 type connem struct {
-	from, to int
+	from, to int64
 }
 
 type blackHole struct{}
@@ -1017,7 +1022,7 @@ type logSnapshoter struct {
 	snapshot Snapshot
 }
 
-func (s *logSnapshoter) Snap(index, term int, nodes []int) {
+func (s *logSnapshoter) Snap(index, term int, nodes []int64) {
 	s.snapshot = Snapshot{
 		Index: index,
 		Term:  term,
@@ -1031,3 +1036,10 @@ func (s *logSnapshoter) Restore(ss Snapshot) {
 func (s *logSnapshoter) GetSnap() Snapshot {
 	return s.snapshot
 }
+
+// int64Slice implements sort interface
+type int64Slice []int64
+
+func (p int64Slice) Len() int           { return len(p) }
+func (p int64Slice) Less(i, j int) bool { return p[i] < p[j] }
+func (p int64Slice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }

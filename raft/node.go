@@ -13,7 +13,7 @@ type Interface interface {
 type tick int
 
 type Config struct {
-	NodeId int
+	NodeId int64
 	Addr   string
 }
 
@@ -25,7 +25,7 @@ type Node struct {
 	heartbeat tick
 }
 
-func New(id int, heartbeat, election tick) *Node {
+func New(id int64, heartbeat, election tick) *Node {
 	if election < heartbeat*3 {
 		panic("election is least three times as heartbeat [election: %d, heartbeat: %d]")
 	}
@@ -33,13 +33,13 @@ func New(id int, heartbeat, election tick) *Node {
 	n := &Node{
 		heartbeat: heartbeat,
 		election:  election,
-		sm:        newStateMachine(id, []int{id}),
+		sm:        newStateMachine(id, []int64{id}),
 	}
 
 	return n
 }
 
-func (n *Node) Id() int { return n.sm.id }
+func (n *Node) Id() int64 { return n.sm.id }
 
 func (n *Node) HasLeader() bool { return n.sm.lead != none }
 
@@ -52,9 +52,9 @@ func (n *Node) propose(t int, data []byte) {
 
 func (n *Node) Campaign() { n.Step(Message{Type: msgHup}) }
 
-func (n *Node) Add(id int, addr string) { n.updateConf(AddNode, &Config{NodeId: id, Addr: addr}) }
+func (n *Node) Add(id int64, addr string) { n.updateConf(AddNode, &Config{NodeId: id, Addr: addr}) }
 
-func (n *Node) Remove(id int) { n.updateConf(RemoveNode, &Config{NodeId: id}) }
+func (n *Node) Remove(id int64) { n.updateConf(RemoveNode, &Config{NodeId: id}) }
 
 func (n *Node) Msgs() []Message { return n.sm.Msgs() }
 
