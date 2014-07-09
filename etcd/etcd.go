@@ -27,8 +27,9 @@ const (
 	v2LeaderPrefix     = "/v2/leader"
 	v2StoreStatsPrefix = "/v2/stats/store"
 
-	v2configKVPrefix    = "/_etcd/config"
-	v2adminConfigPrefix = "/v2/admin/config"
+	v2configKVPrefix      = "/_etcd/config"
+	v2adminConfigPrefix   = "/v2/admin/config"
+	v2adminMachinesPrefix = "/v2/admin/machines/"
 
 	raftPrefix = "/raft"
 )
@@ -107,6 +108,7 @@ func New(c *config.Config, id int64) *Server {
 	m.Handle(v2LeaderPrefix, handlerErr(s.serveLeader))
 	m.Handle(v2StoreStatsPrefix, handlerErr(s.serveStoreStats))
 	m.Handle(v2adminConfigPrefix, handlerErr(s.serveAdminConfig))
+	m.Handle(v2adminMachinesPrefix, handlerErr(s.serveAdminMachines))
 	s.Handler = m
 	return s
 }
