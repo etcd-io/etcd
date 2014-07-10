@@ -411,6 +411,7 @@ func stepFollower(sm *stateMachine, m Message) bool {
 		m.To = sm.lead.Get()
 		sm.send(m)
 	case msgApp:
+		sm.lead.Set(m.From)
 		sm.handleAppendEntries(m)
 	case msgSnap:
 		sm.handleSnapshot(m)
