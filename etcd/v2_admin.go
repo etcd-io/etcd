@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/coreos/etcd/store"
@@ -23,6 +24,13 @@ type machineMessage struct {
 	State     string `json:"state"`
 	ClientURL string `json:"clientURL"`
 	PeerURL   string `json:"peerURL"`
+}
+
+type context struct {
+	MinVersion int    `json:"minVersion"`
+	MaxVersion int    `json:"maxVersion"`
+	ClientURL  string `json:"clientURL"`
+	PeerURL    string `json:"peerURL"`
 }
 
 func (s *Server) serveAdminConfig(w http.ResponseWriter, r *http.Request) error {
@@ -54,9 +62,9 @@ func (s *Server) serveAdminConfig(w http.ResponseWriter, r *http.Request) error 
 }
 
 func (s *Server) serveAdminMachines(w http.ResponseWriter, r *http.Request) error {
+	name := strings.TrimPrefix(r.URL.Path, v2adminMachinesPrefix)
 	switch r.Method {
 	case "GET":
-		name := strings.TrimPrefix(r.URL.Path, v2adminMachinesPrefix)
 		var info interface{}
 		var err error
 		if name != "" {
@@ -69,11 +77,30 @@ func (s *Server) serveAdminMachines(w http.ResponseWriter, r *http.Request) erro
 		}
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(info)
+	case "PUT":
+		if !s.node.IsLeader() {
+			return s.redirect(w, r, s.node.Leader())
+		}
+		id, err := strconv.ParseInt(name, 0, 64)
+		if err != nil {
+			return err
+		}
+		info := &context{}
+		if err := json.NewDecoder(r.Body).Decode(info); err != nil {
+			return err
+		}
+		return s.Add(id, info.PeerURL, info.ClientURL)
 	case "DELETE":
-		// todo: remove the machine
-		panic("unimplemented")
+		if !s.node.IsLeader() {
+			return s.redirect(w, r, s.node.Leader())
+		}
+		id, err := strconv.ParseInt(name, 0, 64)
+		if err != nil {
+			return err
+		}
+		return s.Remove(id)
 	default:
-		return allow(w, "GET", "DELETE")
+		return allow(w, "GET", "PUT", "DELETE")
 	}
 	return nil
 }
