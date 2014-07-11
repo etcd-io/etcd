@@ -55,7 +55,7 @@ func (n *Node) HasLeader() bool { return n.Leader() != none }
 
 func (n *Node) IsLeader() bool { return n.Leader() == n.Id() }
 
-func (n *Node) Leader() int64 { return atomic.LoadInt64(&n.sm.lead) }
+func (n *Node) Leader() int64 { return n.sm.lead.Get() }
 
 // Propose asynchronously proposes data be applied to the underlying state machine.
 func (n *Node) Propose(data []byte) { n.propose(Normal, data) }

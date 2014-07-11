@@ -39,7 +39,7 @@ func TestBuildCluster(t *testing.T) {
 			if tt.ids != nil {
 				w = tt.ids[0]
 			}
-			if g := n.sm.lead; g != w {
+			if g := n.sm.lead.Get(); g != w {
 				t.Errorf("#%d.%d: lead = %d, want %d", i, j, g, w)
 			}
 
