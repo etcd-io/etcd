@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"runtime"
 	"testing"
 	"time"
 
@@ -73,6 +74,93 @@ func TestV2Redirect(t *testing.T) {
 		hs[len(hs)-i-1].Close()
 	}
 	afterTest(t)
+}
+
+func TestRemove(t *testing.T) {
+	tests := []struct {
+		size  int
+		round int
+	}{
+		{3, 5},
+		{4, 5},
+		{5, 5},
+		{6, 5},
+	}
+
+	for _, tt := range tests {
+		es, hs := buildCluster(tt.size, false)
+		waitCluster(t, es)
+
+		// we don't remove the machine from 2-node cluster because it is
+		// not 100 percent safe in our raft.
+		// TODO(yichengq): improve it later.
+		for i := 0; i < tt.size-2; i++ {
+			// wait for leader to be stable for all live machines
+			// TODO(yichengq): change it later
+			var prevLead int64
+			var prevTerm int64
+			for j := i; j < tt.size; j++ {
+				id := int64(i)
+				lead := es[j].node.Leader()
+				term := es[j].node.Term()
+				fit := true
+				if j == i {
+					if lead < id {
+						fit = false
+					}
+				} else {
+					if lead != prevLead || term != prevTerm {
+						fit = false
+					}
+				}
+				if !fit {
+					j = i - 1
+					runtime.Gosched()
+					continue
+				}
+				prevLead = lead
+				prevTerm = term
+			}
+
+			index := es[i].Index()
+			es[i].Remove(i)
+
+			// i-th machine cannot be promised to apply the removal command of
+			// its own due to our non-optimized raft.
+			// TODO(yichengq): it should work when
+			// https://github.com/etcd-team/etcd/pull/7 is merged.
+			for j := i + 1; j < tt.size; j++ {
+				w, err := es[j].Watch(v2machineKVPrefix, true, false, index+1)
+				if err != nil {
+					t.Errorf("#%d on %d: %v", i, j, err)
+					break
+				}
+				v := <-w.EventChan
+				ww := fmt.Sprintf("%s/%d", v2machineKVPrefix, i)
+				if v.Node.Key != ww {
+					t.Errorf("#%d on %d: path = %v, want %v", i, j, v.Node.Key, ww)
+				}
+			}
+
+			// may need to wait for msgDenial
+			// TODO(yichengq): no need to sleep here when previous issue is merged.
+			if es[i].mode == stop {
+				continue
+			}
+			time.Sleep(defaultElection * defaultTickDuration)
+			if g := es[i].mode; g != stop {
+				t.Errorf("#%d: mode = %d, want stop", i, g)
+			}
+		}
+
+		for i := range hs {
+			es[len(hs)-i-1].Stop()
+		}
+		for i := range hs {
+			hs[len(hs)-i-1].Close()
+		}
+		afterTest(t)
+	}
 }
 
 func buildCluster(number int, tls bool) ([]*Server, []*httptest.Server) {
