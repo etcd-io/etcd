@@ -175,6 +175,23 @@ func (s *Server) Join() {
 	s.run()
 }
 
+func (s *Server) Remove(id int) {
+	d, err := json.Marshal(&raft.Config{NodeId: s.id})
+	if err != nil {
+		panic(err)
+	}
+
+	b, err := json.Marshal(&raft.Message{From: s.id, Type: 2, Entries: []raft.Entry{{Type: 2, Data: d}}})
+	if err != nil {
+		panic(err)
+	}
+
+	if err := s.t.send(s.raftPubAddr+raftPrefix, b); err != nil {
+		log.Println(err)
+	}
+	// todo(xiangli) WAIT for remove to be committed or retry...
+}
+
 func (s *Server) run() {
 	for {
 		switch s.mode {
@@ -219,6 +236,12 @@ func (s *Server) runParticipant() {
 		}
 		s.apply(node.Next())
 		s.send(node.Msgs())
+		if node.IsRemoved() {
+			// TODO: delete it after standby is implemented
+			s.mode = stop
+			log.Printf("Node: %d removed from participants\n", s.id)
+			return
+		}
 	}
 }
 
@@ -250,6 +273,15 @@ func (s *Server) apply(ents []raft.Entry) {
 			s.nodes[cfg.Addr] = true
 			p := path.Join(v2machineKVPrefix, fmt.Sprint(cfg.NodeId))
 			s.Store.Set(p, false, fmt.Sprintf("raft=%v&etcd=%v", cfg.Addr, string(cfg.Context)), store.Permanent)
+		case raft.RemoveNode:
+			cfg := new(raft.Config)
+			if err := json.Unmarshal(ent.Data, cfg); err != nil {
+				log.Println(err)
+				break
+			}
+			log.Printf("Remove Node %x\n", cfg.NodeId)
+			p := path.Join(v2machineKVPrefix, fmt.Sprint(cfg.NodeId))
+			s.Store.Delete(p, false, false)
 		default:
 			panic("unimplemented")
 		}
