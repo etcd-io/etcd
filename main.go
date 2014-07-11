@@ -41,9 +41,9 @@ func main() {
 	serve("etcd", config.BindAddr, config.EtcdTLSInfo(), corsInfo, e)
 }
 
-func genId() int {
+func genId() int64 {
 	r := rand.New(rand.NewSource(int64(time.Now().Nanosecond())))
-	return r.Int()
+	return r.Int63()
 }
 
 func serve(who string, addr string, tinfo *config.TLSInfo, cinfo *ehttp.CORSInfo, handler http.Handler) {
