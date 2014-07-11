@@ -18,6 +18,7 @@ import (
 func main() {
 	var config = config.New()
 	if err := config.Load(os.Args[1:]); err != nil {
+		fmt.Println(etcd.Usage() + "\n")
 		fmt.Println(err.Error(), "\n")
 		os.Exit(1)
 	} else if config.ShowVersion {
