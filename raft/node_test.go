@@ -39,7 +39,7 @@ func TestTickMsgBeat(t *testing.T) {
 		n.Add(int64(i), "", nil)
 		for _, m := range n.Msgs() {
 			if m.Type == msgApp {
-				n.Step(Message{From: m.To, Type: msgAppResp, Index: m.Index + len(m.Entries)})
+				n.Step(Message{From: m.To, Type: msgAppResp, Index: m.Index + int64(len(m.Entries))})
 			}
 		}
 		// ignore commit index update messages
