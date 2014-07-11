@@ -95,35 +95,18 @@ func TestRemove(t *testing.T) {
 		// not 100 percent safe in our raft.
 		// TODO(yichengq): improve it later.
 		for i := 0; i < tt.size-2; i++ {
-			// wait for leader to be stable for all live machines
-			// TODO(yichengq): change it later
-			var prevLead int64
-			var prevTerm int64
-			for j := i; j < tt.size; j++ {
-				id := int64(i)
-				lead := es[j].node.Leader()
-				term := es[j].node.Term()
-				fit := true
-				if j == i {
-					if lead < id {
-						fit = false
-					}
-				} else {
-					if lead != prevLead || term != prevTerm {
-						fit = false
+			id := int64(i)
+			var index uint64
+			for {
+				lead := es[id].node.Leader()
+				if lead != -1 {
+					index = es[lead].Index()
+					if err := es[lead].Remove(id); err == nil {
+						break
 					}
 				}
-				if !fit {
-					j = i - 1
-					runtime.Gosched()
-					continue
-				}
-				prevLead = lead
-				prevTerm = term
+				runtime.Gosched()
 			}
-
-			index := es[i].Index()
-			es[i].Remove(i)
 
 			// i-th machine cannot be promised to apply the removal command of
 			// its own due to our non-optimized raft.

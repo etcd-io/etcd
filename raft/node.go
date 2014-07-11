@@ -74,10 +74,10 @@ func (n *Node) propose(t int64, data []byte) {
 func (n *Node) Campaign() { n.Step(Message{Type: msgHup}) }
 
 func (n *Node) Add(id int64, addr string, context []byte) {
-	n.updateConf(AddNode, &Config{NodeId: id, Addr: addr, Context: context})
+	n.UpdateConf(AddNode, &Config{NodeId: id, Addr: addr, Context: context})
 }
 
-func (n *Node) Remove(id int64) { n.updateConf(RemoveNode, &Config{NodeId: id}) }
+func (n *Node) Remove(id int64) { n.UpdateConf(RemoveNode, &Config{NodeId: id}) }
 
 func (n *Node) Msgs() []Message { return n.sm.Msgs() }
 
@@ -164,7 +164,7 @@ func (n *Node) Tick() {
 	}
 }
 
-func (n *Node) updateConf(t int64, c *Config) {
+func (n *Node) UpdateConf(t int64, c *Config) {
 	data, err := json.Marshal(c)
 	if err != nil {
 		panic(err)
