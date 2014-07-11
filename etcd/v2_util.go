@@ -10,13 +10,17 @@ import (
 	"strings"
 )
 
+type testHttpClient struct {
+	*http.Client
+}
+
 // Creates a new HTTP client with KeepAlive disabled.
-func NewHTTPClient() *http.Client {
-	return &http.Client{Transport: &http.Transport{DisableKeepAlives: true}}
+func NewTestClient() *testHttpClient {
+	return &testHttpClient{&http.Client{Transport: &http.Transport{DisableKeepAlives: true}}}
 }
 
 // Reads the body from the response and closes it.
-func ReadBody(resp *http.Response) []byte {
+func (t *testHttpClient) ReadBody(resp *http.Response) []byte {
 	if resp == nil {
 		return []byte{}
 	}
@@ -26,53 +30,52 @@ func ReadBody(resp *http.Response) []byte {
 }
 
 // Reads the body from the response and parses it as JSON.
-func ReadBodyJSON(resp *http.Response) map[string]interface{} {
+func (t *testHttpClient) ReadBodyJSON(resp *http.Response) map[string]interface{} {
 	m := make(map[string]interface{})
-	b := ReadBody(resp)
+	b := t.ReadBody(resp)
 	if err := json.Unmarshal(b, &m); err != nil {
 		panic(fmt.Sprintf("HTTP body JSON parse error: %v: %s", err, string(b)))
 	}
 	return m
 }
 
-func Head(url string) (*http.Response, error) {
-	return send("HEAD", url, "application/json", nil)
+func (t *testHttpClient) Head(url string) (*http.Response, error) {
+	return t.send("HEAD", url, "application/json", nil)
 }
 
-func Get(url string) (*http.Response, error) {
-	return send("GET", url, "application/json", nil)
+func (t *testHttpClient) Get(url string) (*http.Response, error) {
+	return t.send("GET", url, "application/json", nil)
 }
 
-func Post(url string, bodyType string, body io.Reader) (*http.Response, error) {
-	return send("POST", url, bodyType, body)
+func (t *testHttpClient) Post(url string, bodyType string, body io.Reader) (*http.Response, error) {
+	return t.send("POST", url, bodyType, body)
 }
 
-func PostForm(url string, data url.Values) (*http.Response, error) {
-	return Post(url, "application/x-www-form-urlencoded", strings.NewReader(data.Encode()))
+func (t *testHttpClient) PostForm(url string, data url.Values) (*http.Response, error) {
+	return t.Post(url, "application/x-www-form-urlencoded", strings.NewReader(data.Encode()))
 }
 
-func Put(url string, bodyType string, body io.Reader) (*http.Response, error) {
-	return send("PUT", url, bodyType, body)
+func (t *testHttpClient) Put(url string, bodyType string, body io.Reader) (*http.Response, error) {
+	return t.send("PUT", url, bodyType, body)
 }
 
-func PutForm(url string, data url.Values) (*http.Response, error) {
-	return Put(url, "application/x-www-form-urlencoded", strings.NewReader(data.Encode()))
+func (t *testHttpClient) PutForm(url string, data url.Values) (*http.Response, error) {
+	return t.Put(url, "application/x-www-form-urlencoded", strings.NewReader(data.Encode()))
 }
 
-func Delete(url string, bodyType string, body io.Reader) (*http.Response, error) {
-	return send("DELETE", url, bodyType, body)
+func (t *testHttpClient) Delete(url string, bodyType string, body io.Reader) (*http.Response, error) {
+	return t.send("DELETE", url, bodyType, body)
 }
 
-func DeleteForm(url string, data url.Values) (*http.Response, error) {
-	return Delete(url, "application/x-www-form-urlencoded", strings.NewReader(data.Encode()))
+func (t *testHttpClient) DeleteForm(url string, data url.Values) (*http.Response, error) {
+	return t.Delete(url, "application/x-www-form-urlencoded", strings.NewReader(data.Encode()))
 }
 
-func send(method string, url string, bodyType string, body io.Reader) (*http.Response, error) {
-	c := NewHTTPClient()
+func (t *testHttpClient) send(method string, url string, bodyType string, body io.Reader) (*http.Response, error) {
 	req, err := http.NewRequest(method, url, body)
 	if err != nil {
 		return nil, err
 	}
 	req.Header.Set("Content-Type", bodyType)
-	return c.Do(req)
+	return t.Do(req)
 }
