@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/config"
+	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/store"
 )
@@ -53,6 +54,7 @@ type Server struct {
 
 	proposal    chan v2Proposal
 	node        *v2Raft
+	addNodeC    chan raft.Config
 	removeNodeC chan raft.Config
 	t           *transporter
 
@@ -91,6 +93,7 @@ func New(c *config.Config, id int64) *Server {
 			Node:   raft.New(id, defaultHeartbeat, defaultElection),
 			result: make(map[wait]chan interface{}),
 		},
+		addNodeC:    make(chan raft.Config),
 		removeNodeC: make(chan raft.Config),
 		t:           newTransporter(tc),
 
@@ -177,6 +180,37 @@ func (s *Server) Join() {
 	s.run()
 }
 
+func (s *Server) Add(id int64, raftPubAddr string, pubAddr string) error {
+	p := path.Join(v2machineKVPrefix, fmt.Sprint(id))
+	index := s.Index()
+
+	_, err := s.Get(p, false, false)
+	if err == nil {
+		return fmt.Errorf("existed node")
+	}
+	if v, ok := err.(*etcdErr.Error); !ok || v.ErrorCode != etcdErr.EcodeKeyNotFound {
+		return err
+	}
+	for {
+		if s.mode == stop {
+			return fmt.Errorf("server is stopped")
+		}
+		s.addNodeC <- raft.Config{NodeId: id, Addr: raftPubAddr, Context: []byte(pubAddr)}
+		w, err := s.Watch(p, true, false, index+1)
+		if err != nil {
+			return err
+		}
+		select {
+		case v := <-w.EventChan:
+			if v.Action == store.Set {
+				return nil
+			}
+			index = v.Index()
+		case <-time.After(4 * defaultHeartbeat * s.tickDuration):
+		}
+	}
+}
+
 func (s *Server) Remove(id int64) error {
 	p := path.Join(v2machineKVPrefix, fmt.Sprint(id))
 	index := s.Index()
@@ -221,6 +255,7 @@ func (s *Server) run() {
 
 func (s *Server) runParticipant() {
 	node := s.node
+	addNodeC := s.addNodeC
 	removeNodeC := s.removeNodeC
 	recv := s.t.recv
 	ticker := time.NewTicker(s.tickDuration)
@@ -236,6 +271,8 @@ func (s *Server) runParticipant() {
 		select {
 		case p := <-proposal:
 			node.Propose(p)
+		case c := <-addNodeC:
+			node.UpdateConf(raft.AddNode, &c)
 		case c := <-removeNodeC:
 			node.UpdateConf(raft.RemoveNode, &c)
 		case msg := <-recv:
