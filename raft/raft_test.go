@@ -545,7 +545,7 @@ func TestStateTransition(t *testing.T) {
 			if sm.term != tt.wterm {
 				t.Errorf("%d: term = %d, want %d", i, sm.term, tt.wterm)
 			}
-			if sm.lead != tt.wlead {
+			if sm.lead.Get() != tt.wlead {
 				t.Errorf("%d: lead = %d, want %d", i, sm.lead, tt.wlead)
 			}
 		}()
