@@ -30,8 +30,16 @@ const (
 	raftPrefix = "/raft"
 )
 
+const (
+	participant = iota
+	standby
+	stop
+)
+
 type Server struct {
 	config *config.Config
+
+	mode int
 
 	id           int64
 	pubAddr      string
@@ -90,7 +98,6 @@ func New(c *config.Config, id int64) *Server {
 	}
 
 	m := http.NewServeMux()
-	//m.Handle("/HEAD", handlerErr(s.serveHead))
 	m.Handle(v2Prefix+"/", handlerErr(s.serveValue))
 	m.Handle(v2machinePrefix, handlerErr(s.serveMachines))
 	m.Handle(v2peersPrefix, handlerErr(s.serveMachines))
@@ -153,6 +160,21 @@ func (s *Server) Join() {
 }
 
 func (s *Server) run() {
+	for {
+		switch s.mode {
+		case participant:
+			s.runParticipant()
+		case standby:
+			s.runStandby()
+		case stop:
+			return
+		default:
+			panic("unsupport mode")
+		}
+	}
+}
+
+func (s *Server) runParticipant() {
 	node := s.node
 	recv := s.t.recv
 	ticker := time.NewTicker(s.tickDuration)
@@ -176,11 +198,16 @@ func (s *Server) run() {
 			node.Sync()
 		case <-s.stop:
 			log.Printf("Node: %d stopped\n", s.id)
+			s.mode = stop
 			return
 		}
 		s.apply(node.Next())
 		s.send(node.Msgs())
 	}
+}
+
+func (s *Server) runStandby() {
+	panic("unimplemented")
 }
 
 func (s *Server) apply(ents []raft.Entry) {
