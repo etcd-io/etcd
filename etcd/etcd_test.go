@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
 	"time"
 
@@ -38,6 +39,38 @@ func TestMultipleTLSNodes(t *testing.T) {
 		for i := range hs {
 			hs[len(hs)-i-1].Close()
 		}
+	}
+	afterTest(t)
+}
+
+func TestV2Redirect(t *testing.T) {
+	es, hs := buildCluster(3, false)
+	waitCluster(t, es)
+	u := hs[1].URL
+	ru := fmt.Sprintf("%s%s", hs[0].URL, "/v2/keys/foo")
+	tc := NewTestClient()
+
+	v := url.Values{}
+	v.Set("value", "XXX")
+	resp, _ := tc.PutForm(fmt.Sprintf("%s%s", u, "/v2/keys/foo"), v)
+	if resp.StatusCode != http.StatusTemporaryRedirect {
+		t.Errorf("status = %d, want %d", resp.StatusCode, http.StatusTemporaryRedirect)
+	}
+	location, err := resp.Location()
+	if err != nil {
+		t.Errorf("want err = %, want nil", err)
+	}
+
+	if location.String() != ru {
+		t.Errorf("location = %v, want %v", location.String(), ru)
+	}
+
+	resp.Body.Close()
+	for i := range es {
+		es[len(es)-i-1].Stop()
+	}
+	for i := range hs {
+		hs[len(hs)-i-1].Close()
 	}
 	afterTest(t)
 }
