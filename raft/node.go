@@ -45,7 +45,7 @@ func (n *Node) Id() int64 {
 	return atomic.LoadInt64(&n.sm.id)
 }
 
-func (n *Node) Index() int64 { return n.sm.log.lastIndex() }
+func (n *Node) Index() int64 { return n.sm.index.Get() }
 
 func (n *Node) Term() int64 { return n.sm.term.Get() }
 
