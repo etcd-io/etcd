@@ -57,6 +57,7 @@ type Server struct {
 	addNodeC    chan raft.Config
 	removeNodeC chan raft.Config
 	t           *transporter
+	client      *v2client
 
 	store.Store
 
@@ -96,6 +97,7 @@ func New(c *config.Config, id int64) *Server {
 		addNodeC:    make(chan raft.Config),
 		removeNodeC: make(chan raft.Config),
 		t:           newTransporter(tc),
+		client:      newClient(tc),
 
 		Store: store.New(),
 
@@ -159,24 +161,29 @@ func (s *Server) Bootstrap() {
 
 func (s *Server) Join() {
 	log.Println("joining cluster via peers", s.config.Peers)
-	d, err := json.Marshal(&raft.Config{s.id, s.raftPubAddr, []byte(s.pubAddr)})
-	if err != nil {
-		panic(err)
+	info := &context{
+		MinVersion: store.MinVersion(),
+		MaxVersion: store.MaxVersion(),
+		ClientURL:  s.pubAddr,
+		PeerURL:    s.raftPubAddr,
 	}
 
-	b, err := json.Marshal(&raft.Message{From: s.id, Type: 2, Entries: []raft.Entry{{Type: 1, Data: d}}})
-	if err != nil {
-		panic(err)
-	}
-
-	for seed := range s.nodes {
-		if err := s.t.send(seed+raftPrefix, b); err != nil {
-			log.Println(err)
-			continue
+	succeed := false
+	for i := 0; i < 5; i++ {
+		for seed := range s.nodes {
+			if err := s.client.AddMachine(seed, fmt.Sprint(s.id), info); err == nil {
+				succeed = true
+				break
+			} else {
+				log.Println(err)
+			}
 		}
-		// todo(xiangli) WAIT for join to be committed or retry...
-		break
+		if succeed {
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
 	}
+
 	s.run()
 }
 
