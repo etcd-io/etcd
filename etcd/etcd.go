@@ -51,9 +51,10 @@ type Server struct {
 	nodes        map[string]bool
 	tickDuration time.Duration
 
-	proposal chan v2Proposal
-	node     *v2Raft
-	t        *transporter
+	proposal    chan v2Proposal
+	node        *v2Raft
+	removeNodeC chan raft.Config
+	t           *transporter
 
 	store.Store
 
@@ -90,7 +91,8 @@ func New(c *config.Config, id int64) *Server {
 			Node:   raft.New(id, defaultHeartbeat, defaultElection),
 			result: make(map[wait]chan interface{}),
 		},
-		t: newTransporter(tc),
+		removeNodeC: make(chan raft.Config),
+		t:           newTransporter(tc),
 
 		Store: store.New(),
 
@@ -175,21 +177,31 @@ func (s *Server) Join() {
 	s.run()
 }
 
-func (s *Server) Remove(id int) {
-	d, err := json.Marshal(&raft.Config{NodeId: s.id})
-	if err != nil {
-		panic(err)
-	}
+func (s *Server) Remove(id int64) error {
+	p := path.Join(v2machineKVPrefix, fmt.Sprint(id))
+	index := s.Index()
 
-	b, err := json.Marshal(&raft.Message{From: s.id, Type: 2, Entries: []raft.Entry{{Type: 2, Data: d}}})
-	if err != nil {
-		panic(err)
+	if _, err := s.Get(p, false, false); err != nil {
+		return err
 	}
-
-	if err := s.t.send(s.raftPubAddr+raftPrefix, b); err != nil {
-		log.Println(err)
+	for {
+		if s.mode == stop {
+			return fmt.Errorf("server is stopped")
+		}
+		s.removeNodeC <- raft.Config{NodeId: id}
+		w, err := s.Watch(p, true, false, index+1)
+		if err != nil {
+			return err
+		}
+		select {
+		case v := <-w.EventChan:
+			if v.Action == store.Delete {
+				return nil
+			}
+			index = v.Index()
+		case <-time.After(4 * defaultHeartbeat * s.tickDuration):
+		}
 	}
-	// todo(xiangli) WAIT for remove to be committed or retry...
 }
 
 func (s *Server) run() {
@@ -209,6 +221,7 @@ func (s *Server) run() {
 
 func (s *Server) runParticipant() {
 	node := s.node
+	removeNodeC := s.removeNodeC
 	recv := s.t.recv
 	ticker := time.NewTicker(s.tickDuration)
 	v2SyncTicker := time.NewTicker(time.Millisecond * 500)
@@ -223,6 +236,8 @@ func (s *Server) runParticipant() {
 		select {
 		case p := <-proposal:
 			node.Propose(p)
+		case c := <-removeNodeC:
+			node.UpdateConf(raft.RemoveNode, &c)
 		case msg := <-recv:
 			node.Step(*msg)
 		case <-ticker.C:
