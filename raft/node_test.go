@@ -1,6 +1,7 @@
 package raft
 
 import (
+	"reflect"
 	"testing"
 )
 
@@ -138,6 +139,52 @@ func TestRemove(t *testing.T) {
 	}
 	if n.sm.id != 0 {
 		t.Errorf("id = %d, want 0", n.sm.id)
+	}
+}
+
+func TestDenial(t *testing.T) {
+	logents := []Entry{
+		{Type: AddNode, Term: 1, Data: []byte(`{"NodeId":1}`)},
+		{Type: AddNode, Term: 1, Data: []byte(`{"NodeId":2}`)},
+		{Type: RemoveNode, Term: 1, Data: []byte(`{"NodeId":2}`)},
+	}
+
+	tests := []struct {
+		ent     Entry
+		wdenied map[int64]bool
+	}{
+		{
+			Entry{Type: AddNode, Term: 1, Data: []byte(`{"NodeId":2}`)},
+			map[int64]bool{0: false, 1: false, 2: false},
+		},
+		{
+			Entry{Type: RemoveNode, Term: 1, Data: []byte(`{"NodeId":1}`)},
+			map[int64]bool{0: false, 1: true, 2: true},
+		},
+		{
+			Entry{Type: RemoveNode, Term: 1, Data: []byte(`{"NodeId":0}`)},
+			map[int64]bool{0: true, 1: false, 2: true},
+		},
+	}
+
+	for i, tt := range tests {
+		n := dictate(New(0, defaultHeartbeat, defaultElection))
+		n.Next()
+		n.Msgs()
+		n.sm.log.append(n.sm.log.committed, append(logents, tt.ent)...)
+		n.sm.log.committed += int64(len(logents) + 1)
+		n.Next()
+
+		for id, denied := range tt.wdenied {
+			n.Step(Message{From: id, To: 0, Type: msgApp, Term: 1})
+			w := []Message{}
+			if denied {
+				w = []Message{{From: 0, To: id, Term: 1, Type: msgDenied}}
+			}
+			if g := n.Msgs(); !reflect.DeepEqual(g, w) {
+				t.Errorf("#%d: msgs for %d = %+v, want %+v", i, id, g, w)
+			}
+		}
 	}
 }
 

@@ -19,6 +19,7 @@ const (
 	msgVote
 	msgVoteResp
 	msgSnap
+	msgDenied
 )
 
 var mtmap = [...]string{
@@ -30,6 +31,7 @@ var mtmap = [...]string{
 	msgVote:     "msgVote",
 	msgVoteResp: "msgVoteResp",
 	msgSnap:     "msgSnap",
+	msgDenied:   "msgDenied",
 }
 
 func (mt messageType) String() string {
