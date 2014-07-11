@@ -112,7 +112,7 @@ type stateMachine struct {
 	id int64
 
 	// the term we are participating in at any time
-	term int64
+	term atomicInt
 
 	// who we voted for in term
 	vote int64
@@ -165,7 +165,7 @@ func (sm *stateMachine) poll(id int64, v bool) (granted int) {
 // send persists state to stable storage and then sends to its mailbox.
 func (sm *stateMachine) send(m Message) {
 	m.From = sm.id
-	m.Term = sm.term
+	m.Term = sm.term.Get()
 	sm.msgs = append(sm.msgs, m)
 }
 
@@ -206,7 +206,7 @@ func (sm *stateMachine) maybeCommit() bool {
 	sort.Sort(sort.Reverse(mis))
 	mci := mis[sm.q()-1]
 
-	return sm.log.maybeCommit(mci, sm.term)
+	return sm.log.maybeCommit(mci, sm.term.Get())
 }
 
 // nextEnts returns the appliable entries and updates the applied index
@@ -215,7 +215,7 @@ func (sm *stateMachine) nextEnts() (ents []Entry) {
 }
 
 func (sm *stateMachine) reset(term int64) {
-	sm.term = term
+	sm.term.Set(term)
 	sm.lead.Set(none)
 	sm.vote = none
 	sm.votes = make(map[int64]bool)
@@ -232,7 +232,7 @@ func (sm *stateMachine) q() int {
 }
 
 func (sm *stateMachine) appendEntry(e Entry) {
-	e.Term = sm.term
+	e.Term = sm.term.Get()
 	sm.log.append(sm.log.lastIndex(), e)
 	sm.ins[sm.id].update(sm.log.lastIndex())
 	sm.maybeCommit()
@@ -257,7 +257,7 @@ func (sm *stateMachine) becomeCandidate() {
 	if sm.state == stateLeader {
 		panic("invalid transition [leader -> candidate]")
 	}
-	sm.reset(sm.term + 1)
+	sm.reset(sm.term.Get() + 1)
 	sm.vote = sm.id
 	sm.state = stateCandidate
 }
@@ -267,7 +267,7 @@ func (sm *stateMachine) becomeLeader() {
 	if sm.state == stateFollower {
 		panic("invalid transition [follower -> leader]")
 	}
-	sm.reset(sm.term)
+	sm.reset(sm.term.Get())
 	sm.lead.Set(sm.id)
 	sm.state = stateLeader
 
@@ -307,9 +307,9 @@ func (sm *stateMachine) Step(m Message) (ok bool) {
 	switch {
 	case m.Term == 0:
 		// local message
-	case m.Term > sm.term:
+	case m.Term > sm.term.Get():
 		sm.becomeFollower(m.Term, m.From)
-	case m.Term < sm.term:
+	case m.Term < sm.term.Get():
 		// ignore
 		return true
 	}
@@ -380,7 +380,7 @@ func stepCandidate(sm *stateMachine, m Message) bool {
 	case msgProp:
 		return false
 	case msgApp:
-		sm.becomeFollower(sm.term, m.From)
+		sm.becomeFollower(sm.term.Get(), m.From)
 		sm.handleAppendEntries(m)
 	case msgSnap:
 		sm.becomeFollower(m.Term, m.From)
@@ -394,7 +394,7 @@ func stepCandidate(sm *stateMachine, m Message) bool {
 			sm.becomeLeader()
 			sm.bcastAppend()
 		case len(sm.votes) - gr:
-			sm.becomeFollower(sm.term, none)
+			sm.becomeFollower(sm.term.Get(), none)
 		}
 	}
 	return true

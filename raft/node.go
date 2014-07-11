@@ -47,7 +47,7 @@ func (n *Node) Id() int64 {
 
 func (n *Node) Index() int64 { return n.sm.log.lastIndex() }
 
-func (n *Node) Term() int64 { return n.sm.term }
+func (n *Node) Term() int64 { return n.sm.term.Get() }
 
 func (n *Node) Applied() int64 { return n.sm.log.applied }
 
