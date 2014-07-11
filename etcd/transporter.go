@@ -87,11 +87,11 @@ func (t *transporter) send(addr string, data []byte) error {
 		t.mu.RUnlock()
 		return fmt.Errorf("transporter stopped")
 	}
+	t.wg.Add(1)
+	defer t.wg.Done()
 	t.mu.RUnlock()
 
 	buf := bytes.NewBuffer(data)
-	t.wg.Add(1)
-	defer t.wg.Done()
 	resp, err := t.client.Post(addr, "application/octet-stream", buf)
 	if err != nil {
 		return err
@@ -148,7 +148,10 @@ func (t *transporter) serveCfg(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	if u, ok := t.urls[id]; ok {
+	t.mu.RLock()
+	u, ok := t.urls[id]
+	t.mu.RUnlock()
+	if ok {
 		w.Write([]byte(u))
 		return
 	}
