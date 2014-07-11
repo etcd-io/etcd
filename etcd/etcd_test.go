@@ -76,6 +76,69 @@ func TestV2Redirect(t *testing.T) {
 	afterTest(t)
 }
 
+func TestAdd(t *testing.T) {
+	tests := []struct {
+		size  int
+		round int
+	}{
+		{3, 5},
+		{4, 5},
+		{5, 5},
+		{6, 5},
+	}
+
+	for _, tt := range tests {
+		es := make([]*Server, tt.size)
+		hs := make([]*httptest.Server, tt.size)
+		for i := 0; i < tt.size; i++ {
+			c := config.New()
+			if i > 0 {
+				c.Peers = []string{hs[0].URL}
+			}
+			es[i], hs[i] = initTestServer(c, int64(i), false)
+		}
+
+		go es[0].Bootstrap()
+
+		for i := 1; i < tt.size; i++ {
+			var index uint64
+			for {
+				lead := es[0].node.Leader()
+				if lead != -1 {
+					index = es[lead].Index()
+					ne := es[i]
+					if err := es[lead].Add(ne.id, ne.raftPubAddr, ne.pubAddr); err == nil {
+						break
+					}
+				}
+				runtime.Gosched()
+			}
+			go es[i].run()
+
+			for j := 0; j <= i; j++ {
+				w, err := es[j].Watch(v2machineKVPrefix, true, false, index+1)
+				if err != nil {
+					t.Errorf("#%d on %d: %v", i, j, err)
+					break
+				}
+				v := <-w.EventChan
+				ww := fmt.Sprintf("%s/%d", v2machineKVPrefix, i)
+				if v.Node.Key != ww {
+					t.Errorf("#%d on %d: path = %v, want %v", i, j, v.Node.Key, ww)
+				}
+			}
+		}
+
+		for i := range hs {
+			es[len(hs)-i-1].Stop()
+		}
+		for i := range hs {
+			hs[len(hs)-i-1].Close()
+		}
+		afterTest(t)
+	}
+}
+
 func TestRemove(t *testing.T) {
 	tests := []struct {
 		size  int
@@ -155,21 +218,7 @@ func buildCluster(number int, tls bool) ([]*Server, []*httptest.Server) {
 	for i := range es {
 		c := config.New()
 		c.Peers = []string{seed}
-		es[i] = New(c, int64(i))
-		es[i].SetTick(time.Millisecond * 5)
-		m := http.NewServeMux()
-		m.Handle("/", es[i])
-		m.Handle("/raft", es[i].t)
-		m.Handle("/raft/", es[i].t)
-
-		if tls {
-			hs[i] = httptest.NewTLSServer(m)
-		} else {
-			hs[i] = httptest.NewServer(m)
-		}
-
-		es[i].raftPubAddr = hs[i].URL
-		es[i].pubAddr = hs[i].URL
+		es[i], hs[i] = initTestServer(c, int64(i), tls)
 
 		if i == bootstrapper {
 			seed = hs[i].URL
@@ -186,6 +235,25 @@ func buildCluster(number int, tls bool) ([]*Server, []*httptest.Server) {
 		}
 	}
 	return es, hs
+}
+
+func initTestServer(c *config.Config, id int64, tls bool) (e *Server, h *httptest.Server) {
+	e = New(c, id)
+	e.SetTick(time.Millisecond * 5)
+	m := http.NewServeMux()
+	m.Handle("/", e)
+	m.Handle("/raft", e.t)
+	m.Handle("/raft/", e.t)
+
+	if tls {
+		h = httptest.NewTLSServer(m)
+	} else {
+		h = httptest.NewServer(m)
+	}
+
+	e.raftPubAddr = h.URL
+	e.pubAddr = h.URL
+	return
 }
 
 func waitCluster(t *testing.T, es []*Server) {
