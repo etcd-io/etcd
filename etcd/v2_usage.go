@@ -1,4 +1,4 @@
-package server
+package etcd
 
 import (
 	"strings"
