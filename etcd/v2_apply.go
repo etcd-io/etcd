@@ -9,7 +9,7 @@ import (
 	"github.com/coreos/etcd/store"
 )
 
-func (s *Server) v2apply(index int, ent raft.Entry) {
+func (s *Server) v2apply(index int64, ent raft.Entry) {
 	var ret interface{}
 	var e *store.Event
 	var err error

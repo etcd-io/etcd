@@ -14,14 +14,14 @@ type v2Proposal struct {
 }
 
 type wait struct {
-	index int
-	term  int
+	index int64
+	term  int64
 }
 
 type v2Raft struct {
 	*raft.Node
 	result map[wait]chan interface{}
-	term   int
+	term   int64
 }
 
 func (r *v2Raft) Propose(p v2Proposal) error {

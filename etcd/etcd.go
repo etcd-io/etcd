@@ -184,7 +184,7 @@ func (s *Server) run() {
 }
 
 func (s *Server) apply(ents []raft.Entry) {
-	offset := s.node.Applied() - len(ents) + 1
+	offset := s.node.Applied() - int64(len(ents)) + 1
 	for i, ent := range ents {
 		switch ent.Type {
 		// expose raft entry type
@@ -192,7 +192,7 @@ func (s *Server) apply(ents []raft.Entry) {
 			if len(ent.Data) == 0 {
 				continue
 			}
-			s.v2apply(offset+i, ent)
+			s.v2apply(offset+int64(i), ent)
 		case raft.AddNode:
 			cfg := new(raft.Config)
 			if err := json.Unmarshal(ent.Data, cfg); err != nil {

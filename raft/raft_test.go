@@ -43,7 +43,7 @@ func TestLogReplication(t *testing.T) {
 	tests := []struct {
 		*network
 		msgs       []Message
-		wcommitted int
+		wcommitted int64
 	}{
 		{
 			newNetwork(nil, nil, nil),
@@ -214,7 +214,7 @@ func TestDuelingCandidates(t *testing.T) {
 	tests := []struct {
 		sm    *stateMachine
 		state stateType
-		term  int
+		term  int64
 		log   *log
 	}{
 		{a, stateFollower, 2, wlog},
@@ -406,30 +406,30 @@ func TestProposalByProxy(t *testing.T) {
 
 func TestCommit(t *testing.T) {
 	tests := []struct {
-		matches []int
+		matches []int64
 		logs    []Entry
-		smTerm  int
-		w       int
+		smTerm  int64
+		w       int64
 	}{
 		// single
-		{[]int{1}, []Entry{{}, {Term: 1}}, 1, 1},
-		{[]int{1}, []Entry{{}, {Term: 1}}, 2, 0},
-		{[]int{2}, []Entry{{}, {Term: 1}, {Term: 2}}, 2, 2},
-		{[]int{1}, []Entry{{}, {Term: 2}}, 2, 1},
+		{[]int64{1}, []Entry{{}, {Term: 1}}, 1, 1},
+		{[]int64{1}, []Entry{{}, {Term: 1}}, 2, 0},
+		{[]int64{2}, []Entry{{}, {Term: 1}, {Term: 2}}, 2, 2},
+		{[]int64{1}, []Entry{{}, {Term: 2}}, 2, 1},
 
 		// odd
-		{[]int{2, 1, 1}, []Entry{{}, {Term: 1}, {Term: 2}}, 1, 1},
-		{[]int{2, 1, 1}, []Entry{{}, {Term: 1}, {Term: 1}}, 2, 0},
-		{[]int{2, 1, 2}, []Entry{{}, {Term: 1}, {Term: 2}}, 2, 2},
-		{[]int{2, 1, 2}, []Entry{{}, {Term: 1}, {Term: 1}}, 2, 0},
+		{[]int64{2, 1, 1}, []Entry{{}, {Term: 1}, {Term: 2}}, 1, 1},
+		{[]int64{2, 1, 1}, []Entry{{}, {Term: 1}, {Term: 1}}, 2, 0},
+		{[]int64{2, 1, 2}, []Entry{{}, {Term: 1}, {Term: 2}}, 2, 2},
+		{[]int64{2, 1, 2}, []Entry{{}, {Term: 1}, {Term: 1}}, 2, 0},
 
 		// even
-		{[]int{2, 1, 1, 1}, []Entry{{}, {Term: 1}, {Term: 2}}, 1, 1},
-		{[]int{2, 1, 1, 1}, []Entry{{}, {Term: 1}, {Term: 1}}, 2, 0},
-		{[]int{2, 1, 1, 2}, []Entry{{}, {Term: 1}, {Term: 2}}, 1, 1},
-		{[]int{2, 1, 1, 2}, []Entry{{}, {Term: 1}, {Term: 1}}, 2, 0},
-		{[]int{2, 1, 2, 2}, []Entry{{}, {Term: 1}, {Term: 2}}, 2, 2},
-		{[]int{2, 1, 2, 2}, []Entry{{}, {Term: 1}, {Term: 1}}, 2, 0},
+		{[]int64{2, 1, 1, 1}, []Entry{{}, {Term: 1}, {Term: 2}}, 1, 1},
+		{[]int64{2, 1, 1, 1}, []Entry{{}, {Term: 1}, {Term: 1}}, 2, 0},
+		{[]int64{2, 1, 1, 2}, []Entry{{}, {Term: 1}, {Term: 2}}, 1, 1},
+		{[]int64{2, 1, 1, 2}, []Entry{{}, {Term: 1}, {Term: 1}}, 2, 0},
+		{[]int64{2, 1, 2, 2}, []Entry{{}, {Term: 1}, {Term: 2}}, 2, 2},
+		{[]int64{2, 1, 2, 2}, []Entry{{}, {Term: 1}, {Term: 1}}, 2, 0},
 	}
 
 	for i, tt := range tests {
@@ -448,9 +448,9 @@ func TestCommit(t *testing.T) {
 func TestRecvMsgVote(t *testing.T) {
 	tests := []struct {
 		state   stateType
-		i, term int
+		i, term int64
 		voteFor int64
-		w       int
+		w       int64
 	}{
 		{stateFollower, 0, 0, none, -1},
 		{stateFollower, 0, 1, none, -1},
@@ -504,7 +504,7 @@ func TestStateTransition(t *testing.T) {
 		from   stateType
 		to     stateType
 		wallow bool
-		wterm  int
+		wterm  int64
 		wlead  int64
 	}{
 		{stateFollower, stateFollower, true, 1, none},
@@ -579,7 +579,7 @@ func TestConf(t *testing.T) {
 // the uncommitted log entries
 func TestConfChangeLeader(t *testing.T) {
 	tests := []struct {
-		et       int
+		et       int64
 		wPending bool
 	}{
 		{Normal, false},
@@ -605,8 +605,8 @@ func TestAllServerStepdown(t *testing.T) {
 		state stateType
 
 		wstate stateType
-		wterm  int
-		windex int
+		wterm  int64
+		windex int64
 	}{
 		{stateFollower, stateFollower, 3, 1},
 		{stateCandidate, stateFollower, 3, 1},
@@ -614,7 +614,7 @@ func TestAllServerStepdown(t *testing.T) {
 	}
 
 	tmsgTypes := [...]messageType{msgVote, msgApp}
-	tterm := 3
+	tterm := int64(3)
 
 	for i, tt := range tests {
 		sm := newStateMachine(0, []int64{0, 1, 2})
@@ -637,7 +637,7 @@ func TestAllServerStepdown(t *testing.T) {
 			if sm.term != tt.wterm {
 				t.Errorf("#%d.%d term = %v , want %v", i, j, sm.term, tt.wterm)
 			}
-			if len(sm.log.ents) != tt.windex {
+			if int64(len(sm.log.ents)) != tt.windex {
 				t.Errorf("#%d.%d index = %v , want %v", i, j, len(sm.log.ents), tt.windex)
 			}
 		}
@@ -646,10 +646,10 @@ func TestAllServerStepdown(t *testing.T) {
 
 func TestLeaderAppResp(t *testing.T) {
 	tests := []struct {
-		index      int
+		index      int64
 		wmsgNum    int
-		windex     int
-		wcommitted int
+		windex     int64
+		wcommitted int64
 	}{
 		{-1, 1, 1, 0}, // bad resp; leader does not commit; reply with log entries
 		{2, 2, 2, 2},  // good resp; leader commits; broadcast with commit index
@@ -714,7 +714,7 @@ func TestRecvMsgBeat(t *testing.T) {
 func TestMaybeCompact(t *testing.T) {
 	tests := []struct {
 		snapshoter Snapshoter
-		applied    int
+		applied    int64
 		wCompact   bool
 	}{
 		{nil, defaultCompactThreshold + 1, false},
@@ -726,7 +726,7 @@ func TestMaybeCompact(t *testing.T) {
 		sm := newStateMachine(0, []int64{0, 1, 2})
 		sm.setSnapshoter(tt.snapshoter)
 		for i := 0; i < defaultCompactThreshold*2; i++ {
-			sm.log.append(i, Entry{Term: i + 1})
+			sm.log.append(int64(i), Entry{Term: int64(i + 1)})
 		}
 		sm.log.applied = tt.applied
 		sm.log.committed = tt.applied
@@ -891,7 +891,7 @@ func TestSlowNodeRestore(t *testing.T) {
 	}
 }
 
-func ents(terms ...int) *stateMachine {
+func ents(terms ...int64) *stateMachine {
 	ents := []Entry{{}}
 	for _, term := range terms {
 		ents = append(ents, Entry{Term: term})
@@ -1022,7 +1022,7 @@ type logSnapshoter struct {
 	snapshot Snapshot
 }
 
-func (s *logSnapshoter) Snap(index, term int, nodes []int64) {
+func (s *logSnapshoter) Snap(index, term int64, nodes []int64) {
 	s.snapshot = Snapshot{
 		Index: index,
 		Term:  term,
@@ -1036,10 +1036,3 @@ func (s *logSnapshoter) Restore(ss Snapshot) {
 func (s *logSnapshoter) GetSnap() Snapshot {
 	return s.snapshot
 }
-
-// int64Slice implements sort interface
-type int64Slice []int64
-
-func (p int64Slice) Len() int           { return len(p) }
-func (p int64Slice) Less(i, j int) bool { return p[i] < p[j] }
-func (p int64Slice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }

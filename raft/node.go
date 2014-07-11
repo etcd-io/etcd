@@ -11,7 +11,7 @@ type Interface interface {
 	Msgs() []Message
 }
 
-type tick int
+type tick int64
 
 type Config struct {
 	NodeId  int64
@@ -45,11 +45,11 @@ func (n *Node) Id() int64 {
 	return atomic.LoadInt64(&n.sm.id)
 }
 
-func (n *Node) Index() int { return n.sm.log.lastIndex() }
+func (n *Node) Index() int64 { return n.sm.log.lastIndex() }
 
-func (n *Node) Term() int { return n.sm.term }
+func (n *Node) Term() int64 { return n.sm.term }
 
-func (n *Node) Applied() int { return n.sm.log.applied }
+func (n *Node) Applied() int64 { return n.sm.log.applied }
 
 func (n *Node) HasLeader() bool { return n.Leader() != none }
 
@@ -60,7 +60,7 @@ func (n *Node) Leader() int64 { return n.sm.lead.Get() }
 // Propose asynchronously proposes data be applied to the underlying state machine.
 func (n *Node) Propose(data []byte) { n.propose(Normal, data) }
 
-func (n *Node) propose(t int, data []byte) {
+func (n *Node) propose(t int64, data []byte) {
 	n.Step(Message{Type: msgProp, Entries: []Entry{{Type: t, Data: data}}})
 }
 
@@ -141,7 +141,7 @@ func (n *Node) Tick() {
 	}
 }
 
-func (n *Node) updateConf(t int, c *Config) {
+func (n *Node) updateConf(t int64, c *Config) {
 	data, err := json.Marshal(c)
 	if err != nil {
 		panic(err)

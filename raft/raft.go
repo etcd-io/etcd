@@ -8,7 +8,7 @@ import (
 
 const none = -1
 
-type messageType int
+type messageType int64
 
 const (
 	msgHup messageType = iota
@@ -33,7 +33,7 @@ var mtmap = [...]string{
 }
 
 func (mt messageType) String() string {
-	return mtmap[int(mt)]
+	return mtmap[int64(mt)]
 }
 
 var errNoLeader = errors.New("no leader")
@@ -44,7 +44,7 @@ const (
 	stateLeader
 )
 
-type stateType int
+type stateType int64
 
 var stmap = [...]string{
 	stateFollower:  "stateFollower",
@@ -59,27 +59,27 @@ var stepmap = [...]stepFunc{
 }
 
 func (st stateType) String() string {
-	return stmap[int(st)]
+	return stmap[int64(st)]
 }
 
 type Message struct {
 	Type     messageType
 	To       int64
 	From     int64
-	Term     int
-	LogTerm  int
-	Index    int
-	PrevTerm int
+	Term     int64
+	LogTerm  int64
+	Index    int64
+	PrevTerm int64
 	Entries  []Entry
-	Commit   int
+	Commit   int64
 	Snapshot Snapshot
 }
 
 type index struct {
-	match, next int
+	match, next int64
 }
 
-func (in *index) update(n int) {
+func (in *index) update(n int64) {
 	in.match = n
 	in.next = n + 1
 }
@@ -93,21 +93,26 @@ func (in *index) decr() {
 // An AtomicInt is an int64 to be accessed atomically.
 type atomicInt int64
 
-// Add atomically adds n to i.
 func (i *atomicInt) Set(n int64) {
 	atomic.StoreInt64((*int64)(i), n)
 }
 
-// Get atomically gets the value of i.
 func (i *atomicInt) Get() int64 {
 	return atomic.LoadInt64((*int64)(i))
 }
+
+// int64Slice implements sort interface
+type int64Slice []int64
+
+func (p int64Slice) Len() int           { return len(p) }
+func (p int64Slice) Less(i, j int) bool { return p[i] < p[j] }
+func (p int64Slice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
 
 type stateMachine struct {
 	id int64
 
 	// the term we are participating in at any time
-	term int
+	term int64
 
 	// who we voted for in term
 	vote int64
@@ -194,11 +199,11 @@ func (sm *stateMachine) bcastAppend() {
 
 func (sm *stateMachine) maybeCommit() bool {
 	// TODO(bmizerany): optimize.. Currently naive
-	mis := make([]int, 0, len(sm.ins))
+	mis := make(int64Slice, 0, len(sm.ins))
 	for i := range sm.ins {
 		mis = append(mis, sm.ins[i].match)
 	}
-	sort.Sort(sort.Reverse(sort.IntSlice(mis)))
+	sort.Sort(sort.Reverse(mis))
 	mci := mis[sm.q()-1]
 
 	return sm.log.maybeCommit(mci, sm.term)
@@ -209,7 +214,7 @@ func (sm *stateMachine) nextEnts() (ents []Entry) {
 	return sm.log.nextEnts()
 }
 
-func (sm *stateMachine) reset(term int) {
+func (sm *stateMachine) reset(term int64) {
 	sm.term = term
 	sm.lead.Set(none)
 	sm.vote = none
@@ -240,7 +245,7 @@ func (sm *stateMachine) promotable() bool {
 	return sm.log.committed != 0
 }
 
-func (sm *stateMachine) becomeFollower(term int, lead int64) {
+func (sm *stateMachine) becomeFollower(term int64, lead int64) {
 	sm.reset(term)
 	sm.lead.Set(lead)
 	sm.state = stateFollower
@@ -449,7 +454,7 @@ func (sm *stateMachine) restore(s Snapshot) {
 	sm.snapshoter.Restore(s)
 }
 
-func (sm *stateMachine) needSnapshot(i int) bool {
+func (sm *stateMachine) needSnapshot(i int64) bool {
 	if i < sm.log.offset {
 		if sm.snapshoter == nil {
 			panic("need snapshot but snapshoter is nil")
