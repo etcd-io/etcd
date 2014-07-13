@@ -24,13 +24,14 @@ type v2Raft struct {
 	term   int64
 }
 
-func (r *v2Raft) Propose(p v2Proposal) error {
+func (r *v2Raft) Propose(p v2Proposal) {
 	if !r.Node.IsLeader() {
-		return fmt.Errorf("not leader")
+		p.ret <- fmt.Errorf("not leader")
+		return
 	}
 	r.Node.Propose(p.data)
 	r.result[wait{r.Index(), r.Term()}] = p.ret
-	return nil
+	return
 }
 
 func (r *v2Raft) Sync() {
