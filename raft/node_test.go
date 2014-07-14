@@ -72,13 +72,14 @@ func TestResetElapse(t *testing.T) {
 	}{
 		{Message{From: 0, To: 1, Type: msgApp, Term: 2, Entries: []Entry{{Term: 1}}}, 0},
 		{Message{From: 0, To: 1, Type: msgApp, Term: 1, Entries: []Entry{{Term: 1}}}, 1},
-		{Message{From: 0, To: 1, Type: msgVote, Term: 2}, 0},
+		{Message{From: 0, To: 1, Type: msgVote, Term: 2, Index: 1, LogTerm: 1}, 0},
 		{Message{From: 0, To: 1, Type: msgVote, Term: 1}, 1},
 	}
 
 	for i, tt := range tests {
 		n := New(0, defaultHeartbeat, defaultElection)
 		n.sm = newStateMachine(0, []int64{0, 1, 2})
+		n.sm.log.append(0, Entry{Type: Normal, Term: 1})
 		n.sm.term = 2
 		n.sm.log.committed = 1
 

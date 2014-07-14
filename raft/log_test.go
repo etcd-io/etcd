@@ -5,6 +5,60 @@ import (
 	"testing"
 )
 
+// TestAppend ensures:
+// 1. If an existing entry conflicts with a new one (same index
+// but different terms), delete the existing entry and all that
+// follow it
+// 2.Append any new entries not already in the log
+func TestAppend(t *testing.T) {
+	previousEnts := []Entry{{Term: 1}, {Term: 2}}
+	tests := []struct {
+		after  int64
+		ents   []Entry
+		windex int64
+		wents  []Entry
+	}{
+		{
+			2,
+			[]Entry{},
+			2,
+			[]Entry{{Term: 1}, {Term: 2}},
+		},
+		{
+			2,
+			[]Entry{{Term: 2}},
+			3,
+			[]Entry{{Term: 1}, {Term: 2}, {Term: 2}},
+		},
+		// conflicts with index 1
+		{
+			0,
+			[]Entry{{Term: 2}},
+			1,
+			[]Entry{{Term: 2}},
+		},
+		// conflicts with index 2
+		{
+			1,
+			[]Entry{{Term: 3}, {Term: 3}},
+			3,
+			[]Entry{{Term: 1}, {Term: 3}, {Term: 3}},
+		},
+	}
+
+	for i, tt := range tests {
+		log := newLog()
+		log.ents = append(log.ents, previousEnts...)
+		index := log.append(tt.after, tt.ents...)
+		if index != tt.windex {
+			t.Errorf("#%d: lastIndex = %d, want %d", i, index, tt.windex)
+		}
+		if g := log.entries(1); !reflect.DeepEqual(g, tt.wents) {
+			t.Errorf("#%d: logEnts = %+v, want %+v", i, g, tt.wents)
+		}
+	}
+}
+
 // TestCompactionSideEffects ensures that all the log related funcationality works correctly after
 // a compaction.
 func TestCompactionSideEffects(t *testing.T) {
