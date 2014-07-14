@@ -445,6 +445,62 @@ func TestCommit(t *testing.T) {
 	}
 }
 
+// TestHandleMsgApp ensures:
+// 1. Reply false if log doesn’t contain an entry at prevLogIndex whose term matches prevLogTerm.
+// 2. If an existing entry conflicts with a new one (same index but different terms),
+//    delete the existing entry and all that follow it; append any new entries not already in the log.
+// 3. If leaderCommit > commitIndex, set commitIndex = min(leaderCommit, index of last new entry).
+func TestHandleMsgApp(t *testing.T) {
+	tests := []struct {
+		m       Message
+		wIndex  int64
+		wCommit int64
+		wAccept bool
+	}{
+		// Ensure 1
+		{Message{Type: msgApp, Term: 2, LogTerm: 3, Index: 2, Commit: 3}, 2, 0, false}, // previous log mismatch
+		{Message{Type: msgApp, Term: 2, LogTerm: 3, Index: 3, Commit: 3}, 2, 0, false}, // previous log non-exist
+
+		// Ensure 2
+		{Message{Type: msgApp, Term: 2, LogTerm: 1, Index: 1, Commit: 1}, 2, 1, true},
+		{Message{Type: msgApp, Term: 2, LogTerm: 0, Index: 0, Commit: 1, Entries: []Entry{{Term: 2}}}, 1, 1, true},
+		{Message{Type: msgApp, Term: 2, LogTerm: 2, Index: 2, Commit: 3, Entries: []Entry{{Term: 2}, {Term: 2}}}, 4, 3, true},
+		{Message{Type: msgApp, Term: 2, LogTerm: 2, Index: 2, Commit: 4, Entries: []Entry{{Term: 2}}}, 3, 3, true},
+		{Message{Type: msgApp, Term: 2, LogTerm: 1, Index: 1, Commit: 4, Entries: []Entry{{Term: 2}}}, 2, 2, true},
+
+		// Ensure 3
+		{Message{Type: msgApp, Term: 2, LogTerm: 2, Index: 2, Commit: 2}, 2, 2, true},
+		{Message{Type: msgApp, Term: 2, LogTerm: 2, Index: 2, Commit: 4}, 2, 2, true}, // commit upto min(commit, last)
+	}
+
+	for i, tt := range tests {
+		sm := &stateMachine{
+			state: stateFollower,
+			term:  2,
+			log:   &log{committed: 0, ents: []Entry{{}, {Term: 1}, {Term: 2}}},
+		}
+
+		sm.handleAppendEntries(tt.m)
+		if sm.log.lastIndex() != tt.wIndex {
+			t.Errorf("#%d: lastIndex = %d, want %d", i, sm.log.lastIndex(), tt.wIndex)
+		}
+		if sm.log.committed != tt.wCommit {
+			t.Errorf("#%d: committed = %d, want %d", i, sm.log.committed, tt.wCommit)
+		}
+		m := sm.Msgs()
+		if len(m) != 1 {
+			t.Errorf("#%d: msg = nil, want 1")
+		}
+		gaccept := true
+		if m[0].Index == -1 {
+			gaccept = false
+		}
+		if gaccept != tt.wAccept {
+			t.Errorf("#%d: accept = %v, want %v", gaccept, tt.wAccept)
+		}
+	}
+}
+
 func TestRecvMsgVote(t *testing.T) {
 	tests := []struct {
 		state   stateType
