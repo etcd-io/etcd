@@ -21,14 +21,14 @@ const (
 
 	defaultTickDuration = time.Millisecond * 100
 
-	v2machineKVPrefix  = "/_etcd/machines"
-	v2Prefix           = "/v2/keys"
-	v2machinePrefix    = "/v2/machines"
-	v2peersPrefix      = "/v2/peers"
-	v2LeaderPrefix     = "/v2/leader"
-	v2StoreStatsPrefix = "/v2/stats/store"
+	v2machineKVPrefix = "/_etcd/machines"
+	v2configKVPrefix  = "/_etcd/config"
 
-	v2configKVPrefix      = "/_etcd/config"
+	v2Prefix              = "/v2/keys"
+	v2machinePrefix       = "/v2/machines"
+	v2peersPrefix         = "/v2/peers"
+	v2LeaderPrefix        = "/v2/leader"
+	v2StoreStatsPrefix    = "/v2/stats/store"
 	v2adminConfigPrefix   = "/v2/admin/config"
 	v2adminMachinesPrefix = "/v2/admin/machines/"
 
