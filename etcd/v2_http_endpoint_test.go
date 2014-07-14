@@ -298,8 +298,14 @@ func TestGetAdminMachinesEndPoint(t *testing.T) {
 			t.Errorf("%v", err)
 			continue
 		}
-		if !reflect.DeepEqual(m, w) {
-			t.Errorf("on %d: machines = %+v, want %+v", i, m, w)
+
+		sm := machineSlice(m)
+		sw := machineSlice(w)
+		sort.Sort(sm)
+		sort.Sort(sw)
+
+		if !reflect.DeepEqual(sm, sw) {
+			t.Errorf("on %d: machines = %+v, want %+v", i, sm, sw)
 		}
 	}
 
@@ -330,3 +336,10 @@ func barrier(t *testing.T, base int, es []*Server) {
 		}
 	}
 }
+
+// int64Slice implements sort interface
+type machineSlice []*machineMessage
+
+func (s machineSlice) Len() int           { return len(s) }
+func (s machineSlice) Less(i, j int) bool { return s[i].Name < s[j].Name }
+func (s machineSlice) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
