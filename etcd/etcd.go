@@ -168,21 +168,22 @@ func (s *Server) Join() {
 		PeerURL:    s.raftPubAddr,
 	}
 
-	succeed := false
+	url := ""
 	for i := 0; i < 5; i++ {
 		for seed := range s.nodes {
 			if err := s.client.AddMachine(seed, fmt.Sprint(s.id), info); err == nil {
-				succeed = true
+				url = seed
 				break
 			} else {
 				log.Println(err)
 			}
 		}
-		if succeed {
+		if url != "" {
 			break
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
+	s.nodes = map[string]bool{url: true}
 
 	s.run()
 }
@@ -329,9 +330,10 @@ func (s *Server) apply(ents []raft.Entry) {
 				break
 			}
 			log.Printf("Add Node %x %v %v\n", cfg.NodeId, cfg.Addr, string(cfg.Context))
-			s.nodes[cfg.Addr] = true
 			p := path.Join(v2machineKVPrefix, fmt.Sprint(cfg.NodeId))
-			s.Store.Set(p, false, fmt.Sprintf("raft=%v&etcd=%v", cfg.Addr, string(cfg.Context)), store.Permanent)
+			if _, err := s.Store.Set(p, false, fmt.Sprintf("raft=%v&etcd=%v", cfg.Addr, string(cfg.Context)), store.Permanent); err == nil {
+				s.nodes[cfg.Addr] = true
+			}
 		case raft.RemoveNode:
 			cfg := new(raft.Config)
 			if err := json.Unmarshal(ent.Data, cfg); err != nil {
@@ -340,7 +342,9 @@ func (s *Server) apply(ents []raft.Entry) {
 			}
 			log.Printf("Remove Node %x\n", cfg.NodeId)
 			p := path.Join(v2machineKVPrefix, fmt.Sprint(cfg.NodeId))
-			s.Store.Delete(p, false, false)
+			if _, err := s.Store.Delete(p, false, false); err == nil {
+				delete(s.nodes, cfg.Addr)
+			}
 		default:
 			panic("unimplemented")
 		}
