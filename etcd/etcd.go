@@ -19,6 +19,8 @@ const (
 	defaultHeartbeat = 1
 	defaultElection  = 5
 
+	maxBufferedProposal = 128
+
 	defaultTickDuration = time.Millisecond * 100
 
 	v2machineKVPrefix = "/_etcd/machines"
@@ -94,7 +96,7 @@ func New(c *config.Config, id int64) *Server {
 		raftPubAddr:  c.Peer.Addr,
 		nodes:        make(map[string]bool),
 		tickDuration: defaultTickDuration,
-		proposal:     make(chan v2Proposal),
+		proposal:     make(chan v2Proposal, maxBufferedProposal),
 		node: &v2Raft{
 			Node:   raft.New(id, defaultHeartbeat, defaultElection),
 			result: make(map[wait]chan interface{}),
