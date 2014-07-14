@@ -26,7 +26,7 @@ The full documentation is contained in the [API docs](https://github.com/coreos/
 
 ### Required
 
-* `-name` - The node name. Defaults to the hostname.
+* `-name` - The node name. Defaults to a UUID.
 
 ### Optional
 
