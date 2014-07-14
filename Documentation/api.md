@@ -833,6 +833,8 @@ curl -L http://127.0.0.1:4001/v2/keys/afile -XPUT --data-urlencode value@afile.t
 
 ### Read Consistency
 
+#### Read from the Master
+
 Followers in a cluster can be behind the leader in their copy of the keyspace.
 If your application wants or needs the most up-to-date version of a key then it should ensure it reads from the current leader.
 By using the `consistent=true` flag in your GET requests, etcd will make sure you are talking to the current master.
@@ -842,6 +844,19 @@ A client makes a write to L and F1 acknowledges the request.
 The client is told the write was successful and the keyspace is updated.
 Meanwhile F2 has partitioned from the network and will have an out-of-date version of the keyspace until the partition resolves.
 Since F2 missed the most recent write, a client reading from F2 will have an out-of-date version of the keyspace.
+
+Implementation notes on `consistent=true`: If the leader you are talking to is
+partitioned it will be unable to determine if it is not currently the master.
+In a later version we will provide a mechanism to set an upperbound of time
+that the current master can be unable to contact the quorom and still serve
+reads.
+
+### Read Linearization
+
+If you want a read that is fully linearized you can use a `quorum=true` GET.
+The read will take a very similar path to a write and will have a similar
+speed. If you are unsure if you need this feature feel free to email etcd-dev
+for advice.
 
 ## Lock Module (*Deprecated and Removed*)
 
