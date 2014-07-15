@@ -298,6 +298,7 @@ func (s *Server) runParticipant() {
 	recv := s.t.recv
 	ticker := time.NewTicker(s.tickDuration)
 	v2SyncTicker := time.NewTicker(time.Millisecond * 500)
+	defer node.StopProposalWaiters()
 
 	var proposal chan v2Proposal
 	var addNodeC, removeNodeC chan raft.Config

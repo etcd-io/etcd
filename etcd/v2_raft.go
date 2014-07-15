@@ -45,3 +45,10 @@ func (r *v2Raft) Sync() {
 	}
 	r.Node.Propose(data)
 }
+
+func (r *v2Raft) StopProposalWaiters() {
+	for k, ch := range r.result {
+		ch <- fmt.Errorf("server is stopped or removed from participant")
+		delete(r.result, k)
+	}
+}
