@@ -24,9 +24,10 @@ type Config struct {
 type Node struct {
 	sm *stateMachine
 
-	elapsed   tick
-	election  tick
-	heartbeat tick
+	elapsed      tick
+	electionRand tick
+	election     tick
+	heartbeat    tick
 
 	// TODO: it needs garbage collection later
 	rmNodes map[int64]struct{}
@@ -40,10 +41,11 @@ func New(id int64, heartbeat, election tick) *Node {
 
 	rand.Seed(time.Now().UnixNano())
 	n := &Node{
-		heartbeat: heartbeat,
-		election:  election + tick(rand.Int31())%election,
-		sm:        newStateMachine(id, []int64{id}),
-		rmNodes:   make(map[int64]struct{}),
+		heartbeat:    heartbeat,
+		election:     election,
+		electionRand: election + tick(rand.Int31())%election,
+		sm:           newStateMachine(id, []int64{id}),
+		rmNodes:      make(map[int64]struct{}),
 	}
 
 	return n
@@ -155,13 +157,16 @@ func (n *Node) Tick() {
 		return
 	}
 
-	timeout, msgType := n.election, msgHup
+	timeout, msgType := n.electionRand, msgHup
 	if n.sm.state == stateLeader {
 		timeout, msgType = n.heartbeat, msgBeat
 	}
 	if n.elapsed >= timeout {
 		n.Step(Message{Type: msgType})
 		n.elapsed = 0
+		if n.sm.state != stateLeader {
+			n.electionRand = n.election + tick(rand.Int31())%n.election
+		}
 	} else {
 		n.elapsed++
 	}
