@@ -68,5 +68,7 @@ func (w *Watcher) Remove() {
 	defer w.hub.mutex.Unlock()
 
 	close(w.EventChan)
-	w.remove()
+	if w.remove != nil {
+		w.remove()
+	}
 }
