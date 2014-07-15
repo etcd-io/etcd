@@ -41,6 +41,11 @@ const (
 	stop
 )
 
+var (
+	removeTmpErr  = fmt.Errorf("remove: try again")
+	serverStopErr = fmt.Errorf("server is stopped")
+)
+
 type Server struct {
 	config *config.Config
 
@@ -147,6 +152,10 @@ func (s *Server) Run() {
 }
 
 func (s *Server) Stop() {
+	if s.mode == stop {
+		return
+	}
+	s.mode = stop
 	close(s.stop)
 	s.t.stop()
 }
@@ -194,16 +203,17 @@ func (s *Server) Add(id int64, raftPubAddr string, pubAddr string) error {
 
 	_, err := s.Get(p, false, false)
 	if err == nil {
-		return fmt.Errorf("existed node")
+		return nil
 	}
 	if v, ok := err.(*etcdErr.Error); !ok || v.ErrorCode != etcdErr.EcodeKeyNotFound {
 		return err
 	}
 	for {
-		if s.mode == stop {
+		select {
+		case s.addNodeC <- raft.Config{NodeId: id, Addr: raftPubAddr, Context: []byte(pubAddr)}:
+		case <-s.stop:
 			return fmt.Errorf("server is stopped")
 		}
-		s.addNodeC <- raft.Config{NodeId: id, Addr: raftPubAddr, Context: []byte(pubAddr)}
 		w, err := s.Watch(p, true, false, index+1)
 		if err != nil {
 			return err
@@ -215,34 +225,45 @@ func (s *Server) Add(id int64, raftPubAddr string, pubAddr string) error {
 			}
 			index = v.Index()
 		case <-time.After(4 * defaultHeartbeat * s.tickDuration):
+		case <-s.stop:
+			return fmt.Errorf("server is stopped")
 		}
 	}
 }
 
 func (s *Server) Remove(id int64) error {
 	p := path.Join(v2machineKVPrefix, fmt.Sprint(id))
-	index := s.Index()
 
-	if _, err := s.Get(p, false, false); err != nil {
-		return err
+	v, err := s.Get(p, false, false)
+	if err != nil {
+		return nil
 	}
-	for {
-		if s.mode == stop {
-			return fmt.Errorf("server is stopped")
+
+	select {
+	case s.removeNodeC <- raft.Config{NodeId: id}:
+	case <-s.stop:
+		return serverStopErr
+	}
+
+	// TODO(xiangli): do not need to watch if the
+	// removal target is self
+	w, err := s.Watch(p, true, false, v.Index()+1)
+	if err != nil {
+		return removeTmpErr
+	}
+
+	select {
+	case v := <-w.EventChan:
+		if v.Action == store.Delete {
+			return nil
 		}
-		s.removeNodeC <- raft.Config{NodeId: id}
-		w, err := s.Watch(p, true, false, index+1)
-		if err != nil {
-			return err
-		}
-		select {
-		case v := <-w.EventChan:
-			if v.Action == store.Delete {
-				return nil
-			}
-			index = v.Index()
-		case <-time.After(4 * defaultHeartbeat * s.tickDuration):
-		}
+		return removeTmpErr
+	case <-time.After(4 * defaultHeartbeat * s.tickDuration):
+		w.Remove()
+		return removeTmpErr
+	case <-s.stop:
+		w.Remove()
+		return serverStopErr
 	}
 }
 
@@ -291,15 +312,14 @@ func (s *Server) runParticipant() {
 			node.Sync()
 		case <-s.stop:
 			log.Printf("Node: %d stopped\n", s.id)
-			s.mode = stop
 			return
 		}
 		s.apply(node.Next())
 		s.send(node.Msgs())
 		if node.IsRemoved() {
 			// TODO: delete it after standby is implemented
-			s.mode = stop
 			log.Printf("Node: %d removed from participants\n", s.id)
+			s.Stop()
 			return
 		}
 	}
