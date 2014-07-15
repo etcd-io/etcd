@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"runtime"
 	"testing"
 	"time"
 
@@ -101,31 +100,37 @@ func TestAdd(t *testing.T) {
 		go es[0].Bootstrap()
 
 		for i := 1; i < tt.size; i++ {
-			var index uint64
+			id := int64(i)
 			for {
 				lead := es[0].node.Leader()
-				if lead != -1 {
-					index = es[lead].Index()
-					ne := es[i]
-					if err := es[lead].Add(ne.id, ne.raftPubAddr, ne.pubAddr); err == nil {
-						break
-					}
+				if lead == -1 {
+					time.Sleep(defaultElection * es[0].tickDuration)
+					continue
 				}
-				runtime.Gosched()
+
+				err := es[lead].Add(id, es[id].raftPubAddr, es[id].pubAddr)
+				if err == nil {
+					break
+				}
+				switch err {
+				case tmpErr:
+					time.Sleep(defaultElection * es[0].tickDuration)
+				case serverStopErr:
+					t.Fatalf("#%d on %d: unexpected stop", i, lead)
+				default:
+					t.Fatal(err)
+				}
 			}
 			go es[i].run()
 
 			for j := 0; j <= i; j++ {
-				w, err := es[j].Watch(v2machineKVPrefix, true, false, index+1)
+				p := fmt.Sprintf("%s/%d", v2machineKVPrefix, id)
+				w, err := es[j].Watch(p, false, false, 1)
 				if err != nil {
 					t.Errorf("#%d on %d: %v", i, j, err)
 					break
 				}
-				v := <-w.EventChan
-				ww := fmt.Sprintf("%s/%d", v2machineKVPrefix, i)
-				if v.Node.Key != ww {
-					t.Errorf("#%d on %d: path = %v, want %v", i, j, v.Node.Key, ww)
-				}
+				<-w.EventChan
 			}
 		}
 
@@ -169,7 +174,7 @@ func TestRemove(t *testing.T) {
 					break
 				}
 				switch err {
-				case removeTmpErr:
+				case tmpErr:
 					time.Sleep(defaultElection * 5 * time.Millisecond)
 				case serverStopErr:
 					if lead == id {

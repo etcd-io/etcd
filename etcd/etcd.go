@@ -42,7 +42,7 @@ const (
 )
 
 var (
-	removeTmpErr  = fmt.Errorf("remove: try again")
+	tmpErr        = fmt.Errorf("try again")
 	serverStopErr = fmt.Errorf("server is stopped")
 )
 
@@ -199,7 +199,6 @@ func (s *Server) Join() {
 
 func (s *Server) Add(id int64, raftPubAddr string, pubAddr string) error {
 	p := path.Join(v2machineKVPrefix, fmt.Sprint(id))
-	index := s.Index()
 
 	_, err := s.Get(p, false, false)
 	if err == nil {
@@ -208,26 +207,33 @@ func (s *Server) Add(id int64, raftPubAddr string, pubAddr string) error {
 	if v, ok := err.(*etcdErr.Error); !ok || v.ErrorCode != etcdErr.EcodeKeyNotFound {
 		return err
 	}
-	for {
-		select {
-		case s.addNodeC <- raft.Config{NodeId: id, Addr: raftPubAddr, Context: []byte(pubAddr)}:
-		case <-s.stop:
-			return fmt.Errorf("server is stopped")
+
+	w, err := s.Watch(p, true, false, 0)
+	if err != nil {
+		log.Println("add error:", err)
+		return tmpErr
+	}
+
+	select {
+	case s.addNodeC <- raft.Config{NodeId: id, Addr: raftPubAddr, Context: []byte(pubAddr)}:
+	case <-s.stop:
+		return serverStopErr
+	}
+
+	select {
+	case v := <-w.EventChan:
+		if v.Action == store.Set {
+			return nil
 		}
-		w, err := s.Watch(p, true, false, index+1)
-		if err != nil {
-			return err
-		}
-		select {
-		case v := <-w.EventChan:
-			if v.Action == store.Set {
-				return nil
-			}
-			index = v.Index()
-		case <-time.After(4 * defaultHeartbeat * s.tickDuration):
-		case <-s.stop:
-			return fmt.Errorf("server is stopped")
-		}
+		log.Println("add error: action =", v.Action)
+		return tmpErr
+	case <-time.After(4 * defaultHeartbeat * s.tickDuration):
+		w.Remove()
+		log.Println("add error: wait timeout")
+		return tmpErr
+	case <-s.stop:
+		w.Remove()
+		return serverStopErr
 	}
 }
 
@@ -249,7 +255,8 @@ func (s *Server) Remove(id int64) error {
 	// removal target is self
 	w, err := s.Watch(p, true, false, v.Index()+1)
 	if err != nil {
-		return removeTmpErr
+		log.Println("remove error:", err)
+		return tmpErr
 	}
 
 	select {
@@ -257,10 +264,12 @@ func (s *Server) Remove(id int64) error {
 		if v.Action == store.Delete {
 			return nil
 		}
-		return removeTmpErr
+		log.Println("remove error: action =", v.Action)
+		return tmpErr
 	case <-time.After(4 * defaultHeartbeat * s.tickDuration):
 		w.Remove()
-		return removeTmpErr
+		log.Println("remove error: wait timeout")
+		return tmpErr
 	case <-s.stop:
 		w.Remove()
 		return serverStopErr
@@ -284,18 +293,21 @@ func (s *Server) run() {
 
 func (s *Server) runParticipant() {
 	node := s.node
-	addNodeC := s.addNodeC
-	removeNodeC := s.removeNodeC
 	recv := s.t.recv
 	ticker := time.NewTicker(s.tickDuration)
 	v2SyncTicker := time.NewTicker(time.Millisecond * 500)
 
 	var proposal chan v2Proposal
+	var addNodeC, removeNodeC chan raft.Config
 	for {
 		if node.HasLeader() {
 			proposal = s.proposal
+			addNodeC = s.addNodeC
+			removeNodeC = s.removeNodeC
 		} else {
 			proposal = nil
+			addNodeC = nil
+			removeNodeC = nil
 		}
 		select {
 		case p := <-proposal:
