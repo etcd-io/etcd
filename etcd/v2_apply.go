@@ -50,7 +50,8 @@ func (s *Server) v2apply(index int64, ent raft.Entry) {
 		}
 	}
 
-	if s.node.result[wait{index, ent.Term}] == nil {
+	w := wait{index, ent.Term}
+	if s.node.result[w] == nil {
 		return
 	}
 
@@ -59,5 +60,6 @@ func (s *Server) v2apply(index int64, ent raft.Entry) {
 	} else {
 		ret = e
 	}
-	s.node.result[wait{index, ent.Term}] <- ret
+	s.node.result[w] <- ret
+	delete(s.node.result, w)
 }
