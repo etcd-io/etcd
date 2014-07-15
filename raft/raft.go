@@ -311,7 +311,11 @@ func (sm *stateMachine) Step(m Message) (ok bool) {
 	case m.Term == 0:
 		// local message
 	case m.Term > sm.term.Get():
-		sm.becomeFollower(m.Term, m.From)
+		lead := m.From
+		if m.Type == msgVote {
+			lead = none
+		}
+		sm.becomeFollower(m.Term, lead)
 	case m.Term < sm.term.Get():
 		// ignore
 		return true
