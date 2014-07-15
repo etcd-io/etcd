@@ -76,20 +76,12 @@ func TestV2Redirect(t *testing.T) {
 }
 
 func TestAdd(t *testing.T) {
-	tests := []struct {
-		size  int
-		round int
-	}{
-		{3, 5},
-		{4, 5},
-		{5, 5},
-		{6, 5},
-	}
+	tests := []int{3, 4, 5, 6}
 
 	for _, tt := range tests {
-		es := make([]*Server, tt.size)
-		hs := make([]*httptest.Server, tt.size)
-		for i := 0; i < tt.size; i++ {
+		es := make([]*Server, tt)
+		hs := make([]*httptest.Server, tt)
+		for i := 0; i < tt; i++ {
 			c := config.New()
 			if i > 0 {
 				c.Peers = []string{hs[0].URL}
@@ -99,7 +91,7 @@ func TestAdd(t *testing.T) {
 
 		go es[0].Bootstrap()
 
-		for i := 1; i < tt.size; i++ {
+		for i := 1; i < tt; i++ {
 			id := int64(i)
 			for {
 				lead := es[0].node.Leader()
