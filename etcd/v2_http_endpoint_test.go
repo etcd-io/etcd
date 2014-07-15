@@ -216,8 +216,8 @@ func TestPutAdminConfigEndPoint(t *testing.T) {
 		for j := range hs {
 			hs[len(hs)-j-1].Close()
 		}
-		afterTest(t)
 	}
+	afterTest(t)
 }
 
 func TestGetAdminMachineEndPoint(t *testing.T) {
