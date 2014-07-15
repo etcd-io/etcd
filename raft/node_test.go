@@ -16,7 +16,7 @@ func TestTickMsgHup(t *testing.T) {
 	// simulate to patch the join log
 	n.Step(Message{Type: msgApp, Commit: 1, Entries: []Entry{Entry{}}})
 
-	for i := 0; i < defaultElection+1; i++ {
+	for i := 0; i < defaultElection*2; i++ {
 		n.Tick()
 	}
 

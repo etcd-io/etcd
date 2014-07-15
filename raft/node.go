@@ -3,7 +3,9 @@ package raft
 import (
 	"encoding/json"
 	golog "log"
+	"math/rand"
 	"sync/atomic"
+	"time"
 )
 
 type Interface interface {
@@ -36,9 +38,10 @@ func New(id int64, heartbeat, election tick) *Node {
 		panic("election is least three times as heartbeat [election: %d, heartbeat: %d]")
 	}
 
+	rand.Seed(time.Now().UnixNano())
 	n := &Node{
 		heartbeat: heartbeat,
-		election:  election,
+		election:  election + tick(rand.Int31())%election,
 		sm:        newStateMachine(id, []int64{id}),
 		rmNodes:   make(map[int64]struct{}),
 	}
