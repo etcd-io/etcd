@@ -2,6 +2,7 @@ package etcd
 
 import (
 	"fmt"
+	"math/rand"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -9,6 +10,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/config"
+	"github.com/coreos/etcd/store"
 )
 
 func TestMultipleNodes(t *testing.T) {
@@ -107,7 +109,7 @@ func TestAdd(t *testing.T) {
 				switch err {
 				case tmpErr:
 					time.Sleep(defaultElection * es[0].tickDuration)
-				case serverStopErr:
+				case raftStopErr:
 					t.Fatalf("#%d on %d: unexpected stop", i, lead)
 				default:
 					t.Fatal(err)
@@ -147,6 +149,8 @@ func TestRemove(t *testing.T) {
 		// not 100 percent safe in our raft.
 		// TODO(yichengq): improve it later.
 		for i := 0; i < tt-2; i++ {
+			<-es[i].modeC
+
 			id := int64(i)
 			send := id
 			for {
@@ -168,18 +172,95 @@ func TestRemove(t *testing.T) {
 				switch err {
 				case tmpErr:
 					time.Sleep(defaultElection * 5 * time.Millisecond)
-				case serverStopErr:
+				case raftStopErr:
 					if lead == id {
 						break
 					}
 				default:
 					t.Fatal(err)
 				}
+
 			}
-			<-es[i].stop
+
+			if g := <-es[i].modeC; g != standby {
+				t.Errorf("#%d: mode = %d, want standby", i, g)
+			}
 		}
 
 		for i := range es {
+			es[len(hs)-i-1].Stop()
+		}
+		for i := range hs {
+			hs[len(hs)-i-1].Close()
+		}
+	}
+	afterTest(t)
+}
+
+// TODO(yichengq): cannot handle previous msgDenial correctly now
+func TestModeSwitch(t *testing.T) {
+	size := 5
+	round := 1
+
+	for i := 0; i < size; i++ {
+		es, hs := buildCluster(size, false)
+		waitCluster(t, es)
+
+		if g := <-es[i].modeC; g != participant {
+			t.Fatalf("#%d: mode = %d, want participant", i, g)
+		}
+
+		config := config.NewClusterConfig()
+		config.SyncInterval = 0
+		id := int64(i)
+		for j := 0; j < round; j++ {
+			lead, _ := waitActiveLeader(es)
+			// cluster only demotes follower
+			if lead == id {
+				continue
+			}
+
+			config.ActiveSize = size - 1
+			if err := es[lead].setClusterConfig(config); err != nil {
+				t.Fatalf("#%d: setClusterConfig err = %v", i, err)
+			}
+			if err := es[lead].Remove(id); err != nil {
+				t.Fatalf("#%d: remove err = %v", i, err)
+			}
+
+			if g := <-es[i].modeC; g != standby {
+				t.Fatalf("#%d: mode = %d, want standby", i, g)
+			}
+			if g := len(es[i].modeC); g != 0 {
+				t.Fatalf("#%d: mode to %d, want remain", i, <-es[i].modeC)
+			}
+
+			if g := es[i].leader; g != lead {
+				t.Errorf("#%d: lead = %d, want %d", i, g, lead)
+			}
+
+			config.ActiveSize = size
+			if err := es[lead].setClusterConfig(config); err != nil {
+				t.Fatalf("#%d: setClusterConfig err = %v", i, err)
+			}
+
+			if g := <-es[i].modeC; g != participant {
+				t.Fatalf("#%d: mode = %d, want participant", i, g)
+			}
+			//			if g := len(es[i].modeC); g != 0 {
+			//				t.Fatalf("#%d: mode to %d, want remain", i, <-es[i].modeC)
+			//			}
+
+			//			if err := checkParticipant(i, es); err != nil {
+			//				t.Errorf("#%d: check alive err = %v", i, err)
+			//			}
+		}
+
+		//		if g := len(es[i].modeC); g != 0 {
+		//			t.Fatalf("#%d: mode to %d, want remain", i, <-es[i].modeC)
+		//		}
+
+		for i := range hs {
 			es[len(hs)-i-1].Stop()
 		}
 		for i := range hs {
@@ -197,7 +278,9 @@ func buildCluster(number int, tls bool) ([]*Server, []*httptest.Server) {
 
 	for i := range es {
 		c := config.New()
-		c.Peers = []string{seed}
+		if seed != "" {
+			c.Peers = []string{seed}
+		}
 		es[i], hs[i] = initTestServer(c, int64(i), tls)
 
 		if i == bootstrapper {
@@ -261,4 +344,25 @@ func waitCluster(t *testing.T, es []*Server) {
 			}
 		}
 	}
+}
+
+// checkParticipant checks the i-th server works well as participant.
+func checkParticipant(i int, es []*Server) error {
+	lead, _ := waitActiveLeader(es)
+	key := fmt.Sprintf("/%d", rand.Int31())
+	ev, err := es[lead].Set(key, false, "bar", store.Permanent)
+	if err != nil {
+		return err
+	}
+
+	w, err := es[i].Watch(key, false, false, ev.Index())
+	if err != nil {
+		return err
+	}
+	select {
+	case <-w.EventChan:
+	case <-time.After(8 * defaultHeartbeat * es[i].tickDuration):
+		return fmt.Errorf("watch timeout")
+	}
+	return nil
 }

@@ -45,11 +45,7 @@ func (s *Server) serveAdminConfig(w http.ResponseWriter, r *http.Request) error 
 			return err
 		}
 		c.Sanitize()
-		b, err := json.Marshal(c)
-		if err != nil {
-			return err
-		}
-		if _, err := s.Set(v2configKVPrefix, false, string(b), store.Permanent); err != nil {
+		if err := s.setClusterConfig(c); err != nil {
 			return err
 		}
 	default:

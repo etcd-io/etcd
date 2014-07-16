@@ -48,7 +48,7 @@ func (r *v2Raft) Sync() {
 
 func (r *v2Raft) StopProposalWaiters() {
 	for k, ch := range r.result {
-		ch <- fmt.Errorf("server is stopped or removed from participant")
+		ch <- raftStopErr
 		delete(r.result, k)
 	}
 }

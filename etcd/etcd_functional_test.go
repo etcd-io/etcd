@@ -104,7 +104,17 @@ type leadterm struct {
 	term int64
 }
 
-func waitLeader(es []*Server) {
+func waitActiveLeader(es []*Server) (lead, term int64) {
+	for {
+		if l, t := waitLeader(es); l >= 0 && es[l].mode == participant {
+			return l, t
+		}
+	}
+}
+
+// waitLeader waits until all alive servers are checked to have the same leader.
+// WARNING: The lead returned is not guaranteed to be actual leader.
+func waitLeader(es []*Server) (lead, term int64) {
 	for {
 		ls := make([]leadterm, 0, len(es))
 		for i := range es {
@@ -117,7 +127,7 @@ func waitLeader(es []*Server) {
 			}
 		}
 		if isSameLead(ls) {
-			return
+			return ls[0].lead, ls[0].term
 		}
 		time.Sleep(es[0].tickDuration * defaultElection)
 	}
