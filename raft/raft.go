@@ -141,7 +141,7 @@ type stateMachine struct {
 }
 
 func newStateMachine(id int64, peers []int64) *stateMachine {
-	sm := &stateMachine{id: id, log: newLog(), ins: make(map[int64]*index)}
+	sm := &stateMachine{id: id, lead: none, log: newLog(), ins: make(map[int64]*index)}
 	for _, p := range peers {
 		sm.ins[p] = &index{}
 	}
