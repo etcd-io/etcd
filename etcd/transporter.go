@@ -48,11 +48,19 @@ func newTransporter(tc *tls.Config) *transporter {
 	return t
 }
 
+func (t *transporter) start() {
+	t.mu.Lock()
+	t.stopped = false
+	t.mu.Unlock()
+}
+
 func (t *transporter) stop() {
 	t.mu.Lock()
 	t.stopped = true
 	t.mu.Unlock()
+}
 
+func (t *transporter) closeConnections() {
 	t.wg.Wait()
 	tr := t.client.Transport.(*http.Transport)
 	tr.CloseIdleConnections()
@@ -125,6 +133,14 @@ func (t *transporter) fetchAddr(seedurl string, id int64) error {
 }
 
 func (t *transporter) serveRaft(w http.ResponseWriter, r *http.Request) {
+	t.mu.RLock()
+	if t.stopped {
+		t.mu.RUnlock()
+		http.Error(w, "404 page not found", http.StatusNotFound)
+		return
+	}
+	t.mu.RUnlock()
+
 	msg := new(raft.Message)
 	if err := json.NewDecoder(r.Body).Decode(msg); err != nil {
 		log.Println(err)
@@ -143,6 +159,14 @@ func (t *transporter) serveRaft(w http.ResponseWriter, r *http.Request) {
 }
 
 func (t *transporter) serveCfg(w http.ResponseWriter, r *http.Request) {
+	t.mu.RLock()
+	if t.stopped {
+		t.mu.RUnlock()
+		http.Error(w, "404 page not found", http.StatusNotFound)
+		return
+	}
+	t.mu.RUnlock()
+
 	id, err := strconv.ParseInt(r.URL.Path[len("/raft/cfg/"):], 10, 64)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
