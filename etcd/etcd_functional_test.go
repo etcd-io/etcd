@@ -110,7 +110,7 @@ func waitLeader(es []*Server) {
 		for i := range es {
 			switch es[i].mode {
 			case participant:
-				ls = append(ls, reportLead(es[i]))
+				ls = append(ls, getLead(es[i]))
 			case standby:
 				//TODO(xiangli) add standby support
 			case stop:
@@ -123,7 +123,7 @@ func waitLeader(es []*Server) {
 	}
 }
 
-func reportLead(s *Server) leadterm {
+func getLead(s *Server) leadterm {
 	return leadterm{s.node.Leader(), s.node.Term()}
 }
 
