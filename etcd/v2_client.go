@@ -6,10 +6,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/coreos/etcd/config"
 	etcdErr "github.com/coreos/etcd/error"
@@ -70,9 +72,12 @@ func (c *v2client) GetMachines(url string) ([]*machineMessage, *etcdErr.Error) {
 	if err != nil {
 		return nil, clientError(err)
 	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, c.readErrorBody(resp.Body)
+	}
 
 	msgs := new([]*machineMessage)
-	if uerr := c.readJSONResponse(resp, msgs); uerr != nil {
+	if uerr := c.readJSONBody(resp.Body, msgs); uerr != nil {
 		return nil, uerr
 	}
 	return *msgs, nil
@@ -83,9 +88,12 @@ func (c *v2client) GetClusterConfig(url string) (*config.ClusterConfig, *etcdErr
 	if err != nil {
 		return nil, clientError(err)
 	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, c.readErrorBody(resp.Body)
+	}
 
 	config := new(config.ClusterConfig)
-	if uerr := c.readJSONResponse(resp, config); uerr != nil {
+	if uerr := c.readJSONBody(resp.Body, config); uerr != nil {
 		return nil, uerr
 	}
 	return config, nil
@@ -102,40 +110,39 @@ func (c *v2client) AddMachine(url string, name string, info *context) *etcdErr.E
 	if err != nil {
 		return clientError(err)
 	}
+	if resp.StatusCode != http.StatusOK {
+		return c.readErrorBody(resp.Body)
+	}
+	c.readBody(resp.Body)
+	return nil
+}
 
-	if err := c.readErrorResponse(resp); err != nil {
-		return err
+func (c *v2client) readErrorBody(body io.ReadCloser) *etcdErr.Error {
+	b, err := c.readBody(body)
+	if err != nil {
+		return clientError(err)
+	}
+	uerr := &etcdErr.Error{}
+	if err := json.Unmarshal(b, uerr); err != nil {
+		str := strings.TrimSpace(string(b))
+		return etcdErr.NewError(etcdErr.EcodeClientInternal, str, 0)
 	}
 	return nil
 }
 
-func (c *v2client) readJSONResponse(resp *http.Response, val interface{}) *etcdErr.Error {
-	if err := c.readErrorResponse(resp); err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	defer ioutil.ReadAll(resp.Body)
-
-	if err := json.NewDecoder(resp.Body).Decode(val); err != nil {
+func (c *v2client) readJSONBody(body io.ReadCloser, val interface{}) *etcdErr.Error {
+	if err := json.NewDecoder(body).Decode(val); err != nil {
 		log.Printf("Error parsing join response: %v", err)
 		return clientError(err)
 	}
+	c.readBody(body)
 	return nil
 }
 
-func (c *v2client) readErrorResponse(resp *http.Response) *etcdErr.Error {
-	if resp.StatusCode == http.StatusOK {
-		return nil
-	}
-	defer resp.Body.Close()
-	defer ioutil.ReadAll(resp.Body)
-
-	uerr := &etcdErr.Error{}
-	if err := json.NewDecoder(resp.Body).Decode(uerr); err != nil {
-		log.Printf("Error parsing response to etcd error: %v", err)
-		return clientError(err)
-	}
-	return uerr
+func (c *v2client) readBody(body io.ReadCloser) ([]byte, error) {
+	b, err := ioutil.ReadAll(body)
+	body.Close()
+	return b, err
 }
 
 // put sends server side PUT request.
