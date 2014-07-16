@@ -17,14 +17,19 @@ import (
 	"github.com/coreos/etcd/raft"
 )
 
+const (
+	serving int = iota
+	stopped
+)
+
 var (
 	errUnknownNode = errors.New("unknown node")
 )
 
 type transporter struct {
-	mu      sync.RWMutex
-	stopped bool
-	urls    map[int64]string
+	mu     sync.RWMutex
+	status int
+	urls   map[int64]string
 
 	recv   chan *raft.Message
 	client *http.Client
@@ -50,13 +55,13 @@ func newTransporter(tc *tls.Config) *transporter {
 
 func (t *transporter) start() {
 	t.mu.Lock()
-	t.stopped = false
+	t.status = serving
 	t.mu.Unlock()
 }
 
 func (t *transporter) stop() {
 	t.mu.Lock()
-	t.stopped = true
+	t.status = stopped
 	t.mu.Unlock()
 }
 
@@ -91,7 +96,7 @@ func (t *transporter) sendTo(nodeId int64, data []byte) error {
 
 func (t *transporter) send(addr string, data []byte) error {
 	t.mu.RLock()
-	if t.stopped {
+	if t.status == stopped {
 		t.mu.RUnlock()
 		return fmt.Errorf("transporter stopped")
 	}
@@ -134,12 +139,12 @@ func (t *transporter) fetchAddr(seedurl string, id int64) error {
 
 func (t *transporter) serveRaft(w http.ResponseWriter, r *http.Request) {
 	t.mu.RLock()
-	if t.stopped {
-		t.mu.RUnlock()
+	status := t.status
+	t.mu.RUnlock()
+	if status == stopped {
 		http.Error(w, "404 page not found", http.StatusNotFound)
 		return
 	}
-	t.mu.RUnlock()
 
 	msg := new(raft.Message)
 	if err := json.NewDecoder(r.Body).Decode(msg); err != nil {
@@ -160,12 +165,12 @@ func (t *transporter) serveRaft(w http.ResponseWriter, r *http.Request) {
 
 func (t *transporter) serveCfg(w http.ResponseWriter, r *http.Request) {
 	t.mu.RLock()
-	if t.stopped {
-		t.mu.RUnlock()
+	status := t.status
+	t.mu.RUnlock()
+	if status == stopped {
 		http.Error(w, "404 page not found", http.StatusNotFound)
 		return
 	}
-	t.mu.RUnlock()
 
 	id, err := strconv.ParseInt(r.URL.Path[len("/raft/cfg/"):], 10, 64)
 	if err != nil {
