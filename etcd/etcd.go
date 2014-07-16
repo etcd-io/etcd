@@ -158,8 +158,8 @@ func (s *Server) Stop() {
 		return
 	}
 	s.mode = stop
-	close(s.stop)
 	s.t.stop()
+	close(s.stop)
 }
 
 func (s *Server) Bootstrap() {
