@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"path"
 	"time"
 
@@ -44,8 +45,9 @@ const (
 )
 
 var (
-	tmpErr        = fmt.Errorf("try again")
-	serverStopErr = fmt.Errorf("server is stopped")
+	tmpErr            = fmt.Errorf("try again")
+	raftStopErr       = fmt.Errorf("raft is stopped")
+	noneId      int64 = -1
 )
 
 type Server struct {
@@ -56,21 +58,30 @@ type Server struct {
 	id           int64
 	pubAddr      string
 	raftPubAddr  string
-	nodes        map[string]bool
 	tickDuration time.Duration
 
+	nodes  map[string]bool
+	client *v2client
+
+	// participant mode vars
 	proposal    chan v2Proposal
 	node        *v2Raft
 	addNodeC    chan raft.Config
 	removeNodeC chan raft.Config
 	t           *transporter
-	client      *v2client
+
+	// standby mode vars
+	leader      int64
+	leaderAddr  string
+	clusterConf *config.ClusterConfig
 
 	store.Store
 
-	stop chan struct{}
+	modeC chan int
+	stop  chan struct{}
 
-	http.Handler
+	participantHandler http.Handler
+	standbyHandler     http.Handler
 }
 
 func New(c *config.Config, id int64) *Server {
@@ -95,21 +106,20 @@ func New(c *config.Config, id int64) *Server {
 		pubAddr:      c.Addr,
 		raftPubAddr:  c.Peer.Addr,
 		nodes:        make(map[string]bool),
+		client:       newClient(tc),
 		tickDuration: defaultTickDuration,
-		proposal:     make(chan v2Proposal, maxBufferedProposal),
-		node: &v2Raft{
-			Node:   raft.New(id, defaultHeartbeat, defaultElection),
-			result: make(map[wait]chan interface{}),
-		},
-		addNodeC:    make(chan raft.Config),
-		removeNodeC: make(chan raft.Config),
-		t:           newTransporter(tc),
-		client:      newClient(tc),
 
 		Store: store.New(),
 
-		stop: make(chan struct{}),
+		modeC: make(chan int, 10),
+		stop:  make(chan struct{}),
 	}
+	node := &v2Raft{
+		Node:   raft.New(id, defaultHeartbeat, defaultElection),
+		result: make(map[wait]chan interface{}),
+	}
+	t := newTransporter(tc)
+	s.initParticipant(node, t)
 
 	for _, seed := range c.Peers {
 		s.nodes[seed] = true
@@ -123,7 +133,10 @@ func New(c *config.Config, id int64) *Server {
 	m.Handle(v2StoreStatsPrefix, handlerErr(s.serveStoreStats))
 	m.Handle(v2adminConfigPrefix, handlerErr(s.serveAdminConfig))
 	m.Handle(v2adminMachinesPrefix, handlerErr(s.serveAdminMachines))
-	s.Handler = m
+	s.participantHandler = m
+	m = http.NewServeMux()
+	m.Handle("/", handlerErr(s.serveRedirect))
+	s.standbyHandler = m
 	return s
 }
 
@@ -132,7 +145,7 @@ func (s *Server) SetTick(d time.Duration) {
 }
 
 func (s *Server) RaftHandler() http.Handler {
-	return s.t
+	return http.HandlerFunc(s.ServeHTTPRaft)
 }
 
 func (s *Server) ClusterConfig() *config.ClusterConfig {
@@ -216,10 +229,15 @@ func (s *Server) Add(id int64, raftPubAddr string, pubAddr string) error {
 		return tmpErr
 	}
 
+	if s.mode != participant {
+		return raftStopErr
+	}
 	select {
 	case s.addNodeC <- raft.Config{NodeId: id, Addr: raftPubAddr, Context: []byte(pubAddr)}:
-	case <-s.stop:
-		return serverStopErr
+	default:
+		w.Remove()
+		log.Println("unable to send out addNode proposal")
+		return tmpErr
 	}
 
 	select {
@@ -229,13 +247,10 @@ func (s *Server) Add(id int64, raftPubAddr string, pubAddr string) error {
 		}
 		log.Println("add error: action =", v.Action)
 		return tmpErr
-	case <-time.After(4 * defaultHeartbeat * s.tickDuration):
+	case <-time.After(6 * defaultHeartbeat * s.tickDuration):
 		w.Remove()
 		log.Println("add error: wait timeout")
 		return tmpErr
-	case <-s.stop:
-		w.Remove()
-		return serverStopErr
 	}
 }
 
@@ -247,10 +262,14 @@ func (s *Server) Remove(id int64) error {
 		return nil
 	}
 
+	if s.mode != participant {
+		return raftStopErr
+	}
 	select {
 	case s.removeNodeC <- raft.Config{NodeId: id}:
-	case <-s.stop:
-		return serverStopErr
+	default:
+		log.Println("unable to send out removeNode proposal")
+		return tmpErr
 	}
 
 	// TODO(xiangli): do not need to watch if the
@@ -268,18 +287,56 @@ func (s *Server) Remove(id int64) error {
 		}
 		log.Println("remove error: action =", v.Action)
 		return tmpErr
-	case <-time.After(4 * defaultHeartbeat * s.tickDuration):
+	case <-time.After(6 * defaultHeartbeat * s.tickDuration):
 		w.Remove()
 		log.Println("remove error: wait timeout")
 		return tmpErr
-	case <-s.stop:
-		w.Remove()
-		return serverStopErr
 	}
+}
+
+func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	switch s.mode {
+	case participant:
+		s.participantHandler.ServeHTTP(w, r)
+	case standby:
+		s.standbyHandler.ServeHTTP(w, r)
+	case stop:
+		http.Error(w, "server is stopped", http.StatusInternalServerError)
+	}
+}
+
+func (s *Server) ServeHTTPRaft(w http.ResponseWriter, r *http.Request) {
+	switch s.mode {
+	case participant:
+		s.t.ServeHTTP(w, r)
+	case standby:
+		http.NotFound(w, r)
+	case stop:
+		http.Error(w, "server is stopped", http.StatusInternalServerError)
+	}
+}
+
+func (s *Server) initParticipant(node *v2Raft, t *transporter) {
+	s.proposal = make(chan v2Proposal, maxBufferedProposal)
+	s.node = node
+	s.addNodeC = make(chan raft.Config, 1)
+	s.removeNodeC = make(chan raft.Config, 1)
+	s.t = t
+}
+
+func (s *Server) initStandby(leader int64, leaderAddr string, conf *config.ClusterConfig) {
+	s.leader = leader
+	s.leaderAddr = leaderAddr
+	s.clusterConf = conf
 }
 
 func (s *Server) run() {
 	for {
+		select {
+		case s.modeC <- s.mode:
+		default:
+		}
+
 		switch s.mode {
 		case participant:
 			s.runParticipant()
@@ -298,7 +355,7 @@ func (s *Server) runParticipant() {
 	recv := s.t.recv
 	ticker := time.NewTicker(s.tickDuration)
 	v2SyncTicker := time.NewTicker(time.Millisecond * 500)
-	defer node.StopProposalWaiters()
+	defer s.node.StopProposalWaiters()
 
 	var proposal chan v2Proposal
 	var addNodeC, removeNodeC chan raft.Config
@@ -332,16 +389,54 @@ func (s *Server) runParticipant() {
 		s.apply(node.Next())
 		s.send(node.Msgs())
 		if node.IsRemoved() {
-			// TODO: delete it after standby is implemented
-			log.Printf("Node: %d removed from participants\n", s.id)
-			s.Stop()
-			return
+			break
 		}
 	}
+
+	log.Printf("Node: %d removed to standby mode\n", s.id)
+	leader := noneId
+	leaderAddr := ""
+	if s.node.HasLeader() && !s.node.IsLeader() {
+		leader = s.node.Leader()
+		leaderAddr = s.fetchAddrFromStore(s.leader)
+	}
+	conf := s.ClusterConfig()
+	s.initStandby(leader, leaderAddr, conf)
+	s.mode = standby
+	return
 }
 
 func (s *Server) runStandby() {
-	panic("unimplemented")
+	syncDuration := time.Duration(int64(s.clusterConf.SyncInterval * float64(time.Second)))
+	for {
+		select {
+		case <-time.After(syncDuration):
+		case <-s.stop:
+			log.Printf("Node: %d stopped\n", s.id)
+			return
+		}
+
+		if err := s.syncCluster(); err != nil {
+			continue
+		}
+		if err := s.standbyJoin(s.leaderAddr); err != nil {
+			continue
+		}
+		break
+	}
+
+	log.Printf("Node: %d removed to participant mode\n", s.id)
+	// TODO(yichengq): use old v2Raft
+	// 1. reject proposal in leader state when sm is removed
+	// 2. record removeIndex in node to ignore msgDenial and old removal
+	s.Store = store.New()
+	node := &v2Raft{
+		Node:   raft.New(s.id, defaultHeartbeat, defaultElection),
+		result: make(map[wait]chan interface{}),
+	}
+	s.initParticipant(node, s.t)
+	s.mode = participant
+	return
 }
 
 func (s *Server) apply(ents []raft.Entry) {
@@ -376,10 +471,9 @@ func (s *Server) apply(ents []raft.Entry) {
 				break
 			}
 			log.Printf("Remove Node %x\n", cfg.NodeId)
+			delete(s.nodes, s.fetchAddrFromStore(cfg.NodeId))
 			p := path.Join(v2machineKVPrefix, fmt.Sprint(cfg.NodeId))
-			if _, err := s.Store.Delete(p, false, false); err == nil {
-				delete(s.nodes, cfg.Addr)
-			}
+			s.Store.Delete(p, false, false)
 		default:
 			panic("unimplemented")
 		}
@@ -413,6 +507,17 @@ func (s *Server) send(msgs []raft.Message) {
 	}
 }
 
+func (s *Server) setClusterConfig(c *config.ClusterConfig) error {
+	b, err := json.Marshal(c)
+	if err != nil {
+		return err
+	}
+	if _, err := s.Set(v2configKVPrefix, false, string(b), store.Permanent); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (s *Server) fetchAddr(nodeId int64) error {
 	for seed := range s.nodes {
 		if err := s.t.fetchAddr(seed, nodeId); err == nil {
@@ -420,4 +525,30 @@ func (s *Server) fetchAddr(nodeId int64) error {
 		}
 	}
 	return fmt.Errorf("cannot fetch the address of node %d", nodeId)
+}
+
+func (s *Server) fetchAddrFromStore(nodeId int64) string {
+	p := path.Join(v2machineKVPrefix, fmt.Sprint(nodeId))
+	if ev, err := s.Get(p, false, false); err == nil {
+		if m, err := url.ParseQuery(*ev.Node.Value); err == nil {
+			return m["raft"][0]
+		}
+	}
+	return ""
+}
+
+func (s *Server) standbyJoin(addr string) error {
+	if s.clusterConf.ActiveSize <= len(s.nodes) {
+		return fmt.Errorf("full cluster")
+	}
+	info := &context{
+		MinVersion: store.MinVersion(),
+		MaxVersion: store.MaxVersion(),
+		ClientURL:  s.pubAddr,
+		PeerURL:    s.raftPubAddr,
+	}
+	if err := s.client.AddMachine(s.leaderAddr, fmt.Sprint(s.id), info); err != nil {
+		return err
+	}
+	return nil
 }

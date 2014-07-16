@@ -61,6 +61,9 @@ func (s *Server) do(c *cmd) (*store.Event, error) {
 		ret:  make(chan interface{}, 1),
 	}
 
+	if s.mode != participant {
+		return nil, raftStopErr
+	}
 	select {
 	case s.proposal <- p:
 	default:

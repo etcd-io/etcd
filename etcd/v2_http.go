@@ -111,16 +111,24 @@ func (s *Server) redirect(w http.ResponseWriter, r *http.Request, id int64) erro
 		return fmt.Errorf("failed to parse node entry: %s", *e.Node.Value)
 	}
 
-	originalURL := r.URL
-	redirectURL, err := url.Parse(m["etcd"][0])
+	redirectAddr, err := s.buildRedirectURL(m["etcd"][0], r.URL)
 	if err != nil {
-		log.Println("redirect cannot parse url:", err)
-		return fmt.Errorf("redirect cannot parse url: %v", err)
+		log.Println("redirect cannot build new url:", err)
+		return err
+	}
+
+	http.Redirect(w, r, redirectAddr, http.StatusTemporaryRedirect)
+	return nil
+}
+
+func (s *Server) buildRedirectURL(redirectAddr string, originalURL *url.URL) (string, error) {
+	redirectURL, err := url.Parse(redirectAddr)
+	if err != nil {
+		return "", fmt.Errorf("redirect cannot parse url: %v", err)
 	}
 
 	redirectURL.Path = originalURL.Path
 	redirectURL.RawQuery = originalURL.RawQuery
 	redirectURL.Fragment = originalURL.Fragment
-	http.Redirect(w, r, redirectURL.String(), http.StatusTemporaryRedirect)
-	return nil
+	return redirectURL.String(), nil
 }
