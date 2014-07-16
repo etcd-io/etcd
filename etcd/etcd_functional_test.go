@@ -2,8 +2,11 @@ package etcd
 
 import (
 	"math/rand"
+	"net/http/httptest"
 	"testing"
 	"time"
+
+	"github.com/coreos/etcd/config"
 )
 
 func TestKillLeader(t *testing.T) {
@@ -64,6 +67,38 @@ func TestRandomKill(t *testing.T) {
 	afterTest(t)
 }
 
+func TestJoinThroughFollower(t *testing.T) {
+	tests := []int{3, 4, 5, 6}
+
+	for _, tt := range tests {
+		es := make([]*Server, tt)
+		hs := make([]*httptest.Server, tt)
+		for i := 0; i < tt; i++ {
+			c := config.New()
+			if i > 0 {
+				c.Peers = []string{hs[i-1].URL}
+			}
+			es[i], hs[i] = initTestServer(c, int64(i), false)
+		}
+
+		go es[0].Bootstrap()
+
+		for i := 1; i < tt; i++ {
+			go es[i].Run()
+			waitLeader(es[:i])
+		}
+		waitCluster(t, es)
+
+		for i := range hs {
+			es[len(hs)-i-1].Stop()
+		}
+		for i := range hs {
+			hs[len(hs)-i-1].Close()
+		}
+	}
+	afterTest(t)
+}
+
 type leadterm struct {
 	lead int64
 	term int64
@@ -98,6 +133,9 @@ func isSameLead(ls []leadterm) bool {
 		m[ls[i]] = m[ls[i]] + 1
 	}
 	if len(m) == 1 {
+		if ls[0].lead == -1 {
+			return false
+		}
 		return true
 	}
 	// todo(xiangli): printout the current cluster status for debugging....
