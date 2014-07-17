@@ -480,12 +480,7 @@ func (s *Server) apply(ents []raft.Entry) {
 
 func (s *Server) send(msgs []raft.Message) {
 	for i := range msgs {
-		data, err := json.Marshal(msgs[i])
-		if err != nil {
-			// todo(xiangli): error handling
-			log.Fatal(err)
-		}
-		if err = s.peerHub.send(msgs[i].To, data); err != nil {
+		if err := s.peerHub.send(msgs[i]); err != nil {
 			log.Println("send:", err)
 		}
 	}
