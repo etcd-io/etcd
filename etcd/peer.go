@@ -2,7 +2,6 @@ package etcd
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -18,10 +17,6 @@ const (
 	// participant is defined in etcd.go
 	idle = iota + 1
 	stopped
-)
-
-var (
-	errUnknownNode = errors.New("unknown node")
 )
 
 type peer struct {

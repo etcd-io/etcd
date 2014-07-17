@@ -1,12 +1,17 @@
 package etcd
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"path"
 	"sync"
+)
+
+var (
+	errUnknownPeer = errors.New("unknown peer")
 )
 
 type peerGetter interface {
@@ -70,7 +75,7 @@ func (h *peerHub) send(nodeId int64, data []byte) error {
 	if p == nil {
 		err := h.fetch(nodeId)
 		if err != nil {
-			return err
+			return errUnknownPeer
 		}
 	}
 
