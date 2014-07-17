@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/coreos/etcd/config"
 	etcdErr "github.com/coreos/etcd/error"
@@ -25,12 +26,19 @@ import (
 // etcd error code easily.
 type v2client struct {
 	http.Client
+	wg sync.WaitGroup
 }
 
 func newClient(tc *tls.Config) *v2client {
 	tr := new(http.Transport)
 	tr.TLSClientConfig = tc
-	return &v2client{http.Client{Transport: tr}}
+	return &v2client{Client: http.Client{Transport: tr}}
+}
+
+func (c *v2client) CloseConnections() {
+	c.wg.Wait()
+	tr := c.Transport.(*http.Transport)
+	tr.CloseIdleConnections()
 }
 
 // CheckVersion returns true when the version check on the server returns 200.
@@ -145,9 +153,17 @@ func (c *v2client) readBody(body io.ReadCloser) ([]byte, error) {
 	return b, err
 }
 
+func (c *v2client) Get(url string) (*http.Response, error) {
+	c.wg.Add(1)
+	defer c.wg.Done()
+	return c.Client.Get(url)
+}
+
 // put sends server side PUT request.
 // It always follows redirects instead of stopping according to RFC 2616.
 func (c *v2client) put(urlStr string, body []byte) (*http.Response, error) {
+	c.wg.Add(1)
+	defer c.wg.Done()
 	return c.doAlwaysFollowingRedirects("PUT", urlStr, body)
 }
 
