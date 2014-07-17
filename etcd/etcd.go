@@ -160,16 +160,6 @@ func (s *Server) RaftHandler() http.Handler {
 	return s.rh
 }
 
-func (s *Server) ClusterConfig() *config.ClusterConfig {
-	c := config.NewClusterConfig()
-	// This is used for backward compatibility because it doesn't
-	// set cluster config in older version.
-	if e, err := s.Get(v2configKVPrefix, false, false); err == nil {
-		json.Unmarshal([]byte(*e.Node.Value), c)
-	}
-	return c
-}
-
 func (s *Server) Run() {
 	if len(s.config.Peers) == 0 {
 		s.Bootstrap()
