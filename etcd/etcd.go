@@ -65,7 +65,7 @@ type Server struct {
 	tickDuration time.Duration
 
 	client *v2client
-	t      *transporter
+	rh     *raftHandler
 	node   *v2Raft
 	store.Store
 
@@ -131,7 +131,7 @@ func New(c *config.Config, id int64) *Server {
 		modeC: make(chan int, 10),
 		stop:  make(chan struct{}),
 	}
-	s.t = newTransporter(s.peerHub)
+	s.rh = newRaftHandler(s.peerHub)
 
 	for _, seed := range c.Peers {
 		s.nodes[seed] = true
@@ -157,7 +157,7 @@ func (s *Server) SetTick(d time.Duration) {
 }
 
 func (s *Server) RaftHandler() http.Handler {
-	return s.t
+	return s.rh
 }
 
 func (s *Server) ClusterConfig() *config.ClusterConfig {
@@ -184,7 +184,7 @@ func (s *Server) Stop() {
 	}
 	s.mode = stop
 
-	s.t.stop()
+	s.rh.stop()
 	s.client.CloseConnections()
 	s.peerHub.stop()
 	close(s.stop)
@@ -324,7 +324,7 @@ func (s *Server) initParticipant() {
 	s.proposal = make(chan v2Proposal, maxBufferedProposal)
 	s.addNodeC = make(chan raft.Config, 1)
 	s.removeNodeC = make(chan raft.Config, 1)
-	s.t.start()
+	s.rh.start()
 }
 
 func (s *Server) initStandby() {
@@ -358,10 +358,10 @@ func (s *Server) run() {
 func (s *Server) runParticipant() {
 	defer func() {
 		s.node.StopProposalWaiters()
-		s.t.stop()
+		s.rh.stop()
 	}()
 	node := s.node
-	recv := s.t.recv
+	recv := s.rh.recv
 	ticker := time.NewTicker(s.tickDuration)
 	v2SyncTicker := time.NewTicker(time.Millisecond * 500)
 

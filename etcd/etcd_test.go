@@ -375,8 +375,8 @@ func initTestServer(c *config.Config, id int64, tls bool) (e *Server, h *httptes
 	e.SetTick(time.Millisecond * 5)
 	m := http.NewServeMux()
 	m.Handle("/", e)
-	m.Handle("/raft", e.t)
-	m.Handle("/raft/", e.t)
+	m.Handle("/raft", e.RaftHandler())
+	m.Handle("/raft/", e.RaftHandler())
 
 	if tls {
 		h = httptest.NewTLSServer(m)

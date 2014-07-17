@@ -2,7 +2,6 @@ package etcd
 
 import (
 	"encoding/json"
-
 	"log"
 	"net/http"
 	"strconv"
@@ -11,7 +10,7 @@ import (
 	"github.com/coreos/etcd/raft"
 )
 
-type transporter struct {
+type raftHandler struct {
 	mu      sync.RWMutex
 	serving bool
 
@@ -21,33 +20,33 @@ type transporter struct {
 	*http.ServeMux
 }
 
-func newTransporter(p peerGetter) *transporter {
-	t := &transporter{
+func newRaftHandler(p peerGetter) *raftHandler {
+	h := &raftHandler{
 		recv:       make(chan *raft.Message, 512),
 		peerGetter: p,
 	}
-	t.ServeMux = http.NewServeMux()
-	t.ServeMux.HandleFunc("/raft/cfg/", t.serveCfg)
-	t.ServeMux.HandleFunc("/raft", t.serveRaft)
-	return t
+	h.ServeMux = http.NewServeMux()
+	h.ServeMux.HandleFunc("/raft/cfg/", h.serveCfg)
+	h.ServeMux.HandleFunc("/raft", h.serveRaft)
+	return h
 }
 
-func (t *transporter) start() {
-	t.mu.Lock()
-	t.serving = true
-	t.mu.Unlock()
+func (h *raftHandler) start() {
+	h.mu.Lock()
+	h.serving = true
+	h.mu.Unlock()
 }
 
-func (t *transporter) stop() {
-	t.mu.Lock()
-	t.serving = false
-	t.mu.Unlock()
+func (h *raftHandler) stop() {
+	h.mu.Lock()
+	h.serving = false
+	h.mu.Unlock()
 }
 
-func (t *transporter) serveRaft(w http.ResponseWriter, r *http.Request) {
-	t.mu.RLock()
-	serving := t.serving
-	t.mu.RUnlock()
+func (h *raftHandler) serveRaft(w http.ResponseWriter, r *http.Request) {
+	h.mu.RLock()
+	serving := h.serving
+	h.mu.RUnlock()
 	if !serving {
 		http.Error(w, "404 page not found", http.StatusNotFound)
 		return
@@ -60,7 +59,7 @@ func (t *transporter) serveRaft(w http.ResponseWriter, r *http.Request) {
 	}
 
 	select {
-	case t.recv <- msg:
+	case h.recv <- msg:
 	default:
 		log.Println("drop")
 		// drop the incoming package at network layer if the upper layer
@@ -70,10 +69,10 @@ func (t *transporter) serveRaft(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-func (t *transporter) serveCfg(w http.ResponseWriter, r *http.Request) {
-	t.mu.RLock()
-	serving := t.serving
-	t.mu.RUnlock()
+func (h *raftHandler) serveCfg(w http.ResponseWriter, r *http.Request) {
+	h.mu.RLock()
+	serving := h.serving
+	h.mu.RUnlock()
 	if !serving {
 		http.Error(w, "404 page not found", http.StatusNotFound)
 		return
@@ -84,7 +83,7 @@ func (t *transporter) serveCfg(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	p, err := t.peerGetter.peer(id)
+	p, err := h.peerGetter.peer(id)
 	if err == nil {
 		w.Write([]byte(p.url))
 		return
