@@ -14,7 +14,7 @@ import (
 )
 
 func TestMultipleNodes(t *testing.T) {
-	tests := []int{1, 3, 5, 9, 11}
+	tests := []int{1, 3, 5}
 
 	for _, tt := range tests {
 		es, hs := buildCluster(tt, false)
@@ -195,6 +195,7 @@ func TestRemove(t *testing.T) {
 		}
 	}
 	afterTest(t)
+	TestGoroutinesRunning(t)
 }
 
 func TestBecomeStandby(t *testing.T) {
