@@ -66,13 +66,13 @@ type Server struct {
 
 	client *v2client
 	rh     *raftHandler
-	node   *v2Raft
-	store.Store
 
 	// participant mode vars
 	proposal    chan v2Proposal
 	addNodeC    chan raft.Config
 	removeNodeC chan raft.Config
+	node        *v2Raft
+	store.Store
 
 	// standby mode vars
 	leader      int64
@@ -105,6 +105,7 @@ func New(c *config.Config, id int64) *Server {
 	tr := new(http.Transport)
 	tr.TLSClientConfig = tc
 	client := &http.Client{Transport: tr}
+	peerHub := newPeerHub(client)
 
 	s := &Server{
 		config:      c,
@@ -113,25 +114,22 @@ func New(c *config.Config, id int64) *Server {
 		raftPubAddr: c.Peer.Addr,
 
 		nodes:   make(map[string]bool),
-		peerHub: newPeerHub(client),
+		peerHub: peerHub,
 
 		tickDuration: defaultTickDuration,
+
+		client: newClient(tc),
+		rh:     newRaftHandler(peerHub),
 
 		node: &v2Raft{
 			Node:   raft.New(id, defaultHeartbeat, defaultElection),
 			result: make(map[wait]chan interface{}),
 		},
-
-		addNodeC:    make(chan raft.Config),
-		removeNodeC: make(chan raft.Config),
-		client:      newClient(tc),
-
 		Store: store.New(),
 
 		modeC: make(chan int, 10),
 		stop:  make(chan struct{}),
 	}
-	s.rh = newRaftHandler(s.peerHub)
 
 	for _, seed := range c.Peers {
 		s.nodes[seed] = true
