@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/coreos/etcd/config"
 	"github.com/coreos/etcd/store"
 )
 
@@ -99,6 +100,16 @@ func (s *Server) serveAdminMachines(w http.ResponseWriter, r *http.Request) erro
 		return allow(w, "GET", "PUT", "DELETE")
 	}
 	return nil
+}
+
+func (s *Server) ClusterConfig() *config.ClusterConfig {
+	c := config.NewClusterConfig()
+	// This is used for backward compatibility because it doesn't
+	// set cluster config in older version.
+	if e, err := s.Get(v2configKVPrefix, false, false); err == nil {
+		json.Unmarshal([]byte(*e.Node.Value), c)
+	}
+	return c
 }
 
 // someMachineMessage return machine message of specified name.
