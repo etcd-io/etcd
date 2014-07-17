@@ -142,9 +142,16 @@ func TestAdd(t *testing.T) {
 func TestRemove(t *testing.T) {
 	tests := []int{3, 4, 5, 6}
 
-	for _, tt := range tests {
+	for k, tt := range tests {
 		es, hs := buildCluster(tt, false)
 		waitCluster(t, es)
+
+		lead, _ := waitLeader(es)
+		config := config.NewClusterConfig()
+		config.ActiveSize = 0
+		if err := es[lead].setClusterConfig(config); err != nil {
+			t.Fatalf("#%d: setClusterConfig err = %v", k, err)
+		}
 
 		// we don't remove the machine from 2-node cluster because it is
 		// not 100 percent safe in our raft.
@@ -184,7 +191,7 @@ func TestRemove(t *testing.T) {
 			}
 
 			if g := <-es[i].modeC; g != standby {
-				t.Errorf("#%d: mode = %d, want standby", i, g)
+				t.Errorf("#%d on %d: mode = %d, want standby", k, i, g)
 			}
 		}
 
