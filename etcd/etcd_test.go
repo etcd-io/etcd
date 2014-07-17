@@ -14,7 +14,7 @@ import (
 )
 
 func TestMultipleNodes(t *testing.T) {
-	tests := []int{1, 3, 5}
+	tests := []int{1, 3, 5, 9, 11}
 
 	for _, tt := range tests {
 		es, hs := buildCluster(tt, false)
@@ -196,6 +196,7 @@ func TestRemove(t *testing.T) {
 		}
 	}
 	afterTest(t)
+	// ensure that no goroutines are running
 	TestGoroutinesRunning(t)
 }
 
