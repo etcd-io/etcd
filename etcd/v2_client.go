@@ -44,11 +44,11 @@ func (c *v2client) CloseConnections() {
 // CheckVersion returns true when the version check on the server returns 200.
 func (c *v2client) CheckVersion(url string, version int) (bool, *etcdErr.Error) {
 	resp, err := c.Get(url + fmt.Sprintf("/version/%d/check", version))
+	defer c.wg.Done()
 	if err != nil {
 		return false, clientError(err)
 	}
-
-	defer resp.Body.Close()
+	c.readBody(resp.Body)
 
 	return resp.StatusCode == 200, nil
 }
@@ -56,13 +56,12 @@ func (c *v2client) CheckVersion(url string, version int) (bool, *etcdErr.Error) 
 // GetVersion fetches the peer version of a cluster.
 func (c *v2client) GetVersion(url string) (int, *etcdErr.Error) {
 	resp, err := c.Get(url + "/version")
+	defer c.wg.Done()
 	if err != nil {
 		return 0, clientError(err)
 	}
 
-	defer resp.Body.Close()
-
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := c.readBody(resp.Body)
 	if err != nil {
 		return 0, clientError(err)
 	}
@@ -77,6 +76,7 @@ func (c *v2client) GetVersion(url string) (int, *etcdErr.Error) {
 
 func (c *v2client) GetMachines(url string) ([]*machineMessage, *etcdErr.Error) {
 	resp, err := c.Get(url + "/v2/admin/machines/")
+	defer c.wg.Done()
 	if err != nil {
 		return nil, clientError(err)
 	}
@@ -93,6 +93,7 @@ func (c *v2client) GetMachines(url string) ([]*machineMessage, *etcdErr.Error) {
 
 func (c *v2client) GetClusterConfig(url string) (*config.ClusterConfig, *etcdErr.Error) {
 	resp, err := c.Get(url + "/v2/admin/config")
+	defer c.wg.Done()
 	if err != nil {
 		return nil, clientError(err)
 	}
@@ -115,6 +116,7 @@ func (c *v2client) AddMachine(url string, name string, info *context) *etcdErr.E
 
 	log.Printf("Send Join Request to %s", url)
 	resp, err := c.put(url, b)
+	defer c.wg.Done()
 	if err != nil {
 		return clientError(err)
 	}
@@ -155,7 +157,6 @@ func (c *v2client) readBody(body io.ReadCloser) ([]byte, error) {
 
 func (c *v2client) Get(url string) (*http.Response, error) {
 	c.wg.Add(1)
-	defer c.wg.Done()
 	return c.Client.Get(url)
 }
 
@@ -163,7 +164,6 @@ func (c *v2client) Get(url string) (*http.Response, error) {
 // It always follows redirects instead of stopping according to RFC 2616.
 func (c *v2client) put(urlStr string, body []byte) (*http.Response, error) {
 	c.wg.Add(1)
-	defer c.wg.Done()
 	return c.doAlwaysFollowingRedirects("PUT", urlStr, body)
 }
 
