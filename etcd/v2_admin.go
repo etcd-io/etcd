@@ -112,6 +112,17 @@ func (s *Server) ClusterConfig() *config.ClusterConfig {
 	return c
 }
 
+func (s *Server) setClusterConfig(c *config.ClusterConfig) error {
+	b, err := json.Marshal(c)
+	if err != nil {
+		return err
+	}
+	if _, err := s.Set(v2configKVPrefix, false, string(b), store.Permanent); err != nil {
+		return err
+	}
+	return nil
+}
+
 // someMachineMessage return machine message of specified name.
 func (s *Server) someMachineMessage(name string) (*machineMessage, error) {
 	p := filepath.Join(v2machineKVPrefix, name)

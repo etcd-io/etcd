@@ -511,17 +511,6 @@ func (s *Server) send(msgs []raft.Message) {
 	}
 }
 
-func (s *Server) setClusterConfig(c *config.ClusterConfig) error {
-	b, err := json.Marshal(c)
-	if err != nil {
-		return err
-	}
-	if _, err := s.Set(v2configKVPrefix, false, string(b), store.Permanent); err != nil {
-		return err
-	}
-	return nil
-}
-
 func (s *Server) fetchAddr(nodeId int64) error {
 	for seed := range s.nodes {
 		if err := s.peerHub.fetch(seed, nodeId); err == nil {
