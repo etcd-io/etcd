@@ -333,7 +333,6 @@ func (s *Server) run() {
 		case s.modeC <- s.mode:
 		default:
 		}
-
 		switch s.mode {
 		case participant:
 			s.runParticipant()
@@ -389,20 +388,15 @@ func (s *Server) runParticipant() {
 		s.apply(node.Next())
 		s.send(node.Msgs())
 		if node.IsRemoved() {
-			break
+			log.Printf("Node: %d removed to standby mode\n", s.id)
+			s.initStandby()
+			return
 		}
 	}
-
-	log.Printf("Node: %d removed to standby mode\n", s.id)
-	s.initStandby()
-	return
 }
 
 func (s *Server) runStandby() {
-	syncDuration := time.Duration(int64(s.clusterConf.SyncInterval * float64(time.Second)))
-	if err := s.syncCluster(); err != nil {
-		log.Println("standby sync:", err)
-	}
+	syncDuration := time.Duration(0)
 	for {
 		select {
 		case <-time.After(syncDuration):
@@ -422,20 +416,18 @@ func (s *Server) runStandby() {
 			log.Println("standby join:", err)
 			continue
 		}
-		break
+		log.Printf("Node: %d removed to participant mode\n", s.id)
+		// TODO(yichengq): use old v2Raft
+		// 1. reject proposal in leader state when sm is removed
+		// 2. record removeIndex in node to ignore msgDenial and old removal
+		s.node = &v2Raft{
+			Node:   raft.New(s.id, defaultHeartbeat, defaultElection),
+			result: make(map[wait]chan interface{}),
+		}
+		s.Store = store.New()
+		s.initParticipant()
+		return
 	}
-
-	log.Printf("Node: %d removed to participant mode\n", s.id)
-	// TODO(yichengq): use old v2Raft
-	// 1. reject proposal in leader state when sm is removed
-	// 2. record removeIndex in node to ignore msgDenial and old removal
-	s.node = &v2Raft{
-		Node:   raft.New(s.id, defaultHeartbeat, defaultElection),
-		result: make(map[wait]chan interface{}),
-	}
-	s.Store = store.New()
-	s.initParticipant()
-	return
 }
 
 func (s *Server) apply(ents []raft.Entry) {
