@@ -394,7 +394,7 @@ func (s *Server) runParticipant() {
 }
 
 func (s *Server) runStandby() {
-	syncDuration := time.Duration(0)
+	var syncDuration time.Duration
 	for {
 		select {
 		case <-time.After(syncDuration):
@@ -407,6 +407,7 @@ func (s *Server) runStandby() {
 			log.Println("standby sync:", err)
 			continue
 		}
+		syncDuration = time.Duration(s.clusterConf.SyncInterval * float64(time.Second))
 		if s.clusterConf.ActiveSize <= len(s.nodes) {
 			continue
 		}
