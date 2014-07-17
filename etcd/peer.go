@@ -48,6 +48,7 @@ func (p *peer) participate() {
 	p.queue = make(chan []byte)
 	p.status = participant
 	for i := 0; i < maxInflight; i++ {
+		p.wg.Add(1)
 		go p.handle(p.queue)
 	}
 }
@@ -72,11 +73,10 @@ func (p *peer) stop() {
 }
 
 func (p *peer) handle(queue chan []byte) {
-	p.wg.Add(1)
+	defer p.wg.Done()
 	for d := range queue {
 		p.post(d)
 	}
-	p.wg.Done()
 }
 
 func (p *peer) send(d []byte) error {
