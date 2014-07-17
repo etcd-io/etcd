@@ -446,13 +446,10 @@ func (s *Server) apply(ents []raft.Entry) {
 				log.Println(err)
 				break
 			}
-			if err := s.peerHub.add(cfg.NodeId, cfg.Addr); err != nil {
+			peer, err := s.peerHub.add(cfg.NodeId, cfg.Addr)
+			if err != nil {
 				log.Println(err)
 				break
-			}
-			peer, err := s.peerHub.peer(cfg.NodeId)
-			if err != nil {
-				log.Fatal("cannot get the added peer:", err)
 			}
 			peer.participate()
 			log.Printf("Add Node %x %v %v\n", cfg.NodeId, cfg.Addr, string(cfg.Context))
