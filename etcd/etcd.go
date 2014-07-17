@@ -105,7 +105,7 @@ func New(c *config.Config, id int64) *Server {
 	tr := new(http.Transport)
 	tr.TLSClientConfig = tc
 	client := &http.Client{Transport: tr}
-	peerHub := newPeerHub(client)
+	peerHub := newPeerHub(c.Peers, client)
 
 	s := &Server{
 		config:      c,
@@ -113,7 +113,8 @@ func New(c *config.Config, id int64) *Server {
 		pubAddr:     c.Addr,
 		raftPubAddr: c.Peer.Addr,
 
-		nodes:   make(map[string]bool),
+		nodes: make(map[string]bool),
+
 		peerHub: peerHub,
 
 		tickDuration: defaultTickDuration,
@@ -487,28 +488,10 @@ func (s *Server) send(msgs []raft.Message) {
 			// todo(xiangli): error handling
 			log.Fatal(err)
 		}
-		if err = s.peerHub.send(msgs[i].To, data); err == nil {
-			continue
-		}
-		if err == errUnknownNode {
-			err = s.fetchAddr(msgs[i].To)
-		}
-		if err == nil {
-			err = s.peerHub.send(msgs[i].To, data)
-		}
-		if err != nil {
-			log.Println(err)
+		if err = s.peerHub.send(msgs[i].To, data); err != nil {
+			log.Println("send:", err)
 		}
 	}
-}
-
-func (s *Server) fetchAddr(nodeId int64) error {
-	for seed := range s.nodes {
-		if err := s.peerHub.fetch(seed, nodeId); err == nil {
-			return nil
-		}
-	}
-	return fmt.Errorf("cannot fetch the address of node %d", nodeId)
 }
 
 func (s *Server) fetchAddrFromStore(nodeId int64) string {
