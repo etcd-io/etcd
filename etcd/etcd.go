@@ -55,12 +55,15 @@ type Server struct {
 
 	mode int
 
-	id           int64
-	pubAddr      string
-	raftPubAddr  string
+	id          int64
+	pubAddr     string
+	raftPubAddr string
+
+	nodes   map[string]bool
+	peerHub *peerHub
+
 	tickDuration time.Duration
 
-	nodes  map[string]bool
 	client *v2client
 	t      *transporter
 	node   *v2Raft
@@ -99,25 +102,36 @@ func New(c *config.Config, id int64) *Server {
 		}
 	}
 
+	tr := new(http.Transport)
+	tr.TLSClientConfig = tc
+	client := &http.Client{Transport: tr}
+
 	s := &Server{
-		config:       c,
-		id:           id,
-		pubAddr:      c.Addr,
-		raftPubAddr:  c.Peer.Addr,
+		config:      c,
+		id:          id,
+		pubAddr:     c.Addr,
+		raftPubAddr: c.Peer.Addr,
+
+		nodes:   make(map[string]bool),
+		peerHub: newPeerHub(client),
+
 		tickDuration: defaultTickDuration,
 
-		nodes:  make(map[string]bool),
-		client: newClient(tc),
-		t:      newTransporter(tc),
 		node: &v2Raft{
 			Node:   raft.New(id, defaultHeartbeat, defaultElection),
 			result: make(map[wait]chan interface{}),
 		},
+
+		addNodeC:    make(chan raft.Config),
+		removeNodeC: make(chan raft.Config),
+		client:      newClient(tc),
+
 		Store: store.New(),
 
 		modeC: make(chan int, 10),
 		stop:  make(chan struct{}),
 	}
+	s.t = newTransporter(s.peerHub)
 
 	for _, seed := range c.Peers {
 		s.nodes[seed] = true
@@ -169,8 +183,10 @@ func (s *Server) Stop() {
 		return
 	}
 	s.mode = stop
-	s.t.closeConnections()
+
+	s.t.stop()
 	s.client.CloseConnections()
+	s.peerHub.stop()
 	close(s.stop)
 }
 
@@ -446,10 +462,15 @@ func (s *Server) apply(ents []raft.Entry) {
 				log.Println(err)
 				break
 			}
-			if err := s.t.set(cfg.NodeId, cfg.Addr); err != nil {
+			if err := s.peerHub.add(cfg.NodeId, cfg.Addr); err != nil {
 				log.Println(err)
 				break
 			}
+			peer, err := s.peerHub.peer(cfg.NodeId)
+			if err != nil {
+				log.Fatal("cannot get the added peer:", err)
+			}
+			peer.participate()
 			log.Printf("Add Node %x %v %v\n", cfg.NodeId, cfg.Addr, string(cfg.Context))
 			p := path.Join(v2machineKVPrefix, fmt.Sprint(cfg.NodeId))
 			if _, err := s.Store.Set(p, false, fmt.Sprintf("raft=%v&etcd=%v", cfg.Addr, string(cfg.Context)), store.Permanent); err == nil {
@@ -463,6 +484,11 @@ func (s *Server) apply(ents []raft.Entry) {
 			}
 			log.Printf("Remove Node %x\n", cfg.NodeId)
 			delete(s.nodes, s.fetchAddrFromStore(cfg.NodeId))
+			peer, err := s.peerHub.peer(cfg.NodeId)
+			if err != nil {
+				log.Fatal("cannot get the added peer:", err)
+			}
+			peer.idle()
 			p := path.Join(v2machineKVPrefix, fmt.Sprint(cfg.NodeId))
 			s.Store.Delete(p, false, false)
 		default:
@@ -478,23 +504,18 @@ func (s *Server) send(msgs []raft.Message) {
 			// todo(xiangli): error handling
 			log.Fatal(err)
 		}
-		// todo(xiangli): reuse routines and limit the number of sending routines
-		// sync.Pool?
-		go func(i int) {
-			var err error
-			if err = s.t.sendTo(msgs[i].To, data); err == nil {
-				return
-			}
-			if err == errUnknownNode {
-				err = s.fetchAddr(msgs[i].To)
-			}
-			if err == nil {
-				err = s.t.sendTo(msgs[i].To, data)
-			}
-			if err != nil {
-				log.Println(err)
-			}
-		}(i)
+		if err = s.peerHub.send(msgs[i].To, data); err == nil {
+			continue
+		}
+		if err == errUnknownNode {
+			err = s.fetchAddr(msgs[i].To)
+		}
+		if err == nil {
+			err = s.peerHub.send(msgs[i].To, data)
+		}
+		if err != nil {
+			log.Println(err)
+		}
 	}
 }
 
@@ -511,7 +532,7 @@ func (s *Server) setClusterConfig(c *config.ClusterConfig) error {
 
 func (s *Server) fetchAddr(nodeId int64) error {
 	for seed := range s.nodes {
-		if err := s.t.fetchAddr(seed, nodeId); err == nil {
+		if err := s.peerHub.fetch(seed, nodeId); err == nil {
 			return nil
 		}
 	}

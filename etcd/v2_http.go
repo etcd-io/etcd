@@ -51,8 +51,8 @@ func (s *Server) serveLeader(w http.ResponseWriter, r *http.Request) error {
 	if r.Method != "GET" {
 		return allow(w, "GET")
 	}
-	if laddr, ok := s.t.urls[s.node.Leader()]; ok {
-		w.Write([]byte(laddr))
+	if p, ok := s.peerHub.peers[s.node.Leader()]; ok {
+		w.Write([]byte(p.url))
 		return nil
 	}
 	return fmt.Errorf("no leader")
