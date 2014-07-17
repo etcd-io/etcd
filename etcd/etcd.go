@@ -172,6 +172,7 @@ func (s *Server) Stop() {
 	}
 	s.mode = stop
 	s.t.closeConnections()
+	s.client.CloseConnections()
 	close(s.stop)
 }
 
