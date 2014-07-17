@@ -115,6 +115,7 @@ func TestAdd(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
+			es[i].initParticipant()
 			go es[i].run()
 
 			for j := 0; j <= i; j++ {

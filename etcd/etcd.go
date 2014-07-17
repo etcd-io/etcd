@@ -192,6 +192,7 @@ func (s *Server) Stop() {
 
 func (s *Server) Bootstrap() {
 	log.Println("starting a bootstrap node")
+	s.initParticipant()
 	s.node.Campaign()
 	s.node.Add(s.id, s.raftPubAddr, []byte(s.pubAddr))
 	s.apply(s.node.Next())
@@ -200,6 +201,7 @@ func (s *Server) Bootstrap() {
 
 func (s *Server) Join() {
 	log.Println("joining cluster via peers", s.config.Peers)
+	s.initParticipant()
 	info := &context{
 		MinVersion: store.MinVersion(),
 		MaxVersion: store.MaxVersion(),
@@ -325,12 +327,14 @@ func (s *Server) initParticipant() {
 	s.addNodeC = make(chan raft.Config, 1)
 	s.removeNodeC = make(chan raft.Config, 1)
 	s.rh.start()
+	s.mode = participant
 }
 
 func (s *Server) initStandby() {
 	s.leader = noneId
 	s.leaderAddr = ""
 	s.clusterConf = config.NewClusterConfig()
+	s.mode = standby
 }
 
 func (s *Server) run() {
@@ -342,10 +346,8 @@ func (s *Server) run() {
 
 		switch s.mode {
 		case participant:
-			s.initParticipant()
 			s.runParticipant()
 		case standby:
-			s.initStandby()
 			s.runStandby()
 		case stop:
 			return
@@ -402,7 +404,7 @@ func (s *Server) runParticipant() {
 	}
 
 	log.Printf("Node: %d removed to standby mode\n", s.id)
-	s.mode = standby
+	s.initStandby()
 	return
 }
 
@@ -442,7 +444,7 @@ func (s *Server) runStandby() {
 		result: make(map[wait]chan interface{}),
 	}
 	s.Store = store.New()
-	s.mode = participant
+	s.initParticipant()
 	return
 }
 
