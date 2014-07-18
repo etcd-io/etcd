@@ -129,22 +129,20 @@ func (s *Server) ServeRaftHTTP(w http.ResponseWriter, r *http.Request) {
 func (s *Server) Run() {
 	next := participantMode
 	for {
+		s.modeC <- next
 		switch next {
 		case participantMode:
 			s.p = newParticipant(s.id, s.pubAddr, s.raftPubAddr, s.nodes, s.client, s.peerHub, s.tickDuration)
 			s.mode.Set(participantMode)
-			s.modeC <- s.mode.Get()
 			// TODO: it may block here. move modeC later.
 			next = s.p.run()
 		case standbyMode:
 			s.s = newStandby(s.id, s.pubAddr, s.raftPubAddr, s.nodes, s.client, s.peerHub)
 			s.mode.Set(standbyMode)
-			s.modeC <- s.mode.Get()
 			next = s.s.run()
 		case stopMode:
 			s.client.CloseConnections()
 			s.peerHub.stop()
-			s.modeC <- s.mode.Get()
 			s.stopc <- struct{}{}
 			return
 		default:
