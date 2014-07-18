@@ -10,7 +10,6 @@ import (
 	"sort"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/coreos/etcd/config"
 	"github.com/coreos/etcd/store"
@@ -183,6 +182,7 @@ func TestPutAdminConfigEndPoint(t *testing.T) {
 	for i, tt := range tests {
 		es, hs := buildCluster(3, false)
 		waitCluster(t, es)
+		index := es[0].p.Index()
 
 		r, err := NewTestClient().Put(hs[0].URL+v2adminConfigPrefix, "application/json", bytes.NewBufferString(tt.c))
 		if err != nil {
@@ -197,14 +197,13 @@ func TestPutAdminConfigEndPoint(t *testing.T) {
 			t.Errorf("#%d: put result = %s, want %s", i, b, wbody)
 		}
 
-		barrier(t, 0, es)
-
 		for j := range es {
-			e, err := es[j].p.Get(v2configKVPrefix, false, false)
+			w, err := es[j].p.Watch(v2configKVPrefix, false, false, index)
 			if err != nil {
 				t.Errorf("%v", err)
 				continue
 			}
+			e := <-w.EventChan
 			if g := *e.Node.Value; g != tt.wc {
 				t.Errorf("#%d.%d: %s = %s, want %s", i, j, v2configKVPrefix, g, tt.wc)
 			}
@@ -316,25 +315,6 @@ func TestGetAdminMachinesEndPoint(t *testing.T) {
 		hs[len(hs)-i-1].Close()
 	}
 	afterTest(t)
-}
-
-// barrier ensures that all servers have made further progress on applied index
-// compared to the base one.
-func barrier(t *testing.T, base int, es []*Server) {
-	applied := es[base].p.node.Applied()
-	// time used for goroutine scheduling
-	time.Sleep(5 * time.Millisecond)
-	for i, e := range es {
-		for j := 0; ; j++ {
-			if e.p.node.Applied() >= applied {
-				break
-			}
-			time.Sleep(defaultHeartbeat * defaultTickDuration)
-			if j == 2 {
-				t.Fatalf("#%d: applied = %d, want >= %d", i, e.p.node.Applied(), applied)
-			}
-		}
-	}
 }
 
 // int64Slice implements sort interface
