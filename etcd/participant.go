@@ -36,10 +36,9 @@ const (
 )
 
 var (
-	tmpErr            = fmt.Errorf("try again")
-	stopErr           = fmt.Errorf("server is stopped")
-	raftStopErr       = fmt.Errorf("raft is stopped")
-	noneId      int64 = -1
+	tmpErr      = fmt.Errorf("try again")
+	stopErr     = fmt.Errorf("server is stopped")
+	raftStopErr = fmt.Errorf("raft is stopped")
 )
 
 type participant struct {
