@@ -34,19 +34,19 @@ type context struct {
 	PeerURL    string `json:"peerURL"`
 }
 
-func (s *Server) serveAdminConfig(w http.ResponseWriter, r *http.Request) error {
+func (p *participant) serveAdminConfig(w http.ResponseWriter, r *http.Request) error {
 	switch r.Method {
 	case "GET":
 	case "PUT":
-		if !s.node.IsLeader() {
-			return s.redirect(w, r, s.node.Leader())
+		if !p.node.IsLeader() {
+			return p.redirect(w, r, p.node.Leader())
 		}
-		c := s.ClusterConfig()
+		c := p.clusterConfig()
 		if err := json.NewDecoder(r.Body).Decode(c); err != nil {
 			return err
 		}
 		c.Sanitize()
-		if err := s.setClusterConfig(c); err != nil {
+		if err := p.setClusterConfig(c); err != nil {
 			return err
 		}
 	default:
@@ -54,20 +54,20 @@ func (s *Server) serveAdminConfig(w http.ResponseWriter, r *http.Request) error 
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(s.ClusterConfig())
+	json.NewEncoder(w).Encode(p.clusterConfig())
 	return nil
 }
 
-func (s *Server) serveAdminMachines(w http.ResponseWriter, r *http.Request) error {
+func (p *participant) serveAdminMachines(w http.ResponseWriter, r *http.Request) error {
 	name := strings.TrimPrefix(r.URL.Path, v2adminMachinesPrefix)
 	switch r.Method {
 	case "GET":
 		var info interface{}
 		var err error
 		if name != "" {
-			info, err = s.someMachineMessage(name)
+			info, err = p.someMachineMessage(name)
 		} else {
-			info, err = s.allMachineMessages()
+			info, err = p.allMachineMessages()
 		}
 		if err != nil {
 			return err
@@ -75,8 +75,8 @@ func (s *Server) serveAdminMachines(w http.ResponseWriter, r *http.Request) erro
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(info)
 	case "PUT":
-		if !s.node.IsLeader() {
-			return s.redirect(w, r, s.node.Leader())
+		if !p.node.IsLeader() {
+			return p.redirect(w, r, p.node.Leader())
 		}
 		id, err := strconv.ParseInt(name, 0, 64)
 		if err != nil {
@@ -86,60 +86,60 @@ func (s *Server) serveAdminMachines(w http.ResponseWriter, r *http.Request) erro
 		if err := json.NewDecoder(r.Body).Decode(info); err != nil {
 			return err
 		}
-		return s.Add(id, info.PeerURL, info.ClientURL)
+		return p.add(id, info.PeerURL, info.ClientURL)
 	case "DELETE":
-		if !s.node.IsLeader() {
-			return s.redirect(w, r, s.node.Leader())
+		if !p.node.IsLeader() {
+			return p.redirect(w, r, p.node.Leader())
 		}
 		id, err := strconv.ParseInt(name, 0, 64)
 		if err != nil {
 			return err
 		}
-		return s.Remove(id)
+		return p.remove(id)
 	default:
 		return allow(w, "GET", "PUT", "DELETE")
 	}
 	return nil
 }
 
-func (s *Server) ClusterConfig() *config.ClusterConfig {
+func (p *participant) clusterConfig() *config.ClusterConfig {
 	c := config.NewClusterConfig()
 	// This is used for backward compatibility because it doesn't
 	// set cluster config in older version.
-	if e, err := s.Get(v2configKVPrefix, false, false); err == nil {
+	if e, err := p.Get(v2configKVPrefix, false, false); err == nil {
 		json.Unmarshal([]byte(*e.Node.Value), c)
 	}
 	return c
 }
 
-func (s *Server) setClusterConfig(c *config.ClusterConfig) error {
+func (p *participant) setClusterConfig(c *config.ClusterConfig) error {
 	b, err := json.Marshal(c)
 	if err != nil {
 		return err
 	}
-	if _, err := s.Set(v2configKVPrefix, false, string(b), store.Permanent); err != nil {
+	if _, err := p.Set(v2configKVPrefix, false, string(b), store.Permanent); err != nil {
 		return err
 	}
 	return nil
 }
 
 // someMachineMessage return machine message of specified name.
-func (s *Server) someMachineMessage(name string) (*machineMessage, error) {
-	p := filepath.Join(v2machineKVPrefix, name)
-	e, err := s.Get(p, false, false)
+func (p *participant) someMachineMessage(name string) (*machineMessage, error) {
+	pp := filepath.Join(v2machineKVPrefix, name)
+	e, err := p.Get(pp, false, false)
 	if err != nil {
 		return nil, err
 	}
-	lead := fmt.Sprint(s.node.Leader())
+	lead := fmt.Sprint(p.node.Leader())
 	return newMachineMessage(e.Node, lead), nil
 }
 
-func (s *Server) allMachineMessages() ([]*machineMessage, error) {
-	e, err := s.Get(v2machineKVPrefix, false, false)
+func (p *participant) allMachineMessages() ([]*machineMessage, error) {
+	e, err := p.Get(v2machineKVPrefix, false, false)
 	if err != nil {
 		return nil, err
 	}
-	lead := fmt.Sprint(s.node.Leader())
+	lead := fmt.Sprint(p.node.Leader())
 	ms := make([]*machineMessage, len(e.Node.Nodes))
 	for i, n := range e.Node.Nodes {
 		ms[i] = newMachineMessage(n, lead)

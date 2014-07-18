@@ -200,7 +200,7 @@ func TestPutAdminConfigEndPoint(t *testing.T) {
 		barrier(t, 0, es)
 
 		for j := range es {
-			e, err := es[j].Get(v2configKVPrefix, false, false)
+			e, err := es[j].p.Get(v2configKVPrefix, false, false)
 			if err != nil {
 				t.Errorf("%v", err)
 				continue
@@ -321,17 +321,17 @@ func TestGetAdminMachinesEndPoint(t *testing.T) {
 // barrier ensures that all servers have made further progress on applied index
 // compared to the base one.
 func barrier(t *testing.T, base int, es []*Server) {
-	applied := es[base].node.Applied()
+	applied := es[base].p.node.Applied()
 	// time used for goroutine scheduling
 	time.Sleep(5 * time.Millisecond)
 	for i, e := range es {
 		for j := 0; ; j++ {
-			if e.node.Applied() >= applied {
+			if e.p.node.Applied() >= applied {
 				break
 			}
 			time.Sleep(defaultHeartbeat * defaultTickDuration)
 			if j == 2 {
-				t.Fatalf("#%d: applied = %d, want >= %d", i, e.node.Applied(), applied)
+				t.Fatalf("#%d: applied = %d, want >= %d", i, e.p.node.Applied(), applied)
 			}
 		}
 	}

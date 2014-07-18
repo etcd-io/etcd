@@ -13,9 +13,9 @@ import (
 	"github.com/coreos/etcd/store"
 )
 
-func (s *Server) PutHandler(w http.ResponseWriter, req *http.Request) error {
-	if !s.node.IsLeader() {
-		return s.redirect(w, req, s.node.Leader())
+func (p *participant) PutHandler(w http.ResponseWriter, req *http.Request) error {
+	if !p.node.IsLeader() {
+		return p.redirect(w, req, p.node.Leader())
 	}
 
 	key := req.URL.Path[len("/v2/keys"):]
@@ -27,7 +27,7 @@ func (s *Server) PutHandler(w http.ResponseWriter, req *http.Request) error {
 
 	expireTime, err := store.TTL(req.Form.Get("ttl"))
 	if err != nil {
-		return etcdErr.NewError(etcdErr.EcodeTTLNaN, "Update", s.Store.Index())
+		return etcdErr.NewError(etcdErr.EcodeTTLNaN, "Update", p.Store.Index())
 	}
 
 	prevValue, valueOk := firstValue(req.Form, "prevValue")
@@ -36,7 +36,7 @@ func (s *Server) PutHandler(w http.ResponseWriter, req *http.Request) error {
 
 	// Set handler: create a new node or replace the old one.
 	if !valueOk && !indexOk && !existOk {
-		return s.serveSet(w, req, key, dir, value, expireTime)
+		return p.serveSet(w, req, key, dir, value, expireTime)
 	}
 
 	// update with test
@@ -44,11 +44,11 @@ func (s *Server) PutHandler(w http.ResponseWriter, req *http.Request) error {
 		if prevExist == "false" {
 			// Create command: create a new node. Fail, if a node already exists
 			// Ignore prevIndex and prevValue
-			return s.serveCreate(w, req, key, dir, value, expireTime)
+			return p.serveCreate(w, req, key, dir, value, expireTime)
 		}
 
 		if prevExist == "true" && !indexOk && !valueOk {
-			return s.serveUpdate(w, req, key, value, expireTime)
+			return p.serveUpdate(w, req, key, value, expireTime)
 		}
 	}
 
@@ -59,7 +59,7 @@ func (s *Server) PutHandler(w http.ResponseWriter, req *http.Request) error {
 
 		// bad previous index
 		if err != nil {
-			return etcdErr.NewError(etcdErr.EcodeIndexNaN, "CompareAndSwap", s.Store.Index())
+			return etcdErr.NewError(etcdErr.EcodeIndexNaN, "CompareAndSwap", p.Store.Index())
 		}
 	} else {
 		prevIndex = 0
@@ -67,22 +67,22 @@ func (s *Server) PutHandler(w http.ResponseWriter, req *http.Request) error {
 
 	if valueOk {
 		if prevValue == "" {
-			return etcdErr.NewError(etcdErr.EcodePrevValueRequired, "CompareAndSwap", s.Store.Index())
+			return etcdErr.NewError(etcdErr.EcodePrevValueRequired, "CompareAndSwap", p.Store.Index())
 		}
 	}
 
-	return s.serveCAS(w, req, key, value, prevValue, prevIndex, expireTime)
+	return p.serveCAS(w, req, key, value, prevValue, prevIndex, expireTime)
 }
 
-func (s *Server) handleRet(w http.ResponseWriter, ret *store.Event) {
+func (p *participant) handleRet(w http.ResponseWriter, ret *store.Event) {
 	b, _ := json.Marshal(ret)
 
 	w.Header().Set("Content-Type", "application/json")
 	// etcd index should be the same as the event index
 	// which is also the last modified index of the node
 	w.Header().Add("X-Etcd-Index", fmt.Sprint(ret.Index()))
-	// w.Header().Add("X-Raft-Index", fmt.Sprint(s.CommitIndex()))
-	// w.Header().Add("X-Raft-Term", fmt.Sprint(s.Term()))
+	// w.Header().Add("X-Raft-Index", fmt.Sprint(p.CommitIndex()))
+	// w.Header().Add("X-Raft-Term", fmt.Sprint(p.Term()))
 
 	if ret.IsCreated() {
 		w.WriteHeader(http.StatusCreated)
@@ -93,44 +93,44 @@ func (s *Server) handleRet(w http.ResponseWriter, ret *store.Event) {
 	w.Write(b)
 }
 
-func (s *Server) serveSet(w http.ResponseWriter, req *http.Request, key string, dir bool, value string, expireTime time.Time) error {
-	ret, err := s.Set(key, dir, value, expireTime)
+func (p *participant) serveSet(w http.ResponseWriter, req *http.Request, key string, dir bool, value string, expireTime time.Time) error {
+	ret, err := p.Set(key, dir, value, expireTime)
 	if err == nil {
-		s.handleRet(w, ret)
+		p.handleRet(w, ret)
 		return nil
 	}
 	log.Println("set:", err)
 	return err
 }
 
-func (s *Server) serveCreate(w http.ResponseWriter, req *http.Request, key string, dir bool, value string, expireTime time.Time) error {
-	ret, err := s.Create(key, dir, value, expireTime, false)
+func (p *participant) serveCreate(w http.ResponseWriter, req *http.Request, key string, dir bool, value string, expireTime time.Time) error {
+	ret, err := p.Create(key, dir, value, expireTime, false)
 	if err == nil {
-		s.handleRet(w, ret)
+		p.handleRet(w, ret)
 		return nil
 	}
 	log.Println("create:", err)
 	return err
 }
 
-func (s *Server) serveUpdate(w http.ResponseWriter, req *http.Request, key, value string, expireTime time.Time) error {
+func (p *participant) serveUpdate(w http.ResponseWriter, req *http.Request, key, value string, expireTime time.Time) error {
 	// Update should give at least one option
 	if value == "" && expireTime.Sub(store.Permanent) == 0 {
-		return etcdErr.NewError(etcdErr.EcodeValueOrTTLRequired, "Update", s.Store.Index())
+		return etcdErr.NewError(etcdErr.EcodeValueOrTTLRequired, "Update", p.Store.Index())
 	}
-	ret, err := s.Update(key, value, expireTime)
+	ret, err := p.Update(key, value, expireTime)
 	if err == nil {
-		s.handleRet(w, ret)
+		p.handleRet(w, ret)
 		return nil
 	}
 	log.Println("update:", err)
 	return err
 }
 
-func (s *Server) serveCAS(w http.ResponseWriter, req *http.Request, key, value, prevValue string, prevIndex uint64, expireTime time.Time) error {
-	ret, err := s.CAS(key, value, prevValue, prevIndex, expireTime)
+func (p *participant) serveCAS(w http.ResponseWriter, req *http.Request, key, value, prevValue string, prevIndex uint64, expireTime time.Time) error {
+	ret, err := p.CAS(key, value, prevValue, prevIndex, expireTime)
 	if err == nil {
-		s.handleRet(w, ret)
+		p.handleRet(w, ret)
 		return nil
 	}
 	log.Println("update:", err)

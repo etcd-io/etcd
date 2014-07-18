@@ -9,7 +9,7 @@ import (
 	etcdErr "github.com/coreos/etcd/error"
 )
 
-func (s *Server) GetHandler(w http.ResponseWriter, req *http.Request) error {
+func (p *participant) GetHandler(w http.ResponseWriter, req *http.Request) error {
 	key := req.URL.Path[len("/v2/keys"):]
 	// TODO(xiangli): handle consistent get
 	recursive := (req.FormValue("recursive") == "true")
@@ -17,12 +17,12 @@ func (s *Server) GetHandler(w http.ResponseWriter, req *http.Request) error {
 	waitIndex := req.FormValue("waitIndex")
 	stream := (req.FormValue("stream") == "true")
 	if req.FormValue("wait") == "true" {
-		return s.handleWatch(key, recursive, stream, waitIndex, w, req)
+		return p.handleWatch(key, recursive, stream, waitIndex, w, req)
 	}
-	return s.handleGet(key, recursive, sort, w, req)
+	return p.handleGet(key, recursive, sort, w, req)
 }
 
-func (s *Server) handleWatch(key string, recursive, stream bool, waitIndex string, w http.ResponseWriter, req *http.Request) error {
+func (p *participant) handleWatch(key string, recursive, stream bool, waitIndex string, w http.ResponseWriter, req *http.Request) error {
 	// Create a command to watch from a given index (default 0).
 	var sinceIndex uint64 = 0
 	var err error
@@ -30,11 +30,11 @@ func (s *Server) handleWatch(key string, recursive, stream bool, waitIndex strin
 	if waitIndex != "" {
 		sinceIndex, err = strconv.ParseUint(waitIndex, 10, 64)
 		if err != nil {
-			return etcdErr.NewError(etcdErr.EcodeIndexNaN, "Watch From Index", s.Store.Index())
+			return etcdErr.NewError(etcdErr.EcodeIndexNaN, "Watch From Index", p.Store.Index())
 		}
 	}
 
-	watcher, err := s.Store.Watch(key, recursive, stream, sinceIndex)
+	watcher, err := p.Store.Watch(key, recursive, stream, sinceIndex)
 	if err != nil {
 		return err
 	}
@@ -42,7 +42,7 @@ func (s *Server) handleWatch(key string, recursive, stream bool, waitIndex strin
 	cn, _ := w.(http.CloseNotifier)
 	closeChan := cn.CloseNotify()
 
-	s.writeHeaders(w)
+	p.writeHeaders(w)
 
 	if stream {
 		// watcher hub will not help to remove stream watcher
@@ -86,12 +86,12 @@ func (s *Server) handleWatch(key string, recursive, stream bool, waitIndex strin
 	return nil
 }
 
-func (s *Server) handleGet(key string, recursive, sort bool, w http.ResponseWriter, req *http.Request) error {
-	event, err := s.Store.Get(key, recursive, sort)
+func (p *participant) handleGet(key string, recursive, sort bool, w http.ResponseWriter, req *http.Request) error {
+	event, err := p.Store.Get(key, recursive, sort)
 	if err != nil {
 		return err
 	}
-	s.writeHeaders(w)
+	p.writeHeaders(w)
 	if req.Method == "HEAD" {
 		return nil
 	}
@@ -103,9 +103,9 @@ func (s *Server) handleGet(key string, recursive, sort bool, w http.ResponseWrit
 	return nil
 }
 
-func (s *Server) writeHeaders(w http.ResponseWriter) {
+func (p *participant) writeHeaders(w http.ResponseWriter) {
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Add("X-Etcd-Index", fmt.Sprint(s.Store.Index()))
+	w.Header().Add("X-Etcd-Index", fmt.Sprint(p.Store.Index()))
 	// TODO(xiangli): raft-index and term
 	w.WriteHeader(http.StatusOK)
 }

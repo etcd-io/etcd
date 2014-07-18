@@ -14,9 +14,9 @@ const (
 )
 
 const (
-	// participant is defined in etcd.go
-	idle = iota + 1
-	stopped
+	participantPeer = iota
+	idlePeer
+	stoppedPeer
 )
 
 type peer struct {
@@ -32,7 +32,7 @@ type peer struct {
 func newPeer(url string, c *http.Client) *peer {
 	return &peer{
 		url:    url,
-		status: idle,
+		status: idlePeer,
 		c:      c,
 	}
 }
@@ -41,7 +41,7 @@ func (p *peer) participate() {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.queue = make(chan []byte)
-	p.status = participant
+	p.status = participantPeer
 	for i := 0; i < maxInflight; i++ {
 		p.wg.Add(1)
 		go p.handle(p.queue)
@@ -51,18 +51,18 @@ func (p *peer) participate() {
 func (p *peer) idle() {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	if p.status == participant {
+	if p.status == participantPeer {
 		close(p.queue)
 	}
-	p.status = idle
+	p.status = idlePeer
 }
 
 func (p *peer) stop() {
 	p.mu.Lock()
-	if p.status == participant {
+	if p.status == participantPeer {
 		close(p.queue)
 	}
-	p.status = stopped
+	p.status = stoppedPeer
 	p.mu.Unlock()
 	p.wg.Wait()
 }
@@ -79,13 +79,13 @@ func (p *peer) send(d []byte) error {
 	defer p.mu.Unlock()
 
 	switch p.status {
-	case participant:
+	case participantPeer:
 		select {
 		case p.queue <- d:
 		default:
 			return fmt.Errorf("reach max serving")
 		}
-	case idle:
+	case idlePeer:
 		if p.inflight.Get() > maxInflight {
 			return fmt.Errorf("reach max idle")
 		}
@@ -94,7 +94,7 @@ func (p *peer) send(d []byte) error {
 			p.post(d)
 			p.wg.Done()
 		}()
-	case stopped:
+	case stoppedPeer:
 		return fmt.Errorf("sender stopped")
 	}
 	return nil
@@ -121,4 +121,8 @@ func (i *atomicInt) Add(d int64) {
 
 func (i *atomicInt) Get() int64 {
 	return atomic.LoadInt64((*int64)(i))
+}
+
+func (i *atomicInt) Set(n int64) {
+	atomic.StoreInt64((*int64)(i), n)
 }
