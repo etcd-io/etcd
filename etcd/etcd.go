@@ -103,8 +103,10 @@ func (s *Server) Stop() {
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch s.mode.Get() {
-	case participantMode, standbyMode:
+	case participantMode:
 		s.p.ServeHTTP(w, r)
+	case standbyMode:
+		s.s.ServeHTTP(w, r)
 	default:
 		http.NotFound(w, r)
 	}
