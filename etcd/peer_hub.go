@@ -41,6 +41,16 @@ func newPeerHub(seeds []string, c *http.Client) *peerHub {
 	return h
 }
 
+func (h *peerHub) getSeeds() map[string]bool {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	s := make(map[string]bool)
+	for k, v := range h.seeds {
+		s[k] = v
+	}
+	return s
+}
+
 func (h *peerHub) stop() {
 	h.mu.Lock()
 	defer h.mu.Unlock()

@@ -64,12 +64,11 @@ type participant struct {
 	*http.ServeMux
 }
 
-func newParticipant(id int64, pubAddr string, raftPubAddr string, seeds map[string]bool, client *v2client, peerHub *peerHub, tickDuration time.Duration) *participant {
+func newParticipant(id int64, pubAddr string, raftPubAddr string, client *v2client, peerHub *peerHub, tickDuration time.Duration) *participant {
 	p := &participant{
 		id:           id,
 		pubAddr:      pubAddr,
 		raftPubAddr:  raftPubAddr,
-		seeds:        seeds,
 		tickDuration: tickDuration,
 
 		client:  client,
@@ -101,13 +100,14 @@ func newParticipant(id int64, pubAddr string, raftPubAddr string, seeds map[stri
 }
 
 func (p *participant) run() int64 {
-	if len(p.seeds) == 0 {
+	seeds := p.peerHub.getSeeds()
+	if len(seeds) == 0 {
 		log.Println("starting a bootstrap node")
 		p.node.Campaign()
 		p.node.Add(p.id, p.raftPubAddr, []byte(p.pubAddr))
 		p.apply(p.node.Next())
 	} else {
-		log.Println("joining cluster via peers", p.seeds)
+		log.Println("joining cluster via peers", seeds)
 		p.join()
 	}
 
@@ -316,7 +316,7 @@ func (p *participant) join() {
 	}
 
 	for {
-		for seed := range p.seeds {
+		for seed := range p.peerHub.getSeeds() {
 			if err := p.client.AddMachine(seed, fmt.Sprint(p.id), info); err == nil {
 				return
 			} else {
