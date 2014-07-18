@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"sync"
 	"time"
 
 	etcdErr "github.com/coreos/etcd/error"
@@ -36,6 +37,7 @@ const (
 
 var (
 	tmpErr            = fmt.Errorf("try again")
+	stopErr           = fmt.Errorf("server is stopped")
 	raftStopErr       = fmt.Errorf("raft is stopped")
 	noneId      int64 = -1
 )
@@ -57,7 +59,9 @@ type participant struct {
 	store.Store
 	rh *raftHandler
 
-	stopc chan struct{}
+	stopped bool
+	mu      sync.Mutex
+	stopc   chan struct{}
 
 	*http.ServeMux
 }
@@ -152,12 +156,19 @@ func (p *participant) run() int64 {
 		p.send(node.Msgs())
 		if node.IsRemoved() {
 			log.Printf("Participant %d return\n", p.id)
+			p.stop()
 			return standbyMode
 		}
 	}
 }
 
 func (p *participant) stop() {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.stopped {
+		return
+	}
+	p.stopped = true
 	close(p.stopc)
 }
 
@@ -201,6 +212,8 @@ func (p *participant) add(id int64, raftPubAddr string, pubAddr string) error {
 		w.Remove()
 		log.Println("add error: wait timeout")
 		return tmpErr
+	case <-p.stopc:
+		return stopErr
 	}
 }
 
@@ -238,6 +251,8 @@ func (p *participant) remove(id int64) error {
 		w.Remove()
 		log.Println("remove error: wait timeout")
 		return tmpErr
+	case <-p.stopc:
+		return stopErr
 	}
 }
 

@@ -2,7 +2,6 @@ package etcd
 
 import (
 	"crypto/tls"
-	"errors"
 	"log"
 	"net/http"
 	"time"
@@ -16,10 +15,6 @@ const (
 	participantMode int64 = iota
 	standbyMode
 	stopMode
-)
-
-var (
-	stopErr = errors.New("stopped")
 )
 
 type Server struct {

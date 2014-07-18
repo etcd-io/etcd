@@ -110,7 +110,7 @@ func TestAdd(t *testing.T) {
 				switch err {
 				case tmpErr:
 					time.Sleep(defaultElection * es[0].tickDuration)
-				case raftStopErr:
+				case raftStopErr, stopErr:
 					t.Fatalf("#%d on %d: unexpected stop", i, lead)
 				default:
 					t.Fatal(err)
@@ -179,7 +179,7 @@ func TestRemove(t *testing.T) {
 				switch err {
 				case tmpErr:
 					time.Sleep(defaultElection * 5 * time.Millisecond)
-				case raftStopErr:
+				case raftStopErr, stopErr:
 					if lead == id {
 						break
 					}
