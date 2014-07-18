@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/coreos/etcd/config"
@@ -27,6 +28,7 @@ type standby struct {
 
 	leader      int64
 	leaderAddr  string
+	mu          sync.RWMutex
 	clusterConf *config.ClusterConfig
 
 	stopc chan struct{}
@@ -87,11 +89,24 @@ func (s *standby) stop() {
 	close(s.stopc)
 }
 
+func (s *standby) leaderInfo() (int64, string) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.leader, s.leaderAddr
+}
+
+func (s *standby) setLeaderInfo(leader int64, leaderAddr string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.leader, s.leaderAddr = leader, leaderAddr
+}
+
 func (s *standby) serveRedirect(w http.ResponseWriter, r *http.Request) error {
-	if s.leader == noneId {
+	leader, leaderAddr := s.leaderInfo()
+	if leader == noneId {
 		return fmt.Errorf("no leader in the cluster")
 	}
-	redirectAddr, err := buildRedirectURL(s.leaderAddr, r.URL)
+	redirectAddr, err := buildRedirectURL(leaderAddr, r.URL)
 	if err != nil {
 		return err
 	}
@@ -117,8 +132,7 @@ func (s *standby) syncCluster() error {
 				if err != nil {
 					return err
 				}
-				s.leader = id
-				s.leaderAddr = machine.PeerURL
+				s.setLeaderInfo(id, machine.PeerURL)
 			}
 		}
 		s.clusterConf = config
