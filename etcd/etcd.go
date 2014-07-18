@@ -134,7 +134,7 @@ func (s *Server) Run() {
 		}
 		switch next {
 		case participantMode:
-			s.p = newParticipant(s.id, s.pubAddr, s.raftPubAddr, s.nodes, s.client, s.peerHub, s.tickDuration)
+			s.p = newParticipant(s.id, s.pubAddr, s.raftPubAddr, s.client, s.peerHub, s.tickDuration)
 			s.mode.Set(participantMode)
 			s.mu.Unlock()
 			next = s.p.run()
