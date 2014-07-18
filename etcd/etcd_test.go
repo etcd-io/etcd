@@ -227,8 +227,17 @@ func TestBecomeStandby(t *testing.T) {
 		if err := es[lead].p.setClusterConfig(config); err != nil {
 			t.Fatalf("#%d: setClusterConfig err = %v", i, err)
 		}
-		if err := es[lead].p.remove(id); err != nil {
-			t.Fatalf("#%d: remove err = %v", i, err)
+		for {
+			err := es[lead].p.remove(id)
+			if err == nil {
+				break
+			}
+			switch err {
+			case tmpErr:
+				time.Sleep(defaultElection * 5 * time.Millisecond)
+			default:
+				t.Fatalf("#%d: remove err = %v", i, err)
+			}
 		}
 
 		waitMode(standbyMode, es[i])
