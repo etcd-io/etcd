@@ -91,18 +91,19 @@ func TestAdd(t *testing.T) {
 			es[i], hs[i] = initTestServer(c, int64(i), false)
 		}
 
-		go es[0].Bootstrap()
+		go es[0].Run()
+		<-es[0].modeC
 
 		for i := 1; i < tt; i++ {
 			id := int64(i)
 			for {
-				lead := es[0].node.Leader()
+				lead := es[0].p.node.Leader()
 				if lead == -1 {
 					time.Sleep(defaultElection * es[0].tickDuration)
 					continue
 				}
 
-				err := es[lead].Add(id, es[id].raftPubAddr, es[id].pubAddr)
+				err := es[lead].p.add(id, es[id].raftPubAddr, es[id].pubAddr)
 				if err == nil {
 					break
 				}
@@ -115,12 +116,12 @@ func TestAdd(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			es[i].initParticipant()
-			go es[i].run()
+			go es[i].Run()
+			<-es[i].modeC
 
 			for j := 0; j <= i; j++ {
 				p := fmt.Sprintf("%s/%d", v2machineKVPrefix, id)
-				w, err := es[j].Watch(p, false, false, 1)
+				w, err := es[j].p.Watch(p, false, false, 1)
 				if err != nil {
 					t.Errorf("#%d on %d: %v", i, j, err)
 					break
@@ -149,7 +150,7 @@ func TestRemove(t *testing.T) {
 		lead, _ := waitLeader(es)
 		config := config.NewClusterConfig()
 		config.ActiveSize = 0
-		if err := es[lead].setClusterConfig(config); err != nil {
+		if err := es[lead].p.setClusterConfig(config); err != nil {
 			t.Fatalf("#%d: setClusterConfig err = %v", k, err)
 		}
 
@@ -157,8 +158,6 @@ func TestRemove(t *testing.T) {
 		// not 100 percent safe in our raft.
 		// TODO(yichengq): improve it later.
 		for i := 0; i < tt-2; i++ {
-			<-es[i].modeC
-
 			id := int64(i)
 			send := id
 			for {
@@ -167,13 +166,13 @@ func TestRemove(t *testing.T) {
 					send = id
 				}
 
-				lead := es[send].node.Leader()
+				lead := es[send].p.node.Leader()
 				if lead == -1 {
 					time.Sleep(defaultElection * 5 * time.Millisecond)
 					continue
 				}
 
-				err := es[lead].Remove(id)
+				err := es[lead].p.remove(id)
 				if err == nil {
 					break
 				}
@@ -190,7 +189,7 @@ func TestRemove(t *testing.T) {
 
 			}
 
-			if g := <-es[i].modeC; g != standby {
+			if g := <-es[i].modeC; g != standbyMode {
 				t.Errorf("#%d on %d: mode = %d, want standby", k, i, g)
 			}
 		}
@@ -223,22 +222,18 @@ func TestBecomeStandby(t *testing.T) {
 		}
 		id := int64(i)
 
-		if g := <-es[i].modeC; g != participant {
-			t.Fatalf("#%d: mode = %d, want participant", i, g)
-		}
-
 		config := config.NewClusterConfig()
 		config.SyncInterval = 1000
 
 		config.ActiveSize = size - 1
-		if err := es[lead].setClusterConfig(config); err != nil {
+		if err := es[lead].p.setClusterConfig(config); err != nil {
 			t.Fatalf("#%d: setClusterConfig err = %v", i, err)
 		}
-		if err := es[lead].Remove(id); err != nil {
+		if err := es[lead].p.remove(id); err != nil {
 			t.Fatalf("#%d: remove err = %v", i, err)
 		}
 
-		if g := <-es[i].modeC; g != standby {
+		if g := <-es[i].modeC; g != standbyMode {
 			t.Fatalf("#%d: mode = %d, want standby", i, g)
 		}
 		if g := len(es[i].modeC); g != 0 {
@@ -246,12 +241,12 @@ func TestBecomeStandby(t *testing.T) {
 		}
 
 		for k := 0; k < 4; k++ {
-			if es[i].leader != noneId {
+			if es[i].s.leader != noneId {
 				break
 			}
 			time.Sleep(20 * time.Millisecond)
 		}
-		if g := es[i].leader; g != lead {
+		if g := es[i].s.leader; g != lead {
 			t.Errorf("#%d: lead = %d, want %d", i, g, lead)
 		}
 
@@ -279,7 +274,7 @@ func TestModeSwitch(t *testing.T) {
 		es, hs := buildCluster(size, false)
 		waitCluster(t, es)
 
-		if g := <-es[i].modeC; g != participant {
+		if g := <-es[i].modeC; g != participantMode {
 			t.Fatalf("#%d: mode = %d, want participant", i, g)
 		}
 
@@ -294,14 +289,14 @@ func TestModeSwitch(t *testing.T) {
 			}
 
 			config.ActiveSize = size - 1
-			if err := es[lead].setClusterConfig(config); err != nil {
+			if err := es[lead].p.setClusterConfig(config); err != nil {
 				t.Fatalf("#%d: setClusterConfig err = %v", i, err)
 			}
-			if err := es[lead].Remove(id); err != nil {
+			if err := es[lead].p.remove(id); err != nil {
 				t.Fatalf("#%d: remove err = %v", i, err)
 			}
 
-			if g := <-es[i].modeC; g != standby {
+			if g := <-es[i].modeC; g != standbyMode {
 				t.Fatalf("#%d: mode = %d, want standby", i, g)
 			}
 			if g := len(es[i].modeC); g != 0 {
@@ -309,21 +304,21 @@ func TestModeSwitch(t *testing.T) {
 			}
 
 			for k := 0; k < 4; k++ {
-				if es[i].leader != noneId {
+				if es[i].s.leader != noneId {
 					break
 				}
 				time.Sleep(20 * time.Millisecond)
 			}
-			if g := es[i].leader; g != lead {
+			if g := es[i].s.leader; g != lead {
 				t.Errorf("#%d: lead = %d, want %d", i, g, lead)
 			}
 
 			config.ActiveSize = size
-			if err := es[lead].setClusterConfig(config); err != nil {
+			if err := es[lead].p.setClusterConfig(config); err != nil {
 				t.Fatalf("#%d: setClusterConfig err = %v", i, err)
 			}
 
-			if g := <-es[i].modeC; g != participant {
+			if g := <-es[i].modeC; g != participantMode {
 				t.Fatalf("#%d: mode = %d, want participant", i, g)
 			}
 			if g := len(es[i].modeC); g != 0 {
@@ -364,17 +359,17 @@ func buildCluster(number int, tls bool) ([]*Server, []*httptest.Server) {
 
 		if i == bootstrapper {
 			seed = hs[i].URL
-			go es[i].Bootstrap()
 		} else {
 			// wait for the previous configuration change to be committed
 			// or this configuration request might be dropped
-			w, err := es[0].Watch(v2machineKVPrefix, true, false, uint64(i))
+			w, err := es[0].p.Watch(v2machineKVPrefix, true, false, uint64(i))
 			if err != nil {
 				panic(err)
 			}
 			<-w.EventChan
-			go es[i].Join()
 		}
+		go es[i].Run()
+		<-es[i].modeC
 	}
 	return es, hs
 }
@@ -404,7 +399,7 @@ func waitCluster(t *testing.T, es []*Server) {
 		var index uint64
 		for k := 0; k < n; k++ {
 			index++
-			w, err := e.Watch(v2machineKVPrefix, true, false, index)
+			w, err := e.p.Watch(v2machineKVPrefix, true, false, index)
 			if err != nil {
 				panic(err)
 			}
@@ -429,12 +424,12 @@ func waitCluster(t *testing.T, es []*Server) {
 func checkParticipant(i int, es []*Server) error {
 	lead, _ := waitActiveLeader(es)
 	key := fmt.Sprintf("/%d", rand.Int31())
-	ev, err := es[lead].Set(key, false, "bar", store.Permanent)
+	ev, err := es[lead].p.Set(key, false, "bar", store.Permanent)
 	if err != nil {
 		return err
 	}
 
-	w, err := es[i].Watch(key, false, false, ev.Index())
+	w, err := es[i].p.Watch(key, false, false, ev.Index())
 	if err != nil {
 		return err
 	}

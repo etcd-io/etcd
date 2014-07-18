@@ -20,57 +20,54 @@ type cmd struct {
 	Time      time.Time
 }
 
-func (s *Server) Set(key string, dir bool, value string, expireTime time.Time) (*store.Event, error) {
+func (p *participant) Set(key string, dir bool, value string, expireTime time.Time) (*store.Event, error) {
 	set := &cmd{Type: "set", Key: key, Dir: dir, Value: value, Time: expireTime}
-	return s.do(set)
+	return p.do(set)
 }
 
-func (s *Server) Create(key string, dir bool, value string, expireTime time.Time, unique bool) (*store.Event, error) {
+func (p *participant) Create(key string, dir bool, value string, expireTime time.Time, unique bool) (*store.Event, error) {
 	create := &cmd{Type: "create", Key: key, Dir: dir, Value: value, Time: expireTime, Unique: unique}
-	return s.do(create)
+	return p.do(create)
 }
 
-func (s *Server) Update(key string, value string, expireTime time.Time) (*store.Event, error) {
+func (p *participant) Update(key string, value string, expireTime time.Time) (*store.Event, error) {
 	update := &cmd{Type: "update", Key: key, Value: value, Time: expireTime}
-	return s.do(update)
+	return p.do(update)
 }
 
-func (s *Server) CAS(key, value, prevValue string, prevIndex uint64, expireTime time.Time) (*store.Event, error) {
+func (p *participant) CAS(key, value, prevValue string, prevIndex uint64, expireTime time.Time) (*store.Event, error) {
 	cas := &cmd{Type: "cas", Key: key, Value: value, PrevValue: prevValue, PrevIndex: prevIndex, Time: expireTime}
-	return s.do(cas)
+	return p.do(cas)
 }
 
-func (s *Server) Delete(key string, dir, recursive bool) (*store.Event, error) {
+func (p *participant) Delete(key string, dir, recursive bool) (*store.Event, error) {
 	d := &cmd{Type: "delete", Key: key, Dir: dir, Recursive: recursive}
-	return s.do(d)
+	return p.do(d)
 }
 
-func (s *Server) CAD(key string, prevValue string, prevIndex uint64) (*store.Event, error) {
+func (p *participant) CAD(key string, prevValue string, prevIndex uint64) (*store.Event, error) {
 	cad := &cmd{Type: "cad", Key: key, PrevValue: prevValue, PrevIndex: prevIndex}
-	return s.do(cad)
+	return p.do(cad)
 }
 
-func (s *Server) do(c *cmd) (*store.Event, error) {
+func (p *participant) do(c *cmd) (*store.Event, error) {
 	data, err := json.Marshal(c)
 	if err != nil {
 		panic(err)
 	}
 
-	p := v2Proposal{
+	pp := v2Proposal{
 		data: data,
 		ret:  make(chan interface{}, 1),
 	}
 
-	if s.mode != participant {
-		return nil, raftStopErr
-	}
 	select {
-	case s.proposal <- p:
+	case p.proposal <- pp:
 	default:
 		return nil, fmt.Errorf("unable to send out the proposal")
 	}
 
-	switch t := (<-p.ret).(type) {
+	switch t := (<-pp.ret).(type) {
 	case *store.Event:
 		return t, nil
 	case error:

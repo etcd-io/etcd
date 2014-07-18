@@ -8,9 +8,9 @@ import (
 	"github.com/coreos/etcd/store"
 )
 
-func (s *Server) PostHandler(w http.ResponseWriter, req *http.Request) error {
-	if !s.node.IsLeader() {
-		return s.redirect(w, req, s.node.Leader())
+func (p *participant) PostHandler(w http.ResponseWriter, req *http.Request) error {
+	if !p.node.IsLeader() {
+		return p.redirect(w, req, p.node.Leader())
 	}
 
 	key := req.URL.Path[len("/v2/keys"):]
@@ -19,12 +19,12 @@ func (s *Server) PostHandler(w http.ResponseWriter, req *http.Request) error {
 	dir := (req.FormValue("dir") == "true")
 	expireTime, err := store.TTL(req.FormValue("ttl"))
 	if err != nil {
-		return etcdErr.NewError(etcdErr.EcodeTTLNaN, "Create", s.Store.Index())
+		return etcdErr.NewError(etcdErr.EcodeTTLNaN, "Create", p.Store.Index())
 	}
 
-	ret, err := s.Create(key, dir, value, expireTime, true)
+	ret, err := p.Create(key, dir, value, expireTime, true)
 	if err == nil {
-		s.handleRet(w, ret)
+		p.handleRet(w, ret)
 		return nil
 	}
 	log.Println("unique:", err)

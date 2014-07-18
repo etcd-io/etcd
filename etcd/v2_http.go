@@ -10,28 +10,28 @@ import (
 	etcdErr "github.com/coreos/etcd/error"
 )
 
-func (s *Server) serveValue(w http.ResponseWriter, r *http.Request) error {
+func (p *participant) serveValue(w http.ResponseWriter, r *http.Request) error {
 	switch r.Method {
 	case "GET":
-		return s.GetHandler(w, r)
+		return p.GetHandler(w, r)
 	case "HEAD":
 		w = &HEADResponseWriter{w}
-		return s.GetHandler(w, r)
+		return p.GetHandler(w, r)
 	case "PUT":
-		return s.PutHandler(w, r)
+		return p.PutHandler(w, r)
 	case "POST":
-		return s.PostHandler(w, r)
+		return p.PostHandler(w, r)
 	case "DELETE":
-		return s.DeleteHandler(w, r)
+		return p.DeleteHandler(w, r)
 	}
 	return allow(w, "GET", "PUT", "POST", "DELETE", "HEAD")
 }
 
-func (s *Server) serveMachines(w http.ResponseWriter, r *http.Request) error {
+func (p *participant) serveMachines(w http.ResponseWriter, r *http.Request) error {
 	if r.Method != "GET" {
 		return allow(w, "GET")
 	}
-	v, err := s.Store.Get(v2machineKVPrefix, false, false)
+	v, err := p.Store.Get(v2machineKVPrefix, false, false)
 	if err != nil {
 		panic(err)
 	}
@@ -47,20 +47,20 @@ func (s *Server) serveMachines(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
-func (s *Server) serveLeader(w http.ResponseWriter, r *http.Request) error {
+func (p *participant) serveLeader(w http.ResponseWriter, r *http.Request) error {
 	if r.Method != "GET" {
 		return allow(w, "GET")
 	}
-	if p, ok := s.peerHub.peers[s.node.Leader()]; ok {
+	if p, ok := p.peerHub.peers[p.node.Leader()]; ok {
 		w.Write([]byte(p.url))
 		return nil
 	}
 	return fmt.Errorf("no leader")
 }
 
-func (s *Server) serveStoreStats(w http.ResponseWriter, req *http.Request) error {
+func (p *participant) serveStoreStats(w http.ResponseWriter, req *http.Request) error {
 	w.Header().Set("Content-Type", "application/json")
-	w.Write(s.Store.JsonStats())
+	w.Write(p.Store.JsonStats())
 	return nil
 }
 
@@ -99,8 +99,8 @@ func (w *HEADResponseWriter) Write([]byte) (int, error) {
 	return 0, nil
 }
 
-func (s *Server) redirect(w http.ResponseWriter, r *http.Request, id int64) error {
-	e, err := s.Store.Get(fmt.Sprintf("%v/%d", v2machineKVPrefix, s.node.Leader()), false, false)
+func (p *participant) redirect(w http.ResponseWriter, r *http.Request, id int64) error {
+	e, err := p.Store.Get(fmt.Sprintf("%v/%d", v2machineKVPrefix, p.node.Leader()), false, false)
 	if err != nil {
 		log.Println("redirect cannot find node", id)
 		return fmt.Errorf("redirect cannot find node %d", id)
@@ -111,7 +111,7 @@ func (s *Server) redirect(w http.ResponseWriter, r *http.Request, id int64) erro
 		return fmt.Errorf("failed to parse node entry: %s", *e.Node.Value)
 	}
 
-	redirectAddr, err := s.buildRedirectURL(m["etcd"][0], r.URL)
+	redirectAddr, err := buildRedirectURL(m["etcd"][0], r.URL)
 	if err != nil {
 		log.Println("redirect cannot build new url:", err)
 		return err
@@ -121,7 +121,7 @@ func (s *Server) redirect(w http.ResponseWriter, r *http.Request, id int64) erro
 	return nil
 }
 
-func (s *Server) buildRedirectURL(redirectAddr string, originalURL *url.URL) (string, error) {
+func buildRedirectURL(redirectAddr string, originalURL *url.URL) (string, error) {
 	redirectURL, err := url.Parse(redirectAddr)
 	if err != nil {
 		return "", fmt.Errorf("redirect cannot parse url: %v", err)

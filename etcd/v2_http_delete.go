@@ -8,9 +8,9 @@ import (
 	etcdErr "github.com/coreos/etcd/error"
 )
 
-func (s *Server) DeleteHandler(w http.ResponseWriter, req *http.Request) error {
-	if !s.node.IsLeader() {
-		return s.redirect(w, req, s.node.Leader())
+func (p *participant) DeleteHandler(w http.ResponseWriter, req *http.Request) error {
+	if !p.node.IsLeader() {
+		return p.redirect(w, req, p.node.Leader())
 	}
 
 	key := req.URL.Path[len("/v2/keys"):]
@@ -23,7 +23,7 @@ func (s *Server) DeleteHandler(w http.ResponseWriter, req *http.Request) error {
 	_, indexOk := req.Form["prevIndex"]
 
 	if !valueOk && !indexOk {
-		return s.serveDelete(w, req, key, dir, recursive)
+		return p.serveDelete(w, req, key, dir, recursive)
 	}
 
 	var err error
@@ -36,32 +36,32 @@ func (s *Server) DeleteHandler(w http.ResponseWriter, req *http.Request) error {
 
 		// bad previous index
 		if err != nil {
-			return etcdErr.NewError(etcdErr.EcodeIndexNaN, "CompareAndDelete", s.Store.Index())
+			return etcdErr.NewError(etcdErr.EcodeIndexNaN, "CompareAndDelete", p.Store.Index())
 		}
 	}
 
 	if valueOk {
 		if prevValue == "" {
-			return etcdErr.NewError(etcdErr.EcodePrevValueRequired, "CompareAndDelete", s.Store.Index())
+			return etcdErr.NewError(etcdErr.EcodePrevValueRequired, "CompareAndDelete", p.Store.Index())
 		}
 	}
-	return s.serveCAD(w, req, key, prevValue, prevIndex)
+	return p.serveCAD(w, req, key, prevValue, prevIndex)
 }
 
-func (s *Server) serveDelete(w http.ResponseWriter, req *http.Request, key string, dir, recursive bool) error {
-	ret, err := s.Delete(key, dir, recursive)
+func (p *participant) serveDelete(w http.ResponseWriter, req *http.Request, key string, dir, recursive bool) error {
+	ret, err := p.Delete(key, dir, recursive)
 	if err == nil {
-		s.handleRet(w, ret)
+		p.handleRet(w, ret)
 		return nil
 	}
 	log.Println("delete:", err)
 	return err
 }
 
-func (s *Server) serveCAD(w http.ResponseWriter, req *http.Request, key string, prevValue string, prevIndex uint64) error {
-	ret, err := s.CAD(key, prevValue, prevIndex)
+func (p *participant) serveCAD(w http.ResponseWriter, req *http.Request, key string, prevValue string, prevIndex uint64) error {
+	ret, err := p.CAD(key, prevValue, prevIndex)
 	if err == nil {
-		s.handleRet(w, ret)
+		p.handleRet(w, ret)
 		return nil
 	}
 	log.Println("cad:", err)

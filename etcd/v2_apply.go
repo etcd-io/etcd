@@ -9,7 +9,7 @@ import (
 	"github.com/coreos/etcd/store"
 )
 
-func (s *Server) v2apply(index int64, ent raft.Entry) {
+func (p *participant) v2apply(index int64, ent raft.Entry) {
 	var ret interface{}
 	var e *store.Event
 	var err error
@@ -22,36 +22,36 @@ func (s *Server) v2apply(index int64, ent raft.Entry) {
 
 	switch cmd.Type {
 	case "set":
-		e, err = s.Store.Set(cmd.Key, cmd.Dir, cmd.Value, cmd.Time)
+		e, err = p.Store.Set(cmd.Key, cmd.Dir, cmd.Value, cmd.Time)
 	case "update":
-		e, err = s.Store.Update(cmd.Key, cmd.Value, cmd.Time)
+		e, err = p.Store.Update(cmd.Key, cmd.Value, cmd.Time)
 	case "create", "unique":
-		e, err = s.Store.Create(cmd.Key, cmd.Dir, cmd.Value, cmd.Unique, cmd.Time)
+		e, err = p.Store.Create(cmd.Key, cmd.Dir, cmd.Value, cmd.Unique, cmd.Time)
 	case "delete":
-		e, err = s.Store.Delete(cmd.Key, cmd.Dir, cmd.Recursive)
+		e, err = p.Store.Delete(cmd.Key, cmd.Dir, cmd.Recursive)
 	case "cad":
-		e, err = s.Store.CompareAndDelete(cmd.Key, cmd.PrevValue, cmd.PrevIndex)
+		e, err = p.Store.CompareAndDelete(cmd.Key, cmd.PrevValue, cmd.PrevIndex)
 	case "cas":
-		e, err = s.Store.CompareAndSwap(cmd.Key, cmd.PrevValue, cmd.PrevIndex, cmd.Value, cmd.Time)
+		e, err = p.Store.CompareAndSwap(cmd.Key, cmd.PrevValue, cmd.PrevIndex, cmd.Value, cmd.Time)
 	case "sync":
-		s.Store.DeleteExpiredKeys(cmd.Time)
+		p.Store.DeleteExpiredKeys(cmd.Time)
 		return
 	default:
 		log.Println("unexpected command type:", cmd.Type)
 	}
 
-	if ent.Term > s.node.term {
-		s.node.term = ent.Term
-		for k, v := range s.node.result {
-			if k.term < s.node.term {
+	if ent.Term > p.node.term {
+		p.node.term = ent.Term
+		for k, v := range p.node.result {
+			if k.term < p.node.term {
 				v <- fmt.Errorf("proposal lost due to leader election")
-				delete(s.node.result, k)
+				delete(p.node.result, k)
 			}
 		}
 	}
 
 	w := wait{index, ent.Term}
-	if s.node.result[w] == nil {
+	if p.node.result[w] == nil {
 		return
 	}
 
@@ -60,6 +60,6 @@ func (s *Server) v2apply(index int64, ent raft.Entry) {
 	} else {
 		ret = e
 	}
-	s.node.result[w] <- ret
-	delete(s.node.result, w)
+	p.node.result[w] <- ret
+	delete(p.node.result, w)
 }

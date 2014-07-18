@@ -17,14 +17,14 @@ func TestKillLeader(t *testing.T) {
 		waitCluster(t, es)
 		waitLeader(es)
 
-		lead := es[0].node.Leader()
+		lead := es[0].p.node.Leader()
 		es[lead].Stop()
 
 		time.Sleep(es[0].tickDuration * defaultElection * 2)
 
 		waitLeader(es)
-		if es[1].node.Leader() == 0 {
-			t.Errorf("#%d: lead = %d, want not 0", i, es[1].node.Leader())
+		if es[1].p.node.Leader() == 0 {
+			t.Errorf("#%d: lead = %d, want not 0", i, es[1].p.node.Leader())
 		}
 
 		for i := range es {
@@ -81,7 +81,7 @@ func TestJoinThroughFollower(t *testing.T) {
 			es[i], hs[i] = initTestServer(c, int64(i), false)
 		}
 
-		go es[0].Bootstrap()
+		go es[0].Run()
 
 		for i := 1; i < tt; i++ {
 			go es[i].Run()
@@ -106,7 +106,7 @@ type leadterm struct {
 
 func waitActiveLeader(es []*Server) (lead, term int64) {
 	for {
-		if l, t := waitLeader(es); l >= 0 && es[l].mode == participant {
+		if l, t := waitLeader(es); l >= 0 && es[l].mode.Get() == participantMode {
 			return l, t
 		}
 	}
@@ -118,12 +118,12 @@ func waitLeader(es []*Server) (lead, term int64) {
 	for {
 		ls := make([]leadterm, 0, len(es))
 		for i := range es {
-			switch es[i].mode {
-			case participant:
+			switch es[i].mode.Get() {
+			case participantMode:
 				ls = append(ls, getLead(es[i]))
-			case standby:
+			case standbyMode:
 				//TODO(xiangli) add standby support
-			case stop:
+			case stopMode:
 			}
 		}
 		if isSameLead(ls) {
@@ -134,7 +134,7 @@ func waitLeader(es []*Server) (lead, term int64) {
 }
 
 func getLead(s *Server) leadterm {
-	return leadterm{s.node.Leader(), s.node.Term()}
+	return leadterm{s.p.node.Leader(), s.p.node.Term()}
 }
 
 func isSameLead(ls []leadterm) bool {
