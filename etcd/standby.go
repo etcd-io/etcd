@@ -11,6 +11,10 @@ import (
 	"github.com/coreos/etcd/store"
 )
 
+var (
+	noneId int64 = -1
+)
+
 type standby struct {
 	id          int64
 	pubAddr     string
