@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"net/url"
 	"path"
 	"sync"
 	"time"
@@ -279,9 +278,7 @@ func (p *participant) apply(ents []raft.Entry) {
 			peer.participate()
 			log.Printf("Add Node %x %v %v\n", cfg.NodeId, cfg.Addr, string(cfg.Context))
 			pp := path.Join(v2machineKVPrefix, fmt.Sprint(cfg.NodeId))
-			if _, err := p.Store.Set(pp, false, fmt.Sprintf("raft=%v&etcd=%v", cfg.Addr, string(cfg.Context)), store.Permanent); err == nil {
-				p.seeds[cfg.Addr] = true
-			}
+			p.Store.Set(pp, false, fmt.Sprintf("raft=%v&etcd=%v", cfg.Addr, string(cfg.Context)), store.Permanent)
 		case raft.RemoveNode:
 			cfg := new(raft.Config)
 			if err := json.Unmarshal(ent.Data, cfg); err != nil {
@@ -289,7 +286,6 @@ func (p *participant) apply(ents []raft.Entry) {
 				break
 			}
 			log.Printf("Remove Node %x\n", cfg.NodeId)
-			delete(p.seeds, p.fetchAddrFromStore(cfg.NodeId))
 			peer, err := p.peerHub.peer(cfg.NodeId)
 			if err != nil {
 				log.Fatal("cannot get the added peer:", err)
@@ -309,16 +305,6 @@ func (p *participant) send(msgs []raft.Message) {
 			log.Println("send:", err)
 		}
 	}
-}
-
-func (p *participant) fetchAddrFromStore(nodeId int64) string {
-	pp := path.Join(v2machineKVPrefix, fmt.Sprint(nodeId))
-	if ev, err := p.Get(pp, false, false); err == nil {
-		if m, err := url.ParseQuery(*ev.Node.Value); err == nil {
-			return m["raft"][0]
-		}
-	}
-	return ""
 }
 
 func (p *participant) join() {
