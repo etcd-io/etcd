@@ -67,7 +67,14 @@ func (p *participant) do(c *cmd) (*store.Event, error) {
 		return nil, fmt.Errorf("unable to send out the proposal")
 	}
 
-	switch t := (<-pp.ret).(type) {
+	var ret interface{}
+	select {
+	case ret = <-pp.ret:
+	case <-p.stopc:
+		return nil, fmt.Errorf("stop serving")
+	}
+
+	switch t := ret.(type) {
 	case *store.Event:
 		return t, nil
 	case error:
