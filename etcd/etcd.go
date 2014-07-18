@@ -11,8 +11,6 @@ import (
 )
 
 const (
-	raftPrefix = "/raft"
-
 	participantMode int64 = iota
 	standbyMode
 	stopMode

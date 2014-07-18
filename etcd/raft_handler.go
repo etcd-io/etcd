@@ -10,6 +10,10 @@ import (
 	"github.com/coreos/etcd/raft"
 )
 
+const (
+	raftPrefix = "/raft"
+)
+
 type raftHandler struct {
 	mu      sync.RWMutex
 	serving bool
@@ -26,8 +30,8 @@ func newRaftHandler(p peerGetter) *raftHandler {
 		peerGetter: p,
 	}
 	h.ServeMux = http.NewServeMux()
-	h.ServeMux.HandleFunc("/raft/cfg/", h.serveCfg)
-	h.ServeMux.HandleFunc("/raft", h.serveRaft)
+	h.ServeMux.HandleFunc(raftPrefix+"/cfg/", h.serveCfg)
+	h.ServeMux.HandleFunc(raftPrefix, h.serveRaft)
 	return h
 }
 
