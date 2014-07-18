@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"log"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/coreos/etcd/config"
@@ -32,7 +33,9 @@ type Server struct {
 	client  *v2client
 	peerHub *peerHub
 
-	stopc chan struct{}
+	stopped bool
+	mu      sync.Mutex
+	stopc   chan struct{}
 }
 
 func New(c *config.Config, id int64) *Server {
@@ -86,15 +89,18 @@ func (s *Server) Stop() {
 	if s.mode.Get() == stopMode {
 		return
 	}
-	m := s.mode.Get()
-	s.mode.Set(stopMode)
-	switch m {
+	s.mu.Lock()
+	s.stopped = true
+	switch s.mode.Get() {
 	case participantMode:
 		s.p.stop()
 	case standbyMode:
 		s.s.stop()
 	}
+	s.mu.Unlock()
 	<-s.stopc
+	s.client.CloseConnections()
+	s.peerHub.stop()
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -122,18 +128,24 @@ func (s *Server) ServeRaftHTTP(w http.ResponseWriter, r *http.Request) {
 func (s *Server) Run() {
 	next := participantMode
 	for {
+		s.mu.Lock()
+		if s.stopped {
+			next = stopMode
+		}
 		switch next {
 		case participantMode:
 			s.p = newParticipant(s.id, s.pubAddr, s.raftPubAddr, s.nodes, s.client, s.peerHub, s.tickDuration)
 			s.mode.Set(participantMode)
+			s.mu.Unlock()
 			next = s.p.run()
 		case standbyMode:
 			s.s = newStandby(s.id, s.pubAddr, s.raftPubAddr, s.nodes, s.client, s.peerHub)
 			s.mode.Set(standbyMode)
+			s.mu.Unlock()
 			next = s.s.run()
 		case stopMode:
-			s.client.CloseConnections()
-			s.peerHub.stop()
+			s.mode.Set(stopMode)
+			s.mu.Unlock()
 			s.stopc <- struct{}{}
 			return
 		default:
