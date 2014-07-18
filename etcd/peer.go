@@ -89,8 +89,8 @@ func (p *peer) send(d []byte) error {
 		if p.inflight.Get() > maxInflight {
 			return fmt.Errorf("reach max idle")
 		}
+		p.wg.Add(1)
 		go func() {
-			p.wg.Add(1)
 			p.post(d)
 			p.wg.Done()
 		}()
