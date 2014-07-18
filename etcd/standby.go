@@ -53,14 +53,14 @@ func newStandby(id int64, pubAddr string, raftPubAddr string, nodes map[string]b
 	return s
 }
 
-func (s *standby) run() {
+func (s *standby) run() int64 {
 	var syncDuration time.Duration
 	for {
 		select {
 		case <-time.After(syncDuration):
 		case <-s.stopc:
 			log.Printf("Standby %d stopped\n", s.id)
-			return
+			return stopMode
 		}
 
 		if err := s.syncCluster(); err != nil {
@@ -75,7 +75,7 @@ func (s *standby) run() {
 			log.Println("standby join:", err)
 			continue
 		}
-		return
+		return participantMode
 	}
 }
 

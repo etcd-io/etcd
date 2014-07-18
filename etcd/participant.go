@@ -98,7 +98,7 @@ func newParticipant(id int64, pubAddr string, raftPubAddr string, seeds map[stri
 	return p
 }
 
-func (p *participant) run() {
+func (p *participant) run() int64 {
 	if len(p.seeds) == 0 {
 		log.Println("starting a bootstrap node")
 		p.node.Campaign()
@@ -146,13 +146,13 @@ func (p *participant) run() {
 			node.Sync()
 		case <-p.stopc:
 			log.Printf("Participant %d stopped\n", p.id)
-			return
+			return stopMode
 		}
 		p.apply(node.Next())
 		p.send(node.Msgs())
 		if node.IsRemoved() {
 			log.Printf("Participant %d return\n", p.id)
-			return
+			return standbyMode
 		}
 	}
 }
