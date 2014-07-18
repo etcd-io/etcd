@@ -92,7 +92,7 @@ func TestAdd(t *testing.T) {
 		}
 
 		go es[0].Run()
-		<-es[0].modeC
+		waitMode(participantMode, es[0])
 
 		for i := 1; i < tt; i++ {
 			id := int64(i)
@@ -117,7 +117,7 @@ func TestAdd(t *testing.T) {
 				}
 			}
 			go es[i].Run()
-			<-es[i].modeC
+			waitMode(participantMode, es[i])
 
 			for j := 0; j <= i; j++ {
 				p := fmt.Sprintf("%s/%d", v2machineKVPrefix, id)
@@ -189,9 +189,7 @@ func TestRemove(t *testing.T) {
 
 			}
 
-			if g := <-es[i].modeC; g != standbyMode {
-				t.Errorf("#%d on %d: mode = %d, want standby", k, i, g)
-			}
+			waitMode(standbyMode, es[i])
 		}
 
 		for i := range es {
@@ -233,12 +231,7 @@ func TestBecomeStandby(t *testing.T) {
 			t.Fatalf("#%d: remove err = %v", i, err)
 		}
 
-		if g := <-es[i].modeC; g != standbyMode {
-			t.Fatalf("#%d: mode = %d, want standby", i, g)
-		}
-		if g := len(es[i].modeC); g != 0 {
-			t.Fatalf("#%d: mode to %d, want remain", i, <-es[i].modeC)
-		}
+		waitMode(standbyMode, es[i])
 
 		for k := 0; k < 4; k++ {
 			if es[i].s.leader != noneId {
@@ -248,10 +241,6 @@ func TestBecomeStandby(t *testing.T) {
 		}
 		if g := es[i].s.leader; g != lead {
 			t.Errorf("#%d: lead = %d, want %d", i, g, lead)
-		}
-
-		if g := len(es[i].modeC); g != 0 {
-			t.Fatalf("#%d: mode to %d, want remain", i, <-es[i].modeC)
 		}
 
 		for i := range hs {
@@ -274,10 +263,6 @@ func TestModeSwitch(t *testing.T) {
 		es, hs := buildCluster(size, false)
 		waitCluster(t, es)
 
-		if g := <-es[i].modeC; g != participantMode {
-			t.Fatalf("#%d: mode = %d, want participant", i, g)
-		}
-
 		config := config.NewClusterConfig()
 		config.SyncInterval = 0
 		id := int64(i)
@@ -296,12 +281,7 @@ func TestModeSwitch(t *testing.T) {
 				t.Fatalf("#%d: remove err = %v", i, err)
 			}
 
-			if g := <-es[i].modeC; g != standbyMode {
-				t.Fatalf("#%d: mode = %d, want standby", i, g)
-			}
-			if g := len(es[i].modeC); g != 0 {
-				t.Fatalf("#%d: mode to %d, want remain", i, <-es[i].modeC)
-			}
+			waitMode(standbyMode, es[i])
 
 			for k := 0; k < 4; k++ {
 				if es[i].s.leader != noneId {
@@ -318,20 +298,11 @@ func TestModeSwitch(t *testing.T) {
 				t.Fatalf("#%d: setClusterConfig err = %v", i, err)
 			}
 
-			if g := <-es[i].modeC; g != participantMode {
-				t.Fatalf("#%d: mode = %d, want participant", i, g)
-			}
-			if g := len(es[i].modeC); g != 0 {
-				t.Fatalf("#%d: mode to %d, want remain", i, <-es[i].modeC)
-			}
+			waitMode(participantMode, es[i])
 
 			if err := checkParticipant(i, es); err != nil {
 				t.Errorf("#%d: check alive err = %v", i, err)
 			}
-		}
-
-		if g := len(es[i].modeC); g != 0 {
-			t.Fatalf("#%d: mode to %d, want remain", i, <-es[i].modeC)
 		}
 
 		for i := range hs {
@@ -369,7 +340,7 @@ func buildCluster(number int, tls bool) ([]*Server, []*httptest.Server) {
 			<-w.EventChan
 		}
 		go es[i].Run()
-		<-es[i].modeC
+		waitMode(participantMode, es[i])
 	}
 	return es, hs
 }
@@ -417,6 +388,15 @@ func waitCluster(t *testing.T, es []*Server) {
 				t.Errorf("#%d path = %v, want %v", i, v.Node.Key, ww)
 			}
 		}
+	}
+}
+
+func waitMode(mode int64, e *Server) {
+	for {
+		if e.mode.Get() == mode {
+			return
+		}
+		time.Sleep(10 * time.Millisecond)
 	}
 }
 

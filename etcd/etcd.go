@@ -37,7 +37,6 @@ type Server struct {
 	client  *v2client
 	peerHub *peerHub
 
-	modeC chan int64
 	stopc chan struct{}
 }
 
@@ -74,7 +73,6 @@ func New(c *config.Config, id int64) *Server {
 		client:  newClient(tc),
 		peerHub: newPeerHub(c.Peers, client),
 
-		modeC: make(chan int64, 10),
 		stopc: make(chan struct{}),
 	}
 	for _, seed := range c.Peers {
@@ -129,12 +127,10 @@ func (s *Server) ServeRaftHTTP(w http.ResponseWriter, r *http.Request) {
 func (s *Server) Run() {
 	next := participantMode
 	for {
-		s.modeC <- next
 		switch next {
 		case participantMode:
 			s.p = newParticipant(s.id, s.pubAddr, s.raftPubAddr, s.nodes, s.client, s.peerHub, s.tickDuration)
 			s.mode.Set(participantMode)
-			// TODO: it may block here. move modeC later.
 			next = s.p.run()
 		case standbyMode:
 			s.s = newStandby(s.id, s.pubAddr, s.raftPubAddr, s.nodes, s.client, s.peerHub)
