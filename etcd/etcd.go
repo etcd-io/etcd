@@ -93,17 +93,22 @@ func (s *Server) Stop() {
 	if s.mode.Get() == stopMode {
 		return
 	}
-	s.stopc <- struct{}{}
+	m := s.mode.Get()
+	s.mode.Set(stopMode)
+	switch m {
+	case participantMode:
+		s.p.stop()
+	case standbyMode:
+		s.s.stop()
+	}
 	<-s.stopc
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch s.mode.Get() {
-	case participantMode:
+	case participantMode, standbyMode:
 		s.p.ServeHTTP(w, r)
-	case standbyMode:
-		s.s.ServeHTTP(w, r)
-	case stopMode:
+	default:
 		http.NotFound(w, r)
 	}
 }
@@ -116,56 +121,34 @@ func (s *Server) ServeRaftHTTP(w http.ResponseWriter, r *http.Request) {
 	switch s.mode.Get() {
 	case participantMode:
 		s.p.raftHandler().ServeHTTP(w, r)
-	case standbyMode:
-		http.NotFound(w, r)
-	case stopMode:
+	default:
 		http.NotFound(w, r)
 	}
 }
 
 func (s *Server) Run() {
-	runc := make(chan struct{})
 	next := participantMode
 	for {
 		switch next {
 		case participantMode:
 			s.p = newParticipant(s.id, s.pubAddr, s.raftPubAddr, s.nodes, s.client, s.peerHub, s.tickDuration)
 			s.mode.Set(participantMode)
-			// TODO: it may block here. remove modeC later.
 			s.modeC <- s.mode.Get()
-			next = standbyMode
-			go func() {
-				s.p.run()
-				runc <- struct{}{}
-			}()
+			// TODO: it may block here. move modeC later.
+			next = s.p.run()
 		case standbyMode:
 			s.s = newStandby(s.id, s.pubAddr, s.raftPubAddr, s.nodes, s.client, s.peerHub)
 			s.mode.Set(standbyMode)
 			s.modeC <- s.mode.Get()
-			next = participantMode
-			go func() {
-				s.s.run()
-				runc <- struct{}{}
-			}()
-		default:
-			panic("unsupport mode")
-		}
-		select {
-		case <-runc:
-		case <-s.stopc:
-			switch s.mode.Get() {
-			case participantMode:
-				s.p.stop()
-			case standbyMode:
-				s.s.stop()
-			}
-			<-runc
-			s.mode.Set(stopMode)
-			s.modeC <- s.mode.Get()
+			next = s.s.run()
+		case stopMode:
 			s.client.CloseConnections()
 			s.peerHub.stop()
+			s.modeC <- s.mode.Get()
 			s.stopc <- struct{}{}
 			return
+		default:
+			panic("unsupport mode")
 		}
 	}
 }
