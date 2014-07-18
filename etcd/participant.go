@@ -330,7 +330,7 @@ func (p *participant) join() {
 		PeerURL:    p.raftPubAddr,
 	}
 
-	for i := 0; i < 5; i++ {
+	for {
 		for seed := range p.seeds {
 			if err := p.client.AddMachine(seed, fmt.Sprint(p.id), info); err == nil {
 				return
@@ -340,4 +340,5 @@ func (p *participant) join() {
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
+	log.Println("fail to join the cluster")
 }
