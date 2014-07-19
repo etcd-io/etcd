@@ -141,6 +141,9 @@ type stateMachine struct {
 }
 
 func newStateMachine(id int64, peers []int64) *stateMachine {
+	if id == none {
+		panic("cannot use none id")
+	}
 	sm := &stateMachine{id: id, lead: none, log: newLog(), ins: make(map[int64]*index)}
 	for _, p := range peers {
 		sm.ins[p] = &index{}
