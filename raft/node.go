@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	golog "log"
 	"math/rand"
-	"sync/atomic"
 	"time"
 )
 
@@ -51,9 +50,7 @@ func New(id int64, heartbeat, election tick) *Node {
 	return n
 }
 
-func (n *Node) Id() int64 {
-	return atomic.LoadInt64(&n.sm.id)
-}
+func (n *Node) Id() int64 { return n.sm.id }
 
 func (n *Node) Index() int64 { return n.sm.index.Get() }
 
@@ -73,10 +70,10 @@ func (n *Node) IsRemoved() bool { return n.removed }
 func (n *Node) Propose(data []byte) { n.propose(Normal, data) }
 
 func (n *Node) propose(t int64, data []byte) {
-	n.Step(Message{Type: msgProp, Entries: []Entry{{Type: t, Data: data}}})
+	n.Step(Message{From: n.sm.id, Type: msgProp, Entries: []Entry{{Type: t, Data: data}}})
 }
 
-func (n *Node) Campaign() { n.Step(Message{Type: msgHup}) }
+func (n *Node) Campaign() { n.Step(Message{From: n.sm.id, Type: msgHup}) }
 
 func (n *Node) Add(id int64, addr string, context []byte) {
 	n.UpdateConf(AddNode, &Config{NodeId: id, Addr: addr, Context: context})
@@ -91,11 +88,11 @@ func (n *Node) Step(m Message) bool {
 		n.removed = true
 		return false
 	}
-	if m.Term != 0 {
-		if _, ok := n.rmNodes[m.From]; ok {
-			n.sm.send(Message{To: m.From, Type: msgDenied})
-			return true
+	if _, ok := n.rmNodes[m.From]; ok {
+		if m.From != n.sm.id {
+			n.sm.send(Message{From: n.sm.id, To: m.From, Type: msgDenied})
 		}
+		return true
 	}
 
 	l := len(n.sm.msgs)
@@ -162,7 +159,7 @@ func (n *Node) Tick() {
 		timeout, msgType = n.heartbeat, msgBeat
 	}
 	if n.elapsed >= timeout {
-		n.Step(Message{Type: msgType})
+		n.Step(Message{From: n.sm.id, Type: msgType})
 		n.elapsed = 0
 		if n.sm.state != stateLeader {
 			n.electionRand = n.election + tick(rand.Int31())%n.election

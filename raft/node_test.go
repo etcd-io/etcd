@@ -14,7 +14,7 @@ func TestTickMsgHup(t *testing.T) {
 	n := New(0, defaultHeartbeat, defaultElection)
 	n.sm = newStateMachine(0, []int64{0, 1, 2})
 	// simulate to patch the join log
-	n.Step(Message{Type: msgApp, Commit: 1, Entries: []Entry{Entry{}}})
+	n.Step(Message{From: 1, Type: msgApp, Commit: 1, Entries: []Entry{Entry{}}})
 
 	for i := 0; i < defaultElection*2; i++ {
 		n.Tick()
@@ -155,15 +155,15 @@ func TestDenial(t *testing.T) {
 	}{
 		{
 			Entry{Type: AddNode, Term: 1, Data: []byte(`{"NodeId":2}`)},
-			map[int64]bool{0: false, 1: false, 2: false},
+			map[int64]bool{1: false, 2: false},
 		},
 		{
 			Entry{Type: RemoveNode, Term: 1, Data: []byte(`{"NodeId":1}`)},
-			map[int64]bool{0: false, 1: true, 2: true},
+			map[int64]bool{1: true, 2: true},
 		},
 		{
 			Entry{Type: RemoveNode, Term: 1, Data: []byte(`{"NodeId":0}`)},
-			map[int64]bool{0: true, 1: false, 2: true},
+			map[int64]bool{1: false, 2: true},
 		},
 	}
 
