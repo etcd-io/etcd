@@ -39,10 +39,9 @@ type Server struct {
 	raftPubAddr  string
 	tickDuration time.Duration
 
-	mode  atomicInt
-	nodes map[string]bool
-	p     *participant
-	s     *standby
+	mode atomicInt
+	p    *participant
+	s    *standby
 
 	client  *v2client
 	peerHub *peerHub
@@ -79,16 +78,12 @@ func New(c *config.Config, id int64) *Server {
 		raftPubAddr:  c.Peer.Addr,
 		tickDuration: defaultTickDuration,
 
-		mode:  atomicInt(stopMode),
-		nodes: make(map[string]bool),
+		mode: atomicInt(stopMode),
 
 		client:  newClient(tc),
 		peerHub: newPeerHub(c.Peers, client),
 
 		stopc: make(chan struct{}),
-	}
-	for _, seed := range c.Peers {
-		s.nodes[seed] = true
 	}
 
 	return s
@@ -155,7 +150,7 @@ func (s *Server) Run() {
 			s.mu.Unlock()
 			next = s.p.run()
 		case standbyMode:
-			s.s = newStandby(s.id, s.pubAddr, s.raftPubAddr, s.nodes, s.client, s.peerHub)
+			s.s = newStandby(s.id, s.pubAddr, s.raftPubAddr, s.client, s.peerHub)
 			s.mode.Set(standbyMode)
 			s.mu.Unlock()
 			next = s.s.run()
