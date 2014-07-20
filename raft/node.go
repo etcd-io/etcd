@@ -79,7 +79,7 @@ func (n *Node) propose(t int64, data []byte) {
 func (n *Node) Campaign() { n.Step(Message{From: n.sm.id, ClusterId: n.ClusterId(), Type: msgHup}) }
 
 func (n *Node) InitCluster(clusterId int64) {
-	d := make([]byte, 8)
+	d := make([]byte, 10)
 	wn := binary.PutVarint(d, clusterId)
 	n.propose(ClusterInit, d[:wn])
 }
