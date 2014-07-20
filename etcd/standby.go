@@ -72,7 +72,7 @@ func newStandby(id int64, pubAddr string, raftPubAddr string, client *v2client, 
 }
 
 func (s *standby) run() int64 {
-	var syncDuration time.Duration
+	syncDuration := time.Millisecond * 100
 	nodes := s.peerHub.getSeeds()
 	for {
 		select {
