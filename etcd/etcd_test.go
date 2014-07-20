@@ -416,6 +416,13 @@ func waitCluster(t *testing.T, es []*Server) {
 			}
 		}
 	}
+
+	clusterId := es[0].p.node.ClusterId()
+	for i, e := range es {
+		if e.p.node.ClusterId() != clusterId {
+			t.Errorf("#%d: clusterId = %x, want %x", i, e.p.node.ClusterId(), clusterId)
+		}
+	}
 }
 
 func waitMode(mode int64, e *Server) {
