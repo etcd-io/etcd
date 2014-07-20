@@ -5,6 +5,7 @@ import "fmt"
 const (
 	Normal int64 = iota
 
+	ClusterInit
 	AddNode
 	RemoveNode
 )

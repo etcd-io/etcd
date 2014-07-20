@@ -63,6 +63,52 @@ func TestBuildCluster(t *testing.T) {
 	}
 }
 
+func TestInitCluster(t *testing.T) {
+	node := New(1, defaultHeartbeat, defaultElection)
+	dictate(node)
+	node.Next()
+
+	if node.ClusterId() != 0xBEEF {
+		t.Errorf("clusterId = %x, want %x", node.ClusterId(), 0xBEEF)
+	}
+
+	func() {
+		defer func() {
+			e := recover()
+			if e != "cannot init a started cluster" {
+				t.Errorf("err = %v, want cannot init a started cluster", e)
+			}
+		}()
+		node.InitCluster(0xFBEE)
+		node.Next()
+	}()
+}
+
+func TestMessageFromDifferentCluster(t *testing.T) {
+	tests := []struct {
+		clusterId int64
+		wType     messageType
+	}{
+		{0xBEEF, msgVoteResp},
+		{0xFBEE, msgDenied},
+	}
+
+	for i, tt := range tests {
+		node := New(1, defaultHeartbeat, defaultElection)
+		dictate(node)
+		node.Next()
+
+		node.Step(Message{From: 1, ClusterId: tt.clusterId, Type: msgVote, Term: 2, LogTerm: 2, Index: 2})
+		msgs := node.Msgs()
+		if len(msgs) != 1 {
+			t.Errorf("#%d: len(msgs) = %d, want 1", i, len(msgs))
+		}
+		if msgs[0].Type != tt.wType {
+			t.Errorf("#%d: msg.Type = %v, want %d", i, msgs[0].Type, tt.wType)
+		}
+	}
+}
+
 // TestBasicCluster ensures all nodes can send proposal to the cluster.
 // And all the proposals will get committed.
 func TestBasicCluster(t *testing.T) {
@@ -83,7 +129,7 @@ func TestBasicCluster(t *testing.T) {
 		for j := 0; j < tt.round; j++ {
 			for _, n := range nodes {
 				data := []byte{byte(n.Id())}
-				nt.send(Message{From: n.Id(), To: n.Id(), Type: msgProp, Entries: []Entry{{Data: data}}})
+				nt.send(Message{From: n.Id(), To: n.Id(), ClusterId: n.ClusterId(), Type: msgProp, Entries: []Entry{{Data: data}}})
 
 				base := nodes[0].Next()
 				if len(base) != 1 {

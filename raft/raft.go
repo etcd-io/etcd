@@ -65,16 +65,17 @@ func (st stateType) String() string {
 }
 
 type Message struct {
-	Type     messageType
-	To       int64
-	From     int64
-	Term     int64
-	LogTerm  int64
-	Index    int64
-	PrevTerm int64
-	Entries  []Entry
-	Commit   int64
-	Snapshot Snapshot
+	Type      messageType
+	ClusterId int64
+	To        int64
+	From      int64
+	Term      int64
+	LogTerm   int64
+	Index     int64
+	PrevTerm  int64
+	Entries   []Entry
+	Commit    int64
+	Snapshot  Snapshot
 }
 
 type index struct {
@@ -111,7 +112,8 @@ func (p int64Slice) Less(i, j int) bool { return p[i] < p[j] }
 func (p int64Slice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
 
 type stateMachine struct {
-	id int64
+	clusterId int64
+	id        int64
 
 	// the term we are participating in at any time
 	term  atomicInt
@@ -144,7 +146,7 @@ func newStateMachine(id int64, peers []int64) *stateMachine {
 	if id == none {
 		panic("cannot use none id")
 	}
-	sm := &stateMachine{id: id, lead: none, log: newLog(), ins: make(map[int64]*index)}
+	sm := &stateMachine{id: id, clusterId: none, lead: none, log: newLog(), ins: make(map[int64]*index)}
 	for _, p := range peers {
 		sm.ins[p] = &index{}
 	}
@@ -170,6 +172,7 @@ func (sm *stateMachine) poll(id int64, v bool) (granted int) {
 
 // send persists state to stable storage and then sends to its mailbox.
 func (sm *stateMachine) send(m Message) {
+	m.ClusterId = sm.clusterId
 	m.From = sm.id
 	m.Term = sm.term.Get()
 	sm.msgs = append(sm.msgs, m)
