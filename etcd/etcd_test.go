@@ -259,12 +259,12 @@ func TestBecomeStandby(t *testing.T) {
 		waitMode(standbyMode, es[i])
 
 		var leader int64
-		for k := 0; k < 4; k++ {
+		for k := 0; k < 3; k++ {
 			leader, _ = es[i].s.leaderInfo()
 			if leader != noneId {
 				break
 			}
-			time.Sleep(20 * time.Millisecond)
+			time.Sleep(50 * time.Millisecond)
 		}
 		if g := leader; g != lead {
 			t.Errorf("#%d: lead = %d, want %d", i, g, lead)
