@@ -1,6 +1,7 @@
 package raft
 
 import (
+	"encoding/binary"
 	"encoding/json"
 	golog "log"
 	"math/rand"
@@ -52,6 +53,8 @@ func New(id int64, heartbeat, election tick) *Node {
 
 func (n *Node) Id() int64 { return n.sm.id }
 
+func (n *Node) ClusterId() int64 { return n.sm.clusterId }
+
 func (n *Node) Index() int64 { return n.sm.index.Get() }
 
 func (n *Node) Term() int64 { return n.sm.term.Get() }
@@ -70,16 +73,24 @@ func (n *Node) IsRemoved() bool { return n.removed }
 func (n *Node) Propose(data []byte) { n.propose(Normal, data) }
 
 func (n *Node) propose(t int64, data []byte) {
-	n.Step(Message{From: n.sm.id, Type: msgProp, Entries: []Entry{{Type: t, Data: data}}})
+	n.Step(Message{From: n.sm.id, ClusterId: n.ClusterId(), Type: msgProp, Entries: []Entry{{Type: t, Data: data}}})
 }
 
-func (n *Node) Campaign() { n.Step(Message{From: n.sm.id, Type: msgHup}) }
+func (n *Node) Campaign() { n.Step(Message{From: n.sm.id, ClusterId: n.ClusterId(), Type: msgHup}) }
+
+func (n *Node) InitCluster(clusterId int64) {
+	d := make([]byte, 8)
+	wn := binary.PutVarint(d, clusterId)
+	n.propose(ClusterInit, d[:wn])
+}
 
 func (n *Node) Add(id int64, addr string, context []byte) {
 	n.UpdateConf(AddNode, &Config{NodeId: id, Addr: addr, Context: context})
 }
 
-func (n *Node) Remove(id int64) { n.UpdateConf(RemoveNode, &Config{NodeId: id}) }
+func (n *Node) Remove(id int64) {
+	n.UpdateConf(RemoveNode, &Config{NodeId: id})
+}
 
 func (n *Node) Msgs() []Message { return n.sm.Msgs() }
 
@@ -88,17 +99,25 @@ func (n *Node) Step(m Message) bool {
 		n.removed = true
 		return false
 	}
+	if n.ClusterId() != none && m.ClusterId != none && m.ClusterId != n.ClusterId() {
+		golog.Printf("denied a message from node %d, cluster %d. accept cluster: %d\n", m.From, m.ClusterId, n.ClusterId())
+		n.sm.send(Message{To: m.From, ClusterId: n.ClusterId(), Type: msgDenied})
+		return true
+	}
+
 	if _, ok := n.rmNodes[m.From]; ok {
 		if m.From != n.sm.id {
-			n.sm.send(Message{From: n.sm.id, To: m.From, Type: msgDenied})
+			n.sm.send(Message{To: m.From, ClusterId: n.ClusterId(), Type: msgDenied})
 		}
 		return true
 	}
 
 	l := len(n.sm.msgs)
+
 	if !n.sm.Step(m) {
 		return false
 	}
+
 	for _, m := range n.sm.msgs[l:] {
 		switch m.Type {
 		case msgAppResp:
@@ -120,6 +139,15 @@ func (n *Node) Next() []Entry {
 	for i := range ents {
 		switch ents[i].Type {
 		case Normal:
+		case ClusterInit:
+			cid, nr := binary.Varint(ents[i].Data)
+			if nr <= 0 {
+				panic("init cluster failed: cannot read clusterId")
+			}
+			if n.ClusterId() != -1 {
+				panic("cannot init a started cluster")
+			}
+			n.sm.clusterId = cid
 		case AddNode:
 			c := new(Config)
 			if err := json.Unmarshal(ents[i].Data, c); err != nil {
@@ -159,7 +187,7 @@ func (n *Node) Tick() {
 		timeout, msgType = n.heartbeat, msgBeat
 	}
 	if n.elapsed >= timeout {
-		n.Step(Message{From: n.sm.id, Type: msgType})
+		n.Step(Message{From: n.sm.id, ClusterId: n.ClusterId(), Type: msgType})
 		n.elapsed = 0
 		if n.sm.state != stateLeader {
 			n.electionRand = n.election + tick(rand.Int31())%n.election

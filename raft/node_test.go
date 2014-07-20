@@ -40,7 +40,7 @@ func TestTickMsgBeat(t *testing.T) {
 		n.Add(int64(i), "", nil)
 		for _, m := range n.Msgs() {
 			if m.Type == msgApp {
-				n.Step(Message{From: m.To, Type: msgAppResp, Index: m.Index + int64(len(m.Entries))})
+				n.Step(Message{From: m.To, ClusterId: m.ClusterId, Type: msgAppResp, Index: m.Index + int64(len(m.Entries))})
 			}
 		}
 		// ignore commit index update messages
@@ -131,7 +131,7 @@ func TestRemove(t *testing.T) {
 	n.Add(1, "", nil)
 	n.Next()
 	n.Remove(0)
-	n.Step(Message{Type: msgAppResp, From: 1, Term: 1, Index: 4})
+	n.Step(Message{Type: msgAppResp, From: 1, ClusterId: n.ClusterId(), Term: 1, Index: 5})
 	n.Next()
 
 	if len(n.sm.ins) != 1 {
@@ -176,10 +176,10 @@ func TestDenial(t *testing.T) {
 		n.Next()
 
 		for id, denied := range tt.wdenied {
-			n.Step(Message{From: id, To: 0, Type: msgApp, Term: 1})
+			n.Step(Message{From: id, To: 0, ClusterId: n.ClusterId(), Type: msgApp, Term: 1})
 			w := []Message{}
 			if denied {
-				w = []Message{{From: 0, To: id, Term: 1, Type: msgDenied}}
+				w = []Message{{From: 0, To: id, ClusterId: n.ClusterId(), Term: 1, Type: msgDenied}}
 			}
 			if g := n.Msgs(); !reflect.DeepEqual(g, w) {
 				t.Errorf("#%d: msgs for %d = %+v, want %+v", i, id, g, w)
@@ -189,7 +189,8 @@ func TestDenial(t *testing.T) {
 }
 
 func dictate(n *Node) *Node {
-	n.Step(Message{Type: msgHup})
+	n.Step(Message{From: n.Id(), Type: msgHup})
+	n.InitCluster(0xBEEF)
 	n.Add(n.Id(), "", nil)
 	return n
 }
