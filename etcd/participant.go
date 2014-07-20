@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math/rand"
 	"net/http"
 	"path"
 	"sync"
@@ -58,6 +59,7 @@ var (
 
 type participant struct {
 	id           int64
+	clusterId    int64
 	pubAddr      string
 	raftPubAddr  string
 	seeds        map[string]bool
@@ -83,6 +85,7 @@ type participant struct {
 func newParticipant(id int64, pubAddr string, raftPubAddr string, client *v2client, peerHub *peerHub, tickDuration time.Duration) *participant {
 	p := &participant{
 		id:           id,
+		clusterId:    -1,
 		pubAddr:      pubAddr,
 		raftPubAddr:  raftPubAddr,
 		tickDuration: tickDuration,
@@ -120,6 +123,7 @@ func (p *participant) run() int64 {
 	if len(seeds) == 0 {
 		log.Println("starting a bootstrap node")
 		p.node.Campaign()
+		p.node.InitCluster(genId())
 		p.node.Add(p.id, p.raftPubAddr, []byte(p.pubAddr))
 		p.apply(p.node.Next())
 	} else {
@@ -280,6 +284,8 @@ func (p *participant) apply(ents []raft.Entry) {
 				continue
 			}
 			p.v2apply(offset+int64(i), ent)
+		case raft.ClusterInit:
+			p.clusterId = p.node.ClusterId()
 		case raft.AddNode:
 			cfg := new(raft.Config)
 			if err := json.Unmarshal(ent.Data, cfg); err != nil {
@@ -342,4 +348,9 @@ func (p *participant) join() {
 		time.Sleep(100 * time.Millisecond)
 	}
 	log.Println("fail to join the cluster")
+}
+
+func genId() int64 {
+	r := rand.New(rand.NewSource(int64(time.Now().Nanosecond())))
+	return r.Int63()
 }
