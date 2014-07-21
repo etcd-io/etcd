@@ -373,7 +373,8 @@ func buildCluster(number int, tls bool) ([]*Server, []*httptest.Server) {
 }
 
 func initTestServer(c *config.Config, id int64, tls bool) (e *Server, h *httptest.Server) {
-	e = New(c, id)
+	e = New(c)
+	e.setId(id)
 	e.SetTick(time.Millisecond * 5)
 	m := http.NewServeMux()
 	m.Handle("/", e)

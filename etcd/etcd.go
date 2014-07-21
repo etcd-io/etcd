@@ -51,7 +51,7 @@ type Server struct {
 	stopc   chan struct{}
 }
 
-func New(c *config.Config, id int64) *Server {
+func New(c *config.Config) *Server {
 	if err := c.Sanitize(); err != nil {
 		log.Fatalf("failed sanitizing configuration: %v", err)
 	}
@@ -73,7 +73,7 @@ func New(c *config.Config, id int64) *Server {
 
 	s := &Server{
 		config:       c,
-		id:           id,
+		id:           genId(),
 		pubAddr:      c.Addr,
 		raftPubAddr:  c.Peer.Addr,
 		tickDuration: defaultTickDuration,
@@ -162,5 +162,11 @@ func (s *Server) Run() {
 		default:
 			panic("unsupport mode")
 		}
+		s.id = genId()
 	}
+}
+
+// setId sets the id for the participant. This should only be used for testing.
+func (s *Server) setId(id int64) {
+	s.id = id
 }
