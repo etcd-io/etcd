@@ -150,7 +150,7 @@ func (s *Server) Run() {
 			s.mu.Unlock()
 			next = s.p.run()
 		case standbyMode:
-			s.s = newStandby(s.id, s.pubAddr, s.raftPubAddr, s.client, s.peerHub)
+			s.s = newStandby(s.client, s.peerHub)
 			s.mode.Set(standbyMode)
 			s.mu.Unlock()
 			next = s.s.run()

@@ -25,7 +25,6 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/config"
-	"github.com/coreos/etcd/store"
 )
 
 var (
@@ -33,10 +32,6 @@ var (
 )
 
 type standby struct {
-	id          int64
-	pubAddr     string
-	raftPubAddr string
-
 	client  *v2client
 	peerHub *peerHub
 
@@ -50,12 +45,8 @@ type standby struct {
 	*http.ServeMux
 }
 
-func newStandby(id int64, pubAddr string, raftPubAddr string, client *v2client, peerHub *peerHub) *standby {
+func newStandby(client *v2client, peerHub *peerHub) *standby {
 	s := &standby{
-		id:          id,
-		pubAddr:     pubAddr,
-		raftPubAddr: raftPubAddr,
-
 		client:  client,
 		peerHub: peerHub,
 
@@ -78,7 +69,7 @@ func (s *standby) run() int64 {
 		select {
 		case <-time.After(syncDuration):
 		case <-s.stopc:
-			log.Printf("Standby %d stopped\n", s.id)
+			log.Printf("Standby stopped\n")
 			return stopMode
 		}
 
@@ -90,10 +81,6 @@ func (s *standby) run() int64 {
 		}
 		syncDuration = time.Duration(s.clusterConf.SyncInterval * float64(time.Second))
 		if s.clusterConf.ActiveSize <= len(nodes) {
-			continue
-		}
-		if err := s.joinByAddr(s.leaderAddr); err != nil {
-			log.Println("standby join:", err)
 			continue
 		}
 		return participantMode
@@ -154,17 +141,4 @@ func (s *standby) syncCluster(nodes map[string]bool) (map[string]bool, error) {
 		return nn, nil
 	}
 	return nil, fmt.Errorf("unreachable cluster")
-}
-
-func (s *standby) joinByAddr(addr string) error {
-	info := &context{
-		MinVersion: store.MinVersion(),
-		MaxVersion: store.MaxVersion(),
-		ClientURL:  s.pubAddr,
-		PeerURL:    s.raftPubAddr,
-	}
-	if err := s.client.AddMachine(s.leaderAddr, fmt.Sprint(s.id), info); err != nil {
-		return err
-	}
-	return nil
 }
