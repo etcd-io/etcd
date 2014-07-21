@@ -4,11 +4,9 @@ import (
 	"crypto/tls"
 	"fmt"
 	"log"
-	"math/rand"
 	"net"
 	"net/http"
 	"os"
-	"time"
 
 	"github.com/coreos/etcd/config"
 	"github.com/coreos/etcd/etcd"
@@ -28,7 +26,7 @@ func main() {
 		os.Exit(0)
 	}
 
-	e := etcd.New(config, genId())
+	e := etcd.New(config)
 	go e.Run()
 
 	corsInfo, err := ehttp.NewCORSInfo(config.CorsOrigins)
@@ -40,11 +38,6 @@ func main() {
 		serve("raft", config.Peer.BindAddr, config.PeerTLSInfo(), corsInfo, e.RaftHandler())
 	}()
 	serve("etcd", config.BindAddr, config.EtcdTLSInfo(), corsInfo, e)
-}
-
-func genId() int64 {
-	r := rand.New(rand.NewSource(int64(time.Now().Nanosecond())))
-	return r.Int63()
 }
 
 func serve(who string, addr string, tinfo *config.TLSInfo, cinfo *ehttp.CORSInfo, handler http.Handler) {
