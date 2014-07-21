@@ -178,13 +178,13 @@ func (s *StandbyServer) redirectRequests(w http.ResponseWriter, r *http.Request)
 // monitorCluster assumes that the machine has tried to join the cluster and
 // failed, so it waits for the interval at the beginning.
 func (s *StandbyServer) monitorCluster() {
+	ticker := time.NewTicker(time.Duration(int64(s.SyncInterval * float64(time.Second))))
+	defer ticker.Stop()
 	for {
-		timer := time.NewTimer(time.Duration(int64(s.SyncInterval * float64(time.Second))))
-		defer timer.Stop()
 		select {
 		case <-s.closeChan:
 			return
-		case <-timer.C:
+		case <-ticker.C:
 		}
 
 		if err := s.syncCluster(nil); err != nil {
