@@ -772,9 +772,9 @@ func (s *PeerServer) startRoutine(f func()) {
 func (s *PeerServer) monitorSnapshot() {
 	for {
 		timer := time.NewTimer(s.snapConf.checkingInterval)
-		defer timer.Stop()
 		select {
 		case <-s.closeChan:
+			timer.Stop()
 			return
 		case <-timer.C:
 		}
@@ -807,6 +807,8 @@ func (s *PeerServer) monitorSync() {
 // monitorTimeoutThreshold groups timeout threshold events together and prints
 // them as a single log line.
 func (s *PeerServer) monitorTimeoutThreshold() {
+	ticker := time.NewTicker(ThresholdMonitorTimeout)
+	defer ticker.Stop()
 	for {
 		select {
 		case <-s.closeChan:
@@ -815,12 +817,10 @@ func (s *PeerServer) monitorTimeoutThreshold() {
 			log.Infof("%s: warning: heartbeat near election timeout: %v", s.Config.Name, value)
 		}
 
-		timer := time.NewTimer(ThresholdMonitorTimeout)
-		defer timer.Stop()
 		select {
 		case <-s.closeChan:
 			return
-		case <-timer.C:
+		case <-ticker.C:
 		}
 	}
 }
@@ -828,13 +828,13 @@ func (s *PeerServer) monitorTimeoutThreshold() {
 // monitorActiveSize has the leader periodically check the status of cluster
 // nodes and swaps them out for standbys as needed.
 func (s *PeerServer) monitorActiveSize() {
+	ticker := time.NewTicker(ActiveMonitorTimeout)
+	defer ticker.Stop()
 	for {
-		timer := time.NewTimer(ActiveMonitorTimeout)
-		defer timer.Stop()
 		select {
 		case <-s.closeChan:
 			return
-		case <-timer.C:
+		case <-ticker.C:
 		}
 
 		// Ignore while this peer is not a leader.
@@ -864,13 +864,13 @@ func (s *PeerServer) monitorActiveSize() {
 
 // monitorPeerActivity has the leader periodically for dead nodes and demotes them.
 func (s *PeerServer) monitorPeerActivity() {
+	ticker := time.NewTicker(PeerActivityMonitorTimeout)
+	defer ticker.Stop()
 	for {
-		timer := time.NewTimer(PeerActivityMonitorTimeout)
-		defer timer.Stop()
 		select {
 		case <-s.closeChan:
 			return
-		case <-timer.C:
+		case <-ticker.C:
 		}
 
 		// Ignore while this peer is not a leader.
