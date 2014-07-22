@@ -280,68 +280,6 @@ func TestBecomeStandby(t *testing.T) {
 	afterTest(t)
 }
 
-// TODO(yichengq): cannot handle previous msgDenial correctly now
-func TestModeSwitch(t *testing.T) {
-	t.Skip("not passed")
-	size := 5
-	round := 3
-
-	for i := 0; i < size; i++ {
-		es, hs := buildCluster(size, false)
-		waitCluster(t, es)
-
-		config := config.NewClusterConfig()
-		config.SyncInterval = 0
-		id := int64(i)
-		for j := 0; j < round; j++ {
-			lead, _ := waitActiveLeader(es)
-			// cluster only demotes follower
-			if lead == id {
-				continue
-			}
-
-			config.ActiveSize = size - 1
-			if err := es[lead].p.setClusterConfig(config); err != nil {
-				t.Fatalf("#%d: setClusterConfig err = %v", i, err)
-			}
-			if err := es[lead].p.remove(id); err != nil {
-				t.Fatalf("#%d: remove err = %v", i, err)
-			}
-
-			waitMode(standbyMode, es[i])
-
-			for k := 0; k < 4; k++ {
-				if es[i].s.leader != noneId {
-					break
-				}
-				time.Sleep(20 * time.Millisecond)
-			}
-			if g := es[i].s.leader; g != lead {
-				t.Errorf("#%d: lead = %d, want %d", i, g, lead)
-			}
-
-			config.ActiveSize = size
-			if err := es[lead].p.setClusterConfig(config); err != nil {
-				t.Fatalf("#%d: setClusterConfig err = %v", i, err)
-			}
-
-			waitMode(participantMode, es[i])
-
-			if err := checkParticipant(i, es); err != nil {
-				t.Errorf("#%d: check alive err = %v", i, err)
-			}
-		}
-
-		for i := range hs {
-			es[len(hs)-i-1].Stop()
-		}
-		for i := range hs {
-			hs[len(hs)-i-1].Close()
-		}
-	}
-	afterTest(t)
-}
-
 func buildCluster(number int, tls bool) ([]*Server, []*httptest.Server) {
 	bootstrapper := 0
 	es := make([]*Server, number)
