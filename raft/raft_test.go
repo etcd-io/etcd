@@ -897,7 +897,7 @@ func TestProvideSnap(t *testing.T) {
 	// node 1 needs a snapshot
 	sm.ins[1].next = sm.log.offset
 
-	sm.Step(Message{From: 0, To: 0, Type: msgBeat})
+	sm.Step(Message{From: 1, To: 0, Type: msgAppResp, Index: -1})
 	msgs = sm.Msgs()
 	if len(msgs) != 1 {
 		t.Errorf("len(msgs) = %d, want 1", len(msgs))

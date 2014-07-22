@@ -196,6 +196,20 @@ func (sm *stateMachine) sendAppend(to int64) {
 	sm.send(m)
 }
 
+// sendHeartbeat sends RRPC, without entries to the given peer.
+func (sm *stateMachine) sendHeartbeat(to int64) {
+	in := sm.ins[to]
+	index := max(in.next-1, sm.log.lastIndex())
+	m := Message{
+		To:      to,
+		Type:    msgApp,
+		Index:   index,
+		LogTerm: sm.log.term(index),
+		Commit:  sm.log.committed,
+	}
+	sm.send(m)
+}
+
 // bcastAppend sends RRPC, with entries to all peers that are not up-to-date according to sm.mis.
 func (sm *stateMachine) bcastAppend() {
 	for i := range sm.ins {
@@ -203,6 +217,16 @@ func (sm *stateMachine) bcastAppend() {
 			continue
 		}
 		sm.sendAppend(i)
+	}
+}
+
+// bcastHeartbeat sends RRPC, without entries to all the peers.
+func (sm *stateMachine) bcastHeartbeat() {
+	for i := range sm.ins {
+		if i == sm.id {
+			continue
+		}
+		sm.sendHeartbeat(i)
 	}
 }
 
@@ -359,7 +383,7 @@ type stepFunc func(sm *stateMachine, m Message) bool
 func stepLeader(sm *stateMachine, m Message) bool {
 	switch m.Type {
 	case msgBeat:
-		sm.bcastAppend()
+		sm.bcastHeartbeat()
 	case msgProp:
 		if len(m.Entries) != 1 {
 			panic("unexpected length(entries) of a msgProp")
