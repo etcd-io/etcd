@@ -394,27 +394,13 @@ func initTestServer(c *config.Config, id int64, tls bool) (e *Server, h *httptes
 
 func waitCluster(t *testing.T, es []*Server) {
 	n := len(es)
-	for i, e := range es {
-		var index uint64
+	for _, e := range es {
 		for k := 0; k < n; k++ {
-			index++
-			w, err := e.p.Watch(v2machineKVPrefix, true, false, index)
+			w, err := e.p.Watch(v2machineKVPrefix+fmt.Sprintf("/%d", es[k].id), true, false, 1)
 			if err != nil {
 				panic(err)
 			}
-			v := <-w.EventChan
-			// join command may appear several times due to retry
-			// when timeout
-			if k > 0 {
-				pw := fmt.Sprintf("%s/%d", v2machineKVPrefix, k-1)
-				if v.Node.Key == pw {
-					continue
-				}
-			}
-			ww := fmt.Sprintf("%s/%d", v2machineKVPrefix, k)
-			if v.Node.Key != ww {
-				t.Errorf("#%d path = %v, want %v", i, v.Node.Key, ww)
-			}
+			<-w.EventChan
 		}
 	}
 
