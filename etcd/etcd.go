@@ -18,8 +18,10 @@ package etcd
 
 import (
 	"crypto/tls"
+	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"sync"
 	"time"
 
@@ -81,7 +83,7 @@ func New(c *config.Config) *Server {
 		mode: atomicInt(stopMode),
 
 		client:  newClient(tc),
-		peerHub: newPeerHub(c.Peers, client),
+		peerHub: newPeerHub(client),
 
 		stopc: make(chan struct{}),
 	}
@@ -136,7 +138,24 @@ func (s *Server) ServeRaftHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *Server) Run() {
+func (s *Server) Run() error {
+	var d *discoverer
+	var seeds []string
+	durl := s.config.Discovery
+	if durl != "" {
+		u, err := url.Parse(durl)
+		if err != nil {
+			return fmt.Errorf("bad discovery URL error: %v", err)
+		}
+		d = newDiscoverer(u, fmt.Sprint(s.id), s.raftPubAddr)
+		if seeds, err = d.discover(); err != nil {
+			return err
+		}
+	} else {
+		seeds = s.config.Peers
+	}
+	s.peerHub.setSeeds(seeds)
+
 	next := participantMode
 	for {
 		s.mu.Lock()
@@ -146,9 +165,16 @@ func (s *Server) Run() {
 		switch next {
 		case participantMode:
 			s.p = newParticipant(s.id, s.pubAddr, s.raftPubAddr, s.client, s.peerHub, s.tickDuration)
+			dStopc := make(chan struct{})
+			if d != nil {
+				go d.heartbeat(dStopc)
+			}
 			s.mode.Set(participantMode)
 			s.mu.Unlock()
 			next = s.p.run()
+			if d != nil {
+				close(dStopc)
+			}
 		case standbyMode:
 			s.s = newStandby(s.client, s.peerHub)
 			s.mode.Set(standbyMode)
@@ -158,7 +184,7 @@ func (s *Server) Run() {
 			s.mode.Set(stopMode)
 			s.mu.Unlock()
 			s.stopc <- struct{}{}
-			return
+			return nil
 		default:
 			panic("unsupport mode")
 		}
