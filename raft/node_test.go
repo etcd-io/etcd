@@ -54,7 +54,7 @@ func TestTickMsgBeat(t *testing.T) {
 
 	called := 0
 	for _, m := range n.Msgs() {
-		if m.Type == msgApp {
+		if m.Type == msgApp && len(m.Entries) == 0 {
 			called++
 		}
 	}
