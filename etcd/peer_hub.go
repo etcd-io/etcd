@@ -45,16 +45,19 @@ type peerHub struct {
 	c       *http.Client
 }
 
-func newPeerHub(seeds []string, c *http.Client) *peerHub {
+func newPeerHub(c *http.Client) *peerHub {
 	h := &peerHub{
 		peers: make(map[int64]*peer),
 		seeds: make(map[string]bool),
 		c:     c,
 	}
+	return h
+}
+
+func (h *peerHub) setSeeds(seeds []string) {
 	for _, seed := range seeds {
 		h.seeds[seed] = true
 	}
-	return h
 }
 
 func (h *peerHub) getSeeds() map[string]bool {
