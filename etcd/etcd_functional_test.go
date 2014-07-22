@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/config"
+	"github.com/coreos/etcd/store"
 )
 
 func TestKillLeader(t *testing.T) {
@@ -113,6 +114,25 @@ func TestJoinThroughFollower(t *testing.T) {
 		}
 	}
 	afterTest(t)
+}
+
+func BenchmarkEndToEndSet(b *testing.B) {
+	es, hs := buildCluster(3, false)
+	waitLeader(es)
+	b.ResetTimer()
+	for n := 0; n < b.N; n++ {
+		_, err := es[0].p.Set("foo", false, "bar", store.Permanent)
+		if err != nil {
+			panic("unexpect error")
+		}
+	}
+	b.StopTimer()
+	for i := range hs {
+		es[len(hs)-i-1].Stop()
+	}
+	for i := range hs {
+		hs[len(hs)-i-1].Close()
+	}
 }
 
 type leadterm struct {
