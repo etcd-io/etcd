@@ -35,91 +35,6 @@ func (g *garbageHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	g.success = true
 }
 
-// TestDiscoveryDownNoBackupPeers ensures that etcd stops if it is started with a
-// bad discovery URL and no backups.
-func TestDiscoveryDownNoBackupPeers(t *testing.T) {
-	g := garbageHandler{t: t}
-	ts := httptest.NewServer(&g)
-	defer ts.Close()
-
-	discover := ts.URL + "/v2/keys/_etcd/registry/1"
-	proc, err := startServer([]string{"-discovery", discover})
-
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-	defer stopServer(proc)
-
-	client := http.Client{}
-	err = assertServerNotUp(client, "http")
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-
-	g.Lock()
-	defer g.Unlock()
-	if !g.success {
-		t.Fatal("Discovery server never called")
-	}
-}
-
-// TestDiscoveryDownWithBackupPeers ensures that etcd runs if it is started with a
-// bad discovery URL and a peer list.
-func TestDiscoveryDownWithBackupPeers(t *testing.T) {
-	etcdtest.RunServer(func(s *server.Server) {
-		g := garbageHandler{t: t}
-		ts := httptest.NewServer(&g)
-		defer ts.Close()
-
-		discover := ts.URL + "/v2/keys/_etcd/registry/1"
-		u, ok := s.PeerHost("ETCDTEST")
-		if !ok {
-			t.Fatalf("Couldn't find the URL")
-		}
-		proc, err := startServer([]string{"-discovery", discover, "-peers", u})
-
-		if err != nil {
-			t.Fatal(err.Error())
-		}
-		defer stopServer(proc)
-
-		client := http.Client{}
-		err = assertServerFunctional(client, "http")
-		if err != nil {
-			t.Fatal(err.Error())
-		}
-
-		g.Lock()
-		defer g.Unlock()
-		if !g.success {
-			t.Fatal("Discovery server never called")
-		}
-	})
-}
-
-// TestDiscoveryNoWithBackupPeers ensures that etcd runs if it is started with
-// no discovery URL and a peer list.
-func TestDiscoveryNoWithBackupPeers(t *testing.T) {
-	etcdtest.RunServer(func(s *server.Server) {
-		u, ok := s.PeerHost("ETCDTEST")
-		if !ok {
-			t.Fatalf("Couldn't find the URL")
-		}
-		proc, err := startServer([]string{"-peers", u})
-
-		if err != nil {
-			t.Fatal(err.Error())
-		}
-		defer stopServer(proc)
-
-		client := http.Client{}
-		err = assertServerFunctional(client, "http")
-		if err != nil {
-			t.Fatal(err.Error())
-		}
-	})
-}
-
 // TestDiscoveryDownNoBackupPeersWithDataDir ensures that etcd runs if it is
 // started with a bad discovery URL, no backups and valid data dir.
 func TestDiscoveryDownNoBackupPeersWithDataDir(t *testing.T) {
@@ -173,47 +88,6 @@ func TestDiscoveryDownNoBackupPeersWithDataDir(t *testing.T) {
 	})
 }
 
-// TestDiscoveryFirstPeer ensures that etcd starts as the leader if it
-// registers as the first peer.
-func TestDiscoveryFirstPeer(t *testing.T) {
-	etcdtest.RunServer(func(s *server.Server) {
-		proc, err := startServer([]string{"-discovery", s.URL() + "/v2/keys/_etcd/registry/2"})
-		if err != nil {
-			t.Fatal(err.Error())
-		}
-		defer stopServer(proc)
-
-		client := http.Client{}
-		err = assertServerFunctional(client, "http")
-		if err != nil {
-			t.Fatal(err.Error())
-		}
-	})
-}
-
-// TestDiscoverySecondPeerFirstDown ensures that etcd stops if it is started with a
-// correct discovery URL but no active machines are found.
-func TestDiscoverySecondPeerFirstDown(t *testing.T) {
-	etcdtest.RunServer(func(s *server.Server) {
-		v := url.Values{}
-		v.Set("value", "started")
-		resp, err := etcdtest.PutForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/_etcd/registry/2/_state"), v)
-		assert.Equal(t, resp.StatusCode, http.StatusCreated)
-
-		proc, err := startServer([]string{"-discovery", s.URL() + "/v2/keys/_etcd/registry/2"})
-		if err != nil {
-			t.Fatal(err.Error())
-		}
-		defer stopServer(proc)
-
-		client := http.Client{}
-		err = assertServerNotUp(client, "http")
-		if err != nil {
-			t.Fatal(err.Error())
-		}
-	})
-}
-
 // TestDiscoverySecondPeerFirstNoResponse ensures that if the first etcd
 // machine stops after heartbeating that the second machine fails too.
 func TestDiscoverySecondPeerFirstNoResponse(t *testing.T) {
@@ -241,61 +115,6 @@ func TestDiscoverySecondPeerFirstNoResponse(t *testing.T) {
 		client := http.Client{}
 		_, err = client.Get("/")
 		if err != nil && strings.Contains(err.Error(), "connection reset by peer") {
-			t.Fatal(err.Error())
-		}
-	})
-}
-
-// TestDiscoverySecondPeerUp ensures that a second peer joining a discovery
-// cluster works.
-func TestDiscoverySecondPeerUp(t *testing.T) {
-	etcdtest.RunServer(func(s *server.Server) {
-		v := url.Values{}
-		v.Set("value", "started")
-		resp, err := etcdtest.PutForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/_etcd/registry/3/_state"), v)
-		assert.Equal(t, resp.StatusCode, http.StatusCreated)
-
-		u, ok := s.PeerURL("ETCDTEST")
-		if !ok {
-			t.Fatalf("Couldn't find the URL")
-		}
-
-		wc := goetcd.NewClient([]string{s.URL()})
-		testResp, err := wc.Set("test", "0", 0)
-
-		if err != nil {
-			t.Fatalf("Couldn't set a test key on the leader %v", err)
-		}
-
-		v = url.Values{}
-		v.Set("value", u)
-		resp, err = etcdtest.PutForm(fmt.Sprintf("%s%s", s.URL(), "/v2/keys/_etcd/registry/3/ETCDTEST"), v)
-		assert.Equal(t, resp.StatusCode, http.StatusCreated)
-
-		proc, err := startServer([]string{"-discovery", s.URL() + "/v2/keys/_etcd/registry/3"})
-		if err != nil {
-			t.Fatal(err.Error())
-		}
-		defer stopServer(proc)
-
-		watch := fmt.Sprintf("%s%s%d", s.URL(), "/v2/keys/_etcd/registry/3/node1?wait=true&waitIndex=", testResp.EtcdIndex)
-		resp, err = http.Get(watch)
-		if err != nil {
-			t.Fatal(err.Error())
-		}
-
-		// TODO(bp): need to have a better way of knowing a machine is up
-		for i := 0; i < 10; i++ {
-			time.Sleep(1 * time.Second)
-
-			etcdc := goetcd.NewClient(nil)
-			_, err = etcdc.Set("foobar", "baz", 0)
-			if err == nil {
-				break
-			}
-		}
-
-		if err != nil {
 			t.Fatal(err.Error())
 		}
 	})

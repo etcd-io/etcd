@@ -167,13 +167,13 @@ func (p *participant) run() int64 {
 		case <-v2SyncTicker.C:
 			node.Sync()
 		case <-p.stopc:
-			log.Printf("Participant %d stopped\n", p.id)
+			log.Printf("Participant %x stopped\n", p.id)
 			return stopMode
 		}
 		p.apply(node.Next())
 		p.send(node.Msgs())
 		if node.IsRemoved() {
-			log.Printf("Participant %d return\n", p.id)
+			log.Printf("Participant %x return\n", p.id)
 			p.stop()
 			return standbyMode
 		}
