@@ -80,9 +80,9 @@ func TestResetElapse(t *testing.T) {
 	for i, tt := range tests {
 		n := New(0, defaultHeartbeat, defaultElection)
 		n.sm = newStateMachine(0, []int64{0, 1, 2})
-		n.sm.log.append(0, Entry{Type: Normal, Term: 1})
+		n.sm.raftLog.append(0, Entry{Type: Normal, Term: 1})
 		n.sm.term = 2
-		n.sm.log.committed = 1
+		n.sm.raftLog.committed = 1
 
 		n.Tick()
 		if n.elapsed != 1 {
@@ -171,8 +171,8 @@ func TestDenial(t *testing.T) {
 		n := dictate(New(0, defaultHeartbeat, defaultElection))
 		n.Next()
 		n.Msgs()
-		n.sm.log.append(n.sm.log.committed, append(logents, tt.ent)...)
-		n.sm.log.committed += int64(len(logents) + 1)
+		n.sm.raftLog.append(n.sm.raftLog.committed, append(logents, tt.ent)...)
+		n.sm.raftLog.committed += int64(len(logents) + 1)
 		n.Next()
 
 		for id, denied := range tt.wdenied {

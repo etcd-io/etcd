@@ -3,7 +3,7 @@ package raft
 import (
 	"encoding/binary"
 	"encoding/json"
-	golog "log"
+	"log"
 	"math/rand"
 	"time"
 )
@@ -59,7 +59,7 @@ func (n *Node) Index() int64 { return n.sm.index.Get() }
 
 func (n *Node) Term() int64 { return n.sm.term.Get() }
 
-func (n *Node) Applied() int64 { return n.sm.log.applied }
+func (n *Node) Applied() int64 { return n.sm.raftLog.applied }
 
 func (n *Node) HasLeader() bool { return n.Leader() != none }
 
@@ -100,7 +100,7 @@ func (n *Node) Step(m Message) bool {
 		return false
 	}
 	if n.ClusterId() != none && m.ClusterId != none && m.ClusterId != n.ClusterId() {
-		golog.Printf("denied a message from node %d, cluster %d. accept cluster: %d\n", m.From, m.ClusterId, n.ClusterId())
+		log.Printf("denied a message from node %d, cluster %d. accept cluster: %d\n", m.From, m.ClusterId, n.ClusterId())
 		n.sm.send(Message{To: m.From, ClusterId: n.ClusterId(), Type: msgDenied})
 		return true
 	}
@@ -151,7 +151,7 @@ func (n *Node) Next() []Entry {
 		case AddNode:
 			c := new(Config)
 			if err := json.Unmarshal(ents[i].Data, c); err != nil {
-				golog.Println(err)
+				log.Println(err)
 				continue
 			}
 			n.sm.addNode(c.NodeId)
@@ -159,7 +159,7 @@ func (n *Node) Next() []Entry {
 		case RemoveNode:
 			c := new(Config)
 			if err := json.Unmarshal(ents[i].Data, c); err != nil {
-				golog.Println(err)
+				log.Println(err)
 				continue
 			}
 			n.sm.removeNode(c.NodeId)
