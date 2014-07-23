@@ -71,30 +71,6 @@ func TestBadDiscoveryService(t *testing.T) {
 	}
 }
 
-func TestRunByAdvisedPeers(t *testing.T) {
-	es, hs := buildCluster(1, false)
-	waitCluster(t, es)
-
-	c := config.New()
-	c.Peers = []string{hs[0].URL}
-	e, h, err := buildServer(c, bootstrapId)
-	if err != nil {
-		t.Fatalf("build server err = %v, want nil", err)
-	}
-	w := es[0].id
-	if g, _ := waitLeader(append(es, e)); g != w {
-		t.Errorf("leader = %d, want %d", g, w)
-	}
-
-	destroyServer(e, h)
-	for i := range hs {
-		es[len(hs)-i-1].Stop()
-	}
-	for i := range hs {
-		hs[len(hs)-i-1].Close()
-	}
-}
-
 func TestBadDiscoveryServiceWithAdvisedPeers(t *testing.T) {
 	g := garbageHandler{t: t}
 	ts := httptest.NewServer(&g)
@@ -132,6 +108,30 @@ func TestBootstrapByDiscoveryService(t *testing.T) {
 
 	destroyServer(e, h)
 	destroyServer(de, dh)
+}
+
+func TestRunByAdvisedPeers(t *testing.T) {
+	es, hs := buildCluster(1, false)
+	waitCluster(t, es)
+
+	c := config.New()
+	c.Peers = []string{hs[0].URL}
+	e, h, err := buildServer(c, bootstrapId)
+	if err != nil {
+		t.Fatalf("build server err = %v, want nil", err)
+	}
+	w := es[0].id
+	if g, _ := waitLeader(append(es, e)); g != w {
+		t.Errorf("leader = %d, want %d", g, w)
+	}
+
+	destroyServer(e, h)
+	for i := range hs {
+		es[len(hs)-i-1].Stop()
+	}
+	for i := range hs {
+		hs[len(hs)-i-1].Close()
+	}
 }
 
 func TestRunByDiscoveryService(t *testing.T) {
