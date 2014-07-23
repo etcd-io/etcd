@@ -121,13 +121,13 @@ func newParticipant(id int64, pubAddr string, raftPubAddr string, client *v2clie
 func (p *participant) run() int64 {
 	seeds := p.peerHub.getSeeds()
 	if len(seeds) == 0 {
-		log.Printf("participant.run id=%x action=bootstrap\n", p.id)
+		log.Printf("id=%x participant.run action=bootstrap\n", p.id)
 		p.node.Campaign()
 		p.node.InitCluster(genId())
 		p.node.Add(p.id, p.raftPubAddr, []byte(p.pubAddr))
 		p.apply(p.node.Next())
 	} else {
-		log.Printf("participant.run id=%x action=join seeds=\"%v\"\n", p.id, seeds)
+		log.Printf("id=%x participant.run action=join seeds=\"%v\"\n", p.id, seeds)
 		p.join()
 	}
 
@@ -167,14 +167,14 @@ func (p *participant) run() int64 {
 		case <-v2SyncTicker.C:
 			node.Sync()
 		case <-p.stopc:
-			log.Printf("participant.stop id=%x\n", p.id)
+			log.Printf("id=%x participant.stop\n", p.id)
 			return stopMode
 		}
 		p.apply(node.Next())
 		p.send(node.Msgs())
 		if node.IsRemoved() {
 			p.stop()
-			log.Printf("participant.end id=%x\n", p.id)
+			log.Printf("id=%x participant.end\n", p.id)
 			return standbyMode
 		}
 	}
@@ -195,7 +195,7 @@ func (p *participant) raftHandler() http.Handler {
 }
 
 func (p *participant) add(id int64, raftPubAddr string, pubAddr string) error {
-	log.Printf("participant.add id=%x nodeId=%x raftPubAddr=%s pubAddr=%s\n", p.id, id, raftPubAddr, pubAddr)
+	log.Printf("id=%x participant.add nodeId=%x raftPubAddr=%s pubAddr=%s\n", p.id, id, raftPubAddr, pubAddr)
 	pp := path.Join(v2machineKVPrefix, fmt.Sprint(id))
 
 	_, err := p.Get(pp, false, false)
@@ -203,13 +203,13 @@ func (p *participant) add(id int64, raftPubAddr string, pubAddr string) error {
 		return nil
 	}
 	if v, ok := err.(*etcdErr.Error); !ok || v.ErrorCode != etcdErr.EcodeKeyNotFound {
-		log.Printf("participant.add id=%x getErr=\"%v\"\n", p.id, err)
+		log.Printf("id=%x participant.add getErr=\"%v\"\n", p.id, err)
 		return err
 	}
 
 	w, err := p.Watch(pp, true, false, 0)
 	if err != nil {
-		log.Printf("participant.add id=%x watchErr=\"%v\"\n", p.id, err)
+		log.Printf("id=%x participant.add watchErr=\"%v\"\n", p.id, err)
 		return tmpErr
 	}
 
@@ -217,7 +217,7 @@ func (p *participant) add(id int64, raftPubAddr string, pubAddr string) error {
 	case p.addNodeC <- raft.Config{NodeId: id, Addr: raftPubAddr, Context: []byte(pubAddr)}:
 	default:
 		w.Remove()
-		log.Printf("participant.add id=%x proposeErr=\"unable to send out addNode proposal\"\n", p.id)
+		log.Printf("id=%x participant.add proposeErr=\"unable to send out addNode proposal\"\n", p.id)
 		return tmpErr
 	}
 
@@ -226,11 +226,11 @@ func (p *participant) add(id int64, raftPubAddr string, pubAddr string) error {
 		if v.Action == store.Set {
 			return nil
 		}
-		log.Printf("participant.add id=%x watchErr=\"unexpected action\" action=%s\n", p.id, v.Action)
+		log.Printf("id=%x participant.add watchErr=\"unexpected action\" action=%s\n", p.id, v.Action)
 		return tmpErr
 	case <-time.After(6 * defaultHeartbeat * p.tickDuration):
 		w.Remove()
-		log.Printf("participant.add id=%x watchErr=timeout\n", p.id)
+		log.Printf("id=%x participant.add watchErr=timeout\n", p.id)
 		return tmpErr
 	case <-p.stopc:
 		return stopErr
@@ -238,7 +238,7 @@ func (p *participant) add(id int64, raftPubAddr string, pubAddr string) error {
 }
 
 func (p *participant) remove(id int64) error {
-	log.Printf("participant.remove id=%x nodeId=%x\n", p.id, id)
+	log.Printf("id=%x participant.remove nodeId=%x\n", p.id, id)
 	pp := path.Join(v2machineKVPrefix, fmt.Sprint(id))
 
 	v, err := p.Get(pp, false, false)
@@ -249,7 +249,7 @@ func (p *participant) remove(id int64) error {
 	select {
 	case p.removeNodeC <- raft.Config{NodeId: id}:
 	default:
-		log.Printf("participant.remove id=%x proposeErr=\"unable to send out removeNode proposal\"\n", p.id)
+		log.Printf("id=%x participant.remove proposeErr=\"unable to send out removeNode proposal\"\n", p.id)
 		return tmpErr
 	}
 
@@ -257,7 +257,7 @@ func (p *participant) remove(id int64) error {
 	// removal target is self
 	w, err := p.Watch(pp, true, false, v.Index()+1)
 	if err != nil {
-		log.Printf("participant.remove id=%x watchErr=\"%v\"\n", p.id, err)
+		log.Printf("id=%x participant.remove watchErr=\"%v\"\n", p.id, err)
 		return tmpErr
 	}
 
@@ -266,11 +266,11 @@ func (p *participant) remove(id int64) error {
 		if v.Action == store.Delete {
 			return nil
 		}
-		log.Printf("participant.remove id=%x watchErr=\"unexpected action\" action=%s\n", p.id, v.Action)
+		log.Printf("id=%x participant.remove watchErr=\"unexpected action\" action=%s\n", p.id, v.Action)
 		return tmpErr
 	case <-time.After(6 * defaultHeartbeat * p.tickDuration):
 		w.Remove()
-		log.Printf("participant.remove id=%x watchErr=timeout\n", p.id)
+		log.Printf("id=%x participant.remove watchErr=timeout\n", p.id)
 		return tmpErr
 	case <-p.stopc:
 		return stopErr
@@ -289,36 +289,36 @@ func (p *participant) apply(ents []raft.Entry) {
 			p.v2apply(offset+int64(i), ent)
 		case raft.ClusterInit:
 			p.clusterId = p.node.ClusterId()
-			log.Printf("participant.cluster.setId id=%x clusterId=%x\n", p.id, p.clusterId)
+			log.Printf("id=%x participant.cluster.setId clusterId=%x\n", p.id, p.clusterId)
 		case raft.AddNode:
 			cfg := new(raft.Config)
 			if err := json.Unmarshal(ent.Data, cfg); err != nil {
-				log.Printf("participant.cluster.addNode id=%x UnmarshalErr=\"%v\"\n", p.id, err)
+				log.Printf("id=%x participant.cluster.addNode unmarshalErr=\"%v\"\n", p.id, err)
 				break
 			}
 			peer, err := p.peerHub.add(cfg.NodeId, cfg.Addr)
 			if err != nil {
-				log.Printf("participant.cluster.addNode id=%x peerAddErr=\"%v\"\n", p.id, err)
+				log.Printf("id=%x participant.cluster.addNode peerAddErr=\"%v\"\n", p.id, err)
 				break
 			}
 			peer.participate()
 			pp := path.Join(v2machineKVPrefix, fmt.Sprint(cfg.NodeId))
 			p.Store.Set(pp, false, fmt.Sprintf("raft=%v&etcd=%v", cfg.Addr, string(cfg.Context)), store.Permanent)
-			log.Printf("participant.cluster.addNode id=%x nodeId=%x addr=%s context=%s\n", p.id, cfg.NodeId, cfg.Addr, cfg.Context)
+			log.Printf("id=%x participant.cluster.addNode nodeId=%x addr=%s context=%s\n", p.id, cfg.NodeId, cfg.Addr, cfg.Context)
 		case raft.RemoveNode:
 			cfg := new(raft.Config)
 			if err := json.Unmarshal(ent.Data, cfg); err != nil {
-				log.Printf("participant.cluster.removeNode id=%x UnmarshalErr=\"%v\"\n", p.id, err)
+				log.Printf("id=%x participant.cluster.removeNode unmarshalErr=\"%v\"\n", p.id, err)
 				break
 			}
 			peer, err := p.peerHub.peer(cfg.NodeId)
 			if err != nil {
-				log.Fatal("participant.apply getPeerErr=\"%v\"", err)
+				log.Fatal("id=%x participant.apply getPeerErr=\"%v\"", p.id, err)
 			}
 			peer.idle()
 			pp := path.Join(v2machineKVPrefix, fmt.Sprint(cfg.NodeId))
 			p.Store.Delete(pp, false, false)
-			log.Printf("participant.cluster.removeNode id=%x nodeId=%x\n", p.id, cfg.NodeId)
+			log.Printf("id=%x participant.cluster.removeNode nodeId=%x\n", p.id, cfg.NodeId)
 		default:
 			panic("unimplemented")
 		}
@@ -328,7 +328,7 @@ func (p *participant) apply(ents []raft.Entry) {
 func (p *participant) send(msgs []raft.Message) {
 	for i := range msgs {
 		if err := p.peerHub.send(msgs[i]); err != nil {
-			log.Printf("participant.send id=%x err=\"%v\"\n", p.id, err)
+			log.Printf("id=%x participant.send err=\"%v\"\n", p.id, err)
 		}
 	}
 }
@@ -346,7 +346,7 @@ func (p *participant) join() {
 			if err := p.client.AddMachine(seed, fmt.Sprint(p.id), info); err == nil {
 				return
 			} else {
-				log.Printf("participant.join id=%x addMachineErr=\"%v\"\n", p.id, err)
+				log.Printf("id=%x participant.join addMachineErr=\"%v\"\n", p.id, err)
 			}
 		}
 		time.Sleep(100 * time.Millisecond)
