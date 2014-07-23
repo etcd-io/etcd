@@ -54,7 +54,6 @@ func (g *garbageHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func TestBadDiscoveryService(t *testing.T) {
 	g := garbageHandler{t: t}
 	ts := httptest.NewServer(&g)
-	defer ts.Close()
 
 	c := config.New()
 	c.Discovery = ts.URL + "/v2/keys/_etcd/registry/1"
@@ -69,12 +68,13 @@ func TestBadDiscoveryService(t *testing.T) {
 	if !g.success {
 		t.Fatal("Discovery server never called")
 	}
+	ts.Close()
+	afterTest(t)
 }
 
 func TestBadDiscoveryServiceWithAdvisedPeers(t *testing.T) {
 	g := garbageHandler{t: t}
 	ts := httptest.NewServer(&g)
-	defer ts.Close()
 
 	es, hs := buildCluster(1, false)
 	waitCluster(t, es)
@@ -94,6 +94,8 @@ func TestBadDiscoveryServiceWithAdvisedPeers(t *testing.T) {
 	for i := range hs {
 		hs[len(hs)-i-1].Close()
 	}
+	ts.Close()
+	afterTest(t)
 }
 
 func TestBootstrapByDiscoveryService(t *testing.T) {
@@ -108,6 +110,7 @@ func TestBootstrapByDiscoveryService(t *testing.T) {
 
 	destroyServer(e, h)
 	destroyServer(de, dh)
+	afterTest(t)
 }
 
 func TestRunByAdvisedPeers(t *testing.T) {
@@ -132,6 +135,7 @@ func TestRunByAdvisedPeers(t *testing.T) {
 	for i := range hs {
 		hs[len(hs)-i-1].Close()
 	}
+	afterTest(t)
 }
 
 func TestRunByDiscoveryService(t *testing.T) {
@@ -144,11 +148,14 @@ func TestRunByDiscoveryService(t *testing.T) {
 	if g := resp.StatusCode; g != http.StatusCreated {
 		t.Fatalf("put status = %d, want %d", g, http.StatusCreated)
 	}
+	resp.Body.Close()
+
 	v.Set("value", dh.URL)
 	resp, _ = tc.PutForm(fmt.Sprintf("%s%s%d", dh.URL, "/v2/keys/_etcd/registry/1/", de.id), v)
 	if g := resp.StatusCode; g != http.StatusCreated {
 		t.Fatalf("put status = %d, want %d", g, http.StatusCreated)
 	}
+	resp.Body.Close()
 
 	c := config.New()
 	c.Discovery = dh.URL + "/v2/keys/_etcd/registry/1"
@@ -163,6 +170,7 @@ func TestRunByDiscoveryService(t *testing.T) {
 
 	destroyServer(e, h)
 	destroyServer(de, dh)
+	afterTest(t)
 }
 
 func buildServer(c *config.Config, id int64) (e *Server, h *httptest.Server, err error) {
@@ -173,6 +181,7 @@ func buildServer(c *config.Config, id int64) (e *Server, h *httptest.Server, err
 			break
 		}
 		if err != nil {
+			destroyServer(e, h)
 			return nil, nil, err
 		}
 		time.Sleep(10 * time.Millisecond)
