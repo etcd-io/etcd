@@ -3,7 +3,7 @@ package raft
 import (
 	"errors"
 	"fmt"
-	golog "log"
+	"log"
 	"sort"
 	"sync/atomic"
 )
@@ -134,7 +134,7 @@ type stateMachine struct {
 	vote int64
 
 	// the log
-	log *log
+	raftLog *raftLog
 
 	ins map[int64]*index
 
@@ -157,7 +157,7 @@ func newStateMachine(id int64, peers []int64) *stateMachine {
 	if id == none {
 		panic("cannot use none id")
 	}
-	sm := &stateMachine{id: id, clusterId: none, lead: none, log: newLog(), ins: make(map[int64]*index)}
+	sm := &stateMachine{id: id, clusterId: none, lead: none, raftLog: newLog(), ins: make(map[int64]*index)}
 	for _, p := range peers {
 		sm.ins[p] = &index{}
 	}
@@ -199,7 +199,7 @@ func (sm *stateMachine) send(m Message) {
 	m.ClusterId = sm.clusterId
 	m.From = sm.id
 	m.Term = sm.term.Get()
-	golog.Printf("raft.send msg %v\n", m)
+	log.Printf("raft.send msg %v\n", m)
 	sm.msgs = append(sm.msgs, m)
 }
 
@@ -214,9 +214,9 @@ func (sm *stateMachine) sendAppend(to int64) {
 		m.Snapshot = sm.snapshoter.GetSnap()
 	} else {
 		m.Type = msgApp
-		m.LogTerm = sm.log.term(in.next - 1)
-		m.Entries = sm.log.entries(in.next)
-		m.Commit = sm.log.committed
+		m.LogTerm = sm.raftLog.term(in.next - 1)
+		m.Entries = sm.raftLog.entries(in.next)
+		m.Commit = sm.raftLog.committed
 	}
 	sm.send(m)
 }
@@ -224,13 +224,13 @@ func (sm *stateMachine) sendAppend(to int64) {
 // sendHeartbeat sends RRPC, without entries to the given peer.
 func (sm *stateMachine) sendHeartbeat(to int64) {
 	in := sm.ins[to]
-	index := max(in.next-1, sm.log.lastIndex())
+	index := max(in.next-1, sm.raftLog.lastIndex())
 	m := Message{
 		To:      to,
 		Type:    msgApp,
 		Index:   index,
-		LogTerm: sm.log.term(index),
-		Commit:  sm.log.committed,
+		LogTerm: sm.raftLog.term(index),
+		Commit:  sm.raftLog.committed,
 	}
 	sm.send(m)
 }
@@ -264,12 +264,12 @@ func (sm *stateMachine) maybeCommit() bool {
 	sort.Sort(sort.Reverse(mis))
 	mci := mis[sm.q()-1]
 
-	return sm.log.maybeCommit(mci, sm.term.Get())
+	return sm.raftLog.maybeCommit(mci, sm.term.Get())
 }
 
 // nextEnts returns the appliable entries and updates the applied index
 func (sm *stateMachine) nextEnts() (ents []Entry) {
-	return sm.log.nextEnts()
+	return sm.raftLog.nextEnts()
 }
 
 func (sm *stateMachine) reset(term int64) {
@@ -278,9 +278,9 @@ func (sm *stateMachine) reset(term int64) {
 	sm.vote = none
 	sm.votes = make(map[int64]bool)
 	for i := range sm.ins {
-		sm.ins[i] = &index{next: sm.log.lastIndex() + 1}
+		sm.ins[i] = &index{next: sm.raftLog.lastIndex() + 1}
 		if i == sm.id {
-			sm.ins[i].match = sm.log.lastIndex()
+			sm.ins[i].match = sm.raftLog.lastIndex()
 		}
 	}
 }
@@ -291,8 +291,8 @@ func (sm *stateMachine) q() int {
 
 func (sm *stateMachine) appendEntry(e Entry) {
 	e.Term = sm.term.Get()
-	sm.index.Set(sm.log.append(sm.log.lastIndex(), e))
-	sm.ins[sm.id].update(sm.log.lastIndex())
+	sm.index.Set(sm.raftLog.append(sm.raftLog.lastIndex(), e))
+	sm.ins[sm.id].update(sm.raftLog.lastIndex())
 	sm.maybeCommit()
 }
 
@@ -300,7 +300,7 @@ func (sm *stateMachine) appendEntry(e Entry) {
 // New machine has to wait for the first log entry to be committed, or it will
 // always start as a one-node cluster.
 func (sm *stateMachine) promotable() bool {
-	return sm.log.committed != 0
+	return sm.raftLog.committed != 0
 }
 
 func (sm *stateMachine) becomeFollower(term int64, lead int64) {
@@ -329,7 +329,7 @@ func (sm *stateMachine) becomeLeader() {
 	sm.lead.Set(sm.id)
 	sm.state = stateLeader
 
-	for _, e := range sm.log.entries(sm.log.committed + 1) {
+	for _, e := range sm.raftLog.entries(sm.raftLog.committed + 1) {
 		if e.isConfig() {
 			sm.pendingConf = true
 		}
@@ -346,11 +346,11 @@ func (sm *stateMachine) Msgs() []Message {
 }
 
 func (sm *stateMachine) Step(m Message) (ok bool) {
-	golog.Printf("raft.step beforeState %v\n", sm)
-	golog.Printf("raft.step beforeLog %v\n", sm.log)
-	defer golog.Printf("raft.step afterLog %v\n", sm.log)
-	defer golog.Printf("raft.step afterState %v\n", sm)
-	golog.Printf("raft.step msg %v\n", m)
+	log.Printf("raft.step beforeState %v\n", sm)
+	log.Printf("raft.step beforeLog %v\n", sm.raftLog)
+	defer log.Printf("raft.step afterLog %v\n", sm.raftLog)
+	defer log.Printf("raft.step afterState %v\n", sm)
+	log.Printf("raft.step msg %v\n", m)
 	if m.Type == msgHup {
 		sm.becomeCandidate()
 		if sm.q() == sm.poll(sm.id, true) {
@@ -361,8 +361,8 @@ func (sm *stateMachine) Step(m Message) (ok bool) {
 			if i == sm.id {
 				continue
 			}
-			lasti := sm.log.lastIndex()
-			sm.send(Message{To: i, Type: msgVote, Index: lasti, LogTerm: sm.log.term(lasti)})
+			lasti := sm.raftLog.lastIndex()
+			sm.send(Message{To: i, Type: msgVote, Index: lasti, LogTerm: sm.raftLog.term(lasti)})
 		}
 		return true
 	}
@@ -385,9 +385,9 @@ func (sm *stateMachine) Step(m Message) (ok bool) {
 }
 
 func (sm *stateMachine) handleAppendEntries(m Message) {
-	if sm.log.maybeAppend(m.Index, m.LogTerm, m.Commit, m.Entries...) {
-		sm.index.Set(sm.log.lastIndex())
-		sm.send(Message{To: m.From, Type: msgAppResp, Index: sm.log.lastIndex()})
+	if sm.raftLog.maybeAppend(m.Index, m.LogTerm, m.Commit, m.Entries...) {
+		sm.index.Set(sm.raftLog.lastIndex())
+		sm.send(Message{To: m.From, Type: msgAppResp, Index: sm.raftLog.lastIndex()})
 	} else {
 		sm.send(Message{To: m.From, Type: msgAppResp, Index: -1})
 	}
@@ -395,11 +395,11 @@ func (sm *stateMachine) handleAppendEntries(m Message) {
 
 func (sm *stateMachine) handleSnapshot(m Message) {
 	sm.restore(m.Snapshot)
-	sm.send(Message{To: m.From, Type: msgAppResp, Index: sm.log.lastIndex()})
+	sm.send(Message{To: m.From, Type: msgAppResp, Index: sm.raftLog.lastIndex()})
 }
 
 func (sm *stateMachine) addNode(id int64) {
-	sm.ins[id] = &index{next: sm.log.lastIndex() + 1}
+	sm.ins[id] = &index{next: sm.raftLog.lastIndex() + 1}
 	sm.pendingConf = false
 }
 
@@ -482,9 +482,9 @@ func stepFollower(sm *stateMachine, m Message) bool {
 	case msgSnap:
 		sm.handleSnapshot(m)
 	case msgVote:
-		if (sm.vote == none || sm.vote == m.From) && sm.log.isUpToDate(m.Index, m.LogTerm) {
+		if (sm.vote == none || sm.vote == m.From) && sm.raftLog.isUpToDate(m.Index, m.LogTerm) {
 			sm.vote = m.From
-			sm.send(Message{To: m.From, Type: msgVoteResp, Index: sm.log.lastIndex()})
+			sm.send(Message{To: m.From, Type: msgVoteResp, Index: sm.raftLog.lastIndex()})
 		} else {
 			sm.send(Message{To: m.From, Type: msgVoteResp, Index: -1})
 		}
@@ -495,11 +495,11 @@ func stepFollower(sm *stateMachine, m Message) bool {
 // maybeCompact tries to compact the log. It calls the snapshoter to take a snapshot and
 // then compact the log up-to the index at which the snapshot was taken.
 func (sm *stateMachine) maybeCompact() bool {
-	if sm.snapshoter == nil || !sm.log.shouldCompact() {
+	if sm.snapshoter == nil || !sm.raftLog.shouldCompact() {
 		return false
 	}
-	sm.snapshoter.Snap(sm.log.applied, sm.log.term(sm.log.applied), sm.nodes())
-	sm.log.compact(sm.log.applied)
+	sm.snapshoter.Snap(sm.raftLog.applied, sm.raftLog.term(sm.raftLog.applied), sm.nodes())
+	sm.raftLog.compact(sm.raftLog.applied)
 	return true
 }
 
@@ -511,13 +511,13 @@ func (sm *stateMachine) restore(s Snapshot) {
 		panic("try to restore from snapshot, but snapshoter is nil")
 	}
 
-	sm.log.restore(s.Index, s.Term)
-	sm.index.Set(sm.log.lastIndex())
+	sm.raftLog.restore(s.Index, s.Term)
+	sm.index.Set(sm.raftLog.lastIndex())
 	sm.ins = make(map[int64]*index)
 	for _, n := range s.Nodes {
-		sm.ins[n] = &index{next: sm.log.lastIndex() + 1}
+		sm.ins[n] = &index{next: sm.raftLog.lastIndex() + 1}
 		if n == sm.id {
-			sm.ins[n].match = sm.log.lastIndex()
+			sm.ins[n].match = sm.raftLog.lastIndex()
 		}
 	}
 	sm.pendingConf = false
@@ -525,7 +525,7 @@ func (sm *stateMachine) restore(s Snapshot) {
 }
 
 func (sm *stateMachine) needSnapshot(i int64) bool {
-	if i < sm.log.offset {
+	if i < sm.raftLog.offset {
 		if sm.snapshoter == nil {
 			panic("need snapshot but snapshoter is nil")
 		}

@@ -26,10 +26,10 @@ func TestBuildCluster(t *testing.T) {
 	for i, tt := range tests {
 		_, nodes := buildCluster(tt.size, tt.ids)
 
-		base := ltoa(nodes[0].sm.log)
+		base := ltoa(nodes[0].sm.raftLog)
 		for j, n := range nodes {
 			// ensure same log
-			l := ltoa(n.sm.log)
+			l := ltoa(n.sm.raftLog)
 			if g := diffu(base, l); g != "" {
 				t.Errorf("#%d.%d: log diff:\n%s", i, j, g)
 			}
