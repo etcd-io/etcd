@@ -53,7 +53,7 @@ func newDiscoverer(u *url.URL, name, raftPubAddr string) *discoverer {
 	u.Path = ""
 
 	// Connect to a scheme://host not a full URL with path
-	log.Println("Discovery via %s using prefix %s.", u.String(), d.prefix)
+	log.Printf("Discovery via %s using prefix %s.\n", u.String(), d.prefix)
 	d.client = etcd.NewClient([]string{u.String()})
 
 	if !strings.HasPrefix(oldPath, "/v2/keys") {
@@ -64,7 +64,7 @@ func newDiscoverer(u *url.URL, name, raftPubAddr string) *discoverer {
 
 func (d *discoverer) discover() ([]string, error) {
 	if _, err := d.client.Set(path.Join(d.prefix, d.name), d.addr, defaultTTL); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("discovery service error: %v", err)
 	}
 
 	// Attempt to take the leadership role, if there is no error we are it!
@@ -72,7 +72,7 @@ func (d *discoverer) discover() ([]string, error) {
 	// Bail out on unexpected errors
 	if err != nil {
 		if clientErr, ok := err.(*etcd.EtcdError); !ok || clientErr.ErrorCode != etcdErr.EcodeNodeExist {
-			return nil, err
+			return nil, fmt.Errorf("discovery service error: %v", err)
 		}
 	}
 
@@ -90,7 +90,7 @@ func (d *discoverer) discover() ([]string, error) {
 func (d *discoverer) findPeers() (peers []string, err error) {
 	resp, err := d.client.Get(path.Join(d.prefix), false, true)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("discovery service error: %v", err)
 	}
 
 	node := resp.Node
