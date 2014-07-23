@@ -44,6 +44,10 @@ func newLog() *log {
 	}
 }
 
+func (l *log) String() string {
+	return fmt.Sprintf("offset=%d committed=%d applied=%d len(ents)=%d", l.offset, l.committed, l.applied, len(l.ents))
+}
+
 func (l *log) maybeAppend(index, logTerm, committed int64, ents ...Entry) bool {
 	if l.matchTerm(index, logTerm) {
 		from := index + 1
