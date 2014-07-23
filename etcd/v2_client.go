@@ -24,7 +24,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -155,7 +154,6 @@ func (c *v2client) AddMachine(url string, name string, info *context) *etcdErr.E
 	b, _ := json.Marshal(info)
 	url = url + "/v2/admin/machines/" + name
 
-	log.Printf("Send Join Request to %s", url)
 	resp, err := c.put(url, b)
 	if err != nil {
 		return clientError(err)
@@ -182,7 +180,6 @@ func (c *v2client) readErrorBody(body io.ReadCloser) *etcdErr.Error {
 
 func (c *v2client) readJSONBody(body io.ReadCloser, val interface{}) *etcdErr.Error {
 	if err := json.NewDecoder(body).Decode(val); err != nil {
-		log.Printf("Error parsing join response: %v", err)
 		return clientError(err)
 	}
 	c.readBody(body)

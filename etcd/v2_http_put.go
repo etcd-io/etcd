@@ -19,7 +19,6 @@ package etcd
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -115,7 +114,6 @@ func (p *participant) serveSet(w http.ResponseWriter, req *http.Request, key str
 		p.handleRet(w, ret)
 		return nil
 	}
-	log.Println("set:", err)
 	return err
 }
 
@@ -125,7 +123,6 @@ func (p *participant) serveCreate(w http.ResponseWriter, req *http.Request, key 
 		p.handleRet(w, ret)
 		return nil
 	}
-	log.Println("create:", err)
 	return err
 }
 
@@ -139,7 +136,6 @@ func (p *participant) serveUpdate(w http.ResponseWriter, req *http.Request, key,
 		p.handleRet(w, ret)
 		return nil
 	}
-	log.Println("update:", err)
 	return err
 }
 
@@ -149,7 +145,6 @@ func (p *participant) serveCAS(w http.ResponseWriter, req *http.Request, key, va
 		p.handleRet(w, ret)
 		return nil
 	}
-	log.Println("update:", err)
 	return err
 }
 

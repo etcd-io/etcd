@@ -32,7 +32,7 @@ func (p *participant) v2apply(index int64, ent raft.Entry) {
 
 	cmd := new(cmd)
 	if err := json.Unmarshal(ent.Data, cmd); err != nil {
-		log.Println("v2apply.decode:", err)
+		log.Printf("participant.store.apply id=%x decodeErr=\"%v\"\n", p.id, err)
 		return
 	}
 
@@ -53,7 +53,7 @@ func (p *participant) v2apply(index int64, ent raft.Entry) {
 		p.Store.DeleteExpiredKeys(cmd.Time)
 		return
 	default:
-		log.Println("unexpected command type:", cmd.Type)
+		log.Printf("participant.store.apply id=%x err=\"unexpected command type %s\"\n", p.id, cmd.Type)
 	}
 
 	if ent.Term > p.node.term {

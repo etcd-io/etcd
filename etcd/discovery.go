@@ -53,7 +53,6 @@ func newDiscoverer(u *url.URL, name, raftPubAddr string) *discoverer {
 	u.Path = ""
 
 	// Connect to a scheme://host not a full URL with path
-	log.Printf("Discovery via %s using prefix %s.\n", u.String(), d.prefix)
 	d.client = etcd.NewClient([]string{u.String()})
 
 	if !strings.HasPrefix(oldPath, "/v2/keys") {
@@ -63,6 +62,8 @@ func newDiscoverer(u *url.URL, name, raftPubAddr string) *discoverer {
 }
 
 func (d *discoverer) discover() ([]string, error) {
+	log.Printf("discoverer name=%s target=\"%q\" prefix=%s\n", d.name, d.client.GetCluster(), d.prefix)
+
 	if _, err := d.client.Set(path.Join(d.prefix, d.name), d.addr, defaultTTL); err != nil {
 		return nil, fmt.Errorf("discovery service error: %v", err)
 	}
@@ -79,7 +80,6 @@ func (d *discoverer) discover() ([]string, error) {
 	// If we got a response then the CAS was successful, we are leader
 	if resp != nil && resp.Node.Value == startedState {
 		// We are the leader, we have no peers
-		log.Println("Discovery _state was empty, so this machine is the initial leader.")
 		return nil, nil
 	}
 
@@ -111,7 +111,6 @@ func (d *discoverer) findPeers() (peers []string, err error) {
 		return nil, errors.New("Discovery found an initialized cluster but no reachable peers are registered.")
 	}
 
-	log.Printf("Discovery found peers %v\n", peers)
 	return
 }
 
@@ -122,7 +121,7 @@ func (d *discoverer) heartbeat(stopc <-chan struct{}) {
 	defer ticker.Stop()
 	for {
 		if _, err := d.client.Set(path.Join(d.prefix, d.name), d.addr, defaultTTL); err != nil {
-			log.Println("Discovery heartbeat failed: %v", err)
+			log.Println("discoverer heartbeatErr=\"%v\"", err)
 		}
 
 		select {

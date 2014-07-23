@@ -17,7 +17,6 @@ limitations under the License.
 package etcd
 
 import (
-	"log"
 	"net/http"
 	"strconv"
 
@@ -70,7 +69,6 @@ func (p *participant) serveDelete(w http.ResponseWriter, req *http.Request, key 
 		p.handleRet(w, ret)
 		return nil
 	}
-	log.Println("delete:", err)
 	return err
 }
 
@@ -80,6 +78,5 @@ func (p *participant) serveCAD(w http.ResponseWriter, req *http.Request, key str
 		p.handleRet(w, ret)
 		return nil
 	}
-	log.Println("cad:", err)
 	return err
 }

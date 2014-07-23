@@ -74,14 +74,14 @@ func (h *raftHandler) serveRaft(w http.ResponseWriter, r *http.Request) {
 
 	msg := new(raft.Message)
 	if err := json.NewDecoder(r.Body).Decode(msg); err != nil {
-		log.Println(err)
+		log.Printf("raftHandler.serve decodeErr=\"%v\"\n", err)
 		return
 	}
 
 	select {
 	case h.recv <- msg:
 	default:
-		log.Println("drop")
+		log.Printf("raftHandler.serve pushErr=\"recv channel is full\"\n")
 		// drop the incoming package at network layer if the upper layer
 		// cannot consume them in time.
 		// TODO(xiangli): not return 200.

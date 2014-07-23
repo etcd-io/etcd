@@ -98,7 +98,7 @@ func (eh handlerErr) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Println("http error", err)
+	log.Printf("HTTP.serve: req=%s err=\"%v\"\n", r.URL, err)
 	http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 }
 
@@ -118,7 +118,6 @@ func (w *HEADResponseWriter) Write([]byte) (int, error) {
 func (p *participant) redirect(w http.ResponseWriter, r *http.Request, id int64) error {
 	e, err := p.Store.Get(fmt.Sprintf("%v/%d", v2machineKVPrefix, p.node.Leader()), false, false)
 	if err != nil {
-		log.Println("redirect cannot find node", id)
 		return fmt.Errorf("redirect cannot find node %d", id)
 	}
 
@@ -129,7 +128,6 @@ func (p *participant) redirect(w http.ResponseWriter, r *http.Request, id int64)
 
 	redirectAddr, err := buildRedirectURL(m["etcd"][0], r.URL)
 	if err != nil {
-		log.Println("redirect cannot build new url:", err)
 		return err
 	}
 
@@ -140,7 +138,7 @@ func (p *participant) redirect(w http.ResponseWriter, r *http.Request, id int64)
 func buildRedirectURL(redirectAddr string, originalURL *url.URL) (string, error) {
 	redirectURL, err := url.Parse(redirectAddr)
 	if err != nil {
-		return "", fmt.Errorf("redirect cannot parse url: %v", err)
+		return "", fmt.Errorf("cannot parse url: %v", err)
 	}
 
 	redirectURL.Path = originalURL.Path
