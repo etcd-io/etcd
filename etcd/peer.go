@@ -122,7 +122,7 @@ func (p *peer) post(d []byte) {
 	buf := bytes.NewBuffer(d)
 	resp, err := p.c.Post(p.url, "application/octet-stream", buf)
 	if err != nil {
-		log.Println("post:", err)
+		log.Println("peer.post url=%s err=\"%v\"", p.url, err)
 		return
 	}
 	resp.Body.Close()

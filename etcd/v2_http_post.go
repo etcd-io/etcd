@@ -17,7 +17,6 @@ limitations under the License.
 package etcd
 
 import (
-	"log"
 	"net/http"
 
 	etcdErr "github.com/coreos/etcd/error"
@@ -43,6 +42,5 @@ func (p *participant) PostHandler(w http.ResponseWriter, req *http.Request) erro
 		p.handleRet(w, ret)
 		return nil
 	}
-	log.Println("unique:", err)
 	return err
 }

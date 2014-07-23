@@ -51,11 +51,12 @@ type Server struct {
 	stopped bool
 	mu      sync.Mutex
 	stopc   chan struct{}
+	log     *log.Logger
 }
 
 func New(c *config.Config) *Server {
 	if err := c.Sanitize(); err != nil {
-		log.Fatalf("failed sanitizing configuration: %v", err)
+		log.Fatalf("server.new sanitizeErr=\"%v\"\n", err)
 	}
 
 	tc := &tls.Config{
@@ -65,7 +66,7 @@ func New(c *config.Config) *Server {
 	if c.PeerTLSInfo().Scheme() == "https" {
 		tc, err = c.PeerTLSInfo().ClientConfig()
 		if err != nil {
-			log.Fatal("failed to create raft transporter tls:", err)
+			log.Fatalf("server.new ClientConfigErr=\"%v\"\n", err)
 		}
 	}
 
@@ -87,12 +88,14 @@ func New(c *config.Config) *Server {
 
 		stopc: make(chan struct{}),
 	}
+	log.Printf("server.new id=%x raftPubAddr=%s\n", s.id, s.raftPubAddr)
 
 	return s
 }
 
 func (s *Server) SetTick(tick time.Duration) {
 	s.tickDuration = tick
+	log.Printf("server.setTick id=%x tick=%q\n", s.id, s.tickDuration)
 }
 
 // Stop stops the server elegently.
@@ -112,6 +115,7 @@ func (s *Server) Stop() {
 	<-s.stopc
 	s.client.CloseConnections()
 	s.peerHub.stop()
+	log.Printf("server.stop id=%x\n", s.id)
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -151,8 +155,10 @@ func (s *Server) Run() error {
 		if seeds, err = d.discover(); err != nil {
 			return err
 		}
+		log.Printf("server.run id=%x source=-discovery seeds=\"%v\"\n", s.id, seeds)
 	} else {
 		seeds = s.config.Peers
+		log.Printf("server.run id=%x source=-peers seeds=\"%v\"\n", s.id, seeds)
 	}
 	s.peerHub.setSeeds(seeds)
 
@@ -170,6 +176,7 @@ func (s *Server) Run() error {
 				go d.heartbeat(dStopc)
 			}
 			s.mode.Set(participantMode)
+			log.Printf("server.run id=%x mode=participantMode\n", s.id)
 			s.mu.Unlock()
 			next = s.p.run()
 			if d != nil {
@@ -178,10 +185,12 @@ func (s *Server) Run() error {
 		case standbyMode:
 			s.s = newStandby(s.client, s.peerHub)
 			s.mode.Set(standbyMode)
+			log.Printf("server.run id=%x mode=standbyMode\n", s.id)
 			s.mu.Unlock()
 			next = s.s.run()
 		case stopMode:
 			s.mode.Set(stopMode)
+			log.Printf("server.run id=%x mode=stopMode\n", s.id)
 			s.mu.Unlock()
 			s.stopc <- struct{}{}
 			return nil
@@ -194,5 +203,6 @@ func (s *Server) Run() error {
 
 // setId sets the id for the participant. This should only be used for testing.
 func (s *Server) setId(id int64) {
+	log.Printf("server.setId id=%x oldId=%x\n", id, s.id)
 	s.id = id
 }

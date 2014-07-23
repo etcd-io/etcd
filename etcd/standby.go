@@ -69,12 +69,12 @@ func (s *standby) run() int64 {
 		select {
 		case <-time.After(syncDuration):
 		case <-s.stopc:
-			log.Printf("Standby stopped\n")
+			log.Printf("standby.stop\n")
 			return stopMode
 		}
 
 		if update, err := s.syncCluster(nodes); err != nil {
-			log.Println("standby sync:", err)
+			log.Println("standby.run syncErr=\"%v\"", err)
 			continue
 		} else {
 			nodes = update
@@ -83,6 +83,7 @@ func (s *standby) run() int64 {
 		if s.clusterConf.ActiveSize <= len(nodes) {
 			continue
 		}
+		log.Printf("standby.end\n")
 		return participantMode
 	}
 }
