@@ -98,6 +98,21 @@ func TestBadDiscoveryServiceWithAdvisedPeers(t *testing.T) {
 	afterTest(t)
 }
 
+func TestBootstrapByEmptyPeers(t *testing.T) {
+	c := config.New()
+	id := genId()
+	e, h, err := buildServer(c, id)
+
+	if err != nil {
+		t.Error(err)
+	}
+	if e.p.node.Leader() != id {
+		t.Error("leader = %x, want %x", e.p.node.Leader(), id)
+	}
+	destroyServer(e, h)
+	afterTest(t)
+}
+
 func TestBootstrapByDiscoveryService(t *testing.T) {
 	de, dh, _ := buildServer(config.New(), genId())
 
