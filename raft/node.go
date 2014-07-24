@@ -209,3 +209,12 @@ func (n *Node) UpdateConf(t int64, c *Config) {
 func (n *Node) UnstableEnts() []Entry {
 	return n.sm.raftLog.unstableEnts()
 }
+
+func (n *Node) UnstableState() State {
+	if n.sm.unstableState == emptyState {
+		return emptyState
+	}
+	s := n.sm.unstableState
+	n.sm.clearState()
+	return s
+}
