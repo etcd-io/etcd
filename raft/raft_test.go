@@ -954,6 +954,41 @@ func TestSlowNodeRestore(t *testing.T) {
 	}
 }
 
+func TestUnstableState(t *testing.T) {
+	sm := newStateMachine(0, []int64{0})
+	w := State{}
+
+	sm.setVote(1)
+	w.Vote = 1
+	if !reflect.DeepEqual(sm.unstableState, w) {
+		t.Errorf("unstableState = %v, want %v", sm.unstableState, w)
+	}
+	sm.clearState()
+
+	sm.setTerm(1)
+	w.Term = 1
+	if !reflect.DeepEqual(sm.unstableState, w) {
+		t.Errorf("unstableState = %v, want %v", sm.unstableState, w)
+	}
+	sm.clearState()
+
+	sm.raftLog.committed = 1
+	sm.addIns(1, 0, 0)
+	w.Commit = 1
+	if !reflect.DeepEqual(sm.unstableState, w) {
+		t.Errorf("unstableState = %v, want %v", sm.unstableState, w)
+	}
+	sm.clearState()
+
+	sm.raftLog.committed = 2
+	sm.deleteIns(1)
+	w.Commit = 2
+	if !reflect.DeepEqual(sm.unstableState, w) {
+		t.Errorf("unstableState = %v, want %v", sm.unstableState, w)
+	}
+	sm.clearState()
+}
+
 func ents(terms ...int64) *stateMachine {
 	ents := []Entry{{}}
 	for _, term := range terms {
