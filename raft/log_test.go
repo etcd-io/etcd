@@ -12,23 +12,27 @@ import (
 // 2.Append any new entries not already in the log
 func TestAppend(t *testing.T) {
 	previousEnts := []Entry{{Term: 1}, {Term: 2}}
+	previousUnstable := int64(3)
 	tests := []struct {
-		after  int64
-		ents   []Entry
-		windex int64
-		wents  []Entry
+		after     int64
+		ents      []Entry
+		windex    int64
+		wents     []Entry
+		wunstable int64
 	}{
 		{
 			2,
 			[]Entry{},
 			2,
 			[]Entry{{Term: 1}, {Term: 2}},
+			3,
 		},
 		{
 			2,
 			[]Entry{{Term: 2}},
 			3,
 			[]Entry{{Term: 1}, {Term: 2}, {Term: 2}},
+			3,
 		},
 		// conflicts with index 1
 		{
@@ -36,6 +40,7 @@ func TestAppend(t *testing.T) {
 			[]Entry{{Term: 2}},
 			1,
 			[]Entry{{Term: 2}},
+			1,
 		},
 		// conflicts with index 2
 		{
@@ -43,18 +48,23 @@ func TestAppend(t *testing.T) {
 			[]Entry{{Term: 3}, {Term: 3}},
 			3,
 			[]Entry{{Term: 1}, {Term: 3}, {Term: 3}},
+			2,
 		},
 	}
 
 	for i, tt := range tests {
 		raftLog := newLog()
 		raftLog.ents = append(raftLog.ents, previousEnts...)
+		raftLog.unstable = previousUnstable
 		index := raftLog.append(tt.after, tt.ents...)
 		if index != tt.windex {
 			t.Errorf("#%d: lastIndex = %d, want %d", i, index, tt.windex)
 		}
 		if g := raftLog.entries(1); !reflect.DeepEqual(g, tt.wents) {
 			t.Errorf("#%d: logEnts = %+v, want %+v", i, g, tt.wents)
+		}
+		if g := raftLog.unstable; g != tt.wunstable {
+			t.Errorf("#%d: unstable = %d, want %d", i, g, tt.wunstable)
 		}
 	}
 }
@@ -88,6 +98,11 @@ func TestCompactionSideEffects(t *testing.T) {
 		}
 	}
 
+	unstableEnts := raftLog.unstableEnts()
+	if g := len(unstableEnts); g != 500 {
+		t.Errorf("len(unstableEntries) = %d, want = %d", g, 500)
+	}
+
 	prev := raftLog.lastIndex()
 	raftLog.append(raftLog.lastIndex(), Entry{Term: raftLog.lastIndex() + 1})
 	if raftLog.lastIndex() != prev+1 {
@@ -98,6 +113,32 @@ func TestCompactionSideEffects(t *testing.T) {
 	if len(ents) != 1 {
 		t.Errorf("len(entries) = %d, want = %d", len(ents), 1)
 	}
+}
+
+func TestUnstableEnts(t *testing.T) {
+	previousEnts := []Entry{{Term: 1}, {Term: 2}}
+	tests := []struct {
+		unstable  int64
+		wents     []Entry
+		wunstable int64
+	}{
+		{3, nil, 3},
+		{1, []Entry{{Term: 1}, {Term: 2}}, 3},
+	}
+
+	for i, tt := range tests {
+		raftLog := newLog()
+		raftLog.ents = append(raftLog.ents, previousEnts...)
+		raftLog.unstable = tt.unstable
+		ents := raftLog.unstableEnts()
+		if !reflect.DeepEqual(ents, tt.wents) {
+			t.Errorf("#%d: unstableEnts = %+v, want %+v", i, ents, tt.wents)
+		}
+		if g := raftLog.unstable; g != tt.wunstable {
+			t.Errorf("#%d: unstable = %d, want %d", i, g, tt.wunstable)
+		}
+	}
+
 }
 
 //TestCompaction ensures that the number of log entreis is correct after compactions.
@@ -163,6 +204,9 @@ func TestLogRestore(t *testing.T) {
 	}
 	if raftLog.committed != index {
 		t.Errorf("comitted = %d, want %d", raftLog.committed, index)
+	}
+	if raftLog.unstable != index+1 {
+		t.Errorf("unstable = %d, want %d", raftLog.unstable, index+1)
 	}
 	if raftLog.term(index) != term {
 		t.Errorf("term = %d, want %d", raftLog.term(index), term)

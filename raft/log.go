@@ -26,6 +26,7 @@ func (e *Entry) isConfig() bool {
 
 type raftLog struct {
 	ents      []Entry
+	unstable  int64
 	committed int64
 	applied   int64
 	offset    int64
@@ -38,6 +39,7 @@ type raftLog struct {
 func newLog() *raftLog {
 	return &raftLog{
 		ents:             make([]Entry, 1),
+		unstable:         1,
 		committed:        0,
 		applied:          0,
 		compactThreshold: defaultCompactThreshold,
@@ -69,6 +71,7 @@ func (l *raftLog) maybeAppend(index, logTerm, committed int64, ents ...Entry) bo
 
 func (l *raftLog) append(after int64, ents ...Entry) int64 {
 	l.ents = append(l.slice(l.offset, after+1), ents...)
+	l.unstable = min(l.unstable, after+1)
 	return l.lastIndex()
 }
 
@@ -79,6 +82,12 @@ func (l *raftLog) findConflict(from int64, ents []Entry) int64 {
 		}
 	}
 	return -1
+}
+
+func (l *raftLog) unstableEnts() []Entry {
+	ents := l.entries(l.unstable)
+	l.unstable = l.lastIndex() + 1
+	return ents
 }
 
 func (l *raftLog) lastIndex() int64 {
@@ -132,7 +141,8 @@ func (l *raftLog) nextEnts() (ents []Entry) {
 	return ents
 }
 
-// compact removes the log entries before i, exclusive.
+// compact compacts all log entries until i.
+// It removes the log entries before i, exclusive.
 // i must be not smaller than the index of the first entry
 // and not greater than the index of the last entry.
 // the number of entries after compaction will be returned.
@@ -141,6 +151,7 @@ func (l *raftLog) compact(i int64) int64 {
 		panic(fmt.Sprintf("compact %d out of bounds [%d:%d]", i, l.offset, l.lastIndex()))
 	}
 	l.ents = l.slice(i, l.lastIndex()+1)
+	l.unstable = max(i+1, l.unstable)
 	l.offset = i
 	return int64(len(l.ents))
 }
@@ -151,6 +162,7 @@ func (l *raftLog) shouldCompact() bool {
 
 func (l *raftLog) restore(index, term int64) {
 	l.ents = []Entry{{Term: term}}
+	l.unstable = index + 1
 	l.committed = index
 	l.applied = index
 	l.offset = index

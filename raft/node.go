@@ -204,3 +204,8 @@ func (n *Node) UpdateConf(t int64, c *Config) {
 	}
 	n.propose(t, data)
 }
+
+// UnstableEnts retuens all the entries that need to be persistent.
+func (n *Node) UnstableEnts() []Entry {
+	return n.sm.raftLog.unstableEnts()
+}
