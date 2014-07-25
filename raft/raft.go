@@ -589,3 +589,20 @@ func (sm *stateMachine) setState(vote, term, commit int64) {
 	sm.unstableState.Term = term
 	sm.unstableState.Commit = commit
 }
+
+func (sm *stateMachine) load(ents []Entry, state State) {
+	sm.loadEnts(ents)
+	sm.loadState(state)
+}
+
+func (sm *stateMachine) loadEnts(ents []Entry) {
+	sm.raftLog.append(sm.raftLog.lastIndex(), ents...)
+}
+
+func (sm *stateMachine) loadState(state State) {
+	sm.term.Set(state.Term)
+	sm.vote = state.Vote
+	sm.raftLog.unstable = state.Commit + 1
+	sm.raftLog.committed = state.Commit
+	sm.saveState()
+}
