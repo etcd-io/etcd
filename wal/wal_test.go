@@ -3,7 +3,10 @@ package wal
 import (
 	"io/ioutil"
 	"os"
+	"path"
 	"testing"
+
+	"github.com/coreos/etcd/raft"
 )
 
 func TestNew(t *testing.T) {
@@ -25,6 +28,76 @@ func TestNew(t *testing.T) {
 		t.Errorf("err = %v, want nil", err)
 	}
 	w.Close()
+	err = os.Remove(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestWriteEntry(t *testing.T) {
+	p := path.Join(os.TempDir(), "waltest")
+	w, err := New(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	e := &raft.Entry{1, 1, []byte{1}}
+	err = w.writeEntry(e)
+	if err != nil {
+		t.Fatal(err)
+	}
+	w.flush()
+
+	err = os.Remove(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestWriteInfo(t *testing.T) {
+	p := path.Join(os.TempDir(), "waltest")
+	w, err := New(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	id := int64(0xBEEF)
+	err = w.writeInfo(id)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// make sure we can only write info at the head of the wal file
+	// still in buffer
+	err = w.writeInfo(id)
+	if err == nil || err.Error() != "cannot write info at 24, expect 0" {
+		t.Errorf("err = %v, want cannot write info at 8, expect 0", err)
+	}
+
+	// flush to disk
+	w.flush()
+	err = w.writeInfo(id)
+	if err == nil || err.Error() != "cannot write info at 24, expect 0" {
+		t.Errorf("err = %v, want cannot write info at 8, expect 0", err)
+	}
+
+	err = os.Remove(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestWriteState(t *testing.T) {
+	p := path.Join(os.TempDir(), "waltest")
+	w, err := New(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	st := &raft.State{1, 1, 1}
+	err = w.writeState(st)
+	if err != nil {
+		t.Fatal(err)
+	}
+	w.flush()
+
 	err = os.Remove(p)
 	if err != nil {
 		t.Fatal(err)
