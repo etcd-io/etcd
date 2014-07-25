@@ -1071,9 +1071,11 @@ func (s *server) RequestVote(req *RequestVoteRequest) *RequestVoteResponse {
 // Processes a "request vote" request.
 func (s *server) processRequestVoteRequest(req *RequestVoteRequest) (*RequestVoteResponse, bool) {
 	// Deny the vote quest if the candidate is not in the current cluster
-	if _, ok := s.peers[req.CandidateName]; !ok {
-		s.debugln("server.rv.deny.vote: unknown peer ", req.CandidateName)
-		return newRequestVoteResponse(math.MaxUint64, false), false
+	if s.State() == Leader {
+		if _, ok := s.peers[req.CandidateName]; !ok {
+			s.debugln("server.rv.deny.vote: unknown peer ", req.CandidateName)
+			return newRequestVoteResponse(math.MaxUint64, false), false
+		}
 	}
 
 	// If the request is coming from an old term then reject it.
