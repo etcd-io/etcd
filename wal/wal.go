@@ -51,7 +51,7 @@ func (w *WAL) writeInfo(id int64) error {
 		return err
 	}
 	if o != 0 || w.bw.Buffered() != 0 {
-		return fmt.Errorf("cannot write info at %d, expect 0", o)
+		return fmt.Errorf("cannot write info at %d, expect 0", max(o, int64(w.bw.Buffered())))
 	}
 	if err := w.writeInt64(infoType); err != nil {
 		return err
@@ -100,4 +100,11 @@ func (w *WAL) writeInt64(n int64) error {
 
 func (w *WAL) flush() error {
 	return w.bw.Flush()
+}
+
+func max(a, b int64) int64 {
+	if a > b {
+		return a
+	}
+	return b
 }
