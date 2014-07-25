@@ -206,7 +206,8 @@ func (n *Node) UpdateConf(t int64, c *Config) {
 }
 
 // UnstableEnts retuens all the entries that need to be persistent.
-func (n *Node) UnstableEnts() []Entry {
+// The first return value is offset, and the second one is unstable entries.
+func (n *Node) UnstableEnts() (int64, []Entry) {
 	return n.sm.raftLog.unstableEnts()
 }
 

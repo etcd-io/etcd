@@ -84,10 +84,11 @@ func (l *raftLog) findConflict(from int64, ents []Entry) int64 {
 	return -1
 }
 
-func (l *raftLog) unstableEnts() []Entry {
+func (l *raftLog) unstableEnts() (int64, []Entry) {
+	offset := l.unstable
 	ents := l.entries(l.unstable)
 	l.unstable = l.lastIndex() + 1
-	return ents
+	return offset, ents
 }
 
 func (l *raftLog) lastIndex() int64 {
