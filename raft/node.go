@@ -219,3 +219,9 @@ func (n *Node) UnstableState() State {
 	n.sm.clearState()
 	return s
 }
+
+// Load loads saved info and recovers the node.
+// It should only be called for new node.
+func (n *Node) Load(ents []Entry, state State) {
+	n.sm.load(ents, state)
+}
