@@ -22,12 +22,25 @@ type WAL struct {
 }
 
 func New(path string) (*WAL, error) {
-	f, err := os.Create(path)
+	f, err := os.Open(path)
+	if err == nil {
+		f.Close()
+		return nil, os.ErrExist
+	}
+
+	f, err = os.Create(path)
 	if err != nil {
 		return nil, err
 	}
 	bw := bufio.NewWriter(f)
 	return &WAL{f, bw}, nil
+}
+
+func (w *WAL) Close() {
+	if w.f != nil {
+		w.flush()
+		w.f.Close()
+	}
 }
 
 func (w *WAL) writeInfo(id int64) error {
