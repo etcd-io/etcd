@@ -55,8 +55,8 @@ The full documentation is contained in the [API docs](https://github.com/coreos/
 * `-peer-heartbeat-interval` - The number of milliseconds in between heartbeat requests
 * `-snapshot=false` - Disable log snapshots. Defaults to `true`.
 * `-cluster-active-size` - The expected number of instances participating in the consensus protocol. Only applied if the etcd instance is the first peer in the cluster.
-* `-cluster-remove-delay` - The delay before one node is removed from the cluster since it cannot be connected at all. Only applied if the etcd instance is the first peer in the cluster.
-* `-cluster-sync-interval` - The interval between synchronization for standby-mode instance with the cluster. Only applied if the etcd instance is the first peer in the cluster.
+* `-cluster-remove-delay` - The number of seconds before one node is removed from the cluster since it cannot be connected at all. Only applied if the etcd instance is the first peer in the cluster.
+* `-cluster-sync-interval` - The number of seconds between synchronization for standby-mode instance with the cluster. Only applied if the etcd instance is the first peer in the cluster.
 * `-v` - Enable verbose logging. Defaults to `false`.
 * `-vv` - Enable very verbose logging. Defaults to `false`.
 * `-version` - Print the version and exit.
