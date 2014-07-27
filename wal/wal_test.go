@@ -4,6 +4,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"reflect"
 	"testing"
 
 	"github.com/coreos/etcd/raft"
@@ -45,7 +46,16 @@ func TestWriteEntry(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	w.flush()
+	w.Close()
+
+	b, err := ioutil.ReadFile(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wb := []byte("\x02\x00\x00\x00\x00\x00\x00\x00!\x00\x00\x00\x00\x00\x00\x00{\"Type\":1,\"Term\":1,\"Data\":\"AQ==\"}")
+	if !reflect.DeepEqual(b, wb) {
+		t.Errorf("ent = %q, want %q", b, wb)
+	}
 
 	err = os.Remove(p)
 	if err != nil {
@@ -78,6 +88,16 @@ func TestWriteInfo(t *testing.T) {
 	if err == nil || err.Error() != "cannot write info at 24, expect 0" {
 		t.Errorf("err = %v, want cannot write info at 8, expect 0", err)
 	}
+	w.Close()
+
+	b, err := ioutil.ReadFile(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wb := []byte("\x01\x00\x00\x00\x00\x00\x00\x00\b\x00\x00\x00\x00\x00\x00\x00\xef\xbe\x00\x00\x00\x00\x00\x00")
+	if !reflect.DeepEqual(b, wb) {
+		t.Errorf("ent = %q, want %q", b, wb)
+	}
 
 	err = os.Remove(p)
 	if err != nil {
@@ -96,7 +116,16 @@ func TestWriteState(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	w.flush()
+	w.Close()
+
+	b, err := ioutil.ReadFile(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wb := []byte("\x03\x00\x00\x00\x00\x00\x00\x00\x18\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00")
+	if !reflect.DeepEqual(b, wb) {
+		t.Errorf("ent = %q, want %q", b, wb)
+	}
 
 	err = os.Remove(p)
 	if err != nil {
