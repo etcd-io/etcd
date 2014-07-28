@@ -15,7 +15,7 @@ The `-name machine0` tells the rest of the cluster that this machine is named ma
 
 ## Getting the etcd version
 
-The etcd version can be obtained from the `/version` endpoint.
+The etcd version of a specific instance can be obtained from the `/version` endpoint.
 
 ```sh
 curl -L http://127.0.0.1:4001/version
