@@ -58,3 +58,10 @@ func readBlock(r io.Reader, b *block) error {
 	b.d = d
 	return nil
 }
+
+func unexpectedEOF(err error) error {
+	if err == io.EOF {
+		return io.ErrUnexpectedEOF
+	}
+	return err
+}
