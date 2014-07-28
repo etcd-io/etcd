@@ -130,6 +130,7 @@ func newParticipant(id int64, pubAddr string, raftPubAddr string, dir string, cl
 		}
 		p.id = n.Id
 		p.node.Node = raft.Recover(n.Id, n.Ents, n.State, defaultHeartbeat, defaultElection)
+		p.apply(p.node.Next())
 		log.Printf("id=%x participant.load path=%s\n", p.id, walPath)
 	}
 	p.w = w
