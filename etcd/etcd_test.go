@@ -311,6 +311,60 @@ func TestVersionCheck(t *testing.T) {
 	}
 }
 
+func TestSingleNodeRecovery(t *testing.T) {
+	id := genId()
+	dataDir, err := ioutil.TempDir(os.TempDir(), "etcd")
+	if err != nil {
+		panic(err)
+	}
+	c := config.New()
+	c.DataDir = dataDir
+	e, h, _ := buildServer(t, c, id)
+	key := "/foo"
+
+	ev, err := e.p.Set(key, false, "bar", time.Now().Add(time.Second*100))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	w, err := e.p.Watch(key, false, false, ev.Index())
+	if err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case v := <-w.EventChan:
+		if v.Node.TTL < 95 {
+			t.Errorf("ttl = %d, want >= 95", v.Node.TTL)
+		}
+	case <-time.After(8 * defaultHeartbeat * e.tickDuration):
+		t.Fatal("watch timeout")
+	}
+
+	e.Stop()
+	h.Close()
+
+	time.Sleep(2 * time.Second)
+
+	c = config.New()
+	c.DataDir = dataDir
+	e, h, _ = buildServer(t, c, id)
+
+	w, err = e.p.Watch(key, false, false, ev.Index())
+	if err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case v := <-w.EventChan:
+		if v.Node.TTL > 99 {
+			t.Errorf("ttl = %d, want <= 99", v.Node.TTL)
+		}
+	case <-time.After(8 * defaultHeartbeat * e.tickDuration):
+		t.Fatal("2nd watch timeout")
+	}
+
+	destroyServer(t, e, h)
+}
+
 func buildCluster(number int, tls bool) ([]*Server, []*httptest.Server) {
 	bootstrapper := 0
 	es := make([]*Server, number)
@@ -342,23 +396,26 @@ func buildCluster(number int, tls bool) ([]*Server, []*httptest.Server) {
 }
 
 func initTestServer(c *config.Config, id int64, tls bool) (e *Server, h *httptest.Server) {
-	n, err := ioutil.TempDir(os.TempDir(), "etcd")
-	if err != nil {
-		panic(err)
+	if c.DataDir == "" {
+		n, err := ioutil.TempDir(os.TempDir(), "etcd")
+		if err != nil {
+			panic(err)
+		}
+		c.DataDir = n
 	}
-	c.DataDir = n
 
-	e, err = New(c)
+	srv, err := New(c)
 	if err != nil {
 		panic(err)
 	}
+	e = srv
 	e.setId(id)
 	e.SetTick(time.Millisecond * 5)
+
 	m := http.NewServeMux()
 	m.Handle("/", e)
 	m.Handle("/raft", e.RaftHandler())
 	m.Handle("/raft/", e.RaftHandler())
-
 	if tls {
 		h = httptest.NewTLSServer(m)
 	} else {
