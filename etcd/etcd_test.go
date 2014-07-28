@@ -37,12 +37,7 @@ func TestMultipleNodes(t *testing.T) {
 	for _, tt := range tests {
 		es, hs := buildCluster(tt, false)
 		waitCluster(t, es)
-		for i := range es {
-			es[len(es)-i-1].Stop()
-		}
-		for i := range hs {
-			hs[len(hs)-i-1].Close()
-		}
+		destoryCluster(t, es, hs)
 	}
 	afterTest(t)
 }
@@ -53,12 +48,7 @@ func TestMultipleTLSNodes(t *testing.T) {
 	for _, tt := range tests {
 		es, hs := buildCluster(tt, true)
 		waitCluster(t, es)
-		for i := range es {
-			es[len(es)-i-1].Stop()
-		}
-		for i := range hs {
-			hs[len(hs)-i-1].Close()
-		}
+		destoryCluster(t, es, hs)
 	}
 	afterTest(t)
 }
@@ -86,12 +76,7 @@ func TestV2Redirect(t *testing.T) {
 	}
 
 	resp.Body.Close()
-	for i := range es {
-		es[len(es)-i-1].Stop()
-	}
-	for i := range hs {
-		hs[len(hs)-i-1].Close()
-	}
+	destoryCluster(t, es, hs)
 	afterTest(t)
 }
 
@@ -148,12 +133,7 @@ func TestAdd(t *testing.T) {
 			}
 		}
 
-		for i := range hs {
-			es[len(hs)-i-1].Stop()
-		}
-		for i := range hs {
-			hs[len(hs)-i-1].Close()
-		}
+		destoryCluster(t, es, hs)
 	}
 	afterTest(t)
 }
@@ -210,12 +190,7 @@ func TestRemove(t *testing.T) {
 			waitMode(standbyMode, es[i])
 		}
 
-		for i := range es {
-			es[len(hs)-i-1].Stop()
-		}
-		for i := range hs {
-			hs[len(hs)-i-1].Close()
-		}
+		destoryCluster(t, es, hs)
 	}
 	afterTest(t)
 	// ensure that no goroutines are running
@@ -272,12 +247,7 @@ func TestBecomeStandby(t *testing.T) {
 			t.Errorf("#%d: lead = %d, want %d", i, g, lead)
 		}
 
-		for i := range hs {
-			es[len(hs)-i-1].Stop()
-		}
-		for i := range hs {
-			hs[len(hs)-i-1].Close()
-		}
+		destoryCluster(t, es, hs)
 	}
 	afterTest(t)
 }
@@ -373,7 +343,6 @@ func buildCluster(number int, tls bool) ([]*Server, []*httptest.Server) {
 
 func initTestServer(c *config.Config, id int64, tls bool) (e *Server, h *httptest.Server) {
 	c.DataDir = fmt.Sprintf("tests/etcd_%d", id)
-	os.RemoveAll(c.DataDir)
 
 	e, err := New(c)
 	if err != nil {
@@ -395,6 +364,31 @@ func initTestServer(c *config.Config, id int64, tls bool) (e *Server, h *httptes
 	e.raftPubAddr = h.URL
 	e.pubAddr = h.URL
 	return
+}
+
+func destoryCluster(t *testing.T, es []*Server, hs []*httptest.Server) {
+	for i := range es {
+		e := es[len(es)-i-1]
+		e.Stop()
+		err := os.RemoveAll(e.config.DataDir)
+		if err != nil {
+			panic(err)
+			t.Fatal(err)
+		}
+	}
+	for i := range hs {
+		hs[len(hs)-i-1].Close()
+	}
+}
+
+func destroyServer(t *testing.T, e *Server, h *httptest.Server) {
+	e.Stop()
+	h.Close()
+	err := os.RemoveAll(e.config.DataDir)
+	if err != nil {
+		panic(err)
+		t.Fatal(err)
+	}
 }
 
 func waitCluster(t *testing.T, es []*Server) {

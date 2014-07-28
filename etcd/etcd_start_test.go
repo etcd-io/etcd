@@ -57,7 +57,7 @@ func TestBadDiscoveryService(t *testing.T) {
 
 	c := config.New()
 	c.Discovery = ts.URL + "/v2/keys/_etcd/registry/1"
-	_, _, err := buildServer(c, bootstrapId)
+	_, _, err := buildServer(t, c, bootstrapId)
 	w := `discovery service error`
 	if err == nil || !strings.HasPrefix(err.Error(), w) {
 		t.Errorf("err = %v, want %s prefix", err, w)
@@ -82,18 +82,13 @@ func TestBadDiscoveryServiceWithAdvisedPeers(t *testing.T) {
 	c := config.New()
 	c.Discovery = ts.URL + "/v2/keys/_etcd/registry/1"
 	c.Peers = []string{hs[0].URL}
-	_, _, err := buildServer(c, bootstrapId)
+	_, _, err := buildServer(t, c, bootstrapId)
 	w := `discovery service error`
 	if err == nil || !strings.HasPrefix(err.Error(), w) {
 		t.Errorf("err = %v, want %s prefix", err, w)
 	}
 
-	for i := range hs {
-		es[len(hs)-i-1].Stop()
-	}
-	for i := range hs {
-		hs[len(hs)-i-1].Close()
-	}
+	destoryCluster(t, es, hs)
 	ts.Close()
 	afterTest(t)
 }
@@ -101,7 +96,7 @@ func TestBadDiscoveryServiceWithAdvisedPeers(t *testing.T) {
 func TestBootstrapByEmptyPeers(t *testing.T) {
 	c := config.New()
 	id := genId()
-	e, h, err := buildServer(c, id)
+	e, h, err := buildServer(t, c, id)
 
 	if err != nil {
 		t.Error(err)
@@ -109,22 +104,22 @@ func TestBootstrapByEmptyPeers(t *testing.T) {
 	if e.p.node.Leader() != id {
 		t.Error("leader = %x, want %x", e.p.node.Leader(), id)
 	}
-	destroyServer(e, h)
+	destroyServer(t, e, h)
 	afterTest(t)
 }
 
 func TestBootstrapByDiscoveryService(t *testing.T) {
-	de, dh, _ := buildServer(config.New(), genId())
+	de, dh, _ := buildServer(t, config.New(), genId())
 
 	c := config.New()
 	c.Discovery = dh.URL + "/v2/keys/_etcd/registry/1"
-	e, h, err := buildServer(c, bootstrapId)
+	e, h, err := buildServer(t, c, bootstrapId)
 	if err != nil {
 		t.Fatalf("build server err = %v, want nil", err)
 	}
 
-	destroyServer(e, h)
-	destroyServer(de, dh)
+	destroyServer(t, e, h)
+	destroyServer(t, de, dh)
 	afterTest(t)
 }
 
@@ -134,7 +129,7 @@ func TestRunByAdvisedPeers(t *testing.T) {
 
 	c := config.New()
 	c.Peers = []string{hs[0].URL}
-	e, h, err := buildServer(c, bootstrapId)
+	e, h, err := buildServer(t, c, bootstrapId)
 	if err != nil {
 		t.Fatalf("build server err = %v, want nil", err)
 	}
@@ -143,18 +138,13 @@ func TestRunByAdvisedPeers(t *testing.T) {
 		t.Errorf("leader = %d, want %d", g, w)
 	}
 
-	destroyServer(e, h)
-	for i := range hs {
-		es[len(hs)-i-1].Stop()
-	}
-	for i := range hs {
-		hs[len(hs)-i-1].Close()
-	}
+	destroyServer(t, e, h)
+	destoryCluster(t, es, hs)
 	afterTest(t)
 }
 
 func TestRunByDiscoveryService(t *testing.T) {
-	de, dh, _ := buildServer(config.New(), genId())
+	de, dh, _ := buildServer(t, config.New(), genId())
 
 	tc := NewTestClient()
 	v := url.Values{}
@@ -174,7 +164,7 @@ func TestRunByDiscoveryService(t *testing.T) {
 
 	c := config.New()
 	c.Discovery = dh.URL + "/v2/keys/_etcd/registry/1"
-	e, h, err := buildServer(c, bootstrapId)
+	e, h, err := buildServer(t, c, bootstrapId)
 	if err != nil {
 		t.Fatalf("build server err = %v, want nil", err)
 	}
@@ -183,12 +173,12 @@ func TestRunByDiscoveryService(t *testing.T) {
 		t.Errorf("leader = %d, want %d", g, w)
 	}
 
-	destroyServer(e, h)
-	destroyServer(de, dh)
+	destroyServer(t, e, h)
+	destroyServer(t, de, dh)
 	afterTest(t)
 }
 
-func buildServer(c *config.Config, id int64) (e *Server, h *httptest.Server, err error) {
+func buildServer(t *testing.T, c *config.Config, id int64) (e *Server, h *httptest.Server, err error) {
 	e, h = initTestServer(c, id, false)
 	go func() { err = e.Run() }()
 	for {
@@ -196,15 +186,10 @@ func buildServer(c *config.Config, id int64) (e *Server, h *httptest.Server, err
 			break
 		}
 		if err != nil {
-			destroyServer(e, h)
+			destroyServer(t, e, h)
 			return nil, nil, err
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
 	return e, h, nil
-}
-
-func destroyServer(e *Server, h *httptest.Server) {
-	e.Stop()
-	h.Close()
 }
