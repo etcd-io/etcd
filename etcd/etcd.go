@@ -22,6 +22,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"os"
 	"sync"
 	"time"
 
@@ -55,7 +56,7 @@ type Server struct {
 	http.Handler
 }
 
-func New(c *config.Config) *Server {
+func New(c *config.Config) (*Server, error) {
 	if err := c.Sanitize(); err != nil {
 		log.Fatalf("server.new sanitizeErr=\"%v\"\n", err)
 	}
@@ -95,8 +96,12 @@ func New(c *config.Config) *Server {
 	s.Handler = m
 
 	log.Printf("id=%x server.new raftPubAddr=%s\n", s.id, s.raftPubAddr)
-
-	return s
+	if err = os.MkdirAll(s.config.DataDir, 0700); err != nil {
+		if !os.IsExist(err) {
+			return nil, err
+		}
+	}
+	return s, nil
 }
 
 func (s *Server) SetTick(tick time.Duration) {
@@ -176,7 +181,12 @@ func (s *Server) Run() error {
 		}
 		switch next {
 		case participantMode:
-			s.p = newParticipant(s.id, s.pubAddr, s.raftPubAddr, s.client, s.peerHub, s.tickDuration)
+			p, err := newParticipant(s.id, s.pubAddr, s.raftPubAddr, s.config.DataDir, s.client, s.peerHub, s.tickDuration)
+			if err != nil {
+				log.Printf("id=%x server.run newParicipanteErr=\"%v\"\n", s.id, err)
+				return err
+			}
+			s.p = p
 			dStopc := make(chan struct{})
 			if d != nil {
 				go d.heartbeat(dStopc)

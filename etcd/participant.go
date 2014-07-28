@@ -22,6 +22,7 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"os"
 	"path"
 	"sync"
 	"time"
@@ -29,6 +30,7 @@ import (
 	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/store"
+	"github.com/coreos/etcd/wal"
 )
 
 const (
@@ -74,6 +76,7 @@ type participant struct {
 	node        *v2Raft
 	store.Store
 	rh *raftHandler
+	w  *wal.WAL
 
 	stopped bool
 	mu      sync.Mutex
@@ -82,12 +85,9 @@ type participant struct {
 	*http.ServeMux
 }
 
-func newParticipant(id int64, pubAddr string, raftPubAddr string, client *v2client, peerHub *peerHub, tickDuration time.Duration) *participant {
+func newParticipant(id int64, pubAddr string, raftPubAddr string, dir string, client *v2client, peerHub *peerHub, tickDuration time.Duration) (*participant, error) {
 	p := &participant{
-		id:           id,
 		clusterId:    -1,
-		pubAddr:      pubAddr,
-		raftPubAddr:  raftPubAddr,
 		tickDuration: tickDuration,
 
 		client:  client,
@@ -97,7 +97,6 @@ func newParticipant(id int64, pubAddr string, raftPubAddr string, client *v2clie
 		addNodeC:    make(chan raft.Config, 1),
 		removeNodeC: make(chan raft.Config, 1),
 		node: &v2Raft{
-			Node:   raft.New(id, defaultHeartbeat, defaultElection),
 			result: make(map[wait]chan interface{}),
 		},
 		Store: store.New(),
@@ -107,6 +106,31 @@ func newParticipant(id int64, pubAddr string, raftPubAddr string, client *v2clie
 		ServeMux: http.NewServeMux(),
 	}
 	p.rh = newRaftHandler(peerHub, p.Store.Version())
+
+	walPath := path.Join(dir, "wal")
+	w, err := wal.Open(walPath)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return nil, err
+		}
+		if w, err = wal.New(walPath); err != nil {
+			return nil, err
+		}
+		w.SaveInfo(p.id)
+		p.id = id
+		p.pubAddr = pubAddr
+		p.raftPubAddr = raftPubAddr
+		p.node.Node = raft.New(p.id, defaultHeartbeat, defaultElection)
+	} else {
+		n, err := w.LoadNode()
+		if err != nil {
+			return nil, err
+		}
+		p.id = n.Id
+		p.node.Node = raft.Recover(n.Id, n.Ents, n.State, defaultHeartbeat, defaultElection)
+	}
+	p.w = w
+
 	p.Handle(v2Prefix+"/", handlerErr(p.serveValue))
 	p.Handle(v2machinePrefix, handlerErr(p.serveMachines))
 	p.Handle(v2peersPrefix, handlerErr(p.serveMachines))
@@ -114,20 +138,23 @@ func newParticipant(id int64, pubAddr string, raftPubAddr string, client *v2clie
 	p.Handle(v2StoreStatsPrefix, handlerErr(p.serveStoreStats))
 	p.Handle(v2adminConfigPrefix, handlerErr(p.serveAdminConfig))
 	p.Handle(v2adminMachinesPrefix, handlerErr(p.serveAdminMachines))
-	return p
+
+	return p, nil
 }
 
 func (p *participant) run() int64 {
-	seeds := p.peerHub.getSeeds()
-	if len(seeds) == 0 {
-		log.Printf("id=%x participant.run action=bootstrap\n", p.id)
-		p.node.Campaign()
-		p.node.InitCluster(genId())
-		p.node.Add(p.id, p.raftPubAddr, []byte(p.pubAddr))
-		p.apply(p.node.Next())
-	} else {
-		log.Printf("id=%x participant.run action=join seeds=\"%v\"\n", p.id, seeds)
-		p.join()
+	if p.node.IsEmpty() {
+		seeds := p.peerHub.getSeeds()
+		if len(seeds) == 0 {
+			log.Printf("id=%x participant.run action=bootstrap\n", p.id)
+			p.node.Campaign()
+			p.node.InitCluster(genId())
+			p.node.Add(p.id, p.raftPubAddr, []byte(p.pubAddr))
+			p.apply(p.node.Next())
+		} else {
+			log.Printf("id=%x participant.run action=join seeds=\"%v\"\n", p.id, seeds)
+			p.join()
+		}
 	}
 
 	p.rh.start()
@@ -170,6 +197,8 @@ func (p *participant) run() int64 {
 			return stopMode
 		}
 		p.apply(node.Next())
+		_, ents := node.UnstableEnts()
+		p.save(ents, node.UnstableState())
 		p.send(node.Msgs())
 		if node.IsRemoved() {
 			p.stop()
@@ -187,6 +216,7 @@ func (p *participant) stop() {
 	}
 	p.stopped = true
 	close(p.stopc)
+	p.w.Close()
 }
 
 func (p *participant) raftHandler() http.Handler {
@@ -303,6 +333,10 @@ func (p *participant) apply(ents []raft.Entry) {
 			peer.participate()
 			pp := path.Join(v2machineKVPrefix, fmt.Sprint(cfg.NodeId))
 			p.Store.Set(pp, false, fmt.Sprintf("raft=%v&etcd=%v", cfg.Addr, string(cfg.Context)), store.Permanent)
+			if p.id == cfg.NodeId {
+				p.raftPubAddr = cfg.Addr
+				p.pubAddr = string(cfg.Context)
+			}
 			log.Printf("id=%x participant.cluster.addNode nodeId=%x addr=%s context=%s\n", p.id, cfg.NodeId, cfg.Addr, cfg.Context)
 		case raft.RemoveNode:
 			cfg := new(raft.Config)
@@ -322,6 +356,17 @@ func (p *participant) apply(ents []raft.Entry) {
 			panic("unimplemented")
 		}
 	}
+}
+
+func (p *participant) save(ents []raft.Entry, state raft.State) {
+	for _, ent := range ents {
+		p.w.SaveEntry(&ent)
+	}
+	if state != raft.EmptyState {
+		p.w.SaveState(&state)
+	}
+	p.w.Flush()
+
 }
 
 func (p *participant) send(msgs []raft.Message) {

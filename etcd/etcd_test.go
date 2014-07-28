@@ -23,6 +23,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"testing"
 	"time"
 
@@ -371,7 +372,13 @@ func buildCluster(number int, tls bool) ([]*Server, []*httptest.Server) {
 }
 
 func initTestServer(c *config.Config, id int64, tls bool) (e *Server, h *httptest.Server) {
-	e = New(c)
+	c.DataDir = fmt.Sprintf("tests/etcd_%d", id)
+	os.RemoveAll(c.DataDir)
+
+	e, err := New(c)
+	if err != nil {
+		panic(err)
+	}
 	e.setId(id)
 	e.SetTick(time.Millisecond * 5)
 	m := http.NewServeMux()

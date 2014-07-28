@@ -204,6 +204,11 @@ func (n *Node) Tick() {
 	}
 }
 
+// IsEmpty returns ture if the log of the node is empty.
+func (n *Node) IsEmpty() bool {
+	return n.sm.raftLog.isEmpty()
+}
+
 func (n *Node) UpdateConf(t int64, c *Config) {
 	data, err := json.Marshal(c)
 	if err != nil {
@@ -219,8 +224,8 @@ func (n *Node) UnstableEnts() (int64, []Entry) {
 }
 
 func (n *Node) UnstableState() State {
-	if n.sm.unstableState == emptyState {
-		return emptyState
+	if n.sm.unstableState == EmptyState {
+		return EmptyState
 	}
 	s := n.sm.unstableState
 	n.sm.clearState()
