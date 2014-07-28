@@ -113,14 +113,16 @@ func newParticipant(id int64, pubAddr string, raftPubAddr string, dir string, cl
 		if !os.IsNotExist(err) {
 			return nil, err
 		}
+
+		p.id = id
+		p.pubAddr = pubAddr
+		p.raftPubAddr = raftPubAddr
 		if w, err = wal.New(walPath); err != nil {
 			return nil, err
 		}
 		w.SaveInfo(p.id)
-		p.id = id
-		p.pubAddr = pubAddr
-		p.raftPubAddr = raftPubAddr
 		p.node.Node = raft.New(p.id, defaultHeartbeat, defaultElection)
+		log.Printf("id=%x participant.new path=%s\n", p.id, walPath)
 	} else {
 		n, err := w.LoadNode()
 		if err != nil {
@@ -128,6 +130,7 @@ func newParticipant(id int64, pubAddr string, raftPubAddr string, dir string, cl
 		}
 		p.id = n.Id
 		p.node.Node = raft.Recover(n.Id, n.Ents, n.State, defaultHeartbeat, defaultElection)
+		log.Printf("id=%x participant.load path=%s\n", p.id, walPath)
 	}
 	p.w = w
 
