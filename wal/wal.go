@@ -19,8 +19,9 @@ var (
 )
 
 type WAL struct {
-	f  *os.File
-	bw *bufio.Writer
+	f   *os.File
+	bw  *bufio.Writer
+	buf *bytes.Buffer
 }
 
 func New(path string) (*WAL, error) {
@@ -35,7 +36,8 @@ func New(path string) (*WAL, error) {
 		return nil, err
 	}
 	bw := bufio.NewWriter(f)
-	return &WAL{f, bw}, nil
+	buf := new(bytes.Buffer)
+	return &WAL{f, bw, buf}, nil
 }
 
 func Open(path string) (*WAL, error) {
@@ -44,7 +46,8 @@ func Open(path string) (*WAL, error) {
 		return nil, err
 	}
 	bw := bufio.NewWriter(f)
-	return &WAL{f, bw}, nil
+	buf := new(bytes.Buffer)
+	return &WAL{f, bw, buf}, nil
 }
 
 func (w *WAL) Close() {
@@ -58,13 +61,12 @@ func (w *WAL) SaveInfo(id int64) error {
 	if err := w.checkAtHead(); err != nil {
 		return err
 	}
-	// cache the buffer?
-	buf := new(bytes.Buffer)
-	err := binary.Write(buf, binary.LittleEndian, id)
+	w.buf.Reset()
+	err := binary.Write(w.buf, binary.LittleEndian, id)
 	if err != nil {
 		panic(err)
 	}
-	return writeBlock(w.bw, infoType, buf.Bytes())
+	return writeBlock(w.bw, infoType, w.buf.Bytes())
 }
 
 func (w *WAL) SaveEntry(e *raft.Entry) error {
@@ -77,13 +79,12 @@ func (w *WAL) SaveEntry(e *raft.Entry) error {
 }
 
 func (w *WAL) SaveState(s *raft.State) error {
-	// cache the buffer?
-	buf := new(bytes.Buffer)
-	err := binary.Write(buf, binary.LittleEndian, s)
+	w.buf.Reset()
+	err := binary.Write(w.buf, binary.LittleEndian, s)
 	if err != nil {
 		panic(err)
 	}
-	return writeBlock(w.bw, stateType, buf.Bytes())
+	return writeBlock(w.bw, stateType, w.buf.Bytes())
 }
 
 func (w *WAL) Flush() error {
@@ -112,8 +113,9 @@ func (w *WAL) LoadNode() (*Node, error) {
 		return nil, err
 	}
 	br := bufio.NewReader(w.f)
+	b := &block{}
 
-	b, err := readBlock(br)
+	err := readBlock(br, b)
 	if err != nil {
 		return nil, err
 	}
@@ -127,7 +129,7 @@ func (w *WAL) LoadNode() (*Node, error) {
 
 	ents := make([]raft.Entry, 0)
 	var state raft.State
-	for b, err = readBlock(br); err == nil; b, err = readBlock(br) {
+	for err = readBlock(br, b); err == nil; err = readBlock(br, b) {
 		switch b.t {
 		case entryType:
 			e, err := loadEntry(b.d)
