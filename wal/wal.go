@@ -49,63 +49,44 @@ func Open(path string) (*WAL, error) {
 
 func (w *WAL) Close() {
 	if w.f != nil {
-		w.flush()
+		w.Flush()
 		w.f.Close()
 	}
 }
 
-func (w *WAL) writeInfo(id int64) error {
-	// | 8 bytes | 8 bytes |  8 bytes |
-	// | type    |   len   |   nodeid |
+func (w *WAL) SaveInfo(id int64) error {
 	if err := w.checkAtHead(); err != nil {
 		return err
 	}
-	if err := w.writeInt64(infoType); err != nil {
-		return err
+	// cache the buffer?
+	buf := new(bytes.Buffer)
+	err := binary.Write(buf, binary.LittleEndian, id)
+	if err != nil {
+		panic(err)
 	}
-	if err := w.writeInt64(8); err != nil {
-		return err
-	}
-	return w.writeInt64(id)
+	return writeBlock(w.bw, infoType, buf.Bytes())
 }
 
-func (w *WAL) writeEntry(e *raft.Entry) error {
-	// | 8 bytes | 8 bytes |  variable length |
-	// | type    |   len   |   entry data     |
-	if err := w.writeInt64(entryType); err != nil {
-		return err
-	}
+func (w *WAL) SaveEntry(e *raft.Entry) error {
+	// protobuf?
 	b, err := json.Marshal(e)
 	if err != nil {
-		return err
+		panic(err)
 	}
-	n := len(b)
-	if err := w.writeInt64(int64(n)); err != nil {
-		return err
-	}
-	if _, err := w.bw.Write(b); err != nil {
-		return err
-	}
-	return nil
+	return writeBlock(w.bw, entryType, b)
 }
 
-func (w *WAL) writeState(s *raft.State) error {
-	// | 8 bytes | 8 bytes |  24 bytes |
-	// | type    |   len   |   state   |
-	if err := w.writeInt64(stateType); err != nil {
-		return err
+func (w *WAL) SaveState(s *raft.State) error {
+	// cache the buffer?
+	buf := new(bytes.Buffer)
+	err := binary.Write(buf, binary.LittleEndian, s)
+	if err != nil {
+		panic(err)
 	}
-	if err := w.writeInt64(24); err != nil {
-		return err
-	}
-	return binary.Write(w.bw, binary.LittleEndian, s)
+	return writeBlock(w.bw, stateType, buf.Bytes())
 }
 
-func (w *WAL) writeInt64(n int64) error {
-	return binary.Write(w.bw, binary.LittleEndian, n)
-}
-
-func (w *WAL) flush() error {
+func (w *WAL) Flush() error {
 	return w.bw.Flush()
 }
 
@@ -126,61 +107,51 @@ type Node struct {
 	State raft.State
 }
 
-func (w *WAL) ReadNode() (*Node, error) {
+func (w *WAL) LoadNode() (*Node, error) {
 	if err := w.checkAtHead(); err != nil {
 		return nil, err
 	}
 	br := bufio.NewReader(w.f)
-	n := new(Node)
 
 	b, err := readBlock(br)
 	if err != nil {
 		return nil, err
 	}
-	switch b.t {
-	case infoType:
-		id, err := parseInfo(b.d)
-		if err != nil {
-			return nil, err
-		}
-		n.Id = id
-	default:
-		return nil, fmt.Errorf("type = %d, want %d", b.t, infoType)
+	if b.t != infoType {
+		return nil, fmt.Errorf("the first block of wal is not infoType but %d", b.t)
+	}
+	id, err := loadInfo(b.d)
+	if err != nil {
+		return nil, err
 	}
 
 	ents := make([]raft.Entry, 0)
 	var state raft.State
-	for {
-		b, err := readBlock(br)
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return nil, err
-		}
+	for b, err = readBlock(br); err == nil; b, err = readBlock(br) {
 		switch b.t {
 		case entryType:
-			e, err := parseEntry(b.d)
+			e, err := loadEntry(b.d)
 			if err != nil {
 				return nil, err
 			}
 			ents = append(ents, e)
 		case stateType:
-			s, err := parseState(b.d)
+			s, err := loadState(b.d)
 			if err != nil {
 				return nil, err
 			}
 			state = s
 		default:
-			return nil, fmt.Errorf("cannot handle type %d", b.t)
+			return nil, fmt.Errorf("unexpected block type %d", b.t)
 		}
 	}
-	n.Ents = ents
-	n.State = state
-	return n, nil
+	if err != io.EOF {
+		return nil, err
+	}
+	return &Node{id, ents, state}, nil
 }
 
-func parseInfo(d []byte) (int64, error) {
+func loadInfo(d []byte) (int64, error) {
 	if len(d) != 8 {
 		return 0, fmt.Errorf("len = %d, want 8", len(d))
 	}
@@ -188,55 +159,34 @@ func parseInfo(d []byte) (int64, error) {
 	return readInt64(buf)
 }
 
-func parseEntry(d []byte) (raft.Entry, error) {
+func loadEntry(d []byte) (raft.Entry, error) {
 	var e raft.Entry
 	err := json.Unmarshal(d, &e)
 	return e, err
 }
 
-func parseState(d []byte) (raft.State, error) {
+func loadState(d []byte) (raft.State, error) {
 	var s raft.State
 	buf := bytes.NewBuffer(d)
 	err := binary.Read(buf, binary.LittleEndian, &s)
 	return s, err
 }
 
-type block struct {
-	t int64
-	l int64
-	d []byte
-}
-
-func readBlock(r io.Reader) (*block, error) {
-	typ, err := readInt64(r)
-	if err != nil {
-		return nil, err
-	}
-	l, err := readInt64(r)
-	if err != nil {
-		if err == io.EOF {
-			err = io.ErrUnexpectedEOF
-		}
-		return nil, err
-	}
-	data := make([]byte, l)
-	n, err := r.Read(data)
-	if err != nil {
-		if err == io.EOF {
-			err = io.ErrUnexpectedEOF
-		}
-		return nil, err
-	}
-	if n != int(l) {
-		return nil, fmt.Errorf("len(data) = %d, want %d", n, l)
-	}
-	return &block{typ, l, data}, nil
+func writeInt64(w io.Writer, n int64) error {
+	return binary.Write(w, binary.LittleEndian, n)
 }
 
 func readInt64(r io.Reader) (int64, error) {
 	var n int64
 	err := binary.Read(r, binary.LittleEndian, &n)
 	return n, err
+}
+
+func unexpectedEOF(err error) error {
+	if err == io.EOF {
+		return io.ErrUnexpectedEOF
+	}
+	return err
 }
 
 func max(a, b int64) int64 {

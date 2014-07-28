@@ -1,8 +1,6 @@
 package wal
 
 import (
-	"bytes"
-	"io"
 	"io/ioutil"
 	"os"
 	"path"
@@ -10,6 +8,17 @@ import (
 	"testing"
 
 	"github.com/coreos/etcd/raft"
+)
+
+var (
+	infoData  = []byte("\xef\xbe\x00\x00\x00\x00\x00\x00")
+	infoBlock = append([]byte("\x01\x00\x00\x00\x00\x00\x00\x00\b\x00\x00\x00\x00\x00\x00\x00"), infoData...)
+
+	stateData  = []byte("\x01\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00")
+	stateBlock = append([]byte("\x03\x00\x00\x00\x00\x00\x00\x00\x18\x00\x00\x00\x00\x00\x00\x00"), stateData...)
+
+	entryJsonData = []byte("{\"Type\":1,\"Term\":1,\"Data\":\"AQ==\"}")
+	entryBlock    = append([]byte("\x02\x00\x00\x00\x00\x00\x00\x00\x21\x00\x00\x00\x00\x00\x00\x00"), entryJsonData...)
 )
 
 func TestNew(t *testing.T) {
@@ -37,14 +46,14 @@ func TestNew(t *testing.T) {
 	}
 }
 
-func TestWriteEntry(t *testing.T) {
+func TestSaveEntry(t *testing.T) {
 	p := path.Join(os.TempDir(), "waltest")
 	w, err := New(p)
 	if err != nil {
 		t.Fatal(err)
 	}
 	e := &raft.Entry{1, 1, []byte{1}}
-	err = w.writeEntry(e)
+	err = w.SaveEntry(e)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -54,9 +63,8 @@ func TestWriteEntry(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	wb := []byte("\x02\x00\x00\x00\x00\x00\x00\x00!\x00\x00\x00\x00\x00\x00\x00{\"Type\":1,\"Term\":1,\"Data\":\"AQ==\"}")
-	if !reflect.DeepEqual(b, wb) {
-		t.Errorf("ent = %q, want %q", b, wb)
+	if !reflect.DeepEqual(b, entryBlock) {
+		t.Errorf("ent = %q, want %q", b, entryBlock)
 	}
 
 	err = os.Remove(p)
@@ -65,28 +73,28 @@ func TestWriteEntry(t *testing.T) {
 	}
 }
 
-func TestWriteInfo(t *testing.T) {
+func TestSaveInfo(t *testing.T) {
 	p := path.Join(os.TempDir(), "waltest")
 	w, err := New(p)
 	if err != nil {
 		t.Fatal(err)
 	}
 	id := int64(0xBEEF)
-	err = w.writeInfo(id)
+	err = w.SaveInfo(id)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// make sure we can only write info at the head of the wal file
 	// still in buffer
-	err = w.writeInfo(id)
+	err = w.SaveInfo(id)
 	if err == nil || err.Error() != "cannot write info at 24, expect 0" {
 		t.Errorf("err = %v, want cannot write info at 8, expect 0", err)
 	}
 
 	// flush to disk
-	w.flush()
-	err = w.writeInfo(id)
+	w.Flush()
+	err = w.SaveInfo(id)
 	if err == nil || err.Error() != "cannot write info at 24, expect 0" {
 		t.Errorf("err = %v, want cannot write info at 8, expect 0", err)
 	}
@@ -96,9 +104,8 @@ func TestWriteInfo(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	wb := []byte("\x01\x00\x00\x00\x00\x00\x00\x00\b\x00\x00\x00\x00\x00\x00\x00\xef\xbe\x00\x00\x00\x00\x00\x00")
-	if !reflect.DeepEqual(b, wb) {
-		t.Errorf("ent = %q, want %q", b, wb)
+	if !reflect.DeepEqual(b, infoBlock) {
+		t.Errorf("ent = %q, want %q", b, infoBlock)
 	}
 
 	err = os.Remove(p)
@@ -107,14 +114,14 @@ func TestWriteInfo(t *testing.T) {
 	}
 }
 
-func TestWriteState(t *testing.T) {
+func TestSaveState(t *testing.T) {
 	p := path.Join(os.TempDir(), "waltest")
 	w, err := New(p)
 	if err != nil {
 		t.Fatal(err)
 	}
 	st := &raft.State{1, 1, 1}
-	err = w.writeState(st)
+	err = w.SaveState(st)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -124,9 +131,8 @@ func TestWriteState(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	wb := []byte("\x03\x00\x00\x00\x00\x00\x00\x00\x18\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00")
-	if !reflect.DeepEqual(b, wb) {
-		t.Errorf("ent = %q, want %q", b, wb)
+	if !reflect.DeepEqual(b, stateBlock) {
+		t.Errorf("ent = %q, want %q", b, stateBlock)
 	}
 
 	err = os.Remove(p)
@@ -135,9 +141,8 @@ func TestWriteState(t *testing.T) {
 	}
 }
 
-func TestParseInfo(t *testing.T) {
-	data := []byte("\xef\xbe\x00\x00\x00\x00\x00\x00")
-	id, err := parseInfo(data)
+func TestLoadInfo(t *testing.T) {
+	id, err := loadInfo(infoData)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -146,9 +151,8 @@ func TestParseInfo(t *testing.T) {
 	}
 }
 
-func TestParseEntry(t *testing.T) {
-	data := []byte("{\"Type\":1,\"Term\":1,\"Data\":\"AQ==\"}")
-	e, err := parseEntry(data)
+func TestLoadEntry(t *testing.T) {
+	e, err := loadEntry(entryJsonData)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -158,9 +162,8 @@ func TestParseEntry(t *testing.T) {
 	}
 }
 
-func TestParseState(t *testing.T) {
-	data := []byte("\x01\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00")
-	s, err := parseState(data)
+func TestLoadState(t *testing.T) {
+	s, err := loadState(stateData)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -170,70 +173,25 @@ func TestParseState(t *testing.T) {
 	}
 }
 
-func TestReadBlock(t *testing.T) {
-	tests := []struct {
-		data []byte
-		wb   *block
-		we   error
-	}{
-		{
-			[]byte("\x01\x00\x00\x00\x00\x00\x00\x00\b\x00\x00\x00\x00\x00\x00\x00\xef\xbe\x00\x00\x00\x00\x00\x00"),
-			&block{1, 8, []byte("\xef\xbe\x00\x00\x00\x00\x00\x00")},
-			nil,
-		},
-		{
-			[]byte(""),
-			nil,
-			io.EOF,
-		},
-		{
-			[]byte("\x01\x00\x00\x00"),
-			nil,
-			io.ErrUnexpectedEOF,
-		},
-		{
-			[]byte("\x01\x00\x00\x00\x00\x00\x00\x00"),
-			nil,
-			io.ErrUnexpectedEOF,
-		},
-		{
-			[]byte("\x01\x00\x00\x00\x00\x00\x00\x00\b\x00\x00\x00\x00\x00\x00\x00"),
-			nil,
-			io.ErrUnexpectedEOF,
-		},
-	}
-
-	for i, tt := range tests {
-		buf := bytes.NewBuffer(tt.data)
-		b, e := readBlock(buf)
-		if !reflect.DeepEqual(b, tt.wb) {
-			t.Errorf("#%d: block = %v, want %v", i, b, tt.wb)
-		}
-		if !reflect.DeepEqual(e, tt.we) {
-			t.Errorf("#%d: err = %v, want %v", i, e, tt.we)
-		}
-	}
-}
-
-func TestReadNode(t *testing.T) {
+func TestLoadNode(t *testing.T) {
 	p := path.Join(os.TempDir(), "waltest")
 	w, err := New(p)
 	if err != nil {
 		t.Fatal(err)
 	}
 	id := int64(0xBEEF)
-	if err = w.writeInfo(id); err != nil {
+	if err = w.SaveInfo(id); err != nil {
 		t.Fatal(err)
 	}
 	ents := []raft.Entry{{1, 1, []byte{1}}, {2, 2, []byte{2}}}
 	for _, e := range ents {
-		if err = w.writeEntry(&e); err != nil {
+		if err = w.SaveEntry(&e); err != nil {
 			t.Fatal(err)
 		}
 	}
 	sts := []raft.State{{1, 1, 1}, {2, 2, 2}}
 	for _, s := range sts {
-		if err = w.writeState(&s); err != nil {
+		if err = w.SaveState(&s); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -243,7 +201,7 @@ func TestReadNode(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	n, err := w.ReadNode()
+	n, err := w.LoadNode()
 	if err != nil {
 		t.Fatal(err)
 	}
