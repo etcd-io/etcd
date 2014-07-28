@@ -13,31 +13,34 @@ func TestReadBlock(t *testing.T) {
 		wb   *block
 		we   error
 	}{
-		{infoBlock, &block{1, 8, infoData}, nil},
-		{[]byte(""), nil, io.EOF},
-		{infoBlock[:len(infoBlock)-len(infoData)-8], nil, io.ErrUnexpectedEOF},
-		{infoBlock[:len(infoBlock)-len(infoData)], nil, io.ErrUnexpectedEOF},
-		{infoBlock[:len(infoBlock)-8], nil, io.ErrUnexpectedEOF},
+		{infoBlock, &block{1, infoData}, nil},
+		{[]byte(""), &block{}, io.EOF},
+		{infoBlock[:len(infoBlock)-len(infoData)-8], &block{}, io.ErrUnexpectedEOF},
+		{infoBlock[:len(infoBlock)-len(infoData)], &block{}, io.ErrUnexpectedEOF},
+		{infoBlock[:len(infoBlock)-8], &block{}, io.ErrUnexpectedEOF},
 	}
 
+	b := &block{}
 	for i, tt := range tests {
 		buf := bytes.NewBuffer(tt.data)
-		b, e := readBlock(buf)
+		e := readBlock(buf, b)
 		if !reflect.DeepEqual(b, tt.wb) {
 			t.Errorf("#%d: block = %v, want %v", i, b, tt.wb)
 		}
 		if !reflect.DeepEqual(e, tt.we) {
 			t.Errorf("#%d: err = %v, want %v", i, e, tt.we)
 		}
+		b = &block{}
 	}
 }
 
 func TestWriteBlock(t *testing.T) {
+	b := &block{}
 	typ := int64(0xABCD)
 	d := []byte("Hello world!")
 	buf := new(bytes.Buffer)
 	writeBlock(buf, typ, d)
-	b, err := readBlock(buf)
+	err := readBlock(buf, b)
 	if err != nil {
 		t.Errorf("err = %v, want nil", err)
 	}

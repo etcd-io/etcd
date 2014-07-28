@@ -7,7 +7,6 @@ import (
 
 type block struct {
 	t int64
-	l int64
 	d []byte
 }
 
@@ -22,22 +21,24 @@ func writeBlock(w io.Writer, t int64, d []byte) error {
 	return err
 }
 
-func readBlock(r io.Reader) (*block, error) {
+func readBlock(r io.Reader, b *block) error {
 	t, err := readInt64(r)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	l, err := readInt64(r)
 	if err != nil {
-		return nil, unexpectedEOF(err)
+		return unexpectedEOF(err)
 	}
 	d := make([]byte, l)
 	n, err := r.Read(d)
 	if err != nil {
-		return nil, unexpectedEOF(err)
+		return unexpectedEOF(err)
 	}
 	if n != int(l) {
-		return nil, fmt.Errorf("len(data) = %d, want %d", n, l)
+		return fmt.Errorf("len(data) = %d, want %d", n, l)
 	}
-	return &block{t, l, d}, nil
+	b.t = t
+	b.d = d
+	return nil
 }
