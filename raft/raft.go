@@ -72,7 +72,7 @@ type State struct {
 	Commit int64
 }
 
-var emptyState = State{}
+var EmptyState = State{}
 
 type Message struct {
 	Type      messageType
