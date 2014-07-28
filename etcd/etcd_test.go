@@ -342,9 +342,13 @@ func buildCluster(number int, tls bool) ([]*Server, []*httptest.Server) {
 }
 
 func initTestServer(c *config.Config, id int64, tls bool) (e *Server, h *httptest.Server) {
-	c.DataDir = fmt.Sprintf("tests/etcd_%d", id)
+	n, err := ioutil.TempDir(os.TempDir(), "etcd")
+	if err != nil {
+		panic(err)
+	}
+	c.DataDir = n
 
-	e, err := New(c)
+	e, err = New(c)
 	if err != nil {
 		panic(err)
 	}
