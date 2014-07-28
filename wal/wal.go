@@ -24,20 +24,21 @@ type WAL struct {
 	buf *bytes.Buffer
 }
 
+func newWAL(f *os.File) *WAL {
+	return &WAL{f, bufio.NewWriter(f), new(bytes.Buffer)}
+}
+
 func New(path string) (*WAL, error) {
 	f, err := os.Open(path)
 	if err == nil {
 		f.Close()
 		return nil, os.ErrExist
 	}
-
 	f, err = os.Create(path)
 	if err != nil {
 		return nil, err
 	}
-	bw := bufio.NewWriter(f)
-	buf := new(bytes.Buffer)
-	return &WAL{f, bw, buf}, nil
+	return newWAL(f), nil
 }
 
 func Open(path string) (*WAL, error) {
@@ -45,9 +46,7 @@ func Open(path string) (*WAL, error) {
 	if err != nil {
 		return nil, err
 	}
-	bw := bufio.NewWriter(f)
-	buf := new(bytes.Buffer)
-	return &WAL{f, bw, buf}, nil
+	return newWAL(f), nil
 }
 
 func (w *WAL) Close() {
