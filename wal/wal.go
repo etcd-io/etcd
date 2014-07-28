@@ -65,6 +65,10 @@ func Open(path string) (*WAL, error) {
 	return newWAL(f), nil
 }
 
+func (w *WAL) Flush() error {
+	return w.bw.Flush()
+}
+
 func (w *WAL) Close() {
 	if w.f != nil {
 		w.Flush()
@@ -100,10 +104,6 @@ func (w *WAL) SaveState(s *raft.State) error {
 		panic(err)
 	}
 	return writeBlock(w.bw, stateType, w.buf.Bytes())
-}
-
-func (w *WAL) Flush() error {
-	return w.bw.Flush()
 }
 
 func (w *WAL) checkAtHead() error {
@@ -197,13 +197,6 @@ func readInt64(r io.Reader) (int64, error) {
 	var n int64
 	err := binary.Read(r, binary.LittleEndian, &n)
 	return n, err
-}
-
-func unexpectedEOF(err error) error {
-	if err == io.EOF {
-		return io.ErrUnexpectedEOF
-	}
-	return err
 }
 
 func max(a, b int64) int64 {
