@@ -188,12 +188,11 @@ func TestDenial(t *testing.T) {
 	}
 }
 
-func TestLoad(t *testing.T) {
+func TestRecover(t *testing.T) {
 	ents := []Entry{{Term: 1}, {Term: 2}, {Term: 3}}
 	state := State{Term: 500, Vote: 1, Commit: 3}
 
-	n := New(0, defaultHeartbeat, defaultElection)
-	n.Load(ents, state)
+	n := Recover(0, ents, state, defaultHeartbeat, defaultElection)
 	if g := n.Next(); !reflect.DeepEqual(g, ents) {
 		t.Errorf("ents = %+v, want %+v", g, ents)
 	}

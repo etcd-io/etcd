@@ -46,6 +46,10 @@ func newLog() *raftLog {
 	}
 }
 
+func (l *raftLog) isEmpty() bool {
+	return l.offset == 0 && len(l.ents) == 1
+}
+
 func (l *raftLog) String() string {
 	return fmt.Sprintf("offset=%d committed=%d applied=%d len(ents)=%d", l.offset, l.committed, l.applied, len(l.ents))
 }
