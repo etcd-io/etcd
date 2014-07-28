@@ -76,8 +76,7 @@ func TestV2Set(t *testing.T) {
 		}
 	}
 
-	es[0].Stop()
-	hs[0].Close()
+	destoryCluster(t, es, hs)
 	afterTest(t)
 }
 
@@ -185,8 +184,7 @@ func TestV2CreateUpdate(t *testing.T) {
 		}
 	}
 
-	es[0].Stop()
-	hs[0].Close()
+	destoryCluster(t, es, hs)
 	afterTest(t)
 }
 
@@ -314,8 +312,7 @@ func TestV2CAS(t *testing.T) {
 		}
 	}
 
-	es[0].Stop()
-	hs[0].Close()
+	destoryCluster(t, es, hs)
 	afterTest(t)
 }
 
@@ -411,8 +408,7 @@ func TestV2Delete(t *testing.T) {
 		}
 	}
 
-	es[0].Stop()
-	hs[0].Close()
+	destoryCluster(t, es, hs)
 	afterTest(t)
 }
 
@@ -510,8 +506,7 @@ func TestV2CAD(t *testing.T) {
 		}
 	}
 
-	es[0].Stop()
-	hs[0].Close()
+	destoryCluster(t, es, hs)
 	afterTest(t)
 }
 
@@ -574,8 +569,7 @@ func TestV2Unique(t *testing.T) {
 		}
 	}
 
-	es[0].Stop()
-	hs[0].Close()
+	destoryCluster(t, es, hs)
 	afterTest(t)
 }
 
@@ -669,8 +663,7 @@ func TestV2Get(t *testing.T) {
 		}
 	}
 
-	es[0].Stop()
-	hs[0].Close()
+	destoryCluster(t, es, hs)
 	afterTest(t)
 }
 
@@ -715,8 +708,7 @@ func TestV2Watch(t *testing.T) {
 		t.Error(err)
 	}
 
-	es[0].Stop()
-	hs[0].Close()
+	destoryCluster(t, es, hs)
 	afterTest(t)
 }
 
@@ -773,8 +765,7 @@ func TestV2WatchWithIndex(t *testing.T) {
 		t.Error(err)
 	}
 
-	es[0].Stop()
-	hs[0].Close()
+	destoryCluster(t, es, hs)
 	afterTest(t)
 }
 
@@ -821,8 +812,7 @@ func TestV2WatchKeyInDir(t *testing.T) {
 		t.Error(err)
 	}
 
-	es[0].Stop()
-	hs[0].Close()
+	destoryCluster(t, es, hs)
 	afterTest(t)
 }
 
@@ -855,8 +845,7 @@ func TestV2Head(t *testing.T) {
 		t.Errorf("ContentLength = %d, want -1", resp.ContentLength)
 	}
 
-	es[0].Stop()
-	hs[0].Close()
+	destoryCluster(t, es, hs)
 	afterTest(t)
 }
 

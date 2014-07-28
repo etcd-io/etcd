@@ -59,12 +59,7 @@ func TestMachinesEndPoint(t *testing.T) {
 		}
 	}
 
-	for i := range es {
-		es[len(es)-i-1].Stop()
-	}
-	for i := range hs {
-		hs[len(hs)-i-1].Close()
-	}
+	destoryCluster(t, es, hs)
 	afterTest(t)
 }
 
@@ -96,12 +91,7 @@ func TestLeaderEndPoint(t *testing.T) {
 		}
 	}
 
-	for i := range es {
-		es[len(es)-i-1].Stop()
-	}
-	for i := range hs {
-		hs[len(hs)-i-1].Close()
-	}
+	destoryCluster(t, es, hs)
 	afterTest(t)
 }
 
@@ -125,12 +115,7 @@ func TestStoreStatsEndPoint(t *testing.T) {
 		t.Errorf("setSuccess = %d, want 1", stats.SetSuccess)
 	}
 
-	for i := range es {
-		es[len(es)-i-1].Stop()
-	}
-	for i := range hs {
-		hs[len(hs)-i-1].Close()
-	}
+	destoryCluster(t, es, hs)
 	afterTest(t)
 }
 
@@ -164,12 +149,7 @@ func TestGetAdminConfigEndPoint(t *testing.T) {
 		}
 	}
 
-	for i := range es {
-		es[len(es)-i-1].Stop()
-	}
-	for i := range hs {
-		hs[len(hs)-i-1].Close()
-	}
+	destoryCluster(t, es, hs)
 	afterTest(t)
 }
 
@@ -225,12 +205,7 @@ func TestPutAdminConfigEndPoint(t *testing.T) {
 			}
 		}
 
-		for j := range es {
-			es[len(es)-j-1].Stop()
-		}
-		for j := range hs {
-			hs[len(hs)-j-1].Close()
-		}
+		destoryCluster(t, es, hs)
 	}
 	afterTest(t)
 }
@@ -276,12 +251,7 @@ func TestGetAdminMachineEndPoint(t *testing.T) {
 		}
 	}
 
-	for i := range es {
-		es[len(es)-i-1].Stop()
-	}
-	for i := range hs {
-		hs[len(hs)-i-1].Close()
-	}
+	destoryCluster(t, es, hs)
 	afterTest(t)
 }
 
@@ -324,12 +294,7 @@ func TestGetAdminMachinesEndPoint(t *testing.T) {
 		}
 	}
 
-	for i := range es {
-		es[len(es)-i-1].Stop()
-	}
-	for i := range hs {
-		hs[len(hs)-i-1].Close()
-	}
+	destoryCluster(t, es, hs)
 	afterTest(t)
 }
 

@@ -44,12 +44,7 @@ func TestKillLeader(t *testing.T) {
 			t.Errorf("#%d: lead = %d, want not 0", i, es[1].p.node.Leader())
 		}
 
-		for i := range es {
-			es[len(es)-i-1].Stop()
-		}
-		for i := range hs {
-			hs[len(hs)-i-1].Close()
-		}
+		destoryCluster(t, es, hs)
 	}
 	afterTest(t)
 }
@@ -74,12 +69,7 @@ func TestRandomKill(t *testing.T) {
 
 		waitLeader(es)
 
-		for i := range es {
-			es[len(es)-i-1].Stop()
-		}
-		for i := range hs {
-			hs[len(hs)-i-1].Close()
-		}
+		destoryCluster(t, es, hs)
 	}
 	afterTest(t)
 }
@@ -106,12 +96,7 @@ func TestJoinThroughFollower(t *testing.T) {
 		}
 		waitCluster(t, es)
 
-		for i := range hs {
-			es[len(hs)-i-1].Stop()
-		}
-		for i := range hs {
-			hs[len(hs)-i-1].Close()
-		}
+		destoryCluster(t, es, hs)
 	}
 	afterTest(t)
 }
@@ -127,12 +112,7 @@ func BenchmarkEndToEndSet(b *testing.B) {
 		}
 	}
 	b.StopTimer()
-	for i := range hs {
-		es[len(hs)-i-1].Stop()
-	}
-	for i := range hs {
-		hs[len(hs)-i-1].Close()
-	}
+	destoryCluster(nil, es, hs)
 }
 
 // TODO(yichengq): cannot handle previous msgDenial correctly now
@@ -187,12 +167,7 @@ func TestModeSwitch(t *testing.T) {
 			}
 		}
 
-		for i := range hs {
-			es[len(hs)-i-1].Stop()
-		}
-		for i := range hs {
-			hs[len(hs)-i-1].Close()
-		}
+		destoryCluster(t, es, hs)
 	}
 	afterTest(t)
 }
