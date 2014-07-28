@@ -51,6 +51,13 @@ func New(id int64, heartbeat, election tick) *Node {
 	return n
 }
 
+func Recover(id int64, ents []Entry, state State, heartbeat, election tick) *Node {
+	n := New(id, heartbeat, election)
+	n.sm.loadEnts(ents)
+	n.sm.loadState(state)
+	return n
+}
+
 func (n *Node) Id() int64 { return n.sm.id }
 
 func (n *Node) ClusterId() int64 { return n.sm.clusterId }
@@ -218,10 +225,4 @@ func (n *Node) UnstableState() State {
 	s := n.sm.unstableState
 	n.sm.clearState()
 	return s
-}
-
-// Load loads saved info and recovers the node.
-// It should only be called for new node.
-func (n *Node) Load(ents []Entry, state State) {
-	n.sm.load(ents, state)
 }
