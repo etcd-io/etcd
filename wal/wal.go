@@ -65,13 +65,16 @@ func Open(path string) (*WAL, error) {
 	return newWAL(f), nil
 }
 
-func (w *WAL) Flush() error {
-	return w.bw.Flush()
+func (w *WAL) Sync() error {
+	if err := w.bw.Flush(); err != nil {
+		return err
+	}
+	return w.f.Sync()
 }
 
 func (w *WAL) Close() {
 	if w.f != nil {
-		w.Flush()
+		w.Sync()
 		w.f.Close()
 	}
 }
