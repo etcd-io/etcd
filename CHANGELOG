@@ -1,3 +1,10 @@
+v0.4.6
+* Fix long-term timer leak (#900, #875, #868, #904)
+* Fix `Running` field in standby_info file (#881)
+* Add `quorum=true` query parameter for GET requests (#866, #883)
+* Add `Access-Control-Allow-Headers` header for CORS requests (#886)
+* Various documentation improvements (#907, #882)
+
 v0.4.5
 * Flush headers immediatly on `wait=true` requests (#877)
 * Add `ETCD_HTTP_READ_TIMEOUT` and `ETCD_HTTP_WRITE_TIMEOUT` (#880)
