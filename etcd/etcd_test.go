@@ -20,10 +20,12 @@ import (
 	"fmt"
 	"io/ioutil"
 	"math/rand"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -403,6 +405,7 @@ func initTestServer(c *config.Config, id int64, tls bool) (e *Server, h *httptes
 		}
 		c.DataDir = n
 	}
+	addr := c.Addr
 
 	srv, err := New(c)
 	if err != nil {
@@ -416,14 +419,39 @@ func initTestServer(c *config.Config, id int64, tls bool) (e *Server, h *httptes
 	m.Handle("/", e)
 	m.Handle("/raft", e.RaftHandler())
 	m.Handle("/raft/", e.RaftHandler())
-	if tls {
-		h = httptest.NewTLSServer(m)
-	} else {
-		h = httptest.NewServer(m)
-	}
 
+	if addr == "127.0.0.1:4001" {
+		if tls {
+			h = httptest.NewTLSServer(m)
+		} else {
+			h = httptest.NewServer(m)
+		}
+	} else {
+		var l net.Listener
+		var err error
+		for {
+			l, err = net.Listen("tcp", addr)
+			if err == nil {
+				break
+			}
+			if !strings.Contains(err.Error(), "address already in use") {
+				panic(err)
+			}
+			time.Sleep(500 * time.Millisecond)
+		}
+		h = &httptest.Server{
+			Listener: l,
+			Config:   &http.Server{Handler: m},
+		}
+		if tls {
+			h.StartTLS()
+		} else {
+			h.Start()
+		}
+	}
 	e.raftPubAddr = h.URL
 	e.pubAddr = h.URL
+
 	return
 }
 
