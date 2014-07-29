@@ -17,6 +17,7 @@ limitations under the License.
 package etcd
 
 import (
+	"fmt"
 	"math/rand"
 	"net/http/httptest"
 	"testing"
@@ -27,21 +28,38 @@ import (
 )
 
 func TestKillLeader(t *testing.T) {
-	tests := []int{3, 5, 9, 11}
+	tests := []int{3, 5, 9}
 
 	for i, tt := range tests {
 		es, hs := buildCluster(tt, false)
 		waitCluster(t, es)
-		waitLeader(es)
 
-		lead := es[0].p.node.Leader()
-		es[lead].Stop()
+		var totalTime time.Duration
+		for j := 0; j < tt; j++ {
+			lead, _ := waitLeader(es)
+			es[lead].Stop()
+			hs[lead].Close()
+			time.Sleep(es[0].tickDuration * defaultElection * 2)
 
-		time.Sleep(es[0].tickDuration * defaultElection * 2)
+			start := time.Now()
+			if g, _ := waitLeader(es); g == lead {
+				t.Errorf("#%d.%d: lead = %d, want not %d", i, j, g, lead)
+			}
+			take := time.Now().Sub(start)
+			totalTime += take
+			avgTime := totalTime / (time.Duration)(i+1)
+			fmt.Println("Total time:", totalTime, "; Avg time:", avgTime)
 
-		waitLeader(es)
-		if es[1].p.node.Leader() == 0 {
-			t.Errorf("#%d: lead = %d, want not 0", i, es[1].p.node.Leader())
+			c := config.New()
+			c.DataDir = es[lead].config.DataDir
+			c.Addr = hs[lead].Listener.Addr().String()
+			id := es[lead].id
+			e, h, err := buildServer(t, c, id)
+			if err != nil {
+				t.Fatal("#%d.%d: %v", i, j, err)
+			}
+			es[lead] = e
+			hs[lead] = h
 		}
 
 		destoryCluster(t, es, hs)
@@ -49,25 +67,42 @@ func TestKillLeader(t *testing.T) {
 	afterTest(t)
 }
 
-func TestRandomKill(t *testing.T) {
-	tests := []int{3, 5, 9, 11}
+func TestKillRandom(t *testing.T) {
+	tests := []int{3, 5, 9}
 
 	for _, tt := range tests {
 		es, hs := buildCluster(tt, false)
 		waitCluster(t, es)
-		waitLeader(es)
 
-		toKill := make(map[int64]struct{})
-		for len(toKill) != tt/2-1 {
-			toKill[rand.Int63n(int64(tt))] = struct{}{}
+		for j := 0; j < tt; j++ {
+			waitLeader(es)
+
+			toKill := make(map[int64]struct{})
+			for len(toKill) != tt/2-1 {
+				toKill[rand.Int63n(int64(tt))] = struct{}{}
+			}
+			for k := range toKill {
+				es[k].Stop()
+				hs[k].Close()
+			}
+
+			time.Sleep(es[0].tickDuration * defaultElection * 2)
+
+			waitLeader(es)
+
+			for k := range toKill {
+				c := config.New()
+				c.DataDir = es[k].config.DataDir
+				c.Addr = hs[k].Listener.Addr().String()
+				id := es[k].id
+				e, h, err := buildServer(t, c, id)
+				if err != nil {
+					t.Fatal(err)
+				}
+				es[k] = e
+				hs[k] = h
+			}
 		}
-		for k := range toKill {
-			es[k].Stop()
-		}
-
-		time.Sleep(es[0].tickDuration * defaultElection * 2)
-
-		waitLeader(es)
 
 		destoryCluster(t, es, hs)
 	}
