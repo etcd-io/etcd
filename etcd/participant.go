@@ -369,7 +369,7 @@ func (p *participant) save(ents []raft.Entry, state raft.State) {
 	if state != raft.EmptyState {
 		p.w.SaveState(&state)
 	}
-	p.w.Flush()
+	p.w.Sync()
 
 }
 

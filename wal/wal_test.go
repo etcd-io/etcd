@@ -108,8 +108,8 @@ func TestSaveInfo(t *testing.T) {
 		t.Errorf("err = %v, want cannot write info at 8, expect 0", err)
 	}
 
-	// flush to disk
-	w.Flush()
+	// sync to disk
+	w.Sync()
 	err = w.SaveInfo(id)
 	if err == nil || err.Error() != "cannot write info at 24, expect 0" {
 		t.Errorf("err = %v, want cannot write info at 8, expect 0", err)
