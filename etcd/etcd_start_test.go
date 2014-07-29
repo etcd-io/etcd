@@ -178,6 +178,10 @@ func TestRunByDiscoveryService(t *testing.T) {
 	afterTest(t)
 }
 
+func TestRunByDataDir(t *testing.T) {
+	TestSingleNodeRecovery(t)
+}
+
 func buildServer(t *testing.T, c *config.Config, id int64) (e *Server, h *httptest.Server, err error) {
 	e, h = initTestServer(c, id, false)
 	go func() { err = e.Run() }()

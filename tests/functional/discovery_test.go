@@ -35,59 +35,6 @@ func (g *garbageHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	g.success = true
 }
 
-// TestDiscoveryDownNoBackupPeersWithDataDir ensures that etcd runs if it is
-// started with a bad discovery URL, no backups and valid data dir.
-func TestDiscoveryDownNoBackupPeersWithDataDir(t *testing.T) {
-	etcdtest.RunServer(func(s *server.Server) {
-		u, ok := s.PeerHost("ETCDTEST")
-		if !ok {
-			t.Fatalf("Couldn't find the URL")
-		}
-
-		// run etcd and connect to ETCDTEST server
-		proc, err := startServer([]string{"-peers", u})
-		if err != nil {
-			t.Fatal(err.Error())
-		}
-
-		// check it runs well
-		client := http.Client{}
-		err = assertServerFunctional(client, "http")
-		if err != nil {
-			t.Fatal(err.Error())
-		}
-
-		// stop etcd, and leave valid data dir for later usage
-		stopServer(proc)
-
-		g := garbageHandler{t: t}
-		ts := httptest.NewServer(&g)
-		defer ts.Close()
-
-		discover := ts.URL + "/v2/keys/_etcd/registry/1"
-		// connect to ETCDTEST server again with previous data dir
-		proc, err = startServerWithDataDir([]string{"-discovery", discover})
-		if err != nil {
-			t.Fatal(err.Error())
-		}
-		defer stopServer(proc)
-
-		// TODO(yichengq): it needs some time to do leader election
-		// improve to get rid of it
-		time.Sleep(1 * time.Second)
-
-		client = http.Client{}
-		err = assertServerFunctional(client, "http")
-		if err != nil {
-			t.Fatal(err.Error())
-		}
-
-		if !g.success {
-			t.Fatal("Discovery server never called")
-		}
-	})
-}
-
 // TestDiscoverySecondPeerFirstNoResponse ensures that if the first etcd
 // machine stops after heartbeating that the second machine fails too.
 func TestDiscoverySecondPeerFirstNoResponse(t *testing.T) {
@@ -117,52 +64,6 @@ func TestDiscoverySecondPeerFirstNoResponse(t *testing.T) {
 		if err != nil && strings.Contains(err.Error(), "connection reset by peer") {
 			t.Fatal(err.Error())
 		}
-	})
-}
-
-// TestDiscoveryRestart ensures that a discovery cluster could be restarted.
-func TestDiscoveryRestart(t *testing.T) {
-	etcdtest.RunServer(func(s *server.Server) {
-		proc, err := startServer([]string{"-discovery", s.URL() + "/v2/keys/_etcd/registry/4"})
-		if err != nil {
-			t.Fatal(err.Error())
-		}
-
-		client := http.Client{}
-		err = assertServerFunctional(client, "http")
-		if err != nil {
-			t.Fatal(err.Error())
-		}
-
-		proc2, err := startServer2([]string{"-discovery", s.URL() + "/v2/keys/_etcd/registry/4", "-addr", "127.0.0.1:4002", "-peer-addr", "127.0.0.1:7002"})
-		if err != nil {
-			t.Fatal(err.Error())
-		}
-
-		err = assertServerFunctional(client, "http")
-		if err != nil {
-			t.Fatal(err.Error())
-		}
-
-		stopServer(proc)
-		stopServer(proc2)
-
-		proc, err = startServerWithDataDir([]string{"-discovery", s.URL() + "/v2/keys/_etcd/registry/4"})
-		if err != nil {
-			t.Fatal(err.Error())
-		}
-		proc2, err = startServer2WithDataDir([]string{"-discovery", s.URL() + "/v2/keys/_etcd/registry/4", "-addr", "127.0.0.1:4002", "-peer-addr", "127.0.0.1:7002"})
-		if err != nil {
-			t.Fatal(err.Error())
-		}
-
-		err = assertServerFunctional(client, "http")
-		if err != nil {
-			t.Fatal(err.Error())
-		}
-
-		stopServer(proc)
-		stopServer(proc2)
 	})
 }
 
