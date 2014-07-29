@@ -351,6 +351,7 @@ func TestSingleNodeRecovery(t *testing.T) {
 	c.DataDir = dataDir
 	e, h, _ = buildServer(t, c, id)
 
+	waitLeader([]*Server{e})
 	w, err = e.p.Watch(key, false, false, ev.Index())
 	if err != nil {
 		t.Fatal(err)
