@@ -20,6 +20,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -74,6 +75,7 @@ func New(c *config.Config) (*Server, error) {
 
 	tr := new(http.Transport)
 	tr.TLSClientConfig = tc
+	tr.Dial = (&net.Dialer{Timeout: 200 * time.Millisecond}).Dial
 	client := &http.Client{Transport: tr}
 
 	s := &Server{
