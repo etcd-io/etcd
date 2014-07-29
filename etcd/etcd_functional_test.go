@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"math/rand"
 	"net/http/httptest"
+	"reflect"
 	"testing"
 	"time"
 
@@ -130,6 +131,49 @@ func TestJoinThroughFollower(t *testing.T) {
 			waitLeader(es[:i])
 		}
 		waitCluster(t, es)
+
+		destoryCluster(t, es, hs)
+	}
+	afterTest(t)
+}
+
+func TestClusterConfigReload(t *testing.T) {
+	tests := []int{3, 4, 5, 6}
+
+	for i, tt := range tests {
+		es, hs := buildCluster(tt, false)
+		waitCluster(t, es)
+
+		lead, _ := waitLeader(es)
+		conf := config.NewClusterConfig()
+		conf.ActiveSize = 15
+		conf.RemoveDelay = 60
+		if err := es[lead].p.setClusterConfig(conf); err != nil {
+			t.Fatalf("#%d: setClusterConfig err = %v", i, err)
+		}
+
+		for k := range es {
+			es[k].Stop()
+			hs[k].Close()
+		}
+
+		for k := range es {
+			c := config.New()
+			c.DataDir = es[k].config.DataDir
+			c.Addr = hs[k].Listener.Addr().String()
+			id := es[k].id
+			e, h, err := buildServer(t, c, id)
+			if err != nil {
+				t.Fatal(err)
+			}
+			es[k] = e
+			hs[k] = h
+		}
+
+		lead, _ = waitLeader(es)
+		if g := es[lead].p.clusterConfig(); !reflect.DeepEqual(g, conf) {
+			t.Errorf("#%d: clusterConfig = %+v, want %+v", i, g, conf)
+		}
 
 		destoryCluster(t, es, hs)
 	}
