@@ -217,6 +217,53 @@ func TestMultiNodeKillOne(t *testing.T) {
 	afterTest(t)
 }
 
+func TestMultiNodeKillAllAndRecovery(t *testing.T) {
+	tests := []int{5}
+
+	for i, tt := range tests {
+		es, hs := buildCluster(tt, false)
+		waitCluster(t, es)
+		waitLeader(es)
+
+		c := etcd.NewClient([]string{hs[0].URL})
+		for i := 0; i < 10; i++ {
+			if _, err := c.Set("foo", "bar", 0); err != nil {
+				panic(err)
+			}
+		}
+
+		for k := range es {
+			es[k].Stop()
+			hs[k].Close()
+		}
+
+		for k := range es {
+			c := config.New()
+			c.DataDir = es[k].config.DataDir
+			c.Addr = hs[k].Listener.Addr().String()
+			id := es[k].id
+			e, h, err := buildServer(t, c, id)
+			if err != nil {
+				t.Fatalf("#%d.%d: %v", i, k, err)
+			}
+			es[k] = e
+			hs[k] = h
+		}
+
+		waitLeader(es)
+		res, err := c.Set("foo", "bar", 0)
+		if err != nil {
+			t.Fatalf("#%d: set err after recovery: %v", err)
+		}
+		if g := res.Node.ModifiedIndex; g != 16 {
+			t.Errorf("#%d: modifiedIndex = %d, want %d", i, g, 16)
+		}
+
+		destoryCluster(t, es, hs)
+	}
+	afterTest(t)
+}
+
 func BenchmarkEndToEndSet(b *testing.B) {
 	es, hs := buildCluster(3, false)
 	waitLeader(es)
