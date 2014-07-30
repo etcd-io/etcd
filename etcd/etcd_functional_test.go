@@ -26,6 +26,8 @@ import (
 
 	"github.com/coreos/etcd/config"
 	"github.com/coreos/etcd/store"
+
+	"github.com/coreos/etcd/third_party/github.com/coreos/go-etcd/etcd"
 )
 
 func TestKillLeader(t *testing.T) {
@@ -57,7 +59,7 @@ func TestKillLeader(t *testing.T) {
 			id := es[lead].id
 			e, h, err := buildServer(t, c, id)
 			if err != nil {
-				t.Fatal("#%d.%d: %v", i, j, err)
+				t.Fatalf("#%d.%d: %v", i, j, err)
 			}
 			es[lead] = e
 			hs[lead] = h
@@ -180,6 +182,41 @@ func TestClusterConfigReload(t *testing.T) {
 	afterTest(t)
 }
 
+func TestMultiNodeKillOne(t *testing.T) {
+	tests := []int{5}
+
+	for i, tt := range tests {
+		es, hs := buildCluster(tt, false)
+		waitCluster(t, es)
+
+		stop := make(chan bool)
+		go keepSetting(hs[0].URL, stop)
+
+		for j := 0; j < 10; j++ {
+			idx := rand.Int() % tt
+			es[idx].Stop()
+			hs[idx].Close()
+
+			c := config.New()
+			c.DataDir = es[idx].config.DataDir
+			c.Addr = hs[idx].Listener.Addr().String()
+			id := es[idx].id
+			e, h, err := buildServer(t, c, id)
+			if err != nil {
+				t.Fatalf("#%d.%d: %v", i, j, err)
+			}
+			es[idx] = e
+			hs[idx] = h
+		}
+
+		stop <- true
+		<-stop
+
+		destoryCluster(t, es, hs)
+	}
+	afterTest(t)
+}
+
 func BenchmarkEndToEndSet(b *testing.B) {
 	es, hs := buildCluster(3, false)
 	waitLeader(es)
@@ -249,6 +286,41 @@ func TestModeSwitch(t *testing.T) {
 		destoryCluster(t, es, hs)
 	}
 	afterTest(t)
+}
+
+// Sending set commands
+func keepSetting(urlStr string, stop chan bool) {
+	stopSet := false
+	i := 0
+	c := etcd.NewClient([]string{urlStr})
+	for {
+		key := fmt.Sprintf("%s_%v", "foo", i)
+
+		result, err := c.Set(key, "bar", 0)
+
+		if err != nil || result.Node.Key != "/"+key || result.Node.Value != "bar" {
+			select {
+			case <-stop:
+				stopSet = true
+
+			default:
+			}
+		}
+
+		select {
+		case <-stop:
+			stopSet = true
+
+		default:
+		}
+
+		if stopSet {
+			break
+		}
+
+		i++
+	}
+	stop <- true
 }
 
 type leadterm struct {
