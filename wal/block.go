@@ -17,7 +17,6 @@ limitations under the License.
 package wal
 
 import (
-	"fmt"
 	"io"
 )
 
@@ -47,12 +46,8 @@ func readBlock(r io.Reader, b *block) error {
 		return unexpectedEOF(err)
 	}
 	d := make([]byte, l)
-	n, err := r.Read(d)
-	if err != nil {
+	if _, err = io.ReadFull(r, d); err != nil {
 		return unexpectedEOF(err)
-	}
-	if n != int(l) {
-		return fmt.Errorf("len(data) = %d, want %d", n, l)
 	}
 	b.t = t
 	b.d = d
