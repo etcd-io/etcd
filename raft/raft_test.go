@@ -774,51 +774,6 @@ func TestRecvMsgBeat(t *testing.T) {
 	}
 }
 
-func TestMaybeCompact(t *testing.T) {
-	tests := []struct {
-		snapshoter Snapshoter
-		applied    int64
-		wCompact   bool
-	}{
-		{nil, defaultCompactThreshold + 1, false},
-		{new(logSnapshoter), defaultCompactThreshold - 1, false},
-		{new(logSnapshoter), defaultCompactThreshold + 1, true},
-	}
-
-	for i, tt := range tests {
-		sm := newStateMachine(0, []int64{0, 1, 2})
-		sm.setSnapshoter(tt.snapshoter)
-		for i := 0; i < defaultCompactThreshold*2; i++ {
-			sm.raftLog.append(int64(i), Entry{Term: int64(i + 1)})
-		}
-		sm.raftLog.applied = tt.applied
-		sm.raftLog.committed = tt.applied
-
-		if g := sm.maybeCompact(); g != tt.wCompact {
-			t.Errorf("#%d: compact = %v, want %v", i, g, tt.wCompact)
-		}
-
-		if tt.wCompact {
-			s := sm.snapshoter.GetSnap()
-			if s.Index != tt.applied {
-				t.Errorf("#%d: snap.Index = %v, want %v", i, s.Index, tt.applied)
-			}
-			if s.Term != tt.applied {
-				t.Errorf("#%d: snap.Term = %v, want %v", i, s.Index, tt.applied)
-			}
-
-			w := sm.nodes()
-			sw := int64Slice(w)
-			sg := int64Slice(s.Nodes)
-			sort.Sort(sw)
-			sort.Sort(sg)
-			if !reflect.DeepEqual(sg, sw) {
-				t.Errorf("#%d: snap.Nodes = %+v, want %+v", i, sg, sw)
-			}
-		}
-	}
-}
-
 func TestRestore(t *testing.T) {
 	s := Snapshot{
 		Index: defaultCompactThreshold + 1,

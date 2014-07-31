@@ -513,6 +513,11 @@ func (sm *stateMachine) maybeCompact() bool {
 	return true
 }
 
+func (sm *stateMachine) compact(d []byte) {
+	sm.raftLog.snap(d, sm.raftLog.applied, sm.raftLog.term(sm.raftLog.applied), sm.nodes())
+	sm.raftLog.compact(sm.raftLog.applied)
+}
+
 // restore recovers the statemachine from a snapshot. It restores the log and the
 // configuration of statemachine. It calls the snapshoter to restore from the given
 // snapshot.

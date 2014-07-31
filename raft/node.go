@@ -231,3 +231,15 @@ func (n *Node) UnstableState() State {
 	n.sm.clearState()
 	return s
 }
+
+func (n *Node) GetSnap() Snapshot {
+	return n.sm.raftLog.snapshot
+}
+
+func (n *Node) Compact(d []byte) {
+	n.sm.compact(d)
+}
+
+func (n *Node) EntsLen() int {
+	return len(n.sm.raftLog.ents)
+}

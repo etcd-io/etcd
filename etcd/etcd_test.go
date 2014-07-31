@@ -368,6 +368,24 @@ func TestSingleNodeRecovery(t *testing.T) {
 	destroyServer(t, e, h)
 }
 
+func TestTakingSnapshot(t *testing.T) {
+	es, hs := buildCluster(1, false)
+	for i := 0; i < defaultCompact; i++ {
+		es[0].p.Set("/foo", false, "bar", store.Permanent)
+	}
+	snap := es[0].p.node.GetSnap()
+	if snap.Index != defaultCompact {
+		t.Errorf("snap.Index = %d, want %d", snap.Index, defaultCompact)
+	}
+
+	for i := range hs {
+		es[len(hs)-i-1].Stop()
+	}
+	for i := range hs {
+		hs[len(hs)-i-1].Close()
+	}
+}
+
 func buildCluster(number int, tls bool) ([]*Server, []*httptest.Server) {
 	bootstrapper := 0
 	es := make([]*Server, number)

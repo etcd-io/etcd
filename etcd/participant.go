@@ -36,6 +36,7 @@ import (
 const (
 	defaultHeartbeat = 1
 	defaultElection  = 5
+	defaultCompact   = 10000
 
 	maxBufferedProposal = 128
 
@@ -212,6 +213,14 @@ func (p *participant) run() int64 {
 			p.stop()
 			log.Printf("id=%x participant.end\n", p.id)
 			return standbyMode
+		}
+		if p.node.EntsLen() > defaultCompact {
+			d, err := p.Save()
+			if err != nil {
+				panic(err)
+			}
+			p.node.Compact(d)
+			log.Printf("id=%x compacted index=\n", p.id)
 		}
 	}
 }
