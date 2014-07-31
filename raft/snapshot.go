@@ -1,5 +1,7 @@
 package raft
 
+var emptySnapshot = Snapshot{}
+
 type Snapshot struct {
 	Data []byte
 
@@ -11,10 +13,6 @@ type Snapshot struct {
 	Term int64
 }
 
-// A snapshoter can make a snapshot of its current state atomically.
-// It can restore from a snapshot and get the latest snapshot it took.
-type Snapshoter interface {
-	Snap(index, term int64, nodes []int64)
-	Restore(snap Snapshot)
-	GetSnap() Snapshot
+func (s Snapshot) IsEmpty() bool {
+	return s.Term == 0
 }
