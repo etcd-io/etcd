@@ -781,7 +781,9 @@ func TestRestore(t *testing.T) {
 	}
 
 	sm := newStateMachine(0, []int64{0, 1})
-	sm.restore(s)
+	if ok := sm.restore(s); !ok {
+		t.Fatal("restore fail, want succeed")
+	}
 
 	if sm.raftLog.lastIndex() != s.Index {
 		t.Errorf("log.lastIndex = %d, want %d", sm.raftLog.lastIndex(), s.Index)
@@ -798,6 +800,10 @@ func TestRestore(t *testing.T) {
 	}
 	if !reflect.DeepEqual(sm.raftLog.snapshot, s) {
 		t.Errorf("snapshot = %+v, want %+v", sm.raftLog.snapshot, s)
+	}
+
+	if ok := sm.restore(s); ok {
+		t.Fatal("restore succeed, want fail")
 	}
 }
 
