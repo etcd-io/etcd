@@ -24,6 +24,7 @@ type raftLog struct {
 	committed int64
 	applied   int64
 	offset    int64
+	snapshot  Snapshot
 
 	// want a compact after the number of entries exceeds the threshold
 	// TODO(xiangli) size might be a better criteria
@@ -152,6 +153,10 @@ func (l *raftLog) compact(i int64) int64 {
 	l.unstable = max(i+1, l.unstable)
 	l.offset = i
 	return int64(len(l.ents))
+}
+
+func (l *raftLog) snap(d []byte, index, term int64, nodes []int64) {
+	l.snapshot = Snapshot{d, nodes, index, term}
 }
 
 func (l *raftLog) shouldCompact() bool {
