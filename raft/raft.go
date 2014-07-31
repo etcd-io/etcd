@@ -158,6 +158,11 @@ type stateMachine struct {
 	pendingConf bool
 
 	unstableState State
+
+	// promotable indicates whether state machine could be promoted.
+	// New machine has to wait until it has been added to the cluster, or it
+	// may become the leader of the cluster without it.
+	promotable bool
 }
 
 func newStateMachine(id int64, peers []int64) *stateMachine {
@@ -300,13 +305,6 @@ func (sm *stateMachine) appendEntry(e Entry) {
 	sm.maybeCommit()
 }
 
-// promotable indicates whether state machine could be promoted.
-// New machine has to wait for the first log entry to be committed, or it will
-// always start as a one-node cluster.
-func (sm *stateMachine) promotable() bool {
-	return sm.raftLog.committed != 0
-}
-
 func (sm *stateMachine) becomeFollower(term int64, lead int64) {
 	sm.reset(term)
 	sm.lead.Set(lead)
@@ -408,6 +406,9 @@ func (sm *stateMachine) handleSnapshot(m Message) {
 func (sm *stateMachine) addNode(id int64) {
 	sm.addIns(id, 0, sm.raftLog.lastIndex()+1)
 	sm.pendingConf = false
+	if id == sm.id {
+		sm.promotable = true
+	}
 }
 
 func (sm *stateMachine) removeNode(id int64) {
