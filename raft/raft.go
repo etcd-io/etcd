@@ -157,8 +157,6 @@ type stateMachine struct {
 	// pending reconfiguration
 	pendingConf bool
 
-	snapshoter Snapshoter
-
 	unstableState State
 }
 
@@ -185,10 +183,6 @@ func (sm *stateMachine) String() string {
 		s += fmt.Sprintf(` ins="%v"`, sm.ins)
 	}
 	return s
-}
-
-func (sm *stateMachine) setSnapshoter(snapshoter Snapshoter) {
-	sm.snapshoter = snapshoter
 }
 
 func (sm *stateMachine) poll(id int64, v bool) (granted int) {
@@ -220,7 +214,7 @@ func (sm *stateMachine) sendAppend(to int64) {
 	m.Index = in.next - 1
 	if sm.needSnapshot(m.Index) {
 		m.Type = msgSnap
-		m.Snapshot = sm.snapshoter.GetSnap()
+		m.Snapshot = sm.raftLog.snapshot
 	} else {
 		m.Type = msgApp
 		m.LogTerm = sm.raftLog.term(in.next - 1)
@@ -502,31 +496,15 @@ func stepFollower(sm *stateMachine, m Message) bool {
 	return true
 }
 
-// maybeCompact tries to compact the log. It calls the snapshoter to take a snapshot and
-// then compact the log up-to the index at which the snapshot was taken.
-func (sm *stateMachine) maybeCompact() bool {
-	if sm.snapshoter == nil || !sm.raftLog.shouldCompact() {
-		return false
-	}
-	sm.snapshoter.Snap(sm.raftLog.applied, sm.raftLog.term(sm.raftLog.applied), sm.nodes())
-	sm.raftLog.compact(sm.raftLog.applied)
-	return true
-}
-
 func (sm *stateMachine) compact(d []byte) {
 	sm.raftLog.snap(d, sm.raftLog.applied, sm.raftLog.term(sm.raftLog.applied), sm.nodes())
 	sm.raftLog.compact(sm.raftLog.applied)
 }
 
 // restore recovers the statemachine from a snapshot. It restores the log and the
-// configuration of statemachine. It calls the snapshoter to restore from the given
-// snapshot.
+// configuration of statemachine.
 func (sm *stateMachine) restore(s Snapshot) {
-	if sm.snapshoter == nil {
-		panic("try to restore from snapshot, but snapshoter is nil")
-	}
-
-	sm.raftLog.restore(s.Index, s.Term)
+	sm.raftLog.restore(s)
 	sm.index.Set(sm.raftLog.lastIndex())
 	sm.ins = make(map[int64]*index)
 	for _, n := range s.Nodes {
@@ -537,13 +515,12 @@ func (sm *stateMachine) restore(s Snapshot) {
 		}
 	}
 	sm.pendingConf = false
-	sm.snapshoter.Restore(s)
 }
 
 func (sm *stateMachine) needSnapshot(i int64) bool {
 	if i < sm.raftLog.offset {
-		if sm.snapshoter == nil {
-			panic("need snapshot but snapshoter is nil")
+		if sm.raftLog.snapshot.IsEmpty() {
+			panic("need non-empty snapshot")
 		}
 		return true
 	}

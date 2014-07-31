@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log"
 	"math/rand"
+	"sort"
 	"time"
 )
 
@@ -75,6 +76,15 @@ func (n *Node) IsLeader() bool { return n.Leader() == n.Id() }
 func (n *Node) Leader() int64 { return n.sm.lead.Get() }
 
 func (n *Node) IsRemoved() bool { return n.removed }
+
+func (n *Node) Nodes() []int64 {
+	nodes := make(int64Slice, 0, len(n.sm.ins))
+	for k := range n.sm.ins {
+		nodes = append(nodes, k)
+	}
+	sort.Sort(nodes)
+	return nodes
+}
 
 // Propose asynchronously proposes data be applied to the underlying state machine.
 func (n *Node) Propose(data []byte) { n.propose(Normal, data) }
@@ -229,6 +239,15 @@ func (n *Node) UnstableState() State {
 	}
 	s := n.sm.unstableState
 	n.sm.clearState()
+	return s
+}
+
+func (n *Node) UnstableSnapshot() Snapshot {
+	if n.sm.raftLog.unstableSnapshot.IsEmpty() {
+		return emptySnapshot
+	}
+	s := n.sm.raftLog.unstableSnapshot
+	n.sm.raftLog.unstableSnapshot = emptySnapshot
 	return s
 }
 

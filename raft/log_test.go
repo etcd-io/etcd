@@ -192,7 +192,7 @@ func TestLogRestore(t *testing.T) {
 
 	index := int64(1000)
 	term := int64(1000)
-	raftLog.restore(index, term)
+	raftLog.restore(Snapshot{Index: index, Term: term})
 
 	// only has the guard entry
 	if len(raftLog.ents) != 1 {
