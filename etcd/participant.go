@@ -205,6 +205,12 @@ func (p *participant) run() int64 {
 			log.Printf("id=%x participant.stop\n", p.id)
 			return stopMode
 		}
+		if s := node.UnstableSnapshot(); !s.IsEmpty() {
+			if err := p.Recovery(s.Data); err != nil {
+				panic(err)
+			}
+			log.Printf("id=%x recovered index=%d\n", p.id, s.Index)
+		}
 		p.apply(node.Next())
 		ents := node.UnstableEnts()
 		p.save(ents, node.UnstableState())
