@@ -398,8 +398,11 @@ func (sm *stateMachine) handleAppendEntries(m Message) {
 }
 
 func (sm *stateMachine) handleSnapshot(m Message) {
-	sm.restore(m.Snapshot)
-	sm.send(Message{To: m.From, Type: msgAppResp, Index: sm.raftLog.lastIndex()})
+	if sm.restore(m.Snapshot) {
+		sm.send(Message{To: m.From, Type: msgAppResp, Index: sm.raftLog.lastIndex()})
+	} else {
+		sm.send(Message{To: m.From, Type: msgAppResp, Index: sm.raftLog.committed})
+	}
 }
 
 func (sm *stateMachine) addNode(id int64) {
@@ -503,7 +506,11 @@ func (sm *stateMachine) compact(d []byte) {
 
 // restore recovers the statemachine from a snapshot. It restores the log and the
 // configuration of statemachine.
-func (sm *stateMachine) restore(s Snapshot) {
+func (sm *stateMachine) restore(s Snapshot) bool {
+	if s.Index <= sm.raftLog.committed {
+		return false
+	}
+
 	sm.raftLog.restore(s)
 	sm.index.Set(sm.raftLog.lastIndex())
 	sm.ins = make(map[int64]*index)
@@ -515,6 +522,7 @@ func (sm *stateMachine) restore(s Snapshot) {
 		}
 	}
 	sm.pendingConf = false
+	return true
 }
 
 func (sm *stateMachine) needSnapshot(i int64) bool {
