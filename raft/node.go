@@ -195,7 +195,7 @@ func (n *Node) Next() []Entry {
 // If the current elapsed is greater or equal than the timeout,
 // node will send corresponding message to the statemachine.
 func (n *Node) Tick() {
-	if n.sm.promotable == false {
+	if !n.sm.promotable {
 		return
 	}
 
