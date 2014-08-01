@@ -18,6 +18,7 @@ package etcd
 
 import (
 	"fmt"
+	"io/ioutil"
 	"math/rand"
 	"net/http"
 	"net/http/httptest"
@@ -278,6 +279,65 @@ func TestBecomeStandby(t *testing.T) {
 		}
 	}
 	afterTest(t)
+}
+
+func TestReleaseVersion(t *testing.T) {
+	es, hs := buildCluster(1, false)
+
+	resp, err := http.Get(hs[0].URL + "/version")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	g, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		t.Error(err)
+	}
+	gs := string(g)
+	w := fmt.Sprintf("etcd %s", releaseVersion)
+	if gs != w {
+		t.Errorf("version = %v, want %v", gs, w)
+	}
+
+	for i := range hs {
+		es[len(hs)-i-1].Stop()
+	}
+	for i := range hs {
+		hs[len(hs)-i-1].Close()
+	}
+}
+
+func TestVersionCheck(t *testing.T) {
+	es, hs := buildCluster(1, false)
+	u := hs[0].URL
+
+	currentVersion := 2
+	tests := []struct {
+		version int
+		wStatus int
+	}{
+		{currentVersion - 1, http.StatusForbidden},
+		{currentVersion, http.StatusOK},
+		{currentVersion + 1, http.StatusForbidden},
+	}
+
+	for i, tt := range tests {
+		resp, err := http.Get(fmt.Sprintf("%s/raft/version/%d/check", u, tt.version))
+		if err != nil {
+			t.Fatal(err)
+		}
+		resp.Body.Close()
+		if resp.StatusCode != tt.wStatus {
+			t.Fatal("#%d: status = %d, want %d", i, resp.StatusCode, tt.wStatus)
+		}
+	}
+
+	for i := range hs {
+		es[len(hs)-i-1].Stop()
+	}
+	for i := range hs {
+		hs[len(hs)-i-1].Close()
+	}
 }
 
 func buildCluster(number int, tls bool) ([]*Server, []*httptest.Server) {

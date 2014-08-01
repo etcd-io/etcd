@@ -18,12 +18,14 @@ package etcd
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
 	"sync"
 
 	"github.com/coreos/etcd/raft"
+	"github.com/coreos/etcd/store"
 )
 
 const (
@@ -34,20 +36,24 @@ type raftHandler struct {
 	mu      sync.RWMutex
 	serving bool
 
-	peerGetter peerGetter
+	peerGetter   peerGetter
+	storeVersion int
 
 	recv chan *raft.Message
 	*http.ServeMux
 }
 
-func newRaftHandler(p peerGetter) *raftHandler {
+func newRaftHandler(p peerGetter, version int) *raftHandler {
 	h := &raftHandler{
-		recv:       make(chan *raft.Message, 512),
-		peerGetter: p,
+		recv:         make(chan *raft.Message, 512),
+		peerGetter:   p,
+		storeVersion: version,
 	}
 	h.ServeMux = http.NewServeMux()
 	h.ServeMux.HandleFunc(raftPrefix+"/cfg/", h.serveCfg)
 	h.ServeMux.HandleFunc(raftPrefix, h.serveRaft)
+	h.ServeMux.HandleFunc(raftPrefix+"/version", h.serveVersion)
+	h.ServeMux.HandleFunc(raftPrefix+"/version/", h.serveVersionCheck)
 	return h
 }
 
@@ -109,4 +115,21 @@ func (h *raftHandler) serveCfg(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	http.Error(w, err.Error(), http.StatusNotFound)
+}
+
+func (h *raftHandler) serveVersion(w http.ResponseWriter, req *http.Request) {
+	w.Write([]byte(strconv.Itoa(h.storeVersion)))
+}
+
+func (h *raftHandler) serveVersionCheck(w http.ResponseWriter, req *http.Request) {
+	var version int
+	n, err := fmt.Sscanf(req.URL.Path, raftPrefix+"/version/%d/check", &version)
+	if err != nil || n != 1 {
+		http.Error(w, "error version check format: "+req.URL.Path, http.StatusBadRequest)
+		return
+	}
+	if version < store.MinVersion() || version > store.MaxVersion() {
+		w.WriteHeader(http.StatusForbidden)
+		return
+	}
 }
