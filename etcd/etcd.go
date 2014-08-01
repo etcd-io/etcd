@@ -52,6 +52,7 @@ type Server struct {
 	mu      sync.Mutex
 	stopc   chan struct{}
 	log     *log.Logger
+	http.Handler
 }
 
 func New(c *config.Config) *Server {
@@ -88,6 +89,11 @@ func New(c *config.Config) *Server {
 
 		stopc: make(chan struct{}),
 	}
+	m := http.NewServeMux()
+	m.HandleFunc("/", s.requestHandler)
+	m.HandleFunc("/version", versionHandler)
+	s.Handler = m
+
 	log.Printf("id=%x server.new raftPubAddr=%s\n", s.id, s.raftPubAddr)
 
 	return s
@@ -118,7 +124,7 @@ func (s *Server) Stop() {
 	log.Printf("id=%x server.stop\n", s.id)
 }
 
-func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (s *Server) requestHandler(w http.ResponseWriter, r *http.Request) {
 	switch s.mode.Get() {
 	case participantMode:
 		s.p.ServeHTTP(w, r)

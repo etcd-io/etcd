@@ -101,13 +101,12 @@ func newParticipant(id int64, pubAddr string, raftPubAddr string, client *v2clie
 			result: make(map[wait]chan interface{}),
 		},
 		Store: store.New(),
-		rh:    newRaftHandler(peerHub),
 
 		stopc: make(chan struct{}),
 
 		ServeMux: http.NewServeMux(),
 	}
-
+	p.rh = newRaftHandler(peerHub, p.Store.Version())
 	p.Handle(v2Prefix+"/", handlerErr(p.serveValue))
 	p.Handle(v2machinePrefix, handlerErr(p.serveMachines))
 	p.Handle(v2peersPrefix, handlerErr(p.serveMachines))

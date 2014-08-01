@@ -53,10 +53,10 @@ func GetCommandFactory(version int) CommandFactory {
 
 // MinVersion returns the minimum compatible store version.
 func MinVersion() int {
-	return minVersion
+	return 2
 }
 
 // MaxVersion returns the maximum compatible store version.
 func MaxVersion() int {
-	return maxVersion
+	return 2
 }
