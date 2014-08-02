@@ -215,7 +215,9 @@ func (s *Server) Run() error {
 		default:
 			panic("unsupport mode")
 		}
-		s.id = genId()
+		if next != stopMode {
+			s.id = genId()
+		}
 	}
 }
 
