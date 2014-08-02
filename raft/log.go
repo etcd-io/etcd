@@ -15,9 +15,10 @@ const (
 )
 
 type Entry struct {
-	Type int64
-	Term int64
-	Data []byte
+	Type  int64
+	Term  int64
+	Index int64
+	Data  []byte
 }
 
 func (e *Entry) isConfig() bool {
@@ -88,11 +89,10 @@ func (l *raftLog) findConflict(from int64, ents []Entry) int64 {
 	return -1
 }
 
-func (l *raftLog) unstableEnts() (int64, []Entry) {
-	offset := l.unstable
+func (l *raftLog) unstableEnts() []Entry {
 	ents := l.entries(l.unstable)
 	l.unstable = l.lastIndex() + 1
-	return offset, ents
+	return ents
 }
 
 func (l *raftLog) lastIndex() int64 {

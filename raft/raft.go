@@ -301,6 +301,7 @@ func (sm *stateMachine) q() int {
 
 func (sm *stateMachine) appendEntry(e Entry) {
 	e.Term = sm.term.Get()
+	e.Index = sm.raftLog.lastIndex() + 1
 	sm.index.Set(sm.raftLog.append(sm.raftLog.lastIndex(), e))
 	sm.ins[sm.id].update(sm.raftLog.lastIndex())
 	sm.maybeCommit()
