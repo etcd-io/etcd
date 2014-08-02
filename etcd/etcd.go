@@ -76,6 +76,7 @@ func New(c *config.Config) (*Server, error) {
 	tr := new(http.Transport)
 	tr.TLSClientConfig = tc
 	tr.Dial = (&net.Dialer{Timeout: 200 * time.Millisecond}).Dial
+	tr.ResponseHeaderTimeout = defaultTickDuration * defaultHeartbeat
 	client := &http.Client{Transport: tr}
 
 	s := &Server{
