@@ -154,7 +154,7 @@ func (w *WAL) LoadNode() (*Node, error) {
 			if err != nil {
 				return nil, err
 			}
-			ents = append(ents, e)
+			ents = append(ents[:e.Index-1], e)
 		case stateType:
 			s, err := loadState(b.d)
 			if err != nil {
