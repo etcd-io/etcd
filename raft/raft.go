@@ -82,7 +82,6 @@ type Message struct {
 	Term      int64
 	LogTerm   int64
 	Index     int64
-	PrevTerm  int64
 	Entries   []Entry
 	Commit    int64
 	Snapshot  Snapshot
