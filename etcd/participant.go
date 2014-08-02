@@ -201,7 +201,7 @@ func (p *participant) run() int64 {
 			return stopMode
 		}
 		p.apply(node.Next())
-		_, ents := node.UnstableEnts()
+		ents := node.UnstableEnts()
 		p.save(ents, node.UnstableState())
 		p.send(node.Msgs())
 		if node.IsRemoved() {
