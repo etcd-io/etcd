@@ -25,6 +25,7 @@ import (
 	"net/url"
 	"path"
 	"sync"
+	"time"
 
 	"github.com/coreos/etcd/raft"
 )
@@ -77,6 +78,9 @@ func (h *peerHub) stop() {
 	for _, p := range h.peers {
 		p.stop()
 	}
+	// http.Transport needs some time to put used connections
+	// into idle queues.
+	time.Sleep(time.Millisecond)
 	tr := h.c.Transport.(*http.Transport)
 	tr.CloseIdleConnections()
 }
