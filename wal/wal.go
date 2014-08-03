@@ -57,7 +57,7 @@ func New(path string) (*WAL, error) {
 }
 
 func Open(path string) (*WAL, error) {
-	f, err := os.Open(path)
+	f, err := os.OpenFile(path, os.O_RDWR, 0)
 	if err != nil {
 		return nil, err
 	}
