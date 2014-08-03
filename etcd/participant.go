@@ -146,6 +146,8 @@ func newParticipant(id int64, pubAddr string, raftPubAddr string, dir string, cl
 	p.Handle(v2adminConfigPrefix, handlerErr(p.serveAdminConfig))
 	p.Handle(v2adminMachinesPrefix, handlerErr(p.serveAdminMachines))
 
+	// TODO: remind to set application/json for /v2/stats endpoint
+
 	return p, nil
 }
 
