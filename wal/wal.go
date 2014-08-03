@@ -20,7 +20,6 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/binary"
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -92,8 +91,7 @@ func (w *WAL) SaveInfo(id int64) error {
 }
 
 func (w *WAL) SaveEntry(e *raft.Entry) error {
-	// protobuf?
-	b, err := json.Marshal(e)
+	b, err := e.Marshal()
 	if err != nil {
 		panic(err)
 	}
@@ -181,7 +179,10 @@ func loadInfo(d []byte) (int64, error) {
 
 func loadEntry(d []byte) (raft.Entry, error) {
 	var e raft.Entry
-	err := json.Unmarshal(d, &e)
+	err := e.Unmarshal(d)
+	if err != nil {
+		panic(err)
+	}
 	return e, err
 }
 
