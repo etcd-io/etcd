@@ -14,13 +14,6 @@ const (
 	defaultCompactThreshold = 10000
 )
 
-type Entry struct {
-	Type  int64
-	Term  int64
-	Index int64
-	Data  []byte
-}
-
 func (e *Entry) isConfig() bool {
 	return e.Type == AddNode || e.Type == RemoveNode
 }

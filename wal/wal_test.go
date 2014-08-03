@@ -33,8 +33,8 @@ var (
 	stateData  = []byte("\x01\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00")
 	stateBlock = append([]byte("\x03\x00\x00\x00\x00\x00\x00\x00\x18\x00\x00\x00\x00\x00\x00\x00"), stateData...)
 
-	entryJsonData = []byte("{\"Type\":1,\"Term\":1,\"Data\":\"AQ==\"}")
-	entryBlock    = append([]byte("\x02\x00\x00\x00\x00\x00\x00\x00\x21\x00\x00\x00\x00\x00\x00\x00"), entryJsonData...)
+	entryData  = []byte("\b\x01\x10\x01\x18\x01\x22\x01\x01")
+	entryBlock = append([]byte("\x02\x00\x00\x00\x00\x00\x00\x00\t\x00\x00\x00\x00\x00\x00\x00"), entryData...)
 )
 
 func TestNew(t *testing.T) {
@@ -68,7 +68,7 @@ func TestSaveEntry(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	e := &raft.Entry{1, 1, []byte{1}}
+	e := &raft.Entry{Type: 1, Index: 1, Term: 1, Data: []byte{1}}
 	err = w.SaveEntry(e)
 	if err != nil {
 		t.Fatal(err)
@@ -168,11 +168,11 @@ func TestLoadInfo(t *testing.T) {
 }
 
 func TestLoadEntry(t *testing.T) {
-	e, err := loadEntry(entryJsonData)
+	e, err := loadEntry(entryData)
 	if err != nil {
 		t.Fatal(err)
 	}
-	we := raft.Entry{1, 1, []byte{1}}
+	we := raft.Entry{Type: 1, Index: 1, Term: 1, Data: []byte{1}}
 	if !reflect.DeepEqual(e, we) {
 		t.Errorf("ent = %v, want %v", e, we)
 	}
@@ -199,7 +199,7 @@ func TestLoadNode(t *testing.T) {
 	if err = w.SaveInfo(id); err != nil {
 		t.Fatal(err)
 	}
-	ents := []raft.Entry{{1, 1, []byte{1}}, {2, 2, []byte{2}}}
+	ents := []raft.Entry{{Type: 1, Index: 1, Term: 1, Data: []byte{1}}, {Type: 2, Index: 2, Term: 2, Data: []byte{2}}}
 	for _, e := range ents {
 		if err = w.SaveEntry(&e); err != nil {
 			t.Fatal(err)
