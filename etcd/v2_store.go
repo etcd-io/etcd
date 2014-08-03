@@ -17,63 +17,59 @@ limitations under the License.
 package etcd
 
 import (
-	"encoding/json"
 	"fmt"
 	"time"
 
 	"github.com/coreos/etcd/store"
 )
 
-type cmd struct {
-	Type      string
-	Key       string
-	Value     string
-	PrevValue string
-	PrevIndex uint64
-	Dir       bool
-	Recursive bool
-	Unique    bool
-	Sorted    bool
-	Time      time.Time
-}
+const (
+	stset = iota
+	stcreate
+	stupdate
+	stcas
+	stdelete
+	stcad
+	stqget
+	stsync
+)
 
 func (p *participant) Set(key string, dir bool, value string, expireTime time.Time) (*store.Event, error) {
-	set := &cmd{Type: "set", Key: key, Dir: dir, Value: value, Time: expireTime}
+	set := &Cmd{Type: stset, Key: key, Dir: &dir, Value: &value, Time: mustMarshalTime(&expireTime)}
 	return p.do(set)
 }
 
 func (p *participant) Create(key string, dir bool, value string, expireTime time.Time, unique bool) (*store.Event, error) {
-	create := &cmd{Type: "create", Key: key, Dir: dir, Value: value, Time: expireTime, Unique: unique}
+	create := &Cmd{Type: stcreate, Key: key, Dir: &dir, Value: &value, Time: mustMarshalTime(&expireTime), Unique: &unique}
 	return p.do(create)
 }
 
 func (p *participant) Update(key string, value string, expireTime time.Time) (*store.Event, error) {
-	update := &cmd{Type: "update", Key: key, Value: value, Time: expireTime}
+	update := &Cmd{Type: stupdate, Key: key, Value: &value, Time: mustMarshalTime(&expireTime)}
 	return p.do(update)
 }
 
 func (p *participant) CAS(key, value, prevValue string, prevIndex uint64, expireTime time.Time) (*store.Event, error) {
-	cas := &cmd{Type: "cas", Key: key, Value: value, PrevValue: prevValue, PrevIndex: prevIndex, Time: expireTime}
+	cas := &Cmd{Type: stcas, Key: key, Value: &value, PrevValue: &prevValue, PrevIndex: &prevIndex, Time: mustMarshalTime(&expireTime)}
 	return p.do(cas)
 }
 
 func (p *participant) Delete(key string, dir, recursive bool) (*store.Event, error) {
-	d := &cmd{Type: "delete", Key: key, Dir: dir, Recursive: recursive}
+	d := &Cmd{Type: stdelete, Key: key, Dir: &dir, Recursive: &recursive}
 	return p.do(d)
 }
 
 func (p *participant) CAD(key string, prevValue string, prevIndex uint64) (*store.Event, error) {
-	cad := &cmd{Type: "cad", Key: key, PrevValue: prevValue, PrevIndex: prevIndex}
+	cad := &Cmd{Type: stcad, Key: key, PrevValue: &prevValue, PrevIndex: &prevIndex}
 	return p.do(cad)
 }
-
 func (p *participant) QuorumGet(key string, recursive, sorted bool) (*store.Event, error) {
-	get := &cmd{Type: "quorumGet", Key: key, Recursive: recursive, Sorted: sorted}
+	get := &Cmd{Type: stqget, Key: key, Recursive: &recursive, Sorted: &sorted}
 	return p.do(get)
 }
 
-func (p *participant) do(c *cmd) (*store.Event, error) {
-	data, err := json.Marshal(c)
+func (p *participant) do(c *Cmd) (*store.Event, error) {
+	data, err := c.Marshal()
 	if err != nil {
 		panic(err)
 	}

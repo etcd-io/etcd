@@ -17,9 +17,9 @@ limitations under the License.
 package etcd
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/store"
@@ -30,29 +30,29 @@ func (p *participant) v2apply(index int64, ent raft.Entry) {
 	var e *store.Event
 	var err error
 
-	cmd := new(cmd)
-	if err := json.Unmarshal(ent.Data, cmd); err != nil {
+	var cmd Cmd
+	if err := cmd.Unmarshal(ent.Data); err != nil {
 		log.Printf("id=%x participant.store.apply decodeErr=\"%v\"\n", p.id, err)
 		return
 	}
 
 	switch cmd.Type {
-	case "set":
-		e, err = p.Store.Set(cmd.Key, cmd.Dir, cmd.Value, cmd.Time)
-	case "update":
-		e, err = p.Store.Update(cmd.Key, cmd.Value, cmd.Time)
-	case "create", "unique":
-		e, err = p.Store.Create(cmd.Key, cmd.Dir, cmd.Value, cmd.Unique, cmd.Time)
-	case "delete":
-		e, err = p.Store.Delete(cmd.Key, cmd.Dir, cmd.Recursive)
-	case "cad":
-		e, err = p.Store.CompareAndDelete(cmd.Key, cmd.PrevValue, cmd.PrevIndex)
-	case "cas":
-		e, err = p.Store.CompareAndSwap(cmd.Key, cmd.PrevValue, cmd.PrevIndex, cmd.Value, cmd.Time)
-	case "quorumGet":
-		e, err = p.Store.Get(cmd.Key, cmd.Recursive, cmd.Sorted)
-	case "sync":
-		p.Store.DeleteExpiredKeys(cmd.Time)
+	case stset:
+		e, err = p.Store.Set(cmd.Key, *cmd.Dir, *cmd.Value, mustUnmarshalTime(cmd.Time))
+	case stupdate:
+		e, err = p.Store.Update(cmd.Key, *cmd.Value, mustUnmarshalTime(cmd.Time))
+	case stcreate:
+		e, err = p.Store.Create(cmd.Key, *cmd.Dir, *cmd.Value, *cmd.Unique, mustUnmarshalTime(cmd.Time))
+	case stdelete:
+		e, err = p.Store.Delete(cmd.Key, *cmd.Dir, *cmd.Recursive)
+	case stcad:
+		e, err = p.Store.CompareAndDelete(cmd.Key, *cmd.PrevValue, *cmd.PrevIndex)
+	case stcas:
+		e, err = p.Store.CompareAndSwap(cmd.Key, *cmd.PrevValue, *cmd.PrevIndex, *cmd.Value, mustUnmarshalTime(cmd.Time))
+	case stqget:
+		e, err = p.Store.Get(cmd.Key, *cmd.Recursive, *cmd.Sorted)
+	case stsync:
+		p.Store.DeleteExpiredKeys(mustUnmarshalTime(cmd.Time))
 		return
 	default:
 		log.Printf("id=%x participant.store.apply err=\"unexpected command type %s\"\n", p.id, cmd.Type)
@@ -80,4 +80,20 @@ func (p *participant) v2apply(index int64, ent raft.Entry) {
 	}
 	p.node.result[w] <- ret
 	delete(p.node.result, w)
+}
+
+func mustMarshalTime(t *time.Time) []byte {
+	b, err := t.MarshalBinary()
+	if err != nil {
+		panic(err)
+	}
+	return b
+}
+
+func mustUnmarshalTime(b []byte) time.Time {
+	var time time.Time
+	if err := time.UnmarshalBinary(b); err != nil {
+		panic(err)
+	}
+	return time
 }
