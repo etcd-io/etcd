@@ -253,7 +253,7 @@ func (p *participant) add(id int64, raftPubAddr string, pubAddr string) error {
 	log.Printf("id=%x participant.add nodeId=%x raftPubAddr=%s pubAddr=%s\n", p.id, id, raftPubAddr, pubAddr)
 	pp := path.Join(v2machineKVPrefix, fmt.Sprint(id))
 
-	_, err := p.Get(pp, false, false)
+	_, err := p.Store.Get(pp, false, false)
 	if err == nil {
 		return nil
 	}
@@ -296,7 +296,7 @@ func (p *participant) remove(id int64) error {
 	log.Printf("id=%x participant.remove nodeId=%x\n", p.id, id)
 	pp := path.Join(v2machineKVPrefix, fmt.Sprint(id))
 
-	v, err := p.Get(pp, false, false)
+	v, err := p.Store.Get(pp, false, false)
 	if err != nil {
 		return nil
 	}

@@ -408,7 +408,7 @@ func TestRestoreSnapshotFromLeader(t *testing.T) {
 
 	// check store is recovered
 	for i := 0; i < defaultCompact; i++ {
-		ev, err := e.p.Get(fmt.Sprint("/foo", i), false, false)
+		ev, err := e.p.Store.Get(fmt.Sprint("/foo", i), false, false)
 		if err != nil {
 			t.Errorf("get err = %v", err)
 			continue
