@@ -120,7 +120,9 @@ func newParticipant(id int64, pubAddr string, raftPubAddr string, dir string, cl
 		if w, err = wal.New(walPath); err != nil {
 			return nil, err
 		}
-		w.SaveInfo(p.id)
+		if err = w.SaveInfo(p.id); err != nil {
+			return nil, err
+		}
 		p.node.Node = raft.New(p.id, defaultHeartbeat, defaultElection)
 		log.Printf("id=%x participant.new path=%s\n", p.id, walPath)
 	} else {
@@ -131,7 +133,7 @@ func newParticipant(id int64, pubAddr string, raftPubAddr string, dir string, cl
 		p.id = n.Id
 		p.node.Node = raft.Recover(n.Id, n.Ents, n.State, defaultHeartbeat, defaultElection)
 		p.apply(p.node.Next())
-		log.Printf("id=%x participant.load path=%s\n", p.id, walPath)
+		log.Printf("id=%x participant.load path=%s state=\"%+v\" len(ents)=%d", p.id, walPath, n.State, len(n.Ents))
 	}
 	p.w = w
 
@@ -147,6 +149,8 @@ func newParticipant(id int64, pubAddr string, raftPubAddr string, dir string, cl
 }
 
 func (p *participant) run() int64 {
+	defer p.w.Close()
+
 	if p.node.IsEmpty() {
 		seeds := p.peerHub.getSeeds()
 		if len(seeds) == 0 {
@@ -220,7 +224,6 @@ func (p *participant) stop() {
 	}
 	p.stopped = true
 	close(p.stopc)
-	p.w.Close()
 }
 
 func (p *participant) raftHandler() http.Handler {
@@ -364,12 +367,18 @@ func (p *participant) apply(ents []raft.Entry) {
 
 func (p *participant) save(ents []raft.Entry, state raft.State) {
 	for _, ent := range ents {
-		p.w.SaveEntry(&ent)
+		if err := p.w.SaveEntry(&ent); err != nil {
+			log.Panicf("id=%x participant.save saveEntryErr=%q", p.id, err)
+		}
 	}
 	if state != raft.EmptyState {
-		p.w.SaveState(&state)
+		if err := p.w.SaveState(&state); err != nil {
+			log.Panicf("id=%x participant.save saveStateErr=%q", p.id, err)
+		}
 	}
-	p.w.Sync()
+	if err := p.w.Sync(); err != nil {
+		log.Panicf("id=%x participant.save syncErr=%q", p.id, err)
+	}
 
 }
 
