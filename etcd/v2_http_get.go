@@ -32,6 +32,9 @@ func (p *participant) GetHandler(w http.ResponseWriter, req *http.Request) error
 	sort := (req.FormValue("sorted") == "true")
 	waitIndex := req.FormValue("waitIndex")
 	stream := (req.FormValue("stream") == "true")
+	if req.FormValue("quorum") == "true" {
+		return p.handleQuorumGet(key, recursive, sort, w, req)
+	}
 	if req.FormValue("wait") == "true" {
 		return p.handleWatch(key, recursive, stream, waitIndex, w, req)
 	}
@@ -117,6 +120,18 @@ func (p *participant) handleGet(key string, recursive, sort bool, w http.Respons
 		panic(fmt.Sprintf("handleGet: ", err))
 	}
 	w.Write(b)
+	return nil
+}
+
+func (p *participant) handleQuorumGet(key string, recursive, sort bool, w http.ResponseWriter, req *http.Request) error {
+	if req.Method == "HEAD" {
+		return fmt.Errorf("not support HEAD")
+	}
+	event, err := p.Get(key, recursive, sort)
+	if err != nil {
+		return err
+	}
+	p.handleRet(w, event)
 	return nil
 }
 

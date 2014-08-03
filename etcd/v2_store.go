@@ -33,6 +33,7 @@ type cmd struct {
 	Dir       bool
 	Recursive bool
 	Unique    bool
+	Sorted    bool
 	Time      time.Time
 }
 
@@ -64,6 +65,11 @@ func (p *participant) Delete(key string, dir, recursive bool) (*store.Event, err
 func (p *participant) CAD(key string, prevValue string, prevIndex uint64) (*store.Event, error) {
 	cad := &cmd{Type: "cad", Key: key, PrevValue: prevValue, PrevIndex: prevIndex}
 	return p.do(cad)
+}
+
+func (p *participant) Get(key string, recursive, sorted bool) (*store.Event, error) {
+	get := &cmd{Type: "get", Key: key, Recursive: recursive, Sorted: sorted}
+	return p.do(get)
 }
 
 func (p *participant) do(c *cmd) (*store.Event, error) {
