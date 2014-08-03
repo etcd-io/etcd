@@ -122,7 +122,7 @@ func (p *participant) clusterConfig() *config.ClusterConfig {
 	c := config.NewClusterConfig()
 	// This is used for backward compatibility because it doesn't
 	// set cluster config in older version.
-	if e, err := p.Get(v2configKVPrefix, false, false); err == nil {
+	if e, err := p.Store.Get(v2configKVPrefix, false, false); err == nil {
 		json.Unmarshal([]byte(*e.Node.Value), c)
 	}
 	return c
@@ -142,7 +142,7 @@ func (p *participant) setClusterConfig(c *config.ClusterConfig) error {
 // someMachineMessage return machine message of specified name.
 func (p *participant) someMachineMessage(name string) (*machineMessage, error) {
 	pp := filepath.Join(v2machineKVPrefix, name)
-	e, err := p.Get(pp, false, false)
+	e, err := p.Store.Get(pp, false, false)
 	if err != nil {
 		return nil, err
 	}
@@ -151,7 +151,7 @@ func (p *participant) someMachineMessage(name string) (*machineMessage, error) {
 }
 
 func (p *participant) allMachineMessages() ([]*machineMessage, error) {
-	e, err := p.Get(v2machineKVPrefix, false, false)
+	e, err := p.Store.Get(v2machineKVPrefix, false, false)
 	if err != nil {
 		return nil, err
 	}
