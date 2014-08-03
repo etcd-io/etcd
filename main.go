@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/coreos/etcd/config"
 	"github.com/coreos/etcd/etcd"
@@ -26,7 +27,10 @@ func main() {
 		os.Exit(0)
 	}
 
-	e := etcd.New(config)
+	e, err := etcd.New(config)
+	if err != nil {
+		log.Fatal("etcd:", err)
+	}
 	go e.Run()
 
 	corsInfo, err := ehttp.NewCORSInfo(config.CorsOrigins)
@@ -34,13 +38,15 @@ func main() {
 		log.Fatal("cors:", err)
 	}
 
+	readTimeout := time.Duration(config.HTTPReadTimeout) * time.Second
+	writeTimeout := time.Duration(config.HTTPWriteTimeout) * time.Second
 	go func() {
-		serve("raft", config.Peer.BindAddr, config.PeerTLSInfo(), corsInfo, e.RaftHandler())
+		serve("raft", config.Peer.BindAddr, config.PeerTLSInfo(), corsInfo, e.RaftHandler(), readTimeout, writeTimeout)
 	}()
-	serve("etcd", config.BindAddr, config.EtcdTLSInfo(), corsInfo, e)
+	serve("etcd", config.BindAddr, config.EtcdTLSInfo(), corsInfo, e, readTimeout, writeTimeout)
 }
 
-func serve(who string, addr string, tinfo *config.TLSInfo, cinfo *ehttp.CORSInfo, handler http.Handler) {
+func serve(who string, addr string, tinfo *config.TLSInfo, cinfo *ehttp.CORSInfo, handler http.Handler, readTimeout, writeTimeout time.Duration) {
 	t, terr := tinfo.ServerConfig()
 	l, err := net.Listen("tcp", addr)
 	if err != nil {
@@ -63,5 +69,6 @@ func serve(who string, addr string, tinfo *config.TLSInfo, cinfo *ehttp.CORSInfo
 	}
 
 	h := &ehttp.CORSHandler{handler, cinfo}
-	log.Fatal(http.Serve(l, h))
+	s := &http.Server{Handler: h, ReadTimeout: readTimeout, WriteTimeout: writeTimeout}
+	log.Fatal(s.Serve(l))
 }
