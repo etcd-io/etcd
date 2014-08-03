@@ -174,7 +174,9 @@ func (p *participant) run() int64 {
 
 	recv := p.rh.recv
 	ticker := time.NewTicker(p.tickDuration)
+	defer ticker.Stop()
 	v2SyncTicker := time.NewTicker(time.Millisecond * 500)
+	defer v2SyncTicker.Stop()
 
 	var proposal chan v2Proposal
 	var addNodeC, removeNodeC chan raft.Config
