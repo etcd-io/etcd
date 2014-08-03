@@ -22,6 +22,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"log"
 	"os"
 
 	"github.com/coreos/etcd/raft"
@@ -44,6 +45,7 @@ func newWAL(f *os.File) *WAL {
 }
 
 func New(path string) (*WAL, error) {
+	log.Printf("path=%s wal.new", path)
 	f, err := os.Open(path)
 	if err == nil {
 		f.Close()
@@ -57,6 +59,7 @@ func New(path string) (*WAL, error) {
 }
 
 func Open(path string) (*WAL, error) {
+	log.Printf("path=%s wal.open", path)
 	f, err := os.OpenFile(path, os.O_RDWR, 0)
 	if err != nil {
 		return nil, err
@@ -65,6 +68,7 @@ func Open(path string) (*WAL, error) {
 }
 
 func (w *WAL) Sync() error {
+	log.Printf("path=%s wal.sync", w.f.Name())
 	if err := w.bw.Flush(); err != nil {
 		return err
 	}
@@ -72,6 +76,7 @@ func (w *WAL) Sync() error {
 }
 
 func (w *WAL) Close() {
+	log.Printf("path=%s wal.close", w.f.Name())
 	if w.f != nil {
 		w.Sync()
 		w.f.Close()
@@ -79,6 +84,7 @@ func (w *WAL) Close() {
 }
 
 func (w *WAL) SaveInfo(id int64) error {
+	log.Printf("path=%s wal.saveInfo id=%d", w.f.Name(), id)
 	if err := w.checkAtHead(); err != nil {
 		return err
 	}
@@ -91,6 +97,7 @@ func (w *WAL) SaveInfo(id int64) error {
 }
 
 func (w *WAL) SaveEntry(e *raft.Entry) error {
+	log.Printf("path=%s wal.saveEntry ent=\"%+v\"", w.f.Name(), e)
 	b, err := e.Marshal()
 	if err != nil {
 		panic(err)
@@ -99,6 +106,7 @@ func (w *WAL) SaveEntry(e *raft.Entry) error {
 }
 
 func (w *WAL) SaveState(s *raft.State) error {
+	log.Printf("path=%s wal.saveState state=\"%+v\"", w.f.Name(), s)
 	w.buf.Reset()
 	err := binary.Write(w.buf, binary.LittleEndian, s)
 	if err != nil {
@@ -125,6 +133,7 @@ type Node struct {
 }
 
 func (w *WAL) LoadNode() (*Node, error) {
+	log.Printf("path=%s wal.loadNode", w.f.Name())
 	if err := w.checkAtHead(); err != nil {
 		return nil, err
 	}
