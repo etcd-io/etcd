@@ -667,6 +667,100 @@ func TestV2Get(t *testing.T) {
 	afterTest(t)
 }
 
+func TestV2QuorumGet(t *testing.T) {
+	es, hs := buildCluster(1, false)
+	u := hs[0].URL
+	tc := NewTestClient()
+
+	v := url.Values{}
+	v.Set("value", "XXX")
+	resp, err := tc.PutForm(fmt.Sprintf("%s%s", u, "/v2/keys/foo/bar/zar?quorum=true"), v)
+	if err != nil {
+		t.Error(err)
+	}
+	resp.Body.Close()
+
+	tests := []struct {
+		relativeURL string
+		wStatus     int
+		w           map[string]interface{}
+	}{
+		{
+			"/v2/keys/foo/bar/zar",
+			http.StatusOK,
+			map[string]interface{}{
+				"node": map[string]interface{}{
+					"key":   "/foo/bar/zar",
+					"value": "XXX",
+				},
+				"action": "get",
+			},
+		},
+		{
+			"/v2/keys/foo",
+			http.StatusOK,
+			map[string]interface{}{
+				"node": map[string]interface{}{
+					"key": "/foo",
+					"dir": true,
+					"nodes": []interface{}{
+						map[string]interface{}{
+							"key":           "/foo/bar",
+							"dir":           true,
+							"createdIndex":  float64(2),
+							"modifiedIndex": float64(2),
+						},
+					},
+				},
+				"action": "get",
+			},
+		},
+		{
+			"/v2/keys/foo?recursive=true",
+			http.StatusOK,
+			map[string]interface{}{
+				"node": map[string]interface{}{
+					"key": "/foo",
+					"dir": true,
+					"nodes": []interface{}{
+						map[string]interface{}{
+							"key":           "/foo/bar",
+							"dir":           true,
+							"createdIndex":  float64(2),
+							"modifiedIndex": float64(2),
+							"nodes": []interface{}{
+								map[string]interface{}{
+									"key":           "/foo/bar/zar",
+									"value":         "XXX",
+									"createdIndex":  float64(2),
+									"modifiedIndex": float64(2),
+								},
+							},
+						},
+					},
+				},
+				"action": "get",
+			},
+		},
+	}
+
+	for i, tt := range tests {
+		resp, _ := tc.Get(fmt.Sprintf("%s%s", u, tt.relativeURL))
+		if resp.StatusCode != tt.wStatus {
+			t.Errorf("#%d: status = %d, want %d", i, resp.StatusCode, tt.wStatus)
+		}
+		if resp.Header.Get("Content-Type") != "application/json" {
+			t.Errorf("#%d: header = %v, want %v", resp.Header.Get("Content-Type"), "application/json")
+		}
+		if err := checkBody(tc.ReadBodyJSON(resp), tt.w); err != nil {
+			t.Errorf("#%d: %v", i, err)
+		}
+	}
+
+	destoryCluster(t, es, hs)
+	afterTest(t)
+}
+
 func TestV2Watch(t *testing.T) {
 	es, hs := buildCluster(1, false)
 	u := hs[0].URL
