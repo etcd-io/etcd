@@ -17,7 +17,6 @@ limitations under the License.
 package etcd
 
 import (
-	"encoding/json"
 	"fmt"
 	"time"
 
@@ -54,8 +53,9 @@ func (r *v2Raft) Sync() {
 	if !r.Node.IsLeader() {
 		return
 	}
-	sync := &cmd{Type: "sync", Time: time.Now()}
-	data, err := json.Marshal(sync)
+	t := time.Now()
+	sync := &Cmd{Type: stsync, Time: mustMarshalTime(&t)}
+	data, err := sync.Marshal()
 	if err != nil {
 		panic(err)
 	}
