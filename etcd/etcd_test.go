@@ -490,6 +490,7 @@ func initTestServer(c *config.Config, id int64, tls bool) (e *Server, h *httptes
 	m.Handle("/", e)
 	m.Handle("/raft", e.RaftHandler())
 	m.Handle("/raft/", e.RaftHandler())
+	m.Handle("/v2/admin/", e.RaftHandler())
 
 	if addr == "127.0.0.1:4001" {
 		if tls {
