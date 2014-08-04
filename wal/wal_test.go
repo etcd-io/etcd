@@ -30,8 +30,8 @@ var (
 	infoData  = []byte("\b\xef\xfd\x02")
 	infoBlock = append([]byte("\x01\x00\x00\x00\x00\x00\x00\x00\x04\x00\x00\x00\x00\x00\x00\x00"), infoData...)
 
-	stateData  = []byte("\x01\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00")
-	stateBlock = append([]byte("\x03\x00\x00\x00\x00\x00\x00\x00\x18\x00\x00\x00\x00\x00\x00\x00"), stateData...)
+	stateData  = []byte("\b\x01\x10\x01\x18\x01")
+	stateBlock = append([]byte("\x03\x00\x00\x00\x00\x00\x00\x00\x06\x00\x00\x00\x00\x00\x00\x00"), stateData...)
 
 	entryData  = []byte("\b\x01\x10\x01\x18\x01\x22\x01\x01")
 	entryBlock = append([]byte("\x02\x00\x00\x00\x00\x00\x00\x00\t\x00\x00\x00\x00\x00\x00\x00"), entryData...)
@@ -136,7 +136,7 @@ func TestSaveState(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	st := &raft.State{1, 1, 1}
+	st := &raft.State{Term: 1, Vote: 1, Commit: 1}
 	err = w.SaveState(st)
 	if err != nil {
 		t.Fatal(err)
@@ -183,7 +183,7 @@ func TestLoadState(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ws := raft.State{1, 1, 1}
+	ws := raft.State{Term: 1, Vote: 1, Commit: 1}
 	if !reflect.DeepEqual(s, ws) {
 		t.Errorf("state = %v, want %v", s, ws)
 	}
@@ -205,7 +205,7 @@ func TestLoadNode(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	sts := []raft.State{{1, 1, 1}, {2, 2, 2}}
+	sts := []raft.State{{Term: 1, Vote: 1, Commit: 1}, {Term: 2, Vote: 2, Commit: 2}}
 	for _, s := range sts {
 		if err = w.SaveState(&s); err != nil {
 			t.Fatal(err)

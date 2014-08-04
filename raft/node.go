@@ -238,7 +238,7 @@ func (n *Node) UnstableEnts() []Entry {
 }
 
 func (n *Node) UnstableState() State {
-	if n.sm.unstableState == EmptyState {
+	if n.sm.unstableState.IsEmpty() {
 		return EmptyState
 	}
 	s := n.sm.unstableState
