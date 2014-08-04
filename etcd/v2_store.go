@@ -67,8 +67,8 @@ func (p *participant) CAD(key string, prevValue string, prevIndex uint64) (*stor
 	return p.do(cad)
 }
 
-func (p *participant) Get(key string, recursive, sorted bool) (*store.Event, error) {
-	get := &cmd{Type: "get", Key: key, Recursive: recursive, Sorted: sorted}
+func (p *participant) QuorumGet(key string, recursive, sorted bool) (*store.Event, error) {
+	get := &cmd{Type: "quorumGet", Key: key, Recursive: recursive, Sorted: sorted}
 	return p.do(get)
 }
 

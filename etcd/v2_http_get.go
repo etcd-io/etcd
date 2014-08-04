@@ -127,7 +127,7 @@ func (p *participant) handleQuorumGet(key string, recursive, sort bool, w http.R
 	if req.Method == "HEAD" {
 		return fmt.Errorf("not support HEAD")
 	}
-	event, err := p.Get(key, recursive, sort)
+	event, err := p.QuorumGet(key, recursive, sort)
 	if err != nil {
 		return err
 	}
