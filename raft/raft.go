@@ -66,12 +66,6 @@ func (st stateType) String() string {
 	return stmap[int64(st)]
 }
 
-type State struct {
-	Term   int64
-	Vote   int64
-	Commit int64
-}
-
 var EmptyState = State{}
 
 type Message struct {
@@ -593,4 +587,8 @@ func (sm *stateMachine) loadState(state State) {
 	sm.raftLog.committed = state.Commit
 	sm.setTerm(state.Term)
 	sm.setVote(state.Vote)
+}
+
+func (s *State) IsEmpty() bool {
+	return s.Term == 0
 }
