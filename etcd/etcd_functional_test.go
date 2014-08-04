@@ -173,6 +173,8 @@ func TestClusterConfigReload(t *testing.T) {
 		}
 
 		lead, _ = waitLeader(es)
+		// wait for msgAppResp to commit all entries
+		time.Sleep(2 * defaultHeartbeat * es[lead].tickDuration)
 		if g := es[lead].p.clusterConfig(); !reflect.DeepEqual(g, conf) {
 			t.Errorf("#%d: clusterConfig = %+v, want %+v", i, g, conf)
 		}
