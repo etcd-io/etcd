@@ -92,7 +92,8 @@ func (w *WAL) SaveInfo(i *raft.Info) error {
 	if err != nil {
 		panic(err)
 	}
-	return writeBlock(w.bw, infoType, b)
+	rec := &Record{Type: infoType, Data: b}
+	return writeRecord(w.bw, rec)
 }
 
 func (w *WAL) SaveEntry(e *raft.Entry) error {
@@ -101,7 +102,8 @@ func (w *WAL) SaveEntry(e *raft.Entry) error {
 	if err != nil {
 		panic(err)
 	}
-	return writeBlock(w.bw, entryType, b)
+	rec := &Record{Type: entryType, Data: b}
+	return writeRecord(w.bw, rec)
 }
 
 func (w *WAL) SaveState(s *raft.State) error {
@@ -110,7 +112,8 @@ func (w *WAL) SaveState(s *raft.State) error {
 	if err != nil {
 		panic(err)
 	}
-	return writeBlock(w.bw, stateType, b)
+	rec := &Record{Type: stateType, Data: b}
+	return writeRecord(w.bw, rec)
 }
 
 func (w *WAL) checkAtHead() error {
@@ -136,38 +139,38 @@ func (w *WAL) LoadNode() (*Node, error) {
 		return nil, err
 	}
 	br := bufio.NewReader(w.f)
-	b := &block{}
+	rec := &Record{}
 
-	err := readBlock(br, b)
+	err := readRecord(br, rec)
 	if err != nil {
 		return nil, err
 	}
-	if b.t != infoType {
-		return nil, fmt.Errorf("the first block of wal is not infoType but %d", b.t)
+	if rec.Type != infoType {
+		return nil, fmt.Errorf("the first block of wal is not infoType but %d", rec.Type)
 	}
-	i, err := loadInfo(b.d)
+	i, err := loadInfo(rec.Data)
 	if err != nil {
 		return nil, err
 	}
 
 	ents := make([]raft.Entry, 0)
 	var state raft.State
-	for err = readBlock(br, b); err == nil; err = readBlock(br, b) {
-		switch b.t {
+	for err = readRecord(br, rec); err == nil; err = readRecord(br, rec) {
+		switch rec.Type {
 		case entryType:
-			e, err := loadEntry(b.d)
+			e, err := loadEntry(rec.Data)
 			if err != nil {
 				return nil, err
 			}
 			ents = append(ents[:e.Index-1], e)
 		case stateType:
-			s, err := loadState(b.d)
+			s, err := loadState(rec.Data)
 			if err != nil {
 				return nil, err
 			}
 			state = s
 		default:
-			return nil, fmt.Errorf("unexpected block type %d", b.t)
+			return nil, fmt.Errorf("unexpected block type %d", rec.Type)
 		}
 	}
 	if err != io.EOF {
