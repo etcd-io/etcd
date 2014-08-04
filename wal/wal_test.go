@@ -27,8 +27,8 @@ import (
 )
 
 var (
-	infoData  = []byte("\xef\xbe\x00\x00\x00\x00\x00\x00")
-	infoBlock = append([]byte("\x01\x00\x00\x00\x00\x00\x00\x00\b\x00\x00\x00\x00\x00\x00\x00"), infoData...)
+	infoData  = []byte("\b\xef\xfd\x02")
+	infoBlock = append([]byte("\x01\x00\x00\x00\x00\x00\x00\x00\x04\x00\x00\x00\x00\x00\x00\x00"), infoData...)
 
 	stateData  = []byte("\b\x01\x10\x01\x18\x01")
 	stateBlock = append([]byte("\x03\x00\x00\x00\x00\x00\x00\x00\x06\x00\x00\x00\x00\x00\x00\x00"), stateData...)
@@ -95,24 +95,24 @@ func TestSaveInfo(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	id := int64(0xBEEF)
-	err = w.SaveInfo(id)
+	i := &raft.Info{Id: int64(0xBEEF)}
+	err = w.SaveInfo(i)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// make sure we can only write info at the head of the wal file
 	// still in buffer
-	err = w.SaveInfo(id)
-	if err == nil || err.Error() != "cannot write info at 24, expect 0" {
-		t.Errorf("err = %v, want cannot write info at 8, expect 0", err)
+	err = w.SaveInfo(i)
+	if err == nil || err.Error() != "cannot write info at 20, expect 0" {
+		t.Errorf("err = %v, want cannot write info at 20, expect 0", err)
 	}
 
 	// sync to disk
 	w.Sync()
-	err = w.SaveInfo(id)
-	if err == nil || err.Error() != "cannot write info at 24, expect 0" {
-		t.Errorf("err = %v, want cannot write info at 8, expect 0", err)
+	err = w.SaveInfo(i)
+	if err == nil || err.Error() != "cannot write info at 20, expect 0" {
+		t.Errorf("err = %v, want cannot write info at 20, expect 0", err)
 	}
 	w.Close()
 
@@ -158,12 +158,12 @@ func TestSaveState(t *testing.T) {
 }
 
 func TestLoadInfo(t *testing.T) {
-	id, err := loadInfo(infoData)
+	i, err := loadInfo(infoData)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if id != 0xBEEF {
-		t.Errorf("id = %x, want 0xBEEF", id)
+	if i.Id != 0xBEEF {
+		t.Errorf("id = %x, want 0xBEEF", i.Id)
 	}
 }
 
@@ -195,8 +195,8 @@ func TestLoadNode(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	id := int64(0xBEEF)
-	if err = w.SaveInfo(id); err != nil {
+	i := &raft.Info{Id: int64(0xBEEF)}
+	if err = w.SaveInfo(i); err != nil {
 		t.Fatal(err)
 	}
 	ents := []raft.Entry{{Type: 1, Index: 1, Term: 1, Data: []byte{1}}, {Type: 2, Index: 2, Term: 2, Data: []byte{2}}}
@@ -221,8 +221,8 @@ func TestLoadNode(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if n.Id != id {
-		t.Errorf("id = %d, want %d", n.Id, id)
+	if n.Id != i.Id {
+		t.Errorf("id = %d, want %d", n.Id, i.Id)
 	}
 	if !reflect.DeepEqual(n.Ents, ents) {
 		t.Errorf("ents = %+v, want %+v", n.Ents, ents)

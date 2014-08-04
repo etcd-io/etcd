@@ -83,17 +83,16 @@ func (w *WAL) Close() {
 	}
 }
 
-func (w *WAL) SaveInfo(id int64) error {
-	log.Printf("path=%s wal.saveInfo id=%d", w.f.Name(), id)
+func (w *WAL) SaveInfo(i *raft.Info) error {
+	log.Printf("path=%s wal.saveInfo id=%d", w.f.Name(), i.Id)
 	if err := w.checkAtHead(); err != nil {
 		return err
 	}
-	w.buf.Reset()
-	err := binary.Write(w.buf, binary.LittleEndian, id)
+	b, err := i.Marshal()
 	if err != nil {
 		panic(err)
 	}
-	return writeBlock(w.bw, infoType, w.buf.Bytes())
+	return writeBlock(w.bw, infoType, b)
 }
 
 func (w *WAL) SaveEntry(e *raft.Entry) error {
@@ -146,7 +145,7 @@ func (w *WAL) LoadNode() (*Node, error) {
 	if b.t != infoType {
 		return nil, fmt.Errorf("the first block of wal is not infoType but %d", b.t)
 	}
-	id, err := loadInfo(b.d)
+	i, err := loadInfo(b.d)
 	if err != nil {
 		return nil, err
 	}
@@ -174,15 +173,16 @@ func (w *WAL) LoadNode() (*Node, error) {
 	if err != io.EOF {
 		return nil, err
 	}
-	return &Node{id, ents, state}, nil
+	return &Node{i.Id, ents, state}, nil
 }
 
-func loadInfo(d []byte) (int64, error) {
-	if len(d) != 8 {
-		return 0, fmt.Errorf("len = %d, want 8", len(d))
+func loadInfo(d []byte) (raft.Info, error) {
+	var i raft.Info
+	err := i.Unmarshal(d)
+	if err != nil {
+		panic(err)
 	}
-	buf := bytes.NewBuffer(d)
-	return readInt64(buf)
+	return i, err
 }
 
 func loadEntry(d []byte) (raft.Entry, error) {

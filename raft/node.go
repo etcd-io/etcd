@@ -63,6 +63,10 @@ func (n *Node) Id() int64 { return n.sm.id }
 
 func (n *Node) ClusterId() int64 { return n.sm.clusterId }
 
+func (n *Node) Info() Info {
+	return Info{Id: n.Id()}
+}
+
 func (n *Node) Index() int64 { return n.sm.index.Get() }
 
 func (n *Node) Term() int64 { return n.sm.term.Get() }
