@@ -107,12 +107,11 @@ func (w *WAL) SaveEntry(e *raft.Entry) error {
 
 func (w *WAL) SaveState(s *raft.State) error {
 	log.Printf("path=%s wal.saveState state=\"%+v\"", w.f.Name(), s)
-	w.buf.Reset()
-	err := binary.Write(w.buf, binary.LittleEndian, s)
+	b, err := s.Marshal()
 	if err != nil {
 		panic(err)
 	}
-	return writeBlock(w.bw, stateType, w.buf.Bytes())
+	return writeBlock(w.bw, stateType, b)
 }
 
 func (w *WAL) checkAtHead() error {
@@ -197,8 +196,7 @@ func loadEntry(d []byte) (raft.Entry, error) {
 
 func loadState(d []byte) (raft.State, error) {
 	var s raft.State
-	buf := bytes.NewBuffer(d)
-	err := binary.Read(buf, binary.LittleEndian, &s)
+	err := s.Unmarshal(d)
 	return s, err
 }
 

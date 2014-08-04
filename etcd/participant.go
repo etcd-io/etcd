@@ -390,7 +390,7 @@ func (p *participant) save(ents []raft.Entry, state raft.State) {
 			log.Panicf("id=%x participant.save saveEntryErr=%q", p.id, err)
 		}
 	}
-	if state != raft.EmptyState {
+	if !state.IsEmpty() {
 		if err := p.w.SaveState(&state); err != nil {
 			log.Panicf("id=%x participant.save saveStateErr=%q", p.id, err)
 		}
