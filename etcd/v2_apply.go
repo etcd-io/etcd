@@ -49,7 +49,7 @@ func (p *participant) v2apply(index int64, ent raft.Entry) {
 		e, err = p.Store.CompareAndDelete(cmd.Key, cmd.PrevValue, cmd.PrevIndex)
 	case "cas":
 		e, err = p.Store.CompareAndSwap(cmd.Key, cmd.PrevValue, cmd.PrevIndex, cmd.Value, cmd.Time)
-	case "get":
+	case "quorumGet":
 		e, err = p.Store.Get(cmd.Key, cmd.Recursive, cmd.Sorted)
 	case "sync":
 		p.Store.DeleteExpiredKeys(cmd.Time)
