@@ -121,10 +121,11 @@ func newParticipant(id int64, pubAddr string, raftPubAddr string, dir string, cl
 		if w, err = wal.New(walPath); err != nil {
 			return nil, err
 		}
-		if err = w.SaveInfo(p.id); err != nil {
+		p.node.Node = raft.New(p.id, defaultHeartbeat, defaultElection)
+		info := p.node.Info()
+		if err = w.SaveInfo(&info); err != nil {
 			return nil, err
 		}
-		p.node.Node = raft.New(p.id, defaultHeartbeat, defaultElection)
 		log.Printf("id=%x participant.new path=%s\n", p.id, walPath)
 	} else {
 		n, err := w.LoadNode()
