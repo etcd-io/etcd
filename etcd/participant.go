@@ -357,7 +357,9 @@ func (p *participant) apply(ents []raft.Entry) {
 				log.Printf("id=%x participant.cluster.addNode peerAddErr=\"%v\"\n", p.id, err)
 				break
 			}
-			peer.participate()
+			if p.id != cfg.NodeId {
+				peer.participate()
+			}
 			pp := path.Join(v2machineKVPrefix, fmt.Sprint(cfg.NodeId))
 			p.Store.Set(pp, false, fmt.Sprintf("raft=%v&etcd=%v", cfg.Addr, string(cfg.Context)), store.Permanent)
 			if p.id == cfg.NodeId {
