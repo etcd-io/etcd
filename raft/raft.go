@@ -3,7 +3,6 @@ package raft
 import (
 	"errors"
 	"fmt"
-	"log"
 	"sort"
 	"sync/atomic"
 )
@@ -201,7 +200,6 @@ func (sm *stateMachine) send(m Message) {
 	m.ClusterId = sm.clusterId
 	m.From = sm.id
 	m.Term = sm.term.Get()
-	log.Printf("raft.send msg %v\n", m)
 	sm.msgs = append(sm.msgs, m)
 }
 
@@ -342,11 +340,6 @@ func (sm *stateMachine) Msgs() []Message {
 }
 
 func (sm *stateMachine) Step(m Message) (ok bool) {
-	log.Printf("raft.step beforeState %v\n", sm)
-	log.Printf("raft.step beforeLog %v\n", sm.raftLog)
-	defer log.Printf("raft.step afterLog %v\n", sm.raftLog)
-	defer log.Printf("raft.step afterState %v\n", sm)
-	log.Printf("raft.step msg %v\n", m)
 	if m.Type == msgHup {
 		sm.becomeCandidate()
 		if sm.q() == sm.poll(sm.id, true) {
