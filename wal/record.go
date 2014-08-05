@@ -20,43 +20,28 @@ import (
 	"io"
 )
 
-type block struct {
-	t int64
-	d []byte
-}
+func writeRecord(w io.Writer, rec *Record) error {
+	data, err := rec.Marshal()
+	if err != nil {
+		return err
+	}
 
-func writeBlock(w io.Writer, t int64, d []byte) error {
-	if err := writeInt64(w, t); err != nil {
+	if err := writeInt64(w, int64(len(data))); err != nil {
 		return err
 	}
-	if err := writeInt64(w, int64(len(d))); err != nil {
-		return err
-	}
-	_, err := w.Write(d)
+	_, err = w.Write(data)
 	return err
 }
 
-func readBlock(r io.Reader, b *block) error {
-	t, err := readInt64(r)
-	if err != nil {
-		return err
-	}
+func readRecord(r io.Reader, rec *Record) error {
+	rec.Reset()
 	l, err := readInt64(r)
 	if err != nil {
-		return unexpectedEOF(err)
+		return err
 	}
 	d := make([]byte, l)
 	if _, err = io.ReadFull(r, d); err != nil {
-		return unexpectedEOF(err)
+		return err
 	}
-	b.t = t
-	b.d = d
-	return nil
-}
-
-func unexpectedEOF(err error) error {
-	if err == io.EOF {
-		return io.ErrUnexpectedEOF
-	}
-	return err
+	return rec.Unmarshal(d)
 }

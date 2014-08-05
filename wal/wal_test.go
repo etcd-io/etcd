@@ -27,14 +27,14 @@ import (
 )
 
 var (
-	infoData  = []byte("\b\xef\xfd\x02")
-	infoBlock = append([]byte("\x01\x00\x00\x00\x00\x00\x00\x00\x04\x00\x00\x00\x00\x00\x00\x00"), infoData...)
+	infoData   = []byte("\b\xef\xfd\x02")
+	infoRecord = append([]byte("\n\x00\x00\x00\x00\x00\x00\x00\b\x01\x10\x00\x1a\x04"), infoData...)
 
-	stateData  = []byte("\b\x01\x10\x01\x18\x01")
-	stateBlock = append([]byte("\x03\x00\x00\x00\x00\x00\x00\x00\x06\x00\x00\x00\x00\x00\x00\x00"), stateData...)
+	stateData   = []byte("\b\x01\x10\x01\x18\x01")
+	stateRecord = append([]byte("\f\x00\x00\x00\x00\x00\x00\x00\b\x03\x10\x00\x1a\x06"), stateData...)
 
-	entryData  = []byte("\b\x01\x10\x01\x18\x01\x22\x01\x01")
-	entryBlock = append([]byte("\x02\x00\x00\x00\x00\x00\x00\x00\t\x00\x00\x00\x00\x00\x00\x00"), entryData...)
+	entryData   = []byte("\b\x01\x10\x01\x18\x01\x22\x01\x01")
+	entryRecord = append([]byte("\x0f\x00\x00\x00\x00\x00\x00\x00\b\x02\x10\x00\x1a\t"), entryData...)
 )
 
 func TestNew(t *testing.T) {
@@ -79,8 +79,8 @@ func TestSaveEntry(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(b, entryBlock) {
-		t.Errorf("ent = %q, want %q", b, entryBlock)
+	if !reflect.DeepEqual(b, entryRecord) {
+		t.Errorf("ent = %q, want %q", b, entryRecord)
 	}
 
 	err = os.Remove(p)
@@ -104,15 +104,15 @@ func TestSaveInfo(t *testing.T) {
 	// make sure we can only write info at the head of the wal file
 	// still in buffer
 	err = w.SaveInfo(i)
-	if err == nil || err.Error() != "cannot write info at 20, expect 0" {
-		t.Errorf("err = %v, want cannot write info at 20, expect 0", err)
+	if err == nil || err.Error() != "cannot write info at 18, expect 0" {
+		t.Errorf("err = %v, want cannot write info at 18, expect 0", err)
 	}
 
 	// sync to disk
 	w.Sync()
 	err = w.SaveInfo(i)
-	if err == nil || err.Error() != "cannot write info at 20, expect 0" {
-		t.Errorf("err = %v, want cannot write info at 20, expect 0", err)
+	if err == nil || err.Error() != "cannot write info at 18, expect 0" {
+		t.Errorf("err = %v, want cannot write info at 18, expect 0", err)
 	}
 	w.Close()
 
@@ -120,8 +120,8 @@ func TestSaveInfo(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(b, infoBlock) {
-		t.Errorf("ent = %q, want %q", b, infoBlock)
+	if !reflect.DeepEqual(b, infoRecord) {
+		t.Errorf("ent = %q, want %q", b, infoRecord)
 	}
 
 	err = os.Remove(p)
@@ -147,8 +147,8 @@ func TestSaveState(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(b, stateBlock) {
-		t.Errorf("ent = %q, want %q", b, stateBlock)
+	if !reflect.DeepEqual(b, stateRecord) {
+		t.Errorf("ent = %q, want %q", b, stateRecord)
 	}
 
 	err = os.Remove(p)
