@@ -109,9 +109,7 @@ func (h *peerHub) add(id int64, rawurl string) (*peer, error) {
 	if h.stopped {
 		return nil, fmt.Errorf("peerHub stopped")
 	}
-	if _, ok := h.peers[id]; !ok {
-		h.peers[id] = newPeer(u.String(), h.c)
-	}
+	h.peers[id] = newPeer(u.String(), h.c)
 	return h.peers[id], nil
 }
 
