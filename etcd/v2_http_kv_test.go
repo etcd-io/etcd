@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"net/url"
 	"reflect"
@@ -981,7 +982,11 @@ type testHttpClient struct {
 
 // Creates a new HTTP client with KeepAlive disabled.
 func NewTestClient() *testHttpClient {
-	return &testHttpClient{&http.Client{Transport: &http.Transport{DisableKeepAlives: true}}}
+	tr := &http.Transport{
+		Dial:              (&net.Dialer{Timeout: time.Second}).Dial,
+		DisableKeepAlives: true,
+	}
+	return &testHttpClient{&http.Client{Transport: tr}}
 }
 
 // Reads the body from the response and closes it.

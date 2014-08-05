@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"math/rand"
 	"net/http/httptest"
+	"net/url"
 	"reflect"
 	"testing"
 	"time"
@@ -173,6 +174,8 @@ func TestClusterConfigReload(t *testing.T) {
 		}
 
 		lead, _ = waitLeader(es)
+		// wait for msgAppResp to commit all entries
+		time.Sleep(2 * defaultHeartbeat * es[lead].tickDuration)
 		if g := es[lead].p.clusterConfig(); !reflect.DeepEqual(g, conf) {
 			t.Errorf("#%d: clusterConfig = %+v, want %+v", i, g, conf)
 		}
@@ -337,37 +340,22 @@ func TestModeSwitch(t *testing.T) {
 
 // Sending set commands
 func keepSetting(urlStr string, stop chan bool) {
-	stopSet := false
+	tc := NewTestClient()
 	i := 0
-	c := etcd.NewClient([]string{urlStr})
+	value := url.Values(map[string][]string{"value": {"bar"}})
 	for {
-		key := fmt.Sprintf("%s_%v", "foo", i)
-
-		result, err := c.Set(key, "bar", 0)
-
-		if err != nil || result.Node.Key != "/"+key || result.Node.Value != "bar" {
-			select {
-			case <-stop:
-				stopSet = true
-
-			default:
-			}
+		resp, err := tc.PutForm(fmt.Sprintf("%s/v2/keys/foo_%v", urlStr, i), value)
+		if err == nil {
+			tc.ReadBody(resp)
 		}
-
 		select {
 		case <-stop:
-			stopSet = true
-
+			stop <- true
+			return
 		default:
 		}
-
-		if stopSet {
-			break
-		}
-
 		i++
 	}
-	stop <- true
 }
 
 type leadterm struct {
