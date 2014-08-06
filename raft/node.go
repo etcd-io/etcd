@@ -121,7 +121,7 @@ func (n *Node) Step(m Message) bool {
 		return false
 	}
 	if n.ClusterId() != none && m.ClusterId != none && m.ClusterId != n.ClusterId() {
-		log.Printf("denied a message from node %d, cluster %d. accept cluster: %d\n", m.From, m.ClusterId, n.ClusterId())
+		log.Printf("deny message from=%d cluster=%d", m.From, m.ClusterId)
 		n.sm.send(Message{To: m.From, ClusterId: n.ClusterId(), Type: msgDenied})
 		return true
 	}
@@ -172,7 +172,7 @@ func (n *Node) Next() []Entry {
 		case AddNode:
 			c := new(Config)
 			if err := json.Unmarshal(ents[i].Data, c); err != nil {
-				log.Println(err)
+				log.Printf("raft: err=%q", err)
 				continue
 			}
 			n.sm.addNode(c.NodeId)
@@ -180,7 +180,7 @@ func (n *Node) Next() []Entry {
 		case RemoveNode:
 			c := new(Config)
 			if err := json.Unmarshal(ents[i].Data, c); err != nil {
-				log.Println(err)
+				log.Printf("raft: err=%q", err)
 				continue
 			}
 			n.sm.removeNode(c.NodeId)
