@@ -58,7 +58,8 @@ func TestKillLeader(t *testing.T) {
 			c.DataDir = es[lead].cfg.DataDir
 			c.Addr = hs[lead].Listener.Addr().String()
 			id := es[lead].id
-			e, h, err := buildServer(t, c, id)
+			e, h := initTestServer(c, id, false)
+			err := startServer(t, e)
 			if err != nil {
 				t.Fatalf("#%d.%d: %v", i, j, err)
 			}
@@ -99,7 +100,8 @@ func TestKillRandom(t *testing.T) {
 				c.DataDir = es[k].cfg.DataDir
 				c.Addr = hs[k].Listener.Addr().String()
 				id := es[k].id
-				e, h, err := buildServer(t, c, id)
+				e, h := initTestServer(c, id, false)
+				err := startServer(t, e)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -148,10 +150,10 @@ func TestClusterConfigReload(t *testing.T) {
 		waitCluster(t, es)
 
 		lead, _ := waitLeader(es)
-		conf := conf.NewClusterConfig()
-		conf.ActiveSize = 15
-		conf.RemoveDelay = 60
-		if err := es[lead].p.setClusterConfig(conf); err != nil {
+		cc := conf.NewClusterConfig()
+		cc.ActiveSize = 15
+		cc.RemoveDelay = 60
+		if err := es[lead].p.setClusterConfig(cc); err != nil {
 			t.Fatalf("#%d: setClusterConfig err = %v", i, err)
 		}
 
@@ -165,7 +167,8 @@ func TestClusterConfigReload(t *testing.T) {
 			c.DataDir = es[k].cfg.DataDir
 			c.Addr = hs[k].Listener.Addr().String()
 			id := es[k].id
-			e, h, err := buildServer(t, c, id)
+			e, h := initTestServer(c, id, false)
+			err := startServer(t, e)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -176,8 +179,8 @@ func TestClusterConfigReload(t *testing.T) {
 		lead, _ = waitLeader(es)
 		// wait for msgAppResp to commit all entries
 		time.Sleep(2 * defaultHeartbeat * es[lead].tickDuration)
-		if g := es[lead].p.clusterConfig(); !reflect.DeepEqual(g, conf) {
-			t.Errorf("#%d: clusterConfig = %+v, want %+v", i, g, conf)
+		if g := es[lead].p.clusterConfig(); !reflect.DeepEqual(g, cc) {
+			t.Errorf("#%d: clusterConfig = %+v, want %+v", i, g, cc)
 		}
 
 		destoryCluster(t, es, hs)
@@ -204,7 +207,8 @@ func TestMultiNodeKillOne(t *testing.T) {
 			c.DataDir = es[idx].cfg.DataDir
 			c.Addr = hs[idx].Listener.Addr().String()
 			id := es[idx].id
-			e, h, err := buildServer(t, c, id)
+			e, h := initTestServer(c, id, false)
+			err := startServer(t, e)
 			if err != nil {
 				t.Fatalf("#%d.%d: %v", i, j, err)
 			}
@@ -245,7 +249,8 @@ func TestMultiNodeKillAllAndRecovery(t *testing.T) {
 			c.DataDir = es[k].cfg.DataDir
 			c.Addr = hs[k].Listener.Addr().String()
 			id := es[k].id
-			e, h, err := buildServer(t, c, id)
+			e, h := initTestServer(c, id, false)
+			err := startServer(t, e)
 			if err != nil {
 				t.Fatalf("#%d.%d: %v", i, k, err)
 			}

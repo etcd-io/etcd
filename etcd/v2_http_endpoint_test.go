@@ -136,16 +136,16 @@ func TestGetAdminConfigEndPoint(t *testing.T) {
 			t.Errorf("#%d: ContentType = %d, want application/json", i, g)
 		}
 
-		conf := new(conf.ClusterConfig)
-		err = json.NewDecoder(r.Body).Decode(conf)
+		cc := new(conf.ClusterConfig)
+		err = json.NewDecoder(r.Body).Decode(cc)
 		r.Body.Close()
 		if err != nil {
 			t.Errorf("%v", err)
 			continue
 		}
 		w := conf.NewClusterConfig()
-		if !reflect.DeepEqual(conf, w) {
-			t.Errorf("#%d: config = %+v, want %+v", i, conf, w)
+		if !reflect.DeepEqual(cc, w) {
+			t.Errorf("#%d: config = %+v, want %+v", i, cc, w)
 		}
 	}
 

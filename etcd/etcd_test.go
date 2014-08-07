@@ -90,7 +90,7 @@ func TestAdd(t *testing.T) {
 		es := make([]*Server, tt)
 		hs := make([]*httptest.Server, tt)
 		for i := 0; i < tt; i++ {
-			c := cfg.New()
+			c := conf.New()
 			if i > 0 {
 				c.Peers = []string{hs[0].URL}
 			}
@@ -149,7 +149,7 @@ func TestRemove(t *testing.T) {
 		waitCluster(t, es)
 
 		lead, _ := waitLeader(es)
-		cfg := cfg.NewClusterConfig()
+		cfg := conf.NewClusterConfig()
 		cfg.ActiveSize = 0
 		if err := es[lead].p.setClusterConfig(cfg); err != nil {
 			t.Fatalf("#%d: setClusterConfig err = %v", k, err)
@@ -216,7 +216,7 @@ func TestBecomeStandby(t *testing.T) {
 		}
 		id := int64(i)
 
-		cfg := cfg.NewClusterConfig()
+		cfg := conf.NewClusterConfig()
 		cfg.SyncInterval = 1000
 
 		cfg.ActiveSize = size - 1
@@ -320,9 +320,10 @@ func TestSingleNodeRecovery(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	c := cfg.New()
+	c := conf.New()
 	c.DataDir = dataDir
-	e, h, _ := buildServer(t, c, id)
+	e, h := initTestServer(c, id, false)
+	startServer(t, e)
 	key := "/foo"
 
 	ev, err := e.p.Set(key, false, "bar", time.Now().Add(time.Second*100))
@@ -348,9 +349,10 @@ func TestSingleNodeRecovery(t *testing.T) {
 
 	time.Sleep(2 * time.Second)
 
-	c = cfg.New()
+	c = conf.New()
 	c.DataDir = dataDir
-	e, h, _ = buildServer(t, c, id)
+	e, h = initTestServer(c, id, false)
+	startServer(t, e)
 
 	waitLeader([]*Server{e})
 	w, err = e.p.Watch(key, false, false, ev.Index())
@@ -395,7 +397,7 @@ func TestRestoreSnapshotFromLeader(t *testing.T) {
 	}
 
 	// create one to join the cluster
-	c := cfg.New()
+	c := conf.New()
 	c.Peers = []string{hs[0].URL}
 	e, h := initTestServer(c, 1, false)
 	go e.Run()
@@ -445,7 +447,7 @@ func buildCluster(number int, tls bool) ([]*Server, []*httptest.Server) {
 	var seed string
 
 	for i := range es {
-		c := cfg.New()
+		c := conf.New()
 		if seed != "" {
 			c.Peers = []string{seed}
 		}
@@ -468,7 +470,7 @@ func buildCluster(number int, tls bool) ([]*Server, []*httptest.Server) {
 	return es, hs
 }
 
-func initTestServer(c *cfg.Config, id int64, tls bool) (e *Server, h *httptest.Server) {
+func initTestServer(c *conf.Config, id int64, tls bool) (e *Server, h *httptest.Server) {
 	if c.DataDir == "" {
 		n, err := ioutil.TempDir(os.TempDir(), "etcd")
 		if err != nil {
