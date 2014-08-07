@@ -58,7 +58,7 @@ func TestKillLeader(t *testing.T) {
 			c.DataDir = es[lead].cfg.DataDir
 			c.Addr = hs[lead].Listener.Addr().String()
 			id := es[lead].id
-			e, h := initTestServer(c, id, false)
+			e, h := newUnstartedTestServer(c, id, false)
 			err := startServer(t, e)
 			if err != nil {
 				t.Fatalf("#%d.%d: %v", i, j, err)
@@ -100,7 +100,7 @@ func TestKillRandom(t *testing.T) {
 				c.DataDir = es[k].cfg.DataDir
 				c.Addr = hs[k].Listener.Addr().String()
 				id := es[k].id
-				e, h := initTestServer(c, id, false)
+				e, h := newUnstartedTestServer(c, id, false)
 				err := startServer(t, e)
 				if err != nil {
 					t.Fatal(err)
@@ -126,7 +126,7 @@ func TestJoinThroughFollower(t *testing.T) {
 			if i > 0 {
 				c.Peers = []string{hs[i-1].URL}
 			}
-			es[i], hs[i] = initTestServer(c, int64(i), false)
+			es[i], hs[i] = newUnstartedTestServer(c, int64(i), false)
 		}
 
 		go es[0].Run()
@@ -167,7 +167,7 @@ func TestClusterConfigReload(t *testing.T) {
 			c.DataDir = es[k].cfg.DataDir
 			c.Addr = hs[k].Listener.Addr().String()
 			id := es[k].id
-			e, h := initTestServer(c, id, false)
+			e, h := newUnstartedTestServer(c, id, false)
 			err := startServer(t, e)
 			if err != nil {
 				t.Fatal(err)
@@ -207,7 +207,7 @@ func TestMultiNodeKillOne(t *testing.T) {
 			c.DataDir = es[idx].cfg.DataDir
 			c.Addr = hs[idx].Listener.Addr().String()
 			id := es[idx].id
-			e, h := initTestServer(c, id, false)
+			e, h := newUnstartedTestServer(c, id, false)
 			err := startServer(t, e)
 			if err != nil {
 				t.Fatalf("#%d.%d: %v", i, j, err)
@@ -249,7 +249,7 @@ func TestMultiNodeKillAllAndRecovery(t *testing.T) {
 			c.DataDir = es[k].cfg.DataDir
 			c.Addr = hs[k].Listener.Addr().String()
 			id := es[k].id
-			e, h := initTestServer(c, id, false)
+			e, h := newUnstartedTestServer(c, id, false)
 			err := startServer(t, e)
 			if err != nil {
 				t.Fatalf("#%d.%d: %v", i, k, err)

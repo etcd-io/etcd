@@ -94,7 +94,7 @@ func TestAdd(t *testing.T) {
 			if i > 0 {
 				c.Peers = []string{hs[0].URL}
 			}
-			es[i], hs[i] = initTestServer(c, int64(i), false)
+			es[i], hs[i] = newUnstartedTestServer(c, int64(i), false)
 		}
 
 		go es[0].Run()
@@ -322,7 +322,7 @@ func TestSingleNodeRecovery(t *testing.T) {
 	}
 	c := conf.New()
 	c.DataDir = dataDir
-	e, h := initTestServer(c, id, false)
+	e, h := newUnstartedTestServer(c, id, false)
 	startServer(t, e)
 	key := "/foo"
 
@@ -351,7 +351,7 @@ func TestSingleNodeRecovery(t *testing.T) {
 
 	c = conf.New()
 	c.DataDir = dataDir
-	e, h = initTestServer(c, id, false)
+	e, h = newUnstartedTestServer(c, id, false)
 	startServer(t, e)
 
 	waitLeader([]*Server{e})
@@ -399,7 +399,7 @@ func TestRestoreSnapshotFromLeader(t *testing.T) {
 	// create one to join the cluster
 	c := conf.New()
 	c.Peers = []string{hs[0].URL}
-	e, h := initTestServer(c, 1, false)
+	e, h := newUnstartedTestServer(c, 1, false)
 	go e.Run()
 	waitMode(participantMode, e)
 
@@ -451,7 +451,7 @@ func buildCluster(number int, tls bool) ([]*Server, []*httptest.Server) {
 		if seed != "" {
 			c.Peers = []string{seed}
 		}
-		es[i], hs[i] = initTestServer(c, int64(i), tls)
+		es[i], hs[i] = newUnstartedTestServer(c, int64(i), tls)
 
 		if i == bootstrapper {
 			seed = hs[i].URL
@@ -470,7 +470,7 @@ func buildCluster(number int, tls bool) ([]*Server, []*httptest.Server) {
 	return es, hs
 }
 
-func initTestServer(c *conf.Config, id int64, tls bool) (e *Server, h *httptest.Server) {
+func newUnstartedTestServer(c *conf.Config, id int64, tls bool) (e *Server, h *httptest.Server) {
 	if c.DataDir == "" {
 		n, err := ioutil.TempDir(os.TempDir(), "etcd")
 		if err != nil {

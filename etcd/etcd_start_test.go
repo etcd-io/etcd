@@ -57,7 +57,7 @@ func TestBadDiscoveryService(t *testing.T) {
 
 	c := conf.New()
 	c.Discovery = ts.URL + "/v2/keys/_etcd/registry/1"
-	e, h := initTestServer(c, bootstrapId, false)
+	e, h := newUnstartedTestServer(c, bootstrapId, false)
 	err := startServer(t, e)
 	w := `discovery service error`
 	if err == nil || !strings.HasPrefix(err.Error(), w) {
@@ -85,7 +85,7 @@ func TestBadDiscoveryServiceWithAdvisedPeers(t *testing.T) {
 	c := conf.New()
 	c.Discovery = ts.URL + "/v2/keys/_etcd/registry/1"
 	c.Peers = []string{hs[0].URL}
-	e, h := initTestServer(c, bootstrapId, false)
+	e, h := newUnstartedTestServer(c, bootstrapId, false)
 	err := startServer(t, e)
 	w := `discovery service error`
 	if err == nil || !strings.HasPrefix(err.Error(), w) {
@@ -101,7 +101,7 @@ func TestBadDiscoveryServiceWithAdvisedPeers(t *testing.T) {
 func TestBootstrapByEmptyPeers(t *testing.T) {
 	c := conf.New()
 	id := genId()
-	e, h := initTestServer(c, id, false)
+	e, h := newUnstartedTestServer(c, id, false)
 	err := startServer(t, e)
 
 	if err != nil {
@@ -115,12 +115,12 @@ func TestBootstrapByEmptyPeers(t *testing.T) {
 }
 
 func TestBootstrapByDiscoveryService(t *testing.T) {
-	de, dh := initTestServer(conf.New(), genId(), false)
+	de, dh := newUnstartedTestServer(conf.New(), genId(), false)
 	err := startServer(t, de)
 
 	c := conf.New()
 	c.Discovery = dh.URL + "/v2/keys/_etcd/registry/1"
-	e, h := initTestServer(c, bootstrapId, false)
+	e, h := newUnstartedTestServer(c, bootstrapId, false)
 	err = startServer(t, e)
 	if err != nil {
 		t.Fatalf("build server err = %v, want nil", err)
@@ -137,7 +137,7 @@ func TestRunByAdvisedPeers(t *testing.T) {
 
 	c := conf.New()
 	c.Peers = []string{hs[0].URL}
-	e, h := initTestServer(c, bootstrapId, false)
+	e, h := newUnstartedTestServer(c, bootstrapId, false)
 	err := startServer(t, e)
 	if err != nil {
 		t.Fatalf("build server err = %v, want nil", err)
@@ -153,7 +153,7 @@ func TestRunByAdvisedPeers(t *testing.T) {
 }
 
 func TestRunByDiscoveryService(t *testing.T) {
-	de, dh := initTestServer(conf.New(), genId(), false)
+	de, dh := newUnstartedTestServer(conf.New(), genId(), false)
 	err := startServer(t, de)
 
 	tc := NewTestClient()
@@ -174,7 +174,7 @@ func TestRunByDiscoveryService(t *testing.T) {
 
 	c := conf.New()
 	c.Discovery = dh.URL + "/v2/keys/_etcd/registry/1"
-	e, h := initTestServer(c, bootstrapId, false)
+	e, h := newUnstartedTestServer(c, bootstrapId, false)
 	err = startServer(t, e)
 	if err != nil {
 		t.Fatalf("build server err = %v, want nil", err)
