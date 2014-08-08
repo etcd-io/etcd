@@ -62,7 +62,7 @@ func newStandby(client *v2client, peerHub *peerHub) *standby {
 	return s
 }
 
-func (s *standby) run() int64 {
+func (s *standby) run() {
 	syncDuration := time.Millisecond * 100
 	nodes := s.peerHub.getSeeds()
 	for {
@@ -70,7 +70,7 @@ func (s *standby) run() int64 {
 		case <-time.After(syncDuration):
 		case <-s.stopc:
 			log.Printf("standby.stop\n")
-			return stopMode
+			return
 		}
 
 		if update, err := s.syncCluster(nodes); err != nil {
@@ -84,7 +84,7 @@ func (s *standby) run() int64 {
 			continue
 		}
 		log.Printf("standby.end\n")
-		return participantMode
+		return
 	}
 }
 
