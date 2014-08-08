@@ -68,7 +68,6 @@ func Open(path string) (*WAL, error) {
 }
 
 func (w *WAL) Sync() error {
-	log.Printf("path=%s wal.sync", w.f.Name())
 	if err := w.bw.Flush(); err != nil {
 		return err
 	}
@@ -97,7 +96,6 @@ func (w *WAL) SaveInfo(i *raft.Info) error {
 }
 
 func (w *WAL) SaveEntry(e *raft.Entry) error {
-	log.Printf("path=%s wal.saveEntry ent=\"%+v\"", w.f.Name(), e)
 	b, err := e.Marshal()
 	if err != nil {
 		panic(err)
