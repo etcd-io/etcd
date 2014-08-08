@@ -173,9 +173,8 @@ func (p *participant) run() int64 {
 	defer p.rh.stop()
 
 	node := p.node
-	defer node.StopProposalWaiters()
-
 	recv := p.rh.recv
+
 	ticker := time.NewTicker(p.tickDuration)
 	defer ticker.Stop()
 	v2SyncTicker := time.NewTicker(time.Millisecond * 500)

@@ -61,10 +61,3 @@ func (r *v2Raft) Sync() {
 	}
 	r.Node.Propose(data)
 }
-
-func (r *v2Raft) StopProposalWaiters() {
-	for k, ch := range r.result {
-		ch <- raftStopErr
-		delete(r.result, k)
-	}
-}
