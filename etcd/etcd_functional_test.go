@@ -32,6 +32,7 @@ import (
 )
 
 func TestKillLeader(t *testing.T) {
+	defer afterTest(t)
 	tests := []int{3, 5, 9}
 
 	for i, tt := range tests {
@@ -69,10 +70,10 @@ func TestKillLeader(t *testing.T) {
 
 		destoryCluster(t, es, hs)
 	}
-	afterTest(t)
 }
 
 func TestKillRandom(t *testing.T) {
+	defer afterTest(t)
 	tests := []int{3, 5, 9}
 
 	for _, tt := range tests {
@@ -112,10 +113,10 @@ func TestKillRandom(t *testing.T) {
 
 		destoryCluster(t, es, hs)
 	}
-	afterTest(t)
 }
 
 func TestJoinThroughFollower(t *testing.T) {
+	defer afterTest(t)
 	tests := []int{3, 4, 5, 6}
 
 	for _, tt := range tests {
@@ -139,10 +140,10 @@ func TestJoinThroughFollower(t *testing.T) {
 
 		destoryCluster(t, es, hs)
 	}
-	afterTest(t)
 }
 
 func TestClusterConfigReload(t *testing.T) {
+	defer afterTest(t)
 	tests := []int{3, 4, 5, 6}
 
 	for i, tt := range tests {
@@ -185,10 +186,10 @@ func TestClusterConfigReload(t *testing.T) {
 
 		destoryCluster(t, es, hs)
 	}
-	afterTest(t)
 }
 
 func TestMultiNodeKillOne(t *testing.T) {
+	defer afterTest(t)
 	tests := []int{5}
 
 	for i, tt := range tests {
@@ -221,10 +222,10 @@ func TestMultiNodeKillOne(t *testing.T) {
 
 		destoryCluster(t, es, hs)
 	}
-	afterTest(t)
 }
 
 func TestMultiNodeKillAllAndRecovery(t *testing.T) {
+	defer afterTest(t)
 	tests := []int{5}
 
 	for i, tt := range tests {
@@ -269,7 +270,6 @@ func TestMultiNodeKillAllAndRecovery(t *testing.T) {
 
 		destoryCluster(t, es, hs)
 	}
-	afterTest(t)
 }
 
 func BenchmarkEndToEndSet(b *testing.B) {

@@ -35,6 +35,7 @@ import (
 )
 
 func TestMultipleNodes(t *testing.T) {
+	afterTest(t)
 	tests := []int{1, 3, 5, 9, 11}
 
 	for _, tt := range tests {
@@ -42,10 +43,10 @@ func TestMultipleNodes(t *testing.T) {
 		waitCluster(t, es)
 		destoryCluster(t, es, hs)
 	}
-	afterTest(t)
 }
 
 func TestMultipleTLSNodes(t *testing.T) {
+	afterTest(t)
 	tests := []int{1, 3, 5}
 
 	for _, tt := range tests {
@@ -53,10 +54,10 @@ func TestMultipleTLSNodes(t *testing.T) {
 		waitCluster(t, es)
 		destoryCluster(t, es, hs)
 	}
-	afterTest(t)
 }
 
 func TestV2Redirect(t *testing.T) {
+	defer afterTest(t)
 	es, hs := buildCluster(3, false)
 	waitCluster(t, es)
 	u := hs[1].URL
@@ -80,10 +81,10 @@ func TestV2Redirect(t *testing.T) {
 
 	resp.Body.Close()
 	destoryCluster(t, es, hs)
-	afterTest(t)
 }
 
 func TestAdd(t *testing.T) {
+	defer afterTest(t)
 	tests := []int{3, 4, 5, 6}
 
 	for _, tt := range tests {
@@ -138,10 +139,10 @@ func TestAdd(t *testing.T) {
 
 		destoryCluster(t, es, hs)
 	}
-	afterTest(t)
 }
 
 func TestRemove(t *testing.T) {
+	defer afterTest(t)
 	tests := []int{3, 4, 5, 6}
 
 	for k, tt := range tests {
@@ -195,12 +196,10 @@ func TestRemove(t *testing.T) {
 
 		destoryCluster(t, es, hs)
 	}
-	afterTest(t)
-	// ensure that no goroutines are running
-	TestGoroutinesRunning(t)
 }
 
 func TestBecomeStandby(t *testing.T) {
+	defer afterTest(t)
 	size := 5
 	round := 1
 
@@ -252,10 +251,10 @@ func TestBecomeStandby(t *testing.T) {
 
 		destoryCluster(t, es, hs)
 	}
-	afterTest(t)
 }
 
 func TestReleaseVersion(t *testing.T) {
+	defer afterTest(t)
 	es, hs := buildCluster(1, false)
 
 	resp, err := http.Get(hs[0].URL + "/version")
@@ -282,6 +281,7 @@ func TestReleaseVersion(t *testing.T) {
 }
 
 func TestVersionCheck(t *testing.T) {
+	defer afterTest(t)
 	es, hs := buildCluster(1, false)
 	u := hs[0].URL
 
@@ -315,6 +315,7 @@ func TestVersionCheck(t *testing.T) {
 }
 
 func TestSingleNodeRecovery(t *testing.T) {
+	defer afterTest(t)
 	id := genId()
 	c := newTestConfig()
 	e, h := newUnstartedTestServer(c, id, false)
@@ -367,6 +368,7 @@ func TestSingleNodeRecovery(t *testing.T) {
 }
 
 func TestTakingSnapshot(t *testing.T) {
+	defer afterTest(t)
 	es, hs := buildCluster(1, false)
 	for i := 0; i < defaultCompact; i++ {
 		es[0].p.Set("/foo", false, "bar", store.Permanent)
@@ -385,6 +387,7 @@ func TestTakingSnapshot(t *testing.T) {
 }
 
 func TestRestoreSnapshotFromLeader(t *testing.T) {
+	defer afterTest(t)
 	es, hs := buildCluster(1, false)
 	// let leader do snapshot
 	for i := 0; i < defaultCompact; i++ {
