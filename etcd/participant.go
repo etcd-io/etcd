@@ -152,7 +152,7 @@ func newParticipant(id int64, pubAddr string, raftPubAddr string, dir string, cl
 	return p, nil
 }
 
-func (p *participant) run() int64 {
+func (p *participant) run() {
 	defer p.w.Close()
 
 	if p.node.IsEmpty() {
@@ -207,7 +207,7 @@ func (p *participant) run() int64 {
 			node.Sync()
 		case <-p.stopc:
 			log.Printf("id=%x participant.stop\n", p.id)
-			return stopMode
+			return
 		}
 		if s := node.UnstableSnapshot(); !s.IsEmpty() {
 			if err := p.Recovery(s.Data); err != nil {
@@ -222,7 +222,7 @@ func (p *participant) run() int64 {
 		if node.IsRemoved() {
 			p.stop()
 			log.Printf("id=%x participant.end\n", p.id)
-			return standbyMode
+			return
 		}
 		if p.node.EntsLen() > defaultCompact {
 			d, err := p.Save()

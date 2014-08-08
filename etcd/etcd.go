@@ -198,7 +198,8 @@ func (s *Server) Run() error {
 			s.mode.Set(participantMode)
 			log.Printf("id=%x server.run mode=participantMode\n", s.id)
 			s.mu.Unlock()
-			next = s.p.run()
+			s.p.run()
+			next = standbyMode
 			if d != nil {
 				close(dStopc)
 			}
@@ -207,7 +208,8 @@ func (s *Server) Run() error {
 			s.mode.Set(standbyMode)
 			log.Printf("id=%x server.run mode=standbyMode\n", s.id)
 			s.mu.Unlock()
-			next = s.s.run()
+			s.s.run()
+			next = participantMode
 		case stopMode:
 			s.mode.Set(stopMode)
 			log.Printf("id=%x server.run mode=stopMode\n", s.id)
@@ -217,9 +219,11 @@ func (s *Server) Run() error {
 		default:
 			panic("unsupport mode")
 		}
-		if next != stopMode {
+		s.mu.Lock()
+		if !s.stopped {
 			s.id = genId()
 		}
+		s.mu.Unlock()
 	}
 }
 
