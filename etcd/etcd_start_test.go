@@ -25,8 +25,6 @@ import (
 	"sync"
 	"testing"
 	"time"
-
-	"github.com/coreos/etcd/conf"
 )
 
 const (
@@ -55,7 +53,7 @@ func TestBadDiscoveryService(t *testing.T) {
 	g := garbageHandler{t: t}
 	ts := httptest.NewServer(&g)
 
-	c := conf.New()
+	c := newTestConfig()
 	c.Discovery = ts.URL + "/v2/keys/_etcd/registry/1"
 	e, h := newUnstartedTestServer(c, bootstrapId, false)
 	err := startServer(t, e)
@@ -82,7 +80,7 @@ func TestBadDiscoveryServiceWithAdvisedPeers(t *testing.T) {
 	es, hs := buildCluster(1, false)
 	waitCluster(t, es)
 
-	c := conf.New()
+	c := newTestConfig()
 	c.Discovery = ts.URL + "/v2/keys/_etcd/registry/1"
 	c.Peers = []string{hs[0].URL}
 	e, h := newUnstartedTestServer(c, bootstrapId, false)
@@ -99,7 +97,7 @@ func TestBadDiscoveryServiceWithAdvisedPeers(t *testing.T) {
 }
 
 func TestBootstrapByEmptyPeers(t *testing.T) {
-	c := conf.New()
+	c := newTestConfig()
 	id := genId()
 	e, h := newUnstartedTestServer(c, id, false)
 	err := startServer(t, e)
@@ -115,10 +113,10 @@ func TestBootstrapByEmptyPeers(t *testing.T) {
 }
 
 func TestBootstrapByDiscoveryService(t *testing.T) {
-	de, dh := newUnstartedTestServer(conf.New(), genId(), false)
+	de, dh := newUnstartedTestServer(newTestConfig(), genId(), false)
 	err := startServer(t, de)
 
-	c := conf.New()
+	c := newTestConfig()
 	c.Discovery = dh.URL + "/v2/keys/_etcd/registry/1"
 	e, h := newUnstartedTestServer(c, bootstrapId, false)
 	err = startServer(t, e)
@@ -135,7 +133,7 @@ func TestRunByAdvisedPeers(t *testing.T) {
 	es, hs := buildCluster(1, false)
 	waitCluster(t, es)
 
-	c := conf.New()
+	c := newTestConfig()
 	c.Peers = []string{hs[0].URL}
 	e, h := newUnstartedTestServer(c, bootstrapId, false)
 	err := startServer(t, e)
@@ -153,7 +151,7 @@ func TestRunByAdvisedPeers(t *testing.T) {
 }
 
 func TestRunByDiscoveryService(t *testing.T) {
-	de, dh := newUnstartedTestServer(conf.New(), genId(), false)
+	de, dh := newUnstartedTestServer(newTestConfig(), genId(), false)
 	err := startServer(t, de)
 
 	tc := NewTestClient()
@@ -172,7 +170,7 @@ func TestRunByDiscoveryService(t *testing.T) {
 	}
 	resp.Body.Close()
 
-	c := conf.New()
+	c := newTestConfig()
 	c.Discovery = dh.URL + "/v2/keys/_etcd/registry/1"
 	e, h := newUnstartedTestServer(c, bootstrapId, false)
 	err = startServer(t, e)

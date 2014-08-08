@@ -90,7 +90,7 @@ func TestAdd(t *testing.T) {
 		es := make([]*Server, tt)
 		hs := make([]*httptest.Server, tt)
 		for i := 0; i < tt; i++ {
-			c := conf.New()
+			c := newTestConfig()
 			if i > 0 {
 				c.Peers = []string{hs[0].URL}
 			}
@@ -316,12 +316,7 @@ func TestVersionCheck(t *testing.T) {
 
 func TestSingleNodeRecovery(t *testing.T) {
 	id := genId()
-	dataDir, err := ioutil.TempDir(os.TempDir(), "etcd")
-	if err != nil {
-		panic(err)
-	}
-	c := conf.New()
-	c.DataDir = dataDir
+	c := newTestConfig()
 	e, h := newUnstartedTestServer(c, id, false)
 	startServer(t, e)
 	key := "/foo"
@@ -349,9 +344,9 @@ func TestSingleNodeRecovery(t *testing.T) {
 
 	time.Sleep(2 * time.Second)
 
-	c = conf.New()
-	c.DataDir = dataDir
-	e, h = newUnstartedTestServer(c, id, false)
+	nc := newTestConfig()
+	nc.DataDir = c.DataDir
+	e, h = newUnstartedTestServer(nc, id, false)
 	startServer(t, e)
 
 	waitLeader([]*Server{e})
@@ -397,7 +392,7 @@ func TestRestoreSnapshotFromLeader(t *testing.T) {
 	}
 
 	// create one to join the cluster
-	c := conf.New()
+	c := newTestConfig()
 	c.Peers = []string{hs[0].URL}
 	e, h := newUnstartedTestServer(c, 1, false)
 	go e.Run()
@@ -447,7 +442,7 @@ func buildCluster(number int, tls bool) ([]*Server, []*httptest.Server) {
 	var seed string
 
 	for i := range es {
-		c := conf.New()
+		c := newTestConfig()
 		if seed != "" {
 			c.Peers = []string{seed}
 		}
@@ -470,21 +465,11 @@ func buildCluster(number int, tls bool) ([]*Server, []*httptest.Server) {
 	return es, hs
 }
 
-func newUnstartedTestServer(c *conf.Config, id int64, tls bool) (e *Server, h *httptest.Server) {
-	if c.DataDir == "" {
-		n, err := ioutil.TempDir(os.TempDir(), "etcd")
-		if err != nil {
-			panic(err)
-		}
-		c.DataDir = n
-	}
-	addr := c.Addr
-
-	srv, err := New(c)
+func newUnstartedTestServer(c *conf.Config, id int64, tls bool) (*Server, *httptest.Server) {
+	e, err := New(c)
 	if err != nil {
 		panic(err)
 	}
-	e = srv
 	e.setId(id)
 	e.SetTick(time.Millisecond * 5)
 
@@ -494,39 +479,36 @@ func newUnstartedTestServer(c *conf.Config, id int64, tls bool) (e *Server, h *h
 	m.Handle("/raft/", e.RaftHandler())
 	m.Handle("/v2/admin/", e.RaftHandler())
 
-	if addr == "127.0.0.1:4001" {
-		if tls {
-			h = httptest.NewTLSServer(m)
-		} else {
-			h = httptest.NewServer(m)
-		}
-	} else {
-		var l net.Listener
-		var err error
-		for {
-			l, err = net.Listen("tcp", addr)
-			if err == nil {
-				break
-			}
-			if !strings.Contains(err.Error(), "address already in use") {
-				panic(err)
-			}
-			time.Sleep(500 * time.Millisecond)
-		}
-		h = &httptest.Server{
-			Listener: l,
-			Config:   &http.Server{Handler: m},
-		}
-		if tls {
-			h.StartTLS()
-		} else {
-			h.Start()
-		}
+	u, err := url.Parse(c.Addr)
+	if err != nil {
+		panic(err)
 	}
+
+	var l net.Listener
+	for {
+		l, err = net.Listen("tcp", u.Host)
+		if err == nil {
+			break
+		}
+		if !strings.Contains(err.Error(), "address already in use") {
+			panic(err)
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
+	h := &httptest.Server{
+		Listener: l,
+		Config:   &http.Server{Handler: m},
+	}
+	if tls {
+		h.StartTLS()
+	} else {
+		h.Start()
+	}
+
 	e.raftPubAddr = h.URL
 	e.pubAddr = h.URL
 
-	return
+	return e, h
 }
 
 func destoryCluster(t *testing.T, es []*Server, hs []*httptest.Server) {
@@ -602,4 +584,15 @@ func checkParticipant(i int, es []*Server) error {
 		return fmt.Errorf("watch timeout")
 	}
 	return nil
+}
+
+func newTestConfig() *conf.Config {
+	c := conf.New()
+	c.Addr = "127.0.0.1:0"
+	n, err := ioutil.TempDir(os.TempDir(), "etcd")
+	if err != nil {
+		panic(err)
+	}
+	c.DataDir = n
+	return c
 }
