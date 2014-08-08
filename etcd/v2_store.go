@@ -88,7 +88,7 @@ func (p *participant) do(c *Cmd) (*store.Event, error) {
 	var ret interface{}
 	select {
 	case ret = <-pp.ret:
-	case <-p.stopc:
+	case <-p.stopNotifyc:
 		return nil, fmt.Errorf("stop serving")
 	}
 
