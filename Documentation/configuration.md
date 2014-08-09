@@ -84,7 +84,7 @@ max_cluster_size = 9
 max_result_buffer = 1024
 max_retry_attempts = 3
 name = "default-name"
-snapshot = false
+snapshot = true
 verbose = false
 very_verbose = false
 
