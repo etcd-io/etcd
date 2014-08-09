@@ -92,7 +92,7 @@ func New(c *config.Config) (*Server, error) {
 		client:  newClient(tc),
 		peerHub: newPeerHub(client),
 
-		stopc: make(chan struct{}),
+		stopc: make(chan struct{}, 1),
 	}
 	m := http.NewServeMux()
 	m.HandleFunc("/", s.requestHandler)
@@ -123,6 +123,7 @@ func (s *Server) Stop() {
 	case standbyMode:
 		s.s.stop()
 	}
+	s.mode.Set(stopMode)
 	s.mu.Unlock()
 	<-s.stopc
 	s.client.CloseConnections()
@@ -174,12 +175,9 @@ func (s *Server) Run() error {
 	}
 	s.peerHub.setSeeds(seeds)
 
+	defer func() { s.stopc <- struct{}{} }()
 	next := participantMode
 	for {
-		s.mu.Lock()
-		if s.stopped {
-			next = stopMode
-		}
 		switch next {
 		case participantMode:
 			p, err := newParticipant(s.id, s.pubAddr, s.raftPubAddr, s.config.DataDir, s.client, s.peerHub, s.tickDuration)
@@ -187,40 +185,49 @@ func (s *Server) Run() error {
 				log.Printf("id=%x server.run newParicipanteErr=\"%v\"\n", s.id, err)
 				return err
 			}
+
+			s.mu.Lock()
+			if s.stopped {
+				s.mu.Unlock()
+				return nil
+			}
 			s.p = p
+			s.mode.Set(participantMode)
+			log.Printf("id=%x server.run mode=participantMode\n", s.id)
+			s.mu.Unlock()
+
 			dStopc := make(chan struct{})
 			if d != nil {
 				go d.heartbeat(dStopc)
 			}
-			s.mode.Set(participantMode)
-			log.Printf("id=%x server.run mode=participantMode\n", s.id)
-			s.mu.Unlock()
 			s.p.run()
-			next = standbyMode
 			if d != nil {
 				close(dStopc)
 			}
+			next = standbyMode
 		case standbyMode:
+			s.mu.Lock()
+			if s.stopped {
+				s.mu.Unlock()
+				return nil
+			}
 			s.s = newStandby(s.client, s.peerHub)
 			s.mode.Set(standbyMode)
 			log.Printf("id=%x server.run mode=standbyMode\n", s.id)
 			s.mu.Unlock()
+
 			s.s.run()
 			next = participantMode
-		case stopMode:
-			s.mode.Set(stopMode)
-			log.Printf("id=%x server.run mode=stopMode\n", s.id)
-			s.mu.Unlock()
-			s.stopc <- struct{}{}
-			return nil
 		default:
 			panic("unsupport mode")
 		}
 		s.mu.Lock()
-		if !s.stopped {
-			s.id = genId()
-		}
+		stopped := s.stopped
 		s.mu.Unlock()
+		if stopped {
+			return nil
+		}
+		s.id = genId()
 	}
 }
 
