@@ -40,8 +40,6 @@ type standby struct {
 	mu          sync.RWMutex
 	clusterConf *config.ClusterConfig
 
-	stopc chan struct{}
-
 	*http.ServeMux
 }
 
@@ -54,21 +52,19 @@ func newStandby(client *v2client, peerHub *peerHub) *standby {
 		leaderAddr:  "",
 		clusterConf: config.NewClusterConfig(),
 
-		stopc: make(chan struct{}),
-
 		ServeMux: http.NewServeMux(),
 	}
 	s.Handle("/", handlerErr(s.serveRedirect))
 	return s
 }
 
-func (s *standby) run() {
+func (s *standby) run(stop chan struct{}) {
 	syncDuration := time.Millisecond * 100
 	nodes := s.peerHub.getSeeds()
 	for {
 		select {
 		case <-time.After(syncDuration):
-		case <-s.stopc:
+		case <-stop:
 			log.Printf("standby.stop\n")
 			return
 		}
@@ -86,10 +82,6 @@ func (s *standby) run() {
 		log.Printf("standby.end\n")
 		return
 	}
-}
-
-func (s *standby) stop() {
-	close(s.stopc)
 }
 
 func (s *standby) leaderInfo() (int64, string) {

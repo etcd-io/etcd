@@ -78,7 +78,6 @@ type participant struct {
 	rh *raftHandler
 	w  *wal.WAL
 
-	stopc       chan struct{}
 	stopNotifyc chan struct{}
 
 	*http.ServeMux
@@ -100,7 +99,6 @@ func newParticipant(id int64, pubAddr string, raftPubAddr string, dir string, cl
 		},
 		Store: store.New(),
 
-		stopc:       make(chan struct{}),
 		stopNotifyc: make(chan struct{}),
 
 		ServeMux: http.NewServeMux(),
@@ -151,7 +149,7 @@ func newParticipant(id int64, pubAddr string, raftPubAddr string, dir string, cl
 	return p, nil
 }
 
-func (p *participant) run() {
+func (p *participant) run(stop chan struct{}) {
 	defer p.cleanup()
 
 	if p.node.IsEmpty() {
@@ -204,7 +202,7 @@ func (p *participant) run() {
 			node.Tick()
 		case <-v2SyncTicker.C:
 			node.Sync()
-		case <-p.stopc:
+		case <-stop:
 			log.Printf("id=%x participant.stop\n", p.id)
 			return
 		}
@@ -231,10 +229,6 @@ func (p *participant) run() {
 			log.Printf("id=%x compacted index=\n", p.id)
 		}
 	}
-}
-
-func (p *participant) stop() {
-	close(p.stopc)
 }
 
 func (p *participant) cleanup() {
