@@ -190,7 +190,7 @@ func buildServer(t *testing.T, c *config.Config, id int64) (e *Server, h *httpte
 			break
 		}
 		if err != nil {
-			destroyServer(t, e, h)
+			h.Close()
 			return nil, nil, err
 		}
 		time.Sleep(10 * time.Millisecond)

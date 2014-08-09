@@ -115,9 +115,6 @@ func (s *Server) SetTick(tick time.Duration) {
 
 // Stop stops the server elegently.
 func (s *Server) Stop() {
-	if s.mode.Get() == stopMode {
-		return
-	}
 	s.mu.Lock()
 	s.stopped = true
 	switch s.mode.Get() {
