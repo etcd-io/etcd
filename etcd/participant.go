@@ -64,7 +64,6 @@ type participant struct {
 	clusterId    int64
 	pubAddr      string
 	raftPubAddr  string
-	seeds        map[string]bool
 	tickDuration time.Duration
 
 	client  *v2client
