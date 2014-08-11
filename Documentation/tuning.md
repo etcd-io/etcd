@@ -41,7 +41,7 @@ Or you can set the values within the configuration file:
 ```toml
 [peer]
 heartbeat_interval = 100
-election_timeout = 100
+election_timeout = 500
 ```
 
 The values are specified in milliseconds.
