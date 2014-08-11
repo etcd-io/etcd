@@ -126,10 +126,10 @@ curl -L http://127.0.0.1:4001/v2/keys/message -XPUT -d value="Hello etcd"
         "value": "Hello etcd"
     },
     "prevNode": {
-    	"createdIndex": 2
+    	"createdIndex": 2,
     	"key": "/message",
     	"value": "Hello world",
-    	"modifiedIndex": 2,
+    	"modifiedIndex": 2
     }
 }
 ```
