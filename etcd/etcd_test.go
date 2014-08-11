@@ -34,28 +34,6 @@ import (
 	"github.com/coreos/etcd/store"
 )
 
-func TestMultipleNodes(t *testing.T) {
-	afterTest(t)
-	tests := []int{1, 3, 5, 9, 11}
-
-	for _, tt := range tests {
-		es, hs := buildCluster(tt, false)
-		waitCluster(t, es)
-		destoryCluster(t, es, hs)
-	}
-}
-
-func TestMultipleTLSNodes(t *testing.T) {
-	afterTest(t)
-	tests := []int{1, 3, 5}
-
-	for _, tt := range tests {
-		es, hs := buildCluster(tt, true)
-		waitCluster(t, es)
-		destoryCluster(t, es, hs)
-	}
-}
-
 func TestV2Redirect(t *testing.T) {
 	defer afterTest(t)
 	es, hs := buildCluster(3, false)
@@ -566,15 +544,4 @@ func waitMode(mode int64, e *Server) {
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
-}
-
-func newTestConfig() *conf.Config {
-	c := conf.New()
-	c.Addr = "127.0.0.1:0"
-	n, err := ioutil.TempDir(os.TempDir(), "etcd")
-	if err != nil {
-		panic(err)
-	}
-	c.DataDir = n
-	return c
 }
