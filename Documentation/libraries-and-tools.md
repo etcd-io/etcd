@@ -36,6 +36,9 @@
 
 - [jdarcy/etcd-api](https://github.com/jdarcy/etcd-api) - Supports v2
 
+**C++ libraries**
+- [edwardcapriolo/etcdcpp](https://github.com/edwardcapriolo/etcdcpp) - Supports v2
+
 **Clojure libraries**
 
 - [aterreno/etcd-clojure](https://github.com/aterreno/etcd-clojure)
