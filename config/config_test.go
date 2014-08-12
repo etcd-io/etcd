@@ -5,76 +5,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/coreos/etcd/third_party/github.com/BurntSushi/toml"
 	"github.com/coreos/etcd/third_party/github.com/stretchr/testify/assert"
 )
-
-// Ensures that a configuration can be deserialized from TOML.
-func TestConfigTOML(t *testing.T) {
-	content := `
-		addr = "127.0.0.1:4002"
-		ca_file = "/tmp/file.ca"
-		cert_file = "/tmp/file.cert"
-		cors = ["*"]
-		cpu_profile_file = "XXX"
-		data_dir = "/tmp/data"
-		discovery = "http://example.com/foobar"
-		key_file = "/tmp/file.key"
-		bind_addr = "127.0.0.1:4003"
-		peers = ["coreos.com:4001", "coreos.com:4002"]
-		peers_file = "/tmp/peers"
-		max_cluster_size = 10
-		max_result_buffer = 512
-		max_retry_attempts = 5
-		name = "test-name"
-		http_read_timeout = 2.34
-		snapshot = true
-		verbose = true
-		very_verbose = true
-		http_write_timeout = 1.23
-
-		[peer]
-		addr = "127.0.0.1:7002"
-		ca_file = "/tmp/peer/file.ca"
-		cert_file = "/tmp/peer/file.cert"
-		key_file = "/tmp/peer/file.key"
-		bind_addr = "127.0.0.1:7003"
-
-		[cluster]
-		active_size = 5
-		remove_delay = 100.0
-		sync_interval = 10.0
-	`
-	c := New()
-	_, err := toml.Decode(content, &c)
-	assert.Nil(t, err, "")
-	assert.Equal(t, c.Addr, "127.0.0.1:4002", "")
-	assert.Equal(t, c.CAFile, "/tmp/file.ca", "")
-	assert.Equal(t, c.CertFile, "/tmp/file.cert", "")
-	assert.Equal(t, c.CorsOrigins, []string{"*"}, "")
-	assert.Equal(t, c.DataDir, "/tmp/data", "")
-	assert.Equal(t, c.Discovery, "http://example.com/foobar", "")
-	assert.Equal(t, c.HTTPReadTimeout, 2.34, "")
-	assert.Equal(t, c.HTTPWriteTimeout, 1.23, "")
-	assert.Equal(t, c.KeyFile, "/tmp/file.key", "")
-	assert.Equal(t, c.BindAddr, "127.0.0.1:4003", "")
-	assert.Equal(t, c.Peers, []string{"coreos.com:4001", "coreos.com:4002"}, "")
-	assert.Equal(t, c.PeersFile, "/tmp/peers", "")
-	assert.Equal(t, c.MaxResultBuffer, 512, "")
-	assert.Equal(t, c.MaxRetryAttempts, 5, "")
-	assert.Equal(t, c.Name, "test-name", "")
-	assert.Equal(t, c.Snapshot, true, "")
-	assert.Equal(t, c.Verbose, true, "")
-	assert.Equal(t, c.VeryVerbose, true, "")
-	assert.Equal(t, c.Peer.Addr, "127.0.0.1:7002", "")
-	assert.Equal(t, c.Peer.CAFile, "/tmp/peer/file.ca", "")
-	assert.Equal(t, c.Peer.CertFile, "/tmp/peer/file.cert", "")
-	assert.Equal(t, c.Peer.KeyFile, "/tmp/peer/file.key", "")
-	assert.Equal(t, c.Peer.BindAddr, "127.0.0.1:7003", "")
-	assert.Equal(t, c.Cluster.ActiveSize, 5, "")
-	assert.Equal(t, c.Cluster.RemoveDelay, 100.0, "")
-	assert.Equal(t, c.Cluster.SyncInterval, 10.0, "")
-}
 
 // Ensures that a configuration can be retrieved from environment variables.
 func TestConfigEnv(t *testing.T) {
@@ -567,20 +499,6 @@ func TestConfigClusterSyncIntervalFlag(t *testing.T) {
 	assert.Equal(t, c.HTTPReadTimeout, 2.34, "")
 	assert.Nil(t, c.LoadFlags([]string{"-http-write-timeout", "1.23"}), "")
 	assert.Equal(t, c.HTTPWriteTimeout, 1.23, "")
-}
-
-// Ensures that a system config field is overridden by a custom config field.
-func TestConfigCustomConfigOverrideSystemConfig(t *testing.T) {
-	system := `addr = "127.0.0.1:5000"`
-	custom := `addr = "127.0.0.1:6000"`
-	withTempFile(system, func(p1 string) {
-		withTempFile(custom, func(p2 string) {
-			c := New()
-			c.SystemPath = p1
-			assert.Nil(t, c.Load([]string{"-config", p2}), "")
-			assert.Equal(t, c.Addr, "127.0.0.1:6000", "")
-		})
-	})
 }
 
 // Ensures that a custom config field is overridden by an environment variable.

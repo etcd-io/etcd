@@ -14,8 +14,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/coreos/etcd/third_party/github.com/BurntSushi/toml"
-
 	"github.com/coreos/etcd/log"
 	ustrings "github.com/coreos/etcd/pkg/strings"
 )
@@ -27,46 +25,46 @@ const DefaultSystemConfigPath = "/etc/etcd/etcd.conf"
 type Config struct {
 	SystemPath string
 
-	Addr             string `toml:"addr" env:"ETCD_ADDR"`
-	BindAddr         string `toml:"bind_addr" env:"ETCD_BIND_ADDR"`
-	CAFile           string `toml:"ca_file" env:"ETCD_CA_FILE"`
-	CertFile         string `toml:"cert_file" env:"ETCD_CERT_FILE"`
+	Addr             string `env:"ETCD_ADDR"`
+	BindAddr         string `env:"ETCD_BIND_ADDR"`
+	CAFile           string `env:"ETCD_CA_FILE"`
+	CertFile         string `env:"ETCD_CERT_FILE"`
 	CPUProfileFile   string
-	CorsOrigins      []string `toml:"cors" env:"ETCD_CORS"`
-	DataDir          string   `toml:"data_dir" env:"ETCD_DATA_DIR"`
-	Discovery        string   `toml:"discovery" env:"ETCD_DISCOVERY"`
+	CorsOrigins      []string `env:"ETCD_CORS"`
+	DataDir          string   `env:"ETCD_DATA_DIR"`
+	Discovery        string   `env:"ETCD_DISCOVERY"`
 	Force            bool
-	KeyFile          string   `toml:"key_file" env:"ETCD_KEY_FILE"`
-	HTTPReadTimeout  float64  `toml:"http_read_timeout" env:"ETCD_HTTP_READ_TIMEOUT"`
-	HTTPWriteTimeout float64  `toml:"http_write_timeout" env:"ETCD_HTTP_WRITE_TIMEOUT"`
-	Peers            []string `toml:"peers" env:"ETCD_PEERS"`
-	PeersFile        string   `toml:"peers_file" env:"ETCD_PEERS_FILE"`
-	MaxResultBuffer  int      `toml:"max_result_buffer" env:"ETCD_MAX_RESULT_BUFFER"`
-	MaxRetryAttempts int      `toml:"max_retry_attempts" env:"ETCD_MAX_RETRY_ATTEMPTS"`
-	RetryInterval    float64  `toml:"retry_interval" env:"ETCD_RETRY_INTERVAL"`
-	Name             string   `toml:"name" env:"ETCD_NAME"`
-	Snapshot         bool     `toml:"snapshot" env:"ETCD_SNAPSHOT"`
-	SnapshotCount    int      `toml:"snapshot_count" env:"ETCD_SNAPSHOTCOUNT"`
+	KeyFile          string   `env:"ETCD_KEY_FILE"`
+	HTTPReadTimeout  float64  `env:"ETCD_HTTP_READ_TIMEOUT"`
+	HTTPWriteTimeout float64  `env:"ETCD_HTTP_WRITE_TIMEOUT"`
+	Peers            []string `env:"ETCD_PEERS"`
+	PeersFile        string   `env:"ETCD_PEERS_FILE"`
+	MaxResultBuffer  int      `env:"ETCD_MAX_RESULT_BUFFER"`
+	MaxRetryAttempts int      `env:"ETCD_MAX_RETRY_ATTEMPTS"`
+	RetryInterval    float64  `env:"ETCD_RETRY_INTERVAL"`
+	Name             string   `env:"ETCD_NAME"`
+	Snapshot         bool     `env:"ETCD_SNAPSHOT"`
+	SnapshotCount    int      `env:"ETCD_SNAPSHOTCOUNT"`
 	ShowHelp         bool
 	ShowVersion      bool
-	Verbose          bool `toml:"verbose" env:"ETCD_VERBOSE"`
-	VeryVerbose      bool `toml:"very_verbose" env:"ETCD_VERY_VERBOSE"`
-	VeryVeryVerbose  bool `toml:"very_very_verbose" env:"ETCD_VERY_VERY_VERBOSE"`
+	Verbose          bool `env:"ETCD_VERBOSE"`
+	VeryVerbose      bool `env:"ETCD_VERY_VERBOSE"`
+	VeryVeryVerbose  bool `env:"ETCD_VERY_VERY_VERBOSE"`
 	Peer             struct {
-		Addr              string `toml:"addr" env:"ETCD_PEER_ADDR"`
-		BindAddr          string `toml:"bind_addr" env:"ETCD_PEER_BIND_ADDR"`
-		CAFile            string `toml:"ca_file" env:"ETCD_PEER_CA_FILE"`
-		CertFile          string `toml:"cert_file" env:"ETCD_PEER_CERT_FILE"`
-		KeyFile           string `toml:"key_file" env:"ETCD_PEER_KEY_FILE"`
-		HeartbeatInterval int    `toml:"heartbeat_interval" env:"ETCD_PEER_HEARTBEAT_INTERVAL"`
-		ElectionTimeout   int    `toml:"election_timeout" env:"ETCD_PEER_ELECTION_TIMEOUT"`
+		Addr              string `env:"ETCD_PEER_ADDR"`
+		BindAddr          string `env:"ETCD_PEER_BIND_ADDR"`
+		CAFile            string `env:"ETCD_PEER_CA_FILE"`
+		CertFile          string `env:"ETCD_PEER_CERT_FILE"`
+		KeyFile           string `env:"ETCD_PEER_KEY_FILE"`
+		HeartbeatInterval int    `env:"ETCD_PEER_HEARTBEAT_INTERVAL"`
+		ElectionTimeout   int    `env:"ETCD_PEER_ELECTION_TIMEOUT"`
 	}
-	strTrace     string `toml:"trace" env:"ETCD_TRACE"`
-	GraphiteHost string `toml:"graphite_host" env:"ETCD_GRAPHITE_HOST"`
+	strTrace     string `env:"ETCD_TRACE"`
+	GraphiteHost string `env:"ETCD_GRAPHITE_HOST"`
 	Cluster      struct {
-		ActiveSize   int     `toml:"active_size" env:"ETCD_CLUSTER_ACTIVE_SIZE"`
-		RemoveDelay  float64 `toml:"remove_delay" env:"ETCD_CLUSTER_REMOVE_DELAY"`
-		SyncInterval float64 `toml:"sync_interval" env:"ETCD_CLUSTER_SYNC_INTERVAL"`
+		ActiveSize   int     `env:"ETCD_CLUSTER_ACTIVE_SIZE"`
+		RemoveDelay  float64 `env:"ETCD_CLUSTER_REMOVE_DELAY"`
+		SyncInterval float64 `env:"ETCD_CLUSTER_SYNC_INTERVAL"`
 	}
 }
 
@@ -103,18 +101,6 @@ func (c *Config) Load(arguments []string) error {
 	f.StringVar(&path, "config", "", "path to config file")
 	f.Parse(arguments)
 
-	// Load from system file.
-	if err := c.LoadSystemFile(); err != nil {
-		return err
-	}
-
-	// Load from config file specified in arguments.
-	if path != "" {
-		if err := c.LoadFile(path); err != nil {
-			return err
-		}
-	}
-
 	// Load from the environment variables next.
 	if err := c.LoadEnv(); err != nil {
 		return err
@@ -131,20 +117,6 @@ func (c *Config) Load(arguments []string) error {
 	}
 
 	return nil
-}
-
-// Loads from the system etcd configuration file if it exists.
-func (c *Config) LoadSystemFile() error {
-	if _, err := os.Stat(c.SystemPath); os.IsNotExist(err) {
-		return nil
-	}
-	return c.LoadFile(c.SystemPath)
-}
-
-// Loads configuration from a file.
-func (c *Config) LoadFile(path string) error {
-	_, err := toml.DecodeFile(path, &c)
-	return err
 }
 
 // LoadEnv loads the configuration via environment variables.
