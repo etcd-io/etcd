@@ -11,7 +11,6 @@ import (
 
 	"github.com/coreos/etcd/config"
 	"github.com/coreos/etcd/etcd"
-	ehttp "github.com/coreos/etcd/http"
 )
 
 func main() {
@@ -33,7 +32,7 @@ func main() {
 	}
 	go e.Run()
 
-	corsInfo, err := ehttp.NewCORSInfo(config.CorsOrigins)
+	corsInfo, err := newCORSInfo(config.CorsOrigins)
 	if err != nil {
 		log.Fatal("cors:", err)
 	}
@@ -46,7 +45,7 @@ func main() {
 	serve("etcd", config.BindAddr, config.EtcdTLSInfo(), corsInfo, e, readTimeout, writeTimeout)
 }
 
-func serve(who string, addr string, tinfo *config.TLSInfo, cinfo *ehttp.CORSInfo, handler http.Handler, readTimeout, writeTimeout time.Duration) {
+func serve(who string, addr string, tinfo *config.TLSInfo, cinfo *CORSInfo, handler http.Handler, readTimeout, writeTimeout time.Duration) {
 	t, terr := tinfo.ServerConfig()
 	l, err := net.Listen("tcp", addr)
 	if err != nil {
@@ -68,7 +67,7 @@ func serve(who string, addr string, tinfo *config.TLSInfo, cinfo *ehttp.CORSInfo
 		log.Fatal("unsupported http scheme", tinfo.Scheme())
 	}
 
-	h := &ehttp.CORSHandler{handler, cinfo}
+	h := &CORSHandler{handler, cinfo}
 	s := &http.Server{Handler: h, ReadTimeout: readTimeout, WriteTimeout: writeTimeout}
 	log.Fatal(s.Serve(l))
 }

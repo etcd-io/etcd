@@ -1,4 +1,4 @@
-package http
+package main
 
 import (
 	"net/http"

@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package http
+package main
 
 import (
 	"fmt"
@@ -24,7 +24,7 @@ import (
 
 type CORSInfo map[string]bool
 
-func NewCORSInfo(origins []string) (*CORSInfo, error) {
+func newCORSInfo(origins []string) (*CORSInfo, error) {
 	// Construct a lookup of all origins.
 	m := make(map[string]bool)
 	for _, v := range origins {
