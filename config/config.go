@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"math/rand"
 	"net"
 	"net/url"
@@ -14,7 +15,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/coreos/etcd/log"
 	ustrings "github.com/coreos/etcd/pkg/strings"
 )
 
@@ -267,7 +267,7 @@ func (c *Config) LoadPeersFile() error {
 // that etcd is guessing.
 func (c *Config) DataDirFromName() {
 	c.DataDir = c.Name + ".etcd"
-	log.Warnf("Using the directory %s as the etcd curation directory because a directory was not specified. ", c.DataDir)
+	log.Printf("Using the directory %s as the etcd curation directory because a directory was not specified. ", c.DataDir)
 
 	return
 }
