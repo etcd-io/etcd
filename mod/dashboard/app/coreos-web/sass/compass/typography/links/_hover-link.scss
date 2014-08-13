@@ -1,5 +1,0 @@
-// a link that only has an underline when you hover over it
-@mixin hover-link {
-  text-decoration: none;
-  &:hover {
-    text-decoration: underline; } }
