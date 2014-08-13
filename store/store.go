@@ -40,7 +40,6 @@ func init() {
 
 type Store interface {
 	Version() int
-	CommandFactory() CommandFactory
 	Index() uint64
 
 	Get(nodePath string, recursive, sorted bool) (*Event, error)
@@ -97,11 +96,6 @@ func (s *store) Index() uint64 {
 	s.worldLock.RLock()
 	defer s.worldLock.RUnlock()
 	return s.CurrentIndex
-}
-
-// CommandFactory retrieves the command factory for the current version of the store.
-func (s *store) CommandFactory() CommandFactory {
-	return GetCommandFactory(s.Version())
 }
 
 // Get returns a get event.
