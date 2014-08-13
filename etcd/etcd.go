@@ -26,7 +26,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/coreos/etcd/config"
+	"github.com/coreos/etcd/cfg"
 )
 
 const (
@@ -36,7 +36,7 @@ const (
 )
 
 type Server struct {
-	config       *config.Config
+	config       *cfg.Config
 	id           int64
 	pubAddr      string
 	raftPubAddr  string
@@ -55,7 +55,7 @@ type Server struct {
 	http.Handler
 }
 
-func New(c *config.Config) (*Server, error) {
+func New(c *cfg.Config) (*Server, error) {
 	if err := c.Sanitize(); err != nil {
 		log.Fatalf("server.new sanitizeErr=\"%v\"\n", err)
 	}

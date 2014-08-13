@@ -24,7 +24,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/coreos/etcd/config"
+	"github.com/coreos/etcd/cfg"
 )
 
 var (
@@ -38,7 +38,7 @@ type standby struct {
 	leader      int64
 	leaderAddr  string
 	mu          sync.RWMutex
-	clusterConf *config.ClusterConfig
+	clusterConf *cfg.ClusterConfig
 
 	*http.ServeMux
 }
@@ -50,7 +50,7 @@ func newStandby(client *v2client, peerHub *peerHub) *standby {
 
 		leader:      noneId,
 		leaderAddr:  "",
-		clusterConf: config.NewClusterConfig(),
+		clusterConf: cfg.NewClusterConfig(),
 
 		ServeMux: http.NewServeMux(),
 	}

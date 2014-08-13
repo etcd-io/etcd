@@ -9,12 +9,12 @@ import (
 	"os"
 	"time"
 
-	"github.com/coreos/etcd/config"
+	"github.com/coreos/etcd/cfg"
 	"github.com/coreos/etcd/etcd"
 )
 
 func main() {
-	var config = config.New()
+	var config = cfg.New()
 	if err := config.Load(os.Args[1:]); err != nil {
 		fmt.Println(etcd.Usage() + "\n")
 		fmt.Println(err.Error(), "\n")
@@ -45,7 +45,7 @@ func main() {
 	serve("etcd", config.BindAddr, config.EtcdTLSInfo(), corsInfo, e, readTimeout, writeTimeout)
 }
 
-func serve(who string, addr string, tinfo *config.TLSInfo, cinfo *CORSInfo, handler http.Handler, readTimeout, writeTimeout time.Duration) {
+func serve(who string, addr string, tinfo *cfg.TLSInfo, cinfo *CORSInfo, handler http.Handler, readTimeout, writeTimeout time.Duration) {
 	t, terr := tinfo.ServerConfig()
 	l, err := net.Listen("tcp", addr)
 	if err != nil {

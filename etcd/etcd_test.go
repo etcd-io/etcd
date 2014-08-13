@@ -30,7 +30,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/etcd/config"
+	"github.com/coreos/etcd/cfg"
 	"github.com/coreos/etcd/store"
 )
 
