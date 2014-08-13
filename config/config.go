@@ -14,8 +14,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	ustrings "github.com/coreos/etcd/pkg/strings"
 )
 
 // The default location for the etcd configuration file.
@@ -158,7 +156,7 @@ func (c *Config) loadEnv(target interface{}) error {
 		case reflect.String:
 			value.Field(i).SetString(v)
 		case reflect.Slice:
-			value.Field(i).Set(reflect.ValueOf(ustrings.TrimSplit(v, ",")))
+			value.Field(i).Set(reflect.ValueOf(trimSplit(v, ",")))
 		case reflect.Float64:
 			newValue, err := strconv.ParseFloat(v, 64)
 			if err != nil {
@@ -239,10 +237,10 @@ func (c *Config) LoadFlags(arguments []string) error {
 
 	// Convert some parameters to lists.
 	if peers != "" {
-		c.Peers = ustrings.TrimSplit(peers, ",")
+		c.Peers = trimSplit(peers, ",")
 	}
 	if cors != "" {
-		c.CorsOrigins = ustrings.TrimSplit(cors, ",")
+		c.CorsOrigins = trimSplit(cors, ",")
 	}
 
 	return nil
@@ -258,7 +256,7 @@ func (c *Config) LoadPeersFile() error {
 	if err != nil {
 		return fmt.Errorf("Peers file error: %s", err)
 	}
-	c.Peers = ustrings.TrimSplit(string(b), ",")
+	c.Peers = trimSplit(string(b), ",")
 
 	return nil
 }
@@ -414,4 +412,15 @@ func sanitizeBindAddr(bindAddr string, aurl *url.URL) (string, error) {
 	}
 
 	return net.JoinHostPort(bindAddr, aport), nil
+}
+
+// trimSplit slices s into all substrings separated by sep and returns a
+// slice of the substrings between the separator with all leading and trailing
+// white space removed, as defined by Unicode.
+func trimSplit(s, sep string) []string {
+	trimmed := strings.Split(s, sep)
+	for i := range trimmed {
+		trimmed[i] = strings.TrimSpace(trimmed[i])
+	}
+	return trimmed
 }

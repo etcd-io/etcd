@@ -6,7 +6,6 @@ import (
 	"time"
 
 	etcdErr "github.com/coreos/etcd/error"
-	ustrings "github.com/coreos/etcd/pkg/strings"
 )
 
 // explanations of Compare function result
@@ -294,7 +293,7 @@ func (n *node) Repr(recurisive, sorted bool) *NodeExtern {
 	}
 
 	// since n.Value could be changed later, so we need to copy the value out
-	value := ustrings.Clone(n.Value)
+	value := n.Value
 	node := &NodeExtern{
 		Key:           n.Path,
 		Value:         &value,
