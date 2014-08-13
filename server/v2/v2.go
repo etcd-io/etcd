@@ -1,3 +1,5 @@
+// +build ignore
+
 package v2
 
 import (
