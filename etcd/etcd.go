@@ -87,12 +87,12 @@ func New(c *cfg.Config) (*Server, error) {
 
 		mode: atomicInt(stopMode),
 
-		client:  newClient(tc),
-		peerHub: newPeerHub(client),
+		client: newClient(tc),
 
 		exited:      make(chan error, 1),
 		stopNotifyc: make(chan struct{}),
 	}
+	s.peerHub = newPeerHub(s.id, client)
 	m := http.NewServeMux()
 	m.HandleFunc("/", s.requestHandler)
 	m.HandleFunc("/version", versionHandler)
@@ -118,7 +118,6 @@ func (s *Server) Stop() error {
 	close(s.stopNotifyc)
 	err := <-s.exited
 	s.client.CloseConnections()
-	s.peerHub.stop()
 	log.Printf("id=%x server.stop\n", s.id)
 	return err
 }

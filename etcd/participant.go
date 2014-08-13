@@ -48,6 +48,7 @@ const (
 	v2machinePrefix       = "/v2/machines"
 	v2peersPrefix         = "/v2/peers"
 	v2LeaderPrefix        = "/v2/leader"
+	v2LeaderStatsPrefix   = "/v2/stats/leader"
 	v2StoreStatsPrefix    = "/v2/stats/store"
 	v2adminConfigPrefix   = "/v2/admin/config"
 	v2adminMachinesPrefix = "/v2/admin/machines/"
@@ -139,6 +140,7 @@ func newParticipant(id int64, pubAddr string, raftPubAddr string, dir string, cl
 	p.Handle(v2machinePrefix, handlerErr(p.serveMachines))
 	p.Handle(v2peersPrefix, handlerErr(p.serveMachines))
 	p.Handle(v2LeaderPrefix, handlerErr(p.serveLeader))
+	p.Handle(v2LeaderStatsPrefix, handlerErr(p.serveLeaderStats))
 	p.Handle(v2StoreStatsPrefix, handlerErr(p.serveStoreStats))
 	p.rh.Handle(v2adminConfigPrefix, handlerErr(p.serveAdminConfig))
 	p.rh.Handle(v2adminMachinesPrefix, handlerErr(p.serveAdminMachines))
@@ -233,6 +235,7 @@ func (p *participant) run(stop chan struct{}) {
 func (p *participant) cleanup() {
 	p.w.Close()
 	close(p.stopNotifyc)
+	p.peerHub.stop()
 }
 
 func (p *participant) raftHandler() http.Handler {

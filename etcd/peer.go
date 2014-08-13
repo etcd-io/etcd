@@ -23,6 +23,7 @@ import (
 	"net/http"
 	"sync"
 	"sync/atomic"
+	"time"
 )
 
 const (
@@ -36,20 +37,22 @@ const (
 )
 
 type peer struct {
-	url      string
-	queue    chan []byte
-	status   int
-	inflight atomicInt
-	c        *http.Client
-	mu       sync.RWMutex
-	wg       sync.WaitGroup
+	url           string
+	queue         chan []byte
+	status        int
+	inflight      atomicInt
+	c             *http.Client
+	followerStats *raftFollowerStats
+	mu            sync.RWMutex
+	wg            sync.WaitGroup
 }
 
-func newPeer(url string, c *http.Client) *peer {
+func newPeer(url string, c *http.Client, followerStats *raftFollowerStats) *peer {
 	return &peer{
-		url:    url,
-		status: idlePeer,
-		c:      c,
+		url:           url,
+		status:        idlePeer,
+		c:             c,
+		followerStats: followerStats,
 	}
 }
 
@@ -120,7 +123,11 @@ func (p *peer) post(d []byte) {
 	p.inflight.Add(1)
 	defer p.inflight.Add(-1)
 	buf := bytes.NewBuffer(d)
+	start := time.Now()
 	resp, err := p.c.Post(p.url, "application/octet-stream", buf)
+	end := time.Now()
+	// TODO: Have no way to detect RPC success or failure now
+	p.followerStats.Succ(end.Sub(start))
 	if err != nil {
 		log.Printf("peer.post url=%s err=\"%v\"", p.url, err)
 		return

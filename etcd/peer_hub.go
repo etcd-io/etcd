@@ -39,18 +39,20 @@ type peerGetter interface {
 }
 
 type peerHub struct {
-	mu      sync.RWMutex
-	stopped bool
-	seeds   map[string]bool
-	peers   map[int64]*peer
-	c       *http.Client
+	mu             sync.RWMutex
+	stopped        bool
+	seeds          map[string]bool
+	peers          map[int64]*peer
+	c              *http.Client
+	followersStats *raftFollowersStats
 }
 
-func newPeerHub(c *http.Client) *peerHub {
+func newPeerHub(id int64, c *http.Client) *peerHub {
 	h := &peerHub{
-		peers: make(map[int64]*peer),
-		seeds: make(map[string]bool),
-		c:     c,
+		peers:          make(map[int64]*peer),
+		seeds:          make(map[string]bool),
+		c:              c,
+		followersStats: NewRaftFollowersStats(fmt.Sprint(id)),
 	}
 	return h
 }
@@ -78,6 +80,7 @@ func (h *peerHub) stop() {
 	for _, p := range h.peers {
 		p.stop()
 	}
+	h.followersStats.Reset()
 	// http.Transport needs some time to put used connections
 	// into idle queues.
 	time.Sleep(time.Millisecond)
@@ -109,7 +112,7 @@ func (h *peerHub) add(id int64, rawurl string) (*peer, error) {
 	if h.stopped {
 		return nil, fmt.Errorf("peerHub stopped")
 	}
-	h.peers[id] = newPeer(u.String(), h.c)
+	h.peers[id] = newPeer(u.String(), h.c, h.followersStats.Follower(fmt.Sprint(id)))
 	return h.peers[id], nil
 }
 

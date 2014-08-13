@@ -17,6 +17,7 @@ limitations under the License.
 package etcd
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -72,6 +73,14 @@ func (p *participant) serveLeader(w http.ResponseWriter, r *http.Request) error 
 		return nil
 	}
 	return fmt.Errorf("no leader")
+}
+
+func (p *participant) serveLeaderStats(w http.ResponseWriter, req *http.Request) error {
+	if !p.node.IsLeader() {
+		return p.redirect(w, req, p.node.Leader())
+	}
+	w.Header().Set("Content-Type", "application/json")
+	return json.NewEncoder(w).Encode(p.peerHub.followersStats)
 }
 
 func (p *participant) serveStoreStats(w http.ResponseWriter, req *http.Request) error {
