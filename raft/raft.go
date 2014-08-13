@@ -80,6 +80,10 @@ type Message struct {
 	Snapshot  Snapshot
 }
 
+func (m Message) IsMsgApp() bool {
+	return m.Type == msgApp
+}
+
 func (m Message) String() string {
 	return fmt.Sprintf("type=%v from=%x to=%x term=%d logTerm=%d i=%d ci=%d len(ents)=%d",
 		m.Type, m.From, m.To, m.Term, m.LogTerm, m.Index, m.Commit, len(m.Entries))

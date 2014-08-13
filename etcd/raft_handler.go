@@ -38,16 +38,18 @@ type raftHandler struct {
 
 	peerGetter   peerGetter
 	storeVersion int
+	serverStats  *raftServerStats
 
 	recv chan *raft.Message
 	*http.ServeMux
 }
 
-func newRaftHandler(p peerGetter, version int) *raftHandler {
+func newRaftHandler(p peerGetter, version int, serverStats *raftServerStats) *raftHandler {
 	h := &raftHandler{
 		recv:         make(chan *raft.Message, 512),
 		peerGetter:   p,
 		storeVersion: version,
+		serverStats:  serverStats,
 	}
 	h.ServeMux = http.NewServeMux()
 	h.ServeMux.HandleFunc(raftPrefix+"/cfg/", h.serveCfg)
@@ -82,6 +84,9 @@ func (h *raftHandler) serveRaft(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewDecoder(r.Body).Decode(msg); err != nil {
 		log.Printf("raftHandler.serve decodeErr=\"%v\"\n", err)
 		return
+	}
+	if msg.IsMsgApp() {
+		h.serverStats.RecvAppendReq(fmt.Sprint(msg.From), int(r.ContentLength))
 	}
 
 	select {

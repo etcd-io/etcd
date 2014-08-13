@@ -48,6 +48,7 @@ const (
 	v2machinePrefix       = "/v2/machines"
 	v2peersPrefix         = "/v2/peers"
 	v2LeaderPrefix        = "/v2/leader"
+	v2SelfStatsPrefix     = "/v2/stats/self"
 	v2LeaderStatsPrefix   = "/v2/stats/leader"
 	v2StoreStatsPrefix    = "/v2/stats/store"
 	v2adminConfigPrefix   = "/v2/admin/config"
@@ -75,8 +76,9 @@ type participant struct {
 	removeNodeC chan raft.Config
 	node        *v2Raft
 	store.Store
-	rh *raftHandler
-	w  *wal.WAL
+	rh          *raftHandler
+	w           *wal.WAL
+	serverStats *raftServerStats
 
 	stopNotifyc chan struct{}
 
@@ -97,13 +99,15 @@ func newParticipant(id int64, pubAddr string, raftPubAddr string, dir string, cl
 		node: &v2Raft{
 			result: make(map[wait]chan interface{}),
 		},
-		Store: store.New(),
+		Store:       store.New(),
+		serverStats: NewRaftServerStats(fmt.Sprint(id)),
 
 		stopNotifyc: make(chan struct{}),
 
 		ServeMux: http.NewServeMux(),
 	}
-	p.rh = newRaftHandler(peerHub, p.Store.Version())
+	p.rh = newRaftHandler(peerHub, p.Store.Version(), p.serverStats)
+	p.peerHub.setServerStats(p.serverStats)
 
 	walPath := path.Join(dir, "wal")
 	w, err := wal.Open(walPath)
@@ -140,6 +144,7 @@ func newParticipant(id int64, pubAddr string, raftPubAddr string, dir string, cl
 	p.Handle(v2machinePrefix, handlerErr(p.serveMachines))
 	p.Handle(v2peersPrefix, handlerErr(p.serveMachines))
 	p.Handle(v2LeaderPrefix, handlerErr(p.serveLeader))
+	p.Handle(v2SelfStatsPrefix, handlerErr(p.serveSelfStats))
 	p.Handle(v2LeaderStatsPrefix, handlerErr(p.serveLeaderStats))
 	p.Handle(v2StoreStatsPrefix, handlerErr(p.serveStoreStats))
 	p.rh.Handle(v2adminConfigPrefix, handlerErr(p.serveAdminConfig))

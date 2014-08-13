@@ -45,6 +45,7 @@ type peerHub struct {
 	peers          map[int64]*peer
 	c              *http.Client
 	followersStats *raftFollowersStats
+	serverStats    *raftServerStats
 }
 
 func newPeerHub(id int64, c *http.Client) *peerHub {
@@ -55,6 +56,10 @@ func newPeerHub(id int64, c *http.Client) *peerHub {
 		followersStats: NewRaftFollowersStats(fmt.Sprint(id)),
 	}
 	return h
+}
+
+func (h *peerHub) setServerStats(serverStats *raftServerStats) {
+	h.serverStats = serverStats
 }
 
 func (h *peerHub) setSeeds(seeds []string) {
@@ -121,6 +126,9 @@ func (h *peerHub) send(msg raft.Message) error {
 		data, err := json.Marshal(msg)
 		if err != nil {
 			return err
+		}
+		if msg.IsMsgApp() {
+			h.serverStats.SendAppendReq(len(data))
 		}
 		return p.send(data)
 	}
