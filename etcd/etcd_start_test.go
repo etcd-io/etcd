@@ -50,13 +50,17 @@ func (g *garbageHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func TestBadDiscoveryService(t *testing.T) {
+	defer afterTest(t)
 	g := garbageHandler{t: t}
-	ts := httptest.NewServer(&g)
+	httpts := httptest.NewServer(&g)
+	defer httpts.Close()
 
 	c := newTestConfig()
-	c.Discovery = ts.URL + "/v2/keys/_etcd/registry/1"
-	e, h := newUnstartedTestServer(c, bootstrapId, false)
-	err := startServer(t, e)
+	c.Discovery = httpts.URL + "/v2/keys/_etcd/registry/1"
+	ts := testServer{Config: c, Id: bootstrapId}
+	ts.Start()
+
+	err := ts.Destroy()
 	w := `discovery service error`
 	if err == nil || !strings.HasPrefix(err.Error(), w) {
 		t.Errorf("err = %v, want %s prefix", err, w)
@@ -67,141 +71,97 @@ func TestBadDiscoveryService(t *testing.T) {
 	if !g.success {
 		t.Fatal("Discovery server never called")
 	}
-	ts.Close()
-
-	destroyServer(t, e, h)
-	afterTest(t)
 }
 
 func TestBadDiscoveryServiceWithAdvisedPeers(t *testing.T) {
+	defer afterTest(t)
 	g := garbageHandler{t: t}
-	ts := httptest.NewServer(&g)
-
-	es, hs := buildCluster(1, false)
-	waitCluster(t, es)
+	httpts := httptest.NewServer(&g)
+	defer httpts.Close()
 
 	c := newTestConfig()
-	c.Discovery = ts.URL + "/v2/keys/_etcd/registry/1"
-	c.Peers = []string{hs[0].URL}
-	e, h := newUnstartedTestServer(c, bootstrapId, false)
-	err := startServer(t, e)
+	c.Discovery = httpts.URL + "/v2/keys/_etcd/registry/1"
+	c.Peers = []string{"a peer"}
+	ts := testServer{Config: c, Id: bootstrapId}
+	ts.Start()
+
+	err := ts.Destroy()
 	w := `discovery service error`
 	if err == nil || !strings.HasPrefix(err.Error(), w) {
 		t.Errorf("err = %v, want %s prefix", err, w)
 	}
-
-	destoryCluster(t, es, hs)
-	destroyServer(t, e, h)
-	ts.Close()
-	afterTest(t)
 }
 
 func TestBootstrapByEmptyPeers(t *testing.T) {
-	c := newTestConfig()
+	defer afterTest(t)
 	id := genId()
-	e, h := newUnstartedTestServer(c, id, false)
-	err := startServer(t, e)
-
-	if err != nil {
-		t.Error(err)
+	ts := testServer{Id: id}
+	ts.Start()
+	defer ts.Destroy()
+	ts.WaitMode(participantMode, 3)
+	if ts.Participant().node.Leader() != id {
+		t.Errorf("leader = %x, want %x", ts.Participant().node.Leader(), id)
 	}
-	if e.p.node.Leader() != id {
-		t.Errorf("leader = %x, want %x", e.p.node.Leader(), id)
-	}
-	destroyServer(t, e, h)
-	afterTest(t)
 }
 
 func TestBootstrapByDiscoveryService(t *testing.T) {
-	de, dh := newUnstartedTestServer(newTestConfig(), genId(), false)
-	err := startServer(t, de)
+	defer afterTest(t)
+	discoverService := testCluster{Size: 1}
+	discoverService.Start()
+	defer discoverService.Destroy()
 
 	c := newTestConfig()
-	c.Discovery = dh.URL + "/v2/keys/_etcd/registry/1"
-	e, h := newUnstartedTestServer(c, bootstrapId, false)
-	err = startServer(t, e)
+	c.Discovery = discoverService.URL(0) + "/v2/keys/_etcd/registry/1"
+	ts := testServer{Id: bootstrapId, Config: c}
+	ts.Start()
+	ts.WaitMode(participantMode, 3)
+	err := ts.Destroy()
 	if err != nil {
-		t.Fatalf("build server err = %v, want nil", err)
+		t.Fatalf("server stop err = %v, want nil", err)
 	}
-
-	destroyServer(t, e, h)
-	destroyServer(t, de, dh)
-	afterTest(t)
 }
 
 func TestRunByAdvisedPeers(t *testing.T) {
-	es, hs := buildCluster(1, false)
-	waitCluster(t, es)
-
-	c := newTestConfig()
-	c.Peers = []string{hs[0].URL}
-	e, h := newUnstartedTestServer(c, bootstrapId, false)
-	err := startServer(t, e)
-	if err != nil {
-		t.Fatalf("build server err = %v, want nil", err)
-	}
-	w := es[0].id
-	if g, _ := waitLeader(append(es, e)); g != w {
-		t.Errorf("leader = %d, want %d", g, w)
-	}
-
-	destroyServer(t, e, h)
-	destoryCluster(t, es, hs)
-	afterTest(t)
+	t.Skip("test covered by TestMultipleNodes")
 }
 
 func TestRunByDiscoveryService(t *testing.T) {
-	de, dh := newUnstartedTestServer(newTestConfig(), genId(), false)
-	err := startServer(t, de)
+	ds := testCluster{Size: 1}
+	ds.Start()
+	defer ds.Destroy()
 
 	tc := NewTestClient()
 	v := url.Values{}
 	v.Set("value", "started")
-	resp, _ := tc.PutForm(fmt.Sprintf("%s%s", dh.URL, "/v2/keys/_etcd/registry/1/_state"), v)
+	resp, _ := tc.PutForm(fmt.Sprintf("%s%s", ds.URL(0), "/v2/keys/_etcd/registry/1/_state"), v)
 	if g := resp.StatusCode; g != http.StatusCreated {
 		t.Fatalf("put status = %d, want %d", g, http.StatusCreated)
 	}
 	resp.Body.Close()
 
-	v.Set("value", dh.URL)
-	resp, _ = tc.PutForm(fmt.Sprintf("%s%s%d", dh.URL, "/v2/keys/_etcd/registry/1/", de.id), v)
+	v.Set("value", ds.URL(0))
+	resp, _ = tc.PutForm(fmt.Sprintf("%s%s%d", ds.URL(0), "/v2/keys/_etcd/registry/1/", ds.Participant(0).id), v)
 	if g := resp.StatusCode; g != http.StatusCreated {
 		t.Fatalf("put status = %d, want %d", g, http.StatusCreated)
 	}
 	resp.Body.Close()
 
 	c := newTestConfig()
-	c.Discovery = dh.URL + "/v2/keys/_etcd/registry/1"
-	e, h := newUnstartedTestServer(c, bootstrapId, false)
-	err = startServer(t, e)
-	if err != nil {
-		t.Fatalf("build server err = %v, want nil", err)
-	}
-	w := de.id
-	if g, _ := waitLeader([]*Server{e, de}); g != w {
+	c.Discovery = ds.URL(0) + "/v2/keys/_etcd/registry/1"
+	ts := testServer{Config: c, Id: bootstrapId}
+	ts.Start()
+	defer ts.Destroy()
+
+	ts.WaitMode(participantMode, 3)
+	// wait for the leader to do a heartbeat
+	// it will update the lead field of the follower
+	time.Sleep(ds.Node(0).e.tickDuration * defaultHeartbeat * 2)
+	w := ds.Participant(0).id
+	if g := ts.Lead().lead; g != w {
 		t.Errorf("leader = %d, want %d", g, w)
 	}
-
-	destroyServer(t, e, h)
-	destroyServer(t, de, dh)
-	afterTest(t)
 }
 
 func TestRunByDataDir(t *testing.T) {
-	TestSingleNodeRecovery(t)
-}
-
-func startServer(t *testing.T, e *Server) error {
-	var err error
-	go func() { err = e.Run() }()
-	for {
-		if e.mode.Get() == participantMode {
-			break
-		}
-		if err != nil {
-			return err
-		}
-		time.Sleep(10 * time.Millisecond)
-	}
-	return nil
+	t.Skip("test covered by TestSingleNodeRecovery")
 }

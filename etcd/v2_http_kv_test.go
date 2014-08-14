@@ -31,8 +31,11 @@ import (
 )
 
 func TestV2Set(t *testing.T) {
-	es, hs := buildCluster(1, false)
-	u := hs[0].URL
+	cl := testCluster{Size: 1}
+	cl.Start()
+	defer cl.Destroy()
+
+	u := cl.URL(0)
 	tc := NewTestClient()
 	v := url.Values{}
 	v.Set("value", "bar")
@@ -76,14 +79,14 @@ func TestV2Set(t *testing.T) {
 			t.Errorf("#%d: status = %d, want %d", i, resp.StatusCode, tt.wStatus)
 		}
 	}
-
-	destoryCluster(t, es, hs)
-	afterTest(t)
 }
 
 func TestV2CreateUpdate(t *testing.T) {
-	es, hs := buildCluster(1, false)
-	u := hs[0].URL
+	cl := testCluster{Size: 1}
+	cl.Start()
+	defer cl.Destroy()
+
+	u := cl.URL(0)
 	tc := NewTestClient()
 
 	tests := []struct {
@@ -184,14 +187,14 @@ func TestV2CreateUpdate(t *testing.T) {
 			t.Errorf("#%d: %v", i, err)
 		}
 	}
-
-	destoryCluster(t, es, hs)
-	afterTest(t)
 }
 
 func TestV2CAS(t *testing.T) {
-	es, hs := buildCluster(1, false)
-	u := hs[0].URL
+	cl := testCluster{Size: 1}
+	cl.Start()
+	defer cl.Destroy()
+
+	u := cl.URL(0)
 	tc := NewTestClient()
 
 	tests := []struct {
@@ -312,14 +315,14 @@ func TestV2CAS(t *testing.T) {
 			t.Errorf("#%d: %v", i, err)
 		}
 	}
-
-	destoryCluster(t, es, hs)
-	afterTest(t)
 }
 
 func TestV2Delete(t *testing.T) {
-	es, hs := buildCluster(1, false)
-	u := hs[0].URL
+	cl := testCluster{Size: 1}
+	cl.Start()
+	defer cl.Destroy()
+
+	u := cl.URL(0)
 	tc := NewTestClient()
 
 	v := url.Values{}
@@ -408,14 +411,14 @@ func TestV2Delete(t *testing.T) {
 			t.Errorf("#%d: %v", i, err)
 		}
 	}
-
-	destoryCluster(t, es, hs)
-	afterTest(t)
 }
 
 func TestV2CAD(t *testing.T) {
-	es, hs := buildCluster(1, false)
-	u := hs[0].URL
+	cl := testCluster{Size: 1}
+	cl.Start()
+	defer cl.Destroy()
+
+	u := cl.URL(0)
 	tc := NewTestClient()
 
 	v := url.Values{}
@@ -506,14 +509,14 @@ func TestV2CAD(t *testing.T) {
 			t.Errorf("#%d: %v", i, err)
 		}
 	}
-
-	destoryCluster(t, es, hs)
-	afterTest(t)
 }
 
 func TestV2Unique(t *testing.T) {
-	es, hs := buildCluster(1, false)
-	u := hs[0].URL
+	cl := testCluster{Size: 1}
+	cl.Start()
+	defer cl.Destroy()
+
+	u := cl.URL(0)
 	tc := NewTestClient()
 
 	tests := []struct {
@@ -569,14 +572,14 @@ func TestV2Unique(t *testing.T) {
 			t.Errorf("#%d: %v", i, err)
 		}
 	}
-
-	destoryCluster(t, es, hs)
-	afterTest(t)
 }
 
 func TestV2Get(t *testing.T) {
-	es, hs := buildCluster(1, false)
-	u := hs[0].URL
+	cl := testCluster{Size: 1}
+	cl.Start()
+	defer cl.Destroy()
+
+	u := cl.URL(0)
 	tc := NewTestClient()
 
 	v := url.Values{}
@@ -663,14 +666,14 @@ func TestV2Get(t *testing.T) {
 			t.Errorf("#%d: %v", i, err)
 		}
 	}
-
-	destoryCluster(t, es, hs)
-	afterTest(t)
 }
 
 func TestV2QuorumGet(t *testing.T) {
-	es, hs := buildCluster(1, false)
-	u := hs[0].URL
+	cl := testCluster{Size: 1}
+	cl.Start()
+	defer cl.Destroy()
+
+	u := cl.URL(0)
 	tc := NewTestClient()
 
 	v := url.Values{}
@@ -757,14 +760,14 @@ func TestV2QuorumGet(t *testing.T) {
 			t.Errorf("#%d: %v", i, err)
 		}
 	}
-
-	destoryCluster(t, es, hs)
-	afterTest(t)
 }
 
 func TestV2Watch(t *testing.T) {
-	es, hs := buildCluster(1, false)
-	u := hs[0].URL
+	cl := testCluster{Size: 1}
+	cl.Start()
+	defer cl.Destroy()
+
+	u := cl.URL(0)
 	tc := NewTestClient()
 
 	var watchResp *http.Response
@@ -802,14 +805,14 @@ func TestV2Watch(t *testing.T) {
 	if err := checkBody(body, w); err != nil {
 		t.Error(err)
 	}
-
-	destoryCluster(t, es, hs)
-	afterTest(t)
 }
 
 func TestV2WatchWithIndex(t *testing.T) {
-	es, hs := buildCluster(1, false)
-	u := hs[0].URL
+	cl := testCluster{Size: 1}
+	cl.Start()
+	defer cl.Destroy()
+
+	u := cl.URL(0)
 	tc := NewTestClient()
 
 	var body map[string]interface{}
@@ -859,14 +862,14 @@ func TestV2WatchWithIndex(t *testing.T) {
 	if err := checkBody(body, w); err != nil {
 		t.Error(err)
 	}
-
-	destoryCluster(t, es, hs)
-	afterTest(t)
 }
 
 func TestV2WatchKeyInDir(t *testing.T) {
-	es, hs := buildCluster(1, false)
-	u := hs[0].URL
+	cl := testCluster{Size: 1}
+	cl.Start()
+	defer cl.Destroy()
+
+	u := cl.URL(0)
 	tc := NewTestClient()
 
 	var body map[string]interface{}
@@ -906,14 +909,14 @@ func TestV2WatchKeyInDir(t *testing.T) {
 	if err := checkBody(body, w); err != nil {
 		t.Error(err)
 	}
-
-	destoryCluster(t, es, hs)
-	afterTest(t)
 }
 
 func TestV2Head(t *testing.T) {
-	es, hs := buildCluster(1, false)
-	u := hs[0].URL
+	cl := testCluster{Size: 1}
+	cl.Start()
+	defer cl.Destroy()
+
+	u := cl.URL(0)
 	tc := NewTestClient()
 
 	v := url.Values{}
@@ -939,9 +942,6 @@ func TestV2Head(t *testing.T) {
 	if resp.ContentLength != -1 {
 		t.Errorf("ContentLength = %d, want -1", resp.ContentLength)
 	}
-
-	destoryCluster(t, es, hs)
-	afterTest(t)
 }
 
 func checkBody(body map[string]interface{}, w map[string]interface{}) error {

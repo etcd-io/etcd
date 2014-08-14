@@ -70,7 +70,7 @@ func (s *standby) run(stop chan struct{}) {
 		}
 
 		if update, err := s.syncCluster(nodes); err != nil {
-			log.Println("standby.run syncErr=\"%v\"", err)
+			log.Printf("standby.run syncErr=\"%v\"", err)
 			continue
 		} else {
 			nodes = update
