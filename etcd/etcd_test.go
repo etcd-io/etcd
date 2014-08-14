@@ -302,7 +302,7 @@ func (c *testCluster) Start() {
 	c.nodes = nodes
 	nodes[0] = &testServer{Id: 0, TLS: c.TLS}
 	nodes[0].Start()
-	if !nodes[0].WaitMode(participantMode, 5) {
+	if !nodes[0].WaitMode(participantMode, 10) {
 		panic("cannot wait until participantMode")
 	}
 
@@ -319,7 +319,7 @@ func (c *testCluster) Start() {
 		// or this configuration request might be dropped.
 		// Or it could be a slow join because it needs to retry.
 		// TODO: this might not be true if we add param for retry interval.
-		if !s.WaitMode(participantMode, 3) {
+		if !s.WaitMode(participantMode, 20) {
 			panic("cannot wait until participantMode")
 		}
 		w, err := s.Participant().Watch(v2machineKVPrefix, true, false, uint64(i))

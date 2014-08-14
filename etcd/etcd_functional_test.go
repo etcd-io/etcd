@@ -18,9 +18,11 @@ package etcd
 
 import (
 	"math/rand"
+	"reflect"
 	"testing"
 	"time"
 
+	"github.com/coreos/etcd/conf"
 	"github.com/coreos/etcd/third_party/github.com/coreos/go-etcd/etcd"
 )
 
@@ -101,51 +103,31 @@ func TestJoinThroughFollower(t *testing.T) {
 	}
 }
 
-// func TestClusterConfigReload(t *testing.T) {
-// 	defer afterTest(t)
-// 	tests := []int{3, 5, 7}
+func TestClusterConfigReload(t *testing.T) {
+	defer afterTest(t)
 
-// 	for i, tt := range tests {
-// 		es, hs := buildCluster(tt, false)
-// 		waitCluster(t, es)
+	cl := &testCluster{Size: 5}
+	cl.Start()
+	defer cl.Destroy()
 
-// 		lead, _ := waitLeader(es)
-// 		conf := config.NewClusterConfig()
-// 		conf.ActiveSize = 15
-// 		conf.RemoveDelay = 60
-// 		if err := es[lead].p.setClusterConfig(conf); err != nil {
-// 			t.Fatalf("#%d: setClusterConfig err = %v", i, err)
-// 		}
+	lead, _ := cl.Leader()
+	cc := conf.NewClusterConfig()
+	cc.ActiveSize = 15
+	cc.RemoveDelay = 60
+	if err := cl.Participant(int(lead)).setClusterConfig(cc); err != nil {
+		t.Fatalf("setClusterConfig err = %v", err)
+	}
 
-// 		for k := range es {
-// 			es[k].Stop()
-// 			hs[k].Close()
-// 		}
+	cl.Stop()
+	cl.Restart()
 
-// 		for k := range es {
-// 			c := newTestConfig()
-// 			c.DataDir = es[k].config.DataDir
-// 			c.Addr = hs[k].Listener.Addr().String()
-// 			id := es[k].id
-// 			e, h := newUnstartedTestServer(c, id, false)
-// 			err := startServer(t, e)
-// 			if err != nil {
-// 				t.Fatal(err)
-// 			}
-// 			es[k] = e
-// 			hs[k] = h
-// 		}
-
-// 		lead, _ = waitLeader(es)
-// 		// wait for msgAppResp to commit all entries
-// 		time.Sleep(2 * defaultHeartbeat * es[lead].tickDuration)
-// 		if g := es[lead].p.clusterConfig(); !reflect.DeepEqual(g, conf) {
-// 			t.Errorf("#%d: clusterConfig = %+v, want %+v", i, g, conf)
-// 		}
-
-// 		destoryCluster(t, es, hs)
-// 	}
-// }
+	lead, _ = cl.Leader()
+	// wait for msgAppResp to commit all entries
+	time.Sleep(2 * defaultHeartbeat * cl.Participant(0).tickDuration)
+	if g := cl.Participant(int(lead)).clusterConfig(); !reflect.DeepEqual(g, cc) {
+		t.Errorf("clusterConfig = %+v, want %+v", g, cc)
+	}
+}
 
 func TestFiveNodeKillOneAndRecover(t *testing.T) {
 	defer afterTest(t)
