@@ -14,6 +14,8 @@ import (
 	ehttp "github.com/coreos/etcd/http"
 )
 
+var version = "etcd <unknown>"
+
 func main() {
 	var config = config.New()
 	if err := config.Load(os.Args[1:]); err != nil {
@@ -21,7 +23,7 @@ func main() {
 		fmt.Println(err.Error(), "\n")
 		os.Exit(1)
 	} else if config.ShowVersion {
-		fmt.Println("0.5")
+		fmt.Println(version)
 		os.Exit(0)
 	} else if config.ShowHelp {
 		os.Exit(0)
