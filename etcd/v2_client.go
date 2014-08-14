@@ -29,7 +29,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/coreos/etcd/cfg"
+	"github.com/coreos/etcd/conf"
 	etcdErr "github.com/coreos/etcd/error"
 )
 
@@ -122,7 +122,7 @@ func (c *v2client) GetMachines(url string) ([]*machineMessage, *etcdErr.Error) {
 	return *msgs, nil
 }
 
-func (c *v2client) GetClusterConfig(url string) (*cfg.ClusterConfig, *etcdErr.Error) {
+func (c *v2client) GetClusterConfig(url string) (*conf.ClusterConfig, *etcdErr.Error) {
 	if c.runOne() == false {
 		return nil, clientError(errors.New("v2_client is stopped"))
 	}
@@ -136,7 +136,7 @@ func (c *v2client) GetClusterConfig(url string) (*cfg.ClusterConfig, *etcdErr.Er
 		return nil, c.readErrorBody(resp.Body)
 	}
 
-	config := new(cfg.ClusterConfig)
+	config := new(conf.ClusterConfig)
 	if uerr := c.readJSONBody(resp.Body, config); uerr != nil {
 		return nil, uerr
 	}

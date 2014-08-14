@@ -25,7 +25,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/coreos/etcd/cfg"
+	"github.com/coreos/etcd/conf"
 	"github.com/coreos/etcd/store"
 )
 
@@ -118,8 +118,8 @@ func (p *participant) serveAdminMachines(w http.ResponseWriter, r *http.Request)
 	return nil
 }
 
-func (p *participant) clusterConfig() *cfg.ClusterConfig {
-	c := cfg.NewClusterConfig()
+func (p *participant) clusterConfig() *conf.ClusterConfig {
+	c := conf.NewClusterConfig()
 	// This is used for backward compatibility because it doesn't
 	// set cluster config in older version.
 	if e, err := p.Store.Get(v2configKVPrefix, false, false); err == nil {
@@ -128,7 +128,7 @@ func (p *participant) clusterConfig() *cfg.ClusterConfig {
 	return c
 }
 
-func (p *participant) setClusterConfig(c *cfg.ClusterConfig) error {
+func (p *participant) setClusterConfig(c *conf.ClusterConfig) error {
 	b, err := json.Marshal(c)
 	if err != nil {
 		return err

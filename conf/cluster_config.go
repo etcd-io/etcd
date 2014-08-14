@@ -1,4 +1,4 @@
-package cfg
+package conf
 
 // ClusterConfig represents cluster-wide configuration settings.
 type ClusterConfig struct {

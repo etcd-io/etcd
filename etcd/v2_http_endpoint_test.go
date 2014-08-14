@@ -27,7 +27,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/coreos/etcd/cfg"
+	"github.com/coreos/etcd/conf"
 	"github.com/coreos/etcd/store"
 )
 
@@ -136,14 +136,14 @@ func TestGetAdminConfigEndPoint(t *testing.T) {
 			t.Errorf("#%d: ContentType = %d, want application/json", i, g)
 		}
 
-		conf := new(cfg.ClusterConfig)
+		conf := new(conf.ClusterConfig)
 		err = json.NewDecoder(r.Body).Decode(conf)
 		r.Body.Close()
 		if err != nil {
 			t.Errorf("%v", err)
 			continue
 		}
-		w := cfg.NewClusterConfig()
+		w := conf.NewClusterConfig()
 		if !reflect.DeepEqual(conf, w) {
 			t.Errorf("#%d: config = %+v, want %+v", i, conf, w)
 		}

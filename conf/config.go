@@ -1,4 +1,4 @@
-package cfg
+package conf
 
 import (
 	"flag"
