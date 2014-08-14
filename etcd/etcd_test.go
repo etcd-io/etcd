@@ -90,7 +90,7 @@ func TestAdd(t *testing.T) {
 		es := make([]*Server, tt)
 		hs := make([]*httptest.Server, tt)
 		for i := 0; i < tt; i++ {
-			c := config.New()
+			c := cfg.New()
 			if i > 0 {
 				c.Peers = []string{hs[0].URL}
 			}
@@ -149,9 +149,9 @@ func TestRemove(t *testing.T) {
 		waitCluster(t, es)
 
 		lead, _ := waitLeader(es)
-		config := config.NewClusterConfig()
-		config.ActiveSize = 0
-		if err := es[lead].p.setClusterConfig(config); err != nil {
+		cfg := cfg.NewClusterConfig()
+		cfg.ActiveSize = 0
+		if err := es[lead].p.setClusterConfig(cfg); err != nil {
 			t.Fatalf("#%d: setClusterConfig err = %v", k, err)
 		}
 
@@ -216,11 +216,11 @@ func TestBecomeStandby(t *testing.T) {
 		}
 		id := int64(i)
 
-		config := config.NewClusterConfig()
-		config.SyncInterval = 1000
+		cfg := cfg.NewClusterConfig()
+		cfg.SyncInterval = 1000
 
-		config.ActiveSize = size - 1
-		if err := es[lead].p.setClusterConfig(config); err != nil {
+		cfg.ActiveSize = size - 1
+		if err := es[lead].p.setClusterConfig(cfg); err != nil {
 			t.Fatalf("#%d: setClusterConfig err = %v", i, err)
 		}
 		for {
@@ -320,7 +320,7 @@ func TestSingleNodeRecovery(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	c := config.New()
+	c := cfg.New()
 	c.DataDir = dataDir
 	e, h, _ := buildServer(t, c, id)
 	key := "/foo"
@@ -348,7 +348,7 @@ func TestSingleNodeRecovery(t *testing.T) {
 
 	time.Sleep(2 * time.Second)
 
-	c = config.New()
+	c = cfg.New()
 	c.DataDir = dataDir
 	e, h, _ = buildServer(t, c, id)
 
@@ -395,7 +395,7 @@ func TestRestoreSnapshotFromLeader(t *testing.T) {
 	}
 
 	// create one to join the cluster
-	c := config.New()
+	c := cfg.New()
 	c.Peers = []string{hs[0].URL}
 	e, h := initTestServer(c, 1, false)
 	go e.Run()
@@ -445,7 +445,7 @@ func buildCluster(number int, tls bool) ([]*Server, []*httptest.Server) {
 	var seed string
 
 	for i := range es {
-		c := config.New()
+		c := cfg.New()
 		if seed != "" {
 			c.Peers = []string{seed}
 		}
@@ -468,7 +468,7 @@ func buildCluster(number int, tls bool) ([]*Server, []*httptest.Server) {
 	return es, hs
 }
 
-func initTestServer(c *config.Config, id int64, tls bool) (e *Server, h *httptest.Server) {
+func initTestServer(c *cfg.Config, id int64, tls bool) (e *Server, h *httptest.Server) {
 	if c.DataDir == "" {
 		n, err := ioutil.TempDir(os.TempDir(), "etcd")
 		if err != nil {
@@ -531,7 +531,7 @@ func destoryCluster(t *testing.T, es []*Server, hs []*httptest.Server) {
 	for i := range es {
 		e := es[len(es)-i-1]
 		e.Stop()
-		err := os.RemoveAll(e.config.DataDir)
+		err := os.RemoveAll(e.cfg.DataDir)
 		if err != nil {
 			panic(err)
 			t.Fatal(err)
@@ -545,7 +545,7 @@ func destoryCluster(t *testing.T, es []*Server, hs []*httptest.Server) {
 func destroyServer(t *testing.T, e *Server, h *httptest.Server) {
 	e.Stop()
 	h.Close()
-	err := os.RemoveAll(e.config.DataDir)
+	err := os.RemoveAll(e.cfg.DataDir)
 	if err != nil {
 		panic(err)
 		t.Fatal(err)

@@ -54,9 +54,9 @@ type StandbyServer struct {
 	sync.Mutex
 }
 
-func NewStandbyServer(config StandbyServerConfig, client *Client) *StandbyServer {
+func NewStandbyServer(cfg StandbyServerConfig, client *Client) *StandbyServer {
 	s := &StandbyServer{
-		Config:      config,
+		Config:      cfg,
 		client:      client,
 		standbyInfo: standbyInfo{SyncInterval: DefaultSyncInterval},
 	}
@@ -229,14 +229,14 @@ func (s *StandbyServer) syncCluster(peerURLs []string) error {
 			continue
 		}
 
-		config, err := s.client.GetClusterConfig(peerURL)
+		cfg, err := s.client.GetClusterConfig(peerURL)
 		if err != nil {
 			log.Debugf("fail getting cluster config from %v", peerURL)
 			continue
 		}
 
 		s.setCluster(machines)
-		s.SetSyncInterval(config.SyncInterval)
+		s.SetSyncInterval(cfg.SyncInterval)
 		if err := s.saveInfo(); err != nil {
 			log.Warnf("fail saving cluster info into disk: %v", err)
 		}

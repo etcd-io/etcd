@@ -115,7 +115,7 @@ func (s *standby) syncCluster(nodes map[string]bool) (map[string]bool, error) {
 		if err != nil {
 			continue
 		}
-		config, err := s.client.GetClusterConfig(node)
+		cfg, err := s.client.GetClusterConfig(node)
 		if err != nil {
 			continue
 		}
@@ -130,7 +130,7 @@ func (s *standby) syncCluster(nodes map[string]bool) (map[string]bool, error) {
 				s.setLeaderInfo(id, machine.PeerURL)
 			}
 		}
-		s.clusterConf = config
+		s.clusterConf = cfg
 		return nn, nil
 	}
 	return nil, fmt.Errorf("unreachable cluster")

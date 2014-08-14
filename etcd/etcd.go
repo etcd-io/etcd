@@ -36,7 +36,7 @@ const (
 )
 
 type Server struct {
-	config       *conf.Config
+	cfg          *conf.Config
 	id           int64
 	pubAddr      string
 	raftPubAddr  string
@@ -79,7 +79,7 @@ func New(c *conf.Config) (*Server, error) {
 	client := &http.Client{Transport: tr}
 
 	s := &Server{
-		config:       c,
+		cfg:          c,
 		id:           genId(),
 		pubAddr:      c.Addr,
 		raftPubAddr:  c.Peer.Addr,
@@ -99,7 +99,7 @@ func New(c *conf.Config) (*Server, error) {
 	s.Handler = m
 
 	log.Printf("id=%x server.new raftPubAddr=%s\n", s.id, s.raftPubAddr)
-	if err = os.MkdirAll(s.config.DataDir, 0700); err != nil {
+	if err = os.MkdirAll(s.cfg.DataDir, 0700); err != nil {
 		if !os.IsExist(err) {
 			return nil, err
 		}
@@ -152,7 +152,7 @@ func (s *Server) Run() error {
 	var exit error
 	defer func() { s.exited <- exit }()
 
-	durl := s.config.Discovery
+	durl := s.cfg.Discovery
 	if durl != "" {
 		u, err := url.Parse(durl)
 		if err != nil {
@@ -166,7 +166,7 @@ func (s *Server) Run() error {
 		}
 		log.Printf("id=%x server.run source=-discovery seeds=\"%v\"\n", s.id, seeds)
 	} else {
-		seeds = s.config.Peers
+		seeds = s.cfg.Peers
 		log.Printf("id=%x server.run source=-peers seeds=\"%v\"\n", s.id, seeds)
 	}
 	s.peerHub.setSeeds(seeds)
@@ -175,7 +175,7 @@ func (s *Server) Run() error {
 	for {
 		switch next {
 		case participantMode:
-			p, err := newParticipant(s.id, s.pubAddr, s.raftPubAddr, s.config.DataDir, s.client, s.peerHub, s.tickDuration)
+			p, err := newParticipant(s.id, s.pubAddr, s.raftPubAddr, s.cfg.DataDir, s.client, s.peerHub, s.tickDuration)
 			if err != nil {
 				log.Printf("id=%x server.run newParicipanteErr=\"%v\"\n", s.id, err)
 				exit = err

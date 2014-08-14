@@ -55,7 +55,7 @@ func TestKillLeader(t *testing.T) {
 			fmt.Println("Total time:", totalTime, "; Avg time:", avgTime)
 
 			c := conf.New()
-			c.DataDir = es[lead].config.DataDir
+			c.DataDir = es[lead].cfg.DataDir
 			c.Addr = hs[lead].Listener.Addr().String()
 			id := es[lead].id
 			e, h, err := buildServer(t, c, id)
@@ -96,7 +96,7 @@ func TestKillRandom(t *testing.T) {
 
 			for k := range toKill {
 				c := conf.New()
-				c.DataDir = es[k].config.DataDir
+				c.DataDir = es[k].cfg.DataDir
 				c.Addr = hs[k].Listener.Addr().String()
 				id := es[k].id
 				e, h, err := buildServer(t, c, id)
@@ -162,7 +162,7 @@ func TestClusterConfigReload(t *testing.T) {
 
 		for k := range es {
 			c := conf.New()
-			c.DataDir = es[k].config.DataDir
+			c.DataDir = es[k].cfg.DataDir
 			c.Addr = hs[k].Listener.Addr().String()
 			id := es[k].id
 			e, h, err := buildServer(t, c, id)
@@ -201,7 +201,7 @@ func TestMultiNodeKillOne(t *testing.T) {
 			hs[idx].Close()
 
 			c := conf.New()
-			c.DataDir = es[idx].config.DataDir
+			c.DataDir = es[idx].cfg.DataDir
 			c.Addr = hs[idx].Listener.Addr().String()
 			id := es[idx].id
 			e, h, err := buildServer(t, c, id)
@@ -242,7 +242,7 @@ func TestMultiNodeKillAllAndRecovery(t *testing.T) {
 
 		for k := range es {
 			c := conf.New()
-			c.DataDir = es[k].config.DataDir
+			c.DataDir = es[k].cfg.DataDir
 			c.Addr = hs[k].Listener.Addr().String()
 			id := es[k].id
 			e, h, err := buildServer(t, c, id)
@@ -291,8 +291,8 @@ func TestModeSwitch(t *testing.T) {
 		es, hs := buildCluster(size, false)
 		waitCluster(t, es)
 
-		config := conf.NewClusterConfig()
-		config.SyncInterval = 0
+		cfg := conf.NewClusterConfig()
+		cfg.SyncInterval = 0
 		id := int64(i)
 		for j := 0; j < round; j++ {
 			lead, _ := waitActiveLeader(es)
@@ -301,8 +301,8 @@ func TestModeSwitch(t *testing.T) {
 				continue
 			}
 
-			config.ActiveSize = size - 1
-			if err := es[lead].p.setClusterConfig(config); err != nil {
+			cfg.ActiveSize = size - 1
+			if err := es[lead].p.setClusterConfig(cfg); err != nil {
 				t.Fatalf("#%d: setClusterConfig err = %v", i, err)
 			}
 			if err := es[lead].p.remove(id); err != nil {
@@ -321,8 +321,8 @@ func TestModeSwitch(t *testing.T) {
 				t.Errorf("#%d: lead = %d, want %d", i, g, lead)
 			}
 
-			config.ActiveSize = size
-			if err := es[lead].p.setClusterConfig(config); err != nil {
+			cfg.ActiveSize = size
+			if err := es[lead].p.setClusterConfig(cfg); err != nil {
 				t.Fatalf("#%d: setClusterConfig err = %v", i, err)
 			}
 

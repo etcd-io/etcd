@@ -144,7 +144,7 @@ func TestRunByAdvisedPeers(t *testing.T) {
 }
 
 func TestRunByDiscoveryService(t *testing.T) {
-	de, dh, _ := buildServer(t, config.New(), genId())
+	de, dh, _ := buildServer(t, cfg.New(), genId())
 
 	tc := NewTestClient()
 	v := url.Values{}
@@ -162,7 +162,7 @@ func TestRunByDiscoveryService(t *testing.T) {
 	}
 	resp.Body.Close()
 
-	c := config.New()
+	c := cfg.New()
 	c.Discovery = dh.URL + "/v2/keys/_etcd/registry/1"
 	e, h, err := buildServer(t, c, bootstrapId)
 	if err != nil {
@@ -182,7 +182,7 @@ func TestRunByDataDir(t *testing.T) {
 	TestSingleNodeRecovery(t)
 }
 
-func buildServer(t *testing.T, c *config.Config, id int64) (e *Server, h *httptest.Server, err error) {
+func buildServer(t *testing.T, c *cfg.Config, id int64) (e *Server, h *httptest.Server, err error) {
 	e, h = initTestServer(c, id, false)
 	go func() { err = e.Run() }()
 	for {

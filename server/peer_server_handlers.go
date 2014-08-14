@@ -204,19 +204,19 @@ func (ps *PeerServer) setClusterConfigHttpHandler(w http.ResponseWriter, req *ht
 	}
 
 	// Copy config and update fields passed in.
-	config := ps.ClusterConfig()
+	cfg := ps.ClusterConfig()
 	if activeSize, ok := m["activeSize"].(float64); ok {
-		config.ActiveSize = int(activeSize)
+		cfg.ActiveSize = int(activeSize)
 	}
 	if removeDelay, ok := m["removeDelay"].(float64); ok {
-		config.RemoveDelay = removeDelay
+		cfg.RemoveDelay = removeDelay
 	}
 	if syncInterval, ok := m["syncInterval"].(float64); ok {
-		config.SyncInterval = syncInterval
+		cfg.SyncInterval = syncInterval
 	}
 
 	// Issue command to update.
-	c := &SetClusterConfigCommand{Config: config}
+	c := &SetClusterConfigCommand{Config: cfg}
 	log.Debugf("[recv] Update Cluster Config Request")
 	ps.server.Dispatch(c, w, req)
 

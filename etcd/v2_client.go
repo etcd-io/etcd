@@ -136,11 +136,11 @@ func (c *v2client) GetClusterConfig(url string) (*conf.ClusterConfig, *etcdErr.E
 		return nil, c.readErrorBody(resp.Body)
 	}
 
-	config := new(conf.ClusterConfig)
-	if uerr := c.readJSONBody(resp.Body, config); uerr != nil {
+	cfg := new(conf.ClusterConfig)
+	if uerr := c.readJSONBody(resp.Body, cfg); uerr != nil {
 		return nil, uerr
 	}
-	return config, nil
+	return cfg, nil
 }
 
 // AddMachine adds machine to the cluster.
