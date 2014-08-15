@@ -18,6 +18,7 @@ package etcd
 
 import (
 	"math/rand"
+	"net/url"
 	"reflect"
 	"testing"
 	"time"
@@ -101,6 +102,31 @@ func TestJoinThroughFollower(t *testing.T) {
 		}
 		cl.Destroy()
 	}
+}
+
+func TestJoinWithoutHTTPScheme(t *testing.T) {
+	bt := &testServer{}
+	bt.Start()
+
+	cl := testCluster{nodes: []*testServer{bt}}
+	seed := bt.URL
+	u, err := url.Parse(seed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// remove HTTP scheme
+	seed = u.Host + u.Path
+
+	for i := 1; i < 3; i++ {
+		c := newTestConfig()
+		c.Peers = []string{seed}
+		ts := &testServer{Config: c, Id: int64(i)}
+		ts.Start()
+		ts.WaitMode(participantMode)
+		cl.nodes = append(cl.nodes, ts)
+		cl.Leader()
+	}
+	cl.Destroy()
 }
 
 func TestClusterConfigReload(t *testing.T) {

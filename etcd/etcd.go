@@ -166,7 +166,17 @@ func (s *Server) Run() error {
 		}
 		log.Printf("id=%x server.run source=-discovery seeds=\"%v\"\n", s.id, seeds)
 	} else {
-		seeds = s.cfg.Peers
+		for _, p := range s.cfg.Peers {
+			u, err := url.Parse(p)
+			if err != nil {
+				log.Printf("id=%x server.run err=%q", err)
+				continue
+			}
+			if u.Scheme == "" {
+				u.Scheme = s.cfg.PeerTLSInfo().Scheme()
+			}
+			seeds = append(seeds, u.String())
+		}
 		log.Printf("id=%x server.run source=-peers seeds=\"%v\"\n", s.id, seeds)
 	}
 	s.peerHub.setSeeds(seeds)
