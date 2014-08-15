@@ -175,7 +175,7 @@ func (s *Server) Run() error {
 	for {
 		switch next {
 		case participantMode:
-			p, err := newParticipant(s.id, s.pubAddr, s.raftPubAddr, s.cfg.DataDir, s.client, s.peerHub, s.tickDuration)
+			p, err := newParticipant(s.id, s.cfg, s.client, s.peerHub, s.tickDuration)
 			if err != nil {
 				log.Printf("id=%x server.run newParicipanteErr=\"%v\"\n", s.id, err)
 				exit = err

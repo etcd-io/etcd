@@ -471,6 +471,8 @@ func (s *testServer) Start() {
 
 	e.pubAddr = s.URL
 	e.raftPubAddr = s.URL
+	e.cfg.Addr = s.URL
+	e.cfg.Peer.Addr = s.URL
 	go e.Run()
 }
 
@@ -547,6 +549,7 @@ func newTestConfig() *conf.Config {
 	c.Peer.Addr = "127.0.0.1:0"
 	c.Peer.HeartbeatInterval = 5
 	c.Peer.ElectionTimeout = 25
+	c.RetryInterval = 1 / 10.0
 	dataDir, err := ioutil.TempDir(os.TempDir(), "etcd")
 	if err != nil {
 		panic(err)
