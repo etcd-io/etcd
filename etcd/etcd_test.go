@@ -120,7 +120,7 @@ func TestRemove(t *testing.T) {
 						t.Fatal(err)
 					}
 				}
-				cl.Node(i).WaitMode(standbyMode, 10)
+				cl.Node(i).WaitMode(standbyMode)
 			}
 			cl.Destroy()
 		}
@@ -193,7 +193,7 @@ func TestSingleNodeRecovery(t *testing.T) {
 	ts.Start()
 	defer ts.Destroy()
 
-	ts.WaitMode(participantMode, 1)
+	ts.WaitMode(participantMode)
 
 	key := "/foo"
 	ev, err := ts.Participant().Set(key, false, "bar", time.Now().Add(time.Second*100))
@@ -204,7 +204,7 @@ func TestSingleNodeRecovery(t *testing.T) {
 
 	ts = testServer{Id: ts.Id, Config: c}
 	ts.Start()
-	ts.WaitMode(participantMode, 1)
+	ts.WaitMode(participantMode)
 	w, err := ts.Participant().Store.Watch(key, false, false, ev.Index())
 	if err != nil {
 		t.Fatal(err)
@@ -252,7 +252,7 @@ func TestRestoreSnapshotFromLeader(t *testing.T) {
 	ts := testServer{Config: c, Id: 1}
 	ts.Start()
 	defer ts.Destroy()
-	ts.WaitMode(participantMode, 1)
+	ts.WaitMode(participantMode)
 
 	// check new proposal could be submitted
 	if _, err := cl.Participant(0).Set("/foo", false, "bar", store.Permanent); err != nil {
@@ -302,9 +302,7 @@ func (c *testCluster) Start() {
 	c.nodes = nodes
 	nodes[0] = &testServer{Id: 0, TLS: c.TLS}
 	nodes[0].Start()
-	if !nodes[0].WaitMode(participantMode, 10) {
-		panic("cannot wait until participantMode")
-	}
+	nodes[0].WaitMode(participantMode)
 
 	seed := nodes[0].URL
 	for i := 1; i < c.Size; i++ {
@@ -319,9 +317,7 @@ func (c *testCluster) Start() {
 		// or this configuration request might be dropped.
 		// Or it could be a slow join because it needs to retry.
 		// TODO: this might not be true if we add param for retry interval.
-		if !s.WaitMode(participantMode, 20) {
-			panic("cannot wait until participantMode")
-		}
+		s.WaitMode(participantMode)
 		w, err := s.Participant().Watch(v2machineKVPrefix, true, false, uint64(i))
 		if err != nil {
 			panic(err)
@@ -478,14 +474,14 @@ func (s *testServer) Start() {
 	go e.Run()
 }
 
-func (s *testServer) WaitMode(mode int64, timeout int) bool {
-	for i := 0; i < timeout+1; i++ {
+func (s *testServer) WaitMode(mode int64) {
+	for i := 0; i < 30; i++ {
 		if s.e.mode.Get() == mode {
-			return true
+			return
 		}
 		time.Sleep(time.Millisecond)
 	}
-	return false
+	panic("waitMode should never take more than 30ms.")
 }
 
 func (s *testServer) Participant() *participant {

@@ -98,7 +98,7 @@ func TestBootstrapByEmptyPeers(t *testing.T) {
 	ts := testServer{Id: id}
 	ts.Start()
 	defer ts.Destroy()
-	ts.WaitMode(participantMode, 3)
+	ts.WaitMode(participantMode)
 	if ts.Participant().node.Leader() != id {
 		t.Errorf("leader = %x, want %x", ts.Participant().node.Leader(), id)
 	}
@@ -114,7 +114,7 @@ func TestBootstrapByDiscoveryService(t *testing.T) {
 	c.Discovery = discoverService.URL(0) + "/v2/keys/_etcd/registry/1"
 	ts := testServer{Id: bootstrapId, Config: c}
 	ts.Start()
-	ts.WaitMode(participantMode, 3)
+	ts.WaitMode(participantMode)
 	err := ts.Destroy()
 	if err != nil {
 		t.Fatalf("server stop err = %v, want nil", err)
@@ -152,7 +152,7 @@ func TestRunByDiscoveryService(t *testing.T) {
 	ts.Start()
 	defer ts.Destroy()
 
-	ts.WaitMode(participantMode, 3)
+	ts.WaitMode(participantMode)
 	// wait for the leader to do a heartbeat
 	// it will update the lead field of the follower
 	time.Sleep(ds.Node(0).e.tickDuration * defaultHeartbeat * 2)

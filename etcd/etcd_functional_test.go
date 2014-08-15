@@ -42,7 +42,7 @@ func TestKillLeader(t *testing.T) {
 				t.Errorf("#%d.%d: lead = %d, want not %d", i, j, g, lead)
 			}
 			cl.Node(int(lead)).Start()
-			cl.Node(int(lead)).WaitMode(participantMode, 3)
+			cl.Node(int(lead)).WaitMode(participantMode)
 		}
 		cl.Destroy()
 	}
@@ -72,7 +72,7 @@ func TestKillRandom(t *testing.T) {
 			cl.Leader()
 			for k := range toKill {
 				cl.Node(int(k)).Start()
-				cl.Node(int(k)).WaitMode(participantMode, 3)
+				cl.Node(int(k)).WaitMode(participantMode)
 			}
 		}
 		cl.Destroy()
@@ -94,7 +94,7 @@ func TestJoinThroughFollower(t *testing.T) {
 			c.Peers = []string{seed}
 			ts := &testServer{Config: c, Id: int64(i)}
 			ts.Start()
-			ts.WaitMode(participantMode, 3)
+			ts.WaitMode(participantMode)
 			cl.nodes = append(cl.nodes, ts)
 			cl.Leader()
 			seed = ts.URL
@@ -138,7 +138,7 @@ func TestFiveNodeKillOneAndRecover(t *testing.T) {
 		cl.Node(i).Stop()
 		cl.Leader()
 		cl.Node(i).Start()
-		cl.Node(i).WaitMode(participantMode, 3)
+		cl.Node(i).WaitMode(participantMode)
 		cl.Leader()
 	}
 	cl.Destroy()
