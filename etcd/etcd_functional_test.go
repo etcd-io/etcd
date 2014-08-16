@@ -17,6 +17,7 @@ limitations under the License.
 package etcd
 
 import (
+	"fmt"
 	"math/rand"
 	"net/url"
 	"reflect"
@@ -36,14 +37,14 @@ func TestKillLeader(t *testing.T) {
 		cl.Start()
 		for j := 0; j < tt; j++ {
 			lead, _ := cl.Leader()
-			cl.Node(int(lead)).Stop()
+			cl.Node(lead).Stop()
 			// wait for leader election timeout
 			time.Sleep(cl.Node(0).e.tickDuration * defaultElection * 2)
 			if g, _ := cl.Leader(); g == lead {
 				t.Errorf("#%d.%d: lead = %d, want not %d", i, j, g, lead)
 			}
-			cl.Node(int(lead)).Start()
-			cl.Node(int(lead)).WaitMode(participantMode)
+			cl.Node(lead).Start()
+			cl.Node(lead).WaitMode(participantMode)
 		}
 		cl.Destroy()
 	}
@@ -92,8 +93,9 @@ func TestJoinThroughFollower(t *testing.T) {
 
 		for i := 1; i < tt; i++ {
 			c := newTestConfig()
+			c.Name = fmt.Sprint(i)
 			c.Peers = []string{seed}
-			ts := &testServer{Config: c, Id: int64(i)}
+			ts := &testServer{Config: c}
 			ts.Start()
 			ts.WaitMode(participantMode)
 			cl.nodes = append(cl.nodes, ts)
@@ -119,8 +121,9 @@ func TestJoinWithoutHTTPScheme(t *testing.T) {
 
 	for i := 1; i < 3; i++ {
 		c := newTestConfig()
+		c.Name = "server-" + fmt.Sprint(i)
 		c.Peers = []string{seed}
-		ts := &testServer{Config: c, Id: int64(i)}
+		ts := &testServer{Config: c}
 		ts.Start()
 		ts.WaitMode(participantMode)
 		cl.nodes = append(cl.nodes, ts)
@@ -140,7 +143,7 @@ func TestClusterConfigReload(t *testing.T) {
 	cc := conf.NewClusterConfig()
 	cc.ActiveSize = 15
 	cc.RemoveDelay = 60
-	if err := cl.Participant(int(lead)).setClusterConfig(cc); err != nil {
+	if err := cl.Participant(lead).setClusterConfig(cc); err != nil {
 		t.Fatalf("setClusterConfig err = %v", err)
 	}
 
@@ -150,7 +153,7 @@ func TestClusterConfigReload(t *testing.T) {
 	lead, _ = cl.Leader()
 	// wait for msgAppResp to commit all entries
 	time.Sleep(2 * defaultHeartbeat * cl.Participant(0).tickDuration)
-	if g := cl.Participant(int(lead)).clusterConfig(); !reflect.DeepEqual(g, cc) {
+	if g := cl.Participant(lead).clusterConfig(); !reflect.DeepEqual(g, cc) {
 		t.Errorf("clusterConfig = %+v, want %+v", g, cc)
 	}
 }

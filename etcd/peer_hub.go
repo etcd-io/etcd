@@ -48,12 +48,12 @@ type peerHub struct {
 	serverStats    *raftServerStats
 }
 
-func newPeerHub(id int64, c *http.Client) *peerHub {
+func newPeerHub(c *http.Client, followersStats *raftFollowersStats) *peerHub {
 	h := &peerHub{
 		peers:          make(map[int64]*peer),
 		seeds:          make(map[string]bool),
 		c:              c,
-		followersStats: NewRaftFollowersStats(fmt.Sprint(id)),
+		followersStats: followersStats,
 	}
 	return h
 }

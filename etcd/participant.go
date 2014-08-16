@@ -87,7 +87,7 @@ type participant struct {
 	*http.ServeMux
 }
 
-func newParticipant(id int64, c *conf.Config, client *v2client, peerHub *peerHub, tickDuration time.Duration) (*participant, error) {
+func newParticipant(c *conf.Config, client *v2client, peerHub *peerHub, tickDuration time.Duration) (*participant, error) {
 	p := &participant{
 		clusterId:    -1,
 		cfg:          c,
@@ -103,7 +103,7 @@ func newParticipant(id int64, c *conf.Config, client *v2client, peerHub *peerHub
 			result: make(map[wait]chan interface{}),
 		},
 		Store:       store.New(),
-		serverStats: NewRaftServerStats(fmt.Sprint(id)),
+		serverStats: NewRaftServerStats(c.Name),
 
 		stopNotifyc: make(chan struct{}),
 
@@ -119,7 +119,7 @@ func newParticipant(id int64, c *conf.Config, client *v2client, peerHub *peerHub
 			return nil, err
 		}
 
-		p.id = id
+		p.id = genId()
 		p.pubAddr = c.Addr
 		p.raftPubAddr = c.Peer.Addr
 		if w, err = wal.New(walPath); err != nil {

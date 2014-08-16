@@ -94,7 +94,7 @@ func TestRemove(t *testing.T) {
 			lead, _ := cl.Leader()
 			config := conf.NewClusterConfig()
 			config.ActiveSize = 0
-			if err := cl.Participant(int(lead)).setClusterConfig(config); err != nil {
+			if err := cl.Participant(lead).setClusterConfig(config); err != nil {
 				t.Fatalf("#%d: setClusterConfig err = %v", k, err)
 			}
 
@@ -102,9 +102,9 @@ func TestRemove(t *testing.T) {
 			// not 100 percent safe in our raft.
 			// TODO(yichengq): improve it later.
 			for i := 0; i < tt-2; i++ {
-				id := int64(i)
+				id := cl.Id(i)
 				for {
-					n := cl.Node(int(id))
+					n := cl.Node(i)
 					if n.e.mode.Get() == standbyMode {
 						break
 					}
@@ -189,7 +189,7 @@ func TestVersionCheck(t *testing.T) {
 func TestSingleNodeRecovery(t *testing.T) {
 	defer afterTest(t)
 	c := newTestConfig()
-	ts := testServer{Id: genId(), Config: c}
+	ts := testServer{Config: c}
 	ts.Start()
 	defer ts.Destroy()
 
@@ -202,7 +202,7 @@ func TestSingleNodeRecovery(t *testing.T) {
 	}
 	ts.Stop()
 
-	ts = testServer{Id: ts.Id, Config: c}
+	ts = testServer{Config: c}
 	ts.Start()
 	ts.WaitMode(participantMode)
 	w, err := ts.Participant().Store.Watch(key, false, false, ev.Index())
@@ -248,8 +248,9 @@ func TestRestoreSnapshotFromLeader(t *testing.T) {
 
 	// create one to join the cluster
 	c := newTestConfig()
+	c.Name = "1"
 	c.Peers = []string{cl.URL(0)}
-	ts := testServer{Config: c, Id: 1}
+	ts := testServer{Config: c}
 	ts.Start()
 	defer ts.Destroy()
 	ts.WaitMode(participantMode)
@@ -300,16 +301,18 @@ func (c *testCluster) Start() {
 
 	nodes := make([]*testServer, c.Size)
 	c.nodes = nodes
-	nodes[0] = &testServer{Id: 0, TLS: c.TLS}
+	cfg := newTestConfig()
+	cfg.Name = "testServer-0"
+	nodes[0] = &testServer{Config: cfg, TLS: c.TLS}
 	nodes[0].Start()
 	nodes[0].WaitMode(participantMode)
 
 	seed := nodes[0].URL
 	for i := 1; i < c.Size; i++ {
 		cfg := newTestConfig()
+		cfg.Name = "testServer-" + fmt.Sprint(i)
 		cfg.Peers = []string{seed}
-		id := int64(i)
-		s := &testServer{Config: cfg, Id: id, TLS: c.TLS}
+		s := &testServer{Config: cfg, TLS: c.TLS}
 		s.Start()
 		nodes[i] = s
 
@@ -332,7 +335,7 @@ func (c *testCluster) wait() {
 	for i := 0; i < size; i++ {
 		for k := 0; k < size; k++ {
 			s := c.Node(i)
-			wp := v2machineKVPrefix + fmt.Sprintf("/%d", c.Node(k).Id)
+			wp := v2machineKVPrefix + fmt.Sprintf("/%d", c.Id(k))
 			w, err := s.Participant().Watch(wp, false, false, 1)
 			if err != nil {
 				panic(err)
@@ -365,6 +368,10 @@ func (c *testCluster) URL(i int) string {
 	return c.nodes[i].h.URL
 }
 
+func (c *testCluster) Id(i int) int64 {
+	return c.Participant(i).id
+}
+
 func (c *testCluster) Restart() {
 	for _, s := range c.nodes {
 		s.Start()
@@ -383,20 +390,23 @@ func (c *testCluster) Destroy() {
 	}
 }
 
-func (c *testCluster) Leader() (lead, term int64) {
+// Leader returns the index of leader in the cluster and its leader term.
+func (c *testCluster) Leader() (leadIdx int, term int64) {
+	ids := make(map[int64]int)
 	for {
 		ls := make([]leadterm, 0, c.Size)
 		for i := range c.nodes {
 			switch c.Node(i).e.mode.Get() {
 			case participantMode:
 				ls = append(ls, c.Node(i).Lead())
+				ids[c.Id(i)] = i
 			case standbyMode:
 				//TODO(xiangli) add standby support
 			case stopMode:
 			}
 		}
 		if isSameLead(ls) {
-			return ls[0].lead, ls[0].term
+			return ids[ls[0].lead], ls[0].term
 		}
 		time.Sleep(c.Node(0).e.tickDuration * defaultElection)
 	}
@@ -424,7 +434,6 @@ func isSameLead(ls []leadterm) bool {
 
 type testServer struct {
 	Config *conf.Config
-	Id     int64
 	TLS    bool
 
 	// base URL of form http://ipaddr:port with no trailing slash
@@ -452,7 +461,6 @@ func (s *testServer) Start() {
 		panic(err)
 	}
 	s.e = e
-	e.setId(s.Id)
 	tick := time.Duration(c.Peer.HeartbeatInterval) * time.Millisecond
 	e.SetTick(tick)
 

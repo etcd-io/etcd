@@ -28,7 +28,7 @@ import (
 )
 
 const (
-	bootstrapId = 0xBEEF
+	bootstrapName = "BEEF"
 )
 
 type garbageHandler struct {
@@ -39,7 +39,7 @@ type garbageHandler struct {
 
 func (g *garbageHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, "Hello, client")
-	wp := fmt.Sprint("/v2/keys/_etcd/registry/1/", bootstrapId)
+	wp := fmt.Sprint("/v2/keys/_etcd/registry/1/", bootstrapName)
 	if gp := r.URL.String(); gp != wp {
 		g.t.Fatalf("url = %s, want %s", gp, wp)
 	}
@@ -56,8 +56,9 @@ func TestBadDiscoveryService(t *testing.T) {
 	defer httpts.Close()
 
 	c := newTestConfig()
+	c.Name = bootstrapName
 	c.Discovery = httpts.URL + "/v2/keys/_etcd/registry/1"
-	ts := testServer{Config: c, Id: bootstrapId}
+	ts := testServer{Config: c}
 	ts.Start()
 
 	err := ts.Destroy()
@@ -80,9 +81,10 @@ func TestBadDiscoveryServiceWithAdvisedPeers(t *testing.T) {
 	defer httpts.Close()
 
 	c := newTestConfig()
+	c.Name = bootstrapName
 	c.Discovery = httpts.URL + "/v2/keys/_etcd/registry/1"
 	c.Peers = []string{"a peer"}
-	ts := testServer{Config: c, Id: bootstrapId}
+	ts := testServer{Config: c}
 	ts.Start()
 
 	err := ts.Destroy()
@@ -94,13 +96,12 @@ func TestBadDiscoveryServiceWithAdvisedPeers(t *testing.T) {
 
 func TestBootstrapByEmptyPeers(t *testing.T) {
 	defer afterTest(t)
-	id := genId()
-	ts := testServer{Id: id}
+	ts := testServer{}
 	ts.Start()
 	defer ts.Destroy()
 	ts.WaitMode(participantMode)
-	if ts.Participant().node.Leader() != id {
-		t.Errorf("leader = %x, want %x", ts.Participant().node.Leader(), id)
+	if ts.Participant().node.Leader() != ts.Participant().id {
+		t.Errorf("leader = %x, want %x", ts.Participant().node.Leader(), ts.Participant().id)
 	}
 }
 
@@ -111,8 +112,9 @@ func TestBootstrapByDiscoveryService(t *testing.T) {
 	defer discoverService.Destroy()
 
 	c := newTestConfig()
+	c.Name = bootstrapName
 	c.Discovery = discoverService.URL(0) + "/v2/keys/_etcd/registry/1"
-	ts := testServer{Id: bootstrapId, Config: c}
+	ts := testServer{Config: c}
 	ts.Start()
 	ts.WaitMode(participantMode)
 	err := ts.Destroy()
@@ -147,8 +149,9 @@ func TestRunByDiscoveryService(t *testing.T) {
 	resp.Body.Close()
 
 	c := newTestConfig()
+	c.Name = bootstrapName
 	c.Discovery = ds.URL(0) + "/v2/keys/_etcd/registry/1"
-	ts := testServer{Config: c, Id: bootstrapId}
+	ts := testServer{Config: c}
 	ts.Start()
 	defer ts.Destroy()
 

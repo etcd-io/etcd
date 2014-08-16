@@ -37,7 +37,7 @@ const (
 
 type Server struct {
 	cfg          *conf.Config
-	id           int64
+	name         string
 	pubAddr      string
 	raftPubAddr  string
 	tickDuration time.Duration
@@ -80,7 +80,7 @@ func New(c *conf.Config) (*Server, error) {
 
 	s := &Server{
 		cfg:          c,
-		id:           genId(),
+		name:         c.Name,
 		pubAddr:      c.Addr,
 		raftPubAddr:  c.Peer.Addr,
 		tickDuration: defaultTickDuration,
@@ -92,13 +92,14 @@ func New(c *conf.Config) (*Server, error) {
 		exited:      make(chan error, 1),
 		stopNotifyc: make(chan struct{}),
 	}
-	s.peerHub = newPeerHub(s.id, client)
+	followersStats := NewRaftFollowersStats(s.name)
+	s.peerHub = newPeerHub(client, followersStats)
 	m := http.NewServeMux()
 	m.HandleFunc("/", s.requestHandler)
 	m.HandleFunc("/version", versionHandler)
 	s.Handler = m
 
-	log.Printf("id=%x server.new raftPubAddr=%s\n", s.id, s.raftPubAddr)
+	log.Printf("name=%s server.new raftPubAddr=%s\n", s.name, s.raftPubAddr)
 	if err = os.MkdirAll(s.cfg.DataDir, 0700); err != nil {
 		if !os.IsExist(err) {
 			return nil, err
@@ -109,7 +110,7 @@ func New(c *conf.Config) (*Server, error) {
 
 func (s *Server) SetTick(tick time.Duration) {
 	s.tickDuration = tick
-	log.Printf("id=%x server.setTick tick=%q\n", s.id, s.tickDuration)
+	log.Printf("name=%s server.setTick tick=%q\n", s.name, s.tickDuration)
 }
 
 // Stop stops the server elegently.
@@ -118,7 +119,7 @@ func (s *Server) Stop() error {
 	close(s.stopNotifyc)
 	err := <-s.exited
 	s.client.CloseConnections()
-	log.Printf("id=%x server.stop\n", s.id)
+	log.Printf("name=%s server.stop\n", s.name)
 	return err
 }
 
@@ -159,17 +160,17 @@ func (s *Server) Run() error {
 			exit = err
 			return fmt.Errorf("bad discovery URL error: %v", err)
 		}
-		d = newDiscoverer(u, fmt.Sprint(s.id), s.raftPubAddr)
+		d = newDiscoverer(u, s.name, s.raftPubAddr)
 		if seeds, err = d.discover(); err != nil {
 			exit = err
 			return err
 		}
-		log.Printf("id=%x server.run source=-discovery seeds=\"%v\"\n", s.id, seeds)
+		log.Printf("name=%s server.run source=-discovery seeds=%q", s.name, seeds)
 	} else {
 		for _, p := range s.cfg.Peers {
 			u, err := url.Parse(p)
 			if err != nil {
-				log.Printf("id=%x server.run err=%q", err)
+				log.Printf("name=%s server.run err=%q", s.name, err)
 				continue
 			}
 			if u.Scheme == "" {
@@ -177,7 +178,7 @@ func (s *Server) Run() error {
 			}
 			seeds = append(seeds, u.String())
 		}
-		log.Printf("id=%x server.run source=-peers seeds=\"%v\"\n", s.id, seeds)
+		log.Printf("name=%s server.run source=-peers seeds=%q", s.name, seeds)
 	}
 	s.peerHub.setSeeds(seeds)
 
@@ -185,15 +186,15 @@ func (s *Server) Run() error {
 	for {
 		switch next {
 		case participantMode:
-			p, err := newParticipant(s.id, s.cfg, s.client, s.peerHub, s.tickDuration)
+			p, err := newParticipant(s.cfg, s.client, s.peerHub, s.tickDuration)
 			if err != nil {
-				log.Printf("id=%x server.run newParicipanteErr=\"%v\"\n", s.id, err)
+				log.Printf("name=%s server.run newParicipanteErr=\"%v\"\n", s.name, err)
 				exit = err
 				return err
 			}
 			s.p = p
 			s.mode.Set(participantMode)
-			log.Printf("id=%x server.run mode=participantMode\n", s.id)
+			log.Printf("name=%s server.run mode=participantMode\n", s.name)
 			dStopc := make(chan struct{})
 			if d != nil {
 				go d.heartbeat(dStopc)
@@ -206,7 +207,7 @@ func (s *Server) Run() error {
 		case standbyMode:
 			s.s = newStandby(s.client, s.peerHub)
 			s.mode.Set(standbyMode)
-			log.Printf("id=%x server.run mode=standbyMode\n", s.id)
+			log.Printf("name=%s server.run mode=standbyMode\n", s.name)
 			s.s.run(s.stopNotifyc)
 			next = participantMode
 		default:
@@ -215,12 +216,5 @@ func (s *Server) Run() error {
 		if s.mode.Get() == stopMode {
 			return nil
 		}
-		s.id = genId()
 	}
-}
-
-// setId sets the id for the participant. This should only be used for testing.
-func (s *Server) setId(id int64) {
-	log.Printf("id=%x server.setId oldId=%x\n", id, s.id)
-	s.id = id
 }
