@@ -51,19 +51,33 @@ func TestStoreGetDirectory(t *testing.T) {
 	assert.Equal(t, e.Action, "get", "")
 	assert.Equal(t, e.Node.Key, "/foo", "")
 	assert.Equal(t, len(e.Node.Nodes), 2, "")
-	assert.Equal(t, e.Node.Nodes[0].Key, "/foo/bar", "")
-	assert.Equal(t, *e.Node.Nodes[0].Value, "X", "")
-	assert.Equal(t, e.Node.Nodes[0].Dir, false, "")
-	assert.Equal(t, e.Node.Nodes[1].Key, "/foo/baz", "")
-	assert.Equal(t, e.Node.Nodes[1].Dir, true, "")
-	assert.Equal(t, len(e.Node.Nodes[1].Nodes), 2, "")
-	assert.Equal(t, e.Node.Nodes[1].Nodes[0].Key, "/foo/baz/bat", "")
-	assert.Equal(t, *e.Node.Nodes[1].Nodes[0].Value, "Y", "")
-	assert.Equal(t, e.Node.Nodes[1].Nodes[0].Dir, false, "")
-	assert.Equal(t, e.Node.Nodes[1].Nodes[1].Key, "/foo/baz/ttl", "")
-	assert.Equal(t, *e.Node.Nodes[1].Nodes[1].Value, "Y", "")
-	assert.Equal(t, e.Node.Nodes[1].Nodes[1].Dir, false, "")
-	assert.Equal(t, e.Node.Nodes[1].Nodes[1].TTL, 3, "")
+	var bazNodes NodeExterns
+	for _, node := range e.Node.Nodes {
+		switch node.Key {
+		case "/foo/bar":
+			assert.Equal(t, *node.Value, "X", "")
+			assert.Equal(t, node.Dir, false, "")
+		case "/foo/baz":
+			assert.Equal(t, node.Dir, true, "")
+			assert.Equal(t, len(node.Nodes), 2, "")
+			bazNodes = node.Nodes
+		default:
+			t.Errorf("key = %s, not matched", node.Key)
+		}
+	}
+	for _, node := range bazNodes {
+		switch node.Key {
+		case "/foo/baz/bat":
+			assert.Equal(t, *node.Value, "Y", "")
+			assert.Equal(t, node.Dir, false, "")
+		case "/foo/baz/ttl":
+			assert.Equal(t, *node.Value, "Y", "")
+			assert.Equal(t, node.Dir, false, "")
+			assert.Equal(t, node.TTL, 3, "")
+		default:
+			t.Errorf("key = %s, not matched", node.Key)
+		}
+	}
 }
 
 // Ensure that the store can retrieve a directory in sorted order.
@@ -77,11 +91,25 @@ func TestStoreGetSorted(t *testing.T) {
 	s.Create("/foo/y/b", false, "0", false, Permanent)
 	e, err := s.Get("/foo", true, true)
 	assert.Nil(t, err, "")
-	assert.Equal(t, e.Node.Nodes[0].Key, "/foo/x", "")
-	assert.Equal(t, e.Node.Nodes[1].Key, "/foo/y", "")
-	assert.Equal(t, e.Node.Nodes[1].Nodes[0].Key, "/foo/y/a", "")
-	assert.Equal(t, e.Node.Nodes[1].Nodes[1].Key, "/foo/y/b", "")
-	assert.Equal(t, e.Node.Nodes[2].Key, "/foo/z", "")
+	var yNodes NodeExterns
+	for _, node := range e.Node.Nodes {
+		switch node.Key {
+		case "/foo/x":
+		case "/foo/y":
+			yNodes = node.Nodes
+		case "/foo/z":
+		default:
+			t.Errorf("key = %s, not matched", node.Key)
+		}
+	}
+	for _, node := range yNodes {
+		switch node.Key {
+		case "/foo/y/a":
+		case "/foo/y/b":
+		default:
+			t.Errorf("key = %s, not matched", node.Key)
+		}
+	}
 }
 
 func TestSet(t *testing.T) {
