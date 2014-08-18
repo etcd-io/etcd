@@ -492,7 +492,7 @@ func stepFollower(sm *stateMachine, m Message) bool {
 }
 
 func (sm *stateMachine) compact(d []byte) {
-	sm.raftLog.snap(d, sm.raftLog.applied, sm.raftLog.term(sm.raftLog.applied), sm.nodes())
+	sm.raftLog.snap(d, sm.clusterId, sm.raftLog.applied, sm.raftLog.term(sm.raftLog.applied), sm.nodes())
 	sm.raftLog.compact(sm.raftLog.applied)
 }
 
@@ -505,6 +505,7 @@ func (sm *stateMachine) restore(s Snapshot) bool {
 
 	sm.raftLog.restore(s)
 	sm.index.Set(sm.raftLog.lastIndex())
+	sm.clusterId = s.ClusterId
 	sm.ins = make(map[int64]*index)
 	for _, n := range s.Nodes {
 		if n == sm.id {
