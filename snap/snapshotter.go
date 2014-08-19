@@ -82,6 +82,7 @@ func (s *Snapshotter) Load() (*raft.Snapshot, error) {
 		}
 		if err = json.Unmarshal(serializedSnap.Data, &snap); err != nil {
 			log.Printf("Corruptted snapshot file %v: %v", name, err)
+			continue
 		}
 		break
 	}
