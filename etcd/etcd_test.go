@@ -250,10 +250,8 @@ func TestRestoreSnapshotFromLeader(t *testing.T) {
 	c := newTestConfig()
 	c.Name = "1"
 	c.Peers = []string{cl.URL(0)}
-	ts := testServer{Config: c}
-	ts.Start()
-	defer ts.Destroy()
-	ts.WaitMode(participantMode)
+	ts := &testServer{Config: c}
+	cl.Add(ts)
 
 	// check new proposal could be submitted
 	if _, err := cl.Participant(0).Set("/foo", false, "bar", store.Permanent); err != nil {
@@ -280,6 +278,7 @@ func TestRestoreSnapshotFromLeader(t *testing.T) {
 	}
 	<-wch.EventChan
 
+	// check node map of two machines are the same
 	g := ts.Participant().node.Nodes()
 	w := cl.Participant(0).node.Nodes()
 	if !reflect.DeepEqual(g, w) {
@@ -350,6 +349,20 @@ func (c *testCluster) wait() {
 			panic(fmt.Sprintf("#%d: clusterId = %x, want %x", i, g, clusterId))
 		}
 	}
+}
+
+func (c *testCluster) Add(s *testServer) {
+	lead, _ := c.Leader()
+	// wait for the node to join the cluster
+	// TODO(yichengq): remove this when we get rid of all timeouts
+	wch, err := c.Participant(int(lead)).Watch(v2machineKVPrefix, true, false, 0)
+	if err != nil {
+		panic(err)
+	}
+	s.Start()
+	<-wch.EventChan
+	c.Size++
+	c.nodes = append(c.nodes, s)
 }
 
 func (c *testCluster) Node(i int) *testServer {

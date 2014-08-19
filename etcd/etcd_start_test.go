@@ -151,11 +151,9 @@ func TestRunByDiscoveryService(t *testing.T) {
 	c := newTestConfig()
 	c.Name = bootstrapName
 	c.Discovery = ds.URL(0) + "/v2/keys/_etcd/registry/1"
-	ts := testServer{Config: c}
-	ts.Start()
-	defer ts.Destroy()
+	ts := &testServer{Config: c}
+	ds.Add(ts)
 
-	ts.WaitMode(participantMode)
 	// wait for the leader to do a heartbeat
 	// it will update the lead field of the follower
 	time.Sleep(ds.Node(0).e.tickDuration * defaultHeartbeat * 2)
