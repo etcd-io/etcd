@@ -61,8 +61,8 @@ func (s *Snapshotter) Load() (*raft.Snapshot, error) {
 	}
 	sort.Sort(sort.Reverse(sort.StringSlice(names)))
 
-	var snapshot raft.Snapshot
-	var snap Snapshot
+	var snap raft.Snapshot
+	var serializedSnap Snapshot
 	var b []byte
 	for _, name := range names {
 		b, err = ioutil.ReadFile(path.Join(s.dir, name))
@@ -70,17 +70,17 @@ func (s *Snapshotter) Load() (*raft.Snapshot, error) {
 			log.Printf("Snapshotter cannot read file %v: %v", name, err)
 			continue
 		}
-		if err = snap.Unmarshal(b); err != nil {
+		if err = serializedSnap.Unmarshal(b); err != nil {
 			log.Printf("Corruptted snapshot file %v: %v", name, err)
 			continue
 		}
-		crc := crc32.Update(0, crcTable, snap.Data)
-		if crc != snap.Crc {
+		crc := crc32.Update(0, crcTable, serializedSnap.Data)
+		if crc != serializedSnap.Crc {
 			log.Printf("Corruptted snapshot file %v: crc mismatch", name)
 			err = ErrCRCMismatch
 			continue
 		}
-		if err = json.Unmarshal(snap.Data, &snapshot); err != nil {
+		if err = json.Unmarshal(serializedSnap.Data, &snap); err != nil {
 			log.Printf("Corruptted snapshot file %v: %v", name, err)
 		}
 		break
@@ -88,5 +88,5 @@ func (s *Snapshotter) Load() (*raft.Snapshot, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &snapshot, nil
+	return &snap, nil
 }
