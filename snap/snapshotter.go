@@ -71,17 +71,17 @@ func (s *Snapshotter) Load() (*raft.Snapshot, error) {
 			continue
 		}
 		if err = serializedSnap.Unmarshal(b); err != nil {
-			log.Printf("Corruptted snapshot file %v: %v", name, err)
+			log.Printf("Corrupted snapshot file %v: %v", name, err)
 			continue
 		}
 		crc := crc32.Update(0, crcTable, serializedSnap.Data)
 		if crc != serializedSnap.Crc {
-			log.Printf("Corruptted snapshot file %v: crc mismatch", name)
+			log.Printf("Corrupted snapshot file %v: crc mismatch", name)
 			err = ErrCRCMismatch
 			continue
 		}
 		if err = json.Unmarshal(serializedSnap.Data, &snap); err != nil {
-			log.Printf("Corruptted snapshot file %v: %v", name, err)
+			log.Printf("Corrupted snapshot file %v: %v", name, err)
 			continue
 		}
 		break
