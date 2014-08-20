@@ -22,10 +22,13 @@ var testSnap = &raft.Snapshot{
 
 func TestSaveAndLoad(t *testing.T) {
 	dir := path.Join(os.TempDir(), "snapshot")
-	os.Mkdir(dir, 0700)
+	err := os.Mkdir(dir, 0700)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer os.RemoveAll(dir)
 	ss := New(dir)
-	err := ss.Save(testSnap)
+	err = ss.Save(testSnap)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -41,10 +44,13 @@ func TestSaveAndLoad(t *testing.T) {
 
 func TestBadCRC(t *testing.T) {
 	dir := path.Join(os.TempDir(), "snapshot")
-	os.Mkdir(dir, 0700)
+	err := os.Mkdir(dir, 0700)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer os.RemoveAll(dir)
 	ss := New(dir)
-	err := ss.Save(testSnap)
+	err = ss.Save(testSnap)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -61,11 +67,14 @@ func TestBadCRC(t *testing.T) {
 
 func TestFailback(t *testing.T) {
 	dir := path.Join(os.TempDir(), "snapshot")
-	os.Mkdir(dir, 0700)
+	err := os.Mkdir(dir, 0700)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer os.RemoveAll(dir)
 
 	large := fmt.Sprintf("%016x-%016x-%016x.snap", 0xFFFF, 0xFFFF, 0xFFFF)
-	err := ioutil.WriteFile(path.Join(dir, large), []byte("bad data"), 0666)
+	err = ioutil.WriteFile(path.Join(dir, large), []byte("bad data"), 0666)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -87,7 +96,10 @@ func TestFailback(t *testing.T) {
 
 func TestSnapNames(t *testing.T) {
 	dir := path.Join(os.TempDir(), "snapshot")
-	os.Mkdir(dir, 0700)
+	err := os.Mkdir(dir, 0700)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer os.RemoveAll(dir)
 	for i := 1; i <= 5; i++ {
 		if f, err := os.Create(path.Join(dir, fmt.Sprintf("%d", i))); err != nil {
@@ -112,10 +124,13 @@ func TestSnapNames(t *testing.T) {
 
 func TestLoadNewestSnap(t *testing.T) {
 	dir := path.Join(os.TempDir(), "snapshot")
-	os.Mkdir(dir, 0700)
+	err := os.Mkdir(dir, 0700)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer os.RemoveAll(dir)
 	ss := New(dir)
-	err := ss.Save(testSnap)
+	err = ss.Save(testSnap)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -138,10 +153,13 @@ func TestLoadNewestSnap(t *testing.T) {
 
 func TestNoSnapshot(t *testing.T) {
 	dir := path.Join(os.TempDir(), "snapshot")
-	os.Mkdir(dir, 0700)
+	err := os.Mkdir(dir, 0700)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer os.RemoveAll(dir)
 	ss := New(dir)
-	_, err := ss.Load()
+	_, err = ss.Load()
 	if err == nil || err != ErrNoSnapshot {
 		t.Errorf("err = %v, want %v", err, ErrNoSnapshot)
 	}
