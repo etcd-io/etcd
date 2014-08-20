@@ -47,20 +47,10 @@ func (s *Snapshotter) Save(snapshot *raft.Snapshot) error {
 }
 
 func (s *Snapshotter) Load() (*raft.Snapshot, error) {
-	dir, err := os.Open(s.dir)
+	names, err := s.snapNames()
 	if err != nil {
 		return nil, err
 	}
-	defer dir.Close()
-	names, err := dir.Readdirnames(-1)
-	if err != nil {
-		return nil, err
-	}
-	if len(names) == 0 {
-		return nil, ErrNoSnapshot
-	}
-	sort.Sort(sort.Reverse(sort.StringSlice(names)))
-
 	var snap raft.Snapshot
 	var serializedSnap Snapshot
 	var b []byte
@@ -90,4 +80,23 @@ func (s *Snapshotter) Load() (*raft.Snapshot, error) {
 		return nil, err
 	}
 	return &snap, nil
+}
+
+// snapNames returns the filename of the snapshots in logical time order (from newest to oldest).
+// If there is no avaliable snapshots, an ErrNoSnapshot will be returned.
+func (s *Snapshotter) snapNames() ([]string, error) {
+	dir, err := os.Open(s.dir)
+	if err != nil {
+		return nil, err
+	}
+	defer dir.Close()
+	names, err := dir.Readdirnames(-1)
+	if err != nil {
+		return nil, err
+	}
+	if len(names) == 0 {
+		return nil, ErrNoSnapshot
+	}
+	sort.Sort(sort.Reverse(sort.StringSlice(names)))
+	return names, nil
 }

@@ -85,6 +85,31 @@ func TestFailback(t *testing.T) {
 	}
 }
 
+func TestSnapNames(t *testing.T) {
+	dir := path.Join(os.TempDir(), "snapshot")
+	os.Mkdir(dir, 0700)
+	defer os.RemoveAll(dir)
+	for i := 1; i <= 5; i++ {
+		if f, err := os.Create(path.Join(dir, fmt.Sprintf("%d", i))); err != nil {
+			t.Fatal(err)
+		} else {
+			f.Close()
+		}
+	}
+	ss := New(dir)
+	names, err := ss.snapNames()
+	if err != nil {
+		t.Errorf("err = %v, want nil", err)
+	}
+	if len(names) != 5 {
+		t.Errorf("len = %d, want 10", len(names))
+	}
+	w := []string{"5", "4", "3", "2", "1"}
+	if !reflect.DeepEqual(names, w) {
+		t.Errorf("names = %v, want %v", names, w)
+	}
+}
+
 func TestLoadNewestSnap(t *testing.T) {
 	dir := path.Join(os.TempDir(), "snapshot")
 	os.Mkdir(dir, 0700)
