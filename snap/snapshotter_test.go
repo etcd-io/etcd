@@ -64,7 +64,7 @@ func TestFailback(t *testing.T) {
 	os.Mkdir(dir, 0700)
 	defer os.RemoveAll(dir)
 
-	large := fmt.Sprintf("%016x%016x%016x.snap", 0xFFFF, 0xFFFF, 0xFFFF)
+	large := fmt.Sprintf("%016x-%016x-%016x.snap", 0xFFFF, 0xFFFF, 0xFFFF)
 	err := ioutil.WriteFile(path.Join(dir, large), []byte("bad data"), 0666)
 	if err != nil {
 		t.Fatal(err)

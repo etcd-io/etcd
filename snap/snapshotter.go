@@ -31,7 +31,7 @@ func New(dir string) *Snapshotter {
 }
 
 func (s *Snapshotter) Save(snapshot *raft.Snapshot) error {
-	n := fmt.Sprintf("%016x%016x%016x.snap", snapshot.ClusterId, snapshot.Term, snapshot.Index)
+	fname := fmt.Sprintf("%016x-%016x-%016x.snap", snapshot.ClusterId, snapshot.Term, snapshot.Index)
 	// TODO(xiangli): make raft.Snapshot a protobuf type
 	b, err := json.Marshal(snapshot)
 	if err != nil {
@@ -43,7 +43,7 @@ func (s *Snapshotter) Save(snapshot *raft.Snapshot) error {
 	if err != nil {
 		return err
 	}
-	return ioutil.WriteFile(path.Join(s.dir, n), d, 0666)
+	return ioutil.WriteFile(path.Join(s.dir, fname), d, 0666)
 }
 
 func (s *Snapshotter) Load() (*raft.Snapshot, error) {
