@@ -56,37 +56,47 @@ func (s *Snapshotter) Load() (*raft.Snapshot, error) {
 	if err != nil {
 		return nil, err
 	}
-	var snap raft.Snapshot
-	var serializedSnap Snapshot
-	var b []byte
+	var snap *raft.Snapshot
 	for _, name := range names {
-		fpath := path.Join(s.dir, name)
-		b, err = ioutil.ReadFile(fpath)
-		if err != nil {
-			log.Printf("Snapshotter cannot read file %v: %v", name, err)
-			renameBroken(fpath)
-			continue
+		if snap, err = loadSnap(s.dir, name); err == nil {
+			break
 		}
-		if err = serializedSnap.Unmarshal(b); err != nil {
-			log.Printf("Corrupted snapshot file %v: %v", name, err)
-			renameBroken(fpath)
-			continue
-		}
-		crc := crc32.Update(0, crcTable, serializedSnap.Data)
-		if crc != serializedSnap.Crc {
-			log.Printf("Corrupted snapshot file %v: crc mismatch", name)
-			renameBroken(fpath)
-			err = ErrCRCMismatch
-			continue
-		}
-		if err = json.Unmarshal(serializedSnap.Data, &snap); err != nil {
-			log.Printf("Corrupted snapshot file %v: %v", name, err)
-			renameBroken(fpath)
-			continue
-		}
-		break
 	}
+	return snap, err
+}
+
+func loadSnap(dir, name string) (*raft.Snapshot, error) {
+	var err error
+	var b []byte
+
+	fpath := path.Join(dir, name)
+	defer func() {
+		if err != nil {
+			renameBroken(fpath)
+		}
+	}()
+
+	b, err = ioutil.ReadFile(fpath)
 	if err != nil {
+		log.Printf("Snapshotter cannot read file %v: %v", name, err)
+		return nil, err
+	}
+
+	var serializedSnap Snapshot
+	if err = serializedSnap.Unmarshal(b); err != nil {
+		log.Printf("Corrupted snapshot file %v: %v", name, err)
+		return nil, err
+	}
+	crc := crc32.Update(0, crcTable, serializedSnap.Data)
+	if crc != serializedSnap.Crc {
+		log.Printf("Corrupted snapshot file %v: crc mismatch", name)
+		err = ErrCRCMismatch
+		return nil, err
+	}
+
+	var snap raft.Snapshot
+	if err = json.Unmarshal(serializedSnap.Data, &snap); err != nil {
+		log.Printf("Corrupted snapshot file %v: %v", name, err)
 		return nil, err
 	}
 	return &snap, nil
