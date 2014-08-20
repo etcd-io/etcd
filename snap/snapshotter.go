@@ -10,8 +10,13 @@ import (
 	"os"
 	"path"
 	"sort"
+	"strings"
 
 	"github.com/coreos/etcd/raft"
+)
+
+const (
+	snapSuffix = ".snap"
 )
 
 var (
@@ -31,7 +36,7 @@ func New(dir string) *Snapshotter {
 }
 
 func (s *Snapshotter) Save(snapshot *raft.Snapshot) error {
-	fname := fmt.Sprintf("%016x-%016x-%016x.snap", snapshot.ClusterId, snapshot.Term, snapshot.Index)
+	fname := fmt.Sprintf("%016x-%016x-%016x%s", snapshot.ClusterId, snapshot.Term, snapshot.Index, snapSuffix)
 	// TODO(xiangli): make raft.Snapshot a protobuf type
 	b, err := json.Marshal(snapshot)
 	if err != nil {
@@ -55,23 +60,28 @@ func (s *Snapshotter) Load() (*raft.Snapshot, error) {
 	var serializedSnap Snapshot
 	var b []byte
 	for _, name := range names {
-		b, err = ioutil.ReadFile(path.Join(s.dir, name))
+		fpath := path.Join(s.dir, name)
+		b, err = ioutil.ReadFile(fpath)
 		if err != nil {
 			log.Printf("Snapshotter cannot read file %v: %v", name, err)
+			renameBroken(fpath)
 			continue
 		}
 		if err = serializedSnap.Unmarshal(b); err != nil {
 			log.Printf("Corrupted snapshot file %v: %v", name, err)
+			renameBroken(fpath)
 			continue
 		}
 		crc := crc32.Update(0, crcTable, serializedSnap.Data)
 		if crc != serializedSnap.Crc {
 			log.Printf("Corrupted snapshot file %v: crc mismatch", name)
+			renameBroken(fpath)
 			err = ErrCRCMismatch
 			continue
 		}
 		if err = json.Unmarshal(serializedSnap.Data, &snap); err != nil {
 			log.Printf("Corrupted snapshot file %v: %v", name, err)
+			renameBroken(fpath)
 			continue
 		}
 		break
@@ -94,9 +104,29 @@ func (s *Snapshotter) snapNames() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	if len(names) == 0 {
+	snaps := checkSuffix(names)
+	if len(snaps) == 0 {
 		return nil, ErrNoSnapshot
 	}
-	sort.Sort(sort.Reverse(sort.StringSlice(names)))
-	return names, nil
+	sort.Sort(sort.Reverse(sort.StringSlice(snaps)))
+	return snaps, nil
+}
+
+func checkSuffix(names []string) []string {
+	snaps := []string{}
+	for i := range names {
+		if strings.HasSuffix(names[i], snapSuffix) {
+			snaps = append(snaps, names[i])
+		} else {
+			log.Printf("Unexpected non-snap file %v", names[i])
+		}
+	}
+	return snaps
+}
+
+func renameBroken(path string) {
+	brokenPath := path + ".broken"
+	if err := os.Rename(path, brokenPath); err != nil {
+		log.Printf("Cannot rename broken snapshot file %v to %v: %v", path, brokenPath, err)
+	}
 }

@@ -92,6 +92,11 @@ func TestFailback(t *testing.T) {
 	if !reflect.DeepEqual(g, testSnap) {
 		t.Errorf("snap = %#v, want %#v", g, testSnap)
 	}
+	if f, err := os.Open(path.Join(dir, large) + ".broken"); err != nil {
+		t.Fatal("broken snapshot does not exist")
+	} else {
+		f.Close()
+	}
 }
 
 func TestSnapNames(t *testing.T) {
@@ -102,7 +107,7 @@ func TestSnapNames(t *testing.T) {
 	}
 	defer os.RemoveAll(dir)
 	for i := 1; i <= 5; i++ {
-		if f, err := os.Create(path.Join(dir, fmt.Sprintf("%d", i))); err != nil {
+		if f, err := os.Create(path.Join(dir, fmt.Sprintf("%d.snap", i))); err != nil {
 			t.Fatal(err)
 		} else {
 			f.Close()
@@ -116,7 +121,7 @@ func TestSnapNames(t *testing.T) {
 	if len(names) != 5 {
 		t.Errorf("len = %d, want 10", len(names))
 	}
-	w := []string{"5", "4", "3", "2", "1"}
+	w := []string{"5.snap", "4.snap", "3.snap", "2.snap", "1.snap"}
 	if !reflect.DeepEqual(names, w) {
 		t.Errorf("names = %v, want %v", names, w)
 	}
