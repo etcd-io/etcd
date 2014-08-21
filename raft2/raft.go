@@ -32,3 +32,4 @@ func (sm *raft) hasLeader() bool               { return false }
 func (sm *raft) step(m Message)                {}
 func (sm *raft) resetState()                   {}
 func (sm *raft) propose(id int64, data []byte) {}
+func (sm *raft) tick()                         {}

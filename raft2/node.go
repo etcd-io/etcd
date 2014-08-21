@@ -19,6 +19,7 @@ type Node struct {
 	propc  chan proposal
 	recvc  chan Message
 	statec chan stateResp
+	tickc  chan struct{}
 }
 
 func Start(ctx context.Context, name string, election, heartbeat int) *Node {
@@ -27,6 +28,7 @@ func Start(ctx context.Context, name string, election, heartbeat int) *Node {
 		propc:  make(chan proposal),
 		recvc:  make(chan Message),
 		statec: make(chan stateResp),
+		tickc:  make(chan struct{}),
 	}
 	r := &raft{
 		name:      name,
@@ -55,11 +57,22 @@ func (n *Node) run(r *raft) {
 			r.propose(p.id, p.data)
 		case m := <-n.recvc:
 			r.step(m)
+		case <-n.tickc:
+			r.tick()
 		case n.statec <- stateResp{r.State, r.ents, r.msgs}:
 			r.resetState()
 		case <-n.ctx.Done():
 			return
 		}
+	}
+}
+
+func (n *Node) Tick() error {
+	select {
+	case n.tickc <- struct{}{}:
+		return nil
+	case <-n.ctx.Done():
+		return n.ctx.Err()
 	}
 }
 
@@ -83,7 +96,7 @@ func (n *Node) Step(m Message) error {
 	}
 }
 
-// ReadMessages returns the current point-in-time state.
+// ReadState returns the current point-in-time state.
 func (n *Node) ReadState() (State, []Entry, []Message, error) {
 	select {
 	case sr := <-n.statec:
