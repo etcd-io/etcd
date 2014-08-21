@@ -96,7 +96,7 @@ You have successfully started an etcd on a single machine and written a key to t
 
 - Mailing list: [etcd-dev](https://groups.google.com/forum/?hl=en#!forum/etcd-dev)
 - IRC: #[coreos](irc://irc.freenode.org:6667/#coreos) on freenode.org
-- Planning/Roadmap: [milestones](https://github.com/coreos/etcd/issues/milestones)
+- Planning/Roadmap: [milestones](https://github.com/coreos/etcd/milestones)
 - Bugs: [issues](https://github.com/coreos/etcd/issues)
 
 ## Contributing
