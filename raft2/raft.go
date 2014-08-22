@@ -141,9 +141,6 @@ type raft struct {
 	// the term we are participating in at any time
 	index atomicInt
 
-	// who we voted for in term
-	vote int64
-
 	// the log
 	raftLog *raftLog
 
@@ -191,7 +188,7 @@ func (sm *raft) String() string {
 	s := fmt.Sprintf(`state=%v term=%d`, sm.state, sm.Term)
 	switch sm.state {
 	case stateFollower:
-		s += fmt.Sprintf(" vote=%v lead=%v", sm.vote, sm.lead)
+		s += fmt.Sprintf(" vote=%v lead=%v", sm.Vote, sm.lead)
 	case stateCandidate:
 		s += fmt.Sprintf(` votes="%v"`, sm.votes)
 	case stateLeader:
@@ -494,7 +491,7 @@ func stepFollower(sm *raft, m Message) bool {
 	case msgSnap:
 		sm.handleSnapshot(m)
 	case msgVote:
-		if (sm.vote == none || sm.vote == m.From) && sm.raftLog.isUpToDate(m.Index, m.LogTerm) {
+		if (sm.Vote == none || sm.Vote == m.From) && sm.raftLog.isUpToDate(m.Index, m.LogTerm) {
 			sm.setVote(m.From)
 			sm.send(Message{To: m.From, Type: msgVoteResp, Index: sm.raftLog.lastIndex()})
 		} else {
@@ -554,7 +551,7 @@ func (sm *raft) setTerm(term int64) {
 }
 
 func (sm *raft) setVote(vote int64) {
-	sm.vote = vote
+	sm.Vote = vote
 	sm.saveState()
 }
 
@@ -572,7 +569,7 @@ func (sm *raft) deleteIns(id int64) {
 // When there is a term change, vote change or configuration change, raft
 // must call saveState.
 func (sm *raft) saveState() {
-	sm.setState(sm.vote, sm.Term, sm.raftLog.committed)
+	sm.setState(sm.Vote, sm.Term, sm.raftLog.committed)
 }
 
 func (sm *raft) clearState() {

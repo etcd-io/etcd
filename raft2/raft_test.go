@@ -542,7 +542,7 @@ func TestRecvMsgVote(t *testing.T) {
 	for i, tt := range tests {
 		sm := &raft{
 			state:   tt.state,
-			vote:    tt.voteFor,
+			State:   State{Vote: tt.voteFor},
 			raftLog: &raftLog{ents: []Entry{{}, {Term: 2}, {Term: 2}}},
 		}
 
