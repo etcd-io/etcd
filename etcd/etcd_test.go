@@ -230,7 +230,7 @@ func TestTakingSnapshot(t *testing.T) {
 		cl.Participant(0).Set("/foo", false, "bar", store.Permanent)
 	}
 	snap := cl.Participant(0).node.GetSnap()
-	if snap.Index != defaultCompact {
+	if snap.Index != int64(defaultCompact) {
 		t.Errorf("snap.Index = %d, want %d", snap.Index, defaultCompact)
 	}
 }
@@ -273,7 +273,7 @@ func TestRestoreSnapshotFromLeader(t *testing.T) {
 	}
 
 	// check new proposal could be committed in the new machine
-	wch, err := ts.Participant().Watch("/foo", false, false, defaultCompact)
+	wch, err := ts.Participant().Watch("/foo", false, false, uint64(defaultCompact))
 	if err != nil {
 		t.Errorf("watch err = %v", err)
 	}
@@ -314,34 +314,43 @@ func TestSaveSnapshot(t *testing.T) {
 func TestRestoreSnapshotFromDisk(t *testing.T) {
 	defer afterTest(t)
 
-	cl := testCluster{Size: 1}
-	cl.Start()
-	defer cl.Destroy()
+	tests := []int{1, 3, 5}
 
-	lead, _ := cl.Leader()
-	for i := 0; i < defaultCompact+10; i++ {
-		cl.Participant(lead).Set(fmt.Sprint("/foo", i), false, fmt.Sprint("bar", i), store.Permanent)
-	}
+	// TODO(xiangli): tunable compact; reduce testing time
+	oldDefaultCompact := defaultCompact
+	defaultCompact = 10
+	defer func() { defaultCompact = oldDefaultCompact }()
 
-	cl.Stop()
-	cl.Restart()
+	for _, tt := range tests {
+		cl := testCluster{Size: tt}
+		cl.Start()
+		defer cl.Destroy()
 
-	lead, _ = cl.Leader()
-	// check store is recovered
-	for i := 0; i < defaultCompact+10; i++ {
-		ev, err := cl.Participant(lead).Store.Get(fmt.Sprint("/foo", i), false, false)
-		if err != nil {
-			t.Errorf("get err = %v", err)
-			continue
+		lead, _ := cl.Leader()
+		for i := 0; i < defaultCompact+10; i++ {
+			cl.Participant(lead).Set(fmt.Sprint("/foo", i), false, fmt.Sprint("bar", i), store.Permanent)
 		}
-		w := fmt.Sprint("bar", i)
-		if g := *ev.Node.Value; g != w {
-			t.Errorf("value = %v, want %v", g, w)
+
+		cl.Stop()
+		cl.Restart()
+
+		lead, _ = cl.Leader()
+		// check store is recovered
+		for i := 0; i < defaultCompact+10; i++ {
+			ev, err := cl.Participant(lead).Store.Get(fmt.Sprint("/foo", i), false, false)
+			if err != nil {
+				t.Errorf("get err = %v", err)
+				continue
+			}
+			w := fmt.Sprint("bar", i)
+			if g := *ev.Node.Value; g != w {
+				t.Errorf("value = %v, want %v", g, w)
+			}
 		}
-	}
-	// check new proposal could be submitted
-	if _, err := cl.Participant(lead).Set("/foo", false, "bar", store.Permanent); err != nil {
-		t.Fatal(err)
+		// check new proposal could be submitted
+		if _, err := cl.Participant(lead).Set("/foo", false, "bar", store.Permanent); err != nil {
+			t.Fatal(err)
+		}
 	}
 }
 

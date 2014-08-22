@@ -22,6 +22,7 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"net/url"
 	"os"
 	"path"
 	"time"
@@ -37,7 +38,6 @@ import (
 const (
 	defaultHeartbeat = 1
 	defaultElection  = 5
-	defaultCompact   = 10000
 
 	maxBufferedProposal = 128
 
@@ -58,6 +58,8 @@ const (
 )
 
 var (
+	defaultCompact = 10000
+
 	tmpErr      = fmt.Errorf("try again")
 	stopErr     = fmt.Errorf("server is stopped")
 	raftStopErr = fmt.Errorf("raft is stopped")
@@ -158,6 +160,24 @@ func newParticipant(c *conf.Config, client *v2client, peerHub *peerHub, tickDura
 				panic(err)
 			}
 			log.Printf("id=%x participant.store.recovered index=%d\n", p.id, s.Index)
+
+			for _, node := range s.Nodes {
+				pp := path.Join(v2machineKVPrefix, fmt.Sprint(node))
+				ev, err := p.Store.Get(pp, false, false)
+				if err != nil {
+					panic(err)
+				}
+				q, err := url.ParseQuery(*ev.Node.Value)
+				if err != nil {
+					panic(err)
+				}
+				peer, err := p.peerHub.add(node, q["raft"][0])
+				if err != nil {
+					panic(err)
+				}
+				peer.participate()
+			}
+
 			snapIndex = s.Index
 		}
 		n, err := wal.Read(walDir, snapIndex)
