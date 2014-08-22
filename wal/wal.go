@@ -24,14 +24,21 @@ import (
 	"io"
 	"log"
 	"os"
+	"path"
+	"sort"
 
 	"github.com/coreos/etcd/raft"
 )
 
+const (
+	infoType int64 = iota + 1
+	entryType
+	stateType
+)
+
 var (
-	infoType  = int64(1)
-	entryType = int64(2)
-	stateType = int64(3)
+	ErrIdMismatch = fmt.Errorf("unmatch id")
+	ErrNotFound   = fmt.Errorf("wal file is not found")
 )
 
 type WAL struct {
@@ -44,27 +51,67 @@ func newWAL(f *os.File) *WAL {
 	return &WAL{f, bufio.NewWriter(f), new(bytes.Buffer)}
 }
 
-func New(path string) (*WAL, error) {
-	log.Printf("path=%s wal.new", path)
-	f, err := os.Open(path)
-	if err == nil {
-		f.Close()
+func Exist(dirpath string) bool {
+	names, err := readDir(dirpath)
+	if err != nil {
+		return false
+	}
+	return len(names) != 0
+}
+
+func Create(dirpath string) (*WAL, error) {
+	log.Printf("path=%s wal.create", dirpath)
+	if Exist(dirpath) {
 		return nil, os.ErrExist
 	}
-	f, err = os.Create(path)
+	p := path.Join(dirpath, fmt.Sprintf("%016x-%016x.wal", 0, 0))
+	f, err := os.OpenFile(p, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0600)
 	if err != nil {
 		return nil, err
 	}
 	return newWAL(f), nil
 }
 
-func Open(path string) (*WAL, error) {
-	log.Printf("path=%s wal.open", path)
-	f, err := os.OpenFile(path, os.O_RDWR, 0)
+func Open(dirpath string) (*WAL, error) {
+	log.Printf("path=%s wal.append", dirpath)
+	names, err := readDir(dirpath)
+	if err != nil {
+		return nil, err
+	}
+	names = checkWalNames(names)
+	if len(names) == 0 {
+		return nil, ErrNotFound
+	}
+
+	name := names[len(names)-1]
+	p := path.Join(dirpath, name)
+	f, err := os.OpenFile(p, os.O_WRONLY|os.O_APPEND, 0)
 	if err != nil {
 		return nil, err
 	}
 	return newWAL(f), nil
+}
+
+// index should be the index of last log entry currently.
+// Cut closes current file written and creates a new one to append.
+func (w *WAL) Cut(index int64) error {
+	log.Printf("path=%s wal.cut index=%d", w.f.Name(), index)
+	fpath := w.f.Name()
+	seq, _, err := parseWalName(path.Base(fpath))
+	if err != nil {
+		panic("parse correct name error")
+	}
+	fpath = path.Join(path.Dir(fpath), fmt.Sprintf("%016x-%016x.wal", seq+1, index))
+	f, err := os.OpenFile(fpath, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0600)
+	if err != nil {
+		return err
+	}
+
+	w.Sync()
+	w.f.Close()
+	w.f = f
+	w.bw = bufio.NewWriter(f)
+	return nil
 }
 
 func (w *WAL) Sync() error {
@@ -129,52 +176,141 @@ type Node struct {
 	Id    int64
 	Ents  []raft.Entry
 	State raft.State
+
+	// index of the first entry
+	index int64
 }
 
-func (w *WAL) LoadNode() (*Node, error) {
-	log.Printf("path=%s wal.loadNode", w.f.Name())
-	if err := w.checkAtHead(); err != nil {
-		return nil, err
+func newNode(index int64) *Node {
+	return &Node{Ents: make([]raft.Entry, 0), index: index + 1}
+}
+
+func (n *Node) load(path string) error {
+	f, err := os.Open(path)
+	if err != nil {
+		return err
 	}
-	br := bufio.NewReader(w.f)
+	defer f.Close()
+	br := bufio.NewReader(f)
 	rec := &Record{}
 
-	err := readRecord(br, rec)
+	err = readRecord(br, rec)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	if rec.Type != infoType {
-		return nil, fmt.Errorf("the first block of wal is not infoType but %d", rec.Type)
+		return fmt.Errorf("the first block of wal is not infoType but %d", rec.Type)
 	}
 	i, err := loadInfo(rec.Data)
 	if err != nil {
-		return nil, err
+		return err
 	}
+	if n.Id != 0 && n.Id != i.Id {
+		return ErrIdMismatch
+	}
+	n.Id = i.Id
 
-	ents := make([]raft.Entry, 0)
-	var state raft.State
 	for err = readRecord(br, rec); err == nil; err = readRecord(br, rec) {
 		switch rec.Type {
 		case entryType:
 			e, err := loadEntry(rec.Data)
 			if err != nil {
-				return nil, err
+				return err
 			}
-			ents = append(ents[:e.Index-1], e)
+			if e.Index >= n.index {
+				n.Ents = append(n.Ents[:e.Index-n.index], e)
+			}
 		case stateType:
 			s, err := loadState(rec.Data)
 			if err != nil {
-				return nil, err
+				return err
 			}
-			state = s
+			n.State = s
 		default:
-			return nil, fmt.Errorf("unexpected block type %d", rec.Type)
+			return fmt.Errorf("unexpected block type %d", rec.Type)
 		}
 	}
 	if err != io.EOF {
+		return err
+	}
+	return nil
+}
+
+func (n *Node) startFrom(index int64) error {
+	diff := int(index - n.index)
+	if diff > len(n.Ents) {
+		return ErrNotFound
+	}
+	n.Ents = n.Ents[diff:]
+	return nil
+}
+
+// Read loads all entries after index (index is not included).
+func Read(dirpath string, index int64) (*Node, error) {
+	log.Printf("path=%s wal.load index=%d", dirpath, index)
+	names, err := readDir(dirpath)
+	if err != nil {
 		return nil, err
 	}
-	return &Node{i.Id, ents, state}, nil
+	names = checkWalNames(names)
+	if len(names) == 0 {
+		return nil, ErrNotFound
+	}
+
+	sort.Sort(sort.StringSlice(names))
+	nameIndex, ok := searchIndex(names, index)
+	if !ok || !isValidSeq(names[nameIndex:]) {
+		return nil, ErrNotFound
+	}
+
+	_, initIndex, err := parseWalName(names[nameIndex])
+	if err != nil {
+		panic("parse correct name error")
+	}
+	n := newNode(initIndex)
+	for _, name := range names[nameIndex:] {
+		if err := n.load(path.Join(dirpath, name)); err != nil {
+			return nil, err
+		}
+	}
+	if err := n.startFrom(index + 1); err != nil {
+		return nil, ErrNotFound
+	}
+	return n, nil
+}
+
+// The input names should be sorted.
+// serachIndex returns the array index of the last name that has
+// a smaller raft index section than the given raft index.
+func searchIndex(names []string, index int64) (int, bool) {
+	for i := len(names) - 1; i >= 0; i-- {
+		name := names[i]
+		_, curIndex, err := parseWalName(name)
+		if err != nil {
+			panic("parse correct name error")
+		}
+		if index >= curIndex {
+			return i, true
+		}
+	}
+	return -1, false
+}
+
+// names should have been sorted based on sequence number.
+// isValidSeq checks whether seq increases continuously.
+func isValidSeq(names []string) bool {
+	var lastSeq int64
+	for _, name := range names {
+		curSeq, _, err := parseWalName(name)
+		if err != nil {
+			panic("parse correct name error")
+		}
+		if lastSeq != 0 && lastSeq != curSeq-1 {
+			return false
+		}
+		lastSeq = curSeq
+	}
+	return true
 }
 
 func loadInfo(d []byte) (raft.Info, error) {
@@ -199,6 +335,41 @@ func loadState(d []byte) (raft.State, error) {
 	var s raft.State
 	err := s.Unmarshal(d)
 	return s, err
+}
+
+// readDir returns the filenames in wal directory.
+func readDir(dirpath string) ([]string, error) {
+	dir, err := os.Open(dirpath)
+	if err != nil {
+		return nil, err
+	}
+	defer dir.Close()
+	names, err := dir.Readdirnames(-1)
+	if err != nil {
+		return nil, err
+	}
+	return names, nil
+}
+
+func checkWalNames(names []string) []string {
+	wnames := make([]string, 0)
+	for _, name := range names {
+		if _, _, err := parseWalName(name); err != nil {
+			log.Printf("parse %s: %v", name, err)
+			continue
+		}
+		wnames = append(wnames, name)
+	}
+	return wnames
+}
+
+func parseWalName(str string) (seq, index int64, err error) {
+	var num int
+	num, err = fmt.Sscanf(str, "%016x-%016x.wal", &seq, &index)
+	if num != 2 && err == nil {
+		err = fmt.Errorf("bad wal name: %s", str)
+	}
+	return
 }
 
 func writeInt64(w io.Writer, n int64) error {

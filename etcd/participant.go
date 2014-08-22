@@ -22,7 +22,6 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
-	"os"
 	"path"
 	"time"
 
@@ -112,17 +111,14 @@ func newParticipant(c *conf.Config, client *v2client, peerHub *peerHub, tickDura
 	p.rh = newRaftHandler(peerHub, p.Store.Version(), p.serverStats)
 	p.peerHub.setServerStats(p.serverStats)
 
-	walPath := path.Join(p.cfg.DataDir, "wal")
-	w, err := wal.Open(walPath)
-	if err != nil {
-		if !os.IsNotExist(err) {
-			return nil, err
-		}
-
+	walPath := p.cfg.DataDir
+	var w *wal.WAL
+	var err error
+	if !wal.Exist(walPath) {
 		p.id = genId()
 		p.pubAddr = c.Addr
 		p.raftPubAddr = c.Peer.Addr
-		if w, err = wal.New(walPath); err != nil {
+		if w, err = wal.Create(walPath); err != nil {
 			return nil, err
 		}
 		p.node.Node = raft.New(p.id, defaultHeartbeat, defaultElection)
@@ -132,7 +128,7 @@ func newParticipant(c *conf.Config, client *v2client, peerHub *peerHub, tickDura
 		}
 		log.Printf("id=%x participant.new path=%s\n", p.id, walPath)
 	} else {
-		n, err := w.LoadNode()
+		n, err := wal.Read(walPath, 0)
 		if err != nil {
 			return nil, err
 		}
@@ -140,6 +136,9 @@ func newParticipant(c *conf.Config, client *v2client, peerHub *peerHub, tickDura
 		p.node.Node = raft.Recover(n.Id, n.Ents, n.State, defaultHeartbeat, defaultElection)
 		p.apply(p.node.Next())
 		log.Printf("id=%x participant.load path=%s state=\"%+v\" len(ents)=%d", p.id, walPath, n.State, len(n.Ents))
+		if w, err = wal.Open(walPath); err != nil {
+			return nil, err
+		}
 	}
 	p.w = w
 

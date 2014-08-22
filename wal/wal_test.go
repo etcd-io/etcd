@@ -17,6 +17,7 @@ limitations under the License.
 package wal
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path"
@@ -35,36 +36,123 @@ var (
 
 	entryData   = []byte("\b\x01\x10\x01\x18\x01\x22\x01\x01")
 	entryRecord = append([]byte("\x0f\x00\x00\x00\x00\x00\x00\x00\b\x02\x10\x00\x1a\t"), entryData...)
+
+	firstWalName = "0000000000000000-0000000000000000.wal"
 )
 
 func TestNew(t *testing.T) {
-	f, err := ioutil.TempFile(os.TempDir(), "waltest")
+	p, err := ioutil.TempDir(os.TempDir(), "waltest")
 	if err != nil {
 		t.Fatal(err)
 	}
-	p := f.Name()
-	_, err = New(p)
-	if err == nil || err != os.ErrExist {
-		t.Errorf("err = %v, want %v", err, os.ErrExist)
-	}
-	err = os.Remove(p)
+	defer os.RemoveAll(p)
+
+	w, err := Create(p)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("err = %v, want nil", err)
 	}
-	w, err := New(p)
-	if err != nil {
-		t.Errorf("err = %v, want nil", err)
+	if g := path.Base(w.f.Name()); g != firstWalName {
+		t.Errorf("name = %+v, want %+v", g, firstWalName)
 	}
 	w.Close()
-	err = os.Remove(p)
+}
+
+func TestNewForInitedDir(t *testing.T) {
+	p, err := ioutil.TempDir(os.TempDir(), "waltest")
 	if err != nil {
 		t.Fatal(err)
+	}
+	defer os.RemoveAll(p)
+
+	os.Create(path.Join(p, firstWalName))
+	if _, err = Create(p); err == nil || err != os.ErrExist {
+		t.Errorf("err = %v, want %v", err, os.ErrExist)
+	}
+}
+
+func TestAppend(t *testing.T) {
+	p, err := ioutil.TempDir(os.TempDir(), "waltest")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(p)
+
+	os.Create(path.Join(p, firstWalName))
+	w, err := Open(p)
+	if err != nil {
+		t.Fatalf("err = %v, want nil", err)
+	}
+	if g := path.Base(w.f.Name()); g != firstWalName {
+		t.Errorf("name = %+v, want %+v", g, firstWalName)
+	}
+	w.Close()
+
+	wname := fmt.Sprintf("%016x-%016x.wal", 2, 10)
+	os.Create(path.Join(p, wname))
+	w, err = Open(p)
+	if err != nil {
+		t.Fatalf("err = %v, want nil", err)
+	}
+	if g := path.Base(w.f.Name()); g != wname {
+		t.Errorf("name = %+v, want %+v", g, wname)
+	}
+	w.Close()
+}
+
+func TestAppendForUninitedDir(t *testing.T) {
+	p, err := ioutil.TempDir(os.TempDir(), "waltest")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(p)
+
+	if _, err = Open(p); err != ErrNotFound {
+		t.Errorf("err = %v, want %v", err, ErrNotFound)
+	}
+}
+
+func TestCut(t *testing.T) {
+	p, err := ioutil.TempDir(os.TempDir(), "waltest")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(p)
+
+	w, err := Create(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer w.Close()
+
+	if err := w.Cut(0); err != nil {
+		t.Fatal(err)
+	}
+	wname := fmt.Sprintf("%016x-%016x.wal", 1, 0)
+	if g := path.Base(w.f.Name()); g != wname {
+		t.Errorf("name = %s, want %s", g, wname)
+	}
+
+	e := &raft.Entry{Type: 1, Index: 1, Term: 1, Data: []byte{1}}
+	if err := w.SaveEntry(e); err != nil {
+		t.Fatal(err)
+	}
+	if err := w.Cut(1); err != nil {
+		t.Fatal(err)
+	}
+	wname = fmt.Sprintf("%016x-%016x.wal", 2, 1)
+	if g := path.Base(w.f.Name()); g != wname {
+		t.Errorf("name = %s, want %s", g, wname)
 	}
 }
 
 func TestSaveEntry(t *testing.T) {
-	p := path.Join(os.TempDir(), "waltest")
-	w, err := New(p)
+	p, err := ioutil.TempDir(os.TempDir(), "waltest")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(p)
+
+	w, err := Create(p)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -75,23 +163,23 @@ func TestSaveEntry(t *testing.T) {
 	}
 	w.Close()
 
-	b, err := ioutil.ReadFile(p)
+	b, err := ioutil.ReadFile(path.Join(p, firstWalName))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !reflect.DeepEqual(b, entryRecord) {
 		t.Errorf("ent = %q, want %q", b, entryRecord)
 	}
-
-	err = os.Remove(p)
-	if err != nil {
-		t.Fatal(err)
-	}
 }
 
 func TestSaveInfo(t *testing.T) {
-	p := path.Join(os.TempDir(), "waltest")
-	w, err := New(p)
+	p, err := ioutil.TempDir(os.TempDir(), "waltest")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(p)
+
+	w, err := Create(p)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -116,23 +204,23 @@ func TestSaveInfo(t *testing.T) {
 	}
 	w.Close()
 
-	b, err := ioutil.ReadFile(p)
+	b, err := ioutil.ReadFile(path.Join(p, firstWalName))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !reflect.DeepEqual(b, infoRecord) {
 		t.Errorf("ent = %q, want %q", b, infoRecord)
 	}
-
-	err = os.Remove(p)
-	if err != nil {
-		t.Fatal(err)
-	}
 }
 
 func TestSaveState(t *testing.T) {
-	p := path.Join(os.TempDir(), "waltest")
-	w, err := New(p)
+	p, err := ioutil.TempDir(os.TempDir(), "waltest")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(p)
+
+	w, err := Create(p)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -143,17 +231,12 @@ func TestSaveState(t *testing.T) {
 	}
 	w.Close()
 
-	b, err := ioutil.ReadFile(p)
+	b, err := ioutil.ReadFile(path.Join(p, firstWalName))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !reflect.DeepEqual(b, stateRecord) {
 		t.Errorf("ent = %q, want %q", b, stateRecord)
-	}
-
-	err = os.Remove(p)
-	if err != nil {
-		t.Fatal(err)
 	}
 }
 
@@ -189,9 +272,14 @@ func TestLoadState(t *testing.T) {
 	}
 }
 
-func TestLoadNode(t *testing.T) {
-	p := path.Join(os.TempDir(), "waltest")
-	w, err := New(p)
+func TestNodeLoad(t *testing.T) {
+	p, err := ioutil.TempDir(os.TempDir(), "waltest")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(p)
+
+	w, err := Create(p)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -213,12 +301,8 @@ func TestLoadNode(t *testing.T) {
 	}
 	w.Close()
 
-	w, err = Open(p)
-	if err != nil {
-		t.Fatal(err)
-	}
-	n, err := w.LoadNode()
-	if err != nil {
+	n := newNode(0)
+	if err := n.load(path.Join(p, firstWalName)); err != nil {
 		t.Fatal(err)
 	}
 	if n.Id != i.Id {
@@ -232,9 +316,130 @@ func TestLoadNode(t *testing.T) {
 	if !reflect.DeepEqual(n.State, s) {
 		t.Errorf("state = %+v, want %+v", n.State, s)
 	}
+}
 
-	err = os.Remove(p)
+func TestSearchIndex(t *testing.T) {
+	tests := []struct {
+		names []string
+		index int64
+		widx  int
+		wok   bool
+	}{
+		{
+			[]string{
+				"0000000000000000-0000000000000000.wal",
+				"0000000000000001-0000000000001000.wal",
+				"0000000000000002-0000000000002000.wal",
+			},
+			0x1000, 1, true,
+		},
+		{
+			[]string{
+				"0000000000000001-0000000000004000.wal",
+				"0000000000000002-0000000000003000.wal",
+				"0000000000000003-0000000000005000.wal",
+			},
+			0x4000, 1, true,
+		},
+		{
+			[]string{
+				"0000000000000001-0000000000002000.wal",
+				"0000000000000002-0000000000003000.wal",
+				"0000000000000003-0000000000005000.wal",
+			},
+			0x1000, -1, false,
+		},
+	}
+	for i, tt := range tests {
+		idx, ok := searchIndex(tt.names, tt.index)
+		if idx != tt.widx {
+			t.Errorf("#%d: idx = %d, want %d", i, idx, tt.widx)
+		}
+		if ok != tt.wok {
+			t.Errorf("#%d: ok = %v, want %v", i, ok, tt.wok)
+		}
+	}
+}
+
+func TestScanWalName(t *testing.T) {
+	tests := []struct {
+		str          string
+		wseq, windex int64
+		wok          bool
+	}{
+		{"0000000000000000-0000000000000000.wal", 0, 0, true},
+		{"0000000000000000.wal", 0, 0, false},
+		{"0000000000000000-0000000000000000.snap", 0, 0, false},
+	}
+	for i, tt := range tests {
+		s, index, err := parseWalName(tt.str)
+		if g := err == nil; g != tt.wok {
+			t.Errorf("#%d: ok = %v, want %v", i, g, tt.wok)
+		}
+		if s != tt.wseq {
+			t.Errorf("#%d: seq = %d, want %d", i, s, tt.wseq)
+		}
+		if index != tt.windex {
+			t.Errorf("#%d: index = %d, want %d", i, index, tt.windex)
+		}
+	}
+}
+
+func TestRead(t *testing.T) {
+	p, err := ioutil.TempDir(os.TempDir(), "waltest")
 	if err != nil {
 		t.Fatal(err)
+	}
+	defer os.RemoveAll(p)
+
+	w, err := Create(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	info := &raft.Info{Id: int64(0xBEEF)}
+	if err = w.SaveInfo(info); err != nil {
+		t.Fatal(err)
+	}
+	if err = w.Cut(0); err != nil {
+		t.Fatal(err)
+	}
+	for i := 1; i < 10; i++ {
+		e := raft.Entry{Index: int64(i)}
+		if err = w.SaveEntry(&e); err != nil {
+			t.Fatal(err)
+		}
+		if err = w.Cut(e.Index); err != nil {
+			t.Fatal(err)
+		}
+		if err = w.SaveInfo(info); err != nil {
+			t.Fatal(err)
+		}
+	}
+	w.Close()
+
+	if err := os.Remove(path.Join(p, "0000000000000004-0000000000000003.wal")); err != nil {
+		t.Fatal(err)
+	}
+
+	for i := 0; i < 15; i++ {
+		n, err := Read(p, int64(i))
+		if i <= 3 || i >= 10 {
+			if err != ErrNotFound {
+				t.Errorf("#%d: err = %v, want %v", i, err, ErrNotFound)
+			}
+			continue
+		}
+		if err != nil {
+			t.Errorf("#%d: err = %v, want nil", i, err)
+			continue
+		}
+		if n.Id != info.Id {
+			t.Errorf("#%d: id = %d, want %d", n.Id, info.Id)
+		}
+		for j, e := range n.Ents {
+			if e.Index != int64(j+i+1) {
+				t.Errorf("#%d: ents[%d].Index = %+v, want %+v", i, j, e.Index, j+i+1)
+			}
+		}
 	}
 }
