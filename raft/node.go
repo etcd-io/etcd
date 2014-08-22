@@ -231,6 +231,10 @@ func (n *Node) UpdateConf(t int64, c *Config) {
 	n.propose(t, data)
 }
 
+func (n *Node) Restore(s Snapshot) bool {
+	return n.sm.restore(s)
+}
+
 // UnstableEnts retuens all the entries that need to be persistent.
 // The first return value is offset, and the second one is unstable entries.
 func (n *Node) UnstableEnts() []Entry {
