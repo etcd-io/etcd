@@ -311,7 +311,7 @@ func (sm *raft) q() int {
 func (sm *raft) appendEntry(e Entry) {
 	e.Term = sm.Term
 	e.Index = sm.raftLog.lastIndex() + 1
-	sm.index.Set(sm.raftLog.append(sm.raftLog.lastIndex(), e))
+	sm.LastIndex = sm.raftLog.append(sm.raftLog.lastIndex(), e)
 	sm.ins[sm.id].update(sm.raftLog.lastIndex())
 	sm.maybeCommit()
 }
@@ -392,7 +392,7 @@ func (sm *raft) Step(m Message) error {
 
 func (sm *raft) handleAppendEntries(m Message) {
 	if sm.raftLog.maybeAppend(m.Index, m.LogTerm, m.Commit, m.Entries...) {
-		sm.index.Set(sm.raftLog.lastIndex())
+		sm.LastIndex = sm.raftLog.lastIndex()
 		sm.send(Message{To: m.From, Type: msgAppResp, Index: sm.raftLog.lastIndex()})
 	} else {
 		sm.send(Message{To: m.From, Type: msgAppResp, Index: -1})
@@ -517,7 +517,7 @@ func (sm *raft) restore(s Snapshot) bool {
 	}
 
 	sm.raftLog.restore(s)
-	sm.index.Set(sm.raftLog.lastIndex())
+	sm.LastIndex = sm.raftLog.lastIndex()
 	sm.ins = make(map[int64]*index)
 	for _, n := range s.Nodes {
 		if n == sm.id {
