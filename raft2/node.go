@@ -9,14 +9,9 @@ type stateResp struct {
 	msgs  []Message
 }
 
-type proposal struct {
-	id   int64
-	data []byte
-}
-
 type Node struct {
 	ctx    context.Context
-	propc  chan proposal
+	propc  chan []byte
 	recvc  chan Message
 	statec chan stateResp
 	tickc  chan struct{}
@@ -25,7 +20,7 @@ type Node struct {
 func Start(ctx context.Context, name string, election, heartbeat int) *Node {
 	n := &Node{
 		ctx:    ctx,
-		propc:  make(chan proposal),
+		propc:  make(chan []byte),
 		recvc:  make(chan Message),
 		statec: make(chan stateResp),
 		tickc:  make(chan struct{}),
@@ -54,13 +49,13 @@ func (n *Node) run(r *raft) {
 
 		select {
 		case p := <-propc:
-			r.propose(p.id, p.data)
+			r.propose(p)
 		case m := <-n.recvc:
-			r.step(m)
+			r.Step(m) // raft never returns an error
 		case <-n.tickc:
-			r.tick()
-		case n.statec <- stateResp{r.State, r.ents, r.msgs}:
-			r.resetState()
+			// r.tick()
+		// case n.statec <- stateResp{r.State, r.ents, r.msgs}:
+		// r.resetState()
 		case <-n.ctx.Done():
 			return
 		}
@@ -77,9 +72,9 @@ func (n *Node) Tick() error {
 }
 
 // Propose proposes data be appended to the log.
-func (n *Node) Propose(id int64, data []byte) error {
+func (n *Node) Propose(data []byte) error {
 	select {
-	case n.propc <- proposal{id, data}:
+	case n.propc <- data:
 		return nil
 	case <-n.ctx.Done():
 		return n.ctx.Err()
