@@ -10,13 +10,13 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/conf"
-	"github.com/coreos/etcd/etcd"
+	"github.com/coreos/etcd/etcdserver"
 )
 
 func main() {
 	var cfg = conf.New()
 	if err := cfg.Load(os.Args[1:]); err != nil {
-		fmt.Println(etcd.Usage() + "\n")
+		fmt.Println(etcdserver.Usage() + "\n")
 		fmt.Println(err.Error(), "\n")
 		os.Exit(1)
 	} else if cfg.ShowVersion {
@@ -26,7 +26,7 @@ func main() {
 		os.Exit(0)
 	}
 
-	e, err := etcd.New(cfg)
+	e, err := etcdserver.New(cfg)
 	if err != nil {
 		log.Fatal("etcd:", err)
 	}
