@@ -273,7 +273,9 @@ func (sm *stateMachine) maybeCommit() bool {
 
 // nextEnts returns the appliable entries and updates the applied index
 func (sm *stateMachine) nextEnts() (ents []Entry) {
-	return sm.raftLog.nextEnts()
+	ents = sm.raftLog.nextEnts()
+	sm.raftLog.resetNextEnts()
+	return ents
 }
 
 func (sm *stateMachine) reset(term int64) {

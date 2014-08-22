@@ -134,6 +134,7 @@ func TestUnstableEnts(t *testing.T) {
 		raftLog.ents = append(raftLog.ents, previousEnts...)
 		raftLog.unstable = tt.unstable
 		ents := raftLog.unstableEnts()
+		raftLog.resetUnstable()
 		if !reflect.DeepEqual(ents, tt.wents) {
 			t.Errorf("#%d: unstableEnts = %+v, want %+v", i, ents, tt.wents)
 		}

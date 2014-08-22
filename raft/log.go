@@ -85,9 +85,26 @@ func (l *raftLog) findConflict(from int64, ents []Entry) int64 {
 }
 
 func (l *raftLog) unstableEnts() []Entry {
-	ents := l.entries(l.unstable)
+	return l.entries(l.unstable)
+}
+
+func (l *raftLog) resetUnstable() {
 	l.unstable = l.lastIndex() + 1
-	return ents
+}
+
+// nextEnts returns all the available entries for execution.
+// all the returned entries will be marked as applied.
+func (l *raftLog) nextEnts() (ents []Entry) {
+	if l.committed > l.applied {
+		return l.slice(l.applied+1, l.committed+1)
+	}
+	return nil
+}
+
+func (l *raftLog) resetNextEnts() {
+	if l.committed > l.applied {
+		l.applied = l.committed
+	}
 }
 
 func (l *raftLog) lastIndex() int64 {
@@ -129,16 +146,6 @@ func (l *raftLog) maybeCommit(maxIndex, term int64) bool {
 		return true
 	}
 	return false
-}
-
-// nextEnts returns all the available entries for execution.
-// all the returned entries will be marked as applied.
-func (l *raftLog) nextEnts() (ents []Entry) {
-	if l.committed > l.applied {
-		ents = l.slice(l.applied+1, l.committed+1)
-		l.applied = l.committed
-	}
-	return ents
 }
 
 // compact compacts all log entries until i.
