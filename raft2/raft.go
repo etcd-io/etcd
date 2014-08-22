@@ -127,6 +127,8 @@ func (p int64Slice) Less(i, j int) bool { return p[i] < p[j] }
 func (p int64Slice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
 
 type raft struct {
+	State
+
 	// --- new stuff ---
 	name      string
 	election  int
@@ -137,7 +139,6 @@ type raft struct {
 	id        int64
 
 	// the term we are participating in at any time
-	term  atomicInt
 	index atomicInt
 
 	// who we voted for in term
@@ -187,7 +188,7 @@ func (r *raft) propose(data []byte) {
 }
 
 func (sm *raft) String() string {
-	s := fmt.Sprintf(`state=%v term=%d`, sm.state, sm.term)
+	s := fmt.Sprintf(`state=%v term=%d`, sm.state, sm.Term)
 	switch sm.state {
 	case stateFollower:
 		s += fmt.Sprintf(" vote=%v lead=%v", sm.vote, sm.lead)
@@ -215,7 +216,7 @@ func (sm *raft) poll(id int64, v bool) (granted int) {
 func (sm *raft) send(m Message) {
 	m.ClusterId = sm.clusterId
 	m.From = sm.id
-	m.Term = sm.term.Get()
+	m.Term = sm.Term
 	sm.msgs = append(sm.msgs, m)
 }
 
@@ -280,7 +281,7 @@ func (sm *raft) maybeCommit() bool {
 	sort.Sort(sort.Reverse(mis))
 	mci := mis[sm.q()-1]
 
-	return sm.raftLog.maybeCommit(mci, sm.term.Get())
+	return sm.raftLog.maybeCommit(mci, sm.Term)
 }
 
 // nextEnts returns the appliable entries and updates the applied index
@@ -308,7 +309,7 @@ func (sm *raft) q() int {
 }
 
 func (sm *raft) appendEntry(e Entry) {
-	e.Term = sm.term.Get()
+	e.Term = sm.Term
 	e.Index = sm.raftLog.lastIndex() + 1
 	sm.index.Set(sm.raftLog.append(sm.raftLog.lastIndex(), e))
 	sm.ins[sm.id].update(sm.raftLog.lastIndex())
@@ -327,7 +328,7 @@ func (sm *raft) becomeCandidate() {
 	if sm.state == stateLeader {
 		panic("invalid transition [leader -> candidate]")
 	}
-	sm.reset(sm.term.Get() + 1)
+	sm.reset(sm.Term + 1)
 	sm.setVote(sm.id)
 	sm.state = stateCandidate
 }
@@ -337,7 +338,7 @@ func (sm *raft) becomeLeader() {
 	if sm.state == stateFollower {
 		panic("invalid transition [follower -> leader]")
 	}
-	sm.reset(sm.term.Get())
+	sm.reset(sm.Term)
 	sm.lead.Set(sm.id)
 	sm.state = stateLeader
 
@@ -375,13 +376,13 @@ func (sm *raft) Step(m Message) error {
 	switch {
 	case m.Term == 0:
 		// local message
-	case m.Term > sm.term.Get():
+	case m.Term > sm.Term:
 		lead := m.From
 		if m.Type == msgVote {
 			lead = none
 		}
 		sm.becomeFollower(m.Term, lead)
-	case m.Term < sm.term.Get():
+	case m.Term < sm.Term:
 		// ignore
 	}
 
@@ -459,7 +460,7 @@ func stepCandidate(sm *raft, m Message) bool {
 	case msgProp:
 		return false
 	case msgApp:
-		sm.becomeFollower(sm.term.Get(), m.From)
+		sm.becomeFollower(sm.Term, m.From)
 		sm.handleAppendEntries(m)
 	case msgSnap:
 		sm.becomeFollower(m.Term, m.From)
@@ -473,7 +474,7 @@ func stepCandidate(sm *raft, m Message) bool {
 			sm.becomeLeader()
 			sm.bcastAppend()
 		case len(sm.votes) - gr:
-			sm.becomeFollower(sm.term.Get(), none)
+			sm.becomeFollower(sm.Term, none)
 		}
 	}
 	return true
@@ -548,7 +549,7 @@ func (sm *raft) nodes() []int64 {
 }
 
 func (sm *raft) setTerm(term int64) {
-	sm.term.Set(term)
+	sm.Term = term
 	sm.saveState()
 }
 
@@ -571,7 +572,7 @@ func (sm *raft) deleteIns(id int64) {
 // When there is a term change, vote change or configuration change, raft
 // must call saveState.
 func (sm *raft) saveState() {
-	sm.setState(sm.vote, sm.term.Get(), sm.raftLog.committed)
+	sm.setState(sm.vote, sm.Term, sm.raftLog.committed)
 }
 
 func (sm *raft) clearState() {

@@ -37,7 +37,7 @@ func TestLeaderElection(t *testing.T) {
 		if sm.state != tt.state {
 			t.Errorf("#%d: state = %s, want %s", i, sm.state, tt.state)
 		}
-		if g := sm.term.Get(); g != 1 {
+		if g := sm.Term; g != 1 {
 			t.Errorf("#%d: term = %d, want %d", i, g, 1)
 		}
 	}
@@ -230,7 +230,7 @@ func TestDuelingCandidates(t *testing.T) {
 		if g := tt.sm.state; g != tt.state {
 			t.Errorf("#%d: state = %s, want %s", i, g, tt.state)
 		}
-		if g := tt.sm.term.Get(); g != tt.term {
+		if g := tt.sm.Term; g != tt.term {
 			t.Errorf("#%d: term = %d, want %d", i, g, tt.term)
 		}
 		base := ltoa(tt.raftLog)
@@ -263,7 +263,7 @@ func TestCandidateConcede(t *testing.T) {
 	if g := a.state; g != stateFollower {
 		t.Errorf("state = %s, want %s", g, stateFollower)
 	}
-	if g := a.term; g != 1 {
+	if g := a.Term; g != 1 {
 		t.Errorf("term = %d, want %d", g, 1)
 	}
 	wantLog := ltoa(&raftLog{ents: []Entry{{}, {Type: Normal, Data: nil, Term: 1, Index: 1}, {Term: 1, Index: 2, Data: data}}, committed: 2})
@@ -369,7 +369,7 @@ func TestProposal(t *testing.T) {
 			}
 		}
 		sm := tt.network.peers[0].(*raft)
-		if g := sm.term.Get(); g != 1 {
+		if g := sm.Term; g != 1 {
 			t.Errorf("#%d: term = %d, want %d", i, g, 1)
 		}
 	}
@@ -402,7 +402,7 @@ func TestProposalByProxy(t *testing.T) {
 			}
 		}
 		sm := tt.peers[0].(*raft)
-		if g := sm.term.Get(); g != 1 {
+		if g := sm.Term; g != 1 {
 			t.Errorf("#%d: term = %d, want %d", i, g, 1)
 		}
 	}
@@ -441,7 +441,7 @@ func TestCommit(t *testing.T) {
 		for j := 0; j < len(tt.matches); j++ {
 			ins[int64(j)] = &index{tt.matches[j], tt.matches[j] + 1}
 		}
-		sm := &raft{raftLog: &raftLog{ents: tt.logs}, ins: ins, term: atomicInt(tt.smTerm)}
+		sm := &raft{raftLog: &raftLog{ents: tt.logs}, ins: ins, State: State{Term: tt.smTerm}}
 		sm.maybeCommit()
 		if g := sm.raftLog.committed; g != tt.w {
 			t.Errorf("#%d: committed = %d, want %d", i, g, tt.w)
@@ -480,7 +480,7 @@ func TestHandleMsgApp(t *testing.T) {
 	for i, tt := range tests {
 		sm := &raft{
 			state:   stateFollower,
-			term:    2,
+			State:   State{Term: 2},
 			raftLog: &raftLog{committed: 0, ents: []Entry{{}, {Term: 1}, {Term: 2}}},
 		}
 
@@ -602,8 +602,8 @@ func TestStateTransition(t *testing.T) {
 				sm.becomeLeader()
 			}
 
-			if sm.term.Get() != tt.wterm {
-				t.Errorf("%d: term = %d, want %d", i, sm.term.Get(), tt.wterm)
+			if sm.Term != tt.wterm {
+				t.Errorf("%d: term = %d, want %d", i, sm.Term, tt.wterm)
 			}
 			if sm.lead.Get() != tt.wlead {
 				t.Errorf("%d: lead = %d, want %d", i, sm.lead, tt.wlead)
@@ -694,8 +694,8 @@ func TestAllServerStepdown(t *testing.T) {
 			if sm.state != tt.wstate {
 				t.Errorf("#%d.%d state = %v , want %v", i, j, sm.state, tt.wstate)
 			}
-			if sm.term.Get() != tt.wterm {
-				t.Errorf("#%d.%d term = %v , want %v", i, j, sm.term.Get(), tt.wterm)
+			if sm.Term != tt.wterm {
+				t.Errorf("#%d.%d term = %v , want %v", i, j, sm.Term, tt.wterm)
 			}
 			if int64(len(sm.raftLog.ents)) != tt.windex {
 				t.Errorf("#%d.%d index = %v , want %v", i, j, len(sm.raftLog.ents), tt.windex)
@@ -730,7 +730,7 @@ func TestLeaderAppResp(t *testing.T) {
 		sm.becomeCandidate()
 		sm.becomeLeader()
 		sm.ReadMessages()
-		sm.Step(Message{From: 1, Type: msgAppResp, Index: tt.index, Term: sm.term.Get()})
+		sm.Step(Message{From: 1, Type: msgAppResp, Index: tt.index, Term: sm.Term})
 		msgs := sm.ReadMessages()
 
 		if len(msgs) != tt.wmsgNum {
@@ -762,7 +762,7 @@ func TestRecvMsgBeat(t *testing.T) {
 	for i, tt := range tests {
 		sm := newStateMachine(0, []int64{0, 1, 2})
 		sm.raftLog = &raftLog{ents: []Entry{{}, {Term: 0}, {Term: 1}}}
-		sm.term.Set(1)
+		sm.Term = 1
 		sm.state = tt.state
 		sm.Step(Message{From: 0, To: 0, Type: msgBeat})
 
