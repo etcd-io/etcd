@@ -130,7 +130,8 @@ func (h *peerHub) send(msg raft.Message) error {
 		if msg.IsMsgApp() {
 			h.serverStats.SendAppendReq(len(data))
 		}
-		return p.send(data)
+		p.send(data)
+		return nil
 	}
 	return errUnknownPeer
 }
