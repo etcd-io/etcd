@@ -85,7 +85,13 @@ func (l *raftLog) findConflict(from int64, ents []Entry) int64 {
 }
 
 func (l *raftLog) unstableEnts() []Entry {
-	return l.entries(l.unstable)
+	ents := l.entries(l.unstable)
+	if ents == nil {
+		return nil
+	}
+	cpy := make([]Entry, len(ents))
+	copy(cpy, ents)
+	return cpy
 }
 
 func (l *raftLog) resetUnstable() {
@@ -96,7 +102,13 @@ func (l *raftLog) resetUnstable() {
 // all the returned entries will be marked as applied.
 func (l *raftLog) nextEnts() (ents []Entry) {
 	if l.committed > l.applied {
-		return l.slice(l.applied+1, l.committed+1)
+		ents := l.slice(l.applied+1, l.committed+1)
+		if ents == nil {
+			return nil
+		}
+		cpy := make([]Entry, len(ents))
+		copy(cpy, ents)
+		return cpy
 	}
 	return nil
 }
