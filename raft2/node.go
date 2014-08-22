@@ -4,9 +4,9 @@ package raft
 import "code.google.com/p/go.net/context"
 
 type stateResp struct {
-	state State
-	ents  []Entry
-	msgs  []Message
+	state       State
+	ents, cents []Entry
+	msgs        []Message
 }
 
 type Node struct {
@@ -47,12 +47,12 @@ func (n *Node) run(r *raft) {
 			propc = nil
 		}
 
-		// TODO(bmizerany): move to raft.go or log.go by removing the
-		// idea "unstable" in those files. Callers of ReadState can
-		// determine what is committed by comparing State.Commit to
-		// each Entry.Index. This will also avoid this horrible copy
-		// and alloc.
-		ents := append(r.raftLog.nextEnts(), r.raftLog.unstableEnts()...)
+		sr := stateResp{
+			r.State,
+			r.raftLog.unstableEnts(),
+			r.raftLog.nextEnts(),
+			r.msgs,
+		}
 
 		select {
 		case p := <-propc:
@@ -61,7 +61,7 @@ func (n *Node) run(r *raft) {
 			r.Step(m) // raft never returns an error
 		case <-n.tickc:
 			// r.tick()
-		case n.statec <- stateResp{r.State, ents, r.msgs}:
+		case n.statec <- sr:
 			r.raftLog.resetNextEnts()
 			r.raftLog.resetUnstable()
 			r.msgs = nil
@@ -101,11 +101,11 @@ func (n *Node) Step(m Message) error {
 }
 
 // ReadState returns the current point-in-time state.
-func (n *Node) ReadState() (State, []Entry, []Message, error) {
+func (n *Node) ReadState() (st State, ents, cents []Entry, msgs []Message, err error) {
 	select {
 	case sr := <-n.statec:
-		return sr.state, sr.ents, sr.msgs, nil
+		return sr.state, sr.ents, sr.cents, sr.msgs, nil
 	case <-n.ctx.Done():
-		return State{}, nil, nil, n.ctx.Err()
+		return State{}, nil, nil, nil, n.ctx.Err()
 	}
 }
