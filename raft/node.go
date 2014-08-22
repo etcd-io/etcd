@@ -52,7 +52,7 @@ func New(id int64, heartbeat, election tick) *Node {
 	return n
 }
 
-func Recover(s *Snapshot, id int64, ents []Entry, state State, heartbeat, election tick) *Node {
+func Recover(id int64, s *Snapshot, ents []Entry, state State, heartbeat, election tick) *Node {
 	n := New(id, heartbeat, election)
 	if s != nil {
 		n.sm.restore(*s)

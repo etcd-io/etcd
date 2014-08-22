@@ -192,7 +192,7 @@ func TestRecover(t *testing.T) {
 	ents := []Entry{{Term: 1}, {Term: 2}, {Term: 3}}
 	state := State{Term: 500, Vote: 1, Commit: 3}
 
-	n := Recover(nil, 0, ents, state, defaultHeartbeat, defaultElection)
+	n := Recover(0, nil, ents, state, defaultHeartbeat, defaultElection)
 	if g := n.Next(); !reflect.DeepEqual(g, ents) {
 		t.Errorf("ents = %+v, want %+v", g, ents)
 	}
