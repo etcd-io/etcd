@@ -47,6 +47,13 @@ func (n *Node) run(r *raft) {
 			propc = nil
 		}
 
+		// TODO(bmizerany): move to raft.go or log.go by removing the
+		// idea "unstable" in those files. Callers of ReadState can
+		// determine what is committed by comparing State.Commit to
+		// each Entry.Index. This will also avoid this horrible copy
+		// and alloc.
+		ents := append(r.raftLog.nextEnts(), r.raftLog.unstableEnts()...)
+
 		select {
 		case p := <-propc:
 			r.propose(p)
@@ -54,8 +61,10 @@ func (n *Node) run(r *raft) {
 			r.Step(m) // raft never returns an error
 		case <-n.tickc:
 			// r.tick()
-		// case n.statec <- stateResp{r.State, r.ents, r.msgs}:
-		// r.resetState()
+		case n.statec <- stateResp{r.State, ents, r.msgs}:
+			r.raftLog.resetNextEnts()
+			r.raftLog.resetUnstable()
+			r.msgs = nil
 		case <-n.ctx.Done():
 			return
 		}
