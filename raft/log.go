@@ -171,7 +171,6 @@ func (l *raftLog) restore(s Snapshot) {
 	l.applied = s.Index
 	l.offset = s.Index
 	l.snapshot = s
-	l.unstableSnapshot = s
 }
 
 func (l *raftLog) at(i int64) *Entry {

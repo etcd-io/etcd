@@ -152,22 +152,24 @@ func newParticipant(c *conf.Config, client *v2client, peerHub *peerHub, tickDura
 			log.Printf("id=%x participant.snapload err=%s\n", p.id, err)
 			return nil, err
 		}
+		var logIndex int64
 		if s != nil {
-			p.node.Restore(*s)
-			if err := p.Recovery(s.Data); err != nil {
-				panic(err)
-			}
-			log.Printf("id=%x recovered index=%d\n", p.id, s.Index)
+			logIndex = s.Index
 		}
-
-		n, err := wal.Read(walDir, 0)
+		n, err := wal.Read(walDir, logIndex)
 		if err != nil {
 			return nil, err
 		}
 		p.id = n.Id
-		p.node.Node = raft.Recover(n.Id, n.Ents, n.State, defaultHeartbeat, defaultElection)
+		p.node.Node = raft.Recover(s, n.Id, n.Ents, n.State, defaultHeartbeat, defaultElection)
 		p.apply(p.node.Next())
-		log.Printf("id=%x participant.load path=%s state=\"%+v\" len(ents)=%d", p.id, walDir, n.State, len(n.Ents))
+		log.Printf("id=%x participant.load path=%s snap=%+v state=\"%+v\" len(ents)=%d", p.id, p.cfg.DataDir, s, n.State, len(n.Ents))
+		if s != nil {
+			if err := p.Recovery(s.Data); err != nil {
+				panic(err)
+			}
+			log.Printf("id=%x participant.store.recovered index=%d\n", p.id, s.Index)
+		}
 		if w, err = wal.Open(walDir); err != nil {
 			return nil, err
 		}

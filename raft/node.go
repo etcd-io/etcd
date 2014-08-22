@@ -52,10 +52,15 @@ func New(id int64, heartbeat, election tick) *Node {
 	return n
 }
 
-func Recover(id int64, ents []Entry, state State, heartbeat, election tick) *Node {
+func Recover(s *Snapshot, id int64, ents []Entry, state State, heartbeat, election tick) *Node {
 	n := New(id, heartbeat, election)
+	if s != nil {
+		n.sm.restore(*s)
+	}
 	n.sm.loadEnts(ents)
-	n.sm.loadState(state)
+	if !state.IsEmpty() {
+		n.sm.loadState(state)
+	}
 	return n
 }
 
@@ -229,10 +234,6 @@ func (n *Node) UpdateConf(t int64, c *Config) {
 		panic(err)
 	}
 	n.propose(t, data)
-}
-
-func (n *Node) Restore(s Snapshot) bool {
-	return n.sm.restore(s)
 }
 
 // UnstableEnts retuens all the entries that need to be persistent.

@@ -388,6 +388,7 @@ func (sm *stateMachine) handleAppendEntries(m Message) {
 
 func (sm *stateMachine) handleSnapshot(m Message) {
 	if sm.restore(m.Snapshot) {
+		sm.raftLog.unstableSnapshot = m.Snapshot
 		sm.send(Message{To: m.From, Type: msgAppResp, Index: sm.raftLog.lastIndex()})
 	} else {
 		sm.send(Message{To: m.From, Type: msgAppResp, Index: sm.raftLog.committed})
@@ -574,10 +575,7 @@ func (sm *stateMachine) setState(vote, term, commit int64) {
 }
 
 func (sm *stateMachine) loadEnts(ents []Entry) {
-	if !sm.raftLog.isEmpty() {
-		panic("cannot load entries when log is not empty")
-	}
-	sm.raftLog.append(0, ents...)
+	sm.raftLog.append(sm.raftLog.lastIndex(), ents...)
 	sm.raftLog.unstable = sm.raftLog.lastIndex() + 1
 }
 
