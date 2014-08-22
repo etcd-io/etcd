@@ -167,7 +167,7 @@ func newParticipant(c *conf.Config, client *v2client, peerHub *peerHub, tickDura
 		p.id = n.Id
 		p.node.Node = raft.Recover(n.Id, s, n.Ents, n.State, defaultHeartbeat, defaultElection)
 		p.apply(p.node.Next())
-		log.Printf("id=%x participant.load path=%s snap=%+v state=\"%+v\" len(ents)=%d", p.id, p.cfg.DataDir, s, n.State, len(n.Ents))
+		log.Printf("id=%x participant.load path=%s snapIndex=%d state=\"%+v\" len(ents)=%d", p.id, p.cfg.DataDir, snapIndex, n.State, len(n.Ents))
 		if w, err = wal.Open(walDir); err != nil {
 			return nil, err
 		}

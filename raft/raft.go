@@ -511,6 +511,7 @@ func (sm *stateMachine) restore(s Snapshot) bool {
 	for _, n := range s.Nodes {
 		if n == sm.id {
 			sm.addIns(n, sm.raftLog.lastIndex(), sm.raftLog.lastIndex()+1)
+			sm.promotable = true
 		} else {
 			sm.addIns(n, 0, sm.raftLog.lastIndex()+1)
 		}

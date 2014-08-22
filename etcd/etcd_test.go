@@ -24,6 +24,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"path"
 	"reflect"
 	"strings"
 	"testing"
@@ -283,6 +284,64 @@ func TestRestoreSnapshotFromLeader(t *testing.T) {
 	w := cl.Participant(0).node.Nodes()
 	if !reflect.DeepEqual(g, w) {
 		t.Errorf("nodes = %v, want %v", g, w)
+	}
+}
+
+func TestSaveSnapshot(t *testing.T) {
+	defer afterTest(t)
+
+	cl := testCluster{Size: 1}
+	cl.Start()
+	defer cl.Destroy()
+
+	n := cl.Node(0)
+	// TODO(xiangli): tunable compact; reduce testing time
+	for i := 0; i < defaultCompact; i++ {
+		n.Participant().Set("/foo", false, "bar", store.Permanent)
+	}
+	snapname := fmt.Sprintf("%016x-%016x-%016x.snap", n.Participant().clusterId, 1, defaultCompact)
+	snappath := path.Join(n.Config.DataDir, "snap", snapname)
+	if _, err := os.Stat(snappath); err != nil {
+		t.Errorf("err = %v, want nil", err)
+	}
+	walname := fmt.Sprintf("%016x-%016x.wal", 1, defaultCompact)
+	walpath := path.Join(n.Config.DataDir, "wal", walname)
+	if _, err := os.Stat(walpath); err != nil {
+		t.Errorf("err = %v, want nil", err)
+	}
+}
+
+func TestRestoreSnapshotFromDisk(t *testing.T) {
+	defer afterTest(t)
+
+	cl := testCluster{Size: 1}
+	cl.Start()
+	defer cl.Destroy()
+
+	lead, _ := cl.Leader()
+	for i := 0; i < defaultCompact+10; i++ {
+		cl.Participant(lead).Set(fmt.Sprint("/foo", i), false, fmt.Sprint("bar", i), store.Permanent)
+	}
+
+	cl.Stop()
+	cl.Restart()
+
+	lead, _ = cl.Leader()
+	// check store is recovered
+	for i := 0; i < defaultCompact+10; i++ {
+		ev, err := cl.Participant(lead).Store.Get(fmt.Sprint("/foo", i), false, false)
+		if err != nil {
+			t.Errorf("get err = %v", err)
+			continue
+		}
+		w := fmt.Sprint("bar", i)
+		if g := *ev.Node.Value; g != w {
+			t.Errorf("value = %v, want %v", g, w)
+		}
+	}
+	// check new proposal could be submitted
+	if _, err := cl.Participant(lead).Set("/foo", false, "bar", store.Permanent); err != nil {
+		t.Fatal(err)
 	}
 }
 
