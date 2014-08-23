@@ -25,7 +25,7 @@ func Example_Node() {
 			log.Fatal(err)
 		}
 
-		if prev.Equal(st) {
+		if !prev.Equal(st) {
 			saveStateToDisk(st)
 			prev = st
 		}
