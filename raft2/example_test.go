@@ -17,7 +17,7 @@ func Example_Node() {
 	// stuff to n happens in other goroutines
 
 	// the last known state
-	var prev *State
+	var prev State
 	for {
 		// ReadState blocks until there is new state ready.
 		st, ents, cents, msgs, err := n.ReadState(context.Background())
@@ -25,14 +25,13 @@ func Example_Node() {
 			log.Fatal(err)
 		}
 
-		curr := &st
 		if !prev.Equal(st) {
 			saveStateToDisk(st)
-			prev = curr
+			prev = st
 		}
 
 		saveToDisk(ents)
-		applyToStore(cents)
+		go applyToStore(cents)
 		sendMessages(msgs)
 	}
 }
