@@ -26,8 +26,11 @@ import (
 )
 
 func (p *participant) GetHandler(w http.ResponseWriter, req *http.Request) error {
+	if req.FormValue("consistent") == "true" && !p.node.IsLeader() {
+		return p.redirect(w, req, p.node.Leader())
+	}
+
 	key := req.URL.Path[len("/v2/keys"):]
-	// TODO(xiangli): handle consistent get
 	recursive := (req.FormValue("recursive") == "true")
 	sort := (req.FormValue("sorted") == "true")
 	waitIndex := req.FormValue("waitIndex")

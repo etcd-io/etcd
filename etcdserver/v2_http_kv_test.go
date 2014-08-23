@@ -18,6 +18,7 @@ package etcdserver
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -666,6 +667,34 @@ func TestV2Get(t *testing.T) {
 			t.Errorf("#%d: %v", i, err)
 		}
 	}
+}
+
+func TestConsistentGet(t *testing.T) {
+	defer afterTest(t)
+
+	noredirect := func(req *http.Request, via []*http.Request) error {
+		return errors.New("no redirect")
+	}
+
+	c := &testCluster{Size: 3}
+	c.Start()
+	defer c.Destroy()
+
+	u := fmt.Sprintf("%s%s", c.URL(1), "/v2/keys/foo?consistent=true")
+	ru := fmt.Sprintf("%s%s", c.URL(0), "/v2/keys/foo?consistent=true")
+	tc := testHttpClient{&http.Client{CheckRedirect: noredirect}}
+	resp, _ := tc.Get(u)
+	if resp.StatusCode != http.StatusTemporaryRedirect {
+		t.Errorf("status = %d, want %d", resp.StatusCode, http.StatusTemporaryRedirect)
+	}
+	location, err := resp.Location()
+	if err != nil {
+		t.Errorf("err = %v, want nil", err)
+	}
+	if location.String() != ru {
+		t.Errorf("location = %v, want %v", location.String(), ru)
+	}
+	resp.Body.Close()
 }
 
 func TestV2QuorumGet(t *testing.T) {
