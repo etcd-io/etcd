@@ -68,16 +68,15 @@ func (st stateType) String() string {
 var EmptyState = State{}
 
 type Message struct {
-	Type      messageType
-	ClusterId int64
-	To        int64
-	From      int64
-	Term      int64
-	LogTerm   int64
-	Index     int64
-	Entries   []Entry
-	Commit    int64
-	Snapshot  Snapshot
+	Type     messageType
+	To       int64
+	From     int64
+	Term     int64
+	LogTerm  int64
+	Index    int64
+	Entries  []Entry
+	Commit   int64
+	Snapshot Snapshot
 }
 
 func (m Message) IsMsgApp() bool {
@@ -129,14 +128,7 @@ func (p int64Slice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
 type raft struct {
 	State
 
-	// --- new stuff ---
-	name      string
-	election  int
-	heartbeat int
-	// -----------------
-
-	clusterId int64
-	id        int64
+	id int64
 
 	// the term we are participating in at any time
 	index atomicInt
@@ -170,7 +162,7 @@ func newStateMachine(id int64, peers []int64) *raft {
 	if id == none {
 		panic("cannot use none id")
 	}
-	sm := &raft{id: id, clusterId: none, lead: none, raftLog: newLog(), ins: make(map[int64]*index)}
+	sm := &raft{id: id, lead: none, raftLog: newLog(), ins: make(map[int64]*index)}
 	for _, p := range peers {
 		sm.ins[p] = &index{}
 	}
@@ -211,7 +203,6 @@ func (sm *raft) poll(id int64, v bool) (granted int) {
 
 // send persists state to stable storage and then sends to its mailbox.
 func (sm *raft) send(m Message) {
-	m.ClusterId = sm.clusterId
 	m.From = sm.id
 	m.Term = sm.Term
 	sm.msgs = append(sm.msgs, m)
