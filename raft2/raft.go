@@ -150,8 +150,6 @@ type raft struct {
 	// pending reconfiguration
 	pendingConf bool
 
-	unstableState State
-
 	// promotable indicates whether state machine could be promoted.
 	// New machine has to wait until it has been added to the cluster, or it
 	// may become the leader of the cluster without it.
@@ -556,21 +554,17 @@ func (sm *raft) deleteIns(id int64) {
 	sm.saveState()
 }
 
-// saveState saves the state to sm.unstableState
+// saveState saves the state to sm.State
 // When there is a term change, vote change or configuration change, raft
 // must call saveState.
 func (sm *raft) saveState() {
 	sm.setState(sm.Vote, sm.Term, sm.raftLog.committed)
 }
 
-func (sm *raft) clearState() {
-	sm.setState(0, 0, 0)
-}
-
 func (sm *raft) setState(vote, term, commit int64) {
-	sm.unstableState.Vote = vote
-	sm.unstableState.Term = term
-	sm.unstableState.Commit = commit
+	sm.Vote = vote
+	sm.Term = term
+	sm.Commit = commit
 }
 
 func (sm *raft) loadEnts(ents []Entry) {
