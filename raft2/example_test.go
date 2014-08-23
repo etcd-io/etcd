@@ -10,7 +10,6 @@ func applyToStore(ents []Entry)        {}
 func sendMessages(msgs []Message)      {}
 func saveStateToDisk(st State)         {}
 func saveToDisk(ents []Entry)          {}
-func stateChanged(prev, st State) bool { return false }
 
 func Example_Node() {
 	n := Start(context.Background(), "", 0, 0)
@@ -26,7 +25,7 @@ func Example_Node() {
 			log.Fatal(err)
 		}
 
-		if stateChanged(prev, st) {
+		if prev.Equal(st) {
 			saveStateToDisk(st)
 			prev = st
 		}
