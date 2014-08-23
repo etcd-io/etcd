@@ -437,9 +437,9 @@ func TestCommit(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		ins := make(map[int64]*index)
+		ins := make(map[int64]*progress)
 		for j := 0; j < len(tt.matches); j++ {
-			ins[int64(j)] = &index{tt.matches[j], tt.matches[j] + 1}
+			ins[int64(j)] = &progress{tt.matches[j], tt.matches[j] + 1}
 		}
 		sm := &raft{raftLog: &raftLog{ents: tt.logs}, ins: ins, State: State{Term: tt.smTerm}}
 		sm.maybeCommit()
@@ -936,9 +936,9 @@ func newNetwork(peers ...Interface) *network {
 			npeers[nid] = sm
 		case *raft:
 			v.id = nid
-			v.ins = make(map[int64]*index)
+			v.ins = make(map[int64]*progress)
 			for i := 0; i < size; i++ {
-				v.ins[int64(i)] = &index{}
+				v.ins[int64(i)] = &progress{}
 			}
 			v.reset(0)
 			npeers[nid] = v

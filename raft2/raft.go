@@ -84,22 +84,22 @@ func (m Message) String() string {
 		m.Type, m.From, m.To, m.Term, m.LogTerm, m.Index, m.Commit, len(m.Entries))
 }
 
-type index struct {
+type progress struct {
 	match, next int64
 }
 
-func (in *index) update(n int64) {
+func (in *progress) update(n int64) {
 	in.match = n
 	in.next = n + 1
 }
 
-func (in *index) decr() {
+func (in *progress) decr() {
 	if in.next--; in.next < 1 {
 		in.next = 1
 	}
 }
 
-func (in *index) String() string {
+func (in *progress) String() string {
 	return fmt.Sprintf("n=%d m=%d", in.next, in.match)
 }
 
@@ -132,7 +132,7 @@ type raft struct {
 	// the log
 	raftLog *raftLog
 
-	ins map[int64]*index
+	ins map[int64]*progress
 
 	state stateType
 
@@ -156,9 +156,9 @@ func newStateMachine(id int64, peers []int64) *raft {
 	if id == none {
 		panic("cannot use none id")
 	}
-	sm := &raft{id: id, lead: none, raftLog: newLog(), ins: make(map[int64]*index)}
+	sm := &raft{id: id, lead: none, raftLog: newLog(), ins: make(map[int64]*progress)}
 	for _, p := range peers {
-		sm.ins[p] = &index{}
+		sm.ins[p] = &progress{}
 	}
 	sm.reset(0)
 	return sm
@@ -279,7 +279,7 @@ func (sm *raft) reset(term int64) {
 	sm.setVote(none)
 	sm.votes = make(map[int64]bool)
 	for i := range sm.ins {
-		sm.ins[i] = &index{next: sm.raftLog.lastIndex() + 1}
+		sm.ins[i] = &progress{next: sm.raftLog.lastIndex() + 1}
 		if i == sm.id {
 			sm.ins[i].match = sm.raftLog.lastIndex()
 		}
@@ -500,7 +500,7 @@ func (sm *raft) restore(s Snapshot) bool {
 
 	sm.raftLog.restore(s)
 	sm.LastIndex = sm.raftLog.lastIndex()
-	sm.ins = make(map[int64]*index)
+	sm.ins = make(map[int64]*progress)
 	for _, n := range s.Nodes {
 		if n == sm.id {
 			sm.addIns(n, sm.raftLog.lastIndex(), sm.raftLog.lastIndex()+1)
@@ -541,7 +541,7 @@ func (sm *raft) setVote(vote int64) {
 }
 
 func (sm *raft) addIns(id, match, next int64) {
-	sm.ins[id] = &index{next: next, match: match}
+	sm.ins[id] = &progress{next: next, match: match}
 	sm.saveState()
 }
 
