@@ -22,8 +22,6 @@ import math "math"
 import io "io"
 import code_google_com_p_gogoprotobuf_proto "code.google.com/p/gogoprotobuf/proto"
 
-import bytes "bytes"
-
 // Reference proto, json, and math imports to suppress error if they are not otherwise used.
 var _ = proto.Marshal
 var _ = &json.SyntaxError{}
@@ -229,41 +227,4 @@ func encodeVarintState(data []byte, offset int, v uint64) int {
 	}
 	data[offset] = uint8(v)
 	return offset + 1
-}
-func (this *State) Equal(that interface{}) bool {
-	if that == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	}
-
-	that1, ok := that.(*State)
-	if !ok {
-		return false
-	}
-	if that1 == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	} else if this == nil {
-		return false
-	}
-	if this.Term != that1.Term {
-		return false
-	}
-	if this.Vote != that1.Vote {
-		return false
-	}
-	if this.Commit != that1.Commit {
-		return false
-	}
-	if this.LastIndex != that1.LastIndex {
-		return false
-	}
-	if !bytes.Equal(this.XXX_unrecognized, that1.XXX_unrecognized) {
-		return false
-	}
-	return true
 }

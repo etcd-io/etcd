@@ -4,13 +4,17 @@ package raft
 import "code.google.com/p/go.net/context"
 
 type stateResp struct {
-	state       State
+	st          State
 	ents, cents []Entry
 	msgs        []Message
 }
 
+func (a State) Equal(b State) bool {
+	return a.Term == b.Term && a.Vote == b.Vote && a.LastIndex == b.LastIndex
+}
+
 func (sr stateResp) containsUpdates(prev stateResp) bool {
-	return !prev.state.Equal(sr.state) || len(sr.ents) > 0 || len(sr.cents) > 0 || len(sr.msgs) > 0
+	return !prev.st.Equal(sr.st) || len(sr.ents) > 0 || len(sr.cents) > 0 || len(sr.msgs) > 0
 }
 
 type Node struct {
@@ -21,7 +25,7 @@ type Node struct {
 	tickc  chan struct{}
 }
 
-func Start(ctx context.Context, name string, election, heartbeat int) *Node {
+func Start(ctx context.Context, id int64) *Node {
 	n := &Node{
 		ctx:    ctx,
 		propc:  make(chan []byte),
@@ -29,11 +33,7 @@ func Start(ctx context.Context, name string, election, heartbeat int) *Node {
 		statec: make(chan stateResp),
 		tickc:  make(chan struct{}),
 	}
-	r := &raft{
-		name:      name,
-		election:  election,
-		heartbeat: heartbeat,
-	}
+	r := &raft{raftLog: newLog(), id: id}
 	go n.run(r)
 	return n
 }
@@ -93,10 +93,12 @@ func (n *Node) Tick() error {
 }
 
 // Propose proposes data be appended to the log.
-func (n *Node) Propose(data []byte) error {
+func (n *Node) Propose(ctx context.Context, data []byte) error {
 	select {
 	case n.propc <- data:
 		return nil
+	case <-ctx.Done():
+		return ctx.Err()
 	case <-n.ctx.Done():
 		return n.ctx.Err()
 	}
@@ -113,10 +115,12 @@ func (n *Node) Step(m Message) error {
 }
 
 // ReadState returns the current point-in-time state.
-func (n *Node) ReadState() (st State, ents, cents []Entry, msgs []Message, err error) {
+func (n *Node) ReadState(ctx context.Context) (st State, ents, cents []Entry, msgs []Message, err error) {
 	select {
 	case sr := <-n.statec:
-		return sr.state, sr.ents, sr.cents, sr.msgs, nil
+		return sr.st, sr.ents, sr.cents, sr.msgs, nil
+	case <-ctx.Done():
+		return State{}, nil, nil, nil, ctx.Err()
 	case <-n.ctx.Done():
 		return State{}, nil, nil, nil, n.ctx.Err()
 	}
