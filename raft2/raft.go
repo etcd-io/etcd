@@ -272,9 +272,9 @@ func (r *raft) nextEnts() (ents []Entry) {
 }
 
 func (r *raft) reset(term int64) {
-	r.setTerm(term)
+	r.Term = term
 	r.lead.Set(none)
-	r.setVote(none)
+	r.Vote = none
 	r.votes = make(map[int64]bool)
 	for i := range r.prs {
 		r.prs[i] = &progress{next: r.raftLog.lastIndex() + 1}
@@ -309,7 +309,7 @@ func (r *raft) becomeCandidate() {
 		panic("invalid transition [leader -> candidate]")
 	}
 	r.reset(r.Term + 1)
-	r.setVote(r.id)
+	r.Vote = r.id
 	r.state = stateCandidate
 }
 
@@ -476,7 +476,7 @@ func stepFollower(r *raft, m Message) {
 		r.handleSnapshot(m)
 	case msgVote:
 		if (r.Vote == none || r.Vote == m.From) && r.raftLog.isUpToDate(m.Index, m.LogTerm) {
-			r.setVote(m.From)
+			r.Vote = m.From
 			r.send(Message{To: m.From, Type: msgVoteResp, Index: r.raftLog.lastIndex()})
 		} else {
 			r.send(Message{To: m.From, Type: msgVoteResp, Index: -1})
@@ -528,37 +528,12 @@ func (r *raft) nodes() []int64 {
 	return nodes
 }
 
-func (r *raft) setTerm(term int64) {
-	r.Term = term
-	r.saveState()
-}
-
-func (r *raft) setVote(vote int64) {
-	r.Vote = vote
-	r.saveState()
-}
-
 func (r *raft) addIns(id, match, next int64) {
 	r.prs[id] = &progress{next: next, match: match}
-	r.saveState()
 }
 
 func (r *raft) deleteIns(id int64) {
 	delete(r.prs, id)
-	r.saveState()
-}
-
-// saveState saves the state to r.State
-// When there is a term change, vote change or configuration change, raft
-// must call saveState.
-func (r *raft) saveState() {
-	r.setState(r.Vote, r.Term, r.raftLog.committed)
-}
-
-func (r *raft) setState(vote, term, commit int64) {
-	r.Vote = vote
-	r.Term = term
-	r.Commit = commit
 }
 
 func (r *raft) loadEnts(ents []Entry) {
@@ -571,8 +546,8 @@ func (r *raft) loadEnts(ents []Entry) {
 
 func (r *raft) loadState(state State) {
 	r.raftLog.committed = state.Commit
-	r.setTerm(state.Term)
-	r.setVote(state.Vote)
+	r.Term = state.Term
+	r.Vote = state.Vote
 }
 
 func (s *State) IsEmpty() bool {
