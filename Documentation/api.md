@@ -383,7 +383,7 @@ curl -L http://127.0.0.1:4001/v2/keys/dir -XPUT -d ttl=30 -d dir=true
         "createdIndex": 17,
         "dir": true,
         "expiration": "2013-12-11T10:37:33.689275857-08:00",
-        "key": "/newdir",
+        "key": "/dir",
         "modifiedIndex": 17,
         "ttl": 30
     }
