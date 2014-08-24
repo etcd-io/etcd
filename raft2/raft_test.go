@@ -437,11 +437,11 @@ func TestCommit(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		ins := make(map[int64]*progress)
+		prs := make(map[int64]*progress)
 		for j := 0; j < len(tt.matches); j++ {
-			ins[int64(j)] = &progress{tt.matches[j], tt.matches[j] + 1}
+			prs[int64(j)] = &progress{tt.matches[j], tt.matches[j] + 1}
 		}
-		sm := &raft{raftLog: &raftLog{ents: tt.logs}, ins: ins, State: State{Term: tt.smTerm}}
+		sm := &raft{raftLog: &raftLog{ents: tt.logs}, prs: prs, State: State{Term: tt.smTerm}}
 		sm.maybeCommit()
 		if g := sm.raftLog.committed; g != tt.w {
 			t.Errorf("#%d: committed = %d, want %d", i, g, tt.w)
@@ -842,7 +842,7 @@ func TestProvideSnap(t *testing.T) {
 
 	// force set the next of node 1, so that
 	// node 1 needs a snapshot
-	sm.ins[1].next = sm.raftLog.offset
+	sm.prs[1].next = sm.raftLog.offset
 
 	sm.Step(Message{From: 1, To: 0, Type: msgAppResp, Index: -1})
 	msgs = sm.ReadMessages()
@@ -936,9 +936,9 @@ func newNetwork(peers ...Interface) *network {
 			npeers[nid] = sm
 		case *raft:
 			v.id = nid
-			v.ins = make(map[int64]*progress)
+			v.prs = make(map[int64]*progress)
 			for i := 0; i < size; i++ {
-				v.ins[int64(i)] = &progress{}
+				v.prs[int64(i)] = &progress{}
 			}
 			v.reset(0)
 			npeers[nid] = v

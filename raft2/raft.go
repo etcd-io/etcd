@@ -88,19 +88,19 @@ type progress struct {
 	match, next int64
 }
 
-func (in *progress) update(n int64) {
-	in.match = n
-	in.next = n + 1
+func (pr *progress) update(n int64) {
+	pr.match = n
+	pr.next = n + 1
 }
 
-func (in *progress) decr() {
-	if in.next--; in.next < 1 {
-		in.next = 1
+func (pr *progress) decr() {
+	if pr.next--; pr.next < 1 {
+		pr.next = 1
 	}
 }
 
-func (in *progress) String() string {
-	return fmt.Sprintf("n=%d m=%d", in.next, in.match)
+func (pr *progress) String() string {
+	return fmt.Sprintf("n=%d m=%d", pr.next, pr.match)
 }
 
 // An AtomicInt is an int64 to be accessed atomically.
@@ -132,7 +132,7 @@ type raft struct {
 	// the log
 	raftLog *raftLog
 
-	ins map[int64]*progress
+	prs map[int64]*progress
 
 	state stateType
 
@@ -156,9 +156,9 @@ func newStateMachine(id int64, peers []int64) *raft {
 	if id == none {
 		panic("cannot use none id")
 	}
-	r := &raft{id: id, lead: none, raftLog: newLog(), ins: make(map[int64]*progress)}
+	r := &raft{id: id, lead: none, raftLog: newLog(), prs: make(map[int64]*progress)}
 	for _, p := range peers {
-		r.ins[p] = &progress{}
+		r.prs[p] = &progress{}
 	}
 	r.reset(0)
 	return r
@@ -178,7 +178,7 @@ func (r *raft) String() string {
 	case stateCandidate:
 		s += fmt.Sprintf(` votes="%v"`, r.votes)
 	case stateLeader:
-		s += fmt.Sprintf(` ins="%v"`, r.ins)
+		s += fmt.Sprintf(` prs="%v"`, r.prs)
 	}
 	return s
 }
@@ -204,17 +204,17 @@ func (r *raft) send(m Message) {
 
 // sendAppend sends RRPC, with entries to the given peer.
 func (r *raft) sendAppend(to int64) {
-	in := r.ins[to]
+	pr := r.prs[to]
 	m := Message{}
 	m.To = to
-	m.Index = in.next - 1
+	m.Index = pr.next - 1
 	if r.needSnapshot(m.Index) {
 		m.Type = msgSnap
 		m.Snapshot = r.raftLog.snapshot
 	} else {
 		m.Type = msgApp
-		m.LogTerm = r.raftLog.term(in.next - 1)
-		m.Entries = r.raftLog.entries(in.next)
+		m.LogTerm = r.raftLog.term(pr.next - 1)
+		m.Entries = r.raftLog.entries(pr.next)
 		m.Commit = r.raftLog.committed
 	}
 	r.send(m)
@@ -222,8 +222,8 @@ func (r *raft) sendAppend(to int64) {
 
 // sendHeartbeat sends RRPC, without entries to the given peer.
 func (r *raft) sendHeartbeat(to int64) {
-	in := r.ins[to]
-	index := max(in.next-1, r.raftLog.lastIndex())
+	pr := r.prs[to]
+	index := max(pr.next-1, r.raftLog.lastIndex())
 	m := Message{
 		To:      to,
 		Type:    msgApp,
@@ -236,7 +236,7 @@ func (r *raft) sendHeartbeat(to int64) {
 
 // bcastAppend sends RRPC, with entries to all peers that are not up-to-date according to r.mis.
 func (r *raft) bcastAppend() {
-	for i := range r.ins {
+	for i := range r.prs {
 		if i == r.id {
 			continue
 		}
@@ -246,7 +246,7 @@ func (r *raft) bcastAppend() {
 
 // bcastHeartbeat sends RRPC, without entries to all the peers.
 func (r *raft) bcastHeartbeat() {
-	for i := range r.ins {
+	for i := range r.prs {
 		if i == r.id {
 			continue
 		}
@@ -256,9 +256,9 @@ func (r *raft) bcastHeartbeat() {
 
 func (r *raft) maybeCommit() bool {
 	// TODO(bmizerany): optimize.. Currently naive
-	mis := make(int64Slice, 0, len(r.ins))
-	for i := range r.ins {
-		mis = append(mis, r.ins[i].match)
+	mis := make(int64Slice, 0, len(r.prs))
+	for i := range r.prs {
+		mis = append(mis, r.prs[i].match)
 	}
 	sort.Sort(sort.Reverse(mis))
 	mci := mis[r.q()-1]
@@ -278,23 +278,23 @@ func (r *raft) reset(term int64) {
 	r.lead.Set(none)
 	r.setVote(none)
 	r.votes = make(map[int64]bool)
-	for i := range r.ins {
-		r.ins[i] = &progress{next: r.raftLog.lastIndex() + 1}
+	for i := range r.prs {
+		r.prs[i] = &progress{next: r.raftLog.lastIndex() + 1}
 		if i == r.id {
-			r.ins[i].match = r.raftLog.lastIndex()
+			r.prs[i].match = r.raftLog.lastIndex()
 		}
 	}
 }
 
 func (r *raft) q() int {
-	return len(r.ins)/2 + 1
+	return len(r.prs)/2 + 1
 }
 
 func (r *raft) appendEntry(e Entry) {
 	e.Term = r.Term
 	e.Index = r.raftLog.lastIndex() + 1
 	r.LastIndex = r.raftLog.append(r.raftLog.lastIndex(), e)
-	r.ins[r.id].update(r.raftLog.lastIndex())
+	r.prs[r.id].update(r.raftLog.lastIndex())
 	r.maybeCommit()
 }
 
@@ -349,7 +349,7 @@ func (r *raft) Step(m Message) error {
 		if r.q() == r.poll(r.id, true) {
 			r.becomeLeader()
 		}
-		for i := range r.ins {
+		for i := range r.prs {
 			if i == r.id {
 				continue
 			}
@@ -426,10 +426,10 @@ func stepLeader(r *raft, m Message) bool {
 		r.bcastAppend()
 	case msgAppResp:
 		if m.Index < 0 {
-			r.ins[m.From].decr()
+			r.prs[m.From].decr()
 			r.sendAppend(m.From)
 		} else {
-			r.ins[m.From].update(m.Index)
+			r.prs[m.From].update(m.Index)
 			if r.maybeCommit() {
 				r.bcastAppend()
 			}
@@ -503,7 +503,7 @@ func (r *raft) restore(s Snapshot) bool {
 
 	r.raftLog.restore(s)
 	r.LastIndex = r.raftLog.lastIndex()
-	r.ins = make(map[int64]*progress)
+	r.prs = make(map[int64]*progress)
 	for _, n := range s.Nodes {
 		if n == r.id {
 			r.addIns(n, r.raftLog.lastIndex(), r.raftLog.lastIndex()+1)
@@ -526,8 +526,8 @@ func (r *raft) needSnapshot(i int64) bool {
 }
 
 func (r *raft) nodes() []int64 {
-	nodes := make([]int64, 0, len(r.ins))
-	for k := range r.ins {
+	nodes := make([]int64, 0, len(r.prs))
+	for k := range r.prs {
 		nodes = append(nodes, k)
 	}
 	return nodes
@@ -544,12 +544,12 @@ func (r *raft) setVote(vote int64) {
 }
 
 func (r *raft) addIns(id, match, next int64) {
-	r.ins[id] = &progress{next: next, match: match}
+	r.prs[id] = &progress{next: next, match: match}
 	r.saveState()
 }
 
 func (r *raft) deleteIns(id int64) {
-	delete(r.ins, id)
+	delete(r.prs, id)
 	r.saveState()
 }
 
