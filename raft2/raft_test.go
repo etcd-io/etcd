@@ -629,7 +629,12 @@ func TestConf(t *testing.T) {
 	}
 
 	// deny the second configuration change request if there is a pending one
+	paniced := false
+	defer func() { recover(); paniced = true }()
 	sm.Step(Message{From: 0, To: 0, Type: msgProp, Entries: []Entry{{Type: AddNode}}})
+	if !paniced {
+		t.Errorf("expected panic")
+	}
 	if sm.raftLog.lastIndex() != 2 {
 		t.Errorf("lastindex = %d, want %d", sm.raftLog.lastIndex(), 1)
 	}

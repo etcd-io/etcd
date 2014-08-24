@@ -405,9 +405,9 @@ func (r *raft) removeNode(id int64) {
 	r.pendingConf = false
 }
 
-type stepFunc func(r *raft, m Message) bool
+type stepFunc func(r *raft, m Message)
 
-func stepLeader(r *raft, m Message) bool {
+func stepLeader(r *raft, m Message) {
 	switch m.Type {
 	case msgBeat:
 		r.bcastHeartbeat()
@@ -418,7 +418,7 @@ func stepLeader(r *raft, m Message) bool {
 		e := m.Entries[0]
 		if e.isConfig() {
 			if r.pendingConf {
-				return false
+				panic("pending conf")
 			}
 			r.pendingConf = true
 		}
@@ -437,13 +437,12 @@ func stepLeader(r *raft, m Message) bool {
 	case msgVote:
 		r.send(Message{To: m.From, Type: msgVoteResp, Index: -1})
 	}
-	return true
 }
 
-func stepCandidate(r *raft, m Message) bool {
+func stepCandidate(r *raft, m Message) {
 	switch m.Type {
 	case msgProp:
-		return false
+		panic("no leader")
 	case msgApp:
 		r.becomeFollower(r.Term, m.From)
 		r.handleAppendEntries(m)
@@ -462,14 +461,13 @@ func stepCandidate(r *raft, m Message) bool {
 			r.becomeFollower(r.Term, none)
 		}
 	}
-	return true
 }
 
-func stepFollower(r *raft, m Message) bool {
+func stepFollower(r *raft, m Message) {
 	switch m.Type {
 	case msgProp:
 		if r.lead.Get() == none {
-			return false
+			panic("no leader")
 		}
 		m.To = r.lead.Get()
 		r.send(m)
@@ -486,7 +484,6 @@ func stepFollower(r *raft, m Message) bool {
 			r.send(Message{To: m.From, Type: msgVoteResp, Index: -1})
 		}
 	}
-	return true
 }
 
 func (r *raft) compact(d []byte) {
