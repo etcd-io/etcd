@@ -252,13 +252,6 @@ func (r *raft) maybeCommit() bool {
 	return r.raftLog.maybeCommit(mci, r.Term)
 }
 
-// nextEnts returns the appliable entries and updates the applied index
-func (r *raft) nextEnts() (ents []Entry) {
-	ents = r.raftLog.nextEnts()
-	r.raftLog.resetNextEnts()
-	return ents
-}
-
 func (r *raft) reset(term int64) {
 	r.Term = term
 	r.lead = none

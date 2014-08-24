@@ -8,6 +8,13 @@ import (
 	"testing"
 )
 
+// nextEnts returns the appliable entries and updates the applied index
+func (r *raft) nextEnts() (ents []Entry) {
+	ents = r.raftLog.nextEnts()
+	r.raftLog.resetNextEnts()
+	return ents
+}
+
 type Interface interface {
 	Step(m Message) error
 	ReadMessages() []Message
