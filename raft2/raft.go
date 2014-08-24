@@ -379,7 +379,7 @@ func (r *raft) handleSnapshot(m Message) {
 }
 
 func (r *raft) addNode(id int64) {
-	r.addIns(id, 0, r.raftLog.lastIndex()+1)
+	r.setProgress(id, 0, r.raftLog.lastIndex()+1)
 	r.configuring = false
 	if id == r.id {
 		r.promotable = true
@@ -387,7 +387,7 @@ func (r *raft) addNode(id int64) {
 }
 
 func (r *raft) removeNode(id int64) {
-	r.deleteIns(id)
+	r.delProgress(id)
 	r.configuring = false
 }
 
@@ -489,9 +489,9 @@ func (r *raft) restore(s Snapshot) bool {
 	r.prs = make(map[int64]*progress)
 	for _, n := range s.Nodes {
 		if n == r.id {
-			r.addIns(n, r.raftLog.lastIndex(), r.raftLog.lastIndex()+1)
+			r.setProgress(n, r.raftLog.lastIndex(), r.raftLog.lastIndex()+1)
 		} else {
-			r.addIns(n, 0, r.raftLog.lastIndex()+1)
+			r.setProgress(n, 0, r.raftLog.lastIndex()+1)
 		}
 	}
 	r.configuring = false
@@ -516,11 +516,11 @@ func (r *raft) nodes() []int64 {
 	return nodes
 }
 
-func (r *raft) addIns(id, match, next int64) {
+func (r *raft) setProgress(id, match, next int64) {
 	r.prs[id] = &progress{next: next, match: match}
 }
 
-func (r *raft) deleteIns(id int64) {
+func (r *raft) delProgress(id int64) {
 	delete(r.prs, id)
 }
 
