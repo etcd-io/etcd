@@ -65,8 +65,6 @@ func (st stateType) String() string {
 	return stmap[int64(st)]
 }
 
-var EmptyState = State{}
-
 type Message struct {
 	Type     messageType
 	To       int64
