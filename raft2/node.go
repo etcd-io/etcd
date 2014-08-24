@@ -104,18 +104,6 @@ func (n *Node) Propose(ctx context.Context, data []byte) error {
 	}
 }
 
-// func (n *Node) SingleFlightPropose(ctx context.Context, id string, data []byte) error {
-// 	ch := n.getSingleFlightChan(id)
-// 	select {
-// 	case ch <- data:
-// 		return nil
-// 	case <-ctx.Done():
-// 		return ctx.Err()
-// 	case <-n.ctx.Done():
-// 		return n.ctx.Err()
-// 	}
-// }
-
 // Step advances the state machine using m.
 func (n *Node) Step(m Message) error {
 	select {
