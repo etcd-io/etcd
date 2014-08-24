@@ -621,8 +621,8 @@ func TestConf(t *testing.T) {
 	if sm.raftLog.lastIndex() != 2 {
 		t.Errorf("lastindex = %d, want %d", sm.raftLog.lastIndex(), 1)
 	}
-	if !sm.pendingConf {
-		t.Errorf("pendingConf = %v, want %v", sm.pendingConf, true)
+	if !sm.configuring {
+		t.Errorf("pendingConf = %v, want %v", sm.configuring, true)
 	}
 	if sm.raftLog.ents[2].Type != AddNode {
 		t.Errorf("type = %d, want %d", sm.raftLog.ents[1].Type, AddNode)
@@ -659,8 +659,8 @@ func TestConfChangeLeader(t *testing.T) {
 		sm.becomeCandidate()
 		sm.becomeLeader()
 
-		if sm.pendingConf != tt.wPending {
-			t.Errorf("#%d: pendingConf = %v, want %v", i, sm.pendingConf, tt.wPending)
+		if sm.configuring != tt.wPending {
+			t.Errorf("#%d: pendingConf = %v, want %v", i, sm.configuring, tt.wPending)
 		}
 	}
 }

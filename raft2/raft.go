@@ -130,7 +130,7 @@ type raft struct {
 	lead int64
 
 	// pending reconfiguration
-	pendingConf bool
+	configuring bool
 
 	// promotable indicates whether state machine could be promoted.
 	// New machine has to wait until it has been added to the cluster, or it
@@ -288,7 +288,7 @@ func (r *raft) becomeFollower(term int64, lead int64) {
 	r.reset(term)
 	r.lead = lead
 	r.state = stateFollower
-	r.pendingConf = false
+	r.configuring = false
 }
 
 func (r *raft) becomeCandidate() {
@@ -312,7 +312,7 @@ func (r *raft) becomeLeader() {
 
 	for _, e := range r.raftLog.entries(r.raftLog.committed + 1) {
 		if e.isConfig() {
-			r.pendingConf = true
+			r.configuring = true
 		}
 	}
 
@@ -380,7 +380,7 @@ func (r *raft) handleSnapshot(m Message) {
 
 func (r *raft) addNode(id int64) {
 	r.addIns(id, 0, r.raftLog.lastIndex()+1)
-	r.pendingConf = false
+	r.configuring = false
 	if id == r.id {
 		r.promotable = true
 	}
@@ -388,7 +388,7 @@ func (r *raft) addNode(id int64) {
 
 func (r *raft) removeNode(id int64) {
 	r.deleteIns(id)
-	r.pendingConf = false
+	r.configuring = false
 }
 
 type stepFunc func(r *raft, m Message)
@@ -403,10 +403,10 @@ func stepLeader(r *raft, m Message) {
 		}
 		e := m.Entries[0]
 		if e.isConfig() {
-			if r.pendingConf {
+			if r.configuring {
 				panic("pending conf")
 			}
-			r.pendingConf = true
+			r.configuring = true
 		}
 		r.appendEntry(e)
 		r.bcastAppend()
@@ -494,7 +494,7 @@ func (r *raft) restore(s Snapshot) bool {
 			r.addIns(n, 0, r.raftLog.lastIndex()+1)
 		}
 	}
-	r.pendingConf = false
+	r.configuring = false
 	return true
 }
 
