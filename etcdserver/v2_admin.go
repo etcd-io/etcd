@@ -81,7 +81,7 @@ func (p *participant) serveAdminMachines(w http.ResponseWriter, r *http.Request)
 		var info interface{}
 		var err error
 		if name != "" {
-			info, err = p.someMachineMessage(name)
+			info, err = p.machineMessage(name)
 		} else {
 			info, err = p.allMachineMessages()
 		}
@@ -139,8 +139,8 @@ func (p *participant) setClusterConfig(c *conf.ClusterConfig) error {
 	return nil
 }
 
-// someMachineMessage return machine message of specified name.
-func (p *participant) someMachineMessage(name string) (*machineMessage, error) {
+// machineMessage returns the machineMessage of the given name
+func (p *participant) machineMessage(name string) (*machineMessage, error) {
 	pp := filepath.Join(v2machineKVPrefix, name)
 	e, err := p.Store.Get(pp, false, false)
 	if err != nil {
