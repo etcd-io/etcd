@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"sort"
-	"sync/atomic"
 )
 
 const none = -1
@@ -101,17 +100,6 @@ func (pr *progress) String() string {
 	return fmt.Sprintf("n=%d m=%d", pr.next, pr.match)
 }
 
-// An AtomicInt is an int64 to be accessed atomically.
-type atomicInt int64
-
-func (i *atomicInt) Set(n int64) {
-	atomic.StoreInt64((*int64)(i), n)
-}
-
-func (i *atomicInt) Get() int64 {
-	return atomic.LoadInt64((*int64)(i))
-}
-
 // int64Slice implements sort interface
 type int64Slice []int64
 
@@ -125,7 +113,7 @@ type raft struct {
 	id int64
 
 	// the term we are participating in at any time
-	index atomicInt
+	index int64
 
 	// the log
 	raftLog *raftLog
@@ -139,7 +127,7 @@ type raft struct {
 	msgs []Message
 
 	// the leader id
-	lead atomicInt
+	lead int64
 
 	// pending reconfiguration
 	pendingConf bool
@@ -273,7 +261,7 @@ func (r *raft) nextEnts() (ents []Entry) {
 
 func (r *raft) reset(term int64) {
 	r.Term = term
-	r.lead.Set(none)
+	r.lead = none
 	r.Vote = none
 	r.votes = make(map[int64]bool)
 	for i := range r.prs {
@@ -298,7 +286,7 @@ func (r *raft) appendEntry(e Entry) {
 
 func (r *raft) becomeFollower(term int64, lead int64) {
 	r.reset(term)
-	r.lead.Set(lead)
+	r.lead = lead
 	r.state = stateFollower
 	r.pendingConf = false
 }
@@ -319,7 +307,7 @@ func (r *raft) becomeLeader() {
 		panic("invalid transition [follower -> leader]")
 	}
 	r.reset(r.Term)
-	r.lead.Set(r.id)
+	r.lead = r.id
 	r.state = stateLeader
 
 	for _, e := range r.raftLog.entries(r.raftLog.committed + 1) {
@@ -464,13 +452,13 @@ func stepCandidate(r *raft, m Message) {
 func stepFollower(r *raft, m Message) {
 	switch m.Type {
 	case msgProp:
-		if r.lead.Get() == none {
+		if r.lead == none {
 			panic("no leader")
 		}
-		m.To = r.lead.Get()
+		m.To = r.lead
 		r.send(m)
 	case msgApp:
-		r.lead.Set(m.From)
+		r.lead = m.From
 		r.handleAppendEntries(m)
 	case msgSnap:
 		r.handleSnapshot(m)

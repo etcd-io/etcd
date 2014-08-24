@@ -605,7 +605,7 @@ func TestStateTransition(t *testing.T) {
 			if sm.Term != tt.wterm {
 				t.Errorf("%d: term = %d, want %d", i, sm.Term, tt.wterm)
 			}
-			if sm.lead.Get() != tt.wlead {
+			if sm.lead != tt.wlead {
 				t.Errorf("%d: lead = %d, want %d", i, sm.lead, tt.wlead)
 			}
 		}()
@@ -709,8 +709,8 @@ func TestAllServerStepdown(t *testing.T) {
 			if msgType == msgVote {
 				wlead = none
 			}
-			if sm.lead.Get() != wlead {
-				t.Errorf("#%d, sm.lead = %d, want %d", i, sm.lead.Get(), none)
+			if sm.lead != wlead {
+				t.Errorf("#%d, sm.lead = %d, want %d", i, sm.lead, none)
 			}
 		}
 	}
