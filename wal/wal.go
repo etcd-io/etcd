@@ -19,7 +19,6 @@ package wal
 import (
 	"bufio"
 	"bytes"
-	"encoding/binary"
 	"fmt"
 	"io"
 	"log"
@@ -370,16 +369,6 @@ func parseWalName(str string) (seq, index int64, err error) {
 		err = fmt.Errorf("bad wal name: %s", str)
 	}
 	return
-}
-
-func writeInt64(w io.Writer, n int64) error {
-	return binary.Write(w, binary.LittleEndian, n)
-}
-
-func readInt64(r io.Reader) (int64, error) {
-	var n int64
-	err := binary.Read(r, binary.LittleEndian, &n)
-	return n, err
 }
 
 func max(a, b int64) int64 {

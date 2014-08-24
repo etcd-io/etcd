@@ -17,6 +17,7 @@ limitations under the License.
 package wal
 
 import (
+	"encoding/binary"
 	"io"
 )
 
@@ -44,4 +45,14 @@ func readRecord(r io.Reader, rec *Record) error {
 		return err
 	}
 	return rec.Unmarshal(d)
+}
+
+func writeInt64(w io.Writer, n int64) error {
+	return binary.Write(w, binary.LittleEndian, n)
+}
+
+func readInt64(r io.Reader) (int64, error) {
+	var n int64
+	err := binary.Read(r, binary.LittleEndian, &n)
+	return n, err
 }
