@@ -152,7 +152,7 @@ type raft struct {
 	promotable bool
 }
 
-func newStateMachine(id int64, peers []int64) *raft {
+func newRaft(id int64, peers []int64) *raft {
 	if id == none {
 		panic("cannot use none id")
 	}

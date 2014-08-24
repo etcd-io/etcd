@@ -25,7 +25,7 @@ type Node struct {
 	tickc  chan struct{}
 }
 
-func Start(ctx context.Context, id int64) *Node {
+func Start(ctx context.Context, id int64, peers []int64) *Node {
 	n := &Node{
 		ctx:    ctx,
 		propc:  make(chan []byte),
@@ -33,7 +33,7 @@ func Start(ctx context.Context, id int64) *Node {
 		statec: make(chan stateResp),
 		tickc:  make(chan struct{}),
 	}
-	r := &raft{raftLog: newLog(), id: id}
+	r := newRaft(id, peers)
 	go n.run(r)
 	return n
 }

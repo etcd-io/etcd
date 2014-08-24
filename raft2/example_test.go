@@ -12,7 +12,7 @@ func saveStateToDisk(st State)    {}
 func saveToDisk(ents []Entry)     {}
 
 func Example_Node() {
-	n := Start(context.Background(), 0)
+	n := Start(context.Background(), 0, nil)
 
 	// stuff to n happens in other goroutines
 
