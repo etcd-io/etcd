@@ -162,7 +162,7 @@ func newRaft(id int64, peers []int64) *raft {
 	return r
 }
 
-func (r *raft) hasLeader() bool { return r.state != stateCandidate }
+func (r *raft) hasLeader() bool { return r.lead != none }
 
 func (r *raft) propose(data []byte) {
 	r.Step(Message{From: r.id, Type: msgProp, Entries: []Entry{{Data: data}}})
