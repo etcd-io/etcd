@@ -14,6 +14,7 @@
 
 - [justinsb/jetcd](https://github.com/justinsb/jetcd)
 - [diwakergupta/jetcd](https://github.com/diwakergupta/jetcd) - Supports v2
+- [nikore/scala-etcd](https://github.com/nikore/scala-etcd) - Supports v2
 
 **Python libraries**
 
