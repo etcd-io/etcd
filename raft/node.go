@@ -1,273 +1,127 @@
+// Package raft implements raft.
 package raft
 
-import (
-	"encoding/binary"
-	"encoding/json"
-	"log"
-	"math/rand"
-	"sort"
-	"time"
-)
+import "code.google.com/p/go.net/context"
 
-type Interface interface {
-	Step(m Message) bool
-	Msgs() []Message
+type stateResp struct {
+	st          State
+	ents, cents []Entry
+	msgs        []Message
 }
 
-type tick int64
+func (a State) Equal(b State) bool {
+	return a.Term == b.Term && a.Vote == b.Vote && a.LastIndex == b.LastIndex
+}
 
-type Config struct {
-	NodeId  int64
-	Addr    string
-	Context []byte
+func (sr stateResp) containsUpdates(prev stateResp) bool {
+	return !prev.st.Equal(sr.st) || len(sr.ents) > 0 || len(sr.cents) > 0 || len(sr.msgs) > 0
 }
 
 type Node struct {
-	sm *stateMachine
-
-	elapsed      tick
-	electionRand tick
-	election     tick
-	heartbeat    tick
-
-	// TODO: it needs garbage collection later
-	rmNodes map[int64]struct{}
-	removed bool
+	ctx    context.Context
+	propc  chan []byte
+	recvc  chan Message
+	statec chan stateResp
+	tickc  chan struct{}
 }
 
-func New(id int64, heartbeat, election tick) *Node {
-	if election < heartbeat*3 {
-		panic("election is least three times as heartbeat [election: %d, heartbeat: %d]")
-	}
-
-	rand.Seed(time.Now().UnixNano())
+func Start(ctx context.Context, id int64, peers []int64) *Node {
 	n := &Node{
-		heartbeat:    heartbeat,
-		election:     election,
-		electionRand: election + tick(rand.Int31())%election,
-		sm:           newStateMachine(id, []int64{id}),
-		rmNodes:      make(map[int64]struct{}),
+		ctx:    ctx,
+		propc:  make(chan []byte),
+		recvc:  make(chan Message),
+		statec: make(chan stateResp),
+		tickc:  make(chan struct{}),
 	}
-
+	r := newRaft(id, peers)
+	go n.run(r)
 	return n
 }
 
-func Recover(id int64, s *Snapshot, ents []Entry, state State, heartbeat, election tick) *Node {
-	n := New(id, heartbeat, election)
-	if s != nil {
-		n.sm.restore(*s)
-	}
-	n.sm.loadEnts(ents)
-	if !state.IsEmpty() {
-		n.sm.loadState(state)
-	}
-	return n
-}
+func (n *Node) run(r *raft) {
+	propc := n.propc
+	statec := n.statec
 
-func (n *Node) Id() int64 { return n.sm.id }
-
-func (n *Node) ClusterId() int64 { return n.sm.clusterId }
-
-func (n *Node) Info() Info {
-	return Info{Id: n.Id()}
-}
-
-func (n *Node) Index() int64 { return n.sm.index.Get() }
-
-func (n *Node) Term() int64 { return n.sm.term.Get() }
-
-func (n *Node) Applied() int64 { return n.sm.raftLog.applied }
-
-func (n *Node) HasLeader() bool { return n.Leader() != none }
-
-func (n *Node) IsLeader() bool { return n.Leader() == n.Id() }
-
-func (n *Node) Leader() int64 { return n.sm.lead.Get() }
-
-func (n *Node) IsRemoved() bool { return n.removed }
-
-func (n *Node) Nodes() []int64 {
-	nodes := make(int64Slice, 0, len(n.sm.ins))
-	for k := range n.sm.ins {
-		nodes = append(nodes, k)
-	}
-	sort.Sort(nodes)
-	return nodes
-}
-
-// Propose asynchronously proposes data be applied to the underlying state machine.
-func (n *Node) Propose(data []byte) { n.propose(Normal, data) }
-
-func (n *Node) propose(t int64, data []byte) {
-	n.Step(Message{From: n.sm.id, ClusterId: n.ClusterId(), Type: msgProp, Entries: []Entry{{Type: t, Data: data}}})
-}
-
-func (n *Node) Campaign() { n.Step(Message{From: n.sm.id, ClusterId: n.ClusterId(), Type: msgHup}) }
-
-func (n *Node) InitCluster(clusterId int64) {
-	d := make([]byte, 10)
-	wn := binary.PutVarint(d, clusterId)
-	n.propose(ClusterInit, d[:wn])
-}
-
-func (n *Node) Add(id int64, addr string, context []byte) {
-	n.UpdateConf(AddNode, &Config{NodeId: id, Addr: addr, Context: context})
-}
-
-func (n *Node) Remove(id int64) {
-	n.UpdateConf(RemoveNode, &Config{NodeId: id})
-}
-
-func (n *Node) Msgs() []Message { return n.sm.Msgs() }
-
-func (n *Node) Step(m Message) bool {
-	if m.Type == msgDenied {
-		n.removed = true
-		return false
-	}
-	if n.ClusterId() != none && m.ClusterId != none && m.ClusterId != n.ClusterId() {
-		log.Printf("deny message from=%d cluster=%d", m.From, m.ClusterId)
-		n.sm.send(Message{To: m.From, ClusterId: n.ClusterId(), Type: msgDenied})
-		return true
-	}
-
-	if _, ok := n.rmNodes[m.From]; ok {
-		if m.From != n.sm.id {
-			n.sm.send(Message{To: m.From, ClusterId: n.ClusterId(), Type: msgDenied})
+	var prev stateResp
+	for {
+		if r.hasLeader() {
+			propc = n.propc
+		} else {
+			// We cannot accept proposals because we don't know who
+			// to send them to, so we'll apply back-pressure and
+			// block senders.
+			propc = nil
 		}
-		return true
-	}
 
-	l := len(n.sm.msgs)
+		sr := stateResp{
+			r.State,
+			r.raftLog.unstableEnts(),
+			r.raftLog.nextEnts(),
+			r.msgs,
+		}
 
-	if !n.sm.Step(m) {
-		return false
-	}
+		if sr.containsUpdates(prev) {
+			statec = n.statec
+		} else {
+			statec = nil
+		}
 
-	for _, m := range n.sm.msgs[l:] {
-		switch m.Type {
-		case msgAppResp:
-			// We just heard from the leader of the same term.
-			n.elapsed = 0
-		case msgVoteResp:
-			// We just heard from the candidate the node voted for.
-			if m.Index >= 0 {
-				n.elapsed = 0
-			}
+		select {
+		case p := <-propc:
+			r.propose(p)
+		case m := <-n.recvc:
+			r.Step(m) // raft never returns an error
+		case <-n.tickc:
+			// r.tick()
+		case statec <- sr:
+			r.raftLog.resetNextEnts()
+			r.raftLog.resetUnstable()
+			r.msgs = nil
+		case <-n.ctx.Done():
+			return
 		}
 	}
-	return true
 }
 
-// Next returns all the appliable entries
-func (n *Node) Next() []Entry {
-	ents := n.sm.nextEnts()
-	for i := range ents {
-		switch ents[i].Type {
-		case Normal:
-		case ClusterInit:
-			cid, nr := binary.Varint(ents[i].Data)
-			if nr <= 0 {
-				panic("init cluster failed: cannot read clusterId")
-			}
-			if n.ClusterId() != -1 {
-				panic("cannot init a started cluster")
-			}
-			n.sm.clusterId = cid
-		case AddNode:
-			c := new(Config)
-			if err := json.Unmarshal(ents[i].Data, c); err != nil {
-				log.Printf("raft: err=%q", err)
-				continue
-			}
-			n.sm.addNode(c.NodeId)
-			delete(n.rmNodes, c.NodeId)
-		case RemoveNode:
-			c := new(Config)
-			if err := json.Unmarshal(ents[i].Data, c); err != nil {
-				log.Printf("raft: err=%q", err)
-				continue
-			}
-			n.sm.removeNode(c.NodeId)
-			n.rmNodes[c.NodeId] = struct{}{}
-			if c.NodeId == n.sm.id {
-				n.removed = true
-			}
-		default:
-			panic("unexpected entry type")
-		}
-	}
-	return ents
-}
-
-// Tick triggers the node to do a tick.
-// If the current elapsed is greater or equal than the timeout,
-// node will send corresponding message to the statemachine.
-func (n *Node) Tick() {
-	if !n.sm.promotable {
-		return
-	}
-
-	timeout, msgType := n.electionRand, msgHup
-	if n.sm.state == stateLeader {
-		timeout, msgType = n.heartbeat, msgBeat
-	}
-	if n.elapsed >= timeout {
-		n.Step(Message{From: n.sm.id, ClusterId: n.ClusterId(), Type: msgType})
-		n.elapsed = 0
-		if n.sm.state != stateLeader {
-			n.electionRand = n.election + tick(rand.Int31())%n.election
-		}
-	} else {
-		n.elapsed++
+func (n *Node) Tick() error {
+	select {
+	case n.tickc <- struct{}{}:
+		return nil
+	case <-n.ctx.Done():
+		return n.ctx.Err()
 	}
 }
 
-// IsEmpty returns ture if the log of the node is empty.
-func (n *Node) IsEmpty() bool {
-	return n.sm.raftLog.isEmpty()
-}
-
-func (n *Node) UpdateConf(t int64, c *Config) {
-	data, err := json.Marshal(c)
-	if err != nil {
-		panic(err)
+// Propose proposes data be appended to the log.
+func (n *Node) Propose(ctx context.Context, data []byte) error {
+	select {
+	case n.propc <- data:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-n.ctx.Done():
+		return n.ctx.Err()
 	}
-	n.propose(t, data)
 }
 
-// UnstableEnts retuens all the entries that need to be persistent.
-// The first return value is offset, and the second one is unstable entries.
-func (n *Node) UnstableEnts() []Entry {
-	return n.sm.raftLog.unstableEnts()
-}
-
-func (n *Node) UnstableState() State {
-	if n.sm.unstableState.IsEmpty() {
-		return EmptyState
+// Step advances the state machine using m.
+func (n *Node) Step(m Message) error {
+	select {
+	case n.recvc <- m:
+		return nil
+	case <-n.ctx.Done():
+		return n.ctx.Err()
 	}
-	s := n.sm.unstableState
-	n.sm.clearState()
-	return s
 }
 
-func (n *Node) UnstableSnapshot() Snapshot {
-	if n.sm.raftLog.unstableSnapshot.IsEmpty() {
-		return emptySnapshot
+// ReadState returns the current point-in-time state.
+func (n *Node) ReadState(ctx context.Context) (st State, ents, cents []Entry, msgs []Message, err error) {
+	select {
+	case sr := <-n.statec:
+		return sr.st, sr.ents, sr.cents, sr.msgs, nil
+	case <-ctx.Done():
+		return State{}, nil, nil, nil, ctx.Err()
+	case <-n.ctx.Done():
+		return State{}, nil, nil, nil, n.ctx.Err()
 	}
-	s := n.sm.raftLog.unstableSnapshot
-	n.sm.raftLog.unstableSnapshot = emptySnapshot
-	return s
-}
-
-func (n *Node) GetSnap() Snapshot {
-	return n.sm.raftLog.snapshot
-}
-
-func (n *Node) Compact(d []byte) {
-	n.sm.compact(d)
-}
-
-func (n *Node) EntsLen() int {
-	return len(n.sm.raftLog.ents)
 }
