@@ -104,7 +104,8 @@ func (n *Node) Propose(ctx context.Context, data []byte) error {
 
 // Step advances the state machine using msgs. Proposals are priotized last so
 // that any votes and vote requests will not be wedged behind proposals and
-// prevent this cluster from making progress.
+// prevent this cluster from making progress. The ctx.Err() will be returned,
+// if any.
 func (n *Node) Step(ctx context.Context, msgs []Message) error {
 	sort.Sort(sort.Reverse(messages(msgs)))
 	for _, m := range msgs {
