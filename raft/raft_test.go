@@ -792,9 +792,9 @@ func TestRecvMsgBeat(t *testing.T) {
 
 func TestRestore(t *testing.T) {
 	s := Snapshot{
-		Index:     defaultCompactThreshold + 1,
-		Term:      defaultCompactThreshold + 1,
-		Nodes:     []int64{0, 1, 2},
+		Index: defaultCompactThreshold + 1,
+		Term:  defaultCompactThreshold + 1,
+		Nodes: []int64{0, 1, 2},
 	}
 
 	sm := newRaft(0, []int64{0, 1})

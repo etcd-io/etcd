@@ -3,7 +3,7 @@ package raft
 var emptySnapshot = Snapshot{}
 
 type Snapshot struct {
-	Data      []byte
+	Data []byte
 	// the configuration
 	Nodes []int64
 	// the index at which the snapshot was taken.
