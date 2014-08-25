@@ -107,7 +107,7 @@ func (n *Node) Propose(ctx context.Context, data []byte) error {
 // prevent this cluster from making progress. The ctx.Err() will be returned,
 // if any.
 func (n *Node) Step(ctx context.Context, msgs []Message) error {
-	sort.Sort(sort.Reverse(messages(msgs)))
+	sort.Sort(sort.Reverse(byMsgType(msgs)))
 	for _, m := range msgs {
 		ch := n.recvc
 		if m.Type == msgProp {
@@ -138,8 +138,8 @@ func (n *Node) ReadState(ctx context.Context) (st State, ents, cents []Entry, ms
 	}
 }
 
-type messages []Message
+type byMsgType []Message
 
-func (msgs messages) Len() int           { return len(msgs) }
-func (msgs messages) Less(i, j int) bool { return msgs[i].Type == msgProp }
-func (msgs messages) Swap(i, j int)      { msgs[i], msgs[j] = msgs[i], msgs[j] }
+func (msgs byMsgType) Len() int           { return len(msgs) }
+func (msgs byMsgType) Less(i, j int) bool { return msgs[i].Type == msgProp }
+func (msgs byMsgType) Swap(i, j int)      { msgs[i], msgs[j] = msgs[i], msgs[j] }
