@@ -224,7 +224,7 @@ curl -L http://127.0.0.1:4001/v2/keys/foo -XPUT -d value=bar -d ttl= -d prevExis
         "key": "/foo",
         "modifiedIndex": 6,
         "value": "bar"
-    }
+    },
     "prevNode": {
         "createdIndex": 5,
         "expiration": "2013-12-04T12:01:21.874888581-08:00",
