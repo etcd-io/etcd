@@ -417,7 +417,7 @@ curl 'http://127.0.0.1:4001/v2/keys/dir/asdf?consistent=true&wait=true'
 		"dir":true,
 		"modifiedIndex": 17,
 		"expiration": "2013-12-11T10:39:35.689275857-08:00"
-	},
+	}
 }
 ```
 
