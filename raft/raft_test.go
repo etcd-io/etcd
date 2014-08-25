@@ -792,7 +792,6 @@ func TestRecvMsgBeat(t *testing.T) {
 
 func TestRestore(t *testing.T) {
 	s := Snapshot{
-		ClusterId: 0xBEEF,
 		Index:     defaultCompactThreshold + 1,
 		Term:      defaultCompactThreshold + 1,
 		Nodes:     []int64{0, 1, 2},
@@ -803,9 +802,6 @@ func TestRestore(t *testing.T) {
 		t.Fatal("restore fail, want succeed")
 	}
 
-	if sm.clusterId != s.ClusterId {
-		t.Errorf("sm.cluster = %x, want %x", sm.clusterId, s.ClusterId)
-	}
 	if sm.raftLog.lastIndex() != s.Index {
 		t.Errorf("log.lastIndex = %d, want %d", sm.raftLog.lastIndex(), s.Index)
 	}

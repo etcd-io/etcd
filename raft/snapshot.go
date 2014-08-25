@@ -3,7 +3,6 @@ package raft
 var emptySnapshot = Snapshot{}
 
 type Snapshot struct {
-	ClusterId int64
 	Data      []byte
 	// the configuration
 	Nodes []int64
