@@ -1,11 +1,15 @@
 package etcdserver
 
 import (
+	"errors"
+
 	"code.google.com/p/go.net/context"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/store"
 	"github.com/coreos/etcd/wait"
 )
+
+var ErrUnknownMethod = errors.New("etcdserver: unknown method")
 
 type Response struct {
 	// The last seen term raft was at when this request was built.
@@ -95,8 +99,9 @@ func (s *Server) Do(ctx context.Context, r Request) (Response, error) {
 			}
 			return Response{Event: ev}, nil
 		}
+	default:
+		return Response{}, ErrUnknownMethod
 	}
-	panic("not reached") // for some reason the compiler wants this... :/
 }
 
 // apply interprets r as a call to store.X and returns an Response interpreted from store.Event
