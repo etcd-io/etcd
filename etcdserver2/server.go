@@ -2,6 +2,7 @@ package etcdserver
 
 import (
 	"errors"
+	"time"
 
 	"code.google.com/p/go.net/context"
 	"github.com/coreos/etcd/raft"
@@ -52,9 +53,7 @@ func (s *Server) Run(ctx context.Context) {
 			s.Send(rd.Messages)
 			go func() {
 				for _, e := range rd.CommittedEntries {
-					var r Request
-					r.Unmarshal(e.Data)
-					s.w.Trigger(r.Id, s.apply(r))
+					s.apply(rd, e)
 				}
 			}()
 		case <-ctx.Done():
@@ -104,7 +103,27 @@ func (s *Server) Do(ctx context.Context, r Request) (Response, error) {
 	}
 }
 
+func respond(rd Ready, ev *store.Event, err error) Response {
+	return Response{Term: rd.Term, Index: rd.Index, Event: ev, err: err}
+}
+
 // apply interprets r as a call to store.X and returns an Response interpreted from store.Event
-func (s *Server) apply(r Request) Response {
-	panic("not implmented")
+func (s *Server) apply(rd Ready, e raft.Entry) Response {
+	resp := Response{Term: rd.Term, Index: rd.Index}
+
+	var r Request
+	if resp.err = r.Unmarshal(e.Data); resp.err != nil {
+		return resp
+	}
+
+
+	switch r.Method {
+	case "POST":
+		resp.Event, resp.err = st.Create(r.Path, r.Dir, r.Val, true, time.Unix(0, r.Expiration))
+		return resp
+	case "PUT":
+	case "DELETE":
+	default:
+		return Response{err: ErrUnknownMethod}
+	}
 }
