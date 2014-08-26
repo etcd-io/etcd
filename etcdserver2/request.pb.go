@@ -30,13 +30,17 @@ var _ = math.Inf
 type Request struct {
 	Id               int64  `protobuf:"varint,1,req,name=id" json:"id"`
 	Method           string `protobuf:"bytes,2,req,name=method" json:"method"`
-	Key              string `protobuf:"bytes,3,req,name=key" json:"key"`
+	Path             string `protobuf:"bytes,3,req,name=path" json:"path"`
 	Val              string `protobuf:"bytes,4,req,name=val" json:"val"`
 	Dir              bool   `protobuf:"varint,5,req,name=dir" json:"dir"`
 	PrevValue        string `protobuf:"bytes,6,req,name=prevValue" json:"prevValue"`
 	PrevIndex        int64  `protobuf:"varint,7,req,name=prevIndex" json:"prevIndex"`
 	PrevExists       bool   `protobuf:"varint,8,req,name=prevExists" json:"prevExists"`
 	Expiration       int64  `protobuf:"varint,9,req,name=expiration" json:"expiration"`
+	Wait             bool   `protobuf:"varint,10,req,name=wait" json:"wait"`
+	Since            uint64 `protobuf:"varint,11,req,name=since" json:"since"`
+	Recursive        bool   `protobuf:"varint,12,req,name=recursive" json:"recursive"`
+	Sorted           bool   `protobuf:"varint,13,req,name=sorted" json:"sorted"`
 	XXX_unrecognized []byte `json:"-"`
 }
 
@@ -122,7 +126,7 @@ func (m *Request) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Key = string(data[index:postIndex])
+			m.Path = string(data[index:postIndex])
 			index = postIndex
 		case 4:
 			if wireType != 2 {
@@ -232,6 +236,72 @@ func (m *Request) Unmarshal(data []byte) error {
 					break
 				}
 			}
+		case 10:
+			if wireType != 0 {
+				return code_google_com_p_gogoprotobuf_proto.ErrWrongType
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if index >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[index]
+				index++
+				v |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.Wait = bool(v != 0)
+		case 11:
+			if wireType != 0 {
+				return code_google_com_p_gogoprotobuf_proto.ErrWrongType
+			}
+			for shift := uint(0); ; shift += 7 {
+				if index >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[index]
+				index++
+				m.Since |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 12:
+			if wireType != 0 {
+				return code_google_com_p_gogoprotobuf_proto.ErrWrongType
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if index >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[index]
+				index++
+				v |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.Recursive = bool(v != 0)
+		case 13:
+			if wireType != 0 {
+				return code_google_com_p_gogoprotobuf_proto.ErrWrongType
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if index >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[index]
+				index++
+				v |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.Sorted = bool(v != 0)
 		default:
 			var sizeOfWire int
 			for {
@@ -261,7 +331,7 @@ func (m *Request) Size() (n int) {
 	n += 1 + sovRequest(uint64(m.Id))
 	l = len(m.Method)
 	n += 1 + l + sovRequest(uint64(l))
-	l = len(m.Key)
+	l = len(m.Path)
 	n += 1 + l + sovRequest(uint64(l))
 	l = len(m.Val)
 	n += 1 + l + sovRequest(uint64(l))
@@ -271,6 +341,10 @@ func (m *Request) Size() (n int) {
 	n += 1 + sovRequest(uint64(m.PrevIndex))
 	n += 2
 	n += 1 + sovRequest(uint64(m.Expiration))
+	n += 2
+	n += 1 + sovRequest(uint64(m.Since))
+	n += 2
+	n += 2
 	if m.XXX_unrecognized != nil {
 		n += len(m.XXX_unrecognized)
 	}
@@ -314,8 +388,8 @@ func (m *Request) MarshalTo(data []byte) (n int, err error) {
 	i += copy(data[i:], m.Method)
 	data[i] = 0x1a
 	i++
-	i = encodeVarintRequest(data, i, uint64(len(m.Key)))
-	i += copy(data[i:], m.Key)
+	i = encodeVarintRequest(data, i, uint64(len(m.Path)))
+	i += copy(data[i:], m.Path)
 	data[i] = 0x22
 	i++
 	i = encodeVarintRequest(data, i, uint64(len(m.Val)))
@@ -346,6 +420,33 @@ func (m *Request) MarshalTo(data []byte) (n int, err error) {
 	data[i] = 0x48
 	i++
 	i = encodeVarintRequest(data, i, uint64(m.Expiration))
+	data[i] = 0x50
+	i++
+	if m.Wait {
+		data[i] = 1
+	} else {
+		data[i] = 0
+	}
+	i++
+	data[i] = 0x58
+	i++
+	i = encodeVarintRequest(data, i, uint64(m.Since))
+	data[i] = 0x60
+	i++
+	if m.Recursive {
+		data[i] = 1
+	} else {
+		data[i] = 0
+	}
+	i++
+	data[i] = 0x68
+	i++
+	if m.Sorted {
+		data[i] = 1
+	} else {
+		data[i] = 0
+	}
+	i++
 	if m.XXX_unrecognized != nil {
 		i += copy(data[i:], m.XXX_unrecognized)
 	}

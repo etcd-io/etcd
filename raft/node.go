@@ -7,25 +7,37 @@ import (
 	"code.google.com/p/go.net/context"
 )
 
-type stateResp struct {
-	st          State
-	ents, cents []Entry
-	msgs        []Message
+type Ready struct {
+	// The current state of a Node
+	State
+
+	// Entries specifies entries to be saved to stable storage BEFORE
+	// Messages are sent.
+	Entries []Entry
+
+	// CommittedEntries specifies entries to be committed to a
+	// store/state-machine. These have previously been committed to stable
+	// store.
+	CommittedEntries []Entry
+
+	// Messages specifies outbound messages to be sent AFTER Entries are
+	// committed to stable storage.
+	Messages []Message
 }
 
 func (a State) Equal(b State) bool {
 	return a.Term == b.Term && a.Vote == b.Vote && a.LastIndex == b.LastIndex
 }
 
-func (sr stateResp) containsUpdates(prev stateResp) bool {
-	return !prev.st.Equal(sr.st) || len(sr.ents) > 0 || len(sr.cents) > 0 || len(sr.msgs) > 0
+func (rd Ready) containsUpdates(prev Ready) bool {
+	return !prev.State.Equal(rd.State) || len(rd.Entries) > 0 || len(rd.CommittedEntries) > 0 || len(rd.Messages) > 0
 }
 
 type Node struct {
 	ctx    context.Context
 	propc  chan Message
 	recvc  chan Message
-	statec chan stateResp
+	readyc chan Ready
 	tickc  chan struct{}
 }
 
@@ -34,7 +46,7 @@ func Start(ctx context.Context, id int64, peers []int64) Node {
 		ctx:    ctx,
 		propc:  make(chan Message),
 		recvc:  make(chan Message),
-		statec: make(chan stateResp),
+		readyc: make(chan Ready),
 		tickc:  make(chan struct{}),
 	}
 	r := newRaft(id, peers)
@@ -44,9 +56,9 @@ func Start(ctx context.Context, id int64, peers []int64) Node {
 
 func (n *Node) run(r *raft) {
 	propc := n.propc
-	statec := n.statec
+	readyc := n.readyc
 
-	var prev stateResp
+	var prev Ready
 	for {
 		if r.hasLeader() {
 			propc = n.propc
@@ -57,17 +69,17 @@ func (n *Node) run(r *raft) {
 			propc = nil
 		}
 
-		sr := stateResp{
+		rd := Ready{
 			r.State,
 			r.raftLog.unstableEnts(),
 			r.raftLog.nextEnts(),
 			r.msgs,
 		}
 
-		if sr.containsUpdates(prev) {
-			statec = n.statec
+		if rd.containsUpdates(prev) {
+			readyc = n.readyc
 		} else {
-			statec = nil
+			readyc = nil
 		}
 
 		select {
@@ -78,7 +90,7 @@ func (n *Node) run(r *raft) {
 			r.Step(m) // raft never returns an error
 		case <-n.tickc:
 			// r.tick()
-		case statec <- sr:
+		case readyc <- rd:
 			r.raftLog.resetNextEnts()
 			r.raftLog.resetUnstable()
 			r.msgs = nil
@@ -127,15 +139,8 @@ func (n *Node) Step(ctx context.Context, msgs []Message) error {
 }
 
 // ReadState returns the current point-in-time state.
-func (n *Node) ReadState(ctx context.Context) (st State, ents, cents []Entry, msgs []Message, err error) {
-	select {
-	case sr := <-n.statec:
-		return sr.st, sr.ents, sr.cents, sr.msgs, nil
-	case <-ctx.Done():
-		return State{}, nil, nil, nil, ctx.Err()
-	case <-n.ctx.Done():
-		return State{}, nil, nil, nil, n.ctx.Err()
-	}
+func (n *Node) Ready() <-chan Ready {
+	return n.readyc
 }
 
 type byMsgType []Message

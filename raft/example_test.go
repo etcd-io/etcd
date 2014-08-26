@@ -1,10 +1,6 @@
 package raft
 
-import (
-	"log"
-
-	"code.google.com/p/go.net/context"
-)
+import "code.google.com/p/go.net/context"
 
 func applyToStore(ents []Entry)   {}
 func sendMessages(msgs []Message) {}
@@ -20,14 +16,10 @@ func Example_Node() {
 	var prev State
 	for {
 		// ReadState blocks until there is new state ready.
-		st, ents, cents, msgs, err := n.ReadState(context.Background())
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		if !prev.Equal(st) {
+		rd := <-n.Ready()
+		if !prev.Equal(rd.State) {
 			saveStateToDisk(st)
-			prev = st
+			prev = rd.State
 		}
 
 		saveToDisk(ents)
