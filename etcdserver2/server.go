@@ -14,10 +14,10 @@ var ErrUnknownMethod = errors.New("etcdserver: unknown method")
 
 type Response struct {
 	// The last seen term raft was at when this request was built.
-	Term int
+	Term int64
 
 	// The last seen index raft was at when this request was built.
-	Index int
+	Commit int64
 
 	*store.Event
 	*store.Watcher
@@ -53,7 +53,11 @@ func (s *Server) Run(ctx context.Context) {
 			s.Send(rd.Messages)
 			go func() {
 				for _, e := range rd.CommittedEntries {
-					s.apply(rd, e)
+					var resp Response
+					resp.Event, resp.err = s.apply(e)
+					resp.Term = rd.Term
+					resp.Commit = rd.Commit
+					s.w.Trigger(e.Id, resp)
 				}
 			}()
 		case <-ctx.Done():
@@ -74,7 +78,7 @@ func (s *Server) Do(ctx context.Context, r Request) (Response, error) {
 			return Response{}, err
 		}
 		ch := s.w.Register(r.Id)
-		s.n.Propose(ctx, data)
+		s.n.Propose(ctx, r.Id, data)
 		select {
 		case x := <-ch:
 			resp := x.(Response)
@@ -103,27 +107,30 @@ func (s *Server) Do(ctx context.Context, r Request) (Response, error) {
 	}
 }
 
-func respond(rd Ready, ev *store.Event, err error) Response {
-	return Response{Term: rd.Term, Index: rd.Index, Event: ev, err: err}
-}
-
 // apply interprets r as a call to store.X and returns an Response interpreted from store.Event
-func (s *Server) apply(rd Ready, e raft.Entry) Response {
-	resp := Response{Term: rd.Term, Index: rd.Index}
-
+func (s *Server) apply(e raft.Entry) (*store.Event, error) {
 	var r Request
-	if resp.err = r.Unmarshal(e.Data); resp.err != nil {
-		return resp
+	if err := r.Unmarshal(e.Data); err != nil {
+		return nil, err
 	}
 
-
+	expr := time.Unix(0, r.Expiration)
 	switch r.Method {
 	case "POST":
-		resp.Event, resp.err = st.Create(r.Path, r.Dir, r.Val, true, time.Unix(0, r.Expiration))
-		return resp
+		return s.st.Create(r.Path, r.Dir, r.Val, true, expr)
 	case "PUT":
+		switch {
+		case r.PrevIndex > 0 || r.PrevValue != "":
+			return s.st.CompareAndSwap(r.Path, r.PrevValue, r.PrevIndex, r.Val, expr)
+		case r.PrevExists:
+			// TODO(bmizerany): implement PrevExists
+			panic("not implemented")
+		default:
+			return s.st.Update(r.Path, r.Val, expr)
+		}
 	case "DELETE":
+		panic("not implemented")
 	default:
-		return Response{err: ErrUnknownMethod}
+		return nil, ErrUnknownMethod
 	}
 }

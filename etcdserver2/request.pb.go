@@ -34,7 +34,7 @@ type Request struct {
 	Val              string `protobuf:"bytes,4,req,name=val" json:"val"`
 	Dir              bool   `protobuf:"varint,5,req,name=dir" json:"dir"`
 	PrevValue        string `protobuf:"bytes,6,req,name=prevValue" json:"prevValue"`
-	PrevIndex        int64  `protobuf:"varint,7,req,name=prevIndex" json:"prevIndex"`
+	PrevIndex        uint64 `protobuf:"varint,7,req,name=prevIndex" json:"prevIndex"`
 	PrevExists       bool   `protobuf:"varint,8,req,name=prevExists" json:"prevExists"`
 	Expiration       int64  `protobuf:"varint,9,req,name=expiration" json:"expiration"`
 	Wait             bool   `protobuf:"varint,10,req,name=wait" json:"wait"`
@@ -199,7 +199,7 @@ func (m *Request) Unmarshal(data []byte) error {
 				}
 				b := data[index]
 				index++
-				m.PrevIndex |= (int64(b) & 0x7F) << shift
+				m.PrevIndex |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
