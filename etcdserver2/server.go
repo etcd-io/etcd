@@ -54,7 +54,7 @@ func (s *Server) Run(ctx context.Context) {
 			go func() {
 				for _, e := range rd.CommittedEntries {
 					var resp Response
-					resp.Event, resp.err = s.apply(e)
+					resp.Event, resp.err = s.apply(context.TODO(), e)
 					resp.Term = rd.Term
 					resp.Commit = rd.Commit
 					s.w.Trigger(e.Id, resp)
@@ -108,9 +108,7 @@ func (s *Server) Do(ctx context.Context, r Request) (Response, error) {
 }
 
 // apply interprets r as a call to store.X and returns an Response interpreted from store.Event
-func (s *Server) apply(e raft.Entry) (*store.Event, error) {
-	// TODO(bmizerany): apply needs to take a context.Context, but store
-	// doesn't have a mechanism to abort operations yet.
+func (s *Server) apply(ctx context.Context, e raft.Entry) (*store.Event, error) {
 	var r Request
 	if err := r.Unmarshal(e.Data); err != nil {
 		return nil, err
