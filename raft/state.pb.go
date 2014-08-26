@@ -2,15 +2,6 @@
 // source: state.proto
 // DO NOT EDIT!
 
-/*
-	Package raft is a generated protocol buffer package.
-
-	It is generated from these files:
-		state.proto
-
-	It has these top-level messages:
-		State
-*/
 package raft
 
 import proto "code.google.com/p/gogoprotobuf/proto"
@@ -19,8 +10,8 @@ import math "math"
 
 // discarding unused import gogoproto "code.google.com/p/gogoprotobuf/gogoproto/gogo.pb"
 
-import io "io"
-import code_google_com_p_gogoprotobuf_proto "code.google.com/p/gogoprotobuf/proto"
+import io1 "io"
+import code_google_com_p_gogoprotobuf_proto1 "code.google.com/p/gogoprotobuf/proto"
 
 // Reference proto, json, and math imports to suppress error if they are not otherwise used.
 var _ = proto.Marshal
@@ -48,7 +39,7 @@ func (m *State) Unmarshal(data []byte) error {
 		var wire uint64
 		for shift := uint(0); ; shift += 7 {
 			if index >= l {
-				return io.ErrUnexpectedEOF
+				return io1.ErrUnexpectedEOF
 			}
 			b := data[index]
 			index++
@@ -62,11 +53,11 @@ func (m *State) Unmarshal(data []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 0 {
-				return code_google_com_p_gogoprotobuf_proto.ErrWrongType
+				return code_google_com_p_gogoprotobuf_proto1.ErrWrongType
 			}
 			for shift := uint(0); ; shift += 7 {
 				if index >= l {
-					return io.ErrUnexpectedEOF
+					return io1.ErrUnexpectedEOF
 				}
 				b := data[index]
 				index++
@@ -77,11 +68,11 @@ func (m *State) Unmarshal(data []byte) error {
 			}
 		case 2:
 			if wireType != 0 {
-				return code_google_com_p_gogoprotobuf_proto.ErrWrongType
+				return code_google_com_p_gogoprotobuf_proto1.ErrWrongType
 			}
 			for shift := uint(0); ; shift += 7 {
 				if index >= l {
-					return io.ErrUnexpectedEOF
+					return io1.ErrUnexpectedEOF
 				}
 				b := data[index]
 				index++
@@ -92,11 +83,11 @@ func (m *State) Unmarshal(data []byte) error {
 			}
 		case 3:
 			if wireType != 0 {
-				return code_google_com_p_gogoprotobuf_proto.ErrWrongType
+				return code_google_com_p_gogoprotobuf_proto1.ErrWrongType
 			}
 			for shift := uint(0); ; shift += 7 {
 				if index >= l {
-					return io.ErrUnexpectedEOF
+					return io1.ErrUnexpectedEOF
 				}
 				b := data[index]
 				index++
@@ -107,11 +98,11 @@ func (m *State) Unmarshal(data []byte) error {
 			}
 		case 4:
 			if wireType != 0 {
-				return code_google_com_p_gogoprotobuf_proto.ErrWrongType
+				return code_google_com_p_gogoprotobuf_proto1.ErrWrongType
 			}
 			for shift := uint(0); ; shift += 7 {
 				if index >= l {
-					return io.ErrUnexpectedEOF
+					return io1.ErrUnexpectedEOF
 				}
 				b := data[index]
 				index++
@@ -130,12 +121,12 @@ func (m *State) Unmarshal(data []byte) error {
 				}
 			}
 			index -= sizeOfWire
-			skippy, err := code_google_com_p_gogoprotobuf_proto.Skip(data[index:])
+			skippy, err := code_google_com_p_gogoprotobuf_proto1.Skip(data[index:])
 			if err != nil {
 				return err
 			}
 			if (index + skippy) > l {
-				return io.ErrUnexpectedEOF
+				return io1.ErrUnexpectedEOF
 			}
 			m.XXX_unrecognized = append(m.XXX_unrecognized, data[index:index+skippy]...)
 			index += skippy

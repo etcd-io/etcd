@@ -7,6 +7,7 @@
 
 	It is generated from these files:
 		entry.proto
+		state.proto
 
 	It has these top-level messages:
 		Entry
@@ -32,6 +33,7 @@ type Entry struct {
 	Term             int64  `protobuf:"varint,2,req,name=term" json:"term"`
 	Index            int64  `protobuf:"varint,3,req,name=index" json:"index"`
 	Data             []byte `protobuf:"bytes,4,opt,name=data" json:"data,omitempty"`
+	Id               int64  `protobuf:"varint,5,req,name=id" json:"id"`
 	XXX_unrecognized []byte `json:"-"`
 }
 
@@ -127,6 +129,21 @@ func (m *Entry) Unmarshal(data []byte) error {
 			}
 			m.Data = append(m.Data, data[index:postIndex]...)
 			index = postIndex
+		case 5:
+			if wireType != 0 {
+				return code_google_com_p_gogoprotobuf_proto.ErrWrongType
+			}
+			for shift := uint(0); ; shift += 7 {
+				if index >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[index]
+				index++
+				m.Id |= (int64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
 		default:
 			var sizeOfWire int
 			for {
@@ -160,6 +177,7 @@ func (m *Entry) Size() (n int) {
 		l = len(m.Data)
 		n += 1 + l + sovEntry(uint64(l))
 	}
+	n += 1 + sovEntry(uint64(m.Id))
 	if m.XXX_unrecognized != nil {
 		n += len(m.XXX_unrecognized)
 	}
@@ -209,6 +227,9 @@ func (m *Entry) MarshalTo(data []byte) (n int, err error) {
 		i = encodeVarintEntry(data, i, uint64(len(m.Data)))
 		i += copy(data[i:], m.Data)
 	}
+	data[i] = 0x28
+	i++
+	i = encodeVarintEntry(data, i, uint64(m.Id))
 	if m.XXX_unrecognized != nil {
 		i += copy(data[i:], m.XXX_unrecognized)
 	}

@@ -110,8 +110,8 @@ func (n *Node) Tick() error {
 }
 
 // Propose proposes data be appended to the log.
-func (n *Node) Propose(ctx context.Context, data []byte) error {
-	return n.Step(ctx, []Message{{Type: msgProp, Entries: []Entry{{Data: data}}}})
+func (n *Node) Propose(ctx context.Context, id int64, data []byte) error {
+	return n.Step(ctx, []Message{{Type: msgProp, Entries: []Entry{{Id: id, Data: data}}}})
 }
 
 // Step advances the state machine using msgs. Proposals are priotized last so
