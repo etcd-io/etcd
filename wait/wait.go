@@ -2,16 +2,16 @@ package wait
 
 import "sync"
 
-type WaitList struct {
+type List struct {
 	l sync.Mutex
 	m map[int64]chan interface{}
 }
 
-func New() WaitList {
-	return WaitList{m: make(map[int64]chan interface{})}
+func New() List {
+	return List{m: make(map[int64]chan interface{})}
 }
 
-func (w WaitList) Register(id int64) <-chan interface{} {
+func (w List) Register(id int64) <-chan interface{} {
 	w.l.Lock()
 	defer w.l.Unlock()
 	ch := w.m[id]
@@ -22,7 +22,7 @@ func (w WaitList) Register(id int64) <-chan interface{} {
 	return ch
 }
 
-func (w WaitList) Trigger(id int64, x interface{}) {
+func (w List) Trigger(id int64, x interface{}) {
 	w.l.Lock()
 	ch := w.m[id]
 	delete(w.m, id)

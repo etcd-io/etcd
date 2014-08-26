@@ -29,8 +29,8 @@ type Node struct {
 	tickc  chan struct{}
 }
 
-func Start(ctx context.Context, id int64, peers []int64) *Node {
-	n := &Node{
+func Start(ctx context.Context, id int64, peers []int64) Node {
+	n := Node{
 		ctx:    ctx,
 		propc:  make(chan Message),
 		recvc:  make(chan Message),

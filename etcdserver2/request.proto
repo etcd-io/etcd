@@ -1,0 +1,20 @@
+package etcdserver;
+
+import "code.google.com/p/gogoprotobuf/gogoproto/gogo.proto";
+
+option (gogoproto.marshaler_all) = true;
+option (gogoproto.sizer_all) = true;
+option (gogoproto.unmarshaler_all) = true;
+option (gogoproto.goproto_getters_all) = false;
+
+message Request {
+	required int64  id         = 1 [(gogoproto.nullable) = false];     
+	required string method     = 2 [(gogoproto.nullable) = false];
+	required string key        = 3 [(gogoproto.nullable) = false];
+	required string val        = 4 [(gogoproto.nullable) = false];
+	required bool   dir        = 5 [(gogoproto.nullable) = false];
+	required string prevValue  = 6 [(gogoproto.nullable) = false];
+	required int64  prevIndex  = 7 [(gogoproto.nullable) = false];
+	required bool   prevExists = 8 [(gogoproto.nullable) = false];
+	required int64  expiration = 9 [(gogoproto.nullable) = false];
+}
