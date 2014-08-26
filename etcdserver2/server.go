@@ -17,6 +17,17 @@ type Server struct {
 	w wait.List
 
 	msgsc chan raft.Message
+
+	// Send specifies the send function for sending msgs to peers. Send
+	// MUST NOT block. It is okay to drop messages, since clients should
+	// timeout and reissue their messages.  If Send is nil, Server will
+	// panic.
+	Send func(msgs []raft.Message)
+
+	// Save specifies the save function for saving ents to stable storage.
+	// Save MUST block until st and ents are on stable storage.  If Send is
+	// nil, Server will panic.
+	Save func(st raft.State, ents []raft.Entry)
 }
 
 func (s *Server) Run(ctx context.Context) {
@@ -26,8 +37,8 @@ func (s *Server) Run(ctx context.Context) {
 			log.Println("etcdserver: error while reading state -", err)
 			return
 		}
-		s.save(st, ents)
-		s.send(msgs)
+		s.Save(st, ents)
+		s.Send(msgs)
 		go func() {
 			for _, e := range cents {
 				var r Request
@@ -56,23 +67,6 @@ func (s *Server) Do(ctx context.Context, r Request) (Response, error) {
 		s.w.Trigger(r.Id, nil) // GC wait
 		return Response{}, ctx.Err()
 	}
-}
-
-// send sends dispatches msgs to the sending goroutine. If the goroutine is
-// busy, it will drop msgs and clients should timeout and reissue.
-// TODO: we could use s.w to trigger and error to cancel the clients faster???? Is this a good idea??
-func (s *Server) send(msgs []raft.Message) {
-	for _, m := range msgs {
-		select {
-		case s.msgsc <- m:
-		default:
-			log.Println("TODO: log dropped message")
-		}
-	}
-}
-
-func (s *Server) save(st raft.State, ents []raft.Entry) {
-	panic("not implemented")
 }
 
 // apply interprets r as a call to store.X and returns an Response interpreted from store.Event
