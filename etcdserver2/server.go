@@ -123,13 +123,12 @@ func (s *Server) apply(ctx context.Context, e raft.Entry) (*store.Event, error) 
 		case r.PrevIndex > 0 || r.PrevValue != "":
 			return s.st.CompareAndSwap(r.Path, r.PrevValue, r.PrevIndex, r.Val, expr)
 		case r.PrevExists:
-			// TODO(bmizerany): implement PrevExists
-			panic("not implemented")
-		default:
 			return s.st.Update(r.Path, r.Val, expr)
+		default:
+			return s.st.Create(r.Path, r.Dir, r.Val, false, expr)
 		}
 	case "DELETE":
-		panic("not implemented")
+		return s.st.Delete(r.Path, r.Recursive, r.Dir)
 	default:
 		return nil, ErrUnknownMethod
 	}
