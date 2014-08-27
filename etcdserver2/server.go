@@ -119,13 +119,18 @@ func (s *Server) apply(ctx context.Context, e raft.Entry) (*store.Event, error) 
 	case "POST":
 		return s.st.Create(r.Path, r.Dir, r.Val, true, expr)
 	case "PUT":
+		exists, set := getBool(r.PrevExists)
 		switch {
-		case r.PrevExists:
-			return s.st.Update(r.Path, r.Val, expr)
+		case set:
+			if exists {
+				return s.st.Update(r.Path, r.Val, expr)
+			} else {
+				return s.st.Create(r.Path, r.Dir, r.Val, false, expr)
+			}
 		case r.PrevIndex > 0 || r.PrevValue != "":
 			return s.st.CompareAndSwap(r.Path, r.PrevValue, r.PrevIndex, r.Val, expr)
 		default:
-			return s.st.Create(r.Path, r.Dir, r.Val, false, expr)
+			return s.st.Set(r.Path, r.Dir, r.Val, expr)
 		}
 	case "DELETE":
 		switch {
@@ -137,4 +142,11 @@ func (s *Server) apply(ctx context.Context, e raft.Entry) (*store.Event, error) 
 	default:
 		return nil, ErrUnknownMethod
 	}
+}
+
+func getBool(v *bool) (vv bool, set bool) {
+	if v == nil {
+		return false, false
+	}
+	return *v, true
 }
