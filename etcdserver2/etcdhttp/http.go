@@ -2,6 +2,7 @@ package etcdhttp
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -10,6 +11,8 @@ import (
 	etcdserver "github.com/coreos/etcd/etcdserver2"
 	"github.com/coreos/etcd/store"
 )
+
+var errClosed = errors.New("etcdhttp: client closed connection")
 
 const DefaultTimeout = 500 * time.Millisecond
 
@@ -50,25 +53,15 @@ func parseRequest(r *http.Request) (etcdserver.Request, error) {
 	return etcdserver.Request{}, nil
 }
 
-func encodeResponse(ctx context.Context, w http.ResponseWriter, resp etcdserver.Response) error {
+func encodeResponse(ctx context.Context, w http.ResponseWriter, resp etcdserver.Response) (err error) {
 	var ev *store.Event
 	switch {
 	case resp.Event != nil:
 		ev = resp.Event
 	case resp.Watcher != nil:
-		// TODO(bmizerany): support streaming?
-		defer resp.Watcher.Remove()
-		var nch <-chan bool
-		if x, ok := w.(http.CloseNotifier); ok {
-			nch = x.CloseNotify()
-		}
-		select {
-		case ev = <-resp.Watcher.EventChan:
-		case <-nch:
-			// TODO: log something?
-			return nil
-		case <-ctx.Done():
-			return ctx.Err()
+		ev, err = waitForEvent(ctx, w, resp.Watcher)
+		if err != nil {
+			return err
 		}
 	default:
 		panic("should not be rechable")
@@ -87,4 +80,23 @@ func encodeResponse(ctx context.Context, w http.ResponseWriter, resp etcdserver.
 		panic(err) // should never be reached
 	}
 	return nil
+}
+
+func waitForEvent(ctx context.Context, w http.ResponseWriter, wa *store.Watcher) (*store.Event, error) {
+	// TODO(bmizerany): support streaming?
+	defer wa.Remove()
+	var nch <-chan bool
+	if x, ok := w.(http.CloseNotifier); ok {
+		nch = x.CloseNotify()
+	}
+
+	select {
+	case ev := <-wa.EventChan:
+		return ev, nil
+	case <-nch:
+		// TODO: log something?
+		return nil, errClosed
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
 }
