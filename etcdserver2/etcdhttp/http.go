@@ -64,7 +64,7 @@ func encodeResponse(ctx context.Context, w http.ResponseWriter, resp etcdserver.
 			return err
 		}
 	default:
-		panic("should not be rechable")
+		panic("should not be reachable")
 	}
 
 	w.Header().Set("Content-Type", "application/json")
