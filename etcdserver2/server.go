@@ -119,9 +119,9 @@ func (s *Server) apply(ctx context.Context, e raft.Entry) (*store.Event, error) 
 	case "POST":
 		return s.st.Create(r.Path, r.Dir, r.Val, true, expr)
 	case "PUT":
-		exists, set := getBool(r.PrevExists)
+		exists, existsSet := getBool(r.PrevExists)
 		switch {
-		case set:
+		case existsSet:
 			if exists {
 				return s.st.Update(r.Path, r.Val, expr)
 			} else {
