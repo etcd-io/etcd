@@ -1,28 +1,15 @@
 package etcdhttp
 
 import (
-	"io"
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
 	"code.google.com/p/go.net/context"
 	etcdserver "github.com/coreos/etcd/etcdserver2"
-	"github.com/coreos/etcd/raft"
+	"github.com/coreos/etcd/store"
 )
-
-func SendWithPrefix(prefix string, send etcdserver.SendFunc) etcdserver.SendFunc {
-	return etcdserver.SendFunc(func(m []raft.Message) {
-		/*
-			url = parseurl
-			u.Path = prefix + u.Path
-			for maxTrys {
-				resp, err := http.Post(u.String(), ...)
-				if err...
-					backoff?
-			}
-		*/
-	})
-}
 
 const DefaultTimeout = 500 * time.Millisecond
 
@@ -56,13 +43,38 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		panic("TODO")
 	}
 
-	encodeResponse(w, resp)
+	encodeResponse(ctx, w, resp)
 }
 
 func parseRequest(r *http.Request) (etcdserver.Request, error) {
 	return etcdserver.Request{}, nil
 }
 
-func encodeResponse(w io.Writer, resp etcdserver.Response) {
+func encodeResponse(ctx context.Context, w http.ResponseWriter, resp etcdserver.Response) error {
+	var ev *store.Event
+	switch {
+	case resp.Event != nil:
+		ev = resp.Event
+	case resp.Watcher != nil:
+		// TODO(bmizerany): support streaming?
+		defer resp.Watcher.Remove()
+		select {
+		case ev = <-resp.Watcher.EventChan:
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	default:
+		panic("should not be rechable")
+	}
 
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Add("X-Etcd-Index", fmt.Sprint(ev.Index()))
+
+	if ev.IsCreated() {
+		w.WriteHeader(http.StatusCreated)
+	} else {
+		w.WriteHeader(http.StatusOK)
+	}
+
+	return json.NewEncoder(w).Encode(ev)
 }
