@@ -120,10 +120,10 @@ func (s *Server) apply(ctx context.Context, e raft.Entry) (*store.Event, error) 
 		return s.st.Create(r.Path, r.Dir, r.Val, true, expr)
 	case "PUT":
 		switch {
-		case r.PrevIndex > 0 || r.PrevValue != "":
-			return s.st.CompareAndSwap(r.Path, r.PrevValue, r.PrevIndex, r.Val, expr)
 		case r.PrevExists:
 			return s.st.Update(r.Path, r.Val, expr)
+		case r.PrevIndex > 0 || r.PrevValue != "":
+			return s.st.CompareAndSwap(r.Path, r.PrevValue, r.PrevIndex, r.Val, expr)
 		default:
 			return s.st.Create(r.Path, r.Dir, r.Val, false, expr)
 		}
