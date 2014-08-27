@@ -56,15 +56,17 @@ func (s *Server) Run(ctx context.Context) {
 		case rd := <-s.Node.Ready():
 			s.Save(rd.State, rd.Entries)
 			s.Send(rd.Messages)
-			go func() {
-				for _, e := range rd.CommittedEntries {
-					var resp Response
-					resp.Event, resp.err = s.apply(context.TODO(), e)
-					resp.Term = rd.Term
-					resp.Commit = rd.Commit
-					s.w.Trigger(e.Id, resp)
-				}
-			}()
+
+			// TODO(bmizerany): do this in the background, but take
+			// care to apply entries in a single goroutine, and not
+			// race them.
+			for _, e := range rd.CommittedEntries {
+				var resp Response
+				resp.Event, resp.err = s.apply(context.TODO(), e)
+				resp.Term = rd.Term
+				resp.Commit = rd.Commit
+				s.w.Trigger(e.Id, resp)
+			}
 		case <-ctx.Done():
 			return
 		}
