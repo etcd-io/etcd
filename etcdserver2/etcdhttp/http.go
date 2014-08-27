@@ -35,21 +35,6 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// avoid spawing goroutines for requests that are short lived.
-	if canBlock(rr) {
-		// cancel the request and release resources associated with it if the
-		// client closes their connection before we get a response.
-		if nf, ok := w.(http.CloseNotifier); ok {
-			go func() {
-				select {
-				case <-nf.CloseNotify():
-					cancel()
-				case <-ctx.Done():
-				}
-			}()
-		}
-	}
-
 	resp, err := h.Server.Do(ctx, rr)
 	if err != nil {
 		// TODO(bmizerany): switch on store errors and etcdserver.ErrUnknownMethod
@@ -95,8 +80,4 @@ func encodeResponse(ctx context.Context, w http.ResponseWriter, resp etcdserver.
 		panic(err) // should never be reached
 	}
 	return nil
-}
-
-func canBlock(r etcdserver.Request) bool {
-	return r.Method != "GET" || (r.Method == "GET" && r.Wait)
 }
