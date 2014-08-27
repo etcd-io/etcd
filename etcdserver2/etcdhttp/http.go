@@ -26,15 +26,28 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		timeout = DefaultTimeout
 	}
 
-	ctx, _ := context.WithTimeout(context.Background(), timeout)
-	// TODO(bmizerany): watch the closenotify chan in another goroutine can
-	// call cancel when it closes. be sure to watch ctx.Done() too so we
-	// don't leak a ton of these goroutines.
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
 
 	rr, err := parseRequest(r)
 	if err != nil {
 		http.Error(w, err.Error(), 400)
 		return
+	}
+
+	// avoid spawing goroutines for requests that are short lived.
+	if canBlock(rr) {
+		// cancel the request and release resources associated with it if the
+		// client closes their connection before we get a response.
+		if nf, ok := w.(http.CloseNotifier); ok {
+			go func() {
+				select {
+				case <-nf.CloseNotify():
+					cancel()
+				case <-ctx.Done():
+				}
+			}()
+		}
 	}
 
 	resp, err := h.Server.Do(ctx, rr)
@@ -77,4 +90,8 @@ func encodeResponse(ctx context.Context, w http.ResponseWriter, resp etcdserver.
 	}
 
 	return json.NewEncoder(w).Encode(ev)
+}
+
+func canBlock(r etcdserver.Request) bool {
+	return r.Method != "GET" || (r.Method == "GET" && r.Wait)
 }
