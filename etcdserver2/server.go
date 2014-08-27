@@ -128,7 +128,12 @@ func (s *Server) apply(ctx context.Context, e raft.Entry) (*store.Event, error) 
 			return s.st.Create(r.Path, r.Dir, r.Val, false, expr)
 		}
 	case "DELETE":
-		return s.st.Delete(r.Path, r.Recursive, r.Dir)
+		switch {
+		case r.PrevIndex > 0 || r.PrevValue != "":
+			return s.st.CompareAndDelete(r.Path, r.PrevValue, r.PrevIndex)
+		default:
+			return s.st.Delete(r.Path, r.Recursive, r.Dir)
+		}
 	default:
 		return nil, ErrUnknownMethod
 	}
