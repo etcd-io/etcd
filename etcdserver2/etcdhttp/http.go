@@ -56,7 +56,9 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		panic("TODO")
 	}
 
-	encodeResponse(ctx, w, resp)
+	if err := encodeResponse(ctx, w, resp); err != nil {
+		http.Error(w, "Timeout while waiting for response", 504)
+	}
 }
 
 func parseRequest(r *http.Request) (etcdserver.Request, error) {
@@ -89,7 +91,10 @@ func encodeResponse(ctx context.Context, w http.ResponseWriter, resp etcdserver.
 		w.WriteHeader(http.StatusOK)
 	}
 
-	return json.NewEncoder(w).Encode(ev)
+	if err := json.NewEncoder(w).Encode(ev); err != nil {
+		panic(err) // should never be reached
+	}
+	return nil
 }
 
 func canBlock(r etcdserver.Request) bool {
