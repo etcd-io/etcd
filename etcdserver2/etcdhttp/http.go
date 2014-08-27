@@ -58,8 +58,15 @@ func encodeResponse(ctx context.Context, w http.ResponseWriter, resp etcdserver.
 	case resp.Watcher != nil:
 		// TODO(bmizerany): support streaming?
 		defer resp.Watcher.Remove()
+		var nch <-chan bool
+		if x, ok := w.(http.CloseNotifier); ok {
+			nch = x.CloseNotify()
+		}
 		select {
 		case ev = <-resp.Watcher.EventChan:
+		case <-nch:
+			// TODO: log something?
+			return nil
 		case <-ctx.Done():
 			return ctx.Err()
 		}
