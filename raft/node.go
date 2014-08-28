@@ -3,7 +3,6 @@ package raft
 
 import (
 	"code.google.com/p/go.net/context"
-
 	pb "github.com/coreos/etcd/raft/raftpb"
 )
 
@@ -78,6 +77,7 @@ func (n *Node) run(r *raft) {
 
 		if rd.containsUpdates(prev) {
 			readyc = n.readyc
+			prev = rd
 		} else {
 			readyc = nil
 		}
@@ -109,9 +109,13 @@ func (n *Node) Tick() error {
 	}
 }
 
+func (n *Node) Campaign(ctx context.Context) error {
+	return n.Step(ctx, pb.Message{Type: msgHup})
+}
+
 // Propose proposes data be appended to the log.
-func (n *Node) Propose(ctx context.Context, id int64, data []byte) error {
-	return n.Step(ctx, pb.Message{Type: msgProp, Entries: []pb.Entry{{Id: id, Data: data}}})
+func (n *Node) Propose(ctx context.Context, data []byte) error {
+	return n.Step(ctx, pb.Message{Type: msgProp, Entries: []pb.Entry{{Data: data}}})
 }
 
 // Step advances the state machine using msgs. The ctx.Err() will be returned,

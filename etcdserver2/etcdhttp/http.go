@@ -1,15 +1,19 @@
 package etcdhttp
 
 import (
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
+	"crypto/rand"
 	"code.google.com/p/go.net/context"
 	"github.com/coreos/etcd/elog"
 	etcdserver "github.com/coreos/etcd/etcdserver2"
@@ -24,7 +28,7 @@ const DefaultTimeout = 500 * time.Millisecond
 
 type Handler struct {
 	Timeout time.Duration
-	Server  etcdserver.Server
+	Server  *etcdserver.Server
 }
 
 func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -53,8 +57,7 @@ func (h Handler) serveKeys(ctx context.Context, w http.ResponseWriter, r *http.R
 
 	resp, err := h.Server.Do(ctx, rr)
 	if err != nil {
-		// TODO(bmizerany): switch on store errors and etcdserver.ErrUnknownMethod
-		panic("TODO")
+		log.Println(err)
 	}
 
 	if err := encodeResponse(ctx, w, resp); err != nil {
@@ -77,7 +80,11 @@ func (h Handler) serveRaft(ctx context.Context, w http.ResponseWriter, r *http.R
 }
 
 func genId() int64 {
-	panic("implement me")
+	b := make([]byte, 8)
+	if _, err := io.ReadFull(rand.Reader, b); err != nil {
+		panic(err) // really bad stuff happened
+	}
+	return int64(binary.BigEndian.Uint64(b))
 }
 
 func parseRequest(r *http.Request) etcdserverpb.Request {
@@ -85,7 +92,7 @@ func parseRequest(r *http.Request) etcdserverpb.Request {
 	rr := etcdserverpb.Request{
 		Id:        genId(),
 		Method:    r.Method,
-		Path:      r.URL.Path[len("/keys/"):],
+		Path:      r.URL.Path[len("/keys"):],
 		Val:       q.Get("value"),
 		PrevValue: q.Get("prevValue"),
 		PrevIndex: parseUint64(q.Get("prevIndex")),

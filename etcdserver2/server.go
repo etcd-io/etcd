@@ -6,14 +6,17 @@ import (
 	"time"
 
 	"code.google.com/p/go.net/context"
+	pb "github.com/coreos/etcd/etcdserver2/etcdserverpb"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/store"
 	"github.com/coreos/etcd/wait"
-	pb "github.com/coreos/etcd/etcdserver2/etcdserverpb"
 )
 
-var ErrUnknownMethod = errors.New("etcdserver: unknown method")
+var (
+	ErrUnknownMethod = errors.New("etcdserver: unknown method")
+	ErrStopped       = errors.New("etcdserver: server stopped")
+)
 
 type SendFunc func(m []raftpb.Message)
 
@@ -32,7 +35,8 @@ type Response struct {
 
 type Server struct {
 	once sync.Once
-	w    wait.List
+	w    *wait.List
+	done chan struct{}
 
 	Node  raft.Node
 	Store store.Store
@@ -49,10 +53,14 @@ type Server struct {
 	Save func(st raftpb.State, ents []raftpb.Entry)
 }
 
-func (s *Server) init() { s.w = wait.New() }
+// Start prepares and starts server in a new goroutine.
+func Start(s *Server) {
+	s.w = wait.New()
+	s.done = make(chan struct{})
+	go s.run()
+}
 
-func (s *Server) Run(ctx context.Context) {
-	s.once.Do(s.init)
+func (s *Server) run() {
 	for {
 		select {
 		case rd := <-s.Node.Ready():
@@ -63,21 +71,26 @@ func (s *Server) Run(ctx context.Context) {
 			// care to apply entries in a single goroutine, and not
 			// race them.
 			for _, e := range rd.CommittedEntries {
+				var r pb.Request
+				if err := r.Unmarshal(e.Data); err != nil {
+					panic("TODO: this is bad, what do we do about it?")
+				}
+
 				var resp Response
-				resp.Event, resp.err = s.apply(context.TODO(), e)
+				resp.Event, resp.err = s.apply(context.TODO(), r)
 				resp.Term = rd.Term
 				resp.Commit = rd.Commit
-				s.w.Trigger(e.Id, resp)
+				s.w.Trigger(r.Id, resp)
 			}
-		case <-ctx.Done():
+		case <-s.done:
 			return
 		}
-
 	}
 }
 
+func (s *Server) Stop() { close(s.done) }
+
 func (s *Server) Do(ctx context.Context, r pb.Request) (Response, error) {
-	s.once.Do(s.init)
 	if r.Id == 0 {
 		panic("r.Id cannot be 0")
 	}
@@ -88,7 +101,7 @@ func (s *Server) Do(ctx context.Context, r pb.Request) (Response, error) {
 			return Response{}, err
 		}
 		ch := s.w.Register(r.Id)
-		s.Node.Propose(ctx, r.Id, data)
+		s.Node.Propose(ctx, data)
 		select {
 		case x := <-ch:
 			resp := x.(Response)
@@ -96,6 +109,8 @@ func (s *Server) Do(ctx context.Context, r pb.Request) (Response, error) {
 		case <-ctx.Done():
 			s.w.Trigger(r.Id, nil) // GC wait
 			return Response{}, ctx.Err()
+		case <-s.done:
+			return Response{}, ErrStopped
 		}
 	case "GET":
 		switch {
@@ -118,12 +133,7 @@ func (s *Server) Do(ctx context.Context, r pb.Request) (Response, error) {
 }
 
 // apply interprets r as a call to store.X and returns an Response interpreted from store.Event
-func (s *Server) apply(ctx context.Context, e raftpb.Entry) (*store.Event, error) {
-	var r pb.Request
-	if err := r.Unmarshal(e.Data); err != nil {
-		return nil, err
-	}
-
+func (s *Server) apply(ctx context.Context, r pb.Request) (*store.Event, error) {
 	expr := time.Unix(0, r.Expiration)
 	switch r.Method {
 	case "POST":
