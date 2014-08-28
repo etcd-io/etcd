@@ -13,6 +13,7 @@ import (
 	"code.google.com/p/go.net/context"
 	"github.com/coreos/etcd/elog"
 	etcdserver "github.com/coreos/etcd/etcdserver2"
+	"github.com/coreos/etcd/etcdserver2/etcdserverpb"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/store"
 )
@@ -79,9 +80,9 @@ func genId() int64 {
 	panic("implement me")
 }
 
-func parseRequest(r *http.Request) etcdserver.Request {
+func parseRequest(r *http.Request) etcdserverpb.Request {
 	q := r.URL.Query()
-	rr := etcdserver.Request{
+	rr := etcdserverpb.Request{
 		Id:        genId(),
 		Method:    r.Method,
 		Path:      r.URL.Path[len("/keys/"):],

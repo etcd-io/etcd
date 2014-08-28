@@ -10,6 +10,7 @@ import (
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/store"
 	"github.com/coreos/etcd/wait"
+	pb "github.com/coreos/etcd/etcdserver2/etcdserverpb"
 )
 
 var ErrUnknownMethod = errors.New("etcdserver: unknown method")
@@ -75,7 +76,7 @@ func (s *Server) Run(ctx context.Context) {
 	}
 }
 
-func (s *Server) Do(ctx context.Context, r Request) (Response, error) {
+func (s *Server) Do(ctx context.Context, r pb.Request) (Response, error) {
 	s.once.Do(s.init)
 	if r.Id == 0 {
 		panic("r.Id cannot be 0")
@@ -118,7 +119,7 @@ func (s *Server) Do(ctx context.Context, r Request) (Response, error) {
 
 // apply interprets r as a call to store.X and returns an Response interpreted from store.Event
 func (s *Server) apply(ctx context.Context, e raftpb.Entry) (*store.Event, error) {
-	var r Request
+	var r pb.Request
 	if err := r.Unmarshal(e.Data); err != nil {
 		return nil, err
 	}

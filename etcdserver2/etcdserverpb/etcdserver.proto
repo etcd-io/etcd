@@ -1,4 +1,4 @@
-package etcdserver;
+package etcdserverpb;
 
 import "code.google.com/p/gogoprotobuf/gogoproto/gogo.proto";
 
