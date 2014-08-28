@@ -39,7 +39,7 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case strings.HasPrefix(r.URL.Path, "/raft"):
 		h.serveRaft(ctx, w, r)
-	case strings.HasPrefix(r.URL.Path, "/keys"):
+	case strings.HasPrefix(r.URL.Path, "/keys/"):
 		h.serveKeys(ctx, w, r)
 	default:
 		http.NotFound(w, r)
