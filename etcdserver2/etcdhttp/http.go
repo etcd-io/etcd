@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -78,8 +79,50 @@ func (h Handler) serveRaft(ctx context.Context, w http.ResponseWriter, r *http.R
 	}
 }
 
+func genId() int64 {
+	panic("implement me")
+}
+
 func parseRequest(r *http.Request) (etcdserver.Request, error) {
-	return etcdserver.Request{}, nil
+	q := r.URL.Query()
+	rr := etcdserver.Request{
+		Id:        genId(),
+		Method:    r.Method,
+		Path:      r.URL.Path[len("/keys/"):],
+		Val:       q.Get("value"),
+		PrevValue: q.Get("prevValue"),
+		PrevIndex: parseUint64(q.Get("prevIndex")),
+		Recursive: parseBool(q.Get("recursive")),
+		Since:     parseUint64(q.Get("waitIndex")),
+		Sorted:    parseBool(q.Get("sorted")),
+		Wait:      parseBool(q.Get("wait")),
+	}
+
+	// PrevExists is nullable, so we leave it null if prevExist wasn't
+	// specified.
+	_, ok := q["wait"]
+	if ok {
+		bv := parseBool(q.Get("wait"))
+		rr.PrevExists = &bv
+	}
+
+	ttl := parseUint64(q.Get("ttl"))
+	if ttl > 0 {
+		expr := time.Duration(ttl) * time.Second
+		rr.Expiration = time.Now().Add(expr).UnixNano()
+	}
+
+	return rr, nil
+}
+
+func parseBool(s string) bool {
+	v, _ := strconv.ParseBool(s)
+	return v
+}
+
+func parseUint64(s string) uint64 {
+	v, _ := strconv.ParseUint(s, 10, 64)
+	return v
 }
 
 func encodeResponse(ctx context.Context, w http.ResponseWriter, resp etcdserver.Response) (err error) {
