@@ -4,11 +4,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"net/http"
+	"strings"
 	"time"
 
 	"code.google.com/p/go.net/context"
+	"github.com/coreos/etcd/elog"
 	etcdserver "github.com/coreos/etcd/etcdserver2"
+	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/store"
 )
 
@@ -32,6 +36,17 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
+	switch {
+	case strings.HasPrefix(r.URL.Path, "/raft"):
+		h.serveRaft(ctx, w, r)
+	case strings.HasPrefix(r.URL.Path, "/keys"):
+		h.serveKeys(ctx, w, r)
+	default:
+		http.NotFound(w, r)
+	}
+}
+
+func (h Handler) serveKeys(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	rr, err := parseRequest(r)
 	if err != nil {
 		http.Error(w, err.Error(), 400)
@@ -46,6 +61,20 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if err := encodeResponse(ctx, w, resp); err != nil {
 		http.Error(w, "Timeout while waiting for response", 504)
+	}
+}
+
+func (h Handler) serveRaft(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	b, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		elog.TODO()
+	}
+	var m raft.Message
+	if err := m.Unmarshal(b); err != nil {
+		elog.TODO()
+	}
+	if err := h.Server.Node.Step(ctx, m); err != nil {
+		elog.TODO()
 	}
 }
 
@@ -94,7 +123,7 @@ func waitForEvent(ctx context.Context, w http.ResponseWriter, wa *store.Watcher)
 	case ev := <-wa.EventChan:
 		return ev, nil
 	case <-nch:
-		// TODO: log something?
+		elog.TODO()
 		return nil, errClosed
 	case <-ctx.Done():
 		return nil, ctx.Err()

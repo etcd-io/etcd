@@ -11,7 +11,7 @@ const none = -1
 type messageType int64
 
 const (
-	msgHup messageType = iota
+	msgHup int64 = iota
 	msgBeat
 	msgProp
 	msgApp
@@ -62,23 +62,6 @@ var stepmap = [...]stepFunc{
 
 func (st stateType) String() string {
 	return stmap[int64(st)]
-}
-
-type Message struct {
-	Type     messageType
-	To       int64
-	From     int64
-	Term     int64
-	LogTerm  int64
-	Index    int64
-	Entries  []Entry
-	Commit   int64
-	Snapshot Snapshot
-}
-
-func (m Message) String() string {
-	return fmt.Sprintf("type=%v from=%x to=%x term=%d logTerm=%d i=%d ci=%d len(ents)=%d",
-		m.Type, m.From, m.To, m.Term, m.LogTerm, m.Index, m.Commit, len(m.Entries))
 }
 
 type progress struct {
@@ -489,7 +472,7 @@ func (r *raft) restore(s Snapshot) bool {
 
 func (r *raft) needSnapshot(i int64) bool {
 	if i < r.raftLog.offset {
-		if r.raftLog.snapshot.IsEmpty() {
+		if r.raftLog.snapshot.Term == 0 {
 			panic("need non-empty snapshot")
 		}
 		return true
@@ -525,8 +508,4 @@ func (r *raft) loadState(state State) {
 	r.raftLog.committed = state.Commit
 	r.Term = state.Term
 	r.Vote = state.Vote
-}
-
-func (s *State) IsEmpty() bool {
-	return s.Term == 0
 }
