@@ -33,23 +33,25 @@ The v2 API has a lot of features, we will categorize them in a few categories:
 **F**: Full support **G**: Good support **B**: Basic support
 **Y**: Feature supported  **-**: Feature not supported
 
+Sorted alphabetically on language/name
+
 |Client |**Language**|**HTTPS Auth**|**Re-connect**|**GET**|**PUT**|**POST**|**DEL**|**Mod Lock**|**Mod Leader**|
 | --- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | 
-|[go-etcd](https://github.com/coreos/go-etcd)                     |go     |Y|Y|F|F|F|F|-|-|
-|[jetcd](https://github.com/diwakergupta/jetcd)                   |java   |Y|-|B|B|-|B|-|-|
-|[python-etcd](https://github.com/jplana/python-etcd)             |python |Y|Y|F|F|F|F|Y|-|
-|[python-etcd-client](https://github.com/dsoprea/PythonEtcdClient)|python |Y|Y|F|F|F|F|Y|Y|
-|[node-etcd](https://github.com/stianeikeland/node-etcd)          |nodejs |Y|-|F|F|-|F|-|-|
-|[nodejs-etcd](https://github.com/lavagetto/nodejs-etcd)          |nodejs |Y|-|F|F|F|F|-|-|
-|[etcd-ruby](https://github.com/ranjib/etcd-ruby)                 |ruby   |-|-|F|F|F|F|-|-|
 |[etcd-api](https://github.com/jdarcy/etcd-api)                   |C      |-|Y|B|G|-|B|-|-|
+|[etcdcpp](https://github.com/edwardcapriolo/etcdcpp)             |C++    |-|-|F|F|G|-|-|-|
 |[cetcd](https://github.com/dwwoelfel/cetcd)                      |Clojure|-|-|F|F|-|G|-|-|
 |[clj-etcd](https://github.com/rthomas/clj-etcd)                  |Clojure|-|-|G|G|-|B|-|-|
 |[etcd-clojure](https://github.com/aterreno/etcd-clojure)         |Clojure|-|-|F|F|F|F|-|-|
-|[etcetera](https://github.com/drusellers/etcetera)               |.net   |-|-|F|F|F|F|-|-|
+|[go-etcd](https://github.com/coreos/go-etcd)                     |go     |Y|Y|F|F|F|F|-|-|
+|[jetcd](https://github.com/diwakergupta/jetcd)                   |java   |Y|-|B|B|-|B|-|-|
 |[Etcd.jl](https://github.com/forio/Etcd.jl)                      |Julia  |-|-|F|F|F|F|Y|Y|
+|[etcetera](https://github.com/drusellers/etcetera)               |.net   |-|-|F|F|F|F|-|-|
+|[node-etcd](https://github.com/stianeikeland/node-etcd)          |nodejs |Y|-|F|F|-|F|-|-|
+|[nodejs-etcd](https://github.com/lavagetto/nodejs-etcd)          |nodejs |Y|-|F|F|F|F|-|-|
 |[p5-etcd](https://metacpan.org/release/Etcd)                     |perl   |-|-|F|F|F|F|-|-|
-|[etcdcpp](https://github.com/edwardcapriolo/etcdcpp)             |C++    |-|-|F|F|G|-|-|-|
+|[python-etcd](https://github.com/jplana/python-etcd)             |python |Y|Y|F|F|F|F|Y|-|
+|[python-etcd-client](https://github.com/dsoprea/PythonEtcdClient)|python |Y|Y|F|F|F|F|Y|Y|
+|[etcd-ruby](https://github.com/ranjib/etcd-ruby)                 |ruby   |-|-|F|F|F|F|-|-|
 
 ## v1-only clients
 
