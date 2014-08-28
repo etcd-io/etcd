@@ -13,7 +13,7 @@ import (
 	"code.google.com/p/go.net/context"
 	"github.com/coreos/etcd/elog"
 	etcdserver "github.com/coreos/etcd/etcdserver2"
-	"github.com/coreos/etcd/raft"
+	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/store"
 )
 
@@ -66,7 +66,7 @@ func (h Handler) serveRaft(ctx context.Context, w http.ResponseWriter, r *http.R
 	if err != nil {
 		elog.TODO()
 	}
-	var m raft.Message
+	var m raftpb.Message
 	if err := m.Unmarshal(b); err != nil {
 		elog.TODO()
 	}

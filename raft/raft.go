@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+
+	pb "github.com/coreos/etcd/raft/raftpb"
 )
 
 const none = -1
@@ -91,7 +93,7 @@ func (p int64Slice) Less(i, j int) bool { return p[i] < p[j] }
 func (p int64Slice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
 
 type raft struct {
-	State
+	pb.State
 
 	id int64
 
@@ -107,7 +109,7 @@ type raft struct {
 
 	votes map[int64]bool
 
-	msgs []Message
+	msgs []pb.Message
 
 	// the leader id
 	lead int64
@@ -161,7 +163,7 @@ func (r *raft) poll(id int64, v bool) (granted int) {
 }
 
 // send persists state to stable storage and then sends to its mailbox.
-func (r *raft) send(m Message) {
+func (r *raft) send(m pb.Message) {
 	m.From = r.id
 	m.Term = r.Term
 	r.msgs = append(r.msgs, m)
@@ -170,7 +172,7 @@ func (r *raft) send(m Message) {
 // sendAppend sends RRPC, with entries to the given peer.
 func (r *raft) sendAppend(to int64) {
 	pr := r.prs[to]
-	m := Message{}
+	m := pb.Message{}
 	m.To = to
 	m.Index = pr.next - 1
 	if r.needSnapshot(m.Index) {
@@ -189,7 +191,7 @@ func (r *raft) sendAppend(to int64) {
 func (r *raft) sendHeartbeat(to int64) {
 	pr := r.prs[to]
 	index := max(pr.next-1, r.raftLog.lastIndex())
-	m := Message{
+	m := pb.Message{
 		To:      to,
 		Type:    msgApp,
 		Index:   index,
@@ -248,7 +250,7 @@ func (r *raft) q() int {
 	return len(r.prs)/2 + 1
 }
 
-func (r *raft) appendEntry(e Entry) {
+func (r *raft) appendEntry(e pb.Entry) {
 	e.Term = r.Term
 	e.Index = r.raftLog.lastIndex() + 1
 	r.LastIndex = r.raftLog.append(r.raftLog.lastIndex(), e)
@@ -283,22 +285,22 @@ func (r *raft) becomeLeader() {
 	r.state = stateLeader
 
 	for _, e := range r.raftLog.entries(r.raftLog.committed + 1) {
-		if e.isConfig() {
+		if isConfig(e) {
 			r.configuring = true
 		}
 	}
 
-	r.appendEntry(Entry{Type: Normal, Data: nil})
+	r.appendEntry(pb.Entry{Type: Normal, Data: nil})
 }
 
-func (r *raft) ReadMessages() []Message {
+func (r *raft) ReadMessages() []pb.Message {
 	msgs := r.msgs
-	r.msgs = make([]Message, 0)
+	r.msgs = make([]pb.Message, 0)
 
 	return msgs
 }
 
-func (r *raft) Step(m Message) error {
+func (r *raft) Step(m pb.Message) error {
 	// TODO(bmizerany): this likely allocs - prevent that.
 	defer func() { r.Commit = r.raftLog.committed }()
 
@@ -312,7 +314,7 @@ func (r *raft) Step(m Message) error {
 				continue
 			}
 			lasti := r.raftLog.lastIndex()
-			r.send(Message{To: i, Type: msgVote, Index: lasti, LogTerm: r.raftLog.term(lasti)})
+			r.send(pb.Message{To: i, Type: msgVote, Index: lasti, LogTerm: r.raftLog.term(lasti)})
 		}
 	}
 
@@ -333,20 +335,20 @@ func (r *raft) Step(m Message) error {
 	return nil
 }
 
-func (r *raft) handleAppendEntries(m Message) {
+func (r *raft) handleAppendEntries(m pb.Message) {
 	if r.raftLog.maybeAppend(m.Index, m.LogTerm, m.Commit, m.Entries...) {
 		r.LastIndex = r.raftLog.lastIndex()
-		r.send(Message{To: m.From, Type: msgAppResp, Index: r.raftLog.lastIndex()})
+		r.send(pb.Message{To: m.From, Type: msgAppResp, Index: r.raftLog.lastIndex()})
 	} else {
-		r.send(Message{To: m.From, Type: msgAppResp, Index: -1})
+		r.send(pb.Message{To: m.From, Type: msgAppResp, Index: -1})
 	}
 }
 
-func (r *raft) handleSnapshot(m Message) {
+func (r *raft) handleSnapshot(m pb.Message) {
 	if r.restore(m.Snapshot) {
-		r.send(Message{To: m.From, Type: msgAppResp, Index: r.raftLog.lastIndex()})
+		r.send(pb.Message{To: m.From, Type: msgAppResp, Index: r.raftLog.lastIndex()})
 	} else {
-		r.send(Message{To: m.From, Type: msgAppResp, Index: r.raftLog.committed})
+		r.send(pb.Message{To: m.From, Type: msgAppResp, Index: r.raftLog.committed})
 	}
 }
 
@@ -363,9 +365,9 @@ func (r *raft) removeNode(id int64) {
 	r.configuring = false
 }
 
-type stepFunc func(r *raft, m Message)
+type stepFunc func(r *raft, m pb.Message)
 
-func stepLeader(r *raft, m Message) {
+func stepLeader(r *raft, m pb.Message) {
 	switch m.Type {
 	case msgBeat:
 		r.bcastHeartbeat()
@@ -374,7 +376,7 @@ func stepLeader(r *raft, m Message) {
 			panic("unexpected length(entries) of a msgProp")
 		}
 		e := m.Entries[0]
-		if e.isConfig() {
+		if isConfig(e) {
 			if r.configuring {
 				panic("pending conf")
 			}
@@ -393,11 +395,11 @@ func stepLeader(r *raft, m Message) {
 			}
 		}
 	case msgVote:
-		r.send(Message{To: m.From, Type: msgVoteResp, Index: -1})
+		r.send(pb.Message{To: m.From, Type: msgVoteResp, Index: -1})
 	}
 }
 
-func stepCandidate(r *raft, m Message) {
+func stepCandidate(r *raft, m pb.Message) {
 	switch m.Type {
 	case msgProp:
 		panic("no leader")
@@ -408,7 +410,7 @@ func stepCandidate(r *raft, m Message) {
 		r.becomeFollower(m.Term, m.From)
 		r.handleSnapshot(m)
 	case msgVote:
-		r.send(Message{To: m.From, Type: msgVoteResp, Index: -1})
+		r.send(pb.Message{To: m.From, Type: msgVoteResp, Index: -1})
 	case msgVoteResp:
 		gr := r.poll(m.From, m.Index >= 0)
 		switch r.q() {
@@ -421,7 +423,7 @@ func stepCandidate(r *raft, m Message) {
 	}
 }
 
-func stepFollower(r *raft, m Message) {
+func stepFollower(r *raft, m pb.Message) {
 	switch m.Type {
 	case msgProp:
 		if r.lead == none {
@@ -437,9 +439,9 @@ func stepFollower(r *raft, m Message) {
 	case msgVote:
 		if (r.Vote == none || r.Vote == m.From) && r.raftLog.isUpToDate(m.Index, m.LogTerm) {
 			r.Vote = m.From
-			r.send(Message{To: m.From, Type: msgVoteResp, Index: r.raftLog.lastIndex()})
+			r.send(pb.Message{To: m.From, Type: msgVoteResp, Index: r.raftLog.lastIndex()})
 		} else {
-			r.send(Message{To: m.From, Type: msgVoteResp, Index: -1})
+			r.send(pb.Message{To: m.From, Type: msgVoteResp, Index: -1})
 		}
 	}
 }
@@ -451,7 +453,7 @@ func (r *raft) compact(d []byte) {
 
 // restore recovers the statemachine from a snapshot. It restores the log and the
 // configuration of statemachine.
-func (r *raft) restore(s Snapshot) bool {
+func (r *raft) restore(s pb.Snapshot) bool {
 	if s.Index <= r.raftLog.committed {
 		return false
 	}
@@ -496,7 +498,7 @@ func (r *raft) delProgress(id int64) {
 	delete(r.prs, id)
 }
 
-func (r *raft) loadEnts(ents []Entry) {
+func (r *raft) loadEnts(ents []pb.Entry) {
 	if !r.raftLog.isEmpty() {
 		panic("cannot load entries when log is not empty")
 	}
@@ -504,7 +506,7 @@ func (r *raft) loadEnts(ents []Entry) {
 	r.raftLog.unstable = r.raftLog.lastIndex() + 1
 }
 
-func (r *raft) loadState(state State) {
+func (r *raft) loadState(state pb.State) {
 	r.raftLog.committed = state.Commit
 	r.Term = state.Term
 	r.Vote = state.Vote

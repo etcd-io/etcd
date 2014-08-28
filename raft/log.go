@@ -1,6 +1,10 @@
 package raft
 
-import "fmt"
+import (
+	"fmt"
+
+	pb "github.com/coreos/etcd/raft/raftpb"
+)
 
 const (
 	Normal int64 = iota
@@ -14,18 +18,18 @@ const (
 	defaultCompactThreshold = 10000
 )
 
-func (e *Entry) isConfig() bool {
+func isConfig(e pb.Entry) bool {
 	return e.Type == AddNode || e.Type == RemoveNode
 }
 
 type raftLog struct {
-	ents             []Entry
+	ents             []pb.Entry
 	unstable         int64
 	committed        int64
 	applied          int64
 	offset           int64
-	snapshot         Snapshot
-	unstableSnapshot Snapshot
+	snapshot         pb.Snapshot
+	unstableSnapshot pb.Snapshot
 
 	// want a compact after the number of entries exceeds the threshold
 	// TODO(xiangli) size might be a better criteria
@@ -34,7 +38,7 @@ type raftLog struct {
 
 func newLog() *raftLog {
 	return &raftLog{
-		ents:             make([]Entry, 1),
+		ents:             make([]pb.Entry, 1),
 		unstable:         1,
 		committed:        0,
 		applied:          0,
@@ -50,7 +54,7 @@ func (l *raftLog) String() string {
 	return fmt.Sprintf("offset=%d committed=%d applied=%d len(ents)=%d", l.offset, l.committed, l.applied, len(l.ents))
 }
 
-func (l *raftLog) maybeAppend(index, logTerm, committed int64, ents ...Entry) bool {
+func (l *raftLog) maybeAppend(index, logTerm, committed int64, ents ...pb.Entry) bool {
 	if l.matchTerm(index, logTerm) {
 		from := index + 1
 		ci := l.findConflict(from, ents)
@@ -69,13 +73,13 @@ func (l *raftLog) maybeAppend(index, logTerm, committed int64, ents ...Entry) bo
 	return false
 }
 
-func (l *raftLog) append(after int64, ents ...Entry) int64 {
+func (l *raftLog) append(after int64, ents ...pb.Entry) int64 {
 	l.ents = append(l.slice(l.offset, after+1), ents...)
 	l.unstable = min(l.unstable, after+1)
 	return l.lastIndex()
 }
 
-func (l *raftLog) findConflict(from int64, ents []Entry) int64 {
+func (l *raftLog) findConflict(from int64, ents []pb.Entry) int64 {
 	for i, ne := range ents {
 		if oe := l.at(from + int64(i)); oe == nil || oe.Term != ne.Term {
 			return from + int64(i)
@@ -84,12 +88,12 @@ func (l *raftLog) findConflict(from int64, ents []Entry) int64 {
 	return -1
 }
 
-func (l *raftLog) unstableEnts() []Entry {
+func (l *raftLog) unstableEnts() []pb.Entry {
 	ents := l.entries(l.unstable)
 	if ents == nil {
 		return nil
 	}
-	cpy := make([]Entry, len(ents))
+	cpy := make([]pb.Entry, len(ents))
 	copy(cpy, ents)
 	return cpy
 }
@@ -100,13 +104,13 @@ func (l *raftLog) resetUnstable() {
 
 // nextEnts returns all the available entries for execution.
 // all the returned entries will be marked as applied.
-func (l *raftLog) nextEnts() (ents []Entry) {
+func (l *raftLog) nextEnts() (ents []pb.Entry) {
 	if l.committed > l.applied {
 		ents := l.slice(l.applied+1, l.committed+1)
 		if ents == nil {
 			return nil
 		}
-		cpy := make([]Entry, len(ents))
+		cpy := make([]pb.Entry, len(ents))
 		copy(cpy, ents)
 		return cpy
 	}
@@ -130,7 +134,7 @@ func (l *raftLog) term(i int64) int64 {
 	return -1
 }
 
-func (l *raftLog) entries(i int64) []Entry {
+func (l *raftLog) entries(i int64) []pb.Entry {
 	// never send out the first entry
 	// first entry is only used for matching
 	// prevLogTerm
@@ -176,15 +180,15 @@ func (l *raftLog) compact(i int64) int64 {
 }
 
 func (l *raftLog) snap(d []byte, index, term int64, nodes []int64) {
-	l.snapshot = Snapshot{d, nodes, index, term, nil}
+	l.snapshot = pb.Snapshot{d, nodes, index, term, nil}
 }
 
 func (l *raftLog) shouldCompact() bool {
 	return (l.applied - l.offset) > l.compactThreshold
 }
 
-func (l *raftLog) restore(s Snapshot) {
-	l.ents = []Entry{{Term: s.Term}}
+func (l *raftLog) restore(s pb.Snapshot) {
+	l.ents = []pb.Entry{{Term: s.Term}}
 	l.unstable = s.Index + 1
 	l.committed = s.Index
 	l.applied = s.Index
@@ -192,7 +196,7 @@ func (l *raftLog) restore(s Snapshot) {
 	l.snapshot = s
 }
 
-func (l *raftLog) at(i int64) *Entry {
+func (l *raftLog) at(i int64) *pb.Entry {
 	if l.isOutOfBounds(i) {
 		return nil
 	}
@@ -200,7 +204,7 @@ func (l *raftLog) at(i int64) *Entry {
 }
 
 // slice get a slice of log entries from lo through hi-1, inclusive.
-func (l *raftLog) slice(lo int64, hi int64) []Entry {
+func (l *raftLog) slice(lo int64, hi int64) []pb.Entry {
 	if lo >= hi {
 		return nil
 	}

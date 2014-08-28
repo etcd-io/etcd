@@ -1,4 +1,4 @@
-package raft;
+package raftpb;
 
 import "code.google.com/p/gogoprotobuf/gogoproto/gogo.proto";
 
@@ -32,4 +32,11 @@ message Message {
 	repeated Entry entries     = 7 [(gogoproto.nullable) = false];
 	required int64 commit      = 8 [(gogoproto.nullable) = false];
 	required Snapshot snapshot = 9 [(gogoproto.nullable) = false];
+}
+
+message State {
+	required int64 term   = 1 [(gogoproto.nullable) = false];
+	required int64 vote   = 2 [(gogoproto.nullable) = false];
+	required int64 commit = 3 [(gogoproto.nullable) = false];
+	required int64 lastIndex = 4 [(gogoproto.nullable) = false];
 }

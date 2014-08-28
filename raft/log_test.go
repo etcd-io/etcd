@@ -3,6 +3,8 @@ package raft
 import (
 	"reflect"
 	"testing"
+
+	pb "github.com/coreos/etcd/raft/raftpb"
 )
 
 // TestAppend ensures:
@@ -11,43 +13,43 @@ import (
 // follow it
 // 2.Append any new entries not already in the log
 func TestAppend(t *testing.T) {
-	previousEnts := []Entry{{Term: 1}, {Term: 2}}
+	previousEnts := []pb.Entry{{Term: 1}, {Term: 2}}
 	previousUnstable := int64(3)
 	tests := []struct {
 		after     int64
-		ents      []Entry
+		ents      []pb.Entry
 		windex    int64
-		wents     []Entry
+		wents     []pb.Entry
 		wunstable int64
 	}{
 		{
 			2,
-			[]Entry{},
+			[]pb.Entry{},
 			2,
-			[]Entry{{Term: 1}, {Term: 2}},
+			[]pb.Entry{{Term: 1}, {Term: 2}},
 			3,
 		},
 		{
 			2,
-			[]Entry{{Term: 2}},
+			[]pb.Entry{{Term: 2}},
 			3,
-			[]Entry{{Term: 1}, {Term: 2}, {Term: 2}},
+			[]pb.Entry{{Term: 1}, {Term: 2}, {Term: 2}},
 			3,
 		},
 		// conflicts with index 1
 		{
 			0,
-			[]Entry{{Term: 2}},
+			[]pb.Entry{{Term: 2}},
 			1,
-			[]Entry{{Term: 2}},
+			[]pb.Entry{{Term: 2}},
 			1,
 		},
 		// conflicts with index 2
 		{
 			1,
-			[]Entry{{Term: 3}, {Term: 3}},
+			[]pb.Entry{{Term: 3}, {Term: 3}},
 			3,
-			[]Entry{{Term: 1}, {Term: 3}, {Term: 3}},
+			[]pb.Entry{{Term: 1}, {Term: 3}, {Term: 3}},
 			2,
 		},
 	}
@@ -77,7 +79,7 @@ func TestCompactionSideEffects(t *testing.T) {
 	raftLog := newLog()
 
 	for i = 0; i < lastIndex; i++ {
-		raftLog.append(int64(i), Entry{Term: int64(i + 1), Index: int64(i + 1)})
+		raftLog.append(int64(i), pb.Entry{Term: int64(i + 1), Index: int64(i + 1)})
 	}
 
 	raftLog.compact(500)
@@ -107,7 +109,7 @@ func TestCompactionSideEffects(t *testing.T) {
 	}
 
 	prev := raftLog.lastIndex()
-	raftLog.append(raftLog.lastIndex(), Entry{Term: raftLog.lastIndex() + 1})
+	raftLog.append(raftLog.lastIndex(), pb.Entry{Term: raftLog.lastIndex() + 1})
 	if raftLog.lastIndex() != prev+1 {
 		t.Errorf("lastIndex = %d, want = %d", raftLog.lastIndex(), prev+1)
 	}
@@ -119,10 +121,10 @@ func TestCompactionSideEffects(t *testing.T) {
 }
 
 func TestUnstableEnts(t *testing.T) {
-	previousEnts := []Entry{{Term: 1, Index: 1}, {Term: 2, Index: 2}}
+	previousEnts := []pb.Entry{{Term: 1, Index: 1}, {Term: 2, Index: 2}}
 	tests := []struct {
 		unstable  int64
-		wents     []Entry
+		wents     []pb.Entry
 		wunstable int64
 	}{
 		{3, nil, 3},
@@ -171,7 +173,7 @@ func TestCompaction(t *testing.T) {
 
 			raftLog := newLog()
 			for i := 0; i < tt.app; i++ {
-				raftLog.append(int64(i), Entry{})
+				raftLog.append(int64(i), pb.Entry{})
 			}
 
 			for j := 0; j < len(tt.compact); j++ {
@@ -188,12 +190,12 @@ func TestLogRestore(t *testing.T) {
 	var i int64
 	raftLog := newLog()
 	for i = 0; i < 100; i++ {
-		raftLog.append(i, Entry{Term: i + 1})
+		raftLog.append(i, pb.Entry{Term: i + 1})
 	}
 
 	index := int64(1000)
 	term := int64(1000)
-	raftLog.restore(Snapshot{Index: index, Term: term})
+	raftLog.restore(pb.Snapshot{Index: index, Term: term})
 
 	// only has the guard entry
 	if len(raftLog.ents) != 1 {
@@ -219,7 +221,7 @@ func TestLogRestore(t *testing.T) {
 func TestIsOutOfBounds(t *testing.T) {
 	offset := int64(100)
 	num := int64(100)
-	l := &raftLog{offset: offset, ents: make([]Entry, num)}
+	l := &raftLog{offset: offset, ents: make([]pb.Entry, num)}
 
 	tests := []struct {
 		index int64
@@ -247,17 +249,17 @@ func TestAt(t *testing.T) {
 
 	l := &raftLog{offset: offset}
 	for i = 0; i < num; i++ {
-		l.ents = append(l.ents, Entry{Term: i})
+		l.ents = append(l.ents, pb.Entry{Term: i})
 	}
 
 	tests := []struct {
 		index int64
-		w     *Entry
+		w     *pb.Entry
 	}{
 		{offset - 1, nil},
-		{offset, &Entry{Term: 0}},
-		{offset + num/2, &Entry{Term: num / 2}},
-		{offset + num - 1, &Entry{Term: num - 1}},
+		{offset, &pb.Entry{Term: 0}},
+		{offset + num/2, &pb.Entry{Term: num / 2}},
+		{offset + num - 1, &pb.Entry{Term: num - 1}},
 		{offset + num, nil},
 	}
 
@@ -276,18 +278,18 @@ func TestSlice(t *testing.T) {
 
 	l := &raftLog{offset: offset}
 	for i = 0; i < num; i++ {
-		l.ents = append(l.ents, Entry{Term: i})
+		l.ents = append(l.ents, pb.Entry{Term: i})
 	}
 
 	tests := []struct {
 		from int64
 		to   int64
-		w    []Entry
+		w    []pb.Entry
 	}{
 		{offset - 1, offset + 1, nil},
-		{offset, offset + 1, []Entry{{Term: 0}}},
-		{offset + num/2, offset + num/2 + 1, []Entry{{Term: num / 2}}},
-		{offset + num - 1, offset + num, []Entry{{Term: num - 1}}},
+		{offset, offset + 1, []pb.Entry{{Term: 0}}},
+		{offset + num/2, offset + num/2 + 1, []pb.Entry{{Term: num / 2}}},
+		{offset + num - 1, offset + num, []pb.Entry{{Term: num - 1}}},
 		{offset + num, offset + num + 1, nil},
 
 		{offset + num/2, offset + num/2, nil},

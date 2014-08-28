@@ -7,13 +7,14 @@ import (
 
 	"code.google.com/p/go.net/context"
 	"github.com/coreos/etcd/raft"
+	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/store"
 	"github.com/coreos/etcd/wait"
 )
 
 var ErrUnknownMethod = errors.New("etcdserver: unknown method")
 
-type SendFunc func(m []raft.Message)
+type SendFunc func(m []raftpb.Message)
 
 type Response struct {
 	// The last seen term raft was at when this request was built.
@@ -44,7 +45,7 @@ type Server struct {
 	// Save specifies the save function for saving ents to stable storage.
 	// Save MUST block until st and ents are on stable storage.  If Send is
 	// nil, Server will panic.
-	Save func(st raft.State, ents []raft.Entry)
+	Save func(st raftpb.State, ents []raftpb.Entry)
 }
 
 func (s *Server) init() { s.w = wait.New() }
@@ -116,7 +117,7 @@ func (s *Server) Do(ctx context.Context, r Request) (Response, error) {
 }
 
 // apply interprets r as a call to store.X and returns an Response interpreted from store.Event
-func (s *Server) apply(ctx context.Context, e raft.Entry) (*store.Event, error) {
+func (s *Server) apply(ctx context.Context, e raftpb.Entry) (*store.Event, error) {
 	var r Request
 	if err := r.Unmarshal(e.Data); err != nil {
 		return nil, err
