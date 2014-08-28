@@ -14,6 +14,9 @@ The v2 API has a lot of features, we will categorize them in a few categories:
 - **GET,PUT,POST,DEL Features**: Support for all the modifiers when calling the etcd server with said HTTP method.
 
 ### Supported features matrix
+**Legend**
+**F**: Full support **G**: Good support **B**: Basic support
+**Y**: Feature supported  **-**: Feature not supported
 
 |Client |**Language**|**HTTPS Auth**|**Re-connect**|**GET**|**PUT**|**POST**|**DEL**|**Mod Lock**|**Mod Leader**|
 | --- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | 
@@ -31,11 +34,6 @@ The v2 API has a lot of features, we will categorize them in a few categories:
 |[Etcd.jl](https://github.com/forio/Etcd.jl)                      |Julia  |-|-|F|F|F|F|Y|Y|
 |[p5-etcd](https://metacpan.org/release/Etcd)                     |perl   |-|-|F|F|F|F|-|-|
 |[etcdcpp](https://github.com/edwardcapriolo/etcdcpp)             |C++    |-|-|F|F|G|-|-|-|
-
-**Legend**
-
-**F**: Full support **G**: Good support **B**: Basic support
-**Y**: Feature supported  **-**: Feature not supported
 
 ## v1-only clients
 
