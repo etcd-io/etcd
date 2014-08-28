@@ -48,11 +48,7 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h Handler) serveKeys(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	rr, err := parseRequest(r)
-	if err != nil {
-		http.Error(w, err.Error(), 400)
-		return
-	}
+	rr := parseRequest(r)
 
 	resp, err := h.Server.Do(ctx, rr)
 	if err != nil {
@@ -83,7 +79,7 @@ func genId() int64 {
 	panic("implement me")
 }
 
-func parseRequest(r *http.Request) (etcdserver.Request, error) {
+func parseRequest(r *http.Request) etcdserver.Request {
 	q := r.URL.Query()
 	rr := etcdserver.Request{
 		Id:        genId(),
@@ -112,7 +108,7 @@ func parseRequest(r *http.Request) (etcdserver.Request, error) {
 		rr.Expiration = time.Now().Add(expr).UnixNano()
 	}
 
-	return rr, nil
+	return rr
 }
 
 func parseBool(s string) bool {
