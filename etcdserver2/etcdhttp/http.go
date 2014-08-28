@@ -140,8 +140,6 @@ func encodeResponse(ctx context.Context, w http.ResponseWriter, resp etcdserver.
 
 	if ev.IsCreated() {
 		w.WriteHeader(http.StatusCreated)
-	} else {
-		w.WriteHeader(http.StatusOK)
 	}
 
 	if err := json.NewEncoder(w).Encode(ev); err != nil {
