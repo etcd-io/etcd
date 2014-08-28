@@ -97,9 +97,9 @@ func parseRequest(r *http.Request) etcdserverpb.Request {
 
 	// PrevExists is nullable, so we leave it null if prevExist wasn't
 	// specified.
-	_, ok := q["wait"]
+	_, ok := q["prevExists"]
 	if ok {
-		bv := parseBool(q.Get("wait"))
+		bv := parseBool(q.Get("prevExists"))
 		rr.PrevExists = &bv
 	}
 
