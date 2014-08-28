@@ -224,7 +224,7 @@ curl -L http://127.0.0.1:4001/v2/keys/foo -XPUT -d value=bar -d ttl= -d prevExis
         "key": "/foo",
         "modifiedIndex": 6,
         "value": "bar"
-    }
+    },
     "prevNode": {
         "createdIndex": 5,
         "expiration": "2013-12-04T12:01:21.874888581-08:00",
@@ -417,7 +417,7 @@ curl 'http://127.0.0.1:4001/v2/keys/dir/asdf?consistent=true&wait=true'
 		"dir":true,
 		"modifiedIndex": 17,
 		"expiration": "2013-12-11T10:39:35.689275857-08:00"
-	},
+	}
 }
 ```
 
