@@ -75,11 +75,6 @@ func New() Store {
 	return newStore()
 }
 
-// Root returns the root of a Store and is for testing only.
-func Root(st Store) interface{} {
-	return st.(*store).Root
-}
-
 func newStore() *store {
 	s := new(store)
 	s.CurrentVersion = defaultVersion

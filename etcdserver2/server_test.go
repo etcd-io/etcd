@@ -82,7 +82,7 @@ func testServer(t *testing.T, ns int64) {
 	var last interface{}
 	for i, sv := range ss {
 		sv.Stop()
-		g := store.Root(sv.Store)
+		g, _ := sv.Store.Get("/", true, true)
 		if last != nil && !reflect.DeepEqual(last, g) {
 			t.Errorf("server %d: Root = %#v, want %#v", i, g, last)
 		}
