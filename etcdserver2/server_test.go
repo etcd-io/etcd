@@ -3,6 +3,7 @@ package etcdserver
 import (
 	"reflect"
 	"testing"
+	"time"
 	"code.google.com/p/go.net/context"
 
 	pb "github.com/coreos/etcd/etcdserver2/etcdserverpb"
@@ -11,21 +12,51 @@ import (
 	"github.com/coreos/etcd/store"
 )
 
-func TestServer(t *testing.T) {
+func TestClusterOf1(t *testing.T) { testServer(t, 1) }
+func TestClusterOf3(t *testing.T) { testServer(t, 3) }
+
+func testServer(t *testing.T, ns int64) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	n := raft.Start(ctx, 1, []int64{1})
-	n.Campaign(ctx)
+	ss := make([]*Server, ns)
 
-	srv := &Server{
-		Node:  n,
-		Store: store.New(),
-		Send:  func(_ []raftpb.Message) {},
-		Save:  func(_ raftpb.State, _ []raftpb.Entry) {},
+	send := func(msgs []raftpb.Message) {
+		var m raftpb.Message
+		for len(msgs) > 0 {
+			m, msgs = msgs[0], msgs[1:]
+			t.Logf("sending: %+v", m)
+			if err := ss[m.To].Node.Step(ctx, m); err != nil {
+				t.Fatal(err)
+			}
+			rd := raft.RecvReadyNow(ss[m.To].Node)
+			msgs = append(msgs, rd.Messages...)
+		}
 	}
-	Start(srv)
-	defer srv.Stop()
+
+	peers := make([]int64, ns)
+	for i := int64(0); i < ns; i++ {
+		peers[i] = i
+	}
+
+	var srv *Server
+	for i := int64(0); i < ns; i++ {
+		n := raft.Start(ctx, i, peers)
+
+		srv = &Server{
+			Node:  n,
+			Store: store.New(),
+			Send:  send,
+			Save:  func(_ raftpb.State, _ []raftpb.Entry) {},
+		}
+		Start(srv)
+
+		ss[i] = srv
+	}
+
+	if err := srv.Node.Campaign(ctx); err != nil {
+		t.Fatal(err)
+	}
 
 	r := pb.Request{
 		Method: "PUT",
@@ -48,6 +79,18 @@ func TestServer(t *testing.T) {
 	if !reflect.DeepEqual(g, w) {
 		t.Error("value:", *g.Value)
 		t.Errorf("g = %+v, w %+v", g, w)
+	}
+
+	time.Sleep(10 * time.Millisecond)
+
+	var last interface{}
+	for i, sv := range ss {
+		sv.Stop()
+		g := store.Root(sv.Store)
+		if last != nil && !reflect.DeepEqual(last, g) {
+			t.Errorf("server %d: Root = %#v, want %#v", i, g, last)
+		}
+		last = g
 	}
 }
 

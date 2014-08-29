@@ -88,7 +88,9 @@ func (s *Server) run() {
 	}
 }
 
-func (s *Server) Stop() { close(s.done) }
+func (s *Server) Stop() {
+	s.done <- struct{}{}
+}
 
 func (s *Server) Do(ctx context.Context, r pb.Request) (Response, error) {
 	if r.Id == 0 {

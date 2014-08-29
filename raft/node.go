@@ -33,20 +33,22 @@ func (rd Ready) containsUpdates(prev Ready) bool {
 }
 
 type Node struct {
-	ctx    context.Context
-	propc  chan pb.Message
-	recvc  chan pb.Message
-	readyc chan Ready
-	tickc  chan struct{}
+	ctx          context.Context
+	propc        chan pb.Message
+	recvc        chan pb.Message
+	readyc       chan Ready
+	tickc        chan struct{}
+	alwaysreadyc chan Ready
 }
 
 func Start(ctx context.Context, id int64, peers []int64) Node {
 	n := Node{
-		ctx:    ctx,
-		propc:  make(chan pb.Message),
-		recvc:  make(chan pb.Message),
-		readyc: make(chan Ready),
-		tickc:  make(chan struct{}),
+		ctx:          ctx,
+		propc:        make(chan pb.Message),
+		recvc:        make(chan pb.Message),
+		readyc:       make(chan Ready),
+		tickc:        make(chan struct{}),
+		alwaysreadyc: make(chan Ready),
 	}
 	r := newRaft(id, peers)
 	go n.run(r)
@@ -94,6 +96,8 @@ func (n *Node) run(r *raft) {
 			r.raftLog.resetNextEnts()
 			r.raftLog.resetUnstable()
 			r.msgs = nil
+		case n.alwaysreadyc <- rd:
+			// this is for testing only
 		case <-n.ctx.Done():
 			return
 		}
@@ -141,8 +145,8 @@ func (n *Node) Ready() <-chan Ready {
 	return n.readyc
 }
 
-type byMsgType []pb.Message
-
-func (msgs byMsgType) Len() int           { return len(msgs) }
-func (msgs byMsgType) Less(i, j int) bool { return msgs[i].Type == msgProp }
-func (msgs byMsgType) Swap(i, j int)      { msgs[i], msgs[j] = msgs[i], msgs[j] }
+// RecvReadyNow returns the state of n without blocking. It is primarly for
+// testing purposes only.
+func RecvReadyNow(n Node) Ready {
+	return <-n.alwaysreadyc
+}
