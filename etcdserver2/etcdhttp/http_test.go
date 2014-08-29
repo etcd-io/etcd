@@ -1,15 +1,14 @@
 package etcdhttp
 
 import (
+	"code.google.com/p/go.net/context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"reflect"
 	"testing"
 	"time"
-	"code.google.com/p/go.net/context"
 
 	etcdserver "github.com/coreos/etcd/etcdserver2"
 	"github.com/coreos/etcd/etcdserver2/etcdserverpb"
@@ -40,7 +39,6 @@ func TestSet(t *testing.T) {
 				if err := r.Unmarshal(e.Data); err != nil {
 					t.Fatal(err)
 				}
-				fmt.Printf("r.Path: %q\n", r.Path)
 			}
 		},
 	}
