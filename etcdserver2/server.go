@@ -88,10 +88,16 @@ func (s *Server) run() {
 	}
 }
 
+// Stop stops the server, and shutsdown the running goroutine. Stop should be
+// called after a Start(s), otherwise it will block forever.
 func (s *Server) Stop() {
 	s.done <- struct{}{}
 }
 
+// Do interprets r and performs an operation on s.Store according to r.Method
+// and other fields. If r.Method is "PUT", "PUT", or "DELETE, r will be sent
+// through consensus before performing its respective operation. Do will block
+// until an action is performed or there is an error.
 func (s *Server) Do(ctx context.Context, r pb.Request) (Response, error) {
 	if r.Id == 0 {
 		panic("r.Id cannot be 0")
