@@ -1,6 +1,7 @@
 package etcdserver
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 	"time"
@@ -22,15 +23,9 @@ func testServer(t *testing.T, ns int64) {
 	ss := make([]*Server, ns)
 
 	send := func(msgs []raftpb.Message) {
-		var m raftpb.Message
-		for len(msgs) > 0 {
-			m, msgs = msgs[0], msgs[1:]
-			t.Logf("sending: %+v", m)
-			if err := ss[m.To].Node.Step(ctx, m); err != nil {
-				t.Fatal(err)
-			}
-			rd := raft.RecvReadyNow(ss[m.To].Node)
-			msgs = append(msgs, rd.Messages...)
+		for _, m := range msgs {
+			fmt.Printf("sending: %+v\n", m)
+			ss[m.To].Node.Step(ctx, m)
 		}
 	}
 
