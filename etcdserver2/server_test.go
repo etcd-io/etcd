@@ -1,7 +1,6 @@
 package etcdserver
 
 import (
-	"fmt"
 	"reflect"
 	"testing"
 	"time"
@@ -24,7 +23,7 @@ func testServer(t *testing.T, ns int64) {
 
 	send := func(msgs []raftpb.Message) {
 		for _, m := range msgs {
-			fmt.Printf("sending: %+v\n", m)
+			t.Logf("sending: %+v\n", m)
 			ss[m.To].Node.Step(ctx, m)
 		}
 	}
