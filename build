@@ -10,9 +10,13 @@ export GOPATH=${PWD}/gopath
 export GOFMTPATH="./bench ./config ./discovery ./etcd ./error ./http ./log main.go ./metrics ./mod ./server ./store ./tests"
 
 # Don't surprise user by formatting their codes by stealth
-if [ "--fmt" = "$1" ]; then
+if echo ${1+"$@"} | grep -q '\-\-fmt' ; then
 	gofmt -s -w -l $GOFMTPATH
 fi
 
-go install github.com/coreos/etcd
+if echo ${1+"$@"} | grep -q '\-\-static' ; then
+	go install -ldflags '-linkmode external -extldflags "-static"' github.com/coreos/etcd
+else
+	go install github.com/coreos/etcd
+fi
 go install github.com/coreos/etcd/bench
