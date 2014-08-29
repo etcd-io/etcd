@@ -53,27 +53,29 @@ func testServer(t *testing.T, ns int64) {
 		t.Fatal(err)
 	}
 
-	r := pb.Request{
-		Method: "PUT",
-		Id:     1,
-		Path:   "/foo",
-		Val:    "bar",
-	}
-	resp, err := srv.Do(ctx, r)
-	if err != nil {
-		t.Fatal(err)
-	}
+	for i := 1; i <= 10; i++ {
+		r := pb.Request{
+			Method: "PUT",
+			Id:     1,
+			Path:   "/foo",
+			Val:    "bar",
+		}
+		resp, err := srv.Do(ctx, r)
+		if err != nil {
+			t.Fatal(err)
+		}
 
-	g, w := resp.Event.Node, &store.NodeExtern{
-		Key:           "/foo",
-		ModifiedIndex: 1,
-		CreatedIndex:  1,
-		Value:         stringp("bar"),
-	}
+		g, w := resp.Event.Node, &store.NodeExtern{
+			Key:           "/foo",
+			ModifiedIndex: uint64(i),
+			CreatedIndex:  uint64(i),
+			Value:         stringp("bar"),
+		}
 
-	if !reflect.DeepEqual(g, w) {
-		t.Error("value:", *g.Value)
-		t.Errorf("g = %+v, w %+v", g, w)
+		if !reflect.DeepEqual(g, w) {
+			t.Error("value:", *g.Value)
+			t.Errorf("g = %+v, w %+v", g, w)
+		}
 	}
 
 	time.Sleep(10 * time.Millisecond)
