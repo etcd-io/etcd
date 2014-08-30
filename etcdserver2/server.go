@@ -2,7 +2,6 @@ package etcdserver
 
 import (
 	"errors"
-	"sync"
 	"time"
 
 	"code.google.com/p/go.net/context"
@@ -27,14 +26,13 @@ type Response struct {
 	// The last seen index raft was at when this request was built.
 	Commit int64
 
-	*store.Event
-	*store.Watcher
+	Event   *store.Event
+	Watcher *store.Watcher
 
 	err error
 }
 
 type Server struct {
-	once sync.Once
 	w    *wait.List
 	done chan struct{}
 
