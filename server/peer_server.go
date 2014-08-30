@@ -350,6 +350,7 @@ func (s *PeerServer) RemoveNotify() <-chan bool {
 
 func (s *PeerServer) HTTPHandler() http.Handler {
 	router := mux.NewRouter()
+	router.StrictSlash(true)
 
 	// internal commands
 	router.HandleFunc("/name", s.NameHttpHandler)
