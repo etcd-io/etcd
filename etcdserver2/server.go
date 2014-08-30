@@ -100,8 +100,11 @@ func (s *Server) Do(ctx context.Context, r pb.Request) (Response, error) {
 	if r.Id == 0 {
 		panic("r.Id cannot be 0")
 	}
+	if r.Method == "GET" && r.Quorum {
+		r.Method = "QGET"
+	}
 	switch r.Method {
-	case "POST", "PUT", "DELETE":
+	case "POST", "PUT", "DELETE", "QGET":
 		data, err := r.Marshal()
 		if err != nil {
 			return Response{}, err
@@ -165,6 +168,8 @@ func (s *Server) apply(ctx context.Context, r pb.Request) (*store.Event, error) 
 		default:
 			return s.Store.Delete(r.Path, r.Recursive, r.Dir)
 		}
+	case "QGET":
+		return s.Store.Get(r.Path, r.Recursive, r.Sorted)
 	default:
 		// This should never be reached, but just in case:
 		return nil, ErrUnknownMethod

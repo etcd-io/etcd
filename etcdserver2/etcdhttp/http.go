@@ -13,8 +13,8 @@ import (
 	"strings"
 	"time"
 
-	"code.google.com/p/go.net/context"
 	"crypto/rand"
+	"code.google.com/p/go.net/context"
 	"github.com/coreos/etcd/elog"
 	etcdserver "github.com/coreos/etcd/etcdserver2"
 	"github.com/coreos/etcd/etcdserver2/etcdserverpb"

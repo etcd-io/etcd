@@ -21,4 +21,5 @@ message Request {
 	required uint64  since      = 11 [(gogoproto.nullable) = false];
 	required bool   recursive  = 12 [(gogoproto.nullable) = false];
 	required bool   sorted     = 13 [(gogoproto.nullable) = false];
+	required bool   quorum     = 14 [(gogoproto.nullable) = false];
 }

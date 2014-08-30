@@ -1,7 +1,6 @@
 package etcdhttp
 
 import (
-	"code.google.com/p/go.net/context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -9,6 +8,7 @@ import (
 	"reflect"
 	"testing"
 	"time"
+	"code.google.com/p/go.net/context"
 
 	etcdserver "github.com/coreos/etcd/etcdserver2"
 	"github.com/coreos/etcd/etcdserver2/etcdserverpb"

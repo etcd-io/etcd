@@ -41,6 +41,7 @@ type Request struct {
 	Since            uint64 `protobuf:"varint,11,req,name=since" json:"since"`
 	Recursive        bool   `protobuf:"varint,12,req,name=recursive" json:"recursive"`
 	Sorted           bool   `protobuf:"varint,13,req,name=sorted" json:"sorted"`
+	Quorum           bool   `protobuf:"varint,14,req,name=quorum" json:"quorum"`
 	XXX_unrecognized []byte `json:"-"`
 }
 
@@ -303,6 +304,23 @@ func (m *Request) Unmarshal(data []byte) error {
 				}
 			}
 			m.Sorted = bool(v != 0)
+		case 14:
+			if wireType != 0 {
+				return code_google_com_p_gogoprotobuf_proto.ErrWrongType
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if index >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[index]
+				index++
+				v |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.Quorum = bool(v != 0)
 		default:
 			var sizeOfWire int
 			for {
@@ -346,6 +364,7 @@ func (m *Request) Size() (n int) {
 	n += 1 + sovEtcdserver(uint64(m.Expiration))
 	n += 2
 	n += 1 + sovEtcdserver(uint64(m.Since))
+	n += 2
 	n += 2
 	n += 2
 	if m.XXX_unrecognized != nil {
@@ -447,6 +466,14 @@ func (m *Request) MarshalTo(data []byte) (n int, err error) {
 	data[i] = 0x68
 	i++
 	if m.Sorted {
+		data[i] = 1
+	} else {
+		data[i] = 0
+	}
+	i++
+	data[i] = 0x70
+	i++
+	if m.Quorum {
 		data[i] = 1
 	} else {
 		data[i] = 0
