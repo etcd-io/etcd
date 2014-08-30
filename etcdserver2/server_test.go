@@ -1,6 +1,7 @@
 package etcdserver
 
 import (
+	"math/rand"
 	"reflect"
 	"testing"
 	"time"
@@ -23,7 +24,7 @@ func testServer(t *testing.T, ns int64) {
 
 	send := func(msgs []raftpb.Message) {
 		for _, m := range msgs {
-			t.Logf("sending: %+v\n", m)
+			t.Logf("m = %+v\n", m)
 			ss[m.To].Node.Step(ctx, m)
 		}
 	}
@@ -33,11 +34,10 @@ func testServer(t *testing.T, ns int64) {
 		peers[i] = i
 	}
 
-	var srv *Server
 	for i := int64(0); i < ns; i++ {
 		n := raft.Start(ctx, i, peers)
 
-		srv = &Server{
+		srv := &Server{
 			Node:  n,
 			Store: store.New(),
 			Send:  send,
@@ -48,18 +48,20 @@ func testServer(t *testing.T, ns int64) {
 		ss[i] = srv
 	}
 
-	if err := srv.Node.Campaign(ctx); err != nil {
+	if err := ss[0].Node.Campaign(ctx); err != nil {
 		t.Fatal(err)
 	}
 
 	for i := 1; i <= 10; i++ {
 		r := pb.Request{
 			Method: "PUT",
-			Id:     1,
+			Id:     int64(i),
 			Path:   "/foo",
 			Val:    "bar",
 		}
-		resp, err := srv.Do(ctx, r)
+		j := rand.Intn(len(ss))
+		t.Logf("ss = %d", j)
+		resp, err := ss[j].Do(ctx, r)
 		if err != nil {
 			t.Fatal(err)
 		}
