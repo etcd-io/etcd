@@ -2,11 +2,9 @@ package store
 
 import (
 	"path"
-	"sort"
 	"time"
 
 	etcdErr "github.com/coreos/etcd/error"
-	ustrings "github.com/coreos/etcd/pkg/strings"
 )
 
 // explanations of Compare function result
@@ -252,56 +250,13 @@ func (n *node) Remove(dir, recursive bool, callback func(path string)) *etcdErr.
 	return nil
 }
 
-func (n *node) Repr(recurisive, sorted bool) *NodeExtern {
-	if n.IsDir() {
-		node := &NodeExtern{
-			Key:           n.Path,
-			Dir:           true,
-			ModifiedIndex: n.ModifiedIndex,
-			CreatedIndex:  n.CreatedIndex,
-		}
-		node.Expiration, node.TTL = n.ExpirationAndTTL()
-
-		if !recurisive {
-			return node
-		}
-
-		children, _ := n.List()
-		node.Nodes = make(NodeExterns, len(children))
-
-		// we do not use the index in the children slice directly
-		// we need to skip the hidden one
-		i := 0
-
-		for _, child := range children {
-
-			if child.IsHidden() { // get will not list hidden node
-				continue
-			}
-
-			node.Nodes[i] = child.Repr(recurisive, sorted)
-
-			i++
-		}
-
-		// eliminate hidden nodes
-		node.Nodes = node.Nodes[:i]
-		if sorted {
-			sort.Sort(node.Nodes)
-		}
-
-		return node
-	}
-
-	// since n.Value could be changed later, so we need to copy the value out
-	value := ustrings.Clone(n.Value)
+func (n *node) Repr(recursive, sorted bool) *NodeExtern {
 	node := &NodeExtern{
 		Key:           n.Path,
-		Value:         &value,
-		ModifiedIndex: n.ModifiedIndex,
 		CreatedIndex:  n.CreatedIndex,
+		ModifiedIndex: n.ModifiedIndex,
 	}
-	node.Expiration, node.TTL = n.ExpirationAndTTL()
+	node.loadInternalNode(n, recursive, sorted)
 	return node
 }
 
