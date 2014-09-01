@@ -86,12 +86,18 @@ func (h Handler) serveRaft(ctx context.Context, w http.ResponseWriter, r *http.R
 	}
 }
 
+// genId generates an random id that is: n < 0 < n.
 func genId() int64 {
-	b := make([]byte, 8)
-	if _, err := io.ReadFull(rand.Reader, b); err != nil {
-		panic(err) // really bad stuff happened
+	for {
+		b := make([]byte, 8)
+		if _, err := io.ReadFull(rand.Reader, b); err != nil {
+			panic(err) // really bad stuff happened
+		}
+		n := int64(binary.BigEndian.Uint64(b))
+		if n != 0 {
+			return n
+		}
 	}
-	return int64(binary.BigEndian.Uint64(b))
 }
 
 func parseRequest(r *http.Request) (etcdserverpb.Request, error) {
