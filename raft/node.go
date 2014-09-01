@@ -2,9 +2,13 @@
 package raft
 
 import (
+	"errors"
+
 	"code.google.com/p/go.net/context"
 	pb "github.com/coreos/etcd/raft/raftpb"
 )
+
+var ErrStopped = errors.New("raft: stopped")
 
 type Ready struct {
 	// The current state of a Node
@@ -39,20 +43,25 @@ type Node struct {
 	readyc       chan Ready
 	tickc        chan struct{}
 	alwaysreadyc chan Ready
+	done         chan struct{}
 }
 
-func Start(ctx context.Context, id int64, peers []int64) Node {
+func Start(id int64, peers []int64) Node {
 	n := Node{
-		ctx:          ctx,
 		propc:        make(chan pb.Message),
 		recvc:        make(chan pb.Message),
 		readyc:       make(chan Ready),
 		tickc:        make(chan struct{}),
 		alwaysreadyc: make(chan Ready),
+		done:         make(chan struct{}),
 	}
 	r := newRaft(id, peers)
 	go n.run(r)
 	return n
+}
+
+func (n *Node) Stop() {
+	close(n.done)
 }
 
 func (n *Node) run(r *raft) {
@@ -98,7 +107,7 @@ func (n *Node) run(r *raft) {
 			r.msgs = nil
 		case n.alwaysreadyc <- rd:
 			// this is for testing only
-		case <-n.ctx.Done():
+		case <-n.done:
 			return
 		}
 	}
@@ -108,7 +117,7 @@ func (n *Node) Tick() error {
 	select {
 	case n.tickc <- struct{}{}:
 		return nil
-	case <-n.ctx.Done():
+	case <-n.done:
 		return n.ctx.Err()
 	}
 }
@@ -135,8 +144,8 @@ func (n *Node) Step(ctx context.Context, m pb.Message) error {
 		return nil
 	case <-ctx.Done():
 		return ctx.Err()
-	case <-n.ctx.Done():
-		return n.ctx.Err()
+	case <-n.done:
+		return ErrStopped
 	}
 }
 
