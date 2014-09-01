@@ -44,7 +44,8 @@ type Server struct {
 	Save func(st raftpb.State, ents []raftpb.Entry)
 }
 
-// Start prepares and starts server in a new goroutine.
+// Start prepares and starts server in a new goroutine. It is no longer safe to
+// modify a Servers fields after it has been sent to Start.
 func Start(s *Server) {
 	s.w = wait.New()
 	s.done = make(chan struct{})
@@ -81,9 +82,10 @@ func (s *Server) Stop() {
 }
 
 // Do interprets r and performs an operation on s.Store according to r.Method
-// and other fields. If r.Method is "PUT", "PUT", or "DELETE, r will be sent
-// through consensus before performing its respective operation. Do will block
-// until an action is performed or there is an error.
+// and other fields. If r.Method is "POST", "PUT", "DELETE", or a "GET with
+// Quorum == true, r will be sent through consensus before performing its
+// respective operation. Do will block until an action is performed or there is
+// an error.
 func (s *Server) Do(ctx context.Context, r pb.Request) (Response, error) {
 	if r.Id == 0 {
 		panic("r.Id cannot be 0")
