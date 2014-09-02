@@ -141,7 +141,7 @@ func (h Handler) serveRaft(ctx context.Context, w http.ResponseWriter, r *http.R
 	}
 }
 
-// genId generates an random id that is: n < 0 < n.
+// genId generates a random id that is: n < 0 < n.
 func genId() int64 {
 	for {
 		b := make([]byte, 8)
