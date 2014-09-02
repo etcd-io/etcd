@@ -4,3 +4,4 @@
 /bin
 .vagrant
 *.etcd
+etcd

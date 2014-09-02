@@ -19,6 +19,7 @@ import (
 	"math/rand"
 	"code.google.com/p/go.net/context"
 	"github.com/coreos/etcd/elog"
+	etcderrors "github.com/coreos/etcd/error"
 	etcdserver "github.com/coreos/etcd/etcdserver2"
 	"github.com/coreos/etcd/etcdserver2/etcdserverpb"
 	"github.com/coreos/etcd/raft/raftpb"
@@ -40,7 +41,7 @@ func (ps Peers) Set(s string) error {
 		return err
 	}
 	for k, v := range v {
-		id, err := strconv.ParseInt(k, 16, 64)
+		id, err := strconv.ParseInt(k, 0, 64)
 		if err != nil {
 			return err
 		}
@@ -151,7 +152,14 @@ func (h Handler) serveKeys(ctx context.Context, w http.ResponseWriter, r *http.R
 	}
 
 	resp, err := h.Server.Do(ctx, rr)
-	if err != nil {
+	switch e := err.(type) {
+	case nil:
+	case *etcderrors.Error:
+		// TODO: gross. this should be handled in encodeResponse
+		log.Println(err)
+		e.Write(w)
+		return
+	default:
 		log.Println(err)
 		http.Error(w, "Internal Server Error", 500)
 		return
