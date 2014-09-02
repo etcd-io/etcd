@@ -12,7 +12,7 @@ func TestNode(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	n := Start(ctx, 1, []int64{1})
+	n := Start(1, []int64{1})
 	ch := make(chan Ready)
 	go func() {
 		for {

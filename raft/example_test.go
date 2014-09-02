@@ -1,8 +1,6 @@
 package raft
 
 import (
-	"code.google.com/p/go.net/context"
-
 	pb "github.com/coreos/etcd/raft/raftpb"
 )
 
@@ -12,7 +10,7 @@ func saveStateToDisk(st pb.State)    {}
 func saveToDisk(ents []pb.Entry)     {}
 
 func Example_Node() {
-	n := Start(context.Background(), 0, nil)
+	n := Start(0, nil)
 
 	// stuff to n happens in other goroutines
 

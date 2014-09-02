@@ -80,7 +80,7 @@ func Sender(p Peers) func(msgs []raftpb.Message) {
 					// TODO: unknown peer id.. what do we do? I
 					// don't think his should ever happen, need to
 					// look into this further.
-					elog.TODO()
+					log.Println("etcdhttp: no addr for %d", m.To)
 					break
 				}
 
@@ -92,7 +92,7 @@ func Sender(p Peers) func(msgs []raftpb.Message) {
 				// of messages out at a time.
 				data, err := m.Marshal()
 				if err != nil {
-					elog.TODO()
+					log.Println("etcdhttp: dropping message:", err)
 					break // drop bad message
 				}
 				if httpPost(url, data) {
@@ -177,14 +177,15 @@ func (h Handler) serveKeys(ctx context.Context, w http.ResponseWriter, r *http.R
 func (h Handler) serveRaft(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	b, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		elog.TODO()
+		log.Println("etcdhttp: error reading raft message:", err)
 	}
 	var m raftpb.Message
 	if err := m.Unmarshal(b); err != nil {
-		elog.TODO()
+		log.Println("etcdhttp: error unmarshaling raft message:", err)
 	}
+	log.Printf("etcdhttp: raft recv message: %+v", m)
 	if err := h.Server.Node.Step(ctx, m); err != nil {
-		elog.TODO()
+		log.Println("etcdhttp: error stepping raft messages:", err)
 	}
 }
 
