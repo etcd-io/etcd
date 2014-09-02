@@ -48,8 +48,10 @@ func testServer(t *testing.T, ns int64) {
 		ss[i] = srv
 	}
 
-	if err := ss[0].Node.Campaign(ctx); err != nil {
-		t.Fatal(err)
+	for i := int64(0); i < ns; i++ {
+		if err := ss[i].Node.Campaign(ctx); err != nil {
+			t.Fatal(err)
+		}
 	}
 
 	for i := 1; i <= 10; i++ {
