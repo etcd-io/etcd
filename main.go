@@ -34,6 +34,10 @@ func main() {
 		log.Fatal(err)
 	}
 
+	if peers.Pick(id) == "" {
+		log.Fatalf("%d=<addr> must be specified in peers", id)
+	}
+
 	n := raft.Start(id, peers.Ids())
 	s := &etcdserver.Server{
 		Store: store.New(),

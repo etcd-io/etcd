@@ -30,6 +30,9 @@ type Peers map[int64][]string
 
 func (ps Peers) Pick(id int64) string {
 	addrs := ps[id]
+	if len(addrs) == 0 {
+		return ""
+	}
 	return fmt.Sprintf("http://%s", addrs[rand.Intn(len(addrs))])
 }
 
