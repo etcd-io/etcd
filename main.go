@@ -1,73 +1,36 @@
 package main
 
 import (
-	"crypto/tls"
-	"fmt"
+	"flag"
 	"log"
-	"net"
 	"net/http"
-	"os"
-	"time"
 
-	"github.com/coreos/etcd/conf"
-	"github.com/coreos/etcd/etcdserver"
+	etcdserver "github.com/coreos/etcd/etcdserver2"
+	"github.com/coreos/etcd/etcdserver2/etcdhttp"
+	"github.com/coreos/etcd/raft"
+	"github.com/coreos/etcd/raft/raftpb"
+)
+
+var (
+	id = flag.String("id", "default", "The id of this server")
 )
 
 func main() {
-	var cfg = conf.New()
-	if err := cfg.Load(os.Args[1:]); err != nil {
-		fmt.Println(etcdserver.Usage() + "\n")
-		fmt.Println(err.Error(), "\n")
-		os.Exit(1)
-	} else if cfg.ShowVersion {
-		fmt.Println("0.5")
-		os.Exit(0)
-	} else if cfg.ShowHelp {
-		os.Exit(0)
+	const V2Prefix = "/v2"
+
+	peers := etcdhttp.Discover(V2Prefix, peerips)
+	n := raft.Start(*id, peers.Ids())
+	s := &etcdserver.Server{
+		Node: n,
+		Save: func(st raftpb.State, ents []raftpb.Entry) {}, // TODO: use wal
+		Send: etcdhttp.Sender(V2Prefix),
 	}
-
-	e, err := etcdserver.New(cfg)
-	if err != nil {
-		log.Fatal("etcd:", err)
+	etcdserver.Start(s)
+	h := &etcdhttp.Handler{
+		Timeout: timeout,
+		Server:  s,
+		Peers:   peers,
 	}
-	go e.Run()
-
-	corsInfo, err := newCORSInfo(cfg.CorsOrigins)
-	if err != nil {
-		log.Fatal("cors:", err)
-	}
-
-	readTimeout := time.Duration(cfg.HTTPReadTimeout) * time.Second
-	writeTimeout := time.Duration(cfg.HTTPWriteTimeout) * time.Second
-	go func() {
-		serve("raft", cfg.Peer.BindAddr, cfg.PeerTLSInfo(), corsInfo, e.RaftHandler(), readTimeout, writeTimeout)
-	}()
-	serve("etcd", cfg.BindAddr, cfg.EtcdTLSInfo(), corsInfo, e, readTimeout, writeTimeout)
-}
-
-func serve(who string, addr string, tinfo *conf.TLSInfo, cinfo *CORSInfo, handler http.Handler, readTimeout, writeTimeout time.Duration) {
-	t, terr := tinfo.ServerConfig()
-	l, err := net.Listen("tcp", addr)
-	if err != nil {
-		log.Fatal(err)
-	}
-	log.Printf("%v server starts listening on %v\n", who, addr)
-
-	switch tinfo.Scheme() {
-	case "http":
-		log.Printf("%v server starts serving HTTP\n", who)
-
-	case "https":
-		if t == nil {
-			log.Fatalf("failed to create %v tls: %v\n", who, terr)
-		}
-		l = tls.NewListener(l, t)
-		log.Printf("%v server starts serving HTTPS\n", who)
-	default:
-		log.Fatal("unsupported http scheme", tinfo.Scheme())
-	}
-
-	h := &CORSHandler{handler, cinfo}
-	s := &http.Server{Handler: h, ReadTimeout: readTimeout, WriteTimeout: writeTimeout}
-	log.Fatal(s.Serve(l))
+	http.Handle(V2Prefix, http.StripPrefix(V2Prefix, h))
+	log.Fatal(http.ListenAndServe(*laddr, nil))
 }

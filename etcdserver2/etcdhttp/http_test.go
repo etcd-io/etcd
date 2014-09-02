@@ -26,7 +26,7 @@ func TestSet(t *testing.T) {
 
 	st := store.New()
 
-	n := raft.Start(ctx, 1, []int64{1})
+	n := raft.Start(1, []int64{1})
 	n.Campaign(ctx)
 
 	srv := &etcdserver.Server{

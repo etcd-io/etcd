@@ -66,6 +66,7 @@ func Sender(prefix string, p Peers) func(msgs []raftpb.Message) {
 }
 
 func httpPost(url string, data []byte) bool {
+	// TODO: set timeouts
 	resp, err := http.Post(url, "application/protobuf", bytes.NewBuffer(data))
 	if err != nil {
 		elog.TODO()
