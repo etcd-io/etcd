@@ -210,9 +210,9 @@ func TestCommitWithoutNewTermEntry(t *testing.T) {
 }
 
 func TestDuelingCandidates(t *testing.T) {
-	a := newRaft(0, nil) // k, id are set later
-	b := newRaft(0, nil)
-	c := newRaft(0, nil)
+	a := newRaft(0, nil, 0, 0) // k, id are set later
+	b := newRaft(0, nil, 0, 0)
+	c := newRaft(0, nil, 0, 0)
 
 	nt := newNetwork(a, b, c)
 	nt.cut(0, 2)
@@ -488,9 +488,9 @@ func TestHandleMsgApp(t *testing.T) {
 
 	for i, tt := range tests {
 		sm := &raft{
-			state:    stateFollower,
-			State: pb.State{Term: 2},
-			raftLog:  &raftLog{committed: 0, ents: []pb.Entry{{}, {Term: 1}, {Term: 2}}},
+			state:   stateFollower,
+			State:   pb.State{Term: 2},
+			raftLog: &raftLog{committed: 0, ents: []pb.Entry{{}, {Term: 1}, {Term: 2}}},
 		}
 
 		sm.handleAppendEntries(tt.m)
@@ -550,9 +550,9 @@ func TestRecvMsgVote(t *testing.T) {
 
 	for i, tt := range tests {
 		sm := &raft{
-			state:    tt.state,
-			State: pb.State{Vote: tt.voteFor},
-			raftLog:  &raftLog{ents: []pb.Entry{{}, {Term: 2}, {Term: 2}}},
+			state:   tt.state,
+			State:   pb.State{Vote: tt.voteFor},
+			raftLog: &raftLog{ents: []pb.Entry{{}, {Term: 2}, {Term: 2}}},
 		}
 
 		sm.Step(pb.Message{Type: msgVote, From: 1, Index: tt.i, LogTerm: tt.term})
@@ -599,7 +599,7 @@ func TestStateTransition(t *testing.T) {
 				}
 			}()
 
-			sm := newRaft(0, []int64{0})
+			sm := newRaft(0, []int64{0}, 0, 0)
 			sm.state = tt.from
 
 			switch tt.to {
@@ -622,7 +622,7 @@ func TestStateTransition(t *testing.T) {
 }
 
 func TestConf(t *testing.T) {
-	sm := newRaft(0, []int64{0})
+	sm := newRaft(0, []int64{0}, 0, 0)
 	sm.becomeCandidate()
 	sm.becomeLeader()
 
@@ -662,7 +662,7 @@ func TestConfChangeLeader(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		sm := newRaft(0, []int64{0})
+		sm := newRaft(0, []int64{0}, 0, 0)
 		sm.raftLog = &raftLog{ents: []pb.Entry{{}, {Type: tt.et}}}
 
 		sm.becomeCandidate()
@@ -691,7 +691,7 @@ func TestAllServerStepdown(t *testing.T) {
 	tterm := int64(3)
 
 	for i, tt := range tests {
-		sm := newRaft(0, []int64{0, 1, 2})
+		sm := newRaft(0, []int64{0, 1, 2}, 0, 0)
 		switch tt.state {
 		case stateFollower:
 			sm.becomeFollower(1, 0)
@@ -739,7 +739,7 @@ func TestLeaderAppResp(t *testing.T) {
 	for i, tt := range tests {
 		// sm term is 1 after it becomes the leader.
 		// thus the last log term must be 1 to be committed.
-		sm := newRaft(0, []int64{0, 1, 2})
+		sm := newRaft(0, []int64{0, 1, 2}, 0, 0)
 		sm.raftLog = &raftLog{ents: []pb.Entry{{}, {Term: 0}, {Term: 1}}}
 		sm.becomeCandidate()
 		sm.becomeLeader()
@@ -774,7 +774,7 @@ func TestRecvMsgBeat(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		sm := newRaft(0, []int64{0, 1, 2})
+		sm := newRaft(0, []int64{0, 1, 2}, 0, 0)
 		sm.raftLog = &raftLog{ents: []pb.Entry{{}, {Term: 0}, {Term: 1}}}
 		sm.Term = 1
 		sm.state = tt.state
@@ -799,7 +799,7 @@ func TestRestore(t *testing.T) {
 		Nodes: []int64{0, 1, 2},
 	}
 
-	sm := newRaft(0, []int64{0, 1})
+	sm := newRaft(0, []int64{0, 1}, 0, 0)
 	if ok := sm.restore(s); !ok {
 		t.Fatal("restore fail, want succeed")
 	}
@@ -832,7 +832,7 @@ func TestProvideSnap(t *testing.T) {
 		Term:  defaultCompactThreshold + 1,
 		Nodes: []int64{0, 1},
 	}
-	sm := newRaft(0, []int64{0})
+	sm := newRaft(0, []int64{0}, 0, 0)
 	// restore the statemachin from a snapshot
 	// so it has a compacted log and a snapshot
 	sm.restore(s)
@@ -873,7 +873,7 @@ func TestRestoreFromSnapMsg(t *testing.T) {
 	}
 	m := pb.Message{Type: msgSnap, From: 0, Term: 1, Snapshot: s}
 
-	sm := newRaft(1, []int64{0, 1})
+	sm := newRaft(1, []int64{0, 1}, 0, 0)
 	sm.Step(m)
 
 	if !reflect.DeepEqual(sm.raftLog.snapshot, s) {
@@ -942,7 +942,7 @@ func newNetwork(peers ...Interface) *network {
 		nid := int64(id)
 		switch v := p.(type) {
 		case nil:
-			sm := newRaft(nid, defaultPeerAddrs)
+			sm := newRaft(nid, defaultPeerAddrs, 0, 0)
 			npeers[nid] = sm
 		case *raft:
 			v.id = nid

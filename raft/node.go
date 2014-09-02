@@ -47,7 +47,7 @@ type Node struct {
 	done         chan struct{}
 }
 
-func Start(id int64, peers []int64) Node {
+func Start(id int64, peers []int64, election, heartbeat int) Node {
 	n := Node{
 		propc:        make(chan pb.Message),
 		recvc:        make(chan pb.Message),
@@ -56,7 +56,7 @@ func Start(id int64, peers []int64) Node {
 		alwaysreadyc: make(chan Ready),
 		done:         make(chan struct{}),
 	}
-	r := newRaft(id, peers)
+	r := newRaft(id, peers, election, heartbeat)
 	go n.run(r)
 	return n
 }
@@ -103,7 +103,7 @@ func (n *Node) run(r *raft) {
 		case m := <-n.recvc:
 			r.Step(m) // raft never returns an error
 		case <-n.tickc:
-			// r.tick()
+			r.tick()
 		case readyc <- rd:
 			r.raftLog.resetNextEnts()
 			r.raftLog.resetUnstable()

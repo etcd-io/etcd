@@ -35,13 +35,15 @@ func testServer(t *testing.T, ns int64) {
 	}
 
 	for i := int64(0); i < ns; i++ {
-		n := raft.Start(i, peers)
-
+		n := raft.Start(i, peers, 1, 10)
+		tk := time.NewTicker(10 * time.Millisecond)
+		defer tk.Stop()
 		srv := &Server{
-			Node:  n,
-			Store: store.New(),
-			Send:  send,
-			Save:  func(_ raftpb.State, _ []raftpb.Entry) {},
+			Node:   n,
+			Store:  store.New(),
+			Send:   send,
+			Save:   func(_ raftpb.State, _ []raftpb.Entry) {},
+			Ticker: tk.C,
 		}
 		Start(srv)
 
