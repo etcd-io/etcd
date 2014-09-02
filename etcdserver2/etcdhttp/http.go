@@ -28,14 +28,14 @@ type Peers map[int64][]string
 
 func (ps Peers) Pick(id int64) string {
 	addrs := ps[id]
-	return fmt.Sprintf("http://%s/raft", addrs[rand.Intn(len(addrs))])
+	return fmt.Sprintf("http://%s", addrs[rand.Intn(len(addrs))])
 }
 
 var errClosed = errors.New("etcdhttp: client closed connection")
 
 const DefaultTimeout = 500 * time.Millisecond
 
-func Sender(prefix string, p Peers) func(msgs []raftpb.Message) {
+func Sender(p Peers) func(msgs []raftpb.Message) {
 	return func(msgs []raftpb.Message) {
 		for _, m := range msgs {
 			// TODO: create workers that deal with message sending
@@ -47,7 +47,13 @@ func Sender(prefix string, p Peers) func(msgs []raftpb.Message) {
 					// don't think his should ever happen, need to
 					// look into this further.
 					elog.TODO()
+					break
 				}
+
+				url += "/raft"
+
+				log.Println("etcdserver: sending to %d@%s", m.To, url)
+
 				// TODO: don't block. we should be able to have 1000s
 				// of messages out at a time.
 				data, err := m.Marshal()
@@ -55,7 +61,7 @@ func Sender(prefix string, p Peers) func(msgs []raftpb.Message) {
 					elog.TODO()
 					break // drop bad message
 				}
-				if httpPost(url+prefix, data) {
+				if httpPost(url, data) {
 					break // success
 				}
 
