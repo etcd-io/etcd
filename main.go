@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 	"time"
+	"code.google.com/p/go.net/context"
 
 	etcdserver "github.com/coreos/etcd/etcdserver2"
 	"github.com/coreos/etcd/etcdserver2/etcdhttp"
@@ -39,6 +40,10 @@ func main() {
 	}
 
 	n := raft.Start(id, peers.Ids())
+
+	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	n.Campaign(ctx)
+
 	s := &etcdserver.Server{
 		Store: store.New(),
 		Node:  n,

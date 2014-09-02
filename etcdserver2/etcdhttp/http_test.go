@@ -11,7 +11,6 @@ import (
 	"code.google.com/p/go.net/context"
 
 	etcdserver "github.com/coreos/etcd/etcdserver2"
-	"github.com/coreos/etcd/etcdserver2/etcdserverpb"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/store"
@@ -33,14 +32,7 @@ func TestSet(t *testing.T) {
 		Node:  n,
 		Store: st,
 		Send:  etcdserver.SendFunc(nopSend),
-		Save: func(st raftpb.State, ents []raftpb.Entry) {
-			for _, e := range ents {
-				var r etcdserverpb.Request
-				if err := r.Unmarshal(e.Data); err != nil {
-					t.Fatal(err)
-				}
-			}
-		},
+		Save:  func(st raftpb.State, ents []raftpb.Entry) {},
 	}
 	etcdserver.Start(srv)
 	defer srv.Stop()
