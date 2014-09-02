@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -29,6 +30,35 @@ type Peers map[int64][]string
 func (ps Peers) Pick(id int64) string {
 	addrs := ps[id]
 	return fmt.Sprintf("http://%s", addrs[rand.Intn(len(addrs))])
+}
+
+// Set parses command line sets of names to ips formatted like:
+// a=1.1.1.1&a=1.1.1.2&b=2.2.2.2
+func (ps Peers) Set(s string) error {
+	v, err := url.ParseQuery(s)
+	if err != nil {
+		return err
+	}
+	for k, v := range v {
+		id, err := strconv.ParseInt(k, 16, 64)
+		if err != nil {
+			return err
+		}
+		ps[id] = v
+	}
+	return nil
+}
+
+func (ps Peers) String() string {
+	return "todo"
+}
+
+func (ps Peers) Ids() []int64 {
+	var ids []int64
+	for id, _ := range ps {
+		ids = append(ids, id)
+	}
+	return ids
 }
 
 var errClosed = errors.New("etcdhttp: client closed connection")
