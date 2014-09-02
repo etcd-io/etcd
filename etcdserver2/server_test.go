@@ -35,7 +35,7 @@ func testServer(t *testing.T, ns int64) {
 	}
 
 	for i := int64(0); i < ns; i++ {
-		n := raft.Start(ctx, i, peers)
+		n := raft.Start(i, peers)
 
 		srv := &Server{
 			Node:  n,
