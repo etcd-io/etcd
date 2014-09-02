@@ -28,7 +28,7 @@ type Peers map[int64][]string
 
 func (ps Peers) Pick(id int64) string {
 	addrs := ps[id]
-	return addrs[rand.Intn(len(addrs))]
+	return fmt.Sprintf("http://%s/raft", addrs[rand.Intn(len(addrs))])
 }
 
 var errClosed = errors.New("etcdhttp: client closed connection")
