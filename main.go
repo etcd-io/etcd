@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"time"
 
-	etcdserver "github.com/coreos/etcd/etcdserver2"
-	"github.com/coreos/etcd/etcdserver2/etcdhttp"
+	"github.com/coreos/etcd/etcdserver"
+	"github.com/coreos/etcd/etcdserver/etcdhttp"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/store"

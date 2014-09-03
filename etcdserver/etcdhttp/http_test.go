@@ -8,9 +8,10 @@ import (
 	"reflect"
 	"testing"
 	"time"
+
 	"code.google.com/p/go.net/context"
 
-	etcdserver "github.com/coreos/etcd/etcdserver2"
+	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/store"

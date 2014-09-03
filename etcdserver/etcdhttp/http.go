@@ -17,11 +17,12 @@ import (
 
 	crand "crypto/rand"
 	"math/rand"
+
 	"code.google.com/p/go.net/context"
 	"github.com/coreos/etcd/elog"
 	etcderrors "github.com/coreos/etcd/error"
-	etcdserver "github.com/coreos/etcd/etcdserver2"
-	"github.com/coreos/etcd/etcdserver2/etcdserverpb"
+	"github.com/coreos/etcd/etcdserver"
+	"github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/store"
 )

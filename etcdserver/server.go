@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"code.google.com/p/go.net/context"
-	pb "github.com/coreos/etcd/etcdserver2/etcdserverpb"
+	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/store"
