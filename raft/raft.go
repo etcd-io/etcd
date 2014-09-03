@@ -108,14 +108,6 @@ type raft struct {
 	// the leader id
 	lead int64
 
-	// pending reconfiguration
-	configuring bool
-
-	// promotable indicates whether state machine could be promoted.
-	// New machine has to wait until it has been added to the cluster, or it
-	// may become the leader of the cluster without it.
-	promotable bool
-
 	elapsed          int
 	heartbeatTimeout int
 	electionTimeout  int
@@ -289,7 +281,6 @@ func (r *raft) becomeFollower(term int64, lead int64) {
 	r.tick = r.tickElection
 	r.lead = lead
 	r.state = stateFollower
-	r.configuring = false
 }
 
 func (r *raft) becomeCandidate() {
@@ -314,13 +305,6 @@ func (r *raft) becomeLeader() {
 	r.tick = r.tickElection
 	r.lead = r.id
 	r.state = stateLeader
-
-	for _, e := range r.raftLog.entries(r.raftLog.committed + 1) {
-		if isConfig(e) {
-			r.configuring = true
-		}
-	}
-
 	r.appendEntry(pb.Entry{Type: Normal, Data: nil})
 }
 
@@ -386,19 +370,6 @@ func (r *raft) handleSnapshot(m pb.Message) {
 	}
 }
 
-func (r *raft) addNode(id int64) {
-	r.setProgress(id, 0, r.raftLog.lastIndex()+1)
-	r.configuring = false
-	if id == r.id {
-		r.promotable = true
-	}
-}
-
-func (r *raft) removeNode(id int64) {
-	r.delProgress(id)
-	r.configuring = false
-}
-
 type stepFunc func(r *raft, m pb.Message)
 
 func stepLeader(r *raft, m pb.Message) {
@@ -410,12 +381,6 @@ func stepLeader(r *raft, m pb.Message) {
 			panic("unexpected length(entries) of a msgProp")
 		}
 		e := m.Entries[0]
-		if isConfig(e) {
-			if r.configuring {
-				panic("pending conf")
-			}
-			r.configuring = true
-		}
 		r.appendEntry(e)
 		r.bcastAppend()
 	case msgAppResp:
@@ -505,7 +470,6 @@ func (r *raft) restore(s pb.Snapshot) bool {
 			r.setProgress(n, 0, r.raftLog.lastIndex()+1)
 		}
 	}
-	r.configuring = false
 	return true
 }
 

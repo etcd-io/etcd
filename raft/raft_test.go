@@ -628,59 +628,6 @@ func TestStateTransition(t *testing.T) {
 	}
 }
 
-func TestConf(t *testing.T) {
-	sm := newRaft(0, []int64{0}, 0, 0)
-	sm.becomeCandidate()
-	sm.becomeLeader()
-
-	sm.Step(pb.Message{From: 0, To: 0, Type: msgProp, Entries: []pb.Entry{{Type: AddNode}}})
-	if sm.raftLog.lastIndex() != 2 {
-		t.Errorf("lastindex = %d, want %d", sm.raftLog.lastIndex(), 1)
-	}
-	if !sm.configuring {
-		t.Errorf("pendingConf = %v, want %v", sm.configuring, true)
-	}
-	if sm.raftLog.ents[2].Type != AddNode {
-		t.Errorf("type = %d, want %d", sm.raftLog.ents[1].Type, AddNode)
-	}
-
-	// deny the second configuration change request if there is a pending one
-	paniced := false
-	defer func() { recover(); paniced = true }()
-	sm.Step(pb.Message{From: 0, To: 0, Type: msgProp, Entries: []pb.Entry{{Type: AddNode}}})
-	if !paniced {
-		t.Errorf("expected panic")
-	}
-	if sm.raftLog.lastIndex() != 2 {
-		t.Errorf("lastindex = %d, want %d", sm.raftLog.lastIndex(), 1)
-	}
-}
-
-// Ensures that the new leader sets the pendingConf flag correctly according to
-// the uncommitted log entries
-func TestConfChangeLeader(t *testing.T) {
-	tests := []struct {
-		et       int64
-		wPending bool
-	}{
-		{Normal, false},
-		{AddNode, true},
-		{RemoveNode, true},
-	}
-
-	for i, tt := range tests {
-		sm := newRaft(0, []int64{0}, 0, 0)
-		sm.raftLog = &raftLog{ents: []pb.Entry{{}, {Type: tt.et}}}
-
-		sm.becomeCandidate()
-		sm.becomeLeader()
-
-		if sm.configuring != tt.wPending {
-			t.Errorf("#%d: pendingConf = %v, want %v", i, sm.configuring, tt.wPending)
-		}
-	}
-}
-
 func TestAllServerStepdown(t *testing.T) {
 	tests := []struct {
 		state stateType
