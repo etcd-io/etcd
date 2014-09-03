@@ -305,7 +305,7 @@ func (r *raft) becomeLeader() {
 	r.tick = r.tickElection
 	r.lead = r.id
 	r.state = stateLeader
-	r.appendEntry(pb.Entry{Type: Normal, Data: nil})
+	r.appendEntry(pb.Entry{Data: nil})
 }
 
 func (r *raft) ReadMessages() []pb.Message {

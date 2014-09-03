@@ -7,14 +7,6 @@ import (
 )
 
 const (
-	Normal int64 = iota
-
-	ClusterInit
-	AddNode
-	RemoveNode
-)
-
-const (
 	defaultCompactThreshold = 10000
 )
 

@@ -223,7 +223,7 @@ func TestDuelingCandidates(t *testing.T) {
 	nt.recover()
 	nt.send(pb.Message{From: 2, To: 2, Type: msgHup})
 
-	wlog := &raftLog{ents: []pb.Entry{{}, pb.Entry{Type: Normal, Data: nil, Term: 1, Index: 1}}, committed: 1}
+	wlog := &raftLog{ents: []pb.Entry{{}, pb.Entry{Data: nil, Term: 1, Index: 1}}, committed: 1}
 	tests := []struct {
 		sm      *raft
 		state   stateType
@@ -275,7 +275,7 @@ func TestCandidateConcede(t *testing.T) {
 	if g := a.Term; g != 1 {
 		t.Errorf("term = %d, want %d", g, 1)
 	}
-	wantLog := ltoa(&raftLog{ents: []pb.Entry{{}, {Type: Normal, Data: nil, Term: 1, Index: 1}, {Term: 1, Index: 2, Data: data}}, committed: 2})
+	wantLog := ltoa(&raftLog{ents: []pb.Entry{{}, {Data: nil, Term: 1, Index: 1}, {Term: 1, Index: 2, Data: data}}, committed: 2})
 	for i, p := range tt.peers {
 		if sm, ok := p.(*raft); ok {
 			l := ltoa(sm.raftLog)
@@ -309,8 +309,8 @@ func TestOldMessages(t *testing.T) {
 
 	l := &raftLog{
 		ents: []pb.Entry{
-			{}, {Type: Normal, Data: nil, Term: 1, Index: 1},
-			{Type: Normal, Data: nil, Term: 2, Index: 2}, {Type: Normal, Data: nil, Term: 3, Index: 3},
+			{}, {Data: nil, Term: 1, Index: 1},
+			{Data: nil, Term: 2, Index: 2}, {Data: nil, Term: 3, Index: 3},
 		},
 		committed: 3,
 	}
@@ -364,7 +364,7 @@ func TestProposal(t *testing.T) {
 
 		wantLog := newLog()
 		if tt.success {
-			wantLog = &raftLog{ents: []pb.Entry{{}, {Type: Normal, Data: nil, Term: 1, Index: 1}, {Term: 1, Index: 2, Data: data}}, committed: 2}
+			wantLog = &raftLog{ents: []pb.Entry{{}, {Data: nil, Term: 1, Index: 1}, {Term: 1, Index: 2, Data: data}}, committed: 2}
 		}
 		base := ltoa(wantLog)
 		for i, p := range tt.peers {
@@ -398,7 +398,7 @@ func TestProposalByProxy(t *testing.T) {
 		// propose via follower
 		tt.send(pb.Message{From: 1, To: 1, Type: msgProp, Entries: []pb.Entry{{Data: []byte("somedata")}}})
 
-		wantLog := &raftLog{ents: []pb.Entry{{}, {Type: Normal, Data: nil, Term: 1, Index: 1}, {Term: 1, Data: data, Index: 2}}, committed: 2}
+		wantLog := &raftLog{ents: []pb.Entry{{}, {Data: nil, Term: 1, Index: 1}, {Term: 1, Data: data, Index: 2}}, committed: 2}
 		base := ltoa(wantLog)
 		for i, p := range tt.peers {
 			if sm, ok := p.(*raft); ok {
