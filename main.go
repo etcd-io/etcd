@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"strconv"
 	"time"
-	"code.google.com/p/go.net/context"
 
 	etcdserver "github.com/coreos/etcd/etcdserver2"
 	"github.com/coreos/etcd/etcdserver2/etcdhttp"
@@ -39,16 +38,15 @@ func main() {
 		log.Fatalf("%d=<addr> must be specified in peers", id)
 	}
 
-	n := raft.Start(id, peers.Ids())
+	n := raft.Start(id, peers.Ids(), 10, 1)
 
-	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
-	n.Campaign(ctx)
-
+	tk := time.NewTicker(100 * time.Millisecond)
 	s := &etcdserver.Server{
-		Store: store.New(),
-		Node:  n,
-		Save:  func(st raftpb.State, ents []raftpb.Entry) {}, // TODO: use wal
-		Send:  etcdhttp.Sender(peers),
+		Store:  store.New(),
+		Node:   n,
+		Save:   func(st raftpb.State, ents []raftpb.Entry) {}, // TODO: use wal
+		Send:   etcdhttp.Sender(peers),
+		Ticker: tk.C,
 	}
 	etcdserver.Start(s)
 	h := &etcdhttp.Handler{
