@@ -1,44 +1,58 @@
-/*
-Copyright 2013 CoreOS Inc.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-     http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
-
 package main
 
 import (
-	"fmt"
-	"os"
+	"flag"
+	"log"
+	"net/http"
+	"strconv"
+	"time"
 
-	"github.com/coreos/etcd/config"
-	"github.com/coreos/etcd/etcd"
-	"github.com/coreos/etcd/server"
+	"github.com/coreos/etcd/etcdserver"
+	"github.com/coreos/etcd/etcdserver/etcdhttp"
+	"github.com/coreos/etcd/raft"
+	"github.com/coreos/etcd/raft/raftpb"
+	"github.com/coreos/etcd/store"
 )
 
+var (
+	fid     = flag.String("id", "0xBEEF", "Id of this server")
+	timeout = flag.Duration("timeout", 10*time.Second, "Request Timeout")
+	laddr   = flag.String("l", ":8080", "HTTP service address (e.g., ':8080')")
+
+	peers = etcdhttp.Peers{}
+)
+
+func init() {
+	flag.Var(peers, "peers", "your peers")
+}
+
 func main() {
-	var config = config.New()
-	if err := config.Load(os.Args[1:]); err != nil {
-		fmt.Println(server.Usage() + "\n")
-		fmt.Println(err.Error() + "\n")
-		os.Exit(1)
-	} else if config.ShowVersion {
-		fmt.Println("etcd version", server.ReleaseVersion)
-		os.Exit(0)
-	} else if config.ShowHelp {
-		fmt.Println(server.Usage() + "\n")
-		os.Exit(0)
+	flag.Parse()
+
+	id, err := strconv.ParseInt(*fid, 0, 64)
+	if err != nil {
+		log.Fatal(err)
 	}
 
-	var etcd = etcd.New(config)
-	etcd.Run()
+	if peers.Pick(id) == "" {
+		log.Fatalf("%#x=<addr> must be specified in peers", id)
+	}
+
+	n := raft.Start(id, peers.Ids(), 10, 1)
+
+	tk := time.NewTicker(100 * time.Millisecond)
+	s := &etcdserver.Server{
+		Store:  store.New(),
+		Node:   n,
+		Save:   func(st raftpb.State, ents []raftpb.Entry) {}, // TODO: use wal
+		Send:   etcdhttp.Sender(peers),
+		Ticker: tk.C,
+	}
+	etcdserver.Start(s)
+	h := &etcdhttp.Handler{
+		Timeout: *timeout,
+		Server:  s,
+	}
+	http.Handle("/", h)
+	log.Fatal(http.ListenAndServe(*laddr, nil))
 }

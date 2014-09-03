@@ -1,0 +1,25 @@
+package etcdserverpb;
+
+import "code.google.com/p/gogoprotobuf/gogoproto/gogo.proto";
+
+option (gogoproto.marshaler_all) = true;
+option (gogoproto.sizer_all) = true;
+option (gogoproto.unmarshaler_all) = true;
+option (gogoproto.goproto_getters_all) = false;
+
+message Request {
+	required int64  id         =  1 [(gogoproto.nullable) = false];     
+	required string method     =  2 [(gogoproto.nullable) = false];
+	required string path       =  3 [(gogoproto.nullable) = false];
+	required string val        =  4 [(gogoproto.nullable) = false];
+	required bool   dir        =  5 [(gogoproto.nullable) = false];
+	required string prevValue  =  6 [(gogoproto.nullable) = false];
+	required uint64  prevIndex  =  7 [(gogoproto.nullable) = false];
+	required bool   prevExists =  8 [(gogoproto.nullable) = true];
+	required int64  expiration =  9 [(gogoproto.nullable) = false];
+	required bool   wait       = 10 [(gogoproto.nullable) = false];
+	required uint64  since      = 11 [(gogoproto.nullable) = false];
+	required bool   recursive  = 12 [(gogoproto.nullable) = false];
+	required bool   sorted     = 13 [(gogoproto.nullable) = false];
+	required bool   quorum     = 14 [(gogoproto.nullable) = false];
+}
