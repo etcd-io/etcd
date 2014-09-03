@@ -29,7 +29,7 @@ var _ = math.Inf
 
 type Record struct {
 	Type             int64  `protobuf:"varint,1,req,name=type" json:"type"`
-	Crc              int32  `protobuf:"varint,2,req,name=crc" json:"crc"`
+	Crc              uint32 `protobuf:"varint,2,req,name=crc" json:"crc"`
 	Data             []byte `protobuf:"bytes,3,opt,name=data" json:"data,omitempty"`
 	XXX_unrecognized []byte `json:"-"`
 }
@@ -84,7 +84,7 @@ func (m *Record) Unmarshal(data []byte) error {
 				}
 				b := data[index]
 				index++
-				m.Crc |= (int32(b) & 0x7F) << shift
+				m.Crc |= (uint32(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -138,7 +138,7 @@ func (m *Record) Size() (n int) {
 	var l int
 	_ = l
 	n += 1 + sovRecord(uint64(m.Type))
-	n += 1 + sovRecord(uint64(uint32(m.Crc)))
+	n += 1 + sovRecord(uint64(m.Crc))
 	if m.Data != nil {
 		l = len(m.Data)
 		n += 1 + l + sovRecord(uint64(l))
@@ -182,7 +182,7 @@ func (m *Record) MarshalTo(data []byte) (n int, err error) {
 	i = encodeVarintRecord(data, i, uint64(m.Type))
 	data[i] = 0x10
 	i++
-	i = encodeVarintRecord(data, i, uint64(uint32(m.Crc)))
+	i = encodeVarintRecord(data, i, uint64(m.Crc))
 	if m.Data != nil {
 		data[i] = 0x1a
 		i++
