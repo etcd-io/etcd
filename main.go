@@ -35,7 +35,7 @@ func main() {
 	}
 
 	if peers.Pick(id) == "" {
-		log.Fatalf("%d=<addr> must be specified in peers", id)
+		log.Fatalf("%#x=<addr> must be specified in peers", id)
 	}
 
 	n := raft.Start(id, peers.Ids(), 10, 1)
