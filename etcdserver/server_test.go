@@ -36,7 +36,7 @@ func testServer(t *testing.T, ns int64) {
 	}
 
 	for i := int64(0); i < ns; i++ {
-		n := raft.Start(i, peers, 1, 10)
+		n := raft.Start(i, peers, 10, 1)
 		tk := time.NewTicker(10 * time.Millisecond)
 		defer tk.Stop()
 		srv := &Server{
@@ -47,14 +47,10 @@ func testServer(t *testing.T, ns int64) {
 			Ticker: tk.C,
 		}
 		Start(srv)
-
+		// TODO(xiangli): randomize election timeout
+		// then remove this sleep.
+		time.Sleep(1 * time.Millisecond)
 		ss[i] = srv
-	}
-
-	for i := int64(0); i < ns; i++ {
-		if err := ss[i].Node.Campaign(ctx); err != nil {
-			t.Fatal(err)
-		}
 	}
 
 	for i := 1; i <= 10; i++ {

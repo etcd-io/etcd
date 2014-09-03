@@ -56,12 +56,6 @@ var stmap = [...]string{
 	stateLeader:    "stateLeader",
 }
 
-var stepmap = [...]stepFunc{
-	stateFollower:  stepFollower,
-	stateCandidate: stepCandidate,
-	stateLeader:    stepLeader,
-}
-
 func (st stateType) String() string {
 	return stmap[int64(st)]
 }
@@ -126,6 +120,7 @@ type raft struct {
 	heartbeatTimeout int
 	electionTimeout  int
 	tick             func()
+	step             stepFunc
 }
 
 func newRaft(id int64, peers []int64, election, heartbeat int) *raft {
@@ -249,6 +244,7 @@ func (r *raft) reset(term int64) {
 	r.Term = term
 	r.lead = none
 	r.Vote = none
+	r.elapsed = 0
 	r.votes = make(map[int64]bool)
 	for i := range r.prs {
 		r.prs[i] = &progress{next: r.raftLog.lastIndex() + 1}
@@ -272,9 +268,10 @@ func (r *raft) appendEntry(e pb.Entry) {
 
 func (r *raft) tickElection() {
 	r.elapsed++
+	// TODO (xiangli): elctionTimeout should be randomized.
 	if r.elapsed > r.electionTimeout {
 		r.elapsed = 0
-		r.campaign()
+		r.Step(pb.Message{From: r.id, Type: msgHup})
 	}
 }
 
@@ -282,41 +279,39 @@ func (r *raft) tickHeartbeat() {
 	r.elapsed++
 	if r.elapsed > r.heartbeatTimeout {
 		r.elapsed = 0
-		r.bcastHeartbeat()
+		r.Step(pb.Message{From: r.id, Type: msgBeat})
 	}
 }
 
-func (r *raft) setTick(f func()) {
-	r.elapsed = 0
-	r.tick = f
-}
-
 func (r *raft) becomeFollower(term int64, lead int64) {
-	r.setTick(r.tickElection)
+	r.step = stepFollower
 	r.reset(term)
+	r.tick = r.tickElection
 	r.lead = lead
 	r.state = stateFollower
 	r.configuring = false
 }
 
 func (r *raft) becomeCandidate() {
-	r.setTick(r.tickElection)
 	// TODO(xiangli) remove the panic when the raft implementation is stable
 	if r.state == stateLeader {
 		panic("invalid transition [leader -> candidate]")
 	}
+	r.step = stepCandidate
 	r.reset(r.Term + 1)
+	r.tick = r.tickElection
 	r.Vote = r.id
 	r.state = stateCandidate
 }
 
 func (r *raft) becomeLeader() {
-	r.setTick(r.tickHeartbeat)
 	// TODO(xiangli) remove the panic when the raft implementation is stable
 	if r.state == stateFollower {
 		panic("invalid transition [follower -> leader]")
 	}
+	r.step = stepLeader
 	r.reset(r.Term)
+	r.tick = r.tickElection
 	r.lead = r.id
 	r.state = stateLeader
 
@@ -370,8 +365,7 @@ func (r *raft) Step(m pb.Message) error {
 	case m.Term < r.Term:
 		// ignore
 	}
-
-	stepmap[r.state](r, m)
+	r.step(r, m)
 	return nil
 }
 
