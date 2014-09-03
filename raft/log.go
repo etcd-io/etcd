@@ -7,20 +7,8 @@ import (
 )
 
 const (
-	Normal int64 = iota
-
-	ClusterInit
-	AddNode
-	RemoveNode
-)
-
-const (
 	defaultCompactThreshold = 10000
 )
-
-func isConfig(e pb.Entry) bool {
-	return e.Type == AddNode || e.Type == RemoveNode
-}
 
 type raftLog struct {
 	ents             []pb.Entry

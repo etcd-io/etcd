@@ -223,7 +223,7 @@ func TestDuelingCandidates(t *testing.T) {
 	nt.recover()
 	nt.send(pb.Message{From: 2, To: 2, Type: msgHup})
 
-	wlog := &raftLog{ents: []pb.Entry{{}, pb.Entry{Type: Normal, Data: nil, Term: 1, Index: 1}}, committed: 1}
+	wlog := &raftLog{ents: []pb.Entry{{}, pb.Entry{Data: nil, Term: 1, Index: 1}}, committed: 1}
 	tests := []struct {
 		sm      *raft
 		state   stateType
@@ -275,7 +275,7 @@ func TestCandidateConcede(t *testing.T) {
 	if g := a.Term; g != 1 {
 		t.Errorf("term = %d, want %d", g, 1)
 	}
-	wantLog := ltoa(&raftLog{ents: []pb.Entry{{}, {Type: Normal, Data: nil, Term: 1, Index: 1}, {Term: 1, Index: 2, Data: data}}, committed: 2})
+	wantLog := ltoa(&raftLog{ents: []pb.Entry{{}, {Data: nil, Term: 1, Index: 1}, {Term: 1, Index: 2, Data: data}}, committed: 2})
 	for i, p := range tt.peers {
 		if sm, ok := p.(*raft); ok {
 			l := ltoa(sm.raftLog)
@@ -309,8 +309,8 @@ func TestOldMessages(t *testing.T) {
 
 	l := &raftLog{
 		ents: []pb.Entry{
-			{}, {Type: Normal, Data: nil, Term: 1, Index: 1},
-			{Type: Normal, Data: nil, Term: 2, Index: 2}, {Type: Normal, Data: nil, Term: 3, Index: 3},
+			{}, {Data: nil, Term: 1, Index: 1},
+			{Data: nil, Term: 2, Index: 2}, {Data: nil, Term: 3, Index: 3},
 		},
 		committed: 3,
 	}
@@ -364,7 +364,7 @@ func TestProposal(t *testing.T) {
 
 		wantLog := newLog()
 		if tt.success {
-			wantLog = &raftLog{ents: []pb.Entry{{}, {Type: Normal, Data: nil, Term: 1, Index: 1}, {Term: 1, Index: 2, Data: data}}, committed: 2}
+			wantLog = &raftLog{ents: []pb.Entry{{}, {Data: nil, Term: 1, Index: 1}, {Term: 1, Index: 2, Data: data}}, committed: 2}
 		}
 		base := ltoa(wantLog)
 		for i, p := range tt.peers {
@@ -398,7 +398,7 @@ func TestProposalByProxy(t *testing.T) {
 		// propose via follower
 		tt.send(pb.Message{From: 1, To: 1, Type: msgProp, Entries: []pb.Entry{{Data: []byte("somedata")}}})
 
-		wantLog := &raftLog{ents: []pb.Entry{{}, {Type: Normal, Data: nil, Term: 1, Index: 1}, {Term: 1, Data: data, Index: 2}}, committed: 2}
+		wantLog := &raftLog{ents: []pb.Entry{{}, {Data: nil, Term: 1, Index: 1}, {Term: 1, Data: data, Index: 2}}, committed: 2}
 		base := ltoa(wantLog)
 		for i, p := range tt.peers {
 			if sm, ok := p.(*raft); ok {
@@ -625,59 +625,6 @@ func TestStateTransition(t *testing.T) {
 				t.Errorf("%d: lead = %d, want %d", i, sm.lead, tt.wlead)
 			}
 		}()
-	}
-}
-
-func TestConf(t *testing.T) {
-	sm := newRaft(0, []int64{0}, 0, 0)
-	sm.becomeCandidate()
-	sm.becomeLeader()
-
-	sm.Step(pb.Message{From: 0, To: 0, Type: msgProp, Entries: []pb.Entry{{Type: AddNode}}})
-	if sm.raftLog.lastIndex() != 2 {
-		t.Errorf("lastindex = %d, want %d", sm.raftLog.lastIndex(), 1)
-	}
-	if !sm.configuring {
-		t.Errorf("pendingConf = %v, want %v", sm.configuring, true)
-	}
-	if sm.raftLog.ents[2].Type != AddNode {
-		t.Errorf("type = %d, want %d", sm.raftLog.ents[1].Type, AddNode)
-	}
-
-	// deny the second configuration change request if there is a pending one
-	paniced := false
-	defer func() { recover(); paniced = true }()
-	sm.Step(pb.Message{From: 0, To: 0, Type: msgProp, Entries: []pb.Entry{{Type: AddNode}}})
-	if !paniced {
-		t.Errorf("expected panic")
-	}
-	if sm.raftLog.lastIndex() != 2 {
-		t.Errorf("lastindex = %d, want %d", sm.raftLog.lastIndex(), 1)
-	}
-}
-
-// Ensures that the new leader sets the pendingConf flag correctly according to
-// the uncommitted log entries
-func TestConfChangeLeader(t *testing.T) {
-	tests := []struct {
-		et       int64
-		wPending bool
-	}{
-		{Normal, false},
-		{AddNode, true},
-		{RemoveNode, true},
-	}
-
-	for i, tt := range tests {
-		sm := newRaft(0, []int64{0}, 0, 0)
-		sm.raftLog = &raftLog{ents: []pb.Entry{{}, {Type: tt.et}}}
-
-		sm.becomeCandidate()
-		sm.becomeLeader()
-
-		if sm.configuring != tt.wPending {
-			t.Errorf("#%d: pendingConf = %v, want %v", i, sm.configuring, tt.wPending)
-		}
 	}
 }
 
