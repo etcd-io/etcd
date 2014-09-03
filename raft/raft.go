@@ -444,7 +444,6 @@ func stepCandidate(r *raft, m pb.Message) {
 	case msgProp:
 		panic("no leader")
 	case msgApp:
-		r.elapsed = 0
 		r.becomeFollower(r.Term, m.From)
 		r.handleAppendEntries(m)
 	case msgSnap:
@@ -480,8 +479,8 @@ func stepFollower(r *raft, m pb.Message) {
 		r.elapsed = 0
 		r.handleSnapshot(m)
 	case msgVote:
-		// TODO(xiang): maybe reset elapsed?
 		if (r.Vote == none || r.Vote == m.From) && r.raftLog.isUpToDate(m.Index, m.LogTerm) {
+			r.elapsed = 0
 			r.Vote = m.From
 			r.send(pb.Message{To: m.From, Type: msgVoteResp, Index: r.raftLog.lastIndex()})
 		} else {
