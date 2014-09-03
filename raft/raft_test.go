@@ -549,11 +549,18 @@ func TestRecvMsgVote(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		sm := &raft{
-			state:   tt.state,
-			State:   pb.State{Vote: tt.voteFor},
-			raftLog: &raftLog{ents: []pb.Entry{{}, {Term: 2}, {Term: 2}}},
+		sm := newRaft(0, []int64{0}, 0, 0)
+		sm.state = tt.state
+		switch tt.state {
+		case stateFollower:
+			sm.step = stepFollower
+		case stateCandidate:
+			sm.step = stepCandidate
+		case stateLeader:
+			sm.step = stepLeader
 		}
+		sm.State = pb.State{Vote: tt.voteFor}
+		sm.raftLog = &raftLog{ents: []pb.Entry{{}, {Term: 2}, {Term: 2}}}
 
 		sm.Step(pb.Message{Type: msgVote, From: 1, Index: tt.i, LogTerm: tt.term})
 
@@ -778,6 +785,14 @@ func TestRecvMsgBeat(t *testing.T) {
 		sm.raftLog = &raftLog{ents: []pb.Entry{{}, {Term: 0}, {Term: 1}}}
 		sm.Term = 1
 		sm.state = tt.state
+		switch tt.state {
+		case stateFollower:
+			sm.step = stepFollower
+		case stateCandidate:
+			sm.step = stepCandidate
+		case stateLeader:
+			sm.step = stepLeader
+		}
 		sm.Step(pb.Message{From: 0, To: 0, Type: msgBeat})
 
 		msgs := sm.ReadMessages()
