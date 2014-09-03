@@ -181,7 +181,7 @@ func (h Handler) serveRaft(ctx context.Context, w http.ResponseWriter, r *http.R
 	if err := m.Unmarshal(b); err != nil {
 		log.Println("etcdhttp: error unmarshaling raft message:", err)
 	}
-	log.Printf("etcdhttp: raft recv message: %+v", m)
+	log.Printf("etcdhttp: raft recv message from %#x: %+v", m.From, m)
 	if err := h.Server.Node.Step(ctx, m); err != nil {
 		log.Println("etcdhttp: error stepping raft messages:", err)
 	}
