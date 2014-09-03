@@ -3,7 +3,6 @@ package raft
 
 import (
 	"errors"
-	"log"
 
 	"code.google.com/p/go.net/context"
 	pb "github.com/coreos/etcd/raft/raftpb"
@@ -72,13 +71,11 @@ func (n *Node) run(r *raft) {
 	var prev Ready
 	for {
 		if r.hasLeader() {
-			log.Printf("raft: found leader %#x - unblocking proposals", r.lead)
 			propc = n.propc
 		} else {
 			// We cannot accept proposals because we don't know who
 			// to send them to, so we'll apply back-pressure and
 			// block senders.
-			log.Println("raft: no leader - blocking proposals")
 			propc = nil
 		}
 
