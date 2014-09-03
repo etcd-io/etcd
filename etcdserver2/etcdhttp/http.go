@@ -86,8 +86,6 @@ func Sender(p Peers) func(msgs []raftpb.Message) {
 
 				url += "/raft"
 
-				log.Printf("etcdserver: sending to %d@%s", m.To, url)
-
 				// TODO: don't block. we should be able to have 1000s
 				// of messages out at a time.
 				data, err := m.Marshal()
