@@ -3,6 +3,7 @@ package raft
 
 import (
 	"errors"
+	"log"
 
 	"code.google.com/p/go.net/context"
 	pb "github.com/coreos/etcd/raft/raftpb"
@@ -68,15 +69,17 @@ func (n *Node) run(r *raft) {
 	propc := n.propc
 	readyc := n.readyc
 
+	var lead int64
 	var prev Ready
 	for {
-		if r.hasLeader() {
-			propc = n.propc
-		} else {
-			// We cannot accept proposals because we don't know who
-			// to send them to, so we'll apply back-pressure and
-			// block senders.
-			propc = nil
+		if lead != r.lead {
+			log.Printf("raft: leader changed from %#x to %#x", lead, r.lead)
+			lead = r.lead
+			if r.hasLeader() {
+				propc = n.propc
+			} else {
+				propc = nil
+			}
 		}
 
 		rd := Ready{
