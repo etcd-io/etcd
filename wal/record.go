@@ -16,43 +16,10 @@ limitations under the License.
 
 package wal
 
-import (
-	"encoding/binary"
-	"io"
-)
-
-func writeRecord(w io.Writer, rec *Record) error {
-	data, err := rec.Marshal()
-	if err != nil {
-		return err
+func (rec *Record) validate(crc uint32) error {
+	if rec.Crc == crc {
+		return nil
 	}
-
-	if err := writeInt64(w, int64(len(data))); err != nil {
-		return err
-	}
-	_, err = w.Write(data)
-	return err
-}
-
-func readRecord(r io.Reader, rec *Record) error {
 	rec.Reset()
-	l, err := readInt64(r)
-	if err != nil {
-		return err
-	}
-	d := make([]byte, l)
-	if _, err = io.ReadFull(r, d); err != nil {
-		return err
-	}
-	return rec.Unmarshal(d)
-}
-
-func writeInt64(w io.Writer, n int64) error {
-	return binary.Write(w, binary.LittleEndian, n)
-}
-
-func readInt64(r io.Reader) (int64, error) {
-	var n int64
-	err := binary.Read(r, binary.LittleEndian, &n)
-	return n, err
+	return ErrCRCMismatch
 }

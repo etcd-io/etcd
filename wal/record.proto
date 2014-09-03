@@ -9,6 +9,6 @@ option (gogoproto.goproto_getters_all) = false;
 
 message Record {
 	required int64 type  = 1 [(gogoproto.nullable) = false];
-	required int32 crc   = 2 [(gogoproto.nullable) = false];
+	required uint32 crc  = 2 [(gogoproto.nullable) = false];
 	optional bytes data  = 3;
 }
