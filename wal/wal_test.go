@@ -133,7 +133,7 @@ func TestCut(t *testing.T) {
 		t.Errorf("name = %s, want %s", g, wname)
 	}
 
-	e := &raftpb.Entry{Type: 1, Index: 1, Term: 1, Data: []byte{1}}
+	e := &raftpb.Entry{Index: 1, Term: 1, Data: []byte{1}}
 	if err := w.SaveEntry(e); err != nil {
 		t.Fatal(err)
 	}
@@ -161,7 +161,7 @@ func TestRecover(t *testing.T) {
 	if err = w.SaveInfo(i); err != nil {
 		t.Fatal(err)
 	}
-	ents := []raftpb.Entry{{Type: 1, Index: 1, Term: 1, Data: []byte{1}}, {Type: 2, Index: 2, Term: 2, Data: []byte{2}}}
+	ents := []raftpb.Entry{{Index: 1, Term: 1, Data: []byte{1}}, {Index: 2, Term: 2, Data: []byte{2}}}
 	for _, e := range ents {
 		if err = w.SaveEntry(&e); err != nil {
 			t.Fatal(err)
