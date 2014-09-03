@@ -23,6 +23,8 @@ import (
 	"io/ioutil"
 	"reflect"
 	"testing"
+
+	"github.com/coreos/etcd/wal/walpb"
 )
 
 func TestReadRecord(t *testing.T) {
@@ -32,18 +34,18 @@ func TestReadRecord(t *testing.T) {
 
 	tests := []struct {
 		data []byte
-		wr   *Record
+		wr   *walpb.Record
 		we   error
 	}{
-		{infoRecord, &Record{Type: 1, Crc: crc32.Checksum(infoData, crcTable), Data: infoData}, nil},
-		{[]byte(""), &Record{}, io.EOF},
-		{infoRecord[:len(infoRecord)-len(infoData)-8], &Record{}, io.ErrUnexpectedEOF},
-		{infoRecord[:len(infoRecord)-len(infoData)], &Record{}, io.ErrUnexpectedEOF},
-		{infoRecord[:len(infoRecord)-8], &Record{}, io.ErrUnexpectedEOF},
-		{badInfoRecord, &Record{}, ErrCRCMismatch},
+		{infoRecord, &walpb.Record{Type: 1, Crc: crc32.Checksum(infoData, crcTable), Data: infoData}, nil},
+		{[]byte(""), &walpb.Record{}, io.EOF},
+		{infoRecord[:len(infoRecord)-len(infoData)-8], &walpb.Record{}, io.ErrUnexpectedEOF},
+		{infoRecord[:len(infoRecord)-len(infoData)], &walpb.Record{}, io.ErrUnexpectedEOF},
+		{infoRecord[:len(infoRecord)-8], &walpb.Record{}, io.ErrUnexpectedEOF},
+		{badInfoRecord, &walpb.Record{}, walpb.ErrCRCMismatch},
 	}
 
-	rec := &Record{}
+	rec := &walpb.Record{}
 	for i, tt := range tests {
 		buf := bytes.NewBuffer(tt.data)
 		decoder := newDecoder(ioutil.NopCloser(buf))
@@ -54,17 +56,17 @@ func TestReadRecord(t *testing.T) {
 		if !reflect.DeepEqual(e, tt.we) {
 			t.Errorf("#%d: err = %v, want %v", i, e, tt.we)
 		}
-		rec = &Record{}
+		rec = &walpb.Record{}
 	}
 }
 
 func TestWriteRecord(t *testing.T) {
-	b := &Record{}
+	b := &walpb.Record{}
 	typ := int64(0xABCD)
 	d := []byte("Hello world!")
 	buf := new(bytes.Buffer)
 	e := newEncoder(buf, 0)
-	e.encode(&Record{Type: typ, Data: d})
+	e.encode(&walpb.Record{Type: typ, Data: d})
 	e.flush()
 	decoder := newDecoder(ioutil.NopCloser(buf))
 	err := decoder.decode(b)

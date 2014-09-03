@@ -1,4 +1,4 @@
-package wal;
+package walpb;
 
 import "code.google.com/p/gogoprotobuf/gogoproto/gogo.proto";
 

@@ -7,6 +7,7 @@ import (
 	"io"
 
 	"github.com/coreos/etcd/crc"
+	"github.com/coreos/etcd/wal/walpb"
 )
 
 type encoder struct {
@@ -21,7 +22,7 @@ func newEncoder(w io.Writer, prevCrc uint32) *encoder {
 	}
 }
 
-func (e *encoder) encode(rec *Record) error {
+func (e *encoder) encode(rec *walpb.Record) error {
 	e.crc.Write(rec.Data)
 	rec.Crc = e.crc.Sum32()
 	data, err := rec.Marshal()
