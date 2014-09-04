@@ -12,17 +12,7 @@ func TestNode(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	n := Start(1, []int64{1}, 0, 0)
-	ch := make(chan Ready)
-	go func() {
-		for {
-			ch <- <-n.Ready()
-		}
-	}()
-	n.Campaign(ctx)
-	n.Propose(ctx, []byte("foo"))
-
-	want := []Ready{
+	wants := []Ready{
 		{
 			State:            raftpb.State{Term: 1, Vote: -1, Commit: 1, LastIndex: 1},
 			Entries:          []raftpb.Entry{{Term: 1, Index: 1}},
@@ -35,16 +25,20 @@ func TestNode(t *testing.T) {
 		},
 	}
 
-	for i, w := range want {
-		if g := <-ch; !reflect.DeepEqual(g, w) {
-			t.Errorf("#%d: g = %+v,\n             w   %+v", i, g, w)
-		}
+	n := Start(1, []int64{1}, 0, 0)
+	n.Campaign(ctx)
+	if g := <-n.Ready(); !reflect.DeepEqual(g, wants[0]) {
+		t.Errorf("#%d: g = %+v,\n             w   %+v", 1, g, wants[0])
+	}
+
+	n.Propose(ctx, []byte("foo"))
+	if g := <-n.Ready(); !reflect.DeepEqual(g, wants[1]) {
+		t.Errorf("#%d: g = %+v,\n             w   %+v", 2, g, wants[1])
 	}
 
 	select {
-	case rd := <-ch:
+	case rd := <-n.Ready():
 		t.Errorf("unexpected Ready: %+v", rd)
 	default:
 	}
-
 }

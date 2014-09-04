@@ -71,6 +71,7 @@ func (n *Node) run(r *raft) {
 
 	var lead int64
 	var prev Ready
+	prev.Vote = none
 	for {
 		if lead != r.lead {
 			log.Printf("raft: leader changed from %#x to %#x", lead, r.lead)
