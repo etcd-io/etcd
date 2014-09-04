@@ -458,6 +458,22 @@ func TestCommit(t *testing.T) {
 	}
 }
 
+// ensure that the Step function ignores the message from old term and does not pass it to the
+// acutal stepX function.
+func TestStepIgnoreOldTermMsg(t *testing.T) {
+	called := false
+	fakeStep := func(r *raft, m pb.Message) {
+		called = true
+	}
+	sm := newRaft(0, []int64{0}, 0, 0)
+	sm.step = fakeStep
+	sm.Term = 2
+	sm.Step(pb.Message{Type: msgApp, Term: sm.Term - 1})
+	if called == true {
+		t.Errorf("stepFunc called = %v , want %v", called, false)
+	}
+}
+
 // TestHandleMsgApp ensures:
 // 1. Reply false if log doesn’t contain an entry at prevLogIndex whose term matches prevLogTerm.
 // 2. If an existing entry conflicts with a new one (same index but different terms),

@@ -348,6 +348,7 @@ func (r *raft) Step(m pb.Message) error {
 		r.becomeFollower(m.Term, lead)
 	case m.Term < r.Term:
 		// ignore
+		return nil
 	}
 	r.step(r, m)
 	return nil
