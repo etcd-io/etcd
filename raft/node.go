@@ -5,8 +5,8 @@ import (
 	"errors"
 	"log"
 
-	"code.google.com/p/go.net/context"
 	pb "github.com/coreos/etcd/raft/raftpb"
+	"github.com/coreos/etcd/third_party/code.google.com/p/go.net/context"
 )
 
 var ErrStopped = errors.New("raft: stopped")

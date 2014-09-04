@@ -9,12 +9,11 @@ import (
 	"testing"
 	"time"
 
-	"code.google.com/p/go.net/context"
-
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/store"
+	"github.com/coreos/etcd/third_party/code.google.com/p/go.net/context"
 )
 
 func nopSave(st raftpb.State, ents []raftpb.Entry) {}

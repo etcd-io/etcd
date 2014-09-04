@@ -18,7 +18,7 @@ import (
 	crand "crypto/rand"
 	"math/rand"
 
-	"code.google.com/p/go.net/context"
+	"github.com/coreos/etcd/third_party/code.google.com/p/go.net/context"
 	"github.com/coreos/etcd/elog"
 	etcderrors "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/etcdserver"
