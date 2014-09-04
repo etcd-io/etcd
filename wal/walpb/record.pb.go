@@ -3,7 +3,7 @@
 // DO NOT EDIT!
 
 /*
-	Package wal is a generated protocol buffer package.
+	Package walpb is a generated protocol buffer package.
 
 	It is generated from these files:
 		record.proto
@@ -11,7 +11,7 @@
 	It has these top-level messages:
 		Record
 */
-package wal
+package walpb
 
 import proto "github.com/coreos/etcd/third_party/code.google.com/p/gogoprotobuf/proto"
 import json "encoding/json"

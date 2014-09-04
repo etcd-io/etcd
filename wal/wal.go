@@ -27,6 +27,7 @@ import (
 	"sort"
 
 	"github.com/coreos/etcd/raft/raftpb"
+	"github.com/coreos/etcd/wal/walpb"
 )
 
 const (
@@ -37,8 +38,8 @@ const (
 )
 
 var (
-	ErrIdMismatch  = fmt.Errorf("wal: unmatch id")
-	ErrNotFound    = fmt.Errorf("wal: file is not found")
+	ErrIdMismatch  = errors.New("wal: unmatch id")
+	ErrNotFound    = errors.New("wal: file is not found")
 	ErrCRCMismatch = errors.New("wal: crc mismatch")
 	crcTable       = crc32.MakeTable(crc32.Castagnoli)
 )
@@ -140,7 +141,7 @@ func (w *WAL) ReadAll() (int64, raftpb.State, []raftpb.Entry, error) {
 	var state raftpb.State
 	var entries []raftpb.Entry
 
-	rec := &Record{}
+	rec := &walpb.Record{}
 	decoder := w.decoder
 	var err error
 	for err = decoder.decode(rec); err == nil; err = decoder.decode(rec) {
@@ -163,7 +164,7 @@ func (w *WAL) ReadAll() (int64, raftpb.State, []raftpb.Entry, error) {
 			crc := decoder.crc.Sum32()
 			// current crc of decoder must match the crc of the record.
 			// do no need to match 0 crc, since the decoder is a new one at this case.
-			if crc != 0 && rec.validate(crc) != nil {
+			if crc != 0 && rec.Validate(crc) != nil {
 				state.Reset()
 				return 0, state, nil, ErrCRCMismatch
 			}
@@ -234,7 +235,7 @@ func (w *WAL) SaveInfo(i *raftpb.Info) error {
 	if err != nil {
 		panic(err)
 	}
-	rec := &Record{Type: infoType, Data: b}
+	rec := &walpb.Record{Type: infoType, Data: b}
 	return w.encoder.encode(rec)
 }
 
@@ -243,7 +244,7 @@ func (w *WAL) SaveEntry(e *raftpb.Entry) error {
 	if err != nil {
 		panic(err)
 	}
-	rec := &Record{Type: entryType, Data: b}
+	rec := &walpb.Record{Type: entryType, Data: b}
 	return w.encoder.encode(rec)
 }
 
@@ -253,10 +254,10 @@ func (w *WAL) SaveState(s *raftpb.State) error {
 	if err != nil {
 		panic(err)
 	}
-	rec := &Record{Type: stateType, Data: b}
+	rec := &walpb.Record{Type: stateType, Data: b}
 	return w.encoder.encode(rec)
 }
 
 func (w *WAL) saveCrc(prevCrc uint32) error {
-	return w.encoder.encode(&Record{Type: crcType, Crc: prevCrc})
+	return w.encoder.encode(&walpb.Record{Type: crcType, Crc: prevCrc})
 }

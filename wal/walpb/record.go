@@ -14,9 +14,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package wal
+package walpb
 
-func (rec *Record) validate(crc uint32) error {
+import "errors"
+
+var (
+	ErrCRCMismatch = errors.New("walpb: crc mismatch")
+)
+
+func (rec *Record) Validate(crc uint32) error {
 	if rec.Crc == crc {
 		return nil
 	}

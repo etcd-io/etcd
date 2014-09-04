@@ -8,6 +8,7 @@ import (
 
 	"github.com/coreos/etcd/crc"
 	"github.com/coreos/etcd/raft/raftpb"
+	"github.com/coreos/etcd/wal/walpb"
 )
 
 type decoder struct {
@@ -24,7 +25,7 @@ func newDecoder(rc io.ReadCloser) *decoder {
 	}
 }
 
-func (d *decoder) decode(rec *Record) error {
+func (d *decoder) decode(rec *walpb.Record) error {
 	rec.Reset()
 	l, err := readInt64(d.br)
 	if err != nil {
@@ -42,7 +43,7 @@ func (d *decoder) decode(rec *Record) error {
 		return nil
 	}
 	d.crc.Write(rec.Data)
-	return rec.validate(d.crc.Sum32())
+	return rec.Validate(d.crc.Sum32())
 }
 
 func (d *decoder) updateCRC(prevCrc uint32) {
