@@ -45,7 +45,7 @@ func TestSet(t *testing.T) {
 	s := httptest.NewServer(h)
 	defer s.Close()
 
-	resp, err := http.PostForm(s.URL+"/keys/foo", url.Values{"value": {"bar"}})
+	resp, err := http.PostForm(s.URL+"/v2/keys/foo", url.Values{"value": {"bar"}})
 	if err != nil {
 		t.Fatal(err)
 	}
