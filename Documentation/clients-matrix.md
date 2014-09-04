@@ -1,7 +1,6 @@
 # Client libraries support matrix for etcd
 
 As etcd features support is really uneven between client libraries, a compatibility matrix can be important.
-We will consider in detail only the features of clients supporting the v2 API. Clients still supporting the v1 API *only* are listed below.
 
 ## v2 clients
 
@@ -14,6 +13,7 @@ The v2 API has a lot of features, we will categorize them in a few categories:
 - **GET,PUT,POST,DEL Features**: Support for all the modifiers when calling the etcd server with said HTTP method.
 
 ### Supported features matrix
+
 **Legend**
 **F**: Full support **G**: Good support **B**: Basic support
 **Y**: Feature supported  **-**: Feature not supported
@@ -30,6 +30,7 @@ Sorted alphabetically on language/name
 |[go-etcd](https://github.com/coreos/go-etcd)                     |go     |Y|Y|F|F|F|F|-|-|
 |[etcd4j](https://github.com/jurmous/etcd4j)                      |java   |Y|Y|F|F|F|F|-|-|
 |[jetcd](https://github.com/diwakergupta/jetcd)                   |java   |Y|-|B|B|-|B|-|-|
+|[jetcd](https://github.com/justinsb/jetcd)                       |java   |-|-|B|B|-|B|-|-|
 |[Etcd.jl](https://github.com/forio/Etcd.jl)                      |Julia  |-|-|F|F|F|F|Y|Y|
 |[etcetera](https://github.com/drusellers/etcetera)               |.net   |-|-|F|F|F|F|-|-|
 |[node-etcd](https://github.com/stianeikeland/node-etcd)          |nodejs |Y|-|F|F|-|F|-|-|
@@ -37,15 +38,5 @@ Sorted alphabetically on language/name
 |[p5-etcd](https://metacpan.org/release/Etcd)                     |perl   |-|-|F|F|F|F|-|-|
 |[python-etcd](https://github.com/jplana/python-etcd)             |python |Y|Y|F|F|F|F|Y|-|
 |[python-etcd-client](https://github.com/dsoprea/PythonEtcdClient)|python |Y|Y|F|F|F|F|Y|Y|
+|[txetcd](https://github.com/russellhaering/txetcd)               |python |-|-|G|G|F|G|-|-|
 |[etcd-ruby](https://github.com/ranjib/etcd-ruby)                 |ruby   |-|-|F|F|F|F|-|-|
-
-## v1-only clients
-
-Clients supporting only the API version 1
-
-- [justinsb/jetcd](https://github.com/justinsb/jetcd) Java
-- [transitorykris/etcd-py](https://github.com/transitorykris/etcd-py) Python
-- [russellhaering/txetcd](https://github.com/russellhaering/txetcd) Python
-- [iconara/etcd-rb](https://github.com/iconara/etcd-rb) Ruby
-- [jpfuentes2/etcd-ruby](https://github.com/jpfuentes2/etcd-ruby) Ruby
-- [marshall-lee/etcd.erl](https://github.com/marshall-lee/etcd.erl) Erlang

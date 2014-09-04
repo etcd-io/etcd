@@ -26,7 +26,6 @@ import (
 	"time"
 
 	etcdErr "github.com/coreos/etcd/error"
-	ustrings "github.com/coreos/etcd/pkg/strings"
 )
 
 // The default version to set when the store is first initialized.
@@ -40,7 +39,6 @@ func init() {
 
 type Store interface {
 	Version() int
-	CommandFactory() CommandFactory
 	Index() uint64
 
 	Get(nodePath string, recursive, sorted bool) (*Event, error)
@@ -94,12 +92,9 @@ func (s *store) Version() int {
 
 // Retrieves current of the store
 func (s *store) Index() uint64 {
+	s.worldLock.RLock()
+	defer s.worldLock.RUnlock()
 	return s.CurrentIndex
-}
-
-// CommandFactory retrieves the command factory for the current version of the store.
-func (s *store) CommandFactory() CommandFactory {
-	return GetCommandFactory(s.Version())
 }
 
 // Get returns a get event.
@@ -240,7 +235,7 @@ func (s *store) CompareAndSwap(nodePath string, prevValue string, prevIndex uint
 	n.UpdateTTL(expireTime)
 
 	// copy the value for safety
-	valueCopy := ustrings.Clone(value)
+	valueCopy := value
 	eNode.Value = &valueCopy
 	eNode.Expiration, eNode.TTL = n.ExpirationAndTTL()
 
@@ -436,7 +431,7 @@ func (s *store) Update(nodePath string, newValue string, expireTime time.Time) (
 		eNode.Dir = true
 	} else {
 		// copy the value for safety
-		newValueCopy := ustrings.Clone(newValue)
+		newValueCopy := newValue
 		eNode.Value = &newValueCopy
 	}
 
@@ -508,7 +503,7 @@ func (s *store) internalCreate(nodePath string, dir bool, value string, unique, 
 
 	if !dir { // create file
 		// copy the value for safety
-		valueCopy := ustrings.Clone(value)
+		valueCopy := value
 		eNode.Value = &valueCopy
 
 		n = newKV(s, nodePath, value, nextIndex, d, "", expireTime)
