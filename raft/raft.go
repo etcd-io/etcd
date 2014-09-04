@@ -302,7 +302,7 @@ func (r *raft) becomeLeader() {
 	}
 	r.step = stepLeader
 	r.reset(r.Term)
-	r.tick = r.tickElection
+	r.tick = r.tickHeartbeat
 	r.lead = r.id
 	r.state = stateLeader
 	r.appendEntry(pb.Entry{Data: nil})
