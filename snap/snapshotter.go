@@ -1,7 +1,6 @@
 package snap
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"hash/crc32"
@@ -12,7 +11,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/coreos/etcd/raft"
+	"github.com/coreos/etcd/raft/raftpb"
+	"github.com/coreos/etcd/snap/snappb"
 )
 
 const (
@@ -35,15 +35,15 @@ func New(dir string) *Snapshotter {
 	}
 }
 
-func (s *Snapshotter) Save(snapshot *raft.Snapshot) error {
-	fname := fmt.Sprintf("%016x-%016x-%016x%s", snapshot.ClusterId, snapshot.Term, snapshot.Index, snapSuffix)
-	// TODO(xiangli): make raft.Snapshot a protobuf type
-	b, err := json.Marshal(snapshot)
+func (s *Snapshotter) Save(snapshot *raftpb.Snapshot) error {
+	fname := fmt.Sprintf("%016x-%016x%s", snapshot.Term, snapshot.Index, snapSuffix)
+	b, err := snapshot.Marshal()
 	if err != nil {
 		panic(err)
 	}
+
 	crc := crc32.Update(0, crcTable, b)
-	snap := Snapshot{Crc: crc, Data: b}
+	snap := snappb.Snapshot{Crc: crc, Data: b}
 	d, err := snap.Marshal()
 	if err != nil {
 		return err
@@ -51,12 +51,12 @@ func (s *Snapshotter) Save(snapshot *raft.Snapshot) error {
 	return ioutil.WriteFile(path.Join(s.dir, fname), d, 0666)
 }
 
-func (s *Snapshotter) Load() (*raft.Snapshot, error) {
+func (s *Snapshotter) Load() (*raftpb.Snapshot, error) {
 	names, err := s.snapNames()
 	if err != nil {
 		return nil, err
 	}
-	var snap *raft.Snapshot
+	var snap *raftpb.Snapshot
 	for _, name := range names {
 		if snap, err = loadSnap(s.dir, name); err == nil {
 			break
@@ -65,7 +65,7 @@ func (s *Snapshotter) Load() (*raft.Snapshot, error) {
 	return snap, err
 }
 
-func loadSnap(dir, name string) (*raft.Snapshot, error) {
+func loadSnap(dir, name string) (*raftpb.Snapshot, error) {
 	var err error
 	var b []byte
 
@@ -82,7 +82,7 @@ func loadSnap(dir, name string) (*raft.Snapshot, error) {
 		return nil, err
 	}
 
-	var serializedSnap Snapshot
+	var serializedSnap snappb.Snapshot
 	if err = serializedSnap.Unmarshal(b); err != nil {
 		log.Printf("Corrupted snapshot file %v: %v", name, err)
 		return nil, err
@@ -94,8 +94,8 @@ func loadSnap(dir, name string) (*raft.Snapshot, error) {
 		return nil, err
 	}
 
-	var snap raft.Snapshot
-	if err = json.Unmarshal(serializedSnap.Data, &snap); err != nil {
+	var snap raftpb.Snapshot
+	if err = snap.Unmarshal(serializedSnap.Data); err != nil {
 		log.Printf("Corrupted snapshot file %v: %v", name, err)
 		return nil, err
 	}

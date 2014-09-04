@@ -9,15 +9,14 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/coreos/etcd/raft"
+	"github.com/coreos/etcd/raft/raftpb"
 )
 
-var testSnap = &raft.Snapshot{
-	ClusterId: 0xBEEF,
-	Data:      []byte("some snapshot"),
-	Nodes:     []int64{1, 2, 3},
-	Index:     1,
-	Term:      1,
+var testSnap = &raftpb.Snapshot{
+	Data:  []byte("some snapshot"),
+	Nodes: []int64{1, 2, 3},
+	Index: 1,
+	Term:  1,
 }
 
 func TestSaveAndLoad(t *testing.T) {
