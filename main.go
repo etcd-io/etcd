@@ -23,6 +23,7 @@ var (
 )
 
 func init() {
+	peers.Set("0xBEEF=localhost:8080")
 	flag.Var(peers, "peers", "your peers")
 }
 

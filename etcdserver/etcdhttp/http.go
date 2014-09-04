@@ -18,13 +18,13 @@ import (
 	crand "crypto/rand"
 	"math/rand"
 
-	"github.com/coreos/etcd/third_party/code.google.com/p/go.net/context"
 	"github.com/coreos/etcd/elog"
 	etcderrors "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/store"
+	"github.com/coreos/etcd/third_party/code.google.com/p/go.net/context"
 )
 
 type Peers map[int64][]string
