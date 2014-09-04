@@ -3,9 +3,9 @@ package raft
 import (
 	"reflect"
 	"testing"
-	"github.com/coreos/etcd/raft/raftpb"
 
-	"code.google.com/p/go.net/context"
+	"github.com/coreos/etcd/raft/raftpb"
+	"github.com/coreos/etcd/third_party/code.google.com/p/go.net/context"
 )
 
 func TestNode(t *testing.T) {

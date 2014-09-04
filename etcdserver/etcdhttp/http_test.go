@@ -9,12 +9,11 @@ import (
 	"testing"
 	"time"
 
-	"code.google.com/p/go.net/context"
-
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/store"
+	"github.com/coreos/etcd/third_party/code.google.com/p/go.net/context"
 )
 
 func nopSave(st raftpb.State, ents []raftpb.Entry) {}
@@ -26,7 +25,7 @@ func TestSet(t *testing.T) {
 
 	st := store.New()
 
-	n := raft.Start(1, []int64{1})
+	n := raft.Start(1, []int64{1}, 0, 0)
 	n.Campaign(ctx)
 
 	srv := &etcdserver.Server{
