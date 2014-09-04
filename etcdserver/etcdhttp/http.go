@@ -18,13 +18,13 @@ import (
 	crand "crypto/rand"
 	"math/rand"
 
-	"github.com/coreos/etcd/third_party/code.google.com/p/go.net/context"
 	"github.com/coreos/etcd/elog"
 	etcderrors "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/store"
+	"github.com/coreos/etcd/third_party/code.google.com/p/go.net/context"
 )
 
 type Peers map[int64][]string
@@ -139,7 +139,7 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case strings.HasPrefix(r.URL.Path, "/raft"):
 		h.serveRaft(ctx, w, r)
-	case strings.HasPrefix(r.URL.Path, "/keys/"):
+	case strings.HasPrefix(r.URL.Path, "/v2/keys/"):
 		h.serveKeys(ctx, w, r)
 	default:
 		http.NotFound(w, r)
@@ -212,7 +212,7 @@ func parseRequest(r *http.Request) (etcdserverpb.Request, error) {
 		Id:        genId(),
 		Method:    r.Method,
 		Val:       r.FormValue("value"),
-		Path:      r.URL.Path[len("/keys"):],
+		Path:      r.URL.Path[len("/v2/keys"):],
 		PrevValue: q.Get("prevValue"),
 		PrevIndex: parseUint64(q.Get("prevIndex")),
 		Recursive: parseBool(q.Get("recursive")),
