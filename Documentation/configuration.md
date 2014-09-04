@@ -75,8 +75,8 @@ cors = []
 cpu_profile_file = ""
 data_dir = "."
 discovery = "http://etcd.local:4001/v2/keys/_etcd/registry/examplecluster"
-http_read_timeout = 10
-http_write_timeout = 10
+http_read_timeout = 10.0
+http_write_timeout = 10.0
 key_file = ""
 peers = []
 peers_file = ""
@@ -112,8 +112,8 @@ sync_interval = 5.0
  * `ETCD_CPU_PROFILE_FILE`
  * `ETCD_DATA_DIR`
  * `ETCD_DISCOVERY`
- * `ETCD_CLUSTER_HTTP_READ_TIMEOUT`
- * `ETCD_CLUSTER_HTTP_WRITE_TIMEOUT`
+ * `ETCD_HTTP_READ_TIMEOUT`
+ * `ETCD_HTTP_WRITE_TIMEOUT`
  * `ETCD_KEY_FILE`
  * `ETCD_PEERS`
  * `ETCD_PEERS_FILE`
