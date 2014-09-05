@@ -46,7 +46,7 @@ func main() {
 		log.Printf("main: no data-dir is given, use default data-dir ./%s", *dir)
 	}
 	if err := os.MkdirAll(*dir, 0700); err != nil {
-		log.Fatal(err)
+		log.Fatalf("main: cannot create data directory: %v", err)
 	}
 
 	waldir := path.Join(*dir, "wal")
