@@ -33,17 +33,15 @@ The latest release and setup instructions are available at [GitHub][github-relea
 
 ### Building
 
-You can build etcd from source:
+You can build etcd using the standard go workflow - ensure `GOPATH` is set appropriately, and then:
 
 ```sh
-git clone https://github.com/coreos/etcd
-cd etcd
-./build
+go get github.com/coreos/etcd
 ```
 
-This will generate a binary called `./bin/etcd`.
+which will generate a binary at `$GOPATH/bin/etcd`
 
-_NOTE_: you need go 1.2+. Please check your installation with
+_NOTE_: etcd requires go 1.2+. Please check your installation with
 
 ```
 go version
