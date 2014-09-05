@@ -39,7 +39,8 @@ func (ps Peers) Pick(id int64) string {
 
 // Set parses command line sets of names to ips formatted like:
 // a=1.1.1.1&a=1.1.1.2&b=2.2.2.2
-func (ps Peers) Set(s string) error {
+func (ps *Peers) Set(s string) error {
+	m := make(map[int64][]string)
 	v, err := url.ParseQuery(s)
 	if err != nil {
 		return err
@@ -49,12 +50,13 @@ func (ps Peers) Set(s string) error {
 		if err != nil {
 			return err
 		}
-		ps[id] = v
+		m[id] = v
 	}
+	*ps = m
 	return nil
 }
 
-func (ps Peers) String() string {
+func (ps *Peers) String() string {
 	return "todo"
 }
 

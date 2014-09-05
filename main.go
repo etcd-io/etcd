@@ -27,7 +27,8 @@ var (
 	timeout = flag.Duration("timeout", 10*time.Second, "Request Timeout")
 	laddr   = flag.String("l", ":8080", "HTTP service address (e.g., ':8080')")
 	dir     = flag.String("data-dir", "", "Path to the data directory")
-	peers   = etcdhttp.Peers{}
+
+	peers = &etcdhttp.Peers{}
 )
 
 func init() {
@@ -62,7 +63,7 @@ func main() {
 		Store:  store.New(),
 		Node:   n,
 		Save:   w.Save,
-		Send:   etcdhttp.Sender(peers),
+		Send:   etcdhttp.Sender(*peers),
 		Ticker: tk.C,
 	}
 	etcdserver.Start(s)
