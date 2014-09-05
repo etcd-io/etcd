@@ -21,6 +21,7 @@ This is a rough outline of what a contributor's workflow looks like:
 - Make sure your commit messages are in the proper format (see below).
 - Push your changes to a topic branch in your fork of the repository.
 - Submit a pull request to coreos/etcd.
+- Your PR must receive a LGTM from each member of the core etcd team (@xiangli-cmu and @bmizerany) before being merged.
 
 Thanks for your contributions!
 
