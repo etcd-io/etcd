@@ -38,7 +38,9 @@ You can build etcd from source:
 ```sh
 git clone https://github.com/coreos/etcd
 cd etcd
-./build
+export GOPATH=${PWD}
+go get
+go build
 ```
 
 This will generate a binary called `./bin/etcd`.
