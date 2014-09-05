@@ -17,13 +17,13 @@ import (
 var (
 	fid     = flag.String("id", "0x1", "Id of this server")
 	timeout = flag.Duration("timeout", 10*time.Second, "Request Timeout")
-	laddr   = flag.String("l", ":8080", "HTTP service address (e.g., ':8080')")
+	laddr   = flag.String("l", ":4001", "HTTP service address (e.g., ':8080')")
 
 	peers = etcdhttp.Peers{}
 )
 
 func init() {
-	peers.Set("0x1=localhost:8080")
+	peers.Set("0x1=localhost:4001")
 	flag.Var(peers, "peers", "your peers")
 }
 
