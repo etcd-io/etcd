@@ -66,6 +66,11 @@ func Create(dirpath string) (*WAL, error) {
 	if Exist(dirpath) {
 		return nil, os.ErrExist
 	}
+
+	if err := os.MkdirAll(dirpath, 0700); err != nil {
+		return nil, err
+	}
+
 	p := path.Join(dirpath, fmt.Sprintf("%016x-%016x.wal", 0, 0))
 	f, err := os.OpenFile(p, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0600)
 	if err != nil {
@@ -256,6 +261,15 @@ func (w *WAL) SaveState(s *raftpb.State) error {
 	}
 	rec := &walpb.Record{Type: stateType, Data: b}
 	return w.encoder.encode(rec)
+}
+
+func (w *WAL) Save(st raftpb.State, ents []raftpb.Entry) {
+	// TODO(xiangli): no addresses fly around
+	w.SaveState(&st)
+	for i := range ents {
+		w.SaveEntry(&ents[i])
+	}
+	w.Sync()
 }
 
 func (w *WAL) saveCrc(prevCrc uint32) error {

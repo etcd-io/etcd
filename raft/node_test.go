@@ -42,3 +42,28 @@ func TestNode(t *testing.T) {
 	default:
 	}
 }
+
+func TestNodeRestart(t *testing.T) {
+	entries := []raftpb.Entry{
+		{Term: 1, Index: 1},
+		{Term: 1, Index: 2, Data: []byte("foo")},
+	}
+	st := raftpb.State{Term: 1, Vote: -1, Commit: 1, LastIndex: 2}
+
+	want := Ready{
+		State: raftpb.State{Term: 1, Vote: -1, Commit: 1, LastIndex: 2},
+		// commit upto index 1
+		CommittedEntries: []raftpb.Entry{{Term: 1, Index: 1}},
+	}
+
+	n := Restart(1, []int64{1}, 0, 0, st, entries)
+	if g := <-n.Ready(); !reflect.DeepEqual(g, want) {
+		t.Errorf("g = %+v,\n             w   %+v", g, want)
+	}
+
+	select {
+	case rd := <-n.Ready():
+		t.Errorf("unexpected Ready: %+v", rd)
+	default:
+	}
+}

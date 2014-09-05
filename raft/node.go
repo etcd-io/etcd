@@ -48,7 +48,23 @@ type Node struct {
 }
 
 func Start(id int64, peers []int64, election, heartbeat int) Node {
-	n := Node{
+	n := newNode()
+	r := newRaft(id, peers, election, heartbeat)
+	go n.run(r)
+	return n
+}
+
+func Restart(id int64, peers []int64, election, heartbeat int, st pb.State, ents []pb.Entry) Node {
+	n := newNode()
+	r := newRaft(id, peers, election, heartbeat)
+	r.loadState(st)
+	r.loadEnts(ents)
+	go n.run(r)
+	return n
+}
+
+func newNode() Node {
+	return Node{
 		propc:        make(chan pb.Message),
 		recvc:        make(chan pb.Message),
 		readyc:       make(chan Ready),
@@ -56,9 +72,6 @@ func Start(id int64, peers []int64, election, heartbeat int) Node {
 		alwaysreadyc: make(chan Ready),
 		done:         make(chan struct{}),
 	}
-	r := newRaft(id, peers, election, heartbeat)
-	go n.run(r)
-	return n
 }
 
 func (n *Node) Stop() {
@@ -71,7 +84,8 @@ func (n *Node) run(r *raft) {
 
 	var lead int64
 	var prev Ready
-	prev.Vote = none
+	prev.State = r.State
+
 	for {
 		if lead != r.lead {
 			log.Printf("raft: leader changed from %#x to %#x", lead, r.lead)

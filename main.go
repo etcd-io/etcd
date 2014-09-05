@@ -2,22 +2,26 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"path"
 	"strconv"
 	"time"
 
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/etcdhttp"
 	"github.com/coreos/etcd/raft"
-	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/store"
+	"github.com/coreos/etcd/wal"
 )
 
 var (
 	fid     = flag.String("id", "0xBEEF", "Id of this server")
 	timeout = flag.Duration("timeout", 10*time.Second, "Request Timeout")
 	laddr   = flag.String("l", ":8080", "HTTP service address (e.g., ':8080')")
+	dir     = flag.String("d", "", "Directory to store wal files and snapshot files")
 
 	peers = etcdhttp.Peers{}
 )
@@ -38,13 +42,43 @@ func main() {
 		log.Fatalf("%#x=<addr> must be specified in peers", id)
 	}
 
-	n := raft.Start(id, peers.Ids(), 10, 1)
+	if *dir == "" {
+		*dir = fmt.Sprintf("%v", *fid)
+		log.Printf("main: no data dir is given, use default data dir ./%s", *dir)
+	}
+	if err := os.MkdirAll(*dir, 0700); err != nil {
+		log.Fatal(err)
+	}
+
+	waldir := path.Join(*dir, "wal")
+
+	var w *wal.WAL
+	var n raft.Node
+	if wal.Exist(waldir) {
+		// TODO(xiangli): check snapshot; not open from zero
+		w, err = wal.OpenFromIndex(waldir, 0)
+		if err != nil {
+			log.Fatal(err)
+		}
+		// TODO(xiangli): save/recovery nodeID?
+		_, st, ents, err := w.ReadAll()
+		if err != nil {
+			log.Fatal(err)
+		}
+		n = raft.Restart(id, peers.Ids(), 10, 1, st, ents)
+	} else {
+		w, err = wal.Create(waldir)
+		if err != nil {
+			log.Fatal(err)
+		}
+		n = raft.Start(id, peers.Ids(), 10, 1)
+	}
 
 	tk := time.NewTicker(100 * time.Millisecond)
 	s := &etcdserver.Server{
 		Store:  store.New(),
 		Node:   n,
-		Save:   func(st raftpb.State, ents []raftpb.Entry) {}, // TODO: use wal
+		Save:   w.Save,
 		Send:   etcdhttp.Sender(peers),
 		Ticker: tk.C,
 	}

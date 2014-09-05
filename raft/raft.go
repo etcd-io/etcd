@@ -512,4 +512,6 @@ func (r *raft) loadState(state pb.State) {
 	r.raftLog.committed = state.Commit
 	r.Term = state.Term
 	r.Vote = state.Vote
+	r.Commit = state.Commit
+	r.LastIndex = state.LastIndex
 }
