@@ -21,9 +21,8 @@ var (
 	fid     = flag.String("id", "0xBEEF", "Id of this server")
 	timeout = flag.Duration("timeout", 10*time.Second, "Request Timeout")
 	laddr   = flag.String("l", ":8080", "HTTP service address (e.g., ':8080')")
-	dir     = flag.String("d", "", "Directory to store wal files and snapshot files")
-
-	peers = etcdhttp.Peers{}
+	dir     = flag.String("data-dir", "", "Path to the data directory")
+	peers   = etcdhttp.Peers{}
 )
 
 func init() {
@@ -44,7 +43,7 @@ func main() {
 
 	if *dir == "" {
 		*dir = fmt.Sprintf("%v", *fid)
-		log.Printf("main: no data dir is given, use default data dir ./%s", *dir)
+		log.Printf("main: no data-dir is given, use default data-dir ./%s", *dir)
 	}
 	if err := os.MkdirAll(*dir, 0700); err != nil {
 		log.Fatal(err)
