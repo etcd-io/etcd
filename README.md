@@ -33,6 +33,8 @@ The latest release and setup instructions are available at [GitHub][github-relea
 
 ### Building
 
+__NOTE__: Currently not working, see #986
+
 You can build etcd using the standard go workflow - ensure `GOPATH` is set appropriately, and then:
 
 ```sh
