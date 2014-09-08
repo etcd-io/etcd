@@ -43,7 +43,7 @@ func main() {
 
 	if *dir == "" {
 		*dir = fmt.Sprintf("%v", *fid)
-		log.Printf("main: no data-dir is given, use default data-dir ./%s", *dir)
+		log.Printf("main: no data-dir is given, using default data-dir ./%s", *dir)
 	}
 	if err := os.MkdirAll(*dir, 0700); err != nil {
 		log.Fatalf("main: cannot create data directory: %v", err)
