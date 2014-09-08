@@ -35,6 +35,9 @@ const (
 	entryType
 	stateType
 	crcType
+
+	// the owner can make/remove files inside the directory
+	privateDirMode = 0700
 )
 
 var (
@@ -67,7 +70,7 @@ func Create(dirpath string) (*WAL, error) {
 		return nil, os.ErrExist
 	}
 
-	if err := os.MkdirAll(dirpath, 0700); err != nil {
+	if err := os.MkdirAll(dirpath, privateDirMode); err != nil {
 		return nil, err
 	}
 

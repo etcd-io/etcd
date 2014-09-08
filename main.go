@@ -17,6 +17,11 @@ import (
 	"github.com/coreos/etcd/wal"
 )
 
+const (
+	// the owner can make/remove files inside the directory
+	privateDirMode = 0700
+)
+
 var (
 	fid     = flag.String("id", "0xBEEF", "Id of this server")
 	timeout = flag.Duration("timeout", 10*time.Second, "Request Timeout")
@@ -45,7 +50,7 @@ func main() {
 		*dir = fmt.Sprintf("%v", *fid)
 		log.Printf("main: no data-dir is given, using default data-dir ./%s", *dir)
 	}
-	if err := os.MkdirAll(*dir, 0700); err != nil {
+	if err := os.MkdirAll(*dir, privateDirMode); err != nil {
 		log.Fatalf("main: cannot create data directory: %v", err)
 	}
 
