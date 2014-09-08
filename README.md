@@ -1,6 +1,6 @@
 # etcd
 
-## WARNING ##
+### WARNING ###
 
 The current `master` branch of etcd is under heavy development in anticipation of the forthcoming 0.5.0 release. 
 
