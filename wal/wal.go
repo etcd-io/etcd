@@ -141,14 +141,10 @@ func OpenFromIndex(dirpath string, index int64) (*WAL, error) {
 
 // ReadAll reads out all records of the current WAL.
 // After ReadAll, the WAL will be ready for appending new records.
-func (w *WAL) ReadAll() (int64, raftpb.State, []raftpb.Entry, error) {
-	var id int64
-	var state raftpb.State
-	var entries []raftpb.Entry
-
+func (w *WAL) ReadAll() (id int64, state raftpb.State, entries []raftpb.Entry, err error) {
 	rec := &walpb.Record{}
 	decoder := w.decoder
-	var err error
+
 	for err = decoder.decode(rec); err == nil; err = decoder.decode(rec) {
 		switch rec.Type {
 		case entryType:
