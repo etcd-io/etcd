@@ -11,6 +11,8 @@ import (
 
 var ErrStopped = errors.New("raft: stopped")
 
+// Ready encapsulates the entries and messages that are ready to be saved to
+// stable storage, committed or sent to other peers.
 type Ready struct {
 	// The current state of a Node
 	pb.State
