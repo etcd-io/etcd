@@ -264,7 +264,7 @@ func (w *WAL) SaveState(s *raftpb.State) error {
 }
 
 func (w *WAL) Save(st raftpb.State, ents []raftpb.Entry) {
-	// TODO(xiangli): no addresses fly around
+	// TODO(xiangli): no more reference operator
 	w.SaveState(&st)
 	for i := range ents {
 		w.SaveEntry(&ents[i])
