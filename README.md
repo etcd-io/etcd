@@ -113,7 +113,9 @@ During the pre-v1.0.0 series of releases we may break the API as we fix bugs and
 
 #### 32-bit systems
 
-etcd has known issues on 32-bit systems.
+etcd has known issues on 32-bit systems due to a bug in the Go runtime. See #[358][358] for more information.
+
+[358]: https://github.com/coreos/etcd/issues/358
 
 ### License
 
