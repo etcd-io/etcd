@@ -35,6 +35,9 @@ const (
 	entryType
 	stateType
 	crcType
+
+	// the owner can make/remove files inside the directory
+	privateDirMode = 0700
 )
 
 var (
@@ -66,6 +69,11 @@ func Create(dirpath string) (*WAL, error) {
 	if Exist(dirpath) {
 		return nil, os.ErrExist
 	}
+
+	if err := os.MkdirAll(dirpath, privateDirMode); err != nil {
+		return nil, err
+	}
+
 	p := path.Join(dirpath, fmt.Sprintf("%016x-%016x.wal", 0, 0))
 	f, err := os.OpenFile(p, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0600)
 	if err != nil {
@@ -136,20 +144,16 @@ func OpenFromIndex(dirpath string, index int64) (*WAL, error) {
 
 // ReadAll reads out all records of the current WAL.
 // After ReadAll, the WAL will be ready for appending new records.
-func (w *WAL) ReadAll() (int64, raftpb.State, []raftpb.Entry, error) {
-	var id int64
-	var state raftpb.State
-	var entries []raftpb.Entry
-
+func (w *WAL) ReadAll() (id int64, state raftpb.State, ents []raftpb.Entry, err error) {
 	rec := &walpb.Record{}
 	decoder := w.decoder
-	var err error
+
 	for err = decoder.decode(rec); err == nil; err = decoder.decode(rec) {
 		switch rec.Type {
 		case entryType:
 			e := mustUnmarshalEntry(rec.Data)
 			if e.Index > w.ri {
-				entries = append(entries[:e.Index-w.ri-1], e)
+				ents = append(ents[:e.Index-w.ri-1], e)
 			}
 		case stateType:
 			state = mustUnmarshalState(rec.Data)
@@ -186,7 +190,7 @@ func (w *WAL) ReadAll() (int64, raftpb.State, []raftpb.Entry, error) {
 	// create encoder (chain crc with the decoder), enable appending
 	w.encoder = newEncoder(w.f, w.decoder.lastCRC())
 	w.decoder = nil
-	return id, state, entries, nil
+	return id, state, ents, nil
 }
 
 // index should be the index of last log entry.
@@ -256,6 +260,15 @@ func (w *WAL) SaveState(s *raftpb.State) error {
 	}
 	rec := &walpb.Record{Type: stateType, Data: b}
 	return w.encoder.encode(rec)
+}
+
+func (w *WAL) Save(st raftpb.State, ents []raftpb.Entry) {
+	// TODO(xiangli): no more reference operator
+	w.SaveState(&st)
+	for i := range ents {
+		w.SaveEntry(&ents[i])
+	}
+	w.Sync()
 }
 
 func (w *WAL) saveCrc(prevCrc uint32) error {
