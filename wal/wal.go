@@ -141,7 +141,7 @@ func OpenFromIndex(dirpath string, index int64) (*WAL, error) {
 
 // ReadAll reads out all records of the current WAL.
 // After ReadAll, the WAL will be ready for appending new records.
-func (w *WAL) ReadAll() (id int64, state raftpb.State, entries []raftpb.Entry, err error) {
+func (w *WAL) ReadAll() (id int64, state raftpb.State, ents []raftpb.Entry, err error) {
 	rec := &walpb.Record{}
 	decoder := w.decoder
 
@@ -150,7 +150,7 @@ func (w *WAL) ReadAll() (id int64, state raftpb.State, entries []raftpb.Entry, e
 		case entryType:
 			e := mustUnmarshalEntry(rec.Data)
 			if e.Index > w.ri {
-				entries = append(entries[:e.Index-w.ri-1], e)
+				ents = append(ents[:e.Index-w.ri-1], e)
 			}
 		case stateType:
 			state = mustUnmarshalState(rec.Data)
@@ -187,7 +187,7 @@ func (w *WAL) ReadAll() (id int64, state raftpb.State, entries []raftpb.Entry, e
 	// create encoder (chain crc with the decoder), enable appending
 	w.encoder = newEncoder(w.f, w.decoder.lastCRC())
 	w.decoder = nil
-	return id, state, entries, nil
+	return id, state, ents, nil
 }
 
 // index should be the index of last log entry.
