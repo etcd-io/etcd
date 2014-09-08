@@ -21,7 +21,7 @@ type SendFunc func(m []raftpb.Message)
 
 type Response struct {
 	Event   *store.Event
-	Watcher *store.Watcher
+	Watcher store.Watcher
 	err     error
 }
 

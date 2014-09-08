@@ -288,7 +288,7 @@ func encodeResponse(ctx context.Context, w http.ResponseWriter, resp etcdserver.
 	return nil
 }
 
-func waitForEvent(ctx context.Context, w http.ResponseWriter, wa *store.Watcher) (*store.Event, error) {
+func waitForEvent(ctx context.Context, w http.ResponseWriter, wa store.Watcher) (*store.Event, error) {
 	// TODO(bmizerany): support streaming?
 	defer wa.Remove()
 	var nch <-chan bool
@@ -297,7 +297,7 @@ func waitForEvent(ctx context.Context, w http.ResponseWriter, wa *store.Watcher)
 	}
 
 	select {
-	case ev := <-wa.EventChan:
+	case ev := <-wa.EventChan():
 		return ev, nil
 	case <-nch:
 		elog.TODO()

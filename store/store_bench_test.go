@@ -113,7 +113,7 @@ func BenchmarkWatch(b *testing.B) {
 
 		e := newEvent("set", kvs[i][0], uint64(i+1), uint64(i+1))
 		s.WatcherHub.notify(e)
-		<-w.EventChan
+		<-w.EventChan()
 		s.CurrentIndex++
 	}
 
@@ -135,7 +135,7 @@ func BenchmarkWatchWithSet(b *testing.B) {
 		w, _ := s.Watch(kvs[i][0], false, false, 0)
 
 		s.Set(kvs[i][0], false, "test", Permanent)
-		<-w.EventChan
+		<-w.EventChan()
 	}
 }
 
@@ -145,7 +145,7 @@ func BenchmarkWatchWithSetBatch(b *testing.B) {
 	kvs, _ := generateNRandomKV(b.N, 128)
 	b.StartTimer()
 
-	watchers := make([]*Watcher, b.N)
+	watchers := make([]Watcher, b.N)
 
 	for i := 0; i < b.N; i++ {
 		watchers[i], _ = s.Watch(kvs[i][0], false, false, 0)
@@ -156,14 +156,14 @@ func BenchmarkWatchWithSetBatch(b *testing.B) {
 	}
 
 	for i := 0; i < b.N; i++ {
-		<-watchers[i].EventChan
+		<-watchers[i].EventChan()
 	}
 
 }
 
 func BenchmarkWatchOneKey(b *testing.B) {
 	s := newStore()
-	watchers := make([]*Watcher, b.N)
+	watchers := make([]Watcher, b.N)
 
 	for i := 0; i < b.N; i++ {
 		watchers[i], _ = s.Watch("/foo", false, false, 0)
@@ -172,7 +172,7 @@ func BenchmarkWatchOneKey(b *testing.B) {
 	s.Set("/foo", false, "", Permanent)
 
 	for i := 0; i < b.N; i++ {
-		<-watchers[i].EventChan
+		<-watchers[i].EventChan()
 	}
 }
 

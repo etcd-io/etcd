@@ -34,19 +34,19 @@ func newWatchHub(capacity int) *watcherHub {
 	}
 }
 
-// Watch function returns a watcher.
+// Watch function returns a Watcher.
 // If recursive is true, the first change after index under key will be sent to the event channel of the watcher.
 // If recursive is false, the first change after index at key will be sent to the event channel of the watcher.
 // If index is zero, watch will start from the current index + 1.
-func (wh *watcherHub) watch(key string, recursive, stream bool, index uint64) (*Watcher, *etcdErr.Error) {
+func (wh *watcherHub) watch(key string, recursive, stream bool, index uint64) (Watcher, *etcdErr.Error) {
 	event, err := wh.EventHistory.scan(key, recursive, index)
 
 	if err != nil {
 		return nil, err
 	}
 
-	w := &Watcher{
-		EventChan:  make(chan *Event, 1), // use a buffered channel
+	w := &watcher{
+		eventChan:  make(chan *Event, 1), // use a buffered channel
 		recursive:  recursive,
 		stream:     stream,
 		sinceIndex: index,
@@ -54,7 +54,7 @@ func (wh *watcherHub) watch(key string, recursive, stream bool, index uint64) (*
 	}
 
 	if event != nil {
-		w.EventChan <- event
+		w.eventChan <- event
 		return w, nil
 	}
 
@@ -75,7 +75,7 @@ func (wh *watcherHub) watch(key string, recursive, stream bool, index uint64) (*
 	}
 
 	w.remove = func() {
-		if w.removed { // avoid remove it twice
+		if w.removed { // avoid removing it twice
 			return
 		}
 		w.removed = true
@@ -121,7 +121,7 @@ func (wh *watcherHub) notifyWatchers(e *Event, nodePath string, deleted bool) {
 		for curr != nil {
 			next := curr.Next() // save reference to the next one in the list
 
-			w, _ := curr.Value.(*Watcher)
+			w, _ := curr.Value.(*watcher)
 
 			originalPath := (e.Node.Key == nodePath)
 			if (originalPath || !isHidden(nodePath, e.Node.Key)) && w.notify(e, originalPath, deleted) {

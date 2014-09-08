@@ -27,7 +27,7 @@ func TestWatcher(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
-	c := w.EventChan
+	c := w.EventChan()
 
 	select {
 	case <-c:
@@ -47,7 +47,7 @@ func TestWatcher(t *testing.T) {
 	}
 
 	w, _ = wh.watch("/foo", false, false, 2)
-	c = w.EventChan
+	c = w.EventChan()
 
 	e = newEvent(Create, "/foo/bar", 2, 2)
 
@@ -72,7 +72,7 @@ func TestWatcher(t *testing.T) {
 
 	// ensure we are doing exact matching rather than prefix matching
 	w, _ = wh.watch("/fo", true, false, 1)
-	c = w.EventChan
+	c = w.EventChan()
 
 	select {
 	case re = <-c:
