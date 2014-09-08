@@ -88,8 +88,11 @@ func startRaft(id int64, peerIds []int64, waldir string) (raft.Node, *wal.WAL) {
 	if err != nil {
 		log.Fatal(err)
 	}
+	wid, st, ents, err := w.ReadAll()
 	// TODO(xiangli): save/recovery nodeID?
-	_, st, ents, err := w.ReadAll()
+	if wid != 0 {
+		log.Fatal("unimplemented: nodeid")
+	}
 	if err != nil {
 		log.Fatal(err)
 	}
