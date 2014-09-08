@@ -70,6 +70,7 @@ func main() {
 	h := &etcdhttp.Handler{
 		Timeout: *timeout,
 		Server:  s,
+		Peers:   peers,
 	}
 	http.Handle("/", h)
 	log.Fatal(http.ListenAndServe(*laddr, nil))

@@ -11,6 +11,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -27,7 +28,10 @@ import (
 	"github.com/coreos/etcd/third_party/code.google.com/p/go.net/context"
 )
 
-const keysPrefix = "/v2/keys"
+const (
+	keysPrefix     = "/v2/keys"
+	machinesPrefix = "/v2/machines"
+)
 
 type Peers map[int64][]string
 
@@ -36,7 +40,12 @@ func (ps Peers) Pick(id int64) string {
 	if len(addrs) == 0 {
 		return ""
 	}
-	return fmt.Sprintf("http://%s", addrs[rand.Intn(len(addrs))])
+	return addScheme(addrs[rand.Intn(len(addrs))])
+}
+
+// TODO: improve this when implementing TLS
+func addScheme(addr string) string {
+	return fmt.Sprintf("http://%s", addr)
 }
 
 // Set parses command line sets of names to ips formatted like:
@@ -138,6 +147,7 @@ func httpPost(url string, data []byte) bool {
 type Handler struct {
 	Timeout time.Duration
 	Server  *etcdserver.Server
+	Peers   Peers
 }
 
 func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -156,6 +166,8 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.serveRaft(ctx, w, r)
 	case strings.HasPrefix(r.URL.Path, keysPrefix):
 		h.serveKeys(ctx, w, r)
+	case strings.HasPrefix(r.URL.Path, machinesPrefix):
+		h.serveMachines(w, r)
 	default:
 		http.NotFound(w, r)
 	}
@@ -186,6 +198,19 @@ func (h Handler) serveKeys(ctx context.Context, w http.ResponseWriter, r *http.R
 		http.Error(w, "Timeout while waiting for response", http.StatusGatewayTimeout)
 		return
 	}
+}
+
+// serveMachines responds address list in the format '0.0.0.0, 1.1.1.1'.
+// TODO: rethink the format of machine list because it is not json format.
+func (h Handler) serveMachines(w http.ResponseWriter, r *http.Request) {
+	urls := make([]string, 0)
+	for _, addrs := range h.Peers {
+		for _, addr := range addrs {
+			urls = append(urls, addScheme(addr))
+		}
+	}
+	sort.Sort(sort.StringSlice(urls))
+	w.Write([]byte(strings.Join(urls, ", ")))
 }
 
 func (h Handler) serveRaft(ctx context.Context, w http.ResponseWriter, r *http.Request) {

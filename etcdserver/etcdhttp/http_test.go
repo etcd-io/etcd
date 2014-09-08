@@ -347,3 +347,35 @@ func TestWaitForEventCancelledContext(t *testing.T) {
 		t.Fatalf("nil err returned with cancelled context!")
 	}
 }
+
+func TestV2MachinesEndpoint(t *testing.T) {
+	h := Handler{Peers: Peers{}}
+
+	s := httptest.NewServer(h)
+	defer s.Close()
+
+	resp, err := http.Get(s.URL + machinesPrefix)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("StatusCode = %d, expected %d", resp.StatusCode, http.StatusOK)
+	}
+}
+
+func TestServeMachines(t *testing.T) {
+	peers := Peers{}
+	peers.Set("0xBEEF0=localhost:8080&0xBEEF1=localhost:8081&0xBEEF2=localhost:8082")
+	h := Handler{Peers: peers}
+
+	writer := httptest.NewRecorder()
+	h.serveMachines(writer, nil)
+	w := "http://localhost:8080, http://localhost:8081, http://localhost:8082"
+	if g := writer.Body.String(); g != w {
+		t.Errorf("data = %s, want %s", g, w)
+	}
+	if writer.Code != http.StatusOK {
+		t.Errorf("header = %d, want %d", writer.Code, http.StatusOK)
+	}
+}
