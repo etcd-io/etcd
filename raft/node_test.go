@@ -52,7 +52,7 @@ func TestNodeRestart(t *testing.T) {
 
 	want := Ready{
 		State: st,
-		// commit upto index 1
+		// commit upto index commit index in st
 		CommittedEntries: entries[:st.Commit],
 	}
 
