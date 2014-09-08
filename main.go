@@ -96,7 +96,7 @@ func startRaft(id int64, peerIds []int64, waldir string) (raft.Node, *wal.WAL) {
 	wid, st, ents, err := w.ReadAll()
 	// TODO(xiangli): save/recovery nodeID?
 	if wid != 0 {
-		log.Fatal("unimplemented: nodeid")
+		log.Fatalf("unexpected nodeid %d: nodeid should always be zero until we save nodeid into wal", wid)
 	}
 	if err != nil {
 		log.Fatal(err)
