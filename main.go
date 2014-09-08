@@ -47,7 +47,7 @@ func main() {
 	}
 
 	if *dir == "" {
-		*dir = fmt.Sprintf("%v", *fid)
+		*dir = fmt.Sprintf("%v_etcd_data", *fid)
 		log.Printf("main: no data-dir is given, using default data-dir ./%s", *dir)
 	}
 	if err := os.MkdirAll(*dir, privateDirMode); err != nil {
