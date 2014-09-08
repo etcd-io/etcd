@@ -1,0 +1,6 @@
+#!/bin/sh
+go test ./wal \
+	./snap \
+	./etcdserver/... \
+	./raft \
+	./store
