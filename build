@@ -1,0 +1,24 @@
+#!/bin/bash -e
+
+ORG_PATH="github.com/coreos"
+REPO_PATH="${ORG_PATH}/etcd"
+
+# If the user hasn't set up a GOPATH, make one for them
+if [[ -z "$GOPATH" ]]; then 
+	GOPATH=${PWD}/gopath
+	if [ ! -h gopath/src/${REPO_PATH} ]; then
+		mkdir -p gopath/src/${ORG_PATH}
+		ln -s ../../../.. gopath/src/${REPO_PATH} || exit 255
+	fi
+	# Similarly, set up GOBIN if not already set
+	if [[ -z "$GOBIN" ]]; then 
+		GOBIN=${PWD}/bin
+	fi
+fi
+
+export GOPATH=$GOPATH
+export GOBIN=$GOBIN
+
+eval $(go env)
+
+go install ${REPO_PATH}
