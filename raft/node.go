@@ -40,13 +40,12 @@ func (rd Ready) containsUpdates(prev Ready) bool {
 }
 
 type Node struct {
-	ctx          context.Context
-	propc        chan pb.Message
-	recvc        chan pb.Message
-	readyc       chan Ready
-	tickc        chan struct{}
-	alwaysreadyc chan Ready
-	done         chan struct{}
+	ctx    context.Context
+	propc  chan pb.Message
+	recvc  chan pb.Message
+	readyc chan Ready
+	tickc  chan struct{}
+	done   chan struct{}
 }
 
 func Start(id int64, peers []int64, election, heartbeat int) Node {
@@ -67,12 +66,11 @@ func Restart(id int64, peers []int64, election, heartbeat int, st pb.State, ents
 
 func newNode() Node {
 	return Node{
-		propc:        make(chan pb.Message),
-		recvc:        make(chan pb.Message),
-		readyc:       make(chan Ready),
-		tickc:        make(chan struct{}),
-		alwaysreadyc: make(chan Ready),
-		done:         make(chan struct{}),
+		propc:  make(chan pb.Message),
+		recvc:  make(chan pb.Message),
+		readyc: make(chan Ready),
+		tickc:  make(chan struct{}),
+		done:   make(chan struct{}),
 	}
 }
 
@@ -125,8 +123,6 @@ func (n *Node) run(r *raft) {
 			r.raftLog.resetNextEnts()
 			r.raftLog.resetUnstable()
 			r.msgs = nil
-		case n.alwaysreadyc <- rd:
-			// this is for testing only
 		case <-n.done:
 			return
 		}
@@ -172,10 +168,4 @@ func (n *Node) Step(ctx context.Context, m pb.Message) error {
 // ReadState returns the current point-in-time state.
 func (n *Node) Ready() <-chan Ready {
 	return n.readyc
-}
-
-// RecvReadyNow returns the state of n without blocking. It is primarly for
-// testing purposes only.
-func RecvReadyNow(n Node) Ready {
-	return <-n.alwaysreadyc
 }
