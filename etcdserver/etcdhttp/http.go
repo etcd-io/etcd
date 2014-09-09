@@ -147,7 +147,9 @@ func httpPost(url string, data []byte) bool {
 type Handler struct {
 	Timeout time.Duration
 	Server  *etcdserver.Server
-	Peers   Peers
+	// TODO: dynamic configuration may make this outdated. take care of it.
+	// TODO: dynamic configuration may introduce race also.
+	Peers Peers
 }
 
 func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
