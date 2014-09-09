@@ -106,7 +106,6 @@ func (n *Node) run(r *raft) {
 
 		if rd.containsUpdates(prev) {
 			readyc = n.readyc
-			prev = rd
 		} else {
 			readyc = nil
 		}
@@ -122,6 +121,7 @@ func (n *Node) run(r *raft) {
 		case readyc <- rd:
 			r.raftLog.resetNextEnts()
 			r.raftLog.resetUnstable()
+			prev = rd
 			r.msgs = nil
 		case <-n.done:
 			return
