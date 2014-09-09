@@ -19,14 +19,14 @@ import (
 
 const (
 	// the owner can make/remove files inside the directory
-	privateDirMode = 0700
+	modePrivateDir = 0700
 )
 
 var (
 	fid     = flag.String("id", "0x1", "Id of this server")
 	timeout = flag.Duration("timeout", 10*time.Second, "Request Timeout")
 	laddr   = flag.String("l", ":8080", "HTTP service address (e.g., ':8080')")
-	dir     = flag.String("data-dir", "", "Path to the data directory")
+	ddir    = flag.String("data-dir", "", "Path to the data directory")
 	peers   = etcdhttp.Peers{}
 )
 
@@ -47,15 +47,15 @@ func main() {
 		log.Fatalf("%#x=<addr> must be specified in peers", id)
 	}
 
-	if *dir == "" {
-		*dir = fmt.Sprintf("%v_etcd_data", *fid)
-		log.Printf("etcd: no data-dir is given, using default data-dir ./%s", *dir)
+	if *ddir == "" {
+		*ddir = fmt.Sprintf("%v_etcd_data", *fid)
+		log.Printf("etcd: no data-dir is given, using default data-dir ./%s", *ddir)
 	}
-	if err := os.MkdirAll(*dir, privateDirMode); err != nil {
+	if err := os.MkdirAll(*ddir, modePrivateDir); err != nil {
 		log.Fatalf("etcd: cannot create data directory: %v", err)
 	}
 
-	n, w := startRaft(id, peers.Ids(), path.Join(*dir, "wal"))
+	n, w := startRaft(id, peers.Ids(), path.Join(*ddir, "wal"))
 
 	tk := time.NewTicker(100 * time.Millisecond)
 	s := &etcdserver.Server{
@@ -90,7 +90,7 @@ func startRaft(id int64, peerIds []int64, waldir string) (raft.Node, *wal.WAL) {
 
 	// restart a node from previous wal
 	// TODO(xiangli): check snapshot; not open from zero
-	w, err := wal.OpenFromIndex(waldir, 0)
+	w, err := wal.OpenAtIndex(waldir, 0)
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -37,7 +37,7 @@ const (
 	crcType
 
 	// the owner can make/remove files inside the directory
-	privateDirMode = 0700
+	modePrivateDir = 0700
 )
 
 var (
@@ -70,7 +70,7 @@ func Create(dirpath string) (*WAL, error) {
 		return nil, os.ErrExist
 	}
 
-	if err := os.MkdirAll(dirpath, privateDirMode); err != nil {
+	if err := os.MkdirAll(dirpath, modePrivateDir); err != nil {
 		return nil, err
 	}
 
@@ -95,7 +95,7 @@ func Create(dirpath string) (*WAL, error) {
 // the given index.
 // The returned WAL is ready to read. The WAL cannot be appended to before
 // reading out all of its previous records.
-func OpenFromIndex(dirpath string, index int64) (*WAL, error) {
+func OpenAtIndex(dirpath string, index int64) (*WAL, error) {
 	log.Printf("path=%s wal.load index=%d", dirpath, index)
 	names, err := readDir(dirpath)
 	if err != nil {
