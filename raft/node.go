@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	EmptyState = pb.State{}
+	emptyState = pb.State{}
 	ErrStopped = errors.New("raft: stopped")
 )
 
@@ -38,8 +38,12 @@ func isStateEqual(a, b pb.State) bool {
 	return a.Term == b.Term && a.Vote == b.Vote && a.LastIndex == b.LastIndex
 }
 
+func IsEmptyState(st pb.State) bool {
+	return isStateEqual(st, emptyState)
+}
+
 func (rd Ready) containsUpdates() bool {
-	return !isStateEqual(EmptyState, rd.State) || len(rd.Entries) > 0 || len(rd.CommittedEntries) > 0 || len(rd.Messages) > 0
+	return !isStateEqual(emptyState, rd.State) || len(rd.Entries) > 0 || len(rd.CommittedEntries) > 0 || len(rd.Messages) > 0
 }
 
 type Node struct {
@@ -106,7 +110,7 @@ func (n *Node) run(r *raft) {
 		}
 
 		if isStateEqual(r.State, prevSt) {
-			rd.State = EmptyState
+			rd.State = emptyState
 		} else {
 			rd.State = r.State
 		}
@@ -128,7 +132,7 @@ func (n *Node) run(r *raft) {
 		case readyc <- rd:
 			r.raftLog.resetNextEnts()
 			r.raftLog.resetUnstable()
-			if !isStateEqual(rd.State, EmptyState) {
+			if !IsEmptyState(rd.State) {
 				prevSt = rd.State
 			}
 			r.msgs = nil
