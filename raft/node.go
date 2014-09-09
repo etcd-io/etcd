@@ -103,18 +103,7 @@ func (n *Node) run(r *raft) {
 			}
 		}
 
-		rd := Ready{
-			Entries:          r.raftLog.unstableEnts(),
-			CommittedEntries: r.raftLog.nextEnts(),
-			Messages:         r.msgs,
-		}
-
-		if isStateEqual(r.State, prevSt) {
-			rd.State = emptyState
-		} else {
-			rd.State = r.State
-		}
-
+		rd := newReady(r, prevSt)
 		if rd.containsUpdates() {
 			readyc = n.readyc
 		} else {
@@ -181,4 +170,19 @@ func (n *Node) Step(ctx context.Context, m pb.Message) error {
 // ReadState returns the current point-in-time state.
 func (n *Node) Ready() <-chan Ready {
 	return n.readyc
+}
+
+func newReady(r *raft, prev pb.State) Ready {
+	rd := Ready{
+		Entries:          r.raftLog.unstableEnts(),
+		CommittedEntries: r.raftLog.nextEnts(),
+		Messages:         r.msgs,
+	}
+
+	if isStateEqual(r.State, prev) {
+		rd.State = emptyState
+	} else {
+		rd.State = r.State
+	}
+	return rd
 }
