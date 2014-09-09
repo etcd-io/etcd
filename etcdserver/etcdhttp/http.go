@@ -222,7 +222,7 @@ func parseRequest(r *http.Request, id int64) (etcdserverpb.Request, error) {
 		return etcdserverpb.Request{}, err
 	}
 	if !strings.HasPrefix(r.URL.Path, keysPrefix) {
-		return etcdserverpb.Request{}, errors.New("expected key prefix!")
+		return etcdserverpb.Request{}, errors.New("unexpected key prefix!")
 	}
 
 	q := r.URL.Query()
@@ -299,7 +299,9 @@ func encodeResponse(ctx context.Context, w http.ResponseWriter, resp etcdserver.
 	return nil
 }
 
-// waitForEvent waits for a given watcher to return its associated event. It returns a non-nil error if the given Context times out or the given ResponseWriter triggers a CloseNotify.
+// waitForEvent waits for a given watcher to return its associated
+// event. It returns a non-nil error if the given Context times out
+// or the given ResponseWriter triggers a CloseNotify.
 func waitForEvent(ctx context.Context, w http.ResponseWriter, wa store.Watcher) (*store.Event, error) {
 	// TODO(bmizerany): support streaming?
 	defer wa.Remove()

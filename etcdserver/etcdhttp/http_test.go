@@ -7,7 +7,6 @@ import (
 	"net/url"
 	"path"
 	"reflect"
-	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -77,7 +76,7 @@ func TestSet(t *testing.T) {
 func stringp(s string) *string { return &s }
 func boolp(b bool) *bool       { return &b }
 
-func makeURL(t *testing.T, s string) *url.URL {
+func mustNewURL(t *testing.T, s string) *url.URL {
 	u, err := url.Parse(s)
 	if err != nil {
 		t.Fatalf("error creating URL from %q: %v", s, err)
@@ -85,8 +84,8 @@ func makeURL(t *testing.T, s string) *url.URL {
 	return u
 }
 
-func TestParseRequest(t *testing.T) {
-	badTestCases := []struct {
+func TestBadParseRequest(t *testing.T) {
+	tests := []struct {
 		in *http.Request
 	}{
 		{
@@ -99,11 +98,11 @@ func TestParseRequest(t *testing.T) {
 		{
 			// bad key prefix
 			&http.Request{
-				URL: makeURL(t, "/badprefix/"),
+				URL: mustNewURL(t, "/badprefix/"),
 			},
 		},
 	}
-	for i, tt := range badTestCases {
+	for i, tt := range tests {
 		got, err := parseRequest(tt.in, 1234)
 		if err == nil {
 			t.Errorf("case %d: unexpected nil error!")
@@ -112,15 +111,17 @@ func TestParseRequest(t *testing.T) {
 			t.Errorf("case %d: unexpected non-empty Request: %#v", i, got)
 		}
 	}
+}
 
-	goodTestCases := []struct {
-		in   *http.Request
-		want etcdserverpb.Request
+func TestGoodParseRequest(t *testing.T) {
+	tests := []struct {
+		in *http.Request
+		w  etcdserverpb.Request
 	}{
 		{
 			// good prefix, all other values default
 			&http.Request{
-				URL: makeURL(t, path.Join(keysPrefix, "foo")),
+				URL: mustNewURL(t, path.Join(keysPrefix, "foo")),
 			},
 			etcdserverpb.Request{
 				Id:   1234,
@@ -130,7 +131,7 @@ func TestParseRequest(t *testing.T) {
 		{
 			// value specified
 			&http.Request{
-				URL: makeURL(t, path.Join(keysPrefix, "foo?value=some_value")),
+				URL: mustNewURL(t, path.Join(keysPrefix, "foo?value=some_value")),
 			},
 			etcdserverpb.Request{
 				Id:   1234,
@@ -141,7 +142,7 @@ func TestParseRequest(t *testing.T) {
 		{
 			// prevIndex specified
 			&http.Request{
-				URL: makeURL(t, path.Join(keysPrefix, "foo?prevIndex=98765")),
+				URL: mustNewURL(t, path.Join(keysPrefix, "foo?prevIndex=98765")),
 			},
 			etcdserverpb.Request{
 				Id:        1234,
@@ -152,7 +153,7 @@ func TestParseRequest(t *testing.T) {
 		{
 			// recursive specified
 			&http.Request{
-				URL: makeURL(t, path.Join(keysPrefix, "foo?recursive=true")),
+				URL: mustNewURL(t, path.Join(keysPrefix, "foo?recursive=true")),
 			},
 			etcdserverpb.Request{
 				Id:        1234,
@@ -163,7 +164,7 @@ func TestParseRequest(t *testing.T) {
 		{
 			// sorted specified
 			&http.Request{
-				URL: makeURL(t, path.Join(keysPrefix, "foo?sorted=true")),
+				URL: mustNewURL(t, path.Join(keysPrefix, "foo?sorted=true")),
 			},
 			etcdserverpb.Request{
 				Id:     1234,
@@ -174,7 +175,7 @@ func TestParseRequest(t *testing.T) {
 		{
 			// wait specified
 			&http.Request{
-				URL: makeURL(t, path.Join(keysPrefix, "foo?wait=true")),
+				URL: mustNewURL(t, path.Join(keysPrefix, "foo?wait=true")),
 			},
 			etcdserverpb.Request{
 				Id:   1234,
@@ -185,7 +186,7 @@ func TestParseRequest(t *testing.T) {
 		{
 			// prevExists should be non-null if specified
 			&http.Request{
-				URL: makeURL(t, path.Join(keysPrefix, "foo?prevExists=true")),
+				URL: mustNewURL(t, path.Join(keysPrefix, "foo?prevExists=true")),
 			},
 			etcdserverpb.Request{
 				Id:         1234,
@@ -196,7 +197,7 @@ func TestParseRequest(t *testing.T) {
 		{
 			// prevExists should be non-null if specified
 			&http.Request{
-				URL: makeURL(t, path.Join(keysPrefix, "foo?prevExists=false")),
+				URL: mustNewURL(t, path.Join(keysPrefix, "foo?prevExists=false")),
 			},
 			etcdserverpb.Request{
 				Id:         1234,
@@ -206,13 +207,13 @@ func TestParseRequest(t *testing.T) {
 		},
 	}
 
-	for i, tt := range goodTestCases {
+	for i, tt := range tests {
 		got, err := parseRequest(tt.in, 1234)
 		if err != nil {
-			t.Errorf("case %d: unexpected error: %#v", err)
+			t.Errorf("#%d: err = %v, want %v", i, err, nil)
 		}
-		if !reflect.DeepEqual(got, tt.want) {
-			t.Errorf("case %d: bad request: got %#v, want %#v", i, got, tt.want)
+		if !reflect.DeepEqual(got, tt.w) {
+			t.Errorf("#%d: bad request: got %#v, want %#v", i, got, tt.w)
 		}
 	}
 }
@@ -236,10 +237,10 @@ func (w *eventingWatcher) EventChan() chan *store.Event {
 func (w *eventingWatcher) Remove() {}
 
 func TestEncodeResponse(t *testing.T) {
-	testCases := []struct {
+	tests := []struct {
 		ctx  context.Context
 		resp etcdserver.Response
-		idx  uint64
+		idx  string
 		code int
 		err  error
 	}{
@@ -254,7 +255,7 @@ func TestEncodeResponse(t *testing.T) {
 				},
 				Watcher: nil,
 			},
-			0,
+			"0",
 			http.StatusOK,
 			nil,
 		},
@@ -269,7 +270,7 @@ func TestEncodeResponse(t *testing.T) {
 				},
 				Watcher: nil,
 			},
-			0,
+			"0",
 			http.StatusCreated,
 			nil,
 		},
@@ -278,13 +279,13 @@ func TestEncodeResponse(t *testing.T) {
 			etcdserver.Response{
 				Watcher: &eventingWatcher{store.Create},
 			},
-			0,
+			"0",
 			http.StatusCreated,
 			nil,
 		},
 	}
 
-	for i, tt := range testCases {
+	for i, tt := range tests {
 		rw := httptest.NewRecorder()
 		err := encodeResponse(tt.ctx, rw, tt.resp)
 		if err != tt.err {
@@ -296,8 +297,8 @@ func TestEncodeResponse(t *testing.T) {
 			t.Errorf("case %d: bad Content-Type: got %q, want application/json", i, gct)
 		}
 
-		if gei := rw.Header().Get("X-Etcd-Index"); gei != strconv.Itoa(int(tt.idx)) {
-			t.Errorf("case %d: bad X-Etcd-Index header: got %s, want %d", i, gei, tt.idx)
+		if gei := rw.Header().Get("X-Etcd-Index"); gei != tt.idx {
+			t.Errorf("case %d: bad X-Etcd-Index header: got %s, want %s", i, gei, tt.idx)
 		}
 
 		if rw.Code != tt.code {
@@ -305,7 +306,6 @@ func TestEncodeResponse(t *testing.T) {
 		}
 
 	}
-
 }
 
 type dummyWatcher struct {
