@@ -518,14 +518,14 @@ func TestHandleMsgApp(t *testing.T) {
 		}
 		m := sm.ReadMessages()
 		if len(m) != 1 {
-			t.Errorf("#%d: msg = nil, want 1")
+			t.Errorf("#%d: msg = nil, want 1", i)
 		}
 		gaccept := true
 		if m[0].Index == -1 {
 			gaccept = false
 		}
 		if gaccept != tt.wAccept {
-			t.Errorf("#%d: accept = %v, want %v", gaccept, tt.wAccept)
+			t.Errorf("#%d: accept = %v, want %v", i, gaccept, tt.wAccept)
 		}
 	}
 }
@@ -764,7 +764,7 @@ func TestRecvMsgBeat(t *testing.T) {
 		}
 		for _, m := range msgs {
 			if m.Type != msgApp {
-				t.Errorf("%d: msg.type = %v, want %v", m.Type, msgApp)
+				t.Errorf("%d: msg.type = %v, want %v", i, m.Type, msgApp)
 			}
 		}
 	}

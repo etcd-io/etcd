@@ -68,7 +68,7 @@ func (ps *Peers) String() string {
 
 func (ps Peers) Ids() []int64 {
 	var ids []int64
-	for id, _ := range ps {
+	for id := range ps {
 		ids = append(ids, id)
 	}
 	return ids

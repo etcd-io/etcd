@@ -168,7 +168,12 @@ func (l *raftLog) compact(i int64) int64 {
 }
 
 func (l *raftLog) snap(d []byte, index, term int64, nodes []int64) {
-	l.snapshot = pb.Snapshot{d, nodes, index, term, nil}
+	l.snapshot = pb.Snapshot{
+		Data:  d,
+		Nodes: nodes,
+		Index: index,
+		Term:  term,
+	}
 }
 
 func (l *raftLog) shouldCompact() bool {

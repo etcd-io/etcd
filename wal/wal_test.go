@@ -313,7 +313,7 @@ func TestRecoverAfterCut(t *testing.T) {
 			continue
 		}
 		if id != info.Id {
-			t.Errorf("#%d: id = %d, want %d", id, info.Id)
+			t.Errorf("#%d: id = %d, want %d", i, id, info.Id)
 		}
 		for j, e := range entries {
 			if e.Index != int64(j+i+1) {
