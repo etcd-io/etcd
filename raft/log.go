@@ -94,13 +94,7 @@ func (l *raftLog) resetUnstable() {
 // all the returned entries will be marked as applied.
 func (l *raftLog) nextEnts() (ents []pb.Entry) {
 	if l.committed > l.applied {
-		ents := l.slice(l.applied+1, l.committed+1)
-		if ents == nil {
-			return nil
-		}
-		cpy := make([]pb.Entry, len(ents))
-		copy(cpy, ents)
-		return cpy
+		return l.slice(l.applied+1, l.committed+1)
 	}
 	return nil
 }
