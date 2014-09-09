@@ -70,17 +70,6 @@ func newDir(store *store, nodePath string, createdIndex uint64, parent *node,
 	}
 }
 
-// IsHidden function checks if the node is a hidden node. A hidden node
-// will begin with '_'
-// A hidden node will not be shown via get command under a directory
-// For example if we have /foo/_hidden and /foo/notHidden, get "/foo"
-// will only return /foo/notHidden
-func (n *node) IsHidden() bool {
-	_, name := path.Split(n.Path)
-
-	return name[0] == '_'
-}
-
 // IsPermanent function checks if the node is a permanent one.
 func (n *node) IsPermanent() bool {
 	// we use a uninitialized time.Time to indicate the node is a
@@ -251,7 +240,7 @@ func (n *node) Remove(dir, recursive bool, callback func(path string)) *etcdErr.
 	return nil
 }
 
-func (n *node) Repr(recurisive, sorted bool) *NodeExtern {
+func (n *node) Repr(recursive, sorted bool) *NodeExtern {
 	if n.IsDir() {
 		node := &NodeExtern{
 			Key:           n.Path,
@@ -261,7 +250,7 @@ func (n *node) Repr(recurisive, sorted bool) *NodeExtern {
 		}
 		node.Expiration, node.TTL = n.ExpirationAndTTL()
 
-		if !recurisive {
+		if !recursive {
 			return node
 		}
 
@@ -269,21 +258,14 @@ func (n *node) Repr(recurisive, sorted bool) *NodeExtern {
 		node.Nodes = make(NodeExterns, len(children))
 
 		// we do not use the index in the children slice directly
-		// we need to skip the hidden one
 		i := 0
 
 		for _, child := range children {
-
-			if child.IsHidden() { // get will not list hidden node
-				continue
-			}
-
-			node.Nodes[i] = child.Repr(recurisive, sorted)
+			node.Nodes[i] = child.Repr(recursive, sorted)
 
 			i++
 		}
 
-		// eliminate hidden nodes
 		node.Nodes = node.Nodes[:i]
 		if sorted {
 			sort.Sort(node.Nodes)
