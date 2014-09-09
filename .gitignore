@@ -4,5 +4,5 @@
 /machine*
 /bin
 .vagrant
-*.etcd
+/*_etcd_data
 etcd
