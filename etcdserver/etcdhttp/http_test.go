@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"path"
 	"reflect"
 	"strconv"
 	"sync"
@@ -12,6 +13,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/etcdserver"
+	"github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/store"
@@ -73,6 +75,147 @@ func TestSet(t *testing.T) {
 }
 
 func stringp(s string) *string { return &s }
+func boolp(b bool) *bool       { return &b }
+
+func makeURL(t *testing.T, s string) *url.URL {
+	u, err := url.Parse(s)
+	if err != nil {
+		t.Fatalf("error creating URL from %q: %v", s, err)
+	}
+	return u
+}
+
+func TestParseRequest(t *testing.T) {
+	badTestCases := []struct {
+		in *http.Request
+	}{
+		{
+			// parseForm failure
+			&http.Request{
+				Body:   nil,
+				Method: "PUT",
+			},
+		},
+		{
+			// bad key prefix
+			&http.Request{
+				URL: makeURL(t, "/badprefix/"),
+			},
+		},
+	}
+	for i, tt := range badTestCases {
+		got, err := parseRequest(tt.in, 1234)
+		if err == nil {
+			t.Errorf("case %d: unexpected nil error!")
+		}
+		if !reflect.DeepEqual(got, etcdserverpb.Request{}) {
+			t.Errorf("case %d: unexpected non-empty Request: %#v", i, got)
+		}
+	}
+
+	goodTestCases := []struct {
+		in   *http.Request
+		want etcdserverpb.Request
+	}{
+		{
+			// good prefix, all other values default
+			&http.Request{
+				URL: makeURL(t, path.Join(keysPrefix, "foo")),
+			},
+			etcdserverpb.Request{
+				Id:   1234,
+				Path: "/foo",
+			},
+		},
+		{
+			// value specified
+			&http.Request{
+				URL: makeURL(t, path.Join(keysPrefix, "foo?value=some_value")),
+			},
+			etcdserverpb.Request{
+				Id:   1234,
+				Val:  "some_value",
+				Path: "/foo",
+			},
+		},
+		{
+			// prevIndex specified
+			&http.Request{
+				URL: makeURL(t, path.Join(keysPrefix, "foo?prevIndex=98765")),
+			},
+			etcdserverpb.Request{
+				Id:        1234,
+				PrevIndex: 98765,
+				Path:      "/foo",
+			},
+		},
+		{
+			// recursive specified
+			&http.Request{
+				URL: makeURL(t, path.Join(keysPrefix, "foo?recursive=true")),
+			},
+			etcdserverpb.Request{
+				Id:        1234,
+				Recursive: true,
+				Path:      "/foo",
+			},
+		},
+		{
+			// sorted specified
+			&http.Request{
+				URL: makeURL(t, path.Join(keysPrefix, "foo?sorted=true")),
+			},
+			etcdserverpb.Request{
+				Id:     1234,
+				Sorted: true,
+				Path:   "/foo",
+			},
+		},
+		{
+			// wait specified
+			&http.Request{
+				URL: makeURL(t, path.Join(keysPrefix, "foo?wait=true")),
+			},
+			etcdserverpb.Request{
+				Id:   1234,
+				Wait: true,
+				Path: "/foo",
+			},
+		},
+		{
+			// prevExists should be non-null if specified
+			&http.Request{
+				URL: makeURL(t, path.Join(keysPrefix, "foo?prevExists=true")),
+			},
+			etcdserverpb.Request{
+				Id:         1234,
+				PrevExists: boolp(true),
+				Path:       "/foo",
+			},
+		},
+		{
+			// prevExists should be non-null if specified
+			&http.Request{
+				URL: makeURL(t, path.Join(keysPrefix, "foo?prevExists=false")),
+			},
+			etcdserverpb.Request{
+				Id:         1234,
+				PrevExists: boolp(false),
+				Path:       "/foo",
+			},
+		},
+	}
+
+	for i, tt := range goodTestCases {
+		got, err := parseRequest(tt.in, 1234)
+		if err != nil {
+			t.Errorf("case %d: unexpected error: %#v", err)
+		}
+		if !reflect.DeepEqual(got, tt.want) {
+			t.Errorf("case %d: bad request: got %#v, want %#v", i, got, tt.want)
+		}
+	}
+}
 
 // eventingWatcher immediately returns a simple event of the given action on its channel
 type eventingWatcher struct {

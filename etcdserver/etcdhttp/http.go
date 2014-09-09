@@ -27,6 +27,8 @@ import (
 	"github.com/coreos/etcd/third_party/code.google.com/p/go.net/context"
 )
 
+const keysPrefix = "/v2/keys"
+
 type Peers map[int64][]string
 
 func (ps Peers) Pick(id int64) string {
@@ -152,7 +154,7 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case strings.HasPrefix(r.URL.Path, "/raft"):
 		h.serveRaft(ctx, w, r)
-	case strings.HasPrefix(r.URL.Path, "/v2/keys/"):
+	case strings.HasPrefix(r.URL.Path, keysPrefix):
 		h.serveKeys(ctx, w, r)
 	default:
 		http.NotFound(w, r)
@@ -160,7 +162,7 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h Handler) serveKeys(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	rr, err := parseRequest(r)
+	rr, err := parseRequest(r, genId())
 	if err != nil {
 		log.Println(err) // reading of body failed
 		return
@@ -215,17 +217,22 @@ func genId() int64 {
 	}
 }
 
-func parseRequest(r *http.Request) (etcdserverpb.Request, error) {
+func parseRequest(r *http.Request, id int64) (etcdserverpb.Request, error) {
 	if err := r.ParseForm(); err != nil {
 		return etcdserverpb.Request{}, err
 	}
+	if !strings.HasPrefix(r.URL.Path, keysPrefix) {
+		return etcdserverpb.Request{}, errors.New("expected key prefix!")
+	}
 
 	q := r.URL.Query()
+	// TODO(jonboulle): perform strict validation of all parameters
+	// https://github.com/coreos/etcd/issues/1011
 	rr := etcdserverpb.Request{
-		Id:        genId(),
+		Id:        id,
 		Method:    r.Method,
 		Val:       r.FormValue("value"),
-		Path:      r.URL.Path[len("/v2/keys"):],
+		Path:      r.URL.Path[len(keysPrefix):],
 		PrevValue: q.Get("prevValue"),
 		PrevIndex: parseUint64(q.Get("prevIndex")),
 		Recursive: parseBool(q.Get("recursive")),
@@ -245,6 +252,8 @@ func parseRequest(r *http.Request) (etcdserverpb.Request, error) {
 	ttl := parseUint64(q.Get("ttl"))
 	if ttl > 0 {
 		expr := time.Duration(ttl) * time.Second
+		// TODO(jonboulle): use fake clock instead of time module
+		// https://github.com/coreos/etcd/issues/1021
 		rr.Expiration = time.Now().Add(expr).UnixNano()
 	}
 
