@@ -9,7 +9,10 @@ import (
 	"github.com/coreos/etcd/third_party/code.google.com/p/go.net/context"
 )
 
-var ErrStopped = errors.New("raft: stopped")
+var (
+	emptyState = pb.State{}
+	ErrStopped = errors.New("raft: stopped")
+)
 
 // Ready encapsulates the entries and messages that are ready to be saved to
 // stable storage, committed or sent to other peers.
@@ -35,8 +38,12 @@ func isStateEqual(a, b pb.State) bool {
 	return a.Term == b.Term && a.Vote == b.Vote && a.LastIndex == b.LastIndex
 }
 
-func (rd Ready) containsUpdates(prev Ready) bool {
-	return !isStateEqual(prev.State, rd.State) || len(rd.Entries) > 0 || len(rd.CommittedEntries) > 0 || len(rd.Messages) > 0
+func IsEmptyState(st pb.State) bool {
+	return isStateEqual(st, emptyState)
+}
+
+func (rd Ready) containsUpdates() bool {
+	return !IsEmptyState(rd.State) || len(rd.Entries) > 0 || len(rd.CommittedEntries) > 0 || len(rd.Messages) > 0
 }
 
 type Node struct {
@@ -83,8 +90,7 @@ func (n *Node) run(r *raft) {
 	readyc := n.readyc
 
 	var lead int64
-	var prev Ready
-	prev.State = r.State
+	prevSt := r.State
 
 	for {
 		if lead != r.lead {
@@ -97,16 +103,9 @@ func (n *Node) run(r *raft) {
 			}
 		}
 
-		rd := Ready{
-			r.State,
-			r.raftLog.unstableEnts(),
-			r.raftLog.nextEnts(),
-			r.msgs,
-		}
-
-		if rd.containsUpdates(prev) {
+		rd := newReady(r, prevSt)
+		if rd.containsUpdates() {
 			readyc = n.readyc
-			prev = rd
 		} else {
 			readyc = nil
 		}
@@ -122,6 +121,9 @@ func (n *Node) run(r *raft) {
 		case readyc <- rd:
 			r.raftLog.resetNextEnts()
 			r.raftLog.resetUnstable()
+			if !IsEmptyState(rd.State) {
+				prevSt = rd.State
+			}
 			r.msgs = nil
 		case <-n.done:
 			return
@@ -168,4 +170,16 @@ func (n *Node) Step(ctx context.Context, m pb.Message) error {
 // ReadState returns the current point-in-time state.
 func (n *Node) Ready() <-chan Ready {
 	return n.readyc
+}
+
+func newReady(r *raft, prev pb.State) Ready {
+	rd := Ready{
+		Entries:          r.raftLog.unstableEnts(),
+		CommittedEntries: r.raftLog.nextEnts(),
+		Messages:         r.msgs,
+	}
+	if !isStateEqual(r.State, prev) {
+		rd.State = r.State
+	}
+	return rd
 }

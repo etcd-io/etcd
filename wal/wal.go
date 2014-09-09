@@ -26,6 +26,7 @@ import (
 	"path"
 	"sort"
 
+	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/wal/walpb"
 )
@@ -253,6 +254,9 @@ func (w *WAL) SaveEntry(e *raftpb.Entry) error {
 }
 
 func (w *WAL) SaveState(s *raftpb.State) error {
+	if raft.IsEmptyState(*s) {
+		return nil
+	}
 	log.Printf("path=%s wal.saveState state=\"%+v\"", w.f.Name(), s)
 	b, err := s.Marshal()
 	if err != nil {
