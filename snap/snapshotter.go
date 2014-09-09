@@ -35,7 +35,11 @@ func New(dir string) *Snapshotter {
 	}
 }
 
-func (s *Snapshotter) Save(snapshot *raftpb.Snapshot) error {
+func (s *Snapshotter) SaveSnap(snap raftpb.Snapshot) {
+	s.save(&snap)
+}
+
+func (s *Snapshotter) save(snapshot *raftpb.Snapshot) error {
 	fname := fmt.Sprintf("%016x-%016x%s", snapshot.Term, snapshot.Index, snapSuffix)
 	b, err := snapshot.Marshal()
 	if err != nil {

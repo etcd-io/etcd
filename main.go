@@ -13,9 +13,15 @@ import (
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/etcdhttp"
 	"github.com/coreos/etcd/raft"
+	"github.com/coreos/etcd/snap"
 	"github.com/coreos/etcd/store"
 	"github.com/coreos/etcd/wal"
 )
+
+type storage struct {
+	*wal.WAL
+	*snap.Snapshotter
+}
 
 const (
 	// the owner can make/remove files inside the directory
@@ -60,11 +66,11 @@ func main() {
 
 	tk := time.NewTicker(100 * time.Millisecond)
 	s := &etcdserver.Server{
-		Store:  store.New(),
-		Node:   n,
-		Save:   w.Save,
-		Send:   etcdhttp.Sender(*peers),
-		Ticker: tk.C,
+		Store:   store.New(),
+		Node:    n,
+		Storage: storage{WAL: w},
+		Send:    etcdhttp.Sender(*peers),
+		Ticker:  tk.C,
 	}
 	etcdserver.Start(s)
 	h := &etcdhttp.Handler{

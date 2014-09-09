@@ -25,6 +25,17 @@ type Response struct {
 	err     error
 }
 
+type Storage interface {
+	// Save function saves ents and state to the underlying stable storage.
+	// Save MUST block until st and ents are on stable storage.
+	Save(st raftpb.State, ents []raftpb.Entry)
+	// SavenSnap function saves snapshot to the underlying stable storage.
+	SaveSnap(snap raftpb.Snapshot)
+	// Cut cuts out a new wal file for saving new state and entries.
+	// TODO: remove cut function. WAL should take care of this.
+	Cut(index int64) error
+}
+
 type Server struct {
 	w    *wait.List
 	done chan struct{}
@@ -38,10 +49,7 @@ type Server struct {
 	// panic.
 	Send SendFunc
 
-	// Save specifies the save function for saving ents to stable storage.
-	// Save MUST block until st and ents are on stable storage.  If Send is
-	// nil, Server will panic.
-	Save func(st raftpb.State, ents []raftpb.Entry)
+	Storage Storage
 
 	Ticker <-chan time.Time
 }
@@ -60,7 +68,8 @@ func (s *Server) run() {
 		case <-s.Ticker:
 			s.Node.Tick()
 		case rd := <-s.Node.Ready():
-			s.Save(rd.State, rd.Entries)
+			s.Storage.Save(rd.State, rd.Entries)
+			//s.Save(rd.State, rd.Entries)
 			s.Send(rd.Messages)
 
 			// TODO(bmizerany): do this in the background, but take

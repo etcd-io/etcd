@@ -32,6 +32,9 @@ type Ready struct {
 	// Messages specifies outbound messages to be sent AFTER Entries are
 	// committed to stable storage.
 	Messages []pb.Message
+
+	// Snapshot specifies the snapshot to be saved to stable storage.
+	Snapshot pb.Snapshot
 }
 
 func isStateEqual(a, b pb.State) bool {
@@ -40,6 +43,10 @@ func isStateEqual(a, b pb.State) bool {
 
 func IsEmptyState(st pb.State) bool {
 	return isStateEqual(st, emptyState)
+}
+
+func IsEmptySnap(sp pb.Snapshot) bool {
+	return sp.Index == 0
 }
 
 func (rd Ready) containsUpdates() bool {
@@ -91,6 +98,7 @@ func (n *Node) run(r *raft) {
 
 	var lead int64
 	prevSt := r.State
+	prevSnapi := r.raftLog.snapshot.Index
 
 	for {
 		if lead != r.lead {
@@ -103,7 +111,7 @@ func (n *Node) run(r *raft) {
 			}
 		}
 
-		rd := newReady(r, prevSt)
+		rd := newReady(r, prevSt, prevSnapi)
 		if rd.containsUpdates() {
 			readyc = n.readyc
 		} else {
@@ -123,6 +131,9 @@ func (n *Node) run(r *raft) {
 			r.raftLog.resetUnstable()
 			if !IsEmptyState(rd.State) {
 				prevSt = rd.State
+			}
+			if !IsEmptySnap(rd.Snapshot) {
+				prevSnapi = rd.Snapshot.Index
 			}
 			r.msgs = nil
 		case <-n.done:
@@ -172,7 +183,7 @@ func (n *Node) Ready() <-chan Ready {
 	return n.readyc
 }
 
-func newReady(r *raft, prev pb.State) Ready {
+func newReady(r *raft, prev pb.State, prevSnapi int64) Ready {
 	rd := Ready{
 		Entries:          r.raftLog.unstableEnts(),
 		CommittedEntries: r.raftLog.nextEnts(),
@@ -180,6 +191,9 @@ func newReady(r *raft, prev pb.State) Ready {
 	}
 	if !isStateEqual(r.State, prev) {
 		rd.State = r.State
+	}
+	if prevSnapi != r.raftLog.snapshot.Index {
+		rd.Snapshot = r.raftLog.snapshot
 	}
 	return rd
 }
