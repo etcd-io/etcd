@@ -57,7 +57,13 @@ func (ps *Peers) Set(s string) error {
 }
 
 func (ps *Peers) String() string {
-	return "todo"
+	v := url.Values{}
+	for k, vv := range *ps {
+		for i := range vv {
+			v.Add(strconv.FormatInt(k, 16), vv[i])
+		}
+	}
+	return v.Encode()
 }
 
 func (ps Peers) Ids() []int64 {
