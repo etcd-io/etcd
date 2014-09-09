@@ -178,10 +178,7 @@ func newReady(r *raft, prev pb.State) Ready {
 		CommittedEntries: r.raftLog.nextEnts(),
 		Messages:         r.msgs,
 	}
-
-	if isStateEqual(r.State, prev) {
-		rd.State = emptyState
-	} else {
+	if !isStateEqual(r.State, prev) {
 		rd.State = r.State
 	}
 	return rd
