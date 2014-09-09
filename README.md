@@ -1,5 +1,7 @@
 # etcd
 
+[![Build Status](https://travis-ci.org/coreos/etcd.png?branch=master)](https://travis-ci.org/coreos/etcd)
+
 ### WARNING ###
 
 The current `master` branch of etcd is under heavy development in anticipation of the forthcoming 0.5.0 release. 
