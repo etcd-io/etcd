@@ -43,7 +43,7 @@ func IsEmptyState(st pb.State) bool {
 }
 
 func (rd Ready) containsUpdates() bool {
-	return !isStateEqual(emptyState, rd.State) || len(rd.Entries) > 0 || len(rd.CommittedEntries) > 0 || len(rd.Messages) > 0
+	return !IsEmptyState(rd.State) || len(rd.Entries) > 0 || len(rd.CommittedEntries) > 0 || len(rd.Messages) > 0
 }
 
 type Node struct {
