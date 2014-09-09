@@ -46,7 +46,7 @@ func TestBadParseRequest(t *testing.T) {
 	for i, tt := range tests {
 		got, err := parseRequest(tt.in, 1234)
 		if err == nil {
-			t.Errorf("case %d: unexpected nil error!")
+			t.Errorf("case %d: unexpected nil error!", i)
 		}
 		if !reflect.DeepEqual(got, etcdserverpb.Request{}) {
 			t.Errorf("case %d: unexpected non-empty Request: %#v", i, got)
@@ -179,7 +179,6 @@ func (w *eventingWatcher) Remove() {}
 
 func TestEncodeResponse(t *testing.T) {
 	tests := []struct {
-		ctx  context.Context
 		resp etcdserver.Response
 		idx  string
 		code int
@@ -187,7 +186,6 @@ func TestEncodeResponse(t *testing.T) {
 	}{
 		// standard case, standard 200 response
 		{
-			context.Background(),
 			etcdserver.Response{
 				Event: &store.Event{
 					Action:   store.Get,
@@ -202,7 +200,6 @@ func TestEncodeResponse(t *testing.T) {
 		},
 		// check new nodes return StatusCreated
 		{
-			context.Background(),
 			etcdserver.Response{
 				Event: &store.Event{
 					Action:   store.Create,
@@ -216,7 +213,6 @@ func TestEncodeResponse(t *testing.T) {
 			nil,
 		},
 		{
-			context.Background(),
 			etcdserver.Response{
 				Watcher: &eventingWatcher{store.Create},
 			},
@@ -228,7 +224,7 @@ func TestEncodeResponse(t *testing.T) {
 
 	for i, tt := range tests {
 		rw := httptest.NewRecorder()
-		err := encodeResponse(tt.ctx, rw, tt.resp)
+		err := encodeResponse(context.Background(), rw, tt.resp)
 		if err != tt.err {
 			t.Errorf("case %d: unexpected err: got %v, want %v", i, err, tt.err)
 			continue
