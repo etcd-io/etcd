@@ -17,6 +17,7 @@ limitations under the License.
 package wal
 
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -320,5 +321,19 @@ func TestRecoverAfterCut(t *testing.T) {
 				t.Errorf("#%d: ents[%d].Index = %+v, want %+v", i, j, e.Index, j+i+1)
 			}
 		}
+	}
+}
+
+func TestSaveEmpty(t *testing.T) {
+	var buf bytes.Buffer
+	var est raftpb.State
+	w := WAL{
+		encoder: newEncoder(&buf, 0),
+	}
+	if err := w.SaveState(&est); err != nil {
+		t.Errorf("err = %v, want nil", err)
+	}
+	if len(buf.Bytes()) != 0 {
+		t.Errorf("buf.Bytes = %d, want 0", len(buf.Bytes()))
 	}
 }
