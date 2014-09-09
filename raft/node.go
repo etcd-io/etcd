@@ -38,8 +38,8 @@ func isStateEqual(a, b pb.State) bool {
 	return a.Term == b.Term && a.Vote == b.Vote && a.LastIndex == b.LastIndex
 }
 
-func (rd Ready) containsUpdates(prevSt pb.State) bool {
-	return !isStateEqual(prevSt, rd.State) || len(rd.Entries) > 0 || len(rd.CommittedEntries) > 0 || len(rd.Messages) > 0
+func (rd Ready) containsUpdates() bool {
+	return !isStateEqual(EmptyState, rd.State) || len(rd.Entries) > 0 || len(rd.CommittedEntries) > 0 || len(rd.Messages) > 0
 }
 
 type Node struct {
@@ -100,13 +100,18 @@ func (n *Node) run(r *raft) {
 		}
 
 		rd := Ready{
-			r.State,
-			r.raftLog.unstableEnts(),
-			r.raftLog.nextEnts(),
-			r.msgs,
+			Entries:          r.raftLog.unstableEnts(),
+			CommittedEntries: r.raftLog.nextEnts(),
+			Messages:         r.msgs,
 		}
 
-		if rd.containsUpdates(prevSt) {
+		if isStateEqual(r.State, prevSt) {
+			rd.State = EmptyState
+		} else {
+			rd.State = r.State
+		}
+
+		if rd.containsUpdates() {
 			readyc = n.readyc
 		} else {
 			readyc = nil
@@ -123,7 +128,9 @@ func (n *Node) run(r *raft) {
 		case readyc <- rd:
 			r.raftLog.resetNextEnts()
 			r.raftLog.resetUnstable()
-			prevSt = rd.State
+			if !isStateEqual(rd.State, EmptyState) {
+				prevSt = rd.State
+			}
 			r.msgs = nil
 		case <-n.done:
 			return

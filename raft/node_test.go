@@ -51,7 +51,7 @@ func TestNodeRestart(t *testing.T) {
 	st := raftpb.State{Term: 1, Vote: -1, Commit: 1, LastIndex: 2}
 
 	want := Ready{
-		State: st,
+		State: EmptyState,
 		// commit upto index commit index in st
 		CommittedEntries: entries[:st.Commit],
 	}
