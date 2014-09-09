@@ -204,7 +204,7 @@ func (h Handler) serveKeys(ctx context.Context, w http.ResponseWriter, r *http.R
 // TODO: rethink the format of machine list because it is not json format.
 func (h Handler) serveMachines(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" && r.Method != "HEAD" {
-		w.WriteHeader(http.StatusMethodNotAllowed)
+		allow(w, "GET", "HEAD")
 		return
 	}
 	urls := make([]string, 0)
@@ -348,4 +348,10 @@ func waitForEvent(ctx context.Context, w http.ResponseWriter, wa store.Watcher) 
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	}
+}
+
+// allow writes response for the case that Method Not Allowed
+func allow(w http.ResponseWriter, m ...string) {
+	w.Header().Set("Allow", strings.Join(m, ","))
+	http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 }

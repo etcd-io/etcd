@@ -363,7 +363,7 @@ func TestV2MachinesEndpoint(t *testing.T) {
 	defer s.Close()
 
 	for _, tt := range tests {
-		req, _ := http.NewRequest(tt.method, s.URL + machinesPrefix, nil)
+		req, _ := http.NewRequest(tt.method, s.URL+machinesPrefix, nil)
 		resp, err := http.DefaultClient.Do(req)
 		if err != nil {
 			t.Fatal(err)
@@ -385,7 +385,7 @@ func TestServeMachines(t *testing.T) {
 	h.serveMachines(writer, req)
 	w := "http://localhost:8080, http://localhost:8081, http://localhost:8082"
 	if g := writer.Body.String(); g != w {
-		t.Errorf("data = %s, want %s", g, w)
+		t.Errorf("body = %s, want %s", g, w)
 	}
 	if writer.Code != http.StatusOK {
 		t.Errorf("header = %d, want %d", writer.Code, http.StatusOK)
