@@ -25,17 +25,18 @@ func testServer(t *testing.T, ns int64) {
 	send := func(msgs []raftpb.Message) {
 		for _, m := range msgs {
 			t.Logf("m = %+v\n", m)
-			ss[m.To].Node.Step(ctx, m)
+			ss[m.To-0x1000].Node.Step(ctx, m)
 		}
 	}
 
 	peers := make([]int64, ns)
 	for i := int64(0); i < ns; i++ {
-		peers[i] = i
+		peers[i] = 0x1000 + i
 	}
 
 	for i := int64(0); i < ns; i++ {
-		n := raft.Start(i, peers, 10, 1)
+		id := 0x1000 + i
+		n := raft.Start(id, peers, 10, 1)
 		tk := time.NewTicker(10 * time.Millisecond)
 		defer tk.Stop()
 		srv := &Server{
@@ -51,6 +52,11 @@ func testServer(t *testing.T, ns int64) {
 		time.Sleep(1 * time.Millisecond)
 		ss[i] = srv
 	}
+
+	// TODO: find fast way to trigger leader election
+	// TODO: introduce the way to know that the leader has been elected
+	// then remove this sleep.
+	time.Sleep(110 * time.Millisecond)
 
 	for i := 1; i <= 10; i++ {
 		r := pb.Request{
