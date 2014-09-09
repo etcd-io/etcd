@@ -203,6 +203,10 @@ func (h Handler) serveKeys(ctx context.Context, w http.ResponseWriter, r *http.R
 // serveMachines responds address list in the format '0.0.0.0, 1.1.1.1'.
 // TODO: rethink the format of machine list because it is not json format.
 func (h Handler) serveMachines(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" && r.Method != "HEAD" {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
 	urls := make([]string, 0)
 	for _, addrs := range h.Peers {
 		for _, addr := range addrs {

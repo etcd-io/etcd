@@ -349,18 +349,29 @@ func TestWaitForEventCancelledContext(t *testing.T) {
 }
 
 func TestV2MachinesEndpoint(t *testing.T) {
-	h := Handler{Peers: Peers{}}
+	tests := []struct {
+		method string
+		wcode  int
+	}{
+		{"GET", http.StatusOK},
+		{"HEAD", http.StatusOK},
+		{"POST", http.StatusMethodNotAllowed},
+	}
 
+	h := Handler{Peers: Peers{}}
 	s := httptest.NewServer(h)
 	defer s.Close()
 
-	resp, err := http.Get(s.URL + machinesPrefix)
-	if err != nil {
-		t.Fatal(err)
-	}
+	for _, tt := range tests {
+		req, _ := http.NewRequest(tt.method, s.URL + machinesPrefix, nil)
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
 
-	if resp.StatusCode != http.StatusOK {
-		t.Errorf("StatusCode = %d, expected %d", resp.StatusCode, http.StatusOK)
+		if resp.StatusCode != tt.wcode {
+			t.Errorf("StatusCode = %d, expected %d", resp.StatusCode, tt.wcode)
+		}
 	}
 }
 
@@ -370,7 +381,8 @@ func TestServeMachines(t *testing.T) {
 	h := Handler{Peers: peers}
 
 	writer := httptest.NewRecorder()
-	h.serveMachines(writer, nil)
+	req, _ := http.NewRequest("GET", "", nil)
+	h.serveMachines(writer, req)
 	w := "http://localhost:8080, http://localhost:8081, http://localhost:8082"
 	if g := writer.Body.String(); g != w {
 		t.Errorf("data = %s, want %s", g, w)
