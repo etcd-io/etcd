@@ -347,3 +347,47 @@ func TestWaitForEventCancelledContext(t *testing.T) {
 		t.Fatalf("nil err returned with cancelled context!")
 	}
 }
+
+func TestV2MachinesEndpoint(t *testing.T) {
+	tests := []struct {
+		method string
+		wcode  int
+	}{
+		{"GET", http.StatusOK},
+		{"HEAD", http.StatusOK},
+		{"POST", http.StatusMethodNotAllowed},
+	}
+
+	h := Handler{Peers: Peers{}}
+	s := httptest.NewServer(h)
+	defer s.Close()
+
+	for _, tt := range tests {
+		req, _ := http.NewRequest(tt.method, s.URL+machinesPrefix, nil)
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if resp.StatusCode != tt.wcode {
+			t.Errorf("StatusCode = %d, expected %d", resp.StatusCode, tt.wcode)
+		}
+	}
+}
+
+func TestServeMachines(t *testing.T) {
+	peers := Peers{}
+	peers.Set("0xBEEF0=localhost:8080&0xBEEF1=localhost:8081&0xBEEF2=localhost:8082")
+	h := Handler{Peers: peers}
+
+	writer := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "", nil)
+	h.serveMachines(writer, req)
+	w := "http://localhost:8080, http://localhost:8081, http://localhost:8082"
+	if g := writer.Body.String(); g != w {
+		t.Errorf("body = %s, want %s", g, w)
+	}
+	if writer.Code != http.StatusOK {
+		t.Errorf("header = %d, want %d", writer.Code, http.StatusOK)
+	}
+}
