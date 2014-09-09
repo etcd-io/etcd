@@ -158,7 +158,7 @@ func TestRecover(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	i := &raftpb.Info{Id: int64(0xBEEF)}
+	i := &raftpb.Info{Id: int64(0xBAD0)}
 	if err = w.SaveInfo(i); err != nil {
 		t.Fatal(err)
 	}
@@ -275,7 +275,7 @@ func TestRecoverAfterCut(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	info := &raftpb.Info{Id: int64(0xBEEF)}
+	info := &raftpb.Info{Id: int64(0xBAD1)}
 	if err = w.SaveInfo(info); err != nil {
 		t.Fatal(err)
 	}
