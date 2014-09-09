@@ -215,7 +215,7 @@ func (h Handler) serveMachines(w http.ResponseWriter, r *http.Request) {
 			urls = append(urls, addScheme(addr))
 		}
 	}
-	sort.Sort(sort.StringSlice(urls))
+	sort.Strings(urls)
 	w.Write([]byte(strings.Join(urls, ", ")))
 }
 
