@@ -26,6 +26,8 @@ func mustNewURL(t *testing.T, s string) *url.URL {
 	return u
 }
 
+// mustNewRequest takes a path, appends it to the standard keysPrefix, and constructs
+// an *http.Request referencing the resulting URL
 func mustNewRequest(t *testing.T, p string) *http.Request {
 	return &http.Request{
 		URL: mustNewURL(t, path.Join(keysPrefix, p)),
@@ -38,7 +40,7 @@ func TestParseBool(t *testing.T) {
 		t.Fatalf("got %t, want %t", got, false)
 	}
 	if err != nil {
-		t.Fatalf("got err=%v, want err=%v", err, nil)
+		t.Fatalf("err = %v, want %v", err, nil)
 	}
 }
 
@@ -48,7 +50,7 @@ func TestParseUint64(t *testing.T) {
 		t.Fatalf("got %d, want %d", got, 0)
 	}
 	if err != nil {
-		t.Fatalf("got err=%v, want err=%v", err, nil)
+		t.Fatalf("err = %v, want %v", err, nil)
 	}
 }
 
@@ -70,46 +72,20 @@ func TestBadParseRequest(t *testing.T) {
 			},
 		},
 		// bad values for prevIndex, waitIndex, ttl
-		{
-			mustNewRequest(t, "?prevIndex=foo"),
-		},
-		{
-			mustNewRequest(t, "?prevIndex=1.5"),
-		},
-		{
-			mustNewRequest(t, "?prevIndex=-1"),
-		},
-		{
-			mustNewRequest(t, "?waitIndex=garbage"),
-		},
-		{
-			mustNewRequest(t, "?waitIndex=??"),
-		},
-		{
-			mustNewRequest(t, "?ttl=-1"),
-		},
+		{mustNewRequest(t, "?prevIndex=foo")},
+		{mustNewRequest(t, "?prevIndex=1.5")},
+		{mustNewRequest(t, "?prevIndex=-1")},
+		{mustNewRequest(t, "?waitIndex=garbage")},
+		{mustNewRequest(t, "?waitIndex=??")},
+		{mustNewRequest(t, "?ttl=-1")},
 		// bad values for recursive, sorted, wait
-		{
-			mustNewRequest(t, "?recursive=hahaha"),
-		},
-		{
-			mustNewRequest(t, "?recursive=1234"),
-		},
-		{
-			mustNewRequest(t, "?recursive=?"),
-		},
-		{
-			mustNewRequest(t, "?sorted=hahaha"),
-		},
-		{
-			mustNewRequest(t, "?sorted=!!"),
-		},
-		{
-			mustNewRequest(t, "?wait=notreally"),
-		},
-		{
-			mustNewRequest(t, "?wait=what!"),
-		},
+		{mustNewRequest(t, "?recursive=hahaha")},
+		{mustNewRequest(t, "?recursive=1234")},
+		{mustNewRequest(t, "?recursive=?")},
+		{mustNewRequest(t, "?sorted=hahaha")},
+		{mustNewRequest(t, "?sorted=!!")},
+		{mustNewRequest(t, "?wait=notreally")},
+		{mustNewRequest(t, "?wait=what!")},
 	}
 	for i, tt := range tests {
 		got, err := parseRequest(tt.in, 1234)
@@ -243,9 +219,9 @@ func TestWriteInternalError(t *testing.T) {
 	}
 
 	tests := []struct {
-		err  error
-		code int
-		idx  string
+		err   error
+		wcode int
+		wi    string
 	}{
 		{
 			etcdErr.NewError(etcdErr.EcodeKeyNotFound, "/foo/bar", 123),
@@ -258,19 +234,19 @@ func TestWriteInternalError(t *testing.T) {
 			"456",
 		},
 		{
-			err:  errors.New("something went wrong"),
-			code: http.StatusInternalServerError,
+			err:   errors.New("something went wrong"),
+			wcode: http.StatusInternalServerError,
 		},
 	}
 
 	for i, tt := range tests {
 		rw := httptest.NewRecorder()
 		writeInternalError(rw, tt.err)
-		if code := rw.Code; code != tt.code {
-			t.Errorf("#%d: got %d, want %d", i, code, tt.code)
+		if code := rw.Code; code != tt.wcode {
+			t.Errorf("#%d: code=%d, want %d", i, code, tt.wcode)
 		}
-		if idx := rw.Header().Get("X-Etcd-Index"); idx != tt.idx {
-			t.Errorf("#%d: got %q, want %q", i, idx, tt.idx)
+		if idx := rw.Header().Get("X-Etcd-Index"); idx != tt.wi {
+			t.Errorf("#%d: X-Etcd-Index=%q, want %q", i, idx, tt.wi)
 		}
 	}
 }

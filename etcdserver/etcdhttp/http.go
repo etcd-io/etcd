@@ -195,8 +195,7 @@ func (h Handler) serveKeys(ctx context.Context, w http.ResponseWriter, r *http.R
 	case resp.Event != nil:
 		ev = resp.Event
 	case resp.Watcher != nil:
-		ev, err = waitForEvent(ctx, w, resp.Watcher)
-		if err != nil {
+		if ev, err = waitForEvent(ctx, w, resp.Watcher); err != nil {
 			http.Error(w, err.Error(), http.StatusGatewayTimeout)
 			return
 		}
