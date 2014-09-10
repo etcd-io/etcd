@@ -1,6 +1,7 @@
 package etcdhttp
 
 import (
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -9,7 +10,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/coreos/etcd/etcdserver"
+	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/store"
 	"github.com/coreos/etcd/third_party/code.google.com/p/go.net/context"
@@ -23,6 +24,12 @@ func mustNewURL(t *testing.T, s string) *url.URL {
 		t.Fatalf("error creating URL from %q: %v", s, err)
 	}
 	return u
+}
+
+func mustNewRequest(t *testing.T, p string) *http.Request {
+	return &http.Request{
+		URL: mustNewURL(t, path.Join(keysPrefix, p)),
+	}
 }
 
 func TestBadParseRequest(t *testing.T) {
@@ -41,6 +48,47 @@ func TestBadParseRequest(t *testing.T) {
 			&http.Request{
 				URL: mustNewURL(t, "/badprefix/"),
 			},
+		},
+		// bad values for prevIndex, waitIndex, ttl
+		{
+			mustNewRequest(t, "?prevIndex=foo"),
+		},
+		{
+			mustNewRequest(t, "?prevIndex=1.5"),
+		},
+		{
+			mustNewRequest(t, "?prevIndex=-1"),
+		},
+		{
+			mustNewRequest(t, "?waitIndex=garbage"),
+		},
+		{
+			mustNewRequest(t, "?waitIndex=??"),
+		},
+		{
+			mustNewRequest(t, "?ttl=-1"),
+		},
+		// bad values for recursive, sorted, wait
+		{
+			mustNewRequest(t, "?recursive=hahaha"),
+		},
+		{
+			mustNewRequest(t, "?recursive=1234"),
+		},
+		{
+			mustNewRequest(t, "?recursive=?"),
+		},
+		{
+			mustNewRequest(t, "?sorted=hahaha"),
+		},
+		{
+			mustNewRequest(t, "?sorted=!!"),
+		},
+		{
+			mustNewRequest(t, "?wait=notreally"),
+		},
+		{
+			mustNewRequest(t, "?wait=what!"),
 		},
 	}
 	for i, tt := range tests {
@@ -61,9 +109,7 @@ func TestGoodParseRequest(t *testing.T) {
 	}{
 		{
 			// good prefix, all other values default
-			&http.Request{
-				URL: mustNewURL(t, path.Join(keysPrefix, "foo")),
-			},
+			mustNewRequest(t, "foo"),
 			etcdserverpb.Request{
 				Id:   1234,
 				Path: "/foo",
@@ -71,9 +117,7 @@ func TestGoodParseRequest(t *testing.T) {
 		},
 		{
 			// value specified
-			&http.Request{
-				URL: mustNewURL(t, path.Join(keysPrefix, "foo?value=some_value")),
-			},
+			mustNewRequest(t, "foo?value=some_value"),
 			etcdserverpb.Request{
 				Id:   1234,
 				Val:  "some_value",
@@ -82,9 +126,7 @@ func TestGoodParseRequest(t *testing.T) {
 		},
 		{
 			// prevIndex specified
-			&http.Request{
-				URL: mustNewURL(t, path.Join(keysPrefix, "foo?prevIndex=98765")),
-			},
+			mustNewRequest(t, "foo?prevIndex=98765"),
 			etcdserverpb.Request{
 				Id:        1234,
 				PrevIndex: 98765,
@@ -93,9 +135,7 @@ func TestGoodParseRequest(t *testing.T) {
 		},
 		{
 			// recursive specified
-			&http.Request{
-				URL: mustNewURL(t, path.Join(keysPrefix, "foo?recursive=true")),
-			},
+			mustNewRequest(t, "foo?recursive=true"),
 			etcdserverpb.Request{
 				Id:        1234,
 				Recursive: true,
@@ -104,9 +144,7 @@ func TestGoodParseRequest(t *testing.T) {
 		},
 		{
 			// sorted specified
-			&http.Request{
-				URL: mustNewURL(t, path.Join(keysPrefix, "foo?sorted=true")),
-			},
+			mustNewRequest(t, "foo?sorted=true"),
 			etcdserverpb.Request{
 				Id:     1234,
 				Sorted: true,
@@ -115,9 +153,7 @@ func TestGoodParseRequest(t *testing.T) {
 		},
 		{
 			// wait specified
-			&http.Request{
-				URL: mustNewURL(t, path.Join(keysPrefix, "foo?wait=true")),
-			},
+			mustNewRequest(t, "foo?wait=true"),
 			etcdserverpb.Request{
 				Id:   1234,
 				Wait: true,
@@ -126,9 +162,7 @@ func TestGoodParseRequest(t *testing.T) {
 		},
 		{
 			// prevExists should be non-null if specified
-			&http.Request{
-				URL: mustNewURL(t, path.Join(keysPrefix, "foo?prevExists=true")),
-			},
+			mustNewRequest(t, "foo?prevExists=true"),
 			etcdserverpb.Request{
 				Id:         1234,
 				PrevExists: boolp(true),
@@ -137,9 +171,7 @@ func TestGoodParseRequest(t *testing.T) {
 		},
 		{
 			// prevExists should be non-null if specified
-			&http.Request{
-				URL: mustNewURL(t, path.Join(keysPrefix, "foo?prevExists=false")),
-			},
+			mustNewRequest(t, "foo?prevExists=false"),
 			etcdserverpb.Request{
 				Id:         1234,
 				PrevExists: boolp(false),
@@ -177,22 +209,77 @@ func (w *eventingWatcher) EventChan() chan *store.Event {
 
 func (w *eventingWatcher) Remove() {}
 
-func TestEncodeResponse(t *testing.T) {
+func TestWriteInternalError(t *testing.T) {
+	// nil error should not panic
+	rw := httptest.NewRecorder()
+	writeInternalError(rw, nil)
+	h := rw.Header()
+	if len(h) > 0 {
+		t.Fatalf("unexpected non-empty headers: %#v", h)
+	}
+	b := rw.Body.String()
+	if len(b) > 0 {
+		t.Fatalf("unexpected non-empty body: %q", b)
+	}
+
 	tests := []struct {
-		resp etcdserver.Response
+		err  error
+		code int
+		idx  string
+	}{
+		{
+			etcdErr.NewError(etcdErr.EcodeKeyNotFound, "/foo/bar", 123),
+			http.StatusNotFound,
+			"123",
+		},
+		{
+			etcdErr.NewError(etcdErr.EcodeTestFailed, "/foo/bar", 456),
+			http.StatusPreconditionFailed,
+			"456",
+		},
+		{
+			err:  errors.New("something went wrong"),
+			code: http.StatusInternalServerError,
+		},
+	}
+
+	for i, tt := range tests {
+		rw := httptest.NewRecorder()
+		writeInternalError(rw, tt.err)
+		if code := rw.Code; code != tt.code {
+			t.Errorf("#%d: got %d, want %d", i, code, tt.code)
+		}
+		if idx := rw.Header().Get("X-Etcd-Index"); idx != tt.idx {
+			t.Errorf("#%d: got %q, want %q", i, idx, tt.idx)
+		}
+	}
+}
+
+func TestWriteEvent(t *testing.T) {
+	// nil event should not panic
+	rw := httptest.NewRecorder()
+	writeEvent(rw, nil)
+	h := rw.Header()
+	if len(h) > 0 {
+		t.Fatalf("unexpected non-empty headers: %#v", h)
+	}
+	b := rw.Body.String()
+	if len(b) > 0 {
+		t.Fatalf("unexpected non-empty body: %q", b)
+	}
+
+	tests := []struct {
+		ev   *store.Event
 		idx  string
 		code int
 		err  error
 	}{
 		// standard case, standard 200 response
 		{
-			etcdserver.Response{
-				Event: &store.Event{
-					Action:   store.Get,
-					Node:     &store.NodeExtern{},
-					PrevNode: &store.NodeExtern{},
-				},
-				Watcher: nil,
+			&store.Event{
+				Action:   store.Get,
+				Node:     &store.NodeExtern{},
+				PrevNode: &store.NodeExtern{},
 			},
 			"0",
 			http.StatusOK,
@@ -200,21 +287,10 @@ func TestEncodeResponse(t *testing.T) {
 		},
 		// check new nodes return StatusCreated
 		{
-			etcdserver.Response{
-				Event: &store.Event{
-					Action:   store.Create,
-					Node:     &store.NodeExtern{},
-					PrevNode: &store.NodeExtern{},
-				},
-				Watcher: nil,
-			},
-			"0",
-			http.StatusCreated,
-			nil,
-		},
-		{
-			etcdserver.Response{
-				Watcher: &eventingWatcher{store.Create},
+			&store.Event{
+				Action:   store.Create,
+				Node:     &store.NodeExtern{},
+				PrevNode: &store.NodeExtern{},
 			},
 			"0",
 			http.StatusCreated,
@@ -224,20 +300,13 @@ func TestEncodeResponse(t *testing.T) {
 
 	for i, tt := range tests {
 		rw := httptest.NewRecorder()
-		err := encodeResponse(context.Background(), rw, tt.resp)
-		if err != tt.err {
-			t.Errorf("case %d: unexpected err: got %v, want %v", i, err, tt.err)
-			continue
-		}
-
+		writeEvent(rw, tt.ev)
 		if gct := rw.Header().Get("Content-Type"); gct != "application/json" {
 			t.Errorf("case %d: bad Content-Type: got %q, want application/json", i, gct)
 		}
-
 		if gei := rw.Header().Get("X-Etcd-Index"); gei != tt.idx {
 			t.Errorf("case %d: bad X-Etcd-Index header: got %s, want %s", i, gei, tt.idx)
 		}
-
 		if rw.Code != tt.code {
 			t.Errorf("case %d: bad response code: got %d, want %v", i, rw.Code, tt.code)
 		}

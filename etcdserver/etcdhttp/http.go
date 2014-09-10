@@ -20,7 +20,7 @@ import (
 	"math/rand"
 
 	"github.com/coreos/etcd/elog"
-	etcderrors "github.com/coreos/etcd/error"
+	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/raft/raftpb"
@@ -32,6 +32,8 @@ const (
 	keysPrefix     = "/v2/keys"
 	machinesPrefix = "/v2/machines"
 )
+
+var emptyReq = etcdserverpb.Request{}
 
 type Peers map[int64][]string
 
@@ -178,28 +180,32 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (h Handler) serveKeys(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	rr, err := parseRequest(r, genId())
 	if err != nil {
-		log.Println(err) // reading of body failed
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	resp, err := h.Server.Do(ctx, rr)
-	switch e := err.(type) {
-	case nil:
-	case *etcderrors.Error:
-		// TODO: gross. this should be handled in encodeResponse
-		log.Println(err)
-		e.Write(w)
-		return
-	default:
-		log.Println(err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	if err != nil {
+		writeInternalError(w, err)
 		return
 	}
 
-	if err := encodeResponse(ctx, w, resp); err != nil {
-		http.Error(w, "Timeout while waiting for response", http.StatusGatewayTimeout)
+	var ev *store.Event
+	switch {
+	case resp.Event != nil:
+		ev = resp.Event
+	case resp.Watcher != nil:
+		ev, err = waitForEvent(ctx, w, resp.Watcher)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusGatewayTimeout)
+			return
+		}
+	default:
+		writeInternalError(w, errors.New("received response with no Event/Watcher!"))
 		return
 	}
+
+	writeEvent(w, ev)
 }
 
 // serveMachines responds address list in the format '0.0.0.0, 1.1.1.1'.
@@ -249,38 +255,60 @@ func genId() int64 {
 }
 
 func parseRequest(r *http.Request, id int64) (etcdserverpb.Request, error) {
-	if err := r.ParseForm(); err != nil {
-		return etcdserverpb.Request{}, err
-	}
-	if !strings.HasPrefix(r.URL.Path, keysPrefix) {
-		return etcdserverpb.Request{}, errors.New("unexpected key prefix!")
+	var err error
+
+	if err = r.ParseForm(); err != nil {
+		return emptyReq, err
 	}
 
+	if !strings.HasPrefix(r.URL.Path, keysPrefix) {
+		return emptyReq, errors.New("unexpected key prefix!")
+	}
+	path := r.URL.Path[len(keysPrefix):]
+
 	q := r.URL.Query()
-	// TODO(jonboulle): perform strict validation of all parameters
-	// https://github.com/coreos/etcd/issues/1011
+
+	var pIdx, wIdx, ttl uint64
+	if pIdx, err = parseUint64(q.Get("prevIndex")); err != nil {
+		return emptyReq, errors.New("invalid value for prevIndex")
+	}
+	if wIdx, err = parseUint64(q.Get("waitIndex")); err != nil {
+		return emptyReq, errors.New("invalid value for waitIndex")
+	}
+	if ttl, err = parseUint64(q.Get("ttl")); err != nil {
+		return emptyReq, errors.New("invalid value for ttl")
+	}
+
+	var rec, sort, wait bool
+	if rec, err = parseBool(q.Get("recursive")); err != nil {
+		return emptyReq, errors.New("invalid value for recursive")
+	}
+	if sort, err = parseBool(q.Get("sorted")); err != nil {
+		return emptyReq, errors.New("invalid value for sorted")
+	}
+	if wait, err = parseBool(q.Get("wait")); err != nil {
+		return emptyReq, errors.New("invalid value for wait")
+	}
+
 	rr := etcdserverpb.Request{
 		Id:        id,
 		Method:    r.Method,
 		Val:       r.FormValue("value"),
-		Path:      r.URL.Path[len(keysPrefix):],
+		Path:      path,
 		PrevValue: q.Get("prevValue"),
-		PrevIndex: parseUint64(q.Get("prevIndex")),
-		Recursive: parseBool(q.Get("recursive")),
-		Since:     parseUint64(q.Get("waitIndex")),
-		Sorted:    parseBool(q.Get("sorted")),
-		Wait:      parseBool(q.Get("wait")),
+		PrevIndex: pIdx,
+		Recursive: rec,
+		Since:     wIdx,
+		Sorted:    sort,
+		Wait:      wait,
 	}
 
-	// PrevExists is nullable, so we leave it null if prevExist wasn't
-	// specified.
-	_, ok := q["prevExists"]
-	if ok {
-		bv := parseBool(q.Get("prevExists"))
+	// prevExists is nullable, so leave it null if not specified
+	if _, ok := q["prevExists"]; ok {
+		bv, _ := parseBool(q.Get("prevExists"))
 		rr.PrevExists = &bv
 	}
 
-	ttl := parseUint64(q.Get("ttl"))
 	if ttl > 0 {
 		expr := time.Duration(ttl) * time.Second
 		// TODO(jonboulle): use fake clock instead of time module
@@ -291,32 +319,40 @@ func parseRequest(r *http.Request, id int64) (etcdserverpb.Request, error) {
 	return rr, nil
 }
 
-func parseBool(s string) bool {
-	v, _ := strconv.ParseBool(s)
-	return v
-}
-
-func parseUint64(s string) uint64 {
-	v, _ := strconv.ParseUint(s, 10, 64)
-	return v
-}
-
-// encodeResponse serializes the given etcdserver Response and writes the
-// resulting JSON to the given ResponseWriter, utilizing the provided context
-func encodeResponse(ctx context.Context, w http.ResponseWriter, resp etcdserver.Response) (err error) {
-	var ev *store.Event
-	switch {
-	case resp.Event != nil:
-		ev = resp.Event
-	case resp.Watcher != nil:
-		ev, err = waitForEvent(ctx, w, resp.Watcher)
-		if err != nil {
-			return err
-		}
-	default:
-		panic("should not be reachable")
+func parseBool(s string) (bool, error) {
+	if s == "" {
+		return false, nil
 	}
+	return strconv.ParseBool(s)
+}
 
+func parseUint64(s string) (uint64, error) {
+	if s == "" {
+		return 0, nil
+	}
+	return strconv.ParseUint(s, 10, 64)
+}
+
+// writeInternalError logs and writes the given Error to the ResponseWriter
+// If Error is an etcdErr, it is rendered to the ResponseWriter
+func writeInternalError(w http.ResponseWriter, err error) {
+	if err == nil {
+		return
+	}
+	log.Println(err)
+	if e, ok := err.(*etcdErr.Error); ok {
+		e.Write(w)
+	} else {
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
+}
+
+// writeEvent serializes the given Event and writes the resulting JSON to the
+// given ResponseWriter
+func writeEvent(w http.ResponseWriter, ev *store.Event) {
+	if ev == nil {
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Add("X-Etcd-Index", fmt.Sprint(ev.Index()))
 
@@ -327,10 +363,9 @@ func encodeResponse(ctx context.Context, w http.ResponseWriter, resp etcdserver.
 	if err := json.NewEncoder(w).Encode(ev); err != nil {
 		panic(err) // should never be reached
 	}
-	return nil
 }
 
-// waitForEvent waits for a given watcher to return its associated
+// waitForEvent waits for a given Watcher to return its associated
 // event. It returns a non-nil error if the given Context times out
 // or the given ResponseWriter triggers a CloseNotify.
 func waitForEvent(ctx context.Context, w http.ResponseWriter, wa store.Watcher) (*store.Event, error) {
@@ -340,7 +375,6 @@ func waitForEvent(ctx context.Context, w http.ResponseWriter, wa store.Watcher) 
 	if x, ok := w.(http.CloseNotifier); ok {
 		nch = x.CloseNotify()
 	}
-
 	select {
 	case ev := <-wa.EventChan():
 		return ev, nil
