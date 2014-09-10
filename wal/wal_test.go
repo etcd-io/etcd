@@ -32,7 +32,7 @@ var (
 	infoData   = []byte("\b\xef\xfd\x02")
 	infoRecord = append([]byte("\x0e\x00\x00\x00\x00\x00\x00\x00\b\x01\x10\x99\xb5\xe4\xd0\x03\x1a\x04"), infoData...)
 
-	firstWalName = "0000000000000000-0000000000000000.wal"
+	firstWalName = "0000000000000000-0000000000000001.wal"
 )
 
 func TestNew(t *testing.T) {
@@ -78,7 +78,7 @@ func TestOpenAtIndex(t *testing.T) {
 	}
 	f.Close()
 
-	w, err := OpenAtIndex(dir, 0)
+	w, err := OpenAtIndex(dir, 1)
 	if err != nil {
 		t.Fatalf("err = %v, want nil", err)
 	}
@@ -129,7 +129,7 @@ func TestCut(t *testing.T) {
 	if err := w.Cut(0); err != nil {
 		t.Fatal(err)
 	}
-	wname := fmt.Sprintf("%016x-%016x.wal", 1, 0)
+	wname := fmt.Sprintf("%016x-%016x.wal", 1, 1)
 	if g := path.Base(w.f.Name()); g != wname {
 		t.Errorf("name = %s, want %s", g, wname)
 	}
@@ -141,7 +141,7 @@ func TestCut(t *testing.T) {
 	if err := w.Cut(1); err != nil {
 		t.Fatal(err)
 	}
-	wname = fmt.Sprintf("%016x-%016x.wal", 2, 1)
+	wname = fmt.Sprintf("%016x-%016x.wal", 2, 2)
 	if g := path.Base(w.f.Name()); g != wname {
 		t.Errorf("name = %s, want %s", g, wname)
 	}
@@ -176,7 +176,7 @@ func TestRecover(t *testing.T) {
 	}
 	w.Close()
 
-	if w, err = OpenAtIndex(p, 0); err != nil {
+	if w, err = OpenAtIndex(p, 1); err != nil {
 		t.Fatal(err)
 	}
 	id, state, entries, err := w.ReadAll()
@@ -296,15 +296,19 @@ func TestRecoverAfterCut(t *testing.T) {
 	}
 	w.Close()
 
-	if err := os.Remove(path.Join(p, "0000000000000004-0000000000000003.wal")); err != nil {
+	if err := os.Remove(path.Join(p, "0000000000000004-0000000000000004.wal")); err != nil {
 		t.Fatal(err)
 	}
 
 	for i := 0; i < 10; i++ {
 		w, err := OpenAtIndex(p, int64(i))
-		if i <= 3 {
-			if err != ErrNotFound {
-				t.Errorf("#%d: err = %v, want %v", i, err, ErrNotFound)
+		if err != nil {
+			if i <= 4 {
+				if err != ErrNotFound {
+					t.Errorf("#%d: err = %v, want %v", i, err, ErrNotFound)
+				}
+			} else {
+				t.Errorf("#%d: err = %v, want nil", i, err)
 			}
 			continue
 		}
@@ -317,7 +321,7 @@ func TestRecoverAfterCut(t *testing.T) {
 			t.Errorf("#%d: id = %d, want %d", i, id, info.Id)
 		}
 		for j, e := range entries {
-			if e.Index != int64(j+i+1) {
+			if e.Index != int64(j+i) {
 				t.Errorf("#%d: ents[%d].Index = %+v, want %+v", i, j, e.Index, j+i+1)
 			}
 		}
