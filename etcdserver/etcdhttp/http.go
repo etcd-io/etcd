@@ -180,13 +180,13 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (h Handler) serveKeys(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	rr, err := parseRequest(r, genId())
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		writeError(w, err)
 		return
 	}
 
 	resp, err := h.Server.Do(ctx, rr)
 	if err != nil {
-		writeInternalError(w, err)
+		writeError(w, err)
 		return
 	}
 
@@ -200,7 +200,7 @@ func (h Handler) serveKeys(ctx context.Context, w http.ResponseWriter, r *http.R
 			return
 		}
 	default:
-		writeInternalError(w, errors.New("received response with no Event/Watcher!"))
+		writeError(w, errors.New("received response with no Event/Watcher!"))
 		return
 	}
 
@@ -257,11 +257,17 @@ func parseRequest(r *http.Request, id int64) (etcdserverpb.Request, error) {
 	var err error
 
 	if err = r.ParseForm(); err != nil {
-		return emptyReq, err
+		return emptyReq, etcdErr.NewRequestError(
+			etcdErr.EcodeInvalidForm,
+			err.Error(),
+		)
 	}
 
 	if !strings.HasPrefix(r.URL.Path, keysPrefix) {
-		return emptyReq, errors.New("unexpected key prefix!")
+		return emptyReq, etcdErr.NewRequestError(
+			etcdErr.EcodeInvalidForm,
+			"incorrect key prefix",
+		)
 	}
 	path := r.URL.Path[len(keysPrefix):]
 
@@ -269,24 +275,39 @@ func parseRequest(r *http.Request, id int64) (etcdserverpb.Request, error) {
 
 	var pIdx, wIdx, ttl uint64
 	if pIdx, err = parseUint64(q.Get("prevIndex")); err != nil {
-		return emptyReq, errors.New("invalid value for prevIndex")
+		return emptyReq, etcdErr.NewRequestError(
+			etcdErr.EcodeIndexNaN,
+			"invalid value for prevIndex",
+		)
 	}
 	if wIdx, err = parseUint64(q.Get("waitIndex")); err != nil {
-		return emptyReq, errors.New("invalid value for waitIndex")
+		return emptyReq, etcdErr.NewRequestError(
+			etcdErr.EcodeIndexNaN,
+			"invalid value for waitIndex",
+		)
 	}
 	if ttl, err = parseUint64(q.Get("ttl")); err != nil {
-		return emptyReq, errors.New("invalid value for ttl")
+		return emptyReq, etcdErr.NewRequestError(
+			etcdErr.EcodeTTLNaN,
+			"invalid value for ttl",
+		)
 	}
 
 	var rec, sort, wait bool
 	if rec, err = parseBool(q.Get("recursive")); err != nil {
-		return emptyReq, errors.New("invalid value for recursive")
+		return emptyReq, etcdErr.NewRequestError(
+			etcdErr.EcodeInvalidField,
+			"invalid value for recursive")
 	}
 	if sort, err = parseBool(q.Get("sorted")); err != nil {
-		return emptyReq, errors.New("invalid value for sorted")
+		return emptyReq, etcdErr.NewRequestError(
+			etcdErr.EcodeInvalidField,
+			"invalid value for sorted")
 	}
 	if wait, err = parseBool(q.Get("wait")); err != nil {
-		return emptyReq, errors.New("invalid value for wait")
+		return emptyReq, etcdErr.NewRequestError(
+			etcdErr.EcodeInvalidField,
+			"invalid value for wait")
 	}
 
 	rr := etcdserverpb.Request{
@@ -332,9 +353,10 @@ func parseUint64(s string) (uint64, error) {
 	return strconv.ParseUint(s, 10, 64)
 }
 
-// writeInternalError logs and writes the given Error to the ResponseWriter
+// writeError logs and writes the given Error to the ResponseWriter
 // If Error is an etcdErr, it is rendered to the ResponseWriter
-func writeInternalError(w http.ResponseWriter, err error) {
+// Otherwise, it is assumed to be an InternalServerError
+func writeError(w http.ResponseWriter, err error) {
 	if err == nil {
 		return
 	}

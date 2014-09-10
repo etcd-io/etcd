@@ -56,7 +56,8 @@ func TestParseUint64(t *testing.T) {
 
 func TestBadParseRequest(t *testing.T) {
 	tests := []struct {
-		in *http.Request
+		in    *http.Request
+		wcode int
 	}{
 		{
 			// parseForm failure
@@ -64,36 +65,86 @@ func TestBadParseRequest(t *testing.T) {
 				Body:   nil,
 				Method: "PUT",
 			},
+			etcdErr.EcodeInvalidForm,
 		},
 		{
 			// bad key prefix
 			&http.Request{
 				URL: mustNewURL(t, "/badprefix/"),
 			},
+			etcdErr.EcodeInvalidForm,
 		},
 		// bad values for prevIndex, waitIndex, ttl
-		{mustNewRequest(t, "?prevIndex=foo")},
-		{mustNewRequest(t, "?prevIndex=1.5")},
-		{mustNewRequest(t, "?prevIndex=-1")},
-		{mustNewRequest(t, "?waitIndex=garbage")},
-		{mustNewRequest(t, "?waitIndex=??")},
-		{mustNewRequest(t, "?ttl=-1")},
+		{
+			mustNewRequest(t, "?prevIndex=foo"),
+			etcdErr.EcodeIndexNaN,
+		},
+		{
+			mustNewRequest(t, "?prevIndex=1.5"),
+			etcdErr.EcodeIndexNaN,
+		},
+		{
+			mustNewRequest(t, "?prevIndex=-1"),
+			etcdErr.EcodeIndexNaN,
+		},
+		{
+			mustNewRequest(t, "?waitIndex=garbage"),
+			etcdErr.EcodeIndexNaN,
+		},
+		{
+			mustNewRequest(t, "?waitIndex=??"),
+			etcdErr.EcodeIndexNaN,
+		},
+		{
+			mustNewRequest(t, "?ttl=-1"),
+			etcdErr.EcodeTTLNaN,
+		},
 		// bad values for recursive, sorted, wait
-		{mustNewRequest(t, "?recursive=hahaha")},
-		{mustNewRequest(t, "?recursive=1234")},
-		{mustNewRequest(t, "?recursive=?")},
-		{mustNewRequest(t, "?sorted=hahaha")},
-		{mustNewRequest(t, "?sorted=!!")},
-		{mustNewRequest(t, "?wait=notreally")},
-		{mustNewRequest(t, "?wait=what!")},
+		{
+			mustNewRequest(t, "?recursive=hahaha"),
+			etcdErr.EcodeInvalidField,
+		},
+		{
+			mustNewRequest(t, "?recursive=1234"),
+			etcdErr.EcodeInvalidField,
+		},
+		{
+			mustNewRequest(t, "?recursive=?"),
+			etcdErr.EcodeInvalidField,
+		},
+		{
+			mustNewRequest(t, "?sorted=hahaha"),
+			etcdErr.EcodeInvalidField,
+		},
+		{
+			mustNewRequest(t, "?sorted=!!"),
+			etcdErr.EcodeInvalidField,
+		},
+		{
+			mustNewRequest(t, "?wait=notreally"),
+			etcdErr.EcodeInvalidField,
+		},
+		{
+			mustNewRequest(t, "?wait=what!"),
+			etcdErr.EcodeInvalidField,
+		},
 	}
 	for i, tt := range tests {
 		got, err := parseRequest(tt.in, 1234)
 		if err == nil {
-			t.Errorf("case %d: unexpected nil error!", i)
+			t.Errorf("#%d: unexpected nil error!", i)
+			continue
+		}
+		ee, ok := err.(*etcdErr.Error)
+		if !ok {
+			t.Errorf("#%d: err is not etcd.Error!", i)
+			continue
+		}
+		if ee.ErrorCode != tt.wcode {
+			t.Errorf("#%d: code=%d, want %v", i, ee.ErrorCode, tt.wcode)
 		}
 		if !reflect.DeepEqual(got, etcdserverpb.Request{}) {
-			t.Errorf("case %d: unexpected non-empty Request: %#v", i, got)
+			t.Errorf("#%d: unexpected non-empty Request: %#v", i, got)
 		}
 	}
 }
@@ -205,10 +256,10 @@ func (w *eventingWatcher) EventChan() chan *store.Event {
 
 func (w *eventingWatcher) Remove() {}
 
-func TestWriteInternalError(t *testing.T) {
+func TestWriteError(t *testing.T) {
 	// nil error should not panic
 	rw := httptest.NewRecorder()
-	writeInternalError(rw, nil)
+	writeError(rw, nil)
 	h := rw.Header()
 	if len(h) > 0 {
 		t.Fatalf("unexpected non-empty headers: %#v", h)
@@ -241,7 +292,7 @@ func TestWriteInternalError(t *testing.T) {
 
 	for i, tt := range tests {
 		rw := httptest.NewRecorder()
-		writeInternalError(rw, tt.err)
+		writeError(rw, tt.err)
 		if code := rw.Code; code != tt.wcode {
 			t.Errorf("#%d: code=%d, want %d", i, code, tt.wcode)
 		}
