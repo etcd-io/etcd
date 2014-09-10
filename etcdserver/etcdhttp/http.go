@@ -85,6 +85,20 @@ func (ps Peers) IDs() []int64 {
 	return ids
 }
 
+// Endpoints returns a list of all peer addresses. Each address is
+// prefixed with "http://". The returned list is sorted (asc).
+func (ps Peers) Endpoints() []string {
+	endpoints := make([]string, 0)
+	for _, addrs := range ps {
+		for _, addr := range addrs {
+			endpoints = append(endpoints, addScheme(addr))
+		}
+	}
+	sort.Strings(endpoints)
+
+	return endpoints
+}
+
 var errClosed = errors.New("etcdhttp: client closed connection")
 
 const DefaultTimeout = 500 * time.Millisecond
@@ -209,14 +223,8 @@ func (h Handler) serveMachines(w http.ResponseWriter, r *http.Request) {
 		allow(w, "GET", "HEAD")
 		return
 	}
-	urls := make([]string, 0)
-	for _, addrs := range h.Peers {
-		for _, addr := range addrs {
-			urls = append(urls, addScheme(addr))
-		}
-	}
-	sort.Strings(urls)
-	w.Write([]byte(strings.Join(urls, ", ")))
+	endpoints := h.Peers.Endpoints()
+	w.Write([]byte(strings.Join(endpoints, ", ")))
 }
 
 func (h Handler) serveRaft(ctx context.Context, w http.ResponseWriter, r *http.Request) {
