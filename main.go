@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"os"
 	"path"
-	"strconv"
 	"time"
 
 	"github.com/coreos/etcd/etcdserver"
@@ -23,33 +22,29 @@ const (
 )
 
 var (
-	fid     = flag.String("id", "0x1", "Id of this server")
 	timeout = flag.Duration("timeout", 10*time.Second, "Request Timeout")
-	laddr   = flag.String("l", ":8080", "HTTP service address (e.g., ':8080')")
+	laddr   = flag.String("addr", "localhost:2379", "HTTP service address (e.g., 'localhost:2379')")
 	dir     = flag.String("data-dir", "", "Path to the data directory")
 
 	peers = &etcdhttp.Peers{}
 )
 
 func init() {
-	peers.Set("0x1=localhost:8080")
+	peers.Set("localhost:2379")
 	flag.Var(peers, "peers", "your peers")
 }
 
 func main() {
 	flag.Parse()
 
-	id, err := strconv.ParseInt(*fid, 0, 64)
-	if err != nil {
-		log.Fatal(err)
-	}
+	id := etcdhttp.GenerateID(*laddr)
 
 	if peers.Pick(id) == "" {
-		log.Fatalf("%#x=<addr> must be specified in peers", id)
+		log.Fatalf("%d=<addr> must be specified in peers", id)
 	}
 
 	if *dir == "" {
-		*dir = fmt.Sprintf("%v_etcd_data", *fid)
+		*dir = fmt.Sprintf("%v_etcd_data", fmt.Sprintf("%x", id))
 		log.Printf("main: no data-dir is given, using default data-dir ./%s", *dir)
 	}
 	if err := os.MkdirAll(*dir, privateDirMode); err != nil {

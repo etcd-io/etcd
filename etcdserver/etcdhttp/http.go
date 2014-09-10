@@ -17,6 +17,7 @@ import (
 	"time"
 
 	crand "crypto/rand"
+	"crypto/sha1"
 	"math/rand"
 
 	"github.com/coreos/etcd/elog"
@@ -48,20 +49,21 @@ func addScheme(addr string) string {
 	return fmt.Sprintf("http://%s", addr)
 }
 
-// Set parses command line sets of names to ips formatted like:
-// a=1.1.1.1&a=1.1.1.2&b=2.2.2.2
+// GenerateID makes an ID from a URL string
+// TODO(philips): put in a correct package
+func GenerateID(url string) int64 {
+	hash := sha1.Sum([]byte(url))
+	return int64(binary.BigEndian.Uint64(hash[:8]))
+}
+
+// Set parses command line sets ips formatted like:
+// 1.1.1.1,1.1.1.2,2.2.2.2
 func (ps *Peers) Set(s string) error {
 	m := make(map[int64][]string)
-	v, err := url.ParseQuery(s)
-	if err != nil {
-		return err
-	}
-	for k, v := range v {
-		id, err := strconv.ParseInt(k, 0, 64)
-		if err != nil {
-			return err
-		}
-		m[id] = v
+	urls := strings.Split(s, ",")
+	for _, url := range urls {
+		id := GenerateID(url)
+		m[id] = []string{url}
 	}
 	*ps = m
 	return nil
