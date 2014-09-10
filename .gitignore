@@ -6,3 +6,4 @@
 .vagrant
 /*_etcd_data
 etcd
+*.swp
