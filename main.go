@@ -39,6 +39,13 @@ func init() {
 func main() {
 	flag.Parse()
 
+	h := startEtcd()
+
+	http.Handle("/", h)
+	log.Fatal(http.ListenAndServe(*laddr, nil))
+}
+
+func startEtcd() http.Handler {
 	id, err := strconv.ParseInt(*fid, 0, 64)
 	if err != nil {
 		log.Fatal(err)
@@ -67,13 +74,14 @@ func main() {
 		Ticker: tk.C,
 	}
 	etcdserver.Start(s)
-	h := &etcdhttp.Handler{
+
+	h := etcdhttp.Handler{
 		Timeout: *timeout,
 		Server:  s,
 		Peers:   *peers,
 	}
-	http.Handle("/", h)
-	log.Fatal(http.ListenAndServe(*laddr, nil))
+
+	return &h
 }
 
 // startRaft starts a raft node from the given wal dir.
