@@ -77,7 +77,7 @@ func (ps *Peers) String() string {
 	return v.Encode()
 }
 
-func (ps Peers) Ids() []int64 {
+func (ps Peers) IDs() []int64 {
 	var ids []int64
 	for id := range ps {
 		ids = append(ids, id)
@@ -176,7 +176,7 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h Handler) serveKeys(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	rr, err := parseRequest(r, genId())
+	rr, err := parseRequest(r, genID())
 	if err != nil {
 		log.Println(err) // reading of body failed
 		return
@@ -234,8 +234,8 @@ func (h Handler) serveRaft(ctx context.Context, w http.ResponseWriter, r *http.R
 	}
 }
 
-// genId generates a random id that is: n < 0 < n.
-func genId() int64 {
+// genID generates a random id that is: n < 0 < n.
+func genID() int64 {
 	for {
 		b := make([]byte, 8)
 		if _, err := io.ReadFull(crand.Reader, b); err != nil {

@@ -42,7 +42,7 @@ const (
 )
 
 var (
-	ErrIdMismatch  = errors.New("wal: unmatch id")
+	ErrIDMismatch  = errors.New("wal: unmatch id")
 	ErrNotFound    = errors.New("wal: file is not found")
 	ErrCRCMismatch = errors.New("wal: crc mismatch")
 	crcTable       = crc32.MakeTable(crc32.Castagnoli)
@@ -162,7 +162,7 @@ func (w *WAL) ReadAll() (id int64, state raftpb.State, ents []raftpb.Entry, err 
 			i := mustUnmarshalInfo(rec.Data)
 			if id != 0 && id != i.Id {
 				state.Reset()
-				return 0, state, nil, ErrIdMismatch
+				return 0, state, nil, ErrIDMismatch
 			}
 			id = i.Id
 		case crcType:
