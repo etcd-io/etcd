@@ -23,7 +23,7 @@ const (
 )
 
 var (
-	fid     = flag.String("id", "0x1", "Id of this server")
+	fid     = flag.String("id", "0x1", "ID of this server")
 	timeout = flag.Duration("timeout", 10*time.Second, "Request Timeout")
 	laddr   = flag.String("l", ":8080", "HTTP service address (e.g., ':8080')")
 	dir     = flag.String("data-dir", "", "Path to the data directory")
@@ -56,7 +56,7 @@ func main() {
 		log.Fatalf("main: cannot create data directory: %v", err)
 	}
 
-	n, w := startRaft(id, peers.Ids(), path.Join(*dir, "wal"))
+	n, w := startRaft(id, peers.IDs(), path.Join(*dir, "wal"))
 
 	tk := time.NewTicker(100 * time.Millisecond)
 	s := &etcdserver.Server{
@@ -80,13 +80,13 @@ func main() {
 // If the wal dir does not exist, startRaft will start a new raft node.
 // If the wal dir exists, startRaft will restart the previous raft node.
 // startRaft returns the started raft node and the opened wal.
-func startRaft(id int64, peerIds []int64, waldir string) (raft.Node, *wal.WAL) {
+func startRaft(id int64, peerIDs []int64, waldir string) (raft.Node, *wal.WAL) {
 	if !wal.Exist(waldir) {
 		w, err := wal.Create(waldir)
 		if err != nil {
 			log.Fatal(err)
 		}
-		n := raft.Start(id, peerIds, 10, 1)
+		n := raft.Start(id, peerIDs, 10, 1)
 		return n, w
 	}
 
@@ -104,6 +104,6 @@ func startRaft(id int64, peerIds []int64, waldir string) (raft.Node, *wal.WAL) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	n := raft.Restart(id, peerIds, 10, 1, st, ents)
+	n := raft.Restart(id, peerIDs, 10, 1, st, ents)
 	return n, w
 }
