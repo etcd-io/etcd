@@ -32,6 +32,26 @@ func mustNewRequest(t *testing.T, p string) *http.Request {
 	}
 }
 
+func TestParseBool(t *testing.T) {
+	got, err := parseBool("")
+	if got != false {
+		t.Fatalf("got %t, want %t", got, false)
+	}
+	if err != nil {
+		t.Fatalf("got err=%v, want err=%v", err, nil)
+	}
+}
+
+func TestParseUint64(t *testing.T) {
+	got, err := parseUint64("")
+	if got != 0 {
+		t.Fatalf("got %d, want %d", got, 0)
+	}
+	if err != nil {
+		t.Fatalf("got err=%v, want err=%v", err, nil)
+	}
+}
+
 func TestBadParseRequest(t *testing.T) {
 	tests := []struct {
 		in *http.Request
