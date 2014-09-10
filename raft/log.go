@@ -11,13 +11,12 @@ const (
 )
 
 type raftLog struct {
-	ents             []pb.Entry
-	unstable         int64
-	committed        int64
-	applied          int64
-	offset           int64
-	snapshot         pb.Snapshot
-	unstableSnapshot pb.Snapshot
+	ents      []pb.Entry
+	unstable  int64
+	committed int64
+	applied   int64
+	offset    int64
+	snapshot  pb.Snapshot
 
 	// want a compact after the number of entries exceeds the threshold
 	// TODO(xiangli) size might be a better criteria
