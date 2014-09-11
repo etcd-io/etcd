@@ -254,6 +254,9 @@ func genId() int64 {
 	}
 }
 
+// parseRequest converts a received http.Request to a server Request,
+// performing validation of supplied fields as appropriate.
+// If any validation fails, an empty Request and non-nil error is returned.
 func parseRequest(r *http.Request, id int64) (etcdserverpb.Request, error) {
 	emptyReq := etcdserverpb.Request{}
 
@@ -264,7 +267,6 @@ func parseRequest(r *http.Request, id int64) (etcdserverpb.Request, error) {
 			err.Error(),
 		)
 	}
-	q := r.URL.Query()
 
 	if !strings.HasPrefix(r.URL.Path, keysPrefix) {
 		return emptyReq, etcdErr.NewRequestError(
@@ -275,61 +277,49 @@ func parseRequest(r *http.Request, id int64) (etcdserverpb.Request, error) {
 	p := r.URL.Path[len(keysPrefix):]
 
 	var pIdx, wIdx, ttl uint64
-	if pIdxS := q.Get("prevIndex"); pIdxS != "" {
-		if pIdx, err = parseUint64(pIdxS); err != nil {
-			return emptyReq, etcdErr.NewRequestError(
-				etcdErr.EcodeIndexNaN,
-				fmt.Sprintf("invalid value for prevIndex: %q", pIdxS),
-			)
-		}
+	if pIdx, err = getUint64(r.Form, "prevIndex"); err != nil {
+		return emptyReq, etcdErr.NewRequestError(
+			etcdErr.EcodeIndexNaN,
+			fmt.Sprintf("invalid value for prevIndex"),
+		)
 	}
-	if wIdxS := q.Get("waitIndex"); wIdxS != "" {
-		if wIdx, err = parseUint64(wIdxS); err != nil {
-			return emptyReq, etcdErr.NewRequestError(
-				etcdErr.EcodeIndexNaN,
-				fmt.Sprintf("invalid value for waitIndex: %q", wIdxS),
-			)
-		}
+	if wIdx, err = getUint64(r.Form, "waitIndex"); err != nil {
+		return emptyReq, etcdErr.NewRequestError(
+			etcdErr.EcodeIndexNaN,
+			fmt.Sprintf("invalid value for waitIndex"),
+		)
 	}
-	if ttlS := q.Get("ttl"); ttlS != "" {
-		if ttl, err = parseUint64(ttlS); err != nil {
-			return emptyReq, etcdErr.NewRequestError(
-				etcdErr.EcodeTTLNaN,
-				fmt.Sprintf("invalid value for ttl: %q", ttlS),
-			)
-		}
+	if ttl, err = getUint64(r.Form, "ttl"); err != nil {
+		return emptyReq, etcdErr.NewRequestError(
+			etcdErr.EcodeTTLNaN,
+			`invalid value for "ttl"`,
+		)
 	}
 
 	var rec, sort, wait bool
-	if recS := q.Get("recursive"); recS != "" {
-		if rec, err = strconv.ParseBool(recS); err != nil {
-			return emptyReq, etcdErr.NewRequestError(
-				etcdErr.EcodeInvalidField,
-				fmt.Sprintf("invalid value for recursive: %q", recS),
-			)
-		}
+	if rec, err = getBool(r.Form, "recursive"); err != nil {
+		return emptyReq, etcdErr.NewRequestError(
+			etcdErr.EcodeInvalidField,
+			`invalid value for "recursive"`,
+		)
 	}
-	if sortS := q.Get("sorted"); sortS != "" {
-		if sort, err = strconv.ParseBool(sortS); err != nil {
-			return emptyReq, etcdErr.NewRequestError(
-				etcdErr.EcodeInvalidField,
-				fmt.Sprintf("invalid value for sorted: %q", sortS),
-			)
-		}
+	if sort, err = getBool(r.Form, "sorted"); err != nil {
+		return emptyReq, etcdErr.NewRequestError(
+			etcdErr.EcodeInvalidField,
+			`invalid value for "sorted"`,
+		)
 	}
-	if waitS := q.Get("wait"); waitS != "" {
-		if wait, err = strconv.ParseBool(waitS); err != nil {
-			return emptyReq, etcdErr.NewRequestError(
-				etcdErr.EcodeInvalidField,
-				fmt.Sprintf("invalid value for wait: %q", waitS),
-			)
-		}
+	if wait, err = getBool(r.Form, "wait"); err != nil {
+		return emptyReq, etcdErr.NewRequestError(
+			etcdErr.EcodeInvalidField,
+			`invalid value for "wait"`,
+		)
 	}
 
 	// prevExists is nullable, so leave it null if not specified
 	var pe *bool
-	if _, ok := q["prevExists"]; ok {
-		bv, err := strconv.ParseBool(q.Get("prevExists"))
+	if _, ok := r.Form["prevExists"]; ok {
+		bv, err := getBool(r.Form, "prevExists")
 		if err != nil {
 			return emptyReq, etcdErr.NewRequestError(
 				etcdErr.EcodeInvalidField,
@@ -344,7 +334,7 @@ func parseRequest(r *http.Request, id int64) (etcdserverpb.Request, error) {
 		Method:     r.Method,
 		Path:       p,
 		Val:        r.FormValue("value"),
-		PrevValue:  q.Get("prevValue"),
+		PrevValue:  r.FormValue("prevValue"),
 		PrevIndex:  pIdx,
 		PrevExists: pe,
 		Recursive:  rec,
@@ -367,8 +357,26 @@ func parseRequest(r *http.Request, id int64) (etcdserverpb.Request, error) {
 	return rr, nil
 }
 
-func parseUint64(s string) (uint64, error) {
-	return strconv.ParseUint(s, 10, 64)
+// getUint64 extracts a uint64 by the given key from a Form. If the key does
+// not exist in the form, 0 is returned. If the key exists but the value is
+// badly formed, an error is returned. If multiple values are present only the
+// first is considered.
+func getUint64(form url.Values, key string) (i uint64, err error) {
+	if vals, ok := form[key]; ok {
+		i, err = strconv.ParseUint(vals[0], 10, 64)
+	}
+	return
+}
+
+// getBool extracts a bool by the given key from a Form. If the key does not
+// exist in the form, false is returned. If the key exists but the value is
+// badly formed, an error is returned. If multiple values are present only the
+// first is considered.
+func getBool(form url.Values, key string) (b bool, err error) {
+	if vals, ok := form[key]; ok {
+		b, err = strconv.ParseBool(vals[0])
+	}
+	return
 }
 
 // writeError logs and writes the given Error to the ResponseWriter

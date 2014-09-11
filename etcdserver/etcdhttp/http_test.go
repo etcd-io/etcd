@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"path"
 	"reflect"
+	"strings"
 	"sync"
 	"testing"
 
@@ -34,6 +35,18 @@ func mustNewRequest(t *testing.T, p string) *http.Request {
 	}
 }
 
+// mustNewForm takes a set of Values and constructs a PUT *http.Request,
+// with a URL constructed from appending the given path to the standard keysPrefix
+func mustNewForm(t *testing.T, p string, vals url.Values) *http.Request {
+	u := mustNewURL(t, path.Join(keysPrefix, p))
+	req, err := http.NewRequest("PUT", u.String(), strings.NewReader(vals.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	if err != nil {
+		t.Fatalf("error creating new request: %v", err)
+	}
+	return req
+}
+
 func TestBadParseRequest(t *testing.T) {
 	tests := []struct {
 		in    *http.Request
@@ -56,56 +69,90 @@ func TestBadParseRequest(t *testing.T) {
 		},
 		// bad values for prevIndex, waitIndex, ttl
 		{
-			mustNewRequest(t, "?prevIndex=foo"),
+			mustNewForm(t, "foo", url.Values{"prevIndex": []string{"garbage"}}),
 			etcdErr.EcodeIndexNaN,
 		},
 		{
-			mustNewRequest(t, "?prevIndex=1.5"),
+			mustNewForm(t, "foo", url.Values{"prevIndex": []string{"1.5"}}),
 			etcdErr.EcodeIndexNaN,
 		},
 		{
-			mustNewRequest(t, "?prevIndex=-1"),
+			mustNewForm(t, "foo", url.Values{"prevIndex": []string{"-1"}}),
 			etcdErr.EcodeIndexNaN,
 		},
 		{
-			mustNewRequest(t, "?waitIndex=garbage"),
+			mustNewForm(t, "foo", url.Values{"waitIndex": []string{"garbage"}}),
 			etcdErr.EcodeIndexNaN,
 		},
 		{
-			mustNewRequest(t, "?waitIndex=??"),
+			mustNewForm(t, "foo", url.Values{"waitIndex": []string{"??"}}),
 			etcdErr.EcodeIndexNaN,
 		},
 		{
-			mustNewRequest(t, "?ttl=-1"),
+			mustNewForm(t, "foo", url.Values{"ttl": []string{"-1"}}),
 			etcdErr.EcodeTTLNaN,
 		},
-		// bad values for recursive, sorted, wait
+		// bad values for recursive, sorted, wait, prevExists
 		{
-			mustNewRequest(t, "?recursive=hahaha"),
+			mustNewForm(t, "foo", url.Values{"recursive": []string{"hahaha"}}),
 			etcdErr.EcodeInvalidField,
 		},
 		{
-			mustNewRequest(t, "?recursive=1234"),
+			mustNewForm(t, "foo", url.Values{"recursive": []string{"1234"}}),
 			etcdErr.EcodeInvalidField,
 		},
 		{
-			mustNewRequest(t, "?recursive=?"),
+			mustNewForm(t, "foo", url.Values{"recursive": []string{"?"}}),
 			etcdErr.EcodeInvalidField,
 		},
 		{
-			mustNewRequest(t, "?sorted=hahaha"),
+			mustNewForm(t, "foo", url.Values{"sorted": []string{"?"}}),
 			etcdErr.EcodeInvalidField,
 		},
 		{
-			mustNewRequest(t, "?sorted=!!"),
+			mustNewForm(t, "foo", url.Values{"sorted": []string{"x"}}),
 			etcdErr.EcodeInvalidField,
 		},
 		{
-			mustNewRequest(t, "?wait=notreally"),
+			mustNewForm(t, "foo", url.Values{"wait": []string{"?!"}}),
 			etcdErr.EcodeInvalidField,
 		},
 		{
-			mustNewRequest(t, "?wait=what!"),
+			mustNewForm(t, "foo", url.Values{"wait": []string{"yes"}}),
+			etcdErr.EcodeInvalidField,
+		},
+		{
+			mustNewForm(t, "foo", url.Values{"prevExists": []string{"yes"}}),
+			etcdErr.EcodeInvalidField,
+		},
+		{
+			mustNewForm(t, "foo", url.Values{"prevExists": []string{"#2"}}),
+			etcdErr.EcodeInvalidField,
+		},
+		// query values are considered
+		{
+			mustNewRequest(t, "foo?prevExists=wrong"),
+			etcdErr.EcodeInvalidField,
+		},
+		{
+			mustNewRequest(t, "foo?ttl=wrong"),
+			etcdErr.EcodeTTLNaN,
+		},
+		// but body takes precedence if both are specified
+		{
+			mustNewForm(
+				t,
+				"foo?ttl=12",
+				url.Values{"ttl": []string{"garbage"}},
+			),
+			etcdErr.EcodeTTLNaN,
+		},
+		{
+			mustNewForm(
+				t,
+				"foo?prevExists=false",
+				url.Values{"prevExists": []string{"yes"}},
+			),
 			etcdErr.EcodeInvalidField,
 		},
 	}
@@ -122,6 +169,7 @@ func TestBadParseRequest(t *testing.T) {
 		}
 		if ee.ErrorCode != tt.wcode {
 			t.Errorf("#%d: code=%d, want %v", i, ee.ErrorCode, tt.wcode)
+			t.Logf("cause: %#v", ee.Cause)
 		}
 		if !reflect.DeepEqual(got, etcdserverpb.Request{}) {
 			t.Errorf("#%d: unexpected non-empty Request: %#v", i, got)
@@ -144,65 +192,150 @@ func TestGoodParseRequest(t *testing.T) {
 		},
 		{
 			// value specified
-			mustNewRequest(t, "foo?value=some_value"),
+			mustNewForm(
+				t,
+				"foo",
+				url.Values{"value": []string{"some_value"}},
+			),
 			etcdserverpb.Request{
-				Id:   1234,
-				Val:  "some_value",
-				Path: "/foo",
+				Id:     1234,
+				Method: "PUT",
+				Val:    "some_value",
+				Path:   "/foo",
 			},
 		},
 		{
 			// prevIndex specified
-			mustNewRequest(t, "foo?prevIndex=98765"),
+			mustNewForm(
+				t,
+				"foo",
+				url.Values{"prevIndex": []string{"98765"}},
+			),
 			etcdserverpb.Request{
 				Id:        1234,
+				Method:    "PUT",
 				PrevIndex: 98765,
 				Path:      "/foo",
 			},
 		},
 		{
 			// recursive specified
-			mustNewRequest(t, "foo?recursive=true"),
+			mustNewForm(
+				t,
+				"foo",
+				url.Values{"recursive": []string{"true"}},
+			),
 			etcdserverpb.Request{
 				Id:        1234,
+				Method:    "PUT",
 				Recursive: true,
 				Path:      "/foo",
 			},
 		},
 		{
 			// sorted specified
-			mustNewRequest(t, "foo?sorted=true"),
+			mustNewForm(
+				t,
+				"foo",
+				url.Values{"sorted": []string{"true"}},
+			),
 			etcdserverpb.Request{
 				Id:     1234,
+				Method: "PUT",
 				Sorted: true,
 				Path:   "/foo",
 			},
 		},
 		{
 			// wait specified
-			mustNewRequest(t, "foo?wait=true"),
+			mustNewForm(
+				t,
+				"foo",
+				url.Values{"wait": []string{"true"}},
+			),
 			etcdserverpb.Request{
-				Id:   1234,
-				Wait: true,
-				Path: "/foo",
+				Id:     1234,
+				Method: "PUT",
+				Wait:   true,
+				Path:   "/foo",
 			},
 		},
 		{
 			// prevExists should be non-null if specified
-			mustNewRequest(t, "foo?prevExists=true"),
+			mustNewForm(
+				t,
+				"foo",
+				url.Values{"prevExists": []string{"true"}},
+			),
 			etcdserverpb.Request{
 				Id:         1234,
+				Method:     "PUT",
 				PrevExists: boolp(true),
 				Path:       "/foo",
 			},
 		},
 		{
 			// prevExists should be non-null if specified
-			mustNewRequest(t, "foo?prevExists=false"),
+			mustNewForm(
+				t,
+				"foo",
+				url.Values{"prevExists": []string{"false"}},
+			),
 			etcdserverpb.Request{
 				Id:         1234,
+				Method:     "PUT",
 				PrevExists: boolp(false),
 				Path:       "/foo",
+			},
+		},
+		// mix various fields
+		{
+			mustNewForm(
+				t,
+				"foo",
+				url.Values{
+					"value":      []string{"some value"},
+					"prevExists": []string{"true"},
+					"prevValue":  []string{"previous value"},
+				},
+			),
+			etcdserverpb.Request{
+				Id:         1234,
+				Method:     "PUT",
+				PrevExists: boolp(true),
+				PrevValue:  "previous value",
+				Val:        "some value",
+				Path:       "/foo",
+			},
+		},
+		// query parameters should be used if given
+		{
+			mustNewForm(
+				t,
+				"foo?prevValue=woof",
+				url.Values{},
+			),
+			etcdserverpb.Request{
+				Id:        1234,
+				Method:    "PUT",
+				PrevValue: "woof",
+				Path:      "/foo",
+			},
+		},
+		// but form values should take precedence over query parameters
+		{
+			mustNewForm(
+				t,
+				"foo?prevValue=woof",
+				url.Values{
+					"prevValue": []string{"miaow"},
+				},
+			),
+			etcdserverpb.Request{
+				Id:        1234,
+				Method:    "PUT",
+				PrevValue: "miaow",
+				Path:      "/foo",
 			},
 		},
 	}
@@ -213,7 +346,7 @@ func TestGoodParseRequest(t *testing.T) {
 			t.Errorf("#%d: err = %v, want %v", i, err, nil)
 		}
 		if !reflect.DeepEqual(got, tt.w) {
-			t.Errorf("#%d: bad request: got %#v, want %#v", i, got, tt.w)
+			t.Errorf("#%d: request=%#v, want %#v", i, got, tt.w)
 		}
 	}
 }
