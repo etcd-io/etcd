@@ -12,6 +12,7 @@ import (
 
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/etcdhttp"
+	"github.com/coreos/etcd/proxy"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/store"
 	"github.com/coreos/etcd/wal"
@@ -23,10 +24,11 @@ const (
 )
 
 var (
-	fid     = flag.String("id", "0x1", "ID of this server")
-	timeout = flag.Duration("timeout", 10*time.Second, "Request Timeout")
-	laddr   = flag.String("l", ":8080", "HTTP service address (e.g., ':8080')")
-	dir     = flag.String("data-dir", "", "Path to the data directory")
+	fid       = flag.String("id", "0x1", "ID of this server")
+	timeout   = flag.Duration("timeout", 10*time.Second, "Request Timeout")
+	laddr     = flag.String("l", ":8080", "HTTP service address (e.g., ':8080')")
+	dir       = flag.String("data-dir", "", "Path to the data directory")
+	proxyMode = flag.Bool("proxy-mode", false, "Forward HTTP requests to peers, do not participate in raft.")
 
 	peers = &etcdhttp.Peers{}
 )
@@ -39,6 +41,18 @@ func init() {
 func main() {
 	flag.Parse()
 
+	var h http.Handler
+	if *proxyMode {
+		h = startProxy()
+	} else {
+		h = startEtcd()
+	}
+
+	http.Handle("/", h)
+	log.Fatal(http.ListenAndServe(*laddr, nil))
+}
+
+func startEtcd() http.Handler {
 	id, err := strconv.ParseInt(*fid, 0, 64)
 	if err != nil {
 		log.Fatal(err)
@@ -67,13 +81,14 @@ func main() {
 		Ticker: tk.C,
 	}
 	etcdserver.Start(s)
-	h := &etcdhttp.Handler{
+
+	h := etcdhttp.Handler{
 		Timeout: *timeout,
 		Server:  s,
 		Peers:   *peers,
 	}
-	http.Handle("/", h)
-	log.Fatal(http.ListenAndServe(*laddr, nil))
+
+	return &h
 }
 
 // startRaft starts a raft node from the given wal dir.
@@ -106,4 +121,13 @@ func startRaft(id int64, peerIDs []int64, waldir string) (raft.Node, *wal.WAL) {
 	}
 	n := raft.Restart(id, peerIDs, 10, 1, st, ents)
 	return n, w
+}
+
+func startProxy() http.Handler {
+	h, err := proxy.NewHandler((*peers).Endpoints())
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return h
 }

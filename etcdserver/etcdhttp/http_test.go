@@ -397,3 +397,57 @@ func TestServeMachines(t *testing.T) {
 		t.Errorf("header = %d, want %d", writer.Code, http.StatusOK)
 	}
 }
+
+func TestPeersEndpoints(t *testing.T) {
+	tests := []struct {
+		peers     Peers
+		endpoints []string
+	}{
+		// single peer with a single address
+		{
+			peers: Peers(map[int64][]string{
+				1: []string{"192.0.2.1"},
+			}),
+			endpoints: []string{"http://192.0.2.1"},
+		},
+
+		// single peer with a single address with a port
+		{
+			peers: Peers(map[int64][]string{
+				1: []string{"192.0.2.1:8001"},
+			}),
+			endpoints: []string{"http://192.0.2.1:8001"},
+		},
+
+		// several peers explicitly unsorted
+		{
+			peers: Peers(map[int64][]string{
+				2: []string{"192.0.2.3", "192.0.2.4"},
+				3: []string{"192.0.2.5", "192.0.2.6"},
+				1: []string{"192.0.2.1", "192.0.2.2"},
+			}),
+			endpoints: []string{"http://192.0.2.1", "http://192.0.2.2", "http://192.0.2.3", "http://192.0.2.4", "http://192.0.2.5", "http://192.0.2.6"},
+		},
+
+		// no peers
+		{
+			peers:     Peers(map[int64][]string{}),
+			endpoints: []string{},
+		},
+
+		// peer with no endpoints
+		{
+			peers: Peers(map[int64][]string{
+				3: []string{},
+			}),
+			endpoints: []string{},
+		},
+	}
+
+	for i, tt := range tests {
+		endpoints := tt.peers.Endpoints()
+		if !reflect.DeepEqual(tt.endpoints, endpoints) {
+			t.Errorf("#%d: peers.Endpoints() incorrect: want=%#v got=%#v", i, tt.endpoints, endpoints)
+		}
+	}
+}
