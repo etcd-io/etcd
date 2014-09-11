@@ -54,12 +54,13 @@ func (rd Ready) containsUpdates() bool {
 }
 
 type Node struct {
-	ctx    context.Context
-	propc  chan pb.Message
-	recvc  chan pb.Message
-	readyc chan Ready
-	tickc  chan struct{}
-	done   chan struct{}
+	ctx      context.Context
+	propc    chan pb.Message
+	recvc    chan pb.Message
+	readyc   chan Ready
+	compactc chan []byte
+	tickc    chan struct{}
+	done     chan struct{}
 }
 
 func Start(id int64, peers []int64, election, heartbeat int) Node {
@@ -80,11 +81,12 @@ func Restart(id int64, peers []int64, election, heartbeat int, st pb.State, ents
 
 func newNode() Node {
 	return Node{
-		propc:  make(chan pb.Message),
-		recvc:  make(chan pb.Message),
-		readyc: make(chan Ready),
-		tickc:  make(chan struct{}),
-		done:   make(chan struct{}),
+		propc:    make(chan pb.Message),
+		recvc:    make(chan pb.Message),
+		readyc:   make(chan Ready),
+		compactc: make(chan []byte),
+		tickc:    make(chan struct{}),
+		done:     make(chan struct{}),
 	}
 }
 
@@ -145,6 +147,15 @@ func (n *Node) run(r *raft) {
 func (n *Node) Tick() error {
 	select {
 	case n.tickc <- struct{}{}:
+		return nil
+	case <-n.done:
+		return n.ctx.Err()
+	}
+}
+
+func (n *Node) Compact(d []byte) error {
+	select {
+	case n.compactc <- d:
 		return nil
 	case <-n.done:
 		return n.ctx.Err()

@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/snap/snappb"
 )
@@ -36,6 +37,9 @@ func New(dir string) *Snapshotter {
 }
 
 func (s *Snapshotter) SaveSnap(snap raftpb.Snapshot) {
+	if raft.IsEmptySnap(snap) {
+		return
+	}
 	s.save(&snap)
 }
 

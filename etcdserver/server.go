@@ -2,6 +2,7 @@ package etcdserver
 
 import (
 	"errors"
+	"log"
 	"time"
 
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
@@ -15,6 +16,10 @@ import (
 var (
 	ErrUnknownMethod = errors.New("etcdserver: unknown method")
 	ErrStopped       = errors.New("etcdserver: server stopped")
+)
+
+const (
+	defaultSnapCount = 10000
 )
 
 type SendFunc func(m []raftpb.Message)
@@ -63,13 +68,16 @@ func Start(s *Server) {
 }
 
 func (s *Server) run() {
+	var snapi int64
+	var commiti int64
 	for {
 		select {
 		case <-s.Ticker:
 			s.Node.Tick()
 		case rd := <-s.Node.Ready():
 			s.Storage.Save(rd.State, rd.Entries)
-			//s.Save(rd.State, rd.Entries)
+			// TODO: non-blocking snapshot saving
+			s.Storage.SaveSnap(rd.Snapshot)
 			s.Send(rd.Messages)
 
 			// TODO(bmizerany): do this in the background, but take
@@ -81,11 +89,28 @@ func (s *Server) run() {
 					panic("TODO: this is bad, what do we do about it?")
 				}
 				s.w.Trigger(r.Id, s.apply(r))
+				commiti = e.Index
+			}
+			if commiti-snapi > defaultSnapCount {
+				s.Snapshot()
+				snapi = commiti
 			}
 		case <-s.done:
 			return
 		}
 	}
+}
+
+// TODO: a non-blocking snapshot
+func (s *Server) Snapshot() {
+	d, err := s.Store.Save()
+	if err != nil {
+		log.Println("server: cannot take snapshot %v", err)
+		return
+	}
+	s.Node.Compact(d)
+	// TODO: WAL.Cut should not ask for an index.
+	s.Storage.Cut(0)
 }
 
 // Stop stops the server, and shutsdown the running goroutine. Stop should be
