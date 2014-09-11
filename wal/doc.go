@@ -1,0 +1,54 @@
+// Copyright 2014 CoreOS Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//  http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+/*
+Package wal provides an implementation of a write ahead log that is used by
+etcd.
+
+A WAL is created at a particular directory and is made up of a number of
+discrete WAL files. Inside of each file the raft state and entries are appended
+to it with the Save method:
+
+	w, err := wal.Create("/var/lib/etcd")
+	...
+	err := w.Save(s, ents)
+
+When a user has finished using a WAL it must be closed:
+
+	w.Close()
+
+WAL files are placed inside of the directory in the following format:
+$seq-$index.wal
+
+Periodically a user will want to "cut" the WAL and place new entries into a new
+file. This will increment an internal sequence number and cause a new file to
+be created. If the last raft index saved was 0x20 and this is the first time
+Cut has been called on this WAL then the sequence will increment from 0x0 to
+0x1. The new file will be: 0000000000000001-0000000000000020.wal
+
+At a later time a WAL can be opened at a particular raft index:
+
+	w, err := wal.OpenFromIndex("/var/lib/etcd", 0)
+	...
+
+Additional items cannot be Saved to this WAL until all of the items from 0 to
+the end of the WAL are read first:
+
+	id, state, ents, err := w.ReadAll()
+
+This will give you the raft node id, the last raft.State and the slice of
+raft.Entry items in the log.
+
+*/
+package wal
