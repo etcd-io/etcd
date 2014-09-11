@@ -26,7 +26,7 @@ type Response struct {
 }
 
 type Server struct {
-	w    *wait.List
+	w    wait.Wait
 	done chan struct{}
 
 	Node  raft.Node
@@ -80,9 +80,10 @@ func (s *Server) run() {
 }
 
 // Stop stops the server, and shutsdown the running goroutine. Stop should be
-// called after a Start(s), otherwise it will block forever.
+// called after a Start(s), otherwise it will panic.
 func (s *Server) Stop() {
-	s.done <- struct{}{}
+	s.Node.Stop()
+	close(s.done)
 }
 
 // Do interprets r and performs an operation on s.Store according to r.Method

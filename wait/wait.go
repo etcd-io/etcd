@@ -4,6 +4,11 @@ import (
 	"sync"
 )
 
+type Wait interface {
+	Register(id int64) <-chan interface{}
+	Trigger(id int64, x interface{})
+}
+
 type List struct {
 	l sync.Mutex
 	m map[int64]chan interface{}
