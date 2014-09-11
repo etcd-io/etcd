@@ -190,7 +190,7 @@ func (l *raftLog) at(i int64) *pb.Entry {
 	return &l.ents[i-l.offset]
 }
 
-// slice get a slice of log entries from lo through hi-1, inclusive.
+// slice returns a slice of log entries from lo through hi-1, inclusive.
 func (l *raftLog) slice(lo int64, hi int64) []pb.Entry {
 	if lo >= hi {
 		return nil
