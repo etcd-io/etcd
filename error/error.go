@@ -46,6 +46,7 @@ var errors = map[int]string{
 	EcodeIndexOrValueRequired: "Index or value is required",
 	EcodeIndexValueMutex:      "Index and value cannot both be specified",
 	EcodeInvalidField:         "Invalid field",
+	EcodeInvalidForm:          "Invalid POST form",
 
 	// raft related errors
 	EcodeRaftInternal: "Raft Internal Error",
@@ -84,6 +85,7 @@ const (
 	EcodeIndexOrValueRequired = 207
 	EcodeIndexValueMutex      = 208
 	EcodeInvalidField         = 209
+	EcodeInvalidForm          = 210
 
 	EcodeRaftInternal = 300
 	EcodeLeaderElect  = 301
@@ -102,6 +104,10 @@ type Error struct {
 	Message   string `json:"message"`
 	Cause     string `json:"cause,omitempty"`
 	Index     uint64 `json:"index"`
+}
+
+func NewRequestError(errorCode int, cause string) *Error {
+	return NewError(errorCode, cause, 0)
 }
 
 func NewError(errorCode int, cause string, index uint64) *Error {
