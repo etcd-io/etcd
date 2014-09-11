@@ -44,7 +44,7 @@ Cut is issues 0x10 entries later then the file will be called:
 
 At a later time a WAL can be opened at a particular raft index:
 
-	w, err := wal.OpenFromIndex("/var/lib/etcd", 0)
+	w, err := wal.OpenAtIndex("/var/lib/etcd", 0)
 	...
 
 Additional items cannot be Saved to this WAL until all of the items from 0 to
