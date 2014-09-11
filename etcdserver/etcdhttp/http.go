@@ -280,13 +280,13 @@ func parseRequest(r *http.Request, id int64) (etcdserverpb.Request, error) {
 	if pIdx, err = getUint64(r.Form, "prevIndex"); err != nil {
 		return emptyReq, etcdErr.NewRequestError(
 			etcdErr.EcodeIndexNaN,
-			fmt.Sprintf("invalid value for prevIndex"),
+			`invalid value for "prevIndex"`,
 		)
 	}
 	if wIdx, err = getUint64(r.Form, "waitIndex"); err != nil {
 		return emptyReq, etcdErr.NewRequestError(
 			etcdErr.EcodeIndexNaN,
-			fmt.Sprintf("invalid value for waitIndex"),
+			`invalid value for "waitIndex"`,
 		)
 	}
 	if ttl, err = getUint64(r.Form, "ttl"); err != nil {
