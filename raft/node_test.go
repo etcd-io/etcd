@@ -2,8 +2,8 @@ package raft
 
 import (
 	"reflect"
+	"runtime"
 	"testing"
-	"time"
 
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/third_party/code.google.com/p/go.net/context"
@@ -85,33 +85,51 @@ func TestNodeStepUnblock(t *testing.T) {
 // know who is the current leader; node will direct proposal when it knows
 // who is the current leader.
 func TestBlockProposal(t *testing.T) {
-	propsal := false
-
 	n := newNode()
 	defer n.Stop()
 	r := newRaft(1, []int64{1}, 10, 1)
-	r.step = func(r *raft, m raftpb.Message) {
-		if m.Type == msgProp {
-			propsal = true
-		}
-	}
-
 	go n.run(r)
-	go n.Propose(context.TODO(), []byte("somedata"))
-	// give some time for go routines sechduling ...
-	time.Sleep(time.Millisecond * 2)
-	if propsal {
-		t.Fatalf("proposal = %v, want %v", propsal, false)
+
+	errc := make(chan error, 1)
+	go func() {
+		errc <- n.Propose(context.TODO(), []byte("somedata"))
+	}()
+
+	mustEnoughSched()
+	select {
+	case err := <-errc:
+		t.Errorf("err = %v, want blocking", err)
+	default:
 	}
 
-	// assign a lead to raft.
-	// tick to update the node.
-	r.lead = 1
-	n.Tick()
-	// give some time for go routines sechduling ...
-	time.Sleep(time.Millisecond * 2)
-	if !propsal {
-		t.Fatalf("proposal = %v, want %v", propsal, true)
+	n.Campaign(context.TODO())
+	mustEnoughSched()
+	select {
+	case err := <-errc:
+		if err != nil {
+			t.Errorf("err = %v, want %v", err, nil)
+		}
+	default:
+		t.Errorf("blocking proposal, want unblocking")
+	}
+}
+
+func TestReadyContainUpdates(t *testing.T) {
+	tests := []struct {
+		rd       Ready
+		wcontain bool
+	}{
+		{Ready{}, false},
+		{Ready{State: raftpb.State{Vote: 1}}, true},
+		{Ready{Entries: make([]raftpb.Entry, 1, 1)}, true},
+		{Ready{CommittedEntries: make([]raftpb.Entry, 1, 1)}, true},
+		{Ready{Messages: make([]raftpb.Message, 1, 1)}, true},
+	}
+
+	for i, tt := range tests {
+		if tt.rd.containsUpdates() != tt.wcontain {
+			t.Errorf("#%d: containUpdates = %v, want %v", i, tt.rd.containsUpdates(), tt.wcontain)
+		}
 	}
 }
 
@@ -172,5 +190,12 @@ func TestNodeRestart(t *testing.T) {
 	case rd := <-n.Ready():
 		t.Errorf("unexpected Ready: %+v", rd)
 	default:
+	}
+}
+
+func mustEnoughSched() {
+	// possibility enough to sched upto 10 go routines.
+	for i := 0; i < 10000; i++ {
+		runtime.Gosched()
 	}
 }
