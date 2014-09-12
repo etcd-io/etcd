@@ -9,7 +9,8 @@ import (
 	"github.com/coreos/etcd/third_party/code.google.com/p/go.net/context"
 )
 
-// Proposal goes to proc chan. Others go to recvc chan.
+// TestNodeStep ensures that node.Step sends msgProp to propc chan
+// and other kinds of messages to recvc chan.
 func TestNodeStep(t *testing.T) {
 	for i := range mtmap {
 		n := &Node{
@@ -17,6 +18,7 @@ func TestNodeStep(t *testing.T) {
 			recvc: make(chan raftpb.Message, 1),
 		}
 		n.Step(context.TODO(), raftpb.Message{Type: int64(i)})
+		// Proposal goes to proc chan. Others go to recvc chan.
 		if int64(i) == msgProp {
 			select {
 			case <-n.propc:
@@ -35,7 +37,7 @@ func TestNodeStep(t *testing.T) {
 
 // Cancel and Stop should unblock Step()
 func TestNodeStepUnblock(t *testing.T) {
-	// a node without no buffer to block step
+	// a node without buffer to block step
 	n := &Node{
 		propc: make(chan raftpb.Message),
 		done:  make(chan struct{}),
