@@ -36,11 +36,7 @@ func TestSet(t *testing.T) {
 	srv.Start()
 	defer srv.Stop()
 
-	h := etcdhttp.Handler{
-		Timeout: time.Hour,
-		Server:  srv,
-	}
-
+	h := etcdhttp.NewHandler(srv, nil, time.Hour)
 	s := httptest.NewServer(h)
 	defer s.Close()
 
@@ -50,7 +46,7 @@ func TestSet(t *testing.T) {
 	}
 
 	if resp.StatusCode != 201 {
-		t.Errorf("StatusCode = %d, expected %d", 201, resp.StatusCode)
+		t.Errorf("StatusCode = %d, expected %d", resp.StatusCode, 201)
 	}
 
 	g := new(store.Event)

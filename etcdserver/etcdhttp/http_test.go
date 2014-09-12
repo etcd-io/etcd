@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/etcdserver/etcdserverpb"
@@ -587,8 +588,8 @@ func TestV2MachinesEndpoint(t *testing.T) {
 		{"POST", http.StatusMethodNotAllowed},
 	}
 
-	h := Handler{Peers: Peers{}}
-	s := httptest.NewServer(h)
+	m := NewHandler(nil, Peers{}, time.Hour)
+	s := httptest.NewServer(m)
 	defer s.Close()
 
 	for _, tt := range tests {
@@ -610,13 +611,13 @@ func TestV2MachinesEndpoint(t *testing.T) {
 func TestServeMachines(t *testing.T) {
 	peers := Peers{}
 	peers.Set("0xBEEF0=localhost:8080&0xBEEF1=localhost:8081&0xBEEF2=localhost:8082")
-	h := Handler{Peers: peers}
 
 	writer := httptest.NewRecorder()
 	req, err := http.NewRequest("GET", "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
+	h := &serverHandler{peers: peers}
 	h.serveMachines(writer, req)
 	w := "http://localhost:8080, http://localhost:8081, http://localhost:8082"
 	if g := writer.Body.String(); g != w {

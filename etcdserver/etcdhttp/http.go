@@ -28,49 +28,48 @@ import (
 const (
 	keysPrefix     = "/v2/keys"
 	machinesPrefix = "/v2/machines"
+	raftPrefix     = "/raft"
 
 	DefaultTimeout = 500 * time.Millisecond
 )
 
 var errClosed = errors.New("etcdhttp: client closed connection")
 
-// Handler implements the http.Handler interface and serves etcd client and
-// raft communication.
-type Handler struct {
-	Timeout time.Duration
-	Server  etcdserver.Server
+// NewHandler generates a muxed http.Handler with the given parameters.
+func NewHandler(server etcdserver.Server, peers Peers, timeout time.Duration) http.Handler {
+	sh := &serverHandler{
+		timeout: timeout,
+		server:  server,
+		peers:   peers,
+	}
+	if sh.timeout == 0 {
+		sh.timeout = DefaultTimeout
+	}
+	mux := http.NewServeMux()
+	mux.HandleFunc(raftPrefix, sh.serveRaft)
+	mux.HandleFunc(keysPrefix, sh.serveKeys)
+	mux.HandleFunc(keysPrefix+"/", sh.serveKeys)
 	// TODO: dynamic configuration may make this outdated. take care of it.
 	// TODO: dynamic configuration may introduce race also.
-	Peers Peers
+	mux.HandleFunc(machinesPrefix, sh.serveMachines)
+	mux.HandleFunc("/", http.NotFound)
+	return mux
 }
 
-func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	// TODO: set read/write timeout?
-
-	timeout := h.Timeout
-	if timeout == 0 {
-		timeout = DefaultTimeout
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-
-	switch {
-	case strings.HasPrefix(r.URL.Path, "/raft"):
-		h.serveRaft(ctx, w, r)
-	case strings.HasPrefix(r.URL.Path, keysPrefix):
-		h.serveKeys(ctx, w, r)
-	case strings.HasPrefix(r.URL.Path, machinesPrefix):
-		h.serveMachines(w, r)
-	default:
-		http.NotFound(w, r)
-	}
+// serverHandler provides http.Handlers for etcd client and raft communication.
+type serverHandler struct {
+	timeout time.Duration
+	server  etcdserver.Server
+	peers   Peers
 }
 
-func (h Handler) serveKeys(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+func (h serverHandler) serveKeys(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r.Method, "GET", "PUT", "POST", "DELETE") {
 		return
 	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), h.timeout)
+	defer cancel()
 
 	rr, err := parseRequest(r, genID())
 	if err != nil {
@@ -78,7 +77,7 @@ func (h Handler) serveKeys(ctx context.Context, w http.ResponseWriter, r *http.R
 		return
 	}
 
-	resp, err := h.Server.Do(ctx, rr)
+	resp, err := h.server.Do(ctx, rr)
 	if err != nil {
 		writeError(w, err)
 		return
@@ -106,18 +105,19 @@ func (h Handler) serveKeys(ctx context.Context, w http.ResponseWriter, r *http.R
 
 // serveMachines responds address list in the format '0.0.0.0, 1.1.1.1'.
 // TODO: rethink the format of machine list because it is not json format.
-func (h Handler) serveMachines(w http.ResponseWriter, r *http.Request) {
+func (h serverHandler) serveMachines(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r.Method, "GET", "HEAD") {
 		return
 	}
-	endpoints := h.Peers.Endpoints()
+	endpoints := h.peers.Endpoints()
 	w.Write([]byte(strings.Join(endpoints, ", ")))
 }
 
-func (h Handler) serveRaft(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+func (h serverHandler) serveRaft(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r.Method, "POST") {
 		return
 	}
+
 	b, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		log.Println("etcdhttp: error reading raft message:", err)
@@ -127,7 +127,7 @@ func (h Handler) serveRaft(ctx context.Context, w http.ResponseWriter, r *http.R
 		log.Println("etcdhttp: error unmarshaling raft message:", err)
 	}
 	log.Printf("etcdhttp: raft recv message from %#x: %+v", m.From, m)
-	if err := h.Server.Process(ctx, m); err != nil {
+	if err := h.server.Process(context.TODO(), m); err != nil {
 		log.Println("etcdhttp: error processing raft message:", err)
 		writeError(w, err)
 		return

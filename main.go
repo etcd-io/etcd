@@ -83,14 +83,7 @@ func startEtcd() http.Handler {
 		Ticker: time.Tick(100 * time.Millisecond),
 	}
 	s.Start()
-
-	h := etcdhttp.Handler{
-		Timeout: *timeout,
-		Server:  s,
-		Peers:   *peers,
-	}
-
-	return &h
+	return etcdhttp.NewHandler(s, *peers, *timeout)
 }
 
 // startRaft starts a raft node from the given wal dir.
