@@ -53,11 +53,6 @@ func testServer(t *testing.T, ns int64) {
 		ss[i] = srv
 	}
 
-	// TODO: find fast way to trigger leader election
-	// TODO: introduce the way to know that the leader has been elected
-	// then remove this sleep.
-	time.Sleep(110 * time.Millisecond)
-
 	for i := 1; i <= 10; i++ {
 		r := pb.Request{
 			Method: "PUT",
