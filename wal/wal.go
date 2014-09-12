@@ -75,7 +75,7 @@ func Create(dirpath string) (*WAL, error) {
 		return nil, err
 	}
 
-	p := path.Join(dirpath, fmt.Sprintf("%016x-%016x.wal", 0, 0))
+	p := path.Join(dirpath, fmt.Sprintf("%016x-%016x.wal", 0, 1))
 	f, err := os.OpenFile(p, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0600)
 	if err != nil {
 		return nil, err
@@ -153,8 +153,8 @@ func (w *WAL) ReadAll() (id int64, state raftpb.State, ents []raftpb.Entry, err 
 		switch rec.Type {
 		case entryType:
 			e := mustUnmarshalEntry(rec.Data)
-			if e.Index > w.ri {
-				ents = append(ents[:e.Index-w.ri-1], e)
+			if e.Index >= w.ri {
+				ents = append(ents[:e.Index-w.ri], e)
 			}
 		case stateType:
 			state = mustUnmarshalState(rec.Data)
@@ -200,7 +200,7 @@ func (w *WAL) Cut(index int64) error {
 	log.Printf("wal.cut index=%d", index)
 
 	// create a new wal file with name sequence + 1
-	fpath := path.Join(w.dir, fmt.Sprintf("%016x-%016x.wal", w.seq+1, index))
+	fpath := path.Join(w.dir, fmt.Sprintf("%016x-%016x.wal", w.seq+1, index+1))
 	f, err := os.OpenFile(fpath, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0600)
 	if err != nil {
 		return err

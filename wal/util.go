@@ -14,9 +14,9 @@ func Exist(dirpath string) bool {
 	return len(names) != 0
 }
 
-// The input names should be sorted.
-// serachIndex returns the array index of the last name that has
-// a smaller raft index section than the given raft index.
+// searchIndex returns the last array index of names whose raft index section is
+// equal to or smaller than the given index.
+// The given names MUST be sorted.
 func searchIndex(names []string, index int64) (int, bool) {
 	for i := len(names) - 1; i >= 0; i-- {
 		name := names[i]
