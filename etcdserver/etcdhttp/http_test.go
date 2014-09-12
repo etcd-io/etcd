@@ -680,3 +680,69 @@ func TestPeersEndpoints(t *testing.T) {
 		}
 	}
 }
+
+func TestAllowMethod(t *testing.T) {
+	tests := []struct {
+		m  string
+		ms []string
+		w  bool
+		wh string
+	}{
+		// Accepted methods
+		{
+			m:  "GET",
+			ms: []string{"GET", "POST", "PUT"},
+			w:  true,
+		},
+		{
+			m:  "POST",
+			ms: []string{"POST"},
+			w:  true,
+		},
+		// Made-up methods no good
+		{
+			m:  "FAKE",
+			ms: []string{"GET", "POST", "PUT"},
+			w:  false,
+			wh: "GET,POST,PUT",
+		},
+		// Empty methods no good
+		{
+			m:  "",
+			ms: []string{"GET", "POST"},
+			w:  false,
+			wh: "GET,POST",
+		},
+		// Empty accepted methods no good
+		{
+			m:  "GET",
+			ms: []string{""},
+			w:  false,
+			wh: "",
+		},
+		// No methods accepted
+		{
+			m:  "GET",
+			ms: []string{},
+			w:  false,
+			wh: "",
+		},
+	}
+
+	for i, tt := range tests {
+		rw := httptest.NewRecorder()
+		g := allowMethod(rw, tt.m, tt.ms...)
+		if g != tt.w {
+			t.Errorf("#%d: got allowMethod()=%t, want %t", i, g, tt.w)
+		}
+		if !tt.w {
+			if rw.Code != http.StatusMethodNotAllowed {
+				t.Errorf("#%d: code=%d, want %d", i, rw.Code, http.StatusMethodNotAllowed)
+			}
+			gh := rw.Header().Get("Allow")
+			if gh != tt.wh {
+				t.Errorf("#%d: Allow header=%q, want %q", i, gh, tt.wh)
+			}
+		}
+	}
+}
