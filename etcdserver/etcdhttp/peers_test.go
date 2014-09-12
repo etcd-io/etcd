@@ -47,10 +47,10 @@ func TestPeers(t *testing.T) {
 		if err != nil {
 			t.Errorf("#%d: err=%v, want nil", i, err)
 		}
-		ids := p.IDs()
-		sortint64(ids)
-		if !reflect.DeepEqual(ids, tt.wids) {
-			t.Errorf("#%d: IDs=%#v, want %#v", i, ids, tt.wids)
+		ids := int64Slice(p.IDs())
+		sort.Sort(ids)
+		if !reflect.DeepEqual([]int64(ids), tt.wids) {
+			t.Errorf("#%d: IDs=%#v, want %#v", i, []int64(ids), tt.wids)
 		}
 		ep := p.Endpoints()
 		if !reflect.DeepEqual(ep, tt.wep) {
@@ -68,17 +68,6 @@ type int64Slice []int64
 func (p int64Slice) Len() int           { return len(p) }
 func (p int64Slice) Less(i, j int) bool { return p[i] < p[j] }
 func (p int64Slice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
-
-func sortint64(list []int64) {
-	sorted := make(int64Slice, len(list))
-	for i, j := range list {
-		sorted[i] = j
-	}
-	sort.Sort(sorted)
-	for i, j := range sorted {
-		list[i] = j
-	}
-}
 
 func TestPeersSetBad(t *testing.T) {
 	tests := []string{
