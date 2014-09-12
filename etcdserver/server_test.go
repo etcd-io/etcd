@@ -39,7 +39,7 @@ func TestDoLocalAction(t *testing.T) {
 	}
 	for i, tt := range tests {
 		store := &storeRecorder{}
-		srv := &Server{Store: store}
+		srv := &EtcdServer{Store: store}
 		resp, err := srv.Do(context.TODO(), tt.req)
 
 		if err != tt.werr {
@@ -117,7 +117,7 @@ func TestApply(t *testing.T) {
 
 	for i, tt := range tests {
 		store := &storeRecorder{}
-		srv := &Server{Store: store}
+		srv := &EtcdServer{Store: store}
 		resp := srv.apply(tt.req)
 
 		if !reflect.DeepEqual(resp, tt.wresp) {
@@ -136,7 +136,7 @@ func testServer(t *testing.T, ns int64) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	ss := make([]*Server, ns)
+	ss := make([]*EtcdServer, ns)
 
 	send := func(msgs []raftpb.Message) {
 		for _, m := range msgs {
@@ -155,14 +155,14 @@ func testServer(t *testing.T, ns int64) {
 		n := raft.Start(id, peers, 10, 1)
 		tk := time.NewTicker(10 * time.Millisecond)
 		defer tk.Stop()
-		srv := &Server{
+		srv := &EtcdServer{
 			Node:   n,
 			Store:  store.New(),
 			Send:   send,
 			Save:   func(_ raftpb.State, _ []raftpb.Entry) {},
 			Ticker: tk.C,
 		}
-		Start(srv)
+		srv.Start()
 		// TODO(xiangli): randomize election timeout
 		// then remove this sleep.
 		time.Sleep(1 * time.Millisecond)
@@ -224,14 +224,14 @@ func TestDoProposal(t *testing.T) {
 		tk := make(chan time.Time)
 		// this makes <-tk always successful, which accelerates internal clock
 		close(tk)
-		srv := &Server{
+		srv := &EtcdServer{
 			Node:   n,
 			Store:  st,
 			Send:   func(_ []raftpb.Message) {},
 			Save:   func(_ raftpb.State, _ []raftpb.Entry) {},
 			Ticker: tk,
 		}
-		Start(srv)
+		srv.Start()
 		resp, err := srv.Do(ctx, tt)
 		srv.Stop()
 
@@ -254,7 +254,7 @@ func TestDoProposalCancelled(t *testing.T) {
 	n := raft.Start(0xBAD0, []int64{0xBAD0, 0xBAD1}, 10, 1)
 	st := &storeRecorder{}
 	wait := &waitRecorder{}
-	srv := &Server{
+	srv := &EtcdServer{
 		// TODO: use fake node for better testability
 		Node:  n,
 		Store: st,
@@ -291,7 +291,7 @@ func TestDoProposalStopped(t *testing.T) {
 	tk := make(chan time.Time)
 	// this makes <-tk always successful, which accelarates internal clock
 	close(tk)
-	srv := &Server{
+	srv := &EtcdServer{
 		// TODO: use fake node for better testability
 		Node:   n,
 		Store:  st,
@@ -299,7 +299,7 @@ func TestDoProposalStopped(t *testing.T) {
 		Save:   func(_ raftpb.State, _ []raftpb.Entry) {},
 		Ticker: tk,
 	}
-	Start(srv)
+	srv.Start()
 
 	done := make(chan struct{})
 	var err error

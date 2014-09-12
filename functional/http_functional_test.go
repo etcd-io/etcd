@@ -24,18 +24,16 @@ func TestSet(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	st := store.New()
-
 	n := raft.Start(1, []int64{1}, 0, 0)
 	n.Campaign(ctx)
 
-	srv := &etcdserver.Server{
+	srv := &etcdserver.EtcdServer{
+		Store: store.New(),
 		Node:  n,
-		Store: st,
-		Send:  etcdserver.SendFunc(nopSend),
 		Save:  func(st raftpb.State, ents []raftpb.Entry) {},
+		Send:  etcdserver.SendFunc(nopSend),
 	}
-	etcdserver.Start(srv)
+	srv.Start()
 	defer srv.Stop()
 
 	h := etcdhttp.Handler{

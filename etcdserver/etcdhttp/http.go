@@ -38,7 +38,7 @@ var errClosed = errors.New("etcdhttp: client closed connection")
 // raft communication.
 type Handler struct {
 	Timeout time.Duration
-	Server  *etcdserver.Server
+	Server  etcdserver.Server
 	// TODO: dynamic configuration may make this outdated. take care of it.
 	// TODO: dynamic configuration may introduce race also.
 	Peers Peers
@@ -127,9 +127,12 @@ func (h Handler) serveRaft(ctx context.Context, w http.ResponseWriter, r *http.R
 		log.Println("etcdhttp: error unmarshaling raft message:", err)
 	}
 	log.Printf("etcdhttp: raft recv message from %#x: %+v", m.From, m)
-	if err := h.Server.Node.Step(ctx, m); err != nil {
-		log.Println("etcdhttp: error stepping raft messages:", err)
+	if err := h.Server.Process(ctx, m); err != nil {
+		log.Println("etcdhttp: error processing raft message:", err)
+		writeError(w, err)
+		return
 	}
+	w.WriteHeader(http.StatusOK)
 }
 
 // genID generates a random id that is: n < 0 < n.
