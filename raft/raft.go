@@ -108,7 +108,7 @@ type raft struct {
 	// the leader id
 	lead int64
 
-	elapsed          int
+	elapsed          int // number of ticks since the last msg
 	heartbeatTimeout int
 	electionTimeout  int
 	tick             func()
@@ -258,6 +258,7 @@ func (r *raft) appendEntry(e pb.Entry) {
 	r.maybeCommit()
 }
 
+// tickElection is ran by followers and candidates after r.electionTimeout.
 func (r *raft) tickElection() {
 	r.elapsed++
 	// TODO (xiangli): elctionTimeout should be randomized.
@@ -267,6 +268,7 @@ func (r *raft) tickElection() {
 	}
 }
 
+// tickHeartbeat is ran by leaders to send a msgBeat after r.heartbeatTimeout.
 func (r *raft) tickHeartbeat() {
 	r.elapsed++
 	if r.elapsed > r.heartbeatTimeout {
