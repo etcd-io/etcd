@@ -63,14 +63,20 @@ func TestPeers(t *testing.T) {
 	}
 }
 
+type int64Slice []int64
+
+func (p int64Slice) Len() int           { return len(p) }
+func (p int64Slice) Less(i, j int) bool { return p[i] < p[j] }
+func (p int64Slice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
+
 func sortint64(list []int64) {
-	sorted := make(sort.IntSlice, len(list))
+	sorted := make(int64Slice, len(list))
 	for i, j := range list {
-		sorted[i] = int(j)
+		sorted[i] = j
 	}
-	sorted.Sort()
+	sort.Sort(sorted)
 	for i, j := range sorted {
-		list[i] = int64(j)
+		list[i] = j
 	}
 }
 
