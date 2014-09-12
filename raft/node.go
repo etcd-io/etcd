@@ -86,8 +86,8 @@ func (n *Node) Stop() {
 }
 
 func (n *Node) run(r *raft) {
-	propc := n.propc
-	readyc := n.readyc
+	var propc chan pb.Message
+	var readyc chan Ready
 
 	var lead int64
 	prevSt := r.State
