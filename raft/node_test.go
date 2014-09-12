@@ -96,7 +96,7 @@ func TestBlockProposal(t *testing.T) {
 		errc <- n.Propose(context.TODO(), []byte("somedata"))
 	}()
 
-	mustEnoughSched()
+	forceGoSched()
 	select {
 	case err := <-errc:
 		t.Errorf("err = %v, want blocking", err)
@@ -104,7 +104,7 @@ func TestBlockProposal(t *testing.T) {
 	}
 
 	n.Campaign(context.TODO())
-	mustEnoughSched()
+	forceGoSched()
 	select {
 	case err := <-errc:
 		if err != nil {
@@ -213,7 +213,9 @@ func TestIsStateEqual(t *testing.T) {
 	}
 }
 
-func mustEnoughSched() {
+// WARNING: This is a hack.
+// Remove this when we are able to block/check the status of the go-routines.
+func forceGoSched() {
 	// possibility enough to sched upto 10 go routines.
 	for i := 0; i < 10000; i++ {
 		runtime.Gosched()
