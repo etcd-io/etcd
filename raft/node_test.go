@@ -87,9 +87,9 @@ func TestNodeStepUnblock(t *testing.T) {
 // who is the current leader.
 func TestBlockProposal(t *testing.T) {
 	n := newNode()
-	defer n.Stop()
 	r := newRaft(1, []int64{1}, 10, 1)
 	go n.run(r)
+	defer n.Stop()
 
 	errc := make(chan error, 1)
 	go func() {
