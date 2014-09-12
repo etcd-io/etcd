@@ -81,6 +81,40 @@ func TestNodeStepUnblock(t *testing.T) {
 	}
 }
 
+// TestBlockProposal ensures that node will block proposal when it does not
+// know who is the current leader; node will direct proposal when it knows
+// who is the current leader.
+func TestBlockProposal(t *testing.T) {
+	propsal := false
+
+	n := newNode()
+	defer n.Stop()
+	r := newRaft(1, []int64{1}, 10, 1)
+	r.step = func(r *raft, m raftpb.Message) {
+		if m.Type == msgProp {
+			propsal = true
+		}
+	}
+
+	go n.run(r)
+	go n.Propose(context.TODO(), []byte("somedata"))
+	// give some time for go routines sechduling ...
+	time.Sleep(time.Millisecond * 2)
+	if propsal {
+		t.Fatalf("proposal = %v, want %v", propsal, false)
+	}
+
+	// assign a lead to raft.
+	// tick to update the node.
+	r.lead = 1
+	n.Tick()
+	// give some time for go routines sechduling ...
+	time.Sleep(time.Millisecond * 2)
+	if !propsal {
+		t.Fatalf("proposal = %v, want %v", propsal, true)
+	}
+}
+
 func TestNode(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
