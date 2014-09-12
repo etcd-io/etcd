@@ -1,4 +1,3 @@
-// Package raft implements raft.
 package raft
 
 import (
@@ -55,6 +54,8 @@ type Node struct {
 	done   chan struct{}
 }
 
+// Start returns a new Node given a unique raft id, a list of raft peers, and
+// the election and heartbeat timeouts in units of ticks.
 func Start(id int64, peers []int64, election, heartbeat int) Node {
 	n := newNode()
 	r := newRaft(id, peers, election, heartbeat)
@@ -62,6 +63,9 @@ func Start(id int64, peers []int64, election, heartbeat int) Node {
 	return n
 }
 
+// Restart is identical to Start but takes an initial State and a slice of
+// entries. Generally this is used when restarting from a stable storage
+// log.
 func Restart(id int64, peers []int64, election, heartbeat int, st pb.State, ents []pb.Entry) Node {
 	n := newNode()
 	r := newRaft(id, peers, election, heartbeat)
@@ -131,6 +135,8 @@ func (n *Node) run(r *raft) {
 	}
 }
 
+// Tick increments the internal logical clock for this Node. Election timeouts
+// and heartbeat timeouts are in units of ticks.
 func (n *Node) Tick() error {
 	select {
 	case n.tickc <- struct{}{}:
