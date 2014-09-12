@@ -4,6 +4,7 @@ import (
 	"reflect"
 	"runtime"
 	"testing"
+	"time"
 
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/third_party/code.google.com/p/go.net/context"
@@ -82,7 +83,7 @@ func TestNodeStepUnblock(t *testing.T) {
 }
 
 // TestBlockProposal ensures that node will block proposal when it does not
-// know who is the current leader; node will direct proposal when it knows
+// know who is the current leader; node will accept proposal when it knows
 // who is the current leader.
 func TestBlockProposal(t *testing.T) {
 	n := newNode()
@@ -190,6 +191,25 @@ func TestNodeRestart(t *testing.T) {
 	case rd := <-n.Ready():
 		t.Errorf("unexpected Ready: %+v", rd)
 	default:
+	}
+}
+
+func TestIsStateEqual(t *testing.T) {
+	tests := []struct {
+		st raftpb.State
+		we bool
+	}{
+		{emptyState, true},
+		{raftpb.State{Vote: 1}, false},
+		{raftpb.State{Commit: 1}, false},
+		{raftpb.State{Term: 1}, false},
+		{raftpb.State{LastIndex: 1}, false},
+	}
+
+	for i, tt := range tests {
+		if isStateEqual(tt.st, emptyState) != tt.we {
+			t.Errorf("#%d, equal = %v, want %v", i, isStateEqual(tt.st, emptyState), tt.we)
+		}
 	}
 }
 
