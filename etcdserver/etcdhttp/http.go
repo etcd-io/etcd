@@ -19,6 +19,7 @@ import (
 	crand "crypto/rand"
 	"math/rand"
 
+	"compress/gzip"
 	"github.com/coreos/etcd/elog"
 	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/etcdserver"
@@ -214,6 +215,10 @@ func (h Handler) serveKeys(ctx context.Context, w http.ResponseWriter, r *http.R
 	default:
 		writeError(w, errors.New("received response with no Event/Watcher!"))
 		return
+	}
+
+	if strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
+		w.Header().Set("Content-Encoding", "gzip")
 	}
 
 	if err = writeEvent(w, ev); err != nil {
@@ -414,8 +419,16 @@ func writeEvent(w http.ResponseWriter, ev *store.Event) error {
 	if ev.IsCreated() {
 		w.WriteHeader(http.StatusCreated)
 	}
+	var writer io.Writer
+	if w.Header().Get("Content-Encoding") == "gzip" {
+		gzw := gzip.NewWriter(w)
+		writer = gzw
+		defer gzw.Close()
+	} else {
+		writer = w
+	}
 
-	return json.NewEncoder(w).Encode(ev)
+	return json.NewEncoder(writer).Encode(ev)
 }
 
 // waitForEvent waits for a given Watcher to return its associated
