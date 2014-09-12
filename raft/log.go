@@ -27,7 +27,7 @@ type raftLog struct {
 func newLog() *raftLog {
 	return &raftLog{
 		ents:             make([]pb.Entry, 1),
-		unstable:         1,
+		unstable:         0,
 		committed:        0,
 		applied:          0,
 		compactThreshold: defaultCompactThreshold,
@@ -77,7 +77,7 @@ func (l *raftLog) findConflict(from int64, ents []pb.Entry) int64 {
 }
 
 func (l *raftLog) unstableEnts() []pb.Entry {
-	ents := l.entries(l.unstable)
+	ents := l.slice(l.unstable, l.lastIndex()+1)
 	if ents == nil {
 		return nil
 	}

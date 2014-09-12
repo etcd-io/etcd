@@ -141,7 +141,7 @@ func TestNode(t *testing.T) {
 	wants := []Ready{
 		{
 			State:            raftpb.State{Term: 1, Commit: 1, LastIndex: 1},
-			Entries:          []raftpb.Entry{{Term: 1, Index: 1}},
+			Entries:          []raftpb.Entry{{}, {Term: 1, Index: 1}},
 			CommittedEntries: []raftpb.Entry{{Term: 1, Index: 1}},
 		},
 		{
