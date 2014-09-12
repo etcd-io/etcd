@@ -76,11 +76,14 @@ func TestAppend(t *testing.T) {
 func TestCompactionSideEffects(t *testing.T) {
 	var i int64
 	lastIndex := int64(1000)
+	lastTerm := lastIndex
 	raftLog := newLog()
 
 	for i = 0; i < lastIndex; i++ {
 		raftLog.append(int64(i), pb.Entry{Term: int64(i + 1), Index: int64(i + 1)})
 	}
+	raftLog.maybeCommit(lastIndex, lastTerm)
+	raftLog.resetNextEnts()
 
 	raftLog.compact(500)
 
@@ -149,16 +152,18 @@ func TestUnstableEnts(t *testing.T) {
 //TestCompaction ensures that the number of log entreis is correct after compactions.
 func TestCompaction(t *testing.T) {
 	tests := []struct {
-		app     int
-		compact []int64
-		wleft   []int
-		wallow  bool
+		applied   int64
+		lastIndex int64
+		compact   []int64
+		wleft     []int
+		wallow    bool
 	}{
 		// out of upper bound
-		{1000, []int64{1001}, []int{-1}, false},
-		{1000, []int64{300, 500, 800, 900}, []int{701, 501, 201, 101}, true},
+		{1000, 1000, []int64{1001}, []int{-1}, false},
+		{1000, 1000, []int64{300, 500, 800, 900}, []int{701, 501, 201, 101}, true},
 		// out of lower bound
-		{1000, []int64{300, 299}, []int{701, -1}, false},
+		{1000, 1000, []int64{300, 299}, []int{701, -1}, false},
+		{0, 1000, []int64{1}, []int{-1}, false},
 	}
 
 	for i, tt := range tests {
@@ -172,9 +177,11 @@ func TestCompaction(t *testing.T) {
 			}()
 
 			raftLog := newLog()
-			for i := 0; i < tt.app; i++ {
+			for i := int64(0); i < tt.lastIndex; i++ {
 				raftLog.append(int64(i), pb.Entry{})
 			}
+			raftLog.maybeCommit(tt.applied, 0)
+			raftLog.resetNextEnts()
 
 			for j := 0; j < len(tt.compact); j++ {
 				raftLog.compact(tt.compact[j])
