@@ -60,7 +60,7 @@ type WAL struct {
 	decoder *decoder // decoder to decode records
 
 	f       *os.File // underlay file opened for appending, sync
-	seq     int64    // current sequence of the wal file to be written
+	seq     int64    // the sequence of the current writting wal file
 	enti    int64    // index of the last entry that has been saved to wal
 	encoder *encoder // encoder to encode records
 }
