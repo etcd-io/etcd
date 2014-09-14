@@ -76,7 +76,7 @@ func Create(dirpath string) (*WAL, error) {
 		return nil, err
 	}
 
-	p := path.Join(dirpath, fmt.Sprintf("%016x-%016x.wal", 0, 0))
+	p := path.Join(dirpath, walName(0, 0))
 	f, err := os.OpenFile(p, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0600)
 	if err != nil {
 		return nil, err
@@ -207,7 +207,7 @@ func (w *WAL) Cut() error {
 	log.Printf("wal.cut index=%d", w.enti+1)
 
 	// create a new wal file with name sequence + 1
-	fpath := path.Join(w.dir, fmt.Sprintf("%016x-%016x.wal", w.seq+1, w.enti+1))
+	fpath := path.Join(w.dir, walName(w.seq+1, w.enti+1))
 	f, err := os.OpenFile(fpath, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0600)
 	if err != nil {
 		return err
