@@ -65,7 +65,6 @@ type WAL struct {
 }
 
 // Create creates a WAL ready for appending records.
-// The index of first record saved MUST be 0.
 func Create(dirpath string) (*WAL, error) {
 	log.Printf("path=%s wal.create", dirpath)
 	if Exist(dirpath) {

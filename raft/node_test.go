@@ -171,6 +171,7 @@ func TestNode(t *testing.T) {
 
 func TestNodeRestart(t *testing.T) {
 	entries := []raftpb.Entry{
+		{},
 		{Term: 1, Index: 1},
 		{Term: 1, Index: 2, Data: []byte("foo")},
 	}
@@ -179,7 +180,7 @@ func TestNodeRestart(t *testing.T) {
 	want := Ready{
 		State: emptyState,
 		// commit upto index commit index in st
-		CommittedEntries: entries[:st.Commit],
+		CommittedEntries: entries[1 : st.Commit+1],
 	}
 
 	n := Restart(1, []int64{1}, 0, 0, st, entries)
