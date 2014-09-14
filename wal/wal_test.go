@@ -130,7 +130,7 @@ func TestCut(t *testing.T) {
 	if err := w.SaveEntry(&raftpb.Entry{}); err != nil {
 		t.Fatal(err)
 	}
-	if err := w.Cut(0); err != nil {
+	if err := w.Cut(); err != nil {
 		t.Fatal(err)
 	}
 	wname := fmt.Sprintf("%016x-%016x.wal", 1, 1)
@@ -142,7 +142,7 @@ func TestCut(t *testing.T) {
 	if err := w.SaveEntry(e); err != nil {
 		t.Fatal(err)
 	}
-	if err := w.Cut(1); err != nil {
+	if err := w.Cut(); err != nil {
 		t.Fatal(err)
 	}
 	wname = fmt.Sprintf("%016x-%016x.wal", 2, 2)
@@ -287,7 +287,7 @@ func TestRecoverAfterCut(t *testing.T) {
 	if err = w.SaveEntry(&raftpb.Entry{}); err != nil {
 		t.Fatal(err)
 	}
-	if err = w.Cut(0); err != nil {
+	if err = w.Cut(); err != nil {
 		t.Fatal(err)
 	}
 	for i := 1; i < 10; i++ {
@@ -295,7 +295,7 @@ func TestRecoverAfterCut(t *testing.T) {
 		if err = w.SaveEntry(&e); err != nil {
 			t.Fatal(err)
 		}
-		if err = w.Cut(e.Index); err != nil {
+		if err = w.Cut(); err != nil {
 			t.Fatal(err)
 		}
 		if err = w.SaveInfo(info); err != nil {

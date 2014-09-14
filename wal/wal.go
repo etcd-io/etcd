@@ -61,6 +61,7 @@ type WAL struct {
 
 	f       *os.File // underlay file opened for appending, sync
 	seq     int64    // current sequence of the wal file
+	enti    int64    // index of the last entry that has been saved to wal
 	encoder *encoder // encoder to encode records
 }
 
@@ -156,6 +157,7 @@ func (w *WAL) ReadAll() (id int64, state raftpb.State, ents []raftpb.Entry, err 
 			if e.Index >= w.ri {
 				ents = append(ents[:e.Index-w.ri], e)
 			}
+			w.enti = e.Index
 		case stateType:
 			state = mustUnmarshalState(rec.Data)
 		case infoType:
@@ -196,11 +198,11 @@ func (w *WAL) ReadAll() (id int64, state raftpb.State, ents []raftpb.Entry, err 
 
 // index should be the index of last log entry.
 // Cut closes current file written and creates a new one ready to append.
-func (w *WAL) Cut(index int64) error {
-	log.Printf("wal.cut index=%d", index)
+func (w *WAL) Cut() error {
+	log.Printf("wal.cut index=%d", w.enti+1)
 
 	// create a new wal file with name sequence + 1
-	fpath := path.Join(w.dir, fmt.Sprintf("%016x-%016x.wal", w.seq+1, index+1))
+	fpath := path.Join(w.dir, fmt.Sprintf("%016x-%016x.wal", w.seq+1, w.enti+1))
 	f, err := os.OpenFile(fpath, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0600)
 	if err != nil {
 		return err
@@ -250,7 +252,11 @@ func (w *WAL) SaveEntry(e *raftpb.Entry) error {
 		panic(err)
 	}
 	rec := &walpb.Record{Type: entryType, Data: b}
-	return w.encoder.encode(rec)
+	if err := w.encoder.encode(rec); err != nil {
+		return err
+	}
+	w.enti = e.Index
+	return nil
 }
 
 func (w *WAL) SaveState(s *raftpb.State) error {
