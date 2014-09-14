@@ -91,9 +91,6 @@ type raft struct {
 
 	id int64
 
-	// the term we are participating in at any time
-	index int64
-
 	// the log
 	raftLog *raftLog
 
