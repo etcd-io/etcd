@@ -60,7 +60,7 @@ type WAL struct {
 	decoder *decoder // decoder to decode records
 
 	f       *os.File // underlay file opened for appending, sync
-	seq     int64    // current sequence of the wal file
+	seq     int64    // current sequence of the wal file to be written
 	enti    int64    // index of the last entry that has been saved to wal
 	encoder *encoder // encoder to encode records
 }
@@ -127,6 +127,11 @@ func OpenAtIndex(dirpath string, index int64) (*WAL, error) {
 	rc := MultiReadCloser(rcs...)
 
 	// open the lastest wal file for appending
+	seq, _, err := parseWalName(names[len(names)-1])
+	if err != nil {
+		rc.Close()
+		return nil, err
+	}
 	last := path.Join(dirpath, names[len(names)-1])
 	f, err := os.OpenFile(last, os.O_WRONLY|os.O_APPEND, 0)
 	if err != nil {
@@ -139,7 +144,8 @@ func OpenAtIndex(dirpath string, index int64) (*WAL, error) {
 		ri:      index,
 		decoder: newDecoder(rc),
 
-		f: f,
+		f:   f,
+		seq: seq,
 	}
 	return w, nil
 }

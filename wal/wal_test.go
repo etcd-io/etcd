@@ -77,13 +77,22 @@ func TestOpenAtIndex(t *testing.T) {
 		t.Fatal(err)
 	}
 	f.Close()
+	writef := fmt.Sprintf("%016x-%016x.wal", 1, 4)
+	f, err = os.Create(path.Join(dir, writef))
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.Close()
 
 	w, err := OpenAtIndex(dir, 0)
 	if err != nil {
 		t.Fatalf("err = %v, want nil", err)
 	}
-	if g := path.Base(w.f.Name()); g != firstWalName {
-		t.Errorf("name = %+v, want %+v", g, firstWalName)
+	if g := path.Base(w.f.Name()); g != writef {
+		t.Errorf("name = %+v, want %+v", g, writef)
+	}
+	if w.seq != 1 {
+		t.Errorf("seq = %d, want %d", w.seq, 1)
 	}
 	w.Close()
 
