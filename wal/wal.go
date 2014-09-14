@@ -202,7 +202,6 @@ func (w *WAL) ReadAll() (id int64, state raftpb.State, ents []raftpb.Entry, err 
 	return id, state, ents, nil
 }
 
-// index should be the index of last log entry.
 // Cut closes current file written and creates a new one ready to append.
 func (w *WAL) Cut() error {
 	log.Printf("wal.cut index=%d", w.enti+1)
