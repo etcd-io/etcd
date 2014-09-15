@@ -121,10 +121,14 @@ func (h serverHandler) serveRaft(w http.ResponseWriter, r *http.Request) {
 	b, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		log.Println("etcdhttp: error reading raft message:", err)
+		http.Error(w, "error reading raft message", http.StatusBadRequest)
+		return
 	}
 	var m raftpb.Message
 	if err := m.Unmarshal(b); err != nil {
 		log.Println("etcdhttp: error unmarshaling raft message:", err)
+		http.Error(w, "error unmarshaling raft message", http.StatusBadRequest)
+		return
 	}
 	log.Printf("etcdhttp: raft recv message from %#x: %+v", m.From, m)
 	if err := h.server.Process(context.TODO(), m); err != nil {
