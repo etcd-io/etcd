@@ -124,14 +124,21 @@ func TestHttpPost(t *testing.T) {
 		{
 			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				tr = r
-				w.WriteHeader(200)
+				w.WriteHeader(http.StatusNoContent)
 			}),
 			true,
 		},
 		{
 			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				tr = r
-				w.WriteHeader(404)
+				w.WriteHeader(http.StatusNotFound)
+			}),
+			false,
+		},
+		{
+			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				tr = r
+				w.WriteHeader(http.StatusInternalServerError)
 			}),
 			false,
 		},
