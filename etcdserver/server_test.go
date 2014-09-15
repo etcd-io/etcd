@@ -156,11 +156,11 @@ func testServer(t *testing.T, ns int64) {
 		tk := time.NewTicker(10 * time.Millisecond)
 		defer tk.Stop()
 		srv := &Server{
-			Node:   n,
-			Store:  store.New(),
-			Send:   send,
-			Save:   func(_ raftpb.State, _ []raftpb.Entry) {},
-			Ticker: tk.C,
+			Node:    n,
+			Store:   store.New(),
+			Send:    send,
+			Storage: NopStorage{},
+			Ticker:  tk.C,
 		}
 		Start(srv)
 		// TODO(xiangli): randomize election timeout
@@ -405,3 +405,9 @@ func (w *waitRecorder) Trigger(id int64, x interface{}) {
 func boolp(b bool) *bool { return &b }
 
 func stringp(s string) *string { return &s }
+
+type NopStorage struct{}
+
+func (ns NopStorage) Save(st raftpb.State, ents []raftpb.Entry) {}
+func (ns NopStorage) Cut(index int64) error                     { return nil }
+func (ns NopStorage) SaveSnap(st raftpb.Snapshot)               {}

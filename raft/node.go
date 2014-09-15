@@ -31,6 +31,9 @@ type Ready struct {
 	// Messages specifies outbound messages to be sent AFTER Entries are
 	// committed to stable storage.
 	Messages []pb.Message
+
+	// Snapshot specifies the snapshot to be saved to stable storage.
+	Snapshot pb.Snapshot
 }
 
 func isStateEqual(a, b pb.State) bool {
@@ -41,17 +44,22 @@ func IsEmptyState(st pb.State) bool {
 	return isStateEqual(st, emptyState)
 }
 
+func IsEmptySnap(sp pb.Snapshot) bool {
+	return sp.Index == 0
+}
+
 func (rd Ready) containsUpdates() bool {
 	return !IsEmptyState(rd.State) || len(rd.Entries) > 0 || len(rd.CommittedEntries) > 0 || len(rd.Messages) > 0
 }
 
 type Node struct {
-	ctx    context.Context
-	propc  chan pb.Message
-	recvc  chan pb.Message
-	readyc chan Ready
-	tickc  chan struct{}
-	done   chan struct{}
+	ctx      context.Context
+	propc    chan pb.Message
+	recvc    chan pb.Message
+	readyc   chan Ready
+	compactc chan []byte
+	tickc    chan struct{}
+	done     chan struct{}
 }
 
 // Start returns a new Node given a unique raft id, a list of raft peers, and
@@ -77,11 +85,12 @@ func Restart(id int64, peers []int64, election, heartbeat int, st pb.State, ents
 
 func newNode() Node {
 	return Node{
-		propc:  make(chan pb.Message),
-		recvc:  make(chan pb.Message),
-		readyc: make(chan Ready),
-		tickc:  make(chan struct{}),
-		done:   make(chan struct{}),
+		propc:    make(chan pb.Message),
+		recvc:    make(chan pb.Message),
+		readyc:   make(chan Ready),
+		compactc: make(chan []byte),
+		tickc:    make(chan struct{}),
+		done:     make(chan struct{}),
 	}
 }
 
@@ -95,6 +104,7 @@ func (n *Node) run(r *raft) {
 
 	var lead int64
 	prevSt := r.State
+	prevSnapi := r.raftLog.snapshot.Index
 
 	for {
 		if lead != r.lead {
@@ -107,7 +117,7 @@ func (n *Node) run(r *raft) {
 			}
 		}
 
-		rd := newReady(r, prevSt)
+		rd := newReady(r, prevSt, prevSnapi)
 		if rd.containsUpdates() {
 			readyc = n.readyc
 		} else {
@@ -128,6 +138,9 @@ func (n *Node) run(r *raft) {
 			if !IsEmptyState(rd.State) {
 				prevSt = rd.State
 			}
+			if !IsEmptySnap(rd.Snapshot) {
+				prevSnapi = rd.Snapshot.Index
+			}
 			r.msgs = nil
 		case <-n.done:
 			return
@@ -143,6 +156,15 @@ func (n *Node) Tick() error {
 		return nil
 	case <-n.done:
 		return ErrStopped
+	}
+}
+
+func (n *Node) Compact(d []byte) error {
+	select {
+	case n.compactc <- d:
+		return nil
+	case <-n.done:
+		return n.ctx.Err()
 	}
 }
 
@@ -178,7 +200,7 @@ func (n *Node) Ready() <-chan Ready {
 	return n.readyc
 }
 
-func newReady(r *raft, prev pb.State) Ready {
+func newReady(r *raft, prev pb.State, prevSnapi int64) Ready {
 	rd := Ready{
 		Entries:          r.raftLog.unstableEnts(),
 		CommittedEntries: r.raftLog.nextEnts(),
@@ -186,6 +208,9 @@ func newReady(r *raft, prev pb.State) Ready {
 	}
 	if !isStateEqual(r.State, prev) {
 		rd.State = r.State
+	}
+	if prevSnapi != r.raftLog.snapshot.Index {
+		rd.Snapshot = r.raftLog.snapshot
 	}
 	return rd
 }

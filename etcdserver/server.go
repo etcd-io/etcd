@@ -2,6 +2,7 @@ package etcdserver
 
 import (
 	"errors"
+	"log"
 	"time"
 
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
@@ -17,12 +18,27 @@ var (
 	ErrStopped       = errors.New("etcdserver: server stopped")
 )
 
+const (
+	defaultSnapCount = 10000
+)
+
 type SendFunc func(m []raftpb.Message)
 
 type Response struct {
 	Event   *store.Event
 	Watcher store.Watcher
 	err     error
+}
+
+type Storage interface {
+	// Save function saves ents and state to the underlying stable storage.
+	// Save MUST block until st and ents are on stable storage.
+	Save(st raftpb.State, ents []raftpb.Entry)
+	// SavenSnap function saves snapshot to the underlying stable storage.
+	SaveSnap(snap raftpb.Snapshot)
+	// Cut cuts out a new wal file for saving new state and entries.
+	// TODO: remove cut function. WAL should take care of this.
+	Cut(index int64) error
 }
 
 type Server struct {
@@ -38,10 +54,7 @@ type Server struct {
 	// panic.
 	Send SendFunc
 
-	// Save specifies the save function for saving ents to stable storage.
-	// Save MUST block until st and ents are on stable storage.  If Send is
-	// nil, Server will panic.
-	Save func(st raftpb.State, ents []raftpb.Entry)
+	Storage Storage
 
 	Ticker <-chan time.Time
 }
@@ -55,12 +68,16 @@ func Start(s *Server) {
 }
 
 func (s *Server) run() {
+	var snapi int64
+	var commiti int64
 	for {
 		select {
 		case <-s.Ticker:
 			s.Node.Tick()
 		case rd := <-s.Node.Ready():
-			s.Save(rd.State, rd.Entries)
+			s.Storage.Save(rd.State, rd.Entries)
+			// TODO: non-blocking snapshot saving
+			s.Storage.SaveSnap(rd.Snapshot)
 			s.Send(rd.Messages)
 
 			// TODO(bmizerany): do this in the background, but take
@@ -72,11 +89,28 @@ func (s *Server) run() {
 					panic("TODO: this is bad, what do we do about it?")
 				}
 				s.w.Trigger(r.Id, s.apply(r))
+				commiti = e.Index
+			}
+			if commiti-snapi > defaultSnapCount {
+				s.Snapshot()
+				snapi = commiti
 			}
 		case <-s.done:
 			return
 		}
 	}
+}
+
+// TODO: a non-blocking snapshot
+func (s *Server) Snapshot() {
+	d, err := s.Store.Save()
+	if err != nil {
+		log.Println("server: cannot take snapshot %v", err)
+		return
+	}
+	s.Node.Compact(d)
+	// TODO: WAL.Cut should not ask for an index.
+	s.Storage.Cut(0)
 }
 
 // Stop stops the server, and shutsdown the running goroutine. Stop should be
