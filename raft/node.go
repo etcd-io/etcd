@@ -142,7 +142,7 @@ func (n *Node) Tick() error {
 	case n.tickc <- struct{}{}:
 		return nil
 	case <-n.done:
-		return n.ctx.Err()
+		return ErrStopped
 	}
 }
 
