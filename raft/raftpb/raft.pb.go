@@ -84,7 +84,6 @@ type State struct {
 	Term             int64  `protobuf:"varint,1,req,name=term" json:"term"`
 	Vote             int64  `protobuf:"varint,2,req,name=vote" json:"vote"`
 	Commit           int64  `protobuf:"varint,3,req,name=commit" json:"commit"`
-	LastIndex        int64  `protobuf:"varint,4,req,name=lastIndex" json:"lastIndex"`
 	XXX_unrecognized []byte `json:"-"`
 }
 
@@ -614,21 +613,6 @@ func (m *State) Unmarshal(data []byte) error {
 					break
 				}
 			}
-		case 4:
-			if wireType != 0 {
-				return code_google_com_p_gogoprotobuf_proto.ErrWrongType
-			}
-			for shift := uint(0); ; shift += 7 {
-				if index >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[index]
-				index++
-				m.LastIndex |= (int64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
 		default:
 			var sizeOfWire int
 			for {
@@ -719,7 +703,6 @@ func (m *State) Size() (n int) {
 	n += 1 + sovRaft(uint64(m.Term))
 	n += 1 + sovRaft(uint64(m.Vote))
 	n += 1 + sovRaft(uint64(m.Commit))
-	n += 1 + sovRaft(uint64(m.LastIndex))
 	if m.XXX_unrecognized != nil {
 		n += len(m.XXX_unrecognized)
 	}
@@ -815,7 +798,13 @@ func (m *Snapshot) MarshalTo(data []byte) (n int, err error) {
 		for _, num := range m.Nodes {
 			data[i] = 0x10
 			i++
-			i = encodeVarintRaft(data, i, uint64(num))
+			for num >= 1<<7 {
+				data[i] = uint8(uint64(num)&0x7f | 0x80)
+				num >>= 7
+				i++
+			}
+			data[i] = uint8(num)
+			i++
 		}
 	}
 	data[i] = 0x18
@@ -914,9 +903,6 @@ func (m *State) MarshalTo(data []byte) (n int, err error) {
 	data[i] = 0x18
 	i++
 	i = encodeVarintRaft(data, i, uint64(m.Commit))
-	data[i] = 0x20
-	i++
-	i = encodeVarintRaft(data, i, uint64(m.LastIndex))
 	if m.XXX_unrecognized != nil {
 		i += copy(data[i:], m.XXX_unrecognized)
 	}

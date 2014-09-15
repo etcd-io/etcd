@@ -250,7 +250,7 @@ func (r *raft) q() int {
 func (r *raft) appendEntry(e pb.Entry) {
 	e.Term = r.Term
 	e.Index = r.raftLog.lastIndex() + 1
-	r.LastIndex = r.raftLog.append(r.raftLog.lastIndex(), e)
+	r.raftLog.append(r.raftLog.lastIndex(), e)
 	r.prs[r.id].update(r.raftLog.lastIndex())
 	r.maybeCommit()
 }
@@ -355,7 +355,6 @@ func (r *raft) Step(m pb.Message) error {
 
 func (r *raft) handleAppendEntries(m pb.Message) {
 	if r.raftLog.maybeAppend(m.Index, m.LogTerm, m.Commit, m.Entries...) {
-		r.LastIndex = r.raftLog.lastIndex()
 		r.send(pb.Message{To: m.From, Type: msgAppResp, Index: r.raftLog.lastIndex()})
 	} else {
 		r.send(pb.Message{To: m.From, Type: msgAppResp, Index: -1})
@@ -461,7 +460,6 @@ func (r *raft) restore(s pb.Snapshot) bool {
 	}
 
 	r.raftLog.restore(s)
-	r.LastIndex = r.raftLog.lastIndex()
 	r.prs = make(map[int64]*progress)
 	for _, n := range s.Nodes {
 		if n == r.id {
@@ -511,5 +509,4 @@ func (r *raft) loadState(state pb.State) {
 	r.Term = state.Term
 	r.Vote = state.Vote
 	r.Commit = state.Commit
-	r.LastIndex = state.LastIndex
 }
