@@ -57,6 +57,9 @@ func startEtcd() http.Handler {
 	if err != nil {
 		log.Fatal(err)
 	}
+	if id == raft.None {
+		log.Fatalf("etcd: cannot use None(%d) as etcdserver id", raft.None)
+	}
 
 	if peers.Pick(id) == "" {
 		log.Fatalf("%#x=<addr> must be specified in peers", id)
