@@ -40,5 +40,4 @@ message State {
 	required int64 term   = 1 [(gogoproto.nullable) = false];
 	required int64 vote   = 2 [(gogoproto.nullable) = false];
 	required int64 commit = 3 [(gogoproto.nullable) = false];
-	required int64 lastIndex = 4 [(gogoproto.nullable) = false];
 }
