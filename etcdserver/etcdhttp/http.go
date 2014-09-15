@@ -136,7 +136,7 @@ func (h serverHandler) serveRaft(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err)
 		return
 	}
-	w.WriteHeader(http.StatusOK)
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // genID generates a random id that is: n < 0 < n.

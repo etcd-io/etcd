@@ -814,7 +814,7 @@ func TestServeRaft(t *testing.T) {
 				),
 			),
 			nil,
-			http.StatusOK,
+			http.StatusNoContent,
 		},
 	}
 	for i, tt := range testCases {
@@ -822,14 +822,13 @@ func TestServeRaft(t *testing.T) {
 		if err != nil {
 			t.Fatalf("#%d: could not create request: %#v", i, err)
 		}
-		h := Handler{
-			Timeout: time.Hour,
-			Server:  &errServer{tt.serverErr},
-			Peers:   nil,
+		h := &serverHandler{
+			timeout: time.Hour,
+			server:  &errServer{tt.serverErr},
+			peers:   nil,
 		}
-		c := context.Background()
 		rw := httptest.NewRecorder()
-		h.serveRaft(c, rw, req)
+		h.serveRaft(rw, req)
 		if rw.Code != tt.wcode {
 			t.Errorf("#%d: got code=%d, want %d", i, rw.Code, tt.wcode)
 		}

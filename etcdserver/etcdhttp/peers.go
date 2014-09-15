@@ -131,7 +131,7 @@ func httpPost(url string, data []byte) bool {
 		return false
 	}
 	resp.Body.Close()
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != http.StatusNoContent {
 		elog.TODO()
 		return false
 	}
