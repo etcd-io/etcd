@@ -186,7 +186,7 @@ func (r *raft) sendAppend(to int64) {
 // sendHeartbeat sends RRPC, without entries to the given peer.
 func (r *raft) sendHeartbeat(to int64) {
 	pr := r.prs[to]
-	index := max(pr.next-1, r.raftLog.lastIndex())
+	index := max(pr.next-1, r.raftLog.offset)
 	m := pb.Message{
 		To:      to,
 		Type:    msgApp,
