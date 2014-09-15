@@ -8,7 +8,7 @@ import (
 	pb "github.com/coreos/etcd/raft/raftpb"
 )
 
-const none = -1
+const none = 0
 
 type messageType int64
 

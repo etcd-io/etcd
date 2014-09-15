@@ -25,17 +25,18 @@ func testServer(t *testing.T, ns int64) {
 	send := func(msgs []raftpb.Message) {
 		for _, m := range msgs {
 			t.Logf("m = %+v\n", m)
-			ss[m.To].Node.Step(ctx, m)
+			ss[m.To-1].Node.Step(ctx, m)
 		}
 	}
 
 	peers := make([]int64, ns)
 	for i := int64(0); i < ns; i++ {
-		peers[i] = i
+		peers[i] = i + 1
 	}
 
 	for i := int64(0); i < ns; i++ {
-		n := raft.Start(i, peers, 10, 1)
+		id := i + 1
+		n := raft.Start(id, peers, 10, 1)
 		tk := time.NewTicker(10 * time.Millisecond)
 		defer tk.Stop()
 		srv := &Server{
