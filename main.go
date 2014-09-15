@@ -75,15 +75,14 @@ func startEtcd() http.Handler {
 
 	n, w := startRaft(id, peers.IDs(), path.Join(*dir, "wal"))
 
-	tk := time.NewTicker(100 * time.Millisecond)
-	s := &etcdserver.Server{
+	s := &etcdserver.EtcdServer{
 		Store:  store.New(),
 		Node:   n,
 		Save:   w.Save,
 		Send:   etcdhttp.Sender(*peers),
-		Ticker: tk.C,
+		Ticker: time.Tick(100 * time.Millisecond),
 	}
-	etcdserver.Start(s)
+	s.Start()
 
 	h := etcdhttp.Handler{
 		Timeout: *timeout,

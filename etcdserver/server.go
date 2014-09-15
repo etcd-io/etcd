@@ -18,6 +18,7 @@ var (
 )
 
 type SendFunc func(m []raftpb.Message)
+type SaveFunc func(st raftpb.State, ents []raftpb.Entry)
 
 type Response struct {
 	Event   *store.Event
@@ -25,7 +26,24 @@ type Response struct {
 	err     error
 }
 
-type Server struct {
+type Server interface {
+	// Start performs any initialization of the Server necessary for it to
+	// begin serving requests. It must be called before Do or Process.
+	// Start must be non-blocking; any long-running server functionality
+	// should be implemented in goroutines.
+	Start()
+	// Stop terminates the Server and performs any necessary finalization.
+	// Do and Process cannot be called after Stop has been invoked.
+	Stop()
+	// Do takes a request and attempts to fulfil it, returning a Response.
+	Do(ctx context.Context, r pb.Request) (Response, error)
+	// Process takes a raft message and applies it to the server's raft state
+	// machine, respecting any timeout of the given context.
+	Process(ctx context.Context, m raftpb.Message) error
+}
+
+// EtcdServer is the production implementation of the Server interface
+type EtcdServer struct {
 	w    wait.Wait
 	done chan struct{}
 
@@ -34,27 +52,31 @@ type Server struct {
 
 	// Send specifies the send function for sending msgs to peers. Send
 	// MUST NOT block. It is okay to drop messages, since clients should
-	// timeout and reissue their messages.  If Send is nil, Server will
+	// timeout and reissue their messages.  If Send is nil, server will
 	// panic.
 	Send SendFunc
 
 	// Save specifies the save function for saving ents to stable storage.
 	// Save MUST block until st and ents are on stable storage.  If Send is
-	// nil, Server will panic.
+	// nil, server will panic.
 	Save func(st raftpb.State, ents []raftpb.Entry)
 
 	Ticker <-chan time.Time
 }
 
 // Start prepares and starts server in a new goroutine. It is no longer safe to
-// modify a Servers fields after it has been sent to Start.
-func Start(s *Server) {
+// modify a server's fields after it has been sent to Start.
+func (s *EtcdServer) Start() {
 	s.w = wait.New()
 	s.done = make(chan struct{})
 	go s.run()
 }
 
-func (s *Server) run() {
+func (s *EtcdServer) Process(ctx context.Context, m raftpb.Message) error {
+	return s.Node.Step(ctx, m)
+}
+
+func (s *EtcdServer) run() {
 	for {
 		select {
 		case <-s.Ticker:
@@ -79,9 +101,9 @@ func (s *Server) run() {
 	}
 }
 
-// Stop stops the server, and shutsdown the running goroutine. Stop should be
-// called after a Start(s), otherwise it will panic.
-func (s *Server) Stop() {
+// Stop stops the server, and shuts down the running goroutine. Stop should be
+// called after a Start(s), otherwise it will block forever.
+func (s *EtcdServer) Stop() {
 	s.Node.Stop()
 	close(s.done)
 }
@@ -91,7 +113,7 @@ func (s *Server) Stop() {
 // Quorum == true, r will be sent through consensus before performing its
 // respective operation. Do will block until an action is performed or there is
 // an error.
-func (s *Server) Do(ctx context.Context, r pb.Request) (Response, error) {
+func (s *EtcdServer) Do(ctx context.Context, r pb.Request) (Response, error) {
 	if r.Id == 0 {
 		panic("r.Id cannot be 0")
 	}
@@ -137,7 +159,7 @@ func (s *Server) Do(ctx context.Context, r pb.Request) (Response, error) {
 }
 
 // apply interprets r as a call to store.X and returns an Response interpreted from store.Event
-func (s *Server) apply(r pb.Request) Response {
+func (s *EtcdServer) apply(r pb.Request) Response {
 	f := func(ev *store.Event, err error) Response {
 		return Response{Event: ev, err: err}
 	}
