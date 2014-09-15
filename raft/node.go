@@ -34,7 +34,7 @@ type Ready struct {
 }
 
 func isStateEqual(a, b pb.State) bool {
-	return a.Term == b.Term && a.Vote == b.Vote && a.LastIndex == b.LastIndex
+	return a.Term == b.Term && a.Vote == b.Vote && a.Commit == b.Commit && a.LastIndex == b.LastIndex
 }
 
 func IsEmptyState(st pb.State) bool {
