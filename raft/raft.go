@@ -8,7 +8,7 @@ import (
 	pb "github.com/coreos/etcd/raft/raftpb"
 )
 
-const none = 0
+const None = 0
 
 type messageType int64
 
@@ -113,12 +113,12 @@ type raft struct {
 }
 
 func newRaft(id int64, peers []int64, election, heartbeat int) *raft {
-	if id == none {
+	if id == None {
 		panic("cannot use none id")
 	}
 	r := &raft{
 		id:               id,
-		lead:             none,
+		lead:             None,
 		raftLog:          newLog(),
 		prs:              make(map[int64]*progress),
 		electionTimeout:  election,
@@ -127,11 +127,11 @@ func newRaft(id int64, peers []int64, election, heartbeat int) *raft {
 	for _, p := range peers {
 		r.prs[p] = &progress{}
 	}
-	r.becomeFollower(0, none)
+	r.becomeFollower(0, None)
 	return r
 }
 
-func (r *raft) hasLeader() bool { return r.lead != none }
+func (r *raft) hasLeader() bool { return r.lead != None }
 
 func (r *raft) String() string {
 	s := fmt.Sprintf(`state=%v term=%d`, r.state, r.Term)
@@ -231,8 +231,8 @@ func (r *raft) maybeCommit() bool {
 
 func (r *raft) reset(term int64) {
 	r.Term = term
-	r.lead = none
-	r.Vote = none
+	r.lead = None
+	r.Vote = None
 	r.elapsed = 0
 	r.votes = make(map[int64]bool)
 	for i := range r.prs {
@@ -342,7 +342,7 @@ func (r *raft) Step(m pb.Message) error {
 	case m.Term > r.Term:
 		lead := m.From
 		if m.Type == msgVote {
-			lead = none
+			lead = None
 		}
 		r.becomeFollower(m.Term, lead)
 	case m.Term < r.Term:
@@ -417,7 +417,7 @@ func stepCandidate(r *raft, m pb.Message) {
 			r.becomeLeader()
 			r.bcastAppend()
 		case len(r.votes) - gr:
-			r.becomeFollower(r.Term, none)
+			r.becomeFollower(r.Term, None)
 		}
 	}
 }
@@ -425,7 +425,7 @@ func stepCandidate(r *raft, m pb.Message) {
 func stepFollower(r *raft, m pb.Message) {
 	switch m.Type {
 	case msgProp:
-		if r.lead == none {
+		if r.lead == None {
 			panic("no leader")
 		}
 		m.To = r.lead
@@ -438,7 +438,7 @@ func stepFollower(r *raft, m pb.Message) {
 		r.elapsed = 0
 		r.handleSnapshot(m)
 	case msgVote:
-		if (r.Vote == none || r.Vote == m.From) && r.raftLog.isUpToDate(m.Index, m.LogTerm) {
+		if (r.Vote == None || r.Vote == m.From) && r.raftLog.isUpToDate(m.Index, m.LogTerm) {
 			r.elapsed = 0
 			r.Vote = m.From
 			r.send(pb.Message{To: m.From, Type: msgVoteResp, Index: r.raftLog.lastIndex()})
