@@ -46,7 +46,6 @@ func (rd Ready) containsUpdates() bool {
 }
 
 type Node struct {
-	ctx    context.Context
 	propc  chan pb.Message
 	recvc  chan pb.Message
 	readyc chan Ready
@@ -137,12 +136,10 @@ func (n *Node) run(r *raft) {
 
 // Tick increments the internal logical clock for this Node. Election timeouts
 // and heartbeat timeouts are in units of ticks.
-func (n *Node) Tick() error {
+func (n *Node) Tick() {
 	select {
 	case n.tickc <- struct{}{}:
-		return nil
 	case <-n.done:
-		return ErrStopped
 	}
 }
 
