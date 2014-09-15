@@ -503,8 +503,7 @@ func (r *raft) loadEnts(ents []pb.Entry) {
 	if !r.raftLog.isEmpty() {
 		panic("cannot load entries when log is not empty")
 	}
-	r.raftLog.append(0, ents...)
-	r.raftLog.unstable = r.raftLog.lastIndex() + 1
+	r.raftLog.load(ents)
 }
 
 func (r *raft) loadState(state pb.State) {
