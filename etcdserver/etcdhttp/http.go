@@ -217,11 +217,7 @@ func (h Handler) serveKeys(ctx context.Context, w http.ResponseWriter, r *http.R
 		return
 	}
 
-	if strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
-		w.Header().Set("Content-Encoding", "gzip")
-	}
-
-	if err = writeEvent(w, ev); err != nil {
+	if err = writeEvent(w, ev, r); err != nil {
 		// Should never be reached
 		log.Println("error writing event: %v", err)
 	}
@@ -409,7 +405,7 @@ func writeError(w http.ResponseWriter, err error) {
 
 // writeEvent serializes the given Event and writes the resulting JSON to the
 // given ResponseWriter
-func writeEvent(w http.ResponseWriter, ev *store.Event) error {
+func writeEvent(w http.ResponseWriter, ev *store.Event, r *http.Request) error {
 	if ev == nil {
 		return errors.New("cannot write empty Event!")
 	}
@@ -419,16 +415,16 @@ func writeEvent(w http.ResponseWriter, ev *store.Event) error {
 	if ev.IsCreated() {
 		w.WriteHeader(http.StatusCreated)
 	}
-	var writer io.Writer
-	if w.Header().Get("Content-Encoding") == "gzip" {
+
+	ww := io.Writer(w)
+	if strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
+		w.Header().Set("Content-Encoding", "gzip")
 		gzw := gzip.NewWriter(w)
-		writer = gzw
 		defer gzw.Close()
-	} else {
-		writer = w
+		ww = gzw
 	}
 
-	return json.NewEncoder(writer).Encode(ev)
+	return json.NewEncoder(ww).Encode(ev)
 }
 
 // waitForEvent waits for a given Watcher to return its associated
