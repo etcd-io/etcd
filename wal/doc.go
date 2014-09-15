@@ -48,6 +48,10 @@ At a later time a WAL can be opened at a particular raft index:
 	w, err := wal.OpenAtIndex("/var/lib/etcd", 0)
 	...
 
+The raft index must have been written to the WAL. When opening without a
+snapshot the raft index should always be 0. When opening with a snapshot
+the raft index should be the index of the last entry covered by the snapshot.
+
 Additional items cannot be Saved to this WAL until all of the items from 0 to
 the end of the WAL are read first:
 

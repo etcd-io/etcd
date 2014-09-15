@@ -60,8 +60,8 @@ type WAL struct {
 	decoder *decoder // decoder to decode records
 
 	f       *os.File // underlay file opened for appending, sync
-	seq     int64    // the sequence of the current writting wal file
-	enti    int64    // index of the last entry that has been saved to wal
+	seq     int64    // sequence of the wal file currently used for writes
+	enti    int64    // index of the last entry saved to the wal
 	encoder *encoder // encoder to encode records
 }
 
@@ -94,7 +94,7 @@ func Create(dirpath string) (*WAL, error) {
 }
 
 // OpenAtIndex opens the WAL at the given index.
-// There MUST be an entry with given index written to WAL before.
+// The index MUST have been previously committed to the WAL.
 // The returned WAL is ready to read and the first record will be the given
 // index. The WAL cannot be appended to before reading out all of its
 // previous records.
@@ -205,17 +205,16 @@ func (w *WAL) ReadAll() (id int64, state raftpb.State, ents []raftpb.Entry, err 
 
 // Cut closes current file written and creates a new one ready to append.
 func (w *WAL) Cut() error {
-	log.Printf("wal.cut index=%d", w.enti+1)
-
 	// create a new wal file with name sequence + 1
 	fpath := path.Join(w.dir, walName(w.seq+1, w.enti+1))
 	f, err := os.OpenFile(fpath, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0600)
 	if err != nil {
 		return err
 	}
-
 	w.Sync()
 	w.f.Close()
+
+	log.Printf("wal.cut index=%d prevfile=%s curfile=%s", w.enti, w.f.Name(), f.Name())
 
 	// update writer and save the previous crc
 	w.f = f
