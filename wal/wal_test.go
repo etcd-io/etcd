@@ -18,7 +18,6 @@ package wal
 
 import (
 	"bytes"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path"
@@ -31,8 +30,6 @@ import (
 var (
 	infoData   = []byte("\b\xef\xfd\x02")
 	infoRecord = append([]byte("\x0e\x00\x00\x00\x00\x00\x00\x00\b\x01\x10\x99\xb5\xe4\xd0\x03\x1a\x04"), infoData...)
-
-	firstWalName = "0000000000000000-0000000000000000.wal"
 )
 
 func TestNew(t *testing.T) {
@@ -46,8 +43,8 @@ func TestNew(t *testing.T) {
 	if err != nil {
 		t.Fatalf("err = %v, want nil", err)
 	}
-	if g := path.Base(w.f.Name()); g != firstWalName {
-		t.Errorf("name = %+v, want %+v", g, firstWalName)
+	if g := path.Base(w.f.Name()); g != walName(0, 0) {
+		t.Errorf("name = %+v, want %+v", g, walName(0, 0))
 	}
 	w.Close()
 }
@@ -59,7 +56,7 @@ func TestNewForInitedDir(t *testing.T) {
 	}
 	defer os.RemoveAll(p)
 
-	os.Create(path.Join(p, firstWalName))
+	os.Create(path.Join(p, walName(0, 0)))
 	if _, err = Create(p); err == nil || err != os.ErrExist {
 		t.Errorf("err = %v, want %v", err, os.ErrExist)
 	}
@@ -72,7 +69,7 @@ func TestOpenAtIndex(t *testing.T) {
 	}
 	defer os.RemoveAll(dir)
 
-	f, err := os.Create(path.Join(dir, firstWalName))
+	f, err := os.Create(path.Join(dir, walName(0, 0)))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -82,12 +79,15 @@ func TestOpenAtIndex(t *testing.T) {
 	if err != nil {
 		t.Fatalf("err = %v, want nil", err)
 	}
-	if g := path.Base(w.f.Name()); g != firstWalName {
-		t.Errorf("name = %+v, want %+v", g, firstWalName)
+	if g := path.Base(w.f.Name()); g != walName(0, 0) {
+		t.Errorf("name = %+v, want %+v", g, walName(0, 0))
+	}
+	if w.seq != 0 {
+		t.Errorf("seq = %d, want %d", w.seq, 0)
 	}
 	w.Close()
 
-	wname := fmt.Sprintf("%016x-%016x.wal", 2, 10)
+	wname := walName(2, 10)
 	f, err = os.Create(path.Join(dir, wname))
 	if err != nil {
 		t.Fatal(err)
@@ -100,6 +100,9 @@ func TestOpenAtIndex(t *testing.T) {
 	}
 	if g := path.Base(w.f.Name()); g != wname {
 		t.Errorf("name = %+v, want %+v", g, wname)
+	}
+	if w.seq != 2 {
+		t.Errorf("seq = %d, want %d", w.seq, 2)
 	}
 	w.Close()
 
@@ -130,10 +133,10 @@ func TestCut(t *testing.T) {
 	if err := w.SaveEntry(&raftpb.Entry{}); err != nil {
 		t.Fatal(err)
 	}
-	if err := w.Cut(0); err != nil {
+	if err := w.Cut(); err != nil {
 		t.Fatal(err)
 	}
-	wname := fmt.Sprintf("%016x-%016x.wal", 1, 1)
+	wname := walName(1, 1)
 	if g := path.Base(w.f.Name()); g != wname {
 		t.Errorf("name = %s, want %s", g, wname)
 	}
@@ -142,10 +145,10 @@ func TestCut(t *testing.T) {
 	if err := w.SaveEntry(e); err != nil {
 		t.Fatal(err)
 	}
-	if err := w.Cut(1); err != nil {
+	if err := w.Cut(); err != nil {
 		t.Fatal(err)
 	}
-	wname = fmt.Sprintf("%016x-%016x.wal", 2, 2)
+	wname = walName(2, 2)
 	if g := path.Base(w.f.Name()); g != wname {
 		t.Errorf("name = %s, want %s", g, wname)
 	}
@@ -287,7 +290,7 @@ func TestRecoverAfterCut(t *testing.T) {
 	if err = w.SaveEntry(&raftpb.Entry{}); err != nil {
 		t.Fatal(err)
 	}
-	if err = w.Cut(0); err != nil {
+	if err = w.Cut(); err != nil {
 		t.Fatal(err)
 	}
 	for i := 1; i < 10; i++ {
@@ -295,7 +298,7 @@ func TestRecoverAfterCut(t *testing.T) {
 		if err = w.SaveEntry(&e); err != nil {
 			t.Fatal(err)
 		}
-		if err = w.Cut(e.Index); err != nil {
+		if err = w.Cut(); err != nil {
 			t.Fatal(err)
 		}
 		if err = w.SaveInfo(info); err != nil {
@@ -304,7 +307,7 @@ func TestRecoverAfterCut(t *testing.T) {
 	}
 	w.Close()
 
-	if err := os.Remove(path.Join(p, "0000000000000004-0000000000000004.wal")); err != nil {
+	if err := os.Remove(path.Join(p, walName(4, 4))); err != nil {
 		t.Fatal(err)
 	}
 
