@@ -35,23 +35,33 @@ const (
 
 var errClosed = errors.New("etcdhttp: client closed connection")
 
-// NewHandler generates a muxed http.Handler with the given parameters.
-func NewHandler(server etcdserver.Server, peers Peers, timeout time.Duration) http.Handler {
+// NewClientHandler generates a muxed http.Handler with the given parameters to serve etcd client requests.
+func NewClientHandler(server etcdserver.Server, peers Peers, timeout time.Duration) http.Handler {
 	sh := &serverHandler{
-		timeout: timeout,
 		server:  server,
 		peers:   peers,
+		timeout: timeout,
 	}
 	if sh.timeout == 0 {
 		sh.timeout = DefaultTimeout
 	}
 	mux := http.NewServeMux()
-	mux.HandleFunc(raftPrefix, sh.serveRaft)
 	mux.HandleFunc(keysPrefix, sh.serveKeys)
 	mux.HandleFunc(keysPrefix+"/", sh.serveKeys)
 	// TODO: dynamic configuration may make this outdated. take care of it.
 	// TODO: dynamic configuration may introduce race also.
 	mux.HandleFunc(machinesPrefix, sh.serveMachines)
+	mux.HandleFunc("/", http.NotFound)
+	return mux
+}
+
+// NewPeerHandler generates an http.Handler to handle etcd peer (raft) requests.
+func NewPeerHandler(server etcdserver.Server) http.Handler {
+	sh := &serverHandler{
+		server: server,
+	}
+	mux := http.NewServeMux()
+	mux.HandleFunc(raftPrefix, sh.serveRaft)
 	mux.HandleFunc("/", http.NotFound)
 	return mux
 }

@@ -27,6 +27,7 @@ var (
 	fid       = flag.String("id", "0x1", "ID of this server")
 	timeout   = flag.Duration("timeout", 10*time.Second, "Request Timeout")
 	laddr     = flag.String("l", ":8080", "HTTP service address (e.g., ':8080')")
+	paddr     = flag.String("r", ":2380", "Peer service address (e.g., ':2380')")
 	dir       = flag.String("data-dir", "", "Path to the data directory")
 	proxyMode = flag.Bool("proxy-mode", false, "Forward HTTP requests to peers, do not participate in raft.")
 
@@ -41,18 +42,16 @@ func init() {
 func main() {
 	flag.Parse()
 
-	var h http.Handler
 	if *proxyMode {
-		h = startProxy()
+		startProxy()
 	} else {
-		h = startEtcd()
+		startEtcd()
 	}
-
-	http.Handle("/", h)
-	log.Fatal(http.ListenAndServe(*laddr, nil))
 }
 
-func startEtcd() http.Handler {
+// startEtcd launches the etcd server and HTTP handlers for client/server communication.
+// Never returns.
+func startEtcd() {
 	id, err := strconv.ParseInt(*fid, 0, 64)
 	if err != nil {
 		log.Fatal(err)
@@ -83,7 +82,25 @@ func startEtcd() http.Handler {
 		Ticker: time.Tick(100 * time.Millisecond),
 	}
 	s.Start()
-	return etcdhttp.NewHandler(s, *peers, *timeout)
+
+	ch := etcdhttp.NewClientHandler(s, *peers, *timeout)
+	ph := etcdhttp.NewPeerHandler(s)
+
+	// Start the peer server in a goroutine
+	go func() {
+		ps := &http.Server{
+			Addr:    *paddr,
+			Handler: ph,
+		}
+		log.Fatal(ps.ListenAndServe())
+	}()
+
+	// Client server takes over the main goroutine
+	cs := &http.Server{
+		Addr:    *laddr,
+		Handler: ch,
+	}
+	log.Fatal(cs.ListenAndServe())
 }
 
 // startRaft starts a raft node from the given wal dir.
@@ -118,11 +135,13 @@ func startRaft(id int64, peerIDs []int64, waldir string) (raft.Node, *wal.WAL) {
 	return n, w
 }
 
-func startProxy() http.Handler {
+// startEtcd launches an HTTP proxy for client communication which proxies to other etcd nodes.
+// Never returns.
+func startProxy() {
 	h, err := proxy.NewHandler((*peers).Endpoints())
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	return h
+	http.Handle("/", h)
+	log.Fatal(http.ListenAndServe(*laddr, h))
 }
