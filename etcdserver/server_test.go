@@ -376,7 +376,7 @@ func TestSyncFail(t *testing.T) {
 	select {
 	case <-n.Ready():
 	case <-time.After(time.Millisecond):
-		t.Fatalf("no ready")
+		t.Fatalf("expect to receive ready within 1ms, but fail")
 	}
 
 	srv := &EtcdServer{
