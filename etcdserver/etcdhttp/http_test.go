@@ -835,7 +835,7 @@ func TestServeRaft(t *testing.T) {
 			http.StatusBadRequest,
 		},
 		{
-			// bad request JSON
+			// bad request protobuf
 			"POST",
 			strings.NewReader("malformed garbage"),
 			nil,
@@ -890,14 +890,12 @@ type resServer struct {
 	res etcdserver.Response
 }
 
-func (rs *resServer) Do(ctx context.Context, r etcdserverpb.Request) (etcdserver.Response, error) {
+func (rs *resServer) Do(_ context.Context, _ etcdserverpb.Request) (etcdserver.Response, error) {
 	return rs.res, nil
 }
-func (rs *resServer) Process(ctx context.Context, m raftpb.Message) error {
-	return nil
-}
-func (rs *resServer) Start() {}
-func (rs *resServer) Stop()  {}
+func (rs *resServer) Process(_ context.Context, _ raftpb.Message) error { return nil }
+func (rs *resServer) Start()                                            {}
+func (rs *resServer) Stop()                                             {}
 
 func mustMarshalEvent(t *testing.T, ev *store.Event) string {
 	b := new(bytes.Buffer)
