@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -8,6 +9,7 @@ import (
 	"os"
 	"path"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/coreos/etcd/etcdserver"
@@ -26,17 +28,19 @@ const (
 var (
 	fid       = flag.String("id", "0x1", "ID of this server")
 	timeout   = flag.Duration("timeout", 10*time.Second, "Request Timeout")
-	laddr     = flag.String("l", ":4001", "HTTP service address (e.g., ':4001')")
-	paddr     = flag.String("r", ":7001", "Peer service address (e.g., ':7001')")
+	paddr     = flag.String("peer-bind-addr", ":7001", "Peer service address (e.g., ':7001')")
 	dir       = flag.String("data-dir", "", "Path to the data directory")
 	proxyMode = flag.Bool("proxy-mode", false, "Forward HTTP requests to peers, do not participate in raft.")
 
 	peers = &etcdhttp.Peers{}
+	addrs = &Addrs{}
 )
 
 func init() {
-	peers.Set("0x1=localhost:8080")
 	flag.Var(peers, "peers", "your peers")
+	flag.Var(addrs, "bind-addr", "List of HTTP service addresses (e.g., '127.0.0.1:4001,10.0.0.1:8080')")
+	peers.Set("0x1=localhost:8080")
+	addrs.Set("127.0.0.1:4001")
 }
 
 func main() {
@@ -47,10 +51,12 @@ func main() {
 	} else {
 		startEtcd()
 	}
+
+	// Block indefinitely
+	<-make(chan struct{})
 }
 
 // startEtcd launches the etcd server and HTTP handlers for client/server communication.
-// Never returns.
 func startEtcd() {
 	id, err := strconv.ParseInt(*fid, 0, 64)
 	if err != nil {
@@ -89,19 +95,18 @@ func startEtcd() {
 
 	// Start the peer server in a goroutine
 	go func() {
-		ps := &http.Server{
-			Addr:    *paddr,
-			Handler: ph,
-		}
-		log.Fatal(ps.ListenAndServe())
+		log.Print("Listening for peers on ", *paddr)
+		log.Fatal(http.ListenAndServe(*paddr, ph))
 	}()
 
-	// Client server takes over the main goroutine
-	cs := &http.Server{
-		Addr:    *laddr,
-		Handler: ch,
+	// Start a client server goroutine for each listen address
+	for _, addr := range *addrs {
+		addr := addr
+		go func() {
+			log.Print("Listening for client requests on ", addr)
+			log.Fatal(http.ListenAndServe(addr, ch))
+		}()
 	}
-	log.Fatal(cs.ListenAndServe())
 }
 
 // startRaft starts a raft node from the given wal dir.
@@ -136,13 +141,41 @@ func startRaft(id int64, peerIDs []int64, waldir string) (raft.Node, *wal.WAL) {
 	return n, w
 }
 
-// startEtcd launches an HTTP proxy for client communication which proxies to other etcd nodes.
-// Never returns.
+// startProxy launches an HTTP proxy for client communication which proxies to other etcd nodes.
 func startProxy() {
-	h, err := proxy.NewHandler((*peers).Endpoints())
+	ph, err := proxy.NewHandler((*peers).Endpoints())
 	if err != nil {
 		log.Fatal(err)
 	}
-	http.Handle("/", h)
-	log.Fatal(http.ListenAndServe(*laddr, h))
+	// Start a proxy server goroutine for each listen address
+	for _, addr := range *addrs {
+		addr := addr
+		go func() {
+			log.Print("Listening for client requests on ", addr)
+			log.Fatal(http.ListenAndServe(addr, ph))
+		}()
+	}
+}
+
+// Addrs implements the flag.Value interface to allow users to define multiple
+// listen addresses on the command-line
+type Addrs []string
+
+// Set parses a command line set of listen addresses, formatted like:
+// 127.0.0.1:7001,unix:///var/run/etcd.sock,10.1.1.1:8080
+func (as *Addrs) Set(s string) error {
+	// TODO(jonboulle): validate things.
+	parsed := make([]string, 0)
+	for _, a := range strings.Split(s, ",") {
+		parsed = append(parsed, strings.TrimSpace(a))
+	}
+	if len(parsed) == 0 {
+		return errors.New("no valid addresses given!")
+	}
+	*as = parsed
+	return nil
+}
+
+func (as *Addrs) String() string {
+	return strings.Join(*as, ",")
 }
