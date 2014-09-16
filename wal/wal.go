@@ -265,7 +265,7 @@ func (w *WAL) SaveEntry(e *raftpb.Entry) error {
 }
 
 func (w *WAL) SaveState(s *raftpb.HardState) error {
-	if raft.IsEmptyState(*s) {
+	if raft.IsEmptyHardState(*s) {
 		return nil
 	}
 	log.Printf("path=%s wal.saveState state=\"%+v\"", w.f.Name(), s)

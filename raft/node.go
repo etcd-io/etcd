@@ -52,16 +52,16 @@ type Ready struct {
 	Messages []pb.Message
 }
 
-func isStateEqual(a, b pb.HardState) bool {
+func isHardStateEqual(a, b pb.HardState) bool {
 	return a.Term == b.Term && a.Vote == b.Vote && a.Commit == b.Commit
 }
 
-func IsEmptyState(st pb.HardState) bool {
-	return isStateEqual(st, emptyState)
+func IsEmptyHardState(st pb.HardState) bool {
+	return isHardStateEqual(st, emptyState)
 }
 
 func (rd Ready) containsUpdates() bool {
-	return rd.SoftState != nil || !IsEmptyState(rd.HardState) || len(rd.Entries) > 0 || len(rd.CommittedEntries) > 0 || len(rd.Messages) > 0
+	return rd.SoftState != nil || !IsEmptyHardState(rd.HardState) || len(rd.Entries) > 0 || len(rd.CommittedEntries) > 0 || len(rd.Messages) > 0
 }
 
 type Node struct {
@@ -145,7 +145,7 @@ func (n *Node) run(r *raft) {
 			if rd.SoftState != nil {
 				prevSoftSt = rd.SoftState
 			}
-			if !IsEmptyState(rd.HardState) {
+			if !IsEmptyHardState(rd.HardState) {
 				prevHardSt = rd.HardState
 			}
 			r.raftLog.resetNextEnts()
@@ -207,7 +207,7 @@ func newReady(r *raft, prevSoftSt *SoftState, prevHardSt pb.HardState) Ready {
 	if softSt := r.softState(); !softSt.equal(prevSoftSt) {
 		rd.SoftState = softSt
 	}
-	if !isStateEqual(r.HardState, prevHardSt) {
+	if !isHardStateEqual(r.HardState, prevHardSt) {
 		rd.HardState = r.HardState
 	}
 	return rd

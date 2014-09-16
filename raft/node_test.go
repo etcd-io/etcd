@@ -209,8 +209,8 @@ func TestIsStateEqual(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		if isStateEqual(tt.st, emptyState) != tt.we {
-			t.Errorf("#%d, equal = %v, want %v", i, isStateEqual(tt.st, emptyState), tt.we)
+		if isHardStateEqual(tt.st, emptyState) != tt.we {
+			t.Errorf("#%d, equal = %v, want %v", i, isHardStateEqual(tt.st, emptyState), tt.we)
 		}
 	}
 }
