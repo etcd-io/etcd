@@ -26,19 +26,19 @@ type Interface interface {
 func TestLeaderElection(t *testing.T) {
 	tests := []struct {
 		*network
-		state stateType
+		state StateType
 	}{
-		{newNetwork(nil, nil, nil), stateLeader},
-		{newNetwork(nil, nil, nopStepper), stateLeader},
-		{newNetwork(nil, nopStepper, nopStepper), stateCandidate},
-		{newNetwork(nil, nopStepper, nopStepper, nil), stateCandidate},
-		{newNetwork(nil, nopStepper, nopStepper, nil, nil), stateLeader},
+		{newNetwork(nil, nil, nil), StateLeader},
+		{newNetwork(nil, nil, nopStepper), StateLeader},
+		{newNetwork(nil, nopStepper, nopStepper), StateCandidate},
+		{newNetwork(nil, nopStepper, nopStepper, nil), StateCandidate},
+		{newNetwork(nil, nopStepper, nopStepper, nil, nil), StateLeader},
 
 		// three logs further along than 0
-		{newNetwork(nil, ents(1), ents(2), ents(1, 3), nil), stateFollower},
+		{newNetwork(nil, ents(1), ents(2), ents(1, 3), nil), StateFollower},
 
 		// logs converge
-		{newNetwork(ents(1), nil, ents(2), ents(1), nil), stateLeader},
+		{newNetwork(ents(1), nil, ents(2), ents(1), nil), StateLeader},
 	}
 
 	for i, tt := range tests {
@@ -226,13 +226,13 @@ func TestDuelingCandidates(t *testing.T) {
 	wlog := &raftLog{ents: []pb.Entry{{}, pb.Entry{Data: nil, Term: 1, Index: 1}}, committed: 1}
 	tests := []struct {
 		sm      *raft
-		state   stateType
+		state   StateType
 		term    int64
 		raftLog *raftLog
 	}{
-		{a, stateFollower, 2, wlog},
-		{b, stateFollower, 2, wlog},
-		{c, stateFollower, 2, newLog()},
+		{a, StateFollower, 2, wlog},
+		{b, StateFollower, 2, wlog},
+		{c, StateFollower, 2, newLog()},
 	}
 
 	for i, tt := range tests {
@@ -269,8 +269,8 @@ func TestCandidateConcede(t *testing.T) {
 	tt.send(pb.Message{From: 3, To: 3, Type: msgProp, Entries: []pb.Entry{{Data: data}}})
 
 	a := tt.peers[1].(*raft)
-	if g := a.state; g != stateFollower {
-		t.Errorf("state = %s, want %s", g, stateFollower)
+	if g := a.state; g != StateFollower {
+		t.Errorf("state = %s, want %s", g, StateFollower)
 	}
 	if g := a.Term; g != 1 {
 		t.Errorf("term = %d, want %d", g, 1)
@@ -293,8 +293,8 @@ func TestSingleNodeCandidate(t *testing.T) {
 	tt.send(pb.Message{From: 1, To: 1, Type: msgHup})
 
 	sm := tt.peers[1].(*raft)
-	if sm.state != stateLeader {
-		t.Errorf("state = %d, want %d", sm.state, stateLeader)
+	if sm.state != StateLeader {
+		t.Errorf("state = %d, want %d", sm.state, StateLeader)
 	}
 }
 
@@ -450,7 +450,7 @@ func TestCommit(t *testing.T) {
 		for j := 0; j < len(tt.matches); j++ {
 			prs[int64(j)] = &progress{tt.matches[j], tt.matches[j] + 1}
 		}
-		sm := &raft{raftLog: &raftLog{ents: tt.logs}, prs: prs, State: pb.State{Term: tt.smTerm}}
+		sm := &raft{raftLog: &raftLog{ents: tt.logs}, prs: prs, HardState: pb.HardState{Term: tt.smTerm}}
 		sm.maybeCommit()
 		if g := sm.raftLog.committed; g != tt.w {
 			t.Errorf("#%d: committed = %d, want %d", i, g, tt.w)
@@ -504,9 +504,9 @@ func TestHandleMsgApp(t *testing.T) {
 
 	for i, tt := range tests {
 		sm := &raft{
-			state:   stateFollower,
-			State:   pb.State{Term: 2},
-			raftLog: &raftLog{committed: 0, ents: []pb.Entry{{}, {Term: 1}, {Term: 2}}},
+			state:     StateFollower,
+			HardState: pb.HardState{Term: 2},
+			raftLog:   &raftLog{committed: 0, ents: []pb.Entry{{}, {Term: 1}, {Term: 2}}},
 		}
 
 		sm.handleAppendEntries(tt.m)
@@ -532,50 +532,50 @@ func TestHandleMsgApp(t *testing.T) {
 
 func TestRecvMsgVote(t *testing.T) {
 	tests := []struct {
-		state   stateType
+		state   StateType
 		i, term int64
 		voteFor int64
 		w       int64
 	}{
-		{stateFollower, 0, 0, None, -1},
-		{stateFollower, 0, 1, None, -1},
-		{stateFollower, 0, 2, None, -1},
-		{stateFollower, 0, 3, None, 2},
+		{StateFollower, 0, 0, None, -1},
+		{StateFollower, 0, 1, None, -1},
+		{StateFollower, 0, 2, None, -1},
+		{StateFollower, 0, 3, None, 2},
 
-		{stateFollower, 1, 0, None, -1},
-		{stateFollower, 1, 1, None, -1},
-		{stateFollower, 1, 2, None, -1},
-		{stateFollower, 1, 3, None, 2},
+		{StateFollower, 1, 0, None, -1},
+		{StateFollower, 1, 1, None, -1},
+		{StateFollower, 1, 2, None, -1},
+		{StateFollower, 1, 3, None, 2},
 
-		{stateFollower, 2, 0, None, -1},
-		{stateFollower, 2, 1, None, -1},
-		{stateFollower, 2, 2, None, 2},
-		{stateFollower, 2, 3, None, 2},
+		{StateFollower, 2, 0, None, -1},
+		{StateFollower, 2, 1, None, -1},
+		{StateFollower, 2, 2, None, 2},
+		{StateFollower, 2, 3, None, 2},
 
-		{stateFollower, 3, 0, None, -1},
-		{stateFollower, 3, 1, None, -1},
-		{stateFollower, 3, 2, None, 2},
-		{stateFollower, 3, 3, None, 2},
+		{StateFollower, 3, 0, None, -1},
+		{StateFollower, 3, 1, None, -1},
+		{StateFollower, 3, 2, None, 2},
+		{StateFollower, 3, 3, None, 2},
 
-		{stateFollower, 3, 2, 2, 2},
-		{stateFollower, 3, 2, 1, -1},
+		{StateFollower, 3, 2, 2, 2},
+		{StateFollower, 3, 2, 1, -1},
 
-		{stateLeader, 3, 3, 1, -1},
-		{stateCandidate, 3, 3, 1, -1},
+		{StateLeader, 3, 3, 1, -1},
+		{StateCandidate, 3, 3, 1, -1},
 	}
 
 	for i, tt := range tests {
 		sm := newRaft(1, []int64{1}, 0, 0)
 		sm.state = tt.state
 		switch tt.state {
-		case stateFollower:
+		case StateFollower:
 			sm.step = stepFollower
-		case stateCandidate:
+		case StateCandidate:
 			sm.step = stepCandidate
-		case stateLeader:
+		case StateLeader:
 			sm.step = stepLeader
 		}
-		sm.State = pb.State{Vote: tt.voteFor}
+		sm.HardState = pb.HardState{Vote: tt.voteFor}
 		sm.raftLog = &raftLog{ents: []pb.Entry{{}, {Term: 2}, {Term: 2}}}
 
 		sm.Step(pb.Message{Type: msgVote, From: 2, Index: tt.i, LogTerm: tt.term})
@@ -593,23 +593,23 @@ func TestRecvMsgVote(t *testing.T) {
 
 func TestStateTransition(t *testing.T) {
 	tests := []struct {
-		from   stateType
-		to     stateType
+		from   StateType
+		to     StateType
 		wallow bool
 		wterm  int64
 		wlead  int64
 	}{
-		{stateFollower, stateFollower, true, 1, None},
-		{stateFollower, stateCandidate, true, 1, None},
-		{stateFollower, stateLeader, false, -1, None},
+		{StateFollower, StateFollower, true, 1, None},
+		{StateFollower, StateCandidate, true, 1, None},
+		{StateFollower, StateLeader, false, -1, None},
 
-		{stateCandidate, stateFollower, true, 0, None},
-		{stateCandidate, stateCandidate, true, 1, None},
-		{stateCandidate, stateLeader, true, 0, 1},
+		{StateCandidate, StateFollower, true, 0, None},
+		{StateCandidate, StateCandidate, true, 1, None},
+		{StateCandidate, StateLeader, true, 0, 1},
 
-		{stateLeader, stateFollower, true, 1, None},
-		{stateLeader, stateCandidate, false, 1, None},
-		{stateLeader, stateLeader, true, 0, 1},
+		{StateLeader, StateFollower, true, 1, None},
+		{StateLeader, StateCandidate, false, 1, None},
+		{StateLeader, StateLeader, true, 0, 1},
 	}
 
 	for i, tt := range tests {
@@ -626,11 +626,11 @@ func TestStateTransition(t *testing.T) {
 			sm.state = tt.from
 
 			switch tt.to {
-			case stateFollower:
+			case StateFollower:
 				sm.becomeFollower(tt.wterm, tt.wlead)
-			case stateCandidate:
+			case StateCandidate:
 				sm.becomeCandidate()
-			case stateLeader:
+			case StateLeader:
 				sm.becomeLeader()
 			}
 
@@ -646,15 +646,15 @@ func TestStateTransition(t *testing.T) {
 
 func TestAllServerStepdown(t *testing.T) {
 	tests := []struct {
-		state stateType
+		state StateType
 
-		wstate stateType
+		wstate StateType
 		wterm  int64
 		windex int64
 	}{
-		{stateFollower, stateFollower, 3, 1},
-		{stateCandidate, stateFollower, 3, 1},
-		{stateLeader, stateFollower, 3, 2},
+		{StateFollower, StateFollower, 3, 1},
+		{StateCandidate, StateFollower, 3, 1},
+		{StateLeader, StateFollower, 3, 2},
 	}
 
 	tmsgTypes := [...]int64{msgVote, msgApp}
@@ -663,11 +663,11 @@ func TestAllServerStepdown(t *testing.T) {
 	for i, tt := range tests {
 		sm := newRaft(1, []int64{1, 2, 3}, 0, 0)
 		switch tt.state {
-		case stateFollower:
+		case StateFollower:
 			sm.becomeFollower(1, None)
-		case stateCandidate:
+		case StateCandidate:
 			sm.becomeCandidate()
-		case stateLeader:
+		case StateLeader:
 			sm.becomeCandidate()
 			sm.becomeLeader()
 		}
@@ -796,13 +796,13 @@ func TestBcastBeat(t *testing.T) {
 // tests the output of the statemachine when receiving msgBeat
 func TestRecvMsgBeat(t *testing.T) {
 	tests := []struct {
-		state stateType
+		state StateType
 		wMsg  int
 	}{
-		{stateLeader, 2},
+		{StateLeader, 2},
 		// candidate and follower should ignore msgBeat
-		{stateCandidate, 0},
-		{stateFollower, 0},
+		{StateCandidate, 0},
+		{StateFollower, 0},
 	}
 
 	for i, tt := range tests {
@@ -811,11 +811,11 @@ func TestRecvMsgBeat(t *testing.T) {
 		sm.Term = 1
 		sm.state = tt.state
 		switch tt.state {
-		case stateFollower:
+		case StateFollower:
 			sm.step = stepFollower
-		case stateCandidate:
+		case StateCandidate:
 			sm.step = stepCandidate
-		case stateLeader:
+		case StateLeader:
 			sm.step = stepLeader
 		}
 		sm.Step(pb.Message{From: 1, To: 1, Type: msgBeat})

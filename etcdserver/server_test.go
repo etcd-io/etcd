@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"math/rand"
 	"reflect"
+	"runtime"
+	"sync"
 	"testing"
 	"time"
 
@@ -110,6 +112,10 @@ func TestApply(t *testing.T) {
 			Response{Event: &store.Event{}}, []string{"Get"},
 		},
 		{
+			pb.Request{Method: "SYNC", Id: 1},
+			Response{}, []string{"DeleteExpiredKeys"},
+		},
+		{
 			pb.Request{Method: "BADMETHOD", Id: 1},
 			Response{err: ErrUnknownMethod}, nil,
 		},
@@ -159,7 +165,7 @@ func testServer(t *testing.T, ns int64) {
 			Node:   n,
 			Store:  store.New(),
 			Send:   send,
-			Save:   func(_ raftpb.State, _ []raftpb.Entry) {},
+			Save:   func(_ raftpb.HardState, _ []raftpb.Entry) {},
 			Ticker: tk.C,
 		}
 		srv.Start()
@@ -228,7 +234,7 @@ func TestDoProposal(t *testing.T) {
 			Node:   n,
 			Store:  st,
 			Send:   func(_ []raftpb.Message) {},
-			Save:   func(_ raftpb.State, _ []raftpb.Entry) {},
+			Save:   func(_ raftpb.HardState, _ []raftpb.Entry) {},
 			Ticker: tk,
 		}
 		srv.Start()
@@ -296,7 +302,7 @@ func TestDoProposalStopped(t *testing.T) {
 		Node:   n,
 		Store:  st,
 		Send:   func(_ []raftpb.Message) {},
-		Save:   func(_ raftpb.State, _ []raftpb.Entry) {},
+		Save:   func(_ raftpb.HardState, _ []raftpb.Entry) {},
 		Ticker: tk,
 	}
 	srv.Start()
@@ -315,6 +321,117 @@ func TestDoProposalStopped(t *testing.T) {
 	}
 	if err != ErrStopped {
 		t.Errorf("err = %v, want %v", err, ErrStopped)
+	}
+}
+
+// TestSync tests sync 1. is nonblocking 2. sends out SYNC request.
+func TestSync(t *testing.T) {
+	n := raft.Start(0xBAD0, []int64{0xBAD0}, 10, 1)
+	n.Campaign(context.TODO())
+	select {
+	case <-n.Ready():
+	case <-time.After(time.Millisecond):
+		t.Fatalf("expect to receive ready within 1ms, but fail")
+	}
+
+	srv := &EtcdServer{
+		// TODO: use fake node for better testability
+		Node: n,
+	}
+	start := time.Now()
+	srv.sync(defaultSyncTimeout)
+
+	// check that sync is non-blocking
+	if d := time.Since(start); d > time.Millisecond {
+		t.Errorf("CallSyncTime = %v, want < %v", d, time.Millisecond)
+	}
+
+	// give time for goroutine in sync to run
+	// TODO: use fake clock
+	var ready raft.Ready
+	select {
+	case ready = <-n.Ready():
+	case <-time.After(time.Millisecond):
+		t.Fatalf("expect to receive ready within 1ms, but fail")
+	}
+
+	if len(ready.CommittedEntries) != 1 {
+		t.Fatalf("len(CommittedEntries) = %d, want 1", len(ready.CommittedEntries))
+	}
+	e := ready.CommittedEntries[0]
+	var req pb.Request
+	if err := req.Unmarshal(e.Data); err != nil {
+		t.Fatalf("unmarshal error: %v", err)
+	}
+	if req.Method != "SYNC" {
+		t.Errorf("method = %s, want SYNC", req.Method)
+	}
+}
+
+// TestSyncFail tests the case that sync 1. is non-blocking 2. fails to
+// propose SYNC request because there is no leader
+func TestSyncFail(t *testing.T) {
+	// The node is run without Tick and Campaign, so it has no leader forever.
+	n := raft.Start(0xBAD0, []int64{0xBAD0}, 10, 1)
+	select {
+	case <-n.Ready():
+	case <-time.After(time.Millisecond):
+		t.Fatalf("no ready")
+	}
+
+	srv := &EtcdServer{
+		// TODO: use fake node for better testability
+		Node: n,
+	}
+	routineN := runtime.NumGoroutine()
+	start := time.Now()
+	srv.sync(time.Millisecond)
+
+	// check that sync is non-blocking
+	if d := time.Since(start); d > time.Millisecond {
+		t.Errorf("CallSyncTime = %v, want < %v", d, time.Millisecond)
+	}
+
+	// give time for goroutine in sync to cancel
+	// TODO: use fake clock
+	time.Sleep(2 * time.Millisecond)
+	if g := runtime.NumGoroutine(); g != routineN {
+		t.Errorf("NumGoroutine = %d, want %d", g, routineN)
+	}
+	select {
+	case g := <-n.Ready():
+		t.Errorf("ready = %+v, want no", g)
+	default:
+	}
+}
+
+func TestSyncTriggerDeleteExpriedKeys(t *testing.T) {
+	n := raft.Start(0xBAD0, []int64{0xBAD0}, 10, 1)
+	n.Campaign(context.TODO())
+	st := &storeRecorder{}
+	syncInterval := 5 * time.Millisecond
+	syncTicker := time.NewTicker(syncInterval)
+	defer syncTicker.Stop()
+	srv := &EtcdServer{
+		// TODO: use fake node for better testability
+		Node:       n,
+		Store:      st,
+		Send:       func(_ []raftpb.Message) {},
+		Save:       func(_ raftpb.HardState, _ []raftpb.Entry) {},
+		SyncTicker: syncTicker.C,
+	}
+	srv.Start()
+	// give time for sync request to be proposed and performed
+	// TODO: use fake clock
+	time.Sleep(syncInterval + time.Millisecond)
+	srv.Stop()
+
+	action := st.Action()
+	if len(action) != 1 {
+		t.Fatalf("len(action) = %d, want 1", len(action))
+	}
+	if action[0] != "DeleteExpiredKeys" {
+		t.Errorf("action = %s, want DeleteExpiredKeys", action[0])
 	}
 }
 
@@ -342,48 +459,63 @@ func TestGetBool(t *testing.T) {
 }
 
 type storeRecorder struct {
+	sync.Mutex
 	action []string
 }
 
+func (s *storeRecorder) record(action string) {
+	s.Lock()
+	s.action = append(s.action, action)
+	s.Unlock()
+}
+func (s *storeRecorder) Action() []string {
+	s.Lock()
+	cpy := make([]string, len(s.action))
+	copy(cpy, s.action)
+	s.Unlock()
+	return cpy
+}
 func (s *storeRecorder) Version() int  { return 0 }
 func (s *storeRecorder) Index() uint64 { return 0 }
 func (s *storeRecorder) Get(_ string, _, _ bool) (*store.Event, error) {
-	s.action = append(s.action, "Get")
+	s.record("Get")
 	return &store.Event{}, nil
 }
 func (s *storeRecorder) Set(_ string, _ bool, _ string, _ time.Time) (*store.Event, error) {
-	s.action = append(s.action, "Set")
+	s.record("Set")
 	return &store.Event{}, nil
 }
 func (s *storeRecorder) Update(_, _ string, _ time.Time) (*store.Event, error) {
-	s.action = append(s.action, "Update")
+	s.record("Update")
 	return &store.Event{}, nil
 }
 func (s *storeRecorder) Create(_ string, _ bool, _ string, _ bool, _ time.Time) (*store.Event, error) {
-	s.action = append(s.action, "Create")
+	s.record("Create")
 	return &store.Event{}, nil
 }
 func (s *storeRecorder) CompareAndSwap(_, _ string, _ uint64, _ string, _ time.Time) (*store.Event, error) {
-	s.action = append(s.action, "CompareAndSwap")
+	s.record("CompareAndSwap")
 	return &store.Event{}, nil
 }
 func (s *storeRecorder) Delete(_ string, _, _ bool) (*store.Event, error) {
-	s.action = append(s.action, "Delete")
+	s.record("Delete")
 	return &store.Event{}, nil
 }
 func (s *storeRecorder) CompareAndDelete(_, _ string, _ uint64) (*store.Event, error) {
-	s.action = append(s.action, "CompareAndDelete")
+	s.record("CompareAndDelete")
 	return &store.Event{}, nil
 }
 func (s *storeRecorder) Watch(_ string, _, _ bool, _ uint64) (store.Watcher, error) {
-	s.action = append(s.action, "Watch")
+	s.record("Watch")
 	return &stubWatcher{}, nil
 }
-func (s *storeRecorder) Save() ([]byte, error)              { return nil, nil }
-func (s *storeRecorder) Recovery(b []byte) error            { return nil }
-func (s *storeRecorder) TotalTransactions() uint64          { return 0 }
-func (s *storeRecorder) JsonStats() []byte                  { return nil }
-func (s *storeRecorder) DeleteExpiredKeys(cutoff time.Time) {}
+func (s *storeRecorder) Save() ([]byte, error)     { return nil, nil }
+func (s *storeRecorder) Recovery(b []byte) error   { return nil }
+func (s *storeRecorder) TotalTransactions() uint64 { return 0 }
+func (s *storeRecorder) JsonStats() []byte         { return nil }
+func (s *storeRecorder) DeleteExpiredKeys(cutoff time.Time) {
+	s.record("DeleteExpiredKeys")
+}
 
 type stubWatcher struct{}
 

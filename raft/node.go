@@ -9,15 +9,34 @@ import (
 )
 
 var (
-	emptyState = pb.State{}
+	emptyState = pb.HardState{}
 	ErrStopped = errors.New("raft: stopped")
 )
 
-// Ready encapsulates the entries and messages that are ready to be saved to
-// stable storage, committed or sent to other peers.
+// SoftState provides state that is useful for logging and debugging.
+// The state is volatile and does not need to be persisted to the WAL.
+type SoftState struct {
+	Lead      int64
+	RaftState StateType
+}
+
+func (a *SoftState) equal(b *SoftState) bool {
+	return a.Lead == b.Lead && a.RaftState == b.RaftState
+}
+
+// Ready encapsulates the entries and messages that are ready to read,
+// be saved to stable storage, committed or sent to other peers.
+// All fields in Ready are read-only.
 type Ready struct {
-	// The current state of a Node
-	pb.State
+	// The current volatile state of a Node.
+	// SoftState will be nil if there is no update.
+	// It is not required to consume or store SoftState.
+	*SoftState
+
+	// The current state of a Node to be saved to stable storage BEFORE
+	// Messages are sent.
+	// HardState will be equal to empty state if there is no update.
+	pb.HardState
 
 	// Entries specifies entries to be saved to stable storage BEFORE
 	// Messages are sent.
@@ -33,16 +52,16 @@ type Ready struct {
 	Messages []pb.Message
 }
 
-func isStateEqual(a, b pb.State) bool {
+func isStateEqual(a, b pb.HardState) bool {
 	return a.Term == b.Term && a.Vote == b.Vote && a.Commit == b.Commit
 }
 
-func IsEmptyState(st pb.State) bool {
+func IsEmptyState(st pb.HardState) bool {
 	return isStateEqual(st, emptyState)
 }
 
 func (rd Ready) containsUpdates() bool {
-	return !IsEmptyState(rd.State) || len(rd.Entries) > 0 || len(rd.CommittedEntries) > 0 || len(rd.Messages) > 0
+	return rd.SoftState != nil || !IsEmptyState(rd.HardState) || len(rd.Entries) > 0 || len(rd.CommittedEntries) > 0 || len(rd.Messages) > 0
 }
 
 type Node struct {
@@ -65,7 +84,7 @@ func Start(id int64, peers []int64, election, heartbeat int) Node {
 // Restart is identical to Start but takes an initial State and a slice of
 // entries. Generally this is used when restarting from a stable storage
 // log.
-func Restart(id int64, peers []int64, election, heartbeat int, st pb.State, ents []pb.Entry) Node {
+func Restart(id int64, peers []int64, election, heartbeat int, st pb.HardState, ents []pb.Entry) Node {
 	n := newNode()
 	r := newRaft(id, peers, election, heartbeat)
 	r.loadState(st)
@@ -92,25 +111,26 @@ func (n *Node) run(r *raft) {
 	var propc chan pb.Message
 	var readyc chan Ready
 
-	var lead int64
-	prevSt := r.State
+	lead := None
+	prevSoftSt := r.softState()
+	prevHardSt := r.HardState
 
 	for {
-		if lead != r.lead {
-			log.Printf("raft: leader changed from %#x to %#x", lead, r.lead)
-			lead = r.lead
+		rd := newReady(r, prevSoftSt, prevHardSt)
+		if rd.containsUpdates() {
+			readyc = n.readyc
+		} else {
+			readyc = nil
+		}
+
+		if rd.SoftState != nil && lead != rd.SoftState.Lead {
+			log.Printf("raft: leader changed from %#x to %#x", lead, rd.SoftState.Lead)
+			lead = rd.SoftState.Lead
 			if r.hasLeader() {
 				propc = n.propc
 			} else {
 				propc = nil
 			}
-		}
-
-		rd := newReady(r, prevSt)
-		if rd.containsUpdates() {
-			readyc = n.readyc
-		} else {
-			readyc = nil
 		}
 
 		select {
@@ -122,11 +142,14 @@ func (n *Node) run(r *raft) {
 		case <-n.tickc:
 			r.tick()
 		case readyc <- rd:
+			if rd.SoftState != nil {
+				prevSoftSt = rd.SoftState
+			}
+			if !IsEmptyState(rd.HardState) {
+				prevHardSt = rd.HardState
+			}
 			r.raftLog.resetNextEnts()
 			r.raftLog.resetUnstable()
-			if !IsEmptyState(rd.State) {
-				prevSt = rd.State
-			}
 			r.msgs = nil
 		case <-n.done:
 			return
@@ -175,14 +198,17 @@ func (n *Node) Ready() <-chan Ready {
 	return n.readyc
 }
 
-func newReady(r *raft, prev pb.State) Ready {
+func newReady(r *raft, prevSoftSt *SoftState, prevHardSt pb.HardState) Ready {
 	rd := Ready{
 		Entries:          r.raftLog.unstableEnts(),
 		CommittedEntries: r.raftLog.nextEnts(),
 		Messages:         r.msgs,
 	}
-	if !isStateEqual(r.State, prev) {
-		rd.State = r.State
+	if softSt := r.softState(); !softSt.equal(prevSoftSt) {
+		rd.SoftState = softSt
+	}
+	if !isStateEqual(r.HardState, prevHardSt) {
+		rd.HardState = r.HardState
 	}
 	return rd
 }

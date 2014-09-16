@@ -36,7 +36,7 @@ message Message {
 	required Snapshot snapshot = 9 [(gogoproto.nullable) = false];
 }
 
-message State {
+message HardState {
 	required int64 term   = 1 [(gogoproto.nullable) = false];
 	required int64 vote   = 2 [(gogoproto.nullable) = false];
 	required int64 commit = 3 [(gogoproto.nullable) = false];

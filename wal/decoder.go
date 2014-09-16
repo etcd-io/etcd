@@ -76,8 +76,8 @@ func mustUnmarshalEntry(d []byte) raftpb.Entry {
 	return e
 }
 
-func mustUnmarshalState(d []byte) raftpb.State {
-	var s raftpb.State
+func mustUnmarshalState(d []byte) raftpb.HardState {
+	var s raftpb.HardState
 	if err := s.Unmarshal(d); err != nil {
 		panic(err)
 	}

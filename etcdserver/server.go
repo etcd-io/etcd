@@ -1,8 +1,13 @@
 package etcdserver
 
 import (
+	"encoding/binary"
 	"errors"
+	"io"
+	"log"
 	"time"
+
+	crand "crypto/rand"
 
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/raft"
@@ -12,13 +17,15 @@ import (
 	"github.com/coreos/etcd/wait"
 )
 
+const defaultSyncTimeout = time.Second
+
 var (
 	ErrUnknownMethod = errors.New("etcdserver: unknown method")
 	ErrStopped       = errors.New("etcdserver: server stopped")
 )
 
 type SendFunc func(m []raftpb.Message)
-type SaveFunc func(st raftpb.State, ents []raftpb.Entry)
+type SaveFunc func(st raftpb.HardState, ents []raftpb.Entry)
 
 type Response struct {
 	Event   *store.Event
@@ -59,9 +66,10 @@ type EtcdServer struct {
 	// Save specifies the save function for saving ents to stable storage.
 	// Save MUST block until st and ents are on stable storage.  If Send is
 	// nil, server will panic.
-	Save func(st raftpb.State, ents []raftpb.Entry)
+	Save func(st raftpb.HardState, ents []raftpb.Entry)
 
-	Ticker <-chan time.Time
+	Ticker     <-chan time.Time
+	SyncTicker <-chan time.Time
 }
 
 // Start prepares and starts server in a new goroutine. It is no longer safe to
@@ -77,12 +85,13 @@ func (s *EtcdServer) Process(ctx context.Context, m raftpb.Message) error {
 }
 
 func (s *EtcdServer) run() {
+	var syncC <-chan time.Time
 	for {
 		select {
 		case <-s.Ticker:
 			s.Node.Tick()
 		case rd := <-s.Node.Ready():
-			s.Save(rd.State, rd.Entries)
+			s.Save(rd.HardState, rd.Entries)
 			s.Send(rd.Messages)
 
 			// TODO(bmizerany): do this in the background, but take
@@ -95,6 +104,16 @@ func (s *EtcdServer) run() {
 				}
 				s.w.Trigger(r.Id, s.apply(r))
 			}
+
+			if rd.SoftState != nil {
+				if rd.RaftState == raft.StateLeader {
+					syncC = s.SyncTicker
+				} else {
+					syncC = nil
+				}
+			}
+		case <-syncC:
+			s.sync(defaultSyncTimeout)
 		case <-s.done:
 			return
 		}
@@ -109,7 +128,7 @@ func (s *EtcdServer) Stop() {
 }
 
 // Do interprets r and performs an operation on s.Store according to r.Method
-// and other fields. If r.Method is "POST", "PUT", "DELETE", or a "GET with
+// and other fields. If r.Method is "POST", "PUT", "DELETE", or a "GET" with
 // Quorum == true, r will be sent through consensus before performing its
 // respective operation. Do will block until an action is performed or there is
 // an error.
@@ -158,6 +177,29 @@ func (s *EtcdServer) Do(ctx context.Context, r pb.Request) (Response, error) {
 	}
 }
 
+// sync proposes a SYNC request and is non-blocking.
+// This makes no guarantee that the request will be proposed or performed.
+// The request will be cancelled after the given timeout.
+func (s *EtcdServer) sync(timeout time.Duration) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	req := pb.Request{
+		Method: "SYNC",
+		Id:     GenID(),
+		Time:   time.Now().UnixNano(),
+	}
+	data, err := req.Marshal()
+	if err != nil {
+		log.Printf("marshal request %#v error: %v", req, err)
+		return
+	}
+	// There is no promise that node has leader when do SYNC request,
+	// so it uses goroutine to propose.
+	go func() {
+		s.Node.Propose(ctx, data)
+		cancel()
+	}()
+}
+
 // apply interprets r as a call to store.X and returns an Response interpreted from store.Event
 func (s *EtcdServer) apply(r pb.Request) Response {
 	f := func(ev *store.Event, err error) Response {
@@ -190,9 +232,27 @@ func (s *EtcdServer) apply(r pb.Request) Response {
 		}
 	case "QGET":
 		return f(s.Store.Get(r.Path, r.Recursive, r.Sorted))
+	case "SYNC":
+		s.Store.DeleteExpiredKeys(time.Unix(0, r.Time))
+		return Response{}
 	default:
 		// This should never be reached, but just in case:
 		return Response{err: ErrUnknownMethod}
+	}
+}
+
+// TODO: move the function to /id pkg maybe?
+// GenID generates a random id that is not equal to 0.
+func GenID() int64 {
+	for {
+		b := make([]byte, 8)
+		if _, err := io.ReadFull(crand.Reader, b); err != nil {
+			panic(err) // really bad stuff happened
+		}
+		n := int64(binary.BigEndian.Uint64(b))
+		if n != 0 {
+			return n
+		}
 	}
 }
 

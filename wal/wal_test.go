@@ -175,7 +175,7 @@ func TestRecover(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	sts := []raftpb.State{{Term: 1, Vote: 1, Commit: 1}, {Term: 2, Vote: 2, Commit: 2}}
+	sts := []raftpb.HardState{{Term: 1, Vote: 1, Commit: 1}, {Term: 2, Vote: 2, Commit: 2}}
 	for _, s := range sts {
 		if err = w.SaveState(&s); err != nil {
 			t.Fatal(err)
@@ -341,7 +341,7 @@ func TestRecoverAfterCut(t *testing.T) {
 
 func TestSaveEmpty(t *testing.T) {
 	var buf bytes.Buffer
-	var est raftpb.State
+	var est raftpb.HardState
 	w := WAL{
 		encoder: newEncoder(&buf, 0),
 	}

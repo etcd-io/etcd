@@ -153,7 +153,7 @@ func OpenAtIndex(dirpath string, index int64) (*WAL, error) {
 
 // ReadAll reads out all records of the current WAL.
 // After ReadAll, the WAL will be ready for appending new records.
-func (w *WAL) ReadAll() (id int64, state raftpb.State, ents []raftpb.Entry, err error) {
+func (w *WAL) ReadAll() (id int64, state raftpb.HardState, ents []raftpb.Entry, err error) {
 	rec := &walpb.Record{}
 	decoder := w.decoder
 
@@ -264,7 +264,7 @@ func (w *WAL) SaveEntry(e *raftpb.Entry) error {
 	return nil
 }
 
-func (w *WAL) SaveState(s *raftpb.State) error {
+func (w *WAL) SaveState(s *raftpb.HardState) error {
 	if raft.IsEmptyState(*s) {
 		return nil
 	}
@@ -277,7 +277,7 @@ func (w *WAL) SaveState(s *raftpb.State) error {
 	return w.encoder.encode(rec)
 }
 
-func (w *WAL) Save(st raftpb.State, ents []raftpb.Entry) {
+func (w *WAL) Save(st raftpb.HardState, ents []raftpb.Entry) {
 	// TODO(xiangli): no more reference operator
 	w.SaveState(&st)
 	for i := range ents {

@@ -121,15 +121,16 @@ func TestReadyContainUpdates(t *testing.T) {
 		wcontain bool
 	}{
 		{Ready{}, false},
-		{Ready{State: raftpb.State{Vote: 1}}, true},
+		{Ready{SoftState: &SoftState{Lead: 1}}, true},
+		{Ready{HardState: raftpb.HardState{Vote: 1}}, true},
 		{Ready{Entries: make([]raftpb.Entry, 1, 1)}, true},
 		{Ready{CommittedEntries: make([]raftpb.Entry, 1, 1)}, true},
 		{Ready{Messages: make([]raftpb.Message, 1, 1)}, true},
 	}
 
 	for i, tt := range tests {
-		if tt.rd.containsUpdates() != tt.wcontain {
-			t.Errorf("#%d: containUpdates = %v, want %v", i, tt.rd.containsUpdates(), tt.wcontain)
+		if g := tt.rd.containsUpdates(); g != tt.wcontain {
+			t.Errorf("#%d: containUpdates = %v, want %v", i, g, tt.wcontain)
 		}
 	}
 }
@@ -140,12 +141,13 @@ func TestNode(t *testing.T) {
 
 	wants := []Ready{
 		{
-			State:            raftpb.State{Term: 1, Commit: 1},
+			SoftState:        &SoftState{Lead: 1, RaftState: StateLeader},
+			HardState:        raftpb.HardState{Term: 1, Commit: 1},
 			Entries:          []raftpb.Entry{{}, {Term: 1, Index: 1}},
 			CommittedEntries: []raftpb.Entry{{Term: 1, Index: 1}},
 		},
 		{
-			State:            raftpb.State{Term: 1, Commit: 2},
+			HardState:        raftpb.HardState{Term: 1, Commit: 2},
 			Entries:          []raftpb.Entry{{Term: 1, Index: 2, Data: []byte("foo")}},
 			CommittedEntries: []raftpb.Entry{{Term: 1, Index: 2, Data: []byte("foo")}},
 		},
@@ -175,10 +177,10 @@ func TestNodeRestart(t *testing.T) {
 		{Term: 1, Index: 1},
 		{Term: 1, Index: 2, Data: []byte("foo")},
 	}
-	st := raftpb.State{Term: 1, Commit: 1}
+	st := raftpb.HardState{Term: 1, Commit: 1}
 
 	want := Ready{
-		State: emptyState,
+		HardState: emptyState,
 		// commit upto index commit index in st
 		CommittedEntries: entries[1 : st.Commit+1],
 	}
@@ -197,13 +199,13 @@ func TestNodeRestart(t *testing.T) {
 
 func TestIsStateEqual(t *testing.T) {
 	tests := []struct {
-		st raftpb.State
+		st raftpb.HardState
 		we bool
 	}{
 		{emptyState, true},
-		{raftpb.State{Vote: 1}, false},
-		{raftpb.State{Commit: 1}, false},
-		{raftpb.State{Term: 1}, false},
+		{raftpb.HardState{Vote: 1}, false},
+		{raftpb.HardState{Commit: 1}, false},
+		{raftpb.HardState{Term: 1}, false},
 	}
 
 	for i, tt := range tests {

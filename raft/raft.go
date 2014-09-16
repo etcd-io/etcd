@@ -8,7 +8,7 @@ import (
 	pb "github.com/coreos/etcd/raft/raftpb"
 )
 
-const None = 0
+const None int64 = 0
 
 type messageType int64
 
@@ -43,20 +43,20 @@ func (mt messageType) String() string {
 var errNoLeader = errors.New("no leader")
 
 const (
-	stateFollower stateType = iota
-	stateCandidate
-	stateLeader
+	StateFollower StateType = iota
+	StateCandidate
+	StateLeader
 )
 
-type stateType int64
+type StateType int64
 
 var stmap = [...]string{
-	stateFollower:  "stateFollower",
-	stateCandidate: "stateCandidate",
-	stateLeader:    "stateLeader",
+	StateFollower:  "StateFollower",
+	StateCandidate: "StateCandidate",
+	StateLeader:    "StateLeader",
 }
 
-func (st stateType) String() string {
+func (st StateType) String() string {
 	return stmap[int64(st)]
 }
 
@@ -87,7 +87,7 @@ func (p int64Slice) Less(i, j int) bool { return p[i] < p[j] }
 func (p int64Slice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
 
 type raft struct {
-	pb.State
+	pb.HardState
 
 	id int64
 
@@ -96,7 +96,7 @@ type raft struct {
 
 	prs map[int64]*progress
 
-	state stateType
+	state StateType
 
 	votes map[int64]bool
 
@@ -133,14 +133,18 @@ func newRaft(id int64, peers []int64, election, heartbeat int) *raft {
 
 func (r *raft) hasLeader() bool { return r.lead != None }
 
+func (r *raft) softState() *SoftState {
+	return &SoftState{Lead: r.lead, RaftState: r.state}
+}
+
 func (r *raft) String() string {
 	s := fmt.Sprintf(`state=%v term=%d`, r.state, r.Term)
 	switch r.state {
-	case stateFollower:
+	case StateFollower:
 		s += fmt.Sprintf(" vote=%v lead=%v", r.Vote, r.lead)
-	case stateCandidate:
+	case StateCandidate:
 		s += fmt.Sprintf(` votes="%v"`, r.votes)
-	case stateLeader:
+	case StateLeader:
 		s += fmt.Sprintf(` prs="%v"`, r.prs)
 	}
 	return s
@@ -279,31 +283,31 @@ func (r *raft) becomeFollower(term int64, lead int64) {
 	r.reset(term)
 	r.tick = r.tickElection
 	r.lead = lead
-	r.state = stateFollower
+	r.state = StateFollower
 }
 
 func (r *raft) becomeCandidate() {
 	// TODO(xiangli) remove the panic when the raft implementation is stable
-	if r.state == stateLeader {
+	if r.state == StateLeader {
 		panic("invalid transition [leader -> candidate]")
 	}
 	r.step = stepCandidate
 	r.reset(r.Term + 1)
 	r.tick = r.tickElection
 	r.Vote = r.id
-	r.state = stateCandidate
+	r.state = StateCandidate
 }
 
 func (r *raft) becomeLeader() {
 	// TODO(xiangli) remove the panic when the raft implementation is stable
-	if r.state == stateFollower {
+	if r.state == StateFollower {
 		panic("invalid transition [follower -> leader]")
 	}
 	r.step = stepLeader
 	r.reset(r.Term)
 	r.tick = r.tickHeartbeat
 	r.lead = r.id
-	r.state = stateLeader
+	r.state = StateLeader
 	r.appendEntry(pb.Entry{Data: nil})
 }
 
@@ -504,7 +508,7 @@ func (r *raft) loadEnts(ents []pb.Entry) {
 	r.raftLog.load(ents)
 }
 
-func (r *raft) loadState(state pb.State) {
+func (r *raft) loadState(state pb.HardState) {
 	r.raftLog.committed = state.Commit
 	r.Term = state.Term
 	r.Vote = state.Vote
