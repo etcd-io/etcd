@@ -26,8 +26,8 @@ const (
 var (
 	fid       = flag.String("id", "0x1", "ID of this server")
 	timeout   = flag.Duration("timeout", 10*time.Second, "Request Timeout")
-	laddr     = flag.String("l", ":8080", "HTTP service address (e.g., ':8080')")
-	paddr     = flag.String("r", ":2380", "Peer service address (e.g., ':2380')")
+	laddr     = flag.String("l", ":4001", "HTTP service address (e.g., ':4001')")
+	paddr     = flag.String("r", ":7001", "Peer service address (e.g., ':7001')")
 	dir       = flag.String("data-dir", "", "Path to the data directory")
 	proxyMode = flag.Bool("proxy-mode", false, "Forward HTTP requests to peers, do not participate in raft.")
 
