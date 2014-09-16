@@ -437,8 +437,9 @@ func TestWriteEvent(t *testing.T) {
 	}
 
 	tests := []struct {
-		ev   *store.Event
-		idx  string
+		ev  *store.Event
+		idx string
+		// TODO(jonboulle): check body as well as just status code
 		code int
 		err  error
 	}{
@@ -900,7 +901,7 @@ func (rs *resServer) Stop()                                             {}
 func mustMarshalEvent(t *testing.T, ev *store.Event) string {
 	b := new(bytes.Buffer)
 	if err := json.NewEncoder(b).Encode(ev); err != nil {
-		t.Fatalf("error marshalling event %#v: #v", ev, err)
+		t.Fatalf("error marshalling event %#v: %v", ev, err)
 	}
 	return b.String()
 }
@@ -990,10 +991,7 @@ func TestServeKeysEvent(t *testing.T) {
 		etcdserver.Response{
 			Event: &store.Event{
 				Action: store.Get,
-				Node: &store.NodeExtern{
-					Key:           "foo",
-					ModifiedIndex: 2,
-				},
+				Node:   &store.NodeExtern{},
 			},
 		},
 	}
@@ -1011,10 +1009,7 @@ func TestServeKeysEvent(t *testing.T) {
 		t,
 		&store.Event{
 			Action: store.Get,
-			Node: &store.NodeExtern{
-				Key:           "foo",
-				ModifiedIndex: 2,
-			},
+			Node:   &store.NodeExtern{},
 		},
 	)
 
@@ -1046,10 +1041,7 @@ func TestServeKeysWatch(t *testing.T) {
 	go func() {
 		ec <- &store.Event{
 			Action: store.Get,
-			Node: &store.NodeExtern{
-				Key:           "/foo/bar",
-				ModifiedIndex: 12345,
-			},
+			Node:   &store.NodeExtern{},
 		}
 	}()
 	rw := httptest.NewRecorder()
@@ -1061,10 +1053,7 @@ func TestServeKeysWatch(t *testing.T) {
 		t,
 		&store.Event{
 			Action: store.Get,
-			Node: &store.NodeExtern{
-				Key:           "/foo/bar",
-				ModifiedIndex: 12345,
-			},
+			Node:   &store.NodeExtern{},
 		},
 	)
 
