@@ -103,11 +103,11 @@ func send(p Peers, m raftpb.Message) {
 			// TODO: unknown peer id.. what do we do? I
 			// don't think his should ever happen, need to
 			// look into this further.
-			log.Println("etcdhttp: no addr for %d", m.To)
+			log.Printf("etcdhttp: no addr for %d", m.To)
 			return
 		}
 
-		url += "/raft"
+		url += raftPrefix
 
 		// TODO: don't block. we should be able to have 1000s
 		// of messages out at a time.
