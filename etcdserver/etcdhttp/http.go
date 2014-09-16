@@ -246,10 +246,10 @@ func parseRequest(r *http.Request, id int64) (etcdserverpb.Request, error) {
 		rr.PrevExists = pe
 	}
 
+	// TODO(jonboulle): use fake clock instead of time module
+	// https://github.com/coreos/etcd/issues/1021
 	if ttl > 0 {
 		expr := time.Duration(ttl) * time.Second
-		// TODO(jonboulle): use fake clock instead of time module
-		// https://github.com/coreos/etcd/issues/1021
 		rr.Expiration = time.Now().Add(expr).UnixNano()
 	}
 

@@ -2,6 +2,7 @@ package etcdhttp
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -33,10 +34,11 @@ func mustNewURL(t *testing.T, s string) *url.URL {
 }
 
 // mustNewRequest takes a path, appends it to the standard keysPrefix, and constructs
-// an *http.Request referencing the resulting URL
+// a GET *http.Request referencing the resulting URL
 func mustNewRequest(t *testing.T, p string) *http.Request {
 	return &http.Request{
-		URL: mustNewURL(t, path.Join(keysPrefix, p)),
+		Method: "GET",
+		URL:    mustNewURL(t, path.Join(keysPrefix, p)),
 	}
 }
 
@@ -191,8 +193,9 @@ func TestGoodParseRequest(t *testing.T) {
 			// good prefix, all other values default
 			mustNewRequest(t, "foo"),
 			etcdserverpb.Request{
-				Id:   1234,
-				Path: "/foo",
+				Id:     1234,
+				Method: "GET",
+				Path:   "/foo",
 			},
 		},
 		{
@@ -782,21 +785,65 @@ func mustMarshalMsg(t *testing.T, m raftpb.Message) []byte {
 
 func TestServeRaft(t *testing.T) {
 	testCases := []struct {
-		reqBody   io.Reader
+		method    string
+		body      io.Reader
 		serverErr error
-		wcode     int
+
+		wcode int
 	}{
 		{
+			// bad method
+			"GET",
+			bytes.NewReader(
+				mustMarshalMsg(
+					t,
+					raftpb.Message{},
+				),
+			),
+			nil,
+			http.StatusMethodNotAllowed,
+		},
+		{
+			// bad method
+			"PUT",
+			bytes.NewReader(
+				mustMarshalMsg(
+					t,
+					raftpb.Message{},
+				),
+			),
+			nil,
+			http.StatusMethodNotAllowed,
+		},
+		{
+			// bad method
+			"DELETE",
+			bytes.NewReader(
+				mustMarshalMsg(
+					t,
+					raftpb.Message{},
+				),
+			),
+			nil,
+			http.StatusMethodNotAllowed,
+		},
+		{
+			// bad request body
+			"POST",
 			&errReader{},
 			nil,
 			http.StatusBadRequest,
 		},
 		{
+			// bad request JSON
+			"POST",
 			strings.NewReader("malformed garbage"),
 			nil,
 			http.StatusBadRequest,
 		},
 		{
+			// good request, etcdserver.Server error
+			"POST",
 			bytes.NewReader(
 				mustMarshalMsg(
 					t,
@@ -807,6 +854,8 @@ func TestServeRaft(t *testing.T) {
 			http.StatusInternalServerError,
 		},
 		{
+			// good request
+			"POST",
 			bytes.NewReader(
 				mustMarshalMsg(
 					t,
@@ -818,7 +867,7 @@ func TestServeRaft(t *testing.T) {
 		},
 	}
 	for i, tt := range testCases {
-		req, err := http.NewRequest("POST", "foo", tt.reqBody)
+		req, err := http.NewRequest(tt.method, "foo", tt.body)
 		if err != nil {
 			t.Fatalf("#%d: could not create request: %#v", i, err)
 		}
@@ -832,5 +881,200 @@ func TestServeRaft(t *testing.T) {
 		if rw.Code != tt.wcode {
 			t.Errorf("#%d: got code=%d, want %d", i, rw.Code, tt.wcode)
 		}
+	}
+}
+
+// resServer implements the etcd.Server interface for testing.
+// It returns the given responsefrom any Do calls, and nil error
+type resServer struct {
+	res etcdserver.Response
+}
+
+func (rs *resServer) Do(ctx context.Context, r etcdserverpb.Request) (etcdserver.Response, error) {
+	return rs.res, nil
+}
+func (rs *resServer) Process(ctx context.Context, m raftpb.Message) error {
+	return nil
+}
+func (rs *resServer) Start() {}
+func (rs *resServer) Stop()  {}
+
+func mustMarshalEvent(t *testing.T, ev *store.Event) string {
+	b := new(bytes.Buffer)
+	if err := json.NewEncoder(b).Encode(ev); err != nil {
+		t.Fatalf("error marshalling event %#v: #v", ev, err)
+	}
+	return b.String()
+}
+
+func TestBadServeKeys(t *testing.T) {
+	testBadCases := []struct {
+		req    *http.Request
+		server etcdserver.Server
+
+		wcode int
+	}{
+		{
+			// bad method
+			&http.Request{
+				Method: "CONNECT",
+			},
+			&resServer{},
+
+			http.StatusMethodNotAllowed,
+		},
+		{
+			// bad method
+			&http.Request{
+				Method: "TRACE",
+			},
+			&resServer{},
+
+			http.StatusMethodNotAllowed,
+		},
+		{
+			// parseRequest error
+			&http.Request{
+				Body:   nil,
+				Method: "PUT",
+			},
+			&resServer{},
+
+			http.StatusBadRequest,
+		},
+		{
+			// etcdserver.Server error
+			mustNewRequest(t, "foo"),
+			&errServer{
+				errors.New("blah"),
+			},
+
+			http.StatusInternalServerError,
+		},
+		{
+			// timeout waiting for event (watcher never returns)
+			mustNewRequest(t, "foo"),
+			&resServer{
+				etcdserver.Response{
+					Watcher: &dummyWatcher{},
+				},
+			},
+
+			http.StatusGatewayTimeout,
+		},
+		{
+			// non-event/watcher response from etcdserver.Server
+			mustNewRequest(t, "foo"),
+			&resServer{
+				etcdserver.Response{},
+			},
+
+			http.StatusInternalServerError,
+		},
+	}
+	for i, tt := range testBadCases {
+		h := &serverHandler{
+			timeout: 0, // context times out immediately
+			server:  tt.server,
+			peers:   nil,
+		}
+		rw := httptest.NewRecorder()
+		h.serveKeys(rw, tt.req)
+		if rw.Code != tt.wcode {
+			t.Errorf("#%d: got code=%d, want %d", i, rw.Code, tt.wcode)
+		}
+	}
+}
+
+func TestServeKeysEvent(t *testing.T) {
+	req := mustNewRequest(t, "foo")
+	server := &resServer{
+		etcdserver.Response{
+			Event: &store.Event{
+				Action: store.Get,
+				Node: &store.NodeExtern{
+					Key:           "foo",
+					ModifiedIndex: 2,
+				},
+			},
+		},
+	}
+	h := &serverHandler{
+		timeout: time.Hour,
+		server:  server,
+		peers:   nil,
+	}
+	rw := httptest.NewRecorder()
+
+	h.serveKeys(rw, req)
+
+	wcode := http.StatusOK
+	wbody := mustMarshalEvent(
+		t,
+		&store.Event{
+			Action: store.Get,
+			Node: &store.NodeExtern{
+				Key:           "foo",
+				ModifiedIndex: 2,
+			},
+		},
+	)
+
+	if rw.Code != wcode {
+		t.Errorf("got code=%d, want %d", rw.Code, wcode)
+	}
+	g := rw.Body.String()
+	if g != wbody {
+		t.Errorf("got body=%#v, want %#v", g, wbody)
+	}
+}
+
+func TestServeKeysWatch(t *testing.T) {
+	req := mustNewRequest(t, "/foo/bar")
+	ec := make(chan *store.Event)
+	dw := &dummyWatcher{
+		echan: ec,
+	}
+	server := &resServer{
+		etcdserver.Response{
+			Watcher: dw,
+		},
+	}
+	h := &serverHandler{
+		timeout: time.Hour,
+		server:  server,
+		peers:   nil,
+	}
+	go func() {
+		ec <- &store.Event{
+			Action: store.Get,
+			Node: &store.NodeExtern{
+				Key:           "/foo/bar",
+				ModifiedIndex: 12345,
+			},
+		}
+	}()
+	rw := httptest.NewRecorder()
+
+	h.serveKeys(rw, req)
+
+	wcode := http.StatusOK
+	wbody := mustMarshalEvent(
+		t,
+		&store.Event{
+			Action: store.Get,
+			Node: &store.NodeExtern{
+				Key:           "/foo/bar",
+				ModifiedIndex: 12345,
+			},
+		},
+	)
+
+	if rw.Code != wcode {
+		t.Errorf("got code=%d, want %d", rw.Code, wcode)
+	}
+	g := rw.Body.String()
+	if g != wbody {
+		t.Errorf("got body=%#v, want %#v", g, wbody)
 	}
 }
