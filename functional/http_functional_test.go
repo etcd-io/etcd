@@ -17,8 +17,8 @@ import (
 	"github.com/coreos/etcd/third_party/code.google.com/p/go.net/context"
 )
 
-func nopSave(st raftpb.State, ents []raftpb.Entry) {}
-func nopSend(m []raftpb.Message)                   {}
+func nopSave(st raftpb.HardState, ents []raftpb.Entry) {}
+func nopSend(m []raftpb.Message)                       {}
 
 func TestSet(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -30,7 +30,7 @@ func TestSet(t *testing.T) {
 	srv := &etcdserver.EtcdServer{
 		Store: store.New(),
 		Node:  n,
-		Save:  func(st raftpb.State, ents []raftpb.Entry) {},
+		Save:  func(st raftpb.HardState, ents []raftpb.Entry) {},
 		Send:  etcdserver.SendFunc(nopSend),
 	}
 	srv.Start()

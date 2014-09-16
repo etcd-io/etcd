@@ -1,11 +1,9 @@
 package etcdhttp
 
 import (
-	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -13,8 +11,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	crand "crypto/rand"
 
 	"github.com/coreos/etcd/elog"
 	etcdErr "github.com/coreos/etcd/error"
@@ -81,7 +77,7 @@ func (h serverHandler) serveKeys(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(context.Background(), h.timeout)
 	defer cancel()
 
-	rr, err := parseRequest(r, genID())
+	rr, err := parseRequest(r, etcdserver.GenID())
 	if err != nil {
 		writeError(w, err)
 		return
@@ -147,20 +143,6 @@ func (h serverHandler) serveRaft(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
-}
-
-// genID generates a random id that is: n < 0 < n.
-func genID() int64 {
-	for {
-		b := make([]byte, 8)
-		if _, err := io.ReadFull(crand.Reader, b); err != nil {
-			panic(err) // really bad stuff happened
-		}
-		n := int64(binary.BigEndian.Uint64(b))
-		if n != 0 {
-			return n
-		}
-	}
 }
 
 // parseRequest converts a received http.Request to a server Request,

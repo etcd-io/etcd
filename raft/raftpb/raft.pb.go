@@ -13,7 +13,7 @@
 		Entry
 		Snapshot
 		Message
-		State
+		HardState
 */
 package raftpb
 
@@ -80,16 +80,16 @@ func (m *Message) Reset()         { *m = Message{} }
 func (m *Message) String() string { return proto.CompactTextString(m) }
 func (*Message) ProtoMessage()    {}
 
-type State struct {
+type HardState struct {
 	Term             int64  `protobuf:"varint,1,req,name=term" json:"term"`
 	Vote             int64  `protobuf:"varint,2,req,name=vote" json:"vote"`
 	Commit           int64  `protobuf:"varint,3,req,name=commit" json:"commit"`
 	XXX_unrecognized []byte `json:"-"`
 }
 
-func (m *State) Reset()         { *m = State{} }
-func (m *State) String() string { return proto.CompactTextString(m) }
-func (*State) ProtoMessage()    {}
+func (m *HardState) Reset()         { *m = HardState{} }
+func (m *HardState) String() string { return proto.CompactTextString(m) }
+func (*HardState) ProtoMessage()    {}
 
 func init() {
 }
@@ -549,7 +549,7 @@ func (m *Message) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *State) Unmarshal(data []byte) error {
+func (m *HardState) Unmarshal(data []byte) error {
 	l := len(data)
 	index := 0
 	for index < l {
@@ -697,7 +697,7 @@ func (m *Message) Size() (n int) {
 	}
 	return n
 }
-func (m *State) Size() (n int) {
+func (m *HardState) Size() (n int) {
 	var l int
 	_ = l
 	n += 1 + sovRaft(uint64(m.Term))
@@ -879,7 +879,7 @@ func (m *Message) MarshalTo(data []byte) (n int, err error) {
 	}
 	return i, nil
 }
-func (m *State) Marshal() (data []byte, err error) {
+func (m *HardState) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
 	n, err := m.MarshalTo(data)
@@ -889,7 +889,7 @@ func (m *State) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *State) MarshalTo(data []byte) (n int, err error) {
+func (m *HardState) MarshalTo(data []byte) (n int, err error) {
 	var i int
 	_ = i
 	var l int
