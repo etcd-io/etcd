@@ -36,7 +36,7 @@ func TestSet(t *testing.T) {
 	srv.Start()
 	defer srv.Stop()
 
-	h := etcdhttp.NewHandler(srv, nil, time.Hour)
+	h := etcdhttp.NewClientHandler(srv, nil, time.Hour)
 	s := httptest.NewServer(h)
 	defer s.Close()
 

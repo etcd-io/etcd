@@ -596,7 +596,7 @@ func TestV2MachinesEndpoint(t *testing.T) {
 		{"POST", http.StatusMethodNotAllowed},
 	}
 
-	m := NewHandler(nil, Peers{}, time.Hour)
+	m := NewClientHandler(nil, Peers{}, time.Hour)
 	s := httptest.NewServer(m)
 	defer s.Close()
 
