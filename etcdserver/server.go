@@ -63,6 +63,8 @@ type Server interface {
 	// Process takes a raft message and applies it to the server's raft state
 	// machine, respecting any timeout of the given context.
 	Process(ctx context.Context, m raftpb.Message) error
+
+	Index() uint64
 }
 
 // EtcdServer is the production implementation of the Server interface
@@ -291,6 +293,10 @@ func (s *EtcdServer) snapshot() {
 	}
 	s.Node.Compact(d)
 	s.Storage.Cut()
+}
+
+func (s *EtcdServer) Index() uint64 {
+	return s.Store.Index()
 }
 
 // TODO: move the function to /id pkg maybe?
