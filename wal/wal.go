@@ -94,7 +94,8 @@ func Create(dirpath string) (*WAL, error) {
 }
 
 // OpenAtIndex opens the WAL at the given index.
-// The index MUST have been previously committed to the WAL.
+// The index SHOULD have been previously committed to the WAL, or the following
+// ReadAll will fail.
 // The returned WAL is ready to read and the first record will be the given
 // index. The WAL cannot be appended to before reading out all of its
 // previous records.
@@ -152,6 +153,7 @@ func OpenAtIndex(dirpath string, index int64) (*WAL, error) {
 }
 
 // ReadAll reads out all records of the current WAL.
+// If it cannot read out the expected entry, it will return ErrNotFound.
 // After ReadAll, the WAL will be ready for appending new records.
 func (w *WAL) ReadAll() (id int64, state raftpb.HardState, ents []raftpb.Entry, err error) {
 	rec := &walpb.Record{}
@@ -191,6 +193,10 @@ func (w *WAL) ReadAll() (id int64, state raftpb.HardState, ents []raftpb.Entry, 
 	if err != io.EOF {
 		state.Reset()
 		return 0, state, nil, err
+	}
+	if w.enti < w.ri {
+		state.Reset()
+		return 0, state, nil, ErrNotFound
 	}
 
 	// close decoder, disable reading

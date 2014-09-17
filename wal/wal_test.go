@@ -339,6 +339,33 @@ func TestRecoverAfterCut(t *testing.T) {
 	}
 }
 
+func TestOpenAtUncommittedIndex(t *testing.T) {
+	p, err := ioutil.TempDir(os.TempDir(), "waltest")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(p)
+
+	w, err := Create(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := w.SaveEntry(&raftpb.Entry{Index: 0}); err != nil {
+		t.Fatal(err)
+	}
+	w.Close()
+
+	w, err = OpenAtIndex(p, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// commit up to index 0, try to read index 1
+	if _, _, _, err := w.ReadAll(); err != ErrNotFound {
+		t.Errorf("err = %v, want %v", err, ErrNotFound)
+	}
+	w.Close()
+}
+
 func TestSaveEmpty(t *testing.T) {
 	var buf bytes.Buffer
 	var est raftpb.HardState
