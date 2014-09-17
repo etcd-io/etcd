@@ -1,13 +1,10 @@
 package etcdserver
 
 import (
-	"encoding/binary"
 	"errors"
-	"io"
 	"log"
+	"math/rand"
 	"time"
-
-	crand "crypto/rand"
 
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/raft"
@@ -26,6 +23,10 @@ var (
 	ErrUnknownMethod = errors.New("etcdserver: unknown method")
 	ErrStopped       = errors.New("etcdserver: server stopped")
 )
+
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
 
 type SendFunc func(m []raftpb.Message)
 type SaveFunc func(st raftpb.HardState, ents []raftpb.Entry)
@@ -295,17 +296,11 @@ func (s *EtcdServer) snapshot() {
 
 // TODO: move the function to /id pkg maybe?
 // GenID generates a random id that is not equal to 0.
-func GenID() int64 {
-	for {
-		b := make([]byte, 8)
-		if _, err := io.ReadFull(crand.Reader, b); err != nil {
-			panic(err) // really bad stuff happened
-		}
-		n := int64(binary.BigEndian.Uint64(b))
-		if n != 0 {
-			return n
-		}
+func GenID() (n int64) {
+	for n == 0 {
+		n = rand.Int63()
 	}
+	return
 }
 
 func getBool(v *bool) (vv bool, set bool) {
