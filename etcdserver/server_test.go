@@ -635,3 +635,16 @@ func (p *storageRecorder) SaveSnap(st raftpb.Snapshot) {
 	}
 	p.record("SaveSnap")
 }
+
+func TestGenID(t *testing.T) {
+	// Sanity check that the GenID function has been seeded appropriately
+	// (math/rand is seeded with 1 by default)
+	r := rand.NewSource(int64(1))
+	var n int64
+	for n == 0 {
+		n = r.Int63()
+	}
+	if n == GenID() {
+		t.Fatalf("GenID's rand seeded with 1!")
+	}
+}
