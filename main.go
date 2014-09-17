@@ -16,6 +16,7 @@ import (
 	"github.com/coreos/etcd/etcdserver/etcdhttp"
 	"github.com/coreos/etcd/proxy"
 	"github.com/coreos/etcd/raft"
+	"github.com/coreos/etcd/snap"
 	"github.com/coreos/etcd/store"
 	"github.com/coreos/etcd/wal"
 )
@@ -31,6 +32,7 @@ var (
 	paddr     = flag.String("peer-bind-addr", ":7001", "Peer service address (e.g., ':7001')")
 	dir       = flag.String("data-dir", "", "Path to the data directory")
 	proxyMode = flag.Bool("proxy-mode", false, "Forward HTTP requests to peers, do not participate in raft.")
+	snapCount = flag.Int64("snapshot-count", etcdserver.DefaultSnapCount, "Number of committed transactions to trigger a snapshot")
 
 	peers = &etcdhttp.Peers{}
 	addrs = &Addrs{}
@@ -70,6 +72,10 @@ func startEtcd() {
 		log.Fatalf("%#x=<addr> must be specified in peers", id)
 	}
 
+	if *snapCount <= 0 {
+		log.Fatalf("etcd: snapshot-count must be greater than 0: snapshot-count=%d", *snapCount)
+	}
+
 	if *dir == "" {
 		*dir = fmt.Sprintf("%v_etcd_data", *fid)
 		log.Printf("main: no data-dir is given, using default data-dir ./%s", *dir)
@@ -77,16 +83,61 @@ func startEtcd() {
 	if err := os.MkdirAll(*dir, privateDirMode); err != nil {
 		log.Fatalf("main: cannot create data directory: %v", err)
 	}
+	snapdir := path.Join(*dir, "snap")
+	if err := os.MkdirAll(snapdir, privateDirMode); err != nil {
+		log.Fatalf("etcd: cannot create snapshot directory: %v", err)
+	}
+	snapshotter := snap.New(snapdir)
 
-	n, w := startRaft(id, peers.IDs(), path.Join(*dir, "wal"))
+	waldir := path.Join(*dir, "wal")
+	var w *wal.WAL
+	var n raft.Node
+	st := store.New()
+
+	if !wal.Exist(waldir) {
+		w, err = wal.Create(waldir)
+		if err != nil {
+			log.Fatal(err)
+		}
+		n = raft.Start(id, peers.IDs(), 10, 1)
+	} else {
+		var index int64
+		snapshot, err := snapshotter.Load()
+		if err != nil && err != snap.ErrNoSnapshot {
+			log.Fatal(err)
+		}
+		if snapshot != nil {
+			log.Printf("etcd: restart from snapshot at index %d", snapshot.Index)
+			st.Recovery(snapshot.Data)
+			index = snapshot.Index
+		}
+
+		// restart a node from previous wal
+		if w, err = wal.OpenAtIndex(waldir, index); err != nil {
+			log.Fatal(err)
+		}
+		wid, st, ents, err := w.ReadAll()
+		if err != nil {
+			log.Fatal(err)
+		}
+		// TODO(xiangli): save/recovery nodeID?
+		if wid != 0 {
+			log.Fatalf("unexpected nodeid %d: nodeid should always be zero until we save nodeid into wal", wid)
+		}
+		n = raft.Restart(id, peers.IDs(), 10, 1, snapshot, st, ents)
+	}
 
 	s := &etcdserver.EtcdServer{
-		Store:      store.New(),
-		Node:       n,
-		Save:       w.Save,
+		Store: st,
+		Node:  n,
+		Storage: struct {
+			*wal.WAL
+			*snap.Snapshotter
+		}{w, snapshotter},
 		Send:       etcdhttp.Sender(*peers),
 		Ticker:     time.Tick(100 * time.Millisecond),
 		SyncTicker: time.Tick(500 * time.Millisecond),
+		SnapCount:  *snapCount,
 	}
 	s.Start()
 
@@ -107,38 +158,6 @@ func startEtcd() {
 			log.Fatal(http.ListenAndServe(addr, ch))
 		}()
 	}
-}
-
-// startRaft starts a raft node from the given wal dir.
-// If the wal dir does not exist, startRaft will start a new raft node.
-// If the wal dir exists, startRaft will restart the previous raft node.
-// startRaft returns the started raft node and the opened wal.
-func startRaft(id int64, peerIDs []int64, waldir string) (raft.Node, *wal.WAL) {
-	if !wal.Exist(waldir) {
-		w, err := wal.Create(waldir)
-		if err != nil {
-			log.Fatal(err)
-		}
-		n := raft.Start(id, peerIDs, 10, 1)
-		return n, w
-	}
-
-	// restart a node from previous wal
-	// TODO(xiangli): check snapshot; not open from one
-	w, err := wal.OpenAtIndex(waldir, 0)
-	if err != nil {
-		log.Fatal(err)
-	}
-	wid, st, ents, err := w.ReadAll()
-	// TODO(xiangli): save/recovery nodeID?
-	if wid != 0 {
-		log.Fatalf("unexpected nodeid %d: nodeid should always be zero until we save nodeid into wal", wid)
-	}
-	if err != nil {
-		log.Fatal(err)
-	}
-	n := raft.Restart(id, peerIDs, 10, 1, st, ents)
-	return n, w
 }
 
 // startProxy launches an HTTP proxy for client communication which proxies to other etcd nodes.

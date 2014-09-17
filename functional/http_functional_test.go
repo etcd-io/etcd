@@ -28,10 +28,10 @@ func TestSet(t *testing.T) {
 	n.Campaign(ctx)
 
 	srv := &etcdserver.EtcdServer{
-		Store: store.New(),
-		Node:  n,
-		Save:  func(st raftpb.HardState, ents []raftpb.Entry) {},
-		Send:  etcdserver.SendFunc(nopSend),
+		Store:   store.New(),
+		Node:    n,
+		Storage: nopStorage{},
+		Send:    etcdserver.SendFunc(nopSend),
 	}
 	srv.Start()
 	defer srv.Stop()
@@ -66,3 +66,9 @@ func TestSet(t *testing.T) {
 }
 
 func stringp(s string) *string { return &s }
+
+type nopStorage struct{}
+
+func (np nopStorage) Save(st raftpb.HardState, ents []raftpb.Entry) {}
+func (np nopStorage) Cut() error                                    { return nil }
+func (np nopStorage) SaveSnap(st raftpb.Snapshot)                   {}

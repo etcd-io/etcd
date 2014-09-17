@@ -142,6 +142,7 @@ func OpenAtIndex(dirpath string, index int64) (*WAL, error) {
 
 	// create a WAL ready for reading
 	w := &WAL{
+		dir:     dirpath,
 		ri:      index,
 		decoder: newDecoder(rc),
 
