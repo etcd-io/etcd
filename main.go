@@ -46,6 +46,8 @@ func init() {
 func main() {
 	flag.Parse()
 
+	getFlagsFromEnv()
+
 	if *proxyMode {
 		startProxy()
 	} else {
@@ -178,4 +180,26 @@ func (as *Addrs) Set(s string) error {
 
 func (as *Addrs) String() string {
 	return strings.Join(*as, ",")
+}
+
+// getFlagsFromEnv parses all registered flags in the global flagset,
+// and if they are not already set it attempts to set their values from
+// environment variables. Environment variables take the name of the flag but
+// are UPPERCASE, have the prefix "ETCD_", and any dashes are replaced by
+// underscores - for example: some-flag => ETCD_SOME_FLAG
+func getFlagsFromEnv() {
+	alreadySet := make(map[string]bool)
+	flag.Visit(func(f *flag.Flag) {
+		alreadySet[f.Name] = true
+	})
+	flag.VisitAll(func(f *flag.Flag) {
+		if !alreadySet[f.Name] {
+			key := "ETCD_" + strings.ToUpper(strings.Replace(f.Name, "-", "_", -1))
+			val := os.Getenv(key)
+			if val != "" {
+				flag.Set(f.Name, val)
+			}
+		}
+
+	})
 }
