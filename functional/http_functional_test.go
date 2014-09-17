@@ -24,7 +24,7 @@ func TestSet(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	n := raft.Start(1, []int64{1}, 0, 0)
+	n := raft.StartNode(1, []int64{1}, 0, 0)
 	n.Campaign(ctx)
 
 	srv := &etcdserver.EtcdServer{

@@ -99,7 +99,7 @@ func startEtcd() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		n = raft.Start(id, peers.IDs(), 10, 1)
+		n = raft.StartNode(id, peers.IDs(), 10, 1)
 	} else {
 		var index int64
 		snapshot, err := snapshotter.Load()
@@ -124,7 +124,7 @@ func startEtcd() {
 		if wid != 0 {
 			log.Fatalf("unexpected nodeid %d: nodeid should always be zero until we save nodeid into wal", wid)
 		}
-		n = raft.Restart(id, peers.IDs(), 10, 1, snapshot, st, ents)
+		n = raft.RestartNode(id, peers.IDs(), 10, 1, snapshot, st, ents)
 	}
 
 	s := &etcdserver.EtcdServer{

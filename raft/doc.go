@@ -16,9 +16,9 @@
 Package raft provides an implementation of the raft consensus algorithm.
 
 The primary object in raft is a Node. You either start a Node from scratch
-using raft.Start or start a Node from some initial state using raft.Restart.
+using raft.StartNode or start a Node from some initial state using raft.RestartNode.
 
-	n := raft.Start(0x01, []int64{0x02, 0x03}, 3, 1)
+	n := raft.StartNode(0x01, []int64{0x02, 0x03}, 3, 1)
 
 Now that you are holding onto a Node you have a few responsibilities:
 
