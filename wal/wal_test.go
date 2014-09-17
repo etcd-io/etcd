@@ -111,8 +111,8 @@ func TestOpenAtIndex(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer os.RemoveAll(emptydir)
-	if _, err = OpenAtIndex(emptydir, 0); err != ErrNotFound {
-		t.Errorf("err = %v, want %v", err, ErrNotFound)
+	if _, err = OpenAtIndex(emptydir, 0); err != ErrFileNotFound {
+		t.Errorf("err = %v, want %v", err, ErrFileNotFound)
 	}
 }
 
@@ -315,8 +315,8 @@ func TestRecoverAfterCut(t *testing.T) {
 		w, err := OpenAtIndex(p, int64(i))
 		if err != nil {
 			if i <= 4 {
-				if err != ErrNotFound {
-					t.Errorf("#%d: err = %v, want %v", i, err, ErrNotFound)
+				if err != ErrFileNotFound {
+					t.Errorf("#%d: err = %v, want %v", i, err, ErrFileNotFound)
 				}
 			} else {
 				t.Errorf("#%d: err = %v, want nil", i, err)
@@ -360,8 +360,8 @@ func TestOpenAtUncommittedIndex(t *testing.T) {
 		t.Fatal(err)
 	}
 	// commit up to index 0, try to read index 1
-	if _, _, _, err := w.ReadAll(); err != ErrNotFound {
-		t.Errorf("err = %v, want %v", err, ErrNotFound)
+	if _, _, _, err := w.ReadAll(); err != ErrIndexNotFound {
+		t.Errorf("err = %v, want %v", err, ErrIndexNotFound)
 	}
 	w.Close()
 }
