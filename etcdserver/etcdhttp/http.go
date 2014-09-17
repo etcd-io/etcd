@@ -103,7 +103,7 @@ func (h serverHandler) serveKeys(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = writeEvent(w, ev); err != nil {
+	if err = writeEvent(w, ev, h.server.Index()); err != nil {
 		// Should never be reached
 		log.Println("error writing event: %v", err)
 	}
@@ -287,12 +287,12 @@ func writeError(w http.ResponseWriter, err error) {
 
 // writeEvent serializes the given Event and writes the resulting JSON to the
 // given ResponseWriter
-func writeEvent(w http.ResponseWriter, ev *store.Event) error {
+func writeEvent(w http.ResponseWriter, ev *store.Event, index uint64) error {
 	if ev == nil {
 		return errors.New("cannot write empty Event!")
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Add("X-Etcd-Index", fmt.Sprint(ev.Index()))
+	w.Header().Add("X-Etcd-Index", fmt.Sprintf("%d", index))
 
 	if ev.IsCreated() {
 		w.WriteHeader(http.StatusCreated)
