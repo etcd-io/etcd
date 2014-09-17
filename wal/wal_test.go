@@ -111,8 +111,8 @@ func TestOpenAtIndex(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer os.RemoveAll(emptydir)
-	if _, err = OpenAtIndex(emptydir, 0); err != ErrNotFound {
-		t.Errorf("err = %v, want %v", err, ErrNotFound)
+	if _, err = OpenAtIndex(emptydir, 0); err != ErrFileNotFound {
+		t.Errorf("err = %v, want %v", err, ErrFileNotFound)
 	}
 }
 
@@ -315,8 +315,8 @@ func TestRecoverAfterCut(t *testing.T) {
 		w, err := OpenAtIndex(p, int64(i))
 		if err != nil {
 			if i <= 4 {
-				if err != ErrNotFound {
-					t.Errorf("#%d: err = %v, want %v", i, err, ErrNotFound)
+				if err != ErrFileNotFound {
+					t.Errorf("#%d: err = %v, want %v", i, err, ErrFileNotFound)
 				}
 			} else {
 				t.Errorf("#%d: err = %v, want nil", i, err)
@@ -337,6 +337,33 @@ func TestRecoverAfterCut(t *testing.T) {
 			}
 		}
 	}
+}
+
+func TestOpenAtUncommittedIndex(t *testing.T) {
+	p, err := ioutil.TempDir(os.TempDir(), "waltest")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(p)
+
+	w, err := Create(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := w.SaveEntry(&raftpb.Entry{Index: 0}); err != nil {
+		t.Fatal(err)
+	}
+	w.Close()
+
+	w, err = OpenAtIndex(p, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// commit up to index 0, try to read index 1
+	if _, _, _, err := w.ReadAll(); err != ErrIndexNotFound {
+		t.Errorf("err = %v, want %v", err, ErrIndexNotFound)
+	}
+	w.Close()
 }
 
 func TestSaveEmpty(t *testing.T) {

@@ -42,10 +42,11 @@ const (
 )
 
 var (
-	ErrIDMismatch  = errors.New("wal: unmatch id")
-	ErrNotFound    = errors.New("wal: file is not found")
-	ErrCRCMismatch = errors.New("wal: crc mismatch")
-	crcTable       = crc32.MakeTable(crc32.Castagnoli)
+	ErrIDMismatch    = errors.New("wal: unmatch id")
+	ErrFileNotFound  = errors.New("wal: file not found")
+	ErrIndexNotFound = errors.New("wal: index not found in file")
+	ErrCRCMismatch   = errors.New("wal: crc mismatch")
+	crcTable         = crc32.MakeTable(crc32.Castagnoli)
 )
 
 // WAL is a logical repersentation of the stable storage.
@@ -94,7 +95,8 @@ func Create(dirpath string) (*WAL, error) {
 }
 
 // OpenAtIndex opens the WAL at the given index.
-// The index MUST have been previously committed to the WAL.
+// The index SHOULD have been previously committed to the WAL, or the following
+// ReadAll will fail.
 // The returned WAL is ready to read and the first record will be the given
 // index. The WAL cannot be appended to before reading out all of its
 // previous records.
@@ -106,14 +108,14 @@ func OpenAtIndex(dirpath string, index int64) (*WAL, error) {
 	}
 	names = checkWalNames(names)
 	if len(names) == 0 {
-		return nil, ErrNotFound
+		return nil, ErrFileNotFound
 	}
 
 	sort.Sort(sort.StringSlice(names))
 
 	nameIndex, ok := searchIndex(names, index)
 	if !ok || !isValidSeq(names[nameIndex:]) {
-		return nil, ErrNotFound
+		return nil, ErrFileNotFound
 	}
 
 	// open the wal files for reading
@@ -153,6 +155,7 @@ func OpenAtIndex(dirpath string, index int64) (*WAL, error) {
 }
 
 // ReadAll reads out all records of the current WAL.
+// If it cannot read out the expected entry, it will return ErrIndexNotFound.
 // After ReadAll, the WAL will be ready for appending new records.
 func (w *WAL) ReadAll() (id int64, state raftpb.HardState, ents []raftpb.Entry, err error) {
 	rec := &walpb.Record{}
@@ -192,6 +195,10 @@ func (w *WAL) ReadAll() (id int64, state raftpb.HardState, ents []raftpb.Entry, 
 	if err != io.EOF {
 		state.Reset()
 		return 0, state, nil, err
+	}
+	if w.enti < w.ri {
+		state.Reset()
+		return 0, state, nil, ErrIndexNotFound
 	}
 
 	// close decoder, disable reading
