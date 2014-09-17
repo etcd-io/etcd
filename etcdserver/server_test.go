@@ -36,12 +36,12 @@ func TestDoLocalAction(t *testing.T) {
 		},
 		{
 			pb.Request{Method: "BADMETHOD", Id: 1},
-			Response{}, ErrUnknownMethod, nil,
+			Response{}, ErrUnknownMethod, []string{},
 		},
 	}
 	for i, tt := range tests {
-		store := &storeRecorder{}
-		srv := &EtcdServer{Store: store}
+		st := &storeRecorder{}
+		srv := &EtcdServer{Store: st}
 		resp, err := srv.Do(context.TODO(), tt.req)
 
 		if err != tt.werr {
@@ -50,8 +50,9 @@ func TestDoLocalAction(t *testing.T) {
 		if !reflect.DeepEqual(resp, tt.wresp) {
 			t.Errorf("#%d: resp = %+v, want %+v", i, resp, tt.wresp)
 		}
-		if !reflect.DeepEqual(store.action, tt.waction) {
-			t.Errorf("#%d: action = %+v, want %+v", i, store.action, tt.waction)
+		action := st.Action()
+		if !reflect.DeepEqual(action, tt.waction) {
+			t.Errorf("#%d: action = %+v, want %+v", i, action, tt.waction)
 		}
 	}
 }
@@ -117,20 +118,21 @@ func TestApply(t *testing.T) {
 		},
 		{
 			pb.Request{Method: "BADMETHOD", Id: 1},
-			Response{err: ErrUnknownMethod}, nil,
+			Response{err: ErrUnknownMethod}, []string{},
 		},
 	}
 
 	for i, tt := range tests {
-		store := &storeRecorder{}
-		srv := &EtcdServer{Store: store}
+		st := &storeRecorder{}
+		srv := &EtcdServer{Store: st}
 		resp := srv.apply(tt.req)
 
 		if !reflect.DeepEqual(resp, tt.wresp) {
 			t.Errorf("#%d: resp = %+v, want %+v", i, resp, tt.wresp)
 		}
-		if !reflect.DeepEqual(store.action, tt.waction) {
-			t.Errorf("#%d: action = %+v, want %+v", i, store.action, tt.waction)
+		action := st.Action()
+		if !reflect.DeepEqual(action, tt.waction) {
+			t.Errorf("#%d: action = %+v, want %+v", i, action, tt.waction)
 		}
 	}
 }
@@ -241,8 +243,9 @@ func TestDoProposal(t *testing.T) {
 		resp, err := srv.Do(ctx, tt)
 		srv.Stop()
 
-		if len(st.action) != 1 {
-			t.Errorf("#%d: len(action) = %d, want 1", i, len(st.action))
+		action := st.Action()
+		if len(action) != 1 {
+			t.Errorf("#%d: len(action) = %d, want 1", i, len(action))
 		}
 		if err != nil {
 			t.Fatalf("#%d: err = %v, want nil", i, err)
@@ -276,8 +279,9 @@ func TestDoProposalCancelled(t *testing.T) {
 	cancel()
 	<-done
 
-	if len(st.action) != 0 {
-		t.Errorf("len(action) = %v, want 0", len(st.action))
+	action := st.Action()
+	if len(action) != 0 {
+		t.Errorf("len(action) = %v, want 0", len(action))
 	}
 	if err != context.Canceled {
 		t.Fatalf("err = %v, want %v", err, context.Canceled)
@@ -316,8 +320,9 @@ func TestDoProposalStopped(t *testing.T) {
 	srv.Stop()
 	<-done
 
-	if len(st.action) != 0 {
-		t.Errorf("len(action) = %v, want 0", len(st.action))
+	action := st.Action()
+	if len(action) != 0 {
+		t.Errorf("len(action) = %v, want 0", len(action))
 	}
 	if err != ErrStopped {
 		t.Errorf("err = %v, want %v", err, ErrStopped)
