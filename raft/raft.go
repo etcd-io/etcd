@@ -502,9 +502,6 @@ func (r *raft) delProgress(id int64) {
 }
 
 func (r *raft) loadEnts(ents []pb.Entry) {
-	if !r.raftLog.isEmpty() {
-		panic("cannot load entries when log is not empty")
-	}
 	r.raftLog.load(ents)
 }
 

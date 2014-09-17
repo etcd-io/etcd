@@ -162,11 +162,11 @@ func testServer(t *testing.T, ns int64) {
 		tk := time.NewTicker(10 * time.Millisecond)
 		defer tk.Stop()
 		srv := &EtcdServer{
-			Node:   n,
-			Store:  store.New(),
-			Send:   send,
-			Save:   func(_ raftpb.HardState, _ []raftpb.Entry) {},
-			Ticker: tk.C,
+			Node:    n,
+			Store:   store.New(),
+			Send:    send,
+			Storage: &storageRecorder{},
+			Ticker:  tk.C,
 		}
 		srv.Start()
 		// TODO(xiangli): randomize election timeout
@@ -231,11 +231,11 @@ func TestDoProposal(t *testing.T) {
 		// this makes <-tk always successful, which accelerates internal clock
 		close(tk)
 		srv := &EtcdServer{
-			Node:   n,
-			Store:  st,
-			Send:   func(_ []raftpb.Message) {},
-			Save:   func(_ raftpb.HardState, _ []raftpb.Entry) {},
-			Ticker: tk,
+			Node:    n,
+			Store:   st,
+			Send:    func(_ []raftpb.Message) {},
+			Storage: &storageRecorder{},
+			Ticker:  tk,
 		}
 		srv.Start()
 		resp, err := srv.Do(ctx, tt)
@@ -299,11 +299,11 @@ func TestDoProposalStopped(t *testing.T) {
 	close(tk)
 	srv := &EtcdServer{
 		// TODO: use fake node for better testability
-		Node:   n,
-		Store:  st,
-		Send:   func(_ []raftpb.Message) {},
-		Save:   func(_ raftpb.HardState, _ []raftpb.Entry) {},
-		Ticker: tk,
+		Node:    n,
+		Store:   st,
+		Send:    func(_ []raftpb.Message) {},
+		Storage: &storageRecorder{},
+		Ticker:  tk,
 	}
 	srv.Start()
 
@@ -417,7 +417,7 @@ func TestSyncTriggerDeleteExpriedKeys(t *testing.T) {
 		Node:       n,
 		Store:      st,
 		Send:       func(_ []raftpb.Message) {},
-		Save:       func(_ raftpb.HardState, _ []raftpb.Entry) {},
+		Storage:    &storageRecorder{},
 		SyncTicker: syncTicker.C,
 	}
 	srv.Start()
@@ -432,6 +432,73 @@ func TestSyncTriggerDeleteExpriedKeys(t *testing.T) {
 	}
 	if action[0] != "DeleteExpiredKeys" {
 		t.Errorf("action = %s, want DeleteExpiredKeys", action[0])
+	}
+}
+
+// snapshot should snapshot the store and cut the persistent
+// TODO: node.Compact is called... we need to make the node an interface
+func TestSnapshot(t *testing.T) {
+	n := raft.Start(0xBAD0, []int64{0xBAD0}, 10, 1)
+	defer n.Stop()
+	st := &storeRecorder{}
+	p := &storageRecorder{}
+	s := &EtcdServer{
+		Store:   st,
+		Storage: p,
+		Node:    n,
+	}
+
+	s.snapshot()
+	action := st.Action()
+	if len(action) != 1 {
+		t.Fatalf("len(action) = %d, want 1", len(action))
+	}
+	if action[0] != "Save" {
+		t.Errorf("action = %s, want Save", action[0])
+	}
+
+	action = p.Action()
+	if len(action) != 1 {
+		t.Fatalf("len(action) = %d, want 1", len(action))
+	}
+	if action[0] != "Cut" {
+		t.Errorf("action = %s, want Cut", action[0])
+	}
+}
+
+// Applied > SnapCount should trigger a SaveSnap event
+// TODO: receive a snapshot from raft leader should also be able
+// to trigger snapSave and also trigger a store.Recover.
+// We need fake node!
+func TestTriggerSnap(t *testing.T) {
+	ctx := context.Background()
+	n := raft.Start(0xBAD0, []int64{0xBAD0}, 10, 1)
+	n.Campaign(ctx)
+	st := &storeRecorder{}
+	p := &storageRecorder{}
+	s := &EtcdServer{
+		Store:     st,
+		Send:      func(_ []raftpb.Message) {},
+		Storage:   p,
+		Node:      n,
+		SnapCount: 10,
+	}
+
+	s.Start()
+	for i := 0; int64(i) < s.SnapCount; i++ {
+		s.Do(ctx, pb.Request{Method: "PUT", Id: 1})
+	}
+	time.Sleep(time.Millisecond)
+	s.Stop()
+
+	action := p.Action()
+	// each operation is recorded as a Save
+	// Nop + SnapCount * Puts + Cut + SaveSnap = Save + SnapCount * Save + Cut + SaveSnap
+	if len(action) != 3+int(s.SnapCount) {
+		t.Fatalf("len(action) = %d, want %d", len(action), 3+int(s.SnapCount))
+	}
+	if action[12] != "SaveSnap" {
+		t.Errorf("action = %s, want SaveSnap", action[12])
 	}
 }
 
@@ -458,23 +525,28 @@ func TestGetBool(t *testing.T) {
 	}
 }
 
-type storeRecorder struct {
+type recorder struct {
 	sync.Mutex
 	action []string
 }
 
-func (s *storeRecorder) record(action string) {
-	s.Lock()
-	s.action = append(s.action, action)
-	s.Unlock()
+func (r *recorder) record(action string) {
+	r.Lock()
+	r.action = append(r.action, action)
+	r.Unlock()
 }
-func (s *storeRecorder) Action() []string {
-	s.Lock()
-	cpy := make([]string, len(s.action))
-	copy(cpy, s.action)
-	s.Unlock()
+func (r *recorder) Action() []string {
+	r.Lock()
+	cpy := make([]string, len(r.action))
+	copy(cpy, r.action)
+	r.Unlock()
 	return cpy
 }
+
+type storeRecorder struct {
+	recorder
+}
+
 func (s *storeRecorder) Version() int  { return 0 }
 func (s *storeRecorder) Index() uint64 { return 0 }
 func (s *storeRecorder) Get(_ string, _, _ bool) (*store.Event, error) {
@@ -509,7 +581,10 @@ func (s *storeRecorder) Watch(_ string, _, _ bool, _ uint64) (store.Watcher, err
 	s.record("Watch")
 	return &stubWatcher{}, nil
 }
-func (s *storeRecorder) Save() ([]byte, error)     { return nil, nil }
+func (s *storeRecorder) Save() ([]byte, error) {
+	s.record("Save")
+	return nil, nil
+}
 func (s *storeRecorder) Recovery(b []byte) error   { return nil }
 func (s *storeRecorder) TotalTransactions() uint64 { return 0 }
 func (s *storeRecorder) JsonStats() []byte         { return nil }
@@ -537,3 +612,21 @@ func (w *waitRecorder) Trigger(id int64, x interface{}) {
 func boolp(b bool) *bool { return &b }
 
 func stringp(s string) *string { return &s }
+
+type storageRecorder struct {
+	recorder
+}
+
+func (p *storageRecorder) Save(st raftpb.HardState, ents []raftpb.Entry) {
+	p.record("Save")
+}
+func (p *storageRecorder) Cut() error {
+	p.record("Cut")
+	return nil
+}
+func (p *storageRecorder) SaveSnap(st raftpb.Snapshot) {
+	if raft.IsEmptySnap(st) {
+		return
+	}
+	p.record("SaveSnap")
+}

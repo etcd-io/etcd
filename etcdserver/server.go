@@ -17,7 +17,10 @@ import (
 	"github.com/coreos/etcd/wait"
 )
 
-const defaultSyncTimeout = time.Second
+const (
+	defaultSyncTimeout = time.Second
+	DefaultSnapCount   = 10000
+)
 
 var (
 	ErrUnknownMethod = errors.New("etcdserver: unknown method")
@@ -31,6 +34,19 @@ type Response struct {
 	Event   *store.Event
 	Watcher store.Watcher
 	err     error
+}
+
+type Storage interface {
+	// Save function saves ents and state to the underlying stable storage.
+	// Save MUST block until st and ents are on stable storage.
+	Save(st raftpb.HardState, ents []raftpb.Entry)
+	// SaveSnap function saves snapshot to the underlying stable storage.
+	SaveSnap(snap raftpb.Snapshot)
+
+	// TODO: WAL should be able to control cut itself. After implement self-controled cut,
+	// remove it in this interface.
+	// Cut cuts out a new wal file for saving new state and entries.
+	Cut() error
 }
 
 type Server interface {
@@ -63,18 +79,21 @@ type EtcdServer struct {
 	// panic.
 	Send SendFunc
 
-	// Save specifies the save function for saving ents to stable storage.
-	// Save MUST block until st and ents are on stable storage.  If Send is
-	// nil, server will panic.
-	Save func(st raftpb.HardState, ents []raftpb.Entry)
+	Storage Storage
 
 	Ticker     <-chan time.Time
 	SyncTicker <-chan time.Time
+
+	SnapCount int64 // number of entries to trigger a snapshot
 }
 
 // Start prepares and starts server in a new goroutine. It is no longer safe to
 // modify a server's fields after it has been sent to Start.
 func (s *EtcdServer) Start() {
+	if s.SnapCount == 0 {
+		log.Printf("etcdserver: set snapshot count to default %d", DefaultSnapCount)
+		s.SnapCount = DefaultSnapCount
+	}
 	s.w = wait.New()
 	s.done = make(chan struct{})
 	go s.run()
@@ -86,12 +105,15 @@ func (s *EtcdServer) Process(ctx context.Context, m raftpb.Message) error {
 
 func (s *EtcdServer) run() {
 	var syncC <-chan time.Time
+	// snapi indicates the index of the last submitted snapshot request
+	var snapi, appliedi int64
 	for {
 		select {
 		case <-s.Ticker:
 			s.Node.Tick()
 		case rd := <-s.Node.Ready():
-			s.Save(rd.HardState, rd.Entries)
+			s.Storage.Save(rd.HardState, rd.Entries)
+			s.Storage.SaveSnap(rd.Snapshot)
 			s.Send(rd.Messages)
 
 			// TODO(bmizerany): do this in the background, but take
@@ -103,6 +125,24 @@ func (s *EtcdServer) run() {
 					panic("TODO: this is bad, what do we do about it?")
 				}
 				s.w.Trigger(r.Id, s.apply(r))
+				appliedi = e.Index
+			}
+
+			if rd.Snapshot.Index > snapi {
+				snapi = rd.Snapshot.Index
+			}
+
+			// recover from snapshot if it is more updated than current applied
+			if rd.Snapshot.Index > appliedi {
+				if err := s.Store.Recovery(rd.Snapshot.Data); err != nil {
+					panic("TODO: this is bad, what do we do about it?")
+				}
+				appliedi = rd.Snapshot.Index
+			}
+
+			if appliedi-snapi > s.SnapCount {
+				s.snapshot()
+				snapi = appliedi
 			}
 
 			if rd.SoftState != nil {
@@ -239,6 +279,18 @@ func (s *EtcdServer) apply(r pb.Request) Response {
 		// This should never be reached, but just in case:
 		return Response{err: ErrUnknownMethod}
 	}
+}
+
+// TODO: non-blocking snapshot
+func (s *EtcdServer) snapshot() {
+	d, err := s.Store.Save()
+	// TODO: current store will never fail to do a snapshot
+	// what should we do if the store might fail?
+	if err != nil {
+		panic("TODO: this is bad, what do we do about it?")
+	}
+	s.Node.Compact(d)
+	s.Storage.Cut()
 }
 
 // TODO: move the function to /id pkg maybe?
