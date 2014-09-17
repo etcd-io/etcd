@@ -158,7 +158,7 @@ func testServer(t *testing.T, ns int64) {
 
 	for i := int64(0); i < ns; i++ {
 		id := i + 1
-		n := raft.Start(id, peers, 10, 1)
+		n := raft.StartNode(id, peers, 10, 1)
 		tk := time.NewTicker(10 * time.Millisecond)
 		defer tk.Stop()
 		srv := &EtcdServer{
@@ -225,7 +225,7 @@ func TestDoProposal(t *testing.T) {
 
 	for i, tt := range tests {
 		ctx, _ := context.WithCancel(context.Background())
-		n := raft.Start(0xBAD0, []int64{0xBAD0}, 10, 1)
+		n := raft.StartNode(0xBAD0, []int64{0xBAD0}, 10, 1)
 		st := &storeRecorder{}
 		tk := make(chan time.Time)
 		// this makes <-tk always successful, which accelerates internal clock
@@ -257,7 +257,7 @@ func TestDoProposal(t *testing.T) {
 func TestDoProposalCancelled(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	// node cannot make any progress because there are two nodes
-	n := raft.Start(0xBAD0, []int64{0xBAD0, 0xBAD1}, 10, 1)
+	n := raft.StartNode(0xBAD0, []int64{0xBAD0, 0xBAD1}, 10, 1)
 	st := &storeRecorder{}
 	wait := &waitRecorder{}
 	srv := &EtcdServer{
@@ -292,7 +292,7 @@ func TestDoProposalStopped(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	// node cannot make any progress because there are two nodes
-	n := raft.Start(0xBAD0, []int64{0xBAD0, 0xBAD1}, 10, 1)
+	n := raft.StartNode(0xBAD0, []int64{0xBAD0, 0xBAD1}, 10, 1)
 	st := &storeRecorder{}
 	tk := make(chan time.Time)
 	// this makes <-tk always successful, which accelarates internal clock
@@ -326,7 +326,7 @@ func TestDoProposalStopped(t *testing.T) {
 
 // TestSync tests sync 1. is nonblocking 2. sends out SYNC request.
 func TestSync(t *testing.T) {
-	n := raft.Start(0xBAD0, []int64{0xBAD0}, 10, 1)
+	n := raft.StartNode(0xBAD0, []int64{0xBAD0}, 10, 1)
 	n.Campaign(context.TODO())
 	select {
 	case <-n.Ready():
@@ -372,7 +372,7 @@ func TestSync(t *testing.T) {
 // propose SYNC request because there is no leader
 func TestSyncFail(t *testing.T) {
 	// The node is run without Tick and Campaign, so it has no leader forever.
-	n := raft.Start(0xBAD0, []int64{0xBAD0}, 10, 1)
+	n := raft.StartNode(0xBAD0, []int64{0xBAD0}, 10, 1)
 	select {
 	case <-n.Ready():
 	case <-time.After(time.Millisecond):
@@ -406,7 +406,7 @@ func TestSyncFail(t *testing.T) {
 }
 
 func TestSyncTriggerDeleteExpriedKeys(t *testing.T) {
-	n := raft.Start(0xBAD0, []int64{0xBAD0}, 10, 1)
+	n := raft.StartNode(0xBAD0, []int64{0xBAD0}, 10, 1)
 	n.Campaign(context.TODO())
 	st := &storeRecorder{}
 	syncInterval := 5 * time.Millisecond
@@ -438,7 +438,7 @@ func TestSyncTriggerDeleteExpriedKeys(t *testing.T) {
 // snapshot should snapshot the store and cut the persistent
 // TODO: node.Compact is called... we need to make the node an interface
 func TestSnapshot(t *testing.T) {
-	n := raft.Start(0xBAD0, []int64{0xBAD0}, 10, 1)
+	n := raft.StartNode(0xBAD0, []int64{0xBAD0}, 10, 1)
 	defer n.Stop()
 	st := &storeRecorder{}
 	p := &storageRecorder{}
@@ -472,7 +472,7 @@ func TestSnapshot(t *testing.T) {
 // We need fake node!
 func TestTriggerSnap(t *testing.T) {
 	ctx := context.Background()
-	n := raft.Start(0xBAD0, []int64{0xBAD0}, 10, 1)
+	n := raft.StartNode(0xBAD0, []int64{0xBAD0}, 10, 1)
 	n.Campaign(ctx)
 	st := &storeRecorder{}
 	p := &storageRecorder{}

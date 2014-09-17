@@ -14,7 +14,7 @@ import (
 // and other kinds of messages to recvc chan.
 func TestNodeStep(t *testing.T) {
 	for i := range mtmap {
-		n := &Node{
+		n := &node{
 			propc: make(chan raftpb.Message, 1),
 			recvc: make(chan raftpb.Message, 1),
 		}
@@ -39,7 +39,7 @@ func TestNodeStep(t *testing.T) {
 // Cancel and Stop should unblock Step()
 func TestNodeStepUnblock(t *testing.T) {
 	// a node without buffer to block step
-	n := &Node{
+	n := &node{
 		propc: make(chan raftpb.Message),
 		done:  make(chan struct{}),
 	}
@@ -154,7 +154,7 @@ func TestNode(t *testing.T) {
 		},
 	}
 
-	n := Start(1, []int64{1}, 0, 0)
+	n := StartNode(1, []int64{1}, 0, 0)
 	n.Campaign(ctx)
 	if g := <-n.Ready(); !reflect.DeepEqual(g, wants[0]) {
 		t.Errorf("#%d: g = %+v,\n             w   %+v", 1, g, wants[0])
@@ -186,7 +186,7 @@ func TestNodeRestart(t *testing.T) {
 		CommittedEntries: entries[1 : st.Commit+1],
 	}
 
-	n := Restart(1, []int64{1}, 0, 0, nil, st, entries)
+	n := RestartNode(1, []int64{1}, 0, 0, nil, st, entries)
 	if g := <-n.Ready(); !reflect.DeepEqual(g, want) {
 		t.Errorf("g = %+v,\n             w   %+v", g, want)
 	}
