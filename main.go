@@ -24,6 +24,9 @@ import (
 const (
 	// the owner can make/remove files inside the directory
 	privateDirMode = 0700
+
+	proxyFlagValueOff = "off"
+	proxyFlagValueOn  = "on"
 )
 
 var (
@@ -31,18 +34,25 @@ var (
 	timeout   = flag.Duration("timeout", 10*time.Second, "Request Timeout")
 	paddr     = flag.String("peer-bind-addr", ":7001", "Peer service address (e.g., ':7001')")
 	dir       = flag.String("data-dir", "", "Path to the data directory")
-	proxyMode = flag.Bool("proxy-mode", false, "Forward HTTP requests to peers, do not participate in raft.")
 	snapCount = flag.Int64("snapshot-count", etcdserver.DefaultSnapCount, "Number of committed transactions to trigger a snapshot")
 
-	peers = &etcdhttp.Peers{}
-	addrs = &Addrs{}
+	peers     = &etcdhttp.Peers{}
+	addrs     = &Addrs{}
+	proxyFlag = new(ProxyFlag)
+
+	proxyFlagValues = []string{
+		proxyFlagValueOff,
+		proxyFlagValueOn,
+	}
 )
 
 func init() {
 	flag.Var(peers, "peers", "your peers")
 	flag.Var(addrs, "bind-addr", "List of HTTP service addresses (e.g., '127.0.0.1:4001,10.0.0.1:8080')")
+	flag.Var(proxyFlag, "proxy", fmt.Sprintf("Valid values include %s", strings.Join(proxyFlagValues, ", ")))
 	peers.Set("0x1=localhost:8080")
 	addrs.Set("127.0.0.1:4001")
+	proxyFlag.Set(proxyFlagValueOff)
 }
 
 func main() {
@@ -50,10 +60,10 @@ func main() {
 
 	setFlagsFromEnv()
 
-	if *proxyMode {
-		startProxy()
-	} else {
+	if string(*proxyFlag) == proxyFlagValueOff {
 		startEtcd()
+	} else {
+		startProxy()
 	}
 
 	// Block indefinitely
@@ -199,6 +209,26 @@ func (as *Addrs) Set(s string) error {
 
 func (as *Addrs) String() string {
 	return strings.Join(*as, ",")
+}
+
+// ProxyFlag implements the flag.Value interface.
+type ProxyFlag string
+
+// Set verifies the argument to be a valid member of proxyFlagValues
+// before setting the underlying flag value.
+func (pf *ProxyFlag) Set(s string) error {
+	for _, v := range proxyFlagValues {
+		if s == v {
+			*pf = ProxyFlag(s)
+			return nil
+		}
+	}
+
+	return errors.New("invalid value")
+}
+
+func (pf *ProxyFlag) String() string {
+	return string(*pf)
 }
 
 // setFlagsFromEnv parses all registered flags in the global flagset,
