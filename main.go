@@ -25,8 +25,9 @@ const (
 	// the owner can make/remove files inside the directory
 	privateDirMode = 0700
 
-	proxyFlagValueOff = "off"
-	proxyFlagValueOn  = "on"
+	proxyFlagValueOff      = "off"
+	proxyFlagValueReadonly = "readonly"
+	proxyFlagValueOn       = "on"
 )
 
 var (
@@ -42,6 +43,7 @@ var (
 
 	proxyFlagValues = []string{
 		proxyFlagValueOff,
+		proxyFlagValueReadonly,
 		proxyFlagValueOn,
 	}
 )
@@ -178,6 +180,11 @@ func startProxy() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	if string(*proxyFlag) == proxyFlagValueReadonly {
+		ph = proxy.NewReadonlyHandler(ph)
+	}
+
 	// Start a proxy server goroutine for each listen address
 	for _, addr := range *addrs {
 		addr := addr
