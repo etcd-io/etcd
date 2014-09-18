@@ -27,7 +27,7 @@ Thanks for your contributions!
 
 ### Code style
 
-The coding style suggested by the Golang community is used in etcd. See [style doc](https://code.google.com/p/go-wiki/wiki/Style) for details.
+The coding style suggested by the Golang community is used in etcd. See the [style doc](https://code.google.com/p/go-wiki/wiki/CodeReviewComments) for details.
 
 Please follow this style to make etcd easy to review, maintain and develop.
 
