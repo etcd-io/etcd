@@ -41,3 +41,26 @@ func TestSetFlagsFromEnv(t *testing.T) {
 		}
 	}
 }
+
+func TestProxyFlagSet(t *testing.T) {
+	tests := []struct {
+		val  string
+		pass bool
+	}{
+		// known values
+		{"on", true},
+		{"off", true},
+
+		// unrecognized values
+		{"foo", false},
+		{"", false},
+	}
+
+	for i, tt := range tests {
+		pf := new(ProxyFlag)
+		err := pf.Set(tt.val)
+		if tt.pass != (err == nil) {
+			t.Errorf("#%d: want pass=%t, but got err=%v", i, tt.pass, err)
+		}
+	}
+}
