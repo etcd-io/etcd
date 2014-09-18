@@ -21,4 +21,4 @@ export GOBIN=$GOBIN
 
 eval $(go env)
 
-go install ${REPO_PATH}
+go build -o bin/etcd ${REPO_PATH}/cmd/etcd
