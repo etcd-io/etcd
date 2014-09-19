@@ -472,9 +472,6 @@ func TestSnapshot(t *testing.T) {
 }
 
 // Applied > SnapCount should trigger a SaveSnap event
-// TODO: receive a snapshot from raft leader should also be able
-// to trigger snapSave and also trigger a store.Recover.
-// We need fake node!
 func TestTriggerSnap(t *testing.T) {
 	ctx := context.Background()
 	n := raft.StartNode(0xBAD0, []int64{0xBAD0}, 10, 1)
@@ -504,6 +501,34 @@ func TestTriggerSnap(t *testing.T) {
 	}
 	if action[12] != "SaveSnap" {
 		t.Errorf("action = %s, want SaveSnap", action[12])
+	}
+}
+
+// TestRecvSnapshot tests when it receives a snapshot from raft leader,
+// it should trigger storage.SaveSnap and also store.Recover.
+func TestRecvSnapshot(t *testing.T) {
+	n := newReadyNode(raft.Ready{Snapshot: raftpb.Snapshot{Index: 1}})
+	st := &storeRecorder{}
+	p := &storageRecorder{}
+	s := &EtcdServer{
+		Store:   st,
+		Send:    func(_ []raftpb.Message) {},
+		Storage: p,
+		Node:    n,
+	}
+
+	s.Start()
+	// make goroutines move forward to receive snapshot
+	forceGosched()
+	s.Stop()
+
+	waction := []string{"Recovery"}
+	if g := st.Action(); !reflect.DeepEqual(g, waction) {
+		t.Errorf("store action = %v, want %v", g, waction)
+	}
+	waction = []string{"Save", "SaveSnap"}
+	if g := p.Action(); !reflect.DeepEqual(g, waction) {
+		t.Errorf("storage action = %v, want %v", g, waction)
 	}
 }
 
@@ -590,7 +615,10 @@ func (s *storeRecorder) Save() ([]byte, error) {
 	s.record("Save")
 	return nil, nil
 }
-func (s *storeRecorder) Recovery(b []byte) error   { return nil }
+func (s *storeRecorder) Recovery(b []byte) error {
+	s.record("Recovery")
+	return nil
+}
 func (s *storeRecorder) TotalTransactions() uint64 { return 0 }
 func (s *storeRecorder) JsonStats() []byte         { return nil }
 func (s *storeRecorder) DeleteExpiredKeys(cutoff time.Time) {
@@ -636,6 +664,26 @@ func (p *storageRecorder) SaveSnap(st raftpb.Snapshot) {
 	p.record("SaveSnap")
 }
 
+type readyNode struct {
+	readyc chan raft.Ready
+}
+
+func newReadyNode(ready raft.Ready) *readyNode {
+	readyc := make(chan raft.Ready, 1)
+	readyc <- ready
+	return &readyNode{readyc: readyc}
+}
+func (n *readyNode) Tick()                                              {}
+func (n *readyNode) Campaign(ctx context.Context) error                 { return nil }
+func (n *readyNode) Propose(ctx context.Context, data []byte) error     { return nil }
+func (n *readyNode) Configure(ctx context.Context, data []byte) error   { return nil }
+func (n *readyNode) Step(ctx context.Context, msg raftpb.Message) error { return nil }
+func (n *readyNode) Ready() <-chan raft.Ready                           { return n.readyc }
+func (n *readyNode) Stop()                                              {}
+func (n *readyNode) Compact(d []byte)                                   {}
+func (n *readyNode) AddNode(id int64)                                   {}
+func (n *readyNode) RemoveNode(id int64)                                {}
+
 func TestGenID(t *testing.T) {
 	// Sanity check that the GenID function has been seeded appropriately
 	// (math/rand is seeded with 1 by default)
@@ -646,5 +694,14 @@ func TestGenID(t *testing.T) {
 	}
 	if n == GenID() {
 		t.Fatalf("GenID's rand seeded with 1!")
+	}
+}
+
+// WARNING: This is a hack.
+// Remove this when we are able to block/check the status of the go-routines.
+func forceGosched() {
+	// possibility enough to sched upto 10 go routines.
+	for i := 0; i < 10000; i++ {
+		runtime.Gosched()
 	}
 }
