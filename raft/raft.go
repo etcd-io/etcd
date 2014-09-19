@@ -112,7 +112,7 @@ type raft struct {
 	step             stepFunc
 }
 
-func newRaft(id int64, peers []int64, election, heartbeat int) *raft {
+func newRaft(id int64, peers []int64, election int, heartbeat int) *raft {
 	if id == None {
 		panic("cannot use none id")
 	}
