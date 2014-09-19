@@ -92,7 +92,7 @@ type Node interface {
 
 // StartNode returns a new Node given a unique raft id, a list of raft peers, and
 // the election and heartbeat timeouts in units of ticks.
-func StartNode(id int64, peers []int64, election, heartbeat int) Node {
+func StartNode(id int64, peers []int64, election int, heartbeat int) Node {
 	n := newNode()
 	r := newRaft(id, peers, election, heartbeat)
 	go n.run(r)
@@ -102,7 +102,7 @@ func StartNode(id int64, peers []int64, election, heartbeat int) Node {
 // RestartNode is identical to StartNode but takes an initial State and a slice
 // of entries. Generally this is used when restarting from a stable storage
 // log.
-func RestartNode(id int64, peers []int64, election, heartbeat int, snapshot *pb.Snapshot, st pb.HardState, ents []pb.Entry) Node {
+func RestartNode(id int64, peers []int64, election int, heartbeat int, snapshot *pb.Snapshot, st pb.HardState, ents []pb.Entry) Node {
 	n := newNode()
 	r := newRaft(id, peers, election, heartbeat)
 	if snapshot != nil {
