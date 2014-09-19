@@ -105,6 +105,10 @@ type raft struct {
 	// the leader id
 	lead int64
 
+	// pending configuration
+	// New configuration is ignored if there exists configuration unapplied.
+	pendingConf bool
+
 	elapsed          int // number of ticks since the last msg
 	heartbeatTimeout int
 	electionTimeout  int
@@ -245,6 +249,7 @@ func (r *raft) reset(term int64) {
 			r.prs[i].match = r.raftLog.lastIndex()
 		}
 	}
+	r.pendingConf = false
 }
 
 func (r *raft) q() int {
@@ -308,6 +313,15 @@ func (r *raft) becomeLeader() {
 	r.tick = r.tickHeartbeat
 	r.lead = r.id
 	r.state = StateLeader
+	for _, e := range r.raftLog.entries(r.raftLog.committed + 1) {
+		if e.Type != EntryConfig {
+			continue
+		}
+		if r.pendingConf {
+			panic("unexpected double uncommitted config entry")
+		}
+		r.pendingConf = true
+	}
 	r.appendEntry(pb.Entry{Data: nil})
 }
 
@@ -373,6 +387,16 @@ func (r *raft) handleSnapshot(m pb.Message) {
 	}
 }
 
+func (r *raft) addNode(id int64) {
+	r.setProgress(id, 0, r.raftLog.lastIndex()+1)
+	r.pendingConf = false
+}
+
+func (r *raft) removeNode(id int64) {
+	r.delProgress(id)
+	r.pendingConf = false
+}
+
 type stepFunc func(r *raft, m pb.Message)
 
 func stepLeader(r *raft, m pb.Message) {
@@ -384,6 +408,12 @@ func stepLeader(r *raft, m pb.Message) {
 			panic("unexpected length(entries) of a msgProp")
 		}
 		e := m.Entries[0]
+		if e.Type == EntryConfig {
+			if r.pendingConf {
+				return
+			}
+			r.pendingConf = true
+		}
 		r.appendEntry(e)
 		r.bcastAppend()
 	case msgAppResp:

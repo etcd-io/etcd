@@ -948,6 +948,111 @@ func TestSlowNodeRestore(t *testing.T) {
 	}
 }
 
+// TestStepConfig tests that when raft step msgProp in ConfigEntry type,
+// it appends the entry to log and sets pendingConf to be true.
+func TestStepConfig(t *testing.T) {
+	// a raft that cannot make progress
+	r := newRaft(1, []int64{1, 2}, 0, 0)
+	r.becomeCandidate()
+	r.becomeLeader()
+	index := r.raftLog.lastIndex()
+	r.Step(pb.Message{From: 1, To: 1, Type: msgProp, Entries: []pb.Entry{{Type: EntryConfig}}})
+	if g := r.raftLog.lastIndex(); g != index+1 {
+		t.Errorf("index = %d, want %d", g, index+1)
+	}
+	if r.pendingConf != true {
+		t.Errorf("pendingConf = %v, want true", r.pendingConf)
+	}
+}
+
+// TestStepIgnoreConfig tests that if raft step the second msgProp in
+// ConfigEntry type when the first one is uncommitted, the node will deny
+// the proposal and keep its original state.
+func TestStepIgnoreConfig(t *testing.T) {
+	// a raft that cannot make progress
+	r := newRaft(1, []int64{1, 2}, 0, 0)
+	r.becomeCandidate()
+	r.becomeLeader()
+	r.Step(pb.Message{From: 1, To: 1, Type: msgProp, Entries: []pb.Entry{{Type: EntryConfig}}})
+	index := r.raftLog.lastIndex()
+	pendingConf := r.pendingConf
+	r.Step(pb.Message{From: 1, To: 1, Type: msgProp, Entries: []pb.Entry{{Type: EntryConfig}}})
+	if g := r.raftLog.lastIndex(); g != index {
+		t.Errorf("index = %d, want %d", g, index)
+	}
+	if r.pendingConf != pendingConf {
+		t.Errorf("pendingConf = %v, want %v", r.pendingConf, pendingConf)
+	}
+}
+
+// TestRecoverPendingConfig tests that new leader recovers its pendingConf flag
+// based on uncommitted entries.
+func TestRecoverPendingConfig(t *testing.T) {
+	tests := []struct {
+		entType  int64
+		wpending bool
+	}{
+		{EntryNormal, false},
+		{EntryConfig, true},
+	}
+	for i, tt := range tests {
+		r := newRaft(1, []int64{1, 2}, 0, 0)
+		r.appendEntry(pb.Entry{Type: tt.entType})
+		r.becomeCandidate()
+		r.becomeLeader()
+		if r.pendingConf != tt.wpending {
+			t.Errorf("#%d: pendingConf = %v, want %v", i, r.pendingConf, tt.wpending)
+		}
+	}
+}
+
+// TestRecoverDoublePendingConfig tests that new leader will panic if
+// there exist two uncommitted config entries.
+func TestRecoverDoublePendingConfig(t *testing.T) {
+	func() {
+		defer func() {
+			if err := recover(); err == nil {
+				t.Errorf("expect panic, but nothing happens")
+			}
+		}()
+		r := newRaft(1, []int64{1, 2}, 0, 0)
+		r.appendEntry(pb.Entry{Type: EntryConfig})
+		r.appendEntry(pb.Entry{Type: EntryConfig})
+		r.becomeCandidate()
+		r.becomeLeader()
+	}()
+}
+
+// TestAddNode tests that addNode could update pendingConf and peer list correctly.
+func TestAddNode(t *testing.T) {
+	r := newRaft(1, []int64{1}, 0, 0)
+	r.pendingConf = true
+	r.addNode(2)
+	if r.pendingConf != false {
+		t.Errorf("pendingConf = %v, want false", r.pendingConf)
+	}
+	nodes := r.nodes()
+	sort.Sort(int64Slice(nodes))
+	wnodes := []int64{1, 2}
+	if !reflect.DeepEqual(nodes, wnodes) {
+		t.Errorf("nodes = %v, want %v", nodes, wnodes)
+	}
+}
+
+// TestRemoveNode tests that removeNode could update pendingConf and peer list correctly.
+func TestRemoveNode(t *testing.T) {
+	r := newRaft(1, []int64{1, 2}, 0, 0)
+	r.pendingConf = true
+	r.removeNode(2)
+	if r.pendingConf != false {
+		t.Errorf("pendingConf = %v, want false", r.pendingConf)
+	}
+	w := []int64{1}
+	if g := r.nodes(); !reflect.DeepEqual(g, w) {
+		t.Errorf("nodes = %v, want %v", g, w)
+	}
+}
+
 func ents(terms ...int64) *raft {
 	ents := []pb.Entry{{}}
 	for _, term := range terms {
