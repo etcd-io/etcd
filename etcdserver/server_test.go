@@ -508,7 +508,7 @@ func TestTriggerSnap(t *testing.T) {
 // TestRecvSnapshot tests when it receives a snapshot from raft leader,
 // it should trigger storage.SaveSnap and also store.Recover.
 func TestRecvSnapshot(t *testing.T) {
-	n := newReadyNode(raft.Ready{Snapshot: raftpb.Snapshot{Index: 1}})
+	n := newReadyNode()
 	st := &storeRecorder{}
 	p := &storageRecorder{}
 	s := &EtcdServer{
@@ -519,6 +519,7 @@ func TestRecvSnapshot(t *testing.T) {
 	}
 
 	s.Start()
+	n.readyc <- raft.Ready{Snapshot: raftpb.Snapshot{Index: 1}}
 	// make goroutines move forward to receive snapshot
 	testutil.ForceGosched()
 	s.Stop()
@@ -669,9 +670,8 @@ type readyNode struct {
 	readyc chan raft.Ready
 }
 
-func newReadyNode(ready raft.Ready) *readyNode {
+func newReadyNode() *readyNode {
 	readyc := make(chan raft.Ready, 1)
-	readyc <- ready
 	return &readyNode{readyc: readyc}
 }
 func (n *readyNode) Tick()                                              {}
