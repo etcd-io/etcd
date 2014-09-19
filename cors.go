@@ -20,24 +20,37 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 )
 
 type CORSInfo map[string]bool
 
-func newCORSInfo(origins []string) (*CORSInfo, error) {
-	// Construct a lookup of all origins.
+// CORSInfo implements the flag.Value interface to allow users to define a list of CORS origins
+func (ci *CORSInfo) Set(s string) error {
 	m := make(map[string]bool)
-	for _, v := range origins {
+	for _, v := range strings.Split(s, ",") {
+		v = strings.TrimSpace(v)
+		if v == "" {
+			continue
+		}
 		if v != "*" {
 			if _, err := url.Parse(v); err != nil {
-				return nil, fmt.Errorf("Invalid CORS origin: %s", err)
+				return fmt.Errorf("Invalid CORS origin: %s", err)
 			}
 		}
 		m[v] = true
-	}
 
-	info := CORSInfo(m)
-	return &info, nil
+	}
+	*ci = CORSInfo(m)
+	return nil
+}
+
+func (ci *CORSInfo) String() string {
+	o := make([]string, 0)
+	for k, _ := range *ci {
+		o = append(o, k)
+	}
+	return strings.Join(o, ",")
 }
 
 // OriginAllowed determines whether the server will allow a given CORS origin.
