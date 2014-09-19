@@ -57,6 +57,42 @@ func TestDoLocalAction(t *testing.T) {
 	}
 }
 
+// TestDoBadLocalAction tests server requests which do not need to go through consensus,
+// and return errors when they fetch from local data.
+func TestDoBadLocalAction(t *testing.T) {
+	storeErr := fmt.Errorf("bah")
+	tests := []struct {
+		req pb.Request
+
+		waction []string
+	}{
+		{
+			pb.Request{Method: "GET", Id: 1, Wait: true},
+			[]string{"Watch"},
+		},
+		{
+			pb.Request{Method: "GET", Id: 1},
+			[]string{"Get"},
+		},
+	}
+	for i, tt := range tests {
+		st := &errStoreRecorder{err: storeErr}
+		srv := &EtcdServer{Store: st}
+		resp, err := srv.Do(context.Background(), tt.req)
+
+		if err != storeErr {
+			t.Fatalf("#%d: err = %+v, want %+v", i, err, storeErr)
+		}
+		if !reflect.DeepEqual(resp, Response{}) {
+			t.Errorf("#%d: resp = %+v, want %+v", i, resp, Response{})
+		}
+		action := st.Action()
+		if !reflect.DeepEqual(action, tt.waction) {
+			t.Errorf("#%d: action = %+v, want %+v", i, action, tt.waction)
+		}
+	}
+}
+
 func TestApply(t *testing.T) {
 	tests := []struct {
 		req pb.Request
@@ -601,6 +637,21 @@ type stubWatcher struct{}
 
 func (w *stubWatcher) EventChan() chan *store.Event { return nil }
 func (w *stubWatcher) Remove()                      {}
+
+// errStoreRecorder returns an store error on Get, Watch request
+type errStoreRecorder struct {
+	storeRecorder
+	err error
+}
+
+func (s *errStoreRecorder) Get(_ string, _, _ bool) (*store.Event, error) {
+	s.record("Get")
+	return nil, s.err
+}
+func (s *errStoreRecorder) Watch(_ string, _, _ bool, _ uint64) (store.Watcher, error) {
+	s.record("Watch")
+	return nil, s.err
+}
 
 type waitRecorder struct {
 	action []string
