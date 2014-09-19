@@ -19,6 +19,11 @@ const (
 	DefaultSnapCount   = 10000
 )
 
+const (
+	configAddNode int64 = iota
+	configRemoveNode
+)
+
 var (
 	ErrUnknownMethod = errors.New("etcdserver: unknown method")
 	ErrStopped       = errors.New("etcdserver: server stopped")
@@ -121,11 +126,23 @@ func (s *EtcdServer) run() {
 			// care to apply entries in a single goroutine, and not
 			// race them.
 			for _, e := range rd.CommittedEntries {
-				var r pb.Request
-				if err := r.Unmarshal(e.Data); err != nil {
-					panic("TODO: this is bad, what do we do about it?")
+				switch e.Type {
+				case raft.EntryNormal:
+					var r pb.Request
+					if err := r.Unmarshal(e.Data); err != nil {
+						panic("TODO: this is bad, what do we do about it?")
+					}
+					s.w.Trigger(r.Id, s.applyRequest(r))
+				case raft.EntryConfig:
+					var c pb.Config
+					if err := c.Unmarshal(e.Data); err != nil {
+						panic("TODO: this is bad, what do we do about it?")
+					}
+					s.applyConfig(c)
+					s.w.Trigger(c.Id, nil)
+				default:
+					panic("unsupported entry type")
 				}
-				s.w.Trigger(r.Id, s.apply(r))
 				appliedi = e.Index
 			}
 
@@ -218,6 +235,46 @@ func (s *EtcdServer) Do(ctx context.Context, r pb.Request) (Response, error) {
 	}
 }
 
+func (s *EtcdServer) AddNode(ctx context.Context, id int64, context []byte) error {
+	req := pb.Config{
+		Id:      GenID(),
+		Type:    configAddNode,
+		NodeID:  id,
+		Context: context,
+	}
+	return s.configure(ctx, req)
+}
+
+func (s *EtcdServer) RemoveNode(ctx context.Context, id int64) error {
+	req := pb.Config{
+		Id:     GenID(),
+		Type:   configRemoveNode,
+		NodeID: id,
+	}
+	return s.configure(ctx, req)
+}
+
+// configure sends configuration change through consensus then performs it.
+// It will block until the change is performed or there is an error.
+func (s *EtcdServer) configure(ctx context.Context, r pb.Config) error {
+	data, err := r.Marshal()
+	if err != nil {
+		log.Printf("marshal request %#v error: %v", r, err)
+		return err
+	}
+	ch := s.w.Register(r.Id)
+	s.Node.Configure(ctx, data)
+	select {
+	case <-ch:
+		return nil
+	case <-ctx.Done():
+		s.w.Trigger(r.Id, nil) // GC wait
+		return ctx.Err()
+	case <-s.done:
+		return ErrStopped
+	}
+}
+
 // sync proposes a SYNC request and is non-blocking.
 // This makes no guarantee that the request will be proposed or performed.
 // The request will be cancelled after the given timeout.
@@ -249,8 +306,8 @@ func getExpirationTime(r *pb.Request) time.Time {
 	return t
 }
 
-// apply interprets r as a call to store.X and returns an Response interpreted from store.Event
-func (s *EtcdServer) apply(r pb.Request) Response {
+// applyRequest interprets r as a call to store.X and returns an Response interpreted from store.Event
+func (s *EtcdServer) applyRequest(r pb.Request) Response {
 	f := func(ev *store.Event, err error) Response {
 		return Response{Event: ev, err: err}
 	}
@@ -287,6 +344,18 @@ func (s *EtcdServer) apply(r pb.Request) Response {
 	default:
 		// This should never be reached, but just in case:
 		return Response{err: ErrUnknownMethod}
+	}
+}
+
+func (s *EtcdServer) applyConfig(r pb.Config) {
+	switch r.Type {
+	case configAddNode:
+		s.Node.AddNode(r.NodeID)
+	case configRemoveNode:
+		s.Node.RemoveNode(r.NodeID)
+	default:
+		// This should never be reached
+		panic("unsupported config type")
 	}
 }
 

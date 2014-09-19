@@ -24,3 +24,10 @@ message Request {
 	required bool   quorum     = 14 [(gogoproto.nullable) = false];
 	required int64  time       = 15 [(gogoproto.nullable) = false];
 }
+
+message Config {
+	required int64 id      = 1 [(gogoproto.nullable) = false];
+	required int64 type    = 2 [(gogoproto.nullable) = false];
+	required int64 nodeID  = 3 [(gogoproto.nullable) = false];
+	optional bytes context = 4 [(gogoproto.nullable) = false];
+}
