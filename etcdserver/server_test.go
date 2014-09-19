@@ -13,6 +13,7 @@ import (
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/store"
+	"github.com/coreos/etcd/testutil"
 	"github.com/coreos/etcd/third_party/code.google.com/p/go.net/context"
 )
 
@@ -519,7 +520,7 @@ func TestRecvSnapshot(t *testing.T) {
 
 	s.Start()
 	// make goroutines move forward to receive snapshot
-	forceGosched()
+	testutil.ForceGosched()
 	s.Stop()
 
 	waction := []string{"Recovery"}
@@ -694,14 +695,5 @@ func TestGenID(t *testing.T) {
 	}
 	if n == GenID() {
 		t.Fatalf("GenID's rand seeded with 1!")
-	}
-}
-
-// WARNING: This is a hack.
-// Remove this when we are able to block/check the status of the go-routines.
-func forceGosched() {
-	// possibility enough to sched upto 10 go routines.
-	for i := 0; i < 10000; i++ {
-		runtime.Gosched()
 	}
 }
