@@ -534,6 +534,34 @@ func TestRecvSnapshot(t *testing.T) {
 	}
 }
 
+// TestRecvSlowSnapshot tests that slow snapshot will not be applied
+// to store.
+func TestRecvSlowSnapshot(t *testing.T) {
+	n := newReadyNode()
+	st := &storeRecorder{}
+	s := &EtcdServer{
+		Store:   st,
+		Send:    func(_ []raftpb.Message) {},
+		Storage: &storageRecorder{},
+		Node:    n,
+	}
+
+	s.Start()
+	n.readyc <- raft.Ready{Snapshot: raftpb.Snapshot{Index: 1}}
+	// make goroutines move forward to receive snapshot
+	testutil.ForceGosched()
+	action := st.Action()
+
+	n.readyc <- raft.Ready{Snapshot: raftpb.Snapshot{Index: 1}}
+	// make goroutines move forward to receive snapshot
+	testutil.ForceGosched()
+	s.Stop()
+
+	if g := st.Action(); !reflect.DeepEqual(g, action) {
+		t.Errorf("store action = %v, want %v", g, action)
+	}
+}
+
 // TODO: test wait trigger correctness in multi-server case
 
 func TestGetBool(t *testing.T) {
