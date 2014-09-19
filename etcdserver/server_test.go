@@ -69,19 +69,19 @@ func TestApply(t *testing.T) {
 			Response{Event: &store.Event{}}, []string{"Create"},
 		},
 		{
-			pb.Request{Method: "PUT", Id: 1, PrevExists: boolp(true), PrevIndex: 1},
+			pb.Request{Method: "PUT", Id: 1, PrevExist: boolp(true), PrevIndex: 1},
 			Response{Event: &store.Event{}}, []string{"Update"},
 		},
 		{
-			pb.Request{Method: "PUT", Id: 1, PrevExists: boolp(false), PrevIndex: 1},
+			pb.Request{Method: "PUT", Id: 1, PrevExist: boolp(false), PrevIndex: 1},
 			Response{Event: &store.Event{}}, []string{"Create"},
 		},
 		{
-			pb.Request{Method: "PUT", Id: 1, PrevExists: boolp(true)},
+			pb.Request{Method: "PUT", Id: 1, PrevExist: boolp(true)},
 			Response{Event: &store.Event{}}, []string{"Update"},
 		},
 		{
-			pb.Request{Method: "PUT", Id: 1, PrevExists: boolp(false)},
+			pb.Request{Method: "PUT", Id: 1, PrevExist: boolp(false)},
 			Response{Event: &store.Event{}}, []string{"Create"},
 		},
 		{

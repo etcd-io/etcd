@@ -15,7 +15,7 @@ message Request {
 	required bool   dir        =  5 [(gogoproto.nullable) = false];
 	required string prevValue  =  6 [(gogoproto.nullable) = false];
 	required uint64  prevIndex =  7 [(gogoproto.nullable) = false];
-	required bool   prevExists =  8 [(gogoproto.nullable) = true];
+	required bool   prevExist  =  8 [(gogoproto.nullable) = true];
 	required int64  expiration =  9 [(gogoproto.nullable) = false];
 	required bool   wait       = 10 [(gogoproto.nullable) = false];
 	required uint64  since     = 11 [(gogoproto.nullable) = false];

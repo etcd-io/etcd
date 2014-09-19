@@ -35,7 +35,7 @@ type Request struct {
 	Dir              bool   `protobuf:"varint,5,req,name=dir" json:"dir"`
 	PrevValue        string `protobuf:"bytes,6,req,name=prevValue" json:"prevValue"`
 	PrevIndex        uint64 `protobuf:"varint,7,req,name=prevIndex" json:"prevIndex"`
-	PrevExists       *bool  `protobuf:"varint,8,req,name=prevExists" json:"prevExists,omitempty"`
+	PrevExist        *bool  `protobuf:"varint,8,req,name=prevExist" json:"prevExist,omitempty"`
 	Expiration       int64  `protobuf:"varint,9,req,name=expiration" json:"expiration"`
 	Wait             bool   `protobuf:"varint,10,req,name=wait" json:"wait"`
 	Since            uint64 `protobuf:"varint,11,req,name=since" json:"since"`
@@ -223,7 +223,7 @@ func (m *Request) Unmarshal(data []byte) error {
 				}
 			}
 			b := bool(v != 0)
-			m.PrevExists = &b
+			m.PrevExist = &b
 		case 9:
 			if wireType != 0 {
 				return code_google_com_p_gogoprotobuf_proto.ErrWrongType
@@ -374,7 +374,7 @@ func (m *Request) Size() (n int) {
 	l = len(m.PrevValue)
 	n += 1 + l + sovEtcdserver(uint64(l))
 	n += 1 + sovEtcdserver(uint64(m.PrevIndex))
-	if m.PrevExists != nil {
+	if m.PrevExist != nil {
 		n += 2
 	}
 	n += 1 + sovEtcdserver(uint64(m.Expiration))
@@ -448,10 +448,10 @@ func (m *Request) MarshalTo(data []byte) (n int, err error) {
 	data[i] = 0x38
 	i++
 	i = encodeVarintEtcdserver(data, i, uint64(m.PrevIndex))
-	if m.PrevExists != nil {
+	if m.PrevExist != nil {
 		data[i] = 0x40
 		i++
-		if *m.PrevExists {
+		if *m.PrevExist {
 			data[i] = 1
 		} else {
 			data[i] = 0

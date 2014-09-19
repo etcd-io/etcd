@@ -99,7 +99,7 @@ func TestBadParseRequest(t *testing.T) {
 			mustNewForm(t, "foo", url.Values{"ttl": []string{"-1"}}),
 			etcdErr.EcodeTTLNaN,
 		},
-		// bad values for recursive, sorted, wait, prevExists
+		// bad values for recursive, sorted, wait, prevExist
 		{
 			mustNewForm(t, "foo", url.Values{"recursive": []string{"hahaha"}}),
 			etcdErr.EcodeInvalidField,
@@ -129,16 +129,16 @@ func TestBadParseRequest(t *testing.T) {
 			etcdErr.EcodeInvalidField,
 		},
 		{
-			mustNewForm(t, "foo", url.Values{"prevExists": []string{"yes"}}),
+			mustNewForm(t, "foo", url.Values{"prevExist": []string{"yes"}}),
 			etcdErr.EcodeInvalidField,
 		},
 		{
-			mustNewForm(t, "foo", url.Values{"prevExists": []string{"#2"}}),
+			mustNewForm(t, "foo", url.Values{"prevExist": []string{"#2"}}),
 			etcdErr.EcodeInvalidField,
 		},
 		// query values are considered
 		{
-			mustNewRequest(t, "foo?prevExists=wrong"),
+			mustNewRequest(t, "foo?prevExist=wrong"),
 			etcdErr.EcodeInvalidField,
 		},
 		{
@@ -157,8 +157,8 @@ func TestBadParseRequest(t *testing.T) {
 		{
 			mustNewForm(
 				t,
-				"foo?prevExists=false",
-				url.Values{"prevExists": []string{"yes"}},
+				"foo?prevExist=false",
+				url.Values{"prevExist": []string{"yes"}},
 			),
 			etcdErr.EcodeInvalidField,
 		},
@@ -269,31 +269,31 @@ func TestGoodParseRequest(t *testing.T) {
 			},
 		},
 		{
-			// prevExists should be non-null if specified
+			// prevExist should be non-null if specified
 			mustNewForm(
 				t,
 				"foo",
-				url.Values{"prevExists": []string{"true"}},
+				url.Values{"prevExist": []string{"true"}},
 			),
 			etcdserverpb.Request{
-				Id:         1234,
-				Method:     "PUT",
-				PrevExists: boolp(true),
-				Path:       "/foo",
+				Id:        1234,
+				Method:    "PUT",
+				PrevExist: boolp(true),
+				Path:      "/foo",
 			},
 		},
 		{
-			// prevExists should be non-null if specified
+			// prevExist should be non-null if specified
 			mustNewForm(
 				t,
 				"foo",
-				url.Values{"prevExists": []string{"false"}},
+				url.Values{"prevExist": []string{"false"}},
 			),
 			etcdserverpb.Request{
-				Id:         1234,
-				Method:     "PUT",
-				PrevExists: boolp(false),
-				Path:       "/foo",
+				Id:        1234,
+				Method:    "PUT",
+				PrevExist: boolp(false),
+				Path:      "/foo",
 			},
 		},
 		// mix various fields
@@ -302,18 +302,18 @@ func TestGoodParseRequest(t *testing.T) {
 				t,
 				"foo",
 				url.Values{
-					"value":      []string{"some value"},
-					"prevExists": []string{"true"},
-					"prevValue":  []string{"previous value"},
+					"value":     []string{"some value"},
+					"prevExist": []string{"true"},
+					"prevValue": []string{"previous value"},
 				},
 			),
 			etcdserverpb.Request{
-				Id:         1234,
-				Method:     "PUT",
-				PrevExists: boolp(true),
-				PrevValue:  "previous value",
-				Val:        "some value",
-				Path:       "/foo",
+				Id:        1234,
+				Method:    "PUT",
+				PrevExist: boolp(true),
+				PrevValue: "previous value",
+				Val:       "some value",
+				Path:      "/foo",
 			},
 		},
 		// query parameters should be used if given

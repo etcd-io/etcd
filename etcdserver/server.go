@@ -251,7 +251,7 @@ func (s *EtcdServer) apply(r pb.Request) Response {
 	case "POST":
 		return f(s.Store.Create(r.Path, r.Dir, r.Val, true, expr))
 	case "PUT":
-		exists, existsSet := getBool(r.PrevExists)
+		exists, existsSet := getBool(r.PrevExist)
 		switch {
 		case existsSet:
 			if exists {

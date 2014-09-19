@@ -207,35 +207,35 @@ func parseRequest(r *http.Request, id int64) (etcdserverpb.Request, error) {
 		)
 	}
 
-	// prevExists is nullable, so leave it null if not specified
+	// prevExist is nullable, so leave it null if not specified
 	var pe *bool
-	if _, ok := r.Form["prevExists"]; ok {
-		bv, err := getBool(r.Form, "prevExists")
+	if _, ok := r.Form["prevExist"]; ok {
+		bv, err := getBool(r.Form, "prevExist")
 		if err != nil {
 			return emptyReq, etcdErr.NewRequestError(
 				etcdErr.EcodeInvalidField,
-				"invalid value for prevExists",
+				"invalid value for prevExist",
 			)
 		}
 		pe = &bv
 	}
 
 	rr := etcdserverpb.Request{
-		Id:         id,
-		Method:     r.Method,
-		Path:       p,
-		Val:        r.FormValue("value"),
-		PrevValue:  r.FormValue("prevValue"),
-		PrevIndex:  pIdx,
-		PrevExists: pe,
-		Recursive:  rec,
-		Since:      wIdx,
-		Sorted:     sort,
-		Wait:       wait,
+		Id:        id,
+		Method:    r.Method,
+		Path:      p,
+		Val:       r.FormValue("value"),
+		PrevValue: r.FormValue("prevValue"),
+		PrevIndex: pIdx,
+		PrevExist: pe,
+		Recursive: rec,
+		Since:     wIdx,
+		Sorted:    sort,
+		Wait:      wait,
 	}
 
 	if pe != nil {
-		rr.PrevExists = pe
+		rr.PrevExist = pe
 	}
 
 	// TODO(jonboulle): use fake clock instead of time module
