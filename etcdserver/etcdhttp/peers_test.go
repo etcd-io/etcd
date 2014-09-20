@@ -5,10 +5,10 @@ import (
 	"net/http/httptest"
 	"reflect"
 	"sort"
-	"strings"
+	//	"strings"
 	"testing"
 
-	"github.com/coreos/etcd/raft/raftpb"
+	//	"github.com/coreos/etcd/raft/raftpb"
 )
 
 func TestPeers(t *testing.T) {
@@ -166,6 +166,7 @@ func TestHttpPost(t *testing.T) {
 	}
 }
 
+/*
 func TestSend(t *testing.T) {
 	var tr *http.Request
 	var rc int
@@ -236,4 +237,4 @@ func TestSend(t *testing.T) {
 		}
 		ts.Close()
 	}
-}
+}*/

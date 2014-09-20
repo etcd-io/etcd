@@ -86,6 +86,8 @@ type EtcdServer struct {
 	SyncTicker <-chan time.Time
 
 	SnapCount int64 // number of entries to trigger a snapshot
+
+	PeerStore *PeerStore
 }
 
 // Start prepares and starts server in a new goroutine. It is no longer safe to
@@ -149,6 +151,8 @@ func (s *EtcdServer) run() {
 			if rd.SoftState != nil {
 				if rd.RaftState == raft.StateLeader {
 					syncC = s.SyncTicker
+					// TODO: if this is an empty log, writes all peer infos
+					// into the first entry
 				} else {
 					syncC = nil
 				}

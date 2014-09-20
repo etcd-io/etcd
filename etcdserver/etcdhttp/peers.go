@@ -11,6 +11,7 @@ import (
 	"strconv"
 
 	"github.com/coreos/etcd/elog"
+	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/raft/raftpb"
 )
 
@@ -21,6 +22,10 @@ type Peers map[int64][]string
 // TODO: improve this when implementing TLS
 func addScheme(addr string) string {
 	return fmt.Sprintf("http://%s", addr)
+}
+
+func (ps Peers) Peers() map[int64][]string {
+	return ps
 }
 
 // Pick chooses a random address from a given Peer's addresses, and returns it as
@@ -85,21 +90,21 @@ func (ps Peers) Endpoints() []string {
 	return endpoints
 }
 
-func Sender(p Peers) func(msgs []raftpb.Message) {
+func Sender(pst *etcdserver.PeerStore) func(msgs []raftpb.Message) {
 	return func(msgs []raftpb.Message) {
 		for _, m := range msgs {
 			// TODO: reuse go routines
 			// limit the number of outgoing connections for the same receiver
-			go send(p, m)
+			go send(pst, m)
 		}
 	}
 }
 
-func send(p Peers, m raftpb.Message) {
+func send(pst *etcdserver.PeerStore, m raftpb.Message) {
 	// TODO (xiangli): reasonable retry logic
 	for i := 0; i < 3; i++ {
-		url := p.Pick(m.To)
-		if url == "" {
+		info := pst.Get(m.To)
+		if info.IsEmpty() {
 			// TODO: unknown peer id.. what do we do? I
 			// don't think his should ever happen, need to
 			// look into this further.
@@ -107,6 +112,7 @@ func send(p Peers, m raftpb.Message) {
 			return
 		}
 
+		url := info.PeerURLs[rand.Intn(len(info.PeerURLs))]
 		url += raftPrefix
 
 		// TODO: don't block. we should be able to have 1000s
