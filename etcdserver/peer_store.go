@@ -40,6 +40,7 @@ func NewPeerStore(st store.Store, peers map[int64][]string) *PeerStore {
 	for id, addrs := range peers {
 		urls := make([]string, len(addrs))
 		for i := range addrs {
+			// TODO: improve this when implementing TLS
 			urls[i] = fmt.Sprintf("http://%s", addrs[i])
 		}
 		ps.Create(id, PeerInfo{ID: id, PeerURLs: urls})
@@ -55,8 +56,8 @@ func (s *PeerStore) Create(id int64, info PeerInfo) {
 	if err != nil {
 		log.Panicf("marshal peer info error: %v", err)
 	}
-	if _, err := s.Store.Set(p, false, string(b), store.Permanent); err != nil {
-		log.Panicf("set peer should never fail: %v", err)
+	if _, err := s.Store.Create(p, false, string(b), false, store.Permanent); err != nil {
+		log.Panicf("create peer should never fail: %v", err)
 	}
 }
 
@@ -79,7 +80,7 @@ func (s *PeerStore) Get(id int64) PeerInfo {
 }
 
 func (s *PeerStore) GetAll() []PeerInfo {
-	e, err := s.Store.Get(machineKVPrefix, false, false)
+	e, err := s.Store.Get(machineKVPrefix, true, false)
 	if err != nil {
 		log.Panicf("get peers should never fail: %v", err)
 	}

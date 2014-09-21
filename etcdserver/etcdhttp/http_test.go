@@ -886,9 +886,8 @@ func TestServeRaft(t *testing.T) {
 			t.Fatalf("#%d: could not create request: %#v", i, err)
 		}
 		h := &serverHandler{
-			timeout:    time.Hour,
-			server:     &errServer{tt.serverErr},
-			peerGetter: nil,
+			timeout: time.Hour,
+			server:  &errServer{tt.serverErr},
 		}
 		rw := httptest.NewRecorder()
 		h.serveRaft(rw, req)
