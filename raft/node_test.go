@@ -2,11 +2,11 @@ package raft
 
 import (
 	"reflect"
-	"runtime"
 	"testing"
 	"time"
 
 	"github.com/coreos/etcd/raft/raftpb"
+	"github.com/coreos/etcd/testutil"
 	"github.com/coreos/etcd/third_party/code.google.com/p/go.net/context"
 )
 
@@ -96,7 +96,7 @@ func TestBlockProposal(t *testing.T) {
 		errc <- n.Propose(context.TODO(), []byte("somedata"))
 	}()
 
-	forceGosched()
+	testutil.ForceGosched()
 	select {
 	case err := <-errc:
 		t.Errorf("err = %v, want blocking", err)
@@ -104,7 +104,7 @@ func TestBlockProposal(t *testing.T) {
 	}
 
 	n.Campaign(context.TODO())
-	forceGosched()
+	testutil.ForceGosched()
 	select {
 	case err := <-errc:
 		if err != nil {
@@ -216,7 +216,7 @@ func TestCompact(t *testing.T) {
 		Nodes: []int64{1},
 	}
 
-	forceGosched()
+	testutil.ForceGosched()
 	select {
 	case <-n.Ready():
 	default:
@@ -224,7 +224,7 @@ func TestCompact(t *testing.T) {
 	}
 
 	n.Compact(w.Data)
-	forceGosched()
+	testutil.ForceGosched()
 	select {
 	case rd := <-n.Ready():
 		if !reflect.DeepEqual(rd.Snapshot, w) {
@@ -233,7 +233,7 @@ func TestCompact(t *testing.T) {
 	default:
 		t.Fatalf("unexpected compact failure: unable to create a snapshot")
 	}
-	forceGosched()
+	testutil.ForceGosched()
 	// TODO: this test the run updates the snapi correctly... should be tested
 	// separately with other kinds of updates
 	select {
@@ -263,14 +263,5 @@ func TestIsStateEqual(t *testing.T) {
 		if isHardStateEqual(tt.st, emptyState) != tt.we {
 			t.Errorf("#%d, equal = %v, want %v", i, isHardStateEqual(tt.st, emptyState), tt.we)
 		}
-	}
-}
-
-// WARNING: This is a hack.
-// Remove this when we are able to block/check the status of the go-routines.
-func forceGosched() {
-	// possibility enough to sched upto 10 go routines.
-	for i := 0; i < 10000; i++ {
-		runtime.Gosched()
 	}
 }
