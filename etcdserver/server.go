@@ -99,6 +99,8 @@ func (s *EtcdServer) Start() {
 	}
 	s.w = wait.New()
 	s.done = make(chan struct{})
+	// TODO: if this is an empty log, writes all peer infos
+	// into the first entry
 	go s.run()
 }
 
@@ -122,6 +124,7 @@ func (s *EtcdServer) run() {
 			// TODO(bmizerany): do this in the background, but take
 			// care to apply entries in a single goroutine, and not
 			// race them.
+			// TODO: apply configuration change into PeerStore.
 			for _, e := range rd.CommittedEntries {
 				var r pb.Request
 				if err := r.Unmarshal(e.Data); err != nil {
@@ -151,8 +154,6 @@ func (s *EtcdServer) run() {
 			if rd.SoftState != nil {
 				if rd.RaftState == raft.StateLeader {
 					syncC = s.SyncTicker
-					// TODO: if this is an empty log, writes all peer infos
-					// into the first entry
 				} else {
 					syncC = nil
 				}
