@@ -26,6 +26,11 @@ func (i PeerInfo) IsEmpty() bool {
 	return i.ID == raft.None
 }
 
+type PeerGetter interface {
+	Get(id int64) PeerInfo
+	GetAll() []PeerInfo
+}
+
 type PeerStore struct {
 	// TODO: use a particular store
 	Store store.Store

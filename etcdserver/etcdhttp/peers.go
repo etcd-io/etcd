@@ -90,7 +90,7 @@ func (ps Peers) Endpoints() []string {
 	return endpoints
 }
 
-func Sender(pst *etcdserver.PeerStore) func(msgs []raftpb.Message) {
+func Sender(pst etcdserver.PeerGetter) func(msgs []raftpb.Message) {
 	return func(msgs []raftpb.Message) {
 		for _, m := range msgs {
 			// TODO: reuse go routines
@@ -100,7 +100,7 @@ func Sender(pst *etcdserver.PeerStore) func(msgs []raftpb.Message) {
 	}
 }
 
-func send(pst *etcdserver.PeerStore, m raftpb.Message) {
+func send(pst etcdserver.PeerGetter, m raftpb.Message) {
 	// TODO (xiangli): reasonable retry logic
 	for i := 0; i < 3; i++ {
 		info := pst.Get(m.To)
