@@ -93,6 +93,23 @@ func TestDoBadLocalAction(t *testing.T) {
 	}
 }
 
+func TestDoOnInvalidPath(t *testing.T) {
+	tests := []string{
+		machineKVPrefix,
+		machineKVPrefix + "node0",
+	}
+	for i, tt := range tests {
+		srv := &EtcdServer{}
+		resp, err := srv.Do(context.Background(), pb.Request{Id: 1, Path: tt})
+		if err != ErrInvalidPath {
+			t.Fatalf("#%d: err = %+v, want %+v", i, err, ErrInvalidPath)
+		}
+		if !reflect.DeepEqual(resp, Response{}) {
+			t.Errorf("#%d: resp = %+v, want %+v", i, resp, Response{})
+		}
+	}
+}
+
 func TestApply(t *testing.T) {
 	tests := []struct {
 		req pb.Request

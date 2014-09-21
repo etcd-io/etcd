@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"path/filepath"
 	"sort"
 	"strconv"
 
@@ -13,7 +12,7 @@ import (
 	"github.com/coreos/etcd/store"
 )
 
-const machineKVPrefix = "/_etcd/machines"
+const machineKVPrefix = "/_etcd/machines/"
 
 type PeerInfo struct {
 	Name       string
@@ -51,7 +50,7 @@ func NewPeerStore(st store.Store, peers map[int64][]string) *PeerStore {
 // Create creates a new peer.
 // The given id MUST NOT exists in peer store.
 func (s *PeerStore) Create(id int64, info PeerInfo) {
-	p := filepath.Join(machineKVPrefix, strconv.FormatInt(id, 10))
+	p := machineKVPrefix + strconv.FormatInt(id, 10)
 	b, err := json.Marshal(info)
 	if err != nil {
 		log.Panicf("marshal peer info error: %v", err)
@@ -65,7 +64,7 @@ func (s *PeerStore) Create(id int64, info PeerInfo) {
 // If it cannot find peer, it returns an empty PeerInfo.
 func (s *PeerStore) Get(id int64) PeerInfo {
 	var info PeerInfo
-	p := filepath.Join(machineKVPrefix, strconv.FormatInt(id, 10))
+	p := machineKVPrefix + strconv.FormatInt(id, 10)
 	e, err := s.Store.Get(p, false, false)
 	if err != nil {
 		if v, ok := err.(*etcdErr.Error); !ok || v.ErrorCode != etcdErr.EcodeKeyNotFound {
@@ -97,7 +96,7 @@ func (s *PeerStore) GetAll() []PeerInfo {
 // Delete deletes peer.
 // The given id MUST exist in peer store.
 func (s *PeerStore) Delete(id int64) {
-	p := filepath.Join(machineKVPrefix, strconv.FormatInt(id, 10))
+	p := machineKVPrefix + strconv.FormatInt(id, 10)
 	if _, err := s.Store.Delete(p, false, false); err != nil {
 		log.Panicf("delete peer should never fail: %v", err)
 	}
