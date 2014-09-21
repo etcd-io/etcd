@@ -139,7 +139,7 @@ func (s *EtcdServer) run() {
 						panic("TODO: this is bad, what do we do about it?")
 					}
 					s.applyConfig(c)
-					s.w.Trigger(c.Id, nil)
+					s.w.Trigger(c.ID, nil)
 				default:
 					panic("unsupported entry type")
 				}
@@ -237,7 +237,7 @@ func (s *EtcdServer) Do(ctx context.Context, r pb.Request) (Response, error) {
 
 func (s *EtcdServer) AddNode(ctx context.Context, id int64, context []byte) error {
 	req := pb.Config{
-		Id:      GenID(),
+		ID:      GenID(),
 		Type:    configAddNode,
 		NodeID:  id,
 		Context: context,
@@ -247,7 +247,7 @@ func (s *EtcdServer) AddNode(ctx context.Context, id int64, context []byte) erro
 
 func (s *EtcdServer) RemoveNode(ctx context.Context, id int64) error {
 	req := pb.Config{
-		Id:     GenID(),
+		ID:     GenID(),
 		Type:   configRemoveNode,
 		NodeID: id,
 	}
@@ -262,13 +262,13 @@ func (s *EtcdServer) configure(ctx context.Context, r pb.Config) error {
 		log.Printf("marshal request %#v error: %v", r, err)
 		return err
 	}
-	ch := s.w.Register(r.Id)
+	ch := s.w.Register(r.ID)
 	s.Node.Configure(ctx, data)
 	select {
 	case <-ch:
 		return nil
 	case <-ctx.Done():
-		s.w.Trigger(r.Id, nil) // GC wait
+		s.w.Trigger(r.ID, nil) // GC wait
 		return ctx.Err()
 	case <-s.done:
 		return ErrStopped

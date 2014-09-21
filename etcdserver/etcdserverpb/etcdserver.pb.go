@@ -52,10 +52,10 @@ func (m *Request) String() string { return proto.CompactTextString(m) }
 func (*Request) ProtoMessage()    {}
 
 type Config struct {
-	Id               int64  `protobuf:"varint,1,req,name=id" json:"id"`
-	Type             int64  `protobuf:"varint,2,req,name=type" json:"type"`
-	NodeID           int64  `protobuf:"varint,3,req,name=nodeID" json:"nodeID"`
-	Context          []byte `protobuf:"bytes,4,opt,name=context" json:"context"`
+	ID               int64  `protobuf:"varint,1,req" json:"ID"`
+	Type             int64  `protobuf:"varint,2,req" json:"Type"`
+	NodeID           int64  `protobuf:"varint,3,req" json:"NodeID"`
+	Context          []byte `protobuf:"bytes,4,opt" json:"Context"`
 	XXX_unrecognized []byte `json:"-"`
 }
 
@@ -402,7 +402,7 @@ func (m *Config) Unmarshal(data []byte) error {
 				}
 				b := data[index]
 				index++
-				m.Id |= (int64(b) & 0x7F) << shift
+				m.ID |= (int64(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -514,7 +514,7 @@ func (m *Request) Size() (n int) {
 func (m *Config) Size() (n int) {
 	var l int
 	_ = l
-	n += 1 + sovEtcdserver(uint64(m.Id))
+	n += 1 + sovEtcdserver(uint64(m.ID))
 	n += 1 + sovEtcdserver(uint64(m.Type))
 	n += 1 + sovEtcdserver(uint64(m.NodeID))
 	l = len(m.Context)
@@ -656,7 +656,7 @@ func (m *Config) MarshalTo(data []byte) (n int, err error) {
 	_ = l
 	data[i] = 0x8
 	i++
-	i = encodeVarintEtcdserver(data, i, uint64(m.Id))
+	i = encodeVarintEtcdserver(data, i, uint64(m.ID))
 	data[i] = 0x10
 	i++
 	i = encodeVarintEtcdserver(data, i, uint64(m.Type))
