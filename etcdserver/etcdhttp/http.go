@@ -419,16 +419,14 @@ func writeEvent(w http.ResponseWriter, ev *store.Event) error {
 	if ev.IsCreated() {
 		w.WriteHeader(http.StatusCreated)
 	}
-	var writer io.Writer
+	ww := io.Writer(w)
 	if w.Header().Get("Content-Encoding") == "gzip" {
 		gzw := gzip.NewWriter(w)
-		writer = gzw
 		defer gzw.Close()
-	} else {
-		writer = w
+		ww = gzw
 	}
 
-	return json.NewEncoder(writer).Encode(ev)
+	return json.NewEncoder(ww).Encode(ev)
 }
 
 // waitForEvent waits for a given Watcher to return its associated
