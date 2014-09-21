@@ -19,11 +19,6 @@ const (
 	DefaultSnapCount   = 10000
 )
 
-const (
-	configAddNode int64 = iota
-	configRemoveNode
-)
-
 var (
 	ErrUnknownMethod = errors.New("etcdserver: unknown method")
 	ErrStopped       = errors.New("etcdserver: server stopped")
@@ -238,7 +233,7 @@ func (s *EtcdServer) Do(ctx context.Context, r pb.Request) (Response, error) {
 func (s *EtcdServer) AddNode(ctx context.Context, id int64, context []byte) error {
 	req := pb.Config{
 		ID:      GenID(),
-		Type:    configAddNode,
+		Type:    pb.ConfigAddNode,
 		NodeID:  id,
 		Context: context,
 	}
@@ -248,7 +243,7 @@ func (s *EtcdServer) AddNode(ctx context.Context, id int64, context []byte) erro
 func (s *EtcdServer) RemoveNode(ctx context.Context, id int64) error {
 	req := pb.Config{
 		ID:     GenID(),
-		Type:   configRemoveNode,
+		Type:   pb.ConfigRemoveNode,
 		NodeID: id,
 	}
 	return s.configure(ctx, req)
@@ -349,9 +344,9 @@ func (s *EtcdServer) applyRequest(r pb.Request) Response {
 
 func (s *EtcdServer) applyConfig(r pb.Config) {
 	switch r.Type {
-	case configAddNode:
+	case pb.ConfigAddNode:
 		s.Node.AddNode(r.NodeID)
-	case configRemoveNode:
+	case pb.ConfigRemoveNode:
 		s.Node.RemoveNode(r.NodeID)
 	default:
 		// This should never be reached

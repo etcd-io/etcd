@@ -28,6 +28,39 @@ var _ = proto.Marshal
 var _ = &json.SyntaxError{}
 var _ = math.Inf
 
+type ConfigType int32
+
+const (
+	ConfigAddNode    ConfigType = 0
+	ConfigRemoveNode ConfigType = 1
+)
+
+var ConfigType_name = map[int32]string{
+	0: "ConfigAddNode",
+	1: "ConfigRemoveNode",
+}
+var ConfigType_value = map[string]int32{
+	"ConfigAddNode":    0,
+	"ConfigRemoveNode": 1,
+}
+
+func (x ConfigType) Enum() *ConfigType {
+	p := new(ConfigType)
+	*p = x
+	return p
+}
+func (x ConfigType) String() string {
+	return proto.EnumName(ConfigType_name, int32(x))
+}
+func (x *ConfigType) UnmarshalJSON(data []byte) error {
+	value, err := proto.UnmarshalJSONEnum(ConfigType_value, data, "ConfigType")
+	if err != nil {
+		return err
+	}
+	*x = ConfigType(value)
+	return nil
+}
+
 type Request struct {
 	Id               int64  `protobuf:"varint,1,req,name=id" json:"id"`
 	Method           string `protobuf:"bytes,2,req,name=method" json:"method"`
@@ -52,11 +85,11 @@ func (m *Request) String() string { return proto.CompactTextString(m) }
 func (*Request) ProtoMessage()    {}
 
 type Config struct {
-	ID               int64  `protobuf:"varint,1,req" json:"ID"`
-	Type             int64  `protobuf:"varint,2,req" json:"Type"`
-	NodeID           int64  `protobuf:"varint,3,req" json:"NodeID"`
-	Context          []byte `protobuf:"bytes,4,opt" json:"Context"`
-	XXX_unrecognized []byte `json:"-"`
+	ID               int64      `protobuf:"varint,1,req" json:"ID"`
+	Type             ConfigType `protobuf:"varint,2,req,enum=etcdserverpb.ConfigType" json:"Type"`
+	NodeID           int64      `protobuf:"varint,3,req" json:"NodeID"`
+	Context          []byte     `protobuf:"bytes,4,opt" json:"Context"`
+	XXX_unrecognized []byte     `json:"-"`
 }
 
 func (m *Config) Reset()         { *m = Config{} }
@@ -64,6 +97,7 @@ func (m *Config) String() string { return proto.CompactTextString(m) }
 func (*Config) ProtoMessage()    {}
 
 func init() {
+	proto.RegisterEnum("etcdserverpb.ConfigType", ConfigType_name, ConfigType_value)
 }
 func (m *Request) Unmarshal(data []byte) error {
 	l := len(data)
@@ -417,7 +451,7 @@ func (m *Config) Unmarshal(data []byte) error {
 				}
 				b := data[index]
 				index++
-				m.Type |= (int64(b) & 0x7F) << shift
+				m.Type |= (ConfigType(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}

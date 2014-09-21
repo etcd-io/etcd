@@ -6,6 +6,7 @@ option (gogoproto.marshaler_all) = true;
 option (gogoproto.sizer_all) = true;
 option (gogoproto.unmarshaler_all) = true;
 option (gogoproto.goproto_getters_all) = false;
+option (gogoproto.goproto_enum_prefix_all) = false;
 
 message Request {
 	required int64  id         =  1 [(gogoproto.nullable) = false];
@@ -25,9 +26,14 @@ message Request {
 	required int64  time       = 15 [(gogoproto.nullable) = false];
 }
 
+enum ConfigType {
+	ConfigAddNode    = 0;
+	ConfigRemoveNode = 1;
+}
+
 message Config {
-	required int64 ID      = 1 [(gogoproto.nullable) = false];
-	required int64 Type    = 2 [(gogoproto.nullable) = false];
-	required int64 NodeID  = 3 [(gogoproto.nullable) = false];
-	optional bytes Context = 4 [(gogoproto.nullable) = false];
+	required int64      ID      = 1 [(gogoproto.nullable) = false];
+	required ConfigType Type    = 2 [(gogoproto.nullable) = false];
+	required int64      NodeID  = 3 [(gogoproto.nullable) = false];
+	optional bytes      Context = 4 [(gogoproto.nullable) = false];
 }
