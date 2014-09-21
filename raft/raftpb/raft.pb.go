@@ -31,6 +31,39 @@ var _ = proto.Marshal
 var _ = &json.SyntaxError{}
 var _ = math.Inf
 
+type EntryType int32
+
+const (
+	EntryNormal EntryType = 0
+	EntryConfig EntryType = 1
+)
+
+var EntryType_name = map[int32]string{
+	0: "EntryNormal",
+	1: "EntryConfig",
+}
+var EntryType_value = map[string]int32{
+	"EntryNormal": 0,
+	"EntryConfig": 1,
+}
+
+func (x EntryType) Enum() *EntryType {
+	p := new(EntryType)
+	*p = x
+	return p
+}
+func (x EntryType) String() string {
+	return proto.EnumName(EntryType_name, int32(x))
+}
+func (x *EntryType) UnmarshalJSON(data []byte) error {
+	value, err := proto.UnmarshalJSONEnum(EntryType_value, data, "EntryType")
+	if err != nil {
+		return err
+	}
+	*x = EntryType(value)
+	return nil
+}
+
 type Info struct {
 	Id               int64  `protobuf:"varint,1,req,name=id" json:"id"`
 	XXX_unrecognized []byte `json:"-"`
@@ -41,11 +74,11 @@ func (m *Info) String() string { return proto.CompactTextString(m) }
 func (*Info) ProtoMessage()    {}
 
 type Entry struct {
-	Type             int64  `protobuf:"varint,1,req,name=type" json:"type"`
-	Term             int64  `protobuf:"varint,2,req,name=term" json:"term"`
-	Index            int64  `protobuf:"varint,3,req,name=index" json:"index"`
-	Data             []byte `protobuf:"bytes,4,opt,name=data" json:"data"`
-	XXX_unrecognized []byte `json:"-"`
+	Type             EntryType `protobuf:"varint,1,req,enum=raftpb.EntryType" json:"Type"`
+	Term             int64     `protobuf:"varint,2,req" json:"Term"`
+	Index            int64     `protobuf:"varint,3,req" json:"Index"`
+	Data             []byte    `protobuf:"bytes,4,opt" json:"Data"`
+	XXX_unrecognized []byte    `json:"-"`
 }
 
 func (m *Entry) Reset()         { *m = Entry{} }
@@ -93,6 +126,7 @@ func (m *HardState) String() string { return proto.CompactTextString(m) }
 func (*HardState) ProtoMessage()    {}
 
 func init() {
+	proto.RegisterEnum("raftpb.EntryType", EntryType_name, EntryType_value)
 }
 func (m *Info) Unmarshal(data []byte) error {
 	l := len(data)
@@ -180,7 +214,7 @@ func (m *Entry) Unmarshal(data []byte) error {
 				}
 				b := data[index]
 				index++
-				m.Type |= (int64(b) & 0x7F) << shift
+				m.Type |= (EntryType(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}

@@ -313,7 +313,7 @@ func (r *raft) becomeLeader() {
 	r.lead = r.id
 	r.state = StateLeader
 	for _, e := range r.raftLog.entries(r.raftLog.committed + 1) {
-		if e.Type != EntryConfig {
+		if e.Type != pb.EntryConfig {
 			continue
 		}
 		if r.pendingConf {
@@ -407,7 +407,7 @@ func stepLeader(r *raft, m pb.Message) {
 			panic("unexpected length(entries) of a msgProp")
 		}
 		e := m.Entries[0]
-		if e.Type == EntryConfig {
+		if e.Type == pb.EntryConfig {
 			if r.pendingConf {
 				return
 			}

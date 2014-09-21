@@ -6,16 +6,22 @@ option (gogoproto.marshaler_all) = true;
 option (gogoproto.sizer_all) = true;
 option (gogoproto.unmarshaler_all) = true;
 option (gogoproto.goproto_getters_all) = false;
+option (gogoproto.goproto_enum_prefix_all) = false;
 
 message Info {
 	required int64 id   = 1 [(gogoproto.nullable) = false];
 }
 
+enum EntryType {
+	EntryNormal = 0;
+	EntryConfig = 1;
+}
+
 message Entry {
-	required int64 type  = 1 [(gogoproto.nullable) = false];
-	required int64 term  = 2 [(gogoproto.nullable) = false];
-	required int64 index = 3 [(gogoproto.nullable) = false];
-	optional bytes data  = 4 [(gogoproto.nullable) = false];
+	required EntryType Type  = 1 [(gogoproto.nullable) = false];
+	required int64     Term  = 2 [(gogoproto.nullable) = false];
+	required int64     Index = 3 [(gogoproto.nullable) = false];
+	optional bytes     Data  = 4 [(gogoproto.nullable) = false];
 }
 
 message Snapshot {

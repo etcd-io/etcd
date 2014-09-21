@@ -10,11 +10,6 @@ const (
 	defaultCompactThreshold = 10000
 )
 
-const (
-	EntryNormal int64 = iota
-	EntryConfig
-)
-
 type raftLog struct {
 	ents      []pb.Entry
 	unstable  int64

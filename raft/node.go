@@ -247,7 +247,7 @@ func (n *node) Propose(ctx context.Context, data []byte) error {
 }
 
 func (n *node) Configure(ctx context.Context, data []byte) error {
-	return n.Step(ctx, pb.Message{Type: msgProp, Entries: []pb.Entry{{Type: EntryConfig, Data: data}}})
+	return n.Step(ctx, pb.Message{Type: msgProp, Entries: []pb.Entry{{Type: pb.EntryConfig, Data: data}}})
 }
 
 // Step advances the state machine using msgs. The ctx.Err() will be returned,

@@ -895,7 +895,7 @@ func (n *nodeCommitterRecorder) Propose(ctx context.Context, data []byte) error 
 	return n.nodeRecorder.Propose(ctx, data)
 }
 func (n *nodeCommitterRecorder) Configure(ctx context.Context, data []byte) error {
-	n.readyc <- raft.Ready{CommittedEntries: []raftpb.Entry{{Type: raft.EntryConfig, Data: data}}}
+	n.readyc <- raft.Ready{CommittedEntries: []raftpb.Entry{{Type: raftpb.EntryConfig, Data: data}}}
 	return n.nodeRecorder.Configure(ctx, data)
 }
 func (n *nodeCommitterRecorder) Ready() <-chan raft.Ready {

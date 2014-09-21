@@ -127,13 +127,13 @@ func (s *EtcdServer) run() {
 			// race them.
 			for _, e := range rd.CommittedEntries {
 				switch e.Type {
-				case raft.EntryNormal:
+				case raftpb.EntryNormal:
 					var r pb.Request
 					if err := r.Unmarshal(e.Data); err != nil {
 						panic("TODO: this is bad, what do we do about it?")
 					}
 					s.w.Trigger(r.Id, s.applyRequest(r))
-				case raft.EntryConfig:
+				case raftpb.EntryConfig:
 					var c pb.Config
 					if err := c.Unmarshal(e.Data); err != nil {
 						panic("TODO: this is bad, what do we do about it?")
