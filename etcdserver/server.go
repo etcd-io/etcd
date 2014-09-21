@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log"
 	"math/rand"
+	"strings"
 	"time"
 
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
@@ -20,6 +21,7 @@ const (
 )
 
 var (
+	ErrInvalidPath   = errors.New("etcdserver: invalid path")
 	ErrUnknownMethod = errors.New("etcdserver: unknown method")
 	ErrStopped       = errors.New("etcdserver: server stopped")
 )
@@ -86,6 +88,8 @@ type EtcdServer struct {
 	SyncTicker <-chan time.Time
 
 	SnapCount int64 // number of entries to trigger a snapshot
+
+	PeerStore *PeerStore
 }
 
 // Start prepares and starts server in a new goroutine. It is no longer safe to
@@ -97,6 +101,8 @@ func (s *EtcdServer) Start() {
 	}
 	s.w = wait.New()
 	s.done = make(chan struct{})
+	// TODO: if this is an empty log, writes all peer infos
+	// into the first entry
 	go s.run()
 }
 
@@ -120,6 +126,7 @@ func (s *EtcdServer) run() {
 			// TODO(bmizerany): do this in the background, but take
 			// care to apply entries in a single goroutine, and not
 			// race them.
+			// TODO: apply configuration change into PeerStore.
 			for _, e := range rd.CommittedEntries {
 				var r pb.Request
 				if err := r.Unmarshal(e.Data); err != nil {
@@ -176,6 +183,9 @@ func (s *EtcdServer) Stop() {
 func (s *EtcdServer) Do(ctx context.Context, r pb.Request) (Response, error) {
 	if r.Id == 0 {
 		panic("r.Id cannot be 0")
+	}
+	if strings.HasPrefix(r.Path, machineKVPrefix) {
+		return Response{}, ErrInvalidPath
 	}
 	if r.Method == "GET" && r.Quorum {
 		r.Method = "QGET"

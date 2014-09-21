@@ -596,7 +596,7 @@ func TestV2MachinesEndpoint(t *testing.T) {
 		{"POST", http.StatusMethodNotAllowed},
 	}
 
-	m := NewClientHandler(nil, Peers{}, time.Hour)
+	m := NewClientHandler(nil, &fakePeerGetter{}, time.Hour)
 	s := httptest.NewServer(m)
 	defer s.Close()
 
@@ -617,15 +617,20 @@ func TestV2MachinesEndpoint(t *testing.T) {
 }
 
 func TestServeMachines(t *testing.T) {
-	peers := Peers{}
-	peers.Set("0xBEEF0=localhost:8080&0xBEEF1=localhost:8081&0xBEEF2=localhost:8082")
+	peerGetter := &fakePeerGetter{
+		peers: []etcdserver.PeerInfo{
+			{ID: 0xBEEF0, PeerURLs: []string{"http://localhost:8080"}},
+			{ID: 0xBEEF1, PeerURLs: []string{"http://localhost:8081"}},
+			{ID: 0xBEEF2, PeerURLs: []string{"http://localhost:8082"}},
+		},
+	}
 
 	writer := httptest.NewRecorder()
 	req, err := http.NewRequest("GET", "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	h := &serverHandler{peers: peers}
+	h := &serverHandler{peerGetter: peerGetter}
 	h.serveMachines(writer, req)
 	w := "http://localhost:8080, http://localhost:8081, http://localhost:8082"
 	if g := writer.Body.String(); g != w {
@@ -636,54 +641,62 @@ func TestServeMachines(t *testing.T) {
 	}
 }
 
-func TestPeersEndpoints(t *testing.T) {
+func TestPeerGetterGetEndpoints(t *testing.T) {
 	tests := []struct {
-		peers     Peers
-		endpoints []string
+		peerGetter etcdserver.PeerGetter
+		endpoints  []string
 	}{
 		// single peer with a single address
 		{
-			peers: Peers(map[int64][]string{
-				1: []string{"192.0.2.1"},
-			}),
+			peerGetter: &fakePeerGetter{
+				peers: []etcdserver.PeerInfo{
+					{ID: 1, PeerURLs: []string{"http://192.0.2.1"}},
+				},
+			},
 			endpoints: []string{"http://192.0.2.1"},
 		},
 
 		// single peer with a single address with a port
 		{
-			peers: Peers(map[int64][]string{
-				1: []string{"192.0.2.1:8001"},
-			}),
+			peerGetter: &fakePeerGetter{
+				peers: []etcdserver.PeerInfo{
+					{ID: 1, PeerURLs: []string{"http://192.0.2.1:8001"}},
+				},
+			},
 			endpoints: []string{"http://192.0.2.1:8001"},
 		},
 
 		// several peers explicitly unsorted
 		{
-			peers: Peers(map[int64][]string{
-				2: []string{"192.0.2.3", "192.0.2.4"},
-				3: []string{"192.0.2.5", "192.0.2.6"},
-				1: []string{"192.0.2.1", "192.0.2.2"},
-			}),
+			peerGetter: &fakePeerGetter{
+				peers: []etcdserver.PeerInfo{
+					{ID: 2, PeerURLs: []string{"http://192.0.2.3", "http://192.0.2.4"}},
+					{ID: 3, PeerURLs: []string{"http://192.0.2.5", "http://192.0.2.6"}},
+					{ID: 1, PeerURLs: []string{"http://192.0.2.1", "http://192.0.2.2"}},
+				},
+			},
 			endpoints: []string{"http://192.0.2.1", "http://192.0.2.2", "http://192.0.2.3", "http://192.0.2.4", "http://192.0.2.5", "http://192.0.2.6"},
 		},
 
 		// no peers
 		{
-			peers:     Peers(map[int64][]string{}),
-			endpoints: []string{},
+			peerGetter: &fakePeerGetter{peers: []etcdserver.PeerInfo{}},
+			endpoints:  []string{},
 		},
 
 		// peer with no endpoints
 		{
-			peers: Peers(map[int64][]string{
-				3: []string{},
-			}),
+			peerGetter: &fakePeerGetter{
+				peers: []etcdserver.PeerInfo{
+					{ID: 3, PeerURLs: []string{}},
+				},
+			},
 			endpoints: []string{},
 		},
 	}
 
 	for i, tt := range tests {
-		endpoints := tt.peers.Endpoints()
+		endpoints := getEndpoints(tt.peerGetter)
 		if !reflect.DeepEqual(tt.endpoints, endpoints) {
 			t.Errorf("#%d: peers.Endpoints() incorrect: want=%#v got=%#v", i, tt.endpoints, endpoints)
 		}
@@ -875,7 +888,6 @@ func TestServeRaft(t *testing.T) {
 		h := &serverHandler{
 			timeout: time.Hour,
 			server:  &errServer{tt.serverErr},
-			peers:   nil,
 		}
 		rw := httptest.NewRecorder()
 		h.serveRaft(rw, req)
@@ -975,7 +987,6 @@ func TestBadServeKeys(t *testing.T) {
 		h := &serverHandler{
 			timeout: 0, // context times out immediately
 			server:  tt.server,
-			peers:   nil,
 		}
 		rw := httptest.NewRecorder()
 		h.serveKeys(rw, tt.req)
@@ -998,7 +1009,6 @@ func TestServeKeysEvent(t *testing.T) {
 	h := &serverHandler{
 		timeout: time.Hour,
 		server:  server,
-		peers:   nil,
 	}
 	rw := httptest.NewRecorder()
 
@@ -1036,7 +1046,6 @@ func TestServeKeysWatch(t *testing.T) {
 	h := &serverHandler{
 		timeout: time.Hour,
 		server:  server,
-		peers:   nil,
 	}
 	go func() {
 		ec <- &store.Event{
@@ -1065,3 +1074,17 @@ func TestServeKeysWatch(t *testing.T) {
 		t.Errorf("got body=%#v, want %#v", g, wbody)
 	}
 }
+
+type fakePeerGetter struct {
+	peers []etcdserver.PeerInfo
+}
+
+func (p *fakePeerGetter) Get(id int64) etcdserver.PeerInfo {
+	for _, info := range p.peers {
+		if info.ID == id {
+			return info
+		}
+	}
+	return etcdserver.PeerInfo{}
+}
+func (p *fakePeerGetter) GetAll() []etcdserver.PeerInfo { return p.peers }

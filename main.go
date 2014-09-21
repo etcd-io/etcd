@@ -142,6 +142,8 @@ func startEtcd() {
 		n = raft.RestartNode(id, peers.IDs(), 10, 1, snapshot, st, ents)
 	}
 
+	pst := etcdserver.NewPeerStore(st, peers.Peers())
+
 	s := &etcdserver.EtcdServer{
 		Store: st,
 		Node:  n,
@@ -149,14 +151,15 @@ func startEtcd() {
 			*wal.WAL
 			*snap.Snapshotter
 		}{w, snapshotter},
-		Send:       etcdhttp.Sender(*peers),
+		Send:       etcdhttp.Sender(pst),
 		Ticker:     time.Tick(100 * time.Millisecond),
 		SyncTicker: time.Tick(500 * time.Millisecond),
 		SnapCount:  *snapCount,
+		PeerStore:  pst,
 	}
 	s.Start()
 
-	ch := etcdhttp.NewClientHandler(s, *peers, *timeout)
+	ch := etcdhttp.NewClientHandler(s, pst, *timeout)
 	ph := etcdhttp.NewPeerHandler(s)
 
 	// Start the peer server in a goroutine
