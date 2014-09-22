@@ -241,12 +241,20 @@ func (s *EtcdServer) sync(timeout time.Duration) {
 	}()
 }
 
+func getExpirationTime(r *pb.Request) time.Time {
+	var t time.Time
+	if r.Expiration != 0 {
+		t = time.Unix(0, r.Expiration)
+	}
+	return t
+}
+
 // apply interprets r as a call to store.X and returns an Response interpreted from store.Event
 func (s *EtcdServer) apply(r pb.Request) Response {
 	f := func(ev *store.Event, err error) Response {
 		return Response{Event: ev, err: err}
 	}
-	expr := time.Unix(0, r.Expiration)
+	expr := getExpirationTime(&r)
 	switch r.Method {
 	case "POST":
 		return f(s.Store.Create(r.Path, r.Dir, r.Val, true, expr))
