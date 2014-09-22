@@ -162,6 +162,15 @@ func TestWaitNodes(t *testing.T) {
 			nil,
 			all,
 		},
+		{
+			append(all, &client.Node{Key: "/1000/4", CreatedIndex: 5}),
+			3,
+			[]*client.Response{
+				{Node: &client.Node{Key: "/1000/3", CreatedIndex: 4}},
+			},
+			nil,
+			all,
+		},
 	}
 
 	for i, tt := range tests {
