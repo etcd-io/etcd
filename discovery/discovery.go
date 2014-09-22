@@ -54,7 +54,6 @@ func (d *discovery) discover() (*etcdhttp.Peers, error) {
 }
 
 func (d *discovery) createSelf() error {
-	// create self key
 	resp, err := d.c.Create(d.selfKey(), string(d.ctx), 0)
 	if err != nil {
 		return err
