@@ -25,7 +25,7 @@ func TestCheckCluster(t *testing.T) {
 		{
 			// self is in the size range
 			client.Nodes{
-				{Key: "/1000/size", Value: "3", CreatedIndex: 1},
+				{Key: "/1000/config/size", Value: "3", CreatedIndex: 1},
 				{Key: self, CreatedIndex: 2},
 				{Key: "/1000/2", CreatedIndex: 3},
 				{Key: "/1000/3", CreatedIndex: 4},
@@ -37,7 +37,7 @@ func TestCheckCluster(t *testing.T) {
 		{
 			// self is in the size range
 			client.Nodes{
-				{Key: "/1000/size", Value: "3", CreatedIndex: 1},
+				{Key: "/1000/config/size", Value: "3", CreatedIndex: 1},
 				{Key: "/1000/2", CreatedIndex: 2},
 				{Key: "/1000/3", CreatedIndex: 3},
 				{Key: self, CreatedIndex: 4},
@@ -49,7 +49,7 @@ func TestCheckCluster(t *testing.T) {
 		{
 			// self is out of the size range
 			client.Nodes{
-				{Key: "/1000/size", Value: "3", CreatedIndex: 1},
+				{Key: "/1000/config/size", Value: "3", CreatedIndex: 1},
 				{Key: "/1000/2", CreatedIndex: 2},
 				{Key: "/1000/3", CreatedIndex: 3},
 				{Key: "/1000/4", CreatedIndex: 4},
@@ -61,7 +61,7 @@ func TestCheckCluster(t *testing.T) {
 		{
 			// self is not in the cluster
 			client.Nodes{
-				{Key: "/1000/size", Value: "3", CreatedIndex: 1},
+				{Key: "/1000/config/size", Value: "3", CreatedIndex: 1},
 				{Key: "/1000/2", CreatedIndex: 2},
 				{Key: "/1000/3", CreatedIndex: 3},
 			},
@@ -70,7 +70,7 @@ func TestCheckCluster(t *testing.T) {
 		},
 		{
 			client.Nodes{
-				{Key: "/1000/size", Value: "3", CreatedIndex: 1},
+				{Key: "/1000/config/size", Value: "3", CreatedIndex: 1},
 				{Key: "/1000/2", CreatedIndex: 2},
 				{Key: "/1000/3", CreatedIndex: 3},
 				{Key: "/1000/4", CreatedIndex: 4},
@@ -81,34 +81,33 @@ func TestCheckCluster(t *testing.T) {
 		{
 			// bad size key
 			client.Nodes{
-				{Key: "/1000/size", Value: "bad", CreatedIndex: 1},
+				{Key: "/1000/config/size", Value: "bad", CreatedIndex: 1},
 			},
-			ErrBadCluster,
+			ErrBadSizeKey,
 			0,
 		},
 		{
 			// no size key
-			client.Nodes{
-				{Key: self, CreatedIndex: 1},
-			},
+			client.Nodes{},
 			ErrSizeNotFound,
 			0,
 		},
 	}
 
 	for i, tt := range tests {
-		resp := &client.Response{
-			Node: &client.Node{
-				Key:   cluster,
-				Nodes: tt.nodes,
-			},
+		rs := make([]*client.Response, 0)
+		if len(tt.nodes) > 0 {
+			rs = append(rs, &client.Response{Node: tt.nodes[0]})
+			rs = append(rs, &client.Response{
+				Node: &client.Node{
+					Key:   cluster,
+					Nodes: tt.nodes,
+				},
+			})
 		}
-
-		c := &clientWithResp{
-			rs: []*client.Response{resp},
-		}
-
+		c := &clientWithResp{rs: rs}
 		d := discovery{cluster: cluster, id: 1, c: c}
+
 		ns, size, err := d.checkCluster()
 		if err != tt.werr {
 			t.Errorf("#%d: err = %v, want %v", i, err, tt.werr)
@@ -277,7 +276,7 @@ func (c *clientWithResp) Create(key string, value string, ttl time.Duration) (*c
 
 func (c *clientWithResp) Get(key string) (*client.Response, error) {
 	if len(c.rs) == 0 {
-		return &client.Response{}, nil
+		return &client.Response{}, client.ErrKeyNoExist
 	}
 	r := c.rs[0]
 	c.rs = c.rs[1:]

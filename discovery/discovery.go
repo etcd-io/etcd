@@ -14,7 +14,7 @@ import (
 
 var (
 	ErrInvalidURL    = errors.New("discovery: invalid URL")
-	ErrBadCluster    = errors.New("discovery: bad key/value inside cluster")
+	ErrBadSizeKey    = errors.New("discovery: size key is bad")
 	ErrSizeNotFound  = errors.New("discovery: size key not found")
 	ErrTokenNotFound = errors.New("discovery: token not found")
 	ErrDuplicateID   = errors.New("discovery: found duplicate id")
@@ -69,25 +69,34 @@ func (d *discovery) createSelf() error {
 }
 
 func (d *discovery) checkCluster() (client.Nodes, int, error) {
-	resp, err := d.c.Get(d.cluster)
+	configKey := path.Join("/", d.cluster, "config")
+	// find cluster size
+	resp, err := d.c.Get(path.Join(configKey, "size"))
+	if err != nil {
+		if err == client.ErrKeyNoExist {
+			return nil, 0, ErrSizeNotFound
+		}
+		return nil, 0, err
+	}
+	size, err := strconv.Atoi(resp.Node.Value)
+	if err != nil {
+		return nil, 0, ErrBadSizeKey
+	}
+
+	resp, err = d.c.Get(d.cluster)
 	if err != nil {
 		return nil, 0, err
 	}
-	nodes := resp.Node.Nodes
+	nodes := make(client.Nodes, 0)
+	// append non-config keys to nodes
+	for _, n := range resp.Node.Nodes {
+		if !strings.HasPrefix(n.Key, configKey) {
+			nodes = append(nodes, n)
+		}
+	}
+
 	snodes := SortableNodes{nodes}
 	sort.Sort(snodes)
-
-	// find cluster size
-	if nodes[0].Key != path.Join("/", d.cluster, "size") {
-		return nil, 0, ErrSizeNotFound
-	}
-	size, err := strconv.Atoi(nodes[0].Value)
-	if err != nil {
-		return nil, 0, ErrBadCluster
-	}
-
-	// remove size key from nodes
-	nodes = nodes[1:]
 
 	// find self position
 	for i := range nodes {
