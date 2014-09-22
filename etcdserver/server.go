@@ -269,7 +269,7 @@ func (s *EtcdServer) apply(r pb.Request) Response {
 		case r.PrevIndex > 0 || r.PrevValue != "":
 			return f(s.Store.CompareAndDelete(r.Path, r.PrevValue, r.PrevIndex))
 		default:
-			return f(s.Store.Delete(r.Path, r.Recursive, r.Dir))
+			return f(s.Store.Delete(r.Path, r.Dir, r.Recursive))
 		}
 	case "QGET":
 		return f(s.Store.Get(r.Path, r.Recursive, r.Sorted))

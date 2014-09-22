@@ -48,7 +48,7 @@ type Store interface {
 		expireTime time.Time) (*Event, error)
 	CompareAndSwap(nodePath string, prevValue string, prevIndex uint64,
 		value string, expireTime time.Time) (*Event, error)
-	Delete(nodePath string, recursive, dir bool) (*Event, error)
+	Delete(nodePath string, dir, recursive bool) (*Event, error)
 	CompareAndDelete(nodePath string, prevValue string, prevIndex uint64) (*Event, error)
 
 	Watch(prefix string, recursive, stream bool, sinceIndex uint64) (Watcher, error)
