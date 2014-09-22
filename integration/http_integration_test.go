@@ -1,4 +1,4 @@
-package functional
+package integration
 
 import (
 	"encoding/json"
