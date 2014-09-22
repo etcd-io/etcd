@@ -25,7 +25,7 @@ func TestCheckCluster(t *testing.T) {
 		{
 			// self is in the size range
 			client.Nodes{
-				{Key: "/1000/config/size", Value: "3", CreatedIndex: 1},
+				{Key: "/1000/_config/size", Value: "3", CreatedIndex: 1},
 				{Key: self, CreatedIndex: 2},
 				{Key: "/1000/2", CreatedIndex: 3},
 				{Key: "/1000/3", CreatedIndex: 4},
@@ -37,7 +37,7 @@ func TestCheckCluster(t *testing.T) {
 		{
 			// self is in the size range
 			client.Nodes{
-				{Key: "/1000/config/size", Value: "3", CreatedIndex: 1},
+				{Key: "/1000/_config/size", Value: "3", CreatedIndex: 1},
 				{Key: "/1000/2", CreatedIndex: 2},
 				{Key: "/1000/3", CreatedIndex: 3},
 				{Key: self, CreatedIndex: 4},
@@ -49,7 +49,7 @@ func TestCheckCluster(t *testing.T) {
 		{
 			// self is out of the size range
 			client.Nodes{
-				{Key: "/1000/config/size", Value: "3", CreatedIndex: 1},
+				{Key: "/1000/_config/size", Value: "3", CreatedIndex: 1},
 				{Key: "/1000/2", CreatedIndex: 2},
 				{Key: "/1000/3", CreatedIndex: 3},
 				{Key: "/1000/4", CreatedIndex: 4},
@@ -61,7 +61,7 @@ func TestCheckCluster(t *testing.T) {
 		{
 			// self is not in the cluster
 			client.Nodes{
-				{Key: "/1000/config/size", Value: "3", CreatedIndex: 1},
+				{Key: "/1000/_config/size", Value: "3", CreatedIndex: 1},
 				{Key: "/1000/2", CreatedIndex: 2},
 				{Key: "/1000/3", CreatedIndex: 3},
 			},
@@ -70,7 +70,7 @@ func TestCheckCluster(t *testing.T) {
 		},
 		{
 			client.Nodes{
-				{Key: "/1000/config/size", Value: "3", CreatedIndex: 1},
+				{Key: "/1000/_config/size", Value: "3", CreatedIndex: 1},
 				{Key: "/1000/2", CreatedIndex: 2},
 				{Key: "/1000/3", CreatedIndex: 3},
 				{Key: "/1000/4", CreatedIndex: 4},
@@ -81,7 +81,7 @@ func TestCheckCluster(t *testing.T) {
 		{
 			// bad size key
 			client.Nodes{
-				{Key: "/1000/config/size", Value: "bad", CreatedIndex: 1},
+				{Key: "/1000/_config/size", Value: "bad", CreatedIndex: 1},
 			},
 			ErrBadSizeKey,
 			0,

@@ -69,7 +69,7 @@ func (d *discovery) createSelf() error {
 }
 
 func (d *discovery) checkCluster() (client.Nodes, int, error) {
-	configKey := path.Join("/", d.cluster, "config")
+	configKey := path.Join("/", d.cluster, "_config")
 	// find cluster size
 	resp, err := d.c.Get(path.Join(configKey, "size"))
 	if err != nil {
