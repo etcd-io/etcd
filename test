@@ -14,7 +14,7 @@ COVER=${COVER:-"-cover"}
 
 source ./build
 
-TESTABLE="client etcdserver etcdserver/etcdhttp etcdserver/etcdserverpb functional proxy raft snap store wait wal ./"
+TESTABLE="client etcdserver etcdserver/etcdhttp etcdserver/etcdserverpb integration proxy raft snap store wait wal ./"
 FORMATTABLE="$TESTABLE cors.go"
 
 # user has not provided PKG override
