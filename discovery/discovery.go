@@ -54,15 +54,14 @@ func (d *discovery) discover() (*etcdhttp.Peers, error) {
 }
 
 func (d *discovery) createSelf() error {
-	self := path.Join("/", d.cluster, fmt.Sprintf("%d", d.id))
 	// create self key
-	resp, err := d.c.Create(self, string(d.ctx), 0)
+	resp, err := d.c.Create(d.selfKey(), string(d.ctx), 0)
 	if err != nil {
 		return err
 	}
 
 	// ensure self appears on the server we connected to
-	w := d.c.Watch(self, resp.Node.CreatedIndex)
+	w := d.c.Watch(d.selfKey(), resp.Node.CreatedIndex)
 	if _, err = w.Next(); err != nil {
 		return err
 	}
@@ -70,7 +69,6 @@ func (d *discovery) createSelf() error {
 }
 
 func (d *discovery) checkCluster() (client.Nodes, int, error) {
-	self := path.Join("/", d.cluster, fmt.Sprintf("%d", d.id))
 	resp, err := d.c.Get(d.cluster)
 	if err != nil {
 		return nil, 0, err
@@ -93,7 +91,7 @@ func (d *discovery) checkCluster() (client.Nodes, int, error) {
 
 	// find self position
 	for i := range nodes {
-		if nodes[i].Key == self {
+		if nodes[i].Key == d.selfKey() {
 			break
 		}
 		if i >= size-1 {
@@ -119,6 +117,10 @@ func (d *discovery) waitNodes(nodes client.Nodes, size int) (client.Nodes, error
 		all = append(all, resp.Node)
 	}
 	return all, nil
+}
+
+func (d *discovery) selfKey() string {
+	return path.Join("/", d.cluster, fmt.Sprintf("%d", d.id))
 }
 
 func nodesToPeers(ns client.Nodes) (*etcdhttp.Peers, error) {
