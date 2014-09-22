@@ -81,7 +81,8 @@ type Node interface {
 	// Propose proposes that data be appended to the log.
 	Propose(ctx context.Context, data []byte) error
 	// Configure proposes config change. Only one config can be in the process of going through consensus at a time.
-	Configure(ctx context.Context, data []byte) error
+	// Configure doesn't perform config change.
+	Configure(ctx context.Context, conf pb.Config) error
 	// Step advances the state machine using the given message. ctx.Err() will be returned, if any.
 	Step(ctx context.Context, msg pb.Message) error
 	// Ready returns a channel that returns the current point-in-time state
@@ -246,7 +247,11 @@ func (n *node) Propose(ctx context.Context, data []byte) error {
 	return n.Step(ctx, pb.Message{Type: msgProp, Entries: []pb.Entry{{Data: data}}})
 }
 
-func (n *node) Configure(ctx context.Context, data []byte) error {
+func (n *node) Configure(ctx context.Context, conf pb.Config) error {
+	data, err := conf.Marshal()
+	if err != nil {
+		return err
+	}
 	return n.Step(ctx, pb.Message{Type: msgProp, Entries: []pb.Entry{{Type: pb.EntryConfig, Data: data}}})
 }
 

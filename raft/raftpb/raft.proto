@@ -48,3 +48,15 @@ message HardState {
 	required int64 vote   = 2 [(gogoproto.nullable) = false];
 	required int64 commit = 3 [(gogoproto.nullable) = false];
 }
+
+enum ConfigType {
+	ConfigAddNode    = 0;
+	ConfigRemoveNode = 1;
+}
+
+message Config {
+	required int64      ID      = 1 [(gogoproto.nullable) = false];
+	required ConfigType Type    = 2 [(gogoproto.nullable) = false];
+	required int64      NodeID  = 3 [(gogoproto.nullable) = false];
+	optional bytes      Context = 4 [(gogoproto.nullable) = false];
+}

@@ -129,7 +129,7 @@ func (s *EtcdServer) run() {
 					}
 					s.w.Trigger(r.Id, s.applyRequest(r))
 				case raftpb.EntryConfig:
-					var c pb.Config
+					var c raftpb.Config
 					if err := c.Unmarshal(e.Data); err != nil {
 						panic("TODO: this is bad, what do we do about it?")
 					}
@@ -231,9 +231,9 @@ func (s *EtcdServer) Do(ctx context.Context, r pb.Request) (Response, error) {
 }
 
 func (s *EtcdServer) AddNode(ctx context.Context, id int64, context []byte) error {
-	req := pb.Config{
+	req := raftpb.Config{
 		ID:      GenID(),
-		Type:    pb.ConfigAddNode,
+		Type:    raftpb.ConfigAddNode,
 		NodeID:  id,
 		Context: context,
 	}
@@ -241,9 +241,9 @@ func (s *EtcdServer) AddNode(ctx context.Context, id int64, context []byte) erro
 }
 
 func (s *EtcdServer) RemoveNode(ctx context.Context, id int64) error {
-	req := pb.Config{
+	req := raftpb.Config{
 		ID:     GenID(),
-		Type:   pb.ConfigRemoveNode,
+		Type:   raftpb.ConfigRemoveNode,
 		NodeID: id,
 	}
 	return s.configure(ctx, req)
@@ -251,14 +251,13 @@ func (s *EtcdServer) RemoveNode(ctx context.Context, id int64) error {
 
 // configure sends configuration change through consensus then performs it.
 // It will block until the change is performed or there is an error.
-func (s *EtcdServer) configure(ctx context.Context, r pb.Config) error {
-	data, err := r.Marshal()
-	if err != nil {
-		log.Printf("marshal request %#v error: %v", r, err)
+func (s *EtcdServer) configure(ctx context.Context, r raftpb.Config) error {
+	ch := s.w.Register(r.ID)
+	if err := s.Node.Configure(ctx, r); err != nil {
+		log.Printf("configure error: %v", err)
+		s.w.Trigger(r.ID, nil)
 		return err
 	}
-	ch := s.w.Register(r.ID)
-	s.Node.Configure(ctx, data)
 	select {
 	case <-ch:
 		return nil
@@ -342,11 +341,11 @@ func (s *EtcdServer) applyRequest(r pb.Request) Response {
 	}
 }
 
-func (s *EtcdServer) applyConfig(r pb.Config) {
+func (s *EtcdServer) applyConfig(r raftpb.Config) {
 	switch r.Type {
-	case pb.ConfigAddNode:
+	case raftpb.ConfigAddNode:
 		s.Node.AddNode(r.NodeID)
-	case pb.ConfigRemoveNode:
+	case raftpb.ConfigRemoveNode:
 		s.Node.RemoveNode(r.NodeID)
 	default:
 		// This should never be reached

@@ -802,16 +802,16 @@ func newReadyNode() *readyNode {
 	readyc := make(chan raft.Ready, 1)
 	return &readyNode{readyc: readyc}
 }
-func (n *readyNode) Tick()                                              {}
-func (n *readyNode) Campaign(ctx context.Context) error                 { return nil }
-func (n *readyNode) Propose(ctx context.Context, data []byte) error     { return nil }
-func (n *readyNode) Configure(ctx context.Context, data []byte) error   { return nil }
-func (n *readyNode) Step(ctx context.Context, msg raftpb.Message) error { return nil }
-func (n *readyNode) Ready() <-chan raft.Ready                           { return n.readyc }
-func (n *readyNode) Stop()                                              {}
-func (n *readyNode) Compact(d []byte)                                   {}
-func (n *readyNode) AddNode(id int64)                                   {}
-func (n *readyNode) RemoveNode(id int64)                                {}
+func (n *readyNode) Tick()                                                   {}
+func (n *readyNode) Campaign(ctx context.Context) error                      { return nil }
+func (n *readyNode) Propose(ctx context.Context, data []byte) error          { return nil }
+func (n *readyNode) Configure(ctx context.Context, conf raftpb.Config) error { return nil }
+func (n *readyNode) Step(ctx context.Context, msg raftpb.Message) error      { return nil }
+func (n *readyNode) Ready() <-chan raft.Ready                                { return n.readyc }
+func (n *readyNode) Stop()                                                   {}
+func (n *readyNode) Compact(d []byte)                                        {}
+func (n *readyNode) AddNode(id int64)                                        {}
+func (n *readyNode) RemoveNode(id int64)                                     {}
 
 type nodeRecorder struct {
 	recorder
@@ -828,7 +828,7 @@ func (n *nodeRecorder) Propose(ctx context.Context, data []byte) error {
 	n.record("Propose")
 	return nil
 }
-func (n *nodeRecorder) Configure(ctx context.Context, data []byte) error {
+func (n *nodeRecorder) Configure(ctx context.Context, conf raftpb.Config) error {
 	n.record("Configure")
 	return nil
 }
@@ -894,9 +894,13 @@ func (n *nodeCommitterRecorder) Propose(ctx context.Context, data []byte) error 
 	n.readyc <- raft.Ready{CommittedEntries: []raftpb.Entry{{Data: data}}}
 	return n.nodeRecorder.Propose(ctx, data)
 }
-func (n *nodeCommitterRecorder) Configure(ctx context.Context, data []byte) error {
+func (n *nodeCommitterRecorder) Configure(ctx context.Context, conf raftpb.Config) error {
+	data, err := conf.Marshal()
+	if err != nil {
+		return err
+	}
 	n.readyc <- raft.Ready{CommittedEntries: []raftpb.Entry{{Type: raftpb.EntryConfig, Data: data}}}
-	return n.nodeRecorder.Configure(ctx, data)
+	return n.nodeRecorder.Configure(ctx, conf)
 }
 func (n *nodeCommitterRecorder) Ready() <-chan raft.Ready {
 	return n.readyc
