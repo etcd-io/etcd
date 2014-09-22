@@ -49,6 +49,8 @@ var (
 		proxyFlagValueReadonly,
 		proxyFlagValueOn,
 	}
+
+	clientTLSInfo = transport.TLSInfo{}
 )
 
 func init() {
@@ -59,6 +61,10 @@ func init() {
 	peers.Set("0x1=localhost:8080")
 	addrs.Set("127.0.0.1:4001")
 	proxyFlag.Set(proxyFlagValueOff)
+
+	flag.StringVar(&clientTLSInfo.CAFile, "ca-file", "", "Path to the client server TLS CA file.")
+	flag.StringVar(&clientTLSInfo.CertFile, "cert-file", "", "Path to the client server TLS cert file.")
+	flag.StringVar(&clientTLSInfo.KeyFile, "key-file", "", "Path to the client server TLS key file.")
 }
 
 func main() {
@@ -182,7 +188,7 @@ func startEtcd() {
 	// Start a client server goroutine for each listen address
 	for _, addr := range *addrs {
 		addr := addr
-		l, err := transport.NewListener(addr, transport.TLSInfo{})
+		l, err := transport.NewListener(addr, clientTLSInfo)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -212,7 +218,7 @@ func startProxy() {
 	// Start a proxy server goroutine for each listen address
 	for _, addr := range *addrs {
 		addr := addr
-		l, err := transport.NewListener(addr, transport.TLSInfo{})
+		l, err := transport.NewListener(addr, clientTLSInfo)
 		if err != nil {
 			log.Fatal(err)
 		}
