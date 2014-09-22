@@ -19,6 +19,7 @@ import (
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/snap"
 	"github.com/coreos/etcd/store"
+	"github.com/coreos/etcd/transport"
 	"github.com/coreos/etcd/wal"
 )
 
@@ -167,18 +168,28 @@ func startEtcd() {
 		Info:    cors,
 	}
 
+	l, err := transport.NewListener(*paddr)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	// Start the peer server in a goroutine
 	go func() {
 		log.Print("Listening for peers on ", *paddr)
-		log.Fatal(http.ListenAndServe(*paddr, ph))
+		log.Fatal(http.Serve(l, ph))
 	}()
 
 	// Start a client server goroutine for each listen address
 	for _, addr := range *addrs {
 		addr := addr
+		l, err := transport.NewListener(addr)
+		if err != nil {
+			log.Fatal(err)
+		}
+
 		go func() {
 			log.Print("Listening for client requests on ", addr)
-			log.Fatal(http.ListenAndServe(addr, ch))
+			log.Fatal(http.Serve(l, ch))
 		}()
 	}
 }
@@ -201,9 +212,14 @@ func startProxy() {
 	// Start a proxy server goroutine for each listen address
 	for _, addr := range *addrs {
 		addr := addr
+		l, err := transport.NewListener(addr)
+		if err != nil {
+			log.Fatal(err)
+		}
+
 		go func() {
 			log.Print("Listening for client requests on ", addr)
-			log.Fatal(http.ListenAndServe(addr, ph))
+			log.Fatal(http.Serve(l, ph))
 		}()
 	}
 }
