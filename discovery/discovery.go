@@ -61,10 +61,8 @@ func (d *discovery) createSelf() error {
 
 	// ensure self appears on the server we connected to
 	w := d.c.Watch(d.selfKey(), resp.Node.CreatedIndex)
-	if _, err = w.Next(); err != nil {
-		return err
-	}
-	return nil
+	_, err = w.Next()
+	return err
 }
 
 func (d *discovery) checkCluster() (client.Nodes, int, error) {
@@ -94,7 +92,7 @@ func (d *discovery) checkCluster() (client.Nodes, int, error) {
 		}
 	}
 
-	snodes := SortableNodes{nodes}
+	snodes := sortableNodes{nodes}
 	sort.Sort(snodes)
 
 	// find self position
@@ -144,10 +142,10 @@ func nodesToPeers(ns client.Nodes) (*etcdhttp.Peers, error) {
 	return &peers, nil
 }
 
-type SortableNodes struct{ client.Nodes }
+type sortableNodes struct{ client.Nodes }
 
-func (ns SortableNodes) Len() int { return len(ns.Nodes) }
-func (ns SortableNodes) Less(i, j int) bool {
+func (ns sortableNodes) Len() int { return len(ns.Nodes) }
+func (ns sortableNodes) Less(i, j int) bool {
 	return ns.Nodes[i].CreatedIndex < ns.Nodes[j].CreatedIndex
 }
-func (ns SortableNodes) Swap(i, j int) { ns.Nodes[i], ns.Nodes[j] = ns.Nodes[j], ns.Nodes[i] }
+func (ns sortableNodes) Swap(i, j int) { ns.Nodes[i], ns.Nodes[j] = ns.Nodes[j], ns.Nodes[i] }

@@ -245,14 +245,27 @@ func TestNodesToPeers(t *testing.T) {
 }
 
 func TestSortableNodes(t *testing.T) {
-	ns := make(client.Nodes, 0)
+	ns := client.Nodes{
+		{CreatedIndex: 5},
+		{CreatedIndex: 1},
+		{CreatedIndex: 3},
+		{CreatedIndex: 4},
+	}
+	// add some randomness
 	for i := 0; i < 10000; i++ {
 		ns = append(ns, &client.Node{CreatedIndex: uint64(rand.Int31())})
 	}
-	sns := SortableNodes{ns}
+	sns := sortableNodes{ns}
 	sort.Sort(sns)
 	cis := make([]int, 0)
 	for _, n := range sns.Nodes {
+		cis = append(cis, int(n.CreatedIndex))
+	}
+	if sort.IntsAreSorted(cis) != true {
+		t.Errorf("isSorted = %v, want %v", sort.IntsAreSorted(cis), true)
+	}
+	cis = make([]int, 0)
+	for _, n := range ns {
 		cis = append(cis, int(n.CreatedIndex))
 	}
 	if sort.IntsAreSorted(cis) != true {
