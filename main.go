@@ -51,7 +51,7 @@ var (
 )
 
 func init() {
-	flag.Var(peers, "peers", "your peers")
+	flag.Var(peers, "peers", "Comma-separated list of peers (e.g. '0x1=10.1.1.1:7001,0x2=10.1.1.2:7001')")
 	flag.Var(addrs, "bind-addr", "List of HTTP service addresses (e.g., '127.0.0.1:4001,10.0.0.1:8080')")
 	flag.Var(cors, "cors", "Comma-separated white list of origins for CORS (cross-origin resource sharing).")
 	flag.Var(proxyFlag, "proxy", fmt.Sprintf("Valid values include %s", strings.Join(proxyFlagValues, ", ")))
