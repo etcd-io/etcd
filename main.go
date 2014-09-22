@@ -168,7 +168,7 @@ func startEtcd() {
 		Info:    cors,
 	}
 
-	l, err := transport.NewListener(*paddr)
+	l, err := transport.NewListener(*paddr, transport.TLSInfo{})
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -182,7 +182,7 @@ func startEtcd() {
 	// Start a client server goroutine for each listen address
 	for _, addr := range *addrs {
 		addr := addr
-		l, err := transport.NewListener(addr)
+		l, err := transport.NewListener(addr, transport.TLSInfo{})
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -212,7 +212,7 @@ func startProxy() {
 	// Start a proxy server goroutine for each listen address
 	for _, addr := range *addrs {
 		addr := addr
-		l, err := transport.NewListener(addr)
+		l, err := transport.NewListener(addr, transport.TLSInfo{})
 		if err != nil {
 			log.Fatal(err)
 		}
