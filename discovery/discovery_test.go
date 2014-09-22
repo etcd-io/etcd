@@ -2,6 +2,8 @@ package discovery
 
 import (
 	"errors"
+	"math/rand"
+	"sort"
 
 	"reflect"
 	"testing"
@@ -240,6 +242,22 @@ func TestNodesToPeers(t *testing.T) {
 		if !reflect.DeepEqual(peers, tt.wp) {
 			t.Errorf("#%d: peers = %v, want %v", i, peers, tt.wp)
 		}
+	}
+}
+
+func TestSortableNodes(t *testing.T) {
+	ns := make(client.Nodes, 0)
+	for i := 0; i < 10000; i++ {
+		ns = append(ns, &client.Node{CreatedIndex: uint64(rand.Int31())})
+	}
+	sns := SortableNodes{ns}
+	sort.Sort(sns)
+	cis := make([]int, 0)
+	for _, n := range sns.Nodes {
+		cis = append(cis, int(n.CreatedIndex))
+	}
+	if sort.IntsAreSorted(cis) != true {
+		t.Errorf("isSorted = %v, want %v", sort.IntsAreSorted(cis), true)
 	}
 }
 
