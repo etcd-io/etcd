@@ -40,6 +40,7 @@ var (
 
 	peers     = &etcdhttp.Peers{}
 	addrs     = &Addrs{}
+	cors      = &CORSInfo{}
 	proxyFlag = new(ProxyFlag)
 
 	proxyFlagValues = []string{
@@ -52,6 +53,7 @@ var (
 func init() {
 	flag.Var(peers, "peers", "your peers")
 	flag.Var(addrs, "bind-addr", "List of HTTP service addresses (e.g., '127.0.0.1:4001,10.0.0.1:8080')")
+	flag.Var(cors, "cors", "Comma-separated white list of origins for CORS (cross-origin resource sharing).")
 	flag.Var(proxyFlag, "proxy", fmt.Sprintf("Valid values include %s", strings.Join(proxyFlagValues, ", ")))
 	peers.Set("0x1=localhost:8080")
 	addrs.Set("127.0.0.1:4001")
@@ -156,8 +158,14 @@ func startEtcd() {
 	}
 	s.Start()
 
-	ch := etcdhttp.NewClientHandler(s, *peers, *timeout)
-	ph := etcdhttp.NewPeerHandler(s)
+	ch := &CORSHandler{
+		Handler: etcdhttp.NewClientHandler(s, *peers, *timeout),
+		Info:    cors,
+	}
+	ph := &CORSHandler{
+		Handler: etcdhttp.NewPeerHandler(s),
+		Info:    cors,
+	}
 
 	// Start the peer server in a goroutine
 	go func() {
@@ -180,6 +188,10 @@ func startProxy() {
 	ph, err := proxy.NewHandler((*peers).Endpoints())
 	if err != nil {
 		log.Fatal(err)
+	}
+	ph = &CORSHandler{
+		Handler: ph,
+		Info:    cors,
 	}
 
 	if string(*proxyFlag) == proxyFlagValueReadonly {
