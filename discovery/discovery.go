@@ -29,6 +29,13 @@ type discovery struct {
 }
 
 func (d *discovery) discover() (*etcdhttp.Peers, error) {
+	// fast path: if the cluster is full, returns the error
+	// do not need to register itself to the cluster in this
+	// case.
+	if _, _, err := d.checkCluster(); err != nil {
+		return nil, err
+	}
+
 	if err := d.createSelf(); err != nil {
 		return nil, err
 	}
