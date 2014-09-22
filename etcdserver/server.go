@@ -349,7 +349,7 @@ func (s *EtcdServer) applyConfig(r raftpb.Config) {
 		s.Node.RemoveNode(r.NodeID)
 	default:
 		// This should never be reached
-		panic("unsupported config type")
+		panic("unexpected config type")
 	}
 }
 

@@ -61,16 +61,20 @@ data, serialize it into a byte slice and call:
 
 	n.Propose(ctx, data)
 
-To add or remove node in a cluster, serialize the data for configuration change
-into a byte slice and call:
+To add or remove node in a cluster, build Config struct and call:
 
-	n.Configure(ctx, data)
+	n.Configure(ctx, conf)
 
-For the safety consideration, one configuration should include at most one node
-change, which is applied through:
+After configuration is committed, you should apply it to node through:
 
-	n.AddNode(id)
-	n.RemoveNode(id)
+	var conf raftpb.Config
+	conf.Unmarshal(data)
+	switch conf.Type {
+	case raftpb.ConfigAddNode:
+		n.AddNode(conf.ID)
+	case raftpb.ConfigRemoveNode:
+		n.RemoveNode(conf.ID)
+	}
 
 */
 package raft

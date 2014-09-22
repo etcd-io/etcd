@@ -80,8 +80,8 @@ type Node interface {
 	Campaign(ctx context.Context) error
 	// Propose proposes that data be appended to the log.
 	Propose(ctx context.Context, data []byte) error
-	// Configure proposes config change. Only one config can be in the process of going through consensus at a time.
-	// Configure doesn't perform config change.
+	// Configure proposes config change. At most one config can be in the process of going through consensus.
+	// Application needs to call AddNode/RemoveNode when applying EntryConfig type entry.
 	Configure(ctx context.Context, conf pb.Config) error
 	// Step advances the state machine using the given message. ctx.Err() will be returned, if any.
 	Step(ctx context.Context, msg pb.Message) error
