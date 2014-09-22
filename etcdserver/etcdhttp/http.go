@@ -32,10 +32,10 @@ const (
 var errClosed = errors.New("etcdhttp: client closed connection")
 
 // NewClientHandler generates a muxed http.Handler with the given parameters to serve etcd client requests.
-func NewClientHandler(server etcdserver.Server, peers Peers, timeout time.Duration) http.Handler {
+func NewClientHandler(server etcdserver.Server, cluster Cluster, timeout time.Duration) http.Handler {
 	sh := &serverHandler{
 		server:  server,
-		peers:   peers,
+		cluster: cluster,
 		timeout: timeout,
 	}
 	if sh.timeout == 0 {
@@ -66,7 +66,7 @@ func NewPeerHandler(server etcdserver.Server) http.Handler {
 type serverHandler struct {
 	timeout time.Duration
 	server  etcdserver.Server
-	peers   Peers
+	cluster Cluster
 }
 
 func (h serverHandler) serveKeys(w http.ResponseWriter, r *http.Request) {
@@ -115,7 +115,7 @@ func (h serverHandler) serveMachines(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r.Method, "GET", "HEAD") {
 		return
 	}
-	endpoints := h.peers.Endpoints()
+	endpoints := h.cluster.Endpoints()
 	w.Write([]byte(strings.Join(endpoints, ", ")))
 }
 

@@ -32,13 +32,14 @@ const (
 )
 
 var (
-	fid       = flag.String("id", "0x1", "ID of this server")
 	timeout   = flag.Duration("timeout", 10*time.Second, "Request Timeout")
 	paddr     = flag.String("peer-bind-addr", ":7001", "Peer service address (e.g., ':7001')")
 	dir       = flag.String("data-dir", "", "Path to the data directory")
 	snapCount = flag.Int64("snapshot-count", etcdserver.DefaultSnapCount, "Number of committed transactions to trigger a snapshot")
 
-	peers     = &etcdhttp.Peers{}
+	name      etcdhttp.NodeName
+	cluster   = &etcdhttp.Cluster{}
+	peers     = &etcdhttp.Endpoints{}
 	addrs     = &Addrs{}
 	cors      = &CORSInfo{}
 	proxyFlag = new(ProxyFlag)
@@ -51,11 +52,13 @@ var (
 )
 
 func init() {
-	flag.Var(peers, "peers", "your peers")
+	flag.Var(cluster, "bootstrap-config", "Bootstrap configuration for this cluster (e.g. 'a=10.0.0.1:7001 b=10.0.0.2:7001)")
+	flag.Var(peers, "peers", "List of HTTP peer server node endpoints")
 	flag.Var(addrs, "bind-addr", "List of HTTP service addresses (e.g., '127.0.0.1:4001,10.0.0.1:8080')")
 	flag.Var(cors, "cors", "Comma-separated white list of origins for CORS (cross-origin resource sharing).")
 	flag.Var(proxyFlag, "proxy", fmt.Sprintf("Valid values include %s", strings.Join(proxyFlagValues, ", ")))
-	peers.Set("0x1=localhost:8080")
+	flag.Var(&name, "name", "Unique human-readable name for this node")
+	name.Set("default")
 	addrs.Set("127.0.0.1:4001")
 	proxyFlag.Set(proxyFlagValueOff)
 }
@@ -77,16 +80,15 @@ func main() {
 
 // startEtcd launches the etcd server and HTTP handlers for client/server communication.
 func startEtcd() {
-	id, err := strconv.ParseInt(*fid, 0, 64)
-	if err != nil {
-		log.Fatal(err)
-	}
-	if id == raft.None {
-		log.Fatalf("etcd: cannot use None(%d) as etcdserver id", raft.None)
+	id := name.ID()
+
+	// We are running as a single machine; setup our single machine cluster
+	if len(*cluster) == 0 {
+		cluster.Set(fmt.Sprintf("%v=%v", id, addrs.String()))
 	}
 
-	if peers.Pick(id) == "" {
-		log.Fatalf("%#x=<addr> must be specified in peers", id)
+	if cluster.Pick(id) == "" {
+		log.Fatalf("%s=<addrs> must be specified in bootstrap-config", name)
 	}
 
 	if *snapCount <= 0 {
@@ -94,7 +96,7 @@ func startEtcd() {
 	}
 
 	if *dir == "" {
-		*dir = fmt.Sprintf("%v_etcd_data", *fid)
+		*dir = fmt.Sprintf("%v_etcd_data", uint64(id))
 		log.Printf("main: no data-dir is given, using default data-dir ./%s", *dir)
 	}
 	if err := os.MkdirAll(*dir, privateDirMode); err != nil {
@@ -109,6 +111,7 @@ func startEtcd() {
 	waldir := path.Join(*dir, "wal")
 	var w *wal.WAL
 	var n raft.Node
+	var err error
 	st := store.New()
 
 	if !wal.Exist(waldir) {
@@ -116,7 +119,7 @@ func startEtcd() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		n = raft.StartNode(id, peers.IDs(), 10, 1)
+		n = raft.StartNode(id, cluster.IDs(), 10, 1)
 	} else {
 		var index int64
 		snapshot, err := snapshotter.Load()
@@ -141,7 +144,7 @@ func startEtcd() {
 		if wid != 0 {
 			log.Fatalf("unexpected nodeid %d: nodeid should always be zero until we save nodeid into wal", wid)
 		}
-		n = raft.RestartNode(id, peers.IDs(), 10, 1, snapshot, st, ents)
+		n = raft.RestartNode(id, cluster.IDs(), 10, 1, snapshot, st, ents)
 	}
 
 	s := &etcdserver.EtcdServer{
@@ -151,7 +154,7 @@ func startEtcd() {
 			*wal.WAL
 			*snap.Snapshotter
 		}{w, snapshotter},
-		Send:       etcdhttp.Sender(*peers),
+		Send:       etcdhttp.Sender(*cluster),
 		Ticker:     time.Tick(100 * time.Millisecond),
 		SyncTicker: time.Tick(500 * time.Millisecond),
 		SnapCount:  *snapCount,
@@ -159,7 +162,7 @@ func startEtcd() {
 	s.Start()
 
 	ch := &CORSHandler{
-		Handler: etcdhttp.NewClientHandler(s, *peers, *timeout),
+		Handler: etcdhttp.NewClientHandler(s, *cluster, *timeout),
 		Info:    cors,
 	}
 	ph := &CORSHandler{
@@ -167,9 +170,11 @@ func startEtcd() {
 		Info:    cors,
 	}
 
+	log.Printf("started node name=%s id=%v", name, name.ID())
+
 	// Start the peer server in a goroutine
 	go func() {
-		log.Print("Listening for peers on ", *paddr)
+		log.Print("Listening for cluster on ", *paddr)
 		log.Fatal(http.ListenAndServe(*paddr, ph))
 	}()
 
@@ -185,7 +190,7 @@ func startEtcd() {
 
 // startProxy launches an HTTP proxy for client communication which proxies to other etcd nodes.
 func startProxy() {
-	ph, err := proxy.NewHandler((*peers).Endpoints())
+	ph, err := proxy.NewHandler(peers.List())
 	if err != nil {
 		log.Fatal(err)
 	}
