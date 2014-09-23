@@ -126,7 +126,7 @@ func TestDoBadLocalAction(t *testing.T) {
 	}
 }
 
-func TestApply(t *testing.T) {
+func TestApplyRequest(t *testing.T) {
 	tests := []struct {
 		req pb.Request
 
@@ -354,7 +354,7 @@ func TestApply(t *testing.T) {
 	for i, tt := range tests {
 		st := &storeRecorder{}
 		srv := &EtcdServer{Store: st}
-		resp := srv.apply(tt.req)
+		resp := srv.applyRequest(tt.req)
 
 		if !reflect.DeepEqual(resp, tt.wresp) {
 			t.Errorf("#%d: resp = %+v, want %+v", i, resp, tt.wresp)
@@ -792,15 +792,20 @@ func TestAddNode(t *testing.T) {
 		Store:   &storeRecorder{},
 		Send:    func(_ []raftpb.Message) {},
 		Storage: &storageRecorder{},
+		Peers:   make(map[int64][]string),
 	}
 	s.Start()
-	s.AddNode(context.TODO(), 1, []byte("foo"))
+	s.AddNode(context.TODO(), 1, []byte("foo,bar"))
 	gaction := n.Action()
 	s.Stop()
 
 	wactions := []action{action{name: "ProposeConfChange:ConfChangeAddNode"}, action{name: "ApplyConfChange:ConfChangeAddNode"}}
 	if !reflect.DeepEqual(gaction, wactions) {
 		t.Errorf("action = %v, want %v", gaction, wactions)
+	}
+	wpeers := map[int64][]string{1: []string{"foo", "bar"}}
+	if !reflect.DeepEqual(s.Peers, wpeers) {
+		t.Errorf("peers = %v, want %v", s.Peers, wpeers)
 	}
 }
 
@@ -812,6 +817,7 @@ func TestRemoveNode(t *testing.T) {
 		Store:   &storeRecorder{},
 		Send:    func(_ []raftpb.Message) {},
 		Storage: &storageRecorder{},
+		Peers:   map[int64][]string{1: []string{"foo"}, 2: []string{"bar"}},
 	}
 	s.Start()
 	s.RemoveNode(context.TODO(), 1)
@@ -821,6 +827,10 @@ func TestRemoveNode(t *testing.T) {
 	wactions := []action{action{name: "ProposeConfChange:ConfChangeRemoveNode"}, action{name: "ApplyConfChange:ConfChangeRemoveNode"}}
 	if !reflect.DeepEqual(gaction, wactions) {
 		t.Errorf("action = %v, want %v", gaction, wactions)
+	}
+	wpeers := map[int64][]string{2: []string{"bar"}}
+	if !reflect.DeepEqual(s.Peers, wpeers) {
+		t.Errorf("peers = %v, want %v", s.Peers, wpeers)
 	}
 }
 

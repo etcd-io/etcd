@@ -21,9 +21,10 @@ import (
 )
 
 const (
-	keysPrefix     = "/v2/keys"
-	machinesPrefix = "/v2/machines"
-	raftPrefix     = "/raft"
+	keysPrefix         = "/v2/keys"
+	machinesPrefix     = "/v2/machines"
+	adminMembersPrefix = "/v2/admin/members/"
+	raftPrefix         = "/raft"
 
 	// time to wait for response from EtcdServer requests
 	defaultServerTimeout = 500 * time.Millisecond
@@ -61,6 +62,8 @@ func NewPeerHandler(server etcdserver.Server) http.Handler {
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc(raftPrefix, sh.serveRaft)
+	// TODO: mount it here because it could only get peer address from cmdline.
+	mux.HandleFunc(adminMembersPrefix, sh.serveAdminMembers)
 	mux.HandleFunc("/", http.NotFound)
 	return mux
 }
@@ -115,6 +118,44 @@ func (h serverHandler) serveMachines(w http.ResponseWriter, r *http.Request) {
 	}
 	endpoints := h.peers.Endpoints()
 	w.Write([]byte(strings.Join(endpoints, ", ")))
+}
+
+func (h serverHandler) serveAdminMembers(w http.ResponseWriter, r *http.Request) {
+	if !allowMethod(w, r.Method, "PUT", "DELETE") {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), defaultServerTimeout)
+	defer cancel()
+	idStr := strings.TrimPrefix(r.URL.Path, adminMembersPrefix)
+	id, err := strconv.ParseInt(idStr, 0, 64)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	switch r.Method {
+	case "PUT":
+		r.ParseForm()
+		// TODO: use some uniform format for http message
+		peerURLs := r.PostForm["PeerURLs"]
+		log.Printf("etcdhttp: add node %d with peer urls %v", id, peerURLs)
+		peerURLsStr := strings.Join(peerURLs, ",")
+		// TODO: use some uniform format for context data
+		if err := h.server.AddNode(ctx, id, []byte(peerURLsStr)); err != nil {
+			log.Printf("etcdhttp: error adding node %x: %v", id, err)
+			writeError(w, err)
+			return
+		}
+		w.WriteHeader(http.StatusCreated)
+	case "DELETE":
+		log.Printf("etcdhttp: remove node %d", id)
+		if err := h.server.RemoveNode(ctx, id); err != nil {
+			log.Printf("etcdhttp: error removing node %x: %v", id, err)
+			writeError(w, err)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}
 }
 
 func (h serverHandler) serveRaft(w http.ResponseWriter, r *http.Request) {

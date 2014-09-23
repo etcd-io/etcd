@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log"
 	"math/rand"
+	"strings"
 	"time"
 
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
@@ -64,6 +65,8 @@ type Server interface {
 	// Process takes a raft message and applies it to the server's raft state
 	// machine, respecting any timeout of the given context.
 	Process(ctx context.Context, m raftpb.Message) error
+	AddNode(ctx context.Context, id int64, context []byte) error
+	RemoveNode(ctx context.Context, id int64) error
 }
 
 // EtcdServer is the production implementation of the Server interface
@@ -86,6 +89,12 @@ type EtcdServer struct {
 	SyncTicker <-chan time.Time
 
 	SnapCount int64 // number of entries to trigger a snapshot
+
+	// brutely use it here
+	// TODO: move etcdhttp.Peers out of etcdhttp package, or abstract its
+	// interface
+	// wait on: #1123
+	Peers map[int64][]string
 }
 
 // Start prepares and starts server in a new goroutine. It is no longer safe to
@@ -127,13 +136,13 @@ func (s *EtcdServer) run() {
 					if err := r.Unmarshal(e.Data); err != nil {
 						panic("TODO: this is bad, what do we do about it?")
 					}
-					s.w.Trigger(r.Id, s.apply(r))
+					s.w.Trigger(r.Id, s.applyRequest(r))
 				case raftpb.EntryConfChange:
 					var cc raftpb.ConfChange
 					if err := cc.Unmarshal(e.Data); err != nil {
 						panic("TODO: this is bad, what do we do about it?")
 					}
-					s.Node.ApplyConfChange(cc)
+					s.applyConfChange(cc)
 					s.w.Trigger(cc.ID, nil)
 				default:
 					panic("unexpected entry type")
@@ -302,7 +311,7 @@ func getExpirationTime(r *pb.Request) time.Time {
 
 // apply interprets r as a call to store.X and returns a Response interpreted
 // from store.Event
-func (s *EtcdServer) apply(r pb.Request) Response {
+func (s *EtcdServer) applyRequest(r pb.Request) Response {
 	f := func(ev *store.Event, err error) Response {
 		return Response{Event: ev, err: err}
 	}
@@ -338,6 +347,19 @@ func (s *EtcdServer) apply(r pb.Request) Response {
 	default:
 		// This should never be reached, but just in case:
 		return Response{err: ErrUnknownMethod}
+	}
+}
+
+func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange) {
+	s.Node.ApplyConfChange(cc)
+	switch cc.Type {
+	case raftpb.ConfChangeAddNode:
+		s.Peers[cc.NodeID] = strings.Split(string(cc.Context), ",")
+		println("add Peer:", cc.NodeID, string(cc.Context))
+	case raftpb.ConfChangeRemoveNode:
+		delete(s.Peers, cc.NodeID)
+	default:
+		panic("unexpected ConfChange type")
 	}
 }
 

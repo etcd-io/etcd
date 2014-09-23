@@ -739,7 +739,7 @@ func TestAllowMethod(t *testing.T) {
 }
 
 // errServer implements the etcd.Server interface for testing.
-// It returns the given error from any Do/Process calls.
+// It returns the given error from any Do/Process/AddNode/RemoveNode calls.
 type errServer struct {
 	err error
 }
@@ -752,6 +752,12 @@ func (fs *errServer) Process(ctx context.Context, m raftpb.Message) error {
 }
 func (fs *errServer) Start() {}
 func (fs *errServer) Stop()  {}
+func (fs *errServer) AddNode(ctx context.Context, id int64, context []byte) error {
+	return fs.err
+}
+func (fs *errServer) RemoveNode(ctx context.Context, id int64) error {
+	return fs.err
+}
 
 // errReader implements io.Reader to facilitate a broken request.
 type errReader struct{}
@@ -876,9 +882,11 @@ type resServer struct {
 func (rs *resServer) Do(_ context.Context, _ etcdserverpb.Request) (etcdserver.Response, error) {
 	return rs.res, nil
 }
-func (rs *resServer) Process(_ context.Context, _ raftpb.Message) error { return nil }
-func (rs *resServer) Start()                                            {}
-func (rs *resServer) Stop()                                             {}
+func (rs *resServer) Process(_ context.Context, _ raftpb.Message) error  { return nil }
+func (rs *resServer) Start()                                             {}
+func (rs *resServer) Stop()                                              {}
+func (rs *resServer) AddNode(_ context.Context, _ int64, _ []byte) error { return nil }
+func (rs *resServer) RemoveNode(_ context.Context, _ int64) error        { return nil }
 
 func mustMarshalEvent(t *testing.T, ev *store.Event) string {
 	b := new(bytes.Buffer)
@@ -1272,5 +1280,121 @@ func TestHandleWatchStreaming(t *testing.T) {
 	case <-done:
 	case <-time.After(time.Second):
 		t.Fatalf("timed out waiting for done")
+	}
+}
+
+func TestBadServeAdminMembers(t *testing.T) {
+	tests := []struct {
+		req    *http.Request
+		server etcdserver.Server
+
+		wcode int
+	}{
+		{
+			// bad method
+			&http.Request{
+				Method: "CONNECT",
+			},
+			&resServer{},
+
+			http.StatusMethodNotAllowed,
+		},
+		{
+			// bad method
+			&http.Request{
+				Method: "TRACE",
+			},
+			&resServer{},
+
+			http.StatusMethodNotAllowed,
+		},
+		{
+			// parse id error
+			&http.Request{
+				URL:    mustNewURL(t, path.Join(adminMembersPrefix, "badID")),
+				Method: "PUT",
+			},
+			&resServer{},
+
+			http.StatusBadRequest,
+		},
+		{
+			// etcdserver.AddNode error
+			&http.Request{
+				URL:    mustNewURL(t, path.Join(adminMembersPrefix, "1")),
+				Method: "PUT",
+			},
+			&errServer{
+				errors.New("blah"),
+			},
+
+			http.StatusInternalServerError,
+		},
+		{
+			// etcdserver.RemoveNode error
+			&http.Request{
+				URL:    mustNewURL(t, path.Join(adminMembersPrefix, "1")),
+				Method: "DELETE",
+			},
+			&errServer{
+				errors.New("blah"),
+			},
+
+			http.StatusInternalServerError,
+		},
+	}
+	for i, tt := range tests {
+		h := &serverHandler{
+			server: tt.server,
+		}
+		rw := httptest.NewRecorder()
+		h.serveAdminMembers(rw, tt.req)
+		if rw.Code != tt.wcode {
+			t.Errorf("#%d: code=%d, want %d", i, rw.Code, tt.wcode)
+		}
+	}
+}
+
+func TestServeAdminMembersPut(t *testing.T) {
+	req := &http.Request{
+		URL:    mustNewURL(t, path.Join(adminMembersPrefix, "1")),
+		Method: "PUT",
+	}
+	h := &serverHandler{
+		server: &resServer{},
+	}
+	rw := httptest.NewRecorder()
+
+	h.serveAdminMembers(rw, req)
+
+	wcode := http.StatusCreated
+	if rw.Code != wcode {
+		t.Errorf("code=%d, want %d", rw.Code, wcode)
+	}
+	g := rw.Body.String()
+	if g != "" {
+		t.Errorf("got body=%q, want %q", g, "")
+	}
+}
+
+func TestServeAdminMembersDelete(t *testing.T) {
+	req := &http.Request{
+		URL:    mustNewURL(t, path.Join(adminMembersPrefix, "1")),
+		Method: "DELETE",
+	}
+	h := &serverHandler{
+		server: &resServer{},
+	}
+	rw := httptest.NewRecorder()
+
+	h.serveAdminMembers(rw, req)
+
+	wcode := http.StatusNoContent
+	if rw.Code != wcode {
+		t.Errorf("code=%d, want %d", rw.Code, wcode)
+	}
+	g := rw.Body.String()
+	if g != "" {
+		t.Errorf("got body=%q, want %q", g, "")
 	}
 }
