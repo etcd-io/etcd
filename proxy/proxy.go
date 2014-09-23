@@ -1,13 +1,11 @@
 package proxy
 
 import (
-	"net"
 	"net/http"
-	"time"
 )
 
-func NewHandler(t *http.Transport, endpoints []string) (http.Handler, error) {
-	d, err := newDirector(endpoints)
+func NewHandler(t *http.Transport, addrs []string) (http.Handler, error) {
+	d, err := newDirector("http", addrs)
 	if err != nil {
 		return nil, err
 	}

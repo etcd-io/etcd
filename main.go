@@ -217,7 +217,7 @@ func startProxy() {
 		log.Fatal(err)
 	}
 
-	ph, err := proxy.NewHandler(pt, (*peers).Endpoints())
+	ph, err := proxy.NewHandler(pt, (*peers).Addrs())
 	if err != nil {
 		log.Fatal(err)
 	}
