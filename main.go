@@ -212,10 +212,16 @@ func startEtcd() {
 
 // startProxy launches an HTTP proxy for client communication which proxies to other etcd nodes.
 func startProxy() {
-	ph, err := proxy.NewHandler((*peers).Endpoints())
+	pt, err := transport.NewTransport(clientTLSInfo)
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	ph, err := proxy.NewHandler(pt, (*peers).Endpoints())
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	ph = &CORSHandler{
 		Handler: ph,
 		Info:    cors,
