@@ -59,8 +59,6 @@ func (info TLSInfo) ServerConfig() (*tls.Config, error) {
 		if err != nil {
 			return nil, err
 		}
-
-		cfg.RootCAs = cp
 		cfg.ClientCAs = cp
 	} else {
 		cfg.ClientAuth = tls.NoClientCert
