@@ -222,7 +222,7 @@ func TestGoodParseRequest(t *testing.T) {
 			// good prefix, all other values default
 			mustNewRequest(t, "foo"),
 			etcdserverpb.Request{
-				Id:     1234,
+				ID:     1234,
 				Method: "GET",
 				Path:   "/foo",
 			},
@@ -235,7 +235,7 @@ func TestGoodParseRequest(t *testing.T) {
 				url.Values{"value": []string{"some_value"}},
 			),
 			etcdserverpb.Request{
-				Id:     1234,
+				ID:     1234,
 				Method: "PUT",
 				Val:    "some_value",
 				Path:   "/foo",
@@ -249,7 +249,7 @@ func TestGoodParseRequest(t *testing.T) {
 				url.Values{"prevIndex": []string{"98765"}},
 			),
 			etcdserverpb.Request{
-				Id:        1234,
+				ID:        1234,
 				Method:    "PUT",
 				PrevIndex: 98765,
 				Path:      "/foo",
@@ -263,7 +263,7 @@ func TestGoodParseRequest(t *testing.T) {
 				url.Values{"recursive": []string{"true"}},
 			),
 			etcdserverpb.Request{
-				Id:        1234,
+				ID:        1234,
 				Method:    "PUT",
 				Recursive: true,
 				Path:      "/foo",
@@ -277,7 +277,7 @@ func TestGoodParseRequest(t *testing.T) {
 				url.Values{"sorted": []string{"true"}},
 			),
 			etcdserverpb.Request{
-				Id:     1234,
+				ID:     1234,
 				Method: "PUT",
 				Sorted: true,
 				Path:   "/foo",
@@ -287,7 +287,7 @@ func TestGoodParseRequest(t *testing.T) {
 			// wait specified
 			mustNewRequest(t, "foo?wait=true"),
 			etcdserverpb.Request{
-				Id:     1234,
+				ID:     1234,
 				Method: "GET",
 				Wait:   true,
 				Path:   "/foo",
@@ -297,7 +297,7 @@ func TestGoodParseRequest(t *testing.T) {
 			// empty TTL specified
 			mustNewRequest(t, "foo?ttl="),
 			etcdserverpb.Request{
-				Id:         1234,
+				ID:         1234,
 				Method:     "GET",
 				Path:       "/foo",
 				Expiration: 0,
@@ -307,7 +307,7 @@ func TestGoodParseRequest(t *testing.T) {
 			// dir specified
 			mustNewRequest(t, "foo?dir=true"),
 			etcdserverpb.Request{
-				Id:     1234,
+				ID:     1234,
 				Method: "GET",
 				Dir:    true,
 				Path:   "/foo",
@@ -317,7 +317,7 @@ func TestGoodParseRequest(t *testing.T) {
 			// dir specified negatively
 			mustNewRequest(t, "foo?dir=false"),
 			etcdserverpb.Request{
-				Id:     1234,
+				ID:     1234,
 				Method: "GET",
 				Dir:    false,
 				Path:   "/foo",
@@ -331,7 +331,7 @@ func TestGoodParseRequest(t *testing.T) {
 				url.Values{"prevExist": []string{"true"}},
 			),
 			etcdserverpb.Request{
-				Id:        1234,
+				ID:        1234,
 				Method:    "PUT",
 				PrevExist: boolp(true),
 				Path:      "/foo",
@@ -345,7 +345,7 @@ func TestGoodParseRequest(t *testing.T) {
 				url.Values{"prevExist": []string{"false"}},
 			),
 			etcdserverpb.Request{
-				Id:        1234,
+				ID:        1234,
 				Method:    "PUT",
 				PrevExist: boolp(false),
 				Path:      "/foo",
@@ -363,7 +363,7 @@ func TestGoodParseRequest(t *testing.T) {
 				},
 			),
 			etcdserverpb.Request{
-				Id:        1234,
+				ID:        1234,
 				Method:    "PUT",
 				PrevExist: boolp(true),
 				PrevValue: "previous value",
@@ -379,7 +379,7 @@ func TestGoodParseRequest(t *testing.T) {
 				url.Values{},
 			),
 			etcdserverpb.Request{
-				Id:        1234,
+				ID:        1234,
 				Method:    "PUT",
 				PrevValue: "woof",
 				Path:      "/foo",
@@ -395,7 +395,7 @@ func TestGoodParseRequest(t *testing.T) {
 				},
 			),
 			etcdserverpb.Request{
-				Id:        1234,
+				ID:        1234,
 				Method:    "PUT",
 				PrevValue: "miaow",
 				Path:      "/foo",

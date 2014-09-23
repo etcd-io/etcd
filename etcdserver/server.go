@@ -141,7 +141,7 @@ func (s *EtcdServer) run() {
 					if err := r.Unmarshal(e.Data); err != nil {
 						panic("TODO: this is bad, what do we do about it?")
 					}
-					s.w.Trigger(r.Id, s.apply(r))
+					s.w.Trigger(r.ID, s.apply(r))
 				case raftpb.EntryConfChange:
 					var cc raftpb.ConfChange
 					if err := cc.Unmarshal(e.Data); err != nil {
@@ -202,7 +202,7 @@ func (s *EtcdServer) Stop() {
 // respective operation. Do will block until an action is performed or there is
 // an error.
 func (s *EtcdServer) Do(ctx context.Context, r pb.Request) (Response, error) {
-	if r.Id == 0 {
+	if r.ID == 0 {
 		panic("r.Id cannot be 0")
 	}
 	if r.Method == "GET" && r.Quorum {
@@ -214,14 +214,14 @@ func (s *EtcdServer) Do(ctx context.Context, r pb.Request) (Response, error) {
 		if err != nil {
 			return Response{}, err
 		}
-		ch := s.w.Register(r.Id)
+		ch := s.w.Register(r.ID)
 		s.Node.Propose(ctx, data)
 		select {
 		case x := <-ch:
 			resp := x.(Response)
 			return resp, resp.err
 		case <-ctx.Done():
-			s.w.Trigger(r.Id, nil) // GC wait
+			s.w.Trigger(r.ID, nil) // GC wait
 			return Response{}, ctx.Err()
 		case <-s.done:
 			return Response{}, ErrStopped
@@ -301,7 +301,7 @@ func (s *EtcdServer) sync(timeout time.Duration) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	req := pb.Request{
 		Method: "SYNC",
-		Id:     GenID(),
+		ID:     GenID(),
 		Time:   time.Now().UnixNano(),
 	}
 	data, err := req.Marshal()

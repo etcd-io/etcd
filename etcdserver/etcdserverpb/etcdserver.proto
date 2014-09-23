@@ -8,20 +8,20 @@ option (gogoproto.unmarshaler_all) = true;
 option (gogoproto.goproto_getters_all) = false;
 
 message Request {
-	required int64  id         =  1 [(gogoproto.nullable) = false];
-	required string method     =  2 [(gogoproto.nullable) = false];
-	required string path       =  3 [(gogoproto.nullable) = false];
-	required string val        =  4 [(gogoproto.nullable) = false];
-	required bool   dir        =  5 [(gogoproto.nullable) = false];
-	required string prevValue  =  6 [(gogoproto.nullable) = false];
-	required uint64  prevIndex =  7 [(gogoproto.nullable) = false];
-	required bool   prevExist  =  8 [(gogoproto.nullable) = true];
-	required int64  expiration =  9 [(gogoproto.nullable) = false];
-	required bool   wait       = 10 [(gogoproto.nullable) = false];
-	required uint64  since     = 11 [(gogoproto.nullable) = false];
-	required bool   recursive  = 12 [(gogoproto.nullable) = false];
-	required bool   sorted     = 13 [(gogoproto.nullable) = false];
-	required bool   quorum     = 14 [(gogoproto.nullable) = false];
-	required int64  time       = 15 [(gogoproto.nullable) = false];
-	required bool   stream     = 16 [(gogoproto.nullable) = false];
+	required int64  ID         =  1 [(gogoproto.nullable) = false];
+	required string Method     =  2 [(gogoproto.nullable) = false];
+	required string Path       =  3 [(gogoproto.nullable) = false];
+	required string Val        =  4 [(gogoproto.nullable) = false];
+	required bool   Dir        =  5 [(gogoproto.nullable) = false];
+	required string PrevValue  =  6 [(gogoproto.nullable) = false];
+	required uint64 PrevIndex  =  7 [(gogoproto.nullable) = false];
+	required bool   PrevExist  =  8 [(gogoproto.nullable) = true];
+	required int64  Expiration =  9 [(gogoproto.nullable) = false];
+	required bool   Wait       = 10 [(gogoproto.nullable) = false];
+	required uint64 Since      = 11 [(gogoproto.nullable) = false];
+	required bool   Recursive  = 12 [(gogoproto.nullable) = false];
+	required bool   Sorted     = 13 [(gogoproto.nullable) = false];
+	required bool   Quorum     = 14 [(gogoproto.nullable) = false];
+	required int64  Time       = 15 [(gogoproto.nullable) = false];
+	required bool   Stream     = 16 [(gogoproto.nullable) = false];
 }

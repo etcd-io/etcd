@@ -257,7 +257,7 @@ func parseRequest(r *http.Request, id int64) (etcdserverpb.Request, error) {
 	}
 
 	rr := etcdserverpb.Request{
-		Id:        id,
+		ID:        id,
 		Method:    r.Method,
 		Path:      p,
 		Val:       r.FormValue("value"),
