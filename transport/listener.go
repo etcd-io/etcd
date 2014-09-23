@@ -51,21 +51,27 @@ func (info TLSInfo) Empty() bool {
 	return info.CertFile == "" && info.KeyFile == ""
 }
 
-// Generates a tls.Config object for a server from the given files.
-func (info TLSInfo) ServerConfig() (*tls.Config, error) {
-	// Both the key and cert must be present.
+func (info TLSInfo) baseConfig() (*tls.Config, error) {
 	if info.KeyFile == "" || info.CertFile == "" {
 		return nil, fmt.Errorf("KeyFile and CertFile must both be present[key: %v, cert: %v]", info.KeyFile, info.CertFile)
 	}
-
-	var cfg tls.Config
 
 	tlsCert, err := tls.LoadX509KeyPair(info.CertFile, info.KeyFile)
 	if err != nil {
 		return nil, err
 	}
 
+	var cfg tls.Config
 	cfg.Certificates = []tls.Certificate{tlsCert}
+	return &cfg, nil
+}
+
+// ServerConfig generates a tls.Config object for use by an HTTP server
+func (info TLSInfo) ServerConfig() (*tls.Config, error) {
+	cfg, err := info.baseConfig()
+	if err != nil {
+		return nil, err
+	}
 
 	if info.CAFile != "" {
 		cfg.ClientAuth = tls.RequireAndVerifyClientCert
@@ -78,7 +84,26 @@ func (info TLSInfo) ServerConfig() (*tls.Config, error) {
 		cfg.ClientAuth = tls.NoClientCert
 	}
 
-	return &cfg, nil
+	return cfg, nil
+}
+
+// ClientConfig generates a tls.Config object for use by an HTTP client
+func (info TLSInfo) ClientConfig() (*tls.Config, error) {
+	cfg, err := info.baseConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	if info.CAFile != "" {
+		cp, err := newCertPool(info.CAFile)
+		if err != nil {
+			return nil, err
+		}
+
+		cfg.RootCAs = cp
+	}
+
+	return cfg, nil
 }
 
 // newCertPool creates x509 certPool with provided CA file
