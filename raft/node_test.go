@@ -18,7 +18,8 @@ func TestNodeStep(t *testing.T) {
 			propc: make(chan raftpb.Message, 1),
 			recvc: make(chan raftpb.Message, 1),
 		}
-		n.Step(context.TODO(), raftpb.Message{Type: int64(i)})
+		msgt := int64(i)
+		n.Step(context.TODO(), raftpb.Message{Type: msgt})
 		// Proposal goes to proc chan. Others go to recvc chan.
 		if int64(i) == msgProp {
 			select {
@@ -27,10 +28,18 @@ func TestNodeStep(t *testing.T) {
 				t.Errorf("%d: cannot receive %s on propc chan", i, mtmap[i])
 			}
 		} else {
-			select {
-			case <-n.recvc:
-			default:
-				t.Errorf("%d: cannot receive %s on recvc chan", i, mtmap[i])
+			if msgt == msgBeat || msgt == msgHup {
+				select {
+				case <-n.recvc:
+					t.Errorf("%d: step should ignore msgHub/msgBeat", i, mtmap[i])
+				default:
+				}
+			} else {
+				select {
+				case <-n.recvc:
+				default:
+					t.Errorf("%d: cannot receive %s on recvc chan", i, mtmap[i])
+				}
 			}
 		}
 	}
