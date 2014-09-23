@@ -13,8 +13,8 @@ message Info {
 }
 
 enum EntryType {
-	EntryNormal       = 0;
-	EntryConfigChange = 1;
+	EntryNormal     = 0;
+	EntryConfChange = 1;
 }
 
 message Entry {
@@ -49,14 +49,14 @@ message HardState {
 	required int64 commit = 3 [(gogoproto.nullable) = false];
 }
 
-enum ConfigChangeType {
-	ConfigChangeAddNode    = 0;
-	ConfigChangeRemoveNode = 1;
+enum ConfChangeType {
+	ConfChangeAddNode    = 0;
+	ConfChangeRemoveNode = 1;
 }
 
-message ConfigChange {
-	required int64            ID      = 1 [(gogoproto.nullable) = false];
-	required ConfigChangeType Type    = 2 [(gogoproto.nullable) = false];
-	required int64            NodeID  = 3 [(gogoproto.nullable) = false];
-	optional bytes            Context = 4 [(gogoproto.nullable) = false];
+message ConfChange {
+	required int64          ID      = 1 [(gogoproto.nullable) = false];
+	required ConfChangeType Type    = 2 [(gogoproto.nullable) = false];
+	required int64          NodeID  = 3 [(gogoproto.nullable) = false];
+	optional bytes          Context = 4 [(gogoproto.nullable) = false];
 }

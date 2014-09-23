@@ -596,7 +596,7 @@ func TestRecvSlowSnapshot(t *testing.T) {
 
 // TestAddNode tests AddNode could propose and perform node addition.
 func TestAddNode(t *testing.T) {
-	n := newNodeConfigChangeCommitterRecorder()
+	n := newNodeConfChangeCommitterRecorder()
 	s := &EtcdServer{
 		Node:    n,
 		Store:   &storeRecorder{},
@@ -608,7 +608,7 @@ func TestAddNode(t *testing.T) {
 	action := n.Action()
 	s.Stop()
 
-	waction := []string{"ProposeConfigChange:ConfigChangeAddNode", "ApplyConfigChange:ConfigChangeAddNode"}
+	waction := []string{"ProposeConfChange:ConfChangeAddNode", "ApplyConfChange:ConfChangeAddNode"}
 	if !reflect.DeepEqual(action, waction) {
 		t.Errorf("action = %v, want %v", action, waction)
 	}
@@ -616,7 +616,7 @@ func TestAddNode(t *testing.T) {
 
 // TestRemoveNode tests RemoveNode could propose and perform node removal.
 func TestRemoveNode(t *testing.T) {
-	n := newNodeConfigChangeCommitterRecorder()
+	n := newNodeConfChangeCommitterRecorder()
 	s := &EtcdServer{
 		Node:    n,
 		Store:   &storeRecorder{},
@@ -628,7 +628,7 @@ func TestRemoveNode(t *testing.T) {
 	action := n.Action()
 	s.Stop()
 
-	waction := []string{"ProposeConfigChange:ConfigChangeRemoveNode", "ApplyConfigChange:ConfigChangeRemoveNode"}
+	waction := []string{"ProposeConfChange:ConfChangeRemoveNode", "ApplyConfChange:ConfChangeRemoveNode"}
 	if !reflect.DeepEqual(action, waction) {
 		t.Errorf("action = %v, want %v", action, waction)
 	}
@@ -805,12 +805,12 @@ func newReadyNode() *readyNode {
 func (n *readyNode) Tick()                                          {}
 func (n *readyNode) Campaign(ctx context.Context) error             { return nil }
 func (n *readyNode) Propose(ctx context.Context, data []byte) error { return nil }
-func (n *readyNode) ProposeConfigChange(ctx context.Context, conf raftpb.ConfigChange) error {
+func (n *readyNode) ProposeConfChange(ctx context.Context, conf raftpb.ConfChange) error {
 	return nil
 }
 func (n *readyNode) Step(ctx context.Context, msg raftpb.Message) error { return nil }
 func (n *readyNode) Ready() <-chan raft.Ready                           { return n.readyc }
-func (n *readyNode) ApplyConfigChange(conf raftpb.ConfigChange)         {}
+func (n *readyNode) ApplyConfChange(conf raftpb.ConfChange)             {}
 func (n *readyNode) Stop()                                              {}
 func (n *readyNode) Compact(d []byte)                                   {}
 
@@ -829,8 +829,8 @@ func (n *nodeRecorder) Propose(ctx context.Context, data []byte) error {
 	n.record("Propose")
 	return nil
 }
-func (n *nodeRecorder) ProposeConfigChange(ctx context.Context, conf raftpb.ConfigChange) error {
-	n.record("ProposeConfigChange")
+func (n *nodeRecorder) ProposeConfChange(ctx context.Context, conf raftpb.ConfChange) error {
+	n.record("ProposeConfChange")
 	return nil
 }
 func (n *nodeRecorder) Step(ctx context.Context, msg raftpb.Message) error {
@@ -838,8 +838,8 @@ func (n *nodeRecorder) Step(ctx context.Context, msg raftpb.Message) error {
 	return nil
 }
 func (n *nodeRecorder) Ready() <-chan raft.Ready { return nil }
-func (n *nodeRecorder) ApplyConfigChange(conf raftpb.ConfigChange) {
-	n.record("ApplyConfigChange")
+func (n *nodeRecorder) ApplyConfChange(conf raftpb.ConfChange) {
+	n.record("ApplyConfChange")
 }
 func (n *nodeRecorder) Stop() {
 	n.record("Stop")
@@ -878,28 +878,28 @@ func (n *nodeProposalBlockerRecorder) Propose(ctx context.Context, data []byte) 
 	return nil
 }
 
-type nodeConfigChangeCommitterRecorder struct {
+type nodeConfChangeCommitterRecorder struct {
 	nodeRecorder
 	readyc chan raft.Ready
 }
 
-func newNodeConfigChangeCommitterRecorder() *nodeConfigChangeCommitterRecorder {
+func newNodeConfChangeCommitterRecorder() *nodeConfChangeCommitterRecorder {
 	readyc := make(chan raft.Ready, 1)
 	readyc <- raft.Ready{SoftState: &raft.SoftState{RaftState: raft.StateLeader}}
-	return &nodeConfigChangeCommitterRecorder{readyc: readyc}
+	return &nodeConfChangeCommitterRecorder{readyc: readyc}
 }
-func (n *nodeConfigChangeCommitterRecorder) ProposeConfigChange(ctx context.Context, conf raftpb.ConfigChange) error {
+func (n *nodeConfChangeCommitterRecorder) ProposeConfChange(ctx context.Context, conf raftpb.ConfChange) error {
 	data, err := conf.Marshal()
 	if err != nil {
 		return err
 	}
-	n.readyc <- raft.Ready{CommittedEntries: []raftpb.Entry{{Type: raftpb.EntryConfigChange, Data: data}}}
-	n.record("ProposeConfigChange:" + conf.Type.String())
+	n.readyc <- raft.Ready{CommittedEntries: []raftpb.Entry{{Type: raftpb.EntryConfChange, Data: data}}}
+	n.record("ProposeConfChange:" + conf.Type.String())
 	return nil
 }
-func (n *nodeConfigChangeCommitterRecorder) Ready() <-chan raft.Ready {
+func (n *nodeConfChangeCommitterRecorder) Ready() <-chan raft.Ready {
 	return n.readyc
 }
-func (n *nodeConfigChangeCommitterRecorder) ApplyConfigChange(conf raftpb.ConfigChange) {
-	n.record("ApplyConfigChange:" + conf.Type.String())
+func (n *nodeConfChangeCommitterRecorder) ApplyConfChange(conf raftpb.ConfChange) {
+	n.record("ApplyConfChange:" + conf.Type.String())
 }

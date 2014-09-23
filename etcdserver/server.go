@@ -128,12 +128,12 @@ func (s *EtcdServer) run() {
 						panic("TODO: this is bad, what do we do about it?")
 					}
 					s.w.Trigger(r.Id, s.apply(r))
-				case raftpb.EntryConfigChange:
-					var cc raftpb.ConfigChange
+				case raftpb.EntryConfChange:
+					var cc raftpb.ConfChange
 					if err := cc.Unmarshal(e.Data); err != nil {
 						panic("TODO: this is bad, what do we do about it?")
 					}
-					s.Node.ApplyConfigChange(cc)
+					s.Node.ApplyConfChange(cc)
 					s.w.Trigger(cc.ID, nil)
 				default:
 					panic("unexpected entry type")
@@ -231,9 +231,9 @@ func (s *EtcdServer) Do(ctx context.Context, r pb.Request) (Response, error) {
 }
 
 func (s *EtcdServer) AddNode(ctx context.Context, id int64, context []byte) error {
-	cc := raftpb.ConfigChange{
+	cc := raftpb.ConfChange{
 		ID:      GenID(),
-		Type:    raftpb.ConfigChangeAddNode,
+		Type:    raftpb.ConfChangeAddNode,
 		NodeID:  id,
 		Context: context,
 	}
@@ -241,9 +241,9 @@ func (s *EtcdServer) AddNode(ctx context.Context, id int64, context []byte) erro
 }
 
 func (s *EtcdServer) RemoveNode(ctx context.Context, id int64) error {
-	cc := raftpb.ConfigChange{
+	cc := raftpb.ConfChange{
 		ID:     GenID(),
-		Type:   raftpb.ConfigChangeRemoveNode,
+		Type:   raftpb.ConfChangeRemoveNode,
 		NodeID: id,
 	}
 	return s.configure(ctx, cc)
@@ -251,9 +251,9 @@ func (s *EtcdServer) RemoveNode(ctx context.Context, id int64) error {
 
 // configure sends configuration change through consensus then performs it.
 // It will block until the change is performed or there is an error.
-func (s *EtcdServer) configure(ctx context.Context, cc raftpb.ConfigChange) error {
+func (s *EtcdServer) configure(ctx context.Context, cc raftpb.ConfChange) error {
 	ch := s.w.Register(cc.ID)
-	if err := s.Node.ProposeConfigChange(ctx, cc); err != nil {
+	if err := s.Node.ProposeConfChange(ctx, cc); err != nil {
 		log.Printf("configure error: %v", err)
 		s.w.Trigger(cc.ID, nil)
 		return err

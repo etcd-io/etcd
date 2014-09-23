@@ -64,16 +64,16 @@ data, serialize it into a byte slice and call:
 If the proposal is committed, data will appear in committed entries with type
 raftpb.EntryNormal.
 
-To add or remove node in a cluster, build ConfigChange struct 'cc' and call:
+To add or remove node in a cluster, build ConfChange struct 'cc' and call:
 
-	n.ProposeConfigChange(ctx, cc)
+	n.ProposeConfChange(ctx, cc)
 
 After config change is committed, some committed entry with type
-raftpb.EntryConfigChange will be returned. You should apply it to node through:
+raftpb.EntryConfChange will be returned. You should apply it to node through:
 
-	var cc raftpb.ConfigChange
+	var cc raftpb.ConfChange
 	cc.Unmarshal(data)
-	n.ApplyConfigChange(cc)
+	n.ApplyConfChange(cc)
 
 */
 package raft

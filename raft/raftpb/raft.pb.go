@@ -14,7 +14,7 @@
 		Snapshot
 		Message
 		HardState
-		ConfigChange
+		ConfChange
 */
 package raftpb
 
@@ -35,17 +35,17 @@ var _ = math.Inf
 type EntryType int32
 
 const (
-	EntryNormal       EntryType = 0
-	EntryConfigChange EntryType = 1
+	EntryNormal     EntryType = 0
+	EntryConfChange EntryType = 1
 )
 
 var EntryType_name = map[int32]string{
 	0: "EntryNormal",
-	1: "EntryConfigChange",
+	1: "EntryConfChange",
 }
 var EntryType_value = map[string]int32{
-	"EntryNormal":       0,
-	"EntryConfigChange": 1,
+	"EntryNormal":     0,
+	"EntryConfChange": 1,
 }
 
 func (x EntryType) Enum() *EntryType {
@@ -65,36 +65,36 @@ func (x *EntryType) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-type ConfigChangeType int32
+type ConfChangeType int32
 
 const (
-	ConfigChangeAddNode    ConfigChangeType = 0
-	ConfigChangeRemoveNode ConfigChangeType = 1
+	ConfChangeAddNode    ConfChangeType = 0
+	ConfChangeRemoveNode ConfChangeType = 1
 )
 
-var ConfigChangeType_name = map[int32]string{
-	0: "ConfigChangeAddNode",
-	1: "ConfigChangeRemoveNode",
+var ConfChangeType_name = map[int32]string{
+	0: "ConfChangeAddNode",
+	1: "ConfChangeRemoveNode",
 }
-var ConfigChangeType_value = map[string]int32{
-	"ConfigChangeAddNode":    0,
-	"ConfigChangeRemoveNode": 1,
+var ConfChangeType_value = map[string]int32{
+	"ConfChangeAddNode":    0,
+	"ConfChangeRemoveNode": 1,
 }
 
-func (x ConfigChangeType) Enum() *ConfigChangeType {
-	p := new(ConfigChangeType)
+func (x ConfChangeType) Enum() *ConfChangeType {
+	p := new(ConfChangeType)
 	*p = x
 	return p
 }
-func (x ConfigChangeType) String() string {
-	return proto.EnumName(ConfigChangeType_name, int32(x))
+func (x ConfChangeType) String() string {
+	return proto.EnumName(ConfChangeType_name, int32(x))
 }
-func (x *ConfigChangeType) UnmarshalJSON(data []byte) error {
-	value, err := proto.UnmarshalJSONEnum(ConfigChangeType_value, data, "ConfigChangeType")
+func (x *ConfChangeType) UnmarshalJSON(data []byte) error {
+	value, err := proto.UnmarshalJSONEnum(ConfChangeType_value, data, "ConfChangeType")
 	if err != nil {
 		return err
 	}
-	*x = ConfigChangeType(value)
+	*x = ConfChangeType(value)
 	return nil
 }
 
@@ -159,21 +159,21 @@ func (m *HardState) Reset()         { *m = HardState{} }
 func (m *HardState) String() string { return proto.CompactTextString(m) }
 func (*HardState) ProtoMessage()    {}
 
-type ConfigChange struct {
-	ID               int64            `protobuf:"varint,1,req" json:"ID"`
-	Type             ConfigChangeType `protobuf:"varint,2,req,enum=raftpb.ConfigChangeType" json:"Type"`
-	NodeID           int64            `protobuf:"varint,3,req" json:"NodeID"`
-	Context          []byte           `protobuf:"bytes,4,opt" json:"Context"`
-	XXX_unrecognized []byte           `json:"-"`
+type ConfChange struct {
+	ID               int64          `protobuf:"varint,1,req" json:"ID"`
+	Type             ConfChangeType `protobuf:"varint,2,req,enum=raftpb.ConfChangeType" json:"Type"`
+	NodeID           int64          `protobuf:"varint,3,req" json:"NodeID"`
+	Context          []byte         `protobuf:"bytes,4,opt" json:"Context"`
+	XXX_unrecognized []byte         `json:"-"`
 }
 
-func (m *ConfigChange) Reset()         { *m = ConfigChange{} }
-func (m *ConfigChange) String() string { return proto.CompactTextString(m) }
-func (*ConfigChange) ProtoMessage()    {}
+func (m *ConfChange) Reset()         { *m = ConfChange{} }
+func (m *ConfChange) String() string { return proto.CompactTextString(m) }
+func (*ConfChange) ProtoMessage()    {}
 
 func init() {
 	proto.RegisterEnum("raftpb.EntryType", EntryType_name, EntryType_value)
-	proto.RegisterEnum("raftpb.ConfigChangeType", ConfigChangeType_name, ConfigChangeType_value)
+	proto.RegisterEnum("raftpb.ConfChangeType", ConfChangeType_name, ConfChangeType_value)
 }
 func (m *Info) Unmarshal(data []byte) error {
 	l := len(data)
@@ -733,7 +733,7 @@ func (m *HardState) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *ConfigChange) Unmarshal(data []byte) error {
+func (m *ConfChange) Unmarshal(data []byte) error {
 	l := len(data)
 	index := 0
 	for index < l {
@@ -777,7 +777,7 @@ func (m *ConfigChange) Unmarshal(data []byte) error {
 				}
 				b := data[index]
 				index++
-				m.Type |= (ConfigChangeType(b) & 0x7F) << shift
+				m.Type |= (ConfChangeType(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -915,7 +915,7 @@ func (m *HardState) Size() (n int) {
 	}
 	return n
 }
-func (m *ConfigChange) Size() (n int) {
+func (m *ConfChange) Size() (n int) {
 	var l int
 	_ = l
 	n += 1 + sovRaft(uint64(m.ID))
@@ -1131,7 +1131,7 @@ func (m *HardState) MarshalTo(data []byte) (n int, err error) {
 	}
 	return i, nil
 }
-func (m *ConfigChange) Marshal() (data []byte, err error) {
+func (m *ConfChange) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
 	n, err := m.MarshalTo(data)
@@ -1141,7 +1141,7 @@ func (m *ConfigChange) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *ConfigChange) MarshalTo(data []byte) (n int, err error) {
+func (m *ConfChange) MarshalTo(data []byte) (n int, err error) {
 	var i int
 	_ = i
 	var l int

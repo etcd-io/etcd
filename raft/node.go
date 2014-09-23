@@ -80,18 +80,18 @@ type Node interface {
 	Campaign(ctx context.Context) error
 	// Propose proposes that data be appended to the log.
 	Propose(ctx context.Context, data []byte) error
-	// ProposeConfigChange proposes config change.
-	// At most one ConfigChange can be in the process of going through consensus.
-	// Application needs to call ApplyConfigChange when applying EntryConfigChange type entry.
-	ProposeConfigChange(ctx context.Context, cc pb.ConfigChange) error
+	// ProposeConfChange proposes config change.
+	// At most one ConfChange can be in the process of going through consensus.
+	// Application needs to call ApplyConfChange when applying EntryConfChange type entry.
+	ProposeConfChange(ctx context.Context, cc pb.ConfChange) error
 	// Step advances the state machine using the given message. ctx.Err() will be returned, if any.
 	Step(ctx context.Context, msg pb.Message) error
 	// Ready returns a channel that returns the current point-in-time state
 	Ready() <-chan Ready
-	// ApplyConfigChange applies config change to the local node.
+	// ApplyConfChange applies config change to the local node.
 	// TODO: reject existing node when add node
 	// TODO: reject non-existant node when remove node
-	ApplyConfigChange(cc pb.ConfigChange)
+	ApplyConfChange(cc pb.ConfChange)
 	// Stop performs any necessary termination of the Node
 	Stop()
 	// Compact
@@ -127,7 +127,7 @@ type node struct {
 	propc    chan pb.Message
 	recvc    chan pb.Message
 	compactc chan []byte
-	confc    chan pb.ConfigChange
+	confc    chan pb.ConfChange
 	readyc   chan Ready
 	tickc    chan struct{}
 	done     chan struct{}
@@ -138,7 +138,7 @@ func newNode() node {
 		propc:    make(chan pb.Message),
 		recvc:    make(chan pb.Message),
 		compactc: make(chan []byte),
-		confc:    make(chan pb.ConfigChange),
+		confc:    make(chan pb.ConfChange),
 		readyc:   make(chan Ready),
 		tickc:    make(chan struct{}),
 		done:     make(chan struct{}),
@@ -189,9 +189,9 @@ func (n *node) run(r *raft) {
 			r.compact(d)
 		case cc := <-n.confc:
 			switch cc.Type {
-			case pb.ConfigChangeAddNode:
+			case pb.ConfChangeAddNode:
 				r.addNode(cc.NodeID)
-			case pb.ConfigChangeRemoveNode:
+			case pb.ConfChangeRemoveNode:
 				r.removeNode(cc.NodeID)
 			default:
 				panic("unexpected conf type")
@@ -238,12 +238,12 @@ func (n *node) Propose(ctx context.Context, data []byte) error {
 	return n.Step(ctx, pb.Message{Type: msgProp, Entries: []pb.Entry{{Data: data}}})
 }
 
-func (n *node) ProposeConfigChange(ctx context.Context, cc pb.ConfigChange) error {
+func (n *node) ProposeConfChange(ctx context.Context, cc pb.ConfChange) error {
 	data, err := cc.Marshal()
 	if err != nil {
 		return err
 	}
-	return n.Step(ctx, pb.Message{Type: msgProp, Entries: []pb.Entry{{Type: pb.EntryConfigChange, Data: data}}})
+	return n.Step(ctx, pb.Message{Type: msgProp, Entries: []pb.Entry{{Type: pb.EntryConfChange, Data: data}}})
 }
 
 // Step advances the state machine using msgs. The ctx.Err() will be returned,
@@ -268,7 +268,7 @@ func (n *node) Ready() <-chan Ready {
 	return n.readyc
 }
 
-func (n *node) ApplyConfigChange(cc pb.ConfigChange) {
+func (n *node) ApplyConfChange(cc pb.ConfChange) {
 	select {
 	case n.confc <- cc:
 	case <-n.done:
