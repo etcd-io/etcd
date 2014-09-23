@@ -1,6 +1,7 @@
 package transport
 
 import (
+	"crypto/tls"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -211,6 +212,103 @@ func TestTLSInfoEmpty(t *testing.T) {
 		got := tt.info.Empty()
 		if tt.want != got {
 			t.Errorf("#%d: result of Empty() incorrect: want=%t got=%t", i, tt.want, got)
+		}
+	}
+}
+
+func TestTLSInfoMissingFields(t *testing.T) {
+	fCA, err := createTempFile(TLSCA)
+	if err != nil {
+		t.Fatalf("Unable to prepare TLS CA tmpfile: %v", err)
+	}
+	defer os.Remove(fCA)
+
+	fCert, err := createTempFile(TLSCert)
+	if err != nil {
+		t.Fatalf("Unable to prepare TLS cert tmpfile: %v", err)
+	}
+	defer os.Remove(fCert)
+
+	fKey, err := createTempFile(TLSKey)
+	if err != nil {
+		t.Fatalf("Unable to prepare TLS key tmpfile: %v", err)
+	}
+	defer os.Remove(fKey)
+
+	tests := []TLSInfo{
+		TLSInfo{},
+		TLSInfo{CAFile: fCA},
+		TLSInfo{CertFile: fCert},
+		TLSInfo{KeyFile: fKey},
+		TLSInfo{CertFile: fCert, CAFile: fCA},
+		TLSInfo{KeyFile: fKey, CAFile: fCA},
+	}
+
+	for i, info := range tests {
+		if _, err := info.ServerConfig(); err == nil {
+			t.Errorf("#%d: expected non-nil error from ServerConfig()", i)
+		}
+
+		if _, err = info.ClientConfig(); err == nil {
+			t.Errorf("#%d: expected non-nil error from ClientConfig()", i)
+		}
+	}
+}
+
+func TestTLSInfoConfigFuncs(t *testing.T) {
+	fCA, err := createTempFile(TLSCA)
+	if err != nil {
+		t.Fatalf("Unable to prepare TLS CA tmpfile: %v", err)
+	}
+	defer os.Remove(fCA)
+
+	fCert, err := createTempFile(TLSCert)
+	if err != nil {
+		t.Fatalf("Unable to prepare TLS cert tmpfile: %v", err)
+	}
+	defer os.Remove(fCert)
+
+	fKey, err := createTempFile(TLSKey)
+	if err != nil {
+		t.Fatalf("Unable to prepare TLS key tmpfile: %v", err)
+	}
+	defer os.Remove(fKey)
+
+	tests := []struct {
+		info       TLSInfo
+		clientAuth tls.ClientAuthType
+		wantCAs    bool
+	}{
+		{
+			info:       TLSInfo{CertFile: fCert, KeyFile: fKey},
+			clientAuth: tls.NoClientCert,
+			wantCAs:    false,
+		},
+
+		{
+			info:       TLSInfo{CertFile: fCert, KeyFile: fKey, CAFile: fCA},
+			clientAuth: tls.RequireAndVerifyClientCert,
+			wantCAs:    true,
+		},
+	}
+
+	for i, tt := range tests {
+		sCfg, err := tt.info.ServerConfig()
+		if err != nil {
+			t.Errorf("#%d: expected nil error from ServerConfig(), got non-nil: %v", i, err)
+		}
+
+		if tt.wantCAs != (sCfg.ClientCAs != nil) {
+			t.Errorf("%#d: wantCAs=%t but ClientCAs=%v", i, tt.wantCAs, sCfg.ClientCAs)
+		}
+
+		cCfg, err := tt.info.ClientConfig()
+		if err != nil {
+			t.Errorf("#%d: expected nil error from ClientConfig(), got non-nil: %v", i, err)
+		}
+
+		if tt.wantCAs != (cCfg.RootCAs != nil) {
+			t.Errorf("%#d: wantCAs=%t but RootCAs=%v", i, tt.wantCAs, sCfg.RootCAs)
 		}
 	}
 }
