@@ -16,24 +16,28 @@ func TestPeers(t *testing.T) {
 		in      string
 		wids    []int64
 		wep     []string
+		waddrs  []string
 		wstring string
 	}{
 		{
 			"1=1.1.1.1",
 			[]int64{1},
 			[]string{"http://1.1.1.1"},
+			[]string{"1.1.1.1"},
 			"1=1.1.1.1",
 		},
 		{
 			"2=2.2.2.2",
 			[]int64{2},
 			[]string{"http://2.2.2.2"},
+			[]string{"2.2.2.2"},
 			"2=2.2.2.2",
 		},
 		{
 			"1=1.1.1.1&1=1.1.1.2&2=2.2.2.2",
 			[]int64{1, 2},
 			[]string{"http://1.1.1.1", "http://1.1.1.2", "http://2.2.2.2"},
+			[]string{"1.1.1.1", "1.1.1.2", "2.2.2.2"},
 			"1=1.1.1.1&1=1.1.1.2&2=2.2.2.2",
 		},
 		{
@@ -41,6 +45,7 @@ func TestPeers(t *testing.T) {
 			[]int64{1, 2, 3, 4},
 			[]string{"http://1.1.1.1", "http://1.1.1.2", "http://2.2.2.2",
 				"http://3.3.3.3", "http://4.4.4.4"},
+			[]string{"1.1.1.1", "1.1.1.2", "2.2.2.2", "3.3.3.3", "4.4.4.4"},
 			"1=1.1.1.1&1=1.1.1.2&2=2.2.2.2&3=3.3.3.3&4=4.4.4.4",
 		},
 	}
@@ -58,6 +63,10 @@ func TestPeers(t *testing.T) {
 		ep := p.Endpoints()
 		if !reflect.DeepEqual(ep, tt.wep) {
 			t.Errorf("#%d: Endpoints=%#v, want %#v", i, ep, tt.wep)
+		}
+		addrs := p.Addrs()
+		if !reflect.DeepEqual(addrs, tt.waddrs) {
+			t.Errorf("#%d: addrs=%#v, want %#v", i, ep, tt.waddrs)
 		}
 		s := p.String()
 		if s != tt.wstring {
@@ -95,13 +104,13 @@ func TestPeersPick(t *testing.T) {
 		3: []string{},
 	}
 	ids := map[string]bool{
-		"http://abc": true,
-		"http://def": true,
-		"http://ghi": true,
-		"http://jkl": true,
-		"http://mno": true,
-		"http://pqr": true,
-		"http://stu": true,
+		"abc": true,
+		"def": true,
+		"ghi": true,
+		"jkl": true,
+		"mno": true,
+		"pqr": true,
+		"stu": true,
 	}
 	for i := 0; i < 1000; i++ {
 		a := ps.Pick(1)
@@ -110,8 +119,8 @@ func TestPeersPick(t *testing.T) {
 			break
 		}
 	}
-	if b := ps.Pick(2); b != "http://xyz" {
-		t.Errorf("id=%q, want %q", b, "http://xyz")
+	if b := ps.Pick(2); b != "xyz" {
+		t.Errorf("id=%q, want %q", b, "xyz")
 	}
 	if c := ps.Pick(3); c != "" {
 		t.Errorf("id=%q, want \"\"", c)
@@ -148,7 +157,7 @@ func TestHttpPost(t *testing.T) {
 	}
 	for i, tt := range tests {
 		ts := httptest.NewServer(tt.h)
-		if g := httpPost(ts.URL, []byte("adsf")); g != tt.w {
+		if g := httpPost(http.DefaultClient, ts.URL, []byte("adsf")); g != tt.w {
 			t.Errorf("#%d: httpPost()=%t, want %t", i, g, tt.w)
 		}
 		if tr.Method != "POST" {
@@ -161,7 +170,7 @@ func TestHttpPost(t *testing.T) {
 		ts.Close()
 	}
 
-	if httpPost("garbage url", []byte("data")) {
+	if httpPost(http.DefaultClient, "garbage url", []byte("data")) {
 		t.Errorf("httpPost with bad URL returned true unexpectedly!")
 	}
 }
@@ -215,7 +224,7 @@ func TestSend(t *testing.T) {
 		ps := Peers{
 			42: []string{strings.TrimPrefix(ts.URL, "http://")},
 		}
-		send(ps, tt.m)
+		send(http.DefaultClient, "http", ps, tt.m)
 
 		if !tt.ok {
 			if tr != nil {

@@ -51,6 +51,7 @@ var (
 	}
 
 	clientTLSInfo = transport.TLSInfo{}
+	peerTLSInfo   = transport.TLSInfo{}
 )
 
 func init() {
@@ -65,6 +66,10 @@ func init() {
 	flag.StringVar(&clientTLSInfo.CAFile, "ca-file", "", "Path to the client server TLS CA file.")
 	flag.StringVar(&clientTLSInfo.CertFile, "cert-file", "", "Path to the client server TLS cert file.")
 	flag.StringVar(&clientTLSInfo.KeyFile, "key-file", "", "Path to the client server TLS key file.")
+
+	flag.StringVar(&peerTLSInfo.CAFile, "peer-ca-file", "", "Path to the peer server TLS CA file.")
+	flag.StringVar(&peerTLSInfo.CertFile, "peer-cert-file", "", "Path to the peer server TLS cert file.")
+	flag.StringVar(&peerTLSInfo.KeyFile, "peer-key-file", "", "Path to the peer server TLS key file.")
 }
 
 func main() {
@@ -151,6 +156,11 @@ func startEtcd() {
 		n = raft.RestartNode(id, peers.IDs(), 10, 1, snapshot, st, ents)
 	}
 
+	pt, err := transport.NewTransport(peerTLSInfo)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	s := &etcdserver.EtcdServer{
 		Store: st,
 		Node:  n,
@@ -158,7 +168,7 @@ func startEtcd() {
 			*wal.WAL
 			*snap.Snapshotter
 		}{w, snapshotter},
-		Send:       etcdhttp.Sender(*peers),
+		Send:       etcdhttp.Sender(pt, *peers),
 		Ticker:     time.Tick(100 * time.Millisecond),
 		SyncTicker: time.Tick(500 * time.Millisecond),
 		SnapCount:  *snapCount,
@@ -174,7 +184,7 @@ func startEtcd() {
 		Info:    cors,
 	}
 
-	l, err := transport.NewListener(*paddr, transport.TLSInfo{})
+	l, err := transport.NewListener(*paddr, peerTLSInfo)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -202,10 +212,16 @@ func startEtcd() {
 
 // startProxy launches an HTTP proxy for client communication which proxies to other etcd nodes.
 func startProxy() {
-	ph, err := proxy.NewHandler((*peers).Endpoints())
+	pt, err := transport.NewTransport(clientTLSInfo)
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	ph, err := proxy.NewHandler(pt, (*peers).Addrs())
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	ph = &CORSHandler{
 		Handler: ph,
 		Info:    cors,
