@@ -16,8 +16,8 @@ var (
 type Client interface {
 	Create(key, value string, ttl time.Duration) (*Response, error)
 	Get(key string) (*Response, error)
-	Watch(key string) Watcher
-	RecursiveWatch(key string) Watcher
+	Watch(key string, idx uint64) Watcher
+	RecursiveWatch(key string, idx uint64) Watcher
 }
 
 type Watcher interface {
@@ -30,7 +30,7 @@ type Response struct {
 	PrevNode *Node  `json:"prevNode"`
 }
 
-type Nodes []Node
+type Nodes []*Node
 type Node struct {
 	Key           string `json:"key"`
 	Value         string `json:"value"`
