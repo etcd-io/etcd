@@ -594,7 +594,7 @@ func TestRecvSlowSnapshot(t *testing.T) {
 	}
 }
 
-// TestAddNode tests AddNode could propose and perform node addition.
+// TestAddNode tests AddNode can propose and perform node addition.
 func TestAddNode(t *testing.T) {
 	n := newNodeConfChangeCommitterRecorder()
 	s := &EtcdServer{
@@ -614,7 +614,7 @@ func TestAddNode(t *testing.T) {
 	}
 }
 
-// TestRemoveNode tests RemoveNode could propose and perform node removal.
+// TestRemoveNode tests RemoveNode can propose and perform node removal.
 func TestRemoveNode(t *testing.T) {
 	n := newNodeConfChangeCommitterRecorder()
 	s := &EtcdServer{
