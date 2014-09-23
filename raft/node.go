@@ -76,14 +76,22 @@ type Node interface {
 	// Tick increments the internal logical clock for the Node by a single tick. Election
 	// timeouts and heartbeat timeouts are in units of ticks.
 	Tick()
-	// Campaign causes the Node to transition to candidate state and start campaigning to become leader
+	// Campaign causes the Node to transition to candidate state and start campaigning to become leader.
 	Campaign(ctx context.Context) error
 	// Propose proposes that data be appended to the log.
 	Propose(ctx context.Context, data []byte) error
+	// ProposeConfChange proposes config change.
+	// At most one ConfChange can be in the process of going through consensus.
+	// Application needs to call ApplyConfChange when applying EntryConfChange type entry.
+	ProposeConfChange(ctx context.Context, cc pb.ConfChange) error
 	// Step advances the state machine using the given message. ctx.Err() will be returned, if any.
 	Step(ctx context.Context, msg pb.Message) error
 	// Ready returns a channel that returns the current point-in-time state
 	Ready() <-chan Ready
+	// ApplyConfChange applies config change to the local node.
+	// TODO: reject existing node when add node
+	// TODO: reject non-existant node when remove node
+	ApplyConfChange(cc pb.ConfChange)
 	// Stop performs any necessary termination of the Node
 	Stop()
 	// Compact
@@ -119,6 +127,7 @@ type node struct {
 	propc    chan pb.Message
 	recvc    chan pb.Message
 	compactc chan []byte
+	confc    chan pb.ConfChange
 	readyc   chan Ready
 	tickc    chan struct{}
 	done     chan struct{}
@@ -129,6 +138,7 @@ func newNode() node {
 		propc:    make(chan pb.Message),
 		recvc:    make(chan pb.Message),
 		compactc: make(chan []byte),
+		confc:    make(chan pb.ConfChange),
 		readyc:   make(chan Ready),
 		tickc:    make(chan struct{}),
 		done:     make(chan struct{}),
@@ -167,6 +177,9 @@ func (n *node) run(r *raft) {
 		}
 
 		select {
+		// TODO: maybe buffer the config propose if there exists one (the way
+		// described in raft dissertation)
+		// Currently it is dropped in Step silently.
 		case m := <-propc:
 			m.From = r.id
 			r.Step(m)
@@ -174,6 +187,15 @@ func (n *node) run(r *raft) {
 			r.Step(m) // raft never returns an error
 		case d := <-n.compactc:
 			r.compact(d)
+		case cc := <-n.confc:
+			switch cc.Type {
+			case pb.ConfChangeAddNode:
+				r.addNode(cc.NodeID)
+			case pb.ConfChangeRemoveNode:
+				r.removeNode(cc.NodeID)
+			default:
+				panic("unexpected conf type")
+			}
 		case <-n.tickc:
 			r.tick()
 		case readyc <- rd:
@@ -186,6 +208,10 @@ func (n *node) run(r *raft) {
 			if !IsEmptySnap(rd.Snapshot) {
 				prevSnapi = rd.Snapshot.Index
 			}
+			// TODO(yichengq): we assume that all committed config
+			// entries will be applied to make things easy for now.
+			// TODO(yichengq): it may have race because applied is set
+			// before entries are applied.
 			r.raftLog.resetNextEnts()
 			r.raftLog.resetUnstable()
 			r.msgs = nil
@@ -212,6 +238,14 @@ func (n *node) Propose(ctx context.Context, data []byte) error {
 	return n.Step(ctx, pb.Message{Type: msgProp, Entries: []pb.Entry{{Data: data}}})
 }
 
+func (n *node) ProposeConfChange(ctx context.Context, cc pb.ConfChange) error {
+	data, err := cc.Marshal()
+	if err != nil {
+		return err
+	}
+	return n.Step(ctx, pb.Message{Type: msgProp, Entries: []pb.Entry{{Type: pb.EntryConfChange, Data: data}}})
+}
+
 // Step advances the state machine using msgs. The ctx.Err() will be returned,
 // if any.
 func (n *node) Step(ctx context.Context, m pb.Message) error {
@@ -232,6 +266,13 @@ func (n *node) Step(ctx context.Context, m pb.Message) error {
 
 func (n *node) Ready() <-chan Ready {
 	return n.readyc
+}
+
+func (n *node) ApplyConfChange(cc pb.ConfChange) {
+	select {
+	case n.confc <- cc:
+	case <-n.done:
+	}
 }
 
 func (n *node) Compact(d []byte) {

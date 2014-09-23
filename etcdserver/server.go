@@ -121,11 +121,23 @@ func (s *EtcdServer) run() {
 			// care to apply entries in a single goroutine, and not
 			// race them.
 			for _, e := range rd.CommittedEntries {
-				var r pb.Request
-				if err := r.Unmarshal(e.Data); err != nil {
-					panic("TODO: this is bad, what do we do about it?")
+				switch e.Type {
+				case raftpb.EntryNormal:
+					var r pb.Request
+					if err := r.Unmarshal(e.Data); err != nil {
+						panic("TODO: this is bad, what do we do about it?")
+					}
+					s.w.Trigger(r.Id, s.apply(r))
+				case raftpb.EntryConfChange:
+					var cc raftpb.ConfChange
+					if err := cc.Unmarshal(e.Data); err != nil {
+						panic("TODO: this is bad, what do we do about it?")
+					}
+					s.Node.ApplyConfChange(cc)
+					s.w.Trigger(cc.ID, nil)
+				default:
+					panic("unexpected entry type")
 				}
-				s.w.Trigger(r.Id, s.apply(r))
 				appliedi = e.Index
 			}
 
@@ -215,6 +227,45 @@ func (s *EtcdServer) Do(ctx context.Context, r pb.Request) (Response, error) {
 		}
 	default:
 		return Response{}, ErrUnknownMethod
+	}
+}
+
+func (s *EtcdServer) AddNode(ctx context.Context, id int64, context []byte) error {
+	cc := raftpb.ConfChange{
+		ID:      GenID(),
+		Type:    raftpb.ConfChangeAddNode,
+		NodeID:  id,
+		Context: context,
+	}
+	return s.configure(ctx, cc)
+}
+
+func (s *EtcdServer) RemoveNode(ctx context.Context, id int64) error {
+	cc := raftpb.ConfChange{
+		ID:     GenID(),
+		Type:   raftpb.ConfChangeRemoveNode,
+		NodeID: id,
+	}
+	return s.configure(ctx, cc)
+}
+
+// configure sends configuration change through consensus then performs it.
+// It will block until the change is performed or there is an error.
+func (s *EtcdServer) configure(ctx context.Context, cc raftpb.ConfChange) error {
+	ch := s.w.Register(cc.ID)
+	if err := s.Node.ProposeConfChange(ctx, cc); err != nil {
+		log.Printf("configure error: %v", err)
+		s.w.Trigger(cc.ID, nil)
+		return err
+	}
+	select {
+	case <-ch:
+		return nil
+	case <-ctx.Done():
+		s.w.Trigger(cc.ID, nil) // GC wait
+		return ctx.Err()
+	case <-s.done:
+		return ErrStopped
 	}
 }
 

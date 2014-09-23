@@ -14,6 +14,7 @@
 		Snapshot
 		Message
 		HardState
+		ConfChange
 */
 package raftpb
 
@@ -31,6 +32,72 @@ var _ = proto.Marshal
 var _ = &json.SyntaxError{}
 var _ = math.Inf
 
+type EntryType int32
+
+const (
+	EntryNormal     EntryType = 0
+	EntryConfChange EntryType = 1
+)
+
+var EntryType_name = map[int32]string{
+	0: "EntryNormal",
+	1: "EntryConfChange",
+}
+var EntryType_value = map[string]int32{
+	"EntryNormal":     0,
+	"EntryConfChange": 1,
+}
+
+func (x EntryType) Enum() *EntryType {
+	p := new(EntryType)
+	*p = x
+	return p
+}
+func (x EntryType) String() string {
+	return proto.EnumName(EntryType_name, int32(x))
+}
+func (x *EntryType) UnmarshalJSON(data []byte) error {
+	value, err := proto.UnmarshalJSONEnum(EntryType_value, data, "EntryType")
+	if err != nil {
+		return err
+	}
+	*x = EntryType(value)
+	return nil
+}
+
+type ConfChangeType int32
+
+const (
+	ConfChangeAddNode    ConfChangeType = 0
+	ConfChangeRemoveNode ConfChangeType = 1
+)
+
+var ConfChangeType_name = map[int32]string{
+	0: "ConfChangeAddNode",
+	1: "ConfChangeRemoveNode",
+}
+var ConfChangeType_value = map[string]int32{
+	"ConfChangeAddNode":    0,
+	"ConfChangeRemoveNode": 1,
+}
+
+func (x ConfChangeType) Enum() *ConfChangeType {
+	p := new(ConfChangeType)
+	*p = x
+	return p
+}
+func (x ConfChangeType) String() string {
+	return proto.EnumName(ConfChangeType_name, int32(x))
+}
+func (x *ConfChangeType) UnmarshalJSON(data []byte) error {
+	value, err := proto.UnmarshalJSONEnum(ConfChangeType_value, data, "ConfChangeType")
+	if err != nil {
+		return err
+	}
+	*x = ConfChangeType(value)
+	return nil
+}
+
 type Info struct {
 	Id               int64  `protobuf:"varint,1,req,name=id" json:"id"`
 	XXX_unrecognized []byte `json:"-"`
@@ -41,10 +108,11 @@ func (m *Info) String() string { return proto.CompactTextString(m) }
 func (*Info) ProtoMessage()    {}
 
 type Entry struct {
-	Term             int64  `protobuf:"varint,2,req,name=term" json:"term"`
-	Index            int64  `protobuf:"varint,3,req,name=index" json:"index"`
-	Data             []byte `protobuf:"bytes,4,opt,name=data" json:"data"`
-	XXX_unrecognized []byte `json:"-"`
+	Type             EntryType `protobuf:"varint,1,req,enum=raftpb.EntryType" json:"Type"`
+	Term             int64     `protobuf:"varint,2,req" json:"Term"`
+	Index            int64     `protobuf:"varint,3,req" json:"Index"`
+	Data             []byte    `protobuf:"bytes,4,opt" json:"Data"`
+	XXX_unrecognized []byte    `json:"-"`
 }
 
 func (m *Entry) Reset()         { *m = Entry{} }
@@ -91,7 +159,21 @@ func (m *HardState) Reset()         { *m = HardState{} }
 func (m *HardState) String() string { return proto.CompactTextString(m) }
 func (*HardState) ProtoMessage()    {}
 
+type ConfChange struct {
+	ID               int64          `protobuf:"varint,1,req" json:"ID"`
+	Type             ConfChangeType `protobuf:"varint,2,req,enum=raftpb.ConfChangeType" json:"Type"`
+	NodeID           int64          `protobuf:"varint,3,req" json:"NodeID"`
+	Context          []byte         `protobuf:"bytes,4,opt" json:"Context"`
+	XXX_unrecognized []byte         `json:"-"`
+}
+
+func (m *ConfChange) Reset()         { *m = ConfChange{} }
+func (m *ConfChange) String() string { return proto.CompactTextString(m) }
+func (*ConfChange) ProtoMessage()    {}
+
 func init() {
+	proto.RegisterEnum("raftpb.EntryType", EntryType_name, EntryType_value)
+	proto.RegisterEnum("raftpb.ConfChangeType", ConfChangeType_name, ConfChangeType_value)
 }
 func (m *Info) Unmarshal(data []byte) error {
 	l := len(data)
@@ -169,6 +251,21 @@ func (m *Entry) Unmarshal(data []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return code_google_com_p_gogoprotobuf_proto.ErrWrongType
+			}
+			for shift := uint(0); ; shift += 7 {
+				if index >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[index]
+				index++
+				m.Type |= (EntryType(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
 		case 2:
 			if wireType != 0 {
 				return code_google_com_p_gogoprotobuf_proto.ErrWrongType
@@ -636,6 +733,115 @@ func (m *HardState) Unmarshal(data []byte) error {
 	}
 	return nil
 }
+func (m *ConfChange) Unmarshal(data []byte) error {
+	l := len(data)
+	index := 0
+	for index < l {
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if index >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[index]
+			index++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return code_google_com_p_gogoprotobuf_proto.ErrWrongType
+			}
+			for shift := uint(0); ; shift += 7 {
+				if index >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[index]
+				index++
+				m.ID |= (int64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 2:
+			if wireType != 0 {
+				return code_google_com_p_gogoprotobuf_proto.ErrWrongType
+			}
+			for shift := uint(0); ; shift += 7 {
+				if index >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[index]
+				index++
+				m.Type |= (ConfChangeType(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 3:
+			if wireType != 0 {
+				return code_google_com_p_gogoprotobuf_proto.ErrWrongType
+			}
+			for shift := uint(0); ; shift += 7 {
+				if index >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[index]
+				index++
+				m.NodeID |= (int64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 4:
+			if wireType != 2 {
+				return code_google_com_p_gogoprotobuf_proto.ErrWrongType
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if index >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[index]
+				index++
+				byteLen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postIndex := index + byteLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Context = append(m.Context, data[index:postIndex]...)
+			index = postIndex
+		default:
+			var sizeOfWire int
+			for {
+				sizeOfWire++
+				wire >>= 7
+				if wire == 0 {
+					break
+				}
+			}
+			index -= sizeOfWire
+			skippy, err := code_google_com_p_gogoprotobuf_proto.Skip(data[index:])
+			if err != nil {
+				return err
+			}
+			if (index + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, data[index:index+skippy]...)
+			index += skippy
+		}
+	}
+	return nil
+}
 func (m *Info) Size() (n int) {
 	var l int
 	_ = l
@@ -648,6 +854,7 @@ func (m *Info) Size() (n int) {
 func (m *Entry) Size() (n int) {
 	var l int
 	_ = l
+	n += 1 + sovRaft(uint64(m.Type))
 	n += 1 + sovRaft(uint64(m.Term))
 	n += 1 + sovRaft(uint64(m.Index))
 	l = len(m.Data)
@@ -708,6 +915,19 @@ func (m *HardState) Size() (n int) {
 	}
 	return n
 }
+func (m *ConfChange) Size() (n int) {
+	var l int
+	_ = l
+	n += 1 + sovRaft(uint64(m.ID))
+	n += 1 + sovRaft(uint64(m.Type))
+	n += 1 + sovRaft(uint64(m.NodeID))
+	l = len(m.Context)
+	n += 1 + l + sovRaft(uint64(l))
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
+	return n
+}
 
 func sovRaft(x uint64) (n int) {
 	for {
@@ -760,6 +980,9 @@ func (m *Entry) MarshalTo(data []byte) (n int, err error) {
 	_ = i
 	var l int
 	_ = l
+	data[i] = 0x8
+	i++
+	i = encodeVarintRaft(data, i, uint64(m.Type))
 	data[i] = 0x10
 	i++
 	i = encodeVarintRaft(data, i, uint64(m.Term))
@@ -903,6 +1126,39 @@ func (m *HardState) MarshalTo(data []byte) (n int, err error) {
 	data[i] = 0x18
 	i++
 	i = encodeVarintRaft(data, i, uint64(m.Commit))
+	if m.XXX_unrecognized != nil {
+		i += copy(data[i:], m.XXX_unrecognized)
+	}
+	return i, nil
+}
+func (m *ConfChange) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *ConfChange) MarshalTo(data []byte) (n int, err error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	data[i] = 0x8
+	i++
+	i = encodeVarintRaft(data, i, uint64(m.ID))
+	data[i] = 0x10
+	i++
+	i = encodeVarintRaft(data, i, uint64(m.Type))
+	data[i] = 0x18
+	i++
+	i = encodeVarintRaft(data, i, uint64(m.NodeID))
+	data[i] = 0x22
+	i++
+	i = encodeVarintRaft(data, i, uint64(len(m.Context)))
+	i += copy(data[i:], m.Context)
 	if m.XXX_unrecognized != nil {
 		i += copy(data[i:], m.XXX_unrecognized)
 	}

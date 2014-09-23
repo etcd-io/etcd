@@ -594,6 +594,46 @@ func TestRecvSlowSnapshot(t *testing.T) {
 	}
 }
 
+// TestAddNode tests AddNode can propose and perform node addition.
+func TestAddNode(t *testing.T) {
+	n := newNodeConfChangeCommitterRecorder()
+	s := &EtcdServer{
+		Node:    n,
+		Store:   &storeRecorder{},
+		Send:    func(_ []raftpb.Message) {},
+		Storage: &storageRecorder{},
+	}
+	s.Start()
+	s.AddNode(context.TODO(), 1, []byte("foo"))
+	action := n.Action()
+	s.Stop()
+
+	waction := []string{"ProposeConfChange:ConfChangeAddNode", "ApplyConfChange:ConfChangeAddNode"}
+	if !reflect.DeepEqual(action, waction) {
+		t.Errorf("action = %v, want %v", action, waction)
+	}
+}
+
+// TestRemoveNode tests RemoveNode can propose and perform node removal.
+func TestRemoveNode(t *testing.T) {
+	n := newNodeConfChangeCommitterRecorder()
+	s := &EtcdServer{
+		Node:    n,
+		Store:   &storeRecorder{},
+		Send:    func(_ []raftpb.Message) {},
+		Storage: &storageRecorder{},
+	}
+	s.Start()
+	s.RemoveNode(context.TODO(), 1)
+	action := n.Action()
+	s.Stop()
+
+	waction := []string{"ProposeConfChange:ConfChangeRemoveNode", "ApplyConfChange:ConfChangeRemoveNode"}
+	if !reflect.DeepEqual(action, waction) {
+		t.Errorf("action = %v, want %v", action, waction)
+	}
+}
+
 // TODO: test wait trigger correctness in multi-server case
 
 func TestGetBool(t *testing.T) {
@@ -762,16 +802,17 @@ func newReadyNode() *readyNode {
 	readyc := make(chan raft.Ready, 1)
 	return &readyNode{readyc: readyc}
 }
-func (n *readyNode) Tick()                                              {}
-func (n *readyNode) Campaign(ctx context.Context) error                 { return nil }
-func (n *readyNode) Propose(ctx context.Context, data []byte) error     { return nil }
-func (n *readyNode) Configure(ctx context.Context, data []byte) error   { return nil }
+func (n *readyNode) Tick()                                          {}
+func (n *readyNode) Campaign(ctx context.Context) error             { return nil }
+func (n *readyNode) Propose(ctx context.Context, data []byte) error { return nil }
+func (n *readyNode) ProposeConfChange(ctx context.Context, conf raftpb.ConfChange) error {
+	return nil
+}
 func (n *readyNode) Step(ctx context.Context, msg raftpb.Message) error { return nil }
 func (n *readyNode) Ready() <-chan raft.Ready                           { return n.readyc }
+func (n *readyNode) ApplyConfChange(conf raftpb.ConfChange)             {}
 func (n *readyNode) Stop()                                              {}
 func (n *readyNode) Compact(d []byte)                                   {}
-func (n *readyNode) AddNode(id int64)                                   {}
-func (n *readyNode) RemoveNode(id int64)                                {}
 
 type nodeRecorder struct {
 	recorder
@@ -788,13 +829,17 @@ func (n *nodeRecorder) Propose(ctx context.Context, data []byte) error {
 	n.record("Propose")
 	return nil
 }
+func (n *nodeRecorder) ProposeConfChange(ctx context.Context, conf raftpb.ConfChange) error {
+	n.record("ProposeConfChange")
+	return nil
+}
 func (n *nodeRecorder) Step(ctx context.Context, msg raftpb.Message) error {
 	n.record("Step")
 	return nil
 }
-func (n *nodeRecorder) Ready() <-chan raft.Ready {
-	n.record("Ready")
-	return nil
+func (n *nodeRecorder) Ready() <-chan raft.Ready { return nil }
+func (n *nodeRecorder) ApplyConfChange(conf raftpb.ConfChange) {
+	n.record("ApplyConfChange")
 }
 func (n *nodeRecorder) Stop() {
 	n.record("Stop")
@@ -831,4 +876,30 @@ func (n *nodeProposalBlockerRecorder) Propose(ctx context.Context, data []byte) 
 	<-ctx.Done()
 	n.record("Propose blocked")
 	return nil
+}
+
+type nodeConfChangeCommitterRecorder struct {
+	nodeRecorder
+	readyc chan raft.Ready
+}
+
+func newNodeConfChangeCommitterRecorder() *nodeConfChangeCommitterRecorder {
+	readyc := make(chan raft.Ready, 1)
+	readyc <- raft.Ready{SoftState: &raft.SoftState{RaftState: raft.StateLeader}}
+	return &nodeConfChangeCommitterRecorder{readyc: readyc}
+}
+func (n *nodeConfChangeCommitterRecorder) ProposeConfChange(ctx context.Context, conf raftpb.ConfChange) error {
+	data, err := conf.Marshal()
+	if err != nil {
+		return err
+	}
+	n.readyc <- raft.Ready{CommittedEntries: []raftpb.Entry{{Type: raftpb.EntryConfChange, Data: data}}}
+	n.record("ProposeConfChange:" + conf.Type.String())
+	return nil
+}
+func (n *nodeConfChangeCommitterRecorder) Ready() <-chan raft.Ready {
+	return n.readyc
+}
+func (n *nodeConfChangeCommitterRecorder) ApplyConfChange(conf raftpb.ConfChange) {
+	n.record("ApplyConfChange:" + conf.Type.String())
 }
