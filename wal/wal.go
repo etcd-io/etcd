@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"hash/crc32"
 	"io"
-	"log"
 	"os"
 	"path"
 	"sort"
@@ -68,7 +67,6 @@ type WAL struct {
 
 // Create creates a WAL ready for appending records.
 func Create(dirpath string) (*WAL, error) {
-	log.Printf("path=%s wal.create", dirpath)
 	if Exist(dirpath) {
 		return nil, os.ErrExist
 	}
@@ -101,7 +99,6 @@ func Create(dirpath string) (*WAL, error) {
 // index. The WAL cannot be appended to before reading out all of its
 // previous records.
 func OpenAtIndex(dirpath string, index int64) (*WAL, error) {
-	log.Printf("path=%s wal.load index=%d", dirpath, index)
 	names, err := readDir(dirpath)
 	if err != nil {
 		return nil, err
@@ -222,8 +219,6 @@ func (w *WAL) Cut() error {
 	w.Sync()
 	w.f.Close()
 
-	log.Printf("wal.cut index=%d prevfile=%s curfile=%s", w.enti, w.f.Name(), f.Name())
-
 	// update writer and save the previous crc
 	w.f = f
 	w.seq++
@@ -242,7 +237,6 @@ func (w *WAL) Sync() error {
 }
 
 func (w *WAL) Close() {
-	log.Printf("path=%s wal.close", w.f.Name())
 	if w.f != nil {
 		w.Sync()
 		w.f.Close()
@@ -250,7 +244,6 @@ func (w *WAL) Close() {
 }
 
 func (w *WAL) SaveInfo(i *raftpb.Info) error {
-	log.Printf("path=%s wal.saveInfo id=%d", w.f.Name(), i.Id)
 	b, err := i.Marshal()
 	if err != nil {
 		panic(err)
@@ -276,7 +269,6 @@ func (w *WAL) SaveState(s *raftpb.HardState) error {
 	if raft.IsEmptyHardState(*s) {
 		return nil
 	}
-	log.Printf("path=%s wal.saveState state=\"%+v\"", w.f.Name(), s)
 	b, err := s.Marshal()
 	if err != nil {
 		panic(err)
