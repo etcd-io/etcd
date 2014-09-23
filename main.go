@@ -151,13 +151,9 @@ func startEtcd() {
 		n = raft.RestartNode(id, peers.IDs(), 10, 1, snapshot, st, ents)
 	}
 
-	pt := &http.Transport{
-		// timeouts copied from http.DefaultTransport
-		Dial: (&net.Dialer{
-			Timeout:   30 * time.Second,
-			KeepAlive: 30 * time.Second,
-		}).Dial,
-		TLSHandshakeTimeout: 10 * time.Second,
+	pt, err := transport.NewTransport()
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	s := &etcdserver.EtcdServer{

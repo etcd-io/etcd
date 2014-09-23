@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net"
+	"net/http"
+	"time"
 )
 
 func NewListener(addr string, info TLSInfo) (net.Listener, error) {
@@ -25,6 +27,18 @@ func NewListener(addr string, info TLSInfo) (net.Listener, error) {
 	}
 
 	return l, nil
+}
+
+func NewTransport() (*http.Transport, error) {
+	t := &http.Transport{
+		// timeouts taken from http.DefaultTransport
+		Dial: (&net.Dialer{
+			Timeout:   30 * time.Second,
+			KeepAlive: 30 * time.Second,
+		}).Dial,
+		TLSHandshakeTimeout: 10 * time.Second,
+	}
+	return t, nil
 }
 
 type TLSInfo struct {
