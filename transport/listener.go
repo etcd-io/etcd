@@ -29,7 +29,7 @@ func NewListener(addr string, info TLSInfo) (net.Listener, error) {
 	return l, nil
 }
 
-func NewTransport() (*http.Transport, error) {
+func NewTransport(info TLSInfo) (*http.Transport, error) {
 	t := &http.Transport{
 		// timeouts taken from http.DefaultTransport
 		Dial: (&net.Dialer{
@@ -38,6 +38,15 @@ func NewTransport() (*http.Transport, error) {
 		}).Dial,
 		TLSHandshakeTimeout: 10 * time.Second,
 	}
+
+	if !info.Empty() {
+		tlsCfg, err := info.ClientConfig()
+		if err != nil {
+			return nil, err
+		}
+		t.TLSClientConfig = tlsCfg
+	}
+
 	return t, nil
 }
 

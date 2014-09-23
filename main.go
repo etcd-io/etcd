@@ -151,7 +151,7 @@ func startEtcd() {
 		n = raft.RestartNode(id, peers.IDs(), 10, 1, snapshot, st, ents)
 	}
 
-	pt, err := transport.NewTransport()
+	pt, err := transport.NewTransport(transport.TLSInfo{})
 	if err != nil {
 		log.Fatal(err)
 	}
