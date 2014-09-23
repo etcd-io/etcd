@@ -85,6 +85,19 @@ func (ps Peers) Endpoints() []string {
 	return endpoints
 }
 
+// Addrs returns a list of all peer addresses. The returned list is sorted
+// in ascending lexicographical order.
+func (ps Peers) Addrs() []string {
+	addrs := make([]string, 0)
+	for _, paddrs := range ps {
+		for _, paddr := range paddrs {
+			addrs = append(addrs, paddr)
+		}
+	}
+	sort.Strings(addrs)
+	return addrs
+}
+
 func Sender(t *http.Transport, p Peers) func(msgs []raftpb.Message) {
 	c := &http.Client{Transport: t}
 

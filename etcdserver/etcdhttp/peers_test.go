@@ -16,24 +16,28 @@ func TestPeers(t *testing.T) {
 		in      string
 		wids    []int64
 		wep     []string
+		waddrs  []string
 		wstring string
 	}{
 		{
 			"1=1.1.1.1",
 			[]int64{1},
 			[]string{"http://1.1.1.1"},
+			[]string{"1.1.1.1"},
 			"1=1.1.1.1",
 		},
 		{
 			"2=2.2.2.2",
 			[]int64{2},
 			[]string{"http://2.2.2.2"},
+			[]string{"2.2.2.2"},
 			"2=2.2.2.2",
 		},
 		{
 			"1=1.1.1.1&1=1.1.1.2&2=2.2.2.2",
 			[]int64{1, 2},
 			[]string{"http://1.1.1.1", "http://1.1.1.2", "http://2.2.2.2"},
+			[]string{"1.1.1.1", "1.1.1.2", "2.2.2.2"},
 			"1=1.1.1.1&1=1.1.1.2&2=2.2.2.2",
 		},
 		{
@@ -41,6 +45,7 @@ func TestPeers(t *testing.T) {
 			[]int64{1, 2, 3, 4},
 			[]string{"http://1.1.1.1", "http://1.1.1.2", "http://2.2.2.2",
 				"http://3.3.3.3", "http://4.4.4.4"},
+			[]string{"1.1.1.1", "1.1.1.2", "2.2.2.2", "3.3.3.3", "4.4.4.4"},
 			"1=1.1.1.1&1=1.1.1.2&2=2.2.2.2&3=3.3.3.3&4=4.4.4.4",
 		},
 	}
@@ -58,6 +63,10 @@ func TestPeers(t *testing.T) {
 		ep := p.Endpoints()
 		if !reflect.DeepEqual(ep, tt.wep) {
 			t.Errorf("#%d: Endpoints=%#v, want %#v", i, ep, tt.wep)
+		}
+		addrs := p.Addrs()
+		if !reflect.DeepEqual(addrs, tt.waddrs) {
+			t.Errorf("#%d: addrs=%#v, want %#v", i, ep, tt.waddrs)
 		}
 		s := p.String()
 		if s != tt.wstring {
