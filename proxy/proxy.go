@@ -5,7 +5,12 @@ import (
 )
 
 func NewHandler(t *http.Transport, addrs []string) (http.Handler, error) {
-	d, err := newDirector("http", addrs)
+	scheme := "http"
+	if t.TLSClientConfig != nil {
+		scheme = "https"
+	}
+
+	d, err := newDirector(scheme, addrs)
 	if err != nil {
 		return nil, err
 	}
