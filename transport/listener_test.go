@@ -191,3 +191,26 @@ func TestNewTransportTLSInfo(t *testing.T) {
 		}
 	}
 }
+
+func TestTLSInfoEmpty(t *testing.T) {
+	tests := []struct {
+		info TLSInfo
+		want bool
+	}{
+		{TLSInfo{}, true},
+		{TLSInfo{CAFile: "baz"}, true},
+		{TLSInfo{CertFile: "foo"}, false},
+		{TLSInfo{KeyFile: "bar"}, false},
+		{TLSInfo{CertFile: "foo", KeyFile: "bar"}, false},
+		{TLSInfo{CertFile: "foo", CAFile: "baz"}, false},
+		{TLSInfo{KeyFile: "bar", CAFile: "baz"}, false},
+		{TLSInfo{CertFile: "foo", KeyFile: "bar", CAFile: "baz"}, false},
+	}
+
+	for i, tt := range tests {
+		got := tt.info.Empty()
+		if tt.want != got {
+			t.Errorf("#%d: result of Empty() incorrect: want=%t got=%t", i, tt.want, got)
+		}
+	}
+}
