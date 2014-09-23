@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -11,7 +12,6 @@ import (
 	"path"
 	"reflect"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
@@ -36,8 +36,12 @@ func mustNewURL(t *testing.T, s string) *url.URL {
 // mustNewRequest takes a path, appends it to the standard keysPrefix, and constructs
 // a GET *http.Request referencing the resulting URL
 func mustNewRequest(t *testing.T, p string) *http.Request {
+	return mustNewMethodRequest(t, "GET", p)
+}
+
+func mustNewMethodRequest(t *testing.T, m, p string) *http.Request {
 	return &http.Request{
-		Method: "GET",
+		Method: m,
 		URL:    mustNewURL(t, path.Join(keysPrefix, p)),
 	}
 }
@@ -99,7 +103,7 @@ func TestBadParseRequest(t *testing.T) {
 			mustNewForm(t, "foo", url.Values{"ttl": []string{"-1"}}),
 			etcdErr.EcodeTTLNaN,
 		},
-		// bad values for recursive, sorted, wait, prevExist
+		// bad values for recursive, sorted, wait, prevExist, stream
 		{
 			mustNewForm(t, "foo", url.Values{"recursive": []string{"hahaha"}}),
 			etcdErr.EcodeInvalidField,
@@ -134,6 +138,19 @@ func TestBadParseRequest(t *testing.T) {
 		},
 		{
 			mustNewForm(t, "foo", url.Values{"prevExist": []string{"#2"}}),
+			etcdErr.EcodeInvalidField,
+		},
+		{
+			mustNewForm(t, "foo", url.Values{"stream": []string{"zzz"}}),
+			etcdErr.EcodeInvalidField,
+		},
+		{
+			mustNewForm(t, "foo", url.Values{"stream": []string{"something"}}),
+			etcdErr.EcodeInvalidField,
+		},
+		// wait is only valid with GET requests
+		{
+			mustNewMethodRequest(t, "HEAD", "foo?wait=true"),
 			etcdErr.EcodeInvalidField,
 		},
 		// query values are considered
@@ -256,14 +273,10 @@ func TestGoodParseRequest(t *testing.T) {
 		},
 		{
 			// wait specified
-			mustNewForm(
-				t,
-				"foo",
-				url.Values{"wait": []string{"true"}},
-			),
+			mustNewRequest(t, "foo?wait=true"),
 			etcdserverpb.Request{
 				Id:     1234,
-				Method: "PUT",
+				Method: "GET",
 				Wait:   true,
 				Path:   "/foo",
 			},
@@ -491,100 +504,6 @@ func (w *dummyWatcher) EventChan() chan *store.Event {
 	return w.echan
 }
 func (w *dummyWatcher) Remove() {}
-
-type dummyResponseWriter struct {
-	cnchan chan bool
-	http.ResponseWriter
-}
-
-func (rw *dummyResponseWriter) CloseNotify() <-chan bool {
-	return rw.cnchan
-}
-
-func TestWaitForEventChan(t *testing.T) {
-	ctx := context.Background()
-	ec := make(chan *store.Event)
-	dw := &dummyWatcher{
-		echan: ec,
-	}
-	w := httptest.NewRecorder()
-	var wg sync.WaitGroup
-	var ev *store.Event
-	var err error
-	wg.Add(1)
-	go func() {
-		ev, err = waitForEvent(ctx, w, dw)
-		wg.Done()
-	}()
-	ec <- &store.Event{
-		Action: store.Get,
-		Node: &store.NodeExtern{
-			Key:           "/foo/bar",
-			ModifiedIndex: 12345,
-		},
-	}
-	wg.Wait()
-	want := &store.Event{
-		Action: store.Get,
-		Node: &store.NodeExtern{
-			Key:           "/foo/bar",
-			ModifiedIndex: 12345,
-		},
-	}
-	if !reflect.DeepEqual(ev, want) {
-		t.Fatalf("bad event: got %#v, want %#v", ev, want)
-	}
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-}
-
-func TestWaitForEventCloseNotify(t *testing.T) {
-	ctx := context.Background()
-	dw := &dummyWatcher{}
-	cnchan := make(chan bool)
-	w := &dummyResponseWriter{
-		cnchan: cnchan,
-	}
-	var wg sync.WaitGroup
-	var ev *store.Event
-	var err error
-	wg.Add(1)
-	go func() {
-		ev, err = waitForEvent(ctx, w, dw)
-		wg.Done()
-	}()
-	close(cnchan)
-	wg.Wait()
-	if ev != nil {
-		t.Fatalf("non-nil Event returned with CloseNotifier: %v", ev)
-	}
-	if err == nil {
-		t.Fatalf("nil err returned with CloseNotifier!")
-	}
-}
-
-func TestWaitForEventCancelledContext(t *testing.T) {
-	cctx, cancel := context.WithCancel(context.Background())
-	dw := &dummyWatcher{}
-	w := httptest.NewRecorder()
-	var wg sync.WaitGroup
-	var ev *store.Event
-	var err error
-	wg.Add(1)
-	go func() {
-		ev, err = waitForEvent(cctx, w, dw)
-		wg.Done()
-	}()
-	cancel()
-	wg.Wait()
-	if ev != nil {
-		t.Fatalf("non-nil Event returned with cancelled context: %v", ev)
-	}
-	if err == nil {
-		t.Fatalf("nil err returned with cancelled context!")
-	}
-}
 
 func TestV2MachinesEndpoint(t *testing.T) {
 	tests := []struct {
@@ -951,17 +870,6 @@ func TestBadServeKeys(t *testing.T) {
 			http.StatusInternalServerError,
 		},
 		{
-			// timeout waiting for event (watcher never returns)
-			mustNewRequest(t, "foo"),
-			&resServer{
-				etcdserver.Response{
-					Watcher: &dummyWatcher{},
-				},
-			},
-
-			http.StatusGatewayTimeout,
-		},
-		{
 			// non-event/watcher response from etcdserver.Server
 			mustNewRequest(t, "foo"),
 			&resServer{
@@ -1056,6 +964,7 @@ func TestServeKeysWatch(t *testing.T) {
 			Node:   &store.NodeExtern{},
 		},
 	)
+	wbody = fmt.Sprintf("%x\r\n%s\r\n", len(wbody), wbody)
 
 	if rw.Code != wcode {
 		t.Errorf("got code=%d, want %d", rw.Code, wcode)

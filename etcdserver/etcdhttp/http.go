@@ -7,12 +7,12 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"net/http/httputil"
 	"net/url"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/coreos/etcd/elog"
 	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/etcdserverpb"
@@ -26,7 +26,11 @@ const (
 	machinesPrefix = "/v2/machines"
 	raftPrefix     = "/raft"
 
-	DefaultTimeout = 500 * time.Millisecond
+	// time to wait for response from EtcdServer requests
+	defaultServerTimeout = 500 * time.Millisecond
+
+	// time to wait for a Watch request
+	defaultWatchTimeout = 5 * time.Minute
 )
 
 var errClosed = errors.New("etcdhttp: client closed connection")
@@ -39,7 +43,7 @@ func NewClientHandler(server etcdserver.Server, peers Peers, timeout time.Durati
 		timeout: timeout,
 	}
 	if sh.timeout == 0 {
-		sh.timeout = DefaultTimeout
+		sh.timeout = defaultServerTimeout
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc(keysPrefix, sh.serveKeys)
@@ -89,23 +93,16 @@ func (h serverHandler) serveKeys(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var ev *store.Event
 	switch {
 	case resp.Event != nil:
-		ev = resp.Event
-	case resp.Watcher != nil:
-		if ev, err = waitForEvent(ctx, w, resp.Watcher); err != nil {
-			http.Error(w, err.Error(), http.StatusGatewayTimeout)
-			return
+		if err := writeEvent(w, resp.Event); err != nil {
+			// Should never be reached
+			log.Println("error writing event: %v", err)
 		}
+	case resp.Watcher != nil:
+		handleWatch(w, resp.Watcher, rr.Stream)
 	default:
 		writeError(w, errors.New("received response with no Event/Watcher!"))
-		return
-	}
-
-	if err = writeEvent(w, ev); err != nil {
-		// Should never be reached
-		log.Println("error writing event: %v", err)
 	}
 }
 
@@ -187,7 +184,7 @@ func parseRequest(r *http.Request, id int64) (etcdserverpb.Request, error) {
 		)
 	}
 
-	var rec, sort, wait bool
+	var rec, sort, wait, stream bool
 	if rec, err = getBool(r.Form, "recursive"); err != nil {
 		return emptyReq, etcdErr.NewRequestError(
 			etcdErr.EcodeInvalidField,
@@ -204,6 +201,19 @@ func parseRequest(r *http.Request, id int64) (etcdserverpb.Request, error) {
 		return emptyReq, etcdErr.NewRequestError(
 			etcdErr.EcodeInvalidField,
 			`invalid value for "wait"`,
+		)
+	}
+	if stream, err = getBool(r.Form, "stream"); err != nil {
+		return emptyReq, etcdErr.NewRequestError(
+			etcdErr.EcodeInvalidField,
+			`invalid value for "stream"`,
+		)
+	}
+
+	if wait && r.Method != "GET" {
+		return emptyReq, etcdErr.NewRequestError(
+			etcdErr.EcodeInvalidField,
+			`"wait" can only be used with GET requests`,
 		)
 	}
 
@@ -231,6 +241,7 @@ func parseRequest(r *http.Request, id int64) (etcdserverpb.Request, error) {
 		Recursive: rec,
 		Since:     wIdx,
 		Sorted:    sort,
+		Stream:    stream,
 		Wait:      wait,
 	}
 
@@ -285,8 +296,9 @@ func writeError(w http.ResponseWriter, err error) {
 	}
 }
 
-// writeEvent serializes the given Event and writes the resulting JSON to the
-// given ResponseWriter
+// writeEvent serializes a single Event and writes the resulting
+// JSON to the given ResponseWriter, along with the appropriate
+// headers
 func writeEvent(w http.ResponseWriter, ev *store.Event) error {
 	if ev == nil {
 		return errors.New("cannot write empty Event!")
@@ -301,25 +313,51 @@ func writeEvent(w http.ResponseWriter, ev *store.Event) error {
 	return json.NewEncoder(w).Encode(ev)
 }
 
-// waitForEvent waits for a given Watcher to return its associated
-// event. It returns a non-nil error if the given Context times out
-// or the given ResponseWriter triggers a CloseNotify.
-func waitForEvent(ctx context.Context, w http.ResponseWriter, wa store.Watcher) (*store.Event, error) {
-	// TODO(bmizerany): support streaming?
+func handleWatch(w http.ResponseWriter, wa store.Watcher, stream bool) {
 	defer wa.Remove()
+	ech := wa.EventChan()
+	tch := time.After(defaultWatchTimeout)
 	var nch <-chan bool
 	if x, ok := w.(http.CloseNotifier); ok {
 		nch = x.CloseNotify()
 	}
-	select {
-	case ev := <-wa.EventChan():
-		return ev, nil
-	case <-nch:
-		elog.TODO()
-		return nil, errClosed
-	case <-ctx.Done():
-		return nil, ctx.Err()
+
+	w.Header().Set("Content-Type", "application/json")
+	// WriteHeader will implicitly write a Transfer-Encoding: chunked header, so no need to do it explicitly
+	w.WriteHeader(http.StatusOK)
+
+	// Ensure headers are flushed early, in case of long polling
+	w.(http.Flusher).Flush()
+
+	cw := httputil.NewChunkedWriter(w)
+
+	for {
+		select {
+		case <-nch:
+			// Client closed connection. Nothing to do.
+			return
+		case <-tch:
+			cw.Close()
+			return
+		case ev, ok := <-ech:
+			if !ok {
+				// If the channel is closed this may be an indication of
+				// that notifications are much more than we are able to
+				// send to the client in time. Then we simply end streaming.
+				return
+			}
+			if err := json.NewEncoder(cw).Encode(ev); err != nil {
+				// Should never be reached
+				log.Println("error writing event: %v", err)
+				return
+			}
+			if !stream {
+				return
+			}
+			w.(http.Flusher).Flush()
+		}
 	}
+
 }
 
 // allowMethod verifies that the given method is one of the allowed methods,
