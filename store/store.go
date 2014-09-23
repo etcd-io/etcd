@@ -114,6 +114,7 @@ func (s *store) Get(nodePath string, recursive, sorted bool) (*Event, error) {
 	}
 
 	e := newEvent(Get, nodePath, n.ModifiedIndex, n.CreatedIndex)
+	e.EtcdIndex = s.CurrentIndex
 	e.Node.loadInternalNode(n, recursive, sorted)
 
 	s.Stats.Inc(GetSuccess)
@@ -130,6 +131,7 @@ func (s *store) Create(nodePath string, dir bool, value string, unique bool, exp
 	e, err := s.internalCreate(nodePath, dir, value, unique, false, expireTime, Create)
 
 	if err == nil {
+		e.EtcdIndex = s.CurrentIndex
 		s.WatcherHub.notify(e)
 		s.Stats.Inc(CreateSuccess)
 	} else {
@@ -166,6 +168,7 @@ func (s *store) Set(nodePath string, dir bool, value string, expireTime time.Tim
 	if err != nil {
 		return nil, err
 	}
+	e.EtcdIndex = s.CurrentIndex
 
 	// Put prevNode into event
 	if getErr == nil {
@@ -227,6 +230,7 @@ func (s *store) CompareAndSwap(nodePath string, prevValue string, prevIndex uint
 	s.CurrentIndex++
 
 	e := newEvent(CompareAndSwap, nodePath, s.CurrentIndex, n.CreatedIndex)
+	e.EtcdIndex = s.CurrentIndex
 	e.PrevNode = n.Repr(false, false)
 	eNode := e.Node
 
@@ -241,6 +245,7 @@ func (s *store) CompareAndSwap(nodePath string, prevValue string, prevIndex uint
 
 	s.WatcherHub.notify(e)
 	s.Stats.Inc(CompareAndSwapSuccess)
+
 	return e, nil
 }
 
@@ -270,6 +275,7 @@ func (s *store) Delete(nodePath string, dir, recursive bool) (*Event, error) {
 
 	nextIndex := s.CurrentIndex + 1
 	e := newEvent(Delete, nodePath, nextIndex, n.CreatedIndex)
+	e.EtcdIndex = s.CurrentIndex
 	e.PrevNode = n.Repr(false, false)
 	eNode := e.Node
 
@@ -329,6 +335,7 @@ func (s *store) CompareAndDelete(nodePath string, prevValue string, prevIndex ui
 	s.CurrentIndex++
 
 	e := newEvent(CompareAndDelete, nodePath, s.CurrentIndex, n.CreatedIndex)
+	e.EtcdIndex = s.CurrentIndex
 	e.PrevNode = n.Repr(false, false)
 
 	callback := func(path string) { // notify function
@@ -341,6 +348,7 @@ func (s *store) CompareAndDelete(nodePath string, prevValue string, prevIndex ui
 
 	s.WatcherHub.notify(e)
 	s.Stats.Inc(CompareAndDeleteSuccess)
+
 	return e, nil
 }
 
@@ -349,22 +357,12 @@ func (s *store) Watch(key string, recursive, stream bool, sinceIndex uint64) (Wa
 	defer s.worldLock.RUnlock()
 
 	key = path.Clean(path.Join("/", key))
-	nextIndex := s.CurrentIndex + 1
-
-	var w Watcher
-	var err *etcdErr.Error
-
 	if sinceIndex == 0 {
-		w, err = s.WatcherHub.watch(key, recursive, stream, nextIndex)
-
-	} else {
-		w, err = s.WatcherHub.watch(key, recursive, stream, sinceIndex)
+		sinceIndex = s.CurrentIndex + 1
 	}
-
+	// WatchHub does not know about the current index, so we need to pass it in
+	w, err := s.WatcherHub.watch(key, recursive, stream, sinceIndex, s.CurrentIndex)
 	if err != nil {
-		// watchhub do not know the current Index
-		// we need to attach the currentIndex here
-		err.Index = s.CurrentIndex
 		return nil, err
 	}
 
@@ -416,6 +414,7 @@ func (s *store) Update(nodePath string, newValue string, expireTime time.Time) (
 	}
 
 	e := newEvent(Update, nodePath, nextIndex, n.CreatedIndex)
+	e.EtcdIndex = s.CurrentIndex
 	e.PrevNode = n.Repr(false, false)
 	eNode := e.Node
 
@@ -569,6 +568,7 @@ func (s *store) DeleteExpiredKeys(cutoff time.Time) {
 
 		s.CurrentIndex++
 		e := newEvent(Expire, node.Path, s.CurrentIndex, node.CreatedIndex)
+		e.EtcdIndex = s.CurrentIndex
 		e.PrevNode = node.Repr(false, false)
 
 		callback := func(path string) { // notify function

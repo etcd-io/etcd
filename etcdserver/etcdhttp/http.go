@@ -292,7 +292,7 @@ func writeEvent(w http.ResponseWriter, ev *store.Event) error {
 		return errors.New("cannot write empty Event!")
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Add("X-Etcd-Index", fmt.Sprint(ev.Index()))
+	w.Header().Add("X-Etcd-Index", fmt.Sprint(ev.EtcdIndex))
 
 	if ev.IsCreated() {
 		w.WriteHeader(http.StatusCreated)
