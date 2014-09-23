@@ -215,7 +215,7 @@ func TestSend(t *testing.T) {
 		ps := Peers{
 			42: []string{strings.TrimPrefix(ts.URL, "http://")},
 		}
-		send(http.DefaultClient, ps, tt.m)
+		send(http.DefaultClient, "http", ps, tt.m)
 
 		if !tt.ok {
 			if tr != nil {

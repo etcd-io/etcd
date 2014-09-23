@@ -91,12 +91,12 @@ func Sender(t *http.Transport, p Peers) func(msgs []raftpb.Message) {
 		for _, m := range msgs {
 			// TODO: reuse go routines
 			// limit the number of outgoing connections for the same receiver
-			go send(c, p, m)
+			go send(c, "http", p, m)
 		}
 	}
 }
 
-func send(c *http.Client, p Peers, m raftpb.Message) {
+func send(c *http.Client, scheme string, p Peers, m raftpb.Message) {
 	// TODO (xiangli): reasonable retry logic
 	for i := 0; i < 3; i++ {
 		addr := p.Pick(m.To)
@@ -108,7 +108,7 @@ func send(c *http.Client, p Peers, m raftpb.Message) {
 			return
 		}
 
-		url := fmt.Sprintf("http://%s%s", addr, raftPrefix)
+		url := fmt.Sprintf("%s://%s%s", scheme, addr, raftPrefix)
 
 		// TODO: don't block. we should be able to have 1000s
 		// of messages out at a time.
