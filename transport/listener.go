@@ -54,6 +54,10 @@ type TLSInfo struct {
 	CertFile string
 	KeyFile  string
 	CAFile   string
+
+	// parseFunc exists to simplify testing. Typically, parseFunc
+	// should be left nil. In that case, tls.X509KeyPair will be used.
+	parseFunc func([]byte, []byte) (tls.Certificate, error)
 }
 
 func (info TLSInfo) Empty() bool {
@@ -65,7 +69,22 @@ func (info TLSInfo) baseConfig() (*tls.Config, error) {
 		return nil, fmt.Errorf("KeyFile and CertFile must both be present[key: %v, cert: %v]", info.KeyFile, info.CertFile)
 	}
 
-	tlsCert, err := tls.LoadX509KeyPair(info.CertFile, info.KeyFile)
+	cert, err := ioutil.ReadFile(info.CertFile)
+	if err != nil {
+		return nil, err
+	}
+
+	key, err := ioutil.ReadFile(info.KeyFile)
+	if err != nil {
+		return nil, err
+	}
+
+	parseFunc := info.parseFunc
+	if parseFunc == nil {
+		parseFunc = tls.X509KeyPair
+	}
+
+	tlsCert, err := parseFunc(cert, key)
 	if err != nil {
 		return nil, err
 	}
