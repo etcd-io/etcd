@@ -13,8 +13,8 @@ func TestSetFlagsFromEnv(t *testing.T) {
 		t.Fatal(err)
 	}
 	// command-line flags take precedence over env vars
-	os.Setenv("ETCD_ID", "woof")
-	if err := flag.Set("id", "quack"); err != nil {
+	os.Setenv("ETCD_NAME", "woof")
+	if err := flag.Set("name", "quack"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -22,7 +22,7 @@ func TestSetFlagsFromEnv(t *testing.T) {
 	for f, want := range map[string]string{
 		"data-dir":       "",
 		"peer-bind-addr": "1.2.3.4",
-		"id":             "quack",
+		"name":           "quack",
 	} {
 		if got := flag.Lookup(f).Value.String(); got != want {
 			t.Fatalf("flag %q=%q, want %q", f, got, want)
@@ -34,7 +34,7 @@ func TestSetFlagsFromEnv(t *testing.T) {
 	for f, want := range map[string]string{
 		"data-dir":       "/foo/bar",
 		"peer-bind-addr": "1.2.3.4",
-		"id":             "quack",
+		"name":           "quack",
 	} {
 		if got := flag.Lookup(f).Value.String(); got != want {
 			t.Errorf("flag %q=%q, want %q", f, got, want)
