@@ -95,13 +95,13 @@ func TestPeersPick(t *testing.T) {
 		3: []string{},
 	}
 	ids := map[string]bool{
-		"http://abc": true,
-		"http://def": true,
-		"http://ghi": true,
-		"http://jkl": true,
-		"http://mno": true,
-		"http://pqr": true,
-		"http://stu": true,
+		"abc": true,
+		"def": true,
+		"ghi": true,
+		"jkl": true,
+		"mno": true,
+		"pqr": true,
+		"stu": true,
 	}
 	for i := 0; i < 1000; i++ {
 		a := ps.Pick(1)
@@ -110,8 +110,8 @@ func TestPeersPick(t *testing.T) {
 			break
 		}
 	}
-	if b := ps.Pick(2); b != "http://xyz" {
-		t.Errorf("id=%q, want %q", b, "http://xyz")
+	if b := ps.Pick(2); b != "xyz" {
+		t.Errorf("id=%q, want %q", b, "xyz")
 	}
 	if c := ps.Pick(3); c != "" {
 		t.Errorf("id=%q, want \"\"", c)

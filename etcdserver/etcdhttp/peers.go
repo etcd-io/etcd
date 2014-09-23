@@ -23,14 +23,14 @@ func addScheme(addr string) string {
 	return fmt.Sprintf("http://%s", addr)
 }
 
-// Pick chooses a random address from a given Peer's addresses, and returns it as
-// an addressible URI. If the given peer does not exist, an empty string is returned.
+// Pick returns a random address from a given Peer's addresses. If the
+// given peer does not exist, an empty string is returned.
 func (ps Peers) Pick(id int64) string {
 	addrs := ps[id]
 	if len(addrs) == 0 {
 		return ""
 	}
-	return addScheme(addrs[rand.Intn(len(addrs))])
+	return addrs[rand.Intn(len(addrs))]
 }
 
 // Set parses command line sets of names to IPs formatted like:
@@ -99,8 +99,8 @@ func Sender(t *http.Transport, p Peers) func(msgs []raftpb.Message) {
 func send(c *http.Client, p Peers, m raftpb.Message) {
 	// TODO (xiangli): reasonable retry logic
 	for i := 0; i < 3; i++ {
-		url := p.Pick(m.To)
-		if url == "" {
+		addr := p.Pick(m.To)
+		if addr == "" {
 			// TODO: unknown peer id.. what do we do? I
 			// don't think his should ever happen, need to
 			// look into this further.
@@ -108,7 +108,7 @@ func send(c *http.Client, p Peers, m raftpb.Message) {
 			return
 		}
 
-		url += raftPrefix
+		url := fmt.Sprintf("http://%s%s", addr, raftPrefix)
 
 		// TODO: don't block. we should be able to have 1000s
 		// of messages out at a time.
