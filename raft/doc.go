@@ -61,20 +61,19 @@ data, serialize it into a byte slice and call:
 
 	n.Propose(ctx, data)
 
-To add or remove node in a cluster, build Config struct and call:
+If the proposal is committed, data will appear in committed entries with type
+raftpb.EntryNormal.
 
-	n.Configure(ctx, conf)
+To add or remove node in a cluster, build ConfigChange struct 'cc' and call:
 
-After configuration is committed, you should apply it to node through:
+	n.ProposeConfigChange(ctx, cc)
 
-	var conf raftpb.Config
-	conf.Unmarshal(data)
-	switch conf.Type {
-	case raftpb.ConfigAddNode:
-		n.AddNode(conf.ID)
-	case raftpb.ConfigRemoveNode:
-		n.RemoveNode(conf.ID)
-	}
+After config change is committed, some committed entry with type
+raftpb.EntryConfigChange will be returned. You should apply it to node through:
+
+	var cc raftpb.ConfigChange
+	cc.Unmarshal(data)
+	n.ApplyConfigChange(cc)
 
 */
 package raft

@@ -127,16 +127,16 @@ func (s *EtcdServer) run() {
 					if err := r.Unmarshal(e.Data); err != nil {
 						panic("TODO: this is bad, what do we do about it?")
 					}
-					s.w.Trigger(r.Id, s.applyRequest(r))
-				case raftpb.EntryConfig:
-					var c raftpb.Config
-					if err := c.Unmarshal(e.Data); err != nil {
+					s.w.Trigger(r.Id, s.apply(r))
+				case raftpb.EntryConfigChange:
+					var cc raftpb.ConfigChange
+					if err := cc.Unmarshal(e.Data); err != nil {
 						panic("TODO: this is bad, what do we do about it?")
 					}
-					s.applyConfig(c)
-					s.w.Trigger(c.ID, nil)
+					s.Node.ApplyConfigChange(cc)
+					s.w.Trigger(cc.ID, nil)
 				default:
-					panic("unsupported entry type")
+					panic("unexpected entry type")
 				}
 				appliedi = e.Index
 			}
@@ -231,38 +231,38 @@ func (s *EtcdServer) Do(ctx context.Context, r pb.Request) (Response, error) {
 }
 
 func (s *EtcdServer) AddNode(ctx context.Context, id int64, context []byte) error {
-	req := raftpb.Config{
+	cc := raftpb.ConfigChange{
 		ID:      GenID(),
-		Type:    raftpb.ConfigAddNode,
+		Type:    raftpb.ConfigChangeAddNode,
 		NodeID:  id,
 		Context: context,
 	}
-	return s.configure(ctx, req)
+	return s.configure(ctx, cc)
 }
 
 func (s *EtcdServer) RemoveNode(ctx context.Context, id int64) error {
-	req := raftpb.Config{
+	cc := raftpb.ConfigChange{
 		ID:     GenID(),
-		Type:   raftpb.ConfigRemoveNode,
+		Type:   raftpb.ConfigChangeRemoveNode,
 		NodeID: id,
 	}
-	return s.configure(ctx, req)
+	return s.configure(ctx, cc)
 }
 
 // configure sends configuration change through consensus then performs it.
 // It will block until the change is performed or there is an error.
-func (s *EtcdServer) configure(ctx context.Context, r raftpb.Config) error {
-	ch := s.w.Register(r.ID)
-	if err := s.Node.Configure(ctx, r); err != nil {
+func (s *EtcdServer) configure(ctx context.Context, cc raftpb.ConfigChange) error {
+	ch := s.w.Register(cc.ID)
+	if err := s.Node.ProposeConfigChange(ctx, cc); err != nil {
 		log.Printf("configure error: %v", err)
-		s.w.Trigger(r.ID, nil)
+		s.w.Trigger(cc.ID, nil)
 		return err
 	}
 	select {
 	case <-ch:
 		return nil
 	case <-ctx.Done():
-		s.w.Trigger(r.ID, nil) // GC wait
+		s.w.Trigger(cc.ID, nil) // GC wait
 		return ctx.Err()
 	case <-s.done:
 		return ErrStopped
@@ -300,8 +300,8 @@ func getExpirationTime(r *pb.Request) time.Time {
 	return t
 }
 
-// applyRequest interprets r as a call to store.X and returns an Response interpreted from store.Event
-func (s *EtcdServer) applyRequest(r pb.Request) Response {
+// apply interprets r as a call to store.X and returns an Response interpreted from store.Event
+func (s *EtcdServer) apply(r pb.Request) Response {
 	f := func(ev *store.Event, err error) Response {
 		return Response{Event: ev, err: err}
 	}
@@ -338,18 +338,6 @@ func (s *EtcdServer) applyRequest(r pb.Request) Response {
 	default:
 		// This should never be reached, but just in case:
 		return Response{err: ErrUnknownMethod}
-	}
-}
-
-func (s *EtcdServer) applyConfig(r raftpb.Config) {
-	switch r.Type {
-	case raftpb.ConfigAddNode:
-		s.Node.AddNode(r.NodeID)
-	case raftpb.ConfigRemoveNode:
-		s.Node.RemoveNode(r.NodeID)
-	default:
-		// This should never be reached
-		panic("unexpected config type")
 	}
 }
 

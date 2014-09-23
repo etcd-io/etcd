@@ -80,23 +80,22 @@ type Node interface {
 	Campaign(ctx context.Context) error
 	// Propose proposes that data be appended to the log.
 	Propose(ctx context.Context, data []byte) error
-	// Configure proposes config change. At most one config can be in the process of going through consensus.
-	// Application needs to call AddNode/RemoveNode when applying EntryConfig type entry.
-	Configure(ctx context.Context, conf pb.Config) error
+	// ProposeConfigChange proposes config change.
+	// At most one ConfigChange can be in the process of going through consensus.
+	// Application needs to call ApplyConfigChange when applying EntryConfigChange type entry.
+	ProposeConfigChange(ctx context.Context, cc pb.ConfigChange) error
 	// Step advances the state machine using the given message. ctx.Err() will be returned, if any.
 	Step(ctx context.Context, msg pb.Message) error
 	// Ready returns a channel that returns the current point-in-time state
 	Ready() <-chan Ready
+	// ApplyConfigChange applies config change to the local node.
+	// TODO: reject existing node when add node
+	// TODO: reject non-existant node when remove node
+	ApplyConfigChange(cc pb.ConfigChange)
 	// Stop performs any necessary termination of the Node
 	Stop()
 	// Compact
 	Compact(d []byte)
-	// AddNode adds a node with given id into peer list.
-	// TODO: reject existed node
-	AddNode(id int64)
-	// RemoveNode removes a node with give id from peer list.
-	// TODO: reject unexisted node
-	RemoveNode(id int64)
 }
 
 // StartNode returns a new Node given a unique raft id, a list of raft peers, and
@@ -123,22 +122,12 @@ func RestartNode(id int64, peers []int64, election, heartbeat int, snapshot *pb.
 	return &n
 }
 
-const (
-	confAdd = iota
-	confRemove
-)
-
-type conf struct {
-	typ int
-	id  int64
-}
-
 // node is the canonical implementation of the Node interface
 type node struct {
 	propc    chan pb.Message
 	recvc    chan pb.Message
 	compactc chan []byte
-	confc    chan conf
+	confc    chan pb.ConfigChange
 	readyc   chan Ready
 	tickc    chan struct{}
 	done     chan struct{}
@@ -149,7 +138,7 @@ func newNode() node {
 		propc:    make(chan pb.Message),
 		recvc:    make(chan pb.Message),
 		compactc: make(chan []byte),
-		confc:    make(chan conf),
+		confc:    make(chan pb.ConfigChange),
 		readyc:   make(chan Ready),
 		tickc:    make(chan struct{}),
 		done:     make(chan struct{}),
@@ -188,7 +177,9 @@ func (n *node) run(r *raft) {
 		}
 
 		select {
-		// TODO: buffer the config propose if there exists one
+		// TODO: maybe buffer the config propose if there exists one (the way
+		// described in raft dissertation)
+		// Currently it is dropped in Step silently.
 		case m := <-propc:
 			m.From = r.id
 			r.Step(m)
@@ -196,12 +187,12 @@ func (n *node) run(r *raft) {
 			r.Step(m) // raft never returns an error
 		case d := <-n.compactc:
 			r.compact(d)
-		case c := <-n.confc:
-			switch c.typ {
-			case confAdd:
-				r.addNode(c.id)
-			case confRemove:
-				r.removeNode(c.id)
+		case cc := <-n.confc:
+			switch cc.Type {
+			case pb.ConfigChangeAddNode:
+				r.addNode(cc.NodeID)
+			case pb.ConfigChangeRemoveNode:
+				r.removeNode(cc.NodeID)
 			default:
 				panic("unexpected conf type")
 			}
@@ -247,12 +238,12 @@ func (n *node) Propose(ctx context.Context, data []byte) error {
 	return n.Step(ctx, pb.Message{Type: msgProp, Entries: []pb.Entry{{Data: data}}})
 }
 
-func (n *node) Configure(ctx context.Context, conf pb.Config) error {
-	data, err := conf.Marshal()
+func (n *node) ProposeConfigChange(ctx context.Context, cc pb.ConfigChange) error {
+	data, err := cc.Marshal()
 	if err != nil {
 		return err
 	}
-	return n.Step(ctx, pb.Message{Type: msgProp, Entries: []pb.Entry{{Type: pb.EntryConfig, Data: data}}})
+	return n.Step(ctx, pb.Message{Type: msgProp, Entries: []pb.Entry{{Type: pb.EntryConfigChange, Data: data}}})
 }
 
 // Step advances the state machine using msgs. The ctx.Err() will be returned,
@@ -277,23 +268,16 @@ func (n *node) Ready() <-chan Ready {
 	return n.readyc
 }
 
+func (n *node) ApplyConfigChange(cc pb.ConfigChange) {
+	select {
+	case n.confc <- cc:
+	case <-n.done:
+	}
+}
+
 func (n *node) Compact(d []byte) {
 	select {
 	case n.compactc <- d:
-	case <-n.done:
-	}
-}
-
-func (n *node) AddNode(id int64) {
-	select {
-	case n.confc <- conf{typ: confAdd, id: id}:
-	case <-n.done:
-	}
-}
-
-func (n *node) RemoveNode(id int64) {
-	select {
-	case n.confc <- conf{typ: confRemove, id: id}:
 	case <-n.done:
 	}
 }
