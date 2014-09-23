@@ -87,11 +87,17 @@ func (ps Peers) Endpoints() []string {
 
 func Sender(t *http.Transport, p Peers) func(msgs []raftpb.Message) {
 	c := &http.Client{Transport: t}
+
+	scheme := "http"
+	if t.TLSClientConfig != nil {
+		scheme = "https"
+	}
+
 	return func(msgs []raftpb.Message) {
 		for _, m := range msgs {
 			// TODO: reuse go routines
 			// limit the number of outgoing connections for the same receiver
-			go send(c, "http", p, m)
+			go send(c, scheme, p, m)
 		}
 	}
 }
