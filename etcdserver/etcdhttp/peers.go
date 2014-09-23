@@ -85,17 +85,18 @@ func (ps Peers) Endpoints() []string {
 	return endpoints
 }
 
-func Sender(p Peers) func(msgs []raftpb.Message) {
+func Sender(t *http.Transport, p Peers) func(msgs []raftpb.Message) {
+	c := &http.Client{Transport: t}
 	return func(msgs []raftpb.Message) {
 		for _, m := range msgs {
 			// TODO: reuse go routines
 			// limit the number of outgoing connections for the same receiver
-			go send(p, m)
+			go send(c, p, m)
 		}
 	}
 }
 
-func send(p Peers, m raftpb.Message) {
+func send(c *http.Client, p Peers, m raftpb.Message) {
 	// TODO (xiangli): reasonable retry logic
 	for i := 0; i < 3; i++ {
 		url := p.Pick(m.To)
@@ -116,16 +117,15 @@ func send(p Peers, m raftpb.Message) {
 			log.Println("etcdhttp: dropping message:", err)
 			return // drop bad message
 		}
-		if httpPost(url, data) {
+		if httpPost(c, url, data) {
 			return // success
 		}
 		// TODO: backoff
 	}
 }
 
-func httpPost(url string, data []byte) bool {
-	// TODO: set timeouts
-	resp, err := http.Post(url, "application/protobuf", bytes.NewBuffer(data))
+func httpPost(c *http.Client, url string, data []byte) bool {
+	resp, err := c.Post(url, "application/protobuf", bytes.NewBuffer(data))
 	if err != nil {
 		elog.TODO()
 		return false

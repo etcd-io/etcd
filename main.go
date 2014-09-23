@@ -151,6 +151,15 @@ func startEtcd() {
 		n = raft.RestartNode(id, peers.IDs(), 10, 1, snapshot, st, ents)
 	}
 
+	pt := &http.Transport{
+		// timeouts copied from http.DefaultTransport
+		Dial: (&net.Dialer{
+			Timeout:   30 * time.Second,
+			KeepAlive: 30 * time.Second,
+		}).Dial,
+		TLSHandshakeTimeout: 10 * time.Second,
+	}
+
 	s := &etcdserver.EtcdServer{
 		Store: st,
 		Node:  n,
@@ -158,7 +167,7 @@ func startEtcd() {
 			*wal.WAL
 			*snap.Snapshotter
 		}{w, snapshotter},
-		Send:       etcdhttp.Sender(*peers),
+		Send:       etcdhttp.Sender(pt, *peers),
 		Ticker:     time.Tick(100 * time.Millisecond),
 		SyncTicker: time.Tick(500 * time.Millisecond),
 		SnapCount:  *snapCount,

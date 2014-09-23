@@ -148,7 +148,7 @@ func TestHttpPost(t *testing.T) {
 	}
 	for i, tt := range tests {
 		ts := httptest.NewServer(tt.h)
-		if g := httpPost(ts.URL, []byte("adsf")); g != tt.w {
+		if g := httpPost(http.DefaultClient, ts.URL, []byte("adsf")); g != tt.w {
 			t.Errorf("#%d: httpPost()=%t, want %t", i, g, tt.w)
 		}
 		if tr.Method != "POST" {
@@ -161,7 +161,7 @@ func TestHttpPost(t *testing.T) {
 		ts.Close()
 	}
 
-	if httpPost("garbage url", []byte("data")) {
+	if httpPost(http.DefaultClient, "garbage url", []byte("data")) {
 		t.Errorf("httpPost with bad URL returned true unexpectedly!")
 	}
 }
@@ -215,7 +215,7 @@ func TestSend(t *testing.T) {
 		ps := Peers{
 			42: []string{strings.TrimPrefix(ts.URL, "http://")},
 		}
-		send(ps, tt.m)
+		send(http.DefaultClient, ps, tt.m)
 
 		if !tt.ok {
 			if tr != nil {
