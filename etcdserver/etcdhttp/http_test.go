@@ -147,6 +147,11 @@ func TestBadParseRequest(t *testing.T) {
 			mustNewForm(t, "foo", url.Values{"stream": []string{"something"}}),
 			etcdErr.EcodeInvalidField,
 		},
+		// prevValue cannot be empty
+		{
+			mustNewForm(t, "foo", url.Values{"prevValue": []string{""}}),
+			etcdErr.EcodeInvalidField,
+		},
 		// wait is only valid with GET requests
 		{
 			mustNewMethodRequest(t, "HEAD", "foo?wait=true"),
