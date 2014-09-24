@@ -5,38 +5,44 @@ import "flag"
 import "testing"
 
 func TestSetFlagsFromEnv(t *testing.T) {
+	fs := flag.NewFlagSet("testing", flag.ExitOnError)
+	fs.String("a", "", "")
+	fs.String("b", "", "")
+	fs.String("c", "", "")
+	fs.Parse([]string{})
+
 	os.Clearenv()
 	// flags should be settable using env vars
-	os.Setenv("ETCD_DATA_DIR", "/foo/bar")
+	os.Setenv("ETCD_A", "foo")
 	// and command-line flags
-	if err := flag.Set("peer-bind-addr", "1.2.3.4"); err != nil {
+	if err := fs.Set("b", "bar"); err != nil {
 		t.Fatal(err)
 	}
 	// command-line flags take precedence over env vars
-	os.Setenv("ETCD_ID", "woof")
-	if err := flag.Set("id", "quack"); err != nil {
+	os.Setenv("ETCD_C", "woof")
+	if err := fs.Set("c", "quack"); err != nil {
 		t.Fatal(err)
 	}
 
 	// first verify that flags are as expected before reading the env
 	for f, want := range map[string]string{
-		"data-dir":       "",
-		"peer-bind-addr": "1.2.3.4",
-		"id":             "quack",
+		"a": "",
+		"b": "bar",
+		"c": "quack",
 	} {
-		if got := flag.Lookup(f).Value.String(); got != want {
+		if got := fs.Lookup(f).Value.String(); got != want {
 			t.Fatalf("flag %q=%q, want %q", f, got, want)
 		}
 	}
 
 	// now read the env and verify flags were updated as expected
-	SetFlagsFromEnv(flag.CommandLine)
+	SetFlagsFromEnv(fs)
 	for f, want := range map[string]string{
-		"data-dir":       "/foo/bar",
-		"peer-bind-addr": "1.2.3.4",
-		"id":             "quack",
+		"a": "foo",
+		"b": "bar",
+		"c": "quack",
 	} {
-		if got := flag.Lookup(f).Value.String(); got != want {
+		if got := fs.Lookup(f).Value.String(); got != want {
 			t.Errorf("flag %q=%q, want %q", f, got, want)
 		}
 	}
