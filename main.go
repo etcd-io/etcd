@@ -91,6 +91,7 @@ func init() {
 }
 
 func main() {
+	flag.CommandLine.Usage = usageWithIgnoredFlagsFunc(flag.CommandLine, deprecated)
 	flag.Parse()
 
 	setFlagsFromEnv()
@@ -365,4 +366,22 @@ func (df *deprecatedFlag) Set(s string) error {
 
 func (df *deprecatedFlag) String() string {
 	return ""
+}
+
+func usageWithIgnoredFlagsFunc(fs *flag.FlagSet, ignore []string) func() {
+	iMap := make(map[string]struct{}, len(ignore))
+	for _, name := range ignore {
+		iMap[name] = struct{}{}
+	}
+
+	return func() {
+		fs.VisitAll(func(f *flag.Flag) {
+			if _, ok := iMap[f.Name]; ok {
+				return
+			}
+
+			format := "  -%s=%s: %s\n"
+			fmt.Fprintf(os.Stderr, format, f.Name, f.DefValue, f.Usage)
+		})
+	}
 }
