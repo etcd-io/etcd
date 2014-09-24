@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"net/http/httputil"
 	"net/url"
 	"strconv"
 	"strings"
@@ -324,14 +323,10 @@ func handleWatch(ctx context.Context, w http.ResponseWriter, wa store.Watcher, s
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	// WriteHeader will do this implicitly, but best to be explicit.
-	w.Header().Set("Transfer-Encoding", "chunked")
 	w.WriteHeader(http.StatusOK)
 
 	// Ensure headers are flushed early, in case of long polling
 	w.(http.Flusher).Flush()
-
-	cw := httputil.NewChunkedWriter(w)
 
 	for {
 		select {
@@ -339,8 +334,7 @@ func handleWatch(ctx context.Context, w http.ResponseWriter, wa store.Watcher, s
 			// Client closed connection. Nothing to do.
 			return
 		case <-ctx.Done():
-			// Timed out. Close the connection gracefully.
-			cw.Close()
+			// Timed out. net/http will close the connection for us, so nothing to do.
 			return
 		case ev, ok := <-ech:
 			if !ok {
@@ -349,7 +343,7 @@ func handleWatch(ctx context.Context, w http.ResponseWriter, wa store.Watcher, s
 				// send to the client in time. Then we simply end streaming.
 				return
 			}
-			if err := json.NewEncoder(cw).Encode(ev); err != nil {
+			if err := json.NewEncoder(w).Encode(ev); err != nil {
 				// Should never be reached
 				log.Println("error writing event: %v", err)
 				return
@@ -360,7 +354,6 @@ func handleWatch(ctx context.Context, w http.ResponseWriter, wa store.Watcher, s
 			w.(http.Flusher).Flush()
 		}
 	}
-
 }
 
 // allowMethod verifies that the given method is one of the allowed methods,
