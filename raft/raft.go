@@ -265,9 +265,7 @@ func (r *raft) appendEntry(e pb.Entry) {
 
 // tickElection is ran by followers and candidates after r.electionTimeout.
 func (r *raft) tickElection() {
-	// promotable indicates whether state machine can be promoted to leader,
-	// which is true when its own id is in progress list.
-	if _, promotable := r.prs[r.id]; !promotable {
+	if !r.promotable() {
 		r.elapsed = 0
 		return
 	}
@@ -534,6 +532,13 @@ func (r *raft) setProgress(id, match, next int64) {
 
 func (r *raft) delProgress(id int64) {
 	delete(r.prs, id)
+}
+
+// promotable indicates whether state machine can be promoted to leader,
+// which is true when its own id is in progress list.
+func (r *raft) promotable() bool {
+	_, ok := r.prs[r.id]
+	return ok
 }
 
 func (r *raft) loadEnts(ents []pb.Entry) {

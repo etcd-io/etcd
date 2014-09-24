@@ -1053,33 +1053,24 @@ func TestRemoveNode(t *testing.T) {
 	}
 }
 
-func TestTickElectionElapsed(t *testing.T) {
-	electionTimeout := 10
+func TestPromotable(t *testing.T) {
+	id := int64(1)
 	tests := []struct {
-		promotable bool
-		e          int
-		we         int
+		peers []int64
+		wp    bool
 	}{
-		{true, 0, 1},
-		{true, electionTimeout - 1, electionTimeout},
-		{true, electionTimeout, 0},
-		{false, 0, 0},
-		{false, 1, 0},
+		{[]int64{1}, true},
+		{[]int64{1, 2, 3}, true},
+		{[]int64{}, false},
+		{[]int64{2, 3}, false},
 	}
 	for i, tt := range tests {
-		r := &raft{
-			id:              1,
-			raftLog:         newLog(),
-			prs:             make(map[int64]*progress),
-			electionTimeout: electionTimeout,
-			elapsed:         tt.e,
+		r := &raft{id: id, prs: make(map[int64]*progress)}
+		for _, id := range tt.peers {
+			r.prs[id] = &progress{}
 		}
-		if tt.promotable {
-			r.prs[r.id] = &progress{}
-		}
-		r.tickElection()
-		if r.elapsed != tt.we {
-			t.Errorf("#%d: elapsed = %d, want %d", i, r.elapsed, tt.we)
+		if g := r.promotable(); g != tt.wp {
+			t.Errorf("#%d: promotable = %v, want %v", i, g, tt.wp)
 		}
 	}
 }
