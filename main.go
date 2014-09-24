@@ -15,6 +15,7 @@ import (
 
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/etcdhttp"
+	"github.com/coreos/etcd/pkg"
 	"github.com/coreos/etcd/proxy"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/snap"
@@ -91,15 +92,15 @@ func init() {
 	flag.StringVar(&peerTLSInfo.KeyFile, "peer-key-file", "", "Path to the peer server TLS key file.")
 
 	for _, f := range deprecated {
-		flag.Var(&deprecatedFlag{f}, f, "No longer supported.")
+		flag.Var(&pkg.DeprecatedFlag{f}, f, "")
 	}
 }
 
 func main() {
-	flag.Usage = usageWithIgnoredFlagsFunc(flag.CommandLine, deprecated)
+	flag.Usage = pkg.UsageWithIgnoredFlagsFunc(flag.CommandLine, deprecated)
 	flag.Parse()
 
-	setFlagsFromEnv()
+	pkg.SetFlagsFromEnv(flag.CommandLine)
 
 	if string(*proxyFlag) == proxyFlagValueOff {
 		startEtcd()
@@ -331,62 +332,4 @@ func (pf *ProxyFlag) Set(s string) error {
 
 func (pf *ProxyFlag) String() string {
 	return string(*pf)
-}
-
-// setFlagsFromEnv parses all registered flags in the global flagset,
-// and if they are not already set it attempts to set their values from
-// environment variables. Environment variables take the name of the flag but
-// are UPPERCASE, have the prefix "ETCD_", and any dashes are replaced by
-// underscores - for example: some-flag => ETCD_SOME_FLAG
-func setFlagsFromEnv() {
-	alreadySet := make(map[string]bool)
-	flag.Visit(func(f *flag.Flag) {
-		alreadySet[f.Name] = true
-	})
-	flag.VisitAll(func(f *flag.Flag) {
-		if !alreadySet[f.Name] {
-			key := "ETCD_" + strings.ToUpper(strings.Replace(f.Name, "-", "_", -1))
-			val := os.Getenv(key)
-			if val != "" {
-				flag.Set(f.Name, val)
-			}
-		}
-
-	})
-}
-
-type deprecatedFlag struct {
-	name string
-}
-
-// IsBoolFlag is defined to allow the flag to be defined without an argument
-func (df *deprecatedFlag) IsBoolFlag() bool {
-	return true
-}
-
-func (df *deprecatedFlag) Set(s string) error {
-	log.Printf("WARNING: flag \"-%s\" is no longer supported.", df.name)
-	return nil
-}
-
-func (df *deprecatedFlag) String() string {
-	return ""
-}
-
-func usageWithIgnoredFlagsFunc(fs *flag.FlagSet, ignore []string) func() {
-	iMap := make(map[string]struct{}, len(ignore))
-	for _, name := range ignore {
-		iMap[name] = struct{}{}
-	}
-
-	return func() {
-		fs.VisitAll(func(f *flag.Flag) {
-			if _, ok := iMap[f.Name]; ok {
-				return
-			}
-
-			format := "  -%s=%s: %s\n"
-			fmt.Fprintf(os.Stderr, format, f.Name, f.DefValue, f.Usage)
-		})
-	}
 }
