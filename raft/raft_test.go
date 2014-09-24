@@ -1002,7 +1002,8 @@ func TestAddNode(t *testing.T) {
 	}
 }
 
-// TestRemoveNode tests that removeNode could update pendingConf and peer list correctly.
+// TestRemoveNode tests that removeNode could update pendingConf, peer list,
+// removed correctly.
 func TestRemoveNode(t *testing.T) {
 	r := newRaft(1, []int64{1, 2}, 0, 0)
 	r.pendingConf = true
@@ -1013,6 +1014,63 @@ func TestRemoveNode(t *testing.T) {
 	w := []int64{1}
 	if g := r.nodes(); !reflect.DeepEqual(g, w) {
 		t.Errorf("nodes = %v, want %v", g, w)
+	}
+	wremoved := map[int64]bool{2: true}
+	if !reflect.DeepEqual(r.removed, wremoved) {
+		t.Errorf("rmNodes = %v, want %v", r.removed, wremoved)
+	}
+}
+
+// TestRecvMsgDenied tests that state machine sets removed when handling
+// msgDenied, and does not pass it to the actual stepX function.
+func TestRecvMsgDenied(t *testing.T) {
+	called := false
+	fakeStep := func(r *raft, m pb.Message) {
+		called = true
+	}
+	r := newRaft(1, []int64{1, 2}, 0, 0)
+	r.step = fakeStep
+	r.Step(pb.Message{From: 2, Type: msgDenied})
+	if called != false {
+		t.Errorf("stepFunc called = %v , want %v", called, false)
+	}
+	wremoved := map[int64]bool{1: true}
+	if !reflect.DeepEqual(r.removed, wremoved) {
+		t.Errorf("rmNodes = %v, want %v", r.removed, wremoved)
+	}
+}
+
+// TestRecvMsgFromRemovedNode tests that state machine sends correct
+// messages out when handling message from removed node, and does not
+// pass it to the actual stepX function.
+func TestRecvMsgFromRemovedNode(t *testing.T) {
+	tests := []struct {
+		from    int64
+		wmsgNum int
+	}{
+		{1, 0},
+		{2, 1},
+	}
+	for i, tt := range tests {
+		called := false
+		fakeStep := func(r *raft, m pb.Message) {
+			called = true
+		}
+		r := newRaft(1, []int64{1}, 0, 0)
+		r.step = fakeStep
+		r.removeNode(tt.from)
+		r.Step(pb.Message{From: tt.from, Type: msgVote})
+		if called != false {
+			t.Errorf("#%d: stepFunc called = %v , want %v", i, called, false)
+		}
+		if len(r.msgs) != tt.wmsgNum {
+			t.Errorf("#%d: len(msgs) = %d, want %d", i, len(r.msgs), tt.wmsgNum)
+		}
+		for j, msg := range r.msgs {
+			if msg.Type != msgDenied {
+				t.Errorf("#%d.%d: msgType = %d, want %d", i, j, msg.Type, msgDenied)
+			}
+		}
 	}
 }
 
