@@ -300,7 +300,8 @@ func getExpirationTime(r *pb.Request) time.Time {
 	return t
 }
 
-// apply interprets r as a call to store.X and returns an Response interpreted from store.Event
+// apply interprets r as a call to store.X and returns a Response interpreted
+// from store.Event
 func (s *EtcdServer) apply(r pb.Request) Response {
 	f := func(ev *store.Event, err error) Response {
 		return Response{Event: ev, err: err}
@@ -315,9 +316,8 @@ func (s *EtcdServer) apply(r pb.Request) Response {
 		case existsSet:
 			if exists {
 				return f(s.Store.Update(r.Path, r.Val, expr))
-			} else {
-				return f(s.Store.Create(r.Path, r.Dir, r.Val, false, expr))
 			}
+			return f(s.Store.Create(r.Path, r.Dir, r.Val, false, expr))
 		case r.PrevIndex > 0 || r.PrevValue != "":
 			return f(s.Store.CompareAndSwap(r.Path, r.PrevValue, r.PrevIndex, r.Val, expr))
 		default:
