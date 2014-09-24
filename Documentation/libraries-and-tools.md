@@ -3,6 +3,7 @@
 **Tools**
 
 - [etcdctl](https://github.com/coreos/etcdctl) - A command line client for etcd
+- [etcd-backup](https://github.com/fanhattan/etcd-backup) - A powerful command line utility for dumping/restoring etcd - Supports v2
 - [etcd-dump](https://npmjs.org/package/etcd-dump) - Command line utility for dumping/restoring etcd.
 - [etcd-fs](https://github.com/xetorthio/etcd-fs) - FUSE filesystem for etcd
 - [etcd-browser](https://github.com/henszey/etcd-browser) - A web-based key/value editor for etcd using AngularJS
