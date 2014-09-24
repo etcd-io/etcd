@@ -49,21 +49,27 @@ func TestDoLocalAction(t *testing.T) {
 	tests := []struct {
 		req pb.Request
 
-		wresp   Response
-		werr    error
-		waction []string
+		wresp    Response
+		werr     error
+		wactions []action
 	}{
 		{
 			pb.Request{Method: "GET", Id: 1, Wait: true},
-			Response{Watcher: &stubWatcher{}}, nil, []string{"Watch"},
+			Response{Watcher: &stubWatcher{}}, nil, []action{action{name: "Watch"}},
 		},
 		{
 			pb.Request{Method: "GET", Id: 1},
-			Response{Event: &store.Event{}}, nil, []string{"Get"},
+			Response{Event: &store.Event{}}, nil,
+			[]action{
+				action{
+					name:   "Get",
+					params: []interface{}{"", false, false},
+				},
+			},
 		},
 		{
 			pb.Request{Method: "BADMETHOD", Id: 1},
-			Response{}, ErrUnknownMethod, []string{},
+			Response{}, ErrUnknownMethod, []action{},
 		},
 	}
 	for i, tt := range tests {
@@ -77,9 +83,9 @@ func TestDoLocalAction(t *testing.T) {
 		if !reflect.DeepEqual(resp, tt.wresp) {
 			t.Errorf("#%d: resp = %+v, want %+v", i, resp, tt.wresp)
 		}
-		action := st.Action()
-		if !reflect.DeepEqual(action, tt.waction) {
-			t.Errorf("#%d: action = %+v, want %+v", i, action, tt.waction)
+		gaction := st.Action()
+		if !reflect.DeepEqual(gaction, tt.wactions) {
+			t.Errorf("#%d: action = %+v, want %+v", i, gaction, tt.wactions)
 		}
 	}
 }
@@ -91,15 +97,15 @@ func TestDoBadLocalAction(t *testing.T) {
 	tests := []struct {
 		req pb.Request
 
-		waction []string
+		wactions []action
 	}{
 		{
 			pb.Request{Method: "GET", Id: 1, Wait: true},
-			[]string{"Watch"},
+			[]action{action{name: "Watch"}},
 		},
 		{
 			pb.Request{Method: "GET", Id: 1},
-			[]string{"Get"},
+			[]action{action{name: "Get"}},
 		},
 	}
 	for i, tt := range tests {
@@ -113,9 +119,9 @@ func TestDoBadLocalAction(t *testing.T) {
 		if !reflect.DeepEqual(resp, Response{}) {
 			t.Errorf("#%d: resp = %+v, want %+v", i, resp, Response{})
 		}
-		action := st.Action()
-		if !reflect.DeepEqual(action, tt.waction) {
-			t.Errorf("#%d: action = %+v, want %+v", i, action, tt.waction)
+		gaction := st.Action()
+		if !reflect.DeepEqual(gaction, tt.wactions) {
+			t.Errorf("#%d: action = %+v, want %+v", i, gaction, tt.wactions)
 		}
 	}
 }
@@ -124,64 +130,185 @@ func TestApply(t *testing.T) {
 	tests := []struct {
 		req pb.Request
 
-		wresp   Response
-		waction []string
+		wresp    Response
+		wactions []action
 	}{
+		// POST ==> Create
 		{
 			pb.Request{Method: "POST", Id: 1},
-			Response{Event: &store.Event{}}, []string{"Create"},
+			Response{Event: &store.Event{}},
+			[]action{
+				action{
+					name:   "Create",
+					params: []interface{}{"", false, "", true, time.Time{}},
+				},
+			},
 		},
-		{
-			pb.Request{Method: "PUT", Id: 1, PrevExist: boolp(true), PrevIndex: 1},
-			Response{Event: &store.Event{}}, []string{"Update"},
-		},
-		{
-			pb.Request{Method: "PUT", Id: 1, PrevExist: boolp(false), PrevIndex: 1},
-			Response{Event: &store.Event{}}, []string{"Create"},
-		},
-		{
-			pb.Request{Method: "PUT", Id: 1, PrevExist: boolp(true)},
-			Response{Event: &store.Event{}}, []string{"Update"},
-		},
-		{
-			pb.Request{Method: "PUT", Id: 1, PrevExist: boolp(false)},
-			Response{Event: &store.Event{}}, []string{"Create"},
-		},
-		{
-			pb.Request{Method: "PUT", Id: 1, PrevIndex: 1},
-			Response{Event: &store.Event{}}, []string{"CompareAndSwap"},
-		},
-		{
-			pb.Request{Method: "PUT", Id: 1, PrevValue: "bar"},
-			Response{Event: &store.Event{}}, []string{"CompareAndSwap"},
-		},
+		// PUT ==> Set
 		{
 			pb.Request{Method: "PUT", Id: 1},
-			Response{Event: &store.Event{}}, []string{"Set"},
+			Response{Event: &store.Event{}}, []action{action{name: "Set"}},
 		},
+		// PUT with PrevExist=true ==> Update
 		{
-			pb.Request{Method: "DELETE", Id: 1, PrevIndex: 1},
-			Response{Event: &store.Event{}}, []string{"CompareAndDelete"},
+			pb.Request{Method: "PUT", Id: 1, PrevExist: boolp(true)},
+			Response{Event: &store.Event{}},
+			[]action{
+				action{
+					name:   "Update",
+					params: []interface{}{"", "", time.Time{}},
+				},
+			},
 		},
+		// PUT with PrevExist=false ==> Create
 		{
-			pb.Request{Method: "DELETE", Id: 1, PrevValue: "bar"},
-			Response{Event: &store.Event{}}, []string{"CompareAndDelete"},
+			pb.Request{Method: "PUT", Id: 1, PrevExist: boolp(false)},
+			Response{Event: &store.Event{}},
+			[]action{
+				action{
+					name:   "Create",
+					params: []interface{}{"", false, "", false, time.Time{}},
+				},
+			},
 		},
+		// PUT with PrevExist=true *and* PrevIndex set ==> Update
+		// TODO(jonboulle): is this expected?!
+		{
+			pb.Request{Method: "PUT", Id: 1, PrevExist: boolp(true), PrevIndex: 1},
+			Response{Event: &store.Event{}},
+			[]action{
+				action{
+					name:   "Update",
+					params: []interface{}{"", "", time.Time{}},
+				},
+			},
+		},
+		// PUT with PrevExist=false *and* PrevIndex set ==> Create
+		// TODO(jonboulle): is this expected?!
+		{
+			pb.Request{Method: "PUT", Id: 1, PrevExist: boolp(false), PrevIndex: 1},
+			Response{Event: &store.Event{}},
+			[]action{
+				action{
+					name:   "Create",
+					params: []interface{}{"", false, "", false, time.Time{}},
+				},
+			},
+		},
+		// PUT with PrevIndex set ==> CompareAndSwap
+		{
+			pb.Request{Method: "PUT", Id: 1, PrevIndex: 1},
+			Response{Event: &store.Event{}},
+			[]action{
+				action{
+					name:   "CompareAndSwap",
+					params: []interface{}{"", "", uint64(1), "", time.Time{}},
+				},
+			},
+		},
+		// PUT with PrevValue set ==> CompareAndSwap
+		{
+			pb.Request{Method: "PUT", Id: 1, PrevValue: "bar"},
+			Response{Event: &store.Event{}},
+			[]action{
+				action{
+					name:   "CompareAndSwap",
+					params: []interface{}{"", "bar", uint64(0), "", time.Time{}},
+				},
+			},
+		},
+		// PUT with PrevIndex and PrevValue set ==> CompareAndSwap
+		{
+			pb.Request{Method: "PUT", Id: 1, PrevIndex: 1, PrevValue: "bar"},
+			Response{Event: &store.Event{}},
+			[]action{
+				action{
+					name:   "CompareAndSwap",
+					params: []interface{}{"", "bar", uint64(1), "", time.Time{}},
+				},
+			},
+		},
+		// DELETE ==> Delete
 		{
 			pb.Request{Method: "DELETE", Id: 1},
-			Response{Event: &store.Event{}}, []string{"Delete"},
+			Response{Event: &store.Event{}},
+			[]action{
+				action{
+					name:   "Delete",
+					params: []interface{}{"", false, false},
+				},
+			},
 		},
+		// DELETE with PrevIndex set ==> CompareAndDelete
+		{
+			pb.Request{Method: "DELETE", Id: 1, PrevIndex: 1},
+			Response{Event: &store.Event{}},
+			[]action{
+				action{
+					name:   "CompareAndDelete",
+					params: []interface{}{"", "", uint64(1)},
+				},
+			},
+		},
+		// DELETE with PrevValue set ==> CompareAndDelete
+		{
+			pb.Request{Method: "DELETE", Id: 1, PrevValue: "bar"},
+			Response{Event: &store.Event{}},
+			[]action{
+				action{
+					name:   "CompareAndDelete",
+					params: []interface{}{"", "bar", uint64(0)},
+				},
+			},
+		},
+		// DELETE with PrevIndex *and* PrevValue set ==> CompareAndDelete
+		{
+			pb.Request{Method: "DELETE", Id: 1, PrevIndex: 5, PrevValue: "bar"},
+			Response{Event: &store.Event{}},
+			[]action{
+				action{
+					name:   "CompareAndDelete",
+					params: []interface{}{"", "bar", uint64(5)},
+				},
+			},
+		},
+		// QGET ==> Get
 		{
 			pb.Request{Method: "QGET", Id: 1},
-			Response{Event: &store.Event{}}, []string{"Get"},
+			Response{Event: &store.Event{}},
+			[]action{
+				action{
+					name:   "Get",
+					params: []interface{}{"", false, false},
+				},
+			},
 		},
+		// SYNC ==> DeleteExpiredKeys
 		{
 			pb.Request{Method: "SYNC", Id: 1},
-			Response{}, []string{"DeleteExpiredKeys"},
+			Response{},
+			[]action{
+				action{
+					name:   "DeleteExpiredKeys",
+					params: []interface{}{time.Unix(0, 0)},
+				},
+			},
 		},
 		{
+			pb.Request{Method: "SYNC", Id: 1, Time: 12345},
+			Response{},
+			[]action{
+				action{
+					name:   "DeleteExpiredKeys",
+					params: []interface{}{time.Unix(0, 12345)},
+				},
+			},
+		},
+		// Unknown method - error
+		{
 			pb.Request{Method: "BADMETHOD", Id: 1},
-			Response{err: ErrUnknownMethod}, []string{},
+			Response{err: ErrUnknownMethod},
+			[]action{},
 		},
 	}
 
@@ -193,9 +320,9 @@ func TestApply(t *testing.T) {
 		if !reflect.DeepEqual(resp, tt.wresp) {
 			t.Errorf("#%d: resp = %+v, want %+v", i, resp, tt.wresp)
 		}
-		action := st.Action()
-		if !reflect.DeepEqual(action, tt.waction) {
-			t.Errorf("#%d: action = %+v, want %+v", i, action, tt.waction)
+		gaction := st.Action()
+		if !reflect.DeepEqual(gaction, tt.wactions) {
+			t.Errorf("#%d: action = %#v, want %#v", i, gaction, tt.wactions)
 		}
 	}
 }
@@ -342,14 +469,14 @@ func TestDoProposalCancelled(t *testing.T) {
 	cancel()
 	<-done
 
-	action := st.Action()
-	if len(action) != 0 {
-		t.Errorf("len(action) = %v, want 0", len(action))
+	gaction := st.Action()
+	if len(gaction) != 0 {
+		t.Errorf("len(action) = %v, want 0", len(gaction))
 	}
 	if err != context.Canceled {
 		t.Fatalf("err = %v, want %v", err, context.Canceled)
 	}
-	w := []string{"Register1", "Trigger1"}
+	w := []action{action{name: "Register1"}, action{name: "Trigger1"}}
 	if !reflect.DeepEqual(wait.action, w) {
 		t.Errorf("wait.action = %+v, want %+v", wait.action, w)
 	}
@@ -438,7 +565,7 @@ func TestSyncTimeout(t *testing.T) {
 	// give time for goroutine in sync to cancel
 	// TODO: use fake clock
 	testutil.ForceGosched()
-	w := []string{"Propose blocked"}
+	w := []action{action{name: "Propose blocked"}}
 	if g := n.Action(); !reflect.DeepEqual(g, w) {
 		t.Errorf("action = %v, want %v", g, w)
 	}
@@ -511,20 +638,20 @@ func TestSnapshot(t *testing.T) {
 	}
 
 	s.snapshot()
-	action := st.Action()
-	if len(action) != 1 {
-		t.Fatalf("len(action) = %d, want 1", len(action))
+	gaction := st.Action()
+	if len(gaction) != 1 {
+		t.Fatalf("len(action) = %d, want 1", len(gaction))
 	}
-	if action[0] != "Save" {
-		t.Errorf("action = %s, want Save", action[0])
+	if !reflect.DeepEqual(gaction[0], action{name: "Save"}) {
+		t.Errorf("action = %s, want Save", gaction[0])
 	}
 
-	action = p.Action()
-	if len(action) != 1 {
-		t.Fatalf("len(action) = %d, want 1", len(action))
+	gaction = p.Action()
+	if len(gaction) != 1 {
+		t.Fatalf("len(action) = %d, want 1", len(gaction))
 	}
-	if action[0] != "Cut" {
-		t.Errorf("action = %s, want Cut", action[0])
+	if !reflect.DeepEqual(gaction[0], action{name: "Cut"}) {
+		t.Errorf("action = %s, want Cut", gaction[0])
 	}
 }
 
@@ -550,14 +677,14 @@ func TestTriggerSnap(t *testing.T) {
 	time.Sleep(time.Millisecond)
 	s.Stop()
 
-	action := p.Action()
+	gaction := p.Action()
 	// each operation is recorded as a Save
 	// Nop + SnapCount * Puts + Cut + SaveSnap = Save + SnapCount * Save + Cut + SaveSnap
-	if len(action) != 3+int(s.SnapCount) {
-		t.Fatalf("len(action) = %d, want %d", len(action), 3+int(s.SnapCount))
+	if len(gaction) != 3+int(s.SnapCount) {
+		t.Fatalf("len(action) = %d, want %d", len(gaction), 3+int(s.SnapCount))
 	}
-	if action[12] != "SaveSnap" {
-		t.Errorf("action = %s, want SaveSnap", action[12])
+	if !reflect.DeepEqual(gaction[12], action{name: "SaveSnap"}) {
+		t.Errorf("action = %s, want SaveSnap", gaction[12])
 	}
 }
 
@@ -580,13 +707,13 @@ func TestRecvSnapshot(t *testing.T) {
 	testutil.ForceGosched()
 	s.Stop()
 
-	waction := []string{"Recovery"}
-	if g := st.Action(); !reflect.DeepEqual(g, waction) {
-		t.Errorf("store action = %v, want %v", g, waction)
+	wactions := []action{action{name: "Recovery"}}
+	if g := st.Action(); !reflect.DeepEqual(g, wactions) {
+		t.Errorf("store action = %v, want %v", g, wactions)
 	}
-	waction = []string{"Save", "SaveSnap"}
-	if g := p.Action(); !reflect.DeepEqual(g, waction) {
-		t.Errorf("storage action = %v, want %v", g, waction)
+	wactions = []action{action{name: "Save"}, action{name: "SaveSnap"}}
+	if g := p.Action(); !reflect.DeepEqual(g, wactions) {
+		t.Errorf("storage action = %v, want %v", g, wactions)
 	}
 }
 
@@ -629,12 +756,12 @@ func TestAddNode(t *testing.T) {
 	}
 	s.Start()
 	s.AddNode(context.TODO(), 1, []byte("foo"))
-	action := n.Action()
+	gaction := n.Action()
 	s.Stop()
 
-	waction := []string{"ProposeConfChange:ConfChangeAddNode", "ApplyConfChange:ConfChangeAddNode"}
-	if !reflect.DeepEqual(action, waction) {
-		t.Errorf("action = %v, want %v", action, waction)
+	wactions := []action{action{name: "ProposeConfChange:ConfChangeAddNode"}, action{name: "ApplyConfChange:ConfChangeAddNode"}}
+	if !reflect.DeepEqual(gaction, wactions) {
+		t.Errorf("action = %v, want %v", gaction, wactions)
 	}
 }
 
@@ -649,12 +776,12 @@ func TestRemoveNode(t *testing.T) {
 	}
 	s.Start()
 	s.RemoveNode(context.TODO(), 1)
-	action := n.Action()
+	gaction := n.Action()
 	s.Stop()
 
-	waction := []string{"ProposeConfChange:ConfChangeRemoveNode", "ApplyConfChange:ConfChangeRemoveNode"}
-	if !reflect.DeepEqual(action, waction) {
-		t.Errorf("action = %v, want %v", action, waction)
+	wactions := []action{action{name: "ProposeConfChange:ConfChangeRemoveNode"}, action{name: "ApplyConfChange:ConfChangeRemoveNode"}}
+	if !reflect.DeepEqual(gaction, wactions) {
+		t.Errorf("action = %v, want %v", gaction, wactions)
 	}
 }
 
@@ -694,20 +821,25 @@ func TestGenID(t *testing.T) {
 	}
 }
 
-type recorder struct {
-	sync.Mutex
-	action []string
+type action struct {
+	name   string
+	params []interface{}
 }
 
-func (r *recorder) record(action string) {
+type recorder struct {
+	sync.Mutex
+	actions []action
+}
+
+func (r *recorder) record(a action) {
 	r.Lock()
-	r.action = append(r.action, action)
+	r.actions = append(r.actions, a)
 	r.Unlock()
 }
-func (r *recorder) Action() []string {
+func (r *recorder) Action() []action {
 	r.Lock()
-	cpy := make([]string, len(r.action))
-	copy(cpy, r.action)
+	cpy := make([]action, len(r.actions))
+	copy(cpy, r.actions)
 	r.Unlock()
 	return cpy
 }
@@ -718,50 +850,71 @@ type storeRecorder struct {
 
 func (s *storeRecorder) Version() int  { return 0 }
 func (s *storeRecorder) Index() uint64 { return 0 }
-func (s *storeRecorder) Get(_ string, _, _ bool) (*store.Event, error) {
-	s.record("Get")
+func (s *storeRecorder) Get(path string, recursive, sorted bool) (*store.Event, error) {
+	s.record(action{
+		name:   "Get",
+		params: []interface{}{path, recursive, sorted},
+	})
 	return &store.Event{}, nil
 }
 func (s *storeRecorder) Set(_ string, _ bool, _ string, _ time.Time) (*store.Event, error) {
-	s.record("Set")
+	s.record(action{name: "Set"})
 	return &store.Event{}, nil
 }
-func (s *storeRecorder) Update(_, _ string, _ time.Time) (*store.Event, error) {
-	s.record("Update")
+func (s *storeRecorder) Update(path, val string, expr time.Time) (*store.Event, error) {
+	s.record(action{
+		name:   "Update",
+		params: []interface{}{path, val, expr},
+	})
 	return &store.Event{}, nil
 }
-func (s *storeRecorder) Create(_ string, _ bool, _ string, _ bool, _ time.Time) (*store.Event, error) {
-	s.record("Create")
+func (s *storeRecorder) Create(path string, dir bool, val string, uniq bool, exp time.Time) (*store.Event, error) {
+	s.record(action{
+		name:   "Create",
+		params: []interface{}{path, dir, val, uniq, exp},
+	})
 	return &store.Event{}, nil
 }
-func (s *storeRecorder) CompareAndSwap(_, _ string, _ uint64, _ string, _ time.Time) (*store.Event, error) {
-	s.record("CompareAndSwap")
+func (s *storeRecorder) CompareAndSwap(path, prevVal string, prevIdx uint64, val string, expr time.Time) (*store.Event, error) {
+	s.record(action{
+		name:   "CompareAndSwap",
+		params: []interface{}{path, prevVal, prevIdx, val, expr},
+	})
 	return &store.Event{}, nil
 }
-func (s *storeRecorder) Delete(_ string, _, _ bool) (*store.Event, error) {
-	s.record("Delete")
+func (s *storeRecorder) Delete(path string, dir, recursive bool) (*store.Event, error) {
+	s.record(action{
+		name:   "Delete",
+		params: []interface{}{path, dir, recursive},
+	})
 	return &store.Event{}, nil
 }
-func (s *storeRecorder) CompareAndDelete(_, _ string, _ uint64) (*store.Event, error) {
-	s.record("CompareAndDelete")
+func (s *storeRecorder) CompareAndDelete(path, prevVal string, prevIdx uint64) (*store.Event, error) {
+	s.record(action{
+		name:   "CompareAndDelete",
+		params: []interface{}{path, prevVal, prevIdx},
+	})
 	return &store.Event{}, nil
 }
 func (s *storeRecorder) Watch(_ string, _, _ bool, _ uint64) (store.Watcher, error) {
-	s.record("Watch")
+	s.record(action{name: "Watch"})
 	return &stubWatcher{}, nil
 }
 func (s *storeRecorder) Save() ([]byte, error) {
-	s.record("Save")
+	s.record(action{name: "Save"})
 	return nil, nil
 }
 func (s *storeRecorder) Recovery(b []byte) error {
-	s.record("Recovery")
+	s.record(action{name: "Recovery"})
 	return nil
 }
 func (s *storeRecorder) TotalTransactions() uint64 { return 0 }
 func (s *storeRecorder) JsonStats() []byte         { return nil }
 func (s *storeRecorder) DeleteExpiredKeys(cutoff time.Time) {
-	s.record("DeleteExpiredKeys")
+	s.record(action{
+		name:   "DeleteExpiredKeys",
+		params: []interface{}{cutoff},
+	})
 }
 
 type stubWatcher struct{}
@@ -776,24 +929,24 @@ type errStoreRecorder struct {
 }
 
 func (s *errStoreRecorder) Get(_ string, _, _ bool) (*store.Event, error) {
-	s.record("Get")
+	s.record(action{name: "Get"})
 	return nil, s.err
 }
 func (s *errStoreRecorder) Watch(_ string, _, _ bool, _ uint64) (store.Watcher, error) {
-	s.record("Watch")
+	s.record(action{name: "Watch"})
 	return nil, s.err
 }
 
 type waitRecorder struct {
-	action []string
+	action []action
 }
 
 func (w *waitRecorder) Register(id int64) <-chan interface{} {
-	w.action = append(w.action, fmt.Sprint("Register", id))
+	w.action = append(w.action, action{name: fmt.Sprint("Register", id)})
 	return nil
 }
 func (w *waitRecorder) Trigger(id int64, x interface{}) {
-	w.action = append(w.action, fmt.Sprint("Trigger", id))
+	w.action = append(w.action, action{name: fmt.Sprint("Trigger", id)})
 }
 
 func boolp(b bool) *bool { return &b }
@@ -805,17 +958,17 @@ type storageRecorder struct {
 }
 
 func (p *storageRecorder) Save(st raftpb.HardState, ents []raftpb.Entry) {
-	p.record("Save")
+	p.record(action{name: "Save"})
 }
 func (p *storageRecorder) Cut() error {
-	p.record("Cut")
+	p.record(action{name: "Cut"})
 	return nil
 }
 func (p *storageRecorder) SaveSnap(st raftpb.Snapshot) {
 	if raft.IsEmptySnap(st) {
 		return
 	}
-	p.record("SaveSnap")
+	p.record(action{name: "SaveSnap"})
 }
 
 type readyNode struct {
@@ -843,33 +996,33 @@ type nodeRecorder struct {
 }
 
 func (n *nodeRecorder) Tick() {
-	n.record("Tick")
+	n.record(action{name: "Tick"})
 }
 func (n *nodeRecorder) Campaign(ctx context.Context) error {
-	n.record("Campaign")
+	n.record(action{name: "Campaign"})
 	return nil
 }
 func (n *nodeRecorder) Propose(ctx context.Context, data []byte) error {
-	n.record("Propose")
+	n.record(action{name: "Propose"})
 	return nil
 }
 func (n *nodeRecorder) ProposeConfChange(ctx context.Context, conf raftpb.ConfChange) error {
-	n.record("ProposeConfChange")
+	n.record(action{name: "ProposeConfChange"})
 	return nil
 }
 func (n *nodeRecorder) Step(ctx context.Context, msg raftpb.Message) error {
-	n.record("Step")
+	n.record(action{name: "Step"})
 	return nil
 }
 func (n *nodeRecorder) Ready() <-chan raft.Ready { return nil }
 func (n *nodeRecorder) ApplyConfChange(conf raftpb.ConfChange) {
-	n.record("ApplyConfChange")
+	n.record(action{name: "ApplyConfChange"})
 }
 func (n *nodeRecorder) Stop() {
-	n.record("Stop")
+	n.record(action{name: "Stop"})
 }
 func (n *nodeRecorder) Compact(d []byte) {
-	n.record("Compact")
+	n.record(action{name: "Compact"})
 }
 
 type nodeProposeDataRecorder struct {
@@ -898,7 +1051,7 @@ type nodeProposalBlockerRecorder struct {
 
 func (n *nodeProposalBlockerRecorder) Propose(ctx context.Context, data []byte) error {
 	<-ctx.Done()
-	n.record("Propose blocked")
+	n.record(action{name: "Propose blocked"})
 	return nil
 }
 
@@ -918,12 +1071,12 @@ func (n *nodeConfChangeCommitterRecorder) ProposeConfChange(ctx context.Context,
 		return err
 	}
 	n.readyc <- raft.Ready{CommittedEntries: []raftpb.Entry{{Type: raftpb.EntryConfChange, Data: data}}}
-	n.record("ProposeConfChange:" + conf.Type.String())
+	n.record(action{name: "ProposeConfChange:" + conf.Type.String()})
 	return nil
 }
 func (n *nodeConfChangeCommitterRecorder) Ready() <-chan raft.Ready {
 	return n.readyc
 }
 func (n *nodeConfChangeCommitterRecorder) ApplyConfChange(conf raftpb.ConfChange) {
-	n.record("ApplyConfChange:" + conf.Type.String())
+	n.record(action{name: "ApplyConfChange:" + conf.Type.String()})
 }
