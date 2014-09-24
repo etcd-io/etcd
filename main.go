@@ -86,7 +86,7 @@ func init() {
 	flag.StringVar(&peerTLSInfo.KeyFile, "peer-key-file", "", "Path to the peer server TLS key file.")
 
 	for _, f := range deprecated {
-		flag.Var(&deprecatedFlag{f}, f, "No longer supported.")
+		flag.Var(&deprecatedFlag{f}, f, "")
 	}
 }
 
