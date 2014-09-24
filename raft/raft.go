@@ -265,6 +265,12 @@ func (r *raft) appendEntry(e pb.Entry) {
 
 // tickElection is ran by followers and candidates after r.electionTimeout.
 func (r *raft) tickElection() {
+	// promotable indicates whether state machine can be promoted to leader,
+	// which is true when its own id is in progress list.
+	if _, promotable := r.prs[r.id]; !promotable {
+		r.elapsed = 0
+		return
+	}
 	r.elapsed++
 	// TODO (xiangli): elctionTimeout should be randomized.
 	if r.elapsed > r.electionTimeout {

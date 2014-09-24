@@ -1053,6 +1053,37 @@ func TestRemoveNode(t *testing.T) {
 	}
 }
 
+func TestTickElectionElapsed(t *testing.T) {
+	electionTimeout := 10
+	tests := []struct {
+		promotable bool
+		e          int
+		we         int
+	}{
+		{true, 0, 1},
+		{true, electionTimeout - 1, electionTimeout},
+		{true, electionTimeout, 0},
+		{false, 0, 0},
+		{false, 1, 0},
+	}
+	for i, tt := range tests {
+		r := &raft{
+			id:              1,
+			raftLog:         newLog(),
+			prs:             make(map[int64]*progress),
+			electionTimeout: electionTimeout,
+			elapsed:         tt.e,
+		}
+		if tt.promotable {
+			r.prs[r.id] = &progress{}
+		}
+		r.tickElection()
+		if r.elapsed != tt.we {
+			t.Errorf("#%d: elapsed = %d, want %d", i, r.elapsed, tt.we)
+		}
+	}
+}
+
 func ents(terms ...int64) *raft {
 	ents := []pb.Entry{{}}
 	for _, term := range terms {
