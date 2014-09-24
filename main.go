@@ -95,7 +95,7 @@ func main() {
 	flag.Usage = pkg.UsageWithIgnoredFlagsFunc(flag.CommandLine, deprecated)
 	flag.Parse()
 
-	SetFlagsFromEnv(flag.CommandLine)
+	pkg.SetFlagsFromEnv(flag.CommandLine)
 
 	if string(*proxyFlag) == proxyFlagValueOff {
 		startEtcd()
@@ -327,25 +327,4 @@ func (pf *ProxyFlag) Set(s string) error {
 
 func (pf *ProxyFlag) String() string {
 	return string(*pf)
-}
-
-// SetFlagsFromEnv parses all registered flags in the given flagset,
-// and if they are not already set it attempts to set their values from
-// environment variables. Environment variables take the name of the flag but
-// are UPPERCASE, have the prefix "ETCD_", and any dashes are replaced by
-// underscores - for example: some-flag => ETCD_SOME_FLAG
-func SetFlagsFromEnv(fs *flag.FlagSet) {
-	alreadySet := make(map[string]bool)
-	fs.Visit(func(f *flag.Flag) {
-		alreadySet[f.Name] = true
-	})
-	fs.VisitAll(func(f *flag.Flag) {
-		if !alreadySet[f.Name] {
-			key := "ETCD_" + strings.ToUpper(strings.Replace(f.Name, "-", "_", -1))
-			val := os.Getenv(key)
-			if val != "" {
-				fs.Set(f.Name, val)
-			}
-		}
-	})
 }

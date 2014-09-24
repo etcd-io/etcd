@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 )
 
 type DeprecatedFlag struct {
@@ -41,4 +42,25 @@ func UsageWithIgnoredFlagsFunc(fs *flag.FlagSet, ignore []string) func() {
 			fmt.Fprintf(os.Stderr, format, f.Name, f.DefValue, f.Usage)
 		})
 	}
+}
+
+// SetFlagsFromEnv parses all registered flags in the given flagset,
+// and if they are not already set it attempts to set their values from
+// environment variables. Environment variables take the name of the flag but
+// are UPPERCASE, have the prefix "ETCD_", and any dashes are replaced by
+// underscores - for example: some-flag => ETCD_SOME_FLAG
+func SetFlagsFromEnv(fs *flag.FlagSet) {
+	alreadySet := make(map[string]bool)
+	fs.Visit(func(f *flag.Flag) {
+		alreadySet[f.Name] = true
+	})
+	fs.VisitAll(func(f *flag.Flag) {
+		if !alreadySet[f.Name] {
+			key := "ETCD_" + strings.ToUpper(strings.Replace(f.Name, "-", "_", -1))
+			val := os.Getenv(key)
+			if val != "" {
+				fs.Set(f.Name, val)
+			}
+		}
+	})
 }
