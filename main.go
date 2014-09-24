@@ -52,6 +52,20 @@ var (
 
 	clientTLSInfo = transport.TLSInfo{}
 	peerTLSInfo   = transport.TLSInfo{}
+
+	deprecated = []string{
+		"config",
+		"peers-file",
+		"peer-heartbeat-interval",
+		"peer-election-timeout",
+		"max-result-buffer",
+		"max-retry-attempts",
+		"retry-interval",
+		"snapshot",
+		"cluster-active-size",
+		"cluster-remove-delay",
+		"cluster-sync-interval",
+	}
 )
 
 func init() {
@@ -70,6 +84,10 @@ func init() {
 	flag.StringVar(&peerTLSInfo.CAFile, "peer-ca-file", "", "Path to the peer server TLS CA file.")
 	flag.StringVar(&peerTLSInfo.CertFile, "peer-cert-file", "", "Path to the peer server TLS cert file.")
 	flag.StringVar(&peerTLSInfo.KeyFile, "peer-key-file", "", "Path to the peer server TLS key file.")
+
+	for _, f := range deprecated {
+		flag.Var(&deprecatedFlag{f}, f, "No longer supported.")
+	}
 }
 
 func main() {
@@ -329,4 +347,22 @@ func setFlagsFromEnv() {
 		}
 
 	})
+}
+
+type deprecatedFlag struct {
+	name string
+}
+
+// IsBoolFlag is defined to allow the flag to be defined without an argument
+func (df *deprecatedFlag) IsBoolFlag() bool {
+	return true
+}
+
+func (df *deprecatedFlag) Set(s string) error {
+	log.Printf("WARNING: flag \"-%s\" is no longer supported.", df.name)
+	return nil
+}
+
+func (df *deprecatedFlag) String() string {
+	return ""
 }
