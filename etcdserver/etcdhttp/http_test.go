@@ -974,3 +974,147 @@ func TestServeKeysWatch(t *testing.T) {
 		t.Errorf("got body=%#v, want %#v", g, wbody)
 	}
 }
+
+func TestHandleWatch(t *testing.T) {
+	rw := httptest.NewRecorder()
+	wa := &dummyWatcher{
+		echan: make(chan *store.Event, 1),
+	}
+	wa.echan <- &store.Event{
+		Action: store.Get,
+		Node:   &store.NodeExtern{},
+	}
+
+	handleWatch(context.Background(), rw, wa, false)
+
+	wcode := http.StatusOK
+	wte := "chunked"
+	wct := "application/json"
+	wbody := mustMarshalEvent(
+		t,
+		&store.Event{
+			Action: store.Get,
+			Node:   &store.NodeExtern{},
+		},
+	)
+	wbody = fmt.Sprintf("%x\r\n%s\r\n", len(wbody), wbody)
+
+	if rw.Code != wcode {
+		t.Errorf("got code=%d, want %d", rw.Code, wcode)
+	}
+	h := rw.Header()
+	if ct := h.Get("Content-Type"); ct != wct {
+		t.Errorf("Content-Type=%q, want %q", ct, wct)
+	}
+	if te := h.Get("Transfer-Encoding"); te != wte {
+		t.Errorf("Transfer-Encoding=%q, want %q", te, wte)
+	}
+	g := rw.Body.String()
+	if g != wbody {
+		t.Errorf("got body=%#v, want %#v", g, wbody)
+	}
+}
+
+func TestHandleWatchNoEvent(t *testing.T) {
+	rw := httptest.NewRecorder()
+	wa := &dummyWatcher{
+		echan: make(chan *store.Event, 1),
+	}
+	close(wa.echan)
+
+	handleWatch(context.Background(), rw, wa, false)
+
+	wcode := http.StatusOK
+	wte := "chunked"
+	wct := "application/json"
+	wbody := ""
+
+	if rw.Code != wcode {
+		t.Errorf("got code=%d, want %d", rw.Code, wcode)
+	}
+	h := rw.Header()
+	if ct := h.Get("Content-Type"); ct != wct {
+		t.Errorf("Content-Type=%q, want %q", ct, wct)
+	}
+	if te := h.Get("Transfer-Encoding"); te != wte {
+		t.Errorf("Transfer-Encoding=%q, want %q", te, wte)
+	}
+	g := rw.Body.String()
+	if g != wbody {
+		t.Errorf("got body=%#v, want %#v", g, wbody)
+	}
+}
+
+type recordingCloseNotifier struct {
+	*httptest.ResponseRecorder
+	cn chan bool
+}
+
+func (rcn *recordingCloseNotifier) CloseNotify() <-chan bool {
+	return rcn.cn
+}
+
+func TestHandleWatchCloseNotified(t *testing.T) {
+	rw := &recordingCloseNotifier{
+		ResponseRecorder: httptest.NewRecorder(),
+		cn:               make(chan bool, 1),
+	}
+	rw.cn <- true
+	wa := &dummyWatcher{}
+
+	handleWatch(context.Background(), rw, wa, false)
+
+	wcode := http.StatusOK
+	wte := "chunked"
+	wct := "application/json"
+	wbody := ""
+
+	if rw.Code != wcode {
+		t.Errorf("got code=%d, want %d", rw.Code, wcode)
+	}
+	h := rw.Header()
+	if ct := h.Get("Content-Type"); ct != wct {
+		t.Errorf("Content-Type=%q, want %q", ct, wct)
+	}
+	if te := h.Get("Transfer-Encoding"); te != wte {
+		t.Errorf("Transfer-Encoding=%q, want %q", te, wte)
+	}
+	g := rw.Body.String()
+	if g != wbody {
+		t.Errorf("got body=%#v, want %#v", g, wbody)
+	}
+}
+
+func TestHandleWatchTimeout(t *testing.T) {
+	rw := httptest.NewRecorder()
+	wa := &dummyWatcher{}
+	// Simulate a timed-out context
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	handleWatch(ctx, rw, wa, false)
+
+	wcode := http.StatusOK
+	wte := "chunked"
+	wct := "application/json"
+	wbody := "0\r\n"
+
+	if rw.Code != wcode {
+		t.Errorf("got code=%d, want %d", rw.Code, wcode)
+	}
+	h := rw.Header()
+	if ct := h.Get("Content-Type"); ct != wct {
+		t.Errorf("Content-Type=%q, want %q", ct, wct)
+	}
+	if te := h.Get("Transfer-Encoding"); te != wte {
+		t.Errorf("Transfer-Encoding=%q, want %q", te, wte)
+	}
+	g := rw.Body.String()
+	if g != wbody {
+		t.Errorf("got body=%#v, want %#v", g, wbody)
+	}
+}
+
+func TestHandleWatchStreaming(t *testing.T) {
+	// TODO(jonboulle): me
+}

@@ -100,7 +100,9 @@ func (h serverHandler) serveKeys(w http.ResponseWriter, r *http.Request) {
 			log.Println("error writing event: %v", err)
 		}
 	case resp.Watcher != nil:
-		handleWatch(w, resp.Watcher, rr.Stream)
+		ctx, cancel := context.WithTimeout(context.Background(), defaultWatchTimeout)
+		defer cancel()
+		handleWatch(ctx, w, resp.Watcher, rr.Stream)
 	default:
 		writeError(w, errors.New("received response with no Event/Watcher!"))
 	}
@@ -313,17 +315,17 @@ func writeEvent(w http.ResponseWriter, ev *store.Event) error {
 	return json.NewEncoder(w).Encode(ev)
 }
 
-func handleWatch(w http.ResponseWriter, wa store.Watcher, stream bool) {
+func handleWatch(ctx context.Context, w http.ResponseWriter, wa store.Watcher, stream bool) {
 	defer wa.Remove()
 	ech := wa.EventChan()
-	tch := time.After(defaultWatchTimeout)
 	var nch <-chan bool
 	if x, ok := w.(http.CloseNotifier); ok {
 		nch = x.CloseNotify()
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	// WriteHeader will implicitly write a Transfer-Encoding: chunked header, so no need to do it explicitly
+	// WriteHeader will do this implicitly, but best to be explicit.
+	w.Header().Set("Transfer-Encoding", "chunked")
 	w.WriteHeader(http.StatusOK)
 
 	// Ensure headers are flushed early, in case of long polling
@@ -336,7 +338,8 @@ func handleWatch(w http.ResponseWriter, wa store.Watcher, stream bool) {
 		case <-nch:
 			// Client closed connection. Nothing to do.
 			return
-		case <-tch:
+		case <-ctx.Done():
+			// Timed out. Close the connection gracefully.
 			cw.Close()
 			return
 		case ev, ok := <-ech:
