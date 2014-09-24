@@ -33,11 +33,13 @@ const (
 )
 
 var (
-	fid       = flag.String("id", "0x1", "ID of this server")
-	timeout   = flag.Duration("timeout", 10*time.Second, "Request Timeout")
-	paddr     = flag.String("peer-bind-addr", ":7001", "Peer service address (e.g., ':7001')")
-	dir       = flag.String("data-dir", "", "Path to the data directory")
-	snapCount = flag.Int64("snapshot-count", etcdserver.DefaultSnapCount, "Number of committed transactions to trigger a snapshot")
+	eFlags = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+
+	fid       = eFlags.String("id", "0x1", "ID of this server")
+	timeout   = eFlags.Duration("timeout", 10*time.Second, "Request Timeout")
+	paddr     = eFlags.String("peer-bind-addr", ":7001", "Peer service address (e.g., ':7001')")
+	dir       = eFlags.String("data-dir", "", "Path to the data directory")
+	snapCount = eFlags.Int64("snapshot-count", etcdserver.DefaultSnapCount, "Number of committed transactions to trigger a snapshot")
 
 	peers     = &etcdhttp.Peers{}
 	addrs     = &Addrs{}
@@ -69,32 +71,32 @@ var (
 )
 
 func init() {
-	flag.Var(peers, "peers", "your peers")
-	flag.Var(addrs, "bind-addr", "List of HTTP service addresses (e.g., '127.0.0.1:4001,10.0.0.1:8080')")
-	flag.Var(cors, "cors", "Comma-separated white list of origins for CORS (cross-origin resource sharing).")
-	flag.Var(proxyFlag, "proxy", fmt.Sprintf("Valid values include %s", strings.Join(proxyFlagValues, ", ")))
+	eFlags.Var(peers, "peers", "your peers")
+	eFlags.Var(addrs, "bind-addr", "List of HTTP service addresses (e.g., '127.0.0.1:4001,10.0.0.1:8080')")
+	eFlags.Var(cors, "cors", "Comma-separated white list of origins for CORS (cross-origin resource sharing).")
+	eFlags.Var(proxyFlag, "proxy", fmt.Sprintf("Valid values include %s", strings.Join(proxyFlagValues, ", ")))
 	peers.Set("0x1=localhost:8080")
 	addrs.Set("127.0.0.1:4001")
 	proxyFlag.Set(proxyFlagValueOff)
 
-	flag.StringVar(&clientTLSInfo.CAFile, "ca-file", "", "Path to the client server TLS CA file.")
-	flag.StringVar(&clientTLSInfo.CertFile, "cert-file", "", "Path to the client server TLS cert file.")
-	flag.StringVar(&clientTLSInfo.KeyFile, "key-file", "", "Path to the client server TLS key file.")
+	eFlags.StringVar(&clientTLSInfo.CAFile, "ca-file", "", "Path to the client server TLS CA file.")
+	eFlags.StringVar(&clientTLSInfo.CertFile, "cert-file", "", "Path to the client server TLS cert file.")
+	eFlags.StringVar(&clientTLSInfo.KeyFile, "key-file", "", "Path to the client server TLS key file.")
 
-	flag.StringVar(&peerTLSInfo.CAFile, "peer-ca-file", "", "Path to the peer server TLS CA file.")
-	flag.StringVar(&peerTLSInfo.CertFile, "peer-cert-file", "", "Path to the peer server TLS cert file.")
-	flag.StringVar(&peerTLSInfo.KeyFile, "peer-key-file", "", "Path to the peer server TLS key file.")
+	eFlags.StringVar(&peerTLSInfo.CAFile, "peer-ca-file", "", "Path to the peer server TLS CA file.")
+	eFlags.StringVar(&peerTLSInfo.CertFile, "peer-cert-file", "", "Path to the peer server TLS cert file.")
+	eFlags.StringVar(&peerTLSInfo.KeyFile, "peer-key-file", "", "Path to the peer server TLS key file.")
 
 	for _, f := range deprecated {
-		flag.Var(&deprecatedFlag{f}, f, "No longer supported.")
+		eFlags.Var(&deprecatedFlag{f}, f, "No longer supported.")
 	}
 }
 
 func main() {
-	flag.CommandLine.Usage = usageWithIgnoredFlagsFunc(flag.CommandLine, deprecated)
-	flag.Parse()
+	eFlags.Usage = usageWithIgnoredFlagsFunc(eFlags, deprecated)
+	eFlags.Parse(os.Args[1:])
 
-	setFlagsFromEnv(flag.CommandLine)
+	setFlagsFromEnv(eFlags)
 
 	if string(*proxyFlag) == proxyFlagValueOff {
 		startEtcd()
