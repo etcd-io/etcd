@@ -218,6 +218,14 @@ func parseRequest(r *http.Request, id int64) (etcdserverpb.Request, error) {
 		)
 	}
 
+	pV := r.FormValue("prevValue")
+	if _, ok := r.Form["prevValue"]; ok && pV == "" {
+		return emptyReq, etcdErr.NewRequestError(
+			etcdErr.EcodeInvalidField,
+			`"prevValue" cannot be empty`,
+		)
+	}
+
 	// prevExist is nullable, so leave it null if not specified
 	var pe *bool
 	if _, ok := r.Form["prevExist"]; ok {
@@ -236,7 +244,7 @@ func parseRequest(r *http.Request, id int64) (etcdserverpb.Request, error) {
 		Method:    r.Method,
 		Path:      p,
 		Val:       r.FormValue("value"),
-		PrevValue: r.FormValue("prevValue"),
+		PrevValue: pV,
 		PrevIndex: pIdx,
 		PrevExist: pe,
 		Recursive: rec,
