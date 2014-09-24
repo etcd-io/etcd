@@ -65,6 +65,11 @@ var (
 		"cluster-active-size",
 		"cluster-remove-delay",
 		"cluster-sync-interval",
+		"addr",
+		"peer-addr",
+		"force",
+		"v",
+		"vv",
 	}
 )
 
