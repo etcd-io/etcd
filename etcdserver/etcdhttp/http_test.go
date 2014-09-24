@@ -11,7 +11,6 @@ import (
 	"path"
 	"reflect"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
@@ -36,8 +35,12 @@ func mustNewURL(t *testing.T, s string) *url.URL {
 // mustNewRequest takes a path, appends it to the standard keysPrefix, and constructs
 // a GET *http.Request referencing the resulting URL
 func mustNewRequest(t *testing.T, p string) *http.Request {
+	return mustNewMethodRequest(t, "GET", p)
+}
+
+func mustNewMethodRequest(t *testing.T, m, p string) *http.Request {
 	return &http.Request{
-		Method: "GET",
+		Method: m,
 		URL:    mustNewURL(t, path.Join(keysPrefix, p)),
 	}
 }
@@ -99,7 +102,7 @@ func TestBadParseRequest(t *testing.T) {
 			mustNewForm(t, "foo", url.Values{"ttl": []string{"-1"}}),
 			etcdErr.EcodeTTLNaN,
 		},
-		// bad values for recursive, sorted, wait, prevExist
+		// bad values for recursive, sorted, wait, prevExist, stream
 		{
 			mustNewForm(t, "foo", url.Values{"recursive": []string{"hahaha"}}),
 			etcdErr.EcodeInvalidField,
@@ -134,6 +137,19 @@ func TestBadParseRequest(t *testing.T) {
 		},
 		{
 			mustNewForm(t, "foo", url.Values{"prevExist": []string{"#2"}}),
+			etcdErr.EcodeInvalidField,
+		},
+		{
+			mustNewForm(t, "foo", url.Values{"stream": []string{"zzz"}}),
+			etcdErr.EcodeInvalidField,
+		},
+		{
+			mustNewForm(t, "foo", url.Values{"stream": []string{"something"}}),
+			etcdErr.EcodeInvalidField,
+		},
+		// wait is only valid with GET requests
+		{
+			mustNewMethodRequest(t, "HEAD", "foo?wait=true"),
 			etcdErr.EcodeInvalidField,
 		},
 		// query values are considered
@@ -256,14 +272,10 @@ func TestGoodParseRequest(t *testing.T) {
 		},
 		{
 			// wait specified
-			mustNewForm(
-				t,
-				"foo",
-				url.Values{"wait": []string{"true"}},
-			),
+			mustNewRequest(t, "foo?wait=true"),
 			etcdserverpb.Request{
 				Id:     1234,
-				Method: "PUT",
+				Method: "GET",
 				Wait:   true,
 				Path:   "/foo",
 			},
@@ -491,100 +503,6 @@ func (w *dummyWatcher) EventChan() chan *store.Event {
 	return w.echan
 }
 func (w *dummyWatcher) Remove() {}
-
-type dummyResponseWriter struct {
-	cnchan chan bool
-	http.ResponseWriter
-}
-
-func (rw *dummyResponseWriter) CloseNotify() <-chan bool {
-	return rw.cnchan
-}
-
-func TestWaitForEventChan(t *testing.T) {
-	ctx := context.Background()
-	ec := make(chan *store.Event)
-	dw := &dummyWatcher{
-		echan: ec,
-	}
-	w := httptest.NewRecorder()
-	var wg sync.WaitGroup
-	var ev *store.Event
-	var err error
-	wg.Add(1)
-	go func() {
-		ev, err = waitForEvent(ctx, w, dw)
-		wg.Done()
-	}()
-	ec <- &store.Event{
-		Action: store.Get,
-		Node: &store.NodeExtern{
-			Key:           "/foo/bar",
-			ModifiedIndex: 12345,
-		},
-	}
-	wg.Wait()
-	want := &store.Event{
-		Action: store.Get,
-		Node: &store.NodeExtern{
-			Key:           "/foo/bar",
-			ModifiedIndex: 12345,
-		},
-	}
-	if !reflect.DeepEqual(ev, want) {
-		t.Fatalf("bad event: got %#v, want %#v", ev, want)
-	}
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-}
-
-func TestWaitForEventCloseNotify(t *testing.T) {
-	ctx := context.Background()
-	dw := &dummyWatcher{}
-	cnchan := make(chan bool)
-	w := &dummyResponseWriter{
-		cnchan: cnchan,
-	}
-	var wg sync.WaitGroup
-	var ev *store.Event
-	var err error
-	wg.Add(1)
-	go func() {
-		ev, err = waitForEvent(ctx, w, dw)
-		wg.Done()
-	}()
-	close(cnchan)
-	wg.Wait()
-	if ev != nil {
-		t.Fatalf("non-nil Event returned with CloseNotifier: %v", ev)
-	}
-	if err == nil {
-		t.Fatalf("nil err returned with CloseNotifier!")
-	}
-}
-
-func TestWaitForEventCancelledContext(t *testing.T) {
-	cctx, cancel := context.WithCancel(context.Background())
-	dw := &dummyWatcher{}
-	w := httptest.NewRecorder()
-	var wg sync.WaitGroup
-	var ev *store.Event
-	var err error
-	wg.Add(1)
-	go func() {
-		ev, err = waitForEvent(cctx, w, dw)
-		wg.Done()
-	}()
-	cancel()
-	wg.Wait()
-	if ev != nil {
-		t.Fatalf("non-nil Event returned with cancelled context: %v", ev)
-	}
-	if err == nil {
-		t.Fatalf("nil err returned with cancelled context!")
-	}
-}
 
 func TestV2MachinesEndpoint(t *testing.T) {
 	tests := []struct {
@@ -951,17 +869,6 @@ func TestBadServeKeys(t *testing.T) {
 			http.StatusInternalServerError,
 		},
 		{
-			// timeout waiting for event (watcher never returns)
-			mustNewRequest(t, "foo"),
-			&resServer{
-				etcdserver.Response{
-					Watcher: &dummyWatcher{},
-				},
-			},
-
-			http.StatusGatewayTimeout,
-		},
-		{
 			// non-event/watcher response from etcdserver.Server
 			mustNewRequest(t, "foo"),
 			&resServer{
@@ -1063,5 +970,243 @@ func TestServeKeysWatch(t *testing.T) {
 	g := rw.Body.String()
 	if g != wbody {
 		t.Errorf("got body=%#v, want %#v", g, wbody)
+	}
+}
+
+func TestHandleWatch(t *testing.T) {
+	rw := httptest.NewRecorder()
+	wa := &dummyWatcher{
+		echan: make(chan *store.Event, 1),
+	}
+	wa.echan <- &store.Event{
+		Action: store.Get,
+		Node:   &store.NodeExtern{},
+	}
+
+	handleWatch(context.Background(), rw, wa, false)
+
+	wcode := http.StatusOK
+	wct := "application/json"
+	wbody := mustMarshalEvent(
+		t,
+		&store.Event{
+			Action: store.Get,
+			Node:   &store.NodeExtern{},
+		},
+	)
+
+	if rw.Code != wcode {
+		t.Errorf("got code=%d, want %d", rw.Code, wcode)
+	}
+	h := rw.Header()
+	if ct := h.Get("Content-Type"); ct != wct {
+		t.Errorf("Content-Type=%q, want %q", ct, wct)
+	}
+	g := rw.Body.String()
+	if g != wbody {
+		t.Errorf("got body=%#v, want %#v", g, wbody)
+	}
+}
+
+func TestHandleWatchNoEvent(t *testing.T) {
+	rw := httptest.NewRecorder()
+	wa := &dummyWatcher{
+		echan: make(chan *store.Event, 1),
+	}
+	close(wa.echan)
+
+	handleWatch(context.Background(), rw, wa, false)
+
+	wcode := http.StatusOK
+	wct := "application/json"
+	wbody := ""
+
+	if rw.Code != wcode {
+		t.Errorf("got code=%d, want %d", rw.Code, wcode)
+	}
+	h := rw.Header()
+	if ct := h.Get("Content-Type"); ct != wct {
+		t.Errorf("Content-Type=%q, want %q", ct, wct)
+	}
+	g := rw.Body.String()
+	if g != wbody {
+		t.Errorf("got body=%#v, want %#v", g, wbody)
+	}
+}
+
+type recordingCloseNotifier struct {
+	*httptest.ResponseRecorder
+	cn chan bool
+}
+
+func (rcn *recordingCloseNotifier) CloseNotify() <-chan bool {
+	return rcn.cn
+}
+
+func TestHandleWatchCloseNotified(t *testing.T) {
+	rw := &recordingCloseNotifier{
+		ResponseRecorder: httptest.NewRecorder(),
+		cn:               make(chan bool, 1),
+	}
+	rw.cn <- true
+	wa := &dummyWatcher{}
+
+	handleWatch(context.Background(), rw, wa, false)
+
+	wcode := http.StatusOK
+	wct := "application/json"
+	wbody := ""
+
+	if rw.Code != wcode {
+		t.Errorf("got code=%d, want %d", rw.Code, wcode)
+	}
+	h := rw.Header()
+	if ct := h.Get("Content-Type"); ct != wct {
+		t.Errorf("Content-Type=%q, want %q", ct, wct)
+	}
+	g := rw.Body.String()
+	if g != wbody {
+		t.Errorf("got body=%#v, want %#v", g, wbody)
+	}
+}
+
+func TestHandleWatchTimeout(t *testing.T) {
+	rw := httptest.NewRecorder()
+	wa := &dummyWatcher{}
+	// Simulate a timed-out context
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	handleWatch(ctx, rw, wa, false)
+
+	wcode := http.StatusOK
+	wct := "application/json"
+	wbody := ""
+
+	if rw.Code != wcode {
+		t.Errorf("got code=%d, want %d", rw.Code, wcode)
+	}
+	h := rw.Header()
+	if ct := h.Get("Content-Type"); ct != wct {
+		t.Errorf("Content-Type=%q, want %q", ct, wct)
+	}
+	g := rw.Body.String()
+	if g != wbody {
+		t.Errorf("got body=%#v, want %#v", g, wbody)
+	}
+}
+
+// flushingRecorder provides a channel to allow users to block until the Recorder is Flushed()
+type flushingRecorder struct {
+	*httptest.ResponseRecorder
+	ch chan struct{}
+}
+
+func (fr *flushingRecorder) Flush() {
+	fr.ResponseRecorder.Flush()
+	fr.ch <- struct{}{}
+}
+
+func TestHandleWatchStreaming(t *testing.T) {
+	rw := &flushingRecorder{
+		httptest.NewRecorder(),
+		make(chan struct{}, 1),
+	}
+	wa := &dummyWatcher{
+		echan: make(chan *store.Event),
+	}
+
+	// Launch the streaming handler in the background with a cancellable context
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() {
+		handleWatch(ctx, rw, wa, true)
+		close(done)
+	}()
+
+	// Expect one Flush for the headers etc.
+	select {
+	case <-rw.ch:
+	case <-time.After(time.Second):
+		t.Fatalf("timed out waiting for flush")
+	}
+
+	// Expect headers but no body
+	wcode := http.StatusOK
+	wct := "application/json"
+	wbody := ""
+
+	if rw.Code != wcode {
+		t.Errorf("got code=%d, want %d", rw.Code, wcode)
+	}
+	h := rw.Header()
+	if ct := h.Get("Content-Type"); ct != wct {
+		t.Errorf("Content-Type=%q, want %q", ct, wct)
+	}
+	g := rw.Body.String()
+	if g != wbody {
+		t.Errorf("got body=%#v, want %#v", g, wbody)
+	}
+
+	// Now send the first event
+	select {
+	case wa.echan <- &store.Event{
+		Action: store.Get,
+		Node:   &store.NodeExtern{},
+	}:
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for send")
+	}
+
+	// Wait for it to be flushed...
+	select {
+	case <-rw.ch:
+	case <-time.After(time.Second):
+		t.Fatalf("timed out waiting for flush")
+	}
+
+	// And check the body is as expected
+	wbody = mustMarshalEvent(
+		t,
+		&store.Event{
+			Action: store.Get,
+			Node:   &store.NodeExtern{},
+		},
+	)
+	g = rw.Body.String()
+	if g != wbody {
+		t.Errorf("got body=%#v, want %#v", g, wbody)
+	}
+
+	// Rinse and repeat
+	select {
+	case wa.echan <- &store.Event{
+		Action: store.Get,
+		Node:   &store.NodeExtern{},
+	}:
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for send")
+	}
+
+	select {
+	case <-rw.ch:
+	case <-time.After(time.Second):
+		t.Fatalf("timed out waiting for flush")
+	}
+
+	// This time, we expect to see both events
+	wbody = wbody + wbody
+	g = rw.Body.String()
+	if g != wbody {
+		t.Errorf("got body=%#v, want %#v", g, wbody)
+	}
+
+	// Finally, time out the connection and ensure the serving goroutine returns
+	cancel()
+
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatalf("timed out waiting for done")
 	}
 }

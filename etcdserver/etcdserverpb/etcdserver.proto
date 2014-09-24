@@ -23,4 +23,5 @@ message Request {
 	required bool   sorted     = 13 [(gogoproto.nullable) = false];
 	required bool   quorum     = 14 [(gogoproto.nullable) = false];
 	required int64  time       = 15 [(gogoproto.nullable) = false];
+	required bool   stream     = 16 [(gogoproto.nullable) = false];
 }
