@@ -30,7 +30,7 @@ func TestSetFlagsFromEnv(t *testing.T) {
 	}
 
 	// now read the env and verify flags were updated as expected
-	setFlagsFromEnv(flag.CommandLine)
+	SetFlagsFromEnv(flag.CommandLine)
 	for f, want := range map[string]string{
 		"data-dir":       "/foo/bar",
 		"peer-bind-addr": "1.2.3.4",
