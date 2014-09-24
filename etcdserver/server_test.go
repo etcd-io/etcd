@@ -155,10 +155,38 @@ func TestApply(t *testing.T) {
 				},
 			},
 		},
+		// POST ==> Create, with dir
+		{
+			pb.Request{Method: "POST", Id: 1, Dir: true},
+			Response{Event: &store.Event{}},
+			[]action{
+				action{
+					name:   "Create",
+					params: []interface{}{"", true, "", true, time.Time{}},
+				},
+			},
+		},
 		// PUT ==> Set
 		{
 			pb.Request{Method: "PUT", Id: 1},
-			Response{Event: &store.Event{}}, []action{action{name: "Set"}},
+			Response{Event: &store.Event{}},
+			[]action{
+				action{
+					name:   "Set",
+					params: []interface{}{"", false, "", time.Time{}},
+				},
+			},
+		},
+		// PUT ==> Set, with dir
+		{
+			pb.Request{Method: "PUT", Id: 1, Dir: true},
+			Response{Event: &store.Event{}},
+			[]action{
+				action{
+					name:   "Set",
+					params: []interface{}{"", true, "", time.Time{}},
+				},
+			},
 		},
 		// PUT with PrevExist=true ==> Update
 		{
@@ -868,8 +896,11 @@ func (s *storeRecorder) Get(path string, recursive, sorted bool) (*store.Event, 
 	})
 	return &store.Event{}, nil
 }
-func (s *storeRecorder) Set(_ string, _ bool, _ string, _ time.Time) (*store.Event, error) {
-	s.record(action{name: "Set"})
+func (s *storeRecorder) Set(path string, dir bool, val string, expr time.Time) (*store.Event, error) {
+	s.record(action{
+		name:   "Set",
+		params: []interface{}{path, dir, val, expr},
+	})
 	return &store.Event{}, nil
 }
 func (s *storeRecorder) Update(path, val string, expr time.Time) (*store.Event, error) {
