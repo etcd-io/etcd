@@ -188,7 +188,7 @@ func parseRequest(r *http.Request, id int64) (etcdserverpb.Request, error) {
 		}
 	}
 
-	var rec, sort, wait, stream bool
+	var rec, sort, wait, dir, stream bool
 	if rec, err = getBool(r.Form, "recursive"); err != nil {
 		return emptyReq, etcdErr.NewRequestError(
 			etcdErr.EcodeInvalidField,
@@ -205,6 +205,13 @@ func parseRequest(r *http.Request, id int64) (etcdserverpb.Request, error) {
 		return emptyReq, etcdErr.NewRequestError(
 			etcdErr.EcodeInvalidField,
 			`invalid value for "wait"`,
+		)
+	}
+	// TODO(jonboulle): define what parameters dir is/isn't compatible with?
+	if dir, err = getBool(r.Form, "dir"); err != nil {
+		return emptyReq, etcdErr.NewRequestError(
+			etcdErr.EcodeInvalidField,
+			`invalid value for "dir"`,
 		)
 	}
 	if stream, err = getBool(r.Form, "stream"); err != nil {
@@ -247,6 +254,7 @@ func parseRequest(r *http.Request, id int64) (etcdserverpb.Request, error) {
 		Method:    r.Method,
 		Path:      p,
 		Val:       r.FormValue("value"),
+		Dir:       dir,
 		PrevValue: pV,
 		PrevIndex: pIdx,
 		PrevExist: pe,

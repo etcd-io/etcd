@@ -102,7 +102,7 @@ func TestBadParseRequest(t *testing.T) {
 			mustNewForm(t, "foo", url.Values{"ttl": []string{"-1"}}),
 			etcdErr.EcodeTTLNaN,
 		},
-		// bad values for recursive, sorted, wait, prevExist, stream
+		// bad values for recursive, sorted, wait, prevExist, dir, stream
 		{
 			mustNewForm(t, "foo", url.Values{"recursive": []string{"hahaha"}}),
 			etcdErr.EcodeInvalidField,
@@ -137,6 +137,14 @@ func TestBadParseRequest(t *testing.T) {
 		},
 		{
 			mustNewForm(t, "foo", url.Values{"prevExist": []string{"#2"}}),
+			etcdErr.EcodeInvalidField,
+		},
+		{
+			mustNewForm(t, "foo", url.Values{"dir": []string{"no"}}),
+			etcdErr.EcodeInvalidField,
+		},
+		{
+			mustNewForm(t, "foo", url.Values{"dir": []string{"file"}}),
 			etcdErr.EcodeInvalidField,
 		},
 		{
@@ -303,6 +311,26 @@ func TestGoodParseRequest(t *testing.T) {
 				Method:     "GET",
 				Path:       "/foo",
 				Expiration: 0,
+			},
+		},
+		{
+			// dir specified
+			mustNewRequest(t, "foo?dir=true"),
+			etcdserverpb.Request{
+				Id:     1234,
+				Method: "GET",
+				Dir:    true,
+				Path:   "/foo",
+			},
+		},
+		{
+			// dir specified negatively
+			mustNewRequest(t, "foo?dir=false"),
+			etcdserverpb.Request{
+				Id:     1234,
+				Method: "GET",
+				Dir:    false,
+				Path:   "/foo",
 			},
 		},
 		{
