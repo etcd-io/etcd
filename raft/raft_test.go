@@ -1053,6 +1053,28 @@ func TestRemoveNode(t *testing.T) {
 	}
 }
 
+func TestPromotable(t *testing.T) {
+	id := int64(1)
+	tests := []struct {
+		peers []int64
+		wp    bool
+	}{
+		{[]int64{1}, true},
+		{[]int64{1, 2, 3}, true},
+		{[]int64{}, false},
+		{[]int64{2, 3}, false},
+	}
+	for i, tt := range tests {
+		r := &raft{id: id, prs: make(map[int64]*progress)}
+		for _, id := range tt.peers {
+			r.prs[id] = &progress{}
+		}
+		if g := r.promotable(); g != tt.wp {
+			t.Errorf("#%d: promotable = %v, want %v", i, g, tt.wp)
+		}
+	}
+}
+
 func ents(terms ...int64) *raft {
 	ents := []pb.Entry{{}}
 	for _, term := range terms {
