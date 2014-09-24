@@ -15,6 +15,7 @@ import (
 
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/etcdhttp"
+	"github.com/coreos/etcd/pkg"
 	"github.com/coreos/etcd/proxy"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/snap"
@@ -86,12 +87,12 @@ func init() {
 	flag.StringVar(&peerTLSInfo.KeyFile, "peer-key-file", "", "Path to the peer server TLS key file.")
 
 	for _, f := range deprecated {
-		flag.Var(&deprecatedFlag{f}, f, "")
+		flag.Var(&pkg.DeprecatedFlag{f}, f, "")
 	}
 }
 
 func main() {
-	flag.Usage = usageWithIgnoredFlagsFunc(flag.CommandLine, deprecated)
+	flag.Usage = pkg.UsageWithIgnoredFlagsFunc(flag.CommandLine, deprecated)
 	flag.Parse()
 
 	setFlagsFromEnv()
@@ -348,40 +349,4 @@ func setFlagsFromEnv() {
 		}
 
 	})
-}
-
-type deprecatedFlag struct {
-	name string
-}
-
-// IsBoolFlag is defined to allow the flag to be defined without an argument
-func (df *deprecatedFlag) IsBoolFlag() bool {
-	return true
-}
-
-func (df *deprecatedFlag) Set(s string) error {
-	log.Printf("WARNING: flag \"-%s\" is no longer supported.", df.name)
-	return nil
-}
-
-func (df *deprecatedFlag) String() string {
-	return ""
-}
-
-func usageWithIgnoredFlagsFunc(fs *flag.FlagSet, ignore []string) func() {
-	iMap := make(map[string]struct{}, len(ignore))
-	for _, name := range ignore {
-		iMap[name] = struct{}{}
-	}
-
-	return func() {
-		fs.VisitAll(func(f *flag.Flag) {
-			if _, ok := iMap[f.Name]; ok {
-				return
-			}
-
-			format := "  -%s=%s: %s\n"
-			fmt.Fprintf(os.Stderr, format, f.Name, f.DefValue, f.Usage)
-		})
-	}
 }
