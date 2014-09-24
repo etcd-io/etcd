@@ -91,7 +91,7 @@ func init() {
 }
 
 func main() {
-	flag.CommandLine.Usage = usageWithIgnoredFlagsFunc(flag.CommandLine, deprecated)
+	flag.Usage = usageWithIgnoredFlagsFunc(flag.CommandLine, deprecated)
 	flag.Parse()
 
 	setFlagsFromEnv()
