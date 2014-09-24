@@ -54,17 +54,22 @@ var (
 	peerTLSInfo   = transport.TLSInfo{}
 
 	deprecated = []string{
-		"config",
-		"peers-file",
-		"peer-heartbeat-interval",
-		"peer-election-timeout",
-		"max-result-buffer",
-		"max-retry-attempts",
-		"retry-interval",
-		"snapshot",
+		"addr",
 		"cluster-active-size",
 		"cluster-remove-delay",
 		"cluster-sync-interval",
+		"config",
+		"force",
+		"max-result-buffer",
+		"max-retry-attempts",
+		"peer-addr",
+		"peer-heartbeat-interval",
+		"peer-election-timeout",
+		"peers-file",
+		"retry-interval",
+		"snapshot",
+		"v",
+		"vv",
 	}
 )
 
