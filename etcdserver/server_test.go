@@ -144,6 +144,17 @@ func TestApply(t *testing.T) {
 				},
 			},
 		},
+		// POST ==> Create, with expiration
+		{
+			pb.Request{Method: "POST", Id: 1, Expiration: 1337},
+			Response{Event: &store.Event{}},
+			[]action{
+				action{
+					name:   "Create",
+					params: []interface{}{"", false, "", true, time.Unix(0, 1337)},
+				},
+			},
+		},
 		// PUT ==> Set
 		{
 			pb.Request{Method: "PUT", Id: 1},
