@@ -206,7 +206,7 @@ If the TTL has expired, the key will have been deleted, and you will be returned
     "cause": "/foo",
     "errorCode": 100,
     "index": 6,
-    "message": "Key Not Found"
+    "message": "Key not found"
 }
 ```
 
@@ -457,7 +457,7 @@ The error code explains the problem:
     "cause": "/foo",
     "errorCode": 105,
     "index": 39776,
-    "message": "Already exists"
+    "message": "Key already exists"
 }
 ```
 
@@ -474,7 +474,7 @@ This will try to compare the previous value of the key and the previous value we
     "cause": "[two != one]",
     "errorCode": 101,
     "index": 8,
-    "message": "Test Failed"
+    "message": "Compare failed"
 }
 ```
 
