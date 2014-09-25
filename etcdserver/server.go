@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log"
 	"math/rand"
+	"sync/atomic"
 	"time"
 
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
@@ -66,6 +67,11 @@ type Server interface {
 	Process(ctx context.Context, m raftpb.Message) error
 }
 
+type RaftTimer interface {
+	Index() int64
+	Term() int64
+}
+
 // EtcdServer is the production implementation of the Server interface
 type EtcdServer struct {
 	w    wait.Wait
@@ -86,6 +92,10 @@ type EtcdServer struct {
 	SyncTicker <-chan time.Time
 
 	SnapCount int64 // number of entries to trigger a snapshot
+
+	// Cache of the latest raft index and raft term the server has seen
+	raftIndex int64
+	raftTerm  int64
 }
 
 // Start prepares and starts server in a new goroutine. It is no longer safe to
@@ -138,6 +148,8 @@ func (s *EtcdServer) run() {
 				default:
 					panic("unexpected entry type")
 				}
+				atomic.StoreInt64(&s.raftIndex, e.Index)
+				atomic.StoreInt64(&s.raftTerm, e.Term)
 				appliedi = e.Index
 			}
 
@@ -247,6 +259,15 @@ func (s *EtcdServer) RemoveNode(ctx context.Context, id int64) error {
 		NodeID: id,
 	}
 	return s.configure(ctx, cc)
+}
+
+// Implement the RaftTimer interface
+func (s *EtcdServer) Index() int64 {
+	return atomic.LoadInt64(&s.raftIndex)
+}
+
+func (s *EtcdServer) Term() int64 {
+	return atomic.LoadInt64(&s.raftTerm)
 }
 
 // configure sends configuration change through consensus then performs it.
