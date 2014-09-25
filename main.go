@@ -212,10 +212,7 @@ func startEtcd() {
 		Handler: etcdhttp.NewClientHandler(s, *peers, *timeout),
 		Info:    cors,
 	}
-	ph := &pkg.CORSHandler{
-		Handler: etcdhttp.NewPeerHandler(s),
-		Info:    cors,
-	}
+	ph := etcdhttp.NewPeerHandler(s)
 
 	l, err := transport.NewListener(*paddr, peerTLSInfo)
 	if err != nil {
