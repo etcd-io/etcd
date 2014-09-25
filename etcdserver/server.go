@@ -80,7 +80,7 @@ type EtcdServer struct {
 	Node  raft.Node
 	Store store.Store
 
-	// Send specifies the send function for sending msgs to peers. Send
+	// Send specifies the send function for sending msgs to members. Send
 	// MUST NOT block. It is okay to drop messages, since clients should
 	// timeout and reissue their messages.  If Send is nil, server will
 	// panic.
@@ -94,8 +94,9 @@ type EtcdServer struct {
 	SnapCount int64 // number of entries to trigger a snapshot
 
 	// Cache of the latest raft index and raft term the server has seen
-	raftIndex int64
-	raftTerm  int64
+	raftIndex    int64
+	raftTerm     int64
+	ClusterStore ClusterStore
 }
 
 // Start prepares and starts server in a new goroutine. It is no longer safe to
@@ -107,6 +108,8 @@ func (s *EtcdServer) Start() {
 	}
 	s.w = wait.New()
 	s.done = make(chan struct{})
+	// TODO: if this is an empty log, writes all peer infos
+	// into the first entry
 	go s.run()
 }
 
@@ -130,6 +133,7 @@ func (s *EtcdServer) run() {
 			// TODO(bmizerany): do this in the background, but take
 			// care to apply entries in a single goroutine, and not
 			// race them.
+			// TODO: apply configuration change into ClusterStore.
 			for _, e := range rd.CommittedEntries {
 				switch e.Type {
 				case raftpb.EntryNormal:
