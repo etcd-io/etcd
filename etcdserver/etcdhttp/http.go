@@ -165,7 +165,7 @@ func parseRequest(r *http.Request, id int64) (etcdserverpb.Request, error) {
 	}
 	p := r.URL.Path[len(keysPrefix):]
 
-	var pIdx, wIdx, ttl uint64
+	var pIdx, wIdx uint64
 	if pIdx, err = getUint64(r.Form, "prevIndex"); err != nil {
 		return emptyReq, etcdErr.NewRequestError(
 			etcdErr.EcodeIndexNaN,
@@ -177,15 +177,6 @@ func parseRequest(r *http.Request, id int64) (etcdserverpb.Request, error) {
 			etcdErr.EcodeIndexNaN,
 			`invalid value for "waitIndex"`,
 		)
-	}
-	// An empty TTL value is equivalent to it being unset entirely
-	if len(r.FormValue("ttl")) > 0 {
-		if ttl, err = getUint64(r.Form, "ttl"); err != nil {
-			return emptyReq, etcdErr.NewRequestError(
-				etcdErr.EcodeTTLNaN,
-				`invalid value for "ttl"`,
-			)
-		}
 	}
 
 	var rec, sort, wait, dir, stream bool
@@ -236,6 +227,20 @@ func parseRequest(r *http.Request, id int64) (etcdserverpb.Request, error) {
 		)
 	}
 
+	// TTL is nullable, so leave it null if not specified
+	// or an empty string
+	var ttl *uint64
+	if len(r.FormValue("ttl")) > 0 {
+		i, err := getUint64(r.Form, "ttl")
+		if err != nil {
+			return emptyReq, etcdErr.NewRequestError(
+				etcdErr.EcodeTTLNaN,
+				`invalid value for "ttl"`,
+			)
+		}
+		ttl = &i
+	}
+
 	// prevExist is nullable, so leave it null if not specified
 	var pe *bool
 	if _, ok := r.Form["prevExist"]; ok {
@@ -269,10 +274,11 @@ func parseRequest(r *http.Request, id int64) (etcdserverpb.Request, error) {
 		rr.PrevExist = pe
 	}
 
+	// Null TTL is equivalent to unset Expiration
 	// TODO(jonboulle): use fake clock instead of time module
 	// https://github.com/coreos/etcd/issues/1021
-	if ttl > 0 {
-		expr := time.Duration(ttl) * time.Second
+	if ttl != nil {
+		expr := time.Duration(*ttl) * time.Second
 		rr.Expiration = time.Now().Add(expr).UnixNano()
 	}
 
