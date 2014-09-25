@@ -45,7 +45,7 @@ var (
 
 	peers     = &etcdhttp.Peers{}
 	addrs     = &Addrs{}
-	cors      = &CORSInfo{}
+	cors      = &pkg.CORSInfo{}
 	proxyFlag = new(ProxyFlag)
 
 	proxyFlagValues = []string{
@@ -208,11 +208,11 @@ func startEtcd() {
 	}
 	s.Start()
 
-	ch := &CORSHandler{
+	ch := &pkg.CORSHandler{
 		Handler: etcdhttp.NewClientHandler(s, *peers, *timeout),
 		Info:    cors,
 	}
-	ph := &CORSHandler{
+	ph := &pkg.CORSHandler{
 		Handler: etcdhttp.NewPeerHandler(s),
 		Info:    cors,
 	}
@@ -255,7 +255,7 @@ func startProxy() {
 		log.Fatal(err)
 	}
 
-	ph = &CORSHandler{
+	ph = &pkg.CORSHandler{
 		Handler: ph,
 		Info:    cors,
 	}
