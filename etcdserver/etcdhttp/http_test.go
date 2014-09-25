@@ -294,16 +294,6 @@ func TestGoodParseRequest(t *testing.T) {
 			},
 		},
 		{
-			// zero TTL specified
-			mustNewRequest(t, "foo?ttl=0"),
-			etcdserverpb.Request{
-				Id:         1234,
-				Method:     "GET",
-				Path:       "/foo",
-				Expiration: 0,
-			},
-		},
-		{
 			// empty TTL specified
 			mustNewRequest(t, "foo?ttl="),
 			etcdserverpb.Request{
@@ -427,6 +417,16 @@ func TestGoodParseRequest(t *testing.T) {
 	now := time.Now().UnixNano()
 	req := mustNewForm(t, "foo", url.Values{"ttl": []string{"100"}})
 	got, err := parseRequest(req, 1234)
+	if err != nil {
+		t.Fatalf("err = %v, want nil", err)
+	}
+	if got.Expiration <= now {
+		t.Fatalf("expiration = %v, wanted > %v", got.Expiration, now)
+	}
+
+	// ensure TTL=0 results in an expiration time
+	req = mustNewForm(t, "foo", url.Values{"ttl": []string{"0"}})
+	got, err = parseRequest(req, 1234)
 	if err != nil {
 		t.Fatalf("err = %v, want nil", err)
 	}
