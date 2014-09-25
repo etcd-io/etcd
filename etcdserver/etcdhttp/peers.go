@@ -10,7 +10,6 @@ import (
 	"sort"
 	"strconv"
 
-	"github.com/coreos/etcd/elog"
 	"github.com/coreos/etcd/raft/raftpb"
 )
 
@@ -146,12 +145,12 @@ func send(c *http.Client, scheme string, p Peers, m raftpb.Message) {
 func httpPost(c *http.Client, url string, data []byte) bool {
 	resp, err := c.Post(url, "application/protobuf", bytes.NewBuffer(data))
 	if err != nil {
-		elog.TODO()
+		// TODO: log the error?
 		return false
 	}
 	resp.Body.Close()
 	if resp.StatusCode != http.StatusNoContent {
-		elog.TODO()
+		// TODO: log the error?
 		return false
 	}
 	return true
