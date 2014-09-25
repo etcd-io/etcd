@@ -286,6 +286,26 @@ func TestGoodParseRequest(t *testing.T) {
 			},
 		},
 		{
+			// zero TTL specified
+			mustNewRequest(t, "foo?ttl=0"),
+			etcdserverpb.Request{
+				Id:         1234,
+				Method:     "GET",
+				Path:       "/foo",
+				Expiration: 0,
+			},
+		},
+		{
+			// empty TTL specified
+			mustNewRequest(t, "foo?ttl="),
+			etcdserverpb.Request{
+				Id:         1234,
+				Method:     "GET",
+				Path:       "/foo",
+				Expiration: 0,
+			},
+		},
+		{
 			// prevExist should be non-null if specified
 			mustNewForm(
 				t,
@@ -373,6 +393,17 @@ func TestGoodParseRequest(t *testing.T) {
 		if !reflect.DeepEqual(got, tt.w) {
 			t.Errorf("#%d: request=%#v, want %#v", i, got, tt.w)
 		}
+	}
+
+	// Test TTL separately until we don't rely on the time module...
+	now := time.Now().UnixNano()
+	req := mustNewForm(t, "foo", url.Values{"ttl": []string{"100"}})
+	got, err := parseRequest(req, 1234)
+	if err != nil {
+		t.Fatalf("err = %v, want nil", err)
+	}
+	if got.Expiration <= now {
+		t.Fatalf("expiration = %v, wanted > %v", got.Expiration, now)
 	}
 }
 

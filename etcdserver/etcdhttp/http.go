@@ -178,11 +178,14 @@ func parseRequest(r *http.Request, id int64) (etcdserverpb.Request, error) {
 			`invalid value for "waitIndex"`,
 		)
 	}
-	if ttl, err = getUint64(r.Form, "ttl"); err != nil {
-		return emptyReq, etcdErr.NewRequestError(
-			etcdErr.EcodeTTLNaN,
-			`invalid value for "ttl"`,
-		)
+	// An empty TTL value is equivalent to it being unset entirely
+	if len(r.FormValue("ttl")) > 0 {
+		if ttl, err = getUint64(r.Form, "ttl"); err != nil {
+			return emptyReq, etcdErr.NewRequestError(
+				etcdErr.EcodeTTLNaN,
+				`invalid value for "ttl"`,
+			)
+		}
 	}
 
 	var rec, sort, wait, stream bool
