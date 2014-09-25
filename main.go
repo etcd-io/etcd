@@ -31,14 +31,17 @@ const (
 	proxyFlagValueOff      = "off"
 	proxyFlagValueReadonly = "readonly"
 	proxyFlagValueOn       = "on"
+
+	version = "0.5.0-alpha"
 )
 
 var (
-	fid       = flag.String("id", "0x1", "ID of this server")
-	timeout   = flag.Duration("timeout", 10*time.Second, "Request Timeout")
-	paddr     = flag.String("peer-bind-addr", ":7001", "Peer service address (e.g., ':7001')")
-	dir       = flag.String("data-dir", "", "Path to the data directory")
-	snapCount = flag.Int64("snapshot-count", etcdserver.DefaultSnapCount, "Number of committed transactions to trigger a snapshot")
+	fid          = flag.String("id", "0x1", "ID of this server")
+	timeout      = flag.Duration("timeout", 10*time.Second, "Request Timeout")
+	paddr        = flag.String("peer-bind-addr", ":7001", "Peer service address (e.g., ':7001')")
+	dir          = flag.String("data-dir", "", "Path to the data directory")
+	snapCount    = flag.Int64("snapshot-count", etcdserver.DefaultSnapCount, "Number of committed transactions to trigger a snapshot")
+	printVersion = flag.Bool("version", false, "Print the version and exit")
 
 	peers     = &etcdhttp.Peers{}
 	addrs     = &Addrs{}
@@ -99,6 +102,11 @@ func init() {
 func main() {
 	flag.Usage = pkg.UsageWithIgnoredFlagsFunc(flag.CommandLine, deprecated)
 	flag.Parse()
+
+	if *printVersion {
+		fmt.Println("etcd version", version)
+		os.Exit(0)
+	}
 
 	pkg.SetFlagsFromEnv(flag.CommandLine)
 
