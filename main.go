@@ -16,11 +16,11 @@ import (
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/etcdhttp"
 	"github.com/coreos/etcd/pkg"
+	"github.com/coreos/etcd/pkg/transport"
 	"github.com/coreos/etcd/proxy"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/snap"
 	"github.com/coreos/etcd/store"
-	"github.com/coreos/etcd/transport"
 	"github.com/coreos/etcd/wal"
 )
 
