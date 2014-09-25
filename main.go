@@ -32,6 +32,10 @@ const (
 	proxyFlagValueReadonly = "readonly"
 	proxyFlagValueOn       = "on"
 
+	reconfigFlagValueOff    = "off"
+	reconfigFlagValueAdd    = "add"
+	reconfigFlagValueRemove = "remove"
+
 	version = "0.5.0-alpha"
 )
 
@@ -43,15 +47,21 @@ var (
 	snapCount    = flag.Int64("snapshot-count", etcdserver.DefaultSnapCount, "Number of committed transactions to trigger a snapshot")
 	printVersion = flag.Bool("version", false, "Print the version and exit")
 
-	peers     = &etcdhttp.Peers{}
-	addrs     = &Addrs{}
-	cors      = &pkg.CORSInfo{}
-	proxyFlag = new(ProxyFlag)
+	peers        = &etcdhttp.Peers{}
+	addrs        = &Addrs{}
+	cors         = &pkg.CORSInfo{}
+	proxyFlag    = new(ProxyFlag)
+	reconfigFlag = new(ReconfigFlag)
 
 	proxyFlagValues = []string{
 		proxyFlagValueOff,
 		proxyFlagValueReadonly,
 		proxyFlagValueOn,
+	}
+	reconfigFlagValues = []string{
+		reconfigFlagValueOff,
+		reconfigFlagValueAdd,
+		reconfigFlagValueRemove,
 	}
 
 	clientTLSInfo = transport.TLSInfo{}
@@ -82,9 +92,11 @@ func init() {
 	flag.Var(addrs, "bind-addr", "List of HTTP service addresses (e.g., '127.0.0.1:4001,10.0.0.1:8080')")
 	flag.Var(cors, "cors", "Comma-separated white list of origins for CORS (cross-origin resource sharing).")
 	flag.Var(proxyFlag, "proxy", fmt.Sprintf("Valid values include %s", strings.Join(proxyFlagValues, ", ")))
+	flag.Var(reconfigFlag, "reconfig", fmt.Sprintf("Valid values include %s", strings.Join(reconfigFlagValues, ", ")))
 	peers.Set("0x1=localhost:8080")
 	addrs.Set("127.0.0.1:4001")
 	proxyFlag.Set(proxyFlagValueOff)
+	reconfigFlag.Set(reconfigFlagValueOff)
 
 	flag.StringVar(&clientTLSInfo.CAFile, "ca-file", "", "Path to the client server TLS CA file.")
 	flag.StringVar(&clientTLSInfo.CertFile, "cert-file", "", "Path to the client server TLS cert file.")
@@ -111,6 +123,10 @@ func main() {
 	pkg.SetFlagsFromEnv(flag.CommandLine)
 
 	if string(*proxyFlag) == proxyFlagValueOff {
+		if reconfigFlag.String() == reconfigFlagValueRemove {
+			remove()
+			return
+		}
 		startEtcd()
 	} else {
 		startProxy()
@@ -120,8 +136,7 @@ func main() {
 	<-make(chan struct{})
 }
 
-// startEtcd launches the etcd server and HTTP handlers for client/server communication.
-func startEtcd() {
+func getID() int64 {
 	id, err := strconv.ParseInt(*fid, 0, 64)
 	if err != nil {
 		log.Fatal(err)
@@ -129,6 +144,13 @@ func startEtcd() {
 	if id == raft.None {
 		log.Fatalf("etcd: cannot use None(%d) as etcdserver id", raft.None)
 	}
+
+	return id
+}
+
+// startEtcd launches the etcd server and HTTP handlers for client/server communication.
+func startEtcd() {
+	id := getID()
 
 	if peers.Pick(id) == "" {
 		log.Fatalf("%#x=<addr> must be specified in peers", id)
@@ -156,10 +178,16 @@ func startEtcd() {
 	var n raft.Node
 	st := store.New()
 
+	var err error
 	if !wal.Exist(waldir) {
 		w, err = wal.Create(waldir)
 		if err != nil {
 			log.Fatal(err)
+		}
+		if reconfigFlag.String() == reconfigFlagValueAdd {
+			add()
+			// TODO: set peers to empty when bootstrap info could be recovered
+			// from log
 		}
 		n = raft.StartNode(id, peers.IDs(), 10, 1)
 	} else {
@@ -205,6 +233,7 @@ func startEtcd() {
 		Ticker:     time.Tick(100 * time.Millisecond),
 		SyncTicker: time.Tick(500 * time.Millisecond),
 		SnapCount:  *snapCount,
+		Peers:      *peers,
 	}
 	s.Start()
 
@@ -337,4 +366,63 @@ func (pf *ProxyFlag) Set(s string) error {
 
 func (pf *ProxyFlag) String() string {
 	return string(*pf)
+}
+
+// ReconfigFlag implements the flag.Value interface.
+type ReconfigFlag string
+
+func (rf *ReconfigFlag) Set(s string) error {
+	for _, v := range reconfigFlagValues {
+		if s == v {
+			*rf = ReconfigFlag(s)
+			return nil
+		}
+	}
+	return errors.New("invalid value")
+}
+
+func (rf *ReconfigFlag) String() string {
+	return string(*rf)
+}
+
+func add() {
+	id := getID()
+	f := func(endpoint string) error {
+		if err := etcdhttp.SendAddMemberRequest(endpoint, id, (*peers)[id]); err != nil {
+			return fmt.Errorf("main: add to %s error: %v", endpoint, err)
+		}
+		return nil
+	}
+	if err := endpointTraversal(peers.Endpoints(), f, 5, 0.5); err != nil {
+		log.Fatalf("main: endpoint traversal error: %v", err)
+	}
+}
+
+func remove() {
+	id := getID()
+	f := func(endpoint string) error {
+		if err := etcdhttp.SendRemoveMemberRequest(endpoint, id); err != nil {
+			return fmt.Errorf("main: remove to %s error: %v", endpoint, err)
+		}
+		return nil
+	}
+	if err := endpointTraversal(peers.Endpoints(), f, 5, 0.5); err != nil {
+		log.Fatalf("main: endpoint traversal error: %v", err)
+	}
+}
+
+func endpointTraversal(endpoints []string, f func(endpoint string) error, maxAttempt int, retryInterval float64) error {
+	for attempt := 0; ; attempt++ {
+		if attempt == maxAttempt {
+			return fmt.Errorf("fail after %d attempts", maxAttempt)
+		}
+		for _, endpoint := range endpoints {
+			if err := f(endpoint); err != nil {
+				log.Printf("%v", err)
+			} else {
+				return nil
+			}
+		}
+		time.Sleep(time.Millisecond * time.Duration(retryInterval*1000))
+	}
 }

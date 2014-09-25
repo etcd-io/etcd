@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+	"reflect"
 	"testing"
 )
 
@@ -61,5 +63,55 @@ func TestValidateAddr(t *testing.T) {
 		if err := validateAddr(in); err != nil {
 			t.Errorf("#%d: err=%v, want nil for in=%q", i, err, in)
 		}
+	}
+}
+
+func TestReconfigFlagSet(t *testing.T) {
+	tests := []struct {
+		val  string
+		pass bool
+	}{
+		// known values
+		{"add", true},
+		{"remove", true},
+		{"off", true},
+
+		// unrecognized values
+		{"foo", false},
+		{"", false},
+	}
+
+	for i, tt := range tests {
+		rf := new(ReconfigFlag)
+		err := rf.Set(tt.val)
+		if tt.pass != (err == nil) {
+			t.Errorf("#%d: want pass=%v, but got err=%v", i, tt.pass, err)
+		}
+	}
+}
+
+func TestBadEndpointTraversal(t *testing.T) {
+	called := make(map[string]int)
+	f := func(endpoint string) error {
+		called[endpoint]++
+		return fmt.Errorf("blah")
+	}
+	err := endpointTraversal([]string{"foo", "bar"}, f, 5, 0)
+
+	if err == nil {
+		t.Errorf("unexpected nil error")
+	}
+	wcalled := map[string]int{"foo": 5, "bar": 5}
+	if !reflect.DeepEqual(called, wcalled) {
+		t.Errorf("called = %v, want %v", called, wcalled)
+	}
+}
+
+func TestEndpointTraversal(t *testing.T) {
+	f := func(endpoint string) error {
+		return nil
+	}
+	if err := endpointTraversal([]string{"foo"}, f, 1, 0); err != nil {
+		t.Errorf("err = %v, want nil", err)
 	}
 }
