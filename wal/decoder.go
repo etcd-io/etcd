@@ -6,7 +6,7 @@ import (
 	"hash"
 	"io"
 
-	"github.com/coreos/etcd/crc"
+	"github.com/coreos/etcd/pkg/crc"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/wal/walpb"
 )
