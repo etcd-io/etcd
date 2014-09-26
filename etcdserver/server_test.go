@@ -382,14 +382,14 @@ func testServer(t *testing.T, ns int64) {
 		}
 	}
 
-	peers := make([]int64, ns)
+	members := make([]int64, ns)
 	for i := int64(0); i < ns; i++ {
-		peers[i] = i + 1
+		members[i] = i + 1
 	}
 
 	for i := int64(0); i < ns; i++ {
 		id := i + 1
-		n := raft.StartNode(id, peers, 10, 1)
+		n := raft.StartNode(id, members, 10, 1)
 		tk := time.NewTicker(10 * time.Millisecond)
 		defer tk.Stop()
 		srv := &EtcdServer{

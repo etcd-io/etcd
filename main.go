@@ -36,14 +36,14 @@ const (
 )
 
 var (
-	fid          = flag.String("id", "0x1", "ID of this server")
+	name         = flag.String("name", "default", "Unique human-readable name for this node")
 	timeout      = flag.Duration("timeout", 10*time.Second, "Request Timeout")
 	paddr        = flag.String("peer-bind-addr", ":7001", "Peer service address (e.g., ':7001')")
 	dir          = flag.String("data-dir", "", "Path to the data directory")
 	snapCount    = flag.Int64("snapshot-count", etcdserver.DefaultSnapCount, "Number of committed transactions to trigger a snapshot")
 	printVersion = flag.Bool("version", false, "Print the version and exit")
 
-	peers     = &etcdhttp.Peers{}
+	cluster   = &etcdserver.Cluster{}
 	addrs     = &Addrs{}
 	cors      = &pkg.CORSInfo{}
 	proxyFlag = new(ProxyFlag)
@@ -78,11 +78,11 @@ var (
 )
 
 func init() {
-	flag.Var(peers, "peers", "your peers")
+	flag.Var(cluster, "bootstrap-config", "Initial cluster configuration for bootstrapping")
 	flag.Var(addrs, "bind-addr", "List of HTTP service addresses (e.g., '127.0.0.1:4001,10.0.0.1:8080')")
 	flag.Var(cors, "cors", "Comma-separated white list of origins for CORS (cross-origin resource sharing).")
 	flag.Var(proxyFlag, "proxy", fmt.Sprintf("Valid values include %s", strings.Join(proxyFlagValues, ", ")))
-	peers.Set("0x1=localhost:8080")
+	cluster.Set("default=localhost:8080")
 	addrs.Set("127.0.0.1:4001")
 	proxyFlag.Set(proxyFlagValueOff)
 
@@ -122,16 +122,13 @@ func main() {
 
 // startEtcd launches the etcd server and HTTP handlers for client/server communication.
 func startEtcd() {
-	id, err := strconv.ParseInt(*fid, 0, 64)
-	if err != nil {
-		log.Fatal(err)
-	}
-	if id == raft.None {
-		log.Fatalf("etcd: cannot use None(%d) as etcdserver id", raft.None)
+	self := cluster.FindName(*name)
+	if self == nil {
+		log.Fatalf("etcd: no member with name=%q exists", *name)
 	}
 
-	if peers.Pick(id) == "" {
-		log.Fatalf("%#x=<addr> must be specified in peers", id)
+	if self.ID == raft.None {
+		log.Fatalf("etcd: cannot use None(%d) as member id", raft.None)
 	}
 
 	if *snapCount <= 0 {
@@ -139,7 +136,7 @@ func startEtcd() {
 	}
 
 	if *dir == "" {
-		*dir = fmt.Sprintf("%v_etcd_data", *fid)
+		*dir = fmt.Sprintf("%v_etcd_data", self.ID)
 		log.Printf("main: no data-dir is given, using default data-dir ./%s", *dir)
 	}
 	if err := os.MkdirAll(*dir, privateDirMode); err != nil {
@@ -154,6 +151,7 @@ func startEtcd() {
 	waldir := path.Join(*dir, "wal")
 	var w *wal.WAL
 	var n raft.Node
+	var err error
 	st := store.New()
 
 	if !wal.Exist(waldir) {
@@ -161,7 +159,7 @@ func startEtcd() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		n = raft.StartNode(id, peers.IDs(), 10, 1)
+		n = raft.StartNode(self.ID, cluster.IDs(), 10, 1)
 	} else {
 		var index int64
 		snapshot, err := snapshotter.Load()
@@ -186,13 +184,15 @@ func startEtcd() {
 		if wid != 0 {
 			log.Fatalf("unexpected nodeid %d: nodeid should always be zero until we save nodeid into wal", wid)
 		}
-		n = raft.RestartNode(id, peers.IDs(), 10, 1, snapshot, st, ents)
+		n = raft.RestartNode(self.ID, cluster.IDs(), 10, 1, snapshot, st, ents)
 	}
 
 	pt, err := transport.NewTransport(peerTLSInfo)
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	cls := etcdserver.NewClusterStore(st, *cluster)
 
 	s := &etcdserver.EtcdServer{
 		Store: st,
@@ -201,15 +201,16 @@ func startEtcd() {
 			*wal.WAL
 			*snap.Snapshotter
 		}{w, snapshotter},
-		Send:       etcdhttp.Sender(pt, *peers),
-		Ticker:     time.Tick(100 * time.Millisecond),
-		SyncTicker: time.Tick(500 * time.Millisecond),
-		SnapCount:  *snapCount,
+		Send:         etcdserver.Sender(pt, cls),
+		Ticker:       time.Tick(100 * time.Millisecond),
+		SyncTicker:   time.Tick(500 * time.Millisecond),
+		SnapCount:    *snapCount,
+		ClusterStore: cls,
 	}
 	s.Start()
 
 	ch := &pkg.CORSHandler{
-		Handler: etcdhttp.NewClientHandler(s, *peers, *timeout),
+		Handler: etcdhttp.NewClientHandler(s, cls, *timeout),
 		Info:    cors,
 	}
 	ph := etcdhttp.NewPeerHandler(s)
@@ -247,7 +248,7 @@ func startProxy() {
 		log.Fatal(err)
 	}
 
-	ph, err := proxy.NewHandler(pt, (*peers).Addrs())
+	ph, err := proxy.NewHandler(pt, (*cluster).Endpoints())
 	if err != nil {
 		log.Fatal(err)
 	}
