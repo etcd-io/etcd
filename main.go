@@ -69,7 +69,6 @@ var (
 		"peer-addr",
 		"peer-heartbeat-interval",
 		"peer-election-timeout",
-		"peers-file",
 		"retry-interval",
 		"snapshot",
 		"v",
