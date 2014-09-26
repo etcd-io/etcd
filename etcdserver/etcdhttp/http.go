@@ -35,10 +35,11 @@ const (
 var errClosed = errors.New("etcdhttp: client closed connection")
 
 // NewClientHandler generates a muxed http.Handler with the given parameters to serve etcd client requests.
-func NewClientHandler(server etcdserver.Server, peers Peers, timeout time.Duration) http.Handler {
+func NewClientHandler(server *etcdserver.EtcdServer, peers Peers, timeout time.Duration) http.Handler {
 	sh := &serverHandler{
 		server:  server,
 		peers:   peers,
+		timer:   server,
 		timeout: timeout,
 	}
 	if sh.timeout == 0 {
@@ -69,6 +70,7 @@ func NewPeerHandler(server etcdserver.Server) http.Handler {
 type serverHandler struct {
 	timeout time.Duration
 	server  etcdserver.Server
+	timer   etcdserver.RaftTimer
 	peers   Peers
 }
 
@@ -94,14 +96,14 @@ func (h serverHandler) serveKeys(w http.ResponseWriter, r *http.Request) {
 
 	switch {
 	case resp.Event != nil:
-		if err := writeEvent(w, resp.Event); err != nil {
+		if err := writeEvent(w, resp.Event, h.timer); err != nil {
 			// Should never be reached
-			log.Println("error writing event: %v", err)
+			log.Printf("error writing event: %v", err)
 		}
 	case resp.Watcher != nil:
 		ctx, cancel := context.WithTimeout(context.Background(), defaultWatchTimeout)
 		defer cancel()
-		handleWatch(ctx, w, resp.Watcher, rr.Stream)
+		handleWatch(ctx, w, resp.Watcher, rr.Stream, h.timer)
 	default:
 		writeError(w, errors.New("received response with no Event/Watcher!"))
 	}
@@ -325,12 +327,14 @@ func writeError(w http.ResponseWriter, err error) {
 // writeEvent serializes a single Event and writes the resulting
 // JSON to the given ResponseWriter, along with the appropriate
 // headers
-func writeEvent(w http.ResponseWriter, ev *store.Event) error {
+func writeEvent(w http.ResponseWriter, ev *store.Event, rt etcdserver.RaftTimer) error {
 	if ev == nil {
 		return errors.New("cannot write empty Event!")
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Add("X-Etcd-Index", fmt.Sprint(ev.EtcdIndex))
+	w.Header().Set("X-Etcd-Index", fmt.Sprint(ev.EtcdIndex))
+	w.Header().Set("X-Raft-Index", fmt.Sprint(rt.Index()))
+	w.Header().Set("X-Raft-Term", fmt.Sprint(rt.Term()))
 
 	if ev.IsCreated() {
 		w.WriteHeader(http.StatusCreated)
@@ -339,7 +343,7 @@ func writeEvent(w http.ResponseWriter, ev *store.Event) error {
 	return json.NewEncoder(w).Encode(ev)
 }
 
-func handleWatch(ctx context.Context, w http.ResponseWriter, wa store.Watcher, stream bool) {
+func handleWatch(ctx context.Context, w http.ResponseWriter, wa store.Watcher, stream bool, rt etcdserver.RaftTimer) {
 	defer wa.Remove()
 	ech := wa.EventChan()
 	var nch <-chan bool
@@ -348,6 +352,8 @@ func handleWatch(ctx context.Context, w http.ResponseWriter, wa store.Watcher, s
 	}
 
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("X-Raft-Index", fmt.Sprint(rt.Index()))
+	w.Header().Set("X-Raft-Term", fmt.Sprint(rt.Term()))
 	w.WriteHeader(http.StatusOK)
 
 	// Ensure headers are flushed early, in case of long polling

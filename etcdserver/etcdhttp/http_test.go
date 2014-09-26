@@ -499,10 +499,15 @@ func TestWriteError(t *testing.T) {
 	}
 }
 
+type dummyRaftTimer struct{}
+
+func (drt dummyRaftTimer) Index() int64 { return int64(100) }
+func (drt dummyRaftTimer) Term() int64  { return int64(5) }
+
 func TestWriteEvent(t *testing.T) {
 	// nil event should not panic
 	rw := httptest.NewRecorder()
-	writeEvent(rw, nil)
+	writeEvent(rw, nil, dummyRaftTimer{})
 	h := rw.Header()
 	if len(h) > 0 {
 		t.Fatalf("unexpected non-empty headers: %#v", h)
@@ -545,9 +550,15 @@ func TestWriteEvent(t *testing.T) {
 
 	for i, tt := range tests {
 		rw := httptest.NewRecorder()
-		writeEvent(rw, tt.ev)
+		writeEvent(rw, tt.ev, dummyRaftTimer{})
 		if gct := rw.Header().Get("Content-Type"); gct != "application/json" {
 			t.Errorf("case %d: bad Content-Type: got %q, want application/json", i, gct)
+		}
+		if gri := rw.Header().Get("X-Raft-Index"); gri != "100" {
+			t.Errorf("case %d: bad X-Raft-Index header: got %s, want %s", i, gri, "100")
+		}
+		if grt := rw.Header().Get("X-Raft-Term"); grt != "5" {
+			t.Errorf("case %d: bad X-Raft-Term header: got %s, want %s", i, grt, "5")
 		}
 		if gei := rw.Header().Get("X-Etcd-Index"); gei != tt.idx {
 			t.Errorf("case %d: bad X-Etcd-Index header: got %s, want %s", i, gei, tt.idx)
@@ -970,6 +981,7 @@ func TestServeKeysEvent(t *testing.T) {
 		timeout: time.Hour,
 		server:  server,
 		peers:   nil,
+		timer:   &dummyRaftTimer{},
 	}
 	rw := httptest.NewRecorder()
 
@@ -1008,6 +1020,7 @@ func TestServeKeysWatch(t *testing.T) {
 		timeout: time.Hour,
 		server:  server,
 		peers:   nil,
+		timer:   &dummyRaftTimer{},
 	}
 	go func() {
 		ec <- &store.Event{
@@ -1047,10 +1060,12 @@ func TestHandleWatch(t *testing.T) {
 		Node:   &store.NodeExtern{},
 	}
 
-	handleWatch(context.Background(), rw, wa, false)
+	handleWatch(context.Background(), rw, wa, false, dummyRaftTimer{})
 
 	wcode := http.StatusOK
 	wct := "application/json"
+	wri := "100"
+	wrt := "5"
 	wbody := mustMarshalEvent(
 		t,
 		&store.Event{
@@ -1066,6 +1081,12 @@ func TestHandleWatch(t *testing.T) {
 	if ct := h.Get("Content-Type"); ct != wct {
 		t.Errorf("Content-Type=%q, want %q", ct, wct)
 	}
+	if ri := h.Get("X-Raft-Index"); ri != wri {
+		t.Errorf("X-Raft-Index=%q, want %q", ri, wri)
+	}
+	if rt := h.Get("X-Raft-Term"); rt != wrt {
+		t.Errorf("X-Raft-Term=%q, want %q", rt, wrt)
+	}
 	g := rw.Body.String()
 	if g != wbody {
 		t.Errorf("got body=%#v, want %#v", g, wbody)
@@ -1079,7 +1100,7 @@ func TestHandleWatchNoEvent(t *testing.T) {
 	}
 	close(wa.echan)
 
-	handleWatch(context.Background(), rw, wa, false)
+	handleWatch(context.Background(), rw, wa, false, dummyRaftTimer{})
 
 	wcode := http.StatusOK
 	wct := "application/json"
@@ -1115,7 +1136,7 @@ func TestHandleWatchCloseNotified(t *testing.T) {
 	rw.cn <- true
 	wa := &dummyWatcher{}
 
-	handleWatch(context.Background(), rw, wa, false)
+	handleWatch(context.Background(), rw, wa, false, dummyRaftTimer{})
 
 	wcode := http.StatusOK
 	wct := "application/json"
@@ -1141,7 +1162,7 @@ func TestHandleWatchTimeout(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
-	handleWatch(ctx, rw, wa, false)
+	handleWatch(ctx, rw, wa, false, dummyRaftTimer{})
 
 	wcode := http.StatusOK
 	wct := "application/json"
@@ -1184,7 +1205,7 @@ func TestHandleWatchStreaming(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan struct{})
 	go func() {
-		handleWatch(ctx, rw, wa, true)
+		handleWatch(ctx, rw, wa, true, dummyRaftTimer{})
 		close(done)
 	}()
 
