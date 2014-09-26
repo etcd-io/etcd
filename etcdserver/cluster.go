@@ -112,3 +112,17 @@ func (c Cluster) Endpoints() []string {
 	sort.Strings(endpoints)
 	return endpoints
 }
+
+// ClientURLs returns a list of all client addresses. Each address is prefixed
+// with the scheme (currently "http://"). The returned list is sorted in
+// ascending lexicographical order.
+func (c Cluster) ClientURLs() []string {
+	urls := make([]string, 0)
+	for _, p := range c {
+		for _, url := range p.ClientURLs {
+			urls = append(urls, addScheme(url))
+		}
+	}
+	sort.Strings(urls)
+	return urls
+}

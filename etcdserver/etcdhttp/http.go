@@ -115,7 +115,7 @@ func (h serverHandler) serveMachines(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r.Method, "GET", "HEAD") {
 		return
 	}
-	endpoints := h.clusterStore.Get().Endpoints()
+	endpoints := h.clusterStore.Get().ClientURLs()
 	w.Write([]byte(strings.Join(endpoints, ", ")))
 }
 
