@@ -18,6 +18,7 @@ package store
 
 type Watcher interface {
 	EventChan() chan *Event
+	StartIndex() uint64 // The EtcdIndex at which the Watcher was created
 	Remove()
 }
 
@@ -26,6 +27,7 @@ type watcher struct {
 	stream     bool
 	recursive  bool
 	sinceIndex uint64
+	startIndex uint64
 	hub        *watcherHub
 	removed    bool
 	remove     func()
@@ -33,6 +35,10 @@ type watcher struct {
 
 func (w *watcher) EventChan() chan *Event {
 	return w.eventChan
+}
+
+func (w *watcher) StartIndex() uint64 {
+	return w.startIndex
 }
 
 // notify function notifies the watcher. If the watcher interests in the given path,

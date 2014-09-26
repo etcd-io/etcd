@@ -586,10 +586,12 @@ func TestStoreCompareAndSwapPrevIndexFailsIfNotMatch(t *testing.T) {
 // Ensure that the store can watch for key creation.
 func TestStoreWatchCreate(t *testing.T) {
 	s := newStore()
-	var eidx uint64 = 1
+	var eidx uint64 = 0
 	w, _ := s.Watch("/foo", false, false, 0)
 	c := w.EventChan()
+	assert.Equal(t, w.StartIndex(), eidx, "")
 	s.Create("/foo", false, "bar", false, Permanent)
+	eidx = 1
 	e := nbselect(c)
 	assert.Equal(t, e.EtcdIndex, eidx, "")
 	assert.Equal(t, e.Action, "create", "")
@@ -601,8 +603,10 @@ func TestStoreWatchCreate(t *testing.T) {
 // Ensure that the store can watch for recursive key creation.
 func TestStoreWatchRecursiveCreate(t *testing.T) {
 	s := newStore()
-	var eidx uint64 = 1
+	var eidx uint64 = 0
 	w, _ := s.Watch("/foo", true, false, 0)
+	assert.Equal(t, w.StartIndex(), eidx, "")
+	eidx = 1
 	s.Create("/foo/bar", false, "baz", false, Permanent)
 	e := nbselect(w.EventChan())
 	assert.Equal(t, e.EtcdIndex, eidx, "")
@@ -613,9 +617,11 @@ func TestStoreWatchRecursiveCreate(t *testing.T) {
 // Ensure that the store can watch for key updates.
 func TestStoreWatchUpdate(t *testing.T) {
 	s := newStore()
-	var eidx uint64 = 2
+	var eidx uint64 = 1
 	s.Create("/foo", false, "bar", false, Permanent)
 	w, _ := s.Watch("/foo", false, false, 0)
+	assert.Equal(t, w.StartIndex(), eidx, "")
+	eidx = 2
 	s.Update("/foo", "baz", Permanent)
 	e := nbselect(w.EventChan())
 	assert.Equal(t, e.EtcdIndex, eidx, "")
@@ -626,9 +632,11 @@ func TestStoreWatchUpdate(t *testing.T) {
 // Ensure that the store can watch for recursive key updates.
 func TestStoreWatchRecursiveUpdate(t *testing.T) {
 	s := newStore()
-	var eidx uint64 = 2
+	var eidx uint64 = 1
 	s.Create("/foo/bar", false, "baz", false, Permanent)
 	w, _ := s.Watch("/foo", true, false, 0)
+	assert.Equal(t, w.StartIndex(), eidx, "")
+	eidx = 2
 	s.Update("/foo/bar", "baz", Permanent)
 	e := nbselect(w.EventChan())
 	assert.Equal(t, e.EtcdIndex, eidx, "")
@@ -639,9 +647,11 @@ func TestStoreWatchRecursiveUpdate(t *testing.T) {
 // Ensure that the store can watch for key deletions.
 func TestStoreWatchDelete(t *testing.T) {
 	s := newStore()
-	var eidx uint64 = 2
+	var eidx uint64 = 1
 	s.Create("/foo", false, "bar", false, Permanent)
 	w, _ := s.Watch("/foo", false, false, 0)
+	assert.Equal(t, w.StartIndex(), eidx, "")
+	eidx = 2
 	s.Delete("/foo", false, false)
 	e := nbselect(w.EventChan())
 	assert.Equal(t, e.EtcdIndex, eidx, "")
@@ -652,9 +662,11 @@ func TestStoreWatchDelete(t *testing.T) {
 // Ensure that the store can watch for recursive key deletions.
 func TestStoreWatchRecursiveDelete(t *testing.T) {
 	s := newStore()
-	var eidx uint64 = 2
+	var eidx uint64 = 1
 	s.Create("/foo/bar", false, "baz", false, Permanent)
 	w, _ := s.Watch("/foo", true, false, 0)
+	assert.Equal(t, w.StartIndex(), eidx, "")
+	eidx = 2
 	s.Delete("/foo/bar", false, false)
 	e := nbselect(w.EventChan())
 	assert.Equal(t, e.EtcdIndex, eidx, "")
@@ -665,9 +677,11 @@ func TestStoreWatchRecursiveDelete(t *testing.T) {
 // Ensure that the store can watch for CAS updates.
 func TestStoreWatchCompareAndSwap(t *testing.T) {
 	s := newStore()
-	var eidx uint64 = 2
+	var eidx uint64 = 1
 	s.Create("/foo", false, "bar", false, Permanent)
 	w, _ := s.Watch("/foo", false, false, 0)
+	assert.Equal(t, w.StartIndex(), eidx, "")
+	eidx = 2
 	s.CompareAndSwap("/foo", "bar", 0, "baz", Permanent)
 	e := nbselect(w.EventChan())
 	assert.Equal(t, e.EtcdIndex, eidx, "")
@@ -678,9 +692,11 @@ func TestStoreWatchCompareAndSwap(t *testing.T) {
 // Ensure that the store can watch for recursive CAS updates.
 func TestStoreWatchRecursiveCompareAndSwap(t *testing.T) {
 	s := newStore()
-	var eidx uint64 = 2
+	var eidx uint64 = 1
 	s.Create("/foo/bar", false, "baz", false, Permanent)
 	w, _ := s.Watch("/foo", true, false, 0)
+	assert.Equal(t, w.StartIndex(), eidx, "")
+	eidx = 2
 	s.CompareAndSwap("/foo/bar", "baz", 0, "bat", Permanent)
 	e := nbselect(w.EventChan())
 	assert.Equal(t, e.EtcdIndex, eidx, "")
@@ -698,22 +714,25 @@ func TestStoreWatchExpire(t *testing.T) {
 	}()
 	go mockSyncService(s.DeleteExpiredKeys, stopChan)
 
-	var eidx uint64 = 3
+	var eidx uint64 = 2
 	s.Create("/foo", false, "bar", false, time.Now().Add(500*time.Millisecond))
 	s.Create("/foofoo", false, "barbarbar", false, time.Now().Add(500*time.Millisecond))
 
 	w, _ := s.Watch("/", true, false, 0)
+	assert.Equal(t, w.StartIndex(), eidx, "")
 	c := w.EventChan()
 	e := nbselect(c)
 	assert.Nil(t, e, "")
 	time.Sleep(600 * time.Millisecond)
+	eidx = 3
 	e = nbselect(c)
 	assert.Equal(t, e.EtcdIndex, eidx, "")
 	assert.Equal(t, e.Action, "expire", "")
 	assert.Equal(t, e.Node.Key, "/foo", "")
 	w, _ = s.Watch("/", true, false, 4)
-	e = nbselect(w.EventChan())
 	eidx = 4
+	assert.Equal(t, w.StartIndex(), eidx, "")
+	e = nbselect(w.EventChan())
 	assert.Equal(t, e.EtcdIndex, eidx, "")
 	assert.Equal(t, e.Action, "expire", "")
 	assert.Equal(t, e.Node.Key, "/foofoo", "")

@@ -51,6 +51,7 @@ func (wh *watcherHub) watch(key string, recursive, stream bool, index, storeInde
 		recursive:  recursive,
 		stream:     stream,
 		sinceIndex: index,
+		startIndex: storeIndex,
 		hub:        wh,
 	}
 
