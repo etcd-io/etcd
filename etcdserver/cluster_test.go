@@ -143,17 +143,17 @@ func TestClusterAddBad(t *testing.T) {
 	}
 }
 
-func TestClusterGetEndpoints(t *testing.T) {
+func TestClusterPeerURLs(t *testing.T) {
 	tests := []struct {
-		mems      []Member
-		endpoints []string
+		mems  []Member
+		wurls []string
 	}{
 		// single peer with a single address
 		{
 			mems: []Member{
 				{ID: 1, PeerURLs: []string{"192.0.2.1"}},
 			},
-			endpoints: []string{"http://192.0.2.1"},
+			wurls: []string{"http://192.0.2.1"},
 		},
 
 		// single peer with a single address with a port
@@ -161,7 +161,7 @@ func TestClusterGetEndpoints(t *testing.T) {
 			mems: []Member{
 				{ID: 1, PeerURLs: []string{"192.0.2.1:8001"}},
 			},
-			endpoints: []string{"http://192.0.2.1:8001"},
+			wurls: []string{"http://192.0.2.1:8001"},
 		},
 
 		// several members explicitly unsorted
@@ -171,21 +171,21 @@ func TestClusterGetEndpoints(t *testing.T) {
 				{ID: 3, PeerURLs: []string{"192.0.2.5", "192.0.2.6"}},
 				{ID: 1, PeerURLs: []string{"192.0.2.1", "192.0.2.2"}},
 			},
-			endpoints: []string{"http://192.0.2.1", "http://192.0.2.2", "http://192.0.2.3", "http://192.0.2.4", "http://192.0.2.5", "http://192.0.2.6"},
+			wurls: []string{"http://192.0.2.1", "http://192.0.2.2", "http://192.0.2.3", "http://192.0.2.4", "http://192.0.2.5", "http://192.0.2.6"},
 		},
 
 		// no members
 		{
-			mems:      []Member{},
-			endpoints: []string{},
+			mems:  []Member{},
+			wurls: []string{},
 		},
 
-		// peer with no endpoints
+		// peer with no peer urls
 		{
 			mems: []Member{
 				{ID: 3, PeerURLs: []string{}},
 			},
-			endpoints: []string{},
+			wurls: []string{},
 		},
 	}
 
@@ -195,9 +195,9 @@ func TestClusterGetEndpoints(t *testing.T) {
 			t.Errorf("AddSlice error: %v", err)
 			continue
 		}
-		endpoints := c.Endpoints()
-		if !reflect.DeepEqual(tt.endpoints, endpoints) {
-			t.Errorf("#%d: members.Endpoints() incorrect: want=%#v got=%#v", i, tt.endpoints, endpoints)
+		urls := c.PeerURLs()
+		if !reflect.DeepEqual(urls, tt.wurls) {
+			t.Errorf("#%d: PeerURLs = %v, want %v", i, urls, tt.wurls)
 		}
 	}
 }
@@ -239,7 +239,7 @@ func TestClusterClientURLs(t *testing.T) {
 			wurls: []string{},
 		},
 
-		// peer with no endpoints
+		// peer with no client urls
 		{
 			mems: []Member{
 				{ID: 3, ClientURLs: []string{}},
@@ -256,7 +256,7 @@ func TestClusterClientURLs(t *testing.T) {
 		}
 		urls := c.ClientURLs()
 		if !reflect.DeepEqual(urls, tt.wurls) {
-			t.Errorf("#%d: ClientURLs = %v, want %v", i, tt.wurls, urls)
+			t.Errorf("#%d: ClientURLs = %v, want %v", i, urls, tt.wurls)
 		}
 	}
 }

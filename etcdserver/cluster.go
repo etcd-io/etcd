@@ -99,10 +99,10 @@ func (c Cluster) IDs() []int64 {
 	return ids
 }
 
-// Endpoints returns a list of all peer addresses. Each address is prefixed
+// PeerURLs returns a list of all peer addresses. Each address is prefixed
 // with the scheme (currently "http://"). The returned list is sorted in
 // ascending lexicographical order.
-func (c Cluster) Endpoints() []string {
+func (c Cluster) PeerURLs() []string {
 	endpoints := make([]string, 0)
 	for _, p := range c {
 		for _, addr := range p.PeerURLs {

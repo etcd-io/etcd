@@ -247,7 +247,7 @@ func startProxy() {
 		log.Fatal(err)
 	}
 
-	ph, err := proxy.NewHandler(pt, (*cluster).Endpoints())
+	ph, err := proxy.NewHandler(pt, (*cluster).PeerURLs())
 	if err != nil {
 		log.Fatal(err)
 	}
