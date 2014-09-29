@@ -99,7 +99,7 @@ func (c Cluster) IDs() []int64 {
 	return ids
 }
 
-// PeerURLs returns a list of all peer urls. Each url is prefixed
+// PeerURLs returns a list of all peer URLs. Each URL is prefixed
 // with the scheme (currently "http://"). The returned list is sorted in
 // ascending lexicographical order.
 func (c Cluster) PeerURLs() []string {
@@ -113,7 +113,7 @@ func (c Cluster) PeerURLs() []string {
 	return urls
 }
 
-// ClientURLs returns a list of all client urls. Each url is prefixed
+// ClientURLs returns a list of all client URLs. Each URL is prefixed
 // with the scheme (currently "http://"). The returned list is sorted in
 // ascending lexicographical order.
 func (c Cluster) ClientURLs() []string {
