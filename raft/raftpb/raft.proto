@@ -32,15 +32,16 @@ message Snapshot {
 }
 
 message Message {
-	required int64 type        = 1 [(gogoproto.nullable) = false];
-	required int64 to          = 2 [(gogoproto.nullable) = false];
-	required int64 from        = 3 [(gogoproto.nullable) = false];
-	required int64 term        = 4 [(gogoproto.nullable) = false];
-	required int64 logTerm     = 5 [(gogoproto.nullable) = false];
-	required int64 index       = 6 [(gogoproto.nullable) = false];
-	repeated Entry entries     = 7 [(gogoproto.nullable) = false];
-	required int64 commit      = 8 [(gogoproto.nullable) = false];
-	required Snapshot snapshot = 9 [(gogoproto.nullable) = false];
+	required int64 type        = 1  [(gogoproto.nullable) = false];
+	required int64 to          = 2  [(gogoproto.nullable) = false];
+	required int64 from        = 3  [(gogoproto.nullable) = false];
+	required int64 term        = 4  [(gogoproto.nullable) = false];
+	required int64 logTerm     = 5  [(gogoproto.nullable) = false];
+	required int64 index       = 6  [(gogoproto.nullable) = false];
+	repeated Entry entries     = 7  [(gogoproto.nullable) = false];
+	required int64 commit      = 8  [(gogoproto.nullable) = false];
+	required Snapshot snapshot = 9  [(gogoproto.nullable) = false];
+	required bool  denied      = 10 [(gogoproto.nullable) = false];
 }
 
 message HardState {
