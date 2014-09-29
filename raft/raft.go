@@ -378,7 +378,7 @@ func (r *raft) handleAppendEntries(m pb.Message) {
 	if r.raftLog.maybeAppend(m.Index, m.LogTerm, m.Commit, m.Entries...) {
 		r.send(pb.Message{To: m.From, Type: msgAppResp, Index: r.raftLog.lastIndex()})
 	} else {
-		r.send(pb.Message{To: m.From, Type: msgAppResp, Index: -1, Denied: true})
+		r.send(pb.Message{To: m.From, Type: msgAppResp, Denied: true})
 	}
 }
 
