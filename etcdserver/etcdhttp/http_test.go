@@ -612,9 +612,9 @@ func TestV2MachinesEndpoint(t *testing.T) {
 func TestServeMachines(t *testing.T) {
 	cluster := &fakeCluster{
 		members: []etcdserver.Member{
-			{ID: 0xBEEF0, PeerURLs: []string{"localhost:8080"}},
-			{ID: 0xBEEF1, PeerURLs: []string{"localhost:8081"}},
-			{ID: 0xBEEF2, PeerURLs: []string{"localhost:8082"}},
+			{ID: 0xBEEF0, ClientURLs: []string{"localhost:8080"}},
+			{ID: 0xBEEF1, ClientURLs: []string{"localhost:8081"}},
+			{ID: 0xBEEF2, ClientURLs: []string{"localhost:8082"}},
 		},
 	}
 
@@ -631,68 +631,6 @@ func TestServeMachines(t *testing.T) {
 	}
 	if writer.Code != http.StatusOK {
 		t.Errorf("header = %d, want %d", writer.Code, http.StatusOK)
-	}
-}
-
-func TestClusterGetEndpoints(t *testing.T) {
-	tests := []struct {
-		clusterStore etcdserver.ClusterStore
-		endpoints    []string
-	}{
-		// single peer with a single address
-		{
-			clusterStore: &fakeCluster{
-				members: []etcdserver.Member{
-					{ID: 1, PeerURLs: []string{"192.0.2.1"}},
-				},
-			},
-			endpoints: []string{"http://192.0.2.1"},
-		},
-
-		// single peer with a single address with a port
-		{
-			clusterStore: &fakeCluster{
-				members: []etcdserver.Member{
-					{ID: 1, PeerURLs: []string{"192.0.2.1:8001"}},
-				},
-			},
-			endpoints: []string{"http://192.0.2.1:8001"},
-		},
-
-		// several members explicitly unsorted
-		{
-			clusterStore: &fakeCluster{
-				members: []etcdserver.Member{
-					{ID: 2, PeerURLs: []string{"192.0.2.3", "192.0.2.4"}},
-					{ID: 3, PeerURLs: []string{"192.0.2.5", "192.0.2.6"}},
-					{ID: 1, PeerURLs: []string{"192.0.2.1", "192.0.2.2"}},
-				},
-			},
-			endpoints: []string{"http://192.0.2.1", "http://192.0.2.2", "http://192.0.2.3", "http://192.0.2.4", "http://192.0.2.5", "http://192.0.2.6"},
-		},
-
-		// no members
-		{
-			clusterStore: &fakeCluster{members: []etcdserver.Member{}},
-			endpoints:    []string{},
-		},
-
-		// peer with no endpoints
-		{
-			clusterStore: &fakeCluster{
-				members: []etcdserver.Member{
-					{ID: 3, PeerURLs: []string{}},
-				},
-			},
-			endpoints: []string{},
-		},
-	}
-
-	for i, tt := range tests {
-		endpoints := tt.clusterStore.Get().Endpoints()
-		if !reflect.DeepEqual(tt.endpoints, endpoints) {
-			t.Errorf("#%d: members.Endpoints() incorrect: want=%#v got=%#v", i, tt.endpoints, endpoints)
-		}
 	}
 }
 

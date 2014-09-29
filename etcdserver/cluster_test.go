@@ -1,6 +1,7 @@
 package etcdserver
 
 import (
+	"reflect"
 	"testing"
 )
 
@@ -138,6 +139,124 @@ func TestClusterAddBad(t *testing.T) {
 			if err == nil {
 				t.Errorf("#%d: set = %v, want err", i, m)
 			}
+		}
+	}
+}
+
+func TestClusterPeerURLs(t *testing.T) {
+	tests := []struct {
+		mems  []Member
+		wurls []string
+	}{
+		// single peer with a single address
+		{
+			mems: []Member{
+				{ID: 1, PeerURLs: []string{"192.0.2.1"}},
+			},
+			wurls: []string{"http://192.0.2.1"},
+		},
+
+		// single peer with a single address with a port
+		{
+			mems: []Member{
+				{ID: 1, PeerURLs: []string{"192.0.2.1:8001"}},
+			},
+			wurls: []string{"http://192.0.2.1:8001"},
+		},
+
+		// several members explicitly unsorted
+		{
+			mems: []Member{
+				{ID: 2, PeerURLs: []string{"192.0.2.3", "192.0.2.4"}},
+				{ID: 3, PeerURLs: []string{"192.0.2.5", "192.0.2.6"}},
+				{ID: 1, PeerURLs: []string{"192.0.2.1", "192.0.2.2"}},
+			},
+			wurls: []string{"http://192.0.2.1", "http://192.0.2.2", "http://192.0.2.3", "http://192.0.2.4", "http://192.0.2.5", "http://192.0.2.6"},
+		},
+
+		// no members
+		{
+			mems:  []Member{},
+			wurls: []string{},
+		},
+
+		// peer with no peer urls
+		{
+			mems: []Member{
+				{ID: 3, PeerURLs: []string{}},
+			},
+			wurls: []string{},
+		},
+	}
+
+	for i, tt := range tests {
+		c := Cluster{}
+		if err := c.AddSlice(tt.mems); err != nil {
+			t.Errorf("AddSlice error: %v", err)
+			continue
+		}
+		urls := c.PeerURLs()
+		if !reflect.DeepEqual(urls, tt.wurls) {
+			t.Errorf("#%d: PeerURLs = %v, want %v", i, urls, tt.wurls)
+		}
+	}
+}
+
+func TestClusterClientURLs(t *testing.T) {
+	tests := []struct {
+		mems  []Member
+		wurls []string
+	}{
+		// single peer with a single address
+		{
+			mems: []Member{
+				{ID: 1, ClientURLs: []string{"192.0.2.1"}},
+			},
+			wurls: []string{"http://192.0.2.1"},
+		},
+
+		// single peer with a single address with a port
+		{
+			mems: []Member{
+				{ID: 1, ClientURLs: []string{"192.0.2.1:8001"}},
+			},
+			wurls: []string{"http://192.0.2.1:8001"},
+		},
+
+		// several members explicitly unsorted
+		{
+			mems: []Member{
+				{ID: 2, ClientURLs: []string{"192.0.2.3", "192.0.2.4"}},
+				{ID: 3, ClientURLs: []string{"192.0.2.5", "192.0.2.6"}},
+				{ID: 1, ClientURLs: []string{"192.0.2.1", "192.0.2.2"}},
+			},
+			wurls: []string{"http://192.0.2.1", "http://192.0.2.2", "http://192.0.2.3", "http://192.0.2.4", "http://192.0.2.5", "http://192.0.2.6"},
+		},
+
+		// no members
+		{
+			mems:  []Member{},
+			wurls: []string{},
+		},
+
+		// peer with no client urls
+		{
+			mems: []Member{
+				{ID: 3, ClientURLs: []string{}},
+			},
+			wurls: []string{},
+		},
+	}
+
+	for i, tt := range tests {
+		c := Cluster{}
+		if err := c.AddSlice(tt.mems); err != nil {
+			t.Errorf("AddSlice error: %v", err)
+			continue
+		}
+		urls := c.ClientURLs()
+		if !reflect.DeepEqual(urls, tt.wurls) {
+			t.Errorf("#%d: ClientURLs = %v, want %v", i, urls, tt.wurls)
 		}
 	}
 }
