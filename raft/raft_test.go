@@ -582,7 +582,7 @@ func TestRecvMsgVote(t *testing.T) {
 			continue
 		}
 		if g := msgs[0].Denied; g != tt.wdenied {
-			t.Errorf("#%d, m.Index = %d, want %d", i, g, tt.wdenied)
+			t.Errorf("#%d, m.Denied = %d, want %d", i, g, tt.wdenied)
 		}
 	}
 }
