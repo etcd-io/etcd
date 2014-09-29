@@ -48,7 +48,7 @@ func (c *Cluster) AddSlice(mems []Member) error {
 // an addressible URI. If the given member does not exist, an empty string is returned.
 func (c Cluster) Pick(id int64) string {
 	if m := c.FindID(id); m != nil {
-		addrs := m.PeerURLs
+		addrs := m.PeerAddrs
 		if len(addrs) == 0 {
 			return ""
 		}
@@ -67,11 +67,11 @@ func (c *Cluster) Set(s string) error {
 		return err
 	}
 
-	for name, urls := range v {
-		if len(urls) == 0 || urls[0] == "" {
+	for name, addrs := range v {
+		if len(addrs) == 0 || addrs[0] == "" {
 			return fmt.Errorf("Empty URL given for %q", name)
 		}
-		m := newMember(name, urls)
+		m := newMember(name, addrs)
 		err := c.Add(*m)
 		if err != nil {
 			return err
@@ -83,8 +83,8 @@ func (c *Cluster) Set(s string) error {
 func (c Cluster) String() string {
 	sl := []string{}
 	for _, m := range c {
-		for _, u := range m.PeerURLs {
-			sl = append(sl, fmt.Sprintf("%s=%s", m.Name, u))
+		for _, addr := range m.PeerAddrs {
+			sl = append(sl, fmt.Sprintf("%s=%s", m.Name, addr))
 		}
 	}
 	sort.Strings(sl)
@@ -99,28 +99,28 @@ func (c Cluster) IDs() []int64 {
 	return ids
 }
 
-// PeerURLs returns a list of all peer addresses. Each address is prefixed
+// PeerURLs returns a list of all peer URLs. Each URL is prefixed
 // with the scheme (currently "http://"). The returned list is sorted in
 // ascending lexicographical order.
 func (c Cluster) PeerURLs() []string {
-	endpoints := make([]string, 0)
+	urls := make([]string, 0)
 	for _, p := range c {
-		for _, addr := range p.PeerURLs {
-			endpoints = append(endpoints, addScheme(addr))
+		for _, addr := range p.PeerAddrs {
+			urls = append(urls, addScheme(addr))
 		}
 	}
-	sort.Strings(endpoints)
-	return endpoints
+	sort.Strings(urls)
+	return urls
 }
 
-// ClientURLs returns a list of all client addresses. Each address is prefixed
+// ClientURLs returns a list of all client URLs. Each URL is prefixed
 // with the scheme (currently "http://"). The returned list is sorted in
 // ascending lexicographical order.
 func (c Cluster) ClientURLs() []string {
 	urls := make([]string, 0)
 	for _, p := range c {
-		for _, url := range p.ClientURLs {
-			urls = append(urls, addScheme(url))
+		for _, addr := range p.ClientAddrs {
+			urls = append(urls, addScheme(addr))
 		}
 	}
 	sort.Strings(urls)

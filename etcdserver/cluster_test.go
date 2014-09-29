@@ -79,9 +79,9 @@ func TestClusterSet(t *testing.T) {
 		{
 			"mem1=10.0.0.1:2379,mem1=128.193.4.20:2379,mem2=10.0.0.2:2379,default=127.0.0.1:2379",
 			[]Member{
-				{ID: 3736794188555456841, Name: "mem1", PeerURLs: []string{"10.0.0.1:2379", "128.193.4.20:2379"}},
-				{ID: 5674507346857578431, Name: "mem2", PeerURLs: []string{"10.0.0.2:2379"}},
-				{ID: 2676999861503984872, Name: "default", PeerURLs: []string{"127.0.0.1:2379"}},
+				{ID: 3736794188555456841, Name: "mem1", PeerAddrs: []string{"10.0.0.1:2379", "128.193.4.20:2379"}},
+				{ID: 5674507346857578431, Name: "mem2", PeerAddrs: []string{"10.0.0.2:2379"}},
+				{ID: 2676999861503984872, Name: "default", PeerAddrs: []string{"127.0.0.1:2379"}},
 			},
 			true,
 		},
@@ -151,7 +151,7 @@ func TestClusterPeerURLs(t *testing.T) {
 		// single peer with a single address
 		{
 			mems: []Member{
-				{ID: 1, PeerURLs: []string{"192.0.2.1"}},
+				{ID: 1, PeerAddrs: []string{"192.0.2.1"}},
 			},
 			wurls: []string{"http://192.0.2.1"},
 		},
@@ -159,7 +159,7 @@ func TestClusterPeerURLs(t *testing.T) {
 		// single peer with a single address with a port
 		{
 			mems: []Member{
-				{ID: 1, PeerURLs: []string{"192.0.2.1:8001"}},
+				{ID: 1, PeerAddrs: []string{"192.0.2.1:8001"}},
 			},
 			wurls: []string{"http://192.0.2.1:8001"},
 		},
@@ -167,9 +167,9 @@ func TestClusterPeerURLs(t *testing.T) {
 		// several members explicitly unsorted
 		{
 			mems: []Member{
-				{ID: 2, PeerURLs: []string{"192.0.2.3", "192.0.2.4"}},
-				{ID: 3, PeerURLs: []string{"192.0.2.5", "192.0.2.6"}},
-				{ID: 1, PeerURLs: []string{"192.0.2.1", "192.0.2.2"}},
+				{ID: 2, PeerAddrs: []string{"192.0.2.3", "192.0.2.4"}},
+				{ID: 3, PeerAddrs: []string{"192.0.2.5", "192.0.2.6"}},
+				{ID: 1, PeerAddrs: []string{"192.0.2.1", "192.0.2.2"}},
 			},
 			wurls: []string{"http://192.0.2.1", "http://192.0.2.2", "http://192.0.2.3", "http://192.0.2.4", "http://192.0.2.5", "http://192.0.2.6"},
 		},
@@ -180,10 +180,10 @@ func TestClusterPeerURLs(t *testing.T) {
 			wurls: []string{},
 		},
 
-		// peer with no peer urls
+		// member with no peer address
 		{
 			mems: []Member{
-				{ID: 3, PeerURLs: []string{}},
+				{ID: 3, PeerAddrs: []string{}},
 			},
 			wurls: []string{},
 		},
@@ -210,7 +210,7 @@ func TestClusterClientURLs(t *testing.T) {
 		// single peer with a single address
 		{
 			mems: []Member{
-				{ID: 1, ClientURLs: []string{"192.0.2.1"}},
+				{ID: 1, ClientAddrs: []string{"192.0.2.1"}},
 			},
 			wurls: []string{"http://192.0.2.1"},
 		},
@@ -218,7 +218,7 @@ func TestClusterClientURLs(t *testing.T) {
 		// single peer with a single address with a port
 		{
 			mems: []Member{
-				{ID: 1, ClientURLs: []string{"192.0.2.1:8001"}},
+				{ID: 1, ClientAddrs: []string{"192.0.2.1:8001"}},
 			},
 			wurls: []string{"http://192.0.2.1:8001"},
 		},
@@ -226,9 +226,9 @@ func TestClusterClientURLs(t *testing.T) {
 		// several members explicitly unsorted
 		{
 			mems: []Member{
-				{ID: 2, ClientURLs: []string{"192.0.2.3", "192.0.2.4"}},
-				{ID: 3, ClientURLs: []string{"192.0.2.5", "192.0.2.6"}},
-				{ID: 1, ClientURLs: []string{"192.0.2.1", "192.0.2.2"}},
+				{ID: 2, ClientAddrs: []string{"192.0.2.3", "192.0.2.4"}},
+				{ID: 3, ClientAddrs: []string{"192.0.2.5", "192.0.2.6"}},
+				{ID: 1, ClientAddrs: []string{"192.0.2.1", "192.0.2.2"}},
 			},
 			wurls: []string{"http://192.0.2.1", "http://192.0.2.2", "http://192.0.2.3", "http://192.0.2.4", "http://192.0.2.5", "http://192.0.2.6"},
 		},
@@ -239,10 +239,10 @@ func TestClusterClientURLs(t *testing.T) {
 			wurls: []string{},
 		},
 
-		// peer with no client urls
+		// member with no client address
 		{
 			mems: []Member{
-				{ID: 3, ClientURLs: []string{}},
+				{ID: 3, ClientAddrs: []string{}},
 			},
 			wurls: []string{},
 		},
