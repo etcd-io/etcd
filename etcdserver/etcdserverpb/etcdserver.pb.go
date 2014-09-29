@@ -28,22 +28,22 @@ var _ = &json.SyntaxError{}
 var _ = math.Inf
 
 type Request struct {
-	Id               int64  `protobuf:"varint,1,req,name=id" json:"id"`
-	Method           string `protobuf:"bytes,2,req,name=method" json:"method"`
-	Path             string `protobuf:"bytes,3,req,name=path" json:"path"`
-	Val              string `protobuf:"bytes,4,req,name=val" json:"val"`
-	Dir              bool   `protobuf:"varint,5,req,name=dir" json:"dir"`
-	PrevValue        string `protobuf:"bytes,6,req,name=prevValue" json:"prevValue"`
-	PrevIndex        uint64 `protobuf:"varint,7,req,name=prevIndex" json:"prevIndex"`
-	PrevExist        *bool  `protobuf:"varint,8,req,name=prevExist" json:"prevExist,omitempty"`
-	Expiration       int64  `protobuf:"varint,9,req,name=expiration" json:"expiration"`
-	Wait             bool   `protobuf:"varint,10,req,name=wait" json:"wait"`
-	Since            uint64 `protobuf:"varint,11,req,name=since" json:"since"`
-	Recursive        bool   `protobuf:"varint,12,req,name=recursive" json:"recursive"`
-	Sorted           bool   `protobuf:"varint,13,req,name=sorted" json:"sorted"`
-	Quorum           bool   `protobuf:"varint,14,req,name=quorum" json:"quorum"`
-	Time             int64  `protobuf:"varint,15,req,name=time" json:"time"`
-	Stream           bool   `protobuf:"varint,16,req,name=stream" json:"stream"`
+	ID               int64  `protobuf:"varint,1,req" json:"ID"`
+	Method           string `protobuf:"bytes,2,req" json:"Method"`
+	Path             string `protobuf:"bytes,3,req" json:"Path"`
+	Val              string `protobuf:"bytes,4,req" json:"Val"`
+	Dir              bool   `protobuf:"varint,5,req" json:"Dir"`
+	PrevValue        string `protobuf:"bytes,6,req" json:"PrevValue"`
+	PrevIndex        uint64 `protobuf:"varint,7,req" json:"PrevIndex"`
+	PrevExist        *bool  `protobuf:"varint,8,req" json:"PrevExist,omitempty"`
+	Expiration       int64  `protobuf:"varint,9,req" json:"Expiration"`
+	Wait             bool   `protobuf:"varint,10,req" json:"Wait"`
+	Since            uint64 `protobuf:"varint,11,req" json:"Since"`
+	Recursive        bool   `protobuf:"varint,12,req" json:"Recursive"`
+	Sorted           bool   `protobuf:"varint,13,req" json:"Sorted"`
+	Quorum           bool   `protobuf:"varint,14,req" json:"Quorum"`
+	Time             int64  `protobuf:"varint,15,req" json:"Time"`
+	Stream           bool   `protobuf:"varint,16,req" json:"Stream"`
 	XXX_unrecognized []byte `json:"-"`
 }
 
@@ -82,7 +82,7 @@ func (m *Request) Unmarshal(data []byte) error {
 				}
 				b := data[index]
 				index++
-				m.Id |= (int64(b) & 0x7F) << shift
+				m.ID |= (int64(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -381,7 +381,7 @@ func (m *Request) Unmarshal(data []byte) error {
 func (m *Request) Size() (n int) {
 	var l int
 	_ = l
-	n += 1 + sovEtcdserver(uint64(m.Id))
+	n += 1 + sovEtcdserver(uint64(m.ID))
 	l = len(m.Method)
 	n += 1 + l + sovEtcdserver(uint64(l))
 	l = len(m.Path)
@@ -439,7 +439,7 @@ func (m *Request) MarshalTo(data []byte) (n int, err error) {
 	_ = l
 	data[i] = 0x8
 	i++
-	i = encodeVarintEtcdserver(data, i, uint64(m.Id))
+	i = encodeVarintEtcdserver(data, i, uint64(m.ID))
 	data[i] = 0x12
 	i++
 	i = encodeVarintEtcdserver(data, i, uint64(len(m.Method)))

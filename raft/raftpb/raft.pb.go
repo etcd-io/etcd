@@ -99,7 +99,7 @@ func (x *ConfChangeType) UnmarshalJSON(data []byte) error {
 }
 
 type Info struct {
-	Id               int64  `protobuf:"varint,1,req,name=id" json:"id"`
+	ID               int64  `protobuf:"varint,1,req" json:"ID"`
 	XXX_unrecognized []byte `json:"-"`
 }
 
@@ -205,7 +205,7 @@ func (m *Info) Unmarshal(data []byte) error {
 				}
 				b := data[index]
 				index++
-				m.Id |= (int64(b) & 0x7F) << shift
+				m.ID |= (int64(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -863,7 +863,7 @@ func (m *ConfChange) Unmarshal(data []byte) error {
 func (m *Info) Size() (n int) {
 	var l int
 	_ = l
-	n += 1 + sovRaft(uint64(m.Id))
+	n += 1 + sovRaft(uint64(m.ID))
 	if m.XXX_unrecognized != nil {
 		n += len(m.XXX_unrecognized)
 	}
@@ -978,7 +978,7 @@ func (m *Info) MarshalTo(data []byte) (n int, err error) {
 	_ = l
 	data[i] = 0x8
 	i++
-	i = encodeVarintRaft(data, i, uint64(m.Id))
+	i = encodeVarintRaft(data, i, uint64(m.ID))
 	if m.XXX_unrecognized != nil {
 		i += copy(data[i:], m.XXX_unrecognized)
 	}

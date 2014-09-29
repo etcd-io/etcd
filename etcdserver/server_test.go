@@ -55,11 +55,11 @@ func TestDoLocalAction(t *testing.T) {
 		wactions []action
 	}{
 		{
-			pb.Request{Method: "GET", Id: 1, Wait: true},
+			pb.Request{Method: "GET", ID: 1, Wait: true},
 			Response{Watcher: &stubWatcher{}}, nil, []action{action{name: "Watch"}},
 		},
 		{
-			pb.Request{Method: "GET", Id: 1},
+			pb.Request{Method: "GET", ID: 1},
 			Response{Event: &store.Event{}}, nil,
 			[]action{
 				action{
@@ -69,7 +69,7 @@ func TestDoLocalAction(t *testing.T) {
 			},
 		},
 		{
-			pb.Request{Method: "BADMETHOD", Id: 1},
+			pb.Request{Method: "BADMETHOD", ID: 1},
 			Response{}, ErrUnknownMethod, []action{},
 		},
 	}
@@ -101,11 +101,11 @@ func TestDoBadLocalAction(t *testing.T) {
 		wactions []action
 	}{
 		{
-			pb.Request{Method: "GET", Id: 1, Wait: true},
+			pb.Request{Method: "GET", ID: 1, Wait: true},
 			[]action{action{name: "Watch"}},
 		},
 		{
-			pb.Request{Method: "GET", Id: 1},
+			pb.Request{Method: "GET", ID: 1},
 			[]action{action{name: "Get"}},
 		},
 	}
@@ -136,7 +136,7 @@ func TestApply(t *testing.T) {
 	}{
 		// POST ==> Create
 		{
-			pb.Request{Method: "POST", Id: 1},
+			pb.Request{Method: "POST", ID: 1},
 			Response{Event: &store.Event{}},
 			[]action{
 				action{
@@ -147,7 +147,7 @@ func TestApply(t *testing.T) {
 		},
 		// POST ==> Create, with expiration
 		{
-			pb.Request{Method: "POST", Id: 1, Expiration: 1337},
+			pb.Request{Method: "POST", ID: 1, Expiration: 1337},
 			Response{Event: &store.Event{}},
 			[]action{
 				action{
@@ -158,7 +158,7 @@ func TestApply(t *testing.T) {
 		},
 		// POST ==> Create, with dir
 		{
-			pb.Request{Method: "POST", Id: 1, Dir: true},
+			pb.Request{Method: "POST", ID: 1, Dir: true},
 			Response{Event: &store.Event{}},
 			[]action{
 				action{
@@ -169,7 +169,7 @@ func TestApply(t *testing.T) {
 		},
 		// PUT ==> Set
 		{
-			pb.Request{Method: "PUT", Id: 1},
+			pb.Request{Method: "PUT", ID: 1},
 			Response{Event: &store.Event{}},
 			[]action{
 				action{
@@ -180,7 +180,7 @@ func TestApply(t *testing.T) {
 		},
 		// PUT ==> Set, with dir
 		{
-			pb.Request{Method: "PUT", Id: 1, Dir: true},
+			pb.Request{Method: "PUT", ID: 1, Dir: true},
 			Response{Event: &store.Event{}},
 			[]action{
 				action{
@@ -191,7 +191,7 @@ func TestApply(t *testing.T) {
 		},
 		// PUT with PrevExist=true ==> Update
 		{
-			pb.Request{Method: "PUT", Id: 1, PrevExist: boolp(true)},
+			pb.Request{Method: "PUT", ID: 1, PrevExist: boolp(true)},
 			Response{Event: &store.Event{}},
 			[]action{
 				action{
@@ -202,7 +202,7 @@ func TestApply(t *testing.T) {
 		},
 		// PUT with PrevExist=false ==> Create
 		{
-			pb.Request{Method: "PUT", Id: 1, PrevExist: boolp(false)},
+			pb.Request{Method: "PUT", ID: 1, PrevExist: boolp(false)},
 			Response{Event: &store.Event{}},
 			[]action{
 				action{
@@ -214,7 +214,7 @@ func TestApply(t *testing.T) {
 		// PUT with PrevExist=true *and* PrevIndex set ==> Update
 		// TODO(jonboulle): is this expected?!
 		{
-			pb.Request{Method: "PUT", Id: 1, PrevExist: boolp(true), PrevIndex: 1},
+			pb.Request{Method: "PUT", ID: 1, PrevExist: boolp(true), PrevIndex: 1},
 			Response{Event: &store.Event{}},
 			[]action{
 				action{
@@ -226,7 +226,7 @@ func TestApply(t *testing.T) {
 		// PUT with PrevExist=false *and* PrevIndex set ==> Create
 		// TODO(jonboulle): is this expected?!
 		{
-			pb.Request{Method: "PUT", Id: 1, PrevExist: boolp(false), PrevIndex: 1},
+			pb.Request{Method: "PUT", ID: 1, PrevExist: boolp(false), PrevIndex: 1},
 			Response{Event: &store.Event{}},
 			[]action{
 				action{
@@ -237,7 +237,7 @@ func TestApply(t *testing.T) {
 		},
 		// PUT with PrevIndex set ==> CompareAndSwap
 		{
-			pb.Request{Method: "PUT", Id: 1, PrevIndex: 1},
+			pb.Request{Method: "PUT", ID: 1, PrevIndex: 1},
 			Response{Event: &store.Event{}},
 			[]action{
 				action{
@@ -248,7 +248,7 @@ func TestApply(t *testing.T) {
 		},
 		// PUT with PrevValue set ==> CompareAndSwap
 		{
-			pb.Request{Method: "PUT", Id: 1, PrevValue: "bar"},
+			pb.Request{Method: "PUT", ID: 1, PrevValue: "bar"},
 			Response{Event: &store.Event{}},
 			[]action{
 				action{
@@ -259,7 +259,7 @@ func TestApply(t *testing.T) {
 		},
 		// PUT with PrevIndex and PrevValue set ==> CompareAndSwap
 		{
-			pb.Request{Method: "PUT", Id: 1, PrevIndex: 1, PrevValue: "bar"},
+			pb.Request{Method: "PUT", ID: 1, PrevIndex: 1, PrevValue: "bar"},
 			Response{Event: &store.Event{}},
 			[]action{
 				action{
@@ -270,7 +270,7 @@ func TestApply(t *testing.T) {
 		},
 		// DELETE ==> Delete
 		{
-			pb.Request{Method: "DELETE", Id: 1},
+			pb.Request{Method: "DELETE", ID: 1},
 			Response{Event: &store.Event{}},
 			[]action{
 				action{
@@ -281,7 +281,7 @@ func TestApply(t *testing.T) {
 		},
 		// DELETE with PrevIndex set ==> CompareAndDelete
 		{
-			pb.Request{Method: "DELETE", Id: 1, PrevIndex: 1},
+			pb.Request{Method: "DELETE", ID: 1, PrevIndex: 1},
 			Response{Event: &store.Event{}},
 			[]action{
 				action{
@@ -292,7 +292,7 @@ func TestApply(t *testing.T) {
 		},
 		// DELETE with PrevValue set ==> CompareAndDelete
 		{
-			pb.Request{Method: "DELETE", Id: 1, PrevValue: "bar"},
+			pb.Request{Method: "DELETE", ID: 1, PrevValue: "bar"},
 			Response{Event: &store.Event{}},
 			[]action{
 				action{
@@ -303,7 +303,7 @@ func TestApply(t *testing.T) {
 		},
 		// DELETE with PrevIndex *and* PrevValue set ==> CompareAndDelete
 		{
-			pb.Request{Method: "DELETE", Id: 1, PrevIndex: 5, PrevValue: "bar"},
+			pb.Request{Method: "DELETE", ID: 1, PrevIndex: 5, PrevValue: "bar"},
 			Response{Event: &store.Event{}},
 			[]action{
 				action{
@@ -314,7 +314,7 @@ func TestApply(t *testing.T) {
 		},
 		// QGET ==> Get
 		{
-			pb.Request{Method: "QGET", Id: 1},
+			pb.Request{Method: "QGET", ID: 1},
 			Response{Event: &store.Event{}},
 			[]action{
 				action{
@@ -325,7 +325,7 @@ func TestApply(t *testing.T) {
 		},
 		// SYNC ==> DeleteExpiredKeys
 		{
-			pb.Request{Method: "SYNC", Id: 1},
+			pb.Request{Method: "SYNC", ID: 1},
 			Response{},
 			[]action{
 				action{
@@ -335,7 +335,7 @@ func TestApply(t *testing.T) {
 			},
 		},
 		{
-			pb.Request{Method: "SYNC", Id: 1, Time: 12345},
+			pb.Request{Method: "SYNC", ID: 1, Time: 12345},
 			Response{},
 			[]action{
 				action{
@@ -346,7 +346,7 @@ func TestApply(t *testing.T) {
 		},
 		// Unknown method - error
 		{
-			pb.Request{Method: "BADMETHOD", Id: 1},
+			pb.Request{Method: "BADMETHOD", ID: 1},
 			Response{err: ErrUnknownMethod},
 			[]action{},
 		},
@@ -410,7 +410,7 @@ func testServer(t *testing.T, ns int64) {
 	for i := 1; i <= 10; i++ {
 		r := pb.Request{
 			Method: "PUT",
-			Id:     int64(i),
+			ID:     int64(i),
 			Path:   "/foo",
 			Val:    "bar",
 		}
@@ -449,10 +449,10 @@ func testServer(t *testing.T, ns int64) {
 
 func TestDoProposal(t *testing.T) {
 	tests := []pb.Request{
-		pb.Request{Method: "POST", Id: 1},
-		pb.Request{Method: "PUT", Id: 1},
-		pb.Request{Method: "DELETE", Id: 1},
-		pb.Request{Method: "GET", Id: 1, Quorum: true},
+		pb.Request{Method: "POST", ID: 1},
+		pb.Request{Method: "PUT", ID: 1},
+		pb.Request{Method: "DELETE", ID: 1},
+		pb.Request{Method: "GET", ID: 1, Quorum: true},
 	}
 
 	for i, tt := range tests {
@@ -503,7 +503,7 @@ func TestDoProposalCancelled(t *testing.T) {
 	done := make(chan struct{})
 	var err error
 	go func() {
-		_, err = srv.Do(ctx, pb.Request{Method: "PUT", Id: 1})
+		_, err = srv.Do(ctx, pb.Request{Method: "PUT", ID: 1})
 		close(done)
 	}()
 	cancel()
@@ -544,7 +544,7 @@ func TestDoProposalStopped(t *testing.T) {
 	done := make(chan struct{})
 	var err error
 	go func() {
-		_, err = srv.Do(ctx, pb.Request{Method: "PUT", Id: 1})
+		_, err = srv.Do(ctx, pb.Request{Method: "PUT", ID: 1})
 		close(done)
 	}()
 	srv.Stop()
@@ -712,7 +712,7 @@ func TestTriggerSnap(t *testing.T) {
 
 	s.Start()
 	for i := 0; int64(i) < s.SnapCount; i++ {
-		s.Do(ctx, pb.Request{Method: "PUT", Id: 1})
+		s.Do(ctx, pb.Request{Method: "PUT", ID: 1})
 	}
 	time.Sleep(time.Millisecond)
 	s.Stop()

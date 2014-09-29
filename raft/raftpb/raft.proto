@@ -9,7 +9,7 @@ option (gogoproto.goproto_getters_all) = false;
 option (gogoproto.goproto_enum_prefix_all) = false;
 
 message Info {
-	required int64 id   = 1 [(gogoproto.nullable) = false];
+	required int64 ID   = 1 [(gogoproto.nullable) = false];
 }
 
 enum EntryType {
