@@ -19,6 +19,8 @@ import (
 const (
 	defaultSyncTimeout = time.Second
 	DefaultSnapCount   = 10000
+	// TODO: calculated based on heartbeat interval
+	defaultPublishRetryInterval = 5 * time.Second
 )
 
 var (
@@ -57,7 +59,7 @@ type Server interface {
 	// begin serving requests. It must be called before Do or Process.
 	// Start must be non-blocking; any long-running server functionality
 	// should be implemented in goroutines.
-	Start()
+	Start(m Member)
 	// Stop terminates the Server and performs any necessary finalization.
 	// Do and Process cannot be called after Stop has been invoked.
 	Stop()
@@ -102,7 +104,16 @@ type EtcdServer struct {
 
 // Start prepares and starts server in a new goroutine. It is no longer safe to
 // modify a server's fields after it has been sent to Start.
-func (s *EtcdServer) Start() {
+// It also starts a goroutine to publish its server information.
+func (s *EtcdServer) Start(m Member) {
+	s.start()
+	go s.publish(m, defaultPublishRetryInterval)
+}
+
+// start prepares and starts server in a new goroutine. It is no longer safe to
+// modify a server's fields after it has been sent to Start.
+// This function is just used for testing.
+func (s *EtcdServer) start() {
 	if s.SnapCount == 0 {
 		log.Printf("etcdserver: set snapshot count to default %d", DefaultSnapCount)
 		s.SnapCount = DefaultSnapCount

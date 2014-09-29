@@ -205,7 +205,9 @@ func startEtcd() {
 		SnapCount:    *snapCount,
 		ClusterStore: cls,
 	}
-	s.Start()
+	member := *self
+	member.ClientURLs = *addrs
+	s.Start(member)
 
 	ch := &pkg.CORSHandler{
 		Handler: etcdhttp.NewClientHandler(s, cls, *timeout),

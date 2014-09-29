@@ -712,8 +712,8 @@ func (fs *errServer) Do(ctx context.Context, r etcdserverpb.Request) (etcdserver
 func (fs *errServer) Process(ctx context.Context, m raftpb.Message) error {
 	return fs.err
 }
-func (fs *errServer) Start() {}
-func (fs *errServer) Stop()  {}
+func (fs *errServer) Start(m etcdserver.Member) {}
+func (fs *errServer) Stop()                     {}
 
 // errReader implements io.Reader to facilitate a broken request.
 type errReader struct{}
@@ -838,7 +838,7 @@ func (rs *resServer) Do(_ context.Context, _ etcdserverpb.Request) (etcdserver.R
 	return rs.res, nil
 }
 func (rs *resServer) Process(_ context.Context, _ raftpb.Message) error { return nil }
-func (rs *resServer) Start()                                            {}
+func (rs *resServer) Start(m etcdserver.Member)                         {}
 func (rs *resServer) Stop()                                             {}
 
 func mustMarshalEvent(t *testing.T, ev *store.Event) string {
