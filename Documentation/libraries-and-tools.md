@@ -17,6 +17,7 @@
 - [justinsb/jetcd](https://github.com/justinsb/jetcd)
 - [diwakergupta/jetcd](https://github.com/diwakergupta/jetcd) - Supports v2
 - [jurmous/etcd4j](https://github.com/jurmous/etcd4j) - Supports v2
+- [AdoHe/etcd4j](http://github.com/AdoHe/etcd4j) - Supports v2 (enhance for real production cluster)
 
 **Python libraries**
 
