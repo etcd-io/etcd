@@ -1,6 +1,7 @@
 package etcdserver
 
 import (
+	"encoding/json"
 	"errors"
 	"log"
 	"math/rand"
@@ -315,6 +316,40 @@ func (s *EtcdServer) sync(timeout time.Duration) {
 		s.Node.Propose(ctx, data)
 		cancel()
 	}()
+}
+
+// publish registers server information into the cluster. The information
+// is the json format of the given member.
+// The function keeps attempting to register until it succeeds,
+// or its server is stopped.
+func (s *EtcdServer) publish(m Member, retryInterval time.Duration) {
+	b, err := json.Marshal(m)
+	if err != nil {
+		log.Printf("etcdserver: json marshal error: %v", err)
+		return
+	}
+	req := pb.Request{
+		Id:     GenID(),
+		Method: "PUT",
+		Path:   m.storeKey(),
+		Val:    string(b),
+	}
+
+	for {
+		ctx, cancel := context.WithTimeout(context.Background(), retryInterval)
+		_, err := s.Do(ctx, req)
+		cancel()
+		switch err {
+		case nil:
+			log.Printf("etcdserver: published %+v to the cluster", m)
+			return
+		case ErrStopped:
+			log.Printf("etcdserver: aborting publish because server is stopped")
+			return
+		default:
+			log.Printf("etcdserver: publish error: %v", err)
+		}
+	}
 }
 
 func getExpirationTime(r *pb.Request) time.Time {
