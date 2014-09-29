@@ -430,7 +430,7 @@ func stepLeader(r *raft, m pb.Message) {
 			}
 		}
 	case msgVote:
-		r.send(pb.Message{To: m.From, Type: msgVoteResp, Index: -1, Denied: true})
+		r.send(pb.Message{To: m.From, Type: msgVoteResp, Denied: true})
 	}
 }
 
@@ -445,7 +445,7 @@ func stepCandidate(r *raft, m pb.Message) {
 		r.becomeFollower(m.Term, m.From)
 		r.handleSnapshot(m)
 	case msgVote:
-		r.send(pb.Message{To: m.From, Type: msgVoteResp, Index: -1, Denied: true})
+		r.send(pb.Message{To: m.From, Type: msgVoteResp, Denied: true})
 	case msgVoteResp:
 		gr := r.poll(m.From, !m.Denied)
 		switch r.q() {
@@ -477,9 +477,9 @@ func stepFollower(r *raft, m pb.Message) {
 		if (r.Vote == None || r.Vote == m.From) && r.raftLog.isUpToDate(m.Index, m.LogTerm) {
 			r.elapsed = 0
 			r.Vote = m.From
-			r.send(pb.Message{To: m.From, Type: msgVoteResp, Index: r.raftLog.lastIndex()})
+			r.send(pb.Message{To: m.From, Type: msgVoteResp})
 		} else {
-			r.send(pb.Message{To: m.From, Type: msgVoteResp, Index: -1, Denied: true})
+			r.send(pb.Message{To: m.From, Type: msgVoteResp, Denied: true})
 		}
 	}
 }
