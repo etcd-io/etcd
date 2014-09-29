@@ -13,19 +13,19 @@ const machineKVPrefix = "/_etcd/machines/"
 type Member struct {
 	ID   int64
 	Name string
-	// TODO(philips): ensure these are URLs
-	PeerURLs   []string
-	ClientURLs []string
+	// TODO(philips): ensure these are addresses
+	PeerAddrs   []string
+	ClientAddrs []string
 }
 
 // newMember creates a Member without an ID and generates one based on the
-// name, peer URLs. This is used for bootstrapping.
-func newMember(name string, peerURLs []string) *Member {
-	sort.Strings(peerURLs)
-	m := &Member{Name: name, PeerURLs: peerURLs}
+// name, peer addresses. This is used for bootstrapping.
+func newMember(name string, PeerAddrs []string) *Member {
+	sort.Strings(PeerAddrs)
+	m := &Member{Name: name, PeerAddrs: PeerAddrs}
 
 	b := []byte(m.Name)
-	for _, p := range m.PeerURLs {
+	for _, p := range m.PeerAddrs {
 		b = append(b, []byte(p)...)
 	}
 
