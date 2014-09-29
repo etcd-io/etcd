@@ -698,12 +698,13 @@ func TestAllServerStepdown(t *testing.T) {
 func TestLeaderAppResp(t *testing.T) {
 	tests := []struct {
 		index      int64
+		denied     bool
 		wmsgNum    int
 		windex     int64
 		wcommitted int64
 	}{
-		{-1, 1, 1, 0}, // bad resp; leader does not commit; reply with log entries
-		{2, 2, 2, 2},  // good resp; leader commits; broadcast with commit index
+		{-1, true, 1, 1, 0}, // bad resp; leader does not commit; reply with log entries
+		{2, false, 2, 2, 2}, // good resp; leader commits; broadcast with commit index
 	}
 
 	for i, tt := range tests {
@@ -714,7 +715,7 @@ func TestLeaderAppResp(t *testing.T) {
 		sm.becomeCandidate()
 		sm.becomeLeader()
 		sm.ReadMessages()
-		sm.Step(pb.Message{From: 2, Type: msgAppResp, Index: tt.index, Term: sm.Term})
+		sm.Step(pb.Message{From: 2, Type: msgAppResp, Index: tt.index, Term: sm.Term, Denied: tt.denied})
 		msgs := sm.ReadMessages()
 
 		if len(msgs) != tt.wmsgNum {
@@ -883,7 +884,7 @@ func TestProvideSnap(t *testing.T) {
 	sm.Step(pb.Message{From: 1, To: 1, Type: msgBeat})
 	msgs := sm.ReadMessages()
 	if len(msgs) != 1 {
-		t.Errorf("len(msgs) = %d, want 1", len(msgs))
+		t.Fatalf("len(msgs) = %d, want 1", len(msgs))
 	}
 	m := msgs[0]
 	if m.Type != msgApp {
@@ -894,10 +895,10 @@ func TestProvideSnap(t *testing.T) {
 	// node 1 needs a snapshot
 	sm.prs[2].next = sm.raftLog.offset
 
-	sm.Step(pb.Message{From: 2, To: 1, Type: msgAppResp, Index: -1})
+	sm.Step(pb.Message{From: 2, To: 1, Type: msgAppResp, Index: -1, Denied: true})
 	msgs = sm.ReadMessages()
 	if len(msgs) != 1 {
-		t.Errorf("len(msgs) = %d, want 1", len(msgs))
+		t.Fatalf("len(msgs) = %d, want 1", len(msgs))
 	}
 	m = msgs[0]
 	if m.Type != msgSnap {
