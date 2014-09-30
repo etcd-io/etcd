@@ -986,11 +986,22 @@ func TestRecoverDoublePendingConfig(t *testing.T) {
 	}()
 }
 
+func TestAddExistNode(t *testing.T) {
+	r := newRaft(1, []int64{1}, 0, 0)
+	err := r.addNode(1)
+	if err != ErrExistID {
+		t.Errorf("addNode error = %v, want %v", err, ErrExistID)
+	}
+}
+
 // TestAddNode tests that addNode could update pendingConf and peer list correctly.
 func TestAddNode(t *testing.T) {
 	r := newRaft(1, []int64{1}, 0, 0)
 	r.pendingConf = true
-	r.addNode(2)
+	err := r.addNode(2)
+	if err != nil {
+		t.Fatalf("unexpected addNode error: %v", err)
+	}
 	if r.pendingConf != false {
 		t.Errorf("pendingConf = %v, want false", r.pendingConf)
 	}
@@ -1002,11 +1013,22 @@ func TestAddNode(t *testing.T) {
 	}
 }
 
+func TestRemoveNonExistNode(t *testing.T) {
+	r := newRaft(1, []int64{1}, 0, 0)
+	err := r.removeNode(2)
+	if err != ErrNonExistID {
+		t.Errorf("removeNode error = %v, want %v", err, ErrNonExistID)
+	}
+}
+
 // TestRemoveNode tests that removeNode could update pendingConf and peer list correctly.
 func TestRemoveNode(t *testing.T) {
 	r := newRaft(1, []int64{1, 2}, 0, 0)
 	r.pendingConf = true
-	r.removeNode(2)
+	err := r.removeNode(2)
+	if err != nil {
+		t.Fatalf("unexpected removeNode error: %v", err)
+	}
 	if r.pendingConf != false {
 		t.Errorf("pendingConf = %v, want false", r.pendingConf)
 	}

@@ -1095,7 +1095,7 @@ func (n *readyNode) ProposeConfChange(ctx context.Context, conf raftpb.ConfChang
 }
 func (n *readyNode) Step(ctx context.Context, msg raftpb.Message) error { return nil }
 func (n *readyNode) Ready() <-chan raft.Ready                           { return n.readyc }
-func (n *readyNode) ApplyConfChange(conf raftpb.ConfChange)             {}
+func (n *readyNode) ApplyConfChange(conf raftpb.ConfChange) error       { return nil }
 func (n *readyNode) Stop()                                              {}
 func (n *readyNode) Compact(d []byte)                                   {}
 
@@ -1123,8 +1123,9 @@ func (n *nodeRecorder) Step(ctx context.Context, msg raftpb.Message) error {
 	return nil
 }
 func (n *nodeRecorder) Ready() <-chan raft.Ready { return nil }
-func (n *nodeRecorder) ApplyConfChange(conf raftpb.ConfChange) {
+func (n *nodeRecorder) ApplyConfChange(conf raftpb.ConfChange) error {
 	n.record(action{name: "ApplyConfChange"})
+	return nil
 }
 func (n *nodeRecorder) Stop() {
 	n.record(action{name: "Stop"})
@@ -1185,8 +1186,9 @@ func (n *nodeConfChangeCommitterRecorder) ProposeConfChange(ctx context.Context,
 func (n *nodeConfChangeCommitterRecorder) Ready() <-chan raft.Ready {
 	return n.readyc
 }
-func (n *nodeConfChangeCommitterRecorder) ApplyConfChange(conf raftpb.ConfChange) {
+func (n *nodeConfChangeCommitterRecorder) ApplyConfChange(conf raftpb.ConfChange) error {
 	n.record(action{name: "ApplyConfChange:" + conf.Type.String()})
+	return nil
 }
 
 type waitWithResponse struct {
