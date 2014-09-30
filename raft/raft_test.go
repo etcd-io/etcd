@@ -690,8 +690,9 @@ func TestLeaderAppResp(t *testing.T) {
 		windex     int64
 		wcommitted int64
 	}{
-		{-1, true, 1, 1, 0}, // bad resp; leader does not commit; reply with log entries
-		{2, false, 2, 2, 2}, // good resp; leader commits; broadcast with commit index
+		{3, true, 0, 0, 0},  // stale resp; no replies
+		{2, true, 1, 1, 0},  // denied resp; leader does not commit; decrese next and send probing msg
+		{2, false, 2, 2, 2}, // accept resp; leader commits; broadcast with commit index
 	}
 
 	for i, tt := range tests {
@@ -857,7 +858,7 @@ func TestProvideSnap(t *testing.T) {
 	// node 1 needs a snapshot
 	sm.prs[2].next = sm.raftLog.offset
 
-	sm.Step(pb.Message{From: 2, To: 1, Type: msgAppResp, Index: -1, Reject: true})
+	sm.Step(pb.Message{From: 2, To: 1, Type: msgAppResp, Index: sm.prs[2].next - 1, Reject: true})
 	msgs := sm.ReadMessages()
 	if len(msgs) != 1 {
 		t.Fatalf("len(msgs) = %d, want 1", len(msgs))
