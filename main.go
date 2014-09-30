@@ -80,6 +80,7 @@ func init() {
 	flag.StringVar(&peerTLSInfo.CAFile, "peer-ca-file", "", "Path to the peer server TLS CA file.")
 	flag.StringVar(&peerTLSInfo.CertFile, "peer-cert-file", "", "Path to the peer server TLS cert file.")
 	flag.StringVar(&peerTLSInfo.KeyFile, "peer-key-file", "", "Path to the peer server TLS key file.")
+	flag.BoolVar(&peerTLSInfo.InsecureSkipVerify, "peer-skip-verify", false, "Skip verifying peer servers' certificate chain and host name.")
 
 	for _, f := range deprecated {
 		flag.Var(&pkg.DeprecatedFlag{f}, f, "")
