@@ -59,7 +59,7 @@ func (c Cluster) Pick(id int64) string {
 }
 
 // Set parses command line sets of names to IPs formatted like:
-// mach0=1.1.1.1,mach0=2.2.2.2,mach0=1.1.1.1,mach1=2.2.2.2,mach1=3.3.3.3
+// mach0=http://1.1.1.1,mach0=http://2.2.2.2,mach0=http://1.1.1.1,mach1=http://2.2.2.2,mach1=http://3.3.3.3
 func (c *Cluster) Set(s string) error {
 	*c = Cluster{}
 	v, err := url.ParseQuery(strings.Replace(s, ",", "&", -1))
@@ -71,7 +71,7 @@ func (c *Cluster) Set(s string) error {
 		if len(urls) == 0 || urls[0] == "" {
 			return fmt.Errorf("Empty URL given for %q", name)
 		}
-		m := newMember(name, urls)
+		m := newMember(name, urls, nil)
 		err := c.Add(*m)
 		if err != nil {
 			return err
@@ -106,7 +106,7 @@ func (c Cluster) PeerURLs() []string {
 	endpoints := make([]string, 0)
 	for _, p := range c {
 		for _, addr := range p.PeerURLs {
-			endpoints = append(endpoints, addScheme(addr))
+			endpoints = append(endpoints, addr)
 		}
 	}
 	sort.Strings(endpoints)
@@ -120,7 +120,7 @@ func (c Cluster) ClientURLs() []string {
 	urls := make([]string, 0)
 	for _, p := range c {
 		for _, url := range p.ClientURLs {
-			urls = append(urls, addScheme(url))
+			urls = append(urls, url)
 		}
 	}
 	sort.Strings(urls)

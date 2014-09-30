@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"path"
 	"strings"
@@ -32,13 +33,15 @@ const (
 var (
 	name         = flag.String("name", "default", "Unique human-readable name for this node")
 	timeout      = flag.Duration("timeout", 10*time.Second, "Request Timeout")
-	paddr        = flag.String("peer-bind-addr", ":7001", "Peer service address (e.g., ':7001')")
 	dir          = flag.String("data-dir", "", "Path to the data directory")
 	snapCount    = flag.Int64("snapshot-count", etcdserver.DefaultSnapCount, "Number of committed transactions to trigger a snapshot")
 	printVersion = flag.Bool("version", false, "Print the version and exit")
 
 	cluster   = &etcdserver.Cluster{}
-	addrs     = &flagtypes.Addrs{}
+	lcurls    = &flagtypes.URLs{}
+	acurls    = &flagtypes.URLs{}
+	lpurls    = &flagtypes.URLs{}
+	apurls    = &flagtypes.URLs{}
 	cors      = &pkg.CORSInfo{}
 	proxyFlag = new(flagtypes.Proxy)
 
@@ -66,11 +69,19 @@ var (
 
 func init() {
 	flag.Var(cluster, "bootstrap-config", "Initial cluster configuration for bootstrapping")
-	flag.Var(addrs, "bind-addr", "List of HTTP service addresses (e.g., '127.0.0.1:4001,10.0.0.1:8080')")
+	flag.Var(apurls, "advertise-peer-urls", "List of this member's peer URLs to advertise to the rest of the cluster")
+	flag.Var(acurls, "advertise-client-urls", "List of this member's client URLs to advertise to the rest of the cluster")
+	flag.Var(lpurls, "listen-peer-urls", "List of this URLs to listen on for peer traffic")
+	flag.Var(lcurls, "listen-client-urls", "List of this URLs to listen on for client traffic")
 	flag.Var(cors, "cors", "Comma-separated white list of origins for CORS (cross-origin resource sharing).")
 	flag.Var(proxyFlag, "proxy", fmt.Sprintf("Valid values include %s", strings.Join(flagtypes.ProxyValues, ", ")))
-	cluster.Set("default=localhost:8080")
-	addrs.Set("127.0.0.1:4001")
+
+	cluster.Set("default=http://localhost:2380,default=http://localhost:7001")
+	lcurls.Set("http://localhost:2379,http://localhost:4001")
+	acurls.Set("http://localhost:2379,http://localhost:4001")
+	lpurls.Set("http://localhost:2380,http://localhost:7001")
+	apurls.Set("http://localhost:2380,http://localhost:7001")
+
 	proxyFlag.Set(flagtypes.ProxyValueOff)
 
 	flag.StringVar(&clientTLSInfo.CAFile, "ca-file", "", "Path to the client server TLS CA file.")
@@ -202,27 +213,28 @@ func startEtcd() {
 	}
 	ph := etcdhttp.NewPeerHandler(s)
 
-	l, err := transport.NewListener(*paddr, peerTLSInfo)
-	if err != nil {
-		log.Fatal(err)
+	for _, u := range []url.URL(*lpurls) {
+		l, err := transport.NewListener(u.Host, peerTLSInfo)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		// Start the peer server in a goroutine
+		go func() {
+			log.Print("Listening for peers on ", u.String())
+			log.Fatal(http.Serve(l, ph))
+		}()
 	}
 
-	// Start the peer server in a goroutine
-	go func() {
-		log.Print("Listening for peers on ", *paddr)
-		log.Fatal(http.Serve(l, ph))
-	}()
-
 	// Start a client server goroutine for each listen address
-	for _, addr := range *addrs {
-		addr := addr
-		l, err := transport.NewListener(addr, clientTLSInfo)
+	for _, u := range []url.URL(*lcurls) {
+		l, err := transport.NewListener(u.Host, clientTLSInfo)
 		if err != nil {
 			log.Fatal(err)
 		}
 
 		go func() {
-			log.Print("Listening for client requests on ", addr)
+			log.Print("Listening for client requests on ", u.String())
 			log.Fatal(http.Serve(l, ch))
 		}()
 	}
@@ -250,15 +262,14 @@ func startProxy() {
 	}
 
 	// Start a proxy server goroutine for each listen address
-	for _, addr := range *addrs {
-		addr := addr
-		l, err := transport.NewListener(addr, clientTLSInfo)
+	for _, u := range []url.URL(*lcurls) {
+		l, err := transport.NewListener(u.Host, clientTLSInfo)
 		if err != nil {
 			log.Fatal(err)
 		}
 
 		go func() {
-			log.Print("Listening for client requests on ", addr)
+			log.Print("Listening for client requests on ", u.Host)
 			log.Fatal(http.Serve(l, ph))
 		}()
 	}

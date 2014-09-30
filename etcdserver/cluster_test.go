@@ -77,11 +77,11 @@ func TestClusterSet(t *testing.T) {
 		parse bool
 	}{
 		{
-			"mem1=10.0.0.1:2379,mem1=128.193.4.20:2379,mem2=10.0.0.2:2379,default=127.0.0.1:2379",
+			"mem1=http://10.0.0.1:2379,mem1=http://128.193.4.20:2379,mem2=http://10.0.0.2:2379,default=http://127.0.0.1:2379",
 			[]Member{
-				{ID: 3736794188555456841, Name: "mem1", PeerURLs: []string{"10.0.0.1:2379", "128.193.4.20:2379"}},
-				{ID: 5674507346857578431, Name: "mem2", PeerURLs: []string{"10.0.0.2:2379"}},
-				{ID: 2676999861503984872, Name: "default", PeerURLs: []string{"127.0.0.1:2379"}},
+				{ID: 3736794188555456841, Name: "mem1", PeerURLs: []string{"http://10.0.0.1:2379", "http://128.193.4.20:2379"}},
+				{ID: 5674507346857578431, Name: "mem2", PeerURLs: []string{"http://10.0.0.2:2379"}},
+				{ID: 2676999861503984872, Name: "default", PeerURLs: []string{"http://127.0.0.1:2379"}},
 			},
 			true,
 		},
@@ -104,10 +104,10 @@ func TestClusterSet(t *testing.T) {
 
 func TestClusterSetBad(t *testing.T) {
 	tests := []string{
-		"mem1=,mem2=128.193.4.20:2379,mem3=10.0.0.2:2379",
-		"mem1,mem2=128.193.4.20:2379,mem3=10.0.0.2:2379",
+		"mem1=,mem2=http://128.193.4.20:2379,mem3=http://10.0.0.2:2379",
+		"mem1,mem2=http://128.193.4.20:2379,mem3=http://10.0.0.2:2379",
 		// TODO(philips): anyone know of a 64 bit sha1 hash collision
-		// "06b2f82fd81b2c20=128.193.4.20:2379,02c60cb75083ceef=128.193.4.20:2379",
+		// "06b2f82fd81b2c20=http://128.193.4.20:2379,02c60cb75083ceef=http://128.193.4.20:2379",
 	}
 	for i, tt := range tests {
 		g := Cluster{}
@@ -151,7 +151,7 @@ func TestClusterPeerURLs(t *testing.T) {
 		// single peer with a single address
 		{
 			mems: []Member{
-				{ID: 1, PeerURLs: []string{"192.0.2.1"}},
+				{ID: 1, PeerURLs: []string{"http://192.0.2.1"}},
 			},
 			wurls: []string{"http://192.0.2.1"},
 		},
@@ -159,7 +159,7 @@ func TestClusterPeerURLs(t *testing.T) {
 		// single peer with a single address with a port
 		{
 			mems: []Member{
-				{ID: 1, PeerURLs: []string{"192.0.2.1:8001"}},
+				{ID: 1, PeerURLs: []string{"http://192.0.2.1:8001"}},
 			},
 			wurls: []string{"http://192.0.2.1:8001"},
 		},
@@ -167,9 +167,9 @@ func TestClusterPeerURLs(t *testing.T) {
 		// several members explicitly unsorted
 		{
 			mems: []Member{
-				{ID: 2, PeerURLs: []string{"192.0.2.3", "192.0.2.4"}},
-				{ID: 3, PeerURLs: []string{"192.0.2.5", "192.0.2.6"}},
-				{ID: 1, PeerURLs: []string{"192.0.2.1", "192.0.2.2"}},
+				{ID: 2, PeerURLs: []string{"http://192.0.2.3", "http://192.0.2.4"}},
+				{ID: 3, PeerURLs: []string{"http://192.0.2.5", "http://192.0.2.6"}},
+				{ID: 1, PeerURLs: []string{"http://192.0.2.1", "http://192.0.2.2"}},
 			},
 			wurls: []string{"http://192.0.2.1", "http://192.0.2.2", "http://192.0.2.3", "http://192.0.2.4", "http://192.0.2.5", "http://192.0.2.6"},
 		},
@@ -210,7 +210,7 @@ func TestClusterClientURLs(t *testing.T) {
 		// single peer with a single address
 		{
 			mems: []Member{
-				{ID: 1, ClientURLs: []string{"192.0.2.1"}},
+				{ID: 1, ClientURLs: []string{"http://192.0.2.1"}},
 			},
 			wurls: []string{"http://192.0.2.1"},
 		},
@@ -218,7 +218,7 @@ func TestClusterClientURLs(t *testing.T) {
 		// single peer with a single address with a port
 		{
 			mems: []Member{
-				{ID: 1, ClientURLs: []string{"192.0.2.1:8001"}},
+				{ID: 1, ClientURLs: []string{"http://192.0.2.1:8001"}},
 			},
 			wurls: []string{"http://192.0.2.1:8001"},
 		},
@@ -226,9 +226,9 @@ func TestClusterClientURLs(t *testing.T) {
 		// several members explicitly unsorted
 		{
 			mems: []Member{
-				{ID: 2, ClientURLs: []string{"192.0.2.3", "192.0.2.4"}},
-				{ID: 3, ClientURLs: []string{"192.0.2.5", "192.0.2.6"}},
-				{ID: 1, ClientURLs: []string{"192.0.2.1", "192.0.2.2"}},
+				{ID: 2, ClientURLs: []string{"http://192.0.2.3", "http://192.0.2.4"}},
+				{ID: 3, ClientURLs: []string{"http://192.0.2.5", "http://192.0.2.6"}},
+				{ID: 1, ClientURLs: []string{"http://192.0.2.1", "http://192.0.2.2"}},
 			},
 			wurls: []string{"http://192.0.2.1", "http://192.0.2.2", "http://192.0.2.3", "http://192.0.2.4", "http://192.0.2.5", "http://192.0.2.6"},
 		},

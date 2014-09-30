@@ -612,9 +612,9 @@ func TestV2MachinesEndpoint(t *testing.T) {
 func TestServeMachines(t *testing.T) {
 	cluster := &fakeCluster{
 		members: []etcdserver.Member{
-			{ID: 0xBEEF0, ClientURLs: []string{"localhost:8080"}},
-			{ID: 0xBEEF1, ClientURLs: []string{"localhost:8081"}},
-			{ID: 0xBEEF2, ClientURLs: []string{"localhost:8082"}},
+			{ID: 0xBEEF0, ClientURLs: []string{"http://localhost:8080"}},
+			{ID: 0xBEEF1, ClientURLs: []string{"http://localhost:8081"}},
+			{ID: 0xBEEF2, ClientURLs: []string{"http://localhost:8082"}},
 		},
 	}
 
