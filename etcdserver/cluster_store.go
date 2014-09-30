@@ -16,6 +16,7 @@ const (
 )
 
 type ClusterStore interface {
+	Create(m Member)
 	Get() Cluster
 	Delete(id int64)
 }
@@ -27,14 +28,14 @@ type clusterStore struct {
 func NewClusterStore(st store.Store, c Cluster) ClusterStore {
 	cls := &clusterStore{Store: st}
 	for _, m := range c {
-		cls.add(*m)
+		cls.Create(*m)
 	}
 	return cls
 }
 
-// add puts a new Member into the store.
+// Create puts a new Member into the store.
 // A Member with a matching id must not exist.
-func (s *clusterStore) add(m Member) {
+func (s *clusterStore) Create(m Member) {
 	b, err := json.Marshal(m)
 	if err != nil {
 		log.Panicf("marshal peer info error: %v", err)

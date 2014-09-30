@@ -128,7 +128,7 @@ func TestDoBadLocalAction(t *testing.T) {
 	}
 }
 
-func TestApply(t *testing.T) {
+func TestApplyRequest(t *testing.T) {
 	tests := []struct {
 		req pb.Request
 
@@ -356,7 +356,7 @@ func TestApply(t *testing.T) {
 	for i, tt := range tests {
 		st := &storeRecorder{}
 		srv := &EtcdServer{store: st}
-		resp := srv.apply(tt.req)
+		resp := srv.applyRequest(tt.req)
 
 		if !reflect.DeepEqual(resp, tt.wresp) {
 			t.Errorf("#%d: resp = %+v, want %+v", i, resp, tt.wresp)
@@ -786,17 +786,20 @@ func TestRecvSlowSnapshot(t *testing.T) {
 	}
 }
 
-// TestAddNode tests AddNode can propose and perform node addition.
-func TestAddNode(t *testing.T) {
+// TestAddMember tests AddMember can propose and perform node addition.
+func TestAddMember(t *testing.T) {
 	n := newNodeConfChangeCommitterRecorder()
+	cs := &clusterStoreRecorder{}
 	s := &EtcdServer{
-		node:    n,
-		store:   &storeRecorder{},
-		send:    func(_ []raftpb.Message) {},
-		storage: &storageRecorder{},
+		node:         n,
+		store:        &storeRecorder{},
+		send:         func(_ []raftpb.Message) {},
+		storage:      &storageRecorder{},
+		ClusterStore: cs,
 	}
 	s.start()
-	s.AddNode(context.TODO(), 1, []byte("foo"))
+	m := Member{ID: 1, PeerURLs: []string{"foo"}}
+	s.AddMember(context.TODO(), m)
 	gaction := n.Action()
 	s.Stop()
 
@@ -804,25 +807,36 @@ func TestAddNode(t *testing.T) {
 	if !reflect.DeepEqual(gaction, wactions) {
 		t.Errorf("action = %v, want %v", gaction, wactions)
 	}
+	wcsactions := []action{{name: "Create", params: []interface{}{m}}}
+	if g := cs.Action(); !reflect.DeepEqual(g, wcsactions) {
+		t.Errorf("csaction = %v, want %v", g, wcsactions)
+	}
 }
 
-// TestRemoveNode tests RemoveNode can propose and perform node removal.
-func TestRemoveNode(t *testing.T) {
+// TestRemoveMember tests RemoveMember can propose and perform node removal.
+func TestRemoveMember(t *testing.T) {
 	n := newNodeConfChangeCommitterRecorder()
+	cs := &clusterStoreRecorder{}
 	s := &EtcdServer{
-		node:    n,
-		store:   &storeRecorder{},
-		send:    func(_ []raftpb.Message) {},
-		storage: &storageRecorder{},
+		node:         n,
+		store:        &storeRecorder{},
+		send:         func(_ []raftpb.Message) {},
+		storage:      &storageRecorder{},
+		ClusterStore: cs,
 	}
 	s.start()
-	s.RemoveNode(context.TODO(), 1)
+	id := int64(1)
+	s.RemoveMember(context.TODO(), id)
 	gaction := n.Action()
 	s.Stop()
 
 	wactions := []action{action{name: "ProposeConfChange:ConfChangeRemoveNode"}, action{name: "ApplyConfChange:ConfChangeRemoveNode"}}
 	if !reflect.DeepEqual(gaction, wactions) {
 		t.Errorf("action = %v, want %v", gaction, wactions)
+	}
+	wcsactions := []action{{name: "Delete", params: []interface{}{id}}}
+	if g := cs.Action(); !reflect.DeepEqual(g, wcsactions) {
+		t.Errorf("csaction = %v, want %v", g, wcsactions)
 	}
 }
 
@@ -1229,6 +1243,21 @@ func (w *waitWithResponse) Register(id int64) <-chan interface{} {
 	return w.ch
 }
 func (w *waitWithResponse) Trigger(id int64, x interface{}) {}
+
+type clusterStoreRecorder struct {
+	recorder
+}
+
+func (cs *clusterStoreRecorder) Create(m Member) {
+	cs.record(action{name: "Create", params: []interface{}{m}})
+}
+func (cs *clusterStoreRecorder) Get() Cluster {
+	cs.record(action{name: "Get"})
+	return nil
+}
+func (cs *clusterStoreRecorder) Delete(id int64) {
+	cs.record(action{name: "Delete", params: []interface{}{id}})
+}
 
 func mustClusterStore(t *testing.T, membs []Member) ClusterStore {
 	c := Cluster{}

@@ -1238,6 +1238,8 @@ type fakeCluster struct {
 	members []etcdserver.Member
 }
 
+func (c *fakeCluster) Create(m etcdserver.Member) { return }
+
 func (c *fakeCluster) Get() etcdserver.Cluster {
 	cl := &etcdserver.Cluster{}
 	cl.AddSlice(c.members)

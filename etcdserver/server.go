@@ -250,13 +250,13 @@ func (s *EtcdServer) run() {
 					if err := r.Unmarshal(e.Data); err != nil {
 						panic("TODO: this is bad, what do we do about it?")
 					}
-					s.w.Trigger(r.ID, s.apply(r))
+					s.w.Trigger(r.ID, s.applyRequest(r))
 				case raftpb.EntryConfChange:
 					var cc raftpb.ConfChange
 					if err := cc.Unmarshal(e.Data); err != nil {
 						panic("TODO: this is bad, what do we do about it?")
 					}
-					s.node.ApplyConfChange(cc)
+					s.applyConfChange(cc)
 					s.w.Trigger(cc.ID, nil)
 				default:
 					panic("unexpected entry type")
@@ -360,17 +360,21 @@ func (s *EtcdServer) Do(ctx context.Context, r pb.Request) (Response, error) {
 	}
 }
 
-func (s *EtcdServer) AddNode(ctx context.Context, id int64, context []byte) error {
+func (s *EtcdServer) AddMember(ctx context.Context, memb Member) error {
+	b, err := json.Marshal(memb)
+	if err != nil {
+		return err
+	}
 	cc := raftpb.ConfChange{
 		ID:      GenID(),
 		Type:    raftpb.ConfChangeAddNode,
-		NodeID:  id,
-		Context: context,
+		NodeID:  memb.ID,
+		Context: b,
 	}
 	return s.configure(ctx, cc)
 }
 
-func (s *EtcdServer) RemoveNode(ctx context.Context, id int64) error {
+func (s *EtcdServer) RemoveMember(ctx context.Context, id int64) error {
 	cc := raftpb.ConfChange{
 		ID:     GenID(),
 		Type:   raftpb.ConfChangeRemoveNode,
@@ -477,9 +481,9 @@ func getExpirationTime(r *pb.Request) time.Time {
 	return t
 }
 
-// apply interprets r as a call to store.X and returns a Response interpreted
+// applyRequest interprets r as a call to store.X and returns a Response interpreted
 // from store.Event
-func (s *EtcdServer) apply(r pb.Request) Response {
+func (s *EtcdServer) applyRequest(r pb.Request) Response {
 	f := func(ev *store.Event, err error) Response {
 		return Response{Event: ev, err: err}
 	}
@@ -515,6 +519,22 @@ func (s *EtcdServer) apply(r pb.Request) Response {
 	default:
 		// This should never be reached, but just in case:
 		return Response{err: ErrUnknownMethod}
+	}
+}
+
+func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange) {
+	s.node.ApplyConfChange(cc)
+	switch cc.Type {
+	case raftpb.ConfChangeAddNode:
+		var m Member
+		if err := json.Unmarshal(cc.Context, &m); err != nil {
+			panic("unexpected unmarshal error")
+		}
+		s.ClusterStore.Create(m)
+	case raftpb.ConfChangeRemoveNode:
+		s.ClusterStore.Delete(cc.NodeID)
+	default:
+		panic("unexpected ConfChange type")
 	}
 }
 
