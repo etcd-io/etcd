@@ -59,7 +59,7 @@ type Server interface {
 	// begin serving requests. It must be called before Do or Process.
 	// Start must be non-blocking; any long-running server functionality
 	// should be implemented in goroutines.
-	Start(m Member)
+	Start()
 	// Stop terminates the Server and performs any necessary finalization.
 	// Do and Process cannot be called after Stop has been invoked.
 	Stop()
@@ -79,6 +79,9 @@ type RaftTimer interface {
 type EtcdServer struct {
 	w    wait.Wait
 	done chan struct{}
+
+	Name       string
+	ClientURLs []string
 
 	Node  raft.Node
 	Store store.Store
@@ -105,8 +108,10 @@ type EtcdServer struct {
 // Start prepares and starts server in a new goroutine. It is no longer safe to
 // modify a server's fields after it has been sent to Start.
 // It also starts a goroutine to publish its server information.
-func (s *EtcdServer) Start(m Member) {
+func (s *EtcdServer) Start() {
 	s.start()
+	m := *s.ClusterStore.Get().FindName(s.Name)
+	m.ClientURLs = s.ClientURLs
 	go s.publish(m, defaultPublishRetryInterval)
 }
 

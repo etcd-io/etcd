@@ -193,8 +193,10 @@ func startEtcd() {
 	cls := etcdserver.NewClusterStore(st, *cluster)
 
 	s := &etcdserver.EtcdServer{
-		Store: st,
-		Node:  n,
+		Name:       *name,
+		ClientURLs: *addrs,
+		Store:      st,
+		Node:       n,
 		Storage: struct {
 			*wal.WAL
 			*snap.Snapshotter
@@ -205,9 +207,7 @@ func startEtcd() {
 		SnapCount:    *snapCount,
 		ClusterStore: cls,
 	}
-	member := *self
-	member.ClientURLs = *addrs
-	s.Start(member)
+	s.Start()
 
 	ch := &pkg.CORSHandler{
 		Handler: etcdhttp.NewClientHandler(s, cls, *timeout),
