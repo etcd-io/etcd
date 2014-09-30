@@ -75,12 +75,6 @@ func (s *clusterStore) Delete(id int64) {
 	}
 }
 
-// addScheme adds the protocol prefix to a string; currently only HTTP
-// TODO: improve this when implementing TLS
-func addScheme(addr string) string {
-	return fmt.Sprintf("http://%s", addr)
-}
-
 func Sender(t *http.Transport, cls ClusterStore) func(msgs []raftpb.Message) {
 	c := &http.Client{Transport: t}
 
