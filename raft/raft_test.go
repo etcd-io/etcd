@@ -986,7 +986,7 @@ func TestRecoverDoublePendingConfig(t *testing.T) {
 	}()
 }
 
-// TestAddNode tests that addNode could update pendingConf and peer list correctly.
+// TestAddNode tests that addNode could update pendingConf and nodes correctly.
 func TestAddNode(t *testing.T) {
 	r := newRaft(1, []int64{1}, 0, 0)
 	r.pendingConf = true
@@ -1002,8 +1002,8 @@ func TestAddNode(t *testing.T) {
 	}
 }
 
-// TestRemoveNode tests that removeNode could update pendingConf, peer list,
-// removed correctly.
+// TestRemoveNode tests that removeNode could update pendingConf, nodes and
+// and removed list correctly.
 func TestRemoveNode(t *testing.T) {
 	r := newRaft(1, []int64{1, 2}, 0, 0)
 	r.pendingConf = true
@@ -1021,8 +1021,8 @@ func TestRemoveNode(t *testing.T) {
 	}
 }
 
-// TestRecvMsgDenied tests that state machine sets removed when handling
-// msgDenied, and does not pass it to the actual stepX function.
+// TestRecvMsgDenied tests that state machine sets the removed list when
+// handling msgDenied, and does not pass it to the actual stepX function.
 func TestRecvMsgDenied(t *testing.T) {
 	called := false
 	fakeStep := func(r *raft, m pb.Message) {

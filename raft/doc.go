@@ -75,7 +75,7 @@ raftpb.EntryConfChange will be returned. You should apply it to node through:
 	cc.Unmarshal(data)
 	n.ApplyConfChange(cc)
 
-Note: One ID represents one unique node in a cluster. A given ID MUST be used
+Note: An ID represents a unique node in a cluster. A given ID MUST be used
 only once even if the old node has been removed.
 
 */
