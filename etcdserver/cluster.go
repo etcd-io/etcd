@@ -71,7 +71,7 @@ func (c *Cluster) Set(s string) error {
 		if len(urls) == 0 || urls[0] == "" {
 			return fmt.Errorf("Empty URL given for %q", name)
 		}
-		m := newMember(name, urls)
+		m := newMember(name, urls, nil)
 		err := c.Add(*m)
 		if err != nil {
 			return err
