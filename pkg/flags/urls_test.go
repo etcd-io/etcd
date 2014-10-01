@@ -21,6 +21,7 @@ func TestValidateURLsBad(t *testing.T) {
 		"234#$",
 		"file://foo/bar",
 		"http://hello/asdf",
+		"http://10.1.1.1",
 	}
 	for i, in := range tests {
 		u := URLs{}
@@ -34,7 +35,8 @@ func TestValidateURLsGood(t *testing.T) {
 	tests := []string{
 		"https://1.2.3.4:8080",
 		"http://10.1.1.1:80",
-		"http://10.1.1.1",
+		"http://localhost:80",
+		"http://:80",
 	}
 	for i, in := range tests {
 		u := URLs{}
