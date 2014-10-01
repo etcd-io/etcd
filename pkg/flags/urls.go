@@ -19,7 +19,7 @@ func (us *URLs) Set(s string) error {
 	if len(all) == 0 {
 		return errors.New("no valid URLs given")
 	}
-	for _, in := range strs {
+	for i, in := range strs {
 		in = strings.TrimSpace(in)
 		u, err := url.Parse(in)
 		if err != nil {
@@ -31,7 +31,7 @@ func (us *URLs) Set(s string) error {
 		if u.Path != "" {
 			return fmt.Errorf("URL must not contain a path: %s", s)
 		}
-		all = append(all, *u)
+		all[i] = *u
 	}
 	*us = all
 	return nil
