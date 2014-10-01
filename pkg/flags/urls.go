@@ -44,3 +44,9 @@ func (us *URLs) String() string {
 	}
 	return strings.Join(all, ",")
 }
+
+func NewURLs(init string) *URLs {
+	v := &URLs{}
+	v.Set(init)
+	return v
+}
