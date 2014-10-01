@@ -190,7 +190,7 @@ func startEtcd() {
 
 	s := &etcdserver.EtcdServer{
 		Name:       *name,
-		ClientURLs: strings.Split(acurls.String(), ","),
+		ClientURLs: strings.Split(cls.Get().String(), ","),
 		Store:      st,
 		Node:       n,
 		Storage: struct {
