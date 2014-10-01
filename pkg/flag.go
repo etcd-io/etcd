@@ -4,8 +4,12 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net/url"
 	"os"
 	"strings"
+
+	"github.com/coreos/etcd/pkg/flags"
+	"github.com/coreos/etcd/pkg/transport"
 )
 
 type DeprecatedFlag struct {
@@ -63,4 +67,39 @@ func SetFlagsFromEnv(fs *flag.FlagSet) {
 			}
 		}
 	})
+}
+
+// URLsFromFlags decides what URLs should be using two different flags
+// as datasources. The first flag's Value must be of type URLs, while
+// the second must be of type IPAddressPort. If both of these flags
+// are set, an error will be returned. If only the first flag is set,
+// the underlying url.URL objects will be returned unmodified. If the
+// second flag happens to be set, the underlying IPAddressPort will be
+// converted to a url.URL and returned. The Scheme of the returned
+// url.URL will be http unless the provided TLSInfo object is non-empty.
+// If neither of the flags have been explicitly set, the default value
+// of the first flag will be returned unmodified.
+func URLsFromFlags(fs *flag.FlagSet, urlsFlagName string, addrFlagName string, tlsInfo transport.TLSInfo) ([]url.URL, error) {
+	visited := make(map[string]struct{})
+	fs.Visit(func(f *flag.Flag) {
+		visited[f.Name] = struct{}{}
+	})
+
+	_, urlsFlagIsSet := visited[urlsFlagName]
+	_, addrFlagIsSet := visited[addrFlagName]
+
+	if addrFlagIsSet {
+		if urlsFlagIsSet {
+			return nil, fmt.Errorf("Set only one of flags -%s and -%s", urlsFlagName, addrFlagName)
+		}
+
+		addr := *fs.Lookup(addrFlagName).Value.(*flags.IPAddressPort)
+		addrURL := url.URL{Scheme: "http", Host: addr.String()}
+		if !tlsInfo.Empty() {
+			addrURL.Scheme = "https"
+		}
+		return []url.URL{addrURL}, nil
+	}
+
+	return []url.URL(*fs.Lookup(urlsFlagName).Value.(*flags.URLs)), nil
 }
