@@ -51,9 +51,10 @@ func NewTransport(info TLSInfo) (*http.Transport, error) {
 }
 
 type TLSInfo struct {
-	CertFile string
-	KeyFile  string
-	CAFile   string
+	CertFile           string
+	KeyFile            string
+	CAFile             string
+	InsecureSkipVerify bool
 
 	// parseFunc exists to simplify testing. Typically, parseFunc
 	// should be left nil. In that case, tls.X509KeyPair will be used.
@@ -91,6 +92,7 @@ func (info TLSInfo) baseConfig() (*tls.Config, error) {
 
 	var cfg tls.Config
 	cfg.Certificates = []tls.Certificate{tlsCert}
+	cfg.InsecureSkipVerify = info.InsecureSkipVerify
 	return &cfg, nil
 }
 
