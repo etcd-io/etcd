@@ -989,8 +989,8 @@ func TestRecoverDoublePendingConfig(t *testing.T) {
 func TestAddExistNode(t *testing.T) {
 	r := newRaft(1, []int64{1}, 0, 0)
 	err := r.addNode(1)
-	if err != ErrExistID {
-		t.Errorf("addNode error = %v, want %v", err, ErrExistID)
+	if err != ErrIDExists {
+		t.Errorf("addNode error = %v, want %v", err, ErrIDExists)
 	}
 }
 
@@ -1016,8 +1016,8 @@ func TestAddNode(t *testing.T) {
 func TestRemoveNonExistNode(t *testing.T) {
 	r := newRaft(1, []int64{1}, 0, 0)
 	err := r.removeNode(2)
-	if err != ErrNonExistID {
-		t.Errorf("removeNode error = %v, want %v", err, ErrNonExistID)
+	if err != ErrIDNotFound {
+		t.Errorf("removeNode error = %v, want %v", err, ErrIDNotFound)
 	}
 }
 

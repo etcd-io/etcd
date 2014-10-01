@@ -41,8 +41,8 @@ func (mt messageType) String() string {
 }
 
 var (
-	ErrExistID    = errors.New("raft: ID has existed")
-	ErrNonExistID = errors.New("raft: ID is non-existant")
+	ErrIDExists   = errors.New("raft: ID is already used by a member")
+	ErrIDNotFound = errors.New("raft: ID is not in-use by a member")
 )
 
 const (
@@ -391,7 +391,7 @@ func (r *raft) handleSnapshot(m pb.Message) {
 func (r *raft) addNode(id int64) error {
 	r.pendingConf = false
 	if _, ok := r.prs[id]; ok {
-		return ErrExistID
+		return ErrIDExists
 	}
 	r.setProgress(id, 0, r.raftLog.lastIndex()+1)
 	return nil
@@ -400,7 +400,7 @@ func (r *raft) addNode(id int64) error {
 func (r *raft) removeNode(id int64) error {
 	r.pendingConf = false
 	if _, ok := r.prs[id]; !ok {
-		return ErrNonExistID
+		return ErrIDNotFound
 	}
 	r.delProgress(id)
 	return nil
