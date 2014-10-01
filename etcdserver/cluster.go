@@ -48,11 +48,11 @@ func (c *Cluster) AddSlice(mems []Member) error {
 // an addressible URI. If the given member does not exist, an empty string is returned.
 func (c Cluster) Pick(id int64) string {
 	if m := c.FindID(id); m != nil {
-		addrs := m.PeerURLs
-		if len(addrs) == 0 {
+		urls := m.PeerURLs
+		if len(urls) == 0 {
 			return ""
 		}
-		return addrs[rand.Intn(len(addrs))]
+		return urls[rand.Intn(len(urls))]
 	}
 
 	return ""
