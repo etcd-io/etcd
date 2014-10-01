@@ -89,9 +89,7 @@ type Node interface {
 	// Ready returns a channel that returns the current point-in-time state
 	Ready() <-chan Ready
 	// ApplyConfChange applies config change to the local node.
-	// TODO: reject existing node when add node
-	// TODO: reject non-existant node when remove node
-	ApplyConfChange(cc pb.ConfChange)
+	ApplyConfChange(cc pb.ConfChange) error
 	// Stop performs any necessary termination of the Node
 	Stop()
 	// Compact
@@ -128,6 +126,7 @@ type node struct {
 	recvc    chan pb.Message
 	compactc chan []byte
 	confc    chan pb.ConfChange
+	conferrc chan error
 	readyc   chan Ready
 	tickc    chan struct{}
 	done     chan struct{}
@@ -139,6 +138,7 @@ func newNode() node {
 		recvc:    make(chan pb.Message),
 		compactc: make(chan []byte),
 		confc:    make(chan pb.ConfChange),
+		conferrc: make(chan error),
 		readyc:   make(chan Ready),
 		tickc:    make(chan struct{}),
 		done:     make(chan struct{}),
@@ -190,9 +190,9 @@ func (n *node) run(r *raft) {
 		case cc := <-n.confc:
 			switch cc.Type {
 			case pb.ConfChangeAddNode:
-				r.addNode(cc.NodeID)
+				n.conferrc <- r.addNode(cc.NodeID)
 			case pb.ConfChangeRemoveNode:
-				r.removeNode(cc.NodeID)
+				n.conferrc <- r.removeNode(cc.NodeID)
 			default:
 				panic("unexpected conf type")
 			}
@@ -277,10 +277,12 @@ func (n *node) Ready() <-chan Ready {
 	return n.readyc
 }
 
-func (n *node) ApplyConfChange(cc pb.ConfChange) {
+func (n *node) ApplyConfChange(cc pb.ConfChange) error {
 	select {
 	case n.confc <- cc:
+		return <-n.conferrc
 	case <-n.done:
+		return ErrStopped
 	}
 }
 

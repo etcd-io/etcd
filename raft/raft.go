@@ -40,7 +40,10 @@ func (mt messageType) String() string {
 	return mtmap[int64(mt)]
 }
 
-var errNoLeader = errors.New("no leader")
+var (
+	ErrIDExists   = errors.New("raft: ID is already used by a member")
+	ErrIDNotFound = errors.New("raft: ID is not in-use by a member")
+)
 
 const (
 	StateFollower StateType = iota
@@ -385,14 +388,22 @@ func (r *raft) handleSnapshot(m pb.Message) {
 	}
 }
 
-func (r *raft) addNode(id int64) {
-	r.setProgress(id, 0, r.raftLog.lastIndex()+1)
+func (r *raft) addNode(id int64) error {
 	r.pendingConf = false
+	if _, ok := r.prs[id]; ok {
+		return ErrIDExists
+	}
+	r.setProgress(id, 0, r.raftLog.lastIndex()+1)
+	return nil
 }
 
-func (r *raft) removeNode(id int64) {
-	r.delProgress(id)
+func (r *raft) removeNode(id int64) error {
 	r.pendingConf = false
+	if _, ok := r.prs[id]; !ok {
+		return ErrIDNotFound
+	}
+	r.delProgress(id)
+	return nil
 }
 
 type stepFunc func(r *raft, m pb.Message)
