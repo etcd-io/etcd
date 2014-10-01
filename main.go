@@ -220,8 +220,9 @@ func startEtcd() {
 		}
 
 		// Start the peer server in a goroutine
+		urlStr := u.String()
 		go func() {
-			log.Print("Listening for peers on ", u.String())
+			log.Print("Listening for peers on ", urlStr)
 			log.Fatal(http.Serve(l, ph))
 		}()
 	}
@@ -233,8 +234,9 @@ func startEtcd() {
 			log.Fatal(err)
 		}
 
+		urlStr := u.String()
 		go func() {
-			log.Print("Listening for client requests on ", u.String())
+			log.Print("Listening for client requests on ", urlStr)
 			log.Fatal(http.Serve(l, ch))
 		}()
 	}
@@ -268,8 +270,9 @@ func startProxy() {
 			log.Fatal(err)
 		}
 
+		host := u.Host
 		go func() {
-			log.Print("Listening for client requests on ", u.Host)
+			log.Print("Listening for client requests on ", host)
 			log.Fatal(http.Serve(l, ph))
 		}()
 	}
