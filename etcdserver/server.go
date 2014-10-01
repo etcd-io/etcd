@@ -110,9 +110,7 @@ type EtcdServer struct {
 // It also starts a goroutine to publish its server information.
 func (s *EtcdServer) Start() {
 	s.start()
-	m := *s.ClusterStore.Get().FindName(s.Name)
-	m.ClientURLs = s.ClientURLs
-	go s.publish(m, defaultPublishRetryInterval)
+	go s.publish(defaultPublishRetryInterval)
 }
 
 // start prepares and starts server in a new goroutine. It is no longer safe to
@@ -335,10 +333,14 @@ func (s *EtcdServer) sync(timeout time.Duration) {
 }
 
 // publish registers server information into the cluster. The information
-// is the json format of the given member.
+// is the json format of its self member struct, whose ClientURLs may be
+// updated.
 // The function keeps attempting to register until it succeeds,
 // or its server is stopped.
-func (s *EtcdServer) publish(m Member, retryInterval time.Duration) {
+// TODO: take care of info fetched from cluster store after having reconfig.
+func (s *EtcdServer) publish(retryInterval time.Duration) {
+	m := *s.ClusterStore.Get().FindName(s.Name)
+	m.ClientURLs = s.ClientURLs
 	b, err := json.Marshal(m)
 	if err != nil {
 		log.Printf("etcdserver: json marshal error: %v", err)
