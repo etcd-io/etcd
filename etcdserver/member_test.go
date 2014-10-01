@@ -1,6 +1,7 @@
 package etcdserver
 
 import (
+	"net/url"
 	"testing"
 	"time"
 )
@@ -18,8 +19,8 @@ func TestMemberTime(t *testing.T) {
 		mem *Member
 		id  int64
 	}{
-		{newMember("mem1", []string{"http://10.0.0.8:2379"}, nil), 7206348984215161146},
-		{newMember("mem1", []string{"http://10.0.0.1:2379"}, timeParse("1984-12-23T15:04:05Z")), 5483967913615174889},
+		{newMember("mem1", []url.URL{{Scheme: "http", Host: "10.0.0.8:2379"}}, nil), 7206348984215161146},
+		{newMember("mem1", []url.URL{{Scheme: "http", Host: "10.0.0.1:2379"}}, timeParse("1984-12-23T15:04:05Z")), 5483967913615174889},
 	}
 	for i, tt := range tests {
 		if tt.mem.ID != tt.id {

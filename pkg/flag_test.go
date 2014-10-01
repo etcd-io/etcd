@@ -77,8 +77,8 @@ func TestURLsFromFlags(t *testing.T) {
 			args:    []string{"-urls=https://192.0.3.17:2930,http://127.0.0.1:1024"},
 			tlsInfo: transport.TLSInfo{},
 			wantURLs: []url.URL{
-				url.URL{Scheme: "https", Host: "192.0.3.17:2930"},
 				url.URL{Scheme: "http", Host: "127.0.0.1:1024"},
+				url.URL{Scheme: "https", Host: "192.0.3.17:2930"},
 			},
 			wantFail: false,
 		},
@@ -117,7 +117,7 @@ func TestURLsFromFlags(t *testing.T) {
 
 	for i, tt := range tests {
 		fs := flag.NewFlagSet("test", flag.PanicOnError)
-		fs.Var(flags.NewURLs("http://127.0.0.1:2379"), "urls", "")
+		fs.Var(flags.NewURLsValue("http://127.0.0.1:2379"), "urls", "")
 		fs.Var(&flags.IPAddressPort{}, "addr", "")
 
 		if err := fs.Parse(tt.args); err != nil {

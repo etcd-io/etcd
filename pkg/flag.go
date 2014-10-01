@@ -101,5 +101,5 @@ func URLsFromFlags(fs *flag.FlagSet, urlsFlagName string, addrFlagName string, t
 		return []url.URL{addrURL}, nil
 	}
 
-	return []url.URL(*fs.Lookup(urlsFlagName).Value.(*flags.URLs)), nil
+	return []url.URL(*fs.Lookup(urlsFlagName).Value.(*flags.URLsValue)), nil
 }

@@ -64,10 +64,10 @@ func init() {
 	flag.Var(cluster, "bootstrap-config", "Initial cluster configuration for bootstrapping")
 	cluster.Set("default=http://localhost:2380,default=http://localhost:7001")
 
-	flag.Var(flagtypes.NewURLs("http://localhost:2380,http://localhost:7001"), "advertise-peer-urls", "List of this member's peer URLs to advertise to the rest of the cluster")
-	flag.Var(flagtypes.NewURLs("http://localhost:2379,http://localhost:4001"), "advertise-client-urls", "List of this member's client URLs to advertise to the rest of the cluster")
-	flag.Var(flagtypes.NewURLs("http://localhost:2380,http://localhost:7001"), "listen-peer-urls", "List of this URLs to listen on for peer traffic")
-	flag.Var(flagtypes.NewURLs("http://localhost:2379,http://localhost:4001"), "listen-client-urls", "List of this URLs to listen on for client traffic")
+	flag.Var(flagtypes.NewURLsValue("http://localhost:2380,http://localhost:7001"), "advertise-peer-urls", "List of this member's peer URLs to advertise to the rest of the cluster")
+	flag.Var(flagtypes.NewURLsValue("http://localhost:2379,http://localhost:4001"), "advertise-client-urls", "List of this member's client URLs to advertise to the rest of the cluster")
+	flag.Var(flagtypes.NewURLsValue("http://localhost:2380,http://localhost:7001"), "listen-peer-urls", "List of this URLs to listen on for peer traffic")
+	flag.Var(flagtypes.NewURLsValue("http://localhost:2379,http://localhost:4001"), "listen-client-urls", "List of this URLs to listen on for client traffic")
 
 	flag.Var(cors, "cors", "Comma-separated white list of origins for CORS (cross-origin resource sharing).")
 
@@ -188,9 +188,14 @@ func startEtcd() {
 
 	cls := etcdserver.NewClusterStore(st, *cluster)
 
+	acurls, err := pkg.URLsFromFlags(flag.CommandLine, "advertise-client-urls", "addr", clientTLSInfo)
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+
 	s := &etcdserver.EtcdServer{
 		Name:       *name,
-		ClientURLs: strings.Split(acurls.String(), ","),
+		ClientURLs: acurls,
 		Store:      st,
 		Node:       n,
 		Storage: struct {
@@ -211,7 +216,7 @@ func startEtcd() {
 	}
 	ph := etcdhttp.NewPeerHandler(s)
 
-	lpurls, err := pkg.URLsFromFlags(flag.CommandLine, "listen-peer-urls", "peer-bind-addr", clientTLSInfo)
+	lpurls, err := pkg.URLsFromFlags(flag.CommandLine, "listen-peer-urls", "peer-bind-addr", peerTLSInfo)
 	if err != nil {
 		log.Fatal(err.Error())
 	}

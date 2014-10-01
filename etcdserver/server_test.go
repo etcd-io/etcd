@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/rand"
+	"net/url"
 	"reflect"
 	"sync"
 	"testing"
@@ -836,7 +837,7 @@ func TestPublish(t *testing.T) {
 	w := &waitWithResponse{ch: ch}
 	srv := &EtcdServer{
 		Name:         "node1",
-		ClientURLs:   []string{"a", "b"},
+		ClientURLs:   []url.URL{{Scheme: "http", Host: "a"}, {Scheme: "http", Host: "b"}},
 		Node:         n,
 		ClusterStore: cs,
 		w:            w,
@@ -854,7 +855,7 @@ func TestPublish(t *testing.T) {
 	if r.Method != "PUT" {
 		t.Errorf("method = %s, want PUT", r.Method)
 	}
-	wm := Member{ID: 1, Name: "node1", ClientURLs: []string{"a", "b"}}
+	wm := Member{ID: 1, Name: "node1", ClientURLs: []string{"http://a", "http://b"}}
 	if r.Path != wm.storeKey() {
 		t.Errorf("path = %s, want %s", r.Path, wm.storeKey())
 	}
