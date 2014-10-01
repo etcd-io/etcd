@@ -257,7 +257,24 @@ func TestCompact(t *testing.T) {
 	}
 }
 
-func TestIsStateEqual(t *testing.T) {
+func TestSoftStateEqual(t *testing.T) {
+	tests := []struct {
+		st *SoftState
+		we bool
+	}{
+		{&SoftState{}, true},
+		{&SoftState{Lead: 1}, false},
+		{&SoftState{RaftState: StateLeader}, false},
+		{&SoftState{ShouldStop: true}, false},
+	}
+	for i, tt := range tests {
+		if g := tt.st.equal(&SoftState{}); g != tt.we {
+			t.Errorf("#%d, equal = %v, want %v", i, g, tt.we)
+		}
+	}
+}
+
+func TestIsHardStateEqual(t *testing.T) {
 	tests := []struct {
 		st raftpb.HardState
 		we bool

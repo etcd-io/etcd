@@ -826,6 +826,26 @@ func TestRemoveNode(t *testing.T) {
 	}
 }
 
+// TestServerStopItself tests that if node sends out Ready with ShouldStop,
+// server will stop.
+func TestServerStopItself(t *testing.T) {
+	n := newReadyNode()
+	s := &EtcdServer{
+		Node:    n,
+		Store:   &storeRecorder{},
+		Send:    func(_ []raftpb.Message) {},
+		Storage: &storageRecorder{},
+	}
+	s.start()
+	n.readyc <- raft.Ready{SoftState: &raft.SoftState{ShouldStop: true}}
+
+	select {
+	case <-s.done:
+	case <-time.After(time.Millisecond):
+		t.Errorf("did not receive from closed done channel as expected")
+	}
+}
+
 // TODO: test wait trigger correctness in multi-server case
 
 func TestPublish(t *testing.T) {

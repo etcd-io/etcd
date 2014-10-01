@@ -16,12 +16,13 @@ var (
 // SoftState provides state that is useful for logging and debugging.
 // The state is volatile and does not need to be persisted to the WAL.
 type SoftState struct {
-	Lead      int64
-	RaftState StateType
+	Lead       int64
+	RaftState  StateType
+	ShouldStop bool
 }
 
 func (a *SoftState) equal(b *SoftState) bool {
-	return a.Lead == b.Lead && a.RaftState == b.RaftState
+	return a.Lead == b.Lead && a.RaftState == b.RaftState && a.ShouldStop == b.ShouldStop
 }
 
 // Ready encapsulates the entries and messages that are ready to read,
