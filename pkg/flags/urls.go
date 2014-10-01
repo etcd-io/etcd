@@ -3,6 +3,7 @@ package flags
 import (
 	"errors"
 	"fmt"
+	"net"
 	"net/url"
 	"strings"
 )
@@ -27,6 +28,9 @@ func (us *URLs) Set(s string) error {
 		}
 		if u.Scheme != "http" && u.Scheme != "https" {
 			return fmt.Errorf("URL scheme must be http or https: %s", s)
+		}
+		if _, _, err := net.SplitHostPort(u.Host); err != nil {
+			return fmt.Errorf(`URL address does not have the form "host:port": %s`, s)
 		}
 		if u.Path != "" {
 			return fmt.Errorf("URL must not contain a path: %s", s)
