@@ -6,6 +6,9 @@ import (
 	"net/url"
 	"sort"
 	"strings"
+
+	"github.com/coreos/etcd/pkg/flags"
+	"github.com/coreos/etcd/pkg/types"
 )
 
 // Cluster is a list of Members that belong to the same raft cluster
@@ -71,7 +74,8 @@ func (c *Cluster) Set(s string) error {
 		if len(urls) == 0 || urls[0] == "" {
 			return fmt.Errorf("Empty URL given for %q", name)
 		}
-		m := newMember(name, urls, nil)
+
+		m := newMember(name, types.URLs(*flags.NewURLsValue(strings.Join(urls, ","))), nil)
 		err := c.Add(*m)
 		if err != nil {
 			return err

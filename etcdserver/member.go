@@ -5,9 +5,10 @@ import (
 	"encoding/binary"
 	"fmt"
 	"path"
-	"sort"
 	"strconv"
 	"time"
+
+	"github.com/coreos/etcd/pkg/types"
 )
 
 const machineKVPrefix = "/_etcd/machines/"
@@ -22,9 +23,8 @@ type Member struct {
 
 // newMember creates a Member without an ID and generates one based on the
 // name, peer URLs. This is used for bootstrapping.
-func newMember(name string, peerURLs []string, now *time.Time) *Member {
-	sort.Strings(peerURLs)
-	m := &Member{Name: name, PeerURLs: peerURLs}
+func newMember(name string, peerURLs types.URLs, now *time.Time) *Member {
+	m := &Member{Name: name, PeerURLs: peerURLs.StringSlice()}
 
 	b := []byte(m.Name)
 	for _, p := range m.PeerURLs {

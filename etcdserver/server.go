@@ -9,6 +9,7 @@ import (
 	"time"
 
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/store"
@@ -81,7 +82,7 @@ type EtcdServer struct {
 	done chan struct{}
 
 	Name       string
-	ClientURLs []string
+	ClientURLs types.URLs
 
 	Node  raft.Node
 	Store store.Store
@@ -340,7 +341,7 @@ func (s *EtcdServer) sync(timeout time.Duration) {
 // TODO: take care of info fetched from cluster store after having reconfig.
 func (s *EtcdServer) publish(retryInterval time.Duration) {
 	m := *s.ClusterStore.Get().FindName(s.Name)
-	m.ClientURLs = s.ClientURLs
+	m.ClientURLs = s.ClientURLs.StringSlice()
 	b, err := json.Marshal(m)
 	if err != nil {
 		log.Printf("etcdserver: json marshal error: %v", err)

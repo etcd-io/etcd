@@ -1,47 +1,27 @@
 package flags
 
 import (
-	"errors"
-	"fmt"
-	"net"
-	"net/url"
 	"strings"
+
+	"github.com/coreos/etcd/pkg/types"
 )
 
-// URLs implements the flag.Value interface to allow users to define multiple
-// URLs on the command-line
-type URLs []url.URL
+type URLsValue types.URLs
 
 // Set parses a command line set of URLs formatted like:
 // http://127.0.0.1:7001,http://10.1.1.2:80
-func (us *URLs) Set(s string) error {
+func (us *URLsValue) Set(s string) error {
 	strs := strings.Split(s, ",")
-	all := make([]url.URL, len(strs))
-	if len(all) == 0 {
-		return errors.New("no valid URLs given")
+	nus, err := types.NewURLs(strs)
+	if err != nil {
+		return err
 	}
-	for i, in := range strs {
-		in = strings.TrimSpace(in)
-		u, err := url.Parse(in)
-		if err != nil {
-			return err
-		}
-		if u.Scheme != "http" && u.Scheme != "https" {
-			return fmt.Errorf("URL scheme must be http or https: %s", s)
-		}
-		if _, _, err := net.SplitHostPort(u.Host); err != nil {
-			return fmt.Errorf(`URL address does not have the form "host:port": %s`, s)
-		}
-		if u.Path != "" {
-			return fmt.Errorf("URL must not contain a path: %s", s)
-		}
-		all[i] = *u
-	}
-	*us = all
+
+	*us = URLsValue(nus)
 	return nil
 }
 
-func (us *URLs) String() string {
+func (us *URLsValue) String() string {
 	all := make([]string, len(*us))
 	for i, u := range *us {
 		all[i] = u.String()
@@ -49,8 +29,8 @@ func (us *URLs) String() string {
 	return strings.Join(all, ",")
 }
 
-func NewURLs(init string) *URLs {
-	v := &URLs{}
+func NewURLsValue(init string) *URLsValue {
+	v := &URLsValue{}
 	v.Set(init)
 	return v
 }
