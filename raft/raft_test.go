@@ -475,7 +475,7 @@ func TestHandleMsgApp(t *testing.T) {
 		m       pb.Message
 		wIndex  int64
 		wCommit int64
-		wDenied bool
+		wReject bool
 	}{
 		// Ensure 1
 		{pb.Message{Type: msgApp, Term: 2, LogTerm: 3, Index: 2, Commit: 3}, 2, 0, true}, // previous log mismatch
@@ -511,8 +511,8 @@ func TestHandleMsgApp(t *testing.T) {
 		if len(m) != 1 {
 			t.Fatalf("#%d: msg = nil, want 1", i)
 		}
-		if m[0].Denied != tt.wDenied {
-			t.Errorf("#%d: denied = %v, want %v", i, m[0].Denied, tt.wDenied)
+		if m[0].Reject != tt.wReject {
+			t.Errorf("#%d: reject = %v, want %v", i, m[0].Reject, tt.wReject)
 		}
 	}
 }
@@ -522,7 +522,7 @@ func TestRecvMsgVote(t *testing.T) {
 		state   StateType
 		i, term int64
 		voteFor int64
-		wdenied bool
+		wreject bool
 	}{
 		{StateFollower, 0, 0, None, true},
 		{StateFollower, 0, 1, None, true},
@@ -572,8 +572,8 @@ func TestRecvMsgVote(t *testing.T) {
 			t.Fatalf("#%d: len(msgs) = %d, want 1", i, g)
 			continue
 		}
-		if g := msgs[0].Denied; g != tt.wdenied {
-			t.Errorf("#%d, m.Denied = %d, want %d", i, g, tt.wdenied)
+		if g := msgs[0].Reject; g != tt.wreject {
+			t.Errorf("#%d, m.Reject = %d, want %d", i, g, tt.wreject)
 		}
 	}
 }
@@ -685,7 +685,7 @@ func TestAllServerStepdown(t *testing.T) {
 func TestLeaderAppResp(t *testing.T) {
 	tests := []struct {
 		index      int64
-		denied     bool
+		reject     bool
 		wmsgNum    int
 		windex     int64
 		wcommitted int64
@@ -702,7 +702,7 @@ func TestLeaderAppResp(t *testing.T) {
 		sm.becomeCandidate()
 		sm.becomeLeader()
 		sm.ReadMessages()
-		sm.Step(pb.Message{From: 2, Type: msgAppResp, Index: tt.index, Term: sm.Term, Denied: tt.denied})
+		sm.Step(pb.Message{From: 2, Type: msgAppResp, Index: tt.index, Term: sm.Term, Reject: tt.reject})
 		msgs := sm.ReadMessages()
 
 		if len(msgs) != tt.wmsgNum {
@@ -857,7 +857,7 @@ func TestProvideSnap(t *testing.T) {
 	// node 1 needs a snapshot
 	sm.prs[2].next = sm.raftLog.offset
 
-	sm.Step(pb.Message{From: 2, To: 1, Type: msgAppResp, Index: -1, Denied: true})
+	sm.Step(pb.Message{From: 2, To: 1, Type: msgAppResp, Index: -1, Reject: true})
 	msgs := sm.ReadMessages()
 	if len(msgs) != 1 {
 		t.Fatalf("len(msgs) = %d, want 1", len(msgs))

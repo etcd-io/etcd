@@ -141,7 +141,7 @@ type Message struct {
 	Entries          []Entry  `protobuf:"bytes,7,rep,name=entries" json:"entries"`
 	Commit           int64    `protobuf:"varint,8,req,name=commit" json:"commit"`
 	Snapshot         Snapshot `protobuf:"bytes,9,req,name=snapshot" json:"snapshot"`
-	Denied           bool     `protobuf:"varint,10,req,name=denied" json:"denied"`
+	Reject           bool     `protobuf:"varint,10,req,name=reject" json:"reject"`
 	XXX_unrecognized []byte   `json:"-"`
 }
 
@@ -640,7 +640,7 @@ func (m *Message) Unmarshal(data []byte) error {
 					break
 				}
 			}
-			m.Denied = bool(v != 0)
+			m.Reject = bool(v != 0)
 		default:
 			var sizeOfWire int
 			for {
@@ -1118,7 +1118,7 @@ func (m *Message) MarshalTo(data []byte) (n int, err error) {
 	i += n1
 	data[i] = 0x50
 	i++
-	if m.Denied {
+	if m.Reject {
 		data[i] = 1
 	} else {
 		data[i] = 0

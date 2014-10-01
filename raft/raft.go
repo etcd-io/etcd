@@ -373,7 +373,7 @@ func (r *raft) handleAppendEntries(m pb.Message) {
 	if r.raftLog.maybeAppend(m.Index, m.LogTerm, m.Commit, m.Entries...) {
 		r.send(pb.Message{To: m.From, Type: msgAppResp, Index: r.raftLog.lastIndex()})
 	} else {
-		r.send(pb.Message{To: m.From, Type: msgAppResp, Denied: true})
+		r.send(pb.Message{To: m.From, Type: msgAppResp, Reject: true})
 	}
 }
 
@@ -415,7 +415,7 @@ func stepLeader(r *raft, m pb.Message) {
 		r.appendEntry(e)
 		r.bcastAppend()
 	case msgAppResp:
-		if m.Denied {
+		if m.Reject {
 			r.prs[m.From].decr()
 			r.sendAppend(m.From)
 		} else {
@@ -425,7 +425,7 @@ func stepLeader(r *raft, m pb.Message) {
 			}
 		}
 	case msgVote:
-		r.send(pb.Message{To: m.From, Type: msgVoteResp, Denied: true})
+		r.send(pb.Message{To: m.From, Type: msgVoteResp, Reject: true})
 	}
 }
 
@@ -440,9 +440,9 @@ func stepCandidate(r *raft, m pb.Message) {
 		r.becomeFollower(m.Term, m.From)
 		r.handleSnapshot(m)
 	case msgVote:
-		r.send(pb.Message{To: m.From, Type: msgVoteResp, Denied: true})
+		r.send(pb.Message{To: m.From, Type: msgVoteResp, Reject: true})
 	case msgVoteResp:
-		gr := r.poll(m.From, !m.Denied)
+		gr := r.poll(m.From, !m.Reject)
 		switch r.q() {
 		case gr:
 			r.becomeLeader()
@@ -474,7 +474,7 @@ func stepFollower(r *raft, m pb.Message) {
 			r.Vote = m.From
 			r.send(pb.Message{To: m.From, Type: msgVoteResp})
 		} else {
-			r.send(pb.Message{To: m.From, Type: msgVoteResp, Denied: true})
+			r.send(pb.Message{To: m.From, Type: msgVoteResp, Reject: true})
 		}
 	}
 }

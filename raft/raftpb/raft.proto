@@ -41,7 +41,7 @@ message Message {
 	repeated Entry entries     = 7  [(gogoproto.nullable) = false];
 	required int64 commit      = 8  [(gogoproto.nullable) = false];
 	required Snapshot snapshot = 9  [(gogoproto.nullable) = false];
-	required bool  denied      = 10 [(gogoproto.nullable) = false];
+	required bool  reject      = 10 [(gogoproto.nullable) = false];
 }
 
 message HardState {
