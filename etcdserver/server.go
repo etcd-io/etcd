@@ -19,6 +19,8 @@ import (
 const (
 	defaultSyncTimeout = time.Second
 	DefaultSnapCount   = 10000
+	// TODO: calculated based on heartbeat interval
+	defaultPublishRetryInterval = 5 * time.Second
 )
 
 var (
@@ -78,6 +80,9 @@ type EtcdServer struct {
 	w    wait.Wait
 	done chan struct{}
 
+	Name       string
+	ClientURLs []string
+
 	Node  raft.Node
 	Store store.Store
 
@@ -102,7 +107,16 @@ type EtcdServer struct {
 
 // Start prepares and starts server in a new goroutine. It is no longer safe to
 // modify a server's fields after it has been sent to Start.
+// It also starts a goroutine to publish its server information.
 func (s *EtcdServer) Start() {
+	s.start()
+	go s.publish(defaultPublishRetryInterval)
+}
+
+// start prepares and starts server in a new goroutine. It is no longer safe to
+// modify a server's fields after it has been sent to Start.
+// This function is just used for testing.
+func (s *EtcdServer) start() {
 	if s.SnapCount == 0 {
 		log.Printf("etcdserver: set snapshot count to default %d", DefaultSnapCount)
 		s.SnapCount = DefaultSnapCount
@@ -319,10 +333,14 @@ func (s *EtcdServer) sync(timeout time.Duration) {
 }
 
 // publish registers server information into the cluster. The information
-// is the json format of the given member.
+// is the json format of its self member struct, whose ClientURLs may be
+// updated.
 // The function keeps attempting to register until it succeeds,
 // or its server is stopped.
-func (s *EtcdServer) publish(m Member, retryInterval time.Duration) {
+// TODO: take care of info fetched from cluster store after having reconfig.
+func (s *EtcdServer) publish(retryInterval time.Duration) {
+	m := *s.ClusterStore.Get().FindName(s.Name)
+	m.ClientURLs = s.ClientURLs
 	b, err := json.Marshal(m)
 	if err != nil {
 		log.Printf("etcdserver: json marshal error: %v", err)

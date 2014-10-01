@@ -193,8 +193,10 @@ func startEtcd() {
 	cls := etcdserver.NewClusterStore(st, *cluster)
 
 	s := &etcdserver.EtcdServer{
-		Store: st,
-		Node:  n,
+		Name:       *name,
+		ClientURLs: strings.Split(acurls.String(), ","),
+		Store:      st,
+		Node:       n,
 		Storage: struct {
 			*wal.WAL
 			*snap.Snapshotter
