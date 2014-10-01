@@ -836,7 +836,7 @@ func TestServerStopItself(t *testing.T) {
 		Send:    func(_ []raftpb.Message) {},
 		Storage: &storageRecorder{},
 	}
-	s.Start()
+	s.start()
 	n.readyc <- raft.Ready{SoftState: &raft.SoftState{ShouldStop: true}}
 
 	select {
