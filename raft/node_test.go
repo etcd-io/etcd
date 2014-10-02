@@ -160,11 +160,11 @@ func TestNode(t *testing.T) {
 			HardState: raftpb.HardState{Term: 1, Commit: 2},
 			Entries: []raftpb.Entry{
 				{},
-				{Type: raftpb.EntryConfChange, Index: 1, Data: ccdata},
+				{Type: raftpb.EntryConfChange, Term: 1, Index: 1, Data: ccdata},
 				{Term: 1, Index: 2},
 			},
 			CommittedEntries: []raftpb.Entry{
-				{Type: raftpb.EntryConfChange, Index: 1, Data: ccdata},
+				{Type: raftpb.EntryConfChange, Term: 1, Index: 1, Data: ccdata},
 				{Term: 1, Index: 2},
 			},
 		},

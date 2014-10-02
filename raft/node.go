@@ -112,8 +112,7 @@ func StartNode(id int64, peers []int64, election, heartbeat int, bootstrapContex
 	if err != nil {
 		panic("unexpected marshal error")
 	}
-	btEnt := pb.Entry{Type: pb.EntryConfChange, Index: 1, Data: data}
-	r.raftLog.append(0, btEnt)
+	r.raftLog.append(0, pb.Entry{Type: pb.EntryConfChange, Term: 1, Index: 1, Data: data})
 	go n.run(r)
 	return &n
 }
