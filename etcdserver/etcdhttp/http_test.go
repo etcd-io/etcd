@@ -591,7 +591,7 @@ func TestV2MachinesEndpoint(t *testing.T) {
 		{"POST", http.StatusMethodNotAllowed},
 	}
 
-	m := NewClientHandler(nil, &fakeCluster{}, time.Hour)
+	m := NewClientHandler(&etcdserver.EtcdServer{ClusterStore: &fakeCluster{}}, time.Hour)
 	s := httptest.NewServer(m)
 	defer s.Close()
 

@@ -856,8 +856,8 @@ func TestPublish(t *testing.T) {
 	ch <- Response{}
 	w := &waitWithResponse{ch: ch}
 	srv := &EtcdServer{
-		Name:         "node1",
-		ClientURLs:   []url.URL{{Scheme: "http", Host: "a"}, {Scheme: "http", Host: "b"}},
+		name:         "node1",
+		clientURLs:   []url.URL{{Scheme: "http", Host: "a"}, {Scheme: "http", Host: "b"}},
 		Node:         n,
 		ClusterStore: cs,
 		w:            w,
@@ -892,7 +892,7 @@ func TestPublish(t *testing.T) {
 func TestPublishStopped(t *testing.T) {
 	cs := mustClusterStore(t, []Member{{ID: 1, Name: "node1"}})
 	srv := &EtcdServer{
-		Name:         "node1",
+		name:         "node1",
 		Node:         &nodeRecorder{},
 		ClusterStore: cs,
 		w:            &waitRecorder{},
@@ -907,7 +907,7 @@ func TestPublishRetry(t *testing.T) {
 	n := &nodeRecorder{}
 	cs := mustClusterStore(t, []Member{{ID: 1, Name: "node1"}})
 	srv := &EtcdServer{
-		Name:         "node1",
+		name:         "node1",
 		Node:         n,
 		ClusterStore: cs,
 		w:            &waitRecorder{},

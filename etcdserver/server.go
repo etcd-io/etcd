@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log"
 	"math/rand"
+	"net/http"
 	"sync/atomic"
 	"time"
 
@@ -12,9 +13,11 @@ import (
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
+	"github.com/coreos/etcd/snap"
 	"github.com/coreos/etcd/store"
 	"github.com/coreos/etcd/third_party/code.google.com/p/go.net/context"
 	"github.com/coreos/etcd/wait"
+	"github.com/coreos/etcd/wal"
 )
 
 const (
@@ -76,13 +79,89 @@ type RaftTimer interface {
 	Term() int64
 }
 
-// EtcdServer is the production implementation of the Server interface
-type EtcdServer struct {
-	w    wait.Wait
-	done chan struct{}
-
+type ServerConfig struct {
 	Name       string
 	ClientURLs types.URLs
+	SnapDir    string
+	SnapCount  int64
+	WalDir     string
+	Cluster    *Cluster
+	Transport  *http.Transport
+}
+
+// NewServer creates a new EtcdServer from the supplied configuration. The
+// configuration is considered static for the lifetime of the EtcdServer.
+func NewServer(cfg *ServerConfig) *EtcdServer {
+	m := cfg.Cluster.FindName(cfg.Name)
+	if m == nil {
+		// Should never happen
+		log.Fatalf("could not find name %v in cluster!", cfg.Name)
+	}
+	st := store.New()
+	ss := snap.New(cfg.SnapDir)
+	var w *wal.WAL
+	var n raft.Node
+	var err error
+	if !wal.Exist(cfg.WalDir) {
+		if w, err = wal.Create(cfg.WalDir); err != nil {
+			log.Fatal(err)
+		}
+		n = raft.StartNode(m.ID, cfg.Cluster.IDs(), 10, 1)
+	} else {
+		var index int64
+		snapshot, err := ss.Load()
+		if err != nil && err != snap.ErrNoSnapshot {
+			log.Fatal(err)
+		}
+		if snapshot != nil {
+			log.Printf("etcdserver: restart from snapshot at index %d", snapshot.Index)
+			st.Recovery(snapshot.Data)
+			index = snapshot.Index
+		}
+
+		// restart a node from previous wal
+		if w, err = wal.OpenAtIndex(cfg.WalDir, index); err != nil {
+			log.Fatal(err)
+		}
+		wid, st, ents, err := w.ReadAll()
+		if err != nil {
+			log.Fatal(err)
+		}
+		// TODO(xiangli): save/recovery nodeID?
+		if wid != 0 {
+			log.Fatalf("unexpected nodeid %d: nodeid should always be zero until we save nodeid into wal", wid)
+		}
+		n = raft.RestartNode(m.ID, cfg.Cluster.IDs(), 10, 1, snapshot, st, ents)
+	}
+
+	cls := NewClusterStore(st, *cfg.Cluster)
+
+	s := &EtcdServer{
+		Store: st,
+		Node:  n,
+		name:  cfg.Name,
+		Storage: struct {
+			*wal.WAL
+			*snap.Snapshotter
+		}{w, ss},
+		Send:         Sender(cfg.Transport, cls),
+		clientURLs:   cfg.ClientURLs,
+		Ticker:       time.Tick(100 * time.Millisecond),
+		SyncTicker:   time.Tick(500 * time.Millisecond),
+		SnapCount:    cfg.SnapCount,
+		ClusterStore: cls,
+	}
+	return s
+}
+
+// EtcdServer is the production implementation of the Server interface
+type EtcdServer struct {
+	w          wait.Wait
+	done       chan struct{}
+	name       string
+	clientURLs types.URLs
+
+	ClusterStore ClusterStore
 
 	Node  raft.Node
 	Store store.Store
@@ -101,9 +180,8 @@ type EtcdServer struct {
 	SnapCount int64 // number of entries to trigger a snapshot
 
 	// Cache of the latest raft index and raft term the server has seen
-	raftIndex    int64
-	raftTerm     int64
-	ClusterStore ClusterStore
+	raftIndex int64
+	raftTerm  int64
 }
 
 // Start prepares and starts server in a new goroutine. It is no longer safe to
@@ -338,14 +416,14 @@ func (s *EtcdServer) sync(timeout time.Duration) {
 }
 
 // publish registers server information into the cluster. The information
-// is the json format of its self member struct, whose ClientURLs may be
-// updated.
+// is the JSON representation of this server's member struct, updated with the
+// static clientURLs of the server.
 // The function keeps attempting to register until it succeeds,
 // or its server is stopped.
 // TODO: take care of info fetched from cluster store after having reconfig.
 func (s *EtcdServer) publish(retryInterval time.Duration) {
-	m := *s.ClusterStore.Get().FindName(s.Name)
-	m.ClientURLs = s.ClientURLs.StringSlice()
+	m := *s.ClusterStore.Get().FindName(s.name)
+	m.ClientURLs = s.clientURLs.StringSlice()
 	b, err := json.Marshal(m)
 	if err != nil {
 		log.Printf("etcdserver: json marshal error: %v", err)

@@ -35,10 +35,10 @@ const (
 var errClosed = errors.New("etcdhttp: client closed connection")
 
 // NewClientHandler generates a muxed http.Handler with the given parameters to serve etcd client requests.
-func NewClientHandler(server *etcdserver.EtcdServer, clusterStore etcdserver.ClusterStore, timeout time.Duration) http.Handler {
+func NewClientHandler(server *etcdserver.EtcdServer, timeout time.Duration) http.Handler {
 	sh := &serverHandler{
 		server:       server,
-		clusterStore: clusterStore,
+		clusterStore: server.ClusterStore,
 		timer:        server,
 		timeout:      timeout,
 	}
