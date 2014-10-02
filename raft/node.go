@@ -114,7 +114,6 @@ func StartNode(id int64, peers []int64, election, heartbeat int, bootstrapContex
 	}
 	btEnt := pb.Entry{Type: pb.EntryConfChange, Index: 1, Data: data}
 	r.raftLog.append(0, btEnt)
-	r.raftLog.committed = 1
 	go n.run(r)
 	return &n
 }
