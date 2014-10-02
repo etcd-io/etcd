@@ -101,9 +101,20 @@ type Node interface {
 
 // StartNode returns a new Node given a unique raft id, a list of raft peers, and
 // the election and heartbeat timeouts in units of ticks.
-func StartNode(id int64, peers []int64, election, heartbeat int) Node {
+func StartNode(id int64, peers []int64, election, heartbeat int, bootstrapContext []byte) Node {
 	n := newNode()
 	r := newRaft(id, peers, election, heartbeat)
+	cc := pb.ConfChange{
+		Type:    pb.ConfChangeBootstrap,
+		Context: bootstrapContext,
+	}
+	data, err := cc.Marshal()
+	if err != nil {
+		panic("unexpected marshal error")
+	}
+	btEnt := pb.Entry{Type: pb.EntryConfChange, Index: 1, Data: data}
+	r.raftLog.append(0, btEnt)
+	r.raftLog.committed = 1
 	go n.run(r)
 	return &n
 }
@@ -194,6 +205,7 @@ func (n *node) run(r *raft) {
 				r.addNode(cc.NodeID)
 			case pb.ConfChangeRemoveNode:
 				r.removeNode(cc.NodeID)
+			case pb.ConfChangeBootstrap:
 			default:
 				panic("unexpected conf type")
 			}

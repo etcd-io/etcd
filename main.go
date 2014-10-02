@@ -153,7 +153,7 @@ func startEtcd() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		n = raft.StartNode(self.ID, cluster.IDs(), 10, 1)
+		n = raft.StartNode(self.ID, cluster.IDs(), 10, 1, []byte(cluster.String()))
 	} else {
 		var index int64
 		snapshot, err := snapshotter.Load()
