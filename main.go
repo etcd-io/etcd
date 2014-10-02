@@ -194,6 +194,7 @@ func startEtcd() {
 	}
 
 	s := &etcdserver.EtcdServer{
+		ID:         self.ID,
 		Name:       *name,
 		ClientURLs: acurls,
 		Store:      st,
