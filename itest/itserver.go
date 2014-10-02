@@ -4,18 +4,19 @@ import (
 	"fmt"
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/etcdhttp"
-	"github.com/coreos/etcd/pkg/transport"
+	"github.com/coreos/etcd/pkg"
 	flagtypes "github.com/coreos/etcd/pkg/flags"
+	"github.com/coreos/etcd/pkg/transport"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/snap"
 	"github.com/coreos/etcd/store"
 	"github.com/coreos/etcd/wal"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"path"
 	"time"
-
 )
 
 const (
@@ -23,34 +24,32 @@ const (
 	privateDirMode = 0700
 )
 
-
 type ITServer struct {
-	port int
-	etcds *etcdserver.EtcdServer
-	dir string
+	port          int
+	etcds         *etcdserver.EtcdServer
+	dir           string
 	name          string
 	peerTLSInfo   transport.TLSInfo
 	clientTLSInfo transport.TLSInfo
-	snapCount     int64
+	snapCount     uint64
 	timeout       time.Duration
-	addrs    	  *flagtypes.Addrs
-	cluster 	  *etcdserver.Cluster
+	addr          *flagtypes.IPAddressPort
+	cluster       *etcdserver.Cluster
 }
-
 
 func NewItServer(port int) *ITServer {
 
 	s := &ITServer{
-		name: "itest",
-		port: port,
-		peerTLSInfo: transport.TLSInfo{},
+		name:          "itest",
+		port:          port,
+		peerTLSInfo:   transport.TLSInfo{},
 		clientTLSInfo: transport.TLSInfo{},
-		snapCount : int64(etcdserver.DefaultSnapCount),
-		timeout: 10*time.Second,
-		addrs: &flagtypes.Addrs{},
-		cluster: &etcdserver.Cluster{},
+		snapCount:     uint64(etcdserver.DefaultSnapCount),
+		timeout:       10 * time.Second,
+		addr:          &flagtypes.IPAddressPort{},
+		cluster:       &etcdserver.Cluster{},
 	}
-	s.addrs.Set(fmt.Sprintf("127.0.0.1:%v",port))
+	s.addr.Set(fmt.Sprintf("127.0.0.1:%v", port))
 	s.cluster.Set("itest=localhost:8080")
 	return s
 
@@ -62,7 +61,6 @@ func (s *ITServer) Stop() {
 }
 
 func (s *ITServer) Start() {
-
 
 	self := s.cluster.FindName(s.name)
 	if self == nil {
@@ -78,6 +76,8 @@ func (s *ITServer) Start() {
 	}
 
 	s.dir = fmt.Sprintf("%v_%v_etcd_data", s.name, self.ID)
+	log.Printf("main: no data-dir is given, using default data-dir ./%s", s.dir)
+
 	if err := os.MkdirAll(s.dir, privateDirMode); err != nil {
 		log.Fatalf("main: cannot create data directory: %v", err)
 	}
@@ -132,10 +132,13 @@ func (s *ITServer) Start() {
 	}
 
 	cls := etcdserver.NewClusterStore(st, *s.cluster)
+	u, _ := url.Parse(fmt.Sprintf("http://localhost:%v/", s.port))
 
 	s.etcds = &etcdserver.EtcdServer{
-		Store: st,
-		Node:  n,
+		Name:       s.name,
+		ClientURLs: []url.URL{*u},
+		Store:      st,
+		Node:       n,
 		Storage: struct {
 			*wal.WAL
 			*snap.Snapshotter
@@ -148,20 +151,20 @@ func (s *ITServer) Start() {
 	}
 	s.etcds.Start()
 
-	ch := etcdhttp.NewClientHandler(s.etcds, cls, s.timeout)
-
-	// Start a client server goroutine for each listen address
-	for _, addr := range *s.addrs {
-		addr := addr
-		l, err := transport.NewListener(addr, s.clientTLSInfo)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		go func() {
-			log.Print("Listening for client requests on ", addr)
-			log.Fatal(http.Serve(l, ch))
-		}()
+	ch := &pkg.CORSHandler{
+		Handler: etcdhttp.NewClientHandler(s.etcds, cls, s.timeout),
+		Info:    &pkg.CORSInfo{},
 	}
+
+	l, err := transport.NewListener(u.Host, s.clientTLSInfo)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	urlStr := u.String()
+	go func() {
+		log.Print("Listening for client requests on ", urlStr)
+		log.Fatal(http.Serve(l, ch))
+	}()
 
 }

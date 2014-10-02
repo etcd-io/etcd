@@ -2,8 +2,8 @@ package itest
 
 import (
 	"github.com/coreos/etcd/client"
-	"testing"
 	"net/http"
+	"testing"
 	"time"
 )
 
@@ -14,9 +14,9 @@ func Test_ITServer(t *testing.T) {
 
 	cl, _ := client.NewHTTPClient(&http.Transport{}, "http://localhost:4001", 5*time.Second)
 
-	_,err := cl.Get("/")
-	if(err != nil) {
-		t.Fatal("Unable to request server : %v",err)
+	_, err := cl.Get("/")
+	if err != nil {
+		t.Fatal("Unable to request server : %v", err)
 	}
 
 	s.Stop()
