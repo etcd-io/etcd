@@ -81,6 +81,7 @@ type EtcdServer struct {
 	w    wait.Wait
 	done chan struct{}
 
+	ID         int64
 	Name       string
 	ClientURLs types.URLs
 
@@ -344,7 +345,8 @@ func (s *EtcdServer) sync(timeout time.Duration) {
 // or its server is stopped.
 // TODO: take care of info fetched from cluster store after having reconfig.
 func (s *EtcdServer) publish(retryInterval time.Duration) {
-	m := *s.ClusterStore.Get().FindName(s.Name)
+	m := *s.ClusterStore.Get().FindID(s.ID)
+	m.Name = s.Name
 	m.ClientURLs = s.ClientURLs.StringSlice()
 	b, err := json.Marshal(m)
 	if err != nil {

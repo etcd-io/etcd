@@ -850,12 +850,13 @@ func TestServerStopItself(t *testing.T) {
 
 func TestPublish(t *testing.T) {
 	n := &nodeProposeDataRecorder{}
-	cs := mustClusterStore(t, []Member{{ID: 1, Name: "node1"}})
+	cs := mustClusterStore(t, []Member{{ID: 1}})
 	ch := make(chan interface{}, 1)
 	// simulate that request has gone through consensus
 	ch <- Response{}
 	w := &waitWithResponse{ch: ch}
 	srv := &EtcdServer{
+		ID:           1,
 		Name:         "node1",
 		ClientURLs:   []url.URL{{Scheme: "http", Host: "a"}, {Scheme: "http", Host: "b"}},
 		Node:         n,
@@ -890,9 +891,9 @@ func TestPublish(t *testing.T) {
 
 // TestPublishStopped tests that publish will be stopped if server is stopped.
 func TestPublishStopped(t *testing.T) {
-	cs := mustClusterStore(t, []Member{{ID: 1, Name: "node1"}})
+	cs := mustClusterStore(t, []Member{{ID: 1}})
 	srv := &EtcdServer{
-		Name:         "node1",
+		ID:           1,
 		Node:         &nodeRecorder{},
 		ClusterStore: cs,
 		w:            &waitRecorder{},
@@ -905,9 +906,9 @@ func TestPublishStopped(t *testing.T) {
 // TestPublishRetry tests that publish will keep retry until success.
 func TestPublishRetry(t *testing.T) {
 	n := &nodeRecorder{}
-	cs := mustClusterStore(t, []Member{{ID: 1, Name: "node1"}})
+	cs := mustClusterStore(t, []Member{{ID: 1}})
 	srv := &EtcdServer{
-		Name:         "node1",
+		ID:           1,
 		Node:         n,
 		ClusterStore: cs,
 		w:            &waitRecorder{},
