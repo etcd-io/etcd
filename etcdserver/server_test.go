@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/rand"
-	"net/url"
 	"reflect"
 	"sync"
 	"testing"
@@ -798,7 +797,7 @@ func TestAddMember(t *testing.T) {
 		ClusterStore: cs,
 	}
 	s.start()
-	m := Member{ID: 1, PeerURLs: []string{"foo"}}
+	m := Member{ID: 1, RaftAttributes: RaftAttributes{PeerURLs: []string{"foo"}}}
 	s.AddMember(context.TODO(), m)
 	gaction := n.Action()
 	s.Stop()
@@ -864,17 +863,15 @@ func TestServerStopItself(t *testing.T) {
 
 func TestPublish(t *testing.T) {
 	n := &nodeProposeDataRecorder{}
-	cs := mustClusterStore(t, []Member{{ID: 1, Name: "node1"}})
 	ch := make(chan interface{}, 1)
 	// simulate that request has gone through consensus
 	ch <- Response{}
 	w := &waitWithResponse{ch: ch}
 	srv := &EtcdServer{
-		name:         "node1",
-		clientURLs:   []url.URL{{Scheme: "http", Host: "a"}, {Scheme: "http", Host: "b"}},
-		node:         n,
-		ClusterStore: cs,
-		w:            w,
+		id:         1,
+		attributes: Attributes{Name: "node1", ClientURLs: []string{"http://a", "http://b"}},
+		node:       n,
+		w:          w,
 	}
 	srv.publish(time.Hour)
 
@@ -889,28 +886,25 @@ func TestPublish(t *testing.T) {
 	if r.Method != "PUT" {
 		t.Errorf("method = %s, want PUT", r.Method)
 	}
-	wm := Member{ID: 1, Name: "node1", ClientURLs: []string{"http://a", "http://b"}}
-	if r.Path != wm.storeKey() {
-		t.Errorf("path = %s, want %s", r.Path, wm.storeKey())
+	wm := Member{ID: 1, Attributes: Attributes{Name: "node1", ClientURLs: []string{"http://a", "http://b"}}}
+	if r.Path != wm.storeKey()+attributesSuffix {
+		t.Errorf("path = %s, want %s", r.Path, wm.storeKey()+attributesSuffix)
 	}
-	var gm Member
-	if err := json.Unmarshal([]byte(r.Val), &gm); err != nil {
+	var gattr Attributes
+	if err := json.Unmarshal([]byte(r.Val), &gattr); err != nil {
 		t.Fatalf("unmarshal val error: %v", err)
 	}
-	if !reflect.DeepEqual(gm, wm) {
-		t.Errorf("member = %v, want %v", gm, wm)
+	if !reflect.DeepEqual(gattr, wm.Attributes) {
+		t.Errorf("member = %v, want %v", gattr, wm.Attributes)
 	}
 }
 
 // TestPublishStopped tests that publish will be stopped if server is stopped.
 func TestPublishStopped(t *testing.T) {
-	cs := mustClusterStore(t, []Member{{ID: 1, Name: "node1"}})
 	srv := &EtcdServer{
-		name:         "node1",
-		node:         &nodeRecorder{},
-		ClusterStore: cs,
-		w:            &waitRecorder{},
-		done:         make(chan struct{}),
+		node: &nodeRecorder{},
+		w:    &waitRecorder{},
+		done: make(chan struct{}),
 	}
 	srv.Stop()
 	srv.publish(time.Hour)
@@ -919,21 +913,18 @@ func TestPublishStopped(t *testing.T) {
 // TestPublishRetry tests that publish will keep retry until success.
 func TestPublishRetry(t *testing.T) {
 	n := &nodeRecorder{}
-	cs := mustClusterStore(t, []Member{{ID: 1, Name: "node1"}})
 	srv := &EtcdServer{
-		name:         "node1",
-		node:         n,
-		ClusterStore: cs,
-		w:            &waitRecorder{},
-		done:         make(chan struct{}),
+		node: n,
+		w:    &waitRecorder{},
+		done: make(chan struct{}),
 	}
 	time.AfterFunc(500*time.Microsecond, srv.Stop)
 	srv.publish(10 * time.Nanosecond)
 
 	action := n.Action()
-	// multiple Propose + Stop
-	if len(action) < 3 {
-		t.Errorf("len(action) = %d, want >= 3", action)
+	// multiple Proposes
+	if len(action) < 2 {
+		t.Errorf("len(action) = %d, want >= 2", action)
 	}
 }
 
@@ -1257,12 +1248,4 @@ func (cs *clusterStoreRecorder) Get() Cluster {
 }
 func (cs *clusterStoreRecorder) Remove(id uint64) {
 	cs.record(action{name: "Remove", params: []interface{}{id}})
-}
-
-func mustClusterStore(t *testing.T, membs []Member) ClusterStore {
-	c := Cluster{}
-	if err := c.AddSlice(membs); err != nil {
-		t.Fatalf("error creating cluster from %v: %v", membs, err)
-	}
-	return NewClusterStore(&getAllStore{}, c)
 }
