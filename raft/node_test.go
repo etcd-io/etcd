@@ -149,7 +149,8 @@ func TestNode(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cc := raftpb.ConfChange{Type: raftpb.ConfChangeBootstrap}
+	btCtx := []byte("bootstraping cluster")
+	cc := raftpb.ConfChange{Type: raftpb.ConfChangeBootstrap, Context: btCtx}
 	ccdata, err := cc.Marshal()
 	if err != nil {
 		t.Fatalf("unexpected marshal error: %v", err)
@@ -175,7 +176,7 @@ func TestNode(t *testing.T) {
 		},
 	}
 
-	n := StartNode(1, []int64{1}, 0, 0, nil)
+	n := StartNode(1, []int64{1}, 0, 0, btCtx)
 	n.Campaign(ctx)
 	if g := <-n.Ready(); !reflect.DeepEqual(g, wants[0]) {
 		t.Errorf("#%d: g = %+v,\n             w   %+v", 1, g, wants[0])

@@ -101,6 +101,8 @@ type Node interface {
 
 // StartNode returns a new Node given a unique raft id, a list of raft peers, and
 // the election and heartbeat timeouts in units of ticks.
+// It also wraps bootstrap context in a ConfChange entry with type ConfChangeBootstrap,
+// and puts it at the head of the log.
 func StartNode(id int64, peers []int64, election, heartbeat int, bootstrapContext []byte) Node {
 	n := newNode()
 	r := newRaft(id, peers, election, heartbeat)
