@@ -69,6 +69,8 @@ func (pr *progress) update(n int64) {
 	pr.next = n + 1
 }
 
+// maybeDecrTo returns false if the given to index comes from an out of order message.
+// Otherwise it decreases the progress next index and returns true.
 func (pr *progress) maybeDecrTo(to int64) bool {
 	// the rejection must be stale if the
 	// progress has matched with follower
