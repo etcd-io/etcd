@@ -76,7 +76,7 @@ func TestDoLocalAction(t *testing.T) {
 	}
 	for i, tt := range tests {
 		st := &storeRecorder{}
-		srv := &EtcdServer{Store: st}
+		srv := &EtcdServer{store: st}
 		resp, err := srv.Do(context.TODO(), tt.req)
 
 		if err != tt.werr {
@@ -112,7 +112,7 @@ func TestDoBadLocalAction(t *testing.T) {
 	}
 	for i, tt := range tests {
 		st := &errStoreRecorder{err: storeErr}
-		srv := &EtcdServer{Store: st}
+		srv := &EtcdServer{store: st}
 		resp, err := srv.Do(context.Background(), tt.req)
 
 		if err != storeErr {
@@ -355,7 +355,7 @@ func TestApply(t *testing.T) {
 
 	for i, tt := range tests {
 		st := &storeRecorder{}
-		srv := &EtcdServer{Store: st}
+		srv := &EtcdServer{store: st}
 		resp := srv.apply(tt.req)
 
 		if !reflect.DeepEqual(resp, tt.wresp) {
@@ -380,7 +380,7 @@ func testServer(t *testing.T, ns int64) {
 	send := func(msgs []raftpb.Message) {
 		for _, m := range msgs {
 			t.Logf("m = %+v\n", m)
-			ss[m.To-1].Node.Step(ctx, m)
+			ss[m.To-1].node.Step(ctx, m)
 		}
 	}
 
@@ -395,11 +395,11 @@ func testServer(t *testing.T, ns int64) {
 		tk := time.NewTicker(10 * time.Millisecond)
 		defer tk.Stop()
 		srv := &EtcdServer{
-			Node:    n,
-			Store:   store.New(),
-			Send:    send,
-			Storage: &storageRecorder{},
-			Ticker:  tk.C,
+			node:    n,
+			store:   store.New(),
+			send:    send,
+			storage: &storageRecorder{},
+			ticker:  tk.C,
 		}
 		srv.start()
 		// TODO(xiangli): randomize election timeout
@@ -440,7 +440,7 @@ func testServer(t *testing.T, ns int64) {
 	var last interface{}
 	for i, sv := range ss {
 		sv.Stop()
-		g, _ := sv.Store.Get("/", true, true)
+		g, _ := sv.store.Get("/", true, true)
 		if last != nil && !reflect.DeepEqual(last, g) {
 			t.Errorf("server %d: Root = %#v, want %#v", i, g, last)
 		}
@@ -464,11 +464,11 @@ func TestDoProposal(t *testing.T) {
 		// this makes <-tk always successful, which accelerates internal clock
 		close(tk)
 		srv := &EtcdServer{
-			Node:    n,
-			Store:   st,
-			Send:    func(_ []raftpb.Message) {},
-			Storage: &storageRecorder{},
-			Ticker:  tk,
+			node:    n,
+			store:   st,
+			send:    func(_ []raftpb.Message) {},
+			storage: &storageRecorder{},
+			ticker:  tk,
 		}
 		srv.start()
 		resp, err := srv.Do(ctx, tt)
@@ -496,8 +496,8 @@ func TestDoProposalCancelled(t *testing.T) {
 	wait := &waitRecorder{}
 	srv := &EtcdServer{
 		// TODO: use fake node for better testability
-		Node:  n,
-		Store: st,
+		node:  n,
+		store: st,
 		w:     wait,
 	}
 
@@ -534,11 +534,11 @@ func TestDoProposalStopped(t *testing.T) {
 	close(tk)
 	srv := &EtcdServer{
 		// TODO: use fake node for better testability
-		Node:    n,
-		Store:   st,
-		Send:    func(_ []raftpb.Message) {},
-		Storage: &storageRecorder{},
-		Ticker:  tk,
+		node:    n,
+		store:   st,
+		send:    func(_ []raftpb.Message) {},
+		storage: &storageRecorder{},
+		ticker:  tk,
 	}
 	srv.start()
 
@@ -564,7 +564,7 @@ func TestDoProposalStopped(t *testing.T) {
 func TestSync(t *testing.T) {
 	n := &nodeProposeDataRecorder{}
 	srv := &EtcdServer{
-		Node: n,
+		node: n,
 	}
 	start := time.Now()
 	srv.sync(defaultSyncTimeout)
@@ -593,7 +593,7 @@ func TestSync(t *testing.T) {
 func TestSyncTimeout(t *testing.T) {
 	n := &nodeProposalBlockerRecorder{}
 	srv := &EtcdServer{
-		Node: n,
+		node: n,
 	}
 	start := time.Now()
 	srv.sync(0)
@@ -634,11 +634,11 @@ func TestSyncTrigger(t *testing.T) {
 	}
 	st := make(chan time.Time, 1)
 	srv := &EtcdServer{
-		Node:       n,
-		Store:      &storeRecorder{},
-		Send:       func(_ []raftpb.Message) {},
-		Storage:    &storageRecorder{},
-		SyncTicker: st,
+		node:       n,
+		store:      &storeRecorder{},
+		send:       func(_ []raftpb.Message) {},
+		storage:    &storageRecorder{},
+		syncTicker: st,
 	}
 	srv.start()
 	// trigger the server to become a leader and accept sync requests
@@ -673,9 +673,9 @@ func TestSnapshot(t *testing.T) {
 	st := &storeRecorder{}
 	p := &storageRecorder{}
 	s := &EtcdServer{
-		Store:   st,
-		Storage: p,
-		Node:    n,
+		store:   st,
+		storage: p,
+		node:    n,
 	}
 
 	s.snapshot()
@@ -704,15 +704,15 @@ func TestTriggerSnap(t *testing.T) {
 	st := &storeRecorder{}
 	p := &storageRecorder{}
 	s := &EtcdServer{
-		Store:     st,
-		Send:      func(_ []raftpb.Message) {},
-		Storage:   p,
-		Node:      n,
-		SnapCount: 10,
+		store:     st,
+		send:      func(_ []raftpb.Message) {},
+		storage:   p,
+		node:      n,
+		snapCount: 10,
 	}
 
 	s.start()
-	for i := 0; int64(i) < s.SnapCount; i++ {
+	for i := 0; int64(i) < s.snapCount; i++ {
 		s.Do(ctx, pb.Request{Method: "PUT", ID: 1})
 	}
 	time.Sleep(time.Millisecond)
@@ -721,8 +721,8 @@ func TestTriggerSnap(t *testing.T) {
 	gaction := p.Action()
 	// each operation is recorded as a Save
 	// Nop + SnapCount * Puts + Cut + SaveSnap = Save + SnapCount * Save + Cut + SaveSnap
-	if len(gaction) != 3+int(s.SnapCount) {
-		t.Fatalf("len(action) = %d, want %d", len(gaction), 3+int(s.SnapCount))
+	if len(gaction) != 3+int(s.snapCount) {
+		t.Fatalf("len(action) = %d, want %d", len(gaction), 3+int(s.snapCount))
 	}
 	if !reflect.DeepEqual(gaction[12], action{name: "SaveSnap"}) {
 		t.Errorf("action = %s, want SaveSnap", gaction[12])
@@ -736,10 +736,10 @@ func TestRecvSnapshot(t *testing.T) {
 	st := &storeRecorder{}
 	p := &storageRecorder{}
 	s := &EtcdServer{
-		Store:   st,
-		Send:    func(_ []raftpb.Message) {},
-		Storage: p,
-		Node:    n,
+		store:   st,
+		send:    func(_ []raftpb.Message) {},
+		storage: p,
+		node:    n,
 	}
 
 	s.start()
@@ -764,10 +764,10 @@ func TestRecvSlowSnapshot(t *testing.T) {
 	n := newReadyNode()
 	st := &storeRecorder{}
 	s := &EtcdServer{
-		Store:   st,
-		Send:    func(_ []raftpb.Message) {},
-		Storage: &storageRecorder{},
-		Node:    n,
+		store:   st,
+		send:    func(_ []raftpb.Message) {},
+		storage: &storageRecorder{},
+		node:    n,
 	}
 
 	s.start()
@@ -790,10 +790,10 @@ func TestRecvSlowSnapshot(t *testing.T) {
 func TestAddNode(t *testing.T) {
 	n := newNodeConfChangeCommitterRecorder()
 	s := &EtcdServer{
-		Node:    n,
-		Store:   &storeRecorder{},
-		Send:    func(_ []raftpb.Message) {},
-		Storage: &storageRecorder{},
+		node:    n,
+		store:   &storeRecorder{},
+		send:    func(_ []raftpb.Message) {},
+		storage: &storageRecorder{},
 	}
 	s.start()
 	s.AddNode(context.TODO(), 1, []byte("foo"))
@@ -810,10 +810,10 @@ func TestAddNode(t *testing.T) {
 func TestRemoveNode(t *testing.T) {
 	n := newNodeConfChangeCommitterRecorder()
 	s := &EtcdServer{
-		Node:    n,
-		Store:   &storeRecorder{},
-		Send:    func(_ []raftpb.Message) {},
-		Storage: &storageRecorder{},
+		node:    n,
+		store:   &storeRecorder{},
+		send:    func(_ []raftpb.Message) {},
+		storage: &storageRecorder{},
 	}
 	s.start()
 	s.RemoveNode(context.TODO(), 1)
@@ -831,10 +831,10 @@ func TestRemoveNode(t *testing.T) {
 func TestServerStopItself(t *testing.T) {
 	n := newReadyNode()
 	s := &EtcdServer{
-		Node:    n,
-		Store:   &storeRecorder{},
-		Send:    func(_ []raftpb.Message) {},
-		Storage: &storageRecorder{},
+		node:    n,
+		store:   &storeRecorder{},
+		send:    func(_ []raftpb.Message) {},
+		storage: &storageRecorder{},
 	}
 	s.start()
 	n.readyc <- raft.Ready{SoftState: &raft.SoftState{ShouldStop: true}}
@@ -856,9 +856,9 @@ func TestPublish(t *testing.T) {
 	ch <- Response{}
 	w := &waitWithResponse{ch: ch}
 	srv := &EtcdServer{
-		Name:         "node1",
-		ClientURLs:   []url.URL{{Scheme: "http", Host: "a"}, {Scheme: "http", Host: "b"}},
-		Node:         n,
+		name:         "node1",
+		clientURLs:   []url.URL{{Scheme: "http", Host: "a"}, {Scheme: "http", Host: "b"}},
+		node:         n,
 		ClusterStore: cs,
 		w:            w,
 	}
@@ -892,8 +892,8 @@ func TestPublish(t *testing.T) {
 func TestPublishStopped(t *testing.T) {
 	cs := mustClusterStore(t, []Member{{ID: 1, Name: "node1"}})
 	srv := &EtcdServer{
-		Name:         "node1",
-		Node:         &nodeRecorder{},
+		name:         "node1",
+		node:         &nodeRecorder{},
 		ClusterStore: cs,
 		w:            &waitRecorder{},
 		done:         make(chan struct{}),
@@ -907,8 +907,8 @@ func TestPublishRetry(t *testing.T) {
 	n := &nodeRecorder{}
 	cs := mustClusterStore(t, []Member{{ID: 1, Name: "node1"}})
 	srv := &EtcdServer{
-		Name:         "node1",
-		Node:         n,
+		name:         "node1",
+		node:         n,
 		ClusterStore: cs,
 		w:            &waitRecorder{},
 		done:         make(chan struct{}),
