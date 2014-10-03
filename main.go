@@ -31,7 +31,9 @@ var (
 	snapCount    = flag.Uint64("snapshot-count", etcdserver.DefaultSnapCount, "Number of committed transactions to trigger a snapshot")
 	printVersion = flag.Bool("version", false, "Print the version and exit")
 
-	cluster   = &etcdserver.Cluster{}
+	cluster      = &etcdserver.Cluster{}
+	clusterState = new(etcdserver.ClusterState)
+
 	cors      = &pkg.CORSInfo{}
 	proxyFlag = new(flagtypes.Proxy)
 
@@ -56,7 +58,8 @@ var (
 )
 
 func init() {
-	flag.Var(cluster, "bootstrap-config", "Initial cluster configuration for bootstrapping")
+	flag.Var(cluster, "initial-cluster", "Initial cluster configuration for bootstrapping")
+	flag.Var(clusterState, "initial-cluster-state", "Initial cluster configuration for bootstrapping")
 	cluster.Set("default=http://localhost:2380,default=http://localhost:7001")
 
 	flag.Var(flagtypes.NewURLsValue("http://localhost:2380,http://localhost:7001"), "advertise-peer-urls", "List of this member's peer URLs to advertise to the rest of the cluster")
@@ -146,8 +149,9 @@ func startEtcd() {
 		DataDir:      *dir,
 		SnapCount:    int64(*snapCount),
 		Cluster:      cluster,
-		Transport:    pt,
 		DiscoveryURL: *durl,
+		ClusterState: *clusterState,
+		Transport:    pt,
 	}
 	s := etcdserver.NewServer(cfg)
 	s.Start()

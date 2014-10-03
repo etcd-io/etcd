@@ -15,12 +15,12 @@ before starting we can use an offline bootstrap configuration. Each machine
 will get either the following command line or environment variables:
 
 ```
-ETCD_INITIAL_CLUSTER=”infra0=http://10.0.1.10:2379,infra1=http://infra1=10.0.1.11:2379,infra2=http://10.0.1.12:2379”
+ETCD_INITIAL_CLUSTER=”infra0=http://10.0.1.10:2379,infra1=http://10.0.1.11:2379,infra2=http://10.0.1.12:2379”
 ETCD_INITIAL_CLUSTER_STATE=new
 ```
 
 ```
--initial-cluster infra0=http://10.0.1.10:2379,http://infra1=10.0.1.11:2379,infra2=http://10.0.1.12:2379 \
+-initial-cluster infra0=http://10.0.1.10:2379,http://10.0.1.11:2379,infra2=http://10.0.1.12:2379 \
 	-initial-cluster-state new
 ```
 
@@ -38,30 +38,27 @@ $ etcd -name infra2 -advertise-peer-urls https://10.0.1.12:2379 \
 	-initial-cluster-state new
 ```
 
-These initial cluster command line parameters will be ignored on subsequent
-runs of etcd. You are free to remove the environment variables or command line
-flags after the initial bootstrap process. If you need to make changes to the
-configuration later see our guide on runtime configuration(link needed).
+The command line parameters starting with `-initial-cluster` will be ignored on
+subsequent runs of etcd. You are free to remove the environment variables or
+command line flags after the initial bootstrap process. If you need to make
+changes to the configuration later see our guide on runtime configuration.
 
 ### Error Cases
 
 In the following case we have not included our new host in the list of
-enumerated nodes.  If this is a new cluster, the node must be added to the list
-of initial cluster members.  If this is an existing cluster to which a new node
-is being added we must make the corresponding change to the existing cluster’s
-configuration and then bring the new node online.
-
+enumerated nodes. If this is a new cluster, the node must be added to the list
+of initial cluster members.
 ```
-$ etcd -name infra5 -advertise-peer-urls http://10.0.1.10:2379 \
-	-initial-cluster infra0=http://10.0.1.10:2379,infra1=http://10.0.1.11:2379,infra2=http://10.0.1.12:2379 \
-	-initial-cluster-state=new
-etcd: infra5 not listed in the initial cluster config
+$ etcd -name infra1 -advertise-peer-urls http://10.0.1.11:2379 \
+	-initial-cluster infra0=http://10.0.1.10:2379
+	-initial-cluster-state new
+etcd: infra1 not listed in the initial cluster config
 exit 1
 ```
 
 In this case we are attempting to map a node (infra0) on a different address
 (127.0.0.1:2379) than its enumerated address in the cluster list
-(10.0.1.10:2379).  If this node is to listen on multiple addresses, all
+(10.0.1.10:2379). If this node is to listen on multiple addresses, all
 addresses must be reflected in the “initial-cluster” configuration directive.
 
 ```
@@ -87,7 +84,10 @@ $ curl https://myetcd.local/v2/keys/discovery/6c007a14875d53d9bf0ef5a6fc0257c817
 ```
 
 The URL you will use in this case will be
-`https://myetcd.local/v2/keys/discovery/6c007a14875d53d9bf0ef5a6fc0257c817f0fb83`.
+`https://myetcd.local/v2/keys/discovery/6c007a14875d53d9bf0ef5a6fc0257c817f0fb83`
+and the machines will use the
+`https://myetcd.local/v2/keys/discovery/6c007a14875d53d9bf0ef5a6fc0257c817f0fb83`
+directory for registration as they start.
 
 If you do not have access to an existing cluster you can use the hosted
 discovery.etcd.io service.  You can create a private discovery URL using the
@@ -120,13 +120,9 @@ $ etcd -name infra2 -advertise-peer-urls http://10.0.1.12:2379 -discovery https:
 This will cause each machine to register itself with the etcd service and begin
 the cluster once all machines have been registered.
 
-### Error Cases
+### Error and Warning Cases
 
-```
-$ etcd -name infra0 -advertise-peer-urls http://10.0.1.10:2379 -discovery https://discovery.etcd.io/3e86b59982e49066c5d813af1c2e2579cbf573de
-etcd: error: the cluster using discovery https://discovery.etcd.io/3e86b59982e49066c5d813af1c2e2579cbf573de has already started with all 5 members
-exit 1
-```
+#### Discovery Server Errors
 
 ```
 $ etcd -name infra0 -advertise-peer-urls http://10.0.1.10:2379 -discovery https://discovery.etcd.io/3e86b59982e49066c5d813af1c2e2579cbf573de
@@ -134,10 +130,22 @@ etcd: error: the cluster doesn’t have a size configuration value in https://di
 exit 1
 ```
 
+#### User Errors
+
+```
+$ etcd -name infra0 -advertise-peer-urls http://10.0.1.10:2379 -discovery https://discovery.etcd.io/3e86b59982e49066c5d813af1c2e2579cbf573de
+etcd: error: the cluster using discovery https://discovery.etcd.io/3e86b59982e49066c5d813af1c2e2579cbf573de has already started with all 5 members
+exit 1
+```
+
+#### Warnings
+
+This is a harmless warning notifying you that the discovery URL will be
+ignored on this machine.
+
 ```
 $ etcd -name infra0 -advertise-peer-urls http://10.0.1.10:2379 -discovery https://discovery.etcd.io/3e86b59982e49066c5d813af1c2e2579cbf573de
 etcd: warn: ignoring discovery URL: etcd has already been initialized and has a valid log in /var/lib/etcd
-exit 1
 ```
 
 # 0.4 to 0.5+ Migration Guide
@@ -153,6 +161,6 @@ To make understanding this feature easier, we changed the naming of some flags, 
 |-----------------------|-----------------------|---------------------------------------------------------------------------------------|
 |-peer-addr		|-advertise-peer-urls 	|If specified, peer-addr will be used as the only peer URL. Error if both flags specified.|
 |-addr			|-advertise-client-urls	|If specified, addr will be used as the only client URL. Error if both flags specified.|
-|-peer-bind-addr	|-listen-peer-urls	|If specified, peer-bind-addr will be used as the only peer URL. Error if both flags specified.|
-|-bind-addr		|-listen-client-urls	|If specified, bind-addr will be used as the only client URL. Error if both flags specified.|
+|-peer-bind-addr	|-listen-peer-urls	|If specified, peer-bind-addr will be used as the only peer bind URL. Error if both flags specified.|
+|-bind-addr		|-listen-client-urls	|If specified, bind-addr will be used as the only client bind URL. Error if both flags specified.|
 |-peers			|none			|Deprecated. The -initial-cluster flag provides a similar concept with different semantics. Please read this guide on cluster startup.|
