@@ -1059,6 +1059,7 @@ func (s *storeRecorder) DeleteExpiredKeys(cutoff time.Time) {
 type stubWatcher struct{}
 
 func (w *stubWatcher) EventChan() chan *store.Event { return nil }
+func (w *stubWatcher) StartIndex() uint64           { return 0 }
 func (w *stubWatcher) Remove()                      {}
 
 // errStoreRecorder returns an store error on Get, Watch request
