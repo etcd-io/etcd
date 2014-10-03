@@ -10,6 +10,7 @@
 
 	It has these top-level messages:
 		Request
+		Info
 */
 package etcdserverpb
 
@@ -50,6 +51,15 @@ type Request struct {
 func (m *Request) Reset()         { *m = Request{} }
 func (m *Request) String() string { return proto.CompactTextString(m) }
 func (*Request) ProtoMessage()    {}
+
+type Info struct {
+	ID               uint64 `protobuf:"varint,1,req" json:"ID"`
+	XXX_unrecognized []byte `json:"-"`
+}
+
+func (m *Info) Reset()         { *m = Info{} }
+func (m *Info) String() string { return proto.CompactTextString(m) }
+func (*Info) ProtoMessage()    {}
 
 func init() {
 }
@@ -378,6 +388,63 @@ func (m *Request) Unmarshal(data []byte) error {
 	}
 	return nil
 }
+func (m *Info) Unmarshal(data []byte) error {
+	l := len(data)
+	index := 0
+	for index < l {
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if index >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[index]
+			index++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return code_google_com_p_gogoprotobuf_proto.ErrWrongType
+			}
+			for shift := uint(0); ; shift += 7 {
+				if index >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[index]
+				index++
+				m.ID |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		default:
+			var sizeOfWire int
+			for {
+				sizeOfWire++
+				wire >>= 7
+				if wire == 0 {
+					break
+				}
+			}
+			index -= sizeOfWire
+			skippy, err := code_google_com_p_gogoprotobuf_proto.Skip(data[index:])
+			if err != nil {
+				return err
+			}
+			if (index + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, data[index:index+skippy]...)
+			index += skippy
+		}
+	}
+	return nil
+}
 func (m *Request) Size() (n int) {
 	var l int
 	_ = l
@@ -403,6 +470,15 @@ func (m *Request) Size() (n int) {
 	n += 2
 	n += 1 + sovEtcdserver(uint64(m.Time))
 	n += 3
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
+	return n
+}
+func (m *Info) Size() (n int) {
+	var l int
+	_ = l
+	n += 1 + sovEtcdserver(uint64(m.ID))
 	if m.XXX_unrecognized != nil {
 		n += len(m.XXX_unrecognized)
 	}
@@ -528,6 +604,29 @@ func (m *Request) MarshalTo(data []byte) (n int, err error) {
 		data[i] = 0
 	}
 	i++
+	if m.XXX_unrecognized != nil {
+		i += copy(data[i:], m.XXX_unrecognized)
+	}
+	return i, nil
+}
+func (m *Info) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *Info) MarshalTo(data []byte) (n int, err error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	data[i] = 0x8
+	i++
+	i = encodeVarintEtcdserver(data, i, uint64(m.ID))
 	if m.XXX_unrecognized != nil {
 		i += copy(data[i:], m.XXX_unrecognized)
 	}

@@ -58,19 +58,11 @@ func (d *decoder) close() error {
 	return d.c.Close()
 }
 
-func mustUnmarshalInfo(d []byte) raftpb.Info {
-	var i raftpb.Info
-	if err := i.Unmarshal(d); err != nil {
-		// crc matched, but we cannot unmarshal the struct?!
-		// we must be the next winner of the $1B lottery.
-		panic(err)
-	}
-	return i
-}
-
 func mustUnmarshalEntry(d []byte) raftpb.Entry {
 	var e raftpb.Entry
 	if err := e.Unmarshal(d); err != nil {
+		// crc matched, but we cannot unmarshal the struct?!
+		// we must be the next winner of the $1B lottery.
 		panic(err)
 	}
 	return e

@@ -27,6 +27,11 @@ import (
 	"github.com/coreos/etcd/wal/walpb"
 )
 
+var (
+	infoData   = []byte("\b\xef\xfd\x02")
+	infoRecord = append([]byte("\x0e\x00\x00\x00\x00\x00\x00\x00\b\x01\x10\x99\xb5\xe4\xd0\x03\x1a\x04"), infoData...)
+)
+
 func TestReadRecord(t *testing.T) {
 	badInfoRecord := make([]byte, len(infoRecord))
 	copy(badInfoRecord, infoRecord)

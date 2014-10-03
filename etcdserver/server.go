@@ -116,7 +116,12 @@ func NewServer(cfg *ServerConfig) *EtcdServer {
 		} else if (cfg.ClusterState) != ClusterStateValueNew {
 			log.Fatalf("etcd: initial cluster state unset and no wal or discovery URL found")
 		}
-		if w, err = wal.Create(waldir); err != nil {
+		i := pb.Info{ID: m.ID}
+		b, err := i.Marshal()
+		if err != nil {
+			log.Fatal(err)
+		}
+		if w, err = wal.Create(waldir, b); err != nil {
 			log.Fatal(err)
 		}
 		// TODO: add context for PeerURLs
@@ -140,13 +145,17 @@ func NewServer(cfg *ServerConfig) *EtcdServer {
 		if w, err = wal.OpenAtIndex(waldir, index); err != nil {
 			log.Fatal(err)
 		}
-		wid, st, ents, err := w.ReadAll()
+		md, st, ents, err := w.ReadAll()
 		if err != nil {
 			log.Fatal(err)
 		}
+		var info pb.Info
+		if err := info.Unmarshal(md); err != nil {
+			log.Fatal(err)
+		}
 		// TODO(xiangli): save/recovery nodeID?
-		if wid != 0 {
-			log.Fatalf("unexpected nodeid %d: nodeid should always be zero until we save nodeid into wal", wid)
+		if info.ID != m.ID {
+			log.Fatalf("unexpected nodeid %x, want %x: nodeid should always be the same until we support name/peerURLs update or dynamic configuration", info.ID, m.ID)
 		}
 		n = raft.RestartNode(m.ID, cfg.Cluster.IDs(), 10, 1, snapshot, st, ents)
 	}

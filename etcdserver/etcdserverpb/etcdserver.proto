@@ -25,3 +25,7 @@ message Request {
 	required int64  Time       = 15 [(gogoproto.nullable) = false];
 	required bool   Stream     = 16 [(gogoproto.nullable) = false];
 }
+
+message Info {
+	required uint64 ID   = 1 [(gogoproto.nullable) = false];
+}
