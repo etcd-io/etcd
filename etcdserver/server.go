@@ -530,6 +530,9 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange) {
 		if err := json.Unmarshal(cc.Context, &m); err != nil {
 			panic("unexpected unmarshal error")
 		}
+		if cc.NodeID != m.ID {
+			panic("unmatch node id")
+		}
 		s.ClusterStore.Create(m)
 	case raftpb.ConfChangeRemoveNode:
 		s.ClusterStore.Delete(cc.NodeID)
