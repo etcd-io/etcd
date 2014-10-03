@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/etcdhttp"
@@ -27,7 +26,6 @@ const (
 
 var (
 	name         = flag.String("name", "default", "Unique human-readable name for this node")
-	timeout      = flag.Duration("timeout", 10*time.Second, "Request Timeout")
 	dir          = flag.String("data-dir", "", "Path to the data directory")
 	snapCount    = flag.Uint64("snapshot-count", etcdserver.DefaultSnapCount, "Number of committed transactions to trigger a snapshot")
 	printVersion = flag.Bool("version", false, "Print the version and exit")
@@ -150,7 +148,7 @@ func startEtcd() {
 	s.Start()
 
 	ch := &pkg.CORSHandler{
-		Handler: etcdhttp.NewClientHandler(s, *timeout),
+		Handler: etcdhttp.NewClientHandler(s),
 		Info:    cors,
 	}
 	ph := etcdhttp.NewPeerHandler(s)
