@@ -2,8 +2,92 @@ package etcdserver
 
 import (
 	"reflect"
+	"sort"
 	"testing"
 )
+
+func TestClusterAddSlice(t *testing.T) {
+	tests := []struct {
+		mems []Member
+
+		want *Cluster
+	}{
+		{
+			[]Member{},
+
+			&Cluster{},
+		},
+		{
+			[]Member{
+				{ID: 1, PeerURLs: []string{"foo", "bar"}},
+				{ID: 2, PeerURLs: []string{"baz"}},
+			},
+
+			&Cluster{
+				1: &Member{
+					ID:       1,
+					PeerURLs: []string{"foo", "bar"},
+				},
+				2: &Member{
+					ID:       2,
+					PeerURLs: []string{"baz"},
+				},
+			},
+		},
+	}
+	for i, tt := range tests {
+		c := &Cluster{}
+		if err := c.AddSlice(tt.mems); err != nil {
+			t.Errorf("#%d: err=%#v, want nil", i, err)
+			continue
+		}
+		if !reflect.DeepEqual(c, tt.want) {
+			t.Errorf("#%d: c=%#v, want %#v", i, c, tt.want)
+		}
+	}
+}
+
+func TestClusterAddSliceBad(t *testing.T) {
+	c := Cluster{
+		1: &Member{ID: 1},
+	}
+	if err := c.AddSlice([]Member{{ID: 1}}); err == nil {
+		t.Error("want err, but got nil")
+	}
+}
+
+func TestClusterPick(t *testing.T) {
+	cs := Cluster{
+		1: &Member{ID: 1, PeerURLs: []string{"abc", "def", "ghi", "jkl", "mno", "pqr", "stu"}},
+		2: &Member{ID: 2, PeerURLs: []string{"xyz"}},
+		3: &Member{ID: 3, PeerURLs: []string{}},
+	}
+	ids := map[string]bool{
+		"abc": true,
+		"def": true,
+		"ghi": true,
+		"jkl": true,
+		"mno": true,
+		"pqr": true,
+		"stu": true,
+	}
+	for i := 0; i < 1000; i++ {
+		a := cs.Pick(1)
+		if !ids[a] {
+			t.Errorf("returned ID %q not in expected range!", a)
+			break
+		}
+	}
+	if b := cs.Pick(2); b != "xyz" {
+		t.Errorf("id=%q, want %q", b, "xyz")
+	}
+	if c := cs.Pick(3); c != "" {
+		t.Errorf("id=%q, want %q", c, "")
+	}
+	if d := cs.Pick(4); d != "" {
+		t.Errorf("id=%q, want %q", d, "")
+	}
+}
 
 func TestClusterFind(t *testing.T) {
 	tests := []struct {
@@ -72,9 +156,8 @@ func TestClusterFind(t *testing.T) {
 
 func TestClusterSet(t *testing.T) {
 	tests := []struct {
-		f     string
-		mems  []Member
-		parse bool
+		f    string
+		mems []Member
 	}{
 		{
 			"mem1=http://10.0.0.1:2379,mem1=http://128.193.4.20:2379,mem2=http://10.0.0.2:2379,default=http://127.0.0.1:2379",
@@ -83,13 +166,11 @@ func TestClusterSet(t *testing.T) {
 				{ID: 5674507346857578431, Name: "mem2", PeerURLs: []string{"http://10.0.0.2:2379"}},
 				{ID: 2676999861503984872, Name: "default", PeerURLs: []string{"http://127.0.0.1:2379"}},
 			},
-			true,
 		},
 	}
 	for i, tt := range tests {
 		c := Cluster{}
-		err := c.AddSlice(tt.mems)
-		if err != nil {
+		if err := c.AddSlice(tt.mems); err != nil {
 			t.Error(err)
 		}
 
@@ -104,6 +185,9 @@ func TestClusterSet(t *testing.T) {
 
 func TestClusterSetBad(t *testing.T) {
 	tests := []string{
+		// invalid URL
+		"%^",
+		// no URL defined for member
 		"mem1=,mem2=http://128.193.4.20:2379,mem3=http://10.0.0.2:2379",
 		"mem1,mem2=http://128.193.4.20:2379,mem3=http://10.0.0.2:2379",
 		// TODO(philips): anyone know of a 64 bit sha1 hash collision
@@ -111,34 +195,44 @@ func TestClusterSetBad(t *testing.T) {
 	}
 	for i, tt := range tests {
 		g := Cluster{}
-		err := g.Set(tt)
-		if err == nil {
+		if err := g.Set(tt); err == nil {
 			t.Errorf("#%d: set = %v, want err", i, tt)
 		}
 	}
 }
 
-func TestClusterAddBad(t *testing.T) {
-	tests := []struct {
-		mems []Member
-	}{
-		{
-			[]Member{
-				{ID: 1, Name: "mem1"},
-				{ID: 1, Name: "mem2"},
-			},
-		},
-	}
+type int64slice []int64
 
+func (a int64slice) Len() int           { return len(a) }
+func (a int64slice) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a int64slice) Less(i, j int) bool { return a[i] < a[j] }
+
+func TestClusterIDs(t *testing.T) {
+	cs := Cluster{}
+	cs.AddSlice([]Member{
+		{ID: 1},
+		{ID: 4},
+		{ID: 100},
+	})
+	w := int64slice([]int64{1, 4, 100})
+	g := int64slice(cs.IDs())
+	sort.Sort(g)
+	if !reflect.DeepEqual(w, g) {
+		t.Errorf("IDs=%+v, want %+v", g, w)
+	}
+}
+
+func TestClusterAddBad(t *testing.T) {
+	// Should not be possible to add the same ID multiple times
+	mems := []Member{
+		{ID: 1, Name: "mem1"},
+		{ID: 1, Name: "mem2"},
+	}
 	c := &Cluster{}
 	c.Add(Member{ID: 1, Name: "mem1"})
-
-	for i, tt := range tests {
-		for _, m := range tt.mems {
-			err := c.Add(m)
-			if err == nil {
-				t.Errorf("#%d: set = %v, want err", i, m)
-			}
+	for i, m := range mems {
+		if err := c.Add(m); err == nil {
+			t.Errorf("#%d: set = %v, want err", i, m)
 		}
 	}
 }
