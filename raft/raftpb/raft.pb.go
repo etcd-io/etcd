@@ -70,15 +70,18 @@ type ConfChangeType int32
 const (
 	ConfChangeAddNode    ConfChangeType = 0
 	ConfChangeRemoveNode ConfChangeType = 1
+	ConfChangeBootstrap  ConfChangeType = 2
 )
 
 var ConfChangeType_name = map[int32]string{
 	0: "ConfChangeAddNode",
 	1: "ConfChangeRemoveNode",
+	2: "ConfChangeBootstrap",
 }
 var ConfChangeType_value = map[string]int32{
 	"ConfChangeAddNode":    0,
 	"ConfChangeRemoveNode": 1,
+	"ConfChangeBootstrap":  2,
 }
 
 func (x ConfChangeType) Enum() *ConfChangeType {
