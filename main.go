@@ -6,7 +6,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"path"
 	"strings"
 	"time"
 
@@ -129,11 +128,6 @@ func startEtcd() {
 	if err := os.MkdirAll(*dir, privateDirMode); err != nil {
 		log.Fatalf("main: cannot create data directory: %v", err)
 	}
-	snapdir := path.Join(*dir, "snap")
-	if err := os.MkdirAll(snapdir, privateDirMode); err != nil {
-		log.Fatalf("main: cannot create snapshot directory: %v", err)
-	}
-	waldir := path.Join(*dir, "wal")
 
 	pt, err := transport.NewTransport(peerTLSInfo)
 	if err != nil {
@@ -147,9 +141,8 @@ func startEtcd() {
 	cfg := &etcdserver.ServerConfig{
 		Name:       *name,
 		ClientURLs: acurls,
-		SnapDir:    snapdir,
+		DataDir:    *dir,
 		SnapCount:  int64(*snapCount),
-		WalDir:     waldir,
 		Cluster:    cluster,
 		Transport:  pt,
 	}

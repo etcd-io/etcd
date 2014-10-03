@@ -6,6 +6,8 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"os"
+	"path"
 	"sync/atomic"
 	"time"
 
@@ -21,9 +23,12 @@ import (
 )
 
 const (
+	// owner can make/remove files inside the directory
+	privateDirMode = 0700
+
 	defaultSyncTimeout = time.Second
 	DefaultSnapCount   = 10000
-	// TODO: calculated based on heartbeat interval
+	// TODO: calculate based on heartbeat interval
 	defaultPublishRetryInterval = 5 * time.Second
 )
 
@@ -82,9 +87,8 @@ type RaftTimer interface {
 type ServerConfig struct {
 	Name       string
 	ClientURLs types.URLs
-	SnapDir    string
+	DataDir    string
 	SnapCount  int64
-	WalDir     string
 	Cluster    *Cluster
 	Transport  *http.Transport
 }
@@ -97,13 +101,18 @@ func NewServer(cfg *ServerConfig) *EtcdServer {
 		// Should never happen
 		log.Fatalf("could not find name %v in cluster!", cfg.Name)
 	}
+	snapdir := path.Join(cfg.DataDir, "snap")
+	if err := os.MkdirAll(snapdir, privateDirMode); err != nil {
+		log.Fatalf("etcdserver: cannot create snapshot directory: %v", err)
+	}
+	ss := snap.New(snapdir)
 	st := store.New()
-	ss := snap.New(cfg.SnapDir)
 	var w *wal.WAL
 	var n raft.Node
 	var err error
-	if !wal.Exist(cfg.WalDir) {
-		if w, err = wal.Create(cfg.WalDir); err != nil {
+	waldir := path.Join(cfg.DataDir, "wal")
+	if !wal.Exist(waldir) {
+		if w, err = wal.Create(waldir); err != nil {
 			log.Fatal(err)
 		}
 		n = raft.StartNode(m.ID, cfg.Cluster.IDs(), 10, 1)
@@ -120,7 +129,7 @@ func NewServer(cfg *ServerConfig) *EtcdServer {
 		}
 
 		// restart a node from previous wal
-		if w, err = wal.OpenAtIndex(cfg.WalDir, index); err != nil {
+		if w, err = wal.OpenAtIndex(waldir, index); err != nil {
 			log.Fatal(err)
 		}
 		wid, st, ents, err := w.ReadAll()
