@@ -27,6 +27,7 @@ const (
 var (
 	name         = flag.String("name", "default", "Unique human-readable name for this node")
 	dir          = flag.String("data-dir", "", "Path to the data directory")
+	durl         = flag.String("discovery", "", "Discovery service used to bootstrap the cluster")
 	snapCount    = flag.Uint64("snapshot-count", etcdserver.DefaultSnapCount, "Number of committed transactions to trigger a snapshot")
 	printVersion = flag.Bool("version", false, "Print the version and exit")
 
@@ -97,6 +98,9 @@ func main() {
 	}
 
 	pkg.SetFlagsFromEnv(flag.CommandLine)
+	if err := setClusterForDiscovery(); err != nil {
+		log.Fatalf("etcd: %v", err)
+	}
 
 	if string(*proxyFlag) == flagtypes.ProxyValueOff {
 		startEtcd()
@@ -137,12 +141,13 @@ func startEtcd() {
 		log.Fatal(err.Error())
 	}
 	cfg := &etcdserver.ServerConfig{
-		Name:       *name,
-		ClientURLs: acurls,
-		DataDir:    *dir,
-		SnapCount:  int64(*snapCount),
-		Cluster:    cluster,
-		Transport:  pt,
+		Name:         *name,
+		ClientURLs:   acurls,
+		DataDir:      *dir,
+		SnapCount:    int64(*snapCount),
+		Cluster:      cluster,
+		Transport:    pt,
+		DiscoveryURL: *durl,
 	}
 	s := etcdserver.NewServer(cfg)
 	s.Start()
@@ -230,4 +235,28 @@ func startProxy() {
 			log.Fatal(http.Serve(l, ph))
 		}()
 	}
+}
+
+// setClusterForDiscovery sets cluster to a temporary value if you are using
+// the discovery.
+func setClusterForDiscovery() error {
+	set := make(map[string]bool)
+	flag.Visit(func(f *flag.Flag) {
+		set[f.Name] = true
+	})
+	if set["discovery"] && set["bootstrap-config"] {
+		return fmt.Errorf("both discovery and bootstrap-config are set")
+	}
+	if set["discovery"] {
+		apurls, err := pkg.URLsFromFlags(flag.CommandLine, "advertise-peer-urls", "addr", peerTLSInfo)
+		if err != nil {
+			return err
+		}
+		addrs := make([]string, len(apurls))
+		for i := range apurls {
+			addrs[i] = apurls[i].String()
+		}
+		cluster.Set(fmt.Sprintf("%s=%s", *name, strings.Join(addrs, ",")))
+	}
+	return nil
 }

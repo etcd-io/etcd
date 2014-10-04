@@ -3,13 +3,15 @@ package discovery
 import (
 	"errors"
 	"fmt"
+	"net/http"
+	"net/url"
 	"path"
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/coreos/etcd/client"
-	"github.com/coreos/etcd/etcdserver/etcdhttp"
 )
 
 var (
@@ -21,40 +23,66 @@ var (
 	ErrFullCluster   = errors.New("discovery: cluster is full")
 )
 
+type Discoverer interface {
+	Discover() (string, error)
+}
+
 type discovery struct {
 	cluster string
 	id      int64
-	ctx     []byte
+	config  string
 	c       client.Client
 }
 
-func (d *discovery) discover() (*etcdhttp.Peers, error) {
+func New(durl string, id int64, config string) (Discoverer, error) {
+	u, err := url.Parse(durl)
+	if err != nil {
+		return nil, err
+	}
+	token := u.Path
+	u.Path = ""
+	client, err := client.NewHTTPClient(&http.Transport{}, u.String(), time.Second*5)
+	if err != nil {
+		return nil, err
+	}
+	// discovery service redirects /[key] to /v2/keys/[key]
+	// set the prefix of client to "" to handle this
+	client.SetPrefix("")
+	return &discovery{
+		cluster: token,
+		id:      id,
+		config:  config,
+		c:       client,
+	}, nil
+}
+
+func (d *discovery) Discover() (string, error) {
 	// fast path: if the cluster is full, returns the error
 	// do not need to register itself to the cluster in this
 	// case.
 	if _, _, err := d.checkCluster(); err != nil {
-		return nil, err
+		return "", err
 	}
 
 	if err := d.createSelf(); err != nil {
-		return nil, err
+		return "", err
 	}
 
 	nodes, size, err := d.checkCluster()
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
 	all, err := d.waitNodes(nodes, size)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
-	return nodesToPeers(all)
+	return nodesToCluster(all), nil
 }
 
 func (d *discovery) createSelf() error {
-	resp, err := d.c.Create(d.selfKey(), string(d.ctx), 0)
+	resp, err := d.c.Create(d.selfKey(), d.config, -1)
 	if err != nil {
 		return err
 	}
@@ -87,7 +115,7 @@ func (d *discovery) checkCluster() (client.Nodes, int, error) {
 	nodes := make(client.Nodes, 0)
 	// append non-config keys to nodes
 	for _, n := range resp.Node.Nodes {
-		if !strings.HasPrefix(n.Key, configKey) {
+		if !strings.Contains(n.Key, configKey) {
 			nodes = append(nodes, n)
 		}
 	}
@@ -97,7 +125,7 @@ func (d *discovery) checkCluster() (client.Nodes, int, error) {
 
 	// find self position
 	for i := range nodes {
-		if nodes[i].Key == d.selfKey() {
+		if strings.Contains(nodes[i].Key, d.selfKey()) {
 			break
 		}
 		if i >= size-1 {
@@ -111,7 +139,7 @@ func (d *discovery) waitNodes(nodes client.Nodes, size int) (client.Nodes, error
 	if len(nodes) > size {
 		nodes = nodes[:size]
 	}
-	w := d.c.RecursiveWatch(d.cluster, nodes[len(nodes)-1].ModifiedIndex)
+	w := d.c.RecursiveWatch(d.cluster, nodes[len(nodes)-1].ModifiedIndex+1)
 	all := make(client.Nodes, len(nodes))
 	copy(all, nodes)
 	// wait for others
@@ -129,17 +157,12 @@ func (d *discovery) selfKey() string {
 	return path.Join("/", d.cluster, fmt.Sprintf("%d", d.id))
 }
 
-func nodesToPeers(ns client.Nodes) (*etcdhttp.Peers, error) {
+func nodesToCluster(ns client.Nodes) string {
 	s := make([]string, len(ns))
 	for i, n := range ns {
 		s[i] = n.Value
 	}
-
-	var peers etcdhttp.Peers
-	if err := peers.Set(strings.Join(s, "&")); err != nil {
-		return nil, err
-	}
-	return &peers, nil
+	return strings.Join(s, ",")
 }
 
 type sortableNodes struct{ client.Nodes }
