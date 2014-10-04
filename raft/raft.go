@@ -184,7 +184,12 @@ func (r *raft) poll(id int64, v bool) (granted int) {
 // send persists state to stable storage and then sends to its mailbox.
 func (r *raft) send(m pb.Message) {
 	m.From = r.id
-	m.Term = r.Term
+	// do not attach term to msgProp
+	// proposals are a way to forward to the leader and
+	// should be treated as local message.
+	if m.Type != msgProp {
+		m.Term = r.Term
+	}
 	r.msgs = append(r.msgs, m)
 }
 
