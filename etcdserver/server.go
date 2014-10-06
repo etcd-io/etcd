@@ -91,6 +91,7 @@ type ServerConfig struct {
 	DataDir      string
 	SnapCount    int64
 	Cluster      *Cluster
+	ClusterState ClusterState
 	Transport    *http.Transport
 }
 
@@ -125,6 +126,8 @@ func NewServer(cfg *ServerConfig) *EtcdServer {
 			if err = cfg.Cluster.Set(s); err != nil {
 				log.Fatalf("etcd: %v", err)
 			}
+		} else if (cfg.ClusterState) != ClusterStateValueNew {
+			log.Fatalf("etcd: initial cluster state unset and no wal or discovery URL found")
 		}
 		if w, err = wal.Create(waldir); err != nil {
 			log.Fatal(err)
