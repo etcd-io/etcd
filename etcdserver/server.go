@@ -11,6 +11,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/coreos/etcd/discovery"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft"
@@ -84,12 +85,13 @@ type RaftTimer interface {
 }
 
 type ServerConfig struct {
-	Name       string
-	ClientURLs types.URLs
-	DataDir    string
-	SnapCount  int64
-	Cluster    *Cluster
-	Transport  *http.Transport
+	Name         string
+	DiscoveryURL string
+	ClientURLs   types.URLs
+	DataDir      string
+	SnapCount    int64
+	Cluster      *Cluster
+	Transport    *http.Transport
 }
 
 // NewServer creates a new EtcdServer from the supplied configuration. The
@@ -111,6 +113,19 @@ func NewServer(cfg *ServerConfig) *EtcdServer {
 	var err error
 	waldir := path.Join(cfg.DataDir, "wal")
 	if !wal.Exist(waldir) {
+		if cfg.DiscoveryURL != "" {
+			d, err := discovery.New(cfg.DiscoveryURL, m.ID, cfg.Cluster.String())
+			if err != nil {
+				log.Fatalf("etcd: cannot init discovery %v", err)
+			}
+			s, err := d.Discover()
+			if err != nil {
+				log.Fatalf("etcd: %v", err)
+			}
+			if err = cfg.Cluster.Set(s); err != nil {
+				log.Fatalf("etcd: %v", err)
+			}
+		}
 		if w, err = wal.Create(waldir); err != nil {
 			log.Fatal(err)
 		}
