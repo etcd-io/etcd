@@ -1,6 +1,7 @@
 # Clustering Guide
 
-This guide will walk you through configuring a three machine etcd cluster with the following details:
+This guide will walk you through configuring a three machine etcd cluster with
+the following details:
 
 |Name	|Address	|
 |-------|---------------|
@@ -50,7 +51,7 @@ enumerated nodes. If this is a new cluster, the node must be added to the list
 of initial cluster members.
 ```
 $ etcd -name infra1 -advertise-peer-urls http://10.0.1.11:2379 \
-	-initial-cluster infra0=http://10.0.1.10:2379
+	-initial-cluster infra0=http://10.0.1.10:2379 \
 	-initial-cluster-state new
 etcd: infra1 not listed in the initial cluster config
 exit 1
@@ -155,7 +156,9 @@ advertise multiple addresses. This makes using etcd easier when you have
 complex networking, such as private and public networks on various cloud
 providers.
 
-To make understanding this feature easier, we changed the naming of some flags, but we support the old flags to make the migration from the old to new version easier.
+To make understanding this feature easier, we changed the naming of some flags,
+but we support the old flags to make the migration from the old to new version
+easier.
 
 |Old Flag		|New Flag		|Migration Behavior									|
 |-----------------------|-----------------------|---------------------------------------------------------------------------------------|
@@ -164,3 +167,4 @@ To make understanding this feature easier, we changed the naming of some flags, 
 |-peer-bind-addr	|-listen-peer-urls	|If specified, peer-bind-addr will be used as the only peer bind URL. Error if both flags specified.|
 |-bind-addr		|-listen-client-urls	|If specified, bind-addr will be used as the only client bind URL. Error if both flags specified.|
 |-peers			|none			|Deprecated. The -initial-cluster flag provides a similar concept with different semantics. Please read this guide on cluster startup.|
+|-peers-file		|none			|Deprecated. The -initial-cluster flag provides a similar concept with different semantics. Please read this guide on cluster startup.|
