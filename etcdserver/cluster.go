@@ -100,6 +100,7 @@ func (c Cluster) IDs() []int64 {
 	for _, m := range c {
 		ids = append(ids, m.ID)
 	}
+	sort.Sort(types.Int64Slice(ids))
 	return ids
 }
 

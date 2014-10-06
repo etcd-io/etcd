@@ -2,10 +2,7 @@ package etcdserver
 
 import (
 	"reflect"
-	"sort"
 	"testing"
-
-	"github.com/coreos/etcd/pkg/types"
 )
 
 func TestClusterAddSlice(t *testing.T) {
@@ -210,9 +207,8 @@ func TestClusterIDs(t *testing.T) {
 		{ID: 4},
 		{ID: 100},
 	})
-	w := types.Int64Slice([]int64{1, 4, 100})
-	g := types.Int64Slice(cs.IDs())
-	sort.Sort(g)
+	w := []int64{1, 4, 100}
+	g := cs.IDs()
 	if !reflect.DeepEqual(w, g) {
 		t.Errorf("IDs=%+v, want %+v", g, w)
 	}

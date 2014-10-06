@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"os"
 	"path"
-	"sort"
 	"sync/atomic"
 	"time"
 
@@ -130,14 +129,8 @@ func NewServer(cfg *ServerConfig) *EtcdServer {
 		if w, err = wal.Create(waldir); err != nil {
 			log.Fatal(err)
 		}
-		ids := cfg.Cluster.IDs()
-		sort.Sort(types.Int64Slice(ids))
-		ccs := make([]raftpb.ConfChange, len(ids))
-		for i, id := range ids {
-			// TODO: add context for PeerURLs
-			ccs[i] = raftpb.ConfChange{Type: raftpb.ConfChangeAddNode, NodeID: id}
-		}
-		n = raft.StartNode(m.ID, cfg.Cluster.IDs(), 10, 1, ccs)
+		// TODO: add context for PeerURLs
+		n = raft.StartNode(m.ID, cfg.Cluster.IDs(), 10, 1)
 	} else {
 		var index int64
 		snapshot, err := ss.Load()

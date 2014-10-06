@@ -101,21 +101,23 @@ type Node interface {
 
 // StartNode returns a new Node given a unique raft id, a list of raft peers, and
 // the election and heartbeat timeouts in units of ticks.
-// It also wraps ConfChanges in entry and puts them at the head of the log.
-func StartNode(id int64, peers []int64, election, heartbeat int, ccs []pb.ConfChange) Node {
+// It also builds ConfChangeAddNode entry for each peer and puts them at the head of the log.
+func StartNode(id int64, peers []int64, election, heartbeat int) Node {
 	n := newNode()
 	r := newRaft(id, peers, election, heartbeat)
-	ents := make([]pb.Entry, len(ccs))
-	for i, cc := range ccs {
+
+	ents := make([]pb.Entry, len(peers))
+	for i, peer := range peers {
+		cc := pb.ConfChange{Type: pb.ConfChangeAddNode, NodeID: peer}
 		data, err := cc.Marshal()
 		if err != nil {
 			panic("unexpected marshal error")
 		}
 		ents[i] = pb.Entry{Type: pb.EntryConfChange, Term: 1, Index: int64(i + 1), Data: data}
 	}
-	if !r.raftLog.maybeAppend(0, 0, int64(len(ccs)), ents...) {
-		panic("unexpected append failure")
-	}
+	r.raftLog.append(0, ents...)
+	r.raftLog.committed = int64(len(ents))
+
 	go n.run(r)
 	return &n
 }
