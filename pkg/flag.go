@@ -12,21 +12,38 @@ import (
 	"github.com/coreos/etcd/pkg/transport"
 )
 
+// DeprecatedFlag encapsulates a flag that may have been previously valid but
+// is now deprecated. If a DeprecatedFlag is set, an error occurs.
 type DeprecatedFlag struct {
 	Name string
 }
 
+func (f *DeprecatedFlag) Set(_ string) error {
+	return fmt.Errorf(`flag "-%s" is no longer supported.`, f.Name)
+}
+
+func (f *DeprecatedFlag) String() string {
+	return ""
+}
+
+// IgnoredFlag encapsulates a flag that may have been previously valid but is
+// now ignored. If an IgnoredFlag is set, a warning is printed and
+// operation continues.
+type IgnoredFlag struct {
+	Name string
+}
+
 // IsBoolFlag is defined to allow the flag to be defined without an argument
-func (df *DeprecatedFlag) IsBoolFlag() bool {
+func (f *IgnoredFlag) IsBoolFlag() bool {
 	return true
 }
 
-func (df *DeprecatedFlag) Set(s string) error {
-	log.Printf("WARNING: flag \"-%s\" is no longer supported.", df.Name)
+func (f *IgnoredFlag) Set(s string) error {
+	log.Printf(`WARNING: flag "-%s" is no longer supported - ignoring.`, f.Name)
 	return nil
 }
 
-func (df *DeprecatedFlag) String() string {
+func (f *IgnoredFlag) String() string {
 	return ""
 }
 
