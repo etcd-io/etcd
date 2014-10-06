@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"sort"
 	"sync/atomic"
 	"time"
 
@@ -129,7 +130,14 @@ func NewServer(cfg *ServerConfig) *EtcdServer {
 		if w, err = wal.Create(waldir); err != nil {
 			log.Fatal(err)
 		}
-		n = raft.StartNode(m.ID, cfg.Cluster.IDs(), 10, 1)
+		ids := cfg.Cluster.IDs()
+		sort.Sort(int64Slice(ids))
+		ccs := make([]raftpb.ConfChange, len(ids))
+		for i, id := range ids {
+			// TODO: add context for PeerURLs
+			ccs[i] = raftpb.ConfChange{Type: raftpb.ConfChangeAddNode, NodeID: id}
+		}
+		n = raft.StartNode(m.ID, cfg.Cluster.IDs(), 10, 1, ccs)
 	} else {
 		var index int64
 		snapshot, err := ss.Load()
@@ -552,3 +560,10 @@ func getBool(v *bool) (vv bool, set bool) {
 	}
 	return *v, true
 }
+
+// int64Slice implements sort interface
+type int64Slice []int64
+
+func (p int64Slice) Len() int           { return len(p) }
+func (p int64Slice) Less(i, j int) bool { return p[i] < p[j] }
+func (p int64Slice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }

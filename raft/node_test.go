@@ -149,21 +149,33 @@ func TestNode(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	cc := raftpb.ConfChange{Type: raftpb.ConfChangeAddNode, NodeID: 1}
+	ccdata, err := cc.Marshal()
+	if err != nil {
+		t.Fatalf("unexpected marshal error: %v", err)
+	}
 	wants := []Ready{
 		{
-			SoftState:        &SoftState{Lead: 1, RaftState: StateLeader},
-			HardState:        raftpb.HardState{Term: 1, Commit: 1},
-			Entries:          []raftpb.Entry{{}, {Term: 1, Index: 1}},
-			CommittedEntries: []raftpb.Entry{{Term: 1, Index: 1}},
+			SoftState: &SoftState{Lead: 1, RaftState: StateLeader},
+			HardState: raftpb.HardState{Term: 1, Commit: 2},
+			Entries: []raftpb.Entry{
+				{},
+				{Type: raftpb.EntryConfChange, Term: 1, Index: 1, Data: ccdata},
+				{Term: 1, Index: 2},
+			},
+			CommittedEntries: []raftpb.Entry{
+				{Type: raftpb.EntryConfChange, Term: 1, Index: 1, Data: ccdata},
+				{Term: 1, Index: 2},
+			},
 		},
 		{
-			HardState:        raftpb.HardState{Term: 1, Commit: 2},
-			Entries:          []raftpb.Entry{{Term: 1, Index: 2, Data: []byte("foo")}},
-			CommittedEntries: []raftpb.Entry{{Term: 1, Index: 2, Data: []byte("foo")}},
+			HardState:        raftpb.HardState{Term: 1, Commit: 3},
+			Entries:          []raftpb.Entry{{Term: 1, Index: 3, Data: []byte("foo")}},
+			CommittedEntries: []raftpb.Entry{{Term: 1, Index: 3, Data: []byte("foo")}},
 		},
 	}
 
-	n := StartNode(1, []int64{1}, 0, 0)
+	n := StartNode(1, []int64{1}, 0, 0, []raftpb.ConfChange{cc})
 	n.Campaign(ctx)
 	if g := <-n.Ready(); !reflect.DeepEqual(g, wants[0]) {
 		t.Errorf("#%d: g = %+v,\n             w   %+v", 1, g, wants[0])
