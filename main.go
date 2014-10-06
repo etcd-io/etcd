@@ -38,7 +38,7 @@ var (
 	clientTLSInfo = transport.TLSInfo{}
 	peerTLSInfo   = transport.TLSInfo{}
 
-	deprecated = []string{
+	ignored = []string{
 		"cluster-active-size",
 		"cluster-remove-delay",
 		"cluster-sync-interval",
@@ -83,13 +83,16 @@ func init() {
 	flag.Var(&flagtypes.IPAddressPort{}, "peer-addr", "DEPRECATED: Use -advertise-peer-urls instead.")
 	flag.Var(&flagtypes.IPAddressPort{}, "peer-bind-addr", "DEPRECATED: Use -listen-peer-urls instead.")
 
-	for _, f := range deprecated {
-		flag.Var(&pkg.DeprecatedFlag{f}, f, "")
+	for _, f := range ignored {
+		flag.Var(&pkg.IgnoredFlag{f}, f, "")
 	}
+
+	flag.Var(&pkg.DeprecatedFlag{"peers"}, "peers", "DEPRECATED: Use -bootstrap-config instead")
+	flag.Var(&pkg.DeprecatedFlag{"peers-file"}, "peers-file", "DEPRECATED: Use -bootstrap-config instead")
 }
 
 func main() {
-	flag.Usage = pkg.UsageWithIgnoredFlagsFunc(flag.CommandLine, deprecated)
+	flag.Usage = pkg.UsageWithIgnoredFlagsFunc(flag.CommandLine, ignored)
 	flag.Parse()
 
 	if *printVersion {
