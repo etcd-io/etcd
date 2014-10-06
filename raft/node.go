@@ -104,7 +104,12 @@ type Node interface {
 	ApplyConfChange(cc pb.ConfChange)
 	// Stop performs any necessary termination of the Node
 	Stop()
-	// Compact
+	// Compact discards the entrire log up to the given index. It also
+	// generates a raft snapshot containing the given nodes configuration
+	// and the given snapshot data.
+	// It is the caller's responsibility to ensure the given configuration
+	// and snapshot data match the actual point-in-time configuration and snapshot
+	// at the given index.
 	Compact(index int64, nodes []int64, d []byte)
 }
 
