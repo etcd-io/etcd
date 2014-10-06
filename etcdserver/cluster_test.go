@@ -4,6 +4,8 @@ import (
 	"reflect"
 	"sort"
 	"testing"
+
+	"github.com/coreos/etcd/pkg/types"
 )
 
 func TestClusterAddSlice(t *testing.T) {
@@ -201,12 +203,6 @@ func TestClusterSetBad(t *testing.T) {
 	}
 }
 
-type int64slice []int64
-
-func (a int64slice) Len() int           { return len(a) }
-func (a int64slice) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-func (a int64slice) Less(i, j int) bool { return a[i] < a[j] }
-
 func TestClusterIDs(t *testing.T) {
 	cs := Cluster{}
 	cs.AddSlice([]Member{
@@ -214,8 +210,8 @@ func TestClusterIDs(t *testing.T) {
 		{ID: 4},
 		{ID: 100},
 	})
-	w := int64slice([]int64{1, 4, 100})
-	g := int64slice(cs.IDs())
+	w := types.Int64Slice([]int64{1, 4, 100})
+	g := types.Int64Slice(cs.IDs())
 	sort.Sort(g)
 	if !reflect.DeepEqual(w, g) {
 		t.Errorf("IDs=%+v, want %+v", g, w)

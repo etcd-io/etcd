@@ -131,7 +131,7 @@ func NewServer(cfg *ServerConfig) *EtcdServer {
 			log.Fatal(err)
 		}
 		ids := cfg.Cluster.IDs()
-		sort.Sort(int64Slice(ids))
+		sort.Sort(types.Int64Slice(ids))
 		ccs := make([]raftpb.ConfChange, len(ids))
 		for i, id := range ids {
 			// TODO: add context for PeerURLs
@@ -560,10 +560,3 @@ func getBool(v *bool) (vv bool, set bool) {
 	}
 	return *v, true
 }
-
-// int64Slice implements sort interface
-type int64Slice []int64
-
-func (p int64Slice) Len() int           { return len(p) }
-func (p int64Slice) Less(i, j int) bool { return p[i] < p[j] }
-func (p int64Slice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
