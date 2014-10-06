@@ -3,6 +3,7 @@ package raft
 import (
 	"errors"
 	"log"
+	"reflect"
 
 	pb "github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/third_party/code.google.com/p/go.net/context"
@@ -18,11 +19,13 @@ var (
 type SoftState struct {
 	Lead       int64
 	RaftState  StateType
+	Nodes      []int64
 	ShouldStop bool
 }
 
 func (a *SoftState) equal(b *SoftState) bool {
-	return a.Lead == b.Lead && a.RaftState == b.RaftState && a.ShouldStop == b.ShouldStop
+	nodeeq := reflect.DeepEqual(a.Nodes, b.Nodes)
+	return a.Lead == b.Lead && a.RaftState == b.RaftState && a.ShouldStop == b.ShouldStop && nodeeq
 }
 
 // Ready encapsulates the entries and messages that are ready to read,
@@ -54,6 +57,12 @@ type Ready struct {
 	// Messages specifies outbound messages to be sent AFTER Entries are
 	// committed to stable storage.
 	Messages []pb.Message
+}
+
+type compact struct {
+	index int64
+	nodes []int64
+	data  []byte
 }
 
 func isHardStateEqual(a, b pb.HardState) bool {
@@ -96,7 +105,7 @@ type Node interface {
 	// Stop performs any necessary termination of the Node
 	Stop()
 	// Compact
-	Compact(d []byte)
+	Compact(index int64, nodes []int64, d []byte)
 }
 
 // StartNode returns a new Node given a unique raft id, a list of raft peers, and
@@ -141,7 +150,7 @@ func RestartNode(id int64, peers []int64, election, heartbeat int, snapshot *pb.
 type node struct {
 	propc    chan pb.Message
 	recvc    chan pb.Message
-	compactc chan []byte
+	compactc chan compact
 	confc    chan pb.ConfChange
 	readyc   chan Ready
 	tickc    chan struct{}
@@ -152,7 +161,7 @@ func newNode() node {
 	return node{
 		propc:    make(chan pb.Message),
 		recvc:    make(chan pb.Message),
-		compactc: make(chan []byte),
+		compactc: make(chan compact),
 		confc:    make(chan pb.ConfChange),
 		readyc:   make(chan Ready),
 		tickc:    make(chan struct{}),
@@ -200,8 +209,8 @@ func (n *node) run(r *raft) {
 			r.Step(m)
 		case m := <-n.recvc:
 			r.Step(m) // raft never returns an error
-		case d := <-n.compactc:
-			r.compact(d)
+		case c := <-n.compactc:
+			r.compact(c.index, c.nodes, c.data)
 		case cc := <-n.confc:
 			switch cc.Type {
 			case pb.ConfChangeAddNode:
@@ -299,9 +308,9 @@ func (n *node) ApplyConfChange(cc pb.ConfChange) {
 	}
 }
 
-func (n *node) Compact(d []byte) {
+func (n *node) Compact(index int64, nodes []int64, d []byte) {
 	select {
-	case n.compactc <- d:
+	case n.compactc <- compact{index, nodes, d}:
 	case <-n.done:
 	}
 }

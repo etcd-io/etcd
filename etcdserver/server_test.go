@@ -678,7 +678,7 @@ func TestSnapshot(t *testing.T) {
 		node:    n,
 	}
 
-	s.snapshot()
+	s.snapshot(0, []int64{1})
 	gaction := st.Action()
 	if len(gaction) != 1 {
 		t.Fatalf("len(action) = %d, want 1", len(gaction))
@@ -1129,7 +1129,7 @@ func (n *readyNode) Step(ctx context.Context, msg raftpb.Message) error { return
 func (n *readyNode) Ready() <-chan raft.Ready                           { return n.readyc }
 func (n *readyNode) ApplyConfChange(conf raftpb.ConfChange)             {}
 func (n *readyNode) Stop()                                              {}
-func (n *readyNode) Compact(d []byte)                                   {}
+func (n *readyNode) Compact(index int64, nodes []int64, d []byte)       {}
 
 type nodeRecorder struct {
 	recorder
@@ -1161,7 +1161,7 @@ func (n *nodeRecorder) ApplyConfChange(conf raftpb.ConfChange) {
 func (n *nodeRecorder) Stop() {
 	n.record(action{name: "Stop"})
 }
-func (n *nodeRecorder) Compact(d []byte) {
+func (n *nodeRecorder) Compact(index int64, nodes []int64, d []byte) {
 	n.record(action{name: "Compact"})
 }
 

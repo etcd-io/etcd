@@ -229,6 +229,7 @@ func (s *EtcdServer) run() {
 	var syncC <-chan time.Time
 	// snapi indicates the index of the last submitted snapshot request
 	var snapi, appliedi int64
+	var nodes []int64
 	for {
 		select {
 		case <-s.ticker:
@@ -265,6 +266,19 @@ func (s *EtcdServer) run() {
 				appliedi = e.Index
 			}
 
+			if rd.SoftState != nil {
+				nodes = rd.SoftState.Nodes
+				if rd.RaftState == raft.StateLeader {
+					syncC = s.syncTicker
+				} else {
+					syncC = nil
+				}
+				if rd.SoftState.ShouldStop {
+					s.Stop()
+					return
+				}
+			}
+
 			if rd.Snapshot.Index > snapi {
 				snapi = rd.Snapshot.Index
 			}
@@ -278,20 +292,8 @@ func (s *EtcdServer) run() {
 			}
 
 			if appliedi-snapi > s.snapCount {
-				s.snapshot()
+				s.snapshot(appliedi, nodes)
 				snapi = appliedi
-			}
-
-			if rd.SoftState != nil {
-				if rd.RaftState == raft.StateLeader {
-					syncC = s.syncTicker
-				} else {
-					syncC = nil
-				}
-				if rd.SoftState.ShouldStop {
-					s.Stop()
-					return
-				}
 			}
 		case <-syncC:
 			s.sync(defaultSyncTimeout)
@@ -517,14 +519,14 @@ func (s *EtcdServer) apply(r pb.Request) Response {
 }
 
 // TODO: non-blocking snapshot
-func (s *EtcdServer) snapshot() {
+func (s *EtcdServer) snapshot(snapi int64, snapnodes []int64) {
 	d, err := s.store.Save()
 	// TODO: current store will never fail to do a snapshot
 	// what should we do if the store might fail?
 	if err != nil {
 		panic("TODO: this is bad, what do we do about it?")
 	}
-	s.node.Compact(d)
+	s.node.Compact(snapi, snapnodes, d)
 	s.storage.Cut()
 }
 
