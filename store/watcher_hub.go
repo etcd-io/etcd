@@ -47,7 +47,7 @@ func (wh *watcherHub) watch(key string, recursive, stream bool, index, storeInde
 	}
 
 	w := &watcher{
-		eventChan:  make(chan *Event, 1), // use a buffered channel
+		eventChan:  make(chan *Event, 100), // use a buffered channel
 		recursive:  recursive,
 		stream:     stream,
 		sinceIndex: index,
