@@ -3,6 +3,7 @@ package raft
 import (
 	"bytes"
 	"fmt"
+	"math"
 	"math/rand"
 	"reflect"
 	"sort"
@@ -488,6 +489,38 @@ func TestCommit(t *testing.T) {
 		sm.maybeCommit()
 		if g := sm.raftLog.committed; g != tt.w {
 			t.Errorf("#%d: committed = %d, want %d", i, g, tt.w)
+		}
+	}
+}
+
+func TestIsElectionTimeout(t *testing.T) {
+	tests := []struct {
+		elapse       int
+		wpossibility float64
+		round        bool
+	}{
+		{5, 0, false},
+		{13, 0.3, true},
+		{15, 0.5, true},
+		{18, 0.8, true},
+		{20, 1, false},
+	}
+
+	for i, tt := range tests {
+		sm := newRaft(1, []int64{1}, 10, 1)
+		sm.elapsed = tt.elapse
+		c := 0
+		for j := 0; j < 10000; j++ {
+			if sm.isElectionTimeout() {
+				c++
+			}
+		}
+		got := float64(c) / 10000.0
+		if tt.round {
+			got = math.Floor(got*10+0.5) / 10.0
+		}
+		if got != tt.wpossibility {
+			t.Errorf("#%d: possibility = %v, want %v", i, got, tt.wpossibility)
 		}
 	}
 }
