@@ -618,7 +618,7 @@ func TestRecvMsgVote(t *testing.T) {
 			continue
 		}
 		if g := msgs[0].Reject; g != tt.wreject {
-			t.Errorf("#%d, m.Reject = %d, want %d", i, g, tt.wreject)
+			t.Errorf("#%d, m.Reject = %d, want %v", i, g, tt.wreject)
 		}
 	}
 }

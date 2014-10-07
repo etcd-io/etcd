@@ -31,7 +31,7 @@ func TestNodeStep(t *testing.T) {
 			if msgt == msgBeat || msgt == msgHup {
 				select {
 				case <-n.recvc:
-					t.Errorf("%d: step should ignore msgHub/msgBeat", i, mtmap[i])
+					t.Errorf("%d: step should ignore msgHub/msgBeat", i)
 				default:
 				}
 			} else {
@@ -74,7 +74,7 @@ func TestNodeStepUnblock(t *testing.T) {
 		select {
 		case err := <-errc:
 			if err != tt.werr {
-				t.Errorf("#%d: err = %v, want %v", err, tt.werr)
+				t.Errorf("#%d: err = %v, want %v", i, err, tt.werr)
 			}
 			//clean up side-effect
 			if ctx.Err() != nil {
