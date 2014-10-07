@@ -156,7 +156,7 @@ func TestNode(t *testing.T) {
 	}
 	wants := []Ready{
 		{
-			SoftState: &SoftState{Lead: 1, RaftState: StateLeader},
+			SoftState: &SoftState{Lead: 1, Nodes: []int64{1}, RaftState: StateLeader},
 			HardState: raftpb.HardState{Term: 1, Commit: 2},
 			Entries: []raftpb.Entry{
 				{},
@@ -221,7 +221,7 @@ func TestNodeRestart(t *testing.T) {
 
 // TestCompacts ensures Node.Compact creates a correct raft snapshot and compacts
 // the raft log (call raft.compact)
-func TestCompact(t *testing.T) {
+func TestNodeCompact(t *testing.T) {
 	ctx := context.Background()
 	n := newNode()
 	r := newRaft(1, []int64{1}, 0, 0)
@@ -244,7 +244,7 @@ func TestCompact(t *testing.T) {
 		t.Fatalf("unexpected proposal failure: unable to commit entry")
 	}
 
-	n.Compact(w.Data)
+	n.Compact(w.Index, w.Nodes, w.Data)
 	pkg.ForceGosched()
 	select {
 	case rd := <-n.Ready():
@@ -278,6 +278,7 @@ func TestSoftStateEqual(t *testing.T) {
 		{&SoftState{Lead: 1}, false},
 		{&SoftState{RaftState: StateLeader}, false},
 		{&SoftState{ShouldStop: true}, false},
+		{&SoftState{Nodes: []int64{1, 2}}, false},
 	}
 	for i, tt := range tests {
 		if g := tt.st.equal(&SoftState{}); g != tt.we {
