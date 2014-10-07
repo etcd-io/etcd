@@ -1238,7 +1238,7 @@ type fakeCluster struct {
 	members []etcdserver.Member
 }
 
-func (c *fakeCluster) Create(m etcdserver.Member) { return }
+func (c *fakeCluster) Add(m etcdserver.Member) { return }
 
 func (c *fakeCluster) Get() etcdserver.Cluster {
 	cl := &etcdserver.Cluster{}
@@ -1246,4 +1246,4 @@ func (c *fakeCluster) Get() etcdserver.Cluster {
 	return *cl
 }
 
-func (c *fakeCluster) Delete(id int64) { return }
+func (c *fakeCluster) Remove(id int64) { return }

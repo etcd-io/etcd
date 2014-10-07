@@ -361,6 +361,7 @@ func (s *EtcdServer) Do(ctx context.Context, r pb.Request) (Response, error) {
 }
 
 func (s *EtcdServer) AddMember(ctx context.Context, memb Member) error {
+	// TODO: move Member to protobuf type
 	b, err := json.Marshal(memb)
 	if err != nil {
 		return err
@@ -541,9 +542,9 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange) {
 		if cc.NodeID != m.ID {
 			panic("unexpected nodeID mismatch")
 		}
-		s.ClusterStore.Create(m)
+		s.ClusterStore.Add(m)
 	case raftpb.ConfChangeRemoveNode:
-		s.ClusterStore.Delete(cc.NodeID)
+		s.ClusterStore.Remove(cc.NodeID)
 	default:
 		panic("unexpected ConfChange type")
 	}

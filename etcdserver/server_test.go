@@ -807,7 +807,7 @@ func TestAddMember(t *testing.T) {
 	if !reflect.DeepEqual(gaction, wactions) {
 		t.Errorf("action = %v, want %v", gaction, wactions)
 	}
-	wcsactions := []action{{name: "Create", params: []interface{}{m}}}
+	wcsactions := []action{{name: "Add", params: []interface{}{m}}}
 	if g := cs.Action(); !reflect.DeepEqual(g, wcsactions) {
 		t.Errorf("csaction = %v, want %v", g, wcsactions)
 	}
@@ -834,7 +834,7 @@ func TestRemoveMember(t *testing.T) {
 	if !reflect.DeepEqual(gaction, wactions) {
 		t.Errorf("action = %v, want %v", gaction, wactions)
 	}
-	wcsactions := []action{{name: "Delete", params: []interface{}{id}}}
+	wcsactions := []action{{name: "Remove", params: []interface{}{id}}}
 	if g := cs.Action(); !reflect.DeepEqual(g, wcsactions) {
 		t.Errorf("csaction = %v, want %v", g, wcsactions)
 	}
@@ -1248,15 +1248,15 @@ type clusterStoreRecorder struct {
 	recorder
 }
 
-func (cs *clusterStoreRecorder) Create(m Member) {
-	cs.record(action{name: "Create", params: []interface{}{m}})
+func (cs *clusterStoreRecorder) Add(m Member) {
+	cs.record(action{name: "Add", params: []interface{}{m}})
 }
 func (cs *clusterStoreRecorder) Get() Cluster {
 	cs.record(action{name: "Get"})
 	return nil
 }
-func (cs *clusterStoreRecorder) Delete(id int64) {
-	cs.record(action{name: "Delete", params: []interface{}{id}})
+func (cs *clusterStoreRecorder) Remove(id int64) {
+	cs.record(action{name: "Remove", params: []interface{}{id}})
 }
 
 func mustClusterStore(t *testing.T, membs []Member) ClusterStore {
