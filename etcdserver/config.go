@@ -28,16 +28,14 @@ func (c *ServerConfig) Verify() error {
 		return fmt.Errorf("could not find name %v in cluster!", c.Name)
 	}
 
-	if c.ClusterState == ClusterStateValueNew {
-		// No identical IPs in the cluster peer list
-		urlMap := make(map[string]bool)
-		for _, m := range *c.Cluster {
-			for _, url := range m.PeerURLs {
-				if urlMap[url] {
-					return fmt.Errorf("duplicate url %v in server config", url)
-				}
-				urlMap[url] = true
+	// No identical IPs in the cluster peer list
+	urlMap := make(map[string]bool)
+	for _, m := range *c.Cluster {
+		for _, url := range m.PeerURLs {
+			if urlMap[url] {
+				return fmt.Errorf("duplicate url %v in server config", url)
 			}
+			urlMap[url] = true
 		}
 	}
 	return nil

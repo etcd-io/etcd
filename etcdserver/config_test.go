@@ -19,9 +19,8 @@ func TestConfigVerify(t *testing.T) {
 		cluster := &Cluster{}
 		cluster.Set(tt.clusterSetting)
 		cfg := ServerConfig{
-			Name:         "node1",
-			Cluster:      cluster,
-			ClusterState: ClusterStateValueNew,
+			Name:    "node1",
+			Cluster: cluster,
 		}
 		err := cfg.Verify()
 		if (err == nil) && tt.shouldError {
