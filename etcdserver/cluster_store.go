@@ -59,6 +59,7 @@ func (s *clusterStore) Get() Cluster {
 		if err := json.Unmarshal([]byte(*n.Value), &m); err != nil {
 			log.Panicf("unmarshal peer error: %v", err)
 		}
+		log.Printf("Found member in cluster: %#v", m)
 		err := c.Add(m)
 		if err != nil {
 			log.Panicf("add member to cluster should never fail: %v", err)

@@ -47,7 +47,7 @@ type Member struct {
 	Attributes
 }
 
-// newMember creates a Member without an ID and generates one based on the
+// NewMember creates a Member without an ID and generates one based on the
 // name, peer URLs. This is used for bootstrapping/adding new member.
 func NewMember(name string, peerURLs types.URLs, clusterName string, now *time.Time) *Member {
 	m := &Member{
