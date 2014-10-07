@@ -526,6 +526,14 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange) {
 	s.node.ApplyConfChange(cc)
 	switch cc.Type {
 	case raftpb.ConfChangeAddNode:
+		// TODO(yichengq): this is the hack and should be removed SOON.
+		// Bootstrap write addNode entries into log, which don't set Context
+		// value. They don't need to be applied because now we do it explicitly
+		// before server starts. This hack makes etcd work, and will be removed
+		// in the following PR.
+		if cc.Context == nil {
+			break
+		}
 		var m Member
 		if err := json.Unmarshal(cc.Context, &m); err != nil {
 			panic("unexpected unmarshal error")
