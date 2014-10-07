@@ -221,7 +221,7 @@ func TestNodeRestart(t *testing.T) {
 
 // TestCompacts ensures Node.Compact creates a correct raft snapshot and compacts
 // the raft log (call raft.compact)
-func TestCompact(t *testing.T) {
+func TestNodeCompact(t *testing.T) {
 	ctx := context.Background()
 	n := newNode()
 	r := newRaft(1, []int64{1}, 0, 0)

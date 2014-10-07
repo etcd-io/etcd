@@ -153,7 +153,7 @@ func (r *raft) hasLeader() bool { return r.lead != None }
 func (r *raft) shouldStop() bool { return r.removed[r.id] }
 
 func (r *raft) softState() *SoftState {
-	return &SoftState{Lead: r.lead, Nodes: r.nodes(), RaftState: r.state, ShouldStop: r.shouldStop()}
+	return &SoftState{Lead: r.lead, RaftState: r.state, Nodes: r.nodes(), ShouldStop: r.shouldStop()}
 }
 
 func (r *raft) String() string {
@@ -515,13 +515,12 @@ func stepFollower(r *raft, m pb.Message) {
 	}
 }
 
-func (r *raft) compact(index int64, nodes []int64, d []byte) error {
+func (r *raft) compact(index int64, nodes []int64, d []byte) {
 	if index > r.raftLog.applied {
-		return fmt.Errorf("raft: compact index (%d) exceeds applied index (%d)", index, r.raftLog.applied)
+		panic(fmt.Sprintf("raft: compact index (%d) exceeds applied index (%d)", index, r.raftLog.applied))
 	}
-	r.raftLog.snap(d, r.raftLog.applied, r.raftLog.term(r.raftLog.applied), nodes)
-	r.raftLog.compact(r.raftLog.applied)
-	return nil
+	r.raftLog.snap(d, index, r.raftLog.term(index), nodes)
+	r.raftLog.compact(index)
 }
 
 // restore recovers the statemachine from a snapshot. It restores the log and the

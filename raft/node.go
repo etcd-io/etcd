@@ -24,8 +24,7 @@ type SoftState struct {
 }
 
 func (a *SoftState) equal(b *SoftState) bool {
-	nodeeq := reflect.DeepEqual(a.Nodes, b.Nodes)
-	return a.Lead == b.Lead && a.RaftState == b.RaftState && a.ShouldStop == b.ShouldStop && nodeeq
+	return reflect.DeepEqual(a, b)
 }
 
 // Ready encapsulates the entries and messages that are ready to read,

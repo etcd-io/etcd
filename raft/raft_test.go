@@ -408,6 +408,49 @@ func TestProposalByProxy(t *testing.T) {
 	}
 }
 
+func TestCompact(t *testing.T) {
+	tests := []struct {
+		compacti int64
+		nodes    []int64
+		snapd    []byte
+		wpanic   bool
+	}{
+		{1, []int64{1, 2, 3}, []byte("some data"), false},
+		{2, []int64{1, 2, 3}, []byte("some data"), false},
+		{4, []int64{1, 2, 3}, []byte("some data"), true}, // compact out of range
+	}
+
+	for i, tt := range tests {
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					if tt.wpanic != true {
+						t.Errorf("%d: panic = %v, want %v", i, false, true)
+					}
+				}
+			}()
+			sm := &raft{
+				state: StateLeader,
+				raftLog: &raftLog{
+					committed: 2,
+					applied:   2,
+					ents:      []pb.Entry{{}, {Term: 1}, {Term: 1}, {Term: 1}},
+				},
+			}
+			sm.compact(tt.compacti, tt.nodes, tt.snapd)
+			if sm.raftLog.offset != tt.compacti {
+				t.Errorf("%d: log.offset = %d, want %d", i, sm.raftLog.offset, tt.compacti)
+			}
+			if !reflect.DeepEqual(sm.raftLog.snapshot.Nodes, tt.nodes) {
+				t.Errorf("%d: snap.nodes = %v, want %v", i, sm.raftLog.snapshot.Nodes, tt.nodes)
+			}
+			if !reflect.DeepEqual(sm.raftLog.snapshot.Data, tt.snapd) {
+				t.Errorf("%d: snap.data = %v, want %v", i, sm.raftLog.snapshot.Data, tt.snapd)
+			}
+		}()
+	}
+}
+
 func TestCommit(t *testing.T) {
 	tests := []struct {
 		matches []int64
