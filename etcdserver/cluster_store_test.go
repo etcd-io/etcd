@@ -9,6 +9,28 @@ import (
 	"github.com/coreos/etcd/store"
 )
 
+func TestClusterStoreAdd(t *testing.T) {
+	st := &storeRecorder{}
+	ps := &clusterStore{Store: st}
+	ps.Add(Member{Name: "node", ID: 1})
+
+	wactions := []action{
+		{
+			name: "Create",
+			params: []interface{}{
+				machineKVPrefix + "1",
+				false,
+				`{"ID":1,"Name":"node","PeerURLs":null,"ClientURLs":null}`,
+				false,
+				store.Permanent,
+			},
+		},
+	}
+	if g := st.Action(); !reflect.DeepEqual(g, wactions) {
+		t.Error("actions = %v, want %v", g, wactions)
+	}
+}
+
 func TestClusterStoreGet(t *testing.T) {
 	tests := []struct {
 		mems  []Member
@@ -51,7 +73,7 @@ func TestClusterStoreDelete(t *testing.T) {
 	c := Cluster{}
 	c.Add(Member{Name: "node", ID: 1})
 	cs := NewClusterStore(st, c)
-	cs.Delete(1)
+	cs.Remove(1)
 
 	wdeletes := []string{machineKVPrefix + "1"}
 	if !reflect.DeepEqual(st.deletes, wdeletes) {

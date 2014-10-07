@@ -16,8 +16,9 @@ const (
 )
 
 type ClusterStore interface {
+	Add(m Member)
 	Get() Cluster
-	Delete(id int64)
+	Remove(id int64)
 }
 
 type clusterStore struct {
@@ -27,14 +28,14 @@ type clusterStore struct {
 func NewClusterStore(st store.Store, c Cluster) ClusterStore {
 	cls := &clusterStore{Store: st}
 	for _, m := range c {
-		cls.add(*m)
+		cls.Add(*m)
 	}
 	return cls
 }
 
-// add puts a new Member into the store.
+// Add puts a new Member into the store.
 // A Member with a matching id must not exist.
-func (s *clusterStore) add(m Member) {
+func (s *clusterStore) Add(m Member) {
 	b, err := json.Marshal(m)
 	if err != nil {
 		log.Panicf("marshal peer info error: %v", err)
@@ -66,9 +67,9 @@ func (s *clusterStore) Get() Cluster {
 	return *c
 }
 
-// Delete removes a member from the store.
+// Remove removes a member from the store.
 // The given id MUST exist.
-func (s *clusterStore) Delete(id int64) {
+func (s *clusterStore) Remove(id int64) {
 	p := s.Get().FindID(id).storeKey()
 	if _, err := s.Store.Delete(p, false, false); err != nil {
 		log.Panicf("delete peer should never fail: %v", err)
