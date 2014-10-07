@@ -26,15 +26,15 @@ const (
 )
 
 var mtmap = [...]string{
-	msgHup:      "msgHup",
-	msgBeat:     "msgBeat",
-	msgProp:     "msgProp",
-	msgApp:      "msgApp",
-	msgAppResp:  "msgAppResp",
-	msgVote:     "msgVote",
-	msgVoteResp: "msgVoteResp",
-	msgSnap:     "msgSnap",
-	msgDenied:   "msgDenied",
+	"msgHup",
+	"msgBeat",
+	"msgProp",
+	"msgApp",
+	"msgAppResp",
+	"msgVote",
+	"msgVoteResp",
+	"msgSnap",
+	"msgDenied",
 }
 
 func (mt messageType) String() string {
@@ -54,9 +54,9 @@ const (
 type StateType int64
 
 var stmap = [...]string{
-	StateFollower:  "StateFollower",
-	StateCandidate: "StateCandidate",
-	StateLeader:    "StateLeader",
+	"StateFollower",
+	"StateCandidate",
+	"StateLeader",
 }
 
 func (st StateType) String() string {
