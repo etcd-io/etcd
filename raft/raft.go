@@ -99,7 +99,8 @@ func (p int64Slice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
 type raft struct {
 	pb.HardState
 
-	id int64
+	clusterID uint64
+	id        int64
 
 	// the log
 	raftLog *raftLog
@@ -183,6 +184,7 @@ func (r *raft) poll(id int64, v bool) (granted int) {
 
 // send persists state to stable storage and then sends to its mailbox.
 func (r *raft) send(m pb.Message) {
+	m.ClusterID = r.clusterID
 	m.From = r.id
 	// do not attach term to msgProp
 	// proposals are a way to forward to the leader and
@@ -379,6 +381,12 @@ func (r *raft) Step(m pb.Message) error {
 	if m.Type == msgDenied {
 		r.removed[r.id] = true
 		// TODO: return an error?
+		return nil
+	}
+	if r.clusterID != m.ClusterID {
+		// do its best to deny it
+		r.send(pb.Message{To: m.From, Type: msgDenied})
+		// TODO: return an error to warn user?
 		return nil
 	}
 
