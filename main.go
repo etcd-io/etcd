@@ -59,11 +59,12 @@ var (
 
 func init() {
 	flag.Var(cluster, "initial-cluster", "Initial cluster configuration for bootstrapping")
-	flag.Var(clusterState, "initial-cluster-state", "Initial cluster configuration for bootstrapping")
 	if err := cluster.Set("default=http://localhost:2380,default=http://localhost:7001"); err != nil {
 		// Should never happen
 		log.Panic(err)
 	}
+	flag.Var(clusterState, "initial-cluster-state", "Initial cluster configuration for bootstrapping")
+	clusterState.Set(etcdserver.ClusterStateValueNew)
 
 	flag.Var(flagtypes.NewURLsValue("http://localhost:2380,http://localhost:7001"), "advertise-peer-urls", "List of this member's peer URLs to advertise to the rest of the cluster")
 	flag.Var(flagtypes.NewURLsValue("http://localhost:2379,http://localhost:4001"), "advertise-client-urls", "List of this member's client URLs to advertise to the rest of the cluster")
