@@ -5,7 +5,6 @@ import (
 )
 
 func TestConfigVerify(t *testing.T) {
-
 	tests := []struct {
 		clusterSetting string
 		shouldError    bool

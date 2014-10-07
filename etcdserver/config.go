@@ -25,7 +25,7 @@ func (c *ServerConfig) Verify() error {
 	// Make sure the cluster at least contains the local server.
 	m := c.Cluster.FindName(c.Name)
 	if m == nil {
-		return fmt.Errorf("could not find name %v in cluster!", c.Name)
+		return fmt.Errorf("could not find name %v in cluster", c.Name)
 	}
 
 	// No identical IPs in the cluster peer list
