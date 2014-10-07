@@ -120,7 +120,8 @@ func NewServer(cfg *ServerConfig) *EtcdServer {
 			log.Fatal(err)
 		}
 		// TODO: add context for PeerURLs
-		n = raft.StartNode(m.ID, cfg.Cluster.IDs(), 10, 1)
+		// TODO: generate cluster id
+		n = raft.StartNode(m.ID, 0xBAD0, cfg.Cluster.IDs(), 10, 1)
 	} else {
 		var index int64
 		snapshot, err := ss.Load()

@@ -112,12 +112,13 @@ type Node interface {
 	Compact(index int64, nodes []int64, d []byte)
 }
 
-// StartNode returns a new Node given a unique raft id, a list of raft peers, and
+// StartNode returns a new Node given a unique raft id, cluster id, a list of raft peers, and
 // the election and heartbeat timeouts in units of ticks.
 // It also builds ConfChangeAddNode entry for each peer and puts them at the head of the log.
-func StartNode(id int64, peers []int64, election, heartbeat int) Node {
+func StartNode(id int64, clusterID uint64, peers []int64, election, heartbeat int) Node {
 	n := newNode()
 	r := newRaft(id, peers, election, heartbeat)
+	r.clusterID = clusterID
 
 	ents := make([]pb.Entry, len(peers))
 	for i, peer := range peers {
