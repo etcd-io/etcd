@@ -8,3 +8,4 @@
 etcd
 *.swp
 /hack/insta-discovery/.env
+*.test
