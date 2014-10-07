@@ -5,7 +5,6 @@ import (
 	"errors"
 	"log"
 	"math/rand"
-	"net/http"
 	"os"
 	"path"
 	"sync/atomic"
@@ -84,24 +83,12 @@ type RaftTimer interface {
 	Term() int64
 }
 
-type ServerConfig struct {
-	Name         string
-	DiscoveryURL string
-	ClientURLs   types.URLs
-	DataDir      string
-	SnapCount    int64
-	Cluster      *Cluster
-	ClusterState ClusterState
-	Transport    *http.Transport
-}
-
 // NewServer creates a new EtcdServer from the supplied configuration. The
 // configuration is considered static for the lifetime of the EtcdServer.
 func NewServer(cfg *ServerConfig) *EtcdServer {
-	m := cfg.Cluster.FindName(cfg.Name)
-	if m == nil {
-		// Should never happen
-		log.Fatalf("could not find name %v in cluster!", cfg.Name)
+	err := cfg.Verify()
+	if err != nil {
+		log.Fatalln(err)
 	}
 	snapdir := path.Join(cfg.DataDir, "snap")
 	if err := os.MkdirAll(snapdir, privateDirMode); err != nil {
@@ -111,7 +98,7 @@ func NewServer(cfg *ServerConfig) *EtcdServer {
 	st := store.New()
 	var w *wal.WAL
 	var n raft.Node
-	var err error
+	m := cfg.Cluster.FindName(cfg.Name)
 	waldir := path.Join(cfg.DataDir, "wal")
 	if !wal.Exist(waldir) {
 		if cfg.DiscoveryURL != "" {
