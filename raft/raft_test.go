@@ -201,9 +201,9 @@ func TestCommitWithoutNewTermEntry(t *testing.T) {
 }
 
 func TestDuelingCandidates(t *testing.T) {
-	a := newRaft(-1, nil, 0, 0) // k, id are set later
-	b := newRaft(-1, nil, 0, 0)
-	c := newRaft(-1, nil, 0, 0)
+	a := newRaft(-1, nil, 10, 1) // k, id are set later
+	b := newRaft(-1, nil, 10, 1)
+	c := newRaft(-1, nil, 10, 1)
 
 	nt := newNetwork(a, b, c)
 	nt.cut(1, 3)
@@ -499,7 +499,7 @@ func TestStepIgnoreOldTermMsg(t *testing.T) {
 	fakeStep := func(r *raft, m pb.Message) {
 		called = true
 	}
-	sm := newRaft(1, []int64{1}, 0, 0)
+	sm := newRaft(1, []int64{1}, 10, 1)
 	sm.step = fakeStep
 	sm.Term = 2
 	sm.Step(pb.Message{Type: msgApp, Term: sm.Term - 1})
@@ -597,7 +597,7 @@ func TestRecvMsgVote(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		sm := newRaft(1, []int64{1}, 0, 0)
+		sm := newRaft(1, []int64{1}, 10, 1)
 		sm.state = tt.state
 		switch tt.state {
 		case StateFollower:
@@ -654,7 +654,7 @@ func TestStateTransition(t *testing.T) {
 				}
 			}()
 
-			sm := newRaft(1, []int64{1}, 0, 0)
+			sm := newRaft(1, []int64{1}, 10, 1)
 			sm.state = tt.from
 
 			switch tt.to {
@@ -693,7 +693,7 @@ func TestAllServerStepdown(t *testing.T) {
 	tterm := int64(3)
 
 	for i, tt := range tests {
-		sm := newRaft(1, []int64{1, 2, 3}, 0, 0)
+		sm := newRaft(1, []int64{1, 2, 3}, 10, 1)
 		switch tt.state {
 		case StateFollower:
 			sm.becomeFollower(1, None)
@@ -743,7 +743,7 @@ func TestLeaderAppResp(t *testing.T) {
 	for i, tt := range tests {
 		// sm term is 1 after it becomes the leader.
 		// thus the last log term must be 1 to be committed.
-		sm := newRaft(1, []int64{1, 2, 3}, 0, 0)
+		sm := newRaft(1, []int64{1, 2, 3}, 10, 1)
 		sm.raftLog = &raftLog{ents: []pb.Entry{{}, {Term: 0}, {Term: 1}}}
 		sm.becomeCandidate()
 		sm.becomeLeader()
@@ -775,7 +775,7 @@ func TestBcastBeat(t *testing.T) {
 		Term:  1,
 		Nodes: []int64{1, 2, 3},
 	}
-	sm := newRaft(1, []int64{1, 2, 3}, 0, 0)
+	sm := newRaft(1, []int64{1, 2, 3}, 10, 1)
 	sm.Term = 1
 	sm.restore(s)
 
@@ -825,7 +825,7 @@ func TestRecvMsgBeat(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		sm := newRaft(1, []int64{1, 2, 3}, 0, 0)
+		sm := newRaft(1, []int64{1, 2, 3}, 10, 1)
 		sm.raftLog = &raftLog{ents: []pb.Entry{{}, {Term: 0}, {Term: 1}}}
 		sm.Term = 1
 		sm.state = tt.state
@@ -858,7 +858,7 @@ func TestRestore(t *testing.T) {
 		Nodes: []int64{1, 2, 3},
 	}
 
-	sm := newRaft(1, []int64{1, 2}, 0, 0)
+	sm := newRaft(1, []int64{1, 2}, 10, 1)
 	if ok := sm.restore(s); !ok {
 		t.Fatal("restore fail, want succeed")
 	}
@@ -891,7 +891,7 @@ func TestProvideSnap(t *testing.T) {
 		Term:  defaultCompactThreshold + 1,
 		Nodes: []int64{1, 2},
 	}
-	sm := newRaft(1, []int64{1}, 0, 0)
+	sm := newRaft(1, []int64{1}, 10, 1)
 	// restore the statemachin from a snapshot
 	// so it has a compacted log and a snapshot
 	sm.restore(s)
@@ -922,7 +922,7 @@ func TestRestoreFromSnapMsg(t *testing.T) {
 	}
 	m := pb.Message{Type: msgSnap, From: 1, Term: 2, Snapshot: s}
 
-	sm := newRaft(2, []int64{1, 2}, 0, 0)
+	sm := newRaft(2, []int64{1, 2}, 10, 1)
 	sm.Step(m)
 
 	if !reflect.DeepEqual(sm.raftLog.snapshot, s) {
@@ -961,7 +961,7 @@ func TestSlowNodeRestore(t *testing.T) {
 // it appends the entry to log and sets pendingConf to be true.
 func TestStepConfig(t *testing.T) {
 	// a raft that cannot make progress
-	r := newRaft(1, []int64{1, 2}, 0, 0)
+	r := newRaft(1, []int64{1, 2}, 10, 1)
 	r.becomeCandidate()
 	r.becomeLeader()
 	index := r.raftLog.lastIndex()
@@ -979,7 +979,7 @@ func TestStepConfig(t *testing.T) {
 // the proposal and keep its original state.
 func TestStepIgnoreConfig(t *testing.T) {
 	// a raft that cannot make progress
-	r := newRaft(1, []int64{1, 2}, 0, 0)
+	r := newRaft(1, []int64{1, 2}, 10, 1)
 	r.becomeCandidate()
 	r.becomeLeader()
 	r.Step(pb.Message{From: 1, To: 1, Type: msgProp, Entries: []pb.Entry{{Type: pb.EntryConfChange}}})
@@ -1005,7 +1005,7 @@ func TestRecoverPendingConfig(t *testing.T) {
 		{pb.EntryConfChange, true},
 	}
 	for i, tt := range tests {
-		r := newRaft(1, []int64{1, 2}, 0, 0)
+		r := newRaft(1, []int64{1, 2}, 10, 1)
 		r.appendEntry(pb.Entry{Type: tt.entType})
 		r.becomeCandidate()
 		r.becomeLeader()
@@ -1024,7 +1024,7 @@ func TestRecoverDoublePendingConfig(t *testing.T) {
 				t.Errorf("expect panic, but nothing happens")
 			}
 		}()
-		r := newRaft(1, []int64{1, 2}, 0, 0)
+		r := newRaft(1, []int64{1, 2}, 10, 1)
 		r.appendEntry(pb.Entry{Type: pb.EntryConfChange})
 		r.appendEntry(pb.Entry{Type: pb.EntryConfChange})
 		r.becomeCandidate()
@@ -1034,7 +1034,7 @@ func TestRecoverDoublePendingConfig(t *testing.T) {
 
 // TestAddNode tests that addNode could update pendingConf and nodes correctly.
 func TestAddNode(t *testing.T) {
-	r := newRaft(1, []int64{1}, 0, 0)
+	r := newRaft(1, []int64{1}, 10, 1)
 	r.pendingConf = true
 	r.addNode(2)
 	if r.pendingConf != false {
@@ -1051,7 +1051,7 @@ func TestAddNode(t *testing.T) {
 // TestRemoveNode tests that removeNode could update pendingConf, nodes and
 // and removed list correctly.
 func TestRemoveNode(t *testing.T) {
-	r := newRaft(1, []int64{1, 2}, 0, 0)
+	r := newRaft(1, []int64{1, 2}, 10, 1)
 	r.pendingConf = true
 	r.removeNode(2)
 	if r.pendingConf != false {
@@ -1074,7 +1074,7 @@ func TestRecvMsgDenied(t *testing.T) {
 	fakeStep := func(r *raft, m pb.Message) {
 		called = true
 	}
-	r := newRaft(1, []int64{1, 2}, 0, 0)
+	r := newRaft(1, []int64{1, 2}, 10, 1)
 	r.step = fakeStep
 	r.Step(pb.Message{From: 2, Type: msgDenied})
 	if called != false {
@@ -1102,7 +1102,7 @@ func TestRecvMsgFromRemovedNode(t *testing.T) {
 		fakeStep := func(r *raft, m pb.Message) {
 			called = true
 		}
-		r := newRaft(1, []int64{1}, 0, 0)
+		r := newRaft(1, []int64{1}, 10, 1)
 		r.step = fakeStep
 		r.removeNode(tt.from)
 		r.Step(pb.Message{From: tt.from, Type: msgVote})
@@ -1176,7 +1176,7 @@ func newNetwork(peers ...Interface) *network {
 		id := peerAddrs[i]
 		switch v := p.(type) {
 		case nil:
-			sm := newRaft(id, peerAddrs, 0, 0)
+			sm := newRaft(id, peerAddrs, 10, 1)
 			npeers[id] = sm
 		case *raft:
 			v.id = id

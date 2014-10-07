@@ -3,7 +3,9 @@ package raft
 import (
 	"errors"
 	"fmt"
+	"math/rand"
 	"sort"
+	"time"
 
 	pb "github.com/coreos/etcd/raft/raftpb"
 )
@@ -132,6 +134,7 @@ func newRaft(id int64, peers []int64, election, heartbeat int) *raft {
 	if id == None {
 		panic("cannot use none id")
 	}
+	rand.Seed(time.Now().UnixNano())
 	r := &raft{
 		id:               id,
 		lead:             None,
@@ -286,8 +289,7 @@ func (r *raft) tickElection() {
 		return
 	}
 	r.elapsed++
-	// TODO (xiangli): elctionTimeout should be randomized.
-	if r.elapsed > r.electionTimeout {
+	if r.isElectionTimeout() {
 		r.elapsed = 0
 		r.Step(pb.Message{From: r.id, Type: msgHup})
 	}
@@ -584,4 +586,15 @@ func (r *raft) loadState(state pb.HardState) {
 	r.Term = state.Term
 	r.Vote = state.Vote
 	r.Commit = state.Commit
+}
+
+// isElectionTimeout returns true if r.elapsed is greater than the
+// randomized election timeout in [electiontimeout, 2 * electiontimeout - 1).
+// Otherwise, it returns false.
+func (r *raft) isElectionTimeout() bool {
+	d := r.elapsed - r.electionTimeout
+	if d < 0 {
+		return false
+	}
+	return d > int(rand.Int31())%r.electionTimeout
 }
