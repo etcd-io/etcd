@@ -132,6 +132,7 @@ func NewServer(cfg *ServerConfig) *EtcdServer {
 		if w, err = wal.Create(waldir); err != nil {
 			log.Fatal(err)
 		}
+		// TODO: add context for PeerURLs
 		n = raft.StartNode(m.ID, cfg.Cluster.IDs(), 10, 1)
 	} else {
 		var index int64

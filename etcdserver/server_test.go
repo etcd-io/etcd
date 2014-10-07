@@ -712,7 +712,7 @@ func TestTriggerSnap(t *testing.T) {
 	}
 
 	s.start()
-	for i := 0; int64(i) < s.snapCount; i++ {
+	for i := 0; int64(i) < s.snapCount-1; i++ {
 		s.Do(ctx, pb.Request{Method: "PUT", ID: 1})
 	}
 	time.Sleep(time.Millisecond)
@@ -720,12 +720,12 @@ func TestTriggerSnap(t *testing.T) {
 
 	gaction := p.Action()
 	// each operation is recorded as a Save
-	// Nop + SnapCount * Puts + Cut + SaveSnap = Save + SnapCount * Save + Cut + SaveSnap
-	if len(gaction) != 3+int(s.snapCount) {
-		t.Fatalf("len(action) = %d, want %d", len(gaction), 3+int(s.snapCount))
+	// BootstrapConfig/Nop + (SnapCount - 1) * Puts + Cut + SaveSnap = Save + (SnapCount - 1) * Save + Cut + SaveSnap
+	if len(gaction) != 2+int(s.snapCount) {
+		t.Fatalf("len(action) = %d, want %d", len(gaction), 2+int(s.snapCount))
 	}
-	if !reflect.DeepEqual(gaction[12], action{name: "SaveSnap"}) {
-		t.Errorf("action = %s, want SaveSnap", gaction[12])
+	if !reflect.DeepEqual(gaction[11], action{name: "SaveSnap"}) {
+		t.Errorf("action = %s, want SaveSnap", gaction[11])
 	}
 }
 
