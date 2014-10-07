@@ -496,7 +496,7 @@ func TestCommit(t *testing.T) {
 func TestIsElectionTimeout(t *testing.T) {
 	tests := []struct {
 		elapse       int
-		wpossibility float64
+		wprobability float64
 		round        bool
 	}{
 		{5, 0, false},
@@ -519,8 +519,8 @@ func TestIsElectionTimeout(t *testing.T) {
 		if tt.round {
 			got = math.Floor(got*10+0.5) / 10.0
 		}
-		if got != tt.wpossibility {
-			t.Errorf("#%d: possibility = %v, want %v", i, got, tt.wpossibility)
+		if got != tt.wprobability {
+			t.Errorf("#%d: possibility = %v, want %v", i, got, tt.wprobability)
 		}
 	}
 }

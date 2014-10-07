@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math/rand"
 	"sort"
-	"time"
 
 	pb "github.com/coreos/etcd/raft/raftpb"
 )
@@ -134,7 +133,7 @@ func newRaft(id int64, peers []int64, election, heartbeat int) *raft {
 	if id == None {
 		panic("cannot use none id")
 	}
-	rand.Seed(time.Now().UnixNano())
+	rand.Seed(id)
 	r := &raft{
 		id:               id,
 		lead:             None,
@@ -589,12 +588,12 @@ func (r *raft) loadState(state pb.HardState) {
 }
 
 // isElectionTimeout returns true if r.elapsed is greater than the
-// randomized election timeout in [electiontimeout, 2 * electiontimeout - 1).
+// randomized election timeout in (electiontimeout, 2 * electiontimeout - 1).
 // Otherwise, it returns false.
 func (r *raft) isElectionTimeout() bool {
 	d := r.elapsed - r.electionTimeout
 	if d < 0 {
 		return false
 	}
-	return d > int(rand.Int31())%r.electionTimeout
+	return d > rand.Int()%r.electionTimeout
 }
