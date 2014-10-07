@@ -75,7 +75,7 @@ func (c *Cluster) Set(s string) error {
 			return fmt.Errorf("Empty URL given for %q", name)
 		}
 
-		m := newMember(name, types.URLs(*flags.NewURLsValue(strings.Join(urls, ","))), nil)
+		m := GenerateMember(name, types.URLs(*flags.NewURLsValue(strings.Join(urls, ","))), nil)
 		err := c.Add(*m)
 		if err != nil {
 			return err
