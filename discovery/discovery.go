@@ -23,7 +23,9 @@ var (
 	ErrDuplicateID    = errors.New("discovery: found duplicate id")
 	ErrFullCluster    = errors.New("discovery: cluster is full")
 	ErrTooManyRetries = errors.New("discovery: too many retries")
+)
 
+const (
 	// Number of retries discovery will attempt before giving up and erroring out.
 	nRetries = uint(3)
 )
@@ -73,12 +75,9 @@ func (d *discovery) Discover() (string, error) {
 	}
 
 	if err := d.createSelf(); err != nil {
-		if err == client.ErrTimeout {
-			if d.retries < nRetries {
-				d.logAndBackoffForRetry("registering self")
-				return d.Discover()
-			}
-		}
+		// Fails, even on a timeout, if createSelf times out.
+		// TODO(barakmich): Retrying the same node might want to succeed here
+		// (ie, createSelf should be idempotent for discovery).
 		return "", err
 	}
 
@@ -89,15 +88,6 @@ func (d *discovery) Discover() (string, error) {
 
 	all, err := d.waitNodes(nodes, size)
 	if err != nil {
-		if err == client.ErrTimeout {
-			// Our actual connection timed out (nodes can take awhile, but the discovery
-			// server stopped responding) increment our retry counter and we have to
-			// start from scratch. Calling createSelf() again should be idempotent.
-			if d.retries < nRetries {
-				d.logAndBackoffForRetry("waiting for other nodes")
-				return d.Discover()
-			}
-		}
 		return "", err
 	}
 
@@ -179,6 +169,18 @@ func (d *discovery) checkClusterRetry() (client.Nodes, int, error) {
 	return nil, 0, ErrTooManyRetries
 }
 
+func (d *discovery) waitNodesRetry() (client.Nodes, error) {
+	if d.retries < nRetries {
+		d.logAndBackoffForRetry("waiting for other nodes")
+		nodes, n, err := d.checkCluster()
+		if err != nil {
+			return nil, err
+		}
+		return d.waitNodes(nodes, n)
+	}
+	return nil, ErrTooManyRetries
+}
+
 func (d *discovery) waitNodes(nodes client.Nodes, size int) (client.Nodes, error) {
 	if len(nodes) > size {
 		nodes = nodes[:size]
@@ -190,6 +192,9 @@ func (d *discovery) waitNodes(nodes client.Nodes, size int) (client.Nodes, error
 	for len(all) < size {
 		resp, err := w.Next()
 		if err != nil {
+			if err == client.ErrTimeout {
+				return d.waitNodesRetry()
+			}
 			return nil, err
 		}
 		all = append(all, resp.Node)
