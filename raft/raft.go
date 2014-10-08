@@ -520,7 +520,9 @@ func (r *raft) compact(index int64, nodes []int64, d []byte) {
 	if index > r.raftLog.applied {
 		panic(fmt.Sprintf("raft: compact index (%d) exceeds applied index (%d)", index, r.raftLog.applied))
 	}
-	// we might use a newer verison of removed list. It is OK.
+	// We do not get the removed nodes at the given index.
+	// We get the removed nodes at current index. So a state machine might
+	// have a newer verison of removed nodes after recovery. It is OK.
 	r.raftLog.snap(d, index, r.raftLog.term(index), nodes, r.removedNodes())
 	r.raftLog.compact(index)
 }
