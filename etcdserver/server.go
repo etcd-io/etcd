@@ -122,6 +122,9 @@ func NewServer(cfg *ServerConfig) *EtcdServer {
 		// TODO: add context for PeerURLs
 		n = raft.StartNode(m.ID, cfg.Cluster.IDs(), 10, 1)
 	} else {
+		if cfg.DiscoveryURL != "" {
+			log.Printf("etcd: warn: ignoring discovery URL: etcd has already been initialized and has a valid log in %q", waldir)
+		}
 		var index int64
 		snapshot, err := ss.Load()
 		if err != nil && err != snap.ErrNoSnapshot {
