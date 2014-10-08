@@ -99,7 +99,7 @@ func (x *ConfChangeType) UnmarshalJSON(data []byte) error {
 }
 
 type Info struct {
-	ID               int64  `protobuf:"varint,1,req" json:"ID"`
+	ID               uint64 `protobuf:"varint,1,req" json:"ID"`
 	XXX_unrecognized []byte `json:"-"`
 }
 
@@ -109,8 +109,8 @@ func (*Info) ProtoMessage()    {}
 
 type Entry struct {
 	Type             EntryType `protobuf:"varint,1,req,enum=raftpb.EntryType" json:"Type"`
-	Term             int64     `protobuf:"varint,2,req" json:"Term"`
-	Index            int64     `protobuf:"varint,3,req" json:"Index"`
+	Term             uint64    `protobuf:"varint,2,req" json:"Term"`
+	Index            uint64    `protobuf:"varint,3,req" json:"Index"`
 	Data             []byte    `protobuf:"bytes,4,opt" json:"Data"`
 	XXX_unrecognized []byte    `json:"-"`
 }
@@ -120,12 +120,12 @@ func (m *Entry) String() string { return proto.CompactTextString(m) }
 func (*Entry) ProtoMessage()    {}
 
 type Snapshot struct {
-	Data             []byte  `protobuf:"bytes,1,req,name=data" json:"data"`
-	Nodes            []int64 `protobuf:"varint,2,rep,name=nodes" json:"nodes"`
-	Index            int64   `protobuf:"varint,3,req,name=index" json:"index"`
-	Term             int64   `protobuf:"varint,4,req,name=term" json:"term"`
-	RemovedNodes     []int64 `protobuf:"varint,5,rep,name=removed_nodes" json:"removed_nodes"`
-	XXX_unrecognized []byte  `json:"-"`
+	Data             []byte   `protobuf:"bytes,1,req,name=data" json:"data"`
+	Nodes            []uint64 `protobuf:"varint,2,rep,name=nodes" json:"nodes"`
+	Index            uint64   `protobuf:"varint,3,req,name=index" json:"index"`
+	Term             uint64   `protobuf:"varint,4,req,name=term" json:"term"`
+	RemovedNodes     []uint64 `protobuf:"varint,5,rep,name=removed_nodes" json:"removed_nodes"`
+	XXX_unrecognized []byte   `json:"-"`
 }
 
 func (m *Snapshot) Reset()         { *m = Snapshot{} }
@@ -133,14 +133,14 @@ func (m *Snapshot) String() string { return proto.CompactTextString(m) }
 func (*Snapshot) ProtoMessage()    {}
 
 type Message struct {
-	Type             int64    `protobuf:"varint,1,req,name=type" json:"type"`
-	To               int64    `protobuf:"varint,2,req,name=to" json:"to"`
-	From             int64    `protobuf:"varint,3,req,name=from" json:"from"`
-	Term             int64    `protobuf:"varint,4,req,name=term" json:"term"`
-	LogTerm          int64    `protobuf:"varint,5,req,name=logTerm" json:"logTerm"`
-	Index            int64    `protobuf:"varint,6,req,name=index" json:"index"`
+	Type             uint64   `protobuf:"varint,1,req,name=type" json:"type"`
+	To               uint64   `protobuf:"varint,2,req,name=to" json:"to"`
+	From             uint64   `protobuf:"varint,3,req,name=from" json:"from"`
+	Term             uint64   `protobuf:"varint,4,req,name=term" json:"term"`
+	LogTerm          uint64   `protobuf:"varint,5,req,name=logTerm" json:"logTerm"`
+	Index            uint64   `protobuf:"varint,6,req,name=index" json:"index"`
 	Entries          []Entry  `protobuf:"bytes,7,rep,name=entries" json:"entries"`
-	Commit           int64    `protobuf:"varint,8,req,name=commit" json:"commit"`
+	Commit           uint64   `protobuf:"varint,8,req,name=commit" json:"commit"`
 	Snapshot         Snapshot `protobuf:"bytes,9,req,name=snapshot" json:"snapshot"`
 	Reject           bool     `protobuf:"varint,10,req,name=reject" json:"reject"`
 	XXX_unrecognized []byte   `json:"-"`
@@ -151,9 +151,9 @@ func (m *Message) String() string { return proto.CompactTextString(m) }
 func (*Message) ProtoMessage()    {}
 
 type HardState struct {
-	Term             int64  `protobuf:"varint,1,req,name=term" json:"term"`
-	Vote             int64  `protobuf:"varint,2,req,name=vote" json:"vote"`
-	Commit           int64  `protobuf:"varint,3,req,name=commit" json:"commit"`
+	Term             uint64 `protobuf:"varint,1,req,name=term" json:"term"`
+	Vote             uint64 `protobuf:"varint,2,req,name=vote" json:"vote"`
+	Commit           uint64 `protobuf:"varint,3,req,name=commit" json:"commit"`
 	XXX_unrecognized []byte `json:"-"`
 }
 
@@ -162,9 +162,9 @@ func (m *HardState) String() string { return proto.CompactTextString(m) }
 func (*HardState) ProtoMessage()    {}
 
 type ConfChange struct {
-	ID               int64          `protobuf:"varint,1,req" json:"ID"`
+	ID               uint64         `protobuf:"varint,1,req" json:"ID"`
 	Type             ConfChangeType `protobuf:"varint,2,req,enum=raftpb.ConfChangeType" json:"Type"`
-	NodeID           int64          `protobuf:"varint,3,req" json:"NodeID"`
+	NodeID           uint64         `protobuf:"varint,3,req" json:"NodeID"`
 	Context          []byte         `protobuf:"bytes,4,opt" json:"Context"`
 	XXX_unrecognized []byte         `json:"-"`
 }
@@ -206,7 +206,7 @@ func (m *Info) Unmarshal(data []byte) error {
 				}
 				b := data[index]
 				index++
-				m.ID |= (int64(b) & 0x7F) << shift
+				m.ID |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -278,7 +278,7 @@ func (m *Entry) Unmarshal(data []byte) error {
 				}
 				b := data[index]
 				index++
-				m.Term |= (int64(b) & 0x7F) << shift
+				m.Term |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -293,7 +293,7 @@ func (m *Entry) Unmarshal(data []byte) error {
 				}
 				b := data[index]
 				index++
-				m.Index |= (int64(b) & 0x7F) << shift
+				m.Index |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -388,14 +388,14 @@ func (m *Snapshot) Unmarshal(data []byte) error {
 			if wireType != 0 {
 				return code_google_com_p_gogoprotobuf_proto.ErrWrongType
 			}
-			var v int64
+			var v uint64
 			for shift := uint(0); ; shift += 7 {
 				if index >= l {
 					return io.ErrUnexpectedEOF
 				}
 				b := data[index]
 				index++
-				v |= (int64(b) & 0x7F) << shift
+				v |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -411,7 +411,7 @@ func (m *Snapshot) Unmarshal(data []byte) error {
 				}
 				b := data[index]
 				index++
-				m.Index |= (int64(b) & 0x7F) << shift
+				m.Index |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -426,7 +426,7 @@ func (m *Snapshot) Unmarshal(data []byte) error {
 				}
 				b := data[index]
 				index++
-				m.Term |= (int64(b) & 0x7F) << shift
+				m.Term |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -435,14 +435,14 @@ func (m *Snapshot) Unmarshal(data []byte) error {
 			if wireType != 0 {
 				return code_google_com_p_gogoprotobuf_proto.ErrWrongType
 			}
-			var v int64
+			var v uint64
 			for shift := uint(0); ; shift += 7 {
 				if index >= l {
 					return io.ErrUnexpectedEOF
 				}
 				b := data[index]
 				index++
-				v |= (int64(b) & 0x7F) << shift
+				v |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -500,7 +500,7 @@ func (m *Message) Unmarshal(data []byte) error {
 				}
 				b := data[index]
 				index++
-				m.Type |= (int64(b) & 0x7F) << shift
+				m.Type |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -515,7 +515,7 @@ func (m *Message) Unmarshal(data []byte) error {
 				}
 				b := data[index]
 				index++
-				m.To |= (int64(b) & 0x7F) << shift
+				m.To |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -530,7 +530,7 @@ func (m *Message) Unmarshal(data []byte) error {
 				}
 				b := data[index]
 				index++
-				m.From |= (int64(b) & 0x7F) << shift
+				m.From |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -545,7 +545,7 @@ func (m *Message) Unmarshal(data []byte) error {
 				}
 				b := data[index]
 				index++
-				m.Term |= (int64(b) & 0x7F) << shift
+				m.Term |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -560,7 +560,7 @@ func (m *Message) Unmarshal(data []byte) error {
 				}
 				b := data[index]
 				index++
-				m.LogTerm |= (int64(b) & 0x7F) << shift
+				m.LogTerm |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -575,7 +575,7 @@ func (m *Message) Unmarshal(data []byte) error {
 				}
 				b := data[index]
 				index++
-				m.Index |= (int64(b) & 0x7F) << shift
+				m.Index |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -613,7 +613,7 @@ func (m *Message) Unmarshal(data []byte) error {
 				}
 				b := data[index]
 				index++
-				m.Commit |= (int64(b) & 0x7F) << shift
+				m.Commit |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -711,7 +711,7 @@ func (m *HardState) Unmarshal(data []byte) error {
 				}
 				b := data[index]
 				index++
-				m.Term |= (int64(b) & 0x7F) << shift
+				m.Term |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -726,7 +726,7 @@ func (m *HardState) Unmarshal(data []byte) error {
 				}
 				b := data[index]
 				index++
-				m.Vote |= (int64(b) & 0x7F) << shift
+				m.Vote |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -741,7 +741,7 @@ func (m *HardState) Unmarshal(data []byte) error {
 				}
 				b := data[index]
 				index++
-				m.Commit |= (int64(b) & 0x7F) << shift
+				m.Commit |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -798,7 +798,7 @@ func (m *ConfChange) Unmarshal(data []byte) error {
 				}
 				b := data[index]
 				index++
-				m.ID |= (int64(b) & 0x7F) << shift
+				m.ID |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -828,7 +828,7 @@ func (m *ConfChange) Unmarshal(data []byte) error {
 				}
 				b := data[index]
 				index++
-				m.NodeID |= (int64(b) & 0x7F) << shift
+				m.NodeID |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}

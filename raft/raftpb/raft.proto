@@ -9,7 +9,7 @@ option (gogoproto.goproto_getters_all) = false;
 option (gogoproto.goproto_enum_prefix_all) = false;
 
 message Info {
-	required int64 ID   = 1 [(gogoproto.nullable) = false];
+	required uint64 ID   = 1 [(gogoproto.nullable) = false];
 }
 
 enum EntryType {
@@ -18,37 +18,37 @@ enum EntryType {
 }
 
 message Entry {
-	required EntryType Type  = 1 [(gogoproto.nullable) = false];
-	required int64     Term  = 2 [(gogoproto.nullable) = false];
-	required int64     Index = 3 [(gogoproto.nullable) = false];
-	optional bytes     Data  = 4 [(gogoproto.nullable) = false];
+	required EntryType  Type  = 1 [(gogoproto.nullable) = false];
+	required uint64     Term  = 2 [(gogoproto.nullable) = false];
+	required uint64     Index = 3 [(gogoproto.nullable) = false];
+	optional bytes      Data  = 4 [(gogoproto.nullable) = false];
 }
 
 message Snapshot {
 	required bytes data          = 1 [(gogoproto.nullable) = false];
-	repeated int64 nodes         = 2 [(gogoproto.nullable) = false];
-	required int64 index         = 3 [(gogoproto.nullable) = false];
-	required int64 term          = 4 [(gogoproto.nullable) = false];
-	repeated int64 removed_nodes = 5 [(gogoproto.nullable) = false];
+	repeated uint64 nodes         = 2 [(gogoproto.nullable) = false];
+	required uint64 index         = 3 [(gogoproto.nullable) = false];
+	required uint64 term          = 4 [(gogoproto.nullable) = false];
+	repeated uint64 removed_nodes = 5 [(gogoproto.nullable) = false];
 }
 
 message Message {
-	required int64 type        = 1  [(gogoproto.nullable) = false];
-	required int64 to          = 2  [(gogoproto.nullable) = false];
-	required int64 from        = 3  [(gogoproto.nullable) = false];
-	required int64 term        = 4  [(gogoproto.nullable) = false];
-	required int64 logTerm     = 5  [(gogoproto.nullable) = false];
-	required int64 index       = 6  [(gogoproto.nullable) = false];
-	repeated Entry entries     = 7  [(gogoproto.nullable) = false];
-	required int64 commit      = 8  [(gogoproto.nullable) = false];
-	required Snapshot snapshot = 9  [(gogoproto.nullable) = false];
-	required bool  reject      = 10 [(gogoproto.nullable) = false];
+	required uint64 type        = 1  [(gogoproto.nullable) = false];
+	required uint64 to          = 2  [(gogoproto.nullable) = false];
+	required uint64 from        = 3  [(gogoproto.nullable) = false];
+	required uint64 term        = 4  [(gogoproto.nullable) = false];
+	required uint64 logTerm     = 5  [(gogoproto.nullable) = false];
+	required uint64 index       = 6  [(gogoproto.nullable) = false];
+	repeated Entry entries      = 7  [(gogoproto.nullable) = false];
+	required uint64 commit      = 8  [(gogoproto.nullable) = false];
+	required Snapshot snapshot  = 9  [(gogoproto.nullable) = false];
+	required bool  reject       = 10 [(gogoproto.nullable) = false];
 }
 
 message HardState {
-	required int64 term   = 1 [(gogoproto.nullable) = false];
-	required int64 vote   = 2 [(gogoproto.nullable) = false];
-	required int64 commit = 3 [(gogoproto.nullable) = false];
+	required uint64 term   = 1 [(gogoproto.nullable) = false];
+	required uint64 vote   = 2 [(gogoproto.nullable) = false];
+	required uint64 commit = 3 [(gogoproto.nullable) = false];
 }
 
 enum ConfChangeType {
@@ -57,8 +57,8 @@ enum ConfChangeType {
 }
 
 message ConfChange {
-	required int64          ID      = 1 [(gogoproto.nullable) = false];
-	required ConfChangeType Type    = 2 [(gogoproto.nullable) = false];
-	required int64          NodeID  = 3 [(gogoproto.nullable) = false];
-	optional bytes          Context = 4 [(gogoproto.nullable) = false];
+	required uint64          ID      = 1 [(gogoproto.nullable) = false];
+	required ConfChangeType  Type    = 2 [(gogoproto.nullable) = false];
+	required uint64          NodeID  = 3 [(gogoproto.nullable) = false];
+	optional bytes           Context = 4 [(gogoproto.nullable) = false];
 }

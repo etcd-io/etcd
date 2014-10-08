@@ -12,15 +12,15 @@ const (
 
 type raftLog struct {
 	ents      []pb.Entry
-	unstable  int64
-	committed int64
-	applied   int64
-	offset    int64
+	unstable  uint64
+	committed uint64
+	applied   uint64
+	offset    uint64
 	snapshot  pb.Snapshot
 
 	// want a compact after the number of entries exceeds the threshold
 	// TODO(xiangli) size might be a better criteria
-	compactThreshold int64
+	compactThreshold uint64
 }
 
 func newLog() *raftLog {
@@ -39,20 +39,20 @@ func (l *raftLog) isEmpty() bool {
 
 func (l *raftLog) load(ents []pb.Entry) {
 	l.ents = ents
-	l.unstable = l.offset + int64(len(ents))
+	l.unstable = l.offset + uint64(len(ents))
 }
 
 func (l *raftLog) String() string {
 	return fmt.Sprintf("offset=%d committed=%d applied=%d len(ents)=%d", l.offset, l.committed, l.applied, len(l.ents))
 }
 
-func (l *raftLog) maybeAppend(index, logTerm, committed int64, ents ...pb.Entry) bool {
-	lastnewi := index + int64(len(ents))
+func (l *raftLog) maybeAppend(index, logTerm, committed uint64, ents ...pb.Entry) bool {
+	lastnewi := index + uint64(len(ents))
 	if l.matchTerm(index, logTerm) {
 		from := index + 1
 		ci := l.findConflict(from, ents)
 		switch {
-		case ci == -1:
+		case ci == 0:
 		case ci <= l.committed:
 			panic("conflict with committed entry")
 		default:
@@ -68,19 +68,19 @@ func (l *raftLog) maybeAppend(index, logTerm, committed int64, ents ...pb.Entry)
 	return false
 }
 
-func (l *raftLog) append(after int64, ents ...pb.Entry) int64 {
+func (l *raftLog) append(after uint64, ents ...pb.Entry) uint64 {
 	l.ents = append(l.slice(l.offset, after+1), ents...)
 	l.unstable = min(l.unstable, after+1)
 	return l.lastIndex()
 }
 
-func (l *raftLog) findConflict(from int64, ents []pb.Entry) int64 {
+func (l *raftLog) findConflict(from uint64, ents []pb.Entry) uint64 {
 	for i, ne := range ents {
-		if oe := l.at(from + int64(i)); oe == nil || oe.Term != ne.Term {
-			return from + int64(i)
+		if oe := l.at(from + uint64(i)); oe == nil || oe.Term != ne.Term {
+			return from + uint64(i)
 		}
 	}
-	return -1
+	return 0
 }
 
 func (l *raftLog) unstableEnts() []pb.Entry {
@@ -112,18 +112,18 @@ func (l *raftLog) resetNextEnts() {
 	}
 }
 
-func (l *raftLog) lastIndex() int64 {
-	return int64(len(l.ents)) - 1 + l.offset
+func (l *raftLog) lastIndex() uint64 {
+	return uint64(len(l.ents)) - 1 + l.offset
 }
 
-func (l *raftLog) term(i int64) int64 {
+func (l *raftLog) term(i uint64) uint64 {
 	if e := l.at(i); e != nil {
 		return e.Term
 	}
-	return -1
+	return 0
 }
 
-func (l *raftLog) entries(i int64) []pb.Entry {
+func (l *raftLog) entries(i uint64) []pb.Entry {
 	// never send out the first entry
 	// first entry is only used for matching
 	// prevLogTerm
@@ -133,19 +133,19 @@ func (l *raftLog) entries(i int64) []pb.Entry {
 	return l.slice(i, l.lastIndex()+1)
 }
 
-func (l *raftLog) isUpToDate(i, term int64) bool {
+func (l *raftLog) isUpToDate(i, term uint64) bool {
 	e := l.at(l.lastIndex())
 	return term > e.Term || (term == e.Term && i >= l.lastIndex())
 }
 
-func (l *raftLog) matchTerm(i, term int64) bool {
+func (l *raftLog) matchTerm(i, term uint64) bool {
 	if e := l.at(i); e != nil {
 		return e.Term == term
 	}
 	return false
 }
 
-func (l *raftLog) maybeCommit(maxIndex, term int64) bool {
+func (l *raftLog) maybeCommit(maxIndex, term uint64) bool {
 	if maxIndex > l.committed && l.term(maxIndex) == term {
 		l.committed = maxIndex
 		return true
@@ -158,17 +158,17 @@ func (l *raftLog) maybeCommit(maxIndex, term int64) bool {
 // i must be not smaller than the index of the first entry
 // and not greater than the index of the last entry.
 // the number of entries after compaction will be returned.
-func (l *raftLog) compact(i int64) int64 {
+func (l *raftLog) compact(i uint64) uint64 {
 	if l.isOutOfAppliedBounds(i) {
 		panic(fmt.Sprintf("compact %d out of bounds [%d:%d]", i, l.offset, l.applied))
 	}
 	l.ents = l.slice(i, l.lastIndex()+1)
 	l.unstable = max(i+1, l.unstable)
 	l.offset = i
-	return int64(len(l.ents))
+	return uint64(len(l.ents))
 }
 
-func (l *raftLog) snap(d []byte, index, term int64, nodes []int64, removed []int64) {
+func (l *raftLog) snap(d []byte, index, term uint64, nodes []uint64, removed []uint64) {
 	l.snapshot = pb.Snapshot{
 		Data:         d,
 		Nodes:        nodes,
@@ -191,7 +191,7 @@ func (l *raftLog) restore(s pb.Snapshot) {
 	l.snapshot = s
 }
 
-func (l *raftLog) at(i int64) *pb.Entry {
+func (l *raftLog) at(i uint64) *pb.Entry {
 	if l.isOutOfBounds(i) {
 		return nil
 	}
@@ -199,7 +199,7 @@ func (l *raftLog) at(i int64) *pb.Entry {
 }
 
 // slice returns a slice of log entries from lo through hi-1, inclusive.
-func (l *raftLog) slice(lo int64, hi int64) []pb.Entry {
+func (l *raftLog) slice(lo uint64, hi uint64) []pb.Entry {
 	if lo >= hi {
 		return nil
 	}
@@ -209,28 +209,28 @@ func (l *raftLog) slice(lo int64, hi int64) []pb.Entry {
 	return l.ents[lo-l.offset : hi-l.offset]
 }
 
-func (l *raftLog) isOutOfBounds(i int64) bool {
+func (l *raftLog) isOutOfBounds(i uint64) bool {
 	if i < l.offset || i > l.lastIndex() {
 		return true
 	}
 	return false
 }
 
-func (l *raftLog) isOutOfAppliedBounds(i int64) bool {
+func (l *raftLog) isOutOfAppliedBounds(i uint64) bool {
 	if i < l.offset || i > l.applied {
 		return true
 	}
 	return false
 }
 
-func min(a, b int64) int64 {
+func min(a, b uint64) uint64 {
 	if a > b {
 		return b
 	}
 	return a
 }
 
-func max(a, b int64) int64 {
+func max(a, b uint64) uint64 {
 	if a > b {
 		return a
 	}

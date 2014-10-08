@@ -14,13 +14,13 @@ import (
 // 2.Append any new entries not already in the log
 func TestAppend(t *testing.T) {
 	previousEnts := []pb.Entry{{Term: 1}, {Term: 2}}
-	previousUnstable := int64(3)
+	previousUnstable := uint64(3)
 	tests := []struct {
-		after     int64
+		after     uint64
 		ents      []pb.Entry
-		windex    int64
+		windex    uint64
 		wents     []pb.Entry
-		wunstable int64
+		wunstable uint64
 	}{
 		{
 			2,
@@ -74,13 +74,13 @@ func TestAppend(t *testing.T) {
 // TestCompactionSideEffects ensures that all the log related funcationality works correctly after
 // a compaction.
 func TestCompactionSideEffects(t *testing.T) {
-	var i int64
-	lastIndex := int64(1000)
+	var i uint64
+	lastIndex := uint64(1000)
 	lastTerm := lastIndex
 	raftLog := newLog()
 
 	for i = 0; i < lastIndex; i++ {
-		raftLog.append(int64(i), pb.Entry{Term: int64(i + 1), Index: int64(i + 1)})
+		raftLog.append(uint64(i), pb.Entry{Term: uint64(i + 1), Index: uint64(i + 1)})
 	}
 	raftLog.maybeCommit(lastIndex, lastTerm)
 	raftLog.resetNextEnts()
@@ -126,9 +126,9 @@ func TestCompactionSideEffects(t *testing.T) {
 func TestUnstableEnts(t *testing.T) {
 	previousEnts := []pb.Entry{{Term: 1, Index: 1}, {Term: 2, Index: 2}}
 	tests := []struct {
-		unstable  int64
+		unstable  uint64
 		wents     []pb.Entry
-		wunstable int64
+		wunstable uint64
 	}{
 		{3, nil, 3},
 		{1, previousEnts, 3},
@@ -152,18 +152,18 @@ func TestUnstableEnts(t *testing.T) {
 //TestCompaction ensures that the number of log entreis is correct after compactions.
 func TestCompaction(t *testing.T) {
 	tests := []struct {
-		applied   int64
-		lastIndex int64
-		compact   []int64
+		applied   uint64
+		lastIndex uint64
+		compact   []uint64
 		wleft     []int
 		wallow    bool
 	}{
 		// out of upper bound
-		{1000, 1000, []int64{1001}, []int{-1}, false},
-		{1000, 1000, []int64{300, 500, 800, 900}, []int{701, 501, 201, 101}, true},
+		{1000, 1000, []uint64{1001}, []int{-1}, false},
+		{1000, 1000, []uint64{300, 500, 800, 900}, []int{701, 501, 201, 101}, true},
 		// out of lower bound
-		{1000, 1000, []int64{300, 299}, []int{701, -1}, false},
-		{0, 1000, []int64{1}, []int{-1}, false},
+		{1000, 1000, []uint64{300, 299}, []int{701, -1}, false},
+		{0, 1000, []uint64{1}, []int{-1}, false},
 	}
 
 	for i, tt := range tests {
@@ -177,8 +177,8 @@ func TestCompaction(t *testing.T) {
 			}()
 
 			raftLog := newLog()
-			for i := int64(0); i < tt.lastIndex; i++ {
-				raftLog.append(int64(i), pb.Entry{})
+			for i := uint64(0); i < tt.lastIndex; i++ {
+				raftLog.append(uint64(i), pb.Entry{})
 			}
 			raftLog.maybeCommit(tt.applied, 0)
 			raftLog.resetNextEnts()
@@ -194,14 +194,14 @@ func TestCompaction(t *testing.T) {
 }
 
 func TestLogRestore(t *testing.T) {
-	var i int64
+	var i uint64
 	raftLog := newLog()
 	for i = 0; i < 100; i++ {
 		raftLog.append(i, pb.Entry{Term: i + 1})
 	}
 
-	index := int64(1000)
-	term := int64(1000)
+	index := uint64(1000)
+	term := uint64(1000)
 	raftLog.restore(pb.Snapshot{Index: index, Term: term})
 
 	// only has the guard entry
@@ -226,12 +226,12 @@ func TestLogRestore(t *testing.T) {
 }
 
 func TestIsOutOfBounds(t *testing.T) {
-	offset := int64(100)
-	num := int64(100)
+	offset := uint64(100)
+	num := uint64(100)
 	l := &raftLog{offset: offset, ents: make([]pb.Entry, num)}
 
 	tests := []struct {
-		index int64
+		index uint64
 		w     bool
 	}{
 		{offset - 1, true},
@@ -250,9 +250,9 @@ func TestIsOutOfBounds(t *testing.T) {
 }
 
 func TestAt(t *testing.T) {
-	var i int64
-	offset := int64(100)
-	num := int64(100)
+	var i uint64
+	offset := uint64(100)
+	num := uint64(100)
 
 	l := &raftLog{offset: offset}
 	for i = 0; i < num; i++ {
@@ -260,7 +260,7 @@ func TestAt(t *testing.T) {
 	}
 
 	tests := []struct {
-		index int64
+		index uint64
 		w     *pb.Entry
 	}{
 		{offset - 1, nil},
@@ -279,9 +279,9 @@ func TestAt(t *testing.T) {
 }
 
 func TestSlice(t *testing.T) {
-	var i int64
-	offset := int64(100)
-	num := int64(100)
+	var i uint64
+	offset := uint64(100)
+	num := uint64(100)
 
 	l := &raftLog{offset: offset}
 	for i = 0; i < num; i++ {
@@ -289,8 +289,8 @@ func TestSlice(t *testing.T) {
 	}
 
 	tests := []struct {
-		from int64
-		to   int64
+		from uint64
+		to   uint64
 		w    []pb.Entry
 	}{
 		{offset - 1, offset + 1, nil},
