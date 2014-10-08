@@ -92,13 +92,13 @@ func TestLogReplication(t *testing.T) {
 				t.Errorf("#%d.%d: committed = %d, want %d", i, j, sm.raftLog.committed, tt.wcommitted)
 			}
 
-			ents := make([]pb.Entry, 0)
+			ents := []pb.Entry{}
 			for _, e := range nextEnts(sm) {
 				if e.Data != nil {
 					ents = append(ents, e)
 				}
 			}
-			props := make([]pb.Message, 0)
+			props := []pb.Message{}
 			for _, m := range tt.msgs {
 				if m.Type == msgProp {
 					props = append(props, m)
@@ -651,7 +651,7 @@ func TestRecvMsgVote(t *testing.T) {
 			continue
 		}
 		if g := msgs[0].Reject; g != tt.wreject {
-			t.Errorf("#%d, m.Reject = %d, want %d", i, g, tt.wreject)
+			t.Errorf("#%d, m.Reject = %v, want %v", i, g, tt.wreject)
 		}
 	}
 }
@@ -1270,7 +1270,7 @@ func (nw *network) recover() {
 }
 
 func (nw *network) filter(msgs []pb.Message) []pb.Message {
-	mm := make([]pb.Message, 0)
+	mm := []pb.Message{}
 	for _, m := range msgs {
 		if nw.ignorem[m.Type] {
 			continue

@@ -11,6 +11,8 @@ import (
 
 var (
 	emptyState = pb.HardState{}
+
+	// ErrStopped is returned by methods on Nodes that have been stopped.
 	ErrStopped = errors.New("raft: stopped")
 )
 
@@ -68,10 +70,12 @@ func isHardStateEqual(a, b pb.HardState) bool {
 	return a.Term == b.Term && a.Vote == b.Vote && a.Commit == b.Commit
 }
 
+// IsEmptyHardState returns true if the given HardState is empty.
 func IsEmptyHardState(st pb.HardState) bool {
 	return isHardStateEqual(st, emptyState)
 }
 
+// IsEmptySnap returns true if the given Snapshot is empty.
 func IsEmptySnap(sp pb.Snapshot) bool {
 	return sp.Index == 0
 }
@@ -81,6 +85,7 @@ func (rd Ready) containsUpdates() bool {
 		len(rd.Entries) > 0 || len(rd.CommittedEntries) > 0 || len(rd.Messages) > 0
 }
 
+// Node represents a node in a raft cluster.
 type Node interface {
 	// Tick increments the internal logical clock for the Node by a single tick. Election
 	// timeouts and heartbeat timeouts are in units of ticks.

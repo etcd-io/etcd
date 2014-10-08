@@ -9,6 +9,7 @@ import (
 	pb "github.com/coreos/etcd/raft/raftpb"
 )
 
+// None is a placeholder node ID used when there is no leader.
 const None int64 = 0
 
 type messageType int64
@@ -26,15 +27,15 @@ const (
 )
 
 var mtmap = [...]string{
-	msgHup:      "msgHup",
-	msgBeat:     "msgBeat",
-	msgProp:     "msgProp",
-	msgApp:      "msgApp",
-	msgAppResp:  "msgAppResp",
-	msgVote:     "msgVote",
-	msgVoteResp: "msgVoteResp",
-	msgSnap:     "msgSnap",
-	msgDenied:   "msgDenied",
+	"msgHup",
+	"msgBeat",
+	"msgProp",
+	"msgApp",
+	"msgAppResp",
+	"msgVote",
+	"msgVoteResp",
+	"msgSnap",
+	"msgDenied",
 }
 
 func (mt messageType) String() string {
@@ -43,18 +44,20 @@ func (mt messageType) String() string {
 
 var errNoLeader = errors.New("no leader")
 
+// Possible values for StateType.
 const (
 	StateFollower StateType = iota
 	StateCandidate
 	StateLeader
 )
 
+// StateType represents the role of a node in a cluster.
 type StateType int64
 
 var stmap = [...]string{
-	StateFollower:  "StateFollower",
-	StateCandidate: "StateCandidate",
-	StateLeader:    "StateLeader",
+	"StateFollower",
+	"StateCandidate",
+	"StateLeader",
 }
 
 func (st StateType) String() string {
