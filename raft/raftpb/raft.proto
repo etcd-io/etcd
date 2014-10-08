@@ -25,10 +25,11 @@ message Entry {
 }
 
 message Snapshot {
-	required bytes data  = 1 [(gogoproto.nullable) = false];
-	repeated int64 nodes = 2 [(gogoproto.nullable) = false];
-	required int64 index = 3 [(gogoproto.nullable) = false];
-	required int64 term  = 4 [(gogoproto.nullable) = false];
+	required bytes data          = 1 [(gogoproto.nullable) = false];
+	repeated int64 nodes         = 2 [(gogoproto.nullable) = false];
+	required int64 index         = 3 [(gogoproto.nullable) = false];
+	required int64 term          = 4 [(gogoproto.nullable) = false];
+	repeated int64 removed_nodes = 5 [(gogoproto.nullable) = false];
 }
 
 message Message {

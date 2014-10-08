@@ -124,6 +124,7 @@ type Snapshot struct {
 	Nodes            []int64 `protobuf:"varint,2,rep,name=nodes" json:"nodes"`
 	Index            int64   `protobuf:"varint,3,req,name=index" json:"index"`
 	Term             int64   `protobuf:"varint,4,req,name=term" json:"term"`
+	RemovedNodes     []int64 `protobuf:"varint,5,rep,name=removed_nodes" json:"removed_nodes"`
 	XXX_unrecognized []byte  `json:"-"`
 }
 
@@ -430,6 +431,23 @@ func (m *Snapshot) Unmarshal(data []byte) error {
 					break
 				}
 			}
+		case 5:
+			if wireType != 0 {
+				return code_google_com_p_gogoprotobuf_proto.ErrWrongType
+			}
+			var v int64
+			for shift := uint(0); ; shift += 7 {
+				if index >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[index]
+				index++
+				v |= (int64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.RemovedNodes = append(m.RemovedNodes, v)
 		default:
 			var sizeOfWire int
 			for {
@@ -894,6 +912,11 @@ func (m *Snapshot) Size() (n int) {
 	}
 	n += 1 + sovRaft(uint64(m.Index))
 	n += 1 + sovRaft(uint64(m.Term))
+	if len(m.RemovedNodes) > 0 {
+		for _, e := range m.RemovedNodes {
+			n += 1 + sovRaft(uint64(e))
+		}
+	}
 	if m.XXX_unrecognized != nil {
 		n += len(m.XXX_unrecognized)
 	}
@@ -1055,6 +1078,19 @@ func (m *Snapshot) MarshalTo(data []byte) (n int, err error) {
 	data[i] = 0x20
 	i++
 	i = encodeVarintRaft(data, i, uint64(m.Term))
+	if len(m.RemovedNodes) > 0 {
+		for _, num := range m.RemovedNodes {
+			data[i] = 0x28
+			i++
+			for num >= 1<<7 {
+				data[i] = uint8(uint64(num)&0x7f | 0x80)
+				num >>= 7
+				i++
+			}
+			data[i] = uint8(num)
+			i++
+		}
+	}
 	if m.XXX_unrecognized != nil {
 		i += copy(data[i:], m.XXX_unrecognized)
 	}
