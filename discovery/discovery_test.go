@@ -4,6 +4,7 @@ import (
 	"errors"
 	"math/rand"
 	"sort"
+	"strconv"
 
 	"reflect"
 	"testing"
@@ -107,15 +108,21 @@ func TestCheckCluster(t *testing.T) {
 		c := &clientWithResp{rs: rs}
 		d := discovery{cluster: cluster, id: 1, c: c}
 
-		ns, size, err := d.checkCluster()
-		if err != tt.werr {
-			t.Errorf("#%d: err = %v, want %v", i, err, tt.werr)
-		}
-		if reflect.DeepEqual(ns, tt.nodes) {
-			t.Errorf("#%d: nodes = %v, want %v", i, ns, tt.nodes)
-		}
-		if size != tt.wsize {
-			t.Errorf("#%d: size = %v, want %d", i, size, tt.wsize)
+		cRetry := &clientWithRetry{}
+		cRetry.rs = rs
+		dRetry := discovery{cluster: cluster, id: 1, c: cRetry, timeoutTimescale: time.Millisecond * 2}
+
+		for _, d := range []discovery{d, dRetry} {
+			ns, size, err := d.checkCluster()
+			if err != tt.werr {
+				t.Errorf("#%d: err = %v, want %v", i, err, tt.werr)
+			}
+			if reflect.DeepEqual(ns, tt.nodes) {
+				t.Errorf("#%d: nodes = %v, want %v", i, ns, tt.nodes)
+			}
+			if size != tt.wsize {
+				t.Errorf("#%d: size = %v, want %d", i, size, tt.wsize)
+			}
 		}
 	}
 }
@@ -173,14 +180,42 @@ func TestWaitNodes(t *testing.T) {
 	}
 
 	for i, tt := range tests {
+		// Basic case
 		c := &clientWithResp{nil, &watcherWithResp{tt.rs}}
 		d := &discovery{cluster: "1000", c: c}
-		g, err := d.waitNodes(tt.nodes, tt.size)
-		if err != tt.werr {
-			t.Errorf("#%d: err = %v, want %v", i, err, tt.werr)
+
+		// Retry case
+		retryScanResp := make([]*client.Response, 0)
+		if len(tt.nodes) > 0 {
+			retryScanResp = append(retryScanResp, &client.Response{
+				Node: &client.Node{
+					Key:   "1000",
+					Value: strconv.Itoa(tt.size),
+				},
+			})
+			retryScanResp = append(retryScanResp, &client.Response{
+				Node: &client.Node{
+					Nodes: tt.nodes,
+				},
+			})
 		}
-		if !reflect.DeepEqual(g, tt.wall) {
-			t.Errorf("#%d: all = %v, want %v", i, g, tt.wall)
+		cRetry := &clientWithRetry{}
+		cRetry.rs = retryScanResp
+		cRetry.w = &watcherWithRetry{tt.rs, false}
+		dRetry := &discovery{
+			cluster:          "1000",
+			c:                cRetry,
+			timeoutTimescale: time.Millisecond * 2,
+		}
+
+		for _, d := range []*discovery{d, dRetry} {
+			g, err := d.waitNodes(tt.nodes, tt.size)
+			if err != tt.werr {
+				t.Errorf("#%d: err = %v, want %v", i, err, tt.werr)
+			}
+			if !reflect.DeepEqual(g, tt.wall) {
+				t.Errorf("#%d: all = %v, want %v", i, g, tt.wall)
+			}
 		}
 	}
 }
@@ -329,4 +364,54 @@ type watcherWithErr struct {
 
 func (w *watcherWithErr) Next() (*client.Response, error) {
 	return &client.Response{}, w.err
+}
+
+// Fails every other time
+type clientWithRetry struct {
+	clientWithResp
+	haveFailed bool
+}
+
+func (c *clientWithRetry) Create(key string, value string, ttl time.Duration) (*client.Response, error) {
+	if !c.haveFailed {
+		c.haveFailed = true
+		return nil, client.ErrTimeout
+	}
+	if len(c.rs) == 0 {
+		return &client.Response{}, nil
+	}
+	r := c.rs[0]
+	c.rs = c.rs[1:]
+	return r, nil
+}
+
+func (c *clientWithRetry) Get(key string) (*client.Response, error) {
+	if !c.haveFailed {
+		c.haveFailed = true
+		return nil, client.ErrTimeout
+	}
+	if len(c.rs) == 0 {
+		return &client.Response{}, client.ErrKeyNoExist
+	}
+	r := c.rs[0]
+	c.rs = c.rs[1:]
+	return r, nil
+}
+
+type watcherWithRetry struct {
+	rs         []*client.Response
+	haveFailed bool
+}
+
+func (w *watcherWithRetry) Next() (*client.Response, error) {
+	if !w.haveFailed {
+		w.haveFailed = true
+		return nil, client.ErrTimeout
+	}
+	if len(w.rs) == 0 {
+		return &client.Response{}, nil
+	}
+	r := w.rs[0]
+	w.rs = w.rs[1:]
+	return r, nil
 }

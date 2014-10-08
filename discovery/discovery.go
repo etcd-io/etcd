@@ -41,6 +41,9 @@ type discovery struct {
 	c       client.Client
 	retries uint
 	url     *url.URL
+
+	// Injectable for testing. nil means Seconds.
+	timeoutTimescale time.Duration
 }
 
 func New(durl string, id int64, config string) (Discoverer, error) {
@@ -58,11 +61,12 @@ func New(durl string, id int64, config string) (Discoverer, error) {
 	// set the prefix of client to "" to handle this
 	c.SetPrefix("")
 	return &discovery{
-		cluster: token,
-		id:      id,
-		config:  config,
-		c:       c,
-		url:     u,
+		cluster:          token,
+		id:               id,
+		config:           config,
+		c:                c,
+		url:              u,
+		timeoutTimescale: time.Second,
 	}, nil
 }
 
@@ -156,7 +160,7 @@ func (d *discovery) checkCluster() (client.Nodes, int, error) {
 
 func (d *discovery) logAndBackoffForRetry(step string) {
 	d.retries++
-	retryTime := time.Second * (0x1 << d.retries)
+	retryTime := d.timeoutTimescale * (0x1 << d.retries)
 	log.Println("discovery: during", step, "connection to", d.url, "timed out, retrying in", retryTime)
 	time.Sleep(retryTime)
 }
