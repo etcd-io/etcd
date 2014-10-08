@@ -12,9 +12,9 @@ import (
 )
 
 // Cluster is a list of Members that belong to the same raft cluster
-type Cluster map[int64]*Member
+type Cluster map[uint64]*Member
 
-func (c Cluster) FindID(id int64) *Member {
+func (c Cluster) FindID(id uint64) *Member {
 	return c[id]
 }
 
@@ -49,7 +49,7 @@ func (c *Cluster) AddSlice(mems []Member) error {
 
 // Pick chooses a random address from a given Member's addresses, and returns it as
 // an addressible URI. If the given member does not exist, an empty string is returned.
-func (c Cluster) Pick(id int64) string {
+func (c Cluster) Pick(id uint64) string {
 	if m := c.FindID(id); m != nil {
 		urls := m.PeerURLs
 		if len(urls) == 0 {
@@ -95,12 +95,12 @@ func (c Cluster) String() string {
 	return strings.Join(sl, ",")
 }
 
-func (c Cluster) IDs() []int64 {
-	var ids []int64
+func (c Cluster) IDs() []uint64 {
+	var ids []uint64
 	for _, m := range c {
 		ids = append(ids, m.ID)
 	}
-	sort.Sort(types.Int64Slice(ids))
+	sort.Sort(types.Uint64Slice(ids))
 	return ids
 }
 

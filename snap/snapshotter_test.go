@@ -14,7 +14,7 @@ import (
 
 var testSnap = &raftpb.Snapshot{
 	Data:  []byte("some snapshot"),
-	Nodes: []int64{1, 2, 3},
+	Nodes: []uint64{1, 2, 3},
 	Index: 1,
 	Term:  1,
 }

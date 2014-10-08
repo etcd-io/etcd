@@ -154,7 +154,7 @@ func startEtcd() {
 		Name:         *name,
 		ClientURLs:   acurls,
 		DataDir:      *dir,
-		SnapCount:    int64(*snapCount),
+		SnapCount:    *snapCount,
 		Cluster:      cluster,
 		DiscoveryURL: *durl,
 		ClusterState: *clusterState,

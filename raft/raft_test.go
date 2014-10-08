@@ -896,16 +896,10 @@ func TestRecvMsgBeat(t *testing.T) {
 
 func TestRestore(t *testing.T) {
 	s := pb.Snapshot{
-<<<<<<< HEAD
 		Index:        defaultCompactThreshold + 1,
 		Term:         defaultCompactThreshold + 1,
-		Nodes:        []int64{1, 2, 3},
-		RemovedNodes: []int64{4, 5},
-=======
-		Index: defaultCompactThreshold + 1,
-		Term:  defaultCompactThreshold + 1,
-		Nodes: []uint64{1, 2, 3},
->>>>>>> raft: int64 -> uint64
+		Nodes:        []uint64{1, 2, 3},
+		RemovedNodes: []uint64{4, 5},
 	}
 
 	sm := newRaft(1, []uint64{1, 2}, 10, 1)

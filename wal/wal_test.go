@@ -165,7 +165,7 @@ func TestRecover(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	i := &raftpb.Info{ID: int64(0xBAD0)}
+	i := &raftpb.Info{ID: uint64(0xBAD0)}
 	if err = w.SaveInfo(i); err != nil {
 		t.Fatal(err)
 	}
@@ -207,7 +207,7 @@ func TestRecover(t *testing.T) {
 func TestSearchIndex(t *testing.T) {
 	tests := []struct {
 		names []string
-		index int64
+		index uint64
 		widx  int
 		wok   bool
 	}{
@@ -250,7 +250,7 @@ func TestSearchIndex(t *testing.T) {
 func TestScanWalName(t *testing.T) {
 	tests := []struct {
 		str          string
-		wseq, windex int64
+		wseq, windex uint64
 		wok          bool
 	}{
 		{"0000000000000000-0000000000000000.wal", 0, 0, true},
@@ -282,7 +282,7 @@ func TestRecoverAfterCut(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	info := &raftpb.Info{ID: int64(0xBAD1)}
+	info := &raftpb.Info{ID: uint64(0xBAD1)}
 	if err = w.SaveInfo(info); err != nil {
 		t.Fatal(err)
 	}
@@ -294,7 +294,7 @@ func TestRecoverAfterCut(t *testing.T) {
 		t.Fatal(err)
 	}
 	for i := 1; i < 10; i++ {
-		e := raftpb.Entry{Index: int64(i)}
+		e := raftpb.Entry{Index: uint64(i)}
 		if err = w.SaveEntry(&e); err != nil {
 			t.Fatal(err)
 		}
@@ -312,7 +312,7 @@ func TestRecoverAfterCut(t *testing.T) {
 	}
 
 	for i := 0; i < 10; i++ {
-		w, err := OpenAtIndex(p, int64(i))
+		w, err := OpenAtIndex(p, uint64(i))
 		if err != nil {
 			if i <= 4 {
 				if err != ErrFileNotFound {
@@ -332,7 +332,7 @@ func TestRecoverAfterCut(t *testing.T) {
 			t.Errorf("#%d: id = %d, want %d", i, id, info.ID)
 		}
 		for j, e := range entries {
-			if e.Index != int64(j+i) {
+			if e.Index != uint64(j+i) {
 				t.Errorf("#%d: ents[%d].Index = %+v, want %+v", i, j, e.Index, j+i)
 			}
 		}

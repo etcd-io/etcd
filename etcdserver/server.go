@@ -79,8 +79,8 @@ type Server interface {
 }
 
 type RaftTimer interface {
-	Index() int64
-	Term() int64
+	Index() uint64
+	Term() uint64
 }
 
 // NewServer creates a new EtcdServer from the supplied configuration. The
@@ -125,7 +125,7 @@ func NewServer(cfg *ServerConfig) *EtcdServer {
 		if cfg.DiscoveryURL != "" {
 			log.Printf("etcd: warn: ignoring discovery URL: etcd has already been initialized and has a valid log in %q", waldir)
 		}
-		var index int64
+		var index uint64
 		snapshot, err := ss.Load()
 		if err != nil && err != snap.ErrNoSnapshot {
 			log.Fatal(err)
@@ -194,11 +194,11 @@ type EtcdServer struct {
 	ticker     <-chan time.Time
 	syncTicker <-chan time.Time
 
-	snapCount int64 // number of entries to trigger a snapshot
+	snapCount uint64 // number of entries to trigger a snapshot
 
 	// Cache of the latest raft index and raft term the server has seen
-	raftIndex int64
-	raftTerm  int64
+	raftIndex uint64
+	raftTerm  uint64
 }
 
 // Start prepares and starts server in a new goroutine. It is no longer safe to
@@ -231,8 +231,8 @@ func (s *EtcdServer) Process(ctx context.Context, m raftpb.Message) error {
 func (s *EtcdServer) run() {
 	var syncC <-chan time.Time
 	// snapi indicates the index of the last submitted snapshot request
-	var snapi, appliedi int64
-	var nodes []int64
+	var snapi, appliedi uint64
+	var nodes []uint64
 	for {
 		select {
 		case <-s.ticker:
@@ -260,12 +260,12 @@ func (s *EtcdServer) run() {
 						panic("TODO: this is bad, what do we do about it?")
 					}
 					s.applyConfChange(cc)
-					s.w.Trigger(cc.ID, nil)
+					s.w.Trigger(int64(cc.ID), nil)
 				default:
 					panic("unexpected entry type")
 				}
-				atomic.StoreInt64(&s.raftIndex, e.Index)
-				atomic.StoreInt64(&s.raftTerm, e.Term)
+				atomic.StoreUint64(&s.raftIndex, e.Index)
+				atomic.StoreUint64(&s.raftTerm, e.Term)
 				appliedi = e.Index
 			}
 
@@ -378,7 +378,7 @@ func (s *EtcdServer) AddMember(ctx context.Context, memb Member) error {
 	return s.configure(ctx, cc)
 }
 
-func (s *EtcdServer) RemoveMember(ctx context.Context, id int64) error {
+func (s *EtcdServer) RemoveMember(ctx context.Context, id uint64) error {
 	cc := raftpb.ConfChange{
 		ID:     GenID(),
 		Type:   raftpb.ConfChangeRemoveNode,
@@ -388,28 +388,28 @@ func (s *EtcdServer) RemoveMember(ctx context.Context, id int64) error {
 }
 
 // Implement the RaftTimer interface
-func (s *EtcdServer) Index() int64 {
-	return atomic.LoadInt64(&s.raftIndex)
+func (s *EtcdServer) Index() uint64 {
+	return atomic.LoadUint64(&s.raftIndex)
 }
 
-func (s *EtcdServer) Term() int64 {
-	return atomic.LoadInt64(&s.raftTerm)
+func (s *EtcdServer) Term() uint64 {
+	return atomic.LoadUint64(&s.raftTerm)
 }
 
 // configure sends configuration change through consensus then performs it.
 // It will block until the change is performed or there is an error.
 func (s *EtcdServer) configure(ctx context.Context, cc raftpb.ConfChange) error {
-	ch := s.w.Register(cc.ID)
+	ch := s.w.Register(int64(cc.ID))
 	if err := s.node.ProposeConfChange(ctx, cc); err != nil {
 		log.Printf("configure error: %v", err)
-		s.w.Trigger(cc.ID, nil)
+		s.w.Trigger(int64(cc.ID), nil)
 		return err
 	}
 	select {
 	case <-ch:
 		return nil
 	case <-ctx.Done():
-		s.w.Trigger(cc.ID, nil) // GC wait
+		s.w.Trigger(int64(cc.ID), nil) // GC wait
 		return ctx.Err()
 	case <-s.done:
 		return ErrStopped
@@ -423,7 +423,7 @@ func (s *EtcdServer) sync(timeout time.Duration) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	req := pb.Request{
 		Method: "SYNC",
-		ID:     GenID(),
+		ID:     int64(GenID()),
 		Time:   time.Now().UnixNano(),
 	}
 	data, err := req.Marshal()
@@ -454,7 +454,7 @@ func (s *EtcdServer) publish(retryInterval time.Duration) {
 		return
 	}
 	req := pb.Request{
-		ID:     GenID(),
+		ID:     int64(GenID()),
 		Method: "PUT",
 		Path:   m.storeKey(),
 		Val:    string(b),
@@ -554,7 +554,7 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange) {
 }
 
 // TODO: non-blocking snapshot
-func (s *EtcdServer) snapshot(snapi int64, snapnodes []int64) {
+func (s *EtcdServer) snapshot(snapi uint64, snapnodes []uint64) {
 	d, err := s.store.Save()
 	// TODO: current store will never fail to do a snapshot
 	// what should we do if the store might fail?
@@ -567,9 +567,9 @@ func (s *EtcdServer) snapshot(snapi int64, snapnodes []int64) {
 
 // TODO: move the function to /id pkg maybe?
 // GenID generates a random id that is not equal to 0.
-func GenID() (n int64) {
+func GenID() (n uint64) {
 	for n == 0 {
-		n = rand.Int63()
+		n = uint64(rand.Int63())
 	}
 	return
 }

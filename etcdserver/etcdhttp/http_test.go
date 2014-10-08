@@ -501,8 +501,8 @@ func TestWriteError(t *testing.T) {
 
 type dummyRaftTimer struct{}
 
-func (drt dummyRaftTimer) Index() int64 { return int64(100) }
-func (drt dummyRaftTimer) Term() int64  { return int64(5) }
+func (drt dummyRaftTimer) Index() uint64 { return uint64(100) }
+func (drt dummyRaftTimer) Term() uint64  { return uint64(5) }
 
 func TestWriteEvent(t *testing.T) {
 	// nil event should not panic
@@ -1246,4 +1246,4 @@ func (c *fakeCluster) Get() etcdserver.Cluster {
 	return *cl
 }
 
-func (c *fakeCluster) Remove(id int64) { return }
+func (c *fakeCluster) Remove(id uint64) { return }

@@ -90,7 +90,7 @@ func TestClusterPick(t *testing.T) {
 
 func TestClusterFind(t *testing.T) {
 	tests := []struct {
-		id    int64
+		id    uint64
 		name  string
 		mems  []Member
 		match bool
@@ -207,7 +207,7 @@ func TestClusterIDs(t *testing.T) {
 		{ID: 4},
 		{ID: 100},
 	})
-	w := []int64{1, 4, 100}
+	w := []uint64{1, 4, 100}
 	g := cs.IDs()
 	if !reflect.DeepEqual(w, g) {
 		t.Errorf("IDs=%+v, want %+v", g, w)
