@@ -44,6 +44,6 @@ func newMember(name string, peerURLs types.URLs, now *time.Time) *Member {
 	return m
 }
 
-func (m Member) storeKey() string {
+func (m Member) StoreKey() string {
 	return path.Join(machineKVPrefix, strconv.FormatUint(uint64(m.ID), 16))
 }
