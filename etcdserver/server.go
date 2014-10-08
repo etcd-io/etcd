@@ -123,8 +123,17 @@ func NewServer(cfg *ServerConfig) *EtcdServer {
 		if w, err = wal.Create(waldir, b); err != nil {
 			log.Fatal(err)
 		}
-		// TODO: add context for PeerURLs
-		n = raft.StartNode(m.ID, cfg.Cluster.IDs(), 10, 1)
+
+		ids := cfg.Cluster.IDs()
+		var peers []raft.Peer
+		for _, id := range ids {
+			ctx, err := json.Marshal((*cfg.Cluster)[id])
+			if err != nil {
+				log.Fatal(err)
+			}
+			peers = append(peers, raft.Peer{ID: id, Context: ctx})
+		}
+		n = raft.StartNode(m.ID, peers, 10, 1)
 	} else {
 		if cfg.DiscoveryURL != "" {
 			log.Printf("etcd: warn: ignoring discovery URL: etcd has already been initialized and has a valid log in %q", waldir)
@@ -540,9 +549,7 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange) {
 		// value. They don't need to be applied because now we do it explicitly
 		// before server starts. This hack makes etcd work, and will be removed
 		// in the following PR.
-		if cc.Context == nil {
-			break
-		}
+		break
 		var m Member
 		if err := json.Unmarshal(cc.Context, &m); err != nil {
 			panic("unexpected unmarshal error")

@@ -175,7 +175,7 @@ func TestNode(t *testing.T) {
 		},
 	}
 
-	n := StartNode(1, []uint64{1}, 10, 1)
+	n := StartNode(1, []Peer{{ID: 1}}, 10, 1)
 	n.Campaign(ctx)
 	if g := <-n.Ready(); !reflect.DeepEqual(g, wants[0]) {
 		t.Errorf("#%d: g = %+v,\n             w   %+v", 1, g, wants[0])
