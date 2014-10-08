@@ -914,7 +914,7 @@ func TestRestore(t *testing.T) {
 		t.Errorf("log.lastTerm = %d, want %d", sm.raftLog.term(s.Index), s.Term)
 	}
 	sg := sm.nodes()
-	srn := sm.removedSlice()
+	srn := sm.removedNodes()
 	sort.Sort(int64Slice(sg))
 	sort.Sort(int64Slice(srn))
 	if !reflect.DeepEqual(sg, s.Nodes) {

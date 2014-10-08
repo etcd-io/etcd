@@ -521,7 +521,7 @@ func (r *raft) compact(index int64, nodes []int64, d []byte) {
 		panic(fmt.Sprintf("raft: compact index (%d) exceeds applied index (%d)", index, r.raftLog.applied))
 	}
 	// we might use a newer verison of removed list. It is OK.
-	r.raftLog.snap(d, index, r.raftLog.term(index), nodes, r.removedSlice())
+	r.raftLog.snap(d, index, r.raftLog.term(index), nodes, r.removedNodes())
 	r.raftLog.compact(index)
 }
 
@@ -566,7 +566,7 @@ func (r *raft) nodes() []int64 {
 	return nodes
 }
 
-func (r *raft) removedSlice() []int64 {
+func (r *raft) removedNodes() []int64 {
 	removed := make([]int64, 0, len(r.removed))
 	for k := range r.removed {
 		removed = append(removed, k)
