@@ -389,12 +389,7 @@ func (c *clientWithRetry) Create(key string, value string, ttl time.Duration) (*
 		c.failCount++
 		return nil, client.ErrTimeout
 	}
-	if len(c.rs) == 0 {
-		return &client.Response{}, nil
-	}
-	r := c.rs[0]
-	c.rs = c.rs[1:]
-	return r, nil
+	return c.clientWithResp.Create(key, value, ttl)
 }
 
 func (c *clientWithRetry) Get(key string) (*client.Response, error) {
