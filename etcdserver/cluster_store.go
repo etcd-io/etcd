@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/store"
@@ -76,19 +77,19 @@ func (s *clusterStore) Remove(id int64) {
 	}
 }
 
-func Sender(t *http.Transport, cls ClusterStore) func(msgs []raftpb.Message) {
+func Sender(t *http.Transport, cls ClusterStore, clusterID uint64) func(msgs []raftpb.Message) {
 	c := &http.Client{Transport: t}
 
 	return func(msgs []raftpb.Message) {
 		for _, m := range msgs {
 			// TODO: reuse go routines
 			// limit the number of outgoing connections for the same receiver
-			go send(c, cls, m)
+			go send(c, cls, m, clusterID)
 		}
 	}
 }
 
-func send(c *http.Client, cls ClusterStore, m raftpb.Message) {
+func send(c *http.Client, cls ClusterStore, m raftpb.Message, clusterID uint64) {
 	// TODO (xiangli): reasonable retry logic
 	for i := 0; i < 3; i++ {
 		u := cls.Get().Pick(m.To)
@@ -109,15 +110,22 @@ func send(c *http.Client, cls ClusterStore, m raftpb.Message) {
 			log.Println("etcdhttp: dropping message:", err)
 			return // drop bad message
 		}
-		if httpPost(c, u, data) {
+		if httpPost(c, u, data, clusterID) {
 			return // success
 		}
 		// TODO: backoff
 	}
 }
 
-func httpPost(c *http.Client, url string, data []byte) bool {
-	resp, err := c.Post(url, "application/protobuf", bytes.NewBuffer(data))
+func httpPost(c *http.Client, url string, data []byte, clusterID uint64) bool {
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(data))
+	if err != nil {
+		// TODO: log the error?
+		return false
+	}
+	req.Header.Set("Content-Type", "application/protobuf")
+	req.Header.Set("X-Etcd-Cluster-ID", strconv.FormatUint(clusterID, 16))
+	resp, err := c.Do(req)
 	if err != nil {
 		// TODO: log the error?
 		return false

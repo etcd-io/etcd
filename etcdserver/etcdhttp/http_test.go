@@ -734,6 +734,7 @@ func TestServeRaft(t *testing.T) {
 	testCases := []struct {
 		method    string
 		body      io.Reader
+		clusterID string
 		serverErr error
 
 		wcode int
@@ -747,6 +748,7 @@ func TestServeRaft(t *testing.T) {
 					raftpb.Message{},
 				),
 			),
+			"beef",
 			nil,
 			http.StatusMethodNotAllowed,
 		},
@@ -759,6 +761,7 @@ func TestServeRaft(t *testing.T) {
 					raftpb.Message{},
 				),
 			),
+			"beef",
 			nil,
 			http.StatusMethodNotAllowed,
 		},
@@ -771,6 +774,7 @@ func TestServeRaft(t *testing.T) {
 					raftpb.Message{},
 				),
 			),
+			"beef",
 			nil,
 			http.StatusMethodNotAllowed,
 		},
@@ -778,6 +782,7 @@ func TestServeRaft(t *testing.T) {
 			// bad request body
 			"POST",
 			&errReader{},
+			"beef",
 			nil,
 			http.StatusBadRequest,
 		},
@@ -785,6 +790,7 @@ func TestServeRaft(t *testing.T) {
 			// bad request protobuf
 			"POST",
 			strings.NewReader("malformed garbage"),
+			"beef",
 			nil,
 			http.StatusBadRequest,
 		},
@@ -797,8 +803,35 @@ func TestServeRaft(t *testing.T) {
 					raftpb.Message{},
 				),
 			),
+			"beef",
 			errors.New("some error"),
 			http.StatusInternalServerError,
+		},
+		{
+			// wrong cluster id
+			"POST",
+			bytes.NewReader(
+				mustMarshalMsg(
+					t,
+					raftpb.Message{},
+				),
+			),
+			"bad0",
+			nil,
+			http.StatusBadRequest,
+		},
+		{
+			// no cluster id header
+			"POST",
+			bytes.NewReader(
+				mustMarshalMsg(
+					t,
+					raftpb.Message{},
+				),
+			),
+			"",
+			nil,
+			http.StatusBadRequest,
 		},
 		{
 			// good request
@@ -809,6 +842,7 @@ func TestServeRaft(t *testing.T) {
 					raftpb.Message{},
 				),
 			),
+			"beef",
 			nil,
 			http.StatusNoContent,
 		},
@@ -818,9 +852,11 @@ func TestServeRaft(t *testing.T) {
 		if err != nil {
 			t.Fatalf("#%d: could not create request: %#v", i, err)
 		}
+		req.Header.Set("X-Etcd-Cluster-ID", tt.clusterID)
 		h := &serverHandler{
-			timeout: time.Hour,
-			server:  &errServer{tt.serverErr},
+			timeout:   time.Hour,
+			server:    &errServer{tt.serverErr},
+			clusterID: 0xbeef,
 		}
 		rw := httptest.NewRecorder()
 		h.serveRaft(rw, req)
