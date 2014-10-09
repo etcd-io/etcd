@@ -523,7 +523,10 @@ func (r *raft) compact(index int64, nodes []int64, d []byte) {
 	if index > r.raftLog.applied {
 		panic(fmt.Sprintf("raft: compact index (%d) exceeds applied index (%d)", index, r.raftLog.applied))
 	}
-	r.raftLog.snap(d, index, r.raftLog.term(index), nodes)
+	// We do not get the removed nodes at the given index.
+	// We get the removed nodes at current index. So a state machine might
+	// have a newer verison of removed nodes after recovery. It is OK.
+	r.raftLog.snap(d, index, r.raftLog.term(index), nodes, r.removedNodes())
 	r.raftLog.compact(index)
 }
 
@@ -542,6 +545,10 @@ func (r *raft) restore(s pb.Snapshot) bool {
 		} else {
 			r.setProgress(n, 0, r.raftLog.lastIndex()+1)
 		}
+	}
+	r.removed = make(map[int64]bool)
+	for _, n := range s.RemovedNodes {
+		r.removed[n] = true
 	}
 	return true
 }
@@ -562,6 +569,14 @@ func (r *raft) nodes() []int64 {
 		nodes = append(nodes, k)
 	}
 	return nodes
+}
+
+func (r *raft) removedNodes() []int64 {
+	removed := make([]int64, 0, len(r.removed))
+	for k := range r.removed {
+		removed = append(removed, k)
+	}
+	return removed
 }
 
 func (r *raft) setProgress(id, match, next int64) {

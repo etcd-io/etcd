@@ -231,10 +231,11 @@ func TestNodeCompact(t *testing.T) {
 	n.Propose(ctx, []byte("foo"))
 
 	w := raftpb.Snapshot{
-		Term:  1,
-		Index: 2, // one nop + one proposal
-		Data:  []byte("a snapshot"),
-		Nodes: []int64{1},
+		Term:         1,
+		Index:        2, // one nop + one proposal
+		Data:         []byte("a snapshot"),
+		Nodes:        []int64{1},
+		RemovedNodes: []int64{},
 	}
 
 	pkg.ForceGosched()
