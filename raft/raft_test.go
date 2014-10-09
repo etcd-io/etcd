@@ -417,9 +417,9 @@ func TestCompact(t *testing.T) {
 		snapd    []byte
 		wpanic   bool
 	}{
-		{1, []uint64{1, 2, 3}, []int64{4, 5}, []byte("some data"), false},
-		{2, []uint64{1, 2, 3}, []int64{4, 5}, []byte("some data"), false},
-		{4, []uint64{1, 2, 3}, []int64{4, 5}, []byte("some data"), true}, // compact out of range
+		{1, []uint64{1, 2, 3}, []uint64{4, 5}, []byte("some data"), false},
+		{2, []uint64{1, 2, 3}, []uint64{4, 5}, []byte("some data"), false},
+		{4, []uint64{1, 2, 3}, []uint64{4, 5}, []byte("some data"), true}, // compact out of range
 	}
 
 	for i, tt := range tests {
@@ -438,14 +438,14 @@ func TestCompact(t *testing.T) {
 					applied:   2,
 					ents:      []pb.Entry{{}, {Term: 1}, {Term: 1}, {Term: 1}},
 				},
-				removed: make(map[int64]bool),
+				removed: make(map[uint64]bool),
 			}
 			for _, r := range tt.removed {
 				sm.removeNode(r)
 			}
 			sm.compact(tt.compacti, tt.nodes, tt.snapd)
-			sort.Sort(int64Slice(sm.raftLog.snapshot.Nodes))
-			sort.Sort(int64Slice(sm.raftLog.snapshot.RemovedNodes))
+			sort.Sort(uint64Slice(sm.raftLog.snapshot.Nodes))
+			sort.Sort(uint64Slice(sm.raftLog.snapshot.RemovedNodes))
 			if sm.raftLog.offset != tt.compacti {
 				t.Errorf("%d: log.offset = %d, want %d", i, sm.raftLog.offset, tt.compacti)
 			}
@@ -915,8 +915,8 @@ func TestRestore(t *testing.T) {
 	}
 	sg := sm.nodes()
 	srn := sm.removedNodes()
-	sort.Sort(int64Slice(sg))
-	sort.Sort(int64Slice(srn))
+	sort.Sort(uint64Slice(sg))
+	sort.Sort(uint64Slice(srn))
 	if !reflect.DeepEqual(sg, s.Nodes) {
 		t.Errorf("sm.Nodes = %+v, want %+v", sg, s.Nodes)
 	}
@@ -1088,7 +1088,7 @@ func TestAddNode(t *testing.T) {
 		t.Errorf("pendingConf = %v, want false", r.pendingConf)
 	}
 	nodes := r.nodes()
-	sort.Sort(int64Slice(nodes))
+	sort.Sort(uint64Slice(nodes))
 	wnodes := []uint64{1, 2}
 	if !reflect.DeepEqual(nodes, wnodes) {
 		t.Errorf("nodes = %v, want %v", nodes, wnodes)

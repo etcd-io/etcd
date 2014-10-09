@@ -93,12 +93,12 @@ func (pr *progress) String() string {
 	return fmt.Sprintf("n=%d m=%d", pr.next, pr.match)
 }
 
-// int64Slice implements sort interface
-type int64Slice []uint64
+// uint64Slice implements sort interface
+type uint64Slice []uint64
 
-func (p int64Slice) Len() int           { return len(p) }
-func (p int64Slice) Less(i, j int) bool { return p[i] < p[j] }
-func (p int64Slice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
+func (p uint64Slice) Len() int           { return len(p) }
+func (p uint64Slice) Less(i, j int) bool { return p[i] < p[j] }
+func (p uint64Slice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
 
 type raft struct {
 	pb.HardState
@@ -247,7 +247,7 @@ func (r *raft) bcastHeartbeat() {
 
 func (r *raft) maybeCommit() bool {
 	// TODO(bmizerany): optimize.. Currently naive
-	mis := make(int64Slice, 0, len(r.prs))
+	mis := make(uint64Slice, 0, len(r.prs))
 	for i := range r.prs {
 		mis = append(mis, r.prs[i].match)
 	}
