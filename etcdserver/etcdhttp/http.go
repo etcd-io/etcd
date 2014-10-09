@@ -53,9 +53,10 @@ func NewClientHandler(server *etcdserver.EtcdServer) http.Handler {
 }
 
 // NewPeerHandler generates an http.Handler to handle etcd peer (raft) requests.
-func NewPeerHandler(server etcdserver.Server) http.Handler {
+func NewPeerHandler(server *etcdserver.EtcdServer) http.Handler {
 	sh := &serverHandler{
-		server: server,
+		server:    server,
+		clusterID: server.ClusterID,
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc(raftPrefix, sh.serveRaft)
@@ -69,6 +70,7 @@ type serverHandler struct {
 	server       etcdserver.Server
 	timer        etcdserver.RaftTimer
 	clusterStore etcdserver.ClusterStore
+	clusterID    uint64
 }
 
 func (h serverHandler) serveKeys(w http.ResponseWriter, r *http.Request) {
@@ -118,6 +120,11 @@ func (h serverHandler) serveMachines(w http.ResponseWriter, r *http.Request) {
 
 func (h serverHandler) serveRaft(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r.Method, "POST") {
+		return
+	}
+	if r.Header.Get("X-Etcd-Cluster-ID") != strconv.FormatUint(h.clusterID, 16) {
+		log.Println("etcdhttp: error matching cluster ID")
+		http.Error(w, "error matching cluster ID", http.StatusConflict)
 		return
 	}
 

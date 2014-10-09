@@ -153,6 +153,8 @@ func NewServer(cfg *ServerConfig) *EtcdServer {
 
 	cls := NewClusterStore(st, *cfg.Cluster)
 
+	// TODO: use generated cluster id instead of constant number
+	clusterID := uint64(0xBAD0)
 	s := &EtcdServer{
 		store: st,
 		node:  n,
@@ -161,11 +163,12 @@ func NewServer(cfg *ServerConfig) *EtcdServer {
 			*wal.WAL
 			*snap.Snapshotter
 		}{w, ss},
-		send:         Sender(cfg.Transport, cls),
+		send:         Sender(cfg.Transport, cls, clusterID),
 		clientURLs:   cfg.ClientURLs,
 		ticker:       time.Tick(100 * time.Millisecond),
 		syncTicker:   time.Tick(500 * time.Millisecond),
 		snapCount:    cfg.SnapCount,
+		ClusterID:    clusterID,
 		ClusterStore: cls,
 	}
 	return s
@@ -178,6 +181,7 @@ type EtcdServer struct {
 	name       string
 	clientURLs types.URLs
 
+	ClusterID    uint64
 	ClusterStore ClusterStore
 
 	node  raft.Node
