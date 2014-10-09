@@ -21,9 +21,9 @@ type Member struct {
 	ClientURLs []string
 }
 
-// newMember creates a Member without an ID and generates one based on the
+// GenerateMember creates a Member object, generating an ID based on the
 // name, peer URLs. This is used for bootstrapping.
-func newMember(name string, peerURLs types.URLs, now *time.Time) *Member {
+func GenerateMember(name string, peerURLs types.URLs, now *time.Time) *Member {
 	m := &Member{Name: name, PeerURLs: peerURLs.StringSlice()}
 
 	b := []byte(m.Name)
@@ -44,6 +44,6 @@ func newMember(name string, peerURLs types.URLs, now *time.Time) *Member {
 	return m
 }
 
-func (m Member) storeKey() string {
+func (m Member) StoreKey() string {
 	return path.Join(machineKVPrefix, strconv.FormatUint(uint64(m.ID), 16))
 }

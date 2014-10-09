@@ -41,7 +41,7 @@ func (s *clusterStore) Add(m Member) {
 		log.Panicf("marshal peer info error: %v", err)
 	}
 
-	if _, err := s.Store.Create(m.storeKey(), false, string(b), false, store.Permanent); err != nil {
+	if _, err := s.Store.Create(m.StoreKey(), false, string(b), false, store.Permanent); err != nil {
 		log.Panicf("add member should never fail: %v", err)
 	}
 }
@@ -59,6 +59,7 @@ func (s *clusterStore) Get() Cluster {
 		if err := json.Unmarshal([]byte(*n.Value), &m); err != nil {
 			log.Panicf("unmarshal peer error: %v", err)
 		}
+		log.Printf("Found member in cluster: %#v", m)
 		err := c.Add(m)
 		if err != nil {
 			log.Panicf("add member to cluster should never fail: %v", err)
@@ -70,7 +71,7 @@ func (s *clusterStore) Get() Cluster {
 // Remove removes a member from the store.
 // The given id MUST exist.
 func (s *clusterStore) Remove(id int64) {
-	p := s.Get().FindID(id).storeKey()
+	p := s.Get().FindID(id).StoreKey()
 	if _, err := s.Store.Delete(p, false, false); err != nil {
 		log.Panicf("delete peer should never fail: %v", err)
 	}
