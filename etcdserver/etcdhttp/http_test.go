@@ -818,7 +818,7 @@ func TestServeRaft(t *testing.T) {
 			),
 			"bad0",
 			nil,
-			http.StatusBadRequest,
+			http.StatusConflict,
 		},
 		{
 			// no cluster id header
@@ -831,7 +831,7 @@ func TestServeRaft(t *testing.T) {
 			),
 			"",
 			nil,
-			http.StatusBadRequest,
+			http.StatusConflict,
 		},
 		{
 			// good request

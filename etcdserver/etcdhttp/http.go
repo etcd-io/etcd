@@ -124,7 +124,7 @@ func (h serverHandler) serveRaft(w http.ResponseWriter, r *http.Request) {
 	}
 	if r.Header.Get("X-Etcd-Cluster-ID") != strconv.FormatUint(h.clusterID, 16) {
 		log.Println("etcdhttp: error matching cluster ID")
-		http.Error(w, "error matching cluster ID", http.StatusBadRequest)
+		http.Error(w, "error matching cluster ID", http.StatusConflict)
 		return
 	}
 
