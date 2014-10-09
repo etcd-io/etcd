@@ -29,12 +29,12 @@ type Discoverer interface {
 
 type discovery struct {
 	cluster string
-	id      int64
+	id      uint64
 	config  string
 	c       client.Client
 }
 
-func New(durl string, id int64, config string) (Discoverer, error) {
+func New(durl string, id uint64, config string) (Discoverer, error) {
 	u, err := url.Parse(durl)
 	if err != nil {
 		return nil, err

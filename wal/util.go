@@ -17,7 +17,7 @@ func Exist(dirpath string) bool {
 // searchIndex returns the last array index of names whose raft index section is
 // equal to or smaller than the given index.
 // The given names MUST be sorted.
-func searchIndex(names []string, index int64) (int, bool) {
+func searchIndex(names []string, index uint64) (int, bool) {
 	for i := len(names) - 1; i >= 0; i-- {
 		name := names[i]
 		_, curIndex, err := parseWalName(name)
@@ -34,7 +34,7 @@ func searchIndex(names []string, index int64) (int, bool) {
 // names should have been sorted based on sequence number.
 // isValidSeq checks whether seq increases continuously.
 func isValidSeq(names []string) bool {
-	var lastSeq int64
+	var lastSeq uint64
 	for _, name := range names {
 		curSeq, _, err := parseWalName(name)
 		if err != nil {
@@ -74,7 +74,7 @@ func checkWalNames(names []string) []string {
 	return wnames
 }
 
-func parseWalName(str string) (seq, index int64, err error) {
+func parseWalName(str string) (seq, index uint64, err error) {
 	var num int
 	num, err = fmt.Sscanf(str, "%016x-%016x.wal", &seq, &index)
 	if num != 2 && err == nil {
@@ -83,7 +83,7 @@ func parseWalName(str string) (seq, index int64, err error) {
 	return
 }
 
-func walName(seq, index int64) string {
+func walName(seq, index uint64) string {
 	return fmt.Sprintf("%016x-%016x.wal", seq, index)
 }
 

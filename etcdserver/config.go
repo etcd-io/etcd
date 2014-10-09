@@ -13,7 +13,7 @@ type ServerConfig struct {
 	DiscoveryURL string
 	ClientURLs   types.URLs
 	DataDir      string
-	SnapCount    int64
+	SnapCount    uint64
 	Cluster      *Cluster
 	ClusterState ClusterState
 	Transport    *http.Transport

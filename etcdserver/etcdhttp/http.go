@@ -79,7 +79,7 @@ func (h serverHandler) serveKeys(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(context.Background(), h.timeout)
 	defer cancel()
 
-	rr, err := parseRequest(r, etcdserver.GenID())
+	rr, err := parseRequest(r, int64(etcdserver.GenID()))
 	if err != nil {
 		writeError(w, err)
 		return

@@ -19,9 +19,9 @@ var (
 // SoftState provides state that is useful for logging and debugging.
 // The state is volatile and does not need to be persisted to the WAL.
 type SoftState struct {
-	Lead       int64
+	Lead       uint64
 	RaftState  StateType
-	Nodes      []int64
+	Nodes      []uint64
 	ShouldStop bool
 }
 
@@ -61,8 +61,8 @@ type Ready struct {
 }
 
 type compact struct {
-	index int64
-	nodes []int64
+	index uint64
+	nodes []uint64
 	data  []byte
 }
 
@@ -114,13 +114,13 @@ type Node interface {
 	// It is the caller's responsibility to ensure the given configuration
 	// and snapshot data match the actual point-in-time configuration and snapshot
 	// at the given index.
-	Compact(index int64, nodes []int64, d []byte)
+	Compact(index uint64, nodes []uint64, d []byte)
 }
 
 // StartNode returns a new Node given a unique raft id, a list of raft peers, and
 // the election and heartbeat timeouts in units of ticks.
 // It also builds ConfChangeAddNode entry for each peer and puts them at the head of the log.
-func StartNode(id int64, peers []int64, election, heartbeat int) Node {
+func StartNode(id uint64, peers []uint64, election, heartbeat int) Node {
 	n := newNode()
 	r := newRaft(id, peers, election, heartbeat)
 
@@ -131,10 +131,10 @@ func StartNode(id int64, peers []int64, election, heartbeat int) Node {
 		if err != nil {
 			panic("unexpected marshal error")
 		}
-		ents[i] = pb.Entry{Type: pb.EntryConfChange, Term: 1, Index: int64(i + 1), Data: data}
+		ents[i] = pb.Entry{Type: pb.EntryConfChange, Term: 1, Index: uint64(i + 1), Data: data}
 	}
 	r.raftLog.append(0, ents...)
-	r.raftLog.committed = int64(len(ents))
+	r.raftLog.committed = uint64(len(ents))
 
 	go n.run(r)
 	return &n
@@ -143,7 +143,7 @@ func StartNode(id int64, peers []int64, election, heartbeat int) Node {
 // RestartNode is identical to StartNode but takes an initial State and a slice
 // of entries. Generally this is used when restarting from a stable storage
 // log.
-func RestartNode(id int64, peers []int64, election, heartbeat int, snapshot *pb.Snapshot, st pb.HardState, ents []pb.Entry) Node {
+func RestartNode(id uint64, peers []uint64, election, heartbeat int, snapshot *pb.Snapshot, st pb.HardState, ents []pb.Entry) Node {
 	n := newNode()
 	r := newRaft(id, peers, election, heartbeat)
 	if snapshot != nil {
@@ -317,14 +317,14 @@ func (n *node) ApplyConfChange(cc pb.ConfChange) {
 	}
 }
 
-func (n *node) Compact(index int64, nodes []int64, d []byte) {
+func (n *node) Compact(index uint64, nodes []uint64, d []byte) {
 	select {
 	case n.compactc <- compact{index, nodes, d}:
 	case <-n.done:
 	}
 }
 
-func newReady(r *raft, prevSoftSt *SoftState, prevHardSt pb.HardState, prevSnapi int64) Ready {
+func newReady(r *raft, prevSoftSt *SoftState, prevHardSt pb.HardState, prevSnapi uint64) Ready {
 	rd := Ready{
 		Entries:          r.raftLog.unstableEnts(),
 		CommittedEntries: r.raftLog.nextEnts(),

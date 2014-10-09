@@ -371,7 +371,7 @@ func TestApplyRequest(t *testing.T) {
 func TestClusterOf1(t *testing.T) { testServer(t, 1) }
 func TestClusterOf3(t *testing.T) { testServer(t, 3) }
 
-func testServer(t *testing.T, ns int64) {
+func testServer(t *testing.T, ns uint64) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -384,12 +384,12 @@ func testServer(t *testing.T, ns int64) {
 		}
 	}
 
-	members := make([]int64, ns)
-	for i := int64(0); i < ns; i++ {
+	members := make([]uint64, ns)
+	for i := uint64(0); i < ns; i++ {
 		members[i] = i + 1
 	}
 
-	for i := int64(0); i < ns; i++ {
+	for i := uint64(0); i < ns; i++ {
 		id := i + 1
 		n := raft.StartNode(id, members, 10, 1)
 		tk := time.NewTicker(10 * time.Millisecond)
@@ -458,7 +458,7 @@ func TestDoProposal(t *testing.T) {
 
 	for i, tt := range tests {
 		ctx, _ := context.WithCancel(context.Background())
-		n := raft.StartNode(0xBAD0, []int64{0xBAD0}, 10, 1)
+		n := raft.StartNode(0xBAD0, []uint64{0xBAD0}, 10, 1)
 		st := &storeRecorder{}
 		tk := make(chan time.Time)
 		// this makes <-tk always successful, which accelerates internal clock
@@ -491,7 +491,7 @@ func TestDoProposal(t *testing.T) {
 func TestDoProposalCancelled(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	// node cannot make any progress because there are two nodes
-	n := raft.StartNode(0xBAD0, []int64{0xBAD0, 0xBAD1}, 10, 1)
+	n := raft.StartNode(0xBAD0, []uint64{0xBAD0, 0xBAD1}, 10, 1)
 	st := &storeRecorder{}
 	wait := &waitRecorder{}
 	srv := &EtcdServer{
@@ -527,7 +527,7 @@ func TestDoProposalStopped(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	// node cannot make any progress because there are two nodes
-	n := raft.StartNode(0xBAD0, []int64{0xBAD0, 0xBAD1}, 10, 1)
+	n := raft.StartNode(0xBAD0, []uint64{0xBAD0, 0xBAD1}, 10, 1)
 	st := &storeRecorder{}
 	tk := make(chan time.Time)
 	// this makes <-tk always successful, which accelarates internal clock
@@ -668,7 +668,7 @@ func TestSyncTrigger(t *testing.T) {
 // snapshot should snapshot the store and cut the persistent
 // TODO: node.Compact is called... we need to make the node an interface
 func TestSnapshot(t *testing.T) {
-	n := raft.StartNode(0xBAD0, []int64{0xBAD0}, 10, 1)
+	n := raft.StartNode(0xBAD0, []uint64{0xBAD0}, 10, 1)
 	defer n.Stop()
 	st := &storeRecorder{}
 	p := &storageRecorder{}
@@ -678,7 +678,7 @@ func TestSnapshot(t *testing.T) {
 		node:    n,
 	}
 
-	s.snapshot(0, []int64{1})
+	s.snapshot(0, []uint64{1})
 	gaction := st.Action()
 	if len(gaction) != 1 {
 		t.Fatalf("len(action) = %d, want 1", len(gaction))
@@ -699,7 +699,7 @@ func TestSnapshot(t *testing.T) {
 // Applied > SnapCount should trigger a SaveSnap event
 func TestTriggerSnap(t *testing.T) {
 	ctx := context.Background()
-	n := raft.StartNode(0xBAD0, []int64{0xBAD0}, 10, 1)
+	n := raft.StartNode(0xBAD0, []uint64{0xBAD0}, 10, 1)
 	n.Campaign(ctx)
 	st := &storeRecorder{}
 	p := &storageRecorder{}
@@ -712,7 +712,7 @@ func TestTriggerSnap(t *testing.T) {
 	}
 
 	s.start()
-	for i := 0; int64(i) < s.snapCount-1; i++ {
+	for i := 0; uint64(i) < s.snapCount-1; i++ {
 		s.Do(ctx, pb.Request{Method: "PUT", ID: 1})
 	}
 	time.Sleep(time.Millisecond)
@@ -825,7 +825,7 @@ func TestRemoveMember(t *testing.T) {
 		ClusterStore: cs,
 	}
 	s.start()
-	id := int64(1)
+	id := uint64(1)
 	s.RemoveMember(context.TODO(), id)
 	gaction := n.Action()
 	s.Stop()
@@ -962,9 +962,9 @@ func TestGenID(t *testing.T) {
 	// Sanity check that the GenID function has been seeded appropriately
 	// (math/rand is seeded with 1 by default)
 	r := rand.NewSource(int64(1))
-	var n int64
+	var n uint64
 	for n == 0 {
-		n = r.Int63()
+		n = uint64(r.Int63())
 	}
 	if n == GenID() {
 		t.Fatalf("GenID's rand seeded with 1!")
@@ -1143,7 +1143,7 @@ func (n *readyNode) Step(ctx context.Context, msg raftpb.Message) error { return
 func (n *readyNode) Ready() <-chan raft.Ready                           { return n.readyc }
 func (n *readyNode) ApplyConfChange(conf raftpb.ConfChange)             {}
 func (n *readyNode) Stop()                                              {}
-func (n *readyNode) Compact(index int64, nodes []int64, d []byte)       {}
+func (n *readyNode) Compact(index uint64, nodes []uint64, d []byte)     {}
 
 type nodeRecorder struct {
 	recorder
@@ -1175,7 +1175,7 @@ func (n *nodeRecorder) ApplyConfChange(conf raftpb.ConfChange) {
 func (n *nodeRecorder) Stop() {
 	n.record(action{name: "Stop"})
 }
-func (n *nodeRecorder) Compact(index int64, nodes []int64, d []byte) {
+func (n *nodeRecorder) Compact(index uint64, nodes []uint64, d []byte) {
 	n.record(action{name: "Compact"})
 }
 
@@ -1255,7 +1255,7 @@ func (cs *clusterStoreRecorder) Get() Cluster {
 	cs.record(action{name: "Get"})
 	return nil
 }
-func (cs *clusterStoreRecorder) Remove(id int64) {
+func (cs *clusterStoreRecorder) Remove(id uint64) {
 	cs.record(action{name: "Remove", params: []interface{}{id}})
 }
 

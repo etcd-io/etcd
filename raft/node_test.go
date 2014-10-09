@@ -18,10 +18,10 @@ func TestNodeStep(t *testing.T) {
 			propc: make(chan raftpb.Message, 1),
 			recvc: make(chan raftpb.Message, 1),
 		}
-		msgt := int64(i)
+		msgt := uint64(i)
 		n.Step(context.TODO(), raftpb.Message{Type: msgt})
 		// Proposal goes to proc chan. Others go to recvc chan.
-		if int64(i) == msgProp {
+		if uint64(i) == msgProp {
 			select {
 			case <-n.propc:
 			default:
@@ -96,7 +96,7 @@ func TestNodeStepUnblock(t *testing.T) {
 // who is the current leader.
 func TestBlockProposal(t *testing.T) {
 	n := newNode()
-	r := newRaft(1, []int64{1}, 10, 1)
+	r := newRaft(1, []uint64{1}, 10, 1)
 	go n.run(r)
 	defer n.Stop()
 
@@ -156,7 +156,7 @@ func TestNode(t *testing.T) {
 	}
 	wants := []Ready{
 		{
-			SoftState: &SoftState{Lead: 1, Nodes: []int64{1}, RaftState: StateLeader},
+			SoftState: &SoftState{Lead: 1, Nodes: []uint64{1}, RaftState: StateLeader},
 			HardState: raftpb.HardState{Term: 1, Commit: 2},
 			Entries: []raftpb.Entry{
 				{},
@@ -175,7 +175,7 @@ func TestNode(t *testing.T) {
 		},
 	}
 
-	n := StartNode(1, []int64{1}, 10, 1)
+	n := StartNode(1, []uint64{1}, 10, 1)
 	n.Campaign(ctx)
 	if g := <-n.Ready(); !reflect.DeepEqual(g, wants[0]) {
 		t.Errorf("#%d: g = %+v,\n             w   %+v", 1, g, wants[0])
@@ -207,7 +207,7 @@ func TestNodeRestart(t *testing.T) {
 		CommittedEntries: entries[1 : st.Commit+1],
 	}
 
-	n := RestartNode(1, []int64{1}, 10, 1, nil, st, entries)
+	n := RestartNode(1, []uint64{1}, 10, 1, nil, st, entries)
 	if g := <-n.Ready(); !reflect.DeepEqual(g, want) {
 		t.Errorf("g = %+v,\n             w   %+v", g, want)
 	}
@@ -224,7 +224,7 @@ func TestNodeRestart(t *testing.T) {
 func TestNodeCompact(t *testing.T) {
 	ctx := context.Background()
 	n := newNode()
-	r := newRaft(1, []int64{1}, 10, 1)
+	r := newRaft(1, []uint64{1}, 10, 1)
 	go n.run(r)
 
 	n.Campaign(ctx)
@@ -234,8 +234,8 @@ func TestNodeCompact(t *testing.T) {
 		Term:         1,
 		Index:        2, // one nop + one proposal
 		Data:         []byte("a snapshot"),
-		Nodes:        []int64{1},
-		RemovedNodes: []int64{},
+		Nodes:        []uint64{1},
+		RemovedNodes: []uint64{},
 	}
 
 	pkg.ForceGosched()
@@ -279,7 +279,7 @@ func TestSoftStateEqual(t *testing.T) {
 		{&SoftState{Lead: 1}, false},
 		{&SoftState{RaftState: StateLeader}, false},
 		{&SoftState{ShouldStop: true}, false},
-		{&SoftState{Nodes: []int64{1, 2}}, false},
+		{&SoftState{Nodes: []uint64{1, 2}}, false},
 	}
 	for i, tt := range tests {
 		if g := tt.st.equal(&SoftState{}); g != tt.we {

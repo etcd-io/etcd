@@ -18,7 +18,7 @@ const (
 type ClusterStore interface {
 	Add(m Member)
 	Get() Cluster
-	Remove(id int64)
+	Remove(id uint64)
 }
 
 type clusterStore struct {
@@ -69,7 +69,7 @@ func (s *clusterStore) Get() Cluster {
 
 // Remove removes a member from the store.
 // The given id MUST exist.
-func (s *clusterStore) Remove(id int64) {
+func (s *clusterStore) Remove(id uint64) {
 	p := s.Get().FindID(id).storeKey()
 	if _, err := s.Store.Delete(p, false, false); err != nil {
 		log.Panicf("delete peer should never fail: %v", err)

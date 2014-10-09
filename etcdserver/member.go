@@ -14,7 +14,7 @@ import (
 const machineKVPrefix = "/_etcd/machines/"
 
 type Member struct {
-	ID   int64
+	ID   uint64
 	Name string
 	// TODO(philips): ensure these are URLs
 	PeerURLs   []string
@@ -36,14 +36,10 @@ func newMember(name string, peerURLs types.URLs, now *time.Time) *Member {
 	}
 
 	hash := sha1.Sum(b)
-	m.ID = int64(binary.BigEndian.Uint64(hash[:8]))
-	if m.ID < 0 {
-		m.ID = m.ID * -1
-	}
-
+	m.ID = binary.BigEndian.Uint64(hash[:8])
 	return m
 }
 
 func (m Member) storeKey() string {
-	return path.Join(machineKVPrefix, strconv.FormatUint(uint64(m.ID), 16))
+	return path.Join(machineKVPrefix, strconv.FormatUint(m.ID, 16))
 }

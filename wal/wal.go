@@ -56,12 +56,12 @@ var (
 type WAL struct {
 	dir string // the living directory of the underlay files
 
-	ri      int64    // index of entry to start reading
+	ri      uint64   // index of entry to start reading
 	decoder *decoder // decoder to decode records
 
 	f       *os.File // underlay file opened for appending, sync
-	seq     int64    // sequence of the wal file currently used for writes
-	enti    int64    // index of the last entry saved to the wal
+	seq     uint64   // sequence of the wal file currently used for writes
+	enti    uint64   // index of the last entry saved to the wal
 	encoder *encoder // encoder to encode records
 }
 
@@ -98,7 +98,7 @@ func Create(dirpath string) (*WAL, error) {
 // The returned WAL is ready to read and the first record will be the given
 // index. The WAL cannot be appended to before reading out all of its
 // previous records.
-func OpenAtIndex(dirpath string, index int64) (*WAL, error) {
+func OpenAtIndex(dirpath string, index uint64) (*WAL, error) {
 	names, err := readDir(dirpath)
 	if err != nil {
 		return nil, err
@@ -154,7 +154,7 @@ func OpenAtIndex(dirpath string, index int64) (*WAL, error) {
 // ReadAll reads out all records of the current WAL.
 // If it cannot read out the expected entry, it will return ErrIndexNotFound.
 // After ReadAll, the WAL will be ready for appending new records.
-func (w *WAL) ReadAll() (id int64, state raftpb.HardState, ents []raftpb.Entry, err error) {
+func (w *WAL) ReadAll() (id uint64, state raftpb.HardState, ents []raftpb.Entry, err error) {
 	rec := &walpb.Record{}
 	decoder := w.decoder
 
