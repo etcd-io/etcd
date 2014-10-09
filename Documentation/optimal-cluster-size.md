@@ -2,12 +2,6 @@
 
 etcd's Raft consensus algorithm is most efficient in small clusters between 3 and 9 peers. For clusters larger than 9, etcd will select a subset of instances to participate in the algorithm in order to keep it efficient. The end of this document briefly explores how etcd works internally and why these choices have been made.
 
-## Cluster Management
-
-You can manage the active cluster size through the [cluster config API](https://github.com/coreos/etcd/blob/master/Documentation/api.md#cluster-config). `activeSize` represents the etcd peers allowed to actively participate in the consensus algorithm.
-
-If the total number of etcd instances exceeds this number, additional peers are started as [standbys](https://github.com/coreos/etcd/blob/master/Documentation/design/standbys.md), which can be promoted to active participation if one of the existing active instances has failed or been removed.
-
 ## Internals of etcd
 
 ### Writing to etcd
@@ -22,7 +16,7 @@ The leader election process is similar to writing a key &mdash; a majority of th
 
 ### Odd Active Cluster Size
 
-The other important cluster optimization is to always have an odd active cluster size (i.e. `activeSize`). Adding an odd node to the number of peers doesn't change the size of the majority and therefore doesn't increase the total latency of the majority as described above. But, you gain a higher tolerance for peer failure by adding the extra machine. You can see this in practice when comparing two even and odd sized clusters:
+The other important cluster optimization is to always have an odd active cluster size. Adding an odd node to the number of peers doesn't change the size of the majority and therefore doesn't increase the total latency of the majority as described above. But, you gain a higher tolerance for peer failure by adding the extra machine. You can see this in practice when comparing two even and odd sized clusters:
 
 | Active Peers | Majority   | Failure Tolerance |
 |--------------|------------|-------------------|
