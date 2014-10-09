@@ -1221,44 +1221,6 @@ curl -L http://127.0.0.1:4001/v2/stats/store
 }
 ```
 
-## Cluster Config
-
-The configuration endpoint manages shared cluster wide properties.
-
-### Set Cluster Config
-
-```sh
-curl -L http://127.0.0.1:7001/v2/admin/config -XPUT -d '{"activeSize":3, "removeDelay":1800,"syncInterval":5}'
-```
-
-```json
-{
-    "activeSize": 3,
-    "removeDelay": 1800,
-    "syncInterval":5
-}
-```
-
-`activeSize` is the maximum number of peers that can join the cluster and participate in the consensus protocol.
-
-The size of cluster is controlled to be around a certain number. If it is not, standby-mode instances will join or peer-mode instances will be removed to make it happen.
-
-`removeDelay` indicates the minimum time that a machine has been observed to be unresponsive before it is removed from the cluster.
-
-### Get Cluster Config
-
-```sh
-curl -L http://127.0.0.1:7001/v2/admin/config
-```
-
-```json
-{
-    "activeSize": 3,
-    "removeDelay": 1800,
-    "syncInterval":5
-}
-```
-
 ## Remove Machines
 
 At times you may want to manually remove a machine. Using the machines endpoint
