@@ -108,7 +108,7 @@ func TestCheckCluster(t *testing.T) {
 		c := &clientWithResp{rs: rs}
 		d := discovery{cluster: cluster, id: 1, c: c}
 
-		cRetry := &clientWithRetry{failTimes: 2}
+		cRetry := &clientWithRetry{failTimes: 3}
 		cRetry.rs = rs
 		dRetry := discovery{cluster: cluster, id: 1, c: cRetry, timeoutTimescale: time.Millisecond * 2}
 
@@ -291,6 +291,16 @@ func TestSortableNodes(t *testing.T) {
 	}
 	if sort.IntsAreSorted(cis) != true {
 		t.Errorf("isSorted = %v, want %v", sort.IntsAreSorted(cis), true)
+	}
+}
+
+func TestRetryFailure(t *testing.T) {
+	cluster := "1000"
+	c := &clientWithRetry{failTimes: 4}
+	d := discovery{cluster: cluster, id: 1, c: c, timeoutTimescale: time.Millisecond * 2}
+	_, _, err := d.checkCluster()
+	if err != ErrTooManyRetries {
+		t.Errorf("err = %v, want %v", err, ErrTooManyRetries)
 	}
 }
 
