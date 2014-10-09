@@ -15,7 +15,8 @@ import (
 )
 
 var (
-	v2Prefix = "/v2/keys"
+	v2Prefix   = "/v2/keys"
+	ErrTimeout = context.DeadlineExceeded
 )
 
 // transport mimics http.Transport to provide an interface which can be
