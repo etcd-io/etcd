@@ -14,6 +14,8 @@
 
 **Java libraries**
 
+
+- [boonproject/etcd](https://github.com/boonproject/boon/blob/master/etcd/README.md) - Supports v2, Async/Sync and waits
 - [justinsb/jetcd](https://github.com/justinsb/jetcd)
 - [diwakergupta/jetcd](https://github.com/diwakergupta/jetcd) - Supports v2
 - [jurmous/etcd4j](https://github.com/jurmous/etcd4j) - Supports v2
