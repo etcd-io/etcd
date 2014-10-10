@@ -34,6 +34,10 @@ func (st StateType) String() string {
 	return stmap[uint64(st)]
 }
 
+func (st StateType) MarshalJSON() ([]byte, error) {
+	return []byte(fmt.Sprintf("%q", st.String())), nil
+}
+
 type progress struct {
 	match, next uint64
 }

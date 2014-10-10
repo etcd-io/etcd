@@ -19,6 +19,7 @@ import (
 	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"github.com/coreos/etcd/etcdserver/stats"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/store"
 )
@@ -637,12 +638,18 @@ func TestServeMachines(t *testing.T) {
 	}
 }
 
+type ds struct {
+	data []byte
+}
+
+func (s *ds) ServerStats() *stats.ServerStats { return nil }
+func (s *ds) LeaderStats() *stats.LeaderStats { return nil }
+func (s *ds) StoreStats() []byte              { return s.data }
+
 func TestServeStoreStats(t *testing.T) {
 	w := "foobarbaz"
 	sh := &serverHandler{
-		storeStats: func() []byte {
-			return []byte(w)
-		},
+		stats: &ds{data: []byte(w)},
 	}
 	rw := httptest.NewRecorder()
 	req, err := http.NewRequest("GET", "", nil)

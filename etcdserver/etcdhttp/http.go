@@ -41,14 +41,16 @@ func NewClientHandler(server *etcdserver.EtcdServer) http.Handler {
 	sh := &serverHandler{
 		server:       server,
 		clusterStore: server.ClusterStore,
+		stats:        server,
 		timer:        server,
 		timeout:      defaultServerTimeout,
-		storeStats:   server.StoreStats,
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc(keysPrefix, sh.serveKeys)
 	mux.HandleFunc(keysPrefix+"/", sh.serveKeys)
 	mux.HandleFunc(statsPrefix+"/store", sh.serveStoreStats)
+	mux.HandleFunc(statsPrefix+"/self", sh.serveSelfStats)
+	mux.HandleFunc(statsPrefix+"/leader", sh.serveLeaderStats)
 	// TODO: dynamic configuration may make this outdated. take care of it.
 	// TODO: dynamic configuration may introduce race also.
 	// TODO: add serveMembers
@@ -73,9 +75,9 @@ func NewPeerHandler(server etcdserver.Server) http.Handler {
 type serverHandler struct {
 	timeout      time.Duration
 	server       etcdserver.Server
+	stats        etcdserver.Stats
 	timer        etcdserver.RaftTimer
 	clusterStore etcdserver.ClusterStore
-	storeStats   func() []byte
 }
 
 func (h serverHandler) serveKeys(w http.ResponseWriter, r *http.Request) {
@@ -171,7 +173,37 @@ func (h serverHandler) serveStoreStats(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.Write(h.storeStats())
+	w.Write(h.stats.StoreStats())
+}
+
+func (h serverHandler) serveSelfStats(w http.ResponseWriter, r *http.Request) {
+	if !allowMethod(w, r.Method, "GET") {
+		return
+	}
+	s := h.stats.ServerStats()
+	b, err := json.Marshal(s)
+	if err != nil {
+		log.Printf("error marshalling stats: %v\n", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(b)
+}
+
+func (h serverHandler) serveLeaderStats(w http.ResponseWriter, r *http.Request) {
+	if !allowMethod(w, r.Method, "GET") {
+		return
+	}
+	s := h.stats.LeaderStats()
+	b, err := json.Marshal(s)
+	if err != nil {
+		log.Printf("error marshalling stats: %v\n", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(b)
 }
 
 func (h serverHandler) serveRaft(w http.ResponseWriter, r *http.Request) {
@@ -192,6 +224,10 @@ func (h serverHandler) serveRaft(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	log.Printf("etcdhttp: raft recv message from %#x: %+v", m.From, m)
+	if m.Type == raftpb.MsgApp {
+		// TODO(jonboulle):
+		h.stats.ServerStats().RecvAppendReq(strconv.FormatUint(m.From, 10), int(r.ContentLength))
+	}
 	if err := h.server.Process(context.TODO(), m); err != nil {
 		log.Println("etcdhttp: error processing raft message:", err)
 		writeError(w, err)
