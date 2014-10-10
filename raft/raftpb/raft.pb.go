@@ -9,7 +9,6 @@
 		raft.proto
 
 	It has these top-level messages:
-		Info
 		Entry
 		Snapshot
 		Message
@@ -98,15 +97,6 @@ func (x *ConfChangeType) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-type Info struct {
-	ID               uint64 `protobuf:"varint,1,req" json:"ID"`
-	XXX_unrecognized []byte `json:"-"`
-}
-
-func (m *Info) Reset()         { *m = Info{} }
-func (m *Info) String() string { return proto.CompactTextString(m) }
-func (*Info) ProtoMessage()    {}
-
 type Entry struct {
 	Type             EntryType `protobuf:"varint,1,req,enum=raftpb.EntryType" json:"Type"`
 	Term             uint64    `protobuf:"varint,2,req" json:"Term"`
@@ -176,63 +166,6 @@ func (*ConfChange) ProtoMessage()    {}
 func init() {
 	proto.RegisterEnum("raftpb.EntryType", EntryType_name, EntryType_value)
 	proto.RegisterEnum("raftpb.ConfChangeType", ConfChangeType_name, ConfChangeType_value)
-}
-func (m *Info) Unmarshal(data []byte) error {
-	l := len(data)
-	index := 0
-	for index < l {
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if index >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := data[index]
-			index++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		switch fieldNum {
-		case 1:
-			if wireType != 0 {
-				return code_google_com_p_gogoprotobuf_proto.ErrWrongType
-			}
-			for shift := uint(0); ; shift += 7 {
-				if index >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[index]
-				index++
-				m.ID |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		default:
-			var sizeOfWire int
-			for {
-				sizeOfWire++
-				wire >>= 7
-				if wire == 0 {
-					break
-				}
-			}
-			index -= sizeOfWire
-			skippy, err := code_google_com_p_gogoprotobuf_proto.Skip(data[index:])
-			if err != nil {
-				return err
-			}
-			if (index + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.XXX_unrecognized = append(m.XXX_unrecognized, data[index:index+skippy]...)
-			index += skippy
-		}
-	}
-	return nil
 }
 func (m *Entry) Unmarshal(data []byte) error {
 	l := len(data)
@@ -878,15 +811,6 @@ func (m *ConfChange) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *Info) Size() (n int) {
-	var l int
-	_ = l
-	n += 1 + sovRaft(uint64(m.ID))
-	if m.XXX_unrecognized != nil {
-		n += len(m.XXX_unrecognized)
-	}
-	return n
-}
 func (m *Entry) Size() (n int) {
 	var l int
 	_ = l
@@ -983,29 +907,6 @@ func sovRaft(x uint64) (n int) {
 }
 func sozRaft(x uint64) (n int) {
 	return sovRaft(uint64((x << 1) ^ uint64((int64(x) >> 63))))
-}
-func (m *Info) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *Info) MarshalTo(data []byte) (n int, err error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	data[i] = 0x8
-	i++
-	i = encodeVarintRaft(data, i, uint64(m.ID))
-	if m.XXX_unrecognized != nil {
-		i += copy(data[i:], m.XXX_unrecognized)
-	}
-	return i, nil
 }
 func (m *Entry) Marshal() (data []byte, err error) {
 	size := m.Size()

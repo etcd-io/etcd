@@ -23,6 +23,7 @@ import (
 	"io"
 	"os"
 	"path"
+	"reflect"
 	"sort"
 
 	"github.com/coreos/etcd/raft"
@@ -31,7 +32,7 @@ import (
 )
 
 const (
-	infoType int64 = iota + 1
+	metadataType int64 = iota + 1
 	entryType
 	stateType
 	crcType
@@ -41,11 +42,11 @@ const (
 )
 
 var (
-	ErrIDMismatch    = errors.New("wal: unmatch id")
-	ErrFileNotFound  = errors.New("wal: file not found")
-	ErrIndexNotFound = errors.New("wal: index not found in file")
-	ErrCRCMismatch   = errors.New("wal: crc mismatch")
-	crcTable         = crc32.MakeTable(crc32.Castagnoli)
+	ErrMetadataConflict = errors.New("wal: conflicting metadata found")
+	ErrFileNotFound     = errors.New("wal: file not found")
+	ErrIndexNotFound    = errors.New("wal: index not found in file")
+	ErrCRCMismatch      = errors.New("wal: crc mismatch")
+	crcTable            = crc32.MakeTable(crc32.Castagnoli)
 )
 
 // WAL is a logical repersentation of the stable storage.
@@ -55,6 +56,7 @@ var (
 // The WAL will be ready for appending after reading out all the previous records.
 type WAL struct {
 	dir string // the living directory of the underlay files
+	md  []byte // metadata recorded at the head of each WAL
 
 	ri      uint64   // index of entry to start reading
 	decoder *decoder // decoder to decode records
@@ -65,8 +67,9 @@ type WAL struct {
 	encoder *encoder // encoder to encode records
 }
 
-// Create creates a WAL ready for appending records.
-func Create(dirpath string) (*WAL, error) {
+// Create creates a WAL ready for appending records. The given metadata is
+// recorded at the head of each WAL file, and can be retrieved with ReadAll.
+func Create(dirpath string, metadata []byte) (*WAL, error) {
 	if Exist(dirpath) {
 		return nil, os.ErrExist
 	}
@@ -82,11 +85,15 @@ func Create(dirpath string) (*WAL, error) {
 	}
 	w := &WAL{
 		dir:     dirpath,
+		md:      metadata,
 		seq:     0,
 		f:       f,
 		encoder: newEncoder(f, 0),
 	}
 	if err := w.saveCrc(0); err != nil {
+		return nil, err
+	}
+	if err := w.encoder.encode(&walpb.Record{Type: metadataType, Data: metadata}); err != nil {
 		return nil, err
 	}
 	return w, nil
@@ -154,7 +161,7 @@ func OpenAtIndex(dirpath string, index uint64) (*WAL, error) {
 // ReadAll reads out all records of the current WAL.
 // If it cannot read out the expected entry, it will return ErrIndexNotFound.
 // After ReadAll, the WAL will be ready for appending new records.
-func (w *WAL) ReadAll() (id uint64, state raftpb.HardState, ents []raftpb.Entry, err error) {
+func (w *WAL) ReadAll() (metadata []byte, state raftpb.HardState, ents []raftpb.Entry, err error) {
 	rec := &walpb.Record{}
 	decoder := w.decoder
 
@@ -168,44 +175,44 @@ func (w *WAL) ReadAll() (id uint64, state raftpb.HardState, ents []raftpb.Entry,
 			w.enti = e.Index
 		case stateType:
 			state = mustUnmarshalState(rec.Data)
-		case infoType:
-			i := mustUnmarshalInfo(rec.Data)
-			if id != 0 && id != i.ID {
+		case metadataType:
+			if metadata != nil && !reflect.DeepEqual(metadata, rec.Data) {
 				state.Reset()
-				return 0, state, nil, ErrIDMismatch
+				return nil, state, nil, ErrMetadataConflict
 			}
-			id = i.ID
+			metadata = rec.Data
 		case crcType:
 			crc := decoder.crc.Sum32()
 			// current crc of decoder must match the crc of the record.
 			// do no need to match 0 crc, since the decoder is a new one at this case.
 			if crc != 0 && rec.Validate(crc) != nil {
 				state.Reset()
-				return 0, state, nil, ErrCRCMismatch
+				return nil, state, nil, ErrCRCMismatch
 			}
 			decoder.updateCRC(rec.Crc)
 		default:
 			state.Reset()
-			return 0, state, nil, fmt.Errorf("unexpected block type %d", rec.Type)
+			return nil, state, nil, fmt.Errorf("unexpected block type %d", rec.Type)
 		}
 	}
 	if err != io.EOF {
 		state.Reset()
-		return 0, state, nil, err
+		return nil, state, nil, err
 	}
 	if w.enti < w.ri {
 		state.Reset()
-		return 0, state, nil, ErrIndexNotFound
+		return nil, state, nil, ErrIndexNotFound
 	}
 
 	// close decoder, disable reading
 	w.decoder.close()
 	w.ri = 0
 
+	w.md = metadata
 	// create encoder (chain crc with the decoder), enable appending
 	w.encoder = newEncoder(w.f, w.decoder.lastCRC())
 	w.decoder = nil
-	return id, state, ents, nil
+	return metadata, state, ents, nil
 }
 
 // Cut closes current file written and creates a new one ready to append.
@@ -224,7 +231,10 @@ func (w *WAL) Cut() error {
 	w.seq++
 	prevCrc := w.encoder.crc.Sum32()
 	w.encoder = newEncoder(w.f, prevCrc)
-	return w.saveCrc(prevCrc)
+	if err := w.saveCrc(prevCrc); err != nil {
+		return err
+	}
+	return w.encoder.encode(&walpb.Record{Type: metadataType, Data: w.md})
 }
 
 func (w *WAL) Sync() error {
@@ -241,15 +251,6 @@ func (w *WAL) Close() {
 		w.Sync()
 		w.f.Close()
 	}
-}
-
-func (w *WAL) SaveInfo(i *raftpb.Info) error {
-	b, err := i.Marshal()
-	if err != nil {
-		panic(err)
-	}
-	rec := &walpb.Record{Type: infoType, Data: b}
-	return w.encoder.encode(rec)
 }
 
 func (w *WAL) SaveEntry(e *raftpb.Entry) error {

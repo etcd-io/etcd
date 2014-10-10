@@ -27,11 +27,6 @@ import (
 	"github.com/coreos/etcd/raft/raftpb"
 )
 
-var (
-	infoData   = []byte("\b\xef\xfd\x02")
-	infoRecord = append([]byte("\x0e\x00\x00\x00\x00\x00\x00\x00\b\x01\x10\x99\xb5\xe4\xd0\x03\x1a\x04"), infoData...)
-)
-
 func TestNew(t *testing.T) {
 	p, err := ioutil.TempDir(os.TempDir(), "waltest")
 	if err != nil {
@@ -39,7 +34,7 @@ func TestNew(t *testing.T) {
 	}
 	defer os.RemoveAll(p)
 
-	w, err := Create(p)
+	w, err := Create(p, nil)
 	if err != nil {
 		t.Fatalf("err = %v, want nil", err)
 	}
@@ -57,7 +52,7 @@ func TestNewForInitedDir(t *testing.T) {
 	defer os.RemoveAll(p)
 
 	os.Create(path.Join(p, walName(0, 0)))
-	if _, err = Create(p); err == nil || err != os.ErrExist {
+	if _, err = Create(p, nil); err == nil || err != os.ErrExist {
 		t.Errorf("err = %v, want %v", err, os.ErrExist)
 	}
 }
@@ -123,7 +118,7 @@ func TestCut(t *testing.T) {
 	}
 	defer os.RemoveAll(p)
 
-	w, err := Create(p)
+	w, err := Create(p, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -161,12 +156,8 @@ func TestRecover(t *testing.T) {
 	}
 	defer os.RemoveAll(p)
 
-	w, err := Create(p)
+	w, err := Create(p, []byte("metadata"))
 	if err != nil {
-		t.Fatal(err)
-	}
-	i := &raftpb.Info{ID: uint64(0xBAD0)}
-	if err = w.SaveInfo(i); err != nil {
 		t.Fatal(err)
 	}
 	ents := []raftpb.Entry{{Index: 0, Term: 0}, {Index: 1, Term: 1, Data: []byte{1}}, {Index: 2, Term: 2, Data: []byte{2}}}
@@ -186,13 +177,13 @@ func TestRecover(t *testing.T) {
 	if w, err = OpenAtIndex(p, 0); err != nil {
 		t.Fatal(err)
 	}
-	id, state, entries, err := w.ReadAll()
+	metadata, state, entries, err := w.ReadAll()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if id != i.ID {
-		t.Errorf("id = %d, want %d", id, i.ID)
+	if !reflect.DeepEqual(metadata, []byte("metadata")) {
+		t.Errorf("metadata = %s, want %s", metadata, "metadata")
 	}
 	if !reflect.DeepEqual(entries, ents) {
 		t.Errorf("ents = %+v, want %+v", entries, ents)
@@ -278,12 +269,8 @@ func TestRecoverAfterCut(t *testing.T) {
 	}
 	defer os.RemoveAll(p)
 
-	w, err := Create(p)
+	w, err := Create(p, []byte("metadata"))
 	if err != nil {
-		t.Fatal(err)
-	}
-	info := &raftpb.Info{ID: uint64(0xBAD1)}
-	if err = w.SaveInfo(info); err != nil {
 		t.Fatal(err)
 	}
 	// TODO(unihorn): remove this when cut can operate on an empty file
@@ -299,9 +286,6 @@ func TestRecoverAfterCut(t *testing.T) {
 			t.Fatal(err)
 		}
 		if err = w.Cut(); err != nil {
-			t.Fatal(err)
-		}
-		if err = w.SaveInfo(info); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -323,13 +307,13 @@ func TestRecoverAfterCut(t *testing.T) {
 			}
 			continue
 		}
-		id, _, entries, err := w.ReadAll()
+		metadata, _, entries, err := w.ReadAll()
 		if err != nil {
 			t.Errorf("#%d: err = %v, want nil", i, err)
 			continue
 		}
-		if id != info.ID {
-			t.Errorf("#%d: id = %d, want %d", i, id, info.ID)
+		if !reflect.DeepEqual(metadata, []byte("metadata")) {
+			t.Errorf("#%d: metadata = %s, want %s", i, metadata, "metadata")
 		}
 		for j, e := range entries {
 			if e.Index != uint64(j+i) {
@@ -346,7 +330,7 @@ func TestOpenAtUncommittedIndex(t *testing.T) {
 	}
 	defer os.RemoveAll(p)
 
-	w, err := Create(p)
+	w, err := Create(p, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
