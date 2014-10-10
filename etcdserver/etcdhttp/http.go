@@ -25,6 +25,7 @@ const (
 	deprecatedMachinesPrefix = "/v2/machines"
 	adminMembersPrefix       = "/v2/admin/members/"
 	raftPrefix               = "/raft"
+	statsPrefix              = "/v2/stats"
 
 	// time to wait for response from EtcdServer requests
 	defaultServerTimeout = 500 * time.Millisecond
@@ -42,10 +43,12 @@ func NewClientHandler(server *etcdserver.EtcdServer) http.Handler {
 		clusterStore: server.ClusterStore,
 		timer:        server,
 		timeout:      defaultServerTimeout,
+		storeStats:   server.StoreStats,
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc(keysPrefix, sh.serveKeys)
 	mux.HandleFunc(keysPrefix+"/", sh.serveKeys)
+	mux.HandleFunc(statsPrefix+"/store", sh.serveStoreStats)
 	// TODO: dynamic configuration may make this outdated. take care of it.
 	// TODO: dynamic configuration may introduce race also.
 	// TODO: add serveMembers
@@ -72,6 +75,7 @@ type serverHandler struct {
 	server       etcdserver.Server
 	timer        etcdserver.RaftTimer
 	clusterStore etcdserver.ClusterStore
+	storeStats   func() []byte
 }
 
 func (h serverHandler) serveKeys(w http.ResponseWriter, r *http.Request) {
@@ -160,6 +164,14 @@ func (h serverHandler) serveAdminMembers(w http.ResponseWriter, r *http.Request)
 		}
 		w.WriteHeader(http.StatusNoContent)
 	}
+}
+
+func (h serverHandler) serveStoreStats(w http.ResponseWriter, r *http.Request) {
+	if !allowMethod(w, r.Method, "GET") {
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(h.storeStats())
 }
 
 func (h serverHandler) serveRaft(w http.ResponseWriter, r *http.Request) {

@@ -637,6 +637,32 @@ func TestServeMachines(t *testing.T) {
 	}
 }
 
+func TestServeStoreStats(t *testing.T) {
+	w := "foobarbaz"
+	sh := &serverHandler{
+		storeStats: func() []byte {
+			return []byte(w)
+		},
+	}
+	rw := httptest.NewRecorder()
+	req, err := http.NewRequest("GET", "", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sh.serveStoreStats(rw, req)
+	if rw.Code != http.StatusOK {
+		t.Errorf("header = %d, want %d", rw.Code, http.StatusOK)
+	}
+	wct := "application/json"
+	if gct := rw.Header().Get("Content-Type"); gct != wct {
+		t.Errorf("Content-Type = %q, want %q", gct, wct)
+	}
+	if g := rw.Body.String(); g != w {
+		t.Errorf("body = %s, want %s", g, w)
+	}
+
+}
+
 func TestAllowMethod(t *testing.T) {
 	tests := []struct {
 		m  string
