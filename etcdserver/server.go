@@ -217,6 +217,10 @@ func (s *EtcdServer) Start() {
 	go s.publish(defaultPublishRetryInterval)
 }
 
+func (s *EtcdServer) StoreStats() []byte {
+	return s.store.JsonStats()
+}
+
 // start prepares and starts server in a new goroutine. It is no longer safe to
 // modify a server's fields after it has been sent to Start.
 // This function is just used for testing.
