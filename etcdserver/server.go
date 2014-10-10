@@ -12,7 +12,6 @@ import (
 
 	"github.com/coreos/etcd/discovery"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
-	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/snap"
@@ -163,15 +162,15 @@ func NewServer(cfg *ServerConfig) *EtcdServer {
 	cls := NewClusterStore(st, *cfg.Cluster)
 
 	s := &EtcdServer{
-		store: st,
-		node:  n,
-		name:  cfg.Name,
+		store:      st,
+		node:       n,
+		id:         m.ID,
+		attributes: Attributes{Name: cfg.Name, ClientURLs: cfg.ClientURLs.StringSlice()},
 		storage: struct {
 			*wal.WAL
 			*snap.Snapshotter
 		}{w, ss},
 		send:         Sender(cfg.Transport, cls),
-		clientURLs:   cfg.ClientURLs,
 		ticker:       time.Tick(100 * time.Millisecond),
 		syncTicker:   time.Tick(500 * time.Millisecond),
 		snapCount:    cfg.SnapCount,
@@ -184,8 +183,8 @@ func NewServer(cfg *ServerConfig) *EtcdServer {
 type EtcdServer struct {
 	w          wait.Wait
 	done       chan struct{}
-	name       string
-	clientURLs types.URLs
+	id         uint64
+	attributes Attributes
 
 	ClusterStore ClusterStore
 
@@ -453,11 +452,8 @@ func (s *EtcdServer) sync(timeout time.Duration) {
 // static clientURLs of the server.
 // The function keeps attempting to register until it succeeds,
 // or its server is stopped.
-// TODO: take care of info fetched from cluster store after having reconfig.
 func (s *EtcdServer) publish(retryInterval time.Duration) {
-	m := *s.ClusterStore.Get().FindName(s.name)
-	m.ClientURLs = s.clientURLs.StringSlice()
-	b, err := json.Marshal(m)
+	b, err := json.Marshal(s.attributes)
 	if err != nil {
 		log.Printf("etcdserver: json marshal error: %v", err)
 		return
@@ -465,7 +461,7 @@ func (s *EtcdServer) publish(retryInterval time.Duration) {
 	req := pb.Request{
 		ID:     int64(GenID()),
 		Method: "PUT",
-		Path:   m.storeKey(),
+		Path:   Member{ID: s.id}.storeKey() + attributesSuffix,
 		Val:    string(b),
 	}
 
@@ -475,7 +471,7 @@ func (s *EtcdServer) publish(retryInterval time.Duration) {
 		cancel()
 		switch err {
 		case nil:
-			log.Printf("etcdserver: published %+v to the cluster", m)
+			log.Printf("etcdserver: published %+v to the cluster", s.attributes)
 			return
 		case ErrStopped:
 			log.Printf("etcdserver: aborting publish because server is stopped")

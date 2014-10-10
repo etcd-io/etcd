@@ -18,19 +18,13 @@ func TestClusterAddSlice(t *testing.T) {
 		},
 		{
 			[]Member{
-				{ID: 1, PeerURLs: []string{"foo", "bar"}},
-				{ID: 2, PeerURLs: []string{"baz"}},
+				newTestMember(1, []string{"foo", "bar"}, "", nil),
+				newTestMember(2, []string{"baz"}, "", nil),
 			},
 
 			&Cluster{
-				1: &Member{
-					ID:       1,
-					PeerURLs: []string{"foo", "bar"},
-				},
-				2: &Member{
-					ID:       2,
-					PeerURLs: []string{"baz"},
-				},
+				1: newTestMemberp(1, []string{"foo", "bar"}, "", nil),
+				2: newTestMemberp(2, []string{"baz"}, "", nil),
 			},
 		},
 	}
@@ -48,18 +42,18 @@ func TestClusterAddSlice(t *testing.T) {
 
 func TestClusterAddSliceBad(t *testing.T) {
 	c := Cluster{
-		1: &Member{ID: 1},
+		1: newTestMemberp(1, nil, "", nil),
 	}
-	if err := c.AddSlice([]Member{{ID: 1}}); err == nil {
+	if err := c.AddSlice([]Member{newTestMember(1, nil, "", nil)}); err == nil {
 		t.Error("want err, but got nil")
 	}
 }
 
 func TestClusterPick(t *testing.T) {
 	cs := Cluster{
-		1: &Member{ID: 1, PeerURLs: []string{"abc", "def", "ghi", "jkl", "mno", "pqr", "stu"}},
-		2: &Member{ID: 2, PeerURLs: []string{"xyz"}},
-		3: &Member{ID: 3, PeerURLs: []string{}},
+		1: newTestMemberp(1, []string{"abc", "def", "ghi", "jkl", "mno", "pqr", "stu"}, "", nil),
+		2: newTestMemberp(2, []string{"xyz"}, "", nil),
+		3: newTestMemberp(3, []string{}, "", nil),
 	}
 	ids := map[string]bool{
 		"abc": true,
@@ -98,7 +92,7 @@ func TestClusterFind(t *testing.T) {
 		{
 			1,
 			"node1",
-			[]Member{{Name: "node1", ID: 1}},
+			[]Member{newTestMember(1, nil, "node1", nil)},
 			true,
 		},
 		{
@@ -110,13 +104,13 @@ func TestClusterFind(t *testing.T) {
 		{
 			2,
 			"node2",
-			[]Member{{Name: "node1", ID: 1}, {Name: "node2", ID: 2}},
+			[]Member{newTestMember(1, nil, "node1", nil), newTestMember(2, nil, "node2", nil)},
 			true,
 		},
 		{
 			3,
 			"node3",
-			[]Member{{Name: "node1", ID: 1}, {Name: "node2", ID: 2}},
+			[]Member{newTestMember(1, nil, "node1", nil), newTestMember(2, nil, "node2", nil)},
 			false,
 		},
 	}
@@ -161,9 +155,9 @@ func TestClusterSet(t *testing.T) {
 		{
 			"mem1=http://10.0.0.1:2379,mem1=http://128.193.4.20:2379,mem2=http://10.0.0.2:2379,default=http://127.0.0.1:2379",
 			[]Member{
-				{ID: 3736794188555456841, Name: "mem1", PeerURLs: []string{"http://10.0.0.1:2379", "http://128.193.4.20:2379"}},
-				{ID: 5674507346857578431, Name: "mem2", PeerURLs: []string{"http://10.0.0.2:2379"}},
-				{ID: 2676999861503984872, Name: "default", PeerURLs: []string{"http://127.0.0.1:2379"}},
+				newTestMember(3736794188555456841, []string{"http://10.0.0.1:2379", "http://128.193.4.20:2379"}, "mem1", nil),
+				newTestMember(5674507346857578431, []string{"http://10.0.0.2:2379"}, "mem2", nil),
+				newTestMember(2676999861503984872, []string{"http://127.0.0.1:2379"}, "default", nil),
 			},
 		},
 	}
@@ -203,9 +197,9 @@ func TestClusterSetBad(t *testing.T) {
 func TestClusterIDs(t *testing.T) {
 	cs := Cluster{}
 	cs.AddSlice([]Member{
-		{ID: 1},
-		{ID: 4},
-		{ID: 100},
+		newTestMember(1, nil, "", nil),
+		newTestMember(4, nil, "", nil),
+		newTestMember(100, nil, "", nil),
 	})
 	w := []uint64{1, 4, 100}
 	g := cs.IDs()
@@ -217,14 +211,14 @@ func TestClusterIDs(t *testing.T) {
 func TestClusterAddBad(t *testing.T) {
 	// Should not be possible to add the same ID multiple times
 	mems := []Member{
-		{ID: 1, Name: "mem1"},
-		{ID: 1, Name: "mem2"},
+		newTestMember(1, nil, "mem1", nil),
+		newTestMember(1, nil, "mem2", nil),
 	}
 	c := &Cluster{}
-	c.Add(Member{ID: 1, Name: "mem1"})
+	c.Add(newTestMember(1, nil, "mem1", nil))
 	for i, m := range mems {
 		if err := c.Add(m); err == nil {
-			t.Errorf("#%d: set = %v, want err", i, m)
+			t.Errorf("#%d: set = %v, want err", i, err)
 		}
 	}
 }
@@ -237,7 +231,7 @@ func TestClusterPeerURLs(t *testing.T) {
 		// single peer with a single address
 		{
 			mems: []Member{
-				{ID: 1, PeerURLs: []string{"http://192.0.2.1"}},
+				newTestMember(1, []string{"http://192.0.2.1"}, "", nil),
 			},
 			wurls: []string{"http://192.0.2.1"},
 		},
@@ -245,7 +239,7 @@ func TestClusterPeerURLs(t *testing.T) {
 		// single peer with a single address with a port
 		{
 			mems: []Member{
-				{ID: 1, PeerURLs: []string{"http://192.0.2.1:8001"}},
+				newTestMember(1, []string{"http://192.0.2.1:8001"}, "", nil),
 			},
 			wurls: []string{"http://192.0.2.1:8001"},
 		},
@@ -253,9 +247,9 @@ func TestClusterPeerURLs(t *testing.T) {
 		// several members explicitly unsorted
 		{
 			mems: []Member{
-				{ID: 2, PeerURLs: []string{"http://192.0.2.3", "http://192.0.2.4"}},
-				{ID: 3, PeerURLs: []string{"http://192.0.2.5", "http://192.0.2.6"}},
-				{ID: 1, PeerURLs: []string{"http://192.0.2.1", "http://192.0.2.2"}},
+				newTestMember(2, []string{"http://192.0.2.3", "http://192.0.2.4"}, "", nil),
+				newTestMember(3, []string{"http://192.0.2.5", "http://192.0.2.6"}, "", nil),
+				newTestMember(1, []string{"http://192.0.2.1", "http://192.0.2.2"}, "", nil),
 			},
 			wurls: []string{"http://192.0.2.1", "http://192.0.2.2", "http://192.0.2.3", "http://192.0.2.4", "http://192.0.2.5", "http://192.0.2.6"},
 		},
@@ -269,7 +263,7 @@ func TestClusterPeerURLs(t *testing.T) {
 		// peer with no peer urls
 		{
 			mems: []Member{
-				{ID: 3, PeerURLs: []string{}},
+				newTestMember(3, []string{}, "", nil),
 			},
 			wurls: []string{},
 		},
@@ -296,7 +290,7 @@ func TestClusterClientURLs(t *testing.T) {
 		// single peer with a single address
 		{
 			mems: []Member{
-				{ID: 1, ClientURLs: []string{"http://192.0.2.1"}},
+				newTestMember(1, nil, "", []string{"http://192.0.2.1"}),
 			},
 			wurls: []string{"http://192.0.2.1"},
 		},
@@ -304,7 +298,7 @@ func TestClusterClientURLs(t *testing.T) {
 		// single peer with a single address with a port
 		{
 			mems: []Member{
-				{ID: 1, ClientURLs: []string{"http://192.0.2.1:8001"}},
+				newTestMember(1, nil, "", []string{"http://192.0.2.1:8001"}),
 			},
 			wurls: []string{"http://192.0.2.1:8001"},
 		},
@@ -312,9 +306,9 @@ func TestClusterClientURLs(t *testing.T) {
 		// several members explicitly unsorted
 		{
 			mems: []Member{
-				{ID: 2, ClientURLs: []string{"http://192.0.2.3", "http://192.0.2.4"}},
-				{ID: 3, ClientURLs: []string{"http://192.0.2.5", "http://192.0.2.6"}},
-				{ID: 1, ClientURLs: []string{"http://192.0.2.1", "http://192.0.2.2"}},
+				newTestMember(2, nil, "", []string{"http://192.0.2.3", "http://192.0.2.4"}),
+				newTestMember(3, nil, "", []string{"http://192.0.2.5", "http://192.0.2.6"}),
+				newTestMember(1, nil, "", []string{"http://192.0.2.1", "http://192.0.2.2"}),
 			},
 			wurls: []string{"http://192.0.2.1", "http://192.0.2.2", "http://192.0.2.3", "http://192.0.2.4", "http://192.0.2.5", "http://192.0.2.6"},
 		},
@@ -328,7 +322,7 @@ func TestClusterClientURLs(t *testing.T) {
 		// peer with no client urls
 		{
 			mems: []Member{
-				{ID: 3, ClientURLs: []string{}},
+				newTestMember(3, nil, "", []string{}),
 			},
 			wurls: []string{},
 		},

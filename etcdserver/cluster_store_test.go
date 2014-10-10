@@ -12,22 +12,32 @@ import (
 func TestClusterStoreAdd(t *testing.T) {
 	st := &storeRecorder{}
 	ps := &clusterStore{Store: st}
-	ps.Add(Member{Name: "node", ID: 1})
+	ps.Add(newTestMember(1, nil, "node1", nil))
 
 	wactions := []action{
 		{
 			name: "Create",
 			params: []interface{}{
-				machineKVPrefix + "1",
+				machineKVPrefix + "1/raftAttributes",
 				false,
-				`{"ID":1,"Name":"node","PeerURLs":null,"ClientURLs":null}`,
+				`{"PeerURLs":null}`,
+				false,
+				store.Permanent,
+			},
+		},
+		{
+			name: "Create",
+			params: []interface{}{
+				machineKVPrefix + "1/attributes",
+				false,
+				`{"Name":"node1","ClientURLs":null}`,
 				false,
 				store.Permanent,
 			},
 		},
 	}
 	if g := st.Action(); !reflect.DeepEqual(g, wactions) {
-		t.Error("actions = %v, want %v", g, wactions)
+		t.Errorf("actions = %v, want %v", g, wactions)
 	}
 }
 
@@ -37,20 +47,32 @@ func TestClusterStoreGet(t *testing.T) {
 		wmems []Member
 	}{
 		{
-			[]Member{{Name: "node1", ID: 1}},
-			[]Member{{Name: "node1", ID: 1}},
+			[]Member{newTestMember(1, nil, "node1", nil)},
+			[]Member{newTestMember(1, nil, "node1", nil)},
 		},
 		{
 			[]Member{},
 			[]Member{},
 		},
 		{
-			[]Member{{Name: "node1", ID: 1}, {Name: "node2", ID: 2}},
-			[]Member{{Name: "node1", ID: 1}, {Name: "node2", ID: 2}},
+			[]Member{
+				newTestMember(1, nil, "node1", nil),
+				newTestMember(2, nil, "node2", nil),
+			},
+			[]Member{
+				newTestMember(1, nil, "node1", nil),
+				newTestMember(2, nil, "node2", nil),
+			},
 		},
 		{
-			[]Member{{Name: "node2", ID: 2}, {Name: "node1", ID: 1}},
-			[]Member{{Name: "node1", ID: 1}, {Name: "node2", ID: 2}},
+			[]Member{
+				newTestMember(2, nil, "node2", nil),
+				newTestMember(1, nil, "node1", nil),
+			},
+			[]Member{
+				newTestMember(1, nil, "node1", nil),
+				newTestMember(2, nil, "node2", nil),
+			},
 		},
 	}
 	for i, tt := range tests {
@@ -60,7 +82,7 @@ func TestClusterStoreGet(t *testing.T) {
 			t.Error(err)
 		}
 
-		cs := NewClusterStore(&getAllStore{}, c)
+		cs := NewClusterStore(newGetAllStore(), c)
 
 		if g := cs.Get(); !reflect.DeepEqual(g, c) {
 			t.Errorf("#%d: mems = %v, want %v", i, g, c)
@@ -69,15 +91,62 @@ func TestClusterStoreGet(t *testing.T) {
 }
 
 func TestClusterStoreDelete(t *testing.T) {
-	st := &storeGetAllDeleteRecorder{}
+	st := newStoreGetAllAndDeleteRecorder()
 	c := Cluster{}
-	c.Add(Member{Name: "node", ID: 1})
+	c.Add(newTestMember(1, nil, "node1", nil))
 	cs := NewClusterStore(st, c)
 	cs.Remove(1)
 
 	wdeletes := []string{machineKVPrefix + "1"}
 	if !reflect.DeepEqual(st.deletes, wdeletes) {
 		t.Error("deletes = %v, want %v", st.deletes, wdeletes)
+	}
+}
+
+func TestNodeToMemberFail(t *testing.T) {
+	tests := []*store.NodeExtern{
+		{Key: "/1234", Nodes: []*store.NodeExtern{
+			{Key: "/1234/strange"},
+		}},
+		{Key: "/1234", Nodes: []*store.NodeExtern{
+			{Key: "/1234/dynamic", Value: stringp("garbage")},
+		}},
+		{Key: "/1234", Nodes: []*store.NodeExtern{
+			{Key: "/1234/dynamic", Value: stringp(`{"PeerURLs":null}`)},
+		}},
+		{Key: "/1234", Nodes: []*store.NodeExtern{
+			{Key: "/1234/dynamic", Value: stringp(`{"PeerURLs":null}`)},
+			{Key: "/1234/strange"},
+		}},
+		{Key: "/1234", Nodes: []*store.NodeExtern{
+			{Key: "/1234/dynamic", Value: stringp(`{"PeerURLs":null}`)},
+			{Key: "/1234/static", Value: stringp("garbage")},
+		}},
+		{Key: "/1234", Nodes: []*store.NodeExtern{
+			{Key: "/1234/dynamic", Value: stringp(`{"PeerURLs":null}`)},
+			{Key: "/1234/static", Value: stringp(`{"Name":"node1","ClientURLs":null}`)},
+			{Key: "/1234/strange"},
+		}},
+	}
+	for i, tt := range tests {
+		if _, err := nodeToMember(tt); err == nil {
+			t.Errorf("#%d: unexpected nil error", i)
+		}
+	}
+}
+
+func TestNodeToMember(t *testing.T) {
+	n := &store.NodeExtern{Key: "/1234", Nodes: []*store.NodeExtern{
+		{Key: "/1234/attributes", Value: stringp(`{"Name":"node1","ClientURLs":null}`)},
+		{Key: "/1234/raftAttributes", Value: stringp(`{"PeerURLs":null}`)},
+	}}
+	wm := Member{ID: 0x1234, RaftAttributes: RaftAttributes{}, Attributes: Attributes{Name: "node1"}}
+	m, err := nodeToMember(n)
+	if err != nil {
+		t.Fatalf("unexpected nodeToMember error: %v", err)
+	}
+	if !reflect.DeepEqual(m, wm) {
+		t.Errorf("member = %+v, want %+v", m, wm)
 	}
 }
 
@@ -103,35 +172,41 @@ func (s *simpleStore) Get(key string, _, _ bool) (*store.Event, error) {
 	return ev, nil
 }
 
-// getAllStore inherits simpleStore, and makes Get return all keys.
+// getAllStore embeds simpleStore, and makes Get return all keys sorted.
+// It uses real store because it uses lots of logic in store and is not easy
+// to mock.
+// TODO: use mock one to do testing
 type getAllStore struct {
-	simpleStore
+	store.Store
 }
 
-func (s *getAllStore) Get(_ string, _, _ bool) (*store.Event, error) {
-	nodes := make([]*store.NodeExtern, 0)
-	for k, v := range s.st {
-		nodes = append(nodes, &store.NodeExtern{Key: k, Value: stringp(v)})
+func newGetAllStore() *getAllStore {
+	return &getAllStore{store.New()}
+}
+
+type storeGetAllAndDeleteRecorder struct {
+	*getAllStore
+	deletes []string
+}
+
+func newStoreGetAllAndDeleteRecorder() *storeGetAllAndDeleteRecorder {
+	return &storeGetAllAndDeleteRecorder{getAllStore: newGetAllStore()}
+}
+
+func (s *storeGetAllAndDeleteRecorder) Delete(key string, _, _ bool) (*store.Event, error) {
+	s.deletes = append(s.deletes, key)
+	return nil, nil
+}
+
+func newTestMember(id uint64, peerURLs []string, name string, clientURLs []string) Member {
+	return Member{
+		ID:             id,
+		RaftAttributes: RaftAttributes{PeerURLs: peerURLs},
+		Attributes:     Attributes{Name: name, ClientURLs: clientURLs},
 	}
-	return &store.Event{Node: &store.NodeExtern{Nodes: nodes}}, nil
 }
 
-type storeDeleteRecorder struct {
-	storeRecorder
-	deletes []string
-}
-
-func (s *storeDeleteRecorder) Delete(key string, _, _ bool) (*store.Event, error) {
-	s.deletes = append(s.deletes, key)
-	return nil, nil
-}
-
-type storeGetAllDeleteRecorder struct {
-	getAllStore
-	deletes []string
-}
-
-func (s *storeGetAllDeleteRecorder) Delete(key string, _, _ bool) (*store.Event, error) {
-	s.deletes = append(s.deletes, key)
-	return nil, nil
+func newTestMemberp(id uint64, peerURLs []string, name string, clientURLs []string) *Member {
+	m := newTestMember(id, peerURLs, name, clientURLs)
+	return &m
 }

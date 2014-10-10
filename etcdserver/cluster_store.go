@@ -7,12 +7,16 @@ import (
 	"log"
 	"net/http"
 
+	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/store"
 )
 
 const (
 	raftPrefix = "/raft"
+
+	raftAttributesSuffix = "/raftAttributes"
+	attributesSuffix     = "/attributes"
 )
 
 type ClusterStore interface {
@@ -36,13 +40,20 @@ func NewClusterStore(st store.Store, c Cluster) ClusterStore {
 // Add puts a new Member into the store.
 // A Member with a matching id must not exist.
 func (s *clusterStore) Add(m Member) {
-	b, err := json.Marshal(m)
+	b, err := json.Marshal(m.RaftAttributes)
 	if err != nil {
-		log.Panicf("marshal peer info error: %v", err)
+		log.Panicf("marshal error: %v", err)
+	}
+	if _, err := s.Store.Create(m.storeKey()+raftAttributesSuffix, false, string(b), false, store.Permanent); err != nil {
+		log.Panicf("add raftAttributes should never fail: %v", err)
 	}
 
-	if _, err := s.Store.Create(m.storeKey(), false, string(b), false, store.Permanent); err != nil {
-		log.Panicf("add member should never fail: %v", err)
+	b, err = json.Marshal(m.Attributes)
+	if err != nil {
+		log.Panicf("marshal error: %v", err)
+	}
+	if _, err := s.Store.Create(m.storeKey()+attributesSuffix, false, string(b), false, store.Permanent); err != nil {
+		log.Panicf("add attributes should never fail: %v", err)
 	}
 }
 
@@ -50,28 +61,52 @@ func (s *clusterStore) Add(m Member) {
 // lock here.
 func (s *clusterStore) Get() Cluster {
 	c := &Cluster{}
-	e, err := s.Store.Get(machineKVPrefix, true, false)
+	e, err := s.Store.Get(machineKVPrefix, true, true)
 	if err != nil {
+		if v, ok := err.(*etcdErr.Error); ok && v.ErrorCode == etcdErr.EcodeKeyNotFound {
+			return *c
+		}
 		log.Panicf("get member should never fail: %v", err)
 	}
 	for _, n := range e.Node.Nodes {
-		m := Member{}
-		if err := json.Unmarshal([]byte(*n.Value), &m); err != nil {
-			log.Panicf("unmarshal peer error: %v", err)
-		}
-		err := c.Add(m)
+		m, err := nodeToMember(n)
 		if err != nil {
+			log.Panicf("unexpected nodeToMember error: %v", err)
+		}
+		if err := c.Add(m); err != nil {
 			log.Panicf("add member to cluster should never fail: %v", err)
 		}
 	}
 	return *c
 }
 
+// nodeToMember builds member through a store node.
+// the child nodes of the given node should be sorted by key.
+func nodeToMember(n *store.NodeExtern) (Member, error) {
+	m := Member{ID: parseMemberID(n.Key)}
+	if len(n.Nodes) != 2 {
+		return m, fmt.Errorf("len(nodes) = %d, want 2", len(n.Nodes))
+	}
+	if w := n.Key + attributesSuffix; n.Nodes[0].Key != w {
+		return m, fmt.Errorf("key = %v, want %v", n.Nodes[0].Key, w)
+	}
+	if err := json.Unmarshal([]byte(*n.Nodes[0].Value), &m.Attributes); err != nil {
+		return m, fmt.Errorf("unmarshal attributes error: %v", err)
+	}
+	if w := n.Key + raftAttributesSuffix; n.Nodes[1].Key != w {
+		return m, fmt.Errorf("key = %v, want %v", n.Nodes[1].Key, w)
+	}
+	if err := json.Unmarshal([]byte(*n.Nodes[1].Value), &m.RaftAttributes); err != nil {
+		return m, fmt.Errorf("unmarshal raftAttributes error: %v", err)
+	}
+	return m, nil
+}
+
 // Remove removes a member from the store.
 // The given id MUST exist.
 func (s *clusterStore) Remove(id uint64) {
 	p := s.Get().FindID(id).storeKey()
-	if _, err := s.Store.Delete(p, false, false); err != nil {
+	if _, err := s.Store.Delete(p, true, true); err != nil {
 		log.Panicf("delete peer should never fail: %v", err)
 	}
 }
