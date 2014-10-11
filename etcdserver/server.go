@@ -128,7 +128,7 @@ func NewServer(cfg *ServerConfig) *EtcdServer {
 		if !cfg.IsBootstrap() {
 			log.Fatalf("etcd: initial cluster state unset and no wal or discovery URL found")
 		}
-		if cfg.DiscoveryURL != "" {
+		if cfg.ShouldDiscover() {
 			d, err := discovery.New(cfg.DiscoveryURL, cfg.ID(), cfg.Cluster.String())
 			if err != nil {
 				log.Fatalf("etcd: cannot init discovery %v", err)
@@ -143,8 +143,8 @@ func NewServer(cfg *ServerConfig) *EtcdServer {
 		}
 		n, w = startNode(cfg)
 	} else {
-		if cfg.DiscoveryURL != "" {
-			log.Printf("etcd: warn: ignoring discovery URL: etcd has already been initialized and has a valid log in %q", cfg.WALDir())
+		if cfg.ShouldDiscover() {
+			log.Printf("etcd: warn: ignoring discovery: etcd has already been initialized and has a valid log in %q", cfg.WALDir())
 		}
 		var index uint64
 		snapshot, err := ss.Load()
