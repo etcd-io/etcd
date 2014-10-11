@@ -12,6 +12,7 @@ import (
 	"github.com/coreos/etcd/Godeps/_workspace/src/code.google.com/p/go.net/context"
 	"github.com/coreos/etcd/discovery"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"github.com/coreos/etcd/pkg/pbutil"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/snap"
@@ -384,11 +385,7 @@ func (s *EtcdServer) sync(timeout time.Duration) {
 		ID:     GenID(),
 		Time:   time.Now().UnixNano(),
 	}
-	data, err := req.Marshal()
-	if err != nil {
-		log.Printf("marshal request %#v error: %v", req, err)
-		return
-	}
+	data := pbutil.MustMarshal(&req)
 	// There is no promise that node has leader when do SYNC request,
 	// so it uses goroutine to propose.
 	go func() {
@@ -447,15 +444,11 @@ func (s *EtcdServer) apply(es []raftpb.Entry) uint64 {
 		switch e.Type {
 		case raftpb.EntryNormal:
 			var r pb.Request
-			if err := r.Unmarshal(e.Data); err != nil {
-				panic("TODO: this is bad, what do we do about it?")
-			}
+			pbutil.MustUnmarshal(&r, e.Data)
 			s.w.Trigger(r.ID, s.applyRequest(r))
 		case raftpb.EntryConfChange:
 			var cc raftpb.ConfChange
-			if err := cc.Unmarshal(e.Data); err != nil {
-				panic("TODO: this is bad, what do we do about it?")
-			}
+			pbutil.MustUnmarshal(&cc, e.Data)
 			s.applyConfChange(cc)
 			s.w.Trigger(cc.ID, nil)
 		default:
@@ -541,12 +534,9 @@ func (s *EtcdServer) snapshot(snapi uint64, snapnodes []uint64) {
 }
 
 func startNode(cfg *ServerConfig) (n raft.Node, w *wal.WAL) {
-	i := pb.Info{ID: cfg.ID()}
-	b, err := i.Marshal()
-	if err != nil {
-		log.Fatal(err)
-	}
-	if w, err = wal.Create(cfg.WALDir(), b); err != nil {
+	var err error
+	metadata := pbutil.MustMarshal(&pb.Metadata{NodeID: cfg.ID()})
+	if w, err = wal.Create(cfg.WALDir(), metadata); err != nil {
 		log.Fatal(err)
 	}
 	ids := cfg.Cluster.IDs()
@@ -568,15 +558,15 @@ func restartNode(cfg *ServerConfig, index uint64, snapshot *raftpb.Snapshot) (n 
 	if w, err = wal.OpenAtIndex(cfg.WALDir(), index); err != nil {
 		log.Fatal(err)
 	}
-	md, st, ents, err := w.ReadAll()
+	wmetadata, st, ents, err := w.ReadAll()
 	if err != nil {
 		log.Fatal(err)
 	}
-	var info pb.Info
-	if err := info.Unmarshal(md); err != nil {
-		log.Fatal(err)
-	}
-	n = raft.RestartNode(info.ID, 10, 1, snapshot, st, ents)
+
+	var metadata pb.Metadata
+	pbutil.MustUnmarshal(&metadata, wmetadata)
+
+	n = raft.RestartNode(metadata.NodeID, 10, 1, snapshot, st, ents)
 	return
 }
 

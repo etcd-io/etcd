@@ -7,6 +7,7 @@ import (
 	"io"
 
 	"github.com/coreos/etcd/pkg/crc"
+	"github.com/coreos/etcd/pkg/pbutil"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/wal/walpb"
 )
@@ -60,19 +61,13 @@ func (d *decoder) close() error {
 
 func mustUnmarshalEntry(d []byte) raftpb.Entry {
 	var e raftpb.Entry
-	if err := e.Unmarshal(d); err != nil {
-		// crc matched, but we cannot unmarshal the struct?!
-		// we must be the next winner of the $1B lottery.
-		panic(err)
-	}
+	pbutil.MustUnmarshal(&e, d)
 	return e
 }
 
 func mustUnmarshalState(d []byte) raftpb.HardState {
 	var s raftpb.HardState
-	if err := s.Unmarshal(d); err != nil {
-		panic(err)
-	}
+	pbutil.MustUnmarshal(&s, d)
 	return s
 }
 

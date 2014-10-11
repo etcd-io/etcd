@@ -10,7 +10,7 @@
 
 	It has these top-level messages:
 		Request
-		Info
+		Metadata
 */
 package etcdserverpb
 
@@ -52,14 +52,14 @@ func (m *Request) Reset()         { *m = Request{} }
 func (m *Request) String() string { return proto.CompactTextString(m) }
 func (*Request) ProtoMessage()    {}
 
-type Info struct {
-	ID               uint64 `protobuf:"varint,1,req" json:"ID"`
+type Metadata struct {
+	NodeID           uint64 `protobuf:"varint,1,req" json:"NodeID"`
 	XXX_unrecognized []byte `json:"-"`
 }
 
-func (m *Info) Reset()         { *m = Info{} }
-func (m *Info) String() string { return proto.CompactTextString(m) }
-func (*Info) ProtoMessage()    {}
+func (m *Metadata) Reset()         { *m = Metadata{} }
+func (m *Metadata) String() string { return proto.CompactTextString(m) }
+func (*Metadata) ProtoMessage()    {}
 
 func init() {
 }
@@ -388,7 +388,7 @@ func (m *Request) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *Info) Unmarshal(data []byte) error {
+func (m *Metadata) Unmarshal(data []byte) error {
 	l := len(data)
 	index := 0
 	for index < l {
@@ -417,7 +417,7 @@ func (m *Info) Unmarshal(data []byte) error {
 				}
 				b := data[index]
 				index++
-				m.ID |= (uint64(b) & 0x7F) << shift
+				m.NodeID |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -475,10 +475,10 @@ func (m *Request) Size() (n int) {
 	}
 	return n
 }
-func (m *Info) Size() (n int) {
+func (m *Metadata) Size() (n int) {
 	var l int
 	_ = l
-	n += 1 + sovEtcdserver(uint64(m.ID))
+	n += 1 + sovEtcdserver(uint64(m.NodeID))
 	if m.XXX_unrecognized != nil {
 		n += len(m.XXX_unrecognized)
 	}
@@ -609,7 +609,7 @@ func (m *Request) MarshalTo(data []byte) (n int, err error) {
 	}
 	return i, nil
 }
-func (m *Info) Marshal() (data []byte, err error) {
+func (m *Metadata) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
 	n, err := m.MarshalTo(data)
@@ -619,14 +619,14 @@ func (m *Info) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *Info) MarshalTo(data []byte) (n int, err error) {
+func (m *Metadata) MarshalTo(data []byte) (n int, err error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	data[i] = 0x8
 	i++
-	i = encodeVarintEtcdserver(data, i, uint64(m.ID))
+	i = encodeVarintEtcdserver(data, i, uint64(m.NodeID))
 	if m.XXX_unrecognized != nil {
 		i += copy(data[i:], m.XXX_unrecognized)
 	}
