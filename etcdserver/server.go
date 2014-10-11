@@ -90,14 +90,18 @@ type Server interface {
 	RemoveMember(ctx context.Context, id uint64) error
 }
 
-type Stats interface {
-	// ServerStats returns the statistics of this server
-	ServerStats() *stats.ServerStats
+type ServerStats interface {
+	// SelfStats returns the statistics of this server
+	SelfStats() *stats.ServerStats
 	// LeaderStats returns the statistics of all followers in the cluster
 	// if this server is leader. Otherwise, nil is returned.
 	LeaderStats() *stats.LeaderStats
-	// StoreStats returns statistics of the underlying Store used by the etcdserver
-	StoreStats() []byte
+}
+
+type StoreStats interface {
+	// JSON returns statistics of the underlying Store used by the
+	// EtcdServer, in JSON format
+	JSON() []byte
 }
 
 type RaftTimer interface {
@@ -359,7 +363,7 @@ func (s *EtcdServer) Do(ctx context.Context, r pb.Request) (Response, error) {
 	}
 }
 
-func (s *EtcdServer) ServerStats() *stats.ServerStats {
+func (s *EtcdServer) SelfStats() *stats.ServerStats {
 	s.stats.LeaderInfo.Uptime = time.Now().Sub(s.stats.LeaderInfo.StartTime).String()
 	s.stats.SendingPkgRate, s.stats.SendingBandwidthRate = s.stats.SendRates()
 	s.stats.RecvingPkgRate, s.stats.RecvingBandwidthRate = s.stats.RecvRates()

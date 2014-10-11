@@ -75,7 +75,8 @@ func NewPeerHandler(server etcdserver.Server) http.Handler {
 type serverHandler struct {
 	timeout      time.Duration
 	server       etcdserver.Server
-	stats        etcdserver.Stats
+	stats        etcdserver.ServerStats
+	storestats   etcdserver.StoreStats
 	timer        etcdserver.RaftTimer
 	clusterStore etcdserver.ClusterStore
 }
@@ -173,14 +174,14 @@ func (h serverHandler) serveStoreStats(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.Write(h.stats.StoreStats())
+	w.Write(h.storestats.JSON())
 }
 
 func (h serverHandler) serveSelfStats(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r.Method, "GET") {
 		return
 	}
-	s := h.stats.ServerStats()
+	s := h.stats.SelfStats()
 	b, err := json.Marshal(s)
 	if err != nil {
 		log.Printf("error marshalling stats: %v\n", err)
@@ -226,7 +227,7 @@ func (h serverHandler) serveRaft(w http.ResponseWriter, r *http.Request) {
 	log.Printf("etcdhttp: raft recv message from %#x: %+v", m.From, m)
 	if m.Type == raftpb.MsgApp {
 		// TODO(jonboulle): standardize id uint-->string process: always base 16?
-		h.stats.ServerStats().RecvAppendReq(strconv.FormatUint(m.From, 16), int(r.ContentLength))
+		h.stats.SelfStats().RecvAppendReq(strconv.FormatUint(m.From, 16), int(r.ContentLength))
 	}
 	if err := h.server.Process(context.TODO(), m); err != nil {
 		log.Println("etcdhttp: error processing raft message:", err)

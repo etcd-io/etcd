@@ -638,18 +638,22 @@ func TestServeMachines(t *testing.T) {
 	}
 }
 
-type ds struct {
+type dummyServerStats struct {
+}
+
+func (dss *dummyServerStats) SelfStats() *stats.ServerStats   { return nil }
+func (dss *dummyServerStats) LeaderStats() *stats.LeaderStats { return nil }
+
+type dummyStoreStats struct {
 	data []byte
 }
 
-func (s *ds) ServerStats() *stats.ServerStats { return nil }
-func (s *ds) LeaderStats() *stats.LeaderStats { return nil }
-func (s *ds) StoreStats() []byte              { return s.data }
+func (dss *dummyStoreStats) JSON() []byte { return dss.data }
 
 func TestServeStoreStats(t *testing.T) {
 	w := "foobarbaz"
 	sh := &serverHandler{
-		stats: &ds{data: []byte(w)},
+		storestats: &dummyStoreStats{data: []byte(w)},
 	}
 	rw := httptest.NewRecorder()
 	req, err := http.NewRequest("GET", "", nil)
