@@ -190,9 +190,9 @@ func NewServer(cfg *ServerConfig) *EtcdServer {
 
 	sstats := &stats.ServerStats{
 		Name: cfg.Name,
-		ID:   strconv.FormatUint(cfg.ID(), 10),
+		ID:   strconv.FormatUint(cfg.ID(), 16),
 	}
-	lstats := stats.NewLeaderStats(strconv.FormatUint(cfg.ID(), 10))
+	lstats := stats.NewLeaderStats(strconv.FormatUint(cfg.ID(), 16))
 
 	s := &EtcdServer{
 		store:      st,

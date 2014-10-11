@@ -225,8 +225,8 @@ func (h serverHandler) serveRaft(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Printf("etcdhttp: raft recv message from %#x: %+v", m.From, m)
 	if m.Type == raftpb.MsgApp {
-		// TODO(jonboulle):
-		h.stats.ServerStats().RecvAppendReq(strconv.FormatUint(m.From, 10), int(r.ContentLength))
+		// TODO(jonboulle): standardize id uint-->string process: always base 16?
+		h.stats.ServerStats().RecvAppendReq(strconv.FormatUint(m.From, 16), int(r.ContentLength))
 	}
 	if err := h.server.Process(context.TODO(), m); err != nil {
 		log.Println("etcdhttp: error processing raft message:", err)

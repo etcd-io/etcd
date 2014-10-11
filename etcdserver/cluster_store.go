@@ -148,7 +148,7 @@ func send(c *http.Client, cls ClusterStore, m raftpb.Message, ss *stats.ServerSt
 		if m.Type == raftpb.MsgApp {
 			ss.SendAppendReq(len(data))
 		}
-		to := strconv.FormatUint(m.To, 10)
+		to := strconv.FormatUint(m.To, 16)
 		fs, ok := ls.Followers[to]
 		if !ok {
 			fs = &stats.FollowerStats{}
