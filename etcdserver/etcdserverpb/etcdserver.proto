@@ -27,5 +27,6 @@ message Request {
 }
 
 message Metadata {
-	required uint64 NodeID   = 1 [(gogoproto.nullable) = false];
+	required uint64 NodeID    = 1 [(gogoproto.nullable) = false];
+	required uint64 ClusterID = 2 [(gogoproto.nullable) = false];
 }

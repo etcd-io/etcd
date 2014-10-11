@@ -174,7 +174,6 @@ func TestNode(t *testing.T) {
 			CommittedEntries: []raftpb.Entry{{Term: 1, Index: 3, Data: []byte("foo")}},
 		},
 	}
-
 	n := StartNode(1, []Peer{{ID: 1}}, 10, 1)
 	n.ApplyConfChange(cc)
 	n.Campaign(ctx)

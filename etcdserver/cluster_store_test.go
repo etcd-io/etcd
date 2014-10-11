@@ -80,12 +80,12 @@ func TestClusterStoreGet(t *testing.T) {
 		for _, m := range tt.mems {
 			cs.Add(m)
 		}
-		c := Cluster{}
+		c := NewCluster()
 		if err := c.AddSlice(tt.mems); err != nil {
 			t.Fatal(err)
 		}
-		if g := cs.Get(); !reflect.DeepEqual(g, c) {
-			t.Errorf("#%d: mems = %v, want %v", i, g, c)
+		if g := cs.Get(); !reflect.DeepEqual(&g, c) {
+			t.Errorf("#%d: mems = %v, want %v", i, &g, c)
 		}
 	}
 }

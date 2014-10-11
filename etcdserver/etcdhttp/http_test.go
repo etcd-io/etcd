@@ -1529,7 +1529,7 @@ type fakeCluster struct {
 func (c *fakeCluster) Add(m etcdserver.Member) { return }
 
 func (c *fakeCluster) Get() etcdserver.Cluster {
-	cl := &etcdserver.Cluster{}
+	cl := etcdserver.NewCluster()
 	cl.AddSlice(c.members)
 	return *cl
 }

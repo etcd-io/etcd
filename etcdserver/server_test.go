@@ -446,7 +446,6 @@ func testServer(t *testing.T, ns uint64) {
 		ids[i] = i + 1
 	}
 	members := mustMakePeerSlice(t, ids...)
-
 	for i := uint64(0); i < ns; i++ {
 		id := i + 1
 		n := raft.StartNode(id, members, 10, 1)
@@ -781,11 +780,12 @@ func TestTriggerSnap(t *testing.T) {
 	gaction := p.Action()
 	// each operation is recorded as a Save
 	// BootstrapConfig/Nop + (SnapCount - 1) * Puts + Cut + SaveSnap = Save + (SnapCount - 1) * Save + Cut + SaveSnap
-	if len(gaction) != 2+int(s.snapCount) {
-		t.Fatalf("len(action) = %d, want %d", len(gaction), 2+int(s.snapCount))
+	wcnt := 2 + int(s.snapCount)
+	if len(gaction) != wcnt {
+		t.Fatalf("len(action) = %d, want %d", len(gaction), wcnt)
 	}
-	if !reflect.DeepEqual(gaction[11], action{name: "SaveSnap"}) {
-		t.Errorf("action = %s, want SaveSnap", gaction[11])
+	if !reflect.DeepEqual(gaction[wcnt-1], action{name: "SaveSnap"}) {
+		t.Errorf("action = %s, want SaveSnap", gaction[wcnt-1])
 	}
 }
 
@@ -1321,7 +1321,7 @@ func (cs *clusterStoreRecorder) Add(m Member) {
 }
 func (cs *clusterStoreRecorder) Get() Cluster {
 	cs.record(action{name: "Get"})
-	return nil
+	return Cluster{}
 }
 func (cs *clusterStoreRecorder) Remove(id uint64) {
 	cs.record(action{name: "Remove", params: []interface{}{id}})

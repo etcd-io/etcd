@@ -54,6 +54,7 @@ func (*Request) ProtoMessage()    {}
 
 type Metadata struct {
 	NodeID           uint64 `protobuf:"varint,1,req" json:"NodeID"`
+	ClusterID        uint64 `protobuf:"varint,2,req" json:"ClusterID"`
 	XXX_unrecognized []byte `json:"-"`
 }
 
@@ -422,6 +423,21 @@ func (m *Metadata) Unmarshal(data []byte) error {
 					break
 				}
 			}
+		case 2:
+			if wireType != 0 {
+				return code_google_com_p_gogoprotobuf_proto.ErrWrongType
+			}
+			for shift := uint(0); ; shift += 7 {
+				if index >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[index]
+				index++
+				m.ClusterID |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
 		default:
 			var sizeOfWire int
 			for {
@@ -479,6 +495,7 @@ func (m *Metadata) Size() (n int) {
 	var l int
 	_ = l
 	n += 1 + sovEtcdserver(uint64(m.NodeID))
+	n += 1 + sovEtcdserver(uint64(m.ClusterID))
 	if m.XXX_unrecognized != nil {
 		n += len(m.XXX_unrecognized)
 	}
@@ -627,6 +644,9 @@ func (m *Metadata) MarshalTo(data []byte) (n int, err error) {
 	data[i] = 0x8
 	i++
 	i = encodeVarintEtcdserver(data, i, uint64(m.NodeID))
+	data[i] = 0x10
+	i++
+	i = encodeVarintEtcdserver(data, i, uint64(m.ClusterID))
 	if m.XXX_unrecognized != nil {
 		i += copy(data[i:], m.XXX_unrecognized)
 	}

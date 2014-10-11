@@ -55,7 +55,7 @@ func (s *clusterStore) Add(m Member) {
 // TODO(philips): keep the latest copy without going to the store to avoid the
 // lock here.
 func (s *clusterStore) Get() Cluster {
-	c := &Cluster{}
+	c := NewCluster()
 	e, err := s.Store.Get(membersKVPrefix, true, true)
 	if err != nil {
 		if v, ok := err.(*etcdErr.Error); ok && v.ErrorCode == etcdErr.EcodeKeyNotFound {

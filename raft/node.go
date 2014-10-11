@@ -130,17 +130,16 @@ func StartNode(id uint64, peers []Peer, election, heartbeat int) Node {
 	n := newNode()
 	r := newRaft(id, nil, election, heartbeat)
 
-	ents := make([]pb.Entry, len(peers))
-	for i, peer := range peers {
+	for _, peer := range peers {
 		cc := pb.ConfChange{Type: pb.ConfChangeAddNode, NodeID: peer.ID, Context: peer.Context}
-		data, err := cc.Marshal()
+		d, err := cc.Marshal()
 		if err != nil {
 			panic("unexpected marshal error")
 		}
-		ents[i] = pb.Entry{Type: pb.EntryConfChange, Term: 1, Index: uint64(i + 1), Data: data}
+		e := pb.Entry{Type: pb.EntryConfChange, Term: 1, Index: r.raftLog.lastIndex() + 1, Data: d}
+		r.raftLog.append(r.raftLog.lastIndex(), e)
 	}
-	r.raftLog.append(0, ents...)
-	r.raftLog.committed = uint64(len(ents))
+	r.raftLog.committed = r.raftLog.lastIndex()
 
 	go n.run(r)
 	return &n
