@@ -29,14 +29,6 @@ type clusterStore struct {
 	Store store.Store
 }
 
-func NewClusterStore(st store.Store, c Cluster) ClusterStore {
-	cls := &clusterStore{Store: st}
-	for _, m := range c {
-		cls.Add(*m)
-	}
-	return cls
-}
-
 // Add puts a new Member into the store.
 // A Member with a matching id must not exist.
 func (s *clusterStore) Add(m Member) {

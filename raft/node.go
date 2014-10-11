@@ -127,11 +127,7 @@ type Peer struct {
 // It also builds ConfChangeAddNode entry for each peer and puts them at the head of the log.
 func StartNode(id uint64, peers []Peer, election, heartbeat int) Node {
 	n := newNode()
-	peerIDs := make([]uint64, len(peers))
-	for i, peer := range peers {
-		peerIDs[i] = peer.ID
-	}
-	r := newRaft(id, peerIDs, election, heartbeat)
+	r := newRaft(id, nil, election, heartbeat)
 
 	ents := make([]pb.Entry, len(peers))
 	for i, peer := range peers {
@@ -152,9 +148,9 @@ func StartNode(id uint64, peers []Peer, election, heartbeat int) Node {
 // RestartNode is identical to StartNode but takes an initial State and a slice
 // of entries. Generally this is used when restarting from a stable storage
 // log.
-func RestartNode(id uint64, peers []uint64, election, heartbeat int, snapshot *pb.Snapshot, st pb.HardState, ents []pb.Entry) Node {
+func RestartNode(id uint64, election, heartbeat int, snapshot *pb.Snapshot, st pb.HardState, ents []pb.Entry) Node {
 	n := newNode()
-	r := newRaft(id, peers, election, heartbeat)
+	r := newRaft(id, nil, election, heartbeat)
 	if snapshot != nil {
 		r.restore(*snapshot)
 	}

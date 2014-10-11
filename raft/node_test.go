@@ -176,6 +176,7 @@ func TestNode(t *testing.T) {
 	}
 
 	n := StartNode(1, []Peer{{ID: 1}}, 10, 1)
+	n.ApplyConfChange(cc)
 	n.Campaign(ctx)
 	if g := <-n.Ready(); !reflect.DeepEqual(g, wants[0]) {
 		t.Errorf("#%d: g = %+v,\n             w   %+v", 1, g, wants[0])
@@ -207,7 +208,7 @@ func TestNodeRestart(t *testing.T) {
 		CommittedEntries: entries[1 : st.Commit+1],
 	}
 
-	n := RestartNode(1, []uint64{1}, 10, 1, nil, st, entries)
+	n := RestartNode(1, 10, 1, nil, st, entries)
 	if g := <-n.Ready(); !reflect.DeepEqual(g, want) {
 		t.Errorf("g = %+v,\n             w   %+v", g, want)
 	}
