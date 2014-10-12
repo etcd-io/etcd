@@ -79,7 +79,7 @@ func (h serverHandler) serveKeys(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(context.Background(), h.timeout)
 	defer cancel()
 
-	rr, err := parseRequest(r, int64(etcdserver.GenID()))
+	rr, err := parseRequest(r, etcdserver.GenID())
 	if err != nil {
 		writeError(w, err)
 		return
@@ -145,7 +145,7 @@ func (h serverHandler) serveRaft(w http.ResponseWriter, r *http.Request) {
 // parseRequest converts a received http.Request to a server Request,
 // performing validation of supplied fields as appropriate.
 // If any validation fails, an empty Request and non-nil error is returned.
-func parseRequest(r *http.Request, id int64) (etcdserverpb.Request, error) {
+func parseRequest(r *http.Request, id uint64) (etcdserverpb.Request, error) {
 	emptyReq := etcdserverpb.Request{}
 
 	err := r.ParseForm()

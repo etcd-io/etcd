@@ -8,7 +8,7 @@ option (gogoproto.unmarshaler_all) = true;
 option (gogoproto.goproto_getters_all) = false;
 
 message Request {
-	required int64  ID         =  1 [(gogoproto.nullable) = false];
+	required uint64 ID         =  1 [(gogoproto.nullable) = false];
 	required string Method     =  2 [(gogoproto.nullable) = false];
 	required string Path       =  3 [(gogoproto.nullable) = false];
 	required string Val        =  4 [(gogoproto.nullable) = false];
