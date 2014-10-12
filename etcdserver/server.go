@@ -278,7 +278,7 @@ func (s *EtcdServer) Stop() {
 // an error.
 func (s *EtcdServer) Do(ctx context.Context, r pb.Request) (Response, error) {
 	if r.ID == 0 {
-		panic("r.Id cannot be 0")
+		panic("r.ID cannot be 0")
 	}
 	if r.Method == "GET" && r.Quorum {
 		r.Method = "QGET"
