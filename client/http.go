@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/url"
 	"path"
@@ -15,8 +16,9 @@ import (
 )
 
 var (
-	v2Prefix   = "/v2/keys"
-	ErrTimeout = context.DeadlineExceeded
+	v2Prefix          = "/v2/keys"
+	ErrTimeout        = context.DeadlineExceeded
+	ErrGatewayTimeout = fmt.Errorf("client: gateway timeout")
 )
 
 // transport mimics http.Transport to provide an interface which can be
@@ -162,18 +164,26 @@ type httpWatcher struct {
 }
 
 func (hw *httpWatcher) Next() (*Response, error) {
-	httpresp, body, err := hw.httpClient.do(context.Background(), &hw.nextWait)
-	if err != nil {
-		return nil, err
-	}
+	for {
+		httpresp, body, err := hw.httpClient.do(context.Background(), &hw.nextWait)
+		if err != nil {
+			return nil, err
+		}
 
-	resp, err := unmarshalHTTPResponse(httpresp.StatusCode, body)
-	if err != nil {
-		return nil, err
-	}
+		resp, err := unmarshalHTTPResponse(httpresp.StatusCode, body)
+		if err == ErrGatewayTimeout {
+			// TODO: update index
+			// https://github.com/coreos/etcd/issues/1292
+			log.Print("client: gateway timeout, retrying now")
+			continue
+		}
+		if err != nil {
+			return nil, err
+		}
 
-	hw.nextWait.WaitIndex = resp.Node.ModifiedIndex + 1
-	return resp, nil
+		hw.nextWait.WaitIndex = resp.Node.ModifiedIndex + 1
+		return resp, nil
+	}
 }
 
 func v2URL(ep url.URL, key string) *url.URL {
@@ -276,6 +286,8 @@ func unmarshalErrorResponse(code int) error {
 	case http.StatusInternalServerError:
 		// this isn't necessarily true
 		return ErrNoLeader
+	case http.StatusGatewayTimeout:
+		return ErrGatewayTimeout
 	default:
 	}
 

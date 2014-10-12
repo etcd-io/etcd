@@ -325,7 +325,7 @@ func TestUnmarshalErrorResponse(t *testing.T) {
 		{http.StatusNotImplemented, unrecognized},
 		{http.StatusBadGateway, unrecognized},
 		{http.StatusServiceUnavailable, unrecognized},
-		{http.StatusGatewayTimeout, unrecognized},
+		{http.StatusGatewayTimeout, ErrGatewayTimeout},
 		{http.StatusHTTPVersionNotSupported, unrecognized},
 	}
 
