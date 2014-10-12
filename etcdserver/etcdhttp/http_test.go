@@ -581,7 +581,7 @@ func (w *dummyWatcher) EventChan() chan *store.Event {
 func (w *dummyWatcher) StartIndex() uint64 { return w.sidx }
 func (w *dummyWatcher) Remove()            {}
 
-func TestV2MachinesEndpoint(t *testing.T) {
+func TestV2MembersEndpoint(t *testing.T) {
 	tests := []struct {
 		method string
 		wcode  int
@@ -596,7 +596,7 @@ func TestV2MachinesEndpoint(t *testing.T) {
 	defer s.Close()
 
 	for _, tt := range tests {
-		req, err := http.NewRequest(tt.method, s.URL+machinesPrefix, nil)
+		req, err := http.NewRequest(tt.method, s.URL+membersPrefix, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
