@@ -13,32 +13,32 @@ import (
 // TestNodeStep ensures that node.Step sends msgProp to propc chan
 // and other kinds of messages to recvc chan.
 func TestNodeStep(t *testing.T) {
-	for i := range mtmap {
+	for i, msgn := range raftpb.MessageType_name {
 		n := &node{
 			propc: make(chan raftpb.Message, 1),
 			recvc: make(chan raftpb.Message, 1),
 		}
-		msgt := uint64(i)
+		msgt := raftpb.MessageType(i)
 		n.Step(context.TODO(), raftpb.Message{Type: msgt})
 		// Proposal goes to proc chan. Others go to recvc chan.
-		if uint64(i) == msgProp {
+		if msgt == raftpb.MsgProp {
 			select {
 			case <-n.propc:
 			default:
-				t.Errorf("%d: cannot receive %s on propc chan", i, mtmap[i])
+				t.Errorf("%d: cannot receive %s on propc chan", msgt, msgn)
 			}
 		} else {
-			if msgt == msgBeat || msgt == msgHup {
+			if msgt == raftpb.MsgBeat || msgt == raftpb.MsgHup {
 				select {
 				case <-n.recvc:
-					t.Errorf("%d: step should ignore %s", i, mtmap[i])
+					t.Errorf("%d: step should ignore %s", msgt, msgn)
 				default:
 				}
 			} else {
 				select {
 				case <-n.recvc:
 				default:
-					t.Errorf("%d: cannot receive %s on recvc chan", i, mtmap[i])
+					t.Errorf("%d: cannot receive %s on recvc chan", msgt, msgn)
 				}
 			}
 		}
@@ -67,7 +67,7 @@ func TestNodeStepUnblock(t *testing.T) {
 	for i, tt := range tests {
 		errc := make(chan error, 1)
 		go func() {
-			err := n.Step(ctx, raftpb.Message{Type: msgProp})
+			err := n.Step(ctx, raftpb.Message{Type: raftpb.MsgProp})
 			errc <- err
 		}()
 		tt.unblock()

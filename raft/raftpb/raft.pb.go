@@ -64,6 +64,60 @@ func (x *EntryType) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+type MessageType int32
+
+const (
+	MsgHup      MessageType = 0
+	MsgBeat     MessageType = 1
+	MsgProp     MessageType = 2
+	MsgApp      MessageType = 3
+	MsgAppResp  MessageType = 4
+	MsgVote     MessageType = 5
+	MsgVoteResp MessageType = 6
+	MsgSnap     MessageType = 7
+	MsgDenied   MessageType = 8
+)
+
+var MessageType_name = map[int32]string{
+	0: "MsgHup",
+	1: "MsgBeat",
+	2: "MsgProp",
+	3: "MsgApp",
+	4: "MsgAppResp",
+	5: "MsgVote",
+	6: "MsgVoteResp",
+	7: "MsgSnap",
+	8: "MsgDenied",
+}
+var MessageType_value = map[string]int32{
+	"MsgHup":      0,
+	"MsgBeat":     1,
+	"MsgProp":     2,
+	"MsgApp":      3,
+	"MsgAppResp":  4,
+	"MsgVote":     5,
+	"MsgVoteResp": 6,
+	"MsgSnap":     7,
+	"MsgDenied":   8,
+}
+
+func (x MessageType) Enum() *MessageType {
+	p := new(MessageType)
+	*p = x
+	return p
+}
+func (x MessageType) String() string {
+	return proto.EnumName(MessageType_name, int32(x))
+}
+func (x *MessageType) UnmarshalJSON(data []byte) error {
+	value, err := proto.UnmarshalJSONEnum(MessageType_value, data, "MessageType")
+	if err != nil {
+		return err
+	}
+	*x = MessageType(value)
+	return nil
+}
+
 type ConfChangeType int32
 
 const (
@@ -123,17 +177,17 @@ func (m *Snapshot) String() string { return proto.CompactTextString(m) }
 func (*Snapshot) ProtoMessage()    {}
 
 type Message struct {
-	Type             uint64   `protobuf:"varint,1,req,name=type" json:"type"`
-	To               uint64   `protobuf:"varint,2,req,name=to" json:"to"`
-	From             uint64   `protobuf:"varint,3,req,name=from" json:"from"`
-	Term             uint64   `protobuf:"varint,4,req,name=term" json:"term"`
-	LogTerm          uint64   `protobuf:"varint,5,req,name=logTerm" json:"logTerm"`
-	Index            uint64   `protobuf:"varint,6,req,name=index" json:"index"`
-	Entries          []Entry  `protobuf:"bytes,7,rep,name=entries" json:"entries"`
-	Commit           uint64   `protobuf:"varint,8,req,name=commit" json:"commit"`
-	Snapshot         Snapshot `protobuf:"bytes,9,req,name=snapshot" json:"snapshot"`
-	Reject           bool     `protobuf:"varint,10,req,name=reject" json:"reject"`
-	XXX_unrecognized []byte   `json:"-"`
+	Type             MessageType `protobuf:"varint,1,req,name=type,enum=raftpb.MessageType" json:"type"`
+	To               uint64      `protobuf:"varint,2,req,name=to" json:"to"`
+	From             uint64      `protobuf:"varint,3,req,name=from" json:"from"`
+	Term             uint64      `protobuf:"varint,4,req,name=term" json:"term"`
+	LogTerm          uint64      `protobuf:"varint,5,req,name=logTerm" json:"logTerm"`
+	Index            uint64      `protobuf:"varint,6,req,name=index" json:"index"`
+	Entries          []Entry     `protobuf:"bytes,7,rep,name=entries" json:"entries"`
+	Commit           uint64      `protobuf:"varint,8,req,name=commit" json:"commit"`
+	Snapshot         Snapshot    `protobuf:"bytes,9,req,name=snapshot" json:"snapshot"`
+	Reject           bool        `protobuf:"varint,10,req,name=reject" json:"reject"`
+	XXX_unrecognized []byte      `json:"-"`
 }
 
 func (m *Message) Reset()         { *m = Message{} }
@@ -165,6 +219,7 @@ func (*ConfChange) ProtoMessage()    {}
 
 func init() {
 	proto.RegisterEnum("raftpb.EntryType", EntryType_name, EntryType_value)
+	proto.RegisterEnum("raftpb.MessageType", MessageType_name, MessageType_value)
 	proto.RegisterEnum("raftpb.ConfChangeType", ConfChangeType_name, ConfChangeType_value)
 }
 func (m *Entry) Unmarshal(data []byte) error {
@@ -433,7 +488,7 @@ func (m *Message) Unmarshal(data []byte) error {
 				}
 				b := data[index]
 				index++
-				m.Type |= (uint64(b) & 0x7F) << shift
+				m.Type |= (MessageType(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}

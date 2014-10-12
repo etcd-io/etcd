@@ -264,16 +264,16 @@ func (n *node) Tick() {
 }
 
 func (n *node) Campaign(ctx context.Context) error {
-	return n.step(ctx, pb.Message{Type: msgHup})
+	return n.step(ctx, pb.Message{Type: pb.MsgHup})
 }
 
 func (n *node) Propose(ctx context.Context, data []byte) error {
-	return n.step(ctx, pb.Message{Type: msgProp, Entries: []pb.Entry{{Data: data}}})
+	return n.step(ctx, pb.Message{Type: pb.MsgProp, Entries: []pb.Entry{{Data: data}}})
 }
 
 func (n *node) Step(ctx context.Context, m pb.Message) error {
 	// ignore unexpected local messages receiving over network
-	if m.Type == msgHup || m.Type == msgBeat {
+	if m.Type == pb.MsgHup || m.Type == pb.MsgBeat {
 		// TODO: return an error?
 		return nil
 	}
@@ -285,14 +285,14 @@ func (n *node) ProposeConfChange(ctx context.Context, cc pb.ConfChange) error {
 	if err != nil {
 		return err
 	}
-	return n.Step(ctx, pb.Message{Type: msgProp, Entries: []pb.Entry{{Type: pb.EntryConfChange, Data: data}}})
+	return n.Step(ctx, pb.Message{Type: pb.MsgProp, Entries: []pb.Entry{{Type: pb.EntryConfChange, Data: data}}})
 }
 
 // Step advances the state machine using msgs. The ctx.Err() will be returned,
 // if any.
 func (n *node) step(ctx context.Context, m pb.Message) error {
 	ch := n.recvc
-	if m.Type == msgProp {
+	if m.Type == pb.MsgProp {
 		ch = n.propc
 	}
 
