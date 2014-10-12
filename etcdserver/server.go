@@ -268,7 +268,7 @@ func (s *EtcdServer) run() {
 						panic("TODO: this is bad, what do we do about it?")
 					}
 					s.applyConfChange(cc)
-					s.w.Trigger(int64(cc.ID), nil)
+					s.w.Trigger(cc.ID, nil)
 				default:
 					panic("unexpected entry type")
 				}
@@ -407,17 +407,17 @@ func (s *EtcdServer) Term() uint64 {
 // configure sends configuration change through consensus then performs it.
 // It will block until the change is performed or there is an error.
 func (s *EtcdServer) configure(ctx context.Context, cc raftpb.ConfChange) error {
-	ch := s.w.Register(int64(cc.ID))
+	ch := s.w.Register(cc.ID)
 	if err := s.node.ProposeConfChange(ctx, cc); err != nil {
 		log.Printf("configure error: %v", err)
-		s.w.Trigger(int64(cc.ID), nil)
+		s.w.Trigger(cc.ID, nil)
 		return err
 	}
 	select {
 	case <-ch:
 		return nil
 	case <-ctx.Done():
-		s.w.Trigger(int64(cc.ID), nil) // GC wait
+		s.w.Trigger(cc.ID, nil) // GC wait
 		return ctx.Err()
 	case <-s.done:
 		return ErrStopped
@@ -431,7 +431,7 @@ func (s *EtcdServer) sync(timeout time.Duration) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	req := pb.Request{
 		Method: "SYNC",
-		ID:     int64(GenID()),
+		ID:     GenID(),
 		Time:   time.Now().UnixNano(),
 	}
 	data, err := req.Marshal()
@@ -459,7 +459,7 @@ func (s *EtcdServer) publish(retryInterval time.Duration) {
 		return
 	}
 	req := pb.Request{
-		ID:     int64(GenID()),
+		ID:     GenID(),
 		Method: "PUT",
 		Path:   Member{ID: s.id}.storeKey() + attributesSuffix,
 		Val:    string(b),

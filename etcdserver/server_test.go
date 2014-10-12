@@ -410,7 +410,7 @@ func testServer(t *testing.T, ns uint64) {
 	for i := 1; i <= 10; i++ {
 		r := pb.Request{
 			Method: "PUT",
-			ID:     int64(i),
+			ID:     uint64(i),
 			Path:   "/foo",
 			Val:    "bar",
 		}
@@ -1086,11 +1086,11 @@ type waitRecorder struct {
 	action []action
 }
 
-func (w *waitRecorder) Register(id int64) <-chan interface{} {
+func (w *waitRecorder) Register(id uint64) <-chan interface{} {
 	w.action = append(w.action, action{name: fmt.Sprint("Register", id)})
 	return nil
 }
-func (w *waitRecorder) Trigger(id int64, x interface{}) {
+func (w *waitRecorder) Trigger(id uint64, x interface{}) {
 	w.action = append(w.action, action{name: fmt.Sprint("Trigger", id)})
 }
 
@@ -1230,10 +1230,10 @@ type waitWithResponse struct {
 	ch <-chan interface{}
 }
 
-func (w *waitWithResponse) Register(id int64) <-chan interface{} {
+func (w *waitWithResponse) Register(id uint64) <-chan interface{} {
 	return w.ch
 }
-func (w *waitWithResponse) Trigger(id int64, x interface{}) {}
+func (w *waitWithResponse) Trigger(id uint64, x interface{}) {}
 
 type clusterStoreRecorder struct {
 	recorder

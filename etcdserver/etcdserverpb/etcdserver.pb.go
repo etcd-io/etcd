@@ -29,7 +29,7 @@ var _ = &json.SyntaxError{}
 var _ = math.Inf
 
 type Request struct {
-	ID               int64  `protobuf:"varint,1,req" json:"ID"`
+	ID               uint64 `protobuf:"varint,1,req" json:"ID"`
 	Method           string `protobuf:"bytes,2,req" json:"Method"`
 	Path             string `protobuf:"bytes,3,req" json:"Path"`
 	Val              string `protobuf:"bytes,4,req" json:"Val"`
@@ -92,7 +92,7 @@ func (m *Request) Unmarshal(data []byte) error {
 				}
 				b := data[index]
 				index++
-				m.ID |= (int64(b) & 0x7F) << shift
+				m.ID |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
