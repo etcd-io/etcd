@@ -68,8 +68,8 @@ func init() {
 
 	flag.Var(flagtypes.NewURLsValue("http://localhost:2380,http://localhost:7001"), "advertise-peer-urls", "List of this member's peer URLs to advertise to the rest of the cluster")
 	flag.Var(flagtypes.NewURLsValue("http://localhost:2379,http://localhost:4001"), "advertise-client-urls", "List of this member's client URLs to advertise to the rest of the cluster")
-	flag.Var(flagtypes.NewURLsValue("http://localhost:2380,http://localhost:7001"), "listen-peer-urls", "List of this URLs to listen on for peer traffic")
-	flag.Var(flagtypes.NewURLsValue("http://localhost:2379,http://localhost:4001"), "listen-client-urls", "List of this URLs to listen on for client traffic")
+	flag.Var(flagtypes.NewURLsValue("http://localhost:2380,http://localhost:7001"), "listen-peer-urls", "List of URLs to listen on for peer traffic")
+	flag.Var(flagtypes.NewURLsValue("http://localhost:2379,http://localhost:4001"), "listen-client-urls", "List of URLs to listen on for client traffic")
 
 	flag.Var(cors, "cors", "Comma-separated white list of origins for CORS (cross-origin resource sharing).")
 
@@ -94,8 +94,8 @@ func init() {
 		flag.Var(&pkg.IgnoredFlag{f}, f, "")
 	}
 
-	flag.Var(&pkg.DeprecatedFlag{"peers"}, "peers", "DEPRECATED: Use -bootstrap-config instead")
-	flag.Var(&pkg.DeprecatedFlag{"peers-file"}, "peers-file", "DEPRECATED: Use -bootstrap-config instead")
+	flag.Var(&pkg.DeprecatedFlag{"peers"}, "peers", "DEPRECATED: Use -initial-cluster instead")
+	flag.Var(&pkg.DeprecatedFlag{"peers-file"}, "peers-file", "DEPRECATED: Use -initial-cluster instead")
 }
 
 func main() {
@@ -255,8 +255,8 @@ func setClusterForDiscovery() error {
 	flag.Visit(func(f *flag.Flag) {
 		set[f.Name] = true
 	})
-	if set["discovery"] && set["bootstrap-config"] {
-		return fmt.Errorf("both discovery and bootstrap-config are set")
+	if set["discovery"] && set["initial-cluster"] {
+		return fmt.Errorf("both discovery and initial-cluster are set")
 	}
 	if set["discovery"] {
 		apurls, err := pkg.URLsFromFlags(flag.CommandLine, "advertise-peer-urls", "addr", peerTLSInfo)
