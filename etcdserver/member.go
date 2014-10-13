@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"path"
+	"sort"
 	"strconv"
 	"time"
 
@@ -40,7 +41,8 @@ func newMember(name string, peerURLs types.URLs, now *time.Time) *Member {
 		Attributes:     Attributes{Name: name},
 	}
 
-	b := []byte(m.Name)
+	var b []byte
+	sort.Strings(m.PeerURLs)
 	for _, p := range m.PeerURLs {
 		b = append(b, []byte(p)...)
 	}
@@ -52,6 +54,10 @@ func newMember(name string, peerURLs types.URLs, now *time.Time) *Member {
 	hash := sha1.Sum(b)
 	m.ID = binary.BigEndian.Uint64(hash[:8])
 	return m
+}
+
+func NewMemberFromURLs(name string, urls types.URLs) *Member {
+	return newMember(name, urls, nil)
 }
 
 func (m Member) storeKey() string {
