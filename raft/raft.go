@@ -128,7 +128,7 @@ func (r *raft) hasLeader() bool { return r.lead != None }
 func (r *raft) shouldStop() bool { return r.removed[r.id] }
 
 func (r *raft) softState() *SoftState {
-	return &SoftState{Lead: r.lead, RaftState: r.state, Nodes: r.nodes(), ShouldStop: r.shouldStop()}
+	return &SoftState{Lead: r.lead, RaftState: r.state, Nodes: r.nodes(), RemovedNodes: r.removedNodes(), ShouldStop: r.shouldStop()}
 }
 
 func (r *raft) String() string {
