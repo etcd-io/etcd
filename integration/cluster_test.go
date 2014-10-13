@@ -103,7 +103,9 @@ func (c *cluster) Launch(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		m.LocalMember = *etcdserver.NewMemberFromURLs(c.name(i), listenUrls)
+		localMember := *etcdserver.NewMemberFromURLs(c.name(i), listenUrls)
+		m.NodeID = localMember.ID
+		m.Name = localMember.Name
 		m.ClientURLs, err = types.NewURLs([]string{"http://" + cln.Addr().String()})
 		if err != nil {
 			t.Fatal(err)

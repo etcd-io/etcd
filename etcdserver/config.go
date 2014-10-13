@@ -27,7 +27,8 @@ import (
 
 // ServerConfig holds the configuration of etcd as taken from the command line or discovery.
 type ServerConfig struct {
-	LocalMember  Member
+	NodeID       uint64
+	Name         string
 	DiscoveryURL string
 	ClientURLs   types.URLs
 	DataDir      string
@@ -47,14 +48,14 @@ func (c *ServerConfig) VerifyBootstrapConfig() error {
 	// Make sure the cluster at least contains the local server.
 	isOk := false
 	for _, m := range c.Cluster.members {
-		if m.ID == c.LocalMember.ID {
+		if m.ID == c.NodeID {
 			isOk = true
 		}
 	}
 	if !isOk {
 		return fmt.Errorf("couldn't find local ID in cluster config")
 	}
-	if c.LocalMember.ID == raft.None {
+	if c.NodeID == raft.None {
 		return fmt.Errorf("could not use %x as member id", raft.None)
 	}
 
@@ -74,8 +75,6 @@ func (c *ServerConfig) VerifyBootstrapConfig() error {
 func (c *ServerConfig) WALDir() string { return path.Join(c.DataDir, "wal") }
 
 func (c *ServerConfig) SnapDir() string { return path.Join(c.DataDir, "snap") }
-
-func (c *ServerConfig) ID() uint64 { return c.LocalMember.ID }
 
 func (c *ServerConfig) ShouldDiscover() bool {
 	return c.DiscoveryURL != ""

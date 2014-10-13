@@ -51,9 +51,7 @@ func TestBootstrapConfigVerify(t *testing.T) {
 		}
 
 		cfg := ServerConfig{
-			LocalMember: Member{
-				ID: 0x7350a9cd4dc16f76,
-			},
+			NodeID:       0x7350a9cd4dc16f76,
 			DiscoveryURL: tt.disc,
 			Cluster:      cluster,
 			ClusterState: tt.clst,
