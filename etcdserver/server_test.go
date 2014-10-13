@@ -383,10 +383,11 @@ func testServer(t *testing.T, ns uint64) {
 		}
 	}
 
-	members := make([]uint64, ns)
+	ids := make([]uint64, ns)
 	for i := uint64(0); i < ns; i++ {
-		members[i] = i + 1
+		ids[i] = i + 1
 	}
+	members := mustMakePeerSlice(t, ids...)
 
 	for i := uint64(0); i < ns; i++ {
 		id := i + 1
@@ -394,16 +395,14 @@ func testServer(t *testing.T, ns uint64) {
 		tk := time.NewTicker(10 * time.Millisecond)
 		defer tk.Stop()
 		srv := &EtcdServer{
-			node:    n,
-			store:   store.New(),
-			send:    send,
-			storage: &storageRecorder{},
-			ticker:  tk.C,
+			node:         n,
+			store:        store.New(),
+			send:         send,
+			storage:      &storageRecorder{},
+			ticker:       tk.C,
+			ClusterStore: &clusterStoreRecorder{},
 		}
 		srv.start()
-		// TODO(xiangli): randomize election timeout
-		// then remove this sleep.
-		time.Sleep(1 * time.Millisecond)
 		ss[i] = srv
 	}
 
@@ -457,17 +456,18 @@ func TestDoProposal(t *testing.T) {
 
 	for i, tt := range tests {
 		ctx, _ := context.WithCancel(context.Background())
-		n := raft.StartNode(0xBAD0, []uint64{0xBAD0}, 10, 1)
+		n := raft.StartNode(0xBAD0, mustMakePeerSlice(t, 0xBAD0), 10, 1)
 		st := &storeRecorder{}
 		tk := make(chan time.Time)
 		// this makes <-tk always successful, which accelerates internal clock
 		close(tk)
 		srv := &EtcdServer{
-			node:    n,
-			store:   st,
-			send:    func(_ []raftpb.Message) {},
-			storage: &storageRecorder{},
-			ticker:  tk,
+			node:         n,
+			store:        st,
+			send:         func(_ []raftpb.Message) {},
+			storage:      &storageRecorder{},
+			ticker:       tk,
+			ClusterStore: &clusterStoreRecorder{},
 		}
 		srv.start()
 		resp, err := srv.Do(ctx, tt)
@@ -490,7 +490,7 @@ func TestDoProposal(t *testing.T) {
 func TestDoProposalCancelled(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	// node cannot make any progress because there are two nodes
-	n := raft.StartNode(0xBAD0, []uint64{0xBAD0, 0xBAD1}, 10, 1)
+	n := raft.StartNode(0xBAD0, mustMakePeerSlice(t, 0xBAD0, 0xBAD1), 10, 1)
 	st := &storeRecorder{}
 	wait := &waitRecorder{}
 	srv := &EtcdServer{
@@ -526,7 +526,7 @@ func TestDoProposalStopped(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	// node cannot make any progress because there are two nodes
-	n := raft.StartNode(0xBAD0, []uint64{0xBAD0, 0xBAD1}, 10, 1)
+	n := raft.StartNode(0xBAD0, mustMakePeerSlice(t, 0xBAD0, 0xBAD1), 10, 1)
 	st := &storeRecorder{}
 	tk := make(chan time.Time)
 	// this makes <-tk always successful, which accelarates internal clock
@@ -667,7 +667,7 @@ func TestSyncTrigger(t *testing.T) {
 // snapshot should snapshot the store and cut the persistent
 // TODO: node.Compact is called... we need to make the node an interface
 func TestSnapshot(t *testing.T) {
-	n := raft.StartNode(0xBAD0, []uint64{0xBAD0}, 10, 1)
+	n := raft.StartNode(0xBAD0, mustMakePeerSlice(t, 0xBAD0), 10, 1)
 	defer n.Stop()
 	st := &storeRecorder{}
 	p := &storageRecorder{}
@@ -698,16 +698,19 @@ func TestSnapshot(t *testing.T) {
 // Applied > SnapCount should trigger a SaveSnap event
 func TestTriggerSnap(t *testing.T) {
 	ctx := context.Background()
-	n := raft.StartNode(0xBAD0, []uint64{0xBAD0}, 10, 1)
+	n := raft.StartNode(0xBAD0, mustMakePeerSlice(t, 0xBAD0), 10, 1)
+	<-n.Ready()
+	n.ApplyConfChange(raftpb.ConfChange{Type: raftpb.ConfChangeAddNode, NodeID: 0xBAD0})
 	n.Campaign(ctx)
 	st := &storeRecorder{}
 	p := &storageRecorder{}
 	s := &EtcdServer{
-		store:     st,
-		send:      func(_ []raftpb.Message) {},
-		storage:   p,
-		node:      n,
-		snapCount: 10,
+		store:        st,
+		send:         func(_ []raftpb.Message) {},
+		storage:      p,
+		node:         n,
+		snapCount:    10,
+		ClusterStore: &clusterStoreRecorder{},
 	}
 
 	s.start()
@@ -1248,4 +1251,17 @@ func (cs *clusterStoreRecorder) Get() Cluster {
 }
 func (cs *clusterStoreRecorder) Remove(id uint64) {
 	cs.record(action{name: "Remove", params: []interface{}{id}})
+}
+
+func mustMakePeerSlice(t *testing.T, ids ...uint64) []raft.Peer {
+	peers := make([]raft.Peer, len(ids))
+	for i, id := range ids {
+		m := Member{ID: id}
+		b, err := json.Marshal(m)
+		if err != nil {
+			t.Fatal(err)
+		}
+		peers[i] = raft.Peer{ID: id, Context: b}
+	}
+	return peers
 }

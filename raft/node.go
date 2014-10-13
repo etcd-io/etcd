@@ -117,16 +117,21 @@ type Node interface {
 	Compact(index uint64, nodes []uint64, d []byte)
 }
 
+type Peer struct {
+	ID      uint64
+	Context []byte
+}
+
 // StartNode returns a new Node given a unique raft id, a list of raft peers, and
 // the election and heartbeat timeouts in units of ticks.
 // It also builds ConfChangeAddNode entry for each peer and puts them at the head of the log.
-func StartNode(id uint64, peers []uint64, election, heartbeat int) Node {
+func StartNode(id uint64, peers []Peer, election, heartbeat int) Node {
 	n := newNode()
-	r := newRaft(id, peers, election, heartbeat)
+	r := newRaft(id, nil, election, heartbeat)
 
 	ents := make([]pb.Entry, len(peers))
 	for i, peer := range peers {
-		cc := pb.ConfChange{Type: pb.ConfChangeAddNode, NodeID: peer}
+		cc := pb.ConfChange{Type: pb.ConfChangeAddNode, NodeID: peer.ID, Context: peer.Context}
 		data, err := cc.Marshal()
 		if err != nil {
 			panic("unexpected marshal error")
@@ -143,9 +148,9 @@ func StartNode(id uint64, peers []uint64, election, heartbeat int) Node {
 // RestartNode is identical to StartNode but takes an initial State and a slice
 // of entries. Generally this is used when restarting from a stable storage
 // log.
-func RestartNode(id uint64, peers []uint64, election, heartbeat int, snapshot *pb.Snapshot, st pb.HardState, ents []pb.Entry) Node {
+func RestartNode(id uint64, election, heartbeat int, snapshot *pb.Snapshot, st pb.HardState, ents []pb.Entry) Node {
 	n := newNode()
-	r := newRaft(id, peers, election, heartbeat)
+	r := newRaft(id, nil, election, heartbeat)
 	if snapshot != nil {
 		r.restore(*snapshot)
 	}
