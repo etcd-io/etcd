@@ -52,7 +52,7 @@ func (c *ServerConfig) ShouldDiscover() bool {
 	return c.DiscoveryURL != ""
 }
 
-// IsBootstrap returns ture if a bootstrap method is provided.
+// IsBootstrap returns true if a bootstrap method is provided.
 func (c *ServerConfig) IsBootstrap() bool {
 	return c.DiscoveryURL != "" || c.ClusterState == ClusterStateValueNew
 }
