@@ -9,7 +9,7 @@ import (
 
 // ServerConfig holds the configuration of etcd as taken from the command line or discovery.
 type ServerConfig struct {
-	LocalMember  Member
+	NodeID       uint64
 	DiscoveryURL string
 	ClientURLs   types.URLs
 	DataDir      string
@@ -25,7 +25,7 @@ func (c *ServerConfig) Verify() error {
 	// LocalMember is in the cluster list
 	isOk := false
 	for _, m := range *c.Cluster {
-		if m.ID == c.LocalMember.ID {
+		if m.ID == c.NodeID {
 			isOk = true
 		}
 	}

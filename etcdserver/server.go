@@ -97,7 +97,7 @@ func NewServer(cfg *ServerConfig) *EtcdServer {
 	st := store.New()
 	var w *wal.WAL
 	var n raft.Node
-	m := cfg.LocalMember
+	m := cfg.Cluster.FindID(cfg.NodeID)
 	waldir := path.Join(cfg.DataDir, "wal")
 	if !wal.Exist(waldir) {
 		if cfg.DiscoveryURL != "" {
@@ -165,7 +165,7 @@ func NewServer(cfg *ServerConfig) *EtcdServer {
 		store:      st,
 		node:       n,
 		id:         m.ID,
-		attributes: Attributes{Name: cfg.LocalMember.Name, ClientURLs: cfg.ClientURLs.StringSlice()},
+		attributes: Attributes{Name: m.Name, ClientURLs: cfg.ClientURLs.StringSlice()},
 		storage: struct {
 			*wal.WAL
 			*snap.Snapshotter
