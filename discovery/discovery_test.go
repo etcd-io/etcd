@@ -3,6 +3,8 @@ package discovery
 import (
 	"errors"
 	"math/rand"
+	"net/http"
+	"os"
 	"sort"
 	"strconv"
 
@@ -12,6 +14,61 @@ import (
 
 	"github.com/coreos/etcd/client"
 )
+
+func TestProxyFuncFromEnvUnset(t *testing.T) {
+	os.Setenv(DiscoveryProxyEnv, "")
+	pf, err := proxyFuncFromEnv()
+	if pf != nil {
+		t.Fatal("unexpected non-nil proxyFunc")
+	}
+	if err != nil {
+		t.Fatalf("unexpected non-nil err: %v", err)
+	}
+}
+
+func TestProxyFuncFromEnvBad(t *testing.T) {
+	tests := []string{
+		"%%",
+		"http://foo.com/%1",
+	}
+	for i, in := range tests {
+		os.Setenv(DiscoveryProxyEnv, in)
+		pf, err := proxyFuncFromEnv()
+		if pf != nil {
+			t.Errorf("#%d: unexpected non-nil proxyFunc", i)
+		}
+		if err == nil {
+			t.Errorf("#%d: unexpected nil err", i)
+		}
+	}
+}
+
+func TestProxyFuncFromEnv(t *testing.T) {
+	tests := map[string]string{
+		"bar.com":              "http://bar.com",
+		"http://disco.foo.bar": "http://disco.foo.bar",
+	}
+	for in, w := range tests {
+		os.Setenv(DiscoveryProxyEnv, in)
+		pf, err := proxyFuncFromEnv()
+		if pf == nil {
+			t.Errorf("%s: unexpected nil proxyFunc", in)
+			continue
+		}
+		if err != nil {
+			t.Errorf("%s: unexpected non-nil err: %v", in, err)
+			continue
+		}
+		g, err := pf(&http.Request{})
+		if err != nil {
+			t.Errorf("%s: unexpected non-nil err: %v", in, err)
+		}
+		if g.String() != w {
+			t.Errorf("%s: proxyURL=%q, want %q", g, w)
+		}
+
+	}
+}
 
 func TestCheckCluster(t *testing.T) {
 	cluster := "1000"
