@@ -24,6 +24,7 @@ const (
 	keysPrefix               = "/v2/keys"
 	membersPrefix            = "/v2/members"
 	deprecatedMachinesPrefix = "/v2/machines"
+	adminMembersPrefix       = "/v2/admin/members/"
 	raftPrefix               = "/raft"
 
 	// time to wait for response from EtcdServer requests
@@ -51,6 +52,7 @@ func NewClientHandler(server *etcdserver.EtcdServer) http.Handler {
 	// TODO: add serveMembers
 	mux.HandleFunc(membersPrefix, sh.serveMachines)
 	mux.HandleFunc(deprecatedMachinesPrefix, sh.serveMachines)
+	mux.HandleFunc(adminMembersPrefix, sh.serveAdminMembers)
 	mux.HandleFunc("/", http.NotFound)
 	return mux
 }
@@ -116,6 +118,47 @@ func (h serverHandler) serveMachines(w http.ResponseWriter, r *http.Request) {
 	}
 	endpoints := h.clusterStore.Get().ClientURLs()
 	w.Write([]byte(strings.Join(endpoints, ", ")))
+}
+
+func (h serverHandler) serveAdminMembers(w http.ResponseWriter, r *http.Request) {
+	if !allowMethod(w, r.Method, "PUT", "DELETE") {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), defaultServerTimeout)
+	defer cancel()
+	idStr := strings.TrimPrefix(r.URL.Path, adminMembersPrefix)
+	id, err := strconv.ParseUint(idStr, 16, 64)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	switch r.Method {
+	case "PUT":
+		r.ParseForm()
+		peerURLs := r.PostForm["PeerURLs"]
+		log.Printf("etcdhttp: add node %x with peer urls %v", id, peerURLs)
+		m := etcdserver.Member{
+			ID: id,
+			RaftAttributes: etcdserver.RaftAttributes{
+				PeerURLs: peerURLs,
+			},
+		}
+		if err := h.server.AddMember(ctx, m); err != nil {
+			log.Printf("etcdhttp: error adding node %x: %v", id, err)
+			writeError(w, err)
+			return
+		}
+		w.WriteHeader(http.StatusCreated)
+	case "DELETE":
+		log.Printf("etcdhttp: remove node %x", id)
+		if err := h.server.RemoveMember(ctx, id); err != nil {
+			log.Printf("etcdhttp: error removing node %x: %v", id, err)
+			writeError(w, err)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}
 }
 
 func (h serverHandler) serveRaft(w http.ResponseWriter, r *http.Request) {

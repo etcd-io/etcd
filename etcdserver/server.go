@@ -74,6 +74,10 @@ type Server interface {
 	// Process takes a raft message and applies it to the server's raft state
 	// machine, respecting any timeout of the given context.
 	Process(ctx context.Context, m raftpb.Message) error
+	// AddMember attempts to add a member into the cluster.
+	AddMember(ctx context.Context, memb Member) error
+	// RemoveMember attempts to remove a member from the cluster.
+	RemoveMember(ctx context.Context, id uint64) error
 }
 
 type RaftTimer interface {

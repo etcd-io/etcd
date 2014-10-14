@@ -703,7 +703,7 @@ func TestAllowMethod(t *testing.T) {
 }
 
 // errServer implements the etcd.Server interface for testing.
-// It returns the given error from any Do/Process calls.
+// It returns the given error from any Do/Process/AddMember/RemoveMember calls.
 type errServer struct {
 	err error
 }
@@ -716,6 +716,12 @@ func (fs *errServer) Process(ctx context.Context, m raftpb.Message) error {
 }
 func (fs *errServer) Start() {}
 func (fs *errServer) Stop()  {}
+func (fs *errServer) AddMember(ctx context.Context, m etcdserver.Member) error {
+	return fs.err
+}
+func (fs *errServer) RemoveMember(ctx context.Context, id uint64) error {
+	return fs.err
+}
 
 // errReader implements io.Reader to facilitate a broken request.
 type errReader struct{}
@@ -839,9 +845,11 @@ type resServer struct {
 func (rs *resServer) Do(_ context.Context, _ etcdserverpb.Request) (etcdserver.Response, error) {
 	return rs.res, nil
 }
-func (rs *resServer) Process(_ context.Context, _ raftpb.Message) error { return nil }
-func (rs *resServer) Start()                                            {}
-func (rs *resServer) Stop()                                             {}
+func (rs *resServer) Process(_ context.Context, _ raftpb.Message) error      { return nil }
+func (rs *resServer) Start()                                                 {}
+func (rs *resServer) Stop()                                                  {}
+func (rs *resServer) AddMember(_ context.Context, _ etcdserver.Member) error { return nil }
+func (rs *resServer) RemoveMember(_ context.Context, _ uint64) error         { return nil }
 
 func mustMarshalEvent(t *testing.T, ev *store.Event) string {
 	b := new(bytes.Buffer)
@@ -1231,6 +1239,170 @@ func TestHandleWatchStreaming(t *testing.T) {
 	case <-done:
 	case <-time.After(time.Second):
 		t.Fatalf("timed out waiting for done")
+	}
+}
+
+func TestServeAdminMembersFail(t *testing.T) {
+	tests := []struct {
+		req    *http.Request
+		server etcdserver.Server
+
+		wcode int
+	}{
+		{
+			// bad method
+			&http.Request{
+				Method: "CONNECT",
+			},
+			&resServer{},
+
+			http.StatusMethodNotAllowed,
+		},
+		{
+			// bad method
+			&http.Request{
+				Method: "TRACE",
+			},
+			&resServer{},
+
+			http.StatusMethodNotAllowed,
+		},
+		{
+			// parse id error
+			&http.Request{
+				URL:    mustNewURL(t, path.Join(adminMembersPrefix, "badID")),
+				Method: "PUT",
+			},
+			&resServer{},
+
+			http.StatusBadRequest,
+		},
+		{
+			// etcdserver.AddMember error
+			&http.Request{
+				URL:    mustNewURL(t, path.Join(adminMembersPrefix, "1")),
+				Method: "PUT",
+			},
+			&errServer{
+				errors.New("blah"),
+			},
+
+			http.StatusInternalServerError,
+		},
+		{
+			// etcdserver.RemoveMember error
+			&http.Request{
+				URL:    mustNewURL(t, path.Join(adminMembersPrefix, "1")),
+				Method: "DELETE",
+			},
+			&errServer{
+				errors.New("blah"),
+			},
+
+			http.StatusInternalServerError,
+		},
+	}
+	for i, tt := range tests {
+		h := &serverHandler{
+			server: tt.server,
+		}
+		rw := httptest.NewRecorder()
+		h.serveAdminMembers(rw, tt.req)
+		if rw.Code != tt.wcode {
+			t.Errorf("#%d: code=%d, want %d", i, rw.Code, tt.wcode)
+		}
+	}
+}
+
+type action struct {
+	name   string
+	params []interface{}
+}
+
+type serverRecorder struct {
+	actions []action
+}
+
+func (s *serverRecorder) Do(_ context.Context, r etcdserverpb.Request) (etcdserver.Response, error) {
+	s.actions = append(s.actions, action{name: "Do", params: []interface{}{r}})
+	return etcdserver.Response{}, nil
+}
+func (s *serverRecorder) Process(_ context.Context, m raftpb.Message) error {
+	s.actions = append(s.actions, action{name: "Process", params: []interface{}{m}})
+	return nil
+}
+func (s *serverRecorder) Start() {}
+func (s *serverRecorder) Stop()  {}
+func (s *serverRecorder) AddMember(_ context.Context, m etcdserver.Member) error {
+	s.actions = append(s.actions, action{name: "AddMember", params: []interface{}{m}})
+	return nil
+}
+func (s *serverRecorder) RemoveMember(_ context.Context, id uint64) error {
+	s.actions = append(s.actions, action{name: "RemoveMember", params: []interface{}{id}})
+	return nil
+}
+
+func TestServeAdminMembersPut(t *testing.T) {
+	u := mustNewURL(t, path.Join(adminMembersPrefix, "BEEF"))
+	form := url.Values{"PeerURLs": []string{"http://a", "http://b"}}
+	body := strings.NewReader(form.Encode())
+	req, err := http.NewRequest("PUT", u.String(), body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	s := &serverRecorder{}
+	h := &serverHandler{
+		server: s,
+	}
+	rw := httptest.NewRecorder()
+
+	h.serveAdminMembers(rw, req)
+
+	wcode := http.StatusCreated
+	if rw.Code != wcode {
+		t.Errorf("code=%d, want %d", rw.Code, wcode)
+	}
+	g := rw.Body.String()
+	if g != "" {
+		t.Errorf("got body=%q, want %q", g, "")
+	}
+	wm := etcdserver.Member{
+		ID: 0xBEEF,
+		RaftAttributes: etcdserver.RaftAttributes{
+			PeerURLs: []string{"http://a", "http://b"},
+		},
+	}
+	wactions := []action{{name: "AddMember", params: []interface{}{wm}}}
+	if !reflect.DeepEqual(s.actions, wactions) {
+		t.Errorf("actions = %+v, want %+v", s.actions, wactions)
+	}
+}
+
+func TestServeAdminMembersDelete(t *testing.T) {
+	req := &http.Request{
+		Method: "DELETE",
+		URL:    mustNewURL(t, path.Join(adminMembersPrefix, "BEEF")),
+	}
+	s := &serverRecorder{}
+	h := &serverHandler{
+		server: s,
+	}
+	rw := httptest.NewRecorder()
+
+	h.serveAdminMembers(rw, req)
+
+	wcode := http.StatusNoContent
+	if rw.Code != wcode {
+		t.Errorf("code=%d, want %d", rw.Code, wcode)
+	}
+	g := rw.Body.String()
+	if g != "" {
+		t.Errorf("got body=%q, want %q", g, "")
+	}
+	wactions := []action{{name: "RemoveMember", params: []interface{}{uint64(0xBEEF)}}}
+	if !reflect.DeepEqual(s.actions, wactions) {
+		t.Errorf("actions = %+v, want %+v", s.actions, wactions)
 	}
 }
 
