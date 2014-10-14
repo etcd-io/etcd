@@ -3,6 +3,7 @@ package etcdserver
 import (
 	"fmt"
 	"net/http"
+	"path"
 
 	"github.com/coreos/etcd/pkg/types"
 )
@@ -39,4 +40,19 @@ func (c *ServerConfig) Verify() error {
 		}
 	}
 	return nil
+}
+
+func (c *ServerConfig) WALDir() string { return path.Join(c.DataDir, "wal") }
+
+func (c *ServerConfig) SnapDir() string { return path.Join(c.DataDir, "snap") }
+
+func (c *ServerConfig) ID() uint64 { return c.Cluster.FindName(c.Name).ID }
+
+func (c *ServerConfig) ShouldDiscover() bool {
+	return c.DiscoveryURL != ""
+}
+
+// IsBootstrap returns true if a bootstrap method is provided.
+func (c *ServerConfig) IsBootstrap() bool {
+	return c.DiscoveryURL != "" || c.ClusterState == ClusterStateValueNew
 }
