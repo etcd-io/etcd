@@ -26,6 +26,7 @@ import (
 	"reflect"
 	"sort"
 
+	"github.com/coreos/etcd/pkg/pbutil"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/wal/walpb"
@@ -55,8 +56,8 @@ var (
 // A just opened WAL is in read mode, and ready for reading records.
 // The WAL will be ready for appending after reading out all the previous records.
 type WAL struct {
-	dir string // the living directory of the underlay files
-	md  []byte // metadata recorded at the head of each WAL
+	dir      string // the living directory of the underlay files
+	metadata []byte // metadata recorded at the head of each WAL
 
 	ri      uint64   // index of entry to start reading
 	decoder *decoder // decoder to decode records
@@ -84,11 +85,11 @@ func Create(dirpath string, metadata []byte) (*WAL, error) {
 		return nil, err
 	}
 	w := &WAL{
-		dir:     dirpath,
-		md:      metadata,
-		seq:     0,
-		f:       f,
-		encoder: newEncoder(f, 0),
+		dir:      dirpath,
+		metadata: metadata,
+		seq:      0,
+		f:        f,
+		encoder:  newEncoder(f, 0),
 	}
 	if err := w.saveCrc(0); err != nil {
 		return nil, err
@@ -208,7 +209,7 @@ func (w *WAL) ReadAll() (metadata []byte, state raftpb.HardState, ents []raftpb.
 	w.decoder.close()
 	w.ri = 0
 
-	w.md = metadata
+	w.metadata = metadata
 	// create encoder (chain crc with the decoder), enable appending
 	w.encoder = newEncoder(w.f, w.decoder.lastCRC())
 	w.decoder = nil
@@ -234,7 +235,7 @@ func (w *WAL) Cut() error {
 	if err := w.saveCrc(prevCrc); err != nil {
 		return err
 	}
-	return w.encoder.encode(&walpb.Record{Type: metadataType, Data: w.md})
+	return w.encoder.encode(&walpb.Record{Type: metadataType, Data: w.metadata})
 }
 
 func (w *WAL) Sync() error {
@@ -254,10 +255,7 @@ func (w *WAL) Close() {
 }
 
 func (w *WAL) SaveEntry(e *raftpb.Entry) error {
-	b, err := e.Marshal()
-	if err != nil {
-		panic(err)
-	}
+	b := pbutil.MustMarshal(e)
 	rec := &walpb.Record{Type: entryType, Data: b}
 	if err := w.encoder.encode(rec); err != nil {
 		return err
@@ -270,10 +268,7 @@ func (w *WAL) SaveState(s *raftpb.HardState) error {
 	if raft.IsEmptyHardState(*s) {
 		return nil
 	}
-	b, err := s.Marshal()
-	if err != nil {
-		panic(err)
-	}
+	b := pbutil.MustMarshal(s)
 	rec := &walpb.Record{Type: stateType, Data: b}
 	return w.encoder.encode(rec)
 }
