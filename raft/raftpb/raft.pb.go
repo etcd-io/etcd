@@ -17,14 +17,14 @@
 */
 package raftpb
 
-import proto "github.com/coreos/etcd/third_party/code.google.com/p/gogoprotobuf/proto"
+import proto "github.com/coreos/etcd/Godeps/_workspace/src/code.google.com/p/gogoprotobuf/proto"
 import json "encoding/json"
 import math "math"
 
 // discarding unused import gogoproto "code.google.com/p/gogoprotobuf/gogoproto/gogo.pb"
 
 import io "io"
-import code_google_com_p_gogoprotobuf_proto "github.com/coreos/etcd/third_party/code.google.com/p/gogoprotobuf/proto"
+import code_google_com_p_gogoprotobuf_proto "github.com/coreos/etcd/Godeps/_workspace/src/code.google.com/p/gogoprotobuf/proto"
 
 // Reference proto, json, and math imports to suppress error if they are not otherwise used.
 var _ = proto.Marshal

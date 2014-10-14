@@ -5,8 +5,8 @@ import (
 	"log"
 	"reflect"
 
+	"github.com/coreos/etcd/Godeps/_workspace/src/code.google.com/p/go.net/context"
 	pb "github.com/coreos/etcd/raft/raftpb"
-	"github.com/coreos/etcd/third_party/code.google.com/p/go.net/context"
 )
 
 var (
