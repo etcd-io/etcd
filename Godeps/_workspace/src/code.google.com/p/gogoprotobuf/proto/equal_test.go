@@ -35,7 +35,7 @@ import (
 	"testing"
 
 	pb "./testdata"
-	. "github.com/coreos/etcd/third_party/code.google.com/p/gogoprotobuf/proto"
+	. "github.com/coreos/etcd/Godeps/_workspace/src/code.google.com/p/gogoprotobuf/proto"
 )
 
 // Four identical base messages.

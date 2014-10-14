@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/coreos/etcd/Godeps/_workspace/src/code.google.com/p/go.net/context"
 	"github.com/coreos/etcd/pkg"
 	"github.com/coreos/etcd/raft/raftpb"
-	"github.com/coreos/etcd/third_party/code.google.com/p/go.net/context"
 )
 
 // TestNodeStep ensures that node.Step sends msgProp to propc chan

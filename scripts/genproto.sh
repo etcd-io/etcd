@@ -4,7 +4,7 @@
 # Run from repository root.
 #
 
-PREFIX="github.com/coreos/etcd/third_party"
+PREFIX="github.com/coreos/etcd/Godeps/_workspace/src"
 DIRS="./wal/walpb ./etcdserver/etcdserverpb ./snap/snappb ./raft/raftpb"
 
 SHA="20c42d4d4d776b60d32c2d35ecac40a60793f661"
