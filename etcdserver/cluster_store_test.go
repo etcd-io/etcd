@@ -18,7 +18,7 @@ func TestClusterStoreAdd(t *testing.T) {
 		{
 			name: "Create",
 			params: []interface{}{
-				machineKVPrefix + "1/raftAttributes",
+				membersKVPrefix + "1/raftAttributes",
 				false,
 				`{"PeerURLs":null}`,
 				false,
@@ -28,7 +28,7 @@ func TestClusterStoreAdd(t *testing.T) {
 		{
 			name: "Create",
 			params: []interface{}{
-				machineKVPrefix + "1/attributes",
+				membersKVPrefix + "1/attributes",
 				false,
 				`{"Name":"node1","ClientURLs":null}`,
 				false,
@@ -96,7 +96,7 @@ func TestClusterStoreDelete(t *testing.T) {
 	cs.Add(newTestMember(1, nil, "node1", nil))
 	cs.Remove(1)
 
-	wdeletes := []string{machineKVPrefix + "1"}
+	wdeletes := []string{membersKVPrefix + "1"}
 	if !reflect.DeepEqual(st.deletes, wdeletes) {
 		t.Error("deletes = %v, want %v", st.deletes, wdeletes)
 	}

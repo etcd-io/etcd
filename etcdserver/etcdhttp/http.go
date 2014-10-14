@@ -21,9 +21,10 @@ import (
 )
 
 const (
-	keysPrefix     = "/v2/keys"
-	machinesPrefix = "/v2/machines"
-	raftPrefix     = "/raft"
+	keysPrefix               = "/v2/keys"
+	membersPrefix            = "/v2/members"
+	deprecatedMachinesPrefix = "/v2/machines"
+	raftPrefix               = "/raft"
 
 	// time to wait for response from EtcdServer requests
 	defaultServerTimeout = 500 * time.Millisecond
@@ -47,7 +48,9 @@ func NewClientHandler(server *etcdserver.EtcdServer) http.Handler {
 	mux.HandleFunc(keysPrefix+"/", sh.serveKeys)
 	// TODO: dynamic configuration may make this outdated. take care of it.
 	// TODO: dynamic configuration may introduce race also.
-	mux.HandleFunc(machinesPrefix, sh.serveMachines)
+	// TODO: add serveMembers
+	mux.HandleFunc(membersPrefix, sh.serveMachines)
+	mux.HandleFunc(deprecatedMachinesPrefix, sh.serveMachines)
 	mux.HandleFunc("/", http.NotFound)
 	return mux
 }
@@ -107,7 +110,6 @@ func (h serverHandler) serveKeys(w http.ResponseWriter, r *http.Request) {
 }
 
 // serveMachines responds address list in the format '0.0.0.0, 1.1.1.1'.
-// TODO: rethink the format of machine list because it is not json format.
 func (h serverHandler) serveMachines(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r.Method, "GET", "HEAD") {
 		return
