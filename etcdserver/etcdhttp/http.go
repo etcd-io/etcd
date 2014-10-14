@@ -22,7 +22,6 @@ import (
 
 const (
 	keysPrefix               = "/v2/keys"
-	membersPrefix            = "/v2/members"
 	deprecatedMachinesPrefix = "/v2/machines"
 	raftPrefix               = "/raft"
 
@@ -49,7 +48,6 @@ func NewClientHandler(server *etcdserver.EtcdServer) http.Handler {
 	// TODO: dynamic configuration may make this outdated. take care of it.
 	// TODO: dynamic configuration may introduce race also.
 	// TODO: add serveMembers
-	mux.HandleFunc(membersPrefix, sh.serveMachines)
 	mux.HandleFunc(deprecatedMachinesPrefix, sh.serveMachines)
 	mux.HandleFunc("/", http.NotFound)
 	return mux
