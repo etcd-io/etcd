@@ -12,36 +12,6 @@ import (
 // None is a placeholder node ID used when there is no leader.
 const None uint64 = 0
 
-type messageType uint64
-
-const (
-	msgHup uint64 = iota
-	msgBeat
-	msgProp
-	msgApp
-	msgAppResp
-	msgVote
-	msgVoteResp
-	msgSnap
-	msgDenied
-)
-
-var mtmap = [...]string{
-	"msgHup",
-	"msgBeat",
-	"msgProp",
-	"msgApp",
-	"msgAppResp",
-	"msgVote",
-	"msgVoteResp",
-	"msgSnap",
-	"msgDenied",
-}
-
-func (mt messageType) String() string {
-	return mtmap[uint64(mt)]
-}
-
 var errNoLeader = errors.New("no leader")
 
 // Possible values for StateType.
@@ -192,7 +162,7 @@ func (r *raft) send(m pb.Message) {
 	// do not attach term to msgProp
 	// proposals are a way to forward to the leader and
 	// should be treated as local message.
-	if m.Type != msgProp {
+	if m.Type != pb.MsgProp {
 		m.Term = r.Term
 	}
 	r.msgs = append(r.msgs, m)
@@ -205,10 +175,10 @@ func (r *raft) sendAppend(to uint64) {
 	m.To = to
 	m.Index = pr.next - 1
 	if r.needSnapshot(m.Index) {
-		m.Type = msgSnap
+		m.Type = pb.MsgSnap
 		m.Snapshot = r.raftLog.snapshot
 	} else {
-		m.Type = msgApp
+		m.Type = pb.MsgApp
 		m.LogTerm = r.raftLog.term(pr.next - 1)
 		m.Entries = r.raftLog.entries(pr.next)
 		m.Commit = r.raftLog.committed
@@ -220,7 +190,7 @@ func (r *raft) sendAppend(to uint64) {
 func (r *raft) sendHeartbeat(to uint64) {
 	m := pb.Message{
 		To:   to,
-		Type: msgApp,
+		Type: pb.MsgApp,
 	}
 	r.send(m)
 }
@@ -293,7 +263,7 @@ func (r *raft) tickElection() {
 	r.elapsed++
 	if r.isElectionTimeout() {
 		r.elapsed = 0
-		r.Step(pb.Message{From: r.id, Type: msgHup})
+		r.Step(pb.Message{From: r.id, Type: pb.MsgHup})
 	}
 }
 
@@ -302,7 +272,7 @@ func (r *raft) tickHeartbeat() {
 	r.elapsed++
 	if r.elapsed > r.heartbeatTimeout {
 		r.elapsed = 0
-		r.Step(pb.Message{From: r.id, Type: msgBeat})
+		r.Step(pb.Message{From: r.id, Type: pb.MsgBeat})
 	}
 }
 
@@ -365,7 +335,7 @@ func (r *raft) campaign() {
 			continue
 		}
 		lasti := r.raftLog.lastIndex()
-		r.send(pb.Message{To: i, Type: msgVote, Index: lasti, LogTerm: r.raftLog.term(lasti)})
+		r.send(pb.Message{To: i, Type: pb.MsgVote, Index: lasti, LogTerm: r.raftLog.term(lasti)})
 	}
 }
 
@@ -375,18 +345,18 @@ func (r *raft) Step(m pb.Message) error {
 
 	if r.removed[m.From] {
 		if m.From != r.id {
-			r.send(pb.Message{To: m.From, Type: msgDenied})
+			r.send(pb.Message{To: m.From, Type: pb.MsgDenied})
 		}
 		// TODO: return an error?
 		return nil
 	}
-	if m.Type == msgDenied {
+	if m.Type == pb.MsgDenied {
 		r.removed[r.id] = true
 		// TODO: return an error?
 		return nil
 	}
 
-	if m.Type == msgHup {
+	if m.Type == pb.MsgHup {
 		r.campaign()
 	}
 
@@ -395,7 +365,7 @@ func (r *raft) Step(m pb.Message) error {
 		// local message
 	case m.Term > r.Term:
 		lead := m.From
-		if m.Type == msgVote {
+		if m.Type == pb.MsgVote {
 			lead = None
 		}
 		r.becomeFollower(m.Term, lead)
@@ -409,17 +379,17 @@ func (r *raft) Step(m pb.Message) error {
 
 func (r *raft) handleAppendEntries(m pb.Message) {
 	if r.raftLog.maybeAppend(m.Index, m.LogTerm, m.Commit, m.Entries...) {
-		r.send(pb.Message{To: m.From, Type: msgAppResp, Index: r.raftLog.lastIndex()})
+		r.send(pb.Message{To: m.From, Type: pb.MsgAppResp, Index: r.raftLog.lastIndex()})
 	} else {
-		r.send(pb.Message{To: m.From, Type: msgAppResp, Index: m.Index, Reject: true})
+		r.send(pb.Message{To: m.From, Type: pb.MsgAppResp, Index: m.Index, Reject: true})
 	}
 }
 
 func (r *raft) handleSnapshot(m pb.Message) {
 	if r.restore(m.Snapshot) {
-		r.send(pb.Message{To: m.From, Type: msgAppResp, Index: r.raftLog.lastIndex()})
+		r.send(pb.Message{To: m.From, Type: pb.MsgAppResp, Index: r.raftLog.lastIndex()})
 	} else {
-		r.send(pb.Message{To: m.From, Type: msgAppResp, Index: r.raftLog.committed})
+		r.send(pb.Message{To: m.From, Type: pb.MsgAppResp, Index: r.raftLog.committed})
 	}
 }
 
@@ -438,9 +408,9 @@ type stepFunc func(r *raft, m pb.Message)
 
 func stepLeader(r *raft, m pb.Message) {
 	switch m.Type {
-	case msgBeat:
+	case pb.MsgBeat:
 		r.bcastHeartbeat()
-	case msgProp:
+	case pb.MsgProp:
 		if len(m.Entries) != 1 {
 			panic("unexpected length(entries) of a msgProp")
 		}
@@ -453,7 +423,7 @@ func stepLeader(r *raft, m pb.Message) {
 		}
 		r.appendEntry(e)
 		r.bcastAppend()
-	case msgAppResp:
+	case pb.MsgAppResp:
 		if m.Reject {
 			if r.prs[m.From].maybeDecrTo(m.Index) {
 				r.sendAppend(m.From)
@@ -464,24 +434,24 @@ func stepLeader(r *raft, m pb.Message) {
 				r.bcastAppend()
 			}
 		}
-	case msgVote:
-		r.send(pb.Message{To: m.From, Type: msgVoteResp, Reject: true})
+	case pb.MsgVote:
+		r.send(pb.Message{To: m.From, Type: pb.MsgVoteResp, Reject: true})
 	}
 }
 
 func stepCandidate(r *raft, m pb.Message) {
 	switch m.Type {
-	case msgProp:
+	case pb.MsgProp:
 		panic("no leader")
-	case msgApp:
+	case pb.MsgApp:
 		r.becomeFollower(r.Term, m.From)
 		r.handleAppendEntries(m)
-	case msgSnap:
+	case pb.MsgSnap:
 		r.becomeFollower(m.Term, m.From)
 		r.handleSnapshot(m)
-	case msgVote:
-		r.send(pb.Message{To: m.From, Type: msgVoteResp, Reject: true})
-	case msgVoteResp:
+	case pb.MsgVote:
+		r.send(pb.Message{To: m.From, Type: pb.MsgVoteResp, Reject: true})
+	case pb.MsgVoteResp:
 		gr := r.poll(m.From, !m.Reject)
 		switch r.q() {
 		case gr:
@@ -495,26 +465,26 @@ func stepCandidate(r *raft, m pb.Message) {
 
 func stepFollower(r *raft, m pb.Message) {
 	switch m.Type {
-	case msgProp:
+	case pb.MsgProp:
 		if r.lead == None {
 			panic("no leader")
 		}
 		m.To = r.lead
 		r.send(m)
-	case msgApp:
+	case pb.MsgApp:
 		r.elapsed = 0
 		r.lead = m.From
 		r.handleAppendEntries(m)
-	case msgSnap:
+	case pb.MsgSnap:
 		r.elapsed = 0
 		r.handleSnapshot(m)
-	case msgVote:
+	case pb.MsgVote:
 		if (r.Vote == None || r.Vote == m.From) && r.raftLog.isUpToDate(m.Index, m.LogTerm) {
 			r.elapsed = 0
 			r.Vote = m.From
-			r.send(pb.Message{To: m.From, Type: msgVoteResp})
+			r.send(pb.Message{To: m.From, Type: pb.MsgVoteResp})
 		} else {
-			r.send(pb.Message{To: m.From, Type: msgVoteResp, Reject: true})
+			r.send(pb.Message{To: m.From, Type: pb.MsgVoteResp, Reject: true})
 		}
 	}
 }
