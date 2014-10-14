@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -1278,10 +1279,21 @@ func TestServeAdminMembersFail(t *testing.T) {
 			http.StatusBadRequest,
 		},
 		{
+			// parse body error
+			&http.Request{
+				URL:    mustNewURL(t, path.Join(adminMembersPrefix, "1")),
+				Method: "PUT",
+			},
+			&resServer{},
+
+			http.StatusBadRequest,
+		},
+		{
 			// etcdserver.AddMember error
 			&http.Request{
 				URL:    mustNewURL(t, path.Join(adminMembersPrefix, "1")),
 				Method: "PUT",
+				Body:   ioutil.NopCloser(strings.NewReader("")),
 			},
 			&errServer{
 				errors.New("blah"),

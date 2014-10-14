@@ -135,7 +135,10 @@ func (h serverHandler) serveAdminMembers(w http.ResponseWriter, r *http.Request)
 
 	switch r.Method {
 	case "PUT":
-		r.ParseForm()
+		if err := r.ParseForm(); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
 		peerURLs := r.PostForm["PeerURLs"]
 		log.Printf("etcdhttp: add node %x with peer urls %v", id, peerURLs)
 		m := etcdserver.Member{
