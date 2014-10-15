@@ -29,6 +29,9 @@ const (
 	DefaultSnapCount   = 10000
 	// TODO: calculate based on heartbeat interval
 	defaultPublishRetryInterval = 5 * time.Second
+
+	KeySpacePrefix    = "/keys"
+	MemberSpacePrefix = "/members"
 )
 
 var (

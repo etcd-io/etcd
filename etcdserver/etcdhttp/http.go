@@ -86,6 +86,7 @@ func (h serverHandler) serveKeys(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	rr.Path = etcdserver.KeySpacePrefix + rr.Path
 	resp, err := h.server.Do(ctx, rr)
 	if err != nil {
 		writeError(w, err)
@@ -94,14 +95,15 @@ func (h serverHandler) serveKeys(w http.ResponseWriter, r *http.Request) {
 
 	switch {
 	case resp.Event != nil:
-		if err := writeEvent(w, resp.Event, h.timer); err != nil {
+		ev := trimEventPrefix(resp.Event, etcdserver.KeySpacePrefix)
+		if err := writeEvent(w, ev, h.timer); err != nil {
 			// Should never be reached
 			log.Printf("error writing event: %v", err)
 		}
 	case resp.Watcher != nil:
 		ctx, cancel := context.WithTimeout(context.Background(), defaultWatchTimeout)
 		defer cancel()
-		handleWatch(ctx, w, resp.Watcher, rr.Stream, h.timer)
+		handleKeyWatch(ctx, w, resp.Watcher, rr.Stream, h.timer)
 	default:
 		writeError(w, errors.New("received response with no Event/Watcher!"))
 	}
@@ -340,7 +342,7 @@ func writeEvent(w http.ResponseWriter, ev *store.Event, rt etcdserver.RaftTimer)
 	return json.NewEncoder(w).Encode(ev)
 }
 
-func handleWatch(ctx context.Context, w http.ResponseWriter, wa store.Watcher, stream bool, rt etcdserver.RaftTimer) {
+func handleKeyWatch(ctx context.Context, w http.ResponseWriter, wa store.Watcher, stream bool, rt etcdserver.RaftTimer) {
 	defer wa.Remove()
 	ech := wa.EventChan()
 	var nch <-chan bool
@@ -372,6 +374,7 @@ func handleWatch(ctx context.Context, w http.ResponseWriter, wa store.Watcher, s
 				// send to the client in time. Then we simply end streaming.
 				return
 			}
+			ev = trimEventPrefix(ev, etcdserver.KeySpacePrefix)
 			if err := json.NewEncoder(w).Encode(ev); err != nil {
 				// Should never be reached
 				log.Println("error writing event: %v", err)
@@ -397,4 +400,24 @@ func allowMethod(w http.ResponseWriter, m string, ms ...string) bool {
 	w.Header().Set("Allow", strings.Join(ms, ","))
 	http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 	return false
+}
+
+func trimEventPrefix(ev *store.Event, pre string) *store.Event {
+	if ev == nil {
+		return nil
+	}
+	ev.Node = trimNodeExternPrefix(ev.Node, pre)
+	ev.PrevNode = trimNodeExternPrefix(ev.PrevNode, pre)
+	return ev
+}
+
+func trimNodeExternPrefix(n *store.NodeExtern, pre string) *store.NodeExtern {
+	if n == nil {
+		return nil
+	}
+	n.Key = strings.TrimPrefix(n.Key, pre)
+	for _, nn := range n.Nodes {
+		nn = trimNodeExternPrefix(nn, pre)
+	}
+	return n
 }
