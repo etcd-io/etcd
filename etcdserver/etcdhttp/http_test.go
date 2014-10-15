@@ -1240,7 +1240,7 @@ func TestHandleWatch(t *testing.T) {
 		}
 		tt.doToChan(wa.echan)
 
-		handleWatch(tt.getCtx(), rw, wa, false, dummyRaftTimer{})
+		handleKeyWatch(tt.getCtx(), rw, wa, false, dummyRaftTimer{})
 
 		wcode := http.StatusOK
 		wct := "application/json"
@@ -1295,7 +1295,7 @@ func TestHandleWatchStreaming(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan struct{})
 	go func() {
-		handleWatch(ctx, rw, wa, true, dummyRaftTimer{})
+		handleKeyWatch(ctx, rw, wa, true, dummyRaftTimer{})
 		close(done)
 	}()
 
@@ -1558,6 +1558,86 @@ func TestServeAdminMembersDelete(t *testing.T) {
 	wactions := []action{{name: "RemoveMember", params: []interface{}{uint64(0xBEEF)}}}
 	if !reflect.DeepEqual(s.actions, wactions) {
 		t.Errorf("actions = %+v, want %+v", s.actions, wactions)
+	}
+}
+
+func TestTrimEventPrefix(t *testing.T) {
+	pre := "/abc"
+	tests := []struct {
+		ev  *store.Event
+		wev *store.Event
+	}{
+		{
+			nil,
+			nil,
+		},
+		{
+			&store.Event{},
+			&store.Event{},
+		},
+		{
+			&store.Event{Node: &store.NodeExtern{Key: "/abc/def"}},
+			&store.Event{Node: &store.NodeExtern{Key: "/def"}},
+		},
+		{
+			&store.Event{PrevNode: &store.NodeExtern{Key: "/abc/ghi"}},
+			&store.Event{PrevNode: &store.NodeExtern{Key: "/ghi"}},
+		},
+		{
+			&store.Event{
+				Node:     &store.NodeExtern{Key: "/abc/def"},
+				PrevNode: &store.NodeExtern{Key: "/abc/ghi"},
+			},
+			&store.Event{
+				Node:     &store.NodeExtern{Key: "/def"},
+				PrevNode: &store.NodeExtern{Key: "/ghi"},
+			},
+		},
+	}
+	for i, tt := range tests {
+		ev := trimEventPrefix(tt.ev, pre)
+		if !reflect.DeepEqual(ev, tt.wev) {
+			t.Errorf("#%d: event = %+v, want %+v", i, ev, tt.wev)
+		}
+	}
+}
+
+func TestTrimNodeExternPrefix(t *testing.T) {
+	pre := "/abc"
+	tests := []struct {
+		n  *store.NodeExtern
+		wn *store.NodeExtern
+	}{
+		{
+			nil,
+			nil,
+		},
+		{
+			&store.NodeExtern{Key: "/abc/def"},
+			&store.NodeExtern{Key: "/def"},
+		},
+		{
+			&store.NodeExtern{
+				Key: "/abc/def",
+				Nodes: []*store.NodeExtern{
+					{Key: "/abc/def/1"},
+					{Key: "/abc/def/2"},
+				},
+			},
+			&store.NodeExtern{
+				Key: "/def",
+				Nodes: []*store.NodeExtern{
+					{Key: "/def/1"},
+					{Key: "/def/2"},
+				},
+			},
+		},
+	}
+	for i, tt := range tests {
+		n := trimNodeExternPrefix(tt.n, pre)
+		if !reflect.DeepEqual(n, tt.wn) {
+			t.Errorf("#%d: node = %+v, want %+v", i, n, tt.wn)
+		}
 	}
 }
 

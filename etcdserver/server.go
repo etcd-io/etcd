@@ -47,6 +47,10 @@ const (
 	DefaultSnapCount   = 10000
 	// TODO: calculate based on heartbeat interval
 	defaultPublishRetryInterval = 5 * time.Second
+
+	AdminDir   = "/0"
+	membersDir = AdminDir + "/members"
+	KeysDir    = "/1"
 )
 
 var (
