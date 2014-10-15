@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/client"
+	"github.com/jonboulle/clockwork"
 )
 
 var (
@@ -45,8 +46,7 @@ type discovery struct {
 	retries uint
 	url     *url.URL
 
-	// Injectable for testing. nil means Seconds.
-	timeoutTimescale time.Duration
+	clock clockwork.Clock
 }
 
 // proxyFuncFromEnv builds a proxy function if the appropriate environment
@@ -97,12 +97,12 @@ func New(durl string, id uint64, config string) (Discoverer, error) {
 	// set the prefix of client to "" to handle this
 	c.SetPrefix("")
 	return &discovery{
-		cluster:          token,
-		id:               id,
-		config:           config,
-		c:                c,
-		url:              u,
-		timeoutTimescale: time.Second,
+		cluster: token,
+		id:      id,
+		config:  config,
+		c:       c,
+		url:     u,
+		clock:   clockwork.NewRealClock(),
 	}, nil
 }
 
@@ -196,9 +196,9 @@ func (d *discovery) checkCluster() (client.Nodes, int, error) {
 
 func (d *discovery) logAndBackoffForRetry(step string) {
 	d.retries++
-	retryTime := d.timeoutTimescale * (0x1 << d.retries)
+	retryTime := time.Second * (0x1 << d.retries)
 	log.Println("discovery: during", step, "connection to", d.url, "timed out, retrying in", retryTime)
-	time.Sleep(retryTime)
+	d.clock.Sleep(retryTime)
 }
 
 func (d *discovery) checkClusterRetry() (client.Nodes, int, error) {
