@@ -89,9 +89,11 @@ func (info TLSInfo) baseConfig() (*tls.Config, error) {
 		return nil, err
 	}
 
-	var cfg tls.Config
-	cfg.Certificates = []tls.Certificate{tlsCert}
-	return &cfg, nil
+	cfg := &tls.Config{
+		Certificates: []tls.Certificate{tlsCert},
+		MinVersion:   tls.VersionTLS10,
+	}
+	return cfg, nil
 }
 
 // ServerConfig generates a tls.Config object for use by an HTTP server
