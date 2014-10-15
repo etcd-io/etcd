@@ -135,10 +135,10 @@ func startEtcd() {
 
 	if *dir == "" {
 		*dir = fmt.Sprintf("%v_etcd_data", self.ID)
-		log.Printf("main: no data-dir provided, using default data-dir ./%s", *dir)
+		log.Printf("etcd: no data-dir provided, using default data-dir ./%s", *dir)
 	}
 	if err := os.MkdirAll(*dir, privateDirMode); err != nil {
-		log.Fatalf("main: cannot create data directory: %v", err)
+		log.Fatalf("etcd: cannot create data directory: %v", err)
 	}
 
 	pt, err := transport.NewTransport(peerTLSInfo)
