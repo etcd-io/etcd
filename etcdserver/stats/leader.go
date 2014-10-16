@@ -2,6 +2,7 @@ package stats
 
 import (
 	"math"
+	"sync"
 	"time"
 )
 
@@ -36,10 +37,15 @@ type FollowerStats struct {
 		Fail    uint64 `json:"fail"`
 		Success uint64 `json:"success"`
 	} `json:"counts"`
+
+	sync.Mutex
 }
 
 // Succ updates the FollowerStats with a successful send
 func (fs *FollowerStats) Succ(d time.Duration) {
+	fs.Lock()
+	defer fs.Unlock()
+
 	total := float64(fs.Counts.Success) * fs.Latency.Average
 	totalSquare := float64(fs.Counts.Success) * fs.Latency.averageSquare
 
@@ -64,5 +70,7 @@ func (fs *FollowerStats) Succ(d time.Duration) {
 
 // Fail updates the FollowerStats with an unsuccessful send
 func (fs *FollowerStats) Fail() {
+	fs.Lock()
+	defer fs.Unlock()
 	fs.Counts.Fail++
 }
