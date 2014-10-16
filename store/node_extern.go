@@ -3,6 +3,8 @@ package store
 import (
 	"sort"
 	"time"
+
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/jonboulle/clockwork"
 )
 
 // NodeExtern is the external representation of the
@@ -20,7 +22,7 @@ type NodeExtern struct {
 	CreatedIndex  uint64      `json:"createdIndex,omitempty"`
 }
 
-func (eNode *NodeExtern) loadInternalNode(n *node, recursive, sorted bool) {
+func (eNode *NodeExtern) loadInternalNode(n *node, recursive, sorted bool, clock clockwork.Clock) {
 	if n.IsDir() { // node is a directory
 		eNode.Dir = true
 
@@ -36,7 +38,7 @@ func (eNode *NodeExtern) loadInternalNode(n *node, recursive, sorted bool) {
 				continue
 			}
 
-			eNode.Nodes[i] = child.Repr(recursive, sorted)
+			eNode.Nodes[i] = child.Repr(recursive, sorted, clock)
 			i++
 		}
 
@@ -52,7 +54,7 @@ func (eNode *NodeExtern) loadInternalNode(n *node, recursive, sorted bool) {
 		eNode.Value = &value
 	}
 
-	eNode.Expiration, eNode.TTL = n.ExpirationAndTTL()
+	eNode.Expiration, eNode.TTL = n.expirationAndTTL(clock)
 }
 
 type NodeExterns []*NodeExtern
