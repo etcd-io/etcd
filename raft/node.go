@@ -227,6 +227,10 @@ func (n *node) run(r *raft) {
 		case c := <-n.compactc:
 			r.compact(c.index, c.nodes, c.data)
 		case cc := <-n.confc:
+			if cc.NodeID == None {
+				r.resetPendingConf()
+				break
+			}
 			switch cc.Type {
 			case pb.ConfChangeAddNode:
 				r.addNode(cc.NodeID)

@@ -393,6 +393,10 @@ func (r *raft) handleSnapshot(m pb.Message) {
 	}
 }
 
+func (r *raft) resetPendingConf() {
+	r.pendingConf = false
+}
+
 func (r *raft) addNode(id uint64) {
 	r.setProgress(id, 0, r.raftLog.lastIndex()+1)
 	r.pendingConf = false
