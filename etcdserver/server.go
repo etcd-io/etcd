@@ -34,6 +34,9 @@ const (
 var (
 	ErrUnknownMethod = errors.New("etcdserver: unknown method")
 	ErrStopped       = errors.New("etcdserver: server stopped")
+	ErrIDRemoved     = errors.New("etcdserver: ID removed")
+	ErrIDExists      = errors.New("etcdserver: ID exists")
+	ErrIDNotFound    = errors.New("etcdserver: ID not found")
 )
 
 func init() {
@@ -75,9 +78,13 @@ type Server interface {
 	// Process takes a raft message and applies it to the server's raft state
 	// machine, respecting any timeout of the given context.
 	Process(ctx context.Context, m raftpb.Message) error
-	// AddMember attempts to add a member into the cluster.
+	// AddMember attempts to add a member into the cluster. It will return
+	// ErrIDRemoved if member ID is removed from the cluster, or return
+	// ErrIDExists if member ID exists in the cluster.
 	AddMember(ctx context.Context, memb Member) error
-	// RemoveMember attempts to remove a member from the cluster.
+	// RemoveMember attempts to remove a member from the cluster. It will
+	// return ErrIDRemoved if member ID is removed from the cluster, or return
+	// ErrIDNotFound if member ID is not in the cluster.
 	RemoveMember(ctx context.Context, id uint64) error
 }
 
@@ -214,26 +221,15 @@ func (s *EtcdServer) run() {
 	var syncC <-chan time.Time
 	// snapi indicates the index of the last submitted snapshot request
 	var snapi, appliedi uint64
-	var nodes []uint64
+	var nodes, removedNodes []uint64
 	for {
 		select {
 		case <-s.ticker:
 			s.node.Tick()
 		case rd := <-s.node.Ready():
-			s.storage.Save(rd.HardState, rd.Entries)
-			s.storage.SaveSnap(rd.Snapshot)
-			s.send(rd.Messages)
-
-			// TODO(bmizerany): do this in the background, but take
-			// care to apply entries in a single goroutine, and not
-			// race them.
-			// TODO: apply configuration change into ClusterStore.
-			if len(rd.CommittedEntries) != 0 {
-				appliedi = s.apply(rd.CommittedEntries)
-			}
-
 			if rd.SoftState != nil {
 				nodes = rd.SoftState.Nodes
+				removedNodes = rd.SoftState.RemovedNodes
 				if rd.RaftState == raft.StateLeader {
 					syncC = s.syncTicker
 				} else {
@@ -243,6 +239,18 @@ func (s *EtcdServer) run() {
 					s.Stop()
 					return
 				}
+			}
+
+			s.storage.Save(rd.HardState, rd.Entries)
+			s.storage.SaveSnap(rd.Snapshot)
+			s.send(rd.Messages)
+
+			// TODO(bmizerany): do this in the background, but take
+			// care to apply entries in a single goroutine, and not
+			// race them.
+			// TODO: apply configuration change into ClusterStore.
+			if len(rd.CommittedEntries) != 0 {
+				appliedi = s.apply(rd.CommittedEntries, nodes, removedNodes)
 			}
 
 			if rd.Snapshot.Index > snapi {
@@ -369,7 +377,13 @@ func (s *EtcdServer) configure(ctx context.Context, cc raftpb.ConfChange) error 
 		return err
 	}
 	select {
-	case <-ch:
+	case x := <-ch:
+		if err, ok := x.(error); ok {
+			return err
+		}
+		if x != nil {
+			log.Panicf("unexpected return type")
+		}
 		return nil
 	case <-ctx.Done():
 		s.w.Trigger(cc.ID, nil) // GC wait
@@ -441,7 +455,7 @@ func getExpirationTime(r *pb.Request) time.Time {
 	return t
 }
 
-func (s *EtcdServer) apply(es []raftpb.Entry) uint64 {
+func (s *EtcdServer) apply(es []raftpb.Entry, nodes, removedNodes []uint64) uint64 {
 	var applied uint64
 	for i := range es {
 		e := es[i]
@@ -453,8 +467,7 @@ func (s *EtcdServer) apply(es []raftpb.Entry) uint64 {
 		case raftpb.EntryConfChange:
 			var cc raftpb.ConfChange
 			pbutil.MustUnmarshal(&cc, e.Data)
-			s.applyConfChange(cc)
-			s.w.Trigger(cc.ID, nil)
+			s.w.Trigger(cc.ID, s.applyConfChange(cc, nodes, removedNodes))
 		default:
 			panic("unexpected entry type")
 		}
@@ -506,7 +519,12 @@ func (s *EtcdServer) applyRequest(r pb.Request) Response {
 	}
 }
 
-func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange) {
+func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, nodes, removedNodes []uint64) error {
+	if err := checkConfChange(cc, nodes, removedNodes); err != nil {
+		cc.NodeID = raft.None
+		s.node.ApplyConfChange(cc)
+		return err
+	}
 	s.node.ApplyConfChange(cc)
 	switch cc.Type {
 	case raftpb.ConfChangeAddNode:
@@ -520,9 +538,27 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange) {
 		s.ClusterStore.Add(m)
 	case raftpb.ConfChangeRemoveNode:
 		s.ClusterStore.Remove(cc.NodeID)
+	}
+	return nil
+}
+
+func checkConfChange(cc raftpb.ConfChange, nodes, removedNodes []uint64) error {
+	if containsUint64(removedNodes, cc.NodeID) {
+		return ErrIDRemoved
+	}
+	switch cc.Type {
+	case raftpb.ConfChangeAddNode:
+		if containsUint64(nodes, cc.NodeID) {
+			return ErrIDExists
+		}
+	case raftpb.ConfChangeRemoveNode:
+		if !containsUint64(nodes, cc.NodeID) {
+			return ErrIDNotFound
+		}
 	default:
 		panic("unexpected ConfChange type")
 	}
+	return nil
 }
 
 // TODO: non-blocking snapshot
@@ -589,4 +625,13 @@ func getBool(v *bool) (vv bool, set bool) {
 		return false, false
 	}
 	return *v, true
+}
+
+func containsUint64(a []uint64, x uint64) bool {
+	for _, v := range a {
+		if v == x {
+			return true
+		}
+	}
+	return false
 }

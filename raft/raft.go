@@ -128,7 +128,7 @@ func (r *raft) hasLeader() bool { return r.lead != None }
 func (r *raft) shouldStop() bool { return r.removed[r.id] }
 
 func (r *raft) softState() *SoftState {
-	return &SoftState{Lead: r.lead, RaftState: r.state, Nodes: r.nodes(), ShouldStop: r.shouldStop()}
+	return &SoftState{Lead: r.lead, RaftState: r.state, Nodes: r.nodes(), RemovedNodes: r.removedNodes(), ShouldStop: r.shouldStop()}
 }
 
 func (r *raft) String() string {
@@ -391,6 +391,10 @@ func (r *raft) handleSnapshot(m pb.Message) {
 	} else {
 		r.send(pb.Message{To: m.From, Type: pb.MsgAppResp, Index: r.raftLog.committed})
 	}
+}
+
+func (r *raft) resetPendingConf() {
+	r.pendingConf = false
 }
 
 func (r *raft) addNode(id uint64) {

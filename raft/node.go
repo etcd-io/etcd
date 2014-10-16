@@ -19,10 +19,11 @@ var (
 // SoftState provides state that is useful for logging and debugging.
 // The state is volatile and does not need to be persisted to the WAL.
 type SoftState struct {
-	Lead       uint64
-	RaftState  StateType
-	Nodes      []uint64
-	ShouldStop bool
+	Lead         uint64
+	RaftState    StateType
+	Nodes        []uint64
+	RemovedNodes []uint64
+	ShouldStop   bool
 }
 
 func (a *SoftState) equal(b *SoftState) bool {
@@ -226,6 +227,10 @@ func (n *node) run(r *raft) {
 		case c := <-n.compactc:
 			r.compact(c.index, c.nodes, c.data)
 		case cc := <-n.confc:
+			if cc.NodeID == None {
+				r.resetPendingConf()
+				break
+			}
 			switch cc.Type {
 			case pb.ConfChangeAddNode:
 				r.addNode(cc.NodeID)

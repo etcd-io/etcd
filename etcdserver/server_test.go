@@ -367,6 +367,64 @@ func TestApplyRequest(t *testing.T) {
 	}
 }
 
+func TestApplyConfChangeError(t *testing.T) {
+	nodes := []uint64{1, 2, 3}
+	removedNodes := []uint64{4}
+	tests := []struct {
+		cc   raftpb.ConfChange
+		werr error
+	}{
+		{
+			raftpb.ConfChange{
+				Type:   raftpb.ConfChangeAddNode,
+				NodeID: 1,
+			},
+			ErrIDExists,
+		},
+		{
+			raftpb.ConfChange{
+				Type:   raftpb.ConfChangeAddNode,
+				NodeID: 4,
+			},
+			ErrIDRemoved,
+		},
+		{
+			raftpb.ConfChange{
+				Type:   raftpb.ConfChangeRemoveNode,
+				NodeID: 4,
+			},
+			ErrIDRemoved,
+		},
+		{
+			raftpb.ConfChange{
+				Type:   raftpb.ConfChangeRemoveNode,
+				NodeID: 5,
+			},
+			ErrIDNotFound,
+		},
+	}
+	for i, tt := range tests {
+		n := &nodeRecorder{}
+		srv := &EtcdServer{
+			node: n,
+		}
+		err := srv.applyConfChange(tt.cc, nodes, removedNodes)
+		if err != tt.werr {
+			t.Errorf("#%d: applyConfChange error = %v, want %v", i, err, tt.werr)
+		}
+		cc := raftpb.ConfChange{Type: tt.cc.Type, NodeID: raft.None}
+		w := []action{
+			{
+				name:   "ApplyConfChange",
+				params: []interface{}{cc},
+			},
+		}
+		if g := n.Action(); !reflect.DeepEqual(g, w) {
+			t.Errorf("#%d: action = %+v, want %+v", i, g, w)
+		}
+	}
+}
+
 func TestClusterOf1(t *testing.T) { testServer(t, 1) }
 func TestClusterOf3(t *testing.T) { testServer(t, 3) }
 
@@ -791,6 +849,12 @@ func TestRecvSlowSnapshot(t *testing.T) {
 // TestAddMember tests AddMember can propose and perform node addition.
 func TestAddMember(t *testing.T) {
 	n := newNodeConfChangeCommitterRecorder()
+	n.readyc <- raft.Ready{
+		SoftState: &raft.SoftState{
+			RaftState: raft.StateLeader,
+			Nodes:     []uint64{2, 3},
+		},
+	}
 	cs := &clusterStoreRecorder{}
 	s := &EtcdServer{
 		node:         n,
@@ -801,10 +865,13 @@ func TestAddMember(t *testing.T) {
 	}
 	s.start()
 	m := Member{ID: 1, RaftAttributes: RaftAttributes{PeerURLs: []string{"foo"}}}
-	s.AddMember(context.TODO(), m)
+	err := s.AddMember(context.TODO(), m)
 	gaction := n.Action()
 	s.Stop()
 
+	if err != nil {
+		t.Fatalf("AddMember error: %v", err)
+	}
 	wactions := []action{action{name: "ProposeConfChange:ConfChangeAddNode"}, action{name: "ApplyConfChange:ConfChangeAddNode"}}
 	if !reflect.DeepEqual(gaction, wactions) {
 		t.Errorf("action = %v, want %v", gaction, wactions)
@@ -818,6 +885,12 @@ func TestAddMember(t *testing.T) {
 // TestRemoveMember tests RemoveMember can propose and perform node removal.
 func TestRemoveMember(t *testing.T) {
 	n := newNodeConfChangeCommitterRecorder()
+	n.readyc <- raft.Ready{
+		SoftState: &raft.SoftState{
+			RaftState: raft.StateLeader,
+			Nodes:     []uint64{1, 2, 3},
+		},
+	}
 	cs := &clusterStoreRecorder{}
 	s := &EtcdServer{
 		node:         n,
@@ -828,10 +901,13 @@ func TestRemoveMember(t *testing.T) {
 	}
 	s.start()
 	id := uint64(1)
-	s.RemoveMember(context.TODO(), id)
+	err := s.RemoveMember(context.TODO(), id)
 	gaction := n.Action()
 	s.Stop()
 
+	if err != nil {
+		t.Fatalf("RemoveMember error: %v", err)
+	}
 	wactions := []action{action{name: "ProposeConfChange:ConfChangeRemoveNode"}, action{name: "ApplyConfChange:ConfChangeRemoveNode"}}
 	if !reflect.DeepEqual(gaction, wactions) {
 		t.Errorf("action = %v, want %v", gaction, wactions)
@@ -1164,7 +1240,7 @@ func (n *nodeRecorder) Step(ctx context.Context, msg raftpb.Message) error {
 }
 func (n *nodeRecorder) Ready() <-chan raft.Ready { return nil }
 func (n *nodeRecorder) ApplyConfChange(conf raftpb.ConfChange) {
-	n.record(action{name: "ApplyConfChange"})
+	n.record(action{name: "ApplyConfChange", params: []interface{}{conf}})
 }
 func (n *nodeRecorder) Stop() {
 	n.record(action{name: "Stop"})
@@ -1210,7 +1286,6 @@ type nodeConfChangeCommitterRecorder struct {
 
 func newNodeConfChangeCommitterRecorder() *nodeConfChangeCommitterRecorder {
 	readyc := make(chan raft.Ready, 1)
-	readyc <- raft.Ready{SoftState: &raft.SoftState{RaftState: raft.StateLeader}}
 	return &nodeConfChangeCommitterRecorder{readyc: readyc}
 }
 func (n *nodeConfChangeCommitterRecorder) ProposeConfChange(ctx context.Context, conf raftpb.ConfChange) error {
