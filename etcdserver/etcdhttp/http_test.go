@@ -19,6 +19,7 @@ import (
 	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"github.com/coreos/etcd/etcdserver/stats"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/store"
 )
@@ -633,8 +634,129 @@ func TestServeMachines(t *testing.T) {
 		t.Errorf("body = %s, want %s", g, w)
 	}
 	if writer.Code != http.StatusOK {
-		t.Errorf("header = %d, want %d", writer.Code, http.StatusOK)
+		t.Errorf("code = %d, want %d", writer.Code, http.StatusOK)
 	}
+}
+
+type dummyServerStats struct {
+	ss *stats.ServerStats
+	ls *stats.LeaderStats
+}
+
+func (dss *dummyServerStats) SelfStats() *stats.ServerStats   { return dss.ss }
+func (dss *dummyServerStats) LeaderStats() *stats.LeaderStats { return dss.ls }
+
+func TestServeSelfStats(t *testing.T) {
+	ss := &stats.ServerStats{
+		Name:           "foobar",
+		RecvingPkgRate: 123.4,
+	}
+	w, err := json.Marshal(ss)
+	if err != nil {
+		t.Fatal("error marshaling: %v", err)
+	}
+	sh := &serverHandler{
+		stats: &dummyServerStats{
+			ss: ss,
+		},
+	}
+	rw := httptest.NewRecorder()
+	sh.serveSelfStats(rw, &http.Request{Method: "GET"})
+	if rw.Code != http.StatusOK {
+		t.Errorf("code = %d, want %d", rw.Code, http.StatusOK)
+	}
+	wct := "application/json"
+	if gct := rw.Header().Get("Content-Type"); gct != wct {
+		t.Errorf("Content-Type = %q, want %q", gct, wct)
+	}
+	if g := rw.Body.String(); g != string(w) {
+		t.Errorf("body = %s, want %s", g, string(w))
+	}
+}
+
+func TestSelfServeStatsBad(t *testing.T) {
+	for _, m := range []string{"PUT", "POST", "DELETE"} {
+		sh := &serverHandler{}
+		rw := httptest.NewRecorder()
+		sh.serveSelfStats(
+			rw,
+			&http.Request{
+				Method: m,
+			},
+		)
+		if rw.Code != http.StatusMethodNotAllowed {
+			t.Errorf("method %s: code=%d, want %d", m, http.StatusMethodNotAllowed)
+		}
+	}
+}
+
+func TestLeaderServeStatsBad(t *testing.T) {
+	for _, m := range []string{"PUT", "POST", "DELETE"} {
+		sh := &serverHandler{}
+		rw := httptest.NewRecorder()
+		sh.serveLeaderStats(
+			rw,
+			&http.Request{
+				Method: m,
+			},
+		)
+		if rw.Code != http.StatusMethodNotAllowed {
+			t.Errorf("method %s: code=%d, want %d", m, http.StatusMethodNotAllowed)
+		}
+	}
+}
+
+func TestServeLeaderStats(t *testing.T) {
+	ls := &stats.LeaderStats{
+		Leader: "foobar",
+	}
+	w, err := json.Marshal(ls)
+	if err != nil {
+		t.Fatal("error marshaling: %v", err)
+	}
+	sh := &serverHandler{
+		stats: &dummyServerStats{
+			ls: ls,
+		},
+	}
+	rw := httptest.NewRecorder()
+	sh.serveLeaderStats(rw, &http.Request{Method: "GET"})
+	if rw.Code != http.StatusOK {
+		t.Errorf("code = %d, want %d", rw.Code, http.StatusOK)
+	}
+	wct := "application/json"
+	if gct := rw.Header().Get("Content-Type"); gct != wct {
+		t.Errorf("Content-Type = %q, want %q", gct, wct)
+	}
+	if g := rw.Body.String(); g != string(w) {
+		t.Errorf("body = %s, want %s", g, string(w))
+	}
+}
+
+type dummyStoreStats struct {
+	data []byte
+}
+
+func (dss *dummyStoreStats) JSON() []byte { return dss.data }
+
+func TestServeStoreStats(t *testing.T) {
+	w := "foobarbaz"
+	sh := &serverHandler{
+		storestats: &dummyStoreStats{data: []byte(w)},
+	}
+	rw := httptest.NewRecorder()
+	sh.serveStoreStats(rw, &http.Request{Method: "GET"})
+	if rw.Code != http.StatusOK {
+		t.Errorf("code = %d, want %d", rw.Code, http.StatusOK)
+	}
+	wct := "application/json"
+	if gct := rw.Header().Get("Content-Type"); gct != wct {
+		t.Errorf("Content-Type = %q, want %q", gct, wct)
+	}
+	if g := rw.Body.String(); g != w {
+		t.Errorf("body = %s, want %s", g, w)
+	}
+
 }
 
 func TestAllowMethod(t *testing.T) {

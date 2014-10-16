@@ -6,8 +6,12 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
+	"time"
 
 	etcdErr "github.com/coreos/etcd/error"
+
+	"github.com/coreos/etcd/etcdserver/stats"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/store"
 )
@@ -103,19 +107,25 @@ func (s *clusterStore) Remove(id uint64) {
 	}
 }
 
-func Sender(t *http.Transport, cls ClusterStore) func(msgs []raftpb.Message) {
+// Sender creates the default production sender used to transport raft messages
+// in the cluster. The returned sender will update the given ServerStats and
+// LeaderStats appropriately.
+func Sender(t *http.Transport, cls ClusterStore, ss *stats.ServerStats, ls *stats.LeaderStats) func(msgs []raftpb.Message) {
 	c := &http.Client{Transport: t}
 
 	return func(msgs []raftpb.Message) {
 		for _, m := range msgs {
 			// TODO: reuse go routines
 			// limit the number of outgoing connections for the same receiver
-			go send(c, cls, m)
+			go send(c, cls, m, ss, ls)
 		}
 	}
 }
 
-func send(c *http.Client, cls ClusterStore, m raftpb.Message) {
+// send uses the given client to send a message to a member in the given
+// ClusterStore, retrying up to 3 times for each message. The given
+// ServerStats and LeaderStats are updated appropriately
+func send(c *http.Client, cls ClusterStore, m raftpb.Message, ss *stats.ServerStats, ls *stats.LeaderStats) {
 	// TODO (xiangli): reasonable retry logic
 	for i := 0; i < 3; i++ {
 		u := cls.Get().Pick(m.To)
@@ -126,7 +136,6 @@ func send(c *http.Client, cls ClusterStore, m raftpb.Message) {
 			log.Printf("etcdhttp: no addr for %d", m.To)
 			return
 		}
-
 		u = fmt.Sprintf("%s%s", u, raftPrefix)
 
 		// TODO: don't block. we should be able to have 1000s
@@ -136,13 +145,31 @@ func send(c *http.Client, cls ClusterStore, m raftpb.Message) {
 			log.Println("etcdhttp: dropping message:", err)
 			return // drop bad message
 		}
-		if httpPost(c, u, data) {
-			return // success
+		if m.Type == raftpb.MsgApp {
+			ss.SendAppendReq(len(data))
 		}
+		to := strconv.FormatUint(m.To, 16)
+		fs, ok := ls.Followers[to]
+		if !ok {
+			fs = &stats.FollowerStats{}
+			fs.Latency.Minimum = 1 << 63
+			ls.Followers[to] = fs
+		}
+
+		start := time.Now()
+		sent := httpPost(c, u, data)
+		end := time.Now()
+		if sent {
+			fs.Succ(end.Sub(start))
+			return
+		}
+		fs.Fail()
 		// TODO: backoff
 	}
 }
 
+// httpPost POSTs a data payload to a url using the given client. Returns true
+// if the POST succeeds, false on any failure.
 func httpPost(c *http.Client, url string, data []byte) bool {
 	resp, err := c.Post(url, "application/protobuf", bytes.NewBuffer(data))
 	if err != nil {

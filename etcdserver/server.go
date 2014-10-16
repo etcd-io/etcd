@@ -6,12 +6,14 @@ import (
 	"log"
 	"math/rand"
 	"os"
+	"strconv"
 	"sync/atomic"
 	"time"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/code.google.com/p/go.net/context"
 	"github.com/coreos/etcd/discovery"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"github.com/coreos/etcd/etcdserver/stats"
 	"github.com/coreos/etcd/pkg/pbutil"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
@@ -88,6 +90,20 @@ type Server interface {
 	RemoveMember(ctx context.Context, id uint64) error
 }
 
+type ServerStats interface {
+	// SelfStats returns the statistics of this server
+	SelfStats() *stats.ServerStats
+	// LeaderStats returns the statistics of all followers in the cluster
+	// if this server is leader. Otherwise, nil is returned.
+	LeaderStats() *stats.LeaderStats
+}
+
+type StoreStats interface {
+	// JSON returns statistics of the underlying Store used by the
+	// EtcdServer, in JSON format
+	JSON() []byte
+}
+
 type RaftTimer interface {
 	Index() uint64
 	Term() uint64
@@ -104,6 +120,9 @@ type EtcdServer struct {
 
 	node  raft.Node
 	store store.Store
+
+	stats  *stats.ServerStats
+	lstats *stats.LeaderStats
 
 	// send specifies the send function for sending msgs to members. send
 	// MUST NOT block. It is okay to drop messages, since clients should
@@ -172,6 +191,13 @@ func NewServer(cfg *ServerConfig) *EtcdServer {
 	}
 
 	cls := &clusterStore{Store: st}
+
+	sstats := &stats.ServerStats{
+		Name: cfg.Name,
+		ID:   strconv.FormatUint(cfg.ID(), 16),
+	}
+	lstats := stats.NewLeaderStats(strconv.FormatUint(cfg.ID(), 16))
+
 	s := &EtcdServer{
 		store:      st,
 		node:       n,
@@ -181,7 +207,9 @@ func NewServer(cfg *ServerConfig) *EtcdServer {
 			*wal.WAL
 			*snap.Snapshotter
 		}{w, ss},
-		send:         Sender(cfg.Transport, cls),
+		stats:        sstats,
+		lstats:       lstats,
+		send:         Sender(cfg.Transport, cls, sstats, lstats),
 		ticker:       time.Tick(100 * time.Millisecond),
 		syncTicker:   time.Tick(500 * time.Millisecond),
 		snapCount:    cfg.SnapCount,
@@ -208,6 +236,7 @@ func (s *EtcdServer) start() {
 	}
 	s.w = wait.New()
 	s.done = make(chan struct{})
+	s.stats.Initialize()
 	// TODO: if this is an empty log, writes all peer infos
 	// into the first entry
 	go s.run()
@@ -332,6 +361,22 @@ func (s *EtcdServer) Do(ctx context.Context, r pb.Request) (Response, error) {
 	default:
 		return Response{}, ErrUnknownMethod
 	}
+}
+
+func (s *EtcdServer) SelfStats() *stats.ServerStats {
+	s.stats.LeaderInfo.Uptime = time.Now().Sub(s.stats.LeaderInfo.StartTime).String()
+	s.stats.SendingPkgRate, s.stats.SendingBandwidthRate = s.stats.SendRates()
+	s.stats.RecvingPkgRate, s.stats.RecvingBandwidthRate = s.stats.RecvRates()
+	return s.stats
+}
+
+func (s *EtcdServer) LeaderStats() *stats.LeaderStats {
+	// TODO(jonboulle): need to lock access to lstats, set it to nil when not leader, ...
+	return s.lstats
+}
+
+func (s *EtcdServer) StoreStats() []byte {
+	return s.store.JsonStats()
 }
 
 func (s *EtcdServer) AddMember(ctx context.Context, memb Member) error {
