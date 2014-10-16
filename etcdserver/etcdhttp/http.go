@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/code.google.com/p/go.net/context"
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/jonboulle/clockwork"
 	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/etcdserverpb"
@@ -89,7 +90,7 @@ func (h serverHandler) serveKeys(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(context.Background(), h.timeout)
 	defer cancel()
 
-	rr, err := parseRequest(r, etcdserver.GenID())
+	rr, err := parseRequest(r, etcdserver.GenID(), clockwork.NewRealClock())
 	if err != nil {
 		writeError(w, err)
 		return
@@ -225,7 +226,7 @@ func (h serverHandler) serveRaft(w http.ResponseWriter, r *http.Request) {
 // parseRequest converts a received http.Request to a server Request,
 // performing validation of supplied fields as appropriate.
 // If any validation fails, an empty Request and non-nil error is returned.
-func parseRequest(r *http.Request, id uint64) (etcdserverpb.Request, error) {
+func parseRequest(r *http.Request, id uint64, clock clockwork.Clock) (etcdserverpb.Request, error) {
 	emptyReq := etcdserverpb.Request{}
 
 	err := r.ParseForm()
@@ -354,11 +355,9 @@ func parseRequest(r *http.Request, id uint64) (etcdserverpb.Request, error) {
 	}
 
 	// Null TTL is equivalent to unset Expiration
-	// TODO(jonboulle): use fake clock instead of time module
-	// https://github.com/coreos/etcd/issues/1021
 	if ttl != nil {
 		expr := time.Duration(*ttl) * time.Second
-		rr.Expiration = time.Now().Add(expr).UnixNano()
+		rr.Expiration = clock.Now().Add(expr).UnixNano()
 	}
 
 	return rr, nil
