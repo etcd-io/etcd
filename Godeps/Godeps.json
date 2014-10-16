@@ -15,6 +15,10 @@
 			"Rev": "7fd1620f09261338b6b1ca1289ace83aee0ec946"
 		},
 		{
+			"ImportPath": "github.com/jonboulle/clockwork",
+			"Rev": "46fde511e4fda2f685792de1700f20e1c45bfe41"
+		},
+		{
 			"ImportPath": "github.com/stretchr/testify/assert",
 			"Rev": "9cc77fa25329013ce07362c7742952ff887361f2"
 		}

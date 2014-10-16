@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/client"
-	"github.com/jonboulle/clockwork"
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/jonboulle/clockwork"
 )
 
 var (
