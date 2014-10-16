@@ -61,9 +61,10 @@ func NewClientHandler(server *etcdserver.EtcdServer) http.Handler {
 }
 
 // NewPeerHandler generates an http.Handler to handle etcd peer (raft) requests.
-func NewPeerHandler(server etcdserver.Server) http.Handler {
+func NewPeerHandler(server *etcdserver.EtcdServer) http.Handler {
 	sh := &serverHandler{
 		server: server,
+		stats:  server,
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc(raftPrefix, sh.serveRaft)
