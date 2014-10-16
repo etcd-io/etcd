@@ -149,12 +149,7 @@ func send(c *http.Client, cls ClusterStore, m raftpb.Message, ss *stats.ServerSt
 			ss.SendAppendReq(len(data))
 		}
 		to := strconv.FormatUint(m.To, 16)
-		fs, ok := ls.Followers[to]
-		if !ok {
-			fs = &stats.FollowerStats{}
-			fs.Latency.Minimum = 1 << 63
-			ls.Followers[to] = fs
-		}
+		fs := ls.Follower(to)
 
 		start := time.Now()
 		sent := httpPost(c, u, data)

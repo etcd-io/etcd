@@ -11,6 +11,8 @@ type LeaderStats struct {
 	// TODO(jonboulle): clarify that these are IDs, not names
 	Leader    string                    `json:"leader"`
 	Followers map[string]*FollowerStats `json:"followers"`
+
+	sync.Mutex
 }
 
 // NewLeaderStats generates a new LeaderStats with the given id as leader
@@ -19,6 +21,18 @@ func NewLeaderStats(id string) *LeaderStats {
 		Leader:    id,
 		Followers: make(map[string]*FollowerStats),
 	}
+}
+
+func (ls *LeaderStats) Follower(name string) *FollowerStats {
+	ls.Lock()
+	defer ls.Unlock()
+	fs, ok := ls.Followers[name]
+	if !ok {
+		fs = &FollowerStats{}
+		fs.Latency.Minimum = 1 << 63
+		ls.Followers[name] = fs
+	}
+	return fs
 }
 
 // FollowerStats encapsulates various statistics about a follower in an etcd cluster
