@@ -473,7 +473,7 @@ func testServer(t *testing.T, ns uint64) {
 			store:        store.New(),
 			send:         send,
 			storage:      &storageRecorder{},
-			ticker:       tk.C,
+			Ticker:       tk.C,
 			ClusterStore: &clusterStoreRecorder{},
 		}
 		srv.start()
@@ -540,7 +540,7 @@ func TestDoProposal(t *testing.T) {
 			store:        st,
 			send:         func(_ []raftpb.Message) {},
 			storage:      &storageRecorder{},
-			ticker:       tk,
+			Ticker:       tk,
 			ClusterStore: &clusterStoreRecorder{},
 		}
 		srv.start()
@@ -611,7 +611,7 @@ func TestDoProposalStopped(t *testing.T) {
 		store:   st,
 		send:    func(_ []raftpb.Message) {},
 		storage: &storageRecorder{},
-		ticker:  tk,
+		Ticker:  tk,
 	}
 	srv.start()
 
@@ -711,7 +711,7 @@ func TestSyncTrigger(t *testing.T) {
 		store:      &storeRecorder{},
 		send:       func(_ []raftpb.Message) {},
 		storage:    &storageRecorder{},
-		syncTicker: st,
+		SyncTicker: st,
 	}
 	srv.start()
 	// trigger the server to become a leader and accept sync requests
