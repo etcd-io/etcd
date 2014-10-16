@@ -896,8 +896,8 @@ func TestRecvMsgBeat(t *testing.T) {
 
 func TestRestore(t *testing.T) {
 	s := pb.Snapshot{
-		Index:        defaultCompactThreshold + 1,
-		Term:         defaultCompactThreshold + 1,
+		Index:        11, // magic number
+		Term:         11, // magic number
 		Nodes:        []uint64{1, 2, 3},
 		RemovedNodes: []uint64{4, 5},
 	}
@@ -934,8 +934,8 @@ func TestRestore(t *testing.T) {
 
 func TestProvideSnap(t *testing.T) {
 	s := pb.Snapshot{
-		Index: defaultCompactThreshold + 1,
-		Term:  defaultCompactThreshold + 1,
+		Index: 11, // magic number
+		Term:  11, // magic number
 		Nodes: []uint64{1, 2},
 	}
 	sm := newRaft(1, []uint64{1}, 10, 1)
@@ -963,8 +963,8 @@ func TestProvideSnap(t *testing.T) {
 
 func TestRestoreFromSnapMsg(t *testing.T) {
 	s := pb.Snapshot{
-		Index: defaultCompactThreshold + 1,
-		Term:  defaultCompactThreshold + 1,
+		Index: 11, // magic number
+		Term:  11, // magic number
 		Nodes: []uint64{1, 2},
 	}
 	m := pb.Message{Type: pb.MsgSnap, From: 1, Term: 2, Snapshot: s}
@@ -982,7 +982,7 @@ func TestSlowNodeRestore(t *testing.T) {
 	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgHup})
 
 	nt.isolate(3)
-	for j := 0; j < defaultCompactThreshold+1; j++ {
+	for j := 0; j <= 100; j++ {
 		nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{}}})
 	}
 	lead := nt.peers[1].(*raft)

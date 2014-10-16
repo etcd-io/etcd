@@ -6,10 +6,6 @@ import (
 	pb "github.com/coreos/etcd/raft/raftpb"
 )
 
-const (
-	defaultCompactThreshold = 10000
-)
-
 type raftLog struct {
 	ents      []pb.Entry
 	unstable  uint64
@@ -17,19 +13,14 @@ type raftLog struct {
 	applied   uint64
 	offset    uint64
 	snapshot  pb.Snapshot
-
-	// want a compact after the number of entries exceeds the threshold
-	// TODO(xiangli) size might be a better criteria
-	compactThreshold uint64
 }
 
 func newLog() *raftLog {
 	return &raftLog{
-		ents:             make([]pb.Entry, 1),
-		unstable:         0,
-		committed:        0,
-		applied:          0,
-		compactThreshold: defaultCompactThreshold,
+		ents:      make([]pb.Entry, 1),
+		unstable:  0,
+		committed: 0,
+		applied:   0,
 	}
 }
 
@@ -176,10 +167,6 @@ func (l *raftLog) snap(d []byte, index, term uint64, nodes []uint64, removed []u
 		Term:         term,
 		RemovedNodes: removed,
 	}
-}
-
-func (l *raftLog) shouldCompact() bool {
-	return (l.applied - l.offset) > l.compactThreshold
 }
 
 func (l *raftLog) restore(s pb.Snapshot) {
