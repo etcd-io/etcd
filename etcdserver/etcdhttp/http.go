@@ -42,6 +42,7 @@ func NewClientHandler(server *etcdserver.EtcdServer) http.Handler {
 		server:       server,
 		clusterStore: server.ClusterStore,
 		stats:        server,
+		storestats:   server,
 		timer:        server,
 		timeout:      defaultServerTimeout,
 	}
@@ -175,22 +176,15 @@ func (h serverHandler) serveStoreStats(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.Write(h.storestats.JSON())
+	w.Write(h.storestats.StoreStatsJSON())
 }
 
 func (h serverHandler) serveSelfStats(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r.Method, "GET") {
 		return
 	}
-	s := h.stats.SelfStats()
-	b, err := json.Marshal(s)
-	if err != nil {
-		log.Printf("error marshalling stats: %v\n", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
 	w.Header().Set("Content-Type", "application/json")
-	w.Write(b)
+	w.Write(h.stats.SelfStatsJSON())
 }
 
 func (h serverHandler) serveLeaderStats(w http.ResponseWriter, r *http.Request) {

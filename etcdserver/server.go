@@ -91,17 +91,18 @@ type Server interface {
 }
 
 type ServerStats interface {
-	// SelfStats returns the statistics of this server
+	// SelfStats returns the struct representing statistics of this server
 	SelfStats() *stats.ServerStats
+	// SelfStats returns the statistics of this server in JSON form
+	SelfStatsJSON() []byte
 	// LeaderStats returns the statistics of all followers in the cluster
 	// if this server is leader. Otherwise, nil is returned.
 	LeaderStats() *stats.LeaderStats
 }
 
 type StoreStats interface {
-	// JSON returns statistics of the underlying Store used by the
-	// EtcdServer, in JSON format
-	JSON() []byte
+	// StoreStatsJSON returns statistics of the store in JSON format
+	StoreStatsJSON() []byte
 }
 
 type RaftTimer interface {
@@ -364,10 +365,20 @@ func (s *EtcdServer) Do(ctx context.Context, r pb.Request) (Response, error) {
 }
 
 func (s *EtcdServer) SelfStats() *stats.ServerStats {
-	s.stats.LeaderInfo.Uptime = time.Now().Sub(s.stats.LeaderInfo.StartTime).String()
-	s.stats.SendingPkgRate, s.stats.SendingBandwidthRate = s.stats.SendRates()
-	s.stats.RecvingPkgRate, s.stats.RecvingBandwidthRate = s.stats.RecvRates()
 	return s.stats
+}
+
+func (s *EtcdServer) SelfStatsJSON() []byte {
+	stats := *s.stats
+	stats.LeaderInfo.Uptime = time.Now().Sub(stats.LeaderInfo.StartTime).String()
+	stats.SendingPkgRate, stats.SendingBandwidthRate = stats.SendRates()
+	stats.RecvingPkgRate, stats.RecvingBandwidthRate = stats.RecvRates()
+	b, err := json.Marshal(s.stats)
+	// TODO(jonboulle): appropriate error handling?
+	if err != nil {
+		log.Printf("error marshalling self stats: %v", err)
+	}
+	return b
 }
 
 func (s *EtcdServer) LeaderStats() *stats.LeaderStats {
@@ -375,7 +386,7 @@ func (s *EtcdServer) LeaderStats() *stats.LeaderStats {
 	return s.lstats
 }
 
-func (s *EtcdServer) StoreStats() []byte {
+func (s *EtcdServer) StoreStatsJSON() []byte {
 	return s.store.JsonStats()
 }
 

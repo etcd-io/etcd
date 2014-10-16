@@ -639,11 +639,12 @@ func TestServeMachines(t *testing.T) {
 }
 
 type dummyServerStats struct {
-	ss *stats.ServerStats
+	js []byte
 	ls *stats.LeaderStats
 }
 
-func (dss *dummyServerStats) SelfStats() *stats.ServerStats   { return dss.ss }
+func (dss *dummyServerStats) SelfStatsJSON() []byte           { return dss.js }
+func (dss *dummyServerStats) SelfStats() *stats.ServerStats   { return nil }
 func (dss *dummyServerStats) LeaderStats() *stats.LeaderStats { return dss.ls }
 
 func TestServeSelfStats(t *testing.T) {
@@ -657,7 +658,7 @@ func TestServeSelfStats(t *testing.T) {
 	}
 	sh := &serverHandler{
 		stats: &dummyServerStats{
-			ss: ss,
+			js: w,
 		},
 	}
 	rw := httptest.NewRecorder()
@@ -737,7 +738,7 @@ type dummyStoreStats struct {
 	data []byte
 }
 
-func (dss *dummyStoreStats) JSON() []byte { return dss.data }
+func (dss *dummyStoreStats) StoreStatsJSON() []byte { return dss.data }
 
 func TestServeStoreStats(t *testing.T) {
 	w := "foobarbaz"
