@@ -27,7 +27,10 @@ func NewLeaderStats(id string) *LeaderStats {
 }
 
 func (ls *LeaderStats) JSON() []byte {
-	b, err := json.Marshal(ls)
+	ls.Lock()
+	stats := *ls
+	ls.Unlock()
+	b, err := json.Marshal(stats)
 	// TODO(jonboulle): appropriate error handling?
 	if err != nil {
 		log.Printf("error marshalling leader stats: %v", err)
