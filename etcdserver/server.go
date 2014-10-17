@@ -364,7 +364,7 @@ func (s *EtcdServer) Do(ctx context.Context, r pb.Request) (Response, error) {
 }
 
 func (s *EtcdServer) SelfStats() *stats.ServerStats {
-	s.stats.LeaderInfo.Uptime = time.Now().Sub(s.stats.LeaderInfo.StartTime).String()
+	s.stats.UpdateLeaderUptime()
 	s.stats.SendingPkgRate, s.stats.SendingBandwidthRate = s.stats.SendRates()
 	s.stats.RecvingPkgRate, s.stats.RecvingBandwidthRate = s.stats.RecvRates()
 	return s.stats

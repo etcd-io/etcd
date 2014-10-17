@@ -62,6 +62,12 @@ func (ss *ServerStats) SendRates() (float64, float64) {
 	return ss.sendRateQueue.Rate()
 }
 
+func (ss *ServerStats) UpdateLeaderUptime() {
+	ss.Lock()
+	defer ss.Unlock()
+	ss.LeaderInfo.Uptime = time.Now().Sub(ss.LeaderInfo.StartTime).String()
+}
+
 // RecvAppendReq updates the ServerStats in response to an AppendRequest
 // from the given leader being received
 func (ss *ServerStats) RecvAppendReq(leader string, reqSize int) {
