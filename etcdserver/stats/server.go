@@ -40,11 +40,12 @@ type ServerStats struct {
 
 func (ss *ServerStats) JSON() []byte {
 	ss.Lock()
-	defer ss.Unlock()
-	ss.LeaderInfo.Uptime = time.Now().Sub(ss.LeaderInfo.StartTime).String()
-	ss.SendingPkgRate, ss.SendingBandwidthRate = ss.SendRates()
-	ss.RecvingPkgRate, ss.RecvingBandwidthRate = ss.RecvRates()
-	b, err := json.Marshal(ss)
+	stats := *ss
+	ss.Unlock()
+	stats.LeaderInfo.Uptime = time.Now().Sub(stats.LeaderInfo.StartTime).String()
+	stats.SendingPkgRate, stats.SendingBandwidthRate = stats.SendRates()
+	stats.RecvingPkgRate, stats.RecvingBandwidthRate = stats.RecvRates()
+	b, err := json.Marshal(stats)
 	// TODO(jonboulle): appropriate error handling?
 	if err != nil {
 		log.Printf("error marshalling server stats: %v", err)
