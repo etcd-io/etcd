@@ -36,6 +36,7 @@ func testCluster(t *testing.T, size int) {
 	c.Terminate(t)
 }
 
+// TODO: use etcd client
 func setKey(u url.URL, key string, value string) error {
 	u.Path = "/v2/keys" + key
 	v := url.Values{"value": []string{value}}
@@ -62,28 +63,29 @@ type cluster struct {
 	Members []member
 }
 
+// TODO: support TLS
 func (c *cluster) Launch(t *testing.T) {
 	if c.Size <= 0 {
 		t.Fatalf("cluster size <= 0")
 	}
 
-	peerListeners := make([]net.Listener, c.Size)
-	peerAddrs := make([]string, c.Size)
+	lns := make([]net.Listener, c.Size)
+	btConfs := make([]string, c.Size)
 	for i := 0; i < c.Size; i++ {
 		l := newLocalListener(t)
 		// each member claims only one peer listener
-		peerListeners[i] = l
-		peerAddrs[i] = fmt.Sprintf("%s=%s", c.name(i), "http://"+l.Addr().String())
+		lns[i] = l
+		btConfs[i] = fmt.Sprintf("%s=%s", c.name(i), "http://"+l.Addr().String())
 	}
 	clusterConfig := &etcdserver.Cluster{}
-	if err := clusterConfig.Set(strings.Join(peerAddrs, ",")); err != nil {
+	if err := clusterConfig.Set(strings.Join(btConfs, ",")); err != nil {
 		t.Fatal(err)
 	}
 
 	var err error
 	for i := 0; i < c.Size; i++ {
 		m := member{}
-		m.PeerListeners = []net.Listener{peerListeners[i]}
+		m.PeerListeners = []net.Listener{lns[i]}
 		cln := newLocalListener(t)
 		m.ClientListeners = []net.Listener{cln}
 
