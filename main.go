@@ -259,7 +259,7 @@ func setClusterForDiscovery() error {
 		return fmt.Errorf("both discovery and initial-cluster are set")
 	}
 	if set["discovery"] {
-		apurls, err := pkg.URLsFromFlags(flag.CommandLine, "advertise-peer-urls", "addr", peerTLSInfo)
+		apurls, err := pkg.URLsFromFlags(flag.CommandLine, "advertise-peer-urls", "peer-addr", peerTLSInfo)
 		if err != nil {
 			return err
 		}
