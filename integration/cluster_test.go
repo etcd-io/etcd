@@ -34,7 +34,13 @@ func testCluster(t *testing.T, size int) {
 	c.Launch(t)
 	for i := 0; i < size; i++ {
 		for _, u := range c.Members[i].ClientURLs {
-			if err := setKey(u, "/foo", "bar"); err != nil {
+			var err error
+			for j := 0; j < 3; j++ {
+				if err = setKey(u, "/foo", "bar"); err == nil {
+					break
+				}
+			}
+			if err != nil {
 				t.Errorf("setKey on %v error: %v", u.String(), err)
 			}
 		}
