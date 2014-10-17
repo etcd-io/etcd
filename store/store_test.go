@@ -38,11 +38,31 @@ func TestStoreGetValue(t *testing.T) {
 	assert.Equal(t, *e.Node.Value, "bar", "")
 }
 
+// Ensure that any TTL <= minExpireTime becomes Permanent
+func TestMinExpireTime(t *testing.T) {
+	s := newStore()
+	fc := clockwork.NewFakeClock()
+	s.clock = fc
+	// FakeClock starts at 0, so minExpireTime should be far in the future.. but just in case
+	assert.True(t, minExpireTime.After(fc.Now()), "minExpireTime should be ahead of FakeClock!")
+	s.Create("/foo", false, "Y", false, fc.Now().Add(3*time.Second))
+	fc.Advance(5 * time.Second)
+	// Ensure it hasn't expired
+	s.DeleteExpiredKeys(fc.Now())
+	var eidx uint64 = 1
+	e, err := s.Get("/foo", true, false)
+	assert.Nil(t, err, "")
+	assert.Equal(t, e.EtcdIndex, eidx, "")
+	assert.Equal(t, e.Action, "get", "")
+	assert.Equal(t, e.Node.Key, "/foo", "")
+	assert.Equal(t, e.Node.TTL, 0)
+}
+
 // Ensure that the store can recrusively retrieve a directory listing.
 // Note that hidden files should not be returned.
 func TestStoreGetDirectory(t *testing.T) {
 	s := newStore()
-	fc := clockwork.NewFakeClock()
+	fc := newFakeClock()
 	s.clock = fc
 	s.Create("/foo", true, "", false, Permanent)
 	s.Create("/foo/bar", false, "X", false, Permanent)
@@ -314,7 +334,7 @@ func TestStoreUpdateFailsIfDirectory(t *testing.T) {
 // Ensure that the store can update the TTL on a value.
 func TestStoreUpdateValueTTL(t *testing.T) {
 	s := newStore()
-	fc := clockwork.NewFakeClock()
+	fc := newFakeClock()
 	s.clock = fc
 
 	var eidx uint64 = 2
@@ -333,7 +353,7 @@ func TestStoreUpdateValueTTL(t *testing.T) {
 // Ensure that the store can update the TTL on a directory.
 func TestStoreUpdateDirTTL(t *testing.T) {
 	s := newStore()
-	fc := clockwork.NewFakeClock()
+	fc := newFakeClock()
 	s.clock = fc
 
 	var eidx uint64 = 3
@@ -703,7 +723,7 @@ func TestStoreWatchRecursiveCompareAndSwap(t *testing.T) {
 // Ensure that the store can watch for key expiration.
 func TestStoreWatchExpire(t *testing.T) {
 	s := newStore()
-	fc := clockwork.NewFakeClock()
+	fc := newFakeClock()
 	s.clock = fc
 
 	var eidx uint64 = 2
@@ -783,9 +803,9 @@ func TestStoreRecover(t *testing.T) {
 // Ensure that the store can recover from a previously saved state that includes an expiring key.
 func TestStoreRecoverWithExpiration(t *testing.T) {
 	s := newStore()
-	s.clock = clockwork.NewFakeClock()
+	s.clock = newFakeClock()
 
-	fc := clockwork.NewFakeClock()
+	fc := newFakeClock()
 
 	var eidx uint64 = 4
 	s.Create("/foo", true, "", false, Permanent)
@@ -894,7 +914,7 @@ func TestStoreWatchRecursiveDeleteWithHiddenKey(t *testing.T) {
 // Ensure that the store doesn't see expirations of hidden keys.
 func TestStoreWatchExpireWithHiddenKey(t *testing.T) {
 	s := newStore()
-	fc := clockwork.NewFakeClock()
+	fc := newFakeClock()
 	s.clock = fc
 
 	s.Create("/_foo", false, "bar", false, fc.Now().Add(500*time.Millisecond))
@@ -952,4 +972,13 @@ func nbselect(c <-chan *Event) *Event {
 	default:
 		return nil
 	}
+}
+
+// newFakeClock creates a new FakeClock that has been advanced to at least minExpireTime
+func newFakeClock() clockwork.FakeClock {
+	fc := clockwork.NewFakeClock()
+	for minExpireTime.After(fc.Now()) {
+		fc.Advance((0x1 << 62) * time.Nanosecond)
+	}
+	return fc
 }

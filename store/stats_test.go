@@ -4,7 +4,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/jonboulle/clockwork"
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/stretchr/testify/assert"
 )
 
@@ -88,7 +87,7 @@ func TestStoreStatsDeleteFail(t *testing.T) {
 //Ensure that the number of expirations is recorded in the stats.
 func TestStoreStatsExpireCount(t *testing.T) {
 	s := newStore()
-	fc := clockwork.NewFakeClock()
+	fc := newFakeClock()
 	s.clock = fc
 
 	s.Create("/foo", false, "bar", false, fc.Now().Add(500*time.Millisecond))

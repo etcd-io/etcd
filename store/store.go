@@ -467,6 +467,12 @@ func (s *store) internalCreate(nodePath string, dir bool, value string, unique, 
 		return nil, etcdErr.NewError(etcdErr.EcodeRootROnly, "/", currIndex)
 	}
 
+	// Assume expire times that are way in the past are
+	// This can occur when the time is serialized to JS
+	if expireTime.Before(minExpireTime) {
+		expireTime = Permanent
+	}
+
 	dirName, nodeName := path.Split(nodePath)
 
 	// walk through the nodePath, create dirs and get the last directory node
