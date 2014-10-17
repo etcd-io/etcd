@@ -43,6 +43,7 @@ func NewClientHandler(server *etcdserver.EtcdServer) http.Handler {
 		server:       server,
 		clusterStore: server.ClusterStore,
 		stats:        server,
+		storestats:   server,
 		timer:        server,
 		timeout:      defaultServerTimeout,
 	}

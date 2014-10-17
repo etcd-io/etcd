@@ -370,7 +370,7 @@ func (s *EtcdServer) LeaderStats() []byte {
 	return s.lstats.JSON()
 }
 
-func (s *EtcdServer) StoreStats() []byte {
+func (s *EtcdServer) JSON() []byte {
 	return s.store.JsonStats()
 }
 
