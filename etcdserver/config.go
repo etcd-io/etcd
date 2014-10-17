@@ -21,16 +21,20 @@ type ServerConfig struct {
 	Transport    *http.Transport
 }
 
-// Verify sanity-checks the config struct and returns an error for things that
-// should never happen.
-func (c *ServerConfig) Verify() error {
+// VerifyBootstrapConfig sanity-checks the initial config and returns an error
+// for things that should never happen.
+func (c *ServerConfig) VerifyBootstrapConfig() error {
+	if c.DiscoveryURL == "" && c.ClusterState != ClusterStateValueNew {
+		return fmt.Errorf("initial cluster state unset and no wal or discovery URL found")
+	}
+
 	// Make sure the cluster at least contains the local server.
 	m := c.Cluster.FindName(c.Name)
 	if m == nil {
 		return fmt.Errorf("could not find name %v in cluster", c.Name)
 	}
 	if m.ID == raft.None {
-		return fmt.Errorf("cannot use None(%x) as member id", raft.None)
+		return fmt.Errorf("could not use %x as member id", raft.None)
 	}
 
 	// No identical IPs in the cluster peer list
@@ -54,9 +58,4 @@ func (c *ServerConfig) ID() uint64 { return c.Cluster.FindName(c.Name).ID }
 
 func (c *ServerConfig) ShouldDiscover() bool {
 	return c.DiscoveryURL != ""
-}
-
-// IsBootstrap returns true if a bootstrap method is provided.
-func (c *ServerConfig) IsBootstrap() bool {
-	return c.DiscoveryURL != "" || c.ClusterState == ClusterStateValueNew
 }

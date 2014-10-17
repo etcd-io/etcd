@@ -143,9 +143,6 @@ type EtcdServer struct {
 // NewServer creates a new EtcdServer from the supplied configuration. The
 // configuration is considered static for the lifetime of the EtcdServer.
 func NewServer(cfg *ServerConfig) *EtcdServer {
-	if err := cfg.Verify(); err != nil {
-		log.Fatalln(err)
-	}
 	if err := os.MkdirAll(cfg.SnapDir(), privateDirMode); err != nil {
 		log.Fatalf("etcdserver: cannot create snapshot directory: %v", err)
 	}
@@ -154,8 +151,8 @@ func NewServer(cfg *ServerConfig) *EtcdServer {
 	var w *wal.WAL
 	var n raft.Node
 	if !wal.Exist(cfg.WALDir()) {
-		if !cfg.IsBootstrap() {
-			log.Fatalf("etcdserver: initial cluster state unset and no wal or discovery URL found")
+		if err := cfg.VerifyBootstrapConfig(); err != nil {
+			log.Fatalf("etcdserver: %v", err)
 		}
 		if cfg.ShouldDiscover() {
 			d, err := discovery.New(cfg.DiscoveryURL, cfg.ID(), cfg.Cluster.String())
