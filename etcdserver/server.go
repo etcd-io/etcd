@@ -90,18 +90,16 @@ type Server interface {
 	RemoveMember(ctx context.Context, id uint64) error
 }
 
-type ServerStats interface {
-	// SelfStats returns the statistics of this server
-	SelfStats() *stats.ServerStats
+type Stats interface {
+	// SelfStats returns the struct representing statistics of this server
+	SelfStats() []byte
 	// LeaderStats returns the statistics of all followers in the cluster
 	// if this server is leader. Otherwise, nil is returned.
-	LeaderStats() *stats.LeaderStats
-}
-
-type StoreStats interface {
-	// JSON returns statistics of the underlying Store used by the
-	// EtcdServer, in JSON format
-	JSON() []byte
+	LeaderStats() []byte
+	// StoreStats returns statistics of the store backing this EtcdServer
+	StoreStats() []byte
+	// UpdateRecvApp updates the underlying statistics in response to a receiving an Append request
+	UpdateRecvApp(from uint64, length int64)
 }
 
 type RaftTimer interface {
@@ -194,9 +192,9 @@ func NewServer(cfg *ServerConfig) *EtcdServer {
 
 	sstats := &stats.ServerStats{
 		Name: cfg.Name,
-		ID:   strconv.FormatUint(cfg.ID(), 16),
+		ID:   idAsHex(cfg.ID()),
 	}
-	lstats := stats.NewLeaderStats(strconv.FormatUint(cfg.ID(), 16))
+	lstats := stats.NewLeaderStats(idAsHex(cfg.ID()))
 
 	s := &EtcdServer{
 		store:      st,
@@ -363,20 +361,21 @@ func (s *EtcdServer) Do(ctx context.Context, r pb.Request) (Response, error) {
 	}
 }
 
-func (s *EtcdServer) SelfStats() *stats.ServerStats {
-	s.stats.LeaderInfo.Uptime = time.Now().Sub(s.stats.LeaderInfo.StartTime).String()
-	s.stats.SendingPkgRate, s.stats.SendingBandwidthRate = s.stats.SendRates()
-	s.stats.RecvingPkgRate, s.stats.RecvingBandwidthRate = s.stats.RecvRates()
-	return s.stats
+func (s *EtcdServer) SelfStats() []byte {
+	return s.stats.JSON()
 }
 
-func (s *EtcdServer) LeaderStats() *stats.LeaderStats {
+func (s *EtcdServer) LeaderStats() []byte {
 	// TODO(jonboulle): need to lock access to lstats, set it to nil when not leader, ...
-	return s.lstats
+	return s.lstats.JSON()
 }
 
 func (s *EtcdServer) StoreStats() []byte {
 	return s.store.JsonStats()
+}
+
+func (s *EtcdServer) UpdateRecvApp(from uint64, length int64) {
+	s.stats.RecvAppendReq(idAsHex(from), int(length))
 }
 
 func (s *EtcdServer) AddMember(ctx context.Context, memb Member) error {
@@ -679,4 +678,8 @@ func containsUint64(a []uint64, x uint64) bool {
 		}
 	}
 	return false
+}
+
+func idAsHex(id uint64) string {
+	return strconv.FormatUint(id, 16)
 }

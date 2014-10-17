@@ -1,6 +1,8 @@
 package stats
 
 import (
+	"encoding/json"
+	"log"
 	"sync"
 	"time"
 
@@ -34,6 +36,21 @@ type ServerStats struct {
 	recvRateQueue *statsQueue
 
 	sync.Mutex
+}
+
+func (ss *ServerStats) JSON() []byte {
+	ss.Lock()
+	stats := *ss
+	ss.Unlock()
+	stats.LeaderInfo.Uptime = time.Now().Sub(stats.LeaderInfo.StartTime).String()
+	stats.SendingPkgRate, stats.SendingBandwidthRate = stats.SendRates()
+	stats.RecvingPkgRate, stats.RecvingBandwidthRate = stats.RecvRates()
+	b, err := json.Marshal(stats)
+	// TODO(jonboulle): appropriate error handling?
+	if err != nil {
+		log.Printf("error marshalling server stats: %v", err)
+	}
+	return b
 }
 
 // Initialize clears the statistics of ServerStats and resets its start time

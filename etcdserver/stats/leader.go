@@ -1,6 +1,8 @@
 package stats
 
 import (
+	"encoding/json"
+	"log"
 	"math"
 	"sync"
 	"time"
@@ -22,6 +24,18 @@ func NewLeaderStats(id string) *LeaderStats {
 		Leader:    id,
 		Followers: make(map[string]*FollowerStats),
 	}
+}
+
+func (ls *LeaderStats) JSON() []byte {
+	ls.Lock()
+	stats := *ls
+	ls.Unlock()
+	b, err := json.Marshal(stats)
+	// TODO(jonboulle): appropriate error handling?
+	if err != nil {
+		log.Printf("error marshalling leader stats: %v", err)
+	}
+	return b
 }
 
 func (ls *LeaderStats) Follower(name string) *FollowerStats {
