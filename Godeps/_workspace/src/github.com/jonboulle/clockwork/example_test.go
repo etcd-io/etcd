@@ -38,8 +38,8 @@ func TestMyFunc(t *testing.T) {
 	// Assert the initial state
 	assert_state(t, i, 0)
 
-	// Now tick the clock forward in time
-	c.Tick(1 * time.Hour)
+	// Now advance the clock forward in time
+	c.Advance(1 * time.Hour)
 
 	// Wait until the function completes
 	wg.Wait()

@@ -93,7 +93,7 @@ func TestStoreStatsExpireCount(t *testing.T) {
 
 	s.Create("/foo", false, "bar", false, fc.Now().Add(500*time.Millisecond))
 	assert.Equal(t, uint64(0), s.Stats.ExpireCount, "")
-	fc.Tick(600 * time.Millisecond)
+	fc.Advance(600 * time.Millisecond)
 	s.DeleteExpiredKeys(fc.Now())
 	assert.Equal(t, uint64(1), s.Stats.ExpireCount, "")
 }

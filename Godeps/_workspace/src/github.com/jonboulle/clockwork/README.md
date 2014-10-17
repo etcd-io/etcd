@@ -39,8 +39,8 @@ func TestMyFunc(t *testing.T) {
 
 	assert_state()
 
-	// Tick the FakeClock forward in time
-	c.Tick(3)
+	// Advance the FakeClock forward in time
+	c.Advance(3)
 
 	assert_state()
 }

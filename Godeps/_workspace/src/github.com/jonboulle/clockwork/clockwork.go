@@ -14,12 +14,12 @@ type Clock interface {
 }
 
 // FakeClock provides an interface for a clock which can be
-// manually ticked through time
+// manually advanced through time
 type FakeClock interface {
 	Clock
-	// Tick advances the FakeClock to a new point in time, ensuring any existing
+	// Advance advances the FakeClock to a new point in time, ensuring any existing
 	// sleepers are notified appropriately before returning
-	Tick(d time.Duration)
+	Advance(d time.Duration)
 	// BlockUntil will block until the FakeClock has the given number of
 	// sleepers (callers of Sleep or After)
 	BlockUntil(n int)
@@ -32,7 +32,7 @@ func NewRealClock() Clock {
 }
 
 // NewFakeClock returns a FakeClock implementation which can be
-// manually ticked through time for testing.
+// manually advanced through time for testing.
 func NewFakeClock() FakeClock {
 	return &fakeClock{
 		l: sync.RWMutex{},
@@ -122,10 +122,11 @@ func (fc *fakeClock) Now() time.Time {
 	return fc.time
 }
 
-// Tick advances fakeClock to a new point in time, ensuring channels from any
+// Advance advances fakeClock to a new point in time, ensuring channels from any
 // previous invocations of After are notified appropriately before returning
-func (fc *fakeClock) Tick(d time.Duration) {
+func (fc *fakeClock) Advance(d time.Duration) {
 	fc.l.Lock()
+	defer fc.l.Unlock()
 	end := fc.time.Add(d)
 	var newSleepers []*sleeper
 	for _, s := range fc.sleepers {
@@ -138,7 +139,6 @@ func (fc *fakeClock) Tick(d time.Duration) {
 	fc.sleepers = newSleepers
 	fc.blockers = notifyBlockers(fc.blockers, len(fc.sleepers))
 	fc.time = end
-	fc.l.Unlock()
 }
 
 // BlockUntil will block until the fakeClock has the given number of sleepers

@@ -217,7 +217,7 @@ func TestBadParseRequest(t *testing.T) {
 
 func TestGoodParseRequest(t *testing.T) {
 	fc := clockwork.NewFakeClock()
-	fc.Tick(1111)
+	fc.Advance(1111)
 	tests := []struct {
 		in *http.Request
 		w  etcdserverpb.Request

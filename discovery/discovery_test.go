@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/etcd/client"
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/jonboulle/clockwork"
+	"github.com/coreos/etcd/client"
 )
 
 func TestProxyFuncFromEnvUnset(t *testing.T) {
@@ -175,7 +175,7 @@ func TestCheckCluster(t *testing.T) {
 			go func() {
 				for i := uint(1); i <= nRetries; i++ {
 					fc.BlockUntil(1)
-					fc.Tick(time.Second * (0x1 << i))
+					fc.Advance(time.Second * (0x1 << i))
 				}
 			}()
 			ns, size, err := d.checkCluster()
@@ -263,7 +263,7 @@ func TestWaitNodes(t *testing.T) {
 			go func() {
 				for i := uint(1); i <= nRetries; i++ {
 					fc.BlockUntil(1)
-					fc.Tick(time.Second * (0x1 << i))
+					fc.Advance(time.Second * (0x1 << i))
 				}
 			}()
 			g, err := d.waitNodes(tt.nodes, 3)
@@ -363,7 +363,7 @@ func TestRetryFailure(t *testing.T) {
 	go func() {
 		for i := uint(1); i <= nRetries; i++ {
 			fc.BlockUntil(1)
-			fc.Tick(time.Second * (0x1 << i))
+			fc.Advance(time.Second * (0x1 << i))
 		}
 	}()
 	if _, _, err := d.checkCluster(); err != ErrTooManyRetries {

@@ -323,7 +323,7 @@ func TestStoreUpdateValueTTL(t *testing.T) {
 	e, _ := s.Get("/foo", false, false)
 	assert.Equal(t, *e.Node.Value, "baz", "")
 	assert.Equal(t, e.EtcdIndex, eidx, "")
-	fc.Tick(600 * time.Millisecond)
+	fc.Advance(600 * time.Millisecond)
 	s.DeleteExpiredKeys(fc.Now())
 	e, err = s.Get("/foo", false, false)
 	assert.Nil(t, e, "")
@@ -346,7 +346,7 @@ func TestStoreUpdateDirTTL(t *testing.T) {
 	assert.Equal(t, *e.Node.Value, "baz", "")
 	assert.Equal(t, e.EtcdIndex, eidx, "")
 
-	fc.Tick(600 * time.Millisecond)
+	fc.Advance(600 * time.Millisecond)
 	s.DeleteExpiredKeys(fc.Now())
 	e, err = s.Get("/foo/bar", false, false)
 	assert.Nil(t, e, "")
@@ -715,7 +715,7 @@ func TestStoreWatchExpire(t *testing.T) {
 	c := w.EventChan()
 	e := nbselect(c)
 	assert.Nil(t, e, "")
-	fc.Tick(600 * time.Millisecond)
+	fc.Advance(600 * time.Millisecond)
 	s.DeleteExpiredKeys(fc.Now())
 	eidx = 3
 	e = nbselect(c)
@@ -800,7 +800,7 @@ func TestStoreRecoverWithExpiration(t *testing.T) {
 
 	s2.Recovery(b)
 
-	fc.Tick(600 * time.Millisecond)
+	fc.Advance(600 * time.Millisecond)
 	s.DeleteExpiredKeys(fc.Now())
 
 	e, err := s.Get("/foo/x", false, false)
@@ -904,11 +904,11 @@ func TestStoreWatchExpireWithHiddenKey(t *testing.T) {
 	c := w.EventChan()
 	e := nbselect(c)
 	assert.Nil(t, e, "")
-	fc.Tick(600 * time.Millisecond)
+	fc.Advance(600 * time.Millisecond)
 	s.DeleteExpiredKeys(fc.Now())
 	e = nbselect(c)
 	assert.Nil(t, e, "")
-	fc.Tick(600 * time.Millisecond)
+	fc.Advance(600 * time.Millisecond)
 	s.DeleteExpiredKeys(fc.Now())
 	e = nbselect(c)
 	assert.Equal(t, e.Action, "expire", "")
