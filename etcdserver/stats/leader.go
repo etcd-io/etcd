@@ -1,6 +1,7 @@
 package stats
 
 import (
+	"encoding/json"
 	"math"
 	"sync"
 	"time"
@@ -22,6 +23,11 @@ func NewLeaderStats(id string) *LeaderStats {
 		Leader:    id,
 		Followers: make(map[string]*FollowerStats),
 	}
+}
+
+func (ls *LeaderStats) JSON() []byte {
+	b, _ := json.Marshal(ls)
+	return b
 }
 
 func (ls *LeaderStats) Follower(name string) *FollowerStats {

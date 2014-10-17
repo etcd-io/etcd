@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"strconv"
 	"time"
 
 	etcdErr "github.com/coreos/etcd/error"
@@ -148,7 +147,7 @@ func send(c *http.Client, cls ClusterStore, m raftpb.Message, ss *stats.ServerSt
 		if m.Type == raftpb.MsgApp {
 			ss.SendAppendReq(len(data))
 		}
-		to := strconv.FormatUint(m.To, 16)
+		to := idAsHex(m.To)
 		fs := ls.Follower(to)
 
 		start := time.Now()

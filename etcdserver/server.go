@@ -90,19 +90,16 @@ type Server interface {
 	RemoveMember(ctx context.Context, id uint64) error
 }
 
-type ServerStats interface {
+type Stats interface {
 	// SelfStats returns the struct representing statistics of this server
-	SelfStats() *stats.ServerStats
-	// SelfStats returns the statistics of this server in JSON form
-	SelfStatsJSON() []byte
+	SelfStats() []byte
 	// LeaderStats returns the statistics of all followers in the cluster
 	// if this server is leader. Otherwise, nil is returned.
-	LeaderStats() *stats.LeaderStats
-}
-
-type StoreStats interface {
-	// StoreStatsJSON returns statistics of the store in JSON format
-	StoreStatsJSON() []byte
+	LeaderStats() []byte
+	// StoreStats returns statistics of the store backing this EtcdServer
+	StoreStats() []byte
+	// UpdateRecvApp updates the underlying statistics in response to a receiving an Append request
+	UpdateRecvApp(from uint64, length int64)
 }
 
 type RaftTimer interface {
@@ -195,9 +192,9 @@ func NewServer(cfg *ServerConfig) *EtcdServer {
 
 	sstats := &stats.ServerStats{
 		Name: cfg.Name,
-		ID:   strconv.FormatUint(cfg.ID(), 16),
+		ID:   idAsHex(cfg.ID()),
 	}
-	lstats := stats.NewLeaderStats(strconv.FormatUint(cfg.ID(), 16))
+	lstats := stats.NewLeaderStats(idAsHex(cfg.ID()))
 
 	s := &EtcdServer{
 		store:      st,
@@ -364,30 +361,21 @@ func (s *EtcdServer) Do(ctx context.Context, r pb.Request) (Response, error) {
 	}
 }
 
-func (s *EtcdServer) SelfStats() *stats.ServerStats {
-	return s.stats
+func (s *EtcdServer) SelfStats() []byte {
+	return s.stats.JSON()
 }
 
-func (s *EtcdServer) SelfStatsJSON() []byte {
-	stats := *s.stats
-	stats.LeaderInfo.Uptime = time.Now().Sub(stats.LeaderInfo.StartTime).String()
-	stats.SendingPkgRate, stats.SendingBandwidthRate = stats.SendRates()
-	stats.RecvingPkgRate, stats.RecvingBandwidthRate = stats.RecvRates()
-	b, err := json.Marshal(s.stats)
-	// TODO(jonboulle): appropriate error handling?
-	if err != nil {
-		log.Printf("error marshalling self stats: %v", err)
-	}
-	return b
-}
-
-func (s *EtcdServer) LeaderStats() *stats.LeaderStats {
+func (s *EtcdServer) LeaderStats() []byte {
 	// TODO(jonboulle): need to lock access to lstats, set it to nil when not leader, ...
-	return s.lstats
+	return s.lstats.JSON()
 }
 
-func (s *EtcdServer) StoreStatsJSON() []byte {
+func (s *EtcdServer) StoreStats() []byte {
 	return s.store.JsonStats()
+}
+
+func (s *EtcdServer) UpdateRecvApp(from uint64, length int64) {
+	s.stats.RecvAppendReq(idAsHex(from), int(length))
 }
 
 func (s *EtcdServer) AddMember(ctx context.Context, memb Member) error {
@@ -690,4 +678,8 @@ func containsUint64(a []uint64, x uint64) bool {
 		}
 	}
 	return false
+}
+
+func idAsHex(id uint64) string {
+	return strconv.FormatUint(id, 16)
 }

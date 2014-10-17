@@ -19,7 +19,6 @@ import (
 	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/etcdserverpb"
-	"github.com/coreos/etcd/etcdserver/stats"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/store"
 )
@@ -638,28 +637,20 @@ func TestServeMachines(t *testing.T) {
 	}
 }
 
-type dummyServerStats struct {
-	js []byte
-	ls *stats.LeaderStats
+type dummyStats struct {
+	data []byte
 }
 
-func (dss *dummyServerStats) SelfStatsJSON() []byte           { return dss.js }
-func (dss *dummyServerStats) SelfStats() *stats.ServerStats   { return nil }
-func (dss *dummyServerStats) LeaderStats() *stats.LeaderStats { return dss.ls }
+func (ds *dummyStats) SelfStats() []byte               { return ds.data }
+func (ds *dummyStats) LeaderStats() []byte             { return ds.data }
+func (ds *dummyStats) StoreStats() []byte              { return ds.data }
+func (ds *dummyStats) UpdateRecvApp(_ uint64, _ int64) {}
 
 func TestServeSelfStats(t *testing.T) {
-	ss := &stats.ServerStats{
-		Name:           "foobar",
-		RecvingPkgRate: 123.4,
-	}
-	w, err := json.Marshal(ss)
-	if err != nil {
-		t.Fatal("error marshaling: %v", err)
-	}
+	wb := []byte("some statistics")
+	w := string(wb)
 	sh := &serverHandler{
-		stats: &dummyServerStats{
-			js: w,
-		},
+		stats: &dummyStats{data: wb},
 	}
 	rw := httptest.NewRecorder()
 	sh.serveSelfStats(rw, &http.Request{Method: "GET"})
@@ -670,8 +661,8 @@ func TestServeSelfStats(t *testing.T) {
 	if gct := rw.Header().Get("Content-Type"); gct != wct {
 		t.Errorf("Content-Type = %q, want %q", gct, wct)
 	}
-	if g := rw.Body.String(); g != string(w) {
-		t.Errorf("body = %s, want %s", g, string(w))
+	if g := rw.Body.String(); g != w {
+		t.Errorf("body = %s, want %s", g, w)
 	}
 }
 
@@ -708,17 +699,10 @@ func TestLeaderServeStatsBad(t *testing.T) {
 }
 
 func TestServeLeaderStats(t *testing.T) {
-	ls := &stats.LeaderStats{
-		Leader: "foobar",
-	}
-	w, err := json.Marshal(ls)
-	if err != nil {
-		t.Fatal("error marshaling: %v", err)
-	}
+	wb := []byte("some statistics")
+	w := string(wb)
 	sh := &serverHandler{
-		stats: &dummyServerStats{
-			ls: ls,
-		},
+		stats: &dummyStats{data: wb},
 	}
 	rw := httptest.NewRecorder()
 	sh.serveLeaderStats(rw, &http.Request{Method: "GET"})
@@ -729,21 +713,16 @@ func TestServeLeaderStats(t *testing.T) {
 	if gct := rw.Header().Get("Content-Type"); gct != wct {
 		t.Errorf("Content-Type = %q, want %q", gct, wct)
 	}
-	if g := rw.Body.String(); g != string(w) {
-		t.Errorf("body = %s, want %s", g, string(w))
+	if g := rw.Body.String(); g != w {
+		t.Errorf("body = %s, want %s", g, w)
 	}
 }
 
-type dummyStoreStats struct {
-	data []byte
-}
-
-func (dss *dummyStoreStats) StoreStatsJSON() []byte { return dss.data }
-
 func TestServeStoreStats(t *testing.T) {
-	w := "foobarbaz"
+	wb := []byte("some statistics")
+	w := string(wb)
 	sh := &serverHandler{
-		storestats: &dummyStoreStats{data: []byte(w)},
+		stats: &dummyStats{data: wb},
 	}
 	rw := httptest.NewRecorder()
 	sh.serveStoreStats(rw, &http.Request{Method: "GET"})

@@ -42,7 +42,6 @@ func NewClientHandler(server *etcdserver.EtcdServer) http.Handler {
 		server:       server,
 		clusterStore: server.ClusterStore,
 		stats:        server,
-		storestats:   server,
 		timer:        server,
 		timeout:      defaultServerTimeout,
 	}
@@ -77,8 +76,7 @@ func NewPeerHandler(server *etcdserver.EtcdServer) http.Handler {
 type serverHandler struct {
 	timeout      time.Duration
 	server       etcdserver.Server
-	stats        etcdserver.ServerStats
-	storestats   etcdserver.StoreStats
+	stats        etcdserver.Stats
 	timer        etcdserver.RaftTimer
 	clusterStore etcdserver.ClusterStore
 }
@@ -176,7 +174,7 @@ func (h serverHandler) serveStoreStats(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.Write(h.storestats.StoreStatsJSON())
+	w.Write(h.stats.StoreStats())
 }
 
 func (h serverHandler) serveSelfStats(w http.ResponseWriter, r *http.Request) {
@@ -184,22 +182,15 @@ func (h serverHandler) serveSelfStats(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.Write(h.stats.SelfStatsJSON())
+	w.Write(h.stats.SelfStats())
 }
 
 func (h serverHandler) serveLeaderStats(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r.Method, "GET") {
 		return
 	}
-	s := h.stats.LeaderStats()
-	b, err := json.Marshal(s)
-	if err != nil {
-		log.Printf("error marshalling stats: %v\n", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
 	w.Header().Set("Content-Type", "application/json")
-	w.Write(b)
+	w.Write(h.stats.LeaderStats())
 }
 
 func (h serverHandler) serveRaft(w http.ResponseWriter, r *http.Request) {
@@ -221,8 +212,7 @@ func (h serverHandler) serveRaft(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Printf("etcdhttp: raft recv message from %#x: %+v", m.From, m)
 	if m.Type == raftpb.MsgApp {
-		// TODO(jonboulle): standardize id uint-->string process: always base 16?
-		h.stats.SelfStats().RecvAppendReq(strconv.FormatUint(m.From, 16), int(r.ContentLength))
+		h.stats.UpdateRecvApp(m.From, r.ContentLength)
 	}
 	if err := h.server.Process(context.TODO(), m); err != nil {
 		log.Println("etcdhttp: error processing raft message:", err)
