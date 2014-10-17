@@ -56,7 +56,6 @@ type Store interface {
 	Save() ([]byte, error)
 	Recovery(state []byte) error
 
-	TotalTransactions() uint64
 	JsonStats() []byte
 	DeleteExpiredKeys(cutoff time.Time)
 }
@@ -655,8 +654,4 @@ func (s *store) Recovery(state []byte) error {
 func (s *store) JsonStats() []byte {
 	s.Stats.Watchers = uint64(s.WatcherHub.count)
 	return s.Stats.toJson()
-}
-
-func (s *store) TotalTransactions() uint64 {
-	return s.Stats.TotalTranscations()
 }
