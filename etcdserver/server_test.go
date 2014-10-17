@@ -1131,8 +1131,7 @@ func (s *storeRecorder) Recovery(b []byte) error {
 	s.record(action{name: "Recovery"})
 	return nil
 }
-func (s *storeRecorder) TotalTransactions() uint64 { return 0 }
-func (s *storeRecorder) JsonStats() []byte         { return nil }
+func (s *storeRecorder) JsonStats() []byte { return nil }
 func (s *storeRecorder) DeleteExpiredKeys(cutoff time.Time) {
 	s.record(action{
 		name:   "DeleteExpiredKeys",

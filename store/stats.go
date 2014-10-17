@@ -86,22 +86,9 @@ func (s *Stats) clone() *Stats {
 		s.CompareAndDeleteSuccess, s.CompareAndDeleteFail, s.Watchers, s.ExpireCount}
 }
 
-// Status() return the statistics info of etcd storage its recent start
 func (s *Stats) toJson() []byte {
 	b, _ := json.Marshal(s)
 	return b
-}
-
-func (s *Stats) TotalReads() uint64 {
-	return s.GetSuccess + s.GetFail
-}
-
-func (s *Stats) TotalTranscations() uint64 {
-	return s.SetSuccess + s.SetFail +
-		s.DeleteSuccess + s.DeleteFail +
-		s.CompareAndSwapSuccess + s.CompareAndSwapFail +
-		s.CompareAndDeleteSuccess + s.CompareAndDeleteFail +
-		s.UpdateSuccess + s.UpdateFail
 }
 
 func (s *Stats) Inc(field int) {
