@@ -87,15 +87,12 @@ func TestStoreStatsDeleteFail(t *testing.T) {
 //Ensure that the number of expirations is recorded in the stats.
 func TestStoreStatsExpireCount(t *testing.T) {
 	s := newStore()
+	fc := newFakeClock()
+	s.clock = fc
 
-	c := make(chan bool)
-	defer func() {
-		c <- true
-	}()
-
-	go mockSyncService(s.DeleteExpiredKeys, c)
-	s.Create("/foo", false, "bar", false, time.Now().Add(500*time.Millisecond))
+	s.Create("/foo", false, "bar", false, fc.Now().Add(500*time.Millisecond))
 	assert.Equal(t, uint64(0), s.Stats.ExpireCount, "")
-	time.Sleep(600 * time.Millisecond)
+	fc.Advance(600 * time.Millisecond)
+	s.DeleteExpiredKeys(fc.Now())
 	assert.Equal(t, uint64(1), s.Stats.ExpireCount, "")
 }

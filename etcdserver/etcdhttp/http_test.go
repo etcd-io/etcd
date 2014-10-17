@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/code.google.com/p/go.net/context"
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/jonboulle/clockwork"
 	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/etcdserverpb"
@@ -194,7 +195,7 @@ func TestBadParseRequest(t *testing.T) {
 		},
 	}
 	for i, tt := range tests {
-		got, err := parseRequest(tt.in, 1234)
+		got, err := parseRequest(tt.in, 1234, clockwork.NewFakeClock())
 		if err == nil {
 			t.Errorf("#%d: unexpected nil error!", i)
 			continue
@@ -215,6 +216,8 @@ func TestBadParseRequest(t *testing.T) {
 }
 
 func TestGoodParseRequest(t *testing.T) {
+	fc := clockwork.NewFakeClock()
+	fc.Advance(1111)
 	tests := []struct {
 		in *http.Request
 		w  etcdserverpb.Request
@@ -302,6 +305,26 @@ func TestGoodParseRequest(t *testing.T) {
 				Method:     "GET",
 				Path:       "/foo",
 				Expiration: 0,
+			},
+		},
+		{
+			// non-empty TTL specified
+			mustNewRequest(t, "foo?ttl=5678"),
+			etcdserverpb.Request{
+				ID:         1234,
+				Method:     "GET",
+				Path:       "/foo",
+				Expiration: fc.Now().Add(5678 * time.Second).UnixNano(),
+			},
+		},
+		{
+			// zero TTL specified
+			mustNewRequest(t, "foo?ttl=0"),
+			etcdserverpb.Request{
+				ID:         1234,
+				Method:     "GET",
+				Path:       "/foo",
+				Expiration: fc.Now().UnixNano(),
 			},
 		},
 		{
@@ -405,34 +428,13 @@ func TestGoodParseRequest(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		got, err := parseRequest(tt.in, 1234)
+		got, err := parseRequest(tt.in, 1234, fc)
 		if err != nil {
 			t.Errorf("#%d: err = %v, want %v", i, err, nil)
 		}
 		if !reflect.DeepEqual(got, tt.w) {
 			t.Errorf("#%d: request=%#v, want %#v", i, got, tt.w)
 		}
-	}
-
-	// Test TTL separately until we don't rely on the time module...
-	now := time.Now().UnixNano()
-	req := mustNewForm(t, "foo", url.Values{"ttl": []string{"100"}})
-	got, err := parseRequest(req, 1234)
-	if err != nil {
-		t.Fatalf("err = %v, want nil", err)
-	}
-	if got.Expiration <= now {
-		t.Fatalf("expiration = %v, wanted > %v", got.Expiration, now)
-	}
-
-	// ensure TTL=0 results in an expiration time
-	req = mustNewForm(t, "foo", url.Values{"ttl": []string{"0"}})
-	got, err = parseRequest(req, 1234)
-	if err != nil {
-		t.Fatalf("err = %v, want nil", err)
-	}
-	if got.Expiration <= now {
-		t.Fatalf("expiration = %v, wanted > %v", got.Expiration, now)
 	}
 }
 

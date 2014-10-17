@@ -5,6 +5,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/jonboulle/clockwork"
 	etcdErr "github.com/coreos/etcd/error"
 )
 
@@ -119,7 +120,7 @@ func (n *node) Write(value string, index uint64) *etcdErr.Error {
 	return nil
 }
 
-func (n *node) ExpirationAndTTL() (*time.Time, int64) {
+func (n *node) expirationAndTTL(clock clockwork.Clock) (*time.Time, int64) {
 	if !n.IsPermanent() {
 		/* compute ttl as:
 		   ceiling( (expireTime - timeNow) / nanosecondsPerSecond )
@@ -128,7 +129,7 @@ func (n *node) ExpirationAndTTL() (*time.Time, int64) {
 		   ( (expireTime - timeNow) / nanosecondsPerSecond ) + 1
 		   which ranges 1..n+1
 		*/
-		ttlN := n.ExpireTime.Sub(time.Now())
+		ttlN := n.ExpireTime.Sub(clock.Now())
 		ttl := ttlN / time.Second
 		if (ttlN % time.Second) > 0 {
 			ttl++
@@ -251,7 +252,7 @@ func (n *node) Remove(dir, recursive bool, callback func(path string)) *etcdErr.
 	return nil
 }
 
-func (n *node) Repr(recursive, sorted bool) *NodeExtern {
+func (n *node) Repr(recursive, sorted bool, clock clockwork.Clock) *NodeExtern {
 	if n.IsDir() {
 		node := &NodeExtern{
 			Key:           n.Path,
@@ -259,7 +260,7 @@ func (n *node) Repr(recursive, sorted bool) *NodeExtern {
 			ModifiedIndex: n.ModifiedIndex,
 			CreatedIndex:  n.CreatedIndex,
 		}
-		node.Expiration, node.TTL = n.ExpirationAndTTL()
+		node.Expiration, node.TTL = n.expirationAndTTL(clock)
 
 		if !recursive {
 			return node
@@ -278,7 +279,7 @@ func (n *node) Repr(recursive, sorted bool) *NodeExtern {
 				continue
 			}
 
-			node.Nodes[i] = child.Repr(recursive, sorted)
+			node.Nodes[i] = child.Repr(recursive, sorted, clock)
 
 			i++
 		}
@@ -300,7 +301,7 @@ func (n *node) Repr(recursive, sorted bool) *NodeExtern {
 		ModifiedIndex: n.ModifiedIndex,
 		CreatedIndex:  n.CreatedIndex,
 	}
-	node.Expiration, node.TTL = n.ExpirationAndTTL()
+	node.Expiration, node.TTL = n.expirationAndTTL(clock)
 	return node
 }
 

@@ -25,6 +25,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/jonboulle/clockwork"
 	etcdErr "github.com/coreos/etcd/error"
 )
 
@@ -68,10 +69,13 @@ type store struct {
 	CurrentVersion int
 	ttlKeyHeap     *ttlKeyHeap  // need to recovery manually
 	worldLock      sync.RWMutex // stop the world lock
+	clock          clockwork.Clock
 }
 
 func New() Store {
-	return newStore()
+	s := newStore()
+	s.clock = clockwork.NewRealClock()
+	return s
 }
 
 func newStore() *store {
@@ -114,7 +118,7 @@ func (s *store) Get(nodePath string, recursive, sorted bool) (*Event, error) {
 
 	e := newEvent(Get, nodePath, n.ModifiedIndex, n.CreatedIndex)
 	e.EtcdIndex = s.CurrentIndex
-	e.Node.loadInternalNode(n, recursive, sorted)
+	e.Node.loadInternalNode(n, recursive, sorted, s.clock)
 
 	s.Stats.Inc(GetSuccess)
 
@@ -172,7 +176,7 @@ func (s *store) Set(nodePath string, dir bool, value string, expireTime time.Tim
 	// Put prevNode into event
 	if getErr == nil {
 		prev := newEvent(Get, nodePath, n.ModifiedIndex, n.CreatedIndex)
-		prev.Node.loadInternalNode(n, false, false)
+		prev.Node.loadInternalNode(n, false, false, s.clock)
 		e.PrevNode = prev.Node
 	}
 
@@ -230,7 +234,7 @@ func (s *store) CompareAndSwap(nodePath string, prevValue string, prevIndex uint
 
 	e := newEvent(CompareAndSwap, nodePath, s.CurrentIndex, n.CreatedIndex)
 	e.EtcdIndex = s.CurrentIndex
-	e.PrevNode = n.Repr(false, false)
+	e.PrevNode = n.Repr(false, false, s.clock)
 	eNode := e.Node
 
 	// if test succeed, write the value
@@ -240,7 +244,7 @@ func (s *store) CompareAndSwap(nodePath string, prevValue string, prevIndex uint
 	// copy the value for safety
 	valueCopy := value
 	eNode.Value = &valueCopy
-	eNode.Expiration, eNode.TTL = n.ExpirationAndTTL()
+	eNode.Expiration, eNode.TTL = n.expirationAndTTL(s.clock)
 
 	s.WatcherHub.notify(e)
 	s.Stats.Inc(CompareAndSwapSuccess)
@@ -275,7 +279,7 @@ func (s *store) Delete(nodePath string, dir, recursive bool) (*Event, error) {
 	nextIndex := s.CurrentIndex + 1
 	e := newEvent(Delete, nodePath, nextIndex, n.CreatedIndex)
 	e.EtcdIndex = nextIndex
-	e.PrevNode = n.Repr(false, false)
+	e.PrevNode = n.Repr(false, false, s.clock)
 	eNode := e.Node
 
 	if n.IsDir() {
@@ -335,7 +339,7 @@ func (s *store) CompareAndDelete(nodePath string, prevValue string, prevIndex ui
 
 	e := newEvent(CompareAndDelete, nodePath, s.CurrentIndex, n.CreatedIndex)
 	e.EtcdIndex = s.CurrentIndex
-	e.PrevNode = n.Repr(false, false)
+	e.PrevNode = n.Repr(false, false, s.clock)
 
 	callback := func(path string) { // notify function
 		// notify the watchers with deleted set true
@@ -414,7 +418,7 @@ func (s *store) Update(nodePath string, newValue string, expireTime time.Time) (
 
 	e := newEvent(Update, nodePath, nextIndex, n.CreatedIndex)
 	e.EtcdIndex = nextIndex
-	e.PrevNode = n.Repr(false, false)
+	e.PrevNode = n.Repr(false, false, s.clock)
 	eNode := e.Node
 
 	if n.IsDir() && len(newValue) != 0 {
@@ -436,7 +440,7 @@ func (s *store) Update(nodePath string, newValue string, expireTime time.Time) (
 	// update ttl
 	n.UpdateTTL(expireTime)
 
-	eNode.Expiration, eNode.TTL = n.ExpirationAndTTL()
+	eNode.Expiration, eNode.TTL = n.expirationAndTTL(s.clock)
 
 	s.WatcherHub.notify(e)
 
@@ -463,8 +467,8 @@ func (s *store) internalCreate(nodePath string, dir bool, value string, unique, 
 		return nil, etcdErr.NewError(etcdErr.EcodeRootROnly, "/", currIndex)
 	}
 
-	// Assume expire times that are way in the past are not valid.
-	// This can occur when the time is serialized to JSON and read back in.
+	// Assume expire times that are way in the past are
+	// This can occur when the time is serialized to JS
 	if expireTime.Before(minExpireTime) {
 		expireTime = Permanent
 	}
@@ -491,7 +495,7 @@ func (s *store) internalCreate(nodePath string, dir bool, value string, unique, 
 			if n.IsDir() {
 				return nil, etcdErr.NewError(etcdErr.EcodeNotFile, nodePath, currIndex)
 			}
-			e.PrevNode = n.Repr(false, false)
+			e.PrevNode = n.Repr(false, false, s.clock)
 
 			n.Remove(false, false, nil)
 		} else {
@@ -519,7 +523,7 @@ func (s *store) internalCreate(nodePath string, dir bool, value string, unique, 
 	if !n.IsPermanent() {
 		s.ttlKeyHeap.push(n)
 
-		eNode.Expiration, eNode.TTL = n.ExpirationAndTTL()
+		eNode.Expiration, eNode.TTL = n.expirationAndTTL(s.clock)
 	}
 
 	s.CurrentIndex = nextIndex
@@ -568,7 +572,7 @@ func (s *store) DeleteExpiredKeys(cutoff time.Time) {
 		s.CurrentIndex++
 		e := newEvent(Expire, node.Path, s.CurrentIndex, node.CreatedIndex)
 		e.EtcdIndex = s.CurrentIndex
-		e.PrevNode = node.Repr(false, false)
+		e.PrevNode = node.Repr(false, false, s.clock)
 
 		callback := func(path string) { // notify function
 			// notify the watchers with deleted set true

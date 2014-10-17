@@ -20,6 +20,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/jonboulle/clockwork"
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/stretchr/testify/assert"
 	etcdErr "github.com/coreos/etcd/error"
 )
@@ -37,17 +38,39 @@ func TestStoreGetValue(t *testing.T) {
 	assert.Equal(t, *e.Node.Value, "bar", "")
 }
 
+// Ensure that any TTL <= minExpireTime becomes Permanent
+func TestMinExpireTime(t *testing.T) {
+	s := newStore()
+	fc := clockwork.NewFakeClock()
+	s.clock = fc
+	// FakeClock starts at 0, so minExpireTime should be far in the future.. but just in case
+	assert.True(t, minExpireTime.After(fc.Now()), "minExpireTime should be ahead of FakeClock!")
+	s.Create("/foo", false, "Y", false, fc.Now().Add(3*time.Second))
+	fc.Advance(5 * time.Second)
+	// Ensure it hasn't expired
+	s.DeleteExpiredKeys(fc.Now())
+	var eidx uint64 = 1
+	e, err := s.Get("/foo", true, false)
+	assert.Nil(t, err, "")
+	assert.Equal(t, e.EtcdIndex, eidx, "")
+	assert.Equal(t, e.Action, "get", "")
+	assert.Equal(t, e.Node.Key, "/foo", "")
+	assert.Equal(t, e.Node.TTL, 0)
+}
+
 // Ensure that the store can recrusively retrieve a directory listing.
 // Note that hidden files should not be returned.
 func TestStoreGetDirectory(t *testing.T) {
 	s := newStore()
+	fc := newFakeClock()
+	s.clock = fc
 	s.Create("/foo", true, "", false, Permanent)
 	s.Create("/foo/bar", false, "X", false, Permanent)
 	s.Create("/foo/_hidden", false, "*", false, Permanent)
 	s.Create("/foo/baz", true, "", false, Permanent)
 	s.Create("/foo/baz/bat", false, "Y", false, Permanent)
 	s.Create("/foo/baz/_hidden", false, "*", false, Permanent)
-	s.Create("/foo/baz/ttl", false, "Y", false, time.Now().Add(time.Second*3))
+	s.Create("/foo/baz/ttl", false, "Y", false, fc.Now().Add(time.Second*3))
 	var eidx uint64 = 7
 	e, err := s.Get("/foo", true, false)
 	assert.Nil(t, err, "")
@@ -311,21 +334,17 @@ func TestStoreUpdateFailsIfDirectory(t *testing.T) {
 // Ensure that the store can update the TTL on a value.
 func TestStoreUpdateValueTTL(t *testing.T) {
 	s := newStore()
-
-	c := make(chan bool)
-	defer func() {
-		c <- true
-	}()
-	go mockSyncService(s.DeleteExpiredKeys, c)
+	fc := newFakeClock()
+	s.clock = fc
 
 	var eidx uint64 = 2
 	s.Create("/foo", false, "bar", false, Permanent)
-	_, err := s.Update("/foo", "baz", time.Now().Add(500*time.Millisecond))
+	_, err := s.Update("/foo", "baz", fc.Now().Add(500*time.Millisecond))
 	e, _ := s.Get("/foo", false, false)
 	assert.Equal(t, *e.Node.Value, "baz", "")
 	assert.Equal(t, e.EtcdIndex, eidx, "")
-
-	time.Sleep(600 * time.Millisecond)
+	fc.Advance(600 * time.Millisecond)
+	s.DeleteExpiredKeys(fc.Now())
 	e, err = s.Get("/foo", false, false)
 	assert.Nil(t, e, "")
 	assert.Equal(t, err.(*etcdErr.Error).ErrorCode, etcdErr.EcodeKeyNotFound, "")
@@ -334,24 +353,21 @@ func TestStoreUpdateValueTTL(t *testing.T) {
 // Ensure that the store can update the TTL on a directory.
 func TestStoreUpdateDirTTL(t *testing.T) {
 	s := newStore()
-
-	c := make(chan bool)
-	defer func() {
-		c <- true
-	}()
-	go mockSyncService(s.DeleteExpiredKeys, c)
+	fc := newFakeClock()
+	s.clock = fc
 
 	var eidx uint64 = 3
 	s.Create("/foo", true, "", false, Permanent)
 	s.Create("/foo/bar", false, "baz", false, Permanent)
-	e, err := s.Update("/foo", "", time.Now().Add(500*time.Millisecond))
+	e, err := s.Update("/foo", "", fc.Now().Add(500*time.Millisecond))
 	assert.Equal(t, e.Node.Dir, true, "")
 	assert.Equal(t, e.EtcdIndex, eidx, "")
 	e, _ = s.Get("/foo/bar", false, false)
 	assert.Equal(t, *e.Node.Value, "baz", "")
 	assert.Equal(t, e.EtcdIndex, eidx, "")
 
-	time.Sleep(600 * time.Millisecond)
+	fc.Advance(600 * time.Millisecond)
+	s.DeleteExpiredKeys(fc.Now())
 	e, err = s.Get("/foo/bar", false, false)
 	assert.Nil(t, e, "")
 	assert.Equal(t, err.(*etcdErr.Error).ErrorCode, etcdErr.EcodeKeyNotFound, "")
@@ -707,23 +723,20 @@ func TestStoreWatchRecursiveCompareAndSwap(t *testing.T) {
 // Ensure that the store can watch for key expiration.
 func TestStoreWatchExpire(t *testing.T) {
 	s := newStore()
-
-	stopChan := make(chan bool)
-	defer func() {
-		stopChan <- true
-	}()
-	go mockSyncService(s.DeleteExpiredKeys, stopChan)
+	fc := newFakeClock()
+	s.clock = fc
 
 	var eidx uint64 = 2
-	s.Create("/foo", false, "bar", false, time.Now().Add(500*time.Millisecond))
-	s.Create("/foofoo", false, "barbarbar", false, time.Now().Add(500*time.Millisecond))
+	s.Create("/foo", false, "bar", false, fc.Now().Add(500*time.Millisecond))
+	s.Create("/foofoo", false, "barbarbar", false, fc.Now().Add(500*time.Millisecond))
 
 	w, _ := s.Watch("/", true, false, 0)
 	assert.Equal(t, w.StartIndex(), eidx, "")
 	c := w.EventChan()
 	e := nbselect(c)
 	assert.Nil(t, e, "")
-	time.Sleep(600 * time.Millisecond)
+	fc.Advance(600 * time.Millisecond)
+	s.DeleteExpiredKeys(fc.Now())
 	eidx = 3
 	e = nbselect(c)
 	assert.Equal(t, e.EtcdIndex, eidx, "")
@@ -790,32 +803,25 @@ func TestStoreRecover(t *testing.T) {
 // Ensure that the store can recover from a previously saved state that includes an expiring key.
 func TestStoreRecoverWithExpiration(t *testing.T) {
 	s := newStore()
+	s.clock = newFakeClock()
 
-	c := make(chan bool)
-	defer func() {
-		c <- true
-	}()
-	go mockSyncService(s.DeleteExpiredKeys, c)
+	fc := newFakeClock()
 
 	var eidx uint64 = 4
 	s.Create("/foo", true, "", false, Permanent)
 	s.Create("/foo/x", false, "bar", false, Permanent)
-	s.Create("/foo/y", false, "baz", false, time.Now().Add(5*time.Millisecond))
+	s.Create("/foo/y", false, "baz", false, fc.Now().Add(5*time.Millisecond))
 	b, err := s.Save()
 
 	time.Sleep(10 * time.Millisecond)
 
 	s2 := newStore()
-
-	c2 := make(chan bool)
-	defer func() {
-		c2 <- true
-	}()
-	go mockSyncService(s2.DeleteExpiredKeys, c2)
+	s2.clock = fc
 
 	s2.Recovery(b)
 
-	time.Sleep(600 * time.Millisecond)
+	fc.Advance(600 * time.Millisecond)
+	s.DeleteExpiredKeys(fc.Now())
 
 	e, err := s.Get("/foo/x", false, false)
 	assert.Nil(t, err, "")
@@ -908,24 +914,22 @@ func TestStoreWatchRecursiveDeleteWithHiddenKey(t *testing.T) {
 // Ensure that the store doesn't see expirations of hidden keys.
 func TestStoreWatchExpireWithHiddenKey(t *testing.T) {
 	s := newStore()
+	fc := newFakeClock()
+	s.clock = fc
 
-	stopChan := make(chan bool)
-	defer func() {
-		stopChan <- true
-	}()
-	go mockSyncService(s.DeleteExpiredKeys, stopChan)
-
-	s.Create("/_foo", false, "bar", false, time.Now().Add(500*time.Millisecond))
-	s.Create("/foofoo", false, "barbarbar", false, time.Now().Add(1000*time.Millisecond))
+	s.Create("/_foo", false, "bar", false, fc.Now().Add(500*time.Millisecond))
+	s.Create("/foofoo", false, "barbarbar", false, fc.Now().Add(1000*time.Millisecond))
 
 	w, _ := s.Watch("/", true, false, 0)
 	c := w.EventChan()
 	e := nbselect(c)
 	assert.Nil(t, e, "")
-	time.Sleep(600 * time.Millisecond)
+	fc.Advance(600 * time.Millisecond)
+	s.DeleteExpiredKeys(fc.Now())
 	e = nbselect(c)
 	assert.Nil(t, e, "")
-	time.Sleep(600 * time.Millisecond)
+	fc.Advance(600 * time.Millisecond)
+	s.DeleteExpiredKeys(fc.Now())
 	e = nbselect(c)
 	assert.Equal(t, e.Action, "expire", "")
 	assert.Equal(t, e.Node.Key, "/foofoo", "")
@@ -970,14 +974,11 @@ func nbselect(c <-chan *Event) *Event {
 	}
 }
 
-func mockSyncService(f func(now time.Time), c chan bool) {
-	ticker := time.Tick(time.Millisecond * 500)
-	for {
-		select {
-		case <-c:
-			return
-		case now := <-ticker:
-			f(now)
-		}
+// newFakeClock creates a new FakeClock that has been advanced to at least minExpireTime
+func newFakeClock() clockwork.FakeClock {
+	fc := clockwork.NewFakeClock()
+	for minExpireTime.After(fc.Now()) {
+		fc.Advance((0x1 << 62) * time.Nanosecond)
 	}
+	return fc
 }

@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/jonboulle/clockwork"
 	"github.com/coreos/etcd/client"
 )
 
@@ -167,9 +168,16 @@ func TestCheckCluster(t *testing.T) {
 
 		cRetry := &clientWithRetry{failTimes: 3}
 		cRetry.rs = rs
-		dRetry := discovery{cluster: cluster, id: 1, c: cRetry, timeoutTimescale: time.Millisecond * 2}
+		fc := clockwork.NewFakeClock()
+		dRetry := discovery{cluster: cluster, id: 1, c: cRetry, clock: fc}
 
 		for _, d := range []discovery{d, dRetry} {
+			go func() {
+				for i := uint(1); i <= nRetries; i++ {
+					fc.BlockUntil(1)
+					fc.Advance(time.Second * (0x1 << i))
+				}
+			}()
 			ns, size, err := d.checkCluster()
 			if err != tt.werr {
 				t.Errorf("#%d: err = %v, want %v", i, err, tt.werr)
@@ -193,46 +201,30 @@ func TestWaitNodes(t *testing.T) {
 
 	tests := []struct {
 		nodes client.Nodes
-		size  int
 		rs    []*client.Response
-
-		werr error
-		wall client.Nodes
 	}{
 		{
 			all,
-			3,
 			[]*client.Response{},
-			nil,
-			all,
 		},
 		{
 			all[:1],
-			3,
 			[]*client.Response{
 				{Node: &client.Node{Key: "/1000/2", CreatedIndex: 3}},
 				{Node: &client.Node{Key: "/1000/3", CreatedIndex: 4}},
 			},
-			nil,
-			all,
 		},
 		{
 			all[:2],
-			3,
 			[]*client.Response{
 				{Node: &client.Node{Key: "/1000/3", CreatedIndex: 4}},
 			},
-			nil,
-			all,
 		},
 		{
 			append(all, &client.Node{Key: "/1000/4", CreatedIndex: 5}),
-			3,
 			[]*client.Response{
 				{Node: &client.Node{Key: "/1000/3", CreatedIndex: 4}},
 			},
-			nil,
-			all,
 		},
 	}
 
@@ -247,7 +239,7 @@ func TestWaitNodes(t *testing.T) {
 			retryScanResp = append(retryScanResp, &client.Response{
 				Node: &client.Node{
 					Key:   "1000",
-					Value: strconv.Itoa(tt.size),
+					Value: strconv.Itoa(3),
 				},
 			})
 			retryScanResp = append(retryScanResp, &client.Response{
@@ -260,19 +252,26 @@ func TestWaitNodes(t *testing.T) {
 			rs: retryScanResp,
 			w:  &watcherWithRetry{rs: tt.rs, failTimes: 2},
 		}
+		fc := clockwork.NewFakeClock()
 		dRetry := &discovery{
-			cluster:          "1000",
-			c:                cRetry,
-			timeoutTimescale: time.Millisecond * 2,
+			cluster: "1000",
+			c:       cRetry,
+			clock:   fc,
 		}
 
 		for _, d := range []*discovery{d, dRetry} {
-			g, err := d.waitNodes(tt.nodes, tt.size)
-			if err != tt.werr {
-				t.Errorf("#%d: err = %v, want %v", i, err, tt.werr)
+			go func() {
+				for i := uint(1); i <= nRetries; i++ {
+					fc.BlockUntil(1)
+					fc.Advance(time.Second * (0x1 << i))
+				}
+			}()
+			g, err := d.waitNodes(tt.nodes, 3)
+			if err != nil {
+				t.Errorf("#%d: err = %v, want %v", i, err, nil)
 			}
-			if !reflect.DeepEqual(g, tt.wall) {
-				t.Errorf("#%d: all = %v, want %v", i, g, tt.wall)
+			if !reflect.DeepEqual(g, all) {
+				t.Errorf("#%d: all = %v, want %v", i, g, all)
 			}
 		}
 	}
@@ -354,9 +353,20 @@ func TestSortableNodes(t *testing.T) {
 func TestRetryFailure(t *testing.T) {
 	cluster := "1000"
 	c := &clientWithRetry{failTimes: 4}
-	d := discovery{cluster: cluster, id: 1, c: c, timeoutTimescale: time.Millisecond * 2}
-	_, _, err := d.checkCluster()
-	if err != ErrTooManyRetries {
+	fc := clockwork.NewFakeClock()
+	d := discovery{
+		cluster: cluster,
+		id:      1,
+		c:       c,
+		clock:   fc,
+	}
+	go func() {
+		for i := uint(1); i <= nRetries; i++ {
+			fc.BlockUntil(1)
+			fc.Advance(time.Second * (0x1 << i))
+		}
+	}()
+	if _, _, err := d.checkCluster(); err != ErrTooManyRetries {
 		t.Errorf("err = %v, want %v", err, ErrTooManyRetries)
 	}
 }
@@ -434,7 +444,7 @@ func (w *watcherWithErr) Next() (*client.Response, error) {
 	return &client.Response{}, w.err
 }
 
-// Fails every other time
+// clientWithRetry will timeout all requests up to failTimes
 type clientWithRetry struct {
 	clientWithResp
 	failCount int
@@ -457,6 +467,7 @@ func (c *clientWithRetry) Get(key string) (*client.Response, error) {
 	return c.clientWithResp.Get(key)
 }
 
+// watcherWithRetry will timeout all requests up to failTimes
 type watcherWithRetry struct {
 	rs        []*client.Response
 	failCount int
