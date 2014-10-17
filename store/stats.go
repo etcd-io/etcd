@@ -91,10 +91,6 @@ func (s *Stats) toJson() []byte {
 	return b
 }
 
-func (s *Stats) TotalReads() uint64 {
-	return s.GetSuccess + s.GetFail
-}
-
 func (s *Stats) Inc(field int) {
 	switch field {
 	case SetSuccess:
