@@ -997,10 +997,12 @@ func TestPublish(t *testing.T) {
 // TestPublishStopped tests that publish will be stopped if server is stopped.
 func TestPublishStopped(t *testing.T) {
 	srv := &EtcdServer{
-		node: &nodeRecorder{},
-		w:    &waitRecorder{},
-		done: make(chan struct{}),
+		node:    &nodeRecorder{},
+		w:       &waitRecorder{},
+		done:    make(chan struct{}),
+		stopped: make(chan struct{}),
 	}
+	close(srv.stopped)
 	srv.Stop()
 	srv.publish(time.Hour)
 }
