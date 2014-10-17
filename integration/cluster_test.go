@@ -64,8 +64,7 @@ func setKey(u url.URL, key string, value string) error {
 }
 
 type cluster struct {
-	Size int
-
+	Size    int
 	Members []member
 }
 
@@ -76,15 +75,15 @@ func (c *cluster) Launch(t *testing.T) {
 	}
 
 	lns := make([]net.Listener, c.Size)
-	btConfs := make([]string, c.Size)
+	bootstrapCfgs := make([]string, c.Size)
 	for i := 0; i < c.Size; i++ {
 		l := newLocalListener(t)
 		// each member claims only one peer listener
 		lns[i] = l
-		btConfs[i] = fmt.Sprintf("%s=%s", c.name(i), "http://"+l.Addr().String())
+		bootstrapCfgs[i] = fmt.Sprintf("%s=%s", c.name(i), "http://"+l.Addr().String())
 	}
-	clusterConfig := &etcdserver.Cluster{}
-	if err := clusterConfig.Set(strings.Join(btConfs, ",")); err != nil {
+	clusterCfg := &etcdserver.Cluster{}
+	if err := clusterCfg.Set(strings.Join(bootstrapCfgs, ",")); err != nil {
 		t.Fatal(err)
 	}
 
@@ -94,7 +93,6 @@ func (c *cluster) Launch(t *testing.T) {
 		m.PeerListeners = []net.Listener{lns[i]}
 		cln := newLocalListener(t)
 		m.ClientListeners = []net.Listener{cln}
-
 		m.Name = c.name(i)
 		m.ClientURLs, err = types.NewURLs([]string{"http://" + cln.Addr().String()})
 		if err != nil {
@@ -104,7 +102,7 @@ func (c *cluster) Launch(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		m.Cluster = clusterConfig
+		m.Cluster = clusterCfg
 		m.ClusterState = etcdserver.ClusterStateValueNew
 		m.Transport, err = transport.NewTransport(transport.TLSInfo{})
 		if err != nil {
@@ -171,10 +169,6 @@ func (m *member) Stop(t *testing.T) {
 }
 
 func (m *member) Start(t *testing.T) {
-	panic("unimplemented")
-}
-
-func (m *member) Reboot(t *testing.T) {
 	panic("unimplemented")
 }
 
