@@ -3,6 +3,7 @@ package integration
 import (
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -19,6 +20,11 @@ import (
 )
 
 const tickDuration = 5 * time.Millisecond
+
+func init() {
+	// open microsecond-level time log for integration test debugging
+	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Lshortfile)
+}
 
 func TestClusterOf1(t *testing.T) { testCluster(t, 1) }
 func TestClusterOf3(t *testing.T) { testCluster(t, 3) }
