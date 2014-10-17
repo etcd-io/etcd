@@ -6,6 +6,7 @@ import (
 	"path"
 
 	"github.com/coreos/etcd/pkg/types"
+	"github.com/coreos/etcd/raft"
 )
 
 // ServerConfig holds the configuration of etcd as taken from the command line or discovery.
@@ -27,6 +28,9 @@ func (c *ServerConfig) Verify() error {
 	m := c.Cluster.FindName(c.Name)
 	if m == nil {
 		return fmt.Errorf("could not find name %v in cluster", c.Name)
+	}
+	if m.ID == raft.None {
+		return fmt.Errorf("cannot use None(%x) as member id", raft.None)
 	}
 
 	// No identical IPs in the cluster peer list
