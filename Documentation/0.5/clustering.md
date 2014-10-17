@@ -121,6 +121,8 @@ $ etcd -name infra2 -advertise-peer-urls http://10.0.1.12:2379 -discovery https:
 This will cause each machine to register itself with the etcd service and begin
 the cluster once all machines have been registered.
 
+You can use the environment variable `ETCD_DISCOVERY_PROXY` to cause etcd to use an HTTP proxy to connect to the discovery service.
+
 ### Error and Warning Cases
 
 #### Discovery Server Errors
