@@ -28,8 +28,8 @@ Sorted alphabetically on language/name
 |[clj-etcd](https://github.com/rthomas/clj-etcd)                  |Clojure|-|-|G|G|-|B|-|-|
 |[etcd-clojure](https://github.com/aterreno/etcd-clojure)         |Clojure|-|-|F|F|F|F|-|-|
 |[go-etcd](https://github.com/coreos/go-etcd)                     |go     |Y|Y|F|F|F|F|-|-|
+|[boon etcd client](https://github.com/boonproject/boon/blob/master/etcd/README.md)        |java   |Y|Y|F|F|F|F|-|F|
 |[etcd4j](https://github.com/jurmous/etcd4j)                      |java   |Y|Y|F|F|F|F|-|-|
-|[boon etcd client](https://github.com/boonproject/boon/blob/master/etcd/README.md)        |java   |F|F|F|F|F|F|-|F|
 |[jetcd](https://github.com/diwakergupta/jetcd)                   |java   |Y|-|B|B|-|B|-|-|
 |[jetcd](https://github.com/justinsb/jetcd)                       |java   |-|-|B|B|-|B|-|-|
 |[Etcd.jl](https://github.com/forio/Etcd.jl)                      |Julia  |-|-|F|F|F|F|Y|Y|
