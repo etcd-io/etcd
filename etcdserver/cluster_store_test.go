@@ -20,7 +20,7 @@ func TestClusterStoreAdd(t *testing.T) {
 			params: []interface{}{
 				membersKVPrefix + "1/raftAttributes",
 				false,
-				`{"PeerURLs":null}`,
+				`{"PeerURLs":null,"Removed":false}`,
 				false,
 				store.Permanent,
 			},
@@ -91,14 +91,14 @@ func TestClusterStoreGet(t *testing.T) {
 }
 
 func TestClusterStoreDelete(t *testing.T) {
-	st := newStoreGetAllAndDeleteRecorder()
+	st := newStoreGetAllAndSetRecorder()
 	cs := &clusterStore{Store: st}
 	cs.Add(newTestMember(1, nil, "node1", nil))
 	cs.Remove(1)
 
-	wdeletes := []string{membersKVPrefix + "1"}
-	if !reflect.DeepEqual(st.deletes, wdeletes) {
-		t.Error("deletes = %v, want %v", st.deletes, wdeletes)
+	wsets := []action{{name: "Set", params: []interface{}{membersKVPrefix + "1/raftAttributes", false, `{"PeerURLs":null,"Removed":true}`, store.Permanent}}}
+	if !reflect.DeepEqual(st.sets, wsets) {
+		t.Error("sets = %v, want %v", st.sets, wsets)
 	}
 }
 
@@ -183,17 +183,17 @@ func newGetAllStore() *getAllStore {
 	return &getAllStore{store.New()}
 }
 
-type storeGetAllAndDeleteRecorder struct {
+type storeGetAllAndSetRecorder struct {
 	*getAllStore
-	deletes []string
+	sets []action
 }
 
-func newStoreGetAllAndDeleteRecorder() *storeGetAllAndDeleteRecorder {
-	return &storeGetAllAndDeleteRecorder{getAllStore: newGetAllStore()}
+func newStoreGetAllAndSetRecorder() *storeGetAllAndSetRecorder {
+	return &storeGetAllAndSetRecorder{getAllStore: newGetAllStore()}
 }
 
-func (s *storeGetAllAndDeleteRecorder) Delete(key string, _, _ bool) (*store.Event, error) {
-	s.deletes = append(s.deletes, key)
+func (s *storeGetAllAndSetRecorder) Set(key string, dir bool, value string, expire time.Time) (*store.Event, error) {
+	s.sets = append(s.sets, action{name: "Set", params: []interface{}{key, dir, value, expire}})
 	return nil, nil
 }
 
