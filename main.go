@@ -40,11 +40,12 @@ const (
 )
 
 var (
-	name         = flag.String("name", "default", "Unique human-readable name for this node")
-	dir          = flag.String("data-dir", "", "Path to the data directory")
-	durl         = flag.String("discovery", "", "Discovery service used to bootstrap the cluster")
-	snapCount    = flag.Uint64("snapshot-count", etcdserver.DefaultSnapCount, "Number of committed transactions to trigger a snapshot")
-	printVersion = flag.Bool("version", false, "Print the version and exit")
+	fs           = flag.NewFlagSet("etcd", flag.ContinueOnError)
+	name         = fs.String("name", "default", "Unique human-readable name for this node")
+	dir          = fs.String("data-dir", "", "Path to the data directory")
+	durl         = fs.String("discovery", "", "Discovery service used to bootstrap the cluster")
+	snapCount    = fs.Uint64("snapshot-count", etcdserver.DefaultSnapCount, "Number of committed transactions to trigger a snapshot")
+	printVersion = fs.Bool("version", false, "Print the version and exit")
 
 	cluster      = &etcdserver.Cluster{}
 	clusterState = new(etcdserver.ClusterState)
@@ -73,56 +74,63 @@ var (
 )
 
 func init() {
-	flag.Var(cluster, "initial-cluster", "Initial cluster configuration for bootstrapping")
+	fs.Var(cluster, "initial-cluster", "Initial cluster configuration for bootstrapping")
 	if err := cluster.Set("default=http://localhost:2380,default=http://localhost:7001"); err != nil {
 		// Should never happen
 		log.Panic(err)
 	}
-	flag.Var(clusterState, "initial-cluster-state", "Initial cluster configuration for bootstrapping")
+	fs.Var(clusterState, "initial-cluster-state", "Initial cluster configuration for bootstrapping")
 	clusterState.Set(etcdserver.ClusterStateValueNew)
 
-	flag.Var(flagtypes.NewURLsValue("http://localhost:2380,http://localhost:7001"), "advertise-peer-urls", "List of this member's peer URLs to advertise to the rest of the cluster")
-	flag.Var(flagtypes.NewURLsValue("http://localhost:2379,http://localhost:4001"), "advertise-client-urls", "List of this member's client URLs to advertise to the rest of the cluster")
-	flag.Var(flagtypes.NewURLsValue("http://localhost:2380,http://localhost:7001"), "listen-peer-urls", "List of URLs to listen on for peer traffic")
-	flag.Var(flagtypes.NewURLsValue("http://localhost:2379,http://localhost:4001"), "listen-client-urls", "List of URLs to listen on for client traffic")
+	fs.Var(flagtypes.NewURLsValue("http://localhost:2380,http://localhost:7001"), "advertise-peer-urls", "List of this member's peer URLs to advertise to the rest of the cluster")
+	fs.Var(flagtypes.NewURLsValue("http://localhost:2379,http://localhost:4001"), "advertise-client-urls", "List of this member's client URLs to advertise to the rest of the cluster")
+	fs.Var(flagtypes.NewURLsValue("http://localhost:2380,http://localhost:7001"), "listen-peer-urls", "List of URLs to listen on for peer traffic")
+	fs.Var(flagtypes.NewURLsValue("http://localhost:2379,http://localhost:4001"), "listen-client-urls", "List of URLs to listen on for client traffic")
 
-	flag.Var(cors, "cors", "Comma-separated white list of origins for CORS (cross-origin resource sharing).")
+	fs.Var(cors, "cors", "Comma-separated white list of origins for CORS (cross-origin resource sharing).")
 
-	flag.Var(proxyFlag, "proxy", fmt.Sprintf("Valid values include %s", strings.Join(flagtypes.ProxyValues, ", ")))
+	fs.Var(proxyFlag, "proxy", fmt.Sprintf("Valid values include %s", strings.Join(flagtypes.ProxyValues, ", ")))
 	proxyFlag.Set(flagtypes.ProxyValueOff)
 
-	flag.StringVar(&clientTLSInfo.CAFile, "ca-file", "", "Path to the client server TLS CA file.")
-	flag.StringVar(&clientTLSInfo.CertFile, "cert-file", "", "Path to the client server TLS cert file.")
-	flag.StringVar(&clientTLSInfo.KeyFile, "key-file", "", "Path to the client server TLS key file.")
+	fs.StringVar(&clientTLSInfo.CAFile, "ca-file", "", "Path to the client server TLS CA file.")
+	fs.StringVar(&clientTLSInfo.CertFile, "cert-file", "", "Path to the client server TLS cert file.")
+	fs.StringVar(&clientTLSInfo.KeyFile, "key-file", "", "Path to the client server TLS key file.")
 
-	flag.StringVar(&peerTLSInfo.CAFile, "peer-ca-file", "", "Path to the peer server TLS CA file.")
-	flag.StringVar(&peerTLSInfo.CertFile, "peer-cert-file", "", "Path to the peer server TLS cert file.")
-	flag.StringVar(&peerTLSInfo.KeyFile, "peer-key-file", "", "Path to the peer server TLS key file.")
+	fs.StringVar(&peerTLSInfo.CAFile, "peer-ca-file", "", "Path to the peer server TLS CA file.")
+	fs.StringVar(&peerTLSInfo.CertFile, "peer-cert-file", "", "Path to the peer server TLS cert file.")
+	fs.StringVar(&peerTLSInfo.KeyFile, "peer-key-file", "", "Path to the peer server TLS key file.")
 
 	// backwards-compatibility with v0.4.6
-	flag.Var(&flagtypes.IPAddressPort{}, "addr", "DEPRECATED: Use -advertise-client-urls instead.")
-	flag.Var(&flagtypes.IPAddressPort{}, "bind-addr", "DEPRECATED: Use -listen-client-urls instead.")
-	flag.Var(&flagtypes.IPAddressPort{}, "peer-addr", "DEPRECATED: Use -advertise-peer-urls instead.")
-	flag.Var(&flagtypes.IPAddressPort{}, "peer-bind-addr", "DEPRECATED: Use -listen-peer-urls instead.")
+	fs.Var(&flagtypes.IPAddressPort{}, "addr", "DEPRECATED: Use -advertise-client-urls instead.")
+	fs.Var(&flagtypes.IPAddressPort{}, "bind-addr", "DEPRECATED: Use -listen-client-urls instead.")
+	fs.Var(&flagtypes.IPAddressPort{}, "peer-addr", "DEPRECATED: Use -advertise-peer-urls instead.")
+	fs.Var(&flagtypes.IPAddressPort{}, "peer-bind-addr", "DEPRECATED: Use -listen-peer-urls instead.")
 
 	for _, f := range ignored {
-		flag.Var(&pkg.IgnoredFlag{f}, f, "")
+		fs.Var(&pkg.IgnoredFlag{f}, f, "")
 	}
 
-	flag.Var(&pkg.DeprecatedFlag{"peers"}, "peers", "DEPRECATED: Use -initial-cluster instead")
-	flag.Var(&pkg.DeprecatedFlag{"peers-file"}, "peers-file", "DEPRECATED: Use -initial-cluster instead")
+	fs.Var(&pkg.DeprecatedFlag{"peers"}, "peers", "DEPRECATED: Use -initial-cluster instead")
+	fs.Var(&pkg.DeprecatedFlag{"peers-file"}, "peers-file", "DEPRECATED: Use -initial-cluster instead")
 }
 
 func main() {
-	flag.Usage = pkg.UsageWithIgnoredFlagsFunc(flag.CommandLine, ignored)
-	flag.Parse()
+	fs.Usage = pkg.UsageWithIgnoredFlagsFunc(fs, ignored)
+	err := fs.Parse(os.Args[1:])
+	switch err {
+	case nil:
+	case flag.ErrHelp:
+		os.Exit(0)
+	default:
+		os.Exit(2)
+	}
 
 	if *printVersion {
 		fmt.Println("etcd version", version)
 		os.Exit(0)
 	}
 
-	pkg.SetFlagsFromEnv(flag.CommandLine)
+	pkg.SetFlagsFromEnv(fs)
 	if err := setClusterForDiscovery(); err != nil {
 		log.Fatalf("etcd: %v", err)
 	}
@@ -152,7 +160,7 @@ func startEtcd() {
 		log.Fatal(err)
 	}
 
-	acurls, err := pkg.URLsFromFlags(flag.CommandLine, "advertise-client-urls", "addr", clientTLSInfo)
+	acurls, err := pkg.URLsFromFlags(fs, "advertise-client-urls", "addr", clientTLSInfo)
 	if err != nil {
 		log.Fatal(err.Error())
 	}
@@ -175,7 +183,7 @@ func startEtcd() {
 	}
 	ph := etcdhttp.NewPeerHandler(s)
 
-	lpurls, err := pkg.URLsFromFlags(flag.CommandLine, "listen-peer-urls", "peer-bind-addr", peerTLSInfo)
+	lpurls, err := pkg.URLsFromFlags(fs, "listen-peer-urls", "peer-bind-addr", peerTLSInfo)
 	if err != nil {
 		log.Fatal(err.Error())
 	}
@@ -194,7 +202,7 @@ func startEtcd() {
 		}()
 	}
 
-	lcurls, err := pkg.URLsFromFlags(flag.CommandLine, "listen-client-urls", "bind-addr", clientTLSInfo)
+	lcurls, err := pkg.URLsFromFlags(fs, "listen-client-urls", "bind-addr", clientTLSInfo)
 	if err != nil {
 		log.Fatal(err.Error())
 	}
@@ -235,7 +243,7 @@ func startProxy() {
 		ph = proxy.NewReadonlyHandler(ph)
 	}
 
-	lcurls, err := pkg.URLsFromFlags(flag.CommandLine, "listen-client-urls", "bind-addr", clientTLSInfo)
+	lcurls, err := pkg.URLsFromFlags(fs, "listen-client-urls", "bind-addr", clientTLSInfo)
 	if err != nil {
 		log.Fatal(err.Error())
 	}
@@ -265,7 +273,7 @@ func setClusterForDiscovery() error {
 		return fmt.Errorf("both discovery and initial-cluster are set")
 	}
 	if set["discovery"] {
-		apurls, err := pkg.URLsFromFlags(flag.CommandLine, "advertise-peer-urls", "peer-addr", peerTLSInfo)
+		apurls, err := pkg.URLsFromFlags(fs, "advertise-peer-urls", "peer-addr", peerTLSInfo)
 		if err != nil {
 			return err
 		}
