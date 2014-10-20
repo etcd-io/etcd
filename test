@@ -15,7 +15,7 @@ COVER=${COVER:-"-cover"}
 source ./build
 
 # Hack: gofmt ./ will recursively check the .git directory. So use *.go for gofmt.
-TESTABLE_AND_FORMATTABLE="client etcdserver etcdserver/etcdhttp etcdserver/etcdserverpb pkg pkg/flags pkg/transport proxy raft snap store wait wal"
+TESTABLE_AND_FORMATTABLE="client etcdserver etcdserver/etcdhttp etcdserver/etcdserverpb integration pkg pkg/flags pkg/transport proxy raft snap store wait wal"
 TESTABLE="$TESTABLE_AND_FORMATTABLE ./"
 FORMATTABLE="$TESTABLE_AND_FORMATTABLE *.go"
 

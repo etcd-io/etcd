@@ -127,6 +127,7 @@ type RaftTimer interface {
 type EtcdServer struct {
 	w          wait.Wait
 	done       chan struct{}
+	stopped    chan struct{}
 	id         uint64
 	attributes Attributes
 
@@ -146,8 +147,8 @@ type EtcdServer struct {
 
 	storage Storage
 
-	ticker     <-chan time.Time
-	syncTicker <-chan time.Time
+	Ticker     <-chan time.Time
+	SyncTicker <-chan time.Time
 
 	snapCount uint64 // number of entries to trigger a snapshot
 
@@ -221,8 +222,8 @@ func NewServer(cfg *ServerConfig) *EtcdServer {
 		stats:        sstats,
 		lstats:       lstats,
 		send:         Sender(cfg.Transport, cls, sstats, lstats),
-		ticker:       time.Tick(100 * time.Millisecond),
-		syncTicker:   time.Tick(500 * time.Millisecond),
+		Ticker:       time.Tick(100 * time.Millisecond),
+		SyncTicker:   time.Tick(500 * time.Millisecond),
 		snapCount:    cfg.SnapCount,
 		ClusterStore: cls,
 	}
@@ -247,6 +248,7 @@ func (s *EtcdServer) start() {
 	}
 	s.w = wait.New()
 	s.done = make(chan struct{})
+	s.stopped = make(chan struct{})
 	s.stats.Initialize()
 	// TODO: if this is an empty log, writes all peer infos
 	// into the first entry
@@ -264,14 +266,14 @@ func (s *EtcdServer) run() {
 	var nodes, removedNodes []uint64
 	for {
 		select {
-		case <-s.ticker:
+		case <-s.Ticker:
 			s.node.Tick()
 		case rd := <-s.node.Ready():
 			if rd.SoftState != nil {
 				nodes = rd.SoftState.Nodes
 				removedNodes = rd.SoftState.RemovedNodes
 				if rd.RaftState == raft.StateLeader {
-					syncC = s.syncTicker
+					syncC = s.SyncTicker
 				} else {
 					syncC = nil
 				}
@@ -312,16 +314,18 @@ func (s *EtcdServer) run() {
 		case <-syncC:
 			s.sync(defaultSyncTimeout)
 		case <-s.done:
+			close(s.stopped)
 			return
 		}
 	}
 }
 
-// Stop stops the server, and shuts down the running goroutine. Stop should be
-// called after a Start(s), otherwise it will block forever.
+// Stop stops the server gracefully, and shuts down the running goroutine.
+// Stop should be called after a Start(s), otherwise it will block forever.
 func (s *EtcdServer) Stop() {
 	s.node.Stop()
 	close(s.done)
+	<-s.stopped
 }
 
 // Do interprets r and performs an operation on s.store according to r.Method
