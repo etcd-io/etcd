@@ -622,6 +622,8 @@ func (s *EtcdServer) snapshot(snapi uint64, snapnodes []uint64) {
 
 func startNode(cfg *ServerConfig) (id, cid uint64, n raft.Node, w *wal.WAL) {
 	var err error
+	// TODO: remove the discoveryURL when it becomes part of the source for
+	// generating nodeID.
 	cfg.Cluster.GenID([]byte(cfg.DiscoveryURL))
 	metadata := pbutil.MustMarshal(&pb.Metadata{NodeID: cfg.ID(), ClusterID: cfg.Cluster.ID()})
 	if w, err = wal.Create(cfg.WALDir(), metadata); err != nil {
