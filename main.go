@@ -30,7 +30,6 @@ import (
 	flagtypes "github.com/coreos/etcd/pkg/flags"
 	"github.com/coreos/etcd/pkg/transport"
 	"github.com/coreos/etcd/proxy"
-	"github.com/coreos/etcd/raft"
 )
 
 const (
@@ -140,17 +139,8 @@ func main() {
 
 // startEtcd launches the etcd server and HTTP handlers for client/server communication.
 func startEtcd() {
-	self := cluster.FindName(*name)
-	if self == nil {
-		log.Fatalf("etcd: no member with name=%q exists", *name)
-	}
-
-	if self.ID == raft.None {
-		log.Fatalf("etcd: cannot use None(%d) as member id", raft.None)
-	}
-
 	if *dir == "" {
-		*dir = fmt.Sprintf("%v_etcd_data", self.Name)
+		*dir = fmt.Sprintf("%v_etcd_data", *name)
 		log.Printf("etcd: no data-dir provided, using default data-dir ./%s", *dir)
 	}
 	if err := os.MkdirAll(*dir, privateDirMode); err != nil {
