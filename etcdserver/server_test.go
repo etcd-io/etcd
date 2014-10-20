@@ -383,9 +383,9 @@ func TestApplyRequest(t *testing.T) {
 	}
 }
 
+// TODO: test ErrIDRemoved
 func TestApplyConfChangeError(t *testing.T) {
 	nodes := []uint64{1, 2, 3}
-	removedNodes := []uint64{4}
 	tests := []struct {
 		cc   raftpb.ConfChange
 		werr error
@@ -396,20 +396,6 @@ func TestApplyConfChangeError(t *testing.T) {
 				NodeID: 1,
 			},
 			ErrIDExists,
-		},
-		{
-			raftpb.ConfChange{
-				Type:   raftpb.ConfChangeAddNode,
-				NodeID: 4,
-			},
-			ErrIDRemoved,
-		},
-		{
-			raftpb.ConfChange{
-				Type:   raftpb.ConfChangeRemoveNode,
-				NodeID: 4,
-			},
-			ErrIDRemoved,
 		},
 		{
 			raftpb.ConfChange{
@@ -424,7 +410,7 @@ func TestApplyConfChangeError(t *testing.T) {
 		srv := &EtcdServer{
 			node: n,
 		}
-		err := srv.applyConfChange(tt.cc, nodes, removedNodes)
+		err := srv.applyConfChange(tt.cc, nodes)
 		if err != tt.werr {
 			t.Errorf("#%d: applyConfChange error = %v, want %v", i, err, tt.werr)
 		}
@@ -934,25 +920,7 @@ func TestRemoveMember(t *testing.T) {
 	}
 }
 
-// TestServerStopItself tests that if node sends out Ready with ShouldStop,
-// server will stop.
-func TestServerStopItself(t *testing.T) {
-	n := newReadyNode()
-	s := &EtcdServer{
-		node:    n,
-		store:   &storeRecorder{},
-		send:    func(_ []raftpb.Message) {},
-		storage: &storageRecorder{},
-	}
-	s.start()
-	n.readyc <- raft.Ready{SoftState: &raft.SoftState{ShouldStop: true}}
-
-	select {
-	case <-s.done:
-	case <-time.After(time.Millisecond):
-		t.Errorf("did not receive from closed done channel as expected")
-	}
-}
+// TODO: test server could stop itself when being removed
 
 // TODO: test wait trigger correctness in multi-server case
 

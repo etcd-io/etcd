@@ -112,9 +112,6 @@ type raft struct {
 	// New configuration is ignored if there exists unapplied configuration.
 	pendingConf bool
 
-	// TODO: need GC and recovery from snapshot
-	removed map[uint64]bool
-
 	elapsed          int // number of ticks since the last msg
 	heartbeatTimeout int
 	electionTimeout  int
@@ -132,7 +129,6 @@ func newRaft(id uint64, peers []uint64, election, heartbeat int) *raft {
 		lead:             None,
 		raftLog:          newLog(),
 		prs:              make(map[uint64]*progress),
-		removed:          make(map[uint64]bool),
 		electionTimeout:  election,
 		heartbeatTimeout: heartbeat,
 	}
@@ -145,10 +141,8 @@ func newRaft(id uint64, peers []uint64, election, heartbeat int) *raft {
 
 func (r *raft) hasLeader() bool { return r.lead != None }
 
-func (r *raft) shouldStop() bool { return r.removed[r.id] }
-
 func (r *raft) softState() *SoftState {
-	return &SoftState{Lead: r.lead, RaftState: r.state, Nodes: r.nodes(), RemovedNodes: r.removedNodes(), ShouldStop: r.shouldStop()}
+	return &SoftState{Lead: r.lead, RaftState: r.state, Nodes: r.nodes()}
 }
 
 func (r *raft) String() string {
@@ -363,19 +357,6 @@ func (r *raft) Step(m pb.Message) error {
 	// TODO(bmizerany): this likely allocs - prevent that.
 	defer func() { r.Commit = r.raftLog.committed }()
 
-	if r.removed[m.From] {
-		if m.From != r.id {
-			r.send(pb.Message{To: m.From, Type: pb.MsgDenied})
-		}
-		// TODO: return an error?
-		return nil
-	}
-	if m.Type == pb.MsgDenied {
-		r.removed[r.id] = true
-		// TODO: return an error?
-		return nil
-	}
-
 	if m.Type == pb.MsgHup {
 		r.campaign()
 	}
@@ -425,7 +406,6 @@ func (r *raft) addNode(id uint64) {
 func (r *raft) removeNode(id uint64) {
 	r.delProgress(id)
 	r.pendingConf = false
-	r.removed[id] = true
 }
 
 type stepFunc func(r *raft, m pb.Message)
@@ -517,10 +497,7 @@ func (r *raft) compact(index uint64, nodes []uint64, d []byte) {
 	if index > r.raftLog.applied {
 		panic(fmt.Sprintf("raft: compact index (%d) exceeds applied index (%d)", index, r.raftLog.applied))
 	}
-	// We do not get the removed nodes at the given index.
-	// We get the removed nodes at current index. So a state machine might
-	// have a newer verison of removed nodes after recovery. It is OK.
-	r.raftLog.snap(d, index, r.raftLog.term(index), nodes, r.removedNodes())
+	r.raftLog.snap(d, index, r.raftLog.term(index), nodes)
 	r.raftLog.compact(index)
 }
 
@@ -539,10 +516,6 @@ func (r *raft) restore(s pb.Snapshot) bool {
 		} else {
 			r.setProgress(n, 0, r.raftLog.lastIndex()+1)
 		}
-	}
-	r.removed = make(map[uint64]bool)
-	for _, n := range s.RemovedNodes {
-		r.removed[n] = true
 	}
 	return true
 }
@@ -563,14 +536,6 @@ func (r *raft) nodes() []uint64 {
 		nodes = append(nodes, k)
 	}
 	return nodes
-}
-
-func (r *raft) removedNodes() []uint64 {
-	removed := make([]uint64, 0, len(r.removed))
-	for k := range r.removed {
-		removed = append(removed, k)
-	}
-	return removed
 }
 
 func (r *raft) setProgress(id, match, next uint64) {

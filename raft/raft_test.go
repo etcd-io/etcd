@@ -429,13 +429,12 @@ func TestCompact(t *testing.T) {
 	tests := []struct {
 		compacti uint64
 		nodes    []uint64
-		removed  []uint64
 		snapd    []byte
 		wpanic   bool
 	}{
-		{1, []uint64{1, 2, 3}, []uint64{4, 5}, []byte("some data"), false},
-		{2, []uint64{1, 2, 3}, []uint64{4, 5}, []byte("some data"), false},
-		{4, []uint64{1, 2, 3}, []uint64{4, 5}, []byte("some data"), true}, // compact out of range
+		{1, []uint64{1, 2, 3}, []byte("some data"), false},
+		{2, []uint64{1, 2, 3}, []byte("some data"), false},
+		{4, []uint64{1, 2, 3}, []byte("some data"), true}, // compact out of range
 	}
 
 	for i, tt := range tests {
@@ -454,14 +453,9 @@ func TestCompact(t *testing.T) {
 					applied:   2,
 					ents:      []pb.Entry{{}, {Term: 1}, {Term: 1}, {Term: 1}},
 				},
-				removed: make(map[uint64]bool),
-			}
-			for _, r := range tt.removed {
-				sm.removeNode(r)
 			}
 			sm.compact(tt.compacti, tt.nodes, tt.snapd)
 			sort.Sort(uint64Slice(sm.raftLog.snapshot.Nodes))
-			sort.Sort(uint64Slice(sm.raftLog.snapshot.RemovedNodes))
 			if sm.raftLog.offset != tt.compacti {
 				t.Errorf("%d: log.offset = %d, want %d", i, sm.raftLog.offset, tt.compacti)
 			}
@@ -470,9 +464,6 @@ func TestCompact(t *testing.T) {
 			}
 			if !reflect.DeepEqual(sm.raftLog.snapshot.Data, tt.snapd) {
 				t.Errorf("%d: snap.data = %v, want %v", i, sm.raftLog.snapshot.Data, tt.snapd)
-			}
-			if !reflect.DeepEqual(sm.raftLog.snapshot.RemovedNodes, tt.removed) {
-				t.Errorf("%d: snap.removedNodes = %v, want %v", i, sm.raftLog.snapshot.RemovedNodes, tt.removed)
 			}
 		}()
 	}
@@ -912,10 +903,9 @@ func TestRecvMsgBeat(t *testing.T) {
 
 func TestRestore(t *testing.T) {
 	s := pb.Snapshot{
-		Index:        11, // magic number
-		Term:         11, // magic number
-		Nodes:        []uint64{1, 2, 3},
-		RemovedNodes: []uint64{4, 5},
+		Index: 11, // magic number
+		Term:  11, // magic number
+		Nodes: []uint64{1, 2, 3},
 	}
 
 	sm := newRaft(1, []uint64{1, 2}, 10, 1)
@@ -930,14 +920,9 @@ func TestRestore(t *testing.T) {
 		t.Errorf("log.lastTerm = %d, want %d", sm.raftLog.term(s.Index), s.Term)
 	}
 	sg := sm.nodes()
-	srn := sm.removedNodes()
 	sort.Sort(uint64Slice(sg))
-	sort.Sort(uint64Slice(srn))
 	if !reflect.DeepEqual(sg, s.Nodes) {
 		t.Errorf("sm.Nodes = %+v, want %+v", sg, s.Nodes)
-	}
-	if !reflect.DeepEqual(s.RemovedNodes, srn) {
-		t.Errorf("sm.RemovedNodes = %+v, want %+v", s.RemovedNodes, srn)
 	}
 	if !reflect.DeepEqual(sm.raftLog.snapshot, s) {
 		t.Errorf("snapshot = %+v, want %+v", sm.raftLog.snapshot, s)
@@ -1123,63 +1108,6 @@ func TestRemoveNode(t *testing.T) {
 	w := []uint64{1}
 	if g := r.nodes(); !reflect.DeepEqual(g, w) {
 		t.Errorf("nodes = %v, want %v", g, w)
-	}
-	wremoved := map[uint64]bool{2: true}
-	if !reflect.DeepEqual(r.removed, wremoved) {
-		t.Errorf("rmNodes = %v, want %v", r.removed, wremoved)
-	}
-}
-
-// TestRecvMsgDenied tests that state machine sets the removed list when
-// handling msgDenied, and does not pass it to the actual stepX function.
-func TestRecvMsgDenied(t *testing.T) {
-	called := false
-	fakeStep := func(r *raft, m pb.Message) {
-		called = true
-	}
-	r := newRaft(1, []uint64{1, 2}, 10, 1)
-	r.step = fakeStep
-	r.Step(pb.Message{From: 2, Type: pb.MsgDenied})
-	if called != false {
-		t.Errorf("stepFunc called = %v , want %v", called, false)
-	}
-	wremoved := map[uint64]bool{1: true}
-	if !reflect.DeepEqual(r.removed, wremoved) {
-		t.Errorf("rmNodes = %v, want %v", r.removed, wremoved)
-	}
-}
-
-// TestRecvMsgFromRemovedNode tests that state machine sends correct
-// messages out when handling message from removed node, and does not
-// pass it to the actual stepX function.
-func TestRecvMsgFromRemovedNode(t *testing.T) {
-	tests := []struct {
-		from    uint64
-		wmsgNum int
-	}{
-		{1, 0},
-		{2, 1},
-	}
-	for i, tt := range tests {
-		called := false
-		fakeStep := func(r *raft, m pb.Message) {
-			called = true
-		}
-		r := newRaft(1, []uint64{1}, 10, 1)
-		r.step = fakeStep
-		r.removeNode(tt.from)
-		r.Step(pb.Message{From: tt.from, Type: pb.MsgVote})
-		if called != false {
-			t.Errorf("#%d: stepFunc called = %v , want %v", i, called, false)
-		}
-		if len(r.msgs) != tt.wmsgNum {
-			t.Errorf("#%d: len(msgs) = %d, want %d", i, len(r.msgs), tt.wmsgNum)
-		}
-		for j, msg := range r.msgs {
-			if msg.Type != pb.MsgDenied {
-				t.Errorf("#%d.%d: msgType = %d, want %d", i, j, msg.Type, pb.MsgDenied)
-			}
-		}
 	}
 }
 

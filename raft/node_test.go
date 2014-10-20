@@ -172,7 +172,7 @@ func TestNode(t *testing.T) {
 	}
 	wants := []Ready{
 		{
-			SoftState: &SoftState{Lead: 1, Nodes: []uint64{1}, RemovedNodes: []uint64{}, RaftState: StateLeader},
+			SoftState: &SoftState{Lead: 1, Nodes: []uint64{1}, RaftState: StateLeader},
 			HardState: raftpb.HardState{Term: 1, Commit: 2},
 			Entries: []raftpb.Entry{
 				{},
@@ -248,11 +248,10 @@ func TestNodeCompact(t *testing.T) {
 	n.Propose(ctx, []byte("foo"))
 
 	w := raftpb.Snapshot{
-		Term:         1,
-		Index:        2, // one nop + one proposal
-		Data:         []byte("a snapshot"),
-		Nodes:        []uint64{1},
-		RemovedNodes: []uint64{},
+		Term:  1,
+		Index: 2, // one nop + one proposal
+		Data:  []byte("a snapshot"),
+		Nodes: []uint64{1},
 	}
 
 	pkg.ForceGosched()
@@ -295,9 +294,7 @@ func TestSoftStateEqual(t *testing.T) {
 		{&SoftState{}, true},
 		{&SoftState{Lead: 1}, false},
 		{&SoftState{RaftState: StateLeader}, false},
-		{&SoftState{ShouldStop: true}, false},
 		{&SoftState{Nodes: []uint64{1, 2}}, false},
-		{&SoftState{RemovedNodes: []uint64{1, 2}}, false},
 	}
 	for i, tt := range tests {
 		if g := tt.st.equal(&SoftState{}); g != tt.we {

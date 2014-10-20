@@ -21,11 +21,10 @@ message Entry {
 }
 
 message Snapshot {
-	required bytes data          = 1 [(gogoproto.nullable) = false];
-	repeated uint64 nodes         = 2 [(gogoproto.nullable) = false];
-	required uint64 index         = 3 [(gogoproto.nullable) = false];
-	required uint64 term          = 4 [(gogoproto.nullable) = false];
-	repeated uint64 removed_nodes = 5 [(gogoproto.nullable) = false];
+	required bytes  data  = 1 [(gogoproto.nullable) = false];
+	repeated uint64 nodes = 2 [(gogoproto.nullable) = false];
+	required uint64 index = 3 [(gogoproto.nullable) = false];
+	required uint64 term  = 4 [(gogoproto.nullable) = false];
 }
 
 enum MessageType {
@@ -37,7 +36,6 @@ enum MessageType {
 	MsgVote     = 5;
 	MsgVoteResp = 6;
 	MsgSnap     = 7;
-	MsgDenied   = 8;
 }
 
 message Message {
