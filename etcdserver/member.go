@@ -34,6 +34,7 @@ const membersKVPrefix = "/_etcd/members/"
 type RaftAttributes struct {
 	// TODO(philips): ensure these are URLs
 	PeerURLs []string
+	Removed  bool
 }
 
 // Attributes represents all the non-raft related attributes of an etcd member.

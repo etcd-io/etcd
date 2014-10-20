@@ -114,6 +114,9 @@ func (c Cluster) String() string {
 func (c Cluster) IDs() []uint64 {
 	var ids []uint64
 	for _, m := range c {
+		if m.Removed {
+			continue
+		}
 		ids = append(ids, m.ID)
 	}
 	sort.Sort(types.Uint64Slice(ids))
@@ -126,6 +129,9 @@ func (c Cluster) IDs() []uint64 {
 func (c Cluster) PeerURLs() []string {
 	endpoints := make([]string, 0)
 	for _, p := range c {
+		if p.Removed {
+			continue
+		}
 		for _, addr := range p.PeerURLs {
 			endpoints = append(endpoints, addr)
 		}
@@ -140,6 +146,9 @@ func (c Cluster) PeerURLs() []string {
 func (c Cluster) ClientURLs() []string {
 	urls := make([]string, 0)
 	for _, p := range c {
+		if p.Removed {
+			continue
+		}
 		for _, url := range p.ClientURLs {
 			urls = append(urls, url)
 		}

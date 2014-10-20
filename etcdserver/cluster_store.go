@@ -51,6 +51,10 @@ type clusterStore struct {
 // Add puts a new Member into the store.
 // A Member with a matching id must not exist.
 func (s *clusterStore) Add(m Member) {
+	if m.Removed == true {
+		log.Panicf("unexpected Removed == true")
+	}
+
 	b, err := json.Marshal(m.RaftAttributes)
 	if err != nil {
 		log.Panicf("marshal error: %v", err)
@@ -113,12 +117,20 @@ func nodeToMember(n *store.NodeExtern) (Member, error) {
 	return m, nil
 }
 
-// Remove removes a member from the store.
-// The given id MUST exist.
+// Remove marks a member as removed in the store.
+// The given id MUST exists as active member.
 func (s *clusterStore) Remove(id uint64) {
-	p := s.Get().FindID(id).storeKey()
-	if _, err := s.Store.Delete(p, true, true); err != nil {
-		log.Panicf("delete peer should never fail: %v", err)
+	m := s.Get().FindID(id)
+	if m.Removed == true {
+		log.Panicf("unexpected Removed == true")
+	}
+	m.Removed = true
+	b, err := json.Marshal(m.RaftAttributes)
+	if err != nil {
+		log.Panicf("marshal error: %v", err)
+	}
+	if _, err := s.Store.Set(m.storeKey()+raftAttributesSuffix, false, string(b), store.Permanent); err != nil {
+		log.Panicf("set raftAttributes should never fail: %v", err)
 	}
 }
 
