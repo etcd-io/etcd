@@ -639,7 +639,7 @@ func startNode(cfg *ServerConfig) (id, cid uint64, n raft.Node, w *wal.WAL) {
 		peers[i] = raft.Peer{ID: id, Context: ctx}
 	}
 	id, cid = cfg.ID(), cfg.Cluster.ID()
-	log.Printf("etcdserver: start node %d in cluster %d", cfg.ID(), cfg.Cluster.ID())
+	log.Printf("etcdserver: start node %d in cluster %d", id, cid)
 	n = raft.StartNode(cfg.ID(), peers, 10, 1)
 	return
 }
@@ -658,8 +658,7 @@ func restartNode(cfg *ServerConfig, index uint64, snapshot *raftpb.Snapshot) (id
 	var metadata pb.Metadata
 	pbutil.MustUnmarshal(&metadata, wmetadata)
 	id, cid = metadata.NodeID, metadata.ClusterID
-	log.Printf("etcdserver: restart node %d in cluster %d at commit index %d",
-		metadata.NodeID, metadata.ClusterID, st.Commit)
+	log.Printf("etcdserver: restart node %d in cluster %d at commit index %d", id, cid, st.Commit)
 	n = raft.RestartNode(id, 10, 1, snapshot, st, ents)
 	return
 }
