@@ -261,7 +261,7 @@ func (s *EtcdServer) run() {
 	var syncC <-chan time.Time
 	// snapi indicates the index of the last submitted snapshot request
 	var snapi, appliedi uint64
-	var nodes, removedNodes []uint64
+	var nodes []uint64
 	for {
 		select {
 		case <-s.ticker:
@@ -269,15 +269,10 @@ func (s *EtcdServer) run() {
 		case rd := <-s.node.Ready():
 			if rd.SoftState != nil {
 				nodes = rd.SoftState.Nodes
-				removedNodes = rd.SoftState.RemovedNodes
 				if rd.RaftState == raft.StateLeader {
 					syncC = s.syncTicker
 				} else {
 					syncC = nil
-				}
-				if rd.SoftState.ShouldStop {
-					s.Stop()
-					return
 				}
 			}
 
@@ -290,7 +285,7 @@ func (s *EtcdServer) run() {
 			// race them.
 			// TODO: apply configuration change into ClusterStore.
 			if len(rd.CommittedEntries) != 0 {
-				appliedi = s.apply(rd.CommittedEntries, nodes, removedNodes)
+				appliedi = s.apply(rd.CommittedEntries, nodes)
 			}
 
 			if rd.Snapshot.Index > snapi {
@@ -512,7 +507,7 @@ func getExpirationTime(r *pb.Request) time.Time {
 	return t
 }
 
-func (s *EtcdServer) apply(es []raftpb.Entry, nodes, removedNodes []uint64) uint64 {
+func (s *EtcdServer) apply(es []raftpb.Entry, nodes []uint64) uint64 {
 	var applied uint64
 	for i := range es {
 		e := es[i]
@@ -524,7 +519,7 @@ func (s *EtcdServer) apply(es []raftpb.Entry, nodes, removedNodes []uint64) uint
 		case raftpb.EntryConfChange:
 			var cc raftpb.ConfChange
 			pbutil.MustUnmarshal(&cc, e.Data)
-			s.w.Trigger(cc.ID, s.applyConfChange(cc, nodes, removedNodes))
+			s.w.Trigger(cc.ID, s.applyConfChange(cc, nodes))
 		default:
 			panic("unexpected entry type")
 		}
@@ -576,8 +571,8 @@ func (s *EtcdServer) applyRequest(r pb.Request) Response {
 	}
 }
 
-func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, nodes, removedNodes []uint64) error {
-	if err := checkConfChange(cc, nodes, removedNodes); err != nil {
+func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, nodes []uint64) error {
+	if err := checkConfChange(cc, nodes); err != nil {
 		cc.NodeID = raft.None
 		s.node.ApplyConfChange(cc)
 		return err
@@ -599,10 +594,7 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, nodes, removedNodes [
 	return nil
 }
 
-func checkConfChange(cc raftpb.ConfChange, nodes, removedNodes []uint64) error {
-	if containsUint64(removedNodes, cc.NodeID) {
-		return ErrIDRemoved
-	}
+func checkConfChange(cc raftpb.ConfChange, nodes []uint64) error {
 	switch cc.Type {
 	case raftpb.ConfChangeAddNode:
 		if containsUint64(nodes, cc.NodeID) {

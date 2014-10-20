@@ -175,13 +175,12 @@ func (l *raftLog) compact(i uint64) uint64 {
 	return uint64(len(l.ents))
 }
 
-func (l *raftLog) snap(d []byte, index, term uint64, nodes []uint64, removed []uint64) {
+func (l *raftLog) snap(d []byte, index, term uint64, nodes []uint64) {
 	l.snapshot = pb.Snapshot{
-		Data:         d,
-		Nodes:        nodes,
-		Index:        index,
-		Term:         term,
-		RemovedNodes: removed,
+		Data:  d,
+		Nodes: nodes,
+		Index: index,
+		Term:  term,
 	}
 }
 
