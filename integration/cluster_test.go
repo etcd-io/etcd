@@ -146,6 +146,8 @@ type member struct {
 	hss []*httptest.Server
 }
 
+// Launch starts a member based on ServerConfig, PeerListeners
+// and ClientListeners.
 func (m *member) Launch(t *testing.T) {
 	m.s = etcdserver.NewServer(&m.ServerConfig)
 	m.s.Ticker = time.Tick(tickDuration)
@@ -170,14 +172,17 @@ func (m *member) Launch(t *testing.T) {
 	}
 }
 
+// Stop stops the member, but the data dir of the member is preserved.
 func (m *member) Stop(t *testing.T) {
 	panic("unimplemented")
 }
 
+// Start starts the member using preserved data dir.
 func (m *member) Start(t *testing.T) {
 	panic("unimplemented")
 }
 
+// Terminate stops the member and remove the data dir.
 func (m *member) Terminate(t *testing.T) {
 	m.s.Stop()
 	for _, hs := range m.hss {
