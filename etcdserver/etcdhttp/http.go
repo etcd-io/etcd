@@ -108,13 +108,12 @@ func (h serverHandler) serveKeys(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(context.Background(), h.timeout)
 	defer cancel()
 
-	rr, err := parseRequest(r, etcdserver.GenID(), clockwork.NewRealClock())
+	rr, err := parseKeyRequest(r, etcdserver.GenID(), clockwork.NewRealClock())
 	if err != nil {
 		writeError(w, err)
 		return
 	}
 
-	rr.Path = path.Join(etcdserver.StoreKeysPrefix, rr.Path)
 	resp, err := h.server.Do(ctx, rr)
 	if err != nil {
 		writeError(w, err)
@@ -251,10 +250,10 @@ func (h serverHandler) serveRaft(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// parseRequest converts a received http.Request to a server Request,
-// performing validation of supplied fields as appropriate.
+// parseKeyRequest converts a received http.Request on keysPrefix to
+// a server Request, performing validation of supplied fields as appropriate.
 // If any validation fails, an empty Request and non-nil error is returned.
-func parseRequest(r *http.Request, id uint64, clock clockwork.Clock) (etcdserverpb.Request, error) {
+func parseKeyRequest(r *http.Request, id uint64, clock clockwork.Clock) (etcdserverpb.Request, error) {
 	emptyReq := etcdserverpb.Request{}
 
 	err := r.ParseForm()
@@ -271,7 +270,7 @@ func parseRequest(r *http.Request, id uint64, clock clockwork.Clock) (etcdserver
 			"incorrect key prefix",
 		)
 	}
-	p := r.URL.Path[len(keysPrefix):]
+	p := path.Join(etcdserver.StoreKeysPrefix, r.URL.Path[len(keysPrefix):])
 
 	var pIdx, wIdx uint64
 	if pIdx, err = getUint64(r.Form, "prevIndex"); err != nil {
