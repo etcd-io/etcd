@@ -106,7 +106,11 @@ func (c *Cluster) GenID(salt []byte) {
 	for i, id := range mIDs {
 		binary.BigEndian.PutUint64(b[8*i:], id)
 	}
-	hash := sha1.Sum(append(b, salt...))
+	if len(c.name) > 0 {
+		b = append(b, []byte(c.name)...)
+	}
+	b = append(b, salt...)
+	hash := sha1.Sum(b)
 	c.id = binary.BigEndian.Uint64(hash[:8])
 }
 
