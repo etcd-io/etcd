@@ -199,11 +199,16 @@ func httpPost(c *http.Client, url string, cid uint64, data []byte) bool {
 		// TODO: log the error?
 		return false
 	}
-
 	resp.Body.Close()
-	if resp.StatusCode != http.StatusNoContent {
-		// TODO: log the error?
+
+	switch resp.StatusCode {
+	case http.StatusPreconditionFailed:
+		// TODO: shutdown the etcdserver gracefully?
+		log.Panicf("clusterID mismatch")
+		return false
+	case http.StatusNoContent:
+		return true
+	default:
 		return false
 	}
-	return true
 }
