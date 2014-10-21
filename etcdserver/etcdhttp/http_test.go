@@ -862,6 +862,7 @@ func TestServeRaft(t *testing.T) {
 		method    string
 		body      io.Reader
 		serverErr error
+		clusterID string
 
 		wcode int
 	}{
@@ -875,6 +876,7 @@ func TestServeRaft(t *testing.T) {
 				),
 			),
 			nil,
+			"0",
 			http.StatusMethodNotAllowed,
 		},
 		{
@@ -887,6 +889,7 @@ func TestServeRaft(t *testing.T) {
 				),
 			),
 			nil,
+			"0",
 			http.StatusMethodNotAllowed,
 		},
 		{
@@ -899,6 +902,7 @@ func TestServeRaft(t *testing.T) {
 				),
 			),
 			nil,
+			"0",
 			http.StatusMethodNotAllowed,
 		},
 		{
@@ -906,6 +910,7 @@ func TestServeRaft(t *testing.T) {
 			"POST",
 			&errReader{},
 			nil,
+			"0",
 			http.StatusBadRequest,
 		},
 		{
@@ -913,6 +918,7 @@ func TestServeRaft(t *testing.T) {
 			"POST",
 			strings.NewReader("malformed garbage"),
 			nil,
+			"0",
 			http.StatusBadRequest,
 		},
 		{
@@ -925,6 +931,7 @@ func TestServeRaft(t *testing.T) {
 				),
 			),
 			errors.New("some error"),
+			"0",
 			http.StatusInternalServerError,
 		},
 		{
@@ -937,6 +944,20 @@ func TestServeRaft(t *testing.T) {
 				),
 			),
 			nil,
+			"1",
+			http.StatusPreconditionFailed,
+		},
+		{
+			// good request
+			"POST",
+			bytes.NewReader(
+				mustMarshalMsg(
+					t,
+					raftpb.Message{},
+				),
+			),
+			nil,
+			"0",
 			http.StatusNoContent,
 		},
 	}
@@ -945,9 +966,11 @@ func TestServeRaft(t *testing.T) {
 		if err != nil {
 			t.Fatalf("#%d: could not create request: %#v", i, err)
 		}
+		req.Header.Set("X-Etcd-Cluster-ID", tt.clusterID)
 		h := &serverHandler{
-			timeout: time.Hour,
-			server:  &errServer{tt.serverErr},
+			timeout:      time.Hour,
+			server:       &errServer{tt.serverErr},
+			clusterStore: &fakeCluster{},
 		}
 		rw := httptest.NewRecorder()
 		h.serveRaft(rw, req)

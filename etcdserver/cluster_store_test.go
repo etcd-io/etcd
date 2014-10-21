@@ -92,13 +92,14 @@ func TestClusterStoreGet(t *testing.T) {
 		},
 	}
 	for i, tt := range tests {
-		cs := &clusterStore{Store: newGetAllStore()}
-		for _, m := range tt.mems {
-			cs.Add(m)
-		}
 		c := NewCluster()
 		if err := c.AddSlice(tt.mems); err != nil {
 			t.Fatal(err)
+		}
+		c.GenID(nil)
+		cs := &clusterStore{Store: newGetAllStore(), id: c.id}
+		for _, m := range tt.mems {
+			cs.Add(m)
 		}
 		if g := cs.Get(); !reflect.DeepEqual(&g, c) {
 			t.Errorf("#%d: mems = %v, want %v", i, &g, c)
