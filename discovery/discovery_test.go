@@ -98,7 +98,7 @@ func TestCheckCluster(t *testing.T) {
 	}{
 		{
 			// self is in the size range
-			client.Nodes{
+			[]*client.Node{
 				{Key: "/1000/_config/size", Value: "3", CreatedIndex: 1},
 				{Key: self, CreatedIndex: 2},
 				{Key: "/1000/2", CreatedIndex: 3},
@@ -110,7 +110,7 @@ func TestCheckCluster(t *testing.T) {
 		},
 		{
 			// self is in the size range
-			client.Nodes{
+			[]*client.Node{
 				{Key: "/1000/_config/size", Value: "3", CreatedIndex: 1},
 				{Key: "/1000/2", CreatedIndex: 2},
 				{Key: "/1000/3", CreatedIndex: 3},
@@ -122,7 +122,7 @@ func TestCheckCluster(t *testing.T) {
 		},
 		{
 			// self is out of the size range
-			client.Nodes{
+			[]*client.Node{
 				{Key: "/1000/_config/size", Value: "3", CreatedIndex: 1},
 				{Key: "/1000/2", CreatedIndex: 2},
 				{Key: "/1000/3", CreatedIndex: 3},
@@ -134,7 +134,7 @@ func TestCheckCluster(t *testing.T) {
 		},
 		{
 			// self is not in the cluster
-			client.Nodes{
+			[]*client.Node{
 				{Key: "/1000/_config/size", Value: "3", CreatedIndex: 1},
 				{Key: "/1000/2", CreatedIndex: 2},
 				{Key: "/1000/3", CreatedIndex: 3},
@@ -143,7 +143,7 @@ func TestCheckCluster(t *testing.T) {
 			3,
 		},
 		{
-			client.Nodes{
+			[]*client.Node{
 				{Key: "/1000/_config/size", Value: "3", CreatedIndex: 1},
 				{Key: "/1000/2", CreatedIndex: 2},
 				{Key: "/1000/3", CreatedIndex: 3},
@@ -154,7 +154,7 @@ func TestCheckCluster(t *testing.T) {
 		},
 		{
 			// bad size key
-			client.Nodes{
+			[]*client.Node{
 				{Key: "/1000/_config/size", Value: "bad", CreatedIndex: 1},
 			},
 			ErrBadSizeKey,
@@ -162,7 +162,7 @@ func TestCheckCluster(t *testing.T) {
 		},
 		{
 			// no size key
-			client.Nodes{},
+			[]*client.Node{},
 			ErrSizeNotFound,
 			0,
 		},
@@ -210,9 +210,9 @@ func TestCheckCluster(t *testing.T) {
 
 func TestWaitNodes(t *testing.T) {
 	all := client.Nodes{
-		{Key: "/1000/1", CreatedIndex: 2},
-		{Key: "/1000/2", CreatedIndex: 3},
-		{Key: "/1000/3", CreatedIndex: 4},
+		0: {Key: "/1000/1", CreatedIndex: 2},
+		1: {Key: "/1000/2", CreatedIndex: 3},
+		2: {Key: "/1000/3", CreatedIndex: 4},
 	}
 
 	tests := []struct {
@@ -325,9 +325,9 @@ func TestCreateSelf(t *testing.T) {
 
 func TestNodesToCluster(t *testing.T) {
 	nodes := client.Nodes{
-		{Key: "/1000/1", Value: "1=1.1.1.1", CreatedIndex: 1},
-		{Key: "/1000/2", Value: "2=2.2.2.2", CreatedIndex: 2},
-		{Key: "/1000/3", Value: "3=3.3.3.3", CreatedIndex: 3},
+		0: {Key: "/1000/1", Value: "1=1.1.1.1", CreatedIndex: 1},
+		1: {Key: "/1000/2", Value: "2=2.2.2.2", CreatedIndex: 2},
+		2: {Key: "/1000/3", Value: "3=3.3.3.3", CreatedIndex: 3},
 	}
 	w := "1=1.1.1.1,2=2.2.2.2,3=3.3.3.3"
 
@@ -339,10 +339,10 @@ func TestNodesToCluster(t *testing.T) {
 
 func TestSortableNodes(t *testing.T) {
 	ns := client.Nodes{
-		{CreatedIndex: 5},
-		{CreatedIndex: 1},
-		{CreatedIndex: 3},
-		{CreatedIndex: 4},
+		0: {CreatedIndex: 5},
+		1: {CreatedIndex: 1},
+		2: {CreatedIndex: 3},
+		3: {CreatedIndex: 4},
 	}
 	// add some randomness
 	for i := 0; i < 10000; i++ {

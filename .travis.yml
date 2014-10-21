@@ -4,6 +4,7 @@ go:
 
 install:
  - go get code.google.com/p/go.tools/cmd/cover
+ - go get code.google.com/p/go.tools/cmd/vet
 
 script:
  - ./test

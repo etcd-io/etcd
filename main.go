@@ -107,11 +107,11 @@ func init() {
 	fs.Var(&flagtypes.IPAddressPort{}, "peer-bind-addr", "DEPRECATED: Use -listen-peer-urls instead.")
 
 	for _, f := range ignored {
-		fs.Var(&pkg.IgnoredFlag{f}, f, "")
+		fs.Var(&pkg.IgnoredFlag{Name: f}, f, "")
 	}
 
-	fs.Var(&pkg.DeprecatedFlag{"peers"}, "peers", "DEPRECATED: Use -initial-cluster instead")
-	fs.Var(&pkg.DeprecatedFlag{"peers-file"}, "peers-file", "DEPRECATED: Use -initial-cluster instead")
+	fs.Var(&pkg.DeprecatedFlag{Name: "peers"}, "peers", "DEPRECATED: Use -initial-cluster instead")
+	fs.Var(&pkg.DeprecatedFlag{Name: "peers-file"}, "peers-file", "DEPRECATED: Use -initial-cluster instead")
 }
 
 func main() {
