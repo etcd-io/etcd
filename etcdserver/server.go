@@ -188,7 +188,7 @@ func NewServer(cfg *ServerConfig) *EtcdServer {
 			if err != nil {
 				log.Fatalf("etcdserver: %v", err)
 			}
-			if err = cfg.Cluster.Set(s); err != nil {
+			if err = cfg.Cluster.SetMembersFromString(s); err != nil {
 				log.Fatalf("etcdserver: %v", err)
 			}
 		}

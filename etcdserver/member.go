@@ -49,7 +49,7 @@ type Member struct {
 
 // newMember creates a Member without an ID and generates one based on the
 // name, peer URLs. This is used for bootstrapping.
-func newMember(name string, peerURLs types.URLs, clusterName *string, now *time.Time) *Member {
+func newMember(name string, peerURLs types.URLs, clusterName string, now *time.Time) *Member {
 	m := &Member{
 		RaftAttributes: RaftAttributes{PeerURLs: peerURLs.StringSlice()},
 		Attributes:     Attributes{Name: name},
@@ -61,8 +61,8 @@ func newMember(name string, peerURLs types.URLs, clusterName *string, now *time.
 		b = append(b, []byte(p)...)
 	}
 
-	if clusterName != nil {
-		b = append(b, []byte(*clusterName)...)
+	if clusterName != "" {
+		b = append(b, []byte(clusterName)...)
 	}
 
 	if now != nil {
@@ -72,10 +72,6 @@ func newMember(name string, peerURLs types.URLs, clusterName *string, now *time.
 	hash := sha1.Sum(b)
 	m.ID = binary.BigEndian.Uint64(hash[:8])
 	return m
-}
-
-func NewMemberFromURLs(name string, urls types.URLs, clusterName *string) *Member {
-	return newMember(name, urls, clusterName, nil)
 }
 
 func (m Member) storeKey() string {

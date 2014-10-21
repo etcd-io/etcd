@@ -187,7 +187,7 @@ func TestClusterSet(t *testing.T) {
 		}
 
 		g := Cluster{}
-		g.Set(tt.f)
+		g.SetMembersFromString(tt.f)
 
 		if g.String() != c.String() {
 			t.Errorf("#%d: set = %v, want %v", i, g, c)
@@ -233,7 +233,7 @@ func TestClusterSetBad(t *testing.T) {
 	}
 	for i, tt := range tests {
 		g := NewCluster("")
-		if err := g.Set(tt); err == nil {
+		if err := g.SetMembersFromString(tt); err == nil {
 			t.Errorf("#%d: set = %v, want err", i, tt)
 		}
 	}
