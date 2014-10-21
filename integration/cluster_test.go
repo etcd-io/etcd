@@ -89,18 +89,21 @@ func (c *cluster) Launch(t *testing.T) {
 		lns[i] = l
 		bootstrapCfgs[i] = fmt.Sprintf("%s=%s", c.name(i), "http://"+l.Addr().String())
 	}
-	clusterCfg := &etcdserver.Cluster{}
+	clusterCfg := etcdserver.NewCluster()
 	if err := clusterCfg.Set(strings.Join(bootstrapCfgs, ",")); err != nil {
 		t.Fatal(err)
 	}
 
-	var err error
 	for i := 0; i < c.Size; i++ {
 		m := member{}
 		m.PeerListeners = []net.Listener{lns[i]}
 		cln := newLocalListener(t)
 		m.ClientListeners = []net.Listener{cln}
-		m.Name = c.name(i)
+		listenUrls, err := types.NewURLs([]string{"http://" + lns[i].Addr().String()})
+		if err != nil {
+			t.Fatal(err)
+		}
+		m.LocalMember = *etcdserver.NewMemberFromURLs(c.name(i), listenUrls)
 		m.ClientURLs, err = types.NewURLs([]string{"http://" + cln.Addr().String()})
 		if err != nil {
 			t.Fatal(err)

@@ -27,7 +27,7 @@ import (
 
 // ServerConfig holds the configuration of etcd as taken from the command line or discovery.
 type ServerConfig struct {
-	Name         string
+	LocalMember  Member
 	DiscoveryURL string
 	ClientURLs   types.URLs
 	DataDir      string
@@ -45,11 +45,16 @@ func (c *ServerConfig) VerifyBootstrapConfig() error {
 	}
 
 	// Make sure the cluster at least contains the local server.
-	m := c.Cluster.FindName(c.Name)
-	if m == nil {
-		return fmt.Errorf("could not find name %v in cluster", c.Name)
+	isOk := false
+	for _, m := range c.Cluster.members {
+		if m.ID == c.LocalMember.ID {
+			isOk = true
+		}
 	}
-	if m.ID == raft.None {
+	if !isOk {
+		return fmt.Errorf("couldn't find local ID in cluster config")
+	}
+	if c.LocalMember.ID == raft.None {
 		return fmt.Errorf("could not use %x as member id", raft.None)
 	}
 
@@ -58,7 +63,7 @@ func (c *ServerConfig) VerifyBootstrapConfig() error {
 	for _, m := range c.Cluster.Members() {
 		for _, url := range m.PeerURLs {
 			if urlMap[url] {
-				return fmt.Errorf("duplicate url %v in server config", url)
+				return fmt.Errorf("duplicate url %v in cluster config", url)
 			}
 			urlMap[url] = true
 		}
@@ -70,7 +75,7 @@ func (c *ServerConfig) WALDir() string { return path.Join(c.DataDir, "wal") }
 
 func (c *ServerConfig) SnapDir() string { return path.Join(c.DataDir, "snap") }
 
-func (c *ServerConfig) ID() uint64 { return c.Cluster.FindName(c.Name).ID }
+func (c *ServerConfig) ID() uint64 { return c.LocalMember.ID }
 
 func (c *ServerConfig) ShouldDiscover() bool {
 	return c.DiscoveryURL != ""

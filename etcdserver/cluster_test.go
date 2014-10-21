@@ -137,7 +137,7 @@ func TestClusterFind(t *testing.T) {
 		c := NewCluster()
 		c.AddSlice(tt.mems)
 
-		m := c.FindName(tt.name)
+		m := c.FindID(tt.id)
 		if m == nil && !tt.match {
 			continue
 		}

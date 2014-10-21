@@ -43,16 +43,6 @@ func (c Cluster) FindID(id uint64) *Member {
 	return c.members[id]
 }
 
-func (c Cluster) FindName(name string) *Member {
-	for _, m := range c.members {
-		if m.Name == name {
-			return m
-		}
-	}
-
-	return nil
-}
-
 func (c Cluster) Add(m Member) error {
 	if c.FindID(m.ID) != nil {
 		return fmt.Errorf("Member exists with identical ID %v", m)

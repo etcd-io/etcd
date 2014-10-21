@@ -213,7 +213,7 @@ func NewServer(cfg *ServerConfig) *EtcdServer {
 	cls := &clusterStore{Store: st, id: cid}
 
 	sstats := &stats.ServerStats{
-		Name: cfg.Name,
+		Name: cfg.LocalMember.Attributes.Name,
 		ID:   idAsHex(cfg.ID()),
 	}
 	lstats := stats.NewLeaderStats(idAsHex(cfg.ID()))
@@ -223,7 +223,7 @@ func NewServer(cfg *ServerConfig) *EtcdServer {
 		node:       n,
 		id:         id,
 		clusterID:  cid,
-		attributes: Attributes{Name: cfg.Name, ClientURLs: cfg.ClientURLs.StringSlice()},
+		attributes: Attributes{Name: cfg.LocalMember.Attributes.Name, ClientURLs: cfg.ClientURLs.StringSlice()},
 		storage: struct {
 			*wal.WAL
 			*snap.Snapshotter
