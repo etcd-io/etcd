@@ -56,6 +56,8 @@ var (
 	clientTLSInfo = transport.TLSInfo{}
 	peerTLSInfo   = transport.TLSInfo{}
 
+	initialClusterName *string
+
 	ignored = []string{
 		"cluster-active-size",
 		"cluster-remove-delay",
@@ -74,7 +76,9 @@ var (
 )
 
 func init() {
+	fs.StringVar(initialClusterName, "initial-cluster-name", "etcd", "Initial name for the etcd cluster during bootstrap.")
 	fs.Var(cluster, "initial-cluster", "Initial cluster configuration for bootstrapping")
+	cluster = etcdserver.NewCluster(*initialClusterName)
 	if err := cluster.Set("default=http://localhost:2380,default=http://localhost:7001"); err != nil {
 		// Should never happen
 		log.Panic(err)
@@ -283,8 +287,8 @@ func setupCluster() (*etcdserver.Member, error) {
 		return nil, err
 	}
 	if set["discovery"] {
-		m = etcdserver.NewMemberFromURLs(*name, apurls)
-		cluster = etcdserver.NewCluster()
+		m = etcdserver.NewMemberFromURLs(*name, apurls, durl)
+		cluster = etcdserver.NewCluster(*durl)
 		cluster.Add(*m)
 		return m, nil
 	} else if set["initial-cluster"] {
@@ -298,7 +302,7 @@ func setupCluster() (*etcdserver.Member, error) {
 		log.Println("etcd: cannot find the passed name", *name, "in initial-cluster. Trying advertise-peer-urls")
 
 		// Try to configure by looking for a matching machine based on the peer urls.
-		m = etcdserver.NewMemberFromURLs(*name, apurls)
+		m = etcdserver.NewMemberFromURLs(*name, apurls, initialClusterName)
 		for _, c := range cluster.Members() {
 			if c.ID == m.ID {
 				return c, nil
@@ -307,6 +311,6 @@ func setupCluster() (*etcdserver.Member, error) {
 		log.Println("etcd: Could not find a matching peer for the local instance in initial-cluster.")
 		return nil, fmt.Errorf("etcd: Bootstrapping a static cluster, but local name or local peer urls are not defined")
 	}
-	m = etcdserver.NewMemberFromURLs(*name, apurls)
+	m = etcdserver.NewMemberFromURLs(*name, apurls, initialClusterName)
 	return m, nil
 }

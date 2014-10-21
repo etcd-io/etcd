@@ -19,7 +19,13 @@ import (
 	"github.com/coreos/etcd/pkg/types"
 )
 
-const tickDuration = 5 * time.Millisecond
+const (
+	tickDuration = 5 * time.Millisecond
+)
+
+var (
+	clusterName = "etcd"
+)
 
 func init() {
 	// open microsecond-level time log for integration test debugging
@@ -89,7 +95,7 @@ func (c *cluster) Launch(t *testing.T) {
 		lns[i] = l
 		bootstrapCfgs[i] = fmt.Sprintf("%s=%s", c.name(i), "http://"+l.Addr().String())
 	}
-	clusterCfg := etcdserver.NewCluster()
+	clusterCfg := etcdserver.NewCluster(clusterName)
 	if err := clusterCfg.Set(strings.Join(bootstrapCfgs, ",")); err != nil {
 		t.Fatal(err)
 	}
@@ -103,7 +109,7 @@ func (c *cluster) Launch(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		localMember := *etcdserver.NewMemberFromURLs(c.name(i), listenUrls)
+		localMember := *etcdserver.NewMemberFromURLs(c.name(i), listenUrls, &clusterName)
 		m.NodeID = localMember.ID
 		m.Name = localMember.Name
 		m.ClientURLs, err = types.NewURLs([]string{"http://" + cln.Addr().String()})

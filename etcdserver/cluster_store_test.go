@@ -93,7 +93,7 @@ func TestClusterStoreGet(t *testing.T) {
 		},
 	}
 	for i, tt := range tests {
-		c := NewCluster()
+		c := NewCluster("")
 		if err := c.AddSlice(tt.mems); err != nil {
 			t.Fatal(err)
 		}
