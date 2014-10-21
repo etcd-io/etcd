@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 	"time"
 
 	etcdErr "github.com/coreos/etcd/error"
@@ -46,6 +47,9 @@ type ClusterStore interface {
 
 type clusterStore struct {
 	Store store.Store
+	// TODO: write the id into the actual store?
+	// TODO: save the id as string?
+	id uint64
 }
 
 // Add puts a new Member into the store.
@@ -72,6 +76,7 @@ func (s *clusterStore) Add(m Member) {
 // lock here.
 func (s *clusterStore) Get() Cluster {
 	c := NewCluster()
+	c.id = s.id
 	e, err := s.Store.Get(membersKVPrefix, true, true)
 	if err != nil {
 		if v, ok := err.(*etcdErr.Error); ok && v.ErrorCode == etcdErr.EcodeKeyNotFound {
@@ -141,6 +146,7 @@ func Sender(t *http.Transport, cls ClusterStore, ss *stats.ServerStats, ls *stat
 // ClusterStore, retrying up to 3 times for each message. The given
 // ServerStats and LeaderStats are updated appropriately
 func send(c *http.Client, cls ClusterStore, m raftpb.Message, ss *stats.ServerStats, ls *stats.LeaderStats) {
+	cid := cls.Get().ID()
 	// TODO (xiangli): reasonable retry logic
 	for i := 0; i < 3; i++ {
 		u := cls.Get().Pick(m.To)
@@ -167,7 +173,7 @@ func send(c *http.Client, cls ClusterStore, m raftpb.Message, ss *stats.ServerSt
 		fs := ls.Follower(to)
 
 		start := time.Now()
-		sent := httpPost(c, u, data)
+		sent := httpPost(c, u, cid, data)
 		end := time.Now()
 		if sent {
 			fs.Succ(end.Sub(start))
@@ -180,12 +186,20 @@ func send(c *http.Client, cls ClusterStore, m raftpb.Message, ss *stats.ServerSt
 
 // httpPost POSTs a data payload to a url using the given client. Returns true
 // if the POST succeeds, false on any failure.
-func httpPost(c *http.Client, url string, data []byte) bool {
-	resp, err := c.Post(url, "application/protobuf", bytes.NewBuffer(data))
+func httpPost(c *http.Client, url string, cid uint64, data []byte) bool {
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(data))
 	if err != nil {
 		// TODO: log the error?
 		return false
 	}
+	req.Header.Set("Content-Type", "application/protobuf")
+	req.Header.Set("X-Etcd-Cluster-ID", strconv.FormatUint(cid, 16))
+	resp, err := c.Do(req)
+	if err != nil {
+		// TODO: log the error?
+		return false
+	}
+
 	resp.Body.Close()
 	if resp.StatusCode != http.StatusNoContent {
 		// TODO: log the error?

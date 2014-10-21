@@ -80,8 +80,9 @@ func NewClientHandler(server *etcdserver.EtcdServer) http.Handler {
 // NewPeerHandler generates an http.Handler to handle etcd peer (raft) requests.
 func NewPeerHandler(server *etcdserver.EtcdServer) http.Handler {
 	sh := &serverHandler{
-		server: server,
-		stats:  server,
+		server:       server,
+		stats:        server,
+		clusterStore: server.ClusterStore,
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc(raftPrefix, sh.serveRaft)
@@ -212,6 +213,14 @@ func (h serverHandler) serveLeaderStats(w http.ResponseWriter, r *http.Request) 
 
 func (h serverHandler) serveRaft(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r.Method, "POST") {
+		return
+	}
+
+	gcid := r.Header.Get("X-Etcd-Cluster-ID")
+	wcid := strconv.FormatUint(h.clusterStore.Get().ID(), 16)
+	if gcid != wcid {
+		log.Printf("etcdhttp: request ignored: clusterID mismatch got %s want %x", gcid, wcid)
+		http.Error(w, "clusterID mismatch", http.StatusPreconditionFailed)
 		return
 	}
 

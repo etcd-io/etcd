@@ -204,7 +204,7 @@ func NewServer(cfg *ServerConfig) *EtcdServer {
 		id, cid, n, w = restartNode(cfg, index, snapshot)
 	}
 
-	cls := &clusterStore{Store: st}
+	cls := &clusterStore{Store: st, id: cid}
 
 	sstats := &stats.ServerStats{
 		Name: cfg.Name,
