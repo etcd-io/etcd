@@ -54,7 +54,7 @@ func TestIPAddressPortSet(t *testing.T) {
 	for i, tt := range fail {
 		f := &IPAddressPort{}
 		if err := f.Set(tt); err == nil {
-			t.Errorf("#%d: expected error from IPAddressPort.Set(%q)", i, tt, err)
+			t.Errorf("#%d: expected error from IPAddressPort.Set(%q)", i, tt)
 		}
 	}
 }

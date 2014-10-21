@@ -988,8 +988,8 @@ func TestPublishRetry(t *testing.T) {
 
 	action := n.Action()
 	// multiple Proposes
-	if len(action) < 2 {
-		t.Errorf("len(action) = %d, want >= 2", action)
+	if n := len(action); n < 2 {
+		t.Errorf("len(action) = %d, want >= 2", n)
 	}
 }
 

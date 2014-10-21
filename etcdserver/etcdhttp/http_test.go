@@ -695,7 +695,7 @@ func TestSelfServeStatsBad(t *testing.T) {
 			},
 		)
 		if rw.Code != http.StatusMethodNotAllowed {
-			t.Errorf("method %s: code=%d, want %d", m, http.StatusMethodNotAllowed)
+			t.Errorf("method %s: code=%d, want %d", m, rw.Code, http.StatusMethodNotAllowed)
 		}
 	}
 }
@@ -711,7 +711,7 @@ func TestLeaderServeStatsBad(t *testing.T) {
 			},
 		)
 		if rw.Code != http.StatusMethodNotAllowed {
-			t.Errorf("method %s: code=%d, want %d", m, http.StatusMethodNotAllowed)
+			t.Errorf("method %s: code=%d, want %d", m, rw.Code, http.StatusMethodNotAllowed)
 		}
 	}
 }
@@ -1226,7 +1226,7 @@ func TestHandleWatch(t *testing.T) {
 		wrt := "5"
 
 		if rr.Code != wcode {
-			t.Errorf("#%d: got code=%d, want %d", rr.Code, wcode)
+			t.Errorf("#%d: got code=%d, want %d", i, rr.Code, wcode)
 		}
 		h := rr.Header()
 		if ct := h.Get("Content-Type"); ct != wct {

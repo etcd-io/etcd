@@ -81,7 +81,7 @@ func TestProxyFuncFromEnv(t *testing.T) {
 			t.Errorf("%s: unexpected non-nil err: %v", in, err)
 		}
 		if g.String() != w {
-			t.Errorf("%s: proxyURL=%q, want %q", g, w)
+			t.Errorf("%s: proxyURL=%q, want %q", in, g, w)
 		}
 
 	}
