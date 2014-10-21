@@ -28,8 +28,6 @@ import (
 	"github.com/coreos/etcd/pkg/types"
 )
 
-const membersKVPrefix = "/_etcd/members/"
-
 // RaftAttributes represents the raft related attributes of an etcd member.
 type RaftAttributes struct {
 	// TODO(philips): ensure these are URLs
@@ -71,7 +69,7 @@ func newMember(name string, peerURLs types.URLs, now *time.Time) *Member {
 }
 
 func (m Member) storeKey() string {
-	return path.Join(membersKVPrefix, idAsHex(m.ID))
+	return path.Join(storeMembersPrefix, idAsHex(m.ID))
 }
 
 func parseMemberID(key string) uint64 {

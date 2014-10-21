@@ -24,6 +24,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"path"
 	"strconv"
 	"strings"
 	"time"
@@ -107,7 +108,7 @@ func (h serverHandler) serveKeys(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(context.Background(), h.timeout)
 	defer cancel()
 
-	rr, err := parseRequest(r, etcdserver.GenID(), clockwork.NewRealClock())
+	rr, err := parseKeyRequest(r, etcdserver.GenID(), clockwork.NewRealClock())
 	if err != nil {
 		writeError(w, err)
 		return
@@ -121,14 +122,14 @@ func (h serverHandler) serveKeys(w http.ResponseWriter, r *http.Request) {
 
 	switch {
 	case resp.Event != nil:
-		if err := writeEvent(w, resp.Event, h.timer); err != nil {
+		if err := writeKeyEvent(w, resp.Event, h.timer); err != nil {
 			// Should never be reached
 			log.Printf("error writing event: %v", err)
 		}
 	case resp.Watcher != nil:
 		ctx, cancel := context.WithTimeout(context.Background(), defaultWatchTimeout)
 		defer cancel()
-		handleWatch(ctx, w, resp.Watcher, rr.Stream, h.timer)
+		handleKeyWatch(ctx, w, resp.Watcher, rr.Stream, h.timer)
 	default:
 		writeError(w, errors.New("received response with no Event/Watcher!"))
 	}
@@ -248,10 +249,10 @@ func (h serverHandler) serveRaft(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// parseRequest converts a received http.Request to a server Request,
-// performing validation of supplied fields as appropriate.
+// parseKeyRequest converts a received http.Request on keysPrefix to
+// a server Request, performing validation of supplied fields as appropriate.
 // If any validation fails, an empty Request and non-nil error is returned.
-func parseRequest(r *http.Request, id uint64, clock clockwork.Clock) (etcdserverpb.Request, error) {
+func parseKeyRequest(r *http.Request, id uint64, clock clockwork.Clock) (etcdserverpb.Request, error) {
 	emptyReq := etcdserverpb.Request{}
 
 	err := r.ParseForm()
@@ -268,7 +269,7 @@ func parseRequest(r *http.Request, id uint64, clock clockwork.Clock) (etcdserver
 			"incorrect key prefix",
 		)
 	}
-	p := r.URL.Path[len(keysPrefix):]
+	p := path.Join(etcdserver.StoreKeysPrefix, r.URL.Path[len(keysPrefix):])
 
 	var pIdx, wIdx uint64
 	if pIdx, err = getUint64(r.Form, "prevIndex"); err != nil {
@@ -425,10 +426,10 @@ func writeError(w http.ResponseWriter, err error) {
 	}
 }
 
-// writeEvent serializes a single Event and writes the resulting
-// JSON to the given ResponseWriter, along with the appropriate
-// headers
-func writeEvent(w http.ResponseWriter, ev *store.Event, rt etcdserver.RaftTimer) error {
+// writeKeyEvent trims the prefix of key path in a single Event under
+// StoreKeysPrefix, serializes it and writes the resulting JSON to the given
+// ResponseWriter, along with the appropriate headers.
+func writeKeyEvent(w http.ResponseWriter, ev *store.Event, rt etcdserver.RaftTimer) error {
 	if ev == nil {
 		return errors.New("cannot write empty Event!")
 	}
@@ -441,10 +442,11 @@ func writeEvent(w http.ResponseWriter, ev *store.Event, rt etcdserver.RaftTimer)
 		w.WriteHeader(http.StatusCreated)
 	}
 
+	ev = trimEventPrefix(ev, etcdserver.StoreKeysPrefix)
 	return json.NewEncoder(w).Encode(ev)
 }
 
-func handleWatch(ctx context.Context, w http.ResponseWriter, wa store.Watcher, stream bool, rt etcdserver.RaftTimer) {
+func handleKeyWatch(ctx context.Context, w http.ResponseWriter, wa store.Watcher, stream bool, rt etcdserver.RaftTimer) {
 	defer wa.Remove()
 	ech := wa.EventChan()
 	var nch <-chan bool
@@ -476,6 +478,7 @@ func handleWatch(ctx context.Context, w http.ResponseWriter, wa store.Watcher, s
 				// send to the client in time. Then we simply end streaming.
 				return
 			}
+			ev = trimEventPrefix(ev, etcdserver.StoreKeysPrefix)
 			if err := json.NewEncoder(w).Encode(ev); err != nil {
 				// Should never be reached
 				log.Printf("error writing event: %v\n", err)
@@ -501,4 +504,24 @@ func allowMethod(w http.ResponseWriter, m string, ms ...string) bool {
 	w.Header().Set("Allow", strings.Join(ms, ","))
 	http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 	return false
+}
+
+func trimEventPrefix(ev *store.Event, prefix string) *store.Event {
+	if ev == nil {
+		return nil
+	}
+	ev.Node = trimNodeExternPrefix(ev.Node, prefix)
+	ev.PrevNode = trimNodeExternPrefix(ev.PrevNode, prefix)
+	return ev
+}
+
+func trimNodeExternPrefix(n *store.NodeExtern, prefix string) *store.NodeExtern {
+	if n == nil {
+		return nil
+	}
+	n.Key = strings.TrimPrefix(n.Key, prefix)
+	for _, nn := range n.Nodes {
+		nn = trimNodeExternPrefix(nn, prefix)
+	}
+	return n
 }

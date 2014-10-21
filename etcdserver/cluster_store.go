@@ -77,7 +77,7 @@ func (s *clusterStore) Add(m Member) {
 func (s *clusterStore) Get() Cluster {
 	c := NewCluster()
 	c.id = s.id
-	e, err := s.Store.Get(membersKVPrefix, true, true)
+	e, err := s.Store.Get(storeMembersPrefix, true, true)
 	if err != nil {
 		if v, ok := err.(*etcdErr.Error); ok && v.ErrorCode == etcdErr.EcodeKeyNotFound {
 			return *c
