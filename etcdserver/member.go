@@ -79,3 +79,7 @@ func parseMemberID(key string) uint64 {
 	}
 	return id
 }
+
+func removedMemberStoreKey(id uint64) string {
+	return path.Join(storeRemovedMembersPrefix, idAsHex(id))
+}

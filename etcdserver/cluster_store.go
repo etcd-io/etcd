@@ -43,6 +43,7 @@ type ClusterStore interface {
 	Add(m Member)
 	Get() Cluster
 	Remove(id uint64)
+	IsRemoved(id uint64) bool
 }
 
 type clusterStore struct {
@@ -121,10 +122,26 @@ func nodeToMember(n *store.NodeExtern) (Member, error) {
 // Remove removes a member from the store.
 // The given id MUST exist.
 func (s *clusterStore) Remove(id uint64) {
-	p := s.Get().FindID(id).storeKey()
-	if _, err := s.Store.Delete(p, true, true); err != nil {
+	if _, err := s.Store.Delete(Member{ID: id}.storeKey(), true, true); err != nil {
 		log.Panicf("delete peer should never fail: %v", err)
 	}
+	if _, err := s.Store.Create(removedMemberStoreKey(id), false, "", false, store.Permanent); err != nil {
+		log.Panicf("unexpected creating removed member error: %v", err)
+	}
+}
+
+func (s *clusterStore) IsRemoved(id uint64) bool {
+	_, err := s.Store.Get(removedMemberStoreKey(id), false, false)
+	switch v := err.(type) {
+	case nil:
+		return true
+	case *etcdErr.Error:
+		if v.ErrorCode == etcdErr.EcodeKeyNotFound {
+			return false
+		}
+	}
+	log.Panicf("unexpected getting removed member error: %v", err)
+	return false
 }
 
 // Sender creates the default production sender used to transport raft messages
@@ -205,6 +222,10 @@ func httpPost(c *http.Client, url string, cid uint64, data []byte) bool {
 	case http.StatusPreconditionFailed:
 		// TODO: shutdown the etcdserver gracefully?
 		log.Panicf("clusterID mismatch")
+		return false
+	case http.StatusForbidden:
+		// TODO: stop the server
+		log.Panicf("the member has been removed")
 		return false
 	case http.StatusNoContent:
 		return true

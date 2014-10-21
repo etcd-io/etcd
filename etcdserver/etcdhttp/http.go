@@ -243,7 +243,12 @@ func (h serverHandler) serveRaft(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := h.server.Process(context.TODO(), m); err != nil {
 		log.Println("etcdhttp: error processing raft message:", err)
-		writeError(w, err)
+		switch err {
+		case etcdserver.ErrRemoved:
+			http.Error(w, "unexpected message from removed node", http.StatusForbidden)
+		default:
+			writeError(w, err)
+		}
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
