@@ -22,6 +22,7 @@ import (
 	"log"
 	"math/rand"
 	"os"
+	"path"
 	"strconv"
 	"sync/atomic"
 	"time"
@@ -48,9 +49,8 @@ const (
 	// TODO: calculate based on heartbeat interval
 	defaultPublishRetryInterval = 5 * time.Second
 
-	AdminDir   = "/0"
-	membersDir = AdminDir + "/members"
-	KeysDir    = "/1"
+	StoreAdminPrefix = "/0"
+	StoreKeysPrefix  = "/1"
 )
 
 var (
@@ -59,6 +59,8 @@ var (
 	ErrIDRemoved     = errors.New("etcdserver: ID removed")
 	ErrIDExists      = errors.New("etcdserver: ID exists")
 	ErrIDNotFound    = errors.New("etcdserver: ID not found")
+
+	storeMembersPrefix = path.Join(StoreAdminPrefix, "members")
 )
 
 func init() {

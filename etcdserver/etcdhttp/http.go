@@ -24,6 +24,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"path"
 	"strconv"
 	"strings"
 	"time"
@@ -113,7 +114,7 @@ func (h serverHandler) serveKeys(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rr.Path = etcdserver.KeysDir + rr.Path
+	rr.Path = path.Join(etcdserver.StoreKeysPrefix, rr.Path)
 	resp, err := h.server.Do(ctx, rr)
 	if err != nil {
 		writeError(w, err)
@@ -122,7 +123,7 @@ func (h serverHandler) serveKeys(w http.ResponseWriter, r *http.Request) {
 
 	switch {
 	case resp.Event != nil:
-		ev := trimEventPrefix(resp.Event, etcdserver.KeysDir)
+		ev := trimEventPrefix(resp.Event, etcdserver.StoreKeysPrefix)
 		if err := writeEvent(w, ev, h.timer); err != nil {
 			// Should never be reached
 			log.Printf("error writing event: %v", err)
@@ -478,7 +479,7 @@ func handleKeyWatch(ctx context.Context, w http.ResponseWriter, wa store.Watcher
 				// send to the client in time. Then we simply end streaming.
 				return
 			}
-			ev = trimEventPrefix(ev, etcdserver.KeysDir)
+			ev = trimEventPrefix(ev, etcdserver.StoreKeysPrefix)
 			if err := json.NewEncoder(w).Encode(ev); err != nil {
 				// Should never be reached
 				log.Printf("error writing event: %v\n", err)
@@ -506,22 +507,22 @@ func allowMethod(w http.ResponseWriter, m string, ms ...string) bool {
 	return false
 }
 
-func trimEventPrefix(ev *store.Event, pre string) *store.Event {
+func trimEventPrefix(ev *store.Event, prefix string) *store.Event {
 	if ev == nil {
 		return nil
 	}
-	ev.Node = trimNodeExternPrefix(ev.Node, pre)
-	ev.PrevNode = trimNodeExternPrefix(ev.PrevNode, pre)
+	ev.Node = trimNodeExternPrefix(ev.Node, prefix)
+	ev.PrevNode = trimNodeExternPrefix(ev.PrevNode, prefix)
 	return ev
 }
 
-func trimNodeExternPrefix(n *store.NodeExtern, pre string) *store.NodeExtern {
+func trimNodeExternPrefix(n *store.NodeExtern, prefix string) *store.NodeExtern {
 	if n == nil {
 		return nil
 	}
-	n.Key = strings.TrimPrefix(n.Key, pre)
+	n.Key = strings.TrimPrefix(n.Key, prefix)
 	for _, nn := range n.Nodes {
-		nn = trimNodeExternPrefix(nn, pre)
+		nn = trimNodeExternPrefix(nn, prefix)
 	}
 	return n
 }

@@ -17,6 +17,7 @@
 package etcdserver
 
 import (
+	"path"
 	"reflect"
 	"testing"
 	"time"
@@ -34,7 +35,7 @@ func TestClusterStoreAdd(t *testing.T) {
 		{
 			name: "Create",
 			params: []interface{}{
-				membersDir + "/1/raftAttributes",
+				path.Join(storeMembersPrefix, "1", "raftAttributes"),
 				false,
 				`{"PeerURLs":null}`,
 				false,
@@ -44,7 +45,7 @@ func TestClusterStoreAdd(t *testing.T) {
 		{
 			name: "Create",
 			params: []interface{}{
-				membersDir + "/1/attributes",
+				path.Join(storeMembersPrefix, "1", "attributes"),
 				false,
 				`{"Name":"node1","ClientURLs":null}`,
 				false,
@@ -113,7 +114,7 @@ func TestClusterStoreDelete(t *testing.T) {
 	cs.Add(newTestMember(1, nil, "node1", nil))
 	cs.Remove(1)
 
-	wdeletes := []string{membersDir + "/1"}
+	wdeletes := []string{path.Join(storeMembersPrefix, "1")}
 	if !reflect.DeepEqual(st.deletes, wdeletes) {
 		t.Errorf("deletes = %v, want %v", st.deletes, wdeletes)
 	}

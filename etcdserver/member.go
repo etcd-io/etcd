@@ -69,7 +69,7 @@ func newMember(name string, peerURLs types.URLs, now *time.Time) *Member {
 }
 
 func (m Member) storeKey() string {
-	return path.Join(membersDir, idAsHex(m.ID))
+	return path.Join(storeMembersPrefix, idAsHex(m.ID))
 }
 
 func parseMemberID(key string) uint64 {
