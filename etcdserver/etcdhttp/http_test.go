@@ -526,7 +526,7 @@ func (drt dummyRaftTimer) Term() uint64  { return uint64(5) }
 func TestWriteEvent(t *testing.T) {
 	// nil event should not panic
 	rw := httptest.NewRecorder()
-	writeEvent(rw, nil, dummyRaftTimer{})
+	writeKeyEvent(rw, nil, dummyRaftTimer{})
 	h := rw.Header()
 	if len(h) > 0 {
 		t.Fatalf("unexpected non-empty headers: %#v", h)
@@ -569,7 +569,7 @@ func TestWriteEvent(t *testing.T) {
 
 	for i, tt := range tests {
 		rw := httptest.NewRecorder()
-		writeEvent(rw, tt.ev, dummyRaftTimer{})
+		writeKeyEvent(rw, tt.ev, dummyRaftTimer{})
 		if gct := rw.Header().Get("Content-Type"); gct != "application/json" {
 			t.Errorf("case %d: bad Content-Type: got %q, want application/json", i, gct)
 		}

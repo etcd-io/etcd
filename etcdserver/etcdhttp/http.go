@@ -122,8 +122,7 @@ func (h serverHandler) serveKeys(w http.ResponseWriter, r *http.Request) {
 
 	switch {
 	case resp.Event != nil:
-		ev := trimEventPrefix(resp.Event, etcdserver.StoreKeysPrefix)
-		if err := writeEvent(w, ev, h.timer); err != nil {
+		if err := writeKeyEvent(w, resp.Event, h.timer); err != nil {
 			// Should never be reached
 			log.Printf("error writing event: %v", err)
 		}
@@ -427,10 +426,10 @@ func writeError(w http.ResponseWriter, err error) {
 	}
 }
 
-// writeEvent serializes a single Event and writes the resulting
-// JSON to the given ResponseWriter, along with the appropriate
-// headers
-func writeEvent(w http.ResponseWriter, ev *store.Event, rt etcdserver.RaftTimer) error {
+// writeKeyEvent trims the prefix of key path in a single Event under
+// StoreKeysPrefix, serializes it and writes the resulting JSON to the given
+// ResponseWriter, along with the appropriate headers.
+func writeKeyEvent(w http.ResponseWriter, ev *store.Event, rt etcdserver.RaftTimer) error {
 	if ev == nil {
 		return errors.New("cannot write empty Event!")
 	}
@@ -443,6 +442,7 @@ func writeEvent(w http.ResponseWriter, ev *store.Event, rt etcdserver.RaftTimer)
 		w.WriteHeader(http.StatusCreated)
 	}
 
+	ev = trimEventPrefix(ev, etcdserver.StoreKeysPrefix)
 	return json.NewEncoder(w).Encode(ev)
 }
 
