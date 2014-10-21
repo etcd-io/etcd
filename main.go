@@ -129,13 +129,8 @@ func main() {
 
 	pkg.SetFlagsFromEnv(fs)
 
-	localMember, err := setupCluster()
-	if err != nil {
-		log.Fatalf("etcd: setupCluster returned error %v", err)
-	}
-
 	if string(*proxyFlag) == flagtypes.ProxyValueOff {
-		startEtcd(localMember)
+		startEtcd()
 	} else {
 		startProxy()
 	}
@@ -145,7 +140,12 @@ func main() {
 }
 
 // startEtcd launches the etcd server and HTTP handlers for client/server communication.
-func startEtcd(self *etcdserver.Member) {
+func startEtcd() {
+	self, err := setupCluster()
+	if err != nil {
+		log.Fatalf("etcd: setupCluster returned error %v", err)
+	}
+
 	if *dir == "" {
 		*dir = fmt.Sprintf("%v_etcd_data", *name)
 		log.Printf("etcd: no data-dir provided, using default data-dir ./%s", *dir)
