@@ -55,7 +55,7 @@ func (c *ServerConfig) VerifyBootstrapConfig() error {
 
 	// No identical IPs in the cluster peer list
 	urlMap := make(map[string]bool)
-	for _, m := range *c.Cluster {
+	for _, m := range c.Cluster.Members() {
 		for _, url := range m.PeerURLs {
 			if urlMap[url] {
 				return fmt.Errorf("duplicate url %v in server config", url)

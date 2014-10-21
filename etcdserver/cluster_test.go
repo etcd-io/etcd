@@ -24,28 +24,27 @@ import (
 func TestClusterAddSlice(t *testing.T) {
 	tests := []struct {
 		mems []Member
-
 		want *Cluster
 	}{
 		{
 			[]Member{},
-
-			&Cluster{},
+			NewCluster(),
 		},
 		{
 			[]Member{
 				newTestMember(1, []string{"foo", "bar"}, "", nil),
 				newTestMember(2, []string{"baz"}, "", nil),
 			},
-
 			&Cluster{
-				1: newTestMemberp(1, []string{"foo", "bar"}, "", nil),
-				2: newTestMemberp(2, []string{"baz"}, "", nil),
+				members: map[uint64]*Member{
+					1: newTestMemberp(1, []string{"foo", "bar"}, "", nil),
+					2: newTestMemberp(2, []string{"baz"}, "", nil),
+				},
 			},
 		},
 	}
 	for i, tt := range tests {
-		c := &Cluster{}
+		c := NewCluster()
 		if err := c.AddSlice(tt.mems); err != nil {
 			t.Errorf("#%d: err=%#v, want nil", i, err)
 			continue
@@ -58,7 +57,9 @@ func TestClusterAddSlice(t *testing.T) {
 
 func TestClusterAddSliceBad(t *testing.T) {
 	c := Cluster{
-		1: newTestMemberp(1, nil, "", nil),
+		members: map[uint64]*Member{
+			1: newTestMemberp(1, nil, "", nil),
+		},
 	}
 	if err := c.AddSlice([]Member{newTestMember(1, nil, "", nil)}); err == nil {
 		t.Error("want err, but got nil")
@@ -67,9 +68,11 @@ func TestClusterAddSliceBad(t *testing.T) {
 
 func TestClusterPick(t *testing.T) {
 	cs := Cluster{
-		1: newTestMemberp(1, []string{"abc", "def", "ghi", "jkl", "mno", "pqr", "stu"}, "", nil),
-		2: newTestMemberp(2, []string{"xyz"}, "", nil),
-		3: newTestMemberp(3, []string{}, "", nil),
+		members: map[uint64]*Member{
+			1: newTestMemberp(1, []string{"abc", "def", "ghi", "jkl", "mno", "pqr", "stu"}, "", nil),
+			2: newTestMemberp(2, []string{"xyz"}, "", nil),
+			3: newTestMemberp(3, []string{}, "", nil),
+		},
 	}
 	ids := map[string]bool{
 		"abc": true,
@@ -131,7 +134,7 @@ func TestClusterFind(t *testing.T) {
 		},
 	}
 	for i, tt := range tests {
-		c := Cluster{}
+		c := NewCluster()
 		c.AddSlice(tt.mems)
 
 		m := c.FindName(tt.name)
@@ -147,7 +150,7 @@ func TestClusterFind(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		c := Cluster{}
+		c := NewCluster()
 		c.AddSlice(tt.mems)
 
 		m := c.FindID(tt.id)
@@ -178,7 +181,7 @@ func TestClusterSet(t *testing.T) {
 		},
 	}
 	for i, tt := range tests {
-		c := Cluster{}
+		c := NewCluster()
 		if err := c.AddSlice(tt.mems); err != nil {
 			t.Error(err)
 		}
@@ -189,6 +192,32 @@ func TestClusterSet(t *testing.T) {
 		if g.String() != c.String() {
 			t.Errorf("#%d: set = %v, want %v", i, g, c)
 		}
+	}
+}
+
+func TestClusterGenID(t *testing.T) {
+	cs := NewCluster()
+	cs.AddSlice([]Member{
+		newTestMember(1, nil, "", nil),
+		newTestMember(2, nil, "", nil),
+	})
+
+	cs.GenID(nil)
+	if cs.ID() == 0 {
+		t.Fatalf("cluster.ID = %v, want not 0", cs.ID())
+	}
+	previd := cs.ID()
+
+	cs.Add(newTestMember(3, nil, "", nil))
+	cs.GenID(nil)
+	if cs.ID() == previd {
+		t.Fatalf("cluster.ID = %v, want not %v", cs.ID(), previd)
+	}
+	previd = cs.ID()
+
+	cs.GenID([]byte("http://discovery.etcd.io/12345678"))
+	if cs.ID() == previd {
+		t.Fatalf("cluster.ID = %v, want not %v", cs.ID(), previd)
 	}
 }
 
@@ -203,22 +232,22 @@ func TestClusterSetBad(t *testing.T) {
 		// "06b2f82fd81b2c20=http://128.193.4.20:2379,02c60cb75083ceef=http://128.193.4.20:2379",
 	}
 	for i, tt := range tests {
-		g := Cluster{}
+		g := NewCluster()
 		if err := g.Set(tt); err == nil {
 			t.Errorf("#%d: set = %v, want err", i, tt)
 		}
 	}
 }
 
-func TestClusterIDs(t *testing.T) {
-	cs := Cluster{}
+func TestClusterMemberIDs(t *testing.T) {
+	cs := NewCluster()
 	cs.AddSlice([]Member{
 		newTestMember(1, nil, "", nil),
 		newTestMember(4, nil, "", nil),
 		newTestMember(100, nil, "", nil),
 	})
 	w := []uint64{1, 4, 100}
-	g := cs.IDs()
+	g := cs.MemberIDs()
 	if !reflect.DeepEqual(w, g) {
 		t.Errorf("IDs=%+v, want %+v", g, w)
 	}
@@ -230,7 +259,7 @@ func TestClusterAddBad(t *testing.T) {
 		newTestMember(1, nil, "mem1", nil),
 		newTestMember(1, nil, "mem2", nil),
 	}
-	c := &Cluster{}
+	c := NewCluster()
 	c.Add(newTestMember(1, nil, "mem1", nil))
 	for i, m := range mems {
 		if err := c.Add(m); err == nil {
@@ -286,7 +315,7 @@ func TestClusterPeerURLs(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		c := Cluster{}
+		c := NewCluster()
 		if err := c.AddSlice(tt.mems); err != nil {
 			t.Errorf("AddSlice error: %v", err)
 			continue
@@ -345,7 +374,7 @@ func TestClusterClientURLs(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		c := Cluster{}
+		c := NewCluster()
 		if err := c.AddSlice(tt.mems); err != nil {
 			t.Errorf("AddSlice error: %v", err)
 			continue
