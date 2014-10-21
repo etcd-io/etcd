@@ -30,6 +30,7 @@ func TestClusterOf1(t *testing.T) { testCluster(t, 1) }
 func TestClusterOf3(t *testing.T) { testCluster(t, 3) }
 
 func testCluster(t *testing.T, size int) {
+	defer afterTest(t)
 	c := &cluster{Size: size}
 	c.Launch(t)
 	for i := 0; i < size; i++ {
@@ -114,6 +115,9 @@ func (c *cluster) Launch(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		// TODO: need the support of graceful stop in Sender to remove this
+		m.Transport.DisableKeepAlives = true
+		m.Transport.Dial = (&net.Dialer{Timeout: 100 * time.Millisecond}).Dial
 
 		m.Launch(t)
 		c.Members = append(c.Members, m)
