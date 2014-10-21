@@ -114,7 +114,7 @@ func TestClusterStoreDelete(t *testing.T) {
 
 	wdeletes := []string{membersKVPrefix + "1"}
 	if !reflect.DeepEqual(st.deletes, wdeletes) {
-		t.Error("deletes = %v, want %v", st.deletes, wdeletes)
+		t.Errorf("deletes = %v, want %v", st.deletes, wdeletes)
 	}
 }
 

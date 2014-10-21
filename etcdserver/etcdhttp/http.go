@@ -469,7 +469,7 @@ func handleWatch(ctx context.Context, w http.ResponseWriter, wa store.Watcher, s
 			}
 			if err := json.NewEncoder(w).Encode(ev); err != nil {
 				// Should never be reached
-				log.Println("error writing event: %v", err)
+				log.Printf("error writing event: %v\n", err)
 				return
 			}
 			if !stream {

@@ -85,7 +85,7 @@ func TestNewTransportTLSInfo(t *testing.T) {
 
 		gotTLSClientConfig := trans.TLSClientConfig != nil
 		if tt.wantTLSClientConfig != gotTLSClientConfig {
-			t.Fatalf("%#d: wantTLSClientConfig=%t but gotTLSClientConfig=%t", i, tt.wantTLSClientConfig, gotTLSClientConfig)
+			t.Fatalf("#%d: wantTLSClientConfig=%t but gotTLSClientConfig=%t", i, tt.wantTLSClientConfig, gotTLSClientConfig)
 		}
 	}
 }
@@ -193,7 +193,7 @@ func TestTLSInfoConfigFuncs(t *testing.T) {
 		}
 
 		if tt.wantCAs != (sCfg.ClientCAs != nil) {
-			t.Errorf("%#d: wantCAs=%t but ClientCAs=%v", i, tt.wantCAs, sCfg.ClientCAs)
+			t.Errorf("#%d: wantCAs=%t but ClientCAs=%v", i, tt.wantCAs, sCfg.ClientCAs)
 		}
 
 		cCfg, err := tt.info.ClientConfig()
@@ -202,7 +202,7 @@ func TestTLSInfoConfigFuncs(t *testing.T) {
 		}
 
 		if tt.wantCAs != (cCfg.RootCAs != nil) {
-			t.Errorf("%#d: wantCAs=%t but RootCAs=%v", i, tt.wantCAs, sCfg.RootCAs)
+			t.Errorf("#%d: wantCAs=%t but RootCAs=%v", i, tt.wantCAs, sCfg.RootCAs)
 		}
 	}
 }

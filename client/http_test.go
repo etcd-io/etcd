@@ -115,7 +115,7 @@ func TestGetAction(t *testing.T) {
 
 		err := assertResponse(got, wantURL, wantHeader, nil)
 		if err != nil {
-			t.Errorf("%#d: %v", i, err)
+			t.Errorf("#%d: %v", i, err)
 		}
 	}
 }
@@ -164,7 +164,7 @@ func TestWaitAction(t *testing.T) {
 
 		err := assertResponse(got, wantURL, wantHeader, nil)
 		if err != nil {
-			t.Errorf("%#d: %v", i, err)
+			t.Errorf("#%d: %v", i, err)
 		}
 	}
 }
@@ -208,7 +208,7 @@ func TestCreateAction(t *testing.T) {
 
 		err := assertResponse(got, wantURL, wantHeader, []byte(tt.wantBody))
 		if err != nil {
-			t.Errorf("%#d: %v", i, err)
+			t.Errorf("#%d: %v", i, err)
 		}
 	}
 }
