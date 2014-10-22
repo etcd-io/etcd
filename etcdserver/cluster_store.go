@@ -126,7 +126,7 @@ func (s *clusterStore) Remove(id uint64) {
 		log.Panicf("delete peer should never fail: %v", err)
 	}
 	if _, err := s.Store.Create(removedMemberStoreKey(id), false, "", false, store.Permanent); err != nil {
-		log.Panicf("unexpected creating removed member error: %v", err)
+		log.Panicf("creating RemovedMember should never fail: %v", err)
 	}
 }
 
