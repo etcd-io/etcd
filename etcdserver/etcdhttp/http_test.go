@@ -610,7 +610,7 @@ func TestV2DeprecatedMachinesEndpoint(t *testing.T) {
 		{"POST", http.StatusMethodNotAllowed},
 	}
 
-	m := NewClientHandler(&etcdserver.EtcdServer{ClusterStore: &fakeCluster{}})
+	m := NewClientHandler(&etcdserver.EtcdServer{Cluster: &etcdserver.Cluster{}})
 	s := httptest.NewServer(m)
 	defer s.Close()
 
@@ -632,19 +632,14 @@ func TestV2DeprecatedMachinesEndpoint(t *testing.T) {
 
 func TestServeMachines(t *testing.T) {
 	cluster := &fakeCluster{
-		members: []etcdserver.Member{
-			{ID: 0xBEEF0, Attributes: etcdserver.Attributes{ClientURLs: []string{"http://localhost:8080"}}},
-			{ID: 0xBEEF1, Attributes: etcdserver.Attributes{ClientURLs: []string{"http://localhost:8081"}}},
-			{ID: 0xBEEF2, Attributes: etcdserver.Attributes{ClientURLs: []string{"http://localhost:8082"}}},
-		},
+		clientURLs: []string{"http://localhost:8080", "http://localhost:8081", "http://localhost:8082"},
 	}
-
 	writer := httptest.NewRecorder()
 	req, err := http.NewRequest("GET", "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	h := &serverHandler{clusterStore: cluster}
+	h := &serverHandler{clusterInfo: cluster}
 	h.serveMachines(writer, req)
 	w := "http://localhost:8080, http://localhost:8081, http://localhost:8082"
 	if g := writer.Body.String(); g != w {
@@ -981,9 +976,9 @@ func TestServeRaft(t *testing.T) {
 		}
 		req.Header.Set("X-Etcd-Cluster-ID", tt.clusterID)
 		h := &serverHandler{
-			timeout:      time.Hour,
-			server:       &errServer{tt.serverErr},
-			clusterStore: &fakeCluster{},
+			timeout:     time.Hour,
+			server:      &errServer{tt.serverErr},
+			clusterInfo: &fakeCluster{id: 0},
 		}
 		rw := httptest.NewRecorder()
 		h.serveRaft(rw, req)
@@ -1750,17 +1745,9 @@ func TestTrimNodeExternPrefix(t *testing.T) {
 }
 
 type fakeCluster struct {
-	members []etcdserver.Member
+	id         uint64
+	clientURLs []string
 }
 
-func (c *fakeCluster) Add(m etcdserver.Member) { return }
-
-func (c *fakeCluster) Get() etcdserver.Cluster {
-	cl := etcdserver.NewCluster("")
-	cl.AddSlice(c.members)
-	return *cl
-}
-
-func (c *fakeCluster) Remove(id uint64) { return }
-
-func (c *fakeCluster) IsRemoved(id uint64) bool { return false }
+func (c *fakeCluster) ID() uint64           { return c.id }
+func (c *fakeCluster) ClientURLs() []string { return c.clientURLs }

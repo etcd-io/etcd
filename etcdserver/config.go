@@ -40,7 +40,7 @@ type ServerConfig struct {
 // VerifyBootstrapConfig sanity-checks the initial config and returns an error
 // for things that should never happen.
 func (c *ServerConfig) VerifyBootstrapConfig() error {
-	m := c.Cluster.FindName(c.Name)
+	m := c.Cluster.MemberFromName(c.Name)
 	// Make sure the cluster at least contains the local server.
 	if m == nil {
 		return fmt.Errorf("couldn't find local name %s in the initial cluster configuration", c.Name)

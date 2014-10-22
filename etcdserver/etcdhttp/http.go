@@ -59,12 +59,12 @@ var errClosed = errors.New("etcdhttp: client closed connection")
 // NewClientHandler generates a muxed http.Handler with the given parameters to serve etcd client requests.
 func NewClientHandler(server *etcdserver.EtcdServer) http.Handler {
 	sh := &serverHandler{
-		server:       server,
-		clusterStore: server.ClusterStore,
-		stats:        server,
-		timer:        server,
-		timeout:      defaultServerTimeout,
-		clock:        clockwork.NewRealClock(),
+		server:      server,
+		clusterInfo: server.Cluster,
+		stats:       server,
+		timer:       server,
+		timeout:     defaultServerTimeout,
+		clock:       clockwork.NewRealClock(),
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc(keysPrefix, sh.serveKeys)
@@ -84,10 +84,10 @@ func NewClientHandler(server *etcdserver.EtcdServer) http.Handler {
 // NewPeerHandler generates an http.Handler to handle etcd peer (raft) requests.
 func NewPeerHandler(server *etcdserver.EtcdServer) http.Handler {
 	sh := &serverHandler{
-		server:       server,
-		stats:        server,
-		clusterStore: server.ClusterStore,
-		clock:        clockwork.NewRealClock(),
+		server:      server,
+		stats:       server,
+		clusterInfo: server.Cluster,
+		clock:       clockwork.NewRealClock(),
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc(raftPrefix, sh.serveRaft)
@@ -97,12 +97,12 @@ func NewPeerHandler(server *etcdserver.EtcdServer) http.Handler {
 
 // serverHandler provides http.Handlers for etcd client and raft communication.
 type serverHandler struct {
-	timeout      time.Duration
-	server       etcdserver.Server
-	stats        etcdserver.Stats
-	timer        etcdserver.RaftTimer
-	clusterStore etcdserver.ClusterStore
-	clock        clockwork.Clock
+	timeout     time.Duration
+	server      etcdserver.Server
+	stats       etcdserver.Stats
+	timer       etcdserver.RaftTimer
+	clusterInfo etcdserver.ClusterInfo
+	clock       clockwork.Clock
 }
 
 func (h serverHandler) serveKeys(w http.ResponseWriter, r *http.Request) {
@@ -145,7 +145,7 @@ func (h serverHandler) serveMachines(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r.Method, "GET", "HEAD") {
 		return
 	}
-	endpoints := h.clusterStore.Get().ClientURLs()
+	endpoints := h.clusterInfo.ClientURLs()
 	w.Write([]byte(strings.Join(endpoints, ", ")))
 }
 
@@ -267,7 +267,7 @@ func (h serverHandler) serveRaft(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	wcid := strconv.FormatUint(h.clusterStore.Get().ID(), 16)
+	wcid := strconv.FormatUint(h.clusterInfo.ID(), 16)
 	w.Header().Set("X-Etcd-Cluster-ID", wcid)
 
 	gcid := r.Header.Get("X-Etcd-Cluster-ID")

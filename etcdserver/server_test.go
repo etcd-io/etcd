@@ -423,10 +423,10 @@ func TestApplyConfChangeError(t *testing.T) {
 	}
 	for i, tt := range tests {
 		n := &nodeRecorder{}
-		cs := &removedClusterStore{removed: removed}
+		cl := &Cluster{removed: removed}
 		srv := &EtcdServer{
-			node:         n,
-			ClusterStore: cs,
+			node:    n,
+			Cluster: cl,
 		}
 		err := srv.applyConfChange(tt.cc, nodes)
 		if err != tt.werr {
@@ -471,13 +471,15 @@ func testServer(t *testing.T, ns uint64) {
 		n := raft.StartNode(id, members, 10, 1)
 		tk := time.NewTicker(10 * time.Millisecond)
 		defer tk.Stop()
+		cl := newCluster("abc")
+		cl.SetStore(&storeRecorder{})
 		srv := &EtcdServer{
-			node:         n,
-			store:        store.New(),
-			send:         send,
-			storage:      &storageRecorder{},
-			Ticker:       tk.C,
-			ClusterStore: &clusterStoreRecorder{},
+			node:    n,
+			store:   store.New(),
+			send:    send,
+			storage: &storageRecorder{},
+			Ticker:  tk.C,
+			Cluster: cl,
 		}
 		srv.start()
 		ss[i] = srv
@@ -538,13 +540,15 @@ func TestDoProposal(t *testing.T) {
 		tk := make(chan time.Time)
 		// this makes <-tk always successful, which accelerates internal clock
 		close(tk)
+		cl := newCluster("abc")
+		cl.SetStore(&storeRecorder{})
 		srv := &EtcdServer{
-			node:         n,
-			store:        st,
-			send:         func(_ []raftpb.Message) {},
-			storage:      &storageRecorder{},
-			Ticker:       tk,
-			ClusterStore: &clusterStoreRecorder{},
+			node:    n,
+			store:   st,
+			send:    func(_ []raftpb.Message) {},
+			storage: &storageRecorder{},
+			Ticker:  tk,
+			Cluster: cl,
 		}
 		srv.start()
 		resp, err := srv.Do(ctx, tt)
@@ -782,12 +786,12 @@ func TestTriggerSnap(t *testing.T) {
 	st := &storeRecorder{}
 	p := &storageRecorder{}
 	s := &EtcdServer{
-		store:        st,
-		send:         func(_ []raftpb.Message) {},
-		storage:      p,
-		node:         n,
-		snapCount:    10,
-		ClusterStore: &clusterStoreRecorder{},
+		store:     st,
+		send:      func(_ []raftpb.Message) {},
+		storage:   p,
+		node:      n,
+		snapCount: 10,
+		Cluster:   &Cluster{},
 	}
 
 	s.start()
@@ -872,19 +876,20 @@ func TestAddMember(t *testing.T) {
 	n.readyc <- raft.Ready{
 		SoftState: &raft.SoftState{
 			RaftState: raft.StateLeader,
-			Nodes:     []uint64{2, 3},
+			Nodes:     []uint64{2345, 3456},
 		},
 	}
-	cs := &clusterStoreRecorder{}
+	cl := newTestCluster(nil)
+	cl.SetStore(&storeRecorder{})
 	s := &EtcdServer{
-		node:         n,
-		store:        &storeRecorder{},
-		send:         func(_ []raftpb.Message) {},
-		storage:      &storageRecorder{},
-		ClusterStore: cs,
+		node:    n,
+		store:   &storeRecorder{},
+		send:    func(_ []raftpb.Message) {},
+		storage: &storageRecorder{},
+		Cluster: cl,
 	}
 	s.start()
-	m := Member{ID: 1, RaftAttributes: RaftAttributes{PeerURLs: []string{"foo"}}}
+	m := Member{ID: 1234, RaftAttributes: RaftAttributes{PeerURLs: []string{"foo"}}}
 	err := s.AddMember(context.TODO(), m)
 	gaction := n.Action()
 	s.Stop()
@@ -896,9 +901,8 @@ func TestAddMember(t *testing.T) {
 	if !reflect.DeepEqual(gaction, wactions) {
 		t.Errorf("action = %v, want %v", gaction, wactions)
 	}
-	wcsactions := []action{{name: "Add", params: []interface{}{m}}}
-	if g := cs.Action(); !reflect.DeepEqual(g, wcsactions) {
-		t.Errorf("csaction = %v, want %v", g, wcsactions)
+	if cl.Member(1234) == nil {
+		t.Errorf("member with id 1234 is not added")
 	}
 }
 
@@ -908,20 +912,20 @@ func TestRemoveMember(t *testing.T) {
 	n.readyc <- raft.Ready{
 		SoftState: &raft.SoftState{
 			RaftState: raft.StateLeader,
-			Nodes:     []uint64{1, 2, 3},
+			Nodes:     []uint64{1234, 2345, 3456},
 		},
 	}
-	cs := &clusterStoreRecorder{}
+	cl := newTestCluster([]Member{{ID: 1234}})
+	cl.SetStore(&storeRecorder{})
 	s := &EtcdServer{
-		node:         n,
-		store:        &storeRecorder{},
-		send:         func(_ []raftpb.Message) {},
-		storage:      &storageRecorder{},
-		ClusterStore: cs,
+		node:    n,
+		store:   &storeRecorder{},
+		send:    func(_ []raftpb.Message) {},
+		storage: &storageRecorder{},
+		Cluster: cl,
 	}
 	s.start()
-	id := uint64(1)
-	err := s.RemoveMember(context.TODO(), id)
+	err := s.RemoveMember(context.TODO(), 1234)
 	gaction := n.Action()
 	s.Stop()
 
@@ -932,9 +936,8 @@ func TestRemoveMember(t *testing.T) {
 	if !reflect.DeepEqual(gaction, wactions) {
 		t.Errorf("action = %v, want %v", gaction, wactions)
 	}
-	wcsactions := []action{{name: "Remove", params: []interface{}{id}}}
-	if g := cs.Action(); !reflect.DeepEqual(g, wcsactions) {
-		t.Errorf("csaction = %v, want %v", g, wcsactions)
+	if cl.Member(1234) != nil {
+		t.Errorf("member with id 1234 is not removed")
 	}
 }
 

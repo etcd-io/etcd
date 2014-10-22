@@ -85,7 +85,7 @@ func (c *cluster) Launch(t *testing.T) {
 	}
 
 	lns := make([]net.Listener, c.Size)
-	clusterCfg := etcdserver.NewCluster(clusterName)
+	infos := make([]etcdserver.MemberInfo, c.Size)
 	for i := 0; i < c.Size; i++ {
 		l := newLocalListener(t)
 		// each member claims only one peer listener
@@ -94,9 +94,7 @@ func (c *cluster) Launch(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, err = clusterCfg.AddMemberFromURLs(c.name(i), listenURLs); err != nil {
-			t.Fatal(err)
-		}
+		infos[i] = etcdserver.MemberInfo{Name: c.name(i), PeerURLs: listenURLs}
 	}
 
 	var err error
@@ -114,7 +112,10 @@ func (c *cluster) Launch(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		m.Cluster = clusterCfg
+		m.Cluster, err = etcdserver.NewClusterFromMemberInfos(clusterName, infos)
+		if err != nil {
+			t.Fatal(err)
+		}
 		m.ClusterState = etcdserver.ClusterStateValueNew
 		m.Transport, err = transport.NewTransport(transport.TLSInfo{})
 		if err != nil {

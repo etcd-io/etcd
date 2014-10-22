@@ -262,7 +262,6 @@ func startProxy() {
 
 // setupCluster sets up the cluster definition for bootstrap or discovery.
 func setupCluster() error {
-	cluster = etcdserver.NewCluster(*initialClusterName)
 	set := make(map[string]bool)
 	fs.Visit(func(f *flag.Flag) {
 		set[f.Name] = true
@@ -275,17 +274,17 @@ func setupCluster() error {
 		return err
 	}
 
+	err = nil
 	switch {
 	case set["discovery"]:
-		cluster = etcdserver.NewCluster(*durl)
-		_, err := cluster.AddMemberFromURLs(*name, apurls)
-		return err
+		infos := []etcdserver.MemberInfo{{Name: *name, PeerURLs: apurls}}
+		cluster, err = etcdserver.NewClusterFromMemberInfos(*durl, infos)
 	case set["initial-cluster"]:
 		fallthrough
 	default:
 		// We're statically configured, and cluster has appropriately been set.
 		// Try to configure by indexing the static cluster by name.
-		cluster.SetMembersFromString(*initialCluster)
+		cluster, err = etcdserver.NewClusterFromString(*initialClusterName, *initialCluster)
 	}
-	return nil
+	return err
 }

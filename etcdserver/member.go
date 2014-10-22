@@ -21,6 +21,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"log"
+	"math/rand"
 	"path"
 	"sort"
 	"strconv"
@@ -69,6 +70,15 @@ func NewMember(name string, peerURLs types.URLs, clusterName string, now *time.T
 	hash := sha1.Sum(b)
 	m.ID = binary.BigEndian.Uint64(hash[:8])
 	return m
+}
+
+// Pick chooses a random address from a given Member's addresses, and returns it as
+// an addressible URI. If the given member does not exist, an empty string is returned.
+func (m *Member) Pick() string {
+	if len(m.PeerURLs) == 0 {
+		panic("member should always have some peer url")
+	}
+	return m.PeerURLs[rand.Intn(len(m.PeerURLs))]
 }
 
 func memberStoreKey(id uint64) string {
