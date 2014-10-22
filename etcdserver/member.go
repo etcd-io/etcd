@@ -61,10 +61,7 @@ func newMember(name string, peerURLs types.URLs, clusterName string, now *time.T
 		b = append(b, []byte(p)...)
 	}
 
-	if clusterName != "" {
-		b = append(b, []byte(clusterName)...)
-	}
-
+	b = append(b, []byte(clusterName)...)
 	if now != nil {
 		b = append(b, []byte(fmt.Sprintf("%d", now.Unix()))...)
 	}

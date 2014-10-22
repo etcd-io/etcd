@@ -41,6 +41,10 @@ type ServerConfig struct {
 // VerifyBootstrapConfig sanity-checks the initial config and returns an error
 // for things that should never happen.
 func (c *ServerConfig) VerifyBootstrapConfig() error {
+	if c.NodeID == raft.None {
+		return fmt.Errorf("could not use %x as member id", raft.None)
+	}
+
 	if c.DiscoveryURL == "" && c.ClusterState != ClusterStateValueNew {
 		return fmt.Errorf("initial cluster state unset and no wal or discovery URL found")
 	}
@@ -54,9 +58,6 @@ func (c *ServerConfig) VerifyBootstrapConfig() error {
 	}
 	if !isOk {
 		return fmt.Errorf("couldn't find local ID in cluster config")
-	}
-	if c.NodeID == raft.None {
-		return fmt.Errorf("could not use %x as member id", raft.None)
 	}
 
 	// No identical IPs in the cluster peer list
