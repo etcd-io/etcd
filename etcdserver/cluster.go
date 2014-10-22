@@ -100,7 +100,7 @@ func (c *Cluster) SetMembersFromString(s string) error {
 			return fmt.Errorf("Empty URL given for %q", name)
 		}
 
-		m := newMember(name, types.URLs(*flags.NewURLsValue(strings.Join(urls, ","))), c.name, nil)
+		m := NewMember(name, types.URLs(*flags.NewURLsValue(strings.Join(urls, ","))), c.name, nil)
 		err := c.Add(*m)
 		if err != nil {
 			return err
@@ -110,7 +110,7 @@ func (c *Cluster) SetMembersFromString(s string) error {
 }
 
 func (c *Cluster) AddMemberFromURLs(name string, urls types.URLs) (*Member, error) {
-	m := newMember(name, urls, c.name, nil)
+	m := NewMember(name, urls, c.name, nil)
 	err := c.Add(*m)
 	if err != nil {
 		return nil, err

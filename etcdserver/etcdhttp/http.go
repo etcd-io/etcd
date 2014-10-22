@@ -34,6 +34,7 @@ import (
 	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/store"
 )
@@ -62,6 +63,7 @@ func NewClientHandler(server *etcdserver.EtcdServer) http.Handler {
 		stats:        server,
 		timer:        server,
 		timeout:      defaultServerTimeout,
+		clock:        clockwork.NewRealClock(),
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc(keysPrefix, sh.serveKeys)
@@ -84,6 +86,7 @@ func NewPeerHandler(server *etcdserver.EtcdServer) http.Handler {
 		server:       server,
 		stats:        server,
 		clusterStore: server.ClusterStore,
+		clock:        clockwork.NewRealClock(),
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc(raftPrefix, sh.serveRaft)
@@ -98,6 +101,7 @@ type serverHandler struct {
 	stats        etcdserver.Stats
 	timer        etcdserver.RaftTimer
 	clusterStore etcdserver.ClusterStore
+	clock        clockwork.Clock
 }
 
 func (h serverHandler) serveKeys(w http.ResponseWriter, r *http.Request) {
@@ -145,39 +149,40 @@ func (h serverHandler) serveMachines(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h serverHandler) serveAdminMembers(w http.ResponseWriter, r *http.Request) {
-	if !allowMethod(w, r.Method, "PUT", "DELETE") {
+	if !allowMethod(w, r.Method, "POST", "DELETE") {
 		return
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), defaultServerTimeout)
 	defer cancel()
-	idStr := strings.TrimPrefix(r.URL.Path, adminMembersPrefix)
-	id, err := strconv.ParseUint(idStr, 16, 64)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
 
 	switch r.Method {
-	case "PUT":
+	case "POST":
 		if err := r.ParseForm(); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 		peerURLs := r.PostForm["PeerURLs"]
-		log.Printf("etcdhttp: add node %x with peer urls %v", id, peerURLs)
-		m := etcdserver.Member{
-			ID: id,
-			RaftAttributes: etcdserver.RaftAttributes{
-				PeerURLs: peerURLs,
-			},
+		validURLs, err := types.NewURLs(peerURLs)
+		if err != nil {
+			http.Error(w, "bad peer urls", http.StatusBadRequest)
+			return
 		}
-		if err := h.server.AddMember(ctx, m); err != nil {
-			log.Printf("etcdhttp: error adding node %x: %v", id, err)
+		now := h.clock.Now()
+		m := etcdserver.NewMember("", validURLs, "", &now)
+		if err := h.server.AddMember(ctx, *m); err != nil {
+			log.Printf("etcdhttp: error adding node %x: %v", m.ID, err)
 			writeError(w, err)
 			return
 		}
+		log.Printf("etcdhttp: added node %x with peer urls %v", m.ID, peerURLs)
 		w.WriteHeader(http.StatusCreated)
 	case "DELETE":
+		idStr := strings.TrimPrefix(r.URL.Path, adminMembersPrefix)
+		id, err := strconv.ParseUint(idStr, 16, 64)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
 		log.Printf("etcdhttp: remove node %x", id)
 		if err := h.server.RemoveMember(ctx, id); err != nil {
 			log.Printf("etcdhttp: error removing node %x: %v", id, err)
