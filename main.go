@@ -141,8 +141,7 @@ func main() {
 
 // startEtcd launches the etcd server and HTTP handlers for client/server communication.
 func startEtcd() {
-	self, err := setupCluster()
-	if err != nil {
+	if err := setupCluster(); err != nil {
 		log.Fatalf("etcd: setupCluster returned error %v", err)
 	}
 
@@ -164,7 +163,6 @@ func startEtcd() {
 		log.Fatal(err.Error())
 	}
 	cfg := &etcdserver.ServerConfig{
-		NodeID:       self.ID,
 		Name:         *name,
 		ClientURLs:   acurls,
 		DataDir:      *dir,
@@ -262,37 +260,32 @@ func startProxy() {
 	}
 }
 
-// setupCluster sets cluster to a temporary value if you are using
-// discovery, or to the static configuration for bootstrapped clusters.
-// Returns the local member on success.
-func setupCluster() (*etcdserver.Member, error) {
+// setupCluster sets up the cluster definition for bootstrap or discovery.
+func setupCluster() error {
 	cluster = etcdserver.NewCluster(*initialClusterName)
 	set := make(map[string]bool)
 	fs.Visit(func(f *flag.Flag) {
 		set[f.Name] = true
 	})
 	if set["discovery"] && set["initial-cluster"] {
-		return nil, fmt.Errorf("both discovery and bootstrap-config are set")
+		return fmt.Errorf("both discovery and bootstrap-config are set")
 	}
 	apurls, err := pkg.URLsFromFlags(fs, "advertise-peer-urls", "addr", peerTLSInfo)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	switch {
 	case set["discovery"]:
 		cluster = etcdserver.NewCluster(*durl)
-		return cluster.AddMemberFromURLs(*name, apurls)
+		_, err := cluster.AddMemberFromURLs(*name, apurls)
+		return err
 	case set["initial-cluster"]:
 		fallthrough
 	default:
 		// We're statically configured, and cluster has appropriately been set.
 		// Try to configure by indexing the static cluster by name.
 		cluster.SetMembersFromString(*initialCluster)
-		m := cluster.FindName(*name)
-		if m != nil {
-			return m, nil
-		}
-		return nil, fmt.Errorf("cannot find the passed name %s in --initial-cluster bootstrap list.", *name)
 	}
+	return nil
 }

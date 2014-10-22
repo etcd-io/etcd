@@ -105,7 +105,6 @@ func (c *cluster) Launch(t *testing.T) {
 		m.PeerListeners = []net.Listener{lns[i]}
 		cln := newLocalListener(t)
 		m.ClientListeners = []net.Listener{cln}
-		m.NodeID = clusterCfg.FindName(c.name(i)).ID
 		m.Name = c.name(i)
 		m.ClientURLs, err = types.NewURLs([]string{"http://" + cln.Addr().String()})
 		if err != nil {
