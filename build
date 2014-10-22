@@ -12,3 +12,4 @@ ln -s ${PWD} $GOPATH/src/${REPO_PATH}
 eval $(go env)
 
 go build -o bin/etcd ${REPO_PATH}
+go build -o bin/etcdctl ${REPO_PATH}/etcdctl
