@@ -87,7 +87,7 @@ func (c Cluster) Pick(id uint64) string {
 	return ""
 }
 
-// AddMembersFromFlag parses a sets of names to IPs either from the command line or discovery formatted like:
+// SetMembersFromString parses a sets of names to IPs either from the command line or discovery formatted like:
 // mach0=http://1.1.1.1,mach0=http://2.2.2.2,mach0=http://1.1.1.1,mach1=http://2.2.2.2,mach1=http://3.3.3.3
 func (c *Cluster) SetMembersFromString(s string) error {
 	c.members = make(map[uint64]*Member)
