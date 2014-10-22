@@ -36,7 +36,10 @@ func testCluster(t *testing.T, size int) {
 	for i := 0; i < size; i++ {
 		for _, u := range c.Members[i].ClientURLs {
 			var err error
-			for j := 0; j < 3; j++ {
+			// TODO: find a stable way to determine whether it succeeds
+			// the request timeout in server side doesn't imply what happens
+			// in the cluster now.
+			for j := 0; j < 100; j++ {
 				if err = setKey(u, "/foo", "bar"); err == nil {
 					break
 				}
