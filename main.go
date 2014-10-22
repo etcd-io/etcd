@@ -30,13 +30,12 @@ import (
 	flagtypes "github.com/coreos/etcd/pkg/flags"
 	"github.com/coreos/etcd/pkg/transport"
 	"github.com/coreos/etcd/proxy"
+	"github.com/coreos/etcd/version"
 )
 
 const (
 	// the owner can make/remove files inside the directory
 	privateDirMode = 0700
-
-	version = "0.5.0-alpha"
 )
 
 var (
@@ -123,7 +122,7 @@ func main() {
 	}
 
 	if *printVersion {
-		fmt.Println("etcd version", version)
+		fmt.Println("etcd version", version.Version)
 		os.Exit(0)
 	}
 
