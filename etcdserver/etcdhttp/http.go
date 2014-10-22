@@ -185,7 +185,11 @@ func (h serverHandler) serveAdminMembers(w http.ResponseWriter, r *http.Request)
 			return
 		}
 		log.Printf("etcdhttp: added node %x with peer urls %v", m.ID, raftAttr.PeerURLs)
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
+		if err := json.NewEncoder(w).Encode(m); err != nil {
+			log.Printf("etcdhttp: %v", err)
+		}
 	case "DELETE":
 		idStr := strings.TrimPrefix(r.URL.Path, adminMembersPrefix)
 		id, err := strconv.ParseUint(idStr, 16, 64)

@@ -47,7 +47,7 @@ func TestClusterStoreAdd(t *testing.T) {
 			params: []interface{}{
 				path.Join(storeMembersPrefix, "1", "attributes"),
 				false,
-				`{"Name":"node1","ClientURLs":null}`,
+				`{"Name":"node1"}`,
 				false,
 				store.Permanent,
 			},
