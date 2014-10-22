@@ -1445,6 +1445,18 @@ func TestServeAdminMembersFail(t *testing.T) {
 			http.StatusBadRequest,
 		},
 		{
+			// bad url
+			&http.Request{
+				URL:    mustNewURL(t, adminMembersPrefix),
+				Method: "POST",
+				Body:   ioutil.NopCloser(strings.NewReader(url.Values{"PeerURLs": []string{"http://bad"}}.Encode())),
+				Header: map[string][]string{"Content-Type": []string{"application/x-www-form-urlencoded"}},
+			},
+			&errServer{},
+
+			http.StatusBadRequest,
+		},
+		{
 			// etcdserver.AddMember error
 			&http.Request{
 				URL:    mustNewURL(t, adminMembersPrefix),
