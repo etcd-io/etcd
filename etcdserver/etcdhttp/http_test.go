@@ -1425,22 +1425,25 @@ func TestServeAdminMembersFail(t *testing.T) {
 			http.StatusMethodNotAllowed,
 		},
 		{
-			// parse id error
+			// parse body error
 			&http.Request{
 				URL:    mustNewURL(t, adminMembersPrefix),
 				Method: "POST",
+				Body:   ioutil.NopCloser(strings.NewReader("bad json")),
 			},
 			&resServer{},
 
 			http.StatusBadRequest,
 		},
 		{
-			// parse body error
+			// bad content type
 			&http.Request{
 				URL:    mustNewURL(t, adminMembersPrefix),
 				Method: "POST",
+				Body:   ioutil.NopCloser(strings.NewReader(`{"PeerURLs": ["http://127.0.0.1:1"]}`)),
+				Header: map[string][]string{"Content-Type": []string{"application/bad"}},
 			},
-			&resServer{},
+			&errServer{},
 
 			http.StatusBadRequest,
 		},
@@ -1449,8 +1452,8 @@ func TestServeAdminMembersFail(t *testing.T) {
 			&http.Request{
 				URL:    mustNewURL(t, adminMembersPrefix),
 				Method: "POST",
-				Body:   ioutil.NopCloser(strings.NewReader(url.Values{"PeerURLs": []string{"http://bad"}}.Encode())),
-				Header: map[string][]string{"Content-Type": []string{"application/x-www-form-urlencoded"}},
+				Body:   ioutil.NopCloser(strings.NewReader(`{"PeerURLs": ["http://a"]}`)),
+				Header: map[string][]string{"Content-Type": []string{"application/json"}},
 			},
 			&errServer{},
 
@@ -1461,8 +1464,8 @@ func TestServeAdminMembersFail(t *testing.T) {
 			&http.Request{
 				URL:    mustNewURL(t, adminMembersPrefix),
 				Method: "POST",
-				Body:   ioutil.NopCloser(strings.NewReader(url.Values{"PeerURLs": []string{"http://127.0.0.1:1"}}.Encode())),
-				Header: map[string][]string{"Content-Type": []string{"application/x-www-form-urlencoded"}},
+				Body:   ioutil.NopCloser(strings.NewReader(`{"PeerURLs": ["http://127.0.0.1:1"]}`)),
+				Header: map[string][]string{"Content-Type": []string{"application/json"}},
 			},
 			&errServer{
 				errors.New("blah"),
@@ -1526,13 +1529,17 @@ func (s *serverRecorder) RemoveMember(_ context.Context, id uint64) error {
 
 func TestServeAdminMembersPut(t *testing.T) {
 	u := mustNewURL(t, adminMembersPrefix)
-	form := url.Values{"PeerURLs": []string{"http://127.0.0.1:1"}}
-	body := strings.NewReader(form.Encode())
+	raftAttr := etcdserver.RaftAttributes{PeerURLs: []string{"http://127.0.0.1:1"}}
+	b, err := json.Marshal(raftAttr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := bytes.NewReader(b)
 	req, err := http.NewRequest("POST", u.String(), body)
 	if err != nil {
 		t.Fatal(err)
 	}
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Content-Type", "application/json")
 	s := &serverRecorder{}
 	h := &serverHandler{
 		server: s,
@@ -1551,10 +1558,8 @@ func TestServeAdminMembersPut(t *testing.T) {
 		t.Errorf("got body=%q, want %q", g, "")
 	}
 	wm := etcdserver.Member{
-		ID: 3064321551348478165,
-		RaftAttributes: etcdserver.RaftAttributes{
-			PeerURLs: []string{"http://127.0.0.1:1"},
-		},
+		ID:             3064321551348478165,
+		RaftAttributes: raftAttr,
 	}
 	wactions := []action{{name: "AddMember", params: []interface{}{wm}}}
 	if !reflect.DeepEqual(s.actions, wactions) {

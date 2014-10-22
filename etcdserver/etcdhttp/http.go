@@ -157,12 +157,22 @@ func (h serverHandler) serveAdminMembers(w http.ResponseWriter, r *http.Request)
 
 	switch r.Method {
 	case "POST":
-		if err := r.ParseForm(); err != nil {
+		ctype := r.Header.Get("Content-Type")
+		if ctype != "application/json" {
+			http.Error(w, fmt.Sprintf("bad Content-Type %s, accept application/json", ctype), http.StatusBadRequest)
+			return
+		}
+		b, err := ioutil.ReadAll(r.Body)
+		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		peerURLs := r.PostForm["PeerURLs"]
-		validURLs, err := types.NewURLs(peerURLs)
+		raftAttr := etcdserver.RaftAttributes{}
+		if err := json.Unmarshal(b, &raftAttr); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		validURLs, err := types.NewURLs(raftAttr.PeerURLs)
 		if err != nil {
 			http.Error(w, "bad peer urls", http.StatusBadRequest)
 			return
@@ -174,7 +184,7 @@ func (h serverHandler) serveAdminMembers(w http.ResponseWriter, r *http.Request)
 			writeError(w, err)
 			return
 		}
-		log.Printf("etcdhttp: added node %x with peer urls %v", m.ID, peerURLs)
+		log.Printf("etcdhttp: added node %x with peer urls %v", m.ID, raftAttr.PeerURLs)
 		w.WriteHeader(http.StatusCreated)
 	case "DELETE":
 		idStr := strings.TrimPrefix(r.URL.Path, adminMembersPrefix)
