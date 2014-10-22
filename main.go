@@ -293,5 +293,5 @@ func setupCluster() (*etcdserver.Member, error) {
 		}
 		return nil, fmt.Errorf("cannot find the passed name %s in --initial-cluster bootstrap list.", *name)
 	}
-	return cluster.FindName(*name), nil
+	return cluster.FindID(etcdserver.GenerateMemberID(apurls, *initialClusterName, nil)), nil
 }
