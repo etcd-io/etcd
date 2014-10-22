@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/rand"
+	"path"
 	"reflect"
 	"sync"
 	"testing"
@@ -386,10 +387,25 @@ func TestApplyRequest(t *testing.T) {
 // TODO: test ErrIDRemoved
 func TestApplyConfChangeError(t *testing.T) {
 	nodes := []uint64{1, 2, 3}
+	removed := map[uint64]bool{4: true}
 	tests := []struct {
 		cc   raftpb.ConfChange
 		werr error
 	}{
+		{
+			raftpb.ConfChange{
+				Type:   raftpb.ConfChangeAddNode,
+				NodeID: 4,
+			},
+			ErrIDRemoved,
+		},
+		{
+			raftpb.ConfChange{
+				Type:   raftpb.ConfChangeRemoveNode,
+				NodeID: 4,
+			},
+			ErrIDRemoved,
+		},
 		{
 			raftpb.ConfChange{
 				Type:   raftpb.ConfChangeAddNode,
@@ -407,8 +423,10 @@ func TestApplyConfChangeError(t *testing.T) {
 	}
 	for i, tt := range tests {
 		n := &nodeRecorder{}
+		cs := &removedClusterStore{removed: removed}
 		srv := &EtcdServer{
-			node: n,
+			node:         n,
+			ClusterStore: cs,
 		}
 		err := srv.applyConfChange(tt.cc, nodes)
 		if err != tt.werr {
@@ -950,8 +968,8 @@ func TestPublish(t *testing.T) {
 		t.Errorf("method = %s, want PUT", r.Method)
 	}
 	wm := Member{ID: 1, Attributes: Attributes{Name: "node1", ClientURLs: []string{"http://a", "http://b"}}}
-	if r.Path != wm.storeKey()+attributesSuffix {
-		t.Errorf("path = %s, want %s", r.Path, wm.storeKey()+attributesSuffix)
+	if w := path.Join(memberStoreKey(wm.ID), attributesSuffix); r.Path != w {
+		t.Errorf("path = %s, want %s", r.Path, w)
 	}
 	var gattr Attributes
 	if err := json.Unmarshal([]byte(r.Val), &gattr); err != nil {
@@ -1312,6 +1330,16 @@ func (cs *clusterStoreRecorder) Get() Cluster {
 func (cs *clusterStoreRecorder) Remove(id uint64) {
 	cs.record(action{name: "Remove", params: []interface{}{id}})
 }
+func (cs *clusterStoreRecorder) IsRemoved(id uint64) bool { return false }
+
+type removedClusterStore struct {
+	removed map[uint64]bool
+}
+
+func (cs *removedClusterStore) Add(m Member)             {}
+func (cs *removedClusterStore) Get() Cluster             { return Cluster{} }
+func (cs *removedClusterStore) Remove(id uint64)         {}
+func (cs *removedClusterStore) IsRemoved(id uint64) bool { return cs.removed[id] }
 
 func mustMakePeerSlice(t *testing.T, ids ...uint64) []raft.Peer {
 	peers := make([]raft.Peer, len(ids))

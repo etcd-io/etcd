@@ -43,6 +43,7 @@ type ClusterStore interface {
 	Add(m Member)
 	Get() Cluster
 	Remove(id uint64)
+	IsRemoved(id uint64) bool
 }
 
 type clusterStore struct {
@@ -59,7 +60,7 @@ func (s *clusterStore) Add(m Member) {
 	if err != nil {
 		log.Panicf("marshal error: %v", err)
 	}
-	if _, err := s.Store.Create(m.storeKey()+raftAttributesSuffix, false, string(b), false, store.Permanent); err != nil {
+	if _, err := s.Store.Create(memberStoreKey(m.ID)+raftAttributesSuffix, false, string(b), false, store.Permanent); err != nil {
 		log.Panicf("add raftAttributes should never fail: %v", err)
 	}
 
@@ -67,7 +68,7 @@ func (s *clusterStore) Add(m Member) {
 	if err != nil {
 		log.Panicf("marshal error: %v", err)
 	}
-	if _, err := s.Store.Create(m.storeKey()+attributesSuffix, false, string(b), false, store.Permanent); err != nil {
+	if _, err := s.Store.Create(memberStoreKey(m.ID)+attributesSuffix, false, string(b), false, store.Permanent); err != nil {
 		log.Panicf("add attributes should never fail: %v", err)
 	}
 }
@@ -79,7 +80,7 @@ func (s *clusterStore) Get() Cluster {
 	c.id = s.id
 	e, err := s.Store.Get(storeMembersPrefix, true, true)
 	if err != nil {
-		if v, ok := err.(*etcdErr.Error); ok && v.ErrorCode == etcdErr.EcodeKeyNotFound {
+		if isKeyNotFound(err) {
 			return *c
 		}
 		log.Panicf("get member should never fail: %v", err)
@@ -121,9 +122,24 @@ func nodeToMember(n *store.NodeExtern) (Member, error) {
 // Remove removes a member from the store.
 // The given id MUST exist.
 func (s *clusterStore) Remove(id uint64) {
-	p := s.Get().FindID(id).storeKey()
-	if _, err := s.Store.Delete(p, true, true); err != nil {
+	if _, err := s.Store.Delete(memberStoreKey(id), true, true); err != nil {
 		log.Panicf("delete peer should never fail: %v", err)
+	}
+	if _, err := s.Store.Create(removedMemberStoreKey(id), false, "", false, store.Permanent); err != nil {
+		log.Panicf("creating RemovedMember should never fail: %v", err)
+	}
+}
+
+func (s *clusterStore) IsRemoved(id uint64) bool {
+	_, err := s.Store.Get(removedMemberStoreKey(id), false, false)
+	switch {
+	case err == nil:
+		return true
+	case isKeyNotFound(err):
+		return false
+	default:
+		log.Panicf("unexpected error when getting removed member %x: %v", id, err)
+		return false
 	}
 }
 
@@ -206,9 +222,18 @@ func httpPost(c *http.Client, url string, cid uint64, data []byte) bool {
 		// TODO: shutdown the etcdserver gracefully?
 		log.Panicf("clusterID mismatch")
 		return false
+	case http.StatusForbidden:
+		// TODO: stop the server
+		log.Panicf("the member has been removed")
+		return false
 	case http.StatusNoContent:
 		return true
 	default:
 		return false
 	}
+}
+
+func isKeyNotFound(err error) bool {
+	e, ok := err.(*etcdErr.Error)
+	return ok && e.ErrorCode == etcdErr.EcodeKeyNotFound
 }

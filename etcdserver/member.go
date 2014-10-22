@@ -68,8 +68,8 @@ func newMember(name string, peerURLs types.URLs, now *time.Time) *Member {
 	return m
 }
 
-func (m Member) storeKey() string {
-	return path.Join(storeMembersPrefix, idAsHex(m.ID))
+func memberStoreKey(id uint64) string {
+	return path.Join(storeMembersPrefix, idAsHex(id))
 }
 
 func parseMemberID(key string) uint64 {
@@ -78,4 +78,8 @@ func parseMemberID(key string) uint64 {
 		log.Panicf("unexpected parse member id error: %v", err)
 	}
 	return id
+}
+
+func removedMemberStoreKey(id uint64) string {
+	return path.Join(storeRemovedMembersPrefix, idAsHex(id))
 }

@@ -922,7 +922,7 @@ func TestServeRaft(t *testing.T) {
 			http.StatusBadRequest,
 		},
 		{
-			// good request, etcdserver.Server error
+			// good request, etcdserver.Server internal error
 			"POST",
 			bytes.NewReader(
 				mustMarshalMsg(
@@ -933,6 +933,19 @@ func TestServeRaft(t *testing.T) {
 			errors.New("some error"),
 			"0",
 			http.StatusInternalServerError,
+		},
+		{
+			// good request from removed member
+			"POST",
+			bytes.NewReader(
+				mustMarshalMsg(
+					t,
+					raftpb.Message{},
+				),
+			),
+			etcdserver.ErrRemoved,
+			"0",
+			http.StatusForbidden,
 		},
 		{
 			// good request
@@ -1654,3 +1667,5 @@ func (c *fakeCluster) Get() etcdserver.Cluster {
 }
 
 func (c *fakeCluster) Remove(id uint64) { return }
+
+func (c *fakeCluster) IsRemoved(id uint64) bool { return false }

@@ -108,15 +108,39 @@ func TestClusterStoreGet(t *testing.T) {
 	}
 }
 
-func TestClusterStoreDelete(t *testing.T) {
-	st := newStoreGetAllAndDeleteRecorder()
+func TestClusterStoreRemove(t *testing.T) {
+	st := &storeRecorder{}
 	cs := &clusterStore{Store: st}
-	cs.Add(newTestMember(1, nil, "node1", nil))
 	cs.Remove(1)
 
-	wdeletes := []string{path.Join(storeMembersPrefix, "1")}
-	if !reflect.DeepEqual(st.deletes, wdeletes) {
-		t.Errorf("deletes = %v, want %v", st.deletes, wdeletes)
+	wactions := []action{
+		{name: "Delete", params: []interface{}{memberStoreKey(1), true, true}},
+		{name: "Create", params: []interface{}{removedMemberStoreKey(1), false, "", false, store.Permanent}},
+	}
+	if !reflect.DeepEqual(st.Action(), wactions) {
+		t.Errorf("actions = %v, want %v", st.Action(), wactions)
+	}
+}
+
+func TestClusterStoreIsRemovedFalse(t *testing.T) {
+	st := &errStoreRecorder{err: etcdErr.NewError(etcdErr.EcodeKeyNotFound, "", 0)}
+	cs := clusterStore{Store: st}
+	if ok := cs.IsRemoved(1); ok != false {
+		t.Errorf("IsRemoved = %v, want %v", ok, false)
+	}
+}
+
+func TestClusterStoreIsRemovedTrue(t *testing.T) {
+	st := &storeRecorder{}
+	cs := &clusterStore{Store: st}
+	if ok := cs.IsRemoved(1); ok != true {
+		t.Errorf("IsRemoved = %v, want %v", ok, true)
+	}
+	wactions := []action{
+		{name: "Get", params: []interface{}{removedMemberStoreKey(1), false, false}},
+	}
+	if !reflect.DeepEqual(st.Action(), wactions) {
+		t.Errorf("actions = %v, want %v", st.Action(), wactions)
 	}
 }
 
@@ -199,20 +223,6 @@ type getAllStore struct {
 
 func newGetAllStore() *getAllStore {
 	return &getAllStore{store.New()}
-}
-
-type storeGetAllAndDeleteRecorder struct {
-	*getAllStore
-	deletes []string
-}
-
-func newStoreGetAllAndDeleteRecorder() *storeGetAllAndDeleteRecorder {
-	return &storeGetAllAndDeleteRecorder{getAllStore: newGetAllStore()}
-}
-
-func (s *storeGetAllAndDeleteRecorder) Delete(key string, _, _ bool) (*store.Event, error) {
-	s.deletes = append(s.deletes, key)
-	return nil, nil
 }
 
 func newTestMember(id uint64, peerURLs []string, name string, clientURLs []string) Member {

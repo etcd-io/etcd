@@ -56,11 +56,13 @@ const (
 var (
 	ErrUnknownMethod = errors.New("etcdserver: unknown method")
 	ErrStopped       = errors.New("etcdserver: server stopped")
+	ErrRemoved       = errors.New("etcdserver: server removed")
 	ErrIDRemoved     = errors.New("etcdserver: ID removed")
 	ErrIDExists      = errors.New("etcdserver: ID exists")
 	ErrIDNotFound    = errors.New("etcdserver: ID not found")
 
-	storeMembersPrefix = path.Join(StoreAdminPrefix, "members")
+	storeMembersPrefix        = path.Join(StoreAdminPrefix, "members")
+	storeRemovedMembersPrefix = path.Join(StoreAdminPrefix, "removed_members")
 )
 
 func init() {
@@ -265,6 +267,9 @@ func (s *EtcdServer) start() {
 }
 
 func (s *EtcdServer) Process(ctx context.Context, m raftpb.Message) error {
+	if s.ClusterStore.IsRemoved(m.From) {
+		return ErrRemoved
+	}
 	return s.node.Step(ctx, m)
 }
 
@@ -491,7 +496,7 @@ func (s *EtcdServer) publish(retryInterval time.Duration) {
 	req := pb.Request{
 		ID:     GenID(),
 		Method: "PUT",
-		Path:   Member{ID: s.id}.storeKey() + attributesSuffix,
+		Path:   memberStoreKey(s.id) + attributesSuffix,
 		Val:    string(b),
 	}
 
@@ -585,7 +590,7 @@ func (s *EtcdServer) applyRequest(r pb.Request) Response {
 }
 
 func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, nodes []uint64) error {
-	if err := checkConfChange(cc, nodes); err != nil {
+	if err := s.checkConfChange(cc, nodes); err != nil {
 		cc.NodeID = raft.None
 		s.node.ApplyConfChange(cc)
 		return err
@@ -607,7 +612,10 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, nodes []uint64) error
 	return nil
 }
 
-func checkConfChange(cc raftpb.ConfChange, nodes []uint64) error {
+func (s *EtcdServer) checkConfChange(cc raftpb.ConfChange, nodes []uint64) error {
+	if s.ClusterStore.IsRemoved(cc.NodeID) {
+		return ErrIDRemoved
+	}
 	switch cc.Type {
 	case raftpb.ConfChangeAddNode:
 		if containsUint64(nodes, cc.NodeID) {
