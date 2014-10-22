@@ -50,13 +50,8 @@ func (c *ServerConfig) VerifyBootstrapConfig() error {
 	}
 
 	// Make sure the cluster at least contains the local server.
-	isOk := false
-	for _, m := range c.Cluster.members {
-		if m.ID == c.NodeID {
-			isOk = true
-		}
-	}
-	if !isOk {
+	m := c.Cluster.FindID(c.NodeID)
+	if m == nil {
 		return fmt.Errorf("couldn't find local ID in cluster config")
 	}
 

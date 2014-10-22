@@ -90,12 +90,11 @@ func (c *cluster) Launch(t *testing.T) {
 		l := newLocalListener(t)
 		// each member claims only one peer listener
 		lns[i] = l
-		listenUrls, err := types.NewURLs([]string{"http://" + l.Addr().String()})
+		listenURLs, err := types.NewURLs([]string{"http://" + l.Addr().String()})
 		if err != nil {
 			t.Fatal(err)
 		}
-		_, err = clusterCfg.AddMemberFromURLs(c.name(i), listenUrls)
-		if err != nil {
+		if _, err = clusterCfg.AddMemberFromURLs(c.name(i), listenURLs); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -150,7 +149,6 @@ func newLocalListener(t *testing.T) net.Listener {
 }
 
 type member struct {
-	id uint64
 	etcdserver.ServerConfig
 	PeerListeners, ClientListeners []net.Listener
 

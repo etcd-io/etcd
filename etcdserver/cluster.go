@@ -37,8 +37,7 @@ type Cluster struct {
 }
 
 func NewCluster(clusterName string) *Cluster {
-	c := &Cluster{name: clusterName, members: make(map[uint64]*Member)}
-	return c
+	return &Cluster{name: clusterName, members: make(map[uint64]*Member)}
 }
 
 func (c Cluster) FindName(name string) *Member {
