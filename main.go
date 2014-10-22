@@ -268,7 +268,7 @@ func startProxy() {
 func setupCluster() (*etcdserver.Member, error) {
 	cluster = etcdserver.NewCluster(*initialClusterName)
 	set := make(map[string]bool)
-	flag.Visit(func(f *flag.Flag) {
+	fs.Visit(func(f *flag.Flag) {
 		set[f.Name] = true
 	})
 	if set["discovery"] && set["initial-cluster"] {
