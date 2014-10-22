@@ -643,16 +643,22 @@ We should see the response as an array of items:
 ```json
 {
     "action": "get",
-    "node": {
-        "dir": true,
-        "key": "/",
-        "nodes": [
-            {
-                "createdIndex": 2,
-                "dir": true,
-                "key": "/foo_dir",
-                "modifiedIndex": 2
-            }
+    "node": {
+        "key": "/",
+        "dir": true,
+        "nodes": [
+            {
+                "key": "/foo_dir",
+                "dir": true,
+                "modifiedIndex": 2,
+                "createdIndex": 2
+            },
+            {
+                "key": "/foo",
+                "value": "two",
+                "modifiedIndex": 1,
+                "createdIndex": 1
+            }
         ]
     }
 }
@@ -667,27 +673,33 @@ curl -L http://127.0.0.1:4001/v2/keys/?recursive=true
 
 ```json
 {
-    "action": "get",
-    "node": {
-        "dir": true,
-        "key": "/",
-        "nodes": [
-            {
-                "createdIndex": 2,
-                "dir": true,
-                "key": "/foo_dir",
-                "modifiedIndex": 2,
-                "nodes": [
-                    {
-                        "createdIndex": 2,
-                        "key": "/foo_dir/foo",
-                        "modifiedIndex": 2,
-                        "value": "bar"
-                    }
-                ]
-            }
-        ]
-    }
+    "action": "get",
+    "node": {
+        "key": "/",
+        "dir": true,
+        "nodes": [
+            {
+                "key": "/foo_dir",
+                "dir": true,
+                "nodes": [
+                    {
+                        "key": "/foo_dir/foo",
+                        "value": "bar",
+                        "modifiedIndex": 2,
+                        "createdIndex": 2
+                    }
+                ],
+                "modifiedIndex": 2,
+                "createdIndex": 2
+            },
+            {
+                "key": "/foo",
+                "value": "two",
+                "modifiedIndex": 1,
+                "createdIndex": 1
+            }
+        ]
+    }
 }
 ```
 
