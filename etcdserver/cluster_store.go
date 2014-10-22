@@ -50,7 +50,8 @@ type clusterStore struct {
 	Store store.Store
 	// TODO: write the id into the actual store?
 	// TODO: save the id as string?
-	id uint64
+	id          uint64
+	clusterName string
 }
 
 // Add puts a new Member into the store.
@@ -76,7 +77,7 @@ func (s *clusterStore) Add(m Member) {
 // TODO(philips): keep the latest copy without going to the store to avoid the
 // lock here.
 func (s *clusterStore) Get() Cluster {
-	c := NewCluster()
+	c := NewCluster(s.clusterName)
 	c.id = s.id
 	e, err := s.Store.Get(storeMembersPrefix, true, true)
 	if err != nil {

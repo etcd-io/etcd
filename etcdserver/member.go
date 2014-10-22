@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"log"
 	"path"
+	"sort"
 	"strconv"
 	"time"
 
@@ -48,17 +49,19 @@ type Member struct {
 
 // newMember creates a Member without an ID and generates one based on the
 // name, peer URLs. This is used for bootstrapping.
-func newMember(name string, peerURLs types.URLs, now *time.Time) *Member {
+func newMember(name string, peerURLs types.URLs, clusterName string, now *time.Time) *Member {
 	m := &Member{
 		RaftAttributes: RaftAttributes{PeerURLs: peerURLs.StringSlice()},
 		Attributes:     Attributes{Name: name},
 	}
 
-	b := []byte(m.Name)
+	var b []byte
+	sort.Strings(m.PeerURLs)
 	for _, p := range m.PeerURLs {
 		b = append(b, []byte(p)...)
 	}
 
+	b = append(b, []byte(clusterName)...)
 	if now != nil {
 		b = append(b, []byte(fmt.Sprintf("%d", now.Unix()))...)
 	}

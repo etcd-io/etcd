@@ -182,7 +182,7 @@ func NewServer(cfg *ServerConfig) *EtcdServer {
 			log.Fatalf("etcdserver: %v", err)
 		}
 		if cfg.ShouldDiscover() {
-			d, err := discovery.New(cfg.DiscoveryURL, cfg.ID(), cfg.Cluster.String())
+			d, err := discovery.New(cfg.DiscoveryURL, cfg.NodeID, cfg.Cluster.String())
 			if err != nil {
 				log.Fatalf("etcdserver: cannot init discovery %v", err)
 			}
@@ -190,7 +190,7 @@ func NewServer(cfg *ServerConfig) *EtcdServer {
 			if err != nil {
 				log.Fatalf("etcdserver: %v", err)
 			}
-			if err = cfg.Cluster.Set(s); err != nil {
+			if err = cfg.Cluster.SetMembersFromString(s); err != nil {
 				log.Fatalf("etcdserver: %v", err)
 			}
 		}
@@ -216,9 +216,9 @@ func NewServer(cfg *ServerConfig) *EtcdServer {
 
 	sstats := &stats.ServerStats{
 		Name: cfg.Name,
-		ID:   idAsHex(cfg.ID()),
+		ID:   idAsHex(cfg.NodeID),
 	}
-	lstats := stats.NewLeaderStats(idAsHex(cfg.ID()))
+	lstats := stats.NewLeaderStats(idAsHex(cfg.NodeID))
 
 	s := &EtcdServer{
 		store:      st,
@@ -648,7 +648,7 @@ func startNode(cfg *ServerConfig) (id, cid uint64, n raft.Node, w *wal.WAL) {
 	// TODO: remove the discoveryURL when it becomes part of the source for
 	// generating nodeID.
 	cfg.Cluster.GenID([]byte(cfg.DiscoveryURL))
-	metadata := pbutil.MustMarshal(&pb.Metadata{NodeID: cfg.ID(), ClusterID: cfg.Cluster.ID()})
+	metadata := pbutil.MustMarshal(&pb.Metadata{NodeID: cfg.NodeID, ClusterID: cfg.Cluster.ID()})
 	if w, err = wal.Create(cfg.WALDir(), metadata); err != nil {
 		log.Fatal(err)
 	}
@@ -661,9 +661,9 @@ func startNode(cfg *ServerConfig) (id, cid uint64, n raft.Node, w *wal.WAL) {
 		}
 		peers[i] = raft.Peer{ID: id, Context: ctx}
 	}
-	id, cid = cfg.ID(), cfg.Cluster.ID()
+	id, cid = cfg.NodeID, cfg.Cluster.ID()
 	log.Printf("etcdserver: start node %d in cluster %d", id, cid)
-	n = raft.StartNode(cfg.ID(), peers, 10, 1)
+	n = raft.StartNode(cfg.NodeID, peers, 10, 1)
 	return
 }
 

@@ -27,6 +27,7 @@ import (
 
 // ServerConfig holds the configuration of etcd as taken from the command line or discovery.
 type ServerConfig struct {
+	NodeID       uint64
 	Name         string
 	DiscoveryURL string
 	ClientURLs   types.URLs
@@ -40,17 +41,18 @@ type ServerConfig struct {
 // VerifyBootstrapConfig sanity-checks the initial config and returns an error
 // for things that should never happen.
 func (c *ServerConfig) VerifyBootstrapConfig() error {
+	if c.NodeID == raft.None {
+		return fmt.Errorf("could not use %x as member id", raft.None)
+	}
+
 	if c.DiscoveryURL == "" && c.ClusterState != ClusterStateValueNew {
 		return fmt.Errorf("initial cluster state unset and no wal or discovery URL found")
 	}
 
 	// Make sure the cluster at least contains the local server.
-	m := c.Cluster.FindName(c.Name)
+	m := c.Cluster.FindID(c.NodeID)
 	if m == nil {
-		return fmt.Errorf("could not find name %v in cluster", c.Name)
-	}
-	if m.ID == raft.None {
-		return fmt.Errorf("could not use %x as member id", raft.None)
+		return fmt.Errorf("couldn't find local ID in cluster config")
 	}
 
 	// No identical IPs in the cluster peer list
@@ -58,7 +60,7 @@ func (c *ServerConfig) VerifyBootstrapConfig() error {
 	for _, m := range c.Cluster.Members() {
 		for _, url := range m.PeerURLs {
 			if urlMap[url] {
-				return fmt.Errorf("duplicate url %v in server config", url)
+				return fmt.Errorf("duplicate url %v in cluster config", url)
 			}
 			urlMap[url] = true
 		}
@@ -69,8 +71,6 @@ func (c *ServerConfig) VerifyBootstrapConfig() error {
 func (c *ServerConfig) WALDir() string { return path.Join(c.DataDir, "wal") }
 
 func (c *ServerConfig) SnapDir() string { return path.Join(c.DataDir, "snap") }
-
-func (c *ServerConfig) ID() uint64 { return c.Cluster.FindName(c.Name).ID }
 
 func (c *ServerConfig) ShouldDiscover() bool {
 	return c.DiscoveryURL != ""

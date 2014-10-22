@@ -32,15 +32,12 @@ import (
 // Cluster is a list of Members that belong to the same raft cluster
 type Cluster struct {
 	id      uint64
+	name    string
 	members map[uint64]*Member
 }
 
-func NewCluster() *Cluster {
-	return &Cluster{members: make(map[uint64]*Member)}
-}
-
-func (c Cluster) FindID(id uint64) *Member {
-	return c.members[id]
+func NewCluster(clusterName string) *Cluster {
+	return &Cluster{name: clusterName, members: make(map[uint64]*Member)}
 }
 
 func (c Cluster) FindName(name string) *Member {
@@ -49,8 +46,11 @@ func (c Cluster) FindName(name string) *Member {
 			return m
 		}
 	}
-
 	return nil
+}
+
+func (c Cluster) FindID(id uint64) *Member {
+	return c.members[id]
 }
 
 func (c Cluster) Add(m Member) error {
@@ -86,10 +86,10 @@ func (c Cluster) Pick(id uint64) string {
 	return ""
 }
 
-// Set parses command line sets of names to IPs formatted like:
+// SetMembersFromString parses a sets of names to IPs either from the command line or discovery formatted like:
 // mach0=http://1.1.1.1,mach0=http://2.2.2.2,mach0=http://1.1.1.1,mach1=http://2.2.2.2,mach1=http://3.3.3.3
-func (c *Cluster) Set(s string) error {
-	*c = *NewCluster()
+func (c *Cluster) SetMembersFromString(s string) error {
+	c.members = make(map[uint64]*Member)
 	v, err := url.ParseQuery(strings.Replace(s, ",", "&", -1))
 	if err != nil {
 		return err
@@ -100,7 +100,7 @@ func (c *Cluster) Set(s string) error {
 			return fmt.Errorf("Empty URL given for %q", name)
 		}
 
-		m := newMember(name, types.URLs(*flags.NewURLsValue(strings.Join(urls, ","))), nil)
+		m := newMember(name, types.URLs(*flags.NewURLsValue(strings.Join(urls, ","))), c.name, nil)
 		err := c.Add(*m)
 		if err != nil {
 			return err
@@ -109,13 +109,23 @@ func (c *Cluster) Set(s string) error {
 	return nil
 }
 
+func (c *Cluster) AddMemberFromURLs(name string, urls types.URLs) (*Member, error) {
+	m := newMember(name, urls, c.name, nil)
+	err := c.Add(*m)
+	if err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 func (c *Cluster) GenID(salt []byte) {
 	mIDs := c.MemberIDs()
 	b := make([]byte, 8*len(mIDs))
 	for i, id := range mIDs {
 		binary.BigEndian.PutUint64(b[8*i:], id)
 	}
-	hash := sha1.Sum(append(b, salt...))
+	b = append(b, salt...)
+	hash := sha1.Sum(b)
 	c.id = binary.BigEndian.Uint64(hash[:8])
 }
 

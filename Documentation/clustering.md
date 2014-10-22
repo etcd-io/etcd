@@ -167,3 +167,9 @@ Etcd can also do internal server-to-server communication using SSL client certs.
 To do this just change the `-*-file` flags to `-peer-*-file`.
 
 If you are using SSL for server-to-server communication, you must use it on all instances of etcd.
+
+### Bootstrapping a new cluster by name
+
+An etcd server is uniquely defined by the peer addresses it listens to. Suppose, however, that you wish to start over, while maintaining the data from the previous cluster -- that is, to pretend that this machine has never joined a cluster before.
+
+You can use `--initial-cluster-name` to generate a new unique ID for each node, as a shared token that every node understands. Nodes also take this into account for bootstrapping the new cluster ID, so it also provides a way for a machine to listen on the same interfaces, disconnect from one cluster, and join a different cluster.

@@ -19,7 +19,10 @@ import (
 	"github.com/coreos/etcd/pkg/types"
 )
 
-const tickDuration = 5 * time.Millisecond
+const (
+	tickDuration = 5 * time.Millisecond
+	clusterName  = "etcd"
+)
 
 func init() {
 	// open microsecond-level time log for integration test debugging
@@ -82,16 +85,18 @@ func (c *cluster) Launch(t *testing.T) {
 	}
 
 	lns := make([]net.Listener, c.Size)
-	bootstrapCfgs := make([]string, c.Size)
+	clusterCfg := etcdserver.NewCluster(clusterName)
 	for i := 0; i < c.Size; i++ {
 		l := newLocalListener(t)
 		// each member claims only one peer listener
 		lns[i] = l
-		bootstrapCfgs[i] = fmt.Sprintf("%s=%s", c.name(i), "http://"+l.Addr().String())
-	}
-	clusterCfg := &etcdserver.Cluster{}
-	if err := clusterCfg.Set(strings.Join(bootstrapCfgs, ",")); err != nil {
-		t.Fatal(err)
+		listenURLs, err := types.NewURLs([]string{"http://" + l.Addr().String()})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err = clusterCfg.AddMemberFromURLs(c.name(i), listenURLs); err != nil {
+			t.Fatal(err)
+		}
 	}
 
 	var err error
@@ -100,6 +105,7 @@ func (c *cluster) Launch(t *testing.T) {
 		m.PeerListeners = []net.Listener{lns[i]}
 		cln := newLocalListener(t)
 		m.ClientListeners = []net.Listener{cln}
+		m.NodeID = clusterCfg.FindName(c.name(i)).ID
 		m.Name = c.name(i)
 		m.ClientURLs, err = types.NewURLs([]string{"http://" + cln.Addr().String()})
 		if err != nil {

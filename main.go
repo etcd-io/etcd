@@ -47,8 +47,10 @@ var (
 	snapCount    = fs.Uint64("snapshot-count", etcdserver.DefaultSnapCount, "Number of committed transactions to trigger a snapshot")
 	printVersion = fs.Bool("version", false, "Print the version and exit")
 
-	cluster      = &etcdserver.Cluster{}
-	clusterState = new(etcdserver.ClusterState)
+	initialCluster     = fs.String("initial-cluster", "default=http://localhost:2380,default=http://localhost:7001", "Initial cluster configuration for bootstrapping")
+	initialClusterName = fs.String("initial-cluster-name", "etcd", "Initial name for the etcd cluster during bootstrap")
+	cluster            = &etcdserver.Cluster{}
+	clusterState       = new(etcdserver.ClusterState)
 
 	cors      = &pkg.CORSInfo{}
 	proxyFlag = new(flagtypes.Proxy)
@@ -74,11 +76,6 @@ var (
 )
 
 func init() {
-	fs.Var(cluster, "initial-cluster", "Initial cluster configuration for bootstrapping")
-	if err := cluster.Set("default=http://localhost:2380,default=http://localhost:7001"); err != nil {
-		// Should never happen
-		log.Panic(err)
-	}
 	fs.Var(clusterState, "initial-cluster-state", "Initial cluster configuration for bootstrapping")
 	clusterState.Set(etcdserver.ClusterStateValueNew)
 
@@ -131,9 +128,6 @@ func main() {
 	}
 
 	pkg.SetFlagsFromEnv(fs)
-	if err := setClusterForDiscovery(); err != nil {
-		log.Fatalf("etcd: %v", err)
-	}
 
 	if string(*proxyFlag) == flagtypes.ProxyValueOff {
 		startEtcd()
@@ -147,6 +141,11 @@ func main() {
 
 // startEtcd launches the etcd server and HTTP handlers for client/server communication.
 func startEtcd() {
+	self, err := setupCluster()
+	if err != nil {
+		log.Fatalf("etcd: setupCluster returned error %v", err)
+	}
+
 	if *dir == "" {
 		*dir = fmt.Sprintf("%v_etcd_data", *name)
 		log.Printf("etcd: no data-dir provided, using default data-dir ./%s", *dir)
@@ -165,6 +164,7 @@ func startEtcd() {
 		log.Fatal(err.Error())
 	}
 	cfg := &etcdserver.ServerConfig{
+		NodeID:       self.ID,
 		Name:         *name,
 		ClientURLs:   acurls,
 		DataDir:      *dir,
@@ -262,28 +262,36 @@ func startProxy() {
 	}
 }
 
-// setClusterForDiscovery sets cluster to a temporary value if you are using
-// the discovery.
-func setClusterForDiscovery() error {
+// setupCluster sets cluster to a temporary value if you are using
+// discovery, or to the static configuration for bootstrapped clusters.
+// Returns the local member on success.
+func setupCluster() (*etcdserver.Member, error) {
+	cluster = etcdserver.NewCluster(*initialClusterName)
+	cluster.SetMembersFromString(*initialCluster)
+
 	set := make(map[string]bool)
 	flag.Visit(func(f *flag.Flag) {
 		set[f.Name] = true
 	})
 	if set["discovery"] && set["initial-cluster"] {
-		return fmt.Errorf("both discovery and initial-cluster are set")
+		return nil, fmt.Errorf("both discovery and bootstrap-config are set")
+	}
+	apurls, err := pkg.URLsFromFlags(fs, "advertise-peer-urls", "addr", peerTLSInfo)
+	if err != nil {
+		return nil, err
 	}
 	if set["discovery"] {
-		apurls, err := pkg.URLsFromFlags(fs, "advertise-peer-urls", "peer-addr", peerTLSInfo)
-		if err != nil {
-			return err
+		cluster = etcdserver.NewCluster(*durl)
+		return cluster.AddMemberFromURLs(*name, apurls)
+	} else if set["initial-cluster"] {
+		// We're statically configured, and cluster has appropriately been set.
+		// Try to configure by indexing the static cluster by name.
+		for _, c := range cluster.Members() {
+			if c.Name == *name {
+				return c, nil
+			}
 		}
-		addrs := make([]string, len(apurls))
-		for i := range apurls {
-			addrs[i] = fmt.Sprintf("%s=%s", *name, apurls[i].String())
-		}
-		if err := cluster.Set(strings.Join(addrs, ",")); err != nil {
-			return err
-		}
+		return nil, fmt.Errorf("cannot find the passed name %s in --initial-cluster bootstrap list.", *name)
 	}
-	return nil
+	return cluster.FindName(*name), nil
 }
