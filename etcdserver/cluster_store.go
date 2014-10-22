@@ -221,11 +221,11 @@ func httpPost(c *http.Client, url string, cid uint64, data []byte) bool {
 	switch resp.StatusCode {
 	case http.StatusPreconditionFailed:
 		// TODO: shutdown the etcdserver gracefully?
-		log.Panicf("clusterID mismatch")
+		log.Fatalf("etcd: conflicting cluster ID with the target cluster (%s != %s). Exiting.", resp.Header.Get("X-Etcd-Cluster-ID"), strconv.FormatUint(cid, 16))
 		return false
 	case http.StatusForbidden:
 		// TODO: stop the server
-		log.Panicf("the member has been removed")
+		log.Fatalf("etcd: this member has been permanently removed from the cluster. Exiting.")
 		return false
 	case http.StatusNoContent:
 		return true

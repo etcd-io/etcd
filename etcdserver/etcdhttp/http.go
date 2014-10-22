@@ -222,8 +222,10 @@ func (h serverHandler) serveRaft(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	gcid := r.Header.Get("X-Etcd-Cluster-ID")
 	wcid := strconv.FormatUint(h.clusterStore.Get().ID(), 16)
+	w.Header().Set("X-Etcd-Cluster-ID", wcid)
+
+	gcid := r.Header.Get("X-Etcd-Cluster-ID")
 	if gcid != wcid {
 		log.Printf("etcdhttp: request ignored: clusterID mismatch got %s want %x", gcid, wcid)
 		http.Error(w, "clusterID mismatch", http.StatusPreconditionFailed)

@@ -70,6 +70,18 @@ etcd: infra0 has different advertised URLs in the cluster and advertised peer UR
 exit 1
 ```
 
+If you configure a peer with a different set of configuration and attempt to
+join this cluster you will get a cluster ID mismatch and etcd will exit.
+
+```
+$ etcd -name infra3 -advertise-peer-urls http://10.0.1.13:2379 \
+	-initial-cluster infra0=http://10.0.1.10:2379,infra1=http://10.0.1.11:2379,infra3=http://10.0.1.13:2379 \
+	-initial-cluster-state=new
+etcd: conflicting cluster ID to the target cluster (c6ab534d07e8fcc4 != bc25ea2a74fb18b0). Exiting.
+exit 1
+```
+
+
 ## Discovery
 
 In a number of cases you might not know the IPs of your cluster peers ahead of
