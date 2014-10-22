@@ -967,7 +967,7 @@ func TestPublish(t *testing.T) {
 		t.Errorf("method = %s, want PUT", r.Method)
 	}
 	wm := Member{ID: 1, Attributes: Attributes{Name: "node1", ClientURLs: []string{"http://a", "http://b"}}}
-	if w := wm.storeKey() + attributesSuffix; r.Path != w {
+	if w := memberStoreKey(wm.ID) + attributesSuffix; r.Path != w {
 		t.Errorf("path = %s, want %s", r.Path, w)
 	}
 	var gattr Attributes

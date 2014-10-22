@@ -60,7 +60,7 @@ func (s *clusterStore) Add(m Member) {
 	if err != nil {
 		log.Panicf("marshal error: %v", err)
 	}
-	if _, err := s.Store.Create(m.storeKey()+raftAttributesSuffix, false, string(b), false, store.Permanent); err != nil {
+	if _, err := s.Store.Create(memberStoreKey(m.ID)+raftAttributesSuffix, false, string(b), false, store.Permanent); err != nil {
 		log.Panicf("add raftAttributes should never fail: %v", err)
 	}
 
@@ -68,7 +68,7 @@ func (s *clusterStore) Add(m Member) {
 	if err != nil {
 		log.Panicf("marshal error: %v", err)
 	}
-	if _, err := s.Store.Create(m.storeKey()+attributesSuffix, false, string(b), false, store.Permanent); err != nil {
+	if _, err := s.Store.Create(memberStoreKey(m.ID)+attributesSuffix, false, string(b), false, store.Permanent); err != nil {
 		log.Panicf("add attributes should never fail: %v", err)
 	}
 }
@@ -122,7 +122,7 @@ func nodeToMember(n *store.NodeExtern) (Member, error) {
 // Remove removes a member from the store.
 // The given id MUST exist.
 func (s *clusterStore) Remove(id uint64) {
-	if _, err := s.Store.Delete(Member{ID: id}.storeKey(), true, true); err != nil {
+	if _, err := s.Store.Delete(memberStoreKey(id), true, true); err != nil {
 		log.Panicf("delete peer should never fail: %v", err)
 	}
 	if _, err := s.Store.Create(removedMemberStoreKey(id), false, "", false, store.Permanent); err != nil {

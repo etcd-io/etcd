@@ -114,7 +114,7 @@ func TestClusterStoreRemove(t *testing.T) {
 	cs.Remove(1)
 
 	wactions := []action{
-		{name: "Delete", params: []interface{}{Member{ID: 1}.storeKey(), true, true}},
+		{name: "Delete", params: []interface{}{memberStoreKey(1), true, true}},
 		{name: "Create", params: []interface{}{removedMemberStoreKey(1), false, "", false, store.Permanent}},
 	}
 	if !reflect.DeepEqual(st.Action(), wactions) {
