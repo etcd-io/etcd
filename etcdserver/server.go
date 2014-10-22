@@ -683,7 +683,7 @@ func restartNode(cfg *ServerConfig, index uint64, snapshot *raftpb.Snapshot) (id
 	var metadata pb.Metadata
 	pbutil.MustUnmarshal(&metadata, wmetadata)
 	id, cid = metadata.NodeID, metadata.ClusterID
-	log.Printf("etcdserver: restart node %d in cluster %d at commit index %d", id, cid, st.Commit)
+	log.Printf("etcdserver: restart member %x in cluster %x at commit index %d", id, cid, st.Commit)
 	n = raft.RestartNode(id, 10, 1, snapshot, st, ents)
 	return
 }
