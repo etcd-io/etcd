@@ -238,9 +238,6 @@ func (h serverHandler) serveRaft(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	log.Printf("etcdhttp: raft recv message from %#x: %+v", m.From, m)
-	if m.Type == raftpb.MsgApp {
-		h.stats.UpdateRecvApp(m.From, r.ContentLength)
-	}
 	if err := h.server.Process(context.TODO(), m); err != nil {
 		log.Println("etcdhttp: error processing raft message:", err)
 		switch err {
@@ -250,6 +247,9 @@ func (h serverHandler) serveRaft(w http.ResponseWriter, r *http.Request) {
 			writeError(w, err)
 		}
 		return
+	}
+	if m.Type == raftpb.MsgApp {
+		h.stats.UpdateRecvApp(m.From, r.ContentLength)
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
