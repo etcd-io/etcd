@@ -227,7 +227,7 @@ func (h serverHandler) serveRaft(w http.ResponseWriter, r *http.Request) {
 
 	gcid := r.Header.Get("X-Etcd-Cluster-ID")
 	if gcid != wcid {
-		log.Printf("etcdhttp: request ignored: clusterID mismatch got %s want %x", gcid, wcid)
+		log.Printf("etcdhttp: request ignored due to cluster ID mismatch got %s want %s", gcid, wcid)
 		http.Error(w, "clusterID mismatch", http.StatusPreconditionFailed)
 		return
 	}
