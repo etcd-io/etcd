@@ -80,7 +80,7 @@ func (s *clusterStore) Get() Cluster {
 	c.id = s.id
 	e, err := s.Store.Get(storeMembersPrefix, true, true)
 	if err != nil {
-		if v, ok := err.(*etcdErr.Error); ok && v.ErrorCode == etcdErr.EcodeKeyNotFound {
+		if isKeyNotFound(err) {
 			return *c
 		}
 		log.Panicf("get member should never fail: %v", err)
@@ -132,16 +132,15 @@ func (s *clusterStore) Remove(id uint64) {
 
 func (s *clusterStore) IsRemoved(id uint64) bool {
 	_, err := s.Store.Get(removedMemberStoreKey(id), false, false)
-	switch v := err.(type) {
-	case nil:
+	switch {
+	case err == nil:
 		return true
-	case *etcdErr.Error:
-		if v.ErrorCode == etcdErr.EcodeKeyNotFound {
-			return false
-		}
+	case isKeyNotFound(err):
+		return false
+	default:
+		log.Panicf("unexpected error when getting removed member %x: %v", id, err)
+		return false
 	}
-	log.Panicf("unexpected getting removed member error: %v", err)
-	return false
 }
 
 // Sender creates the default production sender used to transport raft messages
@@ -232,4 +231,9 @@ func httpPost(c *http.Client, url string, cid uint64, data []byte) bool {
 	default:
 		return false
 	}
+}
+
+func isKeyNotFound(err error) bool {
+	e, ok := err.(*etcdErr.Error)
+	return ok && e.ErrorCode == etcdErr.EcodeKeyNotFound
 }
