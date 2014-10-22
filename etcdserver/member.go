@@ -54,10 +54,15 @@ func newMember(name string, peerURLs types.URLs, clusterName string, now *time.T
 		RaftAttributes: RaftAttributes{PeerURLs: peerURLs.StringSlice()},
 		Attributes:     Attributes{Name: name},
 	}
+	m.ID = GenerateMemberID(peerURLs, clusterName, now)
+	return m
+}
 
+func GenerateMemberID(peerURLs types.URLs, clusterName string, now *time.Time) uint64 {
 	var b []byte
-	sort.Strings(m.PeerURLs)
-	for _, p := range m.PeerURLs {
+	ss := peerURLs.StringSlice()
+	sort.Strings(ss)
+	for _, p := range ss {
 		b = append(b, []byte(p)...)
 	}
 
@@ -67,8 +72,7 @@ func newMember(name string, peerURLs types.URLs, clusterName string, now *time.T
 	}
 
 	hash := sha1.Sum(b)
-	m.ID = binary.BigEndian.Uint64(hash[:8])
-	return m
+	return binary.BigEndian.Uint64(hash[:8])
 }
 
 func memberStoreKey(id uint64) string {
