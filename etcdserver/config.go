@@ -27,7 +27,6 @@ import (
 
 // ServerConfig holds the configuration of etcd as taken from the command line or discovery.
 type ServerConfig struct {
-	NodeID       uint64
 	Name         string
 	DiscoveryURL string
 	ClientURLs   types.URLs
@@ -41,18 +40,17 @@ type ServerConfig struct {
 // VerifyBootstrapConfig sanity-checks the initial config and returns an error
 // for things that should never happen.
 func (c *ServerConfig) VerifyBootstrapConfig() error {
-	if c.NodeID == raft.None {
+	m := c.Cluster.FindName(c.Name)
+	// Make sure the cluster at least contains the local server.
+	if m == nil {
+		return fmt.Errorf("couldn't find local name %s in the initial cluster configuration", c.Name)
+	}
+	if m.ID == raft.None {
 		return fmt.Errorf("could not use %x as member id", raft.None)
 	}
 
 	if c.DiscoveryURL == "" && c.ClusterState != ClusterStateValueNew {
 		return fmt.Errorf("initial cluster state unset and no wal or discovery URL found")
-	}
-
-	// Make sure the cluster at least contains the local server.
-	m := c.Cluster.FindID(c.NodeID)
-	if m == nil {
-		return fmt.Errorf("couldn't find local ID in cluster config")
 	}
 
 	// No identical IPs in the cluster peer list
