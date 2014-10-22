@@ -267,8 +267,6 @@ func startProxy() {
 // Returns the local member on success.
 func setupCluster() (*etcdserver.Member, error) {
 	cluster = etcdserver.NewCluster(*initialClusterName)
-	cluster.SetMembersFromString(*initialCluster)
-
 	set := make(map[string]bool)
 	flag.Visit(func(f *flag.Flag) {
 		set[f.Name] = true
@@ -280,18 +278,21 @@ func setupCluster() (*etcdserver.Member, error) {
 	if err != nil {
 		return nil, err
 	}
-	if set["discovery"] {
+
+	switch {
+	case set["discovery"]:
 		cluster = etcdserver.NewCluster(*durl)
 		return cluster.AddMemberFromURLs(*name, apurls)
-	} else if set["initial-cluster"] {
+	case set["initial-cluster"]:
+		fallthrough
+	default:
 		// We're statically configured, and cluster has appropriately been set.
 		// Try to configure by indexing the static cluster by name.
-		for _, c := range cluster.Members() {
-			if c.Name == *name {
-				return c, nil
-			}
+		cluster.SetMembersFromString(*initialCluster)
+		m := cluster.FindName(*name)
+		if m != nil {
+			return m, nil
 		}
 		return nil, fmt.Errorf("cannot find the passed name %s in --initial-cluster bootstrap list.", *name)
 	}
-	return cluster.FindName(*name), nil
 }
