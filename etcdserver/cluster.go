@@ -41,7 +41,8 @@ const (
 type ClusterInfo interface {
 	ID() uint64
 	ClientURLs() []string
-	Members() map[uint64]*Member
+	// Members returns a slice of members sorted by their ID
+	Members() []*Member
 	Member(id uint64) *Member
 }
 
@@ -123,7 +124,20 @@ func newCluster(name string) *Cluster {
 
 func (c Cluster) ID() uint64 { return c.id }
 
-func (c Cluster) Members() map[uint64]*Member { return c.members }
+func (c Cluster) Members() []*Member {
+	var sms SortableMemberSlice
+	for _, m := range c.members {
+		sms = append(sms, m)
+	}
+	sort.Sort(sms)
+	return []*Member(sms)
+}
+
+type SortableMemberSlice []*Member
+
+func (s SortableMemberSlice) Len() int           { return len(s) }
+func (s SortableMemberSlice) Less(i, j int) bool { return s[i].ID < s[j].ID }
+func (s SortableMemberSlice) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
 
 func (c *Cluster) Member(id uint64) *Member {
 	return c.members[id]
