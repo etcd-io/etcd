@@ -29,6 +29,7 @@ import (
 	"github.com/coreos/etcd/pkg"
 	flagtypes "github.com/coreos/etcd/pkg/flags"
 	"github.com/coreos/etcd/pkg/transport"
+	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/proxy"
 )
 
@@ -277,11 +278,7 @@ func setupCluster() error {
 	err = nil
 	switch {
 	case set["discovery"]:
-		addrs := make([]string, 0)
-		for _, u := range apurls {
-			addrs = append(addrs, fmt.Sprintf("%v=%v", *name, u.String()))
-		}
-		clusterStr := strings.Join(addrs, ",")
+		clusterStr := genClusterString(*name, apurls)
 		cluster, err = etcdserver.NewClusterFromString(*durl, clusterStr)
 	case set["initial-cluster"]:
 		fallthrough
@@ -291,4 +288,12 @@ func setupCluster() error {
 		cluster, err = etcdserver.NewClusterFromString(*initialClusterName, *initialCluster)
 	}
 	return err
+}
+
+func genClusterString(name string, urls types.URLs) string {
+	addrs := make([]string, 0)
+	for _, u := range urls {
+		addrs = append(addrs, fmt.Sprintf("%v=%v", name, u.String()))
+	}
+	return strings.Join(addrs, ",")
 }
