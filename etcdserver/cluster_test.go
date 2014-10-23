@@ -132,7 +132,7 @@ func TestClusterMember(t *testing.T) {
 	}
 }
 
-func TestClusterMemberFromName(t *testing.T) {
+func TestClusterMemberByName(t *testing.T) {
 	membs := []Member{
 		newTestMember(1, nil, "node1", nil),
 		newTestMember(2, nil, "node2", nil),

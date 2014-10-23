@@ -41,6 +41,8 @@ const (
 type ClusterInfo interface {
 	ID() uint64
 	ClientURLs() []string
+	Members() map[uint64]*Member
+	Member(id uint64) *Member
 }
 
 // Cluster is a list of Members that belong to the same raft cluster
@@ -48,14 +50,15 @@ type Cluster struct {
 	id      uint64
 	name    string
 	members map[uint64]*Member
-	// removed indicates ids of removed members in the cluster so far
+	// removed contains the ids of removed members in the cluster.
+	// removed id cannot be reused.
 	removed map[uint64]bool
 	store   store.Store
 }
 
 // NewClusterFromString returns Cluster through given clusterName and parsing
 // members from a sets of names to IPs discovery formatted like:
-// mach0=http://1.1.1.1,mach0=http://2.2.2.2,mach0=http://1.1.1.1,mach1=http://2.2.2.2,mach1=http://3.3.3.3
+// mach0=http://1.1.1.1,mach0=http://2.2.2.2,mach1=http://3.3.3.3,mach2=http://4.4.4.4
 func NewClusterFromString(name string, cluster string) (*Cluster, error) {
 	c := newCluster(name)
 
@@ -91,7 +94,7 @@ func NewClusterFromStore(name string, st store.Store) *Cluster {
 	for _, n := range e.Node.Nodes {
 		m, err := nodeToMember(n)
 		if err != nil {
-			log.Panicf("unexpected nodeToMember error: %v", err)
+			log.Panicf("nodeToMember should never fail: %v", err)
 		}
 		c.members[m.ID] = m
 	}
@@ -126,6 +129,8 @@ func (c *Cluster) Member(id uint64) *Member {
 	return c.members[id]
 }
 
+// MemberByName returns a Member with the given name if exists.
+// If more than one member has the given name, it will return one randomly.
 func (c *Cluster) MemberByName(name string) *Member {
 	for _, m := range c.members {
 		if m.Name == name {
@@ -144,7 +149,7 @@ func (c Cluster) MemberIDs() []uint64 {
 	return ids
 }
 
-func (c *Cluster) IsMemberRemoved(id uint64) bool {
+func (c *Cluster) IsIDremoved(id uint64) bool {
 	return c.removed[id]
 }
 
@@ -197,13 +202,9 @@ func (c *Cluster) genID() {
 	c.id = binary.BigEndian.Uint64(hash[:8])
 }
 
-func (c *Cluster) SetID(id uint64) {
-	c.id = id
-}
+func (c *Cluster) SetID(id uint64) { c.id = id }
 
-func (c *Cluster) SetStore(st store.Store) {
-	c.store = st
-}
+func (c *Cluster) SetStore(st store.Store) { c.store = st }
 
 // AddMember puts a new Member into the store.
 // A Member with a matching id must not exist.
@@ -228,7 +229,7 @@ func (c *Cluster) AddMember(m *Member) {
 }
 
 // RemoveMember removes a member from the store.
-// The given id MUST exist.
+// The given id MUST exist, or the function panics.
 func (c *Cluster) RemoveMember(id uint64) {
 	if _, err := c.store.Delete(memberStoreKey(id), true, true); err != nil {
 		log.Panicf("delete peer should never fail: %v", err)

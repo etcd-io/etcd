@@ -160,7 +160,7 @@ func (h serverHandler) serveAdminMembers(w http.ResponseWriter, r *http.Request)
 	case "GET":
 		idStr := strings.TrimPrefix(r.URL.Path, adminMembersPrefix)
 		if idStr == "" {
-			msmap := h.clusterStore.Get().Members()
+			msmap := h.clusterInfo.Members()
 			ms := make(SortableMemberSlice, 0, len(msmap))
 			for _, m := range msmap {
 				ms = append(ms, m)
@@ -177,7 +177,7 @@ func (h serverHandler) serveAdminMembers(w http.ResponseWriter, r *http.Request)
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		m := h.clusterStore.Get().FindID(id)
+		m := h.clusterInfo.Member(id)
 		if m == nil {
 			http.Error(w, "member not found", http.StatusNotFound)
 			return

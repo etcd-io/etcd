@@ -1533,24 +1533,23 @@ func (s *serverRecorder) RemoveMember(_ context.Context, id uint64) error {
 }
 
 func TestServeAdminMembersGet(t *testing.T) {
+	memb1 := etcdserver.Member{ID: 1, Attributes: etcdserver.Attributes{ClientURLs: []string{"http://localhost:8080"}}}
+	memb2 := etcdserver.Member{ID: 2, Attributes: etcdserver.Attributes{ClientURLs: []string{"http://localhost:8081"}}}
 	cluster := &fakeCluster{
-		members: []etcdserver.Member{
-			{ID: 1, Attributes: etcdserver.Attributes{ClientURLs: []string{"http://localhost:8080"}}},
-			{ID: 2, Attributes: etcdserver.Attributes{ClientURLs: []string{"http://localhost:8081"}}},
-		},
+		members: map[uint64]*etcdserver.Member{1: &memb1, 2: &memb2},
 	}
 	h := &serverHandler{
-		server:       &serverRecorder{},
-		clock:        clockwork.NewFakeClock(),
-		clusterStore: cluster,
+		server:      &serverRecorder{},
+		clock:       clockwork.NewFakeClock(),
+		clusterInfo: cluster,
 	}
 
-	msb, err := json.Marshal(cluster.members)
+	msb, err := json.Marshal([]etcdserver.Member{memb1, memb2})
 	if err != nil {
 		t.Fatal(err)
 	}
 	wms := string(msb) + "\n"
-	mb, err := json.Marshal(cluster.members[0])
+	mb, err := json.Marshal(memb1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1747,7 +1746,10 @@ func TestTrimNodeExternPrefix(t *testing.T) {
 type fakeCluster struct {
 	id         uint64
 	clientURLs []string
+	members    map[uint64]*etcdserver.Member
 }
 
-func (c *fakeCluster) ID() uint64           { return c.id }
-func (c *fakeCluster) ClientURLs() []string { return c.clientURLs }
+func (c *fakeCluster) ID() uint64                             { return c.id }
+func (c *fakeCluster) ClientURLs() []string                   { return c.clientURLs }
+func (c *fakeCluster) Members() map[uint64]*etcdserver.Member { return c.members }
+func (c *fakeCluster) Member(id uint64) *etcdserver.Member    { return c.members[id] }
