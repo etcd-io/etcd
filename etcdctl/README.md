@@ -1,8 +1,6 @@
 etcdctl
 ========
 
-[![Build Status](https://travis-ci.org/coreos/etcdctl.png)](https://travis-ci.org/coreos/etcdctl)
-
 `etcdctl` is a command line client for [etcd][etcd].
 It can be used in scripts or for administrators to explore an etcd cluster.
 
