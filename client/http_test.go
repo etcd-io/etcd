@@ -38,37 +38,37 @@ func TestV2URLHelper(t *testing.T) {
 	}{
 		// key is empty, no problem
 		{
-			endpoint: url.URL{Scheme: "http", Host: "example.com", Path: ""},
+			endpoint: url.URL{Scheme: "http", Host: "example.com", Path: "/v2/keys"},
 			key:      "",
 			want:     url.URL{Scheme: "http", Host: "example.com", Path: "/v2/keys"},
 		},
 
 		// key is joined to path
 		{
-			endpoint: url.URL{Scheme: "http", Host: "example.com", Path: ""},
+			endpoint: url.URL{Scheme: "http", Host: "example.com", Path: "/v2/keys"},
 			key:      "/foo/bar",
 			want:     url.URL{Scheme: "http", Host: "example.com", Path: "/v2/keys/foo/bar"},
 		},
 
+		// key is joined to path when path is empty
+		{
+			endpoint: url.URL{Scheme: "http", Host: "example.com", Path: ""},
+			key:      "/foo/bar",
+			want:     url.URL{Scheme: "http", Host: "example.com", Path: "/foo/bar"},
+		},
+
 		// Host field carries through with port
 		{
-			endpoint: url.URL{Scheme: "http", Host: "example.com:8080", Path: ""},
+			endpoint: url.URL{Scheme: "http", Host: "example.com:8080", Path: "/v2/keys"},
 			key:      "",
 			want:     url.URL{Scheme: "http", Host: "example.com:8080", Path: "/v2/keys"},
 		},
 
 		// Scheme carries through
 		{
-			endpoint: url.URL{Scheme: "https", Host: "example.com", Path: ""},
+			endpoint: url.URL{Scheme: "https", Host: "example.com", Path: "/v2/keys"},
 			key:      "",
 			want:     url.URL{Scheme: "https", Host: "example.com", Path: "/v2/keys"},
-		},
-
-		// Path on endpoint is not ignored
-		{
-			endpoint: url.URL{Scheme: "https", Host: "example.com", Path: "/prefix"},
-			key:      "/foo",
-			want:     url.URL{Scheme: "https", Host: "example.com", Path: "/prefix/v2/keys/foo"},
 		},
 	}
 
@@ -81,7 +81,7 @@ func TestV2URLHelper(t *testing.T) {
 }
 
 func TestGetAction(t *testing.T) {
-	ep := url.URL{Scheme: "http", Host: "example.com"}
+	ep := url.URL{Scheme: "http", Host: "example.com/v2/keys"}
 	wantURL := &url.URL{
 		Scheme: "http",
 		Host:   "example.com",
@@ -121,7 +121,7 @@ func TestGetAction(t *testing.T) {
 }
 
 func TestWaitAction(t *testing.T) {
-	ep := url.URL{Scheme: "http", Host: "example.com"}
+	ep := url.URL{Scheme: "http", Host: "example.com/v2/keys"}
 	wantURL := &url.URL{
 		Scheme: "http",
 		Host:   "example.com",
@@ -170,7 +170,7 @@ func TestWaitAction(t *testing.T) {
 }
 
 func TestCreateAction(t *testing.T) {
-	ep := url.URL{Scheme: "http", Host: "example.com"}
+	ep := url.URL{Scheme: "http", Host: "example.com/v2/keys"}
 	wantURL := &url.URL{
 		Scheme:   "http",
 		Host:     "example.com",
