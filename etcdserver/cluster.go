@@ -141,7 +141,7 @@ func (c *Cluster) Member(id uint64) *Member {
 	return c.members[id]
 }
 
-func (c *Cluster) MemberFromName(name string) *Member {
+func (c *Cluster) MemberByName(name string) *Member {
 	for _, m := range c.members {
 		if m.Name == name {
 			return m

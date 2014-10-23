@@ -147,7 +147,7 @@ func TestClusterMemberFromName(t *testing.T) {
 	}
 	for i, tt := range tests {
 		c := newTestCluster(membs)
-		m := c.MemberFromName(tt.name)
+		m := c.MemberByName(tt.name)
 		if g := m != nil; g != tt.match {
 			t.Errorf("#%d: find member = %v, want %v", i, g, tt.match)
 		}

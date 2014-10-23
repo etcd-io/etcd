@@ -180,7 +180,7 @@ func NewServer(cfg *ServerConfig) *EtcdServer {
 		if err := cfg.VerifyBootstrapConfig(); err != nil {
 			log.Fatalf("etcdserver: %v", err)
 		}
-		m := cfg.Cluster.MemberFromName(cfg.Name)
+		m := cfg.Cluster.MemberByName(cfg.Name)
 		if cfg.ShouldDiscover() {
 			d, err := discovery.New(cfg.DiscoveryURL, m.ID, cfg.Cluster.String())
 			if err != nil {
@@ -646,7 +646,7 @@ func startNode(cfg *ServerConfig) (id uint64, n raft.Node, w *wal.WAL) {
 	var err error
 	// TODO: remove the discoveryURL when it becomes part of the source for
 	// generating nodeID.
-	member := cfg.Cluster.MemberFromName(cfg.Name)
+	member := cfg.Cluster.MemberByName(cfg.Name)
 	cfg.Cluster.GenID([]byte(cfg.DiscoveryURL))
 	metadata := pbutil.MustMarshal(&pb.Metadata{NodeID: member.ID, ClusterID: cfg.Cluster.ID()})
 	if w, err = wal.Create(cfg.WALDir(), metadata); err != nil {
