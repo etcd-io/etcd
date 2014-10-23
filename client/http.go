@@ -31,8 +31,8 @@ import (
 )
 
 var (
-	v2Prefix   = "/v2/keys"
-	ErrTimeout = context.DeadlineExceeded
+	DefaultV2KeysPrefix = "/v2/keys"
+	ErrTimeout          = context.DeadlineExceeded
 )
 
 // transport mimics http.Transport to provide an interface which can be
@@ -44,9 +44,10 @@ type transport interface {
 }
 
 type httpClient struct {
-	transport transport
-	endpoint  url.URL
-	timeout   time.Duration
+	transport    transport
+	endpoint     url.URL
+	timeout      time.Duration
+	v2KeysPrefix string
 }
 
 func NewHTTPClient(tr *http.Transport, ep string, timeout time.Duration) (*httpClient, error) {
@@ -56,16 +57,23 @@ func NewHTTPClient(tr *http.Transport, ep string, timeout time.Duration) (*httpC
 	}
 
 	c := &httpClient{
-		transport: tr,
-		endpoint:  *u,
-		timeout:   timeout,
+		transport:    tr,
+		endpoint:     *u,
+		timeout:      timeout,
+		v2KeysPrefix: DefaultV2KeysPrefix,
 	}
 
 	return c, nil
 }
 
 func (c *httpClient) SetPrefix(p string) {
-	v2Prefix = p
+	c.v2KeysPrefix = p
+}
+
+func (c *httpClient) Endpoint() url.URL {
+	ep := c.endpoint
+	ep.Path = path.Join(ep.Path, c.v2KeysPrefix)
+	return ep
 }
 
 func (c *httpClient) Create(key, val string, ttl time.Duration) (*Response, error) {
@@ -112,7 +120,7 @@ type roundTripResponse struct {
 }
 
 func (c *httpClient) do(ctx context.Context, act httpAction) (*http.Response, []byte, error) {
-	req := act.httpRequest(c.endpoint)
+	req := act.httpRequest(c.Endpoint())
 
 	rtchan := make(chan roundTripResponse, 1)
 	go func() {
@@ -192,8 +200,11 @@ func (hw *httpWatcher) Next() (*Response, error) {
 	return resp, nil
 }
 
-func v2URL(ep url.URL, key string) *url.URL {
-	ep.Path = path.Join(ep.Path, v2Prefix, key)
+// v2KeysURL forms a URL representing the location of a key. The provided
+// endpoint must be the root of the etcd keys API. For example, a valid
+// endpoint probably has the path "/v2/keys".
+func v2KeysURL(ep url.URL, key string) *url.URL {
+	ep.Path = path.Join(ep.Path, key)
 	return &ep
 }
 
@@ -207,7 +218,7 @@ type getAction struct {
 }
 
 func (g *getAction) httpRequest(ep url.URL) *http.Request {
-	u := v2URL(ep, g.Key)
+	u := v2KeysURL(ep, g.Key)
 
 	params := u.Query()
 	params.Set("recursive", strconv.FormatBool(g.Recursive))
@@ -224,7 +235,7 @@ type waitAction struct {
 }
 
 func (w *waitAction) httpRequest(ep url.URL) *http.Request {
-	u := v2URL(ep, w.Key)
+	u := v2KeysURL(ep, w.Key)
 
 	params := u.Query()
 	params.Set("wait", "true")
@@ -243,7 +254,7 @@ type createAction struct {
 }
 
 func (c *createAction) httpRequest(ep url.URL) *http.Request {
-	u := v2URL(ep, c.Key)
+	u := v2KeysURL(ep, c.Key)
 
 	params := u.Query()
 	params.Set("prevExist", "false")
