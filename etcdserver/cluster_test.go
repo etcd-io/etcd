@@ -365,6 +365,28 @@ func TestClusterAddMember(t *testing.T) {
 	}
 }
 
+func TestClusterMembers(t *testing.T) {
+	cls := &Cluster{
+		members: map[uint64]*Member{
+			1:   &Member{ID: 1},
+			20:  &Member{ID: 20},
+			100: &Member{ID: 100},
+			5:   &Member{ID: 5},
+			50:  &Member{ID: 50},
+		},
+	}
+	w := []*Member{
+		&Member{ID: 1},
+		&Member{ID: 5},
+		&Member{ID: 20},
+		&Member{ID: 50},
+		&Member{ID: 100},
+	}
+	if g := cls.Members(); !reflect.DeepEqual(g, w) {
+		t.Fatalf("Members()=%#v, want %#v", g, w)
+	}
+}
+
 func TestClusterRemoveMember(t *testing.T) {
 	st := &storeRecorder{}
 	c := newTestCluster(nil)

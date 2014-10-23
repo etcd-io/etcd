@@ -27,6 +27,7 @@ import (
 	"net/url"
 	"path"
 	"reflect"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -1749,7 +1750,14 @@ type fakeCluster struct {
 	members    map[uint64]*etcdserver.Member
 }
 
-func (c *fakeCluster) ID() uint64                             { return c.id }
-func (c *fakeCluster) ClientURLs() []string                   { return c.clientURLs }
-func (c *fakeCluster) Members() map[uint64]*etcdserver.Member { return c.members }
-func (c *fakeCluster) Member(id uint64) *etcdserver.Member    { return c.members[id] }
+func (c *fakeCluster) ID() uint64           { return c.id }
+func (c *fakeCluster) ClientURLs() []string { return c.clientURLs }
+func (c *fakeCluster) Members() []*etcdserver.Member {
+	var sms etcdserver.SortableMemberSlice
+	for _, m := range c.members {
+		sms = append(sms, m)
+	}
+	sort.Sort(sms)
+	return []*etcdserver.Member(sms)
+}
+func (c *fakeCluster) Member(id uint64) *etcdserver.Member { return c.members[id] }
