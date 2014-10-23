@@ -254,7 +254,7 @@ func (h serverHandler) serveRaft(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "error unmarshaling raft message", http.StatusBadRequest)
 		return
 	}
-	log.Printf("etcdhttp: raft recv message from %#x: %+v", m.From, m)
+	log.Printf("etcdhttp: raft recv message from %x: %+v", m.From, m)
 	if err := h.server.Process(context.TODO(), m); err != nil {
 		log.Println("etcdhttp: error processing raft message:", err)
 		switch err {
