@@ -379,11 +379,7 @@ func (r *raft) Step(m pb.Message) error {
 }
 
 func (r *raft) handleAppendEntries(m pb.Message) {
-	if r.raftLog.maybeAppend(m.Index, m.LogTerm, m.Commit, m.Entries...) {
-		mlastIndex := m.Index
-		if len(m.Entries) != 0 {
-			mlastIndex = m.Entries[len(m.Entries)-1].Index
-		}
+	if mlastIndex, ok := r.raftLog.maybeAppend(m.Index, m.LogTerm, m.Commit, m.Entries...); ok {
 		r.send(pb.Message{To: m.From, Type: pb.MsgAppResp, Index: mlastIndex})
 	} else {
 		r.send(pb.Message{To: m.From, Type: pb.MsgAppResp, Index: m.Index, Reject: true})

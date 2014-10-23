@@ -53,8 +53,10 @@ func (l *raftLog) String() string {
 	return fmt.Sprintf("offset=%d committed=%d applied=%d len(ents)=%d", l.offset, l.committed, l.applied, len(l.ents))
 }
 
-func (l *raftLog) maybeAppend(index, logTerm, committed uint64, ents ...pb.Entry) bool {
-	lastnewi := index + uint64(len(ents))
+// maybeAppend returns (0, false) if the entries cannot be appended. Otherwise,
+// it returns (last index of entries, true).
+func (l *raftLog) maybeAppend(index, logTerm, committed uint64, ents ...pb.Entry) (lastnewi uint64, ok bool) {
+	lastnewi = index + uint64(len(ents))
 	if l.matchTerm(index, logTerm) {
 		from := index + 1
 		ci := l.findConflict(from, ents)
@@ -70,9 +72,9 @@ func (l *raftLog) maybeAppend(index, logTerm, committed uint64, ents ...pb.Entry
 		if l.committed < tocommit {
 			l.committed = tocommit
 		}
-		return true
+		return lastnewi, true
 	}
-	return false
+	return 0, false
 }
 
 func (l *raftLog) append(after uint64, ents ...pb.Entry) uint64 {
