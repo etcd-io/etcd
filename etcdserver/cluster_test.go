@@ -60,6 +60,8 @@ func TestClusterFromStringBad(t *testing.T) {
 		// no URL defined for member
 		"mem1=,mem2=http://128.193.4.20:2379,mem3=http://10.0.0.2:2379",
 		"mem1,mem2=http://128.193.4.20:2379,mem3=http://10.0.0.2:2379",
+		// bad URL for member
+		"default=http://localhost/",
 		// TODO(philips): anyone know of a 64 bit sha1 hash collision
 		// "06b2f82fd81b2c20=http://128.193.4.20:2379,02c60cb75083ceef=http://128.193.4.20:2379",
 		// the same url for two members

@@ -71,7 +71,11 @@ func NewClusterFromString(name string, cluster string) (*Cluster, error) {
 		if len(urls) == 0 || urls[0] == "" {
 			return nil, fmt.Errorf("Empty URL given for %q", name)
 		}
-		m := NewMember(name, types.URLs(*flags.NewURLsValue(strings.Join(urls, ","))), c.name, nil)
+		purls := &flags.URLsValue{}
+		if err := purls.Set(strings.Join(urls, ",")); err != nil {
+			return nil, err
+		}
+		m := NewMember(name, types.URLs(*purls), c.name, nil)
 		if _, ok := c.members[m.ID]; ok {
 			return nil, fmt.Errorf("Member exists with identical ID %v", m)
 		}
