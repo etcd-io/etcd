@@ -50,7 +50,6 @@ var (
 
 	initialCluster     = fs.String("initial-cluster", "default=http://localhost:2380,default=http://localhost:7001", "Initial cluster configuration for bootstrapping")
 	initialClusterName = fs.String("initial-cluster-name", "etcd", "Initial name for the etcd cluster during bootstrap")
-	cluster            = &etcdserver.Cluster{}
 	clusterState       = new(etcdserver.ClusterState)
 
 	cors      = &pkg.CORSInfo{}
@@ -142,8 +141,9 @@ func main() {
 
 // startEtcd launches the etcd server and HTTP handlers for client/server communication.
 func startEtcd() {
-	if err := setupCluster(); err != nil {
-		log.Fatalf("etcd: setupCluster returned error %v", err)
+	cls, err := setupCluster()
+	if err != nil {
+		log.Fatalf("etcd: error setting up initial cluster: %v", err)
 	}
 
 	if *dir == "" {
@@ -168,7 +168,7 @@ func startEtcd() {
 		ClientURLs:   acurls,
 		DataDir:      *dir,
 		SnapCount:    *snapCount,
-		Cluster:      cluster,
+		Cluster:      cls,
 		DiscoveryURL: *durl,
 		ClusterState: *clusterState,
 		Transport:    pt,
@@ -223,12 +223,17 @@ func startEtcd() {
 
 // startProxy launches an HTTP proxy for client communication which proxies to other etcd nodes.
 func startProxy() {
+	cls, err := setupCluster()
+	if err != nil {
+		log.Fatalf("etcd: error setting up initial cluster: %v", err)
+	}
+
 	pt, err := transport.NewTransport(clientTLSInfo)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	ph, err := proxy.NewHandler(pt, (*cluster).PeerURLs())
+	ph, err := proxy.NewHandler(pt, cls.PeerURLs())
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -262,32 +267,32 @@ func startProxy() {
 }
 
 // setupCluster sets up the cluster definition for bootstrap or discovery.
-func setupCluster() error {
+func setupCluster() (*etcdserver.Cluster, error) {
 	set := make(map[string]bool)
 	fs.Visit(func(f *flag.Flag) {
 		set[f.Name] = true
 	})
 	if set["discovery"] && set["initial-cluster"] {
-		return fmt.Errorf("both discovery and bootstrap-config are set")
+		return nil, fmt.Errorf("both discovery and bootstrap-config are set")
 	}
 	apurls, err := pkg.URLsFromFlags(fs, "advertise-peer-urls", "addr", peerTLSInfo)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	err = nil
+	var cls *etcdserver.Cluster
 	switch {
 	case set["discovery"]:
 		clusterStr := genClusterString(*name, apurls)
-		cluster, err = etcdserver.NewClusterFromString(*durl, clusterStr)
+		cls, err = etcdserver.NewClusterFromString(*durl, clusterStr)
 	case set["initial-cluster"]:
 		fallthrough
 	default:
 		// We're statically configured, and cluster has appropriately been set.
 		// Try to configure by indexing the static cluster by name.
-		cluster, err = etcdserver.NewClusterFromString(*initialClusterName, *initialCluster)
+		cls, err = etcdserver.NewClusterFromString(*initialClusterName, *initialCluster)
 	}
-	return err
+	return cls, err
 }
 
 func genClusterString(name string, urls types.URLs) string {
