@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"log"
 	"net/url"
+	"path"
 	"sort"
 	"strings"
 
@@ -33,8 +34,8 @@ import (
 )
 
 const (
-	raftAttributesSuffix = "/raftAttributes"
-	attributesSuffix     = "/attributes"
+	raftAttributesSuffix = "raftAttributes"
+	attributesSuffix     = "attributes"
 )
 
 type ClusterInfo interface {
@@ -47,6 +48,7 @@ type Cluster struct {
 	id      uint64
 	name    string
 	members map[uint64]*Member
+	// removed indicates ids of removed members in the cluster so far
 	removed map[uint64]bool
 	store   store.Store
 }
@@ -103,7 +105,7 @@ func NewClusterFromStore(name string, st store.Store) *Cluster {
 		if isKeyNotFound(err) {
 			return c
 		}
-		log.Panicf("get member should never fail: %v", err)
+		log.Panicf("get storeMembers should never fail: %v", err)
 	}
 	for _, n := range e.Node.Nodes {
 		m, err := nodeToMember(n)
@@ -118,7 +120,7 @@ func NewClusterFromStore(name string, st store.Store) *Cluster {
 		if isKeyNotFound(err) {
 			return c
 		}
-		log.Panicf("get member should never fail: %v", err)
+		log.Panicf("get storeRemovedMembers should never fail: %v", err)
 	}
 	for _, n := range e.Node.Nodes {
 		c.removed[parseMemberID(n.Key)] = true
@@ -229,14 +231,16 @@ func (c *Cluster) AddMember(m *Member) {
 	if err != nil {
 		log.Panicf("marshal error: %v", err)
 	}
-	if _, err := c.store.Create(memberStoreKey(m.ID)+raftAttributesSuffix, false, string(b), false, store.Permanent); err != nil {
+	p := path.Join(memberStoreKey(m.ID), raftAttributesSuffix)
+	if _, err := c.store.Create(p, false, string(b), false, store.Permanent); err != nil {
 		log.Panicf("add raftAttributes should never fail: %v", err)
 	}
 	b, err = json.Marshal(m.Attributes)
 	if err != nil {
 		log.Panicf("marshal error: %v", err)
 	}
-	if _, err := c.store.Create(memberStoreKey(m.ID)+attributesSuffix, false, string(b), false, store.Permanent); err != nil {
+	p = path.Join(memberStoreKey(m.ID), attributesSuffix)
+	if _, err := c.store.Create(p, false, string(b), false, store.Permanent); err != nil {
 		log.Panicf("add attributes should never fail: %v", err)
 	}
 	c.members[m.ID] = m
@@ -262,13 +266,13 @@ func nodeToMember(n *store.NodeExtern) (*Member, error) {
 	if len(n.Nodes) != 2 {
 		return m, fmt.Errorf("len(nodes) = %d, want 2", len(n.Nodes))
 	}
-	if w := n.Key + attributesSuffix; n.Nodes[0].Key != w {
+	if w := path.Join(n.Key, attributesSuffix); n.Nodes[0].Key != w {
 		return m, fmt.Errorf("key = %v, want %v", n.Nodes[0].Key, w)
 	}
 	if err := json.Unmarshal([]byte(*n.Nodes[0].Value), &m.Attributes); err != nil {
 		return m, fmt.Errorf("unmarshal attributes error: %v", err)
 	}
-	if w := n.Key + raftAttributesSuffix; n.Nodes[1].Key != w {
+	if w := path.Join(n.Key, raftAttributesSuffix); n.Nodes[1].Key != w {
 		return m, fmt.Errorf("key = %v, want %v", n.Nodes[1].Key, w)
 	}
 	if err := json.Unmarshal([]byte(*n.Nodes[1].Value), &m.RaftAttributes); err != nil {
