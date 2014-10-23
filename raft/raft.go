@@ -380,7 +380,11 @@ func (r *raft) Step(m pb.Message) error {
 
 func (r *raft) handleAppendEntries(m pb.Message) {
 	if r.raftLog.maybeAppend(m.Index, m.LogTerm, m.Commit, m.Entries...) {
-		r.send(pb.Message{To: m.From, Type: pb.MsgAppResp, Index: r.raftLog.lastIndex()})
+		mlastIndex := m.Index
+		if len(m.Entries) != 0 {
+			mlastIndex = m.Entries[len(m.Entries)-1].Index
+		}
+		r.send(pb.Message{To: m.From, Type: pb.MsgAppResp, Index: mlastIndex})
 	} else {
 		r.send(pb.Message{To: m.From, Type: pb.MsgAppResp, Index: m.Index, Reject: true})
 	}
@@ -428,6 +432,9 @@ func stepLeader(r *raft, m pb.Message) {
 		r.appendEntry(e)
 		r.bcastAppend()
 	case pb.MsgAppResp:
+		if m.Index == 0 {
+			return
+		}
 		if m.Reject {
 			if r.prs[m.From].maybeDecrTo(m.Index) {
 				r.sendAppend(m.From)
