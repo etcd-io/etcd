@@ -5,7 +5,7 @@
 /bin
 .vagrant
 *_etcd_data
-etcd
+/etcd
 *.swp
 /hack/insta-discovery/.env
 *.test
