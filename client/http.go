@@ -31,8 +31,8 @@ import (
 )
 
 var (
-	v2Prefix   = "/v2/keys"
-	ErrTimeout = context.DeadlineExceeded
+	DefaultV2KeysPrefix = "/v2/keys"
+	ErrTimeout          = context.DeadlineExceeded
 )
 
 // transport mimics http.Transport to provide an interface which can be
@@ -65,7 +65,7 @@ func NewHTTPClient(tr *http.Transport, ep string, timeout time.Duration) (*httpC
 }
 
 func (c *httpClient) SetPrefix(p string) {
-	v2Prefix = p
+	DefaultV2KeysPrefix = p
 }
 
 func (c *httpClient) Create(key, val string, ttl time.Duration) (*Response, error) {
@@ -193,7 +193,7 @@ func (hw *httpWatcher) Next() (*Response, error) {
 }
 
 func v2URL(ep url.URL, key string) *url.URL {
-	ep.Path = path.Join(ep.Path, v2Prefix, key)
+	ep.Path = path.Join(ep.Path, DefaultV2KeysPrefix, key)
 	return &ep
 }
 
