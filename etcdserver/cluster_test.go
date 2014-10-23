@@ -286,7 +286,7 @@ func TestClusterGenID(t *testing.T) {
 		newTestMember(2, nil, "", nil),
 	})
 
-	cs.GenID(nil)
+	cs.genID()
 	if cs.ID() == 0 {
 		t.Fatalf("cluster.ID = %v, want not 0", cs.ID())
 	}
@@ -294,13 +294,7 @@ func TestClusterGenID(t *testing.T) {
 
 	cs.SetStore(&storeRecorder{})
 	cs.AddMember(newTestMemberp(3, nil, "", nil))
-	cs.GenID(nil)
-	if cs.ID() == previd {
-		t.Fatalf("cluster.ID = %v, want not %v", cs.ID(), previd)
-	}
-	previd = cs.ID()
-
-	cs.GenID([]byte("http://discovery.etcd.io/12345678"))
+	cs.genID()
 	if cs.ID() == previd {
 		t.Fatalf("cluster.ID = %v, want not %v", cs.ID(), previd)
 	}

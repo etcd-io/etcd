@@ -647,7 +647,6 @@ func startNode(cfg *ServerConfig) (id uint64, n raft.Node, w *wal.WAL) {
 	// TODO: remove the discoveryURL when it becomes part of the source for
 	// generating nodeID.
 	member := cfg.Cluster.MemberByName(cfg.Name)
-	cfg.Cluster.GenID([]byte(cfg.DiscoveryURL))
 	metadata := pbutil.MustMarshal(&pb.Metadata{NodeID: member.ID, ClusterID: cfg.Cluster.ID()})
 	if w, err = wal.Create(cfg.WALDir(), metadata); err != nil {
 		log.Fatal(err)

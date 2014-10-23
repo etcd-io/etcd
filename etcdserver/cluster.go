@@ -71,6 +71,7 @@ func NewClusterFromString(name string, cluster string) (*Cluster, error) {
 		}
 		c.members[m.ID] = m
 	}
+	c.genID()
 	return c, nil
 }
 
@@ -89,6 +90,7 @@ func NewClusterFromMemberInfos(name string, infos []MemberInfo) (*Cluster, error
 		}
 		c.members[m.ID] = m
 	}
+	c.genID()
 	return c, nil
 }
 
@@ -202,13 +204,12 @@ func (c Cluster) String() string {
 	return strings.Join(sl, ",")
 }
 
-func (c *Cluster) GenID(salt []byte) {
+func (c *Cluster) genID() {
 	mIDs := c.MemberIDs()
 	b := make([]byte, 8*len(mIDs))
 	for i, id := range mIDs {
 		binary.BigEndian.PutUint64(b[8*i:], id)
 	}
-	b = append(b, salt...)
 	hash := sha1.Sum(b)
 	c.id = binary.BigEndian.Uint64(hash[:8])
 }
