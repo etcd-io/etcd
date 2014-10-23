@@ -192,7 +192,7 @@ func (hw *httpWatcher) Next() (*Response, error) {
 	return resp, nil
 }
 
-func v2URL(ep url.URL, key string) *url.URL {
+func v2KeysURL(ep url.URL, key string) *url.URL {
 	ep.Path = path.Join(ep.Path, DefaultV2KeysPrefix, key)
 	return &ep
 }
@@ -207,7 +207,7 @@ type getAction struct {
 }
 
 func (g *getAction) httpRequest(ep url.URL) *http.Request {
-	u := v2URL(ep, g.Key)
+	u := v2KeysURL(ep, g.Key)
 
 	params := u.Query()
 	params.Set("recursive", strconv.FormatBool(g.Recursive))
@@ -224,7 +224,7 @@ type waitAction struct {
 }
 
 func (w *waitAction) httpRequest(ep url.URL) *http.Request {
-	u := v2URL(ep, w.Key)
+	u := v2KeysURL(ep, w.Key)
 
 	params := u.Query()
 	params.Set("wait", "true")
@@ -243,7 +243,7 @@ type createAction struct {
 }
 
 func (c *createAction) httpRequest(ep url.URL) *http.Request {
-	u := v2URL(ep, c.Key)
+	u := v2KeysURL(ep, c.Key)
 
 	params := u.Query()
 	params.Set("prevExist", "false")

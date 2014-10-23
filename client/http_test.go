@@ -73,7 +73,7 @@ func TestV2URLHelper(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		got := v2URL(tt.endpoint, tt.key)
+		got := v2KeysURL(tt.endpoint, tt.key)
 		if tt.want != *got {
 			t.Errorf("#%d: want=%#v, got=%#v", i, tt.want, *got)
 		}
