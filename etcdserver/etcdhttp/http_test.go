@@ -988,6 +988,34 @@ func TestServeRaft(t *testing.T) {
 	}
 }
 
+func TestServeMembersFails(t *testing.T) {
+	tests := []struct {
+		method string
+		wcode  int
+	}{
+		{
+			"POST",
+			http.StatusMethodNotAllowed,
+		},
+		{
+			"DELETE",
+			http.StatusMethodNotAllowed,
+		},
+		{
+			"BAD",
+			http.StatusMethodNotAllowed,
+		},
+	}
+	for i, tt := range tests {
+		h := &serverHandler{}
+		rw := httptest.NewRecorder()
+		h.serveMembers(rw, &http.Request{Method: tt.method})
+		if rw.Code != tt.wcode {
+			t.Errorf("#%d: code=%d, want %d", i, rw.Code, tt.wcode)
+		}
+	}
+}
+
 // resServer implements the etcd.Server interface for testing.
 // It returns the given responsefrom any Do calls, and nil error
 type resServer struct {
@@ -1532,7 +1560,7 @@ func (s *serverRecorder) RemoveMember(_ context.Context, id uint64) error {
 	return nil
 }
 
-func TestServeAdminMembersGet(t *testing.T) {
+func TestServeAdminMembersAndMembersGet(t *testing.T) {
 	memb1 := etcdserver.Member{ID: 1, Attributes: etcdserver.Attributes{ClientURLs: []string{"http://localhost:8080"}}}
 	memb2 := etcdserver.Member{ID: 2, Attributes: etcdserver.Attributes{ClientURLs: []string{"http://localhost:8081"}}}
 	cluster := &fakeCluster{
@@ -1566,22 +1594,26 @@ func TestServeAdminMembersGet(t *testing.T) {
 		{path.Join(adminMembersPrefix, "100"), http.StatusNotFound, "text/plain; charset=utf-8", "member not found\n"},
 	}
 
-	for i, tt := range tests {
-		req, err := http.NewRequest("GET", mustNewURL(t, tt.path).String(), nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-		rw := httptest.NewRecorder()
-		h.serveAdminMembers(rw, req)
+	funcs := []func(w http.ResponseWriter, r *http.Request){h.serveAdminMembers, h.serveMembers}
 
-		if rw.Code != tt.wcode {
-			t.Errorf("#%d: code=%d, want %d", i, rw.Code, tt.wcode)
-		}
-		if gct := rw.Header().Get("Content-Type"); gct != tt.wct {
-			t.Errorf("#%d: content-type = %s, want %s", i, gct, tt.wct)
-		}
-		if rw.Body.String() != tt.wbody {
-			t.Errorf("#%d: body = %s, want %s", i, rw.Body.String(), tt.wbody)
+	for i, tt := range tests {
+		for j, f := range funcs {
+			req, err := http.NewRequest("GET", mustNewURL(t, tt.path).String(), nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			rw := httptest.NewRecorder()
+			f(rw, req)
+
+			if rw.Code != tt.wcode {
+				t.Errorf("#%d.%d: code=%d, want %d", i, j, rw.Code, tt.wcode)
+			}
+			if gct := rw.Header().Get("Content-Type"); gct != tt.wct {
+				t.Errorf("#%d.%d: content-type = %s, want %s", i, j, gct, tt.wct)
+			}
+			if rw.Body.String() != tt.wbody {
+				t.Errorf("#%d.%d: body = %s, want %s", i, j, rw.Body.String(), tt.wbody)
+			}
 		}
 	}
 }
