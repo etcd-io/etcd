@@ -18,8 +18,8 @@ func NewExecWatchCommand() cli.Command {
 		Name:  "exec-watch",
 		Usage: "watch a key for changes and exec an executable",
 		Flags: []cli.Flag{
-			cli.IntFlag{"after-index", 0, "watch after the given index"},
-			cli.BoolFlag{"recursive", "watch all values for key and child keys"},
+			cli.IntFlag{Name: "after-index", Value: 0, Usage: "watch after the given index"},
+			cli.BoolFlag{Name: "recursive", Usage: "watch all values for key and child keys"},
 		},
 		Action: func(c *cli.Context) {
 			handleKey(c, execWatchCommandFunc)
@@ -92,8 +92,6 @@ func execWatchCommandFunc(c *cli.Context, client *etcd.Client) (*etcd.Response, 
 		go io.Copy(os.Stderr, stderr)
 		cmd.Wait()
 	}
-
-	return nil, nil
 }
 
 func environResponse(resp *etcd.Response, env []string) []string {

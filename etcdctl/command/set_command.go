@@ -14,9 +14,9 @@ func NewSetCommand() cli.Command {
 		Name:  "set",
 		Usage: "set the value of a key",
 		Flags: []cli.Flag{
-			cli.IntFlag{"ttl", 0, "key time-to-live"},
-			cli.StringFlag{"swap-with-value", "", "previous value"},
-			cli.IntFlag{"swap-with-index", 0, "previous index"},
+			cli.IntFlag{Name: "ttl", Value: 0, Usage: "key time-to-live"},
+			cli.StringFlag{Name: "swap-with-value", Value: "", Usage: "previous value"},
+			cli.IntFlag{Name: "swap-with-index", Value: 0, Usage: "previous index"},
 		},
 		Action: func(c *cli.Context) {
 			handleKey(c, setCommandFunc)

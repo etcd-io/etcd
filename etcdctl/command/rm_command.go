@@ -13,10 +13,10 @@ func NewRemoveCommand() cli.Command {
 		Name:  "rm",
 		Usage: "remove a key",
 		Flags: []cli.Flag{
-			cli.BoolFlag{"dir", "removes the key if it is an empty directory or a key-value pair"},
-			cli.BoolFlag{"recursive", "removes the key and all child keys(if it is a directory)"},
-			cli.StringFlag{"with-value", "", "previous value"},
-			cli.IntFlag{"with-index", 0, "previous index"},
+			cli.BoolFlag{Name: "dir", Usage: "removes the key if it is an empty directory or a key-value pair"},
+			cli.BoolFlag{Name: "recursive", Usage: "removes the key and all child keys(if it is a directory)"},
+			cli.StringFlag{Name: "with-value", Value: "", Usage: "previous value"},
+			cli.IntFlag{Name: "with-index", Value: 0, Usage: "previous index"},
 		},
 		Action: func(c *cli.Context) {
 			handleAll(c, removeCommandFunc)

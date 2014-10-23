@@ -15,10 +15,10 @@ func main() {
 	app.Version = version.Version
 	app.Usage = "A simple command line client for etcd."
 	app.Flags = []cli.Flag{
-		cli.BoolFlag{"debug", "output cURL commands which can be used to reproduce the request"},
-		cli.BoolFlag{"no-sync", "don't synchronize cluster information before sending request"},
-		cli.StringFlag{"output, o", "simple", "output response in the given format (`simple` or `json`)"},
-		cli.StringFlag{"peers, C", "", "a comma-delimited list of machine addresses in the cluster (default: \"127.0.0.1:4001\")"},
+		cli.BoolFlag{Name: "debug", Usage: "output cURL commands which can be used to reproduce the request"},
+		cli.BoolFlag{Name: "no-sync", Usage: "don't synchronize cluster information before sending request"},
+		cli.StringFlag{Name: "output, o", Value: "simple", Usage: "output response in the given format (`simple` or `json`)"},
+		cli.StringFlag{Name: "peers, C", Value: "", Usage: "a comma-delimited list of machine addresses in the cluster (default: \"127.0.0.1:4001\")"},
 	}
 	app.Commands = []cli.Command{
 		command.NewMakeCommand(),

@@ -13,7 +13,7 @@ func NewMakeDirCommand() cli.Command {
 		Name:  "mkdir",
 		Usage: "make a new directory",
 		Flags: []cli.Flag{
-			cli.IntFlag{"ttl", 0, "key time-to-live"},
+			cli.IntFlag{Name: "ttl", Value: 0, Usage: "key time-to-live"},
 		},
 		Action: func(c *cli.Context) {
 			handleDir(c, makeDirCommandFunc)

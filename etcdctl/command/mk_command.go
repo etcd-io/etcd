@@ -14,7 +14,7 @@ func NewMakeCommand() cli.Command {
 		Name:  "mk",
 		Usage: "make a new key with a given value",
 		Flags: []cli.Flag{
-			cli.IntFlag{"ttl", 0, "key time-to-live"},
+			cli.IntFlag{Name: "ttl", Value: 0, Usage: "key time-to-live"},
 		},
 		Action: func(c *cli.Context) {
 			handleKey(c, makeCommandFunc)

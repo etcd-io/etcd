@@ -12,7 +12,7 @@ func NewLsCommand() cli.Command {
 		Name:  "ls",
 		Usage: "retrieve a directory",
 		Flags: []cli.Flag{
-			cli.BoolFlag{"recursive", "returns all values for key and child keys"},
+			cli.BoolFlag{Name: "recursive", Usage: "returns all values for key and child keys"},
 		},
 		Action: func(c *cli.Context) {
 			handleLs(c, lsCommandFunc)

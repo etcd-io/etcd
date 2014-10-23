@@ -15,8 +15,8 @@ func NewGetCommand() cli.Command {
 		Name:  "get",
 		Usage: "retrieve the value of a key",
 		Flags: []cli.Flag{
-			cli.BoolFlag{"sort", "returns result in sorted order"},
-			cli.BoolFlag{"consistent", "send request to the leader, thereby guranteeing that any earlier writes will be seen by the read"},
+			cli.BoolFlag{Name: "sort", Usage: "returns result in sorted order"},
+			cli.BoolFlag{Name: "consistent", Usage: "send request to the leader, thereby guranteeing that any earlier writes will be seen by the read"},
 		},
 		Action: func(c *cli.Context) {
 			handleGet(c, getCommandFunc)
