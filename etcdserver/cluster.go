@@ -153,7 +153,7 @@ func (c Cluster) MemberIDs() []uint64 {
 	return ids
 }
 
-func (c *Cluster) IsIDremoved(id uint64) bool {
+func (c *Cluster) IsIDRemoved(id uint64) bool {
 	return c.removed[id]
 }
 

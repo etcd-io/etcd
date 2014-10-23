@@ -266,7 +266,7 @@ func (s *EtcdServer) start() {
 }
 
 func (s *EtcdServer) Process(ctx context.Context, m raftpb.Message) error {
-	if s.Cluster.IsIDremoved(m.From) {
+	if s.Cluster.IsIDRemoved(m.From) {
 		return ErrRemoved
 	}
 	return s.node.Step(ctx, m)
@@ -612,7 +612,7 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, nodes []uint64) error
 }
 
 func (s *EtcdServer) checkConfChange(cc raftpb.ConfChange, nodes []uint64) error {
-	if s.Cluster.IsIDremoved(cc.NodeID) {
+	if s.Cluster.IsIDRemoved(cc.NodeID) {
 		return ErrIDRemoved
 	}
 	switch cc.Type {
