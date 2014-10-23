@@ -40,11 +40,14 @@ import (
 )
 
 const (
+	// prefixes of client endpoint
 	keysPrefix               = "/v2/keys"
 	deprecatedMachinesPrefix = "/v2/machines"
 	adminMembersPrefix       = "/v2/admin/members/"
-	raftPrefix               = "/raft"
 	statsPrefix              = "/v2/stats"
+	// prefixes of peer endpoint
+	raftPrefix    = "/raft"
+	membersPrefix = "/members"
 
 	// time to wait for response from EtcdServer requests
 	defaultServerTimeout = 500 * time.Millisecond
@@ -90,6 +93,7 @@ func NewPeerHandler(server *etcdserver.EtcdServer) http.Handler {
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc(raftPrefix, sh.serveRaft)
+	mux.HandleFunc(membersPrefix, sh.serveMembers)
 	mux.HandleFunc("/", http.NotFound)
 	return mux
 }
@@ -298,6 +302,13 @@ func (h serverHandler) serveRaft(w http.ResponseWriter, r *http.Request) {
 		h.stats.UpdateRecvApp(m.From, r.ContentLength)
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h serverHandler) serveMembers(w http.ResponseWriter, r *http.Request) {
+	if !allowMethod(w, r.Method, "GET") {
+		return
+	}
+	h.serveAdminMembers(w, r)
 }
 
 // parseKeyRequest converts a received http.Request on keysPrefix to
