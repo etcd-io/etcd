@@ -1553,13 +1553,23 @@ func TestServeAdminMembersPut(t *testing.T) {
 	if rw.Code != wcode {
 		t.Errorf("code=%d, want %d", rw.Code, wcode)
 	}
-	g := rw.Body.String()
-	if g != "" {
-		t.Errorf("got body=%q, want %q", g, "")
-	}
 	wm := etcdserver.Member{
 		ID:             3064321551348478165,
 		RaftAttributes: raftAttr,
+	}
+
+	wb, err := json.Marshal(wm)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wct := "application/json"
+	if gct := rw.Header().Get("Content-Type"); gct != wct {
+		t.Errorf("content-type = %s, want %s", gct, wct)
+	}
+	g := rw.Body.String()
+	w := string(wb) + "\n"
+	if g != w {
+		t.Errorf("got body=%q, want %q", g, w)
 	}
 	wactions := []action{{name: "AddMember", params: []interface{}{wm}}}
 	if !reflect.DeepEqual(s.actions, wactions) {

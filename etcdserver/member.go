@@ -37,8 +37,8 @@ type RaftAttributes struct {
 
 // Attributes represents all the non-raft related attributes of an etcd member.
 type Attributes struct {
-	Name       string
-	ClientURLs []string
+	Name       string   `json:",omitempty"`
+	ClientURLs []string `json:",omitempty"`
 }
 
 type Member struct {
