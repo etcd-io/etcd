@@ -25,6 +25,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -160,10 +161,11 @@ func (h serverHandler) serveAdminMembers(w http.ResponseWriter, r *http.Request)
 		idStr := strings.TrimPrefix(r.URL.Path, adminMembersPrefix)
 		if idStr == "" {
 			msmap := h.clusterStore.Get().Members()
-			ms := make([]*etcdserver.Member, 0, len(msmap))
+			ms := make(SortableMemberSlice, 0, len(msmap))
 			for _, m := range msmap {
 				ms = append(ms, m)
 			}
+			sort.Sort(ms)
 			w.Header().Set("Content-Type", "application/json")
 			if err := json.NewEncoder(w).Encode(ms); err != nil {
 				log.Printf("etcdhttp: %v", err)
@@ -580,3 +582,9 @@ func trimNodeExternPrefix(n *store.NodeExtern, prefix string) *store.NodeExtern 
 	}
 	return n
 }
+
+type SortableMemberSlice []*etcdserver.Member
+
+func (s SortableMemberSlice) Len() int           { return len(s) }
+func (s SortableMemberSlice) Less(i, j int) bool { return s[i].ID < s[j].ID }
+func (s SortableMemberSlice) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
