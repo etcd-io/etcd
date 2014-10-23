@@ -13,12 +13,7 @@ The latest release is available as a binary at [Github][github-release] along wi
 
 [github-release]: https://github.com/coreos/etcd/releases/
 
-You can also build etcdctl from source:
-
-```
-./build
-```
-
+You can also build etcdctl from source using the build script found in the parent directory.
 
 ## Usage
 
