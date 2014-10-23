@@ -77,25 +77,6 @@ func NewClusterFromString(name string, cluster string) (*Cluster, error) {
 	return c, nil
 }
 
-type MemberInfo struct {
-	Name     string
-	PeerURLs types.URLs
-}
-
-// NewClusterFromMembers returns Cluster with the given members.
-func NewClusterFromMemberInfos(name string, infos []MemberInfo) (*Cluster, error) {
-	c := newCluster(name)
-	for _, info := range infos {
-		m := NewMember(info.Name, info.PeerURLs, c.name, nil)
-		if _, ok := c.members[m.ID]; ok {
-			return nil, fmt.Errorf("Member exists with identical ID %v", m)
-		}
-		c.members[m.ID] = m
-	}
-	c.genID()
-	return c, nil
-}
-
 func NewClusterFromStore(name string, st store.Store) *Cluster {
 	c := newCluster(name)
 	c.store = st

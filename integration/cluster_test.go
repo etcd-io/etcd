@@ -85,17 +85,14 @@ func (c *cluster) Launch(t *testing.T) {
 	}
 
 	lns := make([]net.Listener, c.Size)
-	infos := make([]etcdserver.MemberInfo, c.Size)
+	addrs := make([]string, c.Size)
 	for i := 0; i < c.Size; i++ {
 		l := newLocalListener(t)
 		// each member claims only one peer listener
 		lns[i] = l
-		listenURLs, err := types.NewURLs([]string{"http://" + l.Addr().String()})
-		if err != nil {
-			t.Fatal(err)
-		}
-		infos[i] = etcdserver.MemberInfo{Name: c.name(i), PeerURLs: listenURLs}
+		addrs[i] = fmt.Sprintf("%v=%v", c.name(i), "http://"+l.Addr().String())
 	}
+	clusterStr := strings.Join(addrs, ",")
 
 	var err error
 	for i := 0; i < c.Size; i++ {
@@ -112,7 +109,7 @@ func (c *cluster) Launch(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		m.Cluster, err = etcdserver.NewClusterFromMemberInfos(clusterName, infos)
+		m.Cluster, err = etcdserver.NewClusterFromString(clusterName, clusterStr)
 		if err != nil {
 			t.Fatal(err)
 		}

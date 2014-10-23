@@ -277,8 +277,12 @@ func setupCluster() error {
 	err = nil
 	switch {
 	case set["discovery"]:
-		infos := []etcdserver.MemberInfo{{Name: *name, PeerURLs: apurls}}
-		cluster, err = etcdserver.NewClusterFromMemberInfos(*durl, infos)
+		addrs := make([]string, 0)
+		for _, u := range apurls {
+			addrs = append(addrs, fmt.Sprintf("%v=%v", *name, u.String()))
+		}
+		clusterStr := strings.Join(addrs, ",")
+		cluster, err = etcdserver.NewClusterFromString(*durl, clusterStr)
 	case set["initial-cluster"]:
 		fallthrough
 	default:
