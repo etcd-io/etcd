@@ -60,7 +60,7 @@ func send(c *http.Client, cl *Cluster, m raftpb.Message, ss *stats.ServerStats, 
 			log.Printf("etcdhttp: no member for %d", m.To)
 			return
 		}
-		u := fmt.Sprintf("%s%s", memb.Pick(), raftPrefix)
+		u := fmt.Sprintf("%s%s", memb.PickPeerURL(), raftPrefix)
 
 		// TODO: don't block. we should be able to have 1000s
 		// of messages out at a time.

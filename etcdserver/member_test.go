@@ -78,7 +78,7 @@ func TestMemberPick(t *testing.T) {
 	}
 	for i, tt := range tests {
 		for j := 0; j < 1000; j++ {
-			a := tt.memb.Pick()
+			a := tt.memb.PickPeerURL()
 			if !tt.urls[a] {
 				t.Errorf("#%d: returned ID %q not in expected range!", i, a)
 				break

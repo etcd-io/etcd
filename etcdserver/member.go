@@ -72,9 +72,9 @@ func NewMember(name string, peerURLs types.URLs, clusterName string, now *time.T
 	return m
 }
 
-// Pick chooses a random address from a given Member's addresses, and returns it as
-// an addressible URI. If the given member does not exist, an empty string is returned.
-func (m *Member) Pick() string {
+// PickPeerURL chooses a random address from a given Member's PeerURLs.
+// It will panic if there is no PeerURLs available in Member.
+func (m *Member) PickPeerURL() string {
 	if len(m.PeerURLs) == 0 {
 		panic("member should always have some peer url")
 	}
