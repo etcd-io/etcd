@@ -1485,6 +1485,16 @@ func TestServeAdminMembersFail(t *testing.T) {
 
 			http.StatusInternalServerError,
 		},
+		{
+			// etcdserver.GetMember bad id
+			&http.Request{
+				URL:    mustNewURL(t, path.Join(adminMembersPrefix, "badid")),
+				Method: "GET",
+			},
+			&errServer{},
+
+			http.StatusBadRequest,
+		},
 	}
 	for i, tt := range tests {
 		h := &serverHandler{
@@ -1525,6 +1535,61 @@ func (s *serverRecorder) AddMember(_ context.Context, m etcdserver.Member) error
 func (s *serverRecorder) RemoveMember(_ context.Context, id uint64) error {
 	s.actions = append(s.actions, action{name: "RemoveMember", params: []interface{}{id}})
 	return nil
+}
+
+func TestServeAdminMembersGet(t *testing.T) {
+	cluster := &fakeCluster{
+		members: []etcdserver.Member{
+			{ID: 1, Attributes: etcdserver.Attributes{ClientURLs: []string{"http://localhost:8080"}}},
+			{ID: 2, Attributes: etcdserver.Attributes{ClientURLs: []string{"http://localhost:8081"}}},
+		},
+	}
+	h := &serverHandler{
+		server:       &serverRecorder{},
+		clock:        clockwork.NewFakeClock(),
+		clusterStore: cluster,
+	}
+
+	msb, err := json.Marshal(cluster.members)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wms := string(msb) + "\n"
+	mb, err := json.Marshal(cluster.members[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	wm := string(mb) + "\n"
+
+	tests := []struct {
+		path  string
+		wcode int
+		wct   string
+		wbody string
+	}{
+		{adminMembersPrefix, http.StatusOK, "application/json", wms},
+		{path.Join(adminMembersPrefix, "1"), http.StatusOK, "application/json", wm},
+		{path.Join(adminMembersPrefix, "100"), http.StatusNotFound, "text/plain; charset=utf-8", "member not found\n"},
+	}
+
+	for i, tt := range tests {
+		req, err := http.NewRequest("GET", mustNewURL(t, tt.path).String(), nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		rw := httptest.NewRecorder()
+		h.serveAdminMembers(rw, req)
+
+		if rw.Code != tt.wcode {
+			t.Errorf("#%d: code=%d, want %d", i, rw.Code, tt.wcode)
+		}
+		if gct := rw.Header().Get("Content-Type"); gct != tt.wct {
+			t.Errorf("#%d: content-type = %s, want %s", i, gct, tt.wct)
+		}
+		if rw.Body.String() != tt.wbody {
+			t.Errorf("#%d: body = %s, want %s", i, rw.Body.String(), tt.wbody)
+		}
+	}
 }
 
 func TestServeAdminMembersPut(t *testing.T) {

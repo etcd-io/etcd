@@ -149,13 +149,42 @@ func (h serverHandler) serveMachines(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h serverHandler) serveAdminMembers(w http.ResponseWriter, r *http.Request) {
-	if !allowMethod(w, r.Method, "POST", "DELETE") {
+	if !allowMethod(w, r.Method, "GET", "POST", "DELETE") {
 		return
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), defaultServerTimeout)
 	defer cancel()
 
 	switch r.Method {
+	case "GET":
+		idStr := strings.TrimPrefix(r.URL.Path, adminMembersPrefix)
+		if idStr == "" {
+			msmap := h.clusterStore.Get().Members()
+			ms := make([]*etcdserver.Member, 0, len(msmap))
+			for _, m := range msmap {
+				ms = append(ms, m)
+			}
+			w.Header().Set("Content-Type", "application/json")
+			if err := json.NewEncoder(w).Encode(ms); err != nil {
+				log.Printf("etcdhttp: %v", err)
+			}
+			return
+		}
+		id, err := strconv.ParseUint(idStr, 16, 64)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		m := h.clusterStore.Get().FindID(id)
+		if m == nil {
+			http.Error(w, "member not found", http.StatusNotFound)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(m); err != nil {
+			log.Printf("etcdhttp: %v", err)
+		}
+		return
 	case "POST":
 		ctype := r.Header.Get("Content-Type")
 		if ctype != "application/json" {
