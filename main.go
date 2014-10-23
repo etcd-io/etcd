@@ -29,6 +29,7 @@ import (
 	"github.com/coreos/etcd/pkg"
 	flagtypes "github.com/coreos/etcd/pkg/flags"
 	"github.com/coreos/etcd/pkg/transport"
+	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/proxy"
 )
 
@@ -262,7 +263,6 @@ func startProxy() {
 
 // setupCluster sets up the cluster definition for bootstrap or discovery.
 func setupCluster() error {
-	cluster = etcdserver.NewCluster(*initialClusterName)
 	set := make(map[string]bool)
 	fs.Visit(func(f *flag.Flag) {
 		set[f.Name] = true
@@ -275,17 +275,25 @@ func setupCluster() error {
 		return err
 	}
 
+	err = nil
 	switch {
 	case set["discovery"]:
-		cluster = etcdserver.NewCluster(*durl)
-		_, err := cluster.AddMemberFromURLs(*name, apurls)
-		return err
+		clusterStr := genClusterString(*name, apurls)
+		cluster, err = etcdserver.NewClusterFromString(*durl, clusterStr)
 	case set["initial-cluster"]:
 		fallthrough
 	default:
 		// We're statically configured, and cluster has appropriately been set.
 		// Try to configure by indexing the static cluster by name.
-		cluster.SetMembersFromString(*initialCluster)
+		cluster, err = etcdserver.NewClusterFromString(*initialClusterName, *initialCluster)
 	}
-	return nil
+	return err
+}
+
+func genClusterString(name string, urls types.URLs) string {
+	addrs := make([]string, 0)
+	for _, u := range urls {
+		addrs = append(addrs, fmt.Sprintf("%v=%v", name, u.String()))
+	}
+	return strings.Join(addrs, ",")
 }

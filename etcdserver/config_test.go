@@ -44,8 +44,7 @@ func TestBootstrapConfigVerify(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		cluster := &Cluster{}
-		err := cluster.SetMembersFromString(tt.clusterSetting)
+		cluster, err := NewClusterFromString("", tt.clusterSetting)
 		if err != nil && tt.shouldError {
 			continue
 		}

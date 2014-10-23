@@ -137,10 +137,9 @@ type EtcdServer struct {
 	done       chan struct{}
 	stopped    chan struct{}
 	id         uint64
-	clusterID  uint64
 	attributes Attributes
 
-	ClusterStore ClusterStore
+	Cluster *Cluster
 
 	node  raft.Node
 	store store.Store
@@ -176,12 +175,12 @@ func NewServer(cfg *ServerConfig) *EtcdServer {
 	st := store.New()
 	var w *wal.WAL
 	var n raft.Node
-	var id, cid uint64
+	var id uint64
 	if !wal.Exist(cfg.WALDir()) {
 		if err := cfg.VerifyBootstrapConfig(); err != nil {
 			log.Fatalf("etcdserver: %v", err)
 		}
-		m := cfg.Cluster.FindName(cfg.Name)
+		m := cfg.Cluster.MemberByName(cfg.Name)
 		if cfg.ShouldDiscover() {
 			d, err := discovery.New(cfg.DiscoveryURL, m.ID, cfg.Cluster.String())
 			if err != nil {
@@ -191,11 +190,12 @@ func NewServer(cfg *ServerConfig) *EtcdServer {
 			if err != nil {
 				log.Fatalf("etcdserver: %v", err)
 			}
-			if err = cfg.Cluster.SetMembersFromString(s); err != nil {
+			if cfg.Cluster, err = NewClusterFromString(cfg.Cluster.name, s); err != nil {
 				log.Fatalf("etcdserver: %v", err)
 			}
 		}
-		id, cid, n, w = startNode(cfg)
+		cfg.Cluster.SetStore(st)
+		id, n, w = startNode(cfg)
 	} else {
 		if cfg.ShouldDiscover() {
 			log.Printf("etcdserver: warn: ignoring discovery: etcd has already been initialized and has a valid log in %q", cfg.WALDir())
@@ -210,10 +210,9 @@ func NewServer(cfg *ServerConfig) *EtcdServer {
 			st.Recovery(snapshot.Data)
 			index = snapshot.Index
 		}
-		id, cid, n, w = restartNode(cfg, index, snapshot)
+		cfg.Cluster = NewClusterFromStore(cfg.Cluster.name, st)
+		id, n, w = restartNode(cfg, index, snapshot)
 	}
-
-	cls := &clusterStore{Store: st, id: cid}
 
 	sstats := &stats.ServerStats{
 		Name: cfg.Name,
@@ -225,19 +224,18 @@ func NewServer(cfg *ServerConfig) *EtcdServer {
 		store:      st,
 		node:       n,
 		id:         id,
-		clusterID:  cid,
 		attributes: Attributes{Name: cfg.Name, ClientURLs: cfg.ClientURLs.StringSlice()},
+		Cluster:    cfg.Cluster,
 		storage: struct {
 			*wal.WAL
 			*snap.Snapshotter
 		}{w, ss},
-		stats:        sstats,
-		lstats:       lstats,
-		send:         Sender(cfg.Transport, cls, sstats, lstats),
-		Ticker:       time.Tick(100 * time.Millisecond),
-		SyncTicker:   time.Tick(500 * time.Millisecond),
-		snapCount:    cfg.SnapCount,
-		ClusterStore: cls,
+		stats:      sstats,
+		lstats:     lstats,
+		send:       Sender(cfg.Transport, cfg.Cluster, sstats, lstats),
+		Ticker:     time.Tick(100 * time.Millisecond),
+		SyncTicker: time.Tick(500 * time.Millisecond),
+		snapCount:  cfg.SnapCount,
 	}
 	return s
 }
@@ -268,7 +266,7 @@ func (s *EtcdServer) start() {
 }
 
 func (s *EtcdServer) Process(ctx context.Context, m raftpb.Message) error {
-	if s.ClusterStore.IsRemoved(m.From) {
+	if s.Cluster.IsIDRemoved(m.From) {
 		return ErrRemoved
 	}
 	return s.node.Step(ctx, m)
@@ -497,7 +495,7 @@ func (s *EtcdServer) publish(retryInterval time.Duration) {
 	req := pb.Request{
 		ID:     GenID(),
 		Method: "PUT",
-		Path:   memberStoreKey(s.id) + attributesSuffix,
+		Path:   path.Join(memberStoreKey(s.id), attributesSuffix),
 		Val:    string(b),
 	}
 
@@ -599,22 +597,22 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, nodes []uint64) error
 	s.node.ApplyConfChange(cc)
 	switch cc.Type {
 	case raftpb.ConfChangeAddNode:
-		var m Member
-		if err := json.Unmarshal(cc.Context, &m); err != nil {
+		m := new(Member)
+		if err := json.Unmarshal(cc.Context, m); err != nil {
 			panic("unexpected unmarshal error")
 		}
 		if cc.NodeID != m.ID {
 			panic("unexpected nodeID mismatch")
 		}
-		s.ClusterStore.Add(m)
+		s.Cluster.AddMember(m)
 	case raftpb.ConfChangeRemoveNode:
-		s.ClusterStore.Remove(cc.NodeID)
+		s.Cluster.RemoveMember(cc.NodeID)
 	}
 	return nil
 }
 
 func (s *EtcdServer) checkConfChange(cc raftpb.ConfChange, nodes []uint64) error {
-	if s.ClusterStore.IsRemoved(cc.NodeID) {
+	if s.Cluster.IsIDRemoved(cc.NodeID) {
 		return ErrIDRemoved
 	}
 	switch cc.Type {
@@ -644,12 +642,11 @@ func (s *EtcdServer) snapshot(snapi uint64, snapnodes []uint64) {
 	s.storage.Cut()
 }
 
-func startNode(cfg *ServerConfig) (id, cid uint64, n raft.Node, w *wal.WAL) {
+func startNode(cfg *ServerConfig) (id uint64, n raft.Node, w *wal.WAL) {
 	var err error
 	// TODO: remove the discoveryURL when it becomes part of the source for
 	// generating nodeID.
-	member := cfg.Cluster.FindName(cfg.Name)
-	cfg.Cluster.GenID([]byte(cfg.DiscoveryURL))
+	member := cfg.Cluster.MemberByName(cfg.Name)
 	metadata := pbutil.MustMarshal(&pb.Metadata{NodeID: member.ID, ClusterID: cfg.Cluster.ID()})
 	if w, err = wal.Create(cfg.WALDir(), metadata); err != nil {
 		log.Fatal(err)
@@ -657,19 +654,19 @@ func startNode(cfg *ServerConfig) (id, cid uint64, n raft.Node, w *wal.WAL) {
 	ids := cfg.Cluster.MemberIDs()
 	peers := make([]raft.Peer, len(ids))
 	for i, id := range ids {
-		ctx, err := json.Marshal((*cfg.Cluster).FindID(id))
+		ctx, err := json.Marshal((*cfg.Cluster).Member(id))
 		if err != nil {
 			log.Fatal(err)
 		}
 		peers[i] = raft.Peer{ID: id, Context: ctx}
 	}
-	id, cid = member.ID, cfg.Cluster.ID()
-	log.Printf("etcdserver: start node %d in cluster %d", id, cid)
-	n = raft.StartNode(member.ID, peers, 10, 1)
+	id = member.ID
+	log.Printf("etcdserver: start node %x in cluster %x", id, cfg.Cluster.ID())
+	n = raft.StartNode(id, peers, 10, 1)
 	return
 }
 
-func restartNode(cfg *ServerConfig, index uint64, snapshot *raftpb.Snapshot) (id, cid uint64, n raft.Node, w *wal.WAL) {
+func restartNode(cfg *ServerConfig, index uint64, snapshot *raftpb.Snapshot) (id uint64, n raft.Node, w *wal.WAL) {
 	var err error
 	// restart a node from previous wal
 	if w, err = wal.OpenAtIndex(cfg.WALDir(), index); err != nil {
@@ -682,8 +679,9 @@ func restartNode(cfg *ServerConfig, index uint64, snapshot *raftpb.Snapshot) (id
 
 	var metadata pb.Metadata
 	pbutil.MustUnmarshal(&metadata, wmetadata)
-	id, cid = metadata.NodeID, metadata.ClusterID
-	log.Printf("etcdserver: restart member %x in cluster %x at commit index %d", id, cid, st.Commit)
+	id = metadata.NodeID
+	cfg.Cluster.SetID(metadata.ClusterID)
+	log.Printf("etcdserver: restart member %x in cluster %x at commit index %d", id, cfg.Cluster.ID(), st.Commit)
 	n = raft.RestartNode(id, 10, 1, snapshot, st, ents)
 	return
 }
