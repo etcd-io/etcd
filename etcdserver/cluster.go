@@ -130,14 +130,18 @@ func (c *Cluster) Member(id uint64) *Member {
 }
 
 // MemberByName returns a Member with the given name if exists.
-// If more than one member has the given name, it will return one randomly.
+// If more than one member has the given name, it will panic.
 func (c *Cluster) MemberByName(name string) *Member {
+	var memb *Member
 	for _, m := range c.members {
 		if m.Name == name {
-			return m
+			if memb != nil {
+				panic("two members with the given name exist in the cluster")
+			}
+			memb = m
 		}
 	}
-	return nil
+	return memb
 }
 
 func (c Cluster) MemberIDs() []uint64 {
