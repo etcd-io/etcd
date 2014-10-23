@@ -282,6 +282,76 @@ func TestClusterClientURLs(t *testing.T) {
 	}
 }
 
+func TestClusterValidateAndAssignIDsBad(t *testing.T) {
+	tests := []struct {
+		clmembs []Member
+		membs   []*Member
+	}{
+		{
+			// unmatched length
+			[]Member{
+				newTestMember(1, []string{"http://127.0.0.1:2379"}, "", nil),
+			},
+			[]*Member{},
+		},
+		{
+			// unmatched peer urls
+			[]Member{
+				newTestMember(1, []string{"http://127.0.0.1:2379"}, "", nil),
+			},
+			[]*Member{
+				newTestMemberp(1, []string{"http://127.0.0.1:4001"}, "", nil),
+			},
+		},
+		{
+			// unmatched peer urls
+			[]Member{
+				newTestMember(1, []string{"http://127.0.0.1:2379"}, "", nil),
+				newTestMember(2, []string{"http://127.0.0.2:2379"}, "", nil),
+			},
+			[]*Member{
+				newTestMemberp(1, []string{"http://127.0.0.1:2379"}, "", nil),
+				newTestMemberp(2, []string{"http://127.0.0.2:4001"}, "", nil),
+			},
+		},
+	}
+	for i, tt := range tests {
+		cl := newTestCluster(tt.clmembs)
+		if err := cl.ValidateAndAssignIDs(tt.membs); err == nil {
+			t.Errorf("#%d: unexpected update success", i)
+		}
+	}
+}
+
+func TestClusterValidateAndAssignIDs(t *testing.T) {
+	tests := []struct {
+		clmembs []Member
+		membs   []*Member
+		wids    []uint64
+	}{
+		{
+			[]Member{
+				newTestMember(1, []string{"http://127.0.0.1:2379"}, "", nil),
+				newTestMember(2, []string{"http://127.0.0.2:2379"}, "", nil),
+			},
+			[]*Member{
+				newTestMemberp(3, []string{"http://127.0.0.1:2379"}, "", nil),
+				newTestMemberp(4, []string{"http://127.0.0.2:2379"}, "", nil),
+			},
+			[]uint64{3, 4},
+		},
+	}
+	for i, tt := range tests {
+		cl := newTestCluster(tt.clmembs)
+		if err := cl.ValidateAndAssignIDs(tt.membs); err != nil {
+			t.Errorf("#%d: unexpect update error: %v", i, err)
+		}
+		if !reflect.DeepEqual(cl.MemberIDs(), tt.wids) {
+			t.Errorf("#%d: ids = %v, want %v", i, cl.MemberIDs(), tt.wids)
+		}
+	}
+}
+
 func TestClusterGenID(t *testing.T) {
 	cs := newTestCluster([]Member{
 		newTestMember(1, nil, "", nil),

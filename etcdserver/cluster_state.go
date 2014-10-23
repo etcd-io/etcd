@@ -21,12 +21,14 @@ import (
 )
 
 const (
-	ClusterStateValueNew = "new"
+	ClusterStateValueNew      = "new"
+	ClusterStateValueExisting = "existing"
 )
 
 var (
 	ClusterStateValues = []string{
 		ClusterStateValueNew,
+		ClusterStateValueExisting,
 	}
 )
 

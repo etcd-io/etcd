@@ -24,6 +24,7 @@ import (
 	"log"
 	"net/url"
 	"path"
+	"reflect"
 	"sort"
 	"strings"
 
@@ -115,6 +116,15 @@ func NewClusterFromStore(name string, st store.Store) *Cluster {
 		c.removed[parseMemberID(n.Key)] = true
 	}
 
+	return c
+}
+
+func NewClusterFromMembers(name string, id uint64, membs []*Member) *Cluster {
+	c := newCluster(name)
+	c.id = id
+	for _, m := range membs {
+		c.members[m.ID] = m
+	}
 	return c
 }
 
@@ -212,6 +222,33 @@ func (c Cluster) String() string {
 	}
 	sort.Strings(sl)
 	return strings.Join(sl, ",")
+}
+
+// ValidateAndAssignIDs validates the given members by matching their PeerURLs
+// with the existing members in the cluster. If the validation succeeds, it
+// assigns the IDs from the given members to the existing members in the
+// cluster. If the validation fails, an error will be returned.
+func (c *Cluster) ValidateAndAssignIDs(membs []*Member) error {
+	if len(c.members) != len(membs) {
+		return fmt.Errorf("cannot update %v from %v because the member count is unequal", c.members, membs)
+	}
+	omembs := make([]*Member, 0)
+	for _, m := range c.members {
+		omembs = append(omembs, m)
+	}
+	sort.Sort(SortableMemberSliceByPeerURLs(omembs))
+	sort.Sort(SortableMemberSliceByPeerURLs(membs))
+	for i := range omembs {
+		if !reflect.DeepEqual(omembs[i].PeerURLs, membs[i].PeerURLs) {
+			return fmt.Errorf("unmatched member while checking PeerURLs")
+		}
+		omembs[i].ID = membs[i].ID
+	}
+	c.members = make(map[uint64]*Member)
+	for _, m := range omembs {
+		c.members[m.ID] = m
+	}
+	return nil
 }
 
 func (c *Cluster) genID() {
