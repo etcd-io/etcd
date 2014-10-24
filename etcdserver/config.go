@@ -46,7 +46,7 @@ func (c *ServerConfig) VerifyBootstrapConfig() error {
 		return fmt.Errorf("couldn't find local name %s in the initial cluster configuration", c.Name)
 	}
 	if m.ID == raft.None {
-		return fmt.Errorf("could not use %x as member id", raft.None)
+		return fmt.Errorf("cannot use %x as member id", raft.None)
 	}
 
 	if c.DiscoveryURL == "" && c.ClusterState != ClusterStateValueNew {
