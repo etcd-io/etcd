@@ -778,16 +778,22 @@ func TestAllServerStepdown(t *testing.T) {
 }
 
 func TestLeaderAppResp(t *testing.T) {
+	// initial progress: match = 0; netx = 3
 	tests := []struct {
-		index      uint64
-		reject     bool
+		index  uint64
+		reject bool
+		// progress
+		wmatch uint64
+		wnext  uint64
+		// message
 		wmsgNum    int
 		windex     uint64
 		wcommitted uint64
 	}{
-		{3, true, 0, 0, 0},  // stale resp; no replies
-		{2, true, 1, 1, 0},  // denied resp; leader does not commit; decrese next and send probing msg
-		{2, false, 2, 2, 2}, // accept resp; leader commits; broadcast with commit index
+		{3, true, 0, 3, 0, 0, 0},  // stale resp; no replies
+		{2, true, 0, 2, 1, 1, 0},  // denied resp; leader does not commit; decrese next and send probing msg
+		{2, false, 2, 3, 2, 2, 2}, // accept resp; leader commits; broadcast with commit index
+		{0, false, 0, 3, 0, 0, 0}, // ignore heartbeat replies
 	}
 
 	for i, tt := range tests {
@@ -799,6 +805,15 @@ func TestLeaderAppResp(t *testing.T) {
 		sm.becomeLeader()
 		sm.ReadMessages()
 		sm.Step(pb.Message{From: 2, Type: pb.MsgAppResp, Index: tt.index, Term: sm.Term, Reject: tt.reject})
+
+		p := sm.prs[2]
+		if p.match != tt.wmatch {
+			t.Errorf("#%d match = %d, want %d", i, p.match, tt.wmatch)
+		}
+		if p.next != tt.wnext {
+			t.Errorf("#%d next = %d, want %d", i, p.next, tt.wnext)
+		}
+
 		msgs := sm.ReadMessages()
 
 		if len(msgs) != tt.wmsgNum {
