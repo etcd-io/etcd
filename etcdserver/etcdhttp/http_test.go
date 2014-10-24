@@ -1136,6 +1136,7 @@ func TestBadServeKeys(t *testing.T) {
 		server etcdserver.Server
 
 		wcode int
+		wbody string
 	}{
 		{
 			// bad method
@@ -1145,6 +1146,7 @@ func TestBadServeKeys(t *testing.T) {
 			&resServer{},
 
 			http.StatusMethodNotAllowed,
+			"Method Not Allowed",
 		},
 		{
 			// bad method
@@ -1154,6 +1156,7 @@ func TestBadServeKeys(t *testing.T) {
 			&resServer{},
 
 			http.StatusMethodNotAllowed,
+			"Method Not Allowed",
 		},
 		{
 			// parseRequest error
@@ -1164,6 +1167,7 @@ func TestBadServeKeys(t *testing.T) {
 			&resServer{},
 
 			http.StatusBadRequest,
+			`{"errorCode":210,"message":"Invalid POST form","cause":"missing form body","index":0}`,
 		},
 		{
 			// etcdserver.Server error
@@ -1173,6 +1177,17 @@ func TestBadServeKeys(t *testing.T) {
 			},
 
 			http.StatusInternalServerError,
+			"Internal Server Error",
+		},
+		{
+			// etcdserver.Server etcd error
+			mustNewRequest(t, "foo"),
+			&errServer{
+				etcdErr.NewError(etcdErr.EcodeKeyNotFound, "/1/pant", 0),
+			},
+
+			http.StatusNotFound,
+			`{"errorCode":100,"message":"Key not found","cause":"/pant","index":0}`,
 		},
 		{
 			// non-event/watcher response from etcdserver.Server
@@ -1182,6 +1197,7 @@ func TestBadServeKeys(t *testing.T) {
 			},
 
 			http.StatusInternalServerError,
+			"Internal Server Error",
 		},
 	}
 	for i, tt := range testBadCases {
@@ -1193,6 +1209,9 @@ func TestBadServeKeys(t *testing.T) {
 		h.serveKeys(rw, tt.req)
 		if rw.Code != tt.wcode {
 			t.Errorf("#%d: got code=%d, want %d", i, rw.Code, tt.wcode)
+		}
+		if g := strings.TrimSuffix(rw.Body.String(), "\n"); g != tt.wbody {
+			t.Errorf("#%d: body = %s, want %s", i, g, tt.wbody)
 		}
 	}
 }

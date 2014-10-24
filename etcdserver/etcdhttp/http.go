@@ -124,6 +124,7 @@ func (h serverHandler) serveKeys(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := h.server.Do(ctx, rr)
 	if err != nil {
+		err = trimErrorPrefix(err, etcdserver.StoreKeysPrefix)
 		writeError(w, err)
 		return
 	}
@@ -592,4 +593,11 @@ func trimNodeExternPrefix(n *store.NodeExtern, prefix string) *store.NodeExtern 
 		nn = trimNodeExternPrefix(nn, prefix)
 	}
 	return n
+}
+
+func trimErrorPrefix(err error, prefix string) error {
+	if e, ok := err.(*etcdErr.Error); ok {
+		e.Cause = strings.TrimPrefix(e.Cause, prefix)
+	}
+	return err
 }
