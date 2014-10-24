@@ -28,13 +28,13 @@ ETCD_INITIAL_CLUSTER_STATE=new
 On each machine you would start etcd with these flags:
 
 ```
-$ etcd -name infra0 -advertise-peer-urls https://10.0.1.10:2379 \
+$ etcd -name infra0 -initial-advertise-peer-urls https://10.0.1.10:2379 \
 	-initial-cluster infra0=http://10.0.1.10:2379,infra1=http://10.0.1.11:2379,infra2=http://10.0.1.12:2379 \
 	-initial-cluster-state new
-$ etcd -name infra1 -advertise-peer-urls https://10.0.1.11:2379 \
+$ etcd -name infra1 -initial-advertise-peer-urls https://10.0.1.11:2379 \
 	-initial-cluster infra0=http://10.0.1.10:2379,infra1=http://10.0.1.11:2379,infra2=http://10.0.1.12:2379 \
 	-initial-cluster-state new
-$ etcd -name infra2 -advertise-peer-urls https://10.0.1.12:2379 \
+$ etcd -name infra2 -initial-advertise-peer-urls https://10.0.1.12:2379 \
 	-initial-cluster infra0=http://10.0.1.10:2379,infra1=http://10.0.1.11:2379,infra2=http://10.0.1.12:2379 \
 	-initial-cluster-state new
 ```
@@ -50,7 +50,7 @@ In the following case we have not included our new host in the list of
 enumerated nodes. If this is a new cluster, the node must be added to the list
 of initial cluster members.
 ```
-$ etcd -name infra1 -advertise-peer-urls http://10.0.1.11:2379 \
+$ etcd -name infra1 -initial-advertise-peer-urls http://10.0.1.11:2379 \
 	-initial-cluster infra0=http://10.0.1.10:2379 \
 	-initial-cluster-state new
 etcd: infra1 not listed in the initial cluster config
@@ -63,7 +63,7 @@ In this case we are attempting to map a node (infra0) on a different address
 addresses must be reflected in the “initial-cluster” configuration directive.
 
 ```
-$ etcd -name infra0 -advertise-peer-urls http://127.0.0.1:2379 \
+$ etcd -name infra0 -initial-advertise-peer-urls http://127.0.0.1:2379 \
 	-initial-cluster infra0=http://10.0.1.10:2379,infra1=http://10.0.1.11:2379,infra2=http://10.0.1.12:2379 \
 	-initial-cluster-state=new
 etcd: infra0 has different advertised URLs in the cluster and advertised peer URLs list
@@ -74,7 +74,7 @@ If you configure a peer with a different set of configuration and attempt to
 join this cluster you will get a cluster ID mismatch and etcd will exit.
 
 ```
-$ etcd -name infra3 -advertise-peer-urls http://10.0.1.13:2379 \
+$ etcd -name infra3 -initial-advertise-peer-urls http://10.0.1.13:2379 \
 	-initial-cluster infra0=http://10.0.1.10:2379,infra1=http://10.0.1.11:2379,infra3=http://10.0.1.13:2379 \
 	-initial-cluster-state=new
 etcd: conflicting cluster ID to the target cluster (c6ab534d07e8fcc4 != bc25ea2a74fb18b0). Exiting.
@@ -125,9 +125,9 @@ ETCD_DISCOVERY=https://discovery.etcd.io/3e86b59982e49066c5d813af1c2e2579cbf573d
 Now we start etcd with those relevant flags on each machine:
 
 ```
-$ etcd -name infra0 -advertise-peer-urls http://10.0.1.10:2379 -discovery https://discovery.etcd.io/3e86b59982e49066c5d813af1c2e2579cbf573de
-$ etcd -name infra1 -advertise-peer-urls http://10.0.1.11:2379 -discovery https://discovery.etcd.io/3e86b59982e49066c5d813af1c2e2579cbf573de
-$ etcd -name infra2 -advertise-peer-urls http://10.0.1.12:2379 -discovery https://discovery.etcd.io/3e86b59982e49066c5d813af1c2e2579cbf573de
+$ etcd -name infra0 -initial-advertise-peer-urls http://10.0.1.10:2379 -discovery https://discovery.etcd.io/3e86b59982e49066c5d813af1c2e2579cbf573de
+$ etcd -name infra1 -initial-advertise-peer-urls http://10.0.1.11:2379 -discovery https://discovery.etcd.io/3e86b59982e49066c5d813af1c2e2579cbf573de
+$ etcd -name infra2 -initial-advertise-peer-urls http://10.0.1.12:2379 -discovery https://discovery.etcd.io/3e86b59982e49066c5d813af1c2e2579cbf573de
 ```
 
 This will cause each machine to register itself with the etcd service and begin
@@ -140,7 +140,7 @@ You can use the environment variable `ETCD_DISCOVERY_PROXY` to cause etcd to use
 #### Discovery Server Errors
 
 ```
-$ etcd -name infra0 -advertise-peer-urls http://10.0.1.10:2379 -discovery https://discovery.etcd.io/3e86b59982e49066c5d813af1c2e2579cbf573de
+$ etcd -name infra0 -initial-advertise-peer-urls http://10.0.1.10:2379 -discovery https://discovery.etcd.io/3e86b59982e49066c5d813af1c2e2579cbf573de
 etcd: error: the cluster doesn’t have a size configuration value in https://discovery.etcd.io/3e86b59982e49066c5d813af1c2e2579cbf573de/_config
 exit 1
 ```
@@ -148,7 +148,7 @@ exit 1
 #### User Errors
 
 ```
-$ etcd -name infra0 -advertise-peer-urls http://10.0.1.10:2379 -discovery https://discovery.etcd.io/3e86b59982e49066c5d813af1c2e2579cbf573de
+$ etcd -name infra0 -initial-advertise-peer-urls http://10.0.1.10:2379 -discovery https://discovery.etcd.io/3e86b59982e49066c5d813af1c2e2579cbf573de
 etcd: error: the cluster using discovery https://discovery.etcd.io/3e86b59982e49066c5d813af1c2e2579cbf573de has already started with all 5 members
 exit 1
 ```
@@ -159,7 +159,7 @@ This is a harmless warning notifying you that the discovery URL will be
 ignored on this machine.
 
 ```
-$ etcd -name infra0 -advertise-peer-urls http://10.0.1.10:2379 -discovery https://discovery.etcd.io/3e86b59982e49066c5d813af1c2e2579cbf573de
+$ etcd -name infra0 -initial-advertise-peer-urls http://10.0.1.10:2379 -discovery https://discovery.etcd.io/3e86b59982e49066c5d813af1c2e2579cbf573de
 etcd: warn: ignoring discovery URL: etcd has already been initialized and has a valid log in /var/lib/etcd
 ```
 
@@ -176,7 +176,7 @@ easier.
 
 |Old Flag		|New Flag		|Migration Behavior									|
 |-----------------------|-----------------------|---------------------------------------------------------------------------------------|
-|-peer-addr		|-advertise-peer-urls 	|If specified, peer-addr will be used as the only peer URL. Error if both flags specified.|
+|-peer-addr		|-initial-advertise-peer-urls 	|If specified, peer-addr will be used as the only peer URL. Error if both flags specified.|
 |-addr			|-advertise-client-urls	|If specified, addr will be used as the only client URL. Error if both flags specified.|
 |-peer-bind-addr	|-listen-peer-urls	|If specified, peer-bind-addr will be used as the only peer bind URL. Error if both flags specified.|
 |-bind-addr		|-listen-client-urls	|If specified, bind-addr will be used as the only client bind URL. Error if both flags specified.|
