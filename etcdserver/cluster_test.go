@@ -311,19 +311,19 @@ func TestNodeToMemberBad(t *testing.T) {
 			{Key: "/1234/dynamic", Value: stringp("garbage")},
 		}},
 		{Key: "/1234", Nodes: []*store.NodeExtern{
-			{Key: "/1234/dynamic", Value: stringp(`{"PeerURLs":null}`)},
+			{Key: "/1234/dynamic", Value: stringp(`{"peerURLs":null}`)},
 		}},
 		{Key: "/1234", Nodes: []*store.NodeExtern{
-			{Key: "/1234/dynamic", Value: stringp(`{"PeerURLs":null}`)},
+			{Key: "/1234/dynamic", Value: stringp(`{"peerURLs":null}`)},
 			{Key: "/1234/strange"},
 		}},
 		{Key: "/1234", Nodes: []*store.NodeExtern{
-			{Key: "/1234/dynamic", Value: stringp(`{"PeerURLs":null}`)},
+			{Key: "/1234/dynamic", Value: stringp(`{"peerURLs":null}`)},
 			{Key: "/1234/static", Value: stringp("garbage")},
 		}},
 		{Key: "/1234", Nodes: []*store.NodeExtern{
-			{Key: "/1234/dynamic", Value: stringp(`{"PeerURLs":null}`)},
-			{Key: "/1234/static", Value: stringp(`{"Name":"node1","ClientURLs":null}`)},
+			{Key: "/1234/dynamic", Value: stringp(`{"peerURLs":null}`)},
+			{Key: "/1234/static", Value: stringp(`{"name":"node1","clientURLs":null}`)},
 			{Key: "/1234/strange"},
 		}},
 	}
@@ -346,7 +346,7 @@ func TestClusterAddMember(t *testing.T) {
 			params: []interface{}{
 				path.Join(storeMembersPrefix, "1", "raftAttributes"),
 				false,
-				`{"PeerURLs":null}`,
+				`{"peerURLs":null}`,
 				false,
 				store.Permanent,
 			},
@@ -356,7 +356,7 @@ func TestClusterAddMember(t *testing.T) {
 			params: []interface{}{
 				path.Join(storeMembersPrefix, "1", "attributes"),
 				false,
-				`{"Name":"node1"}`,
+				`{"name":"node1"}`,
 				false,
 				store.Permanent,
 			},
@@ -449,8 +449,8 @@ func TestClusterRemoveMember(t *testing.T) {
 
 func TestNodeToMember(t *testing.T) {
 	n := &store.NodeExtern{Key: "/1234", Nodes: []*store.NodeExtern{
-		{Key: "/1234/attributes", Value: stringp(`{"Name":"node1","ClientURLs":null}`)},
-		{Key: "/1234/raftAttributes", Value: stringp(`{"PeerURLs":null}`)},
+		{Key: "/1234/attributes", Value: stringp(`{"name":"node1","clientURLs":null}`)},
+		{Key: "/1234/raftAttributes", Value: stringp(`{"peerURLs":null}`)},
 	}}
 	wm := &Member{ID: 0x1234, RaftAttributes: RaftAttributes{}, Attributes: Attributes{Name: "node1"}}
 	m, err := nodeToMember(n)

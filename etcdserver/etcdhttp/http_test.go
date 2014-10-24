@@ -1619,7 +1619,7 @@ func TestServeAdminMembers(t *testing.T) {
 
 	msb, err := json.Marshal(
 		struct {
-			Members []etcdserver.Member
+			Members []etcdserver.Member `json:"members"`
 		}{
 			Members: []etcdserver.Member{memb1, memb2},
 		},
