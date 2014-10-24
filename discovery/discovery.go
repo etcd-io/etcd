@@ -105,7 +105,7 @@ func New(durl string, id uint64, config string) (Discoverer, error) {
 	if err != nil {
 		return nil, err
 	}
-	c, err := client.NewDiscoveryKeysAPI(&http.Transport{Proxy: pf}, u.String(), time.Second*5)
+	c, err := client.NewDiscoveryKeysAPI(&http.Transport{Proxy: pf}, u.String(), client.DefaultRequestTimeout)
 	if err != nil {
 		return nil, err
 	}

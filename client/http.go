@@ -26,7 +26,8 @@ import (
 )
 
 var (
-	ErrTimeout = context.DeadlineExceeded
+	ErrTimeout            = context.DeadlineExceeded
+	DefaultRequestTimeout = 5 * time.Second
 )
 
 // transport mimics http.Transport to provide an interface which can be
