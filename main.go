@@ -146,7 +146,7 @@ func startEtcd() {
 	}
 
 	if *dir == "" {
-		*dir = fmt.Sprintf("%v_etcd_data", *name)
+		*dir = fmt.Sprintf("%v.etcd", *name)
 		log.Printf("etcd: no data-dir provided, using default data-dir ./%s", *dir)
 	}
 	if err := os.MkdirAll(*dir, privateDirMode); err != nil {
