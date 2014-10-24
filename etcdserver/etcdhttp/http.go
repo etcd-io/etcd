@@ -161,34 +161,19 @@ func (h serverHandler) serveAdminMembers(w http.ResponseWriter, r *http.Request)
 
 	switch r.Method {
 	case "GET":
-		idStr := strings.TrimPrefix(r.URL.Path, adminMembersPrefix)
-		if idStr == "" {
-			ms := struct {
-				Members []*etcdserver.Member
-			}{
-				Members: h.clusterInfo.Members(),
-			}
-			w.Header().Set("Content-Type", "application/json")
-			if err := json.NewEncoder(w).Encode(ms); err != nil {
-				log.Printf("etcdhttp: %v", err)
-			}
+		if s := strings.TrimPrefix(r.URL.Path, adminMembersPrefix); s != "" {
+			http.NotFound(w, r)
 			return
 		}
-		id, err := strconv.ParseUint(idStr, 16, 64)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-		m := h.clusterInfo.Member(id)
-		if m == nil {
-			http.Error(w, "member not found", http.StatusNotFound)
-			return
+		ms := struct {
+			Members []*etcdserver.Member
+		}{
+			Members: h.clusterInfo.Members(),
 		}
 		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(m); err != nil {
+		if err := json.NewEncoder(w).Encode(ms); err != nil {
 			log.Printf("etcdhttp: %v", err)
 		}
-		return
 	case "POST":
 		ctype := r.Header.Get("Content-Type")
 		if ctype != "application/json" {
