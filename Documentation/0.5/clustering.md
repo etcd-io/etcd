@@ -93,7 +93,7 @@ Discovery uses an existing cluster to bootstrap itself.  If you are using your
 own etcd cluster you can create a URL like so:
 
 ```
-$ curl https://myetcd.local/v2/keys/discovery/6c007a14875d53d9bf0ef5a6fc0257c817f0fb83/_config/size -d value=5
+$ curl -X PUT https://myetcd.local/v2/keys/discovery/6c007a14875d53d9bf0ef5a6fc0257c817f0fb83/_config/size -d value=5
 ```
 
 The URL you will use in this case will be
