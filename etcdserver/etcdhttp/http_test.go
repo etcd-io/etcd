@@ -168,6 +168,14 @@ func TestBadParseRequest(t *testing.T) {
 			etcdErr.EcodeInvalidField,
 		},
 		{
+			mustNewForm(t, "foo", url.Values{"quorum": []string{"no"}}),
+			etcdErr.EcodeInvalidField,
+		},
+		{
+			mustNewForm(t, "foo", url.Values{"quorum": []string{"file"}}),
+			etcdErr.EcodeInvalidField,
+		},
+		{
 			mustNewForm(t, "foo", url.Values{"stream": []string{"zzz"}}),
 			etcdErr.EcodeInvalidField,
 		},
@@ -302,6 +310,20 @@ func TestGoodParseRequest(t *testing.T) {
 				ID:     1234,
 				Method: "PUT",
 				Sorted: true,
+				Path:   path.Join(etcdserver.StoreKeysPrefix, "/foo"),
+			},
+		},
+		{
+			// quorum specified
+			mustNewForm(
+				t,
+				"foo",
+				url.Values{"quorum": []string{"true"}},
+			),
+			etcdserverpb.Request{
+				ID:     1234,
+				Method: "PUT",
+				Quorum: true,
 				Path:   path.Join(etcdserver.StoreKeysPrefix, "/foo"),
 			},
 		},
