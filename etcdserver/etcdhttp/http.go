@@ -44,7 +44,7 @@ const (
 	// prefixes of client endpoint
 	keysPrefix               = "/v2/keys"
 	deprecatedMachinesPrefix = "/v2/machines"
-	adminMembersPrefix       = "/v2/admin/members/"
+	adminMembersPrefix       = "/v2/admin/members"
 	statsPrefix              = "/v2/stats"
 	versionPrefix            = "/version"
 	// prefixes of peer endpoint
@@ -78,6 +78,7 @@ func NewClientHandler(server *etcdserver.EtcdServer) http.Handler {
 	mux.HandleFunc(statsPrefix+"/leader", sh.serveLeaderStats)
 	mux.HandleFunc(deprecatedMachinesPrefix, sh.serveMachines)
 	mux.HandleFunc(adminMembersPrefix, sh.serveAdminMembers)
+	mux.HandleFunc(adminMembersPrefix+"/", sh.serveAdminMembers)
 	mux.HandleFunc(versionPrefix, sh.serveVersion)
 	mux.HandleFunc("/", http.NotFound)
 	return mux
@@ -153,6 +154,14 @@ func (h serverHandler) serveMachines(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(strings.Join(endpoints, ", ")))
 }
 
+// trimPrefix removes a given prefix and any slash following the prefix
+// e.g.: trimPrefix("foo", "foo") == trimPrefix("foo/", "foo") == ""
+func trimPrefix(p, prefix string) (s string) {
+	s = strings.TrimPrefix(p, prefix)
+	s = strings.TrimPrefix(s, "/")
+	return
+}
+
 func (h serverHandler) serveAdminMembers(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r.Method, "GET", "POST", "DELETE") {
 		return
@@ -162,7 +171,7 @@ func (h serverHandler) serveAdminMembers(w http.ResponseWriter, r *http.Request)
 
 	switch r.Method {
 	case "GET":
-		if s := strings.TrimPrefix(r.URL.Path, adminMembersPrefix); s != "" {
+		if trimPrefix(r.URL.Path, adminMembersPrefix) != "" {
 			http.NotFound(w, r)
 			return
 		}
@@ -210,7 +219,7 @@ func (h serverHandler) serveAdminMembers(w http.ResponseWriter, r *http.Request)
 			log.Printf("etcdhttp: %v", err)
 		}
 	case "DELETE":
-		idStr := strings.TrimPrefix(r.URL.Path, adminMembersPrefix)
+		idStr := trimPrefix(r.URL.Path, adminMembersPrefix)
 		id, err := strconv.ParseUint(idStr, 16, 64)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
