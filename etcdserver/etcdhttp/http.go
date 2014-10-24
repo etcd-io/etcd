@@ -354,7 +354,7 @@ func parseKeyRequest(r *http.Request, id uint64, clock clockwork.Clock) (etcdser
 		)
 	}
 
-	var rec, sort, wait, dir, stream bool
+	var rec, sort, wait, dir, quorum, stream bool
 	if rec, err = getBool(r.Form, "recursive"); err != nil {
 		return emptyReq, etcdErr.NewRequestError(
 			etcdErr.EcodeInvalidField,
@@ -378,6 +378,12 @@ func parseKeyRequest(r *http.Request, id uint64, clock clockwork.Clock) (etcdser
 		return emptyReq, etcdErr.NewRequestError(
 			etcdErr.EcodeInvalidField,
 			`invalid value for "dir"`,
+		)
+	}
+	if quorum, err = getBool(r.Form, "quorum"); err != nil {
+		return emptyReq, etcdErr.NewRequestError(
+			etcdErr.EcodeInvalidField,
+			`invalid value for "quorum"`,
 		)
 	}
 	if stream, err = getBool(r.Form, "stream"); err != nil {
@@ -438,11 +444,12 @@ func parseKeyRequest(r *http.Request, id uint64, clock clockwork.Clock) (etcdser
 		PrevValue: pV,
 		PrevIndex: pIdx,
 		PrevExist: pe,
-		Recursive: rec,
-		Since:     wIdx,
-		Sorted:    sort,
-		Stream:    stream,
 		Wait:      wait,
+		Since:     wIdx,
+		Recursive: rec,
+		Sorted:    sort,
+		Quorum:    quorum,
+		Stream:    stream,
 	}
 
 	if pe != nil {
