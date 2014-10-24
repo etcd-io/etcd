@@ -78,7 +78,7 @@ func init() {
 	fs.Var(clusterState, "initial-cluster-state", "Initial cluster configuration for bootstrapping")
 	clusterState.Set(etcdserver.ClusterStateValueNew)
 
-	fs.Var(flagtypes.NewURLsValue("http://localhost:2380,http://localhost:7001"), "advertise-peer-urls", "List of this member's peer URLs to advertise to the rest of the cluster")
+	fs.Var(flagtypes.NewURLsValue("http://localhost:2380,http://localhost:7001"), "initial-advertise-peer-urls", "List of this member's peer URLs to advertise to the rest of the cluster")
 	fs.Var(flagtypes.NewURLsValue("http://localhost:2379,http://localhost:4001"), "advertise-client-urls", "List of this member's client URLs to advertise to the rest of the cluster")
 	fs.Var(flagtypes.NewURLsValue("http://localhost:2380,http://localhost:7001"), "listen-peer-urls", "List of URLs to listen on for peer traffic")
 	fs.Var(flagtypes.NewURLsValue("http://localhost:2379,http://localhost:4001"), "listen-client-urls", "List of URLs to listen on for client traffic")
@@ -99,7 +99,7 @@ func init() {
 	// backwards-compatibility with v0.4.6
 	fs.Var(&flagtypes.IPAddressPort{}, "addr", "DEPRECATED: Use -advertise-client-urls instead.")
 	fs.Var(&flagtypes.IPAddressPort{}, "bind-addr", "DEPRECATED: Use -listen-client-urls instead.")
-	fs.Var(&flagtypes.IPAddressPort{}, "peer-addr", "DEPRECATED: Use -advertise-peer-urls instead.")
+	fs.Var(&flagtypes.IPAddressPort{}, "peer-addr", "DEPRECATED: Use -initial-advertise-peer-urls instead.")
 	fs.Var(&flagtypes.IPAddressPort{}, "peer-bind-addr", "DEPRECATED: Use -listen-peer-urls instead.")
 
 	for _, f := range ignored {
@@ -274,7 +274,7 @@ func setupCluster() (*etcdserver.Cluster, error) {
 	if set["discovery"] && set["initial-cluster"] {
 		return nil, fmt.Errorf("both discovery and bootstrap-config are set")
 	}
-	apurls, err := pkg.URLsFromFlags(fs, "advertise-peer-urls", "addr", peerTLSInfo)
+	apurls, err := pkg.URLsFromFlags(fs, "initial-advertise-peer-urls", "addr", peerTLSInfo)
 	if err != nil {
 		return nil, err
 	}
