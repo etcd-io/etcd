@@ -41,7 +41,15 @@ var (
 	ErrKeyExists   = errors.New("client: key already exists")
 )
 
-func NewKeysAPI(tr *http.Transport, ep string, to time.Duration) (*HTTPKeysAPI, error) {
+func NewKeysAPI(tr *http.Transport, ep string, to time.Duration) (KeysAPI, error) {
+	return newHTTPKeysAPIWithPrefix(tr, ep, to, DefaultV2KeysPrefix)
+}
+
+func NewDiscoveryKeysAPI(tr *http.Transport, ep string, to time.Duration) (KeysAPI, error) {
+	return newHTTPKeysAPIWithPrefix(tr, ep, to, "")
+}
+
+func newHTTPKeysAPIWithPrefix(tr *http.Transport, ep string, to time.Duration, prefix string) (*HTTPKeysAPI, error) {
 	c, err := newHTTPClient(tr, ep, to)
 	if err != nil {
 		return nil, err
@@ -85,14 +93,7 @@ func (n *Node) String() string {
 }
 
 type HTTPKeysAPI struct {
-	client   *httpClient
-	endpoint url.URL
-}
-
-func (k *HTTPKeysAPI) SetAPIPrefix(p string) {
-	ep := k.endpoint
-	ep.Path = path.Join(ep.Path, p)
-	k.client.endpoint = ep
+	client *httpClient
 }
 
 func (k *HTTPKeysAPI) Create(key, val string, ttl time.Duration) (*Response, error) {
