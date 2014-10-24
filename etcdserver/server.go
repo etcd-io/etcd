@@ -23,6 +23,7 @@ import (
 	"math/rand"
 	"os"
 	"path"
+	"regexp"
 	"strconv"
 	"sync/atomic"
 	"time"
@@ -63,6 +64,8 @@ var (
 
 	storeMembersPrefix        = path.Join(StoreAdminPrefix, "members")
 	storeRemovedMembersPrefix = path.Join(StoreAdminPrefix, "removed_members")
+
+	storeMemberAttributeRegexp = regexp.MustCompile(path.Join(storeMembersPrefix, "[[:xdigit:]]{1,16}", attributesSuffix))
 )
 
 func init() {
@@ -568,6 +571,16 @@ func (s *EtcdServer) applyRequest(r pb.Request) Response {
 		case r.PrevIndex > 0 || r.PrevValue != "":
 			return f(s.store.CompareAndSwap(r.Path, r.PrevValue, r.PrevIndex, r.Val, expr))
 		default:
+			if storeMemberAttributeRegexp.MatchString(r.Path) {
+				id := parseMemberID(path.Dir(r.Path))
+				m := s.Cluster.Member(id)
+				if m == nil {
+					log.Fatalf("fetch member %x should never fail", id)
+				}
+				if err := json.Unmarshal([]byte(r.Val), &m.Attributes); err != nil {
+					log.Fatalf("unmarshal %s should never fail: %v", r.Val, err)
+				}
+			}
 			return f(s.store.Set(r.Path, r.Dir, r.Val, expr))
 		}
 	case "DELETE":

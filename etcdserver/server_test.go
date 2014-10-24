@@ -22,6 +22,7 @@ import (
 	"math/rand"
 	"path"
 	"reflect"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -381,6 +382,25 @@ func TestApplyRequest(t *testing.T) {
 		if !reflect.DeepEqual(gaction, tt.wactions) {
 			t.Errorf("#%d: action = %#v, want %#v", i, gaction, tt.wactions)
 		}
+	}
+}
+
+func TestApplyRequestOnAdminMemberAttributes(t *testing.T) {
+	cl := newTestCluster([]Member{{ID: 1}})
+	srv := &EtcdServer{
+		store:   &storeRecorder{},
+		Cluster: cl,
+	}
+	req := pb.Request{
+		Method: "PUT",
+		ID:     1,
+		Path:   path.Join(storeMembersPrefix, strconv.FormatUint(1, 16), attributesSuffix),
+		Val:    `{"Name":"abc","ClientURLs":["http://127.0.0.1:4001"]}`,
+	}
+	srv.applyRequest(req)
+	w := Attributes{Name: "abc", ClientURLs: []string{"http://127.0.0.1:4001"}}
+	if g := cl.Member(1).Attributes; !reflect.DeepEqual(g, w) {
+		t.Errorf("attributes = %v, want %v", g, w)
 	}
 }
 
