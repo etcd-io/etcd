@@ -389,6 +389,49 @@ func TestClusterMembers(t *testing.T) {
 	}
 }
 
+func TestClusterString(t *testing.T) {
+	cls := &Cluster{
+		members: map[uint64]*Member{
+			1: newTestMemberp(
+				1,
+				[]string{"http://1.1.1.1:1111", "http://0.0.0.0:0000"},
+				"abc",
+				nil,
+			),
+			2: newTestMemberp(
+				2,
+				[]string{"http://2.2.2.2:2222"},
+				"def",
+				nil,
+			),
+			3: newTestMemberp(
+				3,
+				[]string{"http://3.3.3.3:1234", "http://127.0.0.1:7001"},
+				"ghi",
+				nil,
+			),
+			// no PeerURLs = not included
+			4: newTestMemberp(
+				4,
+				[]string{},
+				"four",
+				nil,
+			),
+			5: newTestMemberp(
+				5,
+				nil,
+				"five",
+				nil,
+			),
+		},
+	}
+	w := "abc=http://0.0.0.0:0000,abc=http://1.1.1.1:1111,def=http://2.2.2.2:2222,ghi=http://127.0.0.1:7001,ghi=http://3.3.3.3:1234"
+	if g := cls.String(); g != w {
+		t.Fatalf("Cluster.String():\ngot  %#v\nwant %#v", g, w)
+	}
+
+}
+
 func TestClusterRemoveMember(t *testing.T) {
 	st := &storeRecorder{}
 	c := newTestCluster(nil)
