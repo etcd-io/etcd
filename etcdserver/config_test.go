@@ -16,9 +16,7 @@
 
 package etcdserver
 
-import (
-	"testing"
-)
+import "testing"
 
 func TestBootstrapConfigVerify(t *testing.T) {
 	tests := []struct {
@@ -27,26 +25,49 @@ func TestBootstrapConfigVerify(t *testing.T) {
 		disc           string
 		shouldError    bool
 	}{
-		{"", ClusterStateValueNew, "", true},
-		{"", "", "http://discovery", true},
 		{
-			"node1=http://localhost:7001,node2=http://localhost:7001",
-			ClusterStateValueNew, "", true,
+			// Node must exist in cluster
+			"",
+			ClusterStateValueNew,
+			"",
+			true,
 		},
 		{
+			// Cannot have duplicate URLs in cluster config
+			"node1=http://localhost:7001,node2=http://localhost:7001,node2=http://localhost:7002",
+			ClusterStateValueNew,
+			"",
+			true,
+		},
+		{
+			// Node defined, ClusterState OK
 			"node1=http://localhost:7001,node2=http://localhost:7002",
-			ClusterStateValueNew, "", false,
+			ClusterStateValueNew,
+			"",
+			false,
 		},
 		{
+			// Node defined, discovery OK
 			"node1=http://localhost:7001",
-			"", "http://discovery", false,
+			// TODO(jonboulle): replace with ClusterStateExisting once it exists
+			"",
+			"http://discovery",
+			false,
+		},
+		{
+			// Cannot have ClusterState!=new && !discovery
+			"node1=http://localhost:7001",
+			// TODO(jonboulle): replace with ClusterStateExisting once it exists
+			ClusterState("foo"),
+			"",
+			true,
 		},
 	}
 
 	for i, tt := range tests {
 		cluster, err := NewClusterFromString("", tt.clusterSetting)
-		if err != nil && tt.shouldError {
-			continue
+		if err != nil {
+			t.Fatalf("#%d: Got unexpected error: %v", i, err)
 		}
 
 		cfg := ServerConfig{
@@ -62,6 +83,52 @@ func TestBootstrapConfigVerify(t *testing.T) {
 		}
 		if (err != nil) && !tt.shouldError {
 			t.Errorf("#%d: Got unexpected error: %v", i, err)
+		}
+	}
+}
+
+func TestSnapDir(t *testing.T) {
+	tests := map[string]string{
+		"/":            "/snap",
+		"/var/lib/etc": "/var/lib/etc/snap",
+	}
+	for dd, w := range tests {
+		cfg := ServerConfig{
+			DataDir: dd,
+		}
+		if g := cfg.SnapDir(); g != w {
+			t.Errorf("DataDir=%q: SnapDir()=%q, want=%q", dd, g, w)
+		}
+	}
+}
+
+func TestWALDir(t *testing.T) {
+	tests := map[string]string{
+		"/":            "/wal",
+		"/var/lib/etc": "/var/lib/etc/wal",
+	}
+	for dd, w := range tests {
+		cfg := ServerConfig{
+			DataDir: dd,
+		}
+		if g := cfg.WALDir(); g != w {
+			t.Errorf("DataDir=%q: WALDir()=%q, want=%q", dd, g, w)
+		}
+	}
+}
+
+func TestShouldDiscover(t *testing.T) {
+	tests := map[string]bool{
+		"":    false,
+		"foo": true,
+		"http://discovery.etcd.io/asdf": true,
+	}
+	for durl, w := range tests {
+		cfg := ServerConfig{
+			DiscoveryURL: durl,
+		}
+		if g := cfg.ShouldDiscover(); g != w {
+			t.Errorf("durl=%q: ShouldDiscover()=%t, want=%t", durl, g, w)
 		}
 	}
 }
