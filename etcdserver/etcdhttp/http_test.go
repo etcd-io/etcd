@@ -28,6 +28,7 @@ import (
 	"path"
 	"reflect"
 	"sort"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -1017,6 +1018,59 @@ func TestServeMembersFails(t *testing.T) {
 	}
 }
 
+func TestServeMembersGet(t *testing.T) {
+	memb1 := etcdserver.Member{ID: 1, Attributes: etcdserver.Attributes{ClientURLs: []string{"http://localhost:8080"}}}
+	memb2 := etcdserver.Member{ID: 2, Attributes: etcdserver.Attributes{ClientURLs: []string{"http://localhost:8081"}}}
+	cluster := &fakeCluster{
+		id:      1,
+		members: map[uint64]*etcdserver.Member{1: &memb1, 2: &memb2},
+	}
+	h := &serverHandler{
+		server:      &serverRecorder{},
+		clusterInfo: cluster,
+	}
+
+	msb, err := json.Marshal([]etcdserver.Member{memb1, memb2})
+	if err != nil {
+		t.Fatal(err)
+	}
+	wms := string(msb) + "\n"
+
+	tests := []struct {
+		path  string
+		wcode int
+		wct   string
+		wbody string
+	}{
+		{membersPrefix, http.StatusOK, "application/json", wms},
+		{path.Join(membersPrefix, "bad"), http.StatusBadRequest, "text/plain; charset=utf-8", "bad path\n"},
+	}
+
+	for i, tt := range tests {
+		req, err := http.NewRequest("GET", mustNewURL(t, tt.path).String(), nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		rw := httptest.NewRecorder()
+		h.serveMembers(rw, req)
+
+		if rw.Code != tt.wcode {
+			t.Errorf("#%d: code=%d, want %d", i, rw.Code, tt.wcode)
+		}
+		if gct := rw.Header().Get("Content-Type"); gct != tt.wct {
+			t.Errorf("#%d: content-type = %s, want %s", i, gct, tt.wct)
+		}
+		if rw.Body.String() != tt.wbody {
+			t.Errorf("#%d: body = %s, want %s", i, rw.Body.String(), tt.wbody)
+		}
+		gcid := rw.Header().Get("X-Etcd-Cluster-ID")
+		wcid := strconv.FormatUint(cluster.ID(), 16)
+		if gcid != wcid {
+			t.Errorf("#%d: cid = %s, want %s", i, gcid, wcid)
+		}
+	}
+}
+
 // resServer implements the etcd.Server interface for testing.
 // It returns the given responsefrom any Do calls, and nil error
 type resServer struct {
@@ -1561,7 +1615,7 @@ func (s *serverRecorder) RemoveMember(_ context.Context, id uint64) error {
 	return nil
 }
 
-func TestServeAdminMembersAndMembersGet(t *testing.T) {
+func TestServeAdminMembers(t *testing.T) {
 	memb1 := etcdserver.Member{ID: 1, Attributes: etcdserver.Attributes{ClientURLs: []string{"http://localhost:8080"}}}
 	memb2 := etcdserver.Member{ID: 2, Attributes: etcdserver.Attributes{ClientURLs: []string{"http://localhost:8081"}}}
 	cluster := &fakeCluster{
@@ -1595,26 +1649,22 @@ func TestServeAdminMembersAndMembersGet(t *testing.T) {
 		{path.Join(adminMembersPrefix, "100"), http.StatusNotFound, "text/plain; charset=utf-8", "member not found\n"},
 	}
 
-	funcs := []func(w http.ResponseWriter, r *http.Request){h.serveAdminMembers, h.serveMembers}
-
 	for i, tt := range tests {
-		for j, f := range funcs {
-			req, err := http.NewRequest("GET", mustNewURL(t, tt.path).String(), nil)
-			if err != nil {
-				t.Fatal(err)
-			}
-			rw := httptest.NewRecorder()
-			f(rw, req)
+		req, err := http.NewRequest("GET", mustNewURL(t, tt.path).String(), nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		rw := httptest.NewRecorder()
+		h.serveAdminMembers(rw, req)
 
-			if rw.Code != tt.wcode {
-				t.Errorf("#%d.%d: code=%d, want %d", i, j, rw.Code, tt.wcode)
-			}
-			if gct := rw.Header().Get("Content-Type"); gct != tt.wct {
-				t.Errorf("#%d.%d: content-type = %s, want %s", i, j, gct, tt.wct)
-			}
-			if rw.Body.String() != tt.wbody {
-				t.Errorf("#%d.%d: body = %s, want %s", i, j, rw.Body.String(), tt.wbody)
-			}
+		if rw.Code != tt.wcode {
+			t.Errorf("#%d: code=%d, want %d", i, rw.Code, tt.wcode)
+		}
+		if gct := rw.Header().Get("Content-Type"); gct != tt.wct {
+			t.Errorf("#%d: content-type = %s, want %s", i, gct, tt.wct)
+		}
+		if rw.Body.String() != tt.wbody {
+			t.Errorf("#%d: body = %s, want %s", i, rw.Body.String(), tt.wbody)
 		}
 	}
 }
