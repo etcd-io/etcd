@@ -163,7 +163,11 @@ func (h serverHandler) serveAdminMembers(w http.ResponseWriter, r *http.Request)
 	case "GET":
 		idStr := strings.TrimPrefix(r.URL.Path, adminMembersPrefix)
 		if idStr == "" {
-			ms := h.clusterInfo.Members()
+			ms := struct {
+				Members []*etcdserver.Member
+			}{
+				Members: h.clusterInfo.Members(),
+			}
 			w.Header().Set("Content-Type", "application/json")
 			if err := json.NewEncoder(w).Encode(ms); err != nil {
 				log.Printf("etcdhttp: %v", err)

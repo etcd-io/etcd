@@ -1627,7 +1627,13 @@ func TestServeAdminMembers(t *testing.T) {
 		clusterInfo: cluster,
 	}
 
-	msb, err := json.Marshal([]etcdserver.Member{memb1, memb2})
+	msb, err := json.Marshal(
+		struct {
+			Members []etcdserver.Member
+		}{
+			Members: []etcdserver.Member{memb1, memb2},
+		},
+	)
 	if err != nil {
 		t.Fatal(err)
 	}
