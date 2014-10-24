@@ -33,17 +33,17 @@ import (
 // RaftAttributes represents the raft related attributes of an etcd member.
 type RaftAttributes struct {
 	// TODO(philips): ensure these are URLs
-	PeerURLs []string
+	PeerURLs []string `json:"peerURLs"`
 }
 
 // Attributes represents all the non-raft related attributes of an etcd member.
 type Attributes struct {
-	Name       string   `json:",omitempty"`
-	ClientURLs []string `json:",omitempty"`
+	Name       string   `json:"name,omitempty"`
+	ClientURLs []string `json:"clientURLs,omitempty"`
 }
 
 type Member struct {
-	ID uint64
+	ID uint64 `json:"id"`
 	RaftAttributes
 	Attributes
 }

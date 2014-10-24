@@ -1,30 +1,7 @@
 ## Admin API
 
-### GET /v2/admin/members/:id
-Returns an HTTP 200 OK response code and a representation of the requested member; returns a 404 status code and an error message if the id does not exist.
-```
-    Example Request: GET 
-                     http://localhost:2379/v2/admin/members/272e204152
-    Response formats: JSON
-    Example Response:
-```
-```json
-    [
-        {
-            "ID":"272e204152",
-            "Name":"node1",
-            "PeerURLs":[
-                "http://10.0.0.10:2379"
-            ],
-            "ClientURLs":[
-                "http://10.0.0.10:2380"
-            ]
-        },
-    ]
-```
-
 ### GET /v2/admin/members/
-Return an HTTP 200 OK response code and a representation of all the members;
+Return an HTTP 200 OK response code and a representation of all members in the etcd cluster:
 ```
     Example Request: GET 
                      http://localhost:2379/v2/admin/members/
@@ -32,28 +9,30 @@ Return an HTTP 200 OK response code and a representation of all the members;
     Example Response:
 ```
 ```json
-    [
-        {
-            "ID":"272e204152",
-            "Name":"node1",
-            "PeerURLs":[
-                "http://10.0.0.10:2379"
-            ],
-            "ClientURLs":[
-                "http://10.0.0.10:2380"
-            ]
-        },
-        {
-            "ID":"2225373f43",
-            "Name":"node2",
-            "PeerURLs":[
-                "http://127.0.0.11:2379"
-            ],
-            "ClientURLs":[
-                "http://127.0.0.11:2380"
-            ]
-        },
-    ]
+    {
+        "members": [
+                {
+                    "id":"272e204152",
+                    "name":"node1",
+                    "peerURLs":[
+                        "http://10.0.0.10:2379"
+                    ],
+                    "clientURLs":[
+                            "http://10.0.0.10:2380"
+                    ]
+                },
+                {
+                    "id":"2225373f43",
+                    "name":"node2",
+                    "peerURLs":[
+                        "http://127.0.0.11:2379"
+                    ],
+                    "clientURLs":[
+                        "http://127.0.0.11:2380"
+                    ]
+            },
+        ]
+    }
 ```
 
 ### POST /v2/admin/members/
@@ -73,7 +52,7 @@ If the POST body is malformed an HTTP 400 will be returned. If the member exists
     [
         {
             "id":"3777296169",
-            "PeerURLs":[
+            "peerURLs":[
                 "http://10.0.0.10:2379"
             ],
         },

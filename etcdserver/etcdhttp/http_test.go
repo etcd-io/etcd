@@ -1563,16 +1563,6 @@ func TestServeAdminMembersFail(t *testing.T) {
 
 			http.StatusInternalServerError,
 		},
-		{
-			// etcdserver.GetMember bad id
-			&http.Request{
-				URL:    mustNewURL(t, path.Join(adminMembersPrefix, "badid")),
-				Method: "GET",
-			},
-			&errServer{},
-
-			http.StatusBadRequest,
-		},
 	}
 	for i, tt := range tests {
 		h := &serverHandler{
@@ -1627,16 +1617,17 @@ func TestServeAdminMembers(t *testing.T) {
 		clusterInfo: cluster,
 	}
 
-	msb, err := json.Marshal([]etcdserver.Member{memb1, memb2})
+	msb, err := json.Marshal(
+		struct {
+			Members []etcdserver.Member `json:"members"`
+		}{
+			Members: []etcdserver.Member{memb1, memb2},
+		},
+	)
 	if err != nil {
 		t.Fatal(err)
 	}
 	wms := string(msb) + "\n"
-	mb, err := json.Marshal(memb1)
-	if err != nil {
-		t.Fatal(err)
-	}
-	wm := string(mb) + "\n"
 
 	tests := []struct {
 		path  string
@@ -1645,8 +1636,8 @@ func TestServeAdminMembers(t *testing.T) {
 		wbody string
 	}{
 		{adminMembersPrefix, http.StatusOK, "application/json", wms},
-		{path.Join(adminMembersPrefix, "1"), http.StatusOK, "application/json", wm},
-		{path.Join(adminMembersPrefix, "100"), http.StatusNotFound, "text/plain; charset=utf-8", "member not found\n"},
+		{path.Join(adminMembersPrefix, "100"), http.StatusNotFound, "text/plain; charset=utf-8", "404 page not found\n"},
+		{path.Join(adminMembersPrefix, "foobar"), http.StatusNotFound, "text/plain; charset=utf-8", "404 page not found\n"},
 	}
 
 	for i, tt := range tests {
@@ -1664,7 +1655,7 @@ func TestServeAdminMembers(t *testing.T) {
 			t.Errorf("#%d: content-type = %s, want %s", i, gct, tt.wct)
 		}
 		if rw.Body.String() != tt.wbody {
-			t.Errorf("#%d: body = %s, want %s", i, rw.Body.String(), tt.wbody)
+			t.Errorf("#%d: body = %q, want %q", i, rw.Body.String(), tt.wbody)
 		}
 	}
 }
