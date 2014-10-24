@@ -232,11 +232,18 @@ func startProxy() {
 		log.Fatal(err)
 	}
 
-	ph, err := proxy.NewHandler(pt, cls.PeerURLs())
-	if err != nil {
-		log.Fatal(err)
+	// TODO(jonboulle): update peerURLs dynamically (i.e. when updating
+	// clientURLs) instead of just using the initial fixed list here
+	peerURLs := cls.PeerURLs()
+	uf := func() []string {
+		cls, err := etcdserver.GetClusterFromPeers(peerURLs)
+		if err != nil {
+			log.Printf("etcd: %v", err)
+			return []string{}
+		}
+		return cls.ClientURLs()
 	}
-
+	ph := proxy.NewHandler(pt, uf)
 	ph = &pkg.CORSHandler{
 		Handler: ph,
 		Info:    cors,

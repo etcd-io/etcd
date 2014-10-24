@@ -20,23 +20,17 @@ import (
 	"net/http"
 )
 
-func NewHandler(t *http.Transport, addrs []string) (http.Handler, error) {
-	scheme := "http"
-	if t.TLSClientConfig != nil {
-		scheme = "https"
-	}
+// GetProxyURLs is a function which should return the current set of URLs to
+// which client requests should be proxied. This function will be queried
+// periodically by the proxy Handler to refresh the set of available
+// backends.
+type GetProxyURLs func() []string
 
-	d, err := newDirector(scheme, addrs)
-	if err != nil {
-		return nil, err
-	}
-
-	rp := reverseProxy{
-		director:  d,
+func NewHandler(t *http.Transport, urlsFunc GetProxyURLs) http.Handler {
+	return &reverseProxy{
+		director:  newDirector(urlsFunc),
 		transport: t,
 	}
-
-	return &rp, nil
 }
 
 func readonlyHandlerFunc(next http.Handler) func(http.ResponseWriter, *http.Request) {

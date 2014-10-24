@@ -78,7 +78,7 @@ func TestReverseProxyServe(t *testing.T) {
 
 	for i, tt := range tests {
 		rp := reverseProxy{
-			director:  &director{tt.eps},
+			director:  &director{ep: tt.eps},
 			transport: tt.rt,
 		}
 

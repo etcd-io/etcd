@@ -24,41 +24,36 @@ import (
 
 func TestNewDirectorScheme(t *testing.T) {
 	tests := []struct {
-		scheme string
-		addrs  []string
-		want   []string
+		urls []string
+		want []string
 	}{
 		{
-			scheme: "http",
-			addrs:  []string{"192.0.2.8:4002", "example.com:8080"},
-			want:   []string{"http://192.0.2.8:4002", "http://example.com:8080"},
+			urls: []string{"http://192.0.2.8:4002", "http://example.com:8080"},
+			want: []string{"http://192.0.2.8:4002", "http://example.com:8080"},
 		},
 		{
-			scheme: "https",
-			addrs:  []string{"192.0.2.8:4002", "example.com:8080"},
-			want:   []string{"https://192.0.2.8:4002", "https://example.com:8080"},
+			urls: []string{"https://192.0.2.8:4002", "https://example.com:8080"},
+			want: []string{"https://192.0.2.8:4002", "https://example.com:8080"},
 		},
 
-		// accept addrs without a port
+		// accept urls without a port
 		{
-			scheme: "http",
-			addrs:  []string{"192.0.2.8"},
-			want:   []string{"http://192.0.2.8"},
+			urls: []string{"http://192.0.2.8"},
+			want: []string{"http://192.0.2.8"},
 		},
 
-		// accept addrs even if they are garbage
+		// accept urls even if they are garbage
 		{
-			scheme: "http",
-			addrs:  []string{"."},
-			want:   []string{"http://."},
+			urls: []string{"http://."},
+			want: []string{"http://."},
 		},
 	}
 
 	for i, tt := range tests {
-		got, err := newDirector(tt.scheme, tt.addrs)
-		if err != nil {
-			t.Errorf("#%d: newDirectory returned unexpected error: %v", i, err)
+		uf := func() []string {
+			return tt.urls
 		}
+		got := newDirector(uf)
 
 		for ii, wep := range tt.want {
 			gep := got.ep[ii].URL.String()

@@ -19,6 +19,7 @@ package etcdserver
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"math/rand"
@@ -184,7 +185,10 @@ func NewServer(cfg *ServerConfig) *EtcdServer {
 	haveWAL := wal.Exist(cfg.WALDir())
 	switch {
 	case !haveWAL && cfg.ClusterState == ClusterStateValueExisting:
-		cl := getClusterFromPeers(cfg.Cluster.PeerURLs())
+		cl, err := GetClusterFromPeers(cfg.Cluster.PeerURLs())
+		if err != nil {
+			log.Fatal(err)
+		}
 		if err := cfg.Cluster.ValidateAndAssignIDs(cl.Members()); err != nil {
 			log.Fatalf("etcdserver: %v", err)
 		}
@@ -669,7 +673,7 @@ func (s *EtcdServer) snapshot(snapi uint64, snapnodes []uint64) {
 	s.storage.Cut()
 }
 
-func getClusterFromPeers(urls []string) *Cluster {
+func GetClusterFromPeers(urls []string) (*Cluster, error) {
 	for _, u := range urls {
 		resp, err := http.Get(u + "/members")
 		if err != nil {
@@ -691,10 +695,9 @@ func getClusterFromPeers(urls []string) *Cluster {
 			log.Printf("etcdserver: parse uint error: %v", err)
 			continue
 		}
-		return NewClusterFromMembers("", id, membs)
+		return NewClusterFromMembers("", id, membs), nil
 	}
-	log.Fatalf("etcdserver: could not retrieve cluster information from the given urls")
-	return nil
+	return nil, fmt.Errorf("etcdserver: could not retrieve cluster information from the given urls")
 }
 
 func startNode(cfg *ServerConfig, ids []uint64) (id uint64, n raft.Node, w *wal.WAL) {

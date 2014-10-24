@@ -17,7 +17,6 @@
 package proxy
 
 import (
-	"errors"
 	"log"
 	"net/url"
 	"sync"
@@ -28,28 +27,52 @@ const (
 	// amount of time an endpoint will be held in a failed
 	// state before being reconsidered for proxied requests
 	endpointFailureWait = 5 * time.Second
+
+	// how often the proxy will attempt to refresh its set of endpoints
+	refreshEndpoints = 30 * time.Second
 )
 
-func newDirector(scheme string, addrs []string) (*director, error) {
-	if len(addrs) == 0 {
-		return nil, errors.New("one or more upstream addresses required")
+func newDirector(urlsFunc GetProxyURLs) *director {
+	d := &director{
+		uf: urlsFunc,
 	}
-
-	endpoints := make([]*endpoint, len(addrs))
-	for i, addr := range addrs {
-		u := url.URL{Scheme: scheme, Host: addr}
-		endpoints[i] = newEndpoint(u)
-	}
-
-	d := director{ep: endpoints}
-	return &d, nil
+	d.refresh()
+	go func() {
+		for {
+			select {
+			case <-time.After(refreshEndpoints):
+				d.refresh()
+			}
+		}
+	}()
+	return d
 }
 
 type director struct {
+	sync.Mutex
 	ep []*endpoint
+	uf GetProxyURLs
+}
+
+func (d *director) refresh() {
+	urls := d.uf()
+	d.Lock()
+	defer d.Unlock()
+	var endpoints []*endpoint
+	for _, u := range urls {
+		uu, err := url.Parse(u)
+		if err != nil {
+			log.Printf("upstream URL invalid: %v", err)
+			continue
+		}
+		endpoints = append(endpoints, newEndpoint(*uu))
+	}
+	d.ep = endpoints
 }
 
 func (d *director) endpoints() []*endpoint {
+	d.Lock()
+	defer d.Unlock()
 	filtered := make([]*endpoint, 0)
 	for _, ep := range d.ep {
 		if ep.Available {
