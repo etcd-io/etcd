@@ -304,7 +304,7 @@ func TestCreateSelf(t *testing.T) {
 	errwc := &clientWithResp{rs, errw}
 
 	tests := []struct {
-		c    client.Client
+		c    client.KeysAPI
 		werr error
 	}{
 		// no error

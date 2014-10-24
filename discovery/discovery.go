@@ -58,7 +58,7 @@ type discovery struct {
 	cluster string
 	id      uint64
 	config  string
-	c       client.Client
+	c       client.KeysAPI
 	retries uint
 	url     *url.URL
 
@@ -105,13 +105,10 @@ func New(durl string, id uint64, config string) (Discoverer, error) {
 	if err != nil {
 		return nil, err
 	}
-	c, err := client.NewHTTPClient(&http.Transport{Proxy: pf}, u.String(), time.Second*5)
+	c, err := client.NewDiscoveryKeysAPI(&http.Transport{Proxy: pf}, u.String(), client.DefaultRequestTimeout)
 	if err != nil {
 		return nil, err
 	}
-	// discovery service redirects /[key] to /v2/keys/[key]
-	// set the prefix of client to "" to handle this
-	c.SetPrefix("")
 	return &discovery{
 		cluster: token,
 		id:      id,
