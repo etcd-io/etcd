@@ -308,7 +308,18 @@ func (h serverHandler) serveMembers(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r.Method, "GET") {
 		return
 	}
-	h.serveAdminMembers(w, r)
+	cid := strconv.FormatUint(h.clusterInfo.ID(), 16)
+	w.Header().Set("X-Etcd-Cluster-ID", cid)
+
+	if r.URL.Path != membersPrefix {
+		http.Error(w, "bad path", http.StatusBadRequest)
+		return
+	}
+	ms := h.clusterInfo.Members()
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(ms); err != nil {
+		log.Printf("etcdhttp: %v", err)
+	}
 }
 
 // parseKeyRequest converts a received http.Request on keysPrefix to
