@@ -166,7 +166,7 @@ func (h serverHandler) serveAdminMembers(w http.ResponseWriter, r *http.Request)
 			return
 		}
 		ms := struct {
-			Members []*etcdserver.Member
+			Members []*etcdserver.Member `json:"members"`
 		}{
 			Members: h.clusterInfo.Members(),
 		}
