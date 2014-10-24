@@ -37,6 +37,7 @@ import (
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/store"
+	"github.com/coreos/etcd/version"
 )
 
 const (
@@ -45,6 +46,7 @@ const (
 	deprecatedMachinesPrefix = "/v2/machines"
 	adminMembersPrefix       = "/v2/admin/members/"
 	statsPrefix              = "/v2/stats"
+	versionPrefix            = "/version"
 	// prefixes of peer endpoint
 	raftPrefix    = "/raft"
 	membersPrefix = "/members"
@@ -74,11 +76,9 @@ func NewClientHandler(server *etcdserver.EtcdServer) http.Handler {
 	mux.HandleFunc(statsPrefix+"/store", sh.serveStoreStats)
 	mux.HandleFunc(statsPrefix+"/self", sh.serveSelfStats)
 	mux.HandleFunc(statsPrefix+"/leader", sh.serveLeaderStats)
-	// TODO: dynamic configuration may make this outdated. take care of it.
-	// TODO: dynamic configuration may introduce race also.
-	// TODO: add serveMembers
 	mux.HandleFunc(deprecatedMachinesPrefix, sh.serveMachines)
 	mux.HandleFunc(adminMembersPrefix, sh.serveAdminMembers)
+	mux.HandleFunc(versionPrefix, sh.serveVersion)
 	mux.HandleFunc("/", http.NotFound)
 	return mux
 }
@@ -247,6 +247,13 @@ func (h serverHandler) serveLeaderStats(w http.ResponseWriter, r *http.Request) 
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(h.stats.LeaderStats())
+}
+
+func (h serverHandler) serveVersion(w http.ResponseWriter, r *http.Request) {
+	if !allowMethod(w, r.Method, "GET") {
+		return
+	}
+	w.Write([]byte("etcd " + version.Version))
 }
 
 func (h serverHandler) serveRaft(w http.ResponseWriter, r *http.Request) {

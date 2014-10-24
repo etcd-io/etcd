@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -40,6 +41,7 @@ import (
 	"github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/store"
+	"github.com/coreos/etcd/version"
 )
 
 func boolp(b bool) *bool { return &b }
@@ -752,6 +754,40 @@ func TestServeStoreStats(t *testing.T) {
 		t.Errorf("body = %s, want %s", g, w)
 	}
 
+}
+
+func TestServeVersion(t *testing.T) {
+	req, err := http.NewRequest("GET", "", nil)
+	if err != nil {
+		t.Fatalf("error creating request: %v", err)
+	}
+	h := &serverHandler{}
+	rw := httptest.NewRecorder()
+	h.serveVersion(rw, req)
+	if rw.Code != http.StatusOK {
+		t.Errorf("code=%d, want %d", rw.Code, http.StatusOK)
+	}
+	w := fmt.Sprintf("etcd %s", version.Version)
+	if g := rw.Body.String(); g != w {
+		t.Fatalf("body = %q, want %q", g, w)
+	}
+}
+
+func TestServeVersionFails(t *testing.T) {
+	for _, m := range []string{
+		"CONNECT", "TRACE", "PUT", "POST", "HEAD",
+	} {
+		req, err := http.NewRequest(m, "", nil)
+		if err != nil {
+			t.Fatalf("error creating request: %v", err)
+		}
+		h := &serverHandler{}
+		rw := httptest.NewRecorder()
+		h.serveVersion(rw, req)
+		if rw.Code != http.StatusMethodNotAllowed {
+			t.Errorf("method %s: code=%d, want %d", m, rw.Code, http.StatusMethodNotAllowed)
+		}
+	}
 }
 
 func TestAllowMethod(t *testing.T) {
