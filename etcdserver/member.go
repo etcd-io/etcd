@@ -96,3 +96,11 @@ func parseMemberID(key string) uint64 {
 func removedMemberStoreKey(id uint64) string {
 	return path.Join(storeRemovedMembersPrefix, idAsHex(id))
 }
+
+type SortableMemberSliceByPeerURLs []*Member
+
+func (p SortableMemberSliceByPeerURLs) Len() int { return len(p) }
+func (p SortableMemberSliceByPeerURLs) Less(i, j int) bool {
+	return p[i].PeerURLs[0] < p[j].PeerURLs[0]
+}
+func (p SortableMemberSliceByPeerURLs) Swap(i, j int) { p[i], p[j] = p[j], p[i] }

@@ -19,8 +19,10 @@ package etcdserver
 import (
 	"encoding/json"
 	"errors"
+	"io/ioutil"
 	"log"
 	"math/rand"
+	"net/http"
 	"os"
 	"path"
 	"strconv"
@@ -176,7 +178,17 @@ func NewServer(cfg *ServerConfig) *EtcdServer {
 	var w *wal.WAL
 	var n raft.Node
 	var id uint64
-	if !wal.Exist(cfg.WALDir()) {
+	haveWAL := wal.Exist(cfg.WALDir())
+	switch {
+	case !haveWAL && cfg.ClusterState == ClusterStateValueExisting:
+		cl := getClusterFromPeers(cfg.Cluster.PeerURLs())
+		if err := cfg.Cluster.ValidateAndAssignIDs(cl.Members()); err != nil {
+			log.Fatalf("etcdserver: %v", err)
+		}
+		cfg.Cluster.SetID(cl.id)
+		cfg.Cluster.SetStore(st)
+		id, n, w = startNode(cfg, nil)
+	case !haveWAL && cfg.ClusterState == ClusterStateValueNew:
 		if err := cfg.VerifyBootstrapConfig(); err != nil {
 			log.Fatalf("etcdserver: %v", err)
 		}
@@ -195,8 +207,8 @@ func NewServer(cfg *ServerConfig) *EtcdServer {
 			}
 		}
 		cfg.Cluster.SetStore(st)
-		id, n, w = startNode(cfg)
-	} else {
+		id, n, w = startNode(cfg, cfg.Cluster.MemberIDs())
+	case haveWAL:
 		if cfg.ShouldDiscover() {
 			log.Printf("etcdserver: warn: ignoring discovery: etcd has already been initialized and has a valid log in %q", cfg.WALDir())
 		}
@@ -212,6 +224,8 @@ func NewServer(cfg *ServerConfig) *EtcdServer {
 		}
 		cfg.Cluster = NewClusterFromStore(cfg.Cluster.name, st)
 		id, n, w = restartNode(cfg, index, snapshot)
+	default:
+		log.Fatalf("etcdserver: unsupported bootstrap config")
 	}
 
 	sstats := &stats.ServerStats{
@@ -642,7 +656,35 @@ func (s *EtcdServer) snapshot(snapi uint64, snapnodes []uint64) {
 	s.storage.Cut()
 }
 
-func startNode(cfg *ServerConfig) (id uint64, n raft.Node, w *wal.WAL) {
+func getClusterFromPeers(urls []string) *Cluster {
+	for _, u := range urls {
+		resp, err := http.Get(u + "/members")
+		if err != nil {
+			log.Printf("etcdserver: get /members on %s: %v", u, err)
+			continue
+		}
+		b, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			log.Printf("etcdserver: read body error: %v", err)
+			continue
+		}
+		var membs []*Member
+		if err := json.Unmarshal(b, &membs); err != nil {
+			log.Printf("etcdserver: unmarshal body error: %v", err)
+			continue
+		}
+		id, err := strconv.ParseUint(resp.Header.Get("X-Etcd-Cluster-ID"), 16, 64)
+		if err != nil {
+			log.Printf("etcdserver: parse uint error: %v", err)
+			continue
+		}
+		return NewClusterFromMembers("", id, membs)
+	}
+	log.Fatalf("etcdserver: could not retrieve cluster information from the given urls")
+	return nil
+}
+
+func startNode(cfg *ServerConfig, ids []uint64) (id uint64, n raft.Node, w *wal.WAL) {
 	var err error
 	// TODO: remove the discoveryURL when it becomes part of the source for
 	// generating nodeID.
@@ -651,7 +693,6 @@ func startNode(cfg *ServerConfig) (id uint64, n raft.Node, w *wal.WAL) {
 	if w, err = wal.Create(cfg.WALDir(), metadata); err != nil {
 		log.Fatal(err)
 	}
-	ids := cfg.Cluster.MemberIDs()
 	peers := make([]raft.Peer, len(ids))
 	for i, id := range ids {
 		ctx, err := json.Marshal((*cfg.Cluster).Member(id))
