@@ -53,21 +53,6 @@ type httpClient struct {
 	timeout   time.Duration
 }
 
-func newHTTPClient(tr *http.Transport, ep string, to time.Duration) (*httpClient, error) {
-	u, err := url.Parse(ep)
-	if err != nil {
-		return nil, err
-	}
-
-	c := &httpClient{
-		transport: tr,
-		endpoint:  *u,
-		timeout:   to,
-	}
-
-	return c, nil
-}
-
 func (c *httpClient) doWithTimeout(act httpAction) (*http.Response, []byte, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), c.timeout)
 	defer cancel()
