@@ -49,13 +49,21 @@ func NewDiscoveryKeysAPI(tr *http.Transport, ep string, to time.Duration) (KeysA
 	return newHTTPKeysAPIWithPrefix(tr, ep, to, "")
 }
 
-func newHTTPKeysAPIWithPrefix(tr *http.Transport, ep string, to time.Duration, prefix string) (*HTTPKeysAPI, error) {
-	c, err := newHTTPClient(tr, ep, to)
+func newHTTPKeysAPIWithPrefix(tr *http.Transport, ep string, to time.Duration, prefix string) (*httpKeysAPI, error) {
+	u, err := url.Parse(ep)
 	if err != nil {
 		return nil, err
 	}
 
-	kAPI := HTTPKeysAPI{
+	u.Path = path.Join(u.Path, prefix)
+
+	c := &httpClient{
+		transport: tr,
+		endpoint:  *u,
+		timeout:   to,
+	}
+
+	kAPI := httpKeysAPI{
 		client: c,
 	}
 
@@ -92,11 +100,11 @@ func (n *Node) String() string {
 	return fmt.Sprintf("{Key: %s, CreatedIndex: %d, ModifiedIndex: %d}", n.Key, n.CreatedIndex, n.ModifiedIndex)
 }
 
-type HTTPKeysAPI struct {
+type httpKeysAPI struct {
 	client *httpClient
 }
 
-func (k *HTTPKeysAPI) Create(key, val string, ttl time.Duration) (*Response, error) {
+func (k *httpKeysAPI) Create(key, val string, ttl time.Duration) (*Response, error) {
 	create := &createAction{
 		Key:   key,
 		Value: val,
@@ -114,7 +122,7 @@ func (k *HTTPKeysAPI) Create(key, val string, ttl time.Duration) (*Response, err
 	return unmarshalHTTPResponse(httpresp.StatusCode, body)
 }
 
-func (k *HTTPKeysAPI) Get(key string) (*Response, error) {
+func (k *httpKeysAPI) Get(key string) (*Response, error) {
 	get := &getAction{
 		Key:       key,
 		Recursive: false,
@@ -128,7 +136,7 @@ func (k *HTTPKeysAPI) Get(key string) (*Response, error) {
 	return unmarshalHTTPResponse(httpresp.StatusCode, body)
 }
 
-func (k *HTTPKeysAPI) Watch(key string, idx uint64) Watcher {
+func (k *httpKeysAPI) Watch(key string, idx uint64) Watcher {
 	return &httpWatcher{
 		client: k.client,
 		nextWait: waitAction{
@@ -139,7 +147,7 @@ func (k *HTTPKeysAPI) Watch(key string, idx uint64) Watcher {
 	}
 }
 
-func (k *HTTPKeysAPI) RecursiveWatch(key string, idx uint64) Watcher {
+func (k *httpKeysAPI) RecursiveWatch(key string, idx uint64) Watcher {
 	return &httpWatcher{
 		client: k.client,
 		nextWait: waitAction{
