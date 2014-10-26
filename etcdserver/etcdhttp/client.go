@@ -49,28 +49,46 @@ const (
 
 // NewClientHandler generates a muxed http.Handler with the given parameters to serve etcd client requests.
 func NewClientHandler(server *etcdserver.EtcdServer) http.Handler {
-	sh := &serverHandler{
+	kh := &keysHandler{
+		server:  server,
+		timer:   server,
+		timeout: defaultServerTimeout,
+	}
+
+	sh := &statsHandler{
+		stats: server,
+	}
+
+	amh := &adminMembersHandler{
 		server:      server,
 		clusterInfo: server.Cluster,
-		stats:       server,
-		timer:       server,
-		timeout:     defaultServerTimeout,
 		clock:       clockwork.NewRealClock(),
 	}
+
+	dmh := &deprecatedMachinesHandler{
+		clusterInfo: server.Cluster,
+	}
+
 	mux := http.NewServeMux()
-	mux.HandleFunc(keysPrefix, sh.serveKeys)
-	mux.HandleFunc(keysPrefix+"/", sh.serveKeys)
-	mux.HandleFunc(statsPrefix+"/store", sh.serveStoreStats)
-	mux.HandleFunc(statsPrefix+"/self", sh.serveSelfStats)
-	mux.HandleFunc(statsPrefix+"/leader", sh.serveLeaderStats)
-	mux.HandleFunc(deprecatedMachinesPrefix, sh.serveMachines)
-	mux.HandleFunc(adminMembersPrefix, sh.serveAdminMembers)
-	mux.HandleFunc(versionPrefix, sh.serveVersion)
 	mux.HandleFunc("/", http.NotFound)
+	mux.HandleFunc(versionPrefix, serveVersion)
+	mux.Handle(keysPrefix, kh)
+	mux.Handle(keysPrefix+"/", kh)
+	mux.HandleFunc(statsPrefix+"/store", sh.serveStore)
+	mux.HandleFunc(statsPrefix+"/self", sh.serveSelf)
+	mux.HandleFunc(statsPrefix+"/leader", sh.serveLeader)
+	mux.Handle(adminMembersPrefix, amh)
+	mux.Handle(deprecatedMachinesPrefix, dmh)
 	return mux
 }
 
-func (h serverHandler) serveKeys(w http.ResponseWriter, r *http.Request) {
+type keysHandler struct {
+	server  etcdserver.Server
+	timer   etcdserver.RaftTimer
+	timeout time.Duration
+}
+
+func (h *keysHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r.Method, "GET", "PUT", "POST", "DELETE") {
 		return
 	}
@@ -106,8 +124,11 @@ func (h serverHandler) serveKeys(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// serveMachines responds address list in the format '0.0.0.0, 1.1.1.1'.
-func (h serverHandler) serveMachines(w http.ResponseWriter, r *http.Request) {
+type deprecatedMachinesHandler struct {
+	clusterInfo etcdserver.ClusterInfo
+}
+
+func (h *deprecatedMachinesHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r.Method, "GET", "HEAD") {
 		return
 	}
@@ -115,7 +136,13 @@ func (h serverHandler) serveMachines(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(strings.Join(endpoints, ", ")))
 }
 
-func (h serverHandler) serveAdminMembers(w http.ResponseWriter, r *http.Request) {
+type adminMembersHandler struct {
+	server      etcdserver.Server
+	clusterInfo etcdserver.ClusterInfo
+	clock       clockwork.Clock
+}
+
+func (h *adminMembersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r.Method, "GET", "POST", "DELETE") {
 		return
 	}
@@ -188,7 +215,11 @@ func (h serverHandler) serveAdminMembers(w http.ResponseWriter, r *http.Request)
 	}
 }
 
-func (h serverHandler) serveStoreStats(w http.ResponseWriter, r *http.Request) {
+type statsHandler struct {
+	stats etcdserver.Stats
+}
+
+func (h *statsHandler) serveStore(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r.Method, "GET") {
 		return
 	}
@@ -196,7 +227,7 @@ func (h serverHandler) serveStoreStats(w http.ResponseWriter, r *http.Request) {
 	w.Write(h.stats.StoreStats())
 }
 
-func (h serverHandler) serveSelfStats(w http.ResponseWriter, r *http.Request) {
+func (h *statsHandler) serveSelf(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r.Method, "GET") {
 		return
 	}
@@ -204,7 +235,7 @@ func (h serverHandler) serveSelfStats(w http.ResponseWriter, r *http.Request) {
 	w.Write(h.stats.SelfStats())
 }
 
-func (h serverHandler) serveLeaderStats(w http.ResponseWriter, r *http.Request) {
+func (h *statsHandler) serveLeader(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r.Method, "GET") {
 		return
 	}
@@ -212,7 +243,7 @@ func (h serverHandler) serveLeaderStats(w http.ResponseWriter, r *http.Request) 
 	w.Write(h.stats.LeaderStats())
 }
 
-func (h serverHandler) serveVersion(w http.ResponseWriter, r *http.Request) {
+func serveVersion(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r.Method, "GET") {
 		return
 	}

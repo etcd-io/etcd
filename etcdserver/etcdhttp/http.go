@@ -23,9 +23,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/jonboulle/clockwork"
 	etcdErr "github.com/coreos/etcd/error"
-	"github.com/coreos/etcd/etcdserver"
 )
 
 const (
@@ -37,16 +35,6 @@ const (
 )
 
 var errClosed = errors.New("etcdhttp: client closed connection")
-
-// serverHandler provides http.Handlers for etcd client and raft communication.
-type serverHandler struct {
-	timeout     time.Duration
-	server      etcdserver.Server
-	stats       etcdserver.Stats
-	timer       etcdserver.RaftTimer
-	clusterInfo etcdserver.ClusterInfo
-	clock       clockwork.Clock
-}
 
 // writeError logs and writes the given Error to the ResponseWriter
 // If Error is an etcdErr, it is rendered to the ResponseWriter

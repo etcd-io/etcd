@@ -553,7 +553,7 @@ func TestServeAdminMembers(t *testing.T) {
 	cluster := &fakeCluster{
 		members: map[uint64]*etcdserver.Member{1: &memb1, 2: &memb2},
 	}
-	h := &serverHandler{
+	h := &adminMembersHandler{
 		server:      &serverRecorder{},
 		clock:       clockwork.NewFakeClock(),
 		clusterInfo: cluster,
@@ -588,7 +588,7 @@ func TestServeAdminMembers(t *testing.T) {
 			t.Fatal(err)
 		}
 		rw := httptest.NewRecorder()
-		h.serveAdminMembers(rw, req)
+		h.ServeHTTP(rw, req)
 
 		if rw.Code != tt.wcode {
 			t.Errorf("#%d: code=%d, want %d", i, rw.Code, tt.wcode)
@@ -616,13 +616,13 @@ func TestServeAdminMembersPut(t *testing.T) {
 	}
 	req.Header.Set("Content-Type", "application/json")
 	s := &serverRecorder{}
-	h := &serverHandler{
+	h := &adminMembersHandler{
 		server: s,
 		clock:  clockwork.NewFakeClock(),
 	}
 	rw := httptest.NewRecorder()
 
-	h.serveAdminMembers(rw, req)
+	h.ServeHTTP(rw, req)
 
 	wcode := http.StatusCreated
 	if rw.Code != wcode {
@@ -658,12 +658,12 @@ func TestServeAdminMembersDelete(t *testing.T) {
 		URL:    mustNewURL(t, path.Join(adminMembersPrefix, "BEEF")),
 	}
 	s := &serverRecorder{}
-	h := &serverHandler{
+	h := &adminMembersHandler{
 		server: s,
 	}
 	rw := httptest.NewRecorder()
 
-	h.serveAdminMembers(rw, req)
+	h.ServeHTTP(rw, req)
 
 	wcode := http.StatusNoContent
 	if rw.Code != wcode {
@@ -767,12 +767,12 @@ func TestServeAdminMembersFail(t *testing.T) {
 		},
 	}
 	for i, tt := range tests {
-		h := &serverHandler{
+		h := &adminMembersHandler{
 			server: tt.server,
 			clock:  clockwork.NewFakeClock(),
 		}
 		rw := httptest.NewRecorder()
-		h.serveAdminMembers(rw, tt.req)
+		h.ServeHTTP(rw, tt.req)
 		if rw.Code != tt.wcode {
 			t.Errorf("#%d: code=%d, want %d", i, rw.Code, tt.wcode)
 		}
@@ -884,8 +884,8 @@ func TestServeMachines(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	h := &serverHandler{clusterInfo: cluster}
-	h.serveMachines(writer, req)
+	h := &deprecatedMachinesHandler{clusterInfo: cluster}
+	h.ServeHTTP(writer, req)
 	w := "http://localhost:8080, http://localhost:8081, http://localhost:8082"
 	if g := writer.Body.String(); g != w {
 		t.Errorf("body = %s, want %s", g, w)
@@ -907,11 +907,11 @@ func (ds *dummyStats) UpdateRecvApp(_ uint64, _ int64) {}
 func TestServeSelfStats(t *testing.T) {
 	wb := []byte("some statistics")
 	w := string(wb)
-	sh := &serverHandler{
+	sh := &statsHandler{
 		stats: &dummyStats{data: wb},
 	}
 	rw := httptest.NewRecorder()
-	sh.serveSelfStats(rw, &http.Request{Method: "GET"})
+	sh.serveSelf(rw, &http.Request{Method: "GET"})
 	if rw.Code != http.StatusOK {
 		t.Errorf("code = %d, want %d", rw.Code, http.StatusOK)
 	}
@@ -926,9 +926,9 @@ func TestServeSelfStats(t *testing.T) {
 
 func TestSelfServeStatsBad(t *testing.T) {
 	for _, m := range []string{"PUT", "POST", "DELETE"} {
-		sh := &serverHandler{}
+		sh := &statsHandler{}
 		rw := httptest.NewRecorder()
-		sh.serveSelfStats(
+		sh.serveSelf(
 			rw,
 			&http.Request{
 				Method: m,
@@ -942,9 +942,9 @@ func TestSelfServeStatsBad(t *testing.T) {
 
 func TestLeaderServeStatsBad(t *testing.T) {
 	for _, m := range []string{"PUT", "POST", "DELETE"} {
-		sh := &serverHandler{}
+		sh := &statsHandler{}
 		rw := httptest.NewRecorder()
-		sh.serveLeaderStats(
+		sh.serveLeader(
 			rw,
 			&http.Request{
 				Method: m,
@@ -959,11 +959,11 @@ func TestLeaderServeStatsBad(t *testing.T) {
 func TestServeLeaderStats(t *testing.T) {
 	wb := []byte("some statistics")
 	w := string(wb)
-	sh := &serverHandler{
+	sh := &statsHandler{
 		stats: &dummyStats{data: wb},
 	}
 	rw := httptest.NewRecorder()
-	sh.serveLeaderStats(rw, &http.Request{Method: "GET"})
+	sh.serveLeader(rw, &http.Request{Method: "GET"})
 	if rw.Code != http.StatusOK {
 		t.Errorf("code = %d, want %d", rw.Code, http.StatusOK)
 	}
@@ -979,11 +979,11 @@ func TestServeLeaderStats(t *testing.T) {
 func TestServeStoreStats(t *testing.T) {
 	wb := []byte("some statistics")
 	w := string(wb)
-	sh := &serverHandler{
+	sh := &statsHandler{
 		stats: &dummyStats{data: wb},
 	}
 	rw := httptest.NewRecorder()
-	sh.serveStoreStats(rw, &http.Request{Method: "GET"})
+	sh.serveStore(rw, &http.Request{Method: "GET"})
 	if rw.Code != http.StatusOK {
 		t.Errorf("code = %d, want %d", rw.Code, http.StatusOK)
 	}
@@ -1002,9 +1002,8 @@ func TestServeVersion(t *testing.T) {
 	if err != nil {
 		t.Fatalf("error creating request: %v", err)
 	}
-	h := &serverHandler{}
 	rw := httptest.NewRecorder()
-	h.serveVersion(rw, req)
+	serveVersion(rw, req)
 	if rw.Code != http.StatusOK {
 		t.Errorf("code=%d, want %d", rw.Code, http.StatusOK)
 	}
@@ -1022,9 +1021,8 @@ func TestServeVersionFails(t *testing.T) {
 		if err != nil {
 			t.Fatalf("error creating request: %v", err)
 		}
-		h := &serverHandler{}
 		rw := httptest.NewRecorder()
-		h.serveVersion(rw, req)
+		serveVersion(rw, req)
 		if rw.Code != http.StatusMethodNotAllowed {
 			t.Errorf("method %s: code=%d, want %d", m, rw.Code, http.StatusMethodNotAllowed)
 		}
@@ -1102,12 +1100,12 @@ func TestBadServeKeys(t *testing.T) {
 		},
 	}
 	for i, tt := range testBadCases {
-		h := &serverHandler{
+		h := &keysHandler{
 			timeout: 0, // context times out immediately
 			server:  tt.server,
 		}
 		rw := httptest.NewRecorder()
-		h.serveKeys(rw, tt.req)
+		h.ServeHTTP(rw, tt.req)
 		if rw.Code != tt.wcode {
 			t.Errorf("#%d: got code=%d, want %d", i, rw.Code, tt.wcode)
 		}
@@ -1127,14 +1125,14 @@ func TestServeKeysEvent(t *testing.T) {
 			},
 		},
 	}
-	h := &serverHandler{
+	h := &keysHandler{
 		timeout: time.Hour,
 		server:  server,
 		timer:   &dummyRaftTimer{},
 	}
 	rw := httptest.NewRecorder()
 
-	h.serveKeys(rw, req)
+	h.ServeHTTP(rw, req)
 
 	wcode := http.StatusOK
 	wbody := mustMarshalEvent(
@@ -1165,7 +1163,7 @@ func TestServeKeysWatch(t *testing.T) {
 			Watcher: dw,
 		},
 	}
-	h := &serverHandler{
+	h := &keysHandler{
 		timeout: time.Hour,
 		server:  server,
 		timer:   &dummyRaftTimer{},
@@ -1178,7 +1176,7 @@ func TestServeKeysWatch(t *testing.T) {
 	}()
 	rw := httptest.NewRecorder()
 
-	h.serveKeys(rw, req)
+	h.ServeHTTP(rw, req)
 
 	wcode := http.StatusOK
 	wbody := mustMarshalEvent(
