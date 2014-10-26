@@ -131,9 +131,9 @@ func (l *raftLog) resetNextEnts() {
 	}
 }
 
-func (l *raftLog) lastIndex() uint64 {
-	return uint64(len(l.ents)) - 1 + l.offset
-}
+func (l *raftLog) lastIndex() uint64 { return uint64(len(l.ents)) - 1 + l.offset }
+
+func (l raftLog) lastTerm() uint64 { return l.term(l.lastIndex()) }
 
 func (l *raftLog) term(i uint64) uint64 {
 	if e := l.at(i); e != nil {
@@ -158,8 +158,7 @@ func (l *raftLog) entries(i uint64) []pb.Entry {
 // later term is more up-to-date. If the logs end with the same term, then
 // whichever log has the larger lastIndex is more up-to-date.
 func (l *raftLog) isUpToDate(lasti, term uint64) bool {
-	e := l.at(l.lastIndex())
-	return term > e.Term || (term == e.Term && lasti >= l.lastIndex())
+	return term > l.lastTerm() || (term == l.lastTerm() && lasti >= l.lastIndex())
 }
 
 func (l *raftLog) matchTerm(i, term uint64) bool {

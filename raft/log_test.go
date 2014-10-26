@@ -59,6 +59,37 @@ func TestFindConflict(t *testing.T) {
 	}
 }
 
+func TestIsUpToDate(t *testing.T) {
+	previousEnts := []pb.Entry{{Term: 1}, {Term: 2}, {Term: 3}}
+	raftLog := newLog()
+	raftLog.ents = append(raftLog.ents, previousEnts...)
+	tests := []struct {
+		lastIndex uint64
+		term      uint64
+		wUpToDate bool
+	}{
+		// greater term, ignore lastIndex
+		{raftLog.lastIndex() - 1, 4, true},
+		{raftLog.lastIndex(), 4, true},
+		{raftLog.lastIndex() + 1, 4, true},
+		// smaller term, ignore lastIndex
+		{raftLog.lastIndex() - 1, 2, false},
+		{raftLog.lastIndex(), 2, false},
+		{raftLog.lastIndex() + 1, 2, false},
+		// equal term, lager lastIndex wins
+		{raftLog.lastIndex() - 1, 3, false},
+		{raftLog.lastIndex(), 3, true},
+		{raftLog.lastIndex() + 1, 3, true},
+	}
+
+	for i, tt := range tests {
+		gUpToDate := raftLog.isUpToDate(tt.lastIndex, tt.term)
+		if gUpToDate != tt.wUpToDate {
+			t.Errorf("#%d: uptodate = %v, want %v", i, gUpToDate, tt.wUpToDate)
+		}
+	}
+}
+
 // TestAppend ensures:
 // 1. If an existing entry conflicts with a new one (same index
 // but different terms), delete the existing entry and all that
