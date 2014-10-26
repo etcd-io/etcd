@@ -27,7 +27,6 @@ import (
 	"strconv"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/raft/raftpb"
@@ -169,13 +168,9 @@ func TestServeRaft(t *testing.T) {
 			t.Fatalf("#%d: could not create request: %#v", i, err)
 		}
 		req.Header.Set("X-Etcd-Cluster-ID", tt.clusterID)
-		h := &serverHandler{
-			timeout:     time.Hour,
-			server:      &errServer{tt.serverErr},
-			clusterInfo: &fakeCluster{id: 0},
-		}
 		rw := httptest.NewRecorder()
-		h.serveRaft(rw, req)
+		h := &raftHandler{stats: nil, server: &errServer{tt.serverErr}, clusterInfo: &fakeCluster{id: 0}}
+		h.ServeHTTP(rw, req)
 		if rw.Code != tt.wcode {
 			t.Errorf("#%d: got code=%d, want %d", i, rw.Code, tt.wcode)
 		}
@@ -201,9 +196,9 @@ func TestServeMembersFails(t *testing.T) {
 		},
 	}
 	for i, tt := range tests {
-		h := &serverHandler{}
 		rw := httptest.NewRecorder()
-		h.serveMembers(rw, &http.Request{Method: tt.method})
+		h := &peerMembersHandler{clusterInfo: nil}
+		h.ServeHTTP(rw, &http.Request{Method: tt.method})
 		if rw.Code != tt.wcode {
 			t.Errorf("#%d: code=%d, want %d", i, rw.Code, tt.wcode)
 		}
@@ -217,11 +212,7 @@ func TestServeMembersGet(t *testing.T) {
 		id:      1,
 		members: map[uint64]*etcdserver.Member{1: &memb1, 2: &memb2},
 	}
-	h := &serverHandler{
-		server:      &serverRecorder{},
-		clusterInfo: cluster,
-	}
-
+	h := &peerMembersHandler{clusterInfo: cluster}
 	msb, err := json.Marshal([]etcdserver.Member{memb1, memb2})
 	if err != nil {
 		t.Fatal(err)
@@ -234,8 +225,8 @@ func TestServeMembersGet(t *testing.T) {
 		wct   string
 		wbody string
 	}{
-		{membersPrefix, http.StatusOK, "application/json", wms},
-		{path.Join(membersPrefix, "bad"), http.StatusBadRequest, "text/plain; charset=utf-8", "bad path\n"},
+		{peerMembersPrefix, http.StatusOK, "application/json", wms},
+		{path.Join(peerMembersPrefix, "bad"), http.StatusBadRequest, "text/plain; charset=utf-8", "bad path\n"},
 	}
 
 	for i, tt := range tests {
@@ -244,7 +235,7 @@ func TestServeMembersGet(t *testing.T) {
 			t.Fatal(err)
 		}
 		rw := httptest.NewRecorder()
-		h.serveMembers(rw, req)
+		h.ServeHTTP(rw, req)
 
 		if rw.Code != tt.wcode {
 			t.Errorf("#%d: code=%d, want %d", i, rw.Code, tt.wcode)

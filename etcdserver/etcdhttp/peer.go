@@ -24,32 +24,41 @@ import (
 	"strconv"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/code.google.com/p/go.net/context"
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/jonboulle/clockwork"
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/raft/raftpb"
 )
 
 const (
-	raftPrefix    = "/raft"
-	membersPrefix = "/members"
+	raftPrefix        = "/raft"
+	peerMembersPrefix = "/members"
 )
 
 // NewPeerHandler generates an http.Handler to handle etcd peer (raft) requests.
 func NewPeerHandler(server *etcdserver.EtcdServer) http.Handler {
-	sh := &serverHandler{
-		server:      server,
+	rh := &raftHandler{
 		stats:       server,
+		server:      server,
 		clusterInfo: server.Cluster,
-		clock:       clockwork.NewRealClock(),
 	}
+
+	mh := &peerMembersHandler{
+		clusterInfo: server.Cluster,
+	}
+
 	mux := http.NewServeMux()
-	mux.HandleFunc(raftPrefix, sh.serveRaft)
-	mux.HandleFunc(membersPrefix, sh.serveMembers)
 	mux.HandleFunc("/", http.NotFound)
+	mux.Handle(raftPrefix, rh)
+	mux.Handle(peerMembersPrefix, mh)
 	return mux
 }
 
-func (h serverHandler) serveRaft(w http.ResponseWriter, r *http.Request) {
+type raftHandler struct {
+	stats       etcdserver.Stats
+	server      etcdserver.Server
+	clusterInfo etcdserver.ClusterInfo
+}
+
+func (h *raftHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r.Method, "POST") {
 		return
 	}
@@ -92,14 +101,18 @@ func (h serverHandler) serveRaft(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (h serverHandler) serveMembers(w http.ResponseWriter, r *http.Request) {
+type peerMembersHandler struct {
+	clusterInfo etcdserver.ClusterInfo
+}
+
+func (h *peerMembersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r.Method, "GET") {
 		return
 	}
 	cid := strconv.FormatUint(h.clusterInfo.ID(), 16)
 	w.Header().Set("X-Etcd-Cluster-ID", cid)
 
-	if r.URL.Path != membersPrefix {
+	if r.URL.Path != peerMembersPrefix {
 		http.Error(w, "bad path", http.StatusBadRequest)
 		return
 	}
