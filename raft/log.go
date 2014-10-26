@@ -40,10 +40,6 @@ func newLog() *raftLog {
 	}
 }
 
-func (l *raftLog) isEmpty() bool {
-	return l.offset == 0 && len(l.ents) == 1
-}
-
 func (l *raftLog) load(ents []pb.Entry) {
 	l.ents = ents
 	l.unstable = l.offset + uint64(len(ents))
