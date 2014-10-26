@@ -83,6 +83,16 @@ func (l *raftLog) append(after uint64, ents ...pb.Entry) uint64 {
 	return l.lastIndex()
 }
 
+// findConflict finds the index of the conflict.
+// It returns the the first pair of confilcting entries between the existing
+// entries and the given entries, if there is any.
+// If there is no conflicting entries, and the existing entries contains
+// all the given entries, zero will be returned.
+// If there is no conflicting entries, but the given entries contains new
+// entries, the index of the first new entry will be returned.
+// Conflicting entries has the same index but different term.
+// The first given entry MUST have the index equal to from.
+// The index of the given entries MUST be continously increasing.
 func (l *raftLog) findConflict(from uint64, ents []pb.Entry) uint64 {
 	for i, ne := range ents {
 		if oe := l.at(from + uint64(i)); oe == nil || oe.Term != ne.Term {

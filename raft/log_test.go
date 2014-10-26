@@ -23,6 +23,42 @@ import (
 	pb "github.com/coreos/etcd/raft/raftpb"
 )
 
+func TestFindConflict(t *testing.T) {
+	previousEnts := []pb.Entry{{Term: 1}, {Term: 2}, {Term: 3}}
+	tests := []struct {
+		from      uint64
+		ents      []pb.Entry
+		wconflict uint64
+	}{
+		// no conflict, empty ent
+		{1, []pb.Entry{}, 0},
+		{3, []pb.Entry{}, 0},
+		// no conflict
+		{1, []pb.Entry{{Term: 1}, {Term: 2}, {Term: 3}}, 0},
+		{2, []pb.Entry{{Term: 2}, {Term: 3}}, 0},
+		{3, []pb.Entry{{Term: 3}}, 0},
+		// no conflict, but has new entries
+		{1, []pb.Entry{{Term: 1}, {Term: 2}, {Term: 3}, {Term: 4}, {Term: 4}}, 4},
+		{2, []pb.Entry{{Term: 2}, {Term: 3}, {Term: 4}, {Term: 4}}, 4},
+		{3, []pb.Entry{{Term: 3}, {Term: 4}, {Term: 4}}, 4},
+		{4, []pb.Entry{{Term: 4}, {Term: 4}}, 4},
+		// conflicts with existing entries
+		{1, []pb.Entry{{Term: 4}, {Term: 4}}, 1},
+		{2, []pb.Entry{{Term: 1}, {Term: 4}, {Term: 4}}, 2},
+		{3, []pb.Entry{{Term: 1}, {Term: 2}, {Term: 4}, {Term: 4}}, 3},
+	}
+
+	for i, tt := range tests {
+		raftLog := newLog()
+		raftLog.ents = append(raftLog.ents, previousEnts...)
+
+		gconflict := raftLog.findConflict(tt.from, tt.ents)
+		if gconflict != tt.wconflict {
+			t.Errorf("#%d: conflict = %d, want %d", i, gconflict, tt.wconflict)
+		}
+	}
+}
+
 // TestAppend ensures:
 // 1. If an existing entry conflicts with a new one (same index
 // but different terms), delete the existing entry and all that
