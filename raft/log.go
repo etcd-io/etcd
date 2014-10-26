@@ -152,9 +152,14 @@ func (l *raftLog) entries(i uint64) []pb.Entry {
 	return l.slice(i, l.lastIndex()+1)
 }
 
-func (l *raftLog) isUpToDate(i, term uint64) bool {
+// isUpToDate determines if the given (lastIndex,term) log is more up-to-date
+// by comparing the index and term of the last entries in the existing logs.
+// If the logs have last entries with different terms, then the log with the
+// later term is more up-to-date. If the logs end with the same term, then
+// whichever log has the larger lastIndex is more up-to-date.
+func (l *raftLog) isUpToDate(lasti, term uint64) bool {
 	e := l.at(l.lastIndex())
-	return term > e.Term || (term == e.Term && i >= l.lastIndex())
+	return term > e.Term || (term == e.Term && lasti >= l.lastIndex())
 }
 
 func (l *raftLog) matchTerm(i, term uint64) bool {
