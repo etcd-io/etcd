@@ -574,6 +574,7 @@ func TestServeAdminMembers(t *testing.T) {
 		wbody string
 	}{
 		{adminMembersPrefix, http.StatusOK, "application/json", wmc},
+		{adminMembersPrefix + "/", http.StatusOK, "application/json", wmc},
 		{path.Join(adminMembersPrefix, "100"), http.StatusNotFound, "text/plain; charset=utf-8", "404 page not found\n"},
 		{path.Join(adminMembersPrefix, "foobar"), http.StatusNotFound, "text/plain; charset=utf-8", "404 page not found\n"},
 	}
@@ -1537,6 +1538,23 @@ func TestTrimNodeExternPrefix(t *testing.T) {
 		n := trimNodeExternPrefix(tt.n, pre)
 		if !reflect.DeepEqual(n, tt.wn) {
 			t.Errorf("#%d: node = %+v, want %+v", i, n, tt.wn)
+		}
+	}
+}
+
+func TestTrimPrefix(t *testing.T) {
+	tests := []struct {
+		in     string
+		prefix string
+		w      string
+	}{
+		{"/v2/admin/members", "/v2/admin/members", ""},
+		{"/v2/admin/members/", "/v2/admin/members", ""},
+		{"/v2/admin/members/foo", "/v2/admin/members", "foo"},
+	}
+	for i, tt := range tests {
+		if g := trimPrefix(tt.in, tt.prefix); g != tt.w {
+			t.Errorf("#%d: trimPrefix = %q, want %q", i, g, tt.w)
 		}
 	}
 }

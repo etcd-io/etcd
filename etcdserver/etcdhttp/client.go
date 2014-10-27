@@ -43,7 +43,7 @@ import (
 const (
 	keysPrefix               = "/v2/keys"
 	deprecatedMachinesPrefix = "/v2/machines"
-	adminMembersPrefix       = "/v2/admin/members/"
+	adminMembersPrefix       = "/v2/admin/members"
 	statsPrefix              = "/v2/stats"
 	versionPrefix            = "/version"
 )
@@ -80,6 +80,7 @@ func NewClientHandler(server *etcdserver.EtcdServer) http.Handler {
 	mux.HandleFunc(statsPrefix+"/self", sh.serveSelf)
 	mux.HandleFunc(statsPrefix+"/leader", sh.serveLeader)
 	mux.Handle(adminMembersPrefix, amh)
+	mux.Handle(adminMembersPrefix+"/", amh)
 	mux.Handle(deprecatedMachinesPrefix, dmh)
 	return mux
 }
@@ -159,7 +160,7 @@ func (h *adminMembersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 
 	switch r.Method {
 	case "GET":
-		if s := strings.TrimPrefix(r.URL.Path, adminMembersPrefix); s != "" {
+		if trimPrefix(r.URL.Path, adminMembersPrefix) != "" {
 			http.NotFound(w, r)
 			return
 		}
@@ -203,7 +204,7 @@ func (h *adminMembersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 			log.Printf("etcdhttp: %v", err)
 		}
 	case "DELETE":
-		idStr := strings.TrimPrefix(r.URL.Path, adminMembersPrefix)
+		idStr := trimPrefix(r.URL.Path, adminMembersPrefix)
 		id, err := strconv.ParseUint(idStr, 16, 64)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
@@ -513,6 +514,14 @@ func getBool(form url.Values, key string) (b bool, err error) {
 	if vals, ok := form[key]; ok {
 		b, err = strconv.ParseBool(vals[0])
 	}
+	return
+}
+
+// trimPrefix removes a given prefix and any slash following the prefix
+// e.g.: trimPrefix("foo", "foo") == trimPrefix("foo/", "foo") == ""
+func trimPrefix(p, prefix string) (s string) {
+	s = strings.TrimPrefix(p, prefix)
+	s = strings.TrimPrefix(s, "/")
 	return
 }
 
