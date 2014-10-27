@@ -974,6 +974,7 @@ func TestPublish(t *testing.T) {
 	srv := &EtcdServer{
 		id:         1,
 		attributes: Attributes{Name: "node1", ClientURLs: []string{"http://a", "http://b"}},
+		Cluster:    &Cluster{},
 		node:       n,
 		w:          w,
 	}
@@ -1007,6 +1008,7 @@ func TestPublish(t *testing.T) {
 func TestPublishStopped(t *testing.T) {
 	srv := &EtcdServer{
 		node:    &nodeRecorder{},
+		Cluster: &Cluster{},
 		w:       &waitRecorder{},
 		done:    make(chan struct{}),
 		stopped: make(chan struct{}),

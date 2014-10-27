@@ -526,7 +526,7 @@ func (s *EtcdServer) publish(retryInterval time.Duration) {
 		cancel()
 		switch err {
 		case nil:
-			log.Printf("etcdserver: published %+v to the cluster", s.attributes)
+			log.Printf("etcdserver: published %+v to cluster %x", s.attributes, s.Cluster.ID())
 			return
 		case ErrStopped:
 			log.Printf("etcdserver: aborting publish because server is stopped")
