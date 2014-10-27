@@ -50,7 +50,7 @@ func TestFindConflict(t *testing.T) {
 
 	for i, tt := range tests {
 		raftLog := newLog()
-		raftLog.ents = append(raftLog.ents, previousEnts...)
+		raftLog.append(raftLog.lastIndex(), previousEnts...)
 
 		gconflict := raftLog.findConflict(tt.from, tt.ents)
 		if gconflict != tt.wconflict {
@@ -62,7 +62,7 @@ func TestFindConflict(t *testing.T) {
 func TestIsUpToDate(t *testing.T) {
 	previousEnts := []pb.Entry{{Term: 1}, {Term: 2}, {Term: 3}}
 	raftLog := newLog()
-	raftLog.ents = append(raftLog.ents, previousEnts...)
+	raftLog.append(raftLog.lastIndex(), previousEnts...)
 	tests := []struct {
 		lastIndex uint64
 		term      uint64
@@ -139,7 +139,7 @@ func TestAppend(t *testing.T) {
 
 	for i, tt := range tests {
 		raftLog := newLog()
-		raftLog.ents = append(raftLog.ents, previousEnts...)
+		raftLog.append(raftLog.lastIndex(), previousEnts...)
 		raftLog.unstable = previousUnstable
 		index := raftLog.append(tt.after, tt.ents...)
 		if index != tt.windex {
@@ -219,7 +219,7 @@ func TestUnstableEnts(t *testing.T) {
 
 	for i, tt := range tests {
 		raftLog := newLog()
-		raftLog.ents = append(raftLog.ents, previousEnts...)
+		raftLog.append(0, previousEnts...)
 		raftLog.unstable = tt.unstable
 		ents := raftLog.unstableEnts()
 		raftLog.resetUnstable()
