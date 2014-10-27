@@ -20,17 +20,21 @@ function build {
 }
 
 function package {
-	proj=${1}
-	target=${2}
+	target=${1}
 
 	ccdir="${proj}/bin/${GOOS}_${GOARCH}"
 	if [ -d ${ccdir} ]; then
-		cp ${ccdir}/${proj}* ${target}
+		cp ${ccdir}/etcdctl ${target}
+		cp ${ccdir}/etcd ${target}
 	else
-		cp ${proj}/bin/${proj} ${target}
+		cp ${proj}/bin/etcd ${target}
+		cp ${proj}/bin/etcdctl ${target}
 	fi
 
-	cp ${proj}/README.md ${target}/README-${proj}.md
+	cp etcd/README.md ${target}/README.md
+	cp etcd/etcdctl/README.md ${target}/README-etcdctl.md
+
+	cp -R etcd/Documentation/0.5 ${target}/Documentation
 }
 
 mkdir release
@@ -41,13 +45,11 @@ for i in darwin windows linux; do
 	export GOARCH="amd64"
 
 	build etcd ${VER}
-	build etcdctl ${VER}
 
 	TARGET="etcd-${VER}-${GOOS}-${GOARCH}"
 	mkdir ${TARGET}
 
-	package etcd ${TARGET}
-	package etcdctl ${TARGET}
+	package ${TARGET}
 
 	if [ ${GOOS} == "linux" ]; then
 		tar cvvfz ${TARGET}.tar.gz ${TARGET}
