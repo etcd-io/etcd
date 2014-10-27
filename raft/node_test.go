@@ -22,7 +22,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/code.google.com/p/go.net/context"
-	"github.com/coreos/etcd/pkg"
+	"github.com/coreos/etcd/pkg/testutil"
 	"github.com/coreos/etcd/raft/raftpb"
 )
 
@@ -121,7 +121,7 @@ func TestBlockProposal(t *testing.T) {
 		errc <- n.Propose(context.TODO(), []byte("somedata"))
 	}()
 
-	pkg.ForceGosched()
+	testutil.ForceGosched()
 	select {
 	case err := <-errc:
 		t.Errorf("err = %v, want blocking", err)
@@ -129,7 +129,7 @@ func TestBlockProposal(t *testing.T) {
 	}
 
 	n.Campaign(context.TODO())
-	pkg.ForceGosched()
+	testutil.ForceGosched()
 	select {
 	case err := <-errc:
 		if err != nil {
@@ -253,7 +253,7 @@ func TestNodeCompact(t *testing.T) {
 		Nodes: []uint64{1},
 	}
 
-	pkg.ForceGosched()
+	testutil.ForceGosched()
 	select {
 	case <-n.Ready():
 	default:
@@ -261,7 +261,7 @@ func TestNodeCompact(t *testing.T) {
 	}
 
 	n.Compact(w.Index, w.Nodes, w.Data)
-	pkg.ForceGosched()
+	testutil.ForceGosched()
 	select {
 	case rd := <-n.Ready():
 		if !reflect.DeepEqual(rd.Snapshot, w) {
@@ -270,7 +270,7 @@ func TestNodeCompact(t *testing.T) {
 	default:
 		t.Fatalf("unexpected compact failure: unable to create a snapshot")
 	}
-	pkg.ForceGosched()
+	testutil.ForceGosched()
 	// TODO: this test the run updates the snapi correctly... should be tested
 	// separately with other kinds of updates
 	select {

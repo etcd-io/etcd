@@ -29,7 +29,7 @@ import (
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/code.google.com/p/go.net/context"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
-	"github.com/coreos/etcd/pkg"
+	"github.com/coreos/etcd/pkg/testutil"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/store"
@@ -674,7 +674,7 @@ func TestSync(t *testing.T) {
 		t.Errorf("CallSyncTime = %v, want < %v", d, time.Millisecond)
 	}
 
-	pkg.ForceGosched()
+	testutil.ForceGosched()
 	data := n.data()
 	if len(data) != 1 {
 		t.Fatalf("len(proposeData) = %d, want 1", len(data))
@@ -705,7 +705,7 @@ func TestSyncTimeout(t *testing.T) {
 
 	// give time for goroutine in sync to cancel
 	// TODO: use fake clock
-	pkg.ForceGosched()
+	testutil.ForceGosched()
 	w := []action{action{name: "Propose blocked"}}
 	if g := n.Action(); !reflect.DeepEqual(g, w) {
 		t.Errorf("action = %v, want %v", g, w)
@@ -849,7 +849,7 @@ func TestRecvSnapshot(t *testing.T) {
 	s.start()
 	n.readyc <- raft.Ready{Snapshot: raftpb.Snapshot{Index: 1}}
 	// make goroutines move forward to receive snapshot
-	pkg.ForceGosched()
+	testutil.ForceGosched()
 	s.Stop()
 
 	wactions := []action{action{name: "Recovery"}}
@@ -877,12 +877,12 @@ func TestRecvSlowSnapshot(t *testing.T) {
 	s.start()
 	n.readyc <- raft.Ready{Snapshot: raftpb.Snapshot{Index: 1}}
 	// make goroutines move forward to receive snapshot
-	pkg.ForceGosched()
+	testutil.ForceGosched()
 	action := st.Action()
 
 	n.readyc <- raft.Ready{Snapshot: raftpb.Snapshot{Index: 1}}
 	// make goroutines move forward to receive snapshot
-	pkg.ForceGosched()
+	testutil.ForceGosched()
 	s.Stop()
 
 	if g := st.Action(); !reflect.DeepEqual(g, action) {
