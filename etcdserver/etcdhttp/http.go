@@ -45,7 +45,7 @@ func writeError(w http.ResponseWriter, err error) {
 	}
 	log.Println(err)
 	if e, ok := err.(*etcdErr.Error); ok {
-		e.Write(w)
+		e.WriteTo(w)
 	} else {
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 	}
