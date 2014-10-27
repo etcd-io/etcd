@@ -23,6 +23,8 @@ import (
 	"net/url"
 	"path"
 	"time"
+
+	"github.com/coreos/etcd/etcdserver/etcdhttp/httptypes"
 )
 
 var (
@@ -51,64 +53,14 @@ func NewMembersAPI(tr *http.Transport, ep string, to time.Duration) (MembersAPI,
 }
 
 type MembersAPI interface {
-	List() ([]Member, error)
-}
-
-type Member struct {
-	ID         uint64
-	Name       string
-	PeerURLs   []url.URL
-	ClientURLs []url.URL
-}
-
-func (m *Member) UnmarshalJSON(data []byte) (err error) {
-	rm := struct {
-		ID         uint64
-		Name       string
-		PeerURLs   []string
-		ClientURLs []string
-	}{}
-
-	if err := json.Unmarshal(data, &rm); err != nil {
-		return err
-	}
-
-	parseURLs := func(strs []string) ([]url.URL, error) {
-		urls := make([]url.URL, len(strs))
-		for i, s := range strs {
-			u, err := url.Parse(s)
-			if err != nil {
-				return nil, err
-			}
-			urls[i] = *u
-		}
-
-		return urls, nil
-	}
-
-	if m.PeerURLs, err = parseURLs(rm.PeerURLs); err != nil {
-		return err
-	}
-
-	if m.ClientURLs, err = parseURLs(rm.ClientURLs); err != nil {
-		return err
-	}
-
-	m.ID = rm.ID
-	m.Name = rm.Name
-
-	return nil
-}
-
-type membersCollection struct {
-	Members []Member
+	List() ([]httptypes.Member, error)
 }
 
 type httpMembersAPI struct {
 	client *httpClient
 }
 
-func (m *httpMembersAPI) List() ([]Member, error) {
+func (m *httpMembersAPI) List() ([]httptypes.Member, error) {
 	httpresp, body, err := m.client.doWithTimeout(&membersAPIActionList{})
 	if err != nil {
 		return nil, err
@@ -123,7 +75,7 @@ func (m *httpMembersAPI) List() ([]Member, error) {
 		return nil, err
 	}
 
-	var mCollection membersCollection
+	var mCollection httptypes.MemberCollection
 	if err = mResponse.unmarshalBody(&mCollection); err != nil {
 		return nil, err
 	}
