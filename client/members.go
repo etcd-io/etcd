@@ -80,7 +80,7 @@ func (m *httpMembersAPI) List() ([]httptypes.Member, error) {
 		return nil, err
 	}
 
-	return mCollection.Members, nil
+	return []httptypes.Member(mCollection), nil
 }
 
 type httpMembersAPIResponse struct {

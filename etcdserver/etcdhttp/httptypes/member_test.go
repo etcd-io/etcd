@@ -93,52 +93,65 @@ func TestMemberUnmarshal(t *testing.T) {
 }
 
 func TestMemberCollectionUnmarshal(t *testing.T) {
-	body := []byte(`{"members":[{"id":176869799018424574,"peerURLs":["http://127.0.0.1:7003"],"name":"node3","clientURLs":["http://127.0.0.1:4003"]},{"id":297577273835923749,"peerURLs":["http://127.0.0.1:2380","http://127.0.0.1:7001"],"name":"node1","clientURLs":["http://127.0.0.1:2379","http://127.0.0.1:4001"]},{"id":10666918107976480891,"peerURLs":["http://127.0.0.1:7002"],"name":"node2","clientURLs":["http://127.0.0.1:4002"]}]}`)
-
-	want := MemberCollection{
-		Members: []Member{
-			{
-				ID:   176869799018424574,
-				Name: "node3",
-				PeerURLs: []string{
-					"http://127.0.0.1:7003",
+	tests := []struct {
+		body []byte
+		want MemberCollection
+	}{
+		{
+			body: []byte(`{"members":[]}`),
+			want: MemberCollection([]Member{}),
+		},
+		{
+			body: []byte(`{"members":[{"id":176869799018424574,"peerURLs":["http://127.0.0.1:7003"],"name":"node3","clientURLs":["http://127.0.0.1:4003"]},{"id":297577273835923749,"peerURLs":["http://127.0.0.1:2380","http://127.0.0.1:7001"],"name":"node1","clientURLs":["http://127.0.0.1:2379","http://127.0.0.1:4001"]},{"id":10666918107976480891,"peerURLs":["http://127.0.0.1:7002"],"name":"node2","clientURLs":["http://127.0.0.1:4002"]}]}`),
+			want: MemberCollection(
+				[]Member{
+					{
+						ID:   176869799018424574,
+						Name: "node3",
+						PeerURLs: []string{
+							"http://127.0.0.1:7003",
+						},
+						ClientURLs: []string{
+							"http://127.0.0.1:4003",
+						},
+					},
+					{
+						ID:   297577273835923749,
+						Name: "node1",
+						PeerURLs: []string{
+							"http://127.0.0.1:2380",
+							"http://127.0.0.1:7001",
+						},
+						ClientURLs: []string{
+							"http://127.0.0.1:2379",
+							"http://127.0.0.1:4001",
+						},
+					},
+					{
+						ID:   10666918107976480891,
+						Name: "node2",
+						PeerURLs: []string{
+							"http://127.0.0.1:7002",
+						},
+						ClientURLs: []string{
+							"http://127.0.0.1:4002",
+						},
+					},
 				},
-				ClientURLs: []string{
-					"http://127.0.0.1:4003",
-				},
-			},
-			{
-				ID:   297577273835923749,
-				Name: "node1",
-				PeerURLs: []string{
-					"http://127.0.0.1:2380",
-					"http://127.0.0.1:7001",
-				},
-				ClientURLs: []string{
-					"http://127.0.0.1:2379",
-					"http://127.0.0.1:4001",
-				},
-			},
-			{
-				ID:   10666918107976480891,
-				Name: "node2",
-				PeerURLs: []string{
-					"http://127.0.0.1:7002",
-				},
-				ClientURLs: []string{
-					"http://127.0.0.1:4002",
-				},
-			},
+			),
 		},
 	}
 
-	got := MemberCollection{}
-	err := json.Unmarshal(body, &got)
-	if err != nil {
-		t.Fatalf("Unexpected error: %v", err)
-	}
+	for i, tt := range tests {
+		var got MemberCollection
+		err := json.Unmarshal(tt.body, &got)
+		if err != nil {
+			t.Errorf("#%d: unexpected error: %v", i, err)
+			continue
+		}
 
-	if !reflect.DeepEqual(want, got) {
-		t.Errorf("Incorrect output: want=%#v, got=%#v", want, got)
+		if !reflect.DeepEqual(tt.want, got) {
+			t.Errorf("#%d: incorrect output: want=%#v, got=%#v", i, tt.want, got)
+		}
 	}
 }

@@ -16,13 +16,43 @@
 
 package httptypes
 
+import (
+	"encoding/json"
+)
+
 type Member struct {
-	ID         uint64
-	Name       string
-	PeerURLs   []string
-	ClientURLs []string
+	ID         uint64   `json:"id"`
+	Name       string   `json:"name"`
+	PeerURLs   []string `json:"peerURLs"`
+	ClientURLs []string `json:"clientURLs"`
 }
 
-type MemberCollection struct {
-	Members []Member
+type MemberCollection []Member
+
+func (c *MemberCollection) MarshalJSON() ([]byte, error) {
+	d := struct {
+		Members []Member `json:"members"`
+	}{
+		Members: []Member(*c),
+	}
+
+	return json.Marshal(d)
+}
+
+func (c *MemberCollection) UnmarshalJSON(data []byte) error {
+	d := struct {
+		Members []Member
+	}{}
+
+	if err := json.Unmarshal(data, &d); err != nil {
+		return err
+	}
+
+	if d.Members == nil {
+		*c = make([]Member, 0)
+		return nil
+	}
+
+	*c = d.Members
+	return nil
 }

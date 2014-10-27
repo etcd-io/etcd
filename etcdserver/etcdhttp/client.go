@@ -33,6 +33,7 @@ import (
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/jonboulle/clockwork"
 	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/etcdserver"
+	"github.com/coreos/etcd/etcdserver/etcdhttp/httptypes"
 	"github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/store"
@@ -162,13 +163,9 @@ func (h *adminMembersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 			http.NotFound(w, r)
 			return
 		}
-		ms := struct {
-			Members []*etcdserver.Member `json:"members"`
-		}{
-			Members: h.clusterInfo.Members(),
-		}
+		mc := newMemberCollection(h.clusterInfo.Members())
 		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(ms); err != nil {
+		if err := json.NewEncoder(w).Encode(mc); err != nil {
 			log.Printf("etcdhttp: %v", err)
 		}
 	case "POST":
@@ -517,4 +514,24 @@ func getBool(form url.Values, key string) (b bool, err error) {
 		b, err = strconv.ParseBool(vals[0])
 	}
 	return
+}
+
+func newMemberCollection(ms []*etcdserver.Member) httptypes.MemberCollection {
+	c := httptypes.MemberCollection(make([]httptypes.Member, len(ms)))
+
+	for i, m := range ms {
+		tm := httptypes.Member{
+			ID:         m.ID,
+			Name:       m.Name,
+			PeerURLs:   make([]string, len(m.PeerURLs)),
+			ClientURLs: make([]string, len(m.ClientURLs)),
+		}
+
+		copy(m.PeerURLs, tm.PeerURLs)
+		copy(m.ClientURLs, tm.ClientURLs)
+
+		c[i] = tm
+	}
+
+	return c
 }
