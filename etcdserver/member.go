@@ -85,7 +85,7 @@ func memberStoreKey(id uint64) string {
 	return path.Join(storeMembersPrefix, idAsHex(id))
 }
 
-func parseMemberID(key string) uint64 {
+func mustParseMemberIDFromKey(key string) uint64 {
 	id, err := strconv.ParseUint(path.Base(key), 16, 64)
 	if err != nil {
 		log.Panicf("unexpected parse member id error: %v", err)

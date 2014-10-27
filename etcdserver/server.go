@@ -592,7 +592,7 @@ func (s *EtcdServer) applyRequest(r pb.Request) Response {
 			return f(s.store.CompareAndSwap(r.Path, r.PrevValue, r.PrevIndex, r.Val, expr))
 		default:
 			if storeMemberAttributeRegexp.MatchString(r.Path) {
-				id := parseMemberID(path.Dir(r.Path))
+				id := mustParseMemberIDFromKey(path.Dir(r.Path))
 				m := s.Cluster.Member(id)
 				if m == nil {
 					log.Fatalf("fetch member %x should never fail", id)
