@@ -18,7 +18,6 @@ package httptypes
 
 import (
 	"encoding/json"
-	"net/url"
 	"reflect"
 	"testing"
 )
@@ -32,18 +31,18 @@ func TestMemberUnmarshal(t *testing.T) {
 		// no URLs, just check ID & Name
 		{
 			body:       []byte(`{"id": 1, "name": "dungarees"}`),
-			wantMember: Member{ID: 1, Name: "dungarees", PeerURLs: []url.URL{}, ClientURLs: []url.URL{}},
+			wantMember: Member{ID: 1, Name: "dungarees", PeerURLs: nil, ClientURLs: nil},
 		},
 
 		// both client and peer URLs
 		{
 			body: []byte(`{"peerURLs": ["http://127.0.0.1:4001"], "clientURLs": ["http://127.0.0.1:4001"]}`),
 			wantMember: Member{
-				PeerURLs: []url.URL{
-					{Scheme: "http", Host: "127.0.0.1:4001"},
+				PeerURLs: []string{
+					"http://127.0.0.1:4001",
 				},
-				ClientURLs: []url.URL{
-					{Scheme: "http", Host: "127.0.0.1:4001"},
+				ClientURLs: []string{
+					"http://127.0.0.1:4001",
 				},
 			},
 		},
@@ -52,11 +51,11 @@ func TestMemberUnmarshal(t *testing.T) {
 		{
 			body: []byte(`{"peerURLs": ["http://127.0.0.1:4001", "https://example.com"]}`),
 			wantMember: Member{
-				PeerURLs: []url.URL{
-					{Scheme: "http", Host: "127.0.0.1:4001"},
-					{Scheme: "https", Host: "example.com"},
+				PeerURLs: []string{
+					"http://127.0.0.1:4001",
+					"https://example.com",
 				},
-				ClientURLs: []url.URL{},
+				ClientURLs: nil,
 			},
 		},
 
@@ -64,10 +63,10 @@ func TestMemberUnmarshal(t *testing.T) {
 		{
 			body: []byte(`{"clientURLs": ["http://127.0.0.1:4001", "https://example.com"]}`),
 			wantMember: Member{
-				PeerURLs: []url.URL{},
-				ClientURLs: []url.URL{
-					{Scheme: "http", Host: "127.0.0.1:4001"},
-					{Scheme: "https", Host: "example.com"},
+				PeerURLs: nil,
+				ClientURLs: []string{
+					"http://127.0.0.1:4001",
+					"https://example.com",
 				},
 			},
 		},
@@ -75,12 +74,6 @@ func TestMemberUnmarshal(t *testing.T) {
 		// invalid JSON
 		{
 			body:      []byte(`{"peerU`),
-			wantError: true,
-		},
-
-		// valid JSON, invalid URL
-		{
-			body:      []byte(`{"peerURLs": [":"]}`),
 			wantError: true,
 		},
 	}
@@ -107,33 +100,33 @@ func TestMemberCollectionUnmarshal(t *testing.T) {
 			{
 				ID:   176869799018424574,
 				Name: "node3",
-				PeerURLs: []url.URL{
-					{Scheme: "http", Host: "127.0.0.1:7003"},
+				PeerURLs: []string{
+					"http://127.0.0.1:7003",
 				},
-				ClientURLs: []url.URL{
-					{Scheme: "http", Host: "127.0.0.1:4003"},
+				ClientURLs: []string{
+					"http://127.0.0.1:4003",
 				},
 			},
 			{
 				ID:   297577273835923749,
 				Name: "node1",
-				PeerURLs: []url.URL{
-					{Scheme: "http", Host: "127.0.0.1:2380"},
-					{Scheme: "http", Host: "127.0.0.1:7001"},
+				PeerURLs: []string{
+					"http://127.0.0.1:2380",
+					"http://127.0.0.1:7001",
 				},
-				ClientURLs: []url.URL{
-					{Scheme: "http", Host: "127.0.0.1:2379"},
-					{Scheme: "http", Host: "127.0.0.1:4001"},
+				ClientURLs: []string{
+					"http://127.0.0.1:2379",
+					"http://127.0.0.1:4001",
 				},
 			},
 			{
 				ID:   10666918107976480891,
 				Name: "node2",
-				PeerURLs: []url.URL{
-					{Scheme: "http", Host: "127.0.0.1:7002"},
+				PeerURLs: []string{
+					"http://127.0.0.1:7002",
 				},
-				ClientURLs: []url.URL{
-					{Scheme: "http", Host: "127.0.0.1:4002"},
+				ClientURLs: []string{
+					"http://127.0.0.1:4002",
 				},
 			},
 		},
