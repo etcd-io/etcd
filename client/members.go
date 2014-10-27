@@ -68,15 +68,14 @@ func (m *httpMembersAPI) List() ([]httptypes.Member, error) {
 
 	mResponse := httpMembersAPIResponse{
 		code: httpresp.StatusCode,
-		body: body,
 	}
 
-	if err = mResponse.err(); err != nil {
+	if err := mResponse.err(); err != nil {
 		return nil, err
 	}
 
 	var mCollection httptypes.MemberCollection
-	if err = mResponse.unmarshalBody(&mCollection); err != nil {
+	if err := json.Unmarshal(body, &mCollection); err != nil {
 		return nil, err
 	}
 
@@ -85,7 +84,6 @@ func (m *httpMembersAPI) List() ([]httptypes.Member, error) {
 
 type httpMembersAPIResponse struct {
 	code int
-	body []byte
 }
 
 func (r *httpMembersAPIResponse) err() (err error) {
@@ -93,10 +91,6 @@ func (r *httpMembersAPIResponse) err() (err error) {
 		err = fmt.Errorf("unrecognized status code %d", r.code)
 	}
 	return
-}
-
-func (r *httpMembersAPIResponse) unmarshalBody(dst interface{}) (err error) {
-	return json.Unmarshal(r.body, dst)
 }
 
 type membersAPIActionList struct{}
