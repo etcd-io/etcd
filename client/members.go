@@ -23,6 +23,8 @@ import (
 	"net/url"
 	"path"
 	"time"
+
+	"github.com/coreos/etcd/etcdserver/etcdhttp/httptypes"
 )
 
 var (
@@ -51,64 +53,14 @@ func NewMembersAPI(tr *http.Transport, ep string, to time.Duration) (MembersAPI,
 }
 
 type MembersAPI interface {
-	List() ([]Member, error)
-}
-
-type Member struct {
-	ID         uint64
-	Name       string
-	PeerURLs   []url.URL
-	ClientURLs []url.URL
-}
-
-func (m *Member) UnmarshalJSON(data []byte) (err error) {
-	rm := struct {
-		ID         uint64
-		Name       string
-		PeerURLs   []string
-		ClientURLs []string
-	}{}
-
-	if err := json.Unmarshal(data, &rm); err != nil {
-		return err
-	}
-
-	parseURLs := func(strs []string) ([]url.URL, error) {
-		urls := make([]url.URL, len(strs))
-		for i, s := range strs {
-			u, err := url.Parse(s)
-			if err != nil {
-				return nil, err
-			}
-			urls[i] = *u
-		}
-
-		return urls, nil
-	}
-
-	if m.PeerURLs, err = parseURLs(rm.PeerURLs); err != nil {
-		return err
-	}
-
-	if m.ClientURLs, err = parseURLs(rm.ClientURLs); err != nil {
-		return err
-	}
-
-	m.ID = rm.ID
-	m.Name = rm.Name
-
-	return nil
-}
-
-type membersCollection struct {
-	Members []Member
+	List() ([]httptypes.Member, error)
 }
 
 type httpMembersAPI struct {
 	client *httpClient
 }
 
-func (m *httpMembersAPI) List() ([]Member, error) {
+func (m *httpMembersAPI) List() ([]httptypes.Member, error) {
 	httpresp, body, err := m.client.doWithTimeout(&membersAPIActionList{})
 	if err != nil {
 		return nil, err
@@ -116,24 +68,22 @@ func (m *httpMembersAPI) List() ([]Member, error) {
 
 	mResponse := httpMembersAPIResponse{
 		code: httpresp.StatusCode,
-		body: body,
 	}
 
-	if err = mResponse.err(); err != nil {
+	if err := mResponse.err(); err != nil {
 		return nil, err
 	}
 
-	var mCollection membersCollection
-	if err = mResponse.unmarshalBody(&mCollection); err != nil {
+	var mCollection httptypes.MemberCollection
+	if err := json.Unmarshal(body, &mCollection); err != nil {
 		return nil, err
 	}
 
-	return mCollection.Members, nil
+	return []httptypes.Member(mCollection), nil
 }
 
 type httpMembersAPIResponse struct {
 	code int
-	body []byte
 }
 
 func (r *httpMembersAPIResponse) err() (err error) {
@@ -141,10 +91,6 @@ func (r *httpMembersAPIResponse) err() (err error) {
 		err = fmt.Errorf("unrecognized status code %d", r.code)
 	}
 	return
-}
-
-func (r *httpMembersAPIResponse) unmarshalBody(dst interface{}) (err error) {
-	return json.Unmarshal(r.body, dst)
 }
 
 type membersAPIActionList struct{}

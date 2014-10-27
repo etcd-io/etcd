@@ -561,17 +561,11 @@ func TestServeAdminMembers(t *testing.T) {
 		clusterInfo: cluster,
 	}
 
-	msb, err := json.Marshal(
-		struct {
-			Members []etcdserver.Member `json:"members"`
-		}{
-			Members: []etcdserver.Member{memb1, memb2},
-		},
-	)
+	mcb, err := json.Marshal(newMemberCollection([]*etcdserver.Member{&memb1, &memb2}))
 	if err != nil {
 		t.Fatal(err)
 	}
-	wms := string(msb) + "\n"
+	wmc := string(mcb) + "\n"
 
 	tests := []struct {
 		path  string
@@ -579,7 +573,7 @@ func TestServeAdminMembers(t *testing.T) {
 		wct   string
 		wbody string
 	}{
-		{adminMembersPrefix, http.StatusOK, "application/json", wms},
+		{adminMembersPrefix, http.StatusOK, "application/json", wmc},
 		{path.Join(adminMembersPrefix, "100"), http.StatusNotFound, "text/plain; charset=utf-8", "404 page not found\n"},
 		{path.Join(adminMembersPrefix, "foobar"), http.StatusNotFound, "text/plain; charset=utf-8", "404 page not found\n"},
 	}

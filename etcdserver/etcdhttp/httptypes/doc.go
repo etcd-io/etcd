@@ -14,26 +14,8 @@
    limitations under the License.
 */
 
-package client
+/*
+Package httptypes defines how etcd's HTTP API entities are serialized to and deserialized from JSON.
+*/
 
-import (
-	"net/http"
-	"net/url"
-	"testing"
-)
-
-func TestMembersAPIListAction(t *testing.T) {
-	ep := url.URL{Scheme: "http", Host: "example.com/v2/admin/members"}
-	wantURL := &url.URL{
-		Scheme: "http",
-		Host:   "example.com",
-		Path:   "/v2/admin/members",
-	}
-
-	act := &membersAPIActionList{}
-	got := *act.httpRequest(ep)
-	err := assertResponse(got, wantURL, http.Header{}, nil)
-	if err != nil {
-		t.Errorf(err.Error())
-	}
-}
+package httptypes
