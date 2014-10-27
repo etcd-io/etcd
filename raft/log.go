@@ -79,7 +79,19 @@ func (l *raftLog) append(after uint64, ents ...pb.Entry) uint64 {
 	return l.lastIndex()
 }
 
+// findConflict finds the index of the conflict.
+// It returns the first pair of conflicting entries between the existing
+// entries and the given entries, if there are any.
+// If there is no conflicting entries, and the existing entries contains
+// all the given entries, zero will be returned.
+// If there is no conflicting entries, but the given entries contains new
+// entries, the index of the first new entry will be returned.
+// An entry is considered to be conflicting if it has the same index but
+// a different term.
+// The first entry MUST have an index equal to the argument 'from'.
+// The index of the given entries MUST be continuously increasing.
 func (l *raftLog) findConflict(from uint64, ents []pb.Entry) uint64 {
+	// TODO(xiangli): validate the index of ents
 	for i, ne := range ents {
 		if oe := l.at(from + uint64(i)); oe == nil || oe.Term != ne.Term {
 			return from + uint64(i)
@@ -117,9 +129,9 @@ func (l *raftLog) resetNextEnts() {
 	}
 }
 
-func (l *raftLog) lastIndex() uint64 {
-	return uint64(len(l.ents)) - 1 + l.offset
-}
+func (l *raftLog) lastIndex() uint64 { return uint64(len(l.ents)) - 1 + l.offset }
+
+func (l *raftLog) lastTerm() uint64 { return l.term(l.lastIndex()) }
 
 func (l *raftLog) term(i uint64) uint64 {
 	if e := l.at(i); e != nil {
@@ -138,9 +150,14 @@ func (l *raftLog) entries(i uint64) []pb.Entry {
 	return l.slice(i, l.lastIndex()+1)
 }
 
-func (l *raftLog) isUpToDate(i, term uint64) bool {
-	e := l.at(l.lastIndex())
-	return term > e.Term || (term == e.Term && i >= l.lastIndex())
+// isUpToDate determines if the given (lastIndex,term) log is more up-to-date
+// by comparing the index and term of the last entries in the existing logs.
+// If the logs have last entries with different terms, then the log with the
+// later term is more up-to-date. If the logs end with the same term, then
+// whichever log has the larger lastIndex is more up-to-date. If the logs are
+// the same, the given log is up-to-date.
+func (l *raftLog) isUpToDate(lasti, term uint64) bool {
+	return term > l.lastTerm() || (term == l.lastTerm() && lasti >= l.lastIndex())
 }
 
 func (l *raftLog) matchTerm(i, term uint64) bool {

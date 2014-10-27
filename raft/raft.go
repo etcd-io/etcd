@@ -349,8 +349,7 @@ func (r *raft) campaign() {
 		if i == r.id {
 			continue
 		}
-		lasti := r.raftLog.lastIndex()
-		r.send(pb.Message{To: i, Type: pb.MsgVote, Index: lasti, LogTerm: r.raftLog.term(lasti)})
+		r.send(pb.Message{To: i, Type: pb.MsgVote, Index: r.raftLog.lastIndex(), LogTerm: r.raftLog.lastTerm()})
 	}
 }
 
