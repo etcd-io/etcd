@@ -614,12 +614,24 @@ func TestDoProposalCancelled(t *testing.T) {
 	if len(gaction) != 0 {
 		t.Errorf("len(action) = %v, want 0", len(gaction))
 	}
-	if err != context.Canceled {
-		t.Fatalf("err = %v, want %v", err, context.Canceled)
+	if err != ErrCanceled {
+		t.Fatalf("err = %v, want %v", err, ErrCanceled)
 	}
 	w := []action{action{name: "Register1"}, action{name: "Trigger1"}}
 	if !reflect.DeepEqual(wait.action, w) {
 		t.Errorf("wait.action = %+v, want %+v", wait.action, w)
+	}
+}
+
+func TestDoProposalTimeout(t *testing.T) {
+	ctx, _ := context.WithTimeout(context.Background(), 0)
+	srv := &EtcdServer{
+		node: &nodeRecorder{},
+		w:    &waitRecorder{},
+	}
+	_, err := srv.Do(ctx, pb.Request{Method: "PUT", ID: 1})
+	if err != ErrTimeout {
+		t.Fatalf("err = %v, want %v", err, ErrTimeout)
 	}
 }
 

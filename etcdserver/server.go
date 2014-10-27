@@ -64,6 +64,8 @@ var (
 	ErrIDRemoved     = errors.New("etcdserver: ID removed")
 	ErrIDExists      = errors.New("etcdserver: ID exists")
 	ErrIDNotFound    = errors.New("etcdserver: ID not found")
+	ErrCanceled      = errors.New("etcdserver: request cancelled")
+	ErrTimeout       = errors.New("etcdserver: request timed out")
 
 	storeMembersPrefix        = path.Join(StoreAdminPrefix, "members")
 	storeRemovedMembersPrefix = path.Join(StoreAdminPrefix, "removed_members")
@@ -383,7 +385,7 @@ func (s *EtcdServer) Do(ctx context.Context, r pb.Request) (Response, error) {
 			return resp, resp.err
 		case <-ctx.Done():
 			s.w.Trigger(r.ID, nil) // GC wait
-			return Response{}, ctx.Err()
+			return Response{}, parseCtxErr(ctx.Err())
 		case <-s.done:
 			return Response{}, ErrStopped
 		}
@@ -477,7 +479,7 @@ func (s *EtcdServer) configure(ctx context.Context, cc raftpb.ConfChange) error 
 		return nil
 	case <-ctx.Done():
 		s.w.Trigger(cc.ID, nil) // GC wait
-		return ctx.Err()
+		return parseCtxErr(ctx.Err())
 	case <-s.done:
 		return ErrStopped
 	}
@@ -750,6 +752,17 @@ func GenID() (n uint64) {
 		n = uint64(rand.Int63())
 	}
 	return
+}
+
+func parseCtxErr(err error) error {
+	switch err {
+	case context.Canceled:
+		return ErrCanceled
+	case context.DeadlineExceeded:
+		return ErrTimeout
+	default:
+		return err
+	}
 }
 
 func getBool(v *bool) (vv bool, set bool) {
