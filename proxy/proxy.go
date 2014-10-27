@@ -26,11 +26,20 @@ import (
 // backends.
 type GetProxyURLs func() []string
 
+// NewHandler creates a new HTTP handler, listening on the given transport,
+// which will proxy requests to an etcd cluster.
+// The handler will periodically update its view of the cluster.
 func NewHandler(t *http.Transport, urlsFunc GetProxyURLs) http.Handler {
 	return &reverseProxy{
 		director:  newDirector(urlsFunc),
 		transport: t,
 	}
+}
+
+// NewReadonlyHandler wraps the given HTTP handler to allow only GET requests
+func NewReadonlyHandler(hdlr http.Handler) http.Handler {
+	readonly := readonlyHandlerFunc(hdlr)
+	return http.HandlerFunc(readonly)
 }
 
 func readonlyHandlerFunc(next http.Handler) func(http.ResponseWriter, *http.Request) {
@@ -42,9 +51,4 @@ func readonlyHandlerFunc(next http.Handler) func(http.ResponseWriter, *http.Requ
 
 		next.ServeHTTP(w, req)
 	}
-}
-
-func NewReadonlyHandler(hdlr http.Handler) http.Handler {
-	readonly := readonlyHandlerFunc(hdlr)
-	return http.HandlerFunc(readonly)
 }
