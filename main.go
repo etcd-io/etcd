@@ -27,6 +27,7 @@ import (
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/etcdhttp"
 	"github.com/coreos/etcd/pkg/cors"
+	"github.com/coreos/etcd/pkg/fileutil"
 	"github.com/coreos/etcd/pkg/flags"
 	"github.com/coreos/etcd/pkg/transport"
 	"github.com/coreos/etcd/pkg/types"
@@ -151,6 +152,9 @@ func startEtcd() {
 	}
 	if err := os.MkdirAll(*dir, privateDirMode); err != nil {
 		log.Fatalf("etcd: cannot create data directory: %v", err)
+	}
+	if err := fileutil.IsDirWriteable(*dir); err != nil {
+		log.Fatalf("etcd: cannot write to data directory: %v", err)
 	}
 
 	pt, err := transport.NewTransport(peerTLSInfo)
