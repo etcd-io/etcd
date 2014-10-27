@@ -1,0 +1,12 @@
+#!/usr/bin/bash
+tar cv --files-from /dev/null | docker import - scratch
+
+cat <<DF > Dockerfile
+FROM scratch
+ADD etcd /
+ADD etcdctl /
+EXPOSE 4001 7001 2379 2380
+CMD ["/etcd"]
+DF
+
+docker build .
