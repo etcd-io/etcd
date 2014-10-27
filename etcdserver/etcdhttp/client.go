@@ -50,9 +50,10 @@ const (
 // NewClientHandler generates a muxed http.Handler with the given parameters to serve etcd client requests.
 func NewClientHandler(server *etcdserver.EtcdServer) http.Handler {
 	kh := &keysHandler{
-		server:  server,
-		timer:   server,
-		timeout: defaultServerTimeout,
+		server:      server,
+		clusterInfo: server.Cluster,
+		timer:       server,
+		timeout:     defaultServerTimeout,
 	}
 
 	sh := &statsHandler{
@@ -83,15 +84,18 @@ func NewClientHandler(server *etcdserver.EtcdServer) http.Handler {
 }
 
 type keysHandler struct {
-	server  etcdserver.Server
-	timer   etcdserver.RaftTimer
-	timeout time.Duration
+	server      etcdserver.Server
+	clusterInfo etcdserver.ClusterInfo
+	timer       etcdserver.RaftTimer
+	timeout     time.Duration
 }
 
 func (h *keysHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r.Method, "GET", "PUT", "POST", "DELETE") {
 		return
 	}
+	cid := strconv.FormatUint(h.clusterInfo.ID(), 16)
+	w.Header().Set("X-Etcd-Cluster-ID", cid)
 
 	ctx, cancel := context.WithTimeout(context.Background(), h.timeout)
 	defer cancel()
@@ -146,6 +150,9 @@ func (h *adminMembersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	if !allowMethod(w, r.Method, "GET", "POST", "DELETE") {
 		return
 	}
+	cid := strconv.FormatUint(h.clusterInfo.ID(), 16)
+	w.Header().Set("X-Etcd-Cluster-ID", cid)
+
 	ctx, cancel := context.WithTimeout(context.Background(), defaultServerTimeout)
 	defer cancel()
 
