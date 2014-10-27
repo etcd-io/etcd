@@ -27,6 +27,7 @@ import (
 	"net/url"
 	"path"
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -551,6 +552,7 @@ func TestServeAdminMembers(t *testing.T) {
 	memb1 := etcdserver.Member{ID: 1, Attributes: etcdserver.Attributes{ClientURLs: []string{"http://localhost:8080"}}}
 	memb2 := etcdserver.Member{ID: 2, Attributes: etcdserver.Attributes{ClientURLs: []string{"http://localhost:8081"}}}
 	cluster := &fakeCluster{
+		id:      1,
 		members: map[uint64]*etcdserver.Member{1: &memb1, 2: &memb2},
 	}
 	h := &adminMembersHandler{
@@ -596,6 +598,11 @@ func TestServeAdminMembers(t *testing.T) {
 		if gct := rw.Header().Get("Content-Type"); gct != tt.wct {
 			t.Errorf("#%d: content-type = %s, want %s", i, gct, tt.wct)
 		}
+		gcid := rw.Header().Get("X-Etcd-Cluster-ID")
+		wcid := strconv.FormatUint(cluster.ID(), 16)
+		if gcid != wcid {
+			t.Errorf("#%d: cid = %s, want %s", i, gcid, wcid)
+		}
 		if rw.Body.String() != tt.wbody {
 			t.Errorf("#%d: body = %q, want %q", i, rw.Body.String(), tt.wbody)
 		}
@@ -617,8 +624,9 @@ func TestServeAdminMembersPut(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	s := &serverRecorder{}
 	h := &adminMembersHandler{
-		server: s,
-		clock:  clockwork.NewFakeClock(),
+		server:      s,
+		clock:       clockwork.NewFakeClock(),
+		clusterInfo: &fakeCluster{id: 1},
 	}
 	rw := httptest.NewRecorder()
 
@@ -641,6 +649,11 @@ func TestServeAdminMembersPut(t *testing.T) {
 	if gct := rw.Header().Get("Content-Type"); gct != wct {
 		t.Errorf("content-type = %s, want %s", gct, wct)
 	}
+	gcid := rw.Header().Get("X-Etcd-Cluster-ID")
+	wcid := strconv.FormatUint(h.clusterInfo.ID(), 16)
+	if gcid != wcid {
+		t.Errorf("cid = %s, want %s", gcid, wcid)
+	}
 	g := rw.Body.String()
 	w := string(wb) + "\n"
 	if g != w {
@@ -659,7 +672,8 @@ func TestServeAdminMembersDelete(t *testing.T) {
 	}
 	s := &serverRecorder{}
 	h := &adminMembersHandler{
-		server: s,
+		server:      s,
+		clusterInfo: &fakeCluster{id: 1},
 	}
 	rw := httptest.NewRecorder()
 
@@ -668,6 +682,11 @@ func TestServeAdminMembersDelete(t *testing.T) {
 	wcode := http.StatusNoContent
 	if rw.Code != wcode {
 		t.Errorf("code=%d, want %d", rw.Code, wcode)
+	}
+	gcid := rw.Header().Get("X-Etcd-Cluster-ID")
+	wcid := strconv.FormatUint(h.clusterInfo.ID(), 16)
+	if gcid != wcid {
+		t.Errorf("cid = %s, want %s", gcid, wcid)
 	}
 	g := rw.Body.String()
 	if g != "" {
@@ -768,13 +787,21 @@ func TestServeAdminMembersFail(t *testing.T) {
 	}
 	for i, tt := range tests {
 		h := &adminMembersHandler{
-			server: tt.server,
-			clock:  clockwork.NewFakeClock(),
+			server:      tt.server,
+			clusterInfo: &fakeCluster{id: 1},
+			clock:       clockwork.NewFakeClock(),
 		}
 		rw := httptest.NewRecorder()
 		h.ServeHTTP(rw, tt.req)
 		if rw.Code != tt.wcode {
 			t.Errorf("#%d: code=%d, want %d", i, rw.Code, tt.wcode)
+		}
+		if rw.Code != http.StatusMethodNotAllowed {
+			gcid := rw.Header().Get("X-Etcd-Cluster-ID")
+			wcid := strconv.FormatUint(h.clusterInfo.ID(), 16)
+			if gcid != wcid {
+				t.Errorf("#%d: cid = %s, want %s", i, gcid, wcid)
+			}
 		}
 	}
 }
@@ -1101,13 +1128,21 @@ func TestBadServeKeys(t *testing.T) {
 	}
 	for i, tt := range testBadCases {
 		h := &keysHandler{
-			timeout: 0, // context times out immediately
-			server:  tt.server,
+			timeout:     0, // context times out immediately
+			server:      tt.server,
+			clusterInfo: &fakeCluster{id: 1},
 		}
 		rw := httptest.NewRecorder()
 		h.ServeHTTP(rw, tt.req)
 		if rw.Code != tt.wcode {
 			t.Errorf("#%d: got code=%d, want %d", i, rw.Code, tt.wcode)
+		}
+		if rw.Code != http.StatusMethodNotAllowed {
+			gcid := rw.Header().Get("X-Etcd-Cluster-ID")
+			wcid := strconv.FormatUint(h.clusterInfo.ID(), 16)
+			if gcid != wcid {
+				t.Errorf("#%d: cid = %s, want %s", i, gcid, wcid)
+			}
 		}
 		if g := strings.TrimSuffix(rw.Body.String(), "\n"); g != tt.wbody {
 			t.Errorf("#%d: body = %s, want %s", i, g, tt.wbody)
@@ -1126,9 +1161,10 @@ func TestServeKeysEvent(t *testing.T) {
 		},
 	}
 	h := &keysHandler{
-		timeout: time.Hour,
-		server:  server,
-		timer:   &dummyRaftTimer{},
+		timeout:     time.Hour,
+		server:      server,
+		clusterInfo: &fakeCluster{id: 1},
+		timer:       &dummyRaftTimer{},
 	}
 	rw := httptest.NewRecorder()
 
@@ -1145,6 +1181,11 @@ func TestServeKeysEvent(t *testing.T) {
 
 	if rw.Code != wcode {
 		t.Errorf("got code=%d, want %d", rw.Code, wcode)
+	}
+	gcid := rw.Header().Get("X-Etcd-Cluster-ID")
+	wcid := strconv.FormatUint(h.clusterInfo.ID(), 16)
+	if gcid != wcid {
+		t.Errorf("cid = %s, want %s", gcid, wcid)
 	}
 	g := rw.Body.String()
 	if g != wbody {
@@ -1164,9 +1205,10 @@ func TestServeKeysWatch(t *testing.T) {
 		},
 	}
 	h := &keysHandler{
-		timeout: time.Hour,
-		server:  server,
-		timer:   &dummyRaftTimer{},
+		timeout:     time.Hour,
+		server:      server,
+		clusterInfo: &fakeCluster{id: 1},
+		timer:       &dummyRaftTimer{},
 	}
 	go func() {
 		ec <- &store.Event{
@@ -1189,6 +1231,11 @@ func TestServeKeysWatch(t *testing.T) {
 
 	if rw.Code != wcode {
 		t.Errorf("got code=%d, want %d", rw.Code, wcode)
+	}
+	gcid := rw.Header().Get("X-Etcd-Cluster-ID")
+	wcid := strconv.FormatUint(h.clusterInfo.ID(), 16)
+	if gcid != wcid {
+		t.Errorf("cid = %s, want %s", gcid, wcid)
 	}
 	g := rw.Body.String()
 	if g != wbody {
