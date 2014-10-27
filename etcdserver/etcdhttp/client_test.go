@@ -779,6 +779,16 @@ func TestServeAdminMembersFail(t *testing.T) {
 
 			http.StatusInternalServerError,
 		},
+		{
+			// etcdserver.RemoveMember error
+			&http.Request{
+				URL:    mustNewURL(t, adminMembersPrefix),
+				Method: "DELETE",
+			},
+			nil,
+
+			http.StatusMethodNotAllowed,
+		},
 	}
 	for i, tt := range tests {
 		h := &adminMembersHandler{

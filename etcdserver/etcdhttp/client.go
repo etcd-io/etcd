@@ -205,6 +205,10 @@ func (h *adminMembersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		}
 	case "DELETE":
 		idStr := trimPrefix(r.URL.Path, adminMembersPrefix)
+		if idStr == "" {
+			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+			return
+		}
 		id, err := strconv.ParseUint(idStr, 16, 64)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
