@@ -115,6 +115,7 @@ type raft struct {
 	elapsed          int // number of ticks since the last msg
 	heartbeatTimeout int
 	electionTimeout  int
+	rand             *rand.Rand
 	tick             func()
 	step             stepFunc
 }
@@ -123,7 +124,6 @@ func newRaft(id uint64, peers []uint64, election, heartbeat int) *raft {
 	if id == None {
 		panic("cannot use none id")
 	}
-	rand.Seed(int64(id))
 	r := &raft{
 		id:               id,
 		lead:             None,
@@ -132,6 +132,7 @@ func newRaft(id uint64, peers []uint64, election, heartbeat int) *raft {
 		electionTimeout:  election,
 		heartbeatTimeout: heartbeat,
 	}
+	r.rand = rand.New(rand.NewSource(int64(id)))
 	for _, p := range peers {
 		r.prs[p] = &progress{}
 	}
@@ -575,5 +576,5 @@ func (r *raft) isElectionTimeout() bool {
 	if d < 0 {
 		return false
 	}
-	return d > rand.Int()%r.electionTimeout
+	return d > r.rand.Int()%r.electionTimeout
 }
