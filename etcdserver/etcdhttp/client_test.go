@@ -575,8 +575,8 @@ func TestServeAdminMembers(t *testing.T) {
 	}{
 		{adminMembersPrefix, http.StatusOK, "application/json", wmc},
 		{adminMembersPrefix + "/", http.StatusOK, "application/json", wmc},
-		{path.Join(adminMembersPrefix, "100"), http.StatusNotFound, "text/plain; charset=utf-8", "404 page not found\n"},
-		{path.Join(adminMembersPrefix, "foobar"), http.StatusNotFound, "text/plain; charset=utf-8", "404 page not found\n"},
+		{path.Join(adminMembersPrefix, "100"), http.StatusNotFound, "application/json", `{"message":"Not found"}`},
+		{path.Join(adminMembersPrefix, "foobar"), http.StatusNotFound, "application/json", `{"message":"Not found"}`},
 	}
 
 	for i, tt := range tests {
