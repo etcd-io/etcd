@@ -14,7 +14,7 @@
    limitations under the License.
 */
 
-package pkg
+package flags
 
 import (
 	"flag"
@@ -23,7 +23,6 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/coreos/etcd/pkg/flags"
 	"github.com/coreos/etcd/pkg/transport"
 )
 
@@ -133,8 +132,8 @@ func TestURLsFromFlags(t *testing.T) {
 
 	for i, tt := range tests {
 		fs := flag.NewFlagSet("test", flag.PanicOnError)
-		fs.Var(flags.NewURLsValue("http://127.0.0.1:2379"), "urls", "")
-		fs.Var(&flags.IPAddressPort{}, "addr", "")
+		fs.Var(NewURLsValue("http://127.0.0.1:2379"), "urls", "")
+		fs.Var(&IPAddressPort{}, "addr", "")
 
 		if err := fs.Parse(tt.args); err != nil {
 			t.Errorf("#%d: failed to parse flags: %v", i, err)

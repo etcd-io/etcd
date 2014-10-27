@@ -26,8 +26,8 @@ import (
 
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/etcdhttp"
-	"github.com/coreos/etcd/pkg"
-	flagtypes "github.com/coreos/etcd/pkg/flags"
+	"github.com/coreos/etcd/pkg/cors"
+	"github.com/coreos/etcd/pkg/flags"
 	"github.com/coreos/etcd/pkg/transport"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/proxy"
@@ -51,8 +51,8 @@ var (
 	initialClusterName = fs.String("initial-cluster-name", "etcd", "Initial name for the etcd cluster during bootstrap")
 	clusterState       = new(etcdserver.ClusterState)
 
-	cors      = &pkg.CORSInfo{}
-	proxyFlag = new(flagtypes.Proxy)
+	corsInfo  = &cors.CORSInfo{}
+	proxyFlag = new(flags.Proxy)
 
 	clientTLSInfo = transport.TLSInfo{}
 	peerTLSInfo   = transport.TLSInfo{}
@@ -78,15 +78,15 @@ func init() {
 	fs.Var(clusterState, "initial-cluster-state", "Initial cluster configuration for bootstrapping")
 	clusterState.Set(etcdserver.ClusterStateValueNew)
 
-	fs.Var(flagtypes.NewURLsValue("http://localhost:2380,http://localhost:7001"), "initial-advertise-peer-urls", "List of this member's peer URLs to advertise to the rest of the cluster")
-	fs.Var(flagtypes.NewURLsValue("http://localhost:2379,http://localhost:4001"), "advertise-client-urls", "List of this member's client URLs to advertise to the rest of the cluster")
-	fs.Var(flagtypes.NewURLsValue("http://localhost:2380,http://localhost:7001"), "listen-peer-urls", "List of URLs to listen on for peer traffic")
-	fs.Var(flagtypes.NewURLsValue("http://localhost:2379,http://localhost:4001"), "listen-client-urls", "List of URLs to listen on for client traffic")
+	fs.Var(flags.NewURLsValue("http://localhost:2380,http://localhost:7001"), "initial-advertise-peer-urls", "List of this member's peer URLs to advertise to the rest of the cluster")
+	fs.Var(flags.NewURLsValue("http://localhost:2379,http://localhost:4001"), "advertise-client-urls", "List of this member's client URLs to advertise to the rest of the cluster")
+	fs.Var(flags.NewURLsValue("http://localhost:2380,http://localhost:7001"), "listen-peer-urls", "List of URLs to listen on for peer traffic")
+	fs.Var(flags.NewURLsValue("http://localhost:2379,http://localhost:4001"), "listen-client-urls", "List of URLs to listen on for client traffic")
 
-	fs.Var(cors, "cors", "Comma-separated white list of origins for CORS (cross-origin resource sharing).")
+	fs.Var(corsInfo, "cors", "Comma-separated white list of origins for CORS (cross-origin resource sharing).")
 
-	fs.Var(proxyFlag, "proxy", fmt.Sprintf("Valid values include %s", strings.Join(flagtypes.ProxyValues, ", ")))
-	proxyFlag.Set(flagtypes.ProxyValueOff)
+	fs.Var(proxyFlag, "proxy", fmt.Sprintf("Valid values include %s", strings.Join(flags.ProxyValues, ", ")))
+	proxyFlag.Set(flags.ProxyValueOff)
 
 	fs.StringVar(&clientTLSInfo.CAFile, "ca-file", "", "Path to the client server TLS CA file.")
 	fs.StringVar(&clientTLSInfo.CertFile, "cert-file", "", "Path to the client server TLS cert file.")
@@ -97,21 +97,21 @@ func init() {
 	fs.StringVar(&peerTLSInfo.KeyFile, "peer-key-file", "", "Path to the peer server TLS key file.")
 
 	// backwards-compatibility with v0.4.6
-	fs.Var(&flagtypes.IPAddressPort{}, "addr", "DEPRECATED: Use -advertise-client-urls instead.")
-	fs.Var(&flagtypes.IPAddressPort{}, "bind-addr", "DEPRECATED: Use -listen-client-urls instead.")
-	fs.Var(&flagtypes.IPAddressPort{}, "peer-addr", "DEPRECATED: Use -initial-advertise-peer-urls instead.")
-	fs.Var(&flagtypes.IPAddressPort{}, "peer-bind-addr", "DEPRECATED: Use -listen-peer-urls instead.")
+	fs.Var(&flags.IPAddressPort{}, "addr", "DEPRECATED: Use -advertise-client-urls instead.")
+	fs.Var(&flags.IPAddressPort{}, "bind-addr", "DEPRECATED: Use -listen-client-urls instead.")
+	fs.Var(&flags.IPAddressPort{}, "peer-addr", "DEPRECATED: Use -initial-advertise-peer-urls instead.")
+	fs.Var(&flags.IPAddressPort{}, "peer-bind-addr", "DEPRECATED: Use -listen-peer-urls instead.")
 
 	for _, f := range ignored {
-		fs.Var(&pkg.IgnoredFlag{Name: f}, f, "")
+		fs.Var(&flags.IgnoredFlag{Name: f}, f, "")
 	}
 
-	fs.Var(&pkg.DeprecatedFlag{Name: "peers"}, "peers", "DEPRECATED: Use -initial-cluster instead")
-	fs.Var(&pkg.DeprecatedFlag{Name: "peers-file"}, "peers-file", "DEPRECATED: Use -initial-cluster instead")
+	fs.Var(&flags.DeprecatedFlag{Name: "peers"}, "peers", "DEPRECATED: Use -initial-cluster instead")
+	fs.Var(&flags.DeprecatedFlag{Name: "peers-file"}, "peers-file", "DEPRECATED: Use -initial-cluster instead")
 }
 
 func main() {
-	fs.Usage = pkg.UsageWithIgnoredFlagsFunc(fs, ignored)
+	fs.Usage = flags.UsageWithIgnoredFlagsFunc(fs, ignored)
 	err := fs.Parse(os.Args[1:])
 	switch err {
 	case nil:
@@ -126,9 +126,9 @@ func main() {
 		os.Exit(0)
 	}
 
-	pkg.SetFlagsFromEnv(fs)
+	flags.SetFlagsFromEnv(fs)
 
-	if string(*proxyFlag) == flagtypes.ProxyValueOff {
+	if string(*proxyFlag) == flags.ProxyValueOff {
 		startEtcd()
 	} else {
 		startProxy()
@@ -158,7 +158,7 @@ func startEtcd() {
 		log.Fatal(err)
 	}
 
-	acurls, err := pkg.URLsFromFlags(fs, "advertise-client-urls", "addr", clientTLSInfo)
+	acurls, err := flags.URLsFromFlags(fs, "advertise-client-urls", "addr", clientTLSInfo)
 	if err != nil {
 		log.Fatal(err.Error())
 	}
@@ -175,13 +175,13 @@ func startEtcd() {
 	s := etcdserver.NewServer(cfg)
 	s.Start()
 
-	ch := &pkg.CORSHandler{
+	ch := &cors.CORSHandler{
 		Handler: etcdhttp.NewClientHandler(s),
-		Info:    cors,
+		Info:    corsInfo,
 	}
 	ph := etcdhttp.NewPeerHandler(s)
 
-	lpurls, err := pkg.URLsFromFlags(fs, "listen-peer-urls", "peer-bind-addr", peerTLSInfo)
+	lpurls, err := flags.URLsFromFlags(fs, "listen-peer-urls", "peer-bind-addr", peerTLSInfo)
 	if err != nil {
 		log.Fatal(err.Error())
 	}
@@ -200,7 +200,7 @@ func startEtcd() {
 		}()
 	}
 
-	lcurls, err := pkg.URLsFromFlags(fs, "listen-client-urls", "bind-addr", clientTLSInfo)
+	lcurls, err := flags.URLsFromFlags(fs, "listen-client-urls", "bind-addr", clientTLSInfo)
 	if err != nil {
 		log.Fatal(err.Error())
 	}
@@ -244,16 +244,16 @@ func startProxy() {
 		return cls.ClientURLs()
 	}
 	ph := proxy.NewHandler(pt, uf)
-	ph = &pkg.CORSHandler{
+	ph = &cors.CORSHandler{
 		Handler: ph,
-		Info:    cors,
+		Info:    corsInfo,
 	}
 
-	if string(*proxyFlag) == flagtypes.ProxyValueReadonly {
+	if string(*proxyFlag) == flags.ProxyValueReadonly {
 		ph = proxy.NewReadonlyHandler(ph)
 	}
 
-	lcurls, err := pkg.URLsFromFlags(fs, "listen-client-urls", "bind-addr", clientTLSInfo)
+	lcurls, err := flags.URLsFromFlags(fs, "listen-client-urls", "bind-addr", clientTLSInfo)
 	if err != nil {
 		log.Fatal(err.Error())
 	}
@@ -281,7 +281,7 @@ func setupCluster() (*etcdserver.Cluster, error) {
 	if set["discovery"] && set["initial-cluster"] {
 		return nil, fmt.Errorf("both discovery and bootstrap-config are set")
 	}
-	apurls, err := pkg.URLsFromFlags(fs, "initial-advertise-peer-urls", "addr", peerTLSInfo)
+	apurls, err := flags.URLsFromFlags(fs, "initial-advertise-peer-urls", "addr", peerTLSInfo)
 	if err != nil {
 		return nil, err
 	}

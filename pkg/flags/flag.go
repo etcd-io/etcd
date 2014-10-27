@@ -14,7 +14,7 @@
    limitations under the License.
 */
 
-package pkg
+package flags
 
 import (
 	"flag"
@@ -24,7 +24,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/coreos/etcd/pkg/flags"
 	"github.com/coreos/etcd/pkg/transport"
 )
 
@@ -126,7 +125,7 @@ func URLsFromFlags(fs *flag.FlagSet, urlsFlagName string, addrFlagName string, t
 			return nil, fmt.Errorf("Set only one of flags -%s and -%s", urlsFlagName, addrFlagName)
 		}
 
-		addr := *fs.Lookup(addrFlagName).Value.(*flags.IPAddressPort)
+		addr := *fs.Lookup(addrFlagName).Value.(*IPAddressPort)
 		addrURL := url.URL{Scheme: "http", Host: addr.String()}
 		if !tlsInfo.Empty() {
 			addrURL.Scheme = "https"
@@ -134,5 +133,5 @@ func URLsFromFlags(fs *flag.FlagSet, urlsFlagName string, addrFlagName string, t
 		return []url.URL{addrURL}, nil
 	}
 
-	return []url.URL(*fs.Lookup(urlsFlagName).Value.(*flags.URLsValue)), nil
+	return []url.URL(*fs.Lookup(urlsFlagName).Value.(*URLsValue)), nil
 }
