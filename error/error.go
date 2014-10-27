@@ -133,7 +133,7 @@ func (e Error) toJsonString() string {
 	return string(b)
 }
 
-func (e Error) Write(w http.ResponseWriter) {
+func (e Error) WriteTo(w http.ResponseWriter) {
 	w.Header().Add("X-Etcd-Index", fmt.Sprint(e.Index))
 	// 3xx is raft internal error
 	status := http.StatusBadRequest
