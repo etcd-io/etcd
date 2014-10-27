@@ -1390,3 +1390,68 @@ func mustMakePeerSlice(t *testing.T, ids ...uint64) []raft.Peer {
 	}
 	return peers
 }
+
+func TestIDAsHex(t *testing.T) {
+	tests := []struct {
+		input uint64
+		want  string
+	}{
+		{
+			input: uint64(12),
+			want:  "c",
+		},
+		{
+			input: uint64(4918257920282737594),
+			want:  "444129853c343bba",
+		},
+	}
+
+	for i, tt := range tests {
+		got := IDAsHex(tt.input)
+		if tt.want != got {
+			t.Errorf("#%d: IDAsHex failure: want=%v, got=%v", i, tt.want, got)
+		}
+	}
+}
+
+func TestIDFromHex(t *testing.T) {
+	tests := []struct {
+		input string
+		want  uint64
+	}{
+		{
+			input: "17",
+			want:  uint64(23),
+		},
+		{
+			input: "612840dae127353",
+			want:  uint64(437557308098245459),
+		},
+	}
+
+	for i, tt := range tests {
+		got, err := IDFromHex(tt.input)
+		if err != nil {
+			t.Errorf("#%d: IDFromHex failure: err=%v", i, err)
+			continue
+		}
+		if tt.want != got {
+			t.Errorf("#%d: IDFromHex failure: want=%v, got=%v", i, tt.want, got)
+		}
+	}
+}
+
+func TestIDFromHexFail(t *testing.T) {
+	tests := []string{
+		"",
+		"XXX",
+		"612840dae127353612840dae127353",
+	}
+
+	for i, tt := range tests {
+		_, err := IDFromHex(tt)
+		if err == nil {
+			t.Fatalf("#%d: IDFromHex expected error, but err=nil", i)
+		}
+	}
+}

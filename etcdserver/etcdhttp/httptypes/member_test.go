@@ -30,8 +30,8 @@ func TestMemberUnmarshal(t *testing.T) {
 	}{
 		// no URLs, just check ID & Name
 		{
-			body:       []byte(`{"id": 1, "name": "dungarees"}`),
-			wantMember: Member{ID: 1, Name: "dungarees", PeerURLs: nil, ClientURLs: nil},
+			body:       []byte(`{"id": "c", "name": "dungarees"}`),
+			wantMember: Member{ID: "c", Name: "dungarees", PeerURLs: nil, ClientURLs: nil},
 		},
 
 		// both client and peer URLs
@@ -102,11 +102,11 @@ func TestMemberCollectionUnmarshal(t *testing.T) {
 			want: MemberCollection([]Member{}),
 		},
 		{
-			body: []byte(`{"members":[{"id":176869799018424574,"peerURLs":["http://127.0.0.1:7003"],"name":"node3","clientURLs":["http://127.0.0.1:4003"]},{"id":297577273835923749,"peerURLs":["http://127.0.0.1:2380","http://127.0.0.1:7001"],"name":"node1","clientURLs":["http://127.0.0.1:2379","http://127.0.0.1:4001"]},{"id":10666918107976480891,"peerURLs":["http://127.0.0.1:7002"],"name":"node2","clientURLs":["http://127.0.0.1:4002"]}]}`),
+			body: []byte(`{"members":[{"id":"2745e2525fce8fe","peerURLs":["http://127.0.0.1:7003"],"name":"node3","clientURLs":["http://127.0.0.1:4003"]},{"id":"42134f434382925","peerURLs":["http://127.0.0.1:2380","http://127.0.0.1:7001"],"name":"node1","clientURLs":["http://127.0.0.1:2379","http://127.0.0.1:4001"]},{"id":"94088180e21eb87b","peerURLs":["http://127.0.0.1:7002"],"name":"node2","clientURLs":["http://127.0.0.1:4002"]}]}`),
 			want: MemberCollection(
 				[]Member{
 					{
-						ID:   176869799018424574,
+						ID:   "2745e2525fce8fe",
 						Name: "node3",
 						PeerURLs: []string{
 							"http://127.0.0.1:7003",
@@ -116,7 +116,7 @@ func TestMemberCollectionUnmarshal(t *testing.T) {
 						},
 					},
 					{
-						ID:   297577273835923749,
+						ID:   "42134f434382925",
 						Name: "node1",
 						PeerURLs: []string{
 							"http://127.0.0.1:2380",
@@ -128,7 +128,7 @@ func TestMemberCollectionUnmarshal(t *testing.T) {
 						},
 					},
 					{
-						ID:   10666918107976480891,
+						ID:   "94088180e21eb87b",
 						Name: "node2",
 						PeerURLs: []string{
 							"http://127.0.0.1:7002",

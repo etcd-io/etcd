@@ -21,7 +21,7 @@ import (
 )
 
 type Member struct {
-	ID         uint64   `json:"id"`
+	ID         string   `json:"id"`
 	Name       string   `json:"name"`
 	PeerURLs   []string `json:"peerURLs"`
 	ClientURLs []string `json:"clientURLs"`

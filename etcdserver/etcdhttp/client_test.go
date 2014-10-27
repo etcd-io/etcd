@@ -549,8 +549,8 @@ func TestGoodParseRequest(t *testing.T) {
 }
 
 func TestServeAdminMembers(t *testing.T) {
-	memb1 := etcdserver.Member{ID: 1, Attributes: etcdserver.Attributes{ClientURLs: []string{"http://localhost:8080"}}}
-	memb2 := etcdserver.Member{ID: 2, Attributes: etcdserver.Attributes{ClientURLs: []string{"http://localhost:8081"}}}
+	memb1 := etcdserver.Member{ID: 12, Attributes: etcdserver.Attributes{ClientURLs: []string{"http://localhost:8080"}}}
+	memb2 := etcdserver.Member{ID: 13, Attributes: etcdserver.Attributes{ClientURLs: []string{"http://localhost:8081"}}}
 	cluster := &fakeCluster{
 		id:      1,
 		members: map[uint64]*etcdserver.Member{1: &memb1, 2: &memb2},
@@ -561,11 +561,7 @@ func TestServeAdminMembers(t *testing.T) {
 		clusterInfo: cluster,
 	}
 
-	mcb, err := json.Marshal(newMemberCollection([]*etcdserver.Member{&memb1, &memb2}))
-	if err != nil {
-		t.Fatal(err)
-	}
-	wmc := string(mcb) + "\n"
+	wmc := string(`[{"id":"c","name":"","peerURLs":[],"clientURLs":[""]},{"id":"d","name":"","peerURLs":[],"clientURLs":[""]}]`)
 
 	tests := []struct {
 		path  string
@@ -573,8 +569,8 @@ func TestServeAdminMembers(t *testing.T) {
 		wct   string
 		wbody string
 	}{
-		{adminMembersPrefix, http.StatusOK, "application/json", wmc},
-		{adminMembersPrefix + "/", http.StatusOK, "application/json", wmc},
+		{adminMembersPrefix, http.StatusOK, "application/json", wmc + "\n"},
+		{adminMembersPrefix + "/", http.StatusOK, "application/json", wmc + "\n"},
 		{path.Join(adminMembersPrefix, "100"), http.StatusNotFound, "application/json", `{"message":"Not found"}`},
 		{path.Join(adminMembersPrefix, "foobar"), http.StatusNotFound, "application/json", `{"message":"Not found"}`},
 	}
