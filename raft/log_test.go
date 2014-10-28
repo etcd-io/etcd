@@ -90,11 +90,6 @@ func TestIsUpToDate(t *testing.T) {
 	}
 }
 
-// TestAppend ensures:
-// 1. If an existing entry conflicts with a new one (same index
-// but different terms), delete the existing entry and all that
-// follow it
-// 2.Append any new entries not already in the log
 func TestAppend(t *testing.T) {
 	previousEnts := []pb.Entry{{Term: 1}, {Term: 2}}
 	previousUnstable := uint64(3)
@@ -150,6 +145,107 @@ func TestAppend(t *testing.T) {
 		}
 		if g := raftLog.unstable; g != tt.wunstable {
 			t.Errorf("#%d: unstable = %d, want %d", i, g, tt.wunstable)
+		}
+	}
+}
+
+// TestLogMaybeAppend ensures:
+// If the given (index, term) matches with the existing log:
+// 	1. If an existing entry conflicts with a new one (same index
+// 	but different terms), delete the existing entry and all that
+// 	follow it
+// 	2.Append any new entries not already in the log
+// If the given (index, term) does not match with the existing log:
+// 	return false
+func TestLogMaybeAppend(t *testing.T) {
+	previousEnts := []pb.Entry{{Term: 1}, {Term: 2}, {Term: 3}}
+	lastindex := uint64(3)
+	lastterm := uint64(3)
+
+	tests := []struct {
+		logTerm   uint64
+		index     uint64
+		committed uint64
+		ents      []pb.Entry
+
+		wlasti  uint64
+		wappend bool
+		wcommit uint64
+	}{
+		// not match: term is different
+		{
+			lastterm - 1, lastindex, lastindex, []pb.Entry{{Term: 4}},
+			0, false, 0,
+		},
+		// not match: index out of bound
+		{
+			lastterm, lastindex + 1, lastindex, []pb.Entry{{Term: 4}},
+			0, false, 0,
+		},
+		// match with the last existing entry
+		{
+			lastterm, lastindex, lastindex, nil,
+			lastindex, true, lastindex,
+		},
+		{
+			lastterm, lastindex, lastindex + 1, nil,
+			lastindex, true, lastindex, // do not increase commit higher than lastnewi
+		},
+		{
+			lastterm, lastindex, lastindex, []pb.Entry{{Term: 4}},
+			lastindex + 1, true, lastindex,
+		},
+		{
+			lastterm, lastindex, lastindex + 1, []pb.Entry{{Term: 4}},
+			lastindex + 1, true, lastindex + 1,
+		},
+		{
+			lastterm, lastindex, lastindex + 2, []pb.Entry{{Term: 4}},
+			lastindex + 1, true, lastindex + 1, // do not increase commit higher than lastnewi
+		},
+		{
+			lastterm, lastindex, lastindex + 2, []pb.Entry{{Term: 4}, {Term: 4}},
+			lastindex + 2, true, lastindex + 2,
+		},
+		// match with the the entry in the middle
+		{
+			lastterm - 1, lastindex - 1, lastindex, []pb.Entry{{Term: 4}},
+			lastindex, true, lastindex,
+		},
+		{
+			lastterm - 2, lastindex - 2, lastindex, []pb.Entry{{Term: 4}},
+			lastindex - 1, true, lastindex - 1,
+		},
+		{
+			lastterm - 3, lastindex - 3, lastindex, []pb.Entry{{Term: 4}},
+			lastindex - 2, true, lastindex - 2,
+		},
+		{
+			lastterm - 2, lastindex - 2, lastindex, []pb.Entry{{Term: 4}, {Term: 4}},
+			lastindex, true, lastindex,
+		},
+	}
+
+	for i, tt := range tests {
+		raftLog := newLog()
+		raftLog.append(raftLog.lastIndex(), previousEnts...)
+		glasti, gappend := raftLog.maybeAppend(tt.index, tt.logTerm, tt.committed, tt.ents...)
+		gcommit := raftLog.committed
+
+		if glasti != tt.wlasti {
+			t.Errorf("#%d: lastindex = %d, want %d", i, glasti, tt.wlasti)
+		}
+		if gappend != tt.wappend {
+			t.Errorf("#%d: append = %v, want %v", i, gappend, tt.wappend)
+		}
+		if gcommit != tt.wcommit {
+			t.Errorf("#%d: committed = %d, want %d", i, gcommit, tt.wcommit)
+		}
+		if gappend {
+			gents := raftLog.slice(raftLog.lastIndex()-uint64(len(tt.ents))+1, raftLog.lastIndex()+1)
+			if !reflect.DeepEqual(tt.ents, gents) {
+				t.Errorf("%d: appended entries = %v, want %v", i, gents, tt.ents)
+			}
 		}
 	}
 }
