@@ -36,6 +36,7 @@ import (
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/jonboulle/clockwork"
 	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/etcdserver"
+	"github.com/coreos/etcd/etcdserver/etcdhttp/httptypes"
 	"github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/store"
@@ -561,7 +562,7 @@ func TestServeAdminMembers(t *testing.T) {
 		clusterInfo: cluster,
 	}
 
-	wmc := string(`[{"id":"c","name":"","peerURLs":[],"clientURLs":[""]},{"id":"d","name":"","peerURLs":[],"clientURLs":[""]}]`)
+	wmc := string(`[{"id":"c","name":"","peerURLs":[],"clientURLs":["http://localhost:8080"]},{"id":"d","name":"","peerURLs":[],"clientURLs":["http://localhost:8081"]}]`)
 
 	tests := []struct {
 		path  string
@@ -1562,5 +1563,38 @@ func TestTrimPrefix(t *testing.T) {
 		if g := trimPrefix(tt.in, tt.prefix); g != tt.w {
 			t.Errorf("#%d: trimPrefix = %q, want %q", i, g, tt.w)
 		}
+	}
+}
+
+func TestNewMemberCollection(t *testing.T) {
+	fixture := []*etcdserver.Member{
+		&etcdserver.Member{
+			ID:             12,
+			Attributes:     etcdserver.Attributes{ClientURLs: []string{"http://localhost:8080", "http://localhost:8081"}},
+			RaftAttributes: etcdserver.RaftAttributes{PeerURLs: []string{"http://localhost:8082", "http://localhost:8083"}},
+		},
+		&etcdserver.Member{
+			ID:             13,
+			Attributes:     etcdserver.Attributes{ClientURLs: []string{"http://localhost:9090", "http://localhost:9091"}},
+			RaftAttributes: etcdserver.RaftAttributes{PeerURLs: []string{"http://localhost:9092", "http://localhost:9093"}},
+		},
+	}
+	got := newMemberCollection(fixture)
+
+	want := httptypes.MemberCollection([]httptypes.Member{
+		httptypes.Member{
+			ID:         "c",
+			ClientURLs: []string{"http://localhost:8080", "http://localhost:8081"},
+			PeerURLs:   []string{"http://localhost:8082", "http://localhost:8083"},
+		},
+		httptypes.Member{
+			ID:         "d",
+			ClientURLs: []string{"http://localhost:9090", "http://localhost:9091"},
+			PeerURLs:   []string{"http://localhost:9092", "http://localhost:9093"},
+		},
+	})
+
+	if !reflect.DeepEqual(want, got) {
+		t.Fatalf("newMemberCollection failure: want=%#v, got=%#v", want, got)
 	}
 }
