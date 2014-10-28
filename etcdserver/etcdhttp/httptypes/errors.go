@@ -33,8 +33,8 @@ func (e HTTPError) Error() string {
 
 // TODO(xiangli): handle http write errors
 func (e HTTPError) WriteTo(w http.ResponseWriter) {
-	w.WriteHeader(e.Code)
 	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(e.Code)
 	b, err := json.Marshal(e)
 	if err != nil {
 		panic("unexpected json marshal error")
