@@ -195,9 +195,10 @@ func (h *adminMembersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		}
 		log.Printf("etcdhttp: added node %x with peer urls %v", m.ID, req.PeerURLs)
 
+		res := newMember(m)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
-		if err := json.NewEncoder(w).Encode(m); err != nil {
+		if err := json.NewEncoder(w).Encode(res); err != nil {
 			log.Printf("etcdhttp: %v", err)
 		}
 	case "DELETE":
@@ -530,18 +531,22 @@ func newMemberCollection(ms []*etcdserver.Member) httptypes.MemberCollection {
 	c := httptypes.MemberCollection(make([]httptypes.Member, len(ms)))
 
 	for i, m := range ms {
-		tm := httptypes.Member{
-			ID:         strutil.IDAsHex(m.ID),
-			Name:       m.Name,
-			PeerURLs:   make([]string, len(m.PeerURLs)),
-			ClientURLs: make([]string, len(m.ClientURLs)),
-		}
-
-		copy(tm.PeerURLs, m.PeerURLs)
-		copy(tm.ClientURLs, m.ClientURLs)
-
-		c[i] = tm
+		c[i] = newMember(m)
 	}
 
 	return c
+}
+
+func newMember(m *etcdserver.Member) httptypes.Member {
+	tm := httptypes.Member{
+		ID:         strutil.IDAsHex(m.ID),
+		Name:       m.Name,
+		PeerURLs:   make([]string, len(m.PeerURLs)),
+		ClientURLs: make([]string, len(m.ClientURLs)),
+	}
+
+	copy(tm.PeerURLs, m.PeerURLs)
+	copy(tm.ClientURLs, m.ClientURLs)
+
+	return tm
 }
