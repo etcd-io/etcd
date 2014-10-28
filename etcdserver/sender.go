@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/etcdserver/stats"
+	"github.com/coreos/etcd/pkg/strutil"
 	"github.com/coreos/etcd/raft/raftpb"
 )
 
@@ -72,7 +73,7 @@ func send(c *http.Client, cl *Cluster, m raftpb.Message, ss *stats.ServerStats, 
 		if m.Type == raftpb.MsgApp {
 			ss.SendAppendReq(len(data))
 		}
-		to := IDAsHex(m.To)
+		to := strutil.IDAsHex(m.To)
 		fs := ls.Follower(to)
 
 		start := time.Now()

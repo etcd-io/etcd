@@ -36,6 +36,7 @@ import (
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/etcdserver/stats"
 	"github.com/coreos/etcd/pkg/pbutil"
+	"github.com/coreos/etcd/pkg/strutil"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/snap"
@@ -239,9 +240,9 @@ func NewServer(cfg *ServerConfig) *EtcdServer {
 
 	sstats := &stats.ServerStats{
 		Name: cfg.Name,
-		ID:   IDAsHex(id),
+		ID:   strutil.IDAsHex(id),
 	}
-	lstats := stats.NewLeaderStats(IDAsHex(id))
+	lstats := stats.NewLeaderStats(strutil.IDAsHex(id))
 
 	s := &EtcdServer{
 		store:      st,
@@ -423,7 +424,7 @@ func (s *EtcdServer) StoreStats() []byte {
 }
 
 func (s *EtcdServer) UpdateRecvApp(from uint64, length int64) {
-	s.stats.RecvAppendReq(IDAsHex(from), int(length))
+	s.stats.RecvAppendReq(strutil.IDAsHex(from), int(length))
 }
 
 func (s *EtcdServer) AddMember(ctx context.Context, memb Member) error {
@@ -779,12 +780,4 @@ func containsUint64(a []uint64, x uint64) bool {
 		}
 	}
 	return false
-}
-
-func IDAsHex(id uint64) string {
-	return strconv.FormatUint(id, 16)
-}
-
-func IDFromHex(s string) (uint64, error) {
-	return strconv.ParseUint(s, 16, 64)
 }

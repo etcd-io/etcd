@@ -26,6 +26,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/coreos/etcd/pkg/strutil"
 	"github.com/coreos/etcd/pkg/types"
 )
 
@@ -81,11 +82,11 @@ func (m *Member) PickPeerURL() string {
 }
 
 func memberStoreKey(id uint64) string {
-	return path.Join(storeMembersPrefix, IDAsHex(id))
+	return path.Join(storeMembersPrefix, strutil.IDAsHex(id))
 }
 
 func mustParseMemberIDFromKey(key string) uint64 {
-	id, err := IDFromHex(path.Base(key))
+	id, err := strutil.IDFromHex(path.Base(key))
 	if err != nil {
 		log.Panicf("unexpected parse member id error: %v", err)
 	}
@@ -93,7 +94,7 @@ func mustParseMemberIDFromKey(key string) uint64 {
 }
 
 func removedMemberStoreKey(id uint64) string {
-	return path.Join(storeRemovedMembersPrefix, IDAsHex(id))
+	return path.Join(storeRemovedMembersPrefix, strutil.IDAsHex(id))
 }
 
 type SortableMemberSliceByPeerURLs []*Member
