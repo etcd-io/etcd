@@ -638,6 +638,10 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, nodes []uint64) error
 		s.Cluster.AddMember(m)
 	case raftpb.ConfChangeRemoveNode:
 		s.Cluster.RemoveMember(cc.NodeID)
+		if cc.NodeID == s.id {
+			// TODO: stop the server
+			log.Fatalf("etcd: this member has been permanently removed from the cluster. Exiting.")
+		}
 	}
 	return nil
 }
