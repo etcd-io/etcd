@@ -42,21 +42,19 @@ Returns an HTTP 201 response code and the representation of added member with a 
 If the POST body is malformed an HTTP 400 will be returned. If the member exists in the cluster or existed in the cluster at some point in the past an HTTP 500(TODO: fix this) will be returned. If the cluster fails to process the request within timeout an HTTP 500 will be returned, though the request may be processed later.
 ```
     Example Request: POST
-                     http://localhost:2379/v2/admin/members/
+                     http://localhost:2379/v2/admin/members
                      Body:
-                     [{"PeerURLs":["http://10.0.0.10:2379"]}]
+                     {"peerURLs":["http://10.0.0.10:2379"]}
     Respose formats: JSON
     Example Response:
 ```
 ```json
-    [
-        {
-            "id":"3777296169",
-            "peerURLs":[
-                "http://10.0.0.10:2379"
-            ],
-        },
-    ]
+    {
+        "id":"3777296169",
+        "peerURLs":[
+            "http://10.0.0.10:2379"
+        ],
+    }
 ```
 
 ### DELETE /v2/admin/members/:id
