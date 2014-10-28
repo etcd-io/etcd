@@ -35,6 +35,7 @@ import (
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/etcdhttp/httptypes"
 	"github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"github.com/coreos/etcd/pkg/strutil"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/store"
 	"github.com/coreos/etcd/version"
@@ -534,7 +535,7 @@ func newMemberCollection(ms []*etcdserver.Member) httptypes.MemberCollection {
 
 	for i, m := range ms {
 		tm := httptypes.Member{
-			ID:         etcdserver.IDAsHex(m.ID),
+			ID:         strutil.IDAsHex(m.ID),
 			Name:       m.Name,
 			PeerURLs:   make([]string, len(m.PeerURLs)),
 			ClientURLs: make([]string, len(m.ClientURLs)),
