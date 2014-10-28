@@ -68,3 +68,7 @@ func allowMethod(w http.ResponseWriter, m string, ms ...string) bool {
 	http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 	return false
 }
+
+func notAllowed(w http.ResponseWriter, r *http.Request) {
+	allowMethod(w, "")
+}
