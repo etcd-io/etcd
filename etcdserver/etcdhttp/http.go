@@ -44,13 +44,13 @@ func writeError(w http.ResponseWriter, err error) {
 	if err == nil {
 		return
 	}
-	log.Println(err)
 	switch e := err.(type) {
 	case *etcdErr.Error:
 		e.WriteTo(w)
 	case *httptypes.HTTPError:
 		e.WriteTo(w)
 	default:
+		log.Printf("etcdhttp: unexpected error: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 	}
 }
