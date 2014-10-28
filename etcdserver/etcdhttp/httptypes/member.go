@@ -18,6 +18,8 @@ package httptypes
 
 import (
 	"encoding/json"
+
+	"github.com/coreos/etcd/pkg/types"
 )
 
 type Member struct {
@@ -25,6 +27,29 @@ type Member struct {
 	Name       string   `json:"name"`
 	PeerURLs   []string `json:"peerURLs"`
 	ClientURLs []string `json:"clientURLs"`
+}
+
+type MemberCreateRequest struct {
+	PeerURLs types.URLs
+}
+
+func (m *MemberCreateRequest) UnmarshalJSON(data []byte) error {
+	s := struct {
+		PeerURLs []string `json:"peerURLs"`
+	}{}
+
+	err := json.Unmarshal(data, &s)
+	if err != nil {
+		return err
+	}
+
+	urls, err := types.NewURLs(s.PeerURLs)
+	if err != nil {
+		return err
+	}
+
+	m.PeerURLs = urls
+	return nil
 }
 
 type MemberCollection []Member

@@ -36,7 +36,6 @@ import (
 	"github.com/coreos/etcd/etcdserver/etcdhttp/httptypes"
 	"github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/pkg/strutil"
-	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/store"
 	"github.com/coreos/etcd/version"
 )
@@ -181,24 +180,21 @@ func (h *adminMembersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 			writeError(w, httptypes.NewHTTPError(http.StatusBadRequest, err.Error()))
 			return
 		}
-		raftAttr := etcdserver.RaftAttributes{}
-		if err := json.Unmarshal(b, &raftAttr); err != nil {
+		req := httptypes.MemberCreateRequest{}
+		if err := json.Unmarshal(b, &req); err != nil {
 			writeError(w, httptypes.NewHTTPError(http.StatusBadRequest, err.Error()))
 			return
 		}
-		validURLs, err := types.NewURLs(raftAttr.PeerURLs)
-		if err != nil {
-			writeError(w, httptypes.NewHTTPError(http.StatusBadRequest, "Bad peer urls"))
-			return
-		}
+
 		now := h.clock.Now()
-		m := etcdserver.NewMember("", validURLs, "", &now)
+		m := etcdserver.NewMember("", req.PeerURLs, "", &now)
 		if err := h.server.AddMember(ctx, *m); err != nil {
 			log.Printf("etcdhttp: error adding node %x: %v", m.ID, err)
 			writeError(w, err)
 			return
 		}
-		log.Printf("etcdhttp: added node %x with peer urls %v", m.ID, raftAttr.PeerURLs)
+		log.Printf("etcdhttp: added node %x with peer urls %v", m.ID, req.PeerURLs)
+
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
 		if err := json.NewEncoder(w).Encode(m); err != nil {
