@@ -42,6 +42,7 @@ import (
 )
 
 const (
+	v2Prefix                 = "/v2"
 	keysPrefix               = "/v2/keys"
 	deprecatedMachinesPrefix = "/v2/machines"
 	adminMembersPrefix       = "/v2/admin/members"
@@ -75,8 +76,12 @@ func NewClientHandler(server *etcdserver.EtcdServer) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", http.NotFound)
 	mux.HandleFunc(versionPrefix, serveVersion)
+	mux.HandleFunc(v2Prefix, notAllowed)
+	mux.HandleFunc(v2Prefix+"/", notAllowed)
 	mux.Handle(keysPrefix, kh)
 	mux.Handle(keysPrefix+"/", kh)
+	mux.HandleFunc(statsPrefix, notAllowed)
+	mux.HandleFunc(statsPrefix+"/", notAllowed)
 	mux.HandleFunc(statsPrefix+"/store", sh.serveStore)
 	mux.HandleFunc(statsPrefix+"/self", sh.serveSelf)
 	mux.HandleFunc(statsPrefix+"/leader", sh.serveLeader)
