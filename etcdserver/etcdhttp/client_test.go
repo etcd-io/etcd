@@ -717,6 +717,7 @@ func TestServeAdminMembersFail(t *testing.T) {
 				URL:    mustNewURL(t, adminMembersPrefix),
 				Method: "POST",
 				Body:   ioutil.NopCloser(strings.NewReader("bad json")),
+				Header: map[string][]string{"Content-Type": []string{"application/json"}},
 			},
 			&resServer{},
 
@@ -732,7 +733,7 @@ func TestServeAdminMembersFail(t *testing.T) {
 			},
 			&errServer{},
 
-			http.StatusBadRequest,
+			http.StatusUnsupportedMediaType,
 		},
 		{
 			// bad url

@@ -172,7 +172,7 @@ func (h *adminMembersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	case "POST":
 		ctype := r.Header.Get("Content-Type")
 		if ctype != "application/json" {
-			writeError(w, httptypes.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Bad Content-Type %s, accept application/json", ctype)))
+			writeError(w, httptypes.NewHTTPError(http.StatusUnsupportedMediaType, fmt.Sprintf("Bad Content-Type %s, accept application/json", ctype)))
 			return
 		}
 		b, err := ioutil.ReadAll(r.Body)
