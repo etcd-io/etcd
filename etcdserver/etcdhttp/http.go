@@ -24,6 +24,7 @@ import (
 	"time"
 
 	etcdErr "github.com/coreos/etcd/error"
+	"github.com/coreos/etcd/etcdserver/etcdhttp/httptypes"
 )
 
 const (
@@ -44,9 +45,12 @@ func writeError(w http.ResponseWriter, err error) {
 		return
 	}
 	log.Println(err)
-	if e, ok := err.(*etcdErr.Error); ok {
+	switch e := err.(type) {
+	case *etcdErr.Error:
 		e.WriteTo(w)
-	} else {
+	case *httptypes.HTTPError:
+		e.WriteTo(w)
+	default:
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 	}
 }

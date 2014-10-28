@@ -161,7 +161,7 @@ func (h *adminMembersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	switch r.Method {
 	case "GET":
 		if trimPrefix(r.URL.Path, adminMembersPrefix) != "" {
-			http.NotFound(w, r)
+			writeError(w, httptypes.NewHTTPError(http.StatusNotFound, "Not found"))
 			return
 		}
 		mc := newMemberCollection(h.clusterInfo.Members())
@@ -172,22 +172,22 @@ func (h *adminMembersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	case "POST":
 		ctype := r.Header.Get("Content-Type")
 		if ctype != "application/json" {
-			http.Error(w, fmt.Sprintf("bad Content-Type %s, accept application/json", ctype), http.StatusBadRequest)
+			writeError(w, httptypes.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Bad Content-Type %s, accept application/json", ctype)))
 			return
 		}
 		b, err := ioutil.ReadAll(r.Body)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			writeError(w, httptypes.NewHTTPError(http.StatusBadRequest, err.Error()))
 			return
 		}
 		raftAttr := etcdserver.RaftAttributes{}
 		if err := json.Unmarshal(b, &raftAttr); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			writeError(w, httptypes.NewHTTPError(http.StatusBadRequest, err.Error()))
 			return
 		}
 		validURLs, err := types.NewURLs(raftAttr.PeerURLs)
 		if err != nil {
-			http.Error(w, "bad peer urls", http.StatusBadRequest)
+			writeError(w, httptypes.NewHTTPError(http.StatusBadRequest, "Bad peer urls"))
 			return
 		}
 		now := h.clock.Now()
@@ -211,7 +211,7 @@ func (h *adminMembersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		}
 		id, err := strconv.ParseUint(idStr, 16, 64)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			writeError(w, httptypes.NewHTTPError(http.StatusBadRequest, err.Error()))
 			return
 		}
 		log.Printf("etcdhttp: remove node %x", id)
