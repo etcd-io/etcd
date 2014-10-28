@@ -239,9 +239,9 @@ func NewServer(cfg *ServerConfig) *EtcdServer {
 
 	sstats := &stats.ServerStats{
 		Name: cfg.Name,
-		ID:   idAsHex(id),
+		ID:   IDAsHex(id),
 	}
-	lstats := stats.NewLeaderStats(idAsHex(id))
+	lstats := stats.NewLeaderStats(IDAsHex(id))
 
 	s := &EtcdServer{
 		store:      st,
@@ -423,7 +423,7 @@ func (s *EtcdServer) StoreStats() []byte {
 }
 
 func (s *EtcdServer) UpdateRecvApp(from uint64, length int64) {
-	s.stats.RecvAppendReq(idAsHex(from), int(length))
+	s.stats.RecvAppendReq(IDAsHex(from), int(length))
 }
 
 func (s *EtcdServer) AddMember(ctx context.Context, memb Member) error {
@@ -592,7 +592,7 @@ func (s *EtcdServer) applyRequest(r pb.Request) Response {
 			return f(s.store.CompareAndSwap(r.Path, r.PrevValue, r.PrevIndex, r.Val, expr))
 		default:
 			if storeMemberAttributeRegexp.MatchString(r.Path) {
-				id := parseMemberID(path.Dir(r.Path))
+				id := mustParseMemberIDFromKey(path.Dir(r.Path))
 				m := s.Cluster.Member(id)
 				if m == nil {
 					log.Fatalf("fetch member %x should never fail", id)
@@ -781,6 +781,10 @@ func containsUint64(a []uint64, x uint64) bool {
 	return false
 }
 
-func idAsHex(id uint64) string {
+func IDAsHex(id uint64) string {
 	return strconv.FormatUint(id, 16)
+}
+
+func IDFromHex(s string) (uint64, error) {
+	return strconv.ParseUint(s, 16, 64)
 }

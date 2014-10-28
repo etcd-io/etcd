@@ -113,7 +113,7 @@ func NewClusterFromStore(name string, st store.Store) *Cluster {
 		log.Panicf("get storeRemovedMembers should never fail: %v", err)
 	}
 	for _, n := range e.Node.Nodes {
-		c.removed[parseMemberID(n.Key)] = true
+		c.removed[mustParseMemberIDFromKey(n.Key)] = true
 	}
 
 	return c
@@ -303,7 +303,7 @@ func (c *Cluster) RemoveMember(id uint64) {
 // nodeToMember builds member through a store node.
 // the child nodes of the given node should be sorted by key.
 func nodeToMember(n *store.NodeExtern) (*Member, error) {
-	m := &Member{ID: parseMemberID(n.Key)}
+	m := &Member{ID: mustParseMemberIDFromKey(n.Key)}
 	if len(n.Nodes) != 2 {
 		return m, fmt.Errorf("len(nodes) = %d, want 2", len(n.Nodes))
 	}

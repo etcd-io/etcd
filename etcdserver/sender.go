@@ -72,7 +72,7 @@ func send(c *http.Client, cl *Cluster, m raftpb.Message, ss *stats.ServerStats, 
 		if m.Type == raftpb.MsgApp {
 			ss.SendAppendReq(len(data))
 		}
-		to := idAsHex(m.To)
+		to := IDAsHex(m.To)
 		fs := ls.Follower(to)
 
 		start := time.Now()
