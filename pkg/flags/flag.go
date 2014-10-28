@@ -95,7 +95,10 @@ func SetFlagsFromEnv(fs *flag.FlagSet) {
 			key := "ETCD_" + strings.ToUpper(strings.Replace(f.Name, "-", "_", -1))
 			val := os.Getenv(key)
 			if val != "" {
-				fs.Set(f.Name, val)
+				if err := fs.Set(f.Name, val); err != nil {
+					// Should never happen
+					log.Panicf("error setting flag from env: %v", err)
+				}
 			}
 		}
 	})

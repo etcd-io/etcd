@@ -77,7 +77,10 @@ var (
 
 func init() {
 	fs.Var(clusterState, "initial-cluster-state", "Initial cluster configuration for bootstrapping")
-	clusterState.Set(etcdserver.ClusterStateValueNew)
+	if err := clusterState.Set(etcdserver.ClusterStateValueNew); err != nil {
+		// Should never happen.
+		log.Panicf("unexpected error setting up clusterState: %v", err)
+	}
 
 	fs.Var(flags.NewURLsValue("http://localhost:2380,http://localhost:7001"), "initial-advertise-peer-urls", "List of this member's peer URLs to advertise to the rest of the cluster")
 	fs.Var(flags.NewURLsValue("http://localhost:2379,http://localhost:4001"), "advertise-client-urls", "List of this member's client URLs to advertise to the rest of the cluster")
@@ -87,7 +90,10 @@ func init() {
 	fs.Var(corsInfo, "cors", "Comma-separated white list of origins for CORS (cross-origin resource sharing).")
 
 	fs.Var(proxyFlag, "proxy", fmt.Sprintf("Valid values include %s", strings.Join(flags.ProxyValues, ", ")))
-	proxyFlag.Set(flags.ProxyValueOff)
+	if err := proxyFlag.Set(flags.ProxyValueOff); err != nil {
+		// Should never happen.
+		log.Panicf("unexpected error setting up proxyFlag: %v", err)
+	}
 
 	fs.StringVar(&clientTLSInfo.CAFile, "ca-file", "", "Path to the client server TLS CA file.")
 	fs.StringVar(&clientTLSInfo.CertFile, "cert-file", "", "Path to the client server TLS cert file.")
