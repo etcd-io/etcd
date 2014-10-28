@@ -562,7 +562,7 @@ func TestServeAdminMembers(t *testing.T) {
 		clusterInfo: cluster,
 	}
 
-	wmc := string(`[{"id":"c","name":"","peerURLs":[],"clientURLs":["http://localhost:8080"]},{"id":"d","name":"","peerURLs":[],"clientURLs":["http://localhost:8081"]}]`)
+	wmc := string(`{"members":[{"id":"c","name":"","peerURLs":[],"clientURLs":["http://localhost:8080"]},{"id":"d","name":"","peerURLs":[],"clientURLs":["http://localhost:8081"]}]}`)
 
 	tests := []struct {
 		path  string
@@ -1591,8 +1591,8 @@ func TestNewMemberCollection(t *testing.T) {
 		},
 	})
 
-	if !reflect.DeepEqual(want, got) {
-		t.Fatalf("newMemberCollection failure: want=%#v, got=%#v", want, got)
+	if !reflect.DeepEqual(&want, got) {
+		t.Fatalf("newMemberCollection failure: want=%#v, got=%#v", &want, got)
 	}
 }
 

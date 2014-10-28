@@ -527,14 +527,14 @@ func trimPrefix(p, prefix string) (s string) {
 	return
 }
 
-func newMemberCollection(ms []*etcdserver.Member) httptypes.MemberCollection {
+func newMemberCollection(ms []*etcdserver.Member) *httptypes.MemberCollection {
 	c := httptypes.MemberCollection(make([]httptypes.Member, len(ms)))
 
 	for i, m := range ms {
 		c[i] = newMember(m)
 	}
 
-	return c
+	return &c
 }
 
 func newMember(m *etcdserver.Member) httptypes.Member {
