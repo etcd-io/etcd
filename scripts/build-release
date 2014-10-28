@@ -1,35 +1,43 @@
 #!/bin/sh -e
 
 VER=$1
+PROJ="etcd"
 
-function build {
-	proj=${1}
-	ver=${2}
+if [ -z "$1" ]; then
+	echo "Usage: ${0} VERSION" >> /dev/stderr
+	exit 255
+fi
+
+set -u
+
+function setup_env {
+	local proj=${1}
+	local ver=${2}
 
 	if [ ! -d ${proj} ]; then
 		git clone https://github.com/coreos/${proj}
 	fi
 
-	cd ${proj}
-	git checkout master
-	git fetch --all
-	git reset --hard origin/master
-	git checkout $ver
-	./build
-	cd -
+	pushd ${proj} >/dev/null
+		git checkout master
+		git fetch --all
+		git reset --hard origin/master
+		git checkout $ver
+	popd >/dev/null
 }
 
-function package {
-	target=${1}
 
-	ccdir="${proj}/bin/${GOOS}_${GOARCH}"
+function package {
+	local target=${1}
+	local srcdir="${2}/bin"
+
+	local ccdir="${srcdir}/${GOOS}_${GOARCH}"
 	if [ -d ${ccdir} ]; then
-		cp ${ccdir}/etcdctl ${target}
-		cp ${ccdir}/etcd ${target}
-	else
-		cp ${proj}/bin/etcd ${target}
-		cp ${proj}/bin/etcdctl ${target}
+		srcdir=${ccdir}
 	fi
+	for bin in etcd etcdctl; do
+		cp ${srcdir}/${bin} ${target}
+	done
 
 	cp etcd/README.md ${target}/README.md
 	cp etcd/etcdctl/README.md ${target}/README-etcdctl.md
@@ -37,23 +45,31 @@ function package {
 	cp -R etcd/Documentation/0.5 ${target}/Documentation
 }
 
-mkdir release
-cd release
+function main {
+	mkdir release
+	cd release
+	setup_env ${PROJ} ${VER}
 
-for i in darwin windows linux; do
-	export GOOS=${i}
-	export GOARCH="amd64"
+	for os in darwin windows linux; do
+		export GOOS=${os}
+		export GOARCH="amd64"
 
-	build etcd ${VER}
+		pushd etcd >/dev/null
+			./build
+		popd >/dev/null
 
-	TARGET="etcd-${VER}-${GOOS}-${GOARCH}"
-	mkdir ${TARGET}
+		TARGET="etcd-${VER}-${GOOS}-${GOARCH}"
+		mkdir ${TARGET}
+		package ${TARGET} ${PROJ}
 
-	package ${TARGET}
+		if [ ${GOOS} == "linux" ]; then
+			tar cfz ${TARGET}.tar.gz ${TARGET}
+			echo "Wrote release/${TARGET}.tar.gz"
+		else
+			zip -qr ${TARGET}.zip ${TARGET}
+			echo "Wrote release/${TARGET}.zip"
+		fi
+	done
+}
 
-	if [ ${GOOS} == "linux" ]; then
-		tar cvvfz ${TARGET}.tar.gz ${TARGET}
-	else
-		zip -r ${TARGET}.zip ${TARGET}
-	fi
-done
+main
