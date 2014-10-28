@@ -219,7 +219,7 @@ func (n *node) run(r *raft) {
 		}
 
 		if rd.SoftState != nil && lead != rd.SoftState.Lead {
-			log.Printf("raft: leader changed from %#x to %#x", lead, rd.SoftState.Lead)
+			log.Printf("raft: leader changed from %x to %x", lead, rd.SoftState.Lead)
 			lead = rd.SoftState.Lead
 			if r.hasLeader() {
 				propc = n.propc
