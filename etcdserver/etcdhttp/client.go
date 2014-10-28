@@ -541,8 +541,8 @@ func newMemberCollection(ms []*etcdserver.Member) httptypes.MemberCollection {
 			ClientURLs: make([]string, len(m.ClientURLs)),
 		}
 
-		copy(m.PeerURLs, tm.PeerURLs)
-		copy(m.ClientURLs, tm.ClientURLs)
+		copy(tm.PeerURLs, m.PeerURLs)
+		copy(tm.ClientURLs, m.ClientURLs)
 
 		c[i] = tm
 	}
