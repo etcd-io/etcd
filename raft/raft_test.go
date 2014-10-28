@@ -1168,13 +1168,10 @@ type network struct {
 // newNetwork initializes a network from peers.
 // A nil node will be replaced with a new *stateMachine.
 // A *stateMachine will get its k, id.
-// When using stateMachine, the address list is always [0, n).
+// When using stateMachine, the address list is always [1, n].
 func newNetwork(peers ...Interface) *network {
 	size := len(peers)
-	peerAddrs := make([]uint64, size)
-	for i := 0; i < size; i++ {
-		peerAddrs[i] = 1 + uint64(i)
-	}
+	peerAddrs := idsBySize(size)
 
 	npeers := make(map[uint64]Interface, size)
 
@@ -1273,3 +1270,11 @@ func (blackHole) Step(pb.Message) error      { return nil }
 func (blackHole) ReadMessages() []pb.Message { return nil }
 
 var nopStepper = &blackHole{}
+
+func idsBySize(size int) []uint64 {
+	ids := make([]uint64, size)
+	for i := 0; i < size; i++ {
+		ids[i] = 1 + uint64(i)
+	}
+	return ids
+}
