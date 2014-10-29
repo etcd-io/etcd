@@ -161,6 +161,7 @@ func TestLogMaybeAppend(t *testing.T) {
 	previousEnts := []pb.Entry{{Term: 1}, {Term: 2}, {Term: 3}}
 	lastindex := uint64(3)
 	lastterm := uint64(3)
+	commit := uint64(1)
 
 	tests := []struct {
 		logTerm   uint64
@@ -171,86 +172,105 @@ func TestLogMaybeAppend(t *testing.T) {
 		wlasti  uint64
 		wappend bool
 		wcommit uint64
+		wpanic  bool
 	}{
 		// not match: term is different
 		{
 			lastterm - 1, lastindex, lastindex, []pb.Entry{{Term: 4}},
-			0, false, 0,
+			0, false, commit, false,
 		},
 		// not match: index out of bound
 		{
 			lastterm, lastindex + 1, lastindex, []pb.Entry{{Term: 4}},
-			0, false, 0,
+			0, false, commit, false,
 		},
 		// match with the last existing entry
 		{
 			lastterm, lastindex, lastindex, nil,
-			lastindex, true, lastindex,
+			lastindex, true, lastindex, false,
 		},
 		{
 			lastterm, lastindex, lastindex + 1, nil,
-			lastindex, true, lastindex, // do not increase commit higher than lastnewi
+			lastindex, true, lastindex, false, // do not increase commit higher than lastnewi
 		},
 		{
 			lastterm, lastindex, lastindex - 1, nil,
-			lastindex, true, lastindex - 1, // commit up to the commit in the message
+			lastindex, true, lastindex - 1, false, // commit up to the commit in the message
+		},
+		{
+			lastterm, lastindex, 0, nil,
+			lastindex, true, commit, false, // commit do not decrease
+		},
+		{
+			lastterm - 3, lastindex - 3, lastindex, nil,
+			1, true, commit, false, // commit do not decrease
 		},
 		{
 			lastterm, lastindex, lastindex, []pb.Entry{{Term: 4}},
-			lastindex + 1, true, lastindex,
+			lastindex + 1, true, lastindex, false,
 		},
 		{
 			lastterm, lastindex, lastindex + 1, []pb.Entry{{Term: 4}},
-			lastindex + 1, true, lastindex + 1,
+			lastindex + 1, true, lastindex + 1, false,
 		},
 		{
 			lastterm, lastindex, lastindex + 2, []pb.Entry{{Term: 4}},
-			lastindex + 1, true, lastindex + 1, // do not increase commit higher than lastnewi
+			lastindex + 1, true, lastindex + 1, false, // do not increase commit higher than lastnewi
 		},
 		{
 			lastterm, lastindex, lastindex + 2, []pb.Entry{{Term: 4}, {Term: 4}},
-			lastindex + 2, true, lastindex + 2,
+			lastindex + 2, true, lastindex + 2, false,
 		},
 		// match with the the entry in the middle
 		{
 			lastterm - 1, lastindex - 1, lastindex, []pb.Entry{{Term: 4}},
-			lastindex, true, lastindex,
+			lastindex, true, lastindex, false,
 		},
 		{
 			lastterm - 2, lastindex - 2, lastindex, []pb.Entry{{Term: 4}},
-			lastindex - 1, true, lastindex - 1,
+			lastindex - 1, true, lastindex - 1, false,
 		},
 		{
 			lastterm - 3, lastindex - 3, lastindex, []pb.Entry{{Term: 4}},
-			lastindex - 2, true, lastindex - 2,
+			lastindex - 2, true, lastindex - 2, true, // conflict with existing committed entry
 		},
 		{
 			lastterm - 2, lastindex - 2, lastindex, []pb.Entry{{Term: 4}, {Term: 4}},
-			lastindex, true, lastindex,
+			lastindex, true, lastindex, false,
 		},
 	}
 
 	for i, tt := range tests {
 		raftLog := newLog()
 		raftLog.append(raftLog.lastIndex(), previousEnts...)
-		glasti, gappend := raftLog.maybeAppend(tt.index, tt.logTerm, tt.committed, tt.ents...)
-		gcommit := raftLog.committed
+		raftLog.committed = commit
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					if tt.wpanic != true {
+						t.Errorf("%d: panic = %v, want %v", i, true, tt.wpanic)
+					}
+				}
+			}()
+			glasti, gappend := raftLog.maybeAppend(tt.index, tt.logTerm, tt.committed, tt.ents...)
+			gcommit := raftLog.committed
 
-		if glasti != tt.wlasti {
-			t.Errorf("#%d: lastindex = %d, want %d", i, glasti, tt.wlasti)
-		}
-		if gappend != tt.wappend {
-			t.Errorf("#%d: append = %v, want %v", i, gappend, tt.wappend)
-		}
-		if gcommit != tt.wcommit {
-			t.Errorf("#%d: committed = %d, want %d", i, gcommit, tt.wcommit)
-		}
-		if gappend {
-			gents := raftLog.slice(raftLog.lastIndex()-uint64(len(tt.ents))+1, raftLog.lastIndex()+1)
-			if !reflect.DeepEqual(tt.ents, gents) {
-				t.Errorf("%d: appended entries = %v, want %v", i, gents, tt.ents)
+			if glasti != tt.wlasti {
+				t.Errorf("#%d: lastindex = %d, want %d", i, glasti, tt.wlasti)
 			}
-		}
+			if gappend != tt.wappend {
+				t.Errorf("#%d: append = %v, want %v", i, gappend, tt.wappend)
+			}
+			if gcommit != tt.wcommit {
+				t.Errorf("#%d: committed = %d, want %d", i, gcommit, tt.wcommit)
+			}
+			if gappend {
+				gents := raftLog.slice(raftLog.lastIndex()-uint64(len(tt.ents))+1, raftLog.lastIndex()+1)
+				if !reflect.DeepEqual(tt.ents, gents) {
+					t.Errorf("%d: appended entries = %v, want %v", i, gents, tt.ents)
+				}
+			}
+		}()
 	}
 }
 
