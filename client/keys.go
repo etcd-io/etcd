@@ -114,12 +114,12 @@ func (k *httpKeysAPI) Create(key, val string, ttl time.Duration) (*Response, err
 		create.TTL = &uttl
 	}
 
-	httpresp, body, err := k.client.doWithTimeout(create)
+	code, body, err := k.client.doWithTimeout(create)
 	if err != nil {
 		return nil, err
 	}
 
-	return unmarshalHTTPResponse(httpresp.StatusCode, body)
+	return unmarshalHTTPResponse(code, body)
 }
 
 func (k *httpKeysAPI) Get(key string) (*Response, error) {
@@ -128,12 +128,12 @@ func (k *httpKeysAPI) Get(key string) (*Response, error) {
 		Recursive: false,
 	}
 
-	httpresp, body, err := k.client.doWithTimeout(get)
+	code, body, err := k.client.doWithTimeout(get)
 	if err != nil {
 		return nil, err
 	}
 
-	return unmarshalHTTPResponse(httpresp.StatusCode, body)
+	return unmarshalHTTPResponse(code, body)
 }
 
 func (k *httpKeysAPI) Watch(key string, idx uint64) Watcher {
@@ -165,12 +165,12 @@ type httpWatcher struct {
 
 func (hw *httpWatcher) Next() (*Response, error) {
 	//TODO(bcwaldon): This needs to be cancellable by the calling user
-	httpresp, body, err := hw.client.do(context.Background(), &hw.nextWait)
+	code, body, err := hw.client.do(context.Background(), &hw.nextWait)
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := unmarshalHTTPResponse(httpresp.StatusCode, body)
+	resp, err := unmarshalHTTPResponse(code, body)
 	if err != nil {
 		return nil, err
 	}
