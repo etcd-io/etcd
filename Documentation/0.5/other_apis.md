@@ -1,10 +1,10 @@
 ## Members API
 
-### GET /v2/members/
+### GET /v2/members
 Return an HTTP 200 OK response code and a representation of all members in the etcd cluster:
 ```
     Example Request: GET 
-                     http://localhost:2379/v2/members/
+                     http://localhost:2379/v2/members
     Response formats: JSON
     Example Response:
 ```
@@ -35,7 +35,7 @@ Return an HTTP 200 OK response code and a representation of all members in the e
     }
 ```
 
-### POST /v2/members/
+### POST /v2/members
 Add a member to the cluster.
 Returns an HTTP 201 response code and the representation of added member with a newly generated a memberID when successful. Returns a string describing the failure condition when unsuccessful. 
 
