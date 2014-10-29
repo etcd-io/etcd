@@ -273,13 +273,17 @@ func (w *WAL) SaveState(s *raftpb.HardState) error {
 	return w.encoder.encode(rec)
 }
 
-func (w *WAL) Save(st raftpb.HardState, ents []raftpb.Entry) {
+func (w *WAL) Save(st raftpb.HardState, ents []raftpb.Entry) error {
 	// TODO(xiangli): no more reference operator
-	w.SaveState(&st)
-	for i := range ents {
-		w.SaveEntry(&ents[i])
+	if err := w.SaveState(&st); err != nil {
+		return err
 	}
-	w.Sync()
+	for i := range ents {
+		if err := w.SaveEntry(&ents[i]); err != nil {
+			return err
+		}
+	}
+	return w.Sync()
 }
 
 func (w *WAL) saveCrc(prevCrc uint32) error {

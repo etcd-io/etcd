@@ -89,9 +89,9 @@ type Response struct {
 type Storage interface {
 	// Save function saves ents and state to the underlying stable storage.
 	// Save MUST block until st and ents are on stable storage.
-	Save(st raftpb.HardState, ents []raftpb.Entry)
+	Save(st raftpb.HardState, ents []raftpb.Entry) error
 	// SaveSnap function saves snapshot to the underlying stable storage.
-	SaveSnap(snap raftpb.Snapshot)
+	SaveSnap(snap raftpb.Snapshot) error
 
 	// TODO: WAL should be able to control cut itself. After implement self-controled cut,
 	// remove it in this interface.
@@ -315,8 +315,12 @@ func (s *EtcdServer) run() {
 				}
 			}
 
-			s.storage.Save(rd.HardState, rd.Entries)
-			s.storage.SaveSnap(rd.Snapshot)
+			if err := s.storage.Save(rd.HardState, rd.Entries); err != nil {
+				log.Panicf("etcdserver: save state and entries error: %v", err)
+			}
+			if err := s.storage.SaveSnap(rd.Snapshot); err != nil {
+				log.Panicf("etcdserver: create snapshot error: %v", err)
+			}
 			s.send(rd.Messages)
 
 			// TODO(bmizerany): do this in the background, but take
@@ -673,7 +677,9 @@ func (s *EtcdServer) snapshot(snapi uint64, snapnodes []uint64) {
 		panic("TODO: this is bad, what do we do about it?")
 	}
 	s.node.Compact(snapi, snapnodes, d)
-	s.storage.Cut()
+	if err := s.storage.Cut(); err != nil {
+		log.Panicf("etcdserver: rotate wal file error: %v", err)
+	}
 }
 
 func GetClusterFromPeers(urls []string) (*Cluster, error) {

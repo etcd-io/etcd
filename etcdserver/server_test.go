@@ -1221,18 +1221,19 @@ type storageRecorder struct {
 	recorder
 }
 
-func (p *storageRecorder) Save(st raftpb.HardState, ents []raftpb.Entry) {
+func (p *storageRecorder) Save(st raftpb.HardState, ents []raftpb.Entry) error {
 	p.record(action{name: "Save"})
+	return nil
 }
 func (p *storageRecorder) Cut() error {
 	p.record(action{name: "Cut"})
 	return nil
 }
-func (p *storageRecorder) SaveSnap(st raftpb.Snapshot) {
-	if raft.IsEmptySnap(st) {
-		return
+func (p *storageRecorder) SaveSnap(st raftpb.Snapshot) error {
+	if !raft.IsEmptySnap(st) {
+		p.record(action{name: "SaveSnap"})
 	}
-	p.record(action{name: "SaveSnap"})
+	return nil
 }
 
 type readyNode struct {
