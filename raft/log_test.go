@@ -192,6 +192,10 @@ func TestLogMaybeAppend(t *testing.T) {
 			lastindex, true, lastindex, // do not increase commit higher than lastnewi
 		},
 		{
+			lastterm, lastindex, lastindex - 1, nil,
+			lastindex, true, lastindex - 1, // commit up to the commit in the message
+		},
+		{
 			lastterm, lastindex, lastindex, []pb.Entry{{Term: 4}},
 			lastindex + 1, true, lastindex,
 		},
