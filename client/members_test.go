@@ -23,11 +23,11 @@ import (
 )
 
 func TestMembersAPIListAction(t *testing.T) {
-	ep := url.URL{Scheme: "http", Host: "example.com/v2/admin/members"}
+	ep := url.URL{Scheme: "http", Host: "example.com/v2/members"}
 	wantURL := &url.URL{
 		Scheme: "http",
 		Host:   "example.com",
-		Path:   "/v2/admin/members",
+		Path:   "/v2/members",
 	}
 
 	act := &membersAPIActionList{}

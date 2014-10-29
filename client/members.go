@@ -28,7 +28,7 @@ import (
 )
 
 var (
-	DefaultV2MembersPrefix = "/v2/admin/members"
+	DefaultV2MembersPrefix = "/v2/members"
 )
 
 func NewMembersAPI(tr *http.Transport, ep string, to time.Duration) (MembersAPI, error) {
