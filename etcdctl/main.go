@@ -33,6 +33,8 @@ func main() {
 		command.NewUpdateDirCommand(),
 		command.NewWatchCommand(),
 		command.NewExecWatchCommand(),
+		command.NewMemberCommand(),
 	}
+
 	app.Run(os.Args)
 }
