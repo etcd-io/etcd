@@ -202,8 +202,8 @@ func TestLogMaybeAppend(t *testing.T) {
 			lastindex, true, commit, false, // commit do not decrease
 		},
 		{
-			lastterm - 3, lastindex - 3, lastindex, nil,
-			1, true, commit, false, // commit do not decrease
+			0, 0, lastindex, nil,
+			0, true, commit, false, // commit do not decrease
 		},
 		{
 			lastterm, lastindex, lastindex, []pb.Entry{{Term: 4}},
