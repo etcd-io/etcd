@@ -17,6 +17,7 @@
 package client
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -54,6 +55,8 @@ func NewMembersAPI(tr *http.Transport, ep string, to time.Duration) (MembersAPI,
 
 type MembersAPI interface {
 	List() ([]httptypes.Member, error)
+	Add(peerURL string) (*httptypes.Member, error)
+	Remove(mID string) error
 }
 
 type httpMembersAPI struct {
@@ -66,11 +69,7 @@ func (m *httpMembersAPI) List() ([]httptypes.Member, error) {
 		return nil, err
 	}
 
-	mResponse := httpMembersAPIResponse{
-		code: httpresp.StatusCode,
-	}
-
-	if err := mResponse.err(); err != nil {
+	if err := assertStatusCode(http.StatusOK, httpresp.StatusCode); err != nil {
 		return nil, err
 	}
 
@@ -82,15 +81,33 @@ func (m *httpMembersAPI) List() ([]httptypes.Member, error) {
 	return []httptypes.Member(mCollection), nil
 }
 
-type httpMembersAPIResponse struct {
-	code int
+func (m *httpMembersAPI) Add(peerURL string) (*httptypes.Member, error) {
+	req := &membersAPIActionAdd{peerURL: peerURL}
+	httpresp, body, err := m.client.doWithTimeout(req)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := assertStatusCode(http.StatusCreated, httpresp.StatusCode); err != nil {
+		return nil, err
+	}
+
+	var memb httptypes.Member
+	if err := json.Unmarshal(body, &memb); err != nil {
+		return nil, err
+	}
+
+	return &memb, nil
 }
 
-func (r *httpMembersAPIResponse) err() (err error) {
-	if r.code != http.StatusOK {
-		err = fmt.Errorf("unrecognized status code %d", r.code)
+func (m *httpMembersAPI) Remove(memberID string) error {
+	req := &membersAPIActionRemove{memberID: memberID}
+	httpresp, _, err := m.client.doWithTimeout(req)
+	if err != nil {
+		return err
 	}
-	return
+
+	return assertStatusCode(http.StatusNoContent, httpresp.StatusCode)
 }
 
 type membersAPIActionList struct{}
@@ -98,4 +115,33 @@ type membersAPIActionList struct{}
 func (l *membersAPIActionList) httpRequest(ep url.URL) *http.Request {
 	req, _ := http.NewRequest("GET", ep.String(), nil)
 	return req
+}
+
+type membersAPIActionRemove struct {
+	memberID string
+}
+
+func (d *membersAPIActionRemove) httpRequest(ep url.URL) *http.Request {
+	ep.Path = path.Join(ep.Path, d.memberID)
+	req, _ := http.NewRequest("DELETE", ep.String(), nil)
+	return req
+}
+
+type membersAPIActionAdd struct {
+	peerURL string
+}
+
+func (a *membersAPIActionAdd) httpRequest(ep url.URL) *http.Request {
+	m := httptypes.Member{PeerURLs: []string{a.peerURL}}
+	b, _ := json.Marshal(&m)
+	req, _ := http.NewRequest("POST", ep.String(), bytes.NewReader(b))
+	req.Header.Set("Content-Type", "application/json")
+	return req
+}
+
+func assertStatusCode(want, got int) (err error) {
+	if want != got {
+		err = fmt.Errorf("unexpected status code %d", got)
+	}
+	return err
 }
