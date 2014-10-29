@@ -58,7 +58,7 @@ func send(c *http.Client, cl *Cluster, m raftpb.Message, ss *stats.ServerStats, 
 			// TODO: unknown peer id.. what do we do? I
 			// don't think his should ever happen, need to
 			// look into this further.
-			log.Printf("etcdhttp: no member for %d", m.To)
+			log.Printf("etcdhttp: no member for %s", strutil.IDAsHex(m.To))
 			return
 		}
 		u := fmt.Sprintf("%s%s", memb.PickPeerURL(), raftPrefix)
