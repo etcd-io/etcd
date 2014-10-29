@@ -333,13 +333,6 @@ func (r *raft) becomeLeader() {
 	r.appendEntry(pb.Entry{Data: nil})
 }
 
-func (r *raft) ReadMessages() []pb.Message {
-	msgs := r.msgs
-	r.msgs = make([]pb.Message, 0)
-
-	return msgs
-}
-
 func (r *raft) campaign() {
 	r.becomeCandidate()
 	if r.q() == r.poll(r.id, true) {

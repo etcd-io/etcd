@@ -37,7 +37,14 @@ func nextEnts(r *raft) (ents []pb.Entry) {
 
 type Interface interface {
 	Step(m pb.Message) error
-	ReadMessages() []pb.Message
+	readMessages() []pb.Message
+}
+
+func (r *raft) readMessages() []pb.Message {
+	msgs := r.msgs
+	r.msgs = make([]pb.Message, 0)
+
+	return msgs
 }
 
 func TestLeaderElection(t *testing.T) {
@@ -602,7 +609,7 @@ func TestHandleMsgApp(t *testing.T) {
 		if sm.raftLog.committed != tt.wCommit {
 			t.Errorf("#%d: committed = %d, want %d", i, sm.raftLog.committed, tt.wCommit)
 		}
-		m := sm.ReadMessages()
+		m := sm.readMessages()
 		if len(m) != 1 {
 			t.Fatalf("#%d: msg = nil, want 1", i)
 		}
@@ -662,7 +669,7 @@ func TestRecvMsgVote(t *testing.T) {
 
 		sm.Step(pb.Message{Type: pb.MsgVote, From: 2, Index: tt.i, LogTerm: tt.term})
 
-		msgs := sm.ReadMessages()
+		msgs := sm.readMessages()
 		if g := len(msgs); g != 1 {
 			t.Fatalf("#%d: len(msgs) = %d, want 1", i, g)
 			continue
@@ -803,7 +810,7 @@ func TestLeaderAppResp(t *testing.T) {
 		sm.raftLog = &raftLog{ents: []pb.Entry{{}, {Term: 0}, {Term: 1}}}
 		sm.becomeCandidate()
 		sm.becomeLeader()
-		sm.ReadMessages()
+		sm.readMessages()
 		sm.Step(pb.Message{From: 2, Type: pb.MsgAppResp, Index: tt.index, Term: sm.Term, Reject: tt.reject})
 
 		p := sm.prs[2]
@@ -814,7 +821,7 @@ func TestLeaderAppResp(t *testing.T) {
 			t.Errorf("#%d next = %d, want %d", i, p.next, tt.wnext)
 		}
 
-		msgs := sm.ReadMessages()
+		msgs := sm.readMessages()
 
 		if len(msgs) != tt.wmsgNum {
 			t.Errorf("#%d msgNum = %d, want %d", i, len(msgs), tt.wmsgNum)
@@ -851,7 +858,7 @@ func TestBcastBeat(t *testing.T) {
 	}
 
 	sm.Step(pb.Message{Type: pb.MsgBeat})
-	msgs := sm.ReadMessages()
+	msgs := sm.readMessages()
 	if len(msgs) != 2 {
 		t.Fatalf("len(msgs) = %v, want 1", len(msgs))
 	}
@@ -904,7 +911,7 @@ func TestRecvMsgBeat(t *testing.T) {
 		}
 		sm.Step(pb.Message{From: 1, To: 1, Type: pb.MsgBeat})
 
-		msgs := sm.ReadMessages()
+		msgs := sm.readMessages()
 		if len(msgs) != tt.wMsg {
 			t.Errorf("%d: len(msgs) = %d, want %d", i, len(msgs), tt.wMsg)
 		}
@@ -967,7 +974,7 @@ func TestProvideSnap(t *testing.T) {
 	sm.prs[2].next = sm.raftLog.offset
 
 	sm.Step(pb.Message{From: 2, To: 1, Type: pb.MsgAppResp, Index: sm.prs[2].next - 1, Reject: true})
-	msgs := sm.ReadMessages()
+	msgs := sm.readMessages()
 	if len(msgs) != 1 {
 		t.Fatalf("len(msgs) = %d, want 1", len(msgs))
 	}
@@ -1207,7 +1214,7 @@ func (nw *network) send(msgs ...pb.Message) {
 		m := msgs[0]
 		p := nw.peers[m.To]
 		p.Step(m)
-		msgs = append(msgs[1:], nw.filter(p.ReadMessages())...)
+		msgs = append(msgs[1:], nw.filter(p.readMessages())...)
 	}
 }
 
@@ -1267,7 +1274,7 @@ type connem struct {
 type blackHole struct{}
 
 func (blackHole) Step(pb.Message) error      { return nil }
-func (blackHole) ReadMessages() []pb.Message { return nil }
+func (blackHole) readMessages() []pb.Message { return nil }
 
 var nopStepper = &blackHole{}
 

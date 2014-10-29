@@ -63,7 +63,7 @@ func TestLeaderBcastBeat(t *testing.T) {
 		r.tick()
 	}
 
-	msgs := r.ReadMessages()
+	msgs := r.readMessages()
 	sort.Sort(messageSlice(msgs))
 	wmsgs := []pb.Message{
 		{From: 1, To: 2, Term: 1, Type: pb.MsgApp},
@@ -115,7 +115,7 @@ func testNonleaderStartElection(t *testing.T, state StateType) {
 	if r.votes[r.id] != true {
 		t.Errorf("vote for self = false, want true")
 	}
-	msgs := r.ReadMessages()
+	msgs := r.readMessages()
 	sort.Sort(messageSlice(msgs))
 	wmsgs := []pb.Message{
 		{From: 1, To: 2, Term: 2, Type: pb.MsgVote},
@@ -197,7 +197,7 @@ func TestFollowerVote(t *testing.T) {
 
 		r.Step(pb.Message{From: tt.nvote, To: 1, Term: 1, Type: pb.MsgVote})
 
-		msgs := r.ReadMessages()
+		msgs := r.readMessages()
 		wmsgs := []pb.Message{
 			{From: 1, To: tt.nvote, Term: 1, Type: pb.MsgVoteResp, Reject: tt.wreject},
 		}
@@ -258,7 +258,7 @@ func testNonleaderElectionTimeoutRandomized(t *testing.T, state StateType) {
 		}
 
 		time := 0
-		for len(r.ReadMessages()) == 0 {
+		for len(r.readMessages()) == 0 {
 			r.tick()
 			time++
 		}
@@ -306,7 +306,7 @@ func testNonleadersElectionTimeoutNonconflict(t *testing.T, state StateType) {
 		for timeoutNum == 0 {
 			for _, r := range rs {
 				r.tick()
-				if len(r.ReadMessages()) > 0 {
+				if len(r.readMessages()) > 0 {
 					timeoutNum++
 				}
 			}
