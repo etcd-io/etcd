@@ -549,7 +549,7 @@ func TestGoodParseRequest(t *testing.T) {
 	}
 }
 
-func TestServeAdminMembers(t *testing.T) {
+func TestServeMembers(t *testing.T) {
 	memb1 := etcdserver.Member{ID: 12, Attributes: etcdserver.Attributes{ClientURLs: []string{"http://localhost:8080"}}}
 	memb2 := etcdserver.Member{ID: 13, Attributes: etcdserver.Attributes{ClientURLs: []string{"http://localhost:8081"}}}
 	cluster := &fakeCluster{
@@ -601,7 +601,7 @@ func TestServeAdminMembers(t *testing.T) {
 	}
 }
 
-func TestServeAdminMembersCreate(t *testing.T) {
+func TestServeMembersCreate(t *testing.T) {
 	u := mustNewURL(t, membersPrefix)
 	b := []byte(`{"peerURLs":["http://127.0.0.1:1"]}`)
 	req, err := http.NewRequest("POST", u.String(), bytes.NewReader(b))
@@ -653,7 +653,7 @@ func TestServeAdminMembersCreate(t *testing.T) {
 	}
 }
 
-func TestServeAdminMembersDelete(t *testing.T) {
+func TestServeMembersDelete(t *testing.T) {
 	req := &http.Request{
 		Method: "DELETE",
 		URL:    mustNewURL(t, path.Join(membersPrefix, "BEEF")),
@@ -686,7 +686,7 @@ func TestServeAdminMembersDelete(t *testing.T) {
 	}
 }
 
-func TestServeAdminMembersFail(t *testing.T) {
+func TestServeMembersFail(t *testing.T) {
 	tests := []struct {
 		req    *http.Request
 		server etcdserver.Server
