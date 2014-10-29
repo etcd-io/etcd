@@ -36,6 +36,63 @@ import (
 	pb "github.com/coreos/etcd/raft/raftpb"
 )
 
+func TestFollowerUpdateTermFromMessage(t *testing.T) {
+	testUpdateTermFromMessage(t, StateFollower)
+}
+func TestCandidateUpdateTermFromMessage(t *testing.T) {
+	testUpdateTermFromMessage(t, StateCandidate)
+}
+func TestLeaderUpdateTermFromMessage(t *testing.T) {
+	testUpdateTermFromMessage(t, StateLeader)
+}
+
+// testUpdateTermFromMessage tests that if one server’s current term is
+// smaller than the other’s, then it updates its current term to the larger
+// value. If a candidate or leader discovers that its term is out of date,
+// it immediately reverts to follower state.
+// Reference: section 5.1
+func testUpdateTermFromMessage(t *testing.T, state StateType) {
+	r := newRaft(1, []uint64{1, 2, 3}, 10, 1)
+	switch state {
+	case StateFollower:
+		r.becomeFollower(1, 2)
+	case StateCandidate:
+		r.becomeCandidate()
+	case StateLeader:
+		r.becomeCandidate()
+		r.becomeLeader()
+	}
+
+	r.Step(pb.Message{Type: pb.MsgApp, Term: 2})
+
+	if r.Term != 2 {
+		t.Errorf("term = %d, want %d", r.Term, 2)
+	}
+	if r.state != StateFollower {
+		t.Errorf("state = %v, want %v", r.state, StateFollower)
+	}
+}
+
+// TestRejectStaleTermMessage tests that if a server receives a request with
+// a stale term number, it rejects the request.
+// Our implementation ignores the request instead.
+// Reference: section 5.1
+func TestRejectStaleTermMessage(t *testing.T) {
+	called := false
+	fakeStep := func(r *raft, m pb.Message) {
+		called = true
+	}
+	r := newRaft(1, []uint64{1, 2, 3}, 10, 1)
+	r.step = fakeStep
+	r.loadState(pb.HardState{Term: 2})
+
+	r.Step(pb.Message{Type: pb.MsgApp, Term: r.Term - 1})
+
+	if called == true {
+		t.Errorf("stepFunc called = %v, want %v", called, false)
+	}
+}
+
 // TestStartAsFollower tests that when servers start up, they begin as followers.
 // Reference: section 5.2
 func TestStartAsFollower(t *testing.T) {
