@@ -33,6 +33,20 @@ type MemberCreateRequest struct {
 	PeerURLs types.URLs
 }
 
+func (m *MemberCreateRequest) MarshalJSON() ([]byte, error) {
+	s := struct {
+		PeerURLs []string `json:"peerURLs"`
+	}{
+		PeerURLs: make([]string, len(m.PeerURLs)),
+	}
+
+	for i, u := range m.PeerURLs {
+		s.PeerURLs[i] = u.String()
+	}
+
+	return json.Marshal(&s)
+}
+
 func (m *MemberCreateRequest) UnmarshalJSON(data []byte) error {
 	s := struct {
 		PeerURLs []string `json:"peerURLs"`
