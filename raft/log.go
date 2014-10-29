@@ -50,7 +50,7 @@ func (l *raftLog) String() string {
 }
 
 // maybeAppend returns (0, false) if the entries cannot be appended. Otherwise,
-// it returns (last index of entries, true).
+// it returns (last index of new entries, true).
 func (l *raftLog) maybeAppend(index, logTerm, committed uint64, ents ...pb.Entry) (lastnewi uint64, ok bool) {
 	lastnewi = index + uint64(len(ents))
 	if l.matchTerm(index, logTerm) {
