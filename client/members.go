@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/etcdserver/etcdhttp/httptypes"
+	"github.com/coreos/etcd/pkg/types"
 )
 
 var (
@@ -82,7 +83,12 @@ func (m *httpMembersAPI) List() ([]httptypes.Member, error) {
 }
 
 func (m *httpMembersAPI) Add(peerURL string) (*httptypes.Member, error) {
-	req := &membersAPIActionAdd{peerURL: peerURL}
+	urls, err := types.NewURLs([]string{peerURL})
+	if err != nil {
+		return nil, err
+	}
+
+	req := &membersAPIActionAdd{peerURLs: urls}
 	code, body, err := m.client.doWithTimeout(req)
 	if err != nil {
 		return nil, err
@@ -128,11 +134,11 @@ func (d *membersAPIActionRemove) httpRequest(ep url.URL) *http.Request {
 }
 
 type membersAPIActionAdd struct {
-	peerURL string
+	peerURLs types.URLs
 }
 
 func (a *membersAPIActionAdd) httpRequest(ep url.URL) *http.Request {
-	m := httptypes.Member{PeerURLs: []string{a.peerURL}}
+	m := httptypes.MemberCreateRequest{PeerURLs: a.peerURLs}
 	b, _ := json.Marshal(&m)
 	req, _ := http.NewRequest("POST", ep.String(), bytes.NewReader(b))
 	req.Header.Set("Content-Type", "application/json")
