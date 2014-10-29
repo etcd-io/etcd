@@ -27,6 +27,10 @@ import (
 
 type URLs []url.URL
 
+func (us URLs) String() string {
+	return strings.Join(us.StringSlice(), ",")
+}
+
 func (us *URLs) Sort() {
 	sort.Sort(us)
 }
