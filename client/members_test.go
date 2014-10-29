@@ -24,19 +24,20 @@ import (
 	"github.com/coreos/etcd/pkg/types"
 )
 
-func TestMembersAPIListAction(t *testing.T) {
+func TestMembersAPIActionList(t *testing.T) {
 	ep := url.URL{Scheme: "http", Host: "example.com/v2/members"}
+	act := &membersAPIActionList{}
+
 	wantURL := &url.URL{
 		Scheme: "http",
 		Host:   "example.com",
 		Path:   "/v2/members",
 	}
 
-	act := &membersAPIActionList{}
 	got := *act.httpRequest(ep)
 	err := assertResponse(got, wantURL, http.Header{}, nil)
 	if err != nil {
-		t.Errorf(err.Error())
+		t.Error(err.Error())
 	}
 }
 
