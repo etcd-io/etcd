@@ -66,3 +66,20 @@ func TestMembersAPIActionAdd(t *testing.T) {
 		t.Error(err.Error())
 	}
 }
+
+func TestMembersAPIActionRemove(t *testing.T) {
+	ep := url.URL{Scheme: "http", Host: "example.com/v2/members"}
+	act := &membersAPIActionRemove{memberID: "XXX"}
+
+	wantURL := &url.URL{
+		Scheme: "http",
+		Host:   "example.com",
+		Path:   "/v2/members/XXX",
+	}
+
+	got := *act.httpRequest(ep)
+	err := assertResponse(got, wantURL, http.Header{}, nil)
+	if err != nil {
+		t.Error(err.Error())
+	}
+}
