@@ -1005,6 +1005,6 @@ curl http://127.0.0.1:2379/v2/stats/store
 
 ## Cluster Config
 
-See the [admin API guide][admin-api] for details on the cluster management APIs.
+See the [other etcd APIs][other-apis] for details on the cluster management.
 
-[admin-api]: https://github.com/coreos/etcd/blob/master/Documentation/0.5/admin_api.md
+[other-apis]: https://github.com/coreos/etcd/blob/master/Documentation/0.5/other_apis.md
