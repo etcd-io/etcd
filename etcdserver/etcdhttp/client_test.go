@@ -601,15 +601,10 @@ func TestServeAdminMembers(t *testing.T) {
 	}
 }
 
-func TestServeAdminMembersPut(t *testing.T) {
+func TestServeAdminMembersCreate(t *testing.T) {
 	u := mustNewURL(t, adminMembersPrefix)
-	raftAttr := etcdserver.RaftAttributes{PeerURLs: []string{"http://127.0.0.1:1"}}
-	b, err := json.Marshal(raftAttr)
-	if err != nil {
-		t.Fatal(err)
-	}
-	body := bytes.NewReader(b)
-	req, err := http.NewRequest("POST", u.String(), body)
+	b := []byte(`{"peerURLs":["http://127.0.0.1:1"]}`)
+	req, err := http.NewRequest("POST", u.String(), bytes.NewReader(b))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -628,15 +623,7 @@ func TestServeAdminMembersPut(t *testing.T) {
 	if rw.Code != wcode {
 		t.Errorf("code=%d, want %d", rw.Code, wcode)
 	}
-	wm := etcdserver.Member{
-		ID:             3064321551348478165,
-		RaftAttributes: raftAttr,
-	}
 
-	wb, err := json.Marshal(wm)
-	if err != nil {
-		t.Fatal(err)
-	}
 	wct := "application/json"
 	if gct := rw.Header().Get("Content-Type"); gct != wct {
 		t.Errorf("content-type = %s, want %s", gct, wct)
@@ -646,11 +633,20 @@ func TestServeAdminMembersPut(t *testing.T) {
 	if gcid != wcid {
 		t.Errorf("cid = %s, want %s", gcid, wcid)
 	}
+
+	wb := `{"id":"2a86a83729b330d5","name":"","peerURLs":["http://127.0.0.1:1"],"clientURLs":[]}` + "\n"
 	g := rw.Body.String()
-	w := string(wb) + "\n"
-	if g != w {
-		t.Errorf("got body=%q, want %q", g, w)
+	if g != wb {
+		t.Errorf("got body=%q, want %q", g, wb)
 	}
+
+	wm := etcdserver.Member{
+		ID: 3064321551348478165,
+		RaftAttributes: etcdserver.RaftAttributes{
+			PeerURLs: []string{"http://127.0.0.1:1"},
+		},
+	}
+
 	wactions := []action{{name: "AddMember", params: []interface{}{wm}}}
 	if !reflect.DeepEqual(s.actions, wactions) {
 		t.Errorf("actions = %+v, want %+v", s.actions, wactions)
@@ -721,6 +717,7 @@ func TestServeAdminMembersFail(t *testing.T) {
 				URL:    mustNewURL(t, adminMembersPrefix),
 				Method: "POST",
 				Body:   ioutil.NopCloser(strings.NewReader("bad json")),
+				Header: map[string][]string{"Content-Type": []string{"application/json"}},
 			},
 			&resServer{},
 
@@ -736,7 +733,7 @@ func TestServeAdminMembersFail(t *testing.T) {
 			},
 			&errServer{},
 
-			http.StatusBadRequest,
+			http.StatusUnsupportedMediaType,
 		},
 		{
 			// bad url
@@ -1596,5 +1593,24 @@ func TestNewMemberCollection(t *testing.T) {
 
 	if !reflect.DeepEqual(want, got) {
 		t.Fatalf("newMemberCollection failure: want=%#v, got=%#v", want, got)
+	}
+}
+
+func TestNewMember(t *testing.T) {
+	fixture := &etcdserver.Member{
+		ID:             12,
+		Attributes:     etcdserver.Attributes{ClientURLs: []string{"http://localhost:8080", "http://localhost:8081"}},
+		RaftAttributes: etcdserver.RaftAttributes{PeerURLs: []string{"http://localhost:8082", "http://localhost:8083"}},
+	}
+	got := newMember(fixture)
+
+	want := httptypes.Member{
+		ID:         "c",
+		ClientURLs: []string{"http://localhost:8080", "http://localhost:8081"},
+		PeerURLs:   []string{"http://localhost:8082", "http://localhost:8083"},
+	}
+
+	if !reflect.DeepEqual(want, got) {
+		t.Fatalf("newMember failure: want=%#v, got=%#v", want, got)
 	}
 }
