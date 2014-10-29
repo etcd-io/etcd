@@ -4,22 +4,21 @@ import (
 	"encoding/json"
 	"io/ioutil"
 
-	raftpb "github.com/coreos/etcd/raft/raftpb"
+	"github.com/coreos/etcd/raft/raftpb"
 )
 
 type Config4 struct {
 	CommitIndex uint64 `json:"commitIndex"`
 
-	//TODO(bcwaldon): is this needed?
-	//Peers []struct{
-	//	Name             string `json:"name"`
-	//	ConnectionString string `json:"connectionString"`
-	//}	`json:"peers"`
+	Peers []struct {
+		Name             string `json:"name"`
+		ConnectionString string `json:"connectionString"`
+	} `json:"peers"`
 }
 
 func (c *Config4) HardState5() raftpb.HardState {
 	return raftpb.HardState{
-		Commit: int64(c.CommitIndex),
+		Commit: c.CommitIndex,
 		Term:   0,
 		Vote:   0,
 	}

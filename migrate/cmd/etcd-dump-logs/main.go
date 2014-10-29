@@ -9,6 +9,7 @@ import (
 
 	etcdserverpb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/migrate"
+	"github.com/coreos/etcd/pkg/types"
 	raftpb "github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/wal"
 )
@@ -27,7 +28,7 @@ func main() {
 	flag.Parse()
 
 	if *from == "" {
-		log.Fatal("Must provide -from flag")
+		log.Fatal("Must provide -data-dir flag")
 	}
 
 	var ents []raftpb.Entry
@@ -58,6 +59,12 @@ func main() {
 			}
 		case raftpb.EntryConfChange:
 			msg = fmt.Sprintf("%s conf", msg)
+			var r raftpb.ConfChange
+			if err := r.Unmarshal(e.Data); err != nil {
+				msg = fmt.Sprintf("%s ???", msg)
+			} else {
+				msg = fmt.Sprintf("%s %s %s %s", msg, r.Type, types.ID(r.NodeID), r.Context)
+			}
 		}
 		fmt.Println(msg)
 	}
@@ -70,7 +77,7 @@ func dump4(dataDir string) ([]raftpb.Entry, error) {
 		return nil, err
 	}
 
-	return migrate.Entries4To5(0, ents)
+	return migrate.Entries4To5(ents)
 }
 
 func dump5(dataDir string) ([]raftpb.Entry, error) {

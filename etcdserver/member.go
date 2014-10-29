@@ -105,6 +105,10 @@ func memberStoreKey(id types.ID) string {
 	return path.Join(storeMembersPrefix, id.String())
 }
 
+func MemberAttributesStorePath(id types.ID) string {
+	return path.Join(memberStoreKey(id), attributesSuffix)
+}
+
 func mustParseMemberIDFromKey(key string) types.ID {
 	id, err := types.IDFromString(path.Base(key))
 	if err != nil {

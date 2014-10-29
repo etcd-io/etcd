@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"path"
 	"time"
 
 	"github.com/coreos/etcd/etcdserver"
@@ -17,8 +18,49 @@ import (
 	"github.com/coreos/etcd/store"
 )
 
-func DecodeLog4FromFile(logpath string) ([]*etcd4pb.LogEntry, error) {
-	file, err := os.OpenFile(logpath, os.O_RDWR, 0600)
+const etcdDefaultClusterName = "etcd-cluster"
+
+func UnixTimeOrPermanent(expireTime time.Time) int64 {
+	expire := expireTime.Unix()
+	if expireTime == store.Permanent {
+		expire = 0
+	}
+	return expire
+}
+
+type Log4 []*etcd4pb.LogEntry
+
+func (l Log4) NodeIDs() map[string]uint64 {
+	out := make(map[string]uint64)
+	for _, e := range l {
+		if e.GetCommandName() == "etcd:join" {
+			cmd4, err := NewCommand4(e.GetCommandName(), e.GetCommand(), nil)
+			if err != nil {
+				log.Println("error converting an etcd:join to v0.5 format. Likely corrupt!")
+				return nil
+			}
+			join := cmd4.(*JoinCommand)
+			m := generateNodeMember(join.Name, join.RaftURL, "")
+			out[join.Name] = uint64(m.ID)
+		}
+		if e.GetCommandName() == "etcd:remove" {
+			cmd4, err := NewCommand4(e.GetCommandName(), e.GetCommand(), nil)
+			if err != nil {
+				return nil
+			}
+			name := cmd4.(*RemoveCommand).Name
+			delete(out, name)
+		}
+	}
+	return out
+}
+
+func StorePath(key string) string {
+	return path.Join(etcdserver.StoreKeysPrefix, key)
+}
+
+func DecodeLog4FromFile(logpath string) (Log4, error) {
+	file, err := os.OpenFile(logpath, os.O_RDONLY, 0600)
 	if err != nil {
 		return nil, err
 	}
@@ -37,12 +79,10 @@ func DecodeLog4(file *os.File) ([]*etcd4pb.LogEntry, error) {
 			if err == io.EOF {
 				break
 			}
-			return nil, fmt.Errorf("failed decoding next log entry: ", err)
+			return nil, fmt.Errorf("failed decoding next log entry: %v", err)
 		}
 
-		if entry != nil {
-			entries = append(entries, entry)
-		}
+		entries = append(entries, entry)
 
 		readBytes += int64(n)
 	}
@@ -75,10 +115,10 @@ func DecodeNextEntry4(r io.Reader) (*etcd4pb.LogEntry, int, error) {
 	return ent4, length, nil
 }
 
-func hashName(name string) int64 {
-	var sum int64
+func hashName(name string) uint64 {
+	var sum uint64
 	for _, ch := range name {
-		sum = 131*sum + int64(ch)
+		sum = 131*sum + uint64(ch)
 	}
 	return sum
 }
@@ -88,7 +128,7 @@ type Command4 interface {
 	Data5() ([]byte, error)
 }
 
-func NewCommand4(name string, data []byte) (Command4, error) {
+func NewCommand4(name string, data []byte, raftMap map[string]uint64) (Command4, error) {
 	var cmd Command4
 
 	switch name {
@@ -97,7 +137,6 @@ func NewCommand4(name string, data []byte) (Command4, error) {
 	case "etcd:join":
 		cmd = &JoinCommand{}
 	case "etcd:setClusterConfig":
-		//TODO(bcwaldon): can this safely be discarded?
 		cmd = &NOPCommand{}
 	case "etcd:compareAndDelete":
 		cmd = &CompareAndDeleteCommand{}
@@ -114,9 +153,10 @@ func NewCommand4(name string, data []byte) (Command4, error) {
 	case "etcd:update":
 		cmd = &UpdateCommand{}
 	case "raft:join":
-		cmd = &DefaultJoinCommand{}
+		// These are subsumed by etcd:remove and etcd:join; we shouldn't see them.
+		fallthrough
 	case "raft:leave":
-		cmd = &DefaultLeaveCommand{}
+		return nil, fmt.Errorf("found a raft join/leave command; these shouldn't be in an etcd log")
 	case "raft:nop":
 		cmd = &NOPCommand{}
 	default:
@@ -130,27 +170,43 @@ func NewCommand4(name string, data []byte) (Command4, error) {
 		}
 	}
 
+	switch name {
+	case "etcd:join":
+		c := cmd.(*JoinCommand)
+		m := generateNodeMember(c.Name, c.RaftURL, c.EtcdURL)
+		c.memb = *m
+		if raftMap != nil {
+			raftMap[c.Name] = uint64(m.ID)
+		}
+	case "etcd:remove":
+		c := cmd.(*RemoveCommand)
+		if raftMap != nil {
+			m, ok := raftMap[c.Name]
+			if !ok {
+				return nil, fmt.Errorf("removing a node named %s before it joined", c.Name)
+			}
+			c.id = m
+			delete(raftMap, c.Name)
+		}
+	}
 	return cmd, nil
 }
 
 type RemoveCommand struct {
 	Name string `json:"name"`
+	id   uint64
 }
 
 func (c *RemoveCommand) Type5() raftpb.EntryType {
-	return raftpb.EntryNormal
+	return raftpb.EntryConfChange
 }
 
 func (c *RemoveCommand) Data5() ([]byte, error) {
-	m := etcdserver.Member{
-		ID: hashName(c.Name),
+	req5 := raftpb.ConfChange{
+		ID:     0,
+		Type:   raftpb.ConfChangeRemoveNode,
+		NodeID: c.id,
 	}
-
-	req5 := &etcdserverpb.Request{
-		Method: "DELETE",
-		Path:   m.StoreKey(),
-	}
-
 	return req5.Marshal()
 }
 
@@ -158,46 +214,26 @@ type JoinCommand struct {
 	Name    string `json:"name"`
 	RaftURL string `json:"raftURL"`
 	EtcdURL string `json:"etcdURL"`
-
-	//TODO(bcwaldon): Should these be converted?
-	//MinVersion int `json:"minVersion"`
-	//MaxVersion int `json:"maxVersion"`
+	memb    etcdserver.Member
 }
 
 func (c *JoinCommand) Type5() raftpb.EntryType {
-	return raftpb.EntryNormal
+	return raftpb.EntryConfChange
 }
 
 func (c *JoinCommand) Data5() ([]byte, error) {
-	pURLs, err := types.NewURLs([]string{c.RaftURL})
+	b, err := json.Marshal(c.memb)
 	if err != nil {
 		return nil, err
 	}
 
-	m := etcdserver.GenerateMember(c.Name, pURLs, nil)
-
-	//TODO(bcwaldon): why doesn't this go through GenerateMember?
-	m.ClientURLs = []string{c.EtcdURL}
-
-	b, err := json.Marshal(*m)
-	if err != nil {
-		return nil, err
+	req5 := &raftpb.ConfChange{
+		ID:      0,
+		Type:    raftpb.ConfChangeAddNode,
+		NodeID:  uint64(c.memb.ID),
+		Context: b,
 	}
-
-	req5 := &etcdserverpb.Request{
-		Method: "PUT",
-		Path:   m.StoreKey(),
-		Val:    string(b),
-
-		// TODO(bcwaldon): Is this correct?
-		Time: store.Permanent.Unix(),
-
-		//TODO(bcwaldon): What is the new equivalent of Unique?
-		//Unique: c.Unique,
-	}
-
 	return req5.Marshal()
-
 }
 
 type SetClusterConfigCommand struct {
@@ -223,9 +259,6 @@ func (c *SetClusterConfigCommand) Data5() ([]byte, error) {
 		Path:   "/v2/admin/config",
 		Dir:    false,
 		Val:    string(b),
-
-		// TODO(bcwaldon): Is this correct?
-		Time: store.Permanent.Unix(),
 	}
 
 	return req5.Marshal()
@@ -244,7 +277,7 @@ func (c *CompareAndDeleteCommand) Type5() raftpb.EntryType {
 func (c *CompareAndDeleteCommand) Data5() ([]byte, error) {
 	req5 := &etcdserverpb.Request{
 		Method:    "DELETE",
-		Path:      c.Key,
+		Path:      StorePath(c.Key),
 		PrevValue: c.PrevValue,
 		PrevIndex: c.PrevIndex,
 	}
@@ -265,12 +298,12 @@ func (c *CompareAndSwapCommand) Type5() raftpb.EntryType {
 
 func (c *CompareAndSwapCommand) Data5() ([]byte, error) {
 	req5 := &etcdserverpb.Request{
-		Method:    "PUT",
-		Path:      c.Key,
-		Val:       c.Value,
-		PrevValue: c.PrevValue,
-		PrevIndex: c.PrevIndex,
-		Time:      c.ExpireTime.Unix(),
+		Method:     "PUT",
+		Path:       StorePath(c.Key),
+		Val:        c.Value,
+		PrevValue:  c.PrevValue,
+		PrevIndex:  c.PrevIndex,
+		Expiration: UnixTimeOrPermanent(c.ExpireTime),
 	}
 	return req5.Marshal()
 }
@@ -289,16 +322,17 @@ func (c *CreateCommand) Type5() raftpb.EntryType {
 
 func (c *CreateCommand) Data5() ([]byte, error) {
 	req5 := &etcdserverpb.Request{
-		Method: "PUT",
-		Path:   c.Key,
-		Dir:    c.Dir,
-		Val:    c.Value,
-
-		// TODO(bcwaldon): Is this correct?
-		Time: c.ExpireTime.Unix(),
-
-		//TODO(bcwaldon): What is the new equivalent of Unique?
-		//Unique: c.Unique,
+		Path:       StorePath(c.Key),
+		Dir:        c.Dir,
+		Val:        c.Value,
+		Expiration: UnixTimeOrPermanent(c.ExpireTime),
+	}
+	if c.Unique {
+		req5.Method = "POST"
+	} else {
+		var prevExist = true
+		req5.Method = "PUT"
+		req5.PrevExist = &prevExist
 	}
 	return req5.Marshal()
 }
@@ -316,7 +350,7 @@ func (c *DeleteCommand) Type5() raftpb.EntryType {
 func (c *DeleteCommand) Data5() ([]byte, error) {
 	req5 := &etcdserverpb.Request{
 		Method:    "DELETE",
-		Path:      c.Key,
+		Path:      StorePath(c.Key),
 		Dir:       c.Dir,
 		Recursive: c.Recursive,
 	}
@@ -336,13 +370,11 @@ func (c *SetCommand) Type5() raftpb.EntryType {
 
 func (c *SetCommand) Data5() ([]byte, error) {
 	req5 := &etcdserverpb.Request{
-		Method: "PUT",
-		Path:   c.Key,
-		Dir:    c.Dir,
-		Val:    c.Value,
-
-		//TODO(bcwaldon): Is this correct?
-		Time: c.ExpireTime.Unix(),
+		Method:     "PUT",
+		Path:       StorePath(c.Key),
+		Dir:        c.Dir,
+		Val:        c.Value,
+		Expiration: UnixTimeOrPermanent(c.ExpireTime),
 	}
 	return req5.Marshal()
 }
@@ -358,13 +390,13 @@ func (c *UpdateCommand) Type5() raftpb.EntryType {
 }
 
 func (c *UpdateCommand) Data5() ([]byte, error) {
+	exist := true
 	req5 := &etcdserverpb.Request{
-		Method: "PUT",
-		Path:   c.Key,
-		Val:    c.Value,
-
-		//TODO(bcwaldon): Is this correct?
-		Time: c.ExpireTime.Unix(),
+		Method:     "PUT",
+		Path:       StorePath(c.Key),
+		Val:        c.Value,
+		PrevExist:  &exist,
+		Expiration: UnixTimeOrPermanent(c.ExpireTime),
 	}
 	return req5.Marshal()
 }
@@ -380,30 +412,19 @@ func (c *SyncCommand) Type5() raftpb.EntryType {
 func (c *SyncCommand) Data5() ([]byte, error) {
 	req5 := &etcdserverpb.Request{
 		Method: "SYNC",
-		//TODO(bcwaldon): Is this correct?
-		Time: c.Time.UnixNano(),
+		Time:   c.Time.UnixNano(),
 	}
 	return req5.Marshal()
 }
 
 type DefaultJoinCommand struct {
-	//TODO(bcwaldon): implement Type5, Data5
-	Command4
-
 	Name             string `json:"name"`
 	ConnectionString string `json:"connectionString"`
 }
 
 type DefaultLeaveCommand struct {
-	//TODO(bcwaldon): implement Type5, Data5
-	Command4
-
 	Name string `json:"name"`
-}
-
-//TODO(bcwaldon): Why is CommandName here?
-func (c *DefaultLeaveCommand) CommandName() string {
-	return "raft:leave"
+	id   uint64
 }
 
 type NOPCommand struct{}
@@ -421,7 +442,7 @@ func (c *NOPCommand) Data5() ([]byte, error) {
 	return nil, nil
 }
 
-func Entries4To5(commitIndex uint64, ents4 []*etcd4pb.LogEntry) ([]raftpb.Entry, error) {
+func Entries4To5(ents4 []*etcd4pb.LogEntry) ([]raftpb.Entry, error) {
 	ents4Len := len(ents4)
 
 	if ents4Len == 0 {
@@ -438,11 +459,12 @@ func Entries4To5(commitIndex uint64, ents4 []*etcd4pb.LogEntry) ([]raftpb.Entry,
 		}
 	}
 
+	raftMap := make(map[string]uint64)
 	ents5 := make([]raftpb.Entry, 0)
 	for i, e := range ents4 {
-		ent, err := toEntry5(e)
+		ent, err := toEntry5(e, raftMap)
 		if err != nil {
-			log.Printf("Ignoring invalid log data in entry %d: %v", i, err)
+			log.Fatalf("Error converting entry %d, %s", i, err)
 		} else {
 			ents5 = append(ents5, *ent)
 		}
@@ -451,8 +473,8 @@ func Entries4To5(commitIndex uint64, ents4 []*etcd4pb.LogEntry) ([]raftpb.Entry,
 	return ents5, nil
 }
 
-func toEntry5(ent4 *etcd4pb.LogEntry) (*raftpb.Entry, error) {
-	cmd4, err := NewCommand4(ent4.GetCommandName(), ent4.GetCommand())
+func toEntry5(ent4 *etcd4pb.LogEntry, raftMap map[string]uint64) (*raftpb.Entry, error) {
+	cmd4, err := NewCommand4(ent4.GetCommandName(), ent4.GetCommand(), raftMap)
 	if err != nil {
 		return nil, err
 	}
@@ -463,8 +485,8 @@ func toEntry5(ent4 *etcd4pb.LogEntry) (*raftpb.Entry, error) {
 	}
 
 	ent5 := raftpb.Entry{
-		Term:  int64(ent4.GetTerm()),
-		Index: int64(ent4.GetIndex()),
+		Term:  ent4.GetTerm(),
+		Index: ent4.GetIndex(),
 		Type:  cmd4.Type5(),
 		Data:  data,
 	}
@@ -472,4 +494,15 @@ func toEntry5(ent4 *etcd4pb.LogEntry) (*raftpb.Entry, error) {
 	log.Printf("%d: %s -> %s", ent5.Index, ent4.GetCommandName(), ent5.Type)
 
 	return &ent5, nil
+}
+
+func generateNodeMember(name, rafturl, etcdurl string) *etcdserver.Member {
+	pURLs, err := types.NewURLs([]string{rafturl})
+	if err != nil {
+		log.Fatalf("Invalid Raft URL %s -- this log could never have worked", rafturl)
+	}
+
+	m := etcdserver.NewMember(name, pURLs, etcdDefaultClusterName, nil)
+	m.ClientURLs = []string{etcdurl}
+	return m
 }

@@ -7,11 +7,13 @@ import (
 	"hash/crc32"
 	"io/ioutil"
 	"log"
+	"net/url"
 	"os"
 	"path"
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	raftpb "github.com/coreos/etcd/raft/raftpb"
 )
@@ -25,17 +27,155 @@ type Snapshot4 struct {
 		Name             string `json:"name"`
 		ConnectionString string `json:"connectionString"`
 	} `json:"peers"`
+}
 
-	//TODO(bcwaldon): is this needed?
-	//Path  string `json:"path"`
+type sstore struct {
+	Root           *node
+	CurrentIndex   uint64
+	CurrentVersion int
+}
+
+type node struct {
+	Path string
+
+	CreatedIndex  uint64
+	ModifiedIndex uint64
+
+	Parent *node `json:"-"` // should not encode this field! avoid circular dependency.
+
+	ExpireTime time.Time
+	ACL        string
+	Value      string           // for key-value pair
+	Children   map[string]*node // for directory
+}
+
+func replacePathNames(n *node, s1, s2 string) {
+	n.Path = path.Clean(strings.Replace(n.Path, s1, s2, 1))
+	for _, c := range n.Children {
+		replacePathNames(c, s1, s2)
+	}
+}
+
+func pullNodesFromEtcd(n *node) map[string]uint64 {
+	out := make(map[string]uint64)
+	machines := n.Children["machines"]
+	for name, c := range machines.Children {
+		q, err := url.ParseQuery(c.Value)
+		if err != nil {
+			log.Fatal("Couldn't parse old query string value")
+		}
+		etcdurl := q.Get("etcd")
+		rafturl := q.Get("raft")
+
+		m := generateNodeMember(name, rafturl, etcdurl)
+		out[m.Name] = uint64(m.ID)
+	}
+	return out
+}
+
+func fixEtcd(n *node) {
+	n.Path = "/0"
+	machines := n.Children["machines"]
+	n.Children["members"] = &node{
+		Path:          "/0/members",
+		CreatedIndex:  machines.CreatedIndex,
+		ModifiedIndex: machines.ModifiedIndex,
+		ExpireTime:    machines.ExpireTime,
+		ACL:           machines.ACL,
+		Children:      make(map[string]*node),
+	}
+	for name, c := range machines.Children {
+		q, err := url.ParseQuery(c.Value)
+		if err != nil {
+			log.Fatal("Couldn't parse old query string value")
+		}
+		etcdurl := q.Get("etcd")
+		rafturl := q.Get("raft")
+
+		m := generateNodeMember(name, rafturl, etcdurl)
+		attrBytes, err := json.Marshal(m.Attributes)
+		if err != nil {
+			log.Fatal("Couldn't marshal attributes")
+		}
+		raftBytes, err := json.Marshal(m.RaftAttributes)
+		if err != nil {
+			log.Fatal("Couldn't marshal raft attributes")
+		}
+		newNode := &node{
+			Path:          path.Join("/0/members", m.ID.String()),
+			CreatedIndex:  c.CreatedIndex,
+			ModifiedIndex: c.ModifiedIndex,
+			ExpireTime:    c.ExpireTime,
+			ACL:           c.ACL,
+			Children: map[string]*node{
+				"attributes": &node{
+					Path:          path.Join("/0/members", m.ID.String(), "attributes"),
+					CreatedIndex:  c.CreatedIndex,
+					ModifiedIndex: c.ModifiedIndex,
+					ExpireTime:    c.ExpireTime,
+					ACL:           c.ACL,
+					Value:         string(attrBytes),
+				},
+				"raftAttributes": &node{
+					Path:          path.Join("/0/members", m.ID.String(), "raftAttributes"),
+					CreatedIndex:  c.CreatedIndex,
+					ModifiedIndex: c.ModifiedIndex,
+					ExpireTime:    c.ExpireTime,
+					ACL:           c.ACL,
+					Value:         string(raftBytes),
+				},
+			},
+		}
+		n.Children["members"].Children[m.ID.String()] = newNode
+	}
+	delete(n.Children, "machines")
+
+}
+
+func mangleRoot(n *node) *node {
+	newRoot := &node{
+		Path:          "/",
+		CreatedIndex:  n.CreatedIndex,
+		ModifiedIndex: n.ModifiedIndex,
+		ExpireTime:    n.ExpireTime,
+		ACL:           n.ACL,
+		Children:      make(map[string]*node),
+	}
+	newRoot.Children["1"] = n
+	etcd := n.Children["_etcd"]
+	delete(n.Children, "_etcd")
+	replacePathNames(n, "/", "/1/")
+	fixEtcd(etcd)
+	newRoot.Children["0"] = etcd
+	return newRoot
+}
+
+func (s *Snapshot4) GetNodesFromStore() map[string]uint64 {
+	st := &sstore{}
+	if err := json.Unmarshal(s.State, st); err != nil {
+		log.Fatal("Couldn't unmarshal snapshot")
+	}
+	etcd := st.Root.Children["_etcd"]
+	return pullNodesFromEtcd(etcd)
 }
 
 func (s *Snapshot4) Snapshot5() *raftpb.Snapshot {
+	st := &sstore{}
+	if err := json.Unmarshal(s.State, st); err != nil {
+		log.Fatal("Couldn't unmarshal snapshot")
+	}
+	st.Root = mangleRoot(st.Root)
+
+	newState, err := json.Marshal(st)
+	if err != nil {
+		log.Fatal("Couldn't re-marshal new snapshot")
+	}
+
 	snap5 := raftpb.Snapshot{
-		Data:  s.State,
-		Index: int64(s.LastIndex),
-		Term:  int64(s.LastTerm),
-		Nodes: make([]int64, len(s.Peers)),
+		Data:  newState,
+		Index: s.LastIndex,
+		Term:  s.LastTerm,
+		Nodes: make([]uint64, len(s.Peers)),
 	}
 
 	for i, p := range s.Peers {
@@ -132,6 +272,7 @@ func DecodeSnapshot4(f *os.File) (*Snapshot4, error) {
 }
 
 func NewSnapshotFileNames(names []string) ([]SnapshotFileName, error) {
+
 	s := make([]SnapshotFileName, 0)
 	for _, n := range names {
 		trimmed := strings.TrimSuffix(n, ".ss")
@@ -149,12 +290,12 @@ func NewSnapshotFileNames(names []string) ([]SnapshotFileName, error) {
 		var err error
 		fn.Term, err = strconv.ParseUint(parts[0], 10, 64)
 		if err != nil {
-			return nil, fmt.Errorf("unable to parse term from filename %q: %v", err)
+			return nil, fmt.Errorf("unable to parse term from filename %q: %v", n, err)
 		}
 
 		fn.Index, err = strconv.ParseUint(parts[1], 10, 64)
 		if err != nil {
-			return nil, fmt.Errorf("unable to parse index from filename %q: %v", err)
+			return nil, fmt.Errorf("unable to parse index from filename %q: %v", n, err)
 		}
 
 		s = append(s, fn)
