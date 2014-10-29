@@ -101,3 +101,6 @@ A detailed recap of client functionalities can be found in the [clients compatib
 - [GoogleCloudPlatform/kubernetes](https://github.com/GoogleCloudPlatform/kubernetes) - Container cluster manager.
 - [mailgun/vulcand](https://github.com/mailgun/vulcand) - HTTP proxy that uses etcd as a configuration backend.
 - [duedil-ltd/discodns](https://github.com/duedil-ltd/discodns) - Simple DNS nameserver using etcd as a database for names and records.
+- [skynetservices/skydns](https://github.com/skynetservices/skydns) - RFC compliant DNS server
+- [xordataexchange/crypt](https://github.com/xordataexchange/crypt) - Securely store values in etcd using GPG encryption
+- [spf13/viper](https://github.com/spf13/viper) - Go configuration library, reads values from ENV, pflags, files, and etcd with optional encryption
