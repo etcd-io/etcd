@@ -77,7 +77,7 @@ func (eNode *NodeExtern) Clone() *NodeExtern {
 	if eNode == nil {
 		return nil
 	}
-	en := &NodeExtern{
+	nn := &NodeExtern{
 		Key:           eNode.Key,
 		Dir:           eNode.Dir,
 		TTL:           eNode.TTL,
@@ -86,17 +86,19 @@ func (eNode *NodeExtern) Clone() *NodeExtern {
 	}
 	if eNode.Value != nil {
 		s := *eNode.Value
-		en.Value = &s
+		nn.Value = &s
 	}
 	if eNode.Expiration != nil {
 		t := *eNode.Expiration
-		en.Expiration = &t
+		nn.Expiration = &t
 	}
-	eNode.Nodes = make(NodeExterns, len(en.Nodes))
-	for i, n := range en.Nodes {
-		eNode.Nodes[i] = n.Clone()
+	if eNode.Nodes != nil {
+		nn.Nodes = make(NodeExterns, len(eNode.Nodes))
+		for i, n := range eNode.Nodes {
+			nn.Nodes[i] = n.Clone()
+		}
 	}
-	return en
+	return nn
 }
 
 type NodeExterns []*NodeExtern
