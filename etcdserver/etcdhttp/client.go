@@ -193,7 +193,7 @@ func (h *adminMembersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 			writeError(w, err)
 			return
 		}
-		log.Printf("etcdhttp: added node %x with peer urls %v", m.ID, req.PeerURLs)
+		log.Printf("etcdhttp: added node %x with peer urls %s", m.ID, req.PeerURLs)
 
 		res := newMember(m)
 		w.Header().Set("Content-Type", "application/json")
