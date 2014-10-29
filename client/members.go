@@ -61,17 +61,12 @@ type httpMembersAPI struct {
 }
 
 func (m *httpMembersAPI) List() ([]httptypes.Member, error) {
-	httpresp, body, err := m.client.doWithTimeout(&membersAPIActionList{})
+	code, body, err := m.client.doWithTimeout(&membersAPIActionList{})
 	if err != nil {
 		return nil, err
 	}
-
-	mResponse := httpMembersAPIResponse{
-		code: httpresp.StatusCode,
-	}
-
-	if err := mResponse.err(); err != nil {
-		return nil, err
+	if code != http.StatusOK {
+		return nil, fmt.Errorf("unrecognized status code %d", code)
 	}
 
 	var mCollection httptypes.MemberCollection
@@ -80,17 +75,6 @@ func (m *httpMembersAPI) List() ([]httptypes.Member, error) {
 	}
 
 	return []httptypes.Member(mCollection), nil
-}
-
-type httpMembersAPIResponse struct {
-	code int
-}
-
-func (r *httpMembersAPIResponse) err() (err error) {
-	if r.code != http.StatusOK {
-		err = fmt.Errorf("unrecognized status code %d", r.code)
-	}
-	return
 }
 
 type membersAPIActionList struct{}
