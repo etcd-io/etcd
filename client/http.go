@@ -53,13 +53,13 @@ type httpClient struct {
 	timeout   time.Duration
 }
 
-func (c *httpClient) doWithTimeout(act httpAction) (*http.Response, []byte, error) {
+func (c *httpClient) doWithTimeout(act httpAction) (int, []byte, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), c.timeout)
 	defer cancel()
 	return c.do(ctx, act)
 }
 
-func (c *httpClient) do(ctx context.Context, act httpAction) (*http.Response, []byte, error) {
+func (c *httpClient) do(ctx context.Context, act httpAction) (int, []byte, error) {
 	req := act.httpRequest(c.endpoint)
 
 	rtchan := make(chan roundTripResponse, 1)
@@ -91,9 +91,9 @@ func (c *httpClient) do(ctx context.Context, act httpAction) (*http.Response, []
 	}()
 
 	if err != nil {
-		return nil, nil, err
+		return 0, nil, err
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
-	return resp, body, err
+	return resp.StatusCode, body, err
 }

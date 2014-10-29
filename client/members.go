@@ -64,12 +64,12 @@ type httpMembersAPI struct {
 }
 
 func (m *httpMembersAPI) List() ([]httptypes.Member, error) {
-	httpresp, body, err := m.client.doWithTimeout(&membersAPIActionList{})
+	code, body, err := m.client.doWithTimeout(&membersAPIActionList{})
 	if err != nil {
 		return nil, err
 	}
 
-	if err := assertStatusCode(http.StatusOK, httpresp.StatusCode); err != nil {
+	if err := assertStatusCode(http.StatusOK, code); err != nil {
 		return nil, err
 	}
 
@@ -83,12 +83,12 @@ func (m *httpMembersAPI) List() ([]httptypes.Member, error) {
 
 func (m *httpMembersAPI) Add(peerURL string) (*httptypes.Member, error) {
 	req := &membersAPIActionAdd{peerURL: peerURL}
-	httpresp, body, err := m.client.doWithTimeout(req)
+	code, body, err := m.client.doWithTimeout(req)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := assertStatusCode(http.StatusCreated, httpresp.StatusCode); err != nil {
+	if err := assertStatusCode(http.StatusCreated, code); err != nil {
 		return nil, err
 	}
 
@@ -102,12 +102,12 @@ func (m *httpMembersAPI) Add(peerURL string) (*httptypes.Member, error) {
 
 func (m *httpMembersAPI) Remove(memberID string) error {
 	req := &membersAPIActionRemove{memberID: memberID}
-	httpresp, _, err := m.client.doWithTimeout(req)
+	code, _, err := m.client.doWithTimeout(req)
 	if err != nil {
 		return err
 	}
 
-	return assertStatusCode(http.StatusNoContent, httpresp.StatusCode)
+	return assertStatusCode(http.StatusNoContent, code)
 }
 
 type membersAPIActionList struct{}
