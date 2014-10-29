@@ -43,7 +43,7 @@ import (
 const (
 	keysPrefix               = "/v2/keys"
 	deprecatedMachinesPrefix = "/v2/machines"
-	adminMembersPrefix       = "/v2/admin/members"
+	membersPrefix            = "/v2/members"
 	statsPrefix              = "/v2/stats"
 	versionPrefix            = "/version"
 )
@@ -61,7 +61,7 @@ func NewClientHandler(server *etcdserver.EtcdServer) http.Handler {
 		stats: server,
 	}
 
-	amh := &adminMembersHandler{
+	mh := &membersHandler{
 		server:      server,
 		clusterInfo: server.Cluster,
 		clock:       clockwork.NewRealClock(),
@@ -79,8 +79,8 @@ func NewClientHandler(server *etcdserver.EtcdServer) http.Handler {
 	mux.HandleFunc(statsPrefix+"/store", sh.serveStore)
 	mux.HandleFunc(statsPrefix+"/self", sh.serveSelf)
 	mux.HandleFunc(statsPrefix+"/leader", sh.serveLeader)
-	mux.Handle(adminMembersPrefix, amh)
-	mux.Handle(adminMembersPrefix+"/", amh)
+	mux.Handle(membersPrefix, mh)
+	mux.Handle(membersPrefix+"/", mh)
 	mux.Handle(deprecatedMachinesPrefix, dmh)
 	return mux
 }
@@ -142,13 +142,13 @@ func (h *deprecatedMachinesHandler) ServeHTTP(w http.ResponseWriter, r *http.Req
 	w.Write([]byte(strings.Join(endpoints, ", ")))
 }
 
-type adminMembersHandler struct {
+type membersHandler struct {
 	server      etcdserver.Server
 	clusterInfo etcdserver.ClusterInfo
 	clock       clockwork.Clock
 }
 
-func (h *adminMembersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h *membersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r.Method, "GET", "POST", "DELETE") {
 		return
 	}
@@ -160,7 +160,7 @@ func (h *adminMembersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 
 	switch r.Method {
 	case "GET":
-		if trimPrefix(r.URL.Path, adminMembersPrefix) != "" {
+		if trimPrefix(r.URL.Path, membersPrefix) != "" {
 			writeError(w, httptypes.NewHTTPError(http.StatusNotFound, "Not found"))
 			return
 		}
@@ -202,7 +202,7 @@ func (h *adminMembersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 			log.Printf("etcdhttp: %v", err)
 		}
 	case "DELETE":
-		idStr := trimPrefix(r.URL.Path, adminMembersPrefix)
+		idStr := trimPrefix(r.URL.Path, membersPrefix)
 		if idStr == "" {
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 			return

@@ -556,7 +556,7 @@ func TestServeAdminMembers(t *testing.T) {
 		id:      1,
 		members: map[uint64]*etcdserver.Member{1: &memb1, 2: &memb2},
 	}
-	h := &adminMembersHandler{
+	h := &membersHandler{
 		server:      &serverRecorder{},
 		clock:       clockwork.NewFakeClock(),
 		clusterInfo: cluster,
@@ -570,10 +570,10 @@ func TestServeAdminMembers(t *testing.T) {
 		wct   string
 		wbody string
 	}{
-		{adminMembersPrefix, http.StatusOK, "application/json", wmc + "\n"},
-		{adminMembersPrefix + "/", http.StatusOK, "application/json", wmc + "\n"},
-		{path.Join(adminMembersPrefix, "100"), http.StatusNotFound, "application/json", `{"message":"Not found"}`},
-		{path.Join(adminMembersPrefix, "foobar"), http.StatusNotFound, "application/json", `{"message":"Not found"}`},
+		{membersPrefix, http.StatusOK, "application/json", wmc + "\n"},
+		{membersPrefix + "/", http.StatusOK, "application/json", wmc + "\n"},
+		{path.Join(membersPrefix, "100"), http.StatusNotFound, "application/json", `{"message":"Not found"}`},
+		{path.Join(membersPrefix, "foobar"), http.StatusNotFound, "application/json", `{"message":"Not found"}`},
 	}
 
 	for i, tt := range tests {
@@ -602,7 +602,7 @@ func TestServeAdminMembers(t *testing.T) {
 }
 
 func TestServeAdminMembersCreate(t *testing.T) {
-	u := mustNewURL(t, adminMembersPrefix)
+	u := mustNewURL(t, membersPrefix)
 	b := []byte(`{"peerURLs":["http://127.0.0.1:1"]}`)
 	req, err := http.NewRequest("POST", u.String(), bytes.NewReader(b))
 	if err != nil {
@@ -610,7 +610,7 @@ func TestServeAdminMembersCreate(t *testing.T) {
 	}
 	req.Header.Set("Content-Type", "application/json")
 	s := &serverRecorder{}
-	h := &adminMembersHandler{
+	h := &membersHandler{
 		server:      s,
 		clock:       clockwork.NewFakeClock(),
 		clusterInfo: &fakeCluster{id: 1},
@@ -656,10 +656,10 @@ func TestServeAdminMembersCreate(t *testing.T) {
 func TestServeAdminMembersDelete(t *testing.T) {
 	req := &http.Request{
 		Method: "DELETE",
-		URL:    mustNewURL(t, path.Join(adminMembersPrefix, "BEEF")),
+		URL:    mustNewURL(t, path.Join(membersPrefix, "BEEF")),
 	}
 	s := &serverRecorder{}
-	h := &adminMembersHandler{
+	h := &membersHandler{
 		server:      s,
 		clusterInfo: &fakeCluster{id: 1},
 	}
@@ -714,7 +714,7 @@ func TestServeAdminMembersFail(t *testing.T) {
 		{
 			// parse body error
 			&http.Request{
-				URL:    mustNewURL(t, adminMembersPrefix),
+				URL:    mustNewURL(t, membersPrefix),
 				Method: "POST",
 				Body:   ioutil.NopCloser(strings.NewReader("bad json")),
 				Header: map[string][]string{"Content-Type": []string{"application/json"}},
@@ -726,7 +726,7 @@ func TestServeAdminMembersFail(t *testing.T) {
 		{
 			// bad content type
 			&http.Request{
-				URL:    mustNewURL(t, adminMembersPrefix),
+				URL:    mustNewURL(t, membersPrefix),
 				Method: "POST",
 				Body:   ioutil.NopCloser(strings.NewReader(`{"PeerURLs": ["http://127.0.0.1:1"]}`)),
 				Header: map[string][]string{"Content-Type": []string{"application/bad"}},
@@ -738,7 +738,7 @@ func TestServeAdminMembersFail(t *testing.T) {
 		{
 			// bad url
 			&http.Request{
-				URL:    mustNewURL(t, adminMembersPrefix),
+				URL:    mustNewURL(t, membersPrefix),
 				Method: "POST",
 				Body:   ioutil.NopCloser(strings.NewReader(`{"PeerURLs": ["http://a"]}`)),
 				Header: map[string][]string{"Content-Type": []string{"application/json"}},
@@ -750,7 +750,7 @@ func TestServeAdminMembersFail(t *testing.T) {
 		{
 			// etcdserver.AddMember error
 			&http.Request{
-				URL:    mustNewURL(t, adminMembersPrefix),
+				URL:    mustNewURL(t, membersPrefix),
 				Method: "POST",
 				Body:   ioutil.NopCloser(strings.NewReader(`{"PeerURLs": ["http://127.0.0.1:1"]}`)),
 				Header: map[string][]string{"Content-Type": []string{"application/json"}},
@@ -764,7 +764,7 @@ func TestServeAdminMembersFail(t *testing.T) {
 		{
 			// etcdserver.RemoveMember error
 			&http.Request{
-				URL:    mustNewURL(t, path.Join(adminMembersPrefix, "1")),
+				URL:    mustNewURL(t, path.Join(membersPrefix, "1")),
 				Method: "DELETE",
 			},
 			&errServer{
@@ -776,7 +776,7 @@ func TestServeAdminMembersFail(t *testing.T) {
 		{
 			// etcdserver.RemoveMember error
 			&http.Request{
-				URL:    mustNewURL(t, adminMembersPrefix),
+				URL:    mustNewURL(t, membersPrefix),
 				Method: "DELETE",
 			},
 			nil,
@@ -785,7 +785,7 @@ func TestServeAdminMembersFail(t *testing.T) {
 		},
 	}
 	for i, tt := range tests {
-		h := &adminMembersHandler{
+		h := &membersHandler{
 			server:      tt.server,
 			clusterInfo: &fakeCluster{id: 1},
 			clock:       clockwork.NewFakeClock(),
@@ -1552,9 +1552,9 @@ func TestTrimPrefix(t *testing.T) {
 		prefix string
 		w      string
 	}{
-		{"/v2/admin/members", "/v2/admin/members", ""},
-		{"/v2/admin/members/", "/v2/admin/members", ""},
-		{"/v2/admin/members/foo", "/v2/admin/members", "foo"},
+		{"/v2/members", "/v2/members", ""},
+		{"/v2/members/", "/v2/members", ""},
+		{"/v2/members/foo", "/v2/members", "foo"},
 	}
 	for i, tt := range tests {
 		if g := trimPrefix(tt.in, tt.prefix); g != tt.w {
