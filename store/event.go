@@ -62,3 +62,12 @@ func (e *Event) IsCreated() bool {
 func (e *Event) Index() uint64 {
 	return e.Node.ModifiedIndex
 }
+
+func (e *Event) Clone() *Event {
+	return &Event{
+		Action:    e.Action,
+		EtcdIndex: e.EtcdIndex,
+		Node:      e.Node.Clone(),
+		PrevNode:  e.PrevNode.Clone(),
+	}
+}

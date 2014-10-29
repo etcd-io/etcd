@@ -73,6 +73,32 @@ func (eNode *NodeExtern) loadInternalNode(n *node, recursive, sorted bool, clock
 	eNode.Expiration, eNode.TTL = n.expirationAndTTL(clock)
 }
 
+func (eNode *NodeExtern) Clone() *NodeExtern {
+	if eNode == nil {
+		return nil
+	}
+	en := &NodeExtern{
+		Key:           eNode.Key,
+		Dir:           eNode.Dir,
+		TTL:           eNode.TTL,
+		ModifiedIndex: eNode.ModifiedIndex,
+		CreatedIndex:  eNode.CreatedIndex,
+	}
+	if eNode.Value != nil {
+		s := *eNode.Value
+		en.Value = &s
+	}
+	if eNode.Expiration != nil {
+		t := *eNode.Expiration
+		en.Expiration = &t
+	}
+	eNode.Nodes = make(NodeExterns, len(en.Nodes))
+	for i, n := range en.Nodes {
+		eNode.Nodes[i] = n.Clone()
+	}
+	return en
+}
+
 type NodeExterns []*NodeExtern
 
 // interfaces for sorting

@@ -100,3 +100,34 @@ func TestFullEventQueue(t *testing.T) {
 		}
 	}
 }
+
+func TestCloneEvent(t *testing.T) {
+	e1 := &Event{
+		Action:    Create,
+		EtcdIndex: 1,
+		Node:      nil,
+		PrevNode:  nil,
+	}
+	e2 := e1.Clone()
+	if e2.Action != Create {
+		t.Fatalf("Action=%q, want %q", e2.Action, Create)
+	}
+	if e2.EtcdIndex != e1.EtcdIndex {
+		t.Fatalf("EtcdIndex=%d, want %d", e2.EtcdIndex, e1.EtcdIndex)
+	}
+	// Changing the cloned node should not affect the original
+	e2.Action = Delete
+	e2.EtcdIndex = uint64(5)
+	if e1.Action != Create {
+		t.Fatalf("Action=%q, want %q", e1.Action, Create)
+	}
+	if e1.EtcdIndex != uint64(1) {
+		t.Fatalf("EtcdIndex=%d, want %d", e1.EtcdIndex, uint64(1))
+	}
+	if e2.Action != Delete {
+		t.Fatalf("Action=%q, want %q", e2.Action, Delete)
+	}
+	if e2.EtcdIndex != uint64(5) {
+		t.Fatalf("EtcdIndex=%d, want %d", e2.EtcdIndex, uint64(5))
+	}
+}

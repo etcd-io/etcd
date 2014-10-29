@@ -474,9 +474,12 @@ func trimEventPrefix(ev *store.Event, prefix string) *store.Event {
 	if ev == nil {
 		return nil
 	}
-	ev.Node = trimNodeExternPrefix(ev.Node, prefix)
-	ev.PrevNode = trimNodeExternPrefix(ev.PrevNode, prefix)
-	return ev
+	// Since the *Event may reference one in the store history
+	// history, we must copy it before modifying
+	e := ev.Clone()
+	e.Node = trimNodeExternPrefix(e.Node, prefix)
+	e.PrevNode = trimNodeExternPrefix(e.PrevNode, prefix)
+	return e
 }
 
 func trimNodeExternPrefix(n *store.NodeExtern, prefix string) *store.NodeExtern {
