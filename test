@@ -15,13 +15,12 @@ COVER=${COVER:-"-cover"}
 source ./build
 
 # Hack: gofmt ./ will recursively check the .git directory. So use *.go for gofmt.
-TESTABLE_AND_FORMATTABLE="client discovery etcdctl/command etcdserver etcdserver/etcdhttp etcdserver/etcdhttp/httptypes etcdserver/etcdserverpb integration pkg/flags pkg/strutil pkg/transport proxy raft snap store wait wal"
-TESTABLE="$TESTABLE_AND_FORMATTABLE ./"
+TESTABLE_AND_FORMATTABLE="client discovery etcdctl/command etcdmain etcdserver etcdserver/etcdhttp etcdserver/etcdhttp/httptypes etcdserver/etcdserverpb integration pkg/flags pkg/strutil pkg/transport proxy raft snap store wait wal"
 FORMATTABLE="$TESTABLE_AND_FORMATTABLE *.go etcdctl/"
 
 # user has not provided PKG override
 if [ -z "$PKG" ]; then
-	TEST=$TESTABLE
+	TEST=$TESTABLE_AND_FORMATTABLE
 	FMT=$FORMATTABLE
 
 # user has provided PKG override
