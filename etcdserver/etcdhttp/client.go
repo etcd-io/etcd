@@ -212,13 +212,16 @@ func (h *membersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			writeError(w, httptypes.NewHTTPError(http.StatusBadRequest, err.Error()))
 			return
 		}
-		log.Printf("etcdhttp: remove node %x", id)
-		if err := h.server.RemoveMember(ctx, id); err != nil {
+		err = h.server.RemoveMember(ctx, id)
+		switch {
+		case err == etcdserver.ErrIDNotFound:
+			writeError(w, httptypes.NewHTTPError(http.StatusNotFound, fmt.Sprintf("No such member: %s", idStr)))
+		case err != nil:
 			log.Printf("etcdhttp: error removing node %x: %v", id, err)
 			writeError(w, err)
-			return
+		default:
+			w.WriteHeader(http.StatusNoContent)
 		}
-		w.WriteHeader(http.StatusNoContent)
 	}
 }
 
