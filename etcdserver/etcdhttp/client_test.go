@@ -762,7 +762,7 @@ func TestServeMembersFail(t *testing.T) {
 			http.StatusInternalServerError,
 		},
 		{
-			// etcdserver.RemoveMember error
+			// etcdserver.RemoveMember error with arbitrary server error
 			&http.Request{
 				URL:    mustNewURL(t, path.Join(membersPrefix, "1")),
 				Method: "DELETE",
@@ -774,7 +774,29 @@ func TestServeMembersFail(t *testing.T) {
 			http.StatusInternalServerError,
 		},
 		{
-			// etcdserver.RemoveMember error
+			// etcdserver.RemoveMember error with nonexistent ID
+			&http.Request{
+				URL:    mustNewURL(t, path.Join(membersPrefix, "0")),
+				Method: "DELETE",
+			},
+			&errServer{
+				etcdserver.ErrIDNotFound,
+			},
+
+			http.StatusNotFound,
+		},
+		{
+			// etcdserver.RemoveMember error with badly formed ID
+			&http.Request{
+				URL:    mustNewURL(t, path.Join(membersPrefix, "bad_id")),
+				Method: "DELETE",
+			},
+			nil,
+
+			http.StatusBadRequest,
+		},
+		{
+			// etcdserver.RemoveMember with no ID
 			&http.Request{
 				URL:    mustNewURL(t, membersPrefix),
 				Method: "DELETE",
