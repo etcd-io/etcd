@@ -17,4 +17,4 @@ The data directory has two sub-directories in it:
 1. restart a etcd member without previous data directory
 2. restart a etcd member with different data directory
 
-[0]: https://github.com/coreos/etcd/blob/master/Documentation/0.5/other_apis.md
+[0]: https://github.com/coreos/etcd/blob/master/Documentation/0.5/other_apis.md#members-api
