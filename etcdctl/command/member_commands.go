@@ -33,18 +33,22 @@ func NewMemberCommand() cli.Command {
 	}
 }
 
-func actionMemberList(c *cli.Context) {
-	if len(c.Args()) != 0 {
-		fmt.Fprintln(os.Stderr, "No arguments accepted")
-		os.Exit(1)
-	}
-
+func mustNewMembersAPI(c *cli.Context) client.MembersAPI {
 	mAPI, err := client.NewMembersAPI(&http.Transport{}, "http://127.0.0.1:4001", client.DefaultRequestTimeout)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
 	}
 
+	return mAPI
+}
+
+func actionMemberList(c *cli.Context) {
+	if len(c.Args()) != 0 {
+		fmt.Fprintln(os.Stderr, "No arguments accepted")
+		os.Exit(1)
+	}
+	mAPI := mustNewMembersAPI(c)
 	members, err := mAPI.List()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
@@ -63,12 +67,7 @@ func actionMemberAdd(c *cli.Context) {
 		os.Exit(1)
 	}
 
-	mAPI, err := client.NewMembersAPI(&http.Transport{}, "http://127.0.0.1:4001", client.DefaultRequestTimeout)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err.Error())
-		os.Exit(1)
-	}
-
+	mAPI := mustNewMembersAPI(c)
 	url := args[0]
 	m, err := mAPI.Add(url)
 	if err != nil {
@@ -86,12 +85,7 @@ func actionMemberRemove(c *cli.Context) {
 		os.Exit(1)
 	}
 
-	mAPI, err := client.NewMembersAPI(&http.Transport{}, "http://127.0.0.1:4001", client.DefaultRequestTimeout)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err.Error())
-		os.Exit(1)
-	}
-
+	mAPI := mustNewMembersAPI(c)
 	mID := args[0]
 	if err := mAPI.Remove(mID); err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
