@@ -335,7 +335,7 @@ func TestCandidateConcede(t *testing.T) {
 	tt.recover()
 
 	data := []byte("force follower")
-	// send a proposal to 2 to flush out a msgApp to 0
+	// send a proposal to 2 to flush out a MsgApp to 0
 	tt.send(pb.Message{From: 3, To: 3, Type: pb.MsgProp, Entries: []pb.Entry{{Data: data}}})
 
 	a := tt.peers[1].(*raft)
@@ -893,7 +893,7 @@ func TestLeaderAppResp(t *testing.T) {
 }
 
 // When the leader receives a heartbeat tick, it should
-// send a msgApp with m.Index = 0, m.LogTerm=0 and empty entries.
+// send a MsgApp with m.Index = 0, m.LogTerm=0 and empty entries.
 func TestBcastBeat(t *testing.T) {
 	offset := uint64(1000)
 	// make a state machine with log.offset = 1000
@@ -915,7 +915,7 @@ func TestBcastBeat(t *testing.T) {
 	sm.Step(pb.Message{Type: pb.MsgBeat})
 	msgs := sm.readMessages()
 	if len(msgs) != 2 {
-		t.Fatalf("len(msgs) = %v, want 1", len(msgs))
+		t.Fatalf("len(msgs) = %v, want 2", len(msgs))
 	}
 	tomap := map[uint64]bool{2: true, 3: true}
 	for i, m := range msgs {
@@ -939,14 +939,14 @@ func TestBcastBeat(t *testing.T) {
 	}
 }
 
-// tests the output of the statemachine when receiving msgBeat
+// tests the output of the statemachine when receiving MsgBeat
 func TestRecvMsgBeat(t *testing.T) {
 	tests := []struct {
 		state StateType
 		wMsg  int
 	}{
 		{StateLeader, 2},
-		// candidate and follower should ignore msgBeat
+		// candidate and follower should ignore MsgBeat
 		{StateCandidate, 0},
 		{StateFollower, 0},
 	}
