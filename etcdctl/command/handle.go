@@ -14,6 +14,7 @@ import (
 
 type handlerFunc func(*cli.Context, *etcd.Client) (*etcd.Response, error)
 type printFunc func(*etcd.Response, string)
+type contextualPrintFunc func(*cli.Context, *etcd.Response, string)
 
 // dumpCURL blindly dumps all curl output to os.Stderr
 func dumpCURL(client *etcd.Client) {
@@ -103,6 +104,19 @@ func handlePrint(c *cli.Context, fn handlerFunc, pFn printFunc) {
 
 	if resp != nil && pFn != nil {
 		pFn(resp, c.GlobalString("output"))
+	}
+}
+
+// Just like handlePrint but also passed the context of the command
+func handleContextualPrint(c *cli.Context, fn handlerFunc, pFn contextualPrintFunc) {
+	resp, err := rawhandle(c, fn)
+
+	if err != nil {
+		handleError(ErrorFromEtcd, err)
+	}
+
+	if resp != nil && pFn != nil {
+		pFn(c, resp, c.GlobalString("output"))
 	}
 }
 

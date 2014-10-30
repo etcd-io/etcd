@@ -127,6 +127,13 @@ $ etcdctl ls --recursive
 /adir/key2
 ```
 
+Directories can also have a trailing `/` added to output using `-p`.
+
+```
+$ etcdctl ls -p
+/akey
+/adir/
+```
 
 ### Deleting a key
 

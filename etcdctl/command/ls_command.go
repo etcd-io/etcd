@@ -13,6 +13,7 @@ func NewLsCommand() cli.Command {
 		Usage: "retrieve a directory",
 		Flags: []cli.Flag{
 			cli.BoolFlag{Name: "recursive", Usage: "returns all values for key and child keys"},
+			cli.BoolFlag{Name: "p", Usage: "append slash (/) to directories"},
 		},
 		Action: func(c *cli.Context) {
 			handleLs(c, lsCommandFunc)
@@ -22,17 +23,17 @@ func NewLsCommand() cli.Command {
 
 // handleLs handles a request that intends to do ls-like operations.
 func handleLs(c *cli.Context, fn handlerFunc) {
-	handlePrint(c, fn, printLs)
+	handleContextualPrint(c, fn, printLs)
 }
 
 // printLs writes a response out in a manner similar to the `ls` command in unix.
 // Non-empty directories list their contents and files list their name.
-func printLs(resp *etcd.Response, format string) {
+func printLs(c *cli.Context, resp *etcd.Response, format string) {
 	if !resp.Node.Dir {
 		fmt.Println(resp.Node.Key)
 	}
 	for _, node := range resp.Node.Nodes {
-		rPrint(node)
+		rPrint(c, node)
 	}
 }
 
@@ -49,9 +50,15 @@ func lsCommandFunc(c *cli.Context, client *etcd.Client) (*etcd.Response, error) 
 }
 
 // rPrint recursively prints out the nodes in the node structure.
-func rPrint(n *etcd.Node) {
-	fmt.Println(n.Key)
+func rPrint(c *cli.Context, n *etcd.Node) {
+
+	if n.Dir && c.Bool("p") {
+		fmt.Println(fmt.Sprintf("%v/", n.Key))
+	} else {
+		fmt.Println(n.Key)
+	}
+
 	for _, node := range n.Nodes {
-		rPrint(node)
+		rPrint(c, node)
 	}
 }
