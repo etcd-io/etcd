@@ -465,7 +465,6 @@ func (s *EtcdServer) Term() uint64 {
 func (s *EtcdServer) configure(ctx context.Context, cc raftpb.ConfChange) error {
 	ch := s.w.Register(cc.ID)
 	if err := s.node.ProposeConfChange(ctx, cc); err != nil {
-		log.Printf("configure error: %v", err)
 		s.w.Trigger(cc.ID, nil)
 		return err
 	}

@@ -82,7 +82,7 @@ func checkWalNames(names []string) []string {
 	wnames := make([]string, 0)
 	for _, name := range names {
 		if _, _, err := parseWalName(name); err != nil {
-			log.Printf("parse %s: %v", name, err)
+			log.Printf("wal: parse %s error: %v", name, err)
 			continue
 		}
 		wnames = append(wnames, name)

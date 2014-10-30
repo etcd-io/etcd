@@ -102,25 +102,25 @@ func loadSnap(dir, name string) (*raftpb.Snapshot, error) {
 
 	b, err = ioutil.ReadFile(fpath)
 	if err != nil {
-		log.Printf("Snapshotter cannot read file %v: %v", name, err)
+		log.Printf("snap: snapshotter cannot read file %v: %v", name, err)
 		return nil, err
 	}
 
 	var serializedSnap snappb.Snapshot
 	if err = serializedSnap.Unmarshal(b); err != nil {
-		log.Printf("Corrupted snapshot file %v: %v", name, err)
+		log.Printf("snap: corrupted snapshot file %v: %v", name, err)
 		return nil, err
 	}
 	crc := crc32.Update(0, crcTable, serializedSnap.Data)
 	if crc != serializedSnap.Crc {
-		log.Printf("Corrupted snapshot file %v: crc mismatch", name)
+		log.Printf("snap: corrupted snapshot file %v: crc mismatch", name)
 		err = ErrCRCMismatch
 		return nil, err
 	}
 
 	var snap raftpb.Snapshot
 	if err = snap.Unmarshal(serializedSnap.Data); err != nil {
-		log.Printf("Corrupted snapshot file %v: %v", name, err)
+		log.Printf("snap: corrupted snapshot file %v: %v", name, err)
 		return nil, err
 	}
 	return &snap, nil
@@ -152,7 +152,7 @@ func checkSuffix(names []string) []string {
 		if strings.HasSuffix(names[i], snapSuffix) {
 			snaps = append(snaps, names[i])
 		} else {
-			log.Printf("Unexpected non-snap file %v", names[i])
+			log.Printf("snap: unexpected non-snap file %v", names[i])
 		}
 	}
 	return snaps
@@ -161,6 +161,6 @@ func checkSuffix(names []string) []string {
 func renameBroken(path string) {
 	brokenPath := path + ".broken"
 	if err := os.Rename(path, brokenPath); err != nil {
-		log.Printf("Cannot rename broken snapshot file %v to %v: %v", path, brokenPath, err)
+		log.Printf("snap: cannot rename broken snapshot file %v to %v: %v", path, brokenPath, err)
 	}
 }
