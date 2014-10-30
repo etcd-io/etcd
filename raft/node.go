@@ -219,13 +219,18 @@ func (n *node) run(r *raft) {
 		}
 
 		if rd.SoftState != nil && lead != rd.SoftState.Lead {
-			log.Printf("raft: leader changed from %x to %x", lead, rd.SoftState.Lead)
-			lead = rd.SoftState.Lead
 			if r.hasLeader() {
+				if lead == None {
+					log.Printf("raft: elected leader %x at term %d", rd.SoftState.Lead, r.Term)
+				} else {
+					log.Printf("raft: leader changed from %x to %x at term %d", lead, rd.SoftState.Lead, r.Term)
+				}
 				propc = n.propc
 			} else {
+				log.Printf("raft: lost leader %x at term %d", lead, r.Term)
 				propc = nil
 			}
+			lead = rd.SoftState.Lead
 		}
 
 		select {
