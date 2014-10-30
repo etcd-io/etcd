@@ -88,7 +88,7 @@ func TestProxyFuncFromEnv(t *testing.T) {
 }
 
 func TestCheckCluster(t *testing.T) {
-	cluster := "1000"
+	cluster := "/prefix/1000"
 	self := "/1000/1"
 
 	tests := []struct {
@@ -100,6 +100,7 @@ func TestCheckCluster(t *testing.T) {
 			// self is in the size range
 			[]*client.Node{
 				{Key: "/1000/_config/size", Value: "3", CreatedIndex: 1},
+				{Key: "/1000/_config/"},
 				{Key: self, CreatedIndex: 2},
 				{Key: "/1000/2", CreatedIndex: 3},
 				{Key: "/1000/3", CreatedIndex: 4},
@@ -112,6 +113,7 @@ func TestCheckCluster(t *testing.T) {
 			// self is in the size range
 			[]*client.Node{
 				{Key: "/1000/_config/size", Value: "3", CreatedIndex: 1},
+				{Key: "/1000/_config/"},
 				{Key: "/1000/2", CreatedIndex: 2},
 				{Key: "/1000/3", CreatedIndex: 3},
 				{Key: self, CreatedIndex: 4},
@@ -124,6 +126,7 @@ func TestCheckCluster(t *testing.T) {
 			// self is out of the size range
 			[]*client.Node{
 				{Key: "/1000/_config/size", Value: "3", CreatedIndex: 1},
+				{Key: "/1000/_config/"},
 				{Key: "/1000/2", CreatedIndex: 2},
 				{Key: "/1000/3", CreatedIndex: 3},
 				{Key: "/1000/4", CreatedIndex: 4},
@@ -136,6 +139,7 @@ func TestCheckCluster(t *testing.T) {
 			// self is not in the cluster
 			[]*client.Node{
 				{Key: "/1000/_config/size", Value: "3", CreatedIndex: 1},
+				{Key: "/1000/_config/"},
 				{Key: "/1000/2", CreatedIndex: 2},
 				{Key: "/1000/3", CreatedIndex: 3},
 			},
@@ -145,6 +149,7 @@ func TestCheckCluster(t *testing.T) {
 		{
 			[]*client.Node{
 				{Key: "/1000/_config/size", Value: "3", CreatedIndex: 1},
+				{Key: "/1000/_config/"},
 				{Key: "/1000/2", CreatedIndex: 2},
 				{Key: "/1000/3", CreatedIndex: 3},
 				{Key: "/1000/4", CreatedIndex: 4},
@@ -175,7 +180,7 @@ func TestCheckCluster(t *testing.T) {
 			rs = append(rs, &client.Response{
 				Node: &client.Node{
 					Key:   cluster,
-					Nodes: tt.nodes,
+					Nodes: tt.nodes[1:],
 				},
 			})
 		}
