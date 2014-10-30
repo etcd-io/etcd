@@ -39,8 +39,6 @@ func NewMembersAPI(tr *http.Transport, ep string, to time.Duration) (MembersAPI,
 		return nil, err
 	}
 
-	u.Path = path.Join(u.Path, DefaultV2MembersPrefix)
-
 	c := &httpClient{
 		transport: tr,
 		endpoint:  *u,
@@ -65,7 +63,8 @@ type httpMembersAPI struct {
 }
 
 func (m *httpMembersAPI) List() ([]httptypes.Member, error) {
-	code, body, err := m.client.doWithTimeout(&membersAPIActionList{})
+	req := &membersAPIActionList{}
+	code, body, err := m.client.doWithTimeout(req)
 	if err != nil {
 		return nil, err
 	}
@@ -119,6 +118,7 @@ func (m *httpMembersAPI) Remove(memberID string) error {
 type membersAPIActionList struct{}
 
 func (l *membersAPIActionList) httpRequest(ep url.URL) *http.Request {
+	ep.Path = path.Join(ep.Path, DefaultV2MembersPrefix)
 	req, _ := http.NewRequest("GET", ep.String(), nil)
 	return req
 }
@@ -128,7 +128,7 @@ type membersAPIActionRemove struct {
 }
 
 func (d *membersAPIActionRemove) httpRequest(ep url.URL) *http.Request {
-	ep.Path = path.Join(ep.Path, d.memberID)
+	ep.Path = path.Join(ep.Path, DefaultV2MembersPrefix, d.memberID)
 	req, _ := http.NewRequest("DELETE", ep.String(), nil)
 	return req
 }
@@ -138,6 +138,7 @@ type membersAPIActionAdd struct {
 }
 
 func (a *membersAPIActionAdd) httpRequest(ep url.URL) *http.Request {
+	ep.Path = path.Join(ep.Path, DefaultV2MembersPrefix)
 	m := httptypes.MemberCreateRequest{PeerURLs: a.peerURLs}
 	b, _ := json.Marshal(&m)
 	req, _ := http.NewRequest("POST", ep.String(), bytes.NewReader(b))
