@@ -224,7 +224,7 @@ func assertResponse(got http.Request, wantURL *url.URL, wantHeader http.Header, 
 		}
 	} else {
 		if wantBody == nil {
-			return fmt.Errorf("want.Body=%v got.Body=%v", wantBody, got.Body)
+			return fmt.Errorf("want.Body=%v got.Body=%s", wantBody, got.Body)
 		} else {
 			gotBytes, err := ioutil.ReadAll(got.Body)
 			if err != nil {
@@ -232,7 +232,7 @@ func assertResponse(got http.Request, wantURL *url.URL, wantHeader http.Header, 
 			}
 
 			if !reflect.DeepEqual(wantBody, gotBytes) {
-				return fmt.Errorf("want.Body=%v got.Body=%v", wantBody, gotBytes)
+				return fmt.Errorf("want.Body=%s got.Body=%s", wantBody, gotBytes)
 			}
 		}
 	}

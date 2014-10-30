@@ -20,20 +20,66 @@ import (
 	"net/http"
 	"net/url"
 	"testing"
+
+	"github.com/coreos/etcd/pkg/types"
 )
 
-func TestMembersAPIListAction(t *testing.T) {
+func TestMembersAPIActionList(t *testing.T) {
 	ep := url.URL{Scheme: "http", Host: "example.com/v2/members"}
+	act := &membersAPIActionList{}
+
 	wantURL := &url.URL{
 		Scheme: "http",
 		Host:   "example.com",
 		Path:   "/v2/members",
 	}
 
-	act := &membersAPIActionList{}
 	got := *act.httpRequest(ep)
 	err := assertResponse(got, wantURL, http.Header{}, nil)
 	if err != nil {
-		t.Errorf(err.Error())
+		t.Error(err.Error())
+	}
+}
+
+func TestMembersAPIActionAdd(t *testing.T) {
+	ep := url.URL{Scheme: "http", Host: "example.com/v2/admin/members"}
+	act := &membersAPIActionAdd{
+		peerURLs: types.URLs([]url.URL{
+			url.URL{Scheme: "https", Host: "127.0.0.1:8081"},
+			url.URL{Scheme: "http", Host: "127.0.0.1:8080"},
+		}),
+	}
+
+	wantURL := &url.URL{
+		Scheme: "http",
+		Host:   "example.com",
+		Path:   "/v2/admin/members",
+	}
+	wantHeader := http.Header{
+		"Content-Type": []string{"application/json"},
+	}
+	wantBody := []byte(`{"peerURLs":["https://127.0.0.1:8081","http://127.0.0.1:8080"]}`)
+
+	got := *act.httpRequest(ep)
+	err := assertResponse(got, wantURL, wantHeader, wantBody)
+	if err != nil {
+		t.Error(err.Error())
+	}
+}
+
+func TestMembersAPIActionRemove(t *testing.T) {
+	ep := url.URL{Scheme: "http", Host: "example.com/v2/members"}
+	act := &membersAPIActionRemove{memberID: "XXX"}
+
+	wantURL := &url.URL{
+		Scheme: "http",
+		Host:   "example.com",
+		Path:   "/v2/members/XXX",
+	}
+
+	got := *act.httpRequest(ep)
+	err := assertResponse(got, wantURL, http.Header{}, nil)
+	if err != nil {
+		t.Error(err.Error())
 	}
 }
