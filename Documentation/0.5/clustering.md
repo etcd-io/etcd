@@ -25,16 +25,19 @@ ETCD_INITIAL_CLUSTER_STATE=new
 	-initial-cluster-state new
 ```
 
+If you are spinning up multiple clusters (or creating and destroying a single cluster) with same configuration for testing purpose, it is highly recommended that you specify a unique `initial-cluster-token` for the different clusters. 
+By doing this, etcd can generate unique cluster IDs and member IDs for the clusters even if they otherwise have the exact same configuration. This can protect you from cross-cluster-interaction, which might corrupt your clusters.
+
 On each machine you would start etcd with these flags:
 
 ```
-$ etcd -name infra0 -initial-advertise-peer-urls https://10.0.1.10:2379 \
+$ etcd -name infra0 -initial-advertise-peer-urls https://10.0.1.10:2379 initial-cluster-token etcd-cluster-1\
 	-initial-cluster infra0=http://10.0.1.10:2379,infra1=http://10.0.1.11:2379,infra2=http://10.0.1.12:2379 \
 	-initial-cluster-state new
-$ etcd -name infra1 -initial-advertise-peer-urls https://10.0.1.11:2379 \
+$ etcd -name infra1 -initial-advertise-peer-urls https://10.0.1.11:2379 initial-cluster-token etcd-cluster-1\
 	-initial-cluster infra0=http://10.0.1.10:2379,infra1=http://10.0.1.11:2379,infra2=http://10.0.1.12:2379 \
 	-initial-cluster-state new
-$ etcd -name infra2 -initial-advertise-peer-urls https://10.0.1.12:2379 \
+$ etcd -name infra2 -initial-advertise-peer-urls https://10.0.1.12:2379 initial-cluster-token etcd-cluster-1\
 	-initial-cluster infra0=http://10.0.1.10:2379,infra1=http://10.0.1.11:2379,infra2=http://10.0.1.12:2379 \
 	-initial-cluster-state new
 ```
