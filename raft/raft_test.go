@@ -47,6 +47,61 @@ func (r *raft) readMessages() []pb.Message {
 	return msgs
 }
 
+func TestProgressMaybeDecr(t *testing.T) {
+	tests := []struct {
+		m  uint64
+		n  uint64
+		to uint64
+
+		w  bool
+		wn uint64
+	}{
+		{
+			// match != 0 is always false
+			1, 0, 0, false, 0,
+		},
+		{
+			// match != 0 is always false
+			5, 10, 9, false, 10,
+		},
+		{
+			// next-1 != to is always false
+			0, 0, 0, false, 0,
+		},
+		{
+			// next-1 != to is always false
+			0, 10, 5, false, 10,
+		},
+		{
+			// next>1 = decremented by 1
+			0, 10, 9, true, 9,
+		},
+		{
+			// next>1 = decremented by 1
+			0, 2, 1, true, 1,
+		},
+		{
+			// next<=1 = reset to 1
+			0, 1, 0, true, 1,
+		},
+	}
+	for i, tt := range tests {
+		p := &progress{
+			match: tt.m,
+			next:  tt.n,
+		}
+		if g := p.maybeDecrTo(tt.to); g != tt.w {
+			t.Errorf("#%d: maybeDecrTo=%t, want %t", i, g, tt.w)
+		}
+		if gm := p.match; gm != tt.m {
+			t.Errorf("#%d: match=%d, want %d", i, gm, tt.m)
+		}
+		if gn := p.next; gn != tt.wn {
+			t.Errorf("#%d: next=%d, want %d", i, gn, tt.wn)
+		}
+	}
+}
+
 func TestLeaderElection(t *testing.T) {
 	tests := []struct {
 		*network
