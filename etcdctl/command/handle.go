@@ -39,6 +39,7 @@ func createHttpPath(addr string) (string, error) {
 // rawhandle wraps the command function handlers and sets up the
 // environment but performs no output formatting.
 func rawhandle(c *cli.Context, fn handlerFunc) (*etcd.Response, error) {
+	var client *etcd.Client
 	sync := !c.GlobalBool("no-sync")
 
 	peerstr := c.GlobalString("peers")
@@ -69,7 +70,30 @@ func rawhandle(c *cli.Context, fn handlerFunc) (*etcd.Response, error) {
 		peers = revisedPeers
 	}
 
-	client := etcd.NewClient(peers)
+	if c.GlobalString("key-file") != "" {
+		for i, p := range peers {
+			if p[:5] == "https" {
+				continue
+			} else if p[:4] == "http" {
+				peers[i] = "https" + p[4:]
+			} else {
+				peers[i] = "https://" + p
+			}
+		}
+		var err error
+		client, err = etcd.NewTLSClient(
+			peers,
+			c.GlobalString("cert-file"),
+			c.GlobalString("key-file"),
+			c.GlobalString("ca-file"),
+		)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+
+		client = etcd.NewClient(peers)
+	}
 
 	if c.GlobalBool("debug") {
 		go dumpCURL(client)
