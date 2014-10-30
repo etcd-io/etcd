@@ -793,7 +793,7 @@ func TestServeMembersFail(t *testing.T) {
 			},
 			nil,
 
-			http.StatusBadRequest,
+			http.StatusNotFound,
 		},
 		{
 			// etcdserver.RemoveMember with no ID

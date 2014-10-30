@@ -209,7 +209,7 @@ func (h *membersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		id, err := strconv.ParseUint(idStr, 16, 64)
 		if err != nil {
-			writeError(w, httptypes.NewHTTPError(http.StatusBadRequest, err.Error()))
+			writeError(w, httptypes.NewHTTPError(http.StatusNotFound, fmt.Sprintf("No such member: %s", idStr)))
 			return
 		}
 		err = h.server.RemoveMember(ctx, id)
