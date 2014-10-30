@@ -127,6 +127,30 @@ $ etcdctl ls --recursive
 /adir/key2
 ```
 
+### Copying keys
+
+A key or directory can be copied from a source to a destination using the `cp` command.
+
+```
+$ etcdctl ls /adir
+/adir/key1
+/adir/key2
+$ etcdctl cp /adir /anotherdir
+$ etcdctl ls /anotherdir
+/anotherdir/key1
+/anotherdir/key2
+```
+
+Keys and directories can be copied recursively.
+
+```
+$ etcdctl cp --recursive / /newthing
+$ etcdctl ls --recursive /newthing
+/newthing/akey
+/newthing/adir
+/newthing/adir/key1
+/newthing/adir/key2
+```
 
 ### Deleting a key
 
