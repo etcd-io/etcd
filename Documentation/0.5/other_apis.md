@@ -78,7 +78,7 @@ curl http://10.0.0.10:2379/v2/members -XPOST -H "Content-Type: application/json"
 
 ## Delete a member
 
-Remove a member from the cluster.
+Remove a member from the cluster. The member ID must be a hex-encoded uint64.
 Returns empty when successful. Returns a string describing the failure condition when unsuccessful. 
 
 If the member does not exist in the cluster an HTTP 500(TODO: fix this) will be returned. If the cluster fails to process the request within timeout an HTTP 500 will be returned, though the request may be processed later.

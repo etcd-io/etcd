@@ -210,7 +210,7 @@ func (h *membersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		id, err := types.IDFromString(idStr)
 		if err != nil {
-			writeError(w, httptypes.NewHTTPError(http.StatusBadRequest, err.Error()))
+			writeError(w, httptypes.NewHTTPError(http.StatusNotFound, fmt.Sprintf("No such member: %s", idStr)))
 			return
 		}
 		err = h.server.RemoveMember(ctx, uint64(id))
@@ -223,6 +223,7 @@ func (h *membersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			log.Printf("etcdhttp: error removing node %s: %v", id, err)
 			writeError(w, err)
 		default:
+			log.Printf("etcdhttp: removed node %x", id)
 			w.WriteHeader(http.StatusNoContent)
 		}
 	}
