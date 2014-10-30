@@ -43,8 +43,8 @@ func TestClusterFromString(t *testing.T) {
 		if err != nil {
 			t.Fatalf("#%d: unexpected new error: %v", i, err)
 		}
-		if c.name != "abc" {
-			t.Errorf("#%d: name = %v, want abc", i, c.name)
+		if c.token != "abc" {
+			t.Errorf("#%d: token = %v, want abc", i, c.token)
 		}
 		wc := newTestCluster(tt.mems)
 		if !reflect.DeepEqual(c.members, wc.members) {
@@ -99,8 +99,8 @@ func TestClusterFromStore(t *testing.T) {
 			hc.AddMember(&m)
 		}
 		c := NewClusterFromStore("abc", st)
-		if c.name != "abc" {
-			t.Errorf("#%d: name = %v, want %v", i, c.name, "abc")
+		if c.token != "abc" {
+			t.Errorf("#%d: token = %v, want %v", i, c.token, "abc")
 		}
 		wc := newTestCluster(tt.mems)
 		if !reflect.DeepEqual(c.members, wc.members) {

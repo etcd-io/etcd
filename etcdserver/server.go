@@ -212,7 +212,7 @@ func NewServer(cfg *ServerConfig) *EtcdServer {
 			if err != nil {
 				log.Fatalf("etcdserver: %v", err)
 			}
-			if cfg.Cluster, err = NewClusterFromString(cfg.Cluster.name, s); err != nil {
+			if cfg.Cluster, err = NewClusterFromString(cfg.Cluster.token, s); err != nil {
 				log.Fatalf("etcdserver: %v", err)
 			}
 		}
@@ -232,7 +232,7 @@ func NewServer(cfg *ServerConfig) *EtcdServer {
 			st.Recovery(snapshot.Data)
 			index = snapshot.Index
 		}
-		cfg.Cluster = NewClusterFromStore(cfg.Cluster.name, st)
+		cfg.Cluster = NewClusterFromStore(cfg.Cluster.token, st)
 		id, n, w = restartNode(cfg, index, snapshot)
 	default:
 		log.Fatalf("etcdserver: unsupported bootstrap config")
