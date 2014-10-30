@@ -37,11 +37,7 @@ func createHttpPath(addr string) (string, error) {
 	return u.String(), nil
 }
 
-// rawhandle wraps the command function handlers and sets up the
-// environment but performs no output formatting.
-func rawhandle(c *cli.Context, fn handlerFunc) (*etcd.Response, error) {
-	sync := !c.GlobalBool("no-sync")
-
+func getPeersFlagValue(c *cli.Context) []string {
 	peerstr := c.GlobalString("peers")
 
 	// Use an environment variable if nothing was supplied on the
@@ -55,7 +51,15 @@ func rawhandle(c *cli.Context, fn handlerFunc) (*etcd.Response, error) {
 		peerstr = "127.0.0.1:4001"
 	}
 
-	peers := strings.Split(peerstr, ",")
+	return strings.Split(peerstr, ",")
+}
+
+// rawhandle wraps the command function handlers and sets up the
+// environment but performs no output formatting.
+func rawhandle(c *cli.Context, fn handlerFunc) (*etcd.Response, error) {
+	sync := !c.GlobalBool("no-sync")
+
+	peers := getPeersFlagValue(c)
 
 	// If no sync, create http path for each peer address
 	if !sync {
