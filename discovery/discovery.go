@@ -31,6 +31,7 @@ import (
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/jonboulle/clockwork"
 	"github.com/coreos/etcd/client"
+	"github.com/coreos/etcd/pkg/strutil"
 )
 
 var (
@@ -187,7 +188,7 @@ func (d *discovery) checkCluster() (client.Nodes, int, error) {
 	nodes := make(client.Nodes, 0)
 	// append non-config keys to nodes
 	for _, n := range resp.Node.Nodes {
-		if !strings.Contains(n.Key, configKey) {
+		if !(path.Base(n.Key) == path.Base(configKey)) {
 			nodes = append(nodes, n)
 		}
 	}
@@ -197,7 +198,7 @@ func (d *discovery) checkCluster() (client.Nodes, int, error) {
 
 	// find self position
 	for i := range nodes {
-		if strings.Contains(nodes[i].Key, d.selfKey()) {
+		if path.Base(nodes[i].Key) == path.Base(d.selfKey()) {
 			break
 		}
 		if i >= size-1 {
@@ -241,8 +242,17 @@ func (d *discovery) waitNodes(nodes client.Nodes, size int) (client.Nodes, error
 	w := d.c.RecursiveWatch(d.cluster, nodes[len(nodes)-1].ModifiedIndex+1)
 	all := make(client.Nodes, len(nodes))
 	copy(all, nodes)
+	for _, n := range all {
+		if path.Base(n.Key) == path.Base(d.selfKey()) {
+			log.Printf("discovery: found self %s in the cluster", path.Base(d.selfKey()))
+		} else {
+			log.Printf("discovery: found peer %s in the cluster", path.Base(n.Key))
+		}
+	}
+
 	// wait for others
 	for len(all) < size {
+		log.Printf("discovery: found %d peer(s), waiting for %d more", len(all), size-len(all))
 		resp, err := w.Next()
 		if err != nil {
 			if err == client.ErrTimeout {
@@ -250,13 +260,15 @@ func (d *discovery) waitNodes(nodes client.Nodes, size int) (client.Nodes, error
 			}
 			return nil, err
 		}
+		log.Printf("discovery: found peer %s in the cluster", path.Base(resp.Node.Key))
 		all = append(all, resp.Node)
 	}
+	log.Printf("discovery: found %d needed peer(s)", len(all))
 	return all, nil
 }
 
 func (d *discovery) selfKey() string {
-	return path.Join("/", d.cluster, fmt.Sprintf("%d", d.id))
+	return path.Join("/", d.cluster, strutil.IDAsHex(d.id))
 }
 
 func nodesToCluster(ns client.Nodes) string {
