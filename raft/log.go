@@ -41,6 +41,9 @@ func newLog() *raftLog {
 }
 
 func (l *raftLog) load(ents []pb.Entry) {
+	if l.offset != ents[0].Index {
+		panic("entries loaded don't match offset index")
+	}
 	l.ents = ents
 	l.unstable = l.offset + uint64(len(ents))
 }
