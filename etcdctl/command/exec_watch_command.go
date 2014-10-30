@@ -65,7 +65,7 @@ func execWatchCommandFunc(c *cli.Context, client *etcd.Client) (*etcd.Response, 
 	}()
 
 	receiver := make(chan *etcd.Response)
-	client.SetConsistency(etcd.WEAK_CONSISTENCY)
+	client.SetConsistency(etcd.STRONG_CONSISTENCY)
 	go client.Watch(key, uint64(index), recursive, receiver, stop)
 
 	for {
