@@ -89,21 +89,38 @@ time. This is common when utilizing cloud providers or when your network uses
 DHCP. In these cases you can use an existing etcd cluster to bootstrap a new
 one. We call this process “discovery”.
 
+### Custom etcd discovery service
+
 Discovery uses an existing cluster to bootstrap itself.  If you are using your
 own etcd cluster you can create a URL like so:
 
 ```
-$ curl -X PUT https://myetcd.local/v2/keys/discovery/6c007a14875d53d9bf0ef5a6fc0257c817f0fb83/_config/size -d value=5
+$ curl -X PUT https://myetcd.local/v2/keys/discovery/6c007a14875d53d9bf0ef5a6fc0257c817f0fb83/_config/size -d value=3
 ```
+
+By setting the size key to the URL, you create a discovery URL with expected-cluster-size of 3.
 
 The URL you will use in this case will be
 `https://myetcd.local/v2/keys/discovery/6c007a14875d53d9bf0ef5a6fc0257c817f0fb83`
-and the machines will use the
+and the etcd members will use the
 `https://myetcd.local/v2/keys/discovery/6c007a14875d53d9bf0ef5a6fc0257c817f0fb83`
 directory for registration as they start.
 
-If you do not have access to an existing cluster you can use the hosted
-discovery.etcd.io service.  You can create a private discovery URL using the
+Now we start etcd with those relevant flags for each member:
+
+```
+$ etcd -name infra0 -initial-advertise-peer-urls http://10.0.1.10:2379 -discovery https://myetcd.local/v2/keys/discovery/6c007a14875d53d9bf0ef5a6fc0257c817f0fb83
+$ etcd -name infra1 -initial-advertise-peer-urls http://10.0.1.11:2379 -discovery https://myetcd.local/v2/keys/discovery/6c007a14875d53d9bf0ef5a6fc0257c817f0fb83
+$ etcd -name infra2 -initial-advertise-peer-urls http://10.0.1.12:2379 -discovery https://myetcd.local/v2/keys/discovery/6c007a14875d53d9bf0ef5a6fc0257c817f0fb83
+```
+
+This will cause each member to register itself with the custom etcd discovery service and begin
+the cluster once all machines have been registered.
+
+### Public discovery service
+
+If you do not have access to an existing cluster you can use the public discovery
+service hosted at discovery.etcd.io.  You can create a private discovery URL using the
 "new" endpoint like so:
 
 ```
@@ -122,7 +139,7 @@ ETCD_DISCOVERY=https://discovery.etcd.io/3e86b59982e49066c5d813af1c2e2579cbf573d
 -discovery https://discovery.etcd.io/3e86b59982e49066c5d813af1c2e2579cbf573de
 ```
 
-Now we start etcd with those relevant flags on each machine:
+Now we start etcd with those relevant flags for each member:
 
 ```
 $ etcd -name infra0 -initial-advertise-peer-urls http://10.0.1.10:2379 -discovery https://discovery.etcd.io/3e86b59982e49066c5d813af1c2e2579cbf573de
@@ -130,8 +147,8 @@ $ etcd -name infra1 -initial-advertise-peer-urls http://10.0.1.11:2379 -discover
 $ etcd -name infra2 -initial-advertise-peer-urls http://10.0.1.12:2379 -discovery https://discovery.etcd.io/3e86b59982e49066c5d813af1c2e2579cbf573de
 ```
 
-This will cause each machine to register itself with the etcd service and begin
-the cluster once all machines have been registered.
+This will cause each member to register itself with the discovery service and begin
+the cluster once all members have been registered.
 
 You can use the environment variable `ETCD_DISCOVERY_PROXY` to cause etcd to use an HTTP proxy to connect to the discovery service.
 
