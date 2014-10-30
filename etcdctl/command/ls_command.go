@@ -12,6 +12,7 @@ func NewLsCommand() cli.Command {
 		Name:  "ls",
 		Usage: "retrieve a directory",
 		Flags: []cli.Flag{
+			cli.BoolFlag{Name: "sort", Usage: "returns result in sorted order"},
 			cli.BoolFlag{Name: "recursive", Usage: "returns all values for key and child keys"},
 			cli.BoolFlag{Name: "p", Usage: "append slash (/) to directories"},
 		},
@@ -44,9 +45,10 @@ func lsCommandFunc(c *cli.Context, client *etcd.Client) (*etcd.Response, error) 
 		key = c.Args()[0]
 	}
 	recursive := c.Bool("recursive")
+	sort := c.Bool("sort")
 
 	// Retrieve the value from the server.
-	return client.Get(key, false, recursive)
+	return client.Get(key, sort, recursive)
 }
 
 // rPrint recursively prints out the nodes in the node structure.
