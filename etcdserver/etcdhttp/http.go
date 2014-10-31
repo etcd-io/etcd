@@ -51,7 +51,8 @@ func writeError(w http.ResponseWriter, err error) {
 		e.WriteTo(w)
 	default:
 		log.Printf("etcdhttp: unexpected error: %v", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		herr := httptypes.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
+		herr.WriteTo(w)
 	}
 }
 
