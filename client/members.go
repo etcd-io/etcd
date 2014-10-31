@@ -34,18 +34,11 @@ var (
 	DefaultV2MembersPrefix = "/v2/members"
 )
 
-func NewMembersAPI(tr *http.Transport, eps []string, to time.Duration) (MembersAPI, error) {
-	c, err := NewHTTPClient(tr, eps)
-	if err != nil {
-		return nil, err
-	}
-
-	mAPI := httpMembersAPI{
+func NewMembersAPI(c httpActionDo, to time.Duration) MembersAPI {
+	return &httpMembersAPI{
 		client:  c,
 		timeout: to,
 	}
-
-	return &mAPI, nil
 }
 
 type MembersAPI interface {
