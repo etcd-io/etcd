@@ -33,7 +33,7 @@ var (
 	DefaultV2MembersPrefix = "/v2/members"
 )
 
-func NewMembersAPI(c httpActionDo) MembersAPI {
+func NewMembersAPI(c HTTPClient) MembersAPI {
 	return &httpMembersAPI{
 		client: c,
 	}
@@ -46,7 +46,7 @@ type MembersAPI interface {
 }
 
 type httpMembersAPI struct {
-	client httpActionDo
+	client HTTPClient
 }
 
 func (m *httpMembersAPI) List(ctx context.Context) ([]httptypes.Member, error) {

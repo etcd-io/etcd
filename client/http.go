@@ -30,6 +30,82 @@ var (
 	DefaultRequestTimeout = 5 * time.Second
 )
 
+type SyncableHTTPClient interface {
+	HTTPClient
+	Sync(context.Context) error
+}
+
+type HTTPClient interface {
+	Do(context.Context, HTTPAction) (*http.Response, []byte, error)
+}
+
+type HTTPAction interface {
+	HTTPRequest(url.URL) *http.Request
+}
+
+// CancelableTransport mimics http.Transport to provide an interface which can be
+// substituted for testing (since the RoundTripper interface alone does not
+// require the CancelRequest method)
+type CancelableTransport interface {
+	http.RoundTripper
+	CancelRequest(req *http.Request)
+}
+
+func NewHTTPClient(tr CancelableTransport, eps []string) (SyncableHTTPClient, error) {
+	return newHTTPClusterClient(tr, eps)
+}
+
+func newHTTPClusterClient(tr CancelableTransport, eps []string) (*httpClusterClient, error) {
+	c := httpClusterClient{
+		transport: tr,
+		endpoints: make([]HTTPClient, len(eps)),
+	}
+
+	for i, ep := range eps {
+		u, err := url.Parse(ep)
+		if err != nil {
+			return nil, err
+		}
+
+		c.endpoints[i] = &httpClient{
+			transport: tr,
+			endpoint:  *u,
+		}
+	}
+
+	return &c, nil
+}
+
+type httpClusterClient struct {
+	transport CancelableTransport
+	endpoints []HTTPClient
+}
+
+func (c *httpClusterClient) Do(ctx context.Context, act HTTPAction) (*http.Response, []byte, error) {
+	//TODO(bcwaldon): introduce retry logic so all endpoints are attempted
+	return c.endpoints[0].Do(ctx, act)
+}
+
+func (c *httpClusterClient) Sync(ctx context.Context) error {
+	mAPI := NewMembersAPI(c)
+	ms, err := mAPI.List(ctx)
+	if err != nil {
+		return err
+	}
+
+	eps := make([]string, 0)
+	for _, m := range ms {
+		eps = append(eps, m.ClientURLs...)
+	}
+	nc, err := newHTTPClusterClient(c.transport, eps)
+	if err != nil {
+		return err
+	}
+
+	*c = *nc
+	return nil
+}
+
 type roundTripResponse struct {
 	resp *http.Response
 	err  error
