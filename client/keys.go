@@ -50,14 +50,9 @@ func NewDiscoveryKeysAPI(tr *http.Transport, ep string, to time.Duration) (KeysA
 }
 
 func newHTTPKeysAPIWithPrefix(tr *http.Transport, ep string, to time.Duration, prefix string) (*httpKeysAPI, error) {
-	u, err := url.Parse(ep)
+	c, err := newHTTPClusterClient(tr, []string{ep})
 	if err != nil {
 		return nil, err
-	}
-
-	c := &httpClient{
-		transport: tr,
-		endpoint:  *u,
 	}
 
 	kAPI := httpKeysAPI{

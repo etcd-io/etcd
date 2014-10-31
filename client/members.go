@@ -35,14 +35,9 @@ var (
 )
 
 func NewMembersAPI(tr *http.Transport, ep string, to time.Duration) (MembersAPI, error) {
-	u, err := url.Parse(ep)
+	c, err := newHTTPClusterClient(tr, []string{ep})
 	if err != nil {
 		return nil, err
-	}
-
-	c := &httpClient{
-		transport: tr,
-		endpoint:  *u,
 	}
 
 	mAPI := httpMembersAPI{
