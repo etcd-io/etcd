@@ -16,7 +16,7 @@ before starting we can use an offline bootstrap configuration. Each machine
 will get either the following command line or environment variables:
 
 ```
-ETCD_INITIAL_CLUSTER=”infra0=http://10.0.1.10:2379,infra1=http://10.0.1.11:2379,infra2=http://10.0.1.12:2379”
+ETCD_INITIAL_CLUSTER="infra0=http://10.0.1.10:2379,infra1=http://10.0.1.11:2379,infra2=http://10.0.1.12:2379"
 ETCD_INITIAL_CLUSTER_STATE=new
 ```
 
@@ -49,9 +49,8 @@ changes to the configuration later see our guide on runtime configuration.
 
 ### Error Cases
 
-In the following case we have not included our new host in the list of
-enumerated nodes. If this is a new cluster, the node must be added to the list
-of initial cluster members.
+In the following case we have not included our host in the list of
+enumerated nodes.
 ```
 $ etcd -name infra1 -initial-advertise-peer-urls http://10.0.1.11:2379 \
 	-initial-cluster infra0=http://10.0.1.10:2379 \
@@ -63,7 +62,7 @@ exit 1
 In this case we are attempting to map a node (infra0) on a different address
 (127.0.0.1:2379) than its enumerated address in the cluster list
 (10.0.1.10:2379). If this node is to listen on multiple addresses, all
-addresses must be reflected in the “initial-cluster” configuration directive.
+addresses must be reflected in the "initial-cluster" configuration directive.
 
 ```
 $ etcd -name infra0 -initial-advertise-peer-urls http://127.0.0.1:2379 \
@@ -90,11 +89,11 @@ exit 1
 In a number of cases you might not know the IPs of your cluster peers ahead of
 time. This is common when utilizing cloud providers or when your network uses
 DHCP. In these cases you can use an existing etcd cluster to bootstrap a new
-one. We call this process “discovery”.
+one. We call this process "discovery".
 
 ### Custom etcd discovery service
 
-Discovery uses an existing cluster to bootstrap itself.  If you are using your
+Discovery uses an existing cluster to bootstrap itself. If you are using your
 own etcd cluster you can create a URL like so:
 
 ```
@@ -181,6 +180,85 @@ ignored on this machine.
 ```
 $ etcd -name infra0 -initial-advertise-peer-urls http://10.0.1.10:2379 -discovery https://discovery.etcd.io/3e86b59982e49066c5d813af1c2e2579cbf573de
 etcd: warn: ignoring discovery URL: etcd has already been initialized and has a valid log in /var/lib/etcd
+```
+
+## Dynamic Configuration
+
+You may need to change cluster configuration from time to time. A normal case
+is to retire an old machine and replace it with a new one. Another one is to
+achieve higher availability through expanding the cluster, or gain better
+performance through shrinking the cluster.
+
+etcd supports adding and removing member in zero downtime now.
+
+### Add member
+
+Add the member to the cluster first:
+
+```
+$ curl -X POST http://myetcd.local/v2/members \
+	-H "Content-Type:application/json" \
+	-d '{"PeerURLs":["http://10.0.1.13:2379"]}'
+```
+
+See [POST /v2/members][https://github.com/coreos/etcd/blob/master/Documentation/0.5/other_apis.md#post-v2members] for more details.
+
+Now start etcd with those relevant flags for the new member:
+
+```
+$ etcd -name infra3 \
+	-initial-cluster infra0=http://10.0.1.10:2379,infra1=http://10.0.1.11:2379,infra2=http://10.0.1.12:2379,infra3=http://10.0.1.13:2379 \
+	-initial-cluster-state existing
+```
+
+The new member will run as a part of the cluster and receive the missing log
+from the cluster.
+
+### Remove member
+
+As the first step, you need to find the ID of the removed member, which can
+be found in the debug log, or [Get /v2/members][https://github.com/coreos/etcd/blob/master/Documentation/0.5/other_apis.md#get-v2members].
+
+Let us say the ID is 272e204152.
+
+Use HTTP API to remove the member from the cluster:
+
+```
+$ curl -X DELETE http://myetcd.local/v2/members/272e204152
+```
+
+See [DELETE /v2/members/:id][https://github.com/coreos/etcd/blob/master/Documentation/0.5/other_apis.md#delete-v2membersid] for more details.
+
+etcd that represents the removed member will stop itself, which indicates that
+it has been removed successfully:
+
+```
+etcd: this member has been permanently removed from the cluster. Exiting.
+```
+
+### Error Cases
+
+In the following case we have not included our new host in the list of
+enumerated nodes. If this is a new cluster, the node must be added to the list
+of initial cluster members.
+
+```
+$ etcd -name infra3 \
+	-initial-cluster infra0=http://10.0.1.10:2379,infra1=http://10.0.1.11:2379,infra2=http://10.0.1.12:2379 \
+	-initial-cluster-state existing
+etcdserver: assign ids error: the member count is unequal
+exit 1
+```
+
+In this case we give the different address (10.0.1.14:2379) than the one that
+we used to join the cluster (10.0.1.13:2379).
+
+```
+$ etcd -name infra4 \
+	-initial-cluster infra0=http://10.0.1.10:2379,infra1=http://10.0.1.11:2379,infra2=http://10.0.1.12:2379,infra4=http://10.0.1.14:2379 \
+	-initial-cluster-state existing
+etcdserver: assign ids error: unmatched member while checking PeerURLs
+exit 1
 ```
 
 # 0.4 to 0.5+ Migration Guide
