@@ -896,7 +896,7 @@ curl http://127.0.0.1:2379/v2/stats/leader
         "startTime": "2014-10-24T13:15:51.184719899-07:00",
         "uptime": "7m17.859616962s"
     },
-    "name": "node1",
+    "name": "infra1",
     "recvAppendRequestCnt": 3949,
     "recvBandwidthRate": 561.5729321100841,
     "recvPkgRate": 9.008227977383449,

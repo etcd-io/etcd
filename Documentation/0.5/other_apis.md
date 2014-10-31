@@ -13,7 +13,7 @@ Return an HTTP 200 OK response code and a representation of all members in the e
         "members": [
                 {
                     "id":"272e204152",
-                    "name":"node1",
+                    "name":"infra1",
                     "peerURLs":[
                         "http://10.0.0.10:2379"
                     ],
@@ -23,7 +23,7 @@ Return an HTTP 200 OK response code and a representation of all members in the e
                 },
                 {
                     "id":"2225373f43",
-                    "name":"node2",
+                    "name":"infra2",
                     "peerURLs":[
                         "http://127.0.0.11:2379"
                     ],
