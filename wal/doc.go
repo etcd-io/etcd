@@ -22,7 +22,8 @@ A WAL is created at a particular directory and is made up of a number of
 discrete WAL files. Inside of each file the raft state and entries are appended
 to it with the Save method:
 
-	w, err := wal.Create("/var/lib/etcd")
+	metadata := []byte{}
+	w, err := wal.Create("/var/lib/etcd", metadata)
 	...
 	err := w.Save(s, ents)
 
