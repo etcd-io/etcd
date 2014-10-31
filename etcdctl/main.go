@@ -19,6 +19,9 @@ func main() {
 		cli.BoolFlag{Name: "no-sync", Usage: "don't synchronize cluster information before sending request"},
 		cli.StringFlag{Name: "output, o", Value: "simple", Usage: "output response in the given format (`simple` or `json`)"},
 		cli.StringFlag{Name: "peers, C", Value: "", Usage: "a comma-delimited list of machine addresses in the cluster (default: \"127.0.0.1:4001\")"},
+		cli.StringFlag{"ca-file", "", "Path to the client CA file."},
+		cli.StringFlag{"cert-file", "", "Path to the client cert file."},
+		cli.StringFlag{"key-file", "", "Path to the client key file."},
 	}
 	app.Commands = []cli.Command{
 		command.NewMakeCommand(),
