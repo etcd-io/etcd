@@ -78,14 +78,14 @@ func TestHTTPClientDoSuccess(t *testing.T) {
 		Body:       ioutil.NopCloser(strings.NewReader("foo")),
 	}
 
-	code, body, err := c.do(context.Background(), &fakeAction{})
+	resp, body, err := c.do(context.Background(), &fakeAction{})
 	if err != nil {
 		t.Fatalf("incorrect error value: want=nil got=%v", err)
 	}
 
 	wantCode := http.StatusTeapot
-	if wantCode != code {
-		t.Fatalf("invalid response code: want=%d got=%d", wantCode, code)
+	if wantCode != resp.StatusCode {
+		t.Fatalf("invalid response code: want=%d got=%d", wantCode, resp.StatusCode)
 	}
 
 	wantBody := []byte("foo")

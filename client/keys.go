@@ -112,13 +112,13 @@ func (k *httpKeysAPI) Create(key, val string, ttl time.Duration) (*Response, err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), k.timeout)
-	code, body, err := k.client.do(ctx, create)
+	resp, body, err := k.client.do(ctx, create)
 	cancel()
 	if err != nil {
 		return nil, err
 	}
 
-	return unmarshalHTTPResponse(code, body)
+	return unmarshalHTTPResponse(resp.StatusCode, body)
 }
 
 func (k *httpKeysAPI) Get(key string) (*Response, error) {
@@ -129,13 +129,13 @@ func (k *httpKeysAPI) Get(key string) (*Response, error) {
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), k.timeout)
-	code, body, err := k.client.do(ctx, get)
+	resp, body, err := k.client.do(ctx, get)
 	cancel()
 	if err != nil {
 		return nil, err
 	}
 
-	return unmarshalHTTPResponse(code, body)
+	return unmarshalHTTPResponse(resp.StatusCode, body)
 }
 
 func (k *httpKeysAPI) Watch(key string, idx uint64) Watcher {
@@ -169,12 +169,12 @@ type httpWatcher struct {
 
 func (hw *httpWatcher) Next() (*Response, error) {
 	//TODO(bcwaldon): This needs to be cancellable by the calling user
-	code, body, err := hw.client.do(context.Background(), &hw.nextWait)
+	httpresp, body, err := hw.client.do(context.Background(), &hw.nextWait)
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := unmarshalHTTPResponse(code, body)
+	resp, err := unmarshalHTTPResponse(httpresp.StatusCode, body)
 	if err != nil {
 		return nil, err
 	}

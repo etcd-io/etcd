@@ -43,7 +43,7 @@ type httpAction interface {
 }
 
 type httpActionDo interface {
-	do(context.Context, httpAction) (int, []byte, error)
+	do(context.Context, httpAction) (*http.Response, []byte, error)
 }
 
 type roundTripResponse struct {
@@ -57,7 +57,7 @@ type httpClient struct {
 	timeout   time.Duration
 }
 
-func (c *httpClient) do(ctx context.Context, act httpAction) (int, []byte, error) {
+func (c *httpClient) do(ctx context.Context, act httpAction) (*http.Response, []byte, error) {
 	req := act.httpRequest(c.endpoint)
 
 	rtchan := make(chan roundTripResponse, 1)
@@ -89,9 +89,9 @@ func (c *httpClient) do(ctx context.Context, act httpAction) (int, []byte, error
 	}()
 
 	if err != nil {
-		return 0, nil, err
+		return nil, nil, err
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
-	return resp.StatusCode, body, err
+	return resp, body, err
 }

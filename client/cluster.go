@@ -47,7 +47,7 @@ type httpClusterClient struct {
 	endpoints []*httpClient
 }
 
-func (c *httpClusterClient) do(ctx context.Context, act httpAction) (int, []byte, error) {
+func (c *httpClusterClient) do(ctx context.Context, act httpAction) (*http.Response, []byte, error) {
 	//TODO(bcwaldon): introduce retry logic so all endpoints are attempted
 	return c.endpoints[0].do(ctx, act)
 }
