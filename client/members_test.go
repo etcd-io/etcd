@@ -19,6 +19,7 @@ package client
 import (
 	"net/http"
 	"net/url"
+	"reflect"
 	"testing"
 
 	"github.com/coreos/etcd/pkg/types"
@@ -91,5 +92,22 @@ func TestAssertStatusCode(t *testing.T) {
 
 	if err := assertStatusCode(400, 400); err != nil {
 		t.Errorf("assertStatusCode found conflict in 400 vs 400: %v", err)
+	}
+}
+
+func TestV2MembersURL(t *testing.T) {
+	got := v2MembersURL(url.URL{
+		Scheme: "http",
+		Host:   "foo.example.com:4002",
+		Path:   "/pants",
+	})
+	want := &url.URL{
+		Scheme: "http",
+		Host:   "foo.example.com:4002",
+		Path:   "/pants/v2/members",
+	}
+
+	if !reflect.DeepEqual(want, got) {
+		t.Fatalf("v2MembersURL got %#v, want %#v", got, want)
 	}
 }
