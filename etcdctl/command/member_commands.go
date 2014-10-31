@@ -34,7 +34,7 @@ func NewMemberCommand() cli.Command {
 }
 
 func mustNewMembersAPI(c *cli.Context) client.MembersAPI {
-	mAPI, err := client.NewMembersAPI(&http.Transport{}, "http://127.0.0.1:4001", client.DefaultRequestTimeout)
+	mAPI, err := client.NewMembersAPI(&http.Transport{}, []string{"http://127.0.0.1:4001"}, client.DefaultRequestTimeout)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)

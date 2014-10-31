@@ -34,8 +34,8 @@ var (
 	DefaultV2MembersPrefix = "/v2/members"
 )
 
-func NewMembersAPI(tr *http.Transport, ep string, to time.Duration) (MembersAPI, error) {
-	c, err := newHTTPClusterClient(tr, []string{ep})
+func NewMembersAPI(tr *http.Transport, eps []string, to time.Duration) (MembersAPI, error) {
+	c, err := newHTTPClusterClient(tr, eps)
 	if err != nil {
 		return nil, err
 	}

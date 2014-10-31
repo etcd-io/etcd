@@ -33,6 +33,7 @@ func newHTTPClusterClient(tr *http.Transport, eps []string) (*httpClusterClient,
 		if err != nil {
 			return nil, err
 		}
+
 		c.endpoints[i] = &httpClient{
 			transport: tr,
 			endpoint:  *u,
