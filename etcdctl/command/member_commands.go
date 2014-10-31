@@ -105,9 +105,10 @@ func actionMemberAdd(c *cli.Context) {
 		}
 	}
 
+	fmt.Print("\n")
 	fmt.Printf("ETCD_NAME=%q\n", newName)
 	fmt.Printf("ETCD_INITIAL_CLUSTER=%q\n", strings.Join(conf, ","))
-	fmt.Printf("ETCD_INITIAL_CLUSTER_STATE=existing\n")
+	fmt.Printf("ETCD_INITIAL_CLUSTER_STATE=\"existing\"\n")
 }
 
 func actionMemberRemove(c *cli.Context) {
