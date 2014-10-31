@@ -35,7 +35,7 @@ var (
 )
 
 func NewMembersAPI(tr *http.Transport, eps []string, to time.Duration) (MembersAPI, error) {
-	c, err := newHTTPClusterClient(tr, eps)
+	c, err := NewHTTPClient(tr, eps)
 	if err != nil {
 		return nil, err
 	}

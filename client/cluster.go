@@ -23,7 +23,7 @@ import (
 	"github.com/coreos/etcd/Godeps/_workspace/src/code.google.com/p/go.net/context"
 )
 
-func newHTTPClusterClient(tr *http.Transport, eps []string) (*httpClusterClient, error) {
+func NewHTTPClient(tr *http.Transport, eps []string) (*httpClusterClient, error) {
 	c := httpClusterClient{
 		endpoints: make([]httpActionDo, len(eps)),
 	}
