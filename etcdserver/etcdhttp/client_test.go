@@ -27,7 +27,6 @@ import (
 	"net/url"
 	"path"
 	"reflect"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -38,6 +37,7 @@ import (
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/etcdhttp/httptypes"
 	"github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/store"
 	"github.com/coreos/etcd/version"
@@ -591,7 +591,7 @@ func TestServeMembers(t *testing.T) {
 			t.Errorf("#%d: content-type = %s, want %s", i, gct, tt.wct)
 		}
 		gcid := rw.Header().Get("X-Etcd-Cluster-ID")
-		wcid := strconv.FormatUint(cluster.ID(), 16)
+		wcid := cluster.ID().String()
 		if gcid != wcid {
 			t.Errorf("#%d: cid = %s, want %s", i, gcid, wcid)
 		}
@@ -629,7 +629,7 @@ func TestServeMembersCreate(t *testing.T) {
 		t.Errorf("content-type = %s, want %s", gct, wct)
 	}
 	gcid := rw.Header().Get("X-Etcd-Cluster-ID")
-	wcid := strconv.FormatUint(h.clusterInfo.ID(), 16)
+	wcid := h.clusterInfo.ID().String()
 	if gcid != wcid {
 		t.Errorf("cid = %s, want %s", gcid, wcid)
 	}
@@ -672,7 +672,7 @@ func TestServeMembersDelete(t *testing.T) {
 		t.Errorf("code=%d, want %d", rw.Code, wcode)
 	}
 	gcid := rw.Header().Get("X-Etcd-Cluster-ID")
-	wcid := strconv.FormatUint(h.clusterInfo.ID(), 16)
+	wcid := h.clusterInfo.ID().String()
 	if gcid != wcid {
 		t.Errorf("cid = %s, want %s", gcid, wcid)
 	}
@@ -819,7 +819,7 @@ func TestServeMembersFail(t *testing.T) {
 		}
 		if rw.Code != http.StatusMethodNotAllowed {
 			gcid := rw.Header().Get("X-Etcd-Cluster-ID")
-			wcid := strconv.FormatUint(h.clusterInfo.ID(), 16)
+			wcid := h.clusterInfo.ID().String()
 			if gcid != wcid {
 				t.Errorf("#%d: cid = %s, want %s", i, gcid, wcid)
 			}
@@ -947,10 +947,10 @@ type dummyStats struct {
 	data []byte
 }
 
-func (ds *dummyStats) SelfStats() []byte               { return ds.data }
-func (ds *dummyStats) LeaderStats() []byte             { return ds.data }
-func (ds *dummyStats) StoreStats() []byte              { return ds.data }
-func (ds *dummyStats) UpdateRecvApp(_ uint64, _ int64) {}
+func (ds *dummyStats) SelfStats() []byte                 { return ds.data }
+func (ds *dummyStats) LeaderStats() []byte               { return ds.data }
+func (ds *dummyStats) StoreStats() []byte                { return ds.data }
+func (ds *dummyStats) UpdateRecvApp(_ types.ID, _ int64) {}
 
 func TestServeSelfStats(t *testing.T) {
 	wb := []byte("some statistics")
@@ -1160,7 +1160,7 @@ func TestBadServeKeys(t *testing.T) {
 		}
 		if rw.Code != http.StatusMethodNotAllowed {
 			gcid := rw.Header().Get("X-Etcd-Cluster-ID")
-			wcid := strconv.FormatUint(h.clusterInfo.ID(), 16)
+			wcid := h.clusterInfo.ID().String()
 			if gcid != wcid {
 				t.Errorf("#%d: cid = %s, want %s", i, gcid, wcid)
 			}
@@ -1204,7 +1204,7 @@ func TestServeKeysEvent(t *testing.T) {
 		t.Errorf("got code=%d, want %d", rw.Code, wcode)
 	}
 	gcid := rw.Header().Get("X-Etcd-Cluster-ID")
-	wcid := strconv.FormatUint(h.clusterInfo.ID(), 16)
+	wcid := h.clusterInfo.ID().String()
 	if gcid != wcid {
 		t.Errorf("cid = %s, want %s", gcid, wcid)
 	}
@@ -1254,7 +1254,7 @@ func TestServeKeysWatch(t *testing.T) {
 		t.Errorf("got code=%d, want %d", rw.Code, wcode)
 	}
 	gcid := rw.Header().Get("X-Etcd-Cluster-ID")
-	wcid := strconv.FormatUint(h.clusterInfo.ID(), 16)
+	wcid := h.clusterInfo.ID().String()
 	if gcid != wcid {
 		t.Errorf("cid = %s, want %s", gcid, wcid)
 	}

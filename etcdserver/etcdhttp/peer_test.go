@@ -24,7 +24,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path"
-	"strconv"
 	"strings"
 	"testing"
 
@@ -247,7 +246,7 @@ func TestServeMembersGet(t *testing.T) {
 			t.Errorf("#%d: body = %s, want %s", i, rw.Body.String(), tt.wbody)
 		}
 		gcid := rw.Header().Get("X-Etcd-Cluster-ID")
-		wcid := strconv.FormatUint(cluster.ID(), 16)
+		wcid := cluster.ID().String()
 		if gcid != wcid {
 			t.Errorf("#%d: cid = %s, want %s", i, gcid, wcid)
 		}

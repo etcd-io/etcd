@@ -21,6 +21,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/store"
 )
 
@@ -115,7 +116,7 @@ func TestClusterMember(t *testing.T) {
 		newTestMember(2, nil, "node2", nil),
 	}
 	tests := []struct {
-		id    uint64
+		id    types.ID
 		match bool
 	}{
 		{1, true},
@@ -165,7 +166,7 @@ func TestClusterMemberIDs(t *testing.T) {
 		newTestMember(4, nil, "", nil),
 		newTestMember(100, nil, "", nil),
 	})
-	w := []uint64{1, 4, 100}
+	w := []types.ID{1, 4, 100}
 	g := c.MemberIDs()
 	if !reflect.DeepEqual(w, g) {
 		t.Errorf("IDs = %+v, want %+v", g, w)
@@ -327,7 +328,7 @@ func TestClusterValidateAndAssignIDs(t *testing.T) {
 	tests := []struct {
 		clmembs []Member
 		membs   []*Member
-		wids    []uint64
+		wids    []types.ID
 	}{
 		{
 			[]Member{
@@ -338,7 +339,7 @@ func TestClusterValidateAndAssignIDs(t *testing.T) {
 				newTestMemberp(3, []string{"http://127.0.0.1:2379"}, "", nil),
 				newTestMemberp(4, []string{"http://127.0.0.2:2379"}, "", nil),
 			},
-			[]uint64{3, 4},
+			[]types.ID{3, 4},
 		},
 	}
 	for i, tt := range tests {
@@ -439,7 +440,7 @@ func TestClusterAddMember(t *testing.T) {
 
 func TestClusterMembers(t *testing.T) {
 	cls := &Cluster{
-		members: map[uint64]*Member{
+		members: map[types.ID]*Member{
 			1:   &Member{ID: 1},
 			20:  &Member{ID: 20},
 			100: &Member{ID: 100},
@@ -461,7 +462,7 @@ func TestClusterMembers(t *testing.T) {
 
 func TestClusterString(t *testing.T) {
 	cls := &Cluster{
-		members: map[uint64]*Member{
+		members: map[types.ID]*Member{
 			1: newTestMemberp(
 				1,
 				[]string{"http://1.1.1.1:1111", "http://0.0.0.0:0000"},
@@ -533,7 +534,7 @@ func TestNodeToMember(t *testing.T) {
 }
 
 func newTestCluster(membs []Member) *Cluster {
-	c := &Cluster{members: make(map[uint64]*Member), removed: make(map[uint64]bool)}
+	c := &Cluster{members: make(map[types.ID]*Member), removed: make(map[types.ID]bool)}
 	for i, m := range membs {
 		c.members[m.ID] = &membs[i]
 	}
@@ -542,7 +543,7 @@ func newTestCluster(membs []Member) *Cluster {
 
 func newTestMember(id uint64, peerURLs []string, name string, clientURLs []string) Member {
 	return Member{
-		ID:             id,
+		ID:             types.ID(id),
 		RaftAttributes: RaftAttributes{PeerURLs: peerURLs},
 		Attributes:     Attributes{Name: name, ClientURLs: clientURLs},
 	}

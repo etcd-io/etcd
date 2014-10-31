@@ -30,6 +30,7 @@ import (
 	"github.com/coreos/etcd/Godeps/_workspace/src/code.google.com/p/go.net/context"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/pkg/testutil"
+	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/store"
@@ -407,7 +408,7 @@ func TestApplyRequestOnAdminMemberAttributes(t *testing.T) {
 // TODO: test ErrIDRemoved
 func TestApplyConfChangeError(t *testing.T) {
 	nodes := []uint64{1, 2, 3}
-	removed := map[uint64]bool{4: true}
+	removed := map[types.ID]bool{4: true}
 	tests := []struct {
 		cc   raftpb.ConfChange
 		werr error
@@ -1381,7 +1382,7 @@ func (cs *removedClusterStore) IsRemoved(id uint64) bool { return cs.removed[id]
 func mustMakePeerSlice(t *testing.T, ids ...uint64) []raft.Peer {
 	peers := make([]raft.Peer, len(ids))
 	for i, id := range ids {
-		m := Member{ID: id}
+		m := Member{ID: types.ID(id)}
 		b, err := json.Marshal(m)
 		if err != nil {
 			t.Fatal(err)

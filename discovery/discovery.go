@@ -31,7 +31,7 @@ import (
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/jonboulle/clockwork"
 	"github.com/coreos/etcd/client"
-	"github.com/coreos/etcd/pkg/strutil"
+	"github.com/coreos/etcd/pkg/types"
 )
 
 var (
@@ -57,7 +57,7 @@ type Discoverer interface {
 
 type discovery struct {
 	cluster string
-	id      uint64
+	id      types.ID
 	config  string
 	c       client.KeysAPI
 	retries uint
@@ -95,7 +95,7 @@ func proxyFuncFromEnv() (func(*http.Request) (*url.URL, error), error) {
 	return http.ProxyURL(proxyURL), nil
 }
 
-func New(durl string, id uint64, config string) (Discoverer, error) {
+func New(durl string, id types.ID, config string) (Discoverer, error) {
 	u, err := url.Parse(durl)
 	if err != nil {
 		return nil, err
@@ -268,7 +268,7 @@ func (d *discovery) waitNodes(nodes client.Nodes, size int) (client.Nodes, error
 }
 
 func (d *discovery) selfKey() string {
-	return path.Join("/", d.cluster, strutil.IDAsHex(d.id))
+	return path.Join("/", d.cluster, d.id.String())
 }
 
 func nodesToCluster(ns client.Nodes) string {
