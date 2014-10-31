@@ -193,7 +193,7 @@ func NewServer(cfg *ServerConfig) *EtcdServer {
 			log.Fatal(err)
 		}
 		if err := cfg.Cluster.ValidateAndAssignIDs(cl.Members()); err != nil {
-			log.Fatalf("etcdserver: %v", err)
+			log.Fatalf("etcdserver: error validating IDs from cluster %s: %v", cl, err)
 		}
 		cfg.Cluster.SetID(cl.id)
 		cfg.Cluster.SetStore(st)

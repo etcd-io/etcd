@@ -230,7 +230,7 @@ func (c Cluster) String() string {
 // cluster. If the validation fails, an error will be returned.
 func (c *Cluster) ValidateAndAssignIDs(membs []*Member) error {
 	if len(c.members) != len(membs) {
-		return fmt.Errorf("cannot update %v from %v because the member count is unequal", c.members, membs)
+		return fmt.Errorf("member count is unequal")
 	}
 	omembs := make([]*Member, 0)
 	for _, m := range c.members {
