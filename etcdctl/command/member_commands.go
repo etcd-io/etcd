@@ -48,9 +48,11 @@ func mustNewMembersAPI(c *cli.Context) client.MembersAPI {
 		os.Exit(1)
 	}
 
-	if err := hc.Sync(); err != nil {
-		fmt.Fprintln(os.Stderr, err.Error())
-		os.Exit(1)
+	if !c.GlobalBool("no-sync") {
+		if err := hc.Sync(); err != nil {
+			fmt.Fprintln(os.Stderr, err.Error())
+			os.Exit(1)
+		}
 	}
 
 	return client.NewMembersAPI(hc, client.DefaultRequestTimeout)
