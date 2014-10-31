@@ -12,7 +12,8 @@ import (
 
 func NewMemberCommand() cli.Command {
 	return cli.Command{
-		Name: "member",
+		Name:  "member",
+		Usage: "member add, remove and list subcommands",
 		Subcommands: []cli.Command{
 			cli.Command{
 				Name:   "list",
@@ -69,20 +70,44 @@ func actionMemberList(c *cli.Context) {
 
 func actionMemberAdd(c *cli.Context) {
 	args := c.Args()
-	if len(args) != 1 {
-		fmt.Fprintln(os.Stderr, "Provide a single member peerURL")
+	if len(args) != 2 {
+		fmt.Fprintln(os.Stderr, "Provide a name and a single member peerURL")
 		os.Exit(1)
 	}
 
 	mAPI := mustNewMembersAPI(c)
-	url := args[0]
+
+	url := args[1]
 	m, err := mAPI.Add(url)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
 	}
 
-	fmt.Printf("Added member to cluster with ID %s", m.ID)
+	newID := m.ID
+	newName := args[0]
+	fmt.Printf("Added member named %s with ID %s to cluster\n", newName, newID)
+
+	members, err := mAPI.List()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+		os.Exit(1)
+	}
+
+	conf := []string{}
+	for _, m := range members {
+		for _, u := range m.PeerURLs {
+			n := m.Name
+			if m.ID == newID {
+				n = newName
+			}
+			conf = append(conf, fmt.Sprintf("%s=%s", n, u))
+		}
+	}
+
+	fmt.Printf("ETCD_NAME=%q\n", newName)
+	fmt.Printf("ETCD_INITIAL_CLUSTER=%q\n", strings.Join(conf, ","))
+	fmt.Printf("ETCD_INITIAL_CLUSTER_STATE=existing\n")
 }
 
 func actionMemberRemove(c *cli.Context) {
