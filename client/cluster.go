@@ -23,8 +23,9 @@ import (
 	"github.com/coreos/etcd/Godeps/_workspace/src/code.google.com/p/go.net/context"
 )
 
-func NewHTTPClient(tr *http.Transport, eps []string) (*httpClusterClient, error) {
+func NewHTTPClient(tr CancelableTransport, eps []string) (*httpClusterClient, error) {
 	c := httpClusterClient{
+		transport: tr,
 		endpoints: make([]httpActionDo, len(eps)),
 	}
 
@@ -44,10 +45,31 @@ func NewHTTPClient(tr *http.Transport, eps []string) (*httpClusterClient, error)
 }
 
 type httpClusterClient struct {
+	transport CancelableTransport
 	endpoints []httpActionDo
 }
 
 func (c *httpClusterClient) do(ctx context.Context, act httpAction) (*http.Response, []byte, error) {
 	//TODO(bcwaldon): introduce retry logic so all endpoints are attempted
 	return c.endpoints[0].do(ctx, act)
+}
+
+func (c *httpClusterClient) Sync() error {
+	mAPI := NewMembersAPI(c, DefaultRequestTimeout)
+	ms, err := mAPI.List()
+	if err != nil {
+		return err
+	}
+
+	eps := make([]string, 0)
+	for _, m := range ms {
+		eps = append(eps, m.ClientURLs...)
+	}
+	nc, err := NewHTTPClient(c.transport, eps)
+	if err != nil {
+		return err
+	}
+
+	*c = *nc
+	return nil
 }
