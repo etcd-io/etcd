@@ -25,6 +25,7 @@ import (
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/code.google.com/p/go.net/context"
 	"github.com/coreos/etcd/etcdserver"
+	"github.com/coreos/etcd/pkg/strutil"
 	"github.com/coreos/etcd/raft/raftpb"
 )
 
@@ -86,10 +87,10 @@ func (h *raftHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.server.Process(context.TODO(), m); err != nil {
-		log.Println("etcdhttp: error processing raft message:", err)
 		switch err {
 		case etcdserver.ErrRemoved:
-			http.Error(w, "cannot process message from removed node", http.StatusForbidden)
+			log.Printf("etcdhttp: reject message from removed member %s", strutil.IDAsHex(m.From))
+			http.Error(w, "cannot process message from removed member", http.StatusForbidden)
 		default:
 			writeError(w, err)
 		}
