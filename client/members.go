@@ -23,7 +23,6 @@ import (
 	"net/http"
 	"net/url"
 	"path"
-	"time"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/code.google.com/p/go.net/context"
 	"github.com/coreos/etcd/etcdserver/etcdhttp/httptypes"
@@ -34,29 +33,25 @@ var (
 	DefaultV2MembersPrefix = "/v2/members"
 )
 
-func NewMembersAPI(c httpActionDo, to time.Duration) MembersAPI {
+func NewMembersAPI(c httpActionDo) MembersAPI {
 	return &httpMembersAPI{
-		client:  c,
-		timeout: to,
+		client: c,
 	}
 }
 
 type MembersAPI interface {
-	List() ([]httptypes.Member, error)
-	Add(peerURL string) (*httptypes.Member, error)
-	Remove(mID string) error
+	List(ctx context.Context) ([]httptypes.Member, error)
+	Add(ctx context.Context, peerURL string) (*httptypes.Member, error)
+	Remove(ctx context.Context, mID string) error
 }
 
 type httpMembersAPI struct {
-	client  httpActionDo
-	timeout time.Duration
+	client httpActionDo
 }
 
-func (m *httpMembersAPI) List() ([]httptypes.Member, error) {
+func (m *httpMembersAPI) List(ctx context.Context) ([]httptypes.Member, error) {
 	req := &membersAPIActionList{}
-	ctx, cancel := context.WithTimeout(context.Background(), m.timeout)
 	resp, body, err := m.client.Do(ctx, req)
-	cancel()
 	if err != nil {
 		return nil, err
 	}
@@ -73,16 +68,14 @@ func (m *httpMembersAPI) List() ([]httptypes.Member, error) {
 	return []httptypes.Member(mCollection), nil
 }
 
-func (m *httpMembersAPI) Add(peerURL string) (*httptypes.Member, error) {
+func (m *httpMembersAPI) Add(ctx context.Context, peerURL string) (*httptypes.Member, error) {
 	urls, err := types.NewURLs([]string{peerURL})
 	if err != nil {
 		return nil, err
 	}
 
 	req := &membersAPIActionAdd{peerURLs: urls}
-	ctx, cancel := context.WithTimeout(context.Background(), m.timeout)
 	resp, body, err := m.client.Do(ctx, req)
-	cancel()
 	if err != nil {
 		return nil, err
 	}
@@ -99,11 +92,9 @@ func (m *httpMembersAPI) Add(peerURL string) (*httptypes.Member, error) {
 	return &memb, nil
 }
 
-func (m *httpMembersAPI) Remove(memberID string) error {
+func (m *httpMembersAPI) Remove(ctx context.Context, memberID string) error {
 	req := &membersAPIActionRemove{memberID: memberID}
-	ctx, cancel := context.WithTimeout(context.Background(), m.timeout)
 	resp, _, err := m.client.Do(ctx, req)
-	cancel()
 	if err != nil {
 		return err
 	}

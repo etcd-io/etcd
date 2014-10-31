@@ -75,9 +75,9 @@ func (c *httpClusterClient) Do(ctx context.Context, act HTTPAction) (*http.Respo
 	return c.endpoints[0].Do(ctx, act)
 }
 
-func (c *httpClusterClient) Sync() error {
-	mAPI := NewMembersAPI(c, DefaultRequestTimeout)
-	ms, err := mAPI.List()
+func (c *httpClusterClient) Sync(ctx context.Context) error {
+	mAPI := NewMembersAPI(c)
+	ms, err := mAPI.List(ctx)
 	if err != nil {
 		return err
 	}
