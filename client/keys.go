@@ -41,27 +41,20 @@ var (
 	ErrKeyExists   = errors.New("client: key already exists")
 )
 
-func NewKeysAPI(tr *http.Transport, eps []string, to time.Duration) (KeysAPI, error) {
-	return newHTTPKeysAPIWithPrefix(tr, eps, to, DefaultV2KeysPrefix)
-}
-
-func NewDiscoveryKeysAPI(tr *http.Transport, eps []string, to time.Duration) (KeysAPI, error) {
-	return newHTTPKeysAPIWithPrefix(tr, eps, to, "")
-}
-
-func newHTTPKeysAPIWithPrefix(tr *http.Transport, eps []string, to time.Duration, prefix string) (*httpKeysAPI, error) {
-	c, err := NewHTTPClient(tr, eps)
-	if err != nil {
-		return nil, err
-	}
-
-	kAPI := httpKeysAPI{
+func NewKeysAPI(c httpActionDo, to time.Duration) KeysAPI {
+	return &httpKeysAPI{
 		client:  c,
-		prefix:  prefix,
+		prefix:  DefaultV2KeysPrefix,
 		timeout: to,
 	}
+}
 
-	return &kAPI, nil
+func NewDiscoveryKeysAPI(c httpActionDo, to time.Duration) KeysAPI {
+	return &httpKeysAPI{
+		client:  c,
+		prefix:  "",
+		timeout: to,
+	}
 }
 
 type KeysAPI interface {
