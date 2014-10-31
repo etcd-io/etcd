@@ -100,7 +100,7 @@ func (n *Node) String() string {
 }
 
 type httpKeysAPI struct {
-	client  *httpClient
+	client  httpActionDo
 	prefix  string
 	timeout time.Duration
 }
@@ -168,7 +168,7 @@ func (k *httpKeysAPI) RecursiveWatch(key string, idx uint64) Watcher {
 }
 
 type httpWatcher struct {
-	client   *httpClient
+	client   httpActionDo
 	nextWait waitAction
 }
 

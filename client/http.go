@@ -42,6 +42,10 @@ type httpAction interface {
 	httpRequest(url.URL) *http.Request
 }
 
+type httpActionDo interface {
+	do(context.Context, httpAction) (int, []byte, error)
+}
+
 type roundTripResponse struct {
 	resp *http.Response
 	err  error

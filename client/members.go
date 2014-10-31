@@ -60,7 +60,7 @@ type MembersAPI interface {
 }
 
 type httpMembersAPI struct {
-	client  *httpClient
+	client  httpActionDo
 	timeout time.Duration
 }
 
