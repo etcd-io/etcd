@@ -105,7 +105,7 @@ func (k *httpKeysAPI) Create(key, val string, ttl time.Duration) (*Response, err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), k.timeout)
-	resp, body, err := k.client.do(ctx, create)
+	resp, body, err := k.client.Do(ctx, create)
 	cancel()
 	if err != nil {
 		return nil, err
@@ -122,7 +122,7 @@ func (k *httpKeysAPI) Get(key string) (*Response, error) {
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), k.timeout)
-	resp, body, err := k.client.do(ctx, get)
+	resp, body, err := k.client.Do(ctx, get)
 	cancel()
 	if err != nil {
 		return nil, err
@@ -162,7 +162,7 @@ type httpWatcher struct {
 
 func (hw *httpWatcher) Next() (*Response, error) {
 	//TODO(bcwaldon): This needs to be cancellable by the calling user
-	httpresp, body, err := hw.client.do(context.Background(), &hw.nextWait)
+	httpresp, body, err := hw.client.Do(context.Background(), &hw.nextWait)
 	if err != nil {
 		return nil, err
 	}
@@ -192,7 +192,7 @@ type getAction struct {
 	Recursive bool
 }
 
-func (g *getAction) httpRequest(ep url.URL) *http.Request {
+func (g *getAction) HTTPRequest(ep url.URL) *http.Request {
 	u := v2KeysURL(ep, g.Prefix, g.Key)
 
 	params := u.Query()
@@ -210,7 +210,7 @@ type waitAction struct {
 	Recursive bool
 }
 
-func (w *waitAction) httpRequest(ep url.URL) *http.Request {
+func (w *waitAction) HTTPRequest(ep url.URL) *http.Request {
 	u := v2KeysURL(ep, w.Prefix, w.Key)
 
 	params := u.Query()
@@ -230,7 +230,7 @@ type createAction struct {
 	TTL    *uint64
 }
 
-func (c *createAction) httpRequest(ep url.URL) *http.Request {
+func (c *createAction) HTTPRequest(ep url.URL) *http.Request {
 	u := v2KeysURL(ep, c.Prefix, c.Key)
 
 	params := u.Query()

@@ -55,7 +55,7 @@ type httpMembersAPI struct {
 func (m *httpMembersAPI) List() ([]httptypes.Member, error) {
 	req := &membersAPIActionList{}
 	ctx, cancel := context.WithTimeout(context.Background(), m.timeout)
-	resp, body, err := m.client.do(ctx, req)
+	resp, body, err := m.client.Do(ctx, req)
 	cancel()
 	if err != nil {
 		return nil, err
@@ -81,7 +81,7 @@ func (m *httpMembersAPI) Add(peerURL string) (*httptypes.Member, error) {
 
 	req := &membersAPIActionAdd{peerURLs: urls}
 	ctx, cancel := context.WithTimeout(context.Background(), m.timeout)
-	resp, body, err := m.client.do(ctx, req)
+	resp, body, err := m.client.Do(ctx, req)
 	cancel()
 	if err != nil {
 		return nil, err
@@ -102,7 +102,7 @@ func (m *httpMembersAPI) Add(peerURL string) (*httptypes.Member, error) {
 func (m *httpMembersAPI) Remove(memberID string) error {
 	req := &membersAPIActionRemove{memberID: memberID}
 	ctx, cancel := context.WithTimeout(context.Background(), m.timeout)
-	resp, _, err := m.client.do(ctx, req)
+	resp, _, err := m.client.Do(ctx, req)
 	cancel()
 	if err != nil {
 		return err
@@ -113,7 +113,7 @@ func (m *httpMembersAPI) Remove(memberID string) error {
 
 type membersAPIActionList struct{}
 
-func (l *membersAPIActionList) httpRequest(ep url.URL) *http.Request {
+func (l *membersAPIActionList) HTTPRequest(ep url.URL) *http.Request {
 	u := v2MembersURL(ep)
 	req, _ := http.NewRequest("GET", u.String(), nil)
 	return req
@@ -123,7 +123,7 @@ type membersAPIActionRemove struct {
 	memberID string
 }
 
-func (d *membersAPIActionRemove) httpRequest(ep url.URL) *http.Request {
+func (d *membersAPIActionRemove) HTTPRequest(ep url.URL) *http.Request {
 	u := v2MembersURL(ep)
 	u.Path = path.Join(u.Path, d.memberID)
 	req, _ := http.NewRequest("DELETE", u.String(), nil)
@@ -134,7 +134,7 @@ type membersAPIActionAdd struct {
 	peerURLs types.URLs
 }
 
-func (a *membersAPIActionAdd) httpRequest(ep url.URL) *http.Request {
+func (a *membersAPIActionAdd) HTTPRequest(ep url.URL) *http.Request {
 	u := v2MembersURL(ep)
 	m := httptypes.MemberCreateRequest{PeerURLs: a.peerURLs}
 	b, _ := json.Marshal(&m)

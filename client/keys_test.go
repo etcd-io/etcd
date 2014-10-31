@@ -117,7 +117,7 @@ func TestGetAction(t *testing.T) {
 			Key:       "/foo/bar",
 			Recursive: tt.recursive,
 		}
-		got := *f.httpRequest(ep)
+		got := *f.HTTPRequest(ep)
 
 		wantURL := wantURL
 		wantURL.RawQuery = tt.wantQuery
@@ -166,7 +166,7 @@ func TestWaitAction(t *testing.T) {
 			WaitIndex: tt.waitIndex,
 			Recursive: tt.recursive,
 		}
-		got := *f.httpRequest(ep)
+		got := *f.HTTPRequest(ep)
 
 		wantURL := wantURL
 		wantURL.RawQuery = tt.wantQuery
@@ -213,7 +213,7 @@ func TestCreateAction(t *testing.T) {
 			Value: tt.value,
 			TTL:   tt.ttl,
 		}
-		got := *f.httpRequest(ep)
+		got := *f.HTTPRequest(ep)
 
 		err := assertResponse(got, wantURL, wantHeader, []byte(tt.wantBody))
 		if err != nil {

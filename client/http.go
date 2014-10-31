@@ -30,22 +30,6 @@ var (
 	DefaultRequestTimeout = 5 * time.Second
 )
 
-// CancelableTransport mimics http.Transport to provide an interface which can be
-// substituted for testing (since the RoundTripper interface alone does not
-// require the CancelRequest method)
-type CancelableTransport interface {
-	http.RoundTripper
-	CancelRequest(req *http.Request)
-}
-
-type httpAction interface {
-	httpRequest(url.URL) *http.Request
-}
-
-type httpActionDo interface {
-	do(context.Context, httpAction) (*http.Response, []byte, error)
-}
-
 type roundTripResponse struct {
 	resp *http.Response
 	err  error
@@ -57,8 +41,8 @@ type httpClient struct {
 	timeout   time.Duration
 }
 
-func (c *httpClient) do(ctx context.Context, act httpAction) (*http.Response, []byte, error) {
-	req := act.httpRequest(c.endpoint)
+func (c *httpClient) Do(ctx context.Context, act HTTPAction) (*http.Response, []byte, error) {
+	req := act.HTTPRequest(c.endpoint)
 
 	rtchan := make(chan roundTripResponse, 1)
 	go func() {

@@ -23,6 +23,27 @@ import (
 	"github.com/coreos/etcd/Godeps/_workspace/src/code.google.com/p/go.net/context"
 )
 
+type HTTPClient interface {
+	Do(context.Context, HTTPAction) (*http.Response, []byte, error)
+	Sync() error
+}
+
+type httpActionDo interface {
+	Do(context.Context, HTTPAction) (*http.Response, []byte, error)
+}
+
+type HTTPAction interface {
+	HTTPRequest(url.URL) *http.Request
+}
+
+// CancelableTransport mimics http.Transport to provide an interface which can be
+// substituted for testing (since the RoundTripper interface alone does not
+// require the CancelRequest method)
+type CancelableTransport interface {
+	http.RoundTripper
+	CancelRequest(req *http.Request)
+}
+
 func NewHTTPClient(tr CancelableTransport, eps []string) (*httpClusterClient, error) {
 	c := httpClusterClient{
 		transport: tr,
@@ -49,9 +70,9 @@ type httpClusterClient struct {
 	endpoints []httpActionDo
 }
 
-func (c *httpClusterClient) do(ctx context.Context, act httpAction) (*http.Response, []byte, error) {
+func (c *httpClusterClient) Do(ctx context.Context, act HTTPAction) (*http.Response, []byte, error) {
 	//TODO(bcwaldon): introduce retry logic so all endpoints are attempted
-	return c.endpoints[0].do(ctx, act)
+	return c.endpoints[0].Do(ctx, act)
 }
 
 func (c *httpClusterClient) Sync() error {
