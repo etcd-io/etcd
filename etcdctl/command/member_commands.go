@@ -34,7 +34,14 @@ func NewMemberCommand() cli.Command {
 }
 
 func mustNewMembersAPI(c *cli.Context) client.MembersAPI {
-	mAPI, err := client.NewMembersAPI(&http.Transport{}, []string{"http://127.0.0.1:4001"}, client.DefaultRequestTimeout)
+	peers := getPeersFlagValue(c)
+	for i, p := range peers {
+		if !strings.HasPrefix(p, "http") && !strings.HasPrefix(p, "https") {
+			peers[i] = fmt.Sprintf("http://%s", p)
+		}
+	}
+
+	mAPI, err := client.NewMembersAPI(&http.Transport{}, peers, client.DefaultRequestTimeout)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
