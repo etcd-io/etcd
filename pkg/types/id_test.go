@@ -13,64 +13,65 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-
-package strutil
+package types
 
 import (
+	"reflect"
+	"sort"
 	"testing"
 )
 
-func TestIDAsHex(t *testing.T) {
+func TestIDString(t *testing.T) {
 	tests := []struct {
-		input uint64
+		input ID
 		want  string
 	}{
 		{
-			input: uint64(12),
+			input: 12,
 			want:  "c",
 		},
 		{
-			input: uint64(4918257920282737594),
+			input: 4918257920282737594,
 			want:  "444129853c343bba",
 		},
 	}
 
 	for i, tt := range tests {
-		got := IDAsHex(tt.input)
+		got := tt.input.String()
 		if tt.want != got {
-			t.Errorf("#%d: IDAsHex failure: want=%v, got=%v", i, tt.want, got)
+			t.Errorf("#%d: ID.String failure: want=%v, got=%v", i, tt.want, got)
 		}
 	}
 }
 
-func TestIDFromHex(t *testing.T) {
+func TestIDFromString(t *testing.T) {
 	tests := []struct {
 		input string
-		want  uint64
+		want  ID
 	}{
 		{
 			input: "17",
-			want:  uint64(23),
+			want:  23,
 		},
 		{
 			input: "612840dae127353",
-			want:  uint64(437557308098245459),
+			want:  437557308098245459,
 		},
 	}
 
 	for i, tt := range tests {
-		got, err := IDFromHex(tt.input)
+		got, err := IDFromString(tt.input)
 		if err != nil {
-			t.Errorf("#%d: IDFromHex failure: err=%v", i, err)
+			t.Errorf("#%d: IDFromString failure: err=%v", i, err)
 			continue
 		}
 		if tt.want != got {
-			t.Errorf("#%d: IDFromHex failure: want=%v, got=%v", i, tt.want, got)
+			t.Errorf("#%d: IDFromString failure: want=%v, got=%v", i, tt.want, got)
 		}
 	}
 }
 
-func TestIDFromHexFail(t *testing.T) {
+func TestIDFromStringFail(t *testing.T) {
 	tests := []string{
 		"",
 		"XXX",
@@ -78,9 +79,18 @@ func TestIDFromHexFail(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		_, err := IDFromHex(tt)
+		_, err := IDFromString(tt)
 		if err == nil {
-			t.Fatalf("#%d: IDFromHex expected error, but err=nil", i)
+			t.Fatalf("#%d: IDFromString expected error, but err=nil", i)
 		}
+	}
+}
+
+func TestIDSlice(t *testing.T) {
+	g := []ID{10, 500, 5, 1, 100, 25}
+	w := []ID{1, 5, 10, 25, 100, 500}
+	sort.Sort(IDSlice(g))
+	if !reflect.DeepEqual(g, w) {
+		t.Errorf("slice after sort = %#v, want %#v", g, w)
 	}
 }

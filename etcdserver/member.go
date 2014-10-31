@@ -26,7 +26,6 @@ import (
 	"sort"
 	"time"
 
-	"github.com/coreos/etcd/pkg/strutil"
 	"github.com/coreos/etcd/pkg/types"
 )
 
@@ -43,7 +42,7 @@ type Attributes struct {
 }
 
 type Member struct {
-	ID uint64 `json:"id"`
+	ID types.ID `json:"id"`
 	RaftAttributes
 	Attributes
 }
@@ -68,7 +67,7 @@ func NewMember(name string, peerURLs types.URLs, clusterName string, now *time.T
 	}
 
 	hash := sha1.Sum(b)
-	m.ID = binary.BigEndian.Uint64(hash[:8])
+	m.ID = types.ID(binary.BigEndian.Uint64(hash[:8]))
 	return m
 }
 
@@ -81,20 +80,20 @@ func (m *Member) PickPeerURL() string {
 	return m.PeerURLs[rand.Intn(len(m.PeerURLs))]
 }
 
-func memberStoreKey(id uint64) string {
-	return path.Join(storeMembersPrefix, strutil.IDAsHex(id))
+func memberStoreKey(id types.ID) string {
+	return path.Join(storeMembersPrefix, id.String())
 }
 
-func mustParseMemberIDFromKey(key string) uint64 {
-	id, err := strutil.IDFromHex(path.Base(key))
+func mustParseMemberIDFromKey(key string) types.ID {
+	id, err := types.IDFromString(path.Base(key))
 	if err != nil {
 		log.Panicf("unexpected parse member id error: %v", err)
 	}
 	return id
 }
 
-func removedMemberStoreKey(id uint64) string {
-	return path.Join(storeRemovedMembersPrefix, strutil.IDAsHex(id))
+func removedMemberStoreKey(id types.ID) string {
+	return path.Join(storeRemovedMembersPrefix, id.String())
 }
 
 type SortableMemberSliceByPeerURLs []*Member

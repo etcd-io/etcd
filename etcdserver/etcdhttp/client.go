@@ -35,7 +35,7 @@ import (
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/etcdhttp/httptypes"
 	"github.com/coreos/etcd/etcdserver/etcdserverpb"
-	"github.com/coreos/etcd/pkg/strutil"
+	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/store"
 	"github.com/coreos/etcd/version"
 )
@@ -96,8 +96,7 @@ func (h *keysHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r.Method, "GET", "PUT", "POST", "DELETE") {
 		return
 	}
-	cid := strconv.FormatUint(h.clusterInfo.ID(), 16)
-	w.Header().Set("X-Etcd-Cluster-ID", cid)
+	w.Header().Set("X-Etcd-Cluster-ID", h.clusterInfo.ID().String())
 
 	ctx, cancel := context.WithTimeout(context.Background(), h.timeout)
 	defer cancel()
@@ -152,8 +151,7 @@ func (h *membersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r.Method, "GET", "POST", "DELETE") {
 		return
 	}
-	cid := strconv.FormatUint(h.clusterInfo.ID(), 16)
-	w.Header().Set("X-Etcd-Cluster-ID", cid)
+	w.Header().Set("X-Etcd-Cluster-ID", h.clusterInfo.ID().String())
 
 	ctx, cancel := context.WithTimeout(context.Background(), defaultServerTimeout)
 	defer cancel()
@@ -189,7 +187,7 @@ func (h *membersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		now := h.clock.Now()
 		m := etcdserver.NewMember("", req.PeerURLs, "", &now)
 		if err := h.server.AddMember(ctx, *m); err != nil {
-			log.Printf("etcdhttp: error adding node %x: %v", m.ID, err)
+			log.Printf("etcdhttp: error adding node %s: %v", m.ID, err)
 			writeError(w, err)
 			return
 		}
@@ -206,17 +204,17 @@ func (h *membersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 			return
 		}
-		id, err := strconv.ParseUint(idStr, 16, 64)
+		id, err := types.IDFromString(idStr)
 		if err != nil {
 			writeError(w, httptypes.NewHTTPError(http.StatusBadRequest, err.Error()))
 			return
 		}
-		err = h.server.RemoveMember(ctx, id)
+		err = h.server.RemoveMember(ctx, uint64(id))
 		switch {
 		case err == etcdserver.ErrIDNotFound:
 			writeError(w, httptypes.NewHTTPError(http.StatusNotFound, fmt.Sprintf("No such member: %s", idStr)))
 		case err != nil:
-			log.Printf("etcdhttp: error removing node %x: %v", id, err)
+			log.Printf("etcdhttp: error removing node %s: %v", id, err)
 			writeError(w, err)
 		default:
 			w.WriteHeader(http.StatusNoContent)
@@ -544,7 +542,7 @@ func newMemberCollection(ms []*etcdserver.Member) *httptypes.MemberCollection {
 
 func newMember(m *etcdserver.Member) httptypes.Member {
 	tm := httptypes.Member{
-		ID:         strutil.IDAsHex(m.ID),
+		ID:         m.ID.String(),
 		Name:       m.Name,
 		PeerURLs:   make([]string, len(m.PeerURLs)),
 		ClientURLs: make([]string, len(m.ClientURLs)),

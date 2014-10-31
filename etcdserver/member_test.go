@@ -20,6 +20,8 @@ import (
 	"net/url"
 	"testing"
 	"time"
+
+	"github.com/coreos/etcd/pkg/types"
 )
 
 func timeParse(value string) *time.Time {
@@ -33,7 +35,7 @@ func timeParse(value string) *time.Time {
 func TestMemberTime(t *testing.T) {
 	tests := []struct {
 		mem *Member
-		id  uint64
+		id  types.ID
 	}{
 		{NewMember("mem1", []url.URL{{Scheme: "http", Host: "10.0.0.8:2379"}}, "", nil), 14544069596553697298},
 		// Same ID, different name (names shouldn't matter)

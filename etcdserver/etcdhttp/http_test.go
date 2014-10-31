@@ -28,6 +28,7 @@ import (
 	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft/raftpb"
 )
 
@@ -45,7 +46,7 @@ type fakeCluster struct {
 	members    map[uint64]*etcdserver.Member
 }
 
-func (c *fakeCluster) ID() uint64           { return c.id }
+func (c *fakeCluster) ID() types.ID         { return types.ID(c.id) }
 func (c *fakeCluster) ClientURLs() []string { return c.clientURLs }
 func (c *fakeCluster) Members() []*etcdserver.Member {
 	var sms etcdserver.SortableMemberSlice
@@ -55,7 +56,7 @@ func (c *fakeCluster) Members() []*etcdserver.Member {
 	sort.Sort(sms)
 	return []*etcdserver.Member(sms)
 }
-func (c *fakeCluster) Member(id uint64) *etcdserver.Member { return c.members[id] }
+func (c *fakeCluster) Member(id types.ID) *etcdserver.Member { return c.members[uint64(id)] }
 
 // errServer implements the etcd.Server interface for testing.
 // It returns the given error from any Do/Process/AddMember/RemoveMember calls.
