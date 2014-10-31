@@ -30,10 +30,10 @@ var (
 	DefaultRequestTimeout = 5 * time.Second
 )
 
-// transport mimics http.Transport to provide an interface which can be
+// CancelableTransport mimics http.Transport to provide an interface which can be
 // substituted for testing (since the RoundTripper interface alone does not
 // require the CancelRequest method)
-type transport interface {
+type CancelableTransport interface {
 	http.RoundTripper
 	CancelRequest(req *http.Request)
 }
@@ -52,7 +52,7 @@ type roundTripResponse struct {
 }
 
 type httpClient struct {
-	transport transport
+	transport CancelableTransport
 	endpoint  url.URL
 	timeout   time.Duration
 }
