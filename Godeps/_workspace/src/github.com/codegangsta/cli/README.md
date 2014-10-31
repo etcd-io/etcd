@@ -9,17 +9,17 @@ http://godoc.org/github.com/codegangsta/cli
 ## Overview
 Command line apps are usually so tiny that there is absolutely no reason why your code should *not* be self-documenting. Things like generating help text and parsing command flags/options should not hinder productivity when writing a command line app.
 
-This is where cli.go comes into play. cli.go makes command line programming fun, organized, and expressive!
+**This is where cli.go comes into play.** cli.go makes command line programming fun, organized, and expressive!
 
 ## Installation
 Make sure you have a working Go environment (go 1.1 is *required*). [See the install instructions](http://golang.org/doc/install.html).
 
-To install cli.go, simply run:
+To install `cli.go`, simply run:
 ```
 $ go get github.com/codegangsta/cli
 ```
 
-Make sure your PATH includes to the `$GOPATH/bin` directory so your commands can be easily used:
+Make sure your `PATH` includes to the `$GOPATH/bin` directory so your commands can be easily used:
 ```
 export PATH=$PATH:$GOPATH/bin
 ```
@@ -122,7 +122,7 @@ GLOBAL OPTIONS
 ```
 
 ### Arguments
-You can lookup arguments by calling the `Args` function on cli.Context.
+You can lookup arguments by calling the `Args` function on `cli.Context`.
 
 ``` go
 ...
@@ -137,7 +137,11 @@ Setting and querying flags is simple.
 ``` go
 ...
 app.Flags = []cli.Flag {
-  cli.StringFlag{"lang", "english", "language for the greeting"},
+  cli.StringFlag{
+    Name: "lang",
+    Value: "english",
+    Usage: "language for the greeting",
+  },
 }
 app.Action = func(c *cli.Context) {
   name := "someone"
@@ -155,11 +159,30 @@ app.Action = func(c *cli.Context) {
 
 #### Alternate Names
 
-You can set alternate (or short) names for flags by providing a comma-delimited list for the Name. e.g.
+You can set alternate (or short) names for flags by providing a comma-delimited list for the `Name`. e.g.
 
 ``` go
 app.Flags = []cli.Flag {
-  cli.StringFlag{"lang, l", "english", "language for the greeting"},
+  cli.StringFlag{
+    Name: "lang, l",
+    Value: "english",
+    Usage: "language for the greeting",
+  },
+}
+```
+
+#### Values from the Environment
+
+You can also have the default value set from the environment via `EnvVar`.  e.g.
+
+``` go
+app.Flags = []cli.Flag {
+  cli.StringFlag{
+    Name: "lang, l",
+    Value: "english",
+    Usage: "language for the greeting",
+    EnvVar: "APP_LANG",
+  },
 }
 ```
 
@@ -214,8 +237,8 @@ app.Commands = []cli.Command{
 
 ### Bash Completion
 
-You can enable completion commands by setting the EnableBashCompletion
-flag on the App object.  By default, this setting will only auto-complete to
+You can enable completion commands by setting the `EnableBashCompletion`
+flag on the `App` object.  By default, this setting will only auto-complete to
 show an app's subcommands, but you can write your own completion methods for
 the App or its subcommands.
 ```go
@@ -237,7 +260,7 @@ app.Commands = []cli.Command{
         return
       }
       for _, t := range tasks {
-        println(t)
+        fmt.Println(t)
       }
     },
   }
@@ -247,11 +270,18 @@ app.Commands = []cli.Command{
 
 #### To Enable
 
-Source the autocomplete/bash_autocomplete file in your .bashrc file while
-setting the PROG variable to the name of your program:
+Source the `autocomplete/bash_autocomplete` file in your `.bashrc` file while
+setting the `PROG` variable to the name of your program:
 
 `PROG=myprogram source /.../cli/autocomplete/bash_autocomplete`
 
+
+## Contribution Guidelines
+Feel free to put up a pull request to fix a bug or maybe add a feature. I will give it a code review and make sure that it does not break backwards compatibility. If I or any other collaborators agree that it is in line with the vision of the project, we will work with you to get the code into a mergeable state and merge it into the master branch.
+
+If you are have contributed something significant to the project, I will most likely add you as a collaborator. As a collaborator you are given the ability to merge others pull requests. It is very important that new code does not break existing code, so be careful about what code you do choose to merge. If you have any questions feel free to link @codegangsta to the issue in question and we can review it together.
+
+If you feel like you have contributed to the project but have not yet been added as a collaborator, I probably forgot to add you. Hit @codegangsta up over email and we will get it figured out.
 
 ## About
 cli.go is written by none other than the [Code Gangsta](http://codegangsta.io)

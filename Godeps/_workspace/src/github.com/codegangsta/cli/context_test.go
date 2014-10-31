@@ -2,8 +2,10 @@ package cli_test
 
 import (
 	"flag"
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/codegangsta/cli"
 	"testing"
+	"time"
+
+	"github.com/codegangsta/cli"
 )
 
 func TestNewContext(t *testing.T) {
@@ -24,6 +26,13 @@ func TestContext_Int(t *testing.T) {
 	set.Int("myflag", 12, "doc")
 	c := cli.NewContext(nil, set, set)
 	expect(t, c.Int("myflag"), 12)
+}
+
+func TestContext_Duration(t *testing.T) {
+	set := flag.NewFlagSet("test", 0)
+	set.Duration("myflag", time.Duration(12*time.Second), "doc")
+	c := cli.NewContext(nil, set, set)
+	expect(t, c.Duration("myflag"), time.Duration(12*time.Second))
 }
 
 func TestContext_String(t *testing.T) {

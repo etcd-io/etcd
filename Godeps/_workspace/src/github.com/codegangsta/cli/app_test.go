@@ -2,9 +2,10 @@ package cli_test
 
 import (
 	"fmt"
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/codegangsta/cli"
 	"os"
 	"testing"
+
+	"github.com/codegangsta/cli"
 )
 
 func ExampleApp() {
@@ -42,7 +43,11 @@ func ExampleAppSubcommand() {
 					Usage:       "sends a greeting in english",
 					Description: "greets someone in english",
 					Flags: []cli.Flag{
-						cli.StringFlag{"name", "Bob", "Name of the person to greet"},
+						cli.StringFlag{
+							Name:  "name",
+							Value: "Bob",
+							Usage: "Name of the person to greet",
+						},
 					},
 					Action: func(c *cli.Context) {
 						fmt.Println("Hello,", c.String("name"))
@@ -83,12 +88,10 @@ func ExampleAppHelp() {
 	//    describeit - use it to see a description
 	//
 	// USAGE:
-	//    command describeit [command options] [arguments...]
+	//    command describeit [arguments...]
 	//
 	// DESCRIPTION:
 	//    This is how we describe describeit the function
-	//
-	// OPTIONS:
 }
 
 func ExampleAppBashComplete() {
@@ -254,11 +257,11 @@ func TestApp_ParseSliceFlags(t *testing.T) {
 	var expectedStringSlice = []string{"8.8.8.8", "8.8.4.4"}
 
 	if !IntsEquals(parsedIntSlice, expectedIntSlice) {
-		t.Errorf("%s does not match %s", parsedIntSlice, expectedIntSlice)
+		t.Errorf("%v does not match %v", parsedIntSlice, expectedIntSlice)
 	}
 
 	if !StrsEquals(parsedStringSlice, expectedStringSlice) {
-		t.Errorf("%s does not match %s", parsedStringSlice, expectedStringSlice)
+		t.Errorf("%v does not match %v", parsedStringSlice, expectedStringSlice)
 	}
 }
 
@@ -347,6 +350,26 @@ func TestAppHelpPrinter(t *testing.T) {
 	}
 }
 
+func TestAppVersionPrinter(t *testing.T) {
+	oldPrinter := cli.VersionPrinter
+	defer func() {
+		cli.VersionPrinter = oldPrinter
+	}()
+
+	var wasCalled = false
+	cli.VersionPrinter = func(c *cli.Context) {
+		wasCalled = true
+	}
+
+	app := cli.NewApp()
+	ctx := cli.NewContext(app, nil, nil)
+	cli.ShowVersion(ctx)
+
+	if wasCalled == false {
+		t.Errorf("Version printer expected to be called, but was not")
+	}
+}
+
 func TestAppCommandNotFound(t *testing.T) {
 	beforeRun, subcommandRun := false, false
 	app := cli.NewApp()
@@ -368,4 +391,33 @@ func TestAppCommandNotFound(t *testing.T) {
 
 	expect(t, beforeRun, true)
 	expect(t, subcommandRun, false)
+}
+
+func TestGlobalFlagsInSubcommands(t *testing.T) {
+	subcommandRun := false
+	app := cli.NewApp()
+
+	app.Flags = []cli.Flag{
+		cli.BoolFlag{Name: "debug, d", Usage: "Enable debugging"},
+	}
+
+	app.Commands = []cli.Command{
+		cli.Command{
+			Name: "foo",
+			Subcommands: []cli.Command{
+				{
+					Name: "bar",
+					Action: func(c *cli.Context) {
+						if c.GlobalBool("debug") {
+							subcommandRun = true
+						}
+					},
+				},
+			},
+		},
+	}
+
+	app.Run([]string{"command", "-d", "foo", "bar"})
+
+	expect(t, subcommandRun, true)
 }

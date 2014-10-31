@@ -1,8 +1,9 @@
 package cli_test
 
 import (
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/codegangsta/cli"
 	"os"
+
+	"github.com/codegangsta/cli"
 )
 
 func Example() {
@@ -47,7 +48,11 @@ func ExampleSubcommand() {
 					Usage:       "sends a greeting in english",
 					Description: "greets someone in english",
 					Flags: []cli.Flag{
-						cli.StringFlag{"name", "Bob", "Name of the person to greet"},
+						cli.StringFlag{
+							Name:  "name",
+							Value: "Bob",
+							Usage: "Name of the person to greet",
+						},
 					},
 					Action: func(c *cli.Context) {
 						println("Hello, ", c.String("name"))
@@ -57,7 +62,11 @@ func ExampleSubcommand() {
 					ShortName: "sp",
 					Usage:     "sends a greeting in spanish",
 					Flags: []cli.Flag{
-						cli.StringFlag{"surname", "Jones", "Surname of the person to greet"},
+						cli.StringFlag{
+							Name:  "surname",
+							Value: "Jones",
+							Usage: "Surname of the person to greet",
+						},
 					},
 					Action: func(c *cli.Context) {
 						println("Hola, ", c.String("surname"))
@@ -67,7 +76,11 @@ func ExampleSubcommand() {
 					ShortName: "fr",
 					Usage:     "sends a greeting in french",
 					Flags: []cli.Flag{
-						cli.StringFlag{"nickname", "Stevie", "Nickname of the person to greet"},
+						cli.StringFlag{
+							Name:  "nickname",
+							Value: "Stevie",
+							Usage: "Nickname of the person to greet",
+						},
 					},
 					Action: func(c *cli.Context) {
 						println("Bonjour, ", c.String("nickname"))

@@ -25,6 +25,7 @@ import (
 	"path"
 	"time"
 
+	"github.com/coreos/etcd/Godeps/_workspace/src/code.google.com/p/go.net/context"
 	"github.com/coreos/etcd/etcdserver/etcdhttp/httptypes"
 	"github.com/coreos/etcd/pkg/types"
 )
@@ -33,22 +34,15 @@ var (
 	DefaultV2MembersPrefix = "/v2/members"
 )
 
-func NewMembersAPI(tr *http.Transport, ep string, to time.Duration) (MembersAPI, error) {
-	u, err := url.Parse(ep)
+func NewMembersAPI(tr *http.Transport, eps []string, to time.Duration) (MembersAPI, error) {
+	c, err := newHTTPClusterClient(tr, eps)
 	if err != nil {
 		return nil, err
 	}
 
-	u.Path = path.Join(u.Path, DefaultV2MembersPrefix)
-
-	c := &httpClient{
-		transport: tr,
-		endpoint:  *u,
-		timeout:   to,
-	}
-
 	mAPI := httpMembersAPI{
-		client: c,
+		client:  c,
+		timeout: to,
 	}
 
 	return &mAPI, nil
@@ -61,11 +55,15 @@ type MembersAPI interface {
 }
 
 type httpMembersAPI struct {
-	client *httpClient
+	client  httpActionDo
+	timeout time.Duration
 }
 
 func (m *httpMembersAPI) List() ([]httptypes.Member, error) {
-	code, body, err := m.client.doWithTimeout(&membersAPIActionList{})
+	req := &membersAPIActionList{}
+	ctx, cancel := context.WithTimeout(context.Background(), m.timeout)
+	code, body, err := m.client.do(ctx, req)
+	cancel()
 	if err != nil {
 		return nil, err
 	}
@@ -89,7 +87,9 @@ func (m *httpMembersAPI) Add(peerURL string) (*httptypes.Member, error) {
 	}
 
 	req := &membersAPIActionAdd{peerURLs: urls}
-	code, body, err := m.client.doWithTimeout(req)
+	ctx, cancel := context.WithTimeout(context.Background(), m.timeout)
+	code, body, err := m.client.do(ctx, req)
+	cancel()
 	if err != nil {
 		return nil, err
 	}
@@ -108,7 +108,9 @@ func (m *httpMembersAPI) Add(peerURL string) (*httptypes.Member, error) {
 
 func (m *httpMembersAPI) Remove(memberID string) error {
 	req := &membersAPIActionRemove{memberID: memberID}
-	code, _, err := m.client.doWithTimeout(req)
+	ctx, cancel := context.WithTimeout(context.Background(), m.timeout)
+	code, _, err := m.client.do(ctx, req)
+	cancel()
 	if err != nil {
 		return err
 	}
@@ -119,7 +121,8 @@ func (m *httpMembersAPI) Remove(memberID string) error {
 type membersAPIActionList struct{}
 
 func (l *membersAPIActionList) httpRequest(ep url.URL) *http.Request {
-	req, _ := http.NewRequest("GET", ep.String(), nil)
+	u := v2MembersURL(ep)
+	req, _ := http.NewRequest("GET", u.String(), nil)
 	return req
 }
 
@@ -128,8 +131,9 @@ type membersAPIActionRemove struct {
 }
 
 func (d *membersAPIActionRemove) httpRequest(ep url.URL) *http.Request {
-	ep.Path = path.Join(ep.Path, d.memberID)
-	req, _ := http.NewRequest("DELETE", ep.String(), nil)
+	u := v2MembersURL(ep)
+	u.Path = path.Join(u.Path, d.memberID)
+	req, _ := http.NewRequest("DELETE", u.String(), nil)
 	return req
 }
 
@@ -138,9 +142,10 @@ type membersAPIActionAdd struct {
 }
 
 func (a *membersAPIActionAdd) httpRequest(ep url.URL) *http.Request {
+	u := v2MembersURL(ep)
 	m := httptypes.MemberCreateRequest{PeerURLs: a.peerURLs}
 	b, _ := json.Marshal(&m)
-	req, _ := http.NewRequest("POST", ep.String(), bytes.NewReader(b))
+	req, _ := http.NewRequest("POST", u.String(), bytes.NewReader(b))
 	req.Header.Set("Content-Type", "application/json")
 	return req
 }
@@ -150,4 +155,11 @@ func assertStatusCode(want, got int) (err error) {
 		err = fmt.Errorf("unexpected status code %d", got)
 	}
 	return err
+}
+
+// v2MembersURL add the necessary path to the provided endpoint
+// to route requests to the default v2 members API.
+func v2MembersURL(ep url.URL) *url.URL {
+	ep.Path = path.Join(ep.Path, DefaultV2MembersPrefix)
+	return &ep
 }

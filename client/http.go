@@ -42,6 +42,10 @@ type httpAction interface {
 	httpRequest(url.URL) *http.Request
 }
 
+type httpActionDo interface {
+	do(context.Context, httpAction) (int, []byte, error)
+}
+
 type roundTripResponse struct {
 	resp *http.Response
 	err  error
@@ -51,12 +55,6 @@ type httpClient struct {
 	transport transport
 	endpoint  url.URL
 	timeout   time.Duration
-}
-
-func (c *httpClient) doWithTimeout(act httpAction) (int, []byte, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), c.timeout)
-	defer cancel()
-	return c.do(ctx, act)
 }
 
 func (c *httpClient) do(ctx context.Context, act httpAction) (int, []byte, error) {

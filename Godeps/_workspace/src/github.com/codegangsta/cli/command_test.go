@@ -2,8 +2,9 @@ package cli_test
 
 import (
 	"flag"
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/codegangsta/cli"
 	"testing"
+
+	"github.com/codegangsta/cli"
 )
 
 func TestCommandDoNotIgnoreFlags(t *testing.T) {

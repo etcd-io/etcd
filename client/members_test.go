@@ -19,13 +19,14 @@ package client
 import (
 	"net/http"
 	"net/url"
+	"reflect"
 	"testing"
 
 	"github.com/coreos/etcd/pkg/types"
 )
 
 func TestMembersAPIActionList(t *testing.T) {
-	ep := url.URL{Scheme: "http", Host: "example.com/v2/members"}
+	ep := url.URL{Scheme: "http", Host: "example.com"}
 	act := &membersAPIActionList{}
 
 	wantURL := &url.URL{
@@ -42,7 +43,7 @@ func TestMembersAPIActionList(t *testing.T) {
 }
 
 func TestMembersAPIActionAdd(t *testing.T) {
-	ep := url.URL{Scheme: "http", Host: "example.com/v2/admin/members"}
+	ep := url.URL{Scheme: "http", Host: "example.com"}
 	act := &membersAPIActionAdd{
 		peerURLs: types.URLs([]url.URL{
 			url.URL{Scheme: "https", Host: "127.0.0.1:8081"},
@@ -53,7 +54,7 @@ func TestMembersAPIActionAdd(t *testing.T) {
 	wantURL := &url.URL{
 		Scheme: "http",
 		Host:   "example.com",
-		Path:   "/v2/admin/members",
+		Path:   "/v2/members",
 	}
 	wantHeader := http.Header{
 		"Content-Type": []string{"application/json"},
@@ -68,7 +69,7 @@ func TestMembersAPIActionAdd(t *testing.T) {
 }
 
 func TestMembersAPIActionRemove(t *testing.T) {
-	ep := url.URL{Scheme: "http", Host: "example.com/v2/members"}
+	ep := url.URL{Scheme: "http", Host: "example.com"}
 	act := &membersAPIActionRemove{memberID: "XXX"}
 
 	wantURL := &url.URL{
@@ -91,5 +92,22 @@ func TestAssertStatusCode(t *testing.T) {
 
 	if err := assertStatusCode(400, 400); err != nil {
 		t.Errorf("assertStatusCode found conflict in 400 vs 400: %v", err)
+	}
+}
+
+func TestV2MembersURL(t *testing.T) {
+	got := v2MembersURL(url.URL{
+		Scheme: "http",
+		Host:   "foo.example.com:4002",
+		Path:   "/pants",
+	})
+	want := &url.URL{
+		Scheme: "http",
+		Host:   "foo.example.com:4002",
+		Path:   "/pants/v2/members",
+	}
+
+	if !reflect.DeepEqual(want, got) {
+		t.Fatalf("v2MembersURL got %#v, want %#v", got, want)
 	}
 }
