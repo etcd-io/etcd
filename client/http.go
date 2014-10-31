@@ -38,7 +38,6 @@ type roundTripResponse struct {
 type httpClient struct {
 	transport CancelableTransport
 	endpoint  url.URL
-	timeout   time.Duration
 }
 
 func (c *httpClient) Do(ctx context.Context, act HTTPAction) (*http.Response, []byte, error) {
