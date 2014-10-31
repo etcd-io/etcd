@@ -724,7 +724,7 @@ func startNode(cfg *ServerConfig, ids []types.ID) (id types.ID, n raft.Node, w *
 		peers[i] = raft.Peer{ID: uint64(id), Context: ctx}
 	}
 	id = member.ID
-	log.Printf("etcdserver: start node %x in cluster %x", id.String(), cfg.Cluster.ID().String())
+	log.Printf("etcdserver: start node %s in cluster %s", id, cfg.Cluster.ID())
 	n = raft.StartNode(uint64(id), peers, 10, 1)
 	return
 }
