@@ -49,7 +49,7 @@ func (ls *LeaderStats) JSON() []byte {
 	b, err := json.Marshal(stats)
 	// TODO(jonboulle): appropriate error handling?
 	if err != nil {
-		log.Printf("error marshalling leader stats: %v", err)
+		log.Printf("stats: error marshalling leader stats: %v", err)
 	}
 	return b
 }

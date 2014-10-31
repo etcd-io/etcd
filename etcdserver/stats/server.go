@@ -64,7 +64,7 @@ func (ss *ServerStats) JSON() []byte {
 	b, err := json.Marshal(stats)
 	// TODO(jonboulle): appropriate error handling?
 	if err != nil {
-		log.Printf("error marshalling server stats: %v", err)
+		log.Printf("stats: error marshalling server stats: %v", err)
 	}
 	return b
 }

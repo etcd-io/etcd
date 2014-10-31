@@ -62,7 +62,7 @@ func (d *director) refresh() {
 	for _, u := range urls {
 		uu, err := url.Parse(u)
 		if err != nil {
-			log.Printf("upstream URL invalid: %v", err)
+			log.Printf("proxy: upstream URL invalid: %v", err)
 			continue
 		}
 		endpoints = append(endpoints, newEndpoint(*uu))

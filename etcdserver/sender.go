@@ -59,7 +59,7 @@ func send(c *http.Client, cl *Cluster, m raftpb.Message, ss *stats.ServerStats, 
 				// TODO: unknown peer id.. what do we do? I
 				// don't think his should ever happen, need to
 				// look into this further.
-				log.Printf("etcdhttp: error sending message to unknown receiver %s", strutil.IDAsHex(m.To))
+				log.Printf("etcdserver: error sending message to unknown receiver %s", strutil.IDAsHex(m.To))
 			}
 			return
 		}
@@ -69,7 +69,7 @@ func send(c *http.Client, cl *Cluster, m raftpb.Message, ss *stats.ServerStats, 
 		// of messages out at a time.
 		data, err := m.Marshal()
 		if err != nil {
-			log.Println("etcdhttp: dropping message:", err)
+			log.Println("sender: dropping message:", err)
 			return // drop bad message
 		}
 		if m.Type == raftpb.MsgApp {
