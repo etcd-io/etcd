@@ -5,7 +5,7 @@ When first started, etcd stores its configuration into the data directory. This 
 
 If a member’s data directory is ever lost or corrupted, the user should remove the etcd member from the cluster via the [members API][0]. (The member can then be re-added to the cluster with an empty data directory, again using the [members API][0], and it will recover state).
 
-An etcd member restarted with previously used command line arguments but a new data directory is considered a different member. And it can potentially corrupt the cluster. If you are spinning up multiple clusters for testing it is recommended that you specify a unique cluster-name for the different clusters. This can protect you from cluster corruption in case of the misconfiguration metioned above.
+An etcd member restarted with previously used command line arguments but a new data directory is considered a different member. And it can potentially corrupt the cluster. If you are spinning up multiple clusters for testing it is recommended that you specify a unique initial-cluster-token for the different clusters. This can protect you from cluster corruption in case of the misconfiguration metioned above.
 
 The data directory has two sub-directories in it:
 

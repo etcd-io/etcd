@@ -48,9 +48,9 @@ var (
 	snapCount    = fs.Uint64("snapshot-count", etcdserver.DefaultSnapCount, "Number of committed transactions to trigger a snapshot")
 	printVersion = fs.Bool("version", false, "Print the version and exit")
 
-	initialCluster     = fs.String("initial-cluster", "default=http://localhost:2380,default=http://localhost:7001", "Initial cluster configuration for bootstrapping")
-	initialClusterName = fs.String("initial-cluster-name", "etcd", "Initial name for the etcd cluster during bootstrap")
-	clusterState       = new(etcdserver.ClusterState)
+	initialCluster      = fs.String("initial-cluster", "default=http://localhost:2380,default=http://localhost:7001", "Initial cluster configuration for bootstrapping")
+	initialClusterToken = fs.String("initial-cluster-token", "etcd-cluster", "Initial cluster token for the etcd cluster during bootstrap")
+	clusterState        = new(etcdserver.ClusterState)
 
 	corsInfo  = &cors.CORSInfo{}
 	proxyFlag = new(flags.Proxy)
@@ -306,7 +306,7 @@ func setupCluster() (*etcdserver.Cluster, error) {
 	default:
 		// We're statically configured, and cluster has appropriately been set.
 		// Try to configure by indexing the static cluster by name.
-		cls, err = etcdserver.NewClusterFromString(*initialClusterName, *initialCluster)
+		cls, err = etcdserver.NewClusterFromString(*initialClusterToken, *initialCluster)
 	}
 	return cls, err
 }

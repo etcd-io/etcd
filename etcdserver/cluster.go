@@ -50,7 +50,7 @@ type ClusterInfo interface {
 // Cluster is a list of Members that belong to the same raft cluster
 type Cluster struct {
 	id      uint64
-	name    string
+	token   string
 	members map[uint64]*Member
 	// removed contains the ids of removed members in the cluster.
 	// removed id cannot be reused.
@@ -58,11 +58,11 @@ type Cluster struct {
 	store   store.Store
 }
 
-// NewClusterFromString returns Cluster through given clusterName and parsing
+// NewClusterFromString returns Cluster through given cluster token and parsing
 // members from a sets of names to IPs discovery formatted like:
 // mach0=http://1.1.1.1,mach0=http://2.2.2.2,mach1=http://3.3.3.3,mach2=http://4.4.4.4
-func NewClusterFromString(name string, cluster string) (*Cluster, error) {
-	c := newCluster(name)
+func NewClusterFromString(token string, cluster string) (*Cluster, error) {
+	c := newCluster(token)
 
 	v, err := url.ParseQuery(strings.Replace(cluster, ",", "&", -1))
 	if err != nil {
@@ -76,7 +76,7 @@ func NewClusterFromString(name string, cluster string) (*Cluster, error) {
 		if err := purls.Set(strings.Join(urls, ",")); err != nil {
 			return nil, err
 		}
-		m := NewMember(name, types.URLs(*purls), c.name, nil)
+		m := NewMember(name, types.URLs(*purls), c.token, nil)
 		if _, ok := c.members[m.ID]; ok {
 			return nil, fmt.Errorf("Member exists with identical ID %v", m)
 		}
@@ -86,8 +86,8 @@ func NewClusterFromString(name string, cluster string) (*Cluster, error) {
 	return c, nil
 }
 
-func NewClusterFromStore(name string, st store.Store) *Cluster {
-	c := newCluster(name)
+func NewClusterFromStore(token string, st store.Store) *Cluster {
+	c := newCluster(token)
 	c.store = st
 
 	e, err := c.store.Get(storeMembersPrefix, true, true)
@@ -119,8 +119,8 @@ func NewClusterFromStore(name string, st store.Store) *Cluster {
 	return c
 }
 
-func NewClusterFromMembers(name string, id uint64, membs []*Member) *Cluster {
-	c := newCluster(name)
+func NewClusterFromMembers(token string, id uint64, membs []*Member) *Cluster {
+	c := newCluster(token)
 	c.id = id
 	for _, m := range membs {
 		c.members[m.ID] = m
@@ -128,9 +128,9 @@ func NewClusterFromMembers(name string, id uint64, membs []*Member) *Cluster {
 	return c
 }
 
-func newCluster(name string) *Cluster {
+func newCluster(token string) *Cluster {
 	return &Cluster{
-		name:    name,
+		token:   token,
 		members: make(map[uint64]*Member),
 		removed: make(map[uint64]bool),
 	}

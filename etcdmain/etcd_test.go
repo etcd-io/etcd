@@ -24,9 +24,9 @@ import (
 
 func TestGenClusterString(t *testing.T) {
 	tests := []struct {
-		name string
-		urls []string
-		wstr string
+		token string
+		urls  []string
+		wstr  string
 	}{
 		{
 			"default", []string{"http://127.0.0.1:4001"},
@@ -42,7 +42,7 @@ func TestGenClusterString(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected new urls error: %v", err)
 		}
-		str := genClusterString(tt.name, urls)
+		str := genClusterString(tt.token, urls)
 		if str != tt.wstr {
 			t.Errorf("#%d: cluster = %s, want %s", i, str, tt.wstr)
 		}
