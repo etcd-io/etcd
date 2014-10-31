@@ -41,31 +41,30 @@ var (
 	ErrKeyExists   = errors.New("client: key already exists")
 )
 
-func NewKeysAPI(c httpActionDo, to time.Duration) KeysAPI {
+func NewKeysAPI(c httpActionDo) KeysAPI {
 	return &httpKeysAPI{
-		client:  c,
-		prefix:  DefaultV2KeysPrefix,
-		timeout: to,
+		client: c,
+		prefix: DefaultV2KeysPrefix,
 	}
 }
 
-func NewDiscoveryKeysAPI(c httpActionDo, to time.Duration) KeysAPI {
+func NewDiscoveryKeysAPI(c httpActionDo) KeysAPI {
 	return &httpKeysAPI{
-		client:  c,
-		prefix:  "",
-		timeout: to,
+		client: c,
+		prefix: "",
 	}
 }
 
 type KeysAPI interface {
-	Create(key, value string, ttl time.Duration) (*Response, error)
-	Get(key string) (*Response, error)
+	Create(ctx context.Context, key, value string, ttl time.Duration) (*Response, error)
+	Get(ctx context.Context, key string) (*Response, error)
+
 	Watch(key string, idx uint64) Watcher
 	RecursiveWatch(key string, idx uint64) Watcher
 }
 
 type Watcher interface {
-	Next() (*Response, error)
+	Next(context.Context) (*Response, error)
 }
 
 type Response struct {
@@ -88,12 +87,11 @@ func (n *Node) String() string {
 }
 
 type httpKeysAPI struct {
-	client  httpActionDo
-	prefix  string
-	timeout time.Duration
+	client httpActionDo
+	prefix string
 }
 
-func (k *httpKeysAPI) Create(key, val string, ttl time.Duration) (*Response, error) {
+func (k *httpKeysAPI) Create(ctx context.Context, key, val string, ttl time.Duration) (*Response, error) {
 	create := &createAction{
 		Prefix: k.prefix,
 		Key:    key,
@@ -104,9 +102,7 @@ func (k *httpKeysAPI) Create(key, val string, ttl time.Duration) (*Response, err
 		create.TTL = &uttl
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), k.timeout)
 	resp, body, err := k.client.Do(ctx, create)
-	cancel()
 	if err != nil {
 		return nil, err
 	}
@@ -114,16 +110,14 @@ func (k *httpKeysAPI) Create(key, val string, ttl time.Duration) (*Response, err
 	return unmarshalHTTPResponse(resp.StatusCode, body)
 }
 
-func (k *httpKeysAPI) Get(key string) (*Response, error) {
+func (k *httpKeysAPI) Get(ctx context.Context, key string) (*Response, error) {
 	get := &getAction{
 		Prefix:    k.prefix,
 		Key:       key,
 		Recursive: false,
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), k.timeout)
 	resp, body, err := k.client.Do(ctx, get)
-	cancel()
 	if err != nil {
 		return nil, err
 	}
@@ -160,9 +154,8 @@ type httpWatcher struct {
 	nextWait waitAction
 }
 
-func (hw *httpWatcher) Next() (*Response, error) {
-	//TODO(bcwaldon): This needs to be cancellable by the calling user
-	httpresp, body, err := hw.client.Do(context.Background(), &hw.nextWait)
+func (hw *httpWatcher) Next(ctx context.Context) (*Response, error) {
+	httpresp, body, err := hw.client.Do(ctx, &hw.nextWait)
 	if err != nil {
 		return nil, err
 	}
