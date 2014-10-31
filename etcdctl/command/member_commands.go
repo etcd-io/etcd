@@ -13,6 +13,7 @@ import (
 func NewMemberCommand() cli.Command {
 	return cli.Command{
 		Name: "member",
+		Usage:  "member add, remove and list subcommands",
 		Subcommands: []cli.Command{
 			cli.Command{
 				Name:   "list",
