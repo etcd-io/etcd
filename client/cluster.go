@@ -25,7 +25,7 @@ import (
 
 func newHTTPClusterClient(tr *http.Transport, eps []string) (*httpClusterClient, error) {
 	c := httpClusterClient{
-		endpoints: make([]*httpClient, len(eps)),
+		endpoints: make([]httpActionDo, len(eps)),
 	}
 
 	for i, ep := range eps {
@@ -44,7 +44,7 @@ func newHTTPClusterClient(tr *http.Transport, eps []string) (*httpClusterClient,
 }
 
 type httpClusterClient struct {
-	endpoints []*httpClient
+	endpoints []httpActionDo
 }
 
 func (c *httpClusterClient) do(ctx context.Context, act httpAction) (*http.Response, []byte, error) {
