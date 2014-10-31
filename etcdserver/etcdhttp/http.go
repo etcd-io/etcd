@@ -29,7 +29,7 @@ import (
 
 const (
 	// time to wait for response from EtcdServer requests
-	defaultServerTimeout = 500 * time.Millisecond
+	defaultServerTimeout = 5 * time.Minute
 
 	// time to wait for a Watch request
 	defaultWatchTimeout = 5 * time.Minute
