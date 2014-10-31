@@ -25,6 +25,7 @@ import (
 	"path"
 	"time"
 
+	"github.com/coreos/etcd/Godeps/_workspace/src/code.google.com/p/go.net/context"
 	"github.com/coreos/etcd/etcdserver/etcdhttp/httptypes"
 	"github.com/coreos/etcd/pkg/types"
 )
@@ -42,11 +43,11 @@ func NewMembersAPI(tr *http.Transport, ep string, to time.Duration) (MembersAPI,
 	c := &httpClient{
 		transport: tr,
 		endpoint:  *u,
-		timeout:   to,
 	}
 
 	mAPI := httpMembersAPI{
-		client: c,
+		client:  c,
+		timeout: to,
 	}
 
 	return &mAPI, nil
@@ -59,12 +60,15 @@ type MembersAPI interface {
 }
 
 type httpMembersAPI struct {
-	client *httpClient
+	client  *httpClient
+	timeout time.Duration
 }
 
 func (m *httpMembersAPI) List() ([]httptypes.Member, error) {
 	req := &membersAPIActionList{}
-	code, body, err := m.client.doWithTimeout(req)
+	ctx, cancel := context.WithTimeout(context.Background(), m.timeout)
+	code, body, err := m.client.do(ctx, req)
+	cancel()
 	if err != nil {
 		return nil, err
 	}
@@ -88,7 +92,9 @@ func (m *httpMembersAPI) Add(peerURL string) (*httptypes.Member, error) {
 	}
 
 	req := &membersAPIActionAdd{peerURLs: urls}
-	code, body, err := m.client.doWithTimeout(req)
+	ctx, cancel := context.WithTimeout(context.Background(), m.timeout)
+	code, body, err := m.client.do(ctx, req)
+	cancel()
 	if err != nil {
 		return nil, err
 	}
@@ -107,7 +113,9 @@ func (m *httpMembersAPI) Add(peerURL string) (*httptypes.Member, error) {
 
 func (m *httpMembersAPI) Remove(memberID string) error {
 	req := &membersAPIActionRemove{memberID: memberID}
-	code, _, err := m.client.doWithTimeout(req)
+	ctx, cancel := context.WithTimeout(context.Background(), m.timeout)
+	code, _, err := m.client.do(ctx, req)
+	cancel()
 	if err != nil {
 		return err
 	}

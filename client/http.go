@@ -53,12 +53,6 @@ type httpClient struct {
 	timeout   time.Duration
 }
 
-func (c *httpClient) doWithTimeout(act httpAction) (int, []byte, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), c.timeout)
-	defer cancel()
-	return c.do(ctx, act)
-}
-
 func (c *httpClient) do(ctx context.Context, act httpAction) (int, []byte, error) {
 	req := act.httpRequest(c.endpoint)
 

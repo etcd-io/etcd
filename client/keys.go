@@ -58,12 +58,12 @@ func newHTTPKeysAPIWithPrefix(tr *http.Transport, ep string, to time.Duration, p
 	c := &httpClient{
 		transport: tr,
 		endpoint:  *u,
-		timeout:   to,
 	}
 
 	kAPI := httpKeysAPI{
-		client: c,
-		prefix: prefix,
+		client:  c,
+		prefix:  prefix,
+		timeout: to,
 	}
 
 	return &kAPI, nil
@@ -100,8 +100,9 @@ func (n *Node) String() string {
 }
 
 type httpKeysAPI struct {
-	client *httpClient
-	prefix string
+	client  *httpClient
+	prefix  string
+	timeout time.Duration
 }
 
 func (k *httpKeysAPI) Create(key, val string, ttl time.Duration) (*Response, error) {
@@ -115,7 +116,9 @@ func (k *httpKeysAPI) Create(key, val string, ttl time.Duration) (*Response, err
 		create.TTL = &uttl
 	}
 
-	code, body, err := k.client.doWithTimeout(create)
+	ctx, cancel := context.WithTimeout(context.Background(), k.timeout)
+	code, body, err := k.client.do(ctx, create)
+	cancel()
 	if err != nil {
 		return nil, err
 	}
@@ -130,7 +133,9 @@ func (k *httpKeysAPI) Get(key string) (*Response, error) {
 		Recursive: false,
 	}
 
-	code, body, err := k.client.doWithTimeout(get)
+	ctx, cancel := context.WithTimeout(context.Background(), k.timeout)
+	code, body, err := k.client.do(ctx, get)
+	cancel()
 	if err != nil {
 		return nil, err
 	}
