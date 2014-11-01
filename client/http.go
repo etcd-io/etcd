@@ -26,7 +26,9 @@ import (
 )
 
 var (
-	ErrTimeout            = context.DeadlineExceeded
+	ErrTimeout  = context.DeadlineExceeded
+	ErrCanceled = context.Canceled
+
 	DefaultRequestTimeout = 5 * time.Second
 )
 
@@ -81,9 +83,21 @@ type httpClusterClient struct {
 	endpoints []HTTPClient
 }
 
-func (c *httpClusterClient) Do(ctx context.Context, act HTTPAction) (*http.Response, []byte, error) {
-	//TODO(bcwaldon): introduce retry logic so all endpoints are attempted
-	return c.endpoints[0].Do(ctx, act)
+func (c *httpClusterClient) Do(ctx context.Context, act HTTPAction) (resp *http.Response, body []byte, err error) {
+	for _, hc := range c.endpoints {
+		resp, body, err = hc.Do(ctx, act)
+		if err != nil {
+			if err == ErrTimeout || err == ErrCanceled {
+				return nil, nil, err
+			}
+			continue
+		}
+		if resp.StatusCode/100 == 5 {
+			continue
+		}
+		break
+	}
+	return
 }
 
 func (c *httpClusterClient) Sync(ctx context.Context) error {
