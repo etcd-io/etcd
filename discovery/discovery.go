@@ -29,6 +29,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/coreos/etcd/Godeps/_workspace/src/code.google.com/p/go.net/context"
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/jonboulle/clockwork"
 	"github.com/coreos/etcd/client"
 	"github.com/coreos/etcd/pkg/types"
@@ -106,15 +107,16 @@ func New(durl string, id types.ID, config string) (Discoverer, error) {
 	if err != nil {
 		return nil, err
 	}
-	c, err := client.NewDiscoveryKeysAPI(&http.Transport{Proxy: pf}, []string{u.String()}, client.DefaultRequestTimeout)
+	c, err := client.NewHTTPClient(&http.Transport{Proxy: pf}, []string{u.String()})
 	if err != nil {
 		return nil, err
 	}
+	dc := client.NewDiscoveryKeysAPI(c)
 	return &discovery{
 		cluster: token,
 		id:      id,
 		config:  config,
-		c:       c,
+		c:       dc,
 		url:     u,
 		clock:   clockwork.NewRealClock(),
 	}, nil
@@ -149,21 +151,25 @@ func (d *discovery) Discover() (string, error) {
 }
 
 func (d *discovery) createSelf() error {
-	resp, err := d.c.Create(d.selfKey(), d.config, -1)
+	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
+	resp, err := d.c.Create(ctx, d.selfKey(), d.config, -1)
+	cancel()
 	if err != nil {
 		return err
 	}
 
 	// ensure self appears on the server we connected to
 	w := d.c.Watch(d.selfKey(), resp.Node.CreatedIndex)
-	_, err = w.Next()
+	_, err = w.Next(context.Background())
 	return err
 }
 
 func (d *discovery) checkCluster() (client.Nodes, int, error) {
 	configKey := path.Join("/", d.cluster, "_config")
+	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
 	// find cluster size
-	resp, err := d.c.Get(path.Join(configKey, "size"))
+	resp, err := d.c.Get(ctx, path.Join(configKey, "size"))
+	cancel()
 	if err != nil {
 		if err == client.ErrKeyNoExist {
 			return nil, 0, ErrSizeNotFound
@@ -178,7 +184,9 @@ func (d *discovery) checkCluster() (client.Nodes, int, error) {
 		return nil, 0, ErrBadSizeKey
 	}
 
-	resp, err = d.c.Get(d.cluster)
+	ctx, cancel = context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
+	resp, err = d.c.Get(ctx, d.cluster)
+	cancel()
 	if err != nil {
 		if err == client.ErrTimeout {
 			return d.checkClusterRetry()
@@ -253,7 +261,7 @@ func (d *discovery) waitNodes(nodes client.Nodes, size int) (client.Nodes, error
 	// wait for others
 	for len(all) < size {
 		log.Printf("discovery: found %d peer(s), waiting for %d more", len(all), size-len(all))
-		resp, err := w.Next()
+		resp, err := w.Next(context.Background())
 		if err != nil {
 			if err == client.ErrTimeout {
 				return d.waitNodesRetry()

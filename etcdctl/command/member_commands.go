@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/coreos/etcd/Godeps/_workspace/src/code.google.com/p/go.net/context"
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/codegangsta/cli"
 	"github.com/coreos/etcd/client"
 )
@@ -42,13 +43,23 @@ func mustNewMembersAPI(c *cli.Context) client.MembersAPI {
 		}
 	}
 
-	mAPI, err := client.NewMembersAPI(&http.Transport{}, peers, client.DefaultRequestTimeout)
+	hc, err := client.NewHTTPClient(&http.Transport{}, peers)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
 	}
 
-	return mAPI
+	if !c.GlobalBool("no-sync") {
+		ctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
+		err := hc.Sync(ctx)
+		cancel()
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err.Error())
+			os.Exit(1)
+		}
+	}
+
+	return client.NewMembersAPI(hc)
 }
 
 func actionMemberList(c *cli.Context) {
@@ -57,7 +68,9 @@ func actionMemberList(c *cli.Context) {
 		os.Exit(1)
 	}
 	mAPI := mustNewMembersAPI(c)
-	members, err := mAPI.List()
+	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
+	members, err := mAPI.List(ctx)
+	cancel()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
@@ -78,7 +91,9 @@ func actionMemberAdd(c *cli.Context) {
 	mAPI := mustNewMembersAPI(c)
 
 	url := args[1]
-	m, err := mAPI.Add(url)
+	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
+	m, err := mAPI.Add(ctx, url)
+	cancel()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
@@ -88,7 +103,9 @@ func actionMemberAdd(c *cli.Context) {
 	newName := args[0]
 	fmt.Printf("Added member named %s with ID %s to cluster\n", newName, newID)
 
-	members, err := mAPI.List()
+	ctx, cancel = context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
+	members, err := mAPI.List(ctx)
+	cancel()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
@@ -120,7 +137,10 @@ func actionMemberRemove(c *cli.Context) {
 
 	mAPI := mustNewMembersAPI(c)
 	mID := args[0]
-	if err := mAPI.Remove(mID); err != nil {
+	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
+	err := mAPI.Remove(ctx, mID)
+	cancel()
+	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
 	}

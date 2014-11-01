@@ -21,13 +21,13 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
+	"reflect"
 	"sort"
 	"strconv"
-
-	"reflect"
 	"testing"
 	"time"
 
+	"github.com/coreos/etcd/Godeps/_workspace/src/code.google.com/p/go.net/context"
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/jonboulle/clockwork"
 	"github.com/coreos/etcd/client"
 )
@@ -397,7 +397,7 @@ type clientWithResp struct {
 	w  client.Watcher
 }
 
-func (c *clientWithResp) Create(key string, value string, ttl time.Duration) (*client.Response, error) {
+func (c *clientWithResp) Create(ctx context.Context, key string, value string, ttl time.Duration) (*client.Response, error) {
 	if len(c.rs) == 0 {
 		return &client.Response{}, nil
 	}
@@ -406,7 +406,7 @@ func (c *clientWithResp) Create(key string, value string, ttl time.Duration) (*c
 	return r, nil
 }
 
-func (c *clientWithResp) Get(key string) (*client.Response, error) {
+func (c *clientWithResp) Get(ctx context.Context, key string) (*client.Response, error) {
 	if len(c.rs) == 0 {
 		return &client.Response{}, client.ErrKeyNoExist
 	}
@@ -428,11 +428,11 @@ type clientWithErr struct {
 	w   client.Watcher
 }
 
-func (c *clientWithErr) Create(key string, value string, ttl time.Duration) (*client.Response, error) {
+func (c *clientWithErr) Create(ctx context.Context, key string, value string, ttl time.Duration) (*client.Response, error) {
 	return &client.Response{}, c.err
 }
 
-func (c *clientWithErr) Get(key string) (*client.Response, error) {
+func (c *clientWithErr) Get(ctx context.Context, key string) (*client.Response, error) {
 	return &client.Response{}, c.err
 }
 
@@ -448,7 +448,7 @@ type watcherWithResp struct {
 	rs []*client.Response
 }
 
-func (w *watcherWithResp) Next() (*client.Response, error) {
+func (w *watcherWithResp) Next(context.Context) (*client.Response, error) {
 	if len(w.rs) == 0 {
 		return &client.Response{}, nil
 	}
@@ -461,7 +461,7 @@ type watcherWithErr struct {
 	err error
 }
 
-func (w *watcherWithErr) Next() (*client.Response, error) {
+func (w *watcherWithErr) Next(context.Context) (*client.Response, error) {
 	return &client.Response{}, w.err
 }
 
@@ -472,20 +472,20 @@ type clientWithRetry struct {
 	failTimes int
 }
 
-func (c *clientWithRetry) Create(key string, value string, ttl time.Duration) (*client.Response, error) {
+func (c *clientWithRetry) Create(ctx context.Context, key string, value string, ttl time.Duration) (*client.Response, error) {
 	if c.failCount < c.failTimes {
 		c.failCount++
 		return nil, client.ErrTimeout
 	}
-	return c.clientWithResp.Create(key, value, ttl)
+	return c.clientWithResp.Create(ctx, key, value, ttl)
 }
 
-func (c *clientWithRetry) Get(key string) (*client.Response, error) {
+func (c *clientWithRetry) Get(ctx context.Context, key string) (*client.Response, error) {
 	if c.failCount < c.failTimes {
 		c.failCount++
 		return nil, client.ErrTimeout
 	}
-	return c.clientWithResp.Get(key)
+	return c.clientWithResp.Get(ctx, key)
 }
 
 // watcherWithRetry will timeout all requests up to failTimes
@@ -495,7 +495,7 @@ type watcherWithRetry struct {
 	failTimes int
 }
 
-func (w *watcherWithRetry) Next() (*client.Response, error) {
+func (w *watcherWithRetry) Next(context.Context) (*client.Response, error) {
 	if w.failCount < w.failTimes {
 		w.failCount++
 		return nil, client.ErrTimeout

@@ -35,7 +35,7 @@ func TestMembersAPIActionList(t *testing.T) {
 		Path:   "/v2/members",
 	}
 
-	got := *act.httpRequest(ep)
+	got := *act.HTTPRequest(ep)
 	err := assertResponse(got, wantURL, http.Header{}, nil)
 	if err != nil {
 		t.Error(err.Error())
@@ -61,7 +61,7 @@ func TestMembersAPIActionAdd(t *testing.T) {
 	}
 	wantBody := []byte(`{"peerURLs":["https://127.0.0.1:8081","http://127.0.0.1:8080"]}`)
 
-	got := *act.httpRequest(ep)
+	got := *act.HTTPRequest(ep)
 	err := assertResponse(got, wantURL, wantHeader, wantBody)
 	if err != nil {
 		t.Error(err.Error())
@@ -78,7 +78,7 @@ func TestMembersAPIActionRemove(t *testing.T) {
 		Path:   "/v2/members/XXX",
 	}
 
-	got := *act.httpRequest(ep)
+	got := *act.HTTPRequest(ep)
 	err := assertResponse(got, wantURL, http.Header{}, nil)
 	if err != nil {
 		t.Error(err.Error())

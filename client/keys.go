@@ -41,38 +41,30 @@ var (
 	ErrKeyExists   = errors.New("client: key already exists")
 )
 
-func NewKeysAPI(tr *http.Transport, eps []string, to time.Duration) (KeysAPI, error) {
-	return newHTTPKeysAPIWithPrefix(tr, eps, to, DefaultV2KeysPrefix)
+func NewKeysAPI(c HTTPClient) KeysAPI {
+	return &httpKeysAPI{
+		client: c,
+		prefix: DefaultV2KeysPrefix,
+	}
 }
 
-func NewDiscoveryKeysAPI(tr *http.Transport, eps []string, to time.Duration) (KeysAPI, error) {
-	return newHTTPKeysAPIWithPrefix(tr, eps, to, "")
-}
-
-func newHTTPKeysAPIWithPrefix(tr *http.Transport, eps []string, to time.Duration, prefix string) (*httpKeysAPI, error) {
-	c, err := newHTTPClusterClient(tr, eps)
-	if err != nil {
-		return nil, err
+func NewDiscoveryKeysAPI(c HTTPClient) KeysAPI {
+	return &httpKeysAPI{
+		client: c,
+		prefix: "",
 	}
-
-	kAPI := httpKeysAPI{
-		client:  c,
-		prefix:  prefix,
-		timeout: to,
-	}
-
-	return &kAPI, nil
 }
 
 type KeysAPI interface {
-	Create(key, value string, ttl time.Duration) (*Response, error)
-	Get(key string) (*Response, error)
+	Create(ctx context.Context, key, value string, ttl time.Duration) (*Response, error)
+	Get(ctx context.Context, key string) (*Response, error)
+
 	Watch(key string, idx uint64) Watcher
 	RecursiveWatch(key string, idx uint64) Watcher
 }
 
 type Watcher interface {
-	Next() (*Response, error)
+	Next(context.Context) (*Response, error)
 }
 
 type Response struct {
@@ -95,12 +87,11 @@ func (n *Node) String() string {
 }
 
 type httpKeysAPI struct {
-	client  httpActionDo
-	prefix  string
-	timeout time.Duration
+	client HTTPClient
+	prefix string
 }
 
-func (k *httpKeysAPI) Create(key, val string, ttl time.Duration) (*Response, error) {
+func (k *httpKeysAPI) Create(ctx context.Context, key, val string, ttl time.Duration) (*Response, error) {
 	create := &createAction{
 		Prefix: k.prefix,
 		Key:    key,
@@ -111,31 +102,27 @@ func (k *httpKeysAPI) Create(key, val string, ttl time.Duration) (*Response, err
 		create.TTL = &uttl
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), k.timeout)
-	code, body, err := k.client.do(ctx, create)
-	cancel()
+	resp, body, err := k.client.Do(ctx, create)
 	if err != nil {
 		return nil, err
 	}
 
-	return unmarshalHTTPResponse(code, body)
+	return unmarshalHTTPResponse(resp.StatusCode, body)
 }
 
-func (k *httpKeysAPI) Get(key string) (*Response, error) {
+func (k *httpKeysAPI) Get(ctx context.Context, key string) (*Response, error) {
 	get := &getAction{
 		Prefix:    k.prefix,
 		Key:       key,
 		Recursive: false,
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), k.timeout)
-	code, body, err := k.client.do(ctx, get)
-	cancel()
+	resp, body, err := k.client.Do(ctx, get)
 	if err != nil {
 		return nil, err
 	}
 
-	return unmarshalHTTPResponse(code, body)
+	return unmarshalHTTPResponse(resp.StatusCode, body)
 }
 
 func (k *httpKeysAPI) Watch(key string, idx uint64) Watcher {
@@ -163,18 +150,17 @@ func (k *httpKeysAPI) RecursiveWatch(key string, idx uint64) Watcher {
 }
 
 type httpWatcher struct {
-	client   httpActionDo
+	client   HTTPClient
 	nextWait waitAction
 }
 
-func (hw *httpWatcher) Next() (*Response, error) {
-	//TODO(bcwaldon): This needs to be cancellable by the calling user
-	code, body, err := hw.client.do(context.Background(), &hw.nextWait)
+func (hw *httpWatcher) Next(ctx context.Context) (*Response, error) {
+	httpresp, body, err := hw.client.Do(ctx, &hw.nextWait)
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := unmarshalHTTPResponse(code, body)
+	resp, err := unmarshalHTTPResponse(httpresp.StatusCode, body)
 	if err != nil {
 		return nil, err
 	}
@@ -199,7 +185,7 @@ type getAction struct {
 	Recursive bool
 }
 
-func (g *getAction) httpRequest(ep url.URL) *http.Request {
+func (g *getAction) HTTPRequest(ep url.URL) *http.Request {
 	u := v2KeysURL(ep, g.Prefix, g.Key)
 
 	params := u.Query()
@@ -217,7 +203,7 @@ type waitAction struct {
 	Recursive bool
 }
 
-func (w *waitAction) httpRequest(ep url.URL) *http.Request {
+func (w *waitAction) HTTPRequest(ep url.URL) *http.Request {
 	u := v2KeysURL(ep, w.Prefix, w.Key)
 
 	params := u.Query()
@@ -237,7 +223,7 @@ type createAction struct {
 	TTL    *uint64
 }
 
-func (c *createAction) httpRequest(ep url.URL) *http.Request {
+func (c *createAction) HTTPRequest(ep url.URL) *http.Request {
 	u := v2KeysURL(ep, c.Prefix, c.Key)
 
 	params := u.Query()

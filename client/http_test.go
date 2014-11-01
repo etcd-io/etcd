@@ -65,7 +65,7 @@ func (t *fakeTransport) CancelRequest(*http.Request) {
 
 type fakeAction struct{}
 
-func (a *fakeAction) httpRequest(url.URL) *http.Request {
+func (a *fakeAction) HTTPRequest(url.URL) *http.Request {
 	return &http.Request{}
 }
 
@@ -78,14 +78,14 @@ func TestHTTPClientDoSuccess(t *testing.T) {
 		Body:       ioutil.NopCloser(strings.NewReader("foo")),
 	}
 
-	code, body, err := c.do(context.Background(), &fakeAction{})
+	resp, body, err := c.Do(context.Background(), &fakeAction{})
 	if err != nil {
 		t.Fatalf("incorrect error value: want=nil got=%v", err)
 	}
 
 	wantCode := http.StatusTeapot
-	if wantCode != code {
-		t.Fatalf("invalid response code: want=%d got=%d", wantCode, code)
+	if wantCode != resp.StatusCode {
+		t.Fatalf("invalid response code: want=%d got=%d", wantCode, resp.StatusCode)
 	}
 
 	wantBody := []byte("foo")
@@ -100,7 +100,7 @@ func TestHTTPClientDoError(t *testing.T) {
 
 	tr.errchan <- errors.New("fixture")
 
-	_, _, err := c.do(context.Background(), &fakeAction{})
+	_, _, err := c.Do(context.Background(), &fakeAction{})
 	if err == nil {
 		t.Fatalf("expected non-nil error, got nil")
 	}
@@ -113,7 +113,7 @@ func TestHTTPClientDoCancelContext(t *testing.T) {
 	tr.startCancel <- struct{}{}
 	tr.finishCancel <- struct{}{}
 
-	_, _, err := c.do(context.Background(), &fakeAction{})
+	_, _, err := c.Do(context.Background(), &fakeAction{})
 	if err == nil {
 		t.Fatalf("expected non-nil error, got nil")
 	}
@@ -126,7 +126,7 @@ func TestHTTPClientDoCancelContextWaitForRoundTrip(t *testing.T) {
 	donechan := make(chan struct{})
 	ctx, cancel := context.WithCancel(context.Background())
 	go func() {
-		c.do(ctx, &fakeAction{})
+		c.Do(ctx, &fakeAction{})
 		close(donechan)
 	}()
 
