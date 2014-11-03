@@ -38,6 +38,30 @@ func (s *staticHTTPClient) Do(context.Context, HTTPAction) (*http.Response, []by
 	return &s.resp, nil, s.err
 }
 
+type staticHTTPAction struct {
+	request http.Request
+}
+
+type staticHTTPResponse struct {
+	resp http.Response
+	err  error
+}
+
+func (s *staticHTTPAction) HTTPRequest(url.URL) *http.Request {
+	return &s.request
+}
+
+type multiStaticHTTPClient struct {
+	responses []staticHTTPResponse
+	cur       int
+}
+
+func (s *multiStaticHTTPClient) Do(context.Context, HTTPAction) (*http.Response, []byte, error) {
+	r := s.responses[s.cur]
+	s.cur++
+	return &r.resp, nil, r.err
+}
+
 type fakeTransport struct {
 	respchan     chan *http.Response
 	errchan      chan error
@@ -235,6 +259,204 @@ func TestHTTPClusterClientDo(t *testing.T) {
 
 	for i, tt := range tests {
 		resp, _, err := tt.client.Do(context.Background(), nil)
+		if !reflect.DeepEqual(tt.wantErr, err) {
+			t.Errorf("#%d: got err=%v, want=%v", i, err, tt.wantErr)
+			continue
+		}
+
+		if resp == nil {
+			if tt.wantCode != 0 {
+				t.Errorf("#%d: resp is nil, want=%d", i, tt.wantCode)
+			}
+			continue
+		}
+
+		if resp.StatusCode != tt.wantCode {
+			t.Errorf("#%d: resp code=%d, want=%d", i, resp.StatusCode, tt.wantCode)
+			continue
+		}
+	}
+}
+
+func TestRedirectedHTTPAction(t *testing.T) {
+	act := &redirectedHTTPAction{
+		action: &staticHTTPAction{
+			request: http.Request{
+				Method: "DELETE",
+				URL: &url.URL{
+					Scheme: "https",
+					Host:   "foo.example.com",
+					Path:   "/ping",
+				},
+			},
+		},
+		location: url.URL{
+			Scheme: "https",
+			Host:   "bar.example.com",
+			Path:   "/pong",
+		},
+	}
+
+	want := &http.Request{
+		Method: "DELETE",
+		URL: &url.URL{
+			Scheme: "https",
+			Host:   "bar.example.com",
+			Path:   "/pong",
+		},
+	}
+	got := act.HTTPRequest(url.URL{Scheme: "http", Host: "baz.example.com", Path: "/pang"})
+
+	if !reflect.DeepEqual(want, got) {
+		t.Fatalf("HTTPRequest is %#v, want %#v", want, got)
+	}
+}
+
+func TestRedirectFollowingHTTPClient(t *testing.T) {
+	tests := []struct {
+		max      int
+		client   HTTPClient
+		wantCode int
+		wantErr  error
+	}{
+		// errors bubbled up
+		{
+			max: 2,
+			client: &multiStaticHTTPClient{
+				responses: []staticHTTPResponse{
+					staticHTTPResponse{
+						err: errors.New("fail!"),
+					},
+				},
+			},
+			wantErr: errors.New("fail!"),
+		},
+
+		// no need to follow redirect if none given
+		{
+			max: 2,
+			client: &multiStaticHTTPClient{
+				responses: []staticHTTPResponse{
+					staticHTTPResponse{
+						resp: http.Response{
+							StatusCode: http.StatusTeapot,
+						},
+					},
+				},
+			},
+			wantCode: http.StatusTeapot,
+		},
+
+		// redirects if less than max
+		{
+			max: 2,
+			client: &multiStaticHTTPClient{
+				responses: []staticHTTPResponse{
+					staticHTTPResponse{
+						resp: http.Response{
+							StatusCode: http.StatusTemporaryRedirect,
+							Header:     http.Header{"Location": []string{"http://example.com"}},
+						},
+					},
+					staticHTTPResponse{
+						resp: http.Response{
+							StatusCode: http.StatusTeapot,
+						},
+					},
+				},
+			},
+			wantCode: http.StatusTeapot,
+		},
+
+		// succeed after reaching max redirects
+		{
+			max: 2,
+			client: &multiStaticHTTPClient{
+				responses: []staticHTTPResponse{
+					staticHTTPResponse{
+						resp: http.Response{
+							StatusCode: http.StatusTemporaryRedirect,
+							Header:     http.Header{"Location": []string{"http://example.com"}},
+						},
+					},
+					staticHTTPResponse{
+						resp: http.Response{
+							StatusCode: http.StatusTemporaryRedirect,
+							Header:     http.Header{"Location": []string{"http://example.com"}},
+						},
+					},
+					staticHTTPResponse{
+						resp: http.Response{
+							StatusCode: http.StatusTeapot,
+						},
+					},
+				},
+			},
+			wantCode: http.StatusTeapot,
+		},
+
+		// fail at max+1 redirects
+		{
+			max: 1,
+			client: &multiStaticHTTPClient{
+				responses: []staticHTTPResponse{
+					staticHTTPResponse{
+						resp: http.Response{
+							StatusCode: http.StatusTemporaryRedirect,
+							Header:     http.Header{"Location": []string{"http://example.com"}},
+						},
+					},
+					staticHTTPResponse{
+						resp: http.Response{
+							StatusCode: http.StatusTemporaryRedirect,
+							Header:     http.Header{"Location": []string{"http://example.com"}},
+						},
+					},
+					staticHTTPResponse{
+						resp: http.Response{
+							StatusCode: http.StatusTeapot,
+						},
+					},
+				},
+			},
+			wantErr: ErrTooManyRedirects,
+		},
+
+		// fail if Location header not set
+		{
+			max: 1,
+			client: &multiStaticHTTPClient{
+				responses: []staticHTTPResponse{
+					staticHTTPResponse{
+						resp: http.Response{
+							StatusCode: http.StatusTemporaryRedirect,
+						},
+					},
+				},
+			},
+			wantErr: errors.New("Location header not set"),
+		},
+
+		// fail if Location header is invalid
+		{
+			max: 1,
+			client: &multiStaticHTTPClient{
+				responses: []staticHTTPResponse{
+					staticHTTPResponse{
+						resp: http.Response{
+							StatusCode: http.StatusTemporaryRedirect,
+							Header:     http.Header{"Location": []string{":"}},
+						},
+					},
+				},
+			},
+			wantErr: errors.New("Location header not valid URL: :"),
+		},
+	}
+
+	for i, tt := range tests {
+		client := &redirectFollowingHTTPClient{client: tt.client, max: tt.max}
+		resp, _, err := client.Do(context.Background(), nil)
 		if !reflect.DeepEqual(tt.wantErr, err) {
 			t.Errorf("#%d: got err=%v, want=%v", i, err, tt.wantErr)
 			continue

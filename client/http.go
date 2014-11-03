@@ -17,6 +17,8 @@
 package client
 
 import (
+	"errors"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -26,10 +28,12 @@ import (
 )
 
 var (
-	ErrTimeout  = context.DeadlineExceeded
-	ErrCanceled = context.Canceled
+	ErrTimeout          = context.DeadlineExceeded
+	ErrCanceled         = context.Canceled
+	ErrTooManyRedirects = errors.New("too many redirects")
 
 	DefaultRequestTimeout = 5 * time.Second
+	DefaultMaxRedirects   = 10
 )
 
 type SyncableHTTPClient interface {
@@ -69,9 +73,12 @@ func newHTTPClusterClient(tr CancelableTransport, eps []string) (*httpClusterCli
 			return nil, err
 		}
 
-		c.endpoints[i] = &httpClient{
-			transport: tr,
-			endpoint:  *u,
+		c.endpoints[i] = &redirectFollowingHTTPClient{
+			max: DefaultMaxRedirects,
+			client: &httpClient{
+				transport: tr,
+				endpoint:  *u,
+			},
 		}
 	}
 
@@ -167,4 +174,46 @@ func (c *httpClient) Do(ctx context.Context, act HTTPAction) (*http.Response, []
 
 	body, err := ioutil.ReadAll(resp.Body)
 	return resp, body, err
+}
+
+type redirectFollowingHTTPClient struct {
+	client HTTPClient
+	max    int
+}
+
+func (r *redirectFollowingHTTPClient) Do(ctx context.Context, act HTTPAction) (*http.Response, []byte, error) {
+	for i := 0; i <= r.max; i++ {
+		resp, body, err := r.client.Do(ctx, act)
+		if err != nil {
+			return nil, nil, err
+		}
+		if resp.StatusCode/100 == 3 {
+			hdr := resp.Header.Get("Location")
+			if hdr == "" {
+				return nil, nil, fmt.Errorf("Location header not set")
+			}
+			loc, err := url.Parse(hdr)
+			if err != nil {
+				return nil, nil, fmt.Errorf("Location header not valid URL: %s", hdr)
+			}
+			act = &redirectedHTTPAction{
+				action:   act,
+				location: *loc,
+			}
+			continue
+		}
+		return resp, body, nil
+	}
+	return nil, nil, ErrTooManyRedirects
+}
+
+type redirectedHTTPAction struct {
+	action   HTTPAction
+	location url.URL
+}
+
+func (r *redirectedHTTPAction) HTTPRequest(ep url.URL) *http.Request {
+	orig := r.action.HTTPRequest(ep)
+	orig.URL = &r.location
+	return orig
 }
