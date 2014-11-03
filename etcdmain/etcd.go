@@ -151,6 +151,7 @@ func startEtcd() {
 	if err != nil {
 		log.Fatalf("etcd: error setting up initial cluster: %v", err)
 	}
+	log.Printf("etcd: initial cluster members: %s", cls.String())
 
 	if *dir == "" {
 		*dir = fmt.Sprintf("%v.etcd", *name)
