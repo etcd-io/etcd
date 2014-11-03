@@ -25,6 +25,7 @@ import (
 	"testing"
 
 	"github.com/coreos/etcd/raft/raftpb"
+	"github.com/coreos/etcd/wal/walpb"
 )
 
 func TestNew(t *testing.T) {
@@ -34,14 +35,33 @@ func TestNew(t *testing.T) {
 	}
 	defer os.RemoveAll(p)
 
-	w, err := Create(p, nil)
+	w, err := Create(p, []byte("somedata"))
 	if err != nil {
 		t.Fatalf("err = %v, want nil", err)
 	}
 	if g := path.Base(w.f.Name()); g != walName(0, 0) {
 		t.Errorf("name = %+v, want %+v", g, walName(0, 0))
 	}
-	w.Close()
+	defer w.Close()
+	gd, err := ioutil.ReadFile(w.f.Name())
+	if err != nil {
+		t.Fatalf("err = %v, want nil", err)
+	}
+
+	var wb bytes.Buffer
+	e := newEncoder(&wb, 0)
+	err = e.encode(&walpb.Record{Type: crcType, Crc: 0})
+	if err != nil {
+		t.Fatalf("err = %v, want nil", err)
+	}
+	err = e.encode(&walpb.Record{Type: metadataType, Data: []byte("somedata")})
+	if err != nil {
+		t.Fatalf("err = %v, want nil", err)
+	}
+	e.flush()
+	if !reflect.DeepEqual(gd, wb.Bytes()) {
+		t.Errorf("data = %v, want %v", gd, wb.Bytes())
+	}
 }
 
 func TestNewForInitedDir(t *testing.T) {
