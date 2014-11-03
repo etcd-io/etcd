@@ -20,6 +20,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"strings"
@@ -172,6 +173,41 @@ func startEtcd() {
 	if err != nil {
 		log.Fatal(err.Error())
 	}
+
+	lpurls, err := flags.URLsFromFlags(fs, "listen-peer-urls", "peer-bind-addr", peerTLSInfo)
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+
+	plns := make([]net.Listener, 0)
+	for _, u := range lpurls {
+		l, err := transport.NewListener(u.Host, peerTLSInfo)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		urlStr := u.String()
+		log.Print("etcd: listening for peers on ", urlStr)
+		plns = append(plns, l)
+	}
+
+	lcurls, err := flags.URLsFromFlags(fs, "listen-client-urls", "bind-addr", clientTLSInfo)
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+
+	clns := make([]net.Listener, 0)
+	for _, u := range lcurls {
+		l, err := transport.NewListener(u.Host, clientTLSInfo)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		urlStr := u.String()
+		log.Print("etcd: listening for client requests on ", urlStr)
+		clns = append(clns, l)
+	}
+
 	cfg := &etcdserver.ServerConfig{
 		Name:         *name,
 		ClientURLs:   acurls,
@@ -190,43 +226,17 @@ func startEtcd() {
 		Info:    corsInfo,
 	}
 	ph := etcdhttp.NewPeerHandler(s)
-
-	lpurls, err := flags.URLsFromFlags(fs, "listen-peer-urls", "peer-bind-addr", peerTLSInfo)
-	if err != nil {
-		log.Fatal(err.Error())
-	}
-
-	for _, u := range lpurls {
-		l, err := transport.NewListener(u.Host, peerTLSInfo)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		// Start the peer server in a goroutine
-		urlStr := u.String()
-		go func() {
-			log.Print("etcd: listening for peers on ", urlStr)
+	// Start the peer server in a goroutine
+	for _, l := range plns {
+		go func(l net.Listener) {
 			log.Fatal(http.Serve(l, ph))
-		}()
+		}(l)
 	}
-
-	lcurls, err := flags.URLsFromFlags(fs, "listen-client-urls", "bind-addr", clientTLSInfo)
-	if err != nil {
-		log.Fatal(err.Error())
-	}
-
 	// Start a client server goroutine for each listen address
-	for _, u := range lcurls {
-		l, err := transport.NewListener(u.Host, clientTLSInfo)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		urlStr := u.String()
-		go func() {
-			log.Print("etcd: listening for client requests on ", urlStr)
+	for _, l := range clns {
+		go func(l net.Listener) {
 			log.Fatal(http.Serve(l, ch))
-		}()
+		}(l)
 	}
 }
 
