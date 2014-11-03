@@ -168,8 +168,12 @@ func RestartNode(id uint64, election, heartbeat int, snapshot *pb.Snapshot, st p
 	if snapshot != nil {
 		r.restore(*snapshot)
 	}
-	r.loadState(st)
-	r.loadEnts(ents)
+	if !isHardStateEqual(st, emptyState) {
+		r.loadState(st)
+	}
+	if len(ents) != 0 {
+		r.loadEnts(ents)
+	}
 	go n.run(r)
 	return &n
 }
