@@ -112,7 +112,7 @@ func TestNodeStepUnblock(t *testing.T) {
 // who is the current leader.
 func TestBlockProposal(t *testing.T) {
 	n := newNode()
-	r := newRaft(1, []uint64{1}, 10, 1)
+	r := newRaft(1, []uint64{1}, 10, 1, nil)
 	go n.run(r)
 	defer n.Stop()
 
@@ -175,7 +175,6 @@ func TestNode(t *testing.T) {
 			SoftState: &SoftState{Lead: 1, Nodes: []uint64{1}, RaftState: StateLeader},
 			HardState: raftpb.HardState{Term: 1, Commit: 2},
 			Entries: []raftpb.Entry{
-				{},
 				{Type: raftpb.EntryConfChange, Term: 1, Index: 1, Data: ccdata},
 				{Term: 1, Index: 2},
 			},
@@ -190,12 +189,15 @@ func TestNode(t *testing.T) {
 			CommittedEntries: []raftpb.Entry{{Term: 1, Index: 3, Data: []byte("foo")}},
 		},
 	}
-	n := StartNode(1, []Peer{{ID: 1}}, 10, 1)
+	storage := NewMemoryStorage()
+	n := StartNode(1, []Peer{{ID: 1}}, 10, 1, storage)
 	n.ApplyConfChange(cc)
 	n.Campaign(ctx)
-	if g := <-n.Ready(); !reflect.DeepEqual(g, wants[0]) {
+	g := <-n.Ready()
+	if !reflect.DeepEqual(g, wants[0]) {
 		t.Errorf("#%d: g = %+v,\n             w   %+v", 1, g, wants[0])
 	} else {
+		storage.Append(g.Entries)
 		n.Advance()
 	}
 
@@ -203,6 +205,7 @@ func TestNode(t *testing.T) {
 	if g := <-n.Ready(); !reflect.DeepEqual(g, wants[1]) {
 		t.Errorf("#%d: g = %+v,\n             w   %+v", 2, g, wants[1])
 	} else {
+		storage.Append(g.Entries)
 		n.Advance()
 	}
 
@@ -227,7 +230,7 @@ func TestNodeRestart(t *testing.T) {
 		CommittedEntries: entries[1 : st.Commit+1],
 	}
 
-	n := RestartNode(1, 10, 1, nil, st, entries)
+	n := RestartNode(1, 10, 1, nil, st, entries, nil)
 	if g := <-n.Ready(); !reflect.DeepEqual(g, want) {
 		t.Errorf("g = %+v,\n             w   %+v", g, want)
 	} else {
@@ -246,7 +249,8 @@ func TestNodeRestart(t *testing.T) {
 func TestNodeCompact(t *testing.T) {
 	ctx := context.Background()
 	n := newNode()
-	r := newRaft(1, []uint64{1}, 10, 1)
+	storage := NewMemoryStorage()
+	r := newRaft(1, []uint64{1}, 10, 1, storage)
 	go n.run(r)
 
 	n.Campaign(ctx)
@@ -261,7 +265,8 @@ func TestNodeCompact(t *testing.T) {
 
 	testutil.ForceGosched()
 	select {
-	case <-n.Ready():
+	case rd := <-n.Ready():
+		storage.Append(rd.Entries)
 		n.Advance()
 	default:
 		t.Fatalf("unexpected proposal failure: unable to commit entry")
@@ -274,6 +279,7 @@ func TestNodeCompact(t *testing.T) {
 		if !reflect.DeepEqual(rd.Snapshot, w) {
 			t.Errorf("snap = %+v, want %+v", rd.Snapshot, w)
 		}
+		storage.Append(rd.Entries)
 		n.Advance()
 	default:
 		t.Fatalf("unexpected compact failure: unable to create a snapshot")
@@ -288,8 +294,8 @@ func TestNodeCompact(t *testing.T) {
 	}
 	n.Stop()
 
-	if r.raftLog.offset != w.Index {
-		t.Errorf("log.offset = %d, want %d", r.raftLog.offset, w.Index)
+	if r.raftLog.firstIndex() != w.Index {
+		t.Errorf("log.offset = %d, want %d", r.raftLog.firstIndex(), w.Index)
 	}
 }
 
@@ -297,7 +303,7 @@ func TestNodeAdvance(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	n := StartNode(1, []Peer{{ID: 1}}, 10, 1)
+	n := StartNode(1, []Peer{{ID: 1}}, 10, 1, nil)
 	n.ApplyConfChange(raftpb.ConfChange{Type: raftpb.ConfChangeAddNode, NodeID: 1})
 	n.Campaign(ctx)
 	<-n.Ready()

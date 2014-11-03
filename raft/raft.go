@@ -119,14 +119,14 @@ type raft struct {
 	step             stepFunc
 }
 
-func newRaft(id uint64, peers []uint64, election, heartbeat int) *raft {
+func newRaft(id uint64, peers []uint64, election, heartbeat int, storage Storage) *raft {
 	if id == None {
 		panic("cannot use none id")
 	}
 	r := &raft{
 		id:               id,
 		lead:             None,
-		raftLog:          newLog(),
+		raftLog:          newLog(storage),
 		prs:              make(map[uint64]*progress),
 		electionTimeout:  election,
 		heartbeatTimeout: heartbeat,
@@ -517,7 +517,7 @@ func (r *raft) restore(s pb.Snapshot) bool {
 }
 
 func (r *raft) needSnapshot(i uint64) bool {
-	if i < r.raftLog.offset {
+	if i < r.raftLog.firstIndex() {
 		if r.raftLog.snapshot.Term == 0 {
 			panic("need non-empty snapshot")
 		}

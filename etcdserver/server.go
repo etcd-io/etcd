@@ -156,8 +156,9 @@ type EtcdServer struct {
 
 	Cluster *Cluster
 
-	node  raft.Node
-	store store.Store
+	node        raft.Node
+	raftStorage *raft.MemoryStorage
+	store       store.Store
 
 	stats  *stats.ServerStats
 	lstats *stats.LeaderStats
@@ -190,6 +191,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 	st := store.New()
 	var w *wal.WAL
 	var n raft.Node
+	var s *raft.MemoryStorage
 	var id types.ID
 	haveWAL := wal.Exist(cfg.WALDir())
 	switch {
@@ -204,7 +206,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		}
 		cfg.Cluster.SetID(cl.id)
 		cfg.Cluster.SetStore(st)
-		id, n, w = startNode(cfg, nil)
+		id, n, s, w = startNode(cfg, nil)
 	case !haveWAL && cfg.NewCluster:
 		if err := cfg.VerifyBootstrapConfig(); err != nil {
 			return nil, err
@@ -221,7 +223,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		}
 		cfg.Cluster.SetStore(st)
 		log.Printf("etcdserver: initial cluster members: %s", cfg.Cluster)
-		id, n, w = startNode(cfg, cfg.Cluster.MemberIDs())
+		id, n, s, w = startNode(cfg, cfg.Cluster.MemberIDs())
 	case haveWAL:
 		if cfg.ShouldDiscover() {
 			log.Printf("etcdserver: warn: ignoring discovery: etcd has already been initialized and has a valid log in %q", cfg.WALDir())
@@ -241,9 +243,9 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 			log.Printf("etcdserver: loaded peers from snapshot: %s", cfg.Cluster)
 		}
 		if !cfg.ForceNewCluster {
-			id, n, w = restartNode(cfg, index, snapshot)
+			id, n, s, w = restartNode(cfg, index, snapshot)
 		} else {
-			id, n, w = restartAsStandaloneNode(cfg, index, snapshot)
+			id, n, s, w = restartAsStandaloneNode(cfg, index, snapshot)
 		}
 	default:
 		return nil, fmt.Errorf("unsupported bootstrap config")
@@ -256,12 +258,13 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 	lstats := stats.NewLeaderStats(id.String())
 
 	shub := newSendHub(cfg.Transport, cfg.Cluster, sstats, lstats)
-	s := &EtcdServer{
-		store:      st,
-		node:       n,
-		id:         id,
-		attributes: Attributes{Name: cfg.Name, ClientURLs: cfg.ClientURLs.StringSlice()},
-		Cluster:    cfg.Cluster,
+	srv := &EtcdServer{
+		store:       st,
+		node:        n,
+		raftStorage: s,
+		id:          id,
+		attributes:  Attributes{Name: cfg.Name, ClientURLs: cfg.ClientURLs.StringSlice()},
+		Cluster:     cfg.Cluster,
 		storage: struct {
 			*wal.WAL
 			*snap.Snapshotter
@@ -273,7 +276,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		SyncTicker: time.Tick(500 * time.Millisecond),
 		snapCount:  cfg.SnapCount,
 	}
-	return s, nil
+	return srv, nil
 }
 
 // Start prepares and starts server in a new goroutine. It is no longer safe to
@@ -327,6 +330,7 @@ func (s *EtcdServer) run() {
 				}
 			}
 
+			s.raftStorage.Append(rd.Entries)
 			if err := s.storage.Save(rd.HardState, rd.Entries); err != nil {
 				log.Fatalf("etcdserver: save state and entries error: %v", err)
 			}
@@ -722,7 +726,7 @@ func GetClusterFromPeers(urls []string) (*Cluster, error) {
 	return nil, fmt.Errorf("etcdserver: could not retrieve cluster information from the given urls")
 }
 
-func startNode(cfg *ServerConfig, ids []types.ID) (id types.ID, n raft.Node, w *wal.WAL) {
+func startNode(cfg *ServerConfig, ids []types.ID) (id types.ID, n raft.Node, s *raft.MemoryStorage, w *wal.WAL) {
 	var err error
 	member := cfg.Cluster.MemberByName(cfg.Name)
 	metadata := pbutil.MustMarshal(
@@ -744,7 +748,8 @@ func startNode(cfg *ServerConfig, ids []types.ID) (id types.ID, n raft.Node, w *
 	}
 	id = member.ID
 	log.Printf("etcdserver: start node %s in cluster %s", id, cfg.Cluster.ID())
-	n = raft.StartNode(uint64(id), peers, 10, 1)
+	s = raft.NewMemoryStorage()
+	n = raft.StartNode(uint64(id), peers, 10, 1, s)
 	return
 }
 
@@ -762,13 +767,14 @@ func getOtherPeerURLs(cl ClusterInfo, self string) []string {
 	return us
 }
 
-func restartNode(cfg *ServerConfig, index uint64, snapshot *raftpb.Snapshot) (types.ID, raft.Node, *wal.WAL) {
+func restartNode(cfg *ServerConfig, index uint64, snapshot *raftpb.Snapshot) (types.ID, raft.Node, *raft.MemoryStorage, *wal.WAL) {
 	w, id, cid, st, ents := readWAL(cfg.WALDir(), index)
 	cfg.Cluster.SetID(cid)
 
 	log.Printf("etcdserver: restart member %s in cluster %s at commit index %d", id, cfg.Cluster.ID(), st.Commit)
-	n := raft.RestartNode(uint64(id), 10, 1, snapshot, st, ents)
-	return id, n, w
+	s := raft.NewMemoryStorage()
+	n := raft.RestartNode(uint64(id), 10, 1, snapshot, st, ents, s)
+	return id, n, s, w
 }
 
 func readWAL(waldir string, index uint64) (w *wal.WAL, id, cid types.ID, st raftpb.HardState, ents []raftpb.Entry) {

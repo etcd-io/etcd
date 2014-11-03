@@ -144,9 +144,9 @@ type Peer struct {
 // StartNode returns a new Node given a unique raft id, a list of raft peers, and
 // the election and heartbeat timeouts in units of ticks.
 // It also builds ConfChangeAddNode entry for each peer and puts them at the head of the log.
-func StartNode(id uint64, peers []Peer, election, heartbeat int) Node {
+func StartNode(id uint64, peers []Peer, election, heartbeat int, storage Storage) Node {
 	n := newNode()
-	r := newRaft(id, nil, election, heartbeat)
+	r := newRaft(id, nil, election, heartbeat, storage)
 
 	for _, peer := range peers {
 		cc := pb.ConfChange{Type: pb.ConfChangeAddNode, NodeID: peer.ID, Context: peer.Context}
@@ -166,9 +166,11 @@ func StartNode(id uint64, peers []Peer, election, heartbeat int) Node {
 // RestartNode is identical to StartNode but takes an initial State and a slice
 // of entries. Generally this is used when restarting from a stable storage
 // log.
-func RestartNode(id uint64, election, heartbeat int, snapshot *pb.Snapshot, st pb.HardState, ents []pb.Entry) Node {
+// TODO(bdarnell): remove args that are unnecessary with storage.
+// Maybe this function goes away and is replaced by StartNode with a non-empty Storage.
+func RestartNode(id uint64, election, heartbeat int, snapshot *pb.Snapshot, st pb.HardState, ents []pb.Entry, storage Storage) Node {
 	n := newNode()
-	r := newRaft(id, nil, election, heartbeat)
+	r := newRaft(id, nil, election, heartbeat, storage)
 	if snapshot != nil {
 		r.restore(*snapshot)
 	}
@@ -387,7 +389,7 @@ func (n *node) Compact(index uint64, nodes []uint64, d []byte) {
 
 func newReady(r *raft, prevSoftSt *SoftState, prevHardSt pb.HardState, prevSnapi uint64) Ready {
 	rd := Ready{
-		Entries:          r.raftLog.unstableEnts(),
+		Entries:          r.raftLog.unstableEntries(),
 		CommittedEntries: r.raftLog.nextEnts(),
 		Messages:         r.msgs,
 	}
