@@ -143,6 +143,10 @@ func (c *cluster) Launch(t *testing.T) {
 	}
 }
 
+func (c *cluster) URL(i int) string {
+	return c.Members[i].ClientURLs[0].String()
+}
+
 func (c *cluster) Terminate(t *testing.T) {
 	for _, m := range c.Members {
 		m.Terminate(t)
@@ -174,7 +178,7 @@ type member struct {
 func (m *member) Launch(t *testing.T) {
 	m.s = etcdserver.NewServer(&m.ServerConfig)
 	m.s.Ticker = time.Tick(tickDuration)
-	m.s.SyncTicker = nil
+	m.s.SyncTicker = time.Tick(tickDuration)
 	m.s.Start()
 
 	for _, ln := range m.PeerListeners {
@@ -200,15 +204,16 @@ func (m *member) Stop(t *testing.T) {
 	panic("unimplemented")
 }
 
-// Start starts the member using preserved data dir.
+// Start starts the member using the preserved data dir.
 func (m *member) Start(t *testing.T) {
 	panic("unimplemented")
 }
 
-// Terminate stops the member and remove the data dir.
+// Terminate stops the member and removes the data dir.
 func (m *member) Terminate(t *testing.T) {
 	m.s.Stop()
 	for _, hs := range m.hss {
+		hs.CloseClientConnections()
 		hs.Close()
 	}
 	if err := os.RemoveAll(m.ServerConfig.DataDir); err != nil {
