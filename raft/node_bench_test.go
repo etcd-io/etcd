@@ -10,12 +10,16 @@ func BenchmarkOneNode(b *testing.B) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	n := StartNode(1, []Peer{{ID: 1}}, 0, 0)
+	n := newNode()
+	r := newRaft(1, []uint64{1}, 10, 1)
+	go n.run(r)
+
 	defer n.Stop()
 
 	n.Campaign(ctx)
 	for i := 0; i < b.N; i++ {
 		<-n.Ready()
+		n.Advance()
 		n.Propose(ctx, []byte("foo"))
 	}
 	rd := <-n.Ready()

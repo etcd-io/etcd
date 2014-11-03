@@ -814,6 +814,7 @@ func TestTriggerSnap(t *testing.T) {
 	ctx := context.Background()
 	n := raft.StartNode(0xBAD0, mustMakePeerSlice(t, 0xBAD0), 10, 1)
 	<-n.Ready()
+	n.Advance()
 	n.ApplyConfChange(raftpb.ConfChange{Type: raftpb.ConfChangeAddNode, NodeID: 0xBAD0})
 	n.Campaign(ctx)
 	st := &storeRecorder{}
@@ -1252,6 +1253,7 @@ func (n *readyNode) ProposeConfChange(ctx context.Context, conf raftpb.ConfChang
 }
 func (n *readyNode) Step(ctx context.Context, msg raftpb.Message) error { return nil }
 func (n *readyNode) Ready() <-chan raft.Ready                           { return n.readyc }
+func (n *readyNode) Advance()                                           {}
 func (n *readyNode) ApplyConfChange(conf raftpb.ConfChange)             {}
 func (n *readyNode) Stop()                                              {}
 func (n *readyNode) Compact(index uint64, nodes []uint64, d []byte)     {}
@@ -1260,9 +1262,8 @@ type nodeRecorder struct {
 	recorder
 }
 
-func (n *nodeRecorder) Tick() {
-	n.record(action{name: "Tick"})
-}
+func (n *nodeRecorder) Tick() { n.record(action{name: "Tick"}) }
+
 func (n *nodeRecorder) Campaign(ctx context.Context) error {
 	n.record(action{name: "Campaign"})
 	return nil
@@ -1280,6 +1281,7 @@ func (n *nodeRecorder) Step(ctx context.Context, msg raftpb.Message) error {
 	return nil
 }
 func (n *nodeRecorder) Ready() <-chan raft.Ready { return nil }
+func (n *nodeRecorder) Advance()                 {}
 func (n *nodeRecorder) ApplyConfChange(conf raftpb.ConfChange) {
 	n.record(action{name: "ApplyConfChange", params: []interface{}{conf}})
 }

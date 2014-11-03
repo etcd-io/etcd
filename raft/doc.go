@@ -51,8 +51,9 @@ The total state machine handling loop will look something like this:
 			n.Tick()
 		case rd := <-s.Node.Ready():
 			saveToStable(rd.State, rd.Entries)
-			process(rd.CommittedEntries)
 			send(rd.Messages)
+			process(rd.CommittedEntries)
+			s.Node.Advance()
 		case <-s.done:
 			return
 		}
