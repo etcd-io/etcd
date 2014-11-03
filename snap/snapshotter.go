@@ -52,11 +52,11 @@ func New(dir string) *Snapshotter {
 	}
 }
 
-func (s *Snapshotter) SaveSnap(snapshot raftpb.Snapshot) {
+func (s *Snapshotter) SaveSnap(snapshot raftpb.Snapshot) error {
 	if raft.IsEmptySnap(snapshot) {
-		return
+		return nil
 	}
-	s.save(&snapshot)
+	return s.save(&snapshot)
 }
 
 func (s *Snapshotter) save(snapshot *raftpb.Snapshot) error {
