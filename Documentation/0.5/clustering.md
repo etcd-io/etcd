@@ -16,13 +16,13 @@ before starting we can use an offline bootstrap configuration. Each machine
 will get either the following command line or environment variables:
 
 ```
-ETCD_INITIAL_CLUSTER=”infra0=http://10.0.1.10:2379,infra1=http://10.0.1.11:2379,infra2=http://10.0.1.12:2379”
+ETCD_INITIAL_CLUSTER="infra0=http://10.0.1.10:2380,infra1=http://10.0.1.11:2380,infra2=http://10.0.1.12:2380"
 ETCD_INITIAL_CLUSTER_STATE=new
 ```
 
 ```
--initial-cluster infra0=http://10.0.1.10:2379,http://10.0.1.11:2379,infra2=http://10.0.1.12:2379 \
-	-initial-cluster-state new
+-initial-cluster infra0=http://10.0.1.10:2380,http://10.0.1.11:2380,infra2=http://10.0.1.12:2380 \
+  -initial-cluster-state new
 ```
 
 If you are spinning up multiple clusters (or creating and destroying a single cluster) with same configuration for testing purpose, it is highly recommended that you specify a unique `initial-cluster-token` for the different clusters. 
@@ -31,15 +31,15 @@ By doing this, etcd can generate unique cluster IDs and member IDs for the clust
 On each machine you would start etcd with these flags:
 
 ```
-$ etcd -name infra0 -initial-advertise-peer-urls https://10.0.1.10:2379 initial-cluster-token etcd-cluster-1\
-	-initial-cluster infra0=http://10.0.1.10:2379,infra1=http://10.0.1.11:2379,infra2=http://10.0.1.12:2379 \
-	-initial-cluster-state new
-$ etcd -name infra1 -initial-advertise-peer-urls https://10.0.1.11:2379 initial-cluster-token etcd-cluster-1\
-	-initial-cluster infra0=http://10.0.1.10:2379,infra1=http://10.0.1.11:2379,infra2=http://10.0.1.12:2379 \
-	-initial-cluster-state new
-$ etcd -name infra2 -initial-advertise-peer-urls https://10.0.1.12:2379 initial-cluster-token etcd-cluster-1\
-	-initial-cluster infra0=http://10.0.1.10:2379,infra1=http://10.0.1.11:2379,infra2=http://10.0.1.12:2379 \
-	-initial-cluster-state new
+$ etcd -name infra0 -initial-advertise-peer-urls https://10.0.1.10:2379 initial-cluster-token etcd-cluster-1 \
+  -initial-cluster infra0=http://10.0.1.10:2380,infra1=http://10.0.1.11:2380,infra2=http://10.0.1.12:2380 \
+  -initial-cluster-state new
+$ etcd -name infra1 -initial-advertise-peer-urls https://10.0.1.11:2379 initial-cluster-token etcd-cluster-1 \
+  -initial-cluster infra0=http://10.0.1.10:2380,infra1=http://10.0.1.11:2380,infra2=http://10.0.1.12:2380 \
+  -initial-cluster-state new
+$ etcd -name infra2 -initial-advertise-peer-urls https://10.0.1.12:2379 initial-cluster-token etcd-cluster-1 \
+  -initial-cluster infra0=http://10.0.1.10:2380,infra1=http://10.0.1.11:2380,infra2=http://10.0.1.12:2380 \
+  -initial-cluster-state new
 ```
 
 The command line parameters starting with `-initial-cluster` will be ignored on
@@ -52,23 +52,24 @@ changes to the configuration later see our guide on runtime configuration.
 In the following case we have not included our new host in the list of
 enumerated nodes. If this is a new cluster, the node must be added to the list
 of initial cluster members.
+
 ```
 $ etcd -name infra1 -initial-advertise-peer-urls http://10.0.1.11:2379 \
-	-initial-cluster infra0=http://10.0.1.10:2379 \
-	-initial-cluster-state new
+  -initial-cluster infra0=http://10.0.1.10:2380 \
+  -initial-cluster-state new
 etcd: infra1 not listed in the initial cluster config
 exit 1
 ```
 
 In this case we are attempting to map a node (infra0) on a different address
-(127.0.0.1:2379) than its enumerated address in the cluster list
-(10.0.1.10:2379). If this node is to listen on multiple addresses, all
-addresses must be reflected in the “initial-cluster” configuration directive.
+(127.0.0.1:2380) than its enumerated address in the cluster list
+(10.0.1.10:2380). If this node is to listen on multiple addresses, all
+addresses must be reflected in the "initial-cluster" configuration directive.
 
 ```
 $ etcd -name infra0 -initial-advertise-peer-urls http://127.0.0.1:2379 \
-	-initial-cluster infra0=http://10.0.1.10:2379,infra1=http://10.0.1.11:2379,infra2=http://10.0.1.12:2379 \
-	-initial-cluster-state=new
+  -initial-cluster infra0=http://10.0.1.10:2380,infra1=http://10.0.1.11:2380,infra2=http://10.0.1.12:2380 \
+  -initial-cluster-state=new
 etcd: infra0 has different advertised URLs in the cluster and advertised peer URLs list
 exit 1
 ```
@@ -78,8 +79,8 @@ join this cluster you will get a cluster ID mismatch and etcd will exit.
 
 ```
 $ etcd -name infra3 -initial-advertise-peer-urls http://10.0.1.13:2379 \
-	-initial-cluster infra0=http://10.0.1.10:2379,infra1=http://10.0.1.11:2379,infra3=http://10.0.1.13:2379 \
-	-initial-cluster-state=new
+  -initial-cluster infra0=http://10.0.1.10:2380,infra1=http://10.0.1.11:2380,infra3=http://10.0.1.13:2380 \
+  -initial-cluster-state=new
 etcd: conflicting cluster ID to the target cluster (c6ab534d07e8fcc4 != bc25ea2a74fb18b0). Exiting.
 exit 1
 ```

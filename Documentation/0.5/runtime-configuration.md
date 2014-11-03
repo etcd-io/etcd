@@ -67,7 +67,7 @@ We then use the `remove` command to perform the removal:
 
 ```
 $ etcdctl member remove a8266ecf031671f3
-EOF
+Removed member a8266ecf031671f3 from cluster
 ```
 
 The target member will stop itself at this point and print out the removal in the log:
@@ -80,24 +80,28 @@ Removal of the leader is safe, but the cluster will be out of progress for a per
 
 ### Add a Member
 
-Adding a member is a two step process.
-First we have to tell the cluster that it should expect a new member to join, then we will need to start the member with the correct configuration.
+Adding a member is a two step process:
 
-Using `etcdctl`, let’s tell the cluster about the new member:
+ * Add the new member to the cluster via the [members API](https://github.com/coreos/etcd/blob/master/Documentation/0.5/other_apis.md#post-v2members) or the `etcdctl member add` command.
+ * Start the member with the correct configuration.
+
+Using `etcdctl` let's add the new member to the cluster:
 
 ```
-$ etcdctl member add infra3 http://10.0.1.13:2379
+$ etcdctl member add infra3 http://10.0.1.13:2380
 added member 9bf1b35fc7761a23 to cluster
 ETCD_NAME="infra3"
-ETCD_INITIAL_CLUSTER="infra0=http://10.0.1.10:2379,infra1=http://10.0.1.11:2379,infra2=http://10.0.1.12:2379,infra3=http://10.0.1.13:2379"
+ETCD_INITIAL_CLUSTER="infra0=http://10.0.1.10:2380,infra1=http://10.0.1.11:2380,infra2=http://10.0.1.12:2380,infra3=http://10.0.1.13:2380"
 ETCD_INITIAL_CLUSTER_STATE=existing
 ```
+
+> Notice that infra3 was added to the cluster using its advertised peer URL.
 
 Now start the new etcd process with the relevant flags for the new member:
 
 ```
 $ export ETCD_NAME="infra3"
-$ export ETCD_INITIAL_CLUSTER="infra0=http://10.0.1.10:2379,infra1=http://10.0.1.11:2379,infra2=http://10.0.1.12:2379,infra3=http://10.0.1.13:2379"
+$ export ETCD_INITIAL_CLUSTER="infra0=http://10.0.1.10:2380,infra1=http://10.0.1.11:2380,infra2=http://10.0.1.12:2380,infra3=http://10.0.1.13:2380"
 $ export ETCD_INITIAL_CLUSTER_STATE=existing
 $ etcd -listen-client-urls http://10.0.1.13:2379 -advertise-client-urls http://10.0.1.13:2379  -listen-peer-urls http://10.0.1.13:2380 -initial-advertise-peer-urls http://10.0.1.13:2380
 ```
@@ -114,18 +118,18 @@ If this is a new cluster, the node must be added to the list of initial cluster 
 
 ```
 $ etcd -name infra3 \
-    -initial-cluster infra0=http://10.0.1.10:2379,infra1=http://10.0.1.11:2379,infra2=http://10.0.1.12:2379 \
-    -initial-cluster-state existing
+  -initial-cluster infra0=http://10.0.1.10:2380,infra1=http://10.0.1.11:2380,infra2=http://10.0.1.12:2380 \
+  -initial-cluster-state existing
 etcdserver: assign ids error: the member count is unequal
 exit 1
 ```
 
-In this case we give a different address (10.0.1.14:2379) to the one that we used to join the cluster (10.0.1.13:2379).
+In this case we give a different address (10.0.1.14:2380) to the one that we used to join the cluster (10.0.1.13:2380).
 
 ```
 $ etcd -name infra4 \
-    -initial-cluster infra0=http://10.0.1.10:2379,infra1=http://10.0.1.11:2379,infra2=http://10.0.1.12:2379,infra4=http://10.0.1.14:2379 \
-    -initial-cluster-state existing
+  -initial-cluster infra0=http://10.0.1.10:2380,infra1=http://10.0.1.11:2380,infra2=http://10.0.1.12:2380,infra4=http://10.0.1.14:2380 \
+  -initial-cluster-state existing
 etcdserver: assign ids error: unmatched member while checking PeerURLs
 exit 1
 ```
