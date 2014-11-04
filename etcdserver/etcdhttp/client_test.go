@@ -257,7 +257,7 @@ func TestBadParseRequest(t *testing.T) {
 		// prevValue cannot be empty
 		{
 			mustNewForm(t, "foo", url.Values{"prevValue": []string{""}}),
-			etcdErr.EcodeInvalidField,
+			etcdErr.EcodePrevValueRequired,
 		},
 		// wait is only valid with GET requests
 		{
