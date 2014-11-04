@@ -63,6 +63,16 @@ var errors = map[int]string{
 	EcodeClientInternal: "Client Internal Error",
 }
 
+var errorStatus = map[int]int{
+	EcodeKeyNotFound:  http.StatusNotFound,
+	EcodeNotFile:      http.StatusForbidden,
+	EcodeDirNotEmpty:  http.StatusForbidden,
+	EcodeTestFailed:   http.StatusPreconditionFailed,
+	EcodeNodeExist:    http.StatusPreconditionFailed,
+	EcodeRaftInternal: http.StatusInternalServerError,
+	EcodeLeaderElect:  http.StatusInternalServerError,
+}
+
 const (
 	EcodeKeyNotFound      = 100
 	EcodeTestFailed       = 101
@@ -133,22 +143,17 @@ func (e Error) toJsonString() string {
 	return string(b)
 }
 
+func (e Error) statusCode() int {
+	status, ok := errorStatus[e.ErrorCode]
+	if !ok {
+		status = http.StatusBadRequest
+	}
+	return status
+}
+
 func (e Error) WriteTo(w http.ResponseWriter) {
 	w.Header().Add("X-Etcd-Index", fmt.Sprint(e.Index))
-	// 3xx is raft internal error
-	status := http.StatusBadRequest
-	switch e.ErrorCode {
-	case EcodeKeyNotFound:
-		status = http.StatusNotFound
-	case EcodeNotFile, EcodeDirNotEmpty:
-		status = http.StatusForbidden
-	case EcodeTestFailed, EcodeNodeExist:
-		status = http.StatusPreconditionFailed
-	default:
-		if e.ErrorCode/100 == 3 {
-			status = http.StatusInternalServerError
-		}
-	}
-	w.WriteHeader(status)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(e.statusCode())
 	fmt.Fprintln(w, e.toJsonString())
 }
