@@ -409,6 +409,12 @@ func (s *EtcdServer) Do(ctx context.Context, r pb.Request) (Response, error) {
 			}
 			return Response{Event: ev}, nil
 		}
+	case "HEAD":
+		ev, err := s.store.Get(r.Path, r.Recursive, r.Sorted)
+		if err != nil {
+			return Response{}, err
+		}
+		return Response{Event: ev}, nil
 	default:
 		return Response{}, ErrUnknownMethod
 	}

@@ -912,8 +912,6 @@ func TestV2WatchKeyInDir(t *testing.T) {
 	}
 }
 
-// TODO(jonboulle): enable once #1590 is fixed
-/*
 func TestV2Head(t *testing.T) {
 	cl := cluster{Size: 1}
 	cl.Launch(t)
@@ -930,8 +928,8 @@ func TestV2Head(t *testing.T) {
 	if resp.StatusCode != http.StatusNotFound {
 		t.Errorf("status = %d, want %d", resp.StatusCode, http.StatusNotFound)
 	}
-	if resp.ContentLength != -1 {
-		t.Errorf("ContentLength = %d, want -1", resp.ContentLength)
+	if resp.ContentLength <= 0 {
+		t.Errorf("ContentLength = %d, want > 0", resp.ContentLength)
 	}
 
 	resp, _ = tc.PutForm(fullURL, v)
@@ -942,11 +940,10 @@ func TestV2Head(t *testing.T) {
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("status = %d, want %d", resp.StatusCode, http.StatusOK)
 	}
-	if resp.ContentLength != -1 {
-		t.Errorf("ContentLength = %d, want -1", resp.ContentLength)
+	if resp.ContentLength <= 0 {
+		t.Errorf("ContentLength = %d, want > 0", resp.ContentLength)
 	}
 }
-*/
 
 func checkBody(body map[string]interface{}, w map[string]interface{}) error {
 	if body["node"] != nil {
