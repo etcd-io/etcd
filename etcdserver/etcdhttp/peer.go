@@ -87,7 +87,7 @@ func (h *raftHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := h.server.Process(context.TODO(), m); err != nil {
 		switch err {
-		case etcdserver.ErrRemoved:
+		case etcdserver.ErrIDRemoved:
 			log.Printf("etcdhttp: reject message from removed member %s", types.ID(m.From).String())
 			http.Error(w, "cannot process message from removed member", http.StatusForbidden)
 		default:
