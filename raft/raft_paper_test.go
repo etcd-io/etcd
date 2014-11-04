@@ -233,7 +233,6 @@ func TestLeaderElectionInOneRoundRPC(t *testing.T) {
 
 // TestFollowerVote tests that each follower will vote for at most one
 // candidate in a given term, on a first-come-first-served basis.
-// TODO: (note: Section 5.4 adds an additional restriction on votes).
 // Reference: section 5.2
 func TestFollowerVote(t *testing.T) {
 	tests := []struct {
@@ -742,6 +741,131 @@ func TestLeaderSyncFollowerLog(t *testing.T) {
 
 		if g := diffu(ltoa(lead.raftLog), ltoa(follower.raftLog)); g != "" {
 			t.Errorf("#%d: log diff:\n%s", i, g)
+		}
+	}
+}
+
+// TestVoteRequest tests that the vote request includes information about the candidate’s log
+// and are sent to all of the other nodes.
+// Reference: section 5.4.1
+func TestVoteRequest(t *testing.T) {
+	tests := []struct {
+		ents  []pb.Entry
+		wterm uint64
+	}{
+		{[]pb.Entry{{Term: 1, Index: 1}}, 2},
+		{[]pb.Entry{{Term: 1, Index: 1}, {Term: 2, Index: 2}}, 3},
+	}
+	for i, tt := range tests {
+		r := newRaft(1, []uint64{1, 2, 3}, 10, 1)
+		r.Step(pb.Message{
+			From: 2, To: 1, Type: pb.MsgApp, Term: tt.wterm - 1, LogTerm: 0, Index: 0, Entries: tt.ents,
+		})
+		r.readMessages()
+
+		for i := 0; i < r.electionTimeout*2; i++ {
+			r.tickElection()
+		}
+
+		msgs := r.readMessages()
+		sort.Sort(messageSlice(msgs))
+		if len(msgs) != 2 {
+			t.Fatalf("#%d: len(msg) = %d, want %d", i, len(msgs), 2)
+		}
+		for i, m := range msgs {
+			if m.Type != pb.MsgVote {
+				t.Errorf("#%d: msgType = %d, want %d", i, m.Type, pb.MsgVote)
+			}
+			if m.To != uint64(i+2) {
+				t.Errorf("#%d: to = %d, want %d", i, m.To, i+2)
+			}
+			if m.Term != tt.wterm {
+				t.Errorf("#%d: term = %d, want %d", i, m.Term, tt.wterm)
+			}
+			windex, wlogterm := tt.ents[len(tt.ents)-1].Index, tt.ents[len(tt.ents)-1].Term
+			if m.Index != windex {
+				t.Errorf("#%d: index = %d, want %d", i, m.Index, windex)
+			}
+			if m.LogTerm != wlogterm {
+				t.Errorf("#%d: logterm = %d, want %d", i, m.LogTerm, wlogterm)
+			}
+		}
+	}
+}
+
+// TestVoter tests the voter denies its vote if its own log is more up-to-date
+// than that of the candidate.
+// Reference: section 5.4.1
+func TestVoter(t *testing.T) {
+	tests := []struct {
+		ents    []pb.Entry
+		logterm uint64
+		index   uint64
+
+		wreject bool
+	}{
+		// same logterm
+		{[]pb.Entry{{}, {Term: 1, Index: 1}}, 1, 1, false},
+		{[]pb.Entry{{}, {Term: 1, Index: 1}}, 1, 2, false},
+		{[]pb.Entry{{}, {Term: 1, Index: 1}, {Term: 1, Index: 2}}, 1, 1, true},
+		// candidate higher logterm
+		{[]pb.Entry{{}, {Term: 1, Index: 1}}, 2, 1, false},
+		{[]pb.Entry{{}, {Term: 1, Index: 1}}, 2, 2, false},
+		{[]pb.Entry{{}, {Term: 1, Index: 1}, {Term: 1, Index: 2}}, 2, 1, false},
+		// voter higher logterm
+		{[]pb.Entry{{}, {Term: 2, Index: 1}}, 1, 1, true},
+		{[]pb.Entry{{}, {Term: 2, Index: 1}}, 1, 2, true},
+		{[]pb.Entry{{}, {Term: 2, Index: 1}, {Term: 1, Index: 2}}, 1, 1, true},
+	}
+	for i, tt := range tests {
+		r := newRaft(1, []uint64{1, 2}, 10, 1)
+		r.loadEnts(tt.ents)
+
+		r.Step(pb.Message{From: 2, To: 1, Type: pb.MsgVote, Term: 3, LogTerm: tt.logterm, Index: tt.index})
+
+		msgs := r.readMessages()
+		if len(msgs) != 1 {
+			t.Fatalf("#%d: len(msg) = %d, want %d", i, len(msgs), 1)
+		}
+		m := msgs[0]
+		if m.Type != pb.MsgVoteResp {
+			t.Errorf("#%d: msgType = %d, want %d", i, m.Type, pb.MsgVoteResp)
+		}
+		if m.Reject != tt.wreject {
+			t.Errorf("#%d: reject = %t, want %t", i, m.Reject, tt.wreject)
+		}
+	}
+}
+
+// TestLeaderOnlyCommitsLogFromCurrentTerm tests that only log entries from the leader’s
+// current term are committed by counting replicas.
+// Reference: section 5.4.2
+func TestLeaderOnlyCommitsLogFromCurrentTerm(t *testing.T) {
+	ents := []pb.Entry{{}, {Term: 1, Index: 1}, {Term: 2, Index: 2}}
+	tests := []struct {
+		index   uint64
+		wcommit uint64
+	}{
+		// do not commit log entries in previous terms
+		{1, 0},
+		{2, 0},
+		// commit log in current term
+		{3, 3},
+	}
+	for i, tt := range tests {
+		r := newRaft(1, []uint64{1, 2}, 10, 1)
+		r.loadEnts(ents)
+		r.loadState(pb.HardState{Term: 2})
+		// become leader at term 3
+		r.becomeCandidate()
+		r.becomeLeader()
+		r.readMessages()
+		// propose a entry to current term
+		r.Step(pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{}}})
+
+		r.Step(pb.Message{From: 2, To: 1, Type: pb.MsgAppResp, Term: r.Term, Index: tt.index})
+		if r.raftLog.committed != tt.wcommit {
+			t.Errorf("#%d: commit = %d, want %d", i, r.raftLog.committed, tt.wcommit)
 		}
 	}
 }
