@@ -93,7 +93,7 @@ type keysHandler struct {
 }
 
 func (h *keysHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if !allowMethod(w, r.Method, "GET", "PUT", "POST", "DELETE") {
+	if !allowMethod(w, r.Method, "HEAD", "GET", "PUT", "POST", "DELETE") {
 		return
 	}
 	w.Header().Set("X-Etcd-Cluster-ID", h.clusterInfo.ID().String())

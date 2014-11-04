@@ -88,6 +88,16 @@ func TestDoLocalAction(t *testing.T) {
 			},
 		},
 		{
+			pb.Request{Method: "HEAD", ID: 1},
+			Response{Event: &store.Event{}}, nil,
+			[]action{
+				action{
+					name:   "Get",
+					params: []interface{}{"", false, false},
+				},
+			},
+		},
+		{
 			pb.Request{Method: "BADMETHOD", ID: 1},
 			Response{}, ErrUnknownMethod, []action{},
 		},
@@ -125,6 +135,10 @@ func TestDoBadLocalAction(t *testing.T) {
 		},
 		{
 			pb.Request{Method: "GET", ID: 1},
+			[]action{action{name: "Get"}},
+		},
+		{
+			pb.Request{Method: "HEAD", ID: 1},
 			[]action{action{name: "Get"}},
 		},
 	}

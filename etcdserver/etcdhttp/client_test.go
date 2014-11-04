@@ -63,6 +63,18 @@ func mustNewForm(t *testing.T, p string, vals url.Values) *http.Request {
 	return req
 }
 
+// mustNewPostForm takes a set of Values and constructs a POST *http.Request,
+// with a URL constructed from appending the given path to the standard keysPrefix
+func mustNewPostForm(t *testing.T, p string, vals url.Values) *http.Request {
+	u := mustNewURL(t, path.Join(keysPrefix, p))
+	req, err := http.NewRequest("POST", u.String(), strings.NewReader(vals.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	if err != nil {
+		t.Fatalf("error creating new request: %v", err)
+	}
+	return req
+}
+
 // mustNewRequest takes a path, appends it to the standard keysPrefix, and constructs
 // a GET *http.Request referencing the resulting URL
 func mustNewRequest(t *testing.T, p string) *http.Request {
@@ -1167,6 +1179,55 @@ func TestBadServeKeys(t *testing.T) {
 		}
 		if g := strings.TrimSuffix(rw.Body.String(), "\n"); g != tt.wbody {
 			t.Errorf("#%d: body = %s, want %s", i, g, tt.wbody)
+		}
+	}
+}
+
+func TestServeKeysGood(t *testing.T) {
+	tests := []struct {
+		req   *http.Request
+		wcode int
+	}{
+		{
+			mustNewMethodRequest(t, "HEAD", "foo"),
+			http.StatusOK,
+		},
+		{
+			mustNewMethodRequest(t, "GET", "foo"),
+			http.StatusOK,
+		},
+		{
+			mustNewForm(t, "foo", url.Values{"value": []string{"bar"}}),
+			http.StatusOK,
+		},
+		{
+			mustNewMethodRequest(t, "DELETE", "foo"),
+			http.StatusOK,
+		},
+		{
+			mustNewPostForm(t, "foo", url.Values{"value": []string{"bar"}}),
+			http.StatusOK,
+		},
+	}
+	server := &resServer{
+		etcdserver.Response{
+			Event: &store.Event{
+				Action: store.Get,
+				Node:   &store.NodeExtern{},
+			},
+		},
+	}
+	for i, tt := range tests {
+		h := &keysHandler{
+			timeout:     time.Hour,
+			server:      server,
+			timer:       &dummyRaftTimer{},
+			clusterInfo: &fakeCluster{id: 1},
+		}
+		rw := httptest.NewRecorder()
+		h.ServeHTTP(rw, tt.req)
+		if rw.Code != tt.wcode {
+			t.Errorf("#%d: got code=%d, want %d", i, rw.Code, tt.wcode)
 		}
 	}
 }
