@@ -648,8 +648,11 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, nodes []uint64) error
 			panic("unexpected nodeID mismatch")
 		}
 		s.Cluster.AddMember(m)
+		log.Printf("etcdserver: added node %s to cluster", types.ID(cc.NodeID))
 	case raftpb.ConfChangeRemoveNode:
-		s.Cluster.RemoveMember(types.ID(cc.NodeID))
+		id := types.ID(cc.NodeID)
+		s.Cluster.RemoveMember(id)
+		log.Printf("etcdserver: removed node %s from cluster", id)
 	}
 	return nil
 }
