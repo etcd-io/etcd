@@ -175,9 +175,9 @@ type EtcdServer struct {
 
 // NewServer creates a new EtcdServer from the supplied configuration. The
 // configuration is considered static for the lifetime of the EtcdServer.
-func NewServer(cfg *ServerConfig) *EtcdServer {
+func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 	if err := os.MkdirAll(cfg.SnapDir(), privateDirMode); err != nil {
-		log.Fatalf("etcdserver: cannot create snapshot directory: %v", err)
+		return nil, fmt.Errorf("cannot create snapshot directory: %v", err)
 	}
 	ss := snap.New(cfg.SnapDir())
 	st := store.New()
@@ -192,27 +192,27 @@ func NewServer(cfg *ServerConfig) *EtcdServer {
 			log.Fatal(err)
 		}
 		if err := cfg.Cluster.ValidateAndAssignIDs(cl.Members()); err != nil {
-			log.Fatalf("etcdserver: error validating IDs from cluster %s: %v", cl, err)
+			return nil, fmt.Errorf("error validating IDs from cluster %s: %v", cl, err)
 		}
 		cfg.Cluster.SetID(cl.id)
 		cfg.Cluster.SetStore(st)
 		id, n, w = startNode(cfg, nil)
 	case !haveWAL && cfg.ClusterState == ClusterStateValueNew:
 		if err := cfg.VerifyBootstrapConfig(); err != nil {
-			log.Fatalf("etcdserver: %v", err)
+			return nil, err
 		}
 		m := cfg.Cluster.MemberByName(cfg.Name)
 		if cfg.ShouldDiscover() {
 			d, err := discovery.New(cfg.DiscoveryURL, m.ID, cfg.Cluster.String())
 			if err != nil {
-				log.Fatalf("etcdserver: cannot init discovery %v", err)
+				return nil, fmt.Errorf("cannot init discovery %v", err)
 			}
 			s, err := d.Discover()
 			if err != nil {
-				log.Fatalf("etcdserver: %v", err)
+				return nil, err
 			}
 			if cfg.Cluster, err = NewClusterFromString(cfg.Cluster.token, s); err != nil {
-				log.Fatalf("etcdserver: %v", err)
+				return nil, err
 			}
 		}
 		cfg.Cluster.SetStore(st)
@@ -225,7 +225,7 @@ func NewServer(cfg *ServerConfig) *EtcdServer {
 		var index uint64
 		snapshot, err := ss.Load()
 		if err != nil && err != snap.ErrNoSnapshot {
-			log.Fatal(err)
+			return nil, err
 		}
 		if snapshot != nil {
 			log.Printf("etcdserver: recovering from snapshot at index %d", snapshot.Index)
@@ -235,7 +235,7 @@ func NewServer(cfg *ServerConfig) *EtcdServer {
 		cfg.Cluster = NewClusterFromStore(cfg.Cluster.token, st)
 		id, n, w = restartNode(cfg, index, snapshot)
 	default:
-		log.Fatalf("etcdserver: unsupported bootstrap config")
+		return nil, fmt.Errorf("unsupported bootstrap config")
 	}
 
 	sstats := &stats.ServerStats{
@@ -261,7 +261,7 @@ func NewServer(cfg *ServerConfig) *EtcdServer {
 		SyncTicker: time.Tick(500 * time.Millisecond),
 		snapCount:  cfg.SnapCount,
 	}
-	return s
+	return s, nil
 }
 
 // Start prepares and starts server in a new goroutine. It is no longer safe to

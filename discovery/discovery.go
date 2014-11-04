@@ -56,6 +56,10 @@ type Discoverer interface {
 	Discover() (string, error)
 }
 
+type ProxyDiscovery interface {
+	ProxyDiscover() (string, error)
+}
+
 type discovery struct {
 	cluster string
 	id      types.ID
@@ -97,6 +101,14 @@ func proxyFuncFromEnv() (func(*http.Request) (*url.URL, error), error) {
 }
 
 func New(durl string, id types.ID, config string) (Discoverer, error) {
+	return new(durl, id, config)
+}
+
+func ProxyNew(durl string) (ProxyDiscovery, error) {
+	return new(durl, 0, "")
+}
+
+func new(durl string, id types.ID, config string) (*discovery, error) {
 	u, err := url.Parse(durl)
 	if err != nil {
 		return nil, err
@@ -147,6 +159,22 @@ func (d *discovery) Discover() (string, error) {
 		return "", err
 	}
 
+	return nodesToCluster(all), nil
+}
+
+func (d *discovery) ProxyDiscover() (string, error) {
+	nodes, size, err := d.checkCluster()
+	if err != nil {
+		if err == ErrFullCluster {
+			return nodesToCluster(nodes), nil
+		}
+		return "", err
+	}
+
+	all, err := d.waitNodes(nodes, size)
+	if err != nil {
+		return "", err
+	}
 	return nodesToCluster(all), nil
 }
 
@@ -210,7 +238,7 @@ func (d *discovery) checkCluster() (client.Nodes, int, error) {
 			break
 		}
 		if i >= size-1 {
-			return nil, size, ErrFullCluster
+			return nodes[:size], size, ErrFullCluster
 		}
 	}
 	return nodes, size, nil
