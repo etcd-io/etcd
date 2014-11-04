@@ -786,7 +786,7 @@ func TestServeMembersFail(t *testing.T) {
 			http.StatusInternalServerError,
 		},
 		{
-			// etcdserver.RemoveMember error with preivously removed ID
+			// etcdserver.RemoveMember error with previously removed ID
 			&http.Request{
 				URL:    mustNewURL(t, path.Join(membersPrefix, "0")),
 				Method: "DELETE",
