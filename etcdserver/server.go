@@ -216,6 +216,7 @@ func NewServer(cfg *ServerConfig) *EtcdServer {
 			}
 		}
 		cfg.Cluster.SetStore(st)
+		log.Printf("etcdserver: initial cluster members: %s", cfg.Cluster)
 		id, n, w = startNode(cfg, cfg.Cluster.MemberIDs())
 	case haveWAL:
 		if cfg.ShouldDiscover() {
