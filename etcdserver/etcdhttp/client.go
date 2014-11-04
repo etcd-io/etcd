@@ -342,7 +342,7 @@ func parseKeyRequest(r *http.Request, id uint64, clock clockwork.Clock) (etcdser
 	pV := r.FormValue("prevValue")
 	if _, ok := r.Form["prevValue"]; ok && pV == "" {
 		return emptyReq, etcdErr.NewRequestError(
-			etcdErr.EcodeInvalidField,
+			etcdErr.EcodePrevValueRequired,
 			`"prevValue" cannot be empty`,
 		)
 	}
