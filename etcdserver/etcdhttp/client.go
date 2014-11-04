@@ -211,6 +211,8 @@ func (h *membersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		err = h.server.RemoveMember(ctx, uint64(id))
 		switch {
+		case err == etcdserver.ErrIDRemoved:
+			writeError(w, httptypes.NewHTTPError(http.StatusGone, fmt.Sprintf("Member permanently removed: %s", idStr)))
 		case err == etcdserver.ErrIDNotFound:
 			writeError(w, httptypes.NewHTTPError(http.StatusNotFound, fmt.Sprintf("No such member: %s", idStr)))
 		case err != nil:
