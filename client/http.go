@@ -30,6 +30,7 @@ import (
 var (
 	ErrTimeout          = context.DeadlineExceeded
 	ErrCanceled         = context.Canceled
+	ErrNoEndpoints      = errors.New("no endpoints available")
 	ErrTooManyRedirects = errors.New("too many redirects")
 
 	DefaultRequestTimeout = 5 * time.Second
@@ -91,6 +92,9 @@ type httpClusterClient struct {
 }
 
 func (c *httpClusterClient) Do(ctx context.Context, act HTTPAction) (resp *http.Response, body []byte, err error) {
+	if len(c.endpoints) == 0 {
+		return nil, nil, ErrNoEndpoints
+	}
 	for _, hc := range c.endpoints {
 		resp, body, err = hc.Do(ctx, act)
 		if err != nil {
@@ -117,6 +121,9 @@ func (c *httpClusterClient) Sync(ctx context.Context) error {
 	eps := make([]string, 0)
 	for _, m := range ms {
 		eps = append(eps, m.ClientURLs...)
+	}
+	if len(eps) == 0 {
+		return ErrNoEndpoints
 	}
 	nc, err := newHTTPClusterClient(c.transport, eps)
 	if err != nil {
