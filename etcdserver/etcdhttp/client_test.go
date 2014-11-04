@@ -1124,7 +1124,7 @@ func TestBadServeKeys(t *testing.T) {
 			},
 
 			http.StatusInternalServerError,
-			"Internal Server Error",
+			`{"message":"Internal Server Error"}`,
 		},
 		{
 			// etcdserver.Server etcd error
@@ -1144,7 +1144,7 @@ func TestBadServeKeys(t *testing.T) {
 			},
 
 			http.StatusInternalServerError,
-			"Internal Server Error",
+			`{"message":"Internal Server Error"}`,
 		},
 	}
 	for i, tt := range testBadCases {
