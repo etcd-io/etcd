@@ -46,6 +46,7 @@ type ClusterInfo interface {
 	// Members returns a slice of members sorted by their ID
 	Members() []*Member
 	Member(id types.ID) *Member
+	IsIDRemoved(id types.ID) bool
 }
 
 // Cluster is a list of Members that belong to the same raft cluster
