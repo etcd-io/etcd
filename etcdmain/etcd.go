@@ -40,6 +40,13 @@ import (
 const (
 	// the owner can make/remove files inside the directory
 	privateDirMode = 0700
+
+	proxyFlagOff      = "off"
+	proxyFlagReadonly = "readonly"
+	proxyFlagOn       = "on"
+
+	fallbackFlagExit  = "exit"
+	fallbackFlagProxy = "proxy"
 )
 
 var (
@@ -47,7 +54,6 @@ var (
 	name         = fs.String("name", "default", "Unique human-readable name for this node")
 	dir          = fs.String("data-dir", "", "Path to the data directory")
 	durl         = fs.String("discovery", "", "Discovery service used to bootstrap the cluster")
-	dfallback    = new(flags.Fallback)
 	snapCount    = fs.Uint64("snapshot-count", etcdserver.DefaultSnapCount, "Number of committed transactions to trigger a snapshot")
 	printVersion = fs.Bool("version", false, "Print the version and exit")
 
@@ -56,7 +62,15 @@ var (
 	clusterState        = new(etcdserver.ClusterState)
 
 	corsInfo  = &cors.CORSInfo{}
-	proxyFlag = new(flags.Proxy)
+	proxyFlag = flags.NewStringsFlag(
+		proxyFlagOff,
+		proxyFlagReadonly,
+		proxyFlagOn,
+	)
+	fallbackFlag = flags.NewStringsFlag(
+		fallbackFlagExit,
+		fallbackFlagProxy,
+	)
 
 	clientTLSInfo = transport.TLSInfo{}
 	peerTLSInfo   = transport.TLSInfo{}
@@ -92,13 +106,13 @@ func init() {
 
 	fs.Var(corsInfo, "cors", "Comma-separated white list of origins for CORS (cross-origin resource sharing).")
 
-	fs.Var(proxyFlag, "proxy", fmt.Sprintf("Valid values include %s", strings.Join(flags.ProxyValues, ", ")))
-	if err := proxyFlag.Set(flags.ProxyValueOff); err != nil {
+	fs.Var(proxyFlag, "proxy", fmt.Sprintf("Valid values include %s", strings.Join(proxyFlag.Values, ", ")))
+	if err := proxyFlag.Set(proxyFlagOff); err != nil {
 		// Should never happen.
 		log.Panicf("unexpected error setting up proxyFlag: %v", err)
 	}
-	fs.Var(dfallback, "discovery-fallback", fmt.Sprintf("Valid values include %s", strings.Join(flags.FallbackValues, ", ")))
-	if err := dfallback.Set(flags.FallbackProxy); err != nil {
+	fs.Var(fallbackFlag, "discovery-fallback", fmt.Sprintf("Valid values include %s", strings.Join(fallbackFlag.Values, ", ")))
+	if err := fallbackFlag.Set(fallbackFlagProxy); err != nil {
 		// Should never happen.
 		log.Panicf("unexpected error setting up discovery-fallback flag: %v", err)
 	}
@@ -143,13 +157,13 @@ func Main() {
 
 	flags.SetFlagsFromEnv(fs)
 
-	if string(*proxyFlag) == flags.ProxyValueOff {
+	if proxyFlag.String() == proxyFlagOff {
 		if err := startEtcd(); err == nil {
 			// Block indefinitely
 			<-make(chan struct{})
 		} else {
-			if err == discovery.ErrFullCluster && *dfallback == flags.FallbackProxy {
-				fmt.Printf("etcd: dicovery cluster full, falling back to %s", flags.FallbackProxy)
+			if err == discovery.ErrFullCluster && fallbackFlag.String() == fallbackFlagProxy {
+				fmt.Printf("etcd: discovery cluster full, falling back to %s", fallbackFlagProxy)
 			} else {
 				log.Fatalf("etcd: %v", err)
 			}
@@ -318,7 +332,7 @@ func startProxy() error {
 		Info:    corsInfo,
 	}
 
-	if string(*proxyFlag) == flags.ProxyValueReadonly {
+	if proxyFlag.String() == proxyFlagReadonly {
 		ph = proxy.NewReadonlyHandler(ph)
 	}
 	lcurls, err := flags.URLsFromFlags(fs, "listen-client-urls", "bind-addr", clientTLSInfo)

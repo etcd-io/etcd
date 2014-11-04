@@ -17,37 +17,31 @@
 package flags
 
 import (
-	"errors"
+	"testing"
 )
 
-const (
-	FallbackExit  = "exit"
-	FallbackProxy = "proxy"
-)
+func TestStringsSet(t *testing.T) {
+	tests := []struct {
+		vals []string
 
-var (
-	FallbackValues = []string{
-		FallbackExit,
-		FallbackProxy,
+		val  string
+		pass bool
+	}{
+		// known values
+		{[]string{"abc", "def"}, "abc", true},
+		{[]string{"on", "off", "false"}, "on", true},
+
+		// unrecognized values
+		{[]string{"abc", "def"}, "ghi", false},
+		{[]string{"on", "off"}, "", false},
+		{[]string{}, "asdf", false},
 	}
-)
 
-// FallbackFlag implements the flag.Value interface.
-type Fallback string
-
-// Set verifies the argument to be a valid member of FallbackFlagValues
-// before setting the underlying flag value.
-func (fb *Fallback) Set(s string) error {
-	for _, v := range FallbackValues {
-		if s == v {
-			*fb = Fallback(s)
-			return nil
+	for i, tt := range tests {
+		sf := NewStringsFlag(tt.vals...)
+		err := sf.Set(tt.val)
+		if tt.pass != (err == nil) {
+			t.Errorf("#%d: want pass=%t, but got err=%v", i, tt.pass, err)
 		}
 	}
-
-	return errors.New("invalid value")
-}
-
-func (fb *Fallback) String() string {
-	return string(*fb)
 }
