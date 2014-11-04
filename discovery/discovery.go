@@ -56,10 +56,6 @@ type Discoverer interface {
 	Discover() (string, error)
 }
 
-type ProxyDiscovery interface {
-	ProxyDiscover() (string, error)
-}
-
 type discovery struct {
 	cluster string
 	id      types.ID
@@ -70,6 +66,8 @@ type discovery struct {
 
 	clock clockwork.Clock
 }
+
+type proxyDiscovery struct{ *discovery }
 
 // proxyFuncFromEnv builds a proxy function if the appropriate environment
 // variable is set. It performs basic sanitization of the environment variable
@@ -101,14 +99,18 @@ func proxyFuncFromEnv() (func(*http.Request) (*url.URL, error), error) {
 }
 
 func New(durl string, id types.ID, config string) (Discoverer, error) {
-	return new(durl, id, config)
+	return newDiscovery(durl, id, config)
 }
 
-func ProxyNew(durl string) (ProxyDiscovery, error) {
-	return new(durl, 0, "")
+func ProxyNew(durl string) (Discoverer, error) {
+	d, err := newDiscovery(durl, 0, "")
+	if err != nil {
+		return nil, err
+	}
+	return &proxyDiscovery{d}, nil
 }
 
-func new(durl string, id types.ID, config string) (*discovery, error) {
+func newDiscovery(durl string, id types.ID, config string) (*discovery, error) {
 	u, err := url.Parse(durl)
 	if err != nil {
 		return nil, err
@@ -162,8 +164,8 @@ func (d *discovery) Discover() (string, error) {
 	return nodesToCluster(all), nil
 }
 
-func (d *discovery) ProxyDiscover() (string, error) {
-	nodes, size, err := d.checkCluster()
+func (pd *proxyDiscovery) Discover() (string, error) {
+	nodes, size, err := pd.checkCluster()
 	if err != nil {
 		if err == ErrFullCluster {
 			return nodesToCluster(nodes), nil
@@ -171,7 +173,7 @@ func (d *discovery) ProxyDiscover() (string, error) {
 		return "", err
 	}
 
-	all, err := d.waitNodes(nodes, size)
+	all, err := pd.waitNodes(nodes, size)
 	if err != nil {
 		return "", err
 	}

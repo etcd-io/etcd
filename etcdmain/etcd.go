@@ -149,7 +149,7 @@ func Main() {
 			<-make(chan struct{})
 		} else {
 			if err == discovery.ErrFullCluster && *dfallback == flags.FallbackProxy {
-				fmt.Printf("etcd: dicovery cluster is full, falls back to %s", flags.FallbackProxy)
+				fmt.Printf("etcd: dicovery cluster full, falling back to %s", flags.FallbackProxy)
 			} else {
 				log.Fatalf("etcd: %v", err)
 			}
@@ -287,7 +287,7 @@ func startProxy() error {
 		if err != nil {
 			return fmt.Errorf("cannot init discovery %v", err)
 		}
-		s, err := d.ProxyDiscover()
+		s, err := d.Discover()
 		if err != nil {
 			return err
 		}
