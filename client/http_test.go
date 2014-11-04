@@ -234,6 +234,14 @@ func TestHTTPClusterClientDo(t *testing.T) {
 			wantErr: ErrCanceled,
 		},
 
+		// return err if there are no endpoints
+		{
+			client: &httpClusterClient{
+				endpoints: []HTTPClient{},
+			},
+			wantErr: ErrNoEndpoints,
+		},
+
 		// return err if all endpoints return arbitrary errors
 		{
 			client: &httpClusterClient{
