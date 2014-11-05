@@ -36,7 +36,7 @@ import (
 )
 
 const (
-	tickDuration = 5 * time.Millisecond
+	tickDuration = 10 * time.Millisecond
 	clusterName  = "etcd"
 )
 
@@ -181,7 +181,7 @@ func (m *member) Launch(t *testing.T) {
 		t.Fatalf("failed to initialize the etcd server: %v", err)
 	}
 	m.s.Ticker = time.Tick(tickDuration)
-	m.s.SyncTicker = time.Tick(tickDuration)
+	m.s.SyncTicker = time.Tick(10 * tickDuration)
 	m.s.Start()
 
 	for _, ln := range m.PeerListeners {

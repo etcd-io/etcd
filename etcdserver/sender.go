@@ -125,9 +125,11 @@ func newSender(u string, cid types.ID, c *http.Client, fs *stats.FollowerStats) 
 }
 
 func (s *sender) send(data []byte) {
-	// TODO: we cannot afford the miss of MsgProp, so we wait for some handler
-	// to take the data
-	s.q <- data
+	select {
+	case s.q <- data:
+	default:
+		log.Printf("sender: reach the maximal serving to %s", s.u)
+	}
 }
 
 func (s *sender) stop() {
