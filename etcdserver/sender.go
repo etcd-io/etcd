@@ -29,8 +29,8 @@ import (
 )
 
 const (
-	raftPrefix        = "/raft"
-	maxConnsPerSender = 4
+	raftPrefix    = "/raft"
+	connPerSender = 4
 )
 
 type sendHub struct {
@@ -94,7 +94,7 @@ func (h *sendHub) add(id types.ID) *sender {
 	memb := h.cl.Member(id)
 	if memb == nil {
 		if !h.cl.IsIDRemoved(id) {
-			log.Printf("etcdserver: error sending message to unknown receiver %s", id)
+			log.Printf("etcdserver: add unknown receiver %s", id)
 		}
 		return nil
 	}
@@ -117,8 +117,14 @@ type sender struct {
 }
 
 func newSender(u string, cid types.ID, c *http.Client, fs *stats.FollowerStats) *sender {
-	s := &sender{u: u, cid: cid, c: c, fs: fs, q: make(chan []byte)}
-	for i := 0; i < maxConnsPerSender; i++ {
+	s := &sender{
+		u:   u,
+		cid: cid,
+		c:   c,
+		fs:  fs,
+		q:   make(chan []byte),
+	}
+	for i := 0; i < connPerSender; i++ {
 		go s.handle()
 	}
 	return s
