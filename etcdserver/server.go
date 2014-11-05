@@ -60,7 +60,6 @@ const (
 var (
 	ErrUnknownMethod = errors.New("etcdserver: unknown method")
 	ErrStopped       = errors.New("etcdserver: server stopped")
-	ErrRemoved       = errors.New("etcdserver: server removed")
 	ErrIDRemoved     = errors.New("etcdserver: ID removed")
 	ErrIDExists      = errors.New("etcdserver: ID exists")
 	ErrIDNotFound    = errors.New("etcdserver: ID not found")
@@ -291,7 +290,7 @@ func (s *EtcdServer) start() {
 
 func (s *EtcdServer) Process(ctx context.Context, m raftpb.Message) error {
 	if s.Cluster.IsIDRemoved(types.ID(m.From)) {
-		return ErrRemoved
+		return ErrIDRemoved
 	}
 	return s.node.Step(ctx, m)
 }

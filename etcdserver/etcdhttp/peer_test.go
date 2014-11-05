@@ -130,7 +130,7 @@ func TestServeRaft(t *testing.T) {
 					raftpb.Message{},
 				),
 			),
-			etcdserver.ErrRemoved,
+			etcdserver.ErrIDRemoved,
 			"0",
 			http.StatusForbidden,
 		},
