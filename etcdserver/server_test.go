@@ -1382,31 +1382,6 @@ func (w *waitWithResponse) Register(id uint64) <-chan interface{} {
 }
 func (w *waitWithResponse) Trigger(id uint64, x interface{}) {}
 
-type clusterStoreRecorder struct {
-	recorder
-}
-
-func (cs *clusterStoreRecorder) Add(m Member) {
-	cs.record(action{name: "Add", params: []interface{}{m}})
-}
-func (cs *clusterStoreRecorder) Get() Cluster {
-	cs.record(action{name: "Get"})
-	return Cluster{}
-}
-func (cs *clusterStoreRecorder) Remove(id uint64) {
-	cs.record(action{name: "Remove", params: []interface{}{id}})
-}
-func (cs *clusterStoreRecorder) IsRemoved(id uint64) bool { return false }
-
-type removedClusterStore struct {
-	removed map[uint64]bool
-}
-
-func (cs *removedClusterStore) Add(m Member)             {}
-func (cs *removedClusterStore) Get() Cluster             { return Cluster{} }
-func (cs *removedClusterStore) Remove(id uint64)         {}
-func (cs *removedClusterStore) IsRemoved(id uint64) bool { return cs.removed[id] }
-
 type nopSender struct{}
 
 func (s *nopSender) Send(m []raftpb.Message) {}
