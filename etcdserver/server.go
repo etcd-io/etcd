@@ -343,6 +343,8 @@ func (s *EtcdServer) run() {
 				appliedi = rd.Snapshot.Index
 			}
 
+			s.node.Advance()
+
 			if appliedi-snapi > s.snapCount {
 				s.snapshot(appliedi, nodes)
 				snapi = appliedi

@@ -116,7 +116,11 @@ type Node interface {
 	// Step advances the state machine using the given message. ctx.Err() will be returned, if any.
 	Step(ctx context.Context, msg pb.Message) error
 	// Ready returns a channel that returns the current point-in-time state
+	// Users of the Node must call Advance after applying the state returned by Ready
 	Ready() <-chan Ready
+	// Advance notifies the Node that the application has applied and saved progress up to the last Ready.
+	// It prepares the node to return the next available Ready.
+	Advance()
 	// ApplyConfChange applies config change to the local node.
 	// TODO: reject existing node when add node
 	// TODO: reject non-existant node when remove node
@@ -185,6 +189,7 @@ type node struct {
 	compactc chan compact
 	confc    chan pb.ConfChange
 	readyc   chan Ready
+	advancec chan struct{}
 	tickc    chan struct{}
 	done     chan struct{}
 }
@@ -196,6 +201,7 @@ func newNode() node {
 		compactc: make(chan compact),
 		confc:    make(chan pb.ConfChange),
 		readyc:   make(chan Ready),
+		advancec: make(chan struct{}),
 		tickc:    make(chan struct{}),
 		done:     make(chan struct{}),
 	}
@@ -208,6 +214,9 @@ func (n *node) Stop() {
 func (n *node) run(r *raft) {
 	var propc chan pb.Message
 	var readyc chan Ready
+	var advancec chan struct{}
+	var prevLastUnstablei uint64
+	var rd Ready
 
 	lead := None
 	prevSoftSt := r.softState()
@@ -215,26 +224,30 @@ func (n *node) run(r *raft) {
 	prevSnapi := r.raftLog.snapshot.Index
 
 	for {
-		rd := newReady(r, prevSoftSt, prevHardSt, prevSnapi)
-		if rd.containsUpdates() {
-			readyc = n.readyc
-		} else {
+		if advancec != nil {
 			readyc = nil
-		}
-
-		if rd.SoftState != nil && lead != rd.SoftState.Lead {
-			if r.hasLeader() {
-				if lead == None {
-					log.Printf("raft: elected leader %x at term %d", rd.SoftState.Lead, r.Term)
-				} else {
-					log.Printf("raft: leader changed from %x to %x at term %d", lead, rd.SoftState.Lead, r.Term)
-				}
-				propc = n.propc
+		} else {
+			rd = newReady(r, prevSoftSt, prevHardSt, prevSnapi)
+			if rd.containsUpdates() {
+				readyc = n.readyc
 			} else {
-				log.Printf("raft: lost leader %x at term %d", lead, r.Term)
-				propc = nil
+				readyc = nil
 			}
-			lead = rd.SoftState.Lead
+
+			if rd.SoftState != nil && lead != rd.SoftState.Lead {
+				if r.hasLeader() {
+					if lead == None {
+						log.Printf("raft: elected leader %x at term %d", rd.SoftState.Lead, r.Term)
+					} else {
+						log.Printf("raft: leader changed from %x to %x at term %d", lead, rd.SoftState.Lead, r.Term)
+					}
+					propc = n.propc
+				} else {
+					log.Printf("raft: lost leader %x at term %d", lead, r.Term)
+					propc = nil
+				}
+				lead = rd.SoftState.Lead
+			}
 		}
 
 		select {
@@ -267,19 +280,28 @@ func (n *node) run(r *raft) {
 			if rd.SoftState != nil {
 				prevSoftSt = rd.SoftState
 			}
+			if len(rd.Entries) > 0 {
+				prevLastUnstablei = rd.Entries[len(rd.Entries)-1].Index
+			}
 			if !IsEmptyHardState(rd.HardState) {
 				prevHardSt = rd.HardState
 			}
 			if !IsEmptySnap(rd.Snapshot) {
 				prevSnapi = rd.Snapshot.Index
+				if prevSnapi > prevLastUnstablei {
+					prevLastUnstablei = prevSnapi
+				}
 			}
-			// TODO(yichengq): we assume that all committed config
-			// entries will be applied to make things easy for now.
-			// TODO(yichengq): it may have race because applied is set
-			// before entries are applied.
-			r.raftLog.resetNextEnts()
-			r.raftLog.resetUnstable()
 			r.msgs = nil
+			advancec = n.advancec
+		case <-advancec:
+			if prevHardSt.Commit != 0 {
+				r.raftLog.appliedTo(prevHardSt.Commit)
+			}
+			if prevLastUnstablei != 0 {
+				r.raftLog.stableTo(prevLastUnstablei)
+			}
+			advancec = nil
 		case <-n.done:
 			return
 		}
@@ -340,6 +362,13 @@ func (n *node) step(ctx context.Context, m pb.Message) error {
 
 func (n *node) Ready() <-chan Ready {
 	return n.readyc
+}
+
+func (n *node) Advance() {
+	select {
+	case n.advancec <- struct{}{}:
+	case <-n.done:
+	}
 }
 
 func (n *node) ApplyConfChange(cc pb.ConfChange) {
