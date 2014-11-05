@@ -53,6 +53,8 @@ const (
 )
 
 type Discoverer interface {
+	// Discover connects to a discovery service and retrieves a string
+	// describing an etcd cluster, and any error encountered.
 	Discover() (string, error)
 }
 
@@ -67,7 +69,26 @@ type discovery struct {
 	clock clockwork.Clock
 }
 
-type proxyDiscovery struct{ *discovery }
+type proxyDiscovery struct {
+	*discovery
+}
+
+// New returns a Discoverer which will connect to the discovery service at
+// the given url, and register the server represented by the given id and
+// config to the cluster during the discovery process
+func New(durl string, id types.ID, config string) (Discoverer, error) {
+	return newDiscovery(durl, id, config)
+}
+
+// ProxyNew returns a Discoverer which will connect to the discovery service
+// at the given url and retrieve a string describing the cluster
+func ProxyNew(durl string) (Discoverer, error) {
+	d, err := newDiscovery(durl, 0, "")
+	if err != nil {
+		return nil, err
+	}
+	return &proxyDiscovery{d}, nil
+}
 
 // proxyFuncFromEnv builds a proxy function if the appropriate environment
 // variable is set. It performs basic sanitization of the environment variable
@@ -96,18 +117,6 @@ func proxyFuncFromEnv() (func(*http.Request) (*url.URL, error), error) {
 
 	log.Printf("discovery: using proxy %q", proxyURL.String())
 	return http.ProxyURL(proxyURL), nil
-}
-
-func New(durl string, id types.ID, config string) (Discoverer, error) {
-	return newDiscovery(durl, id, config)
-}
-
-func ProxyNew(durl string) (Discoverer, error) {
-	d, err := newDiscovery(durl, 0, "")
-	if err != nil {
-		return nil, err
-	}
-	return &proxyDiscovery{d}, nil
 }
 
 func newDiscovery(durl string, id types.ID, config string) (*discovery, error) {
