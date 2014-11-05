@@ -189,7 +189,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 	case !haveWAL && cfg.ClusterState == ClusterStateValueExisting:
 		cl, err := GetClusterFromPeers(cfg.Cluster.PeerURLs())
 		if err != nil {
-			log.Fatal(err)
+			return nil, fmt.Errorf("cannot fetch cluster info from peer urls: %v", err)
 		}
 		if err := cfg.Cluster.ValidateAndAssignIDs(cl.Members()); err != nil {
 			return nil, fmt.Errorf("error validating IDs from cluster %s: %v", cl, err)
@@ -316,10 +316,10 @@ func (s *EtcdServer) run() {
 			}
 
 			if err := s.storage.Save(rd.HardState, rd.Entries); err != nil {
-				log.Panicf("etcdserver: save state and entries error: %v", err)
+				log.Fatalf("etcdserver: save state and entries error: %v", err)
 			}
 			if err := s.storage.SaveSnap(rd.Snapshot); err != nil {
-				log.Panicf("etcdserver: create snapshot error: %v", err)
+				log.Fatalf("etcdserver: create snapshot error: %v", err)
 			}
 			s.send(rd.Messages)
 
@@ -338,7 +338,7 @@ func (s *EtcdServer) run() {
 			// recover from snapshot if it is more updated than current applied
 			if rd.Snapshot.Index > appliedi {
 				if err := s.store.Recovery(rd.Snapshot.Data); err != nil {
-					panic("TODO: this is bad, what do we do about it?")
+					log.Panicf("recovery store error: %v", err)
 				}
 				appliedi = rd.Snapshot.Index
 			}
@@ -371,7 +371,7 @@ func (s *EtcdServer) Stop() {
 // an error.
 func (s *EtcdServer) Do(ctx context.Context, r pb.Request) (Response, error) {
 	if r.ID == 0 {
-		panic("r.ID cannot be 0")
+		log.Panicf("request ID should never be 0")
 	}
 	if r.Method == "GET" && r.Quorum {
 		r.Method = "QGET"
@@ -484,7 +484,7 @@ func (s *EtcdServer) configure(ctx context.Context, cc raftpb.ConfChange) error 
 			return err
 		}
 		if x != nil {
-			log.Panicf("unexpected return type")
+			log.Panicf("return type should always be error")
 		}
 		return nil
 	case <-ctx.Done():
@@ -571,7 +571,7 @@ func (s *EtcdServer) apply(es []raftpb.Entry, nodes []uint64) uint64 {
 			pbutil.MustUnmarshal(&cc, e.Data)
 			s.w.Trigger(cc.ID, s.applyConfChange(cc, nodes))
 		default:
-			panic("unexpected entry type")
+			log.Panicf("entry type should be either EntryNormal or EntryConfChange")
 		}
 		atomic.StoreUint64(&s.raftIndex, e.Index)
 		atomic.StoreUint64(&s.raftTerm, e.Term)
@@ -605,10 +605,10 @@ func (s *EtcdServer) applyRequest(r pb.Request) Response {
 				id := mustParseMemberIDFromKey(path.Dir(r.Path))
 				m := s.Cluster.Member(id)
 				if m == nil {
-					log.Fatalf("fetch member %s should never fail", id)
+					log.Panicf("fetch member %s should never fail", id)
 				}
 				if err := json.Unmarshal([]byte(r.Val), &m.Attributes); err != nil {
-					log.Fatalf("unmarshal %s should never fail: %v", r.Val, err)
+					log.Panicf("unmarshal %s should never fail: %v", r.Val, err)
 				}
 			}
 			return f(s.store.Set(r.Path, r.Dir, r.Val, expr))
@@ -642,10 +642,10 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, nodes []uint64) error
 	case raftpb.ConfChangeAddNode:
 		m := new(Member)
 		if err := json.Unmarshal(cc.Context, m); err != nil {
-			panic("unexpected unmarshal error")
+			log.Panicf("unmarshal member should never fail: %v", err)
 		}
 		if cc.NodeID != uint64(m.ID) {
-			panic("unexpected nodeID mismatch")
+			log.Panicf("nodeID should always be equal to member ID")
 		}
 		s.Cluster.AddMember(m)
 		log.Printf("etcdserver: added node %s to cluster", types.ID(cc.NodeID))
@@ -671,7 +671,7 @@ func (s *EtcdServer) checkConfChange(cc raftpb.ConfChange, nodes []uint64) error
 			return ErrIDNotFound
 		}
 	default:
-		panic("unexpected ConfChange type")
+		log.Panicf("ConfChange type should be either AddNode or RemoveNode")
 	}
 	return nil
 }
@@ -682,11 +682,11 @@ func (s *EtcdServer) snapshot(snapi uint64, snapnodes []uint64) {
 	// TODO: current store will never fail to do a snapshot
 	// what should we do if the store might fail?
 	if err != nil {
-		panic("TODO: this is bad, what do we do about it?")
+		log.Panicf("store save should never fail: %v", err)
 	}
 	s.node.Compact(snapi, snapnodes, d)
 	if err := s.storage.Cut(); err != nil {
-		log.Panicf("etcdserver: rotate wal file error: %v", err)
+		log.Panicf("rotate wal file should never fail: %v", err)
 	}
 }
 
@@ -729,13 +729,13 @@ func startNode(cfg *ServerConfig, ids []types.ID) (id types.ID, n raft.Node, w *
 		},
 	)
 	if w, err = wal.Create(cfg.WALDir(), metadata); err != nil {
-		log.Fatal(err)
+		log.Fatalf("etcdserver: create wal error: %v", err)
 	}
 	peers := make([]raft.Peer, len(ids))
 	for i, id := range ids {
 		ctx, err := json.Marshal((*cfg.Cluster).Member(id))
 		if err != nil {
-			log.Fatal(err)
+			log.Panicf("marshal member should never fail: %v", err)
 		}
 		peers[i] = raft.Peer{ID: uint64(id), Context: ctx}
 	}
@@ -749,11 +749,11 @@ func restartNode(cfg *ServerConfig, index uint64, snapshot *raftpb.Snapshot) (id
 	var err error
 	// restart a node from previous wal
 	if w, err = wal.OpenAtIndex(cfg.WALDir(), index); err != nil {
-		log.Fatal(err)
+		log.Fatalf("etcdserver: open wal error: %v", err)
 	}
 	wmetadata, st, ents, err := w.ReadAll()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("etcdserver: read wal error: %v", err)
 	}
 
 	var metadata pb.Metadata

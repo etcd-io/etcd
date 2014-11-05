@@ -29,13 +29,13 @@ type Unmarshaler interface {
 func MustMarshal(m Marshaler) []byte {
 	d, err := m.Marshal()
 	if err != nil {
-		log.Panicf("pbutil: %v", err)
+		log.Panicf("marshal protobuf type should never fail: %v", err)
 	}
 	return d
 }
 
 func MustUnmarshal(um Unmarshaler, data []byte) {
 	if err := um.Unmarshal(data); err != nil {
-		log.Panicf("pbutil: %v", err)
+		log.Panicf("unmarshal protobuf type should never fail: %v", err)
 	}
 }

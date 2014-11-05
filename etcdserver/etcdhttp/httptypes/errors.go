@@ -18,6 +18,7 @@ package httptypes
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 )
 
@@ -37,7 +38,7 @@ func (e HTTPError) WriteTo(w http.ResponseWriter) {
 	w.WriteHeader(e.Code)
 	b, err := json.Marshal(e)
 	if err != nil {
-		panic("unexpected json marshal error")
+		log.Panicf("marshal HTTPError should never fail: %v", err)
 	}
 	w.Write(b)
 }
