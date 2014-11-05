@@ -16,40 +16,33 @@
 
 package flags
 
-import (
-	"errors"
-)
+import "errors"
 
-const (
-	ProxyValueOff      = "off"
-	ProxyValueReadonly = "readonly"
-	ProxyValueOn       = "on"
-)
+// NewStringsFlag creates a new string flag for which any one of the given
+// strings is a valid value, and any other value is an error.
+func NewStringsFlag(valids ...string) *StringsFlag {
+	return &StringsFlag{Values: valids}
+}
 
-var (
-	ProxyValues = []string{
-		ProxyValueOff,
-		ProxyValueReadonly,
-		ProxyValueOn,
-	}
-)
+// StringsFlag implements the flag.Value interface.
+type StringsFlag struct {
+	Values []string
+	val    string
+}
 
-// ProxyFlag implements the flag.Value interface.
-type Proxy string
-
-// Set verifies the argument to be a valid member of proxyFlagValues
+// Set verifies the argument to be a valid member of the allowed values
 // before setting the underlying flag value.
-func (pf *Proxy) Set(s string) error {
-	for _, v := range ProxyValues {
+func (ss *StringsFlag) Set(s string) error {
+	for _, v := range ss.Values {
 		if s == v {
-			*pf = Proxy(s)
+			ss.val = s
 			return nil
 		}
 	}
-
 	return errors.New("invalid value")
 }
 
-func (pf *Proxy) String() string {
-	return string(*pf)
+// String returns the set value (if any) of the StringsFlag
+func (ss *StringsFlag) String() string {
+	return ss.val
 }
