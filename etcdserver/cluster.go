@@ -164,7 +164,7 @@ func (c *Cluster) MemberByName(name string) *Member {
 	for _, m := range c.members {
 		if m.Name == name {
 			if memb != nil {
-				panic("two members with the given name exist in the cluster")
+				log.Panicf("two members with the given name %s exist", name)
 			}
 			memb = m
 		}
@@ -270,19 +270,19 @@ func (c *Cluster) SetStore(st store.Store) { c.store = st }
 func (c *Cluster) AddMember(m *Member) {
 	b, err := json.Marshal(m.RaftAttributes)
 	if err != nil {
-		log.Panicf("marshal error: %v", err)
+		log.Panicf("marshal raftAttributes should never fail: %v", err)
 	}
 	p := path.Join(memberStoreKey(m.ID), raftAttributesSuffix)
 	if _, err := c.store.Create(p, false, string(b), false, store.Permanent); err != nil {
-		log.Panicf("add raftAttributes should never fail: %v", err)
+		log.Panicf("create raftAttributes should never fail: %v", err)
 	}
 	b, err = json.Marshal(m.Attributes)
 	if err != nil {
-		log.Panicf("marshal error: %v", err)
+		log.Panicf("marshal attributes should never fail: %v", err)
 	}
 	p = path.Join(memberStoreKey(m.ID), attributesSuffix)
 	if _, err := c.store.Create(p, false, string(b), false, store.Permanent); err != nil {
-		log.Panicf("add attributes should never fail: %v", err)
+		log.Panicf("create attributes should never fail: %v", err)
 	}
 	c.members[m.ID] = m
 }
@@ -291,11 +291,11 @@ func (c *Cluster) AddMember(m *Member) {
 // The given id MUST exist, or the function panics.
 func (c *Cluster) RemoveMember(id types.ID) {
 	if _, err := c.store.Delete(memberStoreKey(id), true, true); err != nil {
-		log.Panicf("delete peer should never fail: %v", err)
+		log.Panicf("delete member should never fail: %v", err)
 	}
 	delete(c.members, id)
 	if _, err := c.store.Create(removedMemberStoreKey(id), false, "", false, store.Permanent); err != nil {
-		log.Panicf("creating RemovedMember should never fail: %v", err)
+		log.Panicf("create removedMember should never fail: %v", err)
 	}
 	c.removed[id] = true
 }

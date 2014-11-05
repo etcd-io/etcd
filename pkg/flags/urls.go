@@ -49,7 +49,7 @@ func (us *URLsValue) String() string {
 func NewURLsValue(init string) *URLsValue {
 	v := &URLsValue{}
 	if err := v.Set(init); err != nil {
-		log.Panicf("error setting URLsValue: %v", err)
+		log.Panicf("new URLsValue should never fail: %v", err)
 	}
 	return v
 }

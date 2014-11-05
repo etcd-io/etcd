@@ -27,6 +27,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/coreos/etcd/pkg/pbutil"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/snap/snappb"
@@ -61,11 +62,7 @@ func (s *Snapshotter) SaveSnap(snapshot raftpb.Snapshot) error {
 
 func (s *Snapshotter) save(snapshot *raftpb.Snapshot) error {
 	fname := fmt.Sprintf("%016x-%016x%s", snapshot.Term, snapshot.Index, snapSuffix)
-	b, err := snapshot.Marshal()
-	if err != nil {
-		panic(err)
-	}
-
+	b := pbutil.MustMarshal(snapshot)
 	crc := crc32.Update(0, crcTable, b)
 	snap := snappb.Snapshot{Crc: crc, Data: b}
 	d, err := snap.Marshal()
