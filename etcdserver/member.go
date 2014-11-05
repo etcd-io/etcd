@@ -45,6 +45,7 @@ type Member struct {
 	ID types.ID `json:"id"`
 	RaftAttributes
 	Attributes
+	verified bool
 }
 
 // newMember creates a Member without an ID and generates one based on the
