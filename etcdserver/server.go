@@ -690,6 +690,11 @@ func (s *EtcdServer) snapshot(snapi uint64, snapnodes []uint64) {
 	}
 }
 
+// GetClusterFromPeers takes a set of URLs representing etcd peers, and
+// attempts to construct a Cluster by accessing the members endpoint on one of
+// these URLs. The first URL to provide a response is used. If no URLs provide
+// a response, or a Cluster cannot be successfully created from a received
+// response, an error is returned.
 func GetClusterFromPeers(urls []string) (*Cluster, error) {
 	for _, u := range urls {
 		resp, err := http.Get(u + "/members")
