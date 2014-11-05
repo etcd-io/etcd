@@ -847,7 +847,7 @@ func TestV2WatchWithIndex(t *testing.T) {
 
 	select {
 	case <-c:
-	case <-time.After(time.Millisecond):
+	case <-time.After(time.Second):
 		t.Fatal("cannot get watch result")
 	}
 
