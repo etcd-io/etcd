@@ -176,7 +176,10 @@ type member struct {
 // Launch starts a member based on ServerConfig, PeerListeners
 // and ClientListeners.
 func (m *member) Launch(t *testing.T) {
-	m.s = etcdserver.NewServer(&m.ServerConfig)
+	var err error
+	if m.s, err = etcdserver.NewServer(&m.ServerConfig); err != nil {
+		t.Fatalf("failed to initialize the etcd server: %v", err)
+	}
 	m.s.Ticker = time.Tick(tickDuration)
 	m.s.SyncTicker = time.Tick(tickDuration)
 	m.s.Start()

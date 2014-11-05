@@ -67,6 +67,8 @@ type discovery struct {
 	clock clockwork.Clock
 }
 
+type proxyDiscovery struct{ *discovery }
+
 // proxyFuncFromEnv builds a proxy function if the appropriate environment
 // variable is set. It performs basic sanitization of the environment variable
 // and returns any error encountered.
@@ -97,6 +99,18 @@ func proxyFuncFromEnv() (func(*http.Request) (*url.URL, error), error) {
 }
 
 func New(durl string, id types.ID, config string) (Discoverer, error) {
+	return newDiscovery(durl, id, config)
+}
+
+func ProxyNew(durl string) (Discoverer, error) {
+	d, err := newDiscovery(durl, 0, "")
+	if err != nil {
+		return nil, err
+	}
+	return &proxyDiscovery{d}, nil
+}
+
+func newDiscovery(durl string, id types.ID, config string) (*discovery, error) {
 	u, err := url.Parse(durl)
 	if err != nil {
 		return nil, err
@@ -147,6 +161,22 @@ func (d *discovery) Discover() (string, error) {
 		return "", err
 	}
 
+	return nodesToCluster(all), nil
+}
+
+func (pd *proxyDiscovery) Discover() (string, error) {
+	nodes, size, err := pd.checkCluster()
+	if err != nil {
+		if err == ErrFullCluster {
+			return nodesToCluster(nodes), nil
+		}
+		return "", err
+	}
+
+	all, err := pd.waitNodes(nodes, size)
+	if err != nil {
+		return "", err
+	}
 	return nodesToCluster(all), nil
 }
 
@@ -210,7 +240,7 @@ func (d *discovery) checkCluster() (client.Nodes, int, error) {
 			break
 		}
 		if i >= size-1 {
-			return nil, size, ErrFullCluster
+			return nodes[:size], size, ErrFullCluster
 		}
 	}
 	return nodes, size, nil

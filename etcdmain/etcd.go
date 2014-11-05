@@ -25,6 +25,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/coreos/etcd/discovery"
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/etcdhttp"
 	"github.com/coreos/etcd/pkg/cors"
@@ -46,6 +47,7 @@ var (
 	name         = fs.String("name", "default", "Unique human-readable name for this node")
 	dir          = fs.String("data-dir", "", "Path to the data directory")
 	durl         = fs.String("discovery", "", "Discovery service used to bootstrap the cluster")
+	dfallback    = new(flags.Fallback)
 	snapCount    = fs.Uint64("snapshot-count", etcdserver.DefaultSnapCount, "Number of committed transactions to trigger a snapshot")
 	printVersion = fs.Bool("version", false, "Print the version and exit")
 
@@ -95,6 +97,11 @@ func init() {
 		// Should never happen.
 		log.Panicf("unexpected error setting up proxyFlag: %v", err)
 	}
+	fs.Var(dfallback, "discovery-fallback", fmt.Sprintf("Valid values include %s", strings.Join(flags.FallbackValues, ", ")))
+	if err := dfallback.Set(flags.FallbackProxy); err != nil {
+		// Should never happen.
+		log.Panicf("unexpected error setting up discovery-fallback flag: %v", err)
+	}
 
 	fs.StringVar(&clientTLSInfo.CAFile, "ca-file", "", "Path to the client server TLS CA file.")
 	fs.StringVar(&clientTLSInfo.CertFile, "cert-file", "", "Path to the client server TLS cert file.")
@@ -137,74 +144,97 @@ func Main() {
 	flags.SetFlagsFromEnv(fs)
 
 	if string(*proxyFlag) == flags.ProxyValueOff {
-		startEtcd()
-	} else {
-		startProxy()
+		if err := startEtcd(); err == nil {
+			// Block indefinitely
+			<-make(chan struct{})
+		} else {
+			if err == discovery.ErrFullCluster && *dfallback == flags.FallbackProxy {
+				fmt.Printf("etcd: dicovery cluster full, falling back to %s", flags.FallbackProxy)
+			} else {
+				log.Fatalf("etcd: %v", err)
+			}
+		}
 	}
-
+	if err = startProxy(); err != nil {
+		log.Fatalf("proxy: %v", err)
+	}
 	// Block indefinitely
 	<-make(chan struct{})
 }
 
 // startEtcd launches the etcd server and HTTP handlers for client/server communication.
-func startEtcd() {
+func startEtcd() error {
 	cls, err := setupCluster()
 	if err != nil {
-		log.Fatalf("etcd: error setting up initial cluster: %v", err)
+		fmt.Errorf("error setting up initial cluster: %v", err)
 	}
 
 	if *dir == "" {
 		*dir = fmt.Sprintf("%v.etcd", *name)
-		log.Printf("etcd: no data-dir provided, using default data-dir ./%s", *dir)
+		fmt.Errorf("no data-dir provided, using default data-dir ./%s", *dir)
 	}
 	if err := os.MkdirAll(*dir, privateDirMode); err != nil {
-		log.Fatalf("etcd: cannot create data directory: %v", err)
+		fmt.Errorf("cannot create data directory: %v", err)
 	}
 	if err := fileutil.IsDirWriteable(*dir); err != nil {
-		log.Fatalf("etcd: cannot write to data directory: %v", err)
+		fmt.Errorf("cannot write to data directory: %v", err)
 	}
 
 	pt, err := transport.NewTransport(peerTLSInfo)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	acurls, err := flags.URLsFromFlags(fs, "advertise-client-urls", "addr", clientTLSInfo)
 	if err != nil {
-		log.Fatal(err.Error())
+		return err
 	}
 
 	lpurls, err := flags.URLsFromFlags(fs, "listen-peer-urls", "peer-bind-addr", peerTLSInfo)
 	if err != nil {
-		log.Fatal(err.Error())
+		return err
 	}
 
 	plns := make([]net.Listener, 0)
 	for _, u := range lpurls {
-		l, err := transport.NewListener(u.Host, peerTLSInfo)
+		var l net.Listener
+		l, err = transport.NewListener(u.Host, peerTLSInfo)
 		if err != nil {
-			log.Fatal(err)
+			return err
 		}
 
 		urlStr := u.String()
 		log.Print("etcd: listening for peers on ", urlStr)
+		defer func() {
+			if err != nil {
+				l.Close()
+				log.Print("etcd: stopping listening for peers on ", urlStr)
+			}
+		}()
 		plns = append(plns, l)
 	}
 
 	lcurls, err := flags.URLsFromFlags(fs, "listen-client-urls", "bind-addr", clientTLSInfo)
 	if err != nil {
-		log.Fatal(err.Error())
+		return err
 	}
 
 	clns := make([]net.Listener, 0)
 	for _, u := range lcurls {
-		l, err := transport.NewListener(u.Host, clientTLSInfo)
+		var l net.Listener
+		l, err = transport.NewListener(u.Host, clientTLSInfo)
 		if err != nil {
-			log.Fatal(err)
+			return err
 		}
 
 		urlStr := u.String()
 		log.Print("etcd: listening for client requests on ", urlStr)
+		defer func() {
+			if err != nil {
+				l.Close()
+				log.Print("etcd: stopping listening for client requests on ", urlStr)
+			}
+		}()
 		clns = append(clns, l)
 	}
 
@@ -218,7 +248,11 @@ func startEtcd() {
 		ClusterState: *clusterState,
 		Transport:    pt,
 	}
-	s := etcdserver.NewServer(cfg)
+	var s *etcdserver.EtcdServer
+	s, err = etcdserver.NewServer(cfg)
+	if err != nil {
+		return err
+	}
 	s.Start()
 
 	ch := &cors.CORSHandler{
@@ -238,18 +272,33 @@ func startEtcd() {
 			log.Fatal(http.Serve(l, ch))
 		}(l)
 	}
+	return nil
 }
 
 // startProxy launches an HTTP proxy for client communication which proxies to other etcd nodes.
-func startProxy() {
+func startProxy() error {
 	cls, err := setupCluster()
 	if err != nil {
-		log.Fatalf("etcd: error setting up initial cluster: %v", err)
+		return fmt.Errorf("error setting up initial cluster: %v", err)
+	}
+
+	if *durl != "" {
+		d, err := discovery.ProxyNew(*durl)
+		if err != nil {
+			return fmt.Errorf("cannot init discovery %v", err)
+		}
+		s, err := d.Discover()
+		if err != nil {
+			return err
+		}
+		if cls, err = etcdserver.NewClusterFromString(*durl, s); err != nil {
+			return err
+		}
 	}
 
 	pt, err := transport.NewTransport(clientTLSInfo)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	// TODO(jonboulle): update peerURLs dynamically (i.e. when updating
@@ -258,7 +307,7 @@ func startProxy() {
 	uf := func() []string {
 		cls, err := etcdserver.GetClusterFromPeers(peerURLs)
 		if err != nil {
-			log.Printf("etcd: %v", err)
+			log.Printf("proxy: %v", err)
 			return []string{}
 		}
 		return cls.ClientURLs()
@@ -272,24 +321,24 @@ func startProxy() {
 	if string(*proxyFlag) == flags.ProxyValueReadonly {
 		ph = proxy.NewReadonlyHandler(ph)
 	}
-
 	lcurls, err := flags.URLsFromFlags(fs, "listen-client-urls", "bind-addr", clientTLSInfo)
 	if err != nil {
-		log.Fatal(err.Error())
+		return err
 	}
 	// Start a proxy server goroutine for each listen address
 	for _, u := range lcurls {
 		l, err := transport.NewListener(u.Host, clientTLSInfo)
 		if err != nil {
-			log.Fatal(err)
+			return err
 		}
 
 		host := u.Host
 		go func() {
-			log.Print("etcd: proxy listening for client requests on ", host)
+			log.Print("proxy: listening for client requests on ", host)
 			log.Fatal(http.Serve(l, ph))
 		}()
 	}
+	return nil
 }
 
 // setupCluster sets up the cluster definition for bootstrap or discovery.
