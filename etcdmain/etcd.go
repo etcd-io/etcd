@@ -141,8 +141,8 @@ func init() {
 
 func Main() {
 	fs.Usage = flags.UsageWithIgnoredFlagsFunc(fs, ignored)
-	err := fs.Parse(os.Args[1:])
-	switch err {
+	perr := fs.Parse(os.Args[1:])
+	switch perr {
 	case nil:
 	case flag.ErrHelp:
 		os.Exit(0)
@@ -157,20 +157,20 @@ func Main() {
 
 	flags.SetFlagsFromEnv(fs)
 
-	if proxyFlag.String() == proxyFlagOff {
-		if err := startEtcd(); err == nil {
-			// Block indefinitely
-			<-make(chan struct{})
-		} else {
-			if err == discovery.ErrFullCluster && fallbackFlag.String() == fallbackFlagProxy {
-				fmt.Printf("etcd: discovery cluster full, falling back to %s", fallbackFlagProxy)
-			} else {
-				log.Fatalf("etcd: %v", err)
-			}
+	var err error
+	shouldProxy := proxyFlag.String() != proxyFlagOff
+	if !shouldProxy {
+		err = startEtcd()
+		if err == discovery.ErrFullCluster && fallbackFlag.String() == fallbackFlagProxy {
+			log.Printf("etcd: discovery cluster full, falling back to %s", fallbackFlagProxy)
+			shouldProxy = true
 		}
 	}
-	if err = startProxy(); err != nil {
-		log.Fatalf("proxy: %v", err)
+	if shouldProxy {
+		err = startProxy()
+	}
+	if err != nil {
+		log.Fatalf("etcd: %v", err)
 	}
 	// Block indefinitely
 	<-make(chan struct{})
