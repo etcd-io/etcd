@@ -45,19 +45,27 @@ type sendHub struct {
 // to other members. The returned sendHub will update the given ServerStats and
 // LeaderStats appropriately.
 func newSendHub(t *http.Transport, cl *Cluster, ss *stats.ServerStats, ls *stats.LeaderStats) *sendHub {
-	return &sendHub{
+	h := &sendHub{
 		tr:      t,
 		cl:      cl,
 		ss:      ss,
 		ls:      ls,
 		senders: make(map[types.ID]*sender),
 	}
+	for _, m := range cl.Members() {
+		h.Add(m)
+	}
+	return h
 }
 
 func (h *sendHub) Send(msgs []raftpb.Message) {
 	for _, m := range msgs {
-		s := h.sender(types.ID(m.To))
-		if s == nil {
+		to := types.ID(m.To)
+		s, ok := h.senders[to]
+		if !ok {
+			if !h.cl.IsIDRemoved(to) {
+				log.Printf("etcdserver: send message to unknown receiver %s", to)
+			}
 			continue
 		}
 
@@ -83,29 +91,18 @@ func (h *sendHub) Stop() {
 	}
 }
 
-func (h *sendHub) sender(id types.ID) *sender {
-	if s, ok := h.senders[id]; ok {
-		return s
-	}
-	return h.add(id)
+func (h *sendHub) Add(m *Member) {
+	// TODO: considering how to switch between all available peer urls
+	u := fmt.Sprintf("%s%s", m.PickPeerURL(), raftPrefix)
+	c := &http.Client{Transport: h.tr}
+	fs := h.ls.Follower(m.ID.String())
+	s := newSender(u, h.cl.ID(), c, fs)
+	h.senders[m.ID] = s
 }
 
-func (h *sendHub) add(id types.ID) *sender {
-	memb := h.cl.Member(id)
-	if memb == nil {
-		if !h.cl.IsIDRemoved(id) {
-			log.Printf("etcdserver: add unknown receiver %s", id)
-		}
-		return nil
-	}
-	// TODO: considering how to switch between all available peer urls
-	u := fmt.Sprintf("%s%s", memb.PickPeerURL(), raftPrefix)
-	c := &http.Client{Transport: h.tr}
-	fs := h.ls.Follower(id.String())
-	s := newSender(u, h.cl.ID(), c, fs)
-	// TODO: recycle sender during long running
-	h.senders[id] = s
-	return s
+func (h *sendHub) Remove(id types.ID) {
+	h.senders[id].stop()
+	delete(h.senders, id)
 }
 
 type sender struct {

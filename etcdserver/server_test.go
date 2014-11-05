@@ -496,7 +496,9 @@ func (s *fakeSender) Send(msgs []raftpb.Message) {
 		s.ss[m.To-1].node.Step(context.TODO(), m)
 	}
 }
-func (s *fakeSender) Stop() {}
+func (s *fakeSender) Add(m *Member)      {}
+func (s *fakeSender) Remove(id types.ID) {}
+func (s *fakeSender) Stop()              {}
 
 func testServer(t *testing.T, ns uint64) {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -1385,6 +1387,8 @@ func (w *waitWithResponse) Trigger(id uint64, x interface{}) {}
 type nopSender struct{}
 
 func (s *nopSender) Send(m []raftpb.Message) {}
+func (s *nopSender) Add(m *Member)           {}
+func (s *nopSender) Remove(id types.ID)      {}
 func (s *nopSender) Stop()                   {}
 
 func mustMakePeerSlice(t *testing.T, ids ...uint64) []raft.Peer {

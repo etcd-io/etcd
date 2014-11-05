@@ -86,6 +86,8 @@ type Response struct {
 
 type Sender interface {
 	Send(m []raftpb.Message)
+	Add(m *Member)
+	Remove(id types.ID)
 	Stop()
 }
 
@@ -652,10 +654,12 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange) error {
 			log.Panicf("nodeID should always be equal to member ID")
 		}
 		s.Cluster.AddMember(m)
+		s.sender.Add(m)
 		log.Printf("etcdserver: added node %s to cluster", types.ID(cc.NodeID))
 	case raftpb.ConfChangeRemoveNode:
 		id := types.ID(cc.NodeID)
 		s.Cluster.RemoveMember(id)
+		s.sender.Remove(id)
 		log.Printf("etcdserver: removed node %s from cluster", id)
 	}
 	return nil
