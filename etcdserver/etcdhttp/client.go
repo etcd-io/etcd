@@ -189,7 +189,7 @@ func (h *membersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		err = h.server.AddMember(ctx, *m)
 		switch {
 		case err == etcdserver.ErrIDExists || err == etcdserver.ErrPeerURLexists:
-			writeError(w, httptypes.NewHTTPError(http.StatusPreconditionFailed, err.Error()))
+			writeError(w, httptypes.NewHTTPError(http.StatusConflict, err.Error()))
 			return
 		case err != nil:
 			log.Printf("etcdhttp: error adding node %s: %v", m.ID, err)

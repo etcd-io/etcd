@@ -774,6 +774,34 @@ func TestServeMembersFail(t *testing.T) {
 			http.StatusInternalServerError,
 		},
 		{
+			// etcdserver.AddMember error
+			&http.Request{
+				URL:    mustNewURL(t, membersPrefix),
+				Method: "POST",
+				Body:   ioutil.NopCloser(strings.NewReader(`{"PeerURLs": ["http://127.0.0.1:1"]}`)),
+				Header: map[string][]string{"Content-Type": []string{"application/json"}},
+			},
+			&errServer{
+				etcdserver.ErrIDExists,
+			},
+
+			http.StatusConflict,
+		},
+		{
+			// etcdserver.AddMember error
+			&http.Request{
+				URL:    mustNewURL(t, membersPrefix),
+				Method: "POST",
+				Body:   ioutil.NopCloser(strings.NewReader(`{"PeerURLs": ["http://127.0.0.1:1"]}`)),
+				Header: map[string][]string{"Content-Type": []string{"application/json"}},
+			},
+			&errServer{
+				etcdserver.ErrPeerURLexists,
+			},
+
+			http.StatusConflict,
+		},
+		{
 			// etcdserver.RemoveMember error with arbitrary server error
 			&http.Request{
 				URL:    mustNewURL(t, path.Join(membersPrefix, "1")),
