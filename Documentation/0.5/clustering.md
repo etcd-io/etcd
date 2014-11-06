@@ -83,6 +83,14 @@ exit 1
 
 In a number of cases you might not know the IPs of your cluster peers ahead of time. This is common when utilizing cloud providers or when your network uses DHCP. In these cases you can use an existing etcd cluster to bootstrap a new one. We call this process "discovery".
 
+### Lifetime of a Discovery URL
+
+A discovery URL identifies a unique etcd cluster. Instead of reusing a discovery URL, you should always create discovery URLs for new clusters.
+
+Moreover, discovery URLs should ONLY be used for the initial bootstrapping of a cluster. To change cluster membership after the cluster is already running, see the [runtime reconfiguration][runtime] guide.
+
+[runtime]: https://github.com/coreos/etcd/blob/master/Documentation/0.5/runtime-configuration.md
+
 ### Custom etcd discovery service
 
 Discovery uses an existing cluster to bootstrap itself. If you are using your own etcd cluster you can create a URL like so:
