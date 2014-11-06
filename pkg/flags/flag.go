@@ -85,7 +85,7 @@ func UsageWithIgnoredFlagsFunc(fs *flag.FlagSet, ignore []string) func() {
 // environment variables. Environment variables take the name of the flag but
 // are UPPERCASE, have the prefix "ETCD_", and any dashes are replaced by
 // underscores - for example: some-flag => ETCD_SOME_FLAG
-func SetFlagsFromEnv(fs *flag.FlagSet) {
+func SetFlagsFromEnv(fs *flag.FlagSet) (err error) {
 	alreadySet := make(map[string]bool)
 	fs.Visit(func(f *flag.Flag) {
 		alreadySet[f.Name] = true
@@ -95,13 +95,13 @@ func SetFlagsFromEnv(fs *flag.FlagSet) {
 			key := "ETCD_" + strings.ToUpper(strings.Replace(f.Name, "-", "_", -1))
 			val := os.Getenv(key)
 			if val != "" {
-				if err := fs.Set(f.Name, val); err != nil {
-					// Should never happen
-					log.Panicf("error setting flag from env: %v", err)
+				if serr := fs.Set(f.Name, val); serr != nil {
+					err = fmt.Errorf("invalid value %q for %s: %v", val, key, serr)
 				}
 			}
 		}
 	})
+	return
 }
 
 // URLsFromFlags decides what URLs should be using two different flags
