@@ -93,13 +93,11 @@ func TestClusterFromStore(t *testing.T) {
 		},
 	}
 	for i, tt := range tests {
-		st := store.New()
 		hc := newTestCluster(nil)
-		hc.SetStore(st)
 		for _, m := range tt.mems {
 			hc.AddMember(&m)
 		}
-		c := NewClusterFromStore("abc", st)
+		c := NewClusterFromStore("abc", hc.store)
 		if c.token != "abc" {
 			t.Errorf("#%d: token = %v, want %v", i, c.token, "abc")
 		}
@@ -535,8 +533,9 @@ func TestNodeToMember(t *testing.T) {
 
 func newTestCluster(membs []Member) *Cluster {
 	c := &Cluster{members: make(map[types.ID]*Member), removed: make(map[types.ID]bool)}
-	for i, m := range membs {
-		c.members[m.ID] = &membs[i]
+	c.store = store.New()
+	for i := range membs {
+		c.AddMember(&membs[i])
 	}
 	return c
 }

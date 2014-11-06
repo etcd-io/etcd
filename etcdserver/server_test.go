@@ -421,8 +421,13 @@ func TestApplyRequestOnAdminMemberAttributes(t *testing.T) {
 
 // TODO: test ErrIDRemoved
 func TestApplyConfChangeError(t *testing.T) {
-	nodes := []uint64{1, 2, 3}
-	removed := map[types.ID]bool{4: true}
+	cl := newCluster("")
+	cl.SetStore(store.New())
+	for i := 1; i <= 4; i++ {
+		cl.AddMember(&Member{ID: types.ID(i)})
+	}
+	cl.RemoveMember(4)
+
 	tests := []struct {
 		cc   raftpb.ConfChange
 		werr error
@@ -458,12 +463,11 @@ func TestApplyConfChangeError(t *testing.T) {
 	}
 	for i, tt := range tests {
 		n := &nodeRecorder{}
-		cl := &Cluster{removed: removed}
 		srv := &EtcdServer{
 			node:    n,
 			Cluster: cl,
 		}
-		err := srv.applyConfChange(tt.cc, nodes)
+		err := srv.applyConfChange(tt.cc)
 		if err != tt.werr {
 			t.Errorf("#%d: applyConfChange error = %v, want %v", i, err, tt.werr)
 		}
@@ -506,11 +510,12 @@ func testServer(t *testing.T, ns uint64) {
 		n := raft.StartNode(id, members, 10, 1)
 		tk := time.NewTicker(10 * time.Millisecond)
 		defer tk.Stop()
+		st := store.New()
 		cl := newCluster("abc")
-		cl.SetStore(&storeRecorder{})
+		cl.SetStore(st)
 		srv := &EtcdServer{
 			node:    n,
-			store:   store.New(),
+			store:   st,
 			send:    send,
 			storage: &storageRecorder{},
 			Ticker:  tk.C,
@@ -536,8 +541,8 @@ func testServer(t *testing.T, ns uint64) {
 
 		g, w := resp.Event.Node, &store.NodeExtern{
 			Key:           "/foo",
-			ModifiedIndex: uint64(i),
-			CreatedIndex:  uint64(i),
+			ModifiedIndex: uint64(i) + 2*ns,
+			CreatedIndex:  uint64(i) + 2*ns,
 			Value:         stringp("bar"),
 		}
 
@@ -576,7 +581,7 @@ func TestDoProposal(t *testing.T) {
 		// this makes <-tk always successful, which accelerates internal clock
 		close(tk)
 		cl := newCluster("abc")
-		cl.SetStore(&storeRecorder{})
+		cl.SetStore(store.New())
 		srv := &EtcdServer{
 			node:    n,
 			store:   st,
@@ -833,13 +838,15 @@ func TestTriggerSnap(t *testing.T) {
 	n.Campaign(ctx)
 	st := &storeRecorder{}
 	p := &storageRecorder{}
+	cl := newCluster("abc")
+	cl.SetStore(store.New())
 	s := &EtcdServer{
 		store:     st,
 		send:      func(_ []raftpb.Message) {},
 		storage:   p,
 		node:      n,
 		snapCount: 10,
-		Cluster:   &Cluster{},
+		Cluster:   cl,
 	}
 
 	s.start()
@@ -928,7 +935,7 @@ func TestAddMember(t *testing.T) {
 		},
 	}
 	cl := newTestCluster(nil)
-	cl.SetStore(&storeRecorder{})
+	cl.SetStore(store.New())
 	s := &EtcdServer{
 		node:    n,
 		store:   &storeRecorder{},
@@ -964,7 +971,6 @@ func TestRemoveMember(t *testing.T) {
 		},
 	}
 	cl := newTestCluster([]Member{{ID: 1234}})
-	cl.SetStore(&storeRecorder{})
 	s := &EtcdServer{
 		node:    n,
 		store:   &storeRecorder{},

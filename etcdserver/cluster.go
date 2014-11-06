@@ -31,6 +31,7 @@ import (
 	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/pkg/flags"
 	"github.com/coreos/etcd/pkg/types"
+	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/store"
 )
 
@@ -238,6 +239,27 @@ func (c *Cluster) genID() {
 func (c *Cluster) SetID(id types.ID) { c.id = id }
 
 func (c *Cluster) SetStore(st store.Store) { c.store = st }
+
+func (c *Cluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
+	appliedMembers, appliedRemoved := membersFromStore(c.store)
+
+	if appliedRemoved[types.ID(cc.NodeID)] {
+		return ErrIDRemoved
+	}
+	switch cc.Type {
+	case raftpb.ConfChangeAddNode:
+		if appliedMembers[types.ID(cc.NodeID)] != nil {
+			return ErrIDExists
+		}
+	case raftpb.ConfChangeRemoveNode:
+		if appliedMembers[types.ID(cc.NodeID)] == nil {
+			return ErrIDNotFound
+		}
+	default:
+		log.Panicf("ConfChange type should be either AddNode or RemoveNode")
+	}
+	return nil
+}
 
 // AddMember puts a new Member into the store.
 // A Member with a matching id must not exist.
