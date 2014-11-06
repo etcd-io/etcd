@@ -186,12 +186,16 @@ func (h *membersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		now := h.clock.Now()
 		m := etcdserver.NewMember("", req.PeerURLs, "", &now)
-		if err := h.server.AddMember(ctx, *m); err != nil {
+		err = h.server.AddMember(ctx, *m)
+		switch {
+		case err == etcdserver.ErrIDExists || err == etcdserver.ErrPeerURLexists:
+			writeError(w, httptypes.NewHTTPError(http.StatusPreconditionFailed, err.Error()))
+			return
+		case err != nil:
 			log.Printf("etcdhttp: error adding node %s: %v", m.ID, err)
 			writeError(w, err)
 			return
 		}
-
 		res := newMember(m)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)

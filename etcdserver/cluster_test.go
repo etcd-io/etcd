@@ -17,11 +17,14 @@
 package etcdserver
 
 import (
+	"encoding/json"
+	"fmt"
 	"path"
 	"reflect"
 	"testing"
 
 	"github.com/coreos/etcd/pkg/types"
+	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/store"
 )
 
@@ -347,6 +350,77 @@ func TestClusterValidateAndAssignIDs(t *testing.T) {
 		}
 		if !reflect.DeepEqual(cl.MemberIDs(), tt.wids) {
 			t.Errorf("#%d: ids = %v, want %v", i, cl.MemberIDs(), tt.wids)
+		}
+	}
+}
+
+func TestClusterValidateConfigurationChange(t *testing.T) {
+	cl := newCluster("")
+	cl.SetStore(store.New())
+	for i := 1; i <= 4; i++ {
+		attr := RaftAttributes{PeerURLs: []string{fmt.Sprintf("http://127.0.0.1:%d", i)}}
+		cl.AddMember(&Member{ID: types.ID(i), RaftAttributes: attr})
+	}
+	cl.RemoveMember(4)
+
+	attr := RaftAttributes{PeerURLs: []string{fmt.Sprintf("http://127.0.0.1:%d", 1)}}
+	cxt, err := json.Marshal(&Member{ID: types.ID(5), RaftAttributes: attr})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tests := []struct {
+		cc   raftpb.ConfChange
+		werr error
+	}{
+		{
+			raftpb.ConfChange{
+				Type:   raftpb.ConfChangeRemoveNode,
+				NodeID: 3,
+			},
+			nil,
+		},
+		{
+			raftpb.ConfChange{
+				Type:   raftpb.ConfChangeAddNode,
+				NodeID: 4,
+			},
+			ErrIDRemoved,
+		},
+		{
+			raftpb.ConfChange{
+				Type:   raftpb.ConfChangeRemoveNode,
+				NodeID: 4,
+			},
+			ErrIDRemoved,
+		},
+		{
+			raftpb.ConfChange{
+				Type:   raftpb.ConfChangeAddNode,
+				NodeID: 1,
+			},
+			ErrIDExists,
+		},
+		{
+			raftpb.ConfChange{
+				Type:    raftpb.ConfChangeAddNode,
+				NodeID:  5,
+				Context: cxt,
+			},
+			ErrPeerURLexists,
+		},
+		{
+			raftpb.ConfChange{
+				Type:   raftpb.ConfChangeRemoveNode,
+				NodeID: 5,
+			},
+			ErrIDNotFound,
+		},
+	}
+	for i, tt := range tests {
+		err := cl.ValidateConfigurationChange(tt.cc)
+		if err != tt.werr {
+			t.Errorf("#%d: validateConfigurationChange error = %v, want %v", i, err, tt.werr)
 		}
 	}
 }
