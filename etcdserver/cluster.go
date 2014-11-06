@@ -327,7 +327,8 @@ func (c *Cluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
 	return nil
 }
 
-// AddMember puts a new Member into the store.
+// AddMember adds a new Member into the cluster, and saves the given member's
+// raftAttributes into the store. The given member should have empty attributes.
 // A Member with a matching id must not exist.
 func (c *Cluster) AddMember(m *Member) {
 	c.Lock()
@@ -339,14 +340,6 @@ func (c *Cluster) AddMember(m *Member) {
 	p := path.Join(memberStoreKey(m.ID), raftAttributesSuffix)
 	if _, err := c.store.Create(p, false, string(b), false, store.Permanent); err != nil {
 		log.Panicf("create raftAttributes should never fail: %v", err)
-	}
-	b, err = json.Marshal(m.Attributes)
-	if err != nil {
-		log.Panicf("marshal attributes should never fail: %v", err)
-	}
-	p = path.Join(memberStoreKey(m.ID), attributesSuffix)
-	if _, err := c.store.Create(p, false, string(b), false, store.Permanent); err != nil {
-		log.Panicf("create attributes should never fail: %v", err)
 	}
 	c.members[m.ID] = m
 }
@@ -390,20 +383,26 @@ func (c *Cluster) UpdateMember(nm *Member) {
 // the child nodes of the given node should be sorted by key.
 func nodeToMember(n *store.NodeExtern) (*Member, error) {
 	m := &Member{ID: mustParseMemberIDFromKey(n.Key)}
-	if len(n.Nodes) != 2 {
-		return m, fmt.Errorf("len(nodes) = %d, want 2", len(n.Nodes))
+	attrs := make(map[string][]byte)
+	raftAttrKey := path.Join(n.Key, raftAttributesSuffix)
+	attrKey := path.Join(n.Key, attributesSuffix)
+	for _, nn := range n.Nodes {
+		if nn.Key != raftAttrKey && nn.Key != attrKey {
+			return nil, fmt.Errorf("unknown key %q", nn.Key)
+		}
+		attrs[nn.Key] = []byte(*nn.Value)
 	}
-	if w := path.Join(n.Key, attributesSuffix); n.Nodes[0].Key != w {
-		return m, fmt.Errorf("key = %v, want %v", n.Nodes[0].Key, w)
+	if data := attrs[raftAttrKey]; data != nil {
+		if err := json.Unmarshal(data, &m.RaftAttributes); err != nil {
+			return nil, fmt.Errorf("unmarshal raftAttributes error: %v", err)
+		}
+	} else {
+		return nil, fmt.Errorf("raftAttributes key doesn't exist")
 	}
-	if err := json.Unmarshal([]byte(*n.Nodes[0].Value), &m.Attributes); err != nil {
-		return m, fmt.Errorf("unmarshal attributes error: %v", err)
-	}
-	if w := path.Join(n.Key, raftAttributesSuffix); n.Nodes[1].Key != w {
-		return m, fmt.Errorf("key = %v, want %v", n.Nodes[1].Key, w)
-	}
-	if err := json.Unmarshal([]byte(*n.Nodes[1].Value), &m.RaftAttributes); err != nil {
-		return m, fmt.Errorf("unmarshal raftAttributes error: %v", err)
+	if data := attrs[attrKey]; data != nil {
+		if err := json.Unmarshal(data, &m.Attributes); err != nil {
+			return m, fmt.Errorf("unmarshal attributes error: %v", err)
+		}
 	}
 	return m, nil
 }

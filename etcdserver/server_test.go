@@ -554,8 +554,8 @@ func testServer(t *testing.T, ns uint64) {
 
 		g, w := resp.Event.Node, &store.NodeExtern{
 			Key:           "/foo",
-			ModifiedIndex: uint64(i) + 2*ns,
-			CreatedIndex:  uint64(i) + 2*ns,
+			ModifiedIndex: uint64(i) + ns,
+			CreatedIndex:  uint64(i) + ns,
 			Value:         stringp("bar"),
 		}
 
@@ -993,7 +993,9 @@ func TestRemoveMember(t *testing.T) {
 			Nodes:     []uint64{1234, 2345, 3456},
 		},
 	}
-	cl := newTestCluster([]*Member{{ID: 1234}})
+	cl := newTestCluster(nil)
+	cl.SetStore(store.New())
+	cl.AddMember(&Member{ID: 1234})
 	s := &EtcdServer{
 		node:    n,
 		store:   &storeRecorder{},
@@ -1027,7 +1029,9 @@ func TestUpdateMember(t *testing.T) {
 			Nodes:     []uint64{1234, 2345, 3456},
 		},
 	}
-	cl := newTestCluster([]*Member{{ID: 1234}})
+	cl := newTestCluster(nil)
+	cl.SetStore(store.New())
+	cl.AddMember(&Member{ID: 1234})
 	s := &EtcdServer{
 		node:    n,
 		store:   &storeRecorder{},
