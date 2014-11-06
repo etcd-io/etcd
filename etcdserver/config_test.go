@@ -21,44 +21,42 @@ import "testing"
 func TestBootstrapConfigVerify(t *testing.T) {
 	tests := []struct {
 		clusterSetting string
-		clst           ClusterState
+		newclst        bool
 		disc           string
 		shouldError    bool
 	}{
 		{
 			// Node must exist in cluster
 			"",
-			ClusterStateValueNew,
+			true,
 			"",
 			true,
 		},
 		{
 			// Cannot have duplicate URLs in cluster config
 			"node1=http://localhost:7001,node2=http://localhost:7001,node2=http://localhost:7002",
-			ClusterStateValueNew,
+			true,
 			"",
 			true,
 		},
 		{
 			// Node defined, ClusterState OK
 			"node1=http://localhost:7001,node2=http://localhost:7002",
-			ClusterStateValueNew,
+			true,
 			"",
 			false,
 		},
 		{
 			// Node defined, discovery OK
 			"node1=http://localhost:7001",
-			// TODO(jonboulle): replace with ClusterStateExisting once it exists
-			"",
+			false,
 			"http://discovery",
 			false,
 		},
 		{
 			// Cannot have ClusterState!=new && !discovery
 			"node1=http://localhost:7001",
-			// TODO(jonboulle): replace with ClusterStateExisting once it exists
-			ClusterState("foo"),
+			false,
 			"",
 			true,
 		},
@@ -74,7 +72,7 @@ func TestBootstrapConfigVerify(t *testing.T) {
 			Name:         "node1",
 			DiscoveryURL: tt.disc,
 			Cluster:      cluster,
-			ClusterState: tt.clst,
+			NewCluster:   tt.newclst,
 		}
 		err = cfg.VerifyBootstrapConfig()
 		if (err == nil) && tt.shouldError {

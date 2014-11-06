@@ -129,7 +129,7 @@ func (c *cluster) Launch(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		m.ClusterState = etcdserver.ClusterStateValueNew
+		m.NewCluster = true
 		m.Transport, err = transport.NewTransport(transport.TLSInfo{})
 		if err != nil {
 			t.Fatal(err)
