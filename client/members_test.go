@@ -86,12 +86,12 @@ func TestMembersAPIActionRemove(t *testing.T) {
 }
 
 func TestAssertStatusCode(t *testing.T) {
-	if err := assertStatusCode(400, 404); err == nil {
+	if err := assertStatusCode(404, 400); err == nil {
 		t.Errorf("assertStatusCode failed to detect conflict in 400 vs 404")
 	}
 
-	if err := assertStatusCode(400, 400); err != nil {
-		t.Errorf("assertStatusCode found conflict in 400 vs 400: %v", err)
+	if err := assertStatusCode(404, 400, 404); err != nil {
+		t.Errorf("assertStatusCode found conflict in (404,400) vs 400: %v", err)
 	}
 }
 
