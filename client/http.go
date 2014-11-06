@@ -40,6 +40,7 @@ var (
 type SyncableHTTPClient interface {
 	HTTPClient
 	Sync(context.Context) error
+	Endpoints() []string
 }
 
 type HTTPClient interface {
@@ -65,7 +66,8 @@ func NewHTTPClient(tr CancelableTransport, eps []string) (SyncableHTTPClient, er
 func newHTTPClusterClient(tr CancelableTransport, eps []string) (*httpClusterClient, error) {
 	c := httpClusterClient{
 		transport: tr,
-		endpoints: make([]HTTPClient, len(eps)),
+		endpoints: eps,
+		clients:   make([]HTTPClient, len(eps)),
 	}
 
 	for i, ep := range eps {
@@ -74,7 +76,7 @@ func newHTTPClusterClient(tr CancelableTransport, eps []string) (*httpClusterCli
 			return nil, err
 		}
 
-		c.endpoints[i] = &redirectFollowingHTTPClient{
+		c.clients[i] = &redirectFollowingHTTPClient{
 			max: DefaultMaxRedirects,
 			client: &httpClient{
 				transport: tr,
@@ -88,14 +90,15 @@ func newHTTPClusterClient(tr CancelableTransport, eps []string) (*httpClusterCli
 
 type httpClusterClient struct {
 	transport CancelableTransport
-	endpoints []HTTPClient
+	endpoints []string
+	clients   []HTTPClient
 }
 
 func (c *httpClusterClient) Do(ctx context.Context, act HTTPAction) (resp *http.Response, body []byte, err error) {
-	if len(c.endpoints) == 0 {
+	if len(c.clients) == 0 {
 		return nil, nil, ErrNoEndpoints
 	}
-	for _, hc := range c.endpoints {
+	for _, hc := range c.clients {
 		resp, body, err = hc.Do(ctx, act)
 		if err != nil {
 			if err == ErrTimeout || err == ErrCanceled {
@@ -109,6 +112,10 @@ func (c *httpClusterClient) Do(ctx context.Context, act HTTPAction) (resp *http.
 		break
 	}
 	return
+}
+
+func (c *httpClusterClient) Endpoints() []string {
+	return c.endpoints
 }
 
 func (c *httpClusterClient) Sync(ctx context.Context) error {
