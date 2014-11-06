@@ -328,7 +328,7 @@ func (s *EtcdServer) run() {
 			// race them.
 			// TODO: apply configuration change into ClusterStore.
 			if len(rd.CommittedEntries) != 0 {
-				appliedi = s.apply(rd.CommittedEntries, nodes)
+				appliedi = s.apply(rd.CommittedEntries)
 			}
 
 			if rd.Snapshot.Index > snapi {
@@ -559,7 +559,7 @@ func getExpirationTime(r *pb.Request) time.Time {
 	return t
 }
 
-func (s *EtcdServer) apply(es []raftpb.Entry, nodes []uint64) uint64 {
+func (s *EtcdServer) apply(es []raftpb.Entry) uint64 {
 	var applied uint64
 	for i := range es {
 		e := es[i]
@@ -571,7 +571,7 @@ func (s *EtcdServer) apply(es []raftpb.Entry, nodes []uint64) uint64 {
 		case raftpb.EntryConfChange:
 			var cc raftpb.ConfChange
 			pbutil.MustUnmarshal(&cc, e.Data)
-			s.w.Trigger(cc.ID, s.applyConfChange(cc, nodes))
+			s.w.Trigger(cc.ID, s.applyConfChange(cc))
 		default:
 			log.Panicf("entry type should be either EntryNormal or EntryConfChange")
 		}
@@ -633,8 +633,8 @@ func (s *EtcdServer) applyRequest(r pb.Request) Response {
 	}
 }
 
-func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, nodes []uint64) error {
-	if err := s.checkConfChange(cc, nodes); err != nil {
+func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange) error {
+	if err := s.Cluster.ValidateConfigurationChange(cc); err != nil {
 		cc.NodeID = raft.None
 		s.node.ApplyConfChange(cc)
 		return err
@@ -655,25 +655,6 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, nodes []uint64) error
 		id := types.ID(cc.NodeID)
 		s.Cluster.RemoveMember(id)
 		log.Printf("etcdserver: removed node %s from cluster", id)
-	}
-	return nil
-}
-
-func (s *EtcdServer) checkConfChange(cc raftpb.ConfChange, nodes []uint64) error {
-	if s.Cluster.IsIDRemoved(types.ID(cc.NodeID)) {
-		return ErrIDRemoved
-	}
-	switch cc.Type {
-	case raftpb.ConfChangeAddNode:
-		if containsUint64(nodes, cc.NodeID) {
-			return ErrIDExists
-		}
-	case raftpb.ConfChangeRemoveNode:
-		if !containsUint64(nodes, cc.NodeID) {
-			return ErrIDNotFound
-		}
-	default:
-		log.Panicf("ConfChange type should be either AddNode or RemoveNode")
 	}
 	return nil
 }

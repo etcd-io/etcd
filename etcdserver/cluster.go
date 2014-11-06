@@ -31,6 +31,7 @@ import (
 	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/pkg/flags"
 	"github.com/coreos/etcd/pkg/types"
+	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/store"
 )
 
@@ -89,33 +90,7 @@ func NewClusterFromString(token string, cluster string) (*Cluster, error) {
 func NewClusterFromStore(token string, st store.Store) *Cluster {
 	c := newCluster(token)
 	c.store = st
-
-	e, err := c.store.Get(storeMembersPrefix, true, true)
-	if err != nil {
-		if isKeyNotFound(err) {
-			return c
-		}
-		log.Panicf("get storeMembers should never fail: %v", err)
-	}
-	for _, n := range e.Node.Nodes {
-		m, err := nodeToMember(n)
-		if err != nil {
-			log.Panicf("nodeToMember should never fail: %v", err)
-		}
-		c.members[m.ID] = m
-	}
-
-	e, err = c.store.Get(storeRemovedMembersPrefix, true, true)
-	if err != nil {
-		if isKeyNotFound(err) {
-			return c
-		}
-		log.Panicf("get storeRemovedMembers should never fail: %v", err)
-	}
-	for _, n := range e.Node.Nodes {
-		c.removed[mustParseMemberIDFromKey(n.Key)] = true
-	}
-
+	c.members, c.removed = membersFromStore(c.store)
 	return c
 }
 
@@ -265,6 +240,27 @@ func (c *Cluster) SetID(id types.ID) { c.id = id }
 
 func (c *Cluster) SetStore(st store.Store) { c.store = st }
 
+func (c *Cluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
+	appliedMembers, appliedRemoved := membersFromStore(c.store)
+
+	if appliedRemoved[types.ID(cc.NodeID)] {
+		return ErrIDRemoved
+	}
+	switch cc.Type {
+	case raftpb.ConfChangeAddNode:
+		if appliedMembers[types.ID(cc.NodeID)] != nil {
+			return ErrIDExists
+		}
+	case raftpb.ConfChangeRemoveNode:
+		if appliedMembers[types.ID(cc.NodeID)] == nil {
+			return ErrIDNotFound
+		}
+	default:
+		log.Panicf("ConfChange type should be either AddNode or RemoveNode")
+	}
+	return nil
+}
+
 // AddMember puts a new Member into the store.
 // A Member with a matching id must not exist.
 func (c *Cluster) AddMember(m *Member) {
@@ -320,6 +316,37 @@ func nodeToMember(n *store.NodeExtern) (*Member, error) {
 		return m, fmt.Errorf("unmarshal raftAttributes error: %v", err)
 	}
 	return m, nil
+}
+
+func membersFromStore(st store.Store) (map[types.ID]*Member, map[types.ID]bool) {
+	members := make(map[types.ID]*Member)
+	removed := make(map[types.ID]bool)
+	e, err := st.Get(storeMembersPrefix, true, true)
+	if err != nil {
+		if isKeyNotFound(err) {
+			return members, removed
+		}
+		log.Panicf("get storeMembers should never fail: %v", err)
+	}
+	for _, n := range e.Node.Nodes {
+		m, err := nodeToMember(n)
+		if err != nil {
+			log.Panicf("nodeToMember should never fail: %v", err)
+		}
+		members[m.ID] = m
+	}
+
+	e, err = st.Get(storeRemovedMembersPrefix, true, true)
+	if err != nil {
+		if isKeyNotFound(err) {
+			return members, removed
+		}
+		log.Panicf("get storeRemovedMembers should never fail: %v", err)
+	}
+	for _, n := range e.Node.Nodes {
+		removed[mustParseMemberIDFromKey(n.Key)] = true
+	}
+	return members, removed
 }
 
 func isKeyNotFound(err error) bool {
