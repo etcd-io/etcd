@@ -56,7 +56,7 @@ func (m *httpMembersAPI) List(ctx context.Context) ([]httptypes.Member, error) {
 		return nil, err
 	}
 
-	if err := assertStatusCode(http.StatusOK, resp.StatusCode); err != nil {
+	if err := assertStatusCode(resp.StatusCode, http.StatusOK); err != nil {
 		return nil, err
 	}
 
@@ -80,8 +80,16 @@ func (m *httpMembersAPI) Add(ctx context.Context, peerURL string) (*httptypes.Me
 		return nil, err
 	}
 
-	if err := assertStatusCode(http.StatusCreated, resp.StatusCode); err != nil {
+	if err := assertStatusCode(resp.StatusCode, http.StatusCreated, http.StatusConflict); err != nil {
 		return nil, err
+	}
+
+	if resp.StatusCode != http.StatusCreated {
+		var httperr httptypes.HTTPError
+		if err := json.Unmarshal(body, &httperr); err != nil {
+			return nil, err
+		}
+		return nil, httperr
 	}
 
 	var memb httptypes.Member
@@ -99,7 +107,7 @@ func (m *httpMembersAPI) Remove(ctx context.Context, memberID string) error {
 		return err
 	}
 
-	return assertStatusCode(http.StatusNoContent, resp.StatusCode)
+	return assertStatusCode(resp.StatusCode, http.StatusNoContent)
 }
 
 type membersAPIActionList struct{}
@@ -134,11 +142,13 @@ func (a *membersAPIActionAdd) HTTPRequest(ep url.URL) *http.Request {
 	return req
 }
 
-func assertStatusCode(want, got int) (err error) {
-	if want != got {
-		err = fmt.Errorf("unexpected status code %d", got)
+func assertStatusCode(got int, want ...int) (err error) {
+	for _, w := range want {
+		if w == got {
+			return nil
+		}
 	}
-	return err
+	return fmt.Errorf("unexpected status code %d", got)
 }
 
 // v2MembersURL add the necessary path to the provided endpoint
