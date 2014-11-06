@@ -1,3 +1,5 @@
+// +build !windows
+
 /*
    Copyright 2014 CoreOS, Inc.
 
