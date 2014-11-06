@@ -52,42 +52,34 @@ const (
 	nRetries = uint(3)
 )
 
-type Discoverer interface {
-	// Discover connects to a discovery service and retrieves a string
-	// describing an etcd cluster, and any error encountered.
-	Discover() (string, error)
+// JoinCluster will connect to the discovery service at the given url, and
+// register the server represented by the given id and config to the cluster
+func JoinCluster(durl string, id types.ID, config string) (string, error) {
+	d, err := newDiscovery(durl, id)
+	if err != nil {
+		return "", err
+	}
+	return d.joinCluster(config)
+}
+
+// GetCluster will connect to the discovery service at the given url and
+// retrieve a string describing the cluster
+func GetCluster(durl string) (string, error) {
+	d, err := newDiscovery(durl, 0)
+	if err != nil {
+		return "", err
+	}
+	return d.getCluster()
 }
 
 type discovery struct {
 	cluster string
 	id      types.ID
-	config  string
 	c       client.KeysAPI
 	retries uint
 	url     *url.URL
 
 	clock clockwork.Clock
-}
-
-type proxyDiscovery struct {
-	*discovery
-}
-
-// New returns a Discoverer which will connect to the discovery service at
-// the given url, and register the server represented by the given id and
-// config to the cluster during the discovery process
-func New(durl string, id types.ID, config string) (Discoverer, error) {
-	return newDiscovery(durl, id, config)
-}
-
-// ProxyNew returns a Discoverer which will connect to the discovery service
-// at the given url and retrieve a string describing the cluster
-func ProxyNew(durl string) (Discoverer, error) {
-	d, err := newDiscovery(durl, 0, "")
-	if err != nil {
-		return nil, err
-	}
-	return &proxyDiscovery{d}, nil
 }
 
 // proxyFuncFromEnv builds a proxy function if the appropriate environment
@@ -119,7 +111,7 @@ func proxyFuncFromEnv() (func(*http.Request) (*url.URL, error), error) {
 	return http.ProxyURL(proxyURL), nil
 }
 
-func newDiscovery(durl string, id types.ID, config string) (*discovery, error) {
+func newDiscovery(durl string, id types.ID) (*discovery, error) {
 	u, err := url.Parse(durl)
 	if err != nil {
 		return nil, err
@@ -137,23 +129,21 @@ func newDiscovery(durl string, id types.ID, config string) (*discovery, error) {
 	dc := client.NewDiscoveryKeysAPI(c)
 	return &discovery{
 		cluster: token,
-		id:      id,
-		config:  config,
 		c:       dc,
+		id:      id,
 		url:     u,
 		clock:   clockwork.NewRealClock(),
 	}, nil
 }
 
-func (d *discovery) Discover() (string, error) {
-	// fast path: if the cluster is full, returns the error
-	// do not need to register itself to the cluster in this
-	// case.
+func (d *discovery) joinCluster(config string) (string, error) {
+	// fast path: if the cluster is full, return the error
+	// do not need to register to the cluster in this case.
 	if _, _, err := d.checkCluster(); err != nil {
 		return "", err
 	}
 
-	if err := d.createSelf(); err != nil {
+	if err := d.createSelf(config); err != nil {
 		// Fails, even on a timeout, if createSelf times out.
 		// TODO(barakmich): Retrying the same node might want to succeed here
 		// (ie, createSelf should be idempotent for discovery).
@@ -173,8 +163,8 @@ func (d *discovery) Discover() (string, error) {
 	return nodesToCluster(all), nil
 }
 
-func (pd *proxyDiscovery) Discover() (string, error) {
-	nodes, size, err := pd.checkCluster()
+func (d *discovery) getCluster() (string, error) {
+	nodes, size, err := d.checkCluster()
 	if err != nil {
 		if err == ErrFullCluster {
 			return nodesToCluster(nodes), nil
@@ -182,16 +172,16 @@ func (pd *proxyDiscovery) Discover() (string, error) {
 		return "", err
 	}
 
-	all, err := pd.waitNodes(nodes, size)
+	all, err := d.waitNodes(nodes, size)
 	if err != nil {
 		return "", err
 	}
 	return nodesToCluster(all), nil
 }
 
-func (d *discovery) createSelf() error {
+func (d *discovery) createSelf(contents string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
-	resp, err := d.c.Create(ctx, d.selfKey(), d.config, -1)
+	resp, err := d.c.Create(ctx, d.selfKey(), contents, -1)
 	cancel()
 	if err != nil {
 		return err

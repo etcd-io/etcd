@@ -322,7 +322,7 @@ func TestCreateSelf(t *testing.T) {
 
 	for i, tt := range tests {
 		d := discovery{cluster: "1000", c: tt.c}
-		if err := d.createSelf(); err != tt.werr {
+		if err := d.createSelf(""); err != tt.werr {
 			t.Errorf("#%d: err = %v, want %v", i, err, nil)
 		}
 	}
