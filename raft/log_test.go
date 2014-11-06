@@ -286,7 +286,7 @@ func TestCompactionSideEffects(t *testing.T) {
 		raftLog.append(uint64(i), pb.Entry{Term: uint64(i + 1), Index: uint64(i + 1)})
 	}
 	raftLog.maybeCommit(lastIndex, lastTerm)
-	raftLog.resetNextEnts()
+	raftLog.appliedTo(raftLog.committed)
 
 	raftLog.compact(500)
 
@@ -342,7 +342,7 @@ func TestUnstableEnts(t *testing.T) {
 		raftLog.append(0, previousEnts...)
 		raftLog.unstable = tt.unstable
 		ents := raftLog.unstableEnts()
-		raftLog.resetUnstable()
+		raftLog.stableTo(raftLog.lastIndex())
 		if !reflect.DeepEqual(ents, tt.wents) {
 			t.Errorf("#%d: unstableEnts = %+v, want %+v", i, ents, tt.wents)
 		}
@@ -384,7 +384,7 @@ func TestCompaction(t *testing.T) {
 				raftLog.append(uint64(i), pb.Entry{})
 			}
 			raftLog.maybeCommit(tt.applied, 0)
-			raftLog.resetNextEnts()
+			raftLog.appliedTo(raftLog.committed)
 
 			for j := 0; j < len(tt.compact); j++ {
 				raftLog.compact(tt.compact[j])

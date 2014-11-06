@@ -891,8 +891,8 @@ func commitNoopEntry(r *raft) {
 	}
 	// ignore further messages to refresh followers' commmit index
 	r.readMessages()
-	r.raftLog.resetNextEnts()
-	r.raftLog.resetUnstable()
+	r.raftLog.appliedTo(r.raftLog.committed)
+	r.raftLog.stableTo(r.raftLog.lastIndex())
 }
 
 func acceptAndReply(m pb.Message) pb.Message {
