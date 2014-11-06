@@ -51,41 +51,31 @@ func TestNewTransportTLSInfo(t *testing.T) {
 	}
 	defer os.Remove(tmp)
 
-	tests := []struct {
-		info                TLSInfo
-		wantTLSClientConfig bool
-	}{
-		{
-			info:                TLSInfo{},
-			wantTLSClientConfig: false,
+	tests := []TLSInfo{
+		TLSInfo{},
+		TLSInfo{
+			CertFile: tmp,
+			KeyFile:  tmp,
 		},
-		{
-			info: TLSInfo{
-				CertFile: tmp,
-				KeyFile:  tmp,
-			},
-			wantTLSClientConfig: true,
+		TLSInfo{
+			CertFile: tmp,
+			KeyFile:  tmp,
+			CAFile:   tmp,
 		},
-		{
-			info: TLSInfo{
-				CertFile: tmp,
-				KeyFile:  tmp,
-				CAFile:   tmp,
-			},
-			wantTLSClientConfig: true,
+		TLSInfo{
+			CAFile: tmp,
 		},
 	}
 
 	for i, tt := range tests {
-		tt.info.parseFunc = fakeCertificateParserFunc(tls.Certificate{}, nil)
-		trans, err := NewTransport(tt.info)
+		tt.parseFunc = fakeCertificateParserFunc(tls.Certificate{}, nil)
+		trans, err := NewTransport(tt)
 		if err != nil {
 			t.Fatalf("Received unexpected error from NewTransport: %v", err)
 		}
 
-		gotTLSClientConfig := trans.TLSClientConfig != nil
-		if tt.wantTLSClientConfig != gotTLSClientConfig {
-			t.Fatalf("#%d: wantTLSClientConfig=%t but gotTLSClientConfig=%t", i, tt.wantTLSClientConfig, gotTLSClientConfig)
+		if trans.TLSClientConfig == nil {
+			t.Fatalf("#%d: want non-nil TLSClientConfig", i)
 		}
 	}
 }
@@ -121,8 +111,6 @@ func TestTLSInfoMissingFields(t *testing.T) {
 	defer os.Remove(tmp)
 
 	tests := []TLSInfo{
-		TLSInfo{},
-		TLSInfo{CAFile: tmp},
 		TLSInfo{CertFile: tmp},
 		TLSInfo{KeyFile: tmp},
 		TLSInfo{CertFile: tmp, CAFile: tmp},
