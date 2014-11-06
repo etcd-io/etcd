@@ -297,11 +297,7 @@ func startProxy() error {
 	}
 
 	if *durl != "" {
-		d, err := discovery.ProxyNew(*durl)
-		if err != nil {
-			return fmt.Errorf("cannot init discovery %v", err)
-		}
-		s, err := d.Discover()
+		s, err := discovery.GetCluster(*durl)
 		if err != nil {
 			return err
 		}

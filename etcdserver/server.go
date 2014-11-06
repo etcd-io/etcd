@@ -203,11 +203,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		}
 		m := cfg.Cluster.MemberByName(cfg.Name)
 		if cfg.ShouldDiscover() {
-			d, err := discovery.New(cfg.DiscoveryURL, m.ID, cfg.Cluster.String())
-			if err != nil {
-				return nil, fmt.Errorf("cannot init discovery %v", err)
-			}
-			s, err := d.Discover()
+			s, err := discovery.JoinCluster(cfg.DiscoveryURL, m.ID, cfg.Cluster.String())
 			if err != nil {
 				return nil, err
 			}
