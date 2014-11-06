@@ -679,22 +679,22 @@ func GetClusterFromPeers(urls []string) (*Cluster, error) {
 	for _, u := range urls {
 		resp, err := http.Get(u + "/members")
 		if err != nil {
-			log.Printf("etcdserver: get /members on %s: %v", u, err)
+			log.Printf("etcdserver: could not get cluster response from %s: %v", u, err)
 			continue
 		}
 		b, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			log.Printf("etcdserver: read body error: %v", err)
+			log.Printf("etcdserver: could not read the body of cluster response: %v", err)
 			continue
 		}
 		var membs []*Member
 		if err := json.Unmarshal(b, &membs); err != nil {
-			log.Printf("etcdserver: unmarshal body error: %v", err)
+			log.Printf("etcdserver: could not unmarshal cluster response: %v", err)
 			continue
 		}
 		id, err := types.IDFromString(resp.Header.Get("X-Etcd-Cluster-ID"))
 		if err != nil {
-			log.Printf("etcdserver: parse uint error: %v", err)
+			log.Printf("etcdserver: could not parse the cluster ID from cluster res: %v", err)
 			continue
 		}
 		return NewClusterFromMembers("", id, membs), nil
