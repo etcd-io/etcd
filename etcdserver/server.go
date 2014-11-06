@@ -64,6 +64,7 @@ var (
 	ErrIDRemoved     = errors.New("etcdserver: ID removed")
 	ErrIDExists      = errors.New("etcdserver: ID exists")
 	ErrIDNotFound    = errors.New("etcdserver: ID not found")
+	ErrPeerURLexists = errors.New("etcdserver: peerURL exists")
 	ErrCanceled      = errors.New("etcdserver: request cancelled")
 	ErrTimeout       = errors.New("etcdserver: request timed out")
 

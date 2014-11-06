@@ -242,7 +242,6 @@ func (c *Cluster) SetStore(st store.Store) { c.store = st }
 
 func (c *Cluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
 	appliedMembers, appliedRemoved := membersFromStore(c.store)
-
 	if appliedRemoved[types.ID(cc.NodeID)] {
 		return ErrIDRemoved
 	}
@@ -250,6 +249,21 @@ func (c *Cluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
 	case raftpb.ConfChangeAddNode:
 		if appliedMembers[types.ID(cc.NodeID)] != nil {
 			return ErrIDExists
+		}
+		urls := make(map[string]bool)
+		for _, m := range appliedMembers {
+			for _, u := range m.PeerURLs {
+				urls[u] = true
+			}
+		}
+		m := new(Member)
+		if err := json.Unmarshal(cc.Context, m); err != nil {
+			log.Panicf("unmarshal member should never fail: %v", err)
+		}
+		for _, u := range m.PeerURLs {
+			if urls[u] {
+				return ErrPeerURLexists
+			}
 		}
 	case raftpb.ConfChangeRemoveNode:
 		if appliedMembers[types.ID(cc.NodeID)] == nil {
