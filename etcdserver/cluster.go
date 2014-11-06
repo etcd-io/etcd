@@ -259,18 +259,20 @@ func (c *Cluster) SetID(id types.ID) { c.id = id }
 
 func (c *Cluster) SetStore(st store.Store) { c.store = st }
 
+// ValidateConfigurationChange takes a proposed ConfChange and
+// ensures that it is still valid.
 func (c *Cluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
-	appliedMembers, appliedRemoved := membersFromStore(c.store)
-	if appliedRemoved[types.ID(cc.NodeID)] {
+	members, removed := membersFromStore(c.store)
+	if removed[types.ID(cc.NodeID)] {
 		return ErrIDRemoved
 	}
 	switch cc.Type {
 	case raftpb.ConfChangeAddNode:
-		if appliedMembers[types.ID(cc.NodeID)] != nil {
+		if members[types.ID(cc.NodeID)] != nil {
 			return ErrIDExists
 		}
 		urls := make(map[string]bool)
-		for _, m := range appliedMembers {
+		for _, m := range members {
 			for _, u := range m.PeerURLs {
 				urls[u] = true
 			}
@@ -285,7 +287,7 @@ func (c *Cluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
 			}
 		}
 	case raftpb.ConfChangeRemoveNode:
-		if appliedMembers[types.ID(cc.NodeID)] == nil {
+		if members[types.ID(cc.NodeID)] == nil {
 			return ErrIDNotFound
 		}
 	default:

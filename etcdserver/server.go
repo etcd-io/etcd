@@ -333,7 +333,6 @@ func (s *EtcdServer) run() {
 			// TODO(bmizerany): do this in the background, but take
 			// care to apply entries in a single goroutine, and not
 			// race them.
-			// TODO: apply configuration change into ClusterStore.
 			if len(rd.CommittedEntries) != 0 {
 				appliedi = s.apply(rd.CommittedEntries)
 			}
@@ -480,8 +479,9 @@ func (s *EtcdServer) Term() uint64 {
 	return atomic.LoadUint64(&s.raftTerm)
 }
 
-// configure sends configuration change through consensus then performs it.
-// It will block until the change is performed or there is an error.
+// configure sends a configuration change through consensus and
+// then waits for it to be applied to the server. It
+// will block until the change is performed or there is an error.
 func (s *EtcdServer) configure(ctx context.Context, cc raftpb.ConfChange) error {
 	ch := s.w.Register(cc.ID)
 	if err := s.node.ProposeConfChange(ctx, cc); err != nil {
@@ -567,6 +567,8 @@ func getExpirationTime(r *pb.Request) time.Time {
 	return t
 }
 
+// apply takes an Entry received from Raft (after it has been committed) and
+// applies it to the current state of the EtcdServer
 func (s *EtcdServer) apply(es []raftpb.Entry) uint64 {
 	var applied uint64
 	for i := range es {
@@ -641,6 +643,8 @@ func (s *EtcdServer) applyRequest(r pb.Request) Response {
 	}
 }
 
+// applyConfChange applies a ConfChange to the server. It is only
+// invoked with a ConfChange that has already passed through Raft
 func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange) error {
 	if err := s.Cluster.ValidateConfigurationChange(cc); err != nil {
 		cc.NodeID = raft.None
