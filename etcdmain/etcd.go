@@ -47,6 +47,9 @@ const (
 
 	fallbackFlagExit  = "exit"
 	fallbackFlagProxy = "proxy"
+
+	clusterStateFlagNew      = "new"
+	clusterStateFlagExisting = "existing"
 )
 
 var (
@@ -59,9 +62,11 @@ var (
 
 	initialCluster      = fs.String("initial-cluster", "default=http://localhost:2380,default=http://localhost:7001", "Initial cluster configuration for bootstrapping")
 	initialClusterToken = fs.String("initial-cluster-token", "etcd-cluster", "Initial cluster token for the etcd cluster during bootstrap")
-	clusterState        = new(etcdserver.ClusterState)
 
-	corsInfo  = &cors.CORSInfo{}
+	corsInfo      = &cors.CORSInfo{}
+	clientTLSInfo = transport.TLSInfo{}
+	peerTLSInfo   = transport.TLSInfo{}
+
 	proxyFlag = flags.NewStringsFlag(
 		proxyFlagOff,
 		proxyFlagReadonly,
@@ -71,9 +76,10 @@ var (
 		fallbackFlagExit,
 		fallbackFlagProxy,
 	)
-
-	clientTLSInfo = transport.TLSInfo{}
-	peerTLSInfo   = transport.TLSInfo{}
+	clusterStateFlag = flags.NewStringsFlag(
+		clusterStateFlagNew,
+		clusterStateFlagExisting,
+	)
 
 	ignored = []string{
 		"cluster-active-size",
@@ -93,10 +99,10 @@ var (
 )
 
 func init() {
-	fs.Var(clusterState, "initial-cluster-state", "Initial cluster configuration for bootstrapping")
-	if err := clusterState.Set(etcdserver.ClusterStateValueNew); err != nil {
+	fs.Var(clusterStateFlag, "initial-cluster-state", "Initial cluster configuration for bootstrapping")
+	if err := clusterStateFlag.Set(clusterStateFlagNew); err != nil {
 		// Should never happen.
-		log.Panicf("unexpected error setting up clusterState: %v", err)
+		log.Panicf("unexpected error setting up clusterStateFlag: %v", err)
 	}
 
 	fs.Var(flags.NewURLsValue("http://localhost:2380,http://localhost:7001"), "initial-advertise-peer-urls", "List of this member's peer URLs to advertise to the rest of the cluster")
@@ -259,7 +265,7 @@ func startEtcd() error {
 		SnapCount:    *snapCount,
 		Cluster:      cls,
 		DiscoveryURL: *durl,
-		ClusterState: *clusterState,
+		NewCluster:   clusterStateFlag.String() == clusterStateFlagNew,
 		Transport:    pt,
 	}
 	var s *etcdserver.EtcdServer

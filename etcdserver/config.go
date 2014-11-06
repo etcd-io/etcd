@@ -33,7 +33,7 @@ type ServerConfig struct {
 	DataDir      string
 	SnapCount    uint64
 	Cluster      *Cluster
-	ClusterState ClusterState
+	NewCluster   bool
 	Transport    *http.Transport
 }
 
@@ -49,7 +49,7 @@ func (c *ServerConfig) VerifyBootstrapConfig() error {
 		return fmt.Errorf("cannot use %x as member id", raft.None)
 	}
 
-	if c.DiscoveryURL == "" && c.ClusterState != ClusterStateValueNew {
+	if c.DiscoveryURL == "" && !c.NewCluster {
 		return fmt.Errorf("initial cluster state unset and no wal or discovery URL found")
 	}
 

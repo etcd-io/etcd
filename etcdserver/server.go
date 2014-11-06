@@ -187,7 +187,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 	var id types.ID
 	haveWAL := wal.Exist(cfg.WALDir())
 	switch {
-	case !haveWAL && cfg.ClusterState == ClusterStateValueExisting:
+	case !haveWAL && !cfg.NewCluster:
 		cl, err := GetClusterFromPeers(cfg.Cluster.PeerURLs())
 		if err != nil {
 			return nil, fmt.Errorf("cannot fetch cluster info from peer urls: %v", err)
@@ -198,7 +198,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		cfg.Cluster.SetID(cl.id)
 		cfg.Cluster.SetStore(st)
 		id, n, w = startNode(cfg, nil)
-	case !haveWAL && cfg.ClusterState == ClusterStateValueNew:
+	case !haveWAL && cfg.NewCluster:
 		if err := cfg.VerifyBootstrapConfig(); err != nil {
 			return nil, err
 		}
