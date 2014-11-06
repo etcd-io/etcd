@@ -41,7 +41,9 @@ func (c *Client) Watch(prefix string, waitIndex uint64, recursive bool,
 		if err != nil {
 			return nil, err
 		}
-
+		if len(raw.Body) == 0 {
+			continue
+		}
 		resp, err := raw.Unmarshal()
 
 		if err != nil {
