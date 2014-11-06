@@ -20,7 +20,11 @@ import (
 	"errors"
 	"io"
 	"io/ioutil"
+	"net/url"
+	"os"
 	"strings"
+
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/codegangsta/cli"
 )
 
 var (
@@ -48,4 +52,46 @@ func argOrStdin(args []string, stdin io.Reader, i int) (string, error) {
 		return "", ErrNoAvailSrc
 	}
 	return string(bytes), nil
+}
+
+func maybeAddScheme(maybeAddr string) (string, error) {
+	u, err := url.Parse(maybeAddr)
+	if err != nil {
+		return "", err
+	}
+
+	if u.Scheme == "" {
+		u.Scheme = "http"
+	}
+
+	return u.String(), nil
+}
+
+func getPeersFlagValue(c *cli.Context) []string {
+	peerstr := c.GlobalString("peers")
+
+	// Use an environment variable if nothing was supplied on the
+	// command line
+	if peerstr == "" {
+		peerstr = os.Getenv("ETCDCTL_PEERS")
+	}
+
+	// If we still don't have peers, use a default
+	if peerstr == "" {
+		peerstr = "127.0.0.1:4001"
+	}
+
+	return strings.Split(peerstr, ",")
+}
+
+func getEndpoints(c *cli.Context) ([]string, error) {
+	eps := getPeersFlagValue(c)
+	var err error
+	for i, ep := range eps {
+		eps[i], err = maybeAddScheme(ep)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return eps, nil
 }

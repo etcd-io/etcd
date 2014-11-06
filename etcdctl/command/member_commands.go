@@ -52,14 +52,13 @@ func NewMemberCommand() cli.Command {
 }
 
 func mustNewMembersAPI(c *cli.Context) client.MembersAPI {
-	peers := getPeersFlagValue(c)
-	for i, p := range peers {
-		if !strings.HasPrefix(p, "http") && !strings.HasPrefix(p, "https") {
-			peers[i] = fmt.Sprintf("http://%s", p)
-		}
+	eps, err := getEndpoints(c)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+		os.Exit(1)
 	}
 
-	hc, err := client.NewHTTPClient(&http.Transport{}, peers)
+	hc, err := client.NewHTTPClient(&http.Transport{}, eps)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
@@ -73,6 +72,10 @@ func mustNewMembersAPI(c *cli.Context) client.MembersAPI {
 			fmt.Fprintln(os.Stderr, err.Error())
 			os.Exit(1)
 		}
+	}
+
+	if c.GlobalBool("debug") {
+		fmt.Fprintf(os.Stderr, "Cluster-Endpoints: %s\n", strings.Join(hc.Endpoints(), ", "))
 	}
 
 	return client.NewMembersAPI(hc)
