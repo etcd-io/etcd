@@ -47,7 +47,13 @@ func rawhandle(c *cli.Context, fn handlerFunc) (*etcd.Response, error) {
 		return nil, err
 	}
 
+	tr, err := getTransport(c)
+	if err != nil {
+		return nil, err
+	}
+
 	client := etcd.NewClient(endpoints)
+	client.SetTransport(tr)
 
 	if c.GlobalBool("debug") {
 		go dumpCURL(client)

@@ -20,11 +20,13 @@ import (
 	"errors"
 	"io"
 	"io/ioutil"
+	"net/http"
 	"net/url"
 	"os"
 	"strings"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/codegangsta/cli"
+	"github.com/coreos/etcd/pkg/transport"
 )
 
 var (
@@ -54,19 +56,6 @@ func argOrStdin(args []string, stdin io.Reader, i int) (string, error) {
 	return string(bytes), nil
 }
 
-func maybeAddScheme(maybeAddr string) (string, error) {
-	u, err := url.Parse(maybeAddr)
-	if err != nil {
-		return "", err
-	}
-
-	if u.Scheme == "" {
-		u.Scheme = "http"
-	}
-
-	return u.String(), nil
-}
-
 func getPeersFlagValue(c *cli.Context) []string {
 	peerstr := c.GlobalString("peers")
 
@@ -86,12 +75,27 @@ func getPeersFlagValue(c *cli.Context) []string {
 
 func getEndpoints(c *cli.Context) ([]string, error) {
 	eps := getPeersFlagValue(c)
-	var err error
 	for i, ep := range eps {
-		eps[i], err = maybeAddScheme(ep)
+		u, err := url.Parse(ep)
 		if err != nil {
 			return nil, err
 		}
+
+		if u.Scheme == "" {
+			u.Scheme = "http"
+		}
+
+		eps[i] = u.String()
 	}
 	return eps, nil
+}
+
+func getTransport(c *cli.Context) (*http.Transport, error) {
+	tls := transport.TLSInfo{
+		CAFile:   c.GlobalString("ca-file"),
+		CertFile: c.GlobalString("cert-file"),
+		KeyFile:  c.GlobalString("key-file"),
+	}
+	return transport.NewTransport(tls)
+
 }

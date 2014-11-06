@@ -18,7 +18,6 @@ package command
 
 import (
 	"fmt"
-	"net/http"
 	"os"
 	"strings"
 
@@ -58,7 +57,13 @@ func mustNewMembersAPI(c *cli.Context) client.MembersAPI {
 		os.Exit(1)
 	}
 
-	hc, err := client.NewHTTPClient(&http.Transport{}, eps)
+	tr, err := getTransport(c)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+		os.Exit(1)
+	}
+
+	hc, err := client.NewHTTPClient(tr, eps)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
