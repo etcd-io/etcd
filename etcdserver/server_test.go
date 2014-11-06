@@ -698,12 +698,17 @@ func TestSync(t *testing.T) {
 	srv := &EtcdServer{
 		node: n,
 	}
-	start := time.Now()
-	srv.sync(defaultSyncTimeout)
+	done := make(chan struct{})
+	go func() {
+		srv.sync(10 * time.Second)
+		close(done)
+	}()
 
 	// check that sync is non-blocking
-	if d := time.Since(start); d > time.Millisecond {
-		t.Errorf("CallSyncTime = %v, want < %v", d, time.Millisecond)
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatalf("sync should be non-blocking but did not return after 1s!")
 	}
 
 	testutil.ForceGosched()
@@ -727,12 +732,17 @@ func TestSyncTimeout(t *testing.T) {
 	srv := &EtcdServer{
 		node: n,
 	}
-	start := time.Now()
-	srv.sync(0)
+	done := make(chan struct{})
+	go func() {
+		srv.sync(0)
+		close(done)
+	}()
 
 	// check that sync is non-blocking
-	if d := time.Since(start); d > time.Millisecond {
-		t.Errorf("CallSyncTime = %v, want < %v", d, time.Millisecond)
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatalf("sync should be non-blocking but did not return after 1s!")
 	}
 
 	// give time for goroutine in sync to cancel
