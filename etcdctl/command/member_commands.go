@@ -106,9 +106,10 @@ func actionMemberAdd(c *cli.Context) {
 
 	mAPI := mustNewMembersAPI(c)
 
+	name := args[0]
 	url := args[1]
 	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
-	m, err := mAPI.Add(ctx, url)
+	m, err := mAPI.Add(ctx, name, url)
 	cancel()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
@@ -116,8 +117,7 @@ func actionMemberAdd(c *cli.Context) {
 	}
 
 	newID := m.ID
-	newName := args[0]
-	fmt.Printf("Added member named %s with ID %s to cluster\n", newName, newID)
+	fmt.Printf("Added member named %s with ID %s to cluster\n", name, newID)
 
 	ctx, cancel = context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
 	members, err := mAPI.List(ctx)
@@ -132,14 +132,14 @@ func actionMemberAdd(c *cli.Context) {
 		for _, u := range m.PeerURLs {
 			n := m.Name
 			if m.ID == newID {
-				n = newName
+				n = name
 			}
 			conf = append(conf, fmt.Sprintf("%s=%s", n, u))
 		}
 	}
 
 	fmt.Print("\n")
-	fmt.Printf("ETCD_NAME=%q\n", newName)
+	fmt.Printf("ETCD_NAME=%q\n", name)
 	fmt.Printf("ETCD_INITIAL_CLUSTER=%q\n", strings.Join(conf, ","))
 	fmt.Printf("ETCD_INITIAL_CLUSTER_STATE=\"existing\"\n")
 }

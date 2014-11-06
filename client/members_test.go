@@ -45,6 +45,7 @@ func TestMembersAPIActionList(t *testing.T) {
 func TestMembersAPIActionAdd(t *testing.T) {
 	ep := url.URL{Scheme: "http", Host: "example.com"}
 	act := &membersAPIActionAdd{
+		name: "foobar",
 		peerURLs: types.URLs([]url.URL{
 			url.URL{Scheme: "https", Host: "127.0.0.1:8081"},
 			url.URL{Scheme: "http", Host: "127.0.0.1:8080"},
@@ -59,7 +60,7 @@ func TestMembersAPIActionAdd(t *testing.T) {
 	wantHeader := http.Header{
 		"Content-Type": []string{"application/json"},
 	}
-	wantBody := []byte(`{"peerURLs":["https://127.0.0.1:8081","http://127.0.0.1:8080"]}`)
+	wantBody := []byte(`{"name":"foobar","peerURLs":["https://127.0.0.1:8081","http://127.0.0.1:8080"]}`)
 
 	got := *act.HTTPRequest(ep)
 	err := assertResponse(got, wantURL, wantHeader, wantBody)

@@ -58,7 +58,7 @@ If the POST body is malformed an HTTP 400 will be returned. If the member exists
 ```
 POST /v2/members HTTP/1.1
 
-{"peerURLs": ["http://10.0.0.10:2379"]}
+{"name":"foo","peerURLs": ["http://10.0.0.10:2379"]}
 ```
 
 ### Example
@@ -70,6 +70,7 @@ curl http://10.0.0.10:2379/v2/members -XPOST -H "Content-Type: application/json"
 ```json
 {
     "id": "3777296169",
+    "name":"foo",
     "peerURLs": [
         "http://10.0.0.10:2379"
     ]

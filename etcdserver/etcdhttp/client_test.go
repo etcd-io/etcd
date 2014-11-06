@@ -615,7 +615,7 @@ func TestServeMembers(t *testing.T) {
 
 func TestServeMembersCreate(t *testing.T) {
 	u := mustNewURL(t, membersPrefix)
-	b := []byte(`{"peerURLs":["http://127.0.0.1:1"]}`)
+	b := []byte(`{"name":"hello","peerURLs":["http://127.0.0.1:1"]}`)
 	req, err := http.NewRequest("POST", u.String(), bytes.NewReader(b))
 	if err != nil {
 		t.Fatal(err)
@@ -646,7 +646,7 @@ func TestServeMembersCreate(t *testing.T) {
 		t.Errorf("cid = %s, want %s", gcid, wcid)
 	}
 
-	wb := `{"id":"2a86a83729b330d5","name":"","peerURLs":["http://127.0.0.1:1"],"clientURLs":[]}` + "\n"
+	wb := `{"id":"2a86a83729b330d5","name":"hello","peerURLs":["http://127.0.0.1:1"],"clientURLs":[]}` + "\n"
 	g := rw.Body.String()
 	if g != wb {
 		t.Errorf("got body=%q, want %q", g, wb)
@@ -654,6 +654,9 @@ func TestServeMembersCreate(t *testing.T) {
 
 	wm := etcdserver.Member{
 		ID: 3064321551348478165,
+		Attributes: etcdserver.Attributes{
+			Name: "hello",
+		},
 		RaftAttributes: etcdserver.RaftAttributes{
 			PeerURLs: []string{"http://127.0.0.1:1"},
 		},
