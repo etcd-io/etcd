@@ -164,7 +164,7 @@ func (c *Cluster) MemberByName(name string) *Member {
 	for _, m := range c.members {
 		if m.Name == name {
 			if memb != nil {
-				log.Panicf("two members with the given name %s exist", name)
+				log.Panicf("two members with the given name %q exist", name)
 			}
 			memb = m
 		}
