@@ -114,10 +114,6 @@ func (l *raftLog) unstableEnts() []pb.Entry {
 	return cpy
 }
 
-func (l *raftLog) resetUnstable() {
-	l.unstable = l.lastIndex() + 1
-}
-
 // nextEnts returns all the available entries for execution.
 // all the returned entries will be marked as applied.
 func (l *raftLog) nextEnts() (ents []pb.Entry) {
@@ -125,12 +121,6 @@ func (l *raftLog) nextEnts() (ents []pb.Entry) {
 		return l.slice(l.applied+1, l.committed+1)
 	}
 	return nil
-}
-
-func (l *raftLog) resetNextEnts() {
-	if l.committed > l.applied {
-		l.applied = l.committed
-	}
 }
 
 func (l *raftLog) appliedTo(i uint64) {

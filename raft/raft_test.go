@@ -31,7 +31,7 @@ import (
 // nextEnts returns the appliable entries and updates the applied index
 func nextEnts(r *raft) (ents []pb.Entry) {
 	ents = r.raftLog.nextEnts()
-	r.raftLog.resetNextEnts()
+	r.raftLog.appliedTo(r.raftLog.committed)
 	return ents
 }
 
