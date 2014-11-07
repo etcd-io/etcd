@@ -71,13 +71,14 @@ func TestSetFlagsFromEnv(t *testing.T) {
 			t.Errorf("flag %q=%q, want %q", f, got, want)
 		}
 	}
+}
 
+func TestSetFlagsFromEnvBad(t *testing.T) {
 	// now verify that an error is propagated
-	fs = flag.NewFlagSet("testing", flag.ExitOnError)
+	fs := flag.NewFlagSet("testing", flag.ExitOnError)
 	fs.Int("x", 0, "")
 	os.Setenv("ETCD_X", "not_a_number")
-	err = SetFlagsFromEnv(fs)
-	if err == nil {
+	if err := SetFlagsFromEnv(fs); err == nil {
 		t.Errorf("err=nil, want != nil")
 	}
 }
