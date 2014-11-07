@@ -193,7 +193,7 @@ func TestHTTPClusterClientDo(t *testing.T) {
 		// first good response short-circuits Do
 		{
 			client: &httpClusterClient{
-				endpoints: []HTTPClient{
+				clients: []HTTPClient{
 					&staticHTTPClient{resp: http.Response{StatusCode: http.StatusTeapot}},
 					&staticHTTPClient{err: fakeErr},
 				},
@@ -204,7 +204,7 @@ func TestHTTPClusterClientDo(t *testing.T) {
 		// fall through to good endpoint if err is arbitrary
 		{
 			client: &httpClusterClient{
-				endpoints: []HTTPClient{
+				clients: []HTTPClient{
 					&staticHTTPClient{err: fakeErr},
 					&staticHTTPClient{resp: http.Response{StatusCode: http.StatusTeapot}},
 				},
@@ -215,7 +215,7 @@ func TestHTTPClusterClientDo(t *testing.T) {
 		// ErrTimeout short-circuits Do
 		{
 			client: &httpClusterClient{
-				endpoints: []HTTPClient{
+				clients: []HTTPClient{
 					&staticHTTPClient{err: ErrTimeout},
 					&staticHTTPClient{resp: http.Response{StatusCode: http.StatusTeapot}},
 				},
@@ -226,7 +226,7 @@ func TestHTTPClusterClientDo(t *testing.T) {
 		// ErrCanceled short-circuits Do
 		{
 			client: &httpClusterClient{
-				endpoints: []HTTPClient{
+				clients: []HTTPClient{
 					&staticHTTPClient{err: ErrCanceled},
 					&staticHTTPClient{resp: http.Response{StatusCode: http.StatusTeapot}},
 				},
@@ -237,7 +237,7 @@ func TestHTTPClusterClientDo(t *testing.T) {
 		// return err if there are no endpoints
 		{
 			client: &httpClusterClient{
-				endpoints: []HTTPClient{},
+				clients: []HTTPClient{},
 			},
 			wantErr: ErrNoEndpoints,
 		},
@@ -245,7 +245,7 @@ func TestHTTPClusterClientDo(t *testing.T) {
 		// return err if all endpoints return arbitrary errors
 		{
 			client: &httpClusterClient{
-				endpoints: []HTTPClient{
+				clients: []HTTPClient{
 					&staticHTTPClient{err: fakeErr},
 					&staticHTTPClient{err: fakeErr},
 				},
@@ -256,7 +256,7 @@ func TestHTTPClusterClientDo(t *testing.T) {
 		// 500-level errors cause Do to fallthrough to next endpoint
 		{
 			client: &httpClusterClient{
-				endpoints: []HTTPClient{
+				clients: []HTTPClient{
 					&staticHTTPClient{resp: http.Response{StatusCode: http.StatusBadGateway}},
 					&staticHTTPClient{resp: http.Response{StatusCode: http.StatusTeapot}},
 				},
