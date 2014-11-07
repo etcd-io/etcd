@@ -18,6 +18,7 @@ package etcdserver
 
 import (
 	"log"
+	"sort"
 
 	"github.com/coreos/etcd/pkg/pbutil"
 	"github.com/coreos/etcd/pkg/types"
@@ -43,7 +44,7 @@ func restartAsStandaloneNode(cfg *ServerConfig, index uint64, snapshot *raftpb.S
 	}
 
 	// force append the configuration change entries
-	toAppEnts := createConfigChangeEnts(getIDset(snapshot, ents), uint64(id), st.Term, st.Commit)
+	toAppEnts := createConfigChangeEnts(getIDs(snapshot, ents), uint64(id), st.Term, st.Commit)
 	ents = append(ents, toAppEnts...)
 
 	// force commit newly appended entries
@@ -62,12 +63,12 @@ func restartAsStandaloneNode(cfg *ServerConfig, index uint64, snapshot *raftpb.S
 	return
 }
 
-// getIDset returns a set of IDs included in the given snapshot and the entries.
-// The given snapshot contians a list of IDs.
-// The given entries might contain two kinds of ID related entry.
-// If the entry type is Add, the contained ID will be added into the set.
-// If the entry type is Remove, the contained ID will be removed from the set.
-func getIDset(snap *raftpb.Snapshot, ents []raftpb.Entry) map[uint64]bool {
+// getIDs returns an ordered set of IDs included in the given snapshot and
+// the entries. The given snapshot/entries can contain two kinds of
+// ID-related entry:
+// - ConfChangeAddNode, in which case the contained ID will be added into the set.
+// - ConfChangeAddRemove, in which case the contained ID will be removed from the set.
+func getIDs(snap *raftpb.Snapshot, ents []raftpb.Entry) []uint64 {
 	ids := make(map[uint64]bool)
 	if snap != nil {
 		for _, id := range snap.Nodes {
@@ -89,13 +90,21 @@ func getIDset(snap *raftpb.Snapshot, ents []raftpb.Entry) map[uint64]bool {
 			log.Panicf("ConfChange Type should be either ConfChangeAddNode or ConfChangeRemoveNode!")
 		}
 	}
-	return ids
+	sids := make(types.Uint64Slice, 0)
+	for id := range ids {
+		sids = append(sids, id)
+	}
+	sort.Sort(sids)
+	return []uint64(sids)
 }
 
-func createConfigChangeEnts(ids map[uint64]bool, self uint64, term, index uint64) []raftpb.Entry {
+// createConfigChangeEnts creates a series of Raft entries (i.e.
+// EntryConfChange) to remove the set of given IDs from the cluster. The ID
+// `self` is _not_ removed, even if present in the set.
+func createConfigChangeEnts(ids []uint64, self uint64, term, index uint64) []raftpb.Entry {
 	ents := make([]raftpb.Entry, 0)
 	next := index + 1
-	for id := range ids {
+	for _, id := range ids {
 		if id == self {
 			continue
 		}
