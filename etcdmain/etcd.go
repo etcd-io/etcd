@@ -57,6 +57,7 @@ var (
 	name         = fs.String("name", "default", "Unique human-readable name for this node")
 	dir          = fs.String("data-dir", "", "Path to the data directory")
 	durl         = fs.String("discovery", "", "Discovery service used to bootstrap the cluster")
+	dproxy       = fs.String("discovery-proxy", "", "HTTP proxy to use for traffic to discovery service")
 	snapCount    = fs.Uint64("snapshot-count", etcdserver.DefaultSnapCount, "Number of committed transactions to trigger a snapshot")
 	printVersion = fs.Bool("version", false, "Print the version and exit")
 
@@ -259,14 +260,15 @@ func startEtcd() error {
 	}
 
 	cfg := &etcdserver.ServerConfig{
-		Name:         *name,
-		ClientURLs:   acurls,
-		DataDir:      *dir,
-		SnapCount:    *snapCount,
-		Cluster:      cls,
-		DiscoveryURL: *durl,
-		NewCluster:   clusterStateFlag.String() == clusterStateFlagNew,
-		Transport:    pt,
+		Name:           *name,
+		ClientURLs:     acurls,
+		DataDir:        *dir,
+		SnapCount:      *snapCount,
+		Cluster:        cls,
+		DiscoveryURL:   *durl,
+		DiscoveryProxy: *dproxy,
+		NewCluster:     clusterStateFlag.String() == clusterStateFlagNew,
+		Transport:      pt,
 	}
 	var s *etcdserver.EtcdServer
 	s, err = etcdserver.NewServer(cfg)
@@ -303,7 +305,7 @@ func startProxy() error {
 	}
 
 	if *durl != "" {
-		s, err := discovery.GetCluster(*durl)
+		s, err := discovery.GetCluster(*durl, *dproxy)
 		if err != nil {
 			return err
 		}

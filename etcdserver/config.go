@@ -27,14 +27,15 @@ import (
 
 // ServerConfig holds the configuration of etcd as taken from the command line or discovery.
 type ServerConfig struct {
-	Name         string
-	DiscoveryURL string
-	ClientURLs   types.URLs
-	DataDir      string
-	SnapCount    uint64
-	Cluster      *Cluster
-	NewCluster   bool
-	Transport    *http.Transport
+	Name           string
+	DiscoveryURL   string
+	DiscoveryProxy string
+	ClientURLs     types.URLs
+	DataDir        string
+	SnapCount      uint64
+	Cluster        *Cluster
+	NewCluster     bool
+	Transport      *http.Transport
 }
 
 // VerifyBootstrapConfig sanity-checks the initial config and returns an error

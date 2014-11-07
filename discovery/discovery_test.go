@@ -20,7 +20,6 @@ import (
 	"errors"
 	"math/rand"
 	"net/http"
-	"os"
 	"reflect"
 	"sort"
 	"strconv"
@@ -32,9 +31,8 @@ import (
 	"github.com/coreos/etcd/client"
 )
 
-func TestProxyFuncFromEnvUnset(t *testing.T) {
-	os.Setenv(DiscoveryProxyEnv, "")
-	pf, err := proxyFuncFromEnv()
+func TestNewProxyFuncUnset(t *testing.T) {
+	pf, err := newProxyFunc("")
 	if pf != nil {
 		t.Fatal("unexpected non-nil proxyFunc")
 	}
@@ -43,14 +41,13 @@ func TestProxyFuncFromEnvUnset(t *testing.T) {
 	}
 }
 
-func TestProxyFuncFromEnvBad(t *testing.T) {
+func TestNewProxyFuncBad(t *testing.T) {
 	tests := []string{
 		"%%",
 		"http://foo.com/%1",
 	}
 	for i, in := range tests {
-		os.Setenv(DiscoveryProxyEnv, in)
-		pf, err := proxyFuncFromEnv()
+		pf, err := newProxyFunc(in)
 		if pf != nil {
 			t.Errorf("#%d: unexpected non-nil proxyFunc", i)
 		}
@@ -60,14 +57,13 @@ func TestProxyFuncFromEnvBad(t *testing.T) {
 	}
 }
 
-func TestProxyFuncFromEnv(t *testing.T) {
+func TestNewProxyFunc(t *testing.T) {
 	tests := map[string]string{
 		"bar.com":              "http://bar.com",
 		"http://disco.foo.bar": "http://disco.foo.bar",
 	}
 	for in, w := range tests {
-		os.Setenv(DiscoveryProxyEnv, in)
-		pf, err := proxyFuncFromEnv()
+		pf, err := newProxyFunc(in)
 		if pf == nil {
 			t.Errorf("%s: unexpected nil proxyFunc", in)
 			continue

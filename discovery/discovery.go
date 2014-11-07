@@ -22,7 +22,6 @@ import (
 	"log"
 	"net/http"
 	"net/url"
-	"os"
 	"path"
 	"sort"
 	"strconv"
@@ -46,16 +45,14 @@ var (
 )
 
 const (
-	// Environment variable used to configure an HTTP proxy for discovery
-	DiscoveryProxyEnv = "ETCD_DISCOVERY_PROXY"
 	// Number of retries discovery will attempt before giving up and erroring out.
 	nRetries = uint(3)
 )
 
 // JoinCluster will connect to the discovery service at the given url, and
 // register the server represented by the given id and config to the cluster
-func JoinCluster(durl string, id types.ID, config string) (string, error) {
-	d, err := newDiscovery(durl, id)
+func JoinCluster(durl, dproxyurl string, id types.ID, config string) (string, error) {
+	d, err := newDiscovery(durl, dproxyurl, id)
 	if err != nil {
 		return "", err
 	}
@@ -64,8 +61,8 @@ func JoinCluster(durl string, id types.ID, config string) (string, error) {
 
 // GetCluster will connect to the discovery service at the given url and
 // retrieve a string describing the cluster
-func GetCluster(durl string) (string, error) {
-	d, err := newDiscovery(durl, 0)
+func GetCluster(durl, dproxyurl string) (string, error) {
+	d, err := newDiscovery(durl, dproxyurl, 0)
 	if err != nil {
 		return "", err
 	}
@@ -82,11 +79,10 @@ type discovery struct {
 	clock clockwork.Clock
 }
 
-// proxyFuncFromEnv builds a proxy function if the appropriate environment
-// variable is set. It performs basic sanitization of the environment variable
-// and returns any error encountered.
-func proxyFuncFromEnv() (func(*http.Request) (*url.URL, error), error) {
-	proxy := os.Getenv(DiscoveryProxyEnv)
+// newProxyFunc builds a proxy function from the given string, which should
+// represent a URL that can be used as a proxy. It performs basic
+// sanitization of the URL and returns any error encountered.
+func newProxyFunc(proxy string) (func(*http.Request) (*url.URL, error), error) {
 	if proxy == "" {
 		return nil, nil
 	}
@@ -111,14 +107,14 @@ func proxyFuncFromEnv() (func(*http.Request) (*url.URL, error), error) {
 	return http.ProxyURL(proxyURL), nil
 }
 
-func newDiscovery(durl string, id types.ID) (*discovery, error) {
+func newDiscovery(durl, dproxyurl string, id types.ID) (*discovery, error) {
 	u, err := url.Parse(durl)
 	if err != nil {
 		return nil, err
 	}
 	token := u.Path
 	u.Path = ""
-	pf, err := proxyFuncFromEnv()
+	pf, err := newProxyFunc(dproxyurl)
 	if err != nil {
 		return nil, err
 	}

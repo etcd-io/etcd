@@ -204,7 +204,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		}
 		m := cfg.Cluster.MemberByName(cfg.Name)
 		if cfg.ShouldDiscover() {
-			s, err := discovery.JoinCluster(cfg.DiscoveryURL, m.ID, cfg.Cluster.String())
+			s, err := discovery.JoinCluster(cfg.DiscoveryURL, cfg.DiscoveryProxy, m.ID, cfg.Cluster.String())
 			if err != nil {
 				return nil, err
 			}
