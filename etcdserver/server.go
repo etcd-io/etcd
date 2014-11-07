@@ -235,6 +235,9 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 			index = snapshot.Index
 		}
 		cfg.Cluster = NewClusterFromStore(cfg.Cluster.token, st)
+		if snapshot != nil {
+			log.Printf("etcdserver: loaded peers from snapshot: %s", cfg.Cluster)
+		}
 		if !cfg.ForceNewCluster {
 			id, n, w = restartNode(cfg, index, snapshot)
 		} else {
