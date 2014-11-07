@@ -97,7 +97,9 @@ func Create(dirpath string, metadata []byte) (*WAL, error) {
 	if err := w.encoder.encode(&walpb.Record{Type: metadataType, Data: metadata}); err != nil {
 		return nil, err
 	}
-	w.Sync()
+	if err = w.sync(); err != nil {
+		return nil, err
+	}
 	return w, nil
 }
 
@@ -225,7 +227,9 @@ func (w *WAL) Cut() error {
 	if err != nil {
 		return err
 	}
-	w.Sync()
+	if err = w.sync(); err != nil {
+		return err
+	}
 	w.f.Close()
 
 	// update writer and save the previous crc
@@ -239,7 +243,7 @@ func (w *WAL) Cut() error {
 	return w.encoder.encode(&walpb.Record{Type: metadataType, Data: w.metadata})
 }
 
-func (w *WAL) Sync() error {
+func (w *WAL) sync() error {
 	if w.encoder != nil {
 		if err := w.encoder.flush(); err != nil {
 			return err
@@ -248,11 +252,16 @@ func (w *WAL) Sync() error {
 	return w.f.Sync()
 }
 
-func (w *WAL) Close() {
+func (w *WAL) Close() error {
 	if w.f != nil {
-		w.Sync()
-		w.f.Close()
+		if err := w.sync(); err != nil {
+			return err
+		}
+		if err := w.f.Close(); err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
 func (w *WAL) SaveEntry(e *raftpb.Entry) error {
@@ -284,7 +293,7 @@ func (w *WAL) Save(st raftpb.HardState, ents []raftpb.Entry) error {
 			return err
 		}
 	}
-	return w.Sync()
+	return w.sync()
 }
 
 func (w *WAL) saveCrc(prevCrc uint32) error {
