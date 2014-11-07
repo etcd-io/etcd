@@ -62,6 +62,11 @@ func restartAsStandaloneNode(cfg *ServerConfig, index uint64, snapshot *raftpb.S
 	return
 }
 
+// getIDset returns a set of IDs included in the given snapshot and the entries.
+// The given snapshot contians a list of IDs.
+// The given entries might contain two kinds of ID related entry.
+// If the entry type is Add, the contained ID will be added into the set.
+// If the entry type is Remove, the contained ID will be removed from the set.
 func getIDset(snap *raftpb.Snapshot, ents []raftpb.Entry) map[uint64]bool {
 	ids := make(map[uint64]bool)
 	if snap != nil {
