@@ -53,13 +53,14 @@ const (
 )
 
 var (
-	fs           = flag.NewFlagSet("etcd", flag.ContinueOnError)
-	name         = fs.String("name", "default", "Unique human-readable name for this node")
-	dir          = fs.String("data-dir", "", "Path to the data directory")
-	durl         = fs.String("discovery", "", "Discovery service used to bootstrap the cluster")
-	dproxy       = fs.String("discovery-proxy", "", "HTTP proxy to use for traffic to discovery service")
-	snapCount    = fs.Uint64("snapshot-count", etcdserver.DefaultSnapCount, "Number of committed transactions to trigger a snapshot")
-	printVersion = fs.Bool("version", false, "Print the version and exit")
+	fs              = flag.NewFlagSet("etcd", flag.ContinueOnError)
+	name            = fs.String("name", "default", "Unique human-readable name for this node")
+	dir             = fs.String("data-dir", "", "Path to the data directory")
+	durl            = fs.String("discovery", "", "Discovery service used to bootstrap the cluster")
+	dproxy          = fs.String("discovery-proxy", "", "HTTP proxy to use for traffic to discovery service")
+	snapCount       = fs.Uint64("snapshot-count", etcdserver.DefaultSnapCount, "Number of committed transactions to trigger a snapshot")
+	printVersion    = fs.Bool("version", false, "Print the version and exit")
+	forceNewCluster = fs.Bool("force-new-cluster", false, "Force to create a new one member cluster")
 
 	initialCluster      = fs.String("initial-cluster", "default=http://localhost:2380,default=http://localhost:7001", "Initial cluster configuration for bootstrapping")
 	initialClusterToken = fs.String("initial-cluster-token", "etcd-cluster", "Initial cluster token for the etcd cluster during bootstrap")
@@ -262,15 +263,16 @@ func startEtcd() error {
 	}
 
 	cfg := &etcdserver.ServerConfig{
-		Name:           *name,
-		ClientURLs:     acurls,
-		DataDir:        *dir,
-		SnapCount:      *snapCount,
-		Cluster:        cls,
-		DiscoveryURL:   *durl,
-		DiscoveryProxy: *dproxy,
-		NewCluster:     clusterStateFlag.String() == clusterStateFlagNew,
-		Transport:      pt,
+		Name:            *name,
+		ClientURLs:      acurls,
+		DataDir:         *dir,
+		SnapCount:       *snapCount,
+		Cluster:         cls,
+		DiscoveryURL:    *durl,
+		DiscoveryProxy:  *dproxy,
+		NewCluster:      clusterStateFlag.String() == clusterStateFlagNew,
+		Transport:       pt,
+		ForceNewCluster: *forceNewCluster,
 	}
 	var s *etcdserver.EtcdServer
 	s, err = etcdserver.NewServer(cfg)
