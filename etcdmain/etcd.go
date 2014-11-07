@@ -271,8 +271,8 @@ func startEtcd() error {
 		DiscoveryURL:    *durl,
 		DiscoveryProxy:  *dproxy,
 		NewCluster:      clusterStateFlag.String() == clusterStateFlagNew,
-		Transport:       pt,
 		ForceNewCluster: *forceNewCluster,
+		Transport:       pt,
 	}
 	var s *etcdserver.EtcdServer
 	s, err = etcdserver.NewServer(cfg)
