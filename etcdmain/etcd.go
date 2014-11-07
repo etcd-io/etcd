@@ -161,9 +161,11 @@ func Main() {
 		os.Exit(0)
 	}
 
-	flags.SetFlagsFromEnv(fs)
+	err := flags.SetFlagsFromEnv(fs)
+	if err != nil {
+		log.Fatalf("etcd: %v", err)
+	}
 
-	var err error
 	shouldProxy := proxyFlag.String() != proxyFlagOff
 	if !shouldProxy {
 		err = startEtcd()

@@ -58,7 +58,10 @@ func TestSetFlagsFromEnv(t *testing.T) {
 	}
 
 	// now read the env and verify flags were updated as expected
-	SetFlagsFromEnv(fs)
+	err := SetFlagsFromEnv(fs)
+	if err != nil {
+		t.Errorf("err=%v, want nil", err)
+	}
 	for f, want := range map[string]string{
 		"a": "foo",
 		"b": "bar",
@@ -67,6 +70,16 @@ func TestSetFlagsFromEnv(t *testing.T) {
 		if got := fs.Lookup(f).Value.String(); got != want {
 			t.Errorf("flag %q=%q, want %q", f, got, want)
 		}
+	}
+}
+
+func TestSetFlagsFromEnvBad(t *testing.T) {
+	// now verify that an error is propagated
+	fs := flag.NewFlagSet("testing", flag.ExitOnError)
+	fs.Int("x", 0, "")
+	os.Setenv("ETCD_X", "not_a_number")
+	if err := SetFlagsFromEnv(fs); err == nil {
+		t.Errorf("err=nil, want != nil")
 	}
 }
 
