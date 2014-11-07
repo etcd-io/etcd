@@ -61,6 +61,12 @@ func TestSendHubAdd(t *testing.T) {
 	if s.u != "http://a/raft" {
 		t.Errorf("url = %s, want %s", s.u, "http://a/raft")
 	}
+
+	h.Add(m)
+	ns := h.senders[types.ID(1)]
+	if s != ns {
+		t.Errorf("sender = %p, want %p", ns, s)
+	}
 }
 
 func TestSendHubRemove(t *testing.T) {

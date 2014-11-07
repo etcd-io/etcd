@@ -92,6 +92,9 @@ func (h *sendHub) Stop() {
 }
 
 func (h *sendHub) Add(m *Member) {
+	if _, ok := h.senders[m.ID]; ok {
+		return
+	}
 	// TODO: considering how to switch between all available peer urls
 	u := fmt.Sprintf("%s%s", m.PickPeerURL(), raftPrefix)
 	c := &http.Client{Transport: h.tr}
