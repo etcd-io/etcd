@@ -40,6 +40,7 @@ func main() {
 		cli.StringFlag{Name: "ca-file", Value: "", Usage: "verify certificates of HTTPS-enabled servers using this CA bundle"},
 	}
 	app.Commands = []cli.Command{
+		command.NewBackupCommand(),
 		command.NewMakeCommand(),
 		command.NewMakeDirCommand(),
 		command.NewRemoveCommand(),
