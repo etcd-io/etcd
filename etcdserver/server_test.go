@@ -19,6 +19,8 @@ package etcdserver
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"log"
 	"math/rand"
 	"path"
 	"reflect"
@@ -35,6 +37,10 @@ import (
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/store"
 )
+
+func init() {
+	log.SetOutput(ioutil.Discard)
+}
 
 func TestGetExpirationTime(t *testing.T) {
 	tests := []struct {
