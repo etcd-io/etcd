@@ -78,12 +78,17 @@ func init() {
 	rand.Seed(time.Now().UnixNano())
 }
 
-type sendFunc func(m []raftpb.Message)
-
 type Response struct {
 	Event   *store.Event
 	Watcher store.Watcher
 	err     error
+}
+
+type Sender interface {
+	Send(m []raftpb.Message)
+	Add(m *Member)
+	Remove(id types.ID)
+	Stop()
 }
 
 type Storage interface {
@@ -156,11 +161,11 @@ type EtcdServer struct {
 	stats  *stats.ServerStats
 	lstats *stats.LeaderStats
 
-	// send specifies the send function for sending msgs to members. send
+	// sender specifies the sender to send msgs to members. sending msgs
 	// MUST NOT block. It is okay to drop messages, since clients should
 	// timeout and reissue their messages.  If send is nil, server will
 	// panic.
-	send sendFunc
+	sender Sender
 
 	storage Storage
 
@@ -241,6 +246,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 	}
 	lstats := stats.NewLeaderStats(id.String())
 
+	shub := newSendHub(cfg.Transport, cfg.Cluster, sstats, lstats)
 	s := &EtcdServer{
 		store:      st,
 		node:       n,
@@ -253,7 +259,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		}{w, ss},
 		stats:      sstats,
 		lstats:     lstats,
-		send:       Sender(cfg.Transport, cfg.Cluster, sstats, lstats),
+		sender:     shub,
 		Ticker:     time.Tick(100 * time.Millisecond),
 		SyncTicker: time.Tick(500 * time.Millisecond),
 		snapCount:  cfg.SnapCount,
@@ -318,7 +324,7 @@ func (s *EtcdServer) run() {
 			if err := s.storage.SaveSnap(rd.Snapshot); err != nil {
 				log.Fatalf("etcdserver: create snapshot error: %v", err)
 			}
-			s.send(rd.Messages)
+			s.sender.Send(rd.Messages)
 
 			// TODO(bmizerany): do this in the background, but take
 			// care to apply entries in a single goroutine, and not
@@ -361,6 +367,7 @@ func (s *EtcdServer) Stop() {
 	s.node.Stop()
 	close(s.done)
 	<-s.stopped
+	s.sender.Stop()
 }
 
 // Do interprets r and performs an operation on s.store according to r.Method
@@ -647,10 +654,12 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange) error {
 			log.Panicf("nodeID should always be equal to member ID")
 		}
 		s.Cluster.AddMember(m)
+		s.sender.Add(m)
 		log.Printf("etcdserver: added node %s to cluster", types.ID(cc.NodeID))
 	case raftpb.ConfChangeRemoveNode:
 		id := types.ID(cc.NodeID)
 		s.Cluster.RemoveMember(id)
+		s.sender.Remove(id)
 		log.Printf("etcdserver: removed node %s from cluster", id)
 	}
 	return nil

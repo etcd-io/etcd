@@ -28,42 +28,46 @@ import (
 	"github.com/coreos/etcd/raft/raftpb"
 )
 
-const raftPrefix = "/raft"
+const (
+	raftPrefix    = "/raft"
+	connPerSender = 4
+)
 
-// Sender creates the default production sender used to transport raft messages
-// in the cluster. The returned sender will update the given ServerStats and
-// LeaderStats appropriately.
-func Sender(t *http.Transport, cl *Cluster, ss *stats.ServerStats, ls *stats.LeaderStats) func(msgs []raftpb.Message) {
-	c := &http.Client{Transport: t}
-
-	return func(msgs []raftpb.Message) {
-		for _, m := range msgs {
-			// TODO: reuse go routines
-			// limit the number of outgoing connections for the same receiver
-			go send(c, cl, m, ss, ls)
-		}
-	}
+type sendHub struct {
+	tr      *http.Transport
+	cl      ClusterInfo
+	ss      *stats.ServerStats
+	ls      *stats.LeaderStats
+	senders map[types.ID]*sender
 }
 
-// send uses the given client to send a message to a member in the given
-// ClusterStore, retrying up to 3 times for each message. The given
-// ServerStats and LeaderStats are updated appropriately
-func send(c *http.Client, cl *Cluster, m raftpb.Message, ss *stats.ServerStats, ls *stats.LeaderStats) {
-	to := types.ID(m.To)
-	cid := cl.ID()
-	// TODO (xiangli): reasonable retry logic
-	for i := 0; i < 3; i++ {
-		memb := cl.Member(to)
-		if memb == nil {
-			if !cl.IsIDRemoved(to) {
-				// TODO: unknown peer id.. what do we do? I
-				// don't think his should ever happen, need to
-				// look into this further.
-				log.Printf("etcdserver: error sending message to unknown receiver %s", to.String())
+// newSendHub creates the default send hub used to transport raft messages
+// to other members. The returned sendHub will update the given ServerStats and
+// LeaderStats appropriately.
+func newSendHub(t *http.Transport, cl ClusterInfo, ss *stats.ServerStats, ls *stats.LeaderStats) *sendHub {
+	h := &sendHub{
+		tr:      t,
+		cl:      cl,
+		ss:      ss,
+		ls:      ls,
+		senders: make(map[types.ID]*sender),
+	}
+	for _, m := range cl.Members() {
+		h.Add(m)
+	}
+	return h
+}
+
+func (h *sendHub) Send(msgs []raftpb.Message) {
+	for _, m := range msgs {
+		to := types.ID(m.To)
+		s, ok := h.senders[to]
+		if !ok {
+			if !h.cl.IsIDRemoved(to) {
+				log.Printf("etcdserver: send message to unknown receiver %s", to)
 			}
-			return
+			continue
 		}
-		u := fmt.Sprintf("%s%s", memb.PickPeerURL(), raftPrefix)
 
 		// TODO: don't block. we should be able to have 1000s
 		// of messages out at a time.
@@ -73,52 +77,110 @@ func send(c *http.Client, cl *Cluster, m raftpb.Message, ss *stats.ServerStats, 
 			return // drop bad message
 		}
 		if m.Type == raftpb.MsgApp {
-			ss.SendAppendReq(len(data))
+			h.ss.SendAppendReq(len(data))
 		}
-		fs := ls.Follower(to.String())
 
-		start := time.Now()
-		sent := httpPost(c, u, cid, data)
-		end := time.Now()
-		if sent {
-			fs.Succ(end.Sub(start))
-			return
-		}
-		fs.Fail()
-		// TODO: backoff
+		// TODO (xiangli): reasonable retry logic
+		s.send(data)
 	}
 }
 
-// httpPost POSTs a data payload to a url using the given client. Returns true
-// if the POST succeeds, false on any failure.
-func httpPost(c *http.Client, url string, cid types.ID, data []byte) bool {
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(data))
+func (h *sendHub) Stop() {
+	for _, s := range h.senders {
+		s.stop()
+	}
+}
+
+func (h *sendHub) Add(m *Member) {
+	// TODO: considering how to switch between all available peer urls
+	u := fmt.Sprintf("%s%s", m.PickPeerURL(), raftPrefix)
+	c := &http.Client{Transport: h.tr}
+	fs := h.ls.Follower(m.ID.String())
+	s := newSender(u, h.cl.ID(), c, fs)
+	h.senders[m.ID] = s
+}
+
+func (h *sendHub) Remove(id types.ID) {
+	h.senders[id].stop()
+	delete(h.senders, id)
+}
+
+type sender struct {
+	u   string
+	cid types.ID
+	c   *http.Client
+	fs  *stats.FollowerStats
+	q   chan []byte
+}
+
+func newSender(u string, cid types.ID, c *http.Client, fs *stats.FollowerStats) *sender {
+	s := &sender{
+		u:   u,
+		cid: cid,
+		c:   c,
+		fs:  fs,
+		q:   make(chan []byte),
+	}
+	for i := 0; i < connPerSender; i++ {
+		go s.handle()
+	}
+	return s
+}
+
+func (s *sender) send(data []byte) {
+	select {
+	case s.q <- data:
+	default:
+		log.Printf("sender: reach the maximal serving to %s", s.u)
+	}
+}
+
+func (s *sender) stop() {
+	close(s.q)
+}
+
+func (s *sender) handle() {
+	for d := range s.q {
+		start := time.Now()
+		err := s.post(d)
+		end := time.Now()
+		if err != nil {
+			s.fs.Fail()
+			log.Printf("sender: %v", err)
+			continue
+		}
+		s.fs.Succ(end.Sub(start))
+	}
+}
+
+// post POSTs a data payload to a url. Returns nil if the POST succeeds,
+// error on any failure.
+func (s *sender) post(data []byte) error {
+	req, err := http.NewRequest("POST", s.u, bytes.NewBuffer(data))
 	if err != nil {
-		// TODO: log the error?
-		return false
+		return fmt.Errorf("new request to %s error: %v", s.u, err)
 	}
 	req.Header.Set("Content-Type", "application/protobuf")
-	req.Header.Set("X-Etcd-Cluster-ID", cid.String())
-	resp, err := c.Do(req)
+	req.Header.Set("X-Etcd-Cluster-ID", s.cid.String())
+	resp, err := s.c.Do(req)
 	if err != nil {
-		// TODO: log the error?
-		return false
+		return fmt.Errorf("do request %+v error: %v", req, err)
 	}
 	resp.Body.Close()
 
 	switch resp.StatusCode {
 	case http.StatusPreconditionFailed:
 		// TODO: shutdown the etcdserver gracefully?
-		log.Fatalf("etcd: conflicting cluster ID with the target cluster (%s != %s)", resp.Header.Get("X-Etcd-Cluster-ID"), cid.String())
-		return false
+		log.Fatalf("etcd: conflicting cluster ID with the target cluster (%s != %s)", resp.Header.Get("X-Etcd-Cluster-ID"), s.cid)
+		return nil
 	case http.StatusForbidden:
 		// TODO: stop the server
 		log.Println("etcd: this member has been permanently removed from the cluster")
 		log.Fatalln("etcd: the data-dir used by this member must be removed so that this host can be re-added with a new member ID")
-		return false
+		return nil
 	case http.StatusNoContent:
-		return true
+		return nil
 	default:
-		return false
+		return fmt.Errorf("unhandled status %s", http.StatusText(resp.StatusCode))
 	}
 }

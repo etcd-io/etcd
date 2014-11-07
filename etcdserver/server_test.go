@@ -487,18 +487,24 @@ func TestApplyConfChangeError(t *testing.T) {
 func TestClusterOf1(t *testing.T) { testServer(t, 1) }
 func TestClusterOf3(t *testing.T) { testServer(t, 3) }
 
+type fakeSender struct {
+	ss []*EtcdServer
+}
+
+func (s *fakeSender) Send(msgs []raftpb.Message) {
+	for _, m := range msgs {
+		s.ss[m.To-1].node.Step(context.TODO(), m)
+	}
+}
+func (s *fakeSender) Add(m *Member)      {}
+func (s *fakeSender) Remove(id types.ID) {}
+func (s *fakeSender) Stop()              {}
+
 func testServer(t *testing.T, ns uint64) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	ss := make([]*EtcdServer, ns)
-
-	send := func(msgs []raftpb.Message) {
-		for _, m := range msgs {
-			t.Logf("m = %+v\n", m)
-			ss[m.To-1].node.Step(ctx, m)
-		}
-	}
 
 	ids := make([]uint64, ns)
 	for i := uint64(0); i < ns; i++ {
@@ -516,7 +522,7 @@ func testServer(t *testing.T, ns uint64) {
 		srv := &EtcdServer{
 			node:    n,
 			store:   st,
-			send:    send,
+			sender:  &fakeSender{ss},
 			storage: &storageRecorder{},
 			Ticker:  tk.C,
 			Cluster: cl,
@@ -585,7 +591,7 @@ func TestDoProposal(t *testing.T) {
 		srv := &EtcdServer{
 			node:    n,
 			store:   st,
-			send:    func(_ []raftpb.Message) {},
+			sender:  &nopSender{},
 			storage: &storageRecorder{},
 			Ticker:  tk,
 			Cluster: cl,
@@ -668,7 +674,7 @@ func TestDoProposalStopped(t *testing.T) {
 		// TODO: use fake node for better testability
 		node:    n,
 		store:   st,
-		send:    func(_ []raftpb.Message) {},
+		sender:  &nopSender{},
 		storage: &storageRecorder{},
 		Ticker:  tk,
 	}
@@ -778,7 +784,7 @@ func TestSyncTrigger(t *testing.T) {
 	srv := &EtcdServer{
 		node:       n,
 		store:      &storeRecorder{},
-		send:       func(_ []raftpb.Message) {},
+		sender:     &nopSender{},
 		storage:    &storageRecorder{},
 		SyncTicker: st,
 	}
@@ -852,7 +858,7 @@ func TestTriggerSnap(t *testing.T) {
 	cl.SetStore(store.New())
 	s := &EtcdServer{
 		store:     st,
-		send:      func(_ []raftpb.Message) {},
+		sender:    &nopSender{},
 		storage:   p,
 		node:      n,
 		snapCount: 10,
@@ -886,7 +892,7 @@ func TestRecvSnapshot(t *testing.T) {
 	p := &storageRecorder{}
 	s := &EtcdServer{
 		store:   st,
-		send:    func(_ []raftpb.Message) {},
+		sender:  &nopSender{},
 		storage: p,
 		node:    n,
 	}
@@ -914,7 +920,7 @@ func TestRecvSlowSnapshot(t *testing.T) {
 	st := &storeRecorder{}
 	s := &EtcdServer{
 		store:   st,
-		send:    func(_ []raftpb.Message) {},
+		sender:  &nopSender{},
 		storage: &storageRecorder{},
 		node:    n,
 	}
@@ -949,7 +955,7 @@ func TestAddMember(t *testing.T) {
 	s := &EtcdServer{
 		node:    n,
 		store:   &storeRecorder{},
-		send:    func(_ []raftpb.Message) {},
+		sender:  &nopSender{},
 		storage: &storageRecorder{},
 		Cluster: cl,
 	}
@@ -984,7 +990,7 @@ func TestRemoveMember(t *testing.T) {
 	s := &EtcdServer{
 		node:    n,
 		store:   &storeRecorder{},
-		send:    func(_ []raftpb.Message) {},
+		sender:  &nopSender{},
 		storage: &storageRecorder{},
 		Cluster: cl,
 	}
@@ -1052,6 +1058,7 @@ func TestPublish(t *testing.T) {
 func TestPublishStopped(t *testing.T) {
 	srv := &EtcdServer{
 		node:    &nodeRecorder{},
+		sender:  &nopSender{},
 		Cluster: &Cluster{},
 		w:       &waitRecorder{},
 		done:    make(chan struct{}),
@@ -1387,30 +1394,12 @@ func (w *waitWithResponse) Register(id uint64) <-chan interface{} {
 }
 func (w *waitWithResponse) Trigger(id uint64, x interface{}) {}
 
-type clusterStoreRecorder struct {
-	recorder
-}
+type nopSender struct{}
 
-func (cs *clusterStoreRecorder) Add(m Member) {
-	cs.record(action{name: "Add", params: []interface{}{m}})
-}
-func (cs *clusterStoreRecorder) Get() Cluster {
-	cs.record(action{name: "Get"})
-	return Cluster{}
-}
-func (cs *clusterStoreRecorder) Remove(id uint64) {
-	cs.record(action{name: "Remove", params: []interface{}{id}})
-}
-func (cs *clusterStoreRecorder) IsRemoved(id uint64) bool { return false }
-
-type removedClusterStore struct {
-	removed map[uint64]bool
-}
-
-func (cs *removedClusterStore) Add(m Member)             {}
-func (cs *removedClusterStore) Get() Cluster             { return Cluster{} }
-func (cs *removedClusterStore) Remove(id uint64)         {}
-func (cs *removedClusterStore) IsRemoved(id uint64) bool { return cs.removed[id] }
+func (s *nopSender) Send(m []raftpb.Message) {}
+func (s *nopSender) Add(m *Member)           {}
+func (s *nopSender) Remove(id types.ID)      {}
+func (s *nopSender) Stop()                   {}
 
 func mustMakePeerSlice(t *testing.T, ids ...uint64) []raft.Peer {
 	peers := make([]raft.Peer, len(ids))
