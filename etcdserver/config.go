@@ -35,8 +35,8 @@ type ServerConfig struct {
 	SnapCount       uint64
 	Cluster         *Cluster
 	NewCluster      bool
-	Transport       *http.Transport
 	ForceNewCluster bool
+	Transport       *http.Transport
 }
 
 // VerifyBootstrapConfig sanity-checks the initial config and returns an error
