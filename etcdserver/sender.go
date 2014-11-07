@@ -164,7 +164,7 @@ func (s *sender) post(data []byte) error {
 	req.Header.Set("X-Etcd-Cluster-ID", s.cid.String())
 	resp, err := s.c.Do(req)
 	if err != nil {
-		return fmt.Errorf("do request %+v error: %v", req, err)
+		return fmt.Errorf("error posting to %q: %v", req.URL.String(), err)
 	}
 	resp.Body.Close()
 
