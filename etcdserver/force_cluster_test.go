@@ -24,7 +24,7 @@ import (
 	"github.com/coreos/etcd/raft/raftpb"
 )
 
-func TestGetIDset(t *testing.T) {
+func TestGetIDs(t *testing.T) {
 	addcc := &raftpb.ConfChange{Type: raftpb.ConfChangeAddNode, NodeID: 2}
 	addEntry := raftpb.Entry{Type: raftpb.EntryConfChange, Data: pbutil.MustMarshal(addcc)}
 	removecc := &raftpb.ConfChange{Type: raftpb.ConfChangeRemoveNode, NodeID: 2}
@@ -35,20 +35,20 @@ func TestGetIDset(t *testing.T) {
 		snap *raftpb.Snapshot
 		ents []raftpb.Entry
 
-		widSet map[uint64]bool
+		widSet []uint64
 	}{
-		{nil, []raftpb.Entry{}, map[uint64]bool{}},
-		{&raftpb.Snapshot{Nodes: []uint64{1}}, []raftpb.Entry{}, map[uint64]bool{1: true}},
-		{&raftpb.Snapshot{Nodes: []uint64{1}}, []raftpb.Entry{addEntry}, map[uint64]bool{1: true, 2: true}},
-		{&raftpb.Snapshot{Nodes: []uint64{1}}, []raftpb.Entry{addEntry, removeEntry}, map[uint64]bool{1: true}},
-		{&raftpb.Snapshot{Nodes: []uint64{1}}, []raftpb.Entry{addEntry, normalEntry}, map[uint64]bool{1: true, 2: true}},
-		{&raftpb.Snapshot{Nodes: []uint64{1}}, []raftpb.Entry{addEntry, removeEntry, normalEntry}, map[uint64]bool{1: true}},
+		{nil, []raftpb.Entry{}, []uint64{}},
+		{&raftpb.Snapshot{Nodes: []uint64{1}}, []raftpb.Entry{}, []uint64{1}},
+		{&raftpb.Snapshot{Nodes: []uint64{1}}, []raftpb.Entry{addEntry}, []uint64{1, 2}},
+		{&raftpb.Snapshot{Nodes: []uint64{1}}, []raftpb.Entry{addEntry, removeEntry}, []uint64{1}},
+		{&raftpb.Snapshot{Nodes: []uint64{1}}, []raftpb.Entry{addEntry, normalEntry}, []uint64{1, 2}},
+		{&raftpb.Snapshot{Nodes: []uint64{1}}, []raftpb.Entry{addEntry, removeEntry, normalEntry}, []uint64{1}},
 	}
 
 	for i, tt := range tests {
-		idSet := getIDset(tt.snap, tt.ents)
+		idSet := getIDs(tt.snap, tt.ents)
 		if !reflect.DeepEqual(idSet, tt.widSet) {
-			t.Errorf("#%d: idset = %v, want %v", i, idSet, tt.widSet)
+			t.Errorf("#%d: idset = %#v, want %#v", i, idSet, tt.widSet)
 		}
 	}
 }
@@ -57,35 +57,35 @@ func TestCreateConfigChangeEnts(t *testing.T) {
 	removecc2 := &raftpb.ConfChange{Type: raftpb.ConfChangeRemoveNode, NodeID: 2}
 	removecc3 := &raftpb.ConfChange{Type: raftpb.ConfChangeRemoveNode, NodeID: 3}
 	tests := []struct {
-		ids         map[uint64]bool
+		ids         []uint64
 		self        uint64
 		term, index uint64
 
 		wents []raftpb.Entry
 	}{
 		{
-			map[uint64]bool{1: true},
+			[]uint64{1},
 			1,
 			1, 1,
 
 			[]raftpb.Entry{},
 		},
 		{
-			map[uint64]bool{1: true, 2: true},
+			[]uint64{1, 2},
 			1,
 			1, 1,
 
 			[]raftpb.Entry{{Term: 1, Index: 2, Type: raftpb.EntryConfChange, Data: pbutil.MustMarshal(removecc2)}},
 		},
 		{
-			map[uint64]bool{1: true, 2: true},
+			[]uint64{1, 2},
 			1,
 			2, 2,
 
 			[]raftpb.Entry{{Term: 2, Index: 3, Type: raftpb.EntryConfChange, Data: pbutil.MustMarshal(removecc2)}},
 		},
 		{
-			map[uint64]bool{1: true, 2: true, 3: true},
+			[]uint64{1, 2, 3},
 			1,
 			2, 2,
 
@@ -95,7 +95,7 @@ func TestCreateConfigChangeEnts(t *testing.T) {
 			},
 		},
 		{
-			map[uint64]bool{2: true, 3: true},
+			[]uint64{2, 3},
 			2,
 			2, 2,
 
