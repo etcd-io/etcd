@@ -230,7 +230,11 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 			index = snapshot.Index
 		}
 		cfg.Cluster = NewClusterFromStore(cfg.Cluster.token, st)
-		id, n, w = restartNode(cfg, index, snapshot)
+		if !cfg.ForceNewCluster {
+			id, n, w = restartNode(cfg, index, snapshot)
+		} else {
+			id, n, w = restartAsStandaloneNode(cfg, index, snapshot)
+		}
 	default:
 		return nil, fmt.Errorf("unsupported bootstrap config")
 	}
@@ -736,17 +740,27 @@ func restartNode(cfg *ServerConfig, index uint64, snapshot *raftpb.Snapshot) (id
 	if w, err = wal.OpenAtIndex(cfg.WALDir(), index); err != nil {
 		log.Fatalf("etcdserver: open wal error: %v", err)
 	}
-	wmetadata, st, ents, err := w.ReadAll()
+	id, clusterID, st, ents, err := readWAL(w, index)
 	if err != nil {
 		log.Fatalf("etcdserver: read wal error: %v", err)
+	}
+	cfg.Cluster.SetID(clusterID)
+	log.Printf("etcdserver: restart member %s in cluster %s at commit index %d", id, cfg.Cluster.ID(), st.Commit)
+	n = raft.RestartNode(uint64(id), 10, 1, snapshot, st, ents)
+	return
+}
+
+func readWAL(w *wal.WAL, index uint64) (id, cid types.ID, st raftpb.HardState, ents []raftpb.Entry, err error) {
+	var wmetadata []byte
+	wmetadata, st, ents, err = w.ReadAll()
+	if err != nil {
+		return
 	}
 
 	var metadata pb.Metadata
 	pbutil.MustUnmarshal(&metadata, wmetadata)
 	id = types.ID(metadata.NodeID)
-	cfg.Cluster.SetID(types.ID(metadata.ClusterID))
-	log.Printf("etcdserver: restart member %s in cluster %s at commit index %d", id, cfg.Cluster.ID(), st.Commit)
-	n = raft.RestartNode(uint64(id), 10, 1, snapshot, st, ents)
+	cid = types.ID(metadata.ClusterID)
 	return
 }
 
