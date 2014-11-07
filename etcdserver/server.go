@@ -666,12 +666,12 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange) error {
 		}
 		s.Cluster.AddMember(m)
 		s.sender.Add(m)
-		log.Printf("etcdserver: added node %s %v to cluster", types.ID(cc.NodeID), m.PeerURLs)
+		log.Printf("etcdserver: added node %s %v to cluster %s", types.ID(cc.NodeID), m.PeerURLs, s.Cluster.ID())
 	case raftpb.ConfChangeRemoveNode:
 		id := types.ID(cc.NodeID)
 		s.Cluster.RemoveMember(id)
 		s.sender.Remove(id)
-		log.Printf("etcdserver: removed node %s from cluster", id)
+		log.Printf("etcdserver: removed node %s from cluster %s", id, s.Cluster.ID())
 	}
 	return nil
 }
