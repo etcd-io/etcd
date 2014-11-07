@@ -17,6 +17,7 @@
 package etcdserver
 
 import (
+	"encoding/json"
 	"log"
 	"sort"
 
@@ -101,11 +102,15 @@ func getIDs(snap *raftpb.Snapshot, ents []raftpb.Entry) []uint64 {
 // createConfigChangeEnts creates a series of Raft entries (i.e.
 // EntryConfChange) to remove the set of given IDs from the cluster. The ID
 // `self` is _not_ removed, even if present in the set.
+// If `self` is not inside the given ids, it creates a Raft entry to add a
+// default member with the given `self`.
 func createConfigChangeEnts(ids []uint64, self uint64, term, index uint64) []raftpb.Entry {
 	ents := make([]raftpb.Entry, 0)
 	next := index + 1
+	found := false
 	for _, id := range ids {
 		if id == self {
+			found = true
 			continue
 		}
 		cc := &raftpb.ConfChange{
@@ -120,6 +125,28 @@ func createConfigChangeEnts(ids []uint64, self uint64, term, index uint64) []raf
 		}
 		ents = append(ents, e)
 		next++
+	}
+	if !found {
+		m := Member{
+			ID:             types.ID(self),
+			RaftAttributes: RaftAttributes{PeerURLs: []string{"http://localhost:7001", "http://localhost:2380"}},
+		}
+		ctx, err := json.Marshal(m)
+		if err != nil {
+			log.Panicf("marshal member should never fail: %v", err)
+		}
+		cc := &raftpb.ConfChange{
+			Type:    raftpb.ConfChangeAddNode,
+			NodeID:  self,
+			Context: ctx,
+		}
+		e := raftpb.Entry{
+			Type:  raftpb.EntryConfChange,
+			Data:  pbutil.MustMarshal(cc),
+			Term:  term,
+			Index: next,
+		}
+		ents = append(ents, e)
 	}
 	return ents
 }

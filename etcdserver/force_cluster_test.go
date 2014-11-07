@@ -17,10 +17,12 @@
 package etcdserver
 
 import (
+	"encoding/json"
 	"reflect"
 	"testing"
 
 	"github.com/coreos/etcd/pkg/pbutil"
+	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft/raftpb"
 )
 
@@ -54,6 +56,15 @@ func TestGetIDs(t *testing.T) {
 }
 
 func TestCreateConfigChangeEnts(t *testing.T) {
+	m := Member{
+		ID:             types.ID(1),
+		RaftAttributes: RaftAttributes{PeerURLs: []string{"http://localhost:7001", "http://localhost:2380"}},
+	}
+	ctx, err := json.Marshal(m)
+	if err != nil {
+		t.Fatal(err)
+	}
+	addcc1 := &raftpb.ConfChange{Type: raftpb.ConfChangeAddNode, NodeID: 1, Context: ctx}
 	removecc2 := &raftpb.ConfChange{Type: raftpb.ConfChangeRemoveNode, NodeID: 2}
 	removecc3 := &raftpb.ConfChange{Type: raftpb.ConfChangeRemoveNode, NodeID: 3}
 	tests := []struct {
@@ -101,6 +112,17 @@ func TestCreateConfigChangeEnts(t *testing.T) {
 
 			[]raftpb.Entry{
 				{Term: 2, Index: 3, Type: raftpb.EntryConfChange, Data: pbutil.MustMarshal(removecc3)},
+			},
+		},
+		{
+			[]uint64{2, 3},
+			1,
+			2, 2,
+
+			[]raftpb.Entry{
+				{Term: 2, Index: 3, Type: raftpb.EntryConfChange, Data: pbutil.MustMarshal(removecc2)},
+				{Term: 2, Index: 4, Type: raftpb.EntryConfChange, Data: pbutil.MustMarshal(removecc3)},
+				{Term: 2, Index: 5, Type: raftpb.EntryConfChange, Data: pbutil.MustMarshal(addcc1)},
 			},
 		},
 	}

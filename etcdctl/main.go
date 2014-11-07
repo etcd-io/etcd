@@ -37,6 +37,7 @@ func main() {
 		cli.StringFlag{Name: "peers, C", Value: "", Usage: "a comma-delimited list of machine addresses in the cluster (default: \"127.0.0.1:4001\")"},
 	}
 	app.Commands = []cli.Command{
+		command.NewBackupCommand(),
 		command.NewMakeCommand(),
 		command.NewMakeDirCommand(),
 		command.NewRemoveCommand(),
