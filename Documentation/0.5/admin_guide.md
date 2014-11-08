@@ -48,7 +48,7 @@ The first step of the recovery is to backup the data directory on a functioning 
       --backup-dir /tmp/etcd_backup
 ```
 
-This command will rewrite some of the metadata contained in the backup (specifically, the node ID and cluster ID), which means that the node will lose its former identity. In order to recreate a cluster from the backup, you will need to start a new, single-node cluster.
+This command will rewrite some of the metadata contained in the backup (specifically, the node ID and cluster ID), which means that the node will lose its former identity. In order to recreate a cluster from the backup, you will need to start a new, single-node cluster. The metadata is rewritten to prevent the new node from inadvertently being joined onto an existing cluster.
 
 #### Restoring a backup
 
