@@ -32,9 +32,11 @@ The data directory has two sub-directories in it:
 If you are spinning up multiple clusters for testing it is recommended that you specify a unique initial-cluster-token for the different clusters.
 This can protect you from cluster corruption in case of mis-configuration because two members started with different cluster tokens will refuse members from each other.
 
-### Disaster recovery
+### Disaster Recovery
 
-In some circumstances, it may be necessary to recover an etcd cluster from a critical failure where quorum has been irrevocably lost. For example, if a three-node cluster suffered two simultaneous machine failures, it would be normally impossible for the cluster to restore quorum and continue functioning. To recover from such scenarios, etcd provides functionality to backup and restore the datastore and recreate the cluster without data loss.
+etcd is designed to be resilient to machine failures. An etcd cluster can automatically recover from any number of temporary failures (for example, machine reboots), and a cluster of N members can tolerate up to _(N/2)-1_ permanent failures (where a member can no longer access the cluster, due to hardware failure or disk corruption). However, in extreme circumstances, a cluster might permanently lose enough members such that quorum is irrevocably lost. For example, if a three-node cluster suffered two simultaneous and unrecoverable machine failures, it would be normally impossible for the cluster to restore quorum and continue functioning.
+
+To recover from such scenarios, etcd provides functionality to backup and restore the datastore and recreate the cluster without data loss.
 
 #### Backing up the datastore
 
