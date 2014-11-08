@@ -31,3 +31,49 @@ The data directory has two sub-directories in it:
 
 If you are spinning up multiple clusters for testing it is recommended that you specify a unique initial-cluster-token for the different clusters.
 This can protect you from cluster corruption in case of mis-configuration because two members started with different cluster tokens will refuse members from each other.
+
+### Disaster Recovery
+
+etcd is designed to be resilient to machine failures. An etcd cluster can automatically recover from any number of temporary failures (for example, machine reboots), and a cluster of N members can tolerate up to _(N/2)-1_ permanent failures (where a member can no longer access the cluster, due to hardware failure or disk corruption). However, in extreme circumstances, a cluster might permanently lose enough members such that quorum is irrevocably lost. For example, if a three-node cluster suffered two simultaneous and unrecoverable machine failures, it would be normally impossible for the cluster to restore quorum and continue functioning.
+
+To recover from such scenarios, etcd provides functionality to backup and restore the datastore and recreate the cluster without data loss.
+
+#### Backing up the datastore
+
+The first step of the recovery is to backup the data directory on a functioning etcd node. To do this, use the `etcdctl backup` command, passing in the original data directory used by etcd. For example:
+
+```sh
+    etcdctl backup \
+      --data-dir /var/lib/etcd \
+      --backup-dir /tmp/etcd_backup
+```
+
+This command will rewrite some of the metadata contained in the backup (specifically, the node ID and cluster ID), which means that the node will lose its former identity. In order to recreate a cluster from the backup, you will need to start a new, single-node cluster. The metadata is rewritten to prevent the new node from inadvertently being joined onto an existing cluster.
+
+#### Restoring a backup
+
+To restore a backup using the procedure created above, start etcd with the `-force-new-cluster` option and pointing to the backup directory. This will initialize a new, single-member cluster with the default advertised peer URLs, but preserve the entire contents of the etcd data store. Continuing from the previous example:
+
+```sh
+    etcd \
+      -data-dir=/tmp/etcd_backup \
+      -force-new-cluster \
+      ...
+```
+
+Now etcd should be available on this node and serving the original datastore.
+
+Once you have verified that etcd has started successfully, shut it down and move the data back to the previous location (you may wish to make another copy as well to be safe):
+
+```sh
+    pkill etcd
+    rm -fr /var/lib/etcd
+    mv /tmp/etcd_backup /var/lib/etcd
+    etcd \
+      -data-dir=/var/lib/etcd \
+      ...
+```
+
+#### Restoring the cluster
+
+Now that the node is running successfully, you can add more nodes to the cluster and restore resiliency. See the [runtime configuration](runtime-configuration.md) guide for more details.
