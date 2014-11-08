@@ -27,6 +27,7 @@ import (
 	"os"
 	"path"
 	"regexp"
+	"sort"
 	"sync/atomic"
 	"time"
 
@@ -193,7 +194,8 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 	haveWAL := wal.Exist(cfg.WALDir())
 	switch {
 	case !haveWAL && !cfg.NewCluster:
-		cl, err := GetClusterFromPeers(cfg.Cluster.PeerURLs())
+		us := getOtherPeerURLs(cfg.Cluster, cfg.Name)
+		cl, err := GetClusterFromPeers(us)
 		if err != nil {
 			return nil, fmt.Errorf("cannot fetch cluster info from peer urls: %v", err)
 		}
@@ -746,6 +748,20 @@ func startNode(cfg *ServerConfig, ids []types.ID) (id types.ID, n raft.Node, w *
 	log.Printf("etcdserver: start node %s in cluster %s", id, cfg.Cluster.ID())
 	n = raft.StartNode(uint64(id), peers, 10, 1)
 	return
+}
+
+// getOtherPeerURLs returns peer urls of other members in the cluster. The
+// returned list is sorted in ascending lexicographical order.
+func getOtherPeerURLs(cl ClusterInfo, self string) []string {
+	us := make([]string, 0)
+	for _, m := range cl.Members() {
+		if m.Name == self {
+			continue
+		}
+		us = append(us, m.PeerURLs...)
+	}
+	sort.Strings(us)
+	return us
 }
 
 func restartNode(cfg *ServerConfig, index uint64, snapshot *raftpb.Snapshot) (id types.ID, n raft.Node, w *wal.WAL) {

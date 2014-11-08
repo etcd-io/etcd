@@ -1093,6 +1093,47 @@ func TestPublishRetry(t *testing.T) {
 	}
 }
 
+func TestGetOtherPeerURLs(t *testing.T) {
+	tests := []struct {
+		membs []*Member
+		self  string
+		wurls []string
+	}{
+		{
+			[]*Member{
+				newTestMemberp(1, []string{"http://10.0.0.1"}, "a", nil),
+			},
+			"a",
+			[]string{},
+		},
+		{
+			[]*Member{
+				newTestMemberp(1, []string{"http://10.0.0.1"}, "a", nil),
+				newTestMemberp(2, []string{"http://10.0.0.2"}, "b", nil),
+				newTestMemberp(3, []string{"http://10.0.0.3"}, "c", nil),
+			},
+			"a",
+			[]string{"http://10.0.0.2", "http://10.0.0.3"},
+		},
+		{
+			[]*Member{
+				newTestMemberp(1, []string{"http://10.0.0.1"}, "a", nil),
+				newTestMemberp(3, []string{"http://10.0.0.3"}, "c", nil),
+				newTestMemberp(2, []string{"http://10.0.0.2"}, "b", nil),
+			},
+			"a",
+			[]string{"http://10.0.0.2", "http://10.0.0.3"},
+		},
+	}
+	for i, tt := range tests {
+		cl := NewClusterFromMembers("", types.ID(0), tt.membs)
+		urls := getOtherPeerURLs(cl, tt.self)
+		if !reflect.DeepEqual(urls, tt.wurls) {
+			t.Errorf("#%d: urls = %+v, want %+v", i, urls, tt.wurls)
+		}
+	}
+}
+
 func TestGetBool(t *testing.T) {
 	tests := []struct {
 		b    *bool
