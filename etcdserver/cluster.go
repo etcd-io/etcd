@@ -121,7 +121,7 @@ func (c *Cluster) Members() []*Member {
 	defer c.Unlock()
 	var sms SortableMemberSlice
 	for _, m := range c.members {
-		sms = append(sms, m)
+		sms = append(sms, m.Clone())
 	}
 	sort.Sort(sms)
 	return []*Member(sms)
@@ -136,7 +136,7 @@ func (s SortableMemberSlice) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
 func (c *Cluster) Member(id types.ID) *Member {
 	c.Lock()
 	defer c.Unlock()
-	return c.members[id]
+	return c.members[id].Clone()
 }
 
 // MemberByName returns a Member with the given name if exists.
@@ -153,7 +153,7 @@ func (c *Cluster) MemberByName(name string) *Member {
 			memb = m
 		}
 	}
-	return memb
+	return memb.Clone()
 }
 
 func (c *Cluster) MemberIDs() []types.ID {
@@ -333,6 +333,12 @@ func (c *Cluster) RemoveMember(id types.ID) {
 		log.Panicf("create removedMember should never fail: %v", err)
 	}
 	c.removed[id] = true
+}
+
+func (c *Cluster) UpdateMemberAttributes(id types.ID, attr Attributes) {
+	c.Lock()
+	defer c.Unlock()
+	c.members[id].Attributes = attr
 }
 
 // nodeToMember builds member through a store node.

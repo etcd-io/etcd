@@ -80,6 +80,27 @@ func (m *Member) PickPeerURL() string {
 	return m.PeerURLs[rand.Intn(len(m.PeerURLs))]
 }
 
+func (m *Member) Clone() *Member {
+	if m == nil {
+		return nil
+	}
+	mm := &Member{
+		ID: m.ID,
+		Attributes: Attributes{
+			Name: m.Name,
+		},
+	}
+	if m.PeerURLs != nil {
+		mm.PeerURLs = make([]string, len(m.PeerURLs))
+		copy(mm.PeerURLs, m.PeerURLs)
+	}
+	if m.ClientURLs != nil {
+		mm.ClientURLs = make([]string, len(m.ClientURLs))
+		copy(mm.ClientURLs, m.ClientURLs)
+	}
+	return mm
+}
+
 func memberStoreKey(id types.ID) string {
 	return path.Join(storeMembersPrefix, id.String())
 }

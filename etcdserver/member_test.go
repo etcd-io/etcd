@@ -18,6 +18,7 @@ package etcdserver
 
 import (
 	"net/url"
+	"reflect"
 	"testing"
 	"time"
 
@@ -85,6 +86,24 @@ func TestMemberPick(t *testing.T) {
 				t.Errorf("#%d: returned ID %q not in expected range!", i, a)
 				break
 			}
+		}
+	}
+}
+
+func TestMemberClone(t *testing.T) {
+	tests := []*Member{
+		newTestMemberp(1, nil, "abc", nil),
+		newTestMemberp(1, []string{"http://a"}, "abc", nil),
+		newTestMemberp(1, nil, "abc", []string{"http://b"}),
+		newTestMemberp(1, []string{"http://a"}, "abc", []string{"http://b"}),
+	}
+	for i, tt := range tests {
+		nm := tt.Clone()
+		if nm == tt {
+			t.Errorf("#%d: the pointers are the same, and clone doesn't happen", i)
+		}
+		if !reflect.DeepEqual(nm, tt) {
+			t.Errorf("#%d: member = %+v, want %+v", i, nm, tt)
 		}
 	}
 }
