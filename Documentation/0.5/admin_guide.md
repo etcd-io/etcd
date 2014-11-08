@@ -38,10 +38,9 @@ In some circumstances, it may be necessary to recover an etcd cluster from a cri
 
 #### Backing up the datastore
 
-The first step of the recovery is to backup the data directory on a functioning etcd node. To do this, stop etcd and use the `etcdctl backup` command, passing in the original data directory used by etcd. For example:
+The first step of the recovery is to backup the data directory on a functioning etcd node. To do this, use the `etcdctl backup` command, passing in the original data directory used by etcd. For example:
 
 ```sh
-    pkill etcd
     etcdctl backup \
       --data-dir /var/lib/etcd \
       --backup-dir /tmp/etcd_backup
