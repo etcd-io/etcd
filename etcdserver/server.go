@@ -618,13 +618,11 @@ func (s *EtcdServer) applyRequest(r pb.Request) Response {
 		default:
 			if storeMemberAttributeRegexp.MatchString(r.Path) {
 				id := mustParseMemberIDFromKey(path.Dir(r.Path))
-				m := s.Cluster.Member(id)
-				if m == nil {
-					log.Panicf("fetch member %s should never fail", id)
-				}
-				if err := json.Unmarshal([]byte(r.Val), &m.Attributes); err != nil {
+				var attr Attributes
+				if err := json.Unmarshal([]byte(r.Val), &attr); err != nil {
 					log.Panicf("unmarshal %s should never fail: %v", r.Val, err)
 				}
+				s.Cluster.UpdateMemberAttributes(id, attr)
 			}
 			return f(s.store.Set(r.Path, r.Dir, r.Val, expr))
 		}
