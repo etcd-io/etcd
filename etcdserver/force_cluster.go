@@ -28,15 +28,8 @@ import (
 	"github.com/coreos/etcd/wal"
 )
 
-func restartAsStandaloneNode(cfg *ServerConfig, index uint64, snapshot *raftpb.Snapshot) (id types.ID, n raft.Node, w *wal.WAL) {
-	var err error
-	if w, err = wal.OpenAtIndex(cfg.WALDir(), index); err != nil {
-		log.Fatalf("etcdserver: open wal error: %v", err)
-	}
-	id, cid, st, ents, err := readWAL(w, index)
-	if err != nil {
-		log.Fatalf("etcdserver: read wal error: %v", err)
-	}
+func restartAsStandaloneNode(cfg *ServerConfig, index uint64, snapshot *raftpb.Snapshot) (types.ID, raft.Node, *wal.WAL) {
+	w, id, cid, st, ents := readWAL(cfg.WALDir(), index)
 	cfg.Cluster.SetID(cid)
 
 	// discard the previously uncommitted entries
@@ -60,8 +53,8 @@ func restartAsStandaloneNode(cfg *ServerConfig, index uint64, snapshot *raftpb.S
 	}
 
 	log.Printf("etcdserver: forcing restart of member %s in cluster %s at commit index %d", id, cfg.Cluster.ID(), st.Commit)
-	n = raft.RestartNode(uint64(id), 10, 1, snapshot, st, ents)
-	return
+	n := raft.RestartNode(uint64(id), 10, 1, snapshot, st, ents)
+	return id, n, w
 }
 
 // getIDs returns an ordered set of IDs included in the given snapshot and
