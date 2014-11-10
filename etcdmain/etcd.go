@@ -195,7 +195,7 @@ func startEtcd() error {
 
 	if *dir == "" {
 		*dir = fmt.Sprintf("%v.etcd", *name)
-		return fmt.Errorf("no data-dir provided, using default data-dir ./%s", *dir)
+		log.Printf("no data-dir provided, using default data-dir ./%s", *dir)
 	}
 	if err := os.MkdirAll(*dir, privateDirMode); err != nil {
 		return fmt.Errorf("cannot create data directory: %v", err)
