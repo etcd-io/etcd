@@ -17,12 +17,15 @@
 package proxy
 
 import (
+	"fmt"
 	"io"
 	"log"
 	"net"
 	"net/http"
 	"net/url"
 	"strings"
+
+	"github.com/coreos/etcd/etcdserver/etcdhttp/httptypes"
 )
 
 // Hop-by-hop headers. These are removed when sent to the backend.
@@ -64,8 +67,10 @@ func (p *reverseProxy) ServeHTTP(rw http.ResponseWriter, clientreq *http.Request
 
 	endpoints := p.director.endpoints()
 	if len(endpoints) == 0 {
-		log.Printf("proxy: zero endpoints currently available")
-		rw.WriteHeader(http.StatusServiceUnavailable)
+		msg := "proxy: zero endpoints currently available"
+		log.Printf(msg)
+		e := httptypes.NewHTTPError(http.StatusServiceUnavailable, msg)
+		e.WriteTo(rw)
 		return
 	}
 
@@ -86,8 +91,10 @@ func (p *reverseProxy) ServeHTTP(rw http.ResponseWriter, clientreq *http.Request
 	}
 
 	if res == nil {
-		log.Printf("proxy: unable to get response from %d endpoint(s)", len(endpoints))
-		rw.WriteHeader(http.StatusBadGateway)
+		msg := fmt.Sprintf("proxy: unable to get response from %d endpoint(s)", len(endpoints))
+		log.Printf(msg)
+		e := httptypes.NewHTTPError(http.StatusBadGateway, msg)
+		e.WriteTo(rw)
 		return
 	}
 
