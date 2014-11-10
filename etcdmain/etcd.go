@@ -24,8 +24,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"reflect"
-	"sort"
 	"strings"
 
 	"github.com/coreos/etcd/discovery"
@@ -191,7 +189,11 @@ func Main() {
 
 // startEtcd launches the etcd server and HTTP handlers for client/server communication.
 func startEtcd() error {
-	cls, err := setupCluster()
+	apurls, err := flags.URLsFromFlags(fs, "initial-advertise-peer-urls", "addr", peerTLSInfo)
+	if err != nil {
+		return err
+	}
+	cls, err := setupCluster(apurls)
 	if err != nil {
 		return fmt.Errorf("error setting up initial cluster: %v", err)
 	}
@@ -268,6 +270,7 @@ func startEtcd() error {
 	cfg := &etcdserver.ServerConfig{
 		Name:            *name,
 		ClientURLs:      acurls,
+		PeerURLs:        apurls,
 		DataDir:         *dir,
 		SnapCount:       *snapCount,
 		Cluster:         cls,
@@ -306,7 +309,11 @@ func startEtcd() error {
 
 // startProxy launches an HTTP proxy for client communication which proxies to other etcd nodes.
 func startProxy() error {
-	cls, err := setupCluster()
+	apurls, err := flags.URLsFromFlags(fs, "initial-advertise-peer-urls", "addr", peerTLSInfo)
+	if err != nil {
+		return err
+	}
+	cls, err := setupCluster(apurls)
 	if err != nil {
 		return fmt.Errorf("error setting up initial cluster: %v", err)
 	}
@@ -367,7 +374,7 @@ func startProxy() error {
 }
 
 // setupCluster sets up an initial cluster definition for bootstrap or discovery.
-func setupCluster() (*etcdserver.Cluster, error) {
+func setupCluster(apurls []url.URL) (*etcdserver.Cluster, error) {
 	set := make(map[string]bool)
 	fs.Visit(func(f *flag.Flag) {
 		set[f.Name] = true
@@ -375,12 +382,8 @@ func setupCluster() (*etcdserver.Cluster, error) {
 	if set["discovery"] && set["initial-cluster"] {
 		return nil, fmt.Errorf("both discovery and bootstrap-config are set")
 	}
-	apurls, err := flags.URLsFromFlags(fs, "initial-advertise-peer-urls", "addr", peerTLSInfo)
-	if err != nil {
-		return nil, err
-	}
-
 	var cls *etcdserver.Cluster
+	var err error
 	switch {
 	case set["discovery"]:
 		// If using discovery, generate a temporary cluster based on
@@ -392,29 +395,8 @@ func setupCluster() (*etcdserver.Cluster, error) {
 	default:
 		// We're statically configured, and cluster has appropriately been set.
 		cls, err = etcdserver.NewClusterFromString(*initialClusterToken, *initialCluster)
-		// Ensure our own advertised peer URLs match those specified in cluster
-		if err == nil && !clusterPeerURLsMatch(*name, cls, apurls) {
-			cls = nil
-			err = fmt.Errorf("%s has different advertised URLs in the cluster and advertised peer URLs list", *name)
-		}
 	}
 	return cls, err
-}
-
-// clusterPeerURLsMatch checks whether the peer URLs of the member by the given
-// name in the given cluster match the provided set of URLs
-func clusterPeerURLsMatch(name string, cls *etcdserver.Cluster, urls []url.URL) bool {
-	m := cls.MemberByName(name)
-	if m == nil {
-		// should never happen
-		log.Panicf("could not find %q in cluster!", name)
-	}
-	purls := make([]string, len(urls))
-	for i, u := range urls {
-		purls[i] = u.String()
-	}
-	sort.Strings(purls)
-	return reflect.DeepEqual(purls, m.PeerURLs)
 }
 
 func genClusterString(name string, urls types.URLs) string {
