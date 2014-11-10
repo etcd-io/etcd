@@ -22,7 +22,10 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
+	"reflect"
+	"sort"
 	"strings"
 
 	"github.com/coreos/etcd/discovery"
@@ -363,7 +366,7 @@ func startProxy() error {
 	return nil
 }
 
-// setupCluster sets up the cluster definition for bootstrap or discovery.
+// setupCluster sets up an initial cluster definition for bootstrap or discovery.
 func setupCluster() (*etcdserver.Cluster, error) {
 	set := make(map[string]bool)
 	fs.Visit(func(f *flag.Flag) {
@@ -380,16 +383,38 @@ func setupCluster() (*etcdserver.Cluster, error) {
 	var cls *etcdserver.Cluster
 	switch {
 	case set["discovery"]:
+		// If using discovery, generate a temporary cluster based on
+		// self's advertised peer URLs
 		clusterStr := genClusterString(*name, apurls)
 		cls, err = etcdserver.NewClusterFromString(*durl, clusterStr)
 	case set["initial-cluster"]:
 		fallthrough
 	default:
 		// We're statically configured, and cluster has appropriately been set.
-		// Try to configure by indexing the static cluster by name.
 		cls, err = etcdserver.NewClusterFromString(*initialClusterToken, *initialCluster)
+		// Ensure our own advertised peer URLs match those specified in cluster
+		if err == nil && !clusterPeerURLsMatch(*name, cls, apurls) {
+			cls = nil
+			err = fmt.Errorf("%s has different advertised URLs in the cluster and advertised peer URLs list", *name)
+		}
 	}
 	return cls, err
+}
+
+// clusterPeerURLsMatch checks whether the peer URLs of the member by the given
+// name in the given cluster match the provided set of URLs
+func clusterPeerURLsMatch(name string, cls *etcdserver.Cluster, urls []url.URL) bool {
+	m := cls.MemberByName(name)
+	if m == nil {
+		// should never happen
+		log.Panicf("could not find %q in cluster!", name)
+	}
+	purls := make([]string, len(urls))
+	for i, u := range urls {
+		purls[i] = u.String()
+	}
+	sort.Strings(purls)
+	return reflect.DeepEqual(purls, m.PeerURLs)
 }
 
 func genClusterString(name string, urls types.URLs) string {

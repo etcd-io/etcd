@@ -17,10 +17,72 @@
 package etcdmain
 
 import (
+	"net/url"
 	"testing"
 
+	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/pkg/types"
 )
+
+func mustClsFromString(t *testing.T, s string) *etcdserver.Cluster {
+	cls, err := etcdserver.NewClusterFromString("", s)
+	if err != nil {
+		t.Fatalf("error creating cluster from %q: %v", s, err)
+	}
+	return cls
+}
+
+func mustNewURLs(t *testing.T, urls []string) []url.URL {
+	u, err := types.NewURLs(urls)
+	if err != nil {
+		t.Fatalf("unexpected new urls error: %v", err)
+	}
+	return u
+}
+
+func TestClusterPeerURLsMatch(t *testing.T) {
+	tests := []struct {
+		name string
+		cls  *etcdserver.Cluster
+		urls []url.URL
+
+		w bool
+	}{
+		{
+			name: "default",
+			cls:  mustClsFromString(t, "default=http://localhost:12345"),
+			urls: mustNewURLs(t, []string{"http://localhost:12345"}),
+
+			w: true,
+		},
+		{
+			name: "default",
+			cls:  mustClsFromString(t, "default=http://localhost:7001,other=http://192.168.0.1:7002,default=http://localhost:12345"),
+			urls: mustNewURLs(t, []string{"http://localhost:7001", "http://localhost:12345"}),
+
+			w: true,
+		},
+		{
+			name: "infra1",
+			cls:  mustClsFromString(t, "infra1=http://localhost:7001"),
+			urls: mustNewURLs(t, []string{"http://localhost:12345"}),
+
+			w: false,
+		},
+		{
+			name: "infra1",
+			cls:  mustClsFromString(t, "infra1=http://localhost:7001,infra2=http://localhost:12345"),
+			urls: mustNewURLs(t, []string{"http://localhost:12345"}),
+
+			w: false,
+		},
+	}
+	for i, tt := range tests {
+		if g := clusterPeerURLsMatch(tt.name, tt.cls, tt.urls); g != tt.w {
+			t.Errorf("#%d: clusterPeerURLsMatch=%t, want %t", i, g, tt.w)
+		}
+	}
+}
 
 func TestGenClusterString(t *testing.T) {
 	tests := []struct {
@@ -38,10 +100,7 @@ func TestGenClusterString(t *testing.T) {
 		},
 	}
 	for i, tt := range tests {
-		urls, err := types.NewURLs(tt.urls)
-		if err != nil {
-			t.Fatalf("unexpected new urls error: %v", err)
-		}
+		urls := mustNewURLs(t, tt.urls)
 		str := genClusterString(tt.token, urls)
 		if str != tt.wstr {
 			t.Errorf("#%d: cluster = %s, want %s", i, str, tt.wstr)

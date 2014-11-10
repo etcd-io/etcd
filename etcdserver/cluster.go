@@ -42,11 +42,18 @@ const (
 )
 
 type ClusterInfo interface {
+	// ID returns the cluster ID
 	ID() types.ID
+	// ClientURLs returns an aggregate set of all URLs on which this
+	// cluster is listening for client requests
 	ClientURLs() []string
 	// Members returns a slice of members sorted by their ID
 	Members() []*Member
+	// Member retrieves a particular member based on ID, or nil if the
+	// member does not exist in the cluster
 	Member(id types.ID) *Member
+	// IsIDRemoved checks whether the given ID has been removed from this
+	// cluster at some point in the past
 	IsIDRemoved(id types.ID) bool
 }
 
@@ -62,8 +69,9 @@ type Cluster struct {
 	sync.Mutex
 }
 
-// NewClusterFromString returns Cluster through given cluster token and parsing
-// members from a sets of names to IPs discovery formatted like:
+// NewClusterFromString returns a Cluster instantiated from the given cluster token
+// and cluster string, by parsing members from a set of discovery-formatted
+// names-to-IPs, like:
 // mach0=http://1.1.1.1,mach0=http://2.2.2.2,mach1=http://3.3.3.3,mach2=http://4.4.4.4
 func NewClusterFromString(token string, cluster string) (*Cluster, error) {
 	c := newCluster(token)
