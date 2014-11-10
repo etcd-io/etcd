@@ -101,6 +101,8 @@ $ curl -X PUT https://myetcd.local/v2/keys/discovery/6c007a14875d53d9bf0ef5a6fc0
 
 By setting the size key to the URL, you create a discovery URL with expected-cluster-size of 3.
 
+If you bootstrap an etcd cluster using discovery service with more than the expected number of etcd members, the extra etcd processes will [fall back][fall-back] to being [proxies][proxy] by default.
+
 The URL you will use in this case will be `https://myetcd.local/v2/keys/discovery/6c007a14875d53d9bf0ef5a6fc0257c817f0fb83` and the etcd members will use the `https://myetcd.local/v2/keys/discovery/6c007a14875d53d9bf0ef5a6fc0257c817f0fb83` directory for registration as they start.
 
 Now we start etcd with those relevant flags for each member:
@@ -130,6 +132,11 @@ https://discovery.etcd.io/3e86b59982e49066c5d813af1c2e2579cbf573de
 ```
 
 This will create the cluster with an initial expected size of 3 members. If you do not specify a size a default of 3 will be used.
+
+If you bootstrap an etcd cluster using discovery service with more than the expected number of etcd members, the extra etcd processes will [fall back][fall-back] to being [proxies][proxy] by default.
+
+[fall-back]: proxy.md#fallback-to-proxy-mode-with-discovery-service
+[proxy]: proxy.md
 
 ```
 ETCD_DISCOVERY=https://discovery.etcd.io/3e86b59982e49066c5d813af1c2e2579cbf573de
