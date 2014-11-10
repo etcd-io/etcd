@@ -157,7 +157,11 @@ func (c *cluster) Launch(t *testing.T) {
 			wg.Done()
 		}(m)
 	}
+	timer := time.AfterFunc(10*time.Second, func() {
+		t.Fatal("wait too long for members' launch")
+	})
 	wg.Wait()
+	timer.Stop()
 	// wait cluster to be stable to receive future client requests
 	c.waitClientURLsPublished(t)
 }
