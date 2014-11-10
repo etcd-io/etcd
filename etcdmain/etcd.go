@@ -190,18 +190,18 @@ func Main() {
 func startEtcd() error {
 	cls, err := setupCluster()
 	if err != nil {
-		fmt.Errorf("error setting up initial cluster: %v", err)
+		return fmt.Errorf("error setting up initial cluster: %v", err)
 	}
 
 	if *dir == "" {
 		*dir = fmt.Sprintf("%v.etcd", *name)
-		fmt.Errorf("no data-dir provided, using default data-dir ./%s", *dir)
+		return fmt.Errorf("no data-dir provided, using default data-dir ./%s", *dir)
 	}
 	if err := os.MkdirAll(*dir, privateDirMode); err != nil {
-		fmt.Errorf("cannot create data directory: %v", err)
+		return fmt.Errorf("cannot create data directory: %v", err)
 	}
 	if err := fileutil.IsDirWriteable(*dir); err != nil {
-		fmt.Errorf("cannot write to data directory: %v", err)
+		return fmt.Errorf("cannot write to data directory: %v", err)
 	}
 
 	pt, err := transport.NewTransport(peerTLSInfo)
