@@ -89,6 +89,7 @@ type Sender interface {
 	Send(m []raftpb.Message)
 	Add(m *Member)
 	Remove(id types.ID)
+	Update(m *Member)
 	Stop()
 }
 
@@ -114,7 +115,7 @@ type Server interface {
 	// Stop terminates the Server and performs any necessary finalization.
 	// Do and Process cannot be called after Stop has been invoked.
 	Stop()
-	// Do takes a request and attempts to fulfil it, returning a Response.
+	// Do takes a request and attempts to fulfill it, returning a Response.
 	Do(ctx context.Context, r pb.Request) (Response, error)
 	// Process takes a raft message and applies it to the server's raft state
 	// machine, respecting any timeout of the given context.
@@ -127,6 +128,10 @@ type Server interface {
 	// return ErrIDRemoved if member ID is removed from the cluster, or return
 	// ErrIDNotFound if member ID is not in the cluster.
 	RemoveMember(ctx context.Context, id uint64) error
+
+	// UpdateMember attempts to update a existing member in the cluster. It will
+	// return ErrIDNotFound if the member ID does not exist.
+	UpdateMember(ctx context.Context, updateMemb Member) error
 }
 
 type Stats interface {
@@ -475,6 +480,20 @@ func (s *EtcdServer) RemoveMember(ctx context.Context, id uint64) error {
 	return s.configure(ctx, cc)
 }
 
+func (s *EtcdServer) UpdateMember(ctx context.Context, memb Member) error {
+	b, err := json.Marshal(memb)
+	if err != nil {
+		return err
+	}
+	cc := raftpb.ConfChange{
+		ID:      GenID(),
+		Type:    raftpb.ConfChangeUpdateNode,
+		NodeID:  uint64(memb.ID),
+		Context: b,
+	}
+	return s.configure(ctx, cc)
+}
+
 // Implement the RaftTimer interface
 func (s *EtcdServer) Index() uint64 {
 	return atomic.LoadUint64(&s.raftIndex)
@@ -672,6 +691,17 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange) error {
 		s.Cluster.RemoveMember(id)
 		s.sender.Remove(id)
 		log.Printf("etcdserver: removed node %s from cluster %s", id, s.Cluster.ID())
+	case raftpb.ConfChangeUpdateNode:
+		m := new(Member)
+		if err := json.Unmarshal(cc.Context, m); err != nil {
+			log.Panicf("unmarshal member should never fail: %v", err)
+		}
+		if cc.NodeID != uint64(m.ID) {
+			log.Panicf("nodeID should always be equal to member ID")
+		}
+		s.Cluster.UpdateMember(m)
+		s.sender.Update(m)
+		log.Printf("etcdserver: update node %s %v in cluster %s", m.ID, m.PeerURLs, s.Cluster.ID())
 	}
 	return nil
 }

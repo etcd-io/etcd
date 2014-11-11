@@ -21,6 +21,9 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
+	"path"
+	"sync"
 	"time"
 
 	"github.com/coreos/etcd/etcdserver/stats"
@@ -108,12 +111,30 @@ func (h *sendHub) Remove(id types.ID) {
 	delete(h.senders, id)
 }
 
+func (h *sendHub) Update(m *Member) {
+	// TODO: return error or just panic?
+	if _, ok := h.senders[m.ID]; !ok {
+		return
+	}
+	peerURL := m.PickPeerURL()
+	u, err := url.Parse(peerURL)
+	if err != nil {
+		log.Panicf("unexpect peer url %s", peerURL)
+	}
+	u.Path = path.Join(u.Path, raftPrefix)
+	s := h.senders[m.ID]
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.u = u.String()
+}
+
 type sender struct {
 	u   string
 	cid types.ID
 	c   *http.Client
 	fs  *stats.FollowerStats
 	q   chan []byte
+	mu  sync.RWMutex
 }
 
 func newSender(u string, cid types.ID, c *http.Client, fs *stats.FollowerStats) *sender {
@@ -159,7 +180,9 @@ func (s *sender) handle() {
 // post POSTs a data payload to a url. Returns nil if the POST succeeds,
 // error on any failure.
 func (s *sender) post(data []byte) error {
+	s.mu.RLock()
 	req, err := http.NewRequest("POST", s.u, bytes.NewBuffer(data))
+	s.mu.RUnlock()
 	if err != nil {
 		return fmt.Errorf("new request to %s error: %v", s.u, err)
 	}

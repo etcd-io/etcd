@@ -263,12 +263,13 @@ func (c *Cluster) SetStore(st store.Store) { c.store = st }
 // ensures that it is still valid.
 func (c *Cluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
 	members, removed := membersFromStore(c.store)
-	if removed[types.ID(cc.NodeID)] {
+	id := types.ID(cc.NodeID)
+	if removed[id] {
 		return ErrIDRemoved
 	}
 	switch cc.Type {
 	case raftpb.ConfChangeAddNode:
-		if members[types.ID(cc.NodeID)] != nil {
+		if members[id] != nil {
 			return ErrIDExists
 		}
 		urls := make(map[string]bool)
@@ -287,11 +288,33 @@ func (c *Cluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
 			}
 		}
 	case raftpb.ConfChangeRemoveNode:
-		if members[types.ID(cc.NodeID)] == nil {
+		if members[id] == nil {
 			return ErrIDNotFound
 		}
+	case raftpb.ConfChangeUpdateNode:
+		if members[id] == nil {
+			return ErrIDNotFound
+		}
+		urls := make(map[string]bool)
+		for _, m := range members {
+			if m.ID == id {
+				continue
+			}
+			for _, u := range m.PeerURLs {
+				urls[u] = true
+			}
+		}
+		m := new(Member)
+		if err := json.Unmarshal(cc.Context, m); err != nil {
+			log.Panicf("unmarshal member should never fail: %v", err)
+		}
+		for _, u := range m.PeerURLs {
+			if urls[u] {
+				return ErrPeerURLexists
+			}
+		}
 	default:
-		log.Panicf("ConfChange type should be either AddNode or RemoveNode")
+		log.Panicf("ConfChange type should be either AddNode, RemoveNode or UpdateNode")
 	}
 	return nil
 }
@@ -339,6 +362,20 @@ func (c *Cluster) UpdateMemberAttributes(id types.ID, attr Attributes) {
 	c.Lock()
 	defer c.Unlock()
 	c.members[id].Attributes = attr
+}
+
+func (c *Cluster) UpdateMember(nm *Member) {
+	c.Lock()
+	defer c.Unlock()
+	b, err := json.Marshal(nm.RaftAttributes)
+	if err != nil {
+		log.Panicf("marshal raftAttributes should never fail: %v", err)
+	}
+	p := path.Join(memberStoreKey(nm.ID), raftAttributesSuffix)
+	if _, err := c.store.Update(p, string(b), store.Permanent); err != nil {
+		log.Panicf("update raftAttributes should never fail: %v", err)
+	}
+	c.members[nm.ID].RaftAttributes = nm.RaftAttributes
 }
 
 // nodeToMember builds member through a store node.
