@@ -1101,25 +1101,25 @@ func TestGetOtherPeerURLs(t *testing.T) {
 	}{
 		{
 			[]*Member{
-				newTestMemberp(1, []string{"http://10.0.0.1"}, "a", nil),
+				newTestMember(1, []string{"http://10.0.0.1"}, "a", nil),
 			},
 			"a",
 			[]string{},
 		},
 		{
 			[]*Member{
-				newTestMemberp(1, []string{"http://10.0.0.1"}, "a", nil),
-				newTestMemberp(2, []string{"http://10.0.0.2"}, "b", nil),
-				newTestMemberp(3, []string{"http://10.0.0.3"}, "c", nil),
+				newTestMember(1, []string{"http://10.0.0.1"}, "a", nil),
+				newTestMember(2, []string{"http://10.0.0.2"}, "b", nil),
+				newTestMember(3, []string{"http://10.0.0.3"}, "c", nil),
 			},
 			"a",
 			[]string{"http://10.0.0.2", "http://10.0.0.3"},
 		},
 		{
 			[]*Member{
-				newTestMemberp(1, []string{"http://10.0.0.1"}, "a", nil),
-				newTestMemberp(3, []string{"http://10.0.0.3"}, "c", nil),
-				newTestMemberp(2, []string{"http://10.0.0.2"}, "b", nil),
+				newTestMember(1, []string{"http://10.0.0.1"}, "a", nil),
+				newTestMember(3, []string{"http://10.0.0.3"}, "c", nil),
+				newTestMember(2, []string{"http://10.0.0.2"}, "b", nil),
 			},
 			"a",
 			[]string{"http://10.0.0.2", "http://10.0.0.3"},

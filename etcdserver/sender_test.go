@@ -25,9 +25,9 @@ import (
 
 func TestSendHubInitSenders(t *testing.T) {
 	membs := []Member{
-		newTestMember(1, []string{"http://a"}, "", nil),
-		newTestMember(2, []string{"http://b"}, "", nil),
-		newTestMember(3, []string{"http://c"}, "", nil),
+		*newTestMember(1, []string{"http://a"}, "", nil),
+		*newTestMember(2, []string{"http://b"}, "", nil),
+		*newTestMember(3, []string{"http://c"}, "", nil),
 	}
 	cl := newTestCluster(membs)
 	ls := stats.NewLeaderStats("")
@@ -48,7 +48,7 @@ func TestSendHubAdd(t *testing.T) {
 	cl := newTestCluster(nil)
 	ls := stats.NewLeaderStats("")
 	h := newSendHub(nil, cl, nil, ls)
-	m := newTestMemberp(1, []string{"http://a"}, "", nil)
+	m := newTestMember(1, []string{"http://a"}, "", nil)
 	h.Add(m)
 
 	if _, ok := ls.Followers["1"]; !ok {
@@ -71,7 +71,7 @@ func TestSendHubAdd(t *testing.T) {
 
 func TestSendHubRemove(t *testing.T) {
 	membs := []Member{
-		newTestMember(1, []string{"http://a"}, "", nil),
+		*newTestMember(1, []string{"http://a"}, "", nil),
 	}
 	cl := newTestCluster(membs)
 	ls := stats.NewLeaderStats("")
