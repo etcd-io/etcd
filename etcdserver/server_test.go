@@ -407,7 +407,7 @@ func TestApplyRequest(t *testing.T) {
 }
 
 func TestApplyRequestOnAdminMemberAttributes(t *testing.T) {
-	cl := newTestCluster([]Member{{ID: 1}})
+	cl := newTestCluster([]*Member{{ID: 1}})
 	srv := &EtcdServer{
 		store:   &storeRecorder{},
 		Cluster: cl,
@@ -992,7 +992,7 @@ func TestRemoveMember(t *testing.T) {
 			Nodes:     []uint64{1234, 2345, 3456},
 		},
 	}
-	cl := newTestCluster([]Member{{ID: 1234}})
+	cl := newTestCluster([]*Member{{ID: 1234}})
 	s := &EtcdServer{
 		node:    n,
 		store:   &storeRecorder{},

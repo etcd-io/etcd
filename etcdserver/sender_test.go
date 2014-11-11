@@ -24,10 +24,10 @@ import (
 )
 
 func TestSendHubInitSenders(t *testing.T) {
-	membs := []Member{
-		*newTestMember(1, []string{"http://a"}, "", nil),
-		*newTestMember(2, []string{"http://b"}, "", nil),
-		*newTestMember(3, []string{"http://c"}, "", nil),
+	membs := []*Member{
+		newTestMember(1, []string{"http://a"}, "", nil),
+		newTestMember(2, []string{"http://b"}, "", nil),
+		newTestMember(3, []string{"http://c"}, "", nil),
 	}
 	cl := newTestCluster(membs)
 	ls := stats.NewLeaderStats("")
@@ -70,8 +70,8 @@ func TestSendHubAdd(t *testing.T) {
 }
 
 func TestSendHubRemove(t *testing.T) {
-	membs := []Member{
-		*newTestMember(1, []string{"http://a"}, "", nil),
+	membs := []*Member{
+		newTestMember(1, []string{"http://a"}, "", nil),
 	}
 	cl := newTestCluster(membs)
 	ls := stats.NewLeaderStats("")
