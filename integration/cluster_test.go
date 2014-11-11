@@ -118,7 +118,7 @@ func NewCluster(t *testing.T, size int) *cluster {
 	c := &cluster{}
 	ms := make([]*member, size)
 	for i := 0; i < size; i++ {
-		ms[i] = newMember(t, c.name(i))
+		ms[i] = mustNewMember(t, c.name(i))
 	}
 	c.Members = ms
 
@@ -146,7 +146,7 @@ func NewClusterByDiscovery(t *testing.T, size int, url string) *cluster {
 	c := &cluster{}
 	ms := make([]*member, size)
 	for i := 0; i < size; i++ {
-		ms[i] = newMember(t, c.name(i))
+		ms[i] = mustNewMember(t, c.name(i))
 		ms[i].DiscoveryURL = url
 	}
 	c.Members = ms
@@ -240,7 +240,7 @@ type member struct {
 	hss []*httptest.Server
 }
 
-func newMember(t *testing.T, name string) *member {
+func mustNewMember(t *testing.T, name string) *member {
 	var err error
 	m := &member{}
 	pln := newLocalListener(t)
