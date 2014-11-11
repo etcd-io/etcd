@@ -107,3 +107,16 @@ func TestMemberClone(t *testing.T) {
 		}
 	}
 }
+
+func newTestMember(id uint64, peerURLs []string, name string, clientURLs []string) Member {
+	return Member{
+		ID:             types.ID(id),
+		RaftAttributes: RaftAttributes{PeerURLs: peerURLs},
+		Attributes:     Attributes{Name: name, ClientURLs: clientURLs},
+	}
+}
+
+func newTestMemberp(id uint64, peerURLs []string, name string, clientURLs []string) *Member {
+	m := newTestMember(id, peerURLs, name, clientURLs)
+	return &m
+}
