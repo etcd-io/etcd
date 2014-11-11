@@ -222,7 +222,7 @@ func startEtcd() error {
 	plns := make([]net.Listener, 0)
 	for _, u := range lpurls {
 		var l net.Listener
-		l, err = transport.NewListener(u.Host, peerTLSInfo)
+		l, err = transport.NewListener(u.Host, u.Scheme, peerTLSInfo)
 		if err != nil {
 			return err
 		}
@@ -246,7 +246,7 @@ func startEtcd() error {
 	clns := make([]net.Listener, 0)
 	for _, u := range lcurls {
 		var l net.Listener
-		l, err = transport.NewListener(u.Host, clientTLSInfo)
+		l, err = transport.NewListener(u.Host, u.Scheme, clientTLSInfo)
 		if err != nil {
 			return err
 		}
@@ -349,7 +349,7 @@ func startProxy() error {
 	}
 	// Start a proxy server goroutine for each listen address
 	for _, u := range lcurls {
-		l, err := transport.NewListener(u.Host, clientTLSInfo)
+		l, err := transport.NewListener(u.Host, u.Scheme, clientTLSInfo)
 		if err != nil {
 			return err
 		}
