@@ -27,13 +27,13 @@ import (
 	"time"
 )
 
-func NewListener(addr string, info TLSInfo) (net.Listener, error) {
+func NewListener(addr string, scheme string, info TLSInfo) (net.Listener, error) {
 	l, err := net.Listen("tcp", addr)
 	if err != nil {
 		return nil, err
 	}
 
-	if !info.Empty() {
+	if !info.Empty() && scheme == "https" {
 		cfg, err := info.ServerConfig()
 		if err != nil {
 			return nil, err
