@@ -63,7 +63,7 @@ func TestMemberPick(t *testing.T) {
 		urls map[string]bool
 	}{
 		{
-			newTestMemberp(1, []string{"abc", "def", "ghi", "jkl", "mno", "pqr", "stu"}, "", nil),
+			newTestMember(1, []string{"abc", "def", "ghi", "jkl", "mno", "pqr", "stu"}, "", nil),
 			map[string]bool{
 				"abc": true,
 				"def": true,
@@ -75,7 +75,7 @@ func TestMemberPick(t *testing.T) {
 			},
 		},
 		{
-			newTestMemberp(2, []string{"xyz"}, "", nil),
+			newTestMember(2, []string{"xyz"}, "", nil),
 			map[string]bool{"xyz": true},
 		},
 	}
@@ -92,10 +92,10 @@ func TestMemberPick(t *testing.T) {
 
 func TestMemberClone(t *testing.T) {
 	tests := []*Member{
-		newTestMemberp(1, nil, "abc", nil),
-		newTestMemberp(1, []string{"http://a"}, "abc", nil),
-		newTestMemberp(1, nil, "abc", []string{"http://b"}),
-		newTestMemberp(1, []string{"http://a"}, "abc", []string{"http://b"}),
+		newTestMember(1, nil, "abc", nil),
+		newTestMember(1, []string{"http://a"}, "abc", nil),
+		newTestMember(1, nil, "abc", []string{"http://b"}),
+		newTestMember(1, []string{"http://a"}, "abc", []string{"http://b"}),
 	}
 	for i, tt := range tests {
 		nm := tt.Clone()
@@ -105,5 +105,13 @@ func TestMemberClone(t *testing.T) {
 		if !reflect.DeepEqual(nm, tt) {
 			t.Errorf("#%d: member = %+v, want %+v", i, nm, tt)
 		}
+	}
+}
+
+func newTestMember(id uint64, peerURLs []string, name string, clientURLs []string) *Member {
+	return &Member{
+		ID:             types.ID(id),
+		RaftAttributes: RaftAttributes{PeerURLs: peerURLs},
+		Attributes:     Attributes{Name: name, ClientURLs: clientURLs},
 	}
 }
