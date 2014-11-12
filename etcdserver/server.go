@@ -685,12 +685,12 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange) error {
 		}
 		s.Cluster.AddMember(m)
 		s.sender.Add(m)
-		log.Printf("etcdserver: added node %s %v to cluster %s", types.ID(cc.NodeID), m.PeerURLs, s.Cluster.ID())
+		log.Printf("etcdserver: added member %s %v to cluster %s", types.ID(cc.NodeID), m.PeerURLs, s.Cluster.ID())
 	case raftpb.ConfChangeRemoveNode:
 		id := types.ID(cc.NodeID)
 		s.Cluster.RemoveMember(id)
 		s.sender.Remove(id)
-		log.Printf("etcdserver: removed node %s from cluster %s", id, s.Cluster.ID())
+		log.Printf("etcdserver: removed member %s from cluster %s", id, s.Cluster.ID())
 	case raftpb.ConfChangeUpdateNode:
 		m := new(Member)
 		if err := json.Unmarshal(cc.Context, m); err != nil {
@@ -701,7 +701,7 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange) error {
 		}
 		s.Cluster.UpdateMember(m)
 		s.sender.Update(m)
-		log.Printf("etcdserver: update node %s %v in cluster %s", m.ID, m.PeerURLs, s.Cluster.ID())
+		log.Printf("etcdserver: update member %s %v in cluster %s", m.ID, m.PeerURLs, s.Cluster.ID())
 	}
 	return nil
 }
@@ -773,7 +773,7 @@ func startNode(cfg *ServerConfig, ids []types.ID) (id types.ID, n raft.Node, w *
 		peers[i] = raft.Peer{ID: uint64(id), Context: ctx}
 	}
 	id = member.ID
-	log.Printf("etcdserver: start node %s in cluster %s", id, cfg.Cluster.ID())
+	log.Printf("etcdserver: start member %s in cluster %s", id, cfg.Cluster.ID())
 	n = raft.StartNode(uint64(id), peers, 10, 1)
 	return
 }
