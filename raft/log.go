@@ -134,9 +134,6 @@ func (l *raftLog) appliedTo(i uint64) {
 }
 
 func (l *raftLog) stableTo(i uint64) {
-	if i == 0 {
-		return
-	}
 	l.unstable = i + 1
 }
 
