@@ -100,9 +100,8 @@ func (h *sendHub) Add(m *Member) {
 	}
 	// TODO: considering how to switch between all available peer urls
 	u := fmt.Sprintf("%s%s", m.PickPeerURL(), raftPrefix)
-	c := &http.Client{Transport: h.tr}
 	fs := h.ls.Follower(m.ID.String())
-	s := newSender(u, h.cl.ID(), c, fs)
+	s := newSender(h.tr, u, h.cl.ID(), fs)
 	h.senders[m.ID] = s
 }
 
@@ -129,19 +128,19 @@ func (h *sendHub) Update(m *Member) {
 }
 
 type sender struct {
+	tr  http.RoundTripper
 	u   string
 	cid types.ID
-	c   *http.Client
 	fs  *stats.FollowerStats
 	q   chan []byte
 	mu  sync.RWMutex
 }
 
-func newSender(u string, cid types.ID, c *http.Client, fs *stats.FollowerStats) *sender {
+func newSender(tr http.RoundTripper, u string, cid types.ID, fs *stats.FollowerStats) *sender {
 	s := &sender{
+		tr:  tr,
 		u:   u,
 		cid: cid,
-		c:   c,
 		fs:  fs,
 		q:   make(chan []byte),
 	}
@@ -188,7 +187,7 @@ func (s *sender) post(data []byte) error {
 	}
 	req.Header.Set("Content-Type", "application/protobuf")
 	req.Header.Set("X-Etcd-Cluster-ID", s.cid.String())
-	resp, err := s.c.Do(req)
+	resp, err := s.tr.RoundTrip(req)
 	if err != nil {
 		return fmt.Errorf("error posting to %q: %v", req.URL.String(), err)
 	}
