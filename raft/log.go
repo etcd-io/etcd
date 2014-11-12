@@ -47,7 +47,7 @@ type raftLog struct {
 
 func newLog(storage Storage) *raftLog {
 	if storage == nil {
-		storage = NewMemoryStorage()
+		panic("storage must not be nil")
 	}
 	lastIndex, err := storage.GetLastIndex()
 	if err != nil {

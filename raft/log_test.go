@@ -49,7 +49,7 @@ func TestFindConflict(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		raftLog := newLog(nil)
+		raftLog := newLog(NewMemoryStorage())
 		raftLog.append(raftLog.lastIndex(), previousEnts...)
 
 		gconflict := raftLog.findConflict(tt.from, tt.ents)
@@ -61,7 +61,7 @@ func TestFindConflict(t *testing.T) {
 
 func TestIsUpToDate(t *testing.T) {
 	previousEnts := []pb.Entry{{Term: 1}, {Term: 2}, {Term: 3}}
-	raftLog := newLog(nil)
+	raftLog := newLog(NewMemoryStorage())
 	raftLog.append(raftLog.lastIndex(), previousEnts...)
 	tests := []struct {
 		lastIndex uint64
@@ -241,7 +241,7 @@ func TestLogMaybeAppend(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		raftLog := newLog(nil)
+		raftLog := newLog(NewMemoryStorage())
 		raftLog.append(raftLog.lastIndex(), previousEnts...)
 		raftLog.committed = commit
 		func() {
@@ -410,7 +410,7 @@ func TestCompaction(t *testing.T) {
 
 func TestLogRestore(t *testing.T) {
 	var i uint64
-	raftLog := newLog(nil)
+	raftLog := newLog(NewMemoryStorage())
 	for i = 0; i < 100; i++ {
 		raftLog.append(i, pb.Entry{Term: i + 1})
 	}
@@ -443,7 +443,7 @@ func TestLogRestore(t *testing.T) {
 func TestIsOutOfBounds(t *testing.T) {
 	offset := uint64(100)
 	num := uint64(100)
-	l := newLog(nil)
+	l := newLog(NewMemoryStorage())
 	l.restore(pb.Snapshot{Index: offset})
 	l.append(offset, make([]pb.Entry, num)...)
 
@@ -471,7 +471,7 @@ func TestAt(t *testing.T) {
 	offset := uint64(100)
 	num := uint64(100)
 
-	l := newLog(nil)
+	l := newLog(NewMemoryStorage())
 	l.restore(pb.Snapshot{Index: offset})
 	for i = 0; i < num; i++ {
 		l.append(offset+i-1, pb.Entry{Term: i})
@@ -501,7 +501,7 @@ func TestSlice(t *testing.T) {
 	offset := uint64(100)
 	num := uint64(100)
 
-	l := newLog(nil)
+	l := newLog(NewMemoryStorage())
 	l.restore(pb.Snapshot{Index: offset})
 	for i = 0; i < num; i++ {
 		l.append(offset+i-1, pb.Entry{Term: i})

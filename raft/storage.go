@@ -23,9 +23,7 @@ import (
 )
 
 // Storage is an interface that may be implemented by the application
-// to retrieve log entries from storage. If no storage implementation
-// is supplied by the application, a MemoryStorage will be used, which
-// retains all log entries in memory.
+// to retrieve log entries from storage.
 //
 // If any Storage method returns an error, the raft instance will
 // become inoperable and refuse to participate in elections; the

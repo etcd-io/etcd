@@ -112,7 +112,7 @@ func TestNodeStepUnblock(t *testing.T) {
 // who is the current leader.
 func TestBlockProposal(t *testing.T) {
 	n := newNode()
-	r := newRaft(1, []uint64{1}, 10, 1, nil)
+	r := newRaft(1, []uint64{1}, 10, 1, NewMemoryStorage())
 	go n.run(r)
 	defer n.Stop()
 
@@ -230,7 +230,7 @@ func TestNodeRestart(t *testing.T) {
 		CommittedEntries: entries[1 : st.Commit+1],
 	}
 
-	n := RestartNode(1, 10, 1, nil, st, entries, nil)
+	n := RestartNode(1, 10, 1, nil, st, entries, NewMemoryStorage())
 	if g := <-n.Ready(); !reflect.DeepEqual(g, want) {
 		t.Errorf("g = %+v,\n             w   %+v", g, want)
 	} else {
@@ -303,16 +303,19 @@ func TestNodeAdvance(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	n := StartNode(1, []Peer{{ID: 1}}, 10, 1, nil)
+	storage := NewMemoryStorage()
+	n := StartNode(1, []Peer{{ID: 1}}, 10, 1, storage)
 	n.ApplyConfChange(raftpb.ConfChange{Type: raftpb.ConfChangeAddNode, NodeID: 1})
 	n.Campaign(ctx)
 	<-n.Ready()
 	n.Propose(ctx, []byte("foo"))
+	var rd Ready
 	select {
-	case rd := <-n.Ready():
+	case rd = <-n.Ready():
 		t.Fatalf("unexpected Ready before Advance: %+v", rd)
 	default:
 	}
+	storage.Append(rd.Entries)
 	n.Advance()
 	select {
 	case <-n.Ready():
