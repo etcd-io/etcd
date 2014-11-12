@@ -161,7 +161,10 @@ func TestReadyContainUpdates(t *testing.T) {
 	}
 }
 
-func TestNode(t *testing.T) {
+// TestNodeStart ensures that a node can be started correctly. The node should
+// start with correct configuration change entries, and can accept and commit
+// proposals.
+func TestNodeStart(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
