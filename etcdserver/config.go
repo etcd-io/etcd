@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"net/http"
 	"path"
+	"reflect"
+	"sort"
 
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft"
@@ -31,6 +33,7 @@ type ServerConfig struct {
 	DiscoveryURL    string
 	DiscoveryProxy  string
 	ClientURLs      types.URLs
+	PeerURLs        types.URLs
 	DataDir         string
 	SnapCount       uint64
 	Cluster         *Cluster
@@ -45,7 +48,7 @@ func (c *ServerConfig) VerifyBootstrapConfig() error {
 	m := c.Cluster.MemberByName(c.Name)
 	// Make sure the cluster at least contains the local server.
 	if m == nil {
-		return fmt.Errorf("couldn't find local name %s in the initial cluster configuration", c.Name)
+		return fmt.Errorf("couldn't find local name %q in the initial cluster configuration", c.Name)
 	}
 	if uint64(m.ID) == raft.None {
 		return fmt.Errorf("cannot use %x as member id", raft.None)
@@ -64,6 +67,13 @@ func (c *ServerConfig) VerifyBootstrapConfig() error {
 			}
 			urlMap[url] = true
 		}
+	}
+
+	// Advertised peer URLs must match those in the cluster peer list
+	apurls := c.PeerURLs.StringSlice()
+	sort.Strings(apurls)
+	if !reflect.DeepEqual(apurls, m.PeerURLs) {
+		return fmt.Errorf("%s has different advertised URLs in the cluster and advertised peer URLs list", c.Name)
 	}
 	return nil
 }

@@ -25,7 +25,6 @@ import (
 	"net/http/httptest"
 	"os"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
@@ -154,17 +153,19 @@ func NewClusterByDiscovery(t *testing.T, size int, url string) *cluster {
 }
 
 func (c *cluster) Launch(t *testing.T) {
-	var wg sync.WaitGroup
+	errc := make(chan error)
 	for _, m := range c.Members {
-		wg.Add(1)
 		// Members are launched in separate goroutines because if they boot
 		// using discovery url, they have to wait for others to register to continue.
 		go func(m *member) {
-			m.Launch(t)
-			wg.Done()
+			errc <- m.Launch()
 		}(m)
 	}
-	wg.Wait()
+	for _ = range c.Members {
+		if err := <-errc; err != nil {
+			t.Fatalf("error setting up member: %v", err)
+		}
+	}
 	// wait cluster to be stable to receive future client requests
 	c.waitClientURLsPublished(t)
 }
@@ -243,15 +244,23 @@ type member struct {
 func mustNewMember(t *testing.T, name string) *member {
 	var err error
 	m := &member{}
+
 	pln := newLocalListener(t)
 	m.PeerListeners = []net.Listener{pln}
+	m.PeerURLs, err = types.NewURLs([]string{"http://" + pln.Addr().String()})
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	cln := newLocalListener(t)
 	m.ClientListeners = []net.Listener{cln}
-	m.Name = name
 	m.ClientURLs, err = types.NewURLs([]string{"http://" + cln.Addr().String()})
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	m.Name = name
+
 	m.DataDir, err = ioutil.TempDir(os.TempDir(), "etcd")
 	if err != nil {
 		t.Fatal(err)
@@ -268,10 +277,10 @@ func mustNewMember(t *testing.T, name string) *member {
 
 // Launch starts a member based on ServerConfig, PeerListeners
 // and ClientListeners.
-func (m *member) Launch(t *testing.T) {
+func (m *member) Launch() error {
 	var err error
 	if m.s, err = etcdserver.NewServer(&m.ServerConfig); err != nil {
-		t.Fatalf("failed to initialize the etcd server: %v", err)
+		return fmt.Errorf("failed to initialize the etcd server: %v", err)
 	}
 	m.s.Ticker = time.Tick(tickDuration)
 	m.s.SyncTicker = time.Tick(10 * tickDuration)
@@ -293,6 +302,7 @@ func (m *member) Launch(t *testing.T) {
 		hs.Start()
 		m.hss = append(m.hss, hs)
 	}
+	return nil
 }
 
 // Stop stops the member, but the data dir of the member is preserved.
