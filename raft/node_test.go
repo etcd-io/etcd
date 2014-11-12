@@ -140,6 +140,20 @@ func TestBlockProposal(t *testing.T) {
 	}
 }
 
+// TestNodeTick ensures that node.Tick() will increase the
+// elapsed of the underly raft state machine.
+func TestNodeTick(t *testing.T) {
+	n := newNode()
+	r := newRaft(1, []uint64{1}, 10, 1)
+	go n.run(r)
+	elapsed := r.elapsed
+	n.Tick()
+	n.Stop()
+	if r.elapsed != elapsed+1 {
+		t.Errorf("elapsed = %d, want %d", r.elapsed, elapsed+1)
+	}
+}
+
 func TestReadyContainUpdates(t *testing.T) {
 	tests := []struct {
 		rd       Ready
