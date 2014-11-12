@@ -271,6 +271,8 @@ func (n *node) run(r *raft) {
 				r.addNode(cc.NodeID)
 			case pb.ConfChangeRemoveNode:
 				r.removeNode(cc.NodeID)
+			case pb.ConfChangeUpdateNode:
+				r.resetPendingConf()
 			default:
 				panic("unexpected conf type")
 			}

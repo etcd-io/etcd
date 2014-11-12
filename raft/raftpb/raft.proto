@@ -60,6 +60,7 @@ message HardState {
 enum ConfChangeType {
 	ConfChangeAddNode    = 0;
 	ConfChangeRemoveNode = 1;
+	ConfChangeUpdateNode = 2;
 }
 
 message ConfChange {

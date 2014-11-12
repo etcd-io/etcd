@@ -447,7 +447,7 @@ func TestApplyConfChangeError(t *testing.T) {
 		},
 		{
 			raftpb.ConfChange{
-				Type:   raftpb.ConfChangeRemoveNode,
+				Type:   raftpb.ConfChangeUpdateNode,
 				NodeID: 4,
 			},
 			ErrIDRemoved,
@@ -503,6 +503,7 @@ func (s *fakeSender) Send(msgs []raftpb.Message) {
 	}
 }
 func (s *fakeSender) Add(m *Member)      {}
+func (s *fakeSender) Update(m *Member)   {}
 func (s *fakeSender) Remove(id types.ID) {}
 func (s *fakeSender) Stop()              {}
 
@@ -1017,6 +1018,41 @@ func TestRemoveMember(t *testing.T) {
 	}
 }
 
+// TestUpdateMember tests RemoveMember can propose and perform node update.
+func TestUpdateMember(t *testing.T) {
+	n := newNodeConfChangeCommitterRecorder()
+	n.readyc <- raft.Ready{
+		SoftState: &raft.SoftState{
+			RaftState: raft.StateLeader,
+			Nodes:     []uint64{1234, 2345, 3456},
+		},
+	}
+	cl := newTestCluster([]*Member{{ID: 1234}})
+	s := &EtcdServer{
+		node:    n,
+		store:   &storeRecorder{},
+		sender:  &nopSender{},
+		storage: &storageRecorder{},
+		Cluster: cl,
+	}
+	s.start()
+	wm := Member{ID: 1234, RaftAttributes: RaftAttributes{PeerURLs: []string{"http://127.0.0.1:1"}}}
+	err := s.UpdateMember(context.TODO(), wm)
+	gaction := n.Action()
+	s.Stop()
+
+	if err != nil {
+		t.Fatalf("UpdateMember error: %v", err)
+	}
+	wactions := []action{action{name: "ProposeConfChange:ConfChangeUpdateNode"}, action{name: "ApplyConfChange:ConfChangeUpdateNode"}}
+	if !reflect.DeepEqual(gaction, wactions) {
+		t.Errorf("action = %v, want %v", gaction, wactions)
+	}
+	if !reflect.DeepEqual(cl.Member(1234), &wm) {
+		t.Errorf("member = %v, want %v", cl.Member(1234), &wm)
+	}
+}
+
 // TODO: test server could stop itself when being removed
 
 // TODO: test wait trigger correctness in multi-server case
@@ -1446,6 +1482,7 @@ type nopSender struct{}
 func (s *nopSender) Send(m []raftpb.Message) {}
 func (s *nopSender) Add(m *Member)           {}
 func (s *nopSender) Remove(id types.ID)      {}
+func (s *nopSender) Update(m *Member)        {}
 func (s *nopSender) Stop()                   {}
 
 func mustMakePeerSlice(t *testing.T, ids ...uint64) []raft.Peer {
