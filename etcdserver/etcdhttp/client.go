@@ -185,7 +185,7 @@ func (h *membersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 
 		now := h.clock.Now()
-		m := etcdserver.NewMember("", req.PeerURLs, "", &now)
+		m := etcdserver.NewMember(req.Name, req.PeerURLs, "", &now)
 		err = h.server.AddMember(ctx, *m)
 		switch {
 		case err == etcdserver.ErrIDExists || err == etcdserver.ErrPeerURLexists:

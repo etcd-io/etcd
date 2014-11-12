@@ -18,6 +18,7 @@ package httptypes
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"github.com/coreos/etcd/pkg/types"
 )
@@ -30,13 +31,16 @@ type Member struct {
 }
 
 type MemberCreateRequest struct {
+	Name     string
 	PeerURLs types.URLs
 }
 
 func (m *MemberCreateRequest) MarshalJSON() ([]byte, error) {
 	s := struct {
+		Name     string   `json:"name"`
 		PeerURLs []string `json:"peerURLs"`
 	}{
+		Name:     m.Name,
 		PeerURLs: make([]string, len(m.PeerURLs)),
 	}
 
@@ -48,7 +52,9 @@ func (m *MemberCreateRequest) MarshalJSON() ([]byte, error) {
 }
 
 func (m *MemberCreateRequest) UnmarshalJSON(data []byte) error {
+	fmt.Printf("got: %v\n", string(data))
 	s := struct {
+		Name     string   `json:"name"`
 		PeerURLs []string `json:"peerURLs"`
 	}{}
 
@@ -62,6 +68,7 @@ func (m *MemberCreateRequest) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
+	m.Name = s.Name
 	m.PeerURLs = urls
 	return nil
 }

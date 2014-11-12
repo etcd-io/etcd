@@ -41,7 +41,7 @@ func NewMembersAPI(c HTTPClient) MembersAPI {
 
 type MembersAPI interface {
 	List(ctx context.Context) ([]httptypes.Member, error)
-	Add(ctx context.Context, peerURL string) (*httptypes.Member, error)
+	Add(ctx context.Context, name, peerURL string) (*httptypes.Member, error)
 	Remove(ctx context.Context, mID string) error
 }
 
@@ -68,13 +68,13 @@ func (m *httpMembersAPI) List(ctx context.Context) ([]httptypes.Member, error) {
 	return []httptypes.Member(mCollection), nil
 }
 
-func (m *httpMembersAPI) Add(ctx context.Context, peerURL string) (*httptypes.Member, error) {
+func (m *httpMembersAPI) Add(ctx context.Context, name, peerURL string) (*httptypes.Member, error) {
 	urls, err := types.NewURLs([]string{peerURL})
 	if err != nil {
 		return nil, err
 	}
 
-	req := &membersAPIActionAdd{peerURLs: urls}
+	req := &membersAPIActionAdd{name: name, peerURLs: urls}
 	resp, body, err := m.client.Do(ctx, req)
 	if err != nil {
 		return nil, err
@@ -130,12 +130,16 @@ func (d *membersAPIActionRemove) HTTPRequest(ep url.URL) *http.Request {
 }
 
 type membersAPIActionAdd struct {
+	name     string
 	peerURLs types.URLs
 }
 
 func (a *membersAPIActionAdd) HTTPRequest(ep url.URL) *http.Request {
 	u := v2MembersURL(ep)
-	m := httptypes.MemberCreateRequest{PeerURLs: a.peerURLs}
+	m := httptypes.MemberCreateRequest{
+		Name:     a.name,
+		PeerURLs: a.peerURLs,
+	}
 	b, _ := json.Marshal(&m)
 	req, _ := http.NewRequest("POST", u.String(), bytes.NewReader(b))
 	req.Header.Set("Content-Type", "application/json")

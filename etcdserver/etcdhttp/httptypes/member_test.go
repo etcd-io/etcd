@@ -202,12 +202,13 @@ func TestMemberCreateRequestUnmarshalFail(t *testing.T) {
 
 func TestMemberCreateRequestMarshal(t *testing.T) {
 	req := MemberCreateRequest{
+		Name: "foobar",
 		PeerURLs: types.URLs([]url.URL{
 			url.URL{Scheme: "http", Host: "127.0.0.1:8081"},
 			url.URL{Scheme: "https", Host: "127.0.0.1:8080"},
 		}),
 	}
-	want := []byte(`{"peerURLs":["http://127.0.0.1:8081","https://127.0.0.1:8080"]}`)
+	want := []byte(`{"name":"foobar","peerURLs":["http://127.0.0.1:8081","https://127.0.0.1:8080"]}`)
 
 	got, err := json.Marshal(&req)
 	if err != nil {
