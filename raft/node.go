@@ -210,8 +210,15 @@ func newNode() node {
 }
 
 func (n *node) Stop() {
-	n.stop <- struct{}{}
-	<-n.stop
+	select {
+	case n.stop <- struct{}{}:
+		// Not already stopped, so trigger it
+	case <-n.done:
+		// Node has already been stopped - no need to do anything
+		return
+	}
+	// Block until the stop has been acknowledged by run()
+	<-n.done
 }
 
 func (n *node) run(r *raft) {
@@ -306,7 +313,6 @@ func (n *node) run(r *raft) {
 			r.raftLog.stableTo(prevLastUnstablei)
 			advancec = nil
 		case <-n.stop:
-			n.stop <- struct{}{}
 			close(n.done)
 			return
 		}

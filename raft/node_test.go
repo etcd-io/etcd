@@ -141,7 +141,7 @@ func TestBlockProposal(t *testing.T) {
 }
 
 // TestNodeTick ensures that node.Tick() will increase the
-// elapsed of the underly raft state machine.
+// elapsed of the underlying raft state machine.
 func TestNodeTick(t *testing.T) {
 	n := newNode()
 	r := newRaft(1, []uint64{1}, 10, 1)
@@ -152,6 +152,40 @@ func TestNodeTick(t *testing.T) {
 	if r.elapsed != elapsed+1 {
 		t.Errorf("elapsed = %d, want %d", r.elapsed, elapsed+1)
 	}
+}
+
+// TestNodeStop ensures that node.Stop() blocks until the node has stopped
+// processing, and that it is idempotent
+func TestNodeStop(t *testing.T) {
+	n := newNode()
+	r := newRaft(1, []uint64{1}, 10, 1)
+	donec := make(chan struct{})
+
+	go func() {
+		n.run(r)
+		close(donec)
+	}()
+
+	elapsed := r.elapsed
+	n.Tick()
+	n.Stop()
+
+	select {
+	case <-donec:
+	case <-time.After(time.Second):
+		t.Fatalf("timed out waiting for node to stop!")
+	}
+
+	if r.elapsed != elapsed+1 {
+		t.Errorf("elapsed = %d, want %d", r.elapsed, elapsed+1)
+	}
+	// Further ticks should have no effect, the node is stopped.
+	n.Tick()
+	if r.elapsed != elapsed+1 {
+		t.Errorf("elapsed = %d, want %d", r.elapsed, elapsed+1)
+	}
+	// Subsequent Stops should have no effect.
+	n.Stop()
 }
 
 func TestReadyContainUpdates(t *testing.T) {
