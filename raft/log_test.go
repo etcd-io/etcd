@@ -335,6 +335,7 @@ func TestUnstableEnts(t *testing.T) {
 	}{
 		{3, nil, 3},
 		{1, previousEnts, 3},
+		{0, append([]pb.Entry{{}}, previousEnts...), 3},
 	}
 
 	for i, tt := range tests {
@@ -342,12 +343,32 @@ func TestUnstableEnts(t *testing.T) {
 		raftLog.append(0, previousEnts...)
 		raftLog.unstable = tt.unstable
 		ents := raftLog.unstableEnts()
-		raftLog.stableTo(raftLog.lastIndex())
+		if l := len(ents); l > 0 {
+			raftLog.stableTo(ents[l-1].Index)
+		}
 		if !reflect.DeepEqual(ents, tt.wents) {
 			t.Errorf("#%d: unstableEnts = %+v, want %+v", i, ents, tt.wents)
 		}
 		if g := raftLog.unstable; g != tt.wunstable {
 			t.Errorf("#%d: unstable = %d, want %d", i, g, tt.wunstable)
+		}
+	}
+}
+
+func TestStableTo(t *testing.T) {
+	tests := []struct {
+		stable    uint64
+		wunstable uint64
+	}{
+		{0, 1},
+		{1, 2},
+		{2, 3},
+	}
+	for i, tt := range tests {
+		raftLog := newLog()
+		raftLog.stableTo(tt.stable)
+		if raftLog.unstable != tt.wunstable {
+			t.Errorf("#%d: unstable = %d, want %d", i, raftLog.unstable, tt.wunstable)
 		}
 	}
 }

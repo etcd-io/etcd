@@ -298,9 +298,7 @@ func (n *node) run(r *raft) {
 			if prevHardSt.Commit != 0 {
 				r.raftLog.appliedTo(prevHardSt.Commit)
 			}
-			if prevLastUnstablei != 0 {
-				r.raftLog.stableTo(prevLastUnstablei)
-			}
+			r.raftLog.stableTo(prevLastUnstablei)
 			advancec = nil
 		case <-n.done:
 			return
