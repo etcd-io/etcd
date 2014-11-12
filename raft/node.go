@@ -192,6 +192,7 @@ type node struct {
 	advancec chan struct{}
 	tickc    chan struct{}
 	done     chan struct{}
+	stop     chan struct{}
 }
 
 func newNode() node {
@@ -204,11 +205,13 @@ func newNode() node {
 		advancec: make(chan struct{}),
 		tickc:    make(chan struct{}),
 		done:     make(chan struct{}),
+		stop:     make(chan struct{}),
 	}
 }
 
 func (n *node) Stop() {
-	close(n.done)
+	n.stop <- struct{}{}
+	<-n.stop
 }
 
 func (n *node) run(r *raft) {
@@ -302,7 +305,9 @@ func (n *node) run(r *raft) {
 			}
 			r.raftLog.stableTo(prevLastUnstablei)
 			advancec = nil
-		case <-n.done:
+		case <-n.stop:
+			n.stop <- struct{}{}
+			close(n.done)
 			return
 		}
 	}
