@@ -150,11 +150,13 @@ func newSender(tr http.RoundTripper, u string, cid types.ID, fs *stats.FollowerS
 	return s
 }
 
-func (s *sender) send(data []byte) {
+func (s *sender) send(data []byte) error {
 	select {
 	case s.q <- data:
+		return nil
 	default:
 		log.Printf("sender: reach the maximal serving to %s", s.u)
+		return fmt.Errorf("reach maximal serving")
 	}
 }
 
