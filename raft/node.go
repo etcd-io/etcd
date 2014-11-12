@@ -143,7 +143,7 @@ type Peer struct {
 
 // StartNode returns a new Node given a unique raft id, a list of raft peers, and
 // the election and heartbeat timeouts in units of ticks.
-// It also builds ConfChangeAddNode entry for each peer and puts them at the head of the log.
+// It appends a ConfChangeAddNode entry for each given peer to the initial log.
 func StartNode(id uint64, peers []Peer, election, heartbeat int) Node {
 	n := newNode()
 	r := newRaft(id, nil, election, heartbeat)
