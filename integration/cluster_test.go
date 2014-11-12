@@ -158,7 +158,7 @@ func (c *cluster) Launch(t *testing.T) {
 		// Members are launched in separate goroutines because if they boot
 		// using discovery url, they have to wait for others to register to continue.
 		go func(m *member) {
-			errc <- m.Launch(t)
+			errc <- m.Launch()
 		}(m)
 	}
 	for _ = range c.Members {
@@ -277,7 +277,7 @@ func mustNewMember(t *testing.T, name string) *member {
 
 // Launch starts a member based on ServerConfig, PeerListeners
 // and ClientListeners.
-func (m *member) Launch(t *testing.T) error {
+func (m *member) Launch() error {
 	var err error
 	if m.s, err = etcdserver.NewServer(&m.ServerConfig); err != nil {
 		return fmt.Errorf("failed to initialize the etcd server: %v", err)
