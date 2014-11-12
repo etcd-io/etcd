@@ -531,6 +531,7 @@ func (r *raft) nodes() []uint64 {
 	for k := range r.prs {
 		nodes = append(nodes, k)
 	}
+	sort.Sort(uint64Slice(nodes))
 	return nodes
 }
 
