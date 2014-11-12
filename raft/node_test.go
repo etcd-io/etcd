@@ -316,17 +316,19 @@ func TestNodeAdvance(t *testing.T) {
 }
 
 func TestSoftStateEqual(t *testing.T) {
+	softState := &SoftState{Lead: 1, RaftState: StateLeader, Nodes: []uint64{1, 2}}
 	tests := []struct {
 		st *SoftState
 		we bool
 	}{
-		{&SoftState{}, true},
-		{&SoftState{Lead: 1}, false},
-		{&SoftState{RaftState: StateLeader}, false},
-		{&SoftState{Nodes: []uint64{1, 2}}, false},
+		{softState, true},
+		{&SoftState{RaftState: StateLeader, Nodes: []uint64{1, 2}}, false},
+		{&SoftState{Lead: 1, Nodes: []uint64{1, 2}}, false},
+		{&SoftState{Lead: 1, RaftState: StateLeader}, false},
+		{&SoftState{Lead: 1, RaftState: StateLeader, Nodes: []uint64{2, 1}}, true},
 	}
 	for i, tt := range tests {
-		if g := tt.st.equal(&SoftState{}); g != tt.we {
+		if g := tt.st.equal(softState); g != tt.we {
 			t.Errorf("#%d, equal = %v, want %v", i, g, tt.we)
 		}
 	}

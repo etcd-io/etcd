@@ -19,7 +19,6 @@ package raft
 import (
 	"errors"
 	"log"
-	"reflect"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/code.google.com/p/go.net/context"
 	pb "github.com/coreos/etcd/raft/raftpb"
@@ -41,7 +40,22 @@ type SoftState struct {
 }
 
 func (a *SoftState) equal(b *SoftState) bool {
-	return reflect.DeepEqual(a, b)
+	if a.Lead != b.Lead || a.RaftState != b.RaftState {
+		return false
+	}
+	if len(a.Nodes) != len(b.Nodes) {
+		return false
+	}
+	idmap := make(map[uint64]bool)
+	for _, id := range a.Nodes {
+		idmap[id] = true
+	}
+	for _, id := range b.Nodes {
+		if !idmap[id] {
+			return false
+		}
+	}
+	return true
 }
 
 // Ready encapsulates the entries and messages that are ready to read,
