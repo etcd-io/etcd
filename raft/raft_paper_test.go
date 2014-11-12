@@ -605,8 +605,9 @@ func TestFollowerCheckMsgApp(t *testing.T) {
 		{3, 3, true},
 	}
 	for i, tt := range tests {
-		r := newRaft(1, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
-		r.loadEnts(ents)
+		storage := NewMemoryStorage()
+		storage.Append(ents)
+		r := newRaft(1, []uint64{1, 2, 3}, 10, 1, storage)
 		r.loadState(pb.HardState{Commit: 2})
 		r.becomeFollower(2, 2)
 
@@ -729,11 +730,13 @@ func TestLeaderSyncFollowerLog(t *testing.T) {
 		},
 	}
 	for i, tt := range tests {
-		lead := newRaft(1, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
-		lead.loadEnts(ents)
+		leadStorage := NewMemoryStorage()
+		leadStorage.Append(ents)
+		lead := newRaft(1, []uint64{1, 2, 3}, 10, 1, leadStorage)
 		lead.loadState(pb.HardState{Commit: lead.raftLog.lastIndex(), Term: term})
-		follower := newRaft(2, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
-		follower.loadEnts(tt)
+		followerStorage := NewMemoryStorage()
+		followerStorage.Append(tt)
+		follower := newRaft(2, []uint64{1, 2, 3}, 10, 1, followerStorage)
 		follower.loadState(pb.HardState{Term: term - 1})
 		// It is necessary to have a three-node cluster.
 		// The second may have more up-to-date log than the first one, so the
@@ -823,8 +826,9 @@ func TestVoter(t *testing.T) {
 		{[]pb.Entry{{}, {Term: 2, Index: 1}, {Term: 1, Index: 2}}, 1, 1, true},
 	}
 	for i, tt := range tests {
-		r := newRaft(1, []uint64{1, 2}, 10, 1, NewMemoryStorage())
-		r.loadEnts(tt.ents)
+		storage := NewMemoryStorage()
+		storage.Append(tt.ents)
+		r := newRaft(1, []uint64{1, 2}, 10, 1, storage)
 
 		r.Step(pb.Message{From: 2, To: 1, Type: pb.MsgVote, Term: 3, LogTerm: tt.logterm, Index: tt.index})
 
@@ -858,8 +862,9 @@ func TestLeaderOnlyCommitsLogFromCurrentTerm(t *testing.T) {
 		{3, 3},
 	}
 	for i, tt := range tests {
-		r := newRaft(1, []uint64{1, 2}, 10, 1, NewMemoryStorage())
-		r.loadEnts(ents)
+		storage := NewMemoryStorage()
+		storage.Append(ents)
+		r := newRaft(1, []uint64{1, 2}, 10, 1, storage)
 		r.loadState(pb.HardState{Term: 2})
 		// become leader at term 3
 		r.becomeCandidate()

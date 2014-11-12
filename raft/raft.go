@@ -549,10 +549,6 @@ func (r *raft) promotable() bool {
 	return ok
 }
 
-func (r *raft) loadEnts(ents []pb.Entry) {
-	r.raftLog.load(ents)
-}
-
 func (r *raft) loadState(state pb.HardState) {
 	r.raftLog.committed = state.Commit
 	r.Term = state.Term

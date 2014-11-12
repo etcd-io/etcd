@@ -54,7 +54,8 @@ func restartAsStandaloneNode(cfg *ServerConfig, index uint64, snapshot *raftpb.S
 
 	log.Printf("etcdserver: forcing restart of member %s in cluster %s at commit index %d", id, cfg.Cluster.ID(), st.Commit)
 	s := raft.NewMemoryStorage()
-	n := raft.RestartNode(uint64(id), 10, 1, snapshot, st, ents, s)
+	s.Append(ents)
+	n := raft.RestartNode(uint64(id), 10, 1, snapshot, st, s)
 	return id, n, s, w
 }
 

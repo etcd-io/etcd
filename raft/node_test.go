@@ -233,7 +233,7 @@ func TestNodeRestart(t *testing.T) {
 
 	storage := NewMemoryStorage()
 	storage.Append(entries)
-	n := RestartNode(1, 10, 1, nil, st, nil, storage)
+	n := RestartNode(1, 10, 1, nil, st, storage)
 	if g := <-n.Ready(); !reflect.DeepEqual(g, want) {
 		t.Errorf("g = %+v,\n             w   %+v", g, want)
 	} else {

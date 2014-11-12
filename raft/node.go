@@ -168,7 +168,7 @@ func StartNode(id uint64, peers []Peer, election, heartbeat int, storage Storage
 // log.
 // TODO(bdarnell): remove args that are unnecessary with storage.
 // Maybe this function goes away and is replaced by StartNode with a non-empty Storage.
-func RestartNode(id uint64, election, heartbeat int, snapshot *pb.Snapshot, st pb.HardState, ents []pb.Entry, storage Storage) Node {
+func RestartNode(id uint64, election, heartbeat int, snapshot *pb.Snapshot, st pb.HardState, storage Storage) Node {
 	n := newNode()
 	r := newRaft(id, nil, election, heartbeat, storage)
 	if snapshot != nil {
@@ -176,9 +176,6 @@ func RestartNode(id uint64, election, heartbeat int, snapshot *pb.Snapshot, st p
 	}
 	if !isHardStateEqual(st, emptyState) {
 		r.loadState(st)
-	}
-	if len(ents) != 0 {
-		r.loadEnts(ents)
 	}
 	go n.run(r)
 	return &n

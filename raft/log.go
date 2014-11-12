@@ -64,17 +64,6 @@ func newLog(storage Storage) *raftLog {
 	return log
 }
 
-func (l *raftLog) load(ents []pb.Entry) {
-	// TODO(bdarnell): does this method need to support other Storage impls or does it go away?
-	ms := l.storage.(*MemoryStorage)
-	if ms.offset != ents[0].Index {
-		panic("entries loaded don't match offset index")
-	}
-	ms.ents = ents
-	l.unstable = ms.offset + uint64(len(ents))
-	l.unstableEnts = nil
-}
-
 func (l *raftLog) String() string {
 	return fmt.Sprintf("unstable=%d committed=%d applied=%d", l.unstable, l.committed, l.applied)
 
