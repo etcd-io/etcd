@@ -49,14 +49,19 @@ func newLog(storage Storage) *raftLog {
 	if storage == nil {
 		panic("storage must not be nil")
 	}
+	log := &raftLog{
+		storage: storage,
+	}
 	lastIndex, err := storage.GetLastIndex()
-	if err != nil {
+	if err == ErrStorageEmpty {
+		// When starting from scratch populate the list with a dummy entry at term zero.
+		log.unstableEnts = make([]pb.Entry, 1)
+	} else if err == nil {
+		log.unstable = lastIndex + 1
+	} else {
 		panic(err) // TODO(bdarnell)
 	}
-	return &raftLog{
-		storage:  storage,
-		unstable: lastIndex + 1,
-	}
+	return log
 }
 
 func (l *raftLog) load(ents []pb.Entry) {
@@ -67,6 +72,7 @@ func (l *raftLog) load(ents []pb.Entry) {
 	}
 	ms.ents = ents
 	l.unstable = ms.offset + uint64(len(ents))
+	l.unstableEnts = nil
 }
 
 func (l *raftLog) String() string {

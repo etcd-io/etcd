@@ -91,7 +91,7 @@ func TestIsUpToDate(t *testing.T) {
 }
 
 func TestAppend(t *testing.T) {
-	previousEnts := []pb.Entry{{Term: 1}, {Term: 2}}
+	previousEnts := []pb.Entry{{}, {Term: 1}, {Term: 2}}
 	tests := []struct {
 		after     uint64
 		ents      []pb.Entry
@@ -283,7 +283,7 @@ func TestCompactionSideEffects(t *testing.T) {
 	unstableIndex := uint64(750)
 	lastTerm := lastIndex
 	storage := NewMemoryStorage()
-	for i = 1; i <= unstableIndex; i++ {
+	for i = 0; i <= unstableIndex; i++ {
 		storage.Append([]pb.Entry{{Term: uint64(i), Index: uint64(i)}})
 	}
 	raftLog := newLog(storage)
@@ -337,21 +337,21 @@ func TestCompactionSideEffects(t *testing.T) {
 }
 
 func TestUnstableEnts(t *testing.T) {
-	previousEnts := []pb.Entry{{Term: 1, Index: 1}, {Term: 2, Index: 2}}
+	previousEnts := []pb.Entry{{}, {Term: 1, Index: 1}, {Term: 2, Index: 2}}
 	tests := []struct {
 		unstable  uint64
 		wents     []pb.Entry
 		wunstable uint64
 	}{
 		{3, nil, 3},
-		{1, previousEnts, 3},
+		{1, previousEnts[1:], 3},
 	}
 
 	for i, tt := range tests {
 		storage := NewMemoryStorage()
-		storage.Append(previousEnts[:tt.unstable-1])
+		storage.Append(previousEnts[:tt.unstable])
 		raftLog := newLog(storage)
-		raftLog.append(raftLog.lastIndex(), previousEnts[tt.unstable-1:]...)
+		raftLog.append(raftLog.lastIndex(), previousEnts[tt.unstable:]...)
 		ents := raftLog.unstableEntries()
 		raftLog.stableTo(raftLog.lastIndex())
 		if !reflect.DeepEqual(ents, tt.wents) {
@@ -363,7 +363,7 @@ func TestUnstableEnts(t *testing.T) {
 	}
 }
 
-//TestCompaction ensures that the number of log entreis is correct after compactions.
+//TestCompaction ensures that the number of log entries is correct after compactions.
 func TestCompaction(t *testing.T) {
 	tests := []struct {
 		applied   uint64
@@ -391,7 +391,7 @@ func TestCompaction(t *testing.T) {
 			}()
 
 			storage := NewMemoryStorage()
-			for i := uint64(0); i < tt.lastIndex; i++ {
+			for i := uint64(0); i <= tt.lastIndex; i++ {
 				storage.Append([]pb.Entry{{}})
 			}
 			raftLog := newLog(storage)

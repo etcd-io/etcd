@@ -175,6 +175,7 @@ func TestNode(t *testing.T) {
 			SoftState: &SoftState{Lead: 1, Nodes: []uint64{1}, RaftState: StateLeader},
 			HardState: raftpb.HardState{Term: 1, Commit: 2},
 			Entries: []raftpb.Entry{
+				{},
 				{Type: raftpb.EntryConfChange, Term: 1, Index: 1, Data: ccdata},
 				{Term: 1, Index: 2},
 			},
@@ -195,7 +196,7 @@ func TestNode(t *testing.T) {
 	n.Campaign(ctx)
 	g := <-n.Ready()
 	if !reflect.DeepEqual(g, wants[0]) {
-		t.Errorf("#%d: g = %+v,\n             w   %+v", 1, g, wants[0])
+		t.Fatalf("#%d: g = %+v,\n             w   %+v", 1, g, wants[0])
 	} else {
 		storage.Append(g.Entries)
 		n.Advance()
@@ -230,7 +231,9 @@ func TestNodeRestart(t *testing.T) {
 		CommittedEntries: entries[1 : st.Commit+1],
 	}
 
-	n := RestartNode(1, 10, 1, nil, st, entries, NewMemoryStorage())
+	storage := NewMemoryStorage()
+	storage.Append(entries)
+	n := RestartNode(1, 10, 1, nil, st, nil, storage)
 	if g := <-n.Ready(); !reflect.DeepEqual(g, want) {
 		t.Errorf("g = %+v,\n             w   %+v", g, want)
 	} else {

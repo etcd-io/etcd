@@ -513,8 +513,9 @@ func TestLeaderCommitPrecedingEntries(t *testing.T) {
 		{{Term: 1, Index: 1}},
 	}
 	for i, tt := range tests {
-		r := newRaft(1, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
-		r.loadEnts(append([]pb.Entry{{}}, tt...))
+		storage := NewMemoryStorage()
+		storage.Append(append([]pb.Entry{{}}, tt...))
+		r := newRaft(1, []uint64{1, 2, 3}, 10, 1, storage)
 		r.loadState(pb.HardState{Term: 2})
 		r.becomeCandidate()
 		r.becomeLeader()
@@ -659,8 +660,9 @@ func TestFollowerAppendEntries(t *testing.T) {
 		},
 	}
 	for i, tt := range tests {
-		r := newRaft(1, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
-		r.loadEnts([]pb.Entry{{}, {Term: 1, Index: 1}, {Term: 2, Index: 2}})
+		storage := NewMemoryStorage()
+		storage.Append([]pb.Entry{{}, {Term: 1, Index: 1}, {Term: 2, Index: 2}})
+		r := newRaft(1, []uint64{1, 2, 3}, 10, 1, storage)
 		r.becomeFollower(2, 2)
 
 		r.Step(pb.Message{From: 2, To: 1, Type: pb.MsgApp, Term: 2, LogTerm: tt.term, Index: tt.index, Entries: tt.ents})

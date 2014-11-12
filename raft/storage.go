@@ -17,10 +17,15 @@
 package raft
 
 import (
+	"errors"
 	"sync"
 
 	pb "github.com/coreos/etcd/raft/raftpb"
 )
+
+// ErrStorageEmpty is returned by Storage.GetLastIndex when there is
+// no data.
+var ErrStorageEmpty = errors.New("storage is empty")
 
 // Storage is an interface that may be implemented by the application
 // to retrieve log entries from storage.
@@ -32,6 +37,7 @@ type Storage interface {
 	// GetEntries returns a slice of log entries in the range [lo,hi).
 	GetEntries(lo, hi uint64) ([]pb.Entry, error)
 	// GetLastIndex returns the index of the last entry in the log.
+	// If the log is empty it returns ErrStorageEmpty.
 	GetLastIndex() (uint64, error)
 	// GetFirstIndex returns the index of the first log entry that is
 	// available via GetEntries (older entries have been incorporated
@@ -58,10 +64,7 @@ type MemoryStorage struct {
 
 // NewMemoryStorage creates an empty MemoryStorage.
 func NewMemoryStorage() *MemoryStorage {
-	return &MemoryStorage{
-		// Populate the list with a dummy entry at term zero.
-		ents: make([]pb.Entry, 1),
-	}
+	return &MemoryStorage{}
 }
 
 // GetEntries implements the Storage interface.
@@ -75,6 +78,9 @@ func (ms *MemoryStorage) GetEntries(lo, hi uint64) ([]pb.Entry, error) {
 func (ms *MemoryStorage) GetLastIndex() (uint64, error) {
 	ms.Lock()
 	defer ms.Unlock()
+	if len(ms.ents) == 0 {
+		return 0, ErrStorageEmpty
+	}
 	return ms.offset + uint64(len(ms.ents)) - 1, nil
 }
 

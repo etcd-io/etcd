@@ -838,6 +838,12 @@ func TestSnapshot(t *testing.T) {
 	s := raft.NewMemoryStorage()
 	n := raft.StartNode(0xBAD0, mustMakePeerSlice(t, 0xBAD0), 10, 1, s)
 	defer n.Stop()
+
+	// Save the initial state to storage so we have something to snapshot.
+	rd := <-n.Ready()
+	s.Append(rd.Entries)
+	n.Advance()
+
 	st := &storeRecorder{}
 	p := &storageRecorder{}
 	srv := &EtcdServer{
