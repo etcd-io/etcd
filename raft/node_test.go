@@ -346,7 +346,7 @@ func TestNodeStart(t *testing.T) {
 	select {
 	case rd := <-n.Ready():
 		t.Errorf("unexpected Ready: %+v", rd)
-	default:
+	case <-time.After(time.Millisecond):
 	}
 }
 
@@ -375,7 +375,7 @@ func TestNodeRestart(t *testing.T) {
 	select {
 	case rd := <-n.Ready():
 		t.Errorf("unexpected Ready: %+v", rd)
-	default:
+	case <-time.After(time.Millisecond):
 	}
 }
 
@@ -448,13 +448,13 @@ func TestNodeAdvance(t *testing.T) {
 	select {
 	case rd = <-n.Ready():
 		t.Fatalf("unexpected Ready before Advance: %+v", rd)
-	default:
+	case <-time.After(time.Millisecond):
 	}
 	storage.Append(rd.Entries)
 	n.Advance()
 	select {
 	case <-n.Ready():
-	default:
+	case <-time.After(time.Millisecond):
 		t.Errorf("expect Ready after Advance, but there is no Ready available")
 	}
 }

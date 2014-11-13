@@ -115,6 +115,8 @@ type Server interface {
 	// Stop terminates the Server and performs any necessary finalization.
 	// Do and Process cannot be called after Stop has been invoked.
 	Stop()
+	// ID returns the ID of the Server.
+	ID() types.ID
 	// Do takes a request and attempts to fulfill it, returning a Response.
 	Do(ctx context.Context, r pb.Request) (Response, error)
 	// Process takes a raft message and applies it to the server's raft state
@@ -308,6 +310,8 @@ func (s *EtcdServer) start() {
 	// into the first entry
 	go s.run()
 }
+
+func (s *EtcdServer) ID() types.ID { return s.id }
 
 func (s *EtcdServer) Process(ctx context.Context, m raftpb.Message) error {
 	if s.Cluster.IsIDRemoved(types.ID(m.From)) {
