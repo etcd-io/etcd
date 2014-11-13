@@ -157,7 +157,7 @@ type RaftTimer interface {
 type EtcdServer struct {
 	w          wait.Wait
 	done       chan struct{}
-	stopped    chan struct{}
+	stop       chan struct{}
 	id         types.ID
 	attributes Attributes
 
@@ -301,7 +301,7 @@ func (s *EtcdServer) start() {
 	}
 	s.w = wait.New()
 	s.done = make(chan struct{})
-	s.stopped = make(chan struct{})
+	s.stop = make(chan struct{})
 	s.stats.Initialize()
 	// TODO: if this is an empty log, writes all peer infos
 	// into the first entry
@@ -371,8 +371,10 @@ func (s *EtcdServer) run() {
 			}
 		case <-syncC:
 			s.sync(defaultSyncTimeout)
-		case <-s.done:
-			close(s.stopped)
+		case <-s.stop:
+			s.node.Stop()
+			s.sender.Stop()
+			close(s.done)
 			return
 		}
 	}
@@ -381,10 +383,12 @@ func (s *EtcdServer) run() {
 // Stop stops the server gracefully, and shuts down the running goroutine.
 // Stop should be called after a Start(s), otherwise it will block forever.
 func (s *EtcdServer) Stop() {
-	s.node.Stop()
-	close(s.done)
-	<-s.stopped
-	s.sender.Stop()
+	select {
+	case s.stop <- struct{}{}:
+	case <-s.done:
+		return
+	}
+	<-s.done
 }
 
 // Do interprets r and performs an operation on s.store according to r.Method

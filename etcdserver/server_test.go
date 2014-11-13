@@ -1108,10 +1108,9 @@ func TestPublishStopped(t *testing.T) {
 		Cluster: &Cluster{},
 		w:       &waitRecorder{},
 		done:    make(chan struct{}),
-		stopped: make(chan struct{}),
+		stop:    make(chan struct{}),
 	}
-	close(srv.stopped)
-	srv.Stop()
+	close(srv.done)
 	srv.publish(time.Hour)
 }
 
@@ -1123,7 +1122,7 @@ func TestPublishRetry(t *testing.T) {
 		w:    &waitRecorder{},
 		done: make(chan struct{}),
 	}
-	time.AfterFunc(500*time.Microsecond, srv.Stop)
+	time.AfterFunc(500*time.Microsecond, func() { close(srv.done) })
 	srv.publish(10 * time.Nanosecond)
 
 	action := n.Action()
