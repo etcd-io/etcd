@@ -226,6 +226,7 @@ func (n *node) run(r *raft) {
 	var readyc chan Ready
 	var advancec chan struct{}
 	var prevLastUnstablei uint64
+	var havePrevLastUnstablei bool
 	var rd Ready
 
 	lead := None
@@ -294,6 +295,7 @@ func (n *node) run(r *raft) {
 			}
 			if len(rd.Entries) > 0 {
 				prevLastUnstablei = rd.Entries[len(rd.Entries)-1].Index
+				havePrevLastUnstablei = true
 			}
 			if !IsEmptyHardState(rd.HardState) {
 				prevHardSt = rd.HardState
@@ -302,6 +304,7 @@ func (n *node) run(r *raft) {
 				prevSnapi = rd.Snapshot.Index
 				if prevSnapi > prevLastUnstablei {
 					prevLastUnstablei = prevSnapi
+					havePrevLastUnstablei = true
 				}
 			}
 			r.msgs = nil
@@ -310,7 +313,10 @@ func (n *node) run(r *raft) {
 			if prevHardSt.Commit != 0 {
 				r.raftLog.appliedTo(prevHardSt.Commit)
 			}
-			r.raftLog.stableTo(prevLastUnstablei)
+			if havePrevLastUnstablei {
+				r.raftLog.stableTo(prevLastUnstablei)
+				havePrevLastUnstablei = false
+			}
 			advancec = nil
 		case <-n.stop:
 			close(n.done)
