@@ -82,20 +82,21 @@ func TestClusterFromStore(t *testing.T) {
 		mems []*Member
 	}{
 		{
-			[]*Member{newTestMember(1, nil, "node1", nil)},
+			[]*Member{newTestMember(1, nil, "", nil)},
 		},
 		{
 			nil,
 		},
 		{
 			[]*Member{
-				newTestMember(1, nil, "node1", nil),
-				newTestMember(2, nil, "node2", nil),
+				newTestMember(1, nil, "", nil),
+				newTestMember(2, nil, "", nil),
 			},
 		},
 	}
 	for i, tt := range tests {
 		hc := newTestCluster(nil)
+		hc.SetStore(store.New())
 		for _, m := range tt.mems {
 			hc.AddMember(m)
 		}
@@ -500,22 +501,22 @@ func TestNodeToMemberBad(t *testing.T) {
 			{Key: "/1234/strange"},
 		}},
 		{Key: "/1234", Nodes: []*store.NodeExtern{
-			{Key: "/1234/dynamic", Value: stringp("garbage")},
+			{Key: "/1234/raftAttributes", Value: stringp("garbage")},
 		}},
 		{Key: "/1234", Nodes: []*store.NodeExtern{
-			{Key: "/1234/dynamic", Value: stringp(`{"peerURLs":null}`)},
+			{Key: "/1234/attributes", Value: stringp(`{"name":"node1","clientURLs":null}`)},
 		}},
 		{Key: "/1234", Nodes: []*store.NodeExtern{
-			{Key: "/1234/dynamic", Value: stringp(`{"peerURLs":null}`)},
+			{Key: "/1234/raftAttributes", Value: stringp(`{"peerURLs":null}`)},
 			{Key: "/1234/strange"},
 		}},
 		{Key: "/1234", Nodes: []*store.NodeExtern{
-			{Key: "/1234/dynamic", Value: stringp(`{"peerURLs":null}`)},
-			{Key: "/1234/static", Value: stringp("garbage")},
+			{Key: "/1234/raftAttributes", Value: stringp(`{"peerURLs":null}`)},
+			{Key: "/1234/attributes", Value: stringp("garbage")},
 		}},
 		{Key: "/1234", Nodes: []*store.NodeExtern{
-			{Key: "/1234/dynamic", Value: stringp(`{"peerURLs":null}`)},
-			{Key: "/1234/static", Value: stringp(`{"name":"node1","clientURLs":null}`)},
+			{Key: "/1234/raftAttributes", Value: stringp(`{"peerURLs":null}`)},
+			{Key: "/1234/attributes", Value: stringp(`{"name":"node1","clientURLs":null}`)},
 			{Key: "/1234/strange"},
 		}},
 	}
@@ -539,16 +540,6 @@ func TestClusterAddMember(t *testing.T) {
 				path.Join(storeMembersPrefix, "1", "raftAttributes"),
 				false,
 				`{"peerURLs":null}`,
-				false,
-				store.Permanent,
-			},
-		},
-		{
-			name: "Create",
-			params: []interface{}{
-				path.Join(storeMembersPrefix, "1", "attributes"),
-				false,
-				`{"name":"node1"}`,
 				false,
 				store.Permanent,
 			},
@@ -656,9 +647,8 @@ func TestNodeToMember(t *testing.T) {
 
 func newTestCluster(membs []*Member) *Cluster {
 	c := &Cluster{members: make(map[types.ID]*Member), removed: make(map[types.ID]bool)}
-	c.store = store.New()
-	for i := range membs {
-		c.AddMember(membs[i])
+	for _, m := range membs {
+		c.members[m.ID] = m
 	}
 	return c
 }
