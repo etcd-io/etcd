@@ -142,6 +142,47 @@ func TestNodePropose(t *testing.T) {
 	}
 }
 
+// TestNodeProposeConfig ensures that node.ProposeConfChange sends the given configuration proposal
+// to the underlying raft.
+func TestNodeProposeConfig(t *testing.T) {
+	msgs := []raftpb.Message{}
+	appendStep := func(r *raft, m raftpb.Message) {
+		msgs = append(msgs, m)
+	}
+
+	n := newNode()
+	r := newRaft(1, []uint64{1}, 10, 1)
+	go n.run(r)
+	n.Campaign(context.TODO())
+	for {
+		rd := <-n.Ready()
+		// change the step function to appendStep until this raft becomes leader
+		if rd.SoftState.Lead == r.id {
+			r.step = appendStep
+			n.Advance()
+			break
+		}
+		n.Advance()
+	}
+	cc := raftpb.ConfChange{Type: raftpb.ConfChangeAddNode, NodeID: 1}
+	ccdata, err := cc.Marshal()
+	if err != nil {
+		t.Fatal(err)
+	}
+	n.ProposeConfChange(context.TODO(), cc)
+	n.Stop()
+
+	if len(msgs) != 1 {
+		t.Fatalf("len(msgs) = %d, want %d", len(msgs), 1)
+	}
+	if msgs[0].Type != raftpb.MsgProp {
+		t.Errorf("msg type = %d, want %d", msgs[0].Type, raftpb.MsgProp)
+	}
+	if !reflect.DeepEqual(msgs[0].Entries[0].Data, ccdata) {
+		t.Errorf("data = %v, want %v", msgs[0].Entries[0].Data, ccdata)
+	}
+}
+
 // TestBlockProposal ensures that node will block proposal when it does not
 // know who is the current leader; node will accept proposal when it knows
 // who is the current leader.
