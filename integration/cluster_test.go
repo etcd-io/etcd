@@ -99,6 +99,23 @@ func testDoubleClusterSize(t *testing.T, size int) {
 	clusterMustProgress(t, c)
 }
 
+func TestLaunchDuplicateMemberShouldFail(t *testing.T) {
+	size := 3
+	c := NewCluster(t, size)
+	m := c.Members[0].Clone()
+	var err error
+	m.DataDir, err = ioutil.TempDir(os.TempDir(), "etcd")
+	if err != nil {
+		t.Fatal(err)
+	}
+	c.Launch(t)
+	defer c.Terminate(t)
+
+	if err := m.Launch(); err == nil {
+		t.Errorf("unexpect successful launch")
+	}
+}
+
 // clusterMustProgress ensures that cluster can make progress. It creates
 // a key first, and check the new key could be got from all client urls of
 // the cluster.
@@ -337,6 +354,35 @@ func mustNewMember(t *testing.T, name string) *member {
 	m.NewCluster = true
 	m.Transport = newTransport()
 	return m
+}
+
+// Clone returns a member with the same server configuration. The returned
+// member will not set PeerListeners and ClientListeners.
+func (m *member) Clone() *member {
+	mm := &member{}
+	mm.ServerConfig = m.ServerConfig
+
+	var err error
+	clientURLStrs := m.ClientURLs.StringSlice()
+	mm.ClientURLs, err = types.NewURLs(clientURLStrs)
+	if err != nil {
+		// this should never fail
+		panic(err)
+	}
+	peerURLStrs := m.PeerURLs.StringSlice()
+	mm.PeerURLs, err = types.NewURLs(peerURLStrs)
+	if err != nil {
+		// this should never fail
+		panic(err)
+	}
+	clusterStr := m.Cluster.String()
+	mm.Cluster, err = etcdserver.NewClusterFromString(clusterName, clusterStr)
+	if err != nil {
+		// this should never fail
+		panic(err)
+	}
+	mm.Transport = newTransport()
+	return mm
 }
 
 // Launch starts a member based on ServerConfig, PeerListeners
