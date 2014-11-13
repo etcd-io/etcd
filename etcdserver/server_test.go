@@ -677,6 +677,8 @@ func TestDoProposalStopped(t *testing.T) {
 	tk := make(chan time.Time)
 	// this makes <-tk always successful, which accelarates internal clock
 	close(tk)
+	cl := newCluster("abc")
+	cl.SetStore(store.New())
 	srv := &EtcdServer{
 		// TODO: use fake node for better testability
 		node:    n,
@@ -684,6 +686,7 @@ func TestDoProposalStopped(t *testing.T) {
 		sender:  &nopSender{},
 		storage: &storageRecorder{},
 		Ticker:  tk,
+		Cluster: cl,
 	}
 	srv.start()
 
