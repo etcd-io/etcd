@@ -684,13 +684,21 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange) error {
 			log.Panicf("nodeID should always be equal to member ID")
 		}
 		s.Cluster.AddMember(m)
-		s.sender.Add(m)
-		log.Printf("etcdserver: added member %s %v to cluster %s", types.ID(cc.NodeID), m.PeerURLs, s.Cluster.ID())
+		if m.ID == s.id {
+			log.Printf("etcdserver: added local member %s %v to cluster %s", m.ID, m.PeerURLs, s.Cluster.ID())
+		} else {
+			s.sender.Add(m)
+			log.Printf("etcdserver: added member %s %v to cluster %s", m.ID, m.PeerURLs, s.Cluster.ID())
+		}
 	case raftpb.ConfChangeRemoveNode:
 		id := types.ID(cc.NodeID)
 		s.Cluster.RemoveMember(id)
-		s.sender.Remove(id)
-		log.Printf("etcdserver: removed member %s from cluster %s", id, s.Cluster.ID())
+		if id == s.id {
+			log.Printf("etcdserver: removed local member %s from cluster %s", id, s.Cluster.ID())
+		} else {
+			s.sender.Remove(id)
+			log.Printf("etcdserver: removed member %s from cluster %s", id, s.Cluster.ID())
+		}
 	case raftpb.ConfChangeUpdateNode:
 		m := new(Member)
 		if err := json.Unmarshal(cc.Context, m); err != nil {
@@ -700,8 +708,12 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange) error {
 			log.Panicf("nodeID should always be equal to member ID")
 		}
 		s.Cluster.UpdateMember(m)
-		s.sender.Update(m)
-		log.Printf("etcdserver: update member %s %v in cluster %s", m.ID, m.PeerURLs, s.Cluster.ID())
+		if m.ID == s.id {
+			log.Printf("etcdserver: update local member %s %v in cluster %s", m.ID, m.PeerURLs, s.Cluster.ID())
+		} else {
+			s.sender.Update(m)
+			log.Printf("etcdserver: update member %s %v in cluster %s", m.ID, m.PeerURLs, s.Cluster.ID())
+		}
 	}
 	return nil
 }
