@@ -211,6 +211,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		}
 		cfg.Cluster.SetID(cl.id)
 		cfg.Cluster.SetStore(st)
+		cfg.Print()
 		id, n, w = startNode(cfg, nil)
 	case !haveWAL && cfg.NewCluster:
 		if err := cfg.VerifyBootstrapConfig(); err != nil {
@@ -230,7 +231,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 			}
 		}
 		cfg.Cluster.SetStore(st)
-		log.Printf("etcdserver: initial cluster members: %s", cfg.Cluster)
+		cfg.PrintWithInitial()
 		id, n, w = startNode(cfg, cfg.Cluster.MemberIDs())
 	case haveWAL:
 		if cfg.ShouldDiscover() {
@@ -247,6 +248,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 			index = snapshot.Index
 		}
 		cfg.Cluster = NewClusterFromStore(cfg.Cluster.token, st)
+		cfg.Print()
 		if snapshot != nil {
 			log.Printf("etcdserver: loaded peers from snapshot: %s", cfg.Cluster)
 		}

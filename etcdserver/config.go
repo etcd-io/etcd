@@ -18,6 +18,7 @@ package etcdserver
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"path"
 	"reflect"
@@ -84,4 +85,32 @@ func (c *ServerConfig) SnapDir() string { return path.Join(c.DataDir, "snap") }
 
 func (c *ServerConfig) ShouldDiscover() bool {
 	return c.DiscoveryURL != ""
+}
+
+func (c *ServerConfig) PrintWithInitial() {
+	c.print(true)
+}
+
+func (c *ServerConfig) Print() {
+	c.print(false)
+}
+
+func (c *ServerConfig) print(initial bool) {
+	log.Printf("etcdserver: name = %s", c.Name)
+	if c.ForceNewCluster {
+		log.Println("etcdserver: force new cluster")
+	}
+	log.Printf("etcdserver: data dir = %s", c.DataDir)
+	log.Printf("etcdserver: snapshot count = %d", c.SnapCount)
+	if len(c.DiscoveryURL) != 0 {
+		log.Printf("etcdserver: discovery URL= %s", c.DiscoveryURL)
+		if len(c.DiscoveryProxy) != 0 {
+			log.Printf("etcdserver: discovery proxy = %s", c.DiscoveryProxy)
+		}
+	}
+	log.Printf("etcdserver: advertise client URLs = %s", c.ClientURLs)
+	if initial {
+		log.Printf("etcdserver: initial advertise peer URLs = %s", c.PeerURLs)
+		log.Printf("etcdserver: initial cluster = %s", c.Cluster)
+	}
 }

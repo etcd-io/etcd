@@ -74,6 +74,10 @@ type TLSInfo struct {
 	parseFunc func([]byte, []byte) (tls.Certificate, error)
 }
 
+func (info TLSInfo) String() string {
+	return fmt.Sprintf("cert = %s, key = %s, ca = %s", info.CertFile, info.KeyFile, info.CAFile)
+}
+
 func (info TLSInfo) Empty() bool {
 	return info.CertFile == "" && info.KeyFile == ""
 }

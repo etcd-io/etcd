@@ -224,6 +224,9 @@ func startEtcd() error {
 		return err
 	}
 
+	if !peerTLSInfo.Empty() {
+		log.Printf("etcd: peerTLS: %s", peerTLSInfo)
+	}
 	plns := make([]net.Listener, 0)
 	for _, u := range lpurls {
 		var l net.Listener
@@ -248,6 +251,9 @@ func startEtcd() error {
 		return err
 	}
 
+	if !clientTLSInfo.Empty() {
+		log.Printf("etcd: clientTLS: %s", clientTLSInfo)
+	}
 	clns := make([]net.Listener, 0)
 	for _, u := range lcurls {
 		var l net.Listener
@@ -287,6 +293,9 @@ func startEtcd() error {
 	}
 	s.Start()
 
+	if corsInfo.String() != "" {
+		log.Printf("etcd: cors = %s", corsInfo)
+	}
 	ch := &cors.CORSHandler{
 		Handler: etcdhttp.NewClientHandler(s),
 		Info:    corsInfo,
