@@ -29,7 +29,9 @@ type raftLog struct {
 	committed uint64
 	applied   uint64
 	offset    uint64
-	snapshot  pb.Snapshot
+	// Invariant: snapshot.index <= committed
+	// Invariant: snapshot.index <= applied
+	snapshot pb.Snapshot
 }
 
 func newLog() *raftLog {

@@ -19,6 +19,7 @@ package raft
 import (
 	"errors"
 	"fmt"
+	"log"
 	"math/rand"
 	"sort"
 
@@ -555,6 +556,9 @@ func (r *raft) loadEnts(ents []pb.Entry) {
 }
 
 func (r *raft) loadState(state pb.HardState) {
+	if state.Commit < r.raftLog.committed {
+		log.Panicf("loaded committed %d should >= current committed %d", state.Commit, r.raftLog.committed)
+	}
 	r.raftLog.committed = state.Commit
 	r.Term = state.Term
 	r.Vote = state.Vote
