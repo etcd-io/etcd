@@ -92,6 +92,9 @@ type serverRecorder struct {
 	actions []action
 }
 
+func (s *serverRecorder) Start()       {}
+func (s *serverRecorder) Stop()        {}
+func (s *serverRecorder) ID() types.ID { return types.ID(1) }
 func (s *serverRecorder) Do(_ context.Context, r etcdserverpb.Request) (etcdserver.Response, error) {
 	s.actions = append(s.actions, action{name: "Do", params: []interface{}{r}})
 	return etcdserver.Response{}, nil
@@ -100,8 +103,6 @@ func (s *serverRecorder) Process(_ context.Context, m raftpb.Message) error {
 	s.actions = append(s.actions, action{name: "Process", params: []interface{}{m}})
 	return nil
 }
-func (s *serverRecorder) Start() {}
-func (s *serverRecorder) Stop()  {}
 func (s *serverRecorder) AddMember(_ context.Context, m etcdserver.Member) error {
 	s.actions = append(s.actions, action{name: "AddMember", params: []interface{}{m}})
 	return nil
@@ -138,12 +139,13 @@ type resServer struct {
 	res etcdserver.Response
 }
 
+func (rs *resServer) Start()       {}
+func (rs *resServer) Stop()        {}
+func (rs *resServer) ID() types.ID { return types.ID(1) }
 func (rs *resServer) Do(_ context.Context, _ etcdserverpb.Request) (etcdserver.Response, error) {
 	return rs.res, nil
 }
 func (rs *resServer) Process(_ context.Context, _ raftpb.Message) error         { return nil }
-func (rs *resServer) Start()                                                    {}
-func (rs *resServer) Stop()                                                     {}
 func (rs *resServer) AddMember(_ context.Context, _ etcdserver.Member) error    { return nil }
 func (rs *resServer) RemoveMember(_ context.Context, _ uint64) error            { return nil }
 func (rs *resServer) UpdateMember(_ context.Context, _ etcdserver.Member) error { return nil }
