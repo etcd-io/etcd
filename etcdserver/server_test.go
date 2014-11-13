@@ -677,6 +677,8 @@ func TestDoProposalStopped(t *testing.T) {
 	tk := make(chan time.Time)
 	// this makes <-tk always successful, which accelarates internal clock
 	close(tk)
+	cl := newCluster("abc")
+	cl.SetStore(store.New())
 	srv := &EtcdServer{
 		// TODO: use fake node for better testability
 		node:    n,
@@ -684,6 +686,7 @@ func TestDoProposalStopped(t *testing.T) {
 		sender:  &nopSender{},
 		storage: &storageRecorder{},
 		Ticker:  tk,
+		Cluster: cl,
 	}
 	srv.start()
 
@@ -1129,6 +1132,30 @@ func TestPublishRetry(t *testing.T) {
 	// multiple Proposes
 	if n := len(action); n < 2 {
 		t.Errorf("len(action) = %d, want >= 2", n)
+	}
+}
+
+func TestStopNotify(t *testing.T) {
+	s := &EtcdServer{
+		stop: make(chan struct{}),
+		done: make(chan struct{}),
+	}
+	go func() {
+		<-s.stop
+		close(s.done)
+	}()
+
+	notifier := s.StopNotify()
+	select {
+	case <-notifier:
+		t.Fatalf("received unexpected stop notification")
+	default:
+	}
+	s.Stop()
+	select {
+	case <-notifier:
+	default:
+		t.Fatalf("cannot receive stop notification")
 	}
 }
 

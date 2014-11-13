@@ -396,6 +396,10 @@ func (s *EtcdServer) Stop() {
 	<-s.done
 }
 
+// StopNotify returns a channel that receives a empty struct
+// when the server is stopped.
+func (s *EtcdServer) StopNotify() <-chan struct{} { return s.done }
+
 // Do interprets r and performs an operation on s.store according to r.Method
 // and other fields. If r.Method is "POST", "PUT", "DELETE", or a "GET" with
 // Quorum == true, r will be sent through consensus before performing its
@@ -452,18 +456,14 @@ func (s *EtcdServer) Do(ctx context.Context, r pb.Request) (Response, error) {
 	}
 }
 
-func (s *EtcdServer) SelfStats() []byte {
-	return s.stats.JSON()
-}
+func (s *EtcdServer) SelfStats() []byte { return s.stats.JSON() }
 
 func (s *EtcdServer) LeaderStats() []byte {
 	// TODO(jonboulle): need to lock access to lstats, set it to nil when not leader, ...
 	return s.lstats.JSON()
 }
 
-func (s *EtcdServer) StoreStats() []byte {
-	return s.store.JsonStats()
-}
+func (s *EtcdServer) StoreStats() []byte { return s.store.JsonStats() }
 
 func (s *EtcdServer) UpdateRecvApp(from types.ID, length int64) {
 	s.stats.RecvAppendReq(from.String(), int(length))
@@ -508,13 +508,9 @@ func (s *EtcdServer) UpdateMember(ctx context.Context, memb Member) error {
 }
 
 // Implement the RaftTimer interface
-func (s *EtcdServer) Index() uint64 {
-	return atomic.LoadUint64(&s.raftIndex)
-}
+func (s *EtcdServer) Index() uint64 { return atomic.LoadUint64(&s.raftIndex) }
 
-func (s *EtcdServer) Term() uint64 {
-	return atomic.LoadUint64(&s.raftTerm)
-}
+func (s *EtcdServer) Term() uint64 { return atomic.LoadUint64(&s.raftTerm) }
 
 // configure sends a configuration change through consensus and
 // then waits for it to be applied to the server. It
