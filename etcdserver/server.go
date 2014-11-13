@@ -391,6 +391,10 @@ func (s *EtcdServer) Stop() {
 	<-s.done
 }
 
+// StopNotify returns a channel that receives a empty struct
+// when the server is stopped.
+func (s *EtcdServer) StopNotify() <-chan struct{} { return s.done }
+
 // Do interprets r and performs an operation on s.store according to r.Method
 // and other fields. If r.Method is "POST", "PUT", "DELETE", or a "GET" with
 // Quorum == true, r will be sent through consensus before performing its

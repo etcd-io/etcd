@@ -1135,6 +1135,30 @@ func TestPublishRetry(t *testing.T) {
 	}
 }
 
+func TestStopNotify(t *testing.T) {
+	s := &EtcdServer{
+		stop: make(chan struct{}),
+		done: make(chan struct{}),
+	}
+	go func() {
+		<-s.stop
+		close(s.done)
+	}()
+
+	notifier := s.StopNotify()
+	select {
+	case <-notifier:
+		t.Fatalf("received unexpected stop notification")
+	default:
+	}
+	s.Stop()
+	select {
+	case <-notifier:
+	default:
+		t.Fatalf("cannot receive stop notification")
+	}
+}
+
 func TestGetOtherPeerURLs(t *testing.T) {
 	tests := []struct {
 		membs []*Member
