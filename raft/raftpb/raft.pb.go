@@ -75,7 +75,6 @@ const (
 	MsgVote     MessageType = 5
 	MsgVoteResp MessageType = 6
 	MsgSnap     MessageType = 7
-	MsgDenied   MessageType = 8
 )
 
 var MessageType_name = map[int32]string{
@@ -87,7 +86,6 @@ var MessageType_name = map[int32]string{
 	5: "MsgVote",
 	6: "MsgVoteResp",
 	7: "MsgSnap",
-	8: "MsgDenied",
 }
 var MessageType_value = map[string]int32{
 	"MsgHup":      0,
@@ -98,7 +96,6 @@ var MessageType_value = map[string]int32{
 	"MsgVote":     5,
 	"MsgVoteResp": 6,
 	"MsgSnap":     7,
-	"MsgDenied":   8,
 }
 
 func (x MessageType) Enum() *MessageType {
@@ -123,15 +120,18 @@ type ConfChangeType int32
 const (
 	ConfChangeAddNode    ConfChangeType = 0
 	ConfChangeRemoveNode ConfChangeType = 1
+	ConfChangeUpdateNode ConfChangeType = 2
 )
 
 var ConfChangeType_name = map[int32]string{
 	0: "ConfChangeAddNode",
 	1: "ConfChangeRemoveNode",
+	2: "ConfChangeUpdateNode",
 }
 var ConfChangeType_value = map[string]int32{
 	"ConfChangeAddNode":    0,
 	"ConfChangeRemoveNode": 1,
+	"ConfChangeUpdateNode": 2,
 }
 
 func (x ConfChangeType) Enum() *ConfChangeType {

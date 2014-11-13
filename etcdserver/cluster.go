@@ -42,11 +42,18 @@ const (
 )
 
 type ClusterInfo interface {
+	// ID returns the cluster ID
 	ID() types.ID
+	// ClientURLs returns an aggregate set of all URLs on which this
+	// cluster is listening for client requests
 	ClientURLs() []string
 	// Members returns a slice of members sorted by their ID
 	Members() []*Member
+	// Member retrieves a particular member based on ID, or nil if the
+	// member does not exist in the cluster
 	Member(id types.ID) *Member
+	// IsIDRemoved checks whether the given ID has been removed from this
+	// cluster at some point in the past
 	IsIDRemoved(id types.ID) bool
 }
 
@@ -62,8 +69,9 @@ type Cluster struct {
 	sync.Mutex
 }
 
-// NewClusterFromString returns Cluster through given cluster token and parsing
-// members from a sets of names to IPs discovery formatted like:
+// NewClusterFromString returns a Cluster instantiated from the given cluster token
+// and cluster string, by parsing members from a set of discovery-formatted
+// names-to-IPs, like:
 // mach0=http://1.1.1.1,mach0=http://2.2.2.2,mach1=http://3.3.3.3,mach2=http://4.4.4.4
 func NewClusterFromString(token string, cluster string) (*Cluster, error) {
 	c := newCluster(token)
@@ -263,12 +271,13 @@ func (c *Cluster) SetStore(st store.Store) { c.store = st }
 // ensures that it is still valid.
 func (c *Cluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
 	members, removed := membersFromStore(c.store)
-	if removed[types.ID(cc.NodeID)] {
+	id := types.ID(cc.NodeID)
+	if removed[id] {
 		return ErrIDRemoved
 	}
 	switch cc.Type {
 	case raftpb.ConfChangeAddNode:
-		if members[types.ID(cc.NodeID)] != nil {
+		if members[id] != nil {
 			return ErrIDExists
 		}
 		urls := make(map[string]bool)
@@ -287,16 +296,39 @@ func (c *Cluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
 			}
 		}
 	case raftpb.ConfChangeRemoveNode:
-		if members[types.ID(cc.NodeID)] == nil {
+		if members[id] == nil {
 			return ErrIDNotFound
 		}
+	case raftpb.ConfChangeUpdateNode:
+		if members[id] == nil {
+			return ErrIDNotFound
+		}
+		urls := make(map[string]bool)
+		for _, m := range members {
+			if m.ID == id {
+				continue
+			}
+			for _, u := range m.PeerURLs {
+				urls[u] = true
+			}
+		}
+		m := new(Member)
+		if err := json.Unmarshal(cc.Context, m); err != nil {
+			log.Panicf("unmarshal member should never fail: %v", err)
+		}
+		for _, u := range m.PeerURLs {
+			if urls[u] {
+				return ErrPeerURLexists
+			}
+		}
 	default:
-		log.Panicf("ConfChange type should be either AddNode or RemoveNode")
+		log.Panicf("ConfChange type should be either AddNode, RemoveNode or UpdateNode")
 	}
 	return nil
 }
 
-// AddMember puts a new Member into the store.
+// AddMember adds a new Member into the cluster, and saves the given member's
+// raftAttributes into the store. The given member should have empty attributes.
 // A Member with a matching id must not exist.
 func (c *Cluster) AddMember(m *Member) {
 	c.Lock()
@@ -308,14 +340,6 @@ func (c *Cluster) AddMember(m *Member) {
 	p := path.Join(memberStoreKey(m.ID), raftAttributesSuffix)
 	if _, err := c.store.Create(p, false, string(b), false, store.Permanent); err != nil {
 		log.Panicf("create raftAttributes should never fail: %v", err)
-	}
-	b, err = json.Marshal(m.Attributes)
-	if err != nil {
-		log.Panicf("marshal attributes should never fail: %v", err)
-	}
-	p = path.Join(memberStoreKey(m.ID), attributesSuffix)
-	if _, err := c.store.Create(p, false, string(b), false, store.Permanent); err != nil {
-		log.Panicf("create attributes should never fail: %v", err)
 	}
 	c.members[m.ID] = m
 }
@@ -341,24 +365,44 @@ func (c *Cluster) UpdateMemberAttributes(id types.ID, attr Attributes) {
 	c.members[id].Attributes = attr
 }
 
+func (c *Cluster) UpdateMember(nm *Member) {
+	c.Lock()
+	defer c.Unlock()
+	b, err := json.Marshal(nm.RaftAttributes)
+	if err != nil {
+		log.Panicf("marshal raftAttributes should never fail: %v", err)
+	}
+	p := path.Join(memberStoreKey(nm.ID), raftAttributesSuffix)
+	if _, err := c.store.Update(p, string(b), store.Permanent); err != nil {
+		log.Panicf("update raftAttributes should never fail: %v", err)
+	}
+	c.members[nm.ID].RaftAttributes = nm.RaftAttributes
+}
+
 // nodeToMember builds member through a store node.
 // the child nodes of the given node should be sorted by key.
 func nodeToMember(n *store.NodeExtern) (*Member, error) {
 	m := &Member{ID: mustParseMemberIDFromKey(n.Key)}
-	if len(n.Nodes) != 2 {
-		return m, fmt.Errorf("len(nodes) = %d, want 2", len(n.Nodes))
+	attrs := make(map[string][]byte)
+	raftAttrKey := path.Join(n.Key, raftAttributesSuffix)
+	attrKey := path.Join(n.Key, attributesSuffix)
+	for _, nn := range n.Nodes {
+		if nn.Key != raftAttrKey && nn.Key != attrKey {
+			return nil, fmt.Errorf("unknown key %q", nn.Key)
+		}
+		attrs[nn.Key] = []byte(*nn.Value)
 	}
-	if w := path.Join(n.Key, attributesSuffix); n.Nodes[0].Key != w {
-		return m, fmt.Errorf("key = %v, want %v", n.Nodes[0].Key, w)
+	if data := attrs[raftAttrKey]; data != nil {
+		if err := json.Unmarshal(data, &m.RaftAttributes); err != nil {
+			return nil, fmt.Errorf("unmarshal raftAttributes error: %v", err)
+		}
+	} else {
+		return nil, fmt.Errorf("raftAttributes key doesn't exist")
 	}
-	if err := json.Unmarshal([]byte(*n.Nodes[0].Value), &m.Attributes); err != nil {
-		return m, fmt.Errorf("unmarshal attributes error: %v", err)
-	}
-	if w := path.Join(n.Key, raftAttributesSuffix); n.Nodes[1].Key != w {
-		return m, fmt.Errorf("key = %v, want %v", n.Nodes[1].Key, w)
-	}
-	if err := json.Unmarshal([]byte(*n.Nodes[1].Value), &m.RaftAttributes); err != nil {
-		return m, fmt.Errorf("unmarshal raftAttributes error: %v", err)
+	if data := attrs[attrKey]; data != nil {
+		if err := json.Unmarshal(data, &m.Attributes); err != nil {
+			return m, fmt.Errorf("unmarshal attributes error: %v", err)
+		}
 	}
 	return m, nil
 }

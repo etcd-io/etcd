@@ -107,6 +107,86 @@ func TestNodeStepUnblock(t *testing.T) {
 	}
 }
 
+// TestNodePropose ensures that node.Propose sends the given proposal to the underlying raft.
+func TestNodePropose(t *testing.T) {
+	msgs := []raftpb.Message{}
+	appendStep := func(r *raft, m raftpb.Message) {
+		msgs = append(msgs, m)
+	}
+
+	n := newNode()
+	s := NewMemoryStorage()
+	r := newRaft(1, []uint64{1}, 10, 1, s)
+	go n.run(r)
+	n.Campaign(context.TODO())
+	for {
+		rd := <-n.Ready()
+		s.Append(rd.Entries)
+		// change the step function to appendStep until this raft becomes leader
+		if rd.SoftState.Lead == r.id {
+			r.step = appendStep
+			n.Advance()
+			break
+		}
+		n.Advance()
+	}
+	n.Propose(context.TODO(), []byte("somedata"))
+	n.Stop()
+
+	if len(msgs) != 1 {
+		t.Fatalf("len(msgs) = %d, want %d", len(msgs), 1)
+	}
+	if msgs[0].Type != raftpb.MsgProp {
+		t.Errorf("msg type = %d, want %d", msgs[0].Type, raftpb.MsgProp)
+	}
+	if !reflect.DeepEqual(msgs[0].Entries[0].Data, []byte("somedata")) {
+		t.Errorf("data = %v, want %v", msgs[0].Entries[0].Data, []byte("somedata"))
+	}
+}
+
+// TestNodeProposeConfig ensures that node.ProposeConfChange sends the given configuration proposal
+// to the underlying raft.
+func TestNodeProposeConfig(t *testing.T) {
+	msgs := []raftpb.Message{}
+	appendStep := func(r *raft, m raftpb.Message) {
+		msgs = append(msgs, m)
+	}
+
+	n := newNode()
+	s := NewMemoryStorage()
+	r := newRaft(1, []uint64{1}, 10, 1, s)
+	go n.run(r)
+	n.Campaign(context.TODO())
+	for {
+		rd := <-n.Ready()
+		s.Append(rd.Entries)
+		// change the step function to appendStep until this raft becomes leader
+		if rd.SoftState.Lead == r.id {
+			r.step = appendStep
+			n.Advance()
+			break
+		}
+		n.Advance()
+	}
+	cc := raftpb.ConfChange{Type: raftpb.ConfChangeAddNode, NodeID: 1}
+	ccdata, err := cc.Marshal()
+	if err != nil {
+		t.Fatal(err)
+	}
+	n.ProposeConfChange(context.TODO(), cc)
+	n.Stop()
+
+	if len(msgs) != 1 {
+		t.Fatalf("len(msgs) = %d, want %d", len(msgs), 1)
+	}
+	if msgs[0].Type != raftpb.MsgProp {
+		t.Errorf("msg type = %d, want %d", msgs[0].Type, raftpb.MsgProp)
+	}
+	if !reflect.DeepEqual(msgs[0].Entries[0].Data, ccdata) {
+		t.Errorf("data = %v, want %v", msgs[0].Entries[0].Data, ccdata)
+	}
+}
+
 // TestBlockProposal ensures that node will block proposal when it does not
 // know who is the current leader; node will accept proposal when it knows
 // who is the current leader.
@@ -140,6 +220,56 @@ func TestBlockProposal(t *testing.T) {
 	}
 }
 
+// TestNodeTick ensures that node.Tick() will increase the
+// elapsed of the underlying raft state machine.
+func TestNodeTick(t *testing.T) {
+	n := newNode()
+	s := NewMemoryStorage()
+	r := newRaft(1, []uint64{1}, 10, 1, s)
+	go n.run(r)
+	elapsed := r.elapsed
+	n.Tick()
+	n.Stop()
+	if r.elapsed != elapsed+1 {
+		t.Errorf("elapsed = %d, want %d", r.elapsed, elapsed+1)
+	}
+}
+
+// TestNodeStop ensures that node.Stop() blocks until the node has stopped
+// processing, and that it is idempotent
+func TestNodeStop(t *testing.T) {
+	n := newNode()
+	s := NewMemoryStorage()
+	r := newRaft(1, []uint64{1}, 10, 1, s)
+	donec := make(chan struct{})
+
+	go func() {
+		n.run(r)
+		close(donec)
+	}()
+
+	elapsed := r.elapsed
+	n.Tick()
+	n.Stop()
+
+	select {
+	case <-donec:
+	case <-time.After(time.Second):
+		t.Fatalf("timed out waiting for node to stop!")
+	}
+
+	if r.elapsed != elapsed+1 {
+		t.Errorf("elapsed = %d, want %d", r.elapsed, elapsed+1)
+	}
+	// Further ticks should have no effect, the node is stopped.
+	n.Tick()
+	if r.elapsed != elapsed+1 {
+		t.Errorf("elapsed = %d, want %d", r.elapsed, elapsed+1)
+	}
+	// Subsequent Stops should have no effect.
+	n.Stop()
+}
+
 func TestReadyContainUpdates(t *testing.T) {
 	tests := []struct {
 		rd       Ready
@@ -161,7 +291,10 @@ func TestReadyContainUpdates(t *testing.T) {
 	}
 }
 
-func TestNode(t *testing.T) {
+// TestNodeStart ensures that a node can be started correctly. The node should
+// start with correct configuration change entries, and can accept and commit
+// proposals.
+func TestNodeStart(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -236,9 +369,8 @@ func TestNodeRestart(t *testing.T) {
 	n := RestartNode(1, 10, 1, nil, st, storage)
 	if g := <-n.Ready(); !reflect.DeepEqual(g, want) {
 		t.Errorf("g = %+v,\n             w   %+v", g, want)
-	} else {
-		n.Advance()
 	}
+	n.Advance()
 
 	select {
 	case rd := <-n.Ready():

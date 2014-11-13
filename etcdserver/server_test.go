@@ -407,7 +407,7 @@ func TestApplyRequest(t *testing.T) {
 }
 
 func TestApplyRequestOnAdminMemberAttributes(t *testing.T) {
-	cl := newTestCluster([]Member{{ID: 1}})
+	cl := newTestCluster([]*Member{{ID: 1}})
 	srv := &EtcdServer{
 		store:   &storeRecorder{},
 		Cluster: cl,
@@ -447,7 +447,7 @@ func TestApplyConfChangeError(t *testing.T) {
 		},
 		{
 			raftpb.ConfChange{
-				Type:   raftpb.ConfChangeRemoveNode,
+				Type:   raftpb.ConfChangeUpdateNode,
 				NodeID: 4,
 			},
 			ErrIDRemoved,
@@ -503,6 +503,7 @@ func (s *fakeSender) Send(msgs []raftpb.Message) {
 	}
 }
 func (s *fakeSender) Add(m *Member)      {}
+func (s *fakeSender) Update(m *Member)   {}
 func (s *fakeSender) Remove(id types.ID) {}
 func (s *fakeSender) Stop()              {}
 
@@ -559,8 +560,8 @@ func testServer(t *testing.T, ns uint64) {
 
 		g, w := resp.Event.Node, &store.NodeExtern{
 			Key:           "/foo",
-			ModifiedIndex: uint64(i) + 2*ns,
-			CreatedIndex:  uint64(i) + 2*ns,
+			ModifiedIndex: uint64(i) + ns,
+			CreatedIndex:  uint64(i) + ns,
 			Value:         stringp("bar"),
 		}
 
@@ -1019,7 +1020,9 @@ func TestRemoveMember(t *testing.T) {
 			Nodes:     []uint64{1234, 2345, 3456},
 		},
 	}
-	cl := newTestCluster([]Member{{ID: 1234}})
+	cl := newTestCluster(nil)
+	cl.SetStore(store.New())
+	cl.AddMember(&Member{ID: 1234})
 	s := &EtcdServer{
 		node:        n,
 		raftStorage: raft.NewMemoryStorage(),
@@ -1042,6 +1045,44 @@ func TestRemoveMember(t *testing.T) {
 	}
 	if cl.Member(1234) != nil {
 		t.Errorf("member with id 1234 is not removed")
+	}
+}
+
+// TestUpdateMember tests RemoveMember can propose and perform node update.
+func TestUpdateMember(t *testing.T) {
+	n := newNodeConfChangeCommitterRecorder()
+	n.readyc <- raft.Ready{
+		SoftState: &raft.SoftState{
+			RaftState: raft.StateLeader,
+			Nodes:     []uint64{1234, 2345, 3456},
+		},
+	}
+	cl := newTestCluster(nil)
+	cl.SetStore(store.New())
+	cl.AddMember(&Member{ID: 1234})
+	s := &EtcdServer{
+		node:        n,
+		raftStorage: raft.NewMemoryStorage(),
+		store:       &storeRecorder{},
+		sender:      &nopSender{},
+		storage:     &storageRecorder{},
+		Cluster:     cl,
+	}
+	s.start()
+	wm := Member{ID: 1234, RaftAttributes: RaftAttributes{PeerURLs: []string{"http://127.0.0.1:1"}}}
+	err := s.UpdateMember(context.TODO(), wm)
+	gaction := n.Action()
+	s.Stop()
+
+	if err != nil {
+		t.Fatalf("UpdateMember error: %v", err)
+	}
+	wactions := []action{action{name: "ProposeConfChange:ConfChangeUpdateNode"}, action{name: "ApplyConfChange:ConfChangeUpdateNode"}}
+	if !reflect.DeepEqual(gaction, wactions) {
+		t.Errorf("action = %v, want %v", gaction, wactions)
+	}
+	if !reflect.DeepEqual(cl.Member(1234), &wm) {
+		t.Errorf("member = %v, want %v", cl.Member(1234), &wm)
 	}
 }
 
@@ -1129,25 +1170,25 @@ func TestGetOtherPeerURLs(t *testing.T) {
 	}{
 		{
 			[]*Member{
-				newTestMemberp(1, []string{"http://10.0.0.1"}, "a", nil),
+				newTestMember(1, []string{"http://10.0.0.1"}, "a", nil),
 			},
 			"a",
 			[]string{},
 		},
 		{
 			[]*Member{
-				newTestMemberp(1, []string{"http://10.0.0.1"}, "a", nil),
-				newTestMemberp(2, []string{"http://10.0.0.2"}, "b", nil),
-				newTestMemberp(3, []string{"http://10.0.0.3"}, "c", nil),
+				newTestMember(1, []string{"http://10.0.0.1"}, "a", nil),
+				newTestMember(2, []string{"http://10.0.0.2"}, "b", nil),
+				newTestMember(3, []string{"http://10.0.0.3"}, "c", nil),
 			},
 			"a",
 			[]string{"http://10.0.0.2", "http://10.0.0.3"},
 		},
 		{
 			[]*Member{
-				newTestMemberp(1, []string{"http://10.0.0.1"}, "a", nil),
-				newTestMemberp(3, []string{"http://10.0.0.3"}, "c", nil),
-				newTestMemberp(2, []string{"http://10.0.0.2"}, "b", nil),
+				newTestMember(1, []string{"http://10.0.0.1"}, "a", nil),
+				newTestMember(3, []string{"http://10.0.0.3"}, "c", nil),
+				newTestMember(2, []string{"http://10.0.0.2"}, "b", nil),
 			},
 			"a",
 			[]string{"http://10.0.0.2", "http://10.0.0.3"},
@@ -1474,6 +1515,7 @@ type nopSender struct{}
 func (s *nopSender) Send(m []raftpb.Message) {}
 func (s *nopSender) Add(m *Member)           {}
 func (s *nopSender) Remove(id types.ID)      {}
+func (s *nopSender) Update(m *Member)        {}
 func (s *nopSender) Stop()                   {}
 
 func mustMakePeerSlice(t *testing.T, ids ...uint64) []raft.Peer {

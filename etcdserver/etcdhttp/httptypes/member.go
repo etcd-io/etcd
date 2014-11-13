@@ -33,6 +33,10 @@ type MemberCreateRequest struct {
 	PeerURLs types.URLs
 }
 
+type MemberUpdateRequest struct {
+	MemberCreateRequest
+}
+
 func (m *MemberCreateRequest) MarshalJSON() ([]byte, error) {
 	s := struct {
 		PeerURLs []string `json:"peerURLs"`

@@ -1040,7 +1040,6 @@ func TestRestore(t *testing.T) {
 		t.Errorf("log.lastTerm = %d, want %d", sm.raftLog.term(s.Index), s.Term)
 	}
 	sg := sm.nodes()
-	sort.Sort(uint64Slice(sg))
 	if !reflect.DeepEqual(sg, s.Nodes) {
 		t.Errorf("sm.Nodes = %+v, want %+v", sg, s.Nodes)
 	}
@@ -1209,7 +1208,6 @@ func TestAddNode(t *testing.T) {
 		t.Errorf("pendingConf = %v, want false", r.pendingConf)
 	}
 	nodes := r.nodes()
-	sort.Sort(uint64Slice(nodes))
 	wnodes := []uint64{1, 2}
 	if !reflect.DeepEqual(nodes, wnodes) {
 		t.Errorf("nodes = %v, want %v", nodes, wnodes)
@@ -1249,6 +1247,28 @@ func TestPromotable(t *testing.T) {
 		}
 		if g := r.promotable(); g != tt.wp {
 			t.Errorf("#%d: promotable = %v, want %v", i, g, tt.wp)
+		}
+	}
+}
+
+func TestRaftNodes(t *testing.T) {
+	tests := []struct {
+		ids  []uint64
+		wids []uint64
+	}{
+		{
+			[]uint64{1, 2, 3},
+			[]uint64{1, 2, 3},
+		},
+		{
+			[]uint64{3, 2, 1},
+			[]uint64{1, 2, 3},
+		},
+	}
+	for i, tt := range tests {
+		r := newRaft(1, tt.ids, 10, 1, NewMemoryStorage())
+		if !reflect.DeepEqual(r.nodes(), tt.wids) {
+			t.Errorf("#%d: nodes = %+v, want %+v", i, r.nodes(), tt.wids)
 		}
 	}
 }

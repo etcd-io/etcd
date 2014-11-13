@@ -176,10 +176,9 @@ func (l *raftLog) appliedTo(i uint64) {
 }
 
 func (l *raftLog) stableTo(i uint64) {
-	if i == 0 {
-		return
+	if len(l.unstableEnts) > 0 {
+		l.unstableEnts = l.unstableEnts[i+1-l.unstable:]
 	}
-	l.unstableEnts = l.unstableEnts[i+1-l.unstable:]
 	l.unstable = i + 1
 }
 

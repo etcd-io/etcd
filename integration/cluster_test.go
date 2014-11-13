@@ -24,8 +24,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"reflect"
+	"sort"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
@@ -57,15 +58,7 @@ func testCluster(t *testing.T, size int) {
 	c := NewCluster(t, size)
 	c.Launch(t)
 	defer c.Terminate(t)
-	for i, u := range c.URLs() {
-		cc := mustNewHTTPClient(t, []string{u})
-		kapi := client.NewKeysAPI(cc)
-		ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
-		if _, err := kapi.Create(ctx, fmt.Sprintf("/%d", i), "bar", -1); err != nil {
-			t.Errorf("create on %s error: %v", u, err)
-		}
-		cancel()
-	}
+	clusterMustProgress(t, c)
 }
 
 func TestClusterOf1UsingDiscovery(t *testing.T) { testClusterUsingDiscovery(t, 1) }
@@ -88,13 +81,43 @@ func testClusterUsingDiscovery(t *testing.T, size int) {
 	c := NewClusterByDiscovery(t, size, dc.URL(0)+"/v2/keys")
 	c.Launch(t)
 	defer c.Terminate(t)
+	clusterMustProgress(t, c)
+}
 
-	for i, u := range c.URLs() {
+func TestDoubleClusterSizeOf1(t *testing.T) { testDoubleClusterSize(t, 1) }
+func TestDoubleClusterSizeOf3(t *testing.T) { testDoubleClusterSize(t, 3) }
+
+func testDoubleClusterSize(t *testing.T, size int) {
+	defer afterTest(t)
+	c := NewCluster(t, size)
+	c.Launch(t)
+	defer c.Terminate(t)
+
+	for i := 0; i < size; i++ {
+		c.AddMember(t)
+	}
+	clusterMustProgress(t, c)
+}
+
+// clusterMustProgress ensures that cluster can make progress. It creates
+// a key first, and check the new key could be got from all client urls of
+// the cluster.
+func clusterMustProgress(t *testing.T, cl *cluster) {
+	cc := mustNewHTTPClient(t, []string{cl.URL(0)})
+	kapi := client.NewKeysAPI(cc)
+	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+	resp, err := kapi.Create(ctx, "/foo", "bar", -1)
+	if err != nil {
+		t.Fatalf("create on %s error: %v", cl.URL(0), err)
+	}
+	cancel()
+
+	for i, u := range cl.URLs() {
 		cc := mustNewHTTPClient(t, []string{u})
 		kapi := client.NewKeysAPI(cc)
 		ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
-		if _, err := kapi.Create(ctx, fmt.Sprintf("/%d", i), "bar", -1); err != nil {
-			t.Errorf("create on %s error: %v", u, err)
+		if _, err := kapi.Watch("foo", resp.Node.ModifiedIndex).Next(ctx); err != nil {
+			t.Fatalf("#%d: watch on %s error: %v", i, u, err)
 		}
 		cancel()
 	}
@@ -111,7 +134,7 @@ func NewCluster(t *testing.T, size int) *cluster {
 	c := &cluster{}
 	ms := make([]*member, size)
 	for i := 0; i < size; i++ {
-		ms[i] = newMember(t, c.name(i))
+		ms[i] = mustNewMember(t, c.name(i))
 	}
 	c.Members = ms
 
@@ -139,7 +162,7 @@ func NewClusterByDiscovery(t *testing.T, size int, url string) *cluster {
 	c := &cluster{}
 	ms := make([]*member, size)
 	for i := 0; i < size; i++ {
-		ms[i] = newMember(t, c.name(i))
+		ms[i] = mustNewMember(t, c.name(i))
 		ms[i].DiscoveryURL = url
 	}
 	c.Members = ms
@@ -147,19 +170,21 @@ func NewClusterByDiscovery(t *testing.T, size int, url string) *cluster {
 }
 
 func (c *cluster) Launch(t *testing.T) {
-	var wg sync.WaitGroup
+	errc := make(chan error)
 	for _, m := range c.Members {
-		wg.Add(1)
 		// Members are launched in separate goroutines because if they boot
 		// using discovery url, they have to wait for others to register to continue.
 		go func(m *member) {
-			m.Launch(t)
-			wg.Done()
+			errc <- m.Launch()
 		}(m)
 	}
-	wg.Wait()
+	for _ = range c.Members {
+		if err := <-errc; err != nil {
+			t.Fatalf("error setting up member: %v", err)
+		}
+	}
 	// wait cluster to be stable to receive future client requests
-	c.waitClientURLsPublished(t)
+	c.waitMembersMatch(t, c.HTTPMembers())
 }
 
 func (c *cluster) URL(i int) string {
@@ -176,45 +201,92 @@ func (c *cluster) URLs() []string {
 	return urls
 }
 
+func (c *cluster) HTTPMembers() []httptypes.Member {
+	ms := make([]httptypes.Member, len(c.Members))
+	for i, m := range c.Members {
+		ms[i].Name = m.Name
+		for _, ln := range m.PeerListeners {
+			ms[i].PeerURLs = append(ms[i].PeerURLs, "http://"+ln.Addr().String())
+		}
+		for _, ln := range m.ClientListeners {
+			ms[i].ClientURLs = append(ms[i].ClientURLs, "http://"+ln.Addr().String())
+		}
+	}
+	return ms
+}
+
+func (c *cluster) AddMember(t *testing.T) {
+	clusterStr := c.Members[0].Cluster.String()
+	idx := len(c.Members)
+	m := mustNewMember(t, c.name(idx))
+
+	// send add request to the cluster
+	cc := mustNewHTTPClient(t, []string{c.URL(0)})
+	ma := client.NewMembersAPI(cc)
+	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+	peerURL := "http://" + m.PeerListeners[0].Addr().String()
+	if _, err := ma.Add(ctx, peerURL); err != nil {
+		t.Fatalf("add member on %s error: %v", c.URL(0), err)
+	}
+	cancel()
+
+	// wait for the add node entry applied in the cluster
+	members := append(c.HTTPMembers(), httptypes.Member{PeerURLs: []string{peerURL}, ClientURLs: []string{}})
+	c.waitMembersMatch(t, members)
+
+	for _, ln := range m.PeerListeners {
+		clusterStr += fmt.Sprintf(",%s=http://%s", m.Name, ln.Addr().String())
+	}
+	var err error
+	m.Cluster, err = etcdserver.NewClusterFromString(clusterName, clusterStr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	m.NewCluster = false
+	if err := m.Launch(); err != nil {
+		t.Fatal(err)
+	}
+	c.Members = append(c.Members, m)
+	// wait cluster to be stable to receive future client requests
+	c.waitMembersMatch(t, c.HTTPMembers())
+}
+
 func (c *cluster) Terminate(t *testing.T) {
 	for _, m := range c.Members {
 		m.Terminate(t)
 	}
 }
 
-func (c *cluster) waitClientURLsPublished(t *testing.T) {
-	timer := time.AfterFunc(10*time.Second, func() {
-		t.Fatal("wait too long for client urls publish")
-	})
-	cc := mustNewHTTPClient(t, []string{c.URL(0)})
-	ma := client.NewMembersAPI(cc)
-	for {
-		ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
-		membs, err := ma.List(ctx)
-		cancel()
-		if err == nil && c.checkClientURLsPublished(membs) {
-			break
+func (c *cluster) waitMembersMatch(t *testing.T, membs []httptypes.Member) {
+	for _, u := range c.URLs() {
+		cc := mustNewHTTPClient(t, []string{u})
+		ma := client.NewMembersAPI(cc)
+		for {
+			ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+			ms, err := ma.List(ctx)
+			cancel()
+			if err == nil && isMembersEqual(ms, membs) {
+				break
+			}
+			time.Sleep(tickDuration)
 		}
-		time.Sleep(tickDuration)
 	}
-	timer.Stop()
 	return
-}
-
-func (c *cluster) checkClientURLsPublished(membs []httptypes.Member) bool {
-	if len(membs) != len(c.Members) {
-		return false
-	}
-	for _, m := range membs {
-		if len(m.ClientURLs) == 0 {
-			return false
-		}
-	}
-	return true
 }
 
 func (c *cluster) name(i int) string {
 	return fmt.Sprint("node", i)
+}
+
+// isMembersEqual checks whether two members equal except ID field.
+// The given wmembs should always set ID field to empty string.
+func isMembersEqual(membs []httptypes.Member, wmembs []httptypes.Member) bool {
+	sort.Sort(SortableMemberSliceByPeerURLs(membs))
+	sort.Sort(SortableMemberSliceByPeerURLs(wmembs))
+	for i := range membs {
+		membs[i].ID = ""
+	}
+	return reflect.DeepEqual(membs, wmembs)
 }
 
 func newLocalListener(t *testing.T) net.Listener {
@@ -233,18 +305,26 @@ type member struct {
 	hss []*httptest.Server
 }
 
-func newMember(t *testing.T, name string) *member {
+func mustNewMember(t *testing.T, name string) *member {
 	var err error
 	m := &member{}
+
 	pln := newLocalListener(t)
 	m.PeerListeners = []net.Listener{pln}
+	m.PeerURLs, err = types.NewURLs([]string{"http://" + pln.Addr().String()})
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	cln := newLocalListener(t)
 	m.ClientListeners = []net.Listener{cln}
-	m.Name = name
 	m.ClientURLs, err = types.NewURLs([]string{"http://" + cln.Addr().String()})
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	m.Name = name
+
 	m.DataDir, err = ioutil.TempDir(os.TempDir(), "etcd")
 	if err != nil {
 		t.Fatal(err)
@@ -261,13 +341,13 @@ func newMember(t *testing.T, name string) *member {
 
 // Launch starts a member based on ServerConfig, PeerListeners
 // and ClientListeners.
-func (m *member) Launch(t *testing.T) {
+func (m *member) Launch() error {
 	var err error
 	if m.s, err = etcdserver.NewServer(&m.ServerConfig); err != nil {
-		t.Fatalf("failed to initialize the etcd server: %v", err)
+		return fmt.Errorf("failed to initialize the etcd server: %v", err)
 	}
 	m.s.Ticker = time.Tick(tickDuration)
-	m.s.SyncTicker = time.Tick(10 * tickDuration)
+	m.s.SyncTicker = time.Tick(500 * time.Millisecond)
 	m.s.Start()
 
 	for _, ln := range m.PeerListeners {
@@ -286,6 +366,7 @@ func (m *member) Launch(t *testing.T) {
 		hs.Start()
 		m.hss = append(m.hss, hs)
 	}
+	return nil
 }
 
 // Stop stops the member, but the data dir of the member is preserved.
@@ -325,3 +406,11 @@ func newTransport() *http.Transport {
 	tr.Dial = (&net.Dialer{Timeout: 100 * time.Millisecond}).Dial
 	return tr
 }
+
+type SortableMemberSliceByPeerURLs []httptypes.Member
+
+func (p SortableMemberSliceByPeerURLs) Len() int { return len(p) }
+func (p SortableMemberSliceByPeerURLs) Less(i, j int) bool {
+	return p[i].PeerURLs[0] < p[j].PeerURLs[0]
+}
+func (p SortableMemberSliceByPeerURLs) Swap(i, j int) { p[i], p[j] = p[j], p[i] }

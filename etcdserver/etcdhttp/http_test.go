@@ -79,6 +79,9 @@ func (fs *errServer) AddMember(ctx context.Context, m etcdserver.Member) error {
 func (fs *errServer) RemoveMember(ctx context.Context, id uint64) error {
 	return fs.err
 }
+func (fs *errServer) UpdateMember(ctx context.Context, m etcdserver.Member) error {
+	return fs.err
+}
 
 func TestWriteError(t *testing.T) {
 	// nil error should not panic

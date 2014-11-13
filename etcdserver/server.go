@@ -37,11 +37,11 @@ import (
 	"github.com/coreos/etcd/etcdserver/stats"
 	"github.com/coreos/etcd/pkg/pbutil"
 	"github.com/coreos/etcd/pkg/types"
+	"github.com/coreos/etcd/pkg/wait"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/snap"
 	"github.com/coreos/etcd/store"
-	"github.com/coreos/etcd/wait"
 	"github.com/coreos/etcd/wal"
 )
 
@@ -89,6 +89,7 @@ type Sender interface {
 	Send(m []raftpb.Message)
 	Add(m *Member)
 	Remove(id types.ID)
+	Update(m *Member)
 	Stop()
 }
 
@@ -114,7 +115,7 @@ type Server interface {
 	// Stop terminates the Server and performs any necessary finalization.
 	// Do and Process cannot be called after Stop has been invoked.
 	Stop()
-	// Do takes a request and attempts to fulfil it, returning a Response.
+	// Do takes a request and attempts to fulfill it, returning a Response.
 	Do(ctx context.Context, r pb.Request) (Response, error)
 	// Process takes a raft message and applies it to the server's raft state
 	// machine, respecting any timeout of the given context.
@@ -127,6 +128,10 @@ type Server interface {
 	// return ErrIDRemoved if member ID is removed from the cluster, or return
 	// ErrIDNotFound if member ID is not in the cluster.
 	RemoveMember(ctx context.Context, id uint64) error
+
+	// UpdateMember attempts to update a existing member in the cluster. It will
+	// return ErrIDNotFound if the member ID does not exist.
+	UpdateMember(ctx context.Context, updateMemb Member) error
 }
 
 type Stats interface {
@@ -479,6 +484,20 @@ func (s *EtcdServer) RemoveMember(ctx context.Context, id uint64) error {
 	return s.configure(ctx, cc)
 }
 
+func (s *EtcdServer) UpdateMember(ctx context.Context, memb Member) error {
+	b, err := json.Marshal(memb)
+	if err != nil {
+		return err
+	}
+	cc := raftpb.ConfChange{
+		ID:      GenID(),
+		Type:    raftpb.ConfChangeUpdateNode,
+		NodeID:  uint64(memb.ID),
+		Context: b,
+	}
+	return s.configure(ctx, cc)
+}
+
 // Implement the RaftTimer interface
 func (s *EtcdServer) Index() uint64 {
 	return atomic.LoadUint64(&s.raftIndex)
@@ -669,13 +688,36 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange) error {
 			log.Panicf("nodeID should always be equal to member ID")
 		}
 		s.Cluster.AddMember(m)
-		s.sender.Add(m)
-		log.Printf("etcdserver: added node %s %v to cluster %s", types.ID(cc.NodeID), m.PeerURLs, s.Cluster.ID())
+		if m.ID == s.id {
+			log.Printf("etcdserver: added local member %s %v to cluster %s", m.ID, m.PeerURLs, s.Cluster.ID())
+		} else {
+			s.sender.Add(m)
+			log.Printf("etcdserver: added member %s %v to cluster %s", m.ID, m.PeerURLs, s.Cluster.ID())
+		}
 	case raftpb.ConfChangeRemoveNode:
 		id := types.ID(cc.NodeID)
 		s.Cluster.RemoveMember(id)
-		s.sender.Remove(id)
-		log.Printf("etcdserver: removed node %s from cluster %s", id, s.Cluster.ID())
+		if id == s.id {
+			log.Printf("etcdserver: removed local member %s from cluster %s", id, s.Cluster.ID())
+		} else {
+			s.sender.Remove(id)
+			log.Printf("etcdserver: removed member %s from cluster %s", id, s.Cluster.ID())
+		}
+	case raftpb.ConfChangeUpdateNode:
+		m := new(Member)
+		if err := json.Unmarshal(cc.Context, m); err != nil {
+			log.Panicf("unmarshal member should never fail: %v", err)
+		}
+		if cc.NodeID != uint64(m.ID) {
+			log.Panicf("nodeID should always be equal to member ID")
+		}
+		s.Cluster.UpdateMember(m)
+		if m.ID == s.id {
+			log.Printf("etcdserver: update local member %s %v in cluster %s", m.ID, m.PeerURLs, s.Cluster.ID())
+		} else {
+			s.sender.Update(m)
+			log.Printf("etcdserver: update member %s %v in cluster %s", m.ID, m.PeerURLs, s.Cluster.ID())
+		}
 	}
 	return nil
 }
@@ -747,7 +789,7 @@ func startNode(cfg *ServerConfig, ids []types.ID) (id types.ID, n raft.Node, s *
 		peers[i] = raft.Peer{ID: uint64(id), Context: ctx}
 	}
 	id = member.ID
-	log.Printf("etcdserver: start node %s in cluster %s", id, cfg.Cluster.ID())
+	log.Printf("etcdserver: start member %s in cluster %s", id, cfg.Cluster.ID())
 	s = raft.NewMemoryStorage()
 	n = raft.StartNode(uint64(id), peers, 10, 1, s)
 	return

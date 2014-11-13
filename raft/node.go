@@ -143,7 +143,7 @@ type Peer struct {
 
 // StartNode returns a new Node given a unique raft id, a list of raft peers, and
 // the election and heartbeat timeouts in units of ticks.
-// It also builds ConfChangeAddNode entry for each peer and puts them at the head of the log.
+// It appends a ConfChangeAddNode entry for each given peer to the initial log.
 func StartNode(id uint64, peers []Peer, election, heartbeat int, storage Storage) Node {
 	n := newNode()
 	r := newRaft(id, nil, election, heartbeat, storage)
@@ -191,6 +191,7 @@ type node struct {
 	advancec chan struct{}
 	tickc    chan struct{}
 	done     chan struct{}
+	stop     chan struct{}
 }
 
 func newNode() node {
@@ -203,11 +204,20 @@ func newNode() node {
 		advancec: make(chan struct{}),
 		tickc:    make(chan struct{}),
 		done:     make(chan struct{}),
+		stop:     make(chan struct{}),
 	}
 }
 
 func (n *node) Stop() {
-	close(n.done)
+	select {
+	case n.stop <- struct{}{}:
+		// Not already stopped, so trigger it
+	case <-n.done:
+		// Node has already been stopped - no need to do anything
+		return
+	}
+	// Block until the stop has been acknowledged by run()
+	<-n.done
 }
 
 func (n *node) run(r *raft) {
@@ -270,6 +280,8 @@ func (n *node) run(r *raft) {
 				r.addNode(cc.NodeID)
 			case pb.ConfChangeRemoveNode:
 				r.removeNode(cc.NodeID)
+			case pb.ConfChangeUpdateNode:
+				r.resetPendingConf()
 			default:
 				panic("unexpected conf type")
 			}
@@ -297,11 +309,10 @@ func (n *node) run(r *raft) {
 			if prevHardSt.Commit != 0 {
 				r.raftLog.appliedTo(prevHardSt.Commit)
 			}
-			if prevLastUnstablei != 0 {
-				r.raftLog.stableTo(prevLastUnstablei)
-			}
+			r.raftLog.stableTo(prevLastUnstablei)
 			advancec = nil
-		case <-n.done:
+		case <-n.stop:
+			close(n.done)
 			return
 		}
 	}
