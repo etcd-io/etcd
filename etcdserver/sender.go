@@ -37,23 +37,25 @@ const (
 )
 
 type sendHub struct {
-	tr      *http.Transport
-	cl      ClusterInfo
-	ss      *stats.ServerStats
-	ls      *stats.LeaderStats
-	senders map[types.ID]*sender
+	tr         http.RoundTripper
+	cl         ClusterInfo
+	ss         *stats.ServerStats
+	ls         *stats.LeaderStats
+	senders    map[types.ID]*sender
+	shouldstop chan struct{}
 }
 
 // newSendHub creates the default send hub used to transport raft messages
 // to other members. The returned sendHub will update the given ServerStats and
 // LeaderStats appropriately.
-func newSendHub(t *http.Transport, cl ClusterInfo, ss *stats.ServerStats, ls *stats.LeaderStats) *sendHub {
+func newSendHub(t http.RoundTripper, cl ClusterInfo, ss *stats.ServerStats, ls *stats.LeaderStats) *sendHub {
 	h := &sendHub{
-		tr:      t,
-		cl:      cl,
-		ss:      ss,
-		ls:      ls,
-		senders: make(map[types.ID]*sender),
+		tr:         t,
+		cl:         cl,
+		ss:         ss,
+		ls:         ls,
+		senders:    make(map[types.ID]*sender),
+		shouldstop: make(chan struct{}, 1),
 	}
 	for _, m := range cl.Members() {
 		h.Add(m)
@@ -94,6 +96,10 @@ func (h *sendHub) Stop() {
 	}
 }
 
+func (h *sendHub) ShouldStopNotify() <-chan struct{} {
+	return h.shouldstop
+}
+
 func (h *sendHub) Add(m *Member) {
 	if _, ok := h.senders[m.ID]; ok {
 		return
@@ -101,7 +107,7 @@ func (h *sendHub) Add(m *Member) {
 	// TODO: considering how to switch between all available peer urls
 	u := fmt.Sprintf("%s%s", m.PickPeerURL(), raftPrefix)
 	fs := h.ls.Follower(m.ID.String())
-	s := newSender(h.tr, u, h.cl.ID(), fs)
+	s := newSender(h.tr, u, h.cl.ID(), fs, h.shouldstop)
 	h.senders[m.ID] = s
 }
 
@@ -128,22 +134,24 @@ func (h *sendHub) Update(m *Member) {
 }
 
 type sender struct {
-	tr  http.RoundTripper
-	u   string
-	cid types.ID
-	fs  *stats.FollowerStats
-	q   chan []byte
-	mu  sync.RWMutex
-	wg  sync.WaitGroup
+	tr         http.RoundTripper
+	u          string
+	cid        types.ID
+	fs         *stats.FollowerStats
+	q          chan []byte
+	mu         sync.RWMutex
+	wg         sync.WaitGroup
+	shouldstop chan struct{}
 }
 
-func newSender(tr http.RoundTripper, u string, cid types.ID, fs *stats.FollowerStats) *sender {
+func newSender(tr http.RoundTripper, u string, cid types.ID, fs *stats.FollowerStats, shouldstop chan struct{}) *sender {
 	s := &sender{
-		tr:  tr,
-		u:   u,
-		cid: cid,
-		fs:  fs,
-		q:   make(chan []byte),
+		tr:         tr,
+		u:          u,
+		cid:        cid,
+		fs:         fs,
+		q:          make(chan []byte),
+		shouldstop: shouldstop,
 	}
 	s.wg.Add(connPerSender)
 	for i := 0; i < connPerSender; i++ {
@@ -201,13 +209,19 @@ func (s *sender) post(data []byte) error {
 
 	switch resp.StatusCode {
 	case http.StatusPreconditionFailed:
-		// TODO: shutdown the etcdserver gracefully?
-		log.Fatalf("etcd: conflicting cluster ID with the target cluster (%s != %s)", resp.Header.Get("X-Etcd-Cluster-ID"), s.cid)
+		select {
+		case s.shouldstop <- struct{}{}:
+		default:
+		}
+		log.Printf("etcdserver: conflicting cluster ID with the target cluster (%s != %s)", resp.Header.Get("X-Etcd-Cluster-ID"), s.cid)
 		return nil
 	case http.StatusForbidden:
-		// TODO: stop the server
-		log.Println("etcd: this member has been permanently removed from the cluster")
-		log.Fatalln("etcd: the data-dir used by this member must be removed so that this host can be re-added with a new member ID")
+		select {
+		case s.shouldstop <- struct{}{}:
+		default:
+		}
+		log.Println("etcdserver: this member has been permanently removed from the cluster")
+		log.Println("etcdserver: the data-dir used by this member must be removed so that this host can be re-added with a new member ID")
 		return nil
 	case http.StatusNoContent:
 		return nil

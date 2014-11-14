@@ -474,7 +474,7 @@ func TestApplyConfChangeError(t *testing.T) {
 			node:    n,
 			Cluster: cl,
 		}
-		err := srv.applyConfChange(tt.cc)
+		_, err := srv.applyConfChange(tt.cc)
 		if err != tt.werr {
 			t.Errorf("#%d: applyConfChange error = %v, want %v", i, err, tt.werr)
 		}
@@ -491,6 +491,42 @@ func TestApplyConfChangeError(t *testing.T) {
 	}
 }
 
+func TestApplyConfChangeShouldStop(t *testing.T) {
+	cl := newCluster("")
+	cl.SetStore(store.New())
+	for i := 1; i <= 3; i++ {
+		cl.AddMember(&Member{ID: types.ID(i)})
+	}
+	srv := &EtcdServer{
+		id:      1,
+		node:    &nodeRecorder{},
+		Cluster: cl,
+		sender:  &nopSender{},
+	}
+	cc := raftpb.ConfChange{
+		Type:   raftpb.ConfChangeRemoveNode,
+		NodeID: 2,
+	}
+	// remove non-local member
+	shouldStop, err := srv.applyConfChange(cc)
+	if err != nil {
+		t.Fatalf("unexpected error %v", err)
+	}
+	if shouldStop != false {
+		t.Errorf("shouldStop = %t, want %t", shouldStop, false)
+	}
+
+	// remove local member
+	cc.NodeID = 1
+	shouldStop, err = srv.applyConfChange(cc)
+	if err != nil {
+		t.Fatalf("unexpected error %v", err)
+	}
+	if shouldStop != true {
+		t.Errorf("shouldStop = %t, want %t", shouldStop, true)
+	}
+}
+
 func TestClusterOf1(t *testing.T) { testServer(t, 1) }
 func TestClusterOf3(t *testing.T) { testServer(t, 3) }
 
@@ -503,10 +539,11 @@ func (s *fakeSender) Send(msgs []raftpb.Message) {
 		s.ss[m.To-1].node.Step(context.TODO(), m)
 	}
 }
-func (s *fakeSender) Add(m *Member)      {}
-func (s *fakeSender) Update(m *Member)   {}
-func (s *fakeSender) Remove(id types.ID) {}
-func (s *fakeSender) Stop()              {}
+func (s *fakeSender) Add(m *Member)                     {}
+func (s *fakeSender) Update(m *Member)                  {}
+func (s *fakeSender) Remove(id types.ID)                {}
+func (s *fakeSender) Stop()                             {}
+func (s *fakeSender) ShouldStopNotify() <-chan struct{} { return nil }
 
 func testServer(t *testing.T, ns uint64) {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -1556,11 +1593,12 @@ func (w *waitWithResponse) Trigger(id uint64, x interface{}) {}
 
 type nopSender struct{}
 
-func (s *nopSender) Send(m []raftpb.Message) {}
-func (s *nopSender) Add(m *Member)           {}
-func (s *nopSender) Remove(id types.ID)      {}
-func (s *nopSender) Update(m *Member)        {}
-func (s *nopSender) Stop()                   {}
+func (s *nopSender) Send(m []raftpb.Message)           {}
+func (s *nopSender) Add(m *Member)                     {}
+func (s *nopSender) Remove(id types.ID)                {}
+func (s *nopSender) Update(m *Member)                  {}
+func (s *nopSender) Stop()                             {}
+func (s *nopSender) ShouldStopNotify() <-chan struct{} { return nil }
 
 func mustMakePeerSlice(t *testing.T, ids ...uint64) []raft.Peer {
 	peers := make([]raft.Peer, len(ids))

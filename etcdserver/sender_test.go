@@ -89,12 +89,40 @@ func TestSendHubRemove(t *testing.T) {
 	}
 }
 
+func TestSendHubShouldStop(t *testing.T) {
+	membs := []*Member{
+		newTestMember(1, []string{"http://a"}, "", nil),
+	}
+	tr := newRespRoundTripper(http.StatusForbidden, nil)
+	cl := newTestCluster(membs)
+	ls := stats.NewLeaderStats("")
+	h := newSendHub(tr, cl, nil, ls)
+	// wait for handle goroutines start
+	// TODO: wait for goroutines ready before return newSender
+	time.Sleep(10 * time.Millisecond)
+
+	shouldstop := h.ShouldStopNotify()
+	select {
+	case <-shouldstop:
+		t.Fatalf("received unexpected shouldstop notification")
+	case <-time.After(10 * time.Millisecond):
+	}
+	h.senders[1].send([]byte("somedata"))
+
+	testutil.ForceGosched()
+	select {
+	case <-shouldstop:
+	default:
+		t.Fatalf("cannot receive stop notification")
+	}
+}
+
 // TestSenderSend tests that send func could post data using roundtripper
 // and increase success count in stats.
 func TestSenderSend(t *testing.T) {
 	tr := &roundTripperRecorder{}
 	fs := &stats.FollowerStats{}
-	s := newSender(tr, "http://10.0.0.1", types.ID(1), fs)
+	s := newSender(tr, "http://10.0.0.1", types.ID(1), fs, nil)
 	// wait for handle goroutines start
 	// TODO: wait for goroutines ready before return newSender
 	time.Sleep(10 * time.Millisecond)
@@ -116,7 +144,7 @@ func TestSenderSend(t *testing.T) {
 func TestSenderExceedMaximalServing(t *testing.T) {
 	tr := newRoundTripperBlocker()
 	fs := &stats.FollowerStats{}
-	s := newSender(tr, "http://10.0.0.1", types.ID(1), fs)
+	s := newSender(tr, "http://10.0.0.1", types.ID(1), fs, nil)
 	// wait for handle goroutines start
 	// TODO: wait for goroutines ready before return newSender
 	time.Sleep(10 * time.Millisecond)
@@ -144,7 +172,7 @@ func TestSenderExceedMaximalServing(t *testing.T) {
 // it increases fail count in stats.
 func TestSenderSendFailed(t *testing.T) {
 	fs := &stats.FollowerStats{}
-	s := newSender(newRespRoundTripper(0, errors.New("blah")), "http://10.0.0.1", types.ID(1), fs)
+	s := newSender(newRespRoundTripper(0, errors.New("blah")), "http://10.0.0.1", types.ID(1), fs, nil)
 	// wait for handle goroutines start
 	// TODO: wait for goroutines ready before return newSender
 	time.Sleep(10 * time.Millisecond)
@@ -162,7 +190,7 @@ func TestSenderSendFailed(t *testing.T) {
 
 func TestSenderPost(t *testing.T) {
 	tr := &roundTripperRecorder{}
-	s := newSender(tr, "http://10.0.0.1", types.ID(1), nil)
+	s := newSender(tr, "http://10.0.0.1", types.ID(1), nil, nil)
 	if err := s.post([]byte("some data")); err != nil {
 		t.Fatalf("unexpect post error: %v", err)
 	}
@@ -204,12 +232,35 @@ func TestSenderPostBad(t *testing.T) {
 		{"http://10.0.0.1", http.StatusCreated, nil},
 	}
 	for i, tt := range tests {
-		s := newSender(newRespRoundTripper(tt.code, tt.err), tt.u, types.ID(1), nil)
+		shouldstop := make(chan struct{})
+		s := newSender(newRespRoundTripper(tt.code, tt.err), tt.u, types.ID(1), nil, shouldstop)
 		err := s.post([]byte("some data"))
 		s.stop()
 
 		if err == nil {
 			t.Errorf("#%d: err = nil, want not nil", i)
+		}
+	}
+}
+
+func TestSenderPostShouldStop(t *testing.T) {
+	tests := []struct {
+		u    string
+		code int
+		err  error
+	}{
+		{"http://10.0.0.1", http.StatusForbidden, nil},
+		{"http://10.0.0.1", http.StatusPreconditionFailed, nil},
+	}
+	for i, tt := range tests {
+		shouldstop := make(chan struct{}, 1)
+		s := newSender(newRespRoundTripper(tt.code, tt.err), tt.u, types.ID(1), nil, shouldstop)
+		s.post([]byte("some data"))
+		s.stop()
+		select {
+		case <-shouldstop:
+		default:
+			t.Fatalf("#%d: cannot receive shouldstop notification", i)
 		}
 	}
 }
