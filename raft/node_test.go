@@ -368,6 +368,39 @@ func TestNodeRestart(t *testing.T) {
 	}
 }
 
+func TestNodeRestartFromSnapshot(t *testing.T) {
+	snap := &raftpb.Snapshot{
+		Data:  []byte("some data"),
+		Nodes: []uint64{1, 2},
+		Index: 2,
+		Term:  1,
+	}
+	entries := []raftpb.Entry{
+		{Term: 1, Index: 2},
+		{Term: 1, Index: 3, Data: []byte("foo")},
+	}
+	st := raftpb.HardState{Term: 1, Commit: 3}
+
+	want := Ready{
+		HardState: emptyState,
+		// commit upto index commit index in st
+		CommittedEntries: entries[1:],
+	}
+
+	n := RestartNode(1, 10, 1, snap, st, entries)
+	if g := <-n.Ready(); !reflect.DeepEqual(g, want) {
+		t.Errorf("g = %+v,\n             w   %+v", g, want)
+	} else {
+		n.Advance()
+	}
+
+	select {
+	case rd := <-n.Ready():
+		t.Errorf("unexpected Ready: %+v", rd)
+	case <-time.After(time.Millisecond):
+	}
+}
+
 // TestCompacts ensures Node.Compact creates a correct raft snapshot and compacts
 // the raft log (call raft.compact)
 func TestNodeCompact(t *testing.T) {
