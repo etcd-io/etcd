@@ -360,7 +360,18 @@ func (s *EtcdServer) run() {
 			// care to apply entries in a single goroutine, and not
 			// race them.
 			if len(rd.CommittedEntries) != 0 {
-				appliedi = s.apply(rd.CommittedEntries)
+				firsti := rd.CommittedEntries[0].Index
+				if appliedi == 0 {
+					appliedi = firsti - 1
+				}
+				if firsti > appliedi+1 {
+					log.Panicf("etcdserver: first index of committed entry[%d] should <= appliedi[%d] + 1", firsti, appliedi)
+				}
+				var ents []raftpb.Entry
+				if appliedi+1-firsti < uint64(len(rd.CommittedEntries)) {
+					ents = rd.CommittedEntries[appliedi+1-firsti:]
+				}
+				appliedi = s.apply(ents)
 			}
 
 			s.node.Advance()
