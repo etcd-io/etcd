@@ -581,7 +581,7 @@ func (s *EtcdServer) publish(retryInterval time.Duration) {
 	req := pb.Request{
 		ID:     GenID(),
 		Method: "PUT",
-		Path:   path.Join(memberStoreKey(s.id), attributesSuffix),
+		Path:   MemberAttributesStorePath(s.id),
 		Val:    string(b),
 	}
 
