@@ -134,6 +134,7 @@ type sender struct {
 	fs  *stats.FollowerStats
 	q   chan []byte
 	mu  sync.RWMutex
+	wg  sync.WaitGroup
 }
 
 func newSender(tr http.RoundTripper, u string, cid types.ID, fs *stats.FollowerStats) *sender {
@@ -144,6 +145,7 @@ func newSender(tr http.RoundTripper, u string, cid types.ID, fs *stats.FollowerS
 		fs:  fs,
 		q:   make(chan []byte),
 	}
+	s.wg.Add(connPerSender)
 	for i := 0; i < connPerSender; i++ {
 		go s.handle()
 	}
@@ -162,9 +164,11 @@ func (s *sender) send(data []byte) error {
 
 func (s *sender) stop() {
 	close(s.q)
+	s.wg.Wait()
 }
 
 func (s *sender) handle() {
+	defer s.wg.Done()
 	for d := range s.q {
 		start := time.Now()
 		err := s.post(d)

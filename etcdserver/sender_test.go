@@ -102,9 +102,6 @@ func TestSenderSend(t *testing.T) {
 		t.Fatalf("unexpect send error: %v", err)
 	}
 	s.stop()
-	// wait for goroutines end
-	// TODO: elegant stop
-	time.Sleep(10 * time.Millisecond)
 
 	if tr.Request() == nil {
 		t.Errorf("sender fails to post the data")
@@ -155,9 +152,6 @@ func TestSenderSendFailed(t *testing.T) {
 		t.Fatalf("unexpect send error: %v", err)
 	}
 	s.stop()
-	// wait for goroutines end
-	// TODO: elegant stop
-	time.Sleep(10 * time.Millisecond)
 
 	fs.Lock()
 	defer fs.Unlock()
