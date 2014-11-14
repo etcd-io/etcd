@@ -349,17 +349,6 @@ func (s *EtcdServer) run() {
 			}
 			s.sender.Send(rd.Messages)
 
-			// TODO(bmizerany): do this in the background, but take
-			// care to apply entries in a single goroutine, and not
-			// race them.
-			if len(rd.CommittedEntries) != 0 {
-				appliedi = s.apply(rd.CommittedEntries)
-			}
-
-			if rd.Snapshot.Index > snapi {
-				snapi = rd.Snapshot.Index
-			}
-
 			// recover from snapshot if it is more updated than current applied
 			if rd.Snapshot.Index > appliedi {
 				if err := s.store.Recovery(rd.Snapshot.Data); err != nil {
@@ -367,9 +356,18 @@ func (s *EtcdServer) run() {
 				}
 				appliedi = rd.Snapshot.Index
 			}
+			// TODO(bmizerany): do this in the background, but take
+			// care to apply entries in a single goroutine, and not
+			// race them.
+			if len(rd.CommittedEntries) != 0 {
+				appliedi = s.apply(rd.CommittedEntries)
+			}
 
 			s.node.Advance()
 
+			if rd.Snapshot.Index > snapi {
+				snapi = rd.Snapshot.Index
+			}
 			if appliedi-snapi > s.snapCount {
 				s.snapshot(appliedi, nodes)
 				snapi = appliedi
