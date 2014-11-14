@@ -349,27 +349,37 @@ func (s *EtcdServer) run() {
 			}
 			s.sender.Send(rd.Messages)
 
-			// TODO(bmizerany): do this in the background, but take
-			// care to apply entries in a single goroutine, and not
-			// race them.
-			if len(rd.CommittedEntries) != 0 {
-				appliedi = s.apply(rd.CommittedEntries)
-			}
-
-			if rd.Snapshot.Index > snapi {
-				snapi = rd.Snapshot.Index
-			}
-
 			// recover from snapshot if it is more updated than current applied
 			if rd.Snapshot.Index > appliedi {
 				if err := s.store.Recovery(rd.Snapshot.Data); err != nil {
 					log.Panicf("recovery store error: %v", err)
 				}
+				s.Cluster.Recover()
 				appliedi = rd.Snapshot.Index
+			}
+			// TODO(bmizerany): do this in the background, but take
+			// care to apply entries in a single goroutine, and not
+			// race them.
+			if len(rd.CommittedEntries) != 0 {
+				firsti := rd.CommittedEntries[0].Index
+				if appliedi == 0 {
+					appliedi = firsti - 1
+				}
+				if firsti > appliedi+1 {
+					log.Panicf("etcdserver: first index of committed entry[%d] should <= appliedi[%d] + 1", firsti, appliedi)
+				}
+				var ents []raftpb.Entry
+				if appliedi+1-firsti < uint64(len(rd.CommittedEntries)) {
+					ents = rd.CommittedEntries[appliedi+1-firsti:]
+				}
+				appliedi = s.apply(ents)
 			}
 
 			s.node.Advance()
 
+			if rd.Snapshot.Index > snapi {
+				snapi = rd.Snapshot.Index
+			}
 			if appliedi-snapi > s.snapCount {
 				s.snapshot(appliedi, nodes)
 				snapi = appliedi

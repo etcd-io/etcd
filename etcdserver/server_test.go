@@ -31,6 +31,7 @@ import (
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/code.google.com/p/go.net/context"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"github.com/coreos/etcd/pkg/pbutil"
 	"github.com/coreos/etcd/pkg/testutil"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft"
@@ -900,11 +901,14 @@ func TestRecvSnapshot(t *testing.T) {
 	n := newReadyNode()
 	st := &storeRecorder{}
 	p := &storageRecorder{}
+	cl := newCluster("abc")
+	cl.SetStore(store.New())
 	s := &EtcdServer{
 		store:   st,
 		sender:  &nopSender{},
 		storage: p,
 		node:    n,
+		Cluster: cl,
 	}
 
 	s.start()
@@ -924,15 +928,19 @@ func TestRecvSnapshot(t *testing.T) {
 }
 
 // TestRecvSlowSnapshot tests that slow snapshot will not be applied
-// to store.
+// to store. The case could happen when server compacts the log and
+// raft returns the compacted snapshot.
 func TestRecvSlowSnapshot(t *testing.T) {
 	n := newReadyNode()
 	st := &storeRecorder{}
+	cl := newCluster("abc")
+	cl.SetStore(store.New())
 	s := &EtcdServer{
 		store:   st,
 		sender:  &nopSender{},
 		storage: &storageRecorder{},
 		node:    n,
+		Cluster: cl,
 	}
 
 	s.start()
@@ -948,6 +956,45 @@ func TestRecvSlowSnapshot(t *testing.T) {
 
 	if g := st.Action(); !reflect.DeepEqual(g, action) {
 		t.Errorf("store action = %v, want %v", g, action)
+	}
+}
+
+// TestApplySnapshotAndCommittedEntries tests that server applies snapshot
+// first and then committed entries.
+func TestApplySnapshotAndCommittedEntries(t *testing.T) {
+	n := newReadyNode()
+	st := &storeRecorder{}
+	cl := newCluster("abc")
+	cl.SetStore(store.New())
+	s := &EtcdServer{
+		store:   st,
+		sender:  &nopSender{},
+		storage: &storageRecorder{},
+		node:    n,
+		Cluster: cl,
+	}
+
+	s.start()
+	req := &pb.Request{Method: "QGET"}
+	n.readyc <- raft.Ready{
+		Snapshot: raftpb.Snapshot{Index: 1},
+		CommittedEntries: []raftpb.Entry{
+			{Index: 2, Data: pbutil.MustMarshal(req)},
+		},
+	}
+	// make goroutines move forward to receive snapshot
+	testutil.ForceGosched()
+	s.Stop()
+
+	actions := st.Action()
+	if len(actions) != 2 {
+		t.Fatalf("len(action) = %d, want 2", len(actions))
+	}
+	if actions[0].name != "Recovery" {
+		t.Errorf("actions[0] = %s, want %s", actions[0].name, "Recovery")
+	}
+	if actions[1].name != "Get" {
+		t.Errorf("actions[1] = %s, want %s", actions[1].name, "Get")
 	}
 }
 

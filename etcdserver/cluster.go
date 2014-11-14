@@ -267,6 +267,10 @@ func (c *Cluster) SetID(id types.ID) { c.id = id }
 
 func (c *Cluster) SetStore(st store.Store) { c.store = st }
 
+func (c *Cluster) Recover() {
+	c.members, c.removed = membersFromStore(c.store)
+}
+
 // ValidateConfigurationChange takes a proposed ConfChange and
 // ensures that it is still valid.
 func (c *Cluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
