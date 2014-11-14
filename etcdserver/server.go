@@ -91,6 +91,7 @@ type Sender interface {
 	Remove(id types.ID)
 	Update(m *Member)
 	Stop()
+	ShouldStopNotify() <-chan struct{}
 }
 
 type Storage interface {
@@ -327,6 +328,14 @@ func (s *EtcdServer) run() {
 	// snapi indicates the index of the last submitted snapshot request
 	var snapi, appliedi uint64
 	var nodes []uint64
+	var shouldstop bool
+	shouldstopC := s.sender.ShouldStopNotify()
+
+	defer func() {
+		s.node.Stop()
+		s.sender.Stop()
+		close(s.done)
+	}()
 	for {
 		select {
 		case <-s.Ticker:
@@ -372,7 +381,9 @@ func (s *EtcdServer) run() {
 				if appliedi+1-firsti < uint64(len(rd.CommittedEntries)) {
 					ents = rd.CommittedEntries[appliedi+1-firsti:]
 				}
-				appliedi = s.apply(ents)
+				if appliedi, shouldstop = s.apply(ents); shouldstop {
+					return
+				}
 			}
 
 			s.node.Advance()
@@ -386,10 +397,9 @@ func (s *EtcdServer) run() {
 			}
 		case <-syncC:
 			s.sync(defaultSyncTimeout)
+		case <-shouldstopC:
+			return
 		case <-s.stop:
-			s.node.Stop()
-			s.sender.Stop()
-			close(s.done)
 			return
 		}
 	}
@@ -612,7 +622,7 @@ func getExpirationTime(r *pb.Request) time.Time {
 
 // apply takes an Entry received from Raft (after it has been committed) and
 // applies it to the current state of the EtcdServer
-func (s *EtcdServer) apply(es []raftpb.Entry) uint64 {
+func (s *EtcdServer) apply(es []raftpb.Entry) (uint64, bool) {
 	var applied uint64
 	for i := range es {
 		e := es[i]
@@ -624,7 +634,11 @@ func (s *EtcdServer) apply(es []raftpb.Entry) uint64 {
 		case raftpb.EntryConfChange:
 			var cc raftpb.ConfChange
 			pbutil.MustUnmarshal(&cc, e.Data)
-			s.w.Trigger(cc.ID, s.applyConfChange(cc))
+			shouldstop, err := s.applyConfChange(cc)
+			s.w.Trigger(cc.ID, err)
+			if shouldstop {
+				return applied, true
+			}
 		default:
 			log.Panicf("entry type should be either EntryNormal or EntryConfChange")
 		}
@@ -632,7 +646,7 @@ func (s *EtcdServer) apply(es []raftpb.Entry) uint64 {
 		atomic.StoreUint64(&s.raftTerm, e.Term)
 		applied = e.Index
 	}
-	return applied
+	return applied, false
 }
 
 // applyRequest interprets r as a call to store.X and returns a Response interpreted
@@ -686,11 +700,11 @@ func (s *EtcdServer) applyRequest(r pb.Request) Response {
 
 // applyConfChange applies a ConfChange to the server. It is only
 // invoked with a ConfChange that has already passed through Raft
-func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange) error {
+func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange) (bool, error) {
 	if err := s.Cluster.ValidateConfigurationChange(cc); err != nil {
 		cc.NodeID = raft.None
 		s.node.ApplyConfChange(cc)
-		return err
+		return false, err
 	}
 	s.node.ApplyConfChange(cc)
 	switch cc.Type {
@@ -714,6 +728,8 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange) error {
 		s.Cluster.RemoveMember(id)
 		if id == s.id {
 			log.Printf("etcdserver: removed local member %s from cluster %s", id, s.Cluster.ID())
+			log.Println("etcdserver: the data-dir used by this member must be removed so that this host can be re-added with a new member ID")
+			return true, nil
 		} else {
 			s.sender.Remove(id)
 			log.Printf("etcdserver: removed member %s from cluster %s", id, s.Cluster.ID())
@@ -734,7 +750,7 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange) error {
 			log.Printf("etcdserver: update member %s %v in cluster %s", m.ID, m.PeerURLs, s.Cluster.ID())
 		}
 	}
-	return nil
+	return false, nil
 }
 
 // TODO: non-blocking snapshot
