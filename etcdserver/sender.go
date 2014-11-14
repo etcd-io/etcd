@@ -34,6 +34,7 @@ import (
 const (
 	raftPrefix    = "/raft"
 	connPerSender = 4
+	senderBufSize = connPerSender * 4
 )
 
 type sendHub struct {
@@ -150,7 +151,7 @@ func newSender(tr http.RoundTripper, u string, cid types.ID, fs *stats.FollowerS
 		u:          u,
 		cid:        cid,
 		fs:         fs,
-		q:          make(chan []byte),
+		q:          make(chan []byte, senderBufSize),
 		shouldstop: shouldstop,
 	}
 	s.wg.Add(connPerSender)
