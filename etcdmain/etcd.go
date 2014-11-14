@@ -110,8 +110,8 @@ func init() {
 
 	fs.Var(flags.NewURLsValue("http://localhost:2380,http://localhost:7001"), "initial-advertise-peer-urls", "List of this member's peer URLs to advertise to the rest of the cluster")
 	fs.Var(flags.NewURLsValue("http://localhost:2379,http://localhost:4001"), "advertise-client-urls", "List of this member's client URLs to advertise to the rest of the cluster")
-	fs.Var(flags.NewURLsValue("http://localhost:2380,http://localhost:7001"), "listen-peer-urls", "List of URLs to listen on for peer traffic")
-	fs.Var(flags.NewURLsValue("http://localhost:2379,http://localhost:4001"), "listen-client-urls", "List of URLs to listen on for client traffic")
+	fs.Var(flags.NewURLsValue("http://0.0.0.0:2380,http://0.0.0.0:7001"), "listen-peer-urls", "List of URLs to listen on for peer traffic")
+	fs.Var(flags.NewURLsValue("http://0.0.0.0:2379,http://0.0.0.0:4001"), "listen-client-urls", "List of URLs to listen on for client traffic")
 
 	fs.Var(corsInfo, "cors", "Comma-separated white list of origins for CORS (cross-origin resource sharing).")
 
