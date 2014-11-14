@@ -34,17 +34,18 @@ var ErrStorageEmpty = errors.New("storage is empty")
 // become inoperable and refuse to participate in elections; the
 // application is responsible for cleanup and recovery in this case.
 type Storage interface {
-	// GetEntries returns a slice of log entries in the range [lo,hi).
-	GetEntries(lo, hi uint64) ([]pb.Entry, error)
+	// Entries returns a slice of log entries in the range [lo,hi).
+	Entries(lo, hi uint64) ([]pb.Entry, error)
 	// GetLastIndex returns the index of the last entry in the log.
 	// If the log is empty it returns ErrStorageEmpty.
-	GetLastIndex() (uint64, error)
+	LastIndex() (uint64, error)
 	// GetFirstIndex returns the index of the first log entry that is
 	// available via GetEntries (older entries have been incorporated
 	// into the latest Snapshot).
-	GetFirstIndex() (uint64, error)
-	// Compact discards all log entries prior to i, creating a snapshot
-	// which can be used to reconstruct the state at that point.
+	FirstIndex() (uint64, error)
+	// Compact discards all log entries prior to i.
+	// TODO(bdarnell): Create a snapshot which can be used to
+	// reconstruct the state at that point.
 	Compact(i uint64) error
 }
 
@@ -67,15 +68,15 @@ func NewMemoryStorage() *MemoryStorage {
 	return &MemoryStorage{}
 }
 
-// GetEntries implements the Storage interface.
-func (ms *MemoryStorage) GetEntries(lo, hi uint64) ([]pb.Entry, error) {
+// Entries implements the Storage interface.
+func (ms *MemoryStorage) Entries(lo, hi uint64) ([]pb.Entry, error) {
 	ms.Lock()
 	defer ms.Unlock()
 	return ms.ents[lo-ms.offset : hi-ms.offset], nil
 }
 
-// GetLastIndex implements the Storage interface.
-func (ms *MemoryStorage) GetLastIndex() (uint64, error) {
+// LastIndex implements the Storage interface.
+func (ms *MemoryStorage) LastIndex() (uint64, error) {
 	ms.Lock()
 	defer ms.Unlock()
 	if len(ms.ents) == 0 {
@@ -84,8 +85,8 @@ func (ms *MemoryStorage) GetLastIndex() (uint64, error) {
 	return ms.offset + uint64(len(ms.ents)) - 1, nil
 }
 
-// GetFirstIndex implements the Storage interface.
-func (ms *MemoryStorage) GetFirstIndex() (uint64, error) {
+// FirstIndex implements the Storage interface.
+func (ms *MemoryStorage) FirstIndex() (uint64, error) {
 	ms.Lock()
 	defer ms.Unlock()
 	return ms.offset, nil

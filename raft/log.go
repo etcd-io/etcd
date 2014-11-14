@@ -52,7 +52,7 @@ func newLog(storage Storage) *raftLog {
 	log := &raftLog{
 		storage: storage,
 	}
-	lastIndex, err := storage.GetLastIndex()
+	lastIndex, err := storage.LastIndex()
 	if err == ErrStorageEmpty {
 		// When starting from scratch populate the list with a dummy entry at term zero.
 		log.unstableEnts = make([]pb.Entry, 1)
@@ -94,6 +94,9 @@ func (l *raftLog) maybeAppend(index, logTerm, committed uint64, ents ...pb.Entry
 }
 
 func (l *raftLog) append(after uint64, ents ...pb.Entry) uint64 {
+	if after < l.committed {
+		log.Panicf("appending after %d, but already committed through %d", after, l.committed)
+	}
 	if after < l.unstable {
 		// The log is being truncated to before our current unstable
 		// portion, so discard it and reset unstable.
@@ -132,9 +135,7 @@ func (l *raftLog) unstableEntries() []pb.Entry {
 	if len(l.unstableEnts) == 0 {
 		return nil
 	}
-	cpy := make([]pb.Entry, len(l.unstableEnts))
-	copy(cpy, l.unstableEnts)
-	return cpy
+	return append([]pb.Entry(nil), l.unstableEnts...)
 }
 
 // nextEnts returns all the available entries for execution.
@@ -147,7 +148,7 @@ func (l *raftLog) nextEnts() (ents []pb.Entry) {
 }
 
 func (l *raftLog) firstIndex() uint64 {
-	index, err := l.storage.GetFirstIndex()
+	index, err := l.storage.FirstIndex()
 	if err != nil {
 		panic(err) // TODO(bdarnell)
 	}
@@ -158,7 +159,7 @@ func (l *raftLog) lastIndex() uint64 {
 	if len(l.unstableEnts) > 0 {
 		return l.unstable + uint64(len(l.unstableEnts)) - 1
 	}
-	index, err := l.storage.GetLastIndex()
+	index, err := l.storage.LastIndex()
 	if err != nil {
 		panic(err) // TODO(bdarnell)
 	}
@@ -176,6 +177,10 @@ func (l *raftLog) appliedTo(i uint64) {
 }
 
 func (l *raftLog) stableTo(i uint64) {
+	if i < l.unstable || i+1-l.unstable > uint64(len(l.unstableEnts)) {
+		log.Panicf("stableTo(%d) is out of range (unstable=%d, len(unstableEnts)=%d)",
+			i, l.unstable, len(l.unstableEnts))
+	}
 	l.unstableEnts = l.unstableEnts[i+1-l.unstable:]
 	l.unstable = i + 1
 }
@@ -247,11 +252,11 @@ func (l *raftLog) compact(i uint64) uint64 {
 		panic(err) // TODO(bdarnell)
 	}
 	l.unstable = max(i+1, l.unstable)
-	firstIndex, err := l.storage.GetFirstIndex()
+	firstIndex, err := l.storage.FirstIndex()
 	if err != nil {
 		panic(err) // TODO(bdarnell)
 	}
-	lastIndex, err := l.storage.GetLastIndex()
+	lastIndex, err := l.storage.LastIndex()
 	if err != nil {
 		panic(err) // TODO(bdarnell)
 	}
@@ -297,7 +302,7 @@ func (l *raftLog) slice(lo uint64, hi uint64) []pb.Entry {
 	}
 	var ents []pb.Entry
 	if lo < l.unstable {
-		storedEnts, err := l.storage.GetEntries(lo, min(hi, l.unstable))
+		storedEnts, err := l.storage.Entries(lo, min(hi, l.unstable))
 		if err != nil {
 			panic(err) // TODO(bdarnell)
 		}

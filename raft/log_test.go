@@ -495,7 +495,7 @@ func TestAt(t *testing.T) {
 
 	l := newLog(NewMemoryStorage())
 	l.restore(pb.Snapshot{Index: offset})
-	for i = 0; i < num; i++ {
+	for i = 1; i < num; i++ {
 		l.append(offset+i-1, pb.Entry{Term: i})
 	}
 
@@ -525,7 +525,7 @@ func TestSlice(t *testing.T) {
 
 	l := newLog(NewMemoryStorage())
 	l.restore(pb.Snapshot{Index: offset})
-	for i = 0; i < num; i++ {
+	for i = 1; i < num; i++ {
 		l.append(offset+i-1, pb.Entry{Term: i})
 	}
 
