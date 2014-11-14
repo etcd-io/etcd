@@ -354,6 +354,7 @@ func (s *EtcdServer) run() {
 				if err := s.store.Recovery(rd.Snapshot.Data); err != nil {
 					log.Panicf("recovery store error: %v", err)
 				}
+				s.Cluster.Recover()
 				appliedi = rd.Snapshot.Index
 			}
 			// TODO(bmizerany): do this in the background, but take

@@ -901,11 +901,14 @@ func TestRecvSnapshot(t *testing.T) {
 	n := newReadyNode()
 	st := &storeRecorder{}
 	p := &storageRecorder{}
+	cl := newCluster("abc")
+	cl.SetStore(store.New())
 	s := &EtcdServer{
 		store:   st,
 		sender:  &nopSender{},
 		storage: p,
 		node:    n,
+		Cluster: cl,
 	}
 
 	s.start()
@@ -930,11 +933,14 @@ func TestRecvSnapshot(t *testing.T) {
 func TestRecvSlowSnapshot(t *testing.T) {
 	n := newReadyNode()
 	st := &storeRecorder{}
+	cl := newCluster("abc")
+	cl.SetStore(store.New())
 	s := &EtcdServer{
 		store:   st,
 		sender:  &nopSender{},
 		storage: &storageRecorder{},
 		node:    n,
+		Cluster: cl,
 	}
 
 	s.start()
@@ -958,11 +964,14 @@ func TestRecvSlowSnapshot(t *testing.T) {
 func TestApplySnapshotAndCommittedEntries(t *testing.T) {
 	n := newReadyNode()
 	st := &storeRecorder{}
+	cl := newCluster("abc")
+	cl.SetStore(store.New())
 	s := &EtcdServer{
 		store:   st,
 		sender:  &nopSender{},
 		storage: &storageRecorder{},
 		node:    n,
+		Cluster: cl,
 	}
 
 	s.start()
