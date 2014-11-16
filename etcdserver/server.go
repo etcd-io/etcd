@@ -308,7 +308,11 @@ func (s *EtcdServer) start() {
 	s.w = wait.New()
 	s.done = make(chan struct{})
 	s.stop = make(chan struct{})
-	s.stats.Initialize()
+	var leader string
+	if s.lstats != nil {
+		leader = s.lstats.Leader
+	}
+	s.stats.Initialize(leader)
 	// TODO: if this is an empty log, writes all peer infos
 	// into the first entry
 	go s.run()

@@ -70,13 +70,14 @@ func (ss *ServerStats) JSON() []byte {
 }
 
 // Initialize clears the statistics of ServerStats and resets its start time
-func (ss *ServerStats) Initialize() {
+func (ss *ServerStats) Initialize(leader string) {
 	if ss == nil {
 		return
 	}
 	now := time.Now()
 	ss.StartTime = now
 	ss.LeaderInfo.StartTime = now
+	ss.LeaderInfo.Name = leader
 	ss.sendRateQueue = &statsQueue{
 		back: -1,
 	}
