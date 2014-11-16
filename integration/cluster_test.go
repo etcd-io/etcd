@@ -99,6 +99,27 @@ func testDoubleClusterSize(t *testing.T, size int) {
 	clusterMustProgress(t, c)
 }
 
+func TestDecreaseClusterSizeOf3(t *testing.T) { testDecreaseClusterSize(t, 3) }
+func TestDecreaseClusterSizeOf5(t *testing.T) {
+	t.Skip("enable after reducing the election collision rate")
+	// election collision rate is too high when enabling --race
+	testDecreaseClusterSize(t, 5)
+}
+
+func testDecreaseClusterSize(t *testing.T, size int) {
+	defer afterTest(t)
+	c := NewCluster(t, size)
+	c.Launch(t)
+	defer c.Terminate(t)
+
+	for i := 0; i < size-1; i++ {
+		id := c.Members[len(c.Members)-1].s.ID()
+		c.RemoveMember(t, uint64(id))
+		c.waitLeader(t)
+	}
+	clusterMustProgress(t, c)
+}
+
 // clusterMustProgress ensures that cluster can make progress. It creates
 // a key first, and check the new key could be got from all client urls of
 // the cluster.
@@ -251,6 +272,32 @@ func (c *cluster) AddMember(t *testing.T) {
 	c.waitMembersMatch(t, c.HTTPMembers())
 }
 
+func (c *cluster) RemoveMember(t *testing.T, id uint64) {
+	// send remove request to the cluster
+	cc := mustNewHTTPClient(t, []string{c.URL(0)})
+	ma := client.NewMembersAPI(cc)
+	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+	if err := ma.Remove(ctx, types.ID(id).String()); err != nil {
+		t.Fatalf("unexpected remove error %v", err)
+	}
+	cancel()
+	newMembers := make([]*member, 0)
+	for _, m := range c.Members {
+		if uint64(m.s.ID()) != id {
+			newMembers = append(newMembers, m)
+		} else {
+			select {
+			case <-m.s.StopNotify():
+				m.Terminate(t)
+			case <-time.After(time.Second):
+				t.Fatalf("failed to remove member %s in one second", m.s.ID())
+			}
+		}
+	}
+	c.Members = newMembers
+	c.waitMembersMatch(t, c.HTTPMembers())
+}
+
 func (c *cluster) Terminate(t *testing.T) {
 	for _, m := range c.Members {
 		m.Terminate(t)
@@ -272,6 +319,26 @@ func (c *cluster) waitMembersMatch(t *testing.T, membs []httptypes.Member) {
 		}
 	}
 	return
+}
+
+func (c *cluster) waitLeader(t *testing.T) {
+	possibleLead := make(map[uint64]bool)
+	var lead uint64
+	for _, m := range c.Members {
+		possibleLead[uint64(m.s.ID())] = true
+	}
+
+	for lead == 0 || !possibleLead[lead] {
+		lead = 0
+		for _, m := range c.Members {
+			if lead != 0 && lead != m.s.Lead() {
+				lead = 0
+				break
+			}
+			lead = m.s.Lead()
+		}
+		time.Sleep(10 * tickDuration)
+	}
 }
 
 func (c *cluster) name(i int) string {
