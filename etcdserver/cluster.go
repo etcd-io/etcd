@@ -226,33 +226,6 @@ func (c *Cluster) String() string {
 	return strings.Join(sl, ",")
 }
 
-// ValidateAndAssignIDs validates the given members by matching their PeerURLs
-// with the existing members in the cluster. If the validation succeeds, it
-// assigns the IDs from the given members to the existing members in the
-// cluster. If the validation fails, an error will be returned.
-func (c *Cluster) ValidateAndAssignIDs(membs []*Member) error {
-	if len(c.members) != len(membs) {
-		return fmt.Errorf("member count is unequal")
-	}
-	omembs := make([]*Member, 0)
-	for _, m := range c.members {
-		omembs = append(omembs, m)
-	}
-	sort.Sort(SortableMemberSliceByPeerURLs(omembs))
-	sort.Sort(SortableMemberSliceByPeerURLs(membs))
-	for i := range omembs {
-		if !reflect.DeepEqual(omembs[i].PeerURLs, membs[i].PeerURLs) {
-			return fmt.Errorf("unmatched member while checking PeerURLs")
-		}
-		omembs[i].ID = membs[i].ID
-	}
-	c.members = make(map[types.ID]*Member)
-	for _, m := range omembs {
-		c.members[m.ID] = m
-	}
-	return nil
-}
-
 func (c *Cluster) genID() {
 	mIDs := c.MemberIDs()
 	b := make([]byte, 8*len(mIDs))
@@ -266,6 +239,10 @@ func (c *Cluster) genID() {
 func (c *Cluster) SetID(id types.ID) { c.id = id }
 
 func (c *Cluster) SetStore(st store.Store) { c.store = st }
+
+func (c *Cluster) Recover() {
+	c.members, c.removed = membersFromStore(c.store)
+}
 
 // ValidateConfigurationChange takes a proposed ConfChange and
 // ensures that it is still valid.
@@ -436,6 +413,32 @@ func membersFromStore(st store.Store) (map[types.ID]*Member, map[types.ID]bool) 
 		removed[mustParseMemberIDFromKey(n.Key)] = true
 	}
 	return members, removed
+}
+
+// ValidateClusterAndAssignIDs validates the local cluster by matching the PeerURLs
+// with the existing cluster. If the validation succeeds, it assigns the IDs
+// from the existing cluster to the local cluster.
+// If the validation fails, an error will be returned.
+func ValidateClusterAndAssignIDs(local *Cluster, existing *Cluster) error {
+	ems := existing.Members()
+	lms := local.Members()
+	if len(ems) != len(lms) {
+		return fmt.Errorf("member count is unequal")
+	}
+	sort.Sort(SortableMemberSliceByPeerURLs(ems))
+	sort.Sort(SortableMemberSliceByPeerURLs(lms))
+
+	for i := range ems {
+		if !reflect.DeepEqual(ems[i].PeerURLs, lms[i].PeerURLs) {
+			return fmt.Errorf("unmatched member while checking PeerURLs")
+		}
+		lms[i].ID = ems[i].ID
+	}
+	local.members = make(map[types.ID]*Member)
+	for _, m := range lms {
+		local.members[m.ID] = m
+	}
+	return nil
 }
 
 func isKeyNotFound(err error) bool {

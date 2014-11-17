@@ -31,6 +31,7 @@ import (
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/code.google.com/p/go.net/context"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"github.com/coreos/etcd/pkg/pbutil"
 	"github.com/coreos/etcd/pkg/testutil"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft"
@@ -473,7 +474,7 @@ func TestApplyConfChangeError(t *testing.T) {
 			node:    n,
 			Cluster: cl,
 		}
-		err := srv.applyConfChange(tt.cc)
+		_, err := srv.applyConfChange(tt.cc)
 		if err != tt.werr {
 			t.Errorf("#%d: applyConfChange error = %v, want %v", i, err, tt.werr)
 		}
@@ -490,6 +491,42 @@ func TestApplyConfChangeError(t *testing.T) {
 	}
 }
 
+func TestApplyConfChangeShouldStop(t *testing.T) {
+	cl := newCluster("")
+	cl.SetStore(store.New())
+	for i := 1; i <= 3; i++ {
+		cl.AddMember(&Member{ID: types.ID(i)})
+	}
+	srv := &EtcdServer{
+		id:      1,
+		node:    &nodeRecorder{},
+		Cluster: cl,
+		sender:  &nopSender{},
+	}
+	cc := raftpb.ConfChange{
+		Type:   raftpb.ConfChangeRemoveNode,
+		NodeID: 2,
+	}
+	// remove non-local member
+	shouldStop, err := srv.applyConfChange(cc)
+	if err != nil {
+		t.Fatalf("unexpected error %v", err)
+	}
+	if shouldStop != false {
+		t.Errorf("shouldStop = %t, want %t", shouldStop, false)
+	}
+
+	// remove local member
+	cc.NodeID = 1
+	shouldStop, err = srv.applyConfChange(cc)
+	if err != nil {
+		t.Fatalf("unexpected error %v", err)
+	}
+	if shouldStop != true {
+		t.Errorf("shouldStop = %t, want %t", shouldStop, true)
+	}
+}
+
 func TestClusterOf1(t *testing.T) { testServer(t, 1) }
 func TestClusterOf3(t *testing.T) { testServer(t, 3) }
 
@@ -502,10 +539,11 @@ func (s *fakeSender) Send(msgs []raftpb.Message) {
 		s.ss[m.To-1].node.Step(context.TODO(), m)
 	}
 }
-func (s *fakeSender) Add(m *Member)      {}
-func (s *fakeSender) Update(m *Member)   {}
-func (s *fakeSender) Remove(id types.ID) {}
-func (s *fakeSender) Stop()              {}
+func (s *fakeSender) Add(m *Member)                     {}
+func (s *fakeSender) Update(m *Member)                  {}
+func (s *fakeSender) Remove(id types.ID)                {}
+func (s *fakeSender) Stop()                             {}
+func (s *fakeSender) ShouldStopNotify() <-chan struct{} { return nil }
 
 func testServer(t *testing.T, ns uint64) {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -688,6 +726,8 @@ func TestDoProposalStopped(t *testing.T) {
 	tk := make(chan time.Time)
 	// this makes <-tk always successful, which accelarates internal clock
 	close(tk)
+	cl := newCluster("abc")
+	cl.SetStore(store.New())
 	srv := &EtcdServer{
 		// TODO: use fake node for better testability
 		node:        n,
@@ -696,6 +736,7 @@ func TestDoProposalStopped(t *testing.T) {
 		sender:      &nopSender{},
 		storage:     &storageRecorder{},
 		Ticker:      tk,
+		Cluster:     cl,
 	}
 	srv.start()
 
@@ -941,12 +982,15 @@ func TestRecvSnapshot(t *testing.T) {
 	n := newReadyNode()
 	st := &storeRecorder{}
 	p := &storageRecorder{}
+	cl := newCluster("abc")
+	cl.SetStore(store.New())
 	s := &EtcdServer{
 		store:       st,
 		sender:      &nopSender{},
 		storage:     p,
 		node:        n,
 		raftStorage: raft.NewMemoryStorage(),
+		Cluster:     cl,
 	}
 
 	s.start()
@@ -966,16 +1010,20 @@ func TestRecvSnapshot(t *testing.T) {
 }
 
 // TestRecvSlowSnapshot tests that slow snapshot will not be applied
-// to store.
+// to store. The case could happen when server compacts the log and
+// raft returns the compacted snapshot.
 func TestRecvSlowSnapshot(t *testing.T) {
 	n := newReadyNode()
 	st := &storeRecorder{}
+	cl := newCluster("abc")
+	cl.SetStore(store.New())
 	s := &EtcdServer{
 		store:       st,
 		sender:      &nopSender{},
 		storage:     &storageRecorder{},
 		node:        n,
 		raftStorage: raft.NewMemoryStorage(),
+		Cluster:     cl,
 	}
 
 	s.start()
@@ -991,6 +1039,46 @@ func TestRecvSlowSnapshot(t *testing.T) {
 
 	if g := st.Action(); !reflect.DeepEqual(g, action) {
 		t.Errorf("store action = %v, want %v", g, action)
+	}
+}
+
+// TestApplySnapshotAndCommittedEntries tests that server applies snapshot
+// first and then committed entries.
+func TestApplySnapshotAndCommittedEntries(t *testing.T) {
+	t.Skip("TODO(bdarnell): re-enable this test")
+	n := newReadyNode()
+	st := &storeRecorder{}
+	cl := newCluster("abc")
+	cl.SetStore(store.New())
+	s := &EtcdServer{
+		store:   st,
+		sender:  &nopSender{},
+		storage: &storageRecorder{},
+		node:    n,
+		Cluster: cl,
+	}
+
+	s.start()
+	req := &pb.Request{Method: "QGET"}
+	n.readyc <- raft.Ready{
+		Snapshot: raftpb.Snapshot{Index: 1},
+		CommittedEntries: []raftpb.Entry{
+			{Index: 2, Data: pbutil.MustMarshal(req)},
+		},
+	}
+	// make goroutines move forward to receive snapshot
+	testutil.ForceGosched()
+	s.Stop()
+
+	actions := st.Action()
+	if len(actions) != 2 {
+		t.Fatalf("len(action) = %d, want 2", len(actions))
+	}
+	if actions[0].name != "Recovery" {
+		t.Errorf("actions[0] = %s, want %s", actions[0].name, "Recovery")
+	}
+	if actions[1].name != "Get" {
+		t.Errorf("actions[1] = %s, want %s", actions[1].name, "Get")
 	}
 }
 
@@ -1157,10 +1245,9 @@ func TestPublishStopped(t *testing.T) {
 		Cluster: &Cluster{},
 		w:       &waitRecorder{},
 		done:    make(chan struct{}),
-		stopped: make(chan struct{}),
+		stop:    make(chan struct{}),
 	}
-	close(srv.stopped)
-	srv.Stop()
+	close(srv.done)
 	srv.publish(time.Hour)
 }
 
@@ -1172,13 +1259,37 @@ func TestPublishRetry(t *testing.T) {
 		w:    &waitRecorder{},
 		done: make(chan struct{}),
 	}
-	time.AfterFunc(500*time.Microsecond, srv.Stop)
+	time.AfterFunc(500*time.Microsecond, func() { close(srv.done) })
 	srv.publish(10 * time.Nanosecond)
 
 	action := n.Action()
 	// multiple Proposes
 	if n := len(action); n < 2 {
 		t.Errorf("len(action) = %d, want >= 2", n)
+	}
+}
+
+func TestStopNotify(t *testing.T) {
+	s := &EtcdServer{
+		stop: make(chan struct{}),
+		done: make(chan struct{}),
+	}
+	go func() {
+		<-s.stop
+		close(s.done)
+	}()
+
+	notifier := s.StopNotify()
+	select {
+	case <-notifier:
+		t.Fatalf("received unexpected stop notification")
+	default:
+	}
+	s.Stop()
+	select {
+	case <-notifier:
+	default:
+		t.Fatalf("cannot receive stop notification")
 	}
 }
 
@@ -1532,11 +1643,12 @@ func (w *waitWithResponse) Trigger(id uint64, x interface{}) {}
 
 type nopSender struct{}
 
-func (s *nopSender) Send(m []raftpb.Message) {}
-func (s *nopSender) Add(m *Member)           {}
-func (s *nopSender) Remove(id types.ID)      {}
-func (s *nopSender) Update(m *Member)        {}
-func (s *nopSender) Stop()                   {}
+func (s *nopSender) Send(m []raftpb.Message)           {}
+func (s *nopSender) Add(m *Member)                     {}
+func (s *nopSender) Remove(id types.ID)                {}
+func (s *nopSender) Update(m *Member)                  {}
+func (s *nopSender) Stop()                             {}
+func (s *nopSender) ShouldStopNotify() <-chan struct{} { return nil }
 
 func mustMakePeerSlice(t *testing.T, ids ...uint64) []raft.Peer {
 	peers := make([]raft.Peer, len(ids))

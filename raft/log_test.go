@@ -336,6 +336,36 @@ func TestCompactionSideEffects(t *testing.T) {
 	}
 }
 
+func TestNextEnts(t *testing.T) {
+	snap := pb.Snapshot{Term: 1, Index: 3}
+	ents := []pb.Entry{
+		{Term: 1, Index: 4},
+		{Term: 1, Index: 5},
+		{Term: 1, Index: 6},
+	}
+	tests := []struct {
+		applied uint64
+		wents   []pb.Entry
+	}{
+		{0, ents[:2]},
+		{3, ents[:2]},
+		{4, ents[1:2]},
+		{5, nil},
+	}
+	for i, tt := range tests {
+		raftLog := newLog(NewMemoryStorage())
+		raftLog.restore(snap)
+		raftLog.append(snap.Index, ents...)
+		raftLog.maybeCommit(5, 1)
+		raftLog.appliedTo(tt.applied)
+
+		ents := raftLog.nextEnts()
+		if !reflect.DeepEqual(ents, tt.wents) {
+			t.Errorf("#%d: ents = %+v, want %+v", i, ents, tt.wents)
+		}
+	}
+}
+
 func TestUnstableEnts(t *testing.T) {
 	previousEnts := []pb.Entry{{Term: 1, Index: 1}, {Term: 2, Index: 2}}
 	tests := []struct {
@@ -447,9 +477,6 @@ func TestLogRestore(t *testing.T) {
 	}
 	if raftLog.firstIndex() != index+1 {
 		t.Errorf("firstIndex = %d, want %d", raftLog.firstIndex(), index+1)
-	}
-	if raftLog.applied != index {
-		t.Errorf("applied = %d, want %d", raftLog.applied, index)
 	}
 	if raftLog.committed != index {
 		t.Errorf("comitted = %d, want %d", raftLog.committed, index)

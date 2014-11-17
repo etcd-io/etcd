@@ -99,6 +99,27 @@ func testDoubleClusterSize(t *testing.T, size int) {
 	clusterMustProgress(t, c)
 }
 
+func TestDecreaseClusterSizeOf3(t *testing.T) { testDecreaseClusterSize(t, 3) }
+func TestDecreaseClusterSizeOf5(t *testing.T) {
+	t.Skip("enable after reducing the election collision rate")
+	// election collision rate is too high when enabling --race
+	testDecreaseClusterSize(t, 5)
+}
+
+func testDecreaseClusterSize(t *testing.T, size int) {
+	defer afterTest(t)
+	c := NewCluster(t, size)
+	c.Launch(t)
+	defer c.Terminate(t)
+
+	for i := 0; i < size-1; i++ {
+		id := c.Members[len(c.Members)-1].s.ID()
+		c.RemoveMember(t, uint64(id))
+		c.waitLeader(t)
+	}
+	clusterMustProgress(t, c)
+}
+
 // clusterMustProgress ensures that cluster can make progress. It creates
 // a key first, and check the new key could be got from all client urls of
 // the cluster.
@@ -251,6 +272,32 @@ func (c *cluster) AddMember(t *testing.T) {
 	c.waitMembersMatch(t, c.HTTPMembers())
 }
 
+func (c *cluster) RemoveMember(t *testing.T, id uint64) {
+	// send remove request to the cluster
+	cc := mustNewHTTPClient(t, []string{c.URL(0)})
+	ma := client.NewMembersAPI(cc)
+	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+	if err := ma.Remove(ctx, types.ID(id).String()); err != nil {
+		t.Fatalf("unexpected remove error %v", err)
+	}
+	cancel()
+	newMembers := make([]*member, 0)
+	for _, m := range c.Members {
+		if uint64(m.s.ID()) != id {
+			newMembers = append(newMembers, m)
+		} else {
+			select {
+			case <-m.s.StopNotify():
+				m.Terminate(t)
+			case <-time.After(time.Second):
+				t.Fatalf("failed to remove member %s in one second", m.s.ID())
+			}
+		}
+	}
+	c.Members = newMembers
+	c.waitMembersMatch(t, c.HTTPMembers())
+}
+
 func (c *cluster) Terminate(t *testing.T) {
 	for _, m := range c.Members {
 		m.Terminate(t)
@@ -274,6 +321,26 @@ func (c *cluster) waitMembersMatch(t *testing.T, membs []httptypes.Member) {
 	return
 }
 
+func (c *cluster) waitLeader(t *testing.T) {
+	possibleLead := make(map[uint64]bool)
+	var lead uint64
+	for _, m := range c.Members {
+		possibleLead[uint64(m.s.ID())] = true
+	}
+
+	for lead == 0 || !possibleLead[lead] {
+		lead = 0
+		for _, m := range c.Members {
+			if lead != 0 && lead != m.s.Lead() {
+				lead = 0
+				break
+			}
+			lead = m.s.Lead()
+		}
+		time.Sleep(10 * tickDuration)
+	}
+}
+
 func (c *cluster) name(i int) string {
 	return fmt.Sprint("node", i)
 }
@@ -291,6 +358,24 @@ func isMembersEqual(membs []httptypes.Member, wmembs []httptypes.Member) bool {
 
 func newLocalListener(t *testing.T) net.Listener {
 	l, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return l
+}
+
+func newListenerWithAddr(t *testing.T, addr string) net.Listener {
+	var err error
+	var l net.Listener
+	// TODO: we want to reuse a previous closed port immediately.
+	// a better way is to set SO_REUSExx instead of doing retry.
+	for i := 0; i < 3; i++ {
+		l, err = net.Listen("tcp", addr)
+		if err == nil {
+			break
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -339,6 +424,35 @@ func mustNewMember(t *testing.T, name string) *member {
 	return m
 }
 
+// Clone returns a member with the same server configuration. The returned
+// member will not set PeerListeners and ClientListeners.
+func (m *member) Clone() *member {
+	mm := &member{}
+	mm.ServerConfig = m.ServerConfig
+
+	var err error
+	clientURLStrs := m.ClientURLs.StringSlice()
+	mm.ClientURLs, err = types.NewURLs(clientURLStrs)
+	if err != nil {
+		// this should never fail
+		panic(err)
+	}
+	peerURLStrs := m.PeerURLs.StringSlice()
+	mm.PeerURLs, err = types.NewURLs(peerURLStrs)
+	if err != nil {
+		// this should never fail
+		panic(err)
+	}
+	clusterStr := m.Cluster.String()
+	mm.Cluster, err = etcdserver.NewClusterFromString(clusterName, clusterStr)
+	if err != nil {
+		// this should never fail
+		panic(err)
+	}
+	mm.Transport = newTransport()
+	return mm
+}
+
 // Launch starts a member based on ServerConfig, PeerListeners
 // and ClientListeners.
 func (m *member) Launch() error {
@@ -371,12 +485,27 @@ func (m *member) Launch() error {
 
 // Stop stops the member, but the data dir of the member is preserved.
 func (m *member) Stop(t *testing.T) {
-	panic("unimplemented")
+	m.s.Stop()
+	for _, hs := range m.hss {
+		hs.CloseClientConnections()
+		hs.Close()
+	}
+	m.hss = nil
 }
 
 // Start starts the member using the preserved data dir.
-func (m *member) Start(t *testing.T) {
-	panic("unimplemented")
+func (m *member) Restart(t *testing.T) error {
+	newPeerListeners := make([]net.Listener, 0)
+	for _, ln := range m.PeerListeners {
+		newPeerListeners = append(newPeerListeners, newListenerWithAddr(t, ln.Addr().String()))
+	}
+	m.PeerListeners = newPeerListeners
+	newClientListeners := make([]net.Listener, 0)
+	for _, ln := range m.ClientListeners {
+		newClientListeners = append(newClientListeners, newListenerWithAddr(t, ln.Addr().String()))
+	}
+	m.ClientListeners = newClientListeners
+	return m.Launch()
 }
 
 // Terminate stops the member and removes the data dir.

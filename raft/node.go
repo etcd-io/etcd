@@ -173,6 +173,7 @@ func RestartNode(id uint64, election, heartbeat int, snapshot *pb.Snapshot, st p
 	r := newRaft(id, nil, election, heartbeat, storage)
 	if snapshot != nil {
 		r.restore(*snapshot)
+		r.raftLog.appliedTo(snapshot.Index)
 	}
 	if !isHardStateEqual(st, emptyState) {
 		r.loadState(st)

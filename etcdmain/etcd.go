@@ -170,8 +170,9 @@ func Main() {
 	}
 
 	shouldProxy := proxyFlag.String() != proxyFlagOff
+	var stopped <-chan struct{}
 	if !shouldProxy {
-		err = startEtcd()
+		stopped, err = startEtcd()
 		if err == discovery.ErrFullCluster && fallbackFlag.String() == fallbackFlagProxy {
 			log.Printf("etcd: discovery cluster full, falling back to %s", fallbackFlagProxy)
 			shouldProxy = true
@@ -183,19 +184,18 @@ func Main() {
 	if err != nil {
 		log.Fatalf("etcd: %v", err)
 	}
-	// Block indefinitely
-	<-make(chan struct{})
+	<-stopped
 }
 
 // startEtcd launches the etcd server and HTTP handlers for client/server communication.
-func startEtcd() error {
+func startEtcd() (<-chan struct{}, error) {
 	apurls, err := flags.URLsFromFlags(fs, "initial-advertise-peer-urls", "addr", peerTLSInfo)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	cls, err := setupCluster(apurls)
 	if err != nil {
-		return fmt.Errorf("error setting up initial cluster: %v", err)
+		return nil, fmt.Errorf("error setting up initial cluster: %v", err)
 	}
 
 	if *dir == "" {
@@ -203,33 +203,36 @@ func startEtcd() error {
 		log.Printf("no data-dir provided, using default data-dir ./%s", *dir)
 	}
 	if err := os.MkdirAll(*dir, privateDirMode); err != nil {
-		return fmt.Errorf("cannot create data directory: %v", err)
+		return nil, fmt.Errorf("cannot create data directory: %v", err)
 	}
 	if err := fileutil.IsDirWriteable(*dir); err != nil {
-		return fmt.Errorf("cannot write to data directory: %v", err)
+		return nil, fmt.Errorf("cannot write to data directory: %v", err)
 	}
 
 	pt, err := transport.NewTransport(peerTLSInfo)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	acurls, err := flags.URLsFromFlags(fs, "advertise-client-urls", "addr", clientTLSInfo)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	lpurls, err := flags.URLsFromFlags(fs, "listen-peer-urls", "peer-bind-addr", peerTLSInfo)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
+	if !peerTLSInfo.Empty() {
+		log.Printf("etcd: peerTLS: %s", peerTLSInfo)
+	}
 	plns := make([]net.Listener, 0)
 	for _, u := range lpurls {
 		var l net.Listener
 		l, err = transport.NewListener(u.Host, u.Scheme, peerTLSInfo)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		urlStr := u.String()
@@ -245,15 +248,18 @@ func startEtcd() error {
 
 	lcurls, err := flags.URLsFromFlags(fs, "listen-client-urls", "bind-addr", clientTLSInfo)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
+	if !clientTLSInfo.Empty() {
+		log.Printf("etcd: clientTLS: %s", clientTLSInfo)
+	}
 	clns := make([]net.Listener, 0)
 	for _, u := range lcurls {
 		var l net.Listener
 		l, err = transport.NewListener(u.Host, u.Scheme, clientTLSInfo)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		urlStr := u.String()
@@ -283,10 +289,13 @@ func startEtcd() error {
 	var s *etcdserver.EtcdServer
 	s, err = etcdserver.NewServer(cfg)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	s.Start()
 
+	if corsInfo.String() != "" {
+		log.Printf("etcd: cors = %s", corsInfo)
+	}
 	ch := &cors.CORSHandler{
 		Handler: etcdhttp.NewClientHandler(s),
 		Info:    corsInfo,
@@ -304,7 +313,7 @@ func startEtcd() error {
 			log.Fatal(http.Serve(l, ch))
 		}(l)
 	}
-	return nil
+	return s.StopNotify(), nil
 }
 
 // startProxy launches an HTTP proxy for client communication which proxies to other etcd nodes.

@@ -13,3 +13,4 @@ eval $(go env)
 
 go build -o bin/etcd ${REPO_PATH}
 go build -o bin/etcdctl ${REPO_PATH}/etcdctl
+go build -o bin/etcd-migrate ${REPO_PATH}/migrate/cmd/etcd-migrate

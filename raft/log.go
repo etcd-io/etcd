@@ -136,10 +136,12 @@ func (l *raftLog) unstableEntries() []pb.Entry {
 }
 
 // nextEnts returns all the available entries for execution.
-// all the returned entries will be marked as applied.
+// If applied is smaller than the index of snapshot, it returns all committed
+// entries after the index of snapshot.
 func (l *raftLog) nextEnts() (ents []pb.Entry) {
-	if l.committed > l.applied {
-		return l.slice(l.applied+1, l.committed+1)
+	off := max(l.applied, l.snapshot.Index)
+	if l.committed > off {
+		return l.slice(off+1, l.committed+1)
 	}
 	return nil
 }
@@ -275,7 +277,6 @@ func (l *raftLog) restore(s pb.Snapshot) {
 	l.unstable = s.Index + 1
 	l.unstableEnts = nil
 	l.committed = s.Index
-	l.applied = s.Index
 	l.snapshot = s
 }
 
