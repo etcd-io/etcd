@@ -203,14 +203,14 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 	switch {
 	case !haveWAL && !cfg.NewCluster:
 		us := getOtherPeerURLs(cfg.Cluster, cfg.Name)
-		cl, err := GetClusterFromPeers(us)
+		existingCluster, err := GetClusterFromPeers(us)
 		if err != nil {
 			return nil, fmt.Errorf("cannot fetch cluster info from peer urls: %v", err)
 		}
-		if err := cfg.Cluster.ValidateAndAssignIDs(cl.Members()); err != nil {
-			return nil, fmt.Errorf("error validating IDs from cluster %s: %v", cl, err)
+		if err := ValidateClusterAndAssignIDs(cfg.Cluster, existingCluster); err != nil {
+			return nil, fmt.Errorf("error validating peerURLs %s: %v", existingCluster, err)
 		}
-		cfg.Cluster.SetID(cl.id)
+		cfg.Cluster.SetID(existingCluster.id)
 		cfg.Cluster.SetStore(st)
 		cfg.Print()
 		id, n, w = startNode(cfg, nil)

@@ -317,8 +317,9 @@ func TestClusterValidateAndAssignIDsBad(t *testing.T) {
 		},
 	}
 	for i, tt := range tests {
-		cl := newTestCluster(tt.clmembs)
-		if err := cl.ValidateAndAssignIDs(tt.membs); err == nil {
+		ecl := newTestCluster(tt.clmembs)
+		lcl := newTestCluster(tt.membs)
+		if err := ValidateClusterAndAssignIDs(lcl, ecl); err == nil {
 			t.Errorf("#%d: unexpected update success", i)
 		}
 	}
@@ -343,12 +344,13 @@ func TestClusterValidateAndAssignIDs(t *testing.T) {
 		},
 	}
 	for i, tt := range tests {
-		cl := newTestCluster(tt.clmembs)
-		if err := cl.ValidateAndAssignIDs(tt.membs); err != nil {
+		lcl := newTestCluster(tt.clmembs)
+		ecl := newTestCluster(tt.membs)
+		if err := ValidateClusterAndAssignIDs(lcl, ecl); err != nil {
 			t.Errorf("#%d: unexpect update error: %v", i, err)
 		}
-		if !reflect.DeepEqual(cl.MemberIDs(), tt.wids) {
-			t.Errorf("#%d: ids = %v, want %v", i, cl.MemberIDs(), tt.wids)
+		if !reflect.DeepEqual(lcl.MemberIDs(), tt.wids) {
+			t.Errorf("#%d: ids = %v, want %v", i, lcl.MemberIDs(), tt.wids)
 		}
 	}
 }
