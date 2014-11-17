@@ -99,23 +99,6 @@ func testDoubleClusterSize(t *testing.T, size int) {
 	clusterMustProgress(t, c)
 }
 
-func TestLaunchDuplicateMemberShouldFail(t *testing.T) {
-	size := 3
-	c := NewCluster(t, size)
-	m := c.Members[0].Clone()
-	var err error
-	m.DataDir, err = ioutil.TempDir(os.TempDir(), "etcd")
-	if err != nil {
-		t.Fatal(err)
-	}
-	c.Launch(t)
-	defer c.Terminate(t)
-
-	if err := m.Launch(); err == nil {
-		t.Errorf("unexpect successful launch")
-	}
-}
-
 // clusterMustProgress ensures that cluster can make progress. It creates
 // a key first, and check the new key could be got from all client urls of
 // the cluster.
@@ -314,6 +297,24 @@ func newLocalListener(t *testing.T) net.Listener {
 	return l
 }
 
+func newListenerWithAddr(t *testing.T, addr string) net.Listener {
+	var err error
+	var l net.Listener
+	// TODO: we want to reuse a previous closed port immediately.
+	// a better way is to set SO_REUSExx instead of doing retry.
+	for i := 0; i < 3; i++ {
+		l, err = net.Listen("tcp", addr)
+		if err == nil {
+			break
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
+	if err != nil {
+		t.Fatal(err)
+	}
+	return l
+}
+
 type member struct {
 	etcdserver.ServerConfig
 	PeerListeners, ClientListeners []net.Listener
@@ -417,12 +418,27 @@ func (m *member) Launch() error {
 
 // Stop stops the member, but the data dir of the member is preserved.
 func (m *member) Stop(t *testing.T) {
-	panic("unimplemented")
+	m.s.Stop()
+	for _, hs := range m.hss {
+		hs.CloseClientConnections()
+		hs.Close()
+	}
+	m.hss = nil
 }
 
 // Start starts the member using the preserved data dir.
-func (m *member) Start(t *testing.T) {
-	panic("unimplemented")
+func (m *member) Restart(t *testing.T) error {
+	newPeerListeners := make([]net.Listener, 0)
+	for _, ln := range m.PeerListeners {
+		newPeerListeners = append(newPeerListeners, newListenerWithAddr(t, ln.Addr().String()))
+	}
+	m.PeerListeners = newPeerListeners
+	newClientListeners := make([]net.Listener, 0)
+	for _, ln := range m.ClientListeners {
+		newClientListeners = append(newClientListeners, newListenerWithAddr(t, ln.Addr().String()))
+	}
+	m.ClientListeners = newClientListeners
+	return m.Launch()
 }
 
 // Terminate stops the member and removes the data dir.
