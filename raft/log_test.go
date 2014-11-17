@@ -91,7 +91,7 @@ func TestIsUpToDate(t *testing.T) {
 }
 
 func TestAppend(t *testing.T) {
-	previousEnts := []pb.Entry{{}, {Term: 1}, {Term: 2}}
+	previousEnts := []pb.Entry{{Term: 1}, {Term: 2}}
 	tests := []struct {
 		after     uint64
 		ents      []pb.Entry
@@ -283,7 +283,7 @@ func TestCompactionSideEffects(t *testing.T) {
 	unstableIndex := uint64(750)
 	lastTerm := lastIndex
 	storage := NewMemoryStorage()
-	for i = 0; i <= unstableIndex; i++ {
+	for i = 1; i <= unstableIndex; i++ {
 		storage.Append([]pb.Entry{{Term: uint64(i), Index: uint64(i)}})
 	}
 	raftLog := newLog(storage)
@@ -337,22 +337,23 @@ func TestCompactionSideEffects(t *testing.T) {
 }
 
 func TestUnstableEnts(t *testing.T) {
-	previousEnts := []pb.Entry{{}, {Term: 1, Index: 1}, {Term: 2, Index: 2}}
+	previousEnts := []pb.Entry{{Term: 1, Index: 1}, {Term: 2, Index: 2}}
 	tests := []struct {
 		unstable  uint64
 		wents     []pb.Entry
 		wunstable uint64
 	}{
 		{3, nil, 3},
-		{1, previousEnts[1:], 3},
-		{0, append([]pb.Entry{{}}, previousEnts...), 3},
+		{1, previousEnts, 3},
 	}
 
 	for i, tt := range tests {
 		storage := NewMemoryStorage()
-		storage.Append(previousEnts[:tt.unstable])
+		if tt.unstable > 0 {
+			storage.Append(previousEnts[:tt.unstable-1])
+		}
 		raftLog := newLog(storage)
-		raftLog.append(raftLog.lastIndex(), previousEnts[tt.unstable:]...)
+		raftLog.append(raftLog.lastIndex(), previousEnts[tt.unstable-1:]...)
 		ents := raftLog.unstableEntries()
 		if l := len(ents); l > 0 {
 			raftLog.stableTo(ents[l-1].Index)
@@ -371,7 +372,6 @@ func TestStableTo(t *testing.T) {
 		stable    uint64
 		wunstable uint64
 	}{
-		{0, 1},
 		{1, 2},
 		{2, 3},
 	}
@@ -396,9 +396,9 @@ func TestCompaction(t *testing.T) {
 	}{
 		// out of upper bound
 		{1000, 1000, []uint64{1001}, []int{-1}, false},
-		{1000, 1000, []uint64{300, 500, 800, 900}, []int{701, 501, 201, 101}, true},
+		{1000, 1000, []uint64{300, 500, 800, 900}, []int{700, 500, 200, 100}, true},
 		// out of lower bound
-		{1000, 1000, []uint64{300, 299}, []int{701, -1}, false},
+		{1000, 1000, []uint64{300, 299}, []int{700, -1}, false},
 		{0, 1000, []uint64{1}, []int{-1}, false},
 	}
 
@@ -413,7 +413,7 @@ func TestCompaction(t *testing.T) {
 			}()
 
 			storage := NewMemoryStorage()
-			for i := uint64(0); i <= tt.lastIndex; i++ {
+			for i := uint64(1); i <= tt.lastIndex; i++ {
 				storage.Append([]pb.Entry{{}})
 			}
 			raftLog := newLog(storage)
@@ -442,11 +442,11 @@ func TestLogRestore(t *testing.T) {
 	raftLog.restore(pb.Snapshot{Index: index, Term: term})
 
 	// only has the guard entry
-	if len(raftLog.allEntries()) != 1 {
+	if len(raftLog.allEntries()) != 0 {
 		t.Errorf("len = %d, want 1", len(raftLog.allEntries()))
 	}
-	if raftLog.firstIndex() != index {
-		t.Errorf("firstIndex = %d, want %d", raftLog.firstIndex(), index)
+	if raftLog.firstIndex() != index+1 {
+		t.Errorf("firstIndex = %d, want %d", raftLog.firstIndex(), index+1)
 	}
 	if raftLog.applied != index {
 		t.Errorf("applied = %d, want %d", raftLog.applied, index)
@@ -474,7 +474,7 @@ func TestIsOutOfBounds(t *testing.T) {
 		w     bool
 	}{
 		{offset - 1, true},
-		{offset, false},
+		{offset, true},
 		{offset + num/2, false},
 		{offset + num, false},
 		{offset + num + 1, true},
@@ -504,7 +504,7 @@ func TestAt(t *testing.T) {
 		w     *pb.Entry
 	}{
 		{offset - 1, nil},
-		{offset, &pb.Entry{Term: 0}},
+		{offset, nil},
 		{offset + num/2, &pb.Entry{Term: num / 2}},
 		{offset + num - 1, &pb.Entry{Term: num - 1}},
 		{offset + num, nil},
@@ -514,6 +514,36 @@ func TestAt(t *testing.T) {
 		g := l.at(tt.index)
 		if !reflect.DeepEqual(g, tt.w) {
 			t.Errorf("#%d: at = %v, want %v", i, g, tt.w)
+		}
+	}
+}
+
+func TestTerm(t *testing.T) {
+	var i uint64
+	offset := uint64(100)
+	num := uint64(100)
+
+	l := newLog(NewMemoryStorage())
+	l.restore(pb.Snapshot{Index: offset})
+	for i = 1; i < num; i++ {
+		l.append(offset+i-1, pb.Entry{Term: i})
+	}
+
+	tests := []struct {
+		index uint64
+		w     uint64
+	}{
+		{offset - 1, 0},
+		{offset, 0},
+		{offset + num/2, num / 2},
+		{offset + num - 1, num - 1},
+		{offset + num, 0},
+	}
+
+	for i, tt := range tests {
+		term := l.term(tt.index)
+		if !reflect.DeepEqual(term, tt.w) {
+			t.Errorf("#%d: at = %d, want %d", i, term, tt.w)
 		}
 	}
 }
@@ -535,7 +565,7 @@ func TestSlice(t *testing.T) {
 		w    []pb.Entry
 	}{
 		{offset - 1, offset + 1, nil},
-		{offset, offset + 1, []pb.Entry{{Term: 0}}},
+		{offset, offset + 1, nil},
 		{offset + num/2, offset + num/2 + 1, []pb.Entry{{Term: num / 2}}},
 		{offset + num - 1, offset + num, []pb.Entry{{Term: num - 1}}},
 		{offset + num, offset + num + 1, nil},

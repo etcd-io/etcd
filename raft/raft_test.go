@@ -547,8 +547,8 @@ func TestCompact(t *testing.T) {
 			}
 			sm.compact(tt.compacti, tt.nodes, tt.snapd)
 			sort.Sort(uint64Slice(sm.raftLog.snapshot.Nodes))
-			if sm.raftLog.firstIndex() != tt.compacti {
-				t.Errorf("%d: log.firstIndex = %d, want %d", i, sm.raftLog.firstIndex(), tt.compacti)
+			if sm.raftLog.firstIndex() != tt.compacti+1 {
+				t.Errorf("%d: log.firstIndex = %d, want %d", i, sm.raftLog.firstIndex(), tt.compacti+1)
 			}
 			if !reflect.DeepEqual(sm.raftLog.snapshot.Nodes, tt.nodes) {
 				t.Errorf("%d: snap.nodes = %v, want %v", i, sm.raftLog.snapshot.Nodes, tt.nodes)
@@ -836,9 +836,9 @@ func TestAllServerStepdown(t *testing.T) {
 		wterm  uint64
 		windex uint64
 	}{
-		{StateFollower, StateFollower, 3, 1},
-		{StateCandidate, StateFollower, 3, 1},
-		{StateLeader, StateFollower, 3, 2},
+		{StateFollower, StateFollower, 3, 0},
+		{StateCandidate, StateFollower, 3, 0},
+		{StateLeader, StateFollower, 3, 1},
 	}
 
 	tmsgTypes := [...]pb.MessageType{pb.MsgVote, pb.MsgApp}
@@ -865,8 +865,11 @@ func TestAllServerStepdown(t *testing.T) {
 			if sm.Term != tt.wterm {
 				t.Errorf("#%d.%d term = %v , want %v", i, j, sm.Term, tt.wterm)
 			}
+			if uint64(sm.raftLog.lastIndex()) != tt.windex {
+				t.Errorf("#%d.%d index = %v , want %v", i, j, sm.raftLog.lastIndex(), tt.windex)
+			}
 			if uint64(len(sm.raftLog.allEntries())) != tt.windex {
-				t.Errorf("#%d.%d index = %v , want %v", i, j, len(sm.raftLog.allEntries()), tt.windex)
+				t.Errorf("#%d.%d len(ents) = %v , want %v", i, j, len(sm.raftLog.allEntries()), tt.windex)
 			}
 			wlead := uint64(2)
 			if msgType == pb.MsgVote {

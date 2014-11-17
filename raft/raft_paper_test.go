@@ -514,7 +514,7 @@ func TestLeaderCommitPrecedingEntries(t *testing.T) {
 	}
 	for i, tt := range tests {
 		storage := NewMemoryStorage()
-		storage.Append(append([]pb.Entry{{}}, tt...))
+		storage.Append(tt)
 		r := newRaft(1, []uint64{1, 2, 3}, 10, 1, storage)
 		r.loadState(pb.HardState{Term: 2})
 		r.becomeCandidate()
@@ -591,17 +591,17 @@ func TestFollowerCommitEntry(t *testing.T) {
 // append entries.
 // Reference: section 5.3
 func TestFollowerCheckMsgApp(t *testing.T) {
-	ents := []pb.Entry{{}, {Term: 1, Index: 1}, {Term: 2, Index: 2}}
+	ents := []pb.Entry{{Term: 1, Index: 1}, {Term: 2, Index: 2}}
 	tests := []struct {
 		term    uint64
 		index   uint64
 		wreject bool
 	}{
+		{0, 0, false},
 		{ents[0].Term, ents[0].Index, false},
 		{ents[1].Term, ents[1].Index, false},
-		{ents[2].Term, ents[2].Index, false},
-		{ents[1].Term, ents[1].Index + 1, true},
-		{ents[1].Term + 1, ents[1].Index, true},
+		{ents[0].Term, ents[0].Index + 1, true},
+		{ents[0].Term + 1, ents[0].Index, true},
 		{3, 3, true},
 	}
 	for i, tt := range tests {
@@ -638,31 +638,31 @@ func TestFollowerAppendEntries(t *testing.T) {
 		{
 			2, 2,
 			[]pb.Entry{{Term: 3, Index: 3}},
-			[]pb.Entry{{}, {Term: 1, Index: 1}, {Term: 2, Index: 2}, {Term: 3, Index: 3}},
+			[]pb.Entry{{Term: 1, Index: 1}, {Term: 2, Index: 2}, {Term: 3, Index: 3}},
 			[]pb.Entry{{Term: 3, Index: 3}},
 		},
 		{
 			1, 1,
 			[]pb.Entry{{Term: 3, Index: 3}, {Term: 4, Index: 4}},
-			[]pb.Entry{{}, {Term: 1, Index: 1}, {Term: 3, Index: 3}, {Term: 4, Index: 4}},
+			[]pb.Entry{{Term: 1, Index: 1}, {Term: 3, Index: 3}, {Term: 4, Index: 4}},
 			[]pb.Entry{{Term: 3, Index: 3}, {Term: 4, Index: 4}},
 		},
 		{
 			0, 0,
 			[]pb.Entry{{Term: 1, Index: 1}},
-			[]pb.Entry{{}, {Term: 1, Index: 1}, {Term: 2, Index: 2}},
+			[]pb.Entry{{Term: 1, Index: 1}, {Term: 2, Index: 2}},
 			nil,
 		},
 		{
 			0, 0,
 			[]pb.Entry{{Term: 3, Index: 3}},
-			[]pb.Entry{{}, {Term: 3, Index: 3}},
+			[]pb.Entry{{Term: 3, Index: 3}},
 			[]pb.Entry{{Term: 3, Index: 3}},
 		},
 	}
 	for i, tt := range tests {
 		storage := NewMemoryStorage()
-		storage.Append([]pb.Entry{{}, {Term: 1, Index: 1}, {Term: 2, Index: 2}})
+		storage.Append([]pb.Entry{{Term: 1, Index: 1}, {Term: 2, Index: 2}})
 		r := newRaft(1, []uint64{1, 2, 3}, 10, 1, storage)
 		r.becomeFollower(2, 2)
 
@@ -813,17 +813,17 @@ func TestVoter(t *testing.T) {
 		wreject bool
 	}{
 		// same logterm
-		{[]pb.Entry{{}, {Term: 1, Index: 1}}, 1, 1, false},
-		{[]pb.Entry{{}, {Term: 1, Index: 1}}, 1, 2, false},
-		{[]pb.Entry{{}, {Term: 1, Index: 1}, {Term: 1, Index: 2}}, 1, 1, true},
+		{[]pb.Entry{{Term: 1, Index: 1}}, 1, 1, false},
+		{[]pb.Entry{{Term: 1, Index: 1}}, 1, 2, false},
+		{[]pb.Entry{{Term: 1, Index: 1}, {Term: 1, Index: 2}}, 1, 1, true},
 		// candidate higher logterm
-		{[]pb.Entry{{}, {Term: 1, Index: 1}}, 2, 1, false},
-		{[]pb.Entry{{}, {Term: 1, Index: 1}}, 2, 2, false},
-		{[]pb.Entry{{}, {Term: 1, Index: 1}, {Term: 1, Index: 2}}, 2, 1, false},
+		{[]pb.Entry{{Term: 1, Index: 1}}, 2, 1, false},
+		{[]pb.Entry{{Term: 1, Index: 1}}, 2, 2, false},
+		{[]pb.Entry{{Term: 1, Index: 1}, {Term: 1, Index: 2}}, 2, 1, false},
 		// voter higher logterm
-		{[]pb.Entry{{}, {Term: 2, Index: 1}}, 1, 1, true},
-		{[]pb.Entry{{}, {Term: 2, Index: 1}}, 1, 2, true},
-		{[]pb.Entry{{}, {Term: 2, Index: 1}, {Term: 1, Index: 2}}, 1, 1, true},
+		{[]pb.Entry{{Term: 2, Index: 1}}, 1, 1, true},
+		{[]pb.Entry{{Term: 2, Index: 1}}, 1, 2, true},
+		{[]pb.Entry{{Term: 2, Index: 1}, {Term: 1, Index: 2}}, 1, 1, true},
 	}
 	for i, tt := range tests {
 		storage := NewMemoryStorage()
@@ -850,7 +850,7 @@ func TestVoter(t *testing.T) {
 // current term are committed by counting replicas.
 // Reference: section 5.4.2
 func TestLeaderOnlyCommitsLogFromCurrentTerm(t *testing.T) {
-	ents := []pb.Entry{{}, {Term: 1, Index: 1}, {Term: 2, Index: 2}}
+	ents := []pb.Entry{{Term: 1, Index: 1}, {Term: 2, Index: 2}}
 	tests := []struct {
 		index   uint64
 		wcommit uint64

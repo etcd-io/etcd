@@ -308,7 +308,6 @@ func TestNodeStart(t *testing.T) {
 			SoftState: &SoftState{Lead: 1, Nodes: []uint64{1}, RaftState: StateLeader},
 			HardState: raftpb.HardState{Term: 1, Commit: 2},
 			Entries: []raftpb.Entry{
-				{},
 				{Type: raftpb.EntryConfChange, Term: 1, Index: 1, Data: ccdata},
 				{Term: 1, Index: 2},
 			},
@@ -352,7 +351,6 @@ func TestNodeStart(t *testing.T) {
 
 func TestNodeRestart(t *testing.T) {
 	entries := []raftpb.Entry{
-		{},
 		{Term: 1, Index: 1},
 		{Term: 1, Index: 2, Data: []byte("foo")},
 	}
@@ -361,7 +359,7 @@ func TestNodeRestart(t *testing.T) {
 	want := Ready{
 		HardState: emptyState,
 		// commit upto index commit index in st
-		CommittedEntries: entries[1 : st.Commit+1],
+		CommittedEntries: entries[:st.Commit],
 	}
 
 	storage := NewMemoryStorage()
@@ -429,7 +427,7 @@ func TestNodeCompact(t *testing.T) {
 	}
 	n.Stop()
 
-	if r.raftLog.firstIndex() != w.Index {
+	if r.raftLog.firstIndex() != w.Index+1 {
 		t.Errorf("log.offset = %d, want %d", r.raftLog.firstIndex(), w.Index)
 	}
 }

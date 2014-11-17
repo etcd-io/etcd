@@ -53,14 +53,11 @@ func newLog(storage Storage) *raftLog {
 		storage: storage,
 	}
 	lastIndex, err := storage.LastIndex()
-	if err == ErrStorageEmpty {
-		// When starting from scratch populate the list with a dummy entry at term zero.
-		log.unstableEnts = make([]pb.Entry, 1)
-	} else if err == nil {
-		log.unstable = lastIndex + 1
-	} else {
+	if err != nil {
 		panic(err) // TODO(bdarnell)
 	}
+	log.unstable = lastIndex + 1
+
 	return log
 }
 
@@ -190,27 +187,28 @@ func (l *raftLog) lastTerm() uint64 {
 }
 
 func (l *raftLog) term(i uint64) uint64 {
-	if e := l.at(i); e != nil {
-		return e.Term
+	if i < l.unstable {
+		t, err := l.storage.Term(i)
+		if err == ErrSnapshotRequired {
+			return 0
+		} else if err != nil {
+			panic(err) // TODO(bdarnell)
+		}
+		return t
 	}
-	return 0
+	if i >= l.unstable+uint64(len(l.unstableEnts)) {
+		return 0
+	}
+	return l.unstableEnts[i-l.unstable].Term
 }
 
 func (l *raftLog) entries(i uint64) []pb.Entry {
-	// never send out the first entry
-	// first entry is only used for matching
-	// prevLogTerm
-	if i == 0 {
-		panic("cannot return the first entry in log")
-	}
 	return l.slice(i, l.lastIndex()+1)
 }
 
-// allEntries returns all entries in the log, including the initial
-// entry that is only used for prevLogTerm validation. This method
-// should only be used for testing.
+// allEntries returns all entries in the log.
 func (l *raftLog) allEntries() []pb.Entry {
-	return l.slice(l.firstIndex(), l.lastIndex()+1)
+	return l.entries(l.firstIndex())
 }
 
 // isUpToDate determines if the given (lastIndex,term) log is more up-to-date
@@ -224,10 +222,7 @@ func (l *raftLog) isUpToDate(lasti, term uint64) bool {
 }
 
 func (l *raftLog) matchTerm(i, term uint64) bool {
-	if e := l.at(i); e != nil {
-		return e.Term == term
-	}
-	return false
+	return l.term(i) == term
 }
 
 func (l *raftLog) maybeCommit(maxIndex, term uint64) bool {
@@ -303,7 +298,9 @@ func (l *raftLog) slice(lo uint64, hi uint64) []pb.Entry {
 	var ents []pb.Entry
 	if lo < l.unstable {
 		storedEnts, err := l.storage.Entries(lo, min(hi, l.unstable))
-		if err != nil {
+		if err == ErrSnapshotRequired {
+			return nil
+		} else if err != nil {
 			panic(err) // TODO(bdarnell)
 		}
 		ents = append(ents, storedEnts...)

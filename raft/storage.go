@@ -23,9 +23,9 @@ import (
 	pb "github.com/coreos/etcd/raft/raftpb"
 )
 
-// ErrStorageEmpty is returned by Storage.GetLastIndex when there is
-// no data.
-var ErrStorageEmpty = errors.New("storage is empty")
+// ErrSnapshotRequired is returned by Storage.Entries when a requested
+// index is unavailable because it predates the last snapshot.
+var ErrSnapshotRequired = errors.New("snapshot required; requested index is too old")
 
 // Storage is an interface that may be implemented by the application
 // to retrieve log entries from storage.
@@ -36,11 +36,15 @@ var ErrStorageEmpty = errors.New("storage is empty")
 type Storage interface {
 	// Entries returns a slice of log entries in the range [lo,hi).
 	Entries(lo, hi uint64) ([]pb.Entry, error)
-	// GetLastIndex returns the index of the last entry in the log.
-	// If the log is empty it returns ErrStorageEmpty.
+	// Term returns the term of entry i, which must be in the range
+	// [FirstIndex()-1, LastIndex()]. The term of the entry before
+	// FirstIndex is retained for matching purposes even though the
+	// rest of that entry may not be available.
+	Term(i uint64) (uint64, error)
+	// LastIndex returns the index of the last entry in the log.
 	LastIndex() (uint64, error)
-	// GetFirstIndex returns the index of the first log entry that is
-	// available via GetEntries (older entries have been incorporated
+	// FirstIndex returns the index of the first log entry that is
+	// available via Entries (older entries have been incorporated
 	// into the latest Snapshot).
 	FirstIndex() (uint64, error)
 	// Compact discards all log entries prior to i.
@@ -65,23 +69,36 @@ type MemoryStorage struct {
 
 // NewMemoryStorage creates an empty MemoryStorage.
 func NewMemoryStorage() *MemoryStorage {
-	return &MemoryStorage{}
+	return &MemoryStorage{
+		// When starting from scratch populate the list with a dummy entry at term zero.
+		ents: make([]pb.Entry, 1),
+	}
 }
 
 // Entries implements the Storage interface.
 func (ms *MemoryStorage) Entries(lo, hi uint64) ([]pb.Entry, error) {
 	ms.Lock()
 	defer ms.Unlock()
+	if lo <= ms.offset {
+		return nil, ErrSnapshotRequired
+	}
 	return ms.ents[lo-ms.offset : hi-ms.offset], nil
+}
+
+// Term implements the Storage interface.
+func (ms *MemoryStorage) Term(i uint64) (uint64, error) {
+	ms.Lock()
+	defer ms.Unlock()
+	if i < ms.offset || i > ms.offset+uint64(len(ms.ents)) {
+		return 0, ErrSnapshotRequired
+	}
+	return ms.ents[i-ms.offset].Term, nil
 }
 
 // LastIndex implements the Storage interface.
 func (ms *MemoryStorage) LastIndex() (uint64, error) {
 	ms.Lock()
 	defer ms.Unlock()
-	if len(ms.ents) == 0 {
-		return 0, ErrStorageEmpty
-	}
 	return ms.offset + uint64(len(ms.ents)) - 1, nil
 }
 
@@ -89,7 +106,7 @@ func (ms *MemoryStorage) LastIndex() (uint64, error) {
 func (ms *MemoryStorage) FirstIndex() (uint64, error) {
 	ms.Lock()
 	defer ms.Unlock()
-	return ms.offset, nil
+	return ms.offset + 1, nil
 }
 
 // Compact implements the Storage interface.

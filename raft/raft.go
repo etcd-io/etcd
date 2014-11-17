@@ -133,7 +133,7 @@ func newRaft(id uint64, peers []uint64, election, heartbeat int, storage Storage
 	}
 	r.rand = rand.New(rand.NewSource(int64(id)))
 	for _, p := range peers {
-		r.prs[p] = &progress{}
+		r.prs[p] = &progress{next: 1}
 	}
 	r.becomeFollower(0, None)
 	return r
@@ -187,12 +187,12 @@ func (r *raft) sendAppend(to uint64) {
 	pr := r.prs[to]
 	m := pb.Message{}
 	m.To = to
-	m.Index = pr.next - 1
-	if r.needSnapshot(m.Index) {
+	if r.needSnapshot(pr.next) {
 		m.Type = pb.MsgSnap
 		m.Snapshot = r.raftLog.snapshot
 	} else {
 		m.Type = pb.MsgApp
+		m.Index = pr.next - 1
 		m.LogTerm = r.raftLog.term(pr.next - 1)
 		m.Entries = r.raftLog.entries(pr.next)
 		m.Commit = r.raftLog.committed
