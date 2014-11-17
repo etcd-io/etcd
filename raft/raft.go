@@ -202,9 +202,17 @@ func (r *raft) sendAppend(to uint64) {
 
 // sendHeartbeat sends an empty MsgApp
 func (r *raft) sendHeartbeat(to uint64) {
+	// Attach the commit as min(to.matched, r.committed).
+	// When the leader sends out heartbeat message,
+	// the receiver(follower) might not be matched with the leader
+	// or it might not have all the committed entries.
+	// The leader MUST NOT forward the follower's commit to
+	// an unmatched index.
+	commit := min(r.prs[to].match, r.raftLog.committed)
 	m := pb.Message{
-		To:   to,
-		Type: pb.MsgApp,
+		To:     to,
+		Type:   pb.MsgApp,
+		Commit: commit,
 	}
 	r.send(m)
 }
