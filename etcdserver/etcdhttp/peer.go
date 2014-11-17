@@ -32,7 +32,7 @@ const (
 
 // NewPeerHandler generates an http.Handler to handle etcd peer (raft) requests.
 func NewPeerHandler(server *etcdserver.EtcdServer) http.Handler {
-	rh := rafthttp.NewHandler(server, server.Cluster.ID(), server)
+	rh := rafthttp.NewHandler(server, server.Cluster.ID())
 	mh := &peerMembersHandler{
 		clusterInfo: server.Cluster,
 	}

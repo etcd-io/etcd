@@ -145,8 +145,6 @@ type Stats interface {
 	LeaderStats() []byte
 	// StoreStats returns statistics of the store backing this EtcdServer
 	StoreStats() []byte
-	// UpdateRecvApp updates the underlying statistics in response to a receiving an Append request
-	UpdateRecvApp(from types.ID, length int64)
 }
 
 type RaftTimer interface {
@@ -321,6 +319,9 @@ func (s *EtcdServer) Process(ctx context.Context, m raftpb.Message) error {
 		log.Printf("etcdserver: reject message from removed member %s", types.ID(m.From).String())
 		return httptypes.NewHTTPError(http.StatusForbidden, "cannot process message from removed member")
 	}
+	if m.Type == raftpb.MsgApp {
+		s.stats.RecvAppendReq(types.ID(m.From).String(), m.Size())
+	}
 	return s.node.Step(ctx, m)
 }
 
@@ -485,10 +486,6 @@ func (s *EtcdServer) LeaderStats() []byte {
 }
 
 func (s *EtcdServer) StoreStats() []byte { return s.store.JsonStats() }
-
-func (s *EtcdServer) UpdateRecvApp(from types.ID, length int64) {
-	s.stats.RecvAppendReq(from.String(), int(length))
-}
 
 func (s *EtcdServer) AddMember(ctx context.Context, memb Member) error {
 	// TODO: move Member to protobuf type

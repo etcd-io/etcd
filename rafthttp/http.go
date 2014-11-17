@@ -31,22 +31,16 @@ type Processor interface {
 	Process(ctx context.Context, m raftpb.Message) error
 }
 
-type Stats interface {
-	UpdateRecvApp(from types.ID, length int64)
-}
-
-func NewHandler(p Processor, cid types.ID, ss Stats) http.Handler {
+func NewHandler(p Processor, cid types.ID) http.Handler {
 	return &handler{
 		p:   p,
 		cid: cid,
-		ss:  ss,
 	}
 }
 
 type handler struct {
 	p   Processor
 	cid types.ID
-	ss  Stats
 }
 
 func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -87,9 +81,6 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "error processing raft message", http.StatusInternalServerError)
 		}
 		return
-	}
-	if m.Type == raftpb.MsgApp {
-		h.ss.UpdateRecvApp(types.ID(m.From), r.ContentLength)
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
