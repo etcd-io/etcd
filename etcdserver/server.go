@@ -186,6 +186,8 @@ type EtcdServer struct {
 	// Cache of the latest raft index and raft term the server has seen
 	raftIndex uint64
 	raftTerm  uint64
+
+	raftLead uint64
 }
 
 // NewServer creates a new EtcdServer from the supplied configuration. The
@@ -342,6 +344,7 @@ func (s *EtcdServer) run() {
 			s.node.Tick()
 		case rd := <-s.node.Ready():
 			if rd.SoftState != nil {
+				atomic.StoreUint64(&s.raftLead, rd.SoftState.Lead)
 				nodes = rd.SoftState.Nodes
 				if rd.RaftState == raft.StateLeader {
 					syncC = s.SyncTicker
@@ -531,6 +534,11 @@ func (s *EtcdServer) UpdateMember(ctx context.Context, memb Member) error {
 func (s *EtcdServer) Index() uint64 { return atomic.LoadUint64(&s.raftIndex) }
 
 func (s *EtcdServer) Term() uint64 { return atomic.LoadUint64(&s.raftTerm) }
+
+// Only for testing purpose
+// TODO: add Raft server interface to expose raft related info:
+// Index, Term, Lead, Committed, Applied, LastIndex, etc.
+func (s *EtcdServer) Lead() uint64 { return atomic.LoadUint64(&s.raftLead) }
 
 // configure sends a configuration change through consensus and
 // then waits for it to be applied to the server. It
