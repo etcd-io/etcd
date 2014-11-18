@@ -25,7 +25,9 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/etcdserver/stats"
+	"github.com/coreos/etcd/pkg/pbutil"
 	"github.com/coreos/etcd/pkg/types"
+	"github.com/coreos/etcd/raft/raftpb"
 )
 
 const (
@@ -37,7 +39,7 @@ type Sender interface {
 	Update(u string)
 	// Send sends the data to the remote node. It is always non-blocking.
 	// It may be fail to send data if it returns nil error.
-	Send(data []byte) error
+	Send(m raftpb.Message) error
 	// Stop performs any necessary finalization and terminates the Sender
 	// elegantly.
 	Stop()
@@ -77,7 +79,10 @@ func (s *sender) Update(u string) {
 }
 
 // TODO (xiangli): reasonable retry logic
-func (s *sender) Send(data []byte) error {
+func (s *sender) Send(m raftpb.Message) error {
+	// TODO: don't block. we should be able to have 1000s
+	// of messages out at a time.
+	data := pbutil.MustMarshal(&m)
 	select {
 	case s.q <- data:
 		return nil

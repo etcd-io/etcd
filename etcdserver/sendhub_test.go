@@ -24,6 +24,7 @@ import (
 	"github.com/coreos/etcd/etcdserver/stats"
 	"github.com/coreos/etcd/pkg/testutil"
 	"github.com/coreos/etcd/pkg/types"
+	"github.com/coreos/etcd/raft/raftpb"
 )
 
 func TestSendHubInitSenders(t *testing.T) {
@@ -98,7 +99,7 @@ func TestSendHubShouldStop(t *testing.T) {
 		t.Fatalf("received unexpected shouldstop notification")
 	case <-time.After(10 * time.Millisecond):
 	}
-	h.senders[1].Send([]byte("somedata"))
+	h.senders[1].Send(raftpb.Message{})
 
 	testutil.ForceGosched()
 	select {
