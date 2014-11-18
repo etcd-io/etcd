@@ -61,8 +61,18 @@ func TestProgressMaybeDecr(t *testing.T) {
 			1, 0, 0, false, 0,
 		},
 		{
-			// match != 0 is always false
-			5, 10, 9, false, 10,
+			// match != 0 and to is greater than match
+			// directly decrease to match+1
+			5, 10, 5, false, 10,
+		},
+		{
+			// match != 0 and to is greater than match
+			// directly decrease to match+1
+			5, 10, 4, false, 10,
+		},
+		{
+			// match != 0 and to is not greater than match
+			5, 10, 9, true, 6,
 		},
 		{
 			// next-1 != to is always false
@@ -840,7 +850,7 @@ func TestAllServerStepdown(t *testing.T) {
 }
 
 func TestLeaderAppResp(t *testing.T) {
-	// initial progress: match = 0; netx = 3
+	// initial progress: match = 0; next = 3
 	tests := []struct {
 		index  uint64
 		reject bool
@@ -854,7 +864,7 @@ func TestLeaderAppResp(t *testing.T) {
 	}{
 		{3, true, 0, 3, 0, 0, 0},  // stale resp; no replies
 		{2, true, 0, 2, 1, 1, 0},  // denied resp; leader does not commit; decrese next and send probing msg
-		{2, false, 2, 3, 2, 2, 2}, // accept resp; leader commits; broadcast with commit index
+		{2, false, 2, 4, 2, 2, 2}, // accept resp; leader commits; broadcast with commit index
 		{0, false, 0, 3, 0, 0, 0}, // ignore heartbeat replies
 	}
 
@@ -984,6 +994,37 @@ func TestRecvMsgBeat(t *testing.T) {
 			if m.Type != pb.MsgApp {
 				t.Errorf("%d: msg.type = %v, want %v", i, m.Type, pb.MsgApp)
 			}
+		}
+	}
+}
+
+func TestLeaderIncreaseNext(t *testing.T) {
+	previousEnts := []pb.Entry{{Term: 1, Index: 1}, {Term: 1, Index: 2}, {Term: 1, Index: 3}}
+	tests := []struct {
+		// progress
+		match uint64
+		next  uint64
+
+		wnext uint64
+	}{
+		// match is not zero, optimistically increase next
+		// previous entries + noop entry + propose + 1
+		{1, 2, uint64(len(previousEnts) + 1 + 1 + 1)},
+		// match is zero, not optimistically increase next
+		{0, 2, 2},
+	}
+
+	for i, tt := range tests {
+		sm := newRaft(1, []uint64{1, 2}, 10, 1)
+		sm.raftLog.append(0, previousEnts...)
+		sm.becomeCandidate()
+		sm.becomeLeader()
+		sm.prs[2].match, sm.prs[2].next = tt.match, tt.next
+		sm.Step(pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{Data: []byte("somedata")}}})
+
+		p := sm.prs[2]
+		if p.next != tt.wnext {
+			t.Errorf("#%d next = %d, want %d", i, p.next, tt.wnext)
 		}
 	}
 }

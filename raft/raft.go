@@ -63,12 +63,26 @@ func (pr *progress) update(n uint64) {
 	pr.next = n + 1
 }
 
+func (pr *progress) optimisticUpdate(n uint64) {
+	pr.next = n + 1
+}
+
 // maybeDecrTo returns false if the given to index comes from an out of order message.
 // Otherwise it decreases the progress next index and returns true.
 func (pr *progress) maybeDecrTo(to uint64) bool {
-	// the rejection must be stale if the progress has matched with
-	// follower or "to" does not match next - 1
-	if pr.match != 0 || pr.next-1 != to {
+	if pr.match != 0 {
+		// the rejection must be stale if the progress has matched and "to"
+		// is smaller than "match".
+		if to <= pr.match {
+			return false
+		}
+		// directly decrease next to match + 1
+		pr.next = pr.match + 1
+		return true
+	}
+
+	// the rejection must be stale if "to" does not match next - 1
+	if pr.next-1 != to {
 		return false
 	}
 
@@ -196,6 +210,11 @@ func (r *raft) sendAppend(to uint64) {
 		m.LogTerm = r.raftLog.term(pr.next - 1)
 		m.Entries = r.raftLog.entries(pr.next)
 		m.Commit = r.raftLog.committed
+		// optimistically increase the next if the follower
+		// has been matched.
+		if n := len(m.Entries); pr.match != 0 && n != 0 {
+			pr.optimisticUpdate(m.Entries[n-1].Index)
+		}
 	}
 	r.send(m)
 }
