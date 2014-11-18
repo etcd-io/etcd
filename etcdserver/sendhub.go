@@ -70,18 +70,11 @@ func (h *sendHub) Send(msgs []raftpb.Message) {
 			continue
 		}
 
-		// TODO: don't block. we should be able to have 1000s
-		// of messages out at a time.
-		data, err := m.Marshal()
-		if err != nil {
-			log.Println("sender: dropping message:", err)
-			return // drop bad message
-		}
 		if m.Type == raftpb.MsgApp {
-			h.ss.SendAppendReq(len(data))
+			h.ss.SendAppendReq(m.Size())
 		}
 
-		s.Send(data)
+		s.Send(m)
 	}
 }
 

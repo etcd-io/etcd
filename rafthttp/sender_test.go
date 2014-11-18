@@ -26,6 +26,7 @@ import (
 	"github.com/coreos/etcd/etcdserver/stats"
 	"github.com/coreos/etcd/pkg/testutil"
 	"github.com/coreos/etcd/pkg/types"
+	"github.com/coreos/etcd/raft/raftpb"
 )
 
 // TestSenderSend tests that send func could post data using roundtripper
@@ -35,7 +36,7 @@ func TestSenderSend(t *testing.T) {
 	fs := &stats.FollowerStats{}
 	s := NewSender(tr, "http://10.0.0.1", types.ID(1), fs, nil)
 
-	if err := s.Send([]byte("some data")); err != nil {
+	if err := s.Send(raftpb.Message{}); err != nil {
 		t.Fatalf("unexpect send error: %v", err)
 	}
 	s.Stop()
@@ -58,7 +59,7 @@ func TestSenderExceedMaximalServing(t *testing.T) {
 	// keep the sender busy and make the buffer full
 	// nothing can go out as we block the sender
 	for i := 0; i < connPerSender+senderBufSize; i++ {
-		if err := s.Send([]byte("some data")); err != nil {
+		if err := s.Send(raftpb.Message{}); err != nil {
 			t.Errorf("send err = %v, want nil", err)
 		}
 		// force the sender to grab data
@@ -66,7 +67,7 @@ func TestSenderExceedMaximalServing(t *testing.T) {
 	}
 
 	// try to send a data when we are sure the buffer is full
-	if err := s.Send([]byte("some data")); err == nil {
+	if err := s.Send(raftpb.Message{}); err == nil {
 		t.Errorf("unexpect send success")
 	}
 
@@ -75,7 +76,7 @@ func TestSenderExceedMaximalServing(t *testing.T) {
 	testutil.ForceGosched()
 
 	// It could send new data after previous ones succeed
-	if err := s.Send([]byte("some data")); err != nil {
+	if err := s.Send(raftpb.Message{}); err != nil {
 		t.Errorf("send err = %v, want nil", err)
 	}
 	s.Stop()
@@ -87,7 +88,7 @@ func TestSenderSendFailed(t *testing.T) {
 	fs := &stats.FollowerStats{}
 	s := NewSender(newRespRoundTripper(0, errors.New("blah")), "http://10.0.0.1", types.ID(1), fs, nil)
 
-	if err := s.Send([]byte("some data")); err != nil {
+	if err := s.Send(raftpb.Message{}); err != nil {
 		t.Fatalf("unexpect Send error: %v", err)
 	}
 	s.Stop()
