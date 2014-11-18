@@ -36,6 +36,7 @@ import (
 	"github.com/coreos/etcd/etcdserver/etcdhttp/httptypes"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/etcdserver/stats"
+	"github.com/coreos/etcd/migrate"
 	"github.com/coreos/etcd/pkg/pbutil"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/pkg/wait"
@@ -190,18 +191,39 @@ type EtcdServer struct {
 	raftLead uint64
 }
 
+// UpgradeWAL converts an older version of the EtcdServer data to the newest version.
+// It must ensure that, after upgrading, the most recent version is present.
+func UpgradeWAL(cfg *ServerConfig, ver wal.WalVersion) {
+	if ver == wal.WALv0_4 {
+		err := migrate.Migrate4To5(cfg.DataDir, cfg.Name)
+		if err != nil {
+			log.Fatalf("Failed migrating data-dir: %v", err)
+		}
+	}
+}
+
 // NewServer creates a new EtcdServer from the supplied configuration. The
 // configuration is considered static for the lifetime of the EtcdServer.
 func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
-	if err := os.MkdirAll(cfg.SnapDir(), privateDirMode); err != nil {
-		return nil, fmt.Errorf("cannot create snapshot directory: %v", err)
-	}
-	ss := snap.New(cfg.SnapDir())
 	st := store.New()
 	var w *wal.WAL
 	var n raft.Node
 	var id types.ID
-	haveWAL := wal.Exist(cfg.WALDir())
+	walVersion := wal.DetectVersion(cfg.DataDir)
+	if walVersion == wal.UnknownWAL {
+		return nil, fmt.Errorf("unknown wal version in data dir %s", cfg.DataDir)
+	}
+	haveWAL := walVersion != wal.NoWAL
+
+	if haveWAL && walVersion != wal.WALv0_5 {
+		UpgradeWAL(cfg, walVersion)
+	}
+
+	if err := os.MkdirAll(cfg.SnapDir(), privateDirMode); err != nil {
+		return nil, fmt.Errorf("cannot create snapshot directory: %v", err)
+	}
+	ss := snap.New(cfg.SnapDir())
+
 	switch {
 	case !haveWAL && !cfg.NewCluster:
 		us := getOtherPeerURLs(cfg.Cluster, cfg.Name)

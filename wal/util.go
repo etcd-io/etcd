@@ -20,7 +20,54 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path"
 )
+
+type StringSlice []string
+
+func containsStrings(source, target []string) bool {
+	for _, t := range target {
+		ok := false
+		for _, s := range source {
+			if t == s {
+				ok = true
+			}
+		}
+		if !ok {
+			return false
+		}
+	}
+	return true
+}
+
+// WalVersion is an enum for versions of etcd logs.
+type WalVersion string
+
+const (
+	UnknownWAL WalVersion = "Unknown WAL"
+	NoWAL      WalVersion = "No WAL"
+	WALv0_4    WalVersion = "0.4.x"
+	WALv0_5    WalVersion = "0.5.x"
+)
+
+func DetectVersion(dirpath string) WalVersion {
+	names, err := readDir(dirpath)
+	if err != nil || len(names) == 0 {
+		return NoWAL
+	}
+	if containsStrings(names, []string{"snap", "wal"}) {
+		// .../wal cannot be empty to exist.
+		if Exist(path.Join(dirpath, "wal")) {
+			return WALv0_5
+		}
+		return NoWAL
+	}
+	if containsStrings(names, []string{"snapshot", "conf", "log"}) {
+		return WALv0_4
+	}
+
+	return UnknownWAL
+}
 
 func Exist(dirpath string) bool {
 	names, err := readDir(dirpath)
