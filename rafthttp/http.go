@@ -20,6 +20,9 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"path"
+	"strconv"
+	"strings"
 
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft/raftpb"
@@ -27,14 +30,34 @@ import (
 	"github.com/coreos/etcd/Godeps/_workspace/src/code.google.com/p/go.net/context"
 )
 
+var (
+	RaftPrefix       = "/raft"
+	RaftStreamPrefix = path.Join(RaftPrefix, "stream")
+)
+
 type Processor interface {
 	Process(ctx context.Context, m raftpb.Message) error
+}
+
+type SenderFinder interface {
+	// Sender returns the sender of the given id.
+	Sender(id types.ID) Sender
 }
 
 func NewHandler(p Processor, cid types.ID) http.Handler {
 	return &handler{
 		p:   p,
 		cid: cid,
+	}
+}
+
+// NewStreamHandler returns a handler which initiates streamer when receiving
+// stream request from follower.
+func NewStreamHandler(finder SenderFinder, id, cid types.ID) http.Handler {
+	return &streamHandler{
+		finder: finder,
+		id:     id,
+		cid:    cid,
 	}
 }
 
@@ -83,6 +106,68 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+type streamHandler struct {
+	finder SenderFinder
+	id     types.ID
+	cid    types.ID
+}
+
+func (h *streamHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		w.Header().Set("Allow", "GET")
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	fromStr := strings.TrimPrefix(r.URL.Path, RaftStreamPrefix+"/")
+	from, err := types.IDFromString(fromStr)
+	if err != nil {
+		log.Printf("rafthttp: path %s cannot be parsed", fromStr)
+		http.Error(w, "invalid path", http.StatusNotFound)
+		return
+	}
+	s := h.finder.Sender(from)
+	if s == nil {
+		log.Printf("rafthttp: fail to find sender %s", from)
+		http.Error(w, "error sender not found", http.StatusNotFound)
+		return
+	}
+
+	wcid := h.cid.String()
+	if gcid := r.Header.Get("X-Etcd-Cluster-ID"); gcid != wcid {
+		log.Printf("rafthttp: streaming request ignored due to cluster ID mismatch got %s want %s", gcid, wcid)
+		http.Error(w, "clusterID mismatch", http.StatusPreconditionFailed)
+		return
+	}
+
+	wto := h.id.String()
+	if gto := r.Header.Get("X-Raft-To"); gto != wto {
+		log.Printf("rafthttp: streaming request ignored due to ID mismatch got %s want %s", gto, wto)
+		http.Error(w, "to field mismatch", http.StatusPreconditionFailed)
+		return
+	}
+
+	termStr := r.Header.Get("X-Raft-Term")
+	term, err := strconv.ParseUint(termStr, 10, 64)
+	if err != nil {
+		log.Printf("rafthttp: streaming request ignored due to parse term %s error: %v", termStr, err)
+		http.Error(w, "invalid term field", http.StatusBadRequest)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.(http.Flusher).Flush()
+
+	done, err := s.StartStreaming(w.(WriteFlusher), from, term)
+	if err != nil {
+		log.Printf("rafthttp: streaming request ignored due to start streaming error: %v", err)
+		// TODO: consider http status and info here
+		http.Error(w, "error enable streaming", http.StatusInternalServerError)
+		return
+	}
+	<-done
 }
 
 type writerToResponse interface {
