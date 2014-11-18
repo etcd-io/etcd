@@ -387,6 +387,10 @@ func (r *raft) handleAppendEntries(m pb.Message) {
 	}
 }
 
+func (r *raft) handleHeartbeat(m pb.Message) {
+	r.raftLog.commitTo(m.Commit)
+}
+
 func (r *raft) handleSnapshot(m pb.Message) {
 	if r.restore(m.Snapshot) {
 		r.send(pb.Message{To: m.From, Type: pb.MsgAppResp, Index: r.raftLog.lastIndex()})
@@ -482,7 +486,11 @@ func stepFollower(r *raft, m pb.Message) {
 	case pb.MsgApp:
 		r.elapsed = 0
 		r.lead = m.From
-		r.handleAppendEntries(m)
+		if m.LogTerm == 0 && m.Index == 0 && len(m.Entries) == 0 {
+			r.handleHeartbeat(m)
+		} else {
+			r.handleAppendEntries(m)
+		}
 	case pb.MsgSnap:
 		r.elapsed = 0
 		r.handleSnapshot(m)

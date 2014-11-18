@@ -674,6 +674,35 @@ func TestHandleMsgApp(t *testing.T) {
 	}
 }
 
+// TestHandleHeartbeat ensures that the follower commits to the commit in the message.
+func TestHandleHeartbeat(t *testing.T) {
+	commit := uint64(2)
+	tests := []struct {
+		m       pb.Message
+		wCommit uint64
+	}{
+		{pb.Message{Type: pb.MsgApp, Term: 2, Commit: commit + 1}, commit + 1},
+		{pb.Message{Type: pb.MsgApp, Term: 2, Commit: commit - 1}, commit}, // do not decrease commit
+	}
+
+	for i, tt := range tests {
+		sm := &raft{
+			state:     StateFollower,
+			HardState: pb.HardState{Term: 2},
+			raftLog:   &raftLog{committed: 0, ents: []pb.Entry{{}, {Term: 1}, {Term: 2}, {Term: 3}}},
+		}
+		sm.raftLog.commitTo(commit)
+		sm.handleHeartbeat(tt.m)
+		if sm.raftLog.committed != tt.wCommit {
+			t.Errorf("#%d: committed = %d, want %d", i, sm.raftLog.committed, tt.wCommit)
+		}
+		m := sm.readMessages()
+		if len(m) != 0 {
+			t.Fatalf("#%d: msg = nil, want 0", i)
+		}
+	}
+}
+
 func TestRecvMsgVote(t *testing.T) {
 	tests := []struct {
 		state   StateType
