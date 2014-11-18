@@ -14,7 +14,7 @@
    limitations under the License.
 */
 
-package etcdserver
+package rafthttp
 
 import (
 	"errors"
@@ -22,109 +22,23 @@ import (
 	"net/http"
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/coreos/etcd/etcdserver/stats"
 	"github.com/coreos/etcd/pkg/testutil"
 	"github.com/coreos/etcd/pkg/types"
 )
 
-func TestSendHubInitSenders(t *testing.T) {
-	membs := []*Member{
-		newTestMember(1, []string{"http://a"}, "", nil),
-		newTestMember(2, []string{"http://b"}, "", nil),
-		newTestMember(3, []string{"http://c"}, "", nil),
-	}
-	cl := newTestCluster(membs)
-	ls := stats.NewLeaderStats("")
-	h := newSendHub(nil, cl, nil, ls)
-
-	ids := cl.MemberIDs()
-	if len(h.senders) != len(ids) {
-		t.Errorf("len(ids) = %d, want %d", len(h.senders), len(ids))
-	}
-	for _, id := range ids {
-		if _, ok := h.senders[id]; !ok {
-			t.Errorf("senders[%s] is nil, want exists", id)
-		}
-	}
-}
-
-func TestSendHubAdd(t *testing.T) {
-	cl := newTestCluster(nil)
-	ls := stats.NewLeaderStats("")
-	h := newSendHub(nil, cl, nil, ls)
-	m := newTestMember(1, []string{"http://a"}, "", nil)
-	h.Add(m)
-
-	if _, ok := ls.Followers["1"]; !ok {
-		t.Errorf("FollowerStats[1] is nil, want exists")
-	}
-	s, ok := h.senders[types.ID(1)]
-	if !ok {
-		t.Fatalf("senders[1] is nil, want exists")
-	}
-	if s.u != "http://a/raft" {
-		t.Errorf("url = %s, want %s", s.u, "http://a/raft")
-	}
-
-	h.Add(m)
-	ns := h.senders[types.ID(1)]
-	if s != ns {
-		t.Errorf("sender = %p, want %p", ns, s)
-	}
-}
-
-func TestSendHubRemove(t *testing.T) {
-	membs := []*Member{
-		newTestMember(1, []string{"http://a"}, "", nil),
-	}
-	cl := newTestCluster(membs)
-	ls := stats.NewLeaderStats("")
-	h := newSendHub(nil, cl, nil, ls)
-	h.Remove(types.ID(1))
-
-	if _, ok := h.senders[types.ID(1)]; ok {
-		t.Fatalf("senders[1] exists, want removed")
-	}
-}
-
-func TestSendHubShouldStop(t *testing.T) {
-	membs := []*Member{
-		newTestMember(1, []string{"http://a"}, "", nil),
-	}
-	tr := newRespRoundTripper(http.StatusForbidden, nil)
-	cl := newTestCluster(membs)
-	ls := stats.NewLeaderStats("")
-	h := newSendHub(tr, cl, nil, ls)
-
-	shouldstop := h.ShouldStopNotify()
-	select {
-	case <-shouldstop:
-		t.Fatalf("received unexpected shouldstop notification")
-	case <-time.After(10 * time.Millisecond):
-	}
-	h.senders[1].send([]byte("somedata"))
-
-	testutil.ForceGosched()
-	select {
-	case <-shouldstop:
-	default:
-		t.Fatalf("cannot receive stop notification")
-	}
-}
-
 // TestSenderSend tests that send func could post data using roundtripper
 // and increase success count in stats.
 func TestSenderSend(t *testing.T) {
 	tr := &roundTripperRecorder{}
 	fs := &stats.FollowerStats{}
-	s := newSender(tr, "http://10.0.0.1", types.ID(1), fs, nil)
+	s := NewSender(tr, "http://10.0.0.1", types.ID(1), fs, nil)
 
-	if err := s.send([]byte("some data")); err != nil {
+	if err := s.Send([]byte("some data")); err != nil {
 		t.Fatalf("unexpect send error: %v", err)
 	}
-	s.stop()
+	s.Stop()
 
 	if tr.Request() == nil {
 		t.Errorf("sender fails to post the data")
@@ -139,12 +53,12 @@ func TestSenderSend(t *testing.T) {
 func TestSenderExceedMaximalServing(t *testing.T) {
 	tr := newRoundTripperBlocker()
 	fs := &stats.FollowerStats{}
-	s := newSender(tr, "http://10.0.0.1", types.ID(1), fs, nil)
+	s := NewSender(tr, "http://10.0.0.1", types.ID(1), fs, nil)
 
 	// keep the sender busy and make the buffer full
 	// nothing can go out as we block the sender
 	for i := 0; i < connPerSender+senderBufSize; i++ {
-		if err := s.send([]byte("some data")); err != nil {
+		if err := s.Send([]byte("some data")); err != nil {
 			t.Errorf("send err = %v, want nil", err)
 		}
 		// force the sender to grab data
@@ -152,7 +66,7 @@ func TestSenderExceedMaximalServing(t *testing.T) {
 	}
 
 	// try to send a data when we are sure the buffer is full
-	if err := s.send([]byte("some data")); err == nil {
+	if err := s.Send([]byte("some data")); err == nil {
 		t.Errorf("unexpect send success")
 	}
 
@@ -161,22 +75,22 @@ func TestSenderExceedMaximalServing(t *testing.T) {
 	testutil.ForceGosched()
 
 	// It could send new data after previous ones succeed
-	if err := s.send([]byte("some data")); err != nil {
+	if err := s.Send([]byte("some data")); err != nil {
 		t.Errorf("send err = %v, want nil", err)
 	}
-	s.stop()
+	s.Stop()
 }
 
 // TestSenderSendFailed tests that when send func meets the post error,
 // it increases fail count in stats.
 func TestSenderSendFailed(t *testing.T) {
 	fs := &stats.FollowerStats{}
-	s := newSender(newRespRoundTripper(0, errors.New("blah")), "http://10.0.0.1", types.ID(1), fs, nil)
+	s := NewSender(newRespRoundTripper(0, errors.New("blah")), "http://10.0.0.1", types.ID(1), fs, nil)
 
-	if err := s.send([]byte("some data")); err != nil {
-		t.Fatalf("unexpect send error: %v", err)
+	if err := s.Send([]byte("some data")); err != nil {
+		t.Fatalf("unexpect Send error: %v", err)
 	}
-	s.stop()
+	s.Stop()
 
 	fs.Lock()
 	defer fs.Unlock()
@@ -187,11 +101,11 @@ func TestSenderSendFailed(t *testing.T) {
 
 func TestSenderPost(t *testing.T) {
 	tr := &roundTripperRecorder{}
-	s := newSender(tr, "http://10.0.0.1", types.ID(1), nil, nil)
+	s := NewSender(tr, "http://10.0.0.1", types.ID(1), nil, nil)
 	if err := s.post([]byte("some data")); err != nil {
 		t.Fatalf("unexpect post error: %v", err)
 	}
-	s.stop()
+	s.Stop()
 
 	if g := tr.Request().Method; g != "POST" {
 		t.Errorf("method = %s, want %s", g, "POST")
@@ -230,9 +144,9 @@ func TestSenderPostBad(t *testing.T) {
 	}
 	for i, tt := range tests {
 		shouldstop := make(chan struct{})
-		s := newSender(newRespRoundTripper(tt.code, tt.err), tt.u, types.ID(1), nil, shouldstop)
+		s := NewSender(newRespRoundTripper(tt.code, tt.err), tt.u, types.ID(1), nil, shouldstop)
 		err := s.post([]byte("some data"))
-		s.stop()
+		s.Stop()
 
 		if err == nil {
 			t.Errorf("#%d: err = nil, want not nil", i)
@@ -251,9 +165,9 @@ func TestSenderPostShouldStop(t *testing.T) {
 	}
 	for i, tt := range tests {
 		shouldstop := make(chan struct{}, 1)
-		s := newSender(newRespRoundTripper(tt.code, tt.err), tt.u, types.ID(1), nil, shouldstop)
+		s := NewSender(newRespRoundTripper(tt.code, tt.err), tt.u, types.ID(1), nil, shouldstop)
 		s.post([]byte("some data"))
-		s.stop()
+		s.Stop()
 		select {
 		case <-shouldstop:
 		default:
