@@ -191,7 +191,7 @@ func (l *raftLog) lastTerm() uint64 {
 func (l *raftLog) term(i uint64) uint64 {
 	if i < l.unstable {
 		t, err := l.storage.Term(i)
-		if err == ErrSnapshotRequired {
+		if err == ErrCompacted {
 			return 0
 		} else if err != nil {
 			panic(err) // TODO(bdarnell)
@@ -299,7 +299,7 @@ func (l *raftLog) slice(lo uint64, hi uint64) []pb.Entry {
 	var ents []pb.Entry
 	if lo < l.unstable {
 		storedEnts, err := l.storage.Entries(lo, min(hi, l.unstable))
-		if err == ErrSnapshotRequired {
+		if err == ErrCompacted {
 			return nil
 		} else if err != nil {
 			panic(err) // TODO(bdarnell)

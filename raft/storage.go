@@ -23,9 +23,9 @@ import (
 	pb "github.com/coreos/etcd/raft/raftpb"
 )
 
-// ErrSnapshotRequired is returned by Storage.Entries when a requested
+// ErrCompacted is returned by Storage.Entries when a requested
 // index is unavailable because it predates the last snapshot.
-var ErrSnapshotRequired = errors.New("snapshot required; requested index is too old")
+var ErrCompacted = errors.New("requested index is unavailable due to compaction")
 
 // Storage is an interface that may be implemented by the application
 // to retrieve log entries from storage.
@@ -80,7 +80,7 @@ func (ms *MemoryStorage) Entries(lo, hi uint64) ([]pb.Entry, error) {
 	ms.Lock()
 	defer ms.Unlock()
 	if lo <= ms.offset {
-		return nil, ErrSnapshotRequired
+		return nil, ErrCompacted
 	}
 	return ms.ents[lo-ms.offset : hi-ms.offset], nil
 }
@@ -90,7 +90,7 @@ func (ms *MemoryStorage) Term(i uint64) (uint64, error) {
 	ms.Lock()
 	defer ms.Unlock()
 	if i < ms.offset || i > ms.offset+uint64(len(ms.ents)) {
-		return 0, ErrSnapshotRequired
+		return 0, ErrCompacted
 	}
 	return ms.ents[i-ms.offset].Term, nil
 }
