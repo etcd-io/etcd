@@ -149,7 +149,7 @@ func TestServeRaft(t *testing.T) {
 		}
 		req.Header.Set("X-Etcd-Cluster-ID", tt.clusterID)
 		rw := httptest.NewRecorder()
-		h := NewHandler(tt.p, types.ID(0), &nopStats{})
+		h := NewHandler(tt.p, types.ID(0))
 		h.ServeHTTP(rw, req)
 		if rw.Code != tt.wcode {
 			t.Errorf("#%d: got code=%d, want %d", i, rw.Code, tt.wcode)
@@ -171,10 +171,6 @@ type errProcessor struct {
 }
 
 func (p *errProcessor) Process(ctx context.Context, m raftpb.Message) error { return p.err }
-
-type nopStats struct{}
-
-func (s *nopStats) UpdateRecvApp(from types.ID, length int64) {}
 
 type resWriterToError struct {
 	code int
