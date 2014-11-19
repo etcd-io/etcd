@@ -281,7 +281,7 @@ func TestReadyContainUpdates(t *testing.T) {
 		{Ready{Entries: make([]raftpb.Entry, 1, 1)}, true},
 		{Ready{CommittedEntries: make([]raftpb.Entry, 1, 1)}, true},
 		{Ready{Messages: make([]raftpb.Message, 1, 1)}, true},
-		{Ready{Snapshot: raftpb.Snapshot{Index: 1}}, true},
+		{Ready{Snapshot: raftpb.Snapshot{Metadata: raftpb.SnapshotMetadata{Index: 1}}}, true},
 	}
 
 	for i, tt := range tests {
@@ -363,8 +363,9 @@ func TestNodeRestart(t *testing.T) {
 	}
 
 	storage := NewMemoryStorage()
+	storage.SetHardState(st)
 	storage.Append(entries)
-	n := RestartNode(1, 10, 1, nil, st, storage)
+	n := RestartNode(1, 10, 1, storage)
 	if g := <-n.Ready(); !reflect.DeepEqual(g, want) {
 		t.Errorf("g = %+v,\n             w   %+v", g, want)
 	}
@@ -378,15 +379,14 @@ func TestNodeRestart(t *testing.T) {
 }
 
 func TestNodeRestartFromSnapshot(t *testing.T) {
-	t.Skip("TODO(bdarnell): re-enable after integrating snapshot and storage")
-	snap := &raftpb.Snapshot{
-		Data:  []byte("some data"),
-		Nodes: []uint64{1, 2},
-		Index: 2,
-		Term:  1,
+	snap := raftpb.Snapshot{
+		Metadata: raftpb.SnapshotMetadata{
+			ConfState: raftpb.ConfState{Nodes: []uint64{1, 2}},
+			Index:     2,
+			Term:      1,
+		},
 	}
 	entries := []raftpb.Entry{
-		{Term: 1, Index: 2},
 		{Term: 1, Index: 3, Data: []byte("foo")},
 	}
 	st := raftpb.HardState{Term: 1, Commit: 3}
@@ -394,12 +394,14 @@ func TestNodeRestartFromSnapshot(t *testing.T) {
 	want := Ready{
 		HardState: emptyState,
 		// commit upto index commit index in st
-		CommittedEntries: entries[1:],
+		CommittedEntries: entries,
 	}
 
 	s := NewMemoryStorage()
+	s.SetHardState(st)
+	s.ApplySnapshot(snap)
 	s.Append(entries)
-	n := RestartNode(1, 10, 1, snap, st, s)
+	n := RestartNode(1, 10, 1, s)
 	if g := <-n.Ready(); !reflect.DeepEqual(g, want) {
 		t.Errorf("g = %+v,\n             w   %+v", g, want)
 	} else {
@@ -410,61 +412,6 @@ func TestNodeRestartFromSnapshot(t *testing.T) {
 	case rd := <-n.Ready():
 		t.Errorf("unexpected Ready: %+v", rd)
 	case <-time.After(time.Millisecond):
-	}
-}
-
-// TestCompacts ensures Node.Compact creates a correct raft snapshot and compacts
-// the raft log (call raft.compact)
-func TestNodeCompact(t *testing.T) {
-	ctx := context.Background()
-	n := newNode()
-	storage := NewMemoryStorage()
-	r := newRaft(1, []uint64{1}, 10, 1, storage)
-	go n.run(r)
-
-	n.Campaign(ctx)
-	n.Propose(ctx, []byte("foo"))
-
-	w := raftpb.Snapshot{
-		Term:  1,
-		Index: 2, // one nop + one proposal
-		Data:  []byte("a snapshot"),
-		Nodes: []uint64{1},
-	}
-
-	testutil.ForceGosched()
-	select {
-	case rd := <-n.Ready():
-		storage.Append(rd.Entries)
-		n.Advance()
-	default:
-		t.Fatalf("unexpected proposal failure: unable to commit entry")
-	}
-
-	n.Compact(w.Index, w.Nodes, w.Data)
-	testutil.ForceGosched()
-	select {
-	case rd := <-n.Ready():
-		if !reflect.DeepEqual(rd.Snapshot, w) {
-			t.Errorf("snap = %+v, want %+v", rd.Snapshot, w)
-		}
-		storage.Append(rd.Entries)
-		n.Advance()
-	default:
-		t.Fatalf("unexpected compact failure: unable to create a snapshot")
-	}
-	testutil.ForceGosched()
-	// TODO: this test the run updates the snapi correctly... should be tested
-	// separately with other kinds of updates
-	select {
-	case <-n.Ready():
-		t.Fatalf("unexpected more ready")
-	default:
-	}
-	n.Stop()
-
-	if r.raftLog.firstIndex() != w.Index+1 {
-		t.Errorf("log.offset = %d, want %d", r.raftLog.firstIndex(), w.Index)
 	}
 }
 

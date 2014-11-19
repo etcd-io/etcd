@@ -925,11 +925,14 @@ func TestSnapshot(t *testing.T) {
 	}
 
 	gaction = p.Action()
-	if len(gaction) != 1 {
-		t.Fatalf("len(action) = %d, want 1", len(gaction))
+	if len(gaction) != 2 {
+		t.Fatalf("len(action) = %d, want 2", len(gaction))
 	}
 	if !reflect.DeepEqual(gaction[0], action{name: "Cut"}) {
 		t.Errorf("action = %s, want Cut", gaction[0])
+	}
+	if !reflect.DeepEqual(gaction[1], action{name: "SaveSnap"}) {
+		t.Errorf("action = %s, want SaveSnap", gaction[1])
 	}
 }
 
@@ -967,7 +970,7 @@ func TestTriggerSnap(t *testing.T) {
 	gaction := p.Action()
 	// each operation is recorded as a Save
 	// BootstrapConfig/Nop + (SnapCount - 1) * Puts + Cut + SaveSnap = Save + (SnapCount - 1) * Save + Cut + SaveSnap
-	wcnt := 2 + int(srv.snapCount)
+	wcnt := 1 + int(srv.snapCount)
 	if len(gaction) != wcnt {
 		t.Fatalf("len(action) = %d, want %d", len(gaction), wcnt)
 	}
@@ -994,7 +997,7 @@ func TestRecvSnapshot(t *testing.T) {
 	}
 
 	s.start()
-	n.readyc <- raft.Ready{Snapshot: raftpb.Snapshot{Index: 1}}
+	n.readyc <- raft.Ready{Snapshot: raftpb.Snapshot{Metadata: raftpb.SnapshotMetadata{Index: 1}}}
 	// make goroutines move forward to receive snapshot
 	testutil.ForceGosched()
 	s.Stop()
@@ -1027,12 +1030,12 @@ func TestRecvSlowSnapshot(t *testing.T) {
 	}
 
 	s.start()
-	n.readyc <- raft.Ready{Snapshot: raftpb.Snapshot{Index: 1}}
+	n.readyc <- raft.Ready{Snapshot: raftpb.Snapshot{Metadata: raftpb.SnapshotMetadata{Index: 1}}}
 	// make goroutines move forward to receive snapshot
 	testutil.ForceGosched()
 	action := st.Action()
 
-	n.readyc <- raft.Ready{Snapshot: raftpb.Snapshot{Index: 1}}
+	n.readyc <- raft.Ready{Snapshot: raftpb.Snapshot{Metadata: raftpb.SnapshotMetadata{Index: 1}}}
 	// make goroutines move forward to receive snapshot
 	testutil.ForceGosched()
 	s.Stop()
@@ -1045,23 +1048,24 @@ func TestRecvSlowSnapshot(t *testing.T) {
 // TestApplySnapshotAndCommittedEntries tests that server applies snapshot
 // first and then committed entries.
 func TestApplySnapshotAndCommittedEntries(t *testing.T) {
-	t.Skip("TODO(bdarnell): re-enable this test")
 	n := newReadyNode()
 	st := &storeRecorder{}
 	cl := newCluster("abc")
 	cl.SetStore(store.New())
+	storage := raft.NewMemoryStorage()
 	s := &EtcdServer{
-		store:   st,
-		sender:  &nopSender{},
-		storage: &storageRecorder{},
-		node:    n,
-		Cluster: cl,
+		store:       st,
+		sender:      &nopSender{},
+		storage:     &storageRecorder{},
+		node:        n,
+		raftStorage: storage,
+		Cluster:     cl,
 	}
 
 	s.start()
 	req := &pb.Request{Method: "QGET"}
 	n.readyc <- raft.Ready{
-		Snapshot: raftpb.Snapshot{Index: 1},
+		Snapshot: raftpb.Snapshot{Metadata: raftpb.SnapshotMetadata{Index: 1}},
 		CommittedEntries: []raftpb.Entry{
 			{Index: 2, Data: pbutil.MustMarshal(req)},
 		},
@@ -1536,12 +1540,12 @@ func (n *readyNode) Propose(ctx context.Context, data []byte) error { return nil
 func (n *readyNode) ProposeConfChange(ctx context.Context, conf raftpb.ConfChange) error {
 	return nil
 }
-func (n *readyNode) Step(ctx context.Context, msg raftpb.Message) error { return nil }
-func (n *readyNode) Ready() <-chan raft.Ready                           { return n.readyc }
-func (n *readyNode) Advance()                                           {}
-func (n *readyNode) ApplyConfChange(conf raftpb.ConfChange)             {}
-func (n *readyNode) Stop()                                              {}
-func (n *readyNode) Compact(index uint64, nodes []uint64, d []byte)     {}
+func (n *readyNode) Step(ctx context.Context, msg raftpb.Message) error       { return nil }
+func (n *readyNode) Ready() <-chan raft.Ready                                 { return n.readyc }
+func (n *readyNode) Advance()                                                 {}
+func (n *readyNode) ApplyConfChange(conf raftpb.ConfChange) *raftpb.ConfState { return nil }
+func (n *readyNode) Stop()                                                    {}
+func (n *readyNode) Compact(index uint64, nodes []uint64, d []byte)           {}
 
 type nodeRecorder struct {
 	recorder
@@ -1567,8 +1571,9 @@ func (n *nodeRecorder) Step(ctx context.Context, msg raftpb.Message) error {
 }
 func (n *nodeRecorder) Ready() <-chan raft.Ready { return nil }
 func (n *nodeRecorder) Advance()                 {}
-func (n *nodeRecorder) ApplyConfChange(conf raftpb.ConfChange) {
+func (n *nodeRecorder) ApplyConfChange(conf raftpb.ConfChange) *raftpb.ConfState {
 	n.record(action{name: "ApplyConfChange", params: []interface{}{conf}})
+	return nil
 }
 func (n *nodeRecorder) Stop() {
 	n.record(action{name: "Stop"})
@@ -1628,8 +1633,9 @@ func (n *nodeConfChangeCommitterRecorder) ProposeConfChange(ctx context.Context,
 func (n *nodeConfChangeCommitterRecorder) Ready() <-chan raft.Ready {
 	return n.readyc
 }
-func (n *nodeConfChangeCommitterRecorder) ApplyConfChange(conf raftpb.ConfChange) {
+func (n *nodeConfChangeCommitterRecorder) ApplyConfChange(conf raftpb.ConfChange) *raftpb.ConfState {
 	n.record(action{name: "ApplyConfChange:" + conf.Type.String()})
+	return nil
 }
 
 type waitWithResponse struct {

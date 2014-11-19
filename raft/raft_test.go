@@ -22,7 +22,6 @@ import (
 	"math"
 	"math/rand"
 	"reflect"
-	"sort"
 	"testing"
 
 	pb "github.com/coreos/etcd/raft/raftpb"
@@ -514,52 +513,6 @@ func TestProposalByProxy(t *testing.T) {
 	}
 }
 
-func TestCompact(t *testing.T) {
-	tests := []struct {
-		compacti uint64
-		nodes    []uint64
-		snapd    []byte
-		wpanic   bool
-	}{
-		{1, []uint64{1, 2, 3}, []byte("some data"), false},
-		{2, []uint64{1, 2, 3}, []byte("some data"), false},
-		{4, []uint64{1, 2, 3}, []byte("some data"), true}, // compact out of range
-	}
-
-	for i, tt := range tests {
-		func() {
-			defer func() {
-				if r := recover(); r != nil {
-					if tt.wpanic != true {
-						t.Errorf("%d: panic = %v, want %v", i, true, tt.wpanic)
-					}
-				}
-			}()
-			sm := &raft{
-				state: StateLeader,
-				raftLog: &raftLog{
-					committed: 2,
-					applied:   2,
-					storage: &MemoryStorage{
-						ents: []pb.Entry{{}, {Term: 1}, {Term: 1}, {Term: 1}},
-					},
-				},
-			}
-			sm.compact(tt.compacti, tt.nodes, tt.snapd)
-			sort.Sort(uint64Slice(sm.raftLog.snapshot.Nodes))
-			if sm.raftLog.firstIndex() != tt.compacti+1 {
-				t.Errorf("%d: log.firstIndex = %d, want %d", i, sm.raftLog.firstIndex(), tt.compacti+1)
-			}
-			if !reflect.DeepEqual(sm.raftLog.snapshot.Nodes, tt.nodes) {
-				t.Errorf("%d: snap.nodes = %v, want %v", i, sm.raftLog.snapshot.Nodes, tt.nodes)
-			}
-			if !reflect.DeepEqual(sm.raftLog.snapshot.Data, tt.snapd) {
-				t.Errorf("%d: snap.data = %v, want %v", i, sm.raftLog.snapshot.Data, tt.snapd)
-			}
-		}()
-	}
-}
-
 func TestCommit(t *testing.T) {
 	tests := []struct {
 		matches []uint64
@@ -944,13 +897,16 @@ func TestBcastBeat(t *testing.T) {
 	offset := uint64(1000)
 	// make a state machine with log.offset = 1000
 	s := pb.Snapshot{
-		Index: offset,
-		Term:  1,
-		Nodes: []uint64{1, 2, 3},
+		Metadata: pb.SnapshotMetadata{
+			Index:     offset,
+			Term:      1,
+			ConfState: pb.ConfState{Nodes: []uint64{1, 2, 3}},
+		},
 	}
-	sm := newRaft(1, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
+	storage := NewMemoryStorage()
+	storage.ApplySnapshot(s)
+	sm := newRaft(1, []uint64{1, 2, 3}, 10, 1, storage)
 	sm.Term = 1
-	sm.restore(s)
 
 	sm.becomeCandidate()
 	sm.becomeLeader()
@@ -1026,28 +982,28 @@ func TestRecvMsgBeat(t *testing.T) {
 
 func TestRestore(t *testing.T) {
 	s := pb.Snapshot{
-		Index: 11, // magic number
-		Term:  11, // magic number
-		Nodes: []uint64{1, 2, 3},
+		Metadata: pb.SnapshotMetadata{
+			Index:     11, // magic number
+			Term:      11, // magic number
+			ConfState: pb.ConfState{Nodes: []uint64{1, 2, 3}},
+		},
 	}
 
-	sm := newRaft(1, []uint64{1, 2}, 10, 1, NewMemoryStorage())
+	storage := NewMemoryStorage()
+	sm := newRaft(1, []uint64{1, 2}, 10, 1, storage)
 	if ok := sm.restore(s); !ok {
 		t.Fatal("restore fail, want succeed")
 	}
 
-	if sm.raftLog.lastIndex() != s.Index {
-		t.Errorf("log.lastIndex = %d, want %d", sm.raftLog.lastIndex(), s.Index)
+	if sm.raftLog.lastIndex() != s.Metadata.Index {
+		t.Errorf("log.lastIndex = %d, want %d", sm.raftLog.lastIndex(), s.Metadata.Index)
 	}
-	if sm.raftLog.term(s.Index) != s.Term {
-		t.Errorf("log.lastTerm = %d, want %d", sm.raftLog.term(s.Index), s.Term)
+	if sm.raftLog.term(s.Metadata.Index) != s.Metadata.Term {
+		t.Errorf("log.lastTerm = %d, want %d", sm.raftLog.term(s.Metadata.Index), s.Metadata.Term)
 	}
 	sg := sm.nodes()
-	if !reflect.DeepEqual(sg, s.Nodes) {
-		t.Errorf("sm.Nodes = %+v, want %+v", sg, s.Nodes)
-	}
-	if !reflect.DeepEqual(sm.raftLog.snapshot, s) {
-		t.Errorf("snapshot = %+v, want %+v", sm.raftLog.snapshot, s)
+	if !reflect.DeepEqual(sg, s.Metadata.ConfState.Nodes) {
+		t.Errorf("sm.Nodes = %+v, want %+v", sg, s.Metadata.ConfState.Nodes)
 	}
 
 	if ok := sm.restore(s); ok {
@@ -1056,14 +1012,17 @@ func TestRestore(t *testing.T) {
 }
 
 func TestProvideSnap(t *testing.T) {
-	s := pb.Snapshot{
-		Index: 11, // magic number
-		Term:  11, // magic number
-		Nodes: []uint64{1, 2},
-	}
-	sm := newRaft(1, []uint64{1}, 10, 1, NewMemoryStorage())
 	// restore the statemachin from a snapshot
 	// so it has a compacted log and a snapshot
+	s := pb.Snapshot{
+		Metadata: pb.SnapshotMetadata{
+			Index:     11, // magic number
+			Term:      11, // magic number
+			ConfState: pb.ConfState{Nodes: []uint64{1, 2}},
+		},
+	}
+	storage := NewMemoryStorage()
+	sm := newRaft(1, []uint64{1}, 10, 1, storage)
 	sm.restore(s)
 
 	sm.becomeCandidate()
@@ -1086,18 +1045,18 @@ func TestProvideSnap(t *testing.T) {
 
 func TestRestoreFromSnapMsg(t *testing.T) {
 	s := pb.Snapshot{
-		Index: 11, // magic number
-		Term:  11, // magic number
-		Nodes: []uint64{1, 2},
+		Metadata: pb.SnapshotMetadata{
+			Index:     11, // magic number
+			Term:      11, // magic number
+			ConfState: pb.ConfState{Nodes: []uint64{1, 2}},
+		},
 	}
 	m := pb.Message{Type: pb.MsgSnap, From: 1, Term: 2, Snapshot: s}
 
 	sm := newRaft(2, []uint64{1, 2}, 10, 1, NewMemoryStorage())
 	sm.Step(m)
 
-	if !reflect.DeepEqual(sm.raftLog.snapshot, s) {
-		t.Errorf("snapshot = %+v, want %+v", sm.raftLog.snapshot, s)
-	}
+	// TODO(bdarnell): what should this test?
 }
 
 func TestSlowNodeRestore(t *testing.T) {
@@ -1110,15 +1069,12 @@ func TestSlowNodeRestore(t *testing.T) {
 	}
 	lead := nt.peers[1].(*raft)
 	nextEnts(lead, nt.storage[1])
-	lead.compact(lead.raftLog.applied, lead.nodes(), nil)
+	//lead.compact(lead.raftLog.applied, lead.nodes(), nil)
 
 	nt.recover()
 	// trigger a snapshot
 	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{}}})
 	follower := nt.peers[3].(*raft)
-	if !reflect.DeepEqual(follower.raftLog.snapshot, lead.raftLog.snapshot) {
-		t.Errorf("follower.snap = %+v, want %+v", follower.raftLog.snapshot, lead.raftLog.snapshot)
-	}
 
 	// trigger a commit
 	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{}}})

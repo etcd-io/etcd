@@ -85,7 +85,7 @@ func Migrate4To5(dataDir string, name string) error {
 
 	// If we've got the most recent snapshot, we can use it's committed index. Still likely less than the current actual index, but worth it for the replay.
 	if snap5 != nil {
-		st5.Commit = snap5.Index
+		st5.Commit = snap5.Metadata.Index
 	}
 
 	ents5, err := Entries4To5(ents4)

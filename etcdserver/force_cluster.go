@@ -54,8 +54,12 @@ func restartAsStandaloneNode(cfg *ServerConfig, index uint64, snapshot *raftpb.S
 
 	log.Printf("etcdserver: forcing restart of member %s in cluster %s at commit index %d", id, cfg.Cluster.ID(), st.Commit)
 	s := raft.NewMemoryStorage()
+	if snapshot != nil {
+		s.ApplySnapshot(*snapshot)
+	}
+	s.SetHardState(st)
 	s.Append(ents)
-	n := raft.RestartNode(uint64(id), 10, 1, snapshot, st, s)
+	n := raft.RestartNode(uint64(id), 10, 1, s)
 	return id, n, s, w
 }
 
@@ -67,7 +71,7 @@ func restartAsStandaloneNode(cfg *ServerConfig, index uint64, snapshot *raftpb.S
 func getIDs(snap *raftpb.Snapshot, ents []raftpb.Entry) []uint64 {
 	ids := make(map[uint64]bool)
 	if snap != nil {
-		for _, id := range snap.Nodes {
+		for _, id := range snap.Metadata.ConfState.Nodes {
 			ids[id] = true
 		}
 	}

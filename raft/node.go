@@ -75,12 +75,6 @@ type Ready struct {
 	Messages []pb.Message
 }
 
-type compact struct {
-	index uint64
-	nodes []uint64
-	data  []byte
-}
-
 func isHardStateEqual(a, b pb.HardState) bool {
 	return a.Term == b.Term && a.Vote == b.Vote && a.Commit == b.Commit
 }
@@ -92,12 +86,13 @@ func IsEmptyHardState(st pb.HardState) bool {
 
 // IsEmptySnap returns true if the given Snapshot is empty.
 func IsEmptySnap(sp pb.Snapshot) bool {
-	return sp.Index == 0
+	return sp.Metadata.Index == 0
 }
 
 func (rd Ready) containsUpdates() bool {
-	return rd.SoftState != nil || !IsEmptyHardState(rd.HardState) || !IsEmptySnap(rd.Snapshot) ||
-		len(rd.Entries) > 0 || len(rd.CommittedEntries) > 0 || len(rd.Messages) > 0
+	return rd.SoftState != nil || !IsEmptyHardState(rd.HardState) ||
+		!IsEmptySnap(rd.Snapshot) || len(rd.Entries) > 0 ||
+		len(rd.CommittedEntries) > 0 || len(rd.Messages) > 0
 }
 
 // Node represents a node in a raft cluster.
@@ -122,18 +117,14 @@ type Node interface {
 	// It prepares the node to return the next available Ready.
 	Advance()
 	// ApplyConfChange applies config change to the local node.
+	// Returns an opaque ConfState protobuf which must be recorded
+	// in snapshots. Will never return nil; it returns a pointer only
+	// to match MemoryStorage.Compact.
 	// TODO: reject existing node when add node
 	// TODO: reject non-existant node when remove node
-	ApplyConfChange(cc pb.ConfChange)
+	ApplyConfChange(cc pb.ConfChange) *pb.ConfState
 	// Stop performs any necessary termination of the Node
 	Stop()
-	// Compact discards the entrire log up to the given index. It also
-	// generates a raft snapshot containing the given nodes configuration
-	// and the given snapshot data.
-	// It is the caller's responsibility to ensure the given configuration
-	// and snapshot data match the actual point-in-time configuration and snapshot
-	// at the given index.
-	Compact(index uint64, nodes []uint64, d []byte)
 }
 
 type Peer struct {
@@ -157,55 +148,49 @@ func StartNode(id uint64, peers []Peer, election, heartbeat int, storage Storage
 		e := pb.Entry{Type: pb.EntryConfChange, Term: 1, Index: r.raftLog.lastIndex() + 1, Data: d}
 		r.raftLog.append(r.raftLog.lastIndex(), e)
 	}
+	// Mark these initial entries as committed.
+	// TODO(bdarnell): These entries are still unstable; do we need to preserve
+	// the invariant that committed < unstable?
 	r.raftLog.committed = r.raftLog.lastIndex()
 
 	go n.run(r)
 	return &n
 }
 
-// RestartNode is identical to StartNode but takes an initial State and a slice
-// of entries. Generally this is used when restarting from a stable storage
-// log.
-// TODO(bdarnell): remove args that are unnecessary with storage.
-// Maybe this function goes away and is replaced by StartNode with a non-empty Storage.
-func RestartNode(id uint64, election, heartbeat int, snapshot *pb.Snapshot, st pb.HardState, storage Storage) Node {
+// RestartNode is identical to StartNode but does not take a list of peers.
+// The current membership of the cluster will be restored from the Storage.
+func RestartNode(id uint64, election, heartbeat int, storage Storage) Node {
 	n := newNode()
 	r := newRaft(id, nil, election, heartbeat, storage)
-	if snapshot != nil {
-		r.restore(*snapshot)
-		r.raftLog.appliedTo(snapshot.Index)
-	}
-	if !isHardStateEqual(st, emptyState) {
-		r.loadState(st)
-	}
+
 	go n.run(r)
 	return &n
 }
 
 // node is the canonical implementation of the Node interface
 type node struct {
-	propc    chan pb.Message
-	recvc    chan pb.Message
-	compactc chan compact
-	confc    chan pb.ConfChange
-	readyc   chan Ready
-	advancec chan struct{}
-	tickc    chan struct{}
-	done     chan struct{}
-	stop     chan struct{}
+	propc      chan pb.Message
+	recvc      chan pb.Message
+	confc      chan pb.ConfChange
+	confstatec chan pb.ConfState
+	readyc     chan Ready
+	advancec   chan struct{}
+	tickc      chan struct{}
+	done       chan struct{}
+	stop       chan struct{}
 }
 
 func newNode() node {
 	return node{
-		propc:    make(chan pb.Message),
-		recvc:    make(chan pb.Message),
-		compactc: make(chan compact),
-		confc:    make(chan pb.ConfChange),
-		readyc:   make(chan Ready),
-		advancec: make(chan struct{}),
-		tickc:    make(chan struct{}),
-		done:     make(chan struct{}),
-		stop:     make(chan struct{}),
+		propc:      make(chan pb.Message),
+		recvc:      make(chan pb.Message),
+		confc:      make(chan pb.ConfChange),
+		confstatec: make(chan pb.ConfState),
+		readyc:     make(chan Ready),
+		advancec:   make(chan struct{}),
+		tickc:      make(chan struct{}),
+		done:       make(chan struct{}),
+		stop:       make(chan struct{}),
 	}
 }
 
@@ -232,13 +217,12 @@ func (n *node) run(r *raft) {
 	lead := None
 	prevSoftSt := r.softState()
 	prevHardSt := r.HardState
-	prevSnapi := r.raftLog.snapshot.Index
 
 	for {
 		if advancec != nil {
 			readyc = nil
 		} else {
-			rd = newReady(r, prevSoftSt, prevHardSt, prevSnapi)
+			rd = newReady(r, prevSoftSt, prevHardSt)
 			if rd.containsUpdates() {
 				readyc = n.readyc
 			} else {
@@ -270,11 +254,13 @@ func (n *node) run(r *raft) {
 			r.Step(m)
 		case m := <-n.recvc:
 			r.Step(m) // raft never returns an error
-		case c := <-n.compactc:
-			r.compact(c.index, c.nodes, c.data)
 		case cc := <-n.confc:
 			if cc.NodeID == None {
 				r.resetPendingConf()
+				select {
+				case n.confstatec <- pb.ConfState{Nodes: r.nodes()}:
+				case <-n.done:
+				}
 				break
 			}
 			switch cc.Type {
@@ -286,6 +272,10 @@ func (n *node) run(r *raft) {
 				r.resetPendingConf()
 			default:
 				panic("unexpected conf type")
+			}
+			select {
+			case n.confstatec <- pb.ConfState{Nodes: r.nodes()}:
+			case <-n.done:
 			}
 		case <-n.tickc:
 			r.tick()
@@ -301,9 +291,8 @@ func (n *node) run(r *raft) {
 				prevHardSt = rd.HardState
 			}
 			if !IsEmptySnap(rd.Snapshot) {
-				prevSnapi = rd.Snapshot.Index
-				if prevSnapi > prevLastUnstablei {
-					prevLastUnstablei = prevSnapi
+				if rd.Snapshot.Metadata.Index > prevLastUnstablei {
+					prevLastUnstablei = rd.Snapshot.Metadata.Index
 					havePrevLastUnstablei = true
 				}
 			}
@@ -388,21 +377,20 @@ func (n *node) Advance() {
 	}
 }
 
-func (n *node) ApplyConfChange(cc pb.ConfChange) {
+func (n *node) ApplyConfChange(cc pb.ConfChange) *pb.ConfState {
+	var cs pb.ConfState
 	select {
 	case n.confc <- cc:
 	case <-n.done:
 	}
-}
-
-func (n *node) Compact(index uint64, nodes []uint64, d []byte) {
 	select {
-	case n.compactc <- compact{index, nodes, d}:
+	case cs = <-n.confstatec:
 	case <-n.done:
 	}
+	return &cs
 }
 
-func newReady(r *raft, prevSoftSt *SoftState, prevHardSt pb.HardState, prevSnapi uint64) Ready {
+func newReady(r *raft, prevSoftSt *SoftState, prevHardSt pb.HardState) Ready {
 	rd := Ready{
 		Entries:          r.raftLog.unstableEntries(),
 		CommittedEntries: r.raftLog.nextEnts(),
@@ -414,8 +402,8 @@ func newReady(r *raft, prevSoftSt *SoftState, prevHardSt pb.HardState, prevSnapi
 	if !isHardStateEqual(r.HardState, prevHardSt) {
 		rd.HardState = r.HardState
 	}
-	if prevSnapi != r.raftLog.snapshot.Index {
-		rd.Snapshot = r.raftLog.snapshot
+	if r.snapshot != nil {
+		rd.Snapshot = *r.snapshot
 	}
 	return rd
 }

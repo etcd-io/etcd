@@ -41,8 +41,7 @@ type raftLog struct {
 	// applied is the highest log position that the application has
 	// been instructed to apply to its state machine.
 	// Invariant: applied <= committed
-	applied  uint64
-	snapshot pb.Snapshot
+	applied uint64
 }
 
 func newLog(storage Storage) *raftLog {
@@ -52,11 +51,18 @@ func newLog(storage Storage) *raftLog {
 	log := &raftLog{
 		storage: storage,
 	}
+	firstIndex, err := storage.FirstIndex()
+	if err != nil {
+		panic(err) // TODO(bdarnell)
+	}
 	lastIndex, err := storage.LastIndex()
 	if err != nil {
 		panic(err) // TODO(bdarnell)
 	}
 	log.unstable = lastIndex + 1
+	// Initialize our committed and applied pointers to the time of the last compaction.
+	log.committed = firstIndex - 1
+	log.applied = firstIndex - 1
 
 	return log
 }
@@ -139,9 +145,9 @@ func (l *raftLog) unstableEntries() []pb.Entry {
 // If applied is smaller than the index of snapshot, it returns all committed
 // entries after the index of snapshot.
 func (l *raftLog) nextEnts() (ents []pb.Entry) {
-	off := max(l.applied, l.snapshot.Index)
-	if l.committed > off {
-		return l.slice(off+1, l.committed+1)
+	off := max(l.applied+1, l.firstIndex())
+	if l.committed+1 > off {
+		return l.slice(off, l.committed+1)
 	}
 	return nil
 }
@@ -235,49 +241,15 @@ func (l *raftLog) maybeCommit(maxIndex, term uint64) bool {
 	return false
 }
 
-// compact compacts all log entries until i.
-// It removes the log entries before i, exclusive.
-// i must be not smaller than the index of the first entry
-// and not greater than the index of the last entry.
-// the number of entries after compaction will be returned.
-func (l *raftLog) compact(i uint64) uint64 {
-	if l.isOutOfAppliedBounds(i) {
-		panic(fmt.Sprintf("compact %d out of bounds (applied up to %d)", i, l.applied))
-	}
-	err := l.storage.Compact(i)
-	if err != nil {
-		panic(err) // TODO(bdarnell)
-	}
-	l.unstable = max(i+1, l.unstable)
-	firstIndex, err := l.storage.FirstIndex()
-	if err != nil {
-		panic(err) // TODO(bdarnell)
-	}
-	lastIndex, err := l.storage.LastIndex()
-	if err != nil {
-		panic(err) // TODO(bdarnell)
-	}
-	return lastIndex - firstIndex
-}
-
-func (l *raftLog) snap(d []byte, index, term uint64, nodes []uint64) {
-	l.snapshot = pb.Snapshot{
-		Data:  d,
-		Nodes: nodes,
-		Index: index,
-		Term:  term,
-	}
-}
-
 func (l *raftLog) restore(s pb.Snapshot) {
-	l.storage = &MemoryStorage{
-		ents:   []pb.Entry{{Term: s.Term}},
-		offset: s.Index,
+	err := l.storage.ApplySnapshot(s)
+	if err != nil {
+		panic(err) // TODO(bdarnell)
 	}
-	l.unstable = s.Index + 1
+	l.committed = s.Metadata.Index
+	l.applied = s.Metadata.Index
+	l.unstable = l.committed + 1
 	l.unstableEnts = nil
-	l.committed = s.Index
-	l.snapshot = s
 }
 
 func (l *raftLog) at(i uint64) *pb.Entry {

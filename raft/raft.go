@@ -105,6 +105,9 @@ type raft struct {
 
 	msgs []pb.Message
 
+	// the incoming snapshot, if any.
+	snapshot *pb.Snapshot
+
 	// the leader id
 	lead uint64
 
@@ -123,10 +126,15 @@ func newRaft(id uint64, peers []uint64, election, heartbeat int, storage Storage
 	if id == None {
 		panic("cannot use none id")
 	}
+	log := newLog(storage)
+	st, err := storage.HardState()
+	if err != nil {
+		panic(err) // TODO(bdarnell)
+	}
 	r := &raft{
 		id:               id,
 		lead:             None,
-		raftLog:          newLog(storage),
+		raftLog:          log,
 		prs:              make(map[uint64]*progress),
 		electionTimeout:  election,
 		heartbeatTimeout: heartbeat,
@@ -134,6 +142,9 @@ func newRaft(id uint64, peers []uint64, election, heartbeat int, storage Storage
 	r.rand = rand.New(rand.NewSource(int64(id)))
 	for _, p := range peers {
 		r.prs[p] = &progress{next: 1}
+	}
+	if !isHardStateEqual(st, emptyState) {
+		r.loadState(st)
 	}
 	r.becomeFollower(0, None)
 	return r
@@ -189,7 +200,14 @@ func (r *raft) sendAppend(to uint64) {
 	m.To = to
 	if r.needSnapshot(pr.next) {
 		m.Type = pb.MsgSnap
-		m.Snapshot = r.raftLog.snapshot
+		snapshot, err := r.raftLog.storage.Snapshot()
+		if err != nil {
+			panic(err) // TODO(bdarnell)
+		}
+		if snapshot.Metadata.Term == 0 {
+			panic("need non-empty snapshot")
+		}
+		m.Snapshot = snapshot
 	} else {
 		m.Type = pb.MsgApp
 		m.Index = pr.next - 1
@@ -381,6 +399,7 @@ func (r *raft) handleAppendEntries(m pb.Message) {
 
 func (r *raft) handleSnapshot(m pb.Message) {
 	if r.restore(m.Snapshot) {
+		r.snapshot = &m.Snapshot
 		r.send(pb.Message{To: m.From, Type: pb.MsgAppResp, Index: r.raftLog.lastIndex()})
 	} else {
 		r.send(pb.Message{To: m.From, Type: pb.MsgAppResp, Index: r.raftLog.committed})
@@ -489,24 +508,16 @@ func stepFollower(r *raft, m pb.Message) {
 	}
 }
 
-func (r *raft) compact(index uint64, nodes []uint64, d []byte) {
-	if index > r.raftLog.applied {
-		panic(fmt.Sprintf("raft: compact index (%d) exceeds applied index (%d)", index, r.raftLog.applied))
-	}
-	r.raftLog.snap(d, index, r.raftLog.term(index), nodes)
-	r.raftLog.compact(index)
-}
-
 // restore recovers the statemachine from a snapshot. It restores the log and the
 // configuration of statemachine.
 func (r *raft) restore(s pb.Snapshot) bool {
-	if s.Index <= r.raftLog.committed {
+	if s.Metadata.Index <= r.raftLog.committed {
 		return false
 	}
 
 	r.raftLog.restore(s)
 	r.prs = make(map[uint64]*progress)
-	for _, n := range s.Nodes {
+	for _, n := range s.Metadata.ConfState.Nodes {
 		if n == r.id {
 			r.setProgress(n, r.raftLog.lastIndex(), r.raftLog.lastIndex()+1)
 		} else {
@@ -517,13 +528,7 @@ func (r *raft) restore(s pb.Snapshot) bool {
 }
 
 func (r *raft) needSnapshot(i uint64) bool {
-	if i < r.raftLog.firstIndex() {
-		if r.raftLog.snapshot.Term == 0 {
-			panic("need non-empty snapshot")
-		}
-		return true
-	}
-	return false
+	return i < r.raftLog.firstIndex()
 }
 
 func (r *raft) nodes() []uint64 {

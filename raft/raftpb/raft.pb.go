@@ -10,9 +10,11 @@
 
 	It has these top-level messages:
 		Entry
+		SnapshotMetadata
 		Snapshot
 		Message
 		HardState
+		ConfState
 		ConfChange
 */
 package raftpb
@@ -163,12 +165,21 @@ func (m *Entry) Reset()         { *m = Entry{} }
 func (m *Entry) String() string { return proto.CompactTextString(m) }
 func (*Entry) ProtoMessage()    {}
 
+type SnapshotMetadata struct {
+	ConfState        ConfState `protobuf:"bytes,1,req,name=conf_state" json:"conf_state"`
+	Index            uint64    `protobuf:"varint,2,req,name=index" json:"index"`
+	Term             uint64    `protobuf:"varint,3,req,name=term" json:"term"`
+	XXX_unrecognized []byte    `json:"-"`
+}
+
+func (m *SnapshotMetadata) Reset()         { *m = SnapshotMetadata{} }
+func (m *SnapshotMetadata) String() string { return proto.CompactTextString(m) }
+func (*SnapshotMetadata) ProtoMessage()    {}
+
 type Snapshot struct {
-	Data             []byte   `protobuf:"bytes,1,req,name=data" json:"data"`
-	Nodes            []uint64 `protobuf:"varint,2,rep,name=nodes" json:"nodes"`
-	Index            uint64   `protobuf:"varint,3,req,name=index" json:"index"`
-	Term             uint64   `protobuf:"varint,4,req,name=term" json:"term"`
-	XXX_unrecognized []byte   `json:"-"`
+	Data             []byte           `protobuf:"bytes,1,opt,name=data" json:"data"`
+	Metadata         SnapshotMetadata `protobuf:"bytes,2,req,name=metadata" json:"metadata"`
+	XXX_unrecognized []byte           `json:"-"`
 }
 
 func (m *Snapshot) Reset()         { *m = Snapshot{} }
@@ -203,6 +214,15 @@ type HardState struct {
 func (m *HardState) Reset()         { *m = HardState{} }
 func (m *HardState) String() string { return proto.CompactTextString(m) }
 func (*HardState) ProtoMessage()    {}
+
+type ConfState struct {
+	Nodes            []uint64 `protobuf:"varint,1,rep,name=nodes" json:"nodes"`
+	XXX_unrecognized []byte   `json:"-"`
+}
+
+func (m *ConfState) Reset()         { *m = ConfState{} }
+func (m *ConfState) String() string { return proto.CompactTextString(m) }
+func (*ConfState) ProtoMessage()    {}
 
 type ConfChange struct {
 	ID               uint64         `protobuf:"varint,1,req" json:"ID"`
@@ -330,6 +350,102 @@ func (m *Entry) Unmarshal(data []byte) error {
 	}
 	return nil
 }
+func (m *SnapshotMetadata) Unmarshal(data []byte) error {
+	l := len(data)
+	index := 0
+	for index < l {
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if index >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[index]
+			index++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return code_google_com_p_gogoprotobuf_proto.ErrWrongType
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if index >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[index]
+				index++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postIndex := index + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.ConfState.Unmarshal(data[index:postIndex]); err != nil {
+				return err
+			}
+			index = postIndex
+		case 2:
+			if wireType != 0 {
+				return code_google_com_p_gogoprotobuf_proto.ErrWrongType
+			}
+			for shift := uint(0); ; shift += 7 {
+				if index >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[index]
+				index++
+				m.Index |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 3:
+			if wireType != 0 {
+				return code_google_com_p_gogoprotobuf_proto.ErrWrongType
+			}
+			for shift := uint(0); ; shift += 7 {
+				if index >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[index]
+				index++
+				m.Term |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		default:
+			var sizeOfWire int
+			for {
+				sizeOfWire++
+				wire >>= 7
+				if wire == 0 {
+					break
+				}
+			}
+			index -= sizeOfWire
+			skippy, err := code_google_com_p_gogoprotobuf_proto.Skip(data[index:])
+			if err != nil {
+				return err
+			}
+			if (index + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, data[index:index+skippy]...)
+			index += skippy
+		}
+	}
+	return nil
+}
 func (m *Snapshot) Unmarshal(data []byte) error {
 	l := len(data)
 	index := 0
@@ -372,52 +488,29 @@ func (m *Snapshot) Unmarshal(data []byte) error {
 			m.Data = append(m.Data, data[index:postIndex]...)
 			index = postIndex
 		case 2:
-			if wireType != 0 {
+			if wireType != 2 {
 				return code_google_com_p_gogoprotobuf_proto.ErrWrongType
 			}
-			var v uint64
+			var msglen int
 			for shift := uint(0); ; shift += 7 {
 				if index >= l {
 					return io.ErrUnexpectedEOF
 				}
 				b := data[index]
 				index++
-				v |= (uint64(b) & 0x7F) << shift
+				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
-			m.Nodes = append(m.Nodes, v)
-		case 3:
-			if wireType != 0 {
-				return code_google_com_p_gogoprotobuf_proto.ErrWrongType
+			postIndex := index + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
 			}
-			for shift := uint(0); ; shift += 7 {
-				if index >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[index]
-				index++
-				m.Index |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
+			if err := m.Metadata.Unmarshal(data[index:postIndex]); err != nil {
+				return err
 			}
-		case 4:
-			if wireType != 0 {
-				return code_google_com_p_gogoprotobuf_proto.ErrWrongType
-			}
-			for shift := uint(0); ; shift += 7 {
-				if index >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[index]
-				index++
-				m.Term |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
+			index = postIndex
 		default:
 			var sizeOfWire int
 			for {
@@ -739,6 +832,65 @@ func (m *HardState) Unmarshal(data []byte) error {
 	}
 	return nil
 }
+func (m *ConfState) Unmarshal(data []byte) error {
+	l := len(data)
+	index := 0
+	for index < l {
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if index >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[index]
+			index++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return code_google_com_p_gogoprotobuf_proto.ErrWrongType
+			}
+			var v uint64
+			for shift := uint(0); ; shift += 7 {
+				if index >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[index]
+				index++
+				v |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.Nodes = append(m.Nodes, v)
+		default:
+			var sizeOfWire int
+			for {
+				sizeOfWire++
+				wire >>= 7
+				if wire == 0 {
+					break
+				}
+			}
+			index -= sizeOfWire
+			skippy, err := code_google_com_p_gogoprotobuf_proto.Skip(data[index:])
+			if err != nil {
+				return err
+			}
+			if (index + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, data[index:index+skippy]...)
+			index += skippy
+		}
+	}
+	return nil
+}
 func (m *ConfChange) Unmarshal(data []byte) error {
 	l := len(data)
 	index := 0
@@ -861,18 +1013,25 @@ func (m *Entry) Size() (n int) {
 	}
 	return n
 }
+func (m *SnapshotMetadata) Size() (n int) {
+	var l int
+	_ = l
+	l = m.ConfState.Size()
+	n += 1 + l + sovRaft(uint64(l))
+	n += 1 + sovRaft(uint64(m.Index))
+	n += 1 + sovRaft(uint64(m.Term))
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
+	return n
+}
 func (m *Snapshot) Size() (n int) {
 	var l int
 	_ = l
 	l = len(m.Data)
 	n += 1 + l + sovRaft(uint64(l))
-	if len(m.Nodes) > 0 {
-		for _, e := range m.Nodes {
-			n += 1 + sovRaft(uint64(e))
-		}
-	}
-	n += 1 + sovRaft(uint64(m.Index))
-	n += 1 + sovRaft(uint64(m.Term))
+	l = m.Metadata.Size()
+	n += 1 + l + sovRaft(uint64(l))
 	if m.XXX_unrecognized != nil {
 		n += len(m.XXX_unrecognized)
 	}
@@ -908,6 +1067,19 @@ func (m *HardState) Size() (n int) {
 	n += 1 + sovRaft(uint64(m.Term))
 	n += 1 + sovRaft(uint64(m.Vote))
 	n += 1 + sovRaft(uint64(m.Commit))
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
+	return n
+}
+func (m *ConfState) Size() (n int) {
+	var l int
+	_ = l
+	if len(m.Nodes) > 0 {
+		for _, e := range m.Nodes {
+			n += 1 + sovRaft(uint64(e))
+		}
+	}
 	if m.XXX_unrecognized != nil {
 		n += len(m.XXX_unrecognized)
 	}
@@ -973,6 +1145,40 @@ func (m *Entry) MarshalTo(data []byte) (n int, err error) {
 	}
 	return i, nil
 }
+func (m *SnapshotMetadata) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *SnapshotMetadata) MarshalTo(data []byte) (n int, err error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	data[i] = 0xa
+	i++
+	i = encodeVarintRaft(data, i, uint64(m.ConfState.Size()))
+	n1, err := m.ConfState.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
+	}
+	i += n1
+	data[i] = 0x10
+	i++
+	i = encodeVarintRaft(data, i, uint64(m.Index))
+	data[i] = 0x18
+	i++
+	i = encodeVarintRaft(data, i, uint64(m.Term))
+	if m.XXX_unrecognized != nil {
+		i += copy(data[i:], m.XXX_unrecognized)
+	}
+	return i, nil
+}
 func (m *Snapshot) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
@@ -992,25 +1198,14 @@ func (m *Snapshot) MarshalTo(data []byte) (n int, err error) {
 	i++
 	i = encodeVarintRaft(data, i, uint64(len(m.Data)))
 	i += copy(data[i:], m.Data)
-	if len(m.Nodes) > 0 {
-		for _, num := range m.Nodes {
-			data[i] = 0x10
-			i++
-			for num >= 1<<7 {
-				data[i] = uint8(uint64(num)&0x7f | 0x80)
-				num >>= 7
-				i++
-			}
-			data[i] = uint8(num)
-			i++
-		}
+	data[i] = 0x12
+	i++
+	i = encodeVarintRaft(data, i, uint64(m.Metadata.Size()))
+	n2, err := m.Metadata.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
 	}
-	data[i] = 0x18
-	i++
-	i = encodeVarintRaft(data, i, uint64(m.Index))
-	data[i] = 0x20
-	i++
-	i = encodeVarintRaft(data, i, uint64(m.Term))
+	i += n2
 	if m.XXX_unrecognized != nil {
 		i += copy(data[i:], m.XXX_unrecognized)
 	}
@@ -1067,11 +1262,11 @@ func (m *Message) MarshalTo(data []byte) (n int, err error) {
 	data[i] = 0x4a
 	i++
 	i = encodeVarintRaft(data, i, uint64(m.Snapshot.Size()))
-	n1, err := m.Snapshot.MarshalTo(data[i:])
+	n3, err := m.Snapshot.MarshalTo(data[i:])
 	if err != nil {
 		return 0, err
 	}
-	i += n1
+	i += n3
 	data[i] = 0x50
 	i++
 	if m.Reject {
@@ -1109,6 +1304,39 @@ func (m *HardState) MarshalTo(data []byte) (n int, err error) {
 	data[i] = 0x18
 	i++
 	i = encodeVarintRaft(data, i, uint64(m.Commit))
+	if m.XXX_unrecognized != nil {
+		i += copy(data[i:], m.XXX_unrecognized)
+	}
+	return i, nil
+}
+func (m *ConfState) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *ConfState) MarshalTo(data []byte) (n int, err error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.Nodes) > 0 {
+		for _, num := range m.Nodes {
+			data[i] = 0x8
+			i++
+			for num >= 1<<7 {
+				data[i] = uint8(uint64(num)&0x7f | 0x80)
+				num >>= 7
+				i++
+			}
+			data[i] = uint8(num)
+			i++
+		}
+	}
 	if m.XXX_unrecognized != nil {
 		i += copy(data[i:], m.XXX_unrecognized)
 	}

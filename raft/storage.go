@@ -18,6 +18,7 @@ package raft
 
 import (
 	"errors"
+	"fmt"
 	"sync"
 
 	pb "github.com/coreos/etcd/raft/raftpb"
@@ -34,6 +35,8 @@ var ErrCompacted = errors.New("requested index is unavailable due to compaction"
 // become inoperable and refuse to participate in elections; the
 // application is responsible for cleanup and recovery in this case.
 type Storage interface {
+	// HardState returns the saved HardState information.
+	HardState() (pb.HardState, error)
 	// Entries returns a slice of log entries in the range [lo,hi).
 	Entries(lo, hi uint64) ([]pb.Entry, error)
 	// Term returns the term of entry i, which must be in the range
@@ -47,10 +50,11 @@ type Storage interface {
 	// available via Entries (older entries have been incorporated
 	// into the latest Snapshot).
 	FirstIndex() (uint64, error)
-	// Compact discards all log entries prior to i.
-	// TODO(bdarnell): Create a snapshot which can be used to
-	// reconstruct the state at that point.
-	Compact(i uint64) error
+	// Snapshot returns the most recent snapshot.
+	Snapshot() (pb.Snapshot, error)
+	// ApplySnapshot overwrites the contents of this Storage object with
+	// those of the given snapshot.
+	ApplySnapshot(pb.Snapshot) error
 }
 
 // MemoryStorage implements the Storage interface backed by an
@@ -61,10 +65,10 @@ type MemoryStorage struct {
 	// goroutine.
 	sync.Mutex
 
+	hardState pb.HardState
+	snapshot  pb.Snapshot
+	// ents[i] has raft log position i+snapshot.Metadata.Index
 	ents []pb.Entry
-	// offset is the position of the last compaction.
-	// ents[i] has raft log position i+offset.
-	offset uint64
 }
 
 // NewMemoryStorage creates an empty MemoryStorage.
@@ -75,50 +79,96 @@ func NewMemoryStorage() *MemoryStorage {
 	}
 }
 
+// HardState implements the Storage interface.
+func (ms *MemoryStorage) HardState() (pb.HardState, error) {
+	return ms.hardState, nil
+}
+
+// SetHardState saves the current HardState.
+func (ms *MemoryStorage) SetHardState(st pb.HardState) error {
+	ms.hardState = st
+	return nil
+}
+
 // Entries implements the Storage interface.
 func (ms *MemoryStorage) Entries(lo, hi uint64) ([]pb.Entry, error) {
 	ms.Lock()
 	defer ms.Unlock()
-	if lo <= ms.offset {
+	offset := ms.snapshot.Metadata.Index
+	if lo <= offset {
 		return nil, ErrCompacted
 	}
-	return ms.ents[lo-ms.offset : hi-ms.offset], nil
+	return ms.ents[lo-offset : hi-offset], nil
 }
 
 // Term implements the Storage interface.
 func (ms *MemoryStorage) Term(i uint64) (uint64, error) {
 	ms.Lock()
 	defer ms.Unlock()
-	if i < ms.offset || i > ms.offset+uint64(len(ms.ents)) {
+	offset := ms.snapshot.Metadata.Index
+	if i < offset || i > offset+uint64(len(ms.ents)) {
 		return 0, ErrCompacted
 	}
-	return ms.ents[i-ms.offset].Term, nil
+	return ms.ents[i-offset].Term, nil
 }
 
 // LastIndex implements the Storage interface.
 func (ms *MemoryStorage) LastIndex() (uint64, error) {
 	ms.Lock()
 	defer ms.Unlock()
-	return ms.offset + uint64(len(ms.ents)) - 1, nil
+	return ms.snapshot.Metadata.Index + uint64(len(ms.ents)) - 1, nil
 }
 
 // FirstIndex implements the Storage interface.
 func (ms *MemoryStorage) FirstIndex() (uint64, error) {
 	ms.Lock()
 	defer ms.Unlock()
-	return ms.offset + 1, nil
+	return ms.snapshot.Metadata.Index + 1, nil
 }
 
-// Compact implements the Storage interface.
-func (ms *MemoryStorage) Compact(i uint64) error {
+// Snapshot implements the Storage interface.
+func (ms *MemoryStorage) Snapshot() (pb.Snapshot, error) {
 	ms.Lock()
 	defer ms.Unlock()
-	i -= ms.offset
+	return ms.snapshot, nil
+}
+
+// ApplySnapshot implements the Storage interface.
+func (ms *MemoryStorage) ApplySnapshot(snap pb.Snapshot) error {
+	ms.Lock()
+	defer ms.Unlock()
+
+	ms.snapshot = snap
+	ms.ents = []pb.Entry{{Term: snap.Metadata.Term, Index: snap.Metadata.Index}}
+	return nil
+}
+
+// Compact discards all log entries prior to i. Creates a snapshot
+// which can be retrieved with the Snapshot() method and can be used
+// to reconstruct the state at that point.
+// If any configuration changes have been made since the last compaction,
+// the result of the last ApplyConfChange must be passed in.
+// It is the application's responsibility to not attempt to compact an index
+// greater than raftLog.applied.
+func (ms *MemoryStorage) Compact(i uint64, cs *pb.ConfState, data []byte) error {
+	ms.Lock()
+	defer ms.Unlock()
+	offset := ms.snapshot.Metadata.Index
+	if i <= offset || i > offset+uint64(len(ms.ents))-1 {
+		panic(fmt.Sprintf("compact %d out of bounds (%d, %d)", i, offset,
+			offset+uint64(len(ms.ents))-1))
+	}
+	i -= offset
 	ents := make([]pb.Entry, 1, 1+uint64(len(ms.ents))-i)
 	ents[0].Term = ms.ents[i].Term
 	ents = append(ents, ms.ents[i+1:]...)
 	ms.ents = ents
-	ms.offset += i
+	ms.snapshot.Metadata.Index += i
+	ms.snapshot.Metadata.Term = ents[0].Term
+	if cs != nil {
+		ms.snapshot.Metadata.ConfState = *cs
+	}
+	ms.snapshot.Data = data
 	return nil
 }
 

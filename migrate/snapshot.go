@@ -172,14 +172,18 @@ func (s *Snapshot4) Snapshot5() *raftpb.Snapshot {
 	}
 
 	snap5 := raftpb.Snapshot{
-		Data:  newState,
-		Index: s.LastIndex,
-		Term:  s.LastTerm,
-		Nodes: make([]uint64, len(s.Peers)),
+		Data: newState,
+		Metadata: raftpb.SnapshotMetadata{
+			Index: s.LastIndex,
+			Term:  s.LastTerm,
+			ConfState: raftpb.ConfState{
+				Nodes: make([]uint64, len(s.Peers)),
+			},
+		},
 	}
 
 	for i, p := range s.Peers {
-		snap5.Nodes[i] = hashName(p.Name)
+		snap5.Metadata.ConfState.Nodes[i] = hashName(p.Name)
 	}
 
 	return &snap5

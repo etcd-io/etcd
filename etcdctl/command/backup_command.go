@@ -56,7 +56,7 @@ func handleBackup(c *cli.Context) {
 	}
 	var index uint64
 	if snapshot != nil {
-		index = snapshot.Index
+		index = snapshot.Metadata.Index
 		newss := snap.New(destSnap)
 		newss.SaveSnap(*snapshot)
 	}

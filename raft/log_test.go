@@ -298,7 +298,7 @@ func TestCompactionSideEffects(t *testing.T) {
 	raftLog.appliedTo(raftLog.committed)
 
 	offset := uint64(500)
-	raftLog.compact(offset)
+	storage.Compact(offset, nil, nil)
 
 	if raftLog.lastIndex() != lastIndex {
 		t.Errorf("lastIndex = %d, want %d", raftLog.lastIndex(), lastIndex)
@@ -337,7 +337,9 @@ func TestCompactionSideEffects(t *testing.T) {
 }
 
 func TestNextEnts(t *testing.T) {
-	snap := pb.Snapshot{Term: 1, Index: 3}
+	snap := pb.Snapshot{
+		Metadata: pb.SnapshotMetadata{Term: 1, Index: 3},
+	}
 	ents := []pb.Entry{
 		{Term: 1, Index: 4},
 		{Term: 1, Index: 5},
@@ -353,9 +355,10 @@ func TestNextEnts(t *testing.T) {
 		{5, nil},
 	}
 	for i, tt := range tests {
-		raftLog := newLog(NewMemoryStorage())
-		raftLog.restore(snap)
-		raftLog.append(snap.Index, ents...)
+		storage := NewMemoryStorage()
+		storage.ApplySnapshot(snap)
+		raftLog := newLog(storage)
+		raftLog.append(snap.Metadata.Index, ents...)
 		raftLog.maybeCommit(5, 1)
 		raftLog.appliedTo(tt.applied)
 
@@ -418,18 +421,16 @@ func TestStableTo(t *testing.T) {
 //TestCompaction ensures that the number of log entries is correct after compactions.
 func TestCompaction(t *testing.T) {
 	tests := []struct {
-		applied   uint64
 		lastIndex uint64
 		compact   []uint64
 		wleft     []int
 		wallow    bool
 	}{
 		// out of upper bound
-		{1000, 1000, []uint64{1001}, []int{-1}, false},
-		{1000, 1000, []uint64{300, 500, 800, 900}, []int{700, 500, 200, 100}, true},
+		{1000, []uint64{1001}, []int{-1}, false},
+		{1000, []uint64{300, 500, 800, 900}, []int{700, 500, 200, 100}, true},
 		// out of lower bound
-		{1000, 1000, []uint64{300, 299}, []int{700, -1}, false},
-		{0, 1000, []uint64{1}, []int{-1}, false},
+		{1000, []uint64{300, 299}, []int{700, -1}, false},
 	}
 
 	for i, tt := range tests {
@@ -447,11 +448,11 @@ func TestCompaction(t *testing.T) {
 				storage.Append([]pb.Entry{{}})
 			}
 			raftLog := newLog(storage)
-			raftLog.maybeCommit(tt.applied, 0)
+			raftLog.maybeCommit(tt.lastIndex, 0)
 			raftLog.appliedTo(raftLog.committed)
 
 			for j := 0; j < len(tt.compact); j++ {
-				raftLog.compact(tt.compact[j])
+				storage.Compact(tt.compact[j], nil, nil)
 				if len(raftLog.allEntries()) != tt.wleft[j] {
 					t.Errorf("#%d.%d len = %d, want %d", i, j, len(raftLog.allEntries()), tt.wleft[j])
 				}
@@ -461,15 +462,12 @@ func TestCompaction(t *testing.T) {
 }
 
 func TestLogRestore(t *testing.T) {
-	var i uint64
-	raftLog := newLog(NewMemoryStorage())
-	for i = 0; i < 100; i++ {
-		raftLog.append(i, pb.Entry{Term: i + 1})
-	}
-
 	index := uint64(1000)
 	term := uint64(1000)
-	raftLog.restore(pb.Snapshot{Index: index, Term: term})
+	snap := pb.SnapshotMetadata{Index: index, Term: term}
+	storage := NewMemoryStorage()
+	storage.ApplySnapshot(pb.Snapshot{Metadata: snap})
+	raftLog := newLog(storage)
 
 	// only has the guard entry
 	if len(raftLog.allEntries()) != 0 {
@@ -492,8 +490,9 @@ func TestLogRestore(t *testing.T) {
 func TestIsOutOfBounds(t *testing.T) {
 	offset := uint64(100)
 	num := uint64(100)
-	l := newLog(NewMemoryStorage())
-	l.restore(pb.Snapshot{Index: offset})
+	storage := NewMemoryStorage()
+	storage.ApplySnapshot(pb.Snapshot{Metadata: pb.SnapshotMetadata{Index: offset}})
+	l := newLog(storage)
 	l.append(offset, make([]pb.Entry, num)...)
 
 	tests := []struct {
@@ -520,8 +519,9 @@ func TestAt(t *testing.T) {
 	offset := uint64(100)
 	num := uint64(100)
 
-	l := newLog(NewMemoryStorage())
-	l.restore(pb.Snapshot{Index: offset})
+	storage := NewMemoryStorage()
+	storage.ApplySnapshot(pb.Snapshot{Metadata: pb.SnapshotMetadata{Index: offset}})
+	l := newLog(storage)
 	for i = 1; i < num; i++ {
 		l.append(offset+i-1, pb.Entry{Term: i})
 	}
@@ -550,8 +550,9 @@ func TestTerm(t *testing.T) {
 	offset := uint64(100)
 	num := uint64(100)
 
-	l := newLog(NewMemoryStorage())
-	l.restore(pb.Snapshot{Index: offset})
+	storage := NewMemoryStorage()
+	storage.ApplySnapshot(pb.Snapshot{Metadata: pb.SnapshotMetadata{Index: offset}})
+	l := newLog(storage)
 	for i = 1; i < num; i++ {
 		l.append(offset+i-1, pb.Entry{Term: i})
 	}
@@ -580,8 +581,9 @@ func TestSlice(t *testing.T) {
 	offset := uint64(100)
 	num := uint64(100)
 
-	l := newLog(NewMemoryStorage())
-	l.restore(pb.Snapshot{Index: offset})
+	storage := NewMemoryStorage()
+	storage.ApplySnapshot(pb.Snapshot{Metadata: pb.SnapshotMetadata{Index: offset}})
+	l := newLog(storage)
 	for i = 1; i < num; i++ {
 		l.append(offset+i-1, pb.Entry{Term: i})
 	}

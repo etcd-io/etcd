@@ -248,9 +248,9 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 			return nil, err
 		}
 		if snapshot != nil {
-			log.Printf("etcdserver: recovering from snapshot at index %d", snapshot.Index)
+			log.Printf("etcdserver: recovering from snapshot at index %d", snapshot.Metadata.Index)
 			st.Recovery(snapshot.Data)
-			index = snapshot.Index
+			index = snapshot.Metadata.Index
 		}
 		cfg.Cluster = NewClusterFromStore(cfg.Cluster.token, st)
 		cfg.Print()
@@ -360,18 +360,22 @@ func (s *EtcdServer) run() {
 			if err := s.storage.Save(rd.HardState, rd.Entries); err != nil {
 				log.Fatalf("etcdserver: save state and entries error: %v", err)
 			}
-			if err := s.storage.SaveSnap(rd.Snapshot); err != nil {
-				log.Fatalf("etcdserver: create snapshot error: %v", err)
+			if !raft.IsEmptySnap(rd.Snapshot) {
+				if err := s.storage.SaveSnap(rd.Snapshot); err != nil {
+					log.Fatalf("etcdserver: create snapshot error: %v", err)
+				}
 			}
 			s.sender.Send(rd.Messages)
 
-			// recover from snapshot if it is more updated than current applied
-			if rd.Snapshot.Index > appliedi {
-				if err := s.store.Recovery(rd.Snapshot.Data); err != nil {
-					log.Panicf("recovery store error: %v", err)
+			if !raft.IsEmptySnap(rd.Snapshot) {
+				// recover from snapshot if it is more updated than current applied
+				if rd.Snapshot.Metadata.Index > appliedi {
+					if err := s.store.Recovery(rd.Snapshot.Data); err != nil {
+						log.Panicf("recovery store error: %v", err)
+					}
+					s.Cluster.Recover()
+					appliedi = rd.Snapshot.Metadata.Index
 				}
-				s.Cluster.Recover()
-				appliedi = rd.Snapshot.Index
 			}
 			// TODO(bmizerany): do this in the background, but take
 			// care to apply entries in a single goroutine, and not
@@ -395,9 +399,6 @@ func (s *EtcdServer) run() {
 
 			s.node.Advance()
 
-			if rd.Snapshot.Index > snapi {
-				snapi = rd.Snapshot.Index
-			}
 			if appliedi-snapi > s.snapCount {
 				s.snapshot(appliedi, nodes)
 				snapi = appliedi
@@ -773,10 +774,19 @@ func (s *EtcdServer) snapshot(snapi uint64, snapnodes []uint64) {
 	if err != nil {
 		log.Panicf("store save should never fail: %v", err)
 	}
-	s.node.Compact(snapi, snapnodes, d)
+	// TODO(bdarnell): save ConfState instead of snapnodes directly.
+	s.raftStorage.Compact(snapi, &raftpb.ConfState{Nodes: snapnodes}, d)
 	if err := s.storage.Cut(); err != nil {
 		log.Panicf("rotate wal file should never fail: %v", err)
 	}
+	snap, err := s.raftStorage.Snapshot()
+	if err != nil {
+		log.Fatalf("etcdserver: snapshot error: %v", err)
+	}
+	if err := s.storage.SaveSnap(snap); err != nil {
+		log.Fatalf("etcdserver: create snapshot error: %v", err)
+	}
+
 }
 
 // checkClientURLsEmptyFromPeers does its best to get the cluster from peers,
@@ -897,8 +907,12 @@ func restartNode(cfg *ServerConfig, index uint64, snapshot *raftpb.Snapshot) (ty
 
 	log.Printf("etcdserver: restart member %s in cluster %s at commit index %d", id, cfg.Cluster.ID(), st.Commit)
 	s := raft.NewMemoryStorage()
+	if snapshot != nil {
+		s.ApplySnapshot(*snapshot)
+	}
+	s.SetHardState(st)
 	s.Append(ents)
-	n := raft.RestartNode(uint64(id), 10, 1, snapshot, st, s)
+	n := raft.RestartNode(uint64(id), 10, 1, s)
 	return id, n, s, w
 }
 
