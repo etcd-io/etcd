@@ -21,52 +21,38 @@ import (
 	"log"
 	"os"
 	"path"
+
+	"github.com/coreos/etcd/pkg/types"
 )
-
-type StringSlice []string
-
-func containsStrings(source, target []string) bool {
-	for _, t := range target {
-		ok := false
-		for _, s := range source {
-			if t == s {
-				ok = true
-			}
-		}
-		if !ok {
-			return false
-		}
-	}
-	return true
-}
 
 // WalVersion is an enum for versions of etcd logs.
 type WalVersion string
 
 const (
-	UnknownWAL WalVersion = "Unknown WAL"
-	NoWAL      WalVersion = "No WAL"
-	WALv0_4    WalVersion = "0.4.x"
-	WALv0_5    WalVersion = "0.5.x"
+	WALUnknown  WalVersion = "Unknown WAL"
+	WALNotExist WalVersion = "No WAL"
+	WALv0_4     WalVersion = "0.4.x"
+	WALv0_5     WalVersion = "0.5.x"
 )
 
 func DetectVersion(dirpath string) WalVersion {
 	names, err := readDir(dirpath)
 	if err != nil || len(names) == 0 {
-		return NoWAL
+		return WALNotExist
 	}
-	if containsStrings(names, []string{"snap", "wal"}) {
+	nameSet := types.NewUnsafeSet(names...)
+	if nameSet.ContainsAll([]string{"snap", "wal"}) {
 		// .../wal cannot be empty to exist.
 		if Exist(path.Join(dirpath, "wal")) {
 			return WALv0_5
 		}
-		return NoWAL
+		return WALNotExist
 	}
-	if containsStrings(names, []string{"snapshot", "conf", "log"}) {
+	if nameSet.ContainsAll([]string{"snapshot", "conf", "log"}) {
 		return WALv0_4
 	}
 
-	return UnknownWAL
+	return WALUnknown
 }
 
 func Exist(dirpath string) bool {

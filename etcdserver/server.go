@@ -193,13 +193,16 @@ type EtcdServer struct {
 
 // UpgradeWAL converts an older version of the EtcdServer data to the newest version.
 // It must ensure that, after upgrading, the most recent version is present.
-func UpgradeWAL(cfg *ServerConfig, ver wal.WalVersion) {
+func UpgradeWAL(cfg *ServerConfig, ver wal.WalVersion) error {
 	if ver == wal.WALv0_4 {
+		log.Print("Converting v0.4 log to v0.5")
 		err := migrate.Migrate4To5(cfg.DataDir, cfg.Name)
 		if err != nil {
 			log.Fatalf("Failed migrating data-dir: %v", err)
+			return err
 		}
 	}
+	return nil
 }
 
 // NewServer creates a new EtcdServer from the supplied configuration. The
@@ -210,13 +213,16 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 	var n raft.Node
 	var id types.ID
 	walVersion := wal.DetectVersion(cfg.DataDir)
-	if walVersion == wal.UnknownWAL {
+	if walVersion == wal.WALUnknown {
 		return nil, fmt.Errorf("unknown wal version in data dir %s", cfg.DataDir)
 	}
-	haveWAL := walVersion != wal.NoWAL
+	haveWAL := walVersion != wal.WALNotExist
 
 	if haveWAL && walVersion != wal.WALv0_5 {
-		UpgradeWAL(cfg, walVersion)
+		err := UpgradeWAL(cfg, walVersion)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	if err := os.MkdirAll(cfg.SnapDir(), privateDirMode); err != nil {

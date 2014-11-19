@@ -93,11 +93,11 @@ func fixEtcd(n *node) {
 		rafturl := q.Get("raft")
 
 		m := generateNodeMember(name, rafturl, etcdurl)
-		attrBytes, err := json.Marshal(m.Attributes)
+		attrBytes, err := json.Marshal(m.attributes)
 		if err != nil {
 			log.Fatal("Couldn't marshal attributes")
 		}
-		raftBytes, err := json.Marshal(m.RaftAttributes)
+		raftBytes, err := json.Marshal(m.raftAttributes)
 		if err != nil {
 			log.Fatal("Couldn't marshal raft attributes")
 		}
