@@ -14,138 +14,38 @@
    limitations under the License.
 */
 
-package etcdserver
+package rafthttp
 
 import (
 	"bytes"
 	"fmt"
 	"log"
 	"net/http"
-	"net/url"
-	"path"
 	"sync"
 	"time"
 
 	"github.com/coreos/etcd/etcdserver/stats"
+	"github.com/coreos/etcd/pkg/pbutil"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft/raftpb"
 )
 
 const (
-	raftPrefix    = "/raft"
 	connPerSender = 4
 	senderBufSize = connPerSender * 4
 )
 
-type sendHub struct {
-	tr         http.RoundTripper
-	cl         ClusterInfo
-	ss         *stats.ServerStats
-	ls         *stats.LeaderStats
-	senders    map[types.ID]*sender
-	shouldstop chan struct{}
+type Sender interface {
+	Update(u string)
+	// Send sends the data to the remote node. It is always non-blocking.
+	// It may be fail to send data if it returns nil error.
+	Send(m raftpb.Message) error
+	// Stop performs any necessary finalization and terminates the Sender
+	// elegantly.
+	Stop()
 }
 
-// newSendHub creates the default send hub used to transport raft messages
-// to other members. The returned sendHub will update the given ServerStats and
-// LeaderStats appropriately.
-func newSendHub(t http.RoundTripper, cl ClusterInfo, ss *stats.ServerStats, ls *stats.LeaderStats) *sendHub {
-	h := &sendHub{
-		tr:         t,
-		cl:         cl,
-		ss:         ss,
-		ls:         ls,
-		senders:    make(map[types.ID]*sender),
-		shouldstop: make(chan struct{}, 1),
-	}
-	for _, m := range cl.Members() {
-		h.Add(m)
-	}
-	return h
-}
-
-func (h *sendHub) Send(msgs []raftpb.Message) {
-	for _, m := range msgs {
-		to := types.ID(m.To)
-		s, ok := h.senders[to]
-		if !ok {
-			if !h.cl.IsIDRemoved(to) {
-				log.Printf("etcdserver: send message to unknown receiver %s", to)
-			}
-			continue
-		}
-
-		// TODO: don't block. we should be able to have 1000s
-		// of messages out at a time.
-		data, err := m.Marshal()
-		if err != nil {
-			log.Println("sender: dropping message:", err)
-			return // drop bad message
-		}
-		if m.Type == raftpb.MsgApp {
-			h.ss.SendAppendReq(len(data))
-		}
-
-		// TODO (xiangli): reasonable retry logic
-		s.send(data)
-	}
-}
-
-func (h *sendHub) Stop() {
-	for _, s := range h.senders {
-		s.stop()
-	}
-}
-
-func (h *sendHub) ShouldStopNotify() <-chan struct{} {
-	return h.shouldstop
-}
-
-func (h *sendHub) Add(m *Member) {
-	if _, ok := h.senders[m.ID]; ok {
-		return
-	}
-	// TODO: considering how to switch between all available peer urls
-	u := fmt.Sprintf("%s%s", m.PickPeerURL(), raftPrefix)
-	fs := h.ls.Follower(m.ID.String())
-	s := newSender(h.tr, u, h.cl.ID(), fs, h.shouldstop)
-	h.senders[m.ID] = s
-}
-
-func (h *sendHub) Remove(id types.ID) {
-	h.senders[id].stop()
-	delete(h.senders, id)
-}
-
-func (h *sendHub) Update(m *Member) {
-	// TODO: return error or just panic?
-	if _, ok := h.senders[m.ID]; !ok {
-		return
-	}
-	peerURL := m.PickPeerURL()
-	u, err := url.Parse(peerURL)
-	if err != nil {
-		log.Panicf("unexpect peer url %s", peerURL)
-	}
-	u.Path = path.Join(u.Path, raftPrefix)
-	s := h.senders[m.ID]
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.u = u.String()
-}
-
-type sender struct {
-	tr         http.RoundTripper
-	u          string
-	cid        types.ID
-	fs         *stats.FollowerStats
-	q          chan []byte
-	mu         sync.RWMutex
-	wg         sync.WaitGroup
-	shouldstop chan struct{}
-}
-
-func newSender(tr http.RoundTripper, u string, cid types.ID, fs *stats.FollowerStats, shouldstop chan struct{}) *sender {
+func NewSender(tr http.RoundTripper, u string, cid types.ID, fs *stats.FollowerStats, shouldstop chan struct{}) *sender {
 	s := &sender{
 		tr:         tr,
 		u:          u,
@@ -161,7 +61,28 @@ func newSender(tr http.RoundTripper, u string, cid types.ID, fs *stats.FollowerS
 	return s
 }
 
-func (s *sender) send(data []byte) error {
+type sender struct {
+	tr         http.RoundTripper
+	u          string
+	cid        types.ID
+	fs         *stats.FollowerStats
+	q          chan []byte
+	mu         sync.RWMutex
+	wg         sync.WaitGroup
+	shouldstop chan struct{}
+}
+
+func (s *sender) Update(u string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.u = u
+}
+
+// TODO (xiangli): reasonable retry logic
+func (s *sender) Send(m raftpb.Message) error {
+	// TODO: don't block. we should be able to have 1000s
+	// of messages out at a time.
+	data := pbutil.MustMarshal(&m)
 	select {
 	case s.q <- data:
 		return nil
@@ -171,7 +92,7 @@ func (s *sender) send(data []byte) error {
 	}
 }
 
-func (s *sender) stop() {
+func (s *sender) Stop() {
 	close(s.q)
 	s.wg.Wait()
 }

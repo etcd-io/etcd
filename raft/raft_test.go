@@ -64,8 +64,18 @@ func TestProgressMaybeDecr(t *testing.T) {
 			1, 0, 0, false, 0,
 		},
 		{
-			// match != 0 is always false
-			5, 10, 9, false, 10,
+			// match != 0 and to is greater than match
+			// directly decrease to match+1
+			5, 10, 5, false, 10,
+		},
+		{
+			// match != 0 and to is greater than match
+			// directly decrease to match+1
+			5, 10, 4, false, 10,
+		},
+		{
+			// match != 0 and to is not greater than match
+			5, 10, 9, true, 6,
 		},
 		{
 			// next-1 != to is always false
@@ -664,6 +674,37 @@ func TestHandleMsgApp(t *testing.T) {
 	}
 }
 
+// TestHandleHeartbeat ensures that the follower commits to the commit in the message.
+func TestHandleHeartbeat(t *testing.T) {
+	commit := uint64(2)
+	tests := []struct {
+		m       pb.Message
+		wCommit uint64
+	}{
+		{pb.Message{Type: pb.MsgApp, Term: 2, Commit: commit + 1}, commit + 1},
+		{pb.Message{Type: pb.MsgApp, Term: 2, Commit: commit - 1}, commit}, // do not decrease commit
+	}
+
+	for i, tt := range tests {
+		storage := NewMemoryStorage()
+		storage.Append([]pb.Entry{{Term: 1}, {Term: 2}, {Term: 3}})
+		sm := &raft{
+			state:     StateFollower,
+			HardState: pb.HardState{Term: 2},
+			raftLog:   newLog(storage),
+		}
+		sm.raftLog.commitTo(commit)
+		sm.handleHeartbeat(tt.m)
+		if sm.raftLog.committed != tt.wCommit {
+			t.Errorf("#%d: committed = %d, want %d", i, sm.raftLog.committed, tt.wCommit)
+		}
+		m := sm.readMessages()
+		if len(m) != 0 {
+			t.Fatalf("#%d: msg = nil, want 0", i)
+		}
+	}
+}
+
 func TestRecvMsgVote(t *testing.T) {
 	tests := []struct {
 		state   StateType
@@ -836,7 +877,7 @@ func TestAllServerStepdown(t *testing.T) {
 }
 
 func TestLeaderAppResp(t *testing.T) {
-	// initial progress: match = 0; netx = 3
+	// initial progress: match = 0; next = 3
 	tests := []struct {
 		index  uint64
 		reject bool
@@ -850,7 +891,7 @@ func TestLeaderAppResp(t *testing.T) {
 	}{
 		{3, true, 0, 3, 0, 0, 0},  // stale resp; no replies
 		{2, true, 0, 2, 1, 1, 0},  // denied resp; leader does not commit; decrese next and send probing msg
-		{2, false, 2, 3, 2, 2, 2}, // accept resp; leader commits; broadcast with commit index
+		{2, false, 2, 4, 2, 2, 2}, // accept resp; leader commits; broadcast with commit index
 		{0, false, 0, 3, 0, 0, 0}, // ignore heartbeat replies
 	}
 
@@ -913,13 +954,20 @@ func TestBcastBeat(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		sm.appendEntry(pb.Entry{})
 	}
+	// slow follower
+	sm.prs[2].match, sm.prs[2].next = 5, 6
+	// normal follower
+	sm.prs[3].match, sm.prs[3].next = sm.raftLog.lastIndex(), sm.raftLog.lastIndex()+1
 
 	sm.Step(pb.Message{Type: pb.MsgBeat})
 	msgs := sm.readMessages()
 	if len(msgs) != 2 {
 		t.Fatalf("len(msgs) = %v, want 2", len(msgs))
 	}
-	tomap := map[uint64]bool{2: true, 3: true}
+	wantCommitMap := map[uint64]uint64{
+		2: min(sm.raftLog.committed, sm.prs[2].match),
+		3: min(sm.raftLog.committed, sm.prs[3].match),
+	}
 	for i, m := range msgs {
 		if m.Type != pb.MsgApp {
 			t.Fatalf("#%d: type = %v, want = %v", i, m.Type, pb.MsgApp)
@@ -930,10 +978,13 @@ func TestBcastBeat(t *testing.T) {
 		if m.LogTerm != 0 {
 			t.Fatalf("#%d: prevTerm = %d, want %d", i, m.LogTerm, 0)
 		}
-		if !tomap[m.To] {
+		if wantCommitMap[m.To] == 0 {
 			t.Fatalf("#%d: unexpected to %d", i, m.To)
 		} else {
-			delete(tomap, m.To)
+			if m.Commit != wantCommitMap[m.To] {
+				t.Fatalf("#%d: commit = %d, want %d", i, m.Commit, wantCommitMap[m.To])
+			}
+			delete(wantCommitMap, m.To)
 		}
 		if len(m.Entries) != 0 {
 			t.Fatalf("#%d: len(entries) = %d, want 0", i, len(m.Entries))
@@ -976,6 +1027,37 @@ func TestRecvMsgBeat(t *testing.T) {
 			if m.Type != pb.MsgApp {
 				t.Errorf("%d: msg.type = %v, want %v", i, m.Type, pb.MsgApp)
 			}
+		}
+	}
+}
+
+func TestLeaderIncreaseNext(t *testing.T) {
+	previousEnts := []pb.Entry{{Term: 1, Index: 1}, {Term: 1, Index: 2}, {Term: 1, Index: 3}}
+	tests := []struct {
+		// progress
+		match uint64
+		next  uint64
+
+		wnext uint64
+	}{
+		// match is not zero, optimistically increase next
+		// previous entries + noop entry + propose + 1
+		{1, 2, uint64(len(previousEnts) + 1 + 1 + 1)},
+		// match is zero, not optimistically increase next
+		{0, 2, 2},
+	}
+
+	for i, tt := range tests {
+		sm := newRaft(1, []uint64{1, 2}, 10, 1, NewMemoryStorage())
+		sm.raftLog.append(0, previousEnts...)
+		sm.becomeCandidate()
+		sm.becomeLeader()
+		sm.prs[2].match, sm.prs[2].next = tt.match, tt.next
+		sm.Step(pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{Data: []byte("somedata")}}})
+
+		p := sm.prs[2]
+		if p.next != tt.wnext {
+			t.Errorf("#%d next = %d, want %d", i, p.next, tt.wnext)
 		}
 	}
 }

@@ -597,11 +597,10 @@ func TestFollowerCheckMsgApp(t *testing.T) {
 		index   uint64
 		wreject bool
 	}{
-		{0, 0, false},
 		{ents[0].Term, ents[0].Index, false},
-		{ents[1].Term, ents[1].Index, false},
 		{ents[0].Term, ents[0].Index + 1, true},
 		{ents[0].Term + 1, ents[0].Index, true},
+		{ents[1].Term, ents[1].Index, false},
 		{3, 3, true},
 	}
 	for i, tt := range tests {

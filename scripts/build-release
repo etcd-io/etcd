@@ -35,7 +35,7 @@ function package {
 	if [ -d ${ccdir} ]; then
 		srcdir=${ccdir}
 	fi
-	for bin in etcd etcdctl; do
+	for bin in etcd etcdctl etcd-migrate; do
 		cp ${srcdir}/${bin} ${target}
 	done
 

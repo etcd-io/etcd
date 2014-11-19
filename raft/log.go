@@ -86,11 +86,7 @@ func (l *raftLog) maybeAppend(index, logTerm, committed uint64, ents ...pb.Entry
 		default:
 			l.append(ci-1, ents[ci-from:]...)
 		}
-		tocommit := min(committed, lastnewi)
-		// if toCommit > commitIndex, set commitIndex = toCommit
-		if l.committed < tocommit {
-			l.committed = tocommit
-		}
+		l.commitTo(min(committed, lastnewi))
 		return lastnewi, true
 	}
 	return 0, false
@@ -171,6 +167,16 @@ func (l *raftLog) lastIndex() uint64 {
 	return index
 }
 
+func (l *raftLog) commitTo(tocommit uint64) {
+	// never decrease commit
+	if l.committed < tocommit {
+		if l.lastIndex() < tocommit {
+			panic("committed out of range")
+		}
+		l.committed = tocommit
+	}
+}
+
 func (l *raftLog) appliedTo(i uint64) {
 	if i == 0 {
 		return
@@ -235,7 +241,7 @@ func (l *raftLog) matchTerm(i, term uint64) bool {
 
 func (l *raftLog) maybeCommit(maxIndex, term uint64) bool {
 	if maxIndex > l.committed && l.term(maxIndex) == term {
-		l.committed = maxIndex
+		l.commitTo(maxIndex)
 		return true
 	}
 	return false
