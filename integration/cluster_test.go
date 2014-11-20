@@ -146,16 +146,7 @@ type cluster struct {
 	Members []*member
 }
 
-// NewCluster returns an unlaunched cluster of the given size which has been
-// set to use static bootstrap.
-func NewCluster(t *testing.T, size int) *cluster {
-	c := &cluster{}
-	ms := make([]*member, size)
-	for i := 0; i < size; i++ {
-		ms[i] = mustNewMember(t, c.name(i))
-	}
-	c.Members = ms
-
+func fillClusterForMembers(ms []*member, cName string) error {
 	addrs := make([]string, 0)
 	for _, m := range ms {
 		for _, l := range m.PeerListeners {
@@ -165,10 +156,25 @@ func NewCluster(t *testing.T, size int) *cluster {
 	clusterStr := strings.Join(addrs, ",")
 	var err error
 	for _, m := range ms {
-		m.Cluster, err = etcdserver.NewClusterFromString(clusterName, clusterStr)
+		m.Cluster, err = etcdserver.NewClusterFromString(cName, clusterStr)
 		if err != nil {
-			t.Fatal(err)
+			return err
 		}
+	}
+	return nil
+}
+
+// NewCluster returns an unlaunched cluster of the given size which has been
+// set to use static bootstrap.
+func NewCluster(t *testing.T, size int) *cluster {
+	c := &cluster{}
+	ms := make([]*member, size)
+	for i := 0; i < size; i++ {
+		ms[i] = mustNewMember(t, c.name(i))
+	}
+	c.Members = ms
+	if err := fillClusterForMembers(c.Members, clusterName); err != nil {
+		t.Fatal(err)
 	}
 
 	return c
