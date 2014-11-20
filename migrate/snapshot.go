@@ -171,15 +171,17 @@ func (s *Snapshot4) Snapshot5() *raftpb.Snapshot {
 		log.Fatal("Couldn't re-marshal new snapshot")
 	}
 
+	nodes := s.GetNodesFromStore()
+	nodeList := make([]uint64, 0)
+	for _, v := range nodes {
+		nodeList = append(nodeList, v)
+	}
+
 	snap5 := raftpb.Snapshot{
 		Data:  newState,
 		Index: s.LastIndex,
 		Term:  s.LastTerm,
-		Nodes: make([]uint64, len(s.Peers)),
-	}
-
-	for i, p := range s.Peers {
-		snap5.Nodes[i] = hashName(p.Name)
+		Nodes: nodeList,
 	}
 
 	return &snap5
