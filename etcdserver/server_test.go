@@ -36,6 +36,7 @@ import (
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
+	"github.com/coreos/etcd/rafthttp"
 	"github.com/coreos/etcd/store"
 )
 
@@ -501,7 +502,7 @@ func TestApplyConfChangeShouldStop(t *testing.T) {
 		id:      1,
 		node:    &nodeRecorder{},
 		Cluster: cl,
-		sender:  &nopSender{},
+		sendhub: &nopSender{},
 	}
 	cc := raftpb.ConfChange{
 		Type:   raftpb.ConfChangeRemoveNode,
@@ -534,6 +535,7 @@ type fakeSender struct {
 	ss []*EtcdServer
 }
 
+func (s *fakeSender) Sender(id types.ID) rafthttp.Sender { return nil }
 func (s *fakeSender) Send(msgs []raftpb.Message) {
 	for _, m := range msgs {
 		s.ss[m.To-1].node.Step(context.TODO(), m)
@@ -567,7 +569,7 @@ func testServer(t *testing.T, ns uint64) {
 		srv := &EtcdServer{
 			node:    n,
 			store:   st,
-			sender:  &fakeSender{ss},
+			sendhub: &fakeSender{ss},
 			storage: &storageRecorder{},
 			Ticker:  tk.C,
 			Cluster: cl,
@@ -636,7 +638,7 @@ func TestDoProposal(t *testing.T) {
 		srv := &EtcdServer{
 			node:    n,
 			store:   st,
-			sender:  &nopSender{},
+			sendhub: &nopSender{},
 			storage: &storageRecorder{},
 			Ticker:  tk,
 			Cluster: cl,
@@ -721,7 +723,7 @@ func TestDoProposalStopped(t *testing.T) {
 		// TODO: use fake node for better testability
 		node:    n,
 		store:   st,
-		sender:  &nopSender{},
+		sendhub: &nopSender{},
 		storage: &storageRecorder{},
 		Ticker:  tk,
 		Cluster: cl,
@@ -832,7 +834,7 @@ func TestSyncTrigger(t *testing.T) {
 	srv := &EtcdServer{
 		node:       n,
 		store:      &storeRecorder{},
-		sender:     &nopSender{},
+		sendhub:    &nopSender{},
 		storage:    &storageRecorder{},
 		SyncTicker: st,
 	}
@@ -906,7 +908,7 @@ func TestTriggerSnap(t *testing.T) {
 	cl.SetStore(store.New())
 	s := &EtcdServer{
 		store:     st,
-		sender:    &nopSender{},
+		sendhub:   &nopSender{},
 		storage:   p,
 		node:      n,
 		snapCount: 10,
@@ -942,7 +944,7 @@ func TestRecvSnapshot(t *testing.T) {
 	cl.SetStore(store.New())
 	s := &EtcdServer{
 		store:   st,
-		sender:  &nopSender{},
+		sendhub: &nopSender{},
 		storage: p,
 		node:    n,
 		Cluster: cl,
@@ -974,7 +976,7 @@ func TestRecvSlowSnapshot(t *testing.T) {
 	cl.SetStore(store.New())
 	s := &EtcdServer{
 		store:   st,
-		sender:  &nopSender{},
+		sendhub: &nopSender{},
 		storage: &storageRecorder{},
 		node:    n,
 		Cluster: cl,
@@ -1005,7 +1007,7 @@ func TestApplySnapshotAndCommittedEntries(t *testing.T) {
 	cl.SetStore(store.New())
 	s := &EtcdServer{
 		store:   st,
-		sender:  &nopSender{},
+		sendhub: &nopSender{},
 		storage: &storageRecorder{},
 		node:    n,
 		Cluster: cl,
@@ -1049,7 +1051,7 @@ func TestAddMember(t *testing.T) {
 	s := &EtcdServer{
 		node:    n,
 		store:   &storeRecorder{},
-		sender:  &nopSender{},
+		sendhub: &nopSender{},
 		storage: &storageRecorder{},
 		Cluster: cl,
 	}
@@ -1086,7 +1088,7 @@ func TestRemoveMember(t *testing.T) {
 	s := &EtcdServer{
 		node:    n,
 		store:   &storeRecorder{},
-		sender:  &nopSender{},
+		sendhub: &nopSender{},
 		storage: &storageRecorder{},
 		Cluster: cl,
 	}
@@ -1122,7 +1124,7 @@ func TestUpdateMember(t *testing.T) {
 	s := &EtcdServer{
 		node:    n,
 		store:   &storeRecorder{},
-		sender:  &nopSender{},
+		sendhub: &nopSender{},
 		storage: &storageRecorder{},
 		Cluster: cl,
 	}
@@ -1191,7 +1193,7 @@ func TestPublish(t *testing.T) {
 func TestPublishStopped(t *testing.T) {
 	srv := &EtcdServer{
 		node:    &nodeRecorder{},
-		sender:  &nopSender{},
+		sendhub: &nopSender{},
 		Cluster: &Cluster{},
 		w:       &waitRecorder{},
 		done:    make(chan struct{}),
@@ -1593,12 +1595,13 @@ func (w *waitWithResponse) Trigger(id uint64, x interface{}) {}
 
 type nopSender struct{}
 
-func (s *nopSender) Send(m []raftpb.Message)           {}
-func (s *nopSender) Add(m *Member)                     {}
-func (s *nopSender) Remove(id types.ID)                {}
-func (s *nopSender) Update(m *Member)                  {}
-func (s *nopSender) Stop()                             {}
-func (s *nopSender) ShouldStopNotify() <-chan struct{} { return nil }
+func (s *nopSender) Sender(id types.ID) rafthttp.Sender { return nil }
+func (s *nopSender) Send(m []raftpb.Message)            {}
+func (s *nopSender) Add(m *Member)                      {}
+func (s *nopSender) Remove(id types.ID)                 {}
+func (s *nopSender) Update(m *Member)                   {}
+func (s *nopSender) Stop()                              {}
+func (s *nopSender) ShouldStopNotify() <-chan struct{}  { return nil }
 
 func mustMakePeerSlice(t *testing.T, ids ...uint64) []raft.Peer {
 	peers := make([]raft.Peer, len(ids))

@@ -35,6 +35,7 @@ const (
 type sendHub struct {
 	tr         http.RoundTripper
 	cl         ClusterInfo
+	p          rafthttp.Processor
 	ss         *stats.ServerStats
 	ls         *stats.LeaderStats
 	senders    map[types.ID]rafthttp.Sender
@@ -44,10 +45,11 @@ type sendHub struct {
 // newSendHub creates the default send hub used to transport raft messages
 // to other members. The returned sendHub will update the given ServerStats and
 // LeaderStats appropriately.
-func newSendHub(t http.RoundTripper, cl ClusterInfo, ss *stats.ServerStats, ls *stats.LeaderStats) *sendHub {
+func newSendHub(t http.RoundTripper, cl ClusterInfo, p rafthttp.Processor, ss *stats.ServerStats, ls *stats.LeaderStats) *sendHub {
 	h := &sendHub{
 		tr:         t,
 		cl:         cl,
+		p:          p,
 		ss:         ss,
 		ls:         ls,
 		senders:    make(map[types.ID]rafthttp.Sender),
@@ -58,6 +60,8 @@ func newSendHub(t http.RoundTripper, cl ClusterInfo, ss *stats.ServerStats, ls *
 	}
 	return h
 }
+
+func (h *sendHub) Sender(id types.ID) rafthttp.Sender { return h.senders[id] }
 
 func (h *sendHub) Send(msgs []raftpb.Message) {
 	for _, m := range msgs {
@@ -100,7 +104,7 @@ func (h *sendHub) Add(m *Member) {
 	}
 	u.Path = path.Join(u.Path, raftPrefix)
 	fs := h.ls.Follower(m.ID.String())
-	s := rafthttp.NewSender(h.tr, u.String(), h.cl.ID(), fs, h.shouldstop)
+	s := rafthttp.NewSender(h.tr, u.String(), h.cl.ID(), h.p, fs, h.shouldstop)
 	h.senders[m.ID] = s
 }
 
