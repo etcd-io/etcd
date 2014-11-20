@@ -6,8 +6,6 @@ import (
 	"reflect"
 	"testing"
 	"time"
-
-	"github.com/coreos/etcd/etcdserver"
 )
 
 func TestNewCommand(t *testing.T) {
@@ -21,7 +19,7 @@ func TestNewCommand(t *testing.T) {
 		t.Errorf("couldn't create time: %v", err)
 	}
 
-	m := etcdserver.NewMember("alice", []url.URL{{Scheme: "http", Host: "127.0.0.1:7001"}}, etcdDefaultClusterName, nil)
+	m := NewMember("alice", []url.URL{{Scheme: "http", Host: "127.0.0.1:7001"}}, etcdDefaultClusterName)
 	m.ClientURLs = []string{"http://127.0.0.1:4001"}
 
 	tests := []interface{}{
