@@ -24,7 +24,7 @@ import (
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft/raftpb"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/code.google.com/p/go.net/context"
+	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 )
 
 type Processor interface {
