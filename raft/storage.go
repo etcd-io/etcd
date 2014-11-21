@@ -35,8 +35,8 @@ var ErrCompacted = errors.New("requested index is unavailable due to compaction"
 // become inoperable and refuse to participate in elections; the
 // application is responsible for cleanup and recovery in this case.
 type Storage interface {
-	// HardState returns the saved HardState information.
-	HardState() (pb.HardState, error)
+	// InitialState returns the saved HardState and ConfState information.
+	InitialState() (pb.HardState, pb.ConfState, error)
 	// Entries returns a slice of log entries in the range [lo,hi).
 	Entries(lo, hi uint64) ([]pb.Entry, error)
 	// Term returns the term of entry i, which must be in the range
@@ -79,9 +79,9 @@ func NewMemoryStorage() *MemoryStorage {
 	}
 }
 
-// HardState implements the Storage interface.
-func (ms *MemoryStorage) HardState() (pb.HardState, error) {
-	return ms.hardState, nil
+// InitialState implements the Storage interface.
+func (ms *MemoryStorage) InitialState() (pb.HardState, pb.ConfState, error) {
+	return ms.hardState, ms.snapshot.Metadata.ConfState, nil
 }
 
 // SetHardState saves the current HardState.

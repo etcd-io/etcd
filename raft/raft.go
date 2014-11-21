@@ -145,9 +145,18 @@ func newRaft(id uint64, peers []uint64, election, heartbeat int, storage Storage
 		panic("cannot use none id")
 	}
 	log := newLog(storage)
-	st, err := storage.HardState()
+	hs, cs, err := storage.InitialState()
 	if err != nil {
 		panic(err) // TODO(bdarnell)
+	}
+	if len(cs.Nodes) > 0 {
+		if len(peers) > 0 {
+			// TODO(bdarnell): the peers argument is always nil except in
+			// tests; the argument should be removed and these tests should be
+			// updated to specify their nodes through a snapshot.
+			panic("cannot specify both newRaft(peers) and ConfState.Nodes)")
+		}
+		peers = cs.Nodes
 	}
 	r := &raft{
 		id:               id,
@@ -161,8 +170,8 @@ func newRaft(id uint64, peers []uint64, election, heartbeat int, storage Storage
 	for _, p := range peers {
 		r.prs[p] = &progress{next: 1}
 	}
-	if !isHardStateEqual(st, emptyState) {
-		r.loadState(st)
+	if !isHardStateEqual(hs, emptyState) {
+		r.loadState(hs)
 	}
 	r.becomeFollower(0, None)
 	return r

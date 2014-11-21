@@ -974,7 +974,7 @@ func TestBcastBeat(t *testing.T) {
 	}
 	storage := NewMemoryStorage()
 	storage.ApplySnapshot(s)
-	sm := newRaft(1, []uint64{1, 2, 3}, 10, 1, storage)
+	sm := newRaft(1, nil, 10, 1, storage)
 	sm.Term = 1
 
 	sm.becomeCandidate()
