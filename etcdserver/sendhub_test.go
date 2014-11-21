@@ -35,7 +35,7 @@ func TestSendHubInitSenders(t *testing.T) {
 	}
 	cl := newTestCluster(membs)
 	ls := stats.NewLeaderStats("")
-	h := newSendHub(nil, cl, nil, ls)
+	h := newSendHub(nil, cl, nil, nil, ls)
 
 	ids := cl.MemberIDs()
 	if len(h.senders) != len(ids) {
@@ -51,7 +51,7 @@ func TestSendHubInitSenders(t *testing.T) {
 func TestSendHubAdd(t *testing.T) {
 	cl := newTestCluster(nil)
 	ls := stats.NewLeaderStats("")
-	h := newSendHub(nil, cl, nil, ls)
+	h := newSendHub(nil, cl, nil, nil, ls)
 	m := newTestMember(1, []string{"http://a"}, "", nil)
 	h.Add(m)
 
@@ -76,7 +76,7 @@ func TestSendHubRemove(t *testing.T) {
 	}
 	cl := newTestCluster(membs)
 	ls := stats.NewLeaderStats("")
-	h := newSendHub(nil, cl, nil, ls)
+	h := newSendHub(nil, cl, nil, nil, ls)
 	h.Remove(types.ID(1))
 
 	if _, ok := h.senders[types.ID(1)]; ok {
@@ -91,7 +91,7 @@ func TestSendHubShouldStop(t *testing.T) {
 	tr := newRespRoundTripper(http.StatusForbidden, nil)
 	cl := newTestCluster(membs)
 	ls := stats.NewLeaderStats("")
-	h := newSendHub(tr, cl, nil, ls)
+	h := newSendHub(tr, cl, nil, nil, ls)
 
 	shouldstop := h.ShouldStopNotify()
 	select {

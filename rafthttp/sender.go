@@ -36,6 +36,9 @@ const (
 )
 
 type Sender interface {
+	// StartStreaming enables streaming in the sender using the given writer,
+	// which provides a fast and effecient way to send appendEntry messages.
+	StartStreaming(w WriteFlusher, to types.ID, term uint64) (done <-chan struct{}, err error)
 	Update(u string)
 	// Send sends the data to the remote node. It is always non-blocking.
 	// It may be fail to send data if it returns nil error.
@@ -45,14 +48,15 @@ type Sender interface {
 	Stop()
 }
 
-func NewSender(tr http.RoundTripper, u string, cid types.ID, fs *stats.FollowerStats, shouldstop chan struct{}) *sender {
+func NewSender(tr http.RoundTripper, u string, cid types.ID, p Processor, fs *stats.FollowerStats, shouldstop chan struct{}) *sender {
 	s := &sender{
 		tr:         tr,
 		u:          u,
 		cid:        cid,
+		p:          p,
 		fs:         fs,
-		q:          make(chan []byte, senderBufSize),
 		shouldstop: shouldstop,
+		q:          make(chan []byte, senderBufSize),
 	}
 	s.wg.Add(connPerSender)
 	for i := 0; i < connPerSender; i++ {
@@ -65,11 +69,32 @@ type sender struct {
 	tr         http.RoundTripper
 	u          string
 	cid        types.ID
+	p          Processor
 	fs         *stats.FollowerStats
-	q          chan []byte
-	mu         sync.RWMutex
-	wg         sync.WaitGroup
 	shouldstop chan struct{}
+
+	strmCln   *streamClient
+	strmSrv   *streamServer
+	strmSrvMu sync.Mutex
+	q         chan []byte
+
+	mu sync.RWMutex
+	wg sync.WaitGroup
+}
+
+func (s *sender) StartStreaming(w WriteFlusher, to types.ID, term uint64) (<-chan struct{}, error) {
+	s.strmSrvMu.Lock()
+	defer s.strmSrvMu.Unlock()
+	if s.strmSrv != nil {
+		// ignore lower-term streaming request
+		if term < s.strmSrv.term {
+			return nil, fmt.Errorf("out of data streaming request: term %d, request term %d", term, s.strmSrv.term)
+		}
+		// stop the existing one
+		s.strmSrv.stop()
+	}
+	s.strmSrv = startStreamServer(w, to, term, s.fs)
+	return s.strmSrv.stopNotify(), nil
 }
 
 func (s *sender) Update(u string) {
@@ -80,6 +105,15 @@ func (s *sender) Update(u string) {
 
 // TODO (xiangli): reasonable retry logic
 func (s *sender) Send(m raftpb.Message) error {
+	s.maybeStopStream(m.Term)
+	if !s.hasStreamClient() && shouldInitStream(m) {
+		s.initStream(types.ID(m.From), types.ID(m.To), m.Term)
+	}
+	if canUseStream(m) {
+		if ok := s.tryStream(m); ok {
+			return nil
+		}
+	}
 	// TODO: don't block. we should be able to have 1000s
 	// of messages out at a time.
 	data := pbutil.MustMarshal(&m)
@@ -95,6 +129,59 @@ func (s *sender) Send(m raftpb.Message) error {
 func (s *sender) Stop() {
 	close(s.q)
 	s.wg.Wait()
+	s.strmSrvMu.Lock()
+	if s.strmSrv != nil {
+		s.strmSrv.stop()
+	}
+	s.strmSrvMu.Unlock()
+	if s.strmCln != nil {
+		s.strmCln.stop()
+	}
+}
+
+func (s *sender) maybeStopStream(term uint64) {
+	if s.strmCln != nil && term > s.strmCln.term {
+		s.strmCln.stop()
+		s.strmCln = nil
+	}
+	s.strmSrvMu.Lock()
+	defer s.strmSrvMu.Unlock()
+	if s.strmSrv != nil && term > s.strmSrv.term {
+		s.strmSrv.stop()
+		s.strmSrv = nil
+	}
+}
+
+func (s *sender) hasStreamClient() bool {
+	return s.strmCln != nil && !s.strmCln.isStopped()
+}
+
+func (s *sender) initStream(from, to types.ID, term uint64) {
+	strmCln := newStreamClient(from, to, term, s.p)
+	s.mu.Lock()
+	u := s.u
+	s.mu.Unlock()
+	if err := strmCln.start(s.tr, u, s.cid); err != nil {
+		log.Printf("rafthttp: start stream client error: %v", err)
+		return
+	}
+	s.strmCln = strmCln
+	log.Printf("rafthttp: start stream client with %s in term %d", to, term)
+}
+
+func (s *sender) tryStream(m raftpb.Message) bool {
+	s.strmSrvMu.Lock()
+	defer s.strmSrvMu.Unlock()
+	if s.strmSrv == nil || m.Term != s.strmSrv.term {
+		return false
+	}
+	if err := s.strmSrv.send(m.Entries); err != nil {
+		log.Printf("rafthttp: send stream message error: %v", err)
+		s.strmSrv.stop()
+		s.strmSrv = nil
+		return false
+	}
+	return true
 }
 
 func (s *sender) handle() {

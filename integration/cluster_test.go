@@ -36,7 +36,7 @@ import (
 	"github.com/coreos/etcd/etcdserver/etcdhttp/httptypes"
 	"github.com/coreos/etcd/pkg/types"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/code.google.com/p/go.net/context"
+	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 )
 
 const (
@@ -100,11 +100,7 @@ func testDoubleClusterSize(t *testing.T, size int) {
 }
 
 func TestDecreaseClusterSizeOf3(t *testing.T) { testDecreaseClusterSize(t, 3) }
-func TestDecreaseClusterSizeOf5(t *testing.T) {
-	t.Skip("enable after reducing the election collision rate")
-	// election collision rate is too high when enabling --race
-	testDecreaseClusterSize(t, 5)
-}
+func TestDecreaseClusterSizeOf5(t *testing.T) { testDecreaseClusterSize(t, 5) }
 
 func testDecreaseClusterSize(t *testing.T, size int) {
 	defer afterTest(t)
@@ -112,7 +108,8 @@ func testDecreaseClusterSize(t *testing.T, size int) {
 	c.Launch(t)
 	defer c.Terminate(t)
 
-	for i := 0; i < size-1; i++ {
+	// TODO: remove the last but one member
+	for i := 0; i < size-2; i++ {
 		id := c.Members[len(c.Members)-1].s.ID()
 		c.RemoveMember(t, uint64(id))
 		c.waitLeader(t)
@@ -149,16 +146,7 @@ type cluster struct {
 	Members []*member
 }
 
-// NewCluster returns an unlaunched cluster of the given size which has been
-// set to use static bootstrap.
-func NewCluster(t *testing.T, size int) *cluster {
-	c := &cluster{}
-	ms := make([]*member, size)
-	for i := 0; i < size; i++ {
-		ms[i] = mustNewMember(t, c.name(i))
-	}
-	c.Members = ms
-
+func fillClusterForMembers(ms []*member, cName string) error {
 	addrs := make([]string, 0)
 	for _, m := range ms {
 		for _, l := range m.PeerListeners {
@@ -168,10 +156,25 @@ func NewCluster(t *testing.T, size int) *cluster {
 	clusterStr := strings.Join(addrs, ",")
 	var err error
 	for _, m := range ms {
-		m.Cluster, err = etcdserver.NewClusterFromString(clusterName, clusterStr)
+		m.Cluster, err = etcdserver.NewClusterFromString(cName, clusterStr)
 		if err != nil {
-			t.Fatal(err)
+			return err
 		}
+	}
+	return nil
+}
+
+// NewCluster returns an unlaunched cluster of the given size which has been
+// set to use static bootstrap.
+func NewCluster(t *testing.T, size int) *cluster {
+	c := &cluster{}
+	ms := make([]*member, size)
+	for i := 0; i < size; i++ {
+		ms[i] = mustNewMember(t, c.name(i))
+	}
+	c.Members = ms
+	if err := fillClusterForMembers(c.Members, clusterName); err != nil {
+		t.Fatal(err)
 	}
 
 	return c

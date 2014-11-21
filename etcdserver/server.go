@@ -31,16 +31,18 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/code.google.com/p/go.net/context"
+	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/discovery"
 	"github.com/coreos/etcd/etcdserver/etcdhttp/httptypes"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/etcdserver/stats"
+	"github.com/coreos/etcd/migrate"
 	"github.com/coreos/etcd/pkg/pbutil"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/pkg/wait"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
+	"github.com/coreos/etcd/rafthttp"
 	"github.com/coreos/etcd/snap"
 	"github.com/coreos/etcd/store"
 	"github.com/coreos/etcd/wal"
@@ -85,7 +87,8 @@ type Response struct {
 	err     error
 }
 
-type Sender interface {
+type SendHub interface {
+	rafthttp.SenderFinder
 	Send(m []raftpb.Message)
 	Add(m *Member)
 	Remove(id types.ID)
@@ -173,7 +176,7 @@ type EtcdServer struct {
 	// MUST NOT block. It is okay to drop messages, since clients should
 	// timeout and reissue their messages.  If send is nil, server will
 	// panic.
-	sender Sender
+	sendhub SendHub
 
 	storage Storage
 
@@ -189,19 +192,46 @@ type EtcdServer struct {
 	raftLead uint64
 }
 
+// UpgradeWAL converts an older version of the EtcdServer data to the newest version.
+// It must ensure that, after upgrading, the most recent version is present.
+func UpgradeWAL(cfg *ServerConfig, ver wal.WalVersion) error {
+	if ver == wal.WALv0_4 {
+		log.Print("Converting v0.4 log to v0.5")
+		err := migrate.Migrate4To5(cfg.DataDir, cfg.Name)
+		if err != nil {
+			log.Fatalf("Failed migrating data-dir: %v", err)
+			return err
+		}
+	}
+	return nil
+}
+
 // NewServer creates a new EtcdServer from the supplied configuration. The
 // configuration is considered static for the lifetime of the EtcdServer.
 func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
-	if err := os.MkdirAll(cfg.SnapDir(), privateDirMode); err != nil {
-		return nil, fmt.Errorf("cannot create snapshot directory: %v", err)
-	}
-	ss := snap.New(cfg.SnapDir())
 	st := store.New()
 	var w *wal.WAL
 	var n raft.Node
 	var s *raft.MemoryStorage
 	var id types.ID
-	haveWAL := wal.Exist(cfg.WALDir())
+	walVersion := wal.DetectVersion(cfg.DataDir)
+	if walVersion == wal.WALUnknown {
+		return nil, fmt.Errorf("unknown wal version in data dir %s", cfg.DataDir)
+	}
+	haveWAL := walVersion != wal.WALNotExist
+
+	if haveWAL && walVersion != wal.WALv0_5 {
+		err := UpgradeWAL(cfg, walVersion)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if err := os.MkdirAll(cfg.SnapDir(), privateDirMode); err != nil {
+		return nil, fmt.Errorf("cannot create snapshot directory: %v", err)
+	}
+	ss := snap.New(cfg.SnapDir())
+
 	switch {
 	case !haveWAL && !cfg.NewCluster:
 		us := getOtherPeerURLs(cfg.Cluster, cfg.Name)
@@ -272,7 +302,6 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 	}
 	lstats := stats.NewLeaderStats(id.String())
 
-	shub := newSendHub(cfg.Transport, cfg.Cluster, sstats, lstats)
 	srv := &EtcdServer{
 		store:       st,
 		node:        n,
@@ -286,11 +315,11 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		}{w, ss},
 		stats:      sstats,
 		lstats:     lstats,
-		sender:     shub,
 		Ticker:     time.Tick(100 * time.Millisecond),
 		SyncTicker: time.Tick(500 * time.Millisecond),
 		snapCount:  cfg.SnapCount,
 	}
+	srv.sendhub = newSendHub(cfg.Transport, cfg.Cluster, srv, sstats, lstats)
 	return srv, nil
 }
 
@@ -321,6 +350,8 @@ func (s *EtcdServer) start() {
 
 func (s *EtcdServer) ID() types.ID { return s.id }
 
+func (s *EtcdServer) SenderFinder() rafthttp.SenderFinder { return s.sendhub }
+
 func (s *EtcdServer) Process(ctx context.Context, m raftpb.Message) error {
 	if s.Cluster.IsIDRemoved(types.ID(m.From)) {
 		log.Printf("etcdserver: reject message from removed member %s", types.ID(m.From).String())
@@ -338,11 +369,11 @@ func (s *EtcdServer) run() {
 	var snapi, appliedi uint64
 	var nodes []uint64
 	var shouldstop bool
-	shouldstopC := s.sender.ShouldStopNotify()
+	shouldstopC := s.sendhub.ShouldStopNotify()
 
 	defer func() {
 		s.node.Stop()
-		s.sender.Stop()
+		s.sendhub.Stop()
 		close(s.done)
 	}()
 	for {
@@ -369,7 +400,7 @@ func (s *EtcdServer) run() {
 					log.Fatalf("etcdserver: create snapshot error: %v", err)
 				}
 			}
-			s.sender.Send(rd.Messages)
+			s.sendhub.Send(rd.Messages)
 
 			if !raft.IsEmptySnap(rd.Snapshot) {
 				// recover from snapshot if it is more updated than current applied
@@ -733,7 +764,7 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange) (bool, error) {
 		if m.ID == s.id {
 			log.Printf("etcdserver: added local member %s %v to cluster %s", m.ID, m.PeerURLs, s.Cluster.ID())
 		} else {
-			s.sender.Add(m)
+			s.sendhub.Add(m)
 			log.Printf("etcdserver: added member %s %v to cluster %s", m.ID, m.PeerURLs, s.Cluster.ID())
 		}
 	case raftpb.ConfChangeRemoveNode:
@@ -744,7 +775,7 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange) (bool, error) {
 			log.Println("etcdserver: the data-dir used by this member must be removed so that this host can be re-added with a new member ID")
 			return true, nil
 		} else {
-			s.sender.Remove(id)
+			s.sendhub.Remove(id)
 			log.Printf("etcdserver: removed member %s from cluster %s", id, s.Cluster.ID())
 		}
 	case raftpb.ConfChangeUpdateNode:
@@ -759,7 +790,7 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange) (bool, error) {
 		if m.ID == s.id {
 			log.Printf("etcdserver: update local member %s %v in cluster %s", m.ID, m.PeerURLs, s.Cluster.ID())
 		} else {
-			s.sender.Update(m)
+			s.sendhub.Update(m)
 			log.Printf("etcdserver: update member %s %v in cluster %s", m.ID, m.PeerURLs, s.Cluster.ID())
 		}
 	}

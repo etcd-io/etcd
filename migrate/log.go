@@ -10,7 +10,6 @@ import (
 	"path"
 	"time"
 
-	"github.com/coreos/etcd/etcdserver"
 	etcdserverpb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	etcd4pb "github.com/coreos/etcd/migrate/etcd4pb"
 	"github.com/coreos/etcd/pkg/types"
@@ -56,7 +55,7 @@ func (l Log4) NodeIDs() map[string]uint64 {
 }
 
 func StorePath(key string) string {
-	return path.Join(etcdserver.StoreKeysPrefix, key)
+	return path.Join("/1", key)
 }
 
 func DecodeLog4FromFile(logpath string) (Log4, error) {
@@ -214,7 +213,7 @@ type JoinCommand struct {
 	Name    string `json:"name"`
 	RaftURL string `json:"raftURL"`
 	EtcdURL string `json:"etcdURL"`
-	memb    etcdserver.Member
+	memb    member
 }
 
 func (c *JoinCommand) Type5() raftpb.EntryType {
@@ -496,13 +495,13 @@ func toEntry5(ent4 *etcd4pb.LogEntry, raftMap map[string]uint64) (*raftpb.Entry,
 	return &ent5, nil
 }
 
-func generateNodeMember(name, rafturl, etcdurl string) *etcdserver.Member {
+func generateNodeMember(name, rafturl, etcdurl string) *member {
 	pURLs, err := types.NewURLs([]string{rafturl})
 	if err != nil {
 		log.Fatalf("Invalid Raft URL %s -- this log could never have worked", rafturl)
 	}
 
-	m := etcdserver.NewMember(name, pURLs, etcdDefaultClusterName, nil)
+	m := NewMember(name, pURLs, etcdDefaultClusterName)
 	m.ClientURLs = []string{etcdurl}
 	return m
 }

@@ -93,11 +93,11 @@ func fixEtcd(n *node) {
 		rafturl := q.Get("raft")
 
 		m := generateNodeMember(name, rafturl, etcdurl)
-		attrBytes, err := json.Marshal(m.Attributes)
+		attrBytes, err := json.Marshal(m.attributes)
 		if err != nil {
 			log.Fatal("Couldn't marshal attributes")
 		}
-		raftBytes, err := json.Marshal(m.RaftAttributes)
+		raftBytes, err := json.Marshal(m.raftAttributes)
 		if err != nil {
 			log.Fatal("Couldn't marshal raft attributes")
 		}
@@ -171,19 +171,21 @@ func (s *Snapshot4) Snapshot5() *raftpb.Snapshot {
 		log.Fatal("Couldn't re-marshal new snapshot")
 	}
 
+	nodes := s.GetNodesFromStore()
+	nodeList := make([]uint64, 0)
+	for _, v := range nodes {
+		nodeList = append(nodeList, v)
+	}
+
 	snap5 := raftpb.Snapshot{
 		Data: newState,
 		Metadata: raftpb.SnapshotMetadata{
 			Index: s.LastIndex,
 			Term:  s.LastTerm,
 			ConfState: raftpb.ConfState{
-				Nodes: make([]uint64, len(s.Peers)),
+				Nodes: nodeList,
 			},
 		},
-	}
-
-	for i, p := range s.Peers {
-		snap5.Metadata.ConfState.Nodes[i] = hashName(p.Name)
 	}
 
 	return &snap5

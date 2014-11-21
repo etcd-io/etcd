@@ -8,6 +8,7 @@ import (
 
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/pkg/pbutil"
+	"github.com/coreos/etcd/pkg/types"
 	raftpb "github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/snap"
 	"github.com/coreos/etcd/wal"
@@ -125,12 +126,12 @@ func GuessNodeID(nodes map[string]uint64, snap4 *Snapshot4, cfg *Config4, name s
 	if name != "" {
 		log.Printf("Using suggested name %s", name)
 		if val, ok := nodes[name]; ok {
-			log.Printf("Found ID %d", val)
+			log.Printf("Found ID %s", types.ID(val))
 			return val
 		}
 		if snapNodes != nil {
 			if val, ok := snapNodes[name]; ok {
-				log.Printf("Found ID %d", val)
+				log.Printf("Found ID %s", types.ID(val))
 				return val
 			}
 		}
