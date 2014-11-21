@@ -7,7 +7,6 @@ import (
 )
 
 func TestRestartMember(t *testing.T) {
-	t.Skip("TODO(bdarnell): re-enable this test")
 	defer afterTest(t)
 	c := NewCluster(t, 3)
 	c.Launch(t)

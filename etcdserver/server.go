@@ -249,6 +249,8 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 			log.Printf("etcdserver: recovering from snapshot at index %d", snapshot.Metadata.Index)
 			st.Recovery(snapshot.Data)
 			index = snapshot.Metadata.Index
+		} else {
+			index = 1
 		}
 		cfg.Cluster = NewClusterFromStore(cfg.Cluster.token, st)
 		cfg.Print()

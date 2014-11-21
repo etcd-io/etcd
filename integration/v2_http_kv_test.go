@@ -865,7 +865,6 @@ func TestV2WatchWithIndex(t *testing.T) {
 }
 
 func TestV2WatchKeyInDir(t *testing.T) {
-	t.Skip("TODO(bdarnell): re-enable this test")
 	cl := NewCluster(t, 1)
 	cl.Launch(t)
 	defer cl.Terminate(t)
@@ -914,7 +913,6 @@ func TestV2WatchKeyInDir(t *testing.T) {
 }
 
 func TestV2Head(t *testing.T) {
-	t.Skip("TODO(bdarnell): re-enable this test")
 	cl := NewCluster(t, 1)
 	cl.Launch(t)
 	defer cl.Terminate(t)
