@@ -47,6 +47,34 @@ func (r *raft) readMessages() []pb.Message {
 	return msgs
 }
 
+func TestProgressUpdate(t *testing.T) {
+	prevM, prevN := uint64(3), uint64(5)
+	tests := []struct {
+		update uint64
+
+		wm uint64
+		wn uint64
+	}{
+		{prevM - 1, prevM, prevN},         // do not decrease match, next
+		{prevM, prevM, prevN},             // do not decrease next
+		{prevM + 1, prevM + 1, prevN},     // increase match, do not decrease next
+		{prevM + 2, prevM + 2, prevN + 1}, // increase match, next
+	}
+	for i, tt := range tests {
+		p := &progress{
+			match: prevM,
+			next:  prevN,
+		}
+		p.update(tt.update)
+		if p.match != tt.wm {
+			t.Errorf("#%d: match=%d, want %d", i, p.match, tt.wm)
+		}
+		if p.next != tt.wn {
+			t.Errorf("#%d: next=%d, want %d", i, p.next, tt.wn)
+		}
+	}
+}
+
 func TestProgressMaybeDecr(t *testing.T) {
 	tests := []struct {
 		m  uint64

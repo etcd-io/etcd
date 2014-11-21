@@ -59,8 +59,12 @@ type progress struct {
 }
 
 func (pr *progress) update(n uint64) {
-	pr.match = n
-	pr.next = n + 1
+	if pr.match < n {
+		pr.match = n
+	}
+	if pr.next < n+1 {
+		pr.next = n + 1
+	}
 }
 
 func (pr *progress) optimisticUpdate(n uint64) {
