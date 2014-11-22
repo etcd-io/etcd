@@ -19,6 +19,7 @@ package rafthttp
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"sync"
@@ -38,7 +39,7 @@ const (
 type Sender interface {
 	// StartStreaming enables streaming in the sender using the given writer,
 	// which provides a fast and effecient way to send appendEntry messages.
-	StartStreaming(w WriteFlusher, to types.ID, term uint64) (done <-chan struct{}, err error)
+	StartStreaming(w WriteFlusher, closer io.Closer, to types.ID, term uint64) (done <-chan struct{}, err error)
 	Update(u string)
 	// Send sends the data to the remote node. It is always non-blocking.
 	// It may be fail to send data if it returns nil error.
@@ -82,7 +83,7 @@ type sender struct {
 	wg sync.WaitGroup
 }
 
-func (s *sender) StartStreaming(w WriteFlusher, to types.ID, term uint64) (<-chan struct{}, error) {
+func (s *sender) StartStreaming(w WriteFlusher, closer io.Closer, to types.ID, term uint64) (<-chan struct{}, error) {
 	s.strmSrvMu.Lock()
 	defer s.strmSrvMu.Unlock()
 	if s.strmSrv != nil {
@@ -93,7 +94,7 @@ func (s *sender) StartStreaming(w WriteFlusher, to types.ID, term uint64) (<-cha
 		// stop the existing one
 		s.strmSrv.stop()
 	}
-	s.strmSrv = startStreamServer(w, to, term, s.fs)
+	s.strmSrv = startStreamServer(w, closer, to, term, s.fs)
 	return s.strmSrv.stopNotify(), nil
 }
 
