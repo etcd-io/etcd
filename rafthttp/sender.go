@@ -176,7 +176,6 @@ func (s *sender) initStream(from, to types.ID, term uint64) {
 		return
 	}
 	s.strmCln = strmCln
-	log.Printf("rafthttp: start stream client with %s in term %d", to, term)
 }
 
 func (s *sender) tryStream(m raftpb.Message) bool {
