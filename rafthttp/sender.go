@@ -33,6 +33,8 @@ import (
 const (
 	connPerSender = 4
 	senderBufSize = connPerSender * 4
+
+	appRespBatchMs = 50
 )
 
 type Sender interface {
@@ -56,6 +58,7 @@ func NewSender(tr http.RoundTripper, u string, cid types.ID, p Processor, fs *st
 		p:          p,
 		fs:         fs,
 		shouldstop: shouldstop,
+		batcher:    NewBatcher(100, appRespBatchMs*time.Millisecond),
 		q:          make(chan []byte, senderBufSize),
 	}
 	s.wg.Add(connPerSender)
@@ -74,6 +77,7 @@ type sender struct {
 	shouldstop chan struct{}
 
 	strmCln   *streamClient
+	batcher   *Batcher
 	strmSrv   *streamServer
 	strmSrvMu sync.Mutex
 	q         chan []byte
@@ -106,8 +110,14 @@ func (s *sender) Update(u string) {
 // TODO (xiangli): reasonable retry logic
 func (s *sender) Send(m raftpb.Message) error {
 	s.maybeStopStream(m.Term)
-	if !s.hasStreamClient() && shouldInitStream(m) {
+	if shouldInitStream(m) && !s.hasStreamClient() {
 		s.initStream(types.ID(m.From), types.ID(m.To), m.Term)
+		s.batcher.Reset(time.Now())
+	}
+	if canBatch(m) && s.hasStreamClient() {
+		if s.batcher.ShouldBatch(time.Now()) {
+			return nil
+		}
 	}
 	if canUseStream(m) {
 		if ok := s.tryStream(m); ok {
