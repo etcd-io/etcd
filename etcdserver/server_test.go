@@ -963,16 +963,19 @@ func TestTriggerSnap(t *testing.T) {
 	}
 
 	srv.start()
+	// wait for saving nop
+	time.Sleep(time.Millisecond)
 	for i := 0; uint64(i) < srv.snapCount-1; i++ {
 		srv.Do(ctx, pb.Request{Method: "PUT", ID: 1})
 	}
+	// wait for saving the last entry
 	time.Sleep(time.Millisecond)
 	srv.Stop()
 
 	gaction := p.Action()
 	// each operation is recorded as a Save
 	// BootstrapConfig/Nop + (SnapCount - 1) * Puts + Cut + SaveSnap = Save + (SnapCount - 1) * Save + Cut + SaveSnap
-	wcnt := 1 + int(srv.snapCount)
+	wcnt := 2 + int(srv.snapCount)
 	if len(gaction) != wcnt {
 		t.Fatalf("len(action) = %d, want %d", len(gaction), wcnt)
 	}
