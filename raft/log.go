@@ -201,18 +201,23 @@ func (l *raftLog) lastTerm() uint64 {
 }
 
 func (l *raftLog) term(i uint64) uint64 {
-	if i < l.unstable {
-		t, err := l.storage.Term(i)
-		if err == ErrCompacted {
-			return 0
-		} else if err != nil {
-			panic(err) // TODO(bdarnell)
-		}
-		return t
-	}
 	if i >= l.unstable+uint64(len(l.unstableEnts)) {
 		return 0
 	}
+
+	if i < l.unstable {
+		t, err := l.storage.Term(i)
+		if err == nil {
+			return t
+		}
+		if err == ErrCompacted {
+			return 0
+		} else {
+			panic(err) // TODO(bdarnell)
+			return 0
+		}
+	}
+
 	return l.unstableEnts[i-l.unstable].Term
 }
 
