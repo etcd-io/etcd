@@ -285,12 +285,7 @@ func (l *raftLog) slice(lo uint64, hi uint64) []pb.Entry {
 		ents = append(ents, storedEnts...)
 	}
 	if len(l.unstableEnts) > 0 && hi > l.unstable {
-		var firstUnstable uint64
-		if lo < l.unstable {
-			firstUnstable = l.unstable
-		} else {
-			firstUnstable = lo
-		}
+		firstUnstable := max(lo, l.unstable)
 		ents = append(ents, l.unstableEnts[firstUnstable-l.unstable:hi-l.unstable]...)
 	}
 	return ents
