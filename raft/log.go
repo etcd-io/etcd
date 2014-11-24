@@ -46,7 +46,7 @@ type raftLog struct {
 
 func newLog(storage Storage) *raftLog {
 	if storage == nil {
-		panic("storage must not be nil")
+		log.Panic("storage must not be nil")
 	}
 	log := &raftLog{
 		storage: storage,
@@ -93,7 +93,7 @@ func (l *raftLog) maybeAppend(index, logTerm, committed uint64, ents ...pb.Entry
 
 func (l *raftLog) append(after uint64, ents ...pb.Entry) uint64 {
 	if after < l.committed {
-		log.Panicf("appending after %d, but already committed through %d", after, l.committed)
+		log.Panicf("after(%d) out of range [committed(%d)]", after, l.committed)
 	}
 	if after < l.unstable {
 		// The log is being truncated to before our current unstable
@@ -170,7 +170,7 @@ func (l *raftLog) commitTo(tocommit uint64) {
 	// never decrease commit
 	if l.committed < tocommit {
 		if l.lastIndex() < tocommit {
-			panic("committed out of range")
+			log.Panicf("tocommit(%d) is out of range [lastIndex(%d)]", tocommit, l.lastIndex())
 		}
 		l.committed = tocommit
 	}
@@ -181,14 +181,14 @@ func (l *raftLog) appliedTo(i uint64) {
 		return
 	}
 	if l.committed < i || i < l.applied {
-		log.Panicf("applied[%d] is out of range [prevApplied(%d), committed(%d)]", i, l.applied, l.committed)
+		log.Panicf("applied(%d) is out of range [prevApplied(%d), committed(%d)]", i, l.applied, l.committed)
 	}
 	l.applied = i
 }
 
 func (l *raftLog) stableTo(i uint64) {
 	if i < l.unstable || i+1-l.unstable > uint64(len(l.unstableEnts)) {
-		log.Panicf("stableTo(%d) is out of range (unstable=%d, len(unstableEnts)=%d)",
+		log.Panicf("stableTo(%d) is out of range [unstable(%d), len(unstableEnts)(%d)]",
 			i, l.unstable, len(l.unstableEnts))
 	}
 	l.unstableEnts = l.unstableEnts[i+1-l.unstable:]
