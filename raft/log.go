@@ -133,7 +133,7 @@ func (l *raftLog) unstableEntries() []pb.Entry {
 	if len(l.unstableEnts) == 0 {
 		return nil
 	}
-	return append([]pb.Entry(nil), l.unstableEnts...)
+	return append([]pb.Entry{}, l.unstableEnts...)
 }
 
 // nextEnts returns all the available entries for execution.
