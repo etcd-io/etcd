@@ -270,7 +270,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		if cfg.ShouldDiscover() {
 			log.Printf("etcdserver: warn: ignoring discovery: etcd has already been initialized and has a valid log in %q", cfg.WALDir())
 		}
-		var index uint64
+		index := uint64(1)
 		snapshot, err := ss.Load()
 		if err != nil && err != snap.ErrNoSnapshot {
 			return nil, err
@@ -279,8 +279,6 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 			log.Printf("etcdserver: recovering from snapshot at index %d", snapshot.Metadata.Index)
 			st.Recovery(snapshot.Data)
 			index = snapshot.Metadata.Index
-		} else {
-			index = 1
 		}
 		cfg.Cluster = NewClusterFromStore(cfg.Cluster.token, st)
 		cfg.Print()
