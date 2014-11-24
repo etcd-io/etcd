@@ -59,6 +59,7 @@ func startStreamServer(w WriteFlusher, to types.ID, term uint64, fs *stats.Follo
 		done: make(chan struct{}),
 	}
 	go s.handle(w)
+	log.Printf("rafthttp: stream server to %s at term %d starts", to, term)
 	return s
 }
 
@@ -85,7 +86,10 @@ func (s *streamServer) stop() {
 func (s *streamServer) stopNotify() <-chan struct{} { return s.done }
 
 func (s *streamServer) handle(w WriteFlusher) {
-	defer close(s.done)
+	defer func() {
+		close(s.done)
+		log.Printf("rafthttp: stream server to %s at term %d is closed", s.to, s.term)
+	}()
 
 	ew := &entryWriter{w: w}
 	for ents := range s.q {
@@ -145,6 +149,7 @@ func (s *streamClient) start(tr http.RoundTripper, u string, cid types.ID) error
 	}
 	s.closer = resp.Body
 	go s.handle(resp.Body)
+	log.Printf("rafthttp: stream client to %s at term %d starts", s.to, s.term)
 	return nil
 }
 
@@ -163,7 +168,10 @@ func (s *streamClient) isStopped() bool {
 }
 
 func (s *streamClient) handle(r io.Reader) {
-	defer close(s.done)
+	defer func() {
+		close(s.done)
+		log.Printf("rafthttp: stream client to %s at term %d is closed", s.to, s.term)
+	}()
 
 	er := &entryReader{r: r}
 	for {

@@ -35,6 +35,7 @@ import (
 	"github.com/coreos/etcd/pkg/transport"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/proxy"
+	"github.com/coreos/etcd/rafthttp"
 	"github.com/coreos/etcd/version"
 )
 
@@ -209,7 +210,7 @@ func startEtcd() (<-chan struct{}, error) {
 		return nil, fmt.Errorf("cannot write to data directory: %v", err)
 	}
 
-	pt, err := transport.NewTransport(peerTLSInfo)
+	pt, err := transport.NewTimeoutTransport(peerTLSInfo, rafthttp.ConnReadTimeout, rafthttp.ConnWriteTimeout)
 	if err != nil {
 		return nil, err
 	}
@@ -230,7 +231,7 @@ func startEtcd() (<-chan struct{}, error) {
 	plns := make([]net.Listener, 0)
 	for _, u := range lpurls {
 		var l net.Listener
-		l, err = transport.NewListener(u.Host, u.Scheme, peerTLSInfo)
+		l, err = transport.NewTimeoutListener(u.Host, u.Scheme, peerTLSInfo, rafthttp.ConnReadTimeout, rafthttp.ConnWriteTimeout)
 		if err != nil {
 			return nil, err
 		}

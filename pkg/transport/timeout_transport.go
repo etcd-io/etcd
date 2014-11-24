@@ -18,38 +18,25 @@ package transport
 
 import (
 	"net"
+	"net/http"
 	"time"
 )
 
-// NewTimeoutListener returns a listener that listens on the given address.
-// If read/write on the accepted connection blocks longer than its time limit,
+// NewTimeoutTransport returns a transport created using the given TLS info.
+// If read/write on the created connection blocks longer than its time limit,
 // it will return timeout error.
-func NewTimeoutListener(addr string, scheme string, info TLSInfo, rdtimeoutd, wtimeoutd time.Duration) (net.Listener, error) {
-	ln, err := NewListener(addr, scheme, info)
+func NewTimeoutTransport(info TLSInfo, rdtimeoutd, wtimeoutd time.Duration) (*http.Transport, error) {
+	tr, err := NewTransport(info)
 	if err != nil {
 		return nil, err
 	}
-	return &rwTimeoutListener{
-		Listener:   ln,
+	tr.Dial = (&rwTimeoutDialer{
+		Dialer: net.Dialer{
+			Timeout:   30 * time.Second,
+			KeepAlive: 30 * time.Second,
+		},
 		rdtimeoutd: rdtimeoutd,
 		wtimeoutd:  wtimeoutd,
-	}, nil
-}
-
-type rwTimeoutListener struct {
-	net.Listener
-	wtimeoutd  time.Duration
-	rdtimeoutd time.Duration
-}
-
-func (rwln *rwTimeoutListener) Accept() (net.Conn, error) {
-	c, err := rwln.Listener.Accept()
-	if err != nil {
-		return nil, err
-	}
-	return timeoutConn{
-		Conn:       c,
-		wtimeoutd:  rwln.wtimeoutd,
-		rdtimeoutd: rwln.rdtimeoutd,
-	}, nil
+	}).Dial
+	return tr, nil
 }

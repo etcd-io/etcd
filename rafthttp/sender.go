@@ -35,6 +35,9 @@ const (
 	senderBufSize = connPerSender * 4
 
 	appRespBatchMs = 50
+
+	ConnReadTimeout  = 5 * time.Second
+	ConnWriteTimeout = 5 * time.Second
 )
 
 type Sender interface {
@@ -176,7 +179,6 @@ func (s *sender) initStream(from, to types.ID, term uint64) {
 		return
 	}
 	s.strmCln = strmCln
-	log.Printf("rafthttp: start stream client with %s in term %d", to, term)
 }
 
 func (s *sender) tryStream(m raftpb.Message) bool {

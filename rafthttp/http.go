@@ -17,6 +17,7 @@
 package rafthttp
 
 import (
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -28,6 +29,10 @@ import (
 	"github.com/coreos/etcd/raft/raftpb"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
+)
+
+const (
+	ConnReadLimitByte = 64 * 1024
 )
 
 var (
@@ -83,7 +88,10 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	b, err := ioutil.ReadAll(r.Body)
+	// Limit the data size that could be read from the request body, which ensures that read from
+	// connection will not time out accidentally due to possible block in underlying implementation.
+	limitedr := io.LimitReader(r.Body, ConnReadLimitByte)
+	b, err := ioutil.ReadAll(limitedr)
 	if err != nil {
 		log.Println("rafthttp: error reading raft message:", err)
 		http.Error(w, "error reading raft message", http.StatusBadRequest)
