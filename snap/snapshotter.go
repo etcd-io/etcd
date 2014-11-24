@@ -61,7 +61,7 @@ func (s *Snapshotter) SaveSnap(snapshot raftpb.Snapshot) error {
 }
 
 func (s *Snapshotter) save(snapshot *raftpb.Snapshot) error {
-	fname := fmt.Sprintf("%016x-%016x%s", snapshot.Term, snapshot.Index, snapSuffix)
+	fname := fmt.Sprintf("%016x-%016x%s", snapshot.Metadata.Term, snapshot.Metadata.Index, snapSuffix)
 	b := pbutil.MustMarshal(snapshot)
 	crc := crc32.Update(0, crcTable, b)
 	snap := snappb.Snapshot{Crc: crc, Data: b}

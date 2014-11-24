@@ -165,8 +165,9 @@ type EtcdServer struct {
 
 	Cluster *Cluster
 
-	node  raft.Node
-	store store.Store
+	node        raft.Node
+	raftStorage *raft.MemoryStorage
+	store       store.Store
 
 	stats  *stats.ServerStats
 	lstats *stats.LeaderStats
@@ -211,6 +212,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 	st := store.New()
 	var w *wal.WAL
 	var n raft.Node
+	var s *raft.MemoryStorage
 	var id types.ID
 	walVersion := wal.DetectVersion(cfg.DataDir)
 	if walVersion == wal.WALUnknown {
@@ -243,7 +245,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		cfg.Cluster.SetID(existingCluster.id)
 		cfg.Cluster.SetStore(st)
 		cfg.Print()
-		id, n, w = startNode(cfg, nil)
+		id, n, s, w = startNode(cfg, nil)
 	case !haveWAL && cfg.NewCluster:
 		if err := cfg.VerifyBootstrapConfig(); err != nil {
 			return nil, err
@@ -263,7 +265,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		}
 		cfg.Cluster.SetStore(st)
 		cfg.PrintWithInitial()
-		id, n, w = startNode(cfg, cfg.Cluster.MemberIDs())
+		id, n, s, w = startNode(cfg, cfg.Cluster.MemberIDs())
 	case haveWAL:
 		if cfg.ShouldDiscover() {
 			log.Printf("etcdserver: warn: ignoring discovery: etcd has already been initialized and has a valid log in %q", cfg.WALDir())
@@ -274,9 +276,11 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 			return nil, err
 		}
 		if snapshot != nil {
-			log.Printf("etcdserver: recovering from snapshot at index %d", snapshot.Index)
+			log.Printf("etcdserver: recovering from snapshot at index %d", snapshot.Metadata.Index)
 			st.Recovery(snapshot.Data)
-			index = snapshot.Index
+			index = snapshot.Metadata.Index
+		} else {
+			index = 1
 		}
 		cfg.Cluster = NewClusterFromStore(cfg.Cluster.token, st)
 		cfg.Print()
@@ -284,9 +288,9 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 			log.Printf("etcdserver: loaded peers from snapshot: %s", cfg.Cluster)
 		}
 		if !cfg.ForceNewCluster {
-			id, n, w = restartNode(cfg, index, snapshot)
+			id, n, s, w = restartNode(cfg, index, snapshot)
 		} else {
-			id, n, w = restartAsStandaloneNode(cfg, index, snapshot)
+			id, n, s, w = restartAsStandaloneNode(cfg, index, snapshot)
 		}
 	default:
 		return nil, fmt.Errorf("unsupported bootstrap config")
@@ -298,12 +302,13 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 	}
 	lstats := stats.NewLeaderStats(id.String())
 
-	s := &EtcdServer{
-		store:      st,
-		node:       n,
-		id:         id,
-		attributes: Attributes{Name: cfg.Name, ClientURLs: cfg.ClientURLs.StringSlice()},
-		Cluster:    cfg.Cluster,
+	srv := &EtcdServer{
+		store:       st,
+		node:        n,
+		raftStorage: s,
+		id:          id,
+		attributes:  Attributes{Name: cfg.Name, ClientURLs: cfg.ClientURLs.StringSlice()},
+		Cluster:     cfg.Cluster,
 		storage: struct {
 			*wal.WAL
 			*snap.Snapshotter
@@ -314,8 +319,8 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		SyncTicker: time.Tick(500 * time.Millisecond),
 		snapCount:  cfg.SnapCount,
 	}
-	s.sendhub = newSendHub(cfg.Transport, cfg.Cluster, s, sstats, lstats)
-	return s, nil
+	srv.sendhub = newSendHub(cfg.Transport, cfg.Cluster, srv, sstats, lstats)
+	return srv, nil
 }
 
 // Start prepares and starts server in a new goroutine. It is no longer safe to
@@ -386,21 +391,26 @@ func (s *EtcdServer) run() {
 				}
 			}
 
+			s.raftStorage.Append(rd.Entries)
 			if err := s.storage.Save(rd.HardState, rd.Entries); err != nil {
 				log.Fatalf("etcdserver: save state and entries error: %v", err)
 			}
-			if err := s.storage.SaveSnap(rd.Snapshot); err != nil {
-				log.Fatalf("etcdserver: create snapshot error: %v", err)
+			if !raft.IsEmptySnap(rd.Snapshot) {
+				if err := s.storage.SaveSnap(rd.Snapshot); err != nil {
+					log.Fatalf("etcdserver: create snapshot error: %v", err)
+				}
 			}
 			s.sendhub.Send(rd.Messages)
 
-			// recover from snapshot if it is more updated than current applied
-			if rd.Snapshot.Index > appliedi {
-				if err := s.store.Recovery(rd.Snapshot.Data); err != nil {
-					log.Panicf("recovery store error: %v", err)
+			if !raft.IsEmptySnap(rd.Snapshot) {
+				// recover from snapshot if it is more updated than current applied
+				if rd.Snapshot.Metadata.Index > appliedi {
+					if err := s.store.Recovery(rd.Snapshot.Data); err != nil {
+						log.Panicf("recovery store error: %v", err)
+					}
+					s.Cluster.Recover()
+					appliedi = rd.Snapshot.Metadata.Index
 				}
-				s.Cluster.Recover()
-				appliedi = rd.Snapshot.Index
 			}
 			// TODO(bmizerany): do this in the background, but take
 			// care to apply entries in a single goroutine, and not
@@ -424,9 +434,6 @@ func (s *EtcdServer) run() {
 
 			s.node.Advance()
 
-			if rd.Snapshot.Index > snapi {
-				snapi = rd.Snapshot.Index
-			}
 			if appliedi-snapi > s.snapCount {
 				s.snapshot(appliedi, nodes)
 				snapi = appliedi
@@ -798,10 +805,19 @@ func (s *EtcdServer) snapshot(snapi uint64, snapnodes []uint64) {
 	if err != nil {
 		log.Panicf("store save should never fail: %v", err)
 	}
-	s.node.Compact(snapi, snapnodes, d)
+	// TODO(bdarnell): save ConfState instead of snapnodes directly.
+	s.raftStorage.Compact(snapi, &raftpb.ConfState{Nodes: snapnodes}, d)
 	if err := s.storage.Cut(); err != nil {
 		log.Panicf("rotate wal file should never fail: %v", err)
 	}
+	snap, err := s.raftStorage.Snapshot()
+	if err != nil {
+		log.Fatalf("etcdserver: snapshot error: %v", err)
+	}
+	if err := s.storage.SaveSnap(snap); err != nil {
+		log.Fatalf("etcdserver: create snapshot error: %v", err)
+	}
+
 }
 
 // checkClientURLsEmptyFromPeers does its best to get the cluster from peers,
@@ -875,7 +891,7 @@ func getClusterFromPeers(urls []string, logerr bool) (*Cluster, error) {
 	return nil, fmt.Errorf("etcdserver: could not retrieve cluster information from the given urls")
 }
 
-func startNode(cfg *ServerConfig, ids []types.ID) (id types.ID, n raft.Node, w *wal.WAL) {
+func startNode(cfg *ServerConfig, ids []types.ID) (id types.ID, n raft.Node, s *raft.MemoryStorage, w *wal.WAL) {
 	var err error
 	member := cfg.Cluster.MemberByName(cfg.Name)
 	metadata := pbutil.MustMarshal(
@@ -897,7 +913,8 @@ func startNode(cfg *ServerConfig, ids []types.ID) (id types.ID, n raft.Node, w *
 	}
 	id = member.ID
 	log.Printf("etcdserver: start member %s in cluster %s", id, cfg.Cluster.ID())
-	n = raft.StartNode(uint64(id), peers, 10, 1)
+	s = raft.NewMemoryStorage()
+	n = raft.StartNode(uint64(id), peers, 10, 1, s)
 	return
 }
 
@@ -915,13 +932,19 @@ func getOtherPeerURLs(cl ClusterInfo, self string) []string {
 	return us
 }
 
-func restartNode(cfg *ServerConfig, index uint64, snapshot *raftpb.Snapshot) (types.ID, raft.Node, *wal.WAL) {
+func restartNode(cfg *ServerConfig, index uint64, snapshot *raftpb.Snapshot) (types.ID, raft.Node, *raft.MemoryStorage, *wal.WAL) {
 	w, id, cid, st, ents := readWAL(cfg.WALDir(), index)
 	cfg.Cluster.SetID(cid)
 
 	log.Printf("etcdserver: restart member %s in cluster %s at commit index %d", id, cfg.Cluster.ID(), st.Commit)
-	n := raft.RestartNode(uint64(id), 10, 1, snapshot, st, ents)
-	return id, n, w
+	s := raft.NewMemoryStorage()
+	if snapshot != nil {
+		s.ApplySnapshot(*snapshot)
+	}
+	s.SetHardState(st)
+	s.Append(ents)
+	n := raft.RestartNode(uint64(id), 10, 1, s)
+	return id, n, s, w
 }
 
 func readWAL(waldir string, index uint64) (w *wal.WAL, id, cid types.ID, st raftpb.HardState, ents []raftpb.Entry) {
