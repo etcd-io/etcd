@@ -369,24 +369,27 @@ func TestNextEnts(t *testing.T) {
 	}
 }
 
+// TestUnstableEnts ensures unstableEntries returns the unstable part of the
+// entries correctly.
 func TestUnstableEnts(t *testing.T) {
 	previousEnts := []pb.Entry{{Term: 1, Index: 1}, {Term: 2, Index: 2}}
 	tests := []struct {
-		unstable  uint64
-		wents     []pb.Entry
-		wunstable uint64
+		unstable uint64
+		wents    []pb.Entry
 	}{
-		{3, nil, 3},
-		{1, previousEnts, 3},
+		{3, nil},
+		{1, previousEnts},
 	}
 
 	for i, tt := range tests {
+		// append stable entries to storage
 		storage := NewMemoryStorage()
-		if tt.unstable > 0 {
-			storage.Append(previousEnts[:tt.unstable-1])
-		}
+		storage.Append(previousEnts[:tt.unstable-1])
+
+		// append unstable entries to raftlog
 		raftLog := newLog(storage)
 		raftLog.append(raftLog.lastIndex(), previousEnts[tt.unstable-1:]...)
+
 		ents := raftLog.unstableEntries()
 		if l := len(ents); l > 0 {
 			raftLog.stableTo(ents[l-1].Index)
@@ -394,8 +397,9 @@ func TestUnstableEnts(t *testing.T) {
 		if !reflect.DeepEqual(ents, tt.wents) {
 			t.Errorf("#%d: unstableEnts = %+v, want %+v", i, ents, tt.wents)
 		}
-		if g := raftLog.unstable; g != tt.wunstable {
-			t.Errorf("#%d: unstable = %d, want %d", i, g, tt.wunstable)
+		w := previousEnts[len(previousEnts)-1].Index + 1
+		if g := raftLog.unstable; g != w {
+			t.Errorf("#%d: unstable = %d, want %d", i, g, w)
 		}
 	}
 }
