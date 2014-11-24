@@ -69,7 +69,6 @@ func newLog(storage Storage) *raftLog {
 
 func (l *raftLog) String() string {
 	return fmt.Sprintf("unstable=%d committed=%d applied=%d", l.unstable, l.committed, l.applied)
-
 }
 
 // maybeAppend returns (0, false) if the entries cannot be appended. Otherwise,
