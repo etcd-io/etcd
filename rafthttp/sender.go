@@ -35,6 +35,9 @@ const (
 	senderBufSize = connPerSender * 4
 
 	appRespBatchMs = 50
+
+	ConnReadTimeout  = 5 * time.Second
+	ConnWriteTimeout = 5 * time.Second
 )
 
 type Sender interface {
