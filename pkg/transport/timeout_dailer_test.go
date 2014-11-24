@@ -17,8 +17,8 @@ func TestReadWriteTimeoutDialer(t *testing.T) {
 	go ts.Start(t)
 
 	d := rwTimeoutDialer{
-		wtimeoutd:  time.Millisecond,
-		rdtimeoutd: time.Millisecond,
+		wtimeoutd:  10 * time.Millisecond,
+		rdtimeoutd: 10 * time.Millisecond,
 	}
 	conn, err := d.Dial("tcp", ln.Addr().String())
 	if err != nil {
