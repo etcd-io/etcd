@@ -817,7 +817,6 @@ func (s *EtcdServer) snapshot(snapi uint64, snapnodes []uint64) {
 	if err := s.storage.SaveSnap(snap); err != nil {
 		log.Fatalf("etcdserver: create snapshot error: %v", err)
 	}
-
 }
 
 // checkClientURLsEmptyFromPeers does its best to get the cluster from peers,
