@@ -395,10 +395,11 @@ func (s *EtcdServer) run() {
 			if err := s.storage.Save(rd.HardState, rd.Entries); err != nil {
 				log.Fatalf("etcdserver: save state and entries error: %v", err)
 			}
-			if !raft.IsEmptySnap(rd.Snapshot) {
+			if !raft.IsEmptySnap(rd.Snapshot) && rd.Snapshot.Metadata.Index > snapi {
 				if err := s.storage.SaveSnap(rd.Snapshot); err != nil {
 					log.Fatalf("etcdserver: create snapshot error: %v", err)
 				}
+				snapi = rd.Snapshot.Metadata.Index
 			}
 			s.sendhub.Send(rd.Messages)
 
