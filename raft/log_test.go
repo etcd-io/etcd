@@ -505,9 +505,8 @@ func TestLogRestore(t *testing.T) {
 	storage.ApplySnapshot(pb.Snapshot{Metadata: snap})
 	raftLog := newLog(storage)
 
-	// only has the guard entry
 	if len(raftLog.allEntries()) != 0 {
-		t.Errorf("len = %d, want 1", len(raftLog.allEntries()))
+		t.Errorf("len = %d, want 0", len(raftLog.allEntries()))
 	}
 	if raftLog.firstIndex() != index+1 {
 		t.Errorf("firstIndex = %d, want %d", raftLog.firstIndex(), index+1)
