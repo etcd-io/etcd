@@ -214,7 +214,6 @@ func (l *raftLog) term(i uint64) uint64 {
 			return 0
 		} else {
 			panic(err) // TODO(bdarnell)
-			return 0
 		}
 	}
 
