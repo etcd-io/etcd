@@ -245,6 +245,8 @@ func (l *raftLog) maybeCommit(maxIndex, term uint64) bool {
 }
 
 func (l *raftLog) restore(s pb.Snapshot) {
+	// TODO: rethink restore logic.
+	// This breaks the rule that raft never modifies storage.
 	err := l.storage.ApplySnapshot(s)
 	if err != nil {
 		panic(err) // TODO(bdarnell)

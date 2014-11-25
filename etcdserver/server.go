@@ -394,7 +394,6 @@ func (s *EtcdServer) run() {
 				if err := s.storage.SaveSnap(rd.Snapshot); err != nil {
 					log.Fatalf("etcdserver: create snapshot error: %v", err)
 				}
-				s.raftStorage.ApplySnapshot(rd.Snapshot)
 				snapi = rd.Snapshot.Metadata.Index
 			}
 
