@@ -106,7 +106,7 @@ func (ms *MemoryStorage) Term(i uint64) (uint64, error) {
 	ms.Lock()
 	defer ms.Unlock()
 	offset := ms.snapshot.Metadata.Index
-	if i < offset || i > offset+uint64(len(ms.ents)) {
+	if i < offset {
 		return 0, ErrCompacted
 	}
 	return ms.ents[i-offset].Term, nil
