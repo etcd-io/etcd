@@ -182,6 +182,10 @@ func (ms *MemoryStorage) Append(entries []pb.Entry) {
 		return
 	}
 	offset := entries[0].Index - ms.snapshot.Metadata.Index
+	// do not append out of date entries
+	if offset < 0 {
+		return
+	}
 	if uint64(len(ms.ents)) >= offset {
 		ms.ents = ms.ents[:offset]
 	}
