@@ -178,10 +178,14 @@ func (s *Snapshot4) Snapshot5() *raftpb.Snapshot {
 	}
 
 	snap5 := raftpb.Snapshot{
-		Data:  newState,
-		Index: s.LastIndex,
-		Term:  s.LastTerm,
-		Nodes: nodeList,
+		Data: newState,
+		Metadata: raftpb.SnapshotMetadata{
+			Index: s.LastIndex,
+			Term:  s.LastTerm,
+			ConfState: raftpb.ConfState{
+				Nodes: nodeList,
+			},
+		},
 	}
 
 	return &snap5

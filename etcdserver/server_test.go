@@ -560,22 +560,28 @@ func testServer(t *testing.T, ns uint64) {
 	members := mustMakePeerSlice(t, ids...)
 	for i := uint64(0); i < ns; i++ {
 		id := i + 1
-		n := raft.StartNode(id, members, 10, 1)
+		s := raft.NewMemoryStorage()
+		n := raft.StartNode(id, members, 10, 1, s)
 		tk := time.NewTicker(10 * time.Millisecond)
 		defer tk.Stop()
 		st := store.New()
 		cl := newCluster("abc")
 		cl.SetStore(st)
 		srv := &EtcdServer{
-			node:    n,
-			store:   st,
-			sendhub: &fakeSender{ss},
-			storage: &storageRecorder{},
-			Ticker:  tk.C,
-			Cluster: cl,
+			node:        n,
+			raftStorage: s,
+			store:       st,
+			sendhub:     &fakeSender{ss},
+			storage:     &storageRecorder{},
+			Ticker:      tk.C,
+			Cluster:     cl,
 		}
-		srv.start()
 		ss[i] = srv
+	}
+
+	// Start the servers after they're all created to avoid races in send().
+	for i := uint64(0); i < ns; i++ {
+		ss[i].start()
 	}
 
 	for i := 1; i <= 10; i++ {
@@ -628,7 +634,8 @@ func TestDoProposal(t *testing.T) {
 
 	for i, tt := range tests {
 		ctx, _ := context.WithCancel(context.Background())
-		n := raft.StartNode(0xBAD0, mustMakePeerSlice(t, 0xBAD0), 10, 1)
+		s := raft.NewMemoryStorage()
+		n := raft.StartNode(0xBAD0, mustMakePeerSlice(t, 0xBAD0), 10, 1, s)
 		st := &storeRecorder{}
 		tk := make(chan time.Time)
 		// this makes <-tk always successful, which accelerates internal clock
@@ -636,12 +643,13 @@ func TestDoProposal(t *testing.T) {
 		cl := newCluster("abc")
 		cl.SetStore(store.New())
 		srv := &EtcdServer{
-			node:    n,
-			store:   st,
-			sendhub: &nopSender{},
-			storage: &storageRecorder{},
-			Ticker:  tk,
-			Cluster: cl,
+			node:        n,
+			raftStorage: s,
+			store:       st,
+			sendhub:     &nopSender{},
+			storage:     &storageRecorder{},
+			Ticker:      tk,
+			Cluster:     cl,
 		}
 		srv.start()
 		resp, err := srv.Do(ctx, tt)
@@ -664,14 +672,16 @@ func TestDoProposal(t *testing.T) {
 func TestDoProposalCancelled(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	// node cannot make any progress because there are two nodes
-	n := raft.StartNode(0xBAD0, mustMakePeerSlice(t, 0xBAD0, 0xBAD1), 10, 1)
+	s := raft.NewMemoryStorage()
+	n := raft.StartNode(0xBAD0, mustMakePeerSlice(t, 0xBAD0, 0xBAD1), 10, 1, s)
 	st := &storeRecorder{}
 	wait := &waitRecorder{}
 	srv := &EtcdServer{
 		// TODO: use fake node for better testability
-		node:  n,
-		store: st,
-		w:     wait,
+		node:        n,
+		raftStorage: s,
+		store:       st,
+		w:           wait,
 	}
 
 	done := make(chan struct{})
@@ -712,7 +722,8 @@ func TestDoProposalStopped(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	// node cannot make any progress because there are two nodes
-	n := raft.StartNode(0xBAD0, mustMakePeerSlice(t, 0xBAD0, 0xBAD1), 10, 1)
+	s := raft.NewMemoryStorage()
+	n := raft.StartNode(0xBAD0, mustMakePeerSlice(t, 0xBAD0, 0xBAD1), 10, 1, s)
 	st := &storeRecorder{}
 	tk := make(chan time.Time)
 	// this makes <-tk always successful, which accelarates internal clock
@@ -721,12 +732,13 @@ func TestDoProposalStopped(t *testing.T) {
 	cl.SetStore(store.New())
 	srv := &EtcdServer{
 		// TODO: use fake node for better testability
-		node:    n,
-		store:   st,
-		sendhub: &nopSender{},
-		storage: &storageRecorder{},
-		Ticker:  tk,
-		Cluster: cl,
+		node:        n,
+		raftStorage: s,
+		store:       st,
+		sendhub:     &nopSender{},
+		storage:     &storageRecorder{},
+		Ticker:      tk,
+		Cluster:     cl,
 	}
 	srv.start()
 
@@ -832,11 +844,12 @@ func TestSyncTrigger(t *testing.T) {
 	}
 	st := make(chan time.Time, 1)
 	srv := &EtcdServer{
-		node:       n,
-		store:      &storeRecorder{},
-		sendhub:    &nopSender{},
-		storage:    &storageRecorder{},
-		SyncTicker: st,
+		node:        n,
+		raftStorage: raft.NewMemoryStorage(),
+		store:       &storeRecorder{},
+		sendhub:     &nopSender{},
+		storage:     &storageRecorder{},
+		SyncTicker:  st,
 	}
 	srv.start()
 	// trigger the server to become a leader and accept sync requests
@@ -866,17 +879,45 @@ func TestSyncTrigger(t *testing.T) {
 // snapshot should snapshot the store and cut the persistent
 // TODO: node.Compact is called... we need to make the node an interface
 func TestSnapshot(t *testing.T) {
-	n := raft.StartNode(0xBAD0, mustMakePeerSlice(t, 0xBAD0), 10, 1)
+	s := raft.NewMemoryStorage()
+	n := raft.StartNode(0xBAD0, mustMakePeerSlice(t, 0xBAD0), 10, 1, s)
 	defer n.Stop()
+
+	// Progress the node to the point where it has something to snapshot.
+	// TODO(bdarnell): this could be improved with changes in the raft internals.
+	// First, we must apply the initial conf changes so we can have an election.
+	rd := <-n.Ready()
+	s.Append(rd.Entries)
+	for _, e := range rd.CommittedEntries {
+		if e.Type == raftpb.EntryConfChange {
+			var cc raftpb.ConfChange
+			err := cc.Unmarshal(e.Data)
+			if err != nil {
+				t.Fatal(err)
+			}
+			n.ApplyConfChange(cc)
+		}
+	}
+	n.Advance()
+
+	// Now we can have an election and persist the rest of the log.
+	// This causes HardState.Commit to advance. HardState.Commit must
+	// be > 0 to snapshot.
+	n.Campaign(context.Background())
+	rd = <-n.Ready()
+	s.Append(rd.Entries)
+	n.Advance()
+
 	st := &storeRecorder{}
 	p := &storageRecorder{}
-	s := &EtcdServer{
-		store:   st,
-		storage: p,
-		node:    n,
+	srv := &EtcdServer{
+		store:       st,
+		storage:     p,
+		node:        n,
+		raftStorage: s,
 	}
 
-	s.snapshot(0, []uint64{1})
+	srv.snapshot(1, []uint64{1})
 	gaction := st.Action()
 	if len(gaction) != 1 {
 		t.Fatalf("len(action) = %d, want 1", len(gaction))
@@ -886,19 +927,24 @@ func TestSnapshot(t *testing.T) {
 	}
 
 	gaction = p.Action()
-	if len(gaction) != 1 {
-		t.Fatalf("len(action) = %d, want 1", len(gaction))
+	if len(gaction) != 2 {
+		t.Fatalf("len(action) = %d, want 2", len(gaction))
 	}
 	if !reflect.DeepEqual(gaction[0], action{name: "Cut"}) {
 		t.Errorf("action = %s, want Cut", gaction[0])
+	}
+	if !reflect.DeepEqual(gaction[1], action{name: "SaveSnap"}) {
+		t.Errorf("action = %s, want SaveSnap", gaction[1])
 	}
 }
 
 // Applied > SnapCount should trigger a SaveSnap event
 func TestTriggerSnap(t *testing.T) {
 	ctx := context.Background()
-	n := raft.StartNode(0xBAD0, mustMakePeerSlice(t, 0xBAD0), 10, 1)
-	<-n.Ready()
+	s := raft.NewMemoryStorage()
+	n := raft.StartNode(0xBAD0, mustMakePeerSlice(t, 0xBAD0), 10, 1, s)
+	rd := <-n.Ready()
+	s.Append(rd.Entries)
 	n.Advance()
 	n.ApplyConfChange(raftpb.ConfChange{Type: raftpb.ConfChangeAddNode, NodeID: 0xBAD0})
 	n.Campaign(ctx)
@@ -906,26 +952,30 @@ func TestTriggerSnap(t *testing.T) {
 	p := &storageRecorder{}
 	cl := newCluster("abc")
 	cl.SetStore(store.New())
-	s := &EtcdServer{
-		store:     st,
-		sendhub:   &nopSender{},
-		storage:   p,
-		node:      n,
-		snapCount: 10,
-		Cluster:   cl,
+	srv := &EtcdServer{
+		store:       st,
+		sendhub:     &nopSender{},
+		storage:     p,
+		node:        n,
+		raftStorage: s,
+		snapCount:   10,
+		Cluster:     cl,
 	}
 
-	s.start()
-	for i := 0; uint64(i) < s.snapCount-1; i++ {
-		s.Do(ctx, pb.Request{Method: "PUT", ID: 1})
-	}
+	srv.start()
+	// wait for saving nop
 	time.Sleep(time.Millisecond)
-	s.Stop()
+	for i := 0; uint64(i) < srv.snapCount-1; i++ {
+		srv.Do(ctx, pb.Request{Method: "PUT", ID: 1})
+	}
+	// wait for saving the last entry
+	time.Sleep(time.Millisecond)
+	srv.Stop()
 
 	gaction := p.Action()
 	// each operation is recorded as a Save
 	// BootstrapConfig/Nop + (SnapCount - 1) * Puts + Cut + SaveSnap = Save + (SnapCount - 1) * Save + Cut + SaveSnap
-	wcnt := 2 + int(s.snapCount)
+	wcnt := 2 + int(srv.snapCount)
 	if len(gaction) != wcnt {
 		t.Fatalf("len(action) = %d, want %d", len(gaction), wcnt)
 	}
@@ -943,15 +993,16 @@ func TestRecvSnapshot(t *testing.T) {
 	cl := newCluster("abc")
 	cl.SetStore(store.New())
 	s := &EtcdServer{
-		store:   st,
-		sendhub: &nopSender{},
-		storage: p,
-		node:    n,
-		Cluster: cl,
+		store:       st,
+		sendhub:     &nopSender{},
+		storage:     p,
+		node:        n,
+		raftStorage: raft.NewMemoryStorage(),
+		Cluster:     cl,
 	}
 
 	s.start()
-	n.readyc <- raft.Ready{Snapshot: raftpb.Snapshot{Index: 1}}
+	n.readyc <- raft.Ready{Snapshot: raftpb.Snapshot{Metadata: raftpb.SnapshotMetadata{Index: 1}}}
 	// make goroutines move forward to receive snapshot
 	testutil.ForceGosched()
 	s.Stop()
@@ -960,7 +1011,7 @@ func TestRecvSnapshot(t *testing.T) {
 	if g := st.Action(); !reflect.DeepEqual(g, wactions) {
 		t.Errorf("store action = %v, want %v", g, wactions)
 	}
-	wactions = []action{action{name: "Save"}, action{name: "SaveSnap"}}
+	wactions = []action{action{name: "SaveSnap"}, action{name: "Save"}}
 	if g := p.Action(); !reflect.DeepEqual(g, wactions) {
 		t.Errorf("storage action = %v, want %v", g, wactions)
 	}
@@ -975,20 +1026,21 @@ func TestRecvSlowSnapshot(t *testing.T) {
 	cl := newCluster("abc")
 	cl.SetStore(store.New())
 	s := &EtcdServer{
-		store:   st,
-		sendhub: &nopSender{},
-		storage: &storageRecorder{},
-		node:    n,
-		Cluster: cl,
+		store:       st,
+		sendhub:     &nopSender{},
+		storage:     &storageRecorder{},
+		node:        n,
+		raftStorage: raft.NewMemoryStorage(),
+		Cluster:     cl,
 	}
 
 	s.start()
-	n.readyc <- raft.Ready{Snapshot: raftpb.Snapshot{Index: 1}}
+	n.readyc <- raft.Ready{Snapshot: raftpb.Snapshot{Metadata: raftpb.SnapshotMetadata{Index: 1}}}
 	// make goroutines move forward to receive snapshot
 	testutil.ForceGosched()
 	action := st.Action()
 
-	n.readyc <- raft.Ready{Snapshot: raftpb.Snapshot{Index: 1}}
+	n.readyc <- raft.Ready{Snapshot: raftpb.Snapshot{Metadata: raftpb.SnapshotMetadata{Index: 1}}}
 	// make goroutines move forward to receive snapshot
 	testutil.ForceGosched()
 	s.Stop()
@@ -1005,18 +1057,20 @@ func TestApplySnapshotAndCommittedEntries(t *testing.T) {
 	st := &storeRecorder{}
 	cl := newCluster("abc")
 	cl.SetStore(store.New())
+	storage := raft.NewMemoryStorage()
 	s := &EtcdServer{
-		store:   st,
-		sendhub: &nopSender{},
-		storage: &storageRecorder{},
-		node:    n,
-		Cluster: cl,
+		store:       st,
+		sendhub:     &nopSender{},
+		storage:     &storageRecorder{},
+		node:        n,
+		raftStorage: storage,
+		Cluster:     cl,
 	}
 
 	s.start()
 	req := &pb.Request{Method: "QGET"}
 	n.readyc <- raft.Ready{
-		Snapshot: raftpb.Snapshot{Index: 1},
+		Snapshot: raftpb.Snapshot{Metadata: raftpb.SnapshotMetadata{Index: 1}},
 		CommittedEntries: []raftpb.Entry{
 			{Index: 2, Data: pbutil.MustMarshal(req)},
 		},
@@ -1049,11 +1103,12 @@ func TestAddMember(t *testing.T) {
 	cl := newTestCluster(nil)
 	cl.SetStore(store.New())
 	s := &EtcdServer{
-		node:    n,
-		store:   &storeRecorder{},
-		sendhub: &nopSender{},
-		storage: &storageRecorder{},
-		Cluster: cl,
+		node:        n,
+		raftStorage: raft.NewMemoryStorage(),
+		store:       &storeRecorder{},
+		sendhub:     &nopSender{},
+		storage:     &storageRecorder{},
+		Cluster:     cl,
 	}
 	s.start()
 	m := Member{ID: 1234, RaftAttributes: RaftAttributes{PeerURLs: []string{"foo"}}}
@@ -1086,11 +1141,12 @@ func TestRemoveMember(t *testing.T) {
 	cl.SetStore(store.New())
 	cl.AddMember(&Member{ID: 1234})
 	s := &EtcdServer{
-		node:    n,
-		store:   &storeRecorder{},
-		sendhub: &nopSender{},
-		storage: &storageRecorder{},
-		Cluster: cl,
+		node:        n,
+		raftStorage: raft.NewMemoryStorage(),
+		store:       &storeRecorder{},
+		sendhub:     &nopSender{},
+		storage:     &storageRecorder{},
+		Cluster:     cl,
 	}
 	s.start()
 	err := s.RemoveMember(context.TODO(), 1234)
@@ -1122,11 +1178,12 @@ func TestUpdateMember(t *testing.T) {
 	cl.SetStore(store.New())
 	cl.AddMember(&Member{ID: 1234})
 	s := &EtcdServer{
-		node:    n,
-		store:   &storeRecorder{},
-		sendhub: &nopSender{},
-		storage: &storageRecorder{},
-		Cluster: cl,
+		node:        n,
+		raftStorage: raft.NewMemoryStorage(),
+		store:       &storeRecorder{},
+		sendhub:     &nopSender{},
+		storage:     &storageRecorder{},
+		Cluster:     cl,
 	}
 	s.start()
 	wm := Member{ID: 1234, RaftAttributes: RaftAttributes{PeerURLs: []string{"http://127.0.0.1:1"}}}
@@ -1488,12 +1545,12 @@ func (n *readyNode) Propose(ctx context.Context, data []byte) error { return nil
 func (n *readyNode) ProposeConfChange(ctx context.Context, conf raftpb.ConfChange) error {
 	return nil
 }
-func (n *readyNode) Step(ctx context.Context, msg raftpb.Message) error { return nil }
-func (n *readyNode) Ready() <-chan raft.Ready                           { return n.readyc }
-func (n *readyNode) Advance()                                           {}
-func (n *readyNode) ApplyConfChange(conf raftpb.ConfChange)             {}
-func (n *readyNode) Stop()                                              {}
-func (n *readyNode) Compact(index uint64, nodes []uint64, d []byte)     {}
+func (n *readyNode) Step(ctx context.Context, msg raftpb.Message) error       { return nil }
+func (n *readyNode) Ready() <-chan raft.Ready                                 { return n.readyc }
+func (n *readyNode) Advance()                                                 {}
+func (n *readyNode) ApplyConfChange(conf raftpb.ConfChange) *raftpb.ConfState { return nil }
+func (n *readyNode) Stop()                                                    {}
+func (n *readyNode) Compact(index uint64, nodes []uint64, d []byte)           {}
 
 type nodeRecorder struct {
 	recorder
@@ -1519,8 +1576,9 @@ func (n *nodeRecorder) Step(ctx context.Context, msg raftpb.Message) error {
 }
 func (n *nodeRecorder) Ready() <-chan raft.Ready { return nil }
 func (n *nodeRecorder) Advance()                 {}
-func (n *nodeRecorder) ApplyConfChange(conf raftpb.ConfChange) {
+func (n *nodeRecorder) ApplyConfChange(conf raftpb.ConfChange) *raftpb.ConfState {
 	n.record(action{name: "ApplyConfChange", params: []interface{}{conf}})
+	return nil
 }
 func (n *nodeRecorder) Stop() {
 	n.record(action{name: "Stop"})
@@ -1580,8 +1638,9 @@ func (n *nodeConfChangeCommitterRecorder) ProposeConfChange(ctx context.Context,
 func (n *nodeConfChangeCommitterRecorder) Ready() <-chan raft.Ready {
 	return n.readyc
 }
-func (n *nodeConfChangeCommitterRecorder) ApplyConfChange(conf raftpb.ConfChange) {
+func (n *nodeConfChangeCommitterRecorder) ApplyConfChange(conf raftpb.ConfChange) *raftpb.ConfState {
 	n.record(action{name: "ApplyConfChange:" + conf.Type.String()})
+	return nil
 }
 
 type waitWithResponse struct {
