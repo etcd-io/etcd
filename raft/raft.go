@@ -534,6 +534,10 @@ func (r *raft) compact(index uint64, nodes []uint64, d []byte) {
 	if index > r.raftLog.applied {
 		panic(fmt.Sprintf("raft: compact index (%d) exceeds applied index (%d)", index, r.raftLog.applied))
 	}
+	if index < r.raftLog.offset {
+		//TODO: return an error?
+		return
+	}
 	r.raftLog.snap(d, index, r.raftLog.term(index), nodes)
 	r.raftLog.compact(index)
 }
