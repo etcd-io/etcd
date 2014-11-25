@@ -158,14 +158,7 @@ func (l *raftLog) firstIndex() uint64 {
 }
 
 func (l *raftLog) lastIndex() uint64 {
-	if len(l.unstableEnts) > 0 {
-		return l.unstable + uint64(len(l.unstableEnts)) - 1
-	}
-	index, err := l.storage.LastIndex()
-	if err != nil {
-		panic(err) // TODO(bdarnell)
-	}
-	return index
+	return l.unstable + uint64(len(l.unstableEnts)) - 1
 }
 
 func (l *raftLog) commitTo(tocommit uint64) {
