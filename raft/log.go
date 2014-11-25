@@ -288,13 +288,6 @@ func (l *raftLog) isOutOfBounds(i uint64) bool {
 	return false
 }
 
-func (l *raftLog) isOutOfAppliedBounds(i uint64) bool {
-	if i < l.firstIndex() || i > l.applied {
-		return true
-	}
-	return false
-}
-
 func min(a, b uint64) uint64 {
 	if a > b {
 		return b
