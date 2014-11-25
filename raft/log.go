@@ -44,6 +44,8 @@ type raftLog struct {
 	applied uint64
 }
 
+// newLog returns log using the given storage. It recovers the log to the state
+// that it just commits and applies the lastest snapshot.
 func newLog(storage Storage) *raftLog {
 	if storage == nil {
 		log.Panic("storage must not be nil")
@@ -68,7 +70,7 @@ func newLog(storage Storage) *raftLog {
 }
 
 func (l *raftLog) String() string {
-	return fmt.Sprintf("unstable=%d committed=%d applied=%d", l.unstable, l.committed, l.applied)
+	return fmt.Sprintf("unstable=%d committed=%d applied=%d len(unstableEntries)=%d", l.unstable, l.committed, l.applied, len(l.unstableEnts))
 }
 
 // maybeAppend returns (0, false) if the entries cannot be appended. Otherwise,
