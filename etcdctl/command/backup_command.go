@@ -58,7 +58,9 @@ func handleBackup(c *cli.Context) {
 	if snapshot != nil {
 		index = snapshot.Index
 		newss := snap.New(destSnap)
-		newss.SaveSnap(*snapshot)
+		if err := newss.SaveSnap(*snapshot); err != nil {
+			log.Fatal(err)
+		}
 	}
 
 	w, err := wal.OpenAtIndex(srcWAL, index)
