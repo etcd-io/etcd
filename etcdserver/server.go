@@ -270,7 +270,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		if cfg.ShouldDiscover() {
 			log.Printf("etcdserver: warn: ignoring discovery: etcd has already been initialized and has a valid log in %q", cfg.WALDir())
 		}
-		index := uint64(1)
+		var index uint64
 		snapshot, err := ss.Load()
 		if err != nil && err != snap.ErrNoSnapshot {
 			return nil, err
@@ -286,9 +286,9 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 			log.Printf("etcdserver: loaded peers from snapshot: %s", cfg.Cluster)
 		}
 		if !cfg.ForceNewCluster {
-			id, n, s, w = restartNode(cfg, index, snapshot)
+			id, n, s, w = restartNode(cfg, index+1, snapshot)
 		} else {
-			id, n, s, w = restartAsStandaloneNode(cfg, index, snapshot)
+			id, n, s, w = restartAsStandaloneNode(cfg, index+1, snapshot)
 		}
 	default:
 		return nil, fmt.Errorf("unsupported bootstrap config")
