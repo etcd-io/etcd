@@ -120,8 +120,6 @@ type Node interface {
 	// Returns an opaque ConfState protobuf which must be recorded
 	// in snapshots. Will never return nil; it returns a pointer only
 	// to match MemoryStorage.Compact.
-	// TODO: reject existing node when add node
-	// TODO: reject non-existant node when remove node
 	ApplyConfChange(cc pb.ConfChange) *pb.ConfState
 	// Stop performs any necessary termination of the Node
 	Stop()
