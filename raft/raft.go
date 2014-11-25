@@ -231,7 +231,7 @@ func (r *raft) sendAppend(to uint64) {
 		if err != nil {
 			panic(err) // TODO(bdarnell)
 		}
-		if snapshot.Metadata.Term == 0 {
+		if IsEmptySnap(snapshot) {
 			panic("need non-empty snapshot")
 		}
 		m.Snapshot = snapshot
