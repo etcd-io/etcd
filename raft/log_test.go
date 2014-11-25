@@ -549,37 +549,6 @@ func TestIsOutOfBounds(t *testing.T) {
 	}
 }
 
-func TestAt(t *testing.T) {
-	var i uint64
-	offset := uint64(100)
-	num := uint64(100)
-
-	storage := NewMemoryStorage()
-	storage.ApplySnapshot(pb.Snapshot{Metadata: pb.SnapshotMetadata{Index: offset}})
-	l := newLog(storage)
-	for i = 1; i < num; i++ {
-		l.append(offset+i-1, pb.Entry{Index: i, Term: i})
-	}
-
-	tests := []struct {
-		index uint64
-		w     *pb.Entry
-	}{
-		{offset - 1, nil},
-		{offset, nil},
-		{offset + num/2, &pb.Entry{Index: num / 2, Term: num / 2}},
-		{offset + num - 1, &pb.Entry{Index: num - 1, Term: num - 1}},
-		{offset + num, nil},
-	}
-
-	for i, tt := range tests {
-		g := l.at(tt.index)
-		if !reflect.DeepEqual(g, tt.w) {
-			t.Errorf("#%d: at = %v, want %v", i, g, tt.w)
-		}
-	}
-}
-
 func TestTerm(t *testing.T) {
 	var i uint64
 	offset := uint64(100)

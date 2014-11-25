@@ -123,7 +123,7 @@ func (l *raftLog) append(after uint64, ents ...pb.Entry) uint64 {
 func (l *raftLog) findConflict(from uint64, ents []pb.Entry) uint64 {
 	// TODO(xiangli): validate the index of ents
 	for i, ne := range ents {
-		if oe := l.at(from + uint64(i)); oe == nil || oe.Term != ne.Term {
+		if !l.matchTerm(from+uint64(i), ne.Term) {
 			return from + uint64(i)
 		}
 	}
@@ -252,14 +252,6 @@ func (l *raftLog) restore(s pb.Snapshot) {
 	l.committed = s.Metadata.Index
 	l.unstable = l.committed + 1
 	l.unstableEnts = nil
-}
-
-func (l *raftLog) at(i uint64) *pb.Entry {
-	ents := l.slice(i, i+1)
-	if len(ents) == 0 {
-		return nil
-	}
-	return &ents[0]
 }
 
 // slice returns a slice of log entries from lo through hi-1, inclusive.
