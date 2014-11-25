@@ -105,8 +105,7 @@ func (l *raftLog) append(after uint64, ents ...pb.Entry) uint64 {
 	}
 	// Truncate any unstable entries that are being replaced, then
 	// append the new ones.
-	l.unstableEnts = append(l.unstableEnts[0:1+after-l.unstable], ents...)
-	l.unstable = min(l.unstable, after+1)
+	l.unstableEnts = append(l.unstableEnts[:after+1-l.unstable], ents...)
 	return l.lastIndex()
 }
 
