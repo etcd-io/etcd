@@ -33,8 +33,12 @@ func restartAsStandaloneNode(cfg *ServerConfig, index uint64, snapshot *raftpb.S
 	cfg.Cluster.SetID(cid)
 
 	// discard the previously uncommitted entries
-	if len(ents) != 0 {
-		ents = ents[:st.Commit+1]
+	for i, ent := range ents {
+		if ent.Index > st.Commit {
+			log.Printf("etcdserver: discarding %d uncommited WAL entries ", len(ents)-i)
+			ents = ents[:i]
+			break
+		}
 	}
 
 	// force append the configuration change entries
