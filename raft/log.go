@@ -266,13 +266,15 @@ func (l *raftLog) slice(lo uint64, hi uint64) []pb.Entry {
 	if lo < l.unstable {
 		storedEnts, err := l.storage.Entries(lo, min(hi, l.unstable))
 		if err == ErrCompacted {
+			// This should never fail because it has been checked before.
+			log.Panicf("entries[%d:%d) from storage is out of bound", lo, min(hi, l.unstable))
 			return nil
 		} else if err != nil {
 			panic(err) // TODO(bdarnell)
 		}
 		ents = append(ents, storedEnts...)
 	}
-	if len(l.unstableEnts) > 0 && hi > l.unstable {
+	if hi > l.unstable {
 		firstUnstable := max(lo, l.unstable)
 		ents = append(ents, l.unstableEnts[firstUnstable-l.unstable:hi-l.unstable]...)
 	}
