@@ -24,7 +24,7 @@ import (
 )
 
 func TestFindConflict(t *testing.T) {
-	previousEnts := []pb.Entry{{Term: 1}, {Term: 2}, {Term: 3}}
+	previousEnts := []pb.Entry{{Index: 1, Term: 1}, {Index: 2, Term: 2}, {Index: 3, Term: 3}}
 	tests := []struct {
 		from      uint64
 		ents      []pb.Entry
@@ -34,18 +34,18 @@ func TestFindConflict(t *testing.T) {
 		{1, []pb.Entry{}, 0},
 		{3, []pb.Entry{}, 0},
 		// no conflict
-		{1, []pb.Entry{{Term: 1}, {Term: 2}, {Term: 3}}, 0},
-		{2, []pb.Entry{{Term: 2}, {Term: 3}}, 0},
-		{3, []pb.Entry{{Term: 3}}, 0},
+		{1, []pb.Entry{{Index: 1, Term: 1}, {Index: 2, Term: 2}, {Index: 3, Term: 3}}, 0},
+		{2, []pb.Entry{{Index: 2, Term: 2}, {Index: 3, Term: 3}}, 0},
+		{3, []pb.Entry{{Index: 3, Term: 3}}, 0},
 		// no conflict, but has new entries
-		{1, []pb.Entry{{Term: 1}, {Term: 2}, {Term: 3}, {Term: 4}, {Term: 4}}, 4},
-		{2, []pb.Entry{{Term: 2}, {Term: 3}, {Term: 4}, {Term: 4}}, 4},
-		{3, []pb.Entry{{Term: 3}, {Term: 4}, {Term: 4}}, 4},
-		{4, []pb.Entry{{Term: 4}, {Term: 4}}, 4},
+		{1, []pb.Entry{{Index: 1, Term: 1}, {Index: 2, Term: 2}, {Index: 3, Term: 3}, {Index: 4, Term: 4}, {Index: 5, Term: 4}}, 4},
+		{2, []pb.Entry{{Index: 2, Term: 2}, {Index: 3, Term: 3}, {Index: 4, Term: 4}, {Index: 5, Term: 4}}, 4},
+		{3, []pb.Entry{{Index: 3, Term: 3}, {Index: 4, Term: 4}, {Index: 5, Term: 4}}, 4},
+		{4, []pb.Entry{{Index: 4, Term: 4}, {Index: 5, Term: 4}}, 4},
 		// conflicts with existing entries
-		{1, []pb.Entry{{Term: 4}, {Term: 4}}, 1},
-		{2, []pb.Entry{{Term: 1}, {Term: 4}, {Term: 4}}, 2},
-		{3, []pb.Entry{{Term: 1}, {Term: 2}, {Term: 4}, {Term: 4}}, 3},
+		{1, []pb.Entry{{Index: 1, Term: 4}, {Index: 2, Term: 4}}, 1},
+		{2, []pb.Entry{{Index: 2, Term: 1}, {Index: 3, Term: 4}, {Index: 4, Term: 4}}, 2},
+		{3, []pb.Entry{{Index: 3, Term: 1}, {Index: 4, Term: 2}, {Index: 5, Term: 4}, {Index: 6, Term: 4}}, 3},
 	}
 
 	for i, tt := range tests {
@@ -60,7 +60,7 @@ func TestFindConflict(t *testing.T) {
 }
 
 func TestIsUpToDate(t *testing.T) {
-	previousEnts := []pb.Entry{{Term: 1}, {Term: 2}, {Term: 3}}
+	previousEnts := []pb.Entry{{Index: 1, Term: 1}, {Index: 2, Term: 2}, {Index: 3, Term: 3}}
 	raftLog := newLog(NewMemoryStorage())
 	raftLog.append(raftLog.lastIndex(), previousEnts...)
 	tests := []struct {
@@ -91,7 +91,7 @@ func TestIsUpToDate(t *testing.T) {
 }
 
 func TestAppend(t *testing.T) {
-	previousEnts := []pb.Entry{{Term: 1}, {Term: 2}}
+	previousEnts := []pb.Entry{{Index: 1, Term: 1}, {Index: 2, Term: 2}}
 	tests := []struct {
 		after     uint64
 		ents      []pb.Entry
@@ -103,30 +103,30 @@ func TestAppend(t *testing.T) {
 			2,
 			[]pb.Entry{},
 			2,
-			[]pb.Entry{{Term: 1}, {Term: 2}},
+			[]pb.Entry{{Index: 1, Term: 1}, {Index: 2, Term: 2}},
 			3,
 		},
 		{
 			2,
-			[]pb.Entry{{Term: 2}},
+			[]pb.Entry{{Index: 3, Term: 2}},
 			3,
-			[]pb.Entry{{Term: 1}, {Term: 2}, {Term: 2}},
+			[]pb.Entry{{Index: 1, Term: 1}, {Index: 2, Term: 2}, {Index: 3, Term: 2}},
 			3,
 		},
 		// conflicts with index 1
 		{
 			0,
-			[]pb.Entry{{Term: 2}},
+			[]pb.Entry{{Index: 1, Term: 2}},
 			1,
-			[]pb.Entry{{Term: 2}},
+			[]pb.Entry{{Index: 1, Term: 2}},
 			1,
 		},
 		// conflicts with index 2
 		{
 			1,
-			[]pb.Entry{{Term: 3}, {Term: 3}},
+			[]pb.Entry{{Index: 2, Term: 3}, {Index: 3, Term: 3}},
 			3,
-			[]pb.Entry{{Term: 1}, {Term: 3}, {Term: 3}},
+			[]pb.Entry{{Index: 1, Term: 1}, {Index: 2, Term: 3}, {Index: 3, Term: 3}},
 			2,
 		},
 	}
@@ -158,7 +158,7 @@ func TestAppend(t *testing.T) {
 // If the given (index, term) does not match with the existing log:
 // 	return false
 func TestLogMaybeAppend(t *testing.T) {
-	previousEnts := []pb.Entry{{Term: 1}, {Term: 2}, {Term: 3}}
+	previousEnts := []pb.Entry{{Index: 1, Term: 1}, {Index: 2, Term: 2}, {Index: 3, Term: 3}}
 	lastindex := uint64(3)
 	lastterm := uint64(3)
 	commit := uint64(1)
@@ -176,12 +176,12 @@ func TestLogMaybeAppend(t *testing.T) {
 	}{
 		// not match: term is different
 		{
-			lastterm - 1, lastindex, lastindex, []pb.Entry{{Term: 4}},
+			lastterm - 1, lastindex, lastindex, []pb.Entry{{Index: lastindex + 1, Term: 4}},
 			0, false, commit, false,
 		},
 		// not match: index out of bound
 		{
-			lastterm, lastindex + 1, lastindex, []pb.Entry{{Term: 4}},
+			lastterm, lastindex + 1, lastindex, []pb.Entry{{Index: lastindex + 2, Term: 4}},
 			0, false, commit, false,
 		},
 		// match with the last existing entry
@@ -206,36 +206,36 @@ func TestLogMaybeAppend(t *testing.T) {
 			0, true, commit, false, // commit do not decrease
 		},
 		{
-			lastterm, lastindex, lastindex, []pb.Entry{{Term: 4}},
+			lastterm, lastindex, lastindex, []pb.Entry{{Index: lastindex + 1, Term: 4}},
 			lastindex + 1, true, lastindex, false,
 		},
 		{
-			lastterm, lastindex, lastindex + 1, []pb.Entry{{Term: 4}},
+			lastterm, lastindex, lastindex + 1, []pb.Entry{{Index: lastindex + 1, Term: 4}},
 			lastindex + 1, true, lastindex + 1, false,
 		},
 		{
-			lastterm, lastindex, lastindex + 2, []pb.Entry{{Term: 4}},
+			lastterm, lastindex, lastindex + 2, []pb.Entry{{Index: lastindex + 1, Term: 4}},
 			lastindex + 1, true, lastindex + 1, false, // do not increase commit higher than lastnewi
 		},
 		{
-			lastterm, lastindex, lastindex + 2, []pb.Entry{{Term: 4}, {Term: 4}},
+			lastterm, lastindex, lastindex + 2, []pb.Entry{{Index: lastindex + 1, Term: 4}, {Index: lastindex + 2, Term: 4}},
 			lastindex + 2, true, lastindex + 2, false,
 		},
 		// match with the the entry in the middle
 		{
-			lastterm - 1, lastindex - 1, lastindex, []pb.Entry{{Term: 4}},
+			lastterm - 1, lastindex - 1, lastindex, []pb.Entry{{Index: lastindex, Term: 4}},
 			lastindex, true, lastindex, false,
 		},
 		{
-			lastterm - 2, lastindex - 2, lastindex, []pb.Entry{{Term: 4}},
+			lastterm - 2, lastindex - 2, lastindex, []pb.Entry{{Index: lastindex - 1, Term: 4}},
 			lastindex - 1, true, lastindex - 1, false,
 		},
 		{
-			lastterm - 3, lastindex - 3, lastindex, []pb.Entry{{Term: 4}},
+			lastterm - 3, lastindex - 3, lastindex, []pb.Entry{{Index: lastindex - 2, Term: 4}},
 			lastindex - 2, true, lastindex - 2, true, // conflict with existing committed entry
 		},
 		{
-			lastterm - 2, lastindex - 2, lastindex, []pb.Entry{{Term: 4}, {Term: 4}},
+			lastterm - 2, lastindex - 2, lastindex, []pb.Entry{{Index: lastindex - 1, Term: 4}, {Index: lastindex, Term: 4}},
 			lastindex, true, lastindex, false,
 		},
 	}
@@ -325,7 +325,7 @@ func TestCompactionSideEffects(t *testing.T) {
 	}
 
 	prev := raftLog.lastIndex()
-	raftLog.append(raftLog.lastIndex(), pb.Entry{Term: raftLog.lastIndex() + 1})
+	raftLog.append(raftLog.lastIndex(), pb.Entry{Index: raftLog.lastIndex() + 1, Term: raftLog.lastIndex() + 1})
 	if raftLog.lastIndex() != prev+1 {
 		t.Errorf("lastIndex = %d, want = %d", raftLog.lastIndex(), prev+1)
 	}
@@ -481,7 +481,7 @@ func TestCompaction(t *testing.T) {
 
 			storage := NewMemoryStorage()
 			for i := uint64(1); i <= tt.lastIndex; i++ {
-				storage.Append([]pb.Entry{{}})
+				storage.Append([]pb.Entry{{Index: i}})
 			}
 			raftLog := newLog(storage)
 			raftLog.maybeCommit(tt.lastIndex, 0)
@@ -558,7 +558,7 @@ func TestAt(t *testing.T) {
 	storage.ApplySnapshot(pb.Snapshot{Metadata: pb.SnapshotMetadata{Index: offset}})
 	l := newLog(storage)
 	for i = 1; i < num; i++ {
-		l.append(offset+i-1, pb.Entry{Term: i})
+		l.append(offset+i-1, pb.Entry{Index: i, Term: i})
 	}
 
 	tests := []struct {
@@ -567,8 +567,8 @@ func TestAt(t *testing.T) {
 	}{
 		{offset - 1, nil},
 		{offset, nil},
-		{offset + num/2, &pb.Entry{Term: num / 2}},
-		{offset + num - 1, &pb.Entry{Term: num - 1}},
+		{offset + num/2, &pb.Entry{Index: num / 2, Term: num / 2}},
+		{offset + num - 1, &pb.Entry{Index: num - 1, Term: num - 1}},
 		{offset + num, nil},
 	}
 
@@ -589,7 +589,7 @@ func TestTerm(t *testing.T) {
 	storage.ApplySnapshot(pb.Snapshot{Metadata: pb.SnapshotMetadata{Index: offset}})
 	l := newLog(storage)
 	for i = 1; i < num; i++ {
-		l.append(offset+i-1, pb.Entry{Term: i})
+		l.append(offset+i-1, pb.Entry{Index: i, Term: i})
 	}
 
 	tests := []struct {
@@ -620,7 +620,7 @@ func TestSlice(t *testing.T) {
 	storage.ApplySnapshot(pb.Snapshot{Metadata: pb.SnapshotMetadata{Index: offset}})
 	l := newLog(storage)
 	for i = 1; i < num; i++ {
-		l.append(offset+i-1, pb.Entry{Term: i})
+		l.append(offset+i-1, pb.Entry{Index: i, Term: i})
 	}
 
 	tests := []struct {
@@ -630,8 +630,8 @@ func TestSlice(t *testing.T) {
 	}{
 		{offset - 1, offset + 1, nil},
 		{offset, offset + 1, nil},
-		{offset + num/2, offset + num/2 + 1, []pb.Entry{{Term: num / 2}}},
-		{offset + num - 1, offset + num, []pb.Entry{{Term: num - 1}}},
+		{offset + num/2, offset + num/2 + 1, []pb.Entry{{Index: num / 2, Term: num / 2}}},
+		{offset + num - 1, offset + num, []pb.Entry{{Index: num - 1, Term: num - 1}}},
 		{offset + num, offset + num + 1, nil},
 
 		{offset + num/2, offset + num/2, nil},

@@ -715,7 +715,7 @@ func TestHandleHeartbeat(t *testing.T) {
 
 	for i, tt := range tests {
 		storage := NewMemoryStorage()
-		storage.Append([]pb.Entry{{Term: 1}, {Term: 2}, {Term: 3}})
+		storage.Append([]pb.Entry{{Index: 1, Term: 1}, {Index: 2, Term: 2}, {Index: 3, Term: 3}})
 		sm := &raft{
 			state:     StateFollower,
 			HardState: pb.HardState{Term: 2},
@@ -780,7 +780,7 @@ func TestRecvMsgVote(t *testing.T) {
 		}
 		sm.HardState = pb.HardState{Vote: tt.voteFor}
 		sm.raftLog = &raftLog{
-			storage:  &MemoryStorage{ents: []pb.Entry{{}, {Term: 2}, {Term: 2}}},
+			storage:  &MemoryStorage{ents: []pb.Entry{{}, {Index: 1, Term: 2}, {Index: 2, Term: 2}}},
 			unstable: 3,
 		}
 
@@ -928,7 +928,7 @@ func TestLeaderAppResp(t *testing.T) {
 		// thus the last log term must be 1 to be committed.
 		sm := newRaft(1, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
 		sm.raftLog = &raftLog{
-			storage:  &MemoryStorage{ents: []pb.Entry{{}, {Term: 0}, {Term: 1}}},
+			storage:  &MemoryStorage{ents: []pb.Entry{{}, {Index: 1, Term: 0}, {Index: 2, Term: 1}}},
 			unstable: 3,
 		}
 		sm.becomeCandidate()
@@ -980,7 +980,7 @@ func TestBcastBeat(t *testing.T) {
 	sm.becomeCandidate()
 	sm.becomeLeader()
 	for i := 0; i < 10; i++ {
-		sm.appendEntry(pb.Entry{})
+		sm.appendEntry(pb.Entry{Index: uint64(i) + 1})
 	}
 	// slow follower
 	sm.prs[2].match, sm.prs[2].next = 5, 6
@@ -1034,7 +1034,7 @@ func TestRecvMsgBeat(t *testing.T) {
 
 	for i, tt := range tests {
 		sm := newRaft(1, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
-		sm.raftLog = &raftLog{storage: &MemoryStorage{ents: []pb.Entry{{}, {Term: 0}, {Term: 1}}}}
+		sm.raftLog = &raftLog{storage: &MemoryStorage{ents: []pb.Entry{{}, {Index: 1, Term: 0}, {Index: 2, Term: 1}}}}
 		sm.Term = 1
 		sm.state = tt.state
 		switch tt.state {
@@ -1344,8 +1344,8 @@ func TestRaftNodes(t *testing.T) {
 
 func ents(terms ...uint64) *raft {
 	ents := []pb.Entry{{}}
-	for _, term := range terms {
-		ents = append(ents, pb.Entry{Term: term})
+	for i, term := range terms {
+		ents = append(ents, pb.Entry{Index: uint64(i), Term: term})
 	}
 
 	sm := &raft{

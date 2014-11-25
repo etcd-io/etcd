@@ -113,7 +113,7 @@ func TestLeaderBcastBeat(t *testing.T) {
 	r.becomeCandidate()
 	r.becomeLeader()
 	for i := 0; i < 10; i++ {
-		r.appendEntry(pb.Entry{})
+		r.appendEntry(pb.Entry{Index: uint64(i) + 1})
 	}
 
 	for i := 0; i <= hi; i++ {
