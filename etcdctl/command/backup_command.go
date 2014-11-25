@@ -19,6 +19,7 @@ package command
 import (
 	"log"
 	"math/rand"
+	"os"
 	"path"
 	"time"
 
@@ -49,6 +50,9 @@ func handleBackup(c *cli.Context) {
 	srcWAL := path.Join(c.String("data-dir"), "wal")
 	destWAL := path.Join(c.String("backup-dir"), "wal")
 
+	if err := os.MkdirAll(destSnap, 0700); err != nil {
+		log.Fatalf("failed creating backup snapshot dir %v: %v", destSnap, err)
+	}
 	ss := snap.New(srcSnap)
 	snapshot, err := ss.Load()
 	if err != nil && err != snap.ErrNoSnapshot {
