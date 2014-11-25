@@ -488,7 +488,13 @@ func TestCompaction(t *testing.T) {
 			raftLog.appliedTo(raftLog.committed)
 
 			for j := 0; j < len(tt.compact); j++ {
-				storage.Compact(tt.compact[j], nil, nil)
+				err := storage.Compact(tt.compact[j], nil, nil)
+				if err != nil {
+					if tt.wallow {
+						t.Errorf("#%d.%d allow = %t, want %t", i, j, false, tt.wallow)
+					}
+					continue
+				}
 				if len(raftLog.allEntries()) != tt.wleft[j] {
 					t.Errorf("#%d.%d len = %d, want %d", i, j, len(raftLog.allEntries()), tt.wleft[j])
 				}

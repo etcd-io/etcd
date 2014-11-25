@@ -18,13 +18,13 @@ package raft
 
 import (
 	"errors"
-	"fmt"
+	"log"
 	"sync"
 
 	pb "github.com/coreos/etcd/raft/raftpb"
 )
 
-// ErrCompacted is returned by Storage.Entries when a requested
+// ErrCompacted is returned by Storage.Entries/Compact when a requested
 // index is unavailable because it predates the last snapshot.
 var ErrCompacted = errors.New("requested index is unavailable due to compaction")
 
@@ -154,9 +154,11 @@ func (ms *MemoryStorage) Compact(i uint64, cs *pb.ConfState, data []byte) error 
 	ms.Lock()
 	defer ms.Unlock()
 	offset := ms.snapshot.Metadata.Index
-	if i <= offset || i > offset+uint64(len(ms.ents))-1 {
-		panic(fmt.Sprintf("compact %d out of bounds (%d, %d)", i, offset,
-			offset+uint64(len(ms.ents))-1))
+	if i <= offset {
+		return ErrCompacted
+	}
+	if i > offset+uint64(len(ms.ents))-1 {
+		log.Panicf("compact %d out of bound lastindex(%d)", i, offset+uint64(len(ms.ents))-1)
 	}
 	i -= offset
 	ents := make([]pb.Entry, 1, 1+uint64(len(ms.ents))-i)

@@ -808,7 +808,16 @@ func (s *EtcdServer) snapshot(snapi uint64, snapnodes []uint64) {
 	if err != nil {
 		log.Panicf("store save should never fail: %v", err)
 	}
-	s.raftStorage.Compact(snapi, &raftpb.ConfState{Nodes: snapnodes}, d)
+	err = s.raftStorage.Compact(snapi, &raftpb.ConfState{Nodes: snapnodes}, d)
+	if err != nil {
+		// the snapshot was done asynchronously with the progress of raft.
+		// raft might have already got a newer snapshot and called compact.
+		if err == raft.ErrCompacted {
+			return
+		}
+		log.Panicf("etcdserver: unexpected compaction error %v", err)
+	}
+
 	if err := s.storage.Cut(); err != nil {
 		log.Panicf("rotate wal file should never fail: %v", err)
 	}
