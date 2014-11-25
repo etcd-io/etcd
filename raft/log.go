@@ -81,7 +81,7 @@ func (l *raftLog) maybeAppend(index, logTerm, committed uint64, ents ...pb.Entry
 		switch {
 		case ci == 0:
 		case ci <= l.committed:
-			panic("conflict with committed entry")
+			log.Panicf("conflict(%d) with committed entry [committed(%d)]", ci, l.committed)
 		default:
 			l.append(ci-1, ents[ci-from:]...)
 		}

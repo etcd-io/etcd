@@ -176,5 +176,12 @@ func (ms *MemoryStorage) Compact(i uint64, cs *pb.ConfState, data []byte) error 
 func (ms *MemoryStorage) Append(entries []pb.Entry) {
 	ms.Lock()
 	defer ms.Unlock()
+	if len(entries) == 0 {
+		return
+	}
+	offset := entries[0].Index - ms.snapshot.Metadata.Index
+	if uint64(len(ms.ents)) >= offset {
+		ms.ents = ms.ents[:offset]
+	}
 	ms.ents = append(ms.ents, entries...)
 }
