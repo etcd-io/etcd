@@ -804,7 +804,6 @@ func (s *EtcdServer) snapshot(snapi uint64, snapnodes []uint64) {
 	if err != nil {
 		log.Panicf("store save should never fail: %v", err)
 	}
-	// TODO(bdarnell): save ConfState instead of snapnodes directly.
 	s.raftStorage.Compact(snapi, &raftpb.ConfState{Nodes: snapnodes}, d)
 	if err := s.storage.Cut(); err != nil {
 		log.Panicf("rotate wal file should never fail: %v", err)
