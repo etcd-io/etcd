@@ -811,7 +811,7 @@ func (s *EtcdServer) snapshot(snapi uint64, snapnodes []uint64) {
 	}
 	snap, err := s.raftStorage.Snapshot()
 	if err != nil {
-		log.Fatalf("etcdserver: snapshot error: %v", err)
+		log.Panicf("etcdserver: snapshot error: %v", err)
 	}
 	if err := s.storage.SaveSnap(snap); err != nil {
 		log.Fatalf("etcdserver: create snapshot error: %v", err)
