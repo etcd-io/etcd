@@ -250,7 +250,6 @@ func (l *raftLog) restore(s pb.Snapshot) {
 		panic(err) // TODO(bdarnell)
 	}
 	l.committed = s.Metadata.Index
-	l.applied = s.Metadata.Index
 	l.unstable = l.committed + 1
 	l.unstableEnts = nil
 }
