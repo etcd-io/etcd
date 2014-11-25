@@ -210,6 +210,7 @@ func (n *node) run(r *raft) {
 	var advancec chan struct{}
 	var prevLastUnstablei uint64
 	var havePrevLastUnstablei bool
+	var prevSnapi uint64
 	var rd Ready
 
 	lead := None
@@ -293,6 +294,7 @@ func (n *node) run(r *raft) {
 					prevLastUnstablei = rd.Snapshot.Metadata.Index
 					havePrevLastUnstablei = true
 				}
+				prevSnapi = rd.Snapshot.Metadata.Index
 			}
 			r.msgs = nil
 			advancec = n.advancec
@@ -303,6 +305,9 @@ func (n *node) run(r *raft) {
 			if havePrevLastUnstablei {
 				r.raftLog.stableTo(prevLastUnstablei)
 				havePrevLastUnstablei = false
+			}
+			if r.snapshot != nil && r.snapshot.Metadata.Index == prevSnapi {
+				r.snapshot = nil
 			}
 			advancec = nil
 		case <-n.stop:
