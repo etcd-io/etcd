@@ -418,6 +418,7 @@ func (s *EtcdServer) run() {
 				firsti := rd.CommittedEntries[0].Index
 				if appliedi == 0 {
 					appliedi = firsti - 1
+					snapi = appliedi
 				}
 				if firsti > appliedi+1 {
 					log.Panicf("etcdserver: first index of committed entry[%d] should <= appliedi[%d] + 1", firsti, appliedi)
