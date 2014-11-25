@@ -159,6 +159,8 @@ func newRaft(id uint64, peers []uint64, election, heartbeat int) *raft {
 
 func (r *raft) hasLeader() bool { return r.lead != None }
 
+func (r *raft) leader() uint64 { return r.lead }
+
 func (r *raft) softState() *SoftState {
 	return &SoftState{Lead: r.lead, RaftState: r.state, Nodes: r.nodes()}
 }
