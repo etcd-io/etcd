@@ -100,13 +100,6 @@ func (pr *progress) String() string {
 	return fmt.Sprintf("n=%d m=%d", pr.next, pr.match)
 }
 
-// uint64Slice implements sort interface
-type uint64Slice []uint64
-
-func (p uint64Slice) Len() int           { return len(p) }
-func (p uint64Slice) Less(i, j int) bool { return p[i] < p[j] }
-func (p uint64Slice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
-
 type raft struct {
 	pb.HardState
 
@@ -452,9 +445,7 @@ func (r *raft) handleSnapshot(m pb.Message) {
 	}
 }
 
-func (r *raft) resetPendingConf() {
-	r.pendingConf = false
-}
+func (r *raft) resetPendingConf() { r.pendingConf = false }
 
 func (r *raft) addNode(id uint64) {
 	r.setProgress(id, 0, r.raftLog.lastIndex()+1)

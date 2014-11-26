@@ -23,6 +23,27 @@ import (
 	pb "github.com/coreos/etcd/raft/raftpb"
 )
 
+// uint64Slice implements sort interface
+type uint64Slice []uint64
+
+func (p uint64Slice) Len() int           { return len(p) }
+func (p uint64Slice) Less(i, j int) bool { return p[i] < p[j] }
+func (p uint64Slice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
+
+func min(a, b uint64) uint64 {
+	if a > b {
+		return b
+	}
+	return a
+}
+
+func max(a, b uint64) uint64 {
+	if a > b {
+		return a
+	}
+	return b
+}
+
 // DescribeMessage returns a concise human-readable description of a
 // Message for debugging.
 func DescribeMessage(m pb.Message) string {

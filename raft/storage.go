@@ -158,7 +158,7 @@ func (ms *MemoryStorage) Compact(i uint64, cs *pb.ConfState, data []byte) error 
 		return ErrCompacted
 	}
 	if i > offset+uint64(len(ms.ents))-1 {
-		log.Panicf("compact %d out of bound lastindex(%d)", i, offset+uint64(len(ms.ents))-1)
+		log.Panicf("compact %d is out of bound lastindex(%d)", i, offset+uint64(len(ms.ents))-1)
 	}
 	i -= offset
 	ents := make([]pb.Entry, 1, 1+uint64(len(ms.ents))-i)

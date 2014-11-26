@@ -83,7 +83,7 @@ func (l *raftLog) maybeAppend(index, logTerm, committed uint64, ents ...pb.Entry
 		switch {
 		case ci == 0:
 		case ci <= l.committed:
-			log.Panicf("conflict(%d) with committed entry [committed(%d)]", ci, l.committed)
+			log.Panicf("entry %d conflict with committed entry [committed(%d)]", ci, l.committed)
 		default:
 			l.append(ci-1, ents[ci-from:]...)
 		}
@@ -95,7 +95,7 @@ func (l *raftLog) maybeAppend(index, logTerm, committed uint64, ents ...pb.Entry
 
 func (l *raftLog) append(after uint64, ents ...pb.Entry) uint64 {
 	if after < l.committed {
-		log.Panicf("after(%d) out of range [committed(%d)]", after, l.committed)
+		log.Panicf("after(%d) is out of range [committed(%d)]", after, l.committed)
 	}
 	if after < l.unstable {
 		// The log is being truncated to before our current unstable
@@ -288,18 +288,4 @@ func (l *raftLog) isOutOfBounds(i uint64) bool {
 		return true
 	}
 	return false
-}
-
-func min(a, b uint64) uint64 {
-	if a > b {
-		return b
-	}
-	return a
-}
-
-func max(a, b uint64) uint64 {
-	if a > b {
-		return a
-	}
-	return b
 }
