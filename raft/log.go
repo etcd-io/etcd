@@ -26,6 +26,9 @@ import (
 type raftLog struct {
 	// storage contains all stable entries since the last snapshot.
 	storage Storage
+
+	// the incoming unstable snapshot, if any.
+	unstableSnapshot *pb.Snapshot
 	// unstableEnts contains all entries that have not yet been written
 	// to storage.
 	unstableEnts []pb.Entry
@@ -149,7 +152,17 @@ func (l *raftLog) nextEnts() (ents []pb.Entry) {
 	return nil
 }
 
+func (l *raftLog) snapshot() (pb.Snapshot, error) {
+	if l.unstableSnapshot != nil {
+		return *l.unstableSnapshot, nil
+	}
+	return l.storage.Snapshot()
+}
+
 func (l *raftLog) firstIndex() uint64 {
+	if l.unstableSnapshot != nil {
+		return l.unstableSnapshot.Metadata.Index + 1
+	}
 	index, err := l.storage.FirstIndex()
 	if err != nil {
 		panic(err) // TODO(bdarnell)
@@ -199,6 +212,12 @@ func (l *raftLog) term(i uint64) uint64 {
 	case i > l.lastIndex():
 		return 0
 	case i < l.unstable:
+		if snap := l.unstableSnapshot; snap != nil {
+			if i == snap.Metadata.Index {
+				return snap.Metadata.Term
+			}
+			return 0
+		}
 		t, err := l.storage.Term(i)
 		switch err {
 		case nil:
@@ -245,15 +264,10 @@ func (l *raftLog) maybeCommit(maxIndex, term uint64) bool {
 }
 
 func (l *raftLog) restore(s pb.Snapshot) {
-	// TODO: rethink restore logic.
-	// This breaks the rule that raft never modifies storage.
-	err := l.storage.ApplySnapshot(s)
-	if err != nil {
-		panic(err) // TODO(bdarnell)
-	}
 	l.committed = s.Metadata.Index
 	l.unstable = l.committed + 1
 	l.unstableEnts = nil
+	l.unstableSnapshot = &s
 }
 
 // slice returns a slice of log entries from lo through hi-1, inclusive.

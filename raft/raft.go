@@ -116,9 +116,6 @@ type raft struct {
 
 	msgs []pb.Message
 
-	// the incoming snapshot, if any.
-	snapshot *pb.Snapshot
-
 	// the leader id
 	lead uint64
 
@@ -222,7 +219,7 @@ func (r *raft) sendAppend(to uint64) {
 	m.To = to
 	if r.needSnapshot(pr.next) {
 		m.Type = pb.MsgSnap
-		snapshot, err := r.raftLog.storage.Snapshot()
+		snapshot, err := r.raftLog.snapshot()
 		if err != nil {
 			panic(err) // TODO(bdarnell)
 		}
@@ -438,7 +435,6 @@ func (r *raft) handleHeartbeat(m pb.Message) {
 
 func (r *raft) handleSnapshot(m pb.Message) {
 	if r.restore(m.Snapshot) {
-		r.snapshot = &m.Snapshot
 		r.send(pb.Message{To: m.From, Type: pb.MsgAppResp, Index: r.raftLog.lastIndex()})
 	} else {
 		r.send(pb.Message{To: m.From, Type: pb.MsgAppResp, Index: r.raftLog.committed})
