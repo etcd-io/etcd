@@ -306,9 +306,7 @@ func (n *node) run(r *raft) {
 				r.raftLog.stableTo(prevLastUnstablei)
 				havePrevLastUnstablei = false
 			}
-			if r.raftLog.unstable.snapshot != nil && r.raftLog.unstable.snapshot.Metadata.Index == prevSnapi {
-				r.raftLog.unstable.snapshot = nil
-			}
+			r.raftLog.stableSnapTo(prevSnapi)
 			advancec = nil
 		case <-n.stop:
 			close(n.done)
