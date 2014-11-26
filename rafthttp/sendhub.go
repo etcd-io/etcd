@@ -14,7 +14,7 @@
    limitations under the License.
 */
 
-package etcdserver
+package rafthttp
 
 import (
 	"log"
@@ -26,50 +26,39 @@ import (
 	"github.com/coreos/etcd/etcdserver/stats"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft/raftpb"
-	"github.com/coreos/etcd/rafthttp"
 )
 
 const (
 	raftPrefix = "/raft"
 )
 
-type SendHub interface {
-	rafthttp.SenderFinder
-	Send(m []raftpb.Message)
-	Add(m *Member)
-	Remove(id types.ID)
-	Update(m *Member)
-	Stop()
-	ShouldStopNotify() <-chan struct{}
-}
-
 type sendHub struct {
 	tr         http.RoundTripper
-	cl         ClusterInfo
-	p          rafthttp.Processor
+	cid        types.ID
+	p          Processor
 	ss         *stats.ServerStats
 	ls         *stats.LeaderStats
 	mu         sync.RWMutex // protect the sender map
-	senders    map[types.ID]rafthttp.Sender
+	senders    map[types.ID]Sender
 	shouldstop chan struct{}
 }
 
 // newSendHub creates the default send hub used to transport raft messages
 // to other members. The returned sendHub will update the given ServerStats and
 // LeaderStats appropriately.
-func newSendHub(t http.RoundTripper, cl ClusterInfo, p rafthttp.Processor, ss *stats.ServerStats, ls *stats.LeaderStats) *sendHub {
+func newSendHub(t http.RoundTripper, cid types.ID, p Processor, ss *stats.ServerStats, ls *stats.LeaderStats) *sendHub {
 	return &sendHub{
 		tr:         t,
-		cl:         cl,
+		cid:        cid,
 		p:          p,
 		ss:         ss,
 		ls:         ls,
-		senders:    make(map[types.ID]rafthttp.Sender),
+		senders:    make(map[types.ID]Sender),
 		shouldstop: make(chan struct{}, 1),
 	}
 }
 
-func (h *sendHub) Sender(id types.ID) rafthttp.Sender {
+func (h *sendHub) Sender(id types.ID) Sender {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
 	return h.senders[id]
@@ -77,12 +66,14 @@ func (h *sendHub) Sender(id types.ID) rafthttp.Sender {
 
 func (h *sendHub) Send(msgs []raftpb.Message) {
 	for _, m := range msgs {
+		// intentionally dropped message
+		if m.To == 0 {
+			continue
+		}
 		to := types.ID(m.To)
 		s, ok := h.senders[to]
 		if !ok {
-			if !h.cl.IsIDRemoved(to) {
-				log.Printf("etcdserver: send message to unknown receiver %s", to)
-			}
+			log.Printf("etcdserver: send message to unknown receiver %s", to)
 			continue
 		}
 
@@ -107,55 +98,55 @@ func (h *sendHub) ShouldStopNotify() <-chan struct{} {
 	return h.shouldstop
 }
 
-func (h *sendHub) Add(m *Member) {
+func (h *sendHub) AddPeer(id types.ID, urls []string) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	if _, ok := h.senders[m.ID]; ok {
+	if _, ok := h.senders[id]; ok {
 		return
 	}
 	// TODO: considering how to switch between all available peer urls
-	peerURL := m.PickPeerURL()
+	peerURL := urls[0]
 	u, err := url.Parse(peerURL)
 	if err != nil {
 		log.Panicf("unexpect peer url %s", peerURL)
 	}
 	u.Path = path.Join(u.Path, raftPrefix)
-	fs := h.ls.Follower(m.ID.String())
-	s := rafthttp.NewSender(h.tr, u.String(), m.ID, h.cl.ID(), h.p, fs, h.shouldstop)
-	h.senders[m.ID] = s
+	fs := h.ls.Follower(id.String())
+	s := NewSender(h.tr, u.String(), id, h.cid, h.p, fs, h.shouldstop)
+	h.senders[id] = s
 }
 
-func (h *sendHub) Remove(id types.ID) {
+func (h *sendHub) RemovePeer(id types.ID) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	h.senders[id].Stop()
 	delete(h.senders, id)
 }
 
-func (h *sendHub) Update(m *Member) {
+func (h *sendHub) UpdatePeer(id types.ID, urls []string) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	// TODO: return error or just panic?
-	if _, ok := h.senders[m.ID]; !ok {
+	if _, ok := h.senders[id]; !ok {
 		return
 	}
-	peerURL := m.PickPeerURL()
+	peerURL := urls[0]
 	u, err := url.Parse(peerURL)
 	if err != nil {
 		log.Panicf("unexpect peer url %s", peerURL)
 	}
 	u.Path = path.Join(u.Path, raftPrefix)
-	h.senders[m.ID].Update(u.String())
+	h.senders[id].Update(u.String())
 }
 
 // for testing
-func (h *sendHub) pause() {
+func (h *sendHub) Pause() {
 	for _, s := range h.senders {
 		s.Pause()
 	}
 }
 
-func (h *sendHub) resume() {
+func (h *sendHub) Resume() {
 	for _, s := range h.senders {
 		s.Resume()
 	}

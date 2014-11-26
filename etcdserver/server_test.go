@@ -22,6 +22,7 @@ import (
 	"io/ioutil"
 	"log"
 	"math/rand"
+	"net/http"
 	"path"
 	"reflect"
 	"strconv"
@@ -499,10 +500,10 @@ func TestApplyConfChangeShouldStop(t *testing.T) {
 		cl.AddMember(&Member{ID: types.ID(i)})
 	}
 	srv := &EtcdServer{
-		id:      1,
-		node:    &nodeRecorder{},
-		Cluster: cl,
-		sendhub: &nopSender{},
+		id:        1,
+		node:      &nodeRecorder{},
+		Cluster:   cl,
+		transport: &nopTransporter{},
 	}
 	cc := raftpb.ConfChange{
 		Type:   raftpb.ConfChangeRemoveNode,
@@ -531,21 +532,24 @@ func TestApplyConfChangeShouldStop(t *testing.T) {
 func TestClusterOf1(t *testing.T) { testServer(t, 1) }
 func TestClusterOf3(t *testing.T) { testServer(t, 3) }
 
-type fakeSender struct {
+type fakeTransporter struct {
 	ss []*EtcdServer
 }
 
-func (s *fakeSender) Sender(id types.ID) rafthttp.Sender { return nil }
-func (s *fakeSender) Send(msgs []raftpb.Message) {
+func (s *fakeTransporter) Handler() http.Handler              { return nil }
+func (s *fakeTransporter) Sender(id types.ID) rafthttp.Sender { return nil }
+func (s *fakeTransporter) Send(msgs []raftpb.Message) {
 	for _, m := range msgs {
 		s.ss[m.To-1].node.Step(context.TODO(), m)
 	}
 }
-func (s *fakeSender) Add(m *Member)                     {}
-func (s *fakeSender) Update(m *Member)                  {}
-func (s *fakeSender) Remove(id types.ID)                {}
-func (s *fakeSender) Stop()                             {}
-func (s *fakeSender) ShouldStopNotify() <-chan struct{} { return nil }
+func (s *fakeTransporter) AddPeer(id types.ID, us []string)    {}
+func (s *fakeTransporter) UpdatePeer(id types.ID, us []string) {}
+func (s *fakeTransporter) RemovePeer(id types.ID)              {}
+func (s *fakeTransporter) Stop()                               {}
+func (s *fakeTransporter) ShouldStopNotify() <-chan struct{}   { return nil }
+func (s *fakeTransporter) Pause()                              {}
+func (s *fakeTransporter) Resume()                             {}
 
 func testServer(t *testing.T, ns uint64) {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -571,7 +575,7 @@ func testServer(t *testing.T, ns uint64) {
 			node:        n,
 			raftStorage: s,
 			store:       st,
-			sendhub:     &fakeSender{ss},
+			transport:   &fakeTransporter{ss},
 			storage:     &storageRecorder{},
 			Ticker:      tk.C,
 			Cluster:     cl,
@@ -646,7 +650,7 @@ func TestDoProposal(t *testing.T) {
 			node:        n,
 			raftStorage: s,
 			store:       st,
-			sendhub:     &nopSender{},
+			transport:   &nopTransporter{},
 			storage:     &storageRecorder{},
 			Ticker:      tk,
 			Cluster:     cl,
@@ -735,7 +739,7 @@ func TestDoProposalStopped(t *testing.T) {
 		node:        n,
 		raftStorage: s,
 		store:       st,
-		sendhub:     &nopSender{},
+		transport:   &nopTransporter{},
 		storage:     &storageRecorder{},
 		Ticker:      tk,
 		Cluster:     cl,
@@ -847,7 +851,7 @@ func TestSyncTrigger(t *testing.T) {
 		node:        n,
 		raftStorage: raft.NewMemoryStorage(),
 		store:       &storeRecorder{},
-		sendhub:     &nopSender{},
+		transport:   &nopTransporter{},
 		storage:     &storageRecorder{},
 		SyncTicker:  st,
 	}
@@ -933,7 +937,7 @@ func TestTriggerSnap(t *testing.T) {
 	cl.SetStore(store.New())
 	srv := &EtcdServer{
 		store:       st,
-		sendhub:     &nopSender{},
+		transport:   &nopTransporter{},
 		storage:     p,
 		node:        n,
 		raftStorage: s,
@@ -973,7 +977,7 @@ func TestRecvSnapshot(t *testing.T) {
 	cl.SetStore(store.New())
 	s := &EtcdServer{
 		store:       st,
-		sendhub:     &nopSender{},
+		transport:   &nopTransporter{},
 		storage:     p,
 		node:        n,
 		raftStorage: raft.NewMemoryStorage(),
@@ -1006,7 +1010,7 @@ func TestRecvSlowSnapshot(t *testing.T) {
 	cl.SetStore(store.New())
 	s := &EtcdServer{
 		store:       st,
-		sendhub:     &nopSender{},
+		transport:   &nopTransporter{},
 		storage:     &storageRecorder{},
 		node:        n,
 		raftStorage: raft.NewMemoryStorage(),
@@ -1039,7 +1043,7 @@ func TestApplySnapshotAndCommittedEntries(t *testing.T) {
 	storage := raft.NewMemoryStorage()
 	s := &EtcdServer{
 		store:       st,
-		sendhub:     &nopSender{},
+		transport:   &nopTransporter{},
 		storage:     &storageRecorder{},
 		node:        n,
 		raftStorage: storage,
@@ -1082,7 +1086,7 @@ func TestAddMember(t *testing.T) {
 		node:        n,
 		raftStorage: raft.NewMemoryStorage(),
 		store:       &storeRecorder{},
-		sendhub:     &nopSender{},
+		transport:   &nopTransporter{},
 		storage:     &storageRecorder{},
 		Cluster:     cl,
 	}
@@ -1117,7 +1121,7 @@ func TestRemoveMember(t *testing.T) {
 		node:        n,
 		raftStorage: raft.NewMemoryStorage(),
 		store:       &storeRecorder{},
-		sendhub:     &nopSender{},
+		transport:   &nopTransporter{},
 		storage:     &storageRecorder{},
 		Cluster:     cl,
 	}
@@ -1151,7 +1155,7 @@ func TestUpdateMember(t *testing.T) {
 		node:        n,
 		raftStorage: raft.NewMemoryStorage(),
 		store:       &storeRecorder{},
-		sendhub:     &nopSender{},
+		transport:   &nopTransporter{},
 		storage:     &storageRecorder{},
 		Cluster:     cl,
 	}
@@ -1219,12 +1223,12 @@ func TestPublish(t *testing.T) {
 // TestPublishStopped tests that publish will be stopped if server is stopped.
 func TestPublishStopped(t *testing.T) {
 	srv := &EtcdServer{
-		node:    &nodeRecorder{},
-		sendhub: &nopSender{},
-		Cluster: &Cluster{},
-		w:       &waitRecorder{},
-		done:    make(chan struct{}),
-		stop:    make(chan struct{}),
+		node:      &nodeRecorder{},
+		transport: &nopTransporter{},
+		Cluster:   &Cluster{},
+		w:         &waitRecorder{},
+		done:      make(chan struct{}),
+		stop:      make(chan struct{}),
 	}
 	close(srv.done)
 	srv.publish(time.Hour)
@@ -1625,15 +1629,18 @@ func (w *waitWithResponse) Register(id uint64) <-chan interface{} {
 }
 func (w *waitWithResponse) Trigger(id uint64, x interface{}) {}
 
-type nopSender struct{}
+type nopTransporter struct{}
 
-func (s *nopSender) Sender(id types.ID) rafthttp.Sender { return nil }
-func (s *nopSender) Send(m []raftpb.Message)            {}
-func (s *nopSender) Add(m *Member)                      {}
-func (s *nopSender) Remove(id types.ID)                 {}
-func (s *nopSender) Update(m *Member)                   {}
-func (s *nopSender) Stop()                              {}
-func (s *nopSender) ShouldStopNotify() <-chan struct{}  { return nil }
+func (s *nopTransporter) Handler() http.Handler               { return nil }
+func (s *nopTransporter) Sender(id types.ID) rafthttp.Sender  { return nil }
+func (s *nopTransporter) Send(m []raftpb.Message)             {}
+func (s *nopTransporter) AddPeer(id types.ID, us []string)    {}
+func (s *nopTransporter) RemovePeer(id types.ID)              {}
+func (s *nopTransporter) UpdatePeer(id types.ID, us []string) {}
+func (s *nopTransporter) Stop()                               {}
+func (s *nopTransporter) ShouldStopNotify() <-chan struct{}   { return nil }
+func (s *nopTransporter) Pause()                              {}
+func (s *nopTransporter) Resume()                             {}
 
 func mustMakePeerSlice(t *testing.T, ids ...uint64) []raft.Peer {
 	peers := make([]raft.Peer, len(ids))

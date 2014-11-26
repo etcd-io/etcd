@@ -144,11 +144,11 @@ type EtcdServer struct {
 	stats  *stats.ServerStats
 	lstats *stats.LeaderStats
 
-	// sender specifies the sender to send msgs to members. sending msgs
-	// MUST NOT block. It is okay to drop messages, since clients should
-	// timeout and reissue their messages.  If send is nil, server will
-	// panic.
-	sendhub SendHub
+	// transport specifies the transport to send and receive msgs to members.
+	// Sending messages MUST NOT block. It is okay to drop messages, since
+	// clients should timeout and reissue their messages.
+	// If transport is nil, server will panic.
+	transport rafthttp.Transporter
 
 	Ticker     <-chan time.Time
 	SyncTicker <-chan time.Time
@@ -271,13 +271,22 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		SyncTicker:  time.Tick(500 * time.Millisecond),
 		snapCount:   cfg.SnapCount,
 	}
-	srv.sendhub = newSendHub(cfg.Transport, cfg.Cluster, srv, sstats, lstats)
+	tr := &rafthttp.Transport{
+		RoundTripper: cfg.Transport,
+		ID:           id,
+		ClusterID:    cfg.Cluster.ID(),
+		Processor:    srv,
+		ServerStats:  sstats,
+		LeaderStats:  lstats,
+	}
+	tr.Start()
 	// add all the remote members into sendhub
 	for _, m := range cfg.Cluster.Members() {
 		if m.Name != cfg.Name {
-			srv.sendhub.Add(m)
+			tr.AddPeer(m.ID, m.PeerURLs)
 		}
 	}
+	srv.transport = tr
 	return srv, nil
 }
 
@@ -327,7 +336,7 @@ func (s *EtcdServer) purgeFile() {
 
 func (s *EtcdServer) ID() types.ID { return s.id }
 
-func (s *EtcdServer) SenderFinder() rafthttp.SenderFinder { return s.sendhub }
+func (s *EtcdServer) RaftHandler() http.Handler { return s.transport.Handler() }
 
 func (s *EtcdServer) Process(ctx context.Context, m raftpb.Message) error {
 	if s.Cluster.IsIDRemoved(types.ID(m.From)) {
@@ -343,7 +352,7 @@ func (s *EtcdServer) Process(ctx context.Context, m raftpb.Message) error {
 func (s *EtcdServer) run() {
 	var syncC <-chan time.Time
 	var shouldstop bool
-	shouldstopC := s.sendhub.ShouldStopNotify()
+	shouldstopC := s.transport.ShouldStopNotify()
 
 	// load initial state from raft storage
 	snap, err := s.raftStorage.Snapshot()
@@ -357,7 +366,7 @@ func (s *EtcdServer) run() {
 
 	defer func() {
 		s.node.Stop()
-		s.sendhub.Stop()
+		s.transport.Stop()
 		if err := s.storage.Close(); err != nil {
 			log.Panicf("etcdserver: close storage error: %v", err)
 		}
@@ -397,7 +406,7 @@ func (s *EtcdServer) run() {
 			}
 			s.raftStorage.Append(rd.Entries)
 
-			s.sendhub.Send(rd.Messages)
+			s.send(rd.Messages)
 
 			// recover from snapshot if it is more updated than current applied
 			if !raft.IsEmptySnap(rd.Snapshot) && rd.Snapshot.Metadata.Index > appliedi {
@@ -663,6 +672,15 @@ func getExpirationTime(r *pb.Request) time.Time {
 	return t
 }
 
+func (s *EtcdServer) send(ms []raftpb.Message) {
+	for _, m := range ms {
+		if !s.Cluster.IsIDRemoved(types.ID(m.To)) {
+			m.To = 0
+		}
+	}
+	s.transport.Send(ms)
+}
+
 // apply takes entries received from Raft (after it has been committed) and
 // applies them to the current state of the EtcdServer.
 // The given entries should not be empty.
@@ -764,7 +782,7 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.Con
 		if m.ID == s.id {
 			log.Printf("etcdserver: added local member %s %v to cluster %s", m.ID, m.PeerURLs, s.Cluster.ID())
 		} else {
-			s.sendhub.Add(m)
+			s.transport.AddPeer(m.ID, m.PeerURLs)
 			log.Printf("etcdserver: added member %s %v to cluster %s", m.ID, m.PeerURLs, s.Cluster.ID())
 		}
 	case raftpb.ConfChangeRemoveNode:
@@ -775,7 +793,7 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.Con
 			log.Println("etcdserver: the data-dir used by this member must be removed so that this host can be re-added with a new member ID")
 			return true, nil
 		} else {
-			s.sendhub.Remove(id)
+			s.transport.RemovePeer(id)
 			log.Printf("etcdserver: removed member %s from cluster %s", id, s.Cluster.ID())
 		}
 	case raftpb.ConfChangeUpdateNode:
@@ -790,7 +808,7 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.Con
 		if m.ID == s.id {
 			log.Printf("etcdserver: update local member %s %v in cluster %s", m.ID, m.PeerURLs, s.Cluster.ID())
 		} else {
-			s.sendhub.Update(m)
+			s.transport.UpdatePeer(m.ID, m.PeerURLs)
 			log.Printf("etcdserver: update member %s %v in cluster %s", m.ID, m.PeerURLs, s.Cluster.ID())
 		}
 	}
@@ -831,13 +849,13 @@ func (s *EtcdServer) snapshot(snapi uint64, confState *raftpb.ConfState) {
 
 // for testing
 func (s *EtcdServer) PauseSending() {
-	hub := s.sendhub.(*sendHub)
-	hub.pause()
+	hub := s.transport.(*rafthttp.Transport)
+	hub.Pause()
 }
 
 func (s *EtcdServer) ResumeSending() {
-	hub := s.sendhub.(*sendHub)
-	hub.resume()
+	hub := s.transport.(*rafthttp.Transport)
+	hub.Resume()
 }
 
 func startNode(cfg *ServerConfig, ids []types.ID) (id types.ID, n raft.Node, s *raft.MemoryStorage, w *wal.WAL) {
