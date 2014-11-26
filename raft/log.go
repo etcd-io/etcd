@@ -187,17 +187,11 @@ func (l *raftLog) appliedTo(i uint64) {
 	l.applied = i
 }
 
-func (l *raftLog) stableTo(i uint64) {
-	l.unstable.stableTo(i)
-}
+func (l *raftLog) stableTo(i uint64) { l.unstable.stableTo(i) }
 
-func (l *raftLog) stableSnapTo(i uint64) {
-	l.unstable.stableSnapTo(i)
-}
+func (l *raftLog) stableSnapTo(i uint64) { l.unstable.stableSnapTo(i) }
 
-func (l *raftLog) lastTerm() uint64 {
-	return l.term(l.lastIndex())
-}
+func (l *raftLog) lastTerm() uint64 { return l.term(l.lastIndex()) }
 
 func (l *raftLog) term(i uint64) uint64 {
 	if i > l.lastIndex() {
@@ -218,14 +212,10 @@ func (l *raftLog) term(i uint64) uint64 {
 	panic(err) // TODO(bdarnell)
 }
 
-func (l *raftLog) entries(i uint64) []pb.Entry {
-	return l.slice(i, l.lastIndex()+1)
-}
+func (l *raftLog) entries(i uint64) []pb.Entry { return l.slice(i, l.lastIndex()+1) }
 
 // allEntries returns all entries in the log.
-func (l *raftLog) allEntries() []pb.Entry {
-	return l.entries(l.firstIndex())
-}
+func (l *raftLog) allEntries() []pb.Entry { return l.entries(l.firstIndex()) }
 
 // isUpToDate determines if the given (lastIndex,term) log is more up-to-date
 // by comparing the index and term of the last entries in the existing logs.
@@ -237,9 +227,7 @@ func (l *raftLog) isUpToDate(lasti, term uint64) bool {
 	return term > l.lastTerm() || (term == l.lastTerm() && lasti >= l.lastIndex())
 }
 
-func (l *raftLog) matchTerm(i, term uint64) bool {
-	return l.term(i) == term
-}
+func (l *raftLog) matchTerm(i, term uint64) bool { return l.term(i) == term }
 
 func (l *raftLog) maybeCommit(maxIndex, term uint64) bool {
 	if maxIndex > l.committed && l.term(maxIndex) == term {
