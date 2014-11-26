@@ -216,8 +216,8 @@ func (l *raftLog) snap(d []byte, index, term uint64, nodes []uint64) {
 }
 
 func (l *raftLog) restore(s pb.Snapshot) {
-	l.ents = []pb.Entry{{Term: s.Term}}
-	l.unstable = s.Index + 1
+	l.ents = []pb.Entry{{Index: s.Index, Term: s.Term}}
+	l.unstable = s.Index
 	l.committed = s.Index
 	l.offset = s.Index
 	l.snapshot = s
