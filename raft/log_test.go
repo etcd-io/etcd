@@ -143,7 +143,7 @@ func TestAppend(t *testing.T) {
 		if g := raftLog.entries(1); !reflect.DeepEqual(g, tt.wents) {
 			t.Errorf("#%d: logEnts = %+v, want %+v", i, g, tt.wents)
 		}
-		if g := raftLog.unstable; g != tt.wunstable {
+		if g := raftLog.unstable.offset; g != tt.wunstable {
 			t.Errorf("#%d: unstable = %d, want %d", i, g, tt.wunstable)
 		}
 	}
@@ -398,7 +398,7 @@ func TestUnstableEnts(t *testing.T) {
 			t.Errorf("#%d: unstableEnts = %+v, want %+v", i, ents, tt.wents)
 		}
 		w := previousEnts[len(previousEnts)-1].Index + 1
-		if g := raftLog.unstable; g != w {
+		if g := raftLog.unstable.offset; g != w {
 			t.Errorf("#%d: unstable = %d, want %d", i, g, w)
 		}
 	}
@@ -448,7 +448,7 @@ func TestStableTo(t *testing.T) {
 		raftLog := newLog(NewMemoryStorage())
 		raftLog.append(0, []pb.Entry{{}, {}}...)
 		raftLog.stableTo(tt.stable)
-		if raftLog.unstable != tt.wunstable {
+		if raftLog.unstable.offset != tt.wunstable {
 			t.Errorf("#%d: unstable = %d, want %d", i, raftLog.unstable, tt.wunstable)
 		}
 	}
@@ -520,7 +520,7 @@ func TestLogRestore(t *testing.T) {
 	if raftLog.committed != index {
 		t.Errorf("comitted = %d, want %d", raftLog.committed, index)
 	}
-	if raftLog.unstable != index+1 {
+	if raftLog.unstable.offset != index+1 {
 		t.Errorf("unstable = %d, want %d", raftLog.unstable, index+1)
 	}
 	if raftLog.term(index) != term {

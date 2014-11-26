@@ -337,7 +337,7 @@ func TestDuelingCandidates(t *testing.T) {
 	wlog := &raftLog{
 		storage:   &MemoryStorage{ents: []pb.Entry{{}, pb.Entry{Data: nil, Term: 1, Index: 1}}},
 		committed: 1,
-		unstable:  2,
+		unstable:  unstable{offset: 2},
 	}
 	tests := []struct {
 		sm      *raft
@@ -394,7 +394,7 @@ func TestCandidateConcede(t *testing.T) {
 		storage: &MemoryStorage{
 			ents: []pb.Entry{{}, {Data: nil, Term: 1, Index: 1}, {Term: 1, Index: 2, Data: data}},
 		},
-		unstable:  3,
+		unstable:  unstable{offset: 3},
 		committed: 2,
 	})
 	for i, p := range tt.peers {
@@ -435,7 +435,7 @@ func TestOldMessages(t *testing.T) {
 				{Data: nil, Term: 2, Index: 2}, {Data: nil, Term: 3, Index: 3},
 			},
 		},
-		unstable:  4,
+		unstable:  unstable{offset: 4},
 		committed: 3,
 	}
 	base := ltoa(l)
@@ -492,7 +492,7 @@ func TestProposal(t *testing.T) {
 				storage: &MemoryStorage{
 					ents: []pb.Entry{{}, {Data: nil, Term: 1, Index: 1}, {Term: 1, Index: 2, Data: data}},
 				},
-				unstable:  3,
+				unstable:  unstable{offset: 3},
 				committed: 2}
 		}
 		base := ltoa(wantLog)
@@ -531,7 +531,7 @@ func TestProposalByProxy(t *testing.T) {
 			storage: &MemoryStorage{
 				ents: []pb.Entry{{}, {Data: nil, Term: 1, Index: 1}, {Term: 1, Data: data, Index: 2}},
 			},
-			unstable:  3,
+			unstable:  unstable{offset: 3},
 			committed: 2}
 		base := ltoa(wantLog)
 		for i, p := range tt.peers {
@@ -585,7 +585,7 @@ func TestCommit(t *testing.T) {
 			prs[uint64(j)] = &progress{tt.matches[j], tt.matches[j] + 1}
 		}
 		sm := &raft{
-			raftLog:   &raftLog{storage: &MemoryStorage{ents: tt.logs}, unstable: uint64(len(tt.logs))},
+			raftLog:   &raftLog{storage: &MemoryStorage{ents: tt.logs}, unstable: unstable{offset: uint64(len(tt.logs))}},
 			prs:       prs,
 			HardState: pb.HardState{Term: tt.smTerm},
 		}
@@ -681,7 +681,7 @@ func TestHandleMsgApp(t *testing.T) {
 			raftLog: &raftLog{
 				committed: 0,
 				storage:   &MemoryStorage{ents: []pb.Entry{{}, {Term: 1}, {Term: 2}}},
-				unstable:  3,
+				unstable:  unstable{offset: 3},
 			},
 		}
 
@@ -781,7 +781,7 @@ func TestRecvMsgVote(t *testing.T) {
 		sm.HardState = pb.HardState{Vote: tt.voteFor}
 		sm.raftLog = &raftLog{
 			storage:  &MemoryStorage{ents: []pb.Entry{{}, {Index: 1, Term: 2}, {Index: 2, Term: 2}}},
-			unstable: 3,
+			unstable: unstable{offset: 3},
 		}
 
 		sm.Step(pb.Message{Type: pb.MsgVote, From: 2, Index: tt.i, LogTerm: tt.term})
@@ -929,7 +929,7 @@ func TestLeaderAppResp(t *testing.T) {
 		sm := newRaft(1, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
 		sm.raftLog = &raftLog{
 			storage:  &MemoryStorage{ents: []pb.Entry{{}, {Index: 1, Term: 0}, {Index: 2, Term: 1}}},
-			unstable: 3,
+			unstable: unstable{offset: 3},
 		}
 		sm.becomeCandidate()
 		sm.becomeLeader()
@@ -1351,7 +1351,7 @@ func ents(terms ...uint64) *raft {
 	sm := &raft{
 		raftLog: &raftLog{
 			storage:  &MemoryStorage{ents: ents},
-			unstable: uint64(len(ents)),
+			unstable: unstable{offset: uint64(len(ents))},
 		},
 	}
 	sm.reset(0)
