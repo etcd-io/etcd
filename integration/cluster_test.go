@@ -372,7 +372,7 @@ func newListenerWithAddr(t *testing.T, addr string) net.Listener {
 	var l net.Listener
 	// TODO: we want to reuse a previous closed port immediately.
 	// a better way is to set SO_REUSExx instead of doing retry.
-	for i := 0; i < 3; i++ {
+	for i := 0; i < 5; i++ {
 		l, err = net.Listen("tcp", addr)
 		if err == nil {
 			break
