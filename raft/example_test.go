@@ -26,7 +26,7 @@ func saveStateToDisk(st pb.HardState) {}
 func saveToDisk(ents []pb.Entry)      {}
 
 func Example_Node() {
-	n := StartNode(0, nil, 0, 0)
+	n := StartNode(0, nil, 0, 0, nil)
 
 	// stuff to n happens in other goroutines
 

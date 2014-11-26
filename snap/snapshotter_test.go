@@ -29,10 +29,14 @@ import (
 )
 
 var testSnap = &raftpb.Snapshot{
-	Data:  []byte("some snapshot"),
-	Nodes: []uint64{1, 2, 3},
-	Index: 1,
-	Term:  1,
+	Data: []byte("some snapshot"),
+	Metadata: raftpb.SnapshotMetadata{
+		ConfState: raftpb.ConfState{
+			Nodes: []uint64{1, 2, 3},
+		},
+		Index: 1,
+		Term:  1,
+	},
 }
 
 func TestSaveAndLoad(t *testing.T) {
@@ -156,7 +160,7 @@ func TestLoadNewestSnap(t *testing.T) {
 	}
 
 	newSnap := *testSnap
-	newSnap.Index = 5
+	newSnap.Metadata.Index = 5
 	err = ss.save(&newSnap)
 	if err != nil {
 		t.Fatal(err)

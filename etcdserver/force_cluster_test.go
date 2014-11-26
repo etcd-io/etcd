@@ -34,21 +34,30 @@ func TestGetIDs(t *testing.T) {
 	normalEntry := raftpb.Entry{Type: raftpb.EntryNormal}
 
 	tests := []struct {
-		snap *raftpb.Snapshot
-		ents []raftpb.Entry
+		confState *raftpb.ConfState
+		ents      []raftpb.Entry
 
 		widSet []uint64
 	}{
 		{nil, []raftpb.Entry{}, []uint64{}},
-		{&raftpb.Snapshot{Nodes: []uint64{1}}, []raftpb.Entry{}, []uint64{1}},
-		{&raftpb.Snapshot{Nodes: []uint64{1}}, []raftpb.Entry{addEntry}, []uint64{1, 2}},
-		{&raftpb.Snapshot{Nodes: []uint64{1}}, []raftpb.Entry{addEntry, removeEntry}, []uint64{1}},
-		{&raftpb.Snapshot{Nodes: []uint64{1}}, []raftpb.Entry{addEntry, normalEntry}, []uint64{1, 2}},
-		{&raftpb.Snapshot{Nodes: []uint64{1}}, []raftpb.Entry{addEntry, removeEntry, normalEntry}, []uint64{1}},
+		{&raftpb.ConfState{Nodes: []uint64{1}},
+			[]raftpb.Entry{}, []uint64{1}},
+		{&raftpb.ConfState{Nodes: []uint64{1}},
+			[]raftpb.Entry{addEntry}, []uint64{1, 2}},
+		{&raftpb.ConfState{Nodes: []uint64{1}},
+			[]raftpb.Entry{addEntry, removeEntry}, []uint64{1}},
+		{&raftpb.ConfState{Nodes: []uint64{1}},
+			[]raftpb.Entry{addEntry, normalEntry}, []uint64{1, 2}},
+		{&raftpb.ConfState{Nodes: []uint64{1}},
+			[]raftpb.Entry{addEntry, removeEntry, normalEntry}, []uint64{1}},
 	}
 
 	for i, tt := range tests {
-		idSet := getIDs(tt.snap, tt.ents)
+		var snap raftpb.Snapshot
+		if tt.confState != nil {
+			snap.Metadata.ConfState = *tt.confState
+		}
+		idSet := getIDs(&snap, tt.ents)
 		if !reflect.DeepEqual(idSet, tt.widSet) {
 			t.Errorf("#%d: idset = %#v, want %#v", i, idSet, tt.widSet)
 		}
