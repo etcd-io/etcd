@@ -37,5 +37,5 @@ func (b *Batcher) Reset(t time.Time) {
 }
 
 func canBatch(m raftpb.Message) bool {
-	return m.Type == raftpb.MsgAppResp
+	return m.Type == raftpb.MsgAppResp && m.Reject == false
 }
