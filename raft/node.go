@@ -306,8 +306,8 @@ func (n *node) run(r *raft) {
 				r.raftLog.stableTo(prevLastUnstablei)
 				havePrevLastUnstablei = false
 			}
-			if r.raftLog.unstableSnapshot != nil && r.raftLog.unstableSnapshot.Metadata.Index == prevSnapi {
-				r.raftLog.unstableSnapshot = nil
+			if r.raftLog.unstable.snapshot != nil && r.raftLog.unstable.snapshot.Metadata.Index == prevSnapi {
+				r.raftLog.unstable.snapshot = nil
 			}
 			advancec = nil
 		case <-n.stop:
@@ -405,8 +405,8 @@ func newReady(r *raft, prevSoftSt *SoftState, prevHardSt pb.HardState) Ready {
 	if !isHardStateEqual(r.HardState, prevHardSt) {
 		rd.HardState = r.HardState
 	}
-	if r.raftLog.unstableSnapshot != nil {
-		rd.Snapshot = *r.raftLog.unstableSnapshot
+	if r.raftLog.unstable.snapshot != nil {
+		rd.Snapshot = *r.raftLog.unstable.snapshot
 	}
 	return rd
 }
