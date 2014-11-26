@@ -271,8 +271,8 @@ func (l *raftLog) maybeCommit(maxIndex, term uint64) bool {
 
 func (l *raftLog) restore(s pb.Snapshot) {
 	l.committed = s.Metadata.Index
-	l.unstable.offset = l.committed
-	l.unstable.entries = []pb.Entry{{Index: s.Metadata.Index, Term: s.Metadata.Term}}
+	l.unstable.offset = l.committed + 1
+	l.unstable.entries = nil
 	l.unstable.snapshot = &s
 }
 
