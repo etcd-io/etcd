@@ -501,8 +501,8 @@ func TestLogRestore(t *testing.T) {
 	if raftLog.committed != index {
 		t.Errorf("comitted = %d, want %d", raftLog.committed, index)
 	}
-	if raftLog.unstable != index+1 {
-		t.Errorf("unstable = %d, want %d", raftLog.unstable, index+1)
+	if raftLog.unstable != index {
+		t.Errorf("unstable = %d, want %d", raftLog.unstable, index)
 	}
 	if raftLog.term(index) != term {
 		t.Errorf("term = %d, want %d", raftLog.term(index), term)
