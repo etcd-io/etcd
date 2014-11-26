@@ -52,9 +52,6 @@ type Storage interface {
 	FirstIndex() (uint64, error)
 	// Snapshot returns the most recent snapshot.
 	Snapshot() (pb.Snapshot, error)
-	// ApplySnapshot overwrites the contents of this Storage object with
-	// those of the given snapshot.
-	ApplySnapshot(pb.Snapshot) error
 }
 
 // MemoryStorage implements the Storage interface backed by an
@@ -133,7 +130,8 @@ func (ms *MemoryStorage) Snapshot() (pb.Snapshot, error) {
 	return ms.snapshot, nil
 }
 
-// ApplySnapshot implements the Storage interface.
+// ApplySnapshot overwrites the contents of this Storage object with
+// those of the given snapshot.
 func (ms *MemoryStorage) ApplySnapshot(snap pb.Snapshot) error {
 	ms.Lock()
 	defer ms.Unlock()
