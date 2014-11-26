@@ -34,7 +34,7 @@ import (
 )
 
 const (
-	streamBufSize = 1024
+	streamBufSize = 4096
 )
 
 type WriteFlusher interface {
