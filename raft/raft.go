@@ -163,7 +163,7 @@ func newRaft(id uint64, peers []uint64, election, heartbeat int, storage Storage
 	if !isHardStateEqual(hs, emptyState) {
 		r.loadState(hs)
 	}
-	r.becomeFollower(0, None)
+	r.becomeFollower(r.Term, None)
 	return r
 }
 
