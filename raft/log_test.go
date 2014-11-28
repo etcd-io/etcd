@@ -392,7 +392,7 @@ func TestUnstableEnts(t *testing.T) {
 
 		ents := raftLog.unstableEntries()
 		if l := len(ents); l > 0 {
-			raftLog.stableTo(ents[l-1].Index)
+			raftLog.stableTo(ents[l-1].Index, ents[l-i].Term)
 		}
 		if !reflect.DeepEqual(ents, tt.wents) {
 			t.Errorf("#%d: unstableEnts = %+v, want %+v", i, ents, tt.wents)
@@ -446,8 +446,8 @@ func TestStableTo(t *testing.T) {
 	}
 	for i, tt := range tests {
 		raftLog := newLog(NewMemoryStorage())
-		raftLog.append(0, []pb.Entry{{}, {}}...)
-		raftLog.stableTo(tt.stable)
+		raftLog.append(0, []pb.Entry{{Index: 1, Term: 1}, {Index: 2, Term: 1}}...)
+		raftLog.stableTo(tt.stable, 1)
 		if raftLog.unstable.offset != tt.wunstable {
 			t.Errorf("#%d: unstable = %d, want %d", i, raftLog.unstable, tt.wunstable)
 		}

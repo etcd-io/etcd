@@ -16,11 +16,7 @@
 
 package raft
 
-import (
-	"log"
-
-	pb "github.com/coreos/etcd/raft/raftpb"
-)
+import pb "github.com/coreos/etcd/raft/raftpb"
 
 // unstable.entris[i] has raft log position i+unstable.offset.
 // Note that unstable.offset may be less than the highest log
@@ -77,13 +73,13 @@ func (u *unstable) maybeTerm(i uint64) (uint64, bool) {
 	return u.entries[i-u.offset].Term, true
 }
 
-func (u *unstable) stableTo(i uint64) {
-	if i < u.offset || i+1-u.offset > uint64(len(u.entries)) {
-		log.Panicf("stableTo(%d) is out of range [unstable(%d), len(unstableEnts)(%d)]",
-			i, u.offset, len(u.entries))
+func (u *unstable) stableTo(i, t uint64) {
+	if gt, ok := u.maybeTerm(i); ok {
+		if gt == t && i >= u.offset {
+			u.entries = u.entries[i+1-u.offset:]
+			u.offset = i + 1
+		}
 	}
-	u.entries = u.entries[i+1-u.offset:]
-	u.offset = i + 1
 }
 
 func (u *unstable) stableSnapTo(i uint64) {
