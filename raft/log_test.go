@@ -438,18 +438,58 @@ func TestCommitTo(t *testing.T) {
 
 func TestStableTo(t *testing.T) {
 	tests := []struct {
-		stable    uint64
+		stablei   uint64
+		stablet   uint64
 		wunstable uint64
 	}{
-		{1, 2},
-		{2, 3},
+		{1, 1, 2},
+		{2, 2, 3},
+		{2, 1, 1}, // bad term
+		{3, 1, 1}, // bad index
 	}
 	for i, tt := range tests {
 		raftLog := newLog(NewMemoryStorage())
-		raftLog.append(0, []pb.Entry{{Index: 1, Term: 1}, {Index: 2, Term: 1}}...)
-		raftLog.stableTo(tt.stable, 1)
+		raftLog.append(0, []pb.Entry{{Index: 1, Term: 1}, {Index: 2, Term: 2}}...)
+		raftLog.stableTo(tt.stablei, tt.stablet)
 		if raftLog.unstable.offset != tt.wunstable {
-			t.Errorf("#%d: unstable = %d, want %d", i, raftLog.unstable, tt.wunstable)
+			t.Errorf("#%d: unstable = %d, want %d", i, raftLog.unstable.offset, tt.wunstable)
+		}
+	}
+}
+
+func TestStableToWithSnap(t *testing.T) {
+	snapi, snapt := uint64(5), uint64(2)
+	tests := []struct {
+		stablei uint64
+		stablet uint64
+		newEnts []pb.Entry
+
+		wunstable uint64
+	}{
+		{snapi + 1, snapt, nil, snapi + 1},
+		{snapi, snapt, nil, snapi + 1},
+		{snapi - 1, snapt, nil, snapi + 1},
+
+		{snapi + 1, snapt + 1, nil, snapi + 1},
+		{snapi, snapt + 1, nil, snapi + 1},
+		{snapi - 1, snapt + 1, nil, snapi + 1},
+
+		{snapi + 1, snapt, []pb.Entry{{Index: snapi + 1, Term: snapt}}, snapi + 2},
+		{snapi, snapt, []pb.Entry{{Index: snapi + 1, Term: snapt}}, snapi + 1},
+		{snapi - 1, snapt, []pb.Entry{{Index: snapi + 1, Term: snapt}}, snapi + 1},
+
+		{snapi + 1, snapt + 1, []pb.Entry{{Index: snapi + 1, Term: snapt}}, snapi + 1},
+		{snapi, snapt + 1, []pb.Entry{{Index: snapi + 1, Term: snapt}}, snapi + 1},
+		{snapi - 1, snapt + 1, []pb.Entry{{Index: snapi + 1, Term: snapt}}, snapi + 1},
+	}
+	for i, tt := range tests {
+		s := NewMemoryStorage()
+		s.ApplySnapshot(pb.Snapshot{Metadata: pb.SnapshotMetadata{Index: snapi, Term: snapt}})
+		raftLog := newLog(s)
+		raftLog.append(raftLog.lastIndex(), tt.newEnts...)
+		raftLog.stableTo(tt.stablei, tt.stablet)
+		if raftLog.unstable.offset != tt.wunstable {
+			t.Errorf("#%d: unstable = %d, want %d", i, raftLog.unstable.offset, tt.wunstable)
 		}
 	}
 }
