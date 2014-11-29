@@ -37,6 +37,8 @@ type ServerConfig struct {
 	PeerURLs        types.URLs
 	DataDir         string
 	SnapCount       uint64
+	MaxSnapFiles    uint
+	MaxWALFiles     uint
 	Cluster         *Cluster
 	NewCluster      bool
 	ForceNewCluster bool

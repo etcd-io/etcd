@@ -19,9 +19,9 @@ package wal
 import (
 	"fmt"
 	"log"
-	"os"
 	"path"
 
+	"github.com/coreos/etcd/pkg/fileutil"
 	"github.com/coreos/etcd/pkg/types"
 )
 
@@ -36,7 +36,7 @@ const (
 )
 
 func DetectVersion(dirpath string) WalVersion {
-	names, err := readDir(dirpath)
+	names, err := fileutil.ReadDir(dirpath)
 	if err != nil || len(names) == 0 {
 		return WALNotExist
 	}
@@ -56,7 +56,7 @@ func DetectVersion(dirpath string) WalVersion {
 }
 
 func Exist(dirpath string) bool {
-	names, err := readDir(dirpath)
+	names, err := fileutil.ReadDir(dirpath)
 	if err != nil {
 		return false
 	}
@@ -95,20 +95,6 @@ func isValidSeq(names []string) bool {
 		lastSeq = curSeq
 	}
 	return true
-}
-
-// readDir returns the filenames in wal directory.
-func readDir(dirpath string) ([]string, error) {
-	dir, err := os.Open(dirpath)
-	if err != nil {
-		return nil, err
-	}
-	defer dir.Close()
-	names, err := dir.Readdirnames(-1)
-	if err != nil {
-		return nil, err
-	}
-	return names, nil
 }
 
 func checkWalNames(names []string) []string {

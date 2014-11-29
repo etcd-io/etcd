@@ -26,6 +26,7 @@ import (
 	"reflect"
 	"sort"
 
+	"github.com/coreos/etcd/pkg/fileutil"
 	"github.com/coreos/etcd/pkg/pbutil"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
@@ -110,7 +111,7 @@ func Create(dirpath string, metadata []byte) (*WAL, error) {
 // index. The WAL cannot be appended to before reading out all of its
 // previous records.
 func OpenAtIndex(dirpath string, index uint64) (*WAL, error) {
-	names, err := readDir(dirpath)
+	names, err := fileutil.ReadDir(dirpath)
 	if err != nil {
 		return nil, err
 	}
