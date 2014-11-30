@@ -392,10 +392,11 @@ func (s *EtcdServer) run() {
 			// apply snapshot to storage if it is more updated than current snapi
 			if !raft.IsEmptySnap(rd.Snapshot) && rd.Snapshot.Metadata.Index > snapi {
 				if err := s.storage.SaveSnap(rd.Snapshot); err != nil {
-					log.Fatalf("etcdserver: create snapshot error: %v", err)
+					log.Fatalf("etcdserver: save snapshot error: %v", err)
 				}
 				s.raftStorage.ApplySnapshot(rd.Snapshot)
 				snapi = rd.Snapshot.Metadata.Index
+				log.Printf("etcdserver: saved incoming snapshot at index %d", snapi)
 			}
 
 			if err := s.storage.Save(rd.HardState, rd.Entries); err != nil {
@@ -413,6 +414,7 @@ func (s *EtcdServer) run() {
 					}
 					s.Cluster.Recover()
 					appliedi = rd.Snapshot.Metadata.Index
+					log.Printf("etcdserver: recovered from incoming snapshot at index %d", snapi)
 				}
 			}
 			// TODO(bmizerany): do this in the background, but take
@@ -439,6 +441,7 @@ func (s *EtcdServer) run() {
 			s.node.Advance()
 
 			if appliedi-snapi > s.snapCount {
+				log.Printf("etcdserver: start to snapshot (applied: %d, lastsnap: %d)", appliedi, snapi)
 				s.snapshot(appliedi, nodes)
 				snapi = appliedi
 			}
@@ -807,7 +810,7 @@ func (s *EtcdServer) snapshot(snapi uint64, snapnodes []uint64) {
 	// TODO: current store will never fail to do a snapshot
 	// what should we do if the store might fail?
 	if err != nil {
-		log.Panicf("store save should never fail: %v", err)
+		log.Panicf("etcdserver: store save should never fail: %v", err)
 	}
 	err = s.raftStorage.Compact(snapi, &raftpb.ConfState{Nodes: snapnodes}, d)
 	if err != nil {
@@ -818,17 +821,19 @@ func (s *EtcdServer) snapshot(snapi uint64, snapnodes []uint64) {
 		}
 		log.Panicf("etcdserver: unexpected compaction error %v", err)
 	}
+	log.Printf("etcdserver: compacted log at index %d", snapi)
 
 	if err := s.storage.Cut(); err != nil {
-		log.Panicf("rotate wal file should never fail: %v", err)
+		log.Panicf("etcdserver: rotate wal file should never fail: %v", err)
 	}
 	snap, err := s.raftStorage.Snapshot()
 	if err != nil {
 		log.Panicf("etcdserver: snapshot error: %v", err)
 	}
 	if err := s.storage.SaveSnap(snap); err != nil {
-		log.Fatalf("etcdserver: create snapshot error: %v", err)
+		log.Fatalf("etcdserver: save snapshot error: %v", err)
 	}
+	log.Printf("etcdserver: saved snapshot at index %d", snap.Metadata.Index)
 }
 
 // checkClientURLsEmptyFromPeers does its best to get the cluster from peers,
