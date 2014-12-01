@@ -184,8 +184,8 @@ func (ms *MemoryStorage) Append(entries []pb.Entry) {
 	if offset < 0 {
 		return
 	}
-	if uint64(len(ms.ents)) >= offset {
-		ms.ents = ms.ents[:offset]
+	if uint64(len(ms.ents)) > offset {
+		ms.ents = append([]pb.Entry{}, ms.ents[:offset]...)
 	}
 	ms.ents = append(ms.ents, entries...)
 }

@@ -99,18 +99,23 @@ func (u *unstable) restore(s pb.Snapshot) {
 	u.snapshot = &s
 }
 
-func (u *unstable) resetEntries(offset uint64) {
-	u.entries = nil
-	u.offset = offset
-}
-
 func (u *unstable) truncateAndAppend(after uint64, ents []pb.Entry) {
-	if after < u.offset {
-		// The log is being truncated to before our current unstable
-		// portion, so discard it and reset unstable.
-		u.resetEntries(after + 1)
+	switch {
+	case after < u.offset:
+		// The log is being truncated to before our current offset
+		// portion, so set the offset and replace the entries
+		u.offset = after + 1
+		u.entries = ents
+	case after == u.offset+uint64(len(u.entries))-1:
+		// after is the last index in the u.entries
+		// directly append
+		u.entries = append(u.entries, ents...)
+	default:
+		// truncate to after and copy to u.entries
+		// then append
+		u.entries = append([]pb.Entry{}, u.slice(u.offset, after+1)...)
+		u.entries = append(u.entries, ents...)
 	}
-	u.entries = append(u.slice(u.offset, after+1), ents...)
 }
 
 func (u *unstable) slice(lo uint64, hi uint64) []pb.Entry {
