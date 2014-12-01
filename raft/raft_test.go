@@ -31,7 +31,7 @@ import (
 func nextEnts(r *raft, s *MemoryStorage) (ents []pb.Entry) {
 	// Transfer all unstable entries to "stable" storage.
 	s.Append(r.raftLog.unstableEntries())
-	r.raftLog.stableTo(r.raftLog.lastIndex())
+	r.raftLog.stableTo(r.raftLog.lastIndex(), r.raftLog.lastTerm())
 
 	ents = r.raftLog.nextEnts()
 	r.raftLog.appliedTo(r.raftLog.committed)

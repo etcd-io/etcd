@@ -187,7 +187,7 @@ func (l *raftLog) appliedTo(i uint64) {
 	l.applied = i
 }
 
-func (l *raftLog) stableTo(i uint64) { l.unstable.stableTo(i) }
+func (l *raftLog) stableTo(i, t uint64) { l.unstable.stableTo(i, t) }
 
 func (l *raftLog) stableSnapTo(i uint64) { l.unstable.stableSnapTo(i) }
 
