@@ -1,0 +1,18 @@
+#!/usr/bin/bash
+
+cat <<DF > app
+{
+    "acVersion": "1.0.0",
+    "acKind": "AppManifest",
+    "name": "coreos.com/etcd",
+    "os": "linux",
+    "arch": "amd64",
+    "exec": [
+        "/etcd", "main"
+    ],
+    "user": "1000",
+    "group": "1000"
+}
+DF
+
+actool build .
