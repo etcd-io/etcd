@@ -37,6 +37,7 @@ import (
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/etcdserver/stats"
 	"github.com/coreos/etcd/migrate"
+	"github.com/coreos/etcd/pkg/fileutil"
 	"github.com/coreos/etcd/pkg/pbutil"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/pkg/wait"
@@ -59,6 +60,8 @@ const (
 
 	StoreAdminPrefix = "/0"
 	StoreKeysPrefix  = "/1"
+
+	purgeFileInterval = 30 * time.Second
 )
 
 var (
@@ -157,6 +160,7 @@ type RaftTimer interface {
 
 // EtcdServer is the production implementation of the Server interface
 type EtcdServer struct {
+	cfg        *ServerConfig
 	w          wait.Wait
 	done       chan struct{}
 	stop       chan struct{}
@@ -301,6 +305,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 	lstats := stats.NewLeaderStats(id.String())
 
 	srv := &EtcdServer{
+		cfg:         cfg,
 		store:       st,
 		node:        n,
 		raftStorage: s,
@@ -327,6 +332,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 func (s *EtcdServer) Start() {
 	s.start()
 	go s.publish(defaultPublishRetryInterval)
+	go s.purgeFile()
 }
 
 // start prepares and starts server in a new goroutine. It is no longer safe to
@@ -344,6 +350,24 @@ func (s *EtcdServer) start() {
 	// TODO: if this is an empty log, writes all peer infos
 	// into the first entry
 	go s.run()
+}
+
+func (s *EtcdServer) purgeFile() {
+	var serrc, werrc <-chan error
+	if s.cfg.MaxSnapFiles > 0 {
+		serrc = fileutil.PurgeFile(s.cfg.SnapDir(), "snap", s.cfg.MaxSnapFiles, purgeFileInterval, s.done)
+	}
+	if s.cfg.MaxWALFiles > 0 {
+		werrc = fileutil.PurgeFile(s.cfg.WALDir(), "wal", s.cfg.MaxWALFiles, purgeFileInterval, s.done)
+	}
+	select {
+	case e := <-werrc:
+		log.Fatalf("etcdserver: failed to purge wal file %v", e)
+	case e := <-serrc:
+		log.Fatalf("etcdserver: failed to purge snap file %v", e)
+	case <-s.done:
+		return
+	}
 }
 
 func (s *EtcdServer) ID() types.ID { return s.id }

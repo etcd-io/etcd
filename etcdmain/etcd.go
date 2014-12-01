@@ -63,6 +63,8 @@ var (
 	snapCount       = fs.Uint64("snapshot-count", etcdserver.DefaultSnapCount, "Number of committed transactions to trigger a snapshot")
 	printVersion    = fs.Bool("version", false, "Print the version and exit")
 	forceNewCluster = fs.Bool("force-new-cluster", false, "Force to create a new one member cluster")
+	maxSnapFiles    = fs.Uint("max-snapshots", 5, "Maximum number of snapshot files to retain (0 is unlimited)")
+	maxWalFiles     = fs.Uint("max-wals", 5, "Maximum number of wal files to retain (0 is unlimited)")
 
 	initialCluster      = fs.String("initial-cluster", "default=http://localhost:2380,default=http://localhost:7001", "Initial cluster configuration for bootstrapping")
 	initialClusterToken = fs.String("initial-cluster-token", "etcd-cluster", "Initial cluster token for the etcd cluster during bootstrap")
@@ -280,6 +282,8 @@ func startEtcd() (<-chan struct{}, error) {
 		PeerURLs:        apurls,
 		DataDir:         *dir,
 		SnapCount:       *snapCount,
+		MaxSnapFiles:    *maxSnapFiles,
+		MaxWALFiles:     *maxWalFiles,
 		Cluster:         cls,
 		DiscoveryURL:    *durl,
 		DiscoveryProxy:  *dproxy,
