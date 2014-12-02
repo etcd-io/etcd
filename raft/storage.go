@@ -28,6 +28,8 @@ import (
 // index is unavailable because it predates the last snapshot.
 var ErrCompacted = errors.New("requested index is unavailable due to compaction")
 
+var ErrUnavailable = errors.New("requested entry at index is unavailable")
+
 // Storage is an interface that may be implemented by the application
 // to retrieve log entries from storage.
 //
@@ -47,8 +49,9 @@ type Storage interface {
 	// LastIndex returns the index of the last entry in the log.
 	LastIndex() (uint64, error)
 	// FirstIndex returns the index of the first log entry that is
-	// available via Entries (older entries have been incorporated
-	// into the latest Snapshot).
+	// possibly available via Entries (older entries have been incorporated
+	// into the latest Snapshot; if storage only contains the dummy entry the
+	// first log entry is not available).
 	FirstIndex() (uint64, error)
 	// Snapshot returns the most recent snapshot.
 	Snapshot() (pb.Snapshot, error)
@@ -94,6 +97,10 @@ func (ms *MemoryStorage) Entries(lo, hi uint64) ([]pb.Entry, error) {
 	offset := ms.snapshot.Metadata.Index
 	if lo <= offset {
 		return nil, ErrCompacted
+	}
+	// only contains dummy entries.
+	if len(ms.ents) == 1 {
+		return nil, ErrUnavailable
 	}
 	return ms.ents[lo-offset : hi-offset], nil
 }

@@ -34,10 +34,11 @@ type unstable struct {
 	offset  uint64
 }
 
-// maybeFirstIndex returns the first index if it has a snapshot.
+// maybeFirstIndex returns the index of the first possible entry in entries
+// if it has a snapshot.
 func (u *unstable) maybeFirstIndex() (uint64, bool) {
 	if u.snapshot != nil {
-		return u.snapshot.Metadata.Index, true
+		return u.snapshot.Metadata.Index + 1, true
 	}
 	return 0, false
 }
