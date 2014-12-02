@@ -86,6 +86,9 @@ func (h *sendHub) Stop() {
 	for _, s := range h.senders {
 		s.Stop()
 	}
+	if tr, ok := h.tr.(*http.Transport); ok {
+		tr.CloseIdleConnections()
+	}
 }
 
 func (h *sendHub) ShouldStopNotify() <-chan struct{} {
