@@ -26,33 +26,32 @@ import (
 func TestFindConflict(t *testing.T) {
 	previousEnts := []pb.Entry{{Index: 1, Term: 1}, {Index: 2, Term: 2}, {Index: 3, Term: 3}}
 	tests := []struct {
-		from      uint64
 		ents      []pb.Entry
 		wconflict uint64
 	}{
 		// no conflict, empty ent
-		{1, []pb.Entry{}, 0},
-		{3, []pb.Entry{}, 0},
+		{[]pb.Entry{}, 0},
+		{[]pb.Entry{}, 0},
 		// no conflict
-		{1, []pb.Entry{{Index: 1, Term: 1}, {Index: 2, Term: 2}, {Index: 3, Term: 3}}, 0},
-		{2, []pb.Entry{{Index: 2, Term: 2}, {Index: 3, Term: 3}}, 0},
-		{3, []pb.Entry{{Index: 3, Term: 3}}, 0},
+		{[]pb.Entry{{Index: 1, Term: 1}, {Index: 2, Term: 2}, {Index: 3, Term: 3}}, 0},
+		{[]pb.Entry{{Index: 2, Term: 2}, {Index: 3, Term: 3}}, 0},
+		{[]pb.Entry{{Index: 3, Term: 3}}, 0},
 		// no conflict, but has new entries
-		{1, []pb.Entry{{Index: 1, Term: 1}, {Index: 2, Term: 2}, {Index: 3, Term: 3}, {Index: 4, Term: 4}, {Index: 5, Term: 4}}, 4},
-		{2, []pb.Entry{{Index: 2, Term: 2}, {Index: 3, Term: 3}, {Index: 4, Term: 4}, {Index: 5, Term: 4}}, 4},
-		{3, []pb.Entry{{Index: 3, Term: 3}, {Index: 4, Term: 4}, {Index: 5, Term: 4}}, 4},
-		{4, []pb.Entry{{Index: 4, Term: 4}, {Index: 5, Term: 4}}, 4},
+		{[]pb.Entry{{Index: 1, Term: 1}, {Index: 2, Term: 2}, {Index: 3, Term: 3}, {Index: 4, Term: 4}, {Index: 5, Term: 4}}, 4},
+		{[]pb.Entry{{Index: 2, Term: 2}, {Index: 3, Term: 3}, {Index: 4, Term: 4}, {Index: 5, Term: 4}}, 4},
+		{[]pb.Entry{{Index: 3, Term: 3}, {Index: 4, Term: 4}, {Index: 5, Term: 4}}, 4},
+		{[]pb.Entry{{Index: 4, Term: 4}, {Index: 5, Term: 4}}, 4},
 		// conflicts with existing entries
-		{1, []pb.Entry{{Index: 1, Term: 4}, {Index: 2, Term: 4}}, 1},
-		{2, []pb.Entry{{Index: 2, Term: 1}, {Index: 3, Term: 4}, {Index: 4, Term: 4}}, 2},
-		{3, []pb.Entry{{Index: 3, Term: 1}, {Index: 4, Term: 2}, {Index: 5, Term: 4}, {Index: 6, Term: 4}}, 3},
+		{[]pb.Entry{{Index: 1, Term: 4}, {Index: 2, Term: 4}}, 1},
+		{[]pb.Entry{{Index: 2, Term: 1}, {Index: 3, Term: 4}, {Index: 4, Term: 4}}, 2},
+		{[]pb.Entry{{Index: 3, Term: 1}, {Index: 4, Term: 2}, {Index: 5, Term: 4}, {Index: 6, Term: 4}}, 3},
 	}
 
 	for i, tt := range tests {
 		raftLog := newLog(NewMemoryStorage())
-		raftLog.append(raftLog.lastIndex(), previousEnts...)
+		raftLog.append(previousEnts...)
 
-		gconflict := raftLog.findConflict(tt.from, tt.ents)
+		gconflict := raftLog.findConflict(tt.ents)
 		if gconflict != tt.wconflict {
 			t.Errorf("#%d: conflict = %d, want %d", i, gconflict, tt.wconflict)
 		}
@@ -62,7 +61,7 @@ func TestFindConflict(t *testing.T) {
 func TestIsUpToDate(t *testing.T) {
 	previousEnts := []pb.Entry{{Index: 1, Term: 1}, {Index: 2, Term: 2}, {Index: 3, Term: 3}}
 	raftLog := newLog(NewMemoryStorage())
-	raftLog.append(raftLog.lastIndex(), previousEnts...)
+	raftLog.append(previousEnts...)
 	tests := []struct {
 		lastIndex uint64
 		term      uint64
@@ -93,21 +92,18 @@ func TestIsUpToDate(t *testing.T) {
 func TestAppend(t *testing.T) {
 	previousEnts := []pb.Entry{{Index: 1, Term: 1}, {Index: 2, Term: 2}}
 	tests := []struct {
-		after     uint64
 		ents      []pb.Entry
 		windex    uint64
 		wents     []pb.Entry
 		wunstable uint64
 	}{
 		{
-			2,
 			[]pb.Entry{},
 			2,
 			[]pb.Entry{{Index: 1, Term: 1}, {Index: 2, Term: 2}},
 			3,
 		},
 		{
-			2,
 			[]pb.Entry{{Index: 3, Term: 2}},
 			3,
 			[]pb.Entry{{Index: 1, Term: 1}, {Index: 2, Term: 2}, {Index: 3, Term: 2}},
@@ -115,7 +111,6 @@ func TestAppend(t *testing.T) {
 		},
 		// conflicts with index 1
 		{
-			0,
 			[]pb.Entry{{Index: 1, Term: 2}},
 			1,
 			[]pb.Entry{{Index: 1, Term: 2}},
@@ -123,7 +118,6 @@ func TestAppend(t *testing.T) {
 		},
 		// conflicts with index 2
 		{
-			1,
 			[]pb.Entry{{Index: 2, Term: 3}, {Index: 3, Term: 3}},
 			3,
 			[]pb.Entry{{Index: 1, Term: 1}, {Index: 2, Term: 3}, {Index: 3, Term: 3}},
@@ -136,7 +130,7 @@ func TestAppend(t *testing.T) {
 		storage.Append(previousEnts)
 		raftLog := newLog(storage)
 
-		index := raftLog.append(tt.after, tt.ents...)
+		index := raftLog.append(tt.ents...)
 		if index != tt.windex {
 			t.Errorf("#%d: lastIndex = %d, want %d", i, index, tt.windex)
 		}
@@ -242,7 +236,7 @@ func TestLogMaybeAppend(t *testing.T) {
 
 	for i, tt := range tests {
 		raftLog := newLog(NewMemoryStorage())
-		raftLog.append(raftLog.lastIndex(), previousEnts...)
+		raftLog.append(previousEnts...)
 		raftLog.committed = commit
 		func() {
 			defer func() {
@@ -288,7 +282,7 @@ func TestCompactionSideEffects(t *testing.T) {
 	}
 	raftLog := newLog(storage)
 	for i = unstableIndex; i < lastIndex; i++ {
-		raftLog.append(i, pb.Entry{Term: uint64(i + 1), Index: uint64(i + 1)})
+		raftLog.append(pb.Entry{Term: uint64(i + 1), Index: uint64(i + 1)})
 	}
 
 	ok := raftLog.maybeCommit(lastIndex, lastTerm)
@@ -325,7 +319,7 @@ func TestCompactionSideEffects(t *testing.T) {
 	}
 
 	prev := raftLog.lastIndex()
-	raftLog.append(raftLog.lastIndex(), pb.Entry{Index: raftLog.lastIndex() + 1, Term: raftLog.lastIndex() + 1})
+	raftLog.append(pb.Entry{Index: raftLog.lastIndex() + 1, Term: raftLog.lastIndex() + 1})
 	if raftLog.lastIndex() != prev+1 {
 		t.Errorf("lastIndex = %d, want = %d", raftLog.lastIndex(), prev+1)
 	}
@@ -358,7 +352,7 @@ func TestNextEnts(t *testing.T) {
 		storage := NewMemoryStorage()
 		storage.ApplySnapshot(snap)
 		raftLog := newLog(storage)
-		raftLog.append(snap.Metadata.Index, ents...)
+		raftLog.append(ents...)
 		raftLog.maybeCommit(5, 1)
 		raftLog.appliedTo(tt.applied)
 
@@ -388,7 +382,7 @@ func TestUnstableEnts(t *testing.T) {
 
 		// append unstable entries to raftlog
 		raftLog := newLog(storage)
-		raftLog.append(raftLog.lastIndex(), previousEnts[tt.unstable-1:]...)
+		raftLog.append(previousEnts[tt.unstable-1:]...)
 
 		ents := raftLog.unstableEntries()
 		if l := len(ents); l > 0 {
@@ -426,7 +420,7 @@ func TestCommitTo(t *testing.T) {
 				}
 			}()
 			raftLog := newLog(NewMemoryStorage())
-			raftLog.append(0, previousEnts...)
+			raftLog.append(previousEnts...)
 			raftLog.committed = commit
 			raftLog.commitTo(tt.commit)
 			if raftLog.committed != tt.wcommit {
@@ -449,7 +443,7 @@ func TestStableTo(t *testing.T) {
 	}
 	for i, tt := range tests {
 		raftLog := newLog(NewMemoryStorage())
-		raftLog.append(0, []pb.Entry{{Index: 1, Term: 1}, {Index: 2, Term: 2}}...)
+		raftLog.append([]pb.Entry{{Index: 1, Term: 1}, {Index: 2, Term: 2}}...)
 		raftLog.stableTo(tt.stablei, tt.stablet)
 		if raftLog.unstable.offset != tt.wunstable {
 			t.Errorf("#%d: unstable = %d, want %d", i, raftLog.unstable.offset, tt.wunstable)
@@ -486,7 +480,7 @@ func TestStableToWithSnap(t *testing.T) {
 		s := NewMemoryStorage()
 		s.ApplySnapshot(pb.Snapshot{Metadata: pb.SnapshotMetadata{Index: snapi, Term: snapt}})
 		raftLog := newLog(s)
-		raftLog.append(raftLog.lastIndex(), tt.newEnts...)
+		raftLog.append(tt.newEnts...)
 		raftLog.stableTo(tt.stablei, tt.stablet)
 		if raftLog.unstable.offset != tt.wunstable {
 			t.Errorf("#%d: unstable = %d, want %d", i, raftLog.unstable.offset, tt.wunstable)
@@ -574,7 +568,9 @@ func TestIsOutOfBounds(t *testing.T) {
 	storage := NewMemoryStorage()
 	storage.ApplySnapshot(pb.Snapshot{Metadata: pb.SnapshotMetadata{Index: offset}})
 	l := newLog(storage)
-	l.append(offset, make([]pb.Entry, num)...)
+	for i := uint64(1); i <= num; i++ {
+		l.append(pb.Entry{Index: i + offset})
+	}
 
 	tests := []struct {
 		index uint64
@@ -604,7 +600,7 @@ func TestTerm(t *testing.T) {
 	storage.ApplySnapshot(pb.Snapshot{Metadata: pb.SnapshotMetadata{Index: offset}})
 	l := newLog(storage)
 	for i = 1; i < num; i++ {
-		l.append(offset+i-1, pb.Entry{Index: i, Term: i})
+		l.append(pb.Entry{Index: offset + i, Term: i})
 	}
 
 	tests := []struct {
@@ -635,7 +631,7 @@ func TestSlice(t *testing.T) {
 	storage.ApplySnapshot(pb.Snapshot{Metadata: pb.SnapshotMetadata{Index: offset}})
 	l := newLog(storage)
 	for i = 1; i < num; i++ {
-		l.append(offset+i-1, pb.Entry{Index: i, Term: i})
+		l.append(pb.Entry{Index: offset + i, Term: offset + i})
 	}
 
 	tests := []struct {
@@ -645,8 +641,8 @@ func TestSlice(t *testing.T) {
 	}{
 		{offset - 1, offset + 1, nil},
 		{offset, offset + 1, nil},
-		{offset + num/2, offset + num/2 + 1, []pb.Entry{{Index: num / 2, Term: num / 2}}},
-		{offset + num - 1, offset + num, []pb.Entry{{Index: num - 1, Term: num - 1}}},
+		{offset + num/2, offset + num/2 + 1, []pb.Entry{{Index: offset + num/2, Term: offset + num/2}}},
+		{offset + num - 1, offset + num, []pb.Entry{{Index: offset + num - 1, Term: offset + num - 1}}},
 		{offset + num, offset + num + 1, nil},
 
 		{offset + num/2, offset + num/2, nil},

@@ -144,7 +144,7 @@ func StartNode(id uint64, peers []Peer, election, heartbeat int, storage Storage
 			panic("unexpected marshal error")
 		}
 		e := pb.Entry{Type: pb.EntryConfChange, Term: 1, Index: r.raftLog.lastIndex() + 1, Data: d}
-		r.raftLog.append(r.raftLog.lastIndex(), e)
+		r.raftLog.append(e)
 	}
 	// Mark these initial entries as committed.
 	// TODO(bdarnell): These entries are still unstable; do we need to preserve
