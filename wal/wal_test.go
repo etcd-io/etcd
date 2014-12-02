@@ -364,8 +364,8 @@ func TestOpenAtUncommittedIndex(t *testing.T) {
 		t.Fatal(err)
 	}
 	// commit up to index 0, try to read index 1
-	if _, _, _, err := w.ReadAll(); err != ErrIndexNotFound {
-		t.Errorf("err = %v, want %v", err, ErrIndexNotFound)
+	if _, _, _, err := w.ReadAll(); err != nil {
+		t.Errorf("err = %v, want nil", err)
 	}
 	w.Close()
 }
