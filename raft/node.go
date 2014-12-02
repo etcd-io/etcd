@@ -292,10 +292,6 @@ func (n *node) run(r *raft) {
 				prevHardSt = rd.HardState
 			}
 			if !IsEmptySnap(rd.Snapshot) {
-				if rd.Snapshot.Metadata.Index > prevLastUnstablei {
-					prevLastUnstablei = rd.Snapshot.Metadata.Index
-					havePrevLastUnstablei = true
-				}
 				prevSnapi = rd.Snapshot.Metadata.Index
 			}
 			r.msgs = nil
