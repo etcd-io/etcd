@@ -126,10 +126,10 @@ curl -L http://127.0.0.1:4001/v2/keys/message -XPUT -d value="Hello etcd"
         "value": "Hello etcd"
     },
     "prevNode": {
-    	"createdIndex": 2,
-    	"key": "/message",
-    	"value": "Hello world",
-    	"modifiedIndex": 2
+        "createdIndex": 2,
+        "key": "/message",
+        "value": "Hello world",
+        "modifiedIndex": 2
     }
 }
 ```
@@ -153,10 +153,10 @@ curl -L http://127.0.0.1:4001/v2/keys/message -XDELETE
         "modifiedIndex": 4
     },
     "prevNode": {
-    	"key": "/message",
-    	"value": "Hello etcd",
-    	"modifiedIndex": 3,
-    	"createdIndex": 3
+        "key": "/message",
+        "value": "Hello etcd",
+        "modifiedIndex": 3,
+        "createdIndex": 3
     }
 }
 ```
@@ -405,19 +405,19 @@ curl 'http://127.0.0.1:4001/v2/keys/dir/asdf?consistent=true&wait=true'
 
 ```json
 {
-	"action": "expire",
-	"node": {
-		"createdIndex": 8,
-		"key": "/dir",
-		"modifiedIndex": 15
-	},
-	"prevNode": {
-		"createdIndex": 8,
-		"key": "/dir",
-		"dir":true,
-		"modifiedIndex": 17,
-		"expiration": "2013-12-11T10:39:35.689275857-08:00"
-	}
+    "action": "expire",
+    "node": {
+        "createdIndex": 8,
+        "key": "/dir",
+        "modifiedIndex": 15
+    },
+    "prevNode": {
+        "createdIndex": 8,
+        "key": "/dir",
+        "dir":true,
+        "modifiedIndex": 17,
+        "expiration": "2013-12-11T10:39:35.689275857-08:00"
+    }
 }
 ```
 
@@ -499,10 +499,10 @@ The response should be:
         "value": "two"
     },
     "prevNode": {
-    	"createdIndex": 8,
-    	"key": "/foo",
-    	"modifiedIndex": 8,
-    	"value": "one"
+        "createdIndex": 8,
+        "key": "/foo",
+        "modifiedIndex": 8,
+        "value": "one"
     }
 }
 ```
@@ -536,10 +536,10 @@ The error code explains the problem:
 
 ```json
 {
-	"errorCode": 101,
-	"message": "Compare failed",
-	"cause": "[two != one]",
-	"index": 8
+    "errorCode": 101,
+    "message": "Compare failed",
+    "cause": "[two != one]",
+    "index": 8
 }
 ```
 
@@ -551,10 +551,10 @@ curl -L http://127.0.0.1:4001/v2/keys/foo?prevIndex=1 -XDELETE
 
 ```json
 {
-	"errorCode": 101,
-	"message": "Compare failed",
-	"cause": "[1 != 8]",
-	"index": 8
+    "errorCode": 101,
+    "message": "Compare failed",
+    "cause": "[1 != 8]",
+    "index": 8
 }
 ```
 
@@ -568,18 +568,18 @@ The successful response will look something like:
 
 ```json
 {
-	"action": "compareAndDelete",
-	"node": {
-		"key": "/foo",
-		"modifiedIndex": 9,
-		"createdIndex": 8
-	},
-	"prevNode": {
-		"key": "/foo",
-		"value": "one",
-		"modifiedIndex": 8,
-		"createdIndex": 8
-	}
+    "action": "compareAndDelete",
+    "node": {
+        "key": "/foo",
+        "modifiedIndex": 9,
+        "createdIndex": 8
+    },
+    "prevNode": {
+        "key": "/foo",
+        "value": "one",
+        "modifiedIndex": 8,
+        "createdIndex": 8
+    }
 }
 ```
 
@@ -643,22 +643,22 @@ We should see the response as an array of items:
 ```json
 {
     "action": "get",
-    "node": {
-        "key": "/",
-        "dir": true,
-        "nodes": [
-            {
-                "key": "/foo_dir",
-                "dir": true,
-                "modifiedIndex": 2,
-                "createdIndex": 2
-            },
-            {
-                "key": "/foo",
-                "value": "two",
-                "modifiedIndex": 1,
-                "createdIndex": 1
-            }
+    "node": {
+        "key": "/",
+        "dir": true,
+        "nodes": [
+            {
+                "key": "/foo_dir",
+                "dir": true,
+                "modifiedIndex": 2,
+                "createdIndex": 2
+            },
+            {
+                "key": "/foo",
+                "value": "two",
+                "modifiedIndex": 1,
+                "createdIndex": 1
+            }
         ]
     }
 }
@@ -673,33 +673,33 @@ curl -L http://127.0.0.1:4001/v2/keys/?recursive=true
 
 ```json
 {
-    "action": "get",
-    "node": {
-        "key": "/",
-        "dir": true,
-        "nodes": [
-            {
-                "key": "/foo_dir",
-                "dir": true,
-                "nodes": [
-                    {
-                        "key": "/foo_dir/foo",
-                        "value": "bar",
-                        "modifiedIndex": 2,
-                        "createdIndex": 2
-                    }
-                ],
-                "modifiedIndex": 2,
-                "createdIndex": 2
-            },
-            {
-                "key": "/foo",
-                "value": "two",
-                "modifiedIndex": 1,
-                "createdIndex": 1
-            }
-        ]
-    }
+    "action": "get",
+    "node": {
+        "key": "/",
+        "dir": true,
+        "nodes": [
+            {
+                "key": "/foo_dir",
+                "dir": true,
+                "nodes": [
+                    {
+                        "key": "/foo_dir/foo",
+                        "value": "bar",
+                        "modifiedIndex": 2,
+                        "createdIndex": 2
+                    }
+                ],
+                "modifiedIndex": 2,
+                "createdIndex": 2
+            },
+            {
+                "key": "/foo",
+                "value": "two",
+                "modifiedIndex": 1,
+                "createdIndex": 1
+            }
+        ]
+    }
 }
 ```
 
@@ -723,10 +723,10 @@ curl -L 'http://127.0.0.1:4001/v2/keys/foo_dir?dir=true' -XDELETE
         "modifiedIndex": 31
     },
     "prevNode": {
-    	"createdIndex": 30,
-    	"key": "/foo_dir",
-    	"dir": true,
-    	"modifiedIndex": 30
+        "createdIndex": 30,
+        "key": "/foo_dir",
+        "dir": true,
+        "modifiedIndex": 30
     }
 }
 ```
@@ -747,10 +747,10 @@ curl -L http://127.0.0.1:4001/v2/keys/dir?recursive=true -XDELETE
         "modifiedIndex": 11
     },
     "prevNode": {
-    	"createdIndex": 10,
-    	"dir": true,
-    	"key": "/dir",
-    	"modifiedIndex": 10
+        "createdIndex": 10,
+        "dir": true,
+        "key": "/dir",
+        "modifiedIndex": 10
     }
 }
 ```
