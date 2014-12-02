@@ -105,16 +105,16 @@ func (u *unstable) restore(s pb.Snapshot) {
 
 func (u *unstable) truncateAndAppend(after uint64, ents []pb.Entry) {
 	switch {
+	case after == u.offset+uint64(len(u.entries))-1:
+		// after is the last index in the u.entries
+		// directly append
+		u.entries = append(u.entries, ents...)
 	case after < u.offset:
 		log.Printf("raftlog: replace the unstable entries from index %d", after+1)
 		// The log is being truncated to before our current offset
 		// portion, so set the offset and replace the entries
 		u.offset = after + 1
 		u.entries = ents
-	case after == u.offset+uint64(len(u.entries))-1:
-		// after is the last index in the u.entries
-		// directly append
-		u.entries = append(u.entries, ents...)
 	default:
 		// truncate to after and copy to u.entries
 		// then append
