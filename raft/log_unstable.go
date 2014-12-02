@@ -103,7 +103,8 @@ func (u *unstable) restore(s pb.Snapshot) {
 	u.snapshot = &s
 }
 
-func (u *unstable) truncateAndAppend(after uint64, ents []pb.Entry) {
+func (u *unstable) truncateAndAppend(ents []pb.Entry) {
+	after := ents[0].Index - 1
 	switch {
 	case after < u.offset:
 		log.Printf("raftlog: replace the unstable entries from index %d", after+1)

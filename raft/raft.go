@@ -320,7 +320,7 @@ func (r *raft) q() int {
 func (r *raft) appendEntry(e pb.Entry) {
 	e.Term = r.Term
 	e.Index = r.raftLog.lastIndex() + 1
-	r.raftLog.append(r.raftLog.lastIndex(), e)
+	r.raftLog.append(e)
 	r.prs[r.id].update(r.raftLog.lastIndex())
 	r.maybeCommit()
 }

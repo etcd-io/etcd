@@ -654,9 +654,9 @@ func TestFollowerAppendEntries(t *testing.T) {
 		},
 		{
 			1, 1,
-			[]pb.Entry{{Term: 3, Index: 3}, {Term: 4, Index: 4}},
-			[]pb.Entry{{Term: 1, Index: 1}, {Term: 3, Index: 3}, {Term: 4, Index: 4}},
-			[]pb.Entry{{Term: 3, Index: 3}, {Term: 4, Index: 4}},
+			[]pb.Entry{{Term: 3, Index: 2}, {Term: 4, Index: 3}},
+			[]pb.Entry{{Term: 1, Index: 1}, {Term: 3, Index: 2}, {Term: 4, Index: 3}},
+			[]pb.Entry{{Term: 3, Index: 2}, {Term: 4, Index: 3}},
 		},
 		{
 			0, 0,
@@ -666,9 +666,9 @@ func TestFollowerAppendEntries(t *testing.T) {
 		},
 		{
 			0, 0,
-			[]pb.Entry{{Term: 3, Index: 3}},
-			[]pb.Entry{{Term: 3, Index: 3}},
-			[]pb.Entry{{Term: 3, Index: 3}},
+			[]pb.Entry{{Term: 3, Index: 1}},
+			[]pb.Entry{{Term: 3, Index: 1}},
+			[]pb.Entry{{Term: 3, Index: 1}},
 		},
 	}
 	for i, tt := range tests {
