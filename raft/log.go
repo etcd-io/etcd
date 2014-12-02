@@ -263,6 +263,8 @@ func (l *raftLog) slice(lo uint64, hi uint64) []pb.Entry {
 			// This should never fail because it has been checked before.
 			log.Panicf("entries[%d:%d) from storage is out of bound", lo, min(hi, l.unstable.offset))
 			return nil
+		} else if err == ErrUnavailable {
+			return nil
 		} else if err != nil {
 			panic(err) // TODO(bdarnell)
 		}

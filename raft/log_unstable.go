@@ -34,10 +34,11 @@ type unstable struct {
 	offset  uint64
 }
 
-// maybeFirstIndex returns the first index if it has a snapshot.
+// maybeFirstIndex returns the index of the first possible entry in entries
+// if it has a snapshot.
 func (u *unstable) maybeFirstIndex() (uint64, bool) {
 	if u.snapshot != nil {
-		return u.snapshot.Metadata.Index, true
+		return u.snapshot.Metadata.Index + 1, true
 	}
 	return 0, false
 }
@@ -106,16 +107,16 @@ func (u *unstable) restore(s pb.Snapshot) {
 func (u *unstable) truncateAndAppend(ents []pb.Entry) {
 	after := ents[0].Index - 1
 	switch {
+	case after == u.offset+uint64(len(u.entries))-1:
+		// after is the last index in the u.entries
+		// directly append
+		u.entries = append(u.entries, ents...)
 	case after < u.offset:
 		log.Printf("raftlog: replace the unstable entries from index %d", after+1)
 		// The log is being truncated to before our current offset
 		// portion, so set the offset and replace the entries
 		u.offset = after + 1
 		u.entries = ents
-	case after == u.offset+uint64(len(u.entries))-1:
-		// after is the last index in the u.entries
-		// directly append
-		u.entries = append(u.entries, ents...)
 	default:
 		// truncate to after and copy to u.entries
 		// then append
