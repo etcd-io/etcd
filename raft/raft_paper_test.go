@@ -29,6 +29,10 @@ package raft
 
 import (
 	"fmt"
+	"io/ioutil"
+	"log"
+	"os"
+
 	"reflect"
 	"sort"
 	"testing"
@@ -292,9 +296,13 @@ func TestCandidateFallback(t *testing.T) {
 }
 
 func TestFollowerElectionTimeoutRandomized(t *testing.T) {
+	log.SetOutput(ioutil.Discard)
+	defer log.SetOutput(os.Stderr)
 	testNonleaderElectionTimeoutRandomized(t, StateFollower)
 }
 func TestCandidateElectionTimeoutRandomized(t *testing.T) {
+	log.SetOutput(ioutil.Discard)
+	defer log.SetOutput(os.Stderr)
 	testNonleaderElectionTimeoutRandomized(t, StateCandidate)
 }
 
@@ -329,9 +337,13 @@ func testNonleaderElectionTimeoutRandomized(t *testing.T, state StateType) {
 }
 
 func TestFollowersElectioinTimeoutNonconflict(t *testing.T) {
+	log.SetOutput(ioutil.Discard)
+	defer log.SetOutput(os.Stderr)
 	testNonleadersElectionTimeoutNonconflict(t, StateFollower)
 }
 func TestCandidatesElectionTimeoutNonconflict(t *testing.T) {
+	log.SetOutput(ioutil.Discard)
+	defer log.SetOutput(os.Stderr)
 	testNonleadersElectionTimeoutNonconflict(t, StateCandidate)
 }
 

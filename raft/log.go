@@ -111,9 +111,13 @@ func (l *raftLog) append(after uint64, ents ...pb.Entry) uint64 {
 // The index of the given entries MUST be continuously increasing.
 func (l *raftLog) findConflict(from uint64, ents []pb.Entry) uint64 {
 	// TODO(xiangli): validate the index of ents
-	for i, ne := range ents {
-		if !l.matchTerm(from+uint64(i), ne.Term) {
-			return from + uint64(i)
+	for offset, ne := range ents {
+		if i := from + uint64(offset); !l.matchTerm(ne.Index, ne.Term) {
+			if i <= l.lastIndex() {
+				log.Printf("raftlog: found conflict at index %d [existing term: %d, conflicting term: %d]",
+					i, l.term(i), ne.Term)
+			}
+			return i
 		}
 	}
 	return 0

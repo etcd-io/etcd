@@ -16,7 +16,11 @@
 
 package raft
 
-import pb "github.com/coreos/etcd/raft/raftpb"
+import (
+	"log"
+
+	pb "github.com/coreos/etcd/raft/raftpb"
+)
 
 // unstable.entris[i] has raft log position i+unstable.offset.
 // Note that unstable.offset may be less than the highest log
@@ -102,6 +106,7 @@ func (u *unstable) restore(s pb.Snapshot) {
 func (u *unstable) truncateAndAppend(after uint64, ents []pb.Entry) {
 	switch {
 	case after < u.offset:
+		log.Printf("raftlog: replace the unstable entries from index %d", after+1)
 		// The log is being truncated to before our current offset
 		// portion, so set the offset and replace the entries
 		u.offset = after + 1
@@ -113,6 +118,7 @@ func (u *unstable) truncateAndAppend(after uint64, ents []pb.Entry) {
 	default:
 		// truncate to after and copy to u.entries
 		// then append
+		log.Printf("raftlog: truncate the unstable entries to index %d", after)
 		u.entries = append([]pb.Entry{}, u.slice(u.offset, after+1)...)
 		u.entries = append(u.entries, ents...)
 	}
