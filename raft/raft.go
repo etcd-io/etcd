@@ -233,6 +233,9 @@ func (r *raft) sendAppend(to uint64) {
 			panic("need non-empty snapshot")
 		}
 		m.Snapshot = snapshot
+		sindex, sterm := snapshot.Metadata.Index, snapshot.Metadata.Term
+		log.Printf("raft: %x [firstindex: %d, commit: %d] sent snapshot[index: %d, term: %d] to %x [match: %d, next: %d]",
+			r.id, r.raftLog.firstIndex(), r.Commit, to, sindex, sterm, pr.match, pr.next)
 	} else {
 		m.Type = pb.MsgApp
 		m.Index = pr.next - 1
@@ -445,9 +448,14 @@ func (r *raft) handleHeartbeat(m pb.Message) {
 }
 
 func (r *raft) handleSnapshot(m pb.Message) {
+	sindex, sterm := m.Snapshot.Metadata.Index, m.Snapshot.Metadata.Term
 	if r.restore(m.Snapshot) {
+		log.Printf("raft: %x [commit: %d] restored snapshot [index: %d, term: %d]",
+			r.id, r.Commit, sindex, sterm)
 		r.send(pb.Message{To: m.From, Type: pb.MsgAppResp, Index: r.raftLog.lastIndex()})
 	} else {
+		log.Printf("raft: %x [commit: %d] ignored snapshot [index: %d, term: %d]",
+			r.id, r.Commit, sindex, sterm)
 		r.send(pb.Message{To: m.From, Type: pb.MsgAppResp, Index: r.raftLog.committed})
 	}
 }
@@ -573,15 +581,20 @@ func (r *raft) restore(s pb.Snapshot) bool {
 	if s.Metadata.Index <= r.raftLog.committed {
 		return false
 	}
+	log.Printf("raft: %x [commit: %d, lastindex: %d, lastterm: %d] starts to restore snapshot [index: %d, term: %d]",
+		r.id, r.Commit, r.raftLog.lastIndex(), r.raftLog.lastTerm(), s.Metadata.Index, s.Metadata.Term)
 
 	r.raftLog.restore(s)
 	r.prs = make(map[uint64]*progress)
 	for _, n := range s.Metadata.ConfState.Nodes {
+		match, next := uint64(0), uint64(r.raftLog.lastIndex())+1
 		if n == r.id {
-			r.setProgress(n, r.raftLog.lastIndex(), r.raftLog.lastIndex()+1)
+			match = next - 1
 		} else {
-			r.setProgress(n, 0, r.raftLog.lastIndex()+1)
+			match = 0
 		}
+		log.Printf("raft: %x restored progress of %x [match: %d, next: %d]", r.id, n, match, next)
+		r.setProgress(n, match, next)
 	}
 	return true
 }
