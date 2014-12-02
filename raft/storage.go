@@ -179,13 +179,27 @@ func (ms *MemoryStorage) Append(entries []pb.Entry) {
 	if len(entries) == 0 {
 		return
 	}
-	offset := entries[0].Index - ms.snapshot.Metadata.Index
-	// do not append out of date entries
-	if offset < 0 {
+	first := ms.snapshot.Metadata.Index + 1
+	last := entries[0].Index + uint64(len(entries)) - 1
+
+	// shortcut if there is no new entry.
+	if last < first {
 		return
 	}
-	if uint64(len(ms.ents)) > offset {
-		ms.ents = append([]pb.Entry{}, ms.ents[:offset]...)
+	// truncate old entries
+	if first > entries[0].Index {
+		entries = entries[first-entries[0].Index:]
 	}
-	ms.ents = append(ms.ents, entries...)
+
+	offset := entries[0].Index - ms.snapshot.Metadata.Index
+	switch {
+	case uint64(len(ms.ents)) > offset:
+		ms.ents = append([]pb.Entry{}, ms.ents[:offset]...)
+		ms.ents = append(ms.ents, entries...)
+	case uint64(len(ms.ents)) == offset:
+		ms.ents = append(ms.ents, entries...)
+	default:
+		log.Panicf("missing log entry [last: %d, append at: %d]",
+			ms.snapshot.Metadata.Index+uint64(len(ms.ents)), entries[0].Index)
+	}
 }
