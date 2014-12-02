@@ -34,7 +34,9 @@ import (
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/etcdhttp"
 	"github.com/coreos/etcd/etcdserver/etcdhttp/httptypes"
+	"github.com/coreos/etcd/pkg/transport"
 	"github.com/coreos/etcd/pkg/types"
+	"github.com/coreos/etcd/rafthttp"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 )
@@ -423,13 +425,13 @@ func mustNewMember(t *testing.T, name string) *member {
 		t.Fatal(err)
 	}
 	m.NewCluster = true
-	m.Transport = newTransport()
+	m.Transport = mustNewTransport(t)
 	return m
 }
 
 // Clone returns a member with the same server configuration. The returned
 // member will not set PeerListeners and ClientListeners.
-func (m *member) Clone() *member {
+func (m *member) Clone(t *testing.T) *member {
 	mm := &member{}
 	mm.ServerConfig = m.ServerConfig
 
@@ -452,7 +454,7 @@ func (m *member) Clone() *member {
 		// this should never fail
 		panic(err)
 	}
-	mm.Transport = newTransport()
+	mm.Transport = mustNewTransport(t)
 	return mm
 }
 
@@ -524,18 +526,18 @@ func (m *member) Terminate(t *testing.T) {
 }
 
 func mustNewHTTPClient(t *testing.T, eps []string) client.HTTPClient {
-	cc, err := client.NewHTTPClient(newTransport(), eps)
+	cc, err := client.NewHTTPClient(mustNewTransport(t), eps)
 	if err != nil {
 		t.Fatal(err)
 	}
 	return cc
 }
 
-func newTransport() *http.Transport {
-	tr := &http.Transport{}
-	// TODO: need the support of graceful stop in Sender to remove this
-	tr.DisableKeepAlives = true
-	tr.Dial = (&net.Dialer{Timeout: 100 * time.Millisecond}).Dial
+func mustNewTransport(t *testing.T) *http.Transport {
+	tr, err := transport.NewTimeoutTransport(transport.TLSInfo{}, rafthttp.ConnReadTimeout, rafthttp.ConnWriteTimeout)
+	if err != nil {
+		t.Fatal(err)
+	}
 	return tr
 }
 
