@@ -25,7 +25,7 @@ func TestRestartMember(t *testing.T) {
 func TestLaunchDuplicateMemberShouldFail(t *testing.T) {
 	size := 3
 	c := NewCluster(t, size)
-	m := c.Members[0].Clone()
+	m := c.Members[0].Clone(t)
 	var err error
 	m.DataDir, err = ioutil.TempDir(os.TempDir(), "etcd")
 	if err != nil {
