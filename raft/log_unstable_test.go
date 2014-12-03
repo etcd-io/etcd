@@ -112,3 +112,78 @@ func TestMaybeLastIndex(t *testing.T) {
 		}
 	}
 }
+
+func TestUnstableMaybeTerm(t *testing.T) {
+	tests := []struct {
+		entries []pb.Entry
+		offset  uint64
+		snap    *pb.Snapshot
+		index   uint64
+
+		wok   bool
+		wterm uint64
+	}{
+		// term from entries
+		{
+			[]pb.Entry{{Index: 5, Term: 1}}, 5, nil,
+			5,
+			true, 1,
+		},
+		{
+			[]pb.Entry{{Index: 5, Term: 1}}, 5, nil,
+			6,
+			false, 0,
+		},
+		{
+			[]pb.Entry{{Index: 5, Term: 1}}, 5, nil,
+			4,
+			false, 0,
+		},
+		{
+			[]pb.Entry{{Index: 5, Term: 1}}, 5, &pb.Snapshot{Metadata: pb.SnapshotMetadata{Index: 4, Term: 1}},
+			5,
+			true, 1,
+		},
+		{
+			[]pb.Entry{{Index: 5, Term: 1}}, 5, &pb.Snapshot{Metadata: pb.SnapshotMetadata{Index: 4, Term: 1}},
+			6,
+			false, 0,
+		},
+		// term from snapshot
+		{
+			[]pb.Entry{{Index: 5, Term: 1}}, 5, &pb.Snapshot{Metadata: pb.SnapshotMetadata{Index: 4, Term: 1}},
+			4,
+			true, 1,
+		},
+		{
+			[]pb.Entry{}, 5, &pb.Snapshot{Metadata: pb.SnapshotMetadata{Index: 4, Term: 1}},
+			5,
+			false, 0,
+		},
+		{
+			[]pb.Entry{}, 5, &pb.Snapshot{Metadata: pb.SnapshotMetadata{Index: 4, Term: 1}},
+			4,
+			true, 1,
+		},
+		{
+			[]pb.Entry{}, 0, nil,
+			5,
+			false, 0,
+		},
+	}
+
+	for i, tt := range tests {
+		u := unstable{
+			entries:  tt.entries,
+			offset:   tt.offset,
+			snapshot: tt.snap,
+		}
+		term, ok := u.maybeTerm(tt.index)
+		if ok != tt.wok {
+			t.Errorf("#%d: ok = %t, want %t", i, ok, tt.wok)
+		}
+		if term != tt.wterm {
+			t.Errorf("#%d: term = %d, want %d", i, term, tt.wterm)
+		}
+	}
+}
