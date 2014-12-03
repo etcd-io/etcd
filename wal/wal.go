@@ -46,7 +46,6 @@ const (
 var (
 	ErrMetadataConflict = errors.New("wal: conflicting metadata found")
 	ErrFileNotFound     = errors.New("wal: file not found")
-	ErrIndexNotFound    = errors.New("wal: index not found in file")
 	ErrCRCMismatch      = errors.New("wal: crc mismatch")
 	crcTable            = crc32.MakeTable(crc32.Castagnoli)
 )
@@ -203,10 +202,6 @@ func (w *WAL) ReadAll() (metadata []byte, state raftpb.HardState, ents []raftpb.
 	if err != io.EOF {
 		state.Reset()
 		return nil, state, nil, err
-	}
-	if w.enti < w.ri {
-		state.Reset()
-		return nil, state, nil, ErrIndexNotFound
 	}
 
 	// close decoder, disable reading
