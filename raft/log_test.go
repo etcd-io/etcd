@@ -258,7 +258,7 @@ func TestLogMaybeAppend(t *testing.T) {
 			if gcommit != tt.wcommit {
 				t.Errorf("#%d: committed = %d, want %d", i, gcommit, tt.wcommit)
 			}
-			if gappend {
+			if gappend && len(tt.ents) != 0 {
 				gents := raftLog.slice(raftLog.lastIndex()-uint64(len(tt.ents))+1, raftLog.lastIndex()+1)
 				if !reflect.DeepEqual(tt.ents, gents) {
 					t.Errorf("%d: appended entries = %v, want %v", i, gents, tt.ents)
@@ -572,22 +572,59 @@ func TestIsOutOfBounds(t *testing.T) {
 		l.append(pb.Entry{Index: i + offset})
 	}
 
+	first := offset + 1
 	tests := []struct {
-		index uint64
-		w     bool
+		lo, hi uint64
+		wpainc bool
 	}{
-		{offset - 1, true},
-		{offset, true},
-		{offset + num/2, false},
-		{offset + num, false},
-		{offset + num + 1, true},
+		{
+			first - 2, first + 1,
+			true,
+		},
+		{
+			first - 1, first + 1,
+			true,
+		},
+		{
+			first, first,
+			false,
+		},
+		{
+			first + num/2, first + num/2,
+			false,
+		},
+		{
+			first + num - 1, first + num - 1,
+			false,
+		},
+		{
+			first + num, first + num,
+			false,
+		},
+		{
+			first + num, first + num + 1,
+			true,
+		},
+		{
+			first + num + 1, first + num + 1,
+			true,
+		},
 	}
 
 	for i, tt := range tests {
-		g := l.isOutOfBounds(tt.index)
-		if g != tt.w {
-			t.Errorf("#%d: isOutOfBounds = %v, want %v", i, g, tt.w)
-		}
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					if !tt.wpainc {
+						t.Errorf("%d: panic = %v, want %v: %v", i, true, false, r)
+					}
+				}
+			}()
+			l.mustCheckOutOfBounds(tt.lo, tt.hi)
+			if tt.wpainc {
+				t.Errorf("%d: panic = %v, want %v", i, false, true)
+			}
+		}()
 	}
 }
 
@@ -635,24 +672,31 @@ func TestSlice(t *testing.T) {
 	}
 
 	tests := []struct {
-		from uint64
-		to   uint64
-		w    []pb.Entry
+		from   uint64
+		to     uint64
+		w      []pb.Entry
+		wpanic bool
 	}{
-		{offset - 1, offset + 1, nil},
-		{offset, offset + 1, nil},
-		{offset + num/2, offset + num/2 + 1, []pb.Entry{{Index: offset + num/2, Term: offset + num/2}}},
-		{offset + num - 1, offset + num, []pb.Entry{{Index: offset + num - 1, Term: offset + num - 1}}},
-		{offset + num, offset + num + 1, nil},
-
-		{offset + num/2, offset + num/2, nil},
-		{offset + num/2, offset + num/2 - 1, nil},
+		{offset - 1, offset + 1, nil, true},
+		{offset, offset + 1, nil, true},
+		{offset + num/2, offset + num/2 + 1, []pb.Entry{{Index: offset + num/2, Term: offset + num/2}}, false},
+		{offset + num - 1, offset + num, []pb.Entry{{Index: offset + num - 1, Term: offset + num - 1}}, false},
+		{offset + num, offset + num + 1, nil, true},
 	}
 
 	for i, tt := range tests {
-		g := l.slice(tt.from, tt.to)
-		if !reflect.DeepEqual(g, tt.w) {
-			t.Errorf("#%d: from %d to %d = %v, want %v", i, tt.from, tt.to, g, tt.w)
-		}
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					if !tt.wpanic {
+						t.Errorf("%d: panic = %v, want %v: %v", i, true, false, r)
+					}
+				}
+			}()
+			g := l.slice(tt.from, tt.to)
+			if !reflect.DeepEqual(g, tt.w) {
+				t.Errorf("#%d: from %d to %d = %v, want %v", i, tt.from, tt.to, g, tt.w)
+			}
+		}()
 	}
 }

@@ -217,7 +217,12 @@ func (l *raftLog) term(i uint64) uint64 {
 	panic(err) // TODO(bdarnell)
 }
 
-func (l *raftLog) entries(i uint64) []pb.Entry { return l.slice(i, l.lastIndex()+1) }
+func (l *raftLog) entries(i uint64) []pb.Entry {
+	if i > l.lastIndex() {
+		return nil
+	}
+	return l.slice(i, l.lastIndex()+1)
+}
 
 // allEntries returns all entries in the log.
 func (l *raftLog) allEntries() []pb.Entry { return l.entries(l.firstIndex()) }
@@ -250,10 +255,8 @@ func (l *raftLog) restore(s pb.Snapshot) {
 
 // slice returns a slice of log entries from lo through hi-1, inclusive.
 func (l *raftLog) slice(lo uint64, hi uint64) []pb.Entry {
-	if lo >= hi {
-		return nil
-	}
-	if l.isOutOfBounds(lo) || l.isOutOfBounds(hi-1) {
+	l.mustCheckOutOfBounds(lo, hi)
+	if lo == hi {
 		return nil
 	}
 	var ents []pb.Entry
@@ -262,9 +265,8 @@ func (l *raftLog) slice(lo uint64, hi uint64) []pb.Entry {
 		if err == ErrCompacted {
 			// This should never fail because it has been checked before.
 			log.Panicf("entries[%d:%d) from storage is out of bound", lo, min(hi, l.unstable.offset))
-			return nil
 		} else if err == ErrUnavailable {
-			return nil
+			log.Panicf("entries[%d:%d) is unavailable from storage", lo, min(hi, l.unstable.offset))
 		} else if err != nil {
 			panic(err) // TODO(bdarnell)
 		}
@@ -277,9 +279,13 @@ func (l *raftLog) slice(lo uint64, hi uint64) []pb.Entry {
 	return ents
 }
 
-func (l *raftLog) isOutOfBounds(i uint64) bool {
-	if i < l.firstIndex() || i > l.lastIndex() {
-		return true
+// l.firstIndex <= lo <= hi <= l.firstIndex + len(l.entries)
+func (l *raftLog) mustCheckOutOfBounds(lo, hi uint64) {
+	if lo > hi {
+		log.Panicf("raft: invalid slice %d > %d", lo, hi)
 	}
-	return false
+	length := l.lastIndex() - l.firstIndex() + 1
+	if lo < l.firstIndex() || hi > l.firstIndex()+length {
+		log.Panicf("raft: slice[%d,%d) out of bound [%d,%d]", lo, hi, l.firstIndex(), l.lastIndex())
+	}
 }
