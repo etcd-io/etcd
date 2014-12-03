@@ -17,6 +17,7 @@
 package raft
 
 import (
+	"reflect"
 	"testing"
 
 	pb "github.com/coreos/etcd/raft/raftpb"
@@ -184,6 +185,110 @@ func TestUnstableMaybeTerm(t *testing.T) {
 		}
 		if term != tt.wterm {
 			t.Errorf("#%d: term = %d, want %d", i, term, tt.wterm)
+		}
+	}
+}
+
+func TestUnstableRestore(t *testing.T) {
+	u := unstable{
+		entries:  []pb.Entry{{Index: 5, Term: 1}},
+		offset:   5,
+		snapshot: &pb.Snapshot{Metadata: pb.SnapshotMetadata{Index: 4, Term: 1}},
+	}
+	s := pb.Snapshot{Metadata: pb.SnapshotMetadata{Index: 6, Term: 2}}
+	u.restore(s)
+
+	if u.offset != s.Metadata.Index+1 {
+		t.Errorf("offset = %d, want %d", u.offset, s.Metadata.Index+1)
+	}
+	if len(u.entries) != 0 {
+		t.Errorf("len = %d, want 0", len(u.entries))
+	}
+	if !reflect.DeepEqual(u.snapshot, &s) {
+		t.Errorf("snap = %v, want %v", u.snapshot, &s)
+	}
+}
+
+func TestUnstableStableTo(t *testing.T) {
+	tests := []struct {
+		entries     []pb.Entry
+		offset      uint64
+		snap        *pb.Snapshot
+		index, term uint64
+
+		woffset uint64
+		wlen    int
+	}{
+		{
+			[]pb.Entry{}, 0, nil,
+			5, 1,
+			0, 0,
+		},
+		{
+			[]pb.Entry{{Index: 5, Term: 1}}, 5, nil,
+			5, 1, // stable to the first entry
+			6, 0,
+		},
+		{
+			[]pb.Entry{{Index: 5, Term: 1}, {Index: 6, Term: 1}}, 5, nil,
+			5, 1, // stable to the first entry
+			6, 1,
+		},
+		{
+			[]pb.Entry{{Index: 6, Term: 2}}, 5, nil,
+			6, 1, // stable to the first entry and term mismatch
+			5, 1,
+		},
+		{
+			[]pb.Entry{{Index: 5, Term: 1}}, 5, nil,
+			4, 1, // stable to old entry
+			5, 1,
+		},
+		{
+			[]pb.Entry{{Index: 5, Term: 1}}, 5, nil,
+			4, 2, // stable to old entry
+			5, 1,
+		},
+		// with snapshot
+		{
+			[]pb.Entry{{Index: 5, Term: 1}}, 5, &pb.Snapshot{Metadata: pb.SnapshotMetadata{Index: 4, Term: 1}},
+			5, 1, // stable to the first entry
+			6, 0,
+		},
+		{
+			[]pb.Entry{{Index: 5, Term: 1}, {Index: 6, Term: 1}}, 5, &pb.Snapshot{Metadata: pb.SnapshotMetadata{Index: 4, Term: 1}},
+			5, 1, // stable to the first entry
+			6, 1,
+		},
+		{
+			[]pb.Entry{{Index: 6, Term: 2}}, 5, &pb.Snapshot{Metadata: pb.SnapshotMetadata{Index: 5, Term: 1}},
+			6, 1, // stable to the first entry and term mismatch
+			5, 1,
+		},
+		{
+			[]pb.Entry{{Index: 5, Term: 1}}, 5, &pb.Snapshot{Metadata: pb.SnapshotMetadata{Index: 4, Term: 1}},
+			4, 1, // stable to snapshot
+			5, 1,
+		},
+		{
+			[]pb.Entry{{Index: 5, Term: 2}}, 5, &pb.Snapshot{Metadata: pb.SnapshotMetadata{Index: 4, Term: 2}},
+			4, 1, // stable to old entry
+			5, 1,
+		},
+	}
+
+	for i, tt := range tests {
+		u := unstable{
+			entries:  tt.entries,
+			offset:   tt.offset,
+			snapshot: tt.snap,
+		}
+		u.stableTo(tt.index, tt.term)
+		if u.offset != tt.woffset {
+			t.Errorf("#%d: offset = %d, want %d", i, u.offset, tt.woffset)
+		}
+		if len(u.entries) != tt.wlen {
+			t.Errorf("#%d: len = %d, want %d", i, len(u.entries), tt.wlen)
 		}
 	}
 }
