@@ -127,22 +127,17 @@ func (u *unstable) truncateAndAppend(ents []pb.Entry) {
 }
 
 func (u *unstable) slice(lo uint64, hi uint64) []pb.Entry {
-	if lo >= hi {
-		return nil
-	}
-	if u.isOutOfBounds(lo) || u.isOutOfBounds(hi-1) {
-		return nil
-	}
+	u.mustCheckOutOfBounds(lo, hi)
 	return u.entries[lo-u.offset : hi-u.offset]
 }
 
-func (u *unstable) isOutOfBounds(i uint64) bool {
-	if len(u.entries) == 0 {
-		return true
+// u.offset <= lo <= hi <= u.offset+len(u.offset)
+func (u *unstable) mustCheckOutOfBounds(lo, hi uint64) {
+	if lo > hi {
+		log.Panicf("raft: invalid unstable.slice %d > %d", lo, hi)
 	}
-	last := u.offset + uint64(len(u.entries)) - 1
-	if i < u.offset || i > last {
-		return true
+	upper := u.offset + uint64(len(u.entries))
+	if lo < u.offset || hi > upper {
+		log.Panicf("raft: unstable.slice[%d,%d) out of bound [%d,%d]", lo, hi, u.offset, upper)
 	}
-	return false
 }
