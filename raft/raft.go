@@ -399,11 +399,14 @@ func (r *raft) campaign() {
 	r.becomeCandidate()
 	if r.q() == r.poll(r.id, true) {
 		r.becomeLeader()
+		return
 	}
 	for i := range r.prs {
 		if i == r.id {
 			continue
 		}
+		log.Printf("raft: %x [logterm: %d, index: %d] sent vote request to %x at term %d",
+			r.id, r.raftLog.lastTerm(), r.raftLog.lastIndex(), i, r.Term)
 		r.send(pb.Message{To: i, Type: pb.MsgVote, Index: r.raftLog.lastIndex(), LogTerm: r.raftLog.lastTerm()})
 	}
 }
@@ -413,7 +416,9 @@ func (r *raft) Step(m pb.Message) error {
 	defer func() { r.Commit = r.raftLog.committed }()
 
 	if m.Type == pb.MsgHup {
+		log.Printf("raft: %x is starting a new election at term %d", r.id, r.Term)
 		r.campaign()
+		return nil
 	}
 
 	switch {
@@ -424,9 +429,13 @@ func (r *raft) Step(m pb.Message) error {
 		if m.Type == pb.MsgVote {
 			lead = None
 		}
+		log.Printf("raft: %x [term: %d] received a %s message with higher term from %x [term: %d]",
+			r.id, r.Term, m.Type, m.From, m.Term)
 		r.becomeFollower(m.Term, lead)
 	case m.Term < r.Term:
 		// ignore
+		log.Printf("raft: %x [term: %d] ignored a %s message with lower term from %x [term: %d]",
+			r.id, r.Term, m.Type, m.From, m.Term)
 		return nil
 	}
 	r.step(r, m)
