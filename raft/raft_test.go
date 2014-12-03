@@ -1121,6 +1121,40 @@ func TestRestore(t *testing.T) {
 	}
 }
 
+func TestRestoreIgnoreSnapshot(t *testing.T) {
+	previousEnts := []pb.Entry{{Term: 1, Index: 1}, {Term: 1, Index: 2}, {Term: 1, Index: 3}}
+	commit := uint64(1)
+	storage := NewMemoryStorage()
+	sm := newRaft(1, []uint64{1, 2}, 10, 1, storage)
+	sm.raftLog.append(previousEnts...)
+	sm.raftLog.commitTo(commit)
+
+	s := pb.Snapshot{
+		Metadata: pb.SnapshotMetadata{
+			Index:     commit,
+			Term:      1,
+			ConfState: pb.ConfState{Nodes: []uint64{1, 2}},
+		},
+	}
+
+	// ignore snapshot
+	if ok := sm.restore(s); ok {
+		t.Errorf("restore = %t, want %t", ok, false)
+	}
+	if sm.raftLog.committed != commit {
+		t.Errorf("commit = %d, want %d", sm.raftLog.committed, commit)
+	}
+
+	// ignore snapshot and fast forward commit
+	s.Metadata.Index = commit + 1
+	if ok := sm.restore(s); ok {
+		t.Errorf("restore = %t, want %t", ok, false)
+	}
+	if sm.raftLog.committed != commit+1 {
+		t.Errorf("commit = %d, want %d", sm.raftLog.committed, commit+1)
+	}
+}
+
 func TestProvideSnap(t *testing.T) {
 	// restore the statemachin from a snapshot
 	// so it has a compacted log and a snapshot
