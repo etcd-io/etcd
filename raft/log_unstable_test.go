@@ -17,6 +17,7 @@
 package raft
 
 import (
+	"reflect"
 	"testing"
 
 	pb "github.com/coreos/etcd/raft/raftpb"
@@ -185,5 +186,25 @@ func TestUnstableMaybeTerm(t *testing.T) {
 		if term != tt.wterm {
 			t.Errorf("#%d: term = %d, want %d", i, term, tt.wterm)
 		}
+	}
+}
+
+func TestUnstableRestore(t *testing.T) {
+	u := unstable{
+		entries:  []pb.Entry{{Index: 5, Term: 1}},
+		offset:   5,
+		snapshot: &pb.Snapshot{Metadata: pb.SnapshotMetadata{Index: 4, Term: 1}},
+	}
+	s := pb.Snapshot{Metadata: pb.SnapshotMetadata{Index: 6, Term: 2}}
+	u.restore(s)
+
+	if u.offset != s.Metadata.Index+1 {
+		t.Errorf("offset = %d, want %d", u.offset != s.Metadata.Index+1)
+	}
+	if len(u.entries) != 0 {
+		t.Errorf("len = %d, want 0", len(u.entries), 0)
+	}
+	if !reflect.DeepEqual(u.snapshot, &s) {
+		t.Errorf("snap = %v, want %v", u.snapshot, &s)
 	}
 }
