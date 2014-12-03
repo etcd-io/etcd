@@ -292,3 +292,59 @@ func TestUnstableStableTo(t *testing.T) {
 		}
 	}
 }
+
+func TestUnstableTruncateAndAppend(t *testing.T) {
+	tests := []struct {
+		entries  []pb.Entry
+		offset   uint64
+		snap     *pb.Snapshot
+		toappend []pb.Entry
+
+		woffset  uint64
+		wentries []pb.Entry
+	}{
+		// append to the end
+		{
+			[]pb.Entry{{Index: 5, Term: 1}}, 5, nil,
+			[]pb.Entry{{Index: 6, Term: 1}, {Index: 7, Term: 1}},
+			5, []pb.Entry{{Index: 5, Term: 1}, {Index: 6, Term: 1}, {Index: 7, Term: 1}},
+		},
+		// replace the unstable entries
+		{
+			[]pb.Entry{{Index: 5, Term: 1}}, 5, nil,
+			[]pb.Entry{{Index: 5, Term: 2}, {Index: 6, Term: 2}},
+			5, []pb.Entry{{Index: 5, Term: 2}, {Index: 6, Term: 2}},
+		},
+		{
+			[]pb.Entry{{Index: 5, Term: 1}}, 5, nil,
+			[]pb.Entry{{Index: 4, Term: 2}, {Index: 5, Term: 2}, {Index: 6, Term: 2}},
+			4, []pb.Entry{{Index: 4, Term: 2}, {Index: 5, Term: 2}, {Index: 6, Term: 2}},
+		},
+		// truncate the existing entries and append
+		{
+			[]pb.Entry{{Index: 5, Term: 1}, {Index: 6, Term: 1}, {Index: 7, Term: 1}}, 5, nil,
+			[]pb.Entry{{Index: 6, Term: 2}},
+			5, []pb.Entry{{Index: 5, Term: 1}, {Index: 6, Term: 2}},
+		},
+		{
+			[]pb.Entry{{Index: 5, Term: 1}, {Index: 6, Term: 1}, {Index: 7, Term: 1}}, 5, nil,
+			[]pb.Entry{{Index: 7, Term: 2}, {Index: 8, Term: 2}},
+			5, []pb.Entry{{Index: 5, Term: 1}, {Index: 6, Term: 1}, {Index: 7, Term: 2}, {Index: 8, Term: 2}},
+		},
+	}
+
+	for i, tt := range tests {
+		u := unstable{
+			entries:  tt.entries,
+			offset:   tt.offset,
+			snapshot: tt.snap,
+		}
+		u.truncateAndAppend(tt.toappend)
+		if u.offset != tt.woffset {
+			t.Errorf("#%d: offset = %d, want %d", i, u.offset, tt.woffset)
+		}
+		if !reflect.DeepEqual(u.entries, tt.wentries) {
+			t.Errorf("#%d: entries = %v, want %v", i, u.entries, tt.wentries)
+		}
+	}
+}
