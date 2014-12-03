@@ -66,3 +66,49 @@ func TestUnstableMaybeFirstIndex(t *testing.T) {
 		}
 	}
 }
+
+func TestMaybeLastIndex(t *testing.T) {
+	tests := []struct {
+		entries []pb.Entry
+		offset  uint64
+		snap    *pb.Snapshot
+
+		wok    bool
+		windex uint64
+	}{
+		// last in entries
+		{
+			[]pb.Entry{{Index: 5, Term: 1}}, 5, nil,
+			true, 5,
+		},
+		{
+			[]pb.Entry{{Index: 5, Term: 1}}, 5, &pb.Snapshot{Metadata: pb.SnapshotMetadata{Index: 4, Term: 1}},
+			true, 5,
+		},
+		// last in snapshot
+		{
+			[]pb.Entry{}, 5, &pb.Snapshot{Metadata: pb.SnapshotMetadata{Index: 4, Term: 1}},
+			true, 4,
+		},
+		// empty unstable
+		{
+			[]pb.Entry{}, 0, nil,
+			false, 0,
+		},
+	}
+
+	for i, tt := range tests {
+		u := unstable{
+			entries:  tt.entries,
+			offset:   tt.offset,
+			snapshot: tt.snap,
+		}
+		index, ok := u.maybeLastIndex()
+		if ok != tt.wok {
+			t.Errorf("#%d: ok = %t, want %t", i, ok, tt.wok)
+		}
+		if index != tt.windex {
+			t.Errorf("#%d: index = %d, want %d", i, index, tt.windex)
+		}
+	}
+}
