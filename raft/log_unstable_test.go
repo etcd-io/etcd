@@ -199,10 +199,10 @@ func TestUnstableRestore(t *testing.T) {
 	u.restore(s)
 
 	if u.offset != s.Metadata.Index+1 {
-		t.Errorf("offset = %d, want %d", u.offset != s.Metadata.Index+1)
+		t.Errorf("offset = %d, want %d", u.offset, s.Metadata.Index+1)
 	}
 	if len(u.entries) != 0 {
-		t.Errorf("len = %d, want 0", len(u.entries), 0)
+		t.Errorf("len = %d, want 0", len(u.entries))
 	}
 	if !reflect.DeepEqual(u.snapshot, &s) {
 		t.Errorf("snap = %v, want %v", u.snapshot, &s)
