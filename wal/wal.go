@@ -56,8 +56,9 @@ var (
 // A just opened WAL is in read mode, and ready for reading records.
 // The WAL will be ready for appending after reading out all the previous records.
 type WAL struct {
-	dir      string // the living directory of the underlay files
-	metadata []byte // metadata recorded at the head of each WAL
+	dir      string           // the living directory of the underlay files
+	metadata []byte           // metadata recorded at the head of each WAL
+	state    raftpb.HardState // hardstate recorded at the head of WAL
 
 	ri      uint64   // index of entry to start reading
 	decoder *decoder // decoder to decode records
@@ -236,7 +237,10 @@ func (w *WAL) Cut() error {
 	if err := w.saveCrc(prevCrc); err != nil {
 		return err
 	}
-	return w.encoder.encode(&walpb.Record{Type: metadataType, Data: w.metadata})
+	if err := w.encoder.encode(&walpb.Record{Type: metadataType, Data: w.metadata}); err != nil {
+		return err
+	}
+	return w.SaveState(&w.state)
 }
 
 func (w *WAL) sync() error {
@@ -274,6 +278,7 @@ func (w *WAL) SaveState(s *raftpb.HardState) error {
 	if raft.IsEmptyHardState(*s) {
 		return nil
 	}
+	w.state = *s
 	b := pbutil.MustMarshal(s)
 	rec := &walpb.Record{Type: stateType, Data: b}
 	return w.encoder.encode(rec)

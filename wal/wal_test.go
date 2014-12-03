@@ -142,10 +142,13 @@ func TestCut(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer w.Close()
 
 	// TODO(unihorn): remove this when cut can operate on an empty file
 	if err := w.SaveEntry(&raftpb.Entry{}); err != nil {
+		t.Fatal(err)
+	}
+	state := raftpb.HardState{Term: 1}
+	if err := w.SaveState(&state); err != nil {
 		t.Fatal(err)
 	}
 	if err := w.Cut(); err != nil {
@@ -166,6 +169,25 @@ func TestCut(t *testing.T) {
 	wname = walName(2, 2)
 	if g := path.Base(w.f.Name()); g != wname {
 		t.Errorf("name = %s, want %s", g, wname)
+	}
+	w.Close()
+
+	// check the state in the last WAL
+	f, err := os.Open(path.Join(p, wname))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	w = &WAL{
+		decoder: newDecoder(f),
+		ri:      2,
+	}
+	_, gst, _, err := w.ReadAll()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(gst, state) {
+		t.Errorf("state = %+v, want %+v", gst, state)
 	}
 }
 
