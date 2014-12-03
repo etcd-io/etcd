@@ -111,6 +111,8 @@ type Storage interface {
 	// remove it in this interface.
 	// Cut cuts out a new wal file for saving new state and entries.
 	Cut() error
+	// Close closes the Storage and performs finalization.
+	Close() error
 }
 
 type Server interface {
@@ -396,6 +398,9 @@ func (s *EtcdServer) run() {
 	defer func() {
 		s.node.Stop()
 		s.sendhub.Stop()
+		if err := s.storage.Close(); err != nil {
+			log.Panicf("etcdserver: close storage error: %v", err)
+		}
 		close(s.done)
 	}()
 	for {
