@@ -628,6 +628,9 @@ func (r *raft) promotable() bool {
 }
 
 func (r *raft) loadState(state pb.HardState) {
+	if state.Commit < r.raftLog.committed || state.Commit > r.raftLog.lastIndex() {
+		log.Panicf("raft: %x state.commit %d is out of range [%d, %d]", r.id, state.Commit, r.raftLog.committed, r.raftLog.lastIndex())
+	}
 	r.raftLog.committed = state.Commit
 	r.Term = state.Term
 	r.Vote = state.Vote
