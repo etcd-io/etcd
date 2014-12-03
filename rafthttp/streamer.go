@@ -39,24 +39,26 @@ const (
 
 type WriteFlusher interface {
 	io.Writer
-	http.Flusher
+	Flush() error
 }
 
 type streamServer struct {
-	to   types.ID
-	term uint64
-	fs   *stats.FollowerStats
-	q    chan []raftpb.Entry
-	done chan struct{}
+	closer io.Closer
+	to     types.ID
+	term   uint64
+	fs     *stats.FollowerStats
+	q      chan []raftpb.Entry
+	done   chan struct{}
 }
 
-func startStreamServer(w WriteFlusher, to types.ID, term uint64, fs *stats.FollowerStats) *streamServer {
+func startStreamServer(w WriteFlusher, closer io.Closer, to types.ID, term uint64, fs *stats.FollowerStats) *streamServer {
 	s := &streamServer{
-		to:   to,
-		term: term,
-		fs:   fs,
-		q:    make(chan []raftpb.Entry, streamBufSize),
-		done: make(chan struct{}),
+		closer: closer,
+		to:     to,
+		term:   term,
+		fs:     fs,
+		q:      make(chan []raftpb.Entry, streamBufSize),
+		done:   make(chan struct{}),
 	}
 	go s.handle(w)
 	log.Printf("rafthttp: stream server to %s at term %d starts", to, term)
@@ -79,6 +81,7 @@ func (s *streamServer) send(ents []raftpb.Entry) error {
 }
 
 func (s *streamServer) stop() {
+	s.closer.Close()
 	close(s.q)
 	<-s.done
 }
@@ -98,7 +101,10 @@ func (s *streamServer) handle(w WriteFlusher) {
 			log.Printf("rafthttp: write ents error: %v", err)
 			return
 		}
-		w.Flush()
+		if err := w.Flush(); err != nil {
+			log.Printf("rafthttp: flush error: %v", err)
+			return
+		}
 		s.fs.Succ(time.Since(start))
 	}
 }

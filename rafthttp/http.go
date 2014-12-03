@@ -17,6 +17,7 @@
 package rafthttp
 
 import (
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -165,14 +166,25 @@ func (h *streamHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Use identity transfer encoding because we hijack and manage underlying
+	// connections ourselves.
+	w.Header().Set("Transfer-Encoding", "identity")
 	w.WriteHeader(http.StatusOK)
 	w.(http.Flusher).Flush()
 
-	done, err := s.StartStreaming(w.(WriteFlusher), from, term)
+	hj, ok := w.(http.Hijacker)
+	if !ok {
+		log.Panicf("rafthttp: streaming server should support hijacker")
+	}
+	conn, bufrw, err := hj.Hijack()
+	if err != nil {
+		log.Panicf("rafthttp: streaming server should support getting conn from hijacker")
+	}
+
+	done, err := s.StartStreaming(bufrw, conn.(io.Closer), from, term)
+	// TODO: if this could fail, it should be checked before we respond 200 status.
 	if err != nil {
 		log.Printf("rafthttp: streaming request ignored due to start streaming error: %v", err)
-		// TODO: consider http status and info here
-		http.Error(w, "error enable streaming", http.StatusInternalServerError)
 		return
 	}
 	<-done
