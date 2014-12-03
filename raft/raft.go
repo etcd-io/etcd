@@ -191,9 +191,9 @@ func (r *raft) String() string {
 
 func (r *raft) poll(id uint64, v bool) (granted int) {
 	if v {
-		log.Printf("raft: %x received vote from %x at term %x", r.id, id, r.Term)
+		log.Printf("raft: %x received vote from %x at term %d", r.id, id, r.Term)
 	} else {
-		log.Printf("raft: %x received vote rejection from %x at term %x", r.id, id, r.Term)
+		log.Printf("raft: %x received vote rejection from %x at term %d", r.id, id, r.Term)
 	}
 	if _, ok := r.votes[id]; !ok {
 		r.votes[id] = v
