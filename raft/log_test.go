@@ -634,7 +634,7 @@ func TestTerm(t *testing.T) {
 	num := uint64(100)
 
 	storage := NewMemoryStorage()
-	storage.ApplySnapshot(pb.Snapshot{Metadata: pb.SnapshotMetadata{Index: offset}})
+	storage.ApplySnapshot(pb.Snapshot{Metadata: pb.SnapshotMetadata{Index: offset, Term: 1}})
 	l := newLog(storage)
 	for i = 1; i < num; i++ {
 		l.append(pb.Entry{Index: offset + i, Term: i})
@@ -645,10 +645,40 @@ func TestTerm(t *testing.T) {
 		w     uint64
 	}{
 		{offset - 1, 0},
-		{offset, 0},
+		{offset, 1},
 		{offset + num/2, num / 2},
 		{offset + num - 1, num - 1},
 		{offset + num, 0},
+	}
+
+	for i, tt := range tests {
+		term := l.term(tt.index)
+		if !reflect.DeepEqual(term, tt.w) {
+			t.Errorf("#%d: at = %d, want %d", i, term, tt.w)
+		}
+	}
+}
+
+func TestTermWithUnstableSnapshot(t *testing.T) {
+	storagesnapi := uint64(100)
+	unstablesnapi := storagesnapi + 5
+
+	storage := NewMemoryStorage()
+	storage.ApplySnapshot(pb.Snapshot{Metadata: pb.SnapshotMetadata{Index: storagesnapi, Term: 1}})
+	l := newLog(storage)
+	l.restore(pb.Snapshot{Metadata: pb.SnapshotMetadata{Index: unstablesnapi, Term: 1}})
+
+	tests := []struct {
+		index uint64
+		w     uint64
+	}{
+		// cannot get term from storage
+		{storagesnapi, 0},
+		// cannot get term from the gap between storage ents and unstable snapshot
+		{storagesnapi + 1, 0},
+		{unstablesnapi - 1, 0},
+		// get term from unstable snapshot index
+		{unstablesnapi, 1},
 	}
 
 	for i, tt := range tests {

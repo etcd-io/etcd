@@ -199,7 +199,9 @@ func (l *raftLog) stableSnapTo(i uint64) { l.unstable.stableSnapTo(i) }
 func (l *raftLog) lastTerm() uint64 { return l.term(l.lastIndex()) }
 
 func (l *raftLog) term(i uint64) uint64 {
-	if i > l.lastIndex() {
+	// the valid term range is [index of dummy entry, last index]
+	dummyIndex := l.firstIndex() - 1
+	if i < dummyIndex || i > l.lastIndex() {
 		return 0
 	}
 
