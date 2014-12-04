@@ -770,27 +770,13 @@ func TestV2Watch(t *testing.T) {
 	u := cl.URL(0)
 	tc := NewTestClient()
 
-	var watchResp *http.Response
-	c := make(chan bool)
-	go func() {
-		watchResp, _ = tc.Get(fmt.Sprintf("%s%s", u, "/v2/keys/foo/bar?wait=true"))
-		c <- true
-	}()
-
-	// Make sure response didn't fire early.
-	time.Sleep(1 * time.Millisecond)
+	watchResp, _ := tc.Get(fmt.Sprintf("%s%s", u, "/v2/keys/foo/bar?wait=true"))
 
 	// Set a value.
 	v := url.Values{}
 	v.Set("value", "XXX")
 	resp, _ := tc.PutForm(fmt.Sprintf("%s%s", u, "/v2/keys/foo/bar"), v)
 	resp.Body.Close()
-
-	select {
-	case <-c:
-	case <-time.After(time.Millisecond):
-		t.Fatal("cannot get watch result")
-	}
 
 	body := tc.ReadBodyJSON(watchResp)
 	w := map[string]interface{}{
