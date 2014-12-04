@@ -1530,6 +1530,7 @@ func (p *storageRecorder) SaveSnap(st raftpb.Snapshot) error {
 	}
 	return nil
 }
+func (p *storageRecorder) Close() error { return nil }
 
 type readyNode struct {
 	readyc chan raft.Ready
