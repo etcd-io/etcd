@@ -235,7 +235,7 @@ func (r *raft) sendAppend(to uint64) {
 		m.Snapshot = snapshot
 		sindex, sterm := snapshot.Metadata.Index, snapshot.Metadata.Term
 		log.Printf("raft: %x [firstindex: %d, commit: %d] sent snapshot[index: %d, term: %d] to %x [match: %d, next: %d]",
-			r.id, r.raftLog.firstIndex(), r.Commit, to, sindex, sterm, pr.match, pr.next)
+			r.id, r.raftLog.firstIndex(), r.Commit, sindex, sterm, to, pr.match, pr.next)
 	} else {
 		m.Type = pb.MsgApp
 		m.Index = pr.next - 1
