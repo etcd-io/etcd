@@ -30,5 +30,5 @@ func TestUpgradeMember(t *testing.T) {
 
 	c.Launch(t)
 	defer c.Terminate(t)
-	clusterMustProgress(t, c)
+	clusterMustProgress(t, c.Members)
 }
