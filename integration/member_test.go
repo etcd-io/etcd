@@ -4,7 +4,23 @@ import (
 	"io/ioutil"
 	"os"
 	"testing"
+	"time"
 )
+
+func TestPauseMember(t *testing.T) {
+	defer afterTest(t)
+	c := NewCluster(t, 5)
+	c.Launch(t)
+	defer c.Terminate(t)
+
+	for i := 0; i < 5; i++ {
+		c.Members[i].Pause()
+		time.Sleep(20 * tickDuration)
+		c.Members[i].Resume()
+	}
+	c.waitLeader(t)
+	clusterMustProgress(t, c)
+}
 
 func TestRestartMember(t *testing.T) {
 	defer afterTest(t)

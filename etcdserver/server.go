@@ -90,16 +90,6 @@ type Response struct {
 	err     error
 }
 
-type SendHub interface {
-	rafthttp.SenderFinder
-	Send(m []raftpb.Message)
-	Add(m *Member)
-	Remove(id types.ID)
-	Update(m *Member)
-	Stop()
-	ShouldStopNotify() <-chan struct{}
-}
-
 type Storage interface {
 	// Save function saves ents and state to the underlying stable storage.
 	// Save MUST block until st and ents are on stable storage.
@@ -858,6 +848,17 @@ func (s *EtcdServer) snapshot(snapi uint64, snapnodes []uint64) {
 		log.Fatalf("etcdserver: save snapshot error: %v", err)
 	}
 	log.Printf("etcdserver: saved snapshot at index %d", snap.Metadata.Index)
+}
+
+// for testing
+func (s *EtcdServer) PauseSending() {
+	hub := s.sendhub.(*sendHub)
+	hub.pause()
+}
+
+func (s *EtcdServer) ResumeSending() {
+	hub := s.sendhub.(*sendHub)
+	hub.resume()
 }
 
 // checkClientURLsEmptyFromPeers does its best to get the cluster from peers,

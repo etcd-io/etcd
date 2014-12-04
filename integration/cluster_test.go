@@ -34,6 +34,7 @@ import (
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/etcdhttp"
 	"github.com/coreos/etcd/etcdserver/etcdhttp/httptypes"
+	"github.com/coreos/etcd/pkg/testutil"
 	"github.com/coreos/etcd/pkg/transport"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/rafthttp"
@@ -391,8 +392,9 @@ type member struct {
 	etcdserver.ServerConfig
 	PeerListeners, ClientListeners []net.Listener
 
-	s   *etcdserver.EtcdServer
-	hss []*httptest.Server
+	raftHandler *testutil.PauseableHandler
+	s           *etcdserver.EtcdServer
+	hss         []*httptest.Server
 }
 
 func mustNewMember(t *testing.T, name string) *member {
@@ -469,10 +471,12 @@ func (m *member) Launch() error {
 	m.s.SyncTicker = time.Tick(500 * time.Millisecond)
 	m.s.Start()
 
+	m.raftHandler = &testutil.PauseableHandler{Next: etcdhttp.NewPeerHandler(m.s)}
+
 	for _, ln := range m.PeerListeners {
 		hs := &httptest.Server{
 			Listener: ln,
-			Config:   &http.Server{Handler: etcdhttp.NewPeerHandler(m.s)},
+			Config:   &http.Server{Handler: m.raftHandler},
 		}
 		hs.Start()
 		m.hss = append(m.hss, hs)
@@ -486,6 +490,16 @@ func (m *member) Launch() error {
 		m.hss = append(m.hss, hs)
 	}
 	return nil
+}
+
+func (m *member) Pause() {
+	m.raftHandler.Pause()
+	m.s.PauseSending()
+}
+
+func (m *member) Resume() {
+	m.raftHandler.Resume()
+	m.s.ResumeSending()
 }
 
 // Stop stops the member, but the data dir of the member is preserved.

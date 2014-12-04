@@ -51,6 +51,13 @@ type Sender interface {
 	// Stop performs any necessary finalization and terminates the Sender
 	// elegantly.
 	Stop()
+
+	// Pause pauses the sender. The sender will simply drops all incoming
+	// messages without retruning an error.
+	Pause()
+
+	// Resume resumes a paused sender.
+	Resume()
 }
 
 func NewSender(tr http.RoundTripper, u string, cid types.ID, p Processor, fs *stats.FollowerStats, shouldstop chan struct{}) *sender {
@@ -85,8 +92,9 @@ type sender struct {
 	strmSrvMu sync.Mutex
 	q         chan []byte
 
-	mu sync.RWMutex
-	wg sync.WaitGroup
+	paused bool
+	mu     sync.RWMutex
+	wg     sync.WaitGroup
 }
 
 func (s *sender) StartStreaming(w WriteFlusher, to types.ID, term uint64) (<-chan struct{}, error) {
@@ -112,6 +120,13 @@ func (s *sender) Update(u string) {
 
 // TODO (xiangli): reasonable retry logic
 func (s *sender) Send(m raftpb.Message) error {
+	s.mu.RLock()
+	pause := s.paused
+	s.mu.RUnlock()
+	if pause {
+		return nil
+	}
+
 	s.maybeStopStream(m.Term)
 	if shouldInitStream(m) && !s.hasStreamClient() {
 		s.initStream(types.ID(m.From), types.ID(m.To), m.Term)
@@ -150,6 +165,18 @@ func (s *sender) Stop() {
 	if s.strmCln != nil {
 		s.strmCln.stop()
 	}
+}
+
+func (s *sender) Pause() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.paused = true
+}
+
+func (s *sender) Resume() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.paused = false
 }
 
 func (s *sender) maybeStopStream(term uint64) {
