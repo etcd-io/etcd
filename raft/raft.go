@@ -262,7 +262,7 @@ func (r *raft) sendHeartbeat(to uint64) {
 	commit := min(r.prs[to].match, r.raftLog.committed)
 	m := pb.Message{
 		To:     to,
-		Type:   pb.MsgApp,
+		Type:   pb.MsgHeartbeat,
 		Commit: commit,
 	}
 	r.send(m)
@@ -501,9 +501,6 @@ func stepLeader(r *raft, m pb.Message) {
 		r.appendEntry(e)
 		r.bcastAppend()
 	case pb.MsgAppResp:
-		if m.Index == 0 {
-			return
-		}
 		if m.Reject {
 			log.Printf("raft: %x received msgApp rejection from %x for index %d",
 				r.id, m.From, m.Index)
@@ -530,6 +527,9 @@ func stepCandidate(r *raft, m pb.Message) {
 	case pb.MsgApp:
 		r.becomeFollower(r.Term, m.From)
 		r.handleAppendEntries(m)
+	case pb.MsgHeartbeat:
+		r.becomeFollower(r.Term, m.From)
+		r.handleHeartbeat(m)
 	case pb.MsgSnap:
 		r.becomeFollower(m.Term, m.From)
 		r.handleSnapshot(m)
@@ -561,11 +561,11 @@ func stepFollower(r *raft, m pb.Message) {
 	case pb.MsgApp:
 		r.elapsed = 0
 		r.lead = m.From
-		if m.LogTerm == 0 && m.Index == 0 && len(m.Entries) == 0 {
-			r.handleHeartbeat(m)
-		} else {
-			r.handleAppendEntries(m)
-		}
+		r.handleAppendEntries(m)
+	case pb.MsgHeartbeat:
+		r.elapsed = 0
+		r.lead = m.From
+		r.handleHeartbeat(m)
 	case pb.MsgSnap:
 		r.elapsed = 0
 		r.handleSnapshot(m)

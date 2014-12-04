@@ -997,8 +997,8 @@ func TestBcastBeat(t *testing.T) {
 		3: min(sm.raftLog.committed, sm.prs[3].match),
 	}
 	for i, m := range msgs {
-		if m.Type != pb.MsgApp {
-			t.Fatalf("#%d: type = %v, want = %v", i, m.Type, pb.MsgApp)
+		if m.Type != pb.MsgHeartbeat {
+			t.Fatalf("#%d: type = %v, want = %v", i, m.Type, pb.MsgHeartbeat)
 		}
 		if m.Index != 0 {
 			t.Fatalf("#%d: prevIndex = %d, want %d", i, m.Index, 0)
@@ -1052,8 +1052,8 @@ func TestRecvMsgBeat(t *testing.T) {
 			t.Errorf("%d: len(msgs) = %d, want %d", i, len(msgs), tt.wMsg)
 		}
 		for _, m := range msgs {
-			if m.Type != pb.MsgApp {
-				t.Errorf("%d: msg.type = %v, want %v", i, m.Type, pb.MsgApp)
+			if m.Type != pb.MsgHeartbeat {
+				t.Errorf("%d: msg.type = %v, want %v", i, m.Type, pb.MsgHeartbeat)
 			}
 		}
 	}
@@ -1377,9 +1377,9 @@ func TestRaftNodes(t *testing.T) {
 }
 
 func ents(terms ...uint64) *raft {
-	ents := []pb.Entry{}
+	ents := []pb.Entry{{}}
 	for i, term := range terms {
-		ents = append(ents, pb.Entry{Index: uint64(i), Term: term})
+		ents = append(ents, pb.Entry{Index: uint64(i + 1), Term: term})
 	}
 
 	sm := &raft{
