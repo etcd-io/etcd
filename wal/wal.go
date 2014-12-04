@@ -240,7 +240,10 @@ func (w *WAL) Cut() error {
 	if err := w.encoder.encode(&walpb.Record{Type: metadataType, Data: w.metadata}); err != nil {
 		return err
 	}
-	return w.SaveState(&w.state)
+	if err := w.SaveState(&w.state); err != nil {
+		return err
+	}
+	return w.sync()
 }
 
 func (w *WAL) sync() error {

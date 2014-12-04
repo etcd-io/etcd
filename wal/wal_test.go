@@ -131,6 +131,7 @@ func TestOpenAtIndex(t *testing.T) {
 	}
 }
 
+// TODO: split it into smaller tests for better readability
 func TestCut(t *testing.T) {
 	p, err := ioutil.TempDir(os.TempDir(), "waltest")
 	if err != nil {
@@ -142,6 +143,7 @@ func TestCut(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer w.Close()
 
 	// TODO(unihorn): remove this when cut can operate on an empty file
 	if err := w.SaveEntry(&raftpb.Entry{}); err != nil {
@@ -170,19 +172,20 @@ func TestCut(t *testing.T) {
 	if g := path.Base(w.f.Name()); g != wname {
 		t.Errorf("name = %s, want %s", g, wname)
 	}
-	w.Close()
 
 	// check the state in the last WAL
+	// We do check before closing the WAL to ensure that Cut syncs the data
+	// into the disk.
 	f, err := os.Open(path.Join(p, wname))
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer f.Close()
-	w = &WAL{
+	nw := &WAL{
 		decoder: newDecoder(f),
 		ri:      2,
 	}
-	_, gst, _, err := w.ReadAll()
+	_, gst, _, err := nw.ReadAll()
 	if err != nil {
 		t.Fatal(err)
 	}
