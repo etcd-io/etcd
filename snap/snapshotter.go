@@ -124,7 +124,7 @@ func loadSnap(dir, name string) (*raftpb.Snapshot, error) {
 }
 
 // snapNames returns the filename of the snapshots in logical time order (from newest to oldest).
-// If there is no avaliable snapshots, an ErrNoSnapshot will be returned.
+// If there is no available snapshots, an ErrNoSnapshot will be returned.
 func (s *Snapshotter) snapNames() ([]string, error) {
 	dir, err := os.Open(s.dir)
 	if err != nil {

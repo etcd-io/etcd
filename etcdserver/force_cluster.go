@@ -35,7 +35,7 @@ func restartAsStandaloneNode(cfg *ServerConfig, index uint64, snapshot *raftpb.S
 	// discard the previously uncommitted entries
 	for i, ent := range ents {
 		if ent.Index > st.Commit {
-			log.Printf("etcdserver: discarding %d uncommited WAL entries ", len(ents)-i)
+			log.Printf("etcdserver: discarding %d uncommitted WAL entries ", len(ents)-i)
 			ents = ents[:i]
 			break
 		}

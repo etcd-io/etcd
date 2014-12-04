@@ -305,7 +305,7 @@ func TestUnmarshalSuccessfulResponse(t *testing.T) {
 			t.Errorf("#%d: received res==%v, but expected res==%v", i, res, tt.res)
 			continue
 		} else if tt.res == nil {
-			// expected and succesfully got nil response
+			// expected and successfully got nil response
 			continue
 		}
 

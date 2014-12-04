@@ -6,7 +6,7 @@ v0.4.6
 * Various documentation improvements (#907, #882)
 
 v0.4.5
-* Flush headers immediatly on `wait=true` requests (#877)
+* Flush headers immediately on `wait=true` requests (#877)
 * Add `ETCD_HTTP_READ_TIMEOUT` and `ETCD_HTTP_WRITE_TIMEOUT` (#880)
 * Add `ETCDCTL_PEERS` configuration to etcdctl (#95)
 * etcdctl takes stdin for mk (#91)

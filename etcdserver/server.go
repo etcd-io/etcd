@@ -107,7 +107,7 @@ type Storage interface {
 	// SaveSnap function saves snapshot to the underlying stable storage.
 	SaveSnap(snap raftpb.Snapshot) error
 
-	// TODO: WAL should be able to control cut itself. After implement self-controled cut,
+	// TODO: WAL should be able to control cut itself. After implement self-controlled cut,
 	// remove it in this interface.
 	// Cut cuts out a new wal file for saving new state and entries.
 	Cut() error

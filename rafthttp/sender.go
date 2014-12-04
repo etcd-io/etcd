@@ -42,7 +42,7 @@ const (
 
 type Sender interface {
 	// StartStreaming enables streaming in the sender using the given writer,
-	// which provides a fast and effecient way to send appendEntry messages.
+	// which provides a fast and efficient way to send appendEntry messages.
 	StartStreaming(w WriteFlusher, to types.ID, term uint64) (done <-chan struct{}, err error)
 	Update(u string)
 	// Send sends the data to the remote node. It is always non-blocking.

@@ -358,7 +358,7 @@ func TestNodeRestart(t *testing.T) {
 
 	want := Ready{
 		HardState: emptyState,
-		// commit upto index commit index in st
+		// commit up to index commit index in st
 		CommittedEntries: entries[:st.Commit],
 	}
 
@@ -393,7 +393,7 @@ func TestNodeRestartFromSnapshot(t *testing.T) {
 
 	want := Ready{
 		HardState: emptyState,
-		// commit upto index commit index in st
+		// commit up to index commit index in st
 		CommittedEntries: entries,
 	}
 
