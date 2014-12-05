@@ -62,24 +62,6 @@ func (f *IgnoredFlag) String() string {
 	return ""
 }
 
-func UsageWithIgnoredFlagsFunc(fs *flag.FlagSet, ignore []string) func() {
-	iMap := make(map[string]struct{}, len(ignore))
-	for _, name := range ignore {
-		iMap[name] = struct{}{}
-	}
-
-	return func() {
-		fs.VisitAll(func(f *flag.Flag) {
-			if _, ok := iMap[f.Name]; ok {
-				return
-			}
-
-			format := "  -%s=%s: %s\n"
-			fmt.Fprintf(os.Stderr, format, f.Name, f.DefValue, f.Usage)
-		})
-	}
-}
-
 // SetFlagsFromEnv parses all registered flags in the given flagset,
 // and if they are not already set it attempts to set their values from
 // environment variables. Environment variables take the name of the flag but
