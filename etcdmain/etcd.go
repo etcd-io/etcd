@@ -105,6 +105,11 @@ var (
 )
 
 func init() {
+	fs.Usage = func() {
+		fmt.Println(usageline)
+		fmt.Println(flagsline)
+	}
+
 	fs.Var(clusterStateFlag, "initial-cluster-state", "Initial cluster configuration for bootstrapping")
 	if err := clusterStateFlag.Set(clusterStateFlagNew); err != nil {
 		// Should never happen.
@@ -152,7 +157,6 @@ func init() {
 }
 
 func Main() {
-	fs.Usage = flags.UsageWithIgnoredFlagsFunc(fs, ignored)
 	perr := fs.Parse(os.Args[1:])
 	switch perr {
 	case nil:
