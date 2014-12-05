@@ -4,7 +4,6 @@ import (
 	"io/ioutil"
 	"os"
 	"testing"
-	"time"
 )
 
 func TestPauseMember(t *testing.T) {
@@ -15,11 +14,14 @@ func TestPauseMember(t *testing.T) {
 
 	for i := 0; i < 5; i++ {
 		c.Members[i].Pause()
-		time.Sleep(20 * tickDuration)
+		membs := append([]*member{}, c.Members[:i]...)
+		membs = append(membs, c.Members[i+1:]...)
+		c.waitLeader(t, membs)
+		clusterMustProgress(t, membs)
 		c.Members[i].Resume()
 	}
-	c.waitLeader(t)
-	clusterMustProgress(t, c)
+	c.waitLeader(t, c.Members)
+	clusterMustProgress(t, c.Members)
 }
 
 func TestRestartMember(t *testing.T) {
@@ -30,12 +32,16 @@ func TestRestartMember(t *testing.T) {
 
 	for i := 0; i < 3; i++ {
 		c.Members[i].Stop(t)
+		membs := append([]*member{}, c.Members[:i]...)
+		membs = append(membs, c.Members[i+1:]...)
+		c.waitLeader(t, membs)
+		clusterMustProgress(t, membs)
 		err := c.Members[i].Restart(t)
 		if err != nil {
 			t.Fatal(err)
 		}
 	}
-	clusterMustProgress(t, c)
+	clusterMustProgress(t, c.Members)
 }
 
 func TestLaunchDuplicateMemberShouldFail(t *testing.T) {
