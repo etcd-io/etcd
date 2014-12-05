@@ -44,6 +44,10 @@ func max(a, b uint64) uint64 {
 	return b
 }
 
+func IsLocalMsg(m pb.Message) bool { return m.Type == pb.MsgHup || m.Type == pb.MsgBeat }
+
+func IsResponseMsg(m pb.Message) bool { return m.Type == pb.MsgAppResp || m.Type == pb.MsgVoteResp }
+
 // DescribeMessage returns a concise human-readable description of a
 // Message for debugging.
 func DescribeMessage(m pb.Message) string {
