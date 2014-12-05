@@ -27,27 +27,6 @@ import (
 	"github.com/coreos/etcd/raft/raftpb"
 )
 
-func TestSendHubInitSenders(t *testing.T) {
-	membs := []*Member{
-		newTestMember(1, []string{"http://a"}, "", nil),
-		newTestMember(2, []string{"http://b"}, "", nil),
-		newTestMember(3, []string{"http://c"}, "", nil),
-	}
-	cl := newTestCluster(membs)
-	ls := stats.NewLeaderStats("")
-	h := newSendHub(nil, cl, nil, nil, ls)
-
-	ids := cl.MemberIDs()
-	if len(h.senders) != len(ids) {
-		t.Errorf("len(ids) = %d, want %d", len(h.senders), len(ids))
-	}
-	for _, id := range ids {
-		if _, ok := h.senders[id]; !ok {
-			t.Errorf("senders[%s] is nil, want exists", id)
-		}
-	}
-}
-
 func TestSendHubAdd(t *testing.T) {
 	cl := newTestCluster(nil)
 	ls := stats.NewLeaderStats("")
@@ -71,12 +50,11 @@ func TestSendHubAdd(t *testing.T) {
 }
 
 func TestSendHubRemove(t *testing.T) {
-	membs := []*Member{
-		newTestMember(1, []string{"http://a"}, "", nil),
-	}
-	cl := newTestCluster(membs)
+	cl := newTestCluster(nil)
 	ls := stats.NewLeaderStats("")
 	h := newSendHub(nil, cl, nil, nil, ls)
+	m := newTestMember(1, []string{"http://a"}, "", nil)
+	h.Add(m)
 	h.Remove(types.ID(1))
 
 	if _, ok := h.senders[types.ID(1)]; ok {
@@ -85,13 +63,12 @@ func TestSendHubRemove(t *testing.T) {
 }
 
 func TestSendHubShouldStop(t *testing.T) {
-	membs := []*Member{
-		newTestMember(1, []string{"http://a"}, "", nil),
-	}
 	tr := newRespRoundTripper(http.StatusForbidden, nil)
-	cl := newTestCluster(membs)
+	cl := newTestCluster(nil)
 	ls := stats.NewLeaderStats("")
 	h := newSendHub(tr, cl, nil, nil, ls)
+	m := newTestMember(1, []string{"http://a"}, "", nil)
+	h.Add(m)
 
 	shouldstop := h.ShouldStopNotify()
 	select {

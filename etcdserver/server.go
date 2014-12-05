@@ -315,6 +315,9 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		snapCount:  cfg.SnapCount,
 	}
 	srv.sendhub = newSendHub(cfg.Transport, cfg.Cluster, srv, sstats, lstats)
+	for _, m := range getOtherMembers(cfg.Cluster, cfg.Name) {
+		srv.sendhub.Add(m)
+	}
 	return srv, nil
 }
 
@@ -962,6 +965,16 @@ func startNode(cfg *ServerConfig, ids []types.ID) (id types.ID, n raft.Node, s *
 	s = raft.NewMemoryStorage()
 	n = raft.StartNode(uint64(id), peers, 10, 1, s)
 	return
+}
+
+func getOtherMembers(cl ClusterInfo, self string) []*Member {
+	var ms []*Member
+	for _, m := range cl.Members() {
+		if m.Name != self {
+			ms = append(ms, m)
+		}
+	}
+	return ms
 }
 
 // getOtherPeerURLs returns peer urls of other members in the cluster. The
