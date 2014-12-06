@@ -34,7 +34,8 @@ const (
 	connPerSender = 4
 	senderBufSize = connPerSender * 4
 
-	appRespBatchMs = 50
+	appRespBatchNum = 150
+	appRespBatchMs  = 50
 
 	ConnReadTimeout  = 5 * time.Second
 	ConnWriteTimeout = 5 * time.Second
@@ -68,7 +69,7 @@ func NewSender(tr http.RoundTripper, u string, cid types.ID, p Processor, fs *st
 		p:          p,
 		fs:         fs,
 		shouldstop: shouldstop,
-		batcher:    NewBatcher(100, appRespBatchMs*time.Millisecond),
+		batcher:    NewBatcher(appRespBatchNum, appRespBatchMs*time.Millisecond),
 		q:          make(chan []byte, senderBufSize),
 	}
 	s.wg.Add(connPerSender)
