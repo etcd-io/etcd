@@ -183,19 +183,6 @@ func (r *raft) softState() *SoftState {
 	return &SoftState{Lead: r.lead, RaftState: r.state, Nodes: r.nodes()}
 }
 
-func (r *raft) String() string {
-	s := fmt.Sprintf(`state=%v term=%d`, r.state, r.Term)
-	switch r.state {
-	case StateFollower:
-		s += fmt.Sprintf(" vote=%v lead=%v", r.Vote, r.lead)
-	case StateCandidate:
-		s += fmt.Sprintf(` votes="%v"`, r.votes)
-	case StateLeader:
-		s += fmt.Sprintf(` prs="%v"`, r.prs)
-	}
-	return s
-}
-
 func (r *raft) poll(id uint64, v bool) (granted int) {
 	if v {
 		log.Printf("raft: %x received vote from %x at term %d", r.id, id, r.Term)
