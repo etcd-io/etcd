@@ -455,8 +455,10 @@ func (s *EtcdServer) run() {
 				if appliedi+1-firsti < uint64(len(rd.CommittedEntries)) {
 					ents = rd.CommittedEntries[appliedi+1-firsti:]
 				}
-				if appliedi, shouldstop = s.apply(ents); shouldstop {
-					return
+				if len(ents) > 0 {
+					if appliedi, shouldstop = s.apply(ents); shouldstop {
+						return
+					}
 				}
 			}
 
@@ -693,8 +695,9 @@ func getExpirationTime(r *pb.Request) time.Time {
 	return t
 }
 
-// apply takes an Entry received from Raft (after it has been committed) and
-// applies it to the current state of the EtcdServer
+// apply takes entries received from Raft (after it has been committed) and
+// applies them to the current state of the EtcdServer.
+// The given entries should not be empty.
 func (s *EtcdServer) apply(es []raftpb.Entry) (uint64, bool) {
 	var applied uint64
 	for i := range es {
