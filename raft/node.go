@@ -229,6 +229,7 @@ func (n *node) run(r *raft) {
 	lead := None
 	prevSoftSt := r.softState()
 	prevHardSt := r.HardState
+	log.Printf("raft.node: %x [leader: %x, softState: %+v, hardState: %+v] starts running", r.id, lead, *prevSoftSt, prevHardSt)
 
 	for {
 		if advancec != nil {
@@ -323,6 +324,7 @@ func (n *node) run(r *raft) {
 			advancec = nil
 		case <-n.stop:
 			close(n.done)
+			log.Printf("raft.node: %x stops running", r.id)
 			return
 		}
 	}
