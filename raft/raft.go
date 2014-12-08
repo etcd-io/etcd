@@ -56,9 +56,7 @@ func (st StateType) MarshalJSON() ([]byte, error) {
 	return []byte(fmt.Sprintf("%q", st.String())), nil
 }
 
-type progress struct {
-	match, next uint64
-}
+type progress struct{ match, next uint64 }
 
 func (pr *progress) update(n uint64) {
 	if pr.match < n {
@@ -69,9 +67,7 @@ func (pr *progress) update(n uint64) {
 	}
 }
 
-func (pr *progress) optimisticUpdate(n uint64) {
-	pr.next = n + 1
-}
+func (pr *progress) optimisticUpdate(n uint64) { pr.next = n + 1 }
 
 // maybeDecrTo returns false if the given to index comes from an out of order message.
 // Otherwise it decreases the progress next index and returns true.
