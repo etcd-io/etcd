@@ -943,10 +943,6 @@ func TestTriggerSnap(t *testing.T) {
 	ctx := context.Background()
 	s := raft.NewMemoryStorage()
 	n := raft.StartNode(0xBAD0, mustMakePeerSlice(t, 0xBAD0), 10, 1, s)
-	rd := <-n.Ready()
-	s.Append(rd.Entries)
-	n.Advance()
-	n.ApplyConfChange(raftpb.ConfChange{Type: raftpb.ConfChangeAddNode, NodeID: 0xBAD0})
 	n.Campaign(ctx)
 	st := &storeRecorder{}
 	p := &storageRecorder{}
