@@ -94,3 +94,23 @@ DELETE /v2/members/<id> HTTP/1.1
 ```
 curl http://10.0.0.10:2379/v2/members/272e204152 -XDELETE
 ```
+
+## Change the peer urls of a member
+
+Change the peer urls of a given mamber. The member ID must be a hex-encoded uint64. Returns empty when successful. Returns a string describing the failure condition when unsuccessful.
+
+If the POST body is malformed an HTTP 400 will be returned. If the member does not exist in the cluster an HTTP 404 will be returned. If any of the given peerURLs exists in the cluster an HTTP 409 will be returned. If the cluster fails to process the request within timeout an HTTP 500 will be returned, though the request may be processed later.
+
+#### Request
+
+```
+PUT /v2/members/<id> HTTP/1.1
+
+{"peerURLs": ["http://10.0.0.10:2379"]}
+```
+
+#### Example
+
+```
+curl http://10.0.0.10:2379/v2/members/272e204152 -XPUT -H "Content-Type: application/json" -d '{"peerURLs":["http://10.0.0.10:12379"]}'
+```
