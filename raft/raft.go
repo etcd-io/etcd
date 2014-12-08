@@ -98,9 +98,7 @@ func (pr *progress) maybeDecrTo(to uint64) bool {
 	return true
 }
 
-func (pr *progress) String() string {
-	return fmt.Sprintf("n=%d m=%d", pr.next, pr.match)
-}
+func (pr *progress) String() string { return fmt.Sprintf("next = %d, match = %d", pr.next, pr.match) }
 
 type raft struct {
 	pb.HardState
@@ -136,7 +134,7 @@ func newRaft(id uint64, peers []uint64, election, heartbeat int, storage Storage
 	if id == None {
 		panic("cannot use none id")
 	}
-	log := newLog(storage)
+	raftlog := newLog(storage)
 	hs, cs, err := storage.InitialState()
 	if err != nil {
 		panic(err) // TODO(bdarnell)
@@ -153,7 +151,7 @@ func newRaft(id uint64, peers []uint64, election, heartbeat int, storage Storage
 	r := &raft{
 		id:               id,
 		lead:             None,
-		raftLog:          log,
+		raftLog:          raftlog,
 		prs:              make(map[uint64]*progress),
 		electionTimeout:  election,
 		heartbeatTimeout: heartbeat,
@@ -172,7 +170,7 @@ func newRaft(id uint64, peers []uint64, election, heartbeat int, storage Storage
 		nodesStrs = append(nodesStrs, fmt.Sprintf("%x", n))
 	}
 
-	fmt.Printf("raft: newRaft %x [peers: [%s], term: %d, commit: %d, lastindex: %d, lastterm: %d]",
+	log.Printf("raft: newRaft %x [peers: [%s], term: %d, commit: %d, lastindex: %d, lastterm: %d]",
 		r.id, strings.Join(nodesStrs, ","), r.Term, r.raftLog.committed, r.raftLog.lastIndex(), r.raftLog.lastTerm())
 	return r
 }
@@ -243,8 +241,8 @@ func (r *raft) sendAppend(to uint64) {
 		}
 		m.Snapshot = snapshot
 		sindex, sterm := snapshot.Metadata.Index, snapshot.Metadata.Term
-		log.Printf("raft: %x [firstindex: %d, commit: %d] sent snapshot[index: %d, term: %d] to %x [match: %d, next: %d]",
-			r.id, r.raftLog.firstIndex(), r.Commit, sindex, sterm, to, pr.match, pr.next)
+		log.Printf("raft: %x [firstindex: %d, commit: %d] sent snapshot[index: %d, term: %d] to %x [%s]",
+			r.id, r.raftLog.firstIndex(), r.Commit, sindex, sterm, to, pr)
 	} else {
 		m.Type = pb.MsgApp
 		m.Index = pr.next - 1
@@ -624,8 +622,8 @@ func (r *raft) restore(s pb.Snapshot) bool {
 		} else {
 			match = 0
 		}
-		log.Printf("raft: %x restored progress of %x [match: %d, next: %d]", r.id, n, match, next)
 		r.setProgress(n, match, next)
+		log.Printf("raft: %x restored progress of %x [%s]", r.id, n, r.prs[n])
 	}
 	return true
 }
