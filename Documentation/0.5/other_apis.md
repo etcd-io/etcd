@@ -3,6 +3,7 @@
 * [List members](#list-members)
 * [Add a member](#add-a-member)
 * [Delete a member](#delete-a-member)
+* [Change the peer urls of a member](#change-the-peer-urls-of-a-member)
 
 ## List members
 
