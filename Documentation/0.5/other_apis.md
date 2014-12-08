@@ -16,7 +16,7 @@ GET /v2/members HTTP/1.1
 
 ### Example
 
-```
+```sh
 curl http://10.0.0.10:2379/v2/members
 ```
 
@@ -63,8 +63,9 @@ POST /v2/members HTTP/1.1
 
 ### Example
 
-```
-curl http://10.0.0.10:2379/v2/members -XPOST -H "Content-Type: application/json" -d '{"peerURLs":["http://10.0.0.10:2379"]}'
+```sh
+curl http://10.0.0.10:2379/v2/members -XPOST \
+-H "Content-Type: application/json" -d '{"peerURLs":["http://10.0.0.10:2379"]}'
 ```
 
 ```json
@@ -91,7 +92,7 @@ DELETE /v2/members/<id> HTTP/1.1
 
 ### Example
 
-```
+```sh
 curl http://10.0.0.10:2379/v2/members/272e204152 -XDELETE
 ```
 
@@ -111,6 +112,7 @@ PUT /v2/members/<id> HTTP/1.1
 
 #### Example
 
-```
-curl http://10.0.0.10:2379/v2/members/272e204152 -XPUT -H "Content-Type: application/json" -d '{"peerURLs":["http://10.0.0.10:12379"]}'
+```sh
+curl http://10.0.0.10:2379/v2/members/272e204152 -XPUT \
+-H "Content-Type: application/json" -d '{"peerURLs":["http://10.0.0.10:12379"]}'
 ```
