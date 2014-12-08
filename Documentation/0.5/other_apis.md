@@ -80,7 +80,7 @@ curl http://10.0.0.10:2379/v2/members -XPOST \
 ## Delete a member
 
 Remove a member from the cluster. The member ID must be a hex-encoded uint64.
-Returns empty when successful. Returns a string describing the failure condition when unsuccessful. 
+Returns 204 with empty content when successful. Returns a string describing the failure condition when unsuccessful. 
 
 If the member does not exist in the cluster an HTTP 500(TODO: fix this) will be returned. If the cluster fails to process the request within timeout an HTTP 500 will be returned, though the request may be processed later.
 
@@ -98,7 +98,7 @@ curl http://10.0.0.10:2379/v2/members/272e204152 -XDELETE
 
 ## Change the peer urls of a member
 
-Change the peer urls of a given mamber. The member ID must be a hex-encoded uint64. Returns empty when successful. Returns a string describing the failure condition when unsuccessful.
+Change the peer urls of a given mamber. The member ID must be a hex-encoded uint64. Returns 204 with empty content when successful. Returns a string describing the failure condition when unsuccessful.
 
 If the POST body is malformed an HTTP 400 will be returned. If the member does not exist in the cluster an HTTP 404 will be returned. If any of the given peerURLs exists in the cluster an HTTP 409 will be returned. If the cluster fails to process the request within timeout an HTTP 500 will be returned, though the request may be processed later.
 
