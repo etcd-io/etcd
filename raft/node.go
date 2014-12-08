@@ -150,6 +150,18 @@ func StartNode(id uint64, peers []Peer, election, heartbeat int, storage Storage
 	// TODO(bdarnell): These entries are still unstable; do we need to preserve
 	// the invariant that committed < unstable?
 	r.raftLog.committed = r.raftLog.lastIndex()
+	// Now apply them, mainly so that the application can call Campaign
+	// immediately after StartNode in tests. Note that these nodes will
+	// be added to raft twice: here and when the application's Ready
+	// loop calls ApplyConfChange. The calls to addNode must come after
+	// all calls to raftLog.append so progress.next is set after these
+	// bootstrapping entries (it is an error if we try to append these
+	// entries since they have already been committed).
+	// We do not set raftLog.applied so the application will be able
+	// to observe all conf changes via Ready.CommittedEntries.
+	for _, peer := range peers {
+		r.addNode(peer.ID)
+	}
 
 	go n.run(r)
 	return &n
