@@ -12,7 +12,7 @@ The most common use case of cluster reconfiguration is to replace a member becau
 It is important to replace failed members as soon as the failure is detected.
 If etcd falls below a simple majority of members it can no longer accept writes: e.g. in a 3 member cluster the loss of two members will cause writes to fail and the cluster to stop operating.
 
-If you want to migrate an running member to another machine, please refer [member migration section][member migration].
+If you want to migrate a running member to another machine, please refer [member migration section][member migration].
 
 [member migration]: https://github.com/coreos/etcd/blob/master/Documentation/0.5/admin_guide.md#member-migration
 
