@@ -461,24 +461,6 @@ func (r *raft) handleSnapshot(m pb.Message) {
 	}
 }
 
-func (r *raft) resetPendingConf() { r.pendingConf = false }
-
-func (r *raft) addNode(id uint64) {
-	if _, ok := r.prs[id]; ok {
-		// Ignore any redundant addNode calls (which can happen because the
-		// initial bootstrapping entries are applied twice).
-		return
-	}
-
-	r.setProgress(id, 0, r.raftLog.lastIndex()+1)
-	r.pendingConf = false
-}
-
-func (r *raft) removeNode(id uint64) {
-	r.delProgress(id)
-	r.pendingConf = false
-}
-
 type stepFunc func(r *raft, m pb.Message)
 
 func stepLeader(r *raft, m pb.Message) {
@@ -626,19 +608,37 @@ func (r *raft) nodes() []uint64 {
 	return nodes
 }
 
+// promotable indicates whether state machine can be promoted to leader,
+// which is true when its own id is in progress list.
+func (r *raft) promotable() bool {
+	_, ok := r.prs[r.id]
+	return ok
+}
+
+func (r *raft) addNode(id uint64) {
+	if _, ok := r.prs[id]; ok {
+		// Ignore any redundant addNode calls (which can happen because the
+		// initial bootstrapping entries are applied twice).
+		return
+	}
+
+	r.setProgress(id, 0, r.raftLog.lastIndex()+1)
+	r.pendingConf = false
+}
+
+func (r *raft) removeNode(id uint64) {
+	r.delProgress(id)
+	r.pendingConf = false
+}
+
+func (r *raft) resetPendingConf() { r.pendingConf = false }
+
 func (r *raft) setProgress(id, match, next uint64) {
 	r.prs[id] = &progress{next: next, match: match}
 }
 
 func (r *raft) delProgress(id uint64) {
 	delete(r.prs, id)
-}
-
-// promotable indicates whether state machine can be promoted to leader,
-// which is true when its own id is in progress list.
-func (r *raft) promotable() bool {
-	_, ok := r.prs[r.id]
-	return ok
 }
 
 func (r *raft) loadState(state pb.HardState) {
