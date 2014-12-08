@@ -32,7 +32,11 @@ import (
 
 const (
 	connPerSender = 4
-	senderBufSize = connPerSender * 4
+	// senderBufSize is the size of sender buffer, which helps hold the
+	// temporary network latency.
+	// The size ensures that sender does not drop messages when the network
+	// is out of work for less than 1 second in good path.
+	senderBufSize = 64
 
 	appRespBatchMs = 50
 
