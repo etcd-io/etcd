@@ -272,7 +272,9 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 			return nil, err
 		}
 		if snapshot != nil {
-			st.Recovery(snapshot.Data)
+			if err := st.Recovery(snapshot.Data); err != nil {
+				log.Panicf("etcdserver: recovered store from snapshot error: %v", err)
+			}
 			log.Printf("etcdserver: recovered store from snapshot at index %d", snapshot.Metadata.Index)
 			index = snapshot.Metadata.Index
 		}
