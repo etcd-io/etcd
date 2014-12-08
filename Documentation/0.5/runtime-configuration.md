@@ -6,11 +6,15 @@ etcd comes with support for incremental runtime reconfiguration, which allows us
 
 Let us walk through the four use cases for re-configuring a cluster: replacing a member, increasing or decreasing cluster size, and restarting a cluster from a majority failure.
 
-### Replace a Member
+### Replace a Non-recoverable Member
 
-The most common use case of cluster reconfiguration is to replace a member because of a permanent failure of the existing member: for example, hardware failure, loss of network address, or data directory corruption.
+The most common use case of cluster reconfiguration is to replace a member because of a permanent failure of the existing member: for example, hardware failure or data directory corruption.
 It is important to replace failed members as soon as the failure is detected.
 If etcd falls below a simple majority of members it can no longer accept writes: e.g. in a 3 member cluster the loss of two members will cause writes to fail and the cluster to stop operating.
+
+If you want to migrate an running member to another machine, please refer [member migration section][member migration].
+
+[member migration]: https://github.com/coreos/etcd/blob/master/Documentation/0.5/admin_guide.md#member-migration
 
 ### Increase Cluster Size
 
