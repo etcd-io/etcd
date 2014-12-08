@@ -183,6 +183,17 @@ func (r *raft) softState() *SoftState {
 	return &SoftState{Lead: r.lead, RaftState: r.state, Nodes: r.nodes()}
 }
 
+func (r *raft) q() int { return len(r.prs)/2 + 1 }
+
+func (r *raft) nodes() []uint64 {
+	nodes := make([]uint64, 0, len(r.prs))
+	for k := range r.prs {
+		nodes = append(nodes, k)
+	}
+	sort.Sort(uint64Slice(nodes))
+	return nodes
+}
+
 // send persists state to stable storage and then sends to its mailbox.
 func (r *raft) send(m pb.Message) {
 	m.From = r.id
@@ -292,8 +303,6 @@ func (r *raft) reset(term uint64) {
 	}
 	r.pendingConf = false
 }
-
-func (r *raft) q() int { return len(r.prs)/2 + 1 }
 
 func (r *raft) appendEntry(e pb.Entry) {
 	e.Term = r.Term
@@ -597,15 +606,6 @@ func (r *raft) restore(s pb.Snapshot) bool {
 
 func (r *raft) needSnapshot(i uint64) bool {
 	return i < r.raftLog.firstIndex()
-}
-
-func (r *raft) nodes() []uint64 {
-	nodes := make([]uint64, 0, len(r.prs))
-	for k := range r.prs {
-		nodes = append(nodes, k)
-	}
-	sort.Sort(uint64Slice(nodes))
-	return nodes
 }
 
 // promotable indicates whether state machine can be promoted to leader,
