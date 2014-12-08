@@ -183,23 +183,6 @@ func (r *raft) softState() *SoftState {
 	return &SoftState{Lead: r.lead, RaftState: r.state, Nodes: r.nodes()}
 }
 
-func (r *raft) poll(id uint64, v bool) (granted int) {
-	if v {
-		log.Printf("raft: %x received vote from %x at term %d", r.id, id, r.Term)
-	} else {
-		log.Printf("raft: %x received vote rejection from %x at term %d", r.id, id, r.Term)
-	}
-	if _, ok := r.votes[id]; !ok {
-		r.votes[id] = v
-	}
-	for _, vv := range r.votes {
-		if vv {
-			granted++
-		}
-	}
-	return granted
-}
-
 // send persists state to stable storage and then sends to its mailbox.
 func (r *raft) send(m pb.Message) {
 	m.From = r.id
@@ -310,9 +293,7 @@ func (r *raft) reset(term uint64) {
 	r.pendingConf = false
 }
 
-func (r *raft) q() int {
-	return len(r.prs)/2 + 1
-}
+func (r *raft) q() int { return len(r.prs)/2 + 1 }
 
 func (r *raft) appendEntry(e pb.Entry) {
 	e.Term = r.Term
@@ -403,6 +384,23 @@ func (r *raft) campaign() {
 			r.id, r.raftLog.lastTerm(), r.raftLog.lastIndex(), i, r.Term)
 		r.send(pb.Message{To: i, Type: pb.MsgVote, Index: r.raftLog.lastIndex(), LogTerm: r.raftLog.lastTerm()})
 	}
+}
+
+func (r *raft) poll(id uint64, v bool) (granted int) {
+	if v {
+		log.Printf("raft: %x received vote from %x at term %d", r.id, id, r.Term)
+	} else {
+		log.Printf("raft: %x received vote rejection from %x at term %d", r.id, id, r.Term)
+	}
+	if _, ok := r.votes[id]; !ok {
+		r.votes[id] = v
+	}
+	for _, vv := range r.votes {
+		if vv {
+			granted++
+		}
+	}
+	return granted
 }
 
 func (r *raft) Step(m pb.Message) error {
