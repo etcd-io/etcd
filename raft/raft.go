@@ -22,6 +22,7 @@ import (
 	"log"
 	"math/rand"
 	"sort"
+	"strings"
 
 	pb "github.com/coreos/etcd/raft/raftpb"
 )
@@ -165,6 +166,14 @@ func newRaft(id uint64, peers []uint64, election, heartbeat int, storage Storage
 		r.loadState(hs)
 	}
 	r.becomeFollower(r.Term, None)
+
+	nodesStrs := make([]string, 0)
+	for _, n := range r.nodes() {
+		nodesStrs = append(nodesStrs, fmt.Sprintf("%x", n))
+	}
+
+	fmt.Printf("raft: newRaft %x [peers: [%s], term: %d, commit: %d, lastindex: %d, lastterm: %d]",
+		r.id, strings.Join(nodesStrs, ","), r.Term, r.raftLog.committed, r.raftLog.lastIndex(), r.raftLog.lastTerm())
 	return r
 }
 
