@@ -32,6 +32,19 @@ The data directory has two sub-directories in it:
 If you are spinning up multiple clusters for testing it is recommended that you specify a unique initial-cluster-token for the different clusters.
 This can protect you from cluster corruption in case of mis-configuration because two members started with different cluster tokens will refuse members from each other.
 
+### Member Migration
+
+When there is a scheduled machine maintenance or retirement, you might want to migrate an etcd member to another machine without losing the data and changing the member ID. 
+
+The data directory contains all the data to recover a member to its point-in-time state. To migrate a member:
+
+* Stop the member process
+* Copy the data directory of the now-idle member to the new machine
+* Update the peer URLs for that member to reflect the new machine according to the [member api] [change peer url]
+* Start etcd on the new machine, using the same configuration and the copy of the data directory
+
+[change peer url]: https://github.com/coreos/etcd/blob/master/Documentation/0.5/other_apis.md#change-the-peer-urls-of-a-member 
+
 ### Disaster Recovery
 
 etcd is designed to be resilient to machine failures. An etcd cluster can automatically recover from any number of temporary failures (for example, machine reboots), and a cluster of N members can tolerate up to _(N/2)-1_ permanent failures (where a member can no longer access the cluster, due to hardware failure or disk corruption). However, in extreme circumstances, a cluster might permanently lose enough members such that quorum is irrevocably lost. For example, if a three-node cluster suffered two simultaneous and unrecoverable machine failures, it would be normally impossible for the cluster to restore quorum and continue functioning.
