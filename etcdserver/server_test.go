@@ -1621,6 +1621,7 @@ func (n *nodeProposalBlockerRecorder) Propose(ctx context.Context, data []byte) 
 type nodeConfChangeCommitterRecorder struct {
 	nodeRecorder
 	readyc chan raft.Ready
+	index  uint64
 }
 
 func newNodeConfChangeCommitterRecorder() *nodeConfChangeCommitterRecorder {
@@ -1632,7 +1633,8 @@ func (n *nodeConfChangeCommitterRecorder) ProposeConfChange(ctx context.Context,
 	if err != nil {
 		return err
 	}
-	n.readyc <- raft.Ready{CommittedEntries: []raftpb.Entry{{Type: raftpb.EntryConfChange, Data: data}}}
+	n.index++
+	n.readyc <- raft.Ready{CommittedEntries: []raftpb.Entry{{Index: n.index, Type: raftpb.EntryConfChange, Data: data}}}
 	n.record(action{name: "ProposeConfChange:" + conf.Type.String()})
 	return nil
 }
