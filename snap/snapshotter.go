@@ -38,9 +38,10 @@ const (
 )
 
 var (
-	ErrNoSnapshot  = errors.New("snap: no available snapshot")
-	ErrCRCMismatch = errors.New("snap: crc mismatch")
-	crcTable       = crc32.MakeTable(crc32.Castagnoli)
+	ErrNoSnapshot    = errors.New("snap: no available snapshot")
+	ErrEmptySnapshot = errors.New("snap: empty snapshot")
+	ErrCRCMismatch   = errors.New("snap: crc mismatch")
+	crcTable         = crc32.MakeTable(crc32.Castagnoli)
 )
 
 type Snapshotter struct {
@@ -108,11 +109,16 @@ func loadSnap(dir, name string) (*raftpb.Snapshot, error) {
 		log.Printf("snap: corrupted snapshot file %v: %v", name, err)
 		return nil, err
 	}
+
+	if len(serializedSnap.Data) == 0 || serializedSnap.Crc == 0 {
+		log.Printf("snap: unexpected empty snapshot")
+		return nil, ErrEmptySnapshot
+	}
+
 	crc := crc32.Update(0, crcTable, serializedSnap.Data)
 	if crc != serializedSnap.Crc {
 		log.Printf("snap: corrupted snapshot file %v: crc mismatch", name)
-		err = ErrCRCMismatch
-		return nil, err
+		return nil, ErrCRCMismatch
 	}
 
 	var snap raftpb.Snapshot
