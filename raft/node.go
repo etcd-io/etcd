@@ -19,7 +19,6 @@ package raft
 import (
 	"errors"
 	"log"
-	"reflect"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	pb "github.com/coreos/etcd/raft/raftpb"
@@ -37,11 +36,10 @@ var (
 type SoftState struct {
 	Lead      uint64
 	RaftState StateType
-	Nodes     []uint64
 }
 
 func (a *SoftState) equal(b *SoftState) bool {
-	return reflect.DeepEqual(a, b)
+	return a.Lead == b.Lead && a.RaftState == b.RaftState
 }
 
 // Ready encapsulates the entries and messages that are ready to read,

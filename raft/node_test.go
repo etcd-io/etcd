@@ -305,7 +305,7 @@ func TestNodeStart(t *testing.T) {
 	}
 	wants := []Ready{
 		{
-			SoftState: &SoftState{Lead: 1, Nodes: []uint64{1}, RaftState: StateLeader},
+			SoftState: &SoftState{Lead: 1, RaftState: StateLeader},
 			HardState: raftpb.HardState{Term: 2, Commit: 2},
 			Entries: []raftpb.Entry{
 				{Type: raftpb.EntryConfChange, Term: 1, Index: 1, Data: ccdata},
@@ -446,7 +446,6 @@ func TestSoftStateEqual(t *testing.T) {
 		{&SoftState{}, true},
 		{&SoftState{Lead: 1}, false},
 		{&SoftState{RaftState: StateLeader}, false},
-		{&SoftState{Nodes: []uint64{1, 2}}, false},
 	}
 	for i, tt := range tests {
 		if g := tt.st.equal(&SoftState{}); g != tt.we {

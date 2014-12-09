@@ -475,7 +475,7 @@ func TestApplyConfChangeError(t *testing.T) {
 			node:    n,
 			Cluster: cl,
 		}
-		_, err := srv.applyConfChange(tt.cc)
+		_, err := srv.applyConfChange(tt.cc, nil)
 		if err != tt.werr {
 			t.Errorf("#%d: applyConfChange error = %v, want %v", i, err, tt.werr)
 		}
@@ -509,7 +509,7 @@ func TestApplyConfChangeShouldStop(t *testing.T) {
 		NodeID: 2,
 	}
 	// remove non-local member
-	shouldStop, err := srv.applyConfChange(cc)
+	shouldStop, err := srv.applyConfChange(cc, &raftpb.ConfState{})
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
@@ -519,7 +519,7 @@ func TestApplyConfChangeShouldStop(t *testing.T) {
 
 	// remove local member
 	cc.NodeID = 1
-	shouldStop, err = srv.applyConfChange(cc)
+	shouldStop, err = srv.applyConfChange(cc, &raftpb.ConfState{})
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
@@ -917,7 +917,7 @@ func TestSnapshot(t *testing.T) {
 		raftStorage: s,
 	}
 
-	srv.snapshot(1, []uint64{1})
+	srv.snapshot(1, &raftpb.ConfState{Nodes: []uint64{1}})
 	gaction := st.Action()
 	if len(gaction) != 1 {
 		t.Fatalf("len(action) = %d, want 1", len(gaction))
@@ -1091,10 +1091,7 @@ func TestApplySnapshotAndCommittedEntries(t *testing.T) {
 func TestAddMember(t *testing.T) {
 	n := newNodeConfChangeCommitterRecorder()
 	n.readyc <- raft.Ready{
-		SoftState: &raft.SoftState{
-			RaftState: raft.StateLeader,
-			Nodes:     []uint64{2345, 3456},
-		},
+		SoftState: &raft.SoftState{RaftState: raft.StateLeader},
 	}
 	cl := newTestCluster(nil)
 	cl.SetStore(store.New())
@@ -1128,10 +1125,7 @@ func TestAddMember(t *testing.T) {
 func TestRemoveMember(t *testing.T) {
 	n := newNodeConfChangeCommitterRecorder()
 	n.readyc <- raft.Ready{
-		SoftState: &raft.SoftState{
-			RaftState: raft.StateLeader,
-			Nodes:     []uint64{1234, 2345, 3456},
-		},
+		SoftState: &raft.SoftState{RaftState: raft.StateLeader},
 	}
 	cl := newTestCluster(nil)
 	cl.SetStore(store.New())
@@ -1165,10 +1159,7 @@ func TestRemoveMember(t *testing.T) {
 func TestUpdateMember(t *testing.T) {
 	n := newNodeConfChangeCommitterRecorder()
 	n.readyc <- raft.Ready{
-		SoftState: &raft.SoftState{
-			RaftState: raft.StateLeader,
-			Nodes:     []uint64{1234, 2345, 3456},
-		},
+		SoftState: &raft.SoftState{RaftState: raft.StateLeader},
 	}
 	cl := newTestCluster(nil)
 	cl.SetStore(store.New())
@@ -1575,7 +1566,7 @@ func (n *nodeRecorder) Ready() <-chan raft.Ready { return nil }
 func (n *nodeRecorder) Advance()                 {}
 func (n *nodeRecorder) ApplyConfChange(conf raftpb.ConfChange) *raftpb.ConfState {
 	n.record(action{name: "ApplyConfChange", params: []interface{}{conf}})
-	return nil
+	return &raftpb.ConfState{}
 }
 func (n *nodeRecorder) Stop() {
 	n.record(action{name: "Stop"})
@@ -1639,7 +1630,7 @@ func (n *nodeConfChangeCommitterRecorder) Ready() <-chan raft.Ready {
 }
 func (n *nodeConfChangeCommitterRecorder) ApplyConfChange(conf raftpb.ConfChange) *raftpb.ConfState {
 	n.record(action{name: "ApplyConfChange:" + conf.Type.String()})
-	return nil
+	return &raftpb.ConfState{}
 }
 
 type waitWithResponse struct {
