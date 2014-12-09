@@ -137,6 +137,9 @@ func StartNode(id uint64, peers []Peer, election, heartbeat int, storage Storage
 	n := newNode()
 	r := newRaft(id, nil, election, heartbeat, storage)
 
+	// become the follower at term 1 and apply initial configuration
+	// entires of term 1
+	r.becomeFollower(1, None)
 	for _, peer := range peers {
 		cc := pb.ConfChange{Type: pb.ConfChangeAddNode, NodeID: peer.ID, Context: peer.Context}
 		d, err := cc.Marshal()
