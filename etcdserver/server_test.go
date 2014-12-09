@@ -475,7 +475,7 @@ func TestApplyConfChangeError(t *testing.T) {
 			node:    n,
 			Cluster: cl,
 		}
-		_, err := srv.applyConfChange(tt.cc)
+		_, err := srv.applyConfChange(tt.cc, nil)
 		if err != tt.werr {
 			t.Errorf("#%d: applyConfChange error = %v, want %v", i, err, tt.werr)
 		}
@@ -509,7 +509,7 @@ func TestApplyConfChangeShouldStop(t *testing.T) {
 		NodeID: 2,
 	}
 	// remove non-local member
-	shouldStop, err := srv.applyConfChange(cc)
+	shouldStop, err := srv.applyConfChange(cc, nil)
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
@@ -519,7 +519,7 @@ func TestApplyConfChangeShouldStop(t *testing.T) {
 
 	// remove local member
 	cc.NodeID = 1
-	shouldStop, err = srv.applyConfChange(cc)
+	shouldStop, err = srv.applyConfChange(cc, nil)
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
@@ -917,7 +917,7 @@ func TestSnapshot(t *testing.T) {
 		raftStorage: s,
 	}
 
-	srv.snapshot(1, []uint64{1})
+	srv.snapshot(1, &raftpb.ConfState{Nodes: []uint64{1}})
 	gaction := st.Action()
 	if len(gaction) != 1 {
 		t.Fatalf("len(action) = %d, want 1", len(gaction))
