@@ -395,7 +395,7 @@ func (s *EtcdServer) run() {
 	// snapi indicates the index of the last submitted snapshot request
 	snapi := snap.Metadata.Index
 	appliedi := snap.Metadata.Index
-	confState := &snap.Metadata.ConfState
+	confState := snap.Metadata.ConfState
 
 	defer func() {
 		s.node.Stop()
@@ -458,7 +458,7 @@ func (s *EtcdServer) run() {
 					ents = rd.CommittedEntries[appliedi+1-firsti:]
 				}
 				if len(ents) > 0 {
-					if appliedi, shouldstop = s.apply(ents, confState); shouldstop {
+					if appliedi, shouldstop = s.apply(ents, &confState); shouldstop {
 						return
 					}
 				}
@@ -468,7 +468,7 @@ func (s *EtcdServer) run() {
 
 			if appliedi-snapi > s.snapCount {
 				log.Printf("etcdserver: start to snapshot (applied: %d, lastsnap: %d)", appliedi, snapi)
-				s.snapshot(appliedi, confState)
+				s.snapshot(appliedi, &confState)
 				snapi = appliedi
 			}
 		case <-syncC:
@@ -784,7 +784,7 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.Con
 		s.node.ApplyConfChange(cc)
 		return false, err
 	}
-	confState = s.node.ApplyConfChange(cc)
+	*confState = *s.node.ApplyConfChange(cc)
 	switch cc.Type {
 	case raftpb.ConfChangeAddNode:
 		m := new(Member)
