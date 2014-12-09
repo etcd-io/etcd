@@ -188,3 +188,23 @@ func TestNoSnapshot(t *testing.T) {
 		t.Errorf("err = %v, want %v", err, ErrNoSnapshot)
 	}
 }
+
+func TestEmptySnapshot(t *testing.T) {
+	dir := path.Join(os.TempDir(), "snapshot")
+	err := os.Mkdir(dir, 0700)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(dir)
+
+	err = ioutil.WriteFile(path.Join(dir, "1.snap"), []byte("shit"), 0x700)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ss := New(dir)
+	_, err = ss.Load()
+	if err == nil || err != ErrEmptySnapshot {
+		t.Errorf("err = %v, want %v", err, ErrEmptySnapshot)
+	}
+}
