@@ -175,7 +175,13 @@ func (r *raft) hasLeader() bool { return r.lead != None }
 
 func (r *raft) leader() uint64 { return r.lead }
 
-func (r *raft) softState() *SoftState { return &SoftState{Lead: r.lead, RaftState: r.state} }
+func (r *raft) softState() *SoftState {
+	return &SoftState{
+		Lead:      r.lead,
+		RaftState: r.state,
+		Term:      r.Term,
+	}
+}
 
 func (r *raft) q() int { return len(r.prs)/2 + 1 }
 
