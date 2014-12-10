@@ -153,7 +153,8 @@ func (s *sender) Send(m raftpb.Message) error {
 	case s.q <- data:
 		return nil
 	default:
-		log.Printf("sender: reach the maximal serving to %s", s.u)
+		log.Printf("sender: dropping %s because maximal number %d of sender buffer entries to %s has been reached",
+			m.Type, senderBufSize, s.u)
 		return fmt.Errorf("reach maximal serving")
 	}
 }
