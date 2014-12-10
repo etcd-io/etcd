@@ -6,6 +6,10 @@ import (
 	"github.com/coreos/etcd/raft/raftpb"
 )
 
+var (
+	emptyMsgProp = raftpb.Message{Type: raftpb.MsgProp}
+)
+
 type Batcher struct {
 	batchedN int
 	batchedT time.Time
@@ -38,4 +42,31 @@ func (b *Batcher) Reset(t time.Time) {
 
 func canBatch(m raftpb.Message) bool {
 	return m.Type == raftpb.MsgAppResp && m.Reject == false
+}
+
+type ProposalBatcher struct {
+	*Batcher
+	raftpb.Message
+}
+
+func NewProposalBatcher(n int, d time.Duration) *ProposalBatcher {
+	return &ProposalBatcher{
+		Batcher: NewBatcher(n, d),
+		Message: emptyMsgProp,
+	}
+}
+
+func (b *ProposalBatcher) Batch(m raftpb.Message) {
+	b.Message.From = m.From
+	b.Message.To = m.To
+	b.Message.Entries = append(b.Message.Entries, m.Entries...)
+}
+
+func (b *ProposalBatcher) IsEmpty() bool {
+	return len(b.Message.Entries) == 0
+}
+
+func (b *ProposalBatcher) Reset(t time.Time) {
+	b.Batcher.Reset(t)
+	b.Message = emptyMsgProp
 }
