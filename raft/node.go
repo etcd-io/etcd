@@ -36,10 +36,11 @@ var (
 type SoftState struct {
 	Lead      uint64
 	RaftState StateType
+	Term      uint64
 }
 
 func (a *SoftState) equal(b *SoftState) bool {
-	return a.Lead == b.Lead && a.RaftState == b.RaftState
+	return a.Lead == b.Lead && a.RaftState == b.RaftState && a.Term == b.Term
 }
 
 // Ready encapsulates the entries and messages that are ready to read,
