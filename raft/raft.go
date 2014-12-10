@@ -300,10 +300,13 @@ func (r *raft) reset(term uint64) {
 	r.pendingConf = false
 }
 
-func (r *raft) appendEntry(e pb.Entry) {
-	e.Term = r.Term
-	e.Index = r.raftLog.lastIndex() + 1
-	r.raftLog.append(e)
+func (r *raft) appendEntry(es ...pb.Entry) {
+	li := r.raftLog.lastIndex()
+	for i := range es {
+		es[i].Term = r.Term
+		es[i].Index = li + 1 + uint64(i)
+	}
+	r.raftLog.append(es...)
 	r.prs[r.id].update(r.raftLog.lastIndex())
 	r.maybeCommit()
 }
@@ -446,17 +449,18 @@ func stepLeader(r *raft, m pb.Message) {
 	case pb.MsgBeat:
 		r.bcastHeartbeat()
 	case pb.MsgProp:
-		if len(m.Entries) != 1 {
-			panic("unexpected length(entries) of a MsgProp")
+		if len(m.Entries) == 0 {
+			log.Panicf("raft: %x stepped empty MsgProp", r.id)
 		}
-		e := m.Entries[0]
-		if e.Type == pb.EntryConfChange {
-			if r.pendingConf {
-				return
+		for i, e := range m.Entries {
+			if e.Type == pb.EntryConfChange {
+				if r.pendingConf {
+					m.Entries[i] = pb.Entry{Type: pb.EntryNormal}
+				}
+				r.pendingConf = true
 			}
-			r.pendingConf = true
 		}
-		r.appendEntry(e)
+		r.appendEntry(m.Entries...)
 		r.bcastAppend()
 	case pb.MsgAppResp:
 		if m.Reject {
