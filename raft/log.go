@@ -272,11 +272,16 @@ func (l *raftLog) slice(lo uint64, hi uint64) []pb.Entry {
 		} else if err != nil {
 			panic(err) // TODO(bdarnell)
 		}
-		ents = append(ents, storedEnts...)
+		ents = storedEnts
 	}
 	if hi > l.unstable.offset {
 		unstable := l.unstable.slice(max(lo, l.unstable.offset), hi)
-		ents = append(ents, unstable...)
+		if len(ents) > 0 {
+			ents = append([]pb.Entry{}, ents...)
+			ents = append(ents, unstable...)
+		} else {
+			ents = unstable
+		}
 	}
 	return ents
 }

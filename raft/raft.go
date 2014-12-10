@@ -407,12 +407,10 @@ func (r *raft) poll(id uint64, v bool) (granted int) {
 }
 
 func (r *raft) Step(m pb.Message) error {
-	// TODO(bmizerany): this likely allocs - prevent that.
-	defer func() { r.Commit = r.raftLog.committed }()
-
 	if m.Type == pb.MsgHup {
 		log.Printf("raft: %x is starting a new election at term %d", r.id, r.Term)
 		r.campaign()
+		r.Commit = r.raftLog.committed
 		return nil
 	}
 
@@ -434,6 +432,7 @@ func (r *raft) Step(m pb.Message) error {
 		return nil
 	}
 	r.step(r, m)
+	r.Commit = r.raftLog.committed
 	return nil
 }
 
