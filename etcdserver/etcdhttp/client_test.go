@@ -818,7 +818,7 @@ func TestServeMembersFail(t *testing.T) {
 				Header: map[string][]string{"Content-Type": []string{"application/json"}},
 			},
 			&errServer{
-				errors.New("blah"),
+				errors.New("Error while adding a member"),
 			},
 
 			http.StatusInternalServerError,
@@ -858,7 +858,7 @@ func TestServeMembersFail(t *testing.T) {
 				Method: "DELETE",
 			},
 			&errServer{
-				errors.New("blah"),
+				errors.New("Error while removing member"),
 			},
 
 			http.StatusInternalServerError,
@@ -1357,7 +1357,7 @@ func TestBadServeKeys(t *testing.T) {
 			// etcdserver.Server error
 			mustNewRequest(t, "foo"),
 			&errServer{
-				errors.New("blah"),
+				errors.New("Internal Server Error"),
 			},
 
 			http.StatusInternalServerError,
