@@ -264,7 +264,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		id, n, s, w = startNode(cfg, cfg.Cluster.MemberIDs())
 	case haveWAL:
 		if cfg.ShouldDiscover() {
-			log.Printf("etcdserver: warn: ignoring discovery: etcd has already been initialized and has a valid log in %q", cfg.WALDir())
+			log.Printf("etcdserver: discovery token ignored since a cluster has already been initialized. Valid log found at %q", cfg.WALDir())
 		}
 		var index uint64
 		snapshot, err := ss.Load()

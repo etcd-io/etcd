@@ -199,7 +199,7 @@ ignored on this machine.
 ```
 $ etcd -name infra0 -initial-advertise-peer-urls http://10.0.1.10:2380 \
   -discovery https://discovery.etcd.io/3e86b59982e49066c5d813af1c2e2579cbf573de
-etcdserver: warn: ignoring discovery: etcd has already been initialized and has a valid log in /var/lib/etcd
+etcdserver: discovery token ignored since a cluster has already been initialized. Valid log found at /var/lib/etcd
 ```
 
 # 0.4 to 0.5+ Migration Guide
