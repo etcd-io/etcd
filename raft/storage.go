@@ -180,18 +180,18 @@ func (ms *MemoryStorage) Compact(i uint64, cs *pb.ConfState, data []byte) error 
 }
 
 // Append the new entries to storage.
-func (ms *MemoryStorage) Append(entries []pb.Entry) {
+func (ms *MemoryStorage) Append(entries []pb.Entry) error {
 	ms.Lock()
 	defer ms.Unlock()
 	if len(entries) == 0 {
-		return
+		return nil
 	}
 	first := ms.snapshot.Metadata.Index + 1
 	last := entries[0].Index + uint64(len(entries)) - 1
 
 	// shortcut if there is no new entry.
 	if last < first {
-		return
+		return nil
 	}
 	// truncate old entries
 	if first > entries[0].Index {
@@ -209,4 +209,5 @@ func (ms *MemoryStorage) Append(entries []pb.Entry) {
 		log.Panicf("missing log entry [last: %d, append at: %d]",
 			ms.snapshot.Metadata.Index+uint64(len(ms.ents)), entries[0].Index)
 	}
+	return nil
 }
