@@ -73,8 +73,8 @@ func (s *streamServer) send(ents []raftpb.Entry) error {
 	case s.q <- ents:
 		return nil
 	default:
-		log.Printf("rafthttp: maximum number of streams %s reached", s.to)
-		return fmt.Errorf("maximum number of streams reached")
+		log.Printf("rafthttp: maximum number of stream buffer entries to %d has been reached", s.to)
+		return fmt.Errorf("maximum number of stream buffer entries has been reached")
 	}
 }
 
@@ -170,7 +170,7 @@ func (s *streamClient) isStopped() bool {
 func (s *streamClient) handle(r io.Reader) {
 	defer func() {
 		close(s.done)
-		log.Printf("rafthttp: client streaming to %s at term %d is been stopped", s.to, s.term)
+		log.Printf("rafthttp: client streaming to %s at term %d has been stopped", s.to, s.term)
 	}()
 
 	er := &entryReader{r: r}
