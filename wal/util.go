@@ -37,7 +37,7 @@ const (
 
 func DetectVersion(dirpath string) WalVersion {
 	names, err := fileutil.ReadDir(dirpath)
-	if err != nil || len(names) == 0 {
+	if err != nil {
 		return WALNotExist
 	}
 	nameSet := types.NewUnsafeSet(names...)
@@ -46,7 +46,6 @@ func DetectVersion(dirpath string) WalVersion {
 		if Exist(path.Join(dirpath, "wal")) {
 			return WALv0_5
 		}
-		return WALNotExist
 	}
 	if nameSet.ContainsAll([]string{"snapshot", "conf", "log"}) {
 		return WALv0_4
