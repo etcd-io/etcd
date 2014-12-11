@@ -181,6 +181,9 @@ func (d *discovery) createSelf(contents string) error {
 	resp, err := d.c.Create(ctx, d.selfKey(), contents, -1)
 	cancel()
 	if err != nil {
+		if err == client.ErrKeyExists {
+			return ErrDuplicateID
+		}
 		return err
 	}
 
