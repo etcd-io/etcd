@@ -3,13 +3,15 @@
 etcd has a number of modules that are built on top of the core etcd API.
 These modules provide things like dashboards, locks and leader election (removed).
 
-**Warning**: Modules are deprecated from v0.4 until we have a solid base we can apply them back onto.
+**Warning**: Modules and dashboard are deprecated from v0.4 until we have a solid base we can apply them back onto.
 For now, we are choosing to focus on raft algorithm and core etcd to make sure that it works correctly and fast.
 And it is time consuming to maintain these modules in this period, given that etcd's API changes from time to time.
 Moreover, the lock module has some unfixed bugs, which may mislead users.
 But we also notice that these modules are popular and useful, and plan to add them back with full functionality as soon as possible.
 
 ### Dashboard
+
+**Other Dashboards**: There are other dashboards available on [Github](https://github.com/henszey/etcd-browser) that can be run [in a container](https://registry.hub.docker.com/u/tomaskral/etcd-browser/).
 
 An HTML dashboard can be found at `http://127.0.0.1:4001/mod/dashboard/`.
 This dashboard is compiled into the etcd binary and uses the same API as regular etcd clients.
