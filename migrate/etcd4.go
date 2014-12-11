@@ -126,12 +126,12 @@ func GuessNodeID(nodes map[string]uint64, snap4 *Snapshot4, cfg *Config4, name s
 	if name != "" {
 		log.Printf("Using suggested name %s", name)
 		if val, ok := nodes[name]; ok {
-			log.Printf("Found ID %s", types.ID(val))
+			log.Printf("Assigning %s the ID %s", name, types.ID(val))
 			return val
 		}
 		if snapNodes != nil {
 			if val, ok := snapNodes[name]; ok {
-				log.Printf("Found ID %s", types.ID(val))
+				log.Printf("Assigning %s the ID %s", name, types.ID(val))
 				return val
 			}
 		}
