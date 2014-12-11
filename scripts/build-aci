@@ -1,0 +1,33 @@
+#!/usr/bin/bash
+
+if [ ! -d rootfs ]; then
+	mkdir -p rootfs
+	mv * rootfs
+fi
+
+cat <<DF > manifest
+{
+    "acVersion": "0.1.1",
+    "acKind": "ImageManifest",
+    "name": "coreos.com/etcd",
+    "labels": [
+        {"name": "os", "val": "linux"},
+        {"name": "arch", "val": "amd64"},
+        {"name": "version", "val": "${1}"}
+    ],
+    "app": {
+        "exec": [
+             "/etcd"
+        ],
+        "user": "0",
+        "group": "0"
+    }
+}
+DF
+
+mkdir -p rootfs/etc/
+cat <<DF > rootfs/etc/hosts
+127.0.0.1   localhost localhost.localdomain localhost4 localhost4.localdomain4
+DF
+
+actool build -overwrite=true . ../etcd-${1}-linux-amd64.aci
