@@ -210,7 +210,10 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 	var n raft.Node
 	var s *raft.MemoryStorage
 	var id types.ID
-	walVersion := wal.DetectVersion(cfg.DataDir)
+	walVersion, err := wal.DetectVersion(cfg.DataDir)
+	if err != nil {
+		return nil, err
+	}
 	if walVersion == wal.WALUnknown {
 		return nil, fmt.Errorf("unknown wal version in data dir %s", cfg.DataDir)
 	}

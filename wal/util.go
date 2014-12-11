@@ -19,6 +19,7 @@ package wal
 import (
 	"fmt"
 	"log"
+	"os"
 	"path"
 
 	"github.com/coreos/etcd/pkg/fileutil"
@@ -35,24 +36,31 @@ const (
 	WALv0_5     WalVersion = "0.5.x"
 )
 
-func DetectVersion(dirpath string) WalVersion {
+func DetectVersion(dirpath string) (WalVersion, error) {
+	if _, err := os.Stat(dirpath); os.IsNotExist(err) {
+		return WALNotExist, nil
+	}
 	names, err := fileutil.ReadDir(dirpath)
-	if err != nil || len(names) == 0 {
-		return WALNotExist
+	if err != nil {
+		// Error reading the directory
+		return WALNotExist, err
+	}
+	if len(names) == 0 {
+		// Empty WAL directory
+		return WALNotExist, nil
 	}
 	nameSet := types.NewUnsafeSet(names...)
 	if nameSet.ContainsAll([]string{"snap", "wal"}) {
 		// .../wal cannot be empty to exist.
 		if Exist(path.Join(dirpath, "wal")) {
-			return WALv0_5
+			return WALv0_5, nil
 		}
-		return WALNotExist
 	}
 	if nameSet.ContainsAll([]string{"snapshot", "conf", "log"}) {
-		return WALv0_4
+		return WALv0_4, nil
 	}
 
-	return WALUnknown
+	return WALUnknown, nil
 }
 
 func Exist(dirpath string) bool {
