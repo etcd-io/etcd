@@ -482,7 +482,8 @@ func stepLeader(r *raft, m pb.Message) {
 func stepCandidate(r *raft, m pb.Message) {
 	switch m.Type {
 	case pb.MsgProp:
-		panic("no leader")
+		log.Printf("raft: %x no leader at term %d; dropping proposal", r.id, r.Term)
+		return
 	case pb.MsgApp:
 		r.becomeFollower(r.Term, m.From)
 		r.handleAppendEntries(m)
@@ -513,7 +514,8 @@ func stepFollower(r *raft, m pb.Message) {
 	switch m.Type {
 	case pb.MsgProp:
 		if r.lead == None {
-			panic("no leader")
+			log.Printf("raft: %x no leader at term %d; dropping proposal", r.id, r.Term)
+			return
 		}
 		m.To = r.lead
 		r.send(m)
