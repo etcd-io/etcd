@@ -303,7 +303,7 @@ func (s *sender) post(data []byte) error {
 	case http.StatusNoContent:
 		return nil
 	default:
-		return fmt.Errorf("unhandled status %s", http.StatusText(resp.StatusCode))
+		return fmt.Errorf("unexpected http status %s while posting to %q", http.StatusText(resp.StatusCode), req.URL.String())
 	}
 }
 
