@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"math"
 	"net/http"
 	"net/url"
 	"path"
@@ -44,9 +45,9 @@ var (
 	ErrTooManyRetries = errors.New("discovery: too many retries")
 )
 
-const (
+var (
 	// Number of retries discovery will attempt before giving up and erroring out.
-	nRetries = uint(3)
+	nRetries = uint(math.MaxUint32)
 )
 
 // JoinCluster will connect to the discovery service at the given url, and
@@ -135,7 +136,7 @@ func newDiscovery(durl, dproxyurl string, id types.ID) (*discovery, error) {
 func (d *discovery) joinCluster(config string) (string, error) {
 	// fast path: if the cluster is full, return the error
 	// do not need to register to the cluster in this case.
-	if _, _, err := d.checkCluster(); err != nil {
+	if _, _, _, err := d.checkCluster(); err != nil {
 		return "", err
 	}
 
@@ -146,12 +147,12 @@ func (d *discovery) joinCluster(config string) (string, error) {
 		return "", err
 	}
 
-	nodes, size, err := d.checkCluster()
+	nodes, size, index, err := d.checkCluster()
 	if err != nil {
 		return "", err
 	}
 
-	all, err := d.waitNodes(nodes, size)
+	all, err := d.waitNodes(nodes, size, index)
 	if err != nil {
 		return "", err
 	}
@@ -160,7 +161,7 @@ func (d *discovery) joinCluster(config string) (string, error) {
 }
 
 func (d *discovery) getCluster() (string, error) {
-	nodes, size, err := d.checkCluster()
+	nodes, size, index, err := d.checkCluster()
 	if err != nil {
 		if err == ErrFullCluster {
 			return nodesToCluster(nodes), nil
@@ -168,7 +169,7 @@ func (d *discovery) getCluster() (string, error) {
 		return "", err
 	}
 
-	all, err := d.waitNodes(nodes, size)
+	all, err := d.waitNodes(nodes, size, index)
 	if err != nil {
 		return "", err
 	}
@@ -189,7 +190,7 @@ func (d *discovery) createSelf(contents string) error {
 	return err
 }
 
-func (d *discovery) checkCluster() (client.Nodes, int, error) {
+func (d *discovery) checkCluster() (client.Nodes, int, uint64, error) {
 	configKey := path.Join("/", d.cluster, "_config")
 	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
 	// find cluster size
@@ -197,16 +198,16 @@ func (d *discovery) checkCluster() (client.Nodes, int, error) {
 	cancel()
 	if err != nil {
 		if err == client.ErrKeyNoExist {
-			return nil, 0, ErrSizeNotFound
+			return nil, 0, 0, ErrSizeNotFound
 		}
 		if err == client.ErrTimeout {
 			return d.checkClusterRetry()
 		}
-		return nil, 0, err
+		return nil, 0, 0, err
 	}
 	size, err := strconv.Atoi(resp.Node.Value)
 	if err != nil {
-		return nil, 0, ErrBadSizeKey
+		return nil, 0, 0, ErrBadSizeKey
 	}
 
 	ctx, cancel = context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
@@ -216,7 +217,7 @@ func (d *discovery) checkCluster() (client.Nodes, int, error) {
 		if err == client.ErrTimeout {
 			return d.checkClusterRetry()
 		}
-		return nil, 0, err
+		return nil, 0, 0, err
 	}
 	nodes := make(client.Nodes, 0)
 	// append non-config keys to nodes
@@ -235,10 +236,10 @@ func (d *discovery) checkCluster() (client.Nodes, int, error) {
 			break
 		}
 		if i >= size-1 {
-			return nodes[:size], size, ErrFullCluster
+			return nodes[:size], size, resp.Index, ErrFullCluster
 		}
 	}
-	return nodes, size, nil
+	return nodes, size, resp.Index, nil
 }
 
 func (d *discovery) logAndBackoffForRetry(step string) {
@@ -248,31 +249,31 @@ func (d *discovery) logAndBackoffForRetry(step string) {
 	d.clock.Sleep(retryTime)
 }
 
-func (d *discovery) checkClusterRetry() (client.Nodes, int, error) {
+func (d *discovery) checkClusterRetry() (client.Nodes, int, uint64, error) {
 	if d.retries < nRetries {
 		d.logAndBackoffForRetry("cluster status check")
 		return d.checkCluster()
 	}
-	return nil, 0, ErrTooManyRetries
+	return nil, 0, 0, ErrTooManyRetries
 }
 
 func (d *discovery) waitNodesRetry() (client.Nodes, error) {
 	if d.retries < nRetries {
 		d.logAndBackoffForRetry("waiting for other nodes")
-		nodes, n, err := d.checkCluster()
+		nodes, n, index, err := d.checkCluster()
 		if err != nil {
 			return nil, err
 		}
-		return d.waitNodes(nodes, n)
+		return d.waitNodes(nodes, n, index)
 	}
 	return nil, ErrTooManyRetries
 }
 
-func (d *discovery) waitNodes(nodes client.Nodes, size int) (client.Nodes, error) {
+func (d *discovery) waitNodes(nodes client.Nodes, size int, index uint64) (client.Nodes, error) {
 	if len(nodes) > size {
 		nodes = nodes[:size]
 	}
-	w := d.c.RecursiveWatch(d.cluster, nodes[len(nodes)-1].ModifiedIndex+1)
+	w := d.c.RecursiveWatch(d.cluster, index)
 	all := make(client.Nodes, len(nodes))
 	copy(all, nodes)
 	for _, n := range all {

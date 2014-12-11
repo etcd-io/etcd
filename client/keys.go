@@ -71,6 +71,7 @@ type Response struct {
 	Action   string `json:"action"`
 	Node     *Node  `json:"node"`
 	PrevNode *Node  `json:"prevNode"`
+	Index    uint64
 }
 
 type Nodes []*Node
@@ -107,7 +108,7 @@ func (k *httpKeysAPI) Create(ctx context.Context, key, val string, ttl time.Dura
 		return nil, err
 	}
 
-	return unmarshalHTTPResponse(resp.StatusCode, body)
+	return unmarshalHTTPResponse(resp.StatusCode, resp.Header, body)
 }
 
 func (k *httpKeysAPI) Get(ctx context.Context, key string) (*Response, error) {
@@ -122,7 +123,7 @@ func (k *httpKeysAPI) Get(ctx context.Context, key string) (*Response, error) {
 		return nil, err
 	}
 
-	return unmarshalHTTPResponse(resp.StatusCode, body)
+	return unmarshalHTTPResponse(resp.StatusCode, resp.Header, body)
 }
 
 func (k *httpKeysAPI) Watch(key string, idx uint64) Watcher {
@@ -160,7 +161,7 @@ func (hw *httpWatcher) Next(ctx context.Context) (*Response, error) {
 		return nil, err
 	}
 
-	resp, err := unmarshalHTTPResponse(httpresp.StatusCode, body)
+	resp, err := unmarshalHTTPResponse(httpresp.StatusCode, httpresp.Header, body)
 	if err != nil {
 		return nil, err
 	}
@@ -243,10 +244,10 @@ func (c *createAction) HTTPRequest(ep url.URL) *http.Request {
 	return req
 }
 
-func unmarshalHTTPResponse(code int, body []byte) (res *Response, err error) {
+func unmarshalHTTPResponse(code int, header http.Header, body []byte) (res *Response, err error) {
 	switch code {
 	case http.StatusOK, http.StatusCreated:
-		res, err = unmarshalSuccessfulResponse(body)
+		res, err = unmarshalSuccessfulResponse(header, body)
 	default:
 		err = unmarshalErrorResponse(code)
 	}
@@ -254,13 +255,18 @@ func unmarshalHTTPResponse(code int, body []byte) (res *Response, err error) {
 	return
 }
 
-func unmarshalSuccessfulResponse(body []byte) (*Response, error) {
+func unmarshalSuccessfulResponse(header http.Header, body []byte) (*Response, error) {
 	var res Response
 	err := json.Unmarshal(body, &res)
 	if err != nil {
 		return nil, err
 	}
-
+	if header.Get("X-Etcd-Index") != "" {
+		res.Index, err = strconv.ParseUint(header.Get("X-Etcd-Index"), 10, 64)
+	}
+	if err != nil {
+		return nil, err
+	}
 	return &res, nil
 }
 
@@ -273,6 +279,8 @@ func unmarshalErrorResponse(code int) error {
 	case http.StatusInternalServerError:
 		// this isn't necessarily true
 		return ErrNoLeader
+	case http.StatusGatewayTimeout:
+		return ErrTimeout
 	default:
 	}
 
