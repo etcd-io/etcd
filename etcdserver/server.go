@@ -223,11 +223,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		}
 	}
 
-	if err := os.MkdirAll(cfg.SnapDir(), privateDirMode); err != nil {
-		return nil, fmt.Errorf("cannot create snapshot directory: %v", err)
-	}
 	ss := snap.New(cfg.SnapDir())
-
 	switch {
 	case !haveWAL && !cfg.NewCluster:
 		us := getOtherPeerURLs(cfg.Cluster, cfg.Name)
@@ -954,6 +950,9 @@ func startNode(cfg *ServerConfig, ids []types.ID) (id types.ID, n raft.Node, s *
 			ClusterID: uint64(cfg.Cluster.ID()),
 		},
 	)
+	if err := os.MkdirAll(cfg.SnapDir(), privateDirMode); err != nil {
+		log.Fatalf("etcdserver create snapshot directory error: %v", err)
+	}
 	if w, err = wal.Create(cfg.WALDir(), metadata); err != nil {
 		log.Fatalf("etcdserver: create wal error: %v", err)
 	}
