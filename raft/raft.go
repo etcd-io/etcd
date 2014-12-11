@@ -479,7 +479,7 @@ func stepLeader(r *raft, m pb.Message) {
 func stepCandidate(r *raft, m pb.Message) {
 	switch m.Type {
 	case pb.MsgProp:
-		log.Printf("raft: no leader; dropping proposal")
+		log.Printf("raft: %x no leader at term %d; dropping proposal", r.id, r.Term)
 		return
 	case pb.MsgApp:
 		r.becomeFollower(r.Term, m.From)
@@ -511,7 +511,7 @@ func stepFollower(r *raft, m pb.Message) {
 	switch m.Type {
 	case pb.MsgProp:
 		if r.lead == None {
-			log.Printf("raft: no leader; dropping proposal")
+			log.Printf("raft: %x no leader at term %d; dropping proposal", r.id, r.Term)
 			return
 		}
 		m.To = r.lead
