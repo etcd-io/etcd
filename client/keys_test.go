@@ -255,40 +255,46 @@ func assertResponse(got http.Request, wantURL *url.URL, wantHeader http.Header, 
 
 func TestUnmarshalSuccessfulResponse(t *testing.T) {
 	tests := []struct {
+		indexHeader string
 		body        string
 		res         *Response
 		expectError bool
 	}{
 		// Neither PrevNode or Node
 		{
+			"1",
 			`{"action":"delete"}`,
-			&Response{Action: "delete"},
+			&Response{Action: "delete", Index: 1},
 			false,
 		},
 
 		// PrevNode
 		{
+			"15",
 			`{"action":"delete", "prevNode": {"key": "/foo", "value": "bar", "modifiedIndex": 12, "createdIndex": 10}}`,
-			&Response{Action: "delete", PrevNode: &Node{Key: "/foo", Value: "bar", ModifiedIndex: 12, CreatedIndex: 10}},
+			&Response{Action: "delete", Index: 15, PrevNode: &Node{Key: "/foo", Value: "bar", ModifiedIndex: 12, CreatedIndex: 10}},
 			false,
 		},
 
 		// Node
 		{
+			"15",
 			`{"action":"get", "node": {"key": "/foo", "value": "bar", "modifiedIndex": 12, "createdIndex": 10}}`,
-			&Response{Action: "get", Node: &Node{Key: "/foo", Value: "bar", ModifiedIndex: 12, CreatedIndex: 10}},
+			&Response{Action: "get", Index: 15, Node: &Node{Key: "/foo", Value: "bar", ModifiedIndex: 12, CreatedIndex: 10}},
 			false,
 		},
 
 		// PrevNode and Node
 		{
+			"15",
 			`{"action":"update", "prevNode": {"key": "/foo", "value": "baz", "modifiedIndex": 10, "createdIndex": 10}, "node": {"key": "/foo", "value": "bar", "modifiedIndex": 12, "createdIndex": 10}}`,
-			&Response{Action: "update", PrevNode: &Node{Key: "/foo", Value: "baz", ModifiedIndex: 10, CreatedIndex: 10}, Node: &Node{Key: "/foo", Value: "bar", ModifiedIndex: 12, CreatedIndex: 10}},
+			&Response{Action: "update", Index: 15, PrevNode: &Node{Key: "/foo", Value: "baz", ModifiedIndex: 10, CreatedIndex: 10}, Node: &Node{Key: "/foo", Value: "bar", ModifiedIndex: 12, CreatedIndex: 10}},
 			false,
 		},
 
 		// Garbage in body
 		{
+			"",
 			`garbage`,
 			nil,
 			true,
@@ -296,7 +302,9 @@ func TestUnmarshalSuccessfulResponse(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		res, err := unmarshalSuccessfulResponse([]byte(tt.body))
+		h := make(http.Header)
+		h.Add("X-Etcd-Index", tt.indexHeader)
+		res, err := unmarshalSuccessfulResponse(h, []byte(tt.body))
 		if tt.expectError != (err != nil) {
 			t.Errorf("#%d: expectError=%t, err=%v", i, tt.expectError, err)
 		}
@@ -312,7 +320,9 @@ func TestUnmarshalSuccessfulResponse(t *testing.T) {
 		if res.Action != tt.res.Action {
 			t.Errorf("#%d: Action=%s, expected %s", i, res.Action, tt.res.Action)
 		}
-
+		if res.Index != tt.res.Index {
+			t.Errorf("#%d: Index=%d, expected %d", i, res.Index, tt.res.Index)
+		}
 		if !reflect.DeepEqual(res.Node, tt.res.Node) {
 			t.Errorf("#%d: Node=%v, expected %v", i, res.Node, tt.res.Node)
 		}
@@ -350,7 +360,7 @@ func TestUnmarshalErrorResponse(t *testing.T) {
 		{http.StatusNotImplemented, unrecognized},
 		{http.StatusBadGateway, unrecognized},
 		{http.StatusServiceUnavailable, unrecognized},
-		{http.StatusGatewayTimeout, unrecognized},
+		{http.StatusGatewayTimeout, ErrTimeout},
 		{http.StatusHTTPVersionNotSupported, unrecognized},
 	}
 

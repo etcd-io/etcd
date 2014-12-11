@@ -18,6 +18,7 @@ package discovery
 
 import (
 	"errors"
+	"math"
 	"math/rand"
 	"net/http"
 	"reflect"
@@ -29,6 +30,10 @@ import (
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/jonboulle/clockwork"
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/client"
+)
+
+const (
+	maxRetryInTest = 3
 )
 
 func TestNewProxyFuncUnset(t *testing.T) {
@@ -89,6 +94,7 @@ func TestCheckCluster(t *testing.T) {
 
 	tests := []struct {
 		nodes []*client.Node
+		index uint64
 		werr  error
 		wsize int
 	}{
@@ -102,6 +108,7 @@ func TestCheckCluster(t *testing.T) {
 				{Key: "/1000/3", CreatedIndex: 4},
 				{Key: "/1000/4", CreatedIndex: 5},
 			},
+			5,
 			nil,
 			3,
 		},
@@ -115,6 +122,7 @@ func TestCheckCluster(t *testing.T) {
 				{Key: self, CreatedIndex: 4},
 				{Key: "/1000/4", CreatedIndex: 5},
 			},
+			5,
 			nil,
 			3,
 		},
@@ -128,6 +136,7 @@ func TestCheckCluster(t *testing.T) {
 				{Key: "/1000/4", CreatedIndex: 4},
 				{Key: self, CreatedIndex: 5},
 			},
+			5,
 			ErrFullCluster,
 			3,
 		},
@@ -139,6 +148,7 @@ func TestCheckCluster(t *testing.T) {
 				{Key: "/1000/2", CreatedIndex: 2},
 				{Key: "/1000/3", CreatedIndex: 3},
 			},
+			3,
 			nil,
 			3,
 		},
@@ -150,6 +160,7 @@ func TestCheckCluster(t *testing.T) {
 				{Key: "/1000/3", CreatedIndex: 3},
 				{Key: "/1000/4", CreatedIndex: 4},
 			},
+			3,
 			ErrFullCluster,
 			3,
 		},
@@ -158,12 +169,14 @@ func TestCheckCluster(t *testing.T) {
 			[]*client.Node{
 				{Key: "/1000/_config/size", Value: "bad", CreatedIndex: 1},
 			},
+			0,
 			ErrBadSizeKey,
 			0,
 		},
 		{
 			// no size key
 			[]*client.Node{},
+			0,
 			ErrSizeNotFound,
 			0,
 		},
@@ -172,12 +185,13 @@ func TestCheckCluster(t *testing.T) {
 	for i, tt := range tests {
 		rs := make([]*client.Response, 0)
 		if len(tt.nodes) > 0 {
-			rs = append(rs, &client.Response{Node: tt.nodes[0]})
+			rs = append(rs, &client.Response{Node: tt.nodes[0], Index: tt.index})
 			rs = append(rs, &client.Response{
 				Node: &client.Node{
 					Key:   cluster,
 					Nodes: tt.nodes[1:],
 				},
+				Index: tt.index,
 			})
 		}
 		c := &clientWithResp{rs: rs}
@@ -190,12 +204,12 @@ func TestCheckCluster(t *testing.T) {
 
 		for _, d := range []discovery{d, dRetry} {
 			go func() {
-				for i := uint(1); i <= nRetries; i++ {
+				for i := uint(1); i <= maxRetryInTest; i++ {
 					fc.BlockUntil(1)
 					fc.Advance(time.Second * (0x1 << i))
 				}
 			}()
-			ns, size, err := d.checkCluster()
+			ns, size, index, err := d.checkCluster()
 			if err != tt.werr {
 				t.Errorf("#%d: err = %v, want %v", i, err, tt.werr)
 			}
@@ -204,6 +218,9 @@ func TestCheckCluster(t *testing.T) {
 			}
 			if size != tt.wsize {
 				t.Errorf("#%d: size = %v, want %d", i, size, tt.wsize)
+			}
+			if index != tt.index {
+				t.Errorf("#%d: index = %v, want %d", i, index, tt.index)
 			}
 		}
 	}
@@ -278,12 +295,12 @@ func TestWaitNodes(t *testing.T) {
 
 		for _, d := range []*discovery{d, dRetry} {
 			go func() {
-				for i := uint(1); i <= nRetries; i++ {
+				for i := uint(1); i <= maxRetryInTest; i++ {
 					fc.BlockUntil(1)
 					fc.Advance(time.Second * (0x1 << i))
 				}
 			}()
-			g, err := d.waitNodes(tt.nodes, 3)
+			g, err := d.waitNodes(tt.nodes, 3, 0) // we do not care about index in this test
 			if err != nil {
 				t.Errorf("#%d: err = %v, want %v", i, err, nil)
 			}
@@ -368,6 +385,9 @@ func TestSortableNodes(t *testing.T) {
 }
 
 func TestRetryFailure(t *testing.T) {
+	nRetries = maxRetryInTest
+	defer func() { nRetries = math.MaxUint32 }()
+
 	cluster := "1000"
 	c := &clientWithRetry{failTimes: 4}
 	fc := clockwork.NewFakeClock()
@@ -378,12 +398,12 @@ func TestRetryFailure(t *testing.T) {
 		clock:   fc,
 	}
 	go func() {
-		for i := uint(1); i <= nRetries; i++ {
+		for i := uint(1); i <= maxRetryInTest; i++ {
 			fc.BlockUntil(1)
 			fc.Advance(time.Second * (0x1 << i))
 		}
 	}()
-	if _, _, err := d.checkCluster(); err != ErrTooManyRetries {
+	if _, _, _, err := d.checkCluster(); err != ErrTooManyRetries {
 		t.Errorf("err = %v, want %v", err, ErrTooManyRetries)
 	}
 }
