@@ -150,7 +150,8 @@ func (n *node) expirationAndTTL(clock clockwork.Clock) (*time.Time, int64) {
 		if (ttlN % time.Second) > 0 {
 			ttl++
 		}
-		return &n.ExpireTime, int64(ttl)
+		t := n.ExpireTime.UTC()
+		return &t, int64(ttl)
 	}
 	return nil, 0
 }
