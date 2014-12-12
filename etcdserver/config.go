@@ -85,17 +85,11 @@ func (c *ServerConfig) WALDir() string { return path.Join(c.DataDir, "wal") }
 
 func (c *ServerConfig) SnapDir() string { return path.Join(c.DataDir, "snap") }
 
-func (c *ServerConfig) ShouldDiscover() bool {
-	return c.DiscoveryURL != ""
-}
+func (c *ServerConfig) ShouldDiscover() bool { return c.DiscoveryURL != "" }
 
-func (c *ServerConfig) PrintWithInitial() {
-	c.print(true)
-}
+func (c *ServerConfig) PrintWithInitial() { c.print(true) }
 
-func (c *ServerConfig) Print() {
-	c.print(false)
-}
+func (c *ServerConfig) Print() { c.print(false) }
 
 func (c *ServerConfig) print(initial bool) {
 	log.Printf("etcdserver: name = %s", c.Name)
