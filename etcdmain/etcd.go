@@ -189,7 +189,13 @@ func Main() {
 		err = startProxy()
 	}
 	if err != nil {
-		log.Fatalf("etcd: %v", err)
+		switch err {
+		case discovery.ErrDuplicateID:
+			log.Fatalf("etcd: member %s has previously registered with discovery service (%s), but the data-dir (%s) on disk cannot be found.",
+				*name, *durl, *dir)
+		default:
+			log.Fatalf("etcd: %v", err)
+		}
 	}
 	<-stopped
 }
