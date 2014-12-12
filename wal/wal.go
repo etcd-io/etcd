@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"hash/crc32"
 	"io"
+	"log"
 	"os"
 	"path"
 	"reflect"
@@ -123,6 +124,14 @@ func Create(dirpath string, metadata []byte) (*WAL, error) {
 // index. The WAL cannot be appended to before reading out all of its
 // previous records.
 func OpenAtIndex(dirpath string, index uint64) (*WAL, error) {
+	return openAtIndex(dirpath, index, true)
+}
+
+func OpenAtIndexUntilUsing(dirpath string, index uint64) (*WAL, error) {
+	return openAtIndex(dirpath, index, false)
+}
+
+func openAtIndex(dirpath string, index uint64, all bool) (*WAL, error) {
 	names, err := fileutil.ReadDir(dirpath)
 	if err != nil {
 		return nil, err
@@ -153,7 +162,12 @@ func OpenAtIndex(dirpath string, index uint64) (*WAL, error) {
 		}
 		err = l.TryLock()
 		if err != nil {
-			return nil, err
+			if all {
+				return nil, err
+			} else {
+				log.Printf("wal: opened all the files until %s, since it is still in use by an etcd server", name)
+				break
+			}
 		}
 		rcs = append(rcs, f)
 		ls = append(ls, l)
