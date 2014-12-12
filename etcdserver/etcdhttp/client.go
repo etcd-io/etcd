@@ -35,6 +35,7 @@ import (
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/etcdhttp/httptypes"
 	"github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"github.com/coreos/etcd/etcdserver/stats"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/store"
 	"github.com/coreos/etcd/version"
@@ -236,7 +237,7 @@ func (h *membersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 type statsHandler struct {
-	stats etcdserver.Stats
+	stats stats.Stats
 }
 
 func (h *statsHandler) serveStore(w http.ResponseWriter, r *http.Request) {
