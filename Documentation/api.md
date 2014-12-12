@@ -706,35 +706,51 @@ curl -L http://127.0.0.1:4001/v2/keys/?recursive=true
 
 ### Deleting a Directory
 
-Now let's try to delete the directory `/foo_dir`.
+Now let's try to delete the directory `/dir`
 
-You can remove an empty directory using the `DELETE` verb and the `dir=true` parameter.
+You can remove an empty directory using the `DELETE` verb and the `dir=true` parameter. Following will succeed because `/dir` was empty
 
 ```sh
-curl -L 'http://127.0.0.1:4001/v2/keys/foo_dir?dir=true' -XDELETE
+curl -L 'http://127.0.0.1:4001/v2/keys/dir?dir=true' -XDELETE
 ```
+
 ```json
 {
     "action": "delete",
     "node": {
         "createdIndex": 30,
         "dir": true,
-        "key": "/foo_dir",
+        "key": "/dir",
         "modifiedIndex": 31
     },
     "prevNode": {
         "createdIndex": 30,
-        "key": "/foo_dir",
+        "key": "/dir",
         "dir": true,
         "modifiedIndex": 30
     }
 }
 ```
 
+However, deleting `/foo_dir` will result into an error because `/foo_dir` is not empty.
+
+```sh
+curl -L 'http://127.0.0.1:4001/v2/keys/foo_dir?dir=true' -XDELETE
+```
+
+```json
+{
+    "errorCode":108,
+    "message":"Directory not empty",
+    "cause":"/foo_dir",
+    "index":2
+}
+```
+
 To delete a directory that holds keys, you must add `recursive=true`.
 
 ```sh
-curl -L http://127.0.0.1:4001/v2/keys/dir?recursive=true -XDELETE
+curl -L http://127.0.0.1:4001/v2/keys/foo_dir?recursive=true -XDELETE
 ```
 
 ```json
