@@ -90,21 +90,6 @@ type Response struct {
 	err     error
 }
 
-type Storage interface {
-	// Save function saves ents and state to the underlying stable storage.
-	// Save MUST block until st and ents are on stable storage.
-	Save(st raftpb.HardState, ents []raftpb.Entry) error
-	// SaveSnap function saves snapshot to the underlying stable storage.
-	SaveSnap(snap raftpb.Snapshot) error
-
-	// TODO: WAL should be able to control cut itself. After implement self-controlled cut,
-	// remove it in this interface.
-	// Cut cuts out a new wal file for saving new state and entries.
-	Cut() error
-	// Close closes the Storage and performs finalization.
-	Close() error
-}
-
 type Server interface {
 	// Start performs any initialization of the Server necessary for it to
 	// begin serving requests. It must be called before Do or Process.
@@ -295,15 +280,12 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		id:          id,
 		attributes:  Attributes{Name: cfg.Name, ClientURLs: cfg.ClientURLs.StringSlice()},
 		Cluster:     cfg.Cluster,
-		storage: struct {
-			*wal.WAL
-			*snap.Snapshotter
-		}{w, ss},
-		stats:      sstats,
-		lstats:     lstats,
-		Ticker:     time.Tick(100 * time.Millisecond),
-		SyncTicker: time.Tick(500 * time.Millisecond),
-		snapCount:  cfg.SnapCount,
+		storage:     NewStorage(w, ss),
+		stats:       sstats,
+		lstats:      lstats,
+		Ticker:      time.Tick(100 * time.Millisecond),
+		SyncTicker:  time.Tick(500 * time.Millisecond),
+		snapCount:   cfg.SnapCount,
 	}
 	srv.sendhub = newSendHub(cfg.Transport, cfg.Cluster, srv, sstats, lstats)
 	for _, m := range getOtherMembers(cfg.Cluster, cfg.Name) {

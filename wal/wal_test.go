@@ -238,6 +238,7 @@ func TestRecover(t *testing.T) {
 	if !reflect.DeepEqual(state, s) {
 		t.Errorf("state = %+v, want %+v", state, s)
 	}
+	w.Close()
 }
 
 func TestSearchIndex(t *testing.T) {
@@ -365,6 +366,7 @@ func TestRecoverAfterCut(t *testing.T) {
 				t.Errorf("#%d: ents[%d].Index = %+v, want %+v", i, j, e.Index, j+i)
 			}
 		}
+		w.Close()
 	}
 }
 

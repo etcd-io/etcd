@@ -67,6 +67,8 @@ type WAL struct {
 	seq     uint64   // sequence of the wal file currently used for writes
 	enti    uint64   // index of the last entry saved to the wal
 	encoder *encoder // encoder to encode records
+
+	locks []fileutil.Lock // the file locks the WAL is holding (the name is increasing)
 }
 
 // Create creates a WAL ready for appending records. The given metadata is
@@ -85,6 +87,15 @@ func Create(dirpath string, metadata []byte) (*WAL, error) {
 	if err != nil {
 		return nil, err
 	}
+	l, err := fileutil.NewLock(f.Name())
+	if err != nil {
+		return nil, err
+	}
+	err = l.Lock()
+	if err != nil {
+		return nil, err
+	}
+
 	w := &WAL{
 		dir:      dirpath,
 		metadata: metadata,
@@ -92,6 +103,7 @@ func Create(dirpath string, metadata []byte) (*WAL, error) {
 		f:        f,
 		encoder:  newEncoder(f, 0),
 	}
+	w.locks = append(w.locks, l)
 	if err := w.saveCrc(0); err != nil {
 		return nil, err
 	}
@@ -129,12 +141,22 @@ func OpenAtIndex(dirpath string, index uint64) (*WAL, error) {
 
 	// open the wal files for reading
 	rcs := make([]io.ReadCloser, 0)
+	ls := make([]fileutil.Lock, 0)
 	for _, name := range names[nameIndex:] {
 		f, err := os.Open(path.Join(dirpath, name))
 		if err != nil {
 			return nil, err
 		}
+		l, err := fileutil.NewLock(f.Name())
+		if err != nil {
+			return nil, err
+		}
+		err = l.TryLock()
+		if err != nil {
+			return nil, err
+		}
 		rcs = append(rcs, f)
+		ls = append(ls, l)
 	}
 	rc := MultiReadCloser(rcs...)
 
@@ -157,8 +179,9 @@ func OpenAtIndex(dirpath string, index uint64) (*WAL, error) {
 		ri:      index,
 		decoder: newDecoder(rc),
 
-		f:   f,
-		seq: seq,
+		f:     f,
+		seq:   seq,
+		locks: ls,
 	}
 	return w, nil
 }
@@ -224,6 +247,15 @@ func (w *WAL) Cut() error {
 	if err != nil {
 		return err
 	}
+	l, err := fileutil.NewLock(f.Name())
+	if err != nil {
+		return err
+	}
+	err = l.Lock()
+	if err != nil {
+		return err
+	}
+	w.locks = append(w.locks, l)
 	if err = w.sync(); err != nil {
 		return err
 	}
@@ -255,6 +287,30 @@ func (w *WAL) sync() error {
 	return w.f.Sync()
 }
 
+// ReleaseLockTo releases the locks w is holding, which
+// have index smaller or equal to the given index.
+func (w *WAL) ReleaseLockTo(index uint64) error {
+	for _, l := range w.locks {
+		_, i, err := parseWalName(path.Base(l.Name()))
+		if err != nil {
+			return err
+		}
+		if i > index {
+			return nil
+		}
+		err = l.Unlock()
+		if err != nil {
+			return err
+		}
+		err = l.Destroy()
+		if err != nil {
+			return err
+		}
+		w.locks = w.locks[1:]
+	}
+	return nil
+}
+
 func (w *WAL) Close() error {
 	if w.f != nil {
 		if err := w.sync(); err != nil {
@@ -263,6 +319,11 @@ func (w *WAL) Close() error {
 		if err := w.f.Close(); err != nil {
 			return err
 		}
+	}
+	for _, l := range w.locks {
+		// TODO: log the error
+		l.Unlock()
+		l.Destroy()
 	}
 	return nil
 }
