@@ -319,13 +319,13 @@ func startEtcd() (<-chan struct{}, error) {
 	// Start the peer server in a goroutine
 	for _, l := range plns {
 		go func(l net.Listener) {
-			log.Fatal(http.Serve(l, ph))
+			log.Fatal(serveHTTP(l, ph))
 		}(l)
 	}
 	// Start a client server goroutine for each listen address
 	for _, l := range clns {
 		go func(l net.Listener) {
-			log.Fatal(http.Serve(l, ch))
+			log.Fatal(serveHTTP(l, ch))
 		}(l)
 	}
 	return s.StopNotify(), nil
