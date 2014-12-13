@@ -43,7 +43,7 @@ func TestReadWriteTimeoutDialer(t *testing.T) {
 	defer conn.Close()
 
 	// fill the socket buffer
-	data := make([]byte, 1024*1024)
+	data := make([]byte, 5*1024*1024)
 	timer := time.AfterFunc(d.wtimeoutd*5, func() {
 		t.Fatal("wait timeout")
 	})
