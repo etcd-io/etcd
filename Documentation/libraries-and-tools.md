@@ -27,6 +27,7 @@
 - [jplana/python-etcd](https://github.com/jplana/python-etcd) - Supports v2
 - [russellhaering/txetcd](https://github.com/russellhaering/txetcd) - a Twisted Python library
 - [cholcombe973/autodock](https://github.com/cholcombe973/autodock) - A docker deployment automation tool
+- [lisael/aioetcd](https://github.com/lisael/aioetcd) - (Python 3.4+) Asyncio coroutines client (Supports v2)
 
 **Node libraries**
 
