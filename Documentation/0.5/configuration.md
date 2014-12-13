@@ -30,6 +30,14 @@ To start etcd automatically using custom settings at startup in Linux, using a [
 + List of URLs to listen on for client traffic.
 + default: "http://localhost:2379,http://localhost:4001"
 
+##### -max-snapshots
++ Maximum number of snapshot files to retain (0 is unlimited)
++ default: 5
+
+##### -max-wals
++ Maximum number of wal files to retain (0 is unlimited)
++ default: 5
+
 ##### -cors
 + Comma-separated white list of origins for CORS (cross-origin resource sharing).
 + default: none
