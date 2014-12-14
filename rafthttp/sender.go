@@ -65,8 +65,10 @@ type Sender interface {
 	Resume()
 }
 
-func NewSender(tr http.RoundTripper, u string, cid types.ID, p Processor, fs *stats.FollowerStats, shouldstop chan struct{}) *sender {
+func NewSender(tr http.RoundTripper, u string, id types.ID, cid types.ID, p Processor, fs *stats.FollowerStats, shouldstop chan struct{}) *sender {
 	s := &sender{
+		id:          id,
+		active:      true,
 		tr:          tr,
 		u:           u,
 		cid:         cid,
@@ -85,9 +87,10 @@ func NewSender(tr http.RoundTripper, u string, cid types.ID, p Processor, fs *st
 }
 
 type sender struct {
+	id  types.ID
+	cid types.ID
+
 	tr         http.RoundTripper
-	u          string
-	cid        types.ID
 	p          Processor
 	fs         *stats.FollowerStats
 	shouldstop chan struct{}
@@ -99,9 +102,16 @@ type sender struct {
 	strmSrvMu   sync.Mutex
 	q           chan []byte
 
-	paused bool
-	mu     sync.RWMutex
-	wg     sync.WaitGroup
+	// wait for the handling routines
+	wg sync.WaitGroup
+
+	mu sync.RWMutex
+	u  string // the url this sender post to
+	// if the last send was successful, thi sender is active.
+	// Or it is inactive
+	active  bool
+	errored error
+	paused  bool
 }
 
 func (s *sender) StartStreaming(w WriteFlusher, to types.ID, term uint64) (<-chan struct{}, error) {
@@ -258,12 +268,27 @@ func (s *sender) handle() {
 		start := time.Now()
 		err := s.post(d)
 		end := time.Now()
+
+		s.mu.Lock()
 		if err != nil {
+			if s.errored == nil || s.errored.Error() != err.Error() {
+				log.Printf("sender: error posting to %s: %v", s.id, err)
+				s.errored = err
+			}
+			if s.active {
+				log.Printf("sender: the connection with %s becomes inactive", s.id)
+				s.active = false
+			}
 			s.fs.Fail()
-			log.Printf("sender: %v", err)
-			continue
+		} else {
+			if !s.active {
+				log.Printf("sender: the connection with %s becomes active", s.id)
+				s.active = true
+				s.errored = nil
+			}
+			s.fs.Succ(end.Sub(start))
 		}
-		s.fs.Succ(end.Sub(start))
+		s.mu.Unlock()
 	}
 }
 
@@ -274,13 +299,13 @@ func (s *sender) post(data []byte) error {
 	req, err := http.NewRequest("POST", s.u, bytes.NewBuffer(data))
 	s.mu.RUnlock()
 	if err != nil {
-		return fmt.Errorf("new request to %s error: %v", s.u, err)
+		return err
 	}
 	req.Header.Set("Content-Type", "application/protobuf")
 	req.Header.Set("X-Etcd-Cluster-ID", s.cid.String())
 	resp, err := s.tr.RoundTrip(req)
 	if err != nil {
-		return fmt.Errorf("error posting to %q: %v", req.URL.String(), err)
+		return err
 	}
 	resp.Body.Close()
 
@@ -290,15 +315,15 @@ func (s *sender) post(data []byte) error {
 		case s.shouldstop <- struct{}{}:
 		default:
 		}
-		log.Printf("etcdserver: conflicting cluster ID with the target cluster (%s != %s)", resp.Header.Get("X-Etcd-Cluster-ID"), s.cid)
+		log.Printf("rafthttp: conflicting cluster ID with the target cluster (%s != %s)", resp.Header.Get("X-Etcd-Cluster-ID"), s.cid)
 		return nil
 	case http.StatusForbidden:
 		select {
 		case s.shouldstop <- struct{}{}:
 		default:
 		}
-		log.Println("etcdserver: this member has been permanently removed from the cluster")
-		log.Println("etcdserver: the data-dir used by this member must be removed so that this host can be re-added with a new member ID")
+		log.Println("rafthttp: this member has been permanently removed from the cluster")
+		log.Println("rafthttp: the data-dir used by this member must be removed so that this host can be re-added with a new member ID")
 		return nil
 	case http.StatusNoContent:
 		return nil
