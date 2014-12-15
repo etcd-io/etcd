@@ -67,7 +67,7 @@ func handleBackup(c *cli.Context) {
 		}
 	}
 
-	w, err := wal.OpenAtIndex(srcWAL, index)
+	w, err := wal.OpenNotInUse(srcWAL, index)
 	if err != nil {
 		log.Fatal(err)
 	}

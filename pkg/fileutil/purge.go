@@ -27,12 +27,29 @@ func PurgeFile(dirname string, suffix string, max uint, interval time.Duration, 
 			sort.Strings(newfnames)
 			for len(newfnames) > int(max) {
 				f := path.Join(dirname, newfnames[0])
-				err := os.Remove(f)
+				l, err := NewLock(f)
 				if err != nil {
 					errC <- err
 					return
 				}
-				log.Printf("filePurge: successfully remvoed file %s", f)
+				err = l.TryLock()
+				if err != nil {
+					break
+				}
+				err = os.Remove(f)
+				if err != nil {
+					errC <- err
+					return
+				}
+				err = l.Unlock()
+				if err != nil {
+					log.Printf("filePurge: unlock %s error %v", l.Name(), err)
+				}
+				err = l.Destroy()
+				if err != nil {
+					log.Printf("filePurge: destroy lock %s error %v", l.Name(), err)
+				}
+				log.Printf("filePurge: successfully removed file %s", f)
 				newfnames = newfnames[1:]
 			}
 			select {
