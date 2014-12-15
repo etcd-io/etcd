@@ -90,7 +90,7 @@ func TestOpenAtIndex(t *testing.T) {
 	}
 	f.Close()
 
-	w, err := OpenAtIndex(dir, 0)
+	w, err := Open(dir, 0)
 	if err != nil {
 		t.Fatalf("err = %v, want nil", err)
 	}
@@ -109,7 +109,7 @@ func TestOpenAtIndex(t *testing.T) {
 	}
 	f.Close()
 
-	w, err = OpenAtIndex(dir, 5)
+	w, err = Open(dir, 5)
 	if err != nil {
 		t.Fatalf("err = %v, want nil", err)
 	}
@@ -126,7 +126,7 @@ func TestOpenAtIndex(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer os.RemoveAll(emptydir)
-	if _, err = OpenAtIndex(emptydir, 0); err != ErrFileNotFound {
+	if _, err = Open(emptydir, 0); err != ErrFileNotFound {
 		t.Errorf("err = %v, want %v", err, ErrFileNotFound)
 	}
 }
@@ -219,7 +219,7 @@ func TestRecover(t *testing.T) {
 	}
 	w.Close()
 
-	if w, err = OpenAtIndex(p, 0); err != nil {
+	if w, err = Open(p, 0); err != nil {
 		t.Fatal(err)
 	}
 	metadata, state, entries, err := w.ReadAll()
@@ -342,7 +342,7 @@ func TestRecoverAfterCut(t *testing.T) {
 	}
 
 	for i := 0; i < 10; i++ {
-		w, err := OpenAtIndex(p, uint64(i))
+		w, err := Open(p, uint64(i))
 		if err != nil {
 			if i <= 4 {
 				if err != ErrFileNotFound {
@@ -386,7 +386,7 @@ func TestOpenAtUncommittedIndex(t *testing.T) {
 	}
 	w.Close()
 
-	w, err = OpenAtIndex(p, 1)
+	w, err = Open(p, 1)
 	if err != nil {
 		t.Fatal(err)
 	}

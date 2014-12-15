@@ -987,7 +987,7 @@ func restartNode(cfg *ServerConfig, index uint64, snapshot *raftpb.Snapshot) (ty
 
 func readWAL(waldir string, index uint64) (w *wal.WAL, id, cid types.ID, st raftpb.HardState, ents []raftpb.Entry) {
 	var err error
-	if w, err = wal.OpenAtIndex(waldir, index); err != nil {
+	if w, err = wal.Open(waldir, index); err != nil {
 		log.Fatalf("etcdserver: open wal error: %v", err)
 	}
 	var wmetadata []byte

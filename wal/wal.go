@@ -117,17 +117,19 @@ func Create(dirpath string, metadata []byte) (*WAL, error) {
 	return w, nil
 }
 
-// OpenAtIndex opens the WAL at the given index.
+// Open opens the WAL at the given index.
 // The index SHOULD have been previously committed to the WAL, or the following
 // ReadAll will fail.
 // The returned WAL is ready to read and the first record will be the given
 // index. The WAL cannot be appended to before reading out all of its
 // previous records.
-func OpenAtIndex(dirpath string, index uint64) (*WAL, error) {
+func Open(dirpath string, index uint64) (*WAL, error) {
 	return openAtIndex(dirpath, index, true)
 }
 
-func OpenAtIndexUntilUsing(dirpath string, index uint64) (*WAL, error) {
+// OpenNotInUse only opens the wal files that are not in use.
+// Other than that, it is similar to Open.
+func OpenNotInUse(dirpath string, index uint64) (*WAL, error) {
 	return openAtIndex(dirpath, index, false)
 }
 
