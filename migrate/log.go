@@ -490,8 +490,6 @@ func toEntry5(ent4 *etcd4pb.LogEntry, raftMap map[string]uint64) (*raftpb.Entry,
 		Data:  data,
 	}
 
-	log.Printf("%d: %s -> %s", ent5.Index, ent4.GetCommandName(), ent5.Type)
-
 	return &ent5, nil
 }
 

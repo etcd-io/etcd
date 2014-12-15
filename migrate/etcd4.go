@@ -145,7 +145,6 @@ func GuessNodeID(nodes map[string]uint64, snap4 *Snapshot4, cfg *Config4, name s
 		//snapNodes[p.Name] = uint64(m.ID)
 		//}
 		for _, p := range cfg.Peers {
-			log.Printf(p.Name)
 			delete(snapNodes, p.Name)
 		}
 		if len(snapNodes) == 1 {
