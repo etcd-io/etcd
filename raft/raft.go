@@ -279,7 +279,6 @@ func (r *raft) maybeCommit() bool {
 	}
 	sort.Sort(sort.Reverse(mis))
 	mci := mis[r.q()-1]
-
 	return r.raftLog.maybeCommit(mci, r.Term)
 }
 
