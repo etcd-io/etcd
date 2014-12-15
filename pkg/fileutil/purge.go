@@ -32,7 +32,7 @@ func PurgeFile(dirname string, suffix string, max uint, interval time.Duration, 
 					errC <- err
 					return
 				}
-				log.Printf("filePurge: successfully remvoed file %s", f)
+				log.Printf("filePurge: successfully removed file %s", f)
 				newfnames = newfnames[1:]
 			}
 			select {
