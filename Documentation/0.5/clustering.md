@@ -30,18 +30,21 @@ On each machine you would start etcd with these flags:
 
 ```
 $ etcd -name infra0 -initial-advertise-peer-urls https://10.0.1.10:2380 \
+  -listen-peer-urls https://10.0.1.10:2380 \
   -initial-cluster-token etcd-cluster-1 \
   -initial-cluster infra0=http://10.0.1.10:2380,infra1=http://10.0.1.11:2380,infra2=http://10.0.1.12:2380 \
   -initial-cluster-state new
 ```
 ```
 $ etcd -name infra1 -initial-advertise-peer-urls https://10.0.1.11:2380 \
+  -listen-peer-urls https://10.0.1.11:2380 \
   -initial-cluster-token etcd-cluster-1 \
   -initial-cluster infra0=http://10.0.1.10:2380,infra1=http://10.0.1.11:2380,infra2=http://10.0.1.12:2380 \
   -initial-cluster-state new
 ```
 ```
 $ etcd -name infra2 -initial-advertise-peer-urls https://10.0.1.12:2380 \
+  -listen-peer-urls https://10.0.1.12:2380 \
   -initial-cluster-token etcd-cluster-1 \
   -initial-cluster infra0=http://10.0.1.10:2380,infra1=http://10.0.1.11:2380,infra2=http://10.0.1.12:2380 \
   -initial-cluster-state new
@@ -55,6 +58,7 @@ In the following example, we have not included our new host in the list of enume
 
 ```
 $ etcd -name infra1 -initial-advertise-peer-urls http://10.0.1.11:2380 \
+  -listen-peer-urls https://10.0.1.11:2380 \
   -initial-cluster infra0=http://10.0.1.10:2380 \
   -initial-cluster-state new
 etcd: infra1 not listed in the initial cluster config
@@ -65,6 +69,7 @@ In this example, we are attempting to map a node (infra0) on a different address
 
 ```
 $ etcd -name infra0 -initial-advertise-peer-urls http://127.0.0.1:2380 \
+  -listen-peer-urls http://10.0.1.10:2380 \
   -initial-cluster infra0=http://10.0.1.10:2380,infra1=http://10.0.1.11:2380,infra2=http://10.0.1.12:2380 \
   -initial-cluster-state=new
 etcd: error setting up initial cluster: infra0 has different advertised URLs in the cluster and advertised peer URLs list
@@ -75,6 +80,7 @@ If you configure a peer with a different set of configuration and attempt to joi
 
 ```
 $ etcd -name infra3 -initial-advertise-peer-urls http://10.0.1.13:2380 \
+  -listen-peer-urls http://10.0.1.13:2380 \
   -initial-cluster infra0=http://10.0.1.10:2380,infra1=http://10.0.1.11:2380,infra3=http://10.0.1.13:2380 \
   -initial-cluster-state=new
 etcd: conflicting cluster ID to the target cluster (c6ab534d07e8fcc4 != bc25ea2a74fb18b0). Exiting.
@@ -111,14 +117,17 @@ Now we start etcd with those relevant flags for each member:
 
 ```
 $ etcd -name infra0 -initial-advertise-peer-urls http://10.0.1.10:2380 \
+  -listen-peer-urls http://10.0.1.10:2380 \
   -discovery https://myetcd.local/v2/keys/discovery/6c007a14875d53d9bf0ef5a6fc0257c817f0fb83
 ```
 ```
 $ etcd -name infra1 -initial-advertise-peer-urls http://10.0.1.11:2380 \
+  -listen-peer-urls http://10.0.1.11:2380 \
   -discovery https://myetcd.local/v2/keys/discovery/6c007a14875d53d9bf0ef5a6fc0257c817f0fb83
 ```
 ```
 $ etcd -name infra2 -initial-advertise-peer-urls http://10.0.1.12:2380 \
+  -listen-peer-urls http://10.0.1.12:2380 \
   -discovery https://myetcd.local/v2/keys/discovery/6c007a14875d53d9bf0ef5a6fc0257c817f0fb83
 ```
 
@@ -152,14 +161,17 @@ Now we start etcd with those relevant flags for each member:
 
 ```
 $ etcd -name infra0 -initial-advertise-peer-urls http://10.0.1.10:2380 \
+  -listen-peer-urls http://10.0.1.10:2380 \
   -discovery https://discovery.etcd.io/3e86b59982e49066c5d813af1c2e2579cbf573de
 ```
 ```
 $ etcd -name infra1 -initial-advertise-peer-urls http://10.0.1.11:2380 \
+  -listen-peer-urls http://10.0.1.11:2380 \
   -discovery https://discovery.etcd.io/3e86b59982e49066c5d813af1c2e2579cbf573de
 ```
 ```
 $ etcd -name infra2 -initial-advertise-peer-urls http://10.0.1.12:2380 \
+  -listen-peer-urls http://10.0.1.12:2380 \
   -discovery https://discovery.etcd.io/3e86b59982e49066c5d813af1c2e2579cbf573de
 ```
 
@@ -174,6 +186,7 @@ You can use the environment variable `ETCD_DISCOVERY_PROXY` to cause etcd to use
 
 ```
 $ etcd -name infra0 -initial-advertise-peer-urls http://10.0.1.10:2380 \
+  -listen-peer-urls http://10.0.1.10:2380 \
   -discovery https://discovery.etcd.io/3e86b59982e49066c5d813af1c2e2579cbf573de
 etcd: error: the cluster doesn’t have a size configuration value in https://discovery.etcd.io/3e86b59982e49066c5d813af1c2e2579cbf573de/_config
 exit 1
@@ -185,6 +198,7 @@ This error will occur if the discovery cluster already has the configured number
 
 ```
 $ etcd -name infra0 -initial-advertise-peer-urls http://10.0.1.10:2380 \
+  -listen-peer-urls http://10.0.1.10:2380 \
   -discovery https://discovery.etcd.io/3e86b59982e49066c5d813af1c2e2579cbf573de \
   -discovery-fallback exit
 etcd: discovery: cluster is full
@@ -198,6 +212,7 @@ ignored on this machine.
 
 ```
 $ etcd -name infra0 -initial-advertise-peer-urls http://10.0.1.10:2380 \
+  -listen-peer-urls http://10.0.1.10:2380 \
   -discovery https://discovery.etcd.io/3e86b59982e49066c5d813af1c2e2579cbf573de
 etcdserver: discovery token ignored since a cluster has already been initialized. Valid log found at /var/lib/etcd
 ```
