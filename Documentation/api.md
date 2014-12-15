@@ -126,10 +126,10 @@ curl -L http://127.0.0.1:4001/v2/keys/message -XPUT -d value="Hello etcd"
         "value": "Hello etcd"
     },
     "prevNode": {
-    	"createdIndex": 2,
-    	"key": "/message",
-    	"value": "Hello world",
-    	"modifiedIndex": 2
+        "createdIndex": 2,
+        "key": "/message",
+        "value": "Hello world",
+        "modifiedIndex": 2
     }
 }
 ```
@@ -153,10 +153,10 @@ curl -L http://127.0.0.1:4001/v2/keys/message -XDELETE
         "modifiedIndex": 4
     },
     "prevNode": {
-    	"key": "/message",
-    	"value": "Hello etcd",
-    	"modifiedIndex": 3,
-    	"createdIndex": 3
+        "key": "/message",
+        "value": "Hello etcd",
+        "modifiedIndex": 3,
+        "createdIndex": 3
     }
 }
 ```
@@ -405,19 +405,19 @@ curl 'http://127.0.0.1:4001/v2/keys/dir/asdf?consistent=true&wait=true'
 
 ```json
 {
-	"action": "expire",
-	"node": {
-		"createdIndex": 8,
-		"key": "/dir",
-		"modifiedIndex": 15
-	},
-	"prevNode": {
-		"createdIndex": 8,
-		"key": "/dir",
-		"dir":true,
-		"modifiedIndex": 17,
-		"expiration": "2013-12-11T10:39:35.689275857-08:00"
-	}
+    "action": "expire",
+    "node": {
+        "createdIndex": 8,
+        "key": "/dir",
+        "modifiedIndex": 15
+    },
+    "prevNode": {
+        "createdIndex": 8,
+        "key": "/dir",
+        "dir":true,
+        "modifiedIndex": 17,
+        "expiration": "2013-12-11T10:39:35.689275857-08:00"
+    }
 }
 ```
 
@@ -499,10 +499,10 @@ The response should be:
         "value": "two"
     },
     "prevNode": {
-    	"createdIndex": 8,
-    	"key": "/foo",
-    	"modifiedIndex": 8,
-    	"value": "one"
+        "createdIndex": 8,
+        "key": "/foo",
+        "modifiedIndex": 8,
+        "value": "one"
     }
 }
 ```
@@ -536,10 +536,10 @@ The error code explains the problem:
 
 ```json
 {
-	"errorCode": 101,
-	"message": "Compare failed",
-	"cause": "[two != one]",
-	"index": 8
+    "errorCode": 101,
+    "message": "Compare failed",
+    "cause": "[two != one]",
+    "index": 8
 }
 ```
 
@@ -551,10 +551,10 @@ curl -L http://127.0.0.1:4001/v2/keys/foo?prevIndex=1 -XDELETE
 
 ```json
 {
-	"errorCode": 101,
-	"message": "Compare failed",
-	"cause": "[1 != 8]",
-	"index": 8
+    "errorCode": 101,
+    "message": "Compare failed",
+    "cause": "[1 != 8]",
+    "index": 8
 }
 ```
 
@@ -568,18 +568,18 @@ The successful response will look something like:
 
 ```json
 {
-	"action": "compareAndDelete",
-	"node": {
-		"key": "/foo",
-		"modifiedIndex": 9,
-		"createdIndex": 8
-	},
-	"prevNode": {
-		"key": "/foo",
-		"value": "one",
-		"modifiedIndex": 8,
-		"createdIndex": 8
-	}
+    "action": "compareAndDelete",
+    "node": {
+        "key": "/foo",
+        "modifiedIndex": 9,
+        "createdIndex": 8
+    },
+    "prevNode": {
+        "key": "/foo",
+        "value": "one",
+        "modifiedIndex": 8,
+        "createdIndex": 8
+    }
 }
 ```
 
@@ -643,22 +643,22 @@ We should see the response as an array of items:
 ```json
 {
     "action": "get",
-    "node": {
-        "key": "/",
-        "dir": true,
-        "nodes": [
-            {
-                "key": "/foo_dir",
-                "dir": true,
-                "modifiedIndex": 2,
-                "createdIndex": 2
-            },
-            {
-                "key": "/foo",
-                "value": "two",
-                "modifiedIndex": 1,
-                "createdIndex": 1
-            }
+    "node": {
+        "key": "/",
+        "dir": true,
+        "nodes": [
+            {
+                "key": "/foo_dir",
+                "dir": true,
+                "modifiedIndex": 2,
+                "createdIndex": 2
+            },
+            {
+                "key": "/foo",
+                "value": "two",
+                "modifiedIndex": 1,
+                "createdIndex": 1
+            }
         ]
     }
 }
@@ -673,68 +673,84 @@ curl -L http://127.0.0.1:4001/v2/keys/?recursive=true
 
 ```json
 {
-    "action": "get",
-    "node": {
-        "key": "/",
-        "dir": true,
-        "nodes": [
-            {
-                "key": "/foo_dir",
-                "dir": true,
-                "nodes": [
-                    {
-                        "key": "/foo_dir/foo",
-                        "value": "bar",
-                        "modifiedIndex": 2,
-                        "createdIndex": 2
-                    }
-                ],
-                "modifiedIndex": 2,
-                "createdIndex": 2
-            },
-            {
-                "key": "/foo",
-                "value": "two",
-                "modifiedIndex": 1,
-                "createdIndex": 1
-            }
-        ]
-    }
+    "action": "get",
+    "node": {
+        "key": "/",
+        "dir": true,
+        "nodes": [
+            {
+                "key": "/foo_dir",
+                "dir": true,
+                "nodes": [
+                    {
+                        "key": "/foo_dir/foo",
+                        "value": "bar",
+                        "modifiedIndex": 2,
+                        "createdIndex": 2
+                    }
+                ],
+                "modifiedIndex": 2,
+                "createdIndex": 2
+            },
+            {
+                "key": "/foo",
+                "value": "two",
+                "modifiedIndex": 1,
+                "createdIndex": 1
+            }
+        ]
+    }
 }
 ```
 
 
 ### Deleting a Directory
 
-Now let's try to delete the directory `/foo_dir`.
+Now let's try to delete the directory `/dir`
 
-You can remove an empty directory using the `DELETE` verb and the `dir=true` parameter.
+You can remove an empty directory using the `DELETE` verb and the `dir=true` parameter. Following will succeed because `/dir` was empty
 
 ```sh
-curl -L 'http://127.0.0.1:4001/v2/keys/foo_dir?dir=true' -XDELETE
+curl -L 'http://127.0.0.1:4001/v2/keys/dir?dir=true' -XDELETE
 ```
+
 ```json
 {
     "action": "delete",
     "node": {
         "createdIndex": 30,
         "dir": true,
-        "key": "/foo_dir",
+        "key": "/dir",
         "modifiedIndex": 31
     },
     "prevNode": {
-    	"createdIndex": 30,
-    	"key": "/foo_dir",
-    	"dir": true,
-    	"modifiedIndex": 30
+        "createdIndex": 30,
+        "key": "/dir",
+        "dir": true,
+        "modifiedIndex": 30
     }
+}
+```
+
+However, deleting `/foo_dir` will result into an error because `/foo_dir` is not empty.
+
+```sh
+curl -L 'http://127.0.0.1:4001/v2/keys/foo_dir?dir=true' -XDELETE
+```
+
+```json
+{
+    "errorCode":108,
+    "message":"Directory not empty",
+    "cause":"/foo_dir",
+    "index":2
 }
 ```
 
 To delete a directory that holds keys, you must add `recursive=true`.
 
 ```sh
-curl -L http://127.0.0.1:4001/v2/keys/dir?recursive=true -XDELETE
+curl -L http://127.0.0.1:4001/v2/keys/foo_dir?recursive=true -XDELETE
 ```
 
 ```json
@@ -747,10 +763,10 @@ curl -L http://127.0.0.1:4001/v2/keys/dir?recursive=true -XDELETE
         "modifiedIndex": 11
     },
     "prevNode": {
-    	"createdIndex": 10,
-    	"dir": true,
-    	"key": "/dir",
-    	"modifiedIndex": 10
+        "createdIndex": 10,
+        "dir": true,
+        "key": "/dir",
+        "modifiedIndex": 10
     }
 }
 ```

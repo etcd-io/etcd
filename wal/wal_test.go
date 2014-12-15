@@ -90,7 +90,7 @@ func TestOpenAtIndex(t *testing.T) {
 	}
 	f.Close()
 
-	w, err := OpenAtIndex(dir, 0)
+	w, err := Open(dir, 0)
 	if err != nil {
 		t.Fatalf("err = %v, want nil", err)
 	}
@@ -109,7 +109,7 @@ func TestOpenAtIndex(t *testing.T) {
 	}
 	f.Close()
 
-	w, err = OpenAtIndex(dir, 5)
+	w, err = Open(dir, 5)
 	if err != nil {
 		t.Fatalf("err = %v, want nil", err)
 	}
@@ -126,11 +126,12 @@ func TestOpenAtIndex(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer os.RemoveAll(emptydir)
-	if _, err = OpenAtIndex(emptydir, 0); err != ErrFileNotFound {
+	if _, err = Open(emptydir, 0); err != ErrFileNotFound {
 		t.Errorf("err = %v, want %v", err, ErrFileNotFound)
 	}
 }
 
+// TODO: split it into smaller tests for better readability
 func TestCut(t *testing.T) {
 	p, err := ioutil.TempDir(os.TempDir(), "waltest")
 	if err != nil {
@@ -146,6 +147,10 @@ func TestCut(t *testing.T) {
 
 	// TODO(unihorn): remove this when cut can operate on an empty file
 	if err := w.SaveEntry(&raftpb.Entry{}); err != nil {
+		t.Fatal(err)
+	}
+	state := raftpb.HardState{Term: 1}
+	if err := w.SaveState(&state); err != nil {
 		t.Fatal(err)
 	}
 	if err := w.Cut(); err != nil {
@@ -166,6 +171,26 @@ func TestCut(t *testing.T) {
 	wname = walName(2, 2)
 	if g := path.Base(w.f.Name()); g != wname {
 		t.Errorf("name = %s, want %s", g, wname)
+	}
+
+	// check the state in the last WAL
+	// We do check before closing the WAL to ensure that Cut syncs the data
+	// into the disk.
+	f, err := os.Open(path.Join(p, wname))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	nw := &WAL{
+		decoder: newDecoder(f),
+		ri:      2,
+	}
+	_, gst, _, err := nw.ReadAll()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(gst, state) {
+		t.Errorf("state = %+v, want %+v", gst, state)
 	}
 }
 
@@ -194,7 +219,7 @@ func TestRecover(t *testing.T) {
 	}
 	w.Close()
 
-	if w, err = OpenAtIndex(p, 0); err != nil {
+	if w, err = Open(p, 0); err != nil {
 		t.Fatal(err)
 	}
 	metadata, state, entries, err := w.ReadAll()
@@ -213,6 +238,7 @@ func TestRecover(t *testing.T) {
 	if !reflect.DeepEqual(state, s) {
 		t.Errorf("state = %+v, want %+v", state, s)
 	}
+	w.Close()
 }
 
 func TestSearchIndex(t *testing.T) {
@@ -316,7 +342,7 @@ func TestRecoverAfterCut(t *testing.T) {
 	}
 
 	for i := 0; i < 10; i++ {
-		w, err := OpenAtIndex(p, uint64(i))
+		w, err := Open(p, uint64(i))
 		if err != nil {
 			if i <= 4 {
 				if err != ErrFileNotFound {
@@ -340,6 +366,7 @@ func TestRecoverAfterCut(t *testing.T) {
 				t.Errorf("#%d: ents[%d].Index = %+v, want %+v", i, j, e.Index, j+i)
 			}
 		}
+		w.Close()
 	}
 }
 
@@ -359,13 +386,13 @@ func TestOpenAtUncommittedIndex(t *testing.T) {
 	}
 	w.Close()
 
-	w, err = OpenAtIndex(p, 1)
+	w, err = Open(p, 1)
 	if err != nil {
 		t.Fatal(err)
 	}
 	// commit up to index 0, try to read index 1
-	if _, _, _, err := w.ReadAll(); err != ErrIndexNotFound {
-		t.Errorf("err = %v, want %v", err, ErrIndexNotFound)
+	if _, _, _, err := w.ReadAll(); err != nil {
+		t.Errorf("err = %v, want nil", err)
 	}
 	w.Close()
 }

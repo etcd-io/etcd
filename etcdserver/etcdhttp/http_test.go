@@ -24,7 +24,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/code.google.com/p/go.net/context"
+	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/etcdserverpb"
@@ -57,6 +57,7 @@ func (c *fakeCluster) Members() []*etcdserver.Member {
 	return []*etcdserver.Member(sms)
 }
 func (c *fakeCluster) Member(id types.ID) *etcdserver.Member { return c.members[uint64(id)] }
+func (c *fakeCluster) IsIDRemoved(id types.ID) bool          { return false }
 
 // errServer implements the etcd.Server interface for testing.
 // It returns the given error from any Do/Process/AddMember/RemoveMember calls.
@@ -64,18 +65,22 @@ type errServer struct {
 	err error
 }
 
+func (fs *errServer) Start()       {}
+func (fs *errServer) Stop()        {}
+func (fs *errServer) ID() types.ID { return types.ID(1) }
 func (fs *errServer) Do(ctx context.Context, r etcdserverpb.Request) (etcdserver.Response, error) {
 	return etcdserver.Response{}, fs.err
 }
 func (fs *errServer) Process(ctx context.Context, m raftpb.Message) error {
 	return fs.err
 }
-func (fs *errServer) Start() {}
-func (fs *errServer) Stop()  {}
 func (fs *errServer) AddMember(ctx context.Context, m etcdserver.Member) error {
 	return fs.err
 }
 func (fs *errServer) RemoveMember(ctx context.Context, id uint64) error {
+	return fs.err
+}
+func (fs *errServer) UpdateMember(ctx context.Context, m etcdserver.Member) error {
 	return fs.err
 }
 

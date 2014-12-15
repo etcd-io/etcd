@@ -27,13 +27,13 @@ import (
 	"time"
 )
 
-func NewListener(addr string, info TLSInfo) (net.Listener, error) {
+func NewListener(addr string, scheme string, info TLSInfo) (net.Listener, error) {
 	l, err := net.Listen("tcp", addr)
 	if err != nil {
 		return nil, err
 	}
 
-	if !info.Empty() {
+	if !info.Empty() && scheme == "https" {
 		cfg, err := info.ServerConfig()
 		if err != nil {
 			return nil, err
@@ -46,6 +46,11 @@ func NewListener(addr string, info TLSInfo) (net.Listener, error) {
 }
 
 func NewTransport(info TLSInfo) (*http.Transport, error) {
+	cfg, err := info.ClientConfig()
+	if err != nil {
+		return nil, err
+	}
+
 	t := &http.Transport{
 		// timeouts taken from http.DefaultTransport
 		Dial: (&net.Dialer{
@@ -53,14 +58,7 @@ func NewTransport(info TLSInfo) (*http.Transport, error) {
 			KeepAlive: 30 * time.Second,
 		}).Dial,
 		TLSHandshakeTimeout: 10 * time.Second,
-	}
-
-	if !info.Empty() {
-		tlsCfg, err := info.ClientConfig()
-		if err != nil {
-			return nil, err
-		}
-		t.TLSClientConfig = tlsCfg
+		TLSClientConfig:     cfg,
 	}
 
 	return t, nil
@@ -74,6 +72,10 @@ type TLSInfo struct {
 	// parseFunc exists to simplify testing. Typically, parseFunc
 	// should be left nil. In that case, tls.X509KeyPair will be used.
 	parseFunc func([]byte, []byte) (tls.Certificate, error)
+}
+
+func (info TLSInfo) String() string {
+	return fmt.Sprintf("cert = %s, key = %s, ca = %s", info.CertFile, info.KeyFile, info.CAFile)
 }
 
 func (info TLSInfo) Empty() bool {
@@ -134,22 +136,24 @@ func (info TLSInfo) ServerConfig() (*tls.Config, error) {
 }
 
 // ClientConfig generates a tls.Config object for use by an HTTP client
-func (info TLSInfo) ClientConfig() (*tls.Config, error) {
-	cfg, err := info.baseConfig()
-	if err != nil {
-		return nil, err
-	}
-
-	if info.CAFile != "" {
-		cp, err := newCertPool(info.CAFile)
+func (info TLSInfo) ClientConfig() (cfg *tls.Config, err error) {
+	if !info.Empty() {
+		cfg, err = info.baseConfig()
 		if err != nil {
 			return nil, err
 		}
-
-		cfg.RootCAs = cp
+	} else {
+		cfg = &tls.Config{}
 	}
 
-	return cfg, nil
+	if info.CAFile != "" {
+		cfg.RootCAs, err = newCertPool(info.CAFile)
+		if err != nil {
+			return
+		}
+	}
+
+	return
 }
 
 // newCertPool creates x509 certPool with provided CA file

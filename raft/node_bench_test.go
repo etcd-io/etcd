@@ -19,7 +19,7 @@ package raft
 import (
 	"testing"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/code.google.com/p/go.net/context"
+	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 )
 
 func BenchmarkOneNode(b *testing.B) {
@@ -27,14 +27,16 @@ func BenchmarkOneNode(b *testing.B) {
 	defer cancel()
 
 	n := newNode()
-	r := newRaft(1, []uint64{1}, 10, 1)
+	s := NewMemoryStorage()
+	r := newRaft(1, []uint64{1}, 10, 1, s)
 	go n.run(r)
 
 	defer n.Stop()
 
 	n.Campaign(ctx)
 	for i := 0; i < b.N; i++ {
-		<-n.Ready()
+		rd := <-n.Ready()
+		s.Append(rd.Entries)
 		n.Advance()
 		n.Propose(ctx, []byte("foo"))
 	}

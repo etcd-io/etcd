@@ -47,7 +47,7 @@ type Member struct {
 	Attributes
 }
 
-// newMember creates a Member without an ID and generates one based on the
+// NewMember creates a Member without an ID and generates one based on the
 // name, peer URLs. This is used for bootstrapping/adding new member.
 func NewMember(name string, peerURLs types.URLs, clusterName string, now *time.Time) *Member {
 	m := &Member{
@@ -80,8 +80,33 @@ func (m *Member) PickPeerURL() string {
 	return m.PeerURLs[rand.Intn(len(m.PeerURLs))]
 }
 
+func (m *Member) Clone() *Member {
+	if m == nil {
+		return nil
+	}
+	mm := &Member{
+		ID: m.ID,
+		Attributes: Attributes{
+			Name: m.Name,
+		},
+	}
+	if m.PeerURLs != nil {
+		mm.PeerURLs = make([]string, len(m.PeerURLs))
+		copy(mm.PeerURLs, m.PeerURLs)
+	}
+	if m.ClientURLs != nil {
+		mm.ClientURLs = make([]string, len(m.ClientURLs))
+		copy(mm.ClientURLs, m.ClientURLs)
+	}
+	return mm
+}
+
 func memberStoreKey(id types.ID) string {
 	return path.Join(storeMembersPrefix, id.String())
+}
+
+func MemberAttributesStorePath(id types.ID) string {
+	return path.Join(memberStoreKey(id), attributesSuffix)
 }
 
 func mustParseMemberIDFromKey(key string) types.ID {

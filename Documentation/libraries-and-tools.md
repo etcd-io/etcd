@@ -7,6 +7,7 @@
 - [etcd-dump](https://npmjs.org/package/etcd-dump) - Command line utility for dumping/restoring etcd.
 - [etcd-fs](https://github.com/xetorthio/etcd-fs) - FUSE filesystem for etcd
 - [etcd-browser](https://github.com/henszey/etcd-browser) - A web-based key/value editor for etcd using AngularJS
+- [etcd-lock](https://github.com/datawisesystems/etcd-lock) - A lock implementation for etcd
 
 **Go libraries**
 
@@ -26,6 +27,7 @@
 - [jplana/python-etcd](https://github.com/jplana/python-etcd) - Supports v2
 - [russellhaering/txetcd](https://github.com/russellhaering/txetcd) - a Twisted Python library
 - [cholcombe973/autodock](https://github.com/cholcombe973/autodock) - A docker deployment automation tool
+- [lisael/aioetcd](https://github.com/lisael/aioetcd) - (Python 3.4+) Asyncio coroutines client (Supports v2)
 
 **Node libraries**
 

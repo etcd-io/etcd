@@ -20,22 +20,27 @@ message Entry {
 	optional bytes      Data  = 4 [(gogoproto.nullable) = false];
 }
 
+message SnapshotMetadata {
+	required ConfState conf_state = 1 [(gogoproto.nullable) = false];
+	required uint64    index      = 2 [(gogoproto.nullable) = false];
+	required uint64    term       = 3 [(gogoproto.nullable) = false];
+}
+
 message Snapshot {
-	required bytes  data  = 1 [(gogoproto.nullable) = false];
-	repeated uint64 nodes = 2 [(gogoproto.nullable) = false];
-	required uint64 index = 3 [(gogoproto.nullable) = false];
-	required uint64 term  = 4 [(gogoproto.nullable) = false];
+	optional bytes            data     = 1 [(gogoproto.nullable) = false];
+	required SnapshotMetadata metadata = 2 [(gogoproto.nullable) = false];
 }
 
 enum MessageType {
-	MsgHup      = 0;
-	MsgBeat     = 1;
-	MsgProp     = 2;
-	MsgApp      = 3;
-	MsgAppResp  = 4;
-	MsgVote     = 5;
-	MsgVoteResp = 6;
-	MsgSnap     = 7;
+	MsgHup       = 0;
+	MsgBeat      = 1;
+	MsgProp      = 2;
+	MsgApp       = 3;
+	MsgAppResp   = 4;
+	MsgVote      = 5;
+	MsgVoteResp  = 6;
+	MsgSnap      = 7;
+	MsgHeartbeat = 8;
 }
 
 message Message {
@@ -57,9 +62,14 @@ message HardState {
 	required uint64 commit = 3 [(gogoproto.nullable) = false];
 }
 
+message ConfState {
+	repeated uint64 nodes = 1 [(gogoproto.nullable) = false];
+}
+
 enum ConfChangeType {
 	ConfChangeAddNode    = 0;
 	ConfChangeRemoveNode = 1;
+	ConfChangeUpdateNode = 2;
 }
 
 message ConfChange {

@@ -35,3 +35,17 @@ func IsDirWriteable(dir string) error {
 	}
 	return os.Remove(f)
 }
+
+// ReadDir returns the filenames in the given directory.
+func ReadDir(dirpath string) ([]string, error) {
+	dir, err := os.Open(dirpath)
+	if err != nil {
+		return nil, err
+	}
+	defer dir.Close()
+	names, err := dir.Readdirnames(-1)
+	if err != nil {
+		return nil, err
+	}
+	return names, nil
+}

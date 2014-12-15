@@ -29,12 +29,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/code.google.com/p/go.net/context"
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/jonboulle/clockwork"
+	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/etcdhttp/httptypes"
 	"github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"github.com/coreos/etcd/etcdserver/stats"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/store"
 	"github.com/coreos/etcd/version"
@@ -148,7 +149,7 @@ type membersHandler struct {
 }
 
 func (h *membersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if !allowMethod(w, r.Method, "GET", "POST", "DELETE") {
+	if !allowMethod(w, r.Method, "GET", "POST", "DELETE", "PUT") {
 		return
 	}
 	w.Header().Set("X-Etcd-Cluster-ID", h.clusterInfo.ID().String())
@@ -168,30 +169,22 @@ func (h *membersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			log.Printf("etcdhttp: %v", err)
 		}
 	case "POST":
-		ctype := r.Header.Get("Content-Type")
-		if ctype != "application/json" {
-			writeError(w, httptypes.NewHTTPError(http.StatusUnsupportedMediaType, fmt.Sprintf("Bad Content-Type %s, accept application/json", ctype)))
-			return
-		}
-		b, err := ioutil.ReadAll(r.Body)
-		if err != nil {
-			writeError(w, httptypes.NewHTTPError(http.StatusBadRequest, err.Error()))
-			return
-		}
 		req := httptypes.MemberCreateRequest{}
-		if err := json.Unmarshal(b, &req); err != nil {
-			writeError(w, httptypes.NewHTTPError(http.StatusBadRequest, err.Error()))
+		if ok := unmarshalRequest(r, &req, w); !ok {
 			return
 		}
-
 		now := h.clock.Now()
 		m := etcdserver.NewMember("", req.PeerURLs, "", &now)
-		if err := h.server.AddMember(ctx, *m); err != nil {
+		err := h.server.AddMember(ctx, *m)
+		switch {
+		case err == etcdserver.ErrIDExists || err == etcdserver.ErrPeerURLexists:
+			writeError(w, httptypes.NewHTTPError(http.StatusConflict, err.Error()))
+			return
+		case err != nil:
 			log.Printf("etcdhttp: error adding node %s: %v", m.ID, err)
 			writeError(w, err)
 			return
 		}
-
 		res := newMember(m)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
@@ -199,24 +192,43 @@ func (h *membersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			log.Printf("etcdhttp: %v", err)
 		}
 	case "DELETE":
-		idStr := trimPrefix(r.URL.Path, membersPrefix)
-		if idStr == "" {
-			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		id, ok := getID(r.URL.Path, w)
+		if !ok {
 			return
 		}
-		id, err := types.IDFromString(idStr)
-		if err != nil {
-			writeError(w, httptypes.NewHTTPError(http.StatusBadRequest, err.Error()))
-			return
-		}
-		err = h.server.RemoveMember(ctx, uint64(id))
+		err := h.server.RemoveMember(ctx, uint64(id))
 		switch {
 		case err == etcdserver.ErrIDRemoved:
-			writeError(w, httptypes.NewHTTPError(http.StatusGone, fmt.Sprintf("Member permanently removed: %s", idStr)))
+			writeError(w, httptypes.NewHTTPError(http.StatusGone, fmt.Sprintf("Member permanently removed: %s", id)))
 		case err == etcdserver.ErrIDNotFound:
-			writeError(w, httptypes.NewHTTPError(http.StatusNotFound, fmt.Sprintf("No such member: %s", idStr)))
+			writeError(w, httptypes.NewHTTPError(http.StatusNotFound, fmt.Sprintf("No such member: %s", id)))
 		case err != nil:
 			log.Printf("etcdhttp: error removing node %s: %v", id, err)
+			writeError(w, err)
+		default:
+			w.WriteHeader(http.StatusNoContent)
+		}
+	case "PUT":
+		id, ok := getID(r.URL.Path, w)
+		if !ok {
+			return
+		}
+		req := httptypes.MemberUpdateRequest{}
+		if ok := unmarshalRequest(r, &req, w); !ok {
+			return
+		}
+		m := etcdserver.Member{
+			ID:             id,
+			RaftAttributes: etcdserver.RaftAttributes{PeerURLs: req.PeerURLs.StringSlice()},
+		}
+		err := h.server.UpdateMember(ctx, m)
+		switch {
+		case err == etcdserver.ErrPeerURLexists:
+			writeError(w, httptypes.NewHTTPError(http.StatusConflict, err.Error()))
+		case err == etcdserver.ErrIDNotFound:
+			writeError(w, httptypes.NewHTTPError(http.StatusNotFound, fmt.Sprintf("No such member: %s", id)))
+		case err != nil:
+			log.Printf("etcdhttp: error updating node %s: %v", m.ID, err)
 			writeError(w, err)
 		default:
 			w.WriteHeader(http.StatusNoContent)
@@ -225,7 +237,7 @@ func (h *membersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 type statsHandler struct {
-	stats etcdserver.Stats
+	stats stats.Stats
 }
 
 func (h *statsHandler) serveStore(w http.ResponseWriter, r *http.Request) {
@@ -500,6 +512,38 @@ func trimErrorPrefix(err error, prefix string) error {
 		e.Cause = strings.TrimPrefix(e.Cause, prefix)
 	}
 	return err
+}
+
+func unmarshalRequest(r *http.Request, req json.Unmarshaler, w http.ResponseWriter) bool {
+	ctype := r.Header.Get("Content-Type")
+	if ctype != "application/json" {
+		writeError(w, httptypes.NewHTTPError(http.StatusUnsupportedMediaType, fmt.Sprintf("Bad Content-Type %s, accept application/json", ctype)))
+		return false
+	}
+	b, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		writeError(w, httptypes.NewHTTPError(http.StatusBadRequest, err.Error()))
+		return false
+	}
+	if err := req.UnmarshalJSON(b); err != nil {
+		writeError(w, httptypes.NewHTTPError(http.StatusBadRequest, err.Error()))
+		return false
+	}
+	return true
+}
+
+func getID(p string, w http.ResponseWriter) (types.ID, bool) {
+	idStr := trimPrefix(p, membersPrefix)
+	if idStr == "" {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return 0, false
+	}
+	id, err := types.IDFromString(idStr)
+	if err != nil {
+		writeError(w, httptypes.NewHTTPError(http.StatusNotFound, fmt.Sprintf("No such member: %s", idStr)))
+		return 0, false
+	}
+	return id, true
 }
 
 // getUint64 extracts a uint64 by the given key from a Form. If the key does

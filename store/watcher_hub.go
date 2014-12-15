@@ -33,7 +33,7 @@ import (
 // event happens between the end of the first watch command and the start
 // of the second command.
 type watcherHub struct {
-	mutex        sync.Mutex // protect the hash map
+	mutex        sync.Mutex
 	watchers     map[string]*list.List
 	count        int64 // current number of watchers.
 	EventHistory *EventHistory
@@ -71,15 +71,14 @@ func (wh *watcherHub) watch(key string, recursive, stream bool, index, storeInde
 		hub:        wh,
 	}
 
+	wh.mutex.Lock()
+	defer wh.mutex.Unlock()
 	// If the event exists in the known history, append the EtcdIndex and return immediately
 	if event != nil {
 		event.EtcdIndex = storeIndex
 		w.eventChan <- event
 		return w, nil
 	}
-
-	wh.mutex.Lock()
-	defer wh.mutex.Unlock()
 
 	l, ok := wh.watchers[key]
 

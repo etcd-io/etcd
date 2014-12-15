@@ -17,24 +17,27 @@
 package etcdserver
 
 import (
+	"encoding/json"
+	"fmt"
 	"path"
 	"reflect"
 	"testing"
 
 	"github.com/coreos/etcd/pkg/types"
+	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/store"
 )
 
 func TestClusterFromString(t *testing.T) {
 	tests := []struct {
 		f    string
-		mems []Member
+		mems []*Member
 	}{
 		{
 			"mem1=http://10.0.0.1:2379,mem1=http://128.193.4.20:2379,mem2=http://10.0.0.2:2379,default=http://127.0.0.1:2379",
-			[]Member{
-				newTestMember(4322322643958477905, []string{"http://10.0.0.1:2379", "http://128.193.4.20:2379"}, "mem1", nil),
+			[]*Member{
 				newTestMember(3141198903430435750, []string{"http://10.0.0.2:2379"}, "mem2", nil),
+				newTestMember(4322322643958477905, []string{"http://10.0.0.1:2379", "http://128.193.4.20:2379"}, "mem1", nil),
 				newTestMember(12762790032478827328, []string{"http://127.0.0.1:2379"}, "default", nil),
 			},
 		},
@@ -47,9 +50,8 @@ func TestClusterFromString(t *testing.T) {
 		if c.token != "abc" {
 			t.Errorf("#%d: token = %v, want abc", i, c.token)
 		}
-		wc := newTestCluster(tt.mems)
-		if !reflect.DeepEqual(c.members, wc.members) {
-			t.Errorf("#%d: members = %+v, want %+v", i, c.members, wc.members)
+		if !reflect.DeepEqual(c.Members(), tt.mems) {
+			t.Errorf("#%d: members = %+v, want %+v", i, c.Members(), tt.mems)
 		}
 	}
 }
@@ -77,39 +79,39 @@ func TestClusterFromStringBad(t *testing.T) {
 
 func TestClusterFromStore(t *testing.T) {
 	tests := []struct {
-		mems []Member
+		mems []*Member
 	}{
 		{
-			[]Member{newTestMember(1, nil, "node1", nil)},
+			[]*Member{newTestMember(1, nil, "", nil)},
 		},
 		{
-			[]Member{},
+			nil,
 		},
 		{
-			[]Member{
-				newTestMember(1, nil, "node1", nil),
-				newTestMember(2, nil, "node2", nil),
+			[]*Member{
+				newTestMember(1, nil, "", nil),
+				newTestMember(2, nil, "", nil),
 			},
 		},
 	}
 	for i, tt := range tests {
 		hc := newTestCluster(nil)
+		hc.SetStore(store.New())
 		for _, m := range tt.mems {
-			hc.AddMember(&m)
+			hc.AddMember(m)
 		}
 		c := NewClusterFromStore("abc", hc.store)
 		if c.token != "abc" {
 			t.Errorf("#%d: token = %v, want %v", i, c.token, "abc")
 		}
-		wc := newTestCluster(tt.mems)
-		if !reflect.DeepEqual(c.members, wc.members) {
-			t.Errorf("#%d: members = %v, want %v", i, c.members, wc.members)
+		if !reflect.DeepEqual(c.Members(), tt.mems) {
+			t.Errorf("#%d: members = %v, want %v", i, c.Members(), tt.mems)
 		}
 	}
 }
 
 func TestClusterMember(t *testing.T) {
-	membs := []Member{
+	membs := []*Member{
 		newTestMember(1, nil, "node1", nil),
 		newTestMember(2, nil, "node2", nil),
 	}
@@ -134,7 +136,7 @@ func TestClusterMember(t *testing.T) {
 }
 
 func TestClusterMemberByName(t *testing.T) {
-	membs := []Member{
+	membs := []*Member{
 		newTestMember(1, nil, "node1", nil),
 		newTestMember(2, nil, "node2", nil),
 	}
@@ -159,7 +161,7 @@ func TestClusterMemberByName(t *testing.T) {
 }
 
 func TestClusterMemberIDs(t *testing.T) {
-	c := newTestCluster([]Member{
+	c := newTestCluster([]*Member{
 		newTestMember(1, nil, "", nil),
 		newTestMember(4, nil, "", nil),
 		newTestMember(100, nil, "", nil),
@@ -173,12 +175,12 @@ func TestClusterMemberIDs(t *testing.T) {
 
 func TestClusterPeerURLs(t *testing.T) {
 	tests := []struct {
-		mems  []Member
+		mems  []*Member
 		wurls []string
 	}{
 		// single peer with a single address
 		{
-			mems: []Member{
+			mems: []*Member{
 				newTestMember(1, []string{"http://192.0.2.1"}, "", nil),
 			},
 			wurls: []string{"http://192.0.2.1"},
@@ -186,7 +188,7 @@ func TestClusterPeerURLs(t *testing.T) {
 
 		// single peer with a single address with a port
 		{
-			mems: []Member{
+			mems: []*Member{
 				newTestMember(1, []string{"http://192.0.2.1:8001"}, "", nil),
 			},
 			wurls: []string{"http://192.0.2.1:8001"},
@@ -194,7 +196,7 @@ func TestClusterPeerURLs(t *testing.T) {
 
 		// several members explicitly unsorted
 		{
-			mems: []Member{
+			mems: []*Member{
 				newTestMember(2, []string{"http://192.0.2.3", "http://192.0.2.4"}, "", nil),
 				newTestMember(3, []string{"http://192.0.2.5", "http://192.0.2.6"}, "", nil),
 				newTestMember(1, []string{"http://192.0.2.1", "http://192.0.2.2"}, "", nil),
@@ -204,13 +206,13 @@ func TestClusterPeerURLs(t *testing.T) {
 
 		// no members
 		{
-			mems:  []Member{},
+			mems:  []*Member{},
 			wurls: []string{},
 		},
 
 		// peer with no peer urls
 		{
-			mems: []Member{
+			mems: []*Member{
 				newTestMember(3, []string{}, "", nil),
 			},
 			wurls: []string{},
@@ -228,12 +230,12 @@ func TestClusterPeerURLs(t *testing.T) {
 
 func TestClusterClientURLs(t *testing.T) {
 	tests := []struct {
-		mems  []Member
+		mems  []*Member
 		wurls []string
 	}{
 		// single peer with a single address
 		{
-			mems: []Member{
+			mems: []*Member{
 				newTestMember(1, nil, "", []string{"http://192.0.2.1"}),
 			},
 			wurls: []string{"http://192.0.2.1"},
@@ -241,7 +243,7 @@ func TestClusterClientURLs(t *testing.T) {
 
 		// single peer with a single address with a port
 		{
-			mems: []Member{
+			mems: []*Member{
 				newTestMember(1, nil, "", []string{"http://192.0.2.1:8001"}),
 			},
 			wurls: []string{"http://192.0.2.1:8001"},
@@ -249,7 +251,7 @@ func TestClusterClientURLs(t *testing.T) {
 
 		// several members explicitly unsorted
 		{
-			mems: []Member{
+			mems: []*Member{
 				newTestMember(2, nil, "", []string{"http://192.0.2.3", "http://192.0.2.4"}),
 				newTestMember(3, nil, "", []string{"http://192.0.2.5", "http://192.0.2.6"}),
 				newTestMember(1, nil, "", []string{"http://192.0.2.1", "http://192.0.2.2"}),
@@ -259,13 +261,13 @@ func TestClusterClientURLs(t *testing.T) {
 
 		// no members
 		{
-			mems:  []Member{},
+			mems:  []*Member{},
 			wurls: []string{},
 		},
 
 		// peer with no client urls
 		{
-			mems: []Member{
+			mems: []*Member{
 				newTestMember(3, nil, "", []string{}),
 			},
 			wurls: []string{},
@@ -283,40 +285,41 @@ func TestClusterClientURLs(t *testing.T) {
 
 func TestClusterValidateAndAssignIDsBad(t *testing.T) {
 	tests := []struct {
-		clmembs []Member
+		clmembs []*Member
 		membs   []*Member
 	}{
 		{
 			// unmatched length
-			[]Member{
+			[]*Member{
 				newTestMember(1, []string{"http://127.0.0.1:2379"}, "", nil),
 			},
 			[]*Member{},
 		},
 		{
 			// unmatched peer urls
-			[]Member{
+			[]*Member{
 				newTestMember(1, []string{"http://127.0.0.1:2379"}, "", nil),
 			},
 			[]*Member{
-				newTestMemberp(1, []string{"http://127.0.0.1:4001"}, "", nil),
+				newTestMember(1, []string{"http://127.0.0.1:4001"}, "", nil),
 			},
 		},
 		{
 			// unmatched peer urls
-			[]Member{
+			[]*Member{
 				newTestMember(1, []string{"http://127.0.0.1:2379"}, "", nil),
 				newTestMember(2, []string{"http://127.0.0.2:2379"}, "", nil),
 			},
 			[]*Member{
-				newTestMemberp(1, []string{"http://127.0.0.1:2379"}, "", nil),
-				newTestMemberp(2, []string{"http://127.0.0.2:4001"}, "", nil),
+				newTestMember(1, []string{"http://127.0.0.1:2379"}, "", nil),
+				newTestMember(2, []string{"http://127.0.0.2:4001"}, "", nil),
 			},
 		},
 	}
 	for i, tt := range tests {
-		cl := newTestCluster(tt.clmembs)
-		if err := cl.ValidateAndAssignIDs(tt.membs); err == nil {
+		ecl := newTestCluster(tt.clmembs)
+		lcl := newTestCluster(tt.membs)
+		if err := ValidateClusterAndAssignIDs(lcl, ecl); err == nil {
 			t.Errorf("#%d: unexpected update success", i)
 		}
 	}
@@ -324,35 +327,158 @@ func TestClusterValidateAndAssignIDsBad(t *testing.T) {
 
 func TestClusterValidateAndAssignIDs(t *testing.T) {
 	tests := []struct {
-		clmembs []Member
+		clmembs []*Member
 		membs   []*Member
 		wids    []types.ID
 	}{
 		{
-			[]Member{
+			[]*Member{
 				newTestMember(1, []string{"http://127.0.0.1:2379"}, "", nil),
 				newTestMember(2, []string{"http://127.0.0.2:2379"}, "", nil),
 			},
 			[]*Member{
-				newTestMemberp(3, []string{"http://127.0.0.1:2379"}, "", nil),
-				newTestMemberp(4, []string{"http://127.0.0.2:2379"}, "", nil),
+				newTestMember(3, []string{"http://127.0.0.1:2379"}, "", nil),
+				newTestMember(4, []string{"http://127.0.0.2:2379"}, "", nil),
 			},
 			[]types.ID{3, 4},
 		},
 	}
 	for i, tt := range tests {
-		cl := newTestCluster(tt.clmembs)
-		if err := cl.ValidateAndAssignIDs(tt.membs); err != nil {
+		lcl := newTestCluster(tt.clmembs)
+		ecl := newTestCluster(tt.membs)
+		if err := ValidateClusterAndAssignIDs(lcl, ecl); err != nil {
 			t.Errorf("#%d: unexpect update error: %v", i, err)
 		}
-		if !reflect.DeepEqual(cl.MemberIDs(), tt.wids) {
-			t.Errorf("#%d: ids = %v, want %v", i, cl.MemberIDs(), tt.wids)
+		if !reflect.DeepEqual(lcl.MemberIDs(), tt.wids) {
+			t.Errorf("#%d: ids = %v, want %v", i, lcl.MemberIDs(), tt.wids)
+		}
+	}
+}
+
+func TestClusterValidateConfigurationChange(t *testing.T) {
+	cl := newCluster("")
+	cl.SetStore(store.New())
+	for i := 1; i <= 4; i++ {
+		attr := RaftAttributes{PeerURLs: []string{fmt.Sprintf("http://127.0.0.1:%d", i)}}
+		cl.AddMember(&Member{ID: types.ID(i), RaftAttributes: attr})
+	}
+	cl.RemoveMember(4)
+
+	attr := RaftAttributes{PeerURLs: []string{fmt.Sprintf("http://127.0.0.1:%d", 1)}}
+	ctx, err := json.Marshal(&Member{ID: types.ID(5), RaftAttributes: attr})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	attr = RaftAttributes{PeerURLs: []string{fmt.Sprintf("http://127.0.0.1:%d", 5)}}
+	ctx5, err := json.Marshal(&Member{ID: types.ID(5), RaftAttributes: attr})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	attr = RaftAttributes{PeerURLs: []string{fmt.Sprintf("http://127.0.0.1:%d", 3)}}
+	ctx2to3, err := json.Marshal(&Member{ID: types.ID(2), RaftAttributes: attr})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	attr = RaftAttributes{PeerURLs: []string{fmt.Sprintf("http://127.0.0.1:%d", 5)}}
+	ctx2to5, err := json.Marshal(&Member{ID: types.ID(2), RaftAttributes: attr})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tests := []struct {
+		cc   raftpb.ConfChange
+		werr error
+	}{
+		{
+			raftpb.ConfChange{
+				Type:   raftpb.ConfChangeRemoveNode,
+				NodeID: 3,
+			},
+			nil,
+		},
+		{
+			raftpb.ConfChange{
+				Type:   raftpb.ConfChangeAddNode,
+				NodeID: 4,
+			},
+			ErrIDRemoved,
+		},
+		{
+			raftpb.ConfChange{
+				Type:   raftpb.ConfChangeRemoveNode,
+				NodeID: 4,
+			},
+			ErrIDRemoved,
+		},
+		{
+			raftpb.ConfChange{
+				Type:   raftpb.ConfChangeAddNode,
+				NodeID: 1,
+			},
+			ErrIDExists,
+		},
+		{
+			raftpb.ConfChange{
+				Type:    raftpb.ConfChangeAddNode,
+				NodeID:  5,
+				Context: ctx,
+			},
+			ErrPeerURLexists,
+		},
+		{
+			raftpb.ConfChange{
+				Type:   raftpb.ConfChangeRemoveNode,
+				NodeID: 5,
+			},
+			ErrIDNotFound,
+		},
+		{
+			raftpb.ConfChange{
+				Type:    raftpb.ConfChangeAddNode,
+				NodeID:  5,
+				Context: ctx5,
+			},
+			nil,
+		},
+		{
+			raftpb.ConfChange{
+				Type:    raftpb.ConfChangeUpdateNode,
+				NodeID:  5,
+				Context: ctx,
+			},
+			ErrIDNotFound,
+		},
+		// try to change the peer url of 2 to the peer url of 3
+		{
+			raftpb.ConfChange{
+				Type:    raftpb.ConfChangeUpdateNode,
+				NodeID:  2,
+				Context: ctx2to3,
+			},
+			ErrPeerURLexists,
+		},
+		{
+			raftpb.ConfChange{
+				Type:    raftpb.ConfChangeUpdateNode,
+				NodeID:  2,
+				Context: ctx2to5,
+			},
+			nil,
+		},
+	}
+	for i, tt := range tests {
+		err := cl.ValidateConfigurationChange(tt.cc)
+		if err != tt.werr {
+			t.Errorf("#%d: validateConfigurationChange error = %v, want %v", i, err, tt.werr)
 		}
 	}
 }
 
 func TestClusterGenID(t *testing.T) {
-	cs := newTestCluster([]Member{
+	cs := newTestCluster([]*Member{
 		newTestMember(1, nil, "", nil),
 		newTestMember(2, nil, "", nil),
 	})
@@ -364,7 +490,7 @@ func TestClusterGenID(t *testing.T) {
 	previd := cs.ID()
 
 	cs.SetStore(&storeRecorder{})
-	cs.AddMember(newTestMemberp(3, nil, "", nil))
+	cs.AddMember(newTestMember(3, nil, "", nil))
 	cs.genID()
 	if cs.ID() == previd {
 		t.Fatalf("cluster.ID = %v, want not %v", cs.ID(), previd)
@@ -377,22 +503,22 @@ func TestNodeToMemberBad(t *testing.T) {
 			{Key: "/1234/strange"},
 		}},
 		{Key: "/1234", Nodes: []*store.NodeExtern{
-			{Key: "/1234/dynamic", Value: stringp("garbage")},
+			{Key: "/1234/raftAttributes", Value: stringp("garbage")},
 		}},
 		{Key: "/1234", Nodes: []*store.NodeExtern{
-			{Key: "/1234/dynamic", Value: stringp(`{"peerURLs":null}`)},
+			{Key: "/1234/attributes", Value: stringp(`{"name":"node1","clientURLs":null}`)},
 		}},
 		{Key: "/1234", Nodes: []*store.NodeExtern{
-			{Key: "/1234/dynamic", Value: stringp(`{"peerURLs":null}`)},
+			{Key: "/1234/raftAttributes", Value: stringp(`{"peerURLs":null}`)},
 			{Key: "/1234/strange"},
 		}},
 		{Key: "/1234", Nodes: []*store.NodeExtern{
-			{Key: "/1234/dynamic", Value: stringp(`{"peerURLs":null}`)},
-			{Key: "/1234/static", Value: stringp("garbage")},
+			{Key: "/1234/raftAttributes", Value: stringp(`{"peerURLs":null}`)},
+			{Key: "/1234/attributes", Value: stringp("garbage")},
 		}},
 		{Key: "/1234", Nodes: []*store.NodeExtern{
-			{Key: "/1234/dynamic", Value: stringp(`{"peerURLs":null}`)},
-			{Key: "/1234/static", Value: stringp(`{"name":"node1","clientURLs":null}`)},
+			{Key: "/1234/raftAttributes", Value: stringp(`{"peerURLs":null}`)},
+			{Key: "/1234/attributes", Value: stringp(`{"name":"node1","clientURLs":null}`)},
 			{Key: "/1234/strange"},
 		}},
 	}
@@ -407,7 +533,7 @@ func TestClusterAddMember(t *testing.T) {
 	st := &storeRecorder{}
 	c := newTestCluster(nil)
 	c.SetStore(st)
-	c.AddMember(newTestMemberp(1, nil, "node1", nil))
+	c.AddMember(newTestMember(1, nil, "node1", nil))
 
 	wactions := []action{
 		{
@@ -416,16 +542,6 @@ func TestClusterAddMember(t *testing.T) {
 				path.Join(storeMembersPrefix, "1", "raftAttributes"),
 				false,
 				`{"peerURLs":null}`,
-				false,
-				store.Permanent,
-			},
-		},
-		{
-			name: "Create",
-			params: []interface{}{
-				path.Join(storeMembersPrefix, "1", "attributes"),
-				false,
-				`{"name":"node1"}`,
 				false,
 				store.Permanent,
 			},
@@ -461,32 +577,32 @@ func TestClusterMembers(t *testing.T) {
 func TestClusterString(t *testing.T) {
 	cls := &Cluster{
 		members: map[types.ID]*Member{
-			1: newTestMemberp(
+			1: newTestMember(
 				1,
 				[]string{"http://1.1.1.1:1111", "http://0.0.0.0:0000"},
 				"abc",
 				nil,
 			),
-			2: newTestMemberp(
+			2: newTestMember(
 				2,
 				[]string{"http://2.2.2.2:2222"},
 				"def",
 				nil,
 			),
-			3: newTestMemberp(
+			3: newTestMember(
 				3,
 				[]string{"http://3.3.3.3:1234", "http://127.0.0.1:7001"},
 				"ghi",
 				nil,
 			),
 			// no PeerURLs = not included
-			4: newTestMemberp(
+			4: newTestMember(
 				4,
 				[]string{},
 				"four",
 				nil,
 			),
-			5: newTestMemberp(
+			5: newTestMember(
 				5,
 				nil,
 				"five",
@@ -531,24 +647,10 @@ func TestNodeToMember(t *testing.T) {
 	}
 }
 
-func newTestCluster(membs []Member) *Cluster {
+func newTestCluster(membs []*Member) *Cluster {
 	c := &Cluster{members: make(map[types.ID]*Member), removed: make(map[types.ID]bool)}
-	c.store = store.New()
-	for i := range membs {
-		c.AddMember(&membs[i])
+	for _, m := range membs {
+		c.members[m.ID] = m
 	}
 	return c
-}
-
-func newTestMember(id uint64, peerURLs []string, name string, clientURLs []string) Member {
-	return Member{
-		ID:             types.ID(id),
-		RaftAttributes: RaftAttributes{PeerURLs: peerURLs},
-		Attributes:     Attributes{Name: name, ClientURLs: clientURLs},
-	}
-}
-
-func newTestMemberp(id uint64, peerURLs []string, name string, clientURLs []string) *Member {
-	m := newTestMember(id, peerURLs, name, clientURLs)
-	return &m
 }

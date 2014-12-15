@@ -70,6 +70,7 @@ func TestReverseProxyServe(t *testing.T) {
 				res: &http.Response{
 					StatusCode: http.StatusCreated,
 					Body:       ioutil.NopCloser(&bytes.Reader{}),
+					Header:     map[string][]string{"Content-Type": []string{"application/json"}},
 				},
 			},
 			want: http.StatusCreated,
@@ -88,6 +89,9 @@ func TestReverseProxyServe(t *testing.T) {
 
 		if rr.Code != tt.want {
 			t.Errorf("#%d: unexpected HTTP status code: want = %d, got = %d", i, tt.want, rr.Code)
+		}
+		if gct := rr.Header().Get("Content-Type"); gct != "application/json" {
+			t.Errorf("#%d: Content-Type = %s, want %s", i, gct, "application/json")
 		}
 	}
 }

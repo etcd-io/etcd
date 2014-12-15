@@ -14,30 +14,33 @@
    limitations under the License.
 */
 
-package etcdserver
+package transport
 
 import (
-	"testing"
+	"net"
+	"time"
 )
 
-func TestClusterStateSet(t *testing.T) {
-	tests := []struct {
-		val  string
-		pass bool
-	}{
-		// known values
-		{"new", true},
+type timeoutConn struct {
+	net.Conn
+	wtimeoutd  time.Duration
+	rdtimeoutd time.Duration
+}
 
-		// unrecognized values
-		{"foo", false},
-		{"", false},
-	}
-
-	for i, tt := range tests {
-		pf := new(ClusterState)
-		err := pf.Set(tt.val)
-		if tt.pass != (err == nil) {
-			t.Errorf("#%d: want pass=%t, but got err=%v", i, tt.pass, err)
+func (c timeoutConn) Write(b []byte) (n int, err error) {
+	if c.wtimeoutd > 0 {
+		if err := c.SetWriteDeadline(time.Now().Add(c.wtimeoutd)); err != nil {
+			return 0, err
 		}
 	}
+	return c.Conn.Write(b)
+}
+
+func (c timeoutConn) Read(b []byte) (n int, err error) {
+	if c.rdtimeoutd > 0 {
+		if err := c.SetReadDeadline(time.Now().Add(c.rdtimeoutd)); err != nil {
+			return 0, err
+		}
+	}
+	return c.Conn.Read(b)
 }

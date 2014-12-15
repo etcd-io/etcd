@@ -124,7 +124,7 @@ DISCOVERY_URL=... # from https://discovery.etcd.io/new
 etcd -name node1 -data-dir node1 -ca-file=/path/to/ca.crt -cert-file=/path/to/node1.crt -key-file=/path/to/node1.key -peer-addr ${node1_public_ip}:7001 -discovery ${DISCOVERY_URL}
 
 # Node2
-etcd -name node1 -data-dir node2 -ca-file=/path/to/ca.crt -cert-file=/path/to/node2.crt -key-file=/path/to/node2.key -peer-addr ${node2_public_ip}:7001 -discovery ${DISCOVERY_URL}
+etcd -name node2 -data-dir node2 -ca-file=/path/to/ca.crt -cert-file=/path/to/node2.crt -key-file=/path/to/node2.key -peer-addr ${node2_public_ip}:7001 -discovery ${DISCOVERY_URL}
 ```
 
 The etcd nodes will form a cluster and all communication between nodes in the cluster will be encrypted and authenticated using the client certificates. You will see in the output of etcd that the addresses it connects to use HTTPS.
