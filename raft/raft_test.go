@@ -559,35 +559,34 @@ func TestCommit(t *testing.T) {
 		w       uint64
 	}{
 		// single
-		{[]uint64{1}, []pb.Entry{{}, {Term: 1}}, 1, 1},
-		{[]uint64{1}, []pb.Entry{{}, {Term: 1}}, 2, 0},
-		{[]uint64{2}, []pb.Entry{{}, {Term: 1}, {Term: 2}}, 2, 2},
-		{[]uint64{1}, []pb.Entry{{}, {Term: 2}}, 2, 1},
+		{[]uint64{1}, []pb.Entry{{Index: 1, Term: 1}}, 1, 1},
+		{[]uint64{1}, []pb.Entry{{Index: 1, Term: 1}}, 2, 0},
+		{[]uint64{2}, []pb.Entry{{Index: 1, Term: 1}, {Index: 2, Term: 2}}, 2, 2},
+		{[]uint64{1}, []pb.Entry{{Index: 1, Term: 2}}, 2, 1},
 
 		// odd
-		{[]uint64{2, 1, 1}, []pb.Entry{{}, {Term: 1}, {Term: 2}}, 1, 1},
-		{[]uint64{2, 1, 1}, []pb.Entry{{}, {Term: 1}, {Term: 1}}, 2, 0},
-		{[]uint64{2, 1, 2}, []pb.Entry{{}, {Term: 1}, {Term: 2}}, 2, 2},
-		{[]uint64{2, 1, 2}, []pb.Entry{{}, {Term: 1}, {Term: 1}}, 2, 0},
+		{[]uint64{2, 1, 1}, []pb.Entry{{Index: 1, Term: 1}, {Index: 2, Term: 2}}, 1, 1},
+		{[]uint64{2, 1, 1}, []pb.Entry{{Index: 1, Term: 1}, {Index: 2, Term: 1}}, 2, 0},
+		{[]uint64{2, 1, 2}, []pb.Entry{{Index: 1, Term: 1}, {Index: 2, Term: 2}}, 2, 2},
+		{[]uint64{2, 1, 2}, []pb.Entry{{Index: 1, Term: 1}, {Index: 2, Term: 1}}, 2, 0},
 
 		// even
-		{[]uint64{2, 1, 1, 1}, []pb.Entry{{}, {Term: 1}, {Term: 2}}, 1, 1},
-		{[]uint64{2, 1, 1, 1}, []pb.Entry{{}, {Term: 1}, {Term: 1}}, 2, 0},
-		{[]uint64{2, 1, 1, 2}, []pb.Entry{{}, {Term: 1}, {Term: 2}}, 1, 1},
-		{[]uint64{2, 1, 1, 2}, []pb.Entry{{}, {Term: 1}, {Term: 1}}, 2, 0},
-		{[]uint64{2, 1, 2, 2}, []pb.Entry{{}, {Term: 1}, {Term: 2}}, 2, 2},
-		{[]uint64{2, 1, 2, 2}, []pb.Entry{{}, {Term: 1}, {Term: 1}}, 2, 0},
+		{[]uint64{2, 1, 1, 1}, []pb.Entry{{Index: 1, Term: 1}, {Index: 2, Term: 2}}, 1, 1},
+		{[]uint64{2, 1, 1, 1}, []pb.Entry{{Index: 1, Term: 1}, {Index: 2, Term: 1}}, 2, 0},
+		{[]uint64{2, 1, 1, 2}, []pb.Entry{{Index: 1, Term: 1}, {Index: 2, Term: 2}}, 1, 1},
+		{[]uint64{2, 1, 1, 2}, []pb.Entry{{Index: 1, Term: 1}, {Index: 2, Term: 1}}, 2, 0},
+		{[]uint64{2, 1, 2, 2}, []pb.Entry{{Index: 1, Term: 1}, {Index: 2, Term: 2}}, 2, 2},
+		{[]uint64{2, 1, 2, 2}, []pb.Entry{{Index: 1, Term: 1}, {Index: 2, Term: 1}}, 2, 0},
 	}
 
 	for i, tt := range tests {
-		prs := make(map[uint64]*progress)
+		storage := NewMemoryStorage()
+		storage.Append(tt.logs)
+		storage.hardState = pb.HardState{Term: tt.smTerm}
+
+		sm := newRaft(1, []uint64{1}, 5, 1, storage)
 		for j := 0; j < len(tt.matches); j++ {
-			prs[uint64(j)] = &progress{tt.matches[j], tt.matches[j] + 1}
-		}
-		sm := &raft{
-			raftLog:   &raftLog{storage: &MemoryStorage{ents: tt.logs}, unstable: unstable{offset: uint64(len(tt.logs))}},
-			prs:       prs,
-			HardState: pb.HardState{Term: tt.smTerm},
+			sm.setProgress(uint64(j)+1, tt.matches[j], tt.matches[j]+1)
 		}
 		sm.maybeCommit()
 		if g := sm.raftLog.committed; g != tt.w {
@@ -675,15 +674,10 @@ func TestHandleMsgApp(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		sm := &raft{
-			state:     StateFollower,
-			HardState: pb.HardState{Term: 2},
-			raftLog: &raftLog{
-				committed: 0,
-				storage:   &MemoryStorage{ents: []pb.Entry{{}, {Term: 1}, {Term: 2}}},
-				unstable:  unstable{offset: 3},
-			},
-		}
+		storage := NewMemoryStorage()
+		storage.Append([]pb.Entry{{Index: 1, Term: 1}, {Index: 2, Term: 2}})
+		sm := newRaft(1, []uint64{1}, 10, 1, storage)
+		sm.becomeFollower(2, None)
 
 		sm.handleAppendEntries(tt.m)
 		if sm.raftLog.lastIndex() != tt.wIndex {
@@ -709,18 +703,15 @@ func TestHandleHeartbeat(t *testing.T) {
 		m       pb.Message
 		wCommit uint64
 	}{
-		{pb.Message{Type: pb.MsgApp, Term: 2, Commit: commit + 1}, commit + 1},
-		{pb.Message{Type: pb.MsgApp, Term: 2, Commit: commit - 1}, commit}, // do not decrease commit
+		{pb.Message{From: 2, To: 1, Type: pb.MsgApp, Term: 2, Commit: commit + 1}, commit + 1},
+		{pb.Message{From: 2, To: 1, Type: pb.MsgApp, Term: 2, Commit: commit - 1}, commit}, // do not decrease commit
 	}
 
 	for i, tt := range tests {
 		storage := NewMemoryStorage()
 		storage.Append([]pb.Entry{{Index: 1, Term: 1}, {Index: 2, Term: 2}, {Index: 3, Term: 3}})
-		sm := &raft{
-			state:     StateFollower,
-			HardState: pb.HardState{Term: 2},
-			raftLog:   newLog(storage),
-		}
+		sm := newRaft(1, []uint64{1, 2}, 5, 1, storage)
+		sm.becomeFollower(2, 2)
 		sm.raftLog.commitTo(commit)
 		sm.handleHeartbeat(tt.m)
 		if sm.raftLog.committed != tt.wCommit {
@@ -1345,10 +1336,7 @@ func TestPromotable(t *testing.T) {
 		{[]uint64{2, 3}, false},
 	}
 	for i, tt := range tests {
-		r := &raft{id: id, prs: make(map[uint64]*progress)}
-		for _, id := range tt.peers {
-			r.prs[id] = &progress{}
-		}
+		r := newRaft(id, tt.peers, 5, 1, NewMemoryStorage())
 		if g := r.promotable(); g != tt.wp {
 			t.Errorf("#%d: promotable = %v, want %v", i, g, tt.wp)
 		}
@@ -1378,17 +1366,11 @@ func TestRaftNodes(t *testing.T) {
 }
 
 func ents(terms ...uint64) *raft {
-	ents := []pb.Entry{{}}
+	storage := NewMemoryStorage()
 	for i, term := range terms {
-		ents = append(ents, pb.Entry{Index: uint64(i + 1), Term: term})
+		storage.Append([]pb.Entry{{Index: uint64(i + 1), Term: term}})
 	}
-
-	sm := &raft{
-		raftLog: &raftLog{
-			storage:  &MemoryStorage{ents: ents},
-			unstable: unstable{offset: uint64(len(ents))},
-		},
-	}
+	sm := newRaft(1, []uint64{}, 5, 1, storage)
 	sm.reset(0)
 	return sm
 }
