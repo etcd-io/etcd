@@ -36,7 +36,7 @@ func TestSenderSend(t *testing.T) {
 	fs := &stats.FollowerStats{}
 	s := NewSender(tr, "http://10.0.0.1", types.ID(1), types.ID(1), &nopProcessor{}, fs, nil)
 
-	if err := s.Send(raftpb.Message{}); err != nil {
+	if err := s.Send(raftpb.Message{Type: raftpb.MsgApp}); err != nil {
 		t.Fatalf("unexpect send error: %v", err)
 	}
 	s.Stop()
@@ -88,7 +88,7 @@ func TestSenderSendFailed(t *testing.T) {
 	fs := &stats.FollowerStats{}
 	s := NewSender(newRespRoundTripper(0, errors.New("blah")), "http://10.0.0.1", types.ID(1), types.ID(1), &nopProcessor{}, fs, nil)
 
-	if err := s.Send(raftpb.Message{}); err != nil {
+	if err := s.Send(raftpb.Message{Type: raftpb.MsgApp}); err != nil {
 		t.Fatalf("unexpect Send error: %v", err)
 	}
 	s.Stop()

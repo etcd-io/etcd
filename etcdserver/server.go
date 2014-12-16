@@ -526,7 +526,10 @@ func (s *EtcdServer) Do(ctx context.Context, r pb.Request) (Response, error) {
 func (s *EtcdServer) SelfStats() []byte { return s.stats.JSON() }
 
 func (s *EtcdServer) LeaderStats() []byte {
-	// TODO(jonboulle): need to lock access to lstats, set it to nil when not leader, ...
+	lead := atomic.LoadUint64(&s.raftLead)
+	if lead != uint64(s.id) {
+		return nil
+	}
 	return s.lstats.JSON()
 }
 
