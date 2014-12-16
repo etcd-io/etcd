@@ -385,6 +385,11 @@ func (s *EtcdServer) run() {
 				atomic.StoreUint64(&s.raftLead, rd.SoftState.Lead)
 				if rd.RaftState == raft.StateLeader {
 					syncC = s.SyncTicker
+					// TODO: remove the nil checking
+					// current test utility does not provide the stats
+					if s.stats != nil {
+						s.stats.BecomeLeader()
+					}
 				} else {
 					syncC = nil
 				}
