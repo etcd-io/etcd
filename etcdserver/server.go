@@ -385,6 +385,11 @@ func (s *EtcdServer) run() {
 				atomic.StoreUint64(&s.raftLead, rd.SoftState.Lead)
 				if rd.RaftState == raft.StateLeader {
 					syncC = s.SyncTicker
+					// TODO: remove the nil checking
+					// current test utility does not provide the stats
+					if s.stats != nil {
+						s.stats.BecomeLeader()
+					}
 				} else {
 					syncC = nil
 				}
@@ -526,7 +531,10 @@ func (s *EtcdServer) Do(ctx context.Context, r pb.Request) (Response, error) {
 func (s *EtcdServer) SelfStats() []byte { return s.stats.JSON() }
 
 func (s *EtcdServer) LeaderStats() []byte {
-	// TODO(jonboulle): need to lock access to lstats, set it to nil when not leader, ...
+	lead := atomic.LoadUint64(&s.raftLead)
+	if lead != uint64(s.id) {
+		return nil
+	}
 	return s.lstats.JSON()
 }
 
