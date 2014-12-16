@@ -59,6 +59,7 @@ var (
 	name            = fs.String("name", "default", "Unique human-readable name for this node")
 	dir             = fs.String("data-dir", "", "Path to the data directory")
 	durl            = fs.String("discovery", "", "Discovery service used to bootstrap the cluster")
+	dnsCluster      = fs.String("dns-cluster-domain", "", "Bootstrap initial cluster via DNS domain")
 	dproxy          = fs.String("discovery-proxy", "", "HTTP proxy to use for traffic to discovery service")
 	snapCount       = fs.Uint64("snapshot-count", etcdserver.DefaultSnapCount, "Number of committed transactions to trigger a snapshot")
 	printVersion    = fs.Bool("version", false, "Print the version and exit")
@@ -403,8 +404,14 @@ func setupCluster(apurls []url.URL) (*etcdserver.Cluster, error) {
 	fs.Visit(func(f *flag.Flag) {
 		set[f.Name] = true
 	})
-	if set["discovery"] && set["initial-cluster"] {
-		return nil, fmt.Errorf("both discovery and bootstrap-config are set")
+	nSet := 0
+	for _, v := range []bool{set["discovery"], set["inital-cluster"], set["dns-cluster-domain"]} {
+		if v {
+			nSet += 1
+		}
+	}
+	if nSet > 1 {
+		return nil, fmt.Errorf("multiple discovery or bootstrap flags are set. Choose one of \"discovery\", \"initial-cluster\", or \"dns-cluster-domain\"")
 	}
 	var cls *etcdserver.Cluster
 	var err error
@@ -414,6 +421,12 @@ func setupCluster(apurls []url.URL) (*etcdserver.Cluster, error) {
 		// self's advertised peer URLs
 		clusterStr := genClusterString(*name, apurls)
 		cls, err = etcdserver.NewClusterFromString(*durl, clusterStr)
+	case set["dns-cluster-domain"]:
+		clusterStr, clusterToken, err := genDnsClusterString(*initialClusterToken)
+		if err != nil {
+			return nil, err
+		}
+		cls, err = etcdserver.NewClusterFromString(clusterToken, clusterStr)
 	case set["initial-cluster"]:
 		fallthrough
 	default:
@@ -429,4 +442,42 @@ func genClusterString(name string, urls types.URLs) string {
 		addrs = append(addrs, fmt.Sprintf("%v=%v", name, u.String()))
 	}
 	return strings.Join(addrs, ",")
+}
+
+// TODO(barakmich): Currently ignores priority and weight (as they don't make as much sense for a bootstrap)
+// Also doesn't do any lookups for the token (though it could)
+// Also sees hostnames and IPs as separate -- use one or the other for consistency.
+func genDnsClusterString(defaultToken string) (string, string, error) {
+	targetName := make(map[string]int)
+	stringParts := make([]string, 0)
+	tempName := int(0)
+	_, addrs, err := net.LookupSRV("etcd-server-ssl", "tcp", *dnsCluster)
+	if err != nil {
+		return "", "", err
+	}
+	for _, srv := range addrs {
+		var v int
+		var ok bool
+		if v, ok = targetName[srv.Target]; !ok {
+			v = tempName
+			targetName[srv.Target] = v
+			tempName += 1
+		}
+		stringParts = append(stringParts, fmt.Sprintf("%d=https://%s:%d", v, srv.Target, srv.Port))
+	}
+	_, addrs, err = net.LookupSRV("etcd-server", "tcp", *dnsCluster)
+	if err != nil {
+		return "", "", err
+	}
+	for _, srv := range addrs {
+		var v int
+		var ok bool
+		if v, ok = targetName[srv.Target]; !ok {
+			v = tempName
+			targetName[srv.Target] = v
+			tempName += 1
+		}
+		stringParts = append(stringParts, fmt.Sprintf("%d=http://%s:%d", v, srv.Target, srv.Port))
+	}
+	return defaultToken, strings.Join(stringParts, ","), nil
 }
