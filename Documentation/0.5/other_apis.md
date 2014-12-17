@@ -59,21 +59,21 @@ If the POST body is malformed an HTTP 400 will be returned. If the member exists
 ```
 POST /v2/members HTTP/1.1
 
-{"peerURLs": ["http://10.0.0.10:2379"]}
+{"peerURLs": ["http://10.0.0.10:2380"]}
 ```
 
 ### Example
 
 ```sh
 curl http://10.0.0.10:2379/v2/members -XPOST \
--H "Content-Type: application/json" -d '{"peerURLs":["http://10.0.0.10:2379"]}'
+-H "Content-Type: application/json" -d '{"peerURLs":["http://10.0.0.10:2380"]}'
 ```
 
 ```json
 {
     "id": "3777296169",
     "peerURLs": [
-        "http://10.0.0.10:2379"
+        "http://10.0.0.10:2380"
     ]
 }
 ```
@@ -108,12 +108,12 @@ If the POST body is malformed an HTTP 400 will be returned. If the member does n
 ```
 PUT /v2/members/<id> HTTP/1.1
 
-{"peerURLs": ["http://10.0.0.10:2379"]}
+{"peerURLs": ["http://10.0.0.10:2380"]}
 ```
 
 #### Example
 
 ```sh
 curl http://10.0.0.10:2379/v2/members/272e204152 -XPUT \
--H "Content-Type: application/json" -d '{"peerURLs":["http://10.0.0.10:12379"]}'
+-H "Content-Type: application/json" -d '{"peerURLs":["http://10.0.0.10:2380"]}'
 ```
