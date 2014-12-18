@@ -424,7 +424,7 @@ func setupCluster(apurls []url.URL) (*etcdserver.Cluster, error) {
 		clusterStr := genClusterString(*name, apurls)
 		cls, err = etcdserver.NewClusterFromString(*durl, clusterStr)
 	case set["dns-cluster-domain"]:
-		clusterStr, clusterToken, err := genDNSClusterString(*initialClusterToken)
+		clusterStr, clusterToken, err := genDNSClusterString(*initialClusterToken, apurls)
 		if err != nil {
 			return nil, err
 		}
@@ -448,9 +448,8 @@ func genClusterString(name string, urls types.URLs) string {
 
 // TODO(barakmich): Currently ignores priority and weight (as they don't make as much sense for a bootstrap)
 // Also doesn't do any lookups for the token (though it could)
-// Also sees hostnames and IPs as separate -- use one or the other for consistency.
-func genDNSClusterString(defaultToken string) (string, string, error) {
-	targetName := make(map[string]int)
+// Also sees each entry as a separate instance.
+func genDNSClusterString(defaultToken string, apurls types.URLs) (string, string, error) {
 	stringParts := make([]string, 0)
 	tempName := int(0)
 
@@ -460,14 +459,18 @@ func genDNSClusterString(defaultToken string) (string, string, error) {
 			return err
 		}
 		for _, srv := range addrs {
-			var v int
-			var ok bool
-			if v, ok = targetName[srv.Target]; !ok {
-				v = tempName
-				targetName[srv.Target] = v
+			n := ""
+			for _, url := range apurls {
+				if url.Host == fmt.Sprintf("%s:%d", srv.Target, srv.Port) {
+					n = *name
+				}
+			}
+			if n == "" {
+				n = fmt.Sprintf("%d", tempName)
 				tempName += 1
 			}
-			stringParts = append(stringParts, fmt.Sprintf("%d=%s%s:%d", v, prefix, srv.Target, srv.Port))
+			stringParts = append(stringParts, fmt.Sprintf("%s=%s%s:%d", n, prefix, srv.Target, srv.Port))
+			log.Printf("etcd: Got bootstrap from DNS for %s at %s%s:%d", service, prefix, srv.Target, srv.Port)
 		}
 		return nil
 	}
