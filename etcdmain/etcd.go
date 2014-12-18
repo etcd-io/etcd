@@ -59,7 +59,7 @@ var (
 	name            = fs.String("name", "default", "Unique human-readable name for this node")
 	dir             = fs.String("data-dir", "", "Path to the data directory")
 	durl            = fs.String("discovery", "", "Discovery service used to bootstrap the cluster")
-	dnsCluster      = fs.String("dns-cluster-domain", "", "Bootstrap initial cluster via DNS domain")
+	dnsCluster      = fs.String("discovery-srv", "", "Bootstrap initial cluster via DNS domain")
 	dproxy          = fs.String("discovery-proxy", "", "HTTP proxy to use for traffic to discovery service")
 	snapCount       = fs.Uint64("snapshot-count", etcdserver.DefaultSnapCount, "Number of committed transactions to trigger a snapshot")
 	printVersion    = fs.Bool("version", false, "Print the version and exit")
@@ -407,13 +407,13 @@ func setupCluster(apurls []url.URL) (*etcdserver.Cluster, error) {
 		set[f.Name] = true
 	})
 	nSet := 0
-	for _, v := range []bool{set["discovery"], set["inital-cluster"], set["dns-cluster-domain"]} {
+	for _, v := range []bool{set["discovery"], set["inital-cluster"], set["discovery-srv"]} {
 		if v {
 			nSet += 1
 		}
 	}
 	if nSet > 1 {
-		return nil, fmt.Errorf("multiple discovery or bootstrap flags are set. Choose one of \"discovery\", \"initial-cluster\", or \"dns-cluster-domain\"")
+		return nil, fmt.Errorf("multiple discovery or bootstrap flags are set. Choose one of \"discovery\", \"initial-cluster\", or \"discovery-srv\"")
 	}
 	var cls *etcdserver.Cluster
 	var err error
@@ -423,7 +423,7 @@ func setupCluster(apurls []url.URL) (*etcdserver.Cluster, error) {
 		// self's advertised peer URLs
 		clusterStr := genClusterString(*name, apurls)
 		cls, err = etcdserver.NewClusterFromString(*durl, clusterStr)
-	case set["dns-cluster-domain"]:
+	case set["discovery-srv"]:
 		clusterStr, clusterToken, err := genDNSClusterString(*initialClusterToken, apurls)
 		if err != nil {
 			return nil, err
