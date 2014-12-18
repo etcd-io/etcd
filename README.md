@@ -12,6 +12,8 @@ It is strongly recommended that users work with the latest 0.4.x release (0.4.6)
 Unless otherwise noted, the etcd documentation refers to configuring and running 0.4.x releases.
 Documentation related to the 2.0.0 release candidates can be found in the `Documentation/2.0` directory.
 
+![etcd Logo](logos/etcd-horizontal-color.png)
+
 ## README version 0.4.6
 
 A highly-available key value store for shared configuration and service discovery.
