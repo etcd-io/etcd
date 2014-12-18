@@ -100,12 +100,13 @@ func TestGenDNSClusterString(t *testing.T) {
 			}
 			return "", nil, errors.New("Unkown service in mock")
 		}
+		defer func() { lookupSRV = net.LookupSRV }()
 		str, token, err := genDNSClusterString("token")
 		if err != nil {
 			t.Fatalf("%d: err: %#v", i, err)
 		}
 		if token != "token" {
-			t.Error("Token doesn't match default token")
+			t.Errorf("%d: token: %s", i, token)
 		}
 		if str != tt.expected {
 			t.Errorf("#%d: cluster = %s, want %s", i, str, tt.expected)

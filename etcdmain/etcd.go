@@ -453,33 +453,32 @@ func genDNSClusterString(defaultToken string) (string, string, error) {
 	targetName := make(map[string]int)
 	stringParts := make([]string, 0)
 	tempName := int(0)
-	_, addrs, err := lookupSRV("etcd-server-ssl", "tcp", *dnsCluster)
+
+	updateNodeMap := func(service, prefix string) error {
+		_, addrs, err := lookupSRV(service, "tcp", *dnsCluster)
+		if err != nil {
+			return err
+		}
+		for _, srv := range addrs {
+			var v int
+			var ok bool
+			if v, ok = targetName[srv.Target]; !ok {
+				v = tempName
+				targetName[srv.Target] = v
+				tempName += 1
+			}
+			stringParts = append(stringParts, fmt.Sprintf("%d=%s%s:%d", v, prefix, srv.Target, srv.Port))
+		}
+		return nil
+	}
+
+	err := updateNodeMap("etcd-server-ssl", "https://")
 	if err != nil {
 		return "", "", err
 	}
-	for _, srv := range addrs {
-		var v int
-		var ok bool
-		if v, ok = targetName[srv.Target]; !ok {
-			v = tempName
-			targetName[srv.Target] = v
-			tempName += 1
-		}
-		stringParts = append(stringParts, fmt.Sprintf("%d=https://%s:%d", v, srv.Target, srv.Port))
-	}
-	_, addrs, err = lookupSRV("etcd-server", "tcp", *dnsCluster)
+	err = updateNodeMap("etcd-server", "http://")
 	if err != nil {
 		return "", "", err
-	}
-	for _, srv := range addrs {
-		var v int
-		var ok bool
-		if v, ok = targetName[srv.Target]; !ok {
-			v = tempName
-			targetName[srv.Target] = v
-			tempName += 1
-		}
-		stringParts = append(stringParts, fmt.Sprintf("%d=http://%s:%d", v, srv.Target, srv.Port))
 	}
 	return strings.Join(stringParts, ","), defaultToken, nil
 }
