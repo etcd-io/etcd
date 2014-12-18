@@ -459,9 +459,15 @@ func genDNSClusterString(defaultToken string, apurls types.URLs) (string, string
 			return err
 		}
 		for _, srv := range addrs {
+			host := net.JoinHostPort(srv.Target, fmt.Sprintf("%d", srv.Port))
+			tcpAddr, err := net.ResolveTCPAddr("tcp", host)
+			if err != nil {
+				log.Printf("etcd: Couldn't resolve host %s", host)
+				continue
+			}
 			n := ""
 			for _, url := range apurls {
-				if url.Host == fmt.Sprintf("%s:%d", srv.Target, srv.Port) {
+				if url.Host == tcpAddr.String() {
 					n = *name
 				}
 			}
@@ -469,18 +475,25 @@ func genDNSClusterString(defaultToken string, apurls types.URLs) (string, string
 				n = fmt.Sprintf("%d", tempName)
 				tempName += 1
 			}
-			stringParts = append(stringParts, fmt.Sprintf("%s=%s%s:%d", n, prefix, srv.Target, srv.Port))
-			log.Printf("etcd: Got bootstrap from DNS for %s at %s%s:%d", service, prefix, srv.Target, srv.Port)
+			stringParts = append(stringParts, fmt.Sprintf("%s=%s%s", n, prefix, tcpAddr.String()))
+			log.Printf("etcd: Got bootstrap from DNS for %s at host %s to %s%s", service, host, prefix, tcpAddr.String())
 		}
 		return nil
 	}
 
+	failCount := 0
 	err := updateNodeMap("etcd-server-ssl", "https://")
 	if err != nil {
-		return "", "", err
+		log.Printf("etcd: Error querying DNS SRV records for _etcd-server-ssl. Error: %s.", err)
+		failCount += 1
 	}
 	err = updateNodeMap("etcd-server", "http://")
 	if err != nil {
+		log.Printf("etcd: Error querying DNS SRV records for _etcd-server. Error: %s.", err)
+		failCount += 1
+	}
+	if failCount == 2 {
+		log.Printf("etcd: Too many errors querying DNS SRV records. Failing discovery.")
 		return "", "", err
 	}
 	return strings.Join(stringParts, ","), defaultToken, nil
