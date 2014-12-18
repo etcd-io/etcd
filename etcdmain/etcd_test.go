@@ -17,6 +17,8 @@
 package etcdmain
 
 import (
+	"errors"
+	"net"
 	"net/url"
 	"testing"
 
@@ -51,6 +53,62 @@ func TestGenClusterString(t *testing.T) {
 		str := genClusterString(tt.token, urls)
 		if str != tt.wstr {
 			t.Errorf("#%d: cluster = %s, want %s", i, str, tt.wstr)
+		}
+	}
+}
+
+func TestGenDNSClusterString(t *testing.T) {
+	tests := []struct {
+		withSSL    []*net.SRV
+		withoutSSL []*net.SRV
+		expected   string
+	}{
+		{
+			[]*net.SRV{},
+			[]*net.SRV{},
+			"",
+		},
+		{
+			[]*net.SRV{
+				&net.SRV{Target: "10.0.0.1", Port: 2480},
+				&net.SRV{Target: "10.0.0.2", Port: 2480},
+				&net.SRV{Target: "10.0.0.3", Port: 2480},
+			},
+			[]*net.SRV{},
+			"0=https://10.0.0.1:2480,1=https://10.0.0.2:2480,2=https://10.0.0.3:2480",
+		},
+		{
+			[]*net.SRV{
+				&net.SRV{Target: "10.0.0.1", Port: 2480},
+				&net.SRV{Target: "10.0.0.2", Port: 2480},
+				&net.SRV{Target: "10.0.0.3", Port: 2480},
+			},
+			[]*net.SRV{
+				&net.SRV{Target: "10.0.0.1", Port: 7001},
+			},
+			"0=https://10.0.0.1:2480,1=https://10.0.0.2:2480,2=https://10.0.0.3:2480,0=http://10.0.0.1:7001",
+		},
+	}
+
+	for i, tt := range tests {
+		lookupSRV = func(service string, proto string, domain string) (string, []*net.SRV, error) {
+			if service == "etcd-server-ssl" {
+				return "", tt.withSSL, nil
+			}
+			if service == "etcd-server" {
+				return "", tt.withoutSSL, nil
+			}
+			return "", nil, errors.New("Unkown service in mock")
+		}
+		str, token, err := genDNSClusterString("token")
+		if err != nil {
+			t.Fatalf("%d: err: %#v", i, err)
+		}
+		if token != "token" {
+			t.Error("Token doesn't match default token")
+		}
+		if str != tt.expected {
+			t.Errorf("#%d: cluster = %s, want %s", i, str, tt.expected)
 		}
 	}
 }

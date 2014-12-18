@@ -103,6 +103,8 @@ var (
 		"v",
 		"vv",
 	}
+
+	lookupSRV = net.LookupSRV
 )
 
 func init() {
@@ -422,7 +424,7 @@ func setupCluster(apurls []url.URL) (*etcdserver.Cluster, error) {
 		clusterStr := genClusterString(*name, apurls)
 		cls, err = etcdserver.NewClusterFromString(*durl, clusterStr)
 	case set["dns-cluster-domain"]:
-		clusterStr, clusterToken, err := genDnsClusterString(*initialClusterToken)
+		clusterStr, clusterToken, err := genDNSClusterString(*initialClusterToken)
 		if err != nil {
 			return nil, err
 		}
@@ -447,11 +449,11 @@ func genClusterString(name string, urls types.URLs) string {
 // TODO(barakmich): Currently ignores priority and weight (as they don't make as much sense for a bootstrap)
 // Also doesn't do any lookups for the token (though it could)
 // Also sees hostnames and IPs as separate -- use one or the other for consistency.
-func genDnsClusterString(defaultToken string) (string, string, error) {
+func genDNSClusterString(defaultToken string) (string, string, error) {
 	targetName := make(map[string]int)
 	stringParts := make([]string, 0)
 	tempName := int(0)
-	_, addrs, err := net.LookupSRV("etcd-server-ssl", "tcp", *dnsCluster)
+	_, addrs, err := lookupSRV("etcd-server-ssl", "tcp", *dnsCluster)
 	if err != nil {
 		return "", "", err
 	}
@@ -465,7 +467,7 @@ func genDnsClusterString(defaultToken string) (string, string, error) {
 		}
 		stringParts = append(stringParts, fmt.Sprintf("%d=https://%s:%d", v, srv.Target, srv.Port))
 	}
-	_, addrs, err = net.LookupSRV("etcd-server", "tcp", *dnsCluster)
+	_, addrs, err = lookupSRV("etcd-server", "tcp", *dnsCluster)
 	if err != nil {
 		return "", "", err
 	}
@@ -479,5 +481,5 @@ func genDnsClusterString(defaultToken string) (string, string, error) {
 		}
 		stringParts = append(stringParts, fmt.Sprintf("%d=http://%s:%d", v, srv.Target, srv.Port))
 	}
-	return defaultToken, strings.Join(stringParts, ","), nil
+	return strings.Join(stringParts, ","), defaultToken, nil
 }
