@@ -15,7 +15,7 @@ Using an out-of-date data directory can lead to inconsistency as the member had 
 For maximum safety, if an etcd member suffers any sort of data corruption or loss, it must be removed from the cluster.
 Once removed the member can be re-added with an empty data directory.
 
-[members-api]: https://github.com/coreos/etcd/blob/master/Documentation/0.5/other_apis.md#members-api
+[members-api]: https://github.com/coreos/etcd/blob/master/Documentation/2.0/other_apis.md#members-api
 
 #### Contents
 
@@ -106,7 +106,7 @@ etcd -name node1 \
 -advertise-client-urls http://10.0.1.13:2379,http://127.0.0.1:2379
 ```
 
-[change peer url]: https://github.com/coreos/etcd/blob/master/Documentation/0.5/other_apis.md#change-the-peer-urls-of-a-member 
+[change peer url]: https://github.com/coreos/etcd/blob/master/Documentation/2.0/other_apis.md#change-the-peer-urls-of-a-member
 
 ### Disaster Recovery
 

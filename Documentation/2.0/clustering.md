@@ -97,7 +97,7 @@ A discovery URL identifies a unique etcd cluster. Instead of reusing a discovery
 
 Moreover, discovery URLs should ONLY be used for the initial bootstrapping of a cluster. To change cluster membership after the cluster is already running, see the [runtime reconfiguration][runtime] guide.
 
-[runtime]: https://github.com/coreos/etcd/blob/master/Documentation/0.5/runtime-configuration.md
+[runtime]: https://github.com/coreos/etcd/blob/master/Documentation/2.0/runtime-configuration.md
 
 ### Custom etcd discovery service
 
@@ -217,9 +217,9 @@ $ etcd -name infra0 -initial-advertise-peer-urls http://10.0.1.10:2380 \
 etcdserver: discovery token ignored since a cluster has already been initialized. Valid log found at /var/lib/etcd
 ```
 
-# 0.4 to 0.5+ Migration Guide
+# 0.4 to 2.0+ Migration Guide
 
-In etcd 0.5 we introduced the ability to listen on more than one address and to advertise multiple addresses. This makes using etcd easier when you have complex networking, such as private and public networks on various cloud providers.
+In etcd 2.0 we introduced the ability to listen on more than one address and to advertise multiple addresses. This makes using etcd easier when you have complex networking, such as private and public networks on various cloud providers.
 
 To make understanding this feature easier, we changed the naming of some flags, but we support the old flags to make the migration from the old to new version easier.
 

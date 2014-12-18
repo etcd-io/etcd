@@ -3,13 +3,14 @@
 [![Build Status](https://travis-ci.org/coreos/etcd.png?branch=master)](https://travis-ci.org/coreos/etcd)
 [![Docker Repository on Quay.io](https://quay.io/repository/coreos/etcd-git/status "Docker Repository on Quay.io")](https://quay.io/repository/coreos/etcd-git)
 
-### WARNING ###
+### Release Candidate Warning ###
 
-The current `master` branch of etcd is under heavy development in anticipation of the forthcoming 0.5.0 release. 
+The current `master` branch of etcd is under development in anticipation of the forthcoming 2.0.0 release.
 
 It is strongly recommended that users work with the latest 0.4.x release (0.4.6), which can be found on the [releases](https://github.com/coreos/etcd/releases) page.
 
 Unless otherwise noted, the etcd documentation refers to configuring and running 0.4.x releases.
+Documentation related to the 2.0.0 release candidates can be found in the `Documentation/2.0` directory.
 
 ## README version 0.4.6
 

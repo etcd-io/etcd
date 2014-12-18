@@ -131,9 +131,9 @@ Be CAUTIOUS to use unsafe flags because it will break the guarantee given by con
 + Print the version and exit.
 + default: false
 
-[build-cluster]: https://github.com/coreos/etcd/blob/master/Documentation/0.5/clustering.md#static
-[reconfig]: https://github.com/coreos/etcd/blob/master/Documentation/0.5/runtime-configuration.md
-[discovery]: https://github.com/coreos/etcd/blob/master/Documentation/0.5/clustering.md#discovery
-[proxy]: https://github.com/coreos/etcd/blob/master/Documentation/0.5/proxy.md
+[build-cluster]: https://github.com/coreos/etcd/blob/master/Documentation/2.0/clustering.md#static
+[reconfig]: https://github.com/coreos/etcd/blob/master/Documentation/2.0/runtime-configuration.md
+[discovery]: https://github.com/coreos/etcd/blob/master/Documentation/2.0/clustering.md#discovery
+[proxy]: https://github.com/coreos/etcd/blob/master/Documentation/2.0/proxy.md
 [security]: https://github.com/coreos/etcd/blob/master/Documentation/security.md
-[restore]: https://github.com/coreos/etcd/blob/master/Documentation/0.5/admin_guide.md#restoring-a-backup
+[restore]: https://github.com/coreos/etcd/blob/master/Documentation/2.0/admin_guide.md#restoring-a-backup

@@ -1,10 +1,10 @@
-## etcd 0.4.x -> 0.5.0 Data Migration Tool
+## etcd 0.4.x -> 2.0.0 Data Migration Tool
 
 ### Upgrading from 0.4.x
 
-Between 0.4.x and 0.5, the on-disk data formats have changed. In order to allow users to convert to 0.5, a migration tool is provided.
+Between 0.4.x and 2.0, the on-disk data formats have changed. In order to allow users to convert to 2.0, a migration tool is provided.
 
-In the early 0.5.0-alpha series, we're providing this tool early to encourage adoption. However, before 0.5.0-release, etcd will autodetect the 0.4.x data dir upon upgrade and automatically update the data too (while leaving a backup, in case of emergency).
+In the early 2.0.0-alpha series, we're providing this tool early to encourage adoption. However, before 2.0.0-release, etcd will autodetect the 0.4.x data dir upon upgrade and automatically update the data too (while leaving a backup, in case of emergency).
 
 ### Data Migration Tips
 
@@ -18,7 +18,7 @@ The tool can be run via:
 ./bin/etcd-migrate --data-dir=<PATH TO YOUR DATA>
 ```
 
-It should autodetect everything and convert the data-dir to be 0.5 compatible. It does not remove the 0.4.x data, and is safe to convert multiple times; the 0.5 data will be overwritten. Recovering the disk space once everything is settled is covered later in the document.
+It should autodetect everything and convert the data-dir to be 2.0 compatible. It does not remove the 0.4.x data, and is safe to convert multiple times; the 2.0 data will be overwritten. Recovering the disk space once everything is settled is covered later in the document.
 
 If, however, it complains about autodetecting the name (which can happen, depending on how the cluster was configured), you need to supply the name of this particular node. This is equivalent to the `--name` flag (or `ETCD_NAME` variable) that etcd was run with, which can also be found by accessing the self api, eg:
 
@@ -38,10 +38,10 @@ And the tool should migrate successfully. If it still has an error at this time,
 
 ### Recovering Disk Space
 
-If the conversion has completed, the entire cluster is running on something 0.5-based, and the disk space is important, the following command will clear 0.4.x data from the data-dir:
+If the conversion has completed, the entire cluster is running on something 2.0-based, and the disk space is important, the following command will clear 0.4.x data from the data-dir:
 
 ```sh
 rm -ri snapshot conf log
 ```
 
-It will ask before every deletion, but these are the 0.4.x files and will not affect the working 0.5 data.
+It will ask before every deletion, but these are the 0.4.x files and will not affect the working 2.0 data.
