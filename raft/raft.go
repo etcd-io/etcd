@@ -56,9 +56,13 @@ func (st StateType) MarshalJSON() ([]byte, error) {
 	return []byte(fmt.Sprintf("%q", st.String())), nil
 }
 
-type progress struct{ match, next uint64 }
+type progress struct {
+	match, next uint64
+	wait        int
+}
 
 func (pr *progress) update(n uint64) {
+	pr.waitReset()
 	if pr.match < n {
 		pr.match = n
 	}
@@ -72,6 +76,7 @@ func (pr *progress) optimisticUpdate(n uint64) { pr.next = n + 1 }
 // maybeDecrTo returns false if the given to index comes from an out of order message.
 // Otherwise it decreases the progress next index and returns true.
 func (pr *progress) maybeDecrTo(to uint64) bool {
+	pr.waitReset()
 	if pr.match != 0 {
 		// the rejection must be stale if the progress has matched and "to"
 		// is smaller than "match".
@@ -94,7 +99,19 @@ func (pr *progress) maybeDecrTo(to uint64) bool {
 	return true
 }
 
-func (pr *progress) String() string { return fmt.Sprintf("next = %d, match = %d", pr.next, pr.match) }
+func (pr *progress) waitDecr(i int) {
+	pr.wait -= i
+	if pr.wait < 0 {
+		pr.wait = 0
+	}
+}
+func (pr *progress) waitSet(w int)    { pr.wait = w }
+func (pr *progress) waitReset()       { pr.wait = 0 }
+func (pr *progress) shouldWait() bool { return pr.match == 0 && pr.wait > 0 }
+
+func (pr *progress) String() string {
+	return fmt.Sprintf("next = %d, match = %d, wait = %v", pr.next, pr.match, pr.wait)
+}
 
 type raft struct {
 	pb.HardState
@@ -203,6 +220,10 @@ func (r *raft) send(m pb.Message) {
 // sendAppend sends RRPC, with entries to the given peer.
 func (r *raft) sendAppend(to uint64) {
 	pr := r.prs[to]
+	if pr.shouldWait() {
+		log.Printf("raft: %x ignored sending %s to %x [%s]", r.id, pb.MsgApp, to, pr)
+		return
+	}
 	m := pb.Message{}
 	m.To = to
 	if r.needSnapshot(pr.next) {
@@ -218,6 +239,7 @@ func (r *raft) sendAppend(to uint64) {
 		sindex, sterm := snapshot.Metadata.Index, snapshot.Metadata.Term
 		log.Printf("raft: %x [firstindex: %d, commit: %d] sent snapshot[index: %d, term: %d] to %x [%s]",
 			r.id, r.raftLog.firstIndex(), r.Commit, sindex, sterm, to, pr)
+		pr.waitSet(r.electionTimeout)
 	} else {
 		m.Type = pb.MsgApp
 		m.Index = pr.next - 1
@@ -228,6 +250,11 @@ func (r *raft) sendAppend(to uint64) {
 		// has been matched.
 		if n := len(m.Entries); pr.match != 0 && n != 0 {
 			pr.optimisticUpdate(m.Entries[n-1].Index)
+		} else if pr.match == 0 {
+			// TODO (xiangli): better way to find out if the follwer is in good path or not
+			// a follower might be in bad path even if match != 0, since we optmistically
+			// increase the next.
+			pr.waitSet(r.heartbeatTimeout)
 		}
 	}
 	r.send(m)
@@ -268,6 +295,7 @@ func (r *raft) bcastHeartbeat() {
 			continue
 		}
 		r.sendHeartbeat(i)
+		r.prs[i].waitDecr(r.heartbeatTimeout)
 	}
 }
 
