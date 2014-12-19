@@ -59,6 +59,7 @@ var (
 	name            = fs.String("name", "default", "Unique human-readable name for this node")
 	dir             = fs.String("data-dir", "", "Path to the data directory")
 	durl            = fs.String("discovery", "", "Discovery service used to bootstrap the cluster")
+	dnsCluster      = fs.String("discovery-srv", "", "Bootstrap initial cluster via DNS domain")
 	dproxy          = fs.String("discovery-proxy", "", "HTTP proxy to use for traffic to discovery service")
 	snapCount       = fs.Uint64("snapshot-count", etcdserver.DefaultSnapCount, "Number of committed transactions to trigger a snapshot")
 	printVersion    = fs.Bool("version", false, "Print the version and exit")
@@ -102,6 +103,8 @@ var (
 		"v",
 		"vv",
 	}
+
+	lookupSRV = net.LookupSRV
 )
 
 func init() {
@@ -403,8 +406,14 @@ func setupCluster(apurls []url.URL) (*etcdserver.Cluster, error) {
 	fs.Visit(func(f *flag.Flag) {
 		set[f.Name] = true
 	})
-	if set["discovery"] && set["initial-cluster"] {
-		return nil, fmt.Errorf("both discovery and bootstrap-config are set")
+	nSet := 0
+	for _, v := range []bool{set["discovery"], set["inital-cluster"], set["discovery-srv"]} {
+		if v {
+			nSet += 1
+		}
+	}
+	if nSet > 1 {
+		return nil, fmt.Errorf("multiple discovery or bootstrap flags are set. Choose one of \"discovery\", \"initial-cluster\", or \"discovery-srv\"")
 	}
 	var cls *etcdserver.Cluster
 	var err error
@@ -414,6 +423,12 @@ func setupCluster(apurls []url.URL) (*etcdserver.Cluster, error) {
 		// self's advertised peer URLs
 		clusterStr := genClusterString(*name, apurls)
 		cls, err = etcdserver.NewClusterFromString(*durl, clusterStr)
+	case set["discovery-srv"]:
+		clusterStr, clusterToken, err := genDNSClusterString(*initialClusterToken, apurls)
+		if err != nil {
+			return nil, err
+		}
+		cls, err = etcdserver.NewClusterFromString(clusterToken, clusterStr)
 	case set["initial-cluster"]:
 		fallthrough
 	default:
@@ -429,4 +444,68 @@ func genClusterString(name string, urls types.URLs) string {
 		addrs = append(addrs, fmt.Sprintf("%v=%v", name, u.String()))
 	}
 	return strings.Join(addrs, ",")
+}
+
+// TODO(barakmich): Currently ignores priority and weight (as they don't make as much sense for a bootstrap)
+// Also doesn't do any lookups for the token (though it could)
+// Also sees each entry as a separate instance.
+func genDNSClusterString(defaultToken string, apurls types.URLs) (string, string, error) {
+	stringParts := make([]string, 0)
+	tempName := int(0)
+	tcpAPUrls := make([]string, 0)
+
+	// First, resolve the apurls
+	for _, url := range apurls {
+		tcpAddr, err := net.ResolveTCPAddr("tcp", url.Host)
+		if err != nil {
+			log.Printf("etcd: Couldn't resolve host %s during SRV discovery", url.Host)
+			return "", "", err
+		}
+		tcpAPUrls = append(tcpAPUrls, tcpAddr.String())
+	}
+
+	updateNodeMap := func(service, prefix string) error {
+		_, addrs, err := lookupSRV(service, "tcp", *dnsCluster)
+		if err != nil {
+			return err
+		}
+		for _, srv := range addrs {
+			host := net.JoinHostPort(srv.Target, fmt.Sprintf("%d", srv.Port))
+			tcpAddr, err := net.ResolveTCPAddr("tcp", host)
+			if err != nil {
+				log.Printf("etcd: Couldn't resolve host %s during SRV discovery", host)
+				continue
+			}
+			n := ""
+			for _, url := range tcpAPUrls {
+				if url == tcpAddr.String() {
+					n = *name
+				}
+			}
+			if n == "" {
+				n = fmt.Sprintf("%d", tempName)
+				tempName += 1
+			}
+			stringParts = append(stringParts, fmt.Sprintf("%s=%s%s", n, prefix, tcpAddr.String()))
+			log.Printf("etcd: Got bootstrap from DNS for %s at host %s to %s%s", service, host, prefix, tcpAddr.String())
+		}
+		return nil
+	}
+
+	failCount := 0
+	err := updateNodeMap("etcd-server-ssl", "https://")
+	if err != nil {
+		log.Printf("etcd: Error querying DNS SRV records for _etcd-server-ssl. Error: %s.", err)
+		failCount += 1
+	}
+	err = updateNodeMap("etcd-server", "http://")
+	if err != nil {
+		log.Printf("etcd: Error querying DNS SRV records for _etcd-server. Error: %s.", err)
+		failCount += 1
+	}
+	if failCount == 2 {
+		log.Printf("etcd: Too many errors querying DNS SRV records. Failing discovery.")
+		return "", "", err
+	}
+	return strings.Join(stringParts, ","), defaultToken, nil
 }
