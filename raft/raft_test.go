@@ -451,8 +451,10 @@ func TestCandidateConcede(t *testing.T) {
 	tt.send(pb.Message{From: 3, To: 3, Type: pb.MsgBeat})
 
 	data := []byte("force follower")
-	// send a proposal to 2 to flush out a MsgApp to 0
+	// send a proposal to 3 to flush out a MsgApp to 1
 	tt.send(pb.Message{From: 3, To: 3, Type: pb.MsgProp, Entries: []pb.Entry{{Data: data}}})
+	// send heartbeat; flush out commit
+	tt.send(pb.Message{From: 3, To: 3, Type: pb.MsgBeat})
 
 	a := tt.peers[1].(*raft)
 	if g := a.state; g != StateFollower {
