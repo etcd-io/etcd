@@ -33,10 +33,12 @@ To start etcd automatically using custom settings at startup in Linux, using a [
 ##### -max-snapshots
 + Maximum number of snapshot files to retain (0 is unlimited)
 + default: 5
++ The default for users on Windows is unlimited, and manual purging down to 5 (or your preference for safety) is recommended.
 
 ##### -max-wals
 + Maximum number of wal files to retain (0 is unlimited)
 + default: 5
++ The default for users on Windows is unlimited, and manual purging down to 5 (or your preference for safety) is recommended.
 
 ##### -cors
 + Comma-separated white list of origins for CORS (cross-origin resource sharing).
