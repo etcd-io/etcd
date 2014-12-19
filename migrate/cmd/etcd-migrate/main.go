@@ -16,7 +16,7 @@ func main() {
 		log.Fatal("Must provide -data-dir flag")
 	}
 
-	err := migrate.Migrate4To5(*from, *name)
+	err := migrate.Migrate4To2(*from, *name)
 	if err != nil {
 		log.Fatalf("Failed migrating data-dir: %v", err)
 	}

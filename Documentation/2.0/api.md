@@ -1007,4 +1007,4 @@ curl http://127.0.0.1:2379/v2/stats/store
 
 See the [other etcd APIs][other-apis] for details on the cluster management.
 
-[other-apis]: https://github.com/coreos/etcd/blob/master/Documentation/0.5/other_apis.md
+[other-apis]: https://github.com/coreos/etcd/blob/master/Documentation/2.0/other_apis.md

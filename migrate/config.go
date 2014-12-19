@@ -16,7 +16,7 @@ type Config4 struct {
 	} `json:"peers"`
 }
 
-func (c *Config4) HardState5() raftpb.HardState {
+func (c *Config4) HardState2() raftpb.HardState {
 	return raftpb.HardState{
 		Commit: c.CommitIndex,
 		Term:   0,
