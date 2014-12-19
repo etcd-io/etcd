@@ -167,8 +167,8 @@ type EtcdServer struct {
 // It must ensure that, after upgrading, the most recent version is present.
 func UpgradeWAL(cfg *ServerConfig, ver wal.WalVersion) error {
 	if ver == wal.WALv0_4 {
-		log.Print("Converting v0.4 log to v0.5")
-		err := migrate.Migrate4To5(cfg.DataDir, cfg.Name)
+		log.Print("Converting v0.4 log to v2.0")
+		err := migrate.Migrate4To2(cfg.DataDir, cfg.Name)
 		if err != nil {
 			log.Fatalf("Failed migrating data-dir: %v", err)
 			return err
@@ -385,6 +385,11 @@ func (s *EtcdServer) run() {
 				atomic.StoreUint64(&s.raftLead, rd.SoftState.Lead)
 				if rd.RaftState == raft.StateLeader {
 					syncC = s.SyncTicker
+					// TODO: remove the nil checking
+					// current test utility does not provide the stats
+					if s.stats != nil {
+						s.stats.BecomeLeader()
+					}
 				} else {
 					syncC = nil
 				}
@@ -526,7 +531,10 @@ func (s *EtcdServer) Do(ctx context.Context, r pb.Request) (Response, error) {
 func (s *EtcdServer) SelfStats() []byte { return s.stats.JSON() }
 
 func (s *EtcdServer) LeaderStats() []byte {
-	// TODO(jonboulle): need to lock access to lstats, set it to nil when not leader, ...
+	lead := atomic.LoadUint64(&s.raftLead)
+	if lead != uint64(s.id) {
+		return nil
+	}
 	return s.lstats.JSON()
 }
 

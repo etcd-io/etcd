@@ -260,8 +260,13 @@ func (h *statsHandler) serveLeader(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r.Method, "GET") {
 		return
 	}
+	stats := h.stats.LeaderStats()
+	if stats == nil {
+		writeError(w, httptypes.NewHTTPError(http.StatusForbidden, "not current leader"))
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
-	w.Write(h.stats.LeaderStats())
+	w.Write(stats)
 }
 
 func serveVersion(w http.ResponseWriter, r *http.Request) {

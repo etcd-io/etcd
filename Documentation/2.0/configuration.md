@@ -33,10 +33,12 @@ To start etcd automatically using custom settings at startup in Linux, using a [
 ##### -max-snapshots
 + Maximum number of snapshot files to retain (0 is unlimited)
 + default: 5
++ The default for users on Windows is unlimited, and manual purging down to 5 (or your preference for safety) is recommended.
 
 ##### -max-wals
 + Maximum number of wal files to retain (0 is unlimited)
 + default: 5
++ The default for users on Windows is unlimited, and manual purging down to 5 (or your preference for safety) is recommended.
 
 ##### -cors
 + Comma-separated white list of origins for CORS (cross-origin resource sharing).
@@ -131,9 +133,9 @@ Be CAUTIOUS to use unsafe flags because it will break the guarantee given by con
 + Print the version and exit.
 + default: false
 
-[build-cluster]: https://github.com/coreos/etcd/blob/master/Documentation/0.5/clustering.md#static
-[reconfig]: https://github.com/coreos/etcd/blob/master/Documentation/0.5/runtime-configuration.md
-[discovery]: https://github.com/coreos/etcd/blob/master/Documentation/0.5/clustering.md#discovery
-[proxy]: https://github.com/coreos/etcd/blob/master/Documentation/0.5/proxy.md
+[build-cluster]: https://github.com/coreos/etcd/blob/master/Documentation/2.0/clustering.md#static
+[reconfig]: https://github.com/coreos/etcd/blob/master/Documentation/2.0/runtime-configuration.md
+[discovery]: https://github.com/coreos/etcd/blob/master/Documentation/2.0/clustering.md#discovery
+[proxy]: https://github.com/coreos/etcd/blob/master/Documentation/2.0/proxy.md
 [security]: https://github.com/coreos/etcd/blob/master/Documentation/security.md
-[restore]: https://github.com/coreos/etcd/blob/master/Documentation/0.5/admin_guide.md#restoring-a-backup
+[restore]: https://github.com/coreos/etcd/blob/master/Documentation/2.0/admin_guide.md#restoring-a-backup

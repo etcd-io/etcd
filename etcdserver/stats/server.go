@@ -141,3 +141,11 @@ func (ss *ServerStats) SendAppendReq(reqSize int) {
 
 	ss.SendAppendRequestCnt++
 }
+
+func (ss *ServerStats) BecomeLeader() {
+	if ss.State != raft.StateLeader {
+		ss.State = raft.StateLeader
+		ss.LeaderInfo.Name = ss.ID
+		ss.LeaderInfo.StartTime = time.Now()
+	}
+}

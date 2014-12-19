@@ -15,7 +15,7 @@ Using an out-of-date data directory can lead to inconsistency as the member had 
 For maximum safety, if an etcd member suffers any sort of data corruption or loss, it must be removed from the cluster.
 Once removed the member can be re-added with an empty data directory.
 
-[members-api]: https://github.com/coreos/etcd/blob/master/Documentation/0.5/other_apis.md#members-api
+[members-api]: https://github.com/coreos/etcd/blob/master/Documentation/2.0/other_apis.md#members-api
 
 #### Contents
 
@@ -43,7 +43,70 @@ The data directory contains all the data to recover a member to its point-in-tim
 * Update the peer URLs for that member to reflect the new machine according to the [member api] [change peer url]
 * Start etcd on the new machine, using the same configuration and the copy of the data directory
 
-[change peer url]: https://github.com/coreos/etcd/blob/master/Documentation/0.5/other_apis.md#change-the-peer-urls-of-a-member 
+This example will walk you through the process of migrating the infra1 member to a new machine:
+
+|Name|Peer URL|
+|------|--------------|
+|infra0|10.0.1.10:2380|
+|infra1|10.0.1.11:2380|
+|infra2|10.0.1.12:2380|
+
+```
+$ export ETCDCTL_PEERS=http://10.0.1.10:2379,http://10.0.1.11:2379,http://10.0.1.12:2379
+```
+
+```
+$ etcdctl member list
+84194f7c5edd8b37: name=infra0 peerURLs=http://10.0.1.10:2380 clientURLs=http://127.0.0.1:2379,http://10.0.1.10:2379
+b4db3bf5e495e255: name=infra1 peerURLs=http://10.0.1.11:2380 clientURLs=http://127.0.0.1:2379,http://10.0.1.11:2379
+bc1083c870280d44: name=infra2 peerURLs=http://10.0.1.12:2380 clientURLs=http://127.0.0.1:2379,http://10.0.1.12:2379
+```
+
+#### Stop the member etcd process
+
+```
+$ ssh core@10.0.1.11
+```
+
+```
+$ sudo systemctl stop etcd
+```
+
+#### Copy the data directory of the now-idle member to the new machine
+
+```
+$ tar -cvzf node1.etcd.tar.gz /var/lib/etcd/node1.etcd 
+```
+
+```
+$ scp node1.etcd.tar.gz core@10.0.1.13:~/
+```
+
+#### Update the peer URLs for that member to reflect the new machine
+
+```
+$ curl http://10.0.1.10:2379/v2/members/b4db3bf5e495e255 -XPUT \
+-H "Content-Type: application/json" -d '{"peerURLs":["http://10.0.1.13:2380"]}'
+```
+
+#### Start etcd on the new machine, using the same configuration and the copy of the data directory
+
+```
+$ ssh core@10.0.1.13
+```
+
+```
+$ tar -xzvf node1.etcd.tar.gz -C /var/lib/etcd
+```
+
+```
+etcd -name node1 \
+-listen-peer-urls http://10.0.1.13:2380 \
+-listen-client-urls http://10.0.1.13:2379,http://127.0.0.1:2379 \
+-advertise-client-urls http://10.0.1.13:2379,http://127.0.0.1:2379
+```
+
+[change peer url]: https://github.com/coreos/etcd/blob/master/Documentation/2.0/other_apis.md#change-the-peer-urls-of-a-member
 
 ### Disaster Recovery
 
@@ -52,6 +115,8 @@ etcd is designed to be resilient to machine failures. An etcd cluster can automa
 To recover from such scenarios, etcd provides functionality to backup and restore the datastore and recreate the cluster without data loss.
 
 #### Backing up the datastore
+
+**NB:** Windows users must stop etcd before running the backup command.
 
 The first step of the recovery is to backup the data directory on a functioning etcd node. To do this, use the `etcdctl backup` command, passing in the original data directory used by etcd. For example:
 

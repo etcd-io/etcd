@@ -77,7 +77,7 @@ func NewSender(tr http.RoundTripper, u string, id types.ID, cid types.ID, p Proc
 		shouldstop:  shouldstop,
 		batcher:     NewBatcher(100, appRespBatchMs*time.Millisecond),
 		propBatcher: NewProposalBatcher(100, propBatchMs*time.Millisecond),
-		q:           make(chan []byte, senderBufSize),
+		q:           make(chan *raftpb.Message, senderBufSize),
 	}
 	s.wg.Add(connPerSender)
 	for i := 0; i < connPerSender; i++ {
@@ -98,7 +98,7 @@ type sender struct {
 	strmCln     *streamClient
 	batcher     *Batcher
 	propBatcher *ProposalBatcher
-	q           chan []byte
+	q           chan *raftpb.Message
 
 	strmSrvMu sync.Mutex
 	strmSrv   *streamServer
@@ -184,9 +184,8 @@ func (s *sender) Send(m raftpb.Message) error {
 func (s *sender) send(m raftpb.Message) error {
 	// TODO: don't block. we should be able to have 1000s
 	// of messages out at a time.
-	data := pbutil.MustMarshal(&m)
 	select {
-	case s.q <- data:
+	case s.q <- &m:
 		return nil
 	default:
 		log.Printf("sender: dropping %s because maximal number %d of sender buffer entries to %s has been reached",
@@ -267,9 +266,9 @@ func (s *sender) tryStream(m raftpb.Message) bool {
 
 func (s *sender) handle() {
 	defer s.wg.Done()
-	for d := range s.q {
+	for m := range s.q {
 		start := time.Now()
-		err := s.post(d)
+		err := s.post(pbutil.MustMarshal(m))
 		end := time.Now()
 
 		s.mu.Lock()
@@ -282,14 +281,18 @@ func (s *sender) handle() {
 				log.Printf("sender: the connection with %s becomes inactive", s.id)
 				s.active = false
 			}
-			s.fs.Fail()
+			if m.Type == raftpb.MsgApp {
+				s.fs.Fail()
+			}
 		} else {
 			if !s.active {
 				log.Printf("sender: the connection with %s becomes active", s.id)
 				s.active = true
 				s.errored = nil
 			}
-			s.fs.Succ(end.Sub(start))
+			if m.Type == raftpb.MsgApp {
+				s.fs.Succ(end.Sub(start))
+			}
 		}
 		s.mu.Unlock()
 	}

@@ -159,7 +159,7 @@ func (s *Snapshot4) GetNodesFromStore() map[string]uint64 {
 	return pullNodesFromEtcd(etcd)
 }
 
-func (s *Snapshot4) Snapshot5() *raftpb.Snapshot {
+func (s *Snapshot4) Snapshot2() *raftpb.Snapshot {
 	st := &sstore{}
 	if err := json.Unmarshal(s.State, st); err != nil {
 		log.Fatal("Couldn't unmarshal snapshot")
@@ -177,7 +177,7 @@ func (s *Snapshot4) Snapshot5() *raftpb.Snapshot {
 		nodeList = append(nodeList, v)
 	}
 
-	snap5 := raftpb.Snapshot{
+	snap2 := raftpb.Snapshot{
 		Data: newState,
 		Metadata: raftpb.SnapshotMetadata{
 			Index: s.LastIndex,
@@ -188,7 +188,7 @@ func (s *Snapshot4) Snapshot5() *raftpb.Snapshot {
 		},
 	}
 
-	return &snap5
+	return &snap2
 }
 
 func DecodeLatestSnapshot4FromDir(snapdir string) (*Snapshot4, error) {

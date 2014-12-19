@@ -28,4 +28,4 @@ Client is a caller of the cluster's HTTP API.
 
 ### Machine (deprecated)
 
-The alternative of Member in etcd before 0.5
+The alternative of Member in etcd before 2.0

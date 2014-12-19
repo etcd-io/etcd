@@ -70,10 +70,10 @@ func TestProgressUpdate(t *testing.T) {
 		}
 		p.update(tt.update)
 		if p.match != tt.wm {
-			t.Errorf("#%d: match=%d, want %d", i, p.match, tt.wm)
+			t.Errorf("#%d: match= %d, want %d", i, p.match, tt.wm)
 		}
 		if p.next != tt.wn {
-			t.Errorf("#%d: next=%d, want %d", i, p.next, tt.wn)
+			t.Errorf("#%d: next= %d, want %d", i, p.next, tt.wn)
 		}
 	}
 }
@@ -132,14 +132,82 @@ func TestProgressMaybeDecr(t *testing.T) {
 			next:  tt.n,
 		}
 		if g := p.maybeDecrTo(tt.to); g != tt.w {
-			t.Errorf("#%d: maybeDecrTo=%t, want %t", i, g, tt.w)
+			t.Errorf("#%d: maybeDecrTo= %t, want %t", i, g, tt.w)
 		}
 		if gm := p.match; gm != tt.m {
-			t.Errorf("#%d: match=%d, want %d", i, gm, tt.m)
+			t.Errorf("#%d: match= %d, want %d", i, gm, tt.m)
 		}
 		if gn := p.next; gn != tt.wn {
-			t.Errorf("#%d: next=%d, want %d", i, gn, tt.wn)
+			t.Errorf("#%d: next= %d, want %d", i, gn, tt.wn)
 		}
+	}
+}
+
+func TestProgressShouldWait(t *testing.T) {
+	tests := []struct {
+		m    uint64
+		wait int
+
+		w bool
+	}{
+		// match != 0 is always not wait
+		{1, 0, false},
+		{1, 1, false},
+		{0, 1, true},
+		{0, 0, false},
+	}
+	for i, tt := range tests {
+		p := &progress{
+			match: tt.m,
+			wait:  tt.wait,
+		}
+		if g := p.shouldWait(); g != tt.w {
+			t.Errorf("#%d: shouldwait = %t, want %t", i, g, tt.w)
+		}
+	}
+}
+
+// TestProgressWaitReset ensures that progress.Update and progress.DercTo
+// will reset progress.wait.
+func TestProgressWaitReset(t *testing.T) {
+	p := &progress{
+		wait: 1,
+	}
+	p.maybeDecrTo(1)
+	if p.wait != 0 {
+		t.Errorf("wait= %d, want 0", p.wait)
+	}
+	p.wait = 1
+	p.update(2)
+	if p.wait != 0 {
+		t.Errorf("wait= %d, want 0", p.wait)
+	}
+}
+
+// TestProgressDecr ensures raft.heartbeat decreases progress.wait by heartbeat.
+func TestProgressDecr(t *testing.T) {
+	r := newRaft(1, []uint64{1, 2}, 5, 1, NewMemoryStorage())
+	r.becomeCandidate()
+	r.becomeLeader()
+	r.prs[2].wait = r.heartbeatTimeout * 2
+
+	r.Step(pb.Message{From: 1, To: 1, Type: pb.MsgBeat})
+	if r.prs[2].wait != r.heartbeatTimeout*(2-1) {
+		t.Errorf("wait = %d, want %d", r.prs[2].wait, r.heartbeatTimeout*(2-1))
+	}
+}
+
+func TestProgressWait(t *testing.T) {
+	r := newRaft(1, []uint64{1, 2}, 5, 1, NewMemoryStorage())
+	r.becomeCandidate()
+	r.becomeLeader()
+	r.Step(pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{Data: []byte("somedata")}}})
+	r.Step(pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{Data: []byte("somedata")}}})
+	r.Step(pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{Data: []byte("somedata")}}})
+
+	ms := r.readMessages()
+	if len(ms) != 1 {
+		t.Errorf("len(ms) = %d, want 1", len(ms))
 	}
 }
 
@@ -269,7 +337,7 @@ func TestCannotCommitWithoutNewTermEntry(t *testing.T) {
 	// avoid committing ChangeTerm proposal
 	tt.ignore(pb.MsgApp)
 
-	// elect 1 as the new leader with term 2
+	// elect 2 as the new leader with term 2
 	tt.send(pb.Message{From: 2, To: 2, Type: pb.MsgHup})
 
 	// no log entries from previous term should be committed
@@ -279,10 +347,11 @@ func TestCannotCommitWithoutNewTermEntry(t *testing.T) {
 	}
 
 	tt.recover()
-
-	// still be able to append a entry
+	// send heartbeat; reset wait
+	tt.send(pb.Message{From: 2, To: 2, Type: pb.MsgBeat})
+	// append an entry at current term
 	tt.send(pb.Message{From: 2, To: 2, Type: pb.MsgProp, Entries: []pb.Entry{{Data: []byte("some data")}}})
-
+	// expect the committed to be advanced
 	if sm.raftLog.committed != 5 {
 		t.Errorf("committed = %d, want %d", sm.raftLog.committed, 5)
 	}
@@ -378,6 +447,8 @@ func TestCandidateConcede(t *testing.T) {
 
 	// heal the partition
 	tt.recover()
+	// send heartbeat; reset wait
+	tt.send(pb.Message{From: 3, To: 3, Type: pb.MsgBeat})
 
 	data := []byte("force follower")
 	// send a proposal to 2 to flush out a MsgApp to 0
@@ -425,18 +496,21 @@ func TestOldMessages(t *testing.T) {
 	tt.send(pb.Message{From: 1, To: 1, Type: pb.MsgHup})
 	tt.send(pb.Message{From: 2, To: 2, Type: pb.MsgHup})
 	tt.send(pb.Message{From: 1, To: 1, Type: pb.MsgHup})
-	// pretend we're an old leader trying to make progress
-	tt.send(pb.Message{From: 1, To: 1, Type: pb.MsgApp, Term: 1, Entries: []pb.Entry{{Term: 1}}})
+	// pretend we're an old leader trying to make progress; this entry is expected to be ignored.
+	tt.send(pb.Message{From: 2, To: 1, Type: pb.MsgApp, Term: 2, Entries: []pb.Entry{{Index: 3, Term: 2}}})
+	// commit a new entry
+	tt.send(pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{Data: []byte("somedata")}}})
 
 	l := &raftLog{
 		storage: &MemoryStorage{
 			ents: []pb.Entry{
 				{}, {Data: nil, Term: 1, Index: 1},
 				{Data: nil, Term: 2, Index: 2}, {Data: nil, Term: 3, Index: 3},
+				{Data: []byte("somedata"), Term: 3, Index: 4},
 			},
 		},
-		unstable:  unstable{offset: 4},
-		committed: 3,
+		unstable:  unstable{offset: 5},
+		committed: 4,
 	}
 	base := ltoa(l)
 	for i, p := range tt.peers {
@@ -559,35 +633,34 @@ func TestCommit(t *testing.T) {
 		w       uint64
 	}{
 		// single
-		{[]uint64{1}, []pb.Entry{{}, {Term: 1}}, 1, 1},
-		{[]uint64{1}, []pb.Entry{{}, {Term: 1}}, 2, 0},
-		{[]uint64{2}, []pb.Entry{{}, {Term: 1}, {Term: 2}}, 2, 2},
-		{[]uint64{1}, []pb.Entry{{}, {Term: 2}}, 2, 1},
+		{[]uint64{1}, []pb.Entry{{Index: 1, Term: 1}}, 1, 1},
+		{[]uint64{1}, []pb.Entry{{Index: 1, Term: 1}}, 2, 0},
+		{[]uint64{2}, []pb.Entry{{Index: 1, Term: 1}, {Index: 2, Term: 2}}, 2, 2},
+		{[]uint64{1}, []pb.Entry{{Index: 1, Term: 2}}, 2, 1},
 
 		// odd
-		{[]uint64{2, 1, 1}, []pb.Entry{{}, {Term: 1}, {Term: 2}}, 1, 1},
-		{[]uint64{2, 1, 1}, []pb.Entry{{}, {Term: 1}, {Term: 1}}, 2, 0},
-		{[]uint64{2, 1, 2}, []pb.Entry{{}, {Term: 1}, {Term: 2}}, 2, 2},
-		{[]uint64{2, 1, 2}, []pb.Entry{{}, {Term: 1}, {Term: 1}}, 2, 0},
+		{[]uint64{2, 1, 1}, []pb.Entry{{Index: 1, Term: 1}, {Index: 2, Term: 2}}, 1, 1},
+		{[]uint64{2, 1, 1}, []pb.Entry{{Index: 1, Term: 1}, {Index: 2, Term: 1}}, 2, 0},
+		{[]uint64{2, 1, 2}, []pb.Entry{{Index: 1, Term: 1}, {Index: 2, Term: 2}}, 2, 2},
+		{[]uint64{2, 1, 2}, []pb.Entry{{Index: 1, Term: 1}, {Index: 2, Term: 1}}, 2, 0},
 
 		// even
-		{[]uint64{2, 1, 1, 1}, []pb.Entry{{}, {Term: 1}, {Term: 2}}, 1, 1},
-		{[]uint64{2, 1, 1, 1}, []pb.Entry{{}, {Term: 1}, {Term: 1}}, 2, 0},
-		{[]uint64{2, 1, 1, 2}, []pb.Entry{{}, {Term: 1}, {Term: 2}}, 1, 1},
-		{[]uint64{2, 1, 1, 2}, []pb.Entry{{}, {Term: 1}, {Term: 1}}, 2, 0},
-		{[]uint64{2, 1, 2, 2}, []pb.Entry{{}, {Term: 1}, {Term: 2}}, 2, 2},
-		{[]uint64{2, 1, 2, 2}, []pb.Entry{{}, {Term: 1}, {Term: 1}}, 2, 0},
+		{[]uint64{2, 1, 1, 1}, []pb.Entry{{Index: 1, Term: 1}, {Index: 2, Term: 2}}, 1, 1},
+		{[]uint64{2, 1, 1, 1}, []pb.Entry{{Index: 1, Term: 1}, {Index: 2, Term: 1}}, 2, 0},
+		{[]uint64{2, 1, 1, 2}, []pb.Entry{{Index: 1, Term: 1}, {Index: 2, Term: 2}}, 1, 1},
+		{[]uint64{2, 1, 1, 2}, []pb.Entry{{Index: 1, Term: 1}, {Index: 2, Term: 1}}, 2, 0},
+		{[]uint64{2, 1, 2, 2}, []pb.Entry{{Index: 1, Term: 1}, {Index: 2, Term: 2}}, 2, 2},
+		{[]uint64{2, 1, 2, 2}, []pb.Entry{{Index: 1, Term: 1}, {Index: 2, Term: 1}}, 2, 0},
 	}
 
 	for i, tt := range tests {
-		prs := make(map[uint64]*progress)
+		storage := NewMemoryStorage()
+		storage.Append(tt.logs)
+		storage.hardState = pb.HardState{Term: tt.smTerm}
+
+		sm := newRaft(1, []uint64{1}, 5, 1, storage)
 		for j := 0; j < len(tt.matches); j++ {
-			prs[uint64(j)] = &progress{tt.matches[j], tt.matches[j] + 1}
-		}
-		sm := &raft{
-			raftLog:   &raftLog{storage: &MemoryStorage{ents: tt.logs}, unstable: unstable{offset: uint64(len(tt.logs))}},
-			prs:       prs,
-			HardState: pb.HardState{Term: tt.smTerm},
+			sm.setProgress(uint64(j)+1, tt.matches[j], tt.matches[j]+1)
 		}
 		sm.maybeCommit()
 		if g := sm.raftLog.committed; g != tt.w {
@@ -675,15 +748,10 @@ func TestHandleMsgApp(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		sm := &raft{
-			state:     StateFollower,
-			HardState: pb.HardState{Term: 2},
-			raftLog: &raftLog{
-				committed: 0,
-				storage:   &MemoryStorage{ents: []pb.Entry{{}, {Term: 1}, {Term: 2}}},
-				unstable:  unstable{offset: 3},
-			},
-		}
+		storage := NewMemoryStorage()
+		storage.Append([]pb.Entry{{Index: 1, Term: 1}, {Index: 2, Term: 2}})
+		sm := newRaft(1, []uint64{1}, 10, 1, storage)
+		sm.becomeFollower(2, None)
 
 		sm.handleAppendEntries(tt.m)
 		if sm.raftLog.lastIndex() != tt.wIndex {
@@ -709,18 +777,15 @@ func TestHandleHeartbeat(t *testing.T) {
 		m       pb.Message
 		wCommit uint64
 	}{
-		{pb.Message{Type: pb.MsgApp, Term: 2, Commit: commit + 1}, commit + 1},
-		{pb.Message{Type: pb.MsgApp, Term: 2, Commit: commit - 1}, commit}, // do not decrease commit
+		{pb.Message{From: 2, To: 1, Type: pb.MsgApp, Term: 2, Commit: commit + 1}, commit + 1},
+		{pb.Message{From: 2, To: 1, Type: pb.MsgApp, Term: 2, Commit: commit - 1}, commit}, // do not decrease commit
 	}
 
 	for i, tt := range tests {
 		storage := NewMemoryStorage()
 		storage.Append([]pb.Entry{{Index: 1, Term: 1}, {Index: 2, Term: 2}, {Index: 3, Term: 3}})
-		sm := &raft{
-			state:     StateFollower,
-			HardState: pb.HardState{Term: 2},
-			raftLog:   newLog(storage),
-		}
+		sm := newRaft(1, []uint64{1, 2}, 5, 1, storage)
+		sm.becomeFollower(2, 2)
 		sm.raftLog.commitTo(commit)
 		sm.handleHeartbeat(tt.m)
 		if sm.raftLog.committed != tt.wCommit {
@@ -1345,10 +1410,7 @@ func TestPromotable(t *testing.T) {
 		{[]uint64{2, 3}, false},
 	}
 	for i, tt := range tests {
-		r := &raft{id: id, prs: make(map[uint64]*progress)}
-		for _, id := range tt.peers {
-			r.prs[id] = &progress{}
-		}
+		r := newRaft(id, tt.peers, 5, 1, NewMemoryStorage())
 		if g := r.promotable(); g != tt.wp {
 			t.Errorf("#%d: promotable = %v, want %v", i, g, tt.wp)
 		}
@@ -1378,17 +1440,11 @@ func TestRaftNodes(t *testing.T) {
 }
 
 func ents(terms ...uint64) *raft {
-	ents := []pb.Entry{{}}
+	storage := NewMemoryStorage()
 	for i, term := range terms {
-		ents = append(ents, pb.Entry{Index: uint64(i + 1), Term: term})
+		storage.Append([]pb.Entry{{Index: uint64(i + 1), Term: term}})
 	}
-
-	sm := &raft{
-		raftLog: &raftLog{
-			storage:  &MemoryStorage{ents: ents},
-			unstable: unstable{offset: uint64(len(ents))},
-		},
-	}
+	sm := newRaft(1, []uint64{}, 5, 1, storage)
 	sm.reset(0)
 	return sm
 }

@@ -14,7 +14,7 @@ If etcd falls below a simple majority of members it can no longer accept writes:
 
 If you want to migrate a running member to another machine, please refer [member migration section][member migration].
 
-[member migration]: https://github.com/coreos/etcd/blob/master/Documentation/0.5/admin_guide.md#member-migration
+[member migration]: https://github.com/coreos/etcd/blob/master/Documentation/2.0/admin_guide.md#member-migration
 
 ### Increase Cluster Size
 
@@ -53,7 +53,7 @@ To increase from 3 to 5 members you will make two add operations
 To decrease from 5 to 3 you will make two remove operations
 
 All of these examples will use the `etcdctl` command line tool that ships with etcd.
-If you want to use the member API directly you can find the documentation [here](https://github.com/coreos/etcd/blob/master/Documentation/0.5/other_apis.md).
+If you want to use the member API directly you can find the documentation [here](https://github.com/coreos/etcd/blob/master/Documentation/2.0/other_apis.md).
 
 ### Remove a Member
 
@@ -86,7 +86,7 @@ Removal of the leader is safe, but the cluster will be out of progress for a per
 
 Adding a member is a two step process:
 
- * Add the new member to the cluster via the [members API](https://github.com/coreos/etcd/blob/master/Documentation/0.5/other_apis.md#post-v2members) or the `etcdctl member add` command.
+ * Add the new member to the cluster via the [members API](https://github.com/coreos/etcd/blob/master/Documentation/2.0/other_apis.md#post-v2members) or the `etcdctl member add` command.
  * Start the member with the correct configuration.
 
 Using `etcdctl` let's add the new member to the cluster:
