@@ -61,9 +61,7 @@ func TestGenClusterString(t *testing.T) {
 }
 
 func TestGenDNSClusterString(t *testing.T) {
-	oldname := *name
-	*name = "dnsClusterTest"
-	defer func() { *name = oldname }()
+	name := "dnsClusterTest"
 	tests := []struct {
 		withSSL    []*net.SRV
 		withoutSSL []*net.SRV
@@ -124,7 +122,7 @@ func TestGenDNSClusterString(t *testing.T) {
 		}
 		defer func() { lookupSRV = net.LookupSRV }()
 		urls := mustNewURLs(t, tt.urls)
-		str, token, err := genDNSClusterString("token", urls)
+		str, token, err := genDNSClusterString(name, "example.com", "token", urls)
 		if err != nil {
 			t.Fatalf("%d: err: %#v", i, err)
 		}
