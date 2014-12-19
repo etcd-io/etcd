@@ -3,14 +3,13 @@
 [![Build Status](https://travis-ci.org/coreos/etcd.png?branch=master)](https://travis-ci.org/coreos/etcd)
 [![Docker Repository on Quay.io](https://quay.io/repository/coreos/etcd-git/status "Docker Repository on Quay.io")](https://quay.io/repository/coreos/etcd-git)
 
-### Release Candidate Warning ###
+### Release Candidate Disclaimer ###
 
-The current `master` branch of etcd is under development in anticipation of the forthcoming 2.0.0 release.
+The current `master` branch of etcd is tracking the forthcoming 2.0.0 release.
+We encourage users to work with the [latest release candidate](https://github.com/coreos/etcd/releases/tag/v2.0.0-rc.1), but those looking for a stable release should obtain the latest 0.4.x release, [0.4.6](https://github.com/coreos/etcd/releases/tag/v0.4.6).
 
-It is strongly recommended that users work with the latest 0.4.x release (0.4.6), which can be found on the [releases](https://github.com/coreos/etcd/releases) page.
-
-Unless otherwise noted, the etcd documentation refers to configuring and running 0.4.x releases.
-Documentation related to the 2.0.0 release candidates can be found in the `Documentation/2.0` directory.
+Unless otherwise noted, the etcd documentation below and in [`Documentation/`](Documentation) refers to configuring and running 0.4.x releases.
+Documentation related to the 2.0.0 release candidates can be found in the [`Documentation/2.0`](Documentation/) directory.
 
 ![etcd Logo](logos/etcd-horizontal-color.png)
 
@@ -113,9 +112,7 @@ curl -L http://127.0.0.1:4001/version
 
 The `v2` API responses should not change after the 0.2.0 release but new features will be added over time.
 
-The `v1` API has been deprecated and will not be supported.
-
-During the pre-v1.0.0 series of releases we may break the API as we fix bugs and get feedback.
+The `v1` API has been deprecated and will not be supported. It will be removed in the 2.0.0 release.
 
 #### 32-bit systems
 
