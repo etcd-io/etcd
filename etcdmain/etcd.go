@@ -458,7 +458,7 @@ func genDNSClusterString(defaultToken string, apurls types.URLs) (string, string
 	for _, url := range apurls {
 		tcpAddr, err := net.ResolveTCPAddr("tcp", url.Host)
 		if err != nil {
-			log.Printf("etcd: Couldn't resolve host %s", url.Host)
+			log.Printf("etcd: Couldn't resolve host %s during SRV discovery", url.Host)
 			return "", "", err
 		}
 		tcpAPUrls = append(tcpAPUrls, tcpAddr.String())
@@ -473,7 +473,7 @@ func genDNSClusterString(defaultToken string, apurls types.URLs) (string, string
 			host := net.JoinHostPort(srv.Target, fmt.Sprintf("%d", srv.Port))
 			tcpAddr, err := net.ResolveTCPAddr("tcp", host)
 			if err != nil {
-				log.Printf("etcd: Couldn't resolve host %s", host)
+				log.Printf("etcd: Couldn't resolve host %s during SRV discovery", host)
 				continue
 			}
 			n := ""
