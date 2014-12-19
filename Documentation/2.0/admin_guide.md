@@ -116,6 +116,8 @@ To recover from such scenarios, etcd provides functionality to backup and restor
 
 #### Backing up the datastore
 
+**NB:** Windows users must stop etcd before running the backup command.
+
 The first step of the recovery is to backup the data directory on a functioning etcd node. To do this, use the `etcdctl backup` command, passing in the original data directory used by etcd. For example:
 
 ```sh
