@@ -19,6 +19,8 @@ package fileutil
 import (
 	"io/ioutil"
 	"os"
+	"path/filepath"
+	"reflect"
 	"testing"
 )
 
@@ -27,6 +29,7 @@ func TestIsDirWriteable(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected ioutil.TempDir error: %v", err)
 	}
+	defer os.RemoveAll(tmpdir)
 	if err := IsDirWriteable(tmpdir); err != nil {
 		t.Fatalf("unexpected IsDirWriteable error: %v", err)
 	}
@@ -35,5 +38,31 @@ func TestIsDirWriteable(t *testing.T) {
 	}
 	if err := IsDirWriteable(tmpdir); err == nil {
 		t.Fatalf("expected IsDirWriteable to error")
+	}
+}
+
+func TestReadDir(t *testing.T) {
+	tmpdir, err := ioutil.TempDir("", "")
+	defer os.RemoveAll(tmpdir)
+	if err != nil {
+		t.Fatalf("unexpected ioutil.TempDir error: %v", err)
+	}
+	files := []string{"def", "abc", "xyz", "ghi"}
+	for _, f := range files {
+		fh, err := os.Create(filepath.Join(tmpdir, f))
+		if err != nil {
+			t.Fatalf("error creating file: %v", err)
+		}
+		if err := fh.Close(); err != nil {
+			t.Fatalf("error closing file: %v", err)
+		}
+	}
+	fs, err := ReadDir(tmpdir)
+	if err != nil {
+		t.Fatalf("error calling ReadDir: %v", err)
+	}
+	wfs := []string{"abc", "def", "ghi", "xyz"}
+	if !reflect.DeepEqual(fs, wfs) {
+		t.Fatalf("ReadDir: got %v, want %v", fs, wfs)
 	}
 }
