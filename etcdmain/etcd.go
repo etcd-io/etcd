@@ -452,6 +452,17 @@ func genClusterString(name string, urls types.URLs) string {
 func genDNSClusterString(defaultToken string, apurls types.URLs) (string, string, error) {
 	stringParts := make([]string, 0)
 	tempName := int(0)
+	tcpAPUrls := make([]string, 0)
+
+	// First, resolve the apurls
+	for _, url := range apurls {
+		tcpAddr, err := net.ResolveTCPAddr("tcp", url.Host)
+		if err != nil {
+			log.Printf("etcd: Couldn't resolve host %s", url.Host)
+			return "", "", err
+		}
+		tcpAPUrls = append(tcpAPUrls, tcpAddr.String())
+	}
 
 	updateNodeMap := func(service, prefix string) error {
 		_, addrs, err := lookupSRV(service, "tcp", *dnsCluster)
@@ -466,8 +477,8 @@ func genDNSClusterString(defaultToken string, apurls types.URLs) (string, string
 				continue
 			}
 			n := ""
-			for _, url := range apurls {
-				if url.Host == tcpAddr.String() {
+			for _, url := range tcpAPUrls {
+				if url == tcpAddr.String() {
 					n = *name
 				}
 			}
