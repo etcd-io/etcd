@@ -25,7 +25,6 @@ import (
 	"os"
 	"path"
 	"reflect"
-	"sort"
 
 	"github.com/coreos/etcd/pkg/fileutil"
 	"github.com/coreos/etcd/pkg/pbutil"
@@ -142,8 +141,6 @@ func openAtIndex(dirpath string, index uint64, all bool) (*WAL, error) {
 	if len(names) == 0 {
 		return nil, ErrFileNotFound
 	}
-
-	sort.Sort(sort.StringSlice(names))
 
 	nameIndex, ok := searchIndex(names, index)
 	if !ok || !isValidSeq(names[nameIndex:]) {

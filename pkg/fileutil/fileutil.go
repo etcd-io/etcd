@@ -20,6 +20,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"sort"
 )
 
 const (
@@ -36,7 +37,7 @@ func IsDirWriteable(dir string) error {
 	return os.Remove(f)
 }
 
-// ReadDir returns the filenames in the given directory.
+// ReadDir returns the filenames in the given directory in sorted order.
 func ReadDir(dirpath string) ([]string, error) {
 	dir, err := os.Open(dirpath)
 	if err != nil {
@@ -47,5 +48,6 @@ func ReadDir(dirpath string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
+	sort.Strings(names)
 	return names, nil
 }
