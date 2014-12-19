@@ -35,7 +35,7 @@ func (l Log4) NodeIDs() map[string]uint64 {
 		if e.GetCommandName() == "etcd:join" {
 			cmd4, err := NewCommand4(e.GetCommandName(), e.GetCommand(), nil)
 			if err != nil {
-				log.Println("error converting an etcd:join to v0.5 format. Likely corrupt!")
+				log.Println("error converting an etcd:join to v2.0 format. Likely corrupt!")
 				return nil
 			}
 			join := cmd4.(*JoinCommand)
@@ -123,8 +123,8 @@ func hashName(name string) uint64 {
 }
 
 type Command4 interface {
-	Type5() raftpb.EntryType
-	Data5() ([]byte, error)
+	Type2() raftpb.EntryType
+	Data2() ([]byte, error)
 }
 
 func NewCommand4(name string, data []byte, raftMap map[string]uint64) (Command4, error) {
@@ -196,17 +196,17 @@ type RemoveCommand struct {
 	id   uint64
 }
 
-func (c *RemoveCommand) Type5() raftpb.EntryType {
+func (c *RemoveCommand) Type2() raftpb.EntryType {
 	return raftpb.EntryConfChange
 }
 
-func (c *RemoveCommand) Data5() ([]byte, error) {
-	req5 := raftpb.ConfChange{
+func (c *RemoveCommand) Data2() ([]byte, error) {
+	req2 := raftpb.ConfChange{
 		ID:     0,
 		Type:   raftpb.ConfChangeRemoveNode,
 		NodeID: c.id,
 	}
-	return req5.Marshal()
+	return req2.Marshal()
 }
 
 type JoinCommand struct {
@@ -216,23 +216,23 @@ type JoinCommand struct {
 	memb    member
 }
 
-func (c *JoinCommand) Type5() raftpb.EntryType {
+func (c *JoinCommand) Type2() raftpb.EntryType {
 	return raftpb.EntryConfChange
 }
 
-func (c *JoinCommand) Data5() ([]byte, error) {
+func (c *JoinCommand) Data2() ([]byte, error) {
 	b, err := json.Marshal(c.memb)
 	if err != nil {
 		return nil, err
 	}
 
-	req5 := &raftpb.ConfChange{
+	req2 := &raftpb.ConfChange{
 		ID:      0,
 		Type:    raftpb.ConfChangeAddNode,
 		NodeID:  uint64(c.memb.ID),
 		Context: b,
 	}
-	return req5.Marshal()
+	return req2.Marshal()
 }
 
 type SetClusterConfigCommand struct {
@@ -243,24 +243,24 @@ type SetClusterConfigCommand struct {
 	} `json:"config"`
 }
 
-func (c *SetClusterConfigCommand) Type5() raftpb.EntryType {
+func (c *SetClusterConfigCommand) Type2() raftpb.EntryType {
 	return raftpb.EntryNormal
 }
 
-func (c *SetClusterConfigCommand) Data5() ([]byte, error) {
+func (c *SetClusterConfigCommand) Data2() ([]byte, error) {
 	b, err := json.Marshal(c.Config)
 	if err != nil {
 		return nil, err
 	}
 
-	req5 := &etcdserverpb.Request{
+	req2 := &etcdserverpb.Request{
 		Method: "PUT",
 		Path:   "/v2/admin/config",
 		Dir:    false,
 		Val:    string(b),
 	}
 
-	return req5.Marshal()
+	return req2.Marshal()
 }
 
 type CompareAndDeleteCommand struct {
@@ -269,18 +269,18 @@ type CompareAndDeleteCommand struct {
 	PrevIndex uint64 `json:"prevIndex"`
 }
 
-func (c *CompareAndDeleteCommand) Type5() raftpb.EntryType {
+func (c *CompareAndDeleteCommand) Type2() raftpb.EntryType {
 	return raftpb.EntryNormal
 }
 
-func (c *CompareAndDeleteCommand) Data5() ([]byte, error) {
-	req5 := &etcdserverpb.Request{
+func (c *CompareAndDeleteCommand) Data2() ([]byte, error) {
+	req2 := &etcdserverpb.Request{
 		Method:    "DELETE",
 		Path:      StorePath(c.Key),
 		PrevValue: c.PrevValue,
 		PrevIndex: c.PrevIndex,
 	}
-	return req5.Marshal()
+	return req2.Marshal()
 }
 
 type CompareAndSwapCommand struct {
@@ -291,12 +291,12 @@ type CompareAndSwapCommand struct {
 	PrevIndex  uint64    `json:"prevIndex"`
 }
 
-func (c *CompareAndSwapCommand) Type5() raftpb.EntryType {
+func (c *CompareAndSwapCommand) Type2() raftpb.EntryType {
 	return raftpb.EntryNormal
 }
 
-func (c *CompareAndSwapCommand) Data5() ([]byte, error) {
-	req5 := &etcdserverpb.Request{
+func (c *CompareAndSwapCommand) Data2() ([]byte, error) {
+	req2 := &etcdserverpb.Request{
 		Method:     "PUT",
 		Path:       StorePath(c.Key),
 		Val:        c.Value,
@@ -304,7 +304,7 @@ func (c *CompareAndSwapCommand) Data5() ([]byte, error) {
 		PrevIndex:  c.PrevIndex,
 		Expiration: UnixTimeOrPermanent(c.ExpireTime),
 	}
-	return req5.Marshal()
+	return req2.Marshal()
 }
 
 type CreateCommand struct {
@@ -315,25 +315,25 @@ type CreateCommand struct {
 	Dir        bool      `json:"dir"`
 }
 
-func (c *CreateCommand) Type5() raftpb.EntryType {
+func (c *CreateCommand) Type2() raftpb.EntryType {
 	return raftpb.EntryNormal
 }
 
-func (c *CreateCommand) Data5() ([]byte, error) {
-	req5 := &etcdserverpb.Request{
+func (c *CreateCommand) Data2() ([]byte, error) {
+	req2 := &etcdserverpb.Request{
 		Path:       StorePath(c.Key),
 		Dir:        c.Dir,
 		Val:        c.Value,
 		Expiration: UnixTimeOrPermanent(c.ExpireTime),
 	}
 	if c.Unique {
-		req5.Method = "POST"
+		req2.Method = "POST"
 	} else {
 		var prevExist = true
-		req5.Method = "PUT"
-		req5.PrevExist = &prevExist
+		req2.Method = "PUT"
+		req2.PrevExist = &prevExist
 	}
-	return req5.Marshal()
+	return req2.Marshal()
 }
 
 type DeleteCommand struct {
@@ -342,18 +342,18 @@ type DeleteCommand struct {
 	Dir       bool   `json:"dir"`
 }
 
-func (c *DeleteCommand) Type5() raftpb.EntryType {
+func (c *DeleteCommand) Type2() raftpb.EntryType {
 	return raftpb.EntryNormal
 }
 
-func (c *DeleteCommand) Data5() ([]byte, error) {
-	req5 := &etcdserverpb.Request{
+func (c *DeleteCommand) Data2() ([]byte, error) {
+	req2 := &etcdserverpb.Request{
 		Method:    "DELETE",
 		Path:      StorePath(c.Key),
 		Dir:       c.Dir,
 		Recursive: c.Recursive,
 	}
-	return req5.Marshal()
+	return req2.Marshal()
 }
 
 type SetCommand struct {
@@ -363,19 +363,19 @@ type SetCommand struct {
 	Dir        bool      `json:"dir"`
 }
 
-func (c *SetCommand) Type5() raftpb.EntryType {
+func (c *SetCommand) Type2() raftpb.EntryType {
 	return raftpb.EntryNormal
 }
 
-func (c *SetCommand) Data5() ([]byte, error) {
-	req5 := &etcdserverpb.Request{
+func (c *SetCommand) Data2() ([]byte, error) {
+	req2 := &etcdserverpb.Request{
 		Method:     "PUT",
 		Path:       StorePath(c.Key),
 		Dir:        c.Dir,
 		Val:        c.Value,
 		Expiration: UnixTimeOrPermanent(c.ExpireTime),
 	}
-	return req5.Marshal()
+	return req2.Marshal()
 }
 
 type UpdateCommand struct {
@@ -384,36 +384,36 @@ type UpdateCommand struct {
 	ExpireTime time.Time `json:"expireTime"`
 }
 
-func (c *UpdateCommand) Type5() raftpb.EntryType {
+func (c *UpdateCommand) Type2() raftpb.EntryType {
 	return raftpb.EntryNormal
 }
 
-func (c *UpdateCommand) Data5() ([]byte, error) {
+func (c *UpdateCommand) Data2() ([]byte, error) {
 	exist := true
-	req5 := &etcdserverpb.Request{
+	req2 := &etcdserverpb.Request{
 		Method:     "PUT",
 		Path:       StorePath(c.Key),
 		Val:        c.Value,
 		PrevExist:  &exist,
 		Expiration: UnixTimeOrPermanent(c.ExpireTime),
 	}
-	return req5.Marshal()
+	return req2.Marshal()
 }
 
 type SyncCommand struct {
 	Time time.Time `json:"time"`
 }
 
-func (c *SyncCommand) Type5() raftpb.EntryType {
+func (c *SyncCommand) Type2() raftpb.EntryType {
 	return raftpb.EntryNormal
 }
 
-func (c *SyncCommand) Data5() ([]byte, error) {
-	req5 := &etcdserverpb.Request{
+func (c *SyncCommand) Data2() ([]byte, error) {
+	req2 := &etcdserverpb.Request{
 		Method: "SYNC",
 		Time:   c.Time.UnixNano(),
 	}
-	return req5.Marshal()
+	return req2.Marshal()
 }
 
 type DefaultJoinCommand struct {
@@ -433,15 +433,15 @@ func (c NOPCommand) CommandName() string {
 	return "raft:nop"
 }
 
-func (c *NOPCommand) Type5() raftpb.EntryType {
+func (c *NOPCommand) Type2() raftpb.EntryType {
 	return raftpb.EntryNormal
 }
 
-func (c *NOPCommand) Data5() ([]byte, error) {
+func (c *NOPCommand) Data2() ([]byte, error) {
 	return nil, nil
 }
 
-func Entries4To5(ents4 []*etcd4pb.LogEntry) ([]raftpb.Entry, error) {
+func Entries4To2(ents4 []*etcd4pb.LogEntry) ([]raftpb.Entry, error) {
 	ents4Len := len(ents4)
 
 	if ents4Len == 0 {
@@ -459,38 +459,38 @@ func Entries4To5(ents4 []*etcd4pb.LogEntry) ([]raftpb.Entry, error) {
 	}
 
 	raftMap := make(map[string]uint64)
-	ents5 := make([]raftpb.Entry, 0)
+	ents2 := make([]raftpb.Entry, 0)
 	for i, e := range ents4 {
-		ent, err := toEntry5(e, raftMap)
+		ent, err := toEntry2(e, raftMap)
 		if err != nil {
 			log.Fatalf("Error converting entry %d, %s", i, err)
 		} else {
-			ents5 = append(ents5, *ent)
+			ents2 = append(ents2, *ent)
 		}
 	}
 
-	return ents5, nil
+	return ents2, nil
 }
 
-func toEntry5(ent4 *etcd4pb.LogEntry, raftMap map[string]uint64) (*raftpb.Entry, error) {
+func toEntry2(ent4 *etcd4pb.LogEntry, raftMap map[string]uint64) (*raftpb.Entry, error) {
 	cmd4, err := NewCommand4(ent4.GetCommandName(), ent4.GetCommand(), raftMap)
 	if err != nil {
 		return nil, err
 	}
 
-	data, err := cmd4.Data5()
+	data, err := cmd4.Data2()
 	if err != nil {
 		return nil, err
 	}
 
-	ent5 := raftpb.Entry{
+	ent2 := raftpb.Entry{
 		Term:  ent4.GetTerm(),
 		Index: ent4.GetIndex(),
-		Type:  cmd4.Type5(),
+		Type:  cmd4.Type2(),
 		Data:  data,
 	}
 
-	return &ent5, nil
+	return &ent2, nil
 }
 
 func generateNodeMember(name, rafturl, etcdurl string) *member {

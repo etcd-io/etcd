@@ -26,19 +26,19 @@ func cfgFile4(dataDir string) string {
 	return path.Join(dataDir, "conf")
 }
 
-func snapDir5(dataDir string) string {
+func snapDir2(dataDir string) string {
 	return path.Join(dataDir, "snap")
 }
 
-func walDir5(dataDir string) string {
+func walDir2(dataDir string) string {
 	return path.Join(dataDir, "wal")
 }
 
-func Migrate4To5(dataDir string, name string) error {
+func Migrate4To2(dataDir string, name string) error {
 	// prep new directories
-	sd5 := snapDir5(dataDir)
-	if err := os.MkdirAll(sd5, 0700); err != nil {
-		return fmt.Errorf("failed creating snapshot directory %s: %v", sd5, err)
+	sd2 := snapDir2(dataDir)
+	if err := os.MkdirAll(sd2, 0700); err != nil {
+		return fmt.Errorf("failed creating snapshot directory %s: %v", sd2, err)
 	}
 
 	// read v0.4 data
@@ -65,50 +65,50 @@ func Migrate4To5(dataDir string, name string) error {
 	}
 
 	metadata := pbutil.MustMarshal(&pb.Metadata{NodeID: nodeID, ClusterID: 0x04add5})
-	wd5 := walDir5(dataDir)
-	w, err := wal.Create(wd5, metadata)
+	wd2 := walDir2(dataDir)
+	w, err := wal.Create(wd2, metadata)
 	if err != nil {
-		return fmt.Errorf("failed initializing wal at %s: %v", wd5, err)
+		return fmt.Errorf("failed initializing wal at %s: %v", wd2, err)
 	}
 	defer w.Close()
 
 	// transform v0.4 data
-	var snap5 *raftpb.Snapshot
+	var snap2 *raftpb.Snapshot
 	if snap4 == nil {
 		log.Printf("No snapshot found")
 	} else {
 		log.Printf("Found snapshot: lastIndex=%d", snap4.LastIndex)
 
-		snap5 = snap4.Snapshot5()
+		snap2 = snap4.Snapshot2()
 	}
 
-	st5 := cfg4.HardState5()
+	st2 := cfg4.HardState2()
 
 	// If we've got the most recent snapshot, we can use it's committed index. Still likely less than the current actual index, but worth it for the replay.
-	if snap5 != nil {
-		st5.Commit = snap5.Metadata.Index
+	if snap2 != nil {
+		st2.Commit = snap2.Metadata.Index
 	}
 
-	ents5, err := Entries4To5(ents4)
+	ents2, err := Entries4To2(ents4)
 	if err != nil {
 		return err
 	}
 
-	ents5Len := len(ents5)
-	log.Printf("Found %d log entries: firstIndex=%d lastIndex=%d", ents5Len, ents5[0].Index, ents5[ents5Len-1].Index)
+	ents2Len := len(ents2)
+	log.Printf("Found %d log entries: firstIndex=%d lastIndex=%d", ents2Len, ents2[0].Index, ents2[ents2Len-1].Index)
 
 	// explicitly prepend an empty entry as the WAL code expects it
-	ents5 = append(make([]raftpb.Entry, 1), ents5...)
+	ents2 = append(make([]raftpb.Entry, 1), ents2...)
 
-	if err = w.Save(st5, ents5); err != nil {
+	if err = w.Save(st2, ents2); err != nil {
 		return err
 	}
 	log.Printf("Log migration successful")
 
 	// migrate snapshot (if necessary) and logs
-	if snap5 != nil {
-		ss := snap.New(sd5)
-		if err := ss.SaveSnap(*snap5); err != nil {
+	if snap2 != nil {
+		ss := snap.New(sd2)
+		if err := ss.SaveSnap(*snap2); err != nil {
 			return err
 		}
 		log.Printf("Snapshot migration successful")
