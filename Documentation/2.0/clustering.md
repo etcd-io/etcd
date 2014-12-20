@@ -1,12 +1,18 @@
 # Clustering Guide
 
-This guide will walk you through configuring a three machine etcd cluster with the following details:
+This guide willcover the following mechanisms for bootstrapping an etcd cluster:
 
-|Name	|Address	|
-|-------|-----------|
-|infra0	|10.0.1.10	|
-|infra1	|10.0.1.11	|
-|infra2	|10.0.1.12	|
+* [Static](#static)
+* [etcd Discovery](#etcd-discovery)
+* [DNS Discovery](#dns-discovery)
+
+Each of the bootstrapping mechanisms will be used to create a three machine etcd cluster with the following details:
+
+|Name|Address|Hostname|
+|------|---------|------------------|
+|infra0|10.0.1.10|infra0.example.com|
+|infra1|10.0.1.11|infra1.example.com|
+|infra2|10.0.1.12|infra2.example.com|
 
 ## Static
 
@@ -91,7 +97,14 @@ exit 1
 
 In a number of cases, you might not know the IPs of your cluster peers ahead of time. This is common when utilizing cloud providers or when your network uses DHCP. In these cases, rather than specifying a static configuration, you can use an existing etcd cluster to bootstrap a new one. We call this process "discovery".
 
-### Lifetime of a Discovery URL
+There two methods that can be used for discovery:
+
+* etcd discovery service
+* DNS SRV records
+
+### etcd Discovery
+
+#### Lifetime of a Discovery URL
 
 A discovery URL identifies a unique etcd cluster. Instead of reusing a discovery URL, you should always create discovery URLs for new clusters.
 
@@ -99,7 +112,7 @@ Moreover, discovery URLs should ONLY be used for the initial bootstrapping of a 
 
 [runtime]: https://github.com/coreos/etcd/blob/master/Documentation/2.0/runtime-configuration.md
 
-### Custom etcd discovery service
+#### Custom etcd Discovery Service
 
 Discovery uses an existing cluster to bootstrap itself. If you are using your own etcd cluster you can create a URL like so:
 
@@ -133,7 +146,7 @@ $ etcd -name infra2 -initial-advertise-peer-urls http://10.0.1.12:2380 \
 
 This will cause each member to register itself with the custom etcd discovery service and begin the cluster once all machines have been registered.
 
-### Public discovery service
+#### Public etcd Discovery Service
 
 If you do not have access to an existing cluster, you can use the public discovery service hosted at `discovery.etcd.io`.  You can create a private discovery URL using the "new" endpoint like so:
 
@@ -179,9 +192,9 @@ This will cause each member to register itself with the discovery service and be
 
 You can use the environment variable `ETCD_DISCOVERY_PROXY` to cause etcd to use an HTTP proxy to connect to the discovery service.
 
-### Error and Warning Cases
+#### Error and Warning Cases
 
-#### Discovery Server Errors
+##### Discovery Server Errors
 
 
 ```
@@ -192,7 +205,7 @@ etcd: error: the cluster doesn’t have a size configuration value in https://di
 exit 1
 ```
 
-#### User Errors
+##### User Errors
 
 This error will occur if the discovery cluster already has the configured number of members, and `discovery-fallback` is explicitly disabled
 
@@ -205,7 +218,7 @@ etcd: discovery: cluster is full
 exit 1
 ```
 
-#### Warnings
+##### Warnings
 
 This is a harmless warning notifying you that the discovery URL will be
 ignored on this machine.
@@ -215,6 +228,112 @@ $ etcd -name infra0 -initial-advertise-peer-urls http://10.0.1.10:2380 \
   -listen-peer-urls http://10.0.1.10:2380 \
   -discovery https://discovery.etcd.io/3e86b59982e49066c5d813af1c2e2579cbf573de
 etcdserver: discovery token ignored since a cluster has already been initialized. Valid log found at /var/lib/etcd
+```
+
+### DNS Discovery
+
+DNS [SRV records](http://www.ietf.org/rfc/rfc2052.txt) can be used as a discovery mechanism.
+The `-discovery-srv` flag can be used to set the DNS domain name where the discovery SRV records can be found.
+The following DNS SRV records are looked up in the listed order:
+
+* _etcd-server-ssl._tcp.example.com
+* _etcd-server._tcp.example.com
+
+If `_etcd-server-ssl._tcp.example.com` is found then etcd will attempt the bootstrapping process over SSL.
+
+#### Create DNS SRV records
+
+```
+$ dig +noall +answer SRV _etcd-server._tcp.example.com
+_etcd-server._tcp.example.com. 300 IN	SRV	0 0 2380 infra0.example.com.
+_etcd-server._tcp.example.com. 300 IN	SRV	0 0 2380 infra1.example.com.
+_etcd-server._tcp.example.com. 300 IN	SRV	0 0 2380 infra2.example.com.
+```
+
+```
+$ dig +noall +answer infra0.example.com infra1.example.com infra2.example.com
+infra0.example.com.	300	IN	A	10.0.1.10
+infra1.example.com.	300	IN	A	10.0.1.11
+infra2.example.com.	300	IN	A	10.0.1.12
+```
+#### Bootstrap the etcd cluster using DNS
+
+etcd cluster memebers can listen on domain names or IP address, the bootstrap process will resolve DNS A records.
+
+```
+$ etcd -name infra0 \
+-discovery-srv example.com \
+-initial-advertise-peer-urls http://infra0.example.com:2380 \
+-initial-cluster-token etcd-cluster-1 \
+-initial-cluster-state new \
+-advertise-client-urls http://infra0.example.com:2379 \
+-listen-client-urls http://infra0.example.com:2379 \
+-listen-peer-urls http://infra0.example.com:2380
+```
+
+```
+$ etcd -name infra1 \
+-discovery-srv example.com \
+-initial-advertise-peer-urls http://infra1.example.com:2380 \
+-initial-cluster-token etcd-cluster-1 \
+-initial-cluster-state new \
+-advertise-client-urls http://infra1.example.com:2379 \
+-listen-client-urls http://infra1.example.com:2379 \
+-listen-peer-urls http://infra1.example.com:2380
+```
+
+```
+$ etcd -name infra2 \
+-discovery-srv example.com \
+-initial-advertise-peer-urls http://infra2.example.com:2380 \
+-initial-cluster-token etcd-cluster-1 \
+-initial-cluster-state new \
+-advertise-client-urls http://infra2.example.com:2379 \
+-listen-client-urls http://infra2.example.com:2379 \
+-listen-peer-urls http://infra2.example.com:2380
+```
+
+You can also bootstrap the cluster using IP addresses instead of domain names:
+
+```
+$ etcd -name infra0 \
+-discovery-srv example.com \
+-initial-advertise-peer-urls http://10.0.1.10:2380 \
+-initial-cluster-token etcd-cluster-1 \
+-initial-cluster-state new \
+-advertise-client-urls http://10.0.1.10:2379 \
+-listen-client-urls http://10.0.1.10:2379 \
+-listen-peer-urls http://10.0.1.10:2380
+```
+
+```
+$ etcd -name infra1 \
+-discovery-srv example.com \
+-initial-advertise-peer-urls http://10.0.1.11:2380 \
+-initial-cluster-token etcd-cluster-1 \
+-initial-cluster-state new \
+-advertise-client-urls http://10.0.1.11:2379 \
+-listen-client-urls http://10.0.1.11:2379 \
+-listen-peer-urls http://10.0.1.11:2380
+```
+
+```
+$ etcd -name infra2 \
+-discovery-srv example.com \
+-initial-advertise-peer-urls http://10.0.1.12:2380 \
+-initial-cluster-token etcd-cluster-1 \
+-initial-cluster-state new \
+-advertise-client-urls http://10.0.1.12:2379 \
+-listen-client-urls http://10.0.1.12:2379 \
+-listen-peer-urls http://10.0.1.12:2380
+```
+
+#### etcd proxy configuration
+
+DNS SRV records can also be used to configure the list of peers for an etcd server running in proxy mode:
+
+```
+$ etcd --proxy on -discovery-srv example.com
 ```
 
 # 0.4 to 2.0+ Migration Guide
