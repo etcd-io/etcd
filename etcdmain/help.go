@@ -46,7 +46,7 @@ clustering flags:
 	--discovery-proxy ''
 		HTTP proxy to use for traffic to discovery service.
 	--discovery-srv ''
-		dns srv domain name used to bootstrap the cluster.
+		dns srv domain used to bootstrap the cluster.
 
 
 proxy flags:
