@@ -19,8 +19,8 @@ Package raft provides an implementation of the raft consensus algorithm.
 
 The primary object in raft is a Node. You either start a Node from scratch
 using raft.StartNode or start a Node from some initial state using raft.RestartNode.
-
-	n := raft.StartNode(0x01, []int64{0x02, 0x03}, 3, 1)
+	storage := raft.NewMemoryStorage()
+	n := raft.StartNode(0x01, []int64{0x02, 0x03}, 3, 1, storage)
 
 Now that you are holding onto a Node you have a few responsibilities:
 
@@ -37,6 +37,8 @@ channel returned by n.Ready(). It is important that the user persist any
 entries that require stable storage before sending messages to other peers to
 ensure fault-tolerance.
 
+An example MemoryStorage is provided in the raft package.
+
 And finally you need to service timeouts with Tick(). Raft has two important
 timeouts: heartbeat and the election timeout. However, internally to the raft
 package time is represented by an abstract "tick". The user is responsible for
@@ -50,7 +52,7 @@ The total state machine handling loop will look something like this:
 		case <-s.Ticker:
 			n.Tick()
 		case rd := <-s.Node.Ready():
-			saveToStable(rd.State, rd.Entries)
+			saveToStorage(rd.State, rd.Entries)
 			send(rd.Messages)
 			process(rd.CommittedEntries)
 			s.Node.Advance()
