@@ -59,6 +59,9 @@ var (
 		"v",
 		"vv",
 	}
+
+	ErrConflictBootstrapFlags = fmt.Errorf("multiple discovery or bootstrap flags are set" +
+		"Choose one of \"initial-cluster\", \"discovery\" or \"discovery-srv\"")
 )
 
 type config struct {
@@ -189,7 +192,7 @@ func NewConfig() *config {
 }
 
 func (cfg *config) Parse(arguments []string) error {
-	perr := cfg.FlagSet.Parse(os.Args[1:])
+	perr := cfg.FlagSet.Parse(arguments)
 	switch perr {
 	case nil:
 	case flag.ErrHelp:
@@ -213,13 +216,13 @@ func (cfg *config) Parse(arguments []string) error {
 		set[f.Name] = true
 	})
 	nSet := 0
-	for _, v := range []bool{set["discovery"], set["inital-cluster"], set["discovery-srv"]} {
+	for _, v := range []bool{set["discovery"], set["initial-cluster"], set["discovery-srv"]} {
 		if v {
 			nSet += 1
 		}
 	}
 	if nSet > 1 {
-		return fmt.Errorf("multiple discovery or bootstrap flags are set. Choose one of \"discovery\", \"initial-cluster\", or \"discovery-srv\"")
+		return ErrConflictBootstrapFlags
 	}
 
 	cfg.lpurls, err = flags.URLsFromFlags(cfg.FlagSet, "listen-peer-urls", "peer-bind-addr", cfg.peerTLSInfo)
