@@ -113,7 +113,7 @@ func testDecreaseClusterSize(t *testing.T, size int) {
 	defer c.Terminate(t)
 
 	// TODO: remove the last but one member
-	for i := 0; i < size-2; i++ {
+	for i := 0; i < size-1; i++ {
 		id := c.Members[len(c.Members)-1].s.ID()
 		c.RemoveMember(t, uint64(id))
 		c.waitLeader(t, c.Members)

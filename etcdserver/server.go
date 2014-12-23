@@ -435,7 +435,9 @@ func (s *EtcdServer) run() {
 				}
 				if len(ents) > 0 {
 					if appliedi, shouldstop = s.apply(ents, &confState); shouldstop {
-						return
+						m1 := fmt.Sprintf("etcdserver: removed local member %s from cluster %s", s.ID(), s.Cluster.ID())
+						m2 := fmt.Sprint("etcdserver: the data-dir used by this member must be removed so that this host can be re-added with a new member ID")
+						go s.stopWithDelay(10*100*time.Millisecond, m1, m2)
 					}
 				}
 			}
@@ -460,12 +462,24 @@ func (s *EtcdServer) run() {
 // Stop stops the server gracefully, and shuts down the running goroutine.
 // Stop should be called after a Start(s), otherwise it will block forever.
 func (s *EtcdServer) Stop() {
+	s.stopWithMessages()
+}
+
+func (s *EtcdServer) stopWithMessages(msgs ...string) {
 	select {
 	case s.stop <- struct{}{}:
+		for _, msg := range msgs {
+			log.Println(msg)
+		}
 	case <-s.done:
 		return
 	}
 	<-s.done
+}
+
+func (s *EtcdServer) stopWithDelay(d time.Duration, msgs ...string) {
+	time.Sleep(d)
+	s.stopWithMessages(msgs...)
 }
 
 // StopNotify returns a channel that receives a empty struct
@@ -784,8 +798,6 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.Con
 		id := types.ID(cc.NodeID)
 		s.Cluster.RemoveMember(id)
 		if id == s.id {
-			log.Printf("etcdserver: removed local member %s from cluster %s", id, s.Cluster.ID())
-			log.Println("etcdserver: the data-dir used by this member must be removed so that this host can be re-added with a new member ID")
 			return true, nil
 		} else {
 			s.sendhub.Remove(id)

@@ -284,6 +284,11 @@ func (n *node) run(r *raft) {
 			case pb.ConfChangeAddNode:
 				r.addNode(cc.NodeID)
 			case pb.ConfChangeRemoveNode:
+				// block incoming proposal when local node is
+				// removed
+				if cc.NodeID == r.id {
+					n.propc = nil
+				}
 				r.removeNode(cc.NodeID)
 			case pb.ConfChangeUpdateNode:
 				r.resetPendingConf()
