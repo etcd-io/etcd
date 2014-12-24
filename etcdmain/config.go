@@ -17,6 +17,7 @@
 package etcdmain
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -27,6 +28,7 @@ import (
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/pkg/cors"
 	"github.com/coreos/etcd/pkg/flags"
+	"github.com/coreos/etcd/pkg/netutil"
 	"github.com/coreos/etcd/pkg/transport"
 	"github.com/coreos/etcd/version"
 )
@@ -242,7 +244,15 @@ func (cfg *config) Parse(arguments []string) error {
 		return err
 	}
 
+	if err := cfg.resolveUrls(); err != nil {
+		return errors.New("cannot resolve DNS hostnames.")
+	}
+
 	return nil
+}
+
+func (cfg *config) resolveUrls() error {
+	return netutil.ResolveTCPAddrs(cfg.lpurls, cfg.apurls, cfg.lcurls, cfg.acurls)
 }
 
 func (cfg config) isNewCluster() bool          { return cfg.clusterState.String() == clusterStateFlagNew }
