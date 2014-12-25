@@ -1,6 +1,9 @@
 package etcdserver
 
 import (
+	"log"
+
+	"github.com/coreos/etcd/migrate"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/snap"
 	"github.com/coreos/etcd/wal"
@@ -40,6 +43,20 @@ func (st *storage) SaveSnap(snap raftpb.Snapshot) error {
 	err = st.WAL.ReleaseLockTo(snap.Metadata.Index)
 	if err != nil {
 		return err
+	}
+	return nil
+}
+
+// UpgradeWAL converts an older version of the etcdServer data to the newest version.
+// It must ensure that, after upgrading, the most recent version is present.
+func UpgradeWAL(cfg *ServerConfig, ver wal.WalVersion) error {
+	if ver == wal.WALv0_4 {
+		log.Print("etcdserver: converting v0.4 log to v2.0")
+		err := migrate.Migrate4To2(cfg.DataDir, cfg.Name)
+		if err != nil {
+			log.Fatalf("etcdserver: failed migrating data-dir: %v", err)
+			return err
+		}
 	}
 	return nil
 }
