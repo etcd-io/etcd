@@ -40,11 +40,6 @@ const (
 	privateDirMode = 0700
 )
 
-var (
-	// indirection for testing
-	lookupSRV = net.LookupSRV
-)
-
 func Main() {
 	cfg := NewConfig()
 	err := cfg.Parse(os.Args[1:])
@@ -260,7 +255,7 @@ func setupCluster(cfg *config) (*etcdserver.Cluster, error) {
 		clusterStr := genClusterString(cfg.name, cfg.apurls)
 		cls, err = etcdserver.NewClusterFromString(cfg.durl, clusterStr)
 	case cfg.dnsCluster != "":
-		clusterStr, clusterToken, err := genDNSClusterString(cfg.name, cfg.dnsCluster, cfg.initialClusterToken, cfg.apurls)
+		clusterStr, clusterToken, err := discovery.SRVGetCluster(cfg.name, cfg.dnsCluster, cfg.initialClusterToken, cfg.apurls)
 		if err != nil {
 			return nil, err
 		}
@@ -278,68 +273,4 @@ func genClusterString(name string, urls types.URLs) string {
 		addrs = append(addrs, fmt.Sprintf("%v=%v", name, u.String()))
 	}
 	return strings.Join(addrs, ",")
-}
-
-// TODO(barakmich): Currently ignores priority and weight (as they don't make as much sense for a bootstrap)
-// Also doesn't do any lookups for the token (though it could)
-// Also sees each entry as a separate instance.
-func genDNSClusterString(name, dns string, defaultToken string, apurls types.URLs) (string, string, error) {
-	stringParts := make([]string, 0)
-	tempName := int(0)
-	tcpAPUrls := make([]string, 0)
-
-	// First, resolve the apurls
-	for _, url := range apurls {
-		tcpAddr, err := net.ResolveTCPAddr("tcp", url.Host)
-		if err != nil {
-			log.Printf("etcd: Couldn't resolve host %s during SRV discovery", url.Host)
-			return "", "", err
-		}
-		tcpAPUrls = append(tcpAPUrls, tcpAddr.String())
-	}
-
-	updateNodeMap := func(service, prefix string) error {
-		_, addrs, err := lookupSRV(service, "tcp", dns)
-		if err != nil {
-			return err
-		}
-		for _, srv := range addrs {
-			host := net.JoinHostPort(srv.Target, fmt.Sprintf("%d", srv.Port))
-			tcpAddr, err := net.ResolveTCPAddr("tcp", host)
-			if err != nil {
-				log.Printf("etcd: Couldn't resolve host %s during SRV discovery", host)
-				continue
-			}
-			n := ""
-			for _, url := range tcpAPUrls {
-				if url == tcpAddr.String() {
-					n = name
-				}
-			}
-			if n == "" {
-				n = fmt.Sprintf("%d", tempName)
-				tempName += 1
-			}
-			stringParts = append(stringParts, fmt.Sprintf("%s=%s%s", n, prefix, tcpAddr.String()))
-			log.Printf("etcd: Got bootstrap from DNS for %s at host %s to %s%s", service, host, prefix, tcpAddr.String())
-		}
-		return nil
-	}
-
-	failCount := 0
-	err := updateNodeMap("etcd-server-ssl", "https://")
-	if err != nil {
-		log.Printf("etcd: Error querying DNS SRV records for _etcd-server-ssl. Error: %s.", err)
-		failCount += 1
-	}
-	err = updateNodeMap("etcd-server", "http://")
-	if err != nil {
-		log.Printf("etcd: Error querying DNS SRV records for _etcd-server. Error: %s.", err)
-		failCount += 1
-	}
-	if failCount == 2 {
-		log.Printf("etcd: Too many errors querying DNS SRV records. Failing discovery.")
-		return "", "", err
-	}
-	return strings.Join(stringParts, ","), defaultToken, nil
 }
