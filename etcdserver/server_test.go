@@ -883,28 +883,11 @@ func TestSnapshot(t *testing.T) {
 	n := raft.StartNode(0xBAD0, mustMakePeerSlice(t, 0xBAD0), 10, 1, s)
 	defer n.Stop()
 
-	// Progress the node to the point where it has something to snapshot.
-	// TODO(bdarnell): this could be improved with changes in the raft internals.
-	// First, we must apply the initial conf changes so we can have an election.
-	rd := <-n.Ready()
-	s.Append(rd.Entries)
-	for _, e := range rd.CommittedEntries {
-		if e.Type == raftpb.EntryConfChange {
-			var cc raftpb.ConfChange
-			err := cc.Unmarshal(e.Data)
-			if err != nil {
-				t.Fatal(err)
-			}
-			n.ApplyConfChange(cc)
-		}
-	}
-	n.Advance()
-
 	// Now we can have an election and persist the rest of the log.
 	// This causes HardState.Commit to advance. HardState.Commit must
 	// be > 0 to snapshot.
 	n.Campaign(context.Background())
-	rd = <-n.Ready()
+	rd := <-n.Ready()
 	s.Append(rd.Entries)
 	n.Advance()
 
