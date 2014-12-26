@@ -119,6 +119,8 @@ type Node interface {
 	// in snapshots. Will never return nil; it returns a pointer only
 	// to match MemoryStorage.Compact.
 	ApplyConfChange(cc pb.ConfChange) *pb.ConfState
+	// Status returns the current status of the raft state machine.
+	Status() Status
 	// Stop performs any necessary termination of the Node
 	Stop()
 }
@@ -190,6 +192,7 @@ type node struct {
 	tickc      chan struct{}
 	done       chan struct{}
 	stop       chan struct{}
+	status     chan Status
 }
 
 func newNode() node {
@@ -203,6 +206,7 @@ func newNode() node {
 		tickc:      make(chan struct{}),
 		done:       make(chan struct{}),
 		stop:       make(chan struct{}),
+		status:     make(chan Status),
 	}
 }
 
@@ -222,8 +226,7 @@ func (n *node) run(r *raft) {
 	var propc chan pb.Message
 	var readyc chan Ready
 	var advancec chan struct{}
-	var prevLastUnstablei uint64
-	var prevLastUnstablet uint64
+	var prevLastUnstablei, prevLastUnstablet uint64
 	var havePrevLastUnstablei bool
 	var prevSnapi uint64
 	var rd Ready
@@ -231,8 +234,11 @@ func (n *node) run(r *raft) {
 	lead := None
 	prevSoftSt := r.softState()
 	prevHardSt := r.HardState
+	status := &Status{ID: r.id}
 
 	for {
+		status.update(r)
+
 		if advancec != nil {
 			readyc = nil
 		} else {
@@ -328,6 +334,7 @@ func (n *node) run(r *raft) {
 			}
 			r.raftLog.stableSnapTo(prevSnapi)
 			advancec = nil
+		case n.status <- status.get():
 		case <-n.stop:
 			close(n.done)
 			return
@@ -406,6 +413,8 @@ func (n *node) ApplyConfChange(cc pb.ConfChange) *pb.ConfState {
 	}
 	return &cs
 }
+
+func (n *node) Status() Status { return <-n.status }
 
 func newReady(r *raft, prevSoftSt *SoftState, prevHardSt pb.HardState) Ready {
 	rd := Ready{
