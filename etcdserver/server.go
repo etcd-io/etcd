@@ -36,7 +36,6 @@ import (
 	"github.com/coreos/etcd/etcdserver/etcdhttp/httptypes"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/etcdserver/stats"
-	"github.com/coreos/etcd/migrate"
 	"github.com/coreos/etcd/pkg/fileutil"
 	"github.com/coreos/etcd/pkg/pbutil"
 	"github.com/coreos/etcd/pkg/types"
@@ -163,20 +162,6 @@ type EtcdServer struct {
 	raftLead uint64
 }
 
-// UpgradeWAL converts an older version of the EtcdServer data to the newest version.
-// It must ensure that, after upgrading, the most recent version is present.
-func UpgradeWAL(cfg *ServerConfig, ver wal.WalVersion) error {
-	if ver == wal.WALv0_4 {
-		log.Print("Converting v0.4 log to v2.0")
-		err := migrate.Migrate4To2(cfg.DataDir, cfg.Name)
-		if err != nil {
-			log.Fatalf("Failed migrating data-dir: %v", err)
-			return err
-		}
-	}
-	return nil
-}
-
 // NewServer creates a new EtcdServer from the supplied configuration. The
 // configuration is considered static for the lifetime of the EtcdServer.
 func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
@@ -193,13 +178,6 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		return nil, fmt.Errorf("unknown wal version in data dir %s", cfg.DataDir)
 	}
 	haveWAL := walVersion != wal.WALNotExist
-
-	if haveWAL && walVersion != wal.WALv0_5 {
-		err := UpgradeWAL(cfg, walVersion)
-		if err != nil {
-			return nil, err
-		}
-	}
 
 	ss := snap.New(cfg.SnapDir())
 	switch {
@@ -237,6 +215,12 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		cfg.PrintWithInitial()
 		id, n, s, w = startNode(cfg, cfg.Cluster.MemberIDs())
 	case haveWAL:
+		if walVersion != wal.WALv0_5 {
+			if err := UpgradeWAL(cfg, walVersion); err != nil {
+				return nil, err
+			}
+		}
+
 		if cfg.ShouldDiscover() {
 			log.Printf("etcdserver: discovery token ignored since a cluster has already been initialized. Valid log found at %q", cfg.WALDir())
 		}
