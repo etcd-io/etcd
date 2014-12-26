@@ -137,7 +137,9 @@ type EtcdServer struct {
 
 	node        raft.Node
 	raftStorage *raft.MemoryStorage
-	store       store.Store
+	storage     Storage
+
+	store store.Store
 
 	stats  *stats.ServerStats
 	lstats *stats.LeaderStats
@@ -147,8 +149,6 @@ type EtcdServer struct {
 	// timeout and reissue their messages.  If send is nil, server will
 	// panic.
 	sendhub SendHub
-
-	storage Storage
 
 	Ticker     <-chan time.Time
 	SyncTicker <-chan time.Time
@@ -1001,13 +1001,4 @@ func getBool(v *bool) (vv bool, set bool) {
 		return false, false
 	}
 	return *v, true
-}
-
-func containsUint64(a []uint64, x uint64) bool {
-	for _, v := range a {
-		if v == x {
-			return true
-		}
-	}
-	return false
 }
