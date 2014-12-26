@@ -135,12 +135,6 @@ func (c *Cluster) Members() []*Member {
 	return []*Member(sms)
 }
 
-type SortableMemberSlice []*Member
-
-func (s SortableMemberSlice) Len() int           { return len(s) }
-func (s SortableMemberSlice) Less(i, j int) bool { return s[i].ID < s[j].ID }
-func (s SortableMemberSlice) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
-
 func (c *Cluster) Member(id types.ID) *Member {
 	c.Lock()
 	defer c.Unlock()

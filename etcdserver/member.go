@@ -121,6 +121,14 @@ func removedMemberStoreKey(id types.ID) string {
 	return path.Join(storeRemovedMembersPrefix, id.String())
 }
 
+// implement sort by ID interface
+type SortableMemberSlice []*Member
+
+func (s SortableMemberSlice) Len() int           { return len(s) }
+func (s SortableMemberSlice) Less(i, j int) bool { return s[i].ID < s[j].ID }
+func (s SortableMemberSlice) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
+
+// implement sort by peer urls interface
 type SortableMemberSliceByPeerURLs []*Member
 
 func (p SortableMemberSliceByPeerURLs) Len() int { return len(p) }
