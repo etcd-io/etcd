@@ -137,7 +137,9 @@ type EtcdServer struct {
 
 	node        raft.Node
 	raftStorage *raft.MemoryStorage
-	store       store.Store
+	storage     Storage
+
+	store store.Store
 
 	stats  *stats.ServerStats
 	lstats *stats.LeaderStats
@@ -147,8 +149,6 @@ type EtcdServer struct {
 	// timeout and reissue their messages.  If send is nil, server will
 	// panic.
 	sendhub SendHub
-
-	storage Storage
 
 	Ticker     <-chan time.Time
 	SyncTicker <-chan time.Time
@@ -272,8 +272,11 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		snapCount:   cfg.SnapCount,
 	}
 	srv.sendhub = newSendHub(cfg.Transport, cfg.Cluster, srv, sstats, lstats)
-	for _, m := range getOtherMembers(cfg.Cluster, cfg.Name) {
-		srv.sendhub.Add(m)
+	// add all the remote members into sendhub
+	for _, m := range cfg.Cluster.Members() {
+		if m.Name != cfg.Name {
+			srv.sendhub.Add(m)
+		}
 	}
 	return srv, nil
 }
@@ -952,16 +955,6 @@ func getClusterFromPeers(urls []string, logerr bool) (*Cluster, error) {
 	return nil, fmt.Errorf("etcdserver: could not retrieve cluster information from the given urls")
 }
 
-func getOtherMembers(cl ClusterInfo, self string) []*Member {
-	var ms []*Member
-	for _, m := range cl.Members() {
-		if m.Name != self {
-			ms = append(ms, m)
-		}
-	}
-	return ms
-}
-
 // getOtherPeerURLs returns peer urls of other members in the cluster. The
 // returned list is sorted in ascending lexicographical order.
 func getOtherPeerURLs(cl ClusterInfo, self string) []string {
@@ -1001,13 +994,4 @@ func getBool(v *bool) (vv bool, set bool) {
 		return false, false
 	}
 	return *v, true
-}
-
-func containsUint64(a []uint64, x uint64) bool {
-	for _, v := range a {
-		if v == x {
-			return true
-		}
-	}
-	return false
 }
