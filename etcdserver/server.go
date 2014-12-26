@@ -272,8 +272,11 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		snapCount:   cfg.SnapCount,
 	}
 	srv.sendhub = newSendHub(cfg.Transport, cfg.Cluster, srv, sstats, lstats)
-	for _, m := range getOtherMembers(cfg.Cluster, cfg.Name) {
-		srv.sendhub.Add(m)
+	// add all the remote members into sendhub
+	for _, m := range cfg.Cluster.Members() {
+		if m.Name != cfg.Name {
+			srv.sendhub.Add(m)
+		}
 	}
 	return srv, nil
 }
@@ -950,16 +953,6 @@ func getClusterFromPeers(urls []string, logerr bool) (*Cluster, error) {
 		return NewClusterFromMembers("", id, membs), nil
 	}
 	return nil, fmt.Errorf("etcdserver: could not retrieve cluster information from the given urls")
-}
-
-func getOtherMembers(cl ClusterInfo, self string) []*Member {
-	var ms []*Member
-	for _, m := range cl.Members() {
-		if m.Name != self {
-			ms = append(ms, m)
-		}
-	}
-	return ms
 }
 
 // getOtherPeerURLs returns peer urls of other members in the cluster. The
