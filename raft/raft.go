@@ -52,10 +52,6 @@ func (st StateType) String() string {
 	return stmap[uint64(st)]
 }
 
-func (st StateType) MarshalJSON() ([]byte, error) {
-	return []byte(fmt.Sprintf("%q", st.String())), nil
-}
-
 type progress struct {
 	match, next uint64
 	wait        int
@@ -189,8 +185,6 @@ func newRaft(id uint64, peers []uint64, election, heartbeat int, storage Storage
 }
 
 func (r *raft) hasLeader() bool { return r.lead != None }
-
-func (r *raft) leader() uint64 { return r.lead }
 
 func (r *raft) softState() *SoftState { return &SoftState{Lead: r.lead, RaftState: r.state} }
 

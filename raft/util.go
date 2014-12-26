@@ -23,6 +23,10 @@ import (
 	pb "github.com/coreos/etcd/raft/raftpb"
 )
 
+func (st StateType) MarshalJSON() ([]byte, error) {
+	return []byte(fmt.Sprintf("%q", st.String())), nil
+}
+
 // uint64Slice implements sort interface
 type uint64Slice []uint64
 
