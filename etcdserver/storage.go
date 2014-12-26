@@ -3,7 +3,10 @@ package etcdserver
 import (
 	"log"
 
+	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/migrate"
+	"github.com/coreos/etcd/pkg/pbutil"
+	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/snap"
 	"github.com/coreos/etcd/wal"
@@ -47,9 +50,25 @@ func (st *storage) SaveSnap(snap raftpb.Snapshot) error {
 	return nil
 }
 
-// UpgradeWAL converts an older version of the etcdServer data to the newest version.
+func readWAL(waldir string, index uint64) (w *wal.WAL, id, cid types.ID, st raftpb.HardState, ents []raftpb.Entry) {
+	var err error
+	if w, err = wal.Open(waldir, index); err != nil {
+		log.Fatalf("etcdserver: open wal error: %v", err)
+	}
+	var wmetadata []byte
+	if wmetadata, st, ents, err = w.ReadAll(); err != nil {
+		log.Fatalf("etcdserver: read wal error: %v", err)
+	}
+	var metadata pb.Metadata
+	pbutil.MustUnmarshal(&metadata, wmetadata)
+	id = types.ID(metadata.NodeID)
+	cid = types.ID(metadata.ClusterID)
+	return
+}
+
+// upgradeWAL converts an older version of the etcdServer data to the newest version.
 // It must ensure that, after upgrading, the most recent version is present.
-func UpgradeWAL(cfg *ServerConfig, ver wal.WalVersion) error {
+func upgradeWAL(cfg *ServerConfig, ver wal.WalVersion) error {
 	if ver == wal.WALv0_4 {
 		log.Print("etcdserver: converting v0.4 log to v2.0")
 		err := migrate.Migrate4To2(cfg.DataDir, cfg.Name)
