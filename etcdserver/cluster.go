@@ -328,24 +328,25 @@ func (c *Cluster) RemoveMember(id types.ID) {
 	c.removed[id] = true
 }
 
-func (c *Cluster) UpdateMemberAttributes(id types.ID, attr Attributes) {
+func (c *Cluster) UpdateAttributes(id types.ID, attr Attributes) {
 	c.Lock()
 	defer c.Unlock()
 	c.members[id].Attributes = attr
+	// TODO: update store in this function
 }
 
-func (c *Cluster) UpdateMember(nm *Member) {
+func (c *Cluster) UpdateRaftAttributes(id types.ID, raftAttr RaftAttributes) {
 	c.Lock()
 	defer c.Unlock()
-	b, err := json.Marshal(nm.RaftAttributes)
+	b, err := json.Marshal(raftAttr)
 	if err != nil {
 		log.Panicf("marshal raftAttributes should never fail: %v", err)
 	}
-	p := path.Join(memberStoreKey(nm.ID), raftAttributesSuffix)
+	p := path.Join(memberStoreKey(id), raftAttributesSuffix)
 	if _, err := c.store.Update(p, string(b), store.Permanent); err != nil {
 		log.Panicf("update raftAttributes should never fail: %v", err)
 	}
-	c.members[nm.ID].RaftAttributes = nm.RaftAttributes
+	c.members[id].RaftAttributes = raftAttr
 }
 
 func membersFromStore(st store.Store) (map[types.ID]*Member, map[types.ID]bool) {
