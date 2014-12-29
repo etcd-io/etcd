@@ -42,7 +42,7 @@ type raftLog struct {
 }
 
 // newLog returns log using the given storage. It recovers the log to the state
-// that it just commits and applies the lastest snapshot.
+// that it just commits and applies the latest snapshot.
 func newLog(storage Storage) *raftLog {
 	if storage == nil {
 		log.Panic("storage must not be nil")
