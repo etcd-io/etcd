@@ -14,7 +14,7 @@
    limitations under the License.
 */
 
-package etcdserver
+package rafthttp
 
 import (
 	"net/http"
@@ -28,11 +28,9 @@ import (
 )
 
 func TestSendHubAdd(t *testing.T) {
-	cl := newTestCluster(nil)
 	ls := stats.NewLeaderStats("")
-	h := newSendHub(nil, cl, nil, nil, ls)
-	m := newTestMember(1, []string{"http://a"}, "", nil)
-	h.Add(m)
+	h := newSendHub(nil, 0, nil, nil, ls)
+	h.AddPeer(1, []string{"http://a"})
 
 	if _, ok := ls.Followers["1"]; !ok {
 		t.Errorf("FollowerStats[1] is nil, want exists")
@@ -42,20 +40,18 @@ func TestSendHubAdd(t *testing.T) {
 		t.Fatalf("senders[1] is nil, want exists")
 	}
 
-	h.Add(m)
+	h.AddPeer(1, []string{"http://a"})
 	ns := h.senders[types.ID(1)]
 	if s != ns {
-		t.Errorf("sender = %p, want %p", ns, s)
+		t.Errorf("sender = %v, want %v", ns, s)
 	}
 }
 
 func TestSendHubRemove(t *testing.T) {
-	cl := newTestCluster(nil)
 	ls := stats.NewLeaderStats("")
-	h := newSendHub(nil, cl, nil, nil, ls)
-	m := newTestMember(1, []string{"http://a"}, "", nil)
-	h.Add(m)
-	h.Remove(types.ID(1))
+	h := newSendHub(nil, 0, nil, nil, ls)
+	h.AddPeer(1, []string{"http://a"})
+	h.RemovePeer(types.ID(1))
 
 	if _, ok := h.senders[types.ID(1)]; ok {
 		t.Fatalf("senders[1] exists, want removed")
@@ -64,11 +60,9 @@ func TestSendHubRemove(t *testing.T) {
 
 func TestSendHubShouldStop(t *testing.T) {
 	tr := newRespRoundTripper(http.StatusForbidden, nil)
-	cl := newTestCluster(nil)
 	ls := stats.NewLeaderStats("")
-	h := newSendHub(tr, cl, nil, nil, ls)
-	m := newTestMember(1, []string{"http://a"}, "", nil)
-	h.Add(m)
+	h := newSendHub(tr, 0, nil, nil, ls)
+	h.AddPeer(1, []string{"http://a"})
 
 	shouldstop := h.ShouldStopNotify()
 	select {
@@ -85,20 +79,3 @@ func TestSendHubShouldStop(t *testing.T) {
 		t.Fatalf("cannot receive stop notification")
 	}
 }
-
-type respRoundTripper struct {
-	code int
-	err  error
-}
-
-func newRespRoundTripper(code int, err error) *respRoundTripper {
-	return &respRoundTripper{code: code, err: err}
-}
-func (t *respRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
-	return &http.Response{StatusCode: t.code, Body: &nopReadCloser{}}, t.err
-}
-
-type nopReadCloser struct{}
-
-func (n *nopReadCloser) Read(p []byte) (int, error) { return 0, nil }
-func (n *nopReadCloser) Close() error               { return nil }

@@ -40,10 +40,6 @@ var (
 	RaftStreamPrefix = path.Join(RaftPrefix, "stream")
 )
 
-type Processor interface {
-	Process(ctx context.Context, m raftpb.Message) error
-}
-
 type SenderFinder interface {
 	// Sender returns the sender of the given id.
 	Sender(id types.ID) Sender

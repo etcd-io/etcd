@@ -31,16 +31,13 @@ const (
 
 // NewPeerHandler generates an http.Handler to handle etcd peer (raft) requests.
 func NewPeerHandler(server *etcdserver.EtcdServer) http.Handler {
-	rh := rafthttp.NewHandler(server, server.Cluster.ID())
-	rsh := rafthttp.NewStreamHandler(server.SenderFinder(), server.ID(), server.Cluster.ID())
 	mh := &peerMembersHandler{
 		clusterInfo: server.Cluster,
 	}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", http.NotFound)
-	mux.Handle(rafthttp.RaftPrefix, rh)
-	mux.Handle(rafthttp.RaftStreamPrefix+"/", rsh)
+	mux.Handle(rafthttp.RaftPrefix, server.RaftHandler())
 	mux.Handle(peerMembersPrefix, mh)
 	return mux
 }
