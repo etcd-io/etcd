@@ -23,6 +23,7 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"os"
 	"path"
 	"reflect"
 	"strconv"
@@ -40,10 +41,6 @@ import (
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/store"
 )
-
-func init() {
-	log.SetOutput(ioutil.Discard)
-}
 
 // TestDoLocalAction tests requests which do not need to go through raft to be applied,
 // and are served through local data.
@@ -530,6 +527,9 @@ func (s *fakeTransporter) Pause()                              {}
 func (s *fakeTransporter) Resume()                             {}
 
 func testServer(t *testing.T, ns uint64) {
+	log.SetOutput(ioutil.Discard)
+	defer log.SetOutput(os.Stderr)
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -1227,6 +1227,8 @@ func TestPublishStopped(t *testing.T) {
 
 // TestPublishRetry tests that publish will keep retry until success.
 func TestPublishRetry(t *testing.T) {
+	log.SetOutput(ioutil.Discard)
+	defer log.SetOutput(os.Stderr)
 	n := &nodeRecorder{}
 	srv := &EtcdServer{
 		node:     n,
