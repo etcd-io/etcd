@@ -38,6 +38,7 @@ import (
 	"github.com/coreos/etcd/etcdserver/stats"
 	"github.com/coreos/etcd/pkg/fileutil"
 	"github.com/coreos/etcd/pkg/pbutil"
+	"github.com/coreos/etcd/pkg/timeutil"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/pkg/wait"
 	"github.com/coreos/etcd/raft"
@@ -664,14 +665,6 @@ func (s *EtcdServer) publish(retryInterval time.Duration) {
 	}
 }
 
-func getExpirationTime(r *pb.Request) time.Time {
-	var t time.Time
-	if r.Expiration != 0 {
-		t = time.Unix(0, r.Expiration)
-	}
-	return t
-}
-
 func (s *EtcdServer) send(ms []raftpb.Message) {
 	for _, m := range ms {
 		if !s.Cluster.IsIDRemoved(types.ID(m.To)) {
@@ -717,7 +710,7 @@ func (s *EtcdServer) applyRequest(r pb.Request) Response {
 	f := func(ev *store.Event, err error) Response {
 		return Response{Event: ev, err: err}
 	}
-	expr := getExpirationTime(&r)
+	expr := timeutil.UnixNanoToTime(r.Expiration)
 	switch r.Method {
 	case "POST":
 		return f(s.store.Create(r.Path, r.Dir, r.Val, true, expr))
