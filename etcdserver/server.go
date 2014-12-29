@@ -275,7 +275,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		RoundTripper: cfg.Transport,
 		ID:           id,
 		ClusterID:    cfg.Cluster.ID(),
-		Processor:    srv,
+		Raft:         srv,
 		ServerStats:  sstats,
 		LeaderStats:  lstats,
 	}

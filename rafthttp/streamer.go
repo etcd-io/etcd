@@ -107,18 +107,18 @@ type streamClient struct {
 	id   types.ID
 	to   types.ID
 	term uint64
-	p    Processor
+	r    Raft
 
 	closer io.Closer
 	done   chan struct{}
 }
 
-func newStreamClient(id, to types.ID, term uint64, p Processor) *streamClient {
+func newStreamClient(id, to types.ID, term uint64, r Raft) *streamClient {
 	return &streamClient{
 		id:   id,
 		to:   to,
 		term: term,
-		p:    p,
+		r:    r,
 		done: make(chan struct{}),
 	}
 }
@@ -199,7 +199,7 @@ func (s *streamClient) handle(r io.Reader) {
 			Index:   ents[0].Index - 1,
 			Entries: ents,
 		}
-		if err := s.p.Process(context.TODO(), msg); err != nil {
+		if err := s.r.Process(context.TODO(), msg); err != nil {
 			log.Printf("rafthttp: process raft message error: %v", err)
 			return
 		}

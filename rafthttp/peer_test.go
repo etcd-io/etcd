@@ -34,12 +34,12 @@ import (
 func TestSenderSend(t *testing.T) {
 	tr := &roundTripperRecorder{}
 	fs := &stats.FollowerStats{}
-	s := NewSender(tr, "http://10.0.0.1", types.ID(1), types.ID(1), &nopProcessor{}, fs, nil)
+	p := NewPeer(tr, "http://10.0.0.1", types.ID(1), types.ID(1), &nopProcessor{}, fs, nil)
 
-	if err := s.Send(raftpb.Message{Type: raftpb.MsgApp}); err != nil {
+	if err := p.Send(raftpb.Message{Type: raftpb.MsgApp}); err != nil {
 		t.Fatalf("unexpect send error: %v", err)
 	}
-	s.Stop()
+	p.Stop()
 
 	if tr.Request() == nil {
 		t.Errorf("sender fails to post the data")
@@ -54,12 +54,12 @@ func TestSenderSend(t *testing.T) {
 func TestSenderExceedMaximalServing(t *testing.T) {
 	tr := newRoundTripperBlocker()
 	fs := &stats.FollowerStats{}
-	s := NewSender(tr, "http://10.0.0.1", types.ID(1), types.ID(1), &nopProcessor{}, fs, nil)
+	p := NewPeer(tr, "http://10.0.0.1", types.ID(1), types.ID(1), &nopProcessor{}, fs, nil)
 
 	// keep the sender busy and make the buffer full
 	// nothing can go out as we block the sender
 	for i := 0; i < connPerSender+senderBufSize; i++ {
-		if err := s.Send(raftpb.Message{}); err != nil {
+		if err := p.Send(raftpb.Message{}); err != nil {
 			t.Errorf("send err = %v, want nil", err)
 		}
 		// force the sender to grab data
@@ -67,7 +67,7 @@ func TestSenderExceedMaximalServing(t *testing.T) {
 	}
 
 	// try to send a data when we are sure the buffer is full
-	if err := s.Send(raftpb.Message{}); err == nil {
+	if err := p.Send(raftpb.Message{}); err == nil {
 		t.Errorf("unexpect send success")
 	}
 
@@ -76,22 +76,22 @@ func TestSenderExceedMaximalServing(t *testing.T) {
 	testutil.ForceGosched()
 
 	// It could send new data after previous ones succeed
-	if err := s.Send(raftpb.Message{}); err != nil {
+	if err := p.Send(raftpb.Message{}); err != nil {
 		t.Errorf("send err = %v, want nil", err)
 	}
-	s.Stop()
+	p.Stop()
 }
 
 // TestSenderSendFailed tests that when send func meets the post error,
 // it increases fail count in stats.
 func TestSenderSendFailed(t *testing.T) {
 	fs := &stats.FollowerStats{}
-	s := NewSender(newRespRoundTripper(0, errors.New("blah")), "http://10.0.0.1", types.ID(1), types.ID(1), &nopProcessor{}, fs, nil)
+	p := NewPeer(newRespRoundTripper(0, errors.New("blah")), "http://10.0.0.1", types.ID(1), types.ID(1), &nopProcessor{}, fs, nil)
 
-	if err := s.Send(raftpb.Message{Type: raftpb.MsgApp}); err != nil {
+	if err := p.Send(raftpb.Message{Type: raftpb.MsgApp}); err != nil {
 		t.Fatalf("unexpect Send error: %v", err)
 	}
-	s.Stop()
+	p.Stop()
 
 	fs.Lock()
 	defer fs.Unlock()
@@ -102,11 +102,11 @@ func TestSenderSendFailed(t *testing.T) {
 
 func TestSenderPost(t *testing.T) {
 	tr := &roundTripperRecorder{}
-	s := NewSender(tr, "http://10.0.0.1", types.ID(1), types.ID(1), &nopProcessor{}, nil, nil)
-	if err := s.post([]byte("some data")); err != nil {
+	p := NewPeer(tr, "http://10.0.0.1", types.ID(1), types.ID(1), &nopProcessor{}, nil, nil)
+	if err := p.post([]byte("some data")); err != nil {
 		t.Fatalf("unexpect post error: %v", err)
 	}
-	s.Stop()
+	p.Stop()
 
 	if g := tr.Request().Method; g != "POST" {
 		t.Errorf("method = %s, want %s", g, "POST")
@@ -145,9 +145,9 @@ func TestSenderPostBad(t *testing.T) {
 	}
 	for i, tt := range tests {
 		shouldstop := make(chan struct{})
-		s := NewSender(newRespRoundTripper(tt.code, tt.err), tt.u, types.ID(1), types.ID(1), &nopProcessor{}, nil, shouldstop)
-		err := s.post([]byte("some data"))
-		s.Stop()
+		p := NewPeer(newRespRoundTripper(tt.code, tt.err), tt.u, types.ID(1), types.ID(1), &nopProcessor{}, nil, shouldstop)
+		err := p.post([]byte("some data"))
+		p.Stop()
 
 		if err == nil {
 			t.Errorf("#%d: err = nil, want not nil", i)
@@ -166,9 +166,9 @@ func TestSenderPostShouldStop(t *testing.T) {
 	}
 	for i, tt := range tests {
 		shouldstop := make(chan struct{}, 1)
-		s := NewSender(newRespRoundTripper(tt.code, tt.err), tt.u, types.ID(1), types.ID(1), &nopProcessor{}, nil, shouldstop)
-		s.post([]byte("some data"))
-		s.Stop()
+		p := NewPeer(newRespRoundTripper(tt.code, tt.err), tt.u, types.ID(1), types.ID(1), &nopProcessor{}, nil, shouldstop)
+		p.post([]byte("some data"))
+		p.Stop()
 		select {
 		case <-shouldstop:
 		default:

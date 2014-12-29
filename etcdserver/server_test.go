@@ -37,7 +37,6 @@ import (
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
-	"github.com/coreos/etcd/rafthttp"
 	"github.com/coreos/etcd/store"
 )
 
@@ -536,8 +535,7 @@ type fakeTransporter struct {
 	ss []*EtcdServer
 }
 
-func (s *fakeTransporter) Handler() http.Handler              { return nil }
-func (s *fakeTransporter) Sender(id types.ID) rafthttp.Sender { return nil }
+func (s *fakeTransporter) Handler() http.Handler { return nil }
 func (s *fakeTransporter) Send(msgs []raftpb.Message) {
 	for _, m := range msgs {
 		s.ss[m.To-1].node.Step(context.TODO(), m)
@@ -1632,7 +1630,6 @@ func (w *waitWithResponse) Trigger(id uint64, x interface{}) {}
 type nopTransporter struct{}
 
 func (s *nopTransporter) Handler() http.Handler               { return nil }
-func (s *nopTransporter) Sender(id types.ID) rafthttp.Sender  { return nil }
 func (s *nopTransporter) Send(m []raftpb.Message)             {}
 func (s *nopTransporter) AddPeer(id types.ID, us []string)    {}
 func (s *nopTransporter) RemovePeer(id types.ID)              {}

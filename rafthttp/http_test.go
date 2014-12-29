@@ -36,7 +36,7 @@ func TestServeRaft(t *testing.T) {
 	testCases := []struct {
 		method    string
 		body      io.Reader
-		p         Processor
+		p         Raft
 		clusterID string
 
 		wcode int
