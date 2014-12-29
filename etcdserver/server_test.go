@@ -44,33 +44,6 @@ func init() {
 	log.SetOutput(ioutil.Discard)
 }
 
-func TestGetExpirationTime(t *testing.T) {
-	tests := []struct {
-		r    pb.Request
-		want time.Time
-	}{
-		{
-			pb.Request{Expiration: 0},
-			time.Time{},
-		},
-		{
-			pb.Request{Expiration: 60000},
-			time.Unix(0, 60000),
-		},
-		{
-			pb.Request{Expiration: -60000},
-			time.Unix(0, -60000),
-		},
-	}
-
-	for i, tt := range tests {
-		got := getExpirationTime(&tt.r)
-		if !reflect.DeepEqual(tt.want, got) {
-			t.Errorf("#%d: incorrect expiration time: want=%v got=%v", i, tt.want, got)
-		}
-	}
-}
-
 // TestDoLocalAction tests requests which do not need to go through raft to be applied,
 // and are served through local data.
 func TestDoLocalAction(t *testing.T) {
