@@ -27,50 +27,58 @@ import (
 	"github.com/coreos/etcd/raft/raftpb"
 )
 
-func TestSendHubAdd(t *testing.T) {
+func TestTransportAdd(t *testing.T) {
 	ls := stats.NewLeaderStats("")
-	h := newSendHub(nil, 0, nil, nil, ls)
-	h.AddPeer(1, []string{"http://a"})
+	tr := &Transport{
+		LeaderStats: ls,
+	}
+	tr.Start()
+	tr.AddPeer(1, []string{"http://a"})
 
 	if _, ok := ls.Followers["1"]; !ok {
 		t.Errorf("FollowerStats[1] is nil, want exists")
 	}
-	s, ok := h.senders[types.ID(1)]
+	s, ok := tr.peers[types.ID(1)]
 	if !ok {
 		t.Fatalf("senders[1] is nil, want exists")
 	}
 
-	h.AddPeer(1, []string{"http://a"})
-	ns := h.senders[types.ID(1)]
+	// duplicate AddPeer is ignored
+	tr.AddPeer(1, []string{"http://a"})
+	ns := tr.peers[types.ID(1)]
 	if s != ns {
 		t.Errorf("sender = %v, want %v", ns, s)
 	}
 }
 
-func TestSendHubRemove(t *testing.T) {
-	ls := stats.NewLeaderStats("")
-	h := newSendHub(nil, 0, nil, nil, ls)
-	h.AddPeer(1, []string{"http://a"})
-	h.RemovePeer(types.ID(1))
+func TestTransportRemove(t *testing.T) {
+	tr := &Transport{
+		LeaderStats: stats.NewLeaderStats(""),
+	}
+	tr.Start()
+	tr.AddPeer(1, []string{"http://a"})
+	tr.RemovePeer(types.ID(1))
 
-	if _, ok := h.senders[types.ID(1)]; ok {
+	if _, ok := tr.peers[types.ID(1)]; ok {
 		t.Fatalf("senders[1] exists, want removed")
 	}
 }
 
-func TestSendHubShouldStop(t *testing.T) {
-	tr := newRespRoundTripper(http.StatusForbidden, nil)
-	ls := stats.NewLeaderStats("")
-	h := newSendHub(tr, 0, nil, nil, ls)
-	h.AddPeer(1, []string{"http://a"})
+func TestTransportShouldStop(t *testing.T) {
+	tr := &Transport{
+		RoundTripper: newRespRoundTripper(http.StatusForbidden, nil),
+		LeaderStats:  stats.NewLeaderStats(""),
+	}
+	tr.Start()
+	tr.AddPeer(1, []string{"http://a"})
 
-	shouldstop := h.ShouldStopNotify()
+	shouldstop := tr.ShouldStopNotify()
 	select {
 	case <-shouldstop:
 		t.Fatalf("received unexpected shouldstop notification")
 	case <-time.After(10 * time.Millisecond):
 	}
-	h.senders[1].Send(raftpb.Message{})
+	tr.peers[1].Send(raftpb.Message{})
 
 	testutil.ForceGosched()
 	select {
