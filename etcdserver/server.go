@@ -842,13 +842,13 @@ func (s *EtcdServer) snapshot(snapi uint64, confState *raftpb.ConfState) {
 
 // for testing
 func (s *EtcdServer) PauseSending() {
-	hub := s.transport.(*rafthttp.Transport)
-	hub.Pause()
+	p := s.transport.(rafthttp.Pausable)
+	p.Pause()
 }
 
 func (s *EtcdServer) ResumeSending() {
-	hub := s.transport.(*rafthttp.Transport)
-	hub.Resume()
+	p := s.transport.(rafthttp.Pausable)
+	p.Resume()
 }
 
 func startNode(cfg *ServerConfig, ids []types.ID) (id types.ID, n raft.Node, s *raft.MemoryStorage, w *wal.WAL) {

@@ -29,10 +29,10 @@ import (
 
 func TestTransportAdd(t *testing.T) {
 	ls := stats.NewLeaderStats("")
-	tr := &Transport{
+	tr := &transport{
 		leaderStats: ls,
+		peers:       make(map[types.ID]*peer),
 	}
-	tr.Start()
 	tr.AddPeer(1, []string{"http://a"})
 
 	if _, ok := ls.Followers["1"]; !ok {
@@ -52,10 +52,10 @@ func TestTransportAdd(t *testing.T) {
 }
 
 func TestTransportRemove(t *testing.T) {
-	tr := &Transport{
+	tr := &transport{
 		leaderStats: stats.NewLeaderStats(""),
+		peers:       make(map[types.ID]*peer),
 	}
-	tr.Start()
 	tr.AddPeer(1, []string{"http://a"})
 	tr.RemovePeer(types.ID(1))
 
@@ -65,11 +65,12 @@ func TestTransportRemove(t *testing.T) {
 }
 
 func TestTransportShouldStop(t *testing.T) {
-	tr := &Transport{
+	tr := &transport{
 		roundTripper: newRespRoundTripper(http.StatusForbidden, nil),
 		leaderStats:  stats.NewLeaderStats(""),
+		peers:        make(map[types.ID]*peer),
+		shouldstop:   make(chan struct{}, 1),
 	}
-	tr.Start()
 	tr.AddPeer(1, []string{"http://a"})
 
 	shouldstop := tr.ShouldStopNotify()

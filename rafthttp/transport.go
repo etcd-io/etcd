@@ -32,7 +32,7 @@ type Transporter interface {
 	ShouldStopNotify() <-chan struct{}
 }
 
-type Transport struct {
+type transport struct {
 	roundTripper http.RoundTripper
 	id           types.ID
 	clusterID    types.ID
@@ -46,7 +46,7 @@ type Transport struct {
 }
 
 func NewTransporter(rt http.RoundTripper, id, cid types.ID, r Raft, ss *stats.ServerStats, ls *stats.LeaderStats) Transporter {
-	return &Transport{
+	return &transport{
 		roundTripper: rt,
 		id:           id,
 		clusterID:    cid,
@@ -58,7 +58,7 @@ func NewTransporter(rt http.RoundTripper, id, cid types.ID, r Raft, ss *stats.Se
 	}
 }
 
-func (t *Transport) Handler() http.Handler {
+func (t *transport) Handler() http.Handler {
 	h := NewHandler(t.raft, t.clusterID)
 	sh := NewStreamHandler(t, t.id, t.clusterID)
 	mux := http.NewServeMux()
@@ -67,13 +67,13 @@ func (t *Transport) Handler() http.Handler {
 	return mux
 }
 
-func (t *Transport) Peer(id types.ID) *peer {
+func (t *transport) Peer(id types.ID) *peer {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 	return t.peers[id]
 }
 
-func (t *Transport) Send(msgs []raftpb.Message) {
+func (t *transport) Send(msgs []raftpb.Message) {
 	for _, m := range msgs {
 		// intentionally dropped message
 		if m.To == 0 {
@@ -94,7 +94,7 @@ func (t *Transport) Send(msgs []raftpb.Message) {
 	}
 }
 
-func (t *Transport) Stop() {
+func (t *transport) Stop() {
 	for _, p := range t.peers {
 		p.Stop()
 	}
@@ -103,11 +103,11 @@ func (t *Transport) Stop() {
 	}
 }
 
-func (t *Transport) ShouldStopNotify() <-chan struct{} {
+func (t *transport) ShouldStopNotify() <-chan struct{} {
 	return t.shouldstop
 }
 
-func (t *Transport) AddPeer(id types.ID, urls []string) {
+func (t *transport) AddPeer(id types.ID, urls []string) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	if _, ok := t.peers[id]; ok {
@@ -125,14 +125,14 @@ func (t *Transport) AddPeer(id types.ID, urls []string) {
 		t.raft, fs, t.shouldstop)
 }
 
-func (t *Transport) RemovePeer(id types.ID) {
+func (t *transport) RemovePeer(id types.ID) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	t.peers[id].Stop()
 	delete(t.peers, id)
 }
 
-func (t *Transport) UpdatePeer(id types.ID, urls []string) {
+func (t *transport) UpdatePeer(id types.ID, urls []string) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	// TODO: return error or just panic?
@@ -148,14 +148,19 @@ func (t *Transport) UpdatePeer(id types.ID, urls []string) {
 	t.peers[id].Update(u.String())
 }
 
+type Pausable interface {
+	Pause()
+	Resume()
+}
+
 // for testing
-func (t *Transport) Pause() {
+func (t *transport) Pause() {
 	for _, p := range t.peers {
 		p.Pause()
 	}
 }
 
-func (t *Transport) Resume() {
+func (t *transport) Resume() {
 	for _, p := range t.peers {
 		p.Resume()
 	}

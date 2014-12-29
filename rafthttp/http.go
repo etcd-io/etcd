@@ -49,7 +49,7 @@ func NewHandler(r Raft, cid types.ID) http.Handler {
 
 // NewStreamHandler returns a handler which initiates streamer when receiving
 // stream request from follower.
-func NewStreamHandler(tr *Transport, id, cid types.ID) http.Handler {
+func NewStreamHandler(tr *transport, id, cid types.ID) http.Handler {
 	return &streamHandler{
 		tr:  tr,
 		id:  id,
@@ -108,7 +108,7 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 type streamHandler struct {
-	tr  *Transport
+	tr  *transport
 	id  types.ID
 	cid types.ID
 }
