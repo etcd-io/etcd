@@ -271,15 +271,8 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		SyncTicker:  time.Tick(500 * time.Millisecond),
 		snapCount:   cfg.SnapCount,
 	}
-	tr := &rafthttp.Transport{
-		RoundTripper: cfg.Transport,
-		ID:           id,
-		ClusterID:    cfg.Cluster.ID(),
-		Raft:         srv,
-		ServerStats:  sstats,
-		LeaderStats:  lstats,
-	}
-	tr.Start()
+
+	tr := rafthttp.NewTransporter(cfg.Transport, id, cfg.Cluster.ID(), srv, sstats, lstats)
 	// add all the remote members into sendhub
 	for _, m := range cfg.Cluster.Members() {
 		if m.Name != cfg.Name {

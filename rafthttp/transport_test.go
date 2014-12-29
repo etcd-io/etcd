@@ -30,7 +30,7 @@ import (
 func TestTransportAdd(t *testing.T) {
 	ls := stats.NewLeaderStats("")
 	tr := &Transport{
-		LeaderStats: ls,
+		leaderStats: ls,
 	}
 	tr.Start()
 	tr.AddPeer(1, []string{"http://a"})
@@ -53,7 +53,7 @@ func TestTransportAdd(t *testing.T) {
 
 func TestTransportRemove(t *testing.T) {
 	tr := &Transport{
-		LeaderStats: stats.NewLeaderStats(""),
+		leaderStats: stats.NewLeaderStats(""),
 	}
 	tr.Start()
 	tr.AddPeer(1, []string{"http://a"})
@@ -66,8 +66,8 @@ func TestTransportRemove(t *testing.T) {
 
 func TestTransportShouldStop(t *testing.T) {
 	tr := &Transport{
-		RoundTripper: newRespRoundTripper(http.StatusForbidden, nil),
-		LeaderStats:  stats.NewLeaderStats(""),
+		roundTripper: newRespRoundTripper(http.StatusForbidden, nil),
+		leaderStats:  stats.NewLeaderStats(""),
 	}
 	tr.Start()
 	tr.AddPeer(1, []string{"http://a"})
