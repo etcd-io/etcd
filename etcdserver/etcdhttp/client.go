@@ -102,7 +102,7 @@ func (h *keysHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(context.Background(), h.timeout)
 	defer cancel()
 
-	rr, err := parseKeyRequest(r, etcdserver.GenID(), clockwork.NewRealClock())
+	rr, err := parseKeyRequest(r, clockwork.NewRealClock())
 	if err != nil {
 		writeError(w, err)
 		return
@@ -279,7 +279,7 @@ func serveVersion(w http.ResponseWriter, r *http.Request) {
 // parseKeyRequest converts a received http.Request on keysPrefix to
 // a server Request, performing validation of supplied fields as appropriate.
 // If any validation fails, an empty Request and non-nil error is returned.
-func parseKeyRequest(r *http.Request, id uint64, clock clockwork.Clock) (etcdserverpb.Request, error) {
+func parseKeyRequest(r *http.Request, clock clockwork.Clock) (etcdserverpb.Request, error) {
 	emptyReq := etcdserverpb.Request{}
 
 	err := r.ParseForm()
@@ -394,7 +394,6 @@ func parseKeyRequest(r *http.Request, id uint64, clock clockwork.Clock) (etcdser
 	}
 
 	rr := etcdserverpb.Request{
-		ID:        id,
 		Method:    r.Method,
 		Path:      p,
 		Val:       r.FormValue("value"),

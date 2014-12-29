@@ -18,14 +18,13 @@ package command
 
 import (
 	"log"
-	"math/rand"
 	"os"
 	"path"
 	"time"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/codegangsta/cli"
-	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"github.com/coreos/etcd/etcdserver/idutil"
 	"github.com/coreos/etcd/pkg/pbutil"
 	"github.com/coreos/etcd/snap"
 	"github.com/coreos/etcd/wal"
@@ -78,9 +77,9 @@ func handleBackup(c *cli.Context) {
 	}
 	var metadata etcdserverpb.Metadata
 	pbutil.MustUnmarshal(&metadata, wmetadata)
-	rand.Seed(time.Now().UnixNano())
-	metadata.NodeID = etcdserver.GenID()
-	metadata.ClusterID = etcdserver.GenID()
+	idgen := idutil.NewGenerator(0, time.Now())
+	metadata.NodeID = idgen.Next()
+	metadata.ClusterID = idgen.Next()
 
 	neww, err := wal.Create(destWAL, pbutil.MustMarshal(&metadata))
 	if err != nil {

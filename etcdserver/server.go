@@ -35,6 +35,7 @@ import (
 	"github.com/coreos/etcd/discovery"
 	"github.com/coreos/etcd/etcdserver/etcdhttp/httptypes"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"github.com/coreos/etcd/etcdserver/idutil"
 	"github.com/coreos/etcd/etcdserver/stats"
 	"github.com/coreos/etcd/pkg/fileutil"
 	"github.com/coreos/etcd/pkg/pbutil"
@@ -161,6 +162,8 @@ type EtcdServer struct {
 	raftTerm  uint64
 
 	raftLead uint64
+
+	reqIDGen *idutil.Generator
 }
 
 // NewServer creates a new EtcdServer from the supplied configuration. The
@@ -271,6 +274,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		Ticker:      time.Tick(100 * time.Millisecond),
 		SyncTicker:  time.Tick(500 * time.Millisecond),
 		snapCount:   cfg.SnapCount,
+		reqIDGen:    idutil.NewGenerator(uint8(id), time.Now()),
 	}
 	tr := &rafthttp.Transport{
 		RoundTripper: cfg.Transport,
@@ -475,9 +479,7 @@ func (s *EtcdServer) StopNotify() <-chan struct{} { return s.done }
 // respective operation. Do will block until an action is performed or there is
 // an error.
 func (s *EtcdServer) Do(ctx context.Context, r pb.Request) (Response, error) {
-	if r.ID == 0 {
-		log.Panicf("request ID should never be 0")
-	}
+	r.ID = s.reqIDGen.Next()
 	if r.Method == "GET" && r.Quorum {
 		r.Method = "QGET"
 	}
@@ -544,7 +546,6 @@ func (s *EtcdServer) AddMember(ctx context.Context, memb Member) error {
 		return err
 	}
 	cc := raftpb.ConfChange{
-		ID:      GenID(),
 		Type:    raftpb.ConfChangeAddNode,
 		NodeID:  uint64(memb.ID),
 		Context: b,
@@ -554,7 +555,6 @@ func (s *EtcdServer) AddMember(ctx context.Context, memb Member) error {
 
 func (s *EtcdServer) RemoveMember(ctx context.Context, id uint64) error {
 	cc := raftpb.ConfChange{
-		ID:     GenID(),
 		Type:   raftpb.ConfChangeRemoveNode,
 		NodeID: id,
 	}
@@ -567,7 +567,6 @@ func (s *EtcdServer) UpdateMember(ctx context.Context, memb Member) error {
 		return err
 	}
 	cc := raftpb.ConfChange{
-		ID:      GenID(),
 		Type:    raftpb.ConfChangeUpdateNode,
 		NodeID:  uint64(memb.ID),
 		Context: b,
@@ -589,6 +588,7 @@ func (s *EtcdServer) Lead() uint64 { return atomic.LoadUint64(&s.raftLead) }
 // then waits for it to be applied to the server. It
 // will block until the change is performed or there is an error.
 func (s *EtcdServer) configure(ctx context.Context, cc raftpb.ConfChange) error {
+	cc.ID = s.reqIDGen.Next()
 	ch := s.w.Register(cc.ID)
 	if err := s.node.ProposeConfChange(ctx, cc); err != nil {
 		s.w.Trigger(cc.ID, nil)
@@ -618,7 +618,7 @@ func (s *EtcdServer) sync(timeout time.Duration) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	req := pb.Request{
 		Method: "SYNC",
-		ID:     GenID(),
+		ID:     s.reqIDGen.Next(),
 		Time:   time.Now().UnixNano(),
 	}
 	data := pbutil.MustMarshal(&req)
@@ -642,7 +642,6 @@ func (s *EtcdServer) publish(retryInterval time.Duration) {
 		return
 	}
 	req := pb.Request{
-		ID:     GenID(),
 		Method: "PUT",
 		Path:   MemberAttributesStorePath(s.id),
 		Val:    string(b),
@@ -978,15 +977,6 @@ func getOtherPeerURLs(cl ClusterInfo, self string) []string {
 	}
 	sort.Strings(us)
 	return us
-}
-
-// TODO: move the function to /id pkg maybe?
-// GenID generates a random id that is not equal to 0.
-func GenID() (n uint64) {
-	for n == 0 {
-		n = uint64(rand.Int63())
-	}
-	return
 }
 
 func parseCtxErr(err error) error {

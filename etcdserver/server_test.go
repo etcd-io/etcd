@@ -32,6 +32,7 @@ import (
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"github.com/coreos/etcd/etcdserver/idutil"
 	"github.com/coreos/etcd/pkg/pbutil"
 	"github.com/coreos/etcd/pkg/testutil"
 	"github.com/coreos/etcd/pkg/types"
@@ -85,7 +86,10 @@ func TestDoLocalAction(t *testing.T) {
 	}
 	for i, tt := range tests {
 		st := &storeRecorder{}
-		srv := &EtcdServer{store: st}
+		srv := &EtcdServer{
+			store:    st,
+			reqIDGen: idutil.NewGenerator(0, time.Time{}),
+		}
 		resp, err := srv.Do(context.TODO(), tt.req)
 
 		if err != tt.werr {
@@ -125,7 +129,10 @@ func TestDoBadLocalAction(t *testing.T) {
 	}
 	for i, tt := range tests {
 		st := &errStoreRecorder{err: storeErr}
-		srv := &EtcdServer{store: st}
+		srv := &EtcdServer{
+			store:    st,
+			reqIDGen: idutil.NewGenerator(0, time.Time{}),
+		}
 		resp, err := srv.Do(context.Background(), tt.req)
 
 		if err != storeErr {
@@ -550,6 +557,7 @@ func testServer(t *testing.T, ns uint64) {
 			storage:     &storageRecorder{},
 			Ticker:      tk.C,
 			Cluster:     cl,
+			reqIDGen:    idutil.NewGenerator(uint8(i), time.Time{}),
 		}
 		ss[i] = srv
 	}
@@ -562,7 +570,6 @@ func testServer(t *testing.T, ns uint64) {
 	for i := 1; i <= 10; i++ {
 		r := pb.Request{
 			Method: "PUT",
-			ID:     uint64(i),
 			Path:   "/foo",
 			Val:    "bar",
 		}
@@ -625,6 +632,7 @@ func TestDoProposal(t *testing.T) {
 			storage:     &storageRecorder{},
 			Ticker:      tk,
 			Cluster:     cl,
+			reqIDGen:    idutil.NewGenerator(0, time.Time{}),
 		}
 		srv.start()
 		resp, err := srv.Do(ctx, tt)
@@ -657,12 +665,13 @@ func TestDoProposalCancelled(t *testing.T) {
 		raftStorage: s,
 		store:       st,
 		w:           wait,
+		reqIDGen:    idutil.NewGenerator(0, time.Time{}),
 	}
 
 	done := make(chan struct{})
 	var err error
 	go func() {
-		_, err = srv.Do(ctx, pb.Request{Method: "PUT", ID: 1})
+		_, err = srv.Do(ctx, pb.Request{Method: "PUT"})
 		close(done)
 	}()
 	cancel()
@@ -675,7 +684,7 @@ func TestDoProposalCancelled(t *testing.T) {
 	if err != ErrCanceled {
 		t.Fatalf("err = %v, want %v", err, ErrCanceled)
 	}
-	w := []action{action{name: "Register1"}, action{name: "Trigger1"}}
+	w := []action{action{name: "Register"}, action{name: "Trigger"}}
 	if !reflect.DeepEqual(wait.action, w) {
 		t.Errorf("wait.action = %+v, want %+v", wait.action, w)
 	}
@@ -684,8 +693,9 @@ func TestDoProposalCancelled(t *testing.T) {
 func TestDoProposalTimeout(t *testing.T) {
 	ctx, _ := context.WithTimeout(context.Background(), 0)
 	srv := &EtcdServer{
-		node: &nodeRecorder{},
-		w:    &waitRecorder{},
+		node:     &nodeRecorder{},
+		w:        &waitRecorder{},
+		reqIDGen: idutil.NewGenerator(0, time.Time{}),
 	}
 	_, err := srv.Do(ctx, pb.Request{Method: "PUT", ID: 1})
 	if err != ErrTimeout {
@@ -714,6 +724,7 @@ func TestDoProposalStopped(t *testing.T) {
 		storage:     &storageRecorder{},
 		Ticker:      tk,
 		Cluster:     cl,
+		reqIDGen:    idutil.NewGenerator(0, time.Time{}),
 	}
 	srv.start()
 
@@ -739,7 +750,8 @@ func TestDoProposalStopped(t *testing.T) {
 func TestSync(t *testing.T) {
 	n := &nodeProposeDataRecorder{}
 	srv := &EtcdServer{
-		node: n,
+		node:     n,
+		reqIDGen: idutil.NewGenerator(0, time.Time{}),
 	}
 	done := make(chan struct{})
 	go func() {
@@ -773,7 +785,8 @@ func TestSync(t *testing.T) {
 func TestSyncTimeout(t *testing.T) {
 	n := &nodeProposalBlockerRecorder{}
 	srv := &EtcdServer{
-		node: n,
+		node:     n,
+		reqIDGen: idutil.NewGenerator(0, time.Time{}),
 	}
 	done := make(chan struct{})
 	go func() {
@@ -825,6 +838,7 @@ func TestSyncTrigger(t *testing.T) {
 		transport:   &nopTransporter{},
 		storage:     &storageRecorder{},
 		SyncTicker:  st,
+		reqIDGen:    idutil.NewGenerator(0, time.Time{}),
 	}
 	srv.start()
 	// trigger the server to become a leader and accept sync requests
@@ -914,6 +928,7 @@ func TestTriggerSnap(t *testing.T) {
 		raftStorage: s,
 		snapCount:   10,
 		Cluster:     cl,
+		reqIDGen:    idutil.NewGenerator(0, time.Time{}),
 	}
 
 	srv.start()
@@ -1060,6 +1075,7 @@ func TestAddMember(t *testing.T) {
 		transport:   &nopTransporter{},
 		storage:     &storageRecorder{},
 		Cluster:     cl,
+		reqIDGen:    idutil.NewGenerator(0, time.Time{}),
 	}
 	s.start()
 	m := Member{ID: 1234, RaftAttributes: RaftAttributes{PeerURLs: []string{"foo"}}}
@@ -1095,6 +1111,7 @@ func TestRemoveMember(t *testing.T) {
 		transport:   &nopTransporter{},
 		storage:     &storageRecorder{},
 		Cluster:     cl,
+		reqIDGen:    idutil.NewGenerator(0, time.Time{}),
 	}
 	s.start()
 	err := s.RemoveMember(context.TODO(), 1234)
@@ -1129,6 +1146,7 @@ func TestUpdateMember(t *testing.T) {
 		transport:   &nopTransporter{},
 		storage:     &storageRecorder{},
 		Cluster:     cl,
+		reqIDGen:    idutil.NewGenerator(0, time.Time{}),
 	}
 	s.start()
 	wm := Member{ID: 1234, RaftAttributes: RaftAttributes{PeerURLs: []string{"http://127.0.0.1:1"}}}
@@ -1164,6 +1182,7 @@ func TestPublish(t *testing.T) {
 		Cluster:    &Cluster{},
 		node:       n,
 		w:          w,
+		reqIDGen:   idutil.NewGenerator(0, time.Time{}),
 	}
 	srv.publish(time.Hour)
 
@@ -1200,6 +1219,7 @@ func TestPublishStopped(t *testing.T) {
 		w:         &waitRecorder{},
 		done:      make(chan struct{}),
 		stop:      make(chan struct{}),
+		reqIDGen:  idutil.NewGenerator(0, time.Time{}),
 	}
 	close(srv.done)
 	srv.publish(time.Hour)
@@ -1209,9 +1229,10 @@ func TestPublishStopped(t *testing.T) {
 func TestPublishRetry(t *testing.T) {
 	n := &nodeRecorder{}
 	srv := &EtcdServer{
-		node: n,
-		w:    &waitRecorder{},
-		done: make(chan struct{}),
+		node:     n,
+		w:        &waitRecorder{},
+		done:     make(chan struct{}),
+		reqIDGen: idutil.NewGenerator(0, time.Time{}),
 	}
 	time.AfterFunc(500*time.Microsecond, func() { close(srv.done) })
 	srv.publish(10 * time.Nanosecond)
@@ -1306,19 +1327,6 @@ func TestGetBool(t *testing.T) {
 		if set != tt.wset {
 			t.Errorf("#%d: set = %v, want %v", i, set, tt.wset)
 		}
-	}
-}
-
-func TestGenID(t *testing.T) {
-	// Sanity check that the GenID function has been seeded appropriately
-	// (math/rand is seeded with 1 by default)
-	r := rand.NewSource(int64(1))
-	var n uint64
-	for n == 0 {
-		n = uint64(r.Int63())
-	}
-	if n == GenID() {
-		t.Fatalf("GenID's rand seeded with 1!")
 	}
 }
 
@@ -1446,11 +1454,11 @@ type waitRecorder struct {
 }
 
 func (w *waitRecorder) Register(id uint64) <-chan interface{} {
-	w.action = append(w.action, action{name: fmt.Sprint("Register", id)})
+	w.action = append(w.action, action{name: "Register"})
 	return nil
 }
 func (w *waitRecorder) Trigger(id uint64, x interface{}) {
-	w.action = append(w.action, action{name: fmt.Sprint("Trigger", id)})
+	w.action = append(w.action, action{name: "Trigger"})
 }
 
 func boolp(b bool) *bool { return &b }
