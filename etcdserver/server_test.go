@@ -208,7 +208,7 @@ func TestApplyRequest(t *testing.T) {
 		},
 		// PUT with PrevExist=true ==> Update
 		{
-			pb.Request{Method: "PUT", ID: 1, PrevExist: boolp(true)},
+			pb.Request{Method: "PUT", ID: 1, PrevExist: pbutil.Boolp(true)},
 			Response{Event: &store.Event{}},
 			[]action{
 				action{
@@ -219,7 +219,7 @@ func TestApplyRequest(t *testing.T) {
 		},
 		// PUT with PrevExist=false ==> Create
 		{
-			pb.Request{Method: "PUT", ID: 1, PrevExist: boolp(false)},
+			pb.Request{Method: "PUT", ID: 1, PrevExist: pbutil.Boolp(false)},
 			Response{Event: &store.Event{}},
 			[]action{
 				action{
@@ -231,7 +231,7 @@ func TestApplyRequest(t *testing.T) {
 		// PUT with PrevExist=true *and* PrevIndex set ==> Update
 		// TODO(jonboulle): is this expected?!
 		{
-			pb.Request{Method: "PUT", ID: 1, PrevExist: boolp(true), PrevIndex: 1},
+			pb.Request{Method: "PUT", ID: 1, PrevExist: pbutil.Boolp(true), PrevIndex: 1},
 			Response{Event: &store.Event{}},
 			[]action{
 				action{
@@ -243,7 +243,7 @@ func TestApplyRequest(t *testing.T) {
 		// PUT with PrevExist=false *and* PrevIndex set ==> Create
 		// TODO(jonboulle): is this expected?!
 		{
-			pb.Request{Method: "PUT", ID: 1, PrevExist: boolp(false), PrevIndex: 1},
+			pb.Request{Method: "PUT", ID: 1, PrevExist: pbutil.Boolp(false), PrevIndex: 1},
 			Response{Event: &store.Event{}},
 			[]action{
 				action{
@@ -1107,31 +1107,6 @@ func TestGetOtherPeerURLs(t *testing.T) {
 		}
 	}
 }
-
-func TestGetBool(t *testing.T) {
-	tests := []struct {
-		b    *bool
-		wb   bool
-		wset bool
-	}{
-		{nil, false, false},
-		{boolp(true), true, true},
-		{boolp(false), false, true},
-	}
-	for i, tt := range tests {
-		b, set := getBool(tt.b)
-		if b != tt.wb {
-			t.Errorf("#%d: value = %v, want %v", i, b, tt.wb)
-		}
-		if set != tt.wset {
-			t.Errorf("#%d: set = %v, want %v", i, set, tt.wset)
-		}
-	}
-}
-
-func boolp(b bool) *bool { return &b }
-
-func stringp(s string) *string { return &s }
 
 type action struct {
 	name   string
