@@ -714,7 +714,7 @@ func (s *EtcdServer) applyRequest(r pb.Request) Response {
 	case "POST":
 		return f(s.store.Create(r.Path, r.Dir, r.Val, true, expr))
 	case "PUT":
-		exists, existsSet := getBool(r.PrevExist)
+		exists, existsSet := pbutil.GetBool(r.PrevExist)
 		switch {
 		case existsSet:
 			if exists {
@@ -988,11 +988,4 @@ func parseCtxErr(err error) error {
 	default:
 		return err
 	}
-}
-
-func getBool(v *bool) (vv bool, set bool) {
-	if v == nil {
-		return false, false
-	}
-	return *v, true
 }

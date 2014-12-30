@@ -16,35 +16,25 @@
 
 package pbutil
 
-import "log"
+import "testing"
 
-type Marshaler interface {
-	Marshal() (data []byte, err error)
-}
-
-type Unmarshaler interface {
-	Unmarshal(data []byte) error
-}
-
-func MustMarshal(m Marshaler) []byte {
-	d, err := m.Marshal()
-	if err != nil {
-		log.Panicf("marshal protobuf type should never fail: %v", err)
+func TestGetBool(t *testing.T) {
+	tests := []struct {
+		b    *bool
+		wb   bool
+		wset bool
+	}{
+		{nil, false, false},
+		{Boolp(true), true, true},
+		{Boolp(false), false, true},
 	}
-	return d
-}
-
-func MustUnmarshal(um Unmarshaler, data []byte) {
-	if err := um.Unmarshal(data); err != nil {
-		log.Panicf("unmarshal protobuf type should never fail: %v", err)
+	for i, tt := range tests {
+		b, set := GetBool(tt.b)
+		if b != tt.wb {
+			t.Errorf("#%d: value = %v, want %v", i, b, tt.wb)
+		}
+		if set != tt.wset {
+			t.Errorf("#%d: set = %v, want %v", i, set, tt.wset)
+		}
 	}
 }
-
-func GetBool(v *bool) (vv bool, set bool) {
-	if v == nil {
-		return false, false
-	}
-	return *v, true
-}
-
-func Boolp(b bool) *bool { return &b }

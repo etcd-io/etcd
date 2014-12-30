@@ -654,3 +654,5 @@ func newTestCluster(membs []*Member) *Cluster {
 	}
 	return c
 }
+
+func stringp(s string) *string { return &s }
