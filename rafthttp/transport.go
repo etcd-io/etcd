@@ -14,10 +14,6 @@ import (
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 )
 
-const (
-	raftPrefix = "/raft"
-)
-
 type Raft interface {
 	Process(ctx context.Context, m raftpb.Message) error
 }
@@ -119,7 +115,7 @@ func (t *transport) AddPeer(id types.ID, urls []string) {
 	if err != nil {
 		log.Panicf("unexpect peer url %s", peerURL)
 	}
-	u.Path = path.Join(u.Path, raftPrefix)
+	u.Path = path.Join(u.Path, RaftPrefix)
 	fs := t.leaderStats.Follower(id.String())
 	t.peers[id] = NewPeer(t.roundTripper, u.String(), id, t.clusterID,
 		t.raft, fs, t.shouldstop)
@@ -144,7 +140,7 @@ func (t *transport) UpdatePeer(id types.ID, urls []string) {
 	if err != nil {
 		log.Panicf("unexpect peer url %s", peerURL)
 	}
-	u.Path = path.Join(u.Path, raftPrefix)
+	u.Path = path.Join(u.Path, RaftPrefix)
 	t.peers[id].Update(u.String())
 }
 
