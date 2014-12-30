@@ -31,7 +31,7 @@ Or feel free to just use curl, as in the examples below.
 [zookeeper]: http://zookeeper.apache.org/
 [doozer]: https://github.com/ha/doozerd
 [raft]: http://raftconsensus.github.io/
-[etcdctl]: http://github.com/coreos/etcdctl/
+[etcdctl]: https://github.com/coreos/etcd/tree/master/etcdctl
 
 If you're considering etcd for production use, please see: [production-ready.md](./Documentation/production-ready.md)
 
