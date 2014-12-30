@@ -18,7 +18,6 @@ package etcdserver
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -31,7 +30,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/discovery"
 	"github.com/coreos/etcd/etcdserver/etcdhttp/httptypes"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
@@ -48,6 +46,8 @@ import (
 	"github.com/coreos/etcd/snap"
 	"github.com/coreos/etcd/store"
 	"github.com/coreos/etcd/wal"
+
+	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 )
 
 const (
@@ -66,15 +66,6 @@ const (
 )
 
 var (
-	ErrUnknownMethod = errors.New("etcdserver: unknown method")
-	ErrStopped       = errors.New("etcdserver: server stopped")
-	ErrIDRemoved     = errors.New("etcdserver: ID removed")
-	ErrIDExists      = errors.New("etcdserver: ID exists")
-	ErrIDNotFound    = errors.New("etcdserver: ID not found")
-	ErrPeerURLexists = errors.New("etcdserver: peerURL exists")
-	ErrCanceled      = errors.New("etcdserver: request cancelled")
-	ErrTimeout       = errors.New("etcdserver: request timed out")
-
 	storeMembersPrefix        = path.Join(StoreAdminPrefix, "members")
 	storeRemovedMembersPrefix = path.Join(StoreAdminPrefix, "removed_members")
 
@@ -977,15 +968,4 @@ func getOtherPeerURLs(cl ClusterInfo, self string) []string {
 	}
 	sort.Strings(us)
 	return us
-}
-
-func parseCtxErr(err error) error {
-	switch err {
-	case context.Canceled:
-		return ErrCanceled
-	case context.DeadlineExceeded:
-		return ErrTimeout
-	default:
-		return err
-	}
 }
