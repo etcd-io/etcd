@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"math/rand"
 	"net/http"
 	"os"
 	"path"
@@ -502,107 +501,6 @@ func TestApplyConfChangeShouldStop(t *testing.T) {
 	}
 	if shouldStop != true {
 		t.Errorf("shouldStop = %t, want %t", shouldStop, true)
-	}
-}
-
-func TestClusterOf1(t *testing.T) { testServer(t, 1) }
-func TestClusterOf3(t *testing.T) { testServer(t, 3) }
-
-type fakeTransporter struct {
-	ss []*EtcdServer
-}
-
-func (s *fakeTransporter) Handler() http.Handler { return nil }
-func (s *fakeTransporter) Send(msgs []raftpb.Message) {
-	for _, m := range msgs {
-		s.ss[m.To-1].node.Step(context.TODO(), m)
-	}
-}
-func (s *fakeTransporter) AddPeer(id types.ID, us []string)    {}
-func (s *fakeTransporter) UpdatePeer(id types.ID, us []string) {}
-func (s *fakeTransporter) RemovePeer(id types.ID)              {}
-func (s *fakeTransporter) Stop()                               {}
-func (s *fakeTransporter) ShouldStopNotify() <-chan struct{}   { return nil }
-func (s *fakeTransporter) Pause()                              {}
-func (s *fakeTransporter) Resume()                             {}
-
-func testServer(t *testing.T, ns uint64) {
-	log.SetOutput(ioutil.Discard)
-	defer log.SetOutput(os.Stderr)
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	ss := make([]*EtcdServer, ns)
-
-	ids := make([]uint64, ns)
-	for i := uint64(0); i < ns; i++ {
-		ids[i] = i + 1
-	}
-	members := mustMakePeerSlice(t, ids...)
-	for i := uint64(0); i < ns; i++ {
-		id := i + 1
-		s := raft.NewMemoryStorage()
-		n := raft.StartNode(id, members, 10, 1, s)
-		tk := time.NewTicker(10 * time.Millisecond)
-		defer tk.Stop()
-		st := store.New()
-		cl := newCluster("abc")
-		cl.SetStore(st)
-		srv := &EtcdServer{
-			node:        n,
-			raftStorage: s,
-			store:       st,
-			transport:   &fakeTransporter{ss},
-			storage:     &storageRecorder{},
-			Ticker:      tk.C,
-			Cluster:     cl,
-			reqIDGen:    idutil.NewGenerator(uint8(i), time.Time{}),
-		}
-		ss[i] = srv
-	}
-
-	// Start the servers after they're all created to avoid races in send().
-	for i := uint64(0); i < ns; i++ {
-		ss[i].start()
-	}
-
-	for i := 1; i <= 10; i++ {
-		r := pb.Request{
-			Method: "PUT",
-			Path:   "/foo",
-			Val:    "bar",
-		}
-		j := rand.Intn(len(ss))
-		t.Logf("ss = %d", j)
-		resp, err := ss[j].Do(ctx, r)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		g, w := resp.Event.Node, &store.NodeExtern{
-			Key:           "/foo",
-			ModifiedIndex: uint64(i) + ns,
-			CreatedIndex:  uint64(i) + ns,
-			Value:         stringp("bar"),
-		}
-
-		if !reflect.DeepEqual(g, w) {
-			t.Error("value:", *g.Value)
-			t.Errorf("g = %+v, w %+v", g, w)
-		}
-	}
-
-	time.Sleep(10 * time.Millisecond)
-
-	var last interface{}
-	for i, sv := range ss {
-		sv.Stop()
-		g, _ := sv.store.Get("/", true, true)
-		if last != nil && !reflect.DeepEqual(last, g) {
-			t.Errorf("server %d: Root = %#v, want %#v", i, g, last)
-		}
-		last = g
 	}
 }
 
@@ -1621,16 +1519,3 @@ func (s *nopTransporter) Stop()                               {}
 func (s *nopTransporter) ShouldStopNotify() <-chan struct{}   { return nil }
 func (s *nopTransporter) Pause()                              {}
 func (s *nopTransporter) Resume()                             {}
-
-func mustMakePeerSlice(t *testing.T, ids ...uint64) []raft.Peer {
-	peers := make([]raft.Peer, len(ids))
-	for i, id := range ids {
-		m := Member{ID: types.ID(id)}
-		b, err := json.Marshal(m)
-		if err != nil {
-			t.Fatal(err)
-		}
-		peers[i] = raft.Peer{ID: id, Context: b}
-	}
-	return peers
-}
