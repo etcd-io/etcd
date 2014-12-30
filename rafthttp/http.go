@@ -159,14 +159,14 @@ func (h *streamHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.(http.Flusher).Flush()
 
-	done, err := p.StartStreaming(w.(WriteFlusher), from, term)
+	stream := newStreamServer(w.(WriteFlusher), from, term)
+	err = p.attachStream(stream)
 	if err != nil {
-		log.Printf("rafthttp: streaming request ignored due to start streaming error: %v", err)
-		// TODO: consider http status and info here
-		http.Error(w, "error enable streaming", http.StatusInternalServerError)
+		log.Printf("rafthttp: %v", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	<-done
+	<-stream.stopNotify()
 }
 
 type writerToResponse interface {
