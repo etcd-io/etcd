@@ -38,9 +38,10 @@ const (
 )
 
 var (
-	ErrNoSnapshot  = errors.New("snap: no available snapshot")
-	ErrCRCMismatch = errors.New("snap: crc mismatch")
-	crcTable       = crc32.MakeTable(crc32.Castagnoli)
+	ErrNoSnapshot    = errors.New("snap: no available snapshot")
+	ErrEmptySnapshot = errors.New("snap: empty snapshot")
+	ErrCRCMismatch   = errors.New("snap: crc mismatch")
+	crcTable         = crc32.MakeTable(crc32.Castagnoli)
 )
 
 type Snapshotter struct {
@@ -61,7 +62,7 @@ func (s *Snapshotter) SaveSnap(snapshot raftpb.Snapshot) error {
 }
 
 func (s *Snapshotter) save(snapshot *raftpb.Snapshot) error {
-	fname := fmt.Sprintf("%016x-%016x%s", snapshot.Term, snapshot.Index, snapSuffix)
+	fname := fmt.Sprintf("%016x-%016x%s", snapshot.Metadata.Term, snapshot.Metadata.Index, snapSuffix)
 	b := pbutil.MustMarshal(snapshot)
 	crc := crc32.Update(0, crcTable, b)
 	snap := snappb.Snapshot{Crc: crc, Data: b}
@@ -108,11 +109,16 @@ func loadSnap(dir, name string) (*raftpb.Snapshot, error) {
 		log.Printf("snap: corrupted snapshot file %v: %v", name, err)
 		return nil, err
 	}
+
+	if len(serializedSnap.Data) == 0 || serializedSnap.Crc == 0 {
+		log.Printf("snap: unexpected empty snapshot")
+		return nil, ErrEmptySnapshot
+	}
+
 	crc := crc32.Update(0, crcTable, serializedSnap.Data)
 	if crc != serializedSnap.Crc {
 		log.Printf("snap: corrupted snapshot file %v: crc mismatch", name)
-		err = ErrCRCMismatch
-		return nil, err
+		return nil, ErrCRCMismatch
 	}
 
 	var snap raftpb.Snapshot
@@ -124,7 +130,7 @@ func loadSnap(dir, name string) (*raftpb.Snapshot, error) {
 }
 
 // snapNames returns the filename of the snapshots in logical time order (from newest to oldest).
-// If there is no avaliable snapshots, an ErrNoSnapshot will be returned.
+// If there is no available snapshots, an ErrNoSnapshot will be returned.
 func (s *Snapshotter) snapNames() ([]string, error) {
 	dir, err := os.Open(s.dir)
 	if err != nil {

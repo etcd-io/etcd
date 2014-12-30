@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/url"
 	"os"
 	"strings"
 
@@ -40,72 +39,35 @@ func dumpCURL(client *etcd.Client) {
 	}
 }
 
-// createHttpPath attaches http scheme to the given address if needed
-func createHttpPath(addr string) (string, error) {
-	u, err := url.Parse(addr)
-	if err != nil {
-		return "", err
-	}
-
-	if u.Scheme == "" {
-		u.Scheme = "http"
-	}
-	return u.String(), nil
-}
-
-func getPeersFlagValue(c *cli.Context) []string {
-	peerstr := c.GlobalString("peers")
-
-	// Use an environment variable if nothing was supplied on the
-	// command line
-	if peerstr == "" {
-		peerstr = os.Getenv("ETCDCTL_PEERS")
-	}
-
-	// If we still don't have peers, use a default
-	if peerstr == "" {
-		peerstr = "127.0.0.1:4001"
-	}
-
-	return strings.Split(peerstr, ",")
-}
-
 // rawhandle wraps the command function handlers and sets up the
 // environment but performs no output formatting.
 func rawhandle(c *cli.Context, fn handlerFunc) (*etcd.Response, error) {
-	sync := !c.GlobalBool("no-sync")
-
-	peers := getPeersFlagValue(c)
-
-	// If no sync, create http path for each peer address
-	if !sync {
-		revisedPeers := make([]string, 0)
-		for _, peer := range peers {
-			if revisedPeer, err := createHttpPath(peer); err != nil {
-				fmt.Fprintf(os.Stderr, "Unsupported url %v: %v\n", peer, err)
-			} else {
-				revisedPeers = append(revisedPeers, revisedPeer)
-			}
-		}
-		peers = revisedPeers
+	endpoints, err := getEndpoints(c)
+	if err != nil {
+		return nil, err
 	}
 
-	client := etcd.NewClient(peers)
+	tr, err := getTransport(c)
+	if err != nil {
+		return nil, err
+	}
+
+	client := etcd.NewClient(endpoints)
+	client.SetTransport(tr)
 
 	if c.GlobalBool("debug") {
 		go dumpCURL(client)
 	}
 
 	// Sync cluster.
-	if sync {
+	if !c.GlobalBool("no-sync") {
 		if ok := client.SyncCluster(); !ok {
-			handleError(FailedToConnectToHost, errors.New("Cannot sync with the cluster using peers "+strings.Join(peers, ", ")))
+			handleError(FailedToConnectToHost, errors.New("cannot sync with the cluster using endpoints "+strings.Join(endpoints, ", ")))
 		}
 	}
 
 	if c.GlobalBool("debug") {
-		fmt.Fprintf(os.Stderr, "Cluster-Peers: %s\n",
-			strings.Join(client.GetCluster(), " "))
+		fmt.Fprintf(os.Stderr, "Cluster-Endpoints: %s\n", strings.Join(client.GetCluster(), ", "))
 	}
 
 	// Execute handler function.

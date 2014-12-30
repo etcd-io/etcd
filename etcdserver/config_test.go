@@ -16,50 +16,90 @@
 
 package etcdserver
 
-import "testing"
+import (
+	"net/url"
+	"testing"
+
+	"github.com/coreos/etcd/pkg/types"
+)
+
+func mustNewURLs(t *testing.T, urls []string) []url.URL {
+	u, err := types.NewURLs(urls)
+	if err != nil {
+		t.Fatalf("error creating new URLs from %q: %v", urls, err)
+	}
+	return u
+}
 
 func TestBootstrapConfigVerify(t *testing.T) {
 	tests := []struct {
 		clusterSetting string
-		clst           ClusterState
+		newclst        bool
+		apurls         []string
 		disc           string
 		shouldError    bool
 	}{
 		{
 			// Node must exist in cluster
 			"",
-			ClusterStateValueNew,
+			true,
+			nil,
 			"",
+
 			true,
 		},
 		{
 			// Cannot have duplicate URLs in cluster config
 			"node1=http://localhost:7001,node2=http://localhost:7001,node2=http://localhost:7002",
-			ClusterStateValueNew,
+			true,
+			nil,
 			"",
+
 			true,
 		},
 		{
 			// Node defined, ClusterState OK
 			"node1=http://localhost:7001,node2=http://localhost:7002",
-			ClusterStateValueNew,
+			true,
+			[]string{"http://localhost:7001"},
 			"",
+
 			false,
 		},
 		{
 			// Node defined, discovery OK
 			"node1=http://localhost:7001",
-			// TODO(jonboulle): replace with ClusterStateExisting once it exists
-			"",
+			false,
+			[]string{"http://localhost:7001"},
 			"http://discovery",
+
 			false,
 		},
 		{
 			// Cannot have ClusterState!=new && !discovery
 			"node1=http://localhost:7001",
-			// TODO(jonboulle): replace with ClusterStateExisting once it exists
-			ClusterState("foo"),
+			false,
+			nil,
 			"",
+
+			true,
+		},
+		{
+			// Advertised peer URLs must match those in cluster-state
+			"node1=http://localhost:7001",
+			true,
+			[]string{"http://localhost:12345"},
+			"",
+
+			true,
+		},
+		{
+			// Advertised peer URLs must match those in cluster-state
+			"node1=http://localhost:7001,node1=http://localhost:12345",
+			true,
+			[]string{"http://localhost:12345"},
+			"",
+
 			true,
 		},
 	}
@@ -69,12 +109,14 @@ func TestBootstrapConfigVerify(t *testing.T) {
 		if err != nil {
 			t.Fatalf("#%d: Got unexpected error: %v", i, err)
 		}
-
 		cfg := ServerConfig{
 			Name:         "node1",
 			DiscoveryURL: tt.disc,
 			Cluster:      cluster,
-			ClusterState: tt.clst,
+			NewCluster:   tt.newclst,
+		}
+		if tt.apurls != nil {
+			cfg.PeerURLs = mustNewURLs(t, tt.apurls)
 		}
 		err = cfg.VerifyBootstrapConfig()
 		if (err == nil) && tt.shouldError {

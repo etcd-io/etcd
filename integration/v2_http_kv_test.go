@@ -36,7 +36,7 @@ func init() {
 }
 
 func TestV2Set(t *testing.T) {
-	cl := cluster{Size: 1}
+	cl := NewCluster(t, 1)
 	cl.Launch(t)
 	defer cl.Terminate(t)
 
@@ -55,19 +55,19 @@ func TestV2Set(t *testing.T) {
 			"/v2/keys/foo/bar",
 			v,
 			http.StatusCreated,
-			`{"action":"set","node":{"key":"/foo/bar","value":"bar","modifiedIndex":4,"createdIndex":4}}`,
+			`{"action":"set","node":{"key":"/foo/bar","value":"bar","modifiedIndex":3,"createdIndex":3}}`,
 		},
 		{
 			"/v2/keys/foodir?dir=true",
 			url.Values{},
 			http.StatusCreated,
-			`{"action":"set","node":{"key":"/foodir","dir":true,"modifiedIndex":5,"createdIndex":5}}`,
+			`{"action":"set","node":{"key":"/foodir","dir":true,"modifiedIndex":4,"createdIndex":4}}`,
 		},
 		{
 			"/v2/keys/fooempty",
 			url.Values(map[string][]string{"value": {""}}),
 			http.StatusCreated,
-			`{"action":"set","node":{"key":"/fooempty","value":"","modifiedIndex":6,"createdIndex":6}}`,
+			`{"action":"set","node":{"key":"/fooempty","value":"","modifiedIndex":5,"createdIndex":5}}`,
 		},
 	}
 
@@ -88,7 +88,7 @@ func TestV2Set(t *testing.T) {
 }
 
 func TestV2CreateUpdate(t *testing.T) {
-	cl := cluster{Size: 1}
+	cl := NewCluster(t, 1)
 	cl.Launch(t)
 	defer cl.Terminate(t)
 
@@ -195,7 +195,7 @@ func TestV2CreateUpdate(t *testing.T) {
 }
 
 func TestV2CAS(t *testing.T) {
-	cl := cluster{Size: 1}
+	cl := NewCluster(t, 1)
 	cl.Launch(t)
 	defer cl.Terminate(t)
 
@@ -216,12 +216,12 @@ func TestV2CAS(t *testing.T) {
 		},
 		{
 			"/v2/keys/cas/foo",
-			url.Values(map[string][]string{"value": {"YYY"}, "prevIndex": {"4"}}),
+			url.Values(map[string][]string{"value": {"YYY"}, "prevIndex": {"3"}}),
 			http.StatusOK,
 			map[string]interface{}{
 				"node": map[string]interface{}{
 					"value":         "YYY",
-					"modifiedIndex": float64(5),
+					"modifiedIndex": float64(4),
 				},
 				"action": "compareAndSwap",
 			},
@@ -233,8 +233,8 @@ func TestV2CAS(t *testing.T) {
 			map[string]interface{}{
 				"errorCode": float64(101),
 				"message":   "Compare failed",
-				"cause":     "[10 != 5]",
-				"index":     float64(5),
+				"cause":     "[10 != 4]",
+				"index":     float64(4),
 			},
 		},
 		{
@@ -283,7 +283,7 @@ func TestV2CAS(t *testing.T) {
 			map[string]interface{}{
 				"errorCode": float64(101),
 				"message":   "Compare failed",
-				"cause":     "[bad_value != ZZZ] [100 != 6]",
+				"cause":     "[bad_value != ZZZ] [100 != 5]",
 			},
 		},
 		{
@@ -293,12 +293,12 @@ func TestV2CAS(t *testing.T) {
 			map[string]interface{}{
 				"errorCode": float64(101),
 				"message":   "Compare failed",
-				"cause":     "[100 != 6]",
+				"cause":     "[100 != 5]",
 			},
 		},
 		{
 			"/v2/keys/cas/foo",
-			url.Values(map[string][]string{"value": {"XXX"}, "prevValue": {"bad_value"}, "prevIndex": {"6"}}),
+			url.Values(map[string][]string{"value": {"XXX"}, "prevValue": {"bad_value"}, "prevIndex": {"5"}}),
 			http.StatusPreconditionFailed,
 			map[string]interface{}{
 				"errorCode": float64(101),
@@ -320,7 +320,7 @@ func TestV2CAS(t *testing.T) {
 }
 
 func TestV2Delete(t *testing.T) {
-	cl := cluster{Size: 1}
+	cl := NewCluster(t, 1)
 	cl.Launch(t)
 	defer cl.Terminate(t)
 
@@ -416,7 +416,7 @@ func TestV2Delete(t *testing.T) {
 }
 
 func TestV2CAD(t *testing.T) {
-	cl := cluster{Size: 1}
+	cl := NewCluster(t, 1)
 	cl.Launch(t)
 	defer cl.Terminate(t)
 
@@ -448,7 +448,7 @@ func TestV2CAD(t *testing.T) {
 			map[string]interface{}{
 				"errorCode": float64(101),
 				"message":   "Compare failed",
-				"cause":     "[100 != 4]",
+				"cause":     "[100 != 3]",
 			},
 		},
 		{
@@ -460,12 +460,12 @@ func TestV2CAD(t *testing.T) {
 			},
 		},
 		{
-			"/v2/keys/foo?prevIndex=4",
+			"/v2/keys/foo?prevIndex=3",
 			http.StatusOK,
 			map[string]interface{}{
 				"node": map[string]interface{}{
 					"key":           "/foo",
-					"modifiedIndex": float64(6),
+					"modifiedIndex": float64(5),
 				},
 				"action": "compareAndDelete",
 			},
@@ -493,7 +493,7 @@ func TestV2CAD(t *testing.T) {
 			map[string]interface{}{
 				"node": map[string]interface{}{
 					"key":           "/foovalue",
-					"modifiedIndex": float64(7),
+					"modifiedIndex": float64(6),
 				},
 				"action": "compareAndDelete",
 			},
@@ -512,7 +512,7 @@ func TestV2CAD(t *testing.T) {
 }
 
 func TestV2Unique(t *testing.T) {
-	cl := cluster{Size: 1}
+	cl := NewCluster(t, 1)
 	cl.Launch(t)
 	defer cl.Terminate(t)
 
@@ -531,7 +531,7 @@ func TestV2Unique(t *testing.T) {
 			http.StatusCreated,
 			map[string]interface{}{
 				"node": map[string]interface{}{
-					"key":   "/foo/4",
+					"key":   "/foo/3",
 					"value": "XXX",
 				},
 				"action": "create",
@@ -543,7 +543,7 @@ func TestV2Unique(t *testing.T) {
 			http.StatusCreated,
 			map[string]interface{}{
 				"node": map[string]interface{}{
-					"key":   "/foo/5",
+					"key":   "/foo/4",
 					"value": "XXX",
 				},
 				"action": "create",
@@ -555,7 +555,7 @@ func TestV2Unique(t *testing.T) {
 			http.StatusCreated,
 			map[string]interface{}{
 				"node": map[string]interface{}{
-					"key":   "/bar/6",
+					"key":   "/bar/5",
 					"value": "XXX",
 				},
 				"action": "create",
@@ -575,7 +575,7 @@ func TestV2Unique(t *testing.T) {
 }
 
 func TestV2Get(t *testing.T) {
-	cl := cluster{Size: 1}
+	cl := NewCluster(t, 1)
 	cl.Launch(t)
 	defer cl.Terminate(t)
 
@@ -617,8 +617,8 @@ func TestV2Get(t *testing.T) {
 						map[string]interface{}{
 							"key":           "/foo/bar",
 							"dir":           true,
-							"createdIndex":  float64(4),
-							"modifiedIndex": float64(4),
+							"createdIndex":  float64(3),
+							"modifiedIndex": float64(3),
 						},
 					},
 				},
@@ -636,14 +636,14 @@ func TestV2Get(t *testing.T) {
 						map[string]interface{}{
 							"key":           "/foo/bar",
 							"dir":           true,
-							"createdIndex":  float64(4),
-							"modifiedIndex": float64(4),
+							"createdIndex":  float64(3),
+							"modifiedIndex": float64(3),
 							"nodes": []interface{}{
 								map[string]interface{}{
 									"key":           "/foo/bar/zar",
 									"value":         "XXX",
-									"createdIndex":  float64(4),
-									"modifiedIndex": float64(4),
+									"createdIndex":  float64(3),
+									"modifiedIndex": float64(3),
 								},
 							},
 						},
@@ -669,7 +669,7 @@ func TestV2Get(t *testing.T) {
 }
 
 func TestV2QuorumGet(t *testing.T) {
-	cl := cluster{Size: 1}
+	cl := NewCluster(t, 1)
 	cl.Launch(t)
 	defer cl.Terminate(t)
 
@@ -711,8 +711,8 @@ func TestV2QuorumGet(t *testing.T) {
 						map[string]interface{}{
 							"key":           "/foo/bar",
 							"dir":           true,
-							"createdIndex":  float64(4),
-							"modifiedIndex": float64(4),
+							"createdIndex":  float64(3),
+							"modifiedIndex": float64(3),
 						},
 					},
 				},
@@ -730,14 +730,14 @@ func TestV2QuorumGet(t *testing.T) {
 						map[string]interface{}{
 							"key":           "/foo/bar",
 							"dir":           true,
-							"createdIndex":  float64(4),
-							"modifiedIndex": float64(4),
+							"createdIndex":  float64(3),
+							"modifiedIndex": float64(3),
 							"nodes": []interface{}{
 								map[string]interface{}{
 									"key":           "/foo/bar/zar",
 									"value":         "XXX",
-									"createdIndex":  float64(4),
-									"modifiedIndex": float64(4),
+									"createdIndex":  float64(3),
+									"modifiedIndex": float64(3),
 								},
 							},
 						},
@@ -763,22 +763,14 @@ func TestV2QuorumGet(t *testing.T) {
 }
 
 func TestV2Watch(t *testing.T) {
-	cl := cluster{Size: 1}
+	cl := NewCluster(t, 1)
 	cl.Launch(t)
 	defer cl.Terminate(t)
 
 	u := cl.URL(0)
 	tc := NewTestClient()
 
-	var watchResp *http.Response
-	c := make(chan bool)
-	go func() {
-		watchResp, _ = tc.Get(fmt.Sprintf("%s%s", u, "/v2/keys/foo/bar?wait=true"))
-		c <- true
-	}()
-
-	// Make sure response didn't fire early.
-	time.Sleep(1 * time.Millisecond)
+	watchResp, _ := tc.Get(fmt.Sprintf("%s%s", u, "/v2/keys/foo/bar?wait=true"))
 
 	// Set a value.
 	v := url.Values{}
@@ -786,18 +778,12 @@ func TestV2Watch(t *testing.T) {
 	resp, _ := tc.PutForm(fmt.Sprintf("%s%s", u, "/v2/keys/foo/bar"), v)
 	resp.Body.Close()
 
-	select {
-	case <-c:
-	case <-time.After(time.Millisecond):
-		t.Fatal("cannot get watch result")
-	}
-
 	body := tc.ReadBodyJSON(watchResp)
 	w := map[string]interface{}{
 		"node": map[string]interface{}{
 			"key":           "/foo/bar",
 			"value":         "XXX",
-			"modifiedIndex": float64(4),
+			"modifiedIndex": float64(3),
 		},
 		"action": "set",
 	}
@@ -808,7 +794,7 @@ func TestV2Watch(t *testing.T) {
 }
 
 func TestV2WatchWithIndex(t *testing.T) {
-	cl := cluster{Size: 1}
+	cl := NewCluster(t, 1)
 	cl.Launch(t)
 	defer cl.Terminate(t)
 
@@ -818,7 +804,7 @@ func TestV2WatchWithIndex(t *testing.T) {
 	var body map[string]interface{}
 	c := make(chan bool, 1)
 	go func() {
-		resp, _ := tc.Get(fmt.Sprintf("%s%s", u, "/v2/keys/foo/bar?wait=true&waitIndex=5"))
+		resp, _ := tc.Get(fmt.Sprintf("%s%s", u, "/v2/keys/foo/bar?wait=true&waitIndex=4"))
 		body = tc.ReadBodyJSON(resp)
 		c <- true
 	}()
@@ -855,7 +841,7 @@ func TestV2WatchWithIndex(t *testing.T) {
 		"node": map[string]interface{}{
 			"key":           "/foo/bar",
 			"value":         "XXX",
-			"modifiedIndex": float64(5),
+			"modifiedIndex": float64(4),
 		},
 		"action": "set",
 	}
@@ -865,7 +851,7 @@ func TestV2WatchWithIndex(t *testing.T) {
 }
 
 func TestV2WatchKeyInDir(t *testing.T) {
-	cl := cluster{Size: 1}
+	cl := NewCluster(t, 1)
 	cl.Launch(t)
 	defer cl.Terminate(t)
 
@@ -913,7 +899,7 @@ func TestV2WatchKeyInDir(t *testing.T) {
 }
 
 func TestV2Head(t *testing.T) {
-	cl := cluster{Size: 1}
+	cl := NewCluster(t, 1)
 	cl.Launch(t)
 	defer cl.Terminate(t)
 

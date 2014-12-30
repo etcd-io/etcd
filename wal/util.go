@@ -20,10 +20,51 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path"
+
+	"github.com/coreos/etcd/pkg/fileutil"
+	"github.com/coreos/etcd/pkg/types"
 )
 
+// WalVersion is an enum for versions of etcd logs.
+type WalVersion string
+
+const (
+	WALUnknown  WalVersion = "Unknown WAL"
+	WALNotExist WalVersion = "No WAL"
+	WALv0_4     WalVersion = "0.4.x"
+	WALv0_5     WalVersion = "0.5.x"
+)
+
+func DetectVersion(dirpath string) (WalVersion, error) {
+	if _, err := os.Stat(dirpath); os.IsNotExist(err) {
+		return WALNotExist, nil
+	}
+	names, err := fileutil.ReadDir(dirpath)
+	if err != nil {
+		// Error reading the directory
+		return WALNotExist, err
+	}
+	if len(names) == 0 {
+		// Empty WAL directory
+		return WALNotExist, nil
+	}
+	nameSet := types.NewUnsafeSet(names...)
+	if nameSet.ContainsAll([]string{"snap", "wal"}) {
+		// .../wal cannot be empty to exist.
+		if Exist(path.Join(dirpath, "wal")) {
+			return WALv0_5, nil
+		}
+	}
+	if nameSet.ContainsAll([]string{"snapshot", "conf", "log"}) {
+		return WALv0_4, nil
+	}
+
+	return WALUnknown, nil
+}
+
 func Exist(dirpath string) bool {
-	names, err := readDir(dirpath)
+	names, err := fileutil.ReadDir(dirpath)
 	if err != nil {
 		return false
 	}
@@ -62,20 +103,6 @@ func isValidSeq(names []string) bool {
 		lastSeq = curSeq
 	}
 	return true
-}
-
-// readDir returns the filenames in wal directory.
-func readDir(dirpath string) ([]string, error) {
-	dir, err := os.Open(dirpath)
-	if err != nil {
-		return nil, err
-	}
-	defer dir.Close()
-	names, err := dir.Readdirnames(-1)
-	if err != nil {
-		return nil, err
-	}
-	return names, nil
 }
 
 func checkWalNames(names []string) []string {

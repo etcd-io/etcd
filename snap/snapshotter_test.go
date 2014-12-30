@@ -29,10 +29,14 @@ import (
 )
 
 var testSnap = &raftpb.Snapshot{
-	Data:  []byte("some snapshot"),
-	Nodes: []uint64{1, 2, 3},
-	Index: 1,
-	Term:  1,
+	Data: []byte("some snapshot"),
+	Metadata: raftpb.SnapshotMetadata{
+		ConfState: raftpb.ConfState{
+			Nodes: []uint64{1, 2, 3},
+		},
+		Index: 1,
+		Term:  1,
+	},
 }
 
 func TestSaveAndLoad(t *testing.T) {
@@ -156,7 +160,7 @@ func TestLoadNewestSnap(t *testing.T) {
 	}
 
 	newSnap := *testSnap
-	newSnap.Index = 5
+	newSnap.Metadata.Index = 5
 	err = ss.save(&newSnap)
 	if err != nil {
 		t.Fatal(err)
@@ -182,5 +186,25 @@ func TestNoSnapshot(t *testing.T) {
 	_, err = ss.Load()
 	if err == nil || err != ErrNoSnapshot {
 		t.Errorf("err = %v, want %v", err, ErrNoSnapshot)
+	}
+}
+
+func TestEmptySnapshot(t *testing.T) {
+	dir := path.Join(os.TempDir(), "snapshot")
+	err := os.Mkdir(dir, 0700)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(dir)
+
+	err = ioutil.WriteFile(path.Join(dir, "1.snap"), []byte("shit"), 0x700)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ss := New(dir)
+	_, err = ss.Load()
+	if err == nil || err != ErrEmptySnapshot {
+		t.Errorf("err = %v, want %v", err, ErrEmptySnapshot)
 	}
 }

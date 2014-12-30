@@ -19,9 +19,8 @@ package raft
 import (
 	"errors"
 	"log"
-	"reflect"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/code.google.com/p/go.net/context"
+	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	pb "github.com/coreos/etcd/raft/raftpb"
 )
 
@@ -37,11 +36,10 @@ var (
 type SoftState struct {
 	Lead      uint64
 	RaftState StateType
-	Nodes     []uint64
 }
 
 func (a *SoftState) equal(b *SoftState) bool {
-	return reflect.DeepEqual(a, b)
+	return a.Lead == b.Lead && a.RaftState == b.RaftState
 }
 
 // Ready encapsulates the entries and messages that are ready to read,
@@ -75,12 +73,6 @@ type Ready struct {
 	Messages []pb.Message
 }
 
-type compact struct {
-	index uint64
-	nodes []uint64
-	data  []byte
-}
-
 func isHardStateEqual(a, b pb.HardState) bool {
 	return a.Term == b.Term && a.Vote == b.Vote && a.Commit == b.Commit
 }
@@ -92,12 +84,13 @@ func IsEmptyHardState(st pb.HardState) bool {
 
 // IsEmptySnap returns true if the given Snapshot is empty.
 func IsEmptySnap(sp pb.Snapshot) bool {
-	return sp.Index == 0
+	return sp.Metadata.Index == 0
 }
 
 func (rd Ready) containsUpdates() bool {
-	return rd.SoftState != nil || !IsEmptyHardState(rd.HardState) || !IsEmptySnap(rd.Snapshot) ||
-		len(rd.Entries) > 0 || len(rd.CommittedEntries) > 0 || len(rd.Messages) > 0
+	return rd.SoftState != nil || !IsEmptyHardState(rd.HardState) ||
+		!IsEmptySnap(rd.Snapshot) || len(rd.Entries) > 0 ||
+		len(rd.CommittedEntries) > 0 || len(rd.Messages) > 0
 }
 
 // Node represents a node in a raft cluster.
@@ -122,18 +115,12 @@ type Node interface {
 	// It prepares the node to return the next available Ready.
 	Advance()
 	// ApplyConfChange applies config change to the local node.
-	// TODO: reject existing node when add node
-	// TODO: reject non-existant node when remove node
-	ApplyConfChange(cc pb.ConfChange)
+	// Returns an opaque ConfState protobuf which must be recorded
+	// in snapshots. Will never return nil; it returns a pointer only
+	// to match MemoryStorage.Compact.
+	ApplyConfChange(cc pb.ConfChange) *pb.ConfState
 	// Stop performs any necessary termination of the Node
 	Stop()
-	// Compact discards the entrire log up to the given index. It also
-	// generates a raft snapshot containing the given nodes configuration
-	// and the given snapshot data.
-	// It is the caller's responsibility to ensure the given configuration
-	// and snapshot data match the actual point-in-time configuration and snapshot
-	// at the given index.
-	Compact(index uint64, nodes []uint64, d []byte)
 }
 
 type Peer struct {
@@ -143,11 +130,14 @@ type Peer struct {
 
 // StartNode returns a new Node given a unique raft id, a list of raft peers, and
 // the election and heartbeat timeouts in units of ticks.
-// It also builds ConfChangeAddNode entry for each peer and puts them at the head of the log.
-func StartNode(id uint64, peers []Peer, election, heartbeat int) Node {
+// It appends a ConfChangeAddNode entry for each given peer to the initial log.
+func StartNode(id uint64, peers []Peer, election, heartbeat int, storage Storage) Node {
 	n := newNode()
-	r := newRaft(id, nil, election, heartbeat)
+	r := newRaft(id, nil, election, heartbeat, storage)
 
+	// become the follower at term 1 and apply initial configuration
+	// entires of term 1
+	r.becomeFollower(1, None)
 	for _, peer := range peers {
 		cc := pb.ConfChange{Type: pb.ConfChangeAddNode, NodeID: peer.ID, Context: peer.Context}
 		d, err := cc.Marshal()
@@ -155,60 +145,77 @@ func StartNode(id uint64, peers []Peer, election, heartbeat int) Node {
 			panic("unexpected marshal error")
 		}
 		e := pb.Entry{Type: pb.EntryConfChange, Term: 1, Index: r.raftLog.lastIndex() + 1, Data: d}
-		r.raftLog.append(r.raftLog.lastIndex(), e)
+		r.raftLog.append(e)
 	}
+	// Mark these initial entries as committed.
+	// TODO(bdarnell): These entries are still unstable; do we need to preserve
+	// the invariant that committed < unstable?
 	r.raftLog.committed = r.raftLog.lastIndex()
+	r.Commit = r.raftLog.committed
+	// Now apply them, mainly so that the application can call Campaign
+	// immediately after StartNode in tests. Note that these nodes will
+	// be added to raft twice: here and when the application's Ready
+	// loop calls ApplyConfChange. The calls to addNode must come after
+	// all calls to raftLog.append so progress.next is set after these
+	// bootstrapping entries (it is an error if we try to append these
+	// entries since they have already been committed).
+	// We do not set raftLog.applied so the application will be able
+	// to observe all conf changes via Ready.CommittedEntries.
+	for _, peer := range peers {
+		r.addNode(peer.ID)
+	}
 
 	go n.run(r)
 	return &n
 }
 
-// RestartNode is identical to StartNode but takes an initial State and a slice
-// of entries. Generally this is used when restarting from a stable storage
-// log.
-func RestartNode(id uint64, election, heartbeat int, snapshot *pb.Snapshot, st pb.HardState, ents []pb.Entry) Node {
+// RestartNode is identical to StartNode but does not take a list of peers.
+// The current membership of the cluster will be restored from the Storage.
+func RestartNode(id uint64, election, heartbeat int, storage Storage) Node {
 	n := newNode()
-	r := newRaft(id, nil, election, heartbeat)
-	if snapshot != nil {
-		r.restore(*snapshot)
-	}
-	if !isHardStateEqual(st, emptyState) {
-		r.loadState(st)
-	}
-	if len(ents) != 0 {
-		r.loadEnts(ents)
-	}
+	r := newRaft(id, nil, election, heartbeat, storage)
+
 	go n.run(r)
 	return &n
 }
 
 // node is the canonical implementation of the Node interface
 type node struct {
-	propc    chan pb.Message
-	recvc    chan pb.Message
-	compactc chan compact
-	confc    chan pb.ConfChange
-	readyc   chan Ready
-	advancec chan struct{}
-	tickc    chan struct{}
-	done     chan struct{}
+	propc      chan pb.Message
+	recvc      chan pb.Message
+	confc      chan pb.ConfChange
+	confstatec chan pb.ConfState
+	readyc     chan Ready
+	advancec   chan struct{}
+	tickc      chan struct{}
+	done       chan struct{}
+	stop       chan struct{}
 }
 
 func newNode() node {
 	return node{
-		propc:    make(chan pb.Message),
-		recvc:    make(chan pb.Message),
-		compactc: make(chan compact),
-		confc:    make(chan pb.ConfChange),
-		readyc:   make(chan Ready),
-		advancec: make(chan struct{}),
-		tickc:    make(chan struct{}),
-		done:     make(chan struct{}),
+		propc:      make(chan pb.Message),
+		recvc:      make(chan pb.Message),
+		confc:      make(chan pb.ConfChange),
+		confstatec: make(chan pb.ConfState),
+		readyc:     make(chan Ready),
+		advancec:   make(chan struct{}),
+		tickc:      make(chan struct{}),
+		done:       make(chan struct{}),
+		stop:       make(chan struct{}),
 	}
 }
 
 func (n *node) Stop() {
-	close(n.done)
+	select {
+	case n.stop <- struct{}{}:
+		// Not already stopped, so trigger it
+	case <-n.done:
+		// Node has already been stopped - no need to do anything
+		return
+	}
+	// Block until the stop has been acknowledged by run()
+	<-n.done
 }
 
 func (n *node) run(r *raft) {
@@ -216,38 +223,40 @@ func (n *node) run(r *raft) {
 	var readyc chan Ready
 	var advancec chan struct{}
 	var prevLastUnstablei uint64
+	var prevLastUnstablet uint64
+	var havePrevLastUnstablei bool
+	var prevSnapi uint64
 	var rd Ready
 
 	lead := None
 	prevSoftSt := r.softState()
 	prevHardSt := r.HardState
-	prevSnapi := r.raftLog.snapshot.Index
 
 	for {
 		if advancec != nil {
 			readyc = nil
 		} else {
-			rd = newReady(r, prevSoftSt, prevHardSt, prevSnapi)
+			rd = newReady(r, prevSoftSt, prevHardSt)
 			if rd.containsUpdates() {
 				readyc = n.readyc
 			} else {
 				readyc = nil
 			}
+		}
 
-			if rd.SoftState != nil && lead != rd.SoftState.Lead {
-				if r.hasLeader() {
-					if lead == None {
-						log.Printf("raft: elected leader %x at term %d", rd.SoftState.Lead, r.Term)
-					} else {
-						log.Printf("raft: leader changed from %x to %x at term %d", lead, rd.SoftState.Lead, r.Term)
-					}
-					propc = n.propc
+		if lead != r.lead {
+			if r.hasLeader() {
+				if lead == None {
+					log.Printf("raft.node: %x elected leader %x at term %d", r.id, r.lead, r.Term)
 				} else {
-					log.Printf("raft: lost leader %x at term %d", lead, r.Term)
-					propc = nil
+					log.Printf("raft.node: %x changed leader from %x to %x at term %d", r.id, lead, r.lead, r.Term)
 				}
-				lead = rd.SoftState.Lead
+				propc = n.propc
+			} else {
+				log.Printf("raft.node: %x lost leader %x at term %d", r.id, lead, r.Term)
+				propc = nil
 			}
+			lead = r.lead
 		}
 
 		select {
@@ -258,12 +267,17 @@ func (n *node) run(r *raft) {
 			m.From = r.id
 			r.Step(m)
 		case m := <-n.recvc:
-			r.Step(m) // raft never returns an error
-		case c := <-n.compactc:
-			r.compact(c.index, c.nodes, c.data)
+			// filter out response message from unknow From.
+			if _, ok := r.prs[m.From]; ok || !IsResponseMsg(m) {
+				r.Step(m) // raft never returns an error
+			}
 		case cc := <-n.confc:
 			if cc.NodeID == None {
 				r.resetPendingConf()
+				select {
+				case n.confstatec <- pb.ConfState{Nodes: r.nodes()}:
+				case <-n.done:
+				}
 				break
 			}
 			switch cc.Type {
@@ -271,8 +285,14 @@ func (n *node) run(r *raft) {
 				r.addNode(cc.NodeID)
 			case pb.ConfChangeRemoveNode:
 				r.removeNode(cc.NodeID)
+			case pb.ConfChangeUpdateNode:
+				r.resetPendingConf()
 			default:
 				panic("unexpected conf type")
+			}
+			select {
+			case n.confstatec <- pb.ConfState{Nodes: r.nodes()}:
+			case <-n.done:
 			}
 		case <-n.tickc:
 			r.tick()
@@ -282,15 +302,14 @@ func (n *node) run(r *raft) {
 			}
 			if len(rd.Entries) > 0 {
 				prevLastUnstablei = rd.Entries[len(rd.Entries)-1].Index
+				prevLastUnstablet = rd.Entries[len(rd.Entries)-1].Term
+				havePrevLastUnstablei = true
 			}
 			if !IsEmptyHardState(rd.HardState) {
 				prevHardSt = rd.HardState
 			}
 			if !IsEmptySnap(rd.Snapshot) {
-				prevSnapi = rd.Snapshot.Index
-				if prevSnapi > prevLastUnstablei {
-					prevLastUnstablei = prevSnapi
-				}
+				prevSnapi = rd.Snapshot.Metadata.Index
 			}
 			r.msgs = nil
 			advancec = n.advancec
@@ -298,11 +317,14 @@ func (n *node) run(r *raft) {
 			if prevHardSt.Commit != 0 {
 				r.raftLog.appliedTo(prevHardSt.Commit)
 			}
-			if prevLastUnstablei != 0 {
-				r.raftLog.stableTo(prevLastUnstablei)
+			if havePrevLastUnstablei {
+				r.raftLog.stableTo(prevLastUnstablei, prevLastUnstablet)
+				havePrevLastUnstablei = false
 			}
+			r.raftLog.stableSnapTo(prevSnapi)
 			advancec = nil
-		case <-n.done:
+		case <-n.stop:
+			close(n.done)
 			return
 		}
 	}
@@ -317,9 +339,7 @@ func (n *node) Tick() {
 	}
 }
 
-func (n *node) Campaign(ctx context.Context) error {
-	return n.step(ctx, pb.Message{Type: pb.MsgHup})
-}
+func (n *node) Campaign(ctx context.Context) error { return n.step(ctx, pb.Message{Type: pb.MsgHup}) }
 
 func (n *node) Propose(ctx context.Context, data []byte) error {
 	return n.step(ctx, pb.Message{Type: pb.MsgProp, Entries: []pb.Entry{{Data: data}}})
@@ -327,7 +347,7 @@ func (n *node) Propose(ctx context.Context, data []byte) error {
 
 func (n *node) Step(ctx context.Context, m pb.Message) error {
 	// ignore unexpected local messages receiving over network
-	if m.Type == pb.MsgHup || m.Type == pb.MsgBeat {
+	if IsLocalMsg(m) {
 		// TODO: return an error?
 		return nil
 	}
@@ -360,9 +380,7 @@ func (n *node) step(ctx context.Context, m pb.Message) error {
 	}
 }
 
-func (n *node) Ready() <-chan Ready {
-	return n.readyc
-}
+func (n *node) Ready() <-chan Ready { return n.readyc }
 
 func (n *node) Advance() {
 	select {
@@ -371,23 +389,22 @@ func (n *node) Advance() {
 	}
 }
 
-func (n *node) ApplyConfChange(cc pb.ConfChange) {
+func (n *node) ApplyConfChange(cc pb.ConfChange) *pb.ConfState {
+	var cs pb.ConfState
 	select {
 	case n.confc <- cc:
 	case <-n.done:
 	}
-}
-
-func (n *node) Compact(index uint64, nodes []uint64, d []byte) {
 	select {
-	case n.compactc <- compact{index, nodes, d}:
+	case cs = <-n.confstatec:
 	case <-n.done:
 	}
+	return &cs
 }
 
-func newReady(r *raft, prevSoftSt *SoftState, prevHardSt pb.HardState, prevSnapi uint64) Ready {
+func newReady(r *raft, prevSoftSt *SoftState, prevHardSt pb.HardState) Ready {
 	rd := Ready{
-		Entries:          r.raftLog.unstableEnts(),
+		Entries:          r.raftLog.unstableEntries(),
 		CommittedEntries: r.raftLog.nextEnts(),
 		Messages:         r.msgs,
 	}
@@ -397,8 +414,8 @@ func newReady(r *raft, prevSoftSt *SoftState, prevHardSt pb.HardState, prevSnapi
 	if !isHardStateEqual(r.HardState, prevHardSt) {
 		rd.HardState = r.HardState
 	}
-	if prevSnapi != r.raftLog.snapshot.Index {
-		rd.Snapshot = r.raftLog.snapshot
+	if r.raftLog.unstable.snapshot != nil {
+		rd.Snapshot = *r.raftLog.unstable.snapshot
 	}
 	return rd
 }
