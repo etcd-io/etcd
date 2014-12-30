@@ -29,7 +29,6 @@ import (
 	"strings"
 	"sync"
 
-	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/pkg/flags"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft/raftpb"
@@ -404,9 +403,4 @@ func ValidateClusterAndAssignIDs(local *Cluster, existing *Cluster) error {
 		local.members[m.ID] = m
 	}
 	return nil
-}
-
-func isKeyNotFound(err error) bool {
-	e, ok := err.(*etcdErr.Error)
-	return ok && e.ErrorCode == etcdErr.EcodeKeyNotFound
 }
