@@ -379,11 +379,13 @@ func buildValues(value string, ttl uint64) url.Values {
 	return v
 }
 
-// convert key string to http path exclude version
+// convert key string to http path exclude version, including URL escaping
 // for example: key[foo] -> path[keys/foo]
+// key[/%z] -> path[keys/%25z]
 // key[/] -> path[keys/]
 func keyToPath(key string) string {
-	p := path.Join("keys", key)
+	// URL-escape our key, except for slashes
+	p := strings.Replace(url.QueryEscape(path.Join("keys", key)), "%2F", "/", -1)
 
 	// corner case: if key is "/" or "//" ect
 	// path join will clear the tailing "/"
