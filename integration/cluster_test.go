@@ -487,7 +487,9 @@ func (m *member) Launch() error {
 	for _, ln := range m.ClientListeners {
 		hs := &httptest.Server{
 			Listener: ln,
-			Config:   &http.Server{Handler: etcdhttp.NewClientHandler(m.s)},
+			Config: &http.Server{
+				Handler: etcdhttp.NewClientHandler(m.s),
+			},
 		}
 		hs.Start()
 		m.hss = append(m.hss, hs)
