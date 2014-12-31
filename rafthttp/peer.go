@@ -45,27 +45,6 @@ const (
 	ConnWriteTimeout = 5 * time.Second
 )
 
-func NewPeer(tr http.RoundTripper, u string, id types.ID, cid types.ID, r Raft, fs *stats.FollowerStats, shouldstop chan struct{}) *peer {
-	p := &peer{
-		id:          id,
-		active:      true,
-		tr:          tr,
-		u:           u,
-		cid:         cid,
-		r:           r,
-		fs:          fs,
-		shouldstop:  shouldstop,
-		batcher:     NewBatcher(100, appRespBatchMs*time.Millisecond),
-		propBatcher: NewProposalBatcher(100, propBatchMs*time.Millisecond),
-		q:           make(chan *raftpb.Message, senderBufSize),
-	}
-	p.wg.Add(connPerSender)
-	for i := 0; i < connPerSender; i++ {
-		go p.handle()
-	}
-	return p
-}
-
 type peer struct {
 	id  types.ID
 	cid types.ID
@@ -75,13 +54,11 @@ type peer struct {
 	fs         *stats.FollowerStats
 	shouldstop chan struct{}
 
-	strmCln     *streamClient
 	batcher     *Batcher
 	propBatcher *ProposalBatcher
 	q           chan *raftpb.Message
 
-	strmSrvMu sync.Mutex
-	strmSrv   *streamServer
+	stream *stream
 
 	// wait for the handling routines
 	wg sync.WaitGroup
@@ -95,22 +72,26 @@ type peer struct {
 	paused  bool
 }
 
-// StartStreaming enables streaming in the peer using the given writer,
-// which provides a fast and efficient way to send appendEntry messages.
-func (p *peer) StartStreaming(w WriteFlusher, to types.ID, term uint64) (<-chan struct{}, error) {
-	p.strmSrvMu.Lock()
-	defer p.strmSrvMu.Unlock()
-	if p.strmSrv != nil {
-		// ignore lower-term streaming request
-		if term < p.strmSrv.term {
-			return nil, fmt.Errorf("out of data streaming request: term %d, request term %d", term, p.strmSrv.term)
-		}
-		// stop the existing one
-		p.strmSrv.stop()
-		p.strmSrv = nil
+func NewPeer(tr http.RoundTripper, u string, id types.ID, cid types.ID, r Raft, fs *stats.FollowerStats, shouldstop chan struct{}) *peer {
+	p := &peer{
+		id:          id,
+		active:      true,
+		tr:          tr,
+		u:           u,
+		cid:         cid,
+		r:           r,
+		fs:          fs,
+		stream:      &stream{},
+		shouldstop:  shouldstop,
+		batcher:     NewBatcher(100, appRespBatchMs*time.Millisecond),
+		propBatcher: NewProposalBatcher(100, propBatchMs*time.Millisecond),
+		q:           make(chan *raftpb.Message, senderBufSize),
 	}
-	p.strmSrv = startStreamServer(w, to, term, p.fs)
-	return p.strmSrv.stopNotify(), nil
+	p.wg.Add(connPerSender)
+	for i := 0; i < connPerSender; i++ {
+		go p.handle()
+	}
+	return p
 }
 
 func (p *peer) Update(u string) {
@@ -130,9 +111,13 @@ func (p *peer) Send(m raftpb.Message) error {
 		return nil
 	}
 
-	p.maybeStopStream(m.Term)
-	if shouldInitStream(m) && !p.hasStreamClient() {
-		p.initStream(types.ID(m.From), types.ID(m.To), m.Term)
+	// move all the stream related stuff into stream
+	p.stream.invalidate(m.Term)
+	if shouldInitStream(m) && !p.stream.isOpen() {
+		p.mu.Lock()
+		u := p.u
+		p.mu.Unlock()
+		p.stream.open(p.id, types.ID(m.To), p.cid, m.Term, p.tr, u, p.r)
 		p.batcher.Reset(time.Now())
 	}
 
@@ -140,12 +125,12 @@ func (p *peer) Send(m raftpb.Message) error {
 	switch {
 	case isProposal(m):
 		p.propBatcher.Batch(m)
-	case canBatch(m) && p.hasStreamClient():
+	case canBatch(m) && p.stream.isOpen():
 		if !p.batcher.ShouldBatch(time.Now()) {
 			err = p.send(m)
 		}
 	case canUseStream(m):
-		if ok := p.tryStream(m); !ok {
+		if ok := p.stream.write(m); !ok {
 			err = p.send(m)
 		}
 	default:
@@ -183,74 +168,7 @@ func (p *peer) send(m raftpb.Message) error {
 func (p *peer) Stop() {
 	close(p.q)
 	p.wg.Wait()
-	p.strmSrvMu.Lock()
-	if p.strmSrv != nil {
-		p.strmSrv.stop()
-		p.strmSrv = nil
-	}
-	p.strmSrvMu.Unlock()
-	if p.strmCln != nil {
-		p.strmCln.stop()
-	}
-}
-
-// Pause pauses the peer. The peer will simply drops all incoming
-// messages without retruning an error.
-func (p *peer) Pause() {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	p.paused = true
-}
-
-// Resume resumes a paused peer.
-func (p *peer) Resume() {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	p.paused = false
-}
-
-func (p *peer) maybeStopStream(term uint64) {
-	if p.strmCln != nil && term > p.strmCln.term {
-		p.strmCln.stop()
-		p.strmCln = nil
-	}
-	p.strmSrvMu.Lock()
-	defer p.strmSrvMu.Unlock()
-	if p.strmSrv != nil && term > p.strmSrv.term {
-		p.strmSrv.stop()
-		p.strmSrv = nil
-	}
-}
-
-func (p *peer) hasStreamClient() bool {
-	return p.strmCln != nil && !p.strmCln.isStopped()
-}
-
-func (p *peer) initStream(from, to types.ID, term uint64) {
-	strmCln := newStreamClient(from, to, term, p.r)
-	p.mu.Lock()
-	u := p.u
-	p.mu.Unlock()
-	if err := strmCln.start(p.tr, u, p.cid); err != nil {
-		log.Printf("rafthttp: start stream client error: %v", err)
-		return
-	}
-	p.strmCln = strmCln
-}
-
-func (p *peer) tryStream(m raftpb.Message) bool {
-	p.strmSrvMu.Lock()
-	defer p.strmSrvMu.Unlock()
-	if p.strmSrv == nil || m.Term != p.strmSrv.term {
-		return false
-	}
-	if err := p.strmSrv.send(m.Entries); err != nil {
-		log.Printf("rafthttp: send stream message error: %v", err)
-		p.strmSrv.stop()
-		p.strmSrv = nil
-		return false
-	}
-	return true
+	p.stream.stop()
 }
 
 func (p *peer) handle() {
@@ -325,6 +243,27 @@ func (p *peer) post(data []byte) error {
 	default:
 		return fmt.Errorf("unexpected http status %s while posting to %q", http.StatusText(resp.StatusCode), req.URL.String())
 	}
+}
+
+// attachStream attaches a streamSever to the peer.
+func (p *peer) attachStream(server *streamServer) error {
+	server.fs = p.fs
+	return p.stream.attach(server)
+}
+
+// Pause pauses the peer. The peer will simply drops all incoming
+// messages without retruning an error.
+func (p *peer) Pause() {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.paused = true
+}
+
+// Resume resumes a paused peer.
+func (p *peer) Resume() {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.paused = false
 }
 
 func isProposal(m raftpb.Message) bool { return m.Type == raftpb.MsgProp }

@@ -267,15 +267,8 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		snapCount:   cfg.SnapCount,
 		reqIDGen:    idutil.NewGenerator(uint8(id), time.Now()),
 	}
-	tr := &rafthttp.Transport{
-		RoundTripper: cfg.Transport,
-		ID:           id,
-		ClusterID:    cfg.Cluster.ID(),
-		Raft:         srv,
-		ServerStats:  sstats,
-		LeaderStats:  lstats,
-	}
-	tr.Start()
+
+	tr := rafthttp.NewTransporter(cfg.Transport, id, cfg.Cluster.ID(), srv, sstats, lstats)
 	// add all the remote members into sendhub
 	for _, m := range cfg.Cluster.Members() {
 		if m.Name != cfg.Name {
@@ -832,13 +825,13 @@ func (s *EtcdServer) snapshot(snapi uint64, confState *raftpb.ConfState) {
 
 // for testing
 func (s *EtcdServer) PauseSending() {
-	hub := s.transport.(*rafthttp.Transport)
-	hub.Pause()
+	p := s.transport.(rafthttp.Pausable)
+	p.Pause()
 }
 
 func (s *EtcdServer) ResumeSending() {
-	hub := s.transport.(*rafthttp.Transport)
-	hub.Resume()
+	p := s.transport.(rafthttp.Pausable)
+	p.Resume()
 }
 
 func startNode(cfg *ServerConfig, ids []types.ID) (id types.ID, n raft.Node, s *raft.MemoryStorage, w *wal.WAL) {

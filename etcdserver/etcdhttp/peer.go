@@ -38,6 +38,7 @@ func NewPeerHandler(server *etcdserver.EtcdServer) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", http.NotFound)
 	mux.Handle(rafthttp.RaftPrefix, server.RaftHandler())
+	mux.Handle(rafthttp.RaftPrefix+"/", server.RaftHandler())
 	mux.Handle(peerMembersPrefix, mh)
 	return mux
 }
