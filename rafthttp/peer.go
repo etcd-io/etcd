@@ -117,7 +117,7 @@ func (p *peer) Send(m raftpb.Message) error {
 		p.mu.Lock()
 		u := p.u
 		p.mu.Unlock()
-		p.stream.open(p.id, types.ID(m.To), p.cid, m.Term, p.tr, u, p.r)
+		p.stream.open(types.ID(m.From), p.id, p.cid, m.Term, p.tr, u, p.r)
 		p.batcher.Reset(time.Now())
 	}
 
