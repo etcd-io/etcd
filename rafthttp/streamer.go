@@ -49,12 +49,12 @@ type stream struct {
 	client *streamClient
 }
 
-func (s *stream) open(id, to, cid types.ID, term uint64, tr http.RoundTripper, u string, r Raft) error {
+func (s *stream) open(from, to, cid types.ID, term uint64, tr http.RoundTripper, u string, r Raft) error {
 	if s.client != nil {
 		panic("open: stream is open")
 	}
 
-	c, err := newStreamClient(id, to, cid, term, tr, u, r)
+	c, err := newStreamClient(from, to, cid, term, tr, u, r)
 	if err != nil {
 		log.Printf("stream: error opening stream: %v", err)
 		return err
