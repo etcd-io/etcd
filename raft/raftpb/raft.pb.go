@@ -200,6 +200,7 @@ type Message struct {
 	Commit           uint64      `protobuf:"varint,8,req,name=commit" json:"commit"`
 	Snapshot         Snapshot    `protobuf:"bytes,9,req,name=snapshot" json:"snapshot"`
 	Reject           bool        `protobuf:"varint,10,req,name=reject" json:"reject"`
+	RejectHint       uint64      `protobuf:"varint,11,req,name=rejectHint" json:"rejectHint"`
 	XXX_unrecognized []byte      `json:"-"`
 }
 
@@ -725,6 +726,21 @@ func (m *Message) Unmarshal(data []byte) error {
 				}
 			}
 			m.Reject = bool(v != 0)
+		case 11:
+			if wireType != 0 {
+				return code_google_com_p_gogoprotobuf_proto.ErrWrongType
+			}
+			for shift := uint(0); ; shift += 7 {
+				if index >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[index]
+				index++
+				m.RejectHint |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
 		default:
 			var sizeOfWire int
 			for {
@@ -1059,6 +1075,7 @@ func (m *Message) Size() (n int) {
 	l = m.Snapshot.Size()
 	n += 1 + l + sovRaft(uint64(l))
 	n += 2
+	n += 1 + sovRaft(uint64(m.RejectHint))
 	if m.XXX_unrecognized != nil {
 		n += len(m.XXX_unrecognized)
 	}
@@ -1278,6 +1295,9 @@ func (m *Message) MarshalTo(data []byte) (n int, err error) {
 		data[i] = 0
 	}
 	i++
+	data[i] = 0x58
+	i++
+	i = encodeVarintRaft(data, i, uint64(m.RejectHint))
 	if m.XXX_unrecognized != nil {
 		i += copy(data[i:], m.XXX_unrecognized)
 	}

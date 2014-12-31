@@ -80,50 +80,59 @@ func TestProgressUpdate(t *testing.T) {
 
 func TestProgressMaybeDecr(t *testing.T) {
 	tests := []struct {
-		m  uint64
-		n  uint64
-		to uint64
+		m        uint64
+		n        uint64
+		rejected uint64
+		last     uint64
 
 		w  bool
 		wn uint64
 	}{
 		{
 			// match != 0 is always false
-			1, 0, 0, false, 0,
+			1, 0, 0, 0, false, 0,
 		},
 		{
 			// match != 0 and to is greater than match
 			// directly decrease to match+1
-			5, 10, 5, false, 10,
+			5, 10, 5, 5, false, 10,
 		},
 		{
 			// match != 0 and to is greater than match
 			// directly decrease to match+1
-			5, 10, 4, false, 10,
+			5, 10, 4, 4, false, 10,
 		},
 		{
 			// match != 0 and to is not greater than match
-			5, 10, 9, true, 6,
+			5, 10, 9, 9, true, 6,
 		},
 		{
-			// next-1 != to is always false
-			0, 0, 0, false, 0,
+			// next-1 != rejected is always false
+			0, 0, 0, 0, false, 0,
 		},
 		{
-			// next-1 != to is always false
-			0, 10, 5, false, 10,
-		},
-		{
-			// next>1 = decremented by 1
-			0, 10, 9, true, 9,
+			// next-1 != rejected is always false
+			0, 10, 5, 5, false, 10,
 		},
 		{
 			// next>1 = decremented by 1
-			0, 2, 1, true, 1,
+			0, 10, 9, 9, true, 9,
+		},
+		{
+			// next>1 = decremented by 1
+			0, 2, 1, 1, true, 1,
 		},
 		{
 			// next<=1 = reset to 1
-			0, 1, 0, true, 1,
+			0, 1, 0, 0, true, 1,
+		},
+		{
+			// decrease to min(rejected, last+1)
+			0, 10, 9, 2, true, 3,
+		},
+		{
+			// rejected < 1, reset to 1
+			0, 10, 9, 0, true, 1,
 		},
 	}
 	for i, tt := range tests {
@@ -131,7 +140,7 @@ func TestProgressMaybeDecr(t *testing.T) {
 			match: tt.m,
 			next:  tt.n,
 		}
-		if g := p.maybeDecrTo(tt.to); g != tt.w {
+		if g := p.maybeDecrTo(tt.rejected, tt.last); g != tt.w {
 			t.Errorf("#%d: maybeDecrTo= %t, want %t", i, g, tt.w)
 		}
 		if gm := p.match; gm != tt.m {
@@ -173,7 +182,7 @@ func TestProgressWaitReset(t *testing.T) {
 	p := &progress{
 		wait: 1,
 	}
-	p.maybeDecrTo(1)
+	p.maybeDecrTo(1, 1)
 	if p.wait != 0 {
 		t.Errorf("wait= %d, want 0", p.wait)
 	}
@@ -1001,7 +1010,7 @@ func TestLeaderAppResp(t *testing.T) {
 		sm.becomeCandidate()
 		sm.becomeLeader()
 		sm.readMessages()
-		sm.Step(pb.Message{From: 2, Type: pb.MsgAppResp, Index: tt.index, Term: sm.Term, Reject: tt.reject})
+		sm.Step(pb.Message{From: 2, Type: pb.MsgAppResp, Index: tt.index, Term: sm.Term, Reject: tt.reject, RejectHint: tt.index})
 
 		p := sm.prs[2]
 		if p.match != tt.wmatch {

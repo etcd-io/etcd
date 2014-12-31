@@ -44,16 +44,17 @@ enum MessageType {
 }
 
 message Message {
-	required MessageType type     = 1  [(gogoproto.nullable) = false];
-	required uint64      to       = 2  [(gogoproto.nullable) = false];
-	required uint64      from     = 3  [(gogoproto.nullable) = false];
-	required uint64      term     = 4  [(gogoproto.nullable) = false];
-	required uint64      logTerm  = 5  [(gogoproto.nullable) = false];
-	required uint64      index    = 6  [(gogoproto.nullable) = false];
-	repeated Entry       entries  = 7  [(gogoproto.nullable) = false];
-	required uint64      commit   = 8  [(gogoproto.nullable) = false];
-	required Snapshot    snapshot = 9  [(gogoproto.nullable) = false];
-	required bool        reject   = 10 [(gogoproto.nullable) = false];
+	required MessageType type        = 1  [(gogoproto.nullable) = false];
+	required uint64      to          = 2  [(gogoproto.nullable) = false];
+	required uint64      from        = 3  [(gogoproto.nullable) = false];
+	required uint64      term        = 4  [(gogoproto.nullable) = false];
+	required uint64      logTerm     = 5  [(gogoproto.nullable) = false];
+	required uint64      index       = 6  [(gogoproto.nullable) = false];
+	repeated Entry       entries     = 7  [(gogoproto.nullable) = false];
+	required uint64      commit      = 8  [(gogoproto.nullable) = false];
+	required Snapshot    snapshot    = 9  [(gogoproto.nullable) = false];
+	required bool        reject      = 10 [(gogoproto.nullable) = false];
+	required uint64      rejectHint  = 11 [(gogoproto.nullable) = false];
 }
 
 message HardState {
