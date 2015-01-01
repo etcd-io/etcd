@@ -246,9 +246,9 @@ func (p *peer) post(data []byte) error {
 }
 
 // attachStream attaches a streamSever to the peer.
-func (p *peer) attachStream(server *streamServer) error {
-	server.fs = p.fs
-	return p.stream.attach(server)
+func (p *peer) attachStream(sw *streamWriter) error {
+	sw.fs = p.fs
+	return p.stream.attach(sw)
 }
 
 // Pause pauses the peer. The peer will simply drops all incoming

@@ -159,14 +159,14 @@ func (h *streamHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.(http.Flusher).Flush()
 
-	stream := newStreamServer(w.(WriteFlusher), from, term)
-	err = p.attachStream(stream)
+	sw := newStreamWriter(w.(WriteFlusher), from, term)
+	err = p.attachStream(sw)
 	if err != nil {
 		log.Printf("rafthttp: %v", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	<-stream.stopNotify()
+	<-sw.stopNotify()
 }
 
 type writerToResponse interface {

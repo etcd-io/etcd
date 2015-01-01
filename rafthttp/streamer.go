@@ -44,7 +44,7 @@ type stream struct {
 	// the server might be attached asynchronously with the owner of the stream
 	// use a mutex to protect it
 	sync.Mutex
-	server *streamServer
+	w *streamWriter
 
 	client *streamClient
 }
@@ -63,38 +63,38 @@ func (s *stream) open(from, to, cid types.ID, term uint64, tr http.RoundTripper,
 	return nil
 }
 
-func (s *stream) attach(server *streamServer) error {
+func (s *stream) attach(sw *streamWriter) error {
 	s.Lock()
 	defer s.Unlock()
-	if s.server != nil {
+	if s.w != nil {
 		// ignore lower-term streaming request
-		if server.term < s.server.term {
-			return fmt.Errorf("cannot attach out of data stream server [%d / %d]", server.term, s.server.term)
+		if sw.term < s.w.term {
+			return fmt.Errorf("cannot attach out of data stream server [%d / %d]", sw.term, s.w.term)
 		}
-		s.server.stop()
+		s.w.stop()
 	}
-	s.server = server
+	s.w = sw
 	return nil
 }
 
 func (s *stream) write(m raftpb.Message) bool {
 	s.Lock()
 	defer s.Unlock()
-	if s.server == nil {
+	if s.w == nil {
 		return false
 	}
-	if m.Term != s.server.term {
-		if m.Term > s.server.term {
+	if m.Term != s.w.term {
+		if m.Term > s.w.term {
 			panic("expected server to be invalidated when there is a higher term message")
 		}
 		return false
 	}
 	// todo: early unlock?
-	if err := s.server.send(m.Entries); err != nil {
+	if err := s.w.send(m.Entries); err != nil {
 		log.Printf("stream: error sending message: %v", err)
 		log.Printf("stream: stopping the stream server...")
-		s.server.stop()
-		s.server = nil
+		s.w.stop()
+		s.w = nil
 		return false
 	}
 	return true
@@ -106,10 +106,10 @@ func (s *stream) invalidate(term uint64) {
 	s.Lock()
 	defer s.Unlock()
 
-	if s.server != nil {
-		if s.server.term < term {
-			s.server.stop()
-			s.server = nil
+	if s.w != nil {
+		if s.w.term < term {
+			s.w.stop()
+			s.w = nil
 		}
 	}
 	if s.client != nil {
@@ -136,9 +136,8 @@ type WriteFlusher interface {
 	http.Flusher
 }
 
-// TODO: rename it to streamWriter.
 // TODO: replace fs with stream stats
-type streamServer struct {
+type streamWriter struct {
 	to   types.ID
 	term uint64
 	fs   *stats.FollowerStats
@@ -148,8 +147,8 @@ type streamServer struct {
 
 // newStreamServer starts and returns a new started stream server.
 // The caller should call stop when finished, to shut it down.
-func newStreamServer(w WriteFlusher, to types.ID, term uint64) *streamServer {
-	s := &streamServer{
+func newStreamWriter(w WriteFlusher, to types.ID, term uint64) *streamWriter {
+	s := &streamWriter{
 		to:   to,
 		term: term,
 		q:    make(chan []raftpb.Entry, streamBufSize),
@@ -159,7 +158,7 @@ func newStreamServer(w WriteFlusher, to types.ID, term uint64) *streamServer {
 	return s
 }
 
-func (s *streamServer) send(ents []raftpb.Entry) error {
+func (s *streamWriter) send(ents []raftpb.Entry) error {
 	select {
 	case <-s.done:
 		return fmt.Errorf("stopped")
@@ -174,7 +173,7 @@ func (s *streamServer) send(ents []raftpb.Entry) error {
 	}
 }
 
-func (s *streamServer) handle(w WriteFlusher) {
+func (s *streamWriter) handle(w WriteFlusher) {
 	defer func() {
 		close(s.done)
 		log.Printf("rafthttp: server streaming to %s at term %d has been stopped", s.to, s.term)
@@ -192,12 +191,12 @@ func (s *streamServer) handle(w WriteFlusher) {
 	}
 }
 
-func (s *streamServer) stop() {
+func (s *streamWriter) stop() {
 	close(s.q)
 	<-s.done
 }
 
-func (s *streamServer) stopNotify() <-chan struct{} { return s.done }
+func (s *streamWriter) stopNotify() <-chan struct{} { return s.done }
 
 // TODO: rename it to streamReader.
 // TODO: move the raft interface out of the reader.
