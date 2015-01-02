@@ -871,11 +871,12 @@ func TestAddMember(t *testing.T) {
 		SoftState: &raft.SoftState{RaftState: raft.StateLeader},
 	}
 	cl := newTestCluster(nil)
-	cl.SetStore(store.New())
+	st := store.New()
+	cl.SetStore(st)
 	s := &EtcdServer{
 		node:        n,
 		raftStorage: raft.NewMemoryStorage(),
-		store:       &storeRecorder{},
+		store:       st,
 		transport:   &nopTransporter{},
 		storage:     &storageRecorder{},
 		Cluster:     cl,
@@ -906,12 +907,13 @@ func TestRemoveMember(t *testing.T) {
 		SoftState: &raft.SoftState{RaftState: raft.StateLeader},
 	}
 	cl := newTestCluster(nil)
+	st := store.New()
 	cl.SetStore(store.New())
 	cl.AddMember(&Member{ID: 1234})
 	s := &EtcdServer{
 		node:        n,
 		raftStorage: raft.NewMemoryStorage(),
-		store:       &storeRecorder{},
+		store:       st,
 		transport:   &nopTransporter{},
 		storage:     &storageRecorder{},
 		Cluster:     cl,
@@ -941,12 +943,13 @@ func TestUpdateMember(t *testing.T) {
 		SoftState: &raft.SoftState{RaftState: raft.StateLeader},
 	}
 	cl := newTestCluster(nil)
-	cl.SetStore(store.New())
+	st := store.New()
+	cl.SetStore(st)
 	cl.AddMember(&Member{ID: 1234})
 	s := &EtcdServer{
 		node:        n,
 		raftStorage: raft.NewMemoryStorage(),
-		store:       &storeRecorder{},
+		store:       st,
 		transport:   &nopTransporter{},
 		storage:     &storageRecorder{},
 		Cluster:     cl,
