@@ -23,6 +23,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/coreos/etcd/pkg/testutil"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/store"
@@ -535,10 +536,10 @@ func TestClusterAddMember(t *testing.T) {
 	c.SetStore(st)
 	c.AddMember(newTestMember(1, nil, "node1", nil))
 
-	wactions := []action{
+	wactions := []testutil.Action{
 		{
-			name: "Create",
-			params: []interface{}{
+			Name: "Create",
+			Params: []interface{}{
 				path.Join(storeMembersPrefix, "1", "raftAttributes"),
 				false,
 				`{"peerURLs":null}`,
@@ -623,9 +624,9 @@ func TestClusterRemoveMember(t *testing.T) {
 	c.SetStore(st)
 	c.RemoveMember(1)
 
-	wactions := []action{
-		{name: "Delete", params: []interface{}{memberStoreKey(1), true, true}},
-		{name: "Create", params: []interface{}{removedMemberStoreKey(1), false, "", false, store.Permanent}},
+	wactions := []testutil.Action{
+		{Name: "Delete", Params: []interface{}{memberStoreKey(1), true, true}},
+		{Name: "Create", Params: []interface{}{removedMemberStoreKey(1), false, "", false, store.Permanent}},
 	}
 	if !reflect.DeepEqual(st.Action(), wactions) {
 		t.Errorf("actions = %v, want %v", st.Action(), wactions)
