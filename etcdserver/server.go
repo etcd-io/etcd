@@ -387,6 +387,12 @@ func (s *EtcdServer) run() {
 				}
 				s.raftStorage.ApplySnapshot(rd.Snapshot)
 				snapi = rd.Snapshot.Metadata.Index
+				// save dummy entry, which is used to do safety checking when reload
+				dummyEnt := raftpb.Entry{
+					Term:  rd.Snapshot.Metadata.Term,
+					Index: rd.Snapshot.Metadata.Index,
+				}
+				rd.Entries = append([]raftpb.Entry{dummyEnt}, rd.Entries...)
 				log.Printf("etcdserver: saved incoming snapshot at index %d", snapi)
 			}
 
@@ -848,6 +854,9 @@ func startNode(cfg *ServerConfig, ids []types.ID) (id types.ID, n raft.Node, s *
 	}
 	if w, err = wal.Create(cfg.WALDir(), metadata); err != nil {
 		log.Fatalf("etcdserver: create wal error: %v", err)
+	}
+	if err = w.Save(raftpb.HardState{}, []raftpb.Entry{{}}); err != nil {
+		log.Fatalf("etcdserver: write initial entry error: %v", err)
 	}
 	peers := make([]raft.Peer, len(ids))
 	for i, id := range ids {
