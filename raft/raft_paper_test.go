@@ -605,15 +605,16 @@ func TestFollowerCommitEntry(t *testing.T) {
 func TestFollowerCheckMsgApp(t *testing.T) {
 	ents := []pb.Entry{{Term: 1, Index: 1}, {Term: 2, Index: 2}}
 	tests := []struct {
-		term    uint64
-		index   uint64
-		wreject bool
+		term        uint64
+		index       uint64
+		wreject     bool
+		wrejectHint uint64
 	}{
-		{ents[0].Term, ents[0].Index, false},
-		{ents[0].Term, ents[0].Index + 1, true},
-		{ents[0].Term + 1, ents[0].Index, true},
-		{ents[1].Term, ents[1].Index, false},
-		{3, 3, true},
+		{ents[0].Term, ents[0].Index, false, 0},
+		{ents[0].Term, ents[0].Index + 1, true, 2},
+		{ents[0].Term + 1, ents[0].Index, true, 2},
+		{ents[1].Term, ents[1].Index, false, 0},
+		{3, 3, true, 2},
 	}
 	for i, tt := range tests {
 		storage := NewMemoryStorage()
@@ -626,7 +627,7 @@ func TestFollowerCheckMsgApp(t *testing.T) {
 
 		msgs := r.readMessages()
 		wmsgs := []pb.Message{
-			{From: 1, To: 2, Type: pb.MsgAppResp, Term: 2, Index: tt.index, Reject: tt.wreject},
+			{From: 1, To: 2, Type: pb.MsgAppResp, Term: 2, Index: tt.index, Reject: tt.wreject, RejectHint: tt.wrejectHint},
 		}
 		if !reflect.DeepEqual(msgs, wmsgs) {
 			t.Errorf("#%d: msgs = %+v, want %+v", i, msgs, wmsgs)
