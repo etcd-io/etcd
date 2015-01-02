@@ -19,6 +19,7 @@ package etcdhttp
 import (
 	"errors"
 	"log"
+	"math"
 	"net/http"
 	"strings"
 	"time"
@@ -29,10 +30,13 @@ import (
 
 const (
 	// time to wait for response from EtcdServer requests
-	defaultServerTimeout = 5 * time.Minute
+	// 5s for disk and network delay + 10*heartbeat for commit and possible
+	// leader switch
+	// TODO: use heartbeat set in etcdserver
+	defaultServerTimeout = 5*time.Second + 10*(100*time.Millisecond)
 
 	// time to wait for a Watch request
-	defaultWatchTimeout = 5 * time.Minute
+	defaultWatchTimeout = time.Duration(math.MaxInt64)
 )
 
 var errClosed = errors.New("etcdhttp: client closed connection")
