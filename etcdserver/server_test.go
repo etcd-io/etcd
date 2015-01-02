@@ -53,7 +53,7 @@ func TestDoLocalAction(t *testing.T) {
 	}{
 		{
 			pb.Request{Method: "GET", ID: 1, Wait: true},
-			Response{Watcher: &stubWatcher{}}, nil, []action{action{name: "Watch"}},
+			Response{Watcher: &nopWatcher{}}, nil, []action{action{name: "Watch"}},
 		},
 		{
 			pb.Request{Method: "GET", ID: 1},
@@ -116,11 +116,17 @@ func TestDoBadLocalAction(t *testing.T) {
 		},
 		{
 			pb.Request{Method: "GET", ID: 1},
-			[]action{action{name: "Get"}},
+			[]action{action{
+				name:   "Get",
+				params: []interface{}{"", false, false},
+			}},
 		},
 		{
 			pb.Request{Method: "HEAD", ID: 1},
-			[]action{action{name: "Get"}},
+			[]action{action{
+				name:   "Get",
+				params: []interface{}{"", false, false},
+			}},
 		},
 	}
 	for i, tt := range tests {
@@ -1131,9 +1137,10 @@ func (r *recorder) Action() []action {
 	return cpy
 }
 
-type storeRecorder struct {
-	recorder
-}
+// storeRecorder records all the methods it receives.
+// storeRecorder DOES NOT work as a actual store.
+// It always returns invaild empty response and no error.
+type storeRecorder struct{ recorder }
 
 func (s *storeRecorder) Version() int  { return 0 }
 func (s *storeRecorder) Index() uint64 { return 0 }
@@ -1188,7 +1195,7 @@ func (s *storeRecorder) CompareAndDelete(path, prevVal string, prevIdx uint64) (
 }
 func (s *storeRecorder) Watch(_ string, _, _ bool, _ uint64) (store.Watcher, error) {
 	s.record(action{name: "Watch"})
-	return &stubWatcher{}, nil
+	return &nopWatcher{}, nil
 }
 func (s *storeRecorder) Save() ([]byte, error) {
 	s.record(action{name: "Save"})
@@ -1206,24 +1213,25 @@ func (s *storeRecorder) DeleteExpiredKeys(cutoff time.Time) {
 	})
 }
 
-type stubWatcher struct{}
+type nopWatcher struct{}
 
-func (w *stubWatcher) EventChan() chan *store.Event { return nil }
-func (w *stubWatcher) StartIndex() uint64           { return 0 }
-func (w *stubWatcher) Remove()                      {}
+func (w *nopWatcher) EventChan() chan *store.Event { return nil }
+func (w *nopWatcher) StartIndex() uint64           { return 0 }
+func (w *nopWatcher) Remove()                      {}
 
-// errStoreRecorder returns an store error on Get, Watch request
+// errStoreRecorder is a storeRecorder, but returns the given error on
+// Get, Watch methods.
 type errStoreRecorder struct {
 	storeRecorder
 	err error
 }
 
-func (s *errStoreRecorder) Get(_ string, _, _ bool) (*store.Event, error) {
-	s.record(action{name: "Get"})
+func (s *errStoreRecorder) Get(path string, recursive, sorted bool) (*store.Event, error) {
+	s.storeRecorder.Get(path, recursive, sorted)
 	return nil, s.err
 }
-func (s *errStoreRecorder) Watch(_ string, _, _ bool, _ uint64) (store.Watcher, error) {
-	s.record(action{name: "Watch"})
+func (s *errStoreRecorder) Watch(path string, recursive, sorted bool, index uint64) (store.Watcher, error) {
+	s.storeRecorder.Watch(path, recursive, sorted, index)
 	return nil, s.err
 }
 
