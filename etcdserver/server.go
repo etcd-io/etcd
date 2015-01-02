@@ -695,6 +695,8 @@ func getExpirationTime(r *pb.Request) time.Time {
 // The given entries should not be empty.
 func (s *EtcdServer) apply(es []raftpb.Entry, confState *raftpb.ConfState) (uint64, bool) {
 	var applied uint64
+	var shouldstop bool
+	var err error
 	for i := range es {
 		e := es[i]
 		switch e.Type {
@@ -705,11 +707,8 @@ func (s *EtcdServer) apply(es []raftpb.Entry, confState *raftpb.ConfState) (uint
 		case raftpb.EntryConfChange:
 			var cc raftpb.ConfChange
 			pbutil.MustUnmarshal(&cc, e.Data)
-			shouldstop, err := s.applyConfChange(cc, confState)
+			shouldstop, err = s.applyConfChange(cc, confState)
 			s.w.Trigger(cc.ID, err)
-			if shouldstop {
-				return applied, true
-			}
 		default:
 			log.Panicf("entry type should be either EntryNormal or EntryConfChange")
 		}
@@ -717,7 +716,7 @@ func (s *EtcdServer) apply(es []raftpb.Entry, confState *raftpb.ConfState) (uint
 		atomic.StoreUint64(&s.raftTerm, e.Term)
 		applied = e.Index
 	}
-	return applied, false
+	return applied, shouldstop
 }
 
 // applyRequest interprets r as a call to store.X and returns a Response interpreted
