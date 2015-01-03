@@ -1369,9 +1369,9 @@ func TestBadServeKeys(t *testing.T) {
 	}
 	for i, tt := range testBadCases {
 		h := &keysHandler{
-			timeout:     0, // context times out immediately
-			server:      tt.server,
-			clusterInfo: &fakeCluster{id: 1},
+			serveTimeout: 0, // context times out immediately
+			server:       tt.server,
+			clusterInfo:  &fakeCluster{id: 1},
 		}
 		rw := httptest.NewRecorder()
 		h.ServeHTTP(rw, tt.req)
@@ -1427,10 +1427,10 @@ func TestServeKeysGood(t *testing.T) {
 	}
 	for i, tt := range tests {
 		h := &keysHandler{
-			timeout:     time.Hour,
-			server:      server,
-			timer:       &dummyRaftTimer{},
-			clusterInfo: &fakeCluster{id: 1},
+			serveTimeout: time.Hour,
+			server:       server,
+			timer:        &dummyRaftTimer{},
+			clusterInfo:  &fakeCluster{id: 1},
 		}
 		rw := httptest.NewRecorder()
 		h.ServeHTTP(rw, tt.req)
@@ -1451,10 +1451,10 @@ func TestServeKeysEvent(t *testing.T) {
 		},
 	}
 	h := &keysHandler{
-		timeout:     time.Hour,
-		server:      server,
-		clusterInfo: &fakeCluster{id: 1},
-		timer:       &dummyRaftTimer{},
+		serveTimeout: time.Hour,
+		server:       server,
+		clusterInfo:  &fakeCluster{id: 1},
+		timer:        &dummyRaftTimer{},
 	}
 	rw := httptest.NewRecorder()
 
@@ -1495,10 +1495,11 @@ func TestServeKeysWatch(t *testing.T) {
 		},
 	}
 	h := &keysHandler{
-		timeout:     time.Hour,
-		server:      server,
-		clusterInfo: &fakeCluster{id: 1},
-		timer:       &dummyRaftTimer{},
+		serveTimeout: time.Hour,
+		watchTimeout: time.Hour,
+		server:       server,
+		clusterInfo:  &fakeCluster{id: 1},
+		timer:        &dummyRaftTimer{},
 	}
 	go func() {
 		ec <- &store.Event{

@@ -52,10 +52,11 @@ const (
 // NewClientHandler generates a muxed http.Handler with the given parameters to serve etcd client requests.
 func NewClientHandler(server *etcdserver.EtcdServer) http.Handler {
 	kh := &keysHandler{
-		server:      server,
-		clusterInfo: server.Cluster,
-		timer:       server,
-		timeout:     defaultServerTimeout,
+		server:       server,
+		clusterInfo:  server.Cluster,
+		timer:        server,
+		serveTimeout: defaultServeTimeout,
+		watchTimeout: defaultWatchTimeout,
 	}
 
 	sh := &statsHandler{
@@ -63,9 +64,10 @@ func NewClientHandler(server *etcdserver.EtcdServer) http.Handler {
 	}
 
 	mh := &membersHandler{
-		server:      server,
-		clusterInfo: server.Cluster,
-		clock:       clockwork.NewRealClock(),
+		server:       server,
+		clusterInfo:  server.Cluster,
+		clock:        clockwork.NewRealClock(),
+		serveTimeout: defaultServeTimeout,
 	}
 
 	dmh := &deprecatedMachinesHandler{
@@ -87,10 +89,11 @@ func NewClientHandler(server *etcdserver.EtcdServer) http.Handler {
 }
 
 type keysHandler struct {
-	server      etcdserver.Server
-	clusterInfo etcdserver.ClusterInfo
-	timer       etcdserver.RaftTimer
-	timeout     time.Duration
+	server       etcdserver.Server
+	clusterInfo  etcdserver.ClusterInfo
+	timer        etcdserver.RaftTimer
+	serveTimeout time.Duration
+	watchTimeout time.Duration
 }
 
 func (h *keysHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -99,7 +102,7 @@ func (h *keysHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("X-Etcd-Cluster-ID", h.clusterInfo.ID().String())
 
-	ctx, cancel := context.WithTimeout(context.Background(), h.timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), h.serveTimeout)
 	defer cancel()
 
 	rr, err := parseKeyRequest(r, clockwork.NewRealClock())
@@ -122,7 +125,7 @@ func (h *keysHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			log.Printf("error writing event: %v", err)
 		}
 	case resp.Watcher != nil:
-		ctx, cancel := context.WithTimeout(context.Background(), defaultWatchTimeout)
+		ctx, cancel := context.WithTimeout(context.Background(), h.watchTimeout)
 		defer cancel()
 		handleKeyWatch(ctx, w, resp.Watcher, rr.Stream, h.timer)
 	default:
@@ -143,9 +146,10 @@ func (h *deprecatedMachinesHandler) ServeHTTP(w http.ResponseWriter, r *http.Req
 }
 
 type membersHandler struct {
-	server      etcdserver.Server
-	clusterInfo etcdserver.ClusterInfo
-	clock       clockwork.Clock
+	server       etcdserver.Server
+	clusterInfo  etcdserver.ClusterInfo
+	clock        clockwork.Clock
+	serveTimeout time.Duration
 }
 
 func (h *membersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -154,7 +158,7 @@ func (h *membersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("X-Etcd-Cluster-ID", h.clusterInfo.ID().String())
 
-	ctx, cancel := context.WithTimeout(context.Background(), defaultServerTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), h.serveTimeout)
 	defer cancel()
 
 	switch r.Method {
