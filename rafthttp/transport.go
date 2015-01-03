@@ -25,7 +25,6 @@ type Transporter interface {
 	RemovePeer(id types.ID)
 	UpdatePeer(id types.ID, urls []string)
 	Stop()
-	ShouldStopNotify() <-chan struct{}
 }
 
 type transport struct {
@@ -36,12 +35,12 @@ type transport struct {
 	serverStats  *stats.ServerStats
 	leaderStats  *stats.LeaderStats
 
-	mu         sync.RWMutex       // protect the peer map
-	peers      map[types.ID]*peer // remote peers
-	shouldstop chan struct{}
+	mu     sync.RWMutex       // protect the peer map
+	peers  map[types.ID]*peer // remote peers
+	errorc chan error
 }
 
-func NewTransporter(rt http.RoundTripper, id, cid types.ID, r Raft, ss *stats.ServerStats, ls *stats.LeaderStats) Transporter {
+func NewTransporter(rt http.RoundTripper, id, cid types.ID, r Raft, errorc chan error, ss *stats.ServerStats, ls *stats.LeaderStats) Transporter {
 	return &transport{
 		roundTripper: rt,
 		id:           id,
@@ -50,7 +49,7 @@ func NewTransporter(rt http.RoundTripper, id, cid types.ID, r Raft, ss *stats.Se
 		serverStats:  ss,
 		leaderStats:  ls,
 		peers:        make(map[types.ID]*peer),
-		shouldstop:   make(chan struct{}, 1),
+		errorc:       errorc,
 	}
 }
 
@@ -99,10 +98,6 @@ func (t *transport) Stop() {
 	}
 }
 
-func (t *transport) ShouldStopNotify() <-chan struct{} {
-	return t.shouldstop
-}
-
 func (t *transport) AddPeer(id types.ID, urls []string) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
@@ -117,8 +112,7 @@ func (t *transport) AddPeer(id types.ID, urls []string) {
 	}
 	u.Path = path.Join(u.Path, RaftPrefix)
 	fs := t.leaderStats.Follower(id.String())
-	t.peers[id] = NewPeer(t.roundTripper, u.String(), id, t.clusterID,
-		t.raft, fs, t.shouldstop)
+	t.peers[id] = NewPeer(t.roundTripper, u.String(), id, t.clusterID, t.raft, fs, t.errorc)
 }
 
 func (t *transport) RemovePeer(id types.ID) {

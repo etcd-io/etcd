@@ -49,10 +49,10 @@ type peer struct {
 	id  types.ID
 	cid types.ID
 
-	tr         http.RoundTripper
-	r          Raft
-	fs         *stats.FollowerStats
-	shouldstop chan struct{}
+	tr     http.RoundTripper
+	r      Raft
+	fs     *stats.FollowerStats
+	errorc chan error
 
 	batcher     *Batcher
 	propBatcher *ProposalBatcher
@@ -72,7 +72,7 @@ type peer struct {
 	paused  bool
 }
 
-func NewPeer(tr http.RoundTripper, u string, id types.ID, cid types.ID, r Raft, fs *stats.FollowerStats, shouldstop chan struct{}) *peer {
+func NewPeer(tr http.RoundTripper, u string, id types.ID, cid types.ID, r Raft, fs *stats.FollowerStats, errorc chan error) *peer {
 	p := &peer{
 		id:          id,
 		active:      true,
@@ -82,7 +82,7 @@ func NewPeer(tr http.RoundTripper, u string, id types.ID, cid types.ID, r Raft, 
 		r:           r,
 		fs:          fs,
 		stream:      &stream{},
-		shouldstop:  shouldstop,
+		errorc:      errorc,
 		batcher:     NewBatcher(100, appRespBatchMs*time.Millisecond),
 		propBatcher: NewProposalBatcher(100, propBatchMs*time.Millisecond),
 		q:           make(chan *raftpb.Message, senderBufSize),
@@ -224,19 +224,18 @@ func (p *peer) post(data []byte) error {
 
 	switch resp.StatusCode {
 	case http.StatusPreconditionFailed:
+		err := fmt.Errorf("conflicting cluster ID with the target cluster (%s != %s)", resp.Header.Get("X-Etcd-Cluster-ID"), p.cid)
 		select {
-		case p.shouldstop <- struct{}{}:
+		case p.errorc <- err:
 		default:
 		}
-		log.Printf("rafthttp: conflicting cluster ID with the target cluster (%s != %s)", resp.Header.Get("X-Etcd-Cluster-ID"), p.cid)
 		return nil
 	case http.StatusForbidden:
+		err := fmt.Errorf("the member has been permanently removed from the cluster")
 		select {
-		case p.shouldstop <- struct{}{}:
+		case p.errorc <- err:
 		default:
 		}
-		log.Println("rafthttp: this member has been permanently removed from the cluster")
-		log.Println("rafthttp: the data-dir used by this member must be removed so that this host can be re-added with a new member ID")
 		return nil
 	case http.StatusNoContent:
 		return nil
