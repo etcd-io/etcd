@@ -50,7 +50,12 @@ func (st *storage) SaveSnap(snap raftpb.Snapshot) error {
 	return nil
 }
 
-func readWAL(waldir string, index uint64) (w *wal.WAL, id, cid types.ID, st raftpb.HardState, ents []raftpb.Entry) {
+// readWAL returns info stored in the given waldir that starts at the given from.
+func readWAL(waldir string, from *raftpb.SnapshotMetadata) (w *wal.WAL, id, cid types.ID, st raftpb.HardState, ents []raftpb.Entry) {
+	var index, term uint64
+	if from != nil {
+		index, term = from.Index, from.Term
+	}
 	var err error
 	if w, err = wal.Open(waldir, index); err != nil {
 		log.Fatalf("etcdserver: open wal error: %v", err)
@@ -58,6 +63,9 @@ func readWAL(waldir string, index uint64) (w *wal.WAL, id, cid types.ID, st raft
 	var wmetadata []byte
 	if wmetadata, st, ents, err = w.ReadAll(); err != nil {
 		log.Fatalf("etcdserver: read wal error: %v", err)
+	}
+	if ents[0].Term != term {
+		log.Fatalf("etcdserver: entries(term: %d) do not follow snapshot(term: %d)", ents[0].Term, term)
 	}
 	var metadata pb.Metadata
 	pbutil.MustUnmarshal(&metadata, wmetadata)

@@ -220,7 +220,6 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		if cfg.ShouldDiscover() {
 			log.Printf("etcdserver: discovery token ignored since a cluster has already been initialized. Valid log found at %q", cfg.WALDir())
 		}
-		var index uint64
 		snapshot, err := ss.Load()
 		if err != nil && err != snap.ErrNoSnapshot {
 			return nil, err
@@ -230,7 +229,6 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 				log.Panicf("etcdserver: recovered store from snapshot error: %v", err)
 			}
 			log.Printf("etcdserver: recovered store from snapshot at index %d", snapshot.Metadata.Index)
-			index = snapshot.Metadata.Index
 		}
 		cfg.Cluster = NewClusterFromStore(cfg.Cluster.token, st)
 		cfg.Print()
@@ -238,9 +236,9 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 			log.Printf("etcdserver: loaded cluster information from store: %s", cfg.Cluster)
 		}
 		if !cfg.ForceNewCluster {
-			id, n, s, w = restartNode(cfg, index+1, snapshot)
+			id, n, s, w = restartNode(cfg, snapshot)
 		} else {
-			id, n, s, w = restartAsStandaloneNode(cfg, index+1, snapshot)
+			id, n, s, w = restartAsStandaloneNode(cfg, snapshot)
 		}
 	default:
 		return nil, fmt.Errorf("unsupported bootstrap config")
@@ -388,6 +386,12 @@ func (s *EtcdServer) run() {
 				}
 				s.raftStorage.ApplySnapshot(rd.Snapshot)
 				snapi = rd.Snapshot.Metadata.Index
+				// save dummy entry, which is used to do safety checking when reload
+				dummyEnt := raftpb.Entry{
+					Term:  rd.Snapshot.Metadata.Term,
+					Index: rd.Snapshot.Metadata.Index,
+				}
+				rd.Entries = append([]raftpb.Entry{dummyEnt}, rd.Entries...)
 				log.Printf("etcdserver: saved incoming snapshot at index %d", snapi)
 			}
 
@@ -857,6 +861,9 @@ func startNode(cfg *ServerConfig, ids []types.ID) (id types.ID, n raft.Node, s *
 	if w, err = wal.Create(cfg.WALDir(), metadata); err != nil {
 		log.Fatalf("etcdserver: create wal error: %v", err)
 	}
+	if err = w.Save(raftpb.HardState{}, []raftpb.Entry{{}}); err != nil {
+		log.Fatalf("etcdserver: write initial entry error: %v", err)
+	}
 	peers := make([]raft.Peer, len(ids))
 	for i, id := range ids {
 		ctx, err := json.Marshal((*cfg.Cluster).Member(id))
@@ -872,8 +879,12 @@ func startNode(cfg *ServerConfig, ids []types.ID) (id types.ID, n raft.Node, s *
 	return
 }
 
-func restartNode(cfg *ServerConfig, index uint64, snapshot *raftpb.Snapshot) (types.ID, raft.Node, *raft.MemoryStorage, *wal.WAL) {
-	w, id, cid, st, ents := readWAL(cfg.WALDir(), index)
+func restartNode(cfg *ServerConfig, snapshot *raftpb.Snapshot) (types.ID, raft.Node, *raft.MemoryStorage, *wal.WAL) {
+	var from *raftpb.SnapshotMetadata
+	if snapshot != nil {
+		from = &snapshot.Metadata
+	}
+	w, id, cid, st, ents := readWAL(cfg.WALDir(), from)
 	cfg.Cluster.SetID(cid)
 
 	log.Printf("etcdserver: restart member %s in cluster %s at commit index %d", id, cfg.Cluster.ID(), st.Commit)

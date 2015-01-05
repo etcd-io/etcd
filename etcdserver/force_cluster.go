@@ -28,8 +28,12 @@ import (
 	"github.com/coreos/etcd/wal"
 )
 
-func restartAsStandaloneNode(cfg *ServerConfig, index uint64, snapshot *raftpb.Snapshot) (types.ID, raft.Node, *raft.MemoryStorage, *wal.WAL) {
-	w, id, cid, st, ents := readWAL(cfg.WALDir(), index)
+func restartAsStandaloneNode(cfg *ServerConfig, snapshot *raftpb.Snapshot) (types.ID, raft.Node, *raft.MemoryStorage, *wal.WAL) {
+	var from *raftpb.SnapshotMetadata
+	if snapshot != nil {
+		from = &snapshot.Metadata
+	}
+	w, id, cid, st, ents := readWAL(cfg.WALDir(), from)
 	cfg.Cluster.SetID(cid)
 
 	// discard the previously uncommitted entries
