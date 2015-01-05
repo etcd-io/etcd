@@ -276,7 +276,8 @@ The first terminal should get the notification and return with the same response
 
 However, the watch command can do more than this.
 Using the index, we can watch for commands that have happened in the past.
-This is useful for ensuring you don't miss events between watch commands.
+This is useful for ensuring you don't miss events between watch commands. 
+Typically, we watch again from the (modifiedIndex + 1) of the node we got.
 
 Let's try to watch for the set command of index 7 again:
 
@@ -285,6 +286,48 @@ curl 'http://127.0.0.1:2379/v2/keys/foo?wait=true&waitIndex=7'
 ```
 
 The watch command returns immediately with the same response as previously.
+
+**Note**: etcd only keeps the responses of the most recent 1000 events. 
+It is recommended to send the response to another thread to process immediately
+instead of blocking the watch while processing the result. 
+
+If we miss all the 1000 events, we need to recover the current state of the 
+watching key space. First, We do a get and then start to watch from the (etcdIndex + 1).
+
+For example, we set `/foo="bar"` for 2000 times and tries to wait from index 7.
+
+```sh
+curl 'http://127.0.0.1:2379/v2/keys/foo?wait=true&waitIndex=7'
+```
+
+We get the index is outdated response, since we miss the 1000 events kept in etcd.
+```
+{"errorCode":401,"message":"The event in requested index is outdated and cleared","cause":"the requested history has been cleared [1003/7]","index":2002}
+```
+
+To start watch, frist we need to fetch the current state of key `/foo` and the etcdIndex.
+```sh
+curl 'http://127.0.0.1:2379/v2/keys/foo' -vv
+```
+``` 
+< HTTP/1.1 200 OK
+< Content-Type: application/json
+< X-Etcd-Cluster-Id: 7e27652122e8b2ae
+< X-Etcd-Index: 2002
+< X-Raft-Index: 2615
+< X-Raft-Term: 2
+< Date: Mon, 05 Jan 2015 18:54:43 GMT
+< Transfer-Encoding: chunked
+< 
+{"action":"get","node":{"key":"/foo","value":"","modifiedIndex":2002,"createdIndex":2002}}
+```
+
+The `X-Etcd-Index` is important. It is the index when we got the value of `/foo`.
+So we can watch again from the (`X-Etcd-Index` + 1) without missing an event after the last get.
+
+```sh
+curl 'http://127.0.0.1:2379/v2/keys/foo?wait=true&waitIndex=2003'
+```
 
 
 ### Atomically Creating In-Order Keys
