@@ -18,6 +18,7 @@ package rafthttp
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -46,6 +47,8 @@ const (
 )
 
 type peer struct {
+	sync.Mutex
+
 	id  types.ID
 	cid types.ID
 
@@ -63,13 +66,14 @@ type peer struct {
 	// wait for the handling routines
 	wg sync.WaitGroup
 
-	mu sync.RWMutex
-	u  string // the url this sender post to
-	// if the last send was successful, thi sender is active.
+	// the url this sender post to
+	u string
+	// if the last send was successful, the sender is active.
 	// Or it is inactive
 	active  bool
 	errored error
 	paused  bool
+	stopped bool
 }
 
 func NewPeer(tr http.RoundTripper, u string, id types.ID, cid types.ID, r Raft, fs *stats.FollowerStats, errorc chan error) *peer {
@@ -95,8 +99,12 @@ func NewPeer(tr http.RoundTripper, u string, id types.ID, cid types.ID, r Raft, 
 }
 
 func (p *peer) Update(u string) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
+	p.Lock()
+	defer p.Unlock()
+	if p.stopped {
+		// TODO: not panic here?
+		panic("peer: update a stopped peer")
+	}
 	p.u = u
 }
 
@@ -104,19 +112,20 @@ func (p *peer) Update(u string) {
 // It may be fail to send data if it returns nil error.
 // TODO (xiangli): reasonable retry logic
 func (p *peer) Send(m raftpb.Message) error {
-	p.mu.RLock()
-	pause := p.paused
-	p.mu.RUnlock()
-	if pause {
+	p.Lock()
+	defer p.Unlock()
+	if p.stopped {
+		return errors.New("peer: stopped")
+	}
+	if p.paused {
 		return nil
 	}
 
 	// move all the stream related stuff into stream
 	p.stream.invalidate(m.Term)
 	if shouldInitStream(m) && !p.stream.isOpen() {
-		p.mu.Lock()
 		u := p.u
-		p.mu.Unlock()
+		// todo: steam open should not block.
 		p.stream.open(types.ID(m.From), p.id, p.cid, m.Term, p.tr, u, p.r)
 		p.batcher.Reset(time.Now())
 	}
@@ -168,7 +177,11 @@ func (p *peer) send(m raftpb.Message) error {
 func (p *peer) Stop() {
 	close(p.q)
 	p.wg.Wait()
+
+	p.Lock()
+	defer p.Unlock()
 	p.stream.stop()
+	p.stopped = true
 }
 
 func (p *peer) handle() {
@@ -178,7 +191,7 @@ func (p *peer) handle() {
 		err := p.post(pbutil.MustMarshal(m))
 		end := time.Now()
 
-		p.mu.Lock()
+		p.Lock()
 		if err != nil {
 			if p.errored == nil || p.errored.Error() != err.Error() {
 				log.Printf("sender: error posting to %s: %v", p.id, err)
@@ -201,16 +214,16 @@ func (p *peer) handle() {
 				p.fs.Succ(end.Sub(start))
 			}
 		}
-		p.mu.Unlock()
+		p.Unlock()
 	}
 }
 
 // post POSTs a data payload to a url. Returns nil if the POST succeeds,
 // error on any failure.
 func (p *peer) post(data []byte) error {
-	p.mu.RLock()
+	p.Lock()
 	req, err := http.NewRequest("POST", p.u, bytes.NewBuffer(data))
-	p.mu.RUnlock()
+	p.Unlock()
 	if err != nil {
 		return err
 	}
@@ -245,23 +258,29 @@ func (p *peer) post(data []byte) error {
 }
 
 // attachStream attaches a streamSever to the peer.
-func (p *peer) attachStream(server *streamServer) error {
-	server.fs = p.fs
-	return p.stream.attach(server)
+func (p *peer) attachStream(sw *streamWriter) error {
+	p.Lock()
+	defer p.Unlock()
+	if p.stopped {
+		return errors.New("peer: stopped")
+	}
+
+	sw.fs = p.fs
+	return p.stream.attach(sw)
 }
 
 // Pause pauses the peer. The peer will simply drops all incoming
 // messages without retruning an error.
 func (p *peer) Pause() {
-	p.mu.Lock()
-	defer p.mu.Unlock()
+	p.Lock()
+	defer p.Unlock()
 	p.paused = true
 }
 
 // Resume resumes a paused peer.
 func (p *peer) Resume() {
-	p.mu.Lock()
-	defer p.mu.Unlock()
+	p.Lock()
+	defer p.Unlock()
 	p.paused = false
 }
 
