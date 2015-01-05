@@ -155,3 +155,27 @@ Once you have verified that etcd has started successfully, shut it down and move
 #### Restoring the cluster
 
 Now that the node is running successfully, you can add more nodes to the cluster and restore resiliency. See the [runtime configuration](runtime-configuration.md) guide for more details.
+
+### Client Request Timeout
+
+etcd sets different timeouts for various types of client requests. The timeout value is not tunable now, which will be improved soon(https://github.com/coreos/etcd/issues/2038).
+
+#### Get requests
+
+No timeout is set for get requests, because etcd can always return the result in a short time.
+
+#### Watch requests
+
+Unlimited timeout is set for watch requests. Clients can keep long-polling watch requests as long as they want.
+
+#### Delete, Put, Post, QuorumGet requests
+
+The default timeout is large enough to allow all key modifications in a healthy cluster, even when it is electing a new leader.
+
+If the request times out, it indicates three possibilities:
+
+1. the request is lost when switching leader, which occurs occasionally
+2. the request is sent to a network-isolated member
+3. the cluster is unhealthy, or even out-of-work
+
+If case 2 or 3 happens, administrators should resolve it as soon as possible.
