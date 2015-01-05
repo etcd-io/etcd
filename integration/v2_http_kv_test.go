@@ -883,7 +883,10 @@ func TestV2WatchKeyInDir(t *testing.T) {
 
 	select {
 	case <-c:
-	case <-time.After(time.Millisecond * 1500):
+	// 1s ttl + 0.5s sync delay + 1.5s disk and network delay
+	// We set that long disk and network delay because travis may be slow
+	// when do system calls.
+	case <-time.After(3 * time.Second):
 		t.Fatal("timed out waiting for watch result")
 	}
 
