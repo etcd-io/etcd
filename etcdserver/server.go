@@ -121,8 +121,9 @@ type RaftTimer interface {
 type EtcdServer struct {
 	cfg        *ServerConfig
 	w          wait.Wait
-	done       chan struct{}
 	stop       chan struct{}
+	done       chan struct{}
+	errorc     chan error
 	id         types.ID
 	attributes Attributes
 
@@ -253,6 +254,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 
 	srv := &EtcdServer{
 		cfg:         cfg,
+		errorc:      make(chan error, 1),
 		store:       st,
 		node:        n,
 		raftStorage: s,
@@ -268,7 +270,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		reqIDGen:    idutil.NewGenerator(uint8(id), time.Now()),
 	}
 
-	tr := rafthttp.NewTransporter(cfg.Transport, id, cfg.Cluster.ID(), srv, sstats, lstats)
+	tr := rafthttp.NewTransporter(cfg.Transport, id, cfg.Cluster.ID(), srv, srv.errorc, sstats, lstats)
 	// add all the remote members into sendhub
 	for _, m := range cfg.Cluster.Members() {
 		if m.Name != cfg.Name {
@@ -341,7 +343,6 @@ func (s *EtcdServer) Process(ctx context.Context, m raftpb.Message) error {
 func (s *EtcdServer) run() {
 	var syncC <-chan time.Time
 	var shouldstop bool
-	shouldstopC := s.transport.ShouldStopNotify()
 
 	// load initial state from raft storage
 	snap, err := s.raftStorage.Snapshot()
@@ -420,9 +421,7 @@ func (s *EtcdServer) run() {
 				}
 				if len(ents) > 0 {
 					if appliedi, shouldstop = s.apply(ents, &confState); shouldstop {
-						m1 := fmt.Sprintf("etcdserver: removed local member %s from cluster %s", s.ID(), s.Cluster.ID())
-						m2 := fmt.Sprint("etcdserver: the data-dir used by this member must be removed so that this host can be re-added with a new member ID")
-						go s.stopWithDelay(10*100*time.Millisecond, m1, m2)
+						go s.stopWithDelay(10*100*time.Millisecond, fmt.Errorf("the member has been permanently removed from the cluster"))
 					}
 				}
 			}
@@ -436,7 +435,9 @@ func (s *EtcdServer) run() {
 			}
 		case <-syncC:
 			s.sync(defaultSyncTimeout)
-		case <-shouldstopC:
+		case err := <-s.errorc:
+			log.Printf("etcdserver: %s", err)
+			log.Printf("etcdserver: the data-dir used by this member must be removed.")
 			return
 		case <-s.stop:
 			return
@@ -447,24 +448,20 @@ func (s *EtcdServer) run() {
 // Stop stops the server gracefully, and shuts down the running goroutine.
 // Stop should be called after a Start(s), otherwise it will block forever.
 func (s *EtcdServer) Stop() {
-	s.stopWithMessages()
-}
-
-func (s *EtcdServer) stopWithMessages(msgs ...string) {
 	select {
 	case s.stop <- struct{}{}:
-		for _, msg := range msgs {
-			log.Println(msg)
-		}
 	case <-s.done:
 		return
 	}
 	<-s.done
 }
 
-func (s *EtcdServer) stopWithDelay(d time.Duration, msgs ...string) {
+func (s *EtcdServer) stopWithDelay(d time.Duration, err error) {
 	time.Sleep(d)
-	s.stopWithMessages(msgs...)
+	select {
+	case s.errorc <- err:
+	default:
+	}
 }
 
 // StopNotify returns a channel that receives a empty struct

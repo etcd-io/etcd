@@ -64,27 +64,27 @@ func TestTransportRemove(t *testing.T) {
 	}
 }
 
-func TestTransportShouldStop(t *testing.T) {
+func TestTransportErrorc(t *testing.T) {
+	errorc := make(chan error, 1)
 	tr := &transport{
 		roundTripper: newRespRoundTripper(http.StatusForbidden, nil),
 		leaderStats:  stats.NewLeaderStats(""),
 		peers:        make(map[types.ID]*peer),
-		shouldstop:   make(chan struct{}, 1),
+		errorc:       errorc,
 	}
 	tr.AddPeer(1, []string{"http://a"})
 
-	shouldstop := tr.ShouldStopNotify()
 	select {
-	case <-shouldstop:
-		t.Fatalf("received unexpected shouldstop notification")
+	case <-errorc:
+		t.Fatalf("received unexpected from errorc")
 	case <-time.After(10 * time.Millisecond):
 	}
 	tr.peers[1].Send(raftpb.Message{})
 
 	testutil.ForceGosched()
 	select {
-	case <-shouldstop:
+	case <-errorc:
 	default:
-		t.Fatalf("cannot receive stop notification")
+		t.Fatalf("cannot receive error from errorc")
 	}
 }

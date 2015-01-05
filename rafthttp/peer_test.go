@@ -144,8 +144,7 @@ func TestSenderPostBad(t *testing.T) {
 		{"http://10.0.0.1", http.StatusCreated, nil},
 	}
 	for i, tt := range tests {
-		shouldstop := make(chan struct{})
-		p := NewPeer(newRespRoundTripper(tt.code, tt.err), tt.u, types.ID(1), types.ID(1), &nopProcessor{}, nil, shouldstop)
+		p := NewPeer(newRespRoundTripper(tt.code, tt.err), tt.u, types.ID(1), types.ID(1), &nopProcessor{}, nil, make(chan error))
 		err := p.post([]byte("some data"))
 		p.Stop()
 
@@ -155,7 +154,7 @@ func TestSenderPostBad(t *testing.T) {
 	}
 }
 
-func TestSenderPostShouldStop(t *testing.T) {
+func TestPeerPostErrorc(t *testing.T) {
 	tests := []struct {
 		u    string
 		code int
@@ -165,14 +164,14 @@ func TestSenderPostShouldStop(t *testing.T) {
 		{"http://10.0.0.1", http.StatusPreconditionFailed, nil},
 	}
 	for i, tt := range tests {
-		shouldstop := make(chan struct{}, 1)
-		p := NewPeer(newRespRoundTripper(tt.code, tt.err), tt.u, types.ID(1), types.ID(1), &nopProcessor{}, nil, shouldstop)
+		errorc := make(chan error, 1)
+		p := NewPeer(newRespRoundTripper(tt.code, tt.err), tt.u, types.ID(1), types.ID(1), &nopProcessor{}, nil, errorc)
 		p.post([]byte("some data"))
 		p.Stop()
 		select {
-		case <-shouldstop:
+		case <-errorc:
 		default:
-			t.Fatalf("#%d: cannot receive shouldstop notification", i)
+			t.Fatalf("#%d: cannot receive from errorc", i)
 		}
 	}
 }
