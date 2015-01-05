@@ -50,11 +50,11 @@ func (st *storage) SaveSnap(snap raftpb.Snapshot) error {
 	return nil
 }
 
-// readWAL returns info stored in the given waldir that follows the given snapshot.
-func readWAL(waldir string, snapshot *raftpb.Snapshot) (w *wal.WAL, id, cid types.ID, st raftpb.HardState, ents []raftpb.Entry) {
+// readWAL returns info stored in the given waldir that starts at the given from.
+func readWAL(waldir string, from *raftpb.SnapshotMetadata) (w *wal.WAL, id, cid types.ID, st raftpb.HardState, ents []raftpb.Entry) {
 	var index, term uint64
-	if snapshot != nil {
-		index, term = snapshot.Metadata.Index, snapshot.Metadata.Term
+	if from != nil {
+		index, term = from.Index, from.Term
 	}
 	var err error
 	if w, err = wal.Open(waldir, index); err != nil {

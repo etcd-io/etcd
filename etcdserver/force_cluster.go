@@ -29,7 +29,11 @@ import (
 )
 
 func restartAsStandaloneNode(cfg *ServerConfig, snapshot *raftpb.Snapshot) (types.ID, raft.Node, *raft.MemoryStorage, *wal.WAL) {
-	w, id, cid, st, ents := readWAL(cfg.WALDir(), snapshot)
+	var from *raftpb.SnapshotMetadata
+	if snapshot != nil {
+		from = &snapshot.Metadata
+	}
+	w, id, cid, st, ents := readWAL(cfg.WALDir(), from)
 	cfg.Cluster.SetID(cid)
 
 	// discard the previously uncommitted entries

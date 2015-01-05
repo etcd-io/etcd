@@ -872,7 +872,11 @@ func startNode(cfg *ServerConfig, ids []types.ID) (id types.ID, n raft.Node, s *
 }
 
 func restartNode(cfg *ServerConfig, snapshot *raftpb.Snapshot) (types.ID, raft.Node, *raft.MemoryStorage, *wal.WAL) {
-	w, id, cid, st, ents := readWAL(cfg.WALDir(), snapshot)
+	var from *raftpb.SnapshotMetadata
+	if snapshot != nil {
+		from = &snapshot.Metadata
+	}
+	w, id, cid, st, ents := readWAL(cfg.WALDir(), from)
 	cfg.Cluster.SetID(cid)
 
 	log.Printf("etcdserver: restart member %s in cluster %s at commit index %d", id, cfg.Cluster.ID(), st.Commit)
