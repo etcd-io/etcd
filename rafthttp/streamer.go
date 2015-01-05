@@ -49,7 +49,7 @@ type stream struct {
 }
 
 func (s *stream) open(from, to, cid types.ID, term uint64, tr http.RoundTripper, u string, r Raft) error {
-	c, err := newStreamReader(from, to, cid, term, tr, u, r)
+	rd, err := newStreamReader(from, to, cid, term, tr, u, r)
 	if err != nil {
 		log.Printf("stream: error opening stream: %v", err)
 		return err
@@ -58,12 +58,13 @@ func (s *stream) open(from, to, cid types.ID, term uint64, tr http.RoundTripper,
 	s.Lock()
 	defer s.Unlock()
 	if s.stopped {
+		rd.stop()
 		return errors.New("stream: stopped")
 	}
 	if s.r != nil {
 		panic("open: stream is open")
 	}
-	s.r = c
+	s.r = rd
 	return nil
 }
 
