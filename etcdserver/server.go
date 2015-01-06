@@ -93,6 +93,8 @@ type Server interface {
 	Stop()
 	// ID returns the ID of the Server.
 	ID() types.ID
+	// Leader returns the ID of the leader Server.
+	Leader() types.ID
 	// Do takes a request and attempts to fulfill it, returning a Response.
 	Do(ctx context.Context, r pb.Request) (Response, error)
 	// Process takes a raft message and applies it to the server's raft state
@@ -578,6 +580,8 @@ func (s *EtcdServer) Term() uint64 { return atomic.LoadUint64(&s.raftTerm) }
 // TODO: add Raft server interface to expose raft related info:
 // Index, Term, Lead, Committed, Applied, LastIndex, etc.
 func (s *EtcdServer) Lead() uint64 { return atomic.LoadUint64(&s.raftLead) }
+
+func (s *EtcdServer) Leader() types.ID { return types.ID(s.Lead()) }
 
 // configure sends a configuration change through consensus and
 // then waits for it to be applied to the server. It

@@ -159,14 +159,26 @@ func (h *membersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	switch r.Method {
 	case "GET":
-		if trimPrefix(r.URL.Path, membersPrefix) != "" {
+		switch trimPrefix(r.URL.Path, membersPrefix) {
+		case "":
+			mc := newMemberCollection(h.clusterInfo.Members())
+			w.Header().Set("Content-Type", "application/json")
+			if err := json.NewEncoder(w).Encode(mc); err != nil {
+				log.Printf("etcdhttp: %v", err)
+			}
+		case "leader":
+			id := h.server.Leader()
+			if id == 0 {
+				writeError(w, httptypes.NewHTTPError(http.StatusServiceUnavailable, "During election"))
+				return
+			}
+			m := newMember(h.clusterInfo.Member(id))
+			w.Header().Set("Content-Type", "application/json")
+			if err := json.NewEncoder(w).Encode(m); err != nil {
+				log.Printf("etcdhttp: %v", err)
+			}
+		default:
 			writeError(w, httptypes.NewHTTPError(http.StatusNotFound, "Not found"))
-			return
-		}
-		mc := newMemberCollection(h.clusterInfo.Members())
-		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(mc); err != nil {
-			log.Printf("etcdhttp: %v", err)
 		}
 	case "POST":
 		req := httptypes.MemberCreateRequest{}
