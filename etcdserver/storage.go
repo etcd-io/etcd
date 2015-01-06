@@ -10,6 +10,7 @@ import (
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/snap"
 	"github.com/coreos/etcd/wal"
+	"github.com/coreos/etcd/wal/walpb"
 )
 
 type Storage interface {
@@ -43,6 +44,14 @@ func (st *storage) SaveSnap(snap raftpb.Snapshot) error {
 	if err != nil {
 		return err
 	}
+	walsnap := walpb.Snapshot{
+		Index: snap.Metadata.Index,
+		Term:  snap.Metadata.Term,
+	}
+	err = st.WAL.SaveSnapshot(walsnap)
+	if err != nil {
+		return err
+	}
 	err = st.WAL.ReleaseLockTo(snap.Metadata.Index)
 	if err != nil {
 		return err
@@ -50,9 +59,9 @@ func (st *storage) SaveSnap(snap raftpb.Snapshot) error {
 	return nil
 }
 
-func readWAL(waldir string, index uint64) (w *wal.WAL, id, cid types.ID, st raftpb.HardState, ents []raftpb.Entry) {
+func readWAL(waldir string, snap walpb.Snapshot) (w *wal.WAL, id, cid types.ID, st raftpb.HardState, ents []raftpb.Entry) {
 	var err error
-	if w, err = wal.Open(waldir, index); err != nil {
+	if w, err = wal.Open(waldir, snap); err != nil {
 		log.Fatalf("etcdserver: open wal error: %v", err)
 	}
 	var wmetadata []byte
