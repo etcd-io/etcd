@@ -65,9 +65,10 @@ type errServer struct {
 	err error
 }
 
-func (fs *errServer) Start()       {}
-func (fs *errServer) Stop()        {}
-func (fs *errServer) ID() types.ID { return types.ID(1) }
+func (fs *errServer) Start()           {}
+func (fs *errServer) Stop()            {}
+func (fs *errServer) ID() types.ID     { return types.ID(1) }
+func (fs *errServer) Leader() types.ID { return types.ID(1) }
 func (fs *errServer) Do(ctx context.Context, r etcdserverpb.Request) (etcdserver.Response, error) {
 	return etcdserver.Response{}, fs.err
 }
