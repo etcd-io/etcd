@@ -870,8 +870,12 @@ func startNode(cfg *ServerConfig, ids []types.ID) (id types.ID, n raft.Node, s *
 	}
 	id = member.ID
 	log.Printf("etcdserver: start member %s in cluster %s", id, cfg.Cluster.ID())
+	election := cfg.ElectionTimeoutTicks
+	if election == 0 {
+		election = 10
+	}
 	s = raft.NewMemoryStorage()
-	n = raft.StartNode(uint64(id), peers, 10, 1, s)
+	n = raft.StartNode(uint64(id), peers, election, 1, s)
 	return
 }
 
@@ -884,13 +888,17 @@ func restartNode(cfg *ServerConfig, snapshot *raftpb.Snapshot) (types.ID, raft.N
 	cfg.Cluster.SetID(cid)
 
 	log.Printf("etcdserver: restart member %s in cluster %s at commit index %d", id, cfg.Cluster.ID(), st.Commit)
+	election := cfg.ElectionTimeoutTicks
+	if election == 0 {
+		election = 10
+	}
 	s := raft.NewMemoryStorage()
 	if snapshot != nil {
 		s.ApplySnapshot(*snapshot)
 	}
 	s.SetHardState(st)
 	s.Append(ents)
-	n := raft.RestartNode(uint64(id), 10, 1, s)
+	n := raft.RestartNode(uint64(id), election, 1, s)
 	return id, n, s, w
 }
 
