@@ -24,6 +24,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/coreos/etcd/pkg/pbutil"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/wal/walpb"
 )
@@ -56,6 +57,13 @@ func TestNew(t *testing.T) {
 	}
 	err = e.encode(&walpb.Record{Type: metadataType, Data: []byte("somedata")})
 	if err != nil {
+		t.Fatalf("err = %v, want nil", err)
+	}
+	r := &walpb.Record{
+		Type: snapshotType,
+		Data: pbutil.MustMarshal(&walpb.Snapshot{}),
+	}
+	if err = e.encode(r); err != nil {
 		t.Fatalf("err = %v, want nil", err)
 	}
 	e.flush()

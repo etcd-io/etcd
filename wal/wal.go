@@ -113,7 +113,7 @@ func Create(dirpath string, metadata []byte) (*WAL, error) {
 	if err := w.encoder.encode(&walpb.Record{Type: metadataType, Data: metadata}); err != nil {
 		return nil, err
 	}
-	if err = w.sync(); err != nil {
+	if err = w.SaveSnapshot(walpb.Snapshot{}); err != nil {
 		return nil, err
 	}
 	return w, nil

@@ -859,9 +859,6 @@ func startNode(cfg *ServerConfig, ids []types.ID) (id types.ID, n raft.Node, s *
 	if w, err = wal.Create(cfg.WALDir(), metadata); err != nil {
 		log.Fatalf("etcdserver: create wal error: %v", err)
 	}
-	if err = w.SaveSnapshot(walpb.Snapshot{}); err != nil {
-		log.Fatalf("etcdserver: save empty snapshot error: %v", err)
-	}
 	peers := make([]raft.Peer, len(ids))
 	for i, id := range ids {
 		ctx, err := json.Marshal((*cfg.Cluster).Member(id))
