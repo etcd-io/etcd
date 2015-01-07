@@ -43,6 +43,9 @@ type ServerConfig struct {
 	NewCluster      bool
 	ForceNewCluster bool
 	Transport       *http.Transport
+
+	// Only for testing purpose
+	ElectionTimeoutTicks int
 }
 
 // VerifyBootstrapConfig sanity-checks the initial config and returns an error

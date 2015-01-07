@@ -27,6 +27,7 @@ import (
 	"os"
 	"reflect"
 	"sort"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -49,9 +50,18 @@ const (
 	requestTimeout = 2 * time.Second
 )
 
+var (
+	electionTicks = 10
+)
+
 func init() {
 	// open microsecond-level time log for integration test debugging
 	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Lshortfile)
+	if t := os.Getenv("ETCD_ELECTION_TIMEOUT_TICKS"); t != "" {
+		if i, err := strconv.ParseInt(t, 10, 64); err == nil {
+			electionTicks = int(i)
+		}
+	}
 }
 
 func TestClusterOf1(t *testing.T) { testCluster(t, 1) }
@@ -431,6 +441,7 @@ func mustNewMember(t *testing.T, name string) *member {
 	}
 	m.NewCluster = true
 	m.Transport = mustNewTransport(t)
+	m.ElectionTimeoutTicks = electionTicks
 	return m
 }
 
@@ -460,6 +471,7 @@ func (m *member) Clone(t *testing.T) *member {
 		panic(err)
 	}
 	mm.Transport = mustNewTransport(t)
+	mm.ElectionTimeoutTicks = m.ElectionTimeoutTicks
 	return mm
 }
 
