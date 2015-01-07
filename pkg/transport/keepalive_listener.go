@@ -46,6 +46,7 @@ func (kln *keepaliveListener) Accept() (net.Conn, error) {
 	// detection time: tcp_keepalive_time + tcp_keepalive_probes + tcp_keepalive_intvl
 	// default on linux:  30 + 8 * 30
 	// default on osx:    30 + 8 * 75
+	tcpc.SetKeepAlive(true)
 	tcpc.SetKeepAlivePeriod(30 * time.Second)
 	return tcpc, nil
 }
