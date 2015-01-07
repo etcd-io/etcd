@@ -28,6 +28,7 @@ import (
 	"github.com/coreos/etcd/pkg/pbutil"
 	"github.com/coreos/etcd/snap"
 	"github.com/coreos/etcd/wal"
+	"github.com/coreos/etcd/wal/walpb"
 )
 
 func NewBackupCommand() cli.Command {
@@ -57,16 +58,16 @@ func handleBackup(c *cli.Context) {
 	if err != nil && err != snap.ErrNoSnapshot {
 		log.Fatal(err)
 	}
-	var index uint64
+	var walsnap walpb.Snapshot
 	if snapshot != nil {
-		index = snapshot.Metadata.Index
+		walsnap.Index, walsnap.Term = snapshot.Metadata.Index, snapshot.Metadata.Term
 		newss := snap.New(destSnap)
 		if err := newss.SaveSnap(*snapshot); err != nil {
 			log.Fatal(err)
 		}
 	}
 
-	w, err := wal.OpenNotInUse(srcWAL, index)
+	w, err := wal.OpenNotInUse(srcWAL, walsnap)
 	if err != nil {
 		log.Fatal(err)
 	}

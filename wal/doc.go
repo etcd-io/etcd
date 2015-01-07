@@ -27,6 +27,11 @@ to it with the Save method:
 	...
 	err := w.Save(s, ents)
 
+After saving an raft snapshot to disk, SaveSnapshot method should be called to
+record it. So WAL can match with the saved snapshot when restarting.
+
+	err := w.SaveSnapshot(walpb.Snapshot{Index: 10, Term: 2})
+
 When a user has finished using a WAL it must be closed:
 
 	w.Close()
@@ -46,21 +51,20 @@ Cut has been called on this WAL then the sequence will increment from 0x0 to
 Cut issues 0x10 entries with incremental index later then the file will be called:
 0000000000000002-0000000000000031.wal.
 
-At a later time a WAL can be opened at a particular raft index:
+At a later time a WAL can be opened at a particular snapshot. If there is no
+snapshot, an empty snapshot should be passed in.
 
-	w, err := wal.Open("/var/lib/etcd", 0)
+	w, err := wal.Open("/var/lib/etcd", walpb.Snapshot{Index: 10, Term: 2})
 	...
 
-The raft index must have been written to the WAL. When opening without a
-snapshot the raft index should always be 0. When opening with a snapshot
-the raft index should be the index of the last entry covered by the snapshot.
+The snapshot must have been written to the WAL.
 
-Additional items cannot be Saved to this WAL until all of the items from 0 to
-the end of the WAL are read first:
+Additional items cannot be Saved to this WAL until all of the items from the given
+snapshot to the end of the WAL are read first:
 
-	id, state, ents, err := w.ReadAll()
+	metadata, state, ents, err := w.ReadAll()
 
-This will give you the raft node id, the last raft.State and the slice of
+This will give you the metadata, the last raft.State and the slice of
 raft.Entry items in the log.
 
 */

@@ -13,6 +13,7 @@ import (
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/snap"
 	"github.com/coreos/etcd/wal"
+	"github.com/coreos/etcd/wal/walpb"
 )
 
 func main() {
@@ -24,20 +25,20 @@ func main() {
 
 	ss := snap.New(snapDir(*from))
 	snapshot, err := ss.Load()
-	var index uint64
+	var walsnap walpb.Snapshot
 	switch err {
 	case nil:
-		index = snapshot.Metadata.Index
+		walsnap.Index, walsnap.Term = snapshot.Metadata.Index, snapshot.Metadata.Term
 		nodes := genIDSlice(snapshot.Metadata.ConfState.Nodes)
 		fmt.Printf("Snapshot:\nterm=%d index=%d nodes=%s\n",
-			snapshot.Metadata.Term, index, nodes)
+			walsnap.Term, walsnap.Index, nodes)
 	case snap.ErrNoSnapshot:
 		fmt.Printf("Snapshot:\nempty\n")
 	default:
 		log.Fatalf("Failed loading snapshot: %v", err)
 	}
 
-	w, err := wal.Open(walDir(*from), index+1)
+	w, err := wal.Open(walDir(*from), walsnap)
 	if err != nil {
 		log.Fatalf("Failed opening WAL: %v", err)
 	}

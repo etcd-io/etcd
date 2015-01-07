@@ -38,6 +38,7 @@ const (
 	entryType
 	stateType
 	crcType
+	snapshotType
 
 	// the owner can make/remove files inside the directory
 	privateDirMode = 0700
@@ -47,6 +48,8 @@ var (
 	ErrMetadataConflict = errors.New("wal: conflicting metadata found")
 	ErrFileNotFound     = errors.New("wal: file not found")
 	ErrCRCMismatch      = errors.New("wal: crc mismatch")
+	ErrSnapshotMismatch = errors.New("wal: snapshot mismatch")
+	ErrSnapshotNotFound = errors.New("wal: snapshot not found")
 	crcTable            = crc32.MakeTable(crc32.Castagnoli)
 )
 
@@ -60,8 +63,8 @@ type WAL struct {
 	metadata []byte           // metadata recorded at the head of each WAL
 	state    raftpb.HardState // hardstate recorded at the head of WAL
 
-	ri      uint64   // index of entry to start reading
-	decoder *decoder // decoder to decode records
+	start   walpb.Snapshot // snapshot to start reading
+	decoder *decoder       // decoder to decode records
 
 	f       *os.File // underlay file opened for appending, sync
 	seq     uint64   // sequence of the wal file currently used for writes
@@ -110,29 +113,29 @@ func Create(dirpath string, metadata []byte) (*WAL, error) {
 	if err := w.encoder.encode(&walpb.Record{Type: metadataType, Data: metadata}); err != nil {
 		return nil, err
 	}
-	if err = w.sync(); err != nil {
+	if err = w.SaveSnapshot(walpb.Snapshot{}); err != nil {
 		return nil, err
 	}
 	return w, nil
 }
 
-// Open opens the WAL at the given index.
-// The index SHOULD have been previously committed to the WAL, or the following
+// Open opens the WAL at the given snap.
+// The snap SHOULD have been previously saved to the WAL, or the following
 // ReadAll will fail.
-// The returned WAL is ready to read and the first record will be the given
-// index. The WAL cannot be appended to before reading out all of its
+// The returned WAL is ready to read and the first record will be the one after
+// the given snap. The WAL cannot be appended to before reading out all of its
 // previous records.
-func Open(dirpath string, index uint64) (*WAL, error) {
-	return openAtIndex(dirpath, index, true)
+func Open(dirpath string, snap walpb.Snapshot) (*WAL, error) {
+	return openAtIndex(dirpath, snap, true)
 }
 
 // OpenNotInUse only opens the wal files that are not in use.
 // Other than that, it is similar to Open.
-func OpenNotInUse(dirpath string, index uint64) (*WAL, error) {
-	return openAtIndex(dirpath, index, false)
+func OpenNotInUse(dirpath string, snap walpb.Snapshot) (*WAL, error) {
+	return openAtIndex(dirpath, snap, false)
 }
 
-func openAtIndex(dirpath string, index uint64, all bool) (*WAL, error) {
+func openAtIndex(dirpath string, snap walpb.Snapshot, all bool) (*WAL, error) {
 	names, err := fileutil.ReadDir(dirpath)
 	if err != nil {
 		return nil, err
@@ -142,7 +145,7 @@ func openAtIndex(dirpath string, index uint64, all bool) (*WAL, error) {
 		return nil, ErrFileNotFound
 	}
 
-	nameIndex, ok := searchIndex(names, index)
+	nameIndex, ok := searchIndex(names, snap.Index)
 	if !ok || !isValidSeq(names[nameIndex:]) {
 		return nil, ErrFileNotFound
 	}
@@ -189,7 +192,7 @@ func openAtIndex(dirpath string, index uint64, all bool) (*WAL, error) {
 	// create a WAL ready for reading
 	w := &WAL{
 		dir:     dirpath,
-		ri:      index,
+		start:   snap,
 		decoder: newDecoder(rc),
 
 		f:     f,
@@ -200,18 +203,23 @@ func openAtIndex(dirpath string, index uint64, all bool) (*WAL, error) {
 }
 
 // ReadAll reads out all records of the current WAL.
-// If it cannot read out the expected entry, it will return ErrIndexNotFound.
+// If it cannot read out the expected snap, it will return ErrSnapshotNotFound.
+// If loaded snap doesn't match with the expected one, it will return
+// ErrSnapshotMismatch.
+// TODO: detect not-last-snap error.
+// TODO: maybe loose the checking of match.
 // After ReadAll, the WAL will be ready for appending new records.
 func (w *WAL) ReadAll() (metadata []byte, state raftpb.HardState, ents []raftpb.Entry, err error) {
 	rec := &walpb.Record{}
 	decoder := w.decoder
 
+	var match bool
 	for err = decoder.decode(rec); err == nil; err = decoder.decode(rec) {
 		switch rec.Type {
 		case entryType:
 			e := mustUnmarshalEntry(rec.Data)
-			if e.Index >= w.ri {
-				ents = append(ents[:e.Index-w.ri], e)
+			if e.Index > w.start.Index {
+				ents = append(ents[:e.Index-w.start.Index-1], e)
 			}
 			w.enti = e.Index
 		case stateType:
@@ -231,6 +239,16 @@ func (w *WAL) ReadAll() (metadata []byte, state raftpb.HardState, ents []raftpb.
 				return nil, state, nil, ErrCRCMismatch
 			}
 			decoder.updateCRC(rec.Crc)
+		case snapshotType:
+			var snap walpb.Snapshot
+			pbutil.MustUnmarshal(&snap, rec.Data)
+			if snap.Index == w.start.Index {
+				if snap.Term != w.start.Term {
+					state.Reset()
+					return nil, state, nil, ErrSnapshotMismatch
+				}
+				match = true
+			}
 		default:
 			state.Reset()
 			return nil, state, nil, fmt.Errorf("unexpected block type %d", rec.Type)
@@ -240,10 +258,14 @@ func (w *WAL) ReadAll() (metadata []byte, state raftpb.HardState, ents []raftpb.
 		state.Reset()
 		return nil, state, nil, err
 	}
+	if !match {
+		state.Reset()
+		return nil, state, nil, ErrSnapshotNotFound
+	}
 
 	// close decoder, disable reading
 	w.decoder.close()
-	w.ri = 0
+	w.start = walpb.Snapshot{}
 
 	w.metadata = metadata
 	// create encoder (chain crc with the decoder), enable appending
@@ -370,6 +392,19 @@ func (w *WAL) Save(st raftpb.HardState, ents []raftpb.Entry) error {
 		if err := w.SaveEntry(&ents[i]); err != nil {
 			return err
 		}
+	}
+	return w.sync()
+}
+
+func (w *WAL) SaveSnapshot(e walpb.Snapshot) error {
+	b := pbutil.MustMarshal(&e)
+	rec := &walpb.Record{Type: snapshotType, Data: b}
+	if err := w.encoder.encode(rec); err != nil {
+		return err
+	}
+	// update enti only when snapshot is ahead of last index
+	if w.enti < e.Index {
+		w.enti = e.Index
 	}
 	return w.sync()
 }

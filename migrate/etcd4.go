@@ -12,6 +12,7 @@ import (
 	raftpb "github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/snap"
 	"github.com/coreos/etcd/wal"
+	"github.com/coreos/etcd/wal/walpb"
 )
 
 func snapDir4(dataDir string) string {
@@ -106,12 +107,17 @@ func Migrate4To2(dataDir string, name string) error {
 	log.Printf("Log migration successful")
 
 	// migrate snapshot (if necessary) and logs
+	var walsnap walpb.Snapshot
 	if snap2 != nil {
+		walsnap.Index, walsnap.Term = snap2.Metadata.Index, snap2.Metadata.Term
 		ss := snap.New(sd2)
 		if err := ss.SaveSnap(*snap2); err != nil {
 			return err
 		}
 		log.Printf("Snapshot migration successful")
+	}
+	if err = w.SaveSnapshot(walsnap); err != nil {
+		return err
 	}
 
 	return nil
