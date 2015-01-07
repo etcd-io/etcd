@@ -181,7 +181,9 @@ func startEtcd(cfg *config) (<-chan struct{}, error) {
 	// Start a client server goroutine for each listen address
 	for _, l := range clns {
 		go func(l net.Listener) {
-			log.Fatal(serveHTTP(l, ch, 30*time.Second))
+			// read timeout does not work with http close notify
+			// TODO: https://github.com/golang/go/issues/9524
+			log.Fatal(serveHTTP(l, ch, 0))
 		}(l)
 	}
 	return s.StopNotify(), nil
