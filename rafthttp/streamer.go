@@ -29,7 +29,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/coreos/etcd/etcdserver/stats"
+	"github.com/coreos/etcd/pkg/metrics"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft/raftpb"
 
@@ -42,6 +42,7 @@ const (
 
 // TODO: a stream might hava one stream server or one stream client, but not both.
 type stream struct {
+	mg *metrics.Group
 	sync.Mutex
 	w       *streamWriter
 	r       *streamReader
@@ -49,7 +50,7 @@ type stream struct {
 }
 
 func (s *stream) open(from, to, cid types.ID, term uint64, tr http.RoundTripper, u string, r Raft) error {
-	rd, err := newStreamReader(from, to, cid, term, tr, u, r)
+	rd, err := newStreamReader(from, to, cid, term, tr, u, r, s.mg.Group("reader"))
 	if err != nil {
 		log.Printf("stream: error opening stream: %v", err)
 		return err
@@ -81,6 +82,8 @@ func (s *stream) attach(sw *streamWriter) error {
 		}
 		s.w.stop()
 	}
+	sw.mg = s.mg.Group("writer")
+	go sw.handle()
 	s.w = sw
 	return nil
 }
@@ -153,23 +156,24 @@ type WriteFlusher interface {
 
 // TODO: replace fs with stream stats
 type streamWriter struct {
+	w    WriteFlusher
 	to   types.ID
 	term uint64
-	fs   *stats.FollowerStats
+	mg   *metrics.Group
 	q    chan []raftpb.Entry
 	done chan struct{}
 }
 
-// newStreamServer starts and returns a new started stream server.
+// newStreamServer starts and returns a new unstarted stream server.
 // The caller should call stop when finished, to shut it down.
 func newStreamWriter(w WriteFlusher, to types.ID, term uint64) *streamWriter {
 	s := &streamWriter{
+		w:    w,
 		to:   to,
 		term: term,
 		q:    make(chan []raftpb.Entry, streamBufSize),
 		done: make(chan struct{}),
 	}
-	go s.handle(w)
 	return s
 }
 
@@ -188,21 +192,32 @@ func (s *streamWriter) send(ents []raftpb.Entry) error {
 	}
 }
 
-func (s *streamWriter) handle(w WriteFlusher) {
+func (s *streamWriter) handle() {
 	defer func() {
 		close(s.done)
+		s.mg.Clear()
 		log.Printf("rafthttp: server streaming to %s at term %d has been stopped", s.to, s.term)
 	}()
 
-	ew := &entryWriter{w: w}
+	entriesSent := s.mg.Counter("entries_sent")
+	// TODO(yichengq): add bytes_sent
+	lastIndexSent := s.mg.Gauge("last_index_sent")
+	writeLatency := s.mg.Gauge("write_latency_ns")
+	ew := &entryWriter{w: s.w}
 	for ents := range s.q {
+		if len(ents) == 0 {
+			continue
+		}
 		start := time.Now()
 		if err := ew.writeEntries(ents); err != nil {
 			log.Printf("rafthttp: encountered error writing to server log stream: %v", err)
 			return
 		}
-		w.Flush()
-		s.fs.Succ(time.Since(start))
+		s.w.Flush()
+		d := time.Since(start)
+		entriesSent.Add(int64(len(ents)))
+		lastIndexSent.Set(int64(ents[len(ents)-1].Index))
+		writeLatency.Set(int64(d))
 	}
 }
 
@@ -219,6 +234,7 @@ type streamReader struct {
 	to   types.ID
 	term uint64
 	r    Raft
+	mg   *metrics.Group
 
 	closer io.Closer
 	done   chan struct{}
@@ -226,12 +242,13 @@ type streamReader struct {
 
 // newStreamClient starts and returns a new started stream client.
 // The caller should call stop when finished, to shut it down.
-func newStreamReader(id, to, cid types.ID, term uint64, tr http.RoundTripper, u string, r Raft) (*streamReader, error) {
+func newStreamReader(id, to, cid types.ID, term uint64, tr http.RoundTripper, u string, r Raft, mg *metrics.Group) (*streamReader, error) {
 	s := &streamReader{
 		id:   id,
 		to:   to,
 		term: term,
 		r:    r,
+		mg:   mg,
 		done: make(chan struct{}),
 	}
 
@@ -278,11 +295,17 @@ func (s *streamReader) isStopped() bool {
 func (s *streamReader) handle(r io.Reader) {
 	defer func() {
 		close(s.done)
+		s.mg.Clear()
 		log.Printf("rafthttp: client streaming to %s at term %d has been stopped", s.to, s.term)
 	}()
 
+	entriesRecv := s.mg.Counter("entries_received")
+	// TODO(yichengq): add bytes_recieved
+	lastIndexRecv := s.mg.Gauge("last_index_received")
+	readLatency := s.mg.Gauge("read_latency_ns")
 	er := &entryReader{r: r}
 	for {
+		start := time.Now()
 		ents, err := er.readEntries()
 		if err != nil {
 			if err != io.EOF {
@@ -290,6 +313,7 @@ func (s *streamReader) handle(r io.Reader) {
 			}
 			return
 		}
+		d := time.Since(start)
 		// Considering Commit in MsgApp is not recovered, zero-entry appendEntry
 		// messages have no use to raft state machine. Drop it here because
 		// we don't have easy way to recover its Index easily.
@@ -311,6 +335,9 @@ func (s *streamReader) handle(r io.Reader) {
 			log.Printf("rafthttp: process raft message error: %v", err)
 			return
 		}
+		entriesRecv.Add(int64(len(ents)))
+		lastIndexRecv.Set(int64(ents[len(ents)-1].Index))
+		readLatency.Set(int64(d))
 	}
 }
 
