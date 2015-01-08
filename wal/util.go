@@ -129,10 +129,3 @@ func parseWalName(str string) (seq, index uint64, err error) {
 func walName(seq, index uint64) string {
 	return fmt.Sprintf("%016x-%016x.wal", seq, index)
 }
-
-func max(a, b int64) int64 {
-	if a > b {
-		return a
-	}
-	return b
-}
