@@ -118,11 +118,7 @@ func checkWalNames(names []string) []string {
 }
 
 func parseWalName(str string) (seq, index uint64, err error) {
-	var num int
-	num, err = fmt.Sscanf(str, "%016x-%016x.wal", &seq, &index)
-	if num != 2 && err == nil {
-		err = fmt.Errorf("bad wal name: %s", str)
-	}
+	_, err = fmt.Sscanf(str, "%016x-%016x.wal", &seq, &index)
 	return
 }
 
