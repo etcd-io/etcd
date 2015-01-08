@@ -9,7 +9,7 @@ The current `master` branch of etcd is tracking the forthcoming 2.0.0 release.
 We encourage users to work with the [latest release candidate](https://github.com/coreos/etcd/releases/tag/v2.0.0-rc.1), but those looking for a stable release should obtain the latest 0.4.x release, [0.4.6](https://github.com/coreos/etcd/releases/tag/v0.4.6).
 
 Unless otherwise noted, the etcd documentation below and in [`Documentation/`](Documentation) refers to configuring and running 0.4.x releases.
-Documentation related to the 2.0.0 release candidates can be found in the [`Documentation/2.0`](Documentation/) directory.
+Documentation related to the 2.0.0 release candidates can be found in the [`Documentation/2.0`](Documentation/2.0) directory.
 
 ![etcd Logo](logos/etcd-horizontal-color.png)
 
