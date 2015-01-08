@@ -11,9 +11,9 @@ cat <<DF > manifest
     "acKind": "ImageManifest",
     "name": "coreos.com/etcd",
     "labels": [
-        {"name": "os", "val": "linux"},
-        {"name": "arch", "val": "amd64"},
-        {"name": "version", "val": "${1}"}
+        {"name": "os", "value": "linux"},
+        {"name": "arch", "value": "amd64"},
+        {"name": "version", "value": "${1}"}
     ],
     "app": {
         "exec": [
