@@ -22,6 +22,7 @@ import (
 	"bytes"
 	"expvar"
 	"fmt"
+	"sync"
 )
 
 // Counter is a number that increases over time monotonically.
@@ -38,7 +39,9 @@ type Gauge interface {
 
 // Group aggregates counters, gauges and sub-groups.
 type Group struct {
-	m *expvar.Map
+	// clear operation needs exclusive access to map
+	mu sync.RWMutex
+	m  *expvar.Map
 }
 
 func NewGroup() *Group {
@@ -48,6 +51,8 @@ func NewGroup() *Group {
 }
 
 func (g *Group) Counter(key string) Counter {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
 	c := &counter{
 		i: new(expvar.Int),
 	}
@@ -56,6 +61,8 @@ func (g *Group) Counter(key string) Counter {
 }
 
 func (g *Group) Gauge(key string) Gauge {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
 	gg := &gauge{
 		i: new(expvar.Int),
 	}
@@ -64,14 +71,24 @@ func (g *Group) Gauge(key string) Gauge {
 }
 
 func (g *Group) Group(key string) *Group {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
 	gg := NewGroup()
 	g.m.Set(key, gg)
 	return gg
 }
 
-func (g *Group) Clear() { g.m.Init() }
+func (g *Group) Clear() {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	g.m.Init()
+}
 
+// String returns JSON format string that represents the group.
+// It does not print out the empty group and sub-groups.
 func (g *Group) String() string {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
 	var b bytes.Buffer
 	fmt.Fprintf(&b, "{")
 	first := true

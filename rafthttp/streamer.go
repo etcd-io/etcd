@@ -27,7 +27,6 @@ import (
 	"path"
 	"strconv"
 	"sync"
-	"time"
 
 	"github.com/coreos/etcd/pkg/metrics"
 	"github.com/coreos/etcd/pkg/types"
@@ -200,24 +199,21 @@ func (s *streamWriter) handle() {
 	}()
 
 	entriesSent := s.mg.Counter("entries_sent")
-	// TODO(yichengq): add bytes_sent
+	bytesSent := s.mg.Counter("bytes_sent")
 	lastIndexSent := s.mg.Gauge("last_index_sent")
-	writeLatency := s.mg.Gauge("write_latency_ns")
 	ew := &entryWriter{w: s.w}
 	for ents := range s.q {
 		if len(ents) == 0 {
 			continue
 		}
-		start := time.Now()
 		if err := ew.writeEntries(ents); err != nil {
 			log.Printf("rafthttp: encountered error writing to server log stream: %v", err)
 			return
 		}
 		s.w.Flush()
-		d := time.Since(start)
 		entriesSent.Add(int64(len(ents)))
+		bytesSent.Add(int64(entryTransferSize(ents)))
 		lastIndexSent.Set(int64(ents[len(ents)-1].Index))
-		writeLatency.Set(int64(d))
 	}
 }
 
@@ -300,12 +296,10 @@ func (s *streamReader) handle(r io.Reader) {
 	}()
 
 	entriesRecv := s.mg.Counter("entries_received")
-	// TODO(yichengq): add bytes_recieved
+	bytesRecv := s.mg.Counter("bytes_recieved")
 	lastIndexRecv := s.mg.Gauge("last_index_received")
-	readLatency := s.mg.Gauge("read_latency_ns")
 	er := &entryReader{r: r}
 	for {
-		start := time.Now()
 		ents, err := er.readEntries()
 		if err != nil {
 			if err != io.EOF {
@@ -313,7 +307,6 @@ func (s *streamReader) handle(r io.Reader) {
 			}
 			return
 		}
-		d := time.Since(start)
 		// Considering Commit in MsgApp is not recovered, zero-entry appendEntry
 		// messages have no use to raft state machine. Drop it here because
 		// we don't have easy way to recover its Index easily.
@@ -336,8 +329,8 @@ func (s *streamReader) handle(r io.Reader) {
 			return
 		}
 		entriesRecv.Add(int64(len(ents)))
+		bytesRecv.Add(int64(entryTransferSize(ents)))
 		lastIndexRecv.Set(int64(ents[len(ents)-1].Index))
-		readLatency.Set(int64(d))
 	}
 }
 

@@ -52,3 +52,12 @@ func (ew *entryWriter) writeEntry(ent *raftpb.Entry) error {
 	_, err = ew.w.Write(b)
 	return err
 }
+
+func entryTransferSize(ents []raftpb.Entry) int {
+	size := 8
+	for _, e := range ents {
+		size += 8
+		size += e.Size()
+	}
+	return size
+}
