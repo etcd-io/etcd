@@ -1220,10 +1220,10 @@ type dummyStats struct {
 	data []byte
 }
 
-func (ds *dummyStats) SelfStats() []byte                 { return ds.data }
-func (ds *dummyStats) LeaderStats() []byte               { return ds.data }
-func (ds *dummyStats) StoreStats() []byte                { return ds.data }
-func (ds *dummyStats) UpdateRecvApp(_ types.ID, _ int64) {}
+func (ds *dummyStats) SelfStats() []byte      { return ds.data }
+func (ds *dummyStats) LeaderStats() []byte    { return ds.data }
+func (ds *dummyStats) StoreStats() []byte     { return ds.data }
+func (ds *dummyStats) TransportStats() []byte { return ds.data }
 
 func TestServeSelfStats(t *testing.T) {
 	wb := []byte("some statistics")

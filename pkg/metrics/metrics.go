@@ -19,9 +19,9 @@
 package metrics
 
 import (
+	"bytes"
 	"expvar"
 	"fmt"
-	"net/http"
 )
 
 // Counter is a number that increases over time monotonically.
@@ -37,7 +37,6 @@ type Gauge interface {
 }
 
 // Group aggregates counters, gauges and sub-groups.
-// It implements http.Handler, which exposes the registered metrics in JSON format.
 type Group struct {
 	m *expvar.Map
 }
@@ -72,14 +71,25 @@ func (g *Group) Group(key string) *Group {
 
 func (g *Group) Clear() { g.m.Init() }
 
-func (g *Group) String() string { return g.m.String() }
-
-func (g *Group) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	fmt.Fprintf(w, "%s\n", g)
+func (g *Group) String() string {
+	var b bytes.Buffer
+	fmt.Fprintf(&b, "{")
+	first := true
+	g.m.Do(func(kv expvar.KeyValue) {
+		v := kv.Value.String()
+		// omit the empty group
+		if v == "{}" {
+			return
+		}
+		if !first {
+			fmt.Fprintf(&b, ", ")
+		}
+		fmt.Fprintf(&b, "%q: %v", kv.Key, v)
+		first = false
+	})
+	fmt.Fprintf(&b, "}")
+	return b.String()
 }
-
-func (g *Group) Handler() http.Handler { return g }
 
 type counter struct {
 	i *expvar.Int

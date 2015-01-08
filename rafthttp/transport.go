@@ -15,19 +15,13 @@ import (
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 )
 
-var (
-	RaftPrefix       = "/raft"
-	RaftStreamPrefix = path.Join(RaftPrefix, "stream")
-	// Only for internal usage
-	RaftStatsPrefix = path.Join(RaftPrefix, "stats")
-)
-
 type Raft interface {
 	Process(ctx context.Context, m raftpb.Message) error
 }
 
 type Transporter interface {
 	Handler() http.Handler
+	Stats() []byte
 	Send(m []raftpb.Message)
 	AddPeer(id types.ID, urls []string)
 	RemovePeer(id types.ID)
@@ -69,9 +63,10 @@ func (t *transport) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.Handle(RaftPrefix, h)
 	mux.Handle(RaftStreamPrefix+"/", sh)
-	mux.Handle(RaftStatsPrefix, t.metricsGroup.Handler())
 	return mux
 }
+
+func (t *transport) Stats() []byte { return []byte(t.metricsGroup.String()) }
 
 func (t *transport) Peer(id types.ID) *peer {
 	t.mu.RLock()

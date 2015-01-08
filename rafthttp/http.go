@@ -20,6 +20,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"path"
 	"strconv"
 	"strings"
 
@@ -32,6 +33,11 @@ import (
 
 const (
 	ConnReadLimitByte = 64 * 1024
+)
+
+var (
+	RaftPrefix       = "/raft"
+	RaftStreamPrefix = path.Join(RaftPrefix, "stream")
 )
 
 func NewHandler(r Raft, cid types.ID) http.Handler {

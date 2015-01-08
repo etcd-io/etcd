@@ -535,6 +535,8 @@ func (s *EtcdServer) LeaderStats() []byte {
 
 func (s *EtcdServer) StoreStats() []byte { return s.store.JsonStats() }
 
+func (s *EtcdServer) TransportStats() []byte { return s.transport.Stats() }
+
 func (s *EtcdServer) AddMember(ctx context.Context, memb Member) error {
 	// TODO: move Member to protobuf type
 	b, err := json.Marshal(memb)

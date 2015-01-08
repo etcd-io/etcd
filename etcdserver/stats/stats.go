@@ -8,4 +8,6 @@ type Stats interface {
 	LeaderStats() []byte
 	// StoreStats returns statistics of the store backing this EtcdServer
 	StoreStats() []byte
+	// TransportStats returns statistics of the raft transport.
+	TransportStats() []byte
 }

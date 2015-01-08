@@ -50,7 +50,7 @@ type stream struct {
 }
 
 func (s *stream) open(from, to, cid types.ID, term uint64, tr http.RoundTripper, u string, r Raft) error {
-	rd, err := newStreamReader(from, to, cid, term, tr, u, r, s.mg.Group("reader"))
+	rd, err := newStreamReader(from, to, cid, term, tr, u, r, s.mg)
 	if err != nil {
 		log.Printf("stream: error opening stream: %v", err)
 		return err
@@ -82,7 +82,7 @@ func (s *stream) attach(sw *streamWriter) error {
 		}
 		s.w.stop()
 	}
-	sw.mg = s.mg.Group("writer")
+	sw.mg = s.mg
 	go sw.handle()
 	s.w = sw
 	return nil
