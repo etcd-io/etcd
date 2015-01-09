@@ -51,11 +51,9 @@ func restartAsStandaloneNode(cfg *ServerConfig, snapshot *raftpb.Snapshot) (type
 	ents = append(ents, toAppEnts...)
 
 	// force commit newly appended entries
-	for _, e := range toAppEnts {
-		err := w.SaveEntry(&e)
-		if err != nil {
-			log.Fatalf("etcdserver: %v", err)
-		}
+	err := w.Save(raftpb.HardState{}, toAppEnts)
+	if err != nil {
+		log.Fatalf("etcdserver: %v", err)
 	}
 	if len(ents) != 0 {
 		st.Commit = ents[len(ents)-1].Index

@@ -37,11 +37,11 @@ const (
 )
 
 func DetectVersion(dirpath string) (WalVersion, error) {
-	if _, err := os.Stat(dirpath); os.IsNotExist(err) {
-		return WALNotExist, nil
-	}
 	names, err := fileutil.ReadDir(dirpath)
 	if err != nil {
+		if os.IsNotExist(err) {
+			err = nil
+		}
 		// Error reading the directory
 		return WALNotExist, err
 	}
@@ -118,21 +118,10 @@ func checkWalNames(names []string) []string {
 }
 
 func parseWalName(str string) (seq, index uint64, err error) {
-	var num int
-	num, err = fmt.Sscanf(str, "%016x-%016x.wal", &seq, &index)
-	if num != 2 && err == nil {
-		err = fmt.Errorf("bad wal name: %s", str)
-	}
+	_, err = fmt.Sscanf(str, "%016x-%016x.wal", &seq, &index)
 	return
 }
 
 func walName(seq, index uint64) string {
 	return fmt.Sprintf("%016x-%016x.wal", seq, index)
-}
-
-func max(a, b int64) int64 {
-	if a > b {
-		return a
-	}
-	return b
 }

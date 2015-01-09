@@ -56,10 +56,6 @@ func (e *encoder) flush() error {
 	return e.bw.Flush()
 }
 
-func (e *encoder) buffered() int {
-	return e.bw.Buffered()
-}
-
 func writeInt64(w io.Writer, n int64) error {
 	return binary.Write(w, binary.LittleEndian, n)
 }

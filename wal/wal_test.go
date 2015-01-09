@@ -153,12 +153,9 @@ func TestCut(t *testing.T) {
 	}
 	defer w.Close()
 
-	// TODO(unihorn): remove this when cut can operate on an empty file
-	if err := w.SaveEntry(&raftpb.Entry{}); err != nil {
-		t.Fatal(err)
-	}
 	state := raftpb.HardState{Term: 1}
-	if err := w.SaveState(&state); err != nil {
+	// TODO(unihorn): remove this when cut can operate on an empty file
+	if err := w.Save(state, []raftpb.Entry{{}}); err != nil {
 		t.Fatal(err)
 	}
 	if err := w.Cut(); err != nil {
@@ -169,8 +166,8 @@ func TestCut(t *testing.T) {
 		t.Errorf("name = %s, want %s", g, wname)
 	}
 
-	e := &raftpb.Entry{Index: 1, Term: 1, Data: []byte{1}}
-	if err := w.SaveEntry(e); err != nil {
+	es := []raftpb.Entry{{Index: 1, Term: 1, Data: []byte{1}}}
+	if err := w.Save(raftpb.HardState{}, es); err != nil {
 		t.Fatal(err)
 	}
 	if err := w.Cut(); err != nil {
@@ -221,14 +218,12 @@ func TestRecover(t *testing.T) {
 		t.Fatal(err)
 	}
 	ents := []raftpb.Entry{{Index: 1, Term: 1, Data: []byte{1}}, {Index: 2, Term: 2, Data: []byte{2}}}
-	for _, e := range ents {
-		if err = w.SaveEntry(&e); err != nil {
-			t.Fatal(err)
-		}
+	if err = w.Save(raftpb.HardState{}, ents); err != nil {
+		t.Fatal(err)
 	}
 	sts := []raftpb.HardState{{Term: 1, Vote: 1, Commit: 1}, {Term: 2, Vote: 2, Commit: 2}}
 	for _, s := range sts {
-		if err = w.SaveState(&s); err != nil {
+		if err = w.Save(s, nil); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -338,8 +333,8 @@ func TestRecoverAfterCut(t *testing.T) {
 		if err = w.SaveSnapshot(walpb.Snapshot{Index: uint64(i)}); err != nil {
 			t.Fatal(err)
 		}
-		e := raftpb.Entry{Index: uint64(i)}
-		if err = w.SaveEntry(&e); err != nil {
+		es := []raftpb.Entry{{Index: uint64(i)}}
+		if err = w.Save(raftpb.HardState{}, es); err != nil {
 			t.Fatal(err)
 		}
 		if err = w.Cut(); err != nil {
@@ -395,7 +390,7 @@ func TestOpenAtUncommittedIndex(t *testing.T) {
 	if err := w.SaveSnapshot(walpb.Snapshot{}); err != nil {
 		t.Fatal(err)
 	}
-	if err := w.SaveEntry(&raftpb.Entry{Index: 0}); err != nil {
+	if err := w.Save(raftpb.HardState{}, []raftpb.Entry{{Index: 0}}); err != nil {
 		t.Fatal(err)
 	}
 	w.Close()
@@ -411,13 +406,58 @@ func TestOpenAtUncommittedIndex(t *testing.T) {
 	w.Close()
 }
 
+// TestOpenNotInUse tests that OpenNotInUse can load all files that are
+// not in use at that point.
+// The tests creates WAL directory, and cut out multiple WAL files. Then
+// it releases the lock of part of data, and excepts that OpenNotInUse
+// can read out all unlocked data.
+func TestOpenNotInUse(t *testing.T) {
+	p, err := ioutil.TempDir(os.TempDir(), "waltest")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(p)
+	// create WAL
+	w, err := Create(p, nil)
+	defer w.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	// make 10 seperate files
+	for i := 0; i < 10; i++ {
+		es := []raftpb.Entry{{Index: uint64(i)}}
+		if err = w.Save(raftpb.HardState{}, es); err != nil {
+			t.Fatal(err)
+		}
+		if err = w.Cut(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// release the lock to 5
+	unlockIndex := uint64(5)
+	w.ReleaseLockTo(unlockIndex)
+
+	w2, err := OpenNotInUse(p, walpb.Snapshot{})
+	defer w2.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _, ents, err := w2.ReadAll()
+	if err != nil {
+		t.Fatalf("err = %v, want nil", err)
+	}
+	if g := ents[len(ents)-1].Index; g != unlockIndex {
+		t.Errorf("last index read = %d, want %d", g, unlockIndex)
+	}
+}
+
 func TestSaveEmpty(t *testing.T) {
 	var buf bytes.Buffer
 	var est raftpb.HardState
 	w := WAL{
 		encoder: newEncoder(&buf, 0),
 	}
-	if err := w.SaveState(&est); err != nil {
+	if err := w.saveState(&est); err != nil {
 		t.Errorf("err = %v, want nil", err)
 	}
 	if len(buf.Bytes()) != 0 {
