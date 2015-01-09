@@ -307,7 +307,7 @@ func (w *WAL) Cut() error {
 	if err := w.encoder.encode(&walpb.Record{Type: metadataType, Data: w.metadata}); err != nil {
 		return err
 	}
-	if err := w.SaveState(&w.state); err != nil {
+	if err := w.saveState(&w.state); err != nil {
 		return err
 	}
 	return w.sync()
@@ -363,7 +363,7 @@ func (w *WAL) Close() error {
 	return nil
 }
 
-func (w *WAL) SaveEntry(e *raftpb.Entry) error {
+func (w *WAL) saveEntry(e *raftpb.Entry) error {
 	b := pbutil.MustMarshal(e)
 	rec := &walpb.Record{Type: entryType, Data: b}
 	if err := w.encoder.encode(rec); err != nil {
@@ -373,7 +373,7 @@ func (w *WAL) SaveEntry(e *raftpb.Entry) error {
 	return nil
 }
 
-func (w *WAL) SaveState(s *raftpb.HardState) error {
+func (w *WAL) saveState(s *raftpb.HardState) error {
 	if raft.IsEmptyHardState(*s) {
 		return nil
 	}
@@ -385,11 +385,11 @@ func (w *WAL) SaveState(s *raftpb.HardState) error {
 
 func (w *WAL) Save(st raftpb.HardState, ents []raftpb.Entry) error {
 	// TODO(xiangli): no more reference operator
-	if err := w.SaveState(&st); err != nil {
+	if err := w.saveState(&st); err != nil {
 		return err
 	}
 	for i := range ents {
-		if err := w.SaveEntry(&ents[i]); err != nil {
+		if err := w.saveEntry(&ents[i]); err != nil {
 			return err
 		}
 	}

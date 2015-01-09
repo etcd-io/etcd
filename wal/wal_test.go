@@ -153,12 +153,9 @@ func TestCut(t *testing.T) {
 	}
 	defer w.Close()
 
-	// TODO(unihorn): remove this when cut can operate on an empty file
-	if err := w.SaveEntry(&raftpb.Entry{}); err != nil {
-		t.Fatal(err)
-	}
 	state := raftpb.HardState{Term: 1}
-	if err := w.SaveState(&state); err != nil {
+	// TODO(unihorn): remove this when cut can operate on an empty file
+	if err := w.Save(state, []raftpb.Entry{{}}); err != nil {
 		t.Fatal(err)
 	}
 	if err := w.Cut(); err != nil {
@@ -169,8 +166,8 @@ func TestCut(t *testing.T) {
 		t.Errorf("name = %s, want %s", g, wname)
 	}
 
-	e := &raftpb.Entry{Index: 1, Term: 1, Data: []byte{1}}
-	if err := w.SaveEntry(e); err != nil {
+	es := []raftpb.Entry{{Index: 1, Term: 1, Data: []byte{1}}}
+	if err := w.Save(raftpb.HardState{}, es); err != nil {
 		t.Fatal(err)
 	}
 	if err := w.Cut(); err != nil {
@@ -221,14 +218,12 @@ func TestRecover(t *testing.T) {
 		t.Fatal(err)
 	}
 	ents := []raftpb.Entry{{Index: 1, Term: 1, Data: []byte{1}}, {Index: 2, Term: 2, Data: []byte{2}}}
-	for _, e := range ents {
-		if err = w.SaveEntry(&e); err != nil {
-			t.Fatal(err)
-		}
+	if err = w.Save(raftpb.HardState{}, ents); err != nil {
+		t.Fatal(err)
 	}
 	sts := []raftpb.HardState{{Term: 1, Vote: 1, Commit: 1}, {Term: 2, Vote: 2, Commit: 2}}
 	for _, s := range sts {
-		if err = w.SaveState(&s); err != nil {
+		if err = w.Save(s, nil); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -338,8 +333,8 @@ func TestRecoverAfterCut(t *testing.T) {
 		if err = w.SaveSnapshot(walpb.Snapshot{Index: uint64(i)}); err != nil {
 			t.Fatal(err)
 		}
-		e := raftpb.Entry{Index: uint64(i)}
-		if err = w.SaveEntry(&e); err != nil {
+		es := []raftpb.Entry{{Index: uint64(i)}}
+		if err = w.Save(raftpb.HardState{}, es); err != nil {
 			t.Fatal(err)
 		}
 		if err = w.Cut(); err != nil {
@@ -395,7 +390,7 @@ func TestOpenAtUncommittedIndex(t *testing.T) {
 	if err := w.SaveSnapshot(walpb.Snapshot{}); err != nil {
 		t.Fatal(err)
 	}
-	if err := w.SaveEntry(&raftpb.Entry{Index: 0}); err != nil {
+	if err := w.Save(raftpb.HardState{}, []raftpb.Entry{{Index: 0}}); err != nil {
 		t.Fatal(err)
 	}
 	w.Close()
@@ -417,7 +412,7 @@ func TestSaveEmpty(t *testing.T) {
 	w := WAL{
 		encoder: newEncoder(&buf, 0),
 	}
-	if err := w.SaveState(&est); err != nil {
+	if err := w.saveState(&est); err != nil {
 		t.Errorf("err = %v, want nil", err)
 	}
 	if len(buf.Bytes()) != 0 {

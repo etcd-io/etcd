@@ -40,7 +40,7 @@ func benchmarkWriteEntry(b *testing.B, size int, batch int) {
 	b.ResetTimer()
 	n := 0
 	for i := 0; i < b.N; i++ {
-		err := w.SaveEntry(e)
+		err := w.saveEntry(e)
 		if err != nil {
 			b.Fatal(err)
 		}
