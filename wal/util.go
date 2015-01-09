@@ -37,11 +37,11 @@ const (
 )
 
 func DetectVersion(dirpath string) (WalVersion, error) {
-	if _, err := os.Stat(dirpath); os.IsNotExist(err) {
-		return WALNotExist, nil
-	}
 	names, err := fileutil.ReadDir(dirpath)
 	if err != nil {
+		if os.IsNotExist(err) {
+			err = nil
+		}
 		// Error reading the directory
 		return WALNotExist, err
 	}
