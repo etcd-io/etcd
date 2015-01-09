@@ -406,6 +406,51 @@ func TestOpenAtUncommittedIndex(t *testing.T) {
 	w.Close()
 }
 
+// TestOpenNotInUse tests that OpenNotInUse can load all files that are
+// not in use at that point.
+// The tests creates WAL directory, and cut out multiple WAL files. Then
+// it releases the lock of part of data, and excepts that OpenNotInUse
+// can read out all unlocked data.
+func TestOpenNotInUse(t *testing.T) {
+	p, err := ioutil.TempDir(os.TempDir(), "waltest")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(p)
+	// create WAL
+	w, err := Create(p, nil)
+	defer w.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	// make 10 seperate files
+	for i := 0; i < 10; i++ {
+		es := []raftpb.Entry{{Index: uint64(i)}}
+		if err = w.Save(raftpb.HardState{}, es); err != nil {
+			t.Fatal(err)
+		}
+		if err = w.Cut(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// release the lock to 5
+	unlockIndex := uint64(5)
+	w.ReleaseLockTo(unlockIndex)
+
+	w2, err := OpenNotInUse(p, walpb.Snapshot{})
+	defer w2.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _, ents, err := w2.ReadAll()
+	if err != nil {
+		t.Fatalf("err = %v, want nil", err)
+	}
+	if g := ents[len(ents)-1].Index; g != unlockIndex {
+		t.Errorf("last index read = %d, want %d", g, unlockIndex)
+	}
+}
+
 func TestSaveEmpty(t *testing.T) {
 	var buf bytes.Buffer
 	var est raftpb.HardState
