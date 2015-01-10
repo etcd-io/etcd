@@ -20,11 +20,24 @@ import (
 	"encoding/binary"
 	"io"
 
+	"github.com/coreos/etcd/pkg/metrics"
 	"github.com/coreos/etcd/raft/raftpb"
 )
 
 type entryReader struct {
-	r io.Reader
+	r             io.Reader
+	entriesRecv   metrics.Counter
+	bytesRecv     metrics.Counter
+	lastIndexRecv metrics.Gauge
+}
+
+func newEntryReader(r io.Reader, mg *metrics.Group) *entryReader {
+	return &entryReader{
+		r:             r,
+		entriesRecv:   mg.Counter("entries_received"),
+		bytesRecv:     mg.Counter("bytes_recieved"),
+		lastIndexRecv: mg.Gauge("last_index_received"),
+	}
 }
 
 func (er *entryReader) readEntries() ([]raftpb.Entry, error) {
@@ -32,12 +45,15 @@ func (er *entryReader) readEntries() ([]raftpb.Entry, error) {
 	if err := binary.Read(er.r, binary.BigEndian, &l); err != nil {
 		return nil, err
 	}
+	er.bytesRecv.Add(8)
 	ents := make([]raftpb.Entry, int(l))
 	for i := 0; i < int(l); i++ {
 		if err := er.readEntry(&ents[i]); err != nil {
 			return nil, err
 		}
 	}
+	er.entriesRecv.Add(int64(len(ents)))
+	er.lastIndexRecv.Set(int64(ents[len(ents)-1].Index))
 	return ents, nil
 }
 
@@ -50,5 +66,6 @@ func (er *entryReader) readEntry(ent *raftpb.Entry) error {
 	if _, err := io.ReadFull(er.r, buf); err != nil {
 		return err
 	}
+	er.bytesRecv.Add(8 + int64(l))
 	return ent.Unmarshal(buf)
 }

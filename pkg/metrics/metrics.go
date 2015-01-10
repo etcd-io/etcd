@@ -39,7 +39,6 @@ type Gauge interface {
 
 // Group aggregates counters, gauges and sub-groups.
 type Group struct {
-	// clear operation needs exclusive access to map
 	mu sync.RWMutex
 	m  *expvar.Map
 }
@@ -108,17 +107,13 @@ func (g *Group) String() string {
 	return b.String()
 }
 
-type counter struct {
-	i *expvar.Int
-}
+type counter struct{ i *expvar.Int }
 
 func (c *counter) Add(delta int64) { c.i.Add(delta) }
 
 func (c *counter) String() string { return c.i.String() }
 
-type gauge struct {
-	i *expvar.Int
-}
+type gauge struct{ i *expvar.Int }
 
 func (g *gauge) Set(value int64) { g.i.Set(value) }
 

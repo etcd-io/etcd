@@ -198,10 +198,7 @@ func (s *streamWriter) handle() {
 		log.Printf("rafthttp: server streaming to %s at term %d has been stopped", s.to, s.term)
 	}()
 
-	entriesSent := s.mg.Counter("entries_sent")
-	bytesSent := s.mg.Counter("bytes_sent")
-	lastIndexSent := s.mg.Gauge("last_index_sent")
-	ew := &entryWriter{w: s.w}
+	ew := newEntryWriter(s.w, s.mg)
 	for ents := range s.q {
 		if len(ents) == 0 {
 			continue
@@ -211,9 +208,6 @@ func (s *streamWriter) handle() {
 			return
 		}
 		s.w.Flush()
-		entriesSent.Add(int64(len(ents)))
-		bytesSent.Add(int64(entryTransferSize(ents)))
-		lastIndexSent.Set(int64(ents[len(ents)-1].Index))
 	}
 }
 
@@ -295,10 +289,7 @@ func (s *streamReader) handle(r io.Reader) {
 		log.Printf("rafthttp: client streaming to %s at term %d has been stopped", s.to, s.term)
 	}()
 
-	entriesRecv := s.mg.Counter("entries_received")
-	bytesRecv := s.mg.Counter("bytes_recieved")
-	lastIndexRecv := s.mg.Gauge("last_index_received")
-	er := &entryReader{r: r}
+	er := newEntryReader(r, s.mg)
 	for {
 		ents, err := er.readEntries()
 		if err != nil {
@@ -328,9 +319,6 @@ func (s *streamReader) handle(r io.Reader) {
 			log.Printf("rafthttp: process raft message error: %v", err)
 			return
 		}
-		entriesRecv.Add(int64(len(ents)))
-		bytesRecv.Add(int64(entryTransferSize(ents)))
-		lastIndexRecv.Set(int64(ents[len(ents)-1].Index))
 	}
 }
 

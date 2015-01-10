@@ -20,11 +20,24 @@ import (
 	"encoding/binary"
 	"io"
 
+	"github.com/coreos/etcd/pkg/metrics"
 	"github.com/coreos/etcd/raft/raftpb"
 )
 
 type entryWriter struct {
-	w io.Writer
+	w             io.Writer
+	entriesSent   metrics.Counter
+	bytesSent     metrics.Counter
+	lastIndexSent metrics.Gauge
+}
+
+func newEntryWriter(w io.Writer, mg *metrics.Group) *entryWriter {
+	return &entryWriter{
+		w:             w,
+		entriesSent:   mg.Counter("entries_sent"),
+		bytesSent:     mg.Counter("bytes_sent"),
+		lastIndexSent: mg.Gauge("last_index_sent"),
+	}
 }
 
 func (ew *entryWriter) writeEntries(ents []raftpb.Entry) error {
@@ -32,11 +45,14 @@ func (ew *entryWriter) writeEntries(ents []raftpb.Entry) error {
 	if err := binary.Write(ew.w, binary.BigEndian, uint64(l)); err != nil {
 		return err
 	}
+	ew.bytesSent.Add(8)
 	for i := 0; i < l; i++ {
 		if err := ew.writeEntry(&ents[i]); err != nil {
 			return err
 		}
 	}
+	ew.entriesSent.Add(int64(len(ents)))
+	ew.lastIndexSent.Set(int64(ents[len(ents)-1].Index))
 	return nil
 }
 
@@ -50,14 +66,6 @@ func (ew *entryWriter) writeEntry(ent *raftpb.Entry) error {
 		return err
 	}
 	_, err = ew.w.Write(b)
+	ew.bytesSent.Add(8 + int64(size))
 	return err
-}
-
-func entryTransferSize(ents []raftpb.Entry) int {
-	size := 8
-	for _, e := range ents {
-		size += 8
-		size += e.Size()
-	}
-	return size
 }
