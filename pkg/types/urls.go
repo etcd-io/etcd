@@ -27,26 +27,6 @@ import (
 
 type URLs []url.URL
 
-func (us URLs) String() string {
-	return strings.Join(us.StringSlice(), ",")
-}
-
-func (us *URLs) Sort() {
-	sort.Sort(us)
-}
-func (us URLs) Len() int           { return len(us) }
-func (us URLs) Less(i, j int) bool { return us[i].String() < us[j].String() }
-func (us URLs) Swap(i, j int)      { us[i], us[j] = us[j], us[i] }
-
-func (us URLs) StringSlice() []string {
-	out := make([]string, len(us))
-	for i := range us {
-		out[i] = us[i].String()
-	}
-
-	return out
-}
-
 func NewURLs(strs []string) (URLs, error) {
 	all := make([]url.URL, len(strs))
 	if len(all) == 0 {
@@ -73,4 +53,24 @@ func NewURLs(strs []string) (URLs, error) {
 	us.Sort()
 
 	return us, nil
+}
+
+func (us URLs) String() string {
+	return strings.Join(us.StringSlice(), ",")
+}
+
+func (us *URLs) Sort() {
+	sort.Sort(us)
+}
+func (us URLs) Len() int           { return len(us) }
+func (us URLs) Less(i, j int) bool { return us[i].String() < us[j].String() }
+func (us URLs) Swap(i, j int)      { us[i], us[j] = us[j], us[i] }
+
+func (us URLs) StringSlice() []string {
+	out := make([]string, len(us))
+	for i := range us {
+		out[i] = us[i].String()
+	}
+
+	return out
 }
