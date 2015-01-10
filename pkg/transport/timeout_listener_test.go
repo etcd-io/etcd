@@ -22,6 +22,23 @@ import (
 	"time"
 )
 
+// TestNewTimeoutListener tests that NewTimeoutListener returns a
+// rwTimeoutListener struct with timeouts set.
+func TestNewTimeoutListener(t *testing.T) {
+	l, err := NewTimeoutListener(":0", "http", TLSInfo{}, time.Hour, time.Hour)
+	if err != nil {
+		t.Fatalf("unexpected NewTimeoutListener error: %v", err)
+	}
+	defer l.Close()
+	tln := l.(*rwTimeoutListener)
+	if tln.rdtimeoutd != time.Hour {
+		t.Errorf("read timeout = %s, want %s", tln.rdtimeoutd, time.Hour)
+	}
+	if tln.wtimeoutd != time.Hour {
+		t.Errorf("write timeout = %s, want %s", tln.wtimeoutd, time.Hour)
+	}
+}
+
 func TestWriteReadTimeoutListener(t *testing.T) {
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
