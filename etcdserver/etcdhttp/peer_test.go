@@ -18,13 +18,44 @@ package etcdhttp
 
 import (
 	"encoding/json"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"path"
 	"testing"
 
 	"github.com/coreos/etcd/etcdserver"
+	"github.com/coreos/etcd/rafthttp"
 )
+
+// TestNewPeerHandler tests that NewPeerHandler returns a handler that
+// handles raft-prefix requests well.
+func TestNewPeerHandlerOnRaftPrefix(t *testing.T) {
+	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("test data"))
+	})
+	ph := NewPeerHandler(&fakeCluster{}, h)
+	srv := httptest.NewServer(ph)
+	defer srv.Close()
+
+	tests := []string{
+		rafthttp.RaftPrefix,
+		rafthttp.RaftPrefix + "/hello",
+	}
+	for i, tt := range tests {
+		resp, err := http.Get(srv.URL + tt)
+		if err != nil {
+			t.Fatalf("unexpected http.Get error: %v", err)
+		}
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			t.Fatalf("unexpected ioutil.ReadAll error: %v", err)
+		}
+		if w := "test data"; string(body) != w {
+			t.Errorf("#%d: body = %s, want %s", i, body, w)
+		}
+	}
+}
 
 func TestServeMembersFails(t *testing.T) {
 	tests := []struct {
