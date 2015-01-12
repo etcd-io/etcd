@@ -12,6 +12,7 @@ import (
 	"github.com/coreos/etcd/pkg/types"
 	raftpb "github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/wal"
+	"github.com/coreos/etcd/wal/walpb"
 )
 
 func walDir5(dataDir string) string {
@@ -77,7 +78,7 @@ func dump4(dataDir string) ([]raftpb.Entry, error) {
 		return nil, err
 	}
 
-	return migrate.Entries4To5(ents)
+	return migrate.Entries4To2(ents)
 }
 
 func dump5(dataDir string) ([]raftpb.Entry, error) {
@@ -86,7 +87,7 @@ func dump5(dataDir string) ([]raftpb.Entry, error) {
 		return nil, fmt.Errorf("No wal exists at %s", wd5)
 	}
 
-	w, err := wal.OpenAtIndex(wd5, 0)
+	w, err := wal.Open(wd5, walpb.Snapshot{})
 	if err != nil {
 		return nil, err
 	}
