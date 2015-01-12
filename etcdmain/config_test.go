@@ -166,3 +166,81 @@ func TestConfigParsingConflictClusteringFlags(t *testing.T) {
 		}
 	}
 }
+
+func TestConfigIsNewCluster(t *testing.T) {
+	tests := []struct {
+		state  string
+		wIsNew bool
+	}{
+		{clusterStateFlagExisting, false},
+		{clusterStateFlagNew, true},
+	}
+	for i, tt := range tests {
+		cfg := NewConfig()
+		if err := cfg.clusterState.Set(tt.state); err != nil {
+			t.Fatalf("#%d: unexpected clusterState.Set error: %v", i, err)
+		}
+		if g := cfg.isNewCluster(); g != tt.wIsNew {
+			t.Errorf("#%d: isNewCluster = %v, want %v", i, g, tt.wIsNew)
+		}
+	}
+}
+
+func TestConfigIsProxy(t *testing.T) {
+	tests := []struct {
+		proxy    string
+		wIsProxy bool
+	}{
+		{proxyFlagOff, false},
+		{proxyFlagReadonly, true},
+		{proxyFlagOn, true},
+	}
+	for i, tt := range tests {
+		cfg := NewConfig()
+		if err := cfg.proxy.Set(tt.proxy); err != nil {
+			t.Fatalf("#%d: unexpected proxy.Set error: %v", i, err)
+		}
+		if g := cfg.isProxy(); g != tt.wIsProxy {
+			t.Errorf("#%d: isProxy = %v, want %v", i, g, tt.wIsProxy)
+		}
+	}
+}
+
+func TestConfigIsReadonlyProxy(t *testing.T) {
+	tests := []struct {
+		proxy       string
+		wIsReadonly bool
+	}{
+		{proxyFlagOff, false},
+		{proxyFlagReadonly, true},
+		{proxyFlagOn, false},
+	}
+	for i, tt := range tests {
+		cfg := NewConfig()
+		if err := cfg.proxy.Set(tt.proxy); err != nil {
+			t.Fatalf("#%d: unexpected proxy.Set error: %v", i, err)
+		}
+		if g := cfg.isReadonlyProxy(); g != tt.wIsReadonly {
+			t.Errorf("#%d: isReadonlyProxy = %v, want %v", i, g, tt.wIsReadonly)
+		}
+	}
+}
+
+func TestConfigShouldFallbackToProxy(t *testing.T) {
+	tests := []struct {
+		fallback  string
+		wFallback bool
+	}{
+		{fallbackFlagProxy, true},
+		{fallbackFlagExit, false},
+	}
+	for i, tt := range tests {
+		cfg := NewConfig()
+		if err := cfg.fallback.Set(tt.fallback); err != nil {
+			t.Fatalf("#%d: unexpected fallback.Set error: %v", i, err)
+		}
+		if g := cfg.shouldFallbackToProxy(); g != tt.wFallback {
+			t.Errorf("#%d: shouldFallbackToProxy = %v, want %v", i, g, tt.wFallback)
+		}
+	}
+}
