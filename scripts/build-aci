@@ -1,11 +1,45 @@
-#!/usr/bin/bash
+#!/bin/bash
 
-if [ ! -d rootfs ]; then
-	mkdir -p rootfs
-	mv * rootfs
+# A non-installed actool can be used, for example:
+# ACTOOL=../../appc/spec/bin/actool
+ACTOOL=${ACTOOL:-actool}
+
+IMAGEDIR=${IMAGEDIR:-bin/image-aci}
+
+VERSION=$1
+
+if [ ! -x "$ACTOOL" ] ; then
+    echo "actool ($ACTOOL) is not executable"
+    exit 1
 fi
 
-cat <<DF > manifest
+if [ ! -x bin/etcd ] ; then
+    echo "bin/etcd not found. Is it compiled?"
+    exit 1
+fi
+
+if [ -z "$VERSION" ] ; then
+    echo "Usage: scripts/build-aci VERSION"
+    exit 1
+fi
+
+mkdir -p $IMAGEDIR/rootfs
+if [ ! -d $IMAGEDIR/rootfs -o ! -x $IMAGEDIR/rootfs ]; then
+    echo "$IMAGEDIR/rootfs is not a writeable directory"
+    exit 1
+fi
+
+if [ -n "$(ls -A $IMAGEDIR/rootfs)" ]; then
+    echo "$IMAGEDIR/rootfs is not empty"
+    exit 1
+fi
+
+cp bin/etcd bin/etcdctl $IMAGEDIR/rootfs/
+cp README.md            $IMAGEDIR/rootfs/
+cp etcdctl/README.md    $IMAGEDIR/rootfs/README-etcdctl.md
+cp -r Documentation     $IMAGEDIR/rootfs/
+
+cat <<DF > $IMAGEDIR/manifest
 {
     "acVersion": "0.1.1",
     "acKind": "ImageManifest",
@@ -13,7 +47,7 @@ cat <<DF > manifest
     "labels": [
         {"name": "os", "value": "linux"},
         {"name": "arch", "value": "amd64"},
-        {"name": "version", "value": "${1}"}
+        {"name": "version", "value": "${VERSION}"}
     ],
     "app": {
         "exec": [
@@ -25,9 +59,9 @@ cat <<DF > manifest
 }
 DF
 
-mkdir -p rootfs/etc/
-cat <<DF > rootfs/etc/hosts
+mkdir -p $IMAGEDIR/rootfs/etc/
+cat <<DF > $IMAGEDIR/rootfs/etc/hosts
 127.0.0.1   localhost localhost.localdomain localhost4 localhost4.localdomain4
 DF
 
-actool build -overwrite=true . ../etcd-${1}-linux-amd64.aci
+$ACTOOL build -overwrite=true $IMAGEDIR bin/etcd-${1}-linux-amd64.aci
