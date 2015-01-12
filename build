@@ -11,7 +11,8 @@ ln -s ${PWD} $GOPATH/src/${REPO_PATH}
 
 eval $(go env)
 
-go build -o bin/etcd ${REPO_PATH}
+# Static compilation is useful when etcd is run in a container
+CGO_ENABLED=0 go build -a -ldflags '-s' -o bin/etcd ${REPO_PATH}
 CGO_ENABLED=0 go build -a -ldflags '-s' -o bin/etcdctl ${REPO_PATH}/etcdctl
 go build -o bin/etcd-migrate ${REPO_PATH}/tools/etcd-migrate
 go build -o bin/etcd-dump-logs ${REPO_PATH}/tools/etcd-dump-logs
