@@ -1,5 +1,9 @@
 # Clustering Guide
 
+## Overview
+
+Starting an etcd cluster requires that each node knows another in the cluster. If you are trying to bring up a cluster all at once, say using a cloud formation, you also need to coordinate who will be the initial cluster leader. The discovery protocol helps you by providing an automated way to discover other existing peers in a cluster. A static list of peers or DNS-based discovery can also be used.
+
 This guide willcover the following mechanisms for bootstrapping an etcd cluster:
 
 * [Static](#static)
