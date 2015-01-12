@@ -184,7 +184,6 @@ func (p *peer) Stop() {
 	p.Lock()
 	defer p.Unlock()
 	p.stream.stop()
-	p.mg.Clear()
 	p.stopped = true
 }
 

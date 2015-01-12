@@ -137,6 +137,7 @@ func (s *stream) invalidate(term uint64) {
 
 func (s *stream) stop() {
 	s.invalidate(math.MaxUint64)
+	s.mg.Clear()
 }
 
 func (s *stream) isOpen() bool {

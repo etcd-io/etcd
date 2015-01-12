@@ -92,6 +92,10 @@ func (g *Group) String() string {
 	fmt.Fprintf(&b, "{")
 	first := true
 	g.m.Do(func(kv expvar.KeyValue) {
+		// expvar returns all old keys even if Map is inited
+		if kv.Value == nil {
+			return
+		}
 		v := kv.Value.String()
 		// omit the empty group
 		if v == "{}" {
