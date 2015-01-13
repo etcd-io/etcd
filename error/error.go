@@ -129,10 +129,6 @@ func NewError(errorCode int, cause string, index uint64) *Error {
 	}
 }
 
-func Message(code int) string {
-	return errors[code]
-}
-
 // Only for error interface
 func (e Error) Error() string {
 	return e.Message + " (" + e.Cause + ")"
