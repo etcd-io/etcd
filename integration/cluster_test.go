@@ -131,6 +131,44 @@ func testDecreaseClusterSize(t *testing.T, size int) {
 	clusterMustProgress(t, c.Members)
 }
 
+func TestForceNewCluster(t *testing.T) {
+	c := NewCluster(t, 3)
+	c.Launch(t)
+	cc := mustNewHTTPClient(t, []string{c.Members[0].URL()})
+	kapi := client.NewKeysAPI(cc)
+	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+	resp, err := kapi.Create(ctx, "/foo", "bar", -1)
+	if err != nil {
+		t.Fatalf("unexpected create error: %v", err)
+	}
+	cancel()
+	// ensure create has been applied in this machine
+	ctx, cancel = context.WithTimeout(context.Background(), requestTimeout)
+	if _, err := kapi.Watch("foo", resp.Node.ModifiedIndex).Next(ctx); err != nil {
+		t.Fatalf("unexpected watch error: %v", err)
+	}
+	cancel()
+
+	c.Members[0].Stop(t)
+	c.Members[1].Terminate(t)
+	c.Members[2].Terminate(t)
+	c.Members[0].ForceNewCluster = true
+	err = c.Members[0].Restart(t)
+	if err != nil {
+		t.Fatalf("unexpected ForceRestart error: %v", err)
+	}
+	defer c.Members[0].Terminate(t)
+
+	// ensure force restart keep the old data, and new cluster can make progress
+	cc = mustNewHTTPClient(t, []string{c.Members[0].URL()})
+	kapi = client.NewKeysAPI(cc)
+	_, err = kapi.Get(context.TODO(), "/foo")
+	if err != nil {
+		t.Errorf("unexpected get error: %v", err)
+	}
+	clusterMustProgress(t, c.Members[:1])
+}
+
 // clusterMustProgress ensures that cluster can make progress. It creates
 // a random key first, and check the new key could be got from all client urls
 // of the cluster.
