@@ -1169,8 +1169,8 @@ Each node keeps a number of internal statistics:
 - `recvBandwidthRate`: number of bytes per second this node is receiving (follower only)
 - `recvPkgRate`: number of requests per second this node is receiving (follower only)
 - `sendAppendRequestCnt`: number of requests that this node has sent
-- `sendBandwidthRate`: number of bytes per second this node is receiving (leader only). This value is undefined on single machine clusters.
-- `sendPkgRate`: number of requests per second this node is receiving (leader only). This value is undefined on single machine clusters.
+- `sendBandwidthRate`: number of bytes per second this node is sending (leader only). This value is undefined on single machine clusters.
+- `sendPkgRate`: number of requests per second this node is sending (leader only). This value is undefined on single machine clusters.
 - `state`: either leader or follower
 - `startTime`: the time when this node was started
 
