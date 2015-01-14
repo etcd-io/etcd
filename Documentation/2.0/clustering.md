@@ -1,5 +1,9 @@
 # Clustering Guide
 
+## Overview
+
+Starting an etcd cluster statically requires that each member knows another in the cluster. In a number of cases, you might not know the IPs of your cluster members ahead of time. In these cases, you can bootstrap an etcd cluster with the help of a discovery service.
+
 This guide willcover the following mechanisms for bootstrapping an etcd cluster:
 
 * [Static](#static)
