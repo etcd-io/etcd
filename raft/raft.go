@@ -346,7 +346,7 @@ func (r *raft) tickElection() {
 // tickHeartbeat is run by leaders to send a MsgBeat after r.heartbeatTimeout.
 func (r *raft) tickHeartbeat() {
 	r.elapsed++
-	if r.elapsed > r.heartbeatTimeout {
+	if r.elapsed >= r.heartbeatTimeout {
 		r.elapsed = 0
 		r.Step(pb.Message{From: r.id, Type: pb.MsgBeat})
 	}

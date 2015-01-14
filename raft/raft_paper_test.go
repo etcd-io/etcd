@@ -120,7 +120,7 @@ func TestLeaderBcastBeat(t *testing.T) {
 		r.appendEntry(pb.Entry{Index: uint64(i) + 1})
 	}
 
-	for i := 0; i <= hi; i++ {
+	for i := 0; i < hi; i++ {
 		r.tick()
 	}
 
