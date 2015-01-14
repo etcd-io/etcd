@@ -494,6 +494,10 @@ func stepLeader(r *raft, m pb.Message) {
 				r.bcastAppend()
 			}
 		}
+	case pb.MsgHeartbeatResp:
+		if r.prs[m.From].match < r.raftLog.lastIndex() {
+			r.sendAppend(m.From)
+		}
 	case pb.MsgVote:
 		log.Printf("raft: %x [logterm: %d, index: %d, vote: %x] rejected vote from %x [logterm: %d, index: %d] at term %d",
 			r.id, r.raftLog.lastTerm(), r.raftLog.lastIndex(), r.Vote, m.From, m.LogTerm, m.Index, r.Term)
@@ -579,6 +583,7 @@ func (r *raft) handleAppendEntries(m pb.Message) {
 
 func (r *raft) handleHeartbeat(m pb.Message) {
 	r.raftLog.commitTo(m.Commit)
+	r.send(pb.Message{To: m.From, Type: pb.MsgHeartbeatResp})
 }
 
 func (r *raft) handleSnapshot(m pb.Message) {
