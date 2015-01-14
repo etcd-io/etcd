@@ -50,7 +50,9 @@ func max(a, b uint64) uint64 {
 
 func IsLocalMsg(m pb.Message) bool { return m.Type == pb.MsgHup || m.Type == pb.MsgBeat }
 
-func IsResponseMsg(m pb.Message) bool { return m.Type == pb.MsgAppResp || m.Type == pb.MsgVoteResp }
+func IsResponseMsg(m pb.Message) bool {
+	return m.Type == pb.MsgAppResp || m.Type == pb.MsgVoteResp || m.Type == pb.MsgHeartbeatResp
+}
 
 // DescribeMessage returns a concise human-readable description of a
 // Message for debugging.
