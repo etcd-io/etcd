@@ -25,7 +25,7 @@ import (
 // TestNewTimeoutListener tests that NewTimeoutListener returns a
 // rwTimeoutListener struct with timeouts set.
 func TestNewTimeoutListener(t *testing.T) {
-	l, err := NewTimeoutListener(":0", "http", TLSInfo{}, time.Hour, time.Hour)
+	l, err := NewTimeoutListener("127.0.0.1:0", "http", TLSInfo{}, time.Hour, time.Hour)
 	if err != nil {
 		t.Fatalf("unexpected NewTimeoutListener error: %v", err)
 	}

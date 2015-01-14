@@ -25,7 +25,7 @@ import (
 // that accepts connections.
 // TODO: verify the keepalive option is set correctly
 func TestNewKeepAliveListener(t *testing.T) {
-	ln, err := NewKeepAliveListener(":0", "http", TLSInfo{})
+	ln, err := NewKeepAliveListener("127.0.0.1:0", "http", TLSInfo{})
 	if err != nil {
 		t.Fatalf("unexpected NewKeepAliveListener error: %v", err)
 	}
