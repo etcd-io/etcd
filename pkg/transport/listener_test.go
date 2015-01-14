@@ -55,7 +55,7 @@ func TestNewListenerTLSInfo(t *testing.T) {
 	defer os.Remove(tmp)
 	tlsInfo := TLSInfo{CertFile: tmp, KeyFile: tmp}
 	tlsInfo.parseFunc = fakeCertificateParserFunc(tls.Certificate{}, nil)
-	ln, err := NewListener(":0", "https", tlsInfo)
+	ln, err := NewListener("127.0.0.1:0", "https", tlsInfo)
 	if err != nil {
 		t.Fatalf("unexpected NewListener error: %v", err)
 	}
@@ -74,7 +74,7 @@ func TestNewListenerTLSInfo(t *testing.T) {
 
 func TestNewListenerTLSInfoNonexist(t *testing.T) {
 	tlsInfo := TLSInfo{CertFile: "@badname", KeyFile: "@badname"}
-	_, err := NewListener(":0", "https", tlsInfo)
+	_, err := NewListener("127.0.0.1:0", "https", tlsInfo)
 	werr := &os.PathError{
 		Op:   "open",
 		Path: "@badname",
