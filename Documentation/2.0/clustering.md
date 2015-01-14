@@ -1,5 +1,9 @@
 # Clustering Guide
 
+## Overview
+
+Starting an etcd cluster requires that each node knows another in the cluster. If you are trying to bring up a cluster all at once, say using a cloud formation, you also need to coordinate who will be the initial cluster leader. The discovery protocol helps you by providing an automated way to discover other existing peers in a cluster. A static list of peers or DNS-based discovery can also be used.
+
 This guide willcover the following mechanisms for bootstrapping an etcd cluster:
 
 * [Static](#static)
@@ -335,6 +339,20 @@ DNS SRV records can also be used to configure the list of peers for an etcd serv
 ```
 $ etcd --proxy on -discovery-srv example.com
 ```
+
+# Advanced Topics
+
+## Rejoining to the Cluster
+
+If one machine disconnects from the cluster, it could rejoin the cluster automatically when the communication is recovered.
+
+If one machine is killed, it could rejoin the cluster when started with old name. If the peer address is changed, etcd will treat the new peer address as the refreshed one, which benefits instance migration, or virtual machine boot with different IP. The peer-address-changing functionality is only supported when the majority of the cluster is alive, because this behavior needs the consensus of the etcd cluster.
+
+## Bootstrapping a New Cluster by Name
+
+An etcd server is uniquely defined by the peer addresses it listens to. Suppose, however, that you wish to start over, while maintaining the data from the previous cluster -- that is, to pretend that this machine has never joined a cluster before.
+
+You can use `--initial-cluster-name` to generate a new unique ID for each node, as a shared token that every node understands. Nodes also take this into account for bootstrapping the new cluster ID, so it also provides a way for a machine to listen on the same interfaces, disconnect from one cluster, and join a different cluster.
 
 # 0.4 to 2.0+ Migration Guide
 
