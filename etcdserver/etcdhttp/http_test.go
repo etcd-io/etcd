@@ -20,7 +20,6 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"sort"
 	"testing"
 
@@ -31,14 +30,6 @@ import (
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft/raftpb"
 )
-
-func mustNewURL(t *testing.T, s string) *url.URL {
-	u, err := url.Parse(s)
-	if err != nil {
-		t.Fatalf("error creating URL from %q: %v", s, err)
-	}
-	return u
-}
 
 type fakeCluster struct {
 	id         uint64

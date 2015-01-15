@@ -164,3 +164,25 @@ func driveSetTests(t *testing.T, s Set) {
 		}
 	}
 }
+
+func TestUnsafeSetContainsAll(t *testing.T) {
+	vals := []string{"foo", "bar", "baz"}
+	s := NewUnsafeSet(vals...)
+
+	tests := []struct {
+		strs     []string
+		wcontain bool
+	}{
+		{[]string{}, true},
+		{vals[:1], true},
+		{vals[:2], true},
+		{vals, true},
+		{[]string{"cuz"}, false},
+		{[]string{vals[0], "cuz"}, false},
+	}
+	for i, tt := range tests {
+		if g := s.ContainsAll(tt.strs); g != tt.wcontain {
+			t.Errorf("#%d: ok = %v, want %v", i, g, tt.wcontain)
+		}
+	}
+}

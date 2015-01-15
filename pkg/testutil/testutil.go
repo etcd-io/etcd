@@ -20,8 +20,6 @@ import (
 	"net/url"
 	"runtime"
 	"testing"
-
-	"github.com/coreos/etcd/pkg/types"
 )
 
 // WARNING: This is a hack.
@@ -37,9 +35,18 @@ func MustNewURLs(t *testing.T, urls []string) []url.URL {
 	if urls == nil {
 		return nil
 	}
-	u, err := types.NewURLs(urls)
+	var us []url.URL
+	for _, url := range urls {
+		u := MustNewURL(t, url)
+		us = append(us, *u)
+	}
+	return us
+}
+
+func MustNewURL(t *testing.T, s string) *url.URL {
+	u, err := url.Parse(s)
 	if err != nil {
-		t.Fatalf("unexpected new urls error: %v", err)
+		t.Fatalf("parse %v error: %v", s, err)
 	}
 	return u
 }

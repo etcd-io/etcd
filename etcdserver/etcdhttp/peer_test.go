@@ -25,6 +25,7 @@ import (
 	"testing"
 
 	"github.com/coreos/etcd/etcdserver"
+	"github.com/coreos/etcd/pkg/testutil"
 	"github.com/coreos/etcd/rafthttp"
 )
 
@@ -110,7 +111,7 @@ func TestServeMembersGet(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		req, err := http.NewRequest("GET", mustNewURL(t, tt.path).String(), nil)
+		req, err := http.NewRequest("GET", testutil.MustNewURL(t, tt.path).String(), nil)
 		if err != nil {
 			t.Fatal(err)
 		}
