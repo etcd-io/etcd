@@ -162,14 +162,13 @@ type streamWriter struct {
 
 // newStreamServer starts and returns a new started stream server.
 // The caller should call stop when finished, to shut it down.
-func newStreamWriter(w WriteFlusher, to types.ID, term uint64) *streamWriter {
+func newStreamWriter(to types.ID, term uint64) *streamWriter {
 	s := &streamWriter{
 		to:   to,
 		term: term,
 		q:    make(chan []raftpb.Entry, streamBufSize),
 		done: make(chan struct{}),
 	}
-	go s.handle(w)
 	return s
 }
 
