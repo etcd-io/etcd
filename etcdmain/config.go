@@ -77,6 +77,10 @@ type config struct {
 	maxWalFiles    uint
 	name           string
 	snapCount      uint64
+	// TODO: decouple tickMs and heartbeat tick (current heartbeat tick = 1).
+	// make ticks a cluster wide configuration.
+	TickMs     uint
+	ElectionMs uint
 
 	// clustering
 	apurls, acurls      []url.URL
@@ -137,6 +141,8 @@ func NewConfig() *config {
 	fs.UintVar(&cfg.maxWalFiles, "max-wals", defaultMaxWALs, "Maximum number of wal files to retain (0 is unlimited)")
 	fs.StringVar(&cfg.name, "name", "default", "Unique human-readable name for this node")
 	fs.Uint64Var(&cfg.snapCount, "snapshot-count", etcdserver.DefaultSnapCount, "Number of committed transactions to trigger a snapshot")
+	fs.UintVar(&cfg.TickMs, "heartbeat-interval", 100, "Time (in milliseconds) of a heartbeat interval.")
+	fs.UintVar(&cfg.ElectionMs, "election-timeout", 1000, "Time (in milliseconds) for an election to timeout.")
 
 	// clustering
 	fs.Var(flags.NewURLsValue("http://localhost:2380,http://localhost:7001"), "initial-advertise-peer-urls", "List of this member's peer URLs to advertise to the rest of the cluster")
@@ -259,3 +265,5 @@ func (cfg config) isNewCluster() bool          { return cfg.clusterState.String(
 func (cfg config) isProxy() bool               { return cfg.proxy.String() != proxyFlagOff }
 func (cfg config) isReadonlyProxy() bool       { return cfg.proxy.String() == proxyFlagReadonly }
 func (cfg config) shouldFallbackToProxy() bool { return cfg.fallback.String() == fallbackFlagProxy }
+
+func (cfg config) electionTicks() int { return int(cfg.ElectionMs / cfg.TickMs) }
