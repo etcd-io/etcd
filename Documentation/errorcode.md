@@ -1,60 +1,42 @@
 Error Code
 ======
 
-This document describes the error code in **Etcd** project.
+This document describes the error code used in key space '/v2/keys'. Feel free to import 'github.com/coreos/etcd/error' to use.
 
 It's categorized into four groups:
 
 - Command Related Error
+
+| name                 | code | strerror              |
+|----------------------|------|-----------------------|
+| EcodeKeyNotFound     | 100  | "Key not found"       |
+| EcodeTestFailed      | 101  | "Compare failed"      |
+| EcodeNotFile         | 102  | "Not a file"          |
+| EcodeNotDir          | 104  | "Not a directory"     |
+| EcodeNodeExist       | 105  | "Key already exists"  |
+| EcodeRootROnly       | 107  | "Root is read only"   |
+| EcodeDirNotEmpty     | 108  | "Directory not empty" |
+
 - Post Form Related Error
+
+| name                     | code | strerror |
+|--------------------------|------|------------------------------------------------|
+| EcodePrevValueRequired   | 201  | "PrevValue is Required in POST form"           |
+| EcodeTTLNaN              | 202  | "The given TTL in POST form is not a number"   |
+| EcodeIndexNaN            | 203  | "The given index in POST form is not a number" |
+| EcodeInvalidField        | 209  | "Invalid field"                                |
+| EcodeInvalidForm         | 210  | "Invalid POST form"                            |
+
 - Raft Related Error
+
+| name              | code | strerror                 |
+|-------------------|------|--------------------------|
+| EcodeRaftInternal | 300  | "Raft Internal Error"    |
+| EcodeLeaderElect  | 301  | "During Leader Election" |
+
 - Etcd Related Error
 
-Error code corresponding strerror
-------
-
-    const (
-        EcodeKeyNotFound    = 100
-        EcodeTestFailed     = 101
-        EcodeNotFile        = 102
-        EcodeNoMorePeer     = 103
-        EcodeNotDir         = 104
-        EcodeNodeExist      = 105
-        EcodeKeyIsPreserved = 106
-        EcodeRootROnly      = 107
-
-        EcodeValueRequired     = 200
-        EcodePrevValueRequired = 201
-        EcodeTTLNaN            = 202
-        EcodeIndexNaN          = 203
-
-        EcodeRaftInternal = 300
-        EcodeLeaderElect  = 301
-
-        EcodeWatcherCleared = 400
-        EcodeEventIndexCleared = 401
-    )
-
-    // command related errors
-    errors[100] = "Key Not Found"
-    errors[101] = "Test Failed" //test and set
-    errors[102] = "Not A File"
-    errors[103] = "Reached the max number of peers in the cluster"
-    errors[104] = "Not A Directory"
-    errors[105] = "Already exists" // create
-    errors[106] = "The prefix of given key is a keyword in etcd"
-    errors[107] = "Root is read only"
-
-    // Post form related errors
-    errors[200] = "Value is Required in POST form"
-    errors[201] = "PrevValue is Required in POST form"
-    errors[202] = "The given TTL in POST form is not a number"
-    errors[203] = "The given index in POST form is not a number"
-
-    // raft related errors
-    errors[300] = "Raft Internal Error"
-    errors[301] = "During Leader Election"
-
-    // etcd related errors
-    errors[400] = "watcher is cleared due to etcd recovery"
-    errors[401] = "The event in requested index is outdated and cleared"
+| name                    | code | strerror                                               |
+|-------------------------|------|--------------------------------------------------------|
+| EcodeWatcherCleared     | 400  | "watcher is cleared due to etcd recovery"              |
+| EcodeEventIndexCleared  | 401  | "The event in requested index is outdated and cleared" |
