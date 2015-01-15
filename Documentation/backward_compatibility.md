@@ -16,14 +16,14 @@ The major flag changes are to mostly related to bootstrapping. The `initial-*` f
  - `-peers-file` is replaced by `-initial-cluster`.
 
 The documentation of new command line flags can be found at 
-https://github.com/coreos/etcd/blob/master/Documentation/2.0/configuration.md.
+https://github.com/coreos/etcd/blob/master/Documentation/configuration.md.
 
 #### Data Dir 
 - Default data dir location has changed from {$hostname}.etcd to {name}.etcd.
 
 - The disk format within the data dir has changed. etcd 2.0 should be able to auto upgrade the old data format. Instructions on doing so manually are in the [migration tool doc][migrationtooldoc].
 
-[migrationtooldoc]: https://github.com/coreos/etcd/blob/master/Documentation/2.0/0_4_migration_tool.md
+[migrationtooldoc]: https://github.com/coreos/etcd/blob/master/Documentation/0_4_migration_tool.md
 
 #### Standby
 
@@ -33,18 +33,18 @@ Standby mode was intended for large clusters that had a subset of the members ac
 
 Proxy mode in 2.0 will provide similar functionality, and with improved control over which machines act as proxies due to the operator specifically configuring them. Proxies also support read only or read/write modes for increased security and durability.
 
-[proxymode]: https://github.com/coreos/etcd/blob/master/Documentation/2.0/proxy.md
+[proxymode]: https://github.com/coreos/etcd/blob/master/Documentation/proxy.md
 
 #### Discovery Service
 
 A size key needs to be provided inside a [discovery token][discoverytoken].
-[discoverytoken]: https://github.com/coreos/etcd/blob/master/Documentation/2.0/clustering.md#custom-etcd-discovery-service
+[discoverytoken]: https://github.com/coreos/etcd/blob/master/Documentation/clustering.md#custom-etcd-discovery-service
 
 #### HTTP Admin API
 
 `v2/admin` on peer url and `v2/keys/_etcd` are unified under the new [v2/member API][memberapi] to better explain which machines are part of an etcd cluster, and to simplify the keyspace for all your use cases.
 
-[memberapi]: https://github.com/coreos/etcd/blob/master/Documentation/2.0/other_apis.md
+[memberapi]: https://github.com/coreos/etcd/blob/master/Documentation/other_apis.md
 
 #### HTTP Key Value API
 - The follower can now transparently proxy write equests to the leader. Clients will no longer see 307 redirections to the leader from etcd.

@@ -8,7 +8,7 @@ In the early 2.0.0-alpha series, we're providing this tool early to encourage ad
 
 ### Data Migration Tips
 
-* Keep the environment variables and etcd instance flags the same (much as [the upgrade document](../upgrade.md) suggests), particularly `--name`/`ETCD_NAME`.
+* Keep the environment variables and etcd instance flags the same, particularly `--name`/`ETCD_NAME`.
 * Don't change the cluster configuration. If there's a plan to add or remove machines, it's probably best to arrange for that after the migration, rather than before or at the same time.
 
 ### Running the tool
