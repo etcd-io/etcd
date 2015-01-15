@@ -14,6 +14,9 @@
    limitations under the License.
 */
 
+// error package describes errors in etcd project.
+// When any change happens, Documentation/errorcode.md needs to be updated
+// correspondingly.
 package error
 
 import (
@@ -30,8 +33,8 @@ var errors = map[int]string{
 	ecodeNoMorePeer:       "Reached the max number of peers in the cluster",
 	EcodeNotDir:           "Not a directory",
 	EcodeNodeExist:        "Key already exists", // create
-	EcodeRootROnly:        "Root is read only",
 	ecodeKeyIsPreserved:   "The prefix of given key is a keyword in etcd",
+	EcodeRootROnly:        "Root is read only",
 	EcodeDirNotEmpty:      "Directory not empty",
 	ecodeExistingPeerAddr: "Peer address has existed",
 
