@@ -159,6 +159,9 @@ func TestForceNewCluster(t *testing.T) {
 	}
 	defer c.Members[0].Terminate(t)
 
+	// use new http client to init new connection
+	cc = mustNewHTTPClient(t, []string{c.Members[0].URL()})
+	kapi = client.NewKeysAPI(cc)
 	// ensure force restart keep the old data, and new cluster can make progress
 	ctx, cancel = context.WithTimeout(context.Background(), requestTimeout)
 	if _, err := kapi.Watch("/foo", resp.Node.ModifiedIndex).Next(ctx); err != nil {
