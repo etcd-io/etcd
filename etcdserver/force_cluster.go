@@ -66,7 +66,7 @@ func restartAsStandaloneNode(cfg *ServerConfig, snapshot *raftpb.Snapshot) (type
 	}
 	s.SetHardState(st)
 	s.Append(ents)
-	n := raft.RestartNode(uint64(id), 10, 1, s)
+	n := raft.RestartNode(uint64(id), cfg.ElectionTicks, 1, s)
 	return id, n, s, w
 }
 

@@ -156,6 +156,8 @@ func startEtcd(cfg *config) (<-chan struct{}, error) {
 		NewCluster:      cfg.isNewCluster(),
 		ForceNewCluster: cfg.forceNewCluster,
 		Transport:       pt,
+		TickMs:          cfg.TickMs,
+		ElectionTicks:   cfg.electionTicks(),
 	}
 	var s *etcdserver.EtcdServer
 	s, err = etcdserver.NewServer(srvcfg)

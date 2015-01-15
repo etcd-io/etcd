@@ -483,7 +483,7 @@ func mustNewMember(t *testing.T, name string) *member {
 	}
 	m.NewCluster = true
 	m.Transport = mustNewTransport(t)
-	m.ElectionTimeoutTicks = electionTicks
+	m.ElectionTicks = electionTicks
 	return m
 }
 
@@ -513,7 +513,7 @@ func (m *member) Clone(t *testing.T) *member {
 		panic(err)
 	}
 	mm.Transport = mustNewTransport(t)
-	mm.ElectionTimeoutTicks = m.ElectionTimeoutTicks
+	mm.ElectionTicks = m.ElectionTicks
 	return mm
 }
 

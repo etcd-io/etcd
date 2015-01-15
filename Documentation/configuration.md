@@ -22,6 +22,14 @@ To start etcd automatically using custom settings at startup in Linux, using a [
 + Number of committed transactions to trigger a snapshot to disk.
 + default: "10000"
 
+##### heartbeat-interval 
++ Time (in milliseconds) of a heartbeat interval.
++ default: "100"
+
+##### election-timeout 
++ Time (in milliseconds) for an election to timeout.
++ default: "1000"
+
 ##### -listen-peer-urls
 + List of URLs to listen on for peer traffic.
 + default: "http://localhost:2380,http://localhost:7001"
