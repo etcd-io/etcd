@@ -1,8 +1,0 @@
-#!/bin/sh
-
-VER=$(git describe --tags HEAD)
-
-cat <<EOF
-package server
-const ReleaseVersion = "$VER"
-EOF
