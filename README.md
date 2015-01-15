@@ -8,12 +8,7 @@
 The current `master` branch of etcd is tracking the forthcoming 2.0.0 release.
 We encourage users to work with the [latest release candidate](https://github.com/coreos/etcd/releases/tag/v2.0.0-rc.1), but those looking for a stable release should obtain the latest 0.4.x release, [0.4.6](https://github.com/coreos/etcd/releases/tag/v0.4.6).
 
-Unless otherwise noted, the etcd documentation below and in [`Documentation/`](Documentation) refers to configuring and running 0.4.x releases.
-Documentation related to the 2.0.0 release candidates can be found in the [`Documentation/2.0`](Documentation/2.0) directory.
-
 ![etcd Logo](logos/etcd-horizontal-color.png)
-
-## README version 0.4.6
 
 A highly-available key value store for shared configuration and service discovery.
 etcd is inspired by [Apache ZooKeeper][zookeeper] and [doozer][doozer], with a focus on being:
@@ -68,19 +63,17 @@ You have successfully started an etcd on a single machine and written a key to t
 - Set up a [multi-machine cluster][clustering].
 - Learn the [config format, env variables and flags][configuration].
 - Find [language bindings and tools][libraries-and-tools].
-- Learn about the dashboard, lock and leader election [modules][modules].
 - Use TLS to [secure an etcd cluster][security].
 - [Tune etcd][tuning].
-- [Upgrade from old version][upgrade].
+- [Upgrade from 0.4.6 to 2.0.0][upgrade].
 
 [api]: https://github.com/coreos/etcd/blob/master/Documentation/api.md
 [clustering]: https://github.com/coreos/etcd/blob/master/Documentation/clustering.md
 [configuration]: https://github.com/coreos/etcd/blob/master/Documentation/configuration.md
 [libraries-and-tools]: https://github.com/coreos/etcd/blob/master/Documentation/libraries-and-tools.md
-[modules]: https://github.com/coreos/etcd/blob/master/Documentation/modules.md
 [security]: https://github.com/coreos/etcd/blob/master/Documentation/security.md
 [tuning]: https://github.com/coreos/etcd/blob/master/Documentation/tuning.md
-[upgrade]: https://github.com/coreos/etcd/blob/master/Documentation/upgrade.md
+[upgrade]: https://github.com/coreos/etcd/blob/master/Documentation/0_4_migration_tool.md
 
 ## Contact
 
