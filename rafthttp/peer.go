@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/etcdserver/stats"
+	"github.com/coreos/etcd/pkg/metrics"
 	"github.com/coreos/etcd/pkg/pbutil"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft/raftpb"
@@ -55,6 +56,7 @@ type peer struct {
 	tr     http.RoundTripper
 	r      Raft
 	fs     *stats.FollowerStats
+	mg     *metrics.Group
 	errorc chan error
 
 	batcher     *Batcher
@@ -76,7 +78,7 @@ type peer struct {
 	stopped bool
 }
 
-func NewPeer(tr http.RoundTripper, u string, id types.ID, cid types.ID, r Raft, fs *stats.FollowerStats, errorc chan error) *peer {
+func NewPeer(tr http.RoundTripper, u string, id types.ID, cid types.ID, r Raft, fs *stats.FollowerStats, mg *metrics.Group, errorc chan error) *peer {
 	p := &peer{
 		id:          id,
 		active:      true,
@@ -85,7 +87,8 @@ func NewPeer(tr http.RoundTripper, u string, id types.ID, cid types.ID, r Raft, 
 		cid:         cid,
 		r:           r,
 		fs:          fs,
-		stream:      &stream{},
+		mg:          mg,
+		stream:      &stream{mg: mg.Group("stream")},
 		errorc:      errorc,
 		batcher:     NewBatcher(100, appRespBatchMs*time.Millisecond),
 		propBatcher: NewProposalBatcher(100, propBatchMs*time.Millisecond),
@@ -264,8 +267,6 @@ func (p *peer) attachStream(sw *streamWriter) error {
 	if p.stopped {
 		return errors.New("peer: stopped")
 	}
-
-	sw.fs = p.fs
 	return p.stream.attach(sw)
 }
 

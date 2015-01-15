@@ -1389,6 +1389,7 @@ func (n *readyNode) Ready() <-chan raft.Ready { return n.readyc }
 type nopTransporter struct{}
 
 func (s *nopTransporter) Handler() http.Handler               { return nil }
+func (s *nopTransporter) Stats() []byte                       { return nil }
 func (s *nopTransporter) Send(m []raftpb.Message)             {}
 func (s *nopTransporter) AddPeer(id types.ID, us []string)    {}
 func (s *nopTransporter) RemovePeer(id types.ID)              {}

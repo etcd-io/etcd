@@ -80,6 +80,7 @@ func NewClientHandler(server *etcdserver.EtcdServer) http.Handler {
 	mux.HandleFunc(statsPrefix+"/store", sh.serveStore)
 	mux.HandleFunc(statsPrefix+"/self", sh.serveSelf)
 	mux.HandleFunc(statsPrefix+"/leader", sh.serveLeader)
+	mux.HandleFunc(statsPrefix+"/transport", sh.serveTransport)
 	mux.Handle(membersPrefix, mh)
 	mux.Handle(membersPrefix+"/", mh)
 	mux.Handle(deprecatedMachinesPrefix, dmh)
@@ -279,6 +280,14 @@ func (h *statsHandler) serveLeader(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(stats)
+}
+
+func (h *statsHandler) serveTransport(w http.ResponseWriter, r *http.Request) {
+	if !allowMethod(w, r.Method, "GET") {
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(h.stats.TransportStats())
 }
 
 func serveVersion(w http.ResponseWriter, r *http.Request) {

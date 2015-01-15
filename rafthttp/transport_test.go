@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/etcdserver/stats"
+	"github.com/coreos/etcd/pkg/metrics"
 	"github.com/coreos/etcd/pkg/testutil"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft/raftpb"
@@ -30,8 +31,9 @@ import (
 func TestTransportAdd(t *testing.T) {
 	ls := stats.NewLeaderStats("")
 	tr := &transport{
-		leaderStats: ls,
-		peers:       make(map[types.ID]*peer),
+		leaderStats:  ls,
+		metricsGroup: metrics.NewGroup(),
+		peers:        make(map[types.ID]*peer),
 	}
 	tr.AddPeer(1, []string{"http://a"})
 
@@ -53,8 +55,9 @@ func TestTransportAdd(t *testing.T) {
 
 func TestTransportRemove(t *testing.T) {
 	tr := &transport{
-		leaderStats: stats.NewLeaderStats(""),
-		peers:       make(map[types.ID]*peer),
+		leaderStats:  stats.NewLeaderStats(""),
+		metricsGroup: metrics.NewGroup(),
+		peers:        make(map[types.ID]*peer),
 	}
 	tr.AddPeer(1, []string{"http://a"})
 	tr.RemovePeer(types.ID(1))
@@ -69,6 +72,7 @@ func TestTransportErrorc(t *testing.T) {
 	tr := &transport{
 		roundTripper: newRespRoundTripper(http.StatusForbidden, nil),
 		leaderStats:  stats.NewLeaderStats(""),
+		metricsGroup: metrics.NewGroup(),
 		peers:        make(map[types.ID]*peer),
 		errorc:       errorc,
 	}

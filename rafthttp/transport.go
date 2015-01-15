@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/coreos/etcd/etcdserver/stats"
+	"github.com/coreos/etcd/pkg/metrics"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft/raftpb"
 
@@ -20,6 +21,7 @@ type Raft interface {
 
 type Transporter interface {
 	Handler() http.Handler
+	Stats() []byte
 	Send(m []raftpb.Message)
 	AddPeer(id types.ID, urls []string)
 	RemovePeer(id types.ID)
@@ -34,6 +36,7 @@ type transport struct {
 	raft         Raft
 	serverStats  *stats.ServerStats
 	leaderStats  *stats.LeaderStats
+	metricsGroup *metrics.Group
 
 	mu     sync.RWMutex       // protect the peer map
 	peers  map[types.ID]*peer // remote peers
@@ -48,6 +51,7 @@ func NewTransporter(rt http.RoundTripper, id, cid types.ID, r Raft, errorc chan 
 		raft:         r,
 		serverStats:  ss,
 		leaderStats:  ls,
+		metricsGroup: metrics.NewGroup(),
 		peers:        make(map[types.ID]*peer),
 		errorc:       errorc,
 	}
@@ -61,6 +65,8 @@ func (t *transport) Handler() http.Handler {
 	mux.Handle(RaftStreamPrefix+"/", sh)
 	return mux
 }
+
+func (t *transport) Stats() []byte { return []byte(t.metricsGroup.String()) }
 
 func (t *transport) Peer(id types.ID) *peer {
 	t.mu.RLock()
@@ -112,7 +118,8 @@ func (t *transport) AddPeer(id types.ID, urls []string) {
 	}
 	u.Path = path.Join(u.Path, RaftPrefix)
 	fs := t.leaderStats.Follower(id.String())
-	t.peers[id] = NewPeer(t.roundTripper, u.String(), id, t.clusterID, t.raft, fs, t.errorc)
+	g := t.metricsGroup.Group(id.String())
+	t.peers[id] = NewPeer(t.roundTripper, u.String(), id, t.clusterID, t.raft, fs, g, t.errorc)
 }
 
 func (t *transport) RemovePeer(id types.ID) {

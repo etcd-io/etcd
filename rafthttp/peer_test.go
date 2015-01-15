@@ -24,6 +24,7 @@ import (
 	"testing"
 
 	"github.com/coreos/etcd/etcdserver/stats"
+	"github.com/coreos/etcd/pkg/metrics"
 	"github.com/coreos/etcd/pkg/testutil"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft/raftpb"
@@ -34,7 +35,7 @@ import (
 func TestSenderSend(t *testing.T) {
 	tr := &roundTripperRecorder{}
 	fs := &stats.FollowerStats{}
-	p := NewPeer(tr, "http://10.0.0.1", types.ID(1), types.ID(1), &nopProcessor{}, fs, nil)
+	p := NewPeer(tr, "http://10.0.0.1", types.ID(1), types.ID(1), &nopProcessor{}, fs, metrics.NewGroup(), nil)
 
 	if err := p.Send(raftpb.Message{Type: raftpb.MsgApp}); err != nil {
 		t.Fatalf("unexpect send error: %v", err)
@@ -54,7 +55,7 @@ func TestSenderSend(t *testing.T) {
 func TestSenderExceedMaximalServing(t *testing.T) {
 	tr := newRoundTripperBlocker()
 	fs := &stats.FollowerStats{}
-	p := NewPeer(tr, "http://10.0.0.1", types.ID(1), types.ID(1), &nopProcessor{}, fs, nil)
+	p := NewPeer(tr, "http://10.0.0.1", types.ID(1), types.ID(1), &nopProcessor{}, fs, metrics.NewGroup(), nil)
 
 	// keep the sender busy and make the buffer full
 	// nothing can go out as we block the sender
@@ -86,7 +87,7 @@ func TestSenderExceedMaximalServing(t *testing.T) {
 // it increases fail count in stats.
 func TestSenderSendFailed(t *testing.T) {
 	fs := &stats.FollowerStats{}
-	p := NewPeer(newRespRoundTripper(0, errors.New("blah")), "http://10.0.0.1", types.ID(1), types.ID(1), &nopProcessor{}, fs, nil)
+	p := NewPeer(newRespRoundTripper(0, errors.New("blah")), "http://10.0.0.1", types.ID(1), types.ID(1), &nopProcessor{}, fs, metrics.NewGroup(), nil)
 
 	if err := p.Send(raftpb.Message{Type: raftpb.MsgApp}); err != nil {
 		t.Fatalf("unexpect Send error: %v", err)
@@ -102,7 +103,7 @@ func TestSenderSendFailed(t *testing.T) {
 
 func TestSenderPost(t *testing.T) {
 	tr := &roundTripperRecorder{}
-	p := NewPeer(tr, "http://10.0.0.1", types.ID(1), types.ID(1), &nopProcessor{}, nil, nil)
+	p := NewPeer(tr, "http://10.0.0.1", types.ID(1), types.ID(1), &nopProcessor{}, nil, metrics.NewGroup(), nil)
 	if err := p.post([]byte("some data")); err != nil {
 		t.Fatalf("unexpect post error: %v", err)
 	}
@@ -144,7 +145,7 @@ func TestSenderPostBad(t *testing.T) {
 		{"http://10.0.0.1", http.StatusCreated, nil},
 	}
 	for i, tt := range tests {
-		p := NewPeer(newRespRoundTripper(tt.code, tt.err), tt.u, types.ID(1), types.ID(1), &nopProcessor{}, nil, make(chan error))
+		p := NewPeer(newRespRoundTripper(tt.code, tt.err), tt.u, types.ID(1), types.ID(1), &nopProcessor{}, nil, metrics.NewGroup(), make(chan error))
 		err := p.post([]byte("some data"))
 		p.Stop()
 
@@ -165,7 +166,7 @@ func TestPeerPostErrorc(t *testing.T) {
 	}
 	for i, tt := range tests {
 		errorc := make(chan error, 1)
-		p := NewPeer(newRespRoundTripper(tt.code, tt.err), tt.u, types.ID(1), types.ID(1), &nopProcessor{}, nil, errorc)
+		p := NewPeer(newRespRoundTripper(tt.code, tt.err), tt.u, types.ID(1), types.ID(1), &nopProcessor{}, nil, metrics.NewGroup(), errorc)
 		p.post([]byte("some data"))
 		p.Stop()
 		select {
