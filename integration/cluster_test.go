@@ -158,6 +158,7 @@ func TestForceNewCluster(t *testing.T) {
 		t.Fatalf("unexpected ForceRestart error: %v", err)
 	}
 	defer c.Members[0].Terminate(t)
+	c.waitLeader(t, c.Members[:1])
 
 	// use new http client to init new connection
 	cc = mustNewHTTPClient(t, []string{c.Members[0].URL()})
