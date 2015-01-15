@@ -144,7 +144,7 @@ func TestForceNewCluster(t *testing.T) {
 	cancel()
 	// ensure create has been applied in this machine
 	ctx, cancel = context.WithTimeout(context.Background(), requestTimeout)
-	if _, err := kapi.Watch("foo", resp.Node.ModifiedIndex).Next(ctx); err != nil {
+	if _, err := kapi.Watch("/foo", resp.Node.ModifiedIndex).Next(ctx); err != nil {
 		t.Fatalf("unexpected watch error: %v", err)
 	}
 	cancel()
@@ -160,12 +160,11 @@ func TestForceNewCluster(t *testing.T) {
 	defer c.Members[0].Terminate(t)
 
 	// ensure force restart keep the old data, and new cluster can make progress
-	cc = mustNewHTTPClient(t, []string{c.Members[0].URL()})
-	kapi = client.NewKeysAPI(cc)
-	_, err = kapi.Get(context.TODO(), "/foo")
-	if err != nil {
-		t.Errorf("unexpected get error: %v", err)
+	ctx, cancel = context.WithTimeout(context.Background(), requestTimeout)
+	if _, err := kapi.Watch("/foo", resp.Node.ModifiedIndex).Next(ctx); err != nil {
+		t.Fatalf("unexpected watch error: %v", err)
 	}
+	cancel()
 	clusterMustProgress(t, c.Members[:1])
 }
 
