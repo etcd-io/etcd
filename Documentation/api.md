@@ -439,7 +439,7 @@ curl http://127.0.0.1:2379/v2/keys/dir -XPUT -d ttl=30 -d dir=true -d prevExist=
 Keys that are under this directory work as usual, but when the directory expires, a watcher on a key under the directory will get an expire event:
 
 ```sh
-curl 'http://127.0.0.1:2379/v2/keys/dir/asdf?consistent=true&wait=true'
+curl 'http://127.0.0.1:2379/v2/keys/dir/asdf?wait=true'
 ```
 
 ```json
@@ -889,26 +889,6 @@ curl http://127.0.0.1:2379/v2/keys/afile -XPUT --data-urlencode value@afile.txt
     }
 }
 ```
-
-### Read Consistency
-
-#### Read from the Master
-
-Followers in a cluster can be behind the leader in their copy of the keyspace.
-If your application wants or needs the most up-to-date version of a key then it should ensure it reads from the current leader.
-By using the `consistent=true` flag in your GET requests, etcd will make sure you are talking to the current master.
-
-As an example of how a member can be behind the leader let's start with a three member cluster: L, F1, and F2.
-A client makes a write to L and F1 acknowledges the request.
-The client is told the write was successful and the keyspace is updated.
-Meanwhile F2 has partitioned from the network and will have an out-of-date version of the keyspace until the partition resolves.
-Since F2 missed the most recent write, a client reading from F2 will have an out-of-date version of the keyspace.
-
-Implementation notes on `consistent=true`: If the leader you are talking to is
-partitioned it will be unable to determine if it is not currently the master.
-In a later version we will provide a mechanism to set an upperbound of time
-that the current master can be unable to contact the quorom and still serve
-reads.
 
 ### Read Linearization
 

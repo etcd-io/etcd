@@ -83,13 +83,6 @@ $ etcdctl get /foo/bar
 Hello world
 ```
 
-Get the current value for a key within the cluster:
-
-```
-$ etcdctl get /foo/bar --consistent
-Hello world
-```
-
 Get the value of a key with additional metadata in a parseable format:
 
 ```
