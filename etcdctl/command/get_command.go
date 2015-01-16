@@ -32,7 +32,6 @@ func NewGetCommand() cli.Command {
 		Usage: "retrieve the value of a key",
 		Flags: []cli.Flag{
 			cli.BoolFlag{Name: "sort", Usage: "returns result in sorted order"},
-			cli.BoolFlag{Name: "consistent", Usage: "send request to the leader, thereby guranteeing that any earlier writes will be seen by the read"},
 		},
 		Action: func(c *cli.Context) {
 			handleGet(c, getCommandFunc)
@@ -61,15 +60,7 @@ func getCommandFunc(c *cli.Context, client *etcd.Client) (*etcd.Response, error)
 		return nil, errors.New("Key required")
 	}
 	key := c.Args()[0]
-	consistent := c.Bool("consistent")
 	sorted := c.Bool("sort")
-
-	// Setup consistency on the client.
-	if consistent {
-		client.SetConsistency(etcd.STRONG_CONSISTENCY)
-	} else {
-		client.SetConsistency(etcd.WEAK_CONSISTENCY)
-	}
 
 	// Retrieve the value from the server.
 	return client.Get(key, sorted, false)
