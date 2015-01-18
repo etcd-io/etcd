@@ -192,7 +192,7 @@ type node struct {
 	tickc      chan struct{}
 	done       chan struct{}
 	stop       chan struct{}
-	status     chan Status
+	status     chan chan Status
 }
 
 func newNode() node {
@@ -206,7 +206,7 @@ func newNode() node {
 		tickc:      make(chan struct{}),
 		done:       make(chan struct{}),
 		stop:       make(chan struct{}),
-		status:     make(chan Status),
+		status:     make(chan chan Status),
 	}
 }
 
@@ -234,11 +234,8 @@ func (n *node) run(r *raft) {
 	lead := None
 	prevSoftSt := r.softState()
 	prevHardSt := r.HardState
-	status := &Status{ID: r.id}
 
 	for {
-		status.update(r)
-
 		if advancec != nil {
 			readyc = nil
 		} else {
@@ -334,7 +331,8 @@ func (n *node) run(r *raft) {
 			}
 			r.raftLog.stableSnapTo(prevSnapi)
 			advancec = nil
-		case n.status <- status.get():
+		case c := <-n.status:
+			c <- getStatus(r)
 		case <-n.stop:
 			close(n.done)
 			return
@@ -414,7 +412,11 @@ func (n *node) ApplyConfChange(cc pb.ConfChange) *pb.ConfState {
 	return &cs
 }
 
-func (n *node) Status() Status { return <-n.status }
+func (n *node) Status() Status {
+	c := make(chan Status)
+	n.status <- c
+	return <-c
+}
 
 func newReady(r *raft, prevSoftSt *SoftState, prevHardSt pb.HardState) Ready {
 	rd := Ready{

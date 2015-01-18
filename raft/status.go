@@ -16,27 +16,33 @@
 
 package raft
 
+import (
+	pb "github.com/coreos/etcd/raft/raftpb"
+)
+
 type Status struct {
 	ID uint64
 
-	Lead uint64
-	Term uint64
-	Vote uint64
+	pb.HardState
+	SoftState
 
-	AppliedIndex uint64
-	CommitIndex  uint64
+	Applied  uint64
+	Progress map[uint64]progress
 }
 
-func (s *Status) update(r *raft) {
-	s.Lead = r.lead
-	s.Term = r.Term
-	s.Vote = r.Vote
+func getStatus(r *raft) Status {
+	s := Status{ID: r.id}
+	s.HardState = r.HardState
+	s.SoftState = *r.softState()
 
-	s.AppliedIndex = r.raftLog.applied
-	s.CommitIndex = r.raftLog.committed
-}
+	s.Applied = r.raftLog.applied
 
-func (s *Status) get() Status {
-	ns := *s
-	return ns
+	if s.RaftState == StateLeader {
+		s.Progress = make(map[uint64]progress)
+		for id, p := range r.prs {
+			s.Progress[id] = *p
+		}
+	}
+
+	return s
 }
