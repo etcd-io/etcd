@@ -59,6 +59,10 @@ func (h *ttlKeyHeap) Pop() interface{} {
 	old := h.array
 	n := len(old)
 	x := old[n-1]
+	// Set slice element to nil, so GC can recycle the node.
+	// This is due to golang GC doesn't support partial recycling:
+	// https://github.com/golang/go/issues/9618
+	old[n-1] = nil
 	h.array = old[0 : n-1]
 	delete(h.keyMap, x)
 	return x
