@@ -64,16 +64,16 @@ func TestProgressUpdate(t *testing.T) {
 		{prevM + 2, prevM + 2, prevN + 1}, // increase match, next
 	}
 	for i, tt := range tests {
-		p := &progress{
-			match: prevM,
-			next:  prevN,
+		p := &Progress{
+			Match: prevM,
+			Next:  prevN,
 		}
 		p.update(tt.update)
-		if p.match != tt.wm {
-			t.Errorf("#%d: match= %d, want %d", i, p.match, tt.wm)
+		if p.Match != tt.wm {
+			t.Errorf("#%d: match= %d, want %d", i, p.Match, tt.wm)
 		}
-		if p.next != tt.wn {
-			t.Errorf("#%d: next= %d, want %d", i, p.next, tt.wn)
+		if p.Next != tt.wn {
+			t.Errorf("#%d: next= %d, want %d", i, p.Next, tt.wn)
 		}
 	}
 }
@@ -136,17 +136,17 @@ func TestProgressMaybeDecr(t *testing.T) {
 		},
 	}
 	for i, tt := range tests {
-		p := &progress{
-			match: tt.m,
-			next:  tt.n,
+		p := &Progress{
+			Match: tt.m,
+			Next:  tt.n,
 		}
 		if g := p.maybeDecrTo(tt.rejected, tt.last); g != tt.w {
 			t.Errorf("#%d: maybeDecrTo= %t, want %t", i, g, tt.w)
 		}
-		if gm := p.match; gm != tt.m {
+		if gm := p.Match; gm != tt.m {
 			t.Errorf("#%d: match= %d, want %d", i, gm, tt.m)
 		}
-		if gn := p.next; gn != tt.wn {
+		if gn := p.Next; gn != tt.wn {
 			t.Errorf("#%d: next= %d, want %d", i, gn, tt.wn)
 		}
 	}
@@ -166,9 +166,9 @@ func TestProgressShouldWait(t *testing.T) {
 		{0, 0, false},
 	}
 	for i, tt := range tests {
-		p := &progress{
-			match: tt.m,
-			wait:  tt.wait,
+		p := &Progress{
+			Match: tt.m,
+			Wait:  tt.wait,
 		}
 		if g := p.shouldWait(); g != tt.w {
 			t.Errorf("#%d: shouldwait = %t, want %t", i, g, tt.w)
@@ -179,17 +179,17 @@ func TestProgressShouldWait(t *testing.T) {
 // TestProgressWaitReset ensures that progress.Update and progress.DercTo
 // will reset progress.wait.
 func TestProgressWaitReset(t *testing.T) {
-	p := &progress{
-		wait: 1,
+	p := &Progress{
+		Wait: 1,
 	}
 	p.maybeDecrTo(1, 1)
-	if p.wait != 0 {
-		t.Errorf("wait= %d, want 0", p.wait)
+	if p.Wait != 0 {
+		t.Errorf("wait= %d, want 0", p.Wait)
 	}
-	p.wait = 1
+	p.Wait = 1
 	p.update(2)
-	if p.wait != 0 {
-		t.Errorf("wait= %d, want 0", p.wait)
+	if p.Wait != 0 {
+		t.Errorf("wait= %d, want 0", p.Wait)
 	}
 }
 
@@ -198,11 +198,11 @@ func TestProgressDecr(t *testing.T) {
 	r := newRaft(1, []uint64{1, 2}, 5, 1, NewMemoryStorage())
 	r.becomeCandidate()
 	r.becomeLeader()
-	r.prs[2].wait = r.heartbeatTimeout * 2
+	r.prs[2].Wait = r.heartbeatTimeout * 2
 
 	r.Step(pb.Message{From: 1, To: 1, Type: pb.MsgBeat})
-	if r.prs[2].wait != r.heartbeatTimeout*(2-1) {
-		t.Errorf("wait = %d, want %d", r.prs[2].wait, r.heartbeatTimeout*(2-1))
+	if r.prs[2].Wait != r.heartbeatTimeout*(2-1) {
+		t.Errorf("wait = %d, want %d", r.prs[2].Wait, r.heartbeatTimeout*(2-1))
 	}
 }
 
@@ -1073,11 +1073,11 @@ func TestLeaderAppResp(t *testing.T) {
 		sm.Step(pb.Message{From: 2, Type: pb.MsgAppResp, Index: tt.index, Term: sm.Term, Reject: tt.reject, RejectHint: tt.index})
 
 		p := sm.prs[2]
-		if p.match != tt.wmatch {
-			t.Errorf("#%d match = %d, want %d", i, p.match, tt.wmatch)
+		if p.Match != tt.wmatch {
+			t.Errorf("#%d match = %d, want %d", i, p.Match, tt.wmatch)
 		}
-		if p.next != tt.wnext {
-			t.Errorf("#%d next = %d, want %d", i, p.next, tt.wnext)
+		if p.Next != tt.wnext {
+			t.Errorf("#%d next = %d, want %d", i, p.Next, tt.wnext)
 		}
 
 		msgs := sm.readMessages()
@@ -1119,9 +1119,9 @@ func TestBcastBeat(t *testing.T) {
 		sm.appendEntry(pb.Entry{Index: uint64(i) + 1})
 	}
 	// slow follower
-	sm.prs[2].match, sm.prs[2].next = 5, 6
+	sm.prs[2].Match, sm.prs[2].Next = 5, 6
 	// normal follower
-	sm.prs[3].match, sm.prs[3].next = sm.raftLog.lastIndex(), sm.raftLog.lastIndex()+1
+	sm.prs[3].Match, sm.prs[3].Next = sm.raftLog.lastIndex(), sm.raftLog.lastIndex()+1
 
 	sm.Step(pb.Message{Type: pb.MsgBeat})
 	msgs := sm.readMessages()
@@ -1129,8 +1129,8 @@ func TestBcastBeat(t *testing.T) {
 		t.Fatalf("len(msgs) = %v, want 2", len(msgs))
 	}
 	wantCommitMap := map[uint64]uint64{
-		2: min(sm.raftLog.committed, sm.prs[2].match),
-		3: min(sm.raftLog.committed, sm.prs[3].match),
+		2: min(sm.raftLog.committed, sm.prs[2].Match),
+		3: min(sm.raftLog.committed, sm.prs[3].Match),
 	}
 	for i, m := range msgs {
 		if m.Type != pb.MsgHeartbeat {
@@ -1216,12 +1216,12 @@ func TestLeaderIncreaseNext(t *testing.T) {
 		sm.raftLog.append(previousEnts...)
 		sm.becomeCandidate()
 		sm.becomeLeader()
-		sm.prs[2].match, sm.prs[2].next = tt.match, tt.next
+		sm.prs[2].Match, sm.prs[2].Next = tt.match, tt.next
 		sm.Step(pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{Data: []byte("somedata")}}})
 
 		p := sm.prs[2]
-		if p.next != tt.wnext {
-			t.Errorf("#%d next = %d, want %d", i, p.next, tt.wnext)
+		if p.Next != tt.wnext {
+			t.Errorf("#%d next = %d, want %d", i, p.Next, tt.wnext)
 		}
 	}
 }
@@ -1310,9 +1310,9 @@ func TestProvideSnap(t *testing.T) {
 
 	// force set the next of node 1, so that
 	// node 1 needs a snapshot
-	sm.prs[2].next = sm.raftLog.firstIndex()
+	sm.prs[2].Next = sm.raftLog.firstIndex()
 
-	sm.Step(pb.Message{From: 2, To: 1, Type: pb.MsgAppResp, Index: sm.prs[2].next - 1, Reject: true})
+	sm.Step(pb.Message{From: 2, To: 1, Type: pb.MsgAppResp, Index: sm.prs[2].Next - 1, Reject: true})
 	msgs := sm.readMessages()
 	if len(msgs) != 1 {
 		t.Fatalf("len(msgs) = %d, want 1", len(msgs))
@@ -1547,9 +1547,9 @@ func newNetwork(peers ...Interface) *network {
 			npeers[id] = sm
 		case *raft:
 			v.id = id
-			v.prs = make(map[uint64]*progress)
+			v.prs = make(map[uint64]*Progress)
 			for i := 0; i < size; i++ {
-				v.prs[peerAddrs[i]] = &progress{}
+				v.prs[peerAddrs[i]] = &Progress{}
 			}
 			v.reset(0)
 			npeers[id] = v

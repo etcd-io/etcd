@@ -27,9 +27,10 @@ type Status struct {
 	SoftState
 
 	Applied  uint64
-	Progress map[uint64]progress
+	Progress map[uint64]Progress
 }
 
+// getStatus gets a copy of the current raft status.
 func getStatus(r *raft) Status {
 	s := Status{ID: r.id}
 	s.HardState = r.HardState
@@ -38,7 +39,7 @@ func getStatus(r *raft) Status {
 	s.Applied = r.raftLog.applied
 
 	if s.RaftState == StateLeader {
-		s.Progress = make(map[uint64]progress)
+		s.Progress = make(map[uint64]Progress)
 		for id, p := range r.prs {
 			s.Progress[id] = *p
 		}
