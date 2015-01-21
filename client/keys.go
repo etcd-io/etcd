@@ -62,6 +62,8 @@ func NewDiscoveryKeysAPI(c HTTPClient) KeysAPI {
 
 type KeysAPI interface {
 	Create(ctx context.Context, key, value string) (*Response, error)
+	Update(ctx context.Context, key, value string) (*Response, error)
+
 	Get(ctx context.Context, key string) (*Response, error)
 
 	Watch(key string, idx uint64) Watcher
@@ -108,6 +110,24 @@ func (k *httpKeysAPI) Create(ctx context.Context, key, val string) (*Response, e
 		Value:  val,
 		Options: SetOptions{
 			PrevExist: PrevNoExist,
+		},
+	}
+
+	resp, body, err := k.client.Do(ctx, act)
+	if err != nil {
+		return nil, err
+	}
+
+	return unmarshalHTTPResponse(resp.StatusCode, resp.Header, body)
+}
+
+func (k *httpKeysAPI) Update(ctx context.Context, key, val string) (*Response, error) {
+	act := &setAction{
+		Prefix: k.prefix,
+		Key:    key,
+		Value:  val,
+		Options: SetOptions{
+			PrevExist: PrevExist,
 		},
 	}
 
