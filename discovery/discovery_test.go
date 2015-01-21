@@ -27,6 +27,7 @@ import (
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/jonboulle/clockwork"
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
+
 	"github.com/coreos/etcd/client"
 )
 
@@ -262,7 +263,7 @@ func TestWaitNodes(t *testing.T) {
 
 	for i, tt := range tests {
 		// Basic case
-		c := &clientWithResp{nil, &watcherWithResp{tt.rs}}
+		c := &clientWithResp{rs: nil, w: &watcherWithResp{rs: tt.rs}}
 		dBase := &discovery{cluster: "1000", c: c}
 
 		// Retry case
@@ -312,12 +313,12 @@ func TestWaitNodes(t *testing.T) {
 func TestCreateSelf(t *testing.T) {
 	rs := []*client.Response{{Node: &client.Node{Key: "1000/1", CreatedIndex: 2}}}
 
-	w := &watcherWithResp{rs}
-	errw := &watcherWithErr{errors.New("watch err")}
+	w := &watcherWithResp{rs: rs}
+	errw := &watcherWithErr{err: errors.New("watch err")}
 
-	c := &clientWithResp{rs, w}
-	errc := &clientWithErr{errors.New("create err"), w}
-	errwc := &clientWithResp{rs, errw}
+	c := &clientWithResp{rs: rs, w: w}
+	errc := &clientWithErr{err: errors.New("create err"), w: w}
+	errwc := &clientWithResp{rs: rs, w: errw}
 
 	tests := []struct {
 		c    client.KeysAPI
@@ -409,6 +410,7 @@ func TestRetryFailure(t *testing.T) {
 type clientWithResp struct {
 	rs []*client.Response
 	w  client.Watcher
+	client.KeysAPI
 }
 
 func (c *clientWithResp) Create(ctx context.Context, key string, value string) (*client.Response, error) {
@@ -440,6 +442,7 @@ func (c *clientWithResp) RecursiveWatch(key string, waitIndex uint64) client.Wat
 type clientWithErr struct {
 	err error
 	w   client.Watcher
+	client.KeysAPI
 }
 
 func (c *clientWithErr) Create(ctx context.Context, key string, value string) (*client.Response, error) {
@@ -459,6 +462,7 @@ func (c *clientWithErr) RecursiveWatch(key string, waitIndex uint64) client.Watc
 }
 
 type watcherWithResp struct {
+	client.KeysAPI
 	rs []*client.Response
 }
 
