@@ -176,7 +176,7 @@ func (d *discovery) getCluster() (string, error) {
 
 func (d *discovery) createSelf(contents string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
-	resp, err := d.c.Create(ctx, d.selfKey(), contents, -1)
+	resp, err := d.c.Create(ctx, d.selfKey(), contents)
 	cancel()
 	if err != nil {
 		if err == client.ErrKeyExists {

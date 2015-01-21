@@ -23,9 +23,16 @@ import (
 	"path"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
+)
+
+type PrevExistType string
+
+const (
+	PrevIgnore  = PrevExistType("")
+	PrevExist   = PrevExistType("true")
+	PrevNoExist = PrevExistType("false")
 )
 
 var (
@@ -54,11 +61,15 @@ func NewDiscoveryKeysAPI(c HTTPClient) KeysAPI {
 }
 
 type KeysAPI interface {
-	Create(ctx context.Context, key, value string, ttl time.Duration) (*Response, error)
+	Create(ctx context.Context, key, value string) (*Response, error)
 	Get(ctx context.Context, key string) (*Response, error)
 
 	Watch(key string, idx uint64) Watcher
 	RecursiveWatch(key string, idx uint64) Watcher
+}
+
+type SetOptions struct {
+	PrevExist PrevExistType
 }
 
 type Watcher interface {
@@ -90,18 +101,17 @@ type httpKeysAPI struct {
 	prefix string
 }
 
-func (k *httpKeysAPI) Create(ctx context.Context, key, val string, ttl time.Duration) (*Response, error) {
-	create := &createAction{
+func (k *httpKeysAPI) Create(ctx context.Context, key, val string) (*Response, error) {
+	act := &setAction{
 		Prefix: k.prefix,
 		Key:    key,
 		Value:  val,
-	}
-	if ttl >= 0 {
-		uttl := uint64(ttl.Seconds())
-		create.TTL = &uttl
+		Options: SetOptions{
+			PrevExist: PrevNoExist,
+		},
 	}
 
-	resp, body, err := k.client.Do(ctx, create)
+	resp, body, err := k.client.Do(ctx, act)
 	if err != nil {
 		return nil, err
 	}
@@ -215,25 +225,24 @@ func (w *waitAction) HTTPRequest(ep url.URL) *http.Request {
 	return req
 }
 
-type createAction struct {
-	Prefix string
-	Key    string
-	Value  string
-	TTL    *uint64
+type setAction struct {
+	Prefix  string
+	Key     string
+	Value   string
+	Options SetOptions
 }
 
-func (c *createAction) HTTPRequest(ep url.URL) *http.Request {
-	u := v2KeysURL(ep, c.Prefix, c.Key)
+func (a *setAction) HTTPRequest(ep url.URL) *http.Request {
+	u := v2KeysURL(ep, a.Prefix, a.Key)
 
 	params := u.Query()
-	params.Set("prevExist", "false")
+	if a.Options.PrevExist != PrevIgnore {
+		params.Set("prevExist", string(a.Options.PrevExist))
+	}
 	u.RawQuery = params.Encode()
 
 	form := url.Values{}
-	form.Add("value", c.Value)
-	if c.TTL != nil {
-		form.Add("ttl", strconv.FormatUint(*c.TTL, 10))
-	}
+	form.Add("value", a.Value)
 	body := strings.NewReader(form.Encode())
 
 	req, _ := http.NewRequest("PUT", u.String(), body)
