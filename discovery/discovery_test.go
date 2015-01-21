@@ -411,7 +411,7 @@ type clientWithResp struct {
 	w  client.Watcher
 }
 
-func (c *clientWithResp) Create(ctx context.Context, key string, value string, ttl time.Duration) (*client.Response, error) {
+func (c *clientWithResp) Create(ctx context.Context, key string, value string) (*client.Response, error) {
 	if len(c.rs) == 0 {
 		return &client.Response{}, nil
 	}
@@ -442,7 +442,7 @@ type clientWithErr struct {
 	w   client.Watcher
 }
 
-func (c *clientWithErr) Create(ctx context.Context, key string, value string, ttl time.Duration) (*client.Response, error) {
+func (c *clientWithErr) Create(ctx context.Context, key string, value string) (*client.Response, error) {
 	return &client.Response{}, c.err
 }
 
@@ -486,12 +486,12 @@ type clientWithRetry struct {
 	failTimes int
 }
 
-func (c *clientWithRetry) Create(ctx context.Context, key string, value string, ttl time.Duration) (*client.Response, error) {
+func (c *clientWithRetry) Create(ctx context.Context, key string, value string) (*client.Response, error) {
 	if c.failCount < c.failTimes {
 		c.failCount++
 		return nil, client.ErrTimeout
 	}
-	return c.clientWithResp.Create(ctx, key, value, ttl)
+	return c.clientWithResp.Create(ctx, key, value)
 }
 
 func (c *clientWithRetry) Get(ctx context.Context, key string) (*client.Response, error) {
