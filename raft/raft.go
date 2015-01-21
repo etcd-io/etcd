@@ -144,18 +144,18 @@ func newRaft(id uint64, peers []uint64, election, heartbeat int, storage Storage
 		panic("cannot use none id")
 	}
 	raftlog := newLog(storage)
-	hs, cs, err := storage.InitialState()
+	state, err := storage.InitialState()
 	if err != nil {
 		panic(err) // TODO(bdarnell)
 	}
-	if len(cs.Nodes) > 0 {
+	if len(state.ConfState.Nodes) > 0 {
 		if len(peers) > 0 {
 			// TODO(bdarnell): the peers argument is always nil except in
 			// tests; the argument should be removed and these tests should be
 			// updated to specify their nodes through a snapshot.
 			panic("cannot specify both newRaft(peers) and ConfState.Nodes)")
 		}
-		peers = cs.Nodes
+		peers = state.ConfState.Nodes
 	}
 	r := &raft{
 		id:               id,
@@ -169,8 +169,11 @@ func newRaft(id uint64, peers []uint64, election, heartbeat int, storage Storage
 	for _, p := range peers {
 		r.prs[p] = &Progress{Next: 1}
 	}
-	if !isHardStateEqual(hs, emptyState) {
-		r.loadState(hs)
+	if !isHardStateEqual(state.HardState, emptyState) {
+		r.loadState(state.HardState)
+	}
+	if state.AppliedIndex != 0 {
+		raftlog.appliedTo(state.AppliedIndex)
 	}
 	r.becomeFollower(r.Term, None)
 
