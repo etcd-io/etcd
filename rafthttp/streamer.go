@@ -160,7 +160,7 @@ type streamWriter struct {
 	done chan struct{}
 }
 
-// newStreamServer starts and returns a new started stream server.
+// newStreamWriter starts and returns a new unstarted stream writer.
 // The caller should call stop when finished, to shut it down.
 func newStreamWriter(to types.ID, term uint64) *streamWriter {
 	s := &streamWriter{
@@ -193,7 +193,8 @@ func (s *streamWriter) handle(w WriteFlusher) {
 		log.Printf("rafthttp: server streaming to %s at term %d has been stopped", s.to, s.term)
 	}()
 
-	ew := &entryWriter{w: w}
+	ew := newEntryWriter(w, s.to)
+	defer ew.stop()
 	for ents := range s.q {
 		start := time.Now()
 		if err := ew.writeEntries(ents); err != nil {
@@ -280,7 +281,8 @@ func (s *streamReader) handle(r io.Reader) {
 		log.Printf("rafthttp: client streaming to %s at term %d has been stopped", s.to, s.term)
 	}()
 
-	er := &entryReader{r: r}
+	er := newEntryReader(r, s.to)
+	defer er.stop()
 	for {
 		ents, err := er.readEntries()
 		if err != nil {
