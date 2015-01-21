@@ -85,7 +85,7 @@ func testClusterUsingDiscovery(t *testing.T, size int) {
 	dcc := mustNewHTTPClient(t, dc.URLs())
 	dkapi := client.NewKeysAPI(dcc)
 	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
-	if _, err := dkapi.Create(ctx, "/_config/size", fmt.Sprintf("%d", size), -1); err != nil {
+	if _, err := dkapi.Create(ctx, "/_config/size", fmt.Sprintf("%d", size)); err != nil {
 		t.Fatal(err)
 	}
 	cancel()
@@ -135,7 +135,7 @@ func TestForceNewCluster(t *testing.T) {
 	cc := mustNewHTTPClient(t, []string{c.Members[0].URL()})
 	kapi := client.NewKeysAPI(cc)
 	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
-	resp, err := kapi.Create(ctx, "/foo", "bar", -1)
+	resp, err := kapi.Create(ctx, "/foo", "bar")
 	if err != nil {
 		t.Fatalf("unexpected create error: %v", err)
 	}
@@ -178,7 +178,7 @@ func clusterMustProgress(t *testing.T, membs []*member) {
 	kapi := client.NewKeysAPI(cc)
 	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 	key := fmt.Sprintf("foo%d", rand.Int())
-	resp, err := kapi.Create(ctx, "/"+key, "bar", -1)
+	resp, err := kapi.Create(ctx, "/"+key, "bar")
 	if err != nil {
 		t.Fatalf("create on %s error: %v", membs[0].URL(), err)
 	}

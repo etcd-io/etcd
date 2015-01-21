@@ -176,45 +176,129 @@ func TestWaitAction(t *testing.T) {
 	}
 }
 
-func TestCreateAction(t *testing.T) {
-	ep := url.URL{Scheme: "http", Host: "example.com/v2/keys"}
-	wantURL := &url.URL{
-		Scheme:   "http",
-		Host:     "example.com",
-		Path:     "/v2/keys/foo/bar",
-		RawQuery: "prevExist=false",
-	}
+func TestSetAction(t *testing.T) {
 	wantHeader := http.Header(map[string][]string{
 		"Content-Type": []string{"application/x-www-form-urlencoded"},
 	})
 
-	ttl12 := uint64(12)
 	tests := []struct {
-		value    string
-		ttl      *uint64
+		act      setAction
+		wantURL  string
 		wantBody string
 	}{
+		// default prefix
 		{
-			value:    "baz",
+			act: setAction{
+				Prefix: DefaultV2KeysPrefix,
+				Key:    "foo",
+			},
+			wantURL:  "http://example.com/v2/keys/foo",
+			wantBody: "value=",
+		},
+
+		// non-default prefix
+		{
+			act: setAction{
+				Prefix: "/pfx",
+				Key:    "foo",
+			},
+			wantURL:  "http://example.com/pfx/foo",
+			wantBody: "value=",
+		},
+
+		// no prefix
+		{
+			act: setAction{
+				Key: "foo",
+			},
+			wantURL:  "http://example.com/foo",
+			wantBody: "value=",
+		},
+
+		// Key with path separators
+		{
+			act: setAction{
+				Prefix: DefaultV2KeysPrefix,
+				Key:    "foo/bar/baz",
+			},
+			wantURL:  "http://example.com/v2/keys/foo/bar/baz",
+			wantBody: "value=",
+		},
+
+		// Key with leading slash, Prefix with trailing slash
+		{
+			act: setAction{
+				Prefix: "/foo/",
+				Key:    "/bar",
+			},
+			wantURL:  "http://example.com/foo/bar",
+			wantBody: "value=",
+		},
+
+		// Key with trailing slash
+		{
+			act: setAction{
+				Key: "/foo/",
+			},
+			wantURL:  "http://example.com/foo",
+			wantBody: "value=",
+		},
+
+		// Value is set
+		{
+			act: setAction{
+				Key:   "foo",
+				Value: "baz",
+			},
+			wantURL:  "http://example.com/foo",
 			wantBody: "value=baz",
 		},
+
+		// PrevExist set, but still ignored
 		{
-			value:    "baz",
-			ttl:      &ttl12,
-			wantBody: "ttl=12&value=baz",
+			act: setAction{
+				Key: "foo",
+				Options: SetOptions{
+					PrevExist: PrevIgnore,
+				},
+			},
+			wantURL:  "http://example.com/foo",
+			wantBody: "value=",
+		},
+
+		// PrevExist set to true
+		{
+			act: setAction{
+				Key: "foo",
+				Options: SetOptions{
+					PrevExist: PrevExist,
+				},
+			},
+			wantURL:  "http://example.com/foo?prevExist=true",
+			wantBody: "value=",
+		},
+
+		// PrevExist set to false
+		{
+			act: setAction{
+				Key: "foo",
+				Options: SetOptions{
+					PrevExist: PrevNoExist,
+				},
+			},
+			wantURL:  "http://example.com/foo?prevExist=false",
+			wantBody: "value=",
 		},
 	}
 
 	for i, tt := range tests {
-		f := createAction{
-			Key:   "/foo/bar",
-			Value: tt.value,
-			TTL:   tt.ttl,
-		}
-		got := *f.HTTPRequest(ep)
-
-		err := assertResponse(got, wantURL, wantHeader, []byte(tt.wantBody))
+		u, err := url.Parse(tt.wantURL)
 		if err != nil {
+			t.Errorf("#%d: unable to use wantURL fixture: %v", i, err)
+		}
+
+		got := tt.act.HTTPRequest(url.URL{Scheme: "http", Host: "example.com"})
+		if err := assertResponse(*got, u, wantHeader, []byte(tt.wantBody)); err != nil {
 			t.Errorf("#%d: %v", i, err)
 		}
 	}
