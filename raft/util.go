@@ -54,9 +54,13 @@ func IsResponseMsg(m pb.Message) bool {
 	return m.Type == pb.MsgAppResp || m.Type == pb.MsgVoteResp || m.Type == pb.MsgHeartbeatResp
 }
 
+// EntryFormatter can be implemented by the application to provide human-readable formatting
+// of entry data. Nil is a valid EntryFormatter and will use a default format.
+type EntryFormatter func([]byte) string
+
 // DescribeMessage returns a concise human-readable description of a
 // Message for debugging.
-func DescribeMessage(m pb.Message) string {
+func (f EntryFormatter) DescribeMessage(m pb.Message) string {
 	var buf bytes.Buffer
 	fmt.Fprintf(&buf, "%d->%d %s Term:%d Log:%d/%d", m.From, m.To, m.Type, m.Term, m.LogTerm, m.Index)
 	if m.Reject {
@@ -68,7 +72,7 @@ func DescribeMessage(m pb.Message) string {
 	if len(m.Entries) > 0 {
 		fmt.Fprintf(&buf, " Entries:[")
 		for _, e := range m.Entries {
-			buf.WriteString(DescribeEntry(e))
+			buf.WriteString(f.DescribeEntry(e))
 		}
 		fmt.Fprintf(&buf, "]")
 	}
@@ -80,6 +84,24 @@ func DescribeMessage(m pb.Message) string {
 
 // DescribeEntry returns a concise human-readable description of an
 // Entry for debugging.
+func (f EntryFormatter) DescribeEntry(e pb.Entry) string {
+	var formatted string
+	if f == nil {
+		formatted = fmt.Sprintf("%q", e.Data)
+	} else {
+		formatted = f(e.Data)
+	}
+	return fmt.Sprintf("%d/%d %s %s", e.Term, e.Index, e.Type, formatted)
+}
+
+// DescribeMessage returns a concise human-readable description of a
+// Message for debugging using the default formatter.
+func DescribeMessage(m pb.Message) string {
+	return EntryFormatter(nil).DescribeMessage(m)
+}
+
+// DescribeEntry returns a concise human-readable description of an
+// Entry for debugging using the default formatter.
 func DescribeEntry(e pb.Entry) string {
-	return fmt.Sprintf("%d/%d %s %q", e.Term, e.Index, e.Type, string(e.Data))
+	return EntryFormatter(nil).DescribeEntry(e)
 }
