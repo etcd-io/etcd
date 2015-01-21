@@ -21,6 +21,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft/raftpb"
 )
 
@@ -45,12 +46,12 @@ func TestEntsWriteAndRead(t *testing.T) {
 	}
 	for i, tt := range tests {
 		b := &bytes.Buffer{}
-		ew := &entryWriter{w: b}
+		ew := newEntryWriter(b, types.ID(1))
 		if err := ew.writeEntries(tt); err != nil {
 			t.Errorf("#%d: unexpected write ents error: %v", i, err)
 			continue
 		}
-		er := &entryReader{r: b}
+		er := newEntryReader(b, types.ID(1))
 		ents, err := er.readEntries()
 		if err != nil {
 			t.Errorf("#%d: unexpected read ents error: %v", i, err)

@@ -19,6 +19,7 @@ package etcdhttp
 import (
 	"encoding/json"
 	"errors"
+	"expvar"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -47,6 +48,7 @@ const (
 	deprecatedMachinesPrefix = "/v2/machines"
 	membersPrefix            = "/v2/members"
 	statsPrefix              = "/v2/stats"
+	statsPath                = "/stats"
 	healthPath               = "/health"
 	versionPath              = "/version"
 )
@@ -83,6 +85,7 @@ func NewClientHandler(server *etcdserver.EtcdServer) http.Handler {
 	mux.HandleFunc(statsPrefix+"/store", sh.serveStore)
 	mux.HandleFunc(statsPrefix+"/self", sh.serveSelf)
 	mux.HandleFunc(statsPrefix+"/leader", sh.serveLeader)
+	mux.HandleFunc(statsPath, serveStats)
 	mux.Handle(membersPrefix, mh)
 	mux.Handle(membersPrefix+"/", mh)
 	mux.Handle(deprecatedMachinesPrefix, dmh)
@@ -282,6 +285,21 @@ func (h *statsHandler) serveLeader(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(stats)
+}
+
+func serveStats(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	// TODO: getting one key or a prefix of keys based on path
+	fmt.Fprintf(w, "{\n")
+	first := true
+	expvar.Do(func(kv expvar.KeyValue) {
+		if !first {
+			fmt.Fprintf(w, ",\n")
+		}
+		first = false
+		fmt.Fprintf(w, "%q: %s", kv.Key, kv.Value)
+	})
+	fmt.Fprintf(w, "\n}\n")
 }
 
 // TODO: change etcdserver to raft interface when we have it.
