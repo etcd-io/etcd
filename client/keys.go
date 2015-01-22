@@ -67,7 +67,7 @@ type KeysAPI interface {
 	Get(ctx context.Context, key string) (*Response, error)
 
 	Watch(key string, idx uint64) Watcher
-	RecursiveWatch(key string, idx uint64) Watcher
+	RWatch(key string, idx uint64) Watcher
 }
 
 type SetOptions struct {
@@ -166,7 +166,7 @@ func (k *httpKeysAPI) Watch(key string, idx uint64) Watcher {
 	}
 }
 
-func (k *httpKeysAPI) RecursiveWatch(key string, idx uint64) Watcher {
+func (k *httpKeysAPI) RWatch(key string, idx uint64) Watcher {
 	return &httpWatcher{
 		client: k.client,
 		nextWait: waitAction{
