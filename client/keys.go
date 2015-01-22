@@ -61,6 +61,7 @@ func NewDiscoveryKeysAPI(c HTTPClient) KeysAPI {
 }
 
 type KeysAPI interface {
+	Set(ctx context.Context, key, value string, opts SetOptions) (*Response, error)
 	Create(ctx context.Context, key, value string) (*Response, error)
 	Update(ctx context.Context, key, value string) (*Response, error)
 
@@ -104,14 +105,12 @@ type httpKeysAPI struct {
 	prefix string
 }
 
-func (k *httpKeysAPI) Create(ctx context.Context, key, val string) (*Response, error) {
+func (k *httpKeysAPI) Set(ctx context.Context, key, val string, opts SetOptions) (*Response, error) {
 	act := &setAction{
-		Prefix: k.prefix,
-		Key:    key,
-		Value:  val,
-		Options: SetOptions{
-			PrevExist: PrevNoExist,
-		},
+		Prefix:  k.prefix,
+		Key:     key,
+		Value:   val,
+		Options: opts,
 	}
 
 	resp, body, err := k.client.Do(ctx, act)
@@ -122,22 +121,12 @@ func (k *httpKeysAPI) Create(ctx context.Context, key, val string) (*Response, e
 	return unmarshalHTTPResponse(resp.StatusCode, resp.Header, body)
 }
 
+func (k *httpKeysAPI) Create(ctx context.Context, key, val string) (*Response, error) {
+	return k.Set(ctx, key, val, SetOptions{PrevExist: PrevNoExist})
+}
+
 func (k *httpKeysAPI) Update(ctx context.Context, key, val string) (*Response, error) {
-	act := &setAction{
-		Prefix: k.prefix,
-		Key:    key,
-		Value:  val,
-		Options: SetOptions{
-			PrevExist: PrevExist,
-		},
-	}
-
-	resp, body, err := k.client.Do(ctx, act)
-	if err != nil {
-		return nil, err
-	}
-
-	return unmarshalHTTPResponse(resp.StatusCode, resp.Header, body)
+	return k.Set(ctx, key, val, SetOptions{PrevExist: PrevExist})
 }
 
 func (k *httpKeysAPI) Get(ctx context.Context, key string) (*Response, error) {
