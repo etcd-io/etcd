@@ -275,7 +275,7 @@ func (d *discovery) waitNodes(nodes client.Nodes, size int, index uint64) (clien
 		nodes = nodes[:size]
 	}
 	// watch from the next index
-	w := d.c.RecursiveWatch(d.cluster, index+1)
+	w := d.c.RWatch(d.cluster, index+1)
 	all := make(client.Nodes, len(nodes))
 	copy(all, nodes)
 	for _, n := range all {

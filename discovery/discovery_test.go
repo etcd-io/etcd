@@ -435,7 +435,7 @@ func (c *clientWithResp) Watch(key string, waitIndex uint64) client.Watcher {
 	return c.w
 }
 
-func (c *clientWithResp) RecursiveWatch(key string, waitIndex uint64) client.Watcher {
+func (c *clientWithResp) RWatch(key string, waitIndex uint64) client.Watcher {
 	return c.w
 }
 
@@ -457,7 +457,7 @@ func (c *clientWithErr) Watch(key string, waitIndex uint64) client.Watcher {
 	return c.w
 }
 
-func (c *clientWithErr) RecursiveWatch(key string, waitIndex uint64) client.Watcher {
+func (c *clientWithErr) RWatch(key string, waitIndex uint64) client.Watcher {
 	return c.w
 }
 
