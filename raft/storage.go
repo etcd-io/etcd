@@ -37,8 +37,8 @@ var ErrUnavailable = errors.New("requested entry at index is unavailable")
 // become inoperable and refuse to participate in elections; the
 // application is responsible for cleanup and recovery in this case.
 type Storage interface {
-	// InitialState returns the saved HardState and ConfState information.
-	InitialState() (pb.HardState, pb.ConfState, error)
+	// InitialState returns the saved state information.
+	InitialState() (InitialState, error)
 	// Entries returns a slice of log entries in the range [lo,hi).
 	Entries(lo, hi uint64) ([]pb.Entry, error)
 	// Term returns the term of entry i, which must be in the range
@@ -55,6 +55,17 @@ type Storage interface {
 	FirstIndex() (uint64, error)
 	// Snapshot returns the most recent snapshot.
 	Snapshot() (pb.Snapshot, error)
+}
+
+// InitialState is the return value of the Storage.InitialState method.
+type InitialState struct {
+	HardState pb.HardState
+	ConfState pb.ConfState
+
+	// AppliedIndex is the last index which has been applied to the state machine,
+	// for implementations which persist the state machine to disk. If the state
+	// machine is not persistent, this field may be zero.
+	AppliedIndex uint64
 }
 
 // MemoryStorage implements the Storage interface backed by an
@@ -80,8 +91,11 @@ func NewMemoryStorage() *MemoryStorage {
 }
 
 // InitialState implements the Storage interface.
-func (ms *MemoryStorage) InitialState() (pb.HardState, pb.ConfState, error) {
-	return ms.hardState, ms.snapshot.Metadata.ConfState, nil
+func (ms *MemoryStorage) InitialState() (InitialState, error) {
+	return InitialState{
+		HardState: ms.hardState,
+		ConfState: ms.snapshot.Metadata.ConfState,
+	}, nil
 }
 
 // SetHardState saves the current HardState.
