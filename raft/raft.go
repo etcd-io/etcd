@@ -139,7 +139,8 @@ type raft struct {
 	step             stepFunc
 }
 
-func newRaft(id uint64, peers []uint64, election, heartbeat int, storage Storage) *raft {
+func newRaft(id uint64, peers []uint64, election, heartbeat int, storage Storage,
+	applied uint64) *raft {
 	if id == None {
 		panic("cannot use none id")
 	}
@@ -172,6 +173,9 @@ func newRaft(id uint64, peers []uint64, election, heartbeat int, storage Storage
 	if !isHardStateEqual(hs, emptyState) {
 		r.loadState(hs)
 	}
+	if applied > 0 {
+		raftlog.appliedTo(applied)
+	}
 	r.becomeFollower(r.Term, None)
 
 	nodesStrs := make([]string, 0)
@@ -179,8 +183,8 @@ func newRaft(id uint64, peers []uint64, election, heartbeat int, storage Storage
 		nodesStrs = append(nodesStrs, fmt.Sprintf("%x", n))
 	}
 
-	log.Printf("raft: newRaft %x [peers: [%s], term: %d, commit: %d, lastindex: %d, lastterm: %d]",
-		r.id, strings.Join(nodesStrs, ","), r.Term, r.raftLog.committed, r.raftLog.lastIndex(), r.raftLog.lastTerm())
+	log.Printf("raft: newRaft %x [peers: [%s], term: %d, commit: %d, applied: %d, lastindex: %d, lastterm: %d]",
+		r.id, strings.Join(nodesStrs, ","), r.Term, r.raftLog.committed, r.raftLog.applied, r.raftLog.lastIndex(), r.raftLog.lastTerm())
 	return r
 }
 
