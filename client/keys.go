@@ -65,6 +65,7 @@ type KeysAPI interface {
 	Update(ctx context.Context, key, value string) (*Response, error)
 
 	Get(ctx context.Context, key string) (*Response, error)
+	RGet(ctx context.Context, key string) (*Response, error)
 
 	Watch(key string, idx uint64) Watcher
 	RWatch(key string, idx uint64) Watcher
@@ -144,6 +145,21 @@ func (k *httpKeysAPI) Get(ctx context.Context, key string) (*Response, error) {
 		Prefix:    k.prefix,
 		Key:       key,
 		Recursive: false,
+	}
+
+	resp, body, err := k.client.Do(ctx, get)
+	if err != nil {
+		return nil, err
+	}
+
+	return unmarshalHTTPResponse(resp.StatusCode, resp.Header, body)
+}
+
+func (k *httpKeysAPI) RGet(ctx context.Context, key string) (*Response, error) {
+	get := &getAction{
+		Prefix:    k.prefix,
+		Key:       key,
+		Recursive: true,
 	}
 
 	resp, body, err := k.client.Do(ctx, get)
