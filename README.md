@@ -67,13 +67,13 @@ You have successfully started an etcd on a single machine and written a key to t
 - [Tune etcd][tuning].
 - [Upgrade from 0.4.6 to 2.0.0][upgrade].
 
-[api]: https://github.com/coreos/etcd/blob/master/Documentation/api.md
-[clustering]: https://github.com/coreos/etcd/blob/master/Documentation/clustering.md
-[configuration]: https://github.com/coreos/etcd/blob/master/Documentation/configuration.md
-[libraries-and-tools]: https://github.com/coreos/etcd/blob/master/Documentation/libraries-and-tools.md
-[security]: https://github.com/coreos/etcd/blob/master/Documentation/security.md
-[tuning]: https://github.com/coreos/etcd/blob/master/Documentation/tuning.md
-[upgrade]: https://github.com/coreos/etcd/blob/master/Documentation/0_4_migration_tool.md
+[api]: ./Documentation/api.md
+[clustering]: ./Documentation/clustering.md
+[configuration]: ./Documentation/configuration.md
+[libraries-and-tools]: ./Documentation/libraries-and-tools.md
+[security]: ./Documentation/security.md
+[tuning]: ./Documentation/tuning.md
+[upgrade]: ./Documentation/0_4_migration_tool.md
 
 ## Contact
 
