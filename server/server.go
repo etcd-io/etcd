@@ -285,7 +285,7 @@ func (s *Server) Dispatch(c raft.Command, w http.ResponseWriter, req *http.Reque
 // Handler to return the current version of etcd.
 func (s *Server) GetVersionHandler(w http.ResponseWriter, req *http.Request) error {
 	w.WriteHeader(http.StatusOK)
-	fmt.Fprintf(w, "etcd %s", ReleaseVersion)
+	fmt.Fprintf(w, `{"releaseVersion":"%s","internalVersion":"%s"}`, ReleaseVersion, InternalVersion)
 	return nil
 }
 

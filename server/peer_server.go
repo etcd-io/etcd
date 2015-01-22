@@ -913,9 +913,9 @@ func (s *PeerServer) monitorVersion() {
 		}
 		// only support upgrading to etcd2
 		if *resp.Node.Value == "2" {
-			log.Infof("%s: detected next internal version 2, exit after 10 seconds.", s.config.Name)
+			log.Infof("%s: detected next internal version 2, exit after 10 seconds.", s.Config.Name)
 		} else {
-			log.Infof("%s: detected invaild next internal version %s", s.config.Name, *resp.Node.Value)
+			log.Infof("%s: detected invaild next internal version %s", s.Config.Name, *resp.Node.Value)
 			continue
 		}
 		time.Sleep(10 * time.Second)
