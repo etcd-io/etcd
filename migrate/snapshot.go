@@ -43,7 +43,7 @@ type Snapshot4 struct {
 	} `json:"peers"`
 }
 
-type sstore struct {
+type Store4 struct {
 	Root           *node
 	CurrentIndex   uint64
 	CurrentVersion int
@@ -165,7 +165,7 @@ func mangleRoot(n *node) *node {
 }
 
 func (s *Snapshot4) GetNodesFromStore() map[string]uint64 {
-	st := &sstore{}
+	st := &Store4{}
 	if err := json.Unmarshal(s.State, st); err != nil {
 		log.Fatal("Couldn't unmarshal snapshot")
 	}
@@ -174,7 +174,7 @@ func (s *Snapshot4) GetNodesFromStore() map[string]uint64 {
 }
 
 func (s *Snapshot4) Snapshot2() *raftpb.Snapshot {
-	st := &sstore{}
+	st := &Store4{}
 	if err := json.Unmarshal(s.State, st); err != nil {
 		log.Fatal("Couldn't unmarshal snapshot")
 	}
