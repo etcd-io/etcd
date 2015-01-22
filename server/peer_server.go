@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"net/http"
 	"net/url"
+	"os"
 	"sort"
 	"strings"
 	"sync"
@@ -292,6 +293,7 @@ func (s *PeerServer) Start(snapshot bool, clusterConfig *ClusterConfig) error {
 	s.startRoutine(s.monitorTimeoutThreshold)
 	s.startRoutine(s.monitorActiveSize)
 	s.startRoutine(s.monitorPeerActivity)
+	s.startRoutine(s.monitorVersion)
 
 	// open the snapshot
 	if snapshot {
@@ -893,5 +895,32 @@ func (s *PeerServer) monitorPeerActivity() {
 				continue
 			}
 		}
+	}
+}
+
+func (s *PeerServer) monitorVersion() {
+	for {
+		select {
+		case <-s.closeChan:
+			return
+		case <-time.After(time.Second):
+		}
+
+		resp, err := s.store.Get("/_etcd/next-internal-version", false, false)
+		if err != nil {
+			continue
+		}
+		// only support upgrading to etcd2
+		if *resp.Node.Value == "2" {
+			log.Infof("%s: detected next internal version 2, exit after 10 seconds.", s.config.Name)
+		} else {
+			log.Infof("%s: detected invaild next internal version %s", s.config.Name, *resp.Node.Value)
+			continue
+		}
+		time.Sleep(10 * time.Second)
+		// be nice to raft. try not to corrupt log file.
+		go s.raftServer.Stop()
+		time.Sleep(time.Second)
+		os.Exit(0)
 	}
 }
