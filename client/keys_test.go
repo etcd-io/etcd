@@ -304,6 +304,92 @@ func TestSetAction(t *testing.T) {
 	}
 }
 
+func TestDeleteAction(t *testing.T) {
+	wantHeader := http.Header(map[string][]string{
+		"Content-Type": []string{"application/x-www-form-urlencoded"},
+	})
+
+	tests := []struct {
+		act     deleteAction
+		wantURL string
+	}{
+		// default prefix
+		{
+			act: deleteAction{
+				Prefix: DefaultV2KeysPrefix,
+				Key:    "foo",
+			},
+			wantURL: "http://example.com/v2/keys/foo",
+		},
+
+		// non-default prefix
+		{
+			act: deleteAction{
+				Prefix: "/pfx",
+				Key:    "foo",
+			},
+			wantURL: "http://example.com/pfx/foo",
+		},
+
+		// no prefix
+		{
+			act: deleteAction{
+				Key: "foo",
+			},
+			wantURL: "http://example.com/foo",
+		},
+
+		// Key with path separators
+		{
+			act: deleteAction{
+				Prefix: DefaultV2KeysPrefix,
+				Key:    "foo/bar/baz",
+			},
+			wantURL: "http://example.com/v2/keys/foo/bar/baz",
+		},
+
+		// Key with leading slash, Prefix with trailing slash
+		{
+			act: deleteAction{
+				Prefix: "/foo/",
+				Key:    "/bar",
+			},
+			wantURL: "http://example.com/foo/bar",
+		},
+
+		// Key with trailing slash
+		{
+			act: deleteAction{
+				Key: "/foo/",
+			},
+			wantURL: "http://example.com/foo",
+		},
+
+		// Recursive set to true
+		{
+			act: deleteAction{
+				Key: "foo",
+				Options: DeleteOptions{
+					Recursive: true,
+				},
+			},
+			wantURL: "http://example.com/foo?recursive=true",
+		},
+	}
+
+	for i, tt := range tests {
+		u, err := url.Parse(tt.wantURL)
+		if err != nil {
+			t.Errorf("#%d: unable to use wantURL fixture: %v", i, err)
+		}
+
+		got := tt.act.HTTPRequest(url.URL{Scheme: "http", Host: "example.com"})
+		if err := assertRequest(*got, "DELETE", u, wantHeader, nil); err != nil {
+			t.Errorf("#%d: %v", i, err)
+		}
+	}
+}
+
 func assertRequest(got http.Request, wantMethod string, wantURL *url.URL, wantHeader http.Header, wantBody []byte) error {
 	if wantMethod != got.Method {
 		return fmt.Errorf("want.Method=%#v got.Method=%#v", wantMethod, got.Method)
