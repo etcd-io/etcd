@@ -65,6 +65,8 @@ type KeysAPI interface {
 	Create(ctx context.Context, key, value string) (*Response, error)
 	Update(ctx context.Context, key, value string) (*Response, error)
 
+	Delete(ctx context.Context, key string, opts DeleteOptions) (*Response, error)
+
 	Get(ctx context.Context, key string) (*Response, error)
 	RGet(ctx context.Context, key string) (*Response, error)
 
@@ -74,6 +76,10 @@ type KeysAPI interface {
 
 type SetOptions struct {
 	PrevExist PrevExistType
+}
+
+type DeleteOptions struct {
+	Recursive bool
 }
 
 type Watcher interface {
@@ -127,6 +133,21 @@ func (k *httpKeysAPI) Create(ctx context.Context, key, val string) (*Response, e
 
 func (k *httpKeysAPI) Update(ctx context.Context, key, val string) (*Response, error) {
 	return k.Set(ctx, key, val, SetOptions{PrevExist: PrevExist})
+}
+
+func (k *httpKeysAPI) Delete(ctx context.Context, key string, opts DeleteOptions) (*Response, error) {
+	act := &deleteAction{
+		Prefix:  k.prefix,
+		Key:     key,
+		Options: opts,
+	}
+
+	resp, body, err := k.client.Do(ctx, act)
+	if err != nil {
+		return nil, err
+	}
+
+	return unmarshalHTTPResponse(resp.StatusCode, resp.Header, body)
 }
 
 func (k *httpKeysAPI) Get(ctx context.Context, key string) (*Response, error) {
@@ -271,6 +292,28 @@ func (a *setAction) HTTPRequest(ep url.URL) *http.Request {
 	body := strings.NewReader(form.Encode())
 
 	req, _ := http.NewRequest("PUT", u.String(), body)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	return req
+}
+
+type deleteAction struct {
+	Prefix  string
+	Key     string
+	Value   string
+	Options DeleteOptions
+}
+
+func (a *deleteAction) HTTPRequest(ep url.URL) *http.Request {
+	u := v2KeysURL(ep, a.Prefix, a.Key)
+
+	params := u.Query()
+	if a.Options.Recursive {
+		params.Set("recursive", "true")
+	}
+	u.RawQuery = params.Encode()
+
+	req, _ := http.NewRequest("DELETE", u.String(), nil)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	return req
