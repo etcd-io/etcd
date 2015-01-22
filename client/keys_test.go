@@ -120,7 +120,7 @@ func TestGetAction(t *testing.T) {
 		wantURL := baseWantURL
 		wantURL.RawQuery = tt.wantQuery
 
-		err := assertRequest(got, wantURL, wantHeader, nil)
+		err := assertRequest(got, "GET", wantURL, wantHeader, nil)
 		if err != nil {
 			t.Errorf("#%d: %v", i, err)
 		}
@@ -169,7 +169,7 @@ func TestWaitAction(t *testing.T) {
 		wantURL := baseWantURL
 		wantURL.RawQuery = tt.wantQuery
 
-		err := assertRequest(got, wantURL, wantHeader, nil)
+		err := assertRequest(got, "GET", wantURL, wantHeader, nil)
 		if err != nil {
 			t.Errorf("#%d: %v", i, err)
 		}
@@ -298,13 +298,17 @@ func TestSetAction(t *testing.T) {
 		}
 
 		got := tt.act.HTTPRequest(url.URL{Scheme: "http", Host: "example.com"})
-		if err := assertRequest(*got, u, wantHeader, []byte(tt.wantBody)); err != nil {
+		if err := assertRequest(*got, "PUT", u, wantHeader, []byte(tt.wantBody)); err != nil {
 			t.Errorf("#%d: %v", i, err)
 		}
 	}
 }
 
-func assertRequest(got http.Request, wantURL *url.URL, wantHeader http.Header, wantBody []byte) error {
+func assertRequest(got http.Request, wantMethod string, wantURL *url.URL, wantHeader http.Header, wantBody []byte) error {
+	if wantMethod != got.Method {
+		return fmt.Errorf("want.Method=%#v got.Method=%#v", wantMethod, got.Method)
+	}
+
 	if !reflect.DeepEqual(wantURL, got.URL) {
 		return fmt.Errorf("want.URL=%#v got.URL=%#v", wantURL, got.URL)
 	}
