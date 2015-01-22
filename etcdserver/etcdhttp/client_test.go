@@ -1329,7 +1329,7 @@ func TestServeVersion(t *testing.T) {
 	if rw.Code != http.StatusOK {
 		t.Errorf("code=%d, want %d", rw.Code, http.StatusOK)
 	}
-	w := fmt.Sprintf("etcd %s", version.Version)
+	w := fmt.Sprintf(`{"releaseVersion":"%s","internalVersion":"%s"}`, version.Version, version.InternalVersion)
 	if g := rw.Body.String(); g != w {
 		t.Fatalf("body = %q, want %q", g, w)
 	}
