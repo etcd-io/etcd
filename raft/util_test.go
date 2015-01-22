@@ -35,12 +35,12 @@ func TestDescribeEntry(t *testing.T) {
 		Data:  []byte("hello\x00world"),
 	}
 
-	defaultFormatted := DescribeEntry(entry)
+	defaultFormatted := DescribeEntry(entry, nil)
 	if defaultFormatted != "1/2 EntryNormal \"hello\\x00world\"" {
 		t.Errorf("unexpected default output: %s", defaultFormatted)
 	}
 
-	customFormatted := testFormatter.DescribeEntry(entry)
+	customFormatted := DescribeEntry(entry, testFormatter)
 	if customFormatted != "1/2 EntryNormal HELLO\x00WORLD" {
 		t.Errorf("unexpected custom output: %s", customFormatted)
 	}

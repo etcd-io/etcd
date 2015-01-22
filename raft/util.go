@@ -60,7 +60,7 @@ type EntryFormatter func([]byte) string
 
 // DescribeMessage returns a concise human-readable description of a
 // Message for debugging.
-func (f EntryFormatter) DescribeMessage(m pb.Message) string {
+func DescribeMessage(m pb.Message, f EntryFormatter) string {
 	var buf bytes.Buffer
 	fmt.Fprintf(&buf, "%d->%d %s Term:%d Log:%d/%d", m.From, m.To, m.Type, m.Term, m.LogTerm, m.Index)
 	if m.Reject {
@@ -72,7 +72,7 @@ func (f EntryFormatter) DescribeMessage(m pb.Message) string {
 	if len(m.Entries) > 0 {
 		fmt.Fprintf(&buf, " Entries:[")
 		for _, e := range m.Entries {
-			buf.WriteString(f.DescribeEntry(e))
+			buf.WriteString(DescribeEntry(e, f))
 		}
 		fmt.Fprintf(&buf, "]")
 	}
@@ -84,7 +84,7 @@ func (f EntryFormatter) DescribeMessage(m pb.Message) string {
 
 // DescribeEntry returns a concise human-readable description of an
 // Entry for debugging.
-func (f EntryFormatter) DescribeEntry(e pb.Entry) string {
+func DescribeEntry(e pb.Entry, f EntryFormatter) string {
 	var formatted string
 	if f == nil {
 		formatted = fmt.Sprintf("%q", e.Data)
@@ -92,16 +92,4 @@ func (f EntryFormatter) DescribeEntry(e pb.Entry) string {
 		formatted = f(e.Data)
 	}
 	return fmt.Sprintf("%d/%d %s %s", e.Term, e.Index, e.Type, formatted)
-}
-
-// DescribeMessage returns a concise human-readable description of a
-// Message for debugging using the default formatter.
-func DescribeMessage(m pb.Message) string {
-	return EntryFormatter(nil).DescribeMessage(m)
-}
-
-// DescribeEntry returns a concise human-readable description of an
-// Entry for debugging using the default formatter.
-func DescribeEntry(e pb.Entry) string {
-	return EntryFormatter(nil).DescribeEntry(e)
 }
