@@ -56,7 +56,7 @@ func TestLeaderUpdateTermFromMessage(t *testing.T) {
 // it immediately reverts to follower state.
 // Reference: section 5.1
 func testUpdateTermFromMessage(t *testing.T, state StateType) {
-	r := newRaft(1, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
+	r := newRaft(1, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage(), 0)
 	switch state {
 	case StateFollower:
 		r.becomeFollower(1, 2)
@@ -86,7 +86,7 @@ func TestRejectStaleTermMessage(t *testing.T) {
 	fakeStep := func(r *raft, m pb.Message) {
 		called = true
 	}
-	r := newRaft(1, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
+	r := newRaft(1, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage(), 0)
 	r.step = fakeStep
 	r.loadState(pb.HardState{Term: 2})
 
@@ -100,7 +100,7 @@ func TestRejectStaleTermMessage(t *testing.T) {
 // TestStartAsFollower tests that when servers start up, they begin as followers.
 // Reference: section 5.2
 func TestStartAsFollower(t *testing.T) {
-	r := newRaft(1, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
+	r := newRaft(1, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage(), 0)
 	if r.state != StateFollower {
 		t.Errorf("state = %s, want %s", r.state, StateFollower)
 	}
@@ -113,7 +113,7 @@ func TestStartAsFollower(t *testing.T) {
 func TestLeaderBcastBeat(t *testing.T) {
 	// heartbeat interval
 	hi := 1
-	r := newRaft(1, []uint64{1, 2, 3}, 10, hi, NewMemoryStorage())
+	r := newRaft(1, []uint64{1, 2, 3}, 10, hi, NewMemoryStorage(), 0)
 	r.becomeCandidate()
 	r.becomeLeader()
 	for i := 0; i < 10; i++ {
@@ -155,7 +155,7 @@ func TestCandidateStartNewElection(t *testing.T) {
 func testNonleaderStartElection(t *testing.T, state StateType) {
 	// election timeout
 	et := 10
-	r := newRaft(1, []uint64{1, 2, 3}, et, 1, NewMemoryStorage())
+	r := newRaft(1, []uint64{1, 2, 3}, et, 1, NewMemoryStorage(), 0)
 	switch state {
 	case StateFollower:
 		r.becomeFollower(1, 2)
@@ -219,7 +219,7 @@ func TestLeaderElectionInOneRoundRPC(t *testing.T) {
 		{5, map[uint64]bool{}, StateCandidate},
 	}
 	for i, tt := range tests {
-		r := newRaft(1, idsBySize(tt.size), 10, 1, NewMemoryStorage())
+		r := newRaft(1, idsBySize(tt.size), 10, 1, NewMemoryStorage(), 0)
 
 		r.Step(pb.Message{From: 1, To: 1, Type: pb.MsgHup})
 		for id, vote := range tt.votes {
@@ -252,7 +252,7 @@ func TestFollowerVote(t *testing.T) {
 		{2, 1, true},
 	}
 	for i, tt := range tests {
-		r := newRaft(1, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
+		r := newRaft(1, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage(), 0)
 		r.loadState(pb.HardState{Term: 1, Vote: tt.vote})
 
 		r.Step(pb.Message{From: tt.nvote, To: 1, Term: 1, Type: pb.MsgVote})
@@ -278,7 +278,7 @@ func TestCandidateFallback(t *testing.T) {
 		{From: 2, To: 1, Term: 2, Type: pb.MsgApp},
 	}
 	for i, tt := range tests {
-		r := newRaft(1, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
+		r := newRaft(1, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage(), 0)
 		r.Step(pb.Message{From: 1, To: 1, Type: pb.MsgHup})
 		if r.state != StateCandidate {
 			t.Fatalf("unexpected state = %s, want %s", r.state, StateCandidate)
@@ -311,7 +311,7 @@ func TestCandidateElectionTimeoutRandomized(t *testing.T) {
 // Reference: section 5.2
 func testNonleaderElectionTimeoutRandomized(t *testing.T, state StateType) {
 	et := 10
-	r := newRaft(1, []uint64{1, 2, 3}, et, 1, NewMemoryStorage())
+	r := newRaft(1, []uint64{1, 2, 3}, et, 1, NewMemoryStorage(), 0)
 	timeouts := make(map[int]bool)
 	for round := 0; round < 50*et; round++ {
 		switch state {
@@ -357,7 +357,7 @@ func testNonleadersElectionTimeoutNonconflict(t *testing.T, state StateType) {
 	rs := make([]*raft, size)
 	ids := idsBySize(size)
 	for k := range rs {
-		rs[k] = newRaft(ids[k], ids, et, 1, NewMemoryStorage())
+		rs[k] = newRaft(ids[k], ids, et, 1, NewMemoryStorage(), 0)
 	}
 	conflicts := 0
 	for round := 0; round < 1000; round++ {
@@ -400,7 +400,7 @@ func testNonleadersElectionTimeoutNonconflict(t *testing.T, state StateType) {
 // Reference: section 5.3
 func TestLeaderStartReplication(t *testing.T) {
 	s := NewMemoryStorage()
-	r := newRaft(1, []uint64{1, 2, 3}, 10, 1, s)
+	r := newRaft(1, []uint64{1, 2, 3}, 10, 1, s, 0)
 	r.becomeCandidate()
 	r.becomeLeader()
 	commitNoopEntry(r, s)
@@ -439,7 +439,7 @@ func TestLeaderStartReplication(t *testing.T) {
 // Reference: section 5.3
 func TestLeaderCommitEntry(t *testing.T) {
 	s := NewMemoryStorage()
-	r := newRaft(1, []uint64{1, 2, 3}, 10, 1, s)
+	r := newRaft(1, []uint64{1, 2, 3}, 10, 1, s, 0)
 	r.becomeCandidate()
 	r.becomeLeader()
 	commitNoopEntry(r, s)
@@ -493,7 +493,7 @@ func TestLeaderAcknowledgeCommit(t *testing.T) {
 	}
 	for i, tt := range tests {
 		s := NewMemoryStorage()
-		r := newRaft(1, idsBySize(tt.size), 10, 1, s)
+		r := newRaft(1, idsBySize(tt.size), 10, 1, s, 0)
 		r.becomeCandidate()
 		r.becomeLeader()
 		commitNoopEntry(r, s)
@@ -527,7 +527,7 @@ func TestLeaderCommitPrecedingEntries(t *testing.T) {
 	for i, tt := range tests {
 		storage := NewMemoryStorage()
 		storage.Append(tt)
-		r := newRaft(1, []uint64{1, 2, 3}, 10, 1, storage)
+		r := newRaft(1, []uint64{1, 2, 3}, 10, 1, storage, 0)
 		r.loadState(pb.HardState{Term: 2})
 		r.becomeCandidate()
 		r.becomeLeader()
@@ -582,7 +582,7 @@ func TestFollowerCommitEntry(t *testing.T) {
 		},
 	}
 	for i, tt := range tests {
-		r := newRaft(1, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
+		r := newRaft(1, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage(), 0)
 		r.becomeFollower(1, 2)
 
 		r.Step(pb.Message{From: 2, To: 1, Type: pb.MsgApp, Term: 1, Entries: tt.ents, Commit: tt.commit})
@@ -619,7 +619,7 @@ func TestFollowerCheckMsgApp(t *testing.T) {
 	for i, tt := range tests {
 		storage := NewMemoryStorage()
 		storage.Append(ents)
-		r := newRaft(1, []uint64{1, 2, 3}, 10, 1, storage)
+		r := newRaft(1, []uint64{1, 2, 3}, 10, 1, storage, 0)
 		r.loadState(pb.HardState{Commit: 2})
 		r.becomeFollower(2, 2)
 
@@ -675,7 +675,7 @@ func TestFollowerAppendEntries(t *testing.T) {
 	for i, tt := range tests {
 		storage := NewMemoryStorage()
 		storage.Append([]pb.Entry{{Term: 1, Index: 1}, {Term: 2, Index: 2}})
-		r := newRaft(1, []uint64{1, 2, 3}, 10, 1, storage)
+		r := newRaft(1, []uint64{1, 2, 3}, 10, 1, storage, 0)
 		r.becomeFollower(2, 2)
 
 		r.Step(pb.Message{From: 2, To: 1, Type: pb.MsgApp, Term: 2, LogTerm: tt.term, Index: tt.index, Entries: tt.ents})
@@ -744,11 +744,11 @@ func TestLeaderSyncFollowerLog(t *testing.T) {
 	for i, tt := range tests {
 		leadStorage := NewMemoryStorage()
 		leadStorage.Append(ents)
-		lead := newRaft(1, []uint64{1, 2, 3}, 10, 1, leadStorage)
+		lead := newRaft(1, []uint64{1, 2, 3}, 10, 1, leadStorage, 0)
 		lead.loadState(pb.HardState{Commit: lead.raftLog.lastIndex(), Term: term})
 		followerStorage := NewMemoryStorage()
 		followerStorage.Append(tt)
-		follower := newRaft(2, []uint64{1, 2, 3}, 10, 1, followerStorage)
+		follower := newRaft(2, []uint64{1, 2, 3}, 10, 1, followerStorage, 0)
 		follower.loadState(pb.HardState{Term: term - 1})
 		// It is necessary to have a three-node cluster.
 		// The second may have more up-to-date log than the first one, so the
@@ -777,7 +777,7 @@ func TestVoteRequest(t *testing.T) {
 		{[]pb.Entry{{Term: 1, Index: 1}, {Term: 2, Index: 2}}, 3},
 	}
 	for i, tt := range tests {
-		r := newRaft(1, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
+		r := newRaft(1, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage(), 0)
 		r.Step(pb.Message{
 			From: 2, To: 1, Type: pb.MsgApp, Term: tt.wterm - 1, LogTerm: 0, Index: 0, Entries: tt.ents,
 		})
@@ -840,7 +840,7 @@ func TestVoter(t *testing.T) {
 	for i, tt := range tests {
 		storage := NewMemoryStorage()
 		storage.Append(tt.ents)
-		r := newRaft(1, []uint64{1, 2}, 10, 1, storage)
+		r := newRaft(1, []uint64{1, 2}, 10, 1, storage, 0)
 
 		r.Step(pb.Message{From: 2, To: 1, Type: pb.MsgVote, Term: 3, LogTerm: tt.logterm, Index: tt.index})
 
@@ -876,7 +876,7 @@ func TestLeaderOnlyCommitsLogFromCurrentTerm(t *testing.T) {
 	for i, tt := range tests {
 		storage := NewMemoryStorage()
 		storage.Append(ents)
-		r := newRaft(1, []uint64{1, 2}, 10, 1, storage)
+		r := newRaft(1, []uint64{1, 2}, 10, 1, storage, 0)
 		r.loadState(pb.HardState{Term: 2})
 		// become leader at term 3
 		r.becomeCandidate()
