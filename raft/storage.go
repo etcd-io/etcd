@@ -26,6 +26,10 @@ import (
 // index is unavailable because it predates the last snapshot.
 var ErrCompacted = errors.New("requested index is unavailable due to compaction")
 
+// ErrOutOfDataSnap is returned by Storage.CreateSnapshot when a requested
+// index is older than the existing snapshot.
+var ErrSnapOutOfDate = errors.New("requested index is older than the existing snapshot")
+
 var ErrUnavailable = errors.New("requested entry at index is unavailable")
 
 // Storage is an interface that may be implemented by the application
@@ -92,7 +96,7 @@ func (ms *MemoryStorage) SetHardState(st pb.HardState) error {
 func (ms *MemoryStorage) Entries(lo, hi uint64) ([]pb.Entry, error) {
 	ms.Lock()
 	defer ms.Unlock()
-	offset := ms.snapshot.Metadata.Index
+	offset := ms.ents[0].Index
 	if lo <= offset {
 		return nil, ErrCompacted
 	}
@@ -107,7 +111,7 @@ func (ms *MemoryStorage) Entries(lo, hi uint64) ([]pb.Entry, error) {
 func (ms *MemoryStorage) Term(i uint64) (uint64, error) {
 	ms.Lock()
 	defer ms.Unlock()
-	offset := ms.snapshot.Metadata.Index
+	offset := ms.ents[0].Index
 	if i < offset {
 		return 0, ErrCompacted
 	}
@@ -118,14 +122,14 @@ func (ms *MemoryStorage) Term(i uint64) (uint64, error) {
 func (ms *MemoryStorage) LastIndex() (uint64, error) {
 	ms.Lock()
 	defer ms.Unlock()
-	return ms.snapshot.Metadata.Index + uint64(len(ms.ents)) - 1, nil
+	return ms.ents[0].Index + uint64(len(ms.ents)) - 1, nil
 }
 
 // FirstIndex implements the Storage interface.
 func (ms *MemoryStorage) FirstIndex() (uint64, error) {
 	ms.Lock()
 	defer ms.Unlock()
-	return ms.snapshot.Metadata.Index + 1, nil
+	return ms.ents[0].Index + 1, nil
 }
 
 // Snapshot implements the Storage interface.
@@ -141,50 +145,68 @@ func (ms *MemoryStorage) ApplySnapshot(snap pb.Snapshot) error {
 	ms.Lock()
 	defer ms.Unlock()
 
+	// TODO: return snapOutOfDate?
 	ms.snapshot = snap
 	ms.ents = []pb.Entry{{Term: snap.Metadata.Term, Index: snap.Metadata.Index}}
 	return nil
 }
 
-// Compact discards all log entries prior to i. Creates a snapshot
-// which can be retrieved with the Snapshot() method and can be used
-// to reconstruct the state at that point.
+// Creates a snapshot which can be retrieved with the Snapshot() method and
+// can be used to reconstruct the state at that point.
 // If any configuration changes have been made since the last compaction,
 // the result of the last ApplyConfChange must be passed in.
-// It is the application's responsibility to not attempt to compact an index
-// greater than raftLog.applied.
-func (ms *MemoryStorage) Compact(i uint64, cs *pb.ConfState, data []byte) error {
+func (ms *MemoryStorage) CreateSnapshot(i uint64, cs *pb.ConfState, data []byte) (pb.Snapshot, error) {
 	ms.Lock()
 	defer ms.Unlock()
-	offset := ms.snapshot.Metadata.Index
-	if i <= offset {
-		return ErrCompacted
+	if i <= ms.snapshot.Metadata.Index {
+		return pb.Snapshot{}, ErrSnapOutOfDate
 	}
+
+	offset := ms.ents[0].Index
 	if i > offset+uint64(len(ms.ents))-1 {
-		log.Panicf("compact %d is out of bound lastindex(%d)", i, offset+uint64(len(ms.ents))-1)
+		log.Panicf("snapshot %d is out of bound lastindex(%d)", i, offset+uint64(len(ms.ents))-1)
 	}
-	i -= offset
-	ents := make([]pb.Entry, 1, 1+uint64(len(ms.ents))-i)
-	ents[0].Term = ms.ents[i].Term
-	ents = append(ents, ms.ents[i+1:]...)
-	ms.ents = ents
-	ms.snapshot.Metadata.Index += i
-	ms.snapshot.Metadata.Term = ents[0].Term
+
+	ms.snapshot.Metadata.Index = i
+	ms.snapshot.Metadata.Term = ms.ents[i-offset].Term
 	if cs != nil {
 		ms.snapshot.Metadata.ConfState = *cs
 	}
 	ms.snapshot.Data = data
+	return ms.snapshot, nil
+}
+
+// Compact discards all log entries prior to i.
+// It is the application's responsibility to not attempt to compact an index
+// greater than raftLog.applied.
+func (ms *MemoryStorage) Compact(compactIndex uint64) error {
+	offset := ms.ents[0].Index
+	if compactIndex <= offset {
+		return ErrCompacted
+	}
+	if compactIndex > offset+uint64(len(ms.ents))-1 {
+		log.Panicf("compact %d is out of bound lastindex(%d)", compactIndex, offset+uint64(len(ms.ents))-1)
+	}
+
+	i := compactIndex - offset
+	ents := make([]pb.Entry, 1, 1+uint64(len(ms.ents))-i)
+	ents[0].Index = ms.ents[i].Index
+	ents[0].Term = ms.ents[i].Term
+	ents = append(ents, ms.ents[i+1:]...)
+	ms.ents = ents
 	return nil
 }
 
 // Append the new entries to storage.
+// TODO (xiangli): ensure the entries are continuous and
+// entries[0].Index > ms.entries[0].Index
 func (ms *MemoryStorage) Append(entries []pb.Entry) error {
 	ms.Lock()
 	defer ms.Unlock()
 	if len(entries) == 0 {
 		return nil
 	}
-	first := ms.snapshot.Metadata.Index + 1
+	first := ms.ents[0].Index + 1
 	last := entries[0].Index + uint64(len(entries)) - 1
 
 	// shortcut if there is no new entry.
@@ -196,7 +218,7 @@ func (ms *MemoryStorage) Append(entries []pb.Entry) error {
 		entries = entries[first-entries[0].Index:]
 	}
 
-	offset := entries[0].Index - ms.snapshot.Metadata.Index
+	offset := entries[0].Index - ms.ents[0].Index
 	switch {
 	case uint64(len(ms.ents)) > offset:
 		ms.ents = append([]pb.Entry{}, ms.ents[:offset]...)
@@ -205,7 +227,7 @@ func (ms *MemoryStorage) Append(entries []pb.Entry) error {
 		ms.ents = append(ms.ents, entries...)
 	default:
 		log.Panicf("missing log entry [last: %d, append at: %d]",
-			ms.snapshot.Metadata.Index+uint64(len(ms.ents)), entries[0].Index)
+			ms.ents[0].Index+uint64(len(ms.ents)), entries[0].Index)
 	}
 	return nil
 }

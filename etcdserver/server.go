@@ -817,26 +817,31 @@ func (s *EtcdServer) snapshot(snapi uint64, confState *raftpb.ConfState) {
 	if err != nil {
 		log.Panicf("etcdserver: store save should never fail: %v", err)
 	}
-	err = s.r.raftStorage.Compact(snapi, confState, d)
+	snap, err := s.r.raftStorage.CreateSnapshot(snapi, confState, d)
 	if err != nil {
 		// the snapshot was done asynchronously with the progress of raft.
-		// raft might have already got a newer snapshot and called compact.
+		// raft might have already got a newer snapshot.
+		if err == raft.ErrSnapOutOfDate {
+			return
+		}
+		log.Panicf("etcdserver: unexpected create snapshot error %v", err)
+	}
+	if err := s.r.storage.SaveSnap(snap); err != nil {
+		log.Fatalf("etcdserver: save snapshot error: %v", err)
+	}
+
+	err = s.r.raftStorage.Compact(snapi)
+	if err != nil {
+		// the compaction was done asynchronously with the progress of raft.
+		// raft log might already been compact.
 		if err == raft.ErrCompacted {
 			return
 		}
 		log.Panicf("etcdserver: unexpected compaction error %v", err)
 	}
 	log.Printf("etcdserver: compacted log at index %d", snapi)
-
 	if err := s.r.storage.Cut(); err != nil {
 		log.Panicf("etcdserver: rotate wal file should never fail: %v", err)
-	}
-	snap, err := s.r.raftStorage.Snapshot()
-	if err != nil {
-		log.Panicf("etcdserver: snapshot error: %v", err)
-	}
-	if err := s.r.storage.SaveSnap(snap); err != nil {
-		log.Fatalf("etcdserver: save snapshot error: %v", err)
 	}
 	log.Printf("etcdserver: saved snapshot at index %d", snap.Metadata.Index)
 }
