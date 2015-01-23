@@ -23,6 +23,7 @@ import (
 	"path"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 )
@@ -82,6 +83,7 @@ type SetOptions struct {
 	PrevValue string
 	PrevIndex uint64
 	PrevExist PrevExistType
+	TTL       time.Duration
 }
 
 type DeleteOptions struct {
@@ -130,6 +132,7 @@ func (k *httpKeysAPI) Set(ctx context.Context, key, val string, opts *SetOptions
 		act.PrevValue = opts.PrevValue
 		act.PrevIndex = opts.PrevIndex
 		act.PrevExist = opts.PrevExist
+		act.TTL = opts.TTL
 	}
 
 	resp, body, err := k.client.Do(ctx, act)
@@ -289,6 +292,7 @@ type setAction struct {
 	PrevValue string
 	PrevIndex uint64
 	PrevExist PrevExistType
+	TTL       time.Duration
 }
 
 func (a *setAction) HTTPRequest(ep url.URL) *http.Request {
@@ -308,6 +312,9 @@ func (a *setAction) HTTPRequest(ep url.URL) *http.Request {
 
 	form := url.Values{}
 	form.Add("value", a.Value)
+	if a.TTL > 0 {
+		form.Add("ttl", strconv.FormatUint(uint64(a.TTL.Seconds()), 10))
+	}
 	body := strings.NewReader(form.Encode())
 
 	req, _ := http.NewRequest("PUT", u.String(), body)
