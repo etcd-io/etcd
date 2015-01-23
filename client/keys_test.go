@@ -382,10 +382,8 @@ func TestDeleteAction(t *testing.T) {
 		// Recursive set to true
 		{
 			act: deleteAction{
-				Key: "foo",
-				Options: DeleteOptions{
-					Recursive: true,
-				},
+				Key:       "foo",
+				Recursive: true,
 			},
 			wantURL: "http://example.com/foo?recursive=true",
 		},
@@ -393,10 +391,8 @@ func TestDeleteAction(t *testing.T) {
 		// PrevValue is urlencoded
 		{
 			act: deleteAction{
-				Key: "foo",
-				Options: DeleteOptions{
-					PrevValue: "bar baz",
-				},
+				Key:       "foo",
+				PrevValue: "bar baz",
 			},
 			wantURL: "http://example.com/foo?prevValue=bar+baz",
 		},
@@ -404,10 +400,8 @@ func TestDeleteAction(t *testing.T) {
 		// PrevIndex is set
 		{
 			act: deleteAction{
-				Key: "foo",
-				Options: DeleteOptions{
-					PrevIndex: uint64(12),
-				},
+				Key:       "foo",
+				PrevIndex: uint64(12),
 			},
 			wantURL: "http://example.com/foo?prevIndex=12",
 		},
