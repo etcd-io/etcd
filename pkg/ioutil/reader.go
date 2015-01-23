@@ -14,22 +14,28 @@
    limitations under the License.
 */
 
-package ioutils
+package ioutil
 
-import (
-	"bytes"
-	"testing"
-)
+import "io"
 
-func TestLimitedBufferReaderRead(t *testing.T) {
-	buf := bytes.NewBuffer(make([]byte, 10))
-	ln := 1
-	lr := NewLimitedBufferReader(buf, ln)
-	n, err := lr.Read(make([]byte, 10))
-	if err != nil {
-		t.Fatalf("unexpected read error: %v", err)
+// NewLimitedBufferReader returns a reader that reads from the given reader
+// but limits the amount of data returned to at most n bytes.
+func NewLimitedBufferReader(r io.Reader, n int) io.Reader {
+	return &limitedBufferReader{
+		r: r,
+		n: n,
 	}
-	if n != ln {
-		t.Errorf("len(data read) = %d, want %d", n, ln)
+}
+
+type limitedBufferReader struct {
+	r io.Reader
+	n int
+}
+
+func (r *limitedBufferReader) Read(p []byte) (n int, err error) {
+	np := p
+	if len(np) > r.n {
+		np = np[:r.n]
 	}
+	return r.r.Read(np)
 }
