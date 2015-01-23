@@ -121,10 +121,12 @@ type httpKeysAPI struct {
 
 func (k *httpKeysAPI) Set(ctx context.Context, key, val string, opts SetOptions) (*Response, error) {
 	act := &setAction{
-		Prefix:  k.prefix,
-		Key:     key,
-		Value:   val,
-		Options: opts,
+		Prefix:    k.prefix,
+		Key:       key,
+		Value:     val,
+		PrevValue: opts.PrevValue,
+		PrevIndex: opts.PrevIndex,
+		PrevExist: opts.PrevExist,
 	}
 
 	resp, body, err := k.client.Do(ctx, act)
@@ -268,24 +270,26 @@ func (w *waitAction) HTTPRequest(ep url.URL) *http.Request {
 }
 
 type setAction struct {
-	Prefix  string
-	Key     string
-	Value   string
-	Options SetOptions
+	Prefix    string
+	Key       string
+	Value     string
+	PrevValue string
+	PrevIndex uint64
+	PrevExist PrevExistType
 }
 
 func (a *setAction) HTTPRequest(ep url.URL) *http.Request {
 	u := v2KeysURL(ep, a.Prefix, a.Key)
 
 	params := u.Query()
-	if a.Options.PrevValue != "" {
-		params.Set("prevValue", a.Options.PrevValue)
+	if a.PrevValue != "" {
+		params.Set("prevValue", a.PrevValue)
 	}
-	if a.Options.PrevIndex != 0 {
-		params.Set("prevIndex", strconv.FormatUint(a.Options.PrevIndex, 10))
+	if a.PrevIndex != 0 {
+		params.Set("prevIndex", strconv.FormatUint(a.PrevIndex, 10))
 	}
-	if a.Options.PrevExist != PrevIgnore {
-		params.Set("prevExist", string(a.Options.PrevExist))
+	if a.PrevExist != PrevIgnore {
+		params.Set("prevExist", string(a.PrevExist))
 	}
 	u.RawQuery = params.Encode()
 
