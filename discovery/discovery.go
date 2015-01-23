@@ -186,7 +186,7 @@ func (d *discovery) createSelf(contents string) error {
 	}
 
 	// ensure self appears on the server we connected to
-	w := d.c.Watcher(d.selfKey(), client.WatcherOptions{WaitIndex: resp.Node.CreatedIndex})
+	w := d.c.Watcher(d.selfKey(), &client.WatcherOptions{WaitIndex: resp.Node.CreatedIndex})
 	_, err = w.Next(context.Background())
 	return err
 }
@@ -275,7 +275,7 @@ func (d *discovery) waitNodes(nodes client.Nodes, size int, index uint64) (clien
 		nodes = nodes[:size]
 	}
 	// watch from the next index
-	w := d.c.Watcher(d.cluster, client.WatcherOptions{WaitIndex: index + 1, Recursive: true})
+	w := d.c.Watcher(d.cluster, &client.WatcherOptions{WaitIndex: index + 1, Recursive: true})
 	all := make(client.Nodes, len(nodes))
 	copy(all, nodes)
 	for _, n := range all {
