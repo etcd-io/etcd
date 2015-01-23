@@ -431,11 +431,7 @@ func (c *clientWithResp) Get(ctx context.Context, key string) (*client.Response,
 	return r, nil
 }
 
-func (c *clientWithResp) Watch(key string, waitIndex uint64) client.Watcher {
-	return c.w
-}
-
-func (c *clientWithResp) RWatch(key string, waitIndex uint64) client.Watcher {
+func (c *clientWithResp) Watcher(key string, opts client.WatcherOptions) client.Watcher {
 	return c.w
 }
 
@@ -453,11 +449,7 @@ func (c *clientWithErr) Get(ctx context.Context, key string) (*client.Response, 
 	return &client.Response{}, c.err
 }
 
-func (c *clientWithErr) Watch(key string, waitIndex uint64) client.Watcher {
-	return c.w
-}
-
-func (c *clientWithErr) RWatch(key string, waitIndex uint64) client.Watcher {
+func (c *clientWithErr) Watcher(key string, opts client.WatcherOptions) client.Watcher {
 	return c.w
 }
 

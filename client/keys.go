@@ -70,8 +70,12 @@ type KeysAPI interface {
 	Get(ctx context.Context, key string) (*Response, error)
 	RGet(ctx context.Context, key string) (*Response, error)
 
-	Watch(key string, idx uint64) Watcher
-	RWatch(key string, idx uint64) Watcher
+	Watcher(key string, opts WatcherOptions) Watcher
+}
+
+type WatcherOptions struct {
+	WaitIndex uint64
+	Recursive bool
 }
 
 type SetOptions struct {
@@ -184,26 +188,14 @@ func (k *httpKeysAPI) RGet(ctx context.Context, key string) (*Response, error) {
 	return unmarshalHTTPResponse(resp.StatusCode, resp.Header, body)
 }
 
-func (k *httpKeysAPI) Watch(key string, idx uint64) Watcher {
+func (k *httpKeysAPI) Watcher(key string, opts WatcherOptions) Watcher {
 	return &httpWatcher{
 		client: k.client,
 		nextWait: waitAction{
 			Prefix:    k.prefix,
 			Key:       key,
-			WaitIndex: idx,
-			Recursive: false,
-		},
-	}
-}
-
-func (k *httpKeysAPI) RWatch(key string, idx uint64) Watcher {
-	return &httpWatcher{
-		client: k.client,
-		nextWait: waitAction{
-			Prefix:    k.prefix,
-			Key:       key,
-			WaitIndex: idx,
-			Recursive: true,
+			WaitIndex: opts.WaitIndex,
+			Recursive: opts.Recursive,
 		},
 	}
 }
