@@ -1349,7 +1349,8 @@ func TestSlowNodeRestore(t *testing.T) {
 	}
 	lead := nt.peers[1].(*raft)
 	nextEnts(lead, nt.storage[1])
-	nt.storage[1].Compact(lead.raftLog.applied, &pb.ConfState{Nodes: lead.nodes()}, nil)
+	nt.storage[1].CreateSnapshot(lead.raftLog.applied, &pb.ConfState{Nodes: lead.nodes()}, nil)
+	nt.storage[1].Compact(lead.raftLog.applied)
 
 	nt.recover()
 	// trigger a snapshot

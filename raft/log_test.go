@@ -292,7 +292,7 @@ func TestCompactionSideEffects(t *testing.T) {
 	raftLog.appliedTo(raftLog.committed)
 
 	offset := uint64(500)
-	storage.Compact(offset, nil, nil)
+	storage.Compact(offset)
 
 	if raftLog.lastIndex() != lastIndex {
 		t.Errorf("lastIndex = %d, want %d", raftLog.lastIndex(), lastIndex)
@@ -522,7 +522,7 @@ func TestCompaction(t *testing.T) {
 			raftLog.appliedTo(raftLog.committed)
 
 			for j := 0; j < len(tt.compact); j++ {
-				err := storage.Compact(tt.compact[j], nil, nil)
+				err := storage.Compact(tt.compact[j])
 				if err != nil {
 					if tt.wallow {
 						t.Errorf("#%d.%d allow = %t, want %t", i, j, false, tt.wallow)
