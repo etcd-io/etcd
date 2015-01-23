@@ -289,6 +289,18 @@ func TestSetAction(t *testing.T) {
 			wantURL:  "http://example.com/foo?prevExist=false",
 			wantBody: "value=",
 		},
+
+		// PrevValue is urlencoded
+		{
+			act: setAction{
+				Key: "foo",
+				Options: SetOptions{
+					PrevValue: "bar baz",
+				},
+			},
+			wantURL:  "http://example.com/foo?prevValue=bar+baz",
+			wantBody: "value=",
+		},
 	}
 
 	for i, tt := range tests {
@@ -374,6 +386,17 @@ func TestDeleteAction(t *testing.T) {
 				},
 			},
 			wantURL: "http://example.com/foo?recursive=true",
+		},
+
+		// PrevValue is urlencoded
+		{
+			act: deleteAction{
+				Key: "foo",
+				Options: DeleteOptions{
+					PrevValue: "bar baz",
+				},
+			},
+			wantURL: "http://example.com/foo?prevValue=bar+baz",
 		},
 	}
 

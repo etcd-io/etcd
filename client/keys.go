@@ -75,10 +75,12 @@ type KeysAPI interface {
 }
 
 type SetOptions struct {
+	PrevValue string
 	PrevExist PrevExistType
 }
 
 type DeleteOptions struct {
+	PrevValue string
 	Recursive bool
 }
 
@@ -282,6 +284,9 @@ func (a *setAction) HTTPRequest(ep url.URL) *http.Request {
 	u := v2KeysURL(ep, a.Prefix, a.Key)
 
 	params := u.Query()
+	if a.Options.PrevValue != "" {
+		params.Set("prevValue", a.Options.PrevValue)
+	}
 	if a.Options.PrevExist != PrevIgnore {
 		params.Set("prevExist", string(a.Options.PrevExist))
 	}
@@ -308,6 +313,9 @@ func (a *deleteAction) HTTPRequest(ep url.URL) *http.Request {
 	u := v2KeysURL(ep, a.Prefix, a.Key)
 
 	params := u.Query()
+	if a.Options.PrevValue != "" {
+		params.Set("prevValue", a.Options.PrevValue)
+	}
 	if a.Options.Recursive {
 		params.Set("recursive", "true")
 	}
