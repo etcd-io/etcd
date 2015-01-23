@@ -61,16 +61,16 @@ func NewDiscoveryKeysAPI(c HTTPClient) KeysAPI {
 }
 
 type KeysAPI interface {
-	Set(ctx context.Context, key, value string, opts SetOptions) (*Response, error)
+	Set(ctx context.Context, key, value string, opts *SetOptions) (*Response, error)
 	Create(ctx context.Context, key, value string) (*Response, error)
 	Update(ctx context.Context, key, value string) (*Response, error)
 
-	Delete(ctx context.Context, key string, opts DeleteOptions) (*Response, error)
+	Delete(ctx context.Context, key string, opts *DeleteOptions) (*Response, error)
 
 	Get(ctx context.Context, key string) (*Response, error)
 	RGet(ctx context.Context, key string) (*Response, error)
 
-	Watcher(key string, opts WatcherOptions) Watcher
+	Watcher(key string, opts *WatcherOptions) Watcher
 }
 
 type WatcherOptions struct {
@@ -119,14 +119,17 @@ type httpKeysAPI struct {
 	prefix string
 }
 
-func (k *httpKeysAPI) Set(ctx context.Context, key, val string, opts SetOptions) (*Response, error) {
+func (k *httpKeysAPI) Set(ctx context.Context, key, val string, opts *SetOptions) (*Response, error) {
 	act := &setAction{
-		Prefix:    k.prefix,
-		Key:       key,
-		Value:     val,
-		PrevValue: opts.PrevValue,
-		PrevIndex: opts.PrevIndex,
-		PrevExist: opts.PrevExist,
+		Prefix: k.prefix,
+		Key:    key,
+		Value:  val,
+	}
+
+	if opts != nil {
+		act.PrevValue = opts.PrevValue
+		act.PrevIndex = opts.PrevIndex
+		act.PrevExist = opts.PrevExist
 	}
 
 	resp, body, err := k.client.Do(ctx, act)
@@ -138,20 +141,23 @@ func (k *httpKeysAPI) Set(ctx context.Context, key, val string, opts SetOptions)
 }
 
 func (k *httpKeysAPI) Create(ctx context.Context, key, val string) (*Response, error) {
-	return k.Set(ctx, key, val, SetOptions{PrevExist: PrevNoExist})
+	return k.Set(ctx, key, val, &SetOptions{PrevExist: PrevNoExist})
 }
 
 func (k *httpKeysAPI) Update(ctx context.Context, key, val string) (*Response, error) {
-	return k.Set(ctx, key, val, SetOptions{PrevExist: PrevExist})
+	return k.Set(ctx, key, val, &SetOptions{PrevExist: PrevExist})
 }
 
-func (k *httpKeysAPI) Delete(ctx context.Context, key string, opts DeleteOptions) (*Response, error) {
+func (k *httpKeysAPI) Delete(ctx context.Context, key string, opts *DeleteOptions) (*Response, error) {
 	act := &deleteAction{
-		Prefix:    k.prefix,
-		Key:       key,
-		PrevValue: opts.PrevValue,
-		PrevIndex: opts.PrevIndex,
-		Recursive: opts.Recursive,
+		Prefix: k.prefix,
+		Key:    key,
+	}
+
+	if opts != nil {
+		act.PrevValue = opts.PrevValue
+		act.PrevIndex = opts.PrevIndex
+		act.Recursive = opts.Recursive
 	}
 
 	resp, body, err := k.client.Do(ctx, act)
@@ -192,15 +198,20 @@ func (k *httpKeysAPI) RGet(ctx context.Context, key string) (*Response, error) {
 	return unmarshalHTTPResponse(resp.StatusCode, resp.Header, body)
 }
 
-func (k *httpKeysAPI) Watcher(key string, opts WatcherOptions) Watcher {
+func (k *httpKeysAPI) Watcher(key string, opts *WatcherOptions) Watcher {
+	act := waitAction{
+		Prefix: k.prefix,
+		Key:    key,
+	}
+
+	if opts != nil {
+		act.WaitIndex = opts.WaitIndex
+		act.Recursive = opts.Recursive
+	}
+
 	return &httpWatcher{
-		client: k.client,
-		nextWait: waitAction{
-			Prefix:    k.prefix,
-			Key:       key,
-			WaitIndex: opts.WaitIndex,
-			Recursive: opts.Recursive,
-		},
+		client:   k.client,
+		nextWait: act,
 	}
 }
 
