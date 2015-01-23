@@ -301,6 +301,18 @@ func TestSetAction(t *testing.T) {
 			wantURL:  "http://example.com/foo?prevValue=bar+baz",
 			wantBody: "value=",
 		},
+
+		// PrevIndex is set
+		{
+			act: setAction{
+				Key: "foo",
+				Options: SetOptions{
+					PrevIndex: uint64(12),
+				},
+			},
+			wantURL:  "http://example.com/foo?prevIndex=12",
+			wantBody: "value=",
+		},
 	}
 
 	for i, tt := range tests {
@@ -397,6 +409,17 @@ func TestDeleteAction(t *testing.T) {
 				},
 			},
 			wantURL: "http://example.com/foo?prevValue=bar+baz",
+		},
+
+		// PrevIndex is set
+		{
+			act: deleteAction{
+				Key: "foo",
+				Options: DeleteOptions{
+					PrevIndex: uint64(12),
+				},
+			},
+			wantURL: "http://example.com/foo?prevIndex=12",
 		},
 	}
 
