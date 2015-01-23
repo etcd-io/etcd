@@ -24,7 +24,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/coreos/etcd/pkg/ioutils"
+	pioutil "github.com/coreos/etcd/pkg/ioutil"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft/raftpb"
 
@@ -81,7 +81,7 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// Limit the data size that could be read from the request body, which ensures that read from
 	// connection will not time out accidentally due to possible block in underlying implementation.
-	limitedr := ioutils.NewLimitedBufferReader(r.Body, ConnReadLimitByte)
+	limitedr := pioutil.NewLimitedBufferReader(r.Body, ConnReadLimitByte)
 	b, err := ioutil.ReadAll(limitedr)
 	if err != nil {
 		log.Println("rafthttp: error reading raft message:", err)
