@@ -147,9 +147,11 @@ func (k *httpKeysAPI) Update(ctx context.Context, key, val string) (*Response, e
 
 func (k *httpKeysAPI) Delete(ctx context.Context, key string, opts DeleteOptions) (*Response, error) {
 	act := &deleteAction{
-		Prefix:  k.prefix,
-		Key:     key,
-		Options: opts,
+		Prefix:    k.prefix,
+		Key:       key,
+		PrevValue: opts.PrevValue,
+		PrevIndex: opts.PrevIndex,
+		Recursive: opts.Recursive,
 	}
 
 	resp, body, err := k.client.Do(ctx, act)
@@ -304,23 +306,25 @@ func (a *setAction) HTTPRequest(ep url.URL) *http.Request {
 }
 
 type deleteAction struct {
-	Prefix  string
-	Key     string
-	Value   string
-	Options DeleteOptions
+	Prefix    string
+	Key       string
+	Value     string
+	PrevValue string
+	PrevIndex uint64
+	Recursive bool
 }
 
 func (a *deleteAction) HTTPRequest(ep url.URL) *http.Request {
 	u := v2KeysURL(ep, a.Prefix, a.Key)
 
 	params := u.Query()
-	if a.Options.PrevValue != "" {
-		params.Set("prevValue", a.Options.PrevValue)
+	if a.PrevValue != "" {
+		params.Set("prevValue", a.PrevValue)
 	}
-	if a.Options.PrevIndex != 0 {
-		params.Set("prevIndex", strconv.FormatUint(a.Options.PrevIndex, 10))
+	if a.PrevIndex != 0 {
+		params.Set("prevIndex", strconv.FormatUint(a.PrevIndex, 10))
 	}
-	if a.Options.Recursive {
+	if a.Recursive {
 		params.Set("recursive", "true")
 	}
 	u.RawQuery = params.Encode()
