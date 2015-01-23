@@ -8,4 +8,4 @@ install:
  - go get code.google.com/p/go.tools/cmd/vet
 
 script:
- - ./test
+ - INTEGRATION=y ./test
