@@ -257,10 +257,8 @@ func TestSetAction(t *testing.T) {
 		// PrevExist set, but still ignored
 		{
 			act: setAction{
-				Key: "foo",
-				Options: SetOptions{
-					PrevExist: PrevIgnore,
-				},
+				Key:       "foo",
+				PrevExist: PrevIgnore,
 			},
 			wantURL:  "http://example.com/foo",
 			wantBody: "value=",
@@ -269,10 +267,8 @@ func TestSetAction(t *testing.T) {
 		// PrevExist set to true
 		{
 			act: setAction{
-				Key: "foo",
-				Options: SetOptions{
-					PrevExist: PrevExist,
-				},
+				Key:       "foo",
+				PrevExist: PrevExist,
 			},
 			wantURL:  "http://example.com/foo?prevExist=true",
 			wantBody: "value=",
@@ -281,10 +277,8 @@ func TestSetAction(t *testing.T) {
 		// PrevExist set to false
 		{
 			act: setAction{
-				Key: "foo",
-				Options: SetOptions{
-					PrevExist: PrevNoExist,
-				},
+				Key:       "foo",
+				PrevExist: PrevNoExist,
 			},
 			wantURL:  "http://example.com/foo?prevExist=false",
 			wantBody: "value=",
@@ -293,10 +287,8 @@ func TestSetAction(t *testing.T) {
 		// PrevValue is urlencoded
 		{
 			act: setAction{
-				Key: "foo",
-				Options: SetOptions{
-					PrevValue: "bar baz",
-				},
+				Key:       "foo",
+				PrevValue: "bar baz",
 			},
 			wantURL:  "http://example.com/foo?prevValue=bar+baz",
 			wantBody: "value=",
@@ -305,10 +297,8 @@ func TestSetAction(t *testing.T) {
 		// PrevIndex is set
 		{
 			act: setAction{
-				Key: "foo",
-				Options: SetOptions{
-					PrevIndex: uint64(12),
-				},
+				Key:       "foo",
+				PrevIndex: uint64(12),
 			},
 			wantURL:  "http://example.com/foo?prevIndex=12",
 			wantBody: "value=",
