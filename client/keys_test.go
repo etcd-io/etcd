@@ -22,6 +22,7 @@ import (
 	"net/url"
 	"reflect"
 	"testing"
+	"time"
 )
 
 func TestV2KeysURLHelper(t *testing.T) {
@@ -302,6 +303,16 @@ func TestSetAction(t *testing.T) {
 			},
 			wantURL:  "http://example.com/foo?prevIndex=12",
 			wantBody: "value=",
+		},
+
+		// TTL is set
+		{
+			act: setAction{
+				Key: "foo",
+				TTL: 3 * time.Minute,
+			},
+			wantURL:  "http://example.com/foo",
+			wantBody: "ttl=180&value=",
 		},
 	}
 
