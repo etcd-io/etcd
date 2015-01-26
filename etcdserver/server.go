@@ -159,7 +159,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 	switch {
 	case !haveWAL && !cfg.NewCluster:
 		us := getOtherPeerURLs(cfg.Cluster, cfg.Name)
-		existingCluster, err := GetClusterFromPeers(us)
+		existingCluster, err := GetClusterFromPeers(us, cfg.Transport)
 		if err != nil {
 			return nil, fmt.Errorf("cannot fetch cluster info from peer urls: %v", err)
 		}
@@ -175,7 +175,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 			return nil, err
 		}
 		m := cfg.Cluster.MemberByName(cfg.Name)
-		if isBootstrapped(cfg.Cluster, cfg.Name) {
+		if isBootstrapped(cfg) {
 			return nil, fmt.Errorf("member %s has already been bootstrapped", m.ID)
 		}
 		if cfg.ShouldDiscover() {
@@ -820,9 +820,12 @@ func (s *EtcdServer) ResumeSending() { s.r.resumeSending() }
 
 // isBootstrapped tries to check if the given member has been bootstrapped
 // in the given cluster.
-func isBootstrapped(cl *Cluster, member string) bool {
+func isBootstrapped(cfg *ServerConfig) bool {
+	cl := cfg.Cluster
+	member := cfg.Name
+
 	us := getOtherPeerURLs(cl, member)
-	rcl, err := getClusterFromPeers(us, false)
+	rcl, err := getClusterFromPeers(us, false, cfg.Transport)
 	if err != nil {
 		return false
 	}
@@ -842,17 +845,15 @@ func isBootstrapped(cl *Cluster, member string) bool {
 // these URLs. The first URL to provide a response is used. If no URLs provide
 // a response, or a Cluster cannot be successfully created from a received
 // response, an error is returned.
-func GetClusterFromPeers(urls []string) (*Cluster, error) {
-	return getClusterFromPeers(urls, true)
+func GetClusterFromPeers(urls []string, tr *http.Transport) (*Cluster, error) {
+	return getClusterFromPeers(urls, true, tr)
 }
 
 // If logerr is true, it prints out more error messages.
-func getClusterFromPeers(urls []string, logerr bool) (*Cluster, error) {
+func getClusterFromPeers(urls []string, logerr bool, tr *http.Transport) (*Cluster, error) {
 	cc := &http.Client{
-		Transport: &http.Transport{
-			ResponseHeaderTimeout: 500 * time.Millisecond,
-		},
-		Timeout: time.Second,
+		Transport: tr,
+		Timeout:   time.Second,
 	}
 	for _, u := range urls {
 		resp, err := cc.Get(u + "/members")
