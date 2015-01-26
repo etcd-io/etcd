@@ -20,6 +20,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"sync"
 	"time"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
@@ -78,6 +79,7 @@ type httpClusterClient struct {
 	transport CancelableTransport
 	endpoints []string
 	clients   []HTTPClient
+	sync.RWMutex
 }
 
 func (c *httpClusterClient) reset(tr CancelableTransport, eps []string) error {
@@ -111,6 +113,9 @@ func (c *httpClusterClient) reset(tr CancelableTransport, eps []string) error {
 }
 
 func (c *httpClusterClient) Do(ctx context.Context, act HTTPAction) (resp *http.Response, body []byte, err error) {
+	c.RLock()
+	defer c.RUnlock()
+
 	if len(c.clients) == 0 {
 		return nil, nil, ErrNoEndpoints
 	}
@@ -131,10 +136,15 @@ func (c *httpClusterClient) Do(ctx context.Context, act HTTPAction) (resp *http.
 }
 
 func (c *httpClusterClient) Endpoints() []string {
+	c.RLock()
+	defer c.RUnlock()
 	return c.endpoints
 }
 
 func (c *httpClusterClient) Sync(ctx context.Context) error {
+	c.Lock()
+	defer c.Unlock()
+
 	mAPI := NewMembersAPI(c)
 	ms, err := mAPI.List(ctx)
 	if err != nil {
