@@ -67,19 +67,34 @@ type CancelableTransport interface {
 }
 
 func newHTTPClusterClient(tr CancelableTransport, eps []string) (*httpClusterClient, error) {
-	c := httpClusterClient{
-		transport: tr,
-		endpoints: eps,
-		clients:   make([]HTTPClient, len(eps)),
+	c := &httpClusterClient{}
+	if err := c.reset(tr, eps); err != nil {
+		return nil, err
+	}
+	return c, nil
+}
+
+type httpClusterClient struct {
+	transport CancelableTransport
+	endpoints []string
+	clients   []HTTPClient
+}
+
+func (c *httpClusterClient) reset(tr CancelableTransport, eps []string) error {
+	le := len(eps)
+	ne := make([]string, le)
+	if copy(ne, eps) != le {
+		return errors.New("copy call failed")
 	}
 
-	for i, ep := range eps {
-		u, err := url.Parse(ep)
+	nc := make([]HTTPClient, len(ne))
+	for i, e := range ne {
+		u, err := url.Parse(e)
 		if err != nil {
-			return nil, err
+			return err
 		}
 
-		c.clients[i] = &redirectFollowingHTTPClient{
+		nc[i] = &redirectFollowingHTTPClient{
 			max: DefaultMaxRedirects,
 			client: &httpClient{
 				transport: tr,
@@ -88,13 +103,11 @@ func newHTTPClusterClient(tr CancelableTransport, eps []string) (*httpClusterCli
 		}
 	}
 
-	return &c, nil
-}
+	c.endpoints = ne
+	c.clients = nc
+	c.transport = tr
 
-type httpClusterClient struct {
-	transport CancelableTransport
-	endpoints []string
-	clients   []HTTPClient
+	return nil
 }
 
 func (c *httpClusterClient) Do(ctx context.Context, act HTTPAction) (resp *http.Response, body []byte, err error) {
@@ -135,13 +148,8 @@ func (c *httpClusterClient) Sync(ctx context.Context) error {
 	if len(eps) == 0 {
 		return ErrNoEndpoints
 	}
-	nc, err := newHTTPClusterClient(c.transport, eps)
-	if err != nil {
-		return err
-	}
 
-	*c = *nc
-	return nil
+	return c.reset(c.transport, eps)
 }
 
 type roundTripResponse struct {
