@@ -23,7 +23,7 @@ import (
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/go-etcd/etcd"
 )
 
-// NewGetCommand returns the CLI command for "get".
+// NewGetWatchCommand returns the CLI command for "getwatch".
 func NewGetWatchCommand() cli.Command {
 	return cli.Command{
 		Name:  "getwatch",
@@ -39,12 +39,12 @@ func NewGetWatchCommand() cli.Command {
 	}
 }
 
-// handleGet handles a request that intends to do get-like operations.
+// handleGetWatch handles a request that intends to do getwatch-like operations.
 func handleGetWatch(c *cli.Context, fn handlerFunc) {
 	handlePrint(c, fn, printGetWatch)
 }
 
-// printGet writes error message when getting the value of a directory.
+// printGetWatch writes error message when getting the value of a directory.
 func printGetWatch(resp *etcd.Response, format string) {
 	if resp.Node.Dir {
 		fmt.Fprintln(os.Stderr, fmt.Sprintf("%s: is a directory", resp.Node.Key))
@@ -54,7 +54,7 @@ func printGetWatch(resp *etcd.Response, format string) {
 	printKey(resp, format)
 }
 
-// getCommandFunc executes the "get" command.
+// getWatchCommandFunc executes the "getwatch" command.
 func getWatchCommandFunc(c *cli.Context, client *etcd.Client) (*etcd.Response, error) {
 	if len(c.Args()) == 0 {
 		return nil, errors.New("Key required")
