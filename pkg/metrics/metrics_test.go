@@ -21,8 +21,39 @@ import (
 	"testing"
 )
 
-// TestMetrics tests the basic usage of metrics.
-func TestMetrics(t *testing.T) {
+// TestPublish tests function Publish and related creation functions.
+func TestPublish(t *testing.T) {
+	defer reset()
+	Publish("string", new(expvar.String))
+	NewCounter("counter")
+	NewGauge("gauge")
+	NewMap("map")
+
+	keys := []string{"counter", "gauge", "map", "string"}
+	i := 0
+	Do(func(kv expvar.KeyValue) {
+		if kv.Key != keys[i] {
+			t.Errorf("#%d: key = %s, want %s", i, kv.Key, keys[i])
+		}
+		i++
+	})
+}
+
+func TestDuplicatePublish(t *testing.T) {
+	defer reset()
+	num1 := new(expvar.Int)
+	num1.Set(10)
+	Publish("number", num1)
+	num2 := new(expvar.Int)
+	num2.Set(20)
+	Publish("number", num2)
+	if g := Get("number").String(); g != "20" {
+		t.Errorf("number str = %s, want %s", g, "20")
+	}
+}
+
+// TestMap tests the basic usage of Map.
+func TestMap(t *testing.T) {
 	m := &Map{Map: new(expvar.Map).Init()}
 
 	c := m.NewCounter("number")
