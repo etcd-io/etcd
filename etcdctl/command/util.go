@@ -29,6 +29,8 @@ import (
 
 var (
 	ErrNoAvailSrc = errors.New("no available argument and stdin")
+	ErrNumArgs    = errors.New("incorrect number of arguments passed")
+	ErrNotFile    = errors.New("File is not available, or is a directory")
 )
 
 // trimsplit slices s into all substrings separated by sep and returns a
