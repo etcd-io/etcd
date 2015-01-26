@@ -211,11 +211,16 @@ func startProxy(cfg *config) error {
 		return err
 	}
 
+	tr, err := transport.NewTransport(cfg.peerTLSInfo)
+	if err != nil {
+		return err
+	}
+
 	// TODO(jonboulle): update peerURLs dynamically (i.e. when updating
 	// clientURLs) instead of just using the initial fixed list here
 	peerURLs := cls.PeerURLs()
 	uf := func() []string {
-		cls, err := etcdserver.GetClusterFromPeers(peerURLs)
+		cls, err := etcdserver.GetClusterFromPeers(peerURLs, tr)
 		if err != nil {
 			log.Printf("proxy: %v", err)
 			return []string{}
