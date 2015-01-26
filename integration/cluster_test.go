@@ -614,12 +614,13 @@ func (m *member) Terminate(t *testing.T) {
 	}
 }
 
-func mustNewHTTPClient(t *testing.T, eps []string) client.HTTPClient {
-	cc, err := client.NewHTTPClient(mustNewTransport(t), eps)
+func mustNewHTTPClient(t *testing.T, eps []string) client.SyncableHTTPClient {
+	cc := client.ClientConfig{Transport: mustNewTransport(t), Endpoints: eps}
+	c, err := client.New(cc)
 	if err != nil {
 		t.Fatal(err)
 	}
-	return cc
+	return c
 }
 
 func mustNewTransport(t *testing.T) *http.Transport {
