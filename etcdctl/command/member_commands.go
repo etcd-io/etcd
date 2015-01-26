@@ -61,7 +61,12 @@ func mustNewMembersAPI(c *cli.Context) client.MembersAPI {
 		os.Exit(1)
 	}
 
-	hc, err := client.NewHTTPClient(tr, eps)
+	cfg := client.ClientConfig{
+		Transport: tr,
+		Endpoints: eps,
+	}
+
+	hc, err := client.New(cfg)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)

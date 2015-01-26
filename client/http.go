@@ -35,6 +35,15 @@ var (
 	DefaultMaxRedirects   = 10
 )
 
+type ClientConfig struct {
+	Endpoints []string
+	Transport CancelableTransport
+}
+
+func New(cfg ClientConfig) (SyncableHTTPClient, error) {
+	return newHTTPClusterClient(cfg.Transport, cfg.Endpoints)
+}
+
 type SyncableHTTPClient interface {
 	HTTPClient
 	Sync(context.Context) error
@@ -55,10 +64,6 @@ type HTTPAction interface {
 type CancelableTransport interface {
 	http.RoundTripper
 	CancelRequest(req *http.Request)
-}
-
-func NewHTTPClient(tr CancelableTransport, eps []string) (SyncableHTTPClient, error) {
-	return newHTTPClusterClient(tr, eps)
 }
 
 func newHTTPClusterClient(tr CancelableTransport, eps []string) (*httpClusterClient, error) {
