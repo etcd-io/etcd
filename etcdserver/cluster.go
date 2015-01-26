@@ -22,12 +22,12 @@ import (
 	"log"
 	"net/url"
 	"path"
-	"reflect"
 	"sort"
 	"strings"
 	"sync"
 
 	"github.com/coreos/etcd/pkg/flags"
+	"github.com/coreos/etcd/pkg/netutil"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/store"
@@ -391,7 +391,8 @@ func ValidateClusterAndAssignIDs(local *Cluster, existing *Cluster) error {
 	sort.Sort(SortableMemberSliceByPeerURLs(lms))
 
 	for i := range ems {
-		if !reflect.DeepEqual(ems[i].PeerURLs, lms[i].PeerURLs) {
+		// TODO: Remove URLStringsEqual after improvement of using hostnames #2150 #2123
+		if !netutil.URLStringsEqual(ems[i].PeerURLs, lms[i].PeerURLs) {
 			return fmt.Errorf("unmatched member while checking PeerURLs")
 		}
 		lms[i].ID = ems[i].ID
