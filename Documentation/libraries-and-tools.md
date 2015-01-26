@@ -68,6 +68,10 @@
 **Haskell libraries**
 
 - [wereHamster/etcd-hs](https://github.com/wereHamster/etcd-hs)
+ 
+**Tcl libraries**
+
+- [efrecon/etcd-tcl](https://github.com/efrecon/etcd-tcl) - Supports v2, except wait.
 
 A detailed recap of client functionalities can be found in the [clients compatibility matrix][clients-matrix.md].
 
