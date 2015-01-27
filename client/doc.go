@@ -1,0 +1,48 @@
+// Copyright 2015 CoreOS, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+/*
+Package client provides bindings for the etcd APIs.
+
+Create a Config and exchange it for a Client:
+
+	import (
+		"net/http"
+
+		"github.com/coreos/etcd/client"
+		"golang.org/x/net/context"
+	)
+
+	cfg := client.Config{
+		Endpoints: []string{"http://127.0.0.1:4001"},
+		Transport: http.DefaultTransport,
+	}
+
+	c, err := client.New(cfg)
+	if err != nil {
+		// handle error
+	}
+
+Create a KeysAPI using the Client, then use it to interact with etcd:
+
+	kAPI := client.NewKeysAPI(c)
+
+	// create a new key /foo with the value "bar"
+	kAPI.Create(context.Background(), "/foo", "bar")
+
+	// delete the newly created key only if the value is still "bar"
+	kAPI.Delete(context.Background(), "/foo", &DeleteOptions{PrevValue: "bar"})
+
+*/
+package client
