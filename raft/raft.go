@@ -491,9 +491,14 @@ func stepLeader(r *raft, m pb.Message) {
 				r.sendAppend(m.From)
 			}
 		} else {
+			oldWait := r.prs[m.From].shouldWait()
 			r.prs[m.From].update(m.Index)
 			if r.maybeCommit() {
 				r.bcastAppend()
+			} else if oldWait {
+				// update() reset the wait state on this node. If we had delayed sending
+				// an update before, send it now.
+				r.sendAppend(m.From)
 			}
 		}
 	case pb.MsgHeartbeatResp:
