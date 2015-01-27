@@ -47,14 +47,14 @@ var (
 	ErrKeyExists   = errors.New("client: key already exists")
 )
 
-func NewKeysAPI(c SyncableHTTPClient) KeysAPI {
+func NewKeysAPI(c Client) KeysAPI {
 	return &httpKeysAPI{
 		client: c,
 		prefix: DefaultV2KeysPrefix,
 	}
 }
 
-func NewDiscoveryKeysAPI(c SyncableHTTPClient) KeysAPI {
+func NewDiscoveryKeysAPI(c Client) KeysAPI {
 	return &httpKeysAPI{
 		client: c,
 		prefix: "",

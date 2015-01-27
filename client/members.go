@@ -31,7 +31,7 @@ var (
 	DefaultV2MembersPrefix = "/v2/members"
 )
 
-func NewMembersAPI(c SyncableHTTPClient) MembersAPI {
+func NewMembersAPI(c Client) MembersAPI {
 	return &httpMembersAPI{
 		client: c,
 	}
