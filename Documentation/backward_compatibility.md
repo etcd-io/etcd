@@ -10,15 +10,17 @@ The major flag changes are to mostly related to bootstrapping. The `initial-*` f
 
  - `-addr` is replaced by `-advertise-client-urls`.
  - `-bind-addr` is replaced by `-listen-client-urls`.
- - `-peer-add` is replaced by `-initial-advertise-peer-urls`.
+ - `-peer-addr` is replaced by `-initial-advertise-peer-urls`.
  - `-peer-bind-addr` is replaced by `-listen-peer-urls`.
  - `-peers` is replaced by `-initial-cluster`.
  - `-peers-file` is replaced by `-initial-cluster`.
+ - `-peer-heartbeat-interval` is replaced by `-heartbeat-interval`.
+ - `-peer-election-timeout` is replaced by `-election-timeout`.
 
-The documentation of new command line flags can be found at 
+The documentation of new command line flags can be found at
 https://github.com/coreos/etcd/blob/master/Documentation/configuration.md.
 
-#### Data Dir 
+#### Data Dir
 - Default data dir location has changed from {$hostname}.etcd to {name}.etcd.
 
 - The disk format within the data dir has changed. etcd 2.0 should be able to auto upgrade the old data format. Instructions on doing so manually are in the [migration tool doc][migrationtooldoc].
@@ -27,7 +29,7 @@ https://github.com/coreos/etcd/blob/master/Documentation/configuration.md.
 
 #### Standby
 
-etcd 0.4’s standby mode has been deprecated by 2.0’s [proxy mode][proxymode]. 
+etcd 0.4’s standby mode has been deprecated. [Proxy mode][proxymode] is introduced to solve a subset of problems standby was solving.
 
 Standby mode was intended for large clusters that had a subset of the members acting in the consensus process. Overall this process was too magical and allowed for operators to back themselves into a corner.
 
