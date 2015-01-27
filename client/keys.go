@@ -64,20 +64,70 @@ type KeysAPI interface {
 }
 
 type WatcherOptions struct {
+	// WaitIndex defines the index after-which the Watcher should
+	// start emitting events. For example, if a value of 5 is
+	// provided, the first event will have an index >= 6.
+	//
+	// Setting WaitIndex to 0 (default) means that the Watcher
+	// should start watching for events starting at the current
+	// index, whatever that may be.
 	WaitIndex uint64
+
+	// Recursive specifices whether or not the Watcher should emit
+	// events that occur in children of the given keyspace. If set
+	// to false (default), events will be limited to those that
+	// occur for the exact key.
 	Recursive bool
 }
 
 type SetOptions struct {
+	// PrevValue specifies what the current value of the Node must
+	// be in order for the Set operation to succeed.
+	//
+	// Leaving this field empty means that the caller wishes to
+	// ignore the current value of the Node. This cannot be used
+	// to compare the Node's current value to an empty string.
 	PrevValue string
+
+	// PrevIndex indicates what the current ModifiedIndex of the
+	// Node must be in order for the Set operation to succeed.
+	//
+	// If PrevIndex is set to 0 (default), no comparison is made.
 	PrevIndex uint64
+
+	// PrevExist specifies whether the Node must currently exist
+	// (PrevExist) or not (PrevNoExist). If the caller does not
+	// care about existence, set PrevExist to PrevIgnore, or simply
+	// leave it unset.
 	PrevExist PrevExistType
-	TTL       time.Duration
+
+	// TTL defines a period of time after-which the Node should
+	// expire and no longer exist. Values <= 0 are ignored. Given
+	// that the zero-value is ignored, TTL cannot be used to set
+	// a TTL of 0.
+	TTL time.Duration
 }
 
 type DeleteOptions struct {
+	// PrevValue specifies what the current value of the Node must
+	// be in order for the Delete operation to succeed.
+	//
+	// Leaving this field empty means that the caller wishes to
+	// ignore the current value of the Node. This cannot be used
+	// to compare the Node's current value to an empty string.
 	PrevValue string
+
+	// PrevIndex indicates what the current ModifiedIndex of the
+	// Node must be in order for the Delete operation to succeed.
+	//
+	// If PrevIndex is set to 0 (default), no comparison is made.
 	PrevIndex uint64
+
+	// Recursive defines whether or not all children of the Node
+	// should be deleted. If set to true, all children of the Node
+	// identified by the given key will be deleted. If left unset
+	// or explicitly set to false, only a single Node will be
+	// deleted.
 	Recursive bool
 }
 
