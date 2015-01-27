@@ -52,7 +52,11 @@ type ClientConfig struct {
 }
 
 func New(cfg ClientConfig) (SyncableHTTPClient, error) {
-	return newHTTPClusterClient(cfg.Transport, cfg.Endpoints, defaultHTTPClientFactory)
+	c := &httpClusterClient{clientFactory: defaultHTTPClientFactory}
+	if err := c.reset(cfg.Transport, cfg.Endpoints); err != nil {
+		return nil, err
+	}
+	return c, nil
 }
 
 type SyncableHTTPClient interface {
@@ -77,14 +81,6 @@ type HTTPAction interface {
 type CancelableTransport interface {
 	http.RoundTripper
 	CancelRequest(req *http.Request)
-}
-
-func newHTTPClusterClient(tr CancelableTransport, eps []string, cf httpClientFactory) (*httpClusterClient, error) {
-	c := &httpClusterClient{clientFactory: cf}
-	if err := c.reset(tr, eps); err != nil {
-		return nil, err
-	}
-	return c, nil
 }
 
 type httpClusterClient struct {
