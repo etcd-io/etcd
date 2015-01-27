@@ -62,7 +62,7 @@ func (s *multiStaticHTTPClient) Do(context.Context, httpAction) (*http.Response,
 
 func newStaticHTTPClientFactory(responses []staticHTTPResponse) httpClientFactory {
 	var cur int
-	return func(url.URL) HTTPClient {
+	return func(url.URL) httpClient {
 		r := responses[cur]
 		cur++
 		return &staticHTTPClient{resp: r.resp, err: r.err}
@@ -350,7 +350,7 @@ func TestRedirectedHTTPAction(t *testing.T) {
 func TestRedirectFollowingHTTPClient(t *testing.T) {
 	tests := []struct {
 		max      int
-		client   HTTPClient
+		client   httpClient
 		wantCode int
 		wantErr  error
 	}{
