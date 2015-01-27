@@ -117,7 +117,7 @@ func newDiscovery(durl, dproxyurl string, id types.ID) (*discovery, error) {
 	if err != nil {
 		return nil, err
 	}
-	cfg := client.ClientConfig{
+	cfg := client.Config{
 		Transport: &http.Transport{Proxy: pf},
 		Endpoints: []string{u.String()},
 	}
