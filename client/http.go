@@ -53,7 +53,7 @@ type Config struct {
 	Transport CancelableTransport
 }
 
-func New(cfg Config) (SyncableHTTPClient, error) {
+func New(cfg Config) (Client, error) {
 	c := &httpClusterClient{clientFactory: newHTTPClientFactory(cfg.Transport)}
 	if err := c.reset(cfg.Endpoints); err != nil {
 		return nil, err
@@ -61,7 +61,7 @@ func New(cfg Config) (SyncableHTTPClient, error) {
 	return c, nil
 }
 
-type SyncableHTTPClient interface {
+type Client interface {
 	Sync(context.Context) error
 	Endpoints() []string
 
