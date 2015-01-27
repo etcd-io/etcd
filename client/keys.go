@@ -39,10 +39,15 @@ var (
 	defaultV2KeysPrefix = "/v2/keys"
 )
 
+// NewKeysAPI builds a KeysAPI that interacts with etcd's key-value
+// API over HTTP.
 func NewKeysAPI(c Client) KeysAPI {
 	return NewKeysAPIWithPrefix(c, defaultV2KeysPrefix)
 }
 
+// NewKeysAPIWithPrefix acts like NewKeysAPI, but allows the caller
+// to provide a custom base URL path. This should only be used in
+// very rare cases.
 func NewKeysAPIWithPrefix(c Client, p string) KeysAPI {
 	return &httpKeysAPI{
 		client: c,
