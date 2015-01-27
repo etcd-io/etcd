@@ -16,7 +16,6 @@ package client
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -38,13 +37,6 @@ const (
 
 var (
 	defaultV2KeysPrefix = "/v2/keys"
-)
-
-var (
-	ErrUnavailable = errors.New("client: no available etcd endpoints")
-	ErrNoLeader    = errors.New("client: no leader")
-	ErrKeyNoExist  = errors.New("client: key does not exist")
-	ErrKeyExists   = errors.New("client: key already exists")
 )
 
 func NewKeysAPI(c Client) KeysAPI {
