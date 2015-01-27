@@ -39,7 +39,7 @@ var (
 func defaultHTTPClientFactory(tr CancelableTransport, ep url.URL) HTTPClient {
 	return &redirectFollowingHTTPClient{
 		max: DefaultMaxRedirects,
-		client: &httpClient{
+		client: &simpleHTTPClient{
 			transport: tr,
 			endpoint:  ep,
 		},
@@ -181,12 +181,12 @@ type roundTripResponse struct {
 	err  error
 }
 
-type httpClient struct {
+type simpleHTTPClient struct {
 	transport CancelableTransport
 	endpoint  url.URL
 }
 
-func (c *httpClient) Do(ctx context.Context, act HTTPAction) (*http.Response, []byte, error) {
+func (c *simpleHTTPClient) Do(ctx context.Context, act HTTPAction) (*http.Response, []byte, error) {
 	req := act.HTTPRequest(c.endpoint)
 
 	rtchan := make(chan roundTripResponse, 1)

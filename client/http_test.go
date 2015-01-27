@@ -109,9 +109,9 @@ func (a *fakeAction) HTTPRequest(url.URL) *http.Request {
 	return &http.Request{}
 }
 
-func TestHTTPClientDoSuccess(t *testing.T) {
+func TestSimpleHTTPClientDoSuccess(t *testing.T) {
 	tr := newFakeTransport()
-	c := &httpClient{transport: tr}
+	c := &simpleHTTPClient{transport: tr}
 
 	tr.respchan <- &http.Response{
 		StatusCode: http.StatusTeapot,
@@ -134,9 +134,9 @@ func TestHTTPClientDoSuccess(t *testing.T) {
 	}
 }
 
-func TestHTTPClientDoError(t *testing.T) {
+func TestSimpleHTTPClientDoError(t *testing.T) {
 	tr := newFakeTransport()
-	c := &httpClient{transport: tr}
+	c := &simpleHTTPClient{transport: tr}
 
 	tr.errchan <- errors.New("fixture")
 
@@ -146,9 +146,9 @@ func TestHTTPClientDoError(t *testing.T) {
 	}
 }
 
-func TestHTTPClientDoCancelContext(t *testing.T) {
+func TestSimpleHTTPClientDoCancelContext(t *testing.T) {
 	tr := newFakeTransport()
-	c := &httpClient{transport: tr}
+	c := &simpleHTTPClient{transport: tr}
 
 	tr.startCancel <- struct{}{}
 	tr.finishCancel <- struct{}{}
@@ -159,9 +159,9 @@ func TestHTTPClientDoCancelContext(t *testing.T) {
 	}
 }
 
-func TestHTTPClientDoCancelContextWaitForRoundTrip(t *testing.T) {
+func TestSimpleHTTPClientDoCancelContextWaitForRoundTrip(t *testing.T) {
 	tr := newFakeTransport()
-	c := &httpClient{transport: tr}
+	c := &simpleHTTPClient{transport: tr}
 
 	donechan := make(chan struct{})
 	ctx, cancel := context.WithCancel(context.Background())
@@ -175,7 +175,7 @@ func TestHTTPClientDoCancelContextWaitForRoundTrip(t *testing.T) {
 
 	select {
 	case <-donechan:
-		t.Fatalf("httpClient.do should not have exited yet")
+		t.Fatalf("simpleHTTPClient.Do should not have exited yet")
 	default:
 	}
 
@@ -186,7 +186,7 @@ func TestHTTPClientDoCancelContextWaitForRoundTrip(t *testing.T) {
 		//expected behavior
 		return
 	case <-time.After(time.Second):
-		t.Fatalf("httpClient.do did not exit within 1s")
+		t.Fatalf("simpleHTTPClient.Do did not exit within 1s")
 	}
 }
 
