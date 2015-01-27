@@ -195,7 +195,7 @@ func (s *Snapshot4) Snapshot2() *raftpb.Snapshot {
 		Data: newState,
 		Metadata: raftpb.SnapshotMetadata{
 			Index: s.LastIndex,
-			Term:  s.LastTerm,
+			Term:  s.LastTerm + termOffset4to2,
 			ConfState: raftpb.ConfState{
 				Nodes: nodeList,
 			},

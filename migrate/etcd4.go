@@ -29,6 +29,9 @@ import (
 	"github.com/coreos/etcd/wal/walpb"
 )
 
+// We need an offset in leader election terms, because term 0 is special in 2.0.
+const termOffset4to2 = 1
+
 func snapDir4(dataDir string) string {
 	return path.Join(dataDir, "snapshot")
 }
