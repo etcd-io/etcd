@@ -29,6 +29,8 @@ import (
 	"github.com/coreos/etcd/wal/walpb"
 )
 
+const termOffset4to2 = 1
+
 func snapDir4(dataDir string) string {
 	return path.Join(dataDir, "snapshot")
 }

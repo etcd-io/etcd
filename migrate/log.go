@@ -498,7 +498,7 @@ func toEntry2(ent4 *etcd4pb.LogEntry, raftMap map[string]uint64) (*raftpb.Entry,
 	}
 
 	ent2 := raftpb.Entry{
-		Term:  ent4.GetTerm(),
+		Term:  ent4.GetTerm() + termOffset4to2,
 		Index: ent4.GetIndex(),
 		Type:  cmd4.Type2(),
 		Data:  data,
