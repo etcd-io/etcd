@@ -40,16 +40,13 @@ var (
 )
 
 func NewKeysAPI(c Client) KeysAPI {
-	return &httpKeysAPI{
-		client: c,
-		prefix: defaultV2KeysPrefix,
-	}
+	return NewKeysAPIWithPrefix(c, defaultV2KeysPrefix)
 }
 
-func NewDiscoveryKeysAPI(c Client) KeysAPI {
+func NewKeysAPIWithPrefix(c Client, p string) KeysAPI {
 	return &httpKeysAPI{
 		client: c,
-		prefix: "",
+		prefix: p,
 	}
 }
 
