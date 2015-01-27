@@ -115,6 +115,10 @@ func Migrate4To2(dataDir string, name string) error {
 	ents2Len := len(ents2)
 	log.Printf("Found %d log entries: firstIndex=%d lastIndex=%d", ents2Len, ents2[0].Index, ents2[ents2Len-1].Index)
 
+	// set the state term to the biggest term we have ever seen,
+	// so term of future entries will not be the same with term of old ones.
+	st2.Term = ents2[ents2Len-1].Term
+
 	// explicitly prepend an empty entry as the WAL code expects it
 	ents2 = append(make([]raftpb.Entry, 1), ents2...)
 
