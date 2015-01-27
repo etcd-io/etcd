@@ -158,6 +158,8 @@ func Do(f func(expvar.KeyValue)) {
 
 // for test only
 func reset() {
+	mutex.Lock()
+	defer mutex.Unlock()
 	vars = make(map[string]expvar.Var)
 	varKeys = nil
 }
