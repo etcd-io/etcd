@@ -28,7 +28,7 @@ import (
 )
 
 var (
-	DefaultV2MembersPrefix = "/v2/members"
+	defaultV2MembersPrefix = "/v2/members"
 )
 
 func NewMembersAPI(c Client) MembersAPI {
@@ -152,6 +152,6 @@ func assertStatusCode(got int, want ...int) (err error) {
 // v2MembersURL add the necessary path to the provided endpoint
 // to route requests to the default v2 members API.
 func v2MembersURL(ep url.URL) *url.URL {
-	ep.Path = path.Join(ep.Path, DefaultV2MembersPrefix)
+	ep.Path = path.Join(ep.Path, defaultV2MembersPrefix)
 	return &ep
 }
