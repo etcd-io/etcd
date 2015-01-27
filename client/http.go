@@ -66,12 +66,12 @@ type SyncableHTTPClient interface {
 }
 
 type HTTPClient interface {
-	Do(context.Context, HTTPAction) (*http.Response, []byte, error)
+	Do(context.Context, httpAction) (*http.Response, []byte, error)
 }
 
 type httpClientFactory func(CancelableTransport, url.URL) HTTPClient
 
-type HTTPAction interface {
+type httpAction interface {
 	HTTPRequest(url.URL) *http.Request
 }
 
@@ -110,7 +110,7 @@ func (c *httpClusterClient) reset(tr CancelableTransport, eps []string) error {
 	return nil
 }
 
-func (c *httpClusterClient) Do(ctx context.Context, act HTTPAction) (resp *http.Response, body []byte, err error) {
+func (c *httpClusterClient) Do(ctx context.Context, act httpAction) (resp *http.Response, body []byte, err error) {
 	c.RLock()
 	leps := len(c.endpoints)
 	eps := make([]url.URL, leps)
@@ -186,7 +186,7 @@ type simpleHTTPClient struct {
 	endpoint  url.URL
 }
 
-func (c *simpleHTTPClient) Do(ctx context.Context, act HTTPAction) (*http.Response, []byte, error) {
+func (c *simpleHTTPClient) Do(ctx context.Context, act httpAction) (*http.Response, []byte, error) {
 	req := act.HTTPRequest(c.endpoint)
 
 	rtchan := make(chan roundTripResponse, 1)
@@ -230,7 +230,7 @@ type redirectFollowingHTTPClient struct {
 	max    int
 }
 
-func (r *redirectFollowingHTTPClient) Do(ctx context.Context, act HTTPAction) (*http.Response, []byte, error) {
+func (r *redirectFollowingHTTPClient) Do(ctx context.Context, act httpAction) (*http.Response, []byte, error) {
 	for i := 0; i <= r.max; i++ {
 		resp, body, err := r.client.Do(ctx, act)
 		if err != nil {
@@ -257,7 +257,7 @@ func (r *redirectFollowingHTTPClient) Do(ctx context.Context, act HTTPAction) (*
 }
 
 type redirectedHTTPAction struct {
-	action   HTTPAction
+	action   httpAction
 	location url.URL
 }
 
