@@ -26,14 +26,12 @@ import (
 	"bytes"
 	"expvar"
 	"fmt"
+	"sort"
+	"sync"
 )
 
 // Counter is a number that increases over time monotonically.
 type Counter struct{ i *expvar.Int }
-
-func NewCounter(name string) *Counter {
-	return &Counter{i: expvar.NewInt(name)}
-}
 
 func (c *Counter) Add() { c.i.Add(1) }
 
@@ -43,10 +41,6 @@ func (c *Counter) String() string { return c.i.String() }
 
 // Gauge returns instantaneous value that is expected to fluctuate over time.
 type Gauge struct{ i *expvar.Int }
-
-func NewGauge(name string) *Gauge {
-	return &Gauge{i: expvar.NewInt(name)}
-}
 
 func (g *Gauge) Set(value int64) { g.i.Set(value) }
 
@@ -58,19 +52,6 @@ func (v *nilVar) String() string { return "nil" }
 
 // Map aggregates Counters and Gauges.
 type Map struct{ *expvar.Map }
-
-func NewMap(name string) *Map {
-	return &Map{Map: expvar.NewMap(name)}
-}
-
-// GetMap returns the map if it exists, or inits the given name map if it does
-// not exist.
-func GetMap(name string) *Map {
-	if m, ok := expvar.Get(name).(*expvar.Map); ok {
-		return &Map{Map: m}
-	}
-	return NewMap(name)
-}
 
 func (m *Map) NewCounter(key string) *Counter {
 	c := &Counter{i: new(expvar.Int)}
@@ -106,4 +87,77 @@ func (m *Map) String() string {
 	})
 	fmt.Fprintf(&b, "}")
 	return b.String()
+}
+
+// All published variables.
+var (
+	mutex   sync.RWMutex
+	vars    = make(map[string]expvar.Var)
+	varKeys []string // sorted
+)
+
+// Publish declares a named exported variable.
+// If the name is already registered then this will overwrite the old one.
+func Publish(name string, v expvar.Var) {
+	mutex.Lock()
+	defer mutex.Unlock()
+	if _, existing := vars[name]; !existing {
+		varKeys = append(varKeys, name)
+	}
+	sort.Strings(varKeys)
+	vars[name] = v
+	return
+}
+
+// Get retrieves a named exported variable.
+func Get(name string) expvar.Var {
+	mutex.RLock()
+	defer mutex.RUnlock()
+	return vars[name]
+}
+
+// Convenience functions for creating new exported variables.
+func NewCounter(name string) *Counter {
+	c := &Counter{i: new(expvar.Int)}
+	Publish(name, c)
+	return c
+}
+
+func NewGauge(name string) *Gauge {
+	g := &Gauge{i: new(expvar.Int)}
+	Publish(name, g)
+	return g
+}
+
+func NewMap(name string) *Map {
+	m := &Map{Map: new(expvar.Map).Init()}
+	Publish(name, m)
+	return m
+}
+
+// GetMap returns the map if it exists, or inits the given name map if it does
+// not exist.
+func GetMap(name string) *Map {
+	v := Get(name)
+	if v == nil {
+		return NewMap(name)
+	}
+	return v.(*Map)
+}
+
+// Do calls f for each exported variable.
+// The global variable map is locked during the iteration,
+// but existing entries may be concurrently updated.
+func Do(f func(expvar.KeyValue)) {
+	mutex.RLock()
+	defer mutex.RUnlock()
+	for _, k := range varKeys {
+		f(expvar.KeyValue{k, vars[k]})
+	}
+}
+
+// for test only
+func reset() {
+	vars = make(map[string]expvar.Var)
+	varKeys = nil
 }
