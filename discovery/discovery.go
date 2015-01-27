@@ -125,7 +125,7 @@ func newDiscovery(durl, dproxyurl string, id types.ID) (*discovery, error) {
 	if err != nil {
 		return nil, err
 	}
-	dc := client.NewDiscoveryKeysAPI(c)
+	dc := client.NewKeysAPIWithPrefix(c, "")
 	return &discovery{
 		cluster: token,
 		c:       dc,
