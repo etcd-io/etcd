@@ -62,7 +62,7 @@ func (s *multiStaticHTTPClient) Do(context.Context, httpAction) (*http.Response,
 
 func newStaticHTTPClientFactory(responses []staticHTTPResponse) httpClientFactory {
 	var cur int
-	return func(CancelableTransport, url.URL) HTTPClient {
+	return func(url.URL) HTTPClient {
 		r := responses[cur]
 		cur++
 		return &staticHTTPClient{resp: r.resp, err: r.err}
@@ -258,7 +258,7 @@ func TestHTTPClusterClientDo(t *testing.T) {
 		{
 			client: &httpClusterClient{
 				endpoints:     []url.URL{},
-				clientFactory: defaultHTTPClientFactory,
+				clientFactory: newHTTPClientFactory(nil),
 			},
 			wantErr: ErrNoEndpoints,
 		},
