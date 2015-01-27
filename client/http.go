@@ -37,7 +37,7 @@ var (
 )
 
 func newHTTPClientFactory(tr CancelableTransport) httpClientFactory {
-	return func(ep url.URL) HTTPClient {
+	return func(ep url.URL) httpClient {
 		return &redirectFollowingHTTPClient{
 			max: DefaultMaxRedirects,
 			client: &simpleHTTPClient{
@@ -62,16 +62,17 @@ func New(cfg Config) (SyncableHTTPClient, error) {
 }
 
 type SyncableHTTPClient interface {
-	HTTPClient
 	Sync(context.Context) error
 	Endpoints() []string
+
+	httpClient
 }
 
-type HTTPClient interface {
+type httpClient interface {
 	Do(context.Context, httpAction) (*http.Response, []byte, error)
 }
 
-type httpClientFactory func(url.URL) HTTPClient
+type httpClientFactory func(url.URL) httpClient
 
 type httpAction interface {
 	HTTPRequest(url.URL) *http.Request
@@ -225,7 +226,7 @@ func (c *simpleHTTPClient) Do(ctx context.Context, act httpAction) (*http.Respon
 }
 
 type redirectFollowingHTTPClient struct {
-	client HTTPClient
+	client httpClient
 	max    int
 }
 

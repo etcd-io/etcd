@@ -47,14 +47,14 @@ var (
 	ErrKeyExists   = errors.New("client: key already exists")
 )
 
-func NewKeysAPI(c HTTPClient) KeysAPI {
+func NewKeysAPI(c SyncableHTTPClient) KeysAPI {
 	return &httpKeysAPI{
 		client: c,
 		prefix: DefaultV2KeysPrefix,
 	}
 }
 
-func NewDiscoveryKeysAPI(c HTTPClient) KeysAPI {
+func NewDiscoveryKeysAPI(c SyncableHTTPClient) KeysAPI {
 	return &httpKeysAPI{
 		client: c,
 		prefix: "",
@@ -117,7 +117,7 @@ func (n *Node) String() string {
 }
 
 type httpKeysAPI struct {
-	client HTTPClient
+	client httpClient
 	prefix string
 }
 
@@ -219,7 +219,7 @@ func (k *httpKeysAPI) Watcher(key string, opts *WatcherOptions) Watcher {
 }
 
 type httpWatcher struct {
-	client   HTTPClient
+	client   httpClient
 	nextWait waitAction
 }
 
