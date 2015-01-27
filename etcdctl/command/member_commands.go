@@ -61,7 +61,7 @@ func mustNewMembersAPI(c *cli.Context) client.MembersAPI {
 		os.Exit(1)
 	}
 
-	cfg := client.ClientConfig{
+	cfg := client.Config{
 		Transport: tr,
 		Endpoints: eps,
 	}
