@@ -31,6 +31,8 @@ var (
 	defaultV2MembersPrefix = "/v2/members"
 )
 
+// NewMembersAPI constructs a new MembersAPI that uses HTTP to
+// interact with etcd's membership API.
 func NewMembersAPI(c Client) MembersAPI {
 	return &httpMembersAPI{
 		client: c,
