@@ -36,13 +36,15 @@ var (
 	DefaultMaxRedirects   = 10
 )
 
-func defaultHTTPClientFactory(tr CancelableTransport, ep url.URL) HTTPClient {
-	return &redirectFollowingHTTPClient{
-		max: DefaultMaxRedirects,
-		client: &simpleHTTPClient{
-			transport: tr,
-			endpoint:  ep,
-		},
+func newHTTPClientFactory(tr CancelableTransport) httpClientFactory {
+	return func(ep url.URL) HTTPClient {
+		return &redirectFollowingHTTPClient{
+			max: DefaultMaxRedirects,
+			client: &simpleHTTPClient{
+				transport: tr,
+				endpoint:  ep,
+			},
+		}
 	}
 }
 
@@ -52,8 +54,8 @@ type Config struct {
 }
 
 func New(cfg Config) (SyncableHTTPClient, error) {
-	c := &httpClusterClient{clientFactory: defaultHTTPClientFactory}
-	if err := c.reset(cfg.Transport, cfg.Endpoints); err != nil {
+	c := &httpClusterClient{clientFactory: newHTTPClientFactory(cfg.Transport)}
+	if err := c.reset(cfg.Endpoints); err != nil {
 		return nil, err
 	}
 	return c, nil
@@ -69,7 +71,7 @@ type HTTPClient interface {
 	Do(context.Context, httpAction) (*http.Response, []byte, error)
 }
 
-type httpClientFactory func(CancelableTransport, url.URL) HTTPClient
+type httpClientFactory func(url.URL) HTTPClient
 
 type httpAction interface {
 	HTTPRequest(url.URL) *http.Request
@@ -85,12 +87,11 @@ type CancelableTransport interface {
 
 type httpClusterClient struct {
 	clientFactory httpClientFactory
-	transport     CancelableTransport
 	endpoints     []url.URL
 	sync.RWMutex
 }
 
-func (c *httpClusterClient) reset(tr CancelableTransport, eps []string) error {
+func (c *httpClusterClient) reset(eps []string) error {
 	if len(eps) == 0 {
 		return ErrNoEndpoints
 	}
@@ -105,7 +106,6 @@ func (c *httpClusterClient) reset(tr CancelableTransport, eps []string) error {
 	}
 
 	c.endpoints = neps
-	c.transport = tr
 
 	return nil
 }
@@ -115,7 +115,6 @@ func (c *httpClusterClient) Do(ctx context.Context, act httpAction) (resp *http.
 	leps := len(c.endpoints)
 	eps := make([]url.URL, leps)
 	n := copy(eps, c.endpoints)
-	tr := c.transport
 	c.RUnlock()
 
 	if leps == 0 {
@@ -129,7 +128,7 @@ func (c *httpClusterClient) Do(ctx context.Context, act httpAction) (resp *http.
 	}
 
 	for _, ep := range eps {
-		hc := c.clientFactory(tr, ep)
+		hc := c.clientFactory(ep)
 		resp, body, err = hc.Do(ctx, act)
 		if err != nil {
 			if err == ErrTimeout || err == ErrCanceled {
@@ -173,7 +172,7 @@ func (c *httpClusterClient) Sync(ctx context.Context) error {
 		eps = append(eps, m.ClientURLs...)
 	}
 
-	return c.reset(c.transport, eps)
+	return c.reset(eps)
 }
 
 type roundTripResponse struct {
