@@ -226,14 +226,14 @@ func TestCheckCluster(t *testing.T) {
 }
 
 func TestWaitNodes(t *testing.T) {
-	all := client.Nodes{
+	all := []*client.Node{
 		0: {Key: "/1000/1", CreatedIndex: 2},
 		1: {Key: "/1000/2", CreatedIndex: 3},
 		2: {Key: "/1000/3", CreatedIndex: 4},
 	}
 
 	tests := []struct {
-		nodes client.Nodes
+		nodes []*client.Node
 		rs    []*client.Response
 	}{
 		{
@@ -341,7 +341,7 @@ func TestCreateSelf(t *testing.T) {
 }
 
 func TestNodesToCluster(t *testing.T) {
-	nodes := client.Nodes{
+	nodes := []*client.Node{
 		0: {Key: "/1000/1", Value: "1=1.1.1.1", CreatedIndex: 1},
 		1: {Key: "/1000/2", Value: "2=2.2.2.2", CreatedIndex: 2},
 		2: {Key: "/1000/3", Value: "3=3.3.3.3", CreatedIndex: 3},
@@ -355,7 +355,7 @@ func TestNodesToCluster(t *testing.T) {
 }
 
 func TestSortableNodes(t *testing.T) {
-	ns := client.Nodes{
+	ns := []*client.Node{
 		0: {CreatedIndex: 5},
 		1: {CreatedIndex: 1},
 		2: {CreatedIndex: 3},

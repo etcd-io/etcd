@@ -95,13 +95,12 @@ type Response struct {
 	Index    uint64
 }
 
-type Nodes []*Node
 type Node struct {
-	Key           string `json:"key"`
-	Value         string `json:"value"`
-	Nodes         Nodes  `json:"nodes"`
-	ModifiedIndex uint64 `json:"modifiedIndex"`
-	CreatedIndex  uint64 `json:"createdIndex"`
+	Key           string  `json:"key"`
+	Value         string  `json:"value"`
+	Nodes         []*Node `json:"nodes"`
+	ModifiedIndex uint64  `json:"modifiedIndex"`
+	CreatedIndex  uint64  `json:"createdIndex"`
 }
 
 func (n *Node) String() string {

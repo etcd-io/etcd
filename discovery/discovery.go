@@ -195,7 +195,7 @@ func (d *discovery) createSelf(contents string) error {
 	return err
 }
 
-func (d *discovery) checkCluster() (client.Nodes, int, uint64, error) {
+func (d *discovery) checkCluster() ([]*client.Node, int, uint64, error) {
 	configKey := path.Join("/", d.cluster, "_config")
 	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
 	// find cluster size
@@ -224,7 +224,7 @@ func (d *discovery) checkCluster() (client.Nodes, int, uint64, error) {
 		}
 		return nil, 0, 0, err
 	}
-	nodes := make(client.Nodes, 0)
+	nodes := make([]*client.Node, 0)
 	// append non-config keys to nodes
 	for _, n := range resp.Node.Nodes {
 		if !(path.Base(n.Key) == path.Base(configKey)) {
@@ -254,7 +254,7 @@ func (d *discovery) logAndBackoffForRetry(step string) {
 	d.clock.Sleep(retryTime)
 }
 
-func (d *discovery) checkClusterRetry() (client.Nodes, int, uint64, error) {
+func (d *discovery) checkClusterRetry() ([]*client.Node, int, uint64, error) {
 	if d.retries < nRetries {
 		d.logAndBackoffForRetry("cluster status check")
 		return d.checkCluster()
@@ -262,7 +262,7 @@ func (d *discovery) checkClusterRetry() (client.Nodes, int, uint64, error) {
 	return nil, 0, 0, ErrTooManyRetries
 }
 
-func (d *discovery) waitNodesRetry() (client.Nodes, error) {
+func (d *discovery) waitNodesRetry() ([]*client.Node, error) {
 	if d.retries < nRetries {
 		d.logAndBackoffForRetry("waiting for other nodes")
 		nodes, n, index, err := d.checkCluster()
@@ -274,13 +274,13 @@ func (d *discovery) waitNodesRetry() (client.Nodes, error) {
 	return nil, ErrTooManyRetries
 }
 
-func (d *discovery) waitNodes(nodes client.Nodes, size int, index uint64) (client.Nodes, error) {
+func (d *discovery) waitNodes(nodes []*client.Node, size int, index uint64) ([]*client.Node, error) {
 	if len(nodes) > size {
 		nodes = nodes[:size]
 	}
 	// watch from the next index
 	w := d.c.Watcher(d.cluster, &client.WatcherOptions{WaitIndex: index + 1, Recursive: true})
-	all := make(client.Nodes, len(nodes))
+	all := make([]*client.Node, len(nodes))
 	copy(all, nodes)
 	for _, n := range all {
 		if path.Base(n.Key) == path.Base(d.selfKey()) {
@@ -311,7 +311,7 @@ func (d *discovery) selfKey() string {
 	return path.Join("/", d.cluster, d.id.String())
 }
 
-func nodesToCluster(ns client.Nodes) string {
+func nodesToCluster(ns []*client.Node) string {
 	s := make([]string, len(ns))
 	for i, n := range ns {
 		s[i] = n.Value
@@ -319,7 +319,7 @@ func nodesToCluster(ns client.Nodes) string {
 	return strings.Join(s, ",")
 }
 
-type sortableNodes struct{ client.Nodes }
+type sortableNodes struct{ Nodes []*client.Node }
 
 func (ns sortableNodes) Len() int { return len(ns.Nodes) }
 func (ns sortableNodes) Less(i, j int) bool {
