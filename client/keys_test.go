@@ -190,7 +190,7 @@ func TestSetAction(t *testing.T) {
 		// default prefix
 		{
 			act: setAction{
-				Prefix: DefaultV2KeysPrefix,
+				Prefix: defaultV2KeysPrefix,
 				Key:    "foo",
 			},
 			wantURL:  "http://example.com/v2/keys/foo",
@@ -219,7 +219,7 @@ func TestSetAction(t *testing.T) {
 		// Key with path separators
 		{
 			act: setAction{
-				Prefix: DefaultV2KeysPrefix,
+				Prefix: defaultV2KeysPrefix,
 				Key:    "foo/bar/baz",
 			},
 			wantURL:  "http://example.com/v2/keys/foo/bar/baz",
@@ -341,7 +341,7 @@ func TestDeleteAction(t *testing.T) {
 		// default prefix
 		{
 			act: deleteAction{
-				Prefix: DefaultV2KeysPrefix,
+				Prefix: defaultV2KeysPrefix,
 				Key:    "foo",
 			},
 			wantURL: "http://example.com/v2/keys/foo",
@@ -367,7 +367,7 @@ func TestDeleteAction(t *testing.T) {
 		// Key with path separators
 		{
 			act: deleteAction{
-				Prefix: DefaultV2KeysPrefix,
+				Prefix: defaultV2KeysPrefix,
 				Key:    "foo/bar/baz",
 			},
 			wantURL: "http://example.com/v2/keys/foo/bar/baz",

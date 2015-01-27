@@ -37,7 +37,7 @@ const (
 )
 
 var (
-	DefaultV2KeysPrefix = "/v2/keys"
+	defaultV2KeysPrefix = "/v2/keys"
 )
 
 var (
@@ -50,7 +50,7 @@ var (
 func NewKeysAPI(c Client) KeysAPI {
 	return &httpKeysAPI{
 		client: c,
-		prefix: DefaultV2KeysPrefix,
+		prefix: defaultV2KeysPrefix,
 	}
 }
 
