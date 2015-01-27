@@ -615,8 +615,8 @@ func (m *member) Terminate(t *testing.T) {
 }
 
 func mustNewHTTPClient(t *testing.T, eps []string) client.SyncableHTTPClient {
-	cc := client.ClientConfig{Transport: mustNewTransport(t), Endpoints: eps}
-	c, err := client.New(cc)
+	cfg := client.Config{Transport: mustNewTransport(t), Endpoints: eps}
+	c, err := client.New(cfg)
 	if err != nil {
 		t.Fatal(err)
 	}

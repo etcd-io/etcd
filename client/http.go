@@ -46,12 +46,12 @@ func defaultHTTPClientFactory(tr CancelableTransport, ep url.URL) HTTPClient {
 	}
 }
 
-type ClientConfig struct {
+type Config struct {
 	Endpoints []string
 	Transport CancelableTransport
 }
 
-func New(cfg ClientConfig) (SyncableHTTPClient, error) {
+func New(cfg Config) (SyncableHTTPClient, error) {
 	c := &httpClusterClient{clientFactory: defaultHTTPClientFactory}
 	if err := c.reset(cfg.Transport, cfg.Endpoints); err != nil {
 		return nil, err
