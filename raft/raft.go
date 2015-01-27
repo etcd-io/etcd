@@ -217,7 +217,6 @@ func (r *raft) send(m pb.Message) {
 func (r *raft) sendAppend(to uint64) {
 	pr := r.prs[to]
 	if pr.shouldWait() {
-		log.Printf("raft: %x ignored sending %s to %x [%s]", r.id, pb.MsgApp, to, pr)
 		return
 	}
 	m := pb.Message{}
