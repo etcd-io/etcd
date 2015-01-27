@@ -29,6 +29,11 @@ import (
 	"github.com/coreos/etcd/wal/walpb"
 )
 
+// Though term 0 is valid in 0.4, it is a special term in 2.0, and should
+// not be used in append entries. Add termOffset to all terms to get rid of
+// invalid term 0.
+const termOffset = 1
+
 func snapDir4(dataDir string) string {
 	return path.Join(dataDir, "snapshot")
 }
@@ -95,6 +100,7 @@ func Migrate4To2(dataDir string, name string) error {
 		log.Printf("Found snapshot: lastIndex=%d", snap4.LastIndex)
 
 		snap2 = snap4.Snapshot2()
+		snap2.Metadata.Term += termOffset
 	}
 
 	st2 := cfg4.HardState2()
@@ -102,11 +108,15 @@ func Migrate4To2(dataDir string, name string) error {
 	// If we've got the most recent snapshot, we can use it's committed index. Still likely less than the current actual index, but worth it for the replay.
 	if snap2 != nil {
 		st2.Commit = snap2.Metadata.Index
+		st2.Term += termOffset
 	}
 
 	ents2, err := Entries4To2(ents4)
 	if err != nil {
 		return err
+	}
+	for i := range ents2 {
+		ents2[i].Term += termOffset
 	}
 
 	ents2Len := len(ents2)
