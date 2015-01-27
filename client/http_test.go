@@ -32,7 +32,7 @@ type staticHTTPClient struct {
 	err  error
 }
 
-func (s *staticHTTPClient) Do(context.Context, HTTPAction) (*http.Response, []byte, error) {
+func (s *staticHTTPClient) Do(context.Context, httpAction) (*http.Response, []byte, error) {
 	return &s.resp, nil, s.err
 }
 
@@ -54,7 +54,7 @@ type multiStaticHTTPClient struct {
 	cur       int
 }
 
-func (s *multiStaticHTTPClient) Do(context.Context, HTTPAction) (*http.Response, []byte, error) {
+func (s *multiStaticHTTPClient) Do(context.Context, httpAction) (*http.Response, []byte, error) {
 	r := s.responses[s.cur]
 	s.cur++
 	return &r.resp, nil, r.err
