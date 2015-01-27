@@ -36,13 +36,23 @@ var (
 	DefaultMaxRedirects   = 10
 )
 
+func defaultHTTPClientFactory(tr CancelableTransport, ep url.URL) HTTPClient {
+	return &redirectFollowingHTTPClient{
+		max: DefaultMaxRedirects,
+		client: &httpClient{
+			transport: tr,
+			endpoint:  ep,
+		},
+	}
+}
+
 type ClientConfig struct {
 	Endpoints []string
 	Transport CancelableTransport
 }
 
 func New(cfg ClientConfig) (SyncableHTTPClient, error) {
-	return newHTTPClusterClient(cfg.Transport, cfg.Endpoints)
+	return newHTTPClusterClient(cfg.Transport, cfg.Endpoints, defaultHTTPClientFactory)
 }
 
 type SyncableHTTPClient interface {
@@ -54,6 +64,8 @@ type SyncableHTTPClient interface {
 type HTTPClient interface {
 	Do(context.Context, HTTPAction) (*http.Response, []byte, error)
 }
+
+type httpClientFactory func(CancelableTransport, url.URL) HTTPClient
 
 type HTTPAction interface {
 	HTTPRequest(url.URL) *http.Request
@@ -67,8 +79,8 @@ type CancelableTransport interface {
 	CancelRequest(req *http.Request)
 }
 
-func newHTTPClusterClient(tr CancelableTransport, eps []string) (*httpClusterClient, error) {
-	c := &httpClusterClient{}
+func newHTTPClusterClient(tr CancelableTransport, eps []string, cf httpClientFactory) (*httpClusterClient, error) {
+	c := &httpClusterClient{clientFactory: cf}
 	if err := c.reset(tr, eps); err != nil {
 		return nil, err
 	}
@@ -76,37 +88,27 @@ func newHTTPClusterClient(tr CancelableTransport, eps []string) (*httpClusterCli
 }
 
 type httpClusterClient struct {
-	transport CancelableTransport
-	endpoints []string
-	clients   []HTTPClient
+	clientFactory httpClientFactory
+	transport     CancelableTransport
+	endpoints     []url.URL
 	sync.RWMutex
 }
 
 func (c *httpClusterClient) reset(tr CancelableTransport, eps []string) error {
-	le := len(eps)
-	ne := make([]string, le)
-	if copy(ne, eps) != le {
-		return errors.New("copy call failed")
+	if len(eps) == 0 {
+		return ErrNoEndpoints
 	}
 
-	nc := make([]HTTPClient, len(ne))
-	for i, e := range ne {
-		u, err := url.Parse(e)
+	neps := make([]url.URL, len(eps))
+	for i, ep := range eps {
+		u, err := url.Parse(ep)
 		if err != nil {
 			return err
 		}
-
-		nc[i] = &redirectFollowingHTTPClient{
-			max: DefaultMaxRedirects,
-			client: &httpClient{
-				transport: tr,
-				endpoint:  *u,
-			},
-		}
+		neps[i] = *u
 	}
 
-	c.endpoints = ne
-	c.clients = nc
+	c.endpoints = neps
 	c.transport = tr
 
 	return nil
@@ -114,12 +116,24 @@ func (c *httpClusterClient) reset(tr CancelableTransport, eps []string) error {
 
 func (c *httpClusterClient) Do(ctx context.Context, act HTTPAction) (resp *http.Response, body []byte, err error) {
 	c.RLock()
-	defer c.RUnlock()
+	leps := len(c.endpoints)
+	eps := make([]url.URL, leps)
+	n := copy(eps, c.endpoints)
+	tr := c.transport
+	c.RUnlock()
 
-	if len(c.clients) == 0 {
-		return nil, nil, ErrNoEndpoints
+	if leps == 0 {
+		err = ErrNoEndpoints
+		return
 	}
-	for _, hc := range c.clients {
+
+	if leps != n {
+		err = errors.New("unable to pick endpoint: copy failed")
+		return
+	}
+
+	for _, ep := range eps {
+		hc := c.clientFactory(tr, ep)
 		resp, body, err = hc.Do(ctx, act)
 		if err != nil {
 			if err == ErrTimeout || err == ErrCanceled {
@@ -132,13 +146,20 @@ func (c *httpClusterClient) Do(ctx context.Context, act HTTPAction) (resp *http.
 		}
 		break
 	}
+
 	return
 }
 
 func (c *httpClusterClient) Endpoints() []string {
 	c.RLock()
 	defer c.RUnlock()
-	return c.endpoints
+
+	eps := make([]string, len(c.endpoints))
+	for i, ep := range c.endpoints {
+		eps[i] = ep.String()
+	}
+
+	return eps
 }
 
 func (c *httpClusterClient) Sync(ctx context.Context) error {
@@ -154,9 +175,6 @@ func (c *httpClusterClient) Sync(ctx context.Context) error {
 	eps := make([]string, 0)
 	for _, m := range ms {
 		eps = append(eps, m.ClientURLs...)
-	}
-	if len(eps) == 0 {
-		return ErrNoEndpoints
 	}
 
 	return c.reset(c.transport, eps)

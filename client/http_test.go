@@ -60,6 +60,15 @@ func (s *multiStaticHTTPClient) Do(context.Context, HTTPAction) (*http.Response,
 	return &r.resp, nil, r.err
 }
 
+func newStaticHTTPClientFactory(responses []staticHTTPResponse) httpClientFactory {
+	var cur int
+	return func(CancelableTransport, url.URL) HTTPClient {
+		r := responses[cur]
+		cur++
+		return &staticHTTPClient{resp: r.resp, err: r.err}
+	}
+}
+
 type fakeTransport struct {
 	respchan     chan *http.Response
 	errchan      chan error
@@ -183,6 +192,7 @@ func TestHTTPClientDoCancelContextWaitForRoundTrip(t *testing.T) {
 
 func TestHTTPClusterClientDo(t *testing.T) {
 	fakeErr := errors.New("fake!")
+	fakeURL := url.URL{}
 	tests := []struct {
 		client   *httpClusterClient
 		wantCode int
@@ -191,10 +201,13 @@ func TestHTTPClusterClientDo(t *testing.T) {
 		// first good response short-circuits Do
 		{
 			client: &httpClusterClient{
-				clients: []HTTPClient{
-					&staticHTTPClient{resp: http.Response{StatusCode: http.StatusTeapot}},
-					&staticHTTPClient{err: fakeErr},
-				},
+				endpoints: []url.URL{fakeURL, fakeURL},
+				clientFactory: newStaticHTTPClientFactory(
+					[]staticHTTPResponse{
+						staticHTTPResponse{resp: http.Response{StatusCode: http.StatusTeapot}},
+						staticHTTPResponse{err: fakeErr},
+					},
+				),
 			},
 			wantCode: http.StatusTeapot,
 		},
@@ -202,10 +215,13 @@ func TestHTTPClusterClientDo(t *testing.T) {
 		// fall through to good endpoint if err is arbitrary
 		{
 			client: &httpClusterClient{
-				clients: []HTTPClient{
-					&staticHTTPClient{err: fakeErr},
-					&staticHTTPClient{resp: http.Response{StatusCode: http.StatusTeapot}},
-				},
+				endpoints: []url.URL{fakeURL, fakeURL},
+				clientFactory: newStaticHTTPClientFactory(
+					[]staticHTTPResponse{
+						staticHTTPResponse{err: fakeErr},
+						staticHTTPResponse{resp: http.Response{StatusCode: http.StatusTeapot}},
+					},
+				),
 			},
 			wantCode: http.StatusTeapot,
 		},
@@ -213,10 +229,13 @@ func TestHTTPClusterClientDo(t *testing.T) {
 		// ErrTimeout short-circuits Do
 		{
 			client: &httpClusterClient{
-				clients: []HTTPClient{
-					&staticHTTPClient{err: ErrTimeout},
-					&staticHTTPClient{resp: http.Response{StatusCode: http.StatusTeapot}},
-				},
+				endpoints: []url.URL{fakeURL, fakeURL},
+				clientFactory: newStaticHTTPClientFactory(
+					[]staticHTTPResponse{
+						staticHTTPResponse{err: ErrTimeout},
+						staticHTTPResponse{resp: http.Response{StatusCode: http.StatusTeapot}},
+					},
+				),
 			},
 			wantErr: ErrTimeout,
 		},
@@ -224,10 +243,13 @@ func TestHTTPClusterClientDo(t *testing.T) {
 		// ErrCanceled short-circuits Do
 		{
 			client: &httpClusterClient{
-				clients: []HTTPClient{
-					&staticHTTPClient{err: ErrCanceled},
-					&staticHTTPClient{resp: http.Response{StatusCode: http.StatusTeapot}},
-				},
+				endpoints: []url.URL{fakeURL, fakeURL},
+				clientFactory: newStaticHTTPClientFactory(
+					[]staticHTTPResponse{
+						staticHTTPResponse{err: ErrCanceled},
+						staticHTTPResponse{resp: http.Response{StatusCode: http.StatusTeapot}},
+					},
+				),
 			},
 			wantErr: ErrCanceled,
 		},
@@ -235,7 +257,8 @@ func TestHTTPClusterClientDo(t *testing.T) {
 		// return err if there are no endpoints
 		{
 			client: &httpClusterClient{
-				clients: []HTTPClient{},
+				endpoints:     []url.URL{},
+				clientFactory: defaultHTTPClientFactory,
 			},
 			wantErr: ErrNoEndpoints,
 		},
@@ -243,10 +266,13 @@ func TestHTTPClusterClientDo(t *testing.T) {
 		// return err if all endpoints return arbitrary errors
 		{
 			client: &httpClusterClient{
-				clients: []HTTPClient{
-					&staticHTTPClient{err: fakeErr},
-					&staticHTTPClient{err: fakeErr},
-				},
+				endpoints: []url.URL{fakeURL, fakeURL},
+				clientFactory: newStaticHTTPClientFactory(
+					[]staticHTTPResponse{
+						staticHTTPResponse{err: fakeErr},
+						staticHTTPResponse{err: fakeErr},
+					},
+				),
 			},
 			wantErr: fakeErr,
 		},
@@ -254,10 +280,13 @@ func TestHTTPClusterClientDo(t *testing.T) {
 		// 500-level errors cause Do to fallthrough to next endpoint
 		{
 			client: &httpClusterClient{
-				clients: []HTTPClient{
-					&staticHTTPClient{resp: http.Response{StatusCode: http.StatusBadGateway}},
-					&staticHTTPClient{resp: http.Response{StatusCode: http.StatusTeapot}},
-				},
+				endpoints: []url.URL{fakeURL, fakeURL},
+				clientFactory: newStaticHTTPClientFactory(
+					[]staticHTTPResponse{
+						staticHTTPResponse{resp: http.Response{StatusCode: http.StatusBadGateway}},
+						staticHTTPResponse{resp: http.Response{StatusCode: http.StatusTeapot}},
+					},
+				),
 			},
 			wantCode: http.StatusTeapot,
 		},
