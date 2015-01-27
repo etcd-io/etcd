@@ -21,19 +21,8 @@ import (
 	"net/http"
 	"net/url"
 	"sync"
-	"time"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
-)
-
-var (
-	ErrTimeout          = context.DeadlineExceeded
-	ErrCanceled         = context.Canceled
-	ErrNoEndpoints      = errors.New("no endpoints available")
-	ErrTooManyRedirects = errors.New("too many redirects")
-
-	DefaultRequestTimeout = 5 * time.Second
-	DefaultMaxRedirects   = 10
 )
 
 func newHTTPClientFactory(tr CancelableTransport) httpClientFactory {
