@@ -32,22 +32,13 @@ You can override the default values on the command line:
 
 ```sh
 # Command line arguments:
-$ etcd -peer-heartbeat-interval=100 -peer-election-timeout=500
+$ etcd -heartbeat-interval=100 -election-timeout=500
 
 # Environment variables:
-$ ETCD_PEER_HEARTBEAT_INTERVAL=100 ETCD_PEER_ELECTION_TIMEOUT=500 etcd
-```
-
-Or you can set the values within the configuration file:
-
-```toml
-[peer]
-heartbeat_interval = 100
-election_timeout = 500
+$ ETCD_HEARTBEAT_INTERVAL=100 ETCD_ELECTION_TIMEOUT=500 etcd
 ```
 
 The values are specified in milliseconds.
-
 
 ### Snapshots
 
@@ -72,12 +63,6 @@ $ etcd -snapshot-count=5000
 $ ETCD_SNAPSHOT_COUNT=5000 etcd
 ```
 
-Or you can change the setting in the configuration file:
-
-```toml
-snapshot_count = 5000
-```
-
 You can also disable snapshotting by adding the following to your command line:
 
 ```sh
@@ -86,10 +71,4 @@ $ etcd -snapshot false
 
 # Environment variables:
 $ ETCD_SNAPSHOT=false etcd
-```
-
-You can also disable snapshotting within the configuration file:
-
-```toml
-snapshot = false
 ```

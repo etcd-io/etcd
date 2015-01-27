@@ -4,7 +4,7 @@
 
 Between 0.4.x and 2.0, the on-disk data formats have changed. In order to allow users to convert to 2.0, a migration tool is provided.
 
-In the early 2.0.0-alpha series, we're providing this tool early to encourage adoption. However, before 2.0.0-release, etcd will autodetect the 0.4.x data dir upon upgrade and automatically update the data too (while leaving a backup, in case of emergency).
+etcd will detect 0.4.x data dir and update the data automatically (while leaving a backup, in case of emergency).
 
 ### Data Migration Tips
 
