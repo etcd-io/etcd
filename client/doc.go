@@ -39,10 +39,16 @@ Create a KeysAPI using the Client, then use it to interact with etcd:
 	kAPI := client.NewKeysAPI(c)
 
 	// create a new key /foo with the value "bar"
-	kAPI.Create(context.Background(), "/foo", "bar")
+	_, err = kAPI.Create(context.Background(), "/foo", "bar")
+	if err != nil {
+		// handle error
+	}
 
 	// delete the newly created key only if the value is still "bar"
-	kAPI.Delete(context.Background(), "/foo", &DeleteOptions{PrevValue: "bar"})
+	_, err = kAPI.Delete(context.Background(), "/foo", &DeleteOptions{PrevValue: "bar"})
+	if err != nil {
+		// handle error
+	}
 
 Use a custom context to set timeouts on your operations:
 
