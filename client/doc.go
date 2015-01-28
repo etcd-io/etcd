@@ -26,7 +26,7 @@ Create a Config and exchange it for a Client:
 
 	cfg := client.Config{
 		Endpoints: []string{"http://127.0.0.1:4001"},
-		Transport: http.DefaultTransport,
+		Transport: DefaultTransport,
 	}
 
 	c, err := client.New(cfg)
