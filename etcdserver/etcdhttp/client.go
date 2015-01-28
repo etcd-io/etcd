@@ -35,7 +35,6 @@ import (
 	"github.com/coreos/etcd/etcdserver/etcdhttp/httptypes"
 	"github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/etcdserver/stats"
-	"github.com/coreos/etcd/pkg/metrics"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/store"
@@ -291,7 +290,7 @@ func serveStats(w http.ResponseWriter, r *http.Request) {
 	// TODO: getting one key or a prefix of keys based on path
 	fmt.Fprintf(w, "{\n")
 	first := true
-	metrics.Do(func(kv expvar.KeyValue) {
+	expvar.Do(func(kv expvar.KeyValue) {
 		if !first {
 			fmt.Fprintf(w, ",\n")
 		}
