@@ -42,7 +42,7 @@ function package {
 	cp etcd/README.md ${target}/README.md
 	cp etcd/etcdctl/README.md ${target}/README-etcdctl.md
 
-	cp -R etcd/Documentation/2.0 ${target}/Documentation
+	cp -R etcd/Documentation ${target}/Documentation
 }
 
 function main {
