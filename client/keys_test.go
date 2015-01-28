@@ -99,15 +99,28 @@ func TestGetAction(t *testing.T) {
 
 	tests := []struct {
 		recursive bool
+		sorted    bool
 		wantQuery string
 	}{
 		{
 			recursive: false,
-			wantQuery: "recursive=false",
+			sorted:    false,
+			wantQuery: "recursive=false&sorted=false",
 		},
 		{
 			recursive: true,
-			wantQuery: "recursive=true",
+			sorted:    false,
+			wantQuery: "recursive=true&sorted=false",
+		},
+		{
+			recursive: false,
+			sorted:    true,
+			wantQuery: "recursive=false&sorted=true",
+		},
+		{
+			recursive: true,
+			sorted:    true,
+			wantQuery: "recursive=true&sorted=true",
 		},
 	}
 
@@ -115,6 +128,7 @@ func TestGetAction(t *testing.T) {
 		f := getAction{
 			Key:       "/foo/bar",
 			Recursive: tt.recursive,
+			Sorted:    tt.sorted,
 		}
 		got := *f.HTTPRequest(ep)
 
