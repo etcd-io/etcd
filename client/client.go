@@ -39,7 +39,6 @@ var (
 	ErrKeyExists  = errors.New("client: key already exists")
 
 	DefaultRequestTimeout = 5 * time.Second
-	DefaultMaxRedirects   = 10
 )
 
 var DefaultTransport CancelableTransport = &http.Transport{
@@ -72,6 +71,17 @@ type Config struct {
 	// Transport is used by the Client to drive HTTP requests. If not
 	// provided, DefaultTransport will be used.
 	Transport CancelableTransport
+
+	// CheckRedirect specifies the policy for handling HTTP redirects.
+	// If CheckRedirect is not nil, the Client calls it before
+	// following an HTTP redirect. The sole argument is the number of
+	// requests that have alrady been made. If CheckRedirect returns
+	// an error, Client.Do will not make any further requests and return
+	// the error back it to the caller.
+	//
+	// If CheckRedirect is nil, the Client uses its default policy,
+	// which is to stop after 10 consecutive requests.
+	CheckRedirect CheckRedirectFunc
 }
 
 func (cfg *Config) transport() CancelableTransport {
@@ -81,11 +91,28 @@ func (cfg *Config) transport() CancelableTransport {
 	return cfg.Transport
 }
 
+func (cfg *Config) checkRedirect() CheckRedirectFunc {
+	if cfg.CheckRedirect == nil {
+		return DefaultCheckRedirect
+	}
+	return cfg.CheckRedirect
+}
+
 // CancelableTransport mimics net/http.Transport, but requires that
 // the object also support request cancellation.
 type CancelableTransport interface {
 	http.RoundTripper
 	CancelRequest(req *http.Request)
+}
+
+type CheckRedirectFunc func(via int) error
+
+// DefaultCheckRedirect follows up to 10 redirects, but no more.
+var DefaultCheckRedirect CheckRedirectFunc = func(via int) error {
+	if via > 10 {
+		return ErrTooManyRedirects
+	}
+	return nil
 }
 
 type Client interface {
@@ -101,7 +128,7 @@ type Client interface {
 }
 
 func New(cfg Config) (Client, error) {
-	c := &httpClusterClient{clientFactory: newHTTPClientFactory(cfg.transport())}
+	c := &httpClusterClient{clientFactory: newHTTPClientFactory(cfg.transport(), cfg.checkRedirect())}
 	if err := c.reset(cfg.Endpoints); err != nil {
 		return nil, err
 	}
@@ -112,10 +139,10 @@ type httpClient interface {
 	Do(context.Context, httpAction) (*http.Response, []byte, error)
 }
 
-func newHTTPClientFactory(tr CancelableTransport) httpClientFactory {
+func newHTTPClientFactory(tr CancelableTransport, cr CheckRedirectFunc) httpClientFactory {
 	return func(ep url.URL) httpClient {
 		return &redirectFollowingHTTPClient{
-			max: DefaultMaxRedirects,
+			checkRedirect: cr,
 			client: &simpleHTTPClient{
 				transport: tr,
 				endpoint:  ep,
@@ -270,12 +297,17 @@ func (c *simpleHTTPClient) Do(ctx context.Context, act httpAction) (*http.Respon
 }
 
 type redirectFollowingHTTPClient struct {
-	client httpClient
-	max    int
+	client        httpClient
+	checkRedirect CheckRedirectFunc
 }
 
 func (r *redirectFollowingHTTPClient) Do(ctx context.Context, act httpAction) (*http.Response, []byte, error) {
-	for i := 0; i <= r.max; i++ {
+	for i := 0; ; i++ {
+		if i > 0 {
+			if err := r.checkRedirect(i); err != nil {
+				return nil, nil, err
+			}
+		}
 		resp, body, err := r.client.Do(ctx, act)
 		if err != nil {
 			return nil, nil, err
@@ -297,7 +329,6 @@ func (r *redirectFollowingHTTPClient) Do(ctx context.Context, act httpAction) (*
 		}
 		return resp, body, nil
 	}
-	return nil, nil, ErrTooManyRedirects
 }
 
 type redirectedHTTPAction struct {
