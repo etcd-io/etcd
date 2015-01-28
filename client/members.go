@@ -31,6 +31,8 @@ var (
 	defaultV2MembersPrefix = "/v2/members"
 )
 
+type Member httptypes.Member
+
 // NewMembersAPI constructs a new MembersAPI that uses HTTP to
 // interact with etcd's membership API.
 func NewMembersAPI(c Client) MembersAPI {
@@ -40,8 +42,8 @@ func NewMembersAPI(c Client) MembersAPI {
 }
 
 type MembersAPI interface {
-	List(ctx context.Context) ([]httptypes.Member, error)
-	Add(ctx context.Context, peerURL string) (*httptypes.Member, error)
+	List(ctx context.Context) ([]Member, error)
+	Add(ctx context.Context, peerURL string) (*Member, error)
 	Remove(ctx context.Context, mID string) error
 }
 
@@ -49,7 +51,7 @@ type httpMembersAPI struct {
 	client httpClient
 }
 
-func (m *httpMembersAPI) List(ctx context.Context) ([]httptypes.Member, error) {
+func (m *httpMembersAPI) List(ctx context.Context) ([]Member, error) {
 	req := &membersAPIActionList{}
 	resp, body, err := m.client.Do(ctx, req)
 	if err != nil {
@@ -65,10 +67,15 @@ func (m *httpMembersAPI) List(ctx context.Context) ([]httptypes.Member, error) {
 		return nil, err
 	}
 
-	return []httptypes.Member(mCollection), nil
+	ms := make([]Member, len(mCollection))
+	for i, m := range mCollection {
+		m := Member(m)
+		ms[i] = m
+	}
+	return ms, nil
 }
 
-func (m *httpMembersAPI) Add(ctx context.Context, peerURL string) (*httptypes.Member, error) {
+func (m *httpMembersAPI) Add(ctx context.Context, peerURL string) (*Member, error) {
 	urls, err := types.NewURLs([]string{peerURL})
 	if err != nil {
 		return nil, err
@@ -92,7 +99,7 @@ func (m *httpMembersAPI) Add(ctx context.Context, peerURL string) (*httptypes.Me
 		return nil, httperr
 	}
 
-	var memb httptypes.Member
+	var memb Member
 	if err := json.Unmarshal(body, &memb); err != nil {
 		return nil, err
 	}
