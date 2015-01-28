@@ -115,6 +115,13 @@ type GetOptions struct {
 	// Recursive defines whether or not all children of the Node
 	// should be returned.
 	Recursive bool
+
+	// Sort instructs the server whether or not to sort the Nodes.
+	// If true, the Nodes are sorted alphabetically by key in
+	// ascending order (A to z). If false (default), the Nodes will
+	// not be sorted and the ordering used should not be considered
+	// predictable.
+	Sort bool
 }
 
 type DeleteOptions struct {
@@ -236,6 +243,7 @@ func (k *httpKeysAPI) Get(ctx context.Context, key string, opts *GetOptions) (*R
 
 	if opts != nil {
 		act.Recursive = opts.Recursive
+		act.Sorted = opts.Sort
 	}
 
 	resp, body, err := k.client.Do(ctx, act)
@@ -297,6 +305,7 @@ type getAction struct {
 	Prefix    string
 	Key       string
 	Recursive bool
+	Sorted    bool
 }
 
 func (g *getAction) HTTPRequest(ep url.URL) *http.Request {
@@ -304,6 +313,7 @@ func (g *getAction) HTTPRequest(ep url.URL) *http.Request {
 
 	params := u.Query()
 	params.Set("recursive", strconv.FormatBool(g.Recursive))
+	params.Set("sorted", strconv.FormatBool(g.Sorted))
 	u.RawQuery = params.Encode()
 
 	req, _ := http.NewRequest("GET", u.String(), nil)
