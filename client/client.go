@@ -64,9 +64,8 @@ type Config struct {
 	Transport CancelableTransport
 }
 
-// CancelableTransport mimics http.Transport to provide an interface which can be
-// substituted for testing (since the RoundTripper interface alone does not
-// require the CancelRequest method)
+// CancelableTransport mimics net/http.Transport, but requires that
+// the object also support request cancellation.
 type CancelableTransport interface {
 	http.RoundTripper
 	CancelRequest(req *http.Request)
