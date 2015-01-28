@@ -56,13 +56,28 @@ func NewKeysAPIWithPrefix(c Client, p string) KeysAPI {
 }
 
 type KeysAPI interface {
+	// Get retrieves a set of Nodes from etcd
 	Get(ctx context.Context, key string, opts *GetOptions) (*Response, error)
+
+	// Set assigns a new value to a Node identified by a given key. The caller
+	// may define a set of conditions in the SetOptions.
 	Set(ctx context.Context, key, value string, opts *SetOptions) (*Response, error)
+
+	// Delete removes a Node identified by the given key, optionally destroying
+	// all of its children as well. The caller may define a set of required
+	// conditions in an DeleteOptions object.
 	Delete(ctx context.Context, key string, opts *DeleteOptions) (*Response, error)
 
+	// Create is an alias for Set w/ PrevExist=false
 	Create(ctx context.Context, key, value string) (*Response, error)
+
+	// Update is an alias for Set w/ PrevExist=true
 	Update(ctx context.Context, key, value string) (*Response, error)
 
+	// Watcher builds a new Watcher targeted at a specific Node identified
+	// by the given key. The Watcher may be configured at creation time
+	// through a WatcherOptions object. The returned Watcher is designed
+	// to emit events that happen to a Node, and optionally to its children.
 	Watcher(key string, opts *WatcherOptions) Watcher
 }
 
