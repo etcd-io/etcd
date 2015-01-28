@@ -23,7 +23,7 @@ import (
 	"path"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
-	"github.com/coreos/etcd/etcdserver/etcdhttp/httptypes"
+
 	"github.com/coreos/etcd/pkg/types"
 )
 
@@ -31,7 +31,50 @@ var (
 	defaultV2MembersPrefix = "/v2/members"
 )
 
-type Member httptypes.Member
+type Member struct {
+	ID         string   `json:"id"`
+	Name       string   `json:"name"`
+	PeerURLs   []string `json:"peerURLs"`
+	ClientURLs []string `json:"clientURLs"`
+}
+
+type memberCollection []Member
+
+func (c *memberCollection) UnmarshalJSON(data []byte) error {
+	d := struct {
+		Members []Member
+	}{}
+
+	if err := json.Unmarshal(data, &d); err != nil {
+		return err
+	}
+
+	if d.Members == nil {
+		*c = make([]Member, 0)
+		return nil
+	}
+
+	*c = d.Members
+	return nil
+}
+
+type memberCreateRequest struct {
+	PeerURLs types.URLs
+}
+
+func (m *memberCreateRequest) MarshalJSON() ([]byte, error) {
+	s := struct {
+		PeerURLs []string `json:"peerURLs"`
+	}{
+		PeerURLs: make([]string, len(m.PeerURLs)),
+	}
+
+	for i, u := range m.PeerURLs {
+		s.PeerURLs[i] = u.String()
+	}
+
+	return json.Marshal(&s)
+}
 
 // NewMembersAPI constructs a new MembersAPI that uses HTTP to
 // interact with etcd's membership API.
@@ -67,17 +110,12 @@ func (m *httpMembersAPI) List(ctx context.Context) ([]Member, error) {
 		return nil, err
 	}
 
-	var mCollection httptypes.MemberCollection
+	var mCollection memberCollection
 	if err := json.Unmarshal(body, &mCollection); err != nil {
 		return nil, err
 	}
 
-	ms := make([]Member, len(mCollection))
-	for i, m := range mCollection {
-		m := Member(m)
-		ms[i] = m
-	}
-	return ms, nil
+	return []Member(mCollection), nil
 }
 
 func (m *httpMembersAPI) Add(ctx context.Context, peerURL string) (*Member, error) {
@@ -97,7 +135,7 @@ func (m *httpMembersAPI) Add(ctx context.Context, peerURL string) (*Member, erro
 	}
 
 	if resp.StatusCode != http.StatusCreated {
-		var httperr httptypes.HTTPError
+		var httperr HTTPError
 		if err := json.Unmarshal(body, &httperr); err != nil {
 			return nil, err
 		}
@@ -147,7 +185,7 @@ type membersAPIActionAdd struct {
 
 func (a *membersAPIActionAdd) HTTPRequest(ep url.URL) *http.Request {
 	u := v2MembersURL(ep)
-	m := httptypes.MemberCreateRequest{PeerURLs: a.peerURLs}
+	m := memberCreateRequest{PeerURLs: a.peerURLs}
 	b, _ := json.Marshal(&m)
 	req, _ := http.NewRequest("POST", u.String(), bytes.NewReader(b))
 	req.Header.Set("Content-Type", "application/json")
