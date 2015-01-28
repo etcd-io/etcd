@@ -72,7 +72,12 @@ type CancelableTransport interface {
 }
 
 type Client interface {
+	// Sync updates the internal cache of the etcd cluster's membership.
 	Sync(context.Context) error
+
+	// Endpoints returns a copy of the current set of API endpoints used
+	// by Client to resolve HTTP requests. If Sync has ever been called,
+	// this may differ from the initial Endpoints provided in the Config.
 	Endpoints() []string
 
 	httpClient
