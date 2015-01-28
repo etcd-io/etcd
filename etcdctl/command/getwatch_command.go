@@ -78,12 +78,10 @@ func getWatchCommandFunc(c *cli.Context, client *etcd.Client) (*etcd.Response, e
 
 		if err != nil {
 			handleError(ErrorFromEtcd, err)
-		}
-
-		if err != nil {
 			return nil, err
 		}
-		printAll(resp, c.GlobalString("output"))
+
+		fmt.Println(resp.Node.Value)
 	}
 
 	return value, nil

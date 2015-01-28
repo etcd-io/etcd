@@ -16,6 +16,7 @@ package command
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"os/signal"
 
@@ -87,12 +88,10 @@ func watchCommandFunc(c *cli.Context, client *etcd.Client) (*etcd.Response, erro
 
 		if err != nil {
 			handleError(ErrorFromEtcd, err)
-		}
-
-		if err != nil {
 			return nil, err
 		}
-		printAll(resp, c.GlobalString("output"))
+
+		fmt.Println(resp.Node.Value)
 	}
 
 	return nil, nil
