@@ -152,32 +152,32 @@ func TestWaitAction(t *testing.T) {
 	wantHeader := http.Header{}
 
 	tests := []struct {
-		waitIndex uint64
-		recursive bool
-		wantQuery string
+		afterIndex uint64
+		recursive  bool
+		wantQuery  string
 	}{
 		{
-			recursive: false,
-			waitIndex: uint64(0),
-			wantQuery: "recursive=false&wait=true&waitIndex=0",
+			recursive:  false,
+			afterIndex: uint64(0),
+			wantQuery:  "recursive=false&wait=true&waitIndex=0",
 		},
 		{
-			recursive: false,
-			waitIndex: uint64(12),
-			wantQuery: "recursive=false&wait=true&waitIndex=12",
+			recursive:  false,
+			afterIndex: uint64(12),
+			wantQuery:  "recursive=false&wait=true&waitIndex=12",
 		},
 		{
-			recursive: true,
-			waitIndex: uint64(12),
-			wantQuery: "recursive=true&wait=true&waitIndex=12",
+			recursive:  true,
+			afterIndex: uint64(12),
+			wantQuery:  "recursive=true&wait=true&waitIndex=12",
 		},
 	}
 
 	for i, tt := range tests {
 		f := waitAction{
-			Key:       "/foo/bar",
-			WaitIndex: tt.waitIndex,
-			Recursive: tt.recursive,
+			Key:        "/foo/bar",
+			AfterIndex: tt.afterIndex,
+			Recursive:  tt.recursive,
 		}
 		got := *f.HTTPRequest(ep)
 

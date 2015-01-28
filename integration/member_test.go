@@ -109,7 +109,7 @@ func TestSnapshotAndRestartMember(t *testing.T) {
 		kapi := client.NewKeysAPI(cc)
 		ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 		key := fmt.Sprintf("foo%d", i)
-		resp, err := kapi.Get(ctx, "/"+key)
+		resp, err := kapi.Get(ctx, "/"+key, nil)
 		if err != nil {
 			t.Fatalf("#%d: get on %s error: %v", i, m.URL(), err)
 		}

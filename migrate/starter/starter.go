@@ -269,14 +269,18 @@ func getPeersFromDiscoveryURL(discoverURL string) ([]string, error) {
 	}
 	token := u.Path
 	u.Path = ""
-	c, err := client.NewHTTPClient(&http.Transport{}, []string{u.String()})
+	cfg := client.Config{
+		Transport: &http.Transport{},
+		Endpoints: []string{u.String()},
+	}
+	c, err := client.New(cfg)
 	if err != nil {
 		return nil, err
 	}
-	dc := client.NewDiscoveryKeysAPI(c)
+	dc := client.NewKeysAPIWithPrefix(c, "")
 
 	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
-	resp, err := dc.Get(ctx, token)
+	resp, err := dc.Get(ctx, token, nil)
 	cancel()
 	if err != nil {
 		return nil, err
