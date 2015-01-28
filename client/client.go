@@ -18,6 +18,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"net/url"
 	"sync"
@@ -41,6 +42,15 @@ var (
 	DefaultMaxRedirects   = 10
 )
 
+var DefaultTransport CancelableTransport = &http.Transport{
+	Proxy: http.ProxyFromEnvironment,
+	Dial: (&net.Dialer{
+		Timeout:   30 * time.Second,
+		KeepAlive: 30 * time.Second,
+	}).Dial,
+	TLSHandshakeTimeout: 10 * time.Second,
+}
+
 type Config struct {
 	// Endpoints defines a set of URLs (schemes, hosts and ports only)
 	// that can be used to communicate with a logical etcd cluster. For
@@ -60,8 +70,15 @@ type Config struct {
 	Endpoints []string
 
 	// Transport is used by the Client to drive HTTP requests. If not
-	// provided, net/http.DefaultTransport will be used.
+	// provided, DefaultTransport will be used.
 	Transport CancelableTransport
+}
+
+func (cfg *Config) transport() CancelableTransport {
+	if cfg.Transport == nil {
+		return DefaultTransport
+	}
+	return cfg.Transport
 }
 
 // CancelableTransport mimics net/http.Transport, but requires that
@@ -84,7 +101,7 @@ type Client interface {
 }
 
 func New(cfg Config) (Client, error) {
-	c := &httpClusterClient{clientFactory: newHTTPClientFactory(cfg.Transport)}
+	c := &httpClusterClient{clientFactory: newHTTPClientFactory(cfg.transport())}
 	if err := c.reset(cfg.Endpoints); err != nil {
 		return nil, err
 	}
