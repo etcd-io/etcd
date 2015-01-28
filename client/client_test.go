@@ -258,7 +258,7 @@ func TestHTTPClusterClientDo(t *testing.T) {
 		{
 			client: &httpClusterClient{
 				endpoints:     []url.URL{},
-				clientFactory: newHTTPClientFactory(nil),
+				clientFactory: newHTTPClientFactory(nil, nil),
 			},
 			wantErr: ErrNoEndpoints,
 		},
@@ -349,14 +349,14 @@ func TestRedirectedHTTPAction(t *testing.T) {
 
 func TestRedirectFollowingHTTPClient(t *testing.T) {
 	tests := []struct {
-		max      int
-		client   httpClient
-		wantCode int
-		wantErr  error
+		checkRedirect CheckRedirectFunc
+		client        httpClient
+		wantCode      int
+		wantErr       error
 	}{
 		// errors bubbled up
 		{
-			max: 2,
+			checkRedirect: func(int) error { return ErrTooManyRedirects },
 			client: &multiStaticHTTPClient{
 				responses: []staticHTTPResponse{
 					staticHTTPResponse{
@@ -369,7 +369,7 @@ func TestRedirectFollowingHTTPClient(t *testing.T) {
 
 		// no need to follow redirect if none given
 		{
-			max: 2,
+			checkRedirect: func(int) error { return ErrTooManyRedirects },
 			client: &multiStaticHTTPClient{
 				responses: []staticHTTPResponse{
 					staticHTTPResponse{
@@ -384,7 +384,12 @@ func TestRedirectFollowingHTTPClient(t *testing.T) {
 
 		// redirects if less than max
 		{
-			max: 2,
+			checkRedirect: func(via int) error {
+				if via >= 2 {
+					return ErrTooManyRedirects
+				}
+				return nil
+			},
 			client: &multiStaticHTTPClient{
 				responses: []staticHTTPResponse{
 					staticHTTPResponse{
@@ -405,7 +410,12 @@ func TestRedirectFollowingHTTPClient(t *testing.T) {
 
 		// succeed after reaching max redirects
 		{
-			max: 2,
+			checkRedirect: func(via int) error {
+				if via >= 3 {
+					return ErrTooManyRedirects
+				}
+				return nil
+			},
 			client: &multiStaticHTTPClient{
 				responses: []staticHTTPResponse{
 					staticHTTPResponse{
@@ -430,9 +440,14 @@ func TestRedirectFollowingHTTPClient(t *testing.T) {
 			wantCode: http.StatusTeapot,
 		},
 
-		// fail at max+1 redirects
+		// fail if too many redirects
 		{
-			max: 1,
+			checkRedirect: func(via int) error {
+				if via >= 2 {
+					return ErrTooManyRedirects
+				}
+				return nil
+			},
 			client: &multiStaticHTTPClient{
 				responses: []staticHTTPResponse{
 					staticHTTPResponse{
@@ -459,7 +474,7 @@ func TestRedirectFollowingHTTPClient(t *testing.T) {
 
 		// fail if Location header not set
 		{
-			max: 1,
+			checkRedirect: func(int) error { return ErrTooManyRedirects },
 			client: &multiStaticHTTPClient{
 				responses: []staticHTTPResponse{
 					staticHTTPResponse{
@@ -474,7 +489,7 @@ func TestRedirectFollowingHTTPClient(t *testing.T) {
 
 		// fail if Location header is invalid
 		{
-			max: 1,
+			checkRedirect: func(int) error { return ErrTooManyRedirects },
 			client: &multiStaticHTTPClient{
 				responses: []staticHTTPResponse{
 					staticHTTPResponse{
@@ -490,7 +505,7 @@ func TestRedirectFollowingHTTPClient(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		client := &redirectFollowingHTTPClient{client: tt.client, max: tt.max}
+		client := &redirectFollowingHTTPClient{client: tt.client, checkRedirect: tt.checkRedirect}
 		resp, _, err := client.Do(context.Background(), nil)
 		if !reflect.DeepEqual(tt.wantErr, err) {
 			t.Errorf("#%d: got err=%v, want=%v", i, err, tt.wantErr)
