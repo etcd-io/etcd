@@ -44,5 +44,22 @@ Create a KeysAPI using the Client, then use it to interact with etcd:
 	// delete the newly created key only if the value is still "bar"
 	kAPI.Delete(context.Background(), "/foo", &DeleteOptions{PrevValue: "bar"})
 
+Use a custom context to set timeouts on your operations:
+
+	import "time"
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	// set a new key, ignoring it's previous state
+	_, err := kAPI.Set(ctx, "/ping", "pong", nil)
+	if err != nil {
+		if err == context.DeadlineExceeded {
+			// request took longer than 5s
+		} else {
+			// handle error
+		}
+	}
+
 */
 package client
