@@ -42,7 +42,25 @@ var (
 )
 
 type Config struct {
+	// Endpoints defines a set of URLs (schemes, hosts and ports only)
+	// that can be used to communicate with a logical etcd cluster. For
+	// example, a three-node cluster could be provided like so:
+	//
+	// 	Endpoints: []string{
+	//		"http://node1.example.com:4001",
+	//		"http://node2.example.com:2379",
+	//		"http://node3.example.com:4001",
+	//	}
+	//
+	// If multiple endpoints are provided, the Client will attempt to
+	// use them all in the event that one or more of them are unusable.
+	//
+	// If Client.Sync is ever called, the Client may cache an alternate
+	// set of endpoints to continue operation.
 	Endpoints []string
+
+	// Transport is used by the Client to drive HTTP requests. If not
+	// provided, net/http.DefaultTransport will be used.
 	Transport CancelableTransport
 }
 
