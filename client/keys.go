@@ -137,6 +137,16 @@ type DeleteOptions struct {
 }
 
 type Watcher interface {
+	// Next blocks until an etcd event occurs, then returns a Response
+	// represeting that event. The behavior of Next depends on the
+	// WatcherOptions used to construct the Watcher. Next is designed to
+	// be called repeatedly, each time blocking until a subsequent event
+	// is available.
+	//
+	// If the provided context is cancelled, Next will return a non-nil
+	// error. Any other failures encountered while waiting for the next
+	// event (connection issues, deserialization failures, etc) will
+	// also result in a non-nil error.
 	Next(context.Context) (*Response, error)
 }
 
