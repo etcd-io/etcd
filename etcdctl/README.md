@@ -196,26 +196,26 @@ Continuously watch a key and exec a program:
 ```
 $ etcdctl exec-watch /foo/bar -- sh -c "env | grep ETCD"
 ETCD_WATCH_ACTION=set
-ETCD_VALUE=My configuration stuff
-ETCD_MODIFIED_INDEX=1999
-ETCD_KEY=/foo/bar
+ETCD_WATCH_VALUE=My configuration stuff
+ETCD_WATCH_MODIFIED_INDEX=1999
+ETCD_WATCH_KEY=/foo/bar
 ETCD_WATCH_ACTION=set
-ETCD_VALUE=My new configuration stuff
-ETCD_MODIFIED_INDEX=2000
-ETCD_KEY=/foo/bar
+ETCD_WATCH_VALUE=My new configuration stuff
+ETCD_WATCH_MODIFIED_INDEX=2000
+ETCD_WATCH_KEY=/foo/bar
 ```
 
 Continuously and recursively watch a key and exec a program:
 ```
 $ etcdctl exec-watch --recursive /foo -- sh -c "env | grep ETCD"
 ETCD_WATCH_ACTION=set
-ETCD_VALUE=My configuration stuff
-ETCD_MODIFIED_INDEX=1999
-ETCD_KEY=/foo/bar
+ETCD_WATCH_VALUE=My configuration stuff
+ETCD_WATCH_MODIFIED_INDEX=1999
+ETCD_WATCH_KEY=/foo/bar
 ETCD_WATCH_ACTION=set
-ETCD_VALUE=My new configuration stuff
-ETCD_MODIFIED_INDEX=2000
-ETCD_KEY=/foo/barbar
+ETCD_WATCH_VALUE=My new configuration stuff
+ETCD_WATCH_MODIFIED_INDEX=2000
+ETCD_WATCH_KEY=/foo/barbar
 ```
 
 ## Return Codes
