@@ -203,6 +203,19 @@ func TestStorageAppend(t *testing.T) {
 			nil,
 			[]pb.Entry{{Index: 3, Term: 3}, {Index: 4, Term: 4}, {Index: 5, Term: 5}, {Index: 6, Term: 5}},
 		},
+		// truncate incoming entries, truncate the existing entries and append
+		{
+			[]pb.Entry{{Index: 2, Term: 3}, {Index: 3, Term: 3}, {Index: 4, Term: 5}},
+			nil,
+			[]pb.Entry{{Index: 3, Term: 3}, {Index: 4, Term: 5}},
+		},
+		// tunncate the existing entries and append
+		{
+			[]pb.Entry{{Index: 4, Term: 5}},
+			nil,
+			[]pb.Entry{{Index: 3, Term: 3}, {Index: 4, Term: 5}},
+		},
+		// direct append
 		{
 			[]pb.Entry{{Index: 6, Term: 5}},
 			nil,
