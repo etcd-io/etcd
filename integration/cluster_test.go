@@ -33,7 +33,6 @@ import (
 	"github.com/coreos/etcd/client"
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/etcdhttp"
-	"github.com/coreos/etcd/etcdserver/etcdhttp/httptypes"
 	"github.com/coreos/etcd/pkg/testutil"
 	"github.com/coreos/etcd/pkg/transport"
 	"github.com/coreos/etcd/pkg/types"
@@ -280,8 +279,8 @@ func (c *cluster) URLs() []string {
 	return urls
 }
 
-func (c *cluster) HTTPMembers() []httptypes.Member {
-	ms := make([]httptypes.Member, len(c.Members))
+func (c *cluster) HTTPMembers() []client.Member {
+	ms := make([]client.Member, len(c.Members))
 	for i, m := range c.Members {
 		ms[i].Name = m.Name
 		for _, ln := range m.PeerListeners {
@@ -310,7 +309,7 @@ func (c *cluster) AddMember(t *testing.T) {
 	cancel()
 
 	// wait for the add node entry applied in the cluster
-	members := append(c.HTTPMembers(), httptypes.Member{PeerURLs: []string{peerURL}, ClientURLs: []string{}})
+	members := append(c.HTTPMembers(), client.Member{PeerURLs: []string{peerURL}, ClientURLs: []string{}})
 	c.waitMembersMatch(t, members)
 
 	for _, ln := range m.PeerListeners {
@@ -363,7 +362,7 @@ func (c *cluster) Terminate(t *testing.T) {
 	}
 }
 
-func (c *cluster) waitMembersMatch(t *testing.T, membs []httptypes.Member) {
+func (c *cluster) waitMembersMatch(t *testing.T, membs []client.Member) {
 	for _, u := range c.URLs() {
 		cc := mustNewHTTPClient(t, []string{u})
 		ma := client.NewMembersAPI(cc)
@@ -406,7 +405,7 @@ func (c *cluster) name(i int) string {
 
 // isMembersEqual checks whether two members equal except ID field.
 // The given wmembs should always set ID field to empty string.
-func isMembersEqual(membs []httptypes.Member, wmembs []httptypes.Member) bool {
+func isMembersEqual(membs []client.Member, wmembs []client.Member) bool {
 	sort.Sort(SortableMemberSliceByPeerURLs(membs))
 	sort.Sort(SortableMemberSliceByPeerURLs(wmembs))
 	for i := range membs {
@@ -631,7 +630,7 @@ func mustNewTransport(t *testing.T) *http.Transport {
 	return tr
 }
 
-type SortableMemberSliceByPeerURLs []httptypes.Member
+type SortableMemberSliceByPeerURLs []client.Member
 
 func (p SortableMemberSliceByPeerURLs) Len() int { return len(p) }
 func (p SortableMemberSliceByPeerURLs) Less(i, j int) bool {
