@@ -42,8 +42,13 @@ func NewMembersAPI(c Client) MembersAPI {
 }
 
 type MembersAPI interface {
+	// List enumerates the current cluster membership
 	List(ctx context.Context) ([]Member, error)
+
+	// Add instructs etcd to accept a new Member into the cluster
 	Add(ctx context.Context, peerURL string) (*Member, error)
+
+	// Remove demotes an existing Member out of the cluster
 	Remove(ctx context.Context, mID string) error
 }
 
