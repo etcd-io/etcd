@@ -82,14 +82,14 @@ type KeysAPI interface {
 }
 
 type WatcherOptions struct {
-	// WaitIndex defines the index after-which the Watcher should
+	// AfterIndex defines the index after-which the Watcher should
 	// start emitting events. For example, if a value of 5 is
 	// provided, the first event will have an index >= 6.
 	//
-	// Setting WaitIndex to 0 (default) means that the Watcher
+	// Setting AfterIndex to 0 (default) means that the Watcher
 	// should start watching for events starting at the current
 	// index, whatever that may be.
-	WaitIndex uint64
+	AfterIndex uint64
 
 	// Recursive specifices whether or not the Watcher should emit
 	// events that occur in children of the given keyspace. If set
@@ -276,7 +276,7 @@ func (k *httpKeysAPI) Watcher(key string, opts *WatcherOptions) Watcher {
 	}
 
 	if opts != nil {
-		act.WaitIndex = opts.WaitIndex
+		act.AfterIndex = opts.AfterIndex
 		act.Recursive = opts.Recursive
 	}
 
@@ -302,7 +302,7 @@ func (hw *httpWatcher) Next(ctx context.Context) (*Response, error) {
 		return nil, err
 	}
 
-	hw.nextWait.WaitIndex = resp.Node.ModifiedIndex + 1
+	hw.nextWait.AfterIndex = resp.Node.ModifiedIndex + 1
 	return resp, nil
 }
 
@@ -336,10 +336,10 @@ func (g *getAction) HTTPRequest(ep url.URL) *http.Request {
 }
 
 type waitAction struct {
-	Prefix    string
-	Key       string
-	WaitIndex uint64
-	Recursive bool
+	Prefix     string
+	Key        string
+	AfterIndex uint64
+	Recursive  bool
 }
 
 func (w *waitAction) HTTPRequest(ep url.URL) *http.Request {
@@ -347,7 +347,7 @@ func (w *waitAction) HTTPRequest(ep url.URL) *http.Request {
 
 	params := u.Query()
 	params.Set("wait", "true")
-	params.Set("waitIndex", strconv.FormatUint(w.WaitIndex, 10))
+	params.Set("waitIndex", strconv.FormatUint(w.AfterIndex, 10))
 	params.Set("recursive", strconv.FormatBool(w.Recursive))
 	u.RawQuery = params.Encode()
 
