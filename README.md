@@ -3,11 +3,6 @@
 [![Build Status](https://travis-ci.org/coreos/etcd.png?branch=master)](https://travis-ci.org/coreos/etcd)
 [![Docker Repository on Quay.io](https://quay.io/repository/coreos/etcd-git/status "Docker Repository on Quay.io")](https://quay.io/repository/coreos/etcd-git)
 
-### Release Candidate Disclaimer ###
-
-The current `master` branch of etcd is tracking the forthcoming 2.0.0 release.
-We encourage users to work with the [latest release candidate](https://github.com/coreos/etcd/releases/tag/v2.0.0-rc.1), but those looking for a stable release should obtain the latest 0.4.x release, [0.4.6](https://github.com/coreos/etcd/releases/tag/v0.4.6).
-
 ![etcd Logo](logos/etcd-horizontal-color.png)
 
 A highly-available key value store for shared configuration and service discovery.
@@ -119,9 +114,7 @@ curl -L http://127.0.0.1:4001/version
 
 #### API Versioning
 
-The `v2` API responses should not change after the 0.2.0 release but new features will be added over time.
-
-The `v1` API has been deprecated and will not be supported. It will be removed in the 2.0.0 release.
+The `v2` API responses should not change after the 2.0.0 release but new features will be added over time.
 
 #### 32-bit systems
 
