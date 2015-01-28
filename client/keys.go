@@ -56,14 +56,12 @@ func NewKeysAPIWithPrefix(c Client, p string) KeysAPI {
 }
 
 type KeysAPI interface {
+	Get(ctx context.Context, key string, opts *GetOptions) (*Response, error)
 	Set(ctx context.Context, key, value string, opts *SetOptions) (*Response, error)
-	Create(ctx context.Context, key, value string) (*Response, error)
-	Update(ctx context.Context, key, value string) (*Response, error)
-
 	Delete(ctx context.Context, key string, opts *DeleteOptions) (*Response, error)
 
-	Get(ctx context.Context, key string) (*Response, error)
-	RGet(ctx context.Context, key string) (*Response, error)
+	Create(ctx context.Context, key, value string) (*Response, error)
+	Update(ctx context.Context, key, value string) (*Response, error)
 
 	Watcher(key string, opts *WatcherOptions) Watcher
 }
@@ -111,6 +109,12 @@ type SetOptions struct {
 	// that the zero-value is ignored, TTL cannot be used to set
 	// a TTL of 0.
 	TTL time.Duration
+}
+
+type GetOptions struct {
+	// Recursive defines whether or not all children of the Node
+	// should be returned.
+	Recursive bool
 }
 
 type DeleteOptions struct {
@@ -224,29 +228,17 @@ func (k *httpKeysAPI) Delete(ctx context.Context, key string, opts *DeleteOption
 	return unmarshalHTTPResponse(resp.StatusCode, resp.Header, body)
 }
 
-func (k *httpKeysAPI) Get(ctx context.Context, key string) (*Response, error) {
-	get := &getAction{
-		Prefix:    k.prefix,
-		Key:       key,
-		Recursive: false,
+func (k *httpKeysAPI) Get(ctx context.Context, key string, opts *GetOptions) (*Response, error) {
+	act := &getAction{
+		Prefix: k.prefix,
+		Key:    key,
 	}
 
-	resp, body, err := k.client.Do(ctx, get)
-	if err != nil {
-		return nil, err
+	if opts != nil {
+		act.Recursive = opts.Recursive
 	}
 
-	return unmarshalHTTPResponse(resp.StatusCode, resp.Header, body)
-}
-
-func (k *httpKeysAPI) RGet(ctx context.Context, key string) (*Response, error) {
-	get := &getAction{
-		Prefix:    k.prefix,
-		Key:       key,
-		Recursive: true,
-	}
-
-	resp, body, err := k.client.Do(ctx, get)
+	resp, body, err := k.client.Do(ctx, act)
 	if err != nil {
 		return nil, err
 	}

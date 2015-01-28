@@ -422,7 +422,7 @@ func (c *clientWithResp) Create(ctx context.Context, key string, value string) (
 	return r, nil
 }
 
-func (c *clientWithResp) Get(ctx context.Context, key string) (*client.Response, error) {
+func (c *clientWithResp) Get(ctx context.Context, key string, opts *client.GetOptions) (*client.Response, error) {
 	if len(c.rs) == 0 {
 		return &client.Response{}, client.ErrKeyNoExist
 	}
@@ -445,7 +445,7 @@ func (c *clientWithErr) Create(ctx context.Context, key string, value string) (*
 	return &client.Response{}, c.err
 }
 
-func (c *clientWithErr) Get(ctx context.Context, key string) (*client.Response, error) {
+func (c *clientWithErr) Get(ctx context.Context, key string, opts *client.GetOptions) (*client.Response, error) {
 	return &client.Response{}, c.err
 }
 
@@ -490,12 +490,12 @@ func (c *clientWithRetry) Create(ctx context.Context, key string, value string) 
 	return c.clientWithResp.Create(ctx, key, value)
 }
 
-func (c *clientWithRetry) Get(ctx context.Context, key string) (*client.Response, error) {
+func (c *clientWithRetry) Get(ctx context.Context, key string, opts *client.GetOptions) (*client.Response, error) {
 	if c.failCount < c.failTimes {
 		c.failCount++
 		return nil, client.ErrTimeout
 	}
-	return c.clientWithResp.Get(ctx, key)
+	return c.clientWithResp.Get(ctx, key, opts)
 }
 
 // watcherWithRetry will timeout all requests up to failTimes

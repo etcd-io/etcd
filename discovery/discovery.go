@@ -199,7 +199,7 @@ func (d *discovery) checkCluster() ([]*client.Node, int, uint64, error) {
 	configKey := path.Join("/", d.cluster, "_config")
 	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
 	// find cluster size
-	resp, err := d.c.Get(ctx, path.Join(configKey, "size"))
+	resp, err := d.c.Get(ctx, path.Join(configKey, "size"), nil)
 	cancel()
 	if err != nil {
 		if err == client.ErrKeyNoExist {
@@ -216,7 +216,7 @@ func (d *discovery) checkCluster() ([]*client.Node, int, uint64, error) {
 	}
 
 	ctx, cancel = context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
-	resp, err = d.c.Get(ctx, d.cluster)
+	resp, err = d.c.Get(ctx, d.cluster, nil)
 	cancel()
 	if err != nil {
 		if err == client.ErrTimeout {
