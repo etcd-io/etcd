@@ -16,7 +16,6 @@ package etcdserver
 
 import (
 	"encoding/json"
-	"expvar"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -34,7 +33,6 @@ import (
 	"github.com/coreos/etcd/etcdserver/stats"
 	"github.com/coreos/etcd/pkg/fileutil"
 	"github.com/coreos/etcd/pkg/idutil"
-	"github.com/coreos/etcd/pkg/metrics"
 	"github.com/coreos/etcd/pkg/pbutil"
 	"github.com/coreos/etcd/pkg/timeutil"
 	"github.com/coreos/etcd/pkg/types"
@@ -268,7 +266,6 @@ func (s *EtcdServer) Start() {
 	s.start()
 	go s.publish(defaultPublishRetryInterval)
 	go s.purgeFile()
-	metrics.Publish("raft.status", expvar.Func(s.raftStatus))
 }
 
 // start prepares and starts server in a new goroutine. It is no longer safe to
@@ -515,8 +512,6 @@ func (s *EtcdServer) LeaderStats() []byte {
 }
 
 func (s *EtcdServer) StoreStats() []byte { return s.store.JsonStats() }
-
-func (s *EtcdServer) raftStatus() interface{} { return s.r.Status() }
 
 func (s *EtcdServer) AddMember(ctx context.Context, memb Member) error {
 	// TODO: move Member to protobuf type
