@@ -226,32 +226,32 @@ func TestHTTPClusterClientDo(t *testing.T) {
 			wantCode: http.StatusTeapot,
 		},
 
-		// ErrTimeout short-circuits Do
+		// context.DeadlineExceeded short-circuits Do
 		{
 			client: &httpClusterClient{
 				endpoints: []url.URL{fakeURL, fakeURL},
 				clientFactory: newStaticHTTPClientFactory(
 					[]staticHTTPResponse{
-						staticHTTPResponse{err: ErrTimeout},
+						staticHTTPResponse{err: context.DeadlineExceeded},
 						staticHTTPResponse{resp: http.Response{StatusCode: http.StatusTeapot}},
 					},
 				),
 			},
-			wantErr: ErrTimeout,
+			wantErr: context.DeadlineExceeded,
 		},
 
-		// ErrCanceled short-circuits Do
+		// context.Canceled short-circuits Do
 		{
 			client: &httpClusterClient{
 				endpoints: []url.URL{fakeURL, fakeURL},
 				clientFactory: newStaticHTTPClientFactory(
 					[]staticHTTPResponse{
-						staticHTTPResponse{err: ErrCanceled},
+						staticHTTPResponse{err: context.Canceled},
 						staticHTTPResponse{resp: http.Response{StatusCode: http.StatusTeapot}},
 					},
 				),
 			},
-			wantErr: ErrCanceled,
+			wantErr: context.Canceled,
 		},
 
 		// return err if there are no endpoints

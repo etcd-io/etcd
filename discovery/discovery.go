@@ -183,7 +183,7 @@ func (d *discovery) createSelf(contents string) error {
 	resp, err := d.c.Create(ctx, d.selfKey(), contents)
 	cancel()
 	if err != nil {
-		if err == client.ErrKeyExists {
+		if eerr, ok := err.(*client.Error); ok && eerr.Code == client.ErrorCodeNodeExist {
 			return ErrDuplicateID
 		}
 		return err
@@ -202,10 +202,10 @@ func (d *discovery) checkCluster() ([]*client.Node, int, uint64, error) {
 	resp, err := d.c.Get(ctx, path.Join(configKey, "size"), nil)
 	cancel()
 	if err != nil {
-		if err == client.ErrKeyNoExist {
+		if eerr, ok := err.(*client.Error); ok && eerr.Code == client.ErrorCodeKeyNotFound {
 			return nil, 0, 0, ErrSizeNotFound
 		}
-		if err == client.ErrTimeout {
+		if err == context.DeadlineExceeded {
 			return d.checkClusterRetry()
 		}
 		return nil, 0, 0, err
@@ -219,7 +219,7 @@ func (d *discovery) checkCluster() ([]*client.Node, int, uint64, error) {
 	resp, err = d.c.Get(ctx, d.cluster, nil)
 	cancel()
 	if err != nil {
-		if err == client.ErrTimeout {
+		if err == context.DeadlineExceeded {
 			return d.checkClusterRetry()
 		}
 		return nil, 0, 0, err
@@ -295,7 +295,7 @@ func (d *discovery) waitNodes(nodes []*client.Node, size int, index uint64) ([]*
 		log.Printf("discovery: found %d peer(s), waiting for %d more", len(all), size-len(all))
 		resp, err := w.Next(context.Background())
 		if err != nil {
-			if err == client.ErrTimeout {
+			if err == context.DeadlineExceeded {
 				return d.waitNodesRetry()
 			}
 			return nil, err

@@ -144,11 +144,11 @@ func (m *httpMembersAPI) Add(ctx context.Context, peerURL string) (*Member, erro
 	}
 
 	if resp.StatusCode != http.StatusCreated {
-		var httperr HTTPError
-		if err := json.Unmarshal(body, &httperr); err != nil {
+		var merr membersError
+		if err := json.Unmarshal(body, &merr); err != nil {
 			return nil, err
 		}
-		return nil, httperr
+		return nil, merr
 	}
 
 	var memb Member
@@ -215,4 +215,13 @@ func assertStatusCode(got int, want ...int) (err error) {
 func v2MembersURL(ep url.URL) *url.URL {
 	ep.Path = path.Join(ep.Path, defaultV2MembersPrefix)
 	return &ep
+}
+
+type membersError struct {
+	Message string `json:"message"`
+	Code    int    `json:"-"`
+}
+
+func (e membersError) Error() string {
+	return e.Message
 }

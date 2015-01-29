@@ -27,6 +27,39 @@ import (
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 )
 
+const (
+	ErrorCodeKeyNotFound = 100
+	ErrorCodeTestFailed  = 101
+	ErrorCodeNotFile     = 102
+	ErrorCodeNotDir      = 104
+	ErrorCodeNodeExist   = 105
+	ErrorCodeRootROnly   = 107
+	ErrorCodeDirNotEmpty = 108
+
+	ErrorCodePrevValueRequired = 201
+	ErrorCodeTTLNaN            = 202
+	ErrorCodeIndexNaN          = 203
+	ErrorCodeInvalidField      = 209
+	ErrorCodeInvalidForm       = 210
+
+	ErrorCodeRaftInternal = 300
+	ErrorCodeLeaderElect  = 301
+
+	ErrorCodeWatcherCleared    = 400
+	ErrorCodeEventIndexCleared = 401
+)
+
+type Error struct {
+	Code    int    `json:"errorCode"`
+	Message string `json:"message"`
+	Cause   string `json:"cause"`
+	Index   uint64 `json:"index"`
+}
+
+func (e Error) Error() string {
+	return fmt.Sprintf("%v: %v (%v) [%v]", e.Code, e.Message, e.Cause, e.Index)
+}
+
 // PrevExistType is used to define an existence condition when setting
 // or deleting Nodes.
 type PrevExistType string
@@ -452,15 +485,15 @@ func (a *deleteAction) HTTPRequest(ep url.URL) *http.Request {
 func unmarshalHTTPResponse(code int, header http.Header, body []byte) (res *Response, err error) {
 	switch code {
 	case http.StatusOK, http.StatusCreated:
-		res, err = unmarshalSuccessfulResponse(header, body)
+		res, err = unmarshalSuccessfulKeysResponse(header, body)
 	default:
-		err = unmarshalErrorResponse(code)
+		err = unmarshalFailedKeysResponse(body)
 	}
 
 	return
 }
 
-func unmarshalSuccessfulResponse(header http.Header, body []byte) (*Response, error) {
+func unmarshalSuccessfulKeysResponse(header http.Header, body []byte) (*Response, error) {
 	var res Response
 	err := json.Unmarshal(body, &res)
 	if err != nil {
@@ -468,26 +501,17 @@ func unmarshalSuccessfulResponse(header http.Header, body []byte) (*Response, er
 	}
 	if header.Get("X-Etcd-Index") != "" {
 		res.Index, err = strconv.ParseUint(header.Get("X-Etcd-Index"), 10, 64)
-	}
-	if err != nil {
-		return nil, err
+		if err != nil {
+			return nil, err
+		}
 	}
 	return &res, nil
 }
 
-func unmarshalErrorResponse(code int) error {
-	switch code {
-	case http.StatusNotFound:
-		return ErrKeyNoExist
-	case http.StatusPreconditionFailed:
-		return ErrKeyExists
-	case http.StatusInternalServerError:
-		// this isn't necessarily true
-		return ErrNoLeader
-	case http.StatusGatewayTimeout:
-		return ErrTimeout
-	default:
+func unmarshalFailedKeysResponse(body []byte) error {
+	var etcdErr Error
+	if err := json.Unmarshal(body, &etcdErr); err != nil {
+		return err
 	}
-
-	return fmt.Errorf("unrecognized HTTP status code %d", code)
+	return etcdErr
 }

@@ -15,7 +15,6 @@
 package client
 
 import (
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -531,7 +530,7 @@ func TestUnmarshalSuccessfulResponse(t *testing.T) {
 	for i, tt := range tests {
 		h := make(http.Header)
 		h.Add("X-Etcd-Index", tt.indexHeader)
-		res, err := unmarshalSuccessfulResponse(h, []byte(tt.body))
+		res, err := unmarshalSuccessfulKeysResponse(h, []byte(tt.body))
 		if tt.expectError != (err != nil) {
 			t.Errorf("#%d: expectError=%t, err=%v", i, tt.expectError, err)
 		}
@@ -552,54 +551,6 @@ func TestUnmarshalSuccessfulResponse(t *testing.T) {
 		}
 		if !reflect.DeepEqual(res.Node, tt.res.Node) {
 			t.Errorf("#%d: Node=%v, expected %v", i, res.Node, tt.res.Node)
-		}
-	}
-}
-
-func TestUnmarshalErrorResponse(t *testing.T) {
-	unrecognized := errors.New("test fixture")
-
-	tests := []struct {
-		code int
-		want error
-	}{
-		{http.StatusBadRequest, unrecognized},
-		{http.StatusUnauthorized, unrecognized},
-		{http.StatusPaymentRequired, unrecognized},
-		{http.StatusForbidden, unrecognized},
-		{http.StatusNotFound, ErrKeyNoExist},
-		{http.StatusMethodNotAllowed, unrecognized},
-		{http.StatusNotAcceptable, unrecognized},
-		{http.StatusProxyAuthRequired, unrecognized},
-		{http.StatusRequestTimeout, unrecognized},
-		{http.StatusConflict, unrecognized},
-		{http.StatusGone, unrecognized},
-		{http.StatusLengthRequired, unrecognized},
-		{http.StatusPreconditionFailed, ErrKeyExists},
-		{http.StatusRequestEntityTooLarge, unrecognized},
-		{http.StatusRequestURITooLong, unrecognized},
-		{http.StatusUnsupportedMediaType, unrecognized},
-		{http.StatusRequestedRangeNotSatisfiable, unrecognized},
-		{http.StatusExpectationFailed, unrecognized},
-		{http.StatusTeapot, unrecognized},
-
-		{http.StatusInternalServerError, ErrNoLeader},
-		{http.StatusNotImplemented, unrecognized},
-		{http.StatusBadGateway, unrecognized},
-		{http.StatusServiceUnavailable, unrecognized},
-		{http.StatusGatewayTimeout, ErrTimeout},
-		{http.StatusHTTPVersionNotSupported, unrecognized},
-	}
-
-	for i, tt := range tests {
-		want := tt.want
-		if reflect.DeepEqual(unrecognized, want) {
-			want = fmt.Errorf("unrecognized HTTP status code %d", tt.code)
-		}
-
-		got := unmarshalErrorResponse(tt.code)
-		if !reflect.DeepEqual(want, got) {
-			t.Errorf("#%d: want=%v, got=%v", i, want, got)
 		}
 	}
 }
