@@ -424,7 +424,7 @@ func (c *clientWithResp) Create(ctx context.Context, key string, value string) (
 
 func (c *clientWithResp) Get(ctx context.Context, key string, opts *client.GetOptions) (*client.Response, error) {
 	if len(c.rs) == 0 {
-		return &client.Response{}, client.ErrKeyNoExist
+		return &client.Response{}, &client.Error{Code: client.ErrorCodeKeyNotFound}
 	}
 	r := c.rs[0]
 	c.rs = append(c.rs[1:], r)
@@ -485,7 +485,7 @@ type clientWithRetry struct {
 func (c *clientWithRetry) Create(ctx context.Context, key string, value string) (*client.Response, error) {
 	if c.failCount < c.failTimes {
 		c.failCount++
-		return nil, client.ErrTimeout
+		return nil, context.DeadlineExceeded
 	}
 	return c.clientWithResp.Create(ctx, key, value)
 }
@@ -493,7 +493,7 @@ func (c *clientWithRetry) Create(ctx context.Context, key string, value string) 
 func (c *clientWithRetry) Get(ctx context.Context, key string, opts *client.GetOptions) (*client.Response, error) {
 	if c.failCount < c.failTimes {
 		c.failCount++
-		return nil, client.ErrTimeout
+		return nil, context.DeadlineExceeded
 	}
 	return c.clientWithResp.Get(ctx, key, opts)
 }
@@ -508,7 +508,7 @@ type watcherWithRetry struct {
 func (w *watcherWithRetry) Next(context.Context) (*client.Response, error) {
 	if w.failCount < w.failTimes {
 		w.failCount++
-		return nil, client.ErrTimeout
+		return nil, context.DeadlineExceeded
 	}
 	if len(w.rs) == 0 {
 		return &client.Response{}, nil

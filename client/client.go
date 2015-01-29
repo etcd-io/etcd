@@ -28,18 +28,11 @@ import (
 )
 
 var (
-	ErrTimeout          = context.DeadlineExceeded
-	ErrCanceled         = context.Canceled
-	ErrUnavailable      = errors.New("client: no available etcd endpoints")
-	ErrNoLeader         = errors.New("client: no leader")
-	ErrNoEndpoints      = errors.New("no endpoints available")
-	ErrTooManyRedirects = errors.New("too many redirects")
-
-	ErrKeyNoExist = errors.New("client: key does not exist")
-	ErrKeyExists  = errors.New("client: key already exists")
-
-	DefaultRequestTimeout = 5 * time.Second
+	ErrNoEndpoints      = errors.New("client: no endpoints available")
+	ErrTooManyRedirects = errors.New("client: too many redirects")
 )
+
+var DefaultRequestTimeout = 5 * time.Second
 
 var DefaultTransport CancelableTransport = &http.Transport{
 	Proxy: http.ProxyFromEnvironment,
@@ -203,7 +196,7 @@ func (c *httpClusterClient) Do(ctx context.Context, act httpAction) (resp *http.
 		hc := c.clientFactory(ep)
 		resp, body, err = hc.Do(ctx, act)
 		if err != nil {
-			if err == ErrTimeout || err == ErrCanceled {
+			if err == context.DeadlineExceeded || err == context.Canceled {
 				return nil, nil, err
 			}
 			continue
