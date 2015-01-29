@@ -15,6 +15,7 @@
 package client
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -22,6 +23,8 @@ import (
 	"reflect"
 	"testing"
 	"time"
+
+	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 )
 
 func TestV2KeysURLHelper(t *testing.T) {
@@ -620,5 +623,105 @@ func TestUnmarshalFailedKeysResponseBadJSON(t *testing.T) {
 		t.Errorf("got nil error")
 	} else if _, ok := err.(Error); ok {
 		t.Errorf("error is of incorrect type *Error: %#v", err)
+	}
+}
+
+func TestHTTPWatcherNextWaitAction(t *testing.T) {
+	initAction := waitAction{
+		Prefix:     "/pants",
+		Key:        "/foo/bar",
+		Recursive:  true,
+		AfterIndex: 19,
+	}
+
+	client := &actionAssertingHTTPClient{
+		t:   t,
+		act: &initAction,
+		resp: http.Response{
+			StatusCode: http.StatusOK,
+			Header:     http.Header{"X-Etcd-Index": []string{"42"}},
+		},
+		body: []byte(`{"action":"update","node":{"key":"/pants/foo/bar/baz","value":"snarf","modifiedIndex":21,"createdIndex":19},"prevNode":{"key":"/pants/foo/bar/baz","value":"snazz","modifiedIndex":20,"createdIndex":19}}`),
+	}
+
+	wantResponse := &Response{
+		Action:   "update",
+		Node:     &Node{Key: "/pants/foo/bar/baz", Value: "snarf", CreatedIndex: uint64(19), ModifiedIndex: uint64(21)},
+		PrevNode: &Node{Key: "/pants/foo/bar/baz", Value: "snazz", CreatedIndex: uint64(19), ModifiedIndex: uint64(20)},
+		Index:    uint64(42),
+	}
+
+	wantNextWait := waitAction{
+		Prefix:     "/pants",
+		Key:        "/foo/bar",
+		Recursive:  true,
+		AfterIndex: 22,
+	}
+
+	watcher := &httpWatcher{
+		client:   client,
+		nextWait: initAction,
+	}
+
+	resp, err := watcher.Next(context.Background())
+	if err != nil {
+		t.Errorf("non-nil error: %#v", err)
+	}
+
+	if !reflect.DeepEqual(wantResponse, resp) {
+		t.Errorf("received incorrect Response: want=%#v got=%#v", wantResponse, resp)
+	}
+
+	if !reflect.DeepEqual(wantNextWait, watcher.nextWait) {
+		t.Errorf("nextWait incorrect: want=%#v got=%#v", wantNextWait, watcher.nextWait)
+	}
+}
+
+func TestHTTPWatcherNextFail(t *testing.T) {
+	tests := []httpClient{
+		// generic HTTP client failure
+		&staticHTTPClient{
+			err: errors.New("fail!"),
+		},
+
+		// unusable status code
+		&staticHTTPClient{
+			resp: http.Response{
+				StatusCode: http.StatusTeapot,
+			},
+		},
+
+		// etcd Error response
+		&staticHTTPClient{
+			resp: http.Response{
+				StatusCode: http.StatusNotFound,
+			},
+			body: []byte(`{"errorCode":100,"message":"Key not found","cause":"/foo","index":18}`),
+		},
+	}
+
+	for i, tt := range tests {
+		act := waitAction{
+			Prefix:     "/pants",
+			Key:        "/foo/bar",
+			Recursive:  true,
+			AfterIndex: 19,
+		}
+
+		watcher := &httpWatcher{
+			client:   tt,
+			nextWait: act,
+		}
+
+		resp, err := watcher.Next(context.Background())
+		if err == nil {
+			t.Errorf("#%d: expected non-nil error", i)
+		}
+		if resp != nil {
+			t.Errorf("#%d: expected nil Response, got %#v", i, resp)
+		}
+		if !reflect.DeepEqual(act, watcher.nextWait) {
+			t.Errorf("#%d: nextWait changed: want=%#v got=%#v", i, act, watcher.nextWait)
+		}
 	}
 }
