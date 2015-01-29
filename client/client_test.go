@@ -544,3 +544,23 @@ func TestRedirectFollowingHTTPClient(t *testing.T) {
 		}
 	}
 }
+
+func TestDefaultCheckRedirect(t *testing.T) {
+	tests := []struct {
+		num int
+		err error
+	}{
+		{0, nil},
+		{5, nil},
+		{10, nil},
+		{11, ErrTooManyRedirects},
+		{29, ErrTooManyRedirects},
+	}
+
+	for i, tt := range tests {
+		err := DefaultCheckRedirect(tt.num)
+		if !reflect.DeepEqual(tt.err, err) {
+			t.Errorf("#%d: want=%#v got=%#v", i, tt.err, err)
+		}
+	}
+}
