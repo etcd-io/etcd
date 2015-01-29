@@ -1037,3 +1037,117 @@ func TestHTTPKeysAPIGetResponse(t *testing.T) {
 		t.Errorf("incorrect Response: want=%#v got=%#v", wantResponse, resp)
 	}
 }
+
+func TestHTTPKeysAPIDeleteAction(t *testing.T) {
+	tests := []struct {
+		key        string
+		value      string
+		opts       *DeleteOptions
+		wantAction httpAction
+	}{
+		// nil DeleteOptions
+		{
+			key:  "/foo",
+			opts: nil,
+			wantAction: &deleteAction{
+				Key:       "/foo",
+				PrevValue: "",
+				PrevIndex: 0,
+				Recursive: false,
+			},
+		},
+		// empty DeleteOptions
+		{
+			key:  "/foo",
+			opts: &DeleteOptions{},
+			wantAction: &deleteAction{
+				Key:       "/foo",
+				PrevValue: "",
+				PrevIndex: 0,
+				Recursive: false,
+			},
+		},
+		// populated DeleteOptions
+		{
+			key: "/foo",
+			opts: &DeleteOptions{
+				PrevValue: "baz",
+				PrevIndex: 13,
+				Recursive: true,
+			},
+			wantAction: &deleteAction{
+				Key:       "/foo",
+				PrevValue: "baz",
+				PrevIndex: 13,
+				Recursive: true,
+			},
+		},
+	}
+
+	for i, tt := range tests {
+		client := &actionAssertingHTTPClient{t: t, num: i, act: tt.wantAction}
+		kAPI := httpKeysAPI{client: client}
+		kAPI.Delete(context.Background(), tt.key, tt.opts)
+	}
+}
+
+func TestHTTPKeysAPIDeleteError(t *testing.T) {
+	tests := []httpClient{
+		// generic HTTP client failure
+		&staticHTTPClient{
+			err: errors.New("fail!"),
+		},
+
+		// unusable status code
+		&staticHTTPClient{
+			resp: http.Response{
+				StatusCode: http.StatusTeapot,
+			},
+		},
+
+		// etcd Error response
+		&staticHTTPClient{
+			resp: http.Response{
+				StatusCode: http.StatusInternalServerError,
+			},
+			body: []byte(`{"errorCode":300,"message":"Raft internal error","cause":"/foo","index":18}`),
+		},
+	}
+
+	for i, tt := range tests {
+		kAPI := httpKeysAPI{client: tt}
+		resp, err := kAPI.Delete(context.Background(), "/foo", nil)
+		if err == nil {
+			t.Errorf("#%d: received nil error", i)
+		}
+		if resp != nil {
+			t.Errorf("#%d: received non-nil Response: %#v", i, resp)
+		}
+	}
+}
+
+func TestHTTPKeysAPIDeleteResponse(t *testing.T) {
+	client := &staticHTTPClient{
+		resp: http.Response{
+			StatusCode: http.StatusOK,
+			Header:     http.Header{"X-Etcd-Index": []string{"22"}},
+		},
+		body: []byte(`{"action":"delete","node":{"key":"/pants/foo/bar/baz","value":"snarf","modifiedIndex":22,"createdIndex":19},"prevNode":{"key":"/pants/foo/bar/baz","value":"snazz","modifiedIndex":20,"createdIndex":19}}`),
+	}
+
+	wantResponse := &Response{
+		Action:   "delete",
+		Node:     &Node{Key: "/pants/foo/bar/baz", Value: "snarf", CreatedIndex: uint64(19), ModifiedIndex: uint64(22)},
+		PrevNode: &Node{Key: "/pants/foo/bar/baz", Value: "snazz", CreatedIndex: uint64(19), ModifiedIndex: uint64(20)},
+		Index:    uint64(22),
+	}
+
+	kAPI := &httpKeysAPI{client: client, prefix: "/pants"}
+	resp, err := kAPI.Delete(context.Background(), "/foo/bar/baz", nil)
+	if err != nil {
+		t.Errorf("non-nil error: %#v", err)
+	}
+	if !reflect.DeepEqual(wantResponse, resp) {
+		t.Errorf("incorrect Response: want=%#v got=%#v", wantResponse, resp)
+	}
+}
