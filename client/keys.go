@@ -27,6 +27,8 @@ import (
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 )
 
+// PrevExistType is used to define an existence condition when setting
+// or deleting Nodes.
 type PrevExistType string
 
 const (
