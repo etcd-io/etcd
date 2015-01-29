@@ -922,3 +922,118 @@ func TestHTTPKeysAPISetResponse(t *testing.T) {
 		t.Errorf("incorrect Response: want=%#v got=%#v", wantResponse, resp)
 	}
 }
+
+func TestHTTPKeysAPIGetAction(t *testing.T) {
+	tests := []struct {
+		key        string
+		opts       *GetOptions
+		wantAction httpAction
+	}{
+		// nil GetOptions
+		{
+			key:  "/foo",
+			opts: nil,
+			wantAction: &getAction{
+				Key:       "/foo",
+				Sorted:    false,
+				Recursive: false,
+			},
+		},
+		// empty GetOptions
+		{
+			key:  "/foo",
+			opts: &GetOptions{},
+			wantAction: &getAction{
+				Key:       "/foo",
+				Sorted:    false,
+				Recursive: false,
+			},
+		},
+		// populated GetOptions
+		{
+			key: "/foo",
+			opts: &GetOptions{
+				Sort:      true,
+				Recursive: true,
+			},
+			wantAction: &getAction{
+				Key:       "/foo",
+				Sorted:    true,
+				Recursive: true,
+			},
+		},
+	}
+
+	for i, tt := range tests {
+		client := &actionAssertingHTTPClient{t: t, num: i, act: tt.wantAction}
+		kAPI := httpKeysAPI{client: client}
+		kAPI.Get(context.Background(), tt.key, tt.opts)
+	}
+}
+
+func TestHTTPKeysAPIGetError(t *testing.T) {
+	tests := []httpClient{
+		// generic HTTP client failure
+		&staticHTTPClient{
+			err: errors.New("fail!"),
+		},
+
+		// unusable status code
+		&staticHTTPClient{
+			resp: http.Response{
+				StatusCode: http.StatusTeapot,
+			},
+		},
+
+		// etcd Error response
+		&staticHTTPClient{
+			resp: http.Response{
+				StatusCode: http.StatusInternalServerError,
+			},
+			body: []byte(`{"errorCode":300,"message":"Raft internal error","cause":"/foo","index":18}`),
+		},
+	}
+
+	for i, tt := range tests {
+		kAPI := httpKeysAPI{client: tt}
+		resp, err := kAPI.Get(context.Background(), "/foo", nil)
+		if err == nil {
+			t.Errorf("#%d: received nil error", i)
+		}
+		if resp != nil {
+			t.Errorf("#%d: received non-nil Response: %#v", i, resp)
+		}
+	}
+}
+
+func TestHTTPKeysAPIGetResponse(t *testing.T) {
+	client := &staticHTTPClient{
+		resp: http.Response{
+			StatusCode: http.StatusOK,
+			Header:     http.Header{"X-Etcd-Index": []string{"42"}},
+		},
+		body: []byte(`{"action":"get","node":{"key":"/pants/foo/bar","modifiedIndex":25,"createdIndex":19,"nodes":[{"key":"/pants/foo/bar/baz","value":"snarf","createdIndex":21,"modifiedIndex":25}]}}`),
+	}
+
+	wantResponse := &Response{
+		Action: "get",
+		Node: &Node{
+			Key: "/pants/foo/bar",
+			Nodes: []*Node{
+				&Node{Key: "/pants/foo/bar/baz", Value: "snarf", CreatedIndex: 21, ModifiedIndex: 25},
+			},
+			CreatedIndex:  uint64(19),
+			ModifiedIndex: uint64(25),
+		},
+		Index: uint64(42),
+	}
+
+	kAPI := &httpKeysAPI{client: client, prefix: "/pants"}
+	resp, err := kAPI.Get(context.Background(), "/foo/bar", &GetOptions{Recursive: true})
+	if err != nil {
+		t.Errorf("non-nil error: %#v", err)
+	}
+	if !reflect.DeepEqual(wantResponse, resp) {
+		t.Errorf("incorrect Response: want=%#v got=%#v", wantResponse, resp)
+	}
+}
