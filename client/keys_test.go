@@ -1151,3 +1151,31 @@ func TestHTTPKeysAPIDeleteResponse(t *testing.T) {
 		t.Errorf("incorrect Response: want=%#v got=%#v", wantResponse, resp)
 	}
 }
+
+func TestHTTPKeysAPICreateAction(t *testing.T) {
+	act := &setAction{
+		Key:       "/foo",
+		Value:     "bar",
+		PrevExist: PrevNoExist,
+		PrevIndex: 0,
+		PrevValue: "",
+		TTL:       0,
+	}
+
+	kAPI := httpKeysAPI{client: &actionAssertingHTTPClient{t: t, act: act}}
+	kAPI.Create(context.Background(), "/foo", "bar")
+}
+
+func TestHTTPKeysAPIUpdateAction(t *testing.T) {
+	act := &setAction{
+		Key:       "/foo",
+		Value:     "bar",
+		PrevExist: PrevExist,
+		PrevIndex: 0,
+		PrevValue: "",
+		TTL:       0,
+	}
+
+	kAPI := httpKeysAPI{client: &actionAssertingHTTPClient{t: t, act: act}}
+	kAPI.Update(context.Background(), "/foo", "bar")
+}
