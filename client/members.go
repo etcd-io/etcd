@@ -32,9 +32,18 @@ var (
 )
 
 type Member struct {
-	ID         string   `json:"id"`
-	Name       string   `json:"name"`
-	PeerURLs   []string `json:"peerURLs"`
+	// ID is the unique identifier of this Member.
+	ID string `json:"id"`
+
+	// Name is a human-readable, non-unique identifier of this Member.
+	Name string `json:"name"`
+
+	// PeerURLs represents the HTTP(S) endpoints this Member uses to
+	// participate in etcd's consensus protocol.
+	PeerURLs []string `json:"peerURLs"`
+
+	// ClientURLs represents the HTTP(S) endpoints on which this Member
+	// serves it's client-facing APIs.
 	ClientURLs []string `json:"clientURLs"`
 }
 
@@ -85,13 +94,13 @@ func NewMembersAPI(c Client) MembersAPI {
 }
 
 type MembersAPI interface {
-	// List enumerates the current cluster membership
+	// List enumerates the current cluster membership.
 	List(ctx context.Context) ([]Member, error)
 
-	// Add instructs etcd to accept a new Member into the cluster
+	// Add instructs etcd to accept a new Member into the cluster.
 	Add(ctx context.Context, peerURL string) (*Member, error)
 
-	// Remove demotes an existing Member out of the cluster
+	// Remove demotes an existing Member out of the cluster.
 	Remove(ctx context.Context, mID string) error
 }
 
