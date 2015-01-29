@@ -15,6 +15,7 @@
 package command
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"path"
@@ -71,7 +72,12 @@ func handleBackup(c *cli.Context) {
 	}
 	defer w.Close()
 	wmetadata, state, ents, err := w.ReadAll()
-	if err != nil {
+	switch err {
+	case nil:
+	case wal.ErrSnapshotNotFound:
+		fmt.Printf("Failed to find the match snapshot record %+v in wal %v.", walsnap, srcWAL)
+		fmt.Printf("etcdctl will add it back. Start auto fixing...")
+	default:
 		log.Fatal(err)
 	}
 	var metadata etcdserverpb.Metadata
@@ -86,6 +92,9 @@ func handleBackup(c *cli.Context) {
 	}
 	defer neww.Close()
 	if err := neww.Save(state, ents); err != nil {
+		log.Fatal(err)
+	}
+	if err := neww.SaveSnapshot(walsnap); err != nil {
 		log.Fatal(err)
 	}
 }
