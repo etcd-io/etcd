@@ -27,26 +27,44 @@ import (
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 )
 
+type actionAssertingHTTPClient struct {
+	t   *testing.T
+	act httpAction
+
+	resp http.Response
+	body []byte
+	err  error
+}
+
+func (a *actionAssertingHTTPClient) Do(_ context.Context, act httpAction) (*http.Response, []byte, error) {
+	if !reflect.DeepEqual(a.act, act) {
+		a.t.Errorf("unexpected httpAction: want=%#v got=%#v", a.act, act)
+	}
+
+	return &a.resp, a.body, a.err
+}
+
 type staticHTTPClient struct {
 	resp http.Response
+	body []byte
 	err  error
 }
 
 func (s *staticHTTPClient) Do(context.Context, httpAction) (*http.Response, []byte, error) {
-	return &s.resp, nil, s.err
+	return &s.resp, s.body, s.err
 }
 
 type staticHTTPAction struct {
 	request http.Request
 }
 
+func (s *staticHTTPAction) HTTPRequest(url.URL) *http.Request {
+	return &s.request
+}
+
 type staticHTTPResponse struct {
 	resp http.Response
 	err  error
-}
-
-func (s *staticHTTPAction) HTTPRequest(url.URL) *http.Request {
-	return &s.request
 }
 
 type multiStaticHTTPClient struct {
