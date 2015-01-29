@@ -457,7 +457,6 @@ func (a *setAction) HTTPRequest(ep url.URL) *http.Request {
 type deleteAction struct {
 	Prefix    string
 	Key       string
-	Value     string
 	PrevValue string
 	PrevIndex uint64
 	Recursive bool
