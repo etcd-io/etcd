@@ -154,32 +154,32 @@ func TestWaitAction(t *testing.T) {
 	wantHeader := http.Header{}
 
 	tests := []struct {
-		afterIndex uint64
-		recursive  bool
-		wantQuery  string
+		waitIndex uint64
+		recursive bool
+		wantQuery string
 	}{
 		{
-			recursive:  false,
-			afterIndex: uint64(0),
-			wantQuery:  "recursive=false&wait=true&waitIndex=0",
+			recursive: false,
+			waitIndex: uint64(0),
+			wantQuery: "recursive=false&wait=true&waitIndex=0",
 		},
 		{
-			recursive:  false,
-			afterIndex: uint64(12),
-			wantQuery:  "recursive=false&wait=true&waitIndex=12",
+			recursive: false,
+			waitIndex: uint64(12),
+			wantQuery: "recursive=false&wait=true&waitIndex=12",
 		},
 		{
-			recursive:  true,
-			afterIndex: uint64(12),
-			wantQuery:  "recursive=true&wait=true&waitIndex=12",
+			recursive: true,
+			waitIndex: uint64(12),
+			wantQuery: "recursive=true&wait=true&waitIndex=12",
 		},
 	}
 
 	for i, tt := range tests {
 		f := waitAction{
-			Key:        "/foo/bar",
-			AfterIndex: tt.afterIndex,
-			Recursive:  tt.recursive,
+			Key:       "/foo/bar",
+			WaitIndex: tt.waitIndex,
+			Recursive: tt.recursive,
 		}
 		got := *f.HTTPRequest(ep)
 
@@ -188,7 +188,7 @@ func TestWaitAction(t *testing.T) {
 
 		err := assertRequest(got, "GET", wantURL, wantHeader, nil)
 		if err != nil {
-			t.Errorf("#%d: %v", i, err)
+			t.Errorf("#%d: unexpected error: %#v", i, err)
 		}
 	}
 }
@@ -628,10 +628,10 @@ func TestUnmarshalFailedKeysResponseBadJSON(t *testing.T) {
 
 func TestHTTPWatcherNextWaitAction(t *testing.T) {
 	initAction := waitAction{
-		Prefix:     "/pants",
-		Key:        "/foo/bar",
-		Recursive:  true,
-		AfterIndex: 19,
+		Prefix:    "/pants",
+		Key:       "/foo/bar",
+		Recursive: true,
+		WaitIndex: 19,
 	}
 
 	client := &actionAssertingHTTPClient{
@@ -652,10 +652,10 @@ func TestHTTPWatcherNextWaitAction(t *testing.T) {
 	}
 
 	wantNextWait := waitAction{
-		Prefix:     "/pants",
-		Key:        "/foo/bar",
-		Recursive:  true,
-		AfterIndex: 22,
+		Prefix:    "/pants",
+		Key:       "/foo/bar",
+		Recursive: true,
+		WaitIndex: 22,
 	}
 
 	watcher := &httpWatcher{
@@ -702,10 +702,10 @@ func TestHTTPWatcherNextFail(t *testing.T) {
 
 	for i, tt := range tests {
 		act := waitAction{
-			Prefix:     "/pants",
-			Key:        "/foo/bar",
-			Recursive:  true,
-			AfterIndex: 19,
+			Prefix:    "/pants",
+			Key:       "/foo/bar",
+			Recursive: true,
+			WaitIndex: 19,
 		}
 
 		watcher := &httpWatcher{

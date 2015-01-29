@@ -335,8 +335,10 @@ func (k *httpKeysAPI) Watcher(key string, opts *WatcherOptions) Watcher {
 	}
 
 	if opts != nil {
-		act.AfterIndex = opts.AfterIndex
 		act.Recursive = opts.Recursive
+		if opts.AfterIndex > 0 {
+			act.WaitIndex = opts.AfterIndex + 1
+		}
 	}
 
 	return &httpWatcher{
@@ -361,7 +363,7 @@ func (hw *httpWatcher) Next(ctx context.Context) (*Response, error) {
 		return nil, err
 	}
 
-	hw.nextWait.AfterIndex = resp.Node.ModifiedIndex + 1
+	hw.nextWait.WaitIndex = resp.Node.ModifiedIndex + 1
 	return resp, nil
 }
 
@@ -395,10 +397,10 @@ func (g *getAction) HTTPRequest(ep url.URL) *http.Request {
 }
 
 type waitAction struct {
-	Prefix     string
-	Key        string
-	AfterIndex uint64
-	Recursive  bool
+	Prefix    string
+	Key       string
+	WaitIndex uint64
+	Recursive bool
 }
 
 func (w *waitAction) HTTPRequest(ep url.URL) *http.Request {
@@ -406,7 +408,7 @@ func (w *waitAction) HTTPRequest(ep url.URL) *http.Request {
 
 	params := u.Query()
 	params.Set("wait", "true")
-	params.Set("waitIndex", strconv.FormatUint(w.AfterIndex, 10))
+	params.Set("waitIndex", strconv.FormatUint(w.WaitIndex, 10))
 	params.Set("recursive", strconv.FormatBool(w.Recursive))
 	u.RawQuery = params.Encode()
 
