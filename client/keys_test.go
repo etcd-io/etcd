@@ -560,6 +560,14 @@ func TestUnmarshalSuccessfulResponse(t *testing.T) {
 			wantRes: nil,
 			wantErr: true,
 		},
+
+		// non-integer index
+		{
+			hdr:     "poo",
+			body:    `{}`,
+			wantRes: nil,
+			wantErr: true,
+		},
 	}
 
 	for i, tt := range tests {
