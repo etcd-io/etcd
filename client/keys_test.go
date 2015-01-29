@@ -725,3 +725,76 @@ func TestHTTPWatcherNextFail(t *testing.T) {
 		}
 	}
 }
+
+func TestHTTPKeysAPIWatcherAction(t *testing.T) {
+	tests := []struct {
+		key  string
+		opts *WatcherOptions
+		want waitAction
+	}{
+		{
+			key:  "/foo",
+			opts: nil,
+			want: waitAction{
+				Key:       "/foo",
+				Recursive: false,
+				WaitIndex: 0,
+			},
+		},
+
+		{
+			key: "/foo",
+			opts: &WatcherOptions{
+				Recursive:  false,
+				AfterIndex: 0,
+			},
+			want: waitAction{
+				Key:       "/foo",
+				Recursive: false,
+				WaitIndex: 0,
+			},
+		},
+
+		{
+			key: "/foo",
+			opts: &WatcherOptions{
+				Recursive:  true,
+				AfterIndex: 0,
+			},
+			want: waitAction{
+				Key:       "/foo",
+				Recursive: true,
+				WaitIndex: 0,
+			},
+		},
+
+		{
+			key: "/foo",
+			opts: &WatcherOptions{
+				Recursive:  false,
+				AfterIndex: 19,
+			},
+			want: waitAction{
+				Key:       "/foo",
+				Recursive: false,
+				WaitIndex: 20,
+			},
+		},
+	}
+
+	for i, tt := range tests {
+		kAPI := &httpKeysAPI{
+			client: &staticHTTPClient{err: errors.New("fail!")},
+		}
+
+		want := &httpWatcher{
+			client:   &staticHTTPClient{err: errors.New("fail!")},
+			nextWait: tt.want,
+		}
+
+		got := kAPI.Watcher(tt.key, tt.opts)
+		if !reflect.DeepEqual(want, got) {
+			t.Errorf("#%d: incorrect watcher: want=%#v got=%#v", i, want, got)
+		}
+	}
+}
