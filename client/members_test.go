@@ -16,10 +16,13 @@ package client
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/url"
 	"reflect"
 	"testing"
+
+	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 
 	"github.com/coreos/etcd/pkg/types"
 )
@@ -181,11 +184,22 @@ func TestMemberUnmarshal(t *testing.T) {
 	}
 }
 
+func TestMemberCollectionUnmarshalFail(t *testing.T) {
+	mc := &memberCollection{}
+	if err := mc.UnmarshalJSON([]byte(`{`)); err == nil {
+		t.Errorf("got nil error")
+	}
+}
+
 func TestMemberCollectionUnmarshal(t *testing.T) {
 	tests := []struct {
 		body []byte
 		want memberCollection
 	}{
+		{
+			body: []byte(`{}`),
+			want: memberCollection([]Member{}),
+		},
 		{
 			body: []byte(`{"members":[]}`),
 			want: memberCollection([]Member{}),
@@ -261,5 +275,221 @@ func TestMemberCreateRequestMarshal(t *testing.T) {
 
 	if !reflect.DeepEqual(want, got) {
 		t.Fatalf("Failed to marshal memberCreateRequest: want=%s, got=%s", want, got)
+	}
+}
+
+func TestHTTPMembersAPIAddSuccess(t *testing.T) {
+	wantAction := &membersAPIActionAdd{
+		peerURLs: types.URLs([]url.URL{
+			url.URL{Scheme: "http", Host: "127.0.0.1:7002"},
+		}),
+	}
+
+	mAPI := &httpMembersAPI{
+		client: &actionAssertingHTTPClient{
+			t:   t,
+			act: wantAction,
+			resp: http.Response{
+				StatusCode: http.StatusCreated,
+			},
+			body: []byte(`{"id":"94088180e21eb87b","peerURLs":["http://127.0.0.1:7002"]}`),
+		},
+	}
+
+	wantResponseMember := &Member{
+		ID:       "94088180e21eb87b",
+		PeerURLs: []string{"http://127.0.0.1:7002"},
+	}
+
+	m, err := mAPI.Add(context.Background(), "http://127.0.0.1:7002")
+	if err != nil {
+		t.Errorf("got non-nil err: %#v", err)
+	}
+	if !reflect.DeepEqual(wantResponseMember, m) {
+		t.Errorf("incorrect Member: want=%#v got=%#v", wantResponseMember, m)
+	}
+}
+
+func TestHTTPMembersAPIAddError(t *testing.T) {
+	okPeer := "http://example.com:4001"
+	tests := []struct {
+		peerURL string
+		client  httpClient
+
+		// if wantErr == nil, assert that the returned error is non-nil
+		// if wantErr != nil, assert that the returned error matches
+		wantErr error
+	}{
+		// malformed peer URL
+		{
+			peerURL: "\\",
+		},
+
+		// generic httpClient failure
+		{
+			peerURL: okPeer,
+			client:  &staticHTTPClient{err: errors.New("fail!")},
+		},
+
+		// unrecognized HTTP status code
+		{
+			peerURL: okPeer,
+			client: &staticHTTPClient{
+				resp: http.Response{StatusCode: http.StatusTeapot},
+			},
+		},
+
+		// unmarshal body into membersError on StatusConflict
+		{
+			peerURL: okPeer,
+			client: &staticHTTPClient{
+				resp: http.Response{
+					StatusCode: http.StatusConflict,
+				},
+				body: []byte(`{"message":"fail!"}`),
+			},
+			wantErr: membersError{Message: "fail!"},
+		},
+
+		// fail to unmarshal body on StatusConflict
+		{
+			peerURL: okPeer,
+			client: &staticHTTPClient{
+				resp: http.Response{
+					StatusCode: http.StatusConflict,
+				},
+				body: []byte(`{"`),
+			},
+		},
+
+		// fail to unmarshal body on StatusCreated
+		{
+			peerURL: okPeer,
+			client: &staticHTTPClient{
+				resp: http.Response{
+					StatusCode: http.StatusCreated,
+				},
+				body: []byte(`{"id":"XX`),
+			},
+		},
+	}
+
+	for i, tt := range tests {
+		mAPI := &httpMembersAPI{client: tt.client}
+		m, err := mAPI.Add(context.Background(), tt.peerURL)
+		if err == nil {
+			t.Errorf("#%d: got nil err", i)
+		}
+		if tt.wantErr != nil && !reflect.DeepEqual(tt.wantErr, err) {
+			t.Errorf("#%d: incorrect error: want=%#v got=%#v", i, tt.wantErr, err)
+		}
+		if m != nil {
+			t.Errorf("#%d: got non-nil Member", i)
+		}
+	}
+}
+
+func TestHTTPMembersAPIRemoveSuccess(t *testing.T) {
+	wantAction := &membersAPIActionRemove{
+		memberID: "94088180e21eb87b",
+	}
+
+	mAPI := &httpMembersAPI{
+		client: &actionAssertingHTTPClient{
+			t:   t,
+			act: wantAction,
+			resp: http.Response{
+				StatusCode: http.StatusNoContent,
+			},
+		},
+	}
+
+	if err := mAPI.Remove(context.Background(), "94088180e21eb87b"); err != nil {
+		t.Errorf("got non-nil err: %#v", err)
+	}
+}
+
+func TestHTTPMembersAPIRemoveFail(t *testing.T) {
+	tests := []httpClient{
+		// generic error
+		&staticHTTPClient{
+			err: errors.New("fail!"),
+		},
+
+		// unexpected HTTP status code
+		&staticHTTPClient{
+			resp: http.Response{
+				StatusCode: http.StatusInternalServerError,
+			},
+		},
+	}
+
+	for i, tt := range tests {
+		mAPI := &httpMembersAPI{client: tt}
+		if err := mAPI.Remove(context.Background(), "94088180e21eb87b"); err == nil {
+			t.Errorf("#%d: got nil err", i)
+		}
+	}
+}
+
+func TestHTTPMembersAPIListSuccess(t *testing.T) {
+	wantAction := &membersAPIActionList{}
+	mAPI := &httpMembersAPI{
+		client: &actionAssertingHTTPClient{
+			t:   t,
+			act: wantAction,
+			resp: http.Response{
+				StatusCode: http.StatusOK,
+			},
+			body: []byte(`{"members":[{"id":"94088180e21eb87b","name":"node2","peerURLs":["http://127.0.0.1:7002"],"clientURLs":["http://127.0.0.1:4002"]}]}`),
+		},
+	}
+
+	wantResponseMembers := []Member{
+		Member{
+			ID:         "94088180e21eb87b",
+			Name:       "node2",
+			PeerURLs:   []string{"http://127.0.0.1:7002"},
+			ClientURLs: []string{"http://127.0.0.1:4002"},
+		},
+	}
+
+	m, err := mAPI.List(context.Background())
+	if err != nil {
+		t.Errorf("got non-nil err: %#v", err)
+	}
+	if !reflect.DeepEqual(wantResponseMembers, m) {
+		t.Errorf("incorrect Members: want=%#v got=%#v", wantResponseMembers, m)
+	}
+}
+
+func TestHTTPMembersAPIListError(t *testing.T) {
+	tests := []httpClient{
+		// generic httpClient failure
+		&staticHTTPClient{err: errors.New("fail!")},
+
+		// unrecognized HTTP status code
+		&staticHTTPClient{
+			resp: http.Response{StatusCode: http.StatusTeapot},
+		},
+
+		// fail to unmarshal body on StatusOK
+		&staticHTTPClient{
+			resp: http.Response{
+				StatusCode: http.StatusOK,
+			},
+			body: []byte(`[{"id":"XX`),
+		},
+	}
+
+	for i, tt := range tests {
+		mAPI := &httpMembersAPI{client: tt}
+		ms, err := mAPI.List(context.Background())
+		if err == nil {
+			t.Errorf("#%d: got nil err", i)
+		}
+		if ms != nil {
+			t.Errorf("#%d: got non-nil Member slice", i)
+		}
 	}
 }
