@@ -141,7 +141,7 @@ func TestForceNewCluster(t *testing.T) {
 	cancel()
 	// ensure create has been applied in this machine
 	ctx, cancel = context.WithTimeout(context.Background(), requestTimeout)
-	if _, err := kapi.Watcher("/foo", &client.WatcherOptions{AfterIndex: resp.Node.ModifiedIndex}).Next(ctx); err != nil {
+	if _, err := kapi.Watcher("/foo", &client.WatcherOptions{AfterIndex: resp.Node.ModifiedIndex - 1}).Next(ctx); err != nil {
 		t.Fatalf("unexpected watch error: %v", err)
 	}
 	cancel()
@@ -162,7 +162,7 @@ func TestForceNewCluster(t *testing.T) {
 	kapi = client.NewKeysAPI(cc)
 	// ensure force restart keep the old data, and new cluster can make progress
 	ctx, cancel = context.WithTimeout(context.Background(), requestTimeout)
-	if _, err := kapi.Watcher("/foo", &client.WatcherOptions{AfterIndex: resp.Node.ModifiedIndex}).Next(ctx); err != nil {
+	if _, err := kapi.Watcher("/foo", &client.WatcherOptions{AfterIndex: resp.Node.ModifiedIndex - 1}).Next(ctx); err != nil {
 		t.Fatalf("unexpected watch error: %v", err)
 	}
 	cancel()
@@ -188,7 +188,7 @@ func clusterMustProgress(t *testing.T, membs []*member) {
 		cc := mustNewHTTPClient(t, []string{u})
 		kapi := client.NewKeysAPI(cc)
 		ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
-		if _, err := kapi.Watcher(key, &client.WatcherOptions{AfterIndex: resp.Node.ModifiedIndex}).Next(ctx); err != nil {
+		if _, err := kapi.Watcher(key, &client.WatcherOptions{AfterIndex: resp.Node.ModifiedIndex - 1}).Next(ctx); err != nil {
 			t.Fatalf("#%d: watch on %s error: %v", i, u, err)
 		}
 		cancel()
