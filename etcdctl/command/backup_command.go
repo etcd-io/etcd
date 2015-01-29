@@ -88,4 +88,7 @@ func handleBackup(c *cli.Context) {
 	if err := neww.Save(state, ents); err != nil {
 		log.Fatal(err)
 	}
+	if err := neww.SaveSnapshot(walsnap); err != nil {
+		log.Fatal(err)
+	}
 }
