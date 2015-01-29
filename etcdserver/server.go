@@ -250,7 +250,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 	tr := rafthttp.NewTransporter(cfg.Transport, id, cfg.Cluster.ID(), srv, srv.errorc, sstats, lstats)
 	// add all the remote members into sendhub
 	for _, m := range cfg.Cluster.Members() {
-		if m.Name != cfg.Name {
+		if m.ID != id {
 			tr.AddPeer(m.ID, m.PeerURLs)
 		}
 	}
