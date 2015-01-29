@@ -5,8 +5,7 @@
 
 ![etcd Logo](logos/etcd-horizontal-color.png)
 
-A highly-available key value store for shared configuration and service discovery.
-etcd is inspired by [Apache ZooKeeper][zookeeper] and [doozer][doozer], with a focus on being:
+etcd is a distributed, consistent key value store for shared configuration and service discovery with a focus on being:
 
 * *Simple*: curl'able user facing API (HTTP+JSON)
 * *Secure*: optional SSL client cert authentication
