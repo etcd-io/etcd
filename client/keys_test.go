@@ -798,3 +798,127 @@ func TestHTTPKeysAPIWatcherAction(t *testing.T) {
 		}
 	}
 }
+
+func TestHTTPKeysAPISetAction(t *testing.T) {
+	tests := []struct {
+		key        string
+		value      string
+		opts       *SetOptions
+		wantAction httpAction
+	}{
+		// nil SetOptions
+		{
+			key:   "/foo",
+			value: "bar",
+			opts:  nil,
+			wantAction: &setAction{
+				Key:       "/foo",
+				Value:     "bar",
+				PrevValue: "",
+				PrevIndex: 0,
+				PrevExist: PrevIgnore,
+				TTL:       0,
+			},
+		},
+		// empty SetOptions
+		{
+			key:   "/foo",
+			value: "bar",
+			opts:  &SetOptions{},
+			wantAction: &setAction{
+				Key:       "/foo",
+				Value:     "bar",
+				PrevValue: "",
+				PrevIndex: 0,
+				PrevExist: PrevIgnore,
+				TTL:       0,
+			},
+		},
+		// populated SetOptions
+		{
+			key:   "/foo",
+			value: "bar",
+			opts: &SetOptions{
+				PrevValue: "baz",
+				PrevIndex: 13,
+				PrevExist: PrevExist,
+				TTL:       time.Minute,
+			},
+			wantAction: &setAction{
+				Key:       "/foo",
+				Value:     "bar",
+				PrevValue: "baz",
+				PrevIndex: 13,
+				PrevExist: PrevExist,
+				TTL:       time.Minute,
+			},
+		},
+	}
+
+	for i, tt := range tests {
+		client := &actionAssertingHTTPClient{t: t, num: i, act: tt.wantAction}
+		kAPI := httpKeysAPI{client: client}
+		kAPI.Set(context.Background(), tt.key, tt.value, tt.opts)
+	}
+}
+
+func TestHTTPKeysAPISetError(t *testing.T) {
+	tests := []httpClient{
+		// generic HTTP client failure
+		&staticHTTPClient{
+			err: errors.New("fail!"),
+		},
+
+		// unusable status code
+		&staticHTTPClient{
+			resp: http.Response{
+				StatusCode: http.StatusTeapot,
+			},
+		},
+
+		// etcd Error response
+		&staticHTTPClient{
+			resp: http.Response{
+				StatusCode: http.StatusInternalServerError,
+			},
+			body: []byte(`{"errorCode":300,"message":"Raft internal error","cause":"/foo","index":18}`),
+		},
+	}
+
+	for i, tt := range tests {
+		kAPI := httpKeysAPI{client: tt}
+		resp, err := kAPI.Set(context.Background(), "/foo", "bar", nil)
+		if err == nil {
+			t.Errorf("#%d: received nil error", i)
+		}
+		if resp != nil {
+			t.Errorf("#%d: received non-nil Response: %#v", i, resp)
+		}
+	}
+}
+
+func TestHTTPKeysAPISetResponse(t *testing.T) {
+	client := &staticHTTPClient{
+		resp: http.Response{
+			StatusCode: http.StatusOK,
+			Header:     http.Header{"X-Etcd-Index": []string{"21"}},
+		},
+		body: []byte(`{"action":"set","node":{"key":"/pants/foo/bar/baz","value":"snarf","modifiedIndex":21,"createdIndex":21},"prevNode":{"key":"/pants/foo/bar/baz","value":"snazz","modifiedIndex":20,"createdIndex":19}}`),
+	}
+
+	wantResponse := &Response{
+		Action:   "set",
+		Node:     &Node{Key: "/pants/foo/bar/baz", Value: "snarf", CreatedIndex: uint64(21), ModifiedIndex: uint64(21)},
+		PrevNode: &Node{Key: "/pants/foo/bar/baz", Value: "snazz", CreatedIndex: uint64(19), ModifiedIndex: uint64(20)},
+		Index:    uint64(21),
+	}
+
+	kAPI := &httpKeysAPI{client: client, prefix: "/pants"}
+	resp, err := kAPI.Set(context.Background(), "/foo/bar/baz", "snarf", nil)
+	if err != nil {
+		t.Errorf("non-nil error: %#v", err)
+	}
+	if !reflect.DeepEqual(wantResponse, resp) {
+		t.Errorf("incorrect Response: want=%#v got=%#v", wantResponse, resp)
+	}
+}

@@ -29,6 +29,7 @@ import (
 
 type actionAssertingHTTPClient struct {
 	t   *testing.T
+	num int
 	act httpAction
 
 	resp http.Response
@@ -38,7 +39,7 @@ type actionAssertingHTTPClient struct {
 
 func (a *actionAssertingHTTPClient) Do(_ context.Context, act httpAction) (*http.Response, []byte, error) {
 	if !reflect.DeepEqual(a.act, act) {
-		a.t.Errorf("unexpected httpAction: want=%#v got=%#v", a.act, act)
+		a.t.Errorf("#%d: unexpected httpAction: want=%#v got=%#v", a.num, a.act, act)
 	}
 
 	return &a.resp, a.body, a.err
