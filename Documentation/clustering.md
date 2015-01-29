@@ -39,22 +39,22 @@ If you are spinning up multiple clusters (or creating and destroying a single cl
 On each machine you would start etcd with these flags:
 
 ```
-$ etcd -name infra0 -initial-advertise-peer-urls https://10.0.1.10:2380 \
-  -listen-peer-urls https://10.0.1.10:2380 \
+$ etcd -name infra0 -initial-advertise-peer-urls http://10.0.1.10:2380 \
+  -listen-peer-urls http://10.0.1.10:2380 \
   -initial-cluster-token etcd-cluster-1 \
   -initial-cluster infra0=http://10.0.1.10:2380,infra1=http://10.0.1.11:2380,infra2=http://10.0.1.12:2380 \
   -initial-cluster-state new
 ```
 ```
-$ etcd -name infra1 -initial-advertise-peer-urls https://10.0.1.11:2380 \
-  -listen-peer-urls https://10.0.1.11:2380 \
+$ etcd -name infra1 -initial-advertise-peer-urls http://10.0.1.11:2380 \
+  -listen-peer-urls http://10.0.1.11:2380 \
   -initial-cluster-token etcd-cluster-1 \
   -initial-cluster infra0=http://10.0.1.10:2380,infra1=http://10.0.1.11:2380,infra2=http://10.0.1.12:2380 \
   -initial-cluster-state new
 ```
 ```
-$ etcd -name infra2 -initial-advertise-peer-urls https://10.0.1.12:2380 \
-  -listen-peer-urls https://10.0.1.12:2380 \
+$ etcd -name infra2 -initial-advertise-peer-urls http://10.0.1.12:2380 \
+  -listen-peer-urls http://10.0.1.12:2380 \
   -initial-cluster-token etcd-cluster-1 \
   -initial-cluster infra0=http://10.0.1.10:2380,infra1=http://10.0.1.11:2380,infra2=http://10.0.1.12:2380 \
   -initial-cluster-state new
