@@ -177,18 +177,42 @@ type Watcher interface {
 }
 
 type Response struct {
-	Action   string `json:"action"`
-	Node     *Node  `json:"node"`
-	PrevNode *Node  `json:"prevNode"`
-	Index    uint64
+	// Action is the name of the operation that occurred. Possible values
+	// include get, set, delete, update, create, compareAndSwap,
+	// compareAndDelete and expire.
+	Action string `json:"action"`
+
+	// Node represents the state of the relevant etcd Node.
+	Node *Node `json:"node"`
+
+	// PrevNode represents the previous state of the Node. PrevNode is non-nil
+	// only if the Node existed before the action occured and the action
+	// caused a change to the Node.
+	PrevNode *Node `json:"prevNode"`
+
+	// Index holds the cluster-level index at the time the Response was generated.
+	// This index is not tied to the Node(s) contained in this Response.
+	Index uint64 `json:"-"`
 }
 
 type Node struct {
-	Key           string  `json:"key"`
-	Value         string  `json:"value"`
-	Nodes         []*Node `json:"nodes"`
-	ModifiedIndex uint64  `json:"modifiedIndex"`
-	CreatedIndex  uint64  `json:"createdIndex"`
+	// Key represents the unique location of this Node (e.g. "/foo/bar").
+	Key string `json:"key"`
+
+	// Value is the current data stored on this Node. If this Node
+	// is a directory, Value will be empty.
+	Value string `json:"value"`
+
+	// Nodes holds the children of this Node, only if this Node is a directory.
+	// This slice of will be arbitrarily deep (children, grandchildren, great-
+	// grandchildren, etc.) if a recursive Get or Watch request were made.
+	Nodes []*Node `json:"nodes"`
+
+	// CreatedIndex is the etcd index at-which this Node was created.
+	CreatedIndex uint64 `json:"createdIndex"`
+
+	// ModifiedIndex is the etcd index at-which this Node was last modified.
+	ModifiedIndex uint64 `json:"modifiedIndex"`
 }
 
 func (n *Node) String() string {
