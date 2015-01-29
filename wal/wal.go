@@ -256,9 +256,9 @@ func (w *WAL) ReadAll() (metadata []byte, state raftpb.HardState, ents []raftpb.
 		state.Reset()
 		return nil, state, nil, err
 	}
+	err = nil
 	if !match {
-		state.Reset()
-		return nil, state, nil, ErrSnapshotNotFound
+		err = ErrSnapshotNotFound
 	}
 
 	// close decoder, disable reading
@@ -269,7 +269,7 @@ func (w *WAL) ReadAll() (metadata []byte, state raftpb.HardState, ents []raftpb.
 	// create encoder (chain crc with the decoder), enable appending
 	w.encoder = newEncoder(w.f, w.decoder.lastCRC())
 	w.decoder = nil
-	return metadata, state, ents, nil
+	return metadata, state, ents, err
 }
 
 // Cut closes current file written and creates a new one ready to append.
