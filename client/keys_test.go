@@ -597,3 +597,28 @@ func TestUnmarshalSuccessfulResponse(t *testing.T) {
 		}
 	}
 }
+
+func TestUnmarshalFailedKeysResponse(t *testing.T) {
+	body := []byte(`{"errorCode":100,"message":"Key not found","cause":"/foo","index":18}`)
+
+	wantErr := Error{
+		Code:    100,
+		Message: "Key not found",
+		Cause:   "/foo",
+		Index:   uint64(18),
+	}
+
+	gotErr := unmarshalFailedKeysResponse(body)
+	if !reflect.DeepEqual(wantErr, gotErr) {
+		t.Errorf("unexpected error: want=%#v got=%#v", wantErr, gotErr)
+	}
+}
+
+func TestUnmarshalFailedKeysResponseBadJSON(t *testing.T) {
+	err := unmarshalFailedKeysResponse([]byte(`{"er`))
+	if err == nil {
+		t.Errorf("got nil error")
+	} else if _, ok := err.(Error); ok {
+		t.Errorf("error is of incorrect type *Error: %#v", err)
+	}
+}
