@@ -481,76 +481,111 @@ func assertRequest(got http.Request, wantMethod string, wantURL *url.URL, wantHe
 
 func TestUnmarshalSuccessfulResponse(t *testing.T) {
 	tests := []struct {
-		indexHeader string
-		body        string
-		res         *Response
-		expectError bool
+		hdr     string
+		body    string
+		wantRes *Response
+		wantErr bool
 	}{
 		// Neither PrevNode or Node
 		{
-			"1",
-			`{"action":"delete"}`,
-			&Response{Action: "delete", Index: 1},
-			false,
+			hdr:     "1",
+			body:    `{"action":"delete"}`,
+			wantRes: &Response{Action: "delete", Index: 1},
+			wantErr: false,
 		},
 
 		// PrevNode
 		{
-			"15",
-			`{"action":"delete", "prevNode": {"key": "/foo", "value": "bar", "modifiedIndex": 12, "createdIndex": 10}}`,
-			&Response{Action: "delete", Index: 15, PrevNode: &Node{Key: "/foo", Value: "bar", ModifiedIndex: 12, CreatedIndex: 10}},
-			false,
+			hdr:  "15",
+			body: `{"action":"delete", "prevNode": {"key": "/foo", "value": "bar", "modifiedIndex": 12, "createdIndex": 10}}`,
+			wantRes: &Response{
+				Action: "delete",
+				Index:  15,
+				Node:   nil,
+				PrevNode: &Node{
+					Key:           "/foo",
+					Value:         "bar",
+					ModifiedIndex: 12,
+					CreatedIndex:  10,
+				},
+			},
+			wantErr: false,
 		},
 
 		// Node
 		{
-			"15",
-			`{"action":"get", "node": {"key": "/foo", "value": "bar", "modifiedIndex": 12, "createdIndex": 10}}`,
-			&Response{Action: "get", Index: 15, Node: &Node{Key: "/foo", Value: "bar", ModifiedIndex: 12, CreatedIndex: 10}},
-			false,
+			hdr:  "15",
+			body: `{"action":"get", "node": {"key": "/foo", "value": "bar", "modifiedIndex": 12, "createdIndex": 10}}`,
+			wantRes: &Response{
+				Action: "get",
+				Index:  15,
+				Node: &Node{
+					Key:           "/foo",
+					Value:         "bar",
+					ModifiedIndex: 12,
+					CreatedIndex:  10,
+				},
+				PrevNode: nil,
+			},
+			wantErr: false,
 		},
 
 		// PrevNode and Node
 		{
-			"15",
-			`{"action":"update", "prevNode": {"key": "/foo", "value": "baz", "modifiedIndex": 10, "createdIndex": 10}, "node": {"key": "/foo", "value": "bar", "modifiedIndex": 12, "createdIndex": 10}}`,
-			&Response{Action: "update", Index: 15, PrevNode: &Node{Key: "/foo", Value: "baz", ModifiedIndex: 10, CreatedIndex: 10}, Node: &Node{Key: "/foo", Value: "bar", ModifiedIndex: 12, CreatedIndex: 10}},
-			false,
+			hdr:  "15",
+			body: `{"action":"update", "prevNode": {"key": "/foo", "value": "baz", "modifiedIndex": 10, "createdIndex": 10}, "node": {"key": "/foo", "value": "bar", "modifiedIndex": 12, "createdIndex": 10}}`,
+			wantRes: &Response{
+				Action: "update",
+				Index:  15,
+				PrevNode: &Node{
+					Key:           "/foo",
+					Value:         "baz",
+					ModifiedIndex: 10,
+					CreatedIndex:  10,
+				},
+				Node: &Node{
+					Key:           "/foo",
+					Value:         "bar",
+					ModifiedIndex: 12,
+					CreatedIndex:  10,
+				},
+			},
+			wantErr: false,
 		},
 
 		// Garbage in body
 		{
-			"",
-			`garbage`,
-			nil,
-			true,
+			hdr:     "",
+			body:    `garbage`,
+			wantRes: nil,
+			wantErr: true,
 		},
 	}
 
 	for i, tt := range tests {
 		h := make(http.Header)
-		h.Add("X-Etcd-Index", tt.indexHeader)
+		h.Add("X-Etcd-Index", tt.hdr)
 		res, err := unmarshalSuccessfulKeysResponse(h, []byte(tt.body))
-		if tt.expectError != (err != nil) {
-			t.Errorf("#%d: expectError=%t, err=%v", i, tt.expectError, err)
+		if tt.wantErr != (err != nil) {
+			t.Errorf("#%d: wantErr=%t, err=%v", i, tt.wantErr, err)
 		}
 
-		if (res == nil) != (tt.res == nil) {
-			t.Errorf("#%d: received res==%v, but expected res==%v", i, res, tt.res)
+		if (res == nil) != (tt.wantRes == nil) {
+			t.Errorf("#%d: received res=%#v, but expected res=%#v", i, res, tt.wantRes)
 			continue
-		} else if tt.res == nil {
+		} else if tt.wantRes == nil {
 			// expected and successfully got nil response
 			continue
 		}
 
-		if res.Action != tt.res.Action {
-			t.Errorf("#%d: Action=%s, expected %s", i, res.Action, tt.res.Action)
+		if res.Action != tt.wantRes.Action {
+			t.Errorf("#%d: Action=%s, expected %s", i, res.Action, tt.wantRes.Action)
 		}
-		if res.Index != tt.res.Index {
-			t.Errorf("#%d: Index=%d, expected %d", i, res.Index, tt.res.Index)
+		if res.Index != tt.wantRes.Index {
+			t.Errorf("#%d: Index=%d, expected %d", i, res.Index, tt.wantRes.Index)
 		}
-		if !reflect.DeepEqual(res.Node, tt.res.Node) {
-			t.Errorf("#%d: Node=%v, expected %v", i, res.Node, tt.res.Node)
+		if !reflect.DeepEqual(res.Node, tt.wantRes.Node) {
+			t.Errorf("#%d: Node=%v, expected %v", i, res.Node, tt.wantRes.Node)
 		}
 	}
 }
