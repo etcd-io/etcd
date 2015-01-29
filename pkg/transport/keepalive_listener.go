@@ -15,6 +15,7 @@
 package transport
 
 import (
+	"crypto/tls"
 	"net"
 	"time"
 )
@@ -22,18 +23,26 @@ import (
 // NewKeepAliveListener returns a listener that listens on the given address.
 // http://tldp.org/HOWTO/TCP-Keepalive-HOWTO/overview.html
 func NewKeepAliveListener(addr string, scheme string, info TLSInfo) (net.Listener, error) {
-	ln, err := NewListener(addr, scheme, info)
+	l, err := net.Listen("tcp", addr)
 	if err != nil {
 		return nil, err
 	}
+
+	if !info.Empty() && scheme == "https" {
+		cfg, err := info.ServerConfig()
+		if err != nil {
+			return nil, err
+		}
+
+		return newTLSKeepaliveListener(l, cfg), nil
+	}
+
 	return &keepaliveListener{
-		Listener: ln,
+		Listener: l,
 	}, nil
 }
 
-type keepaliveListener struct {
-	net.Listener
-}
+type keepaliveListener struct{ net.Listener }
 
 func (kln *keepaliveListener) Accept() (net.Conn, error) {
 	c, err := kln.Listener.Accept()
@@ -47,4 +56,38 @@ func (kln *keepaliveListener) Accept() (net.Conn, error) {
 	tcpc.SetKeepAlive(true)
 	tcpc.SetKeepAlivePeriod(30 * time.Second)
 	return tcpc, nil
+}
+
+// A tlsKeepaliveListener implements a network listener (net.Listener) for TLS connections.
+type tlsKeepaliveListener struct {
+	net.Listener
+	config *tls.Config
+}
+
+// Accept waits for and returns the next incoming TLS connection.
+// The returned connection c is a *tls.Conn.
+func (l *tlsKeepaliveListener) Accept() (c net.Conn, err error) {
+	c, err = l.Listener.Accept()
+	if err != nil {
+		return
+	}
+	tcpc := c.(*net.TCPConn)
+	// detection time: tcp_keepalive_time + tcp_keepalive_probes + tcp_keepalive_intvl
+	// default on linux:  30 + 8 * 30
+	// default on osx:    30 + 8 * 75
+	tcpc.SetKeepAlive(true)
+	tcpc.SetKeepAlivePeriod(30 * time.Second)
+	c = tls.Server(c, l.config)
+	return
+}
+
+// NewListener creates a Listener which accepts connections from an inner
+// Listener and wraps each connection with Server.
+// The configuration config must be non-nil and must have
+// at least one certificate.
+func newTLSKeepaliveListener(inner net.Listener, config *tls.Config) net.Listener {
+	l := &tlsKeepaliveListener{}
+	l.Listener = inner
+	l.config = config
+	return l
 }

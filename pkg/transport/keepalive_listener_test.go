@@ -15,7 +15,9 @@
 package transport
 
 import (
+	"crypto/tls"
 	"net/http"
+	"os"
 	"testing"
 )
 
@@ -34,4 +36,29 @@ func TestNewKeepAliveListener(t *testing.T) {
 		t.Fatalf("unexpected Accept error: %v", err)
 	}
 	conn.Close()
+	ln.Close()
+
+	// tls
+	tmp, err := createTempFile([]byte("XXX"))
+	if err != nil {
+		t.Fatalf("unable to create tmpfile: %v", err)
+	}
+	defer os.Remove(tmp)
+	tlsInfo := TLSInfo{CertFile: tmp, KeyFile: tmp}
+	tlsInfo.parseFunc = fakeCertificateParserFunc(tls.Certificate{}, nil)
+	tlsln, err := NewKeepAliveListener("127.0.0.1:0", "https", tlsInfo)
+	if err != nil {
+		t.Fatalf("unexpected NewKeepAliveListener error: %v", err)
+	}
+
+	go http.Get("https://" + tlsln.Addr().String())
+	conn, err = tlsln.Accept()
+	if err != nil {
+		t.Fatalf("unexpected Accept error: %v", err)
+	}
+	if _, ok := conn.(*tls.Conn); !ok {
+		t.Errorf("failed to accept *tls.Conn")
+	}
+	conn.Close()
+	tlsln.Close()
 }
