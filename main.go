@@ -24,9 +24,15 @@
 package main
 
 import (
+	"os"
+
 	"github.com/coreos/etcd/etcdmain"
+	"github.com/coreos/etcd/migrate/starter"
 )
 
 func main() {
+	if os.Getenv("ETCD_START_DESIRED_VERSION") != "" {
+		starter.StartDesiredVersion(os.Args[1:])
+	}
 	etcdmain.Main()
 }
