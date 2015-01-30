@@ -322,7 +322,7 @@ func TestHTTPMembersAPIAddError(t *testing.T) {
 	}{
 		// malformed peer URL
 		{
-			peerURL: "\\",
+			peerURL: ":",
 		},
 
 		// generic httpClient failure
