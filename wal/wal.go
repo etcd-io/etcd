@@ -212,7 +212,7 @@ func openAtIndex(dirpath string, snap walpb.Snapshot, all bool) (*WAL, error) {
 // ReadAll reads out all records of the current WAL.
 // If it cannot read out the expected snap, it will return ErrSnapshotNotFound.
 // If loaded snap doesn't match with the expected one, it will return
-// ErrSnapshotMismatch.
+// all the records and error ErrSnapshotMismatch.
 // TODO: detect not-last-snap error.
 // TODO: maybe loose the checking of match.
 // After ReadAll, the WAL will be ready for appending new records.
@@ -265,9 +265,9 @@ func (w *WAL) ReadAll() (metadata []byte, state raftpb.HardState, ents []raftpb.
 		state.Reset()
 		return nil, state, nil, err
 	}
+	err = nil
 	if !match {
-		state.Reset()
-		return nil, state, nil, ErrSnapshotNotFound
+		err = ErrSnapshotNotFound
 	}
 
 	// close decoder, disable reading
@@ -279,7 +279,7 @@ func (w *WAL) ReadAll() (metadata []byte, state raftpb.HardState, ents []raftpb.
 	w.encoder = newEncoder(w.f, w.decoder.lastCRC())
 	w.decoder = nil
 	metrics.Gauge("wal.lastIndexSaved").Set(int64(w.enti))
-	return metadata, state, ents, nil
+	return metadata, state, ents, err
 }
 
 // Cut closes current file written and creates a new one ready to append.
