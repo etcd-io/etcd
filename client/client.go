@@ -223,14 +223,14 @@ func (c *httpClusterClient) Endpoints() []string {
 }
 
 func (c *httpClusterClient) Sync(ctx context.Context) error {
-	c.Lock()
-	defer c.Unlock()
-
 	mAPI := NewMembersAPI(c)
 	ms, err := mAPI.List(ctx)
 	if err != nil {
 		return err
 	}
+
+	c.Lock()
+	defer c.Unlock()
 
 	eps := make([]string, 0)
 	for _, m := range ms {
