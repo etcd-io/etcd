@@ -15,11 +15,15 @@
 package etcdmain
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
 	"os"
+	"path"
+	"reflect"
 	"strings"
 	"time"
 
@@ -216,15 +220,65 @@ func startProxy(cfg *config) error {
 		return err
 	}
 
-	// TODO(jonboulle): update peerURLs dynamically (i.e. when updating
-	// clientURLs) instead of just using the initial fixed list here
-	peerURLs := cls.PeerURLs()
+	if cfg.dir == "" {
+		cfg.dir = fmt.Sprintf("%v.etcdproxy", cfg.name)
+		log.Printf("no proxy data-dir provided, using default proxy data-dir ./%s", cfg.dir)
+	}
+	err = os.MkdirAll(cfg.dir, 0700)
+	if err != nil {
+		return err
+	}
+
+	var peerURLs []string
+	clusterfile := path.Join(cfg.dir, "cluster")
+
+	b, err := ioutil.ReadFile(clusterfile)
+	switch {
+	case err == nil:
+		urls := struct{ PeerURLs []string }{}
+		err := json.Unmarshal(b, &urls)
+		if err != nil {
+			return err
+		}
+		peerURLs = urls.PeerURLs
+		log.Printf("proxy: using peer urls %v from cluster file ./%s", peerURLs, clusterfile)
+	case os.IsNotExist(err):
+		peerURLs = cls.PeerURLs()
+		log.Printf("proxy: using peer urls %v ", peerURLs)
+	default:
+		return err
+	}
+
 	uf := func() []string {
+		old := cls.PeerURLs()
 		cls, err := etcdserver.GetClusterFromPeers(peerURLs, tr)
 		if err != nil {
 			log.Printf("proxy: %v", err)
 			return []string{}
 		}
+
+		urls := struct{ PeerURLs []string }{cls.PeerURLs()}
+		b, err := json.Marshal(urls)
+		if err != nil {
+			log.Printf("proxy: error on marshal peer urls %s", err)
+			return cls.ClientURLs()
+
+		}
+
+		err = ioutil.WriteFile(clusterfile+".bak", b, 0600)
+		if err != nil {
+			log.Printf("proxy: error on writing urls %s", err)
+			return cls.ClientURLs()
+		}
+		err = os.Rename(clusterfile+".bak", clusterfile)
+		if err != nil {
+			log.Printf("proxy: error on updating clusterfile %s", err)
+			return cls.ClientURLs()
+		}
+		if !reflect.DeepEqual(cls.PeerURLs(), old) {
+			log.Printf("proxy: updated peer urls in cluster file from %v to %v", old, cls.PeerURLs())
+		}
+
 		return cls.ClientURLs()
 	}
 	ph := proxy.NewHandler(pt, uf)
