@@ -55,6 +55,10 @@ It is recommended to have an odd number of members in a cluster. Having an odd c
 
 As you can see, adding another member to bring the size of cluster up to an odd size is always worth it. During a network partition, an odd number of members also guarantees that there will almost always be a majority of the cluster that can continue to operate and be the source of truth when the partition ends.
 
+#### Changing Cluster Size
+
+After your cluster is up and running, adding or removing members is done via [runtime reconfiguration](runtime-configuration.md), which allows the cluster to be modified without downtime. The `etcdctl` tool has a `member list`, `member add` and `member remove` commands to complete this process.
+
 ### Member Migration
 
 When there is a scheduled machine maintenance or retirement, you might want to migrate an etcd member to another machine without losing the data and changing the member ID. 

@@ -8,40 +8,40 @@ Reconfiguration requests can only be processed when the the majority of the clus
 
 ## Reconfiguration Use Cases
 
-Let us walk through the four use cases for re-configuring a cluster: replacing a member, increasing or decreasing cluster size, and restarting a cluster from a majority failure.
+Let us walk through some common reasons for reconfiguring a cluster. Most of these just involve combinations of adding or removing a member, which are explained below under [Cluster Reconfiguration Operations](#cluster-reconfiguration-operations).
 
-### Replace a Non-recoverable Member
+### Cycle or Upgrade Multiple Machines
 
-The most common use case of cluster reconfiguration is to replace a member because of a permanent failure of the existing member: for example, hardware failure or data directory corruption.
-It is important to replace failed members as soon as the failure is detected.
-If etcd falls below a simple majority of members it can no longer accept writes: e.g. in a 3 member cluster the loss of two members will cause writes to fail and the cluster to stop operating.
+If you need to move multiple members of your cluster due to planned maintenance (hardware upgrades, network downtime, etc.), it is recommended to modify members one at a time.
 
-If you want to migrate a running member to another machine, please refer [member migration section][member migration].
+It is safe to remove the leader, however there is a brief period of downtime while the election process takes place. If your cluster holds more than 50MB, it is recommended to [migrate the member's data directory][member migration].
 
-[member migration]: https://github.com/coreos/etcd/blob/master/Documentation/admin_guide.md#member-migration
+[member migration]: #member-migration
 
-### Increase Cluster Size
+### Change the Cluster Size
 
-To make your cluster more resilient to machine failure you can increase the size of the cluster.
-For example, if the cluster consists of three machines, it can tolerate one failure.
-If we increase the cluster size to five, it can tolerate two machine failures.
+Increasing the cluster size can enhance [failure tolerance][fault tolerance table] and provide better read performance. Since clients can read from any member, increasing the number of members increases the overall read throughput.
 
-Increasing the cluster size can also provide better read performance.
-When a client accesses etcd, the normal read gets the data from the local copy of each member (members always shares the same view of the cluster at the same index, which is guaranteed by the sequential consistency of etcd).
-Since clients can read from any member, increasing the number of members thus increases overall read throughput.
+Decreasing the cluster size can improve the write performance of a cluster, with a trade-off of decreased resilience. Writes into the cluster are replicated to a majority of members of the cluster before considered committed. Decreasing the cluster size lowers the majority, and each write is committed more quickly.
 
-### Decrease Cluster Size
+[fault tolerance table]: admin_guide.md#fault-tolerance-table
 
-To improve the write performance of a cluster, you might want to trade off resilience by removing members.
-etcd replicates the data to the majority of members of the cluster before committing the write.
-Decreasing the cluster size means the etcd cluster has to do less work for each write, thus increasing the write performance.
+### Replace A Failed Machine
+
+If a machine fails due to hardware failure, data directory corruption, or some other fatal situation, it should be replaced as soon as possible. Machines that have failed but haven't been removed adversely affect your quorum and reduce the tolerance for an additional failure.
+
+To replace the machine, follow the instructions for [removing the member][remove member] from the cluster, and then [add a new member][add member] in its place. If your cluster holds more than 50MB, it is recommended to [migrate the failed member's data directory][member migration] if you can still access it.
+
+[remove member]: #remove-a-member
+[add member]: #add-a-new-member
 
 ### Restart Cluster from Majority Failure
 
 If the majority of your cluster is lost, then you need to take manual action in order to recover safely.
-The basic steps in the recovery process include creating a new cluster using the old data, forcing a single member to act as the leader, and finally using runtime configuration to add members to this new cluster.
+The basic steps in the recovery process include [creating a new cluster using the old data][disaster recovery], forcing a single member to act as the leader, and finally using runtime configuration to [add new members][add member] to this new cluster one at a time.
 
-TODO: https://github.com/coreos/etcd/issues/1242
+[add member]: #add-a-new-member
+[disaster recovery]: admin_guide.md#disaster-recovery
 
 ## Cluster Reconfiguration Operations
 
@@ -61,7 +61,7 @@ If you want to use the member API directly you can find the documentation [here]
 
 ### Remove a Member
 
-First, we need to find the target member:
+First, we need to find the target member's ID. You can list all members with `etcdctl`:
 
 ```
 $ etcdctl member list
@@ -84,27 +84,27 @@ The target member will stop itself at this point and print out the removal in th
 etcd: this member has been permanently removed from the cluster. Exiting.
 ```
 
-Removal of the leader is safe, but the cluster will be out of progress for a period of election timeout because it needs to elect the new leader.
+It is safe to remove the leader, however the cluster will be inactive while a new leader is elected. This duration is normally the period of election timeout plus the voting process.
 
-### Add a Member
+### Add a New Member
 
 Adding a member is a two step process:
 
  * Add the new member to the cluster via the [members API](https://github.com/coreos/etcd/blob/master/Documentation/other_apis.md#post-v2members) or the `etcdctl member add` command.
- * Start the member with the correct configuration.
+ * Start the new member with the new cluster configuration, including a list of the updated members (existing members + the new member).
 
-Using `etcdctl` let's add the new member to the cluster:
+Using `etcdctl` let's add the new member to the cluster by specifing its [name](configuration.md#-name) and [advertised peer URLs](configuration.md#-initial-advertise-peer-urls):
 
 ```
 $ etcdctl member add infra3 http://10.0.1.13:2380
 added member 9bf1b35fc7761a23 to cluster
+
 ETCD_NAME="infra3"
 ETCD_INITIAL_CLUSTER="infra0=http://10.0.1.10:2380,infra1=http://10.0.1.11:2380,infra2=http://10.0.1.12:2380,infra3=http://10.0.1.13:2380"
 ETCD_INITIAL_CLUSTER_STATE=existing
 ```
 
-> Notice that infra3 was added to the cluster using its advertised peer URL.
-
+`etcdctl` has informed the cluster about the new member and printed out the environment variables needed to successfully start it.
 Now start the new etcd process with the relevant flags for the new member:
 
 ```
@@ -116,8 +116,8 @@ $ etcd -listen-client-urls http://10.0.1.13:2379 -advertise-client-urls http://1
 
 The new member will run as a part of the cluster and immediately begin catching up with the rest of the cluster.
 
-If you are adding multiple members the best practice is to configure the new member, then start the process, then configure the next, and so on.
-A common case is increasing a cluster from 1 to 3: if you add one member to a 1-node cluster, the cluster cannot make progress before the new member starts because it needs two members as majority to agree on the consensus.
+If you are adding multiple members the best practice is to configure a single member at a time and verify it starts correctly before adding more new members.
+If you add a new member to a 1-node cluster, the cluster cannot make progress before the new member starts because it needs two members as majority to agree on the consensus. You will only see this behavior between the time `etcdctl member add` informs the cluster about the new member and the new member successfully establishing a connection to the existing one.
 
 #### Error Cases
 
