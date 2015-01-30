@@ -24,9 +24,23 @@
 package main
 
 import (
+	"log"
+	"os"
+	"strconv"
+
 	"github.com/coreos/etcd/etcdmain"
+	"github.com/coreos/etcd/migrate/starter"
 )
 
 func main() {
+	if str := os.Getenv("ETCD_ALLOW_LEGACY_MODE"); str != "" {
+		v, err := strconv.ParseBool(str)
+		if err != nil {
+			log.Fatalf("failed to parse ETCD_ALLOW_LEGACY_MODE=%s as bool", str)
+		}
+		if v {
+			starter.StartDesiredVersion(os.Args[1:])
+		}
+	}
 	etcdmain.Main()
 }

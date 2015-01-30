@@ -119,3 +119,13 @@ func URLsFromFlags(fs *flag.FlagSet, urlsFlagName string, addrFlagName string, t
 
 	return []url.URL(*fs.Lookup(urlsFlagName).Value.(*URLsValue)), nil
 }
+
+func IsSet(fs *flag.FlagSet, name string) bool {
+	set := false
+	fs.Visit(func(f *flag.Flag) {
+		if f.Name == name {
+			set = true
+		}
+	})
+	return set
+}
