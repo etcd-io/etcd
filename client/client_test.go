@@ -636,3 +636,21 @@ func TestHTTPClusterClientSyncFail(t *testing.T) {
 		t.Fatalf("incorrect endpoints after failed Sync: want=%#v got=%#v", want, got)
 	}
 }
+
+func TestHTTPClusterClientResetFail(t *testing.T) {
+	tests := [][]string{
+		// need at least one endpoint
+		[]string{},
+
+		// urls must be valid
+		[]string{":"},
+	}
+
+	for i, tt := range tests {
+		hc := &httpClusterClient{}
+		err := hc.reset(tt)
+		if err == nil {
+			t.Errorf("#%d: expected non-nil error", i)
+		}
+	}
+}
