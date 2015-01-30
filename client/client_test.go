@@ -65,6 +65,7 @@ func (s *staticHTTPAction) HTTPRequest(url.URL) *http.Request {
 
 type staticHTTPResponse struct {
 	resp http.Response
+	body []byte
 	err  error
 }
 
@@ -76,7 +77,7 @@ type multiStaticHTTPClient struct {
 func (s *multiStaticHTTPClient) Do(context.Context, httpAction) (*http.Response, []byte, error) {
 	r := s.responses[s.cur]
 	s.cur++
-	return &r.resp, nil, r.err
+	return &r.resp, r.body, r.err
 }
 
 func newStaticHTTPClientFactory(responses []staticHTTPResponse) httpClientFactory {
@@ -84,7 +85,7 @@ func newStaticHTTPClientFactory(responses []staticHTTPResponse) httpClientFactor
 	return func(url.URL) httpClient {
 		r := responses[cur]
 		cur++
-		return &staticHTTPClient{resp: r.resp, err: r.err}
+		return &staticHTTPClient{resp: r.resp, body: r.body, err: r.err}
 	}
 }
 
@@ -562,5 +563,76 @@ func TestDefaultCheckRedirect(t *testing.T) {
 		if !reflect.DeepEqual(tt.err, err) {
 			t.Errorf("#%d: want=%#v got=%#v", i, tt.err, err)
 		}
+	}
+}
+
+func TestHTTPClusterClientSync(t *testing.T) {
+	cf := newStaticHTTPClientFactory([]staticHTTPResponse{
+		staticHTTPResponse{
+			resp: http.Response{StatusCode: http.StatusOK, Header: http.Header{"Content-Type": []string{"application/json"}}},
+			body: []byte(`{"members":[{"id":"2745e2525fce8fe","peerURLs":["http://127.0.0.1:7003"],"name":"node3","clientURLs":["http://127.0.0.1:4003"]},{"id":"42134f434382925","peerURLs":["http://127.0.0.1:2380","http://127.0.0.1:7001"],"name":"node1","clientURLs":["http://127.0.0.1:2379","http://127.0.0.1:4001"]},{"id":"94088180e21eb87b","peerURLs":["http://127.0.0.1:7002"],"name":"node2","clientURLs":["http://127.0.0.1:4002"]}]}`),
+		},
+	})
+
+	hc := &httpClusterClient{clientFactory: cf}
+	err := hc.reset([]string{"http://127.0.0.1:4001"})
+	if err != nil {
+		t.Fatalf("unexpected error during setup: %#v", err)
+	}
+
+	want := []string{"http://127.0.0.1:4001"}
+	got := hc.Endpoints()
+	if !reflect.DeepEqual(want, got) {
+		t.Fatalf("incorrect endpoints: want=%#v got=%#v", want, got)
+	}
+
+	err = hc.Sync(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error during Sync: %#v", err)
+	}
+
+	want = []string{"http://127.0.0.1:4003", "http://127.0.0.1:2379", "http://127.0.0.1:4001", "http://127.0.0.1:4002"}
+	got = hc.Endpoints()
+	if !reflect.DeepEqual(want, got) {
+		t.Fatalf("incorrect endpoints post-Sync: want=%#v got=%#v", want, got)
+	}
+
+	err = hc.reset([]string{"http://127.0.0.1:4009"})
+	if err != nil {
+		t.Fatalf("unexpected error during reset: %#v", err)
+	}
+
+	want = []string{"http://127.0.0.1:4009"}
+	got = hc.Endpoints()
+	if !reflect.DeepEqual(want, got) {
+		t.Fatalf("incorrect endpoints post-reset: want=%#v got=%#v", want, got)
+	}
+}
+
+func TestHTTPClusterClientSyncFail(t *testing.T) {
+	cf := newStaticHTTPClientFactory([]staticHTTPResponse{
+		staticHTTPResponse{err: errors.New("fail!")},
+	})
+
+	hc := &httpClusterClient{clientFactory: cf}
+	err := hc.reset([]string{"http://127.0.0.1:4001"})
+	if err != nil {
+		t.Fatalf("unexpected error during setup: %#v", err)
+	}
+
+	want := []string{"http://127.0.0.1:4001"}
+	got := hc.Endpoints()
+	if !reflect.DeepEqual(want, got) {
+		t.Fatalf("incorrect endpoints: want=%#v got=%#v", want, got)
+	}
+
+	err = hc.Sync(context.Background())
+	if err == nil {
+		t.Fatalf("got nil error during Sync")
+	}
+
+	got = hc.Endpoints()
+	if !reflect.DeepEqual(want, got) {
+		t.Fatalf("incorrect endpoints after failed Sync: want=%#v got=%#v", want, got)
 	}
 }
