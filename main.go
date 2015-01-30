@@ -30,6 +30,7 @@ import (
 
 	"github.com/coreos/etcd/etcdmain"
 	"github.com/coreos/etcd/migrate/starter"
+	"github.com/coreos/etcd/pkg/coreos"
 )
 
 func main() {
@@ -41,6 +42,8 @@ func main() {
 		if v {
 			starter.StartDesiredVersion(os.Args[1:])
 		}
+	} else if coreos.IsCoreOS() {
+		starter.StartDesiredVersion(os.Args[1:])
 	}
 	etcdmain.Main()
 }
