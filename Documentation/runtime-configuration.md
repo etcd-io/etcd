@@ -41,7 +41,7 @@ Decreasing the cluster size means the etcd cluster has to do less work for each 
 If the majority of your cluster is lost, then you need to take manual action in order to recover safely.
 The basic steps in the recovery process include creating a new cluster using the old data, forcing a single member to act as the leader, and finally using runtime configuration to add members to this new cluster.
 
-TODO: https://github.com/coreos/etcd/issues/1242
+See the admin guide doc on disaster recovery for backup and restore steps.
 
 ## Cluster Reconfiguration Operations
 
