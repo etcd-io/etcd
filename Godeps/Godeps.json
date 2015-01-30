@@ -1,6 +1,6 @@
 {
 	"ImportPath": "github.com/coreos/etcd",
-	"GoVersion": "go1.3.1",
+	"GoVersion": "go1.4.1",
 	"Packages": [
 		"./..."
 	],
@@ -8,6 +8,14 @@
 		{
 			"ImportPath": "code.google.com/p/gogoprotobuf/proto",
 			"Rev": "7fd1620f09261338b6b1ca1289ace83aee0ec946"
+		},
+		{
+			"ImportPath": "github.com/codahale/hdrhistogram",
+			"Rev": "9208b142303c12d8899bae836fd524ac9338b4fd"
+		},
+		{
+			"ImportPath": "github.com/codahale/metrics",
+			"Rev": "9d788a162cb186f9ced1922fc88d456a82cd16a0"
 		},
 		{
 			"ImportPath": "github.com/codegangsta/cli",
@@ -29,8 +37,7 @@
 		},
 		{
 			"ImportPath": "golang.org/x/net/context",
-			"Comment": "null-220",
-			"Rev": "c5a46024776ec35eb562fa9226968b9d543bb13a"
+			"Rev": "b8c11bbe941633d84573af9686bfef280594b4fd"
 		}
 	]
 }

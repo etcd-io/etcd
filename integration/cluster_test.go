@@ -33,7 +33,6 @@ import (
 	"github.com/coreos/etcd/client"
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/etcdhttp"
-	"github.com/coreos/etcd/etcdserver/etcdhttp/httptypes"
 	"github.com/coreos/etcd/pkg/testutil"
 	"github.com/coreos/etcd/pkg/transport"
 	"github.com/coreos/etcd/pkg/types"
@@ -85,7 +84,7 @@ func testClusterUsingDiscovery(t *testing.T, size int) {
 	dcc := mustNewHTTPClient(t, dc.URLs())
 	dkapi := client.NewKeysAPI(dcc)
 	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
-	if _, err := dkapi.Create(ctx, "/_config/size", fmt.Sprintf("%d", size), -1); err != nil {
+	if _, err := dkapi.Create(ctx, "/_config/size", fmt.Sprintf("%d", size)); err != nil {
 		t.Fatal(err)
 	}
 	cancel()
@@ -135,14 +134,14 @@ func TestForceNewCluster(t *testing.T) {
 	cc := mustNewHTTPClient(t, []string{c.Members[0].URL()})
 	kapi := client.NewKeysAPI(cc)
 	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
-	resp, err := kapi.Create(ctx, "/foo", "bar", -1)
+	resp, err := kapi.Create(ctx, "/foo", "bar")
 	if err != nil {
 		t.Fatalf("unexpected create error: %v", err)
 	}
 	cancel()
 	// ensure create has been applied in this machine
 	ctx, cancel = context.WithTimeout(context.Background(), requestTimeout)
-	if _, err := kapi.Watch("/foo", resp.Node.ModifiedIndex).Next(ctx); err != nil {
+	if _, err := kapi.Watcher("/foo", &client.WatcherOptions{AfterIndex: resp.Node.ModifiedIndex - 1}).Next(ctx); err != nil {
 		t.Fatalf("unexpected watch error: %v", err)
 	}
 	cancel()
@@ -163,7 +162,7 @@ func TestForceNewCluster(t *testing.T) {
 	kapi = client.NewKeysAPI(cc)
 	// ensure force restart keep the old data, and new cluster can make progress
 	ctx, cancel = context.WithTimeout(context.Background(), requestTimeout)
-	if _, err := kapi.Watch("/foo", resp.Node.ModifiedIndex).Next(ctx); err != nil {
+	if _, err := kapi.Watcher("/foo", &client.WatcherOptions{AfterIndex: resp.Node.ModifiedIndex - 1}).Next(ctx); err != nil {
 		t.Fatalf("unexpected watch error: %v", err)
 	}
 	cancel()
@@ -178,7 +177,7 @@ func clusterMustProgress(t *testing.T, membs []*member) {
 	kapi := client.NewKeysAPI(cc)
 	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 	key := fmt.Sprintf("foo%d", rand.Int())
-	resp, err := kapi.Create(ctx, "/"+key, "bar", -1)
+	resp, err := kapi.Create(ctx, "/"+key, "bar")
 	if err != nil {
 		t.Fatalf("create on %s error: %v", membs[0].URL(), err)
 	}
@@ -189,7 +188,7 @@ func clusterMustProgress(t *testing.T, membs []*member) {
 		cc := mustNewHTTPClient(t, []string{u})
 		kapi := client.NewKeysAPI(cc)
 		ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
-		if _, err := kapi.Watch(key, resp.Node.ModifiedIndex).Next(ctx); err != nil {
+		if _, err := kapi.Watcher(key, &client.WatcherOptions{AfterIndex: resp.Node.ModifiedIndex - 1}).Next(ctx); err != nil {
 			t.Fatalf("#%d: watch on %s error: %v", i, u, err)
 		}
 		cancel()
@@ -280,8 +279,8 @@ func (c *cluster) URLs() []string {
 	return urls
 }
 
-func (c *cluster) HTTPMembers() []httptypes.Member {
-	ms := make([]httptypes.Member, len(c.Members))
+func (c *cluster) HTTPMembers() []client.Member {
+	ms := make([]client.Member, len(c.Members))
 	for i, m := range c.Members {
 		ms[i].Name = m.Name
 		for _, ln := range m.PeerListeners {
@@ -310,7 +309,7 @@ func (c *cluster) AddMember(t *testing.T) {
 	cancel()
 
 	// wait for the add node entry applied in the cluster
-	members := append(c.HTTPMembers(), httptypes.Member{PeerURLs: []string{peerURL}, ClientURLs: []string{}})
+	members := append(c.HTTPMembers(), client.Member{PeerURLs: []string{peerURL}, ClientURLs: []string{}})
 	c.waitMembersMatch(t, members)
 
 	for _, ln := range m.PeerListeners {
@@ -363,7 +362,7 @@ func (c *cluster) Terminate(t *testing.T) {
 	}
 }
 
-func (c *cluster) waitMembersMatch(t *testing.T, membs []httptypes.Member) {
+func (c *cluster) waitMembersMatch(t *testing.T, membs []client.Member) {
 	for _, u := range c.URLs() {
 		cc := mustNewHTTPClient(t, []string{u})
 		ma := client.NewMembersAPI(cc)
@@ -406,7 +405,7 @@ func (c *cluster) name(i int) string {
 
 // isMembersEqual checks whether two members equal except ID field.
 // The given wmembs should always set ID field to empty string.
-func isMembersEqual(membs []httptypes.Member, wmembs []httptypes.Member) bool {
+func isMembersEqual(membs []client.Member, wmembs []client.Member) bool {
 	sort.Sort(SortableMemberSliceByPeerURLs(membs))
 	sort.Sort(SortableMemberSliceByPeerURLs(wmembs))
 	for i := range membs {
@@ -596,12 +595,13 @@ func (m *member) Terminate(t *testing.T) {
 	}
 }
 
-func mustNewHTTPClient(t *testing.T, eps []string) client.HTTPClient {
-	cc, err := client.NewHTTPClient(mustNewTransport(t), eps)
+func mustNewHTTPClient(t *testing.T, eps []string) client.Client {
+	cfg := client.Config{Transport: mustNewTransport(t), Endpoints: eps}
+	c, err := client.New(cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
-	return cc
+	return c
 }
 
 func mustNewTransport(t *testing.T) *http.Transport {
@@ -612,7 +612,7 @@ func mustNewTransport(t *testing.T) *http.Transport {
 	return tr
 }
 
-type SortableMemberSliceByPeerURLs []httptypes.Member
+type SortableMemberSliceByPeerURLs []client.Member
 
 func (p SortableMemberSliceByPeerURLs) Len() int { return len(p) }
 func (p SortableMemberSliceByPeerURLs) Less(i, j int) bool {

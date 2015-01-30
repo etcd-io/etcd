@@ -18,26 +18,20 @@ import (
 	"encoding/binary"
 	"io"
 
-	"github.com/coreos/etcd/pkg/metrics"
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/codahale/metrics"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft/raftpb"
 )
 
 type entryWriter struct {
-	w         io.Writer
-	id        types.ID
-	ents      *metrics.Counter
-	bytes     *metrics.Counter
-	lastIndex *metrics.Gauge
+	w  io.Writer
+	id types.ID
 }
 
 func newEntryWriter(w io.Writer, id types.ID) *entryWriter {
 	ew := &entryWriter{
-		w:         w,
-		id:        id,
-		ents:      metrics.GetMap("rafthttp.stream.entries_sent").NewCounter(id.String()),
-		bytes:     metrics.GetMap("rafthttp.stream.bytes_sent").NewCounter(id.String()),
-		lastIndex: metrics.GetMap("rafthttp.stream.last_index_sent").NewGauge(id.String()),
+		w:  w,
+		id: id,
 	}
 	return ew
 }
@@ -50,14 +44,14 @@ func (ew *entryWriter) writeEntries(ents []raftpb.Entry) error {
 	if err := binary.Write(ew.w, binary.BigEndian, uint64(l)); err != nil {
 		return err
 	}
-	ew.bytes.AddBy(8)
+	metrics.Counter("rafthttp.stream.bytes_sent." + ew.id.String()).AddN(8)
 	for i := 0; i < l; i++ {
 		if err := ew.writeEntry(&ents[i]); err != nil {
 			return err
 		}
-		ew.ents.Add()
+		metrics.Counter("rafthttp.stream.entries_sent." + ew.id.String()).Add()
 	}
-	ew.lastIndex.Set(int64(ents[l-1].Index))
+	metrics.Gauge("rafthttp.stream.last_index_sent." + ew.id.String()).Set(int64(ents[l-1].Index))
 	return nil
 }
 
@@ -71,12 +65,12 @@ func (ew *entryWriter) writeEntry(ent *raftpb.Entry) error {
 		return err
 	}
 	_, err = ew.w.Write(b)
-	ew.bytes.AddBy(8 + int64(size))
+	metrics.Counter("rafthttp.stream.bytes_sent." + ew.id.String()).AddN(8 + uint64(size))
 	return err
 }
 
 func (ew *entryWriter) stop() {
-	metrics.GetMap("rafthttp.stream.entries_sent").Delete(ew.id.String())
-	metrics.GetMap("rafthttp.stream.bytes_sent").Delete(ew.id.String())
-	metrics.GetMap("rafthttp.stream.last_index_sent").Delete(ew.id.String())
+	metrics.Counter("rafthttp.stream.bytes_sent." + ew.id.String()).Remove()
+	metrics.Counter("rafthttp.stream.entries_sent." + ew.id.String()).Remove()
+	metrics.Gauge("rafthttp.stream.last_index_sent." + ew.id.String()).Remove()
 }

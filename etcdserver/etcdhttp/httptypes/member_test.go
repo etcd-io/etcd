@@ -93,70 +93,6 @@ func TestMemberUnmarshal(t *testing.T) {
 	}
 }
 
-func TestMemberCollectionUnmarshal(t *testing.T) {
-	tests := []struct {
-		body []byte
-		want MemberCollection
-	}{
-		{
-			body: []byte(`{"members":[]}`),
-			want: MemberCollection([]Member{}),
-		},
-		{
-			body: []byte(`{"members":[{"id":"2745e2525fce8fe","peerURLs":["http://127.0.0.1:7003"],"name":"node3","clientURLs":["http://127.0.0.1:4003"]},{"id":"42134f434382925","peerURLs":["http://127.0.0.1:2380","http://127.0.0.1:7001"],"name":"node1","clientURLs":["http://127.0.0.1:2379","http://127.0.0.1:4001"]},{"id":"94088180e21eb87b","peerURLs":["http://127.0.0.1:7002"],"name":"node2","clientURLs":["http://127.0.0.1:4002"]}]}`),
-			want: MemberCollection(
-				[]Member{
-					{
-						ID:   "2745e2525fce8fe",
-						Name: "node3",
-						PeerURLs: []string{
-							"http://127.0.0.1:7003",
-						},
-						ClientURLs: []string{
-							"http://127.0.0.1:4003",
-						},
-					},
-					{
-						ID:   "42134f434382925",
-						Name: "node1",
-						PeerURLs: []string{
-							"http://127.0.0.1:2380",
-							"http://127.0.0.1:7001",
-						},
-						ClientURLs: []string{
-							"http://127.0.0.1:2379",
-							"http://127.0.0.1:4001",
-						},
-					},
-					{
-						ID:   "94088180e21eb87b",
-						Name: "node2",
-						PeerURLs: []string{
-							"http://127.0.0.1:7002",
-						},
-						ClientURLs: []string{
-							"http://127.0.0.1:4002",
-						},
-					},
-				},
-			),
-		},
-	}
-
-	for i, tt := range tests {
-		var got MemberCollection
-		err := json.Unmarshal(tt.body, &got)
-		if err != nil {
-			t.Errorf("#%d: unexpected error: %v", i, err)
-			continue
-		}
-
-		if !reflect.DeepEqual(tt.want, got) {
-			t.Errorf("#%d: incorrect output: want=%#v, got=%#v", i, tt.want, got)
-		}
-	}
-}
-
 func TestMemberCreateRequestUnmarshal(t *testing.T) {
 	body := []byte(`{"peerURLs": ["http://127.0.0.1:8081", "https://127.0.0.1:8080"]}`)
 	want := MemberCreateRequest{
@@ -195,24 +131,5 @@ func TestMemberCreateRequestUnmarshalFail(t *testing.T) {
 		if err := json.Unmarshal(tt, &req); err == nil {
 			t.Errorf("#%d: expected err, got nil", i)
 		}
-	}
-}
-
-func TestMemberCreateRequestMarshal(t *testing.T) {
-	req := MemberCreateRequest{
-		PeerURLs: types.URLs([]url.URL{
-			url.URL{Scheme: "http", Host: "127.0.0.1:8081"},
-			url.URL{Scheme: "https", Host: "127.0.0.1:8080"},
-		}),
-	}
-	want := []byte(`{"peerURLs":["http://127.0.0.1:8081","https://127.0.0.1:8080"]}`)
-
-	got, err := json.Marshal(&req)
-	if err != nil {
-		t.Fatalf("Marshal returned unexpected err=%v", err)
-	}
-
-	if !reflect.DeepEqual(want, got) {
-		t.Fatalf("Failed to marshal MemberCreateRequest: want=%s, got=%s", want, got)
 	}
 }
