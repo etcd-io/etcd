@@ -156,16 +156,40 @@ func actionMemberRemove(c *cli.Context) {
 		fmt.Fprintln(os.Stderr, "Provide a single member ID")
 		os.Exit(1)
 	}
+	removalID := args[0]
 
 	mAPI := mustNewMembersAPI(c)
-	mID := args[0]
+	// Get the list of members.
+	listctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
+	members, err := mAPI.List(listctx)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+		os.Exit(1)
+	}
+	// Sanity check the input.
+	foundID := false
+	for _, m := range members {
+		if m.ID == removalID {
+			foundID = true
+		}
+		if m.Name == removalID {
+			// Note that, so long as it's not ambiguous, we *could* do the right thing by name here.
+			fmt.Fprintf(os.Stderr, "Found a member named %s; if this is correct, please use its ID, eg:\n\tetcdctl member remove %s\n\n", m.Name, m.ID)
+		}
+	}
+	if !foundID {
+		fmt.Fprintf(os.Stderr, "Couldn't find a member in the cluster with an ID of %s.\n", removalID)
+		os.Exit(1)
+	}
+
+	// Actually attempt to remove the member.
 	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
-	err := mAPI.Remove(ctx, mID)
+	err = mAPI.Remove(ctx, removalID)
 	cancel()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
 	}
 
-	fmt.Printf("Removed member %s from cluster\n", mID)
+	fmt.Printf("Removed member %s from cluster\n", removalID)
 }
