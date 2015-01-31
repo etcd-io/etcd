@@ -251,7 +251,7 @@ func startProxy(cfg *config) error {
 
 	uf := func() []string {
 		old := cls.PeerURLs()
-		cls, err := etcdserver.GetClusterFromPeers(peerURLs, tr)
+		cls, err = etcdserver.GetClusterFromPeers(peerURLs, tr)
 		if err != nil {
 			log.Printf("proxy: %v", err)
 			return []string{}
