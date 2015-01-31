@@ -163,7 +163,7 @@ func actionMemberRemove(c *cli.Context) {
 	listctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
 	members, err := mAPI.List(listctx)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err.Error())
+		fmt.Fprintln(os.Stderr, "Error while verifying ID against known members:", err.Error())
 		os.Exit(1)
 	}
 	// Sanity check the input.
@@ -174,7 +174,8 @@ func actionMemberRemove(c *cli.Context) {
 		}
 		if m.Name == removalID {
 			// Note that, so long as it's not ambiguous, we *could* do the right thing by name here.
-			fmt.Fprintf(os.Stderr, "Found a member named %s; if this is correct, please use its ID, eg:\n\tetcdctl member remove %s\n\n", m.Name, m.ID)
+			fmt.Fprintf(os.Stderr, "Found a member named %s; if this is correct, please use its ID, eg:\n\tetcdctl member remove %s\n", m.Name, m.ID)
+			fmt.Fprintf(os.Stderr, "For more details, read the documentation at https://github.com/coreos/etcd/blob/master/Documentation/runtime-configuration.md#remove-a-member\n\n")
 		}
 	}
 	if !foundID {
@@ -187,7 +188,7 @@ func actionMemberRemove(c *cli.Context) {
 	err = mAPI.Remove(ctx, removalID)
 	cancel()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err.Error())
+		fmt.Fprintf(os.Stderr, "Recieved an error trying to remove member %s: %s", removalID, err.Error())
 		os.Exit(1)
 	}
 
