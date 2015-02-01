@@ -177,6 +177,11 @@ func (p *Proc) Terminate() {
 
 type ProcGroup []*Proc
 
+func NewProcInProcGroupWithV1Flags(path string, num int, idx int) *Proc {
+	pg := NewProcGroupWithV1Flags(path, num)
+	return pg[idx]
+}
+
 func NewProcGroupWithV1Flags(path string, num int) ProcGroup {
 	pg := make([]*Proc, num)
 	pg[0] = NewProcWithDefaultFlags(path)
