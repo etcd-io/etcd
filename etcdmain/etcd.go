@@ -221,9 +221,10 @@ func startProxy(cfg *config) error {
 	}
 
 	if cfg.dir == "" {
-		cfg.dir = fmt.Sprintf("%v.etcdproxy", cfg.name)
+		cfg.dir = fmt.Sprintf("%v.etcd", cfg.name)
 		log.Printf("no proxy data-dir provided, using default proxy data-dir ./%s", cfg.dir)
 	}
+	cfg.dir = path.Join(cfg.dir, "proxy")
 	err = os.MkdirAll(cfg.dir, 0700)
 	if err != nil {
 		return err
@@ -250,19 +251,23 @@ func startProxy(cfg *config) error {
 	}
 
 	uf := func() []string {
-		old := cls.PeerURLs()
-		cls, err = etcdserver.GetClusterFromPeers(peerURLs, tr)
+		gcls, err := etcdserver.GetClusterFromPeers(peerURLs, tr)
+		// TODO: remove the 2nd check when we fix GetClusterFromPeers
+		// GetClusterFromPeers should not return nil error with an invaild empty cluster
 		if err != nil {
 			log.Printf("proxy: %v", err)
 			return []string{}
 		}
+		if len(gcls.Members()) == 0 {
+			return cls.ClientURLs()
+		}
+		cls = gcls
 
 		urls := struct{ PeerURLs []string }{cls.PeerURLs()}
 		b, err := json.Marshal(urls)
 		if err != nil {
 			log.Printf("proxy: error on marshal peer urls %s", err)
 			return cls.ClientURLs()
-
 		}
 
 		err = ioutil.WriteFile(clusterfile+".bak", b, 0600)
@@ -275,9 +280,10 @@ func startProxy(cfg *config) error {
 			log.Printf("proxy: error on updating clusterfile %s", err)
 			return cls.ClientURLs()
 		}
-		if !reflect.DeepEqual(cls.PeerURLs(), old) {
-			log.Printf("proxy: updated peer urls in cluster file from %v to %v", old, cls.PeerURLs())
+		if !reflect.DeepEqual(cls.PeerURLs(), peerURLs) {
+			log.Printf("proxy: updated peer urls in cluster file from %v to %v", peerURLs, cls.PeerURLs())
 		}
+		peerURLs = cls.PeerURLs()
 
 		return cls.ClientURLs()
 	}
