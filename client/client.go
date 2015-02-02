@@ -175,7 +175,7 @@ func (c *httpClusterClient) reset(eps []string) error {
 	return nil
 }
 
-func (c *httpClusterClient) Do(ctx context.Context, act httpAction) (resp *http.Response, body []byte, err error) {
+func (c *httpClusterClient) Do(ctx context.Context, act httpAction) (*http.Response, []byte, error) {
 	c.RLock()
 	leps := len(c.endpoints)
 	eps := make([]url.URL, leps)
@@ -183,14 +183,16 @@ func (c *httpClusterClient) Do(ctx context.Context, act httpAction) (resp *http.
 	c.RUnlock()
 
 	if leps == 0 {
-		err = ErrNoEndpoints
-		return
+		return nil, nil, ErrNoEndpoints
 	}
 
 	if leps != n {
-		err = errors.New("unable to pick endpoint: copy failed")
-		return
+		return nil, nil, errors.New("unable to pick endpoint: copy failed")
 	}
+
+	var resp *http.Response
+	var body []byte
+	var err error
 
 	for _, ep := range eps {
 		hc := c.clientFactory(ep)
@@ -207,7 +209,7 @@ func (c *httpClusterClient) Do(ctx context.Context, act httpAction) (resp *http.
 		break
 	}
 
-	return
+	return resp, body, err
 }
 
 func (c *httpClusterClient) Endpoints() []string {
