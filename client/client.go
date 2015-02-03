@@ -270,9 +270,10 @@ func (c *simpleHTTPClient) Do(ctx context.Context, act httpAction) (*http.Respon
 	case rtresp := <-rtchan:
 		resp, err = rtresp.resp, rtresp.err
 	case <-ctx.Done():
+		// cancel and wait for request to actually exit before continuing
 		c.transport.CancelRequest(req)
-		// wait for request to actually exit before continuing
-		<-rtchan
+		rtresp := <-rtchan
+		resp = rtresp.resp
 		err = ctx.Err()
 	}
 
