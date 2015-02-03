@@ -299,13 +299,14 @@ type redirectFollowingHTTPClient struct {
 }
 
 func (r *redirectFollowingHTTPClient) Do(ctx context.Context, act httpAction) (*http.Response, []byte, error) {
+	next := act
 	for i := 0; i < 100; i++ {
 		if i > 0 {
 			if err := r.checkRedirect(i); err != nil {
 				return nil, nil, err
 			}
 		}
-		resp, body, err := r.client.Do(ctx, act)
+		resp, body, err := r.client.Do(ctx, next)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -318,7 +319,7 @@ func (r *redirectFollowingHTTPClient) Do(ctx context.Context, act httpAction) (*
 			if err != nil {
 				return nil, nil, fmt.Errorf("Location header not valid URL: %s", hdr)
 			}
-			act = &redirectedHTTPAction{
+			next = &redirectedHTTPAction{
 				action:   act,
 				location: *loc,
 			}
