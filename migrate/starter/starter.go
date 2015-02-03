@@ -51,7 +51,7 @@ const (
 	empty     version = "empty"
 	unknown   version = "unknown"
 
-	defaultInternalV1etcdBinaryDir = "/usr/libexec/etcd/versions/"
+	defaultInternalV1etcdBinaryDir = "/usr/libexec/etcd/internal_versions/"
 )
 
 var (
