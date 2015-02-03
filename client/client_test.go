@@ -522,6 +522,18 @@ func TestRedirectFollowingHTTPClient(t *testing.T) {
 			},
 			wantErr: errors.New("Location header not valid URL: :"),
 		},
+
+		// fail if redirects checked way too many times
+		{
+			checkRedirect: func(int) error { return nil },
+			client: &staticHTTPClient{
+				resp: http.Response{
+					StatusCode: http.StatusTemporaryRedirect,
+					Header:     http.Header{"Location": []string{"http://example.com"}},
+				},
+			},
+			wantErr: errTooManyRedirectChecks,
+		},
 	}
 
 	for i, tt := range tests {
