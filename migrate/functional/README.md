@@ -7,7 +7,7 @@ This functional test suite deploys a etcd cluster using processes, and asserts e
 Dependencies
 ------------
 
-The test suite can only be run in linux system. It's recommended to run this in a virtual machine environment on CoreOS (e.g. using coreos-vagrant). The only dependency for the tests not provided on the CoreOS image is go.
+The test suite can only be run in CoreOS system. It's recommended to run this in a virtual machine environment on CoreOS (e.g. using coreos-vagrant). The only dependency for the tests not provided on the CoreOS image is go.
 
 Usage
 -----

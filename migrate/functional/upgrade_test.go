@@ -1,6 +1,7 @@
 package functional
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -259,6 +260,84 @@ func TestJoinV1ClusterViaDiscovery(t *testing.T) {
 		if ver != "1" {
 			t.Errorf("internal version = %s, want %s", ver, "1")
 		}
+	}
+}
+
+func TestUpgradeV1Standby(t *testing.T) {
+	// get v1 standby data dir
+	pg := NewProcGroupWithV1Flags(v1BinPath, 3)
+	if err := pg.Start(); err != nil {
+		t.Fatalf("Start error: %v", err)
+	}
+	req, err := http.NewRequest("PUT", pg[0].PeerURL+"/v2/admin/config", bytes.NewBufferString(`{"activeSize":3,"removeDelay":1800,"syncInterval":5}`))
+	if err != nil {
+		t.Fatalf("NewRequest error: %v", err)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("http Do error: %v", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want %d", resp.StatusCode, http.StatusOK)
+	}
+
+	p := NewProcInProcGroupWithV1Flags(v2BinPath, 4, 3)
+	if err := p.Start(); err != nil {
+		t.Fatalf("Start error: %v", err)
+	}
+	fmt.Println("checking new member is in standby mode...")
+	mustExist(path.Join(p.DataDir, "standby_info"))
+	ver, err := checkInternalVersion(p.URL)
+	if err != nil {
+		t.Fatalf("checkVersion error: %v", err)
+	}
+	if ver != "1" {
+		t.Errorf("internal version = %s, want %s", ver, "1")
+	}
+
+	fmt.Println("upgrading the whole cluster...")
+	cmd := exec.Command(etcdctlBinPath, "upgrade", "--peer-url", pg[0].PeerURL)
+	if err := cmd.Start(); err != nil {
+		t.Fatalf("Start error: %v", err)
+	}
+	if err := cmd.Wait(); err != nil {
+		t.Fatalf("Wait error: %v", err)
+	}
+	fmt.Println("waiting until peer-mode etcd exits...")
+	if err := pg.Wait(); err != nil {
+		t.Fatalf("Wait error: %v", err)
+	}
+	fmt.Println("restarting the peer-mode etcd...")
+	npg := NewProcGroupWithV1Flags(v2BinPath, 3)
+	npg.InheritDataDir(pg)
+	npg.CleanUnsuppportedV1Flags()
+	if err := npg.Start(); err != nil {
+		t.Fatalf("Start error: %v", err)
+	}
+	defer npg.Terminate()
+	fmt.Println("waiting until standby-mode etcd exits...")
+	if err := p.Wait(); err != nil {
+		t.Fatalf("Wait error: %v", err)
+	}
+	fmt.Println("restarting the standby-mode etcd...")
+	np := NewProcInProcGroupWithV1Flags(v2BinPath, 4, 3)
+	np.SetDataDir(p.DataDir)
+	np.CleanUnsuppportedV1Flags()
+	if err := np.Start(); err != nil {
+		t.Fatalf("Start error: %v", err)
+	}
+	defer np.Terminate()
+
+	fmt.Println("checking the new member is in v2 proxy mode...")
+	ver, err = checkInternalVersion(np.URL)
+	if err != nil {
+		t.Fatalf("checkVersion error: %v", err)
+	}
+	if ver != "2" {
+		t.Errorf("internal version = %s, want %s", ver, "1")
+	}
+	if _, err := os.Stat(path.Join(np.DataDir, "proxy")); err != nil {
+		t.Errorf("stat proxy dir error = %v, want nil", err)
 	}
 }
 

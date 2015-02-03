@@ -54,7 +54,6 @@ func NewProcWithDefaultFlags(path string) *Proc {
 	}
 	// always expect to use start_desired_verson mode
 	p.Env = append(p.Env,
-		"ETCD_ALLOW_LEGACY_MODE=true",
 		"ETCD_BINARY_DIR="+binDir,
 	)
 	return p
@@ -177,6 +176,11 @@ func (p *Proc) Terminate() {
 }
 
 type ProcGroup []*Proc
+
+func NewProcInProcGroupWithV1Flags(path string, num int, idx int) *Proc {
+	pg := NewProcGroupWithV1Flags(path, num)
+	return pg[idx]
+}
 
 func NewProcGroupWithV1Flags(path string, num int) ProcGroup {
 	pg := make([]*Proc, num)
