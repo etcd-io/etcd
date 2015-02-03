@@ -1,6 +1,7 @@
 package rafttest
 
 import (
+	"sync"
 	"time"
 
 	"github.com/coreos/etcd/raft/raftpb"
@@ -14,15 +15,21 @@ type network interface {
 	// delay message for (0, d] randomly at given rate (1.0 delay all messages)
 	// do we need rate here?
 	delay(from, to uint64, d time.Duration, rate float64)
+
+	disconnect(id uint64)
+	connect(id uint64)
 }
 
 type raftNetwork struct {
-	recvQueues map[uint64]chan raftpb.Message
+	mu           sync.Mutex
+	disconnected map[uint64]bool
+	recvQueues   map[uint64]chan raftpb.Message
 }
 
 func newRaftNetwork(nodes ...uint64) *raftNetwork {
 	pn := &raftNetwork{
-		recvQueues: make(map[uint64]chan raftpb.Message, 0),
+		recvQueues:   make(map[uint64]chan raftpb.Message),
+		disconnected: make(map[uint64]bool),
 	}
 
 	for _, n := range nodes {
@@ -36,18 +43,27 @@ func (rn *raftNetwork) nodeNetwork(id uint64) *nodeNetwork {
 }
 
 func (rn *raftNetwork) send(m raftpb.Message) {
+	rn.mu.Lock()
 	to := rn.recvQueues[m.To]
+	if rn.disconnected[m.To] {
+		to = nil
+	}
+	rn.mu.Unlock()
+
 	if to == nil {
-		panic("sent to nil")
+		return
 	}
 	to <- m
 }
 
 func (rn *raftNetwork) recvFrom(from uint64) chan raftpb.Message {
+	rn.mu.Lock()
 	fromc := rn.recvQueues[from]
-	if fromc == nil {
-		panic("recv from nil")
+	if rn.disconnected[from] {
+		fromc = nil
 	}
+	rn.mu.Unlock()
+
 	return fromc
 }
 
@@ -57,6 +73,18 @@ func (rn *raftNetwork) drop(from, to uint64, rate float64) {
 
 func (rn *raftNetwork) delay(from, to uint64, d time.Duration, rate float64) {
 	panic("unimplemented")
+}
+
+func (rn *raftNetwork) disconnect(id uint64) {
+	rn.mu.Lock()
+	defer rn.mu.Unlock()
+	rn.disconnected[id] = true
+}
+
+func (rn *raftNetwork) connect(id uint64) {
+	rn.mu.Lock()
+	defer rn.mu.Unlock()
+	rn.disconnected[id] = false
 }
 
 type nodeNetwork struct {
