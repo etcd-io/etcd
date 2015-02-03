@@ -28,8 +28,9 @@ import (
 )
 
 var (
-	ErrNoEndpoints      = errors.New("client: no endpoints available")
-	ErrTooManyRedirects = errors.New("client: too many redirects")
+	ErrNoEndpoints           = errors.New("client: no endpoints available")
+	ErrTooManyRedirects      = errors.New("client: too many redirects")
+	errTooManyRedirectChecks = errors.New("client: too many redirect checks")
 )
 
 var DefaultRequestTimeout = 5 * time.Second
@@ -297,7 +298,7 @@ type redirectFollowingHTTPClient struct {
 }
 
 func (r *redirectFollowingHTTPClient) Do(ctx context.Context, act httpAction) (*http.Response, []byte, error) {
-	for i := 0; ; i++ {
+	for i := 0; i < 100; i++ {
 		if i > 0 {
 			if err := r.checkRedirect(i); err != nil {
 				return nil, nil, err
@@ -324,6 +325,8 @@ func (r *redirectFollowingHTTPClient) Do(ctx context.Context, act httpAction) (*
 		}
 		return resp, body, nil
 	}
+
+	return nil, nil, errTooManyRedirectChecks
 }
 
 type redirectedHTTPAction struct {
