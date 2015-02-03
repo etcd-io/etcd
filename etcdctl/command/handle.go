@@ -122,7 +122,7 @@ func printKey(resp *etcd.Response, format string) {
 		fmt.Fprintln(os.Stderr, fmt.Sprintf("Cannot print key [%s: Is a directory]", resp.Node.Key))
 		os.Exit(1)
 	}
-	printKeyOnly(resp, format)
+	printKeyOnly(resp, format, false)
 }
 
 // printAll prints the etcd response in the given format in its best efforts.
@@ -130,15 +130,27 @@ func printAll(resp *etcd.Response, format string) {
 	if resp.Node.Dir == true {
 		return
 	}
-	printKeyOnly(resp, format)
+	printKeyOnly(resp, format, false)
+}
+
+// printAllPrependKey is just like printAll, but prepends the key name to the new value
+func printAllPrependKey(resp *etcd.Response, format string) {
+	if resp.Node.Dir == true {
+		return
+	}
+	printKeyOnly(resp, format, true)
 }
 
 // printKeyOnly only supports to print key correctly.
-func printKeyOnly(resp *etcd.Response, format string) {
+func printKeyOnly(resp *etcd.Response, format string, prependKey bool) {
 	// Format the result.
 	switch format {
 	case "simple":
-		fmt.Println(resp.Node.Value)
+		if prependKey {
+			fmt.Println(fmt.Sprintf("%s: %s", resp.Node.Key, resp.Node.Value))
+		} else {
+			fmt.Println(resp.Node.Value)
+		}
 	case "extended":
 		// Extended prints in a rfc2822 style format
 		fmt.Println("Key:", resp.Node.Key)
