@@ -54,7 +54,6 @@ func NewProcWithDefaultFlags(path string) *Proc {
 	}
 	// always expect to use start_desired_verson mode
 	p.Env = append(p.Env,
-		"ETCD_ALLOW_LEGACY_MODE=true",
 		"ETCD_BINARY_DIR="+binDir,
 	)
 	return p
