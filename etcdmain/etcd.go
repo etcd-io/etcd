@@ -360,7 +360,7 @@ func makeMemberDir(dir string) error {
 			// Link it to the subdir and keep the v1 file at the original
 			// location, so v0.4 etcd can still bootstrap if the upgrade
 			// failed.
-			if err := os.Link(path.Join(dir, name), path.Join(membdir, name)); err != nil {
+			if err := os.Symlink(path.Join(dir, name), path.Join(membdir, name)); err != nil {
 				return err
 			}
 		case v2Files.Contains(name):
