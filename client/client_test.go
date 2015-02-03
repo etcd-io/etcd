@@ -16,6 +16,7 @@ package client
 
 import (
 	"errors"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -176,6 +177,44 @@ func TestSimpleHTTPClientDoCancelContext(t *testing.T) {
 	_, _, err := c.Do(context.Background(), &fakeAction{})
 	if err == nil {
 		t.Fatalf("expected non-nil error, got nil")
+	}
+}
+
+type checkableReadCloser struct {
+	io.ReadCloser
+	closed bool
+}
+
+func (c *checkableReadCloser) Close() error {
+	c.closed = true
+	return c.ReadCloser.Close()
+}
+
+func TestSimpleHTTPClientDoCancelContextResponseBodyClosed(t *testing.T) {
+	tr := newFakeTransport()
+	c := &simpleHTTPClient{transport: tr}
+
+	// create an already-cancelled context
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	body := &checkableReadCloser{ReadCloser: ioutil.NopCloser(strings.NewReader("foo"))}
+	go func() {
+		// wait for CancelRequest to be called, informing us that simpleHTTPClient
+		// knows the context is already timed out
+		<-tr.startCancel
+
+		tr.respchan <- &http.Response{Body: body}
+		tr.finishCancel <- struct{}{}
+	}()
+
+	_, _, err := c.Do(ctx, &fakeAction{})
+	if err == nil {
+		t.Fatalf("expected non-nil error, got nil")
+	}
+
+	if !body.closed {
+		t.Fatalf("expected closed body")
 	}
 }
 
