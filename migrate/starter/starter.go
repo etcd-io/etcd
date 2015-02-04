@@ -32,6 +32,7 @@ import (
 	"github.com/coreos/etcd/migrate"
 	"github.com/coreos/etcd/pkg/fileutil"
 	"github.com/coreos/etcd/pkg/flags"
+	"github.com/coreos/etcd/pkg/osutil"
 	"github.com/coreos/etcd/pkg/types"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
@@ -123,7 +124,7 @@ func checkInternalVersion(fs *flag.FlagSet) version {
 				return internalV1
 			}
 			if ver == internalV2 {
-				os.Unsetenv("ETCD_DISCOVERY")
+				osutil.Unsetenv("ETCD_DISCOVERY")
 				os.Args = append(os.Args, "-initial-cluster", standbyInfo.InitialCluster())
 				return internalV2Proxy
 			}
