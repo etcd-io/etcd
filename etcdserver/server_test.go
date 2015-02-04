@@ -1310,6 +1310,8 @@ func (n *nodeRecorder) Stop() {
 	n.Record(testutil.Action{Name: "Stop"})
 }
 
+func (n *nodeRecorder) ReportUnreachable(id uint64) {}
+
 func (n *nodeRecorder) Compact(index uint64, nodes []uint64, d []byte) {
 	n.Record(testutil.Action{Name: "Compact"})
 }

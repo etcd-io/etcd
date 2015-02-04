@@ -1289,6 +1289,67 @@ func TestLeaderIncreaseNext(t *testing.T) {
 	}
 }
 
+func TestUnreachable(t *testing.T) {
+	previousEnts := []pb.Entry{{Term: 1, Index: 1}, {Term: 1, Index: 2}, {Term: 1, Index: 3}}
+	s := NewMemoryStorage()
+	s.Append(previousEnts)
+	r := newRaft(1, []uint64{1, 2}, 10, 1, s, 0)
+	r.becomeCandidate()
+	r.becomeLeader()
+	r.readMessages()
+
+	// set node 2 to unreachable
+	r.prs[2].Match = 3
+	r.prs[2].Next = 4
+	r.prs[2].Wait = 0
+	r.prs[2].unreachable()
+
+	for i := 0; i < 3; i++ {
+		// node 2 is unreachable, we expect that raft will only send out one msgAPP per heartbeat timeout
+		r.Step(pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{Data: []byte("somedata")}}})
+		msg := r.readMessages()
+		if len(msg) != 1 {
+			t.Errorf("len(msg) = %d, want %d", len(msg), 1)
+		}
+		if msg[0].Index != 3 {
+			t.Errorf("index = %d, want %d", msg[0].Index, 3)
+		}
+
+		if r.prs[2].Wait != r.heartbeatTimeout {
+			t.Errorf("wait = %d, want %d", r.prs[1].Wait, r.heartbeatTimeout)
+		}
+		for i := 0; i < 10; i++ {
+			r.Step(pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{Data: []byte("somedata")}}})
+			if l := len(r.readMessages()); l != 0 {
+				t.Errorf("len(msg) = %d, want %d", l, 0)
+			}
+		}
+
+		// do a heartbeat
+		for i := 0; i < r.heartbeatTimeout; i++ {
+			r.Step(pb.Message{From: 1, To: 1, Type: pb.MsgBeat})
+		}
+		// consume the heartbeat
+		msg = r.readMessages()
+		if len(msg) != 1 {
+			t.Errorf("len(msg) = %d, want %d", len(msg), 1)
+		}
+		if msg[0].Type != pb.MsgHeartbeat {
+			t.Errorf("type = %s, want %s", msg[0].Type, pb.MsgHeartbeat)
+		}
+	}
+
+	// recover node 2
+	r.prs[2].reachable()
+	for i := 0; i < 10; i++ {
+		r.Step(pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{Data: []byte("somedata")}}})
+		msgs := r.readMessages()
+		if len(msgs) != 1 {
+			t.Errorf("len(msg) = %d, want %d", len(msgs), 1)
+		}
+	}
+}
+
 func TestRestore(t *testing.T) {
 	s := pb.Snapshot{
 		Metadata: pb.SnapshotMetadata{
