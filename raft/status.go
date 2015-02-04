@@ -58,7 +58,7 @@ func (s Status) MarshalJSON() ([]byte, error) {
 		j += "}}"
 	} else {
 		for k, v := range s.Progress {
-			subj := fmt.Sprintf(`"%x":{"match":%d,"next":%d},`, k, v.Match, v.Next)
+			subj := fmt.Sprintf(`"%x":{"match":%d,"next":%d,"unreachable":%t},`, k, v.Match, v.Next, v.Unreachable)
 			j += subj
 		}
 		// remove the trailing ","

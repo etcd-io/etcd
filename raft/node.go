@@ -119,6 +119,8 @@ type Node interface {
 	ApplyConfChange(cc pb.ConfChange) *pb.ConfState
 	// Status returns the current status of the raft state machine.
 	Status() Status
+	// Report reports the given node is not reachable for the last send.
+	ReportUnreachable(id uint64)
 	// Stop performs any necessary termination of the Node
 	Stop()
 }
@@ -270,7 +272,7 @@ func (n *node) run(r *raft) {
 			m.From = r.id
 			r.Step(m)
 		case m := <-n.recvc:
-			// filter out response message from unknow From.
+			// filter out response message from unknown From.
 			if _, ok := r.prs[m.From]; ok || !IsResponseMsg(m) {
 				r.Step(m) // raft never returns an error
 			}
@@ -416,6 +418,13 @@ func (n *node) Status() Status {
 	c := make(chan Status)
 	n.status <- c
 	return <-c
+}
+
+func (n *node) ReportUnreachable(id uint64) {
+	select {
+	case n.recvc <- pb.Message{Type: pb.MsgUnreachable, From: id}:
+	case <-n.done:
+	}
 }
 
 func newReady(r *raft, prevSoftSt *SoftState, prevHardSt pb.HardState) Ready {

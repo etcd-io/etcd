@@ -42,6 +42,7 @@ enum MessageType {
 	MsgSnap          = 7;
 	MsgHeartbeat     = 8;
 	MsgHeartbeatResp = 9;
+	MsgUnreachable   = 10;
 }
 
 message Message {
