@@ -123,6 +123,7 @@ func checkInternalVersion(fs *flag.FlagSet) version {
 				return internalV1
 			}
 			if ver == internalV2 {
+				os.Unsetenv("ETCD_DISCOVERY")
 				os.Args = append(os.Args, "-initial-cluster", standbyInfo.InitialCluster())
 				return internalV2Proxy
 			}
