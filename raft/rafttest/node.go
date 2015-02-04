@@ -13,7 +13,7 @@ type node struct {
 	raft.Node
 	id     uint64
 	paused bool
-	nt     network
+	iface  iface
 	stopc  chan struct{}
 
 	// stable
@@ -21,14 +21,14 @@ type node struct {
 	state   raftpb.HardState
 }
 
-func startNode(id uint64, peers []raft.Peer, nt network) *node {
+func startNode(id uint64, peers []raft.Peer, iface iface) *node {
 	st := raft.NewMemoryStorage()
 	rn := raft.StartNode(id, peers, 10, 1, st)
 	n := &node{
 		Node:    rn,
 		id:      id,
 		storage: st,
-		nt:      nt,
+		iface:   iface,
 	}
 	n.start()
 	return n
@@ -51,11 +51,11 @@ func (n *node) start() {
 				n.storage.Append(rd.Entries)
 				go func() {
 					for _, m := range rd.Messages {
-						n.nt.send(m)
+						n.iface.send(m)
 					}
 				}()
 				n.Advance()
-			case m := <-n.nt.recv():
+			case m := <-n.iface.recv():
 				n.Step(context.TODO(), m)
 			case <-n.stopc:
 				n.Stop()
@@ -72,7 +72,7 @@ func (n *node) start() {
 // All in memory state of node is discarded.
 // All stable MUST be unchanged.
 func (n *node) stop() {
-	n.nt.disconnect(n.id)
+	n.iface.disconnect()
 	n.stopc <- struct{}{}
 	// wait for the shutdown
 	<-n.stopc
@@ -85,7 +85,7 @@ func (n *node) restart() {
 	<-n.stopc
 	n.Node = raft.RestartNode(n.id, 10, 1, n.storage, 0)
 	n.start()
-	n.nt.connect(n.id)
+	n.iface.connect()
 }
 
 // pause pauses the node.

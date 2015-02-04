@@ -7,17 +7,25 @@ import (
 	"github.com/coreos/etcd/raft/raftpb"
 )
 
-type network interface {
+// a network interface
+type iface interface {
 	send(m raftpb.Message)
 	recv() chan raftpb.Message
+	disconnect()
+	connect()
+}
+
+// a network
+type network interface {
 	// drop message at given rate (1.0 drops all messages)
 	drop(from, to uint64, rate float64)
 	// delay message for (0, d] randomly at given rate (1.0 delay all messages)
 	// do we need rate here?
 	delay(from, to uint64, d time.Duration, rate float64)
-
 	disconnect(id uint64)
 	connect(id uint64)
+	// heal heals the network
+	heal()
 }
 
 type raftNetwork struct {
@@ -38,7 +46,7 @@ func newRaftNetwork(nodes ...uint64) *raftNetwork {
 	return pn
 }
 
-func (rn *raftNetwork) nodeNetwork(id uint64) *nodeNetwork {
+func (rn *raftNetwork) nodeNetwork(id uint64) iface {
 	return &nodeNetwork{id: id, raftNetwork: rn}
 }
 
@@ -75,6 +83,8 @@ func (rn *raftNetwork) delay(from, to uint64, d time.Duration, rate float64) {
 	panic("unimplemented")
 }
 
+func (rn *raftNetwork) heal() {}
+
 func (rn *raftNetwork) disconnect(id uint64) {
 	rn.mu.Lock()
 	defer rn.mu.Unlock()
@@ -90,6 +100,14 @@ func (rn *raftNetwork) connect(id uint64) {
 type nodeNetwork struct {
 	id uint64
 	*raftNetwork
+}
+
+func (nt *nodeNetwork) connect() {
+	nt.raftNetwork.connect(nt.id)
+}
+
+func (nt *nodeNetwork) disconnect() {
+	nt.raftNetwork.disconnect(nt.id)
 }
 
 func (nt *nodeNetwork) send(m raftpb.Message) {
