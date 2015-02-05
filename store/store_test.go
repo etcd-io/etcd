@@ -23,6 +23,15 @@ import (
 	etcdErr "github.com/coreos/etcd/error"
 )
 
+func TestNewStoreWithNamespaces(t *testing.T) {
+	s := newStore("/0", "/1")
+
+	_, err := s.Get("/0", false, false)
+	assert.Nil(t, err, "")
+	_, err = s.Get("/1", false, false)
+	assert.Nil(t, err, "")
+}
+
 // Ensure that the store can retrieve an existing value.
 func TestStoreGetValue(t *testing.T) {
 	s := newStore()
@@ -433,22 +442,24 @@ func TestStoreDeleteDiretoryFailsIfNonRecursiveAndDir(t *testing.T) {
 }
 
 func TestRootRdOnly(t *testing.T) {
-	s := newStore()
+	s := newStore("/0")
 
-	_, err := s.Set("/", true, "", Permanent)
-	assert.NotNil(t, err, "")
+	for _, tt := range []string{"/", "/0"} {
+		_, err := s.Set(tt, true, "", Permanent)
+		assert.NotNil(t, err, "")
 
-	_, err = s.Delete("/", true, true)
-	assert.NotNil(t, err, "")
+		_, err = s.Delete(tt, true, true)
+		assert.NotNil(t, err, "")
 
-	_, err = s.Create("/", true, "", false, Permanent)
-	assert.NotNil(t, err, "")
+		_, err = s.Create(tt, true, "", false, Permanent)
+		assert.NotNil(t, err, "")
 
-	_, err = s.Update("/", "", Permanent)
-	assert.NotNil(t, err, "")
+		_, err = s.Update(tt, "", Permanent)
+		assert.NotNil(t, err, "")
 
-	_, err = s.CompareAndSwap("/", "", 0, "", Permanent)
-	assert.NotNil(t, err, "")
+		_, err = s.CompareAndSwap(tt, "", 0, "", Permanent)
+		assert.NotNil(t, err, "")
+	}
 }
 
 func TestStoreCompareAndDeletePrevValue(t *testing.T) {
