@@ -49,7 +49,7 @@ func max(a, b uint64) uint64 {
 func IsLocalMsg(m pb.Message) bool { return m.Type == pb.MsgHup || m.Type == pb.MsgBeat }
 
 func IsResponseMsg(m pb.Message) bool {
-	return m.Type == pb.MsgAppResp || m.Type == pb.MsgVoteResp || m.Type == pb.MsgHeartbeatResp
+	return m.Type == pb.MsgAppResp || m.Type == pb.MsgVoteResp || m.Type == pb.MsgHeartbeatResp || m.Type == pb.MsgUnreachable
 }
 
 // EntryFormatter can be implemented by the application to provide human-readable formatting

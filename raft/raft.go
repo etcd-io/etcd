@@ -53,10 +53,13 @@ func (st StateType) String() string {
 type Progress struct {
 	Match, Next uint64
 	Wait        int
+	Unreachable bool
 }
 
 func (pr *Progress) update(n uint64) {
 	pr.waitReset()
+	pr.reachable()
+
 	if pr.Match < n {
 		pr.Match = n
 	}
@@ -71,6 +74,8 @@ func (pr *Progress) optimisticUpdate(n uint64) { pr.Next = n + 1 }
 // Otherwise it decreases the progress next index to min(rejected, last) and returns true.
 func (pr *Progress) maybeDecrTo(rejected, last uint64) bool {
 	pr.waitReset()
+	pr.reachable()
+
 	if pr.Match != 0 {
 		// the rejection must be stale if the progress has matched and "rejected"
 		// is smaller than "match".
@@ -101,7 +106,9 @@ func (pr *Progress) waitDecr(i int) {
 }
 func (pr *Progress) waitSet(w int)    { pr.Wait = w }
 func (pr *Progress) waitReset()       { pr.Wait = 0 }
-func (pr *Progress) shouldWait() bool { return pr.Match == 0 && pr.Wait > 0 }
+func (pr *Progress) reachable()       { pr.Unreachable = false }
+func (pr *Progress) unreachable()     { pr.Unreachable = true }
+func (pr *Progress) shouldWait() bool { return (pr.Unreachable || pr.Match == 0) && pr.Wait > 0 }
 
 func (pr *Progress) String() string {
 	return fmt.Sprintf("next = %d, match = %d, wait = %v", pr.Next, pr.Match, pr.Wait)
@@ -243,12 +250,9 @@ func (r *raft) sendAppend(to uint64) {
 		m.Commit = r.raftLog.committed
 		// optimistically increase the next if the follower
 		// has been matched.
-		if n := len(m.Entries); pr.Match != 0 && n != 0 {
+		if n := len(m.Entries); pr.Match != 0 && !pr.Unreachable && n != 0 {
 			pr.optimisticUpdate(m.Entries[n-1].Index)
-		} else if pr.Match == 0 {
-			// TODO (xiangli): better way to find out if the follower is in good path or not
-			// a follower might be in bad path even if match != 0, since we optimistically
-			// increase the next.
+		} else if pr.Match == 0 || pr.Unreachable {
 			pr.waitSet(r.heartbeatTimeout)
 		}
 	}
@@ -508,6 +512,8 @@ func stepLeader(r *raft, m pb.Message) {
 		log.Printf("raft: %x [logterm: %d, index: %d, vote: %x] rejected vote from %x [logterm: %d, index: %d] at term %d",
 			r.id, r.raftLog.lastTerm(), r.raftLog.lastIndex(), r.Vote, m.From, m.LogTerm, m.Index, r.Term)
 		r.send(pb.Message{To: m.From, Type: pb.MsgVoteResp, Reject: true})
+	case pb.MsgUnreachable:
+		r.prs[m.From].unreachable()
 	}
 }
 
