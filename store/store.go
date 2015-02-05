@@ -70,16 +70,20 @@ type store struct {
 	clock          clockwork.Clock
 }
 
-func New() Store {
-	s := newStore()
+// The given namespaces will be created as initial directories in the returned store.
+func New(namespaces ...string) Store {
+	s := newStore(namespaces...)
 	s.clock = clockwork.NewRealClock()
 	return s
 }
 
-func newStore() *store {
+func newStore(namespaces ...string) *store {
 	s := new(store)
 	s.CurrentVersion = defaultVersion
 	s.Root = newDir(s, "/", s.CurrentIndex, nil, "", Permanent)
+	for _, namespace := range namespaces {
+		s.Root.Add(newDir(s, namespace, s.CurrentIndex, s.Root, "", Permanent))
+	}
 	s.Stats = newStats()
 	s.WatcherHub = newWatchHub(1000)
 	s.ttlKeyHeap = newTtlKeyHeap()

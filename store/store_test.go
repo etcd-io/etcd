@@ -23,6 +23,15 @@ import (
 	etcdErr "github.com/coreos/etcd/error"
 )
 
+func TestNewStoreWithNamespaces(t *testing.T) {
+	s := newStore("/0", "/1")
+
+	_, err := s.Get("/0", false, false)
+	assert.Nil(t, err, "")
+	_, err = s.Get("/1", false, false)
+	assert.Nil(t, err, "")
+}
+
 // Ensure that the store can retrieve an existing value.
 func TestStoreGetValue(t *testing.T) {
 	s := newStore()

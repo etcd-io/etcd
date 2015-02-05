@@ -141,7 +141,7 @@ type EtcdServer struct {
 // NewServer creates a new EtcdServer from the supplied configuration. The
 // configuration is considered static for the lifetime of the EtcdServer.
 func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
-	st := store.New()
+	st := store.New(StoreAdminPrefix, StoreKeysPrefix)
 	var w *wal.WAL
 	var n raft.Node
 	var s *raft.MemoryStorage
