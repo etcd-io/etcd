@@ -22,7 +22,7 @@ type ACL interface {
 	Manage(prefix []byte) bool
 
 	// Manage the ACL
-	// Before call these functions, the caller must check the management permission on its own.
+	// Before calling these functions, the caller must check the management permission on its own.
 	// For example, A wants to grant B read permission for prefix "foo". A must check its own manage
 	// permission before calling GrantRead("foo") on B.
 	GrantRead(prefix []byte)
