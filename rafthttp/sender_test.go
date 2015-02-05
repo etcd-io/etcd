@@ -32,12 +32,12 @@ import (
 func TestSenderSend(t *testing.T) {
 	tr := &roundTripperRecorder{}
 	fs := &stats.FollowerStats{}
-	p := NewPeer(tr, "http://10.0.0.1", types.ID(1), types.ID(1), &nopProcessor{}, fs, nil)
+	s := newSender(tr, "http://10.0.0.1", types.ID(1), types.ID(1), fs, nil)
 
-	if err := p.Send(raftpb.Message{Type: raftpb.MsgApp}); err != nil {
+	if err := s.send(raftpb.Message{Type: raftpb.MsgApp}); err != nil {
 		t.Fatalf("unexpect send error: %v", err)
 	}
-	p.Stop()
+	s.stop()
 
 	if tr.Request() == nil {
 		t.Errorf("sender fails to post the data")
@@ -52,12 +52,12 @@ func TestSenderSend(t *testing.T) {
 func TestSenderExceedMaximalServing(t *testing.T) {
 	tr := newRoundTripperBlocker()
 	fs := &stats.FollowerStats{}
-	p := NewPeer(tr, "http://10.0.0.1", types.ID(1), types.ID(1), &nopProcessor{}, fs, nil)
+	s := newSender(tr, "http://10.0.0.1", types.ID(1), types.ID(1), fs, nil)
 
 	// keep the sender busy and make the buffer full
 	// nothing can go out as we block the sender
 	for i := 0; i < connPerSender+senderBufSize; i++ {
-		if err := p.Send(raftpb.Message{}); err != nil {
+		if err := s.send(raftpb.Message{}); err != nil {
 			t.Errorf("send err = %v, want nil", err)
 		}
 		// force the sender to grab data
@@ -65,7 +65,7 @@ func TestSenderExceedMaximalServing(t *testing.T) {
 	}
 
 	// try to send a data when we are sure the buffer is full
-	if err := p.Send(raftpb.Message{}); err == nil {
+	if err := s.send(raftpb.Message{}); err == nil {
 		t.Errorf("unexpect send success")
 	}
 
@@ -74,22 +74,22 @@ func TestSenderExceedMaximalServing(t *testing.T) {
 	testutil.ForceGosched()
 
 	// It could send new data after previous ones succeed
-	if err := p.Send(raftpb.Message{}); err != nil {
+	if err := s.send(raftpb.Message{}); err != nil {
 		t.Errorf("send err = %v, want nil", err)
 	}
-	p.Stop()
+	s.stop()
 }
 
 // TestSenderSendFailed tests that when send func meets the post error,
 // it increases fail count in stats.
 func TestSenderSendFailed(t *testing.T) {
 	fs := &stats.FollowerStats{}
-	p := NewPeer(newRespRoundTripper(0, errors.New("blah")), "http://10.0.0.1", types.ID(1), types.ID(1), &nopProcessor{}, fs, nil)
+	s := newSender(newRespRoundTripper(0, errors.New("blah")), "http://10.0.0.1", types.ID(1), types.ID(1), fs, nil)
 
-	if err := p.Send(raftpb.Message{Type: raftpb.MsgApp}); err != nil {
+	if err := s.send(raftpb.Message{Type: raftpb.MsgApp}); err != nil {
 		t.Fatalf("unexpect Send error: %v", err)
 	}
-	p.Stop()
+	s.stop()
 
 	fs.Lock()
 	defer fs.Unlock()
@@ -100,11 +100,11 @@ func TestSenderSendFailed(t *testing.T) {
 
 func TestSenderPost(t *testing.T) {
 	tr := &roundTripperRecorder{}
-	p := NewPeer(tr, "http://10.0.0.1", types.ID(1), types.ID(1), &nopProcessor{}, nil, nil)
-	if err := p.post([]byte("some data")); err != nil {
+	s := newSender(tr, "http://10.0.0.1", types.ID(1), types.ID(1), nil, nil)
+	if err := s.post([]byte("some data")); err != nil {
 		t.Fatalf("unexpect post error: %v", err)
 	}
-	p.Stop()
+	s.stop()
 
 	if g := tr.Request().Method; g != "POST" {
 		t.Errorf("method = %s, want %s", g, "POST")
@@ -142,9 +142,9 @@ func TestSenderPostBad(t *testing.T) {
 		{"http://10.0.0.1", http.StatusCreated, nil},
 	}
 	for i, tt := range tests {
-		p := NewPeer(newRespRoundTripper(tt.code, tt.err), tt.u, types.ID(1), types.ID(1), &nopProcessor{}, nil, make(chan error))
-		err := p.post([]byte("some data"))
-		p.Stop()
+		s := newSender(newRespRoundTripper(tt.code, tt.err), tt.u, types.ID(1), types.ID(1), nil, make(chan error))
+		err := s.post([]byte("some data"))
+		s.stop()
 
 		if err == nil {
 			t.Errorf("#%d: err = nil, want not nil", i)
@@ -152,7 +152,7 @@ func TestSenderPostBad(t *testing.T) {
 	}
 }
 
-func TestPeerPostErrorc(t *testing.T) {
+func TestSenderPostErrorc(t *testing.T) {
 	tests := []struct {
 		u    string
 		code int
@@ -163,9 +163,9 @@ func TestPeerPostErrorc(t *testing.T) {
 	}
 	for i, tt := range tests {
 		errorc := make(chan error, 1)
-		p := NewPeer(newRespRoundTripper(tt.code, tt.err), tt.u, types.ID(1), types.ID(1), &nopProcessor{}, nil, errorc)
-		p.post([]byte("some data"))
-		p.Stop()
+		s := newSender(newRespRoundTripper(tt.code, tt.err), tt.u, types.ID(1), types.ID(1), nil, errorc)
+		s.post([]byte("some data"))
+		s.stop()
 		select {
 		case <-errorc:
 		default:
