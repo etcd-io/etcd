@@ -36,7 +36,7 @@ This can protect you from cluster corruption in case of mis-configuration becaus
 
 #### Optimal Cluster Size
 
-The recommended etcd cluster size is 3, 5 or 7, which is decided by the fault tolerance requirement. A 7-member cluster can provide enough fault tolerance in most cases. While larger cluster provides better fault tolerance, its write performance becomes lower since data needs to be replicated to more machines.
+The recommended etcd cluster size is 3, 5 or 7, which is decided by the fault tolerance requirement. A 7-member cluster can provide enough fault tolerance in most cases. While larger cluster provides better fault tolerance the write performance reduces since data needs to be replicated to more machines.
 
 #### Fault Tolerance Table
 

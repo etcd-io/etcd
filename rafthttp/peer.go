@@ -196,7 +196,7 @@ func (p *peer) handle() {
 				p.errored = err
 			}
 			if p.active {
-				log.Printf("sender: the connection with %s becomes inactive", p.id)
+				log.Printf("sender: the connection with %s became inactive", p.id)
 				p.active = false
 			}
 			if m.Type == raftpb.MsgApp {
@@ -204,7 +204,7 @@ func (p *peer) handle() {
 			}
 		} else {
 			if !p.active {
-				log.Printf("sender: the connection with %s becomes active", p.id)
+				log.Printf("sender: the connection with %s became active", p.id)
 				p.active = true
 				p.errored = nil
 			}
