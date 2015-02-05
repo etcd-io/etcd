@@ -341,6 +341,50 @@ func TestUpgradeV1Standby(t *testing.T) {
 	}
 }
 
+func TestUpgradeV1TLSCluster(t *testing.T) {
+	// get v2-desired v1 data dir
+	pg := NewProcGroupWithV1Flags(v1BinPath, 3)
+	pg.SetPeerTLS("./fixtures/server.crt", "./fixtures/server.key.insecure", "./fixtures/ca.crt")
+	if err := pg.Start(); err != nil {
+		t.Fatalf("Start error: %v", err)
+	}
+	cmd := exec.Command(etcdctlBinPath,
+		"upgrade", "--peer-url", pg[1].PeerURL,
+		"--peer-cert-file", "./fixtures/server.crt",
+		"--peer-key-file", "./fixtures/server.key.insecure",
+		"--peer-ca-file", "./fixtures/ca.crt",
+	)
+	if err := cmd.Start(); err != nil {
+		t.Fatalf("Start error: %v", err)
+	}
+	if err := cmd.Wait(); err != nil {
+		t.Fatalf("Wait error: %v", err)
+	}
+	t.Logf("wait until etcd exits...")
+	if err := pg.Wait(); err != nil {
+		t.Fatalf("Wait error: %v", err)
+	}
+
+	npg := NewProcGroupWithV1Flags(v2BinPath, 3)
+	npg.SetPeerTLS("./fixtures/server.crt", "./fixtures/server.key.insecure", "./fixtures/ca.crt")
+	npg.InheritDataDir(pg)
+	npg.CleanUnsuppportedV1Flags()
+	if err := npg.Start(); err != nil {
+		t.Fatalf("Start error: %v", err)
+	}
+	defer npg.Terminate()
+
+	for _, p := range npg {
+		ver, err := checkInternalVersion(p.URL)
+		if err != nil {
+			t.Fatalf("checkVersion error: %v", err)
+		}
+		if ver != "2" {
+			t.Errorf("internal version = %s, want %s", ver, "2")
+		}
+	}
+}
+
 func absPathFromEnv(name string) string {
 	path, err := filepath.Abs(os.Getenv(name))
 	if err != nil {
