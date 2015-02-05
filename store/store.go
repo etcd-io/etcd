@@ -25,6 +25,7 @@ import (
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/jonboulle/clockwork"
 	etcdErr "github.com/coreos/etcd/error"
+	"github.com/coreos/etcd/pkg/types"
 )
 
 // The default version to set when the store is first initialized.
@@ -68,6 +69,7 @@ type store struct {
 	ttlKeyHeap     *ttlKeyHeap  // need to recovery manually
 	worldLock      sync.RWMutex // stop the world lock
 	clock          clockwork.Clock
+	readonlySet    types.Set
 }
 
 // The given namespaces will be created as initial directories in the returned store.
@@ -87,6 +89,7 @@ func newStore(namespaces ...string) *store {
 	s.Stats = newStats()
 	s.WatcherHub = newWatchHub(1000)
 	s.ttlKeyHeap = newTtlKeyHeap()
+	s.readonlySet = types.NewUnsafeSet(append(namespaces, "/")...)
 	return s
 }
 
@@ -207,7 +210,7 @@ func (s *store) CompareAndSwap(nodePath string, prevValue string, prevIndex uint
 
 	nodePath = path.Clean(path.Join("/", nodePath))
 	// we do not allow the user to change "/"
-	if nodePath == "/" {
+	if s.readonlySet.Contains(nodePath) {
 		return nil, etcdErr.NewError(etcdErr.EcodeRootROnly, "/", s.CurrentIndex)
 	}
 
@@ -262,7 +265,7 @@ func (s *store) Delete(nodePath string, dir, recursive bool) (*Event, error) {
 
 	nodePath = path.Clean(path.Join("/", nodePath))
 	// we do not allow the user to change "/"
-	if nodePath == "/" {
+	if s.readonlySet.Contains(nodePath) {
 		return nil, etcdErr.NewError(etcdErr.EcodeRootROnly, "/", s.CurrentIndex)
 	}
 
@@ -405,7 +408,7 @@ func (s *store) Update(nodePath string, newValue string, expireTime time.Time) (
 
 	nodePath = path.Clean(path.Join("/", nodePath))
 	// we do not allow the user to change "/"
-	if nodePath == "/" {
+	if s.readonlySet.Contains(nodePath) {
 		return nil, etcdErr.NewError(etcdErr.EcodeRootROnly, "/", s.CurrentIndex)
 	}
 
@@ -465,7 +468,7 @@ func (s *store) internalCreate(nodePath string, dir bool, value string, unique, 
 	nodePath = path.Clean(path.Join("/", nodePath))
 
 	// we do not allow the user to change "/"
-	if nodePath == "/" {
+	if s.readonlySet.Contains(nodePath) {
 		return nil, etcdErr.NewError(etcdErr.EcodeRootROnly, "/", currIndex)
 	}
 
