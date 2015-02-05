@@ -18,7 +18,9 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"strconv"
@@ -127,6 +129,20 @@ func (p *Proc) SetDiscovery(url string) {
 	)
 }
 
+func (p *Proc) SetPeerTLS(certFile, keyFile, caFile string) {
+	p.Args = append(p.Args,
+		"-peer-cert-file="+certFile,
+		"-peer-key-file="+keyFile,
+		"-peer-ca-file="+caFile,
+	)
+	u, err := url.Parse(p.PeerURL)
+	if err != nil {
+		log.Panicf("unexpected parse error: %v", err)
+	}
+	u.Scheme = "https"
+	p.PeerURL = u.String()
+}
+
 func (p *Proc) CleanUnsuppportedV1Flags() {
 	var args []string
 	for _, arg := range p.Args {
@@ -138,10 +154,6 @@ func (p *Proc) CleanUnsuppportedV1Flags() {
 }
 
 func (p *Proc) Start() error {
-	var err error
-	if p.stderr, err = p.Cmd.StderrPipe(); err != nil {
-		return err
-	}
 	if err := p.Cmd.Start(); err != nil {
 		return err
 	}
@@ -152,8 +164,7 @@ func (p *Proc) Start() error {
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
-	errMsg, _ := ioutil.ReadAll(p.stderr)
-	return fmt.Errorf("instance %s failed to be available after a long time: %s", p.Name, errMsg)
+	return fmt.Errorf("instance %s failed to be available after a long time", p.Name)
 }
 
 func (p *Proc) Stop() {
@@ -161,7 +172,6 @@ func (p *Proc) Stop() {
 		fmt.Printf("Process Kill error: %v", err)
 		return
 	}
-	ioutil.ReadAll(p.stderr)
 	p.Cmd.Wait()
 }
 
@@ -184,14 +194,14 @@ func NewProcInProcGroupWithV1Flags(path string, num int, idx int) *Proc {
 
 func NewProcGroupWithV1Flags(path string, num int) ProcGroup {
 	pg := make([]*Proc, num)
-	pg[0] = NewProcWithDefaultFlags(path)
-	pg[0].SetName("etcd0")
-	for i := 1; i < num; i++ {
+	for i := 0; i < num; i++ {
 		pg[i] = NewProcWithDefaultFlags(path)
 		pg[i].SetName(fmt.Sprintf("etcd%d", i))
 		pg[i].SetV1PeerAddr(fmt.Sprintf("127.0.0.1:%d", 7001+i))
 		pg[i].SetV1Addr(fmt.Sprintf("127.0.0.1:%d", 4001+i))
-		pg[i].SetV1Peers([]string{"127.0.0.1:7001"})
+		if i > 0 {
+			pg[i].SetV1Peers([]string{"127.0.0.1:7001"})
+		}
 	}
 	return pg
 }
@@ -206,6 +216,12 @@ func NewProcGroupViaDiscoveryWithV1Flags(path string, num int, url string) ProcG
 		pg[i].SetV1Addr(fmt.Sprintf("127.0.0.1:%d", 4001+i))
 	}
 	return pg
+}
+
+func (pg ProcGroup) SetPeerTLS(certFile, keyFile, caFile string) {
+	for i := range pg {
+		pg[i].SetPeerTLS(certFile, keyFile, caFile)
+	}
 }
 
 func (pg ProcGroup) InheritDataDir(opg ProcGroup) {

@@ -23,6 +23,7 @@ import (
 	"os"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/codegangsta/cli"
+	"github.com/coreos/etcd/pkg/transport"
 )
 
 func UpgradeCommand() cli.Command {
@@ -33,6 +34,9 @@ func UpgradeCommand() cli.Command {
 			cli.StringFlag{Name: "old-version", Value: "1", Usage: "Old internal version"},
 			cli.StringFlag{Name: "new-version", Value: "2", Usage: "New internal version"},
 			cli.StringFlag{Name: "peer-url", Value: "", Usage: "An etcd peer url string"},
+			cli.StringFlag{Name: "peer-cert-file", Value: "", Usage: "identify HTTPS peer using this SSL certificate file"},
+			cli.StringFlag{Name: "peer-key-file", Value: "", Usage: "identify HTTPS peer using this SSL key file"},
+			cli.StringFlag{Name: "peer-ca-file", Value: "", Usage: "verify certificates of HTTPS-enabled peers using this CA bundle"},
 		},
 		Action: handleUpgrade,
 	}
@@ -47,7 +51,12 @@ func handleUpgrade(c *cli.Context) {
 		fmt.Printf("Do not support upgrade to version %s\n", c.String("new-version"))
 		os.Exit(1)
 	}
-	t, err := getTransport(c)
+	tls := transport.TLSInfo{
+		CAFile:   c.String("peer-ca-file"),
+		CertFile: c.String("peer-cert-file"),
+		KeyFile:  c.String("peer-key-file"),
+	}
+	t, err := transport.NewTransport(tls)
 	if err != nil {
 		log.Fatal(err)
 	}
