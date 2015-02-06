@@ -153,7 +153,7 @@ func (h *streamHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sw := newStreamWriter(from, term)
+	sw := newStreamWriter(w.(WriteFlusher), from, term)
 	err = p.attachStream(sw)
 	if err != nil {
 		log.Printf("rafthttp: %v", err)
@@ -163,7 +163,6 @@ func (h *streamHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 	w.(http.Flusher).Flush()
-	go sw.handle(w.(WriteFlusher))
 	<-sw.stopNotify()
 }
 
