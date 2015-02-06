@@ -86,7 +86,11 @@ func (rn *raftNetwork) send(m raftpb.Message) {
 		time.Sleep(time.Duration(rd))
 	}
 
-	to <- m
+	select {
+	case to <- m:
+	default:
+		// drop messages when the receiver queue is full.
+	}
 }
 
 func (rn *raftNetwork) recvFrom(from uint64) chan raftpb.Message {
