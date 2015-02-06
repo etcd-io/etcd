@@ -1,6 +1,7 @@
 package rafttest
 
 import (
+	"math/rand"
 	"sync"
 	"time"
 
@@ -31,12 +32,18 @@ type network interface {
 type raftNetwork struct {
 	mu           sync.Mutex
 	disconnected map[uint64]bool
+	dropmap      map[conn]float64
 	recvQueues   map[uint64]chan raftpb.Message
+}
+
+type conn struct {
+	from, to uint64
 }
 
 func newRaftNetwork(nodes ...uint64) *raftNetwork {
 	pn := &raftNetwork{
 		recvQueues:   make(map[uint64]chan raftpb.Message),
+		dropmap:      make(map[conn]float64),
 		disconnected: make(map[uint64]bool),
 	}
 
@@ -56,11 +63,16 @@ func (rn *raftNetwork) send(m raftpb.Message) {
 	if rn.disconnected[m.To] {
 		to = nil
 	}
+	drop := rn.dropmap[conn{m.From, m.To}]
 	rn.mu.Unlock()
 
 	if to == nil {
 		return
 	}
+	if drop != 0 && rand.Float64() < drop {
+		return
+	}
+
 	to <- m
 }
 
@@ -76,14 +88,20 @@ func (rn *raftNetwork) recvFrom(from uint64) chan raftpb.Message {
 }
 
 func (rn *raftNetwork) drop(from, to uint64, rate float64) {
-	panic("unimplemented")
+	rn.mu.Lock()
+	defer rn.mu.Unlock()
+	rn.dropmap[conn{from, to}] = rate
 }
 
 func (rn *raftNetwork) delay(from, to uint64, d time.Duration, rate float64) {
 	panic("unimplemented")
 }
 
-func (rn *raftNetwork) heal() {}
+func (rn *raftNetwork) heal() {
+	rn.mu.Lock()
+	defer rn.mu.Unlock()
+	rn.dropmap = make(map[conn]float64)
+}
 
 func (rn *raftNetwork) disconnect(id uint64) {
 	rn.mu.Lock()
