@@ -789,9 +789,10 @@ func TestStoreWatchStream(t *testing.T) {
 // Ensure that the store can recover from a previously saved state.
 func TestStoreRecover(t *testing.T) {
 	s := newStore()
-	var eidx uint64 = 3
+	var eidx uint64 = 4
 	s.Create("/foo", true, "", false, Permanent)
 	s.Create("/foo/x", false, "bar", false, Permanent)
+	s.Update("/foo/x", "barbar", Permanent)
 	s.Create("/foo/y", false, "baz", false, Permanent)
 	b, err := s.Save()
 
@@ -799,9 +800,11 @@ func TestStoreRecover(t *testing.T) {
 	s2.Recovery(b)
 
 	e, err := s.Get("/foo/x", false, false)
+	assert.Equal(t, e.Node.CreatedIndex, uint64(2), "")
+	assert.Equal(t, e.Node.ModifiedIndex, uint64(3), "")
 	assert.Equal(t, e.EtcdIndex, eidx, "")
 	assert.Nil(t, err, "")
-	assert.Equal(t, *e.Node.Value, "bar", "")
+	assert.Equal(t, *e.Node.Value, "barbar", "")
 
 	e, err = s.Get("/foo/y", false, false)
 	assert.Equal(t, e.EtcdIndex, eidx, "")
