@@ -150,6 +150,7 @@ type WriteFlusher interface {
 
 // TODO: replace fs with stream stats
 type streamWriter struct {
+	w    WriteFlusher
 	to   types.ID
 	term uint64
 	fs   *stats.FollowerStats
@@ -159,8 +160,9 @@ type streamWriter struct {
 
 // newStreamWriter starts and returns a new unstarted stream writer.
 // The caller should call stop when finished, to shut it down.
-func newStreamWriter(to types.ID, term uint64) *streamWriter {
+func newStreamWriter(w WriteFlusher, to types.ID, term uint64) *streamWriter {
 	s := &streamWriter{
+		w:    w,
 		to:   to,
 		term: term,
 		q:    make(chan []raftpb.Entry, streamBufSize),
@@ -184,20 +186,20 @@ func (s *streamWriter) send(ents []raftpb.Entry) error {
 	}
 }
 
-func (s *streamWriter) handle(w WriteFlusher) {
+func (s *streamWriter) handle() {
 	defer func() {
 		close(s.done)
 		log.Printf("rafthttp: server streaming to %s at term %d has been stopped", s.to, s.term)
 	}()
 
-	ew := newEntryWriter(w, s.to)
+	ew := newEntryWriter(s.w, s.to)
 	for ents := range s.q {
 		start := time.Now()
 		if err := ew.writeEntries(ents); err != nil {
 			log.Printf("rafthttp: encountered error writing to server log stream: %v", err)
 			return
 		}
-		w.Flush()
+		s.w.Flush()
 		s.fs.Succ(time.Since(start))
 	}
 }
