@@ -19,6 +19,7 @@ import (
 	"log"
 	"os"
 	"sort"
+	"sync/atomic"
 	"time"
 
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
@@ -36,8 +37,21 @@ type RaftTimer interface {
 	Term() uint64
 }
 
+type apply struct {
+	entries   []raftpb.Entry
+	snapshot  raftpb.Snapshot
+	confState *raftpb.ConfState
+	done      chan uint64
+}
+
 type raftNode struct {
 	raft.Node
+	applyc chan apply
+
+	// TODO: remove the etcdserver related logic from raftNode
+	// TODO: add a state machine interface to apply the commit entries
+	// and do snapshot/recover
+	s *EtcdServer
 
 	// config
 	snapCount uint64 // number of entries to trigger a snapshot
@@ -57,6 +71,101 @@ type raftNode struct {
 	term  uint64
 	lead  uint64
 }
+
+func (r *raftNode) run() {
+	var syncC <-chan time.Time
+
+	// load initial state from raft storage
+	snap, err := r.raftStorage.Snapshot()
+	if err != nil {
+		log.Panicf("etcdserver: get snapshot from raft storage error: %v", err)
+	}
+	// snapi indicates the index of the last submitted snapshot request
+	snapi := snap.Metadata.Index
+	confState := snap.Metadata.ConfState
+
+	defer r.stop()
+	for {
+		select {
+		case <-r.ticker:
+			r.Tick()
+		case rd := <-r.Ready():
+			if rd.SoftState != nil {
+				atomic.StoreUint64(&r.lead, rd.SoftState.Lead)
+				if rd.RaftState == raft.StateLeader {
+					syncC = r.s.SyncTicker
+					// TODO: remove the nil checking
+					// current test utility does not provide the stats
+					if r.s.stats != nil {
+						r.s.stats.BecomeLeader()
+					}
+				} else {
+					syncC = nil
+				}
+			}
+
+			apply := apply{
+				entries:   rd.CommittedEntries,
+				snapshot:  rd.Snapshot,
+				confState: &confState,
+				done:      make(chan uint64),
+			}
+			r.applyc <- apply
+
+			// apply snapshot to storage if it is more updated than current snapi
+			if !raft.IsEmptySnap(rd.Snapshot) && rd.Snapshot.Metadata.Index > snapi {
+				if err := r.storage.SaveSnap(rd.Snapshot); err != nil {
+					log.Fatalf("etcdraft: save snapshot error: %v", err)
+				}
+				r.raftStorage.ApplySnapshot(rd.Snapshot)
+				snapi = rd.Snapshot.Metadata.Index
+				log.Printf("etcdraft: saved incoming snapshot at index %d", snapi)
+			}
+
+			if err := r.storage.Save(rd.HardState, rd.Entries); err != nil {
+				log.Fatalf("etcdraft: save state and entries error: %v", err)
+			}
+			r.raftStorage.Append(rd.Entries)
+
+			r.s.send(rd.Messages)
+
+			appliedi := <-apply.done
+			r.Advance()
+
+			if appliedi-snapi > r.snapCount {
+				log.Printf("etcdserver: start to snapshot (applied: %d, lastsnap: %d)", appliedi, snapi)
+				r.s.snapshot(appliedi, &confState)
+				snapi = appliedi
+			}
+		case <-syncC:
+			r.s.sync(defaultSyncTimeout)
+		case <-r.s.done:
+			return
+		}
+	}
+}
+
+func (r *raftNode) apply() chan apply {
+	return r.applyc
+}
+
+func (r *raftNode) stop() {
+	r.Stop()
+	r.transport.Stop()
+	if err := r.storage.Close(); err != nil {
+		log.Panicf("etcdraft: close storage error: %v", err)
+	}
+}
+
+// Implement the RaftTimer interface
+func (r *raftNode) Index() uint64 { return atomic.LoadUint64(&r.index) }
+
+func (r *raftNode) Term() uint64 { return atomic.LoadUint64(&r.term) }
+
+// Only for testing purpose
+// TODO: add Raft server interface to expose raft related info:
+// Index, Term, Lead, Committed, Applied, LastIndex, etc.
+func (r *raftNode) Lead() uint64 { return atomic.LoadUint64(&r.lead) }
 
 // for testing
 func (r *raftNode) pauseSending() {

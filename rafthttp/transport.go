@@ -89,7 +89,9 @@ func (t *transport) Send(msgs []raftpb.Message) {
 			continue
 		}
 		to := types.ID(m.To)
+		t.mu.RLock()
 		p, ok := t.peers[to]
+		t.mu.RUnlock()
 		if !ok {
 			log.Printf("etcdserver: send message to unknown receiver %s", to)
 			continue

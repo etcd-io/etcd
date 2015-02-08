@@ -322,101 +322,41 @@ func (s *EtcdServer) Process(ctx context.Context, m raftpb.Message) error {
 }
 
 func (s *EtcdServer) run() {
-	var syncC <-chan time.Time
-	var shouldstop bool
+	// TODO: get rid of the raft initialization in etcd server
+	s.r.s = s
+	s.r.applyc = make(chan apply)
+	go s.r.run()
 
-	// load initial state from raft storage
-	snap, err := s.r.raftStorage.Snapshot()
-	if err != nil {
-		log.Panicf("etcdserver: get snapshot from raft storage error: %v", err)
-	}
-	// snapi indicates the index of the last submitted snapshot request
-	snapi := snap.Metadata.Index
-	appliedi := snap.Metadata.Index
-	confState := snap.Metadata.ConfState
+	defer close(s.done)
 
-	defer func() {
-		s.r.Stop()
-		s.r.transport.Stop()
-		if err := s.r.storage.Close(); err != nil {
-			log.Panicf("etcdserver: close storage error: %v", err)
-		}
-		close(s.done)
-	}()
-	// TODO: make raft loop a method on raftNode
+	var (
+		appliedi   uint64
+		shouldstop bool
+	)
 	for {
 		select {
-		case <-s.r.ticker:
-			s.r.Tick()
-		case rd := <-s.r.Ready():
-			if rd.SoftState != nil {
-				atomic.StoreUint64(&s.r.lead, rd.SoftState.Lead)
-				if rd.RaftState == raft.StateLeader {
-					syncC = s.SyncTicker
-					// TODO: remove the nil checking
-					// current test utility does not provide the stats
-					if s.stats != nil {
-						s.stats.BecomeLeader()
-					}
-				} else {
-					syncC = nil
-				}
-			}
-
-			// apply snapshot to storage if it is more updated than current snapi
-			if !raft.IsEmptySnap(rd.Snapshot) && rd.Snapshot.Metadata.Index > snapi {
-				if err := s.r.storage.SaveSnap(rd.Snapshot); err != nil {
-					log.Fatalf("etcdserver: save snapshot error: %v", err)
-				}
-				s.r.raftStorage.ApplySnapshot(rd.Snapshot)
-				snapi = rd.Snapshot.Metadata.Index
-				log.Printf("etcdserver: saved incoming snapshot at index %d", snapi)
-			}
-
-			if err := s.r.storage.Save(rd.HardState, rd.Entries); err != nil {
-				log.Fatalf("etcdserver: save state and entries error: %v", err)
-			}
-			s.r.raftStorage.Append(rd.Entries)
-
-			s.send(rd.Messages)
-
-			// recover from snapshot if it is more updated than current applied
-			if !raft.IsEmptySnap(rd.Snapshot) && rd.Snapshot.Metadata.Index > appliedi {
-				if err := s.store.Recovery(rd.Snapshot.Data); err != nil {
+		case apply := <-s.r.apply():
+			if !raft.IsEmptySnap(apply.snapshot) && apply.snapshot.Metadata.Index > appliedi {
+				if err := s.store.Recovery(apply.snapshot.Data); err != nil {
 					log.Panicf("recovery store error: %v", err)
 				}
 				s.Cluster.Recover()
-				appliedi = rd.Snapshot.Metadata.Index
-				log.Printf("etcdserver: recovered from incoming snapshot at index %d", snapi)
+				appliedi = apply.snapshot.Metadata.Index
 			}
-			// TODO(bmizerany): do this in the background, but take
-			// care to apply entries in a single goroutine, and not
-			// race them.
-			if len(rd.CommittedEntries) != 0 {
-				firsti := rd.CommittedEntries[0].Index
+			if len(apply.entries) != 0 {
+				firsti := apply.entries[0].Index
 				if firsti > appliedi+1 {
 					log.Panicf("etcdserver: first index of committed entry[%d] should <= appliedi[%d] + 1", firsti, appliedi)
 				}
 				var ents []raftpb.Entry
-				if appliedi+1-firsti < uint64(len(rd.CommittedEntries)) {
-					ents = rd.CommittedEntries[appliedi+1-firsti:]
+				if appliedi+1-firsti < uint64(len(apply.entries)) {
+					ents = apply.entries[appliedi+1-firsti:]
 				}
-				if len(ents) > 0 {
-					if appliedi, shouldstop = s.apply(ents, &confState); shouldstop {
-						go s.stopWithDelay(10*100*time.Millisecond, fmt.Errorf("the member has been permanently removed from the cluster"))
-					}
+				if appliedi, shouldstop = s.apply(ents, apply.confState); shouldstop {
+					go s.stopWithDelay(10*100*time.Millisecond, fmt.Errorf("the member has been permanently removed from the cluster"))
 				}
 			}
-
-			s.r.Advance()
-
-			if appliedi-snapi > s.r.snapCount {
-				log.Printf("etcdserver: start to snapshot (applied: %d, lastsnap: %d)", appliedi, snapi)
-				s.snapshot(appliedi, &confState)
-				snapi = appliedi
-			}
-		case <-syncC:
-			s.sync(defaultSyncTimeout)
+			apply.done <- appliedi
 		case err := <-s.errorc:
 			log.Printf("etcdserver: %s", err)
 			log.Printf("etcdserver: the data-dir used by this member must be removed.")
@@ -425,6 +365,7 @@ func (s *EtcdServer) run() {
 			return
 		}
 	}
+	// TODO: wait for the stop of raft node routine?
 }
 
 // Stop stops the server gracefully, and shuts down the running goroutine.
@@ -554,16 +495,16 @@ func (s *EtcdServer) UpdateMember(ctx context.Context, memb Member) error {
 }
 
 // Implement the RaftTimer interface
-func (s *EtcdServer) Index() uint64 { return atomic.LoadUint64(&s.r.index) }
+func (s *EtcdServer) Index() uint64 { return s.r.Index() }
 
-func (s *EtcdServer) Term() uint64 { return atomic.LoadUint64(&s.r.term) }
+func (s *EtcdServer) Term() uint64 { return s.r.Term() }
 
 // Only for testing purpose
 // TODO: add Raft server interface to expose raft related info:
 // Index, Term, Lead, Committed, Applied, LastIndex, etc.
-func (s *EtcdServer) Lead() uint64 { return atomic.LoadUint64(&s.r.lead) }
+func (s *EtcdServer) Lead() uint64 { return s.r.Lead() }
 
-func (s *EtcdServer) Leader() types.ID { return types.ID(s.Lead()) }
+func (s *EtcdServer) Leader() types.ID { return types.ID(s.r.Lead()) }
 
 // configure sends a configuration change through consensus and
 // then waits for it to be applied to the server. It
