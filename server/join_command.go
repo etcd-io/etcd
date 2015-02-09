@@ -46,6 +46,7 @@ func (c *JoinCommand) NodeName() string {
 // applyJoin attempts to join a machine to the cluster.
 func applyJoin(c *JoinCommand, context raft.Context) (uint64, error) {
 	ps, _ := context.Server().Context().(*PeerServer)
+	ps.raftServer.FlushCommitIndex()
 	commitIndex := context.CommitIndex()
 
 	// Make sure we're not getting a cached value from the registry.
