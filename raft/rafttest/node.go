@@ -49,11 +49,10 @@ func (n *node) start() {
 					n.storage.SetHardState(n.state)
 				}
 				n.storage.Append(rd.Entries)
-				go func() {
-					for _, m := range rd.Messages {
-						n.iface.send(m)
-					}
-				}()
+				// TODO: make send async, more like real world...
+				for _, m := range rd.Messages {
+					n.iface.send(m)
+				}
 				n.Advance()
 			case m := <-n.iface.recv():
 				n.Step(context.TODO(), m)
