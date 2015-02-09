@@ -33,6 +33,7 @@ type raftNetwork struct {
 	mu           sync.Mutex
 	disconnected map[uint64]bool
 	dropmap      map[conn]float64
+	delaymap     map[conn]delay
 	recvQueues   map[uint64]chan raftpb.Message
 }
 
@@ -40,10 +41,16 @@ type conn struct {
 	from, to uint64
 }
 
+type delay struct {
+	d    time.Duration
+	rate float64
+}
+
 func newRaftNetwork(nodes ...uint64) *raftNetwork {
 	pn := &raftNetwork{
 		recvQueues:   make(map[uint64]chan raftpb.Message),
 		dropmap:      make(map[conn]float64),
+		delaymap:     make(map[conn]delay),
 		disconnected: make(map[uint64]bool),
 	}
 
@@ -64,6 +71,7 @@ func (rn *raftNetwork) send(m raftpb.Message) {
 		to = nil
 	}
 	drop := rn.dropmap[conn{m.From, m.To}]
+	delay := rn.delaymap[conn{m.From, m.To}]
 	rn.mu.Unlock()
 
 	if to == nil {
@@ -71,6 +79,11 @@ func (rn *raftNetwork) send(m raftpb.Message) {
 	}
 	if drop != 0 && rand.Float64() < drop {
 		return
+	}
+	// TODO: shall we delay without blocking the send call?
+	if delay.d != 0 && rand.Float64() < delay.rate {
+		rd := rand.Int63n(int64(delay.d))
+		time.Sleep(time.Duration(rd))
 	}
 
 	to <- m
@@ -94,13 +107,16 @@ func (rn *raftNetwork) drop(from, to uint64, rate float64) {
 }
 
 func (rn *raftNetwork) delay(from, to uint64, d time.Duration, rate float64) {
-	panic("unimplemented")
+	rn.mu.Lock()
+	defer rn.mu.Unlock()
+	rn.delaymap[conn{from, to}] = delay{d, rate}
 }
 
 func (rn *raftNetwork) heal() {
 	rn.mu.Lock()
 	defer rn.mu.Unlock()
 	rn.dropmap = make(map[conn]float64)
+	rn.delaymap = make(map[conn]delay)
 }
 
 func (rn *raftNetwork) disconnect(id uint64) {
