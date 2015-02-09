@@ -16,6 +16,7 @@ package client
 
 import (
 	"errors"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -27,26 +28,46 @@ import (
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 )
 
-type staticHTTPClient struct {
+type actionAssertingHTTPClient struct {
+	t   *testing.T
+	num int
+	act httpAction
+
 	resp http.Response
+	body []byte
 	err  error
 }
 
-func (s *staticHTTPClient) Do(context.Context, HTTPAction) (*http.Response, []byte, error) {
-	return &s.resp, nil, s.err
+func (a *actionAssertingHTTPClient) Do(_ context.Context, act httpAction) (*http.Response, []byte, error) {
+	if !reflect.DeepEqual(a.act, act) {
+		a.t.Errorf("#%d: unexpected httpAction: want=%#v got=%#v", a.num, a.act, act)
+	}
+
+	return &a.resp, a.body, a.err
+}
+
+type staticHTTPClient struct {
+	resp http.Response
+	body []byte
+	err  error
+}
+
+func (s *staticHTTPClient) Do(context.Context, httpAction) (*http.Response, []byte, error) {
+	return &s.resp, s.body, s.err
 }
 
 type staticHTTPAction struct {
 	request http.Request
 }
 
-type staticHTTPResponse struct {
-	resp http.Response
-	err  error
-}
-
 func (s *staticHTTPAction) HTTPRequest(url.URL) *http.Request {
 	return &s.request
+}
+
+type staticHTTPResponse struct {
+	resp http.Response
+	body []byte
+	err  error
 }
 
 type multiStaticHTTPClient struct {
@@ -54,10 +75,19 @@ type multiStaticHTTPClient struct {
 	cur       int
 }
 
-func (s *multiStaticHTTPClient) Do(context.Context, HTTPAction) (*http.Response, []byte, error) {
+func (s *multiStaticHTTPClient) Do(context.Context, httpAction) (*http.Response, []byte, error) {
 	r := s.responses[s.cur]
 	s.cur++
-	return &r.resp, nil, r.err
+	return &r.resp, r.body, r.err
+}
+
+func newStaticHTTPClientFactory(responses []staticHTTPResponse) httpClientFactory {
+	var cur int
+	return func(url.URL) httpClient {
+		r := responses[cur]
+		cur++
+		return &staticHTTPClient{resp: r.resp, body: r.body, err: r.err}
+	}
 }
 
 type fakeTransport struct {
@@ -100,9 +130,9 @@ func (a *fakeAction) HTTPRequest(url.URL) *http.Request {
 	return &http.Request{}
 }
 
-func TestHTTPClientDoSuccess(t *testing.T) {
+func TestSimpleHTTPClientDoSuccess(t *testing.T) {
 	tr := newFakeTransport()
-	c := &httpClient{transport: tr}
+	c := &simpleHTTPClient{transport: tr}
 
 	tr.respchan <- &http.Response{
 		StatusCode: http.StatusTeapot,
@@ -125,9 +155,9 @@ func TestHTTPClientDoSuccess(t *testing.T) {
 	}
 }
 
-func TestHTTPClientDoError(t *testing.T) {
+func TestSimpleHTTPClientDoError(t *testing.T) {
 	tr := newFakeTransport()
-	c := &httpClient{transport: tr}
+	c := &simpleHTTPClient{transport: tr}
 
 	tr.errchan <- errors.New("fixture")
 
@@ -137,9 +167,9 @@ func TestHTTPClientDoError(t *testing.T) {
 	}
 }
 
-func TestHTTPClientDoCancelContext(t *testing.T) {
+func TestSimpleHTTPClientDoCancelContext(t *testing.T) {
 	tr := newFakeTransport()
-	c := &httpClient{transport: tr}
+	c := &simpleHTTPClient{transport: tr}
 
 	tr.startCancel <- struct{}{}
 	tr.finishCancel <- struct{}{}
@@ -150,9 +180,47 @@ func TestHTTPClientDoCancelContext(t *testing.T) {
 	}
 }
 
-func TestHTTPClientDoCancelContextWaitForRoundTrip(t *testing.T) {
+type checkableReadCloser struct {
+	io.ReadCloser
+	closed bool
+}
+
+func (c *checkableReadCloser) Close() error {
+	c.closed = true
+	return c.ReadCloser.Close()
+}
+
+func TestSimpleHTTPClientDoCancelContextResponseBodyClosed(t *testing.T) {
 	tr := newFakeTransport()
-	c := &httpClient{transport: tr}
+	c := &simpleHTTPClient{transport: tr}
+
+	// create an already-cancelled context
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	body := &checkableReadCloser{ReadCloser: ioutil.NopCloser(strings.NewReader("foo"))}
+	go func() {
+		// wait for CancelRequest to be called, informing us that simpleHTTPClient
+		// knows the context is already timed out
+		<-tr.startCancel
+
+		tr.respchan <- &http.Response{Body: body}
+		tr.finishCancel <- struct{}{}
+	}()
+
+	_, _, err := c.Do(ctx, &fakeAction{})
+	if err == nil {
+		t.Fatalf("expected non-nil error, got nil")
+	}
+
+	if !body.closed {
+		t.Fatalf("expected closed body")
+	}
+}
+
+func TestSimpleHTTPClientDoCancelContextWaitForRoundTrip(t *testing.T) {
+	tr := newFakeTransport()
+	c := &simpleHTTPClient{transport: tr}
 
 	donechan := make(chan struct{})
 	ctx, cancel := context.WithCancel(context.Background())
@@ -166,7 +234,7 @@ func TestHTTPClientDoCancelContextWaitForRoundTrip(t *testing.T) {
 
 	select {
 	case <-donechan:
-		t.Fatalf("httpClient.do should not have exited yet")
+		t.Fatalf("simpleHTTPClient.Do should not have exited yet")
 	default:
 	}
 
@@ -177,12 +245,13 @@ func TestHTTPClientDoCancelContextWaitForRoundTrip(t *testing.T) {
 		//expected behavior
 		return
 	case <-time.After(time.Second):
-		t.Fatalf("httpClient.do did not exit within 1s")
+		t.Fatalf("simpleHTTPClient.Do did not exit within 1s")
 	}
 }
 
 func TestHTTPClusterClientDo(t *testing.T) {
 	fakeErr := errors.New("fake!")
+	fakeURL := url.URL{}
 	tests := []struct {
 		client   *httpClusterClient
 		wantCode int
@@ -191,10 +260,13 @@ func TestHTTPClusterClientDo(t *testing.T) {
 		// first good response short-circuits Do
 		{
 			client: &httpClusterClient{
-				clients: []HTTPClient{
-					&staticHTTPClient{resp: http.Response{StatusCode: http.StatusTeapot}},
-					&staticHTTPClient{err: fakeErr},
-				},
+				endpoints: []url.URL{fakeURL, fakeURL},
+				clientFactory: newStaticHTTPClientFactory(
+					[]staticHTTPResponse{
+						staticHTTPResponse{resp: http.Response{StatusCode: http.StatusTeapot}},
+						staticHTTPResponse{err: fakeErr},
+					},
+				),
 			},
 			wantCode: http.StatusTeapot,
 		},
@@ -202,40 +274,50 @@ func TestHTTPClusterClientDo(t *testing.T) {
 		// fall through to good endpoint if err is arbitrary
 		{
 			client: &httpClusterClient{
-				clients: []HTTPClient{
-					&staticHTTPClient{err: fakeErr},
-					&staticHTTPClient{resp: http.Response{StatusCode: http.StatusTeapot}},
-				},
+				endpoints: []url.URL{fakeURL, fakeURL},
+				clientFactory: newStaticHTTPClientFactory(
+					[]staticHTTPResponse{
+						staticHTTPResponse{err: fakeErr},
+						staticHTTPResponse{resp: http.Response{StatusCode: http.StatusTeapot}},
+					},
+				),
 			},
 			wantCode: http.StatusTeapot,
 		},
 
-		// ErrTimeout short-circuits Do
+		// context.DeadlineExceeded short-circuits Do
 		{
 			client: &httpClusterClient{
-				clients: []HTTPClient{
-					&staticHTTPClient{err: ErrTimeout},
-					&staticHTTPClient{resp: http.Response{StatusCode: http.StatusTeapot}},
-				},
+				endpoints: []url.URL{fakeURL, fakeURL},
+				clientFactory: newStaticHTTPClientFactory(
+					[]staticHTTPResponse{
+						staticHTTPResponse{err: context.DeadlineExceeded},
+						staticHTTPResponse{resp: http.Response{StatusCode: http.StatusTeapot}},
+					},
+				),
 			},
-			wantErr: ErrTimeout,
+			wantErr: context.DeadlineExceeded,
 		},
 
-		// ErrCanceled short-circuits Do
+		// context.Canceled short-circuits Do
 		{
 			client: &httpClusterClient{
-				clients: []HTTPClient{
-					&staticHTTPClient{err: ErrCanceled},
-					&staticHTTPClient{resp: http.Response{StatusCode: http.StatusTeapot}},
-				},
+				endpoints: []url.URL{fakeURL, fakeURL},
+				clientFactory: newStaticHTTPClientFactory(
+					[]staticHTTPResponse{
+						staticHTTPResponse{err: context.Canceled},
+						staticHTTPResponse{resp: http.Response{StatusCode: http.StatusTeapot}},
+					},
+				),
 			},
-			wantErr: ErrCanceled,
+			wantErr: context.Canceled,
 		},
 
 		// return err if there are no endpoints
 		{
 			client: &httpClusterClient{
-				clients: []HTTPClient{},
+				endpoints:     []url.URL{},
+				clientFactory: newHTTPClientFactory(nil, nil),
 			},
 			wantErr: ErrNoEndpoints,
 		},
@@ -243,10 +325,13 @@ func TestHTTPClusterClientDo(t *testing.T) {
 		// return err if all endpoints return arbitrary errors
 		{
 			client: &httpClusterClient{
-				clients: []HTTPClient{
-					&staticHTTPClient{err: fakeErr},
-					&staticHTTPClient{err: fakeErr},
-				},
+				endpoints: []url.URL{fakeURL, fakeURL},
+				clientFactory: newStaticHTTPClientFactory(
+					[]staticHTTPResponse{
+						staticHTTPResponse{err: fakeErr},
+						staticHTTPResponse{err: fakeErr},
+					},
+				),
 			},
 			wantErr: fakeErr,
 		},
@@ -254,10 +339,13 @@ func TestHTTPClusterClientDo(t *testing.T) {
 		// 500-level errors cause Do to fallthrough to next endpoint
 		{
 			client: &httpClusterClient{
-				clients: []HTTPClient{
-					&staticHTTPClient{resp: http.Response{StatusCode: http.StatusBadGateway}},
-					&staticHTTPClient{resp: http.Response{StatusCode: http.StatusTeapot}},
-				},
+				endpoints: []url.URL{fakeURL, fakeURL},
+				clientFactory: newStaticHTTPClientFactory(
+					[]staticHTTPResponse{
+						staticHTTPResponse{resp: http.Response{StatusCode: http.StatusBadGateway}},
+						staticHTTPResponse{resp: http.Response{StatusCode: http.StatusTeapot}},
+					},
+				),
 			},
 			wantCode: http.StatusTeapot,
 		},
@@ -320,14 +408,14 @@ func TestRedirectedHTTPAction(t *testing.T) {
 
 func TestRedirectFollowingHTTPClient(t *testing.T) {
 	tests := []struct {
-		max      int
-		client   HTTPClient
-		wantCode int
-		wantErr  error
+		checkRedirect CheckRedirectFunc
+		client        httpClient
+		wantCode      int
+		wantErr       error
 	}{
 		// errors bubbled up
 		{
-			max: 2,
+			checkRedirect: func(int) error { return ErrTooManyRedirects },
 			client: &multiStaticHTTPClient{
 				responses: []staticHTTPResponse{
 					staticHTTPResponse{
@@ -340,7 +428,7 @@ func TestRedirectFollowingHTTPClient(t *testing.T) {
 
 		// no need to follow redirect if none given
 		{
-			max: 2,
+			checkRedirect: func(int) error { return ErrTooManyRedirects },
 			client: &multiStaticHTTPClient{
 				responses: []staticHTTPResponse{
 					staticHTTPResponse{
@@ -355,7 +443,12 @@ func TestRedirectFollowingHTTPClient(t *testing.T) {
 
 		// redirects if less than max
 		{
-			max: 2,
+			checkRedirect: func(via int) error {
+				if via >= 2 {
+					return ErrTooManyRedirects
+				}
+				return nil
+			},
 			client: &multiStaticHTTPClient{
 				responses: []staticHTTPResponse{
 					staticHTTPResponse{
@@ -376,7 +469,12 @@ func TestRedirectFollowingHTTPClient(t *testing.T) {
 
 		// succeed after reaching max redirects
 		{
-			max: 2,
+			checkRedirect: func(via int) error {
+				if via >= 3 {
+					return ErrTooManyRedirects
+				}
+				return nil
+			},
 			client: &multiStaticHTTPClient{
 				responses: []staticHTTPResponse{
 					staticHTTPResponse{
@@ -401,9 +499,14 @@ func TestRedirectFollowingHTTPClient(t *testing.T) {
 			wantCode: http.StatusTeapot,
 		},
 
-		// fail at max+1 redirects
+		// fail if too many redirects
 		{
-			max: 1,
+			checkRedirect: func(via int) error {
+				if via >= 2 {
+					return ErrTooManyRedirects
+				}
+				return nil
+			},
 			client: &multiStaticHTTPClient{
 				responses: []staticHTTPResponse{
 					staticHTTPResponse{
@@ -430,7 +533,7 @@ func TestRedirectFollowingHTTPClient(t *testing.T) {
 
 		// fail if Location header not set
 		{
-			max: 1,
+			checkRedirect: func(int) error { return ErrTooManyRedirects },
 			client: &multiStaticHTTPClient{
 				responses: []staticHTTPResponse{
 					staticHTTPResponse{
@@ -445,7 +548,7 @@ func TestRedirectFollowingHTTPClient(t *testing.T) {
 
 		// fail if Location header is invalid
 		{
-			max: 1,
+			checkRedirect: func(int) error { return ErrTooManyRedirects },
 			client: &multiStaticHTTPClient{
 				responses: []staticHTTPResponse{
 					staticHTTPResponse{
@@ -458,10 +561,22 @@ func TestRedirectFollowingHTTPClient(t *testing.T) {
 			},
 			wantErr: errors.New("Location header not valid URL: :"),
 		},
+
+		// fail if redirects checked way too many times
+		{
+			checkRedirect: func(int) error { return nil },
+			client: &staticHTTPClient{
+				resp: http.Response{
+					StatusCode: http.StatusTemporaryRedirect,
+					Header:     http.Header{"Location": []string{"http://example.com"}},
+				},
+			},
+			wantErr: errTooManyRedirectChecks,
+		},
 	}
 
 	for i, tt := range tests {
-		client := &redirectFollowingHTTPClient{client: tt.client, max: tt.max}
+		client := &redirectFollowingHTTPClient{client: tt.client, checkRedirect: tt.checkRedirect}
 		resp, _, err := client.Do(context.Background(), nil)
 		if !reflect.DeepEqual(tt.wantErr, err) {
 			t.Errorf("#%d: got err=%v, want=%v", i, err, tt.wantErr)
@@ -478,6 +593,115 @@ func TestRedirectFollowingHTTPClient(t *testing.T) {
 		if resp.StatusCode != tt.wantCode {
 			t.Errorf("#%d: resp code=%d, want=%d", i, resp.StatusCode, tt.wantCode)
 			continue
+		}
+	}
+}
+
+func TestDefaultCheckRedirect(t *testing.T) {
+	tests := []struct {
+		num int
+		err error
+	}{
+		{0, nil},
+		{5, nil},
+		{10, nil},
+		{11, ErrTooManyRedirects},
+		{29, ErrTooManyRedirects},
+	}
+
+	for i, tt := range tests {
+		err := DefaultCheckRedirect(tt.num)
+		if !reflect.DeepEqual(tt.err, err) {
+			t.Errorf("#%d: want=%#v got=%#v", i, tt.err, err)
+		}
+	}
+}
+
+func TestHTTPClusterClientSync(t *testing.T) {
+	cf := newStaticHTTPClientFactory([]staticHTTPResponse{
+		staticHTTPResponse{
+			resp: http.Response{StatusCode: http.StatusOK, Header: http.Header{"Content-Type": []string{"application/json"}}},
+			body: []byte(`{"members":[{"id":"2745e2525fce8fe","peerURLs":["http://127.0.0.1:7003"],"name":"node3","clientURLs":["http://127.0.0.1:4003"]},{"id":"42134f434382925","peerURLs":["http://127.0.0.1:2380","http://127.0.0.1:7001"],"name":"node1","clientURLs":["http://127.0.0.1:2379","http://127.0.0.1:4001"]},{"id":"94088180e21eb87b","peerURLs":["http://127.0.0.1:7002"],"name":"node2","clientURLs":["http://127.0.0.1:4002"]}]}`),
+		},
+	})
+
+	hc := &httpClusterClient{clientFactory: cf}
+	err := hc.reset([]string{"http://127.0.0.1:4001"})
+	if err != nil {
+		t.Fatalf("unexpected error during setup: %#v", err)
+	}
+
+	want := []string{"http://127.0.0.1:4001"}
+	got := hc.Endpoints()
+	if !reflect.DeepEqual(want, got) {
+		t.Fatalf("incorrect endpoints: want=%#v got=%#v", want, got)
+	}
+
+	err = hc.Sync(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error during Sync: %#v", err)
+	}
+
+	want = []string{"http://127.0.0.1:4003", "http://127.0.0.1:2379", "http://127.0.0.1:4001", "http://127.0.0.1:4002"}
+	got = hc.Endpoints()
+	if !reflect.DeepEqual(want, got) {
+		t.Fatalf("incorrect endpoints post-Sync: want=%#v got=%#v", want, got)
+	}
+
+	err = hc.reset([]string{"http://127.0.0.1:4009"})
+	if err != nil {
+		t.Fatalf("unexpected error during reset: %#v", err)
+	}
+
+	want = []string{"http://127.0.0.1:4009"}
+	got = hc.Endpoints()
+	if !reflect.DeepEqual(want, got) {
+		t.Fatalf("incorrect endpoints post-reset: want=%#v got=%#v", want, got)
+	}
+}
+
+func TestHTTPClusterClientSyncFail(t *testing.T) {
+	cf := newStaticHTTPClientFactory([]staticHTTPResponse{
+		staticHTTPResponse{err: errors.New("fail!")},
+	})
+
+	hc := &httpClusterClient{clientFactory: cf}
+	err := hc.reset([]string{"http://127.0.0.1:4001"})
+	if err != nil {
+		t.Fatalf("unexpected error during setup: %#v", err)
+	}
+
+	want := []string{"http://127.0.0.1:4001"}
+	got := hc.Endpoints()
+	if !reflect.DeepEqual(want, got) {
+		t.Fatalf("incorrect endpoints: want=%#v got=%#v", want, got)
+	}
+
+	err = hc.Sync(context.Background())
+	if err == nil {
+		t.Fatalf("got nil error during Sync")
+	}
+
+	got = hc.Endpoints()
+	if !reflect.DeepEqual(want, got) {
+		t.Fatalf("incorrect endpoints after failed Sync: want=%#v got=%#v", want, got)
+	}
+}
+
+func TestHTTPClusterClientResetFail(t *testing.T) {
+	tests := [][]string{
+		// need at least one endpoint
+		[]string{},
+
+		// urls must be valid
+		[]string{":"},
+	}
+
+	for i, tt := range tests {
+		hc := &httpClusterClient{}
+		err := hc.reset(tt)
+		if err == nil {
+			t.Errorf("#%d: expected non-nil error", i)
 		}
 	}
 }
