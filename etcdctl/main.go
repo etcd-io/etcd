@@ -39,6 +39,7 @@ func main() {
 	}
 	app.Commands = []cli.Command{
 		command.NewBackupCommand(),
+		command.NewClusterHealthCommand(),
 		command.NewMakeCommand(),
 		command.NewMakeDirCommand(),
 		command.NewRemoveCommand(),
