@@ -324,12 +324,8 @@ func (s *Server) GetLeaderStatsHandler(w http.ResponseWriter, req *http.Request)
 		return nil
 	}
 
-	leader := s.peerServer.RaftServer().Leader()
-	if leader == "" {
-		return etcdErr.NewError(300, "", s.Store().Index())
-	}
-	hostname, _ := s.registry.ClientURL(leader)
-	uhttp.Redirect(hostname, w, req)
+	w.WriteHeader(http.StatusForbidden)
+	w.Write([]byte("not current leader"))
 	return nil
 }
 
