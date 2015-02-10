@@ -12,7 +12,6 @@ import (
 type node struct {
 	raft.Node
 	id     uint64
-	paused bool
 	iface  iface
 	stopc  chan struct{}
 	pausec chan bool
@@ -67,15 +66,12 @@ func (n *node) start() {
 			case p := <-n.pausec:
 				recvms := make([]raftpb.Message, 0)
 				for p {
-					// TODO: locking around paused?
-					n.paused = true
 					select {
 					case m := <-n.iface.recv():
 						recvms = append(recvms, m)
 					case p = <-n.pausec:
 					}
 				}
-				n.paused = false
 				// step all pending messages
 				for _, m := range recvms {
 					n.Step(context.TODO(), m)
@@ -115,8 +111,4 @@ func (n *node) pause() {
 // resume resumes the paused node.
 func (n *node) resume() {
 	n.pausec <- false
-}
-
-func (n *node) isPaused() bool {
-	return n.paused
 }
