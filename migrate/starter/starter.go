@@ -34,6 +34,7 @@ import (
 	"github.com/coreos/etcd/pkg/flags"
 	"github.com/coreos/etcd/pkg/osutil"
 	"github.com/coreos/etcd/pkg/types"
+	etcdversion "github.com/coreos/etcd/version"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 )
@@ -68,6 +69,10 @@ func StartDesiredVersion(args []string) {
 	fs, err := parseConfig(args)
 	if err != nil {
 		return
+	}
+	if fs.Lookup("version").Value.String() == "true" {
+		fmt.Println("etcd version", etcdversion.Version)
+		os.Exit(0)
 	}
 
 	ver := checkInternalVersion(fs)
@@ -357,6 +362,8 @@ func (v *value) Set(s string) error {
 	v.s = s
 	return nil
 }
+
+func (v *value) IsBoolFlag() bool { return true }
 
 // parseConfig parses out the input config from cmdline arguments and
 // environment variables.
