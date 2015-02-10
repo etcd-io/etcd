@@ -134,6 +134,7 @@ func (t *transport) RemovePeer(id types.ID) {
 	defer t.mu.Unlock()
 	t.peers[id].Stop()
 	delete(t.peers, id)
+	delete(t.leaderStats.Followers, id.String())
 }
 
 func (t *transport) UpdatePeer(id types.ID, urls []string) {
