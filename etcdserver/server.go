@@ -387,6 +387,7 @@ func (s *EtcdServer) run() {
 				}
 				s.Cluster.Recover()
 				appliedi = rd.Snapshot.Metadata.Index
+				confState = rd.Snapshot.Metadata.ConfState
 				log.Printf("etcdserver: recovered from incoming snapshot at index %d", snapi)
 			}
 			// TODO(bmizerany): do this in the background, but take
