@@ -194,6 +194,12 @@ func (s *streamWriter) handle(w WriteFlusher) {
 	ew := newEntryWriter(w, s.to)
 	defer ew.stop()
 	for ents := range s.q {
+		// Considering Commit in MsgApp is not recovered when received,
+		// zero-entry appendEntry messages have no use to raft state machine.
+		// Drop it here because it is useless.
+		if len(ents) == 0 {
+			continue
+		}
 		start := time.Now()
 		if err := ew.writeEntries(ents); err != nil {
 			log.Printf("rafthttp: encountered error writing to server log stream: %v", err)
@@ -288,12 +294,6 @@ func (s *streamReader) handle(r io.Reader) {
 				log.Printf("rafthttp: encountered error reading the client log stream: %v", err)
 			}
 			return
-		}
-		// Considering Commit in MsgApp is not recovered, zero-entry appendEntry
-		// messages have no use to raft state machine. Drop it here because
-		// we don't have easy way to recover its Index easily.
-		if len(ents) == 0 {
-			continue
 		}
 		// The commit index field in appendEntry message is not recovered.
 		// The follower updates its commit index through heartbeat.
