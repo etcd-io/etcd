@@ -33,7 +33,7 @@ func UpgradeCommand() cli.Command {
 		Flags: []cli.Flag{
 			cli.StringFlag{Name: "old-version", Value: "1", Usage: "Old internal version"},
 			cli.StringFlag{Name: "new-version", Value: "2", Usage: "New internal version"},
-			cli.StringFlag{Name: "peer-url", Value: "", Usage: "An etcd peer url string"},
+			cli.StringFlag{Name: "peer-url", Value: "http://localhost:7001", Usage: "An etcd peer url string"},
 			cli.StringFlag{Name: "peer-cert-file", Value: "", Usage: "identify HTTPS peer using this SSL certificate file"},
 			cli.StringFlag{Name: "peer-key-file", Value: "", Usage: "identify HTTPS peer using this SSL key file"},
 			cli.StringFlag{Name: "peer-ca-file", Value: "", Usage: "verify certificates of HTTPS-enabled peers using this CA bundle"},
