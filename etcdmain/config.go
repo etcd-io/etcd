@@ -231,11 +231,10 @@ func (cfg *config) Parse(arguments []string) error {
 		return ErrConflictBootstrapFlags
 	}
 
-	peerBindAddrFlag := "peer-bind-addr"
-	if !flags.IsSet(cfg.FlagSet, peerBindAddrFlag) {
-		peerBindAddrFlag = "peer-addr"
-	}
-	cfg.lpurls, err = flags.URLsFromFlags(cfg.FlagSet, "listen-peer-urls", peerBindAddrFlag, cfg.peerTLSInfo)
+	flags.SetBindAddrFromAddr(cfg.FlagSet, "peer-bind-addr", "peer-addr")
+	flags.SetBindAddrFromAddr(cfg.FlagSet, "bind-addr", "addr")
+
+	cfg.lpurls, err = flags.URLsFromFlags(cfg.FlagSet, "listen-peer-urls", "peer-bind-addr", cfg.peerTLSInfo)
 	if err != nil {
 		return err
 	}
@@ -243,11 +242,7 @@ func (cfg *config) Parse(arguments []string) error {
 	if err != nil {
 		return err
 	}
-	bindAddrFlag := "bind-addr"
-	if !flags.IsSet(cfg.FlagSet, bindAddrFlag) {
-		bindAddrFlag = "addr"
-	}
-	cfg.lcurls, err = flags.URLsFromFlags(cfg.FlagSet, "listen-client-urls", bindAddrFlag, cfg.clientTLSInfo)
+	cfg.lcurls, err = flags.URLsFromFlags(cfg.FlagSet, "listen-client-urls", "bind-addr", cfg.clientTLSInfo)
 	if err != nil {
 		return err
 	}
