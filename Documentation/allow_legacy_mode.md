@@ -26,37 +26,57 @@ The default value for `ETCD_BINARY_DIR` is `/usr/libexec/etcd/internal_versions/
 
 ### Upgrading a Cluster
 
-When starting etcd with a v1 data directory and v1 flags, etcd executes the v0.4.7 binary and runs exactly the same as before.
+When starting etcd with a v1 data directory and v1 flags, etcd executes the v0.4.7 binary and runs exactly the same as before. To start the migration, follow the steps below:
 
-Before upgrading, you SHOULD check the health of the cluster by running:
+![Migration Steps](etcd-migration-steps.png)
+
+#### 1. Check the Cluster Health
+
+Before upgrading, you should check the health of the cluster to double check that everything working perfectly. Check the health by running:
 
 ```
 $ etcdctl cluster-health
+cluster is healthy
+member 6e3bd23ae5f1eae0 is healthy
+member 924e2e83e93f2560 is healthy
+member a8266ecf031671f3 is healthy
 ```
 
 If the cluster and all members are healthy, you can start the upgrading process. If not, check the unhealthy machines and repair them using [admin guide](./admin_guide.md).
 
-**The critical moment**: Use the `etcdctl upgrade` command to upgrade the etcd cluster to 2.0 now:
+#### 2. Trigger the Upgrade
+
+When you're ready, use the `etcdctl upgrade` command to start the upgrade the etcd cluster to 2.0:
 
 ```
+# Defaults work on a CoreOS machine running etcd
+$ etcdctl upgrade
+```
+
+```
+# Advanced example specifying a peer url
 $ etcdctl upgrade --old-version=1 --new-version=2 --peer-url=$PEER_URL
 ```
 
-`PEER_URL` is any accessible peer url of the cluster.
+`PEER_URL` can be any accessible peer url of the cluster.
 
-All peer-mode members will print out:
+Once triggered, all peer-mode members will print out:
 
 ```
 detected next internal version 2, exit after 10 seconds.
 ```
 
-etcd does internal coordination for the upgrade within the cluster in this period and then exits.
+#### Parallel Coordinated Upgrade
 
-You need to restart them after they exit. When restarted, it upgrades the data directory, and executes etcd v2.0. If it runs on a CoreOS system, the init system can take care of restart for you.
+As part of the upgrade, etcd does internal coordination within the cluster for a brief period and then exits. Clusters storing 50 MB should be unavailable for less than 1 minute.
 
-After the upgrade process, you can run the health check again to verify the upgrade. If the cluster is unhealthy or there is an unhealthy member, please refer to start [failure recovery](#failure-recovery).
+#### Restart etcd Processes
 
-Standby-mode members will exit after etcd cluster is upgraded to v2.0 with the message:
+After the etcd processes exit, they need to be restarted. You can do this manually or configure your unit system to do this automatically. On CoreOS, etcd is already configured to start automatically with systemd.
+
+When restarted, the data directory of each member is upgraded, and afterwards etcd v2.0 will be running and servicing requests. The upgrade is now complete!
+
+Standby-mode members are a special case &mdash; they will be upgraded into proxy mode (a new feature in etcd 2.0) upon restarting. When the upgrade is triggered, any standbys will exit with the message:
 
 ```
 Detect the cluster has been upgraded to internal API v2. Exit now.
@@ -64,19 +84,17 @@ Detect the cluster has been upgraded to internal API v2. Exit now.
 
 Once restarted, standbys run in v2.0 proxy mode, which proxy user requests to the etcd cluster.
 
+#### 3. Check the Cluster Health
+
+After the upgrade process, you can run the health check again to verify the upgrade. If the cluster is unhealthy or there is an unhealthy member, please refer to start [failure recovery](#failure-recovery).
+
 ### Downgrade
 
-If the upgrading fails due to disk/network issues, you still can restart the upgrading process manually. However, once you upgrade etcd to internal API v2, you CANNOT downgrade it back to internal API v1. If you want to downgrade etcd in the future, please backup your v1 data dir beforehand.
+If the upgrading fails due to disk/network issues, you still can restart the upgrading process manually. However, once you upgrade etcd to internal v2 protocol, you CANNOT downgrade it back to internal v1 protocol. If you want to downgrade etcd in the future, please backup your v1 data dir beforehand.
 
-### Unavailable window
+### Upgrade Process on CoreOS
 
-etcd cluster will be unavailable between the time that the upgrade command is sent and the time that each etcd process is upgraded and restarted.
-
-Usually, the window should be shorter than 1 minute for clusters storing up to 50 MB.
-
-### In CoreOS system
-
-When running on a CoreOS system, allow-legacy mode is enabled by default. Moreover, etcd process will restart automatically, so you don't need to do anything after running the upgrade command.
+When running on a CoreOS system, allow-legacy mode is enabled by default and an automatic update will set up everything needed to execute the upgrade. The `etcd.service` on CoreOS is already configured to restart automatically. All you need to do is run `etcdctl upgrade` when you're ready, as described
 
 ### Internal Details
 
