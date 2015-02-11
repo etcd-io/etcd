@@ -173,7 +173,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 			return nil, err
 		}
 		m := cfg.Cluster.MemberByName(cfg.Name)
-		if isBootstrapped(cfg) {
+		if isMemberBootstrapped(cfg.Cluster, cfg.Name, cfg.Transport) {
 			return nil, fmt.Errorf("member %s has already been bootstrapped", m.ID)
 		}
 		if cfg.ShouldDiscover() {

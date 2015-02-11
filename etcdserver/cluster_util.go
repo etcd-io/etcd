@@ -26,14 +26,11 @@ import (
 	"github.com/coreos/etcd/pkg/types"
 )
 
-// isBootstrapped tries to check if the given member has been bootstrapped
+// isMemberBootstrapped tries to check if the given member has been bootstrapped
 // in the given cluster.
-func isBootstrapped(cfg *ServerConfig) bool {
-	cl := cfg.Cluster
-	member := cfg.Name
-
+func isMemberBootstrapped(cl *Cluster, member string, tr *http.Transport) bool {
 	us := getOtherPeerURLs(cl, member)
-	rcl, err := getClusterFromPeers(us, false, cfg.Transport)
+	rcl, err := getClusterFromPeers(us, false, tr)
 	if err != nil {
 		return false
 	}
