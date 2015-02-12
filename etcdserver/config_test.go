@@ -129,8 +129,8 @@ func TestBootstrapConfigVerify(t *testing.T) {
 
 func TestSnapDir(t *testing.T) {
 	tests := map[string]string{
-		"/":            "/snap",
-		"/var/lib/etc": "/var/lib/etc/snap",
+		"/":            "/member/snap",
+		"/var/lib/etc": "/var/lib/etc/member/snap",
 	}
 	for dd, w := range tests {
 		cfg := ServerConfig{
@@ -144,8 +144,8 @@ func TestSnapDir(t *testing.T) {
 
 func TestWALDir(t *testing.T) {
 	tests := map[string]string{
-		"/":            "/wal",
-		"/var/lib/etc": "/var/lib/etc/wal",
+		"/":            "/member/wal",
+		"/var/lib/etc": "/var/lib/etc/member/wal",
 	}
 	for dd, w := range tests {
 		cfg := ServerConfig{

@@ -27,6 +27,25 @@ https://github.com/coreos/etcd/blob/master/Documentation/configuration.md.
 
 [migrationtooldoc]: https://github.com/coreos/etcd/blob/master/Documentation/0_4_migration_tool.md
 
+#### Key-Value API
+
+##### Read consistency flag
+
+The consistent flag for read operations is removed in etcd 2.0.0. The normal read operations provides the same consistency guarantees with the 0.4.6 read operations with consistent flag set.
+
+The read consistency guarantees are:
+
+The consistent read guarantees the sequential consistency within one client that talks to one etcd server. Read/Write from one client to one etcd member should be observed in order. If one client write a value to a etcd server successfully, it should be able to get the value out of the server immediately. 
+
+Each etcd member will proxy the request to leader and only return the result to user after the result is applied on the local member. Thus after the write succeed, the user is guaranteed to see the value on the member it sent the request to.
+
+Reads do not provide linearizability. If you want linearizabilable read, you need to set quorum option to true.
+
+**Previous behavior**
+
+We added an option for a consistent read in the old version of etcd since etcd 0.x redirects the write request to the leader. When the user get back the result from the leader, the member it sent the request to originally might not apply the write request yet. With the consistent flag set to true, the client will always send read request to the leader. So one client should be able to see its last write when consistent=true is enabled. There is no order guarantees among different clients.
+
+
 #### Standby
 
 etcd 0.4’s standby mode has been deprecated. [Proxy mode][proxymode] is introduced to solve a subset of problems standby was solving.

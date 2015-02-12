@@ -32,13 +32,24 @@ import (
 
 func main() {
 	from := flag.String("data-dir", "", "")
+	snapfile := flag.String("snap-file", "", "The base name of snapshot file to read")
 	flag.Parse()
 	if *from == "" {
 		log.Fatal("Must provide -data-dir flag")
 	}
 
-	ss := snap.New(snapDir(*from))
-	snapshot, err := ss.Load()
+	var (
+		snapshot *raftpb.Snapshot
+		err      error
+	)
+
+	if *snapfile == "" {
+		ss := snap.New(snapDir(*from))
+		snapshot, err = ss.Load()
+	} else {
+		snapshot, err = snap.Read(path.Join(snapDir(*from), *snapfile))
+	}
+
 	var walsnap walpb.Snapshot
 	switch err {
 	case nil:
@@ -102,9 +113,9 @@ func main() {
 	}
 }
 
-func walDir(dataDir string) string { return path.Join(dataDir, "wal") }
+func walDir(dataDir string) string { return path.Join(dataDir, "member", "wal") }
 
-func snapDir(dataDir string) string { return path.Join(dataDir, "snap") }
+func snapDir(dataDir string) string { return path.Join(dataDir, "member", "snap") }
 
 func parseWALMetadata(b []byte) (id, cid types.ID) {
 	var metadata etcdserverpb.Metadata

@@ -11,11 +11,11 @@ The underlying distributed consensus protocol relies on two separate time parame
 The first parameter is called the *Heartbeat Interval*.
 This is the frequency with which the leader will notify followers that it is still the leader.
 etcd batches commands together for higher throughput so this heartbeat interval is also a delay for how long it takes for commands to be committed.
-By default, etcd uses a `50ms` heartbeat interval.
+By default, etcd uses a `100ms` heartbeat interval.
 
 The second parameter is the *Election Timeout*.
 This timeout is how long a follower node will go without hearing a heartbeat before attempting to become leader itself.
-By default, etcd uses a `200ms` election timeout.
+By default, etcd uses a `1000ms` election timeout.
 
 Adjusting these values is a trade off.
 Lowering the heartbeat interval will cause individual commands to be committed faster but it will lower the overall throughput of etcd.

@@ -103,7 +103,7 @@ func Migrate4To2(dataDir string, name string) error {
 	st2 := cfg4.HardState2()
 
 	// If we've got the most recent snapshot, we can use it's committed index. Still likely less than the current actual index, but worth it for the replay.
-	if snap2 != nil {
+	if snap2 != nil && st2.Commit < snap2.Metadata.Index {
 		st2.Commit = snap2.Metadata.Index
 	}
 

@@ -16,7 +16,7 @@ If you need to move multiple members of your cluster due to planned maintenance 
 
 It is safe to remove the leader, however there is a brief period of downtime while the election process takes place. If your cluster holds more than 50MB, it is recommended to [migrate the member's data directory][member migration].
 
-[member migration]: #member-migration
+[member migration]: admin_guide.md#member-migration
 
 ### Change the Cluster Size
 

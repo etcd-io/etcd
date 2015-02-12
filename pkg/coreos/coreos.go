@@ -11,10 +11,17 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+package coreos
 
-package version
-
-var (
-	Version         = "2.0.2+git"
-	InternalVersion = "2"
+import (
+	"io/ioutil"
+	"strings"
 )
+
+func IsCoreOS() bool {
+	b, err := ioutil.ReadFile("/usr/lib/os-release")
+	if err != nil {
+		return false
+	}
+	return strings.Contains(string(b), "ID=coreos")
+}
