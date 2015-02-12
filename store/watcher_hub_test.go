@@ -64,3 +64,22 @@ func TestIsHidden(t *testing.T) {
 		t.Fatalf("%v should not be hidden to %v\n", key, watch)
 	}
 }
+
+func TestWatchersCount(t *testing.T) {
+	wh := newWatchHub(10)
+	w, err := wh.watch("/foo", true, false, 1, 1)
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+	if wh.count != 1 {
+		t.Fatalf("watchers count was %d, expected %d", wh.count, 1)
+	}
+
+	e := newEvent(Set, "/foo", 1, 1)
+	wh.notify(e)
+
+	w.Remove()
+	if wh.count != 0 {
+		t.Fatalf("watchers count was %d, expected %d", wh.count, 0)
+	}
+}

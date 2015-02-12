@@ -143,21 +143,12 @@ func (wh *watcherHub) notifyWatchers(e *Event, nodePath string, deleted bool) {
 			originalPath := (e.Node.Key == nodePath)
 			if (originalPath || !isHidden(nodePath, e.Node.Key)) && w.notify(e, originalPath, deleted) {
 				if !w.stream { // do not remove the stream watcher
-					// if we successfully notify a watcher
-					// we need to remove the watcher from the list
-					// and decrease the counter
-					l.Remove(curr)
-					atomic.AddInt64(&wh.count, -1)
+					// if we successfully notify a watcher, we can remove it
+					w.remove()
 				}
 			}
 
 			curr = next // update current to the next element in the list
-		}
-
-		if l.Len() == 0 {
-			// if we have notified all watcher in the list
-			// we can delete the list
-			delete(wh.watchers, nodePath)
 		}
 	}
 }
