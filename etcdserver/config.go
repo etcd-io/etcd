@@ -83,9 +83,11 @@ func (c *ServerConfig) VerifyBootstrapConfig() error {
 	return nil
 }
 
-func (c *ServerConfig) WALDir() string { return path.Join(c.DataDir, "wal") }
+func (c *ServerConfig) MemberDir() string { return path.Join(c.DataDir, "member") }
 
-func (c *ServerConfig) SnapDir() string { return path.Join(c.DataDir, "snap") }
+func (c *ServerConfig) WALDir() string { return path.Join(c.MemberDir(), "wal") }
+
+func (c *ServerConfig) SnapDir() string { return path.Join(c.MemberDir(), "snap") }
 
 func (c *ServerConfig) ShouldDiscover() bool { return c.DiscoveryURL != "" }
 
@@ -99,6 +101,7 @@ func (c *ServerConfig) print(initial bool) {
 		log.Println("etcdserver: force new cluster")
 	}
 	log.Printf("etcdserver: data dir = %s", c.DataDir)
+	log.Printf("etcdserver: member dir = %s", c.MemberDir())
 	log.Printf("etcdserver: heartbeat = %dms", c.TickMs)
 	log.Printf("etcdserver: election = %dms", c.ElectionTicks*int(c.TickMs))
 	log.Printf("etcdserver: snapshot count = %d", c.SnapCount)

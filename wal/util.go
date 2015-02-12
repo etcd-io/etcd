@@ -31,7 +31,8 @@ const (
 	WALUnknown  WalVersion = "Unknown WAL"
 	WALNotExist WalVersion = "No WAL"
 	WALv0_4     WalVersion = "0.4.x"
-	WALv0_5     WalVersion = "0.5.x"
+	WALv2_0     WalVersion = "2.0.0"
+	WALv2_0_1   WalVersion = "2.0.1"
 )
 
 func DetectVersion(dirpath string) (WalVersion, error) {
@@ -48,10 +49,20 @@ func DetectVersion(dirpath string) (WalVersion, error) {
 		return WALNotExist, nil
 	}
 	nameSet := types.NewUnsafeSet(names...)
+	if nameSet.Contains("member") {
+		ver, err := DetectVersion(path.Join(dirpath, "member"))
+		if ver == WALv2_0 {
+			return WALv2_0_1, nil
+		} else if ver == WALv0_4 {
+			// How in the blazes did it get there?
+			return WALUnknown, nil
+		}
+		return ver, err
+	}
 	if nameSet.ContainsAll([]string{"snap", "wal"}) {
 		// .../wal cannot be empty to exist.
 		if Exist(path.Join(dirpath, "wal")) {
-			return WALv0_5, nil
+			return WALv2_0, nil
 		}
 	}
 	if nameSet.ContainsAll([]string{"snapshot", "conf", "log"}) {

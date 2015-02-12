@@ -144,6 +144,8 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 	var n raft.Node
 	var s *raft.MemoryStorage
 	var id types.ID
+	var ss *snap.Snapshotter
+
 	walVersion, err := wal.DetectVersion(cfg.DataDir)
 	if err != nil {
 		return nil, err
@@ -153,7 +155,6 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 	}
 	haveWAL := walVersion != wal.WALNotExist
 
-	ss := snap.New(cfg.SnapDir())
 	switch {
 	case !haveWAL && !cfg.NewCluster:
 		us := getOtherPeerURLs(cfg.Cluster, cfg.Name)
@@ -189,15 +190,23 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		cfg.PrintWithInitial()
 		id, n, s, w = startNode(cfg, cfg.Cluster.MemberIDs())
 	case haveWAL:
-		if walVersion != wal.WALv0_5 {
-			if err := upgradeWAL(cfg, walVersion); err != nil {
-				return nil, err
-			}
+		// Run the migrations.
+		if err := upgradeWAL(cfg.DataDir, cfg.Name, walVersion); err != nil {
+			return nil, err
+		}
+
+		if err := fileutil.IsDirWriteable(cfg.DataDir); err != nil {
+			return nil, fmt.Errorf("cannot write to data directory: %v", err)
+		}
+
+		if err := fileutil.IsDirWriteable(cfg.MemberDir()); err != nil {
+			return nil, fmt.Errorf("cannot write to member directory: %v", err)
 		}
 
 		if cfg.ShouldDiscover() {
 			log.Printf("etcdserver: discovery token ignored since a cluster has already been initialized. Valid log found at %q", cfg.WALDir())
 		}
+		ss := snap.New(cfg.SnapDir())
 		snapshot, err := ss.Load()
 		if err != nil && err != snap.ErrNoSnapshot {
 			return nil, err

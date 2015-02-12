@@ -16,6 +16,8 @@ package etcdserver
 
 import (
 	"log"
+	"os"
+	"path"
 
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/migrate"
@@ -91,12 +93,45 @@ func readWAL(waldir string, snap walpb.Snapshot) (w *wal.WAL, id, cid types.ID, 
 
 // upgradeWAL converts an older version of the etcdServer data to the newest version.
 // It must ensure that, after upgrading, the most recent version is present.
-func upgradeWAL(cfg *ServerConfig, ver wal.WalVersion) error {
-	if ver == wal.WALv0_4 {
+func upgradeWAL(baseDataDir string, name string, ver wal.WalVersion) error {
+	switch ver {
+	case wal.WALv0_4:
 		log.Print("etcdserver: converting v0.4 log to v2.0")
-		err := migrate.Migrate4To2(cfg.DataDir, cfg.Name)
+		err := migrate.Migrate4To2(baseDataDir, name)
 		if err != nil {
 			log.Fatalf("etcdserver: failed migrating data-dir: %v", err)
+			return err
+		}
+		fallthrough
+	case wal.WALv2_0:
+		err := makeMemberDir(baseDataDir)
+		if err != nil {
+			return err
+		}
+		fallthrough
+	case wal.WALv2_0_1:
+		fallthrough
+	default:
+		log.Printf("datadir is valid for the 2.0.1 format")
+	}
+	return nil
+}
+
+func makeMemberDir(dir string) error {
+	membdir := path.Join(dir, "member")
+	_, err := os.Stat(membdir)
+	switch {
+	case err == nil:
+		return nil
+	case !os.IsNotExist(err):
+		return err
+	}
+	if err := os.MkdirAll(membdir, 0700); err != nil {
+		return err
+	}
+	names := []string{"snap", "wal"}
+	for _, name := range names {
+		if err := os.Rename(path.Join(dir, name), path.Join(membdir, name)); err != nil {
 			return err
 		}
 	}
