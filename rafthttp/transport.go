@@ -132,7 +132,11 @@ func (t *transport) AddPeer(id types.ID, urls []string) {
 func (t *transport) RemovePeer(id types.ID) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	t.peers[id].Stop()
+	if peer, ok := t.peers[id]; ok {
+		peer.Stop()
+	} else {
+		log.Panicf("rafthttp: unexpected removal of unknown peer '%d'", id)
+	}
 	delete(t.peers, id)
 	delete(t.leaderStats.Followers, id.String())
 }
