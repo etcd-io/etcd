@@ -145,16 +145,13 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 	var s *raft.MemoryStorage
 	var id types.ID
 	var ss *snap.Snapshotter
-	baseDataDir := cfg.DataDir
-	// Data dir lives under member now.
-	cfg.DataDir = path.Join(cfg.DataDir, "member")
 
-	walVersion, err := wal.DetectVersion(baseDataDir)
+	walVersion, err := wal.DetectVersion(cfg.DataDir)
 	if err != nil {
 		return nil, err
 	}
 	if walVersion == wal.WALUnknown {
-		return nil, fmt.Errorf("unknown wal version in data dir %s", baseDataDir)
+		return nil, fmt.Errorf("unknown wal version in data dir %s", cfg.DataDir)
 	}
 	haveWAL := walVersion != wal.WALNotExist
 
@@ -194,12 +191,16 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		id, n, s, w = startNode(cfg, cfg.Cluster.MemberIDs())
 	case haveWAL:
 		// Run the migrations.
-		if err := upgradeWAL(baseDataDir, cfg.Name, walVersion); err != nil {
+		if err := upgradeWAL(cfg.DataDir, cfg.Name, walVersion); err != nil {
 			return nil, err
 		}
 
 		if err := fileutil.IsDirWriteable(cfg.DataDir); err != nil {
 			return nil, fmt.Errorf("cannot write to data directory: %v", err)
+		}
+
+		if err := fileutil.IsDirWriteable(cfg.MemberDir()); err != nil {
+			return nil, fmt.Errorf("cannot write to member directory: %v", err)
 		}
 
 		if cfg.ShouldDiscover() {
