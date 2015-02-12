@@ -392,6 +392,16 @@ func (s *EtcdServer) run() {
 					log.Panicf("recovery store error: %v", err)
 				}
 				s.Cluster.Recover()
+
+				// recover raft transport
+				s.r.transport.RemoveAllPeers()
+				for _, m := range s.Cluster.Members() {
+					if m.ID == s.ID() {
+						continue
+					}
+					s.r.transport.AddPeer(m.ID, m.PeerURLs)
+				}
+
 				appliedi = rd.Snapshot.Metadata.Index
 				confState = rd.Snapshot.Metadata.ConfState
 				log.Printf("etcdserver: recovered from incoming snapshot at index %d", snapi)
