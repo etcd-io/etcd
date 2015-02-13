@@ -206,7 +206,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		if cfg.ShouldDiscover() {
 			log.Printf("etcdserver: discovery token ignored since a cluster has already been initialized. Valid log found at %q", cfg.WALDir())
 		}
-		ss := snap.New(cfg.SnapDir())
+		ss = snap.New(cfg.SnapDir())
 		snapshot, err := ss.Load()
 		if err != nil && err != snap.ErrNoSnapshot {
 			return nil, err
