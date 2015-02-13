@@ -185,6 +185,9 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 			if cfg.Cluster, err = NewClusterFromString(cfg.Cluster.token, s); err != nil {
 				return nil, err
 			}
+			if cfg.Cluster.Validate() != nil {
+				return nil, fmt.Errorf("bad discovery cluster: %v", err)
+			}
 		}
 		cfg.Cluster.SetStore(st)
 		cfg.PrintWithInitial()
