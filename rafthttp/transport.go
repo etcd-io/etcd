@@ -37,6 +37,7 @@ type Transporter interface {
 	Send(m []raftpb.Message)
 	AddPeer(id types.ID, urls []string)
 	RemovePeer(id types.ID)
+	RemoveAllPeers()
 	UpdatePeer(id types.ID, urls []string)
 	Stop()
 }
@@ -132,6 +133,19 @@ func (t *transport) AddPeer(id types.ID, urls []string) {
 func (t *transport) RemovePeer(id types.ID) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
+	t.removePeer(id)
+}
+
+func (t *transport) RemoveAllPeers() {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	for id, _ := range t.peers {
+		t.removePeer(id)
+	}
+}
+
+// the caller of this function must have the peers mutex.
+func (t *transport) removePeer(id types.ID) {
 	if peer, ok := t.peers[id]; ok {
 		peer.Stop()
 	} else {
