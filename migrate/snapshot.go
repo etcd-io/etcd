@@ -129,6 +129,7 @@ func fixEtcd(etcdref *node) *node {
 		ExpireTime:    machines.ExpireTime,
 		ACL:           machines.ACL,
 		Children:      make(map[string]*node),
+		Parent:        n,
 	}
 	for name, c := range machines.Children {
 		q, err := url.ParseQuery(c.Value)
@@ -153,25 +154,29 @@ func fixEtcd(etcdref *node) *node {
 			ModifiedIndex: c.ModifiedIndex,
 			ExpireTime:    c.ExpireTime,
 			ACL:           c.ACL,
-			Children: map[string]*node{
-				"attributes": &node{
-					Path:          path.Join("/0/members", m.ID.String(), "attributes"),
-					CreatedIndex:  c.CreatedIndex,
-					ModifiedIndex: c.ModifiedIndex,
-					ExpireTime:    c.ExpireTime,
-					ACL:           c.ACL,
-					Value:         string(attrBytes),
-				},
-				"raftAttributes": &node{
-					Path:          path.Join("/0/members", m.ID.String(), "raftAttributes"),
-					CreatedIndex:  c.CreatedIndex,
-					ModifiedIndex: c.ModifiedIndex,
-					ExpireTime:    c.ExpireTime,
-					ACL:           c.ACL,
-					Value:         string(raftBytes),
-				},
-			},
+			Children:      make(map[string]*node),
+			Parent:        n.Children["members"],
 		}
+		attrs := &node{
+			Path:          path.Join("/0/members", m.ID.String(), "attributes"),
+			CreatedIndex:  c.CreatedIndex,
+			ModifiedIndex: c.ModifiedIndex,
+			ExpireTime:    c.ExpireTime,
+			ACL:           c.ACL,
+			Value:         string(attrBytes),
+			Parent:        newNode,
+		}
+		newNode.Children["attributes"] = attrs
+		raftAttrs := &node{
+			Path:          path.Join("/0/members", m.ID.String(), "raftAttributes"),
+			CreatedIndex:  c.CreatedIndex,
+			ModifiedIndex: c.ModifiedIndex,
+			ExpireTime:    c.ExpireTime,
+			ACL:           c.ACL,
+			Value:         string(raftBytes),
+			Parent:        newNode,
+		}
+		newNode.Children["raftAttributes"] = raftAttrs
 		n.Children["members"].Children[m.ID.String()] = newNode
 	}
 	return n
@@ -190,6 +195,7 @@ func mangleRoot(n *node) *node {
 	etcd := n.Children["_etcd"]
 	replacePathNames(n, "/", "/1/")
 	newZero := fixEtcd(etcd)
+	newZero.Parent = newRoot
 	newRoot.Children["0"] = newZero
 	return newRoot
 }
