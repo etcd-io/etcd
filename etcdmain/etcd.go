@@ -92,7 +92,7 @@ func startEtcd(cfg *config) (<-chan struct{}, error) {
 		log.Printf("no data-dir provided, using default data-dir ./%s", cfg.dir)
 	}
 
-	pt, err := transport.NewTimeoutTransport(cfg.peerTLSInfo, rafthttp.ConnReadTimeout, rafthttp.ConnWriteTimeout)
+	pt, err := transport.NewTimeoutTransport(cfg.peerTLSInfo, rafthttp.DialTimeout, rafthttp.ConnReadTimeout, rafthttp.ConnWriteTimeout)
 	if err != nil {
 		return nil, err
 	}
