@@ -86,6 +86,7 @@ func TestSnapshotAndRestartMember(t *testing.T) {
 	m.SnapCount = 100
 	m.Launch()
 	defer m.Terminate(t)
+	m.WaitOK(t)
 
 	resps := make([]*client.Response, 120)
 	var err error
@@ -96,7 +97,7 @@ func TestSnapshotAndRestartMember(t *testing.T) {
 		key := fmt.Sprintf("foo%d", i)
 		resps[i], err = kapi.Create(ctx, "/"+key, "bar", -1)
 		if err != nil {
-			t.Fatalf("create on %s error: %v", m.URL(), err)
+			t.Fatalf("#%d: create on %s error: %v", i, m.URL(), err)
 		}
 		cancel()
 	}
@@ -110,12 +111,12 @@ func TestSnapshotAndRestartMember(t *testing.T) {
 		key := fmt.Sprintf("foo%d", i)
 		resp, err := kapi.Get(ctx, "/"+key)
 		if err != nil {
-			t.Fatalf("get on %s error: %v", m.URL(), err)
+			t.Fatalf("#%d: get on %s error: %v", i, m.URL(), err)
 		}
 		cancel()
 
 		if !reflect.DeepEqual(resp.Node, resps[i].Node) {
-			t.Errorf("#%d: node = %v, want %v", resp.Node, resps[i].Node)
+			t.Errorf("#%d: node = %v, want %v", i, resp.Node, resps[i].Node)
 		}
 	}
 }
