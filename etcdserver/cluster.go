@@ -346,6 +346,20 @@ func (c *Cluster) UpdateRaftAttributes(id types.ID, raftAttr RaftAttributes) {
 	c.members[id].RaftAttributes = raftAttr
 }
 
+// Validate ensures that there is no identical urls in the cluster peer list
+func (c *Cluster) Validate() error {
+	urlMap := make(map[string]bool)
+	for _, m := range c.Members() {
+		for _, url := range m.PeerURLs {
+			if urlMap[url] {
+				return fmt.Errorf("duplicate url %v in cluster config", url)
+			}
+			urlMap[url] = true
+		}
+	}
+	return nil
+}
+
 func membersFromStore(st store.Store) (map[types.ID]*Member, map[types.ID]bool) {
 	members := make(map[types.ID]*Member)
 	removed := make(map[types.ID]bool)

@@ -62,15 +62,8 @@ func (c *ServerConfig) VerifyBootstrapConfig() error {
 		return fmt.Errorf("initial cluster state unset and no wal or discovery URL found")
 	}
 
-	// No identical IPs in the cluster peer list
-	urlMap := make(map[string]bool)
-	for _, m := range c.Cluster.Members() {
-		for _, url := range m.PeerURLs {
-			if urlMap[url] {
-				return fmt.Errorf("duplicate url %v in cluster config", url)
-			}
-			urlMap[url] = true
-		}
+	if err := c.Cluster.Validate(); err != nil {
+		return err
 	}
 
 	// Advertised peer URLs must match those in the cluster peer list
