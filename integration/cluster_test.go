@@ -547,6 +547,24 @@ func (m *member) Launch() error {
 	return nil
 }
 
+func (m *member) WaitOK(t *testing.T) {
+	cc := mustNewHTTPClient(t, []string{m.URL()})
+	kapi := client.NewKeysAPI(cc)
+	for {
+		ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+		_, err := kapi.Get(ctx, "/")
+		if err != nil {
+			time.Sleep(tickDuration)
+			continue
+		}
+		cancel()
+		break
+	}
+	for m.s.Leader() == 0 {
+		time.Sleep(tickDuration)
+	}
+}
+
 func (m *member) URL() string { return m.ClientURLs[0].String() }
 
 func (m *member) Pause() {
