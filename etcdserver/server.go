@@ -144,7 +144,6 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 	var n raft.Node
 	var s *raft.MemoryStorage
 	var id types.ID
-	var ss *snap.Snapshotter
 
 	walVersion, err := wal.DetectVersion(cfg.DataDir)
 	if err != nil {
@@ -154,6 +153,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		return nil, fmt.Errorf("unknown wal version in data dir %s", cfg.DataDir)
 	}
 	haveWAL := walVersion != wal.WALNotExist
+	ss := snap.New(cfg.SnapDir())
 
 	switch {
 	case !haveWAL && !cfg.NewCluster:
@@ -206,7 +206,6 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		if cfg.ShouldDiscover() {
 			log.Printf("etcdserver: discovery token ignored since a cluster has already been initialized. Valid log found at %q", cfg.WALDir())
 		}
-		ss = snap.New(cfg.SnapDir())
 		snapshot, err := ss.Load()
 		if err != nil && err != snap.ErrNoSnapshot {
 			return nil, err
