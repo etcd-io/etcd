@@ -8,6 +8,7 @@
 - [etcd-fs](https://github.com/xetorthio/etcd-fs) - FUSE filesystem for etcd
 - [etcd-browser](https://github.com/henszey/etcd-browser) - A web-based key/value editor for etcd using AngularJS
 - [etcd-lock](https://github.com/datawisesystems/etcd-lock) - A lock implementation for etcd
+- [etcd-console](https://github.com/matishsiao/etcd-console) - A web-base key/value editor for etcd using PHP
 
 **Go libraries**
 
