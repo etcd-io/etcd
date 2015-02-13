@@ -30,6 +30,7 @@ const (
 	appRespBatchMs = 50
 	propBatchMs    = 10
 
+	DialTimeout      = time.Second
 	ConnReadTimeout  = 5 * time.Second
 	ConnWriteTimeout = 5 * time.Second
 )
