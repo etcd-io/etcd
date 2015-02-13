@@ -15,9 +15,13 @@
 package integration
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
-	"testing"
+	"reflect"
+
+	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
+	"github.com/coreos/etcd/client"
 )
 
 func TestPauseMember(t *testing.T) {
@@ -72,5 +76,45 @@ func TestLaunchDuplicateMemberShouldFail(t *testing.T) {
 
 	if err := m.Launch(); err == nil {
 		t.Errorf("unexpect successful launch")
+	}
+}
+
+func TestSnapshotAndRestartMember(t *testing.T) {
+	defer afterTest(t)
+	m := mustNewMember(t, "snapAndRestartTest")
+	m.SnapCount = 100
+	m.Launch()
+	defer m.Terminate(t)
+
+	resps := make([]*client.Response, 120)
+	var err error
+	for i := 0; i < 120; i++ {
+		cc := mustNewHTTPClient(t, []string{m.URL()})
+		kapi := client.NewKeysAPI(cc)
+		ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+		key := fmt.Sprintf("foo%d", i)
+		resps[i], err = kapi.Create(ctx, "/"+key, "bar", -1)
+		if err != nil {
+			t.Fatalf("create on %s error: %v", m.URL(), err)
+		}
+		cancel()
+	}
+	m.Stop(t)
+	m.Restart(t)
+
+	for i := 0; i < 120; i++ {
+		cc := mustNewHTTPClient(t, []string{m.URL()})
+		kapi := client.NewKeysAPI(cc)
+		ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+		key := fmt.Sprintf("foo%d", i)
+		resp, err := kapi.Get(ctx, "/"+key)
+		if err != nil {
+			t.Fatalf("get on %s error: %v", m.URL(), err)
+		}
+		cancel()
+
+		if !reflect.DeepEqual(resp.Node, resps[i].Node) {
+			t.Errorf("#%d: node = %v, want %v", resp.Node, resps[i].Node)
+		}
 	}
 }
