@@ -15,11 +15,15 @@
 package etcdmain
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
 	"os"
+	"path"
+	"reflect"
 	"strings"
 	"time"
 
@@ -28,7 +32,6 @@ import (
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/etcdhttp"
 	"github.com/coreos/etcd/pkg/cors"
-	"github.com/coreos/etcd/pkg/fileutil"
 	"github.com/coreos/etcd/pkg/transport"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/proxy"
@@ -84,12 +87,6 @@ func startEtcd(cfg *config) (<-chan struct{}, error) {
 	if cfg.dir == "" {
 		cfg.dir = fmt.Sprintf("%v.etcd", cfg.name)
 		log.Printf("no data-dir provided, using default data-dir ./%s", cfg.dir)
-	}
-	if err := os.MkdirAll(cfg.dir, privateDirMode); err != nil {
-		return nil, fmt.Errorf("cannot create data directory: %v", err)
-	}
-	if err := fileutil.IsDirWriteable(cfg.dir); err != nil {
-		return nil, fmt.Errorf("cannot write to data directory: %v", err)
 	}
 
 	pt, err := transport.NewTimeoutTransport(cfg.peerTLSInfo, rafthttp.ConnReadTimeout, rafthttp.ConnWriteTimeout)
@@ -217,15 +214,71 @@ func startProxy(cfg *config) error {
 		return err
 	}
 
-	// TODO(jonboulle): update peerURLs dynamically (i.e. when updating
-	// clientURLs) instead of just using the initial fixed list here
-	peerURLs := cls.PeerURLs()
+	if cfg.dir == "" {
+		cfg.dir = fmt.Sprintf("%v.etcd", cfg.name)
+		log.Printf("no proxy data-dir provided, using default proxy data-dir ./%s", cfg.dir)
+	}
+	cfg.dir = path.Join(cfg.dir, "proxy")
+	err = os.MkdirAll(cfg.dir, 0700)
+	if err != nil {
+		return err
+	}
+
+	var peerURLs []string
+	clusterfile := path.Join(cfg.dir, "cluster")
+
+	b, err := ioutil.ReadFile(clusterfile)
+	switch {
+	case err == nil:
+		urls := struct{ PeerURLs []string }{}
+		err := json.Unmarshal(b, &urls)
+		if err != nil {
+			return err
+		}
+		peerURLs = urls.PeerURLs
+		log.Printf("proxy: using peer urls %v from cluster file ./%s", peerURLs, clusterfile)
+	case os.IsNotExist(err):
+		peerURLs = cls.PeerURLs()
+		log.Printf("proxy: using peer urls %v ", peerURLs)
+	default:
+		return err
+	}
+
 	uf := func() []string {
-		cls, err := etcdserver.GetClusterFromPeers(peerURLs, tr)
+		gcls, err := etcdserver.GetClusterFromPeers(peerURLs, tr)
+		// TODO: remove the 2nd check when we fix GetClusterFromPeers
+		// GetClusterFromPeers should not return nil error with an invaild empty cluster
 		if err != nil {
 			log.Printf("proxy: %v", err)
 			return []string{}
 		}
+		if len(gcls.Members()) == 0 {
+			return cls.ClientURLs()
+		}
+		cls = gcls
+
+		urls := struct{ PeerURLs []string }{cls.PeerURLs()}
+		b, err := json.Marshal(urls)
+		if err != nil {
+			log.Printf("proxy: error on marshal peer urls %s", err)
+			return cls.ClientURLs()
+		}
+
+		err = ioutil.WriteFile(clusterfile+".bak", b, 0600)
+		if err != nil {
+			log.Printf("proxy: error on writing urls %s", err)
+			return cls.ClientURLs()
+		}
+		err = os.Rename(clusterfile+".bak", clusterfile)
+		if err != nil {
+			log.Printf("proxy: error on updating clusterfile %s", err)
+			return cls.ClientURLs()
+		}
+		if !reflect.DeepEqual(cls.PeerURLs(), peerURLs) {
+			log.Printf("proxy: updated peer urls in cluster file from %v to %v", peerURLs, cls.PeerURLs())
+		}
+		peerURLs = cls.PeerURLs()
+
 		return cls.ClientURLs()
 	}
 	ph := proxy.NewHandler(pt, uf)

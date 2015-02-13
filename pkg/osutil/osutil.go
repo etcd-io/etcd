@@ -12,9 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package version
+package osutil
 
-var (
-	Version         = "2.0.2+git"
-	InternalVersion = "2"
+import (
+	"os"
+	"strings"
 )
+
+func Unsetenv(key string) error {
+	envs := os.Environ()
+	os.Clearenv()
+	for _, e := range envs {
+		strs := strings.SplitN(e, "=", 2)
+		if strs[0] == key {
+			continue
+		}
+		if err := os.Setenv(strs[0], strs[1]); err != nil {
+			return err
+		}
+	}
+	return nil
+}

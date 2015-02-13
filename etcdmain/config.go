@@ -231,6 +231,9 @@ func (cfg *config) Parse(arguments []string) error {
 		return ErrConflictBootstrapFlags
 	}
 
+	flags.SetBindAddrFromAddr(cfg.FlagSet, "peer-bind-addr", "peer-addr")
+	flags.SetBindAddrFromAddr(cfg.FlagSet, "bind-addr", "addr")
+
 	cfg.lpurls, err = flags.URLsFromFlags(cfg.FlagSet, "listen-peer-urls", "peer-bind-addr", cfg.peerTLSInfo)
 	if err != nil {
 		return err

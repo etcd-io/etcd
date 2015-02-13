@@ -913,19 +913,35 @@ curl http://127.0.0.1:2379/v2/stats/leader
 
 ```json
 {
-    "id": "2c7d3e0b8627375b",
-    "leaderInfo": {
-        "leader": "8a69d5f6b7814500",
-        "startTime": "2014-10-24T13:15:51.184719899-07:00",
-        "uptime": "7m17.859616962s"
+    "followers": {
+        "6e3bd23ae5f1eae0": {
+            "counts": {
+                "fail": 0,
+                "success": 745
+            },
+            "latency": {
+                "average": 0.017039507382550306,
+                "current": 0.000138,
+                "maximum": 1.007649,
+                "minimum": 0,
+                "standardDeviation": 0.05289178277920594
+            }
+        },
+        "a8266ecf031671f3": {
+            "counts": {
+                "fail": 0,
+                "success": 735
+            },
+            "latency": {
+                "average": 0.012124141496598642,
+                "current": 0.000559,
+                "maximum": 0.791547,
+                "minimum": 0,
+                "standardDeviation": 0.04187900156583733
+            }
+        }
     },
-    "name": "infra1",
-    "recvAppendRequestCnt": 3949,
-    "recvBandwidthRate": 561.5729321100841,
-    "recvPkgRate": 9.008227977383449,
-    "sendAppendRequestCnt": 0,
-    "startTime": "2014-10-24T13:15:50.070369454-07:00",
-    "state": "StateFollower"
+    "leader": "924e2e83e93f2560"
 }
 ```
 
@@ -979,19 +995,19 @@ curl http://127.0.0.1:2379/v2/stats/self
 
 ```json
 {
-    "id": "eca0338f4ea31566",
+    "id": "924e2e83e93f2560",
     "leaderInfo": {
-        "leader": "8a69d5f6b7814500",
-        "startTime": "2014-10-24T13:15:51.186620747-07:00",
-        "uptime": "10m47.012122091s"
+        "leader": "924e2e83e93f2560",
+        "startTime": "2015-02-09T11:38:30.177534688-08:00",
+        "uptime": "9m33.891343412s"
     },
-    "name": "node3",
-    "recvAppendRequestCnt": 5835,
-    "recvBandwidthRate": 584.1485698657176,
-    "recvPkgRate": 9.17390765395709,
-    "sendAppendRequestCnt": 0,
-    "startTime": "2014-10-24T13:15:50.072007085-07:00",
-    "state": "StateFollower"
+    "name": "infra3",
+    "recvAppendRequestCnt": 0,
+    "sendAppendRequestCnt": 6535,
+    "sendBandwidthRate": 824.1758351191694,
+    "sendPkgRate": 11.111234716807138,
+    "startTime": "2015-02-09T11:38:28.972034204-08:00",
+    "state": "StateLeader"
 }
 ```
 

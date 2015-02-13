@@ -28,7 +28,8 @@ func TestDetectVersion(t *testing.T) {
 		wver  WalVersion
 	}{
 		{[]string{}, WALNotExist},
-		{[]string{"snap/", "wal/", "wal/1"}, WALv0_5},
+		{[]string{"member/", "member/wal/", "member/wal/1", "member/snap/"}, WALv2_0_1},
+		{[]string{"snap/", "wal/", "wal/1"}, WALv2_0},
 		{[]string{"snapshot/", "conf", "log"}, WALv0_4},
 		{[]string{"weird"}, WALUnknown},
 		{[]string{"snap/", "wal/"}, WALUnknown},

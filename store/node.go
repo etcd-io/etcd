@@ -369,10 +369,13 @@ func (n *node) Compare(prevValue string, prevIndex uint64) (ok bool, which int) 
 // If the node is a key-value pair, it will clone the pair.
 func (n *node) Clone() *node {
 	if !n.IsDir() {
-		return newKV(n.store, n.Path, n.Value, n.CreatedIndex, n.Parent, n.ACL, n.ExpireTime)
+		newkv := newKV(n.store, n.Path, n.Value, n.CreatedIndex, n.Parent, n.ACL, n.ExpireTime)
+		newkv.ModifiedIndex = n.ModifiedIndex
+		return newkv
 	}
 
 	clone := newDir(n.store, n.Path, n.CreatedIndex, n.Parent, n.ACL, n.ExpireTime)
+	clone.ModifiedIndex = n.ModifiedIndex
 
 	for key, child := range n.Children {
 		clone.Children[key] = child.Clone()

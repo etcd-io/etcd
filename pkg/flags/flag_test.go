@@ -81,6 +81,49 @@ func TestSetFlagsFromEnvBad(t *testing.T) {
 	}
 }
 
+func TestSetBindAddrFromAddr(t *testing.T) {
+	tests := []struct {
+		args  []string
+		waddr *IPAddressPort
+	}{
+		// no flags set
+		{
+			args:  []string{},
+			waddr: &IPAddressPort{},
+		},
+		// addr flag set
+		{
+			args:  []string{"-addr=192.0.3.17:4001"},
+			waddr: &IPAddressPort{IP: "0.0.0.0", Port: 4001},
+		},
+		// bindAddr flag set
+		{
+			args:  []string{"-bind-addr=127.0.0.1:4001"},
+			waddr: &IPAddressPort{IP: "127.0.0.1", Port: 4001},
+		},
+		// both addr flags set
+		{
+			args:  []string{"-bind-addr=127.0.0.1:4001", "-addr=192.0.3.17:4001"},
+			waddr: &IPAddressPort{IP: "127.0.0.1", Port: 4001},
+		},
+	}
+	for i, tt := range tests {
+		fs := flag.NewFlagSet("test", flag.PanicOnError)
+		fs.Var(&IPAddressPort{}, "addr", "")
+		bindAddr := &IPAddressPort{}
+		fs.Var(bindAddr, "bind-addr", "")
+		if err := fs.Parse(tt.args); err != nil {
+			t.Errorf("#%d: failed to parse flags: %v", i, err)
+			continue
+		}
+		SetBindAddrFromAddr(fs, "bind-addr", "addr")
+
+		if !reflect.DeepEqual(bindAddr, tt.waddr) {
+			t.Errorf("#%d: bindAddr = %+v, want %+v", i, bindAddr, tt.waddr)
+		}
+	}
+}
+
 func TestURLsFromFlags(t *testing.T) {
 	tests := []struct {
 		args     []string

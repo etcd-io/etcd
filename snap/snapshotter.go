@@ -86,25 +86,25 @@ func (s *Snapshotter) Load() (*raftpb.Snapshot, error) {
 }
 
 func loadSnap(dir, name string) (*raftpb.Snapshot, error) {
-	var err error
-	var b []byte
-
 	fpath := path.Join(dir, name)
-	defer func() {
-		if err != nil {
-			renameBroken(fpath)
-		}
-	}()
-
-	b, err = ioutil.ReadFile(fpath)
+	snap, err := Read(fpath)
 	if err != nil {
-		log.Printf("snap: snapshotter cannot read file %v: %v", name, err)
+		renameBroken(fpath)
+	}
+	return snap, err
+}
+
+// Read reads the snapshot named by snapname and returns the snapshot.
+func Read(snapname string) (*raftpb.Snapshot, error) {
+	b, err := ioutil.ReadFile(snapname)
+	if err != nil {
+		log.Printf("snap: snapshotter cannot read file %v: %v", snapname, err)
 		return nil, err
 	}
 
 	var serializedSnap snappb.Snapshot
 	if err = serializedSnap.Unmarshal(b); err != nil {
-		log.Printf("snap: corrupted snapshot file %v: %v", name, err)
+		log.Printf("snap: corrupted snapshot file %v: %v", snapname, err)
 		return nil, err
 	}
 
@@ -115,13 +115,13 @@ func loadSnap(dir, name string) (*raftpb.Snapshot, error) {
 
 	crc := crc32.Update(0, crcTable, serializedSnap.Data)
 	if crc != serializedSnap.Crc {
-		log.Printf("snap: corrupted snapshot file %v: crc mismatch", name)
+		log.Printf("snap: corrupted snapshot file %v: crc mismatch", snapname)
 		return nil, ErrCRCMismatch
 	}
 
 	var snap raftpb.Snapshot
 	if err = snap.Unmarshal(serializedSnap.Data); err != nil {
-		log.Printf("snap: corrupted snapshot file %v: %v", name, err)
+		log.Printf("snap: corrupted snapshot file %v: %v", snapname, err)
 		return nil, err
 	}
 	return &snap, nil

@@ -23,6 +23,15 @@ import (
 	etcdErr "github.com/coreos/etcd/error"
 )
 
+func TestNewStoreWithNamespaces(t *testing.T) {
+	s := newStore("/0", "/1")
+
+	_, err := s.Get("/0", false, false)
+	assert.Nil(t, err, "")
+	_, err = s.Get("/1", false, false)
+	assert.Nil(t, err, "")
+}
+
 // Ensure that the store can retrieve an existing value.
 func TestStoreGetValue(t *testing.T) {
 	s := newStore()
@@ -433,22 +442,24 @@ func TestStoreDeleteDiretoryFailsIfNonRecursiveAndDir(t *testing.T) {
 }
 
 func TestRootRdOnly(t *testing.T) {
-	s := newStore()
+	s := newStore("/0")
 
-	_, err := s.Set("/", true, "", Permanent)
-	assert.NotNil(t, err, "")
+	for _, tt := range []string{"/", "/0"} {
+		_, err := s.Set(tt, true, "", Permanent)
+		assert.NotNil(t, err, "")
 
-	_, err = s.Delete("/", true, true)
-	assert.NotNil(t, err, "")
+		_, err = s.Delete(tt, true, true)
+		assert.NotNil(t, err, "")
 
-	_, err = s.Create("/", true, "", false, Permanent)
-	assert.NotNil(t, err, "")
+		_, err = s.Create(tt, true, "", false, Permanent)
+		assert.NotNil(t, err, "")
 
-	_, err = s.Update("/", "", Permanent)
-	assert.NotNil(t, err, "")
+		_, err = s.Update(tt, "", Permanent)
+		assert.NotNil(t, err, "")
 
-	_, err = s.CompareAndSwap("/", "", 0, "", Permanent)
-	assert.NotNil(t, err, "")
+		_, err = s.CompareAndSwap(tt, "", 0, "", Permanent)
+		assert.NotNil(t, err, "")
+	}
 }
 
 func TestStoreCompareAndDeletePrevValue(t *testing.T) {
@@ -778,9 +789,10 @@ func TestStoreWatchStream(t *testing.T) {
 // Ensure that the store can recover from a previously saved state.
 func TestStoreRecover(t *testing.T) {
 	s := newStore()
-	var eidx uint64 = 3
+	var eidx uint64 = 4
 	s.Create("/foo", true, "", false, Permanent)
 	s.Create("/foo/x", false, "bar", false, Permanent)
+	s.Update("/foo/x", "barbar", Permanent)
 	s.Create("/foo/y", false, "baz", false, Permanent)
 	b, err := s.Save()
 
@@ -788,9 +800,11 @@ func TestStoreRecover(t *testing.T) {
 	s2.Recovery(b)
 
 	e, err := s.Get("/foo/x", false, false)
+	assert.Equal(t, e.Node.CreatedIndex, uint64(2), "")
+	assert.Equal(t, e.Node.ModifiedIndex, uint64(3), "")
 	assert.Equal(t, e.EtcdIndex, eidx, "")
 	assert.Nil(t, err, "")
-	assert.Equal(t, *e.Node.Value, "bar", "")
+	assert.Equal(t, *e.Node.Value, "barbar", "")
 
 	e, err = s.Get("/foo/y", false, false)
 	assert.Equal(t, e.EtcdIndex, eidx, "")
