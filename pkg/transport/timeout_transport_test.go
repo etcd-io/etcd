@@ -26,7 +26,7 @@ import (
 // TestNewTimeoutTransport tests that NewTimeoutTransport returns a transport
 // that can dial out timeout connections.
 func TestNewTimeoutTransport(t *testing.T) {
-	tr, err := NewTimeoutTransport(TLSInfo{}, time.Hour, time.Hour)
+	tr, err := NewTimeoutTransport(TLSInfo{}, time.Hour, time.Hour, time.Hour)
 	if err != nil {
 		t.Fatalf("unexpected NewTimeoutTransport error: %v", err)
 	}

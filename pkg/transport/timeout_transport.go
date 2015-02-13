@@ -23,7 +23,7 @@ import (
 // NewTimeoutTransport returns a transport created using the given TLS info.
 // If read/write on the created connection blocks longer than its time limit,
 // it will return timeout error.
-func NewTimeoutTransport(info TLSInfo, rdtimeoutd, wtimeoutd time.Duration) (*http.Transport, error) {
+func NewTimeoutTransport(info TLSInfo, dialtimeoutd, rdtimeoutd, wtimeoutd time.Duration) (*http.Transport, error) {
 	tr, err := NewTransport(info)
 	if err != nil {
 		return nil, err
@@ -33,7 +33,7 @@ func NewTimeoutTransport(info TLSInfo, rdtimeoutd, wtimeoutd time.Duration) (*ht
 	tr.MaxIdleConnsPerHost = -1
 	tr.Dial = (&rwTimeoutDialer{
 		Dialer: net.Dialer{
-			Timeout:   30 * time.Second,
+			Timeout:   dialtimeoutd,
 			KeepAlive: 30 * time.Second,
 		},
 		rdtimeoutd: rdtimeoutd,

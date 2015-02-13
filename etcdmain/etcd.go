@@ -116,7 +116,7 @@ func startEtcd(cfg *config) (<-chan struct{}, error) {
 		return nil, fmt.Errorf("error setting up initial cluster: %v", err)
 	}
 
-	pt, err := transport.NewTimeoutTransport(cfg.peerTLSInfo, rafthttp.ConnReadTimeout, rafthttp.ConnWriteTimeout)
+	pt, err := transport.NewTimeoutTransport(cfg.peerTLSInfo, rafthttp.DialTimeout, rafthttp.ConnReadTimeout, rafthttp.ConnWriteTimeout)
 	if err != nil {
 		return nil, err
 	}
