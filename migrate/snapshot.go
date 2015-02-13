@@ -63,6 +63,24 @@ type node struct {
 	Children   map[string]*node // for directory
 }
 
+func deepCopyNode(n *node, parent *node) *node {
+	out := &node{
+		Path:          n.Path,
+		CreatedIndex:  n.CreatedIndex,
+		ModifiedIndex: n.ModifiedIndex,
+		Parent:        parent,
+		ExpireTime:    n.ExpireTime,
+		ACL:           n.ACL,
+		Value:         n.Value,
+		Children:      make(map[string]*node),
+	}
+	for k, v := range n.Children {
+		out.Children[k] = deepCopyNode(v, out)
+	}
+
+	return out
+}
+
 func replacePathNames(n *node, s1, s2 string) {
 	n.Path = path.Clean(strings.Replace(n.Path, s1, s2, 1))
 	for _, c := range n.Children {
@@ -142,7 +160,12 @@ func fixEtcd(n *node) {
 		}
 		n.Children["members"].Children[m.ID.String()] = newNode
 	}
-	delete(n.Children, "machines")
+
+	for k, _ := range n.Children {
+		if k != "members" {
+			delete(n.Children, k)
+		}
+	}
 
 }
 
@@ -157,10 +180,11 @@ func mangleRoot(n *node) *node {
 	}
 	newRoot.Children["1"] = n
 	etcd := n.Children["_etcd"]
-	delete(n.Children, "_etcd")
+	newEtcd := deepCopyNode(etcd, newRoot)
 	replacePathNames(n, "/", "/1/")
-	fixEtcd(etcd)
-	newRoot.Children["0"] = etcd
+	fixEtcd(newEtcd)
+	newRoot.Children["0"] = newEtcd
+	newRoot.Children["0"].Parent = newRoot
 	return newRoot
 }
 
