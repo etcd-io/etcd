@@ -63,6 +63,24 @@ type node struct {
 	Children   map[string]*node // for directory
 }
 
+func deepCopyNode(n *node, parent *node) *node {
+	out := &node{
+		Path:          n.Path,
+		CreatedIndex:  n.CreatedIndex,
+		ModifiedIndex: n.ModifiedIndex,
+		Parent:        parent,
+		ExpireTime:    n.ExpireTime,
+		ACL:           n.ACL,
+		Value:         n.Value,
+		Children:      make(map[string]*node),
+	}
+	for k, v := range n.Children {
+		out.Children[k] = deepCopyNode(v, out)
+	}
+
+	return out
+}
+
 func replacePathNames(n *node, s1, s2 string) {
 	n.Path = path.Clean(strings.Replace(n.Path, s1, s2, 1))
 	for _, c := range n.Children {
@@ -87,9 +105,23 @@ func pullNodesFromEtcd(n *node) map[string]uint64 {
 	return out
 }
 
-func fixEtcd(n *node) {
-	n.Path = "/0"
-	machines := n.Children["machines"]
+func fixEtcd(etcdref *node) *node {
+	n := &node{
+		Path:          "/0",
+		CreatedIndex:  etcdref.CreatedIndex,
+		ModifiedIndex: etcdref.ModifiedIndex,
+		ExpireTime:    etcdref.ExpireTime,
+		ACL:           etcdref.ACL,
+		Children:      make(map[string]*node),
+	}
+
+	var machines *node
+	if machineOrig, ok := etcdref.Children["machines"]; ok {
+		machines = deepCopyNode(machineOrig, n)
+	}
+	if machines == nil {
+		return n
+	}
 	n.Children["members"] = &node{
 		Path:          "/0/members",
 		CreatedIndex:  machines.CreatedIndex,
@@ -97,6 +129,7 @@ func fixEtcd(n *node) {
 		ExpireTime:    machines.ExpireTime,
 		ACL:           machines.ACL,
 		Children:      make(map[string]*node),
+		Parent:        n,
 	}
 	for name, c := range machines.Children {
 		q, err := url.ParseQuery(c.Value)
@@ -121,29 +154,32 @@ func fixEtcd(n *node) {
 			ModifiedIndex: c.ModifiedIndex,
 			ExpireTime:    c.ExpireTime,
 			ACL:           c.ACL,
-			Children: map[string]*node{
-				"attributes": &node{
-					Path:          path.Join("/0/members", m.ID.String(), "attributes"),
-					CreatedIndex:  c.CreatedIndex,
-					ModifiedIndex: c.ModifiedIndex,
-					ExpireTime:    c.ExpireTime,
-					ACL:           c.ACL,
-					Value:         string(attrBytes),
-				},
-				"raftAttributes": &node{
-					Path:          path.Join("/0/members", m.ID.String(), "raftAttributes"),
-					CreatedIndex:  c.CreatedIndex,
-					ModifiedIndex: c.ModifiedIndex,
-					ExpireTime:    c.ExpireTime,
-					ACL:           c.ACL,
-					Value:         string(raftBytes),
-				},
-			},
+			Children:      make(map[string]*node),
+			Parent:        n.Children["members"],
 		}
+		attrs := &node{
+			Path:          path.Join("/0/members", m.ID.String(), "attributes"),
+			CreatedIndex:  c.CreatedIndex,
+			ModifiedIndex: c.ModifiedIndex,
+			ExpireTime:    c.ExpireTime,
+			ACL:           c.ACL,
+			Value:         string(attrBytes),
+			Parent:        newNode,
+		}
+		newNode.Children["attributes"] = attrs
+		raftAttrs := &node{
+			Path:          path.Join("/0/members", m.ID.String(), "raftAttributes"),
+			CreatedIndex:  c.CreatedIndex,
+			ModifiedIndex: c.ModifiedIndex,
+			ExpireTime:    c.ExpireTime,
+			ACL:           c.ACL,
+			Value:         string(raftBytes),
+			Parent:        newNode,
+		}
+		newNode.Children["raftAttributes"] = raftAttrs
 		n.Children["members"].Children[m.ID.String()] = newNode
 	}
-	delete(n.Children, "machines")
-
+	return n
 }
 
 func mangleRoot(n *node) *node {
@@ -157,10 +193,10 @@ func mangleRoot(n *node) *node {
 	}
 	newRoot.Children["1"] = n
 	etcd := n.Children["_etcd"]
-	delete(n.Children, "_etcd")
 	replacePathNames(n, "/", "/1/")
-	fixEtcd(etcd)
-	newRoot.Children["0"] = etcd
+	newZero := fixEtcd(etcd)
+	newZero.Parent = newRoot
+	newRoot.Children["0"] = newZero
 	return newRoot
 }
 
