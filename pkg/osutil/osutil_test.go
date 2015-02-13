@@ -16,8 +16,11 @@ package osutil
 
 import (
 	"os"
+	"os/signal"
 	"reflect"
+	"syscall"
 	"testing"
+	"time"
 )
 
 func TestUnsetenv(t *testing.T) {
@@ -41,5 +44,45 @@ func TestUnsetenv(t *testing.T) {
 		if g := os.Environ(); !reflect.DeepEqual(g, env) {
 			t.Errorf("#%d: env = %+v, want %+v", i, g, env)
 		}
+	}
+}
+
+func waitSig(t *testing.T, c <-chan os.Signal, sig os.Signal) {
+	select {
+	case s := <-c:
+		if s != sig {
+			t.Fatalf("signal was %v, want %v", s, sig)
+		}
+	case <-time.After(1 * time.Second):
+		t.Fatalf("timeout waiting for %v", sig)
+	}
+}
+
+func TestHandleInterrupts(t *testing.T) {
+	for _, sig := range []syscall.Signal{syscall.SIGINT, syscall.SIGTERM} {
+		n := 1
+		RegisterInterruptHandler(func() { n++ })
+		RegisterInterruptHandler(func() { n *= 2 })
+
+		c := make(chan os.Signal, 2)
+		signal.Notify(c, sig)
+
+		HandleInterrupts()
+		syscall.Kill(syscall.Getpid(), sig)
+
+		// we should receive the signal once from our own kill and
+		// a second time from HandleInterrupts
+		waitSig(t, c, sig)
+		waitSig(t, c, sig)
+
+		if n == 3 {
+			t.Fatalf("interrupt handlers were called in wrong order")
+		}
+		if n != 4 {
+			t.Fatalf("interrupt handlers were not called properly")
+		}
+		// reset interrupt handlers
+		interruptHandlers = interruptHandlers[:0]
+		interruptExitMu.Unlock()
 	}
 }

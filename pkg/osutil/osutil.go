@@ -15,8 +15,12 @@
 package osutil
 
 import (
+	"log"
 	"os"
+	"os/signal"
 	"strings"
+	"sync"
+	"syscall"
 )
 
 func Unsetenv(key string) error {
@@ -32,4 +36,54 @@ func Unsetenv(key string) error {
 		}
 	}
 	return nil
+}
+
+// InterruptHandler is a function that is called on receiving a
+// SIGTERM or SIGINT signal.
+type InterruptHandler func()
+
+var (
+	interruptRegisterMu, interruptExitMu sync.Mutex
+	// interruptHandlers holds all registered InterruptHandlers in order
+	// they will be executed.
+	interruptHandlers = []InterruptHandler{}
+)
+
+// RegisterInterruptHandler registers a new InterruptHandler. Handlers registered
+// after interrupt handing was initiated will not be executed.
+func RegisterInterruptHandler(h InterruptHandler) {
+	interruptRegisterMu.Lock()
+	defer interruptRegisterMu.Unlock()
+	interruptHandlers = append(interruptHandlers, h)
+}
+
+// HandleInterrupts calls the handler functions on receiving a SIGINT or SIGTERM.
+func HandleInterrupts() {
+	notifier := make(chan os.Signal, 1)
+	signal.Notify(notifier, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		sig := <-notifier
+
+		interruptRegisterMu.Lock()
+		ihs := make([]InterruptHandler, len(interruptHandlers))
+		copy(ihs, interruptHandlers)
+		interruptRegisterMu.Unlock()
+
+		interruptExitMu.Lock()
+
+		log.Printf("received %v signal, shutting down", sig)
+
+		for _, h := range ihs {
+			h()
+		}
+		signal.Stop(notifier)
+		syscall.Kill(syscall.Getpid(), sig.(syscall.Signal))
+	}()
+}
+
+// Exit relays to os.Exit if no interrupt handlers are running, blocks otherwise.
+func Exit(code int) {
+	interruptExitMu.Lock()
+	os.Exit(code)
 }
