@@ -105,9 +105,23 @@ func pullNodesFromEtcd(n *node) map[string]uint64 {
 	return out
 }
 
-func fixEtcd(n *node) {
-	n.Path = "/0"
-	machines := n.Children["machines"]
+func fixEtcd(etcdref *node) *node {
+	n := &node{
+		Path:          "/0",
+		CreatedIndex:  etcdref.CreatedIndex,
+		ModifiedIndex: etcdref.ModifiedIndex,
+		ExpireTime:    etcdref.ExpireTime,
+		ACL:           etcdref.ACL,
+		Children:      make(map[string]*node),
+	}
+
+	var machines *node
+	if machineOrig, ok := etcdref.Children["machines"]; ok {
+		machines = deepCopyNode(machineOrig, n)
+	}
+	if machines == nil {
+		return n
+	}
 	n.Children["members"] = &node{
 		Path:          "/0/members",
 		CreatedIndex:  machines.CreatedIndex,
@@ -160,13 +174,7 @@ func fixEtcd(n *node) {
 		}
 		n.Children["members"].Children[m.ID.String()] = newNode
 	}
-
-	for k, _ := range n.Children {
-		if k != "members" {
-			delete(n.Children, k)
-		}
-	}
-
+	return n
 }
 
 func mangleRoot(n *node) *node {
@@ -180,11 +188,9 @@ func mangleRoot(n *node) *node {
 	}
 	newRoot.Children["1"] = n
 	etcd := n.Children["_etcd"]
-	newEtcd := deepCopyNode(etcd, newRoot)
 	replacePathNames(n, "/", "/1/")
-	fixEtcd(newEtcd)
-	newRoot.Children["0"] = newEtcd
-	newRoot.Children["0"].Parent = newRoot
+	newZero := fixEtcd(etcd)
+	newRoot.Children["0"] = newZero
 	return newRoot
 }
 
