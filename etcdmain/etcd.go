@@ -31,6 +31,7 @@ import (
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/etcdhttp"
 	"github.com/coreos/etcd/pkg/cors"
+	"github.com/coreos/etcd/pkg/osutil"
 	"github.com/coreos/etcd/pkg/transport"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/proxy"
@@ -73,7 +74,10 @@ func Main() {
 		}
 	}
 
+	osutil.HandleInterrupts()
+
 	<-stopped
+	osutil.Exit(0)
 }
 
 // startEtcd launches the etcd server and HTTP handlers for client/server communication.
@@ -160,6 +164,7 @@ func startEtcd(cfg *config) (<-chan struct{}, error) {
 		return nil, err
 	}
 	s.Start()
+	osutil.RegisterInterruptHandler(s.Stop)
 
 	if cfg.corsInfo.String() != "" {
 		log.Printf("etcd: cors = %s", cfg.corsInfo)
