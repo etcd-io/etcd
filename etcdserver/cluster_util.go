@@ -29,7 +29,7 @@ import (
 // isMemberBootstrapped tries to check if the given member has been bootstrapped
 // in the given cluster.
 func isMemberBootstrapped(cl *Cluster, member string, tr *http.Transport) bool {
-	us := getOtherPeerURLs(cl, member)
+	us := getRemotePeerURLs(cl, member)
 	rcl, err := getClusterFromPeers(us, false, tr)
 	if err != nil {
 		return false
@@ -94,12 +94,12 @@ func getClusterFromPeers(urls []string, logerr bool, tr *http.Transport) (*Clust
 	return nil, fmt.Errorf("etcdserver: could not retrieve cluster information from the given urls")
 }
 
-// getOtherPeerURLs returns peer urls of other members in the cluster. The
+// getRemotePeerURLs returns peer urls of remote members in the cluster. The
 // returned list is sorted in ascending lexicographical order.
-func getOtherPeerURLs(cl ClusterInfo, self string) []string {
+func getRemotePeerURLs(cl ClusterInfo, local string) []string {
 	us := make([]string, 0)
 	for _, m := range cl.Members() {
-		if m.Name == self {
+		if m.Name == local {
 			continue
 		}
 		us = append(us, m.PeerURLs...)
