@@ -29,8 +29,7 @@ import (
 // isMemberBootstrapped tries to check if the given member has been bootstrapped
 // in the given cluster.
 func isMemberBootstrapped(cl *Cluster, member string, tr *http.Transport) bool {
-	us := getRemotePeerURLs(cl, member)
-	rcl, err := getClusterFromPeers(us, false, tr)
+	rcl, err := getClusterFromRemotePeers(getRemotePeerURLs(cl, member), false, tr)
 	if err != nil {
 		return false
 	}
@@ -45,17 +44,17 @@ func isMemberBootstrapped(cl *Cluster, member string, tr *http.Transport) bool {
 	return false
 }
 
-// GetClusterFromPeers takes a set of URLs representing etcd peers, and
+// GetClusterFromRemotePeers takes a set of URLs representing etcd peers, and
 // attempts to construct a Cluster by accessing the members endpoint on one of
 // these URLs. The first URL to provide a response is used. If no URLs provide
 // a response, or a Cluster cannot be successfully created from a received
 // response, an error is returned.
-func GetClusterFromPeers(urls []string, tr *http.Transport) (*Cluster, error) {
-	return getClusterFromPeers(urls, true, tr)
+func GetClusterFromRemotePeers(urls []string, tr *http.Transport) (*Cluster, error) {
+	return getClusterFromRemotePeers(urls, true, tr)
 }
 
 // If logerr is true, it prints out more error messages.
-func getClusterFromPeers(urls []string, logerr bool, tr *http.Transport) (*Cluster, error) {
+func getClusterFromRemotePeers(urls []string, logerr bool, tr *http.Transport) (*Cluster, error) {
 	cc := &http.Client{
 		Transport: tr,
 		Timeout:   time.Second,

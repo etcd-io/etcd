@@ -157,8 +157,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 
 	switch {
 	case !haveWAL && !cfg.NewCluster:
-		us := getRemotePeerURLs(cfg.Cluster, cfg.Name)
-		existingCluster, err := GetClusterFromPeers(us, cfg.Transport)
+		existingCluster, err := GetClusterFromRemotePeers(getRemotePeerURLs(cfg.Cluster, cfg.Name), cfg.Transport)
 		if err != nil {
 			return nil, fmt.Errorf("cannot fetch cluster info from peer urls: %v", err)
 		}
