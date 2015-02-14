@@ -12,24 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// +build windows
+
 package osutil
 
-import (
-	"os"
-	"strings"
-)
+import "os"
 
-func Unsetenv(key string) error {
-	envs := os.Environ()
-	os.Clearenv()
-	for _, e := range envs {
-		strs := strings.SplitN(e, "=", 2)
-		if strs[0] == key {
-			continue
-		}
-		if err := os.Setenv(strs[0], strs[1]); err != nil {
-			return err
-		}
-	}
-	return nil
+type InterruptHandler func()
+
+// RegisterInterruptHandler is a no-op on windows
+func RegisterInterruptHandler(h InterruptHandler) {}
+
+// HandleInterrupts is a no-op on windows
+func HandleInterrupts() {}
+
+// Exit calls os.Exit
+func Exit(code int) {
+	os.Exit(code)
 }
