@@ -191,7 +191,6 @@ func (s *streamWriter) handle(w WriteFlusher) {
 	}()
 
 	ew := newEntryWriter(w, s.to)
-	defer ew.stop()
 	for ents := range s.q {
 		start := time.Now()
 		if err := ew.writeEntries(ents); err != nil {
@@ -279,7 +278,6 @@ func (s *streamReader) handle(r io.Reader) {
 	}()
 
 	er := newEntryReader(r, s.to)
-	defer er.stop()
 	for {
 		ents, err := er.readEntries()
 		if err != nil {

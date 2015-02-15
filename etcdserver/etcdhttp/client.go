@@ -29,6 +29,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/jonboulle/clockwork"
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/prometheus/client_golang/prometheus"
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/etcdserver"
@@ -46,7 +47,8 @@ const (
 	deprecatedMachinesPrefix = "/v2/machines"
 	membersPrefix            = "/v2/members"
 	statsPrefix              = "/v2/stats"
-	statsPath                = "/stats"
+	varsPath                 = "/debug/vars"
+	metricsPath              = "/metrics"
 	healthPath               = "/health"
 	versionPath              = "/version"
 )
@@ -83,7 +85,8 @@ func NewClientHandler(server *etcdserver.EtcdServer) http.Handler {
 	mux.HandleFunc(statsPrefix+"/store", sh.serveStore)
 	mux.HandleFunc(statsPrefix+"/self", sh.serveSelf)
 	mux.HandleFunc(statsPrefix+"/leader", sh.serveLeader)
-	mux.HandleFunc(statsPath, serveStats)
+	mux.HandleFunc(varsPath, serveVars)
+	mux.Handle(metricsPath, prometheus.Handler())
 	mux.Handle(membersPrefix, mh)
 	mux.Handle(membersPrefix+"/", mh)
 	mux.Handle(deprecatedMachinesPrefix, dmh)
@@ -285,9 +288,8 @@ func (h *statsHandler) serveLeader(w http.ResponseWriter, r *http.Request) {
 	w.Write(stats)
 }
 
-func serveStats(w http.ResponseWriter, r *http.Request) {
+func serveVars(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	// TODO: getting one key or a prefix of keys based on path
 	fmt.Fprintf(w, "{\n")
 	first := true
 	expvar.Do(func(kv expvar.KeyValue) {
