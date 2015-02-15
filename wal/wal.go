@@ -25,8 +25,6 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/codahale/metrics"
-	_ "github.com/coreos/etcd/Godeps/_workspace/src/github.com/prometheus/client_golang/prometheus"
 	"github.com/coreos/etcd/pkg/fileutil"
 	"github.com/coreos/etcd/pkg/pbutil"
 	"github.com/coreos/etcd/raft"
@@ -52,14 +50,7 @@ var (
 	ErrSnapshotMismatch = errors.New("wal: snapshot mismatch")
 	ErrSnapshotNotFound = errors.New("wal: snapshot not found")
 	crcTable            = crc32.MakeTable(crc32.Castagnoli)
-
-	// metrics
-	syncHdr *metrics.Histogram
 )
-
-func init() {
-	syncHdr = metrics.NewHistogram("wal.syncInMicrosecond", 0, 10*int64(time.Second/time.Microsecond), 3)
-}
 
 // WAL is a logical repersentation of the stable storage.
 // WAL is either in read mode or append mode but not both.
@@ -279,7 +270,7 @@ func (w *WAL) ReadAll() (metadata []byte, state raftpb.HardState, ents []raftpb.
 	// create encoder (chain crc with the decoder), enable appending
 	w.encoder = newEncoder(w.f, w.decoder.lastCRC())
 	w.decoder = nil
-	metrics.Gauge("wal.lastIndexSaved").Set(int64(w.enti))
+	lastIndexSaved.Set(float64(w.enti))
 	return metadata, state, ents, err
 }
 
@@ -330,8 +321,7 @@ func (w *WAL) sync() error {
 	}
 	start := time.Now()
 	err := w.f.Sync()
-	syncHdr.RecordValue(time.Since(start).Nanoseconds() / int64(time.Microsecond))
-	metrics.Counter("wal.syncs").Add()
+	syncDurations.Observe(float64(time.Since(start).Nanoseconds() / int64(time.Microsecond)))
 	return err
 }
 
@@ -377,14 +367,13 @@ func (w *WAL) Close() error {
 }
 
 func (w *WAL) saveEntry(e *raftpb.Entry) error {
-	metrics.Counter("wal.saveEntryOps").Add()
 	b := pbutil.MustMarshal(e)
 	rec := &walpb.Record{Type: entryType, Data: b}
 	if err := w.encoder.encode(rec); err != nil {
 		return err
 	}
 	w.enti = e.Index
-	metrics.Gauge("wal.lastIndexSaved").Set(int64(w.enti))
+	lastIndexSaved.Set(float64(w.enti))
 	return nil
 }
 
@@ -392,7 +381,6 @@ func (w *WAL) saveState(s *raftpb.HardState) error {
 	if raft.IsEmptyHardState(*s) {
 		return nil
 	}
-	metrics.Counter("wal.saveStateOps").Add()
 	w.state = *s
 	b := pbutil.MustMarshal(s)
 	rec := &walpb.Record{Type: stateType, Data: b}
@@ -423,12 +411,11 @@ func (w *WAL) SaveSnapshot(e walpb.Snapshot) error {
 	if err := w.encoder.encode(rec); err != nil {
 		return err
 	}
-	metrics.Counter("wal.saveSnapOps").Add()
 	// update enti only when snapshot is ahead of last index
 	if w.enti < e.Index {
 		w.enti = e.Index
 	}
-	metrics.Gauge("wal.lastIndexSaved").Set(int64(w.enti))
+	lastIndexSaved.Set(float64(w.enti))
 	return w.sync()
 }
 
