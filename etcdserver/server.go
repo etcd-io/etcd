@@ -487,12 +487,22 @@ func (s *EtcdServer) Do(ctx context.Context, r pb.Request) (Response, error) {
 			return Response{}, err
 		}
 		ch := s.w.Register(r.ID)
+
+		// TODO: benchmark the cost of time.Now()
+		// might be sampling?
+		start := time.Now()
 		s.r.Propose(ctx, data)
+
+		proposePending.Inc()
+		defer proposePending.Dec()
+
 		select {
 		case x := <-ch:
+			proposeDurations.Observe(float64(time.Since(start).Nanoseconds() / int64(time.Millisecond)))
 			resp := x.(Response)
 			return resp, resp.err
 		case <-ctx.Done():
+			proposeFailed.Inc()
 			s.w.Trigger(r.ID, nil) // GC wait
 			return Response{}, parseCtxErr(ctx.Err())
 		case <-s.done:
