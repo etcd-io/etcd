@@ -47,7 +47,7 @@ type pipeline struct {
 	fs     *stats.FollowerStats
 	errorc chan error
 
-	q chan *raftpb.Message
+	msgc chan raftpb.Message
 	// wait for the handling routines
 	wg sync.WaitGroup
 	sync.Mutex
@@ -65,7 +65,7 @@ func newPipeline(tr http.RoundTripper, u string, id, cid types.ID, fs *stats.Fol
 		u:      u,
 		fs:     fs,
 		errorc: errorc,
-		q:      make(chan *raftpb.Message, pipelineBufSize),
+		msgc:   make(chan raftpb.Message, pipelineBufSize),
 		active: true,
 	}
 	p.wg.Add(connPerPipeline)
@@ -77,29 +77,16 @@ func newPipeline(tr http.RoundTripper, u string, id, cid types.ID, fs *stats.Fol
 
 func (p *pipeline) update(u string) { p.u = u }
 
-func (p *pipeline) send(m raftpb.Message) error {
-	// TODO: don't block. we should be able to have 1000s
-	// of messages out at a time.
-	select {
-	case p.q <- &m:
-		return nil
-	default:
-		log.Printf("pipeline: dropping %s because maximal number %d of pipeline buffer entries to %s has been reached",
-			m.Type, pipelineBufSize, p.u)
-		return fmt.Errorf("reach maximal serving")
-	}
-}
-
 func (p *pipeline) stop() {
-	close(p.q)
+	close(p.msgc)
 	p.wg.Wait()
 }
 
 func (p *pipeline) handle() {
 	defer p.wg.Done()
-	for m := range p.q {
+	for m := range p.msgc {
 		start := time.Now()
-		err := p.pipeline(pbutil.MustMarshal(m))
+		err := p.post(pbutil.MustMarshal(&m))
 		end := time.Now()
 
 		p.Lock()
@@ -131,7 +118,7 @@ func (p *pipeline) handle() {
 
 // post POSTs a data payload to a url. Returns nil if the POST succeeds,
 // error on any failure.
-func (p *pipeline) pipeline(data []byte) error {
+func (p *pipeline) post(data []byte) error {
 	p.Lock()
 	req, err := http.NewRequest("POST", p.u, bytes.NewBuffer(data))
 	p.Unlock()

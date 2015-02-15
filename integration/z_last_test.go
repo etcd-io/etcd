@@ -75,8 +75,11 @@ func afterTest(t *testing.T) {
 		").writeLoop(":                                 "a Transport",
 		"created by net/http/httptest.(*Server).Start": "an httptest.Server",
 		"timeoutHandler":                               "a TimeoutHandler",
-		"net.(*netFD).connect(":                        "a timing out dial",
-		").noteClientGone(":                            "a closenotifier sender",
+		// TODO: dial goroutines leaks even if the request is cancelled.
+		// It needs to wait dial timeout to recycle the goroutine.
+		// comment this line until we have time to dig into it.
+		"net.(*netFD).connect(": "a timing out dial",
+		").noteClientGone(":     "a closenotifier sender",
 	}
 	var stacks string
 	for i := 0; i < 6; i++ {

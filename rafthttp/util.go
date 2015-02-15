@@ -18,43 +18,29 @@ import (
 	"encoding/binary"
 	"io"
 
-	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft/raftpb"
 )
 
-type entryReader struct {
-	r  io.Reader
-	id types.ID
-}
-
-func newEntryReader(r io.Reader, id types.ID) *entryReader {
-	return &entryReader{
-		r:  r,
-		id: id,
+func writeEntry(w io.Writer, ent *raftpb.Entry) error {
+	size := ent.Size()
+	if err := binary.Write(w, binary.BigEndian, uint64(size)); err != nil {
+		return err
 	}
+	b, err := ent.Marshal()
+	if err != nil {
+		return err
+	}
+	_, err = w.Write(b)
+	return err
 }
 
-func (er *entryReader) readEntries() ([]raftpb.Entry, error) {
+func readEntry(r io.Reader, ent *raftpb.Entry) error {
 	var l uint64
-	if err := binary.Read(er.r, binary.BigEndian, &l); err != nil {
-		return nil, err
-	}
-	ents := make([]raftpb.Entry, int(l))
-	for i := 0; i < int(l); i++ {
-		if err := er.readEntry(&ents[i]); err != nil {
-			return nil, err
-		}
-	}
-	return ents, nil
-}
-
-func (er *entryReader) readEntry(ent *raftpb.Entry) error {
-	var l uint64
-	if err := binary.Read(er.r, binary.BigEndian, &l); err != nil {
+	if err := binary.Read(r, binary.BigEndian, &l); err != nil {
 		return err
 	}
 	buf := make([]byte, int(l))
-	if _, err := io.ReadFull(er.r, buf); err != nil {
+	if _, err := io.ReadFull(r, buf); err != nil {
 		return err
 	}
 	return ent.Unmarshal(buf)
