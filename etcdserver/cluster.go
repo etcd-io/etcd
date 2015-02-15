@@ -56,14 +56,15 @@ type ClusterInfo interface {
 
 // Cluster is a list of Members that belong to the same raft cluster
 type Cluster struct {
-	id      types.ID
-	token   string
-	members map[types.ID]*Member
+	id    types.ID
+	token string
+	store store.Store
+
+	sync.Mutex // guards members and removed map
+	members    map[types.ID]*Member
 	// removed contains the ids of removed members in the cluster.
 	// removed id cannot be reused.
 	removed map[types.ID]bool
-	store   store.Store
-	sync.Mutex
 }
 
 // NewClusterFromString returns a Cluster instantiated from the given cluster token
