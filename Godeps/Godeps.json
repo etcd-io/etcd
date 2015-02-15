@@ -15,14 +15,6 @@
 			"Rev": "9352842ae63ee1d7e74e074ce7bb10370c4b6b9e"
 		},
 		{
-			"ImportPath": "github.com/codahale/hdrhistogram",
-			"Rev": "9208b142303c12d8899bae836fd524ac9338b4fd"
-		},
-		{
-			"ImportPath": "github.com/codahale/metrics",
-			"Rev": "9d788a162cb186f9ced1922fc88d456a82cd16a0"
-		},
-		{
 			"ImportPath": "github.com/codegangsta/cli",
 			"Comment": "1.2.0-26-gf7ebb76",
 			"Rev": "f7ebb761e83e21225d1d8954fde853bf8edd46c4"

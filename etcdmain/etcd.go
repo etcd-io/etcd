@@ -27,7 +27,6 @@ import (
 	"strings"
 	"time"
 
-	_ "github.com/coreos/etcd/Godeps/_workspace/src/github.com/codahale/metrics/runtime"
 	"github.com/coreos/etcd/discovery"
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/etcdhttp"

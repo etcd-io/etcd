@@ -18,7 +18,6 @@ import (
 	"encoding/binary"
 	"io"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/codahale/metrics"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft/raftpb"
 )
@@ -40,16 +39,11 @@ func (er *entryReader) readEntries() ([]raftpb.Entry, error) {
 	if err := binary.Read(er.r, binary.BigEndian, &l); err != nil {
 		return nil, err
 	}
-	metrics.Counter("rafthttp.stream.bytes_received." + er.id.String()).AddN(8)
 	ents := make([]raftpb.Entry, int(l))
 	for i := 0; i < int(l); i++ {
 		if err := er.readEntry(&ents[i]); err != nil {
 			return nil, err
 		}
-		metrics.Counter("rafthttp.stream.entries_received." + er.id.String()).AddN(8)
-	}
-	if l > 0 {
-		metrics.Gauge("rafthttp.stream.last_index_received." + er.id.String()).Set(int64(ents[l-1].Index))
 	}
 	return ents, nil
 }
@@ -63,12 +57,5 @@ func (er *entryReader) readEntry(ent *raftpb.Entry) error {
 	if _, err := io.ReadFull(er.r, buf); err != nil {
 		return err
 	}
-	metrics.Counter("rafthttp.stream.bytes_received." + er.id.String()).AddN(8 + uint64(l))
 	return ent.Unmarshal(buf)
-}
-
-func (er *entryReader) stop() {
-	metrics.Counter("rafthttp.stream.bytes_received." + er.id.String()).Remove()
-	metrics.Counter("rafthttp.stream.entries_received." + er.id.String()).Remove()
-	metrics.Gauge("rafthttp.stream.last_index_received." + er.id.String()).Remove()
 }

@@ -191,7 +191,6 @@ func (s *streamWriter) handle(w WriteFlusher) {
 	}()
 
 	ew := newEntryWriter(w, s.to)
-	defer ew.stop()
 	for ents := range s.q {
 		// Considering Commit in MsgApp is not recovered when received,
 		// zero-entry appendEntry messages have no use to raft state machine.
@@ -285,7 +284,6 @@ func (s *streamReader) handle(r io.Reader) {
 	}()
 
 	er := newEntryReader(r, s.to)
-	defer er.stop()
 	for {
 		ents, err := er.readEntries()
 		if err != nil {
