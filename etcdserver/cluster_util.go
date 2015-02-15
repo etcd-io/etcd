@@ -29,8 +29,7 @@ import (
 // isMemberBootstrapped tries to check if the given member has been bootstrapped
 // in the given cluster.
 func isMemberBootstrapped(cl *Cluster, member string, tr *http.Transport) bool {
-	us := getOtherPeerURLs(cl, member)
-	rcl, err := getClusterFromPeers(us, false, tr)
+	rcl, err := getClusterFromRemotePeers(getRemotePeerURLs(cl, member), false, tr)
 	if err != nil {
 		return false
 	}
@@ -45,17 +44,17 @@ func isMemberBootstrapped(cl *Cluster, member string, tr *http.Transport) bool {
 	return false
 }
 
-// GetClusterFromPeers takes a set of URLs representing etcd peers, and
+// GetClusterFromRemotePeers takes a set of URLs representing etcd peers, and
 // attempts to construct a Cluster by accessing the members endpoint on one of
 // these URLs. The first URL to provide a response is used. If no URLs provide
 // a response, or a Cluster cannot be successfully created from a received
 // response, an error is returned.
-func GetClusterFromPeers(urls []string, tr *http.Transport) (*Cluster, error) {
-	return getClusterFromPeers(urls, true, tr)
+func GetClusterFromRemotePeers(urls []string, tr *http.Transport) (*Cluster, error) {
+	return getClusterFromRemotePeers(urls, true, tr)
 }
 
 // If logerr is true, it prints out more error messages.
-func getClusterFromPeers(urls []string, logerr bool, tr *http.Transport) (*Cluster, error) {
+func getClusterFromRemotePeers(urls []string, logerr bool, tr *http.Transport) (*Cluster, error) {
 	cc := &http.Client{
 		Transport: tr,
 		Timeout:   time.Second,
@@ -94,12 +93,12 @@ func getClusterFromPeers(urls []string, logerr bool, tr *http.Transport) (*Clust
 	return nil, fmt.Errorf("etcdserver: could not retrieve cluster information from the given urls")
 }
 
-// getOtherPeerURLs returns peer urls of other members in the cluster. The
+// getRemotePeerURLs returns peer urls of remote members in the cluster. The
 // returned list is sorted in ascending lexicographical order.
-func getOtherPeerURLs(cl ClusterInfo, self string) []string {
+func getRemotePeerURLs(cl ClusterInfo, local string) []string {
 	us := make([]string, 0)
 	for _, m := range cl.Members() {
-		if m.Name == self {
+		if m.Name == local {
 			continue
 		}
 		us = append(us, m.PeerURLs...)

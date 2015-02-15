@@ -1135,7 +1135,7 @@ func TestGetOtherPeerURLs(t *testing.T) {
 	}
 	for i, tt := range tests {
 		cl := NewClusterFromMembers("", types.ID(0), tt.membs)
-		urls := getOtherPeerURLs(cl, tt.self)
+		urls := getRemotePeerURLs(cl, tt.self)
 		if !reflect.DeepEqual(urls, tt.wurls) {
 			t.Errorf("#%d: urls = %+v, want %+v", i, urls, tt.wurls)
 		}
