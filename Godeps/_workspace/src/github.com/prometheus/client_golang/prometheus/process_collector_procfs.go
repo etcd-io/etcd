@@ -15,7 +15,7 @@
 
 package prometheus
 
-import "github.com/prometheus/procfs"
+import "github.com/coreos/etcd/Godeps/_workspace/src/github.com/prometheus/procfs"
 
 func processCollectSupported() bool {
 	if _, err := procfs.NewStat(); err == nil {
