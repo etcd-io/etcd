@@ -16,6 +16,11 @@
 
 package etcdmain
 
+import (
+	// import procfs FIX godeps.
+	_ "github.com/coreos/etcd/Godeps/_workspace/src/github.com/prometheus/procfs"
+)
+
 const (
 	defaultMaxSnapshots = 5
 	defaultMaxWALs      = 5
