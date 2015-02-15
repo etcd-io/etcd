@@ -34,9 +34,7 @@ func TestPipelineSend(t *testing.T) {
 	fs := &stats.FollowerStats{}
 	p := newPipeline(tr, "http://10.0.0.1", types.ID(1), types.ID(1), fs, nil)
 
-	if err := p.send(raftpb.Message{Type: raftpb.MsgApp}); err != nil {
-		t.Fatalf("unexpect send error: %v", err)
-	}
+	p.msgc <- raftpb.Message{Type: raftpb.MsgApp}
 	p.stop()
 
 	if tr.Request() == nil {
@@ -56,17 +54,22 @@ func TestPipelineExceedMaximalServing(t *testing.T) {
 
 	// keep the sender busy and make the buffer full
 	// nothing can go out as we block the sender
+	testutil.ForceGosched()
 	for i := 0; i < connPerPipeline+pipelineBufSize; i++ {
-		if err := p.send(raftpb.Message{}); err != nil {
-			t.Errorf("send err = %v, want nil", err)
+		select {
+		case p.msgc <- raftpb.Message{}:
+		default:
+			t.Errorf("failed to send out message")
 		}
 		// force the sender to grab data
 		testutil.ForceGosched()
 	}
 
 	// try to send a data when we are sure the buffer is full
-	if err := p.send(raftpb.Message{}); err == nil {
-		t.Errorf("unexpect send success")
+	select {
+	case p.msgc <- raftpb.Message{}:
+		t.Errorf("unexpected message sendout")
+	default:
 	}
 
 	// unblock the senders and force them to send out the data
@@ -74,8 +77,10 @@ func TestPipelineExceedMaximalServing(t *testing.T) {
 	testutil.ForceGosched()
 
 	// It could send new data after previous ones succeed
-	if err := p.send(raftpb.Message{}); err != nil {
-		t.Errorf("send err = %v, want nil", err)
+	select {
+	case p.msgc <- raftpb.Message{}:
+	default:
+		t.Errorf("failed to send out message")
 	}
 	p.stop()
 }
@@ -86,9 +91,7 @@ func TestPipelineSendFailed(t *testing.T) {
 	fs := &stats.FollowerStats{}
 	p := newPipeline(newRespRoundTripper(0, errors.New("blah")), "http://10.0.0.1", types.ID(1), types.ID(1), fs, nil)
 
-	if err := p.send(raftpb.Message{Type: raftpb.MsgApp}); err != nil {
-		t.Fatalf("unexpect Send error: %v", err)
-	}
+	p.msgc <- raftpb.Message{Type: raftpb.MsgApp}
 	p.stop()
 
 	fs.Lock()
@@ -101,7 +104,7 @@ func TestPipelineSendFailed(t *testing.T) {
 func TestPipelinePost(t *testing.T) {
 	tr := &roundTripperRecorder{}
 	p := newPipeline(tr, "http://10.0.0.1", types.ID(1), types.ID(1), nil, nil)
-	if err := p.pipeline([]byte("some data")); err != nil {
+	if err := p.post([]byte("some data")); err != nil {
 		t.Fatalf("unexpect post error: %v", err)
 	}
 	p.stop()
@@ -143,7 +146,7 @@ func TestPipelinePostBad(t *testing.T) {
 	}
 	for i, tt := range tests {
 		p := newPipeline(newRespRoundTripper(tt.code, tt.err), tt.u, types.ID(1), types.ID(1), nil, make(chan error))
-		err := p.pipeline([]byte("some data"))
+		err := p.post([]byte("some data"))
 		p.stop()
 
 		if err == nil {
@@ -164,7 +167,7 @@ func TestPipelinePostErrorc(t *testing.T) {
 	for i, tt := range tests {
 		errorc := make(chan error, 1)
 		p := newPipeline(newRespRoundTripper(tt.code, tt.err), tt.u, types.ID(1), types.ID(1), nil, errorc)
-		p.pipeline([]byte("some data"))
+		p.post([]byte("some data"))
 		p.stop()
 		select {
 		case <-errorc:

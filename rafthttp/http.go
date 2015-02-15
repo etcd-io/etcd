@@ -19,8 +19,6 @@ import (
 	"log"
 	"net/http"
 	"path"
-	"strconv"
-	"strings"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	pioutil "github.com/coreos/etcd/pkg/ioutil"
@@ -44,14 +42,16 @@ func NewHandler(r Raft, cid types.ID) http.Handler {
 	}
 }
 
-// NewStreamHandler returns a handler which initiates streamer when receiving
-// stream request from follower.
-func NewStreamHandler(tr *transport, id, cid types.ID) http.Handler {
+func newStreamHandler(tr *transport, id, cid types.ID) http.Handler {
 	return &streamHandler{
 		tr:  tr,
 		id:  id,
 		cid: cid,
 	}
+}
+
+type writerToResponse interface {
+	WriteTo(w http.ResponseWriter)
 }
 
 type handler struct {
@@ -117,11 +117,26 @@ func (h *streamHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fromStr := strings.TrimPrefix(r.URL.Path, RaftStreamPrefix+"/")
+	var t streamType
+	switch path.Dir(r.URL.Path) {
+	case path.Join(RaftStreamPrefix, string(streamTypeMsgApp)):
+		t = streamTypeMsgApp
+	case path.Join(RaftStreamPrefix, string(streamTypeMessage)):
+		t = streamTypeMessage
+	// backward compatibility
+	case RaftStreamPrefix:
+		t = streamTypeMsgApp
+	default:
+		log.Printf("rafthttp: ignored unexpected streaming request path %s", r.URL.Path)
+		http.Error(w, "invalid path", http.StatusNotFound)
+		return
+	}
+
+	fromStr := path.Base(r.URL.Path)
 	from, err := types.IDFromString(fromStr)
 	if err != nil {
-		log.Printf("rafthttp: path %s cannot be parsed", fromStr)
-		http.Error(w, "invalid path", http.StatusNotFound)
+		log.Printf("rafthttp: failed to parse from %s into ID", fromStr)
+		http.Error(w, "invalid from", http.StatusNotFound)
 		return
 	}
 	p := h.tr.Peer(from)
@@ -145,27 +160,34 @@ func (h *streamHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	termStr := r.Header.Get("X-Raft-Term")
-	term, err := strconv.ParseUint(termStr, 10, 64)
-	if err != nil {
-		log.Printf("rafthttp: streaming request ignored due to parse term %s error: %v", termStr, err)
-		http.Error(w, "invalid term field", http.StatusBadRequest)
-		return
-	}
-
-	sw := newStreamWriter(w.(WriteFlusher), from, term)
-	err = p.attachStream(sw)
-	if err != nil {
-		log.Printf("rafthttp: %v", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
 	w.WriteHeader(http.StatusOK)
 	w.(http.Flusher).Flush()
-	<-sw.stopNotify()
+
+	c := newCloseNotifier()
+	conn := &outgoingConn{
+		t:       t,
+		termStr: r.Header.Get("X-Raft-Term"),
+		Writer:  w,
+		Flusher: w.(http.Flusher),
+		Closer:  c,
+	}
+	p.attachOutgoingConn(conn)
+	<-c.closeNotify()
 }
 
-type writerToResponse interface {
-	WriteTo(w http.ResponseWriter)
+type closeNotifier struct {
+	done chan struct{}
 }
+
+func newCloseNotifier() *closeNotifier {
+	return &closeNotifier{
+		done: make(chan struct{}),
+	}
+}
+
+func (n *closeNotifier) Close() error {
+	close(n.done)
+	return nil
+}
+
+func (n *closeNotifier) closeNotify() <-chan struct{} { return n.done }

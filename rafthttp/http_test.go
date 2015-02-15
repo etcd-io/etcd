@@ -15,20 +15,14 @@
 package rafthttp
 
 import (
-	"bytes"
 	"errors"
-	"io"
 	"net/http"
-	"net/http/httptest"
-	"strings"
-	"testing"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
-	"github.com/coreos/etcd/pkg/pbutil"
-	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft/raftpb"
 )
 
+/*
 func TestServeRaft(t *testing.T) {
 	testCases := []struct {
 		method    string
@@ -153,6 +147,7 @@ func TestServeRaft(t *testing.T) {
 		}
 	}
 }
+*/
 
 // errReader implements io.Reader to facilitate a broken request.
 type errReader struct{}

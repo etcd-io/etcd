@@ -68,11 +68,11 @@ func NewTransporter(rt http.RoundTripper, id, cid types.ID, r Raft, errorc chan 
 }
 
 func (t *transport) Handler() http.Handler {
-	h := NewHandler(t.raft, t.clusterID)
-	sh := NewStreamHandler(t, t.id, t.clusterID)
+	pipelineHandler := NewHandler(t.raft, t.clusterID)
+	streamHandler := newStreamHandler(t, t.id, t.clusterID)
 	mux := http.NewServeMux()
-	mux.Handle(RaftPrefix, h)
-	mux.Handle(RaftStreamPrefix+"/", sh)
+	mux.Handle(RaftPrefix, pipelineHandler)
+	mux.Handle(RaftStreamPrefix+"/", streamHandler)
 	return mux
 }
 
@@ -126,7 +126,7 @@ func (t *transport) AddPeer(id types.ID, urls []string) {
 	}
 	u.Path = path.Join(u.Path, RaftPrefix)
 	fs := t.leaderStats.Follower(id.String())
-	t.peers[id] = NewPeer(t.roundTripper, u.String(), id, t.clusterID, t.raft, fs, t.errorc)
+	t.peers[id] = startPeer(t.roundTripper, u.String(), t.id, id, t.clusterID, t.raft, fs, t.errorc)
 }
 
 func (t *transport) RemovePeer(id types.ID) {

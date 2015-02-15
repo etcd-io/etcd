@@ -346,8 +346,8 @@ func (c *cluster) RemoveMember(t *testing.T, id uint64) {
 			select {
 			case <-m.s.StopNotify():
 				m.Terminate(t)
-			// stop delay / election timeout + 1s disk and network delay
-			case <-time.After(time.Duration(electionTicks)*tickDuration + time.Second):
+			// 1s stop delay + election timeout + 1s disk and network delay
+			case <-time.After(time.Second + time.Duration(electionTicks)*tickDuration + time.Second):
 				t.Fatalf("failed to remove member %s in time", m.s.ID())
 			}
 		}
