@@ -91,11 +91,7 @@ func (wh *watcherHub) watch(key string, recursive, stream bool, index, storeInde
 		wh.watchers[key] = l
 	}
 
-	w.remove = func() {
-		if w.removed { // avoid removing it twice
-			return
-		}
-		w.removed = true
+	w.removeFunc = func() {
 		l.Remove(elem)
 		atomic.AddInt64(&wh.count, -1)
 		if l.Len() == 0 {
@@ -141,11 +137,8 @@ func (wh *watcherHub) notifyWatchers(e *Event, nodePath string, deleted bool) {
 			w, _ := curr.Value.(*watcher)
 
 			originalPath := (e.Node.Key == nodePath)
-			if (originalPath || !isHidden(nodePath, e.Node.Key)) && w.notify(e, originalPath, deleted) {
-				if !w.stream { // do not remove the stream watcher
-					// if we successfully notify a watcher, we can remove it
-					w.remove()
-				}
+			if originalPath || !isHidden(nodePath, e.Node.Key) {
+				w.notify(e, originalPath, deleted)
 			}
 
 			curr = next // update current to the next element in the list
