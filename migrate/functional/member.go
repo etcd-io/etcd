@@ -28,6 +28,8 @@ import (
 	"time"
 )
 
+var binDir = ".versions"
+
 type Proc struct {
 	*exec.Cmd
 	Name    string
