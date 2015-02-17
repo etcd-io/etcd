@@ -24,6 +24,7 @@ import (
 	"path"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/coreos/etcd/pkg/pbutil"
 	"github.com/coreos/etcd/raft"
@@ -60,6 +61,8 @@ func (s *Snapshotter) SaveSnap(snapshot raftpb.Snapshot) error {
 }
 
 func (s *Snapshotter) save(snapshot *raftpb.Snapshot) error {
+	start := time.Now()
+
 	fname := fmt.Sprintf("%016x-%016x%s", snapshot.Metadata.Term, snapshot.Metadata.Index, snapSuffix)
 	b := pbutil.MustMarshal(snapshot)
 	crc := crc32.Update(0, crcTable, b)
@@ -68,7 +71,11 @@ func (s *Snapshotter) save(snapshot *raftpb.Snapshot) error {
 	if err != nil {
 		return err
 	}
-	return ioutil.WriteFile(path.Join(s.dir, fname), d, 0666)
+	err = ioutil.WriteFile(path.Join(s.dir, fname), d, 0666)
+	if err != nil {
+		saveDurations.Observe(float64(time.Since(start).Nanoseconds() / int64(time.Microsecond)))
+	}
+	return err
 }
 
 func (s *Snapshotter) Load() (*raftpb.Snapshot, error) {
