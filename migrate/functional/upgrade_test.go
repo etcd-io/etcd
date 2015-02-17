@@ -14,7 +14,6 @@ import (
 )
 
 var (
-	binDir         = ".versions"
 	v1BinPath      = path.Join(binDir, "1")
 	v2BinPath      = path.Join(binDir, "2")
 	etcdctlBinPath string
