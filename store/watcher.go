@@ -91,6 +91,7 @@ func (w *watcher) Remove() {
 	w.remove()
 }
 
+// remove is the internal remove method for which the hub lock must be held.
 func (w *watcher) remove() {
 	w.removeOnce.Do(func() {
 		close(w.eventChan)
