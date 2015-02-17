@@ -193,14 +193,14 @@ func TestCheckCluster(t *testing.T) {
 			})
 		}
 		c := &clientWithResp{rs: rs}
-		d := discovery{cluster: cluster, id: 1, c: c}
+		dBase := discovery{cluster: cluster, id: 1, c: c}
 
 		cRetry := &clientWithRetry{failTimes: 3}
 		cRetry.rs = rs
 		fc := clockwork.NewFakeClock()
 		dRetry := discovery{cluster: cluster, id: 1, c: cRetry, clock: fc}
 
-		for _, d := range []discovery{d, dRetry} {
+		for _, d := range []discovery{dBase, dRetry} {
 			go func() {
 				for i := uint(1); i <= maxRetryInTest; i++ {
 					fc.BlockUntil(1)
@@ -263,7 +263,7 @@ func TestWaitNodes(t *testing.T) {
 	for i, tt := range tests {
 		// Basic case
 		c := &clientWithResp{nil, &watcherWithResp{tt.rs}}
-		d := &discovery{cluster: "1000", c: c}
+		dBase := &discovery{cluster: "1000", c: c}
 
 		// Retry case
 		retryScanResp := make([]*client.Response, 0)
@@ -291,7 +291,7 @@ func TestWaitNodes(t *testing.T) {
 			clock:   fc,
 		}
 
-		for _, d := range []*discovery{d, dRetry} {
+		for _, d := range []*discovery{dBase, dRetry} {
 			go func() {
 				for i := uint(1); i <= maxRetryInTest; i++ {
 					fc.BlockUntil(1)

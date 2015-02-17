@@ -774,7 +774,7 @@ func TestVoteRequest(t *testing.T) {
 		{[]pb.Entry{{Term: 1, Index: 1}}, 2},
 		{[]pb.Entry{{Term: 1, Index: 1}, {Term: 2, Index: 2}}, 3},
 	}
-	for i, tt := range tests {
+	for j, tt := range tests {
 		r := newRaft(1, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage(), 0)
 		r.Step(pb.Message{
 			From: 2, To: 1, Type: pb.MsgApp, Term: tt.wterm - 1, LogTerm: 0, Index: 0, Entries: tt.ents,
@@ -788,7 +788,7 @@ func TestVoteRequest(t *testing.T) {
 		msgs := r.readMessages()
 		sort.Sort(messageSlice(msgs))
 		if len(msgs) != 2 {
-			t.Fatalf("#%d: len(msg) = %d, want %d", i, len(msgs), 2)
+			t.Fatalf("#%d: len(msg) = %d, want %d", j, len(msgs), 2)
 		}
 		for i, m := range msgs {
 			if m.Type != pb.MsgVote {

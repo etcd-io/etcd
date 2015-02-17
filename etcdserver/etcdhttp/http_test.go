@@ -76,13 +76,13 @@ func (fs *errServer) UpdateMember(ctx context.Context, m etcdserver.Member) erro
 
 func TestWriteError(t *testing.T) {
 	// nil error should not panic
-	rw := httptest.NewRecorder()
-	writeError(rw, nil)
-	h := rw.Header()
+	rec := httptest.NewRecorder()
+	writeError(rec, nil)
+	h := rec.Header()
 	if len(h) > 0 {
 		t.Fatalf("unexpected non-empty headers: %#v", h)
 	}
-	b := rw.Body.String()
+	b := rec.Body.String()
 	if len(b) > 0 {
 		t.Fatalf("unexpected non-empty body: %q", b)
 	}

@@ -510,7 +510,7 @@ func TestOldMessages(t *testing.T) {
 	// commit a new entry
 	tt.send(pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{Data: []byte("somedata")}}})
 
-	l := &raftLog{
+	ilog := &raftLog{
 		storage: &MemoryStorage{
 			ents: []pb.Entry{
 				{}, {Data: nil, Term: 1, Index: 1},
@@ -521,7 +521,7 @@ func TestOldMessages(t *testing.T) {
 		unstable:  unstable{offset: 5},
 		committed: 4,
 	}
-	base := ltoa(l)
+	base := ltoa(ilog)
 	for i, p := range tt.peers {
 		if sm, ok := p.(*raft); ok {
 			l := ltoa(sm.raftLog)
@@ -548,7 +548,7 @@ func TestProposal(t *testing.T) {
 		{newNetwork(nil, nopStepper, nopStepper, nil, nil), true},
 	}
 
-	for i, tt := range tests {
+	for j, tt := range tests {
 		send := func(m pb.Message) {
 			defer func() {
 				// only recover is we expect it to panic so
@@ -556,7 +556,7 @@ func TestProposal(t *testing.T) {
 				if !tt.success {
 					e := recover()
 					if e != nil {
-						t.Logf("#%d: err: %s", i, e)
+						t.Logf("#%d: err: %s", j, e)
 					}
 				}
 			}()
@@ -591,7 +591,7 @@ func TestProposal(t *testing.T) {
 		}
 		sm := tt.network.peers[1].(*raft)
 		if g := sm.Term; g != 1 {
-			t.Errorf("#%d: term = %d, want %d", i, g, 1)
+			t.Errorf("#%d: term = %d, want %d", j, g, 1)
 		}
 	}
 }
@@ -603,7 +603,7 @@ func TestProposalByProxy(t *testing.T) {
 		newNetwork(nil, nil, nopStepper),
 	}
 
-	for i, tt := range tests {
+	for j, tt := range tests {
 		// promote 0 the leader
 		tt.send(pb.Message{From: 1, To: 1, Type: pb.MsgHup})
 
@@ -629,7 +629,7 @@ func TestProposalByProxy(t *testing.T) {
 		}
 		sm := tt.peers[1].(*raft)
 		if g := sm.Term; g != 1 {
-			t.Errorf("#%d: term = %d, want %d", i, g, 1)
+			t.Errorf("#%d: term = %d, want %d", j, g, 1)
 		}
 	}
 }
@@ -1601,8 +1601,8 @@ func newNetwork(peers ...Interface) *network {
 	npeers := make(map[uint64]Interface, size)
 	nstorage := make(map[uint64]*MemoryStorage, size)
 
-	for i, p := range peers {
-		id := peerAddrs[i]
+	for j, p := range peers {
+		id := peerAddrs[j]
 		switch v := p.(type) {
 		case nil:
 			nstorage[id] = NewMemoryStorage()

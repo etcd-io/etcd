@@ -1064,13 +1064,13 @@ func TestServeMembersFail(t *testing.T) {
 
 func TestWriteEvent(t *testing.T) {
 	// nil event should not panic
-	rw := httptest.NewRecorder()
-	writeKeyEvent(rw, nil, dummyRaftTimer{})
-	h := rw.Header()
+	rec := httptest.NewRecorder()
+	writeKeyEvent(rec, nil, dummyRaftTimer{})
+	h := rec.Header()
 	if len(h) > 0 {
 		t.Fatalf("unexpected non-empty headers: %#v", h)
 	}
-	b := rw.Body.String()
+	b := rec.Body.String()
 	if len(b) > 0 {
 		t.Fatalf("unexpected non-empty body: %q", b)
 	}

@@ -106,12 +106,12 @@ func checkInternalVersion(fs *flag.FlagSet) version {
 		log.Fatalf("starter: please set --data-dir or ETCD_DATA_DIR for etcd")
 	}
 	// check the data directory
-	ver, err := checkVersion(dataDir)
+	dataver, err := checkVersion(dataDir)
 	if err != nil {
 		log.Fatalf("starter: failed to detect etcd version in %v: %v", dataDir, err)
 	}
-	log.Printf("starter: detect etcd version %s in %s", ver, dataDir)
-	switch ver {
+	log.Printf("starter: detect etcd version %s in %s", dataver, dataDir)
+	switch dataver {
 	case v2_0:
 		return internalV2
 	case v2_0Proxy:

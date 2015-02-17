@@ -1027,8 +1027,8 @@ func TestPublish(t *testing.T) {
 		t.Errorf("method = %s, want PUT", r.Method)
 	}
 	wm := Member{ID: 1, Attributes: Attributes{Name: "node1", ClientURLs: []string{"http://a", "http://b"}}}
-	if w := path.Join(memberStoreKey(wm.ID), attributesSuffix); r.Path != w {
-		t.Errorf("path = %s, want %s", r.Path, w)
+	if wpath := path.Join(memberStoreKey(wm.ID), attributesSuffix); r.Path != wpath {
+		t.Errorf("path = %s, want %s", r.Path, wpath)
 	}
 	var gattr Attributes
 	if err := json.Unmarshal([]byte(r.Val), &gattr); err != nil {
@@ -1072,8 +1072,8 @@ func TestPublishRetry(t *testing.T) {
 
 	action := n.Action()
 	// multiple Proposes
-	if n := len(action); n < 2 {
-		t.Errorf("len(action) = %d, want >= 2", n)
+	if cnt := len(action); cnt < 2 {
+		t.Errorf("len(action) = %d, want >= 2", cnt)
 	}
 }
 
