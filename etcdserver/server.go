@@ -177,11 +177,11 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 			return nil, fmt.Errorf("member %s has already been bootstrapped", m.ID)
 		}
 		if cfg.ShouldDiscover() {
-			s, err := discovery.JoinCluster(cfg.DiscoveryURL, cfg.DiscoveryProxy, m.ID, cfg.Cluster.String())
+			str, err := discovery.JoinCluster(cfg.DiscoveryURL, cfg.DiscoveryProxy, m.ID, cfg.Cluster.String())
 			if err != nil {
 				return nil, err
 			}
-			if cfg.Cluster, err = NewClusterFromString(cfg.Cluster.token, s); err != nil {
+			if cfg.Cluster, err = NewClusterFromString(cfg.Cluster.token, str); err != nil {
 				return nil, err
 			}
 			if err := cfg.Cluster.Validate(); err != nil {

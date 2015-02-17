@@ -60,4 +60,13 @@ if [ -n "${vetRes}" ]; then
 	exit 255
 fi
 
+if [ -f `which go-nyet` ]; then
+  echo "Checking go-nyet..."
+  nyetRes=$(go-nyet -exitWith 0 $FMT)
+  if [ -n "${nyetRes}" ]; then
+          echo -e "go-nyet checking failed:\n${nyetRes}"
+          exit 255
+  fi
+fi
+
 echo "Success"

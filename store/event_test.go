@@ -88,8 +88,8 @@ func TestFullEventQueue(t *testing.T) {
 
 	// Add
 	for i := 0; i < 1000; i++ {
-		e := newEvent(Create, "/foo", uint64(i), uint64(i))
-		eh.addEvent(e)
+		ce := newEvent(Create, "/foo", uint64(i), uint64(i))
+		eh.addEvent(ce)
 		e, err := eh.scan("/foo", true, uint64(i-1))
 		if i > 0 {
 			if e == nil || err != nil {

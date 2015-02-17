@@ -296,15 +296,15 @@ func TestCompactionSideEffects(t *testing.T) {
 		t.Errorf("lastIndex = %d, want %d", raftLog.lastIndex(), lastIndex)
 	}
 
-	for i := offset; i <= raftLog.lastIndex(); i++ {
-		if raftLog.term(i) != i {
-			t.Errorf("term(%d) = %d, want %d", i, raftLog.term(i), i)
+	for j := offset; j <= raftLog.lastIndex(); j++ {
+		if raftLog.term(j) != j {
+			t.Errorf("term(%d) = %d, want %d", j, raftLog.term(j), j)
 		}
 	}
 
-	for i := offset; i <= raftLog.lastIndex(); i++ {
-		if !raftLog.matchTerm(i, i) {
-			t.Errorf("matchTerm(%d) = false, want true", i)
+	for j := offset; j <= raftLog.lastIndex(); j++ {
+		if !raftLog.matchTerm(j, j) {
+			t.Errorf("matchTerm(%d) = false, want true", j)
 		}
 	}
 
@@ -354,9 +354,9 @@ func TestNextEnts(t *testing.T) {
 		raftLog.maybeCommit(5, 1)
 		raftLog.appliedTo(tt.applied)
 
-		ents := raftLog.nextEnts()
-		if !reflect.DeepEqual(ents, tt.wents) {
-			t.Errorf("#%d: ents = %+v, want %+v", i, ents, tt.wents)
+		nents := raftLog.nextEnts()
+		if !reflect.DeepEqual(nents, tt.wents) {
+			t.Errorf("#%d: nents = %+v, want %+v", i, nents, tt.wents)
 		}
 	}
 }
@@ -649,10 +649,10 @@ func TestTerm(t *testing.T) {
 		{offset + num, 0},
 	}
 
-	for i, tt := range tests {
+	for j, tt := range tests {
 		term := l.term(tt.index)
 		if !reflect.DeepEqual(term, tt.w) {
-			t.Errorf("#%d: at = %d, want %d", i, term, tt.w)
+			t.Errorf("#%d: at = %d, want %d", j, term, tt.w)
 		}
 	}
 }
@@ -712,18 +712,18 @@ func TestSlice(t *testing.T) {
 		{offset + num, offset + num + 1, nil, true},
 	}
 
-	for i, tt := range tests {
+	for j, tt := range tests {
 		func() {
 			defer func() {
 				if r := recover(); r != nil {
 					if !tt.wpanic {
-						t.Errorf("%d: panic = %v, want %v: %v", i, true, false, r)
+						t.Errorf("%d: panic = %v, want %v: %v", j, true, false, r)
 					}
 				}
 			}()
 			g := l.slice(tt.from, tt.to)
 			if !reflect.DeepEqual(g, tt.w) {
-				t.Errorf("#%d: from %d to %d = %v, want %v", i, tt.from, tt.to, g, tt.w)
+				t.Errorf("#%d: from %d to %d = %v, want %v", j, tt.from, tt.to, g, tt.w)
 			}
 		}()
 	}

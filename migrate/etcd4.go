@@ -175,8 +175,8 @@ func GuessNodeID(nodes map[string]uint64, snap4 *Snapshot4, cfg *Config4, name s
 			delete(snapNodes, p.Name)
 		}
 		if len(snapNodes) == 1 {
-			for name, id := range nodes {
-				log.Printf("Autodetected from snapshot: name %s", name)
+			for nodename, id := range nodes {
+				log.Printf("Autodetected from snapshot: name %s", nodename)
 				return id
 			}
 		}
@@ -186,8 +186,8 @@ func GuessNodeID(nodes map[string]uint64, snap4 *Snapshot4, cfg *Config4, name s
 		delete(nodes, p.Name)
 	}
 	if len(nodes) == 1 {
-		for name, id := range nodes {
-			log.Printf("Autodetected name %s", name)
+		for nodename, id := range nodes {
+			log.Printf("Autodetected name %s", nodename)
 			return id
 		}
 	}

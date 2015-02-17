@@ -51,10 +51,10 @@ func TestHeapUpdate(t *testing.T) {
 
 	// add from older expire time to earlier expire time
 	// the path is equal to ttl from now
-	for i, n := range kvs {
+	for i := range kvs {
 		path := fmt.Sprintf("%v", 10-i)
 		m := time.Duration(10 - i)
-		n = newKV(nil, path, path, 0, nil, "", time.Now().Add(time.Second*m))
+		n := newKV(nil, path, path, 0, nil, "", time.Now().Add(time.Second*m))
 		kvs[i] = n
 		h.push(n)
 	}

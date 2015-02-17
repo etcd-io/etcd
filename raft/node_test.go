@@ -332,10 +332,10 @@ func TestNodeStart(t *testing.T) {
 	}
 
 	n.Propose(ctx, []byte("foo"))
-	if g := <-n.Ready(); !reflect.DeepEqual(g, wants[1]) {
-		t.Errorf("#%d: g = %+v,\n             w   %+v", 2, g, wants[1])
+	if g2 := <-n.Ready(); !reflect.DeepEqual(g2, wants[1]) {
+		t.Errorf("#%d: g = %+v,\n             w   %+v", 2, g2, wants[1])
 	} else {
-		storage.Append(g.Entries)
+		storage.Append(g2.Entries)
 		n.Advance()
 	}
 

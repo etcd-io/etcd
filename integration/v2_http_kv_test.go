@@ -327,21 +327,21 @@ func TestV2Delete(t *testing.T) {
 
 	v := url.Values{}
 	v.Set("value", "XXX")
-	resp, err := tc.PutForm(fmt.Sprintf("%s%s", u, "/v2/keys/foo"), v)
+	r, err := tc.PutForm(fmt.Sprintf("%s%s", u, "/v2/keys/foo"), v)
 	if err != nil {
 		t.Error(err)
 	}
-	resp.Body.Close()
-	resp, err = tc.PutForm(fmt.Sprintf("%s%s", u, "/v2/keys/emptydir?dir=true"), v)
+	r.Body.Close()
+	r, err = tc.PutForm(fmt.Sprintf("%s%s", u, "/v2/keys/emptydir?dir=true"), v)
 	if err != nil {
 		t.Error(err)
 	}
-	resp.Body.Close()
-	resp, err = tc.PutForm(fmt.Sprintf("%s%s", u, "/v2/keys/foodir/bar?dir=true"), v)
+	r.Body.Close()
+	r, err = tc.PutForm(fmt.Sprintf("%s%s", u, "/v2/keys/foodir/bar?dir=true"), v)
 	if err != nil {
 		t.Error(err)
 	}
-	resp.Body.Close()
+	r.Body.Close()
 
 	tests := []struct {
 		relativeURL string
@@ -423,17 +423,17 @@ func TestV2CAD(t *testing.T) {
 
 	v := url.Values{}
 	v.Set("value", "XXX")
-	resp, err := tc.PutForm(fmt.Sprintf("%s%s", u, "/v2/keys/foo"), v)
+	r, err := tc.PutForm(fmt.Sprintf("%s%s", u, "/v2/keys/foo"), v)
 	if err != nil {
 		t.Error(err)
 	}
-	resp.Body.Close()
+	r.Body.Close()
 
-	resp, err = tc.PutForm(fmt.Sprintf("%s%s", u, "/v2/keys/foovalue"), v)
+	r, err = tc.PutForm(fmt.Sprintf("%s%s", u, "/v2/keys/foovalue"), v)
 	if err != nil {
 		t.Error(err)
 	}
-	resp.Body.Close()
+	r.Body.Close()
 
 	tests := []struct {
 		relativeURL string
@@ -582,11 +582,11 @@ func TestV2Get(t *testing.T) {
 
 	v := url.Values{}
 	v.Set("value", "XXX")
-	resp, err := tc.PutForm(fmt.Sprintf("%s%s", u, "/v2/keys/foo/bar/zar"), v)
+	r, err := tc.PutForm(fmt.Sprintf("%s%s", u, "/v2/keys/foo/bar/zar"), v)
 	if err != nil {
 		t.Error(err)
 	}
-	resp.Body.Close()
+	r.Body.Close()
 
 	tests := []struct {
 		relativeURL string
@@ -676,11 +676,11 @@ func TestV2QuorumGet(t *testing.T) {
 
 	v := url.Values{}
 	v.Set("value", "XXX")
-	resp, err := tc.PutForm(fmt.Sprintf("%s%s", u, "/v2/keys/foo/bar/zar?quorum=true"), v)
+	r, err := tc.PutForm(fmt.Sprintf("%s%s", u, "/v2/keys/foo/bar/zar?quorum=true"), v)
 	if err != nil {
 		t.Error(err)
 	}
-	resp.Body.Close()
+	r.Body.Close()
 
 	tests := []struct {
 		relativeURL string

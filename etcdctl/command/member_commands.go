@@ -134,10 +134,10 @@ func actionMemberAdd(c *cli.Context) {
 	}
 
 	conf := []string{}
-	for _, m := range members {
-		for _, u := range m.PeerURLs {
-			n := m.Name
-			if m.ID == newID {
+	for _, memb := range members {
+		for _, u := range memb.PeerURLs {
+			n := memb.Name
+			if memb.ID == newID {
 				n = newName
 			}
 			conf = append(conf, fmt.Sprintf("%s=%s", n, u))
@@ -160,8 +160,9 @@ func actionMemberRemove(c *cli.Context) {
 
 	mAPI := mustNewMembersAPI(c)
 	// Get the list of members.
-	listctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
+	listctx, listCancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
 	members, err := mAPI.List(listctx)
+	listCancel()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "Error while verifying ID against known members:", err.Error())
 		os.Exit(1)
@@ -184,9 +185,9 @@ func actionMemberRemove(c *cli.Context) {
 	}
 
 	// Actually attempt to remove the member.
-	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
+	ctx, removeCancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
 	err = mAPI.Remove(ctx, removalID)
-	cancel()
+	removeCancel()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Recieved an error trying to remove member %s: %s", removalID, err.Error())
 		os.Exit(1)

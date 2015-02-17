@@ -89,7 +89,7 @@ func TestV2KeysURLHelper(t *testing.T) {
 
 func TestGetAction(t *testing.T) {
 	ep := url.URL{Scheme: "http", Host: "example.com/v2/keys"}
-	wantURL := &url.URL{
+	baseWantURL := &url.URL{
 		Scheme: "http",
 		Host:   "example.com",
 		Path:   "/v2/keys/foo/bar",
@@ -117,7 +117,7 @@ func TestGetAction(t *testing.T) {
 		}
 		got := *f.HTTPRequest(ep)
 
-		wantURL := wantURL
+		wantURL := baseWantURL
 		wantURL.RawQuery = tt.wantQuery
 
 		err := assertResponse(got, wantURL, wantHeader, nil)
@@ -129,7 +129,7 @@ func TestGetAction(t *testing.T) {
 
 func TestWaitAction(t *testing.T) {
 	ep := url.URL{Scheme: "http", Host: "example.com/v2/keys"}
-	wantURL := &url.URL{
+	baseWantURL := &url.URL{
 		Scheme: "http",
 		Host:   "example.com",
 		Path:   "/v2/keys/foo/bar",
@@ -166,7 +166,7 @@ func TestWaitAction(t *testing.T) {
 		}
 		got := *f.HTTPRequest(ep)
 
-		wantURL := wantURL
+		wantURL := baseWantURL
 		wantURL.RawQuery = tt.wantQuery
 
 		err := assertResponse(got, wantURL, wantHeader, nil)

@@ -323,23 +323,23 @@ func TestRecoverAfterCut(t *testing.T) {
 	}
 	defer os.RemoveAll(p)
 
-	w, err := Create(p, []byte("metadata"))
+	md, err := Create(p, []byte("metadata"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	for i := 0; i < 10; i++ {
-		if err = w.SaveSnapshot(walpb.Snapshot{Index: uint64(i)}); err != nil {
+		if err = md.SaveSnapshot(walpb.Snapshot{Index: uint64(i)}); err != nil {
 			t.Fatal(err)
 		}
 		es := []raftpb.Entry{{Index: uint64(i)}}
-		if err = w.Save(raftpb.HardState{}, es); err != nil {
+		if err = md.Save(raftpb.HardState{}, es); err != nil {
 			t.Fatal(err)
 		}
-		if err = w.Cut(); err != nil {
+		if err = md.Cut(); err != nil {
 			t.Fatal(err)
 		}
 	}
-	w.Close()
+	md.Close()
 
 	if err := os.Remove(path.Join(p, walName(4, 4))); err != nil {
 		t.Fatal(err)
