@@ -206,7 +206,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		}
 
 		if cfg.ShouldDiscover() {
-			log.Printf("etcdserver: discovery token ignored since a cluster has already been initialized. Valid log found at %q", cfg.WALDir())
+			cfg.logPrintf("etcdserver: discovery token ignored since a cluster has already been initialized. Valid log found at %q", cfg.WALDir())
 		}
 		snapshot, err := ss.Load()
 		if err != nil && err != snap.ErrNoSnapshot {
@@ -216,12 +216,12 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 			if err := st.Recovery(snapshot.Data); err != nil {
 				log.Panicf("etcdserver: recovered store from snapshot error: %v", err)
 			}
-			log.Printf("etcdserver: recovered store from snapshot at index %d", snapshot.Metadata.Index)
+			cfg.logPrintf("etcdserver: recovered store from snapshot at index %d", snapshot.Metadata.Index)
 		}
 		cfg.Cluster = NewClusterFromStore(cfg.Cluster.token, st)
 		cfg.Print()
 		if snapshot != nil {
-			log.Printf("etcdserver: loaded cluster information from store: %s", cfg.Cluster)
+			cfg.logPrintf("etcdserver: loaded cluster information from store: %s", cfg.Cluster)
 		}
 		if !cfg.ForceNewCluster {
 			id, n, s, w = restartNode(cfg, snapshot)
@@ -284,7 +284,7 @@ func (s *EtcdServer) Start() {
 // This function is just used for testing.
 func (s *EtcdServer) start() {
 	if s.r.snapCount == 0 {
-		log.Printf("etcdserver: set snapshot count to default %d", DefaultSnapCount)
+		s.logPrintf("etcdserver: set snapshot count to default %d", DefaultSnapCount)
 		s.r.snapCount = DefaultSnapCount
 	}
 	s.w = wait.New()
@@ -320,7 +320,7 @@ func (s *EtcdServer) RaftHandler() http.Handler { return s.r.transport.Handler()
 
 func (s *EtcdServer) Process(ctx context.Context, m raftpb.Message) error {
 	if s.Cluster.IsIDRemoved(types.ID(m.From)) {
-		log.Printf("etcdserver: reject message from removed member %s", types.ID(m.From).String())
+		s.logPrintf("etcdserver: reject message from removed member %s", types.ID(m.From).String())
 		return httptypes.NewHTTPError(http.StatusForbidden, "cannot process message from removed member")
 	}
 	if m.Type == raftpb.MsgApp {
@@ -378,7 +378,7 @@ func (s *EtcdServer) run() {
 				}
 				s.r.raftStorage.ApplySnapshot(rd.Snapshot)
 				snapi = rd.Snapshot.Metadata.Index
-				log.Printf("etcdserver: saved incoming snapshot at index %d", snapi)
+				s.logPrintf("etcdserver: saved incoming snapshot at index %d", snapi)
 			}
 
 			if err := s.r.storage.Save(rd.HardState, rd.Entries); err != nil {
@@ -406,7 +406,7 @@ func (s *EtcdServer) run() {
 
 				appliedi = rd.Snapshot.Metadata.Index
 				confState = rd.Snapshot.Metadata.ConfState
-				log.Printf("etcdserver: recovered from incoming snapshot at index %d", snapi)
+				s.logPrintf("etcdserver: recovered from incoming snapshot at index %d", snapi)
 			}
 			// TODO(bmizerany): do this in the background, but take
 			// care to apply entries in a single goroutine, and not
@@ -430,15 +430,15 @@ func (s *EtcdServer) run() {
 			s.r.Advance()
 
 			if appliedi-snapi > s.r.snapCount {
-				log.Printf("etcdserver: start to snapshot (applied: %d, lastsnap: %d)", appliedi, snapi)
+				s.logPrintf("etcdserver: start to snapshot (applied: %d, lastsnap: %d)", appliedi, snapi)
 				s.snapshot(appliedi, &confState)
 				snapi = appliedi
 			}
 		case <-syncC:
 			s.sync(defaultSyncTimeout)
 		case err := <-s.errorc:
-			log.Printf("etcdserver: %s", err)
-			log.Printf("etcdserver: the data-dir used by this member must be removed.")
+			s.logPrintf("etcdserver: %s", err)
+			s.logPrintf("etcdserver: the data-dir used by this member must be removed.")
 			return
 		case <-s.stop:
 			return
@@ -638,7 +638,7 @@ func (s *EtcdServer) sync(timeout time.Duration) {
 func (s *EtcdServer) publish(retryInterval time.Duration) {
 	b, err := json.Marshal(s.attributes)
 	if err != nil {
-		log.Printf("etcdserver: json marshal error: %v", err)
+		s.logPrintf("etcdserver: json marshal error: %v", err)
 		return
 	}
 	req := pb.Request{
@@ -653,13 +653,13 @@ func (s *EtcdServer) publish(retryInterval time.Duration) {
 		cancel()
 		switch err {
 		case nil:
-			log.Printf("etcdserver: published %+v to cluster %s", s.attributes, s.Cluster.ID())
+			s.logPrintf("etcdserver: published %+v to cluster %s", s.attributes, s.Cluster.ID())
 			return
 		case ErrStopped:
-			log.Printf("etcdserver: aborting publish because server is stopped")
+			s.logPrintf("etcdserver: aborting publish because server is stopped")
 			return
 		default:
-			log.Printf("etcdserver: publish error: %v", err)
+			s.logPrintf("etcdserver: publish error: %v", err)
 		}
 	}
 }
@@ -771,10 +771,10 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.Con
 		}
 		s.Cluster.AddMember(m)
 		if m.ID == s.id {
-			log.Printf("etcdserver: added local member %s %v to cluster %s", m.ID, m.PeerURLs, s.Cluster.ID())
+			s.logPrintf("etcdserver: added local member %s %v to cluster %s", m.ID, m.PeerURLs, s.Cluster.ID())
 		} else {
 			s.r.transport.AddPeer(m.ID, m.PeerURLs)
-			log.Printf("etcdserver: added member %s %v to cluster %s", m.ID, m.PeerURLs, s.Cluster.ID())
+			s.logPrintf("etcdserver: added member %s %v to cluster %s", m.ID, m.PeerURLs, s.Cluster.ID())
 		}
 	case raftpb.ConfChangeRemoveNode:
 		id := types.ID(cc.NodeID)
@@ -783,7 +783,7 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.Con
 			return true, nil
 		} else {
 			s.r.transport.RemovePeer(id)
-			log.Printf("etcdserver: removed member %s from cluster %s", id, s.Cluster.ID())
+			s.logPrintf("etcdserver: removed member %s from cluster %s", id, s.Cluster.ID())
 		}
 	case raftpb.ConfChangeUpdateNode:
 		m := new(Member)
@@ -795,10 +795,10 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.Con
 		}
 		s.Cluster.UpdateRaftAttributes(m.ID, m.RaftAttributes)
 		if m.ID == s.id {
-			log.Printf("etcdserver: update local member %s %v in cluster %s", m.ID, m.PeerURLs, s.Cluster.ID())
+			s.logPrintf("etcdserver: update local member %s %v in cluster %s", m.ID, m.PeerURLs, s.Cluster.ID())
 		} else {
 			s.r.transport.UpdatePeer(m.ID, m.PeerURLs)
-			log.Printf("etcdserver: update member %s %v in cluster %s", m.ID, m.PeerURLs, s.Cluster.ID())
+			s.logPrintf("etcdserver: update member %s %v in cluster %s", m.ID, m.PeerURLs, s.Cluster.ID())
 		}
 	}
 	return false, nil
@@ -821,7 +821,7 @@ func (s *EtcdServer) snapshot(snapi uint64, confState *raftpb.ConfState) {
 		}
 		log.Panicf("etcdserver: unexpected compaction error %v", err)
 	}
-	log.Printf("etcdserver: compacted log at index %d", snapi)
+	s.logPrintf("etcdserver: compacted log at index %d", snapi)
 
 	if err := s.r.storage.Cut(); err != nil {
 		log.Panicf("etcdserver: rotate wal file should never fail: %v", err)
@@ -833,9 +833,18 @@ func (s *EtcdServer) snapshot(snapi uint64, confState *raftpb.ConfState) {
 	if err := s.r.storage.SaveSnap(snap); err != nil {
 		log.Fatalf("etcdserver: save snapshot error: %v", err)
 	}
-	log.Printf("etcdserver: saved snapshot at index %d", snap.Metadata.Index)
+	s.logPrintf("etcdserver: saved snapshot at index %d", snap.Metadata.Index)
 }
 
 func (s *EtcdServer) PauseSending() { s.r.pauseSending() }
 
 func (s *EtcdServer) ResumeSending() { s.r.resumeSending() }
+
+// Logging wrapper to use log.Printf if Logger is unset.
+func (s *EtcdServer) logPrintf(fmt string, v ...interface{}) {
+	if s.cfg != nil && s.cfg.Logger != nil {
+		s.cfg.Logger.Printf(fmt, v...)
+	} else {
+		log.Printf(fmt, v...)
+	}
+}
