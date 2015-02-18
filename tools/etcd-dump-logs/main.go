@@ -32,35 +32,47 @@ import (
 
 func main() {
 	from := flag.String("data-dir", "", "")
-	snapfile := flag.String("snap-file", "", "The base name of snapshot file to read")
+	snapfile := flag.String("start-snap", "", "The base name of snapshot file to start dumping")
+	index := flag.Uint64("start-index", 0, "The index to start dumping")
 	flag.Parse()
 	if *from == "" {
-		log.Fatal("Must provide -data-dir flag")
+		log.Fatal("Must provide -data-dir flag.")
+	}
+	if *snapfile != "" && *index != 0 {
+		log.Fatal("start-snap and start-index flags cannot be used together.")
 	}
 
 	var (
+		walsnap  walpb.Snapshot
 		snapshot *raftpb.Snapshot
 		err      error
 	)
 
-	if *snapfile == "" {
-		ss := snap.New(snapDir(*from))
-		snapshot, err = ss.Load()
-	} else {
-		snapshot, err = snap.Read(path.Join(snapDir(*from), *snapfile))
-	}
+	isIndex := *index != 0
 
-	var walsnap walpb.Snapshot
-	switch err {
-	case nil:
-		walsnap.Index, walsnap.Term = snapshot.Metadata.Index, snapshot.Metadata.Term
-		nodes := genIDSlice(snapshot.Metadata.ConfState.Nodes)
-		fmt.Printf("Snapshot:\nterm=%d index=%d nodes=%s\n",
-			walsnap.Term, walsnap.Index, nodes)
-	case snap.ErrNoSnapshot:
-		fmt.Printf("Snapshot:\nempty\n")
-	default:
-		log.Fatalf("Failed loading snapshot: %v", err)
+	if isIndex {
+		fmt.Printf("Start dumping log entries from index %d.\n", *index)
+		walsnap.Index = *index
+	} else {
+		if *snapfile == "" {
+			ss := snap.New(snapDir(*from))
+			snapshot, err = ss.Load()
+		} else {
+			snapshot, err = snap.Read(path.Join(snapDir(*from), *snapfile))
+		}
+
+		switch err {
+		case nil:
+			walsnap.Index, walsnap.Term = snapshot.Metadata.Index, snapshot.Metadata.Term
+			nodes := genIDSlice(snapshot.Metadata.ConfState.Nodes)
+			fmt.Printf("Snapshot:\nterm=%d index=%d nodes=%s\n",
+				walsnap.Term, walsnap.Index, nodes)
+		case snap.ErrNoSnapshot:
+			fmt.Printf("Snapshot:\nempty\n")
+		default:
+			log.Fatalf("Failed loading snapshot: %v", err)
+		}
+		fmt.Println("Start dupmping log entries from snapshot.")
 	}
 
 	w, err := wal.Open(walDir(*from), walsnap)
@@ -69,7 +81,7 @@ func main() {
 	}
 	wmetadata, state, ents, err := w.ReadAll()
 	w.Close()
-	if err != nil {
+	if err != nil && (!isIndex || err != wal.ErrSnapshotNotFound) {
 		log.Fatalf("Failed reading WAL: %v", err)
 	}
 	id, cid := parseWALMetadata(wmetadata)
