@@ -17,7 +17,7 @@ Package wal provides an implementation of a write ahead log that is used by
 etcd.
 
 A WAL is created at a particular directory and is made up of a number of
-discrete WAL files. Inside of each file the raft state and entries are appended
+segmented WAL files. Inside of each file the raft state and entries are appended
 to it with the Save method:
 
 	metadata := []byte{}
@@ -41,12 +41,11 @@ The first WAL file to be created will be 0000000000000000-0000000000000000.wal
 indicating an initial sequence of 0 and an initial raft index of 0. The first
 entry written to WAL MUST have raft index 0.
 
-Periodically a user will want to "cut" the WAL and place new entries into a new
-file. This will increment an internal sequence number and cause a new file to
-be created. If the last raft index saved was 0x20 and this is the first time
-Cut has been called on this WAL then the sequence will increment from 0x0 to
-0x1. The new file will be: 0000000000000001-0000000000000021.wal. If a second
-Cut issues 0x10 entries with incremental index later then the file will be called:
+WAL will cuts its current wal files if its size exceeds 8MB. This will increment an internal
+sequence number and cause a new file to be created. If the last raft index saved
+was 0x20 and this is the first time cut has been called on this WAL then the sequence will
+increment from 0x0 to 0x1. The new file will be: 0000000000000001-0000000000000021.wal.
+If a second cut issues 0x10 entries with incremental index later then the file will be called:
 0000000000000002-0000000000000031.wal.
 
 At a later time a WAL can be opened at a particular snapshot. If there is no
