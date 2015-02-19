@@ -41,6 +41,10 @@ const (
 
 	// the owner can make/remove files inside the directory
 	privateDirMode = 0700
+
+	// the expected size of each wal segment file.
+	// the actual size might be bigger than it.
+	segmentSizeBytes = 64 * 1000 * 1000 // 64MB
 )
 
 var (
@@ -274,14 +278,15 @@ func (w *WAL) ReadAll() (metadata []byte, state raftpb.HardState, ents []raftpb.
 	return metadata, state, ents, err
 }
 
-// Cut closes current file written and creates a new one ready to append.
-func (w *WAL) Cut() error {
+// cut closes current file written and creates a new one ready to append.
+func (w *WAL) cut() error {
 	// create a new wal file with name sequence + 1
 	fpath := path.Join(w.dir, walName(w.seq+1, w.enti+1))
 	f, err := os.OpenFile(fpath, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0600)
 	if err != nil {
 		return err
 	}
+	log.Printf("wal: segmented wal file %v is created", fpath)
 	l, err := fileutil.NewLock(f.Name())
 	if err != nil {
 		return err
@@ -402,7 +407,16 @@ func (w *WAL) Save(st raftpb.HardState, ents []raftpb.Entry) error {
 			return err
 		}
 	}
-	return w.sync()
+
+	fstat, err := w.f.Stat()
+	if err != nil {
+		return err
+	}
+	if fstat.Size() < segmentSizeBytes {
+		return w.sync()
+	}
+	// TODO: add a test for this code path when refactoring the tests
+	return w.cut()
 }
 
 func (w *WAL) SaveSnapshot(e walpb.Snapshot) error {

@@ -720,14 +720,11 @@ func TestSnapshot(t *testing.T) {
 		t.Errorf("action = %s, want Save", gaction[0])
 	}
 	gaction = p.Action()
-	if len(gaction) != 2 {
-		t.Fatalf("len(action) = %d, want 2", len(gaction))
+	if len(gaction) != 1 {
+		t.Fatalf("len(action) = %d, want 1", len(gaction))
 	}
 	if !reflect.DeepEqual(gaction[0], testutil.Action{Name: "SaveSnap"}) {
 		t.Errorf("action = %s, want SaveSnap", gaction[0])
-	}
-	if !reflect.DeepEqual(gaction[1], testutil.Action{Name: "Cut"}) {
-		t.Errorf("action = %s, want Cut", gaction[1])
 	}
 }
 
@@ -755,12 +752,12 @@ func TestTriggerSnap(t *testing.T) {
 
 	gaction := p.Action()
 	// each operation is recorded as a Save
-	// (SnapCount+1) * Puts + Cut + SaveSnap = (SnapCount+1) * Save + SaveSnap + CUT
-	wcnt := 3 + snapc
+	// (SnapCount+1) * Puts + SaveSnap = (SnapCount+1) * Save + SaveSnap
+	wcnt := 2 + snapc
 	if len(gaction) != wcnt {
 		t.Fatalf("len(action) = %d, want %d", len(gaction), wcnt)
 	}
-	if !reflect.DeepEqual(gaction[wcnt-2], testutil.Action{Name: "SaveSnap"}) {
+	if !reflect.DeepEqual(gaction[wcnt-1], testutil.Action{Name: "SaveSnap"}) {
 		t.Errorf("action = %s, want SaveSnap", gaction[wcnt-1])
 	}
 }
@@ -1265,10 +1262,6 @@ type storageRecorder struct{ testutil.Recorder }
 
 func (p *storageRecorder) Save(st raftpb.HardState, ents []raftpb.Entry) error {
 	p.Record(testutil.Action{Name: "Save"})
-	return nil
-}
-func (p *storageRecorder) Cut() error {
-	p.Record(testutil.Action{Name: "Cut"})
 	return nil
 }
 func (p *storageRecorder) SaveSnap(st raftpb.Snapshot) error {

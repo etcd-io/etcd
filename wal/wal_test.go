@@ -156,7 +156,7 @@ func TestCut(t *testing.T) {
 	if err := w.Save(state, []raftpb.Entry{{}}); err != nil {
 		t.Fatal(err)
 	}
-	if err := w.Cut(); err != nil {
+	if err := w.cut(); err != nil {
 		t.Fatal(err)
 	}
 	wname := walName(1, 1)
@@ -168,7 +168,7 @@ func TestCut(t *testing.T) {
 	if err := w.Save(raftpb.HardState{}, es); err != nil {
 		t.Fatal(err)
 	}
-	if err := w.Cut(); err != nil {
+	if err := w.cut(); err != nil {
 		t.Fatal(err)
 	}
 	snap := walpb.Snapshot{Index: 2, Term: 1}
@@ -335,7 +335,7 @@ func TestRecoverAfterCut(t *testing.T) {
 		if err = md.Save(raftpb.HardState{}, es); err != nil {
 			t.Fatal(err)
 		}
-		if err = md.Cut(); err != nil {
+		if err = md.cut(); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -427,7 +427,7 @@ func TestOpenNotInUse(t *testing.T) {
 		if err = w.Save(raftpb.HardState{}, es); err != nil {
 			t.Fatal(err)
 		}
-		if err = w.Cut(); err != nil {
+		if err = w.cut(); err != nil {
 			t.Fatal(err)
 		}
 	}

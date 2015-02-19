@@ -843,10 +843,6 @@ func (s *EtcdServer) snapshot(snapi uint64, confState *raftpb.ConfState) {
 		}
 		log.Panicf("etcdserver: unexpected compaction error %v", err)
 	}
-	log.Printf("etcdserver: compacted log at index %d", snapi)
-	if err := s.r.storage.Cut(); err != nil {
-		log.Panicf("etcdserver: rotate wal file should never fail: %v", err)
-	}
 	log.Printf("etcdserver: saved snapshot at index %d", snap.Metadata.Index)
 }
 
