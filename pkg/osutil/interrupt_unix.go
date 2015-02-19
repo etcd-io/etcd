@@ -59,13 +59,18 @@ func HandleInterrupts() {
 
 		interruptExitMu.Lock()
 
-		log.Printf("received %v signal, shutting down", sig)
+		log.Printf("received %v signal, shutting down...", sig)
 
 		for _, h := range ihs {
 			h()
 		}
 		signal.Stop(notifier)
-		syscall.Kill(syscall.Getpid(), sig.(syscall.Signal))
+		pid := syscall.Getpid()
+		// exit directly if it is the "init" process, since the kernel will not help to kill pid 1.
+		if pid == 1 {
+			os.Exit(0)
+		}
+		syscall.Kill(pid, sig.(syscall.Signal))
 	}()
 }
 
