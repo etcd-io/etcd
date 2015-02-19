@@ -353,7 +353,8 @@ func newDefaultClient(tls *TLSInfo) (*http.Client, error) {
 }
 
 type value struct {
-	s string
+	isBoolFlag bool
+	s          string
 }
 
 func (v *value) String() string { return v.s }
@@ -363,14 +364,20 @@ func (v *value) Set(s string) error {
 	return nil
 }
 
-func (v *value) IsBoolFlag() bool { return true }
+func (v *value) IsBoolFlag() bool { return v.isBoolFlag }
+
+type boolFlag interface {
+	flag.Value
+	IsBoolFlag() bool
+}
 
 // parseConfig parses out the input config from cmdline arguments and
 // environment variables.
 func parseConfig(args []string) (*flag.FlagSet, error) {
 	fs := flag.NewFlagSet("full flagset", flag.ContinueOnError)
 	etcdmain.NewConfig().VisitAll(func(f *flag.Flag) {
-		fs.Var(&value{}, f.Name, "")
+		_, isBoolFlag := f.Value.(boolFlag)
+		fs.Var(&value{isBoolFlag: isBoolFlag}, f.Name, "")
 	})
 	if err := fs.Parse(args); err != nil {
 		return nil, err
