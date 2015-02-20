@@ -60,7 +60,7 @@ if [ -n "${vetRes}" ]; then
 	exit 255
 fi
 
-if [ -f `which go-nyet` ]; then
+if command -v go-nyet >/dev/null 2>&1; then
   echo "Checking go-nyet..."
   nyetRes=$(go-nyet -exitWith 0 $FMT)
   if [ -n "${nyetRes}" ]; then
