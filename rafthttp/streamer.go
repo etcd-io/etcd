@@ -295,6 +295,9 @@ func (s *streamReader) handle(r io.Reader) {
 			}
 			return
 		}
+		if len(ents) == 0 {
+			continue
+		}
 		// The commit index field in appendEntry message is not recovered.
 		// The follower updates its commit index through heartbeat.
 		msg := raftpb.Message{

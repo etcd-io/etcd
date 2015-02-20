@@ -54,7 +54,9 @@ func (er *entryReader) readEntries() ([]raftpb.Entry, error) {
 		}
 		er.ents.Add()
 	}
-	er.lastIndex.Set(int64(ents[l-1].Index))
+	if l > 0 {
+		er.lastIndex.Set(int64(ents[l-1].Index))
+	}
 	return ents, nil
 }
 
