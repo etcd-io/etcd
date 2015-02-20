@@ -84,10 +84,10 @@ func DescribeMessage(m pb.Message, f EntryFormatter) string {
 // Entry for debugging.
 func DescribeEntry(e pb.Entry, f EntryFormatter) string {
 	var formatted string
-	if f == nil {
-		formatted = fmt.Sprintf("%q", e.Data)
-	} else {
+	if e.Type == pb.EntryNormal && f != nil {
 		formatted = f(e.Data)
+	} else {
+		formatted = fmt.Sprintf("%q", e.Data)
 	}
 	return fmt.Sprintf("%d/%d %s %s", e.Term, e.Index, e.Type, formatted)
 }
