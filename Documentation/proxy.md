@@ -14,7 +14,7 @@ The proxy will be listening on `listen-client-urls` and forward requests to the 
 #### Start an etcd proxy with a static configuration
 To start a proxy that will connect to a statically defined etcd cluster, specify the `initial-cluster` flag:
 ```
-etcd -proxy on -client-listen-urls 127.0.0.1:8080 -initial-cluster infra0=http://10.0.1.10:2380,infra1=http://10.0.1.11:2380,infra2=http://10.0.1.12:2380
+etcd -proxy on -listen-client-urls 127.0.0.1:8080 -initial-cluster infra0=http://10.0.1.10:2380,infra1=http://10.0.1.11:2380,infra2=http://10.0.1.12:2380
 ```
 
 #### Start an etcd proxy with the discovery service
@@ -23,7 +23,7 @@ If you bootstrap an etcd cluster using the [discovery service][discovery-service
 To start a proxy using the discovery service, specify the `discovery-url` flag. The proxy will wait until the etcd cluster defined at the `discovery-url` finishes bootstrapping, and then start to forward the requests. 
 
 ```
-etcd -proxy on -client-listen-urls 127.0.0.1:8080  -discovery https://discovery.etcd.io/3e86b59982e49066c5d813af1c2e2579cbf573de
+etcd -proxy on -listen-client-urls 127.0.0.1:8080  -discovery https://discovery.etcd.io/3e86b59982e49066c5d813af1c2e2579cbf573de
 ```
 
 #### Fallback to proxy mode with discovery service
