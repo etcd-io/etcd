@@ -33,7 +33,7 @@ func TestNewPeerHandlerOnRaftPrefix(t *testing.T) {
 	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("test data"))
 	})
-	ph := NewPeerHandler(&fakeCluster{}, h)
+	ph := NewPeerHandler(&fakeCluster{}, &dummyRaftTimer{}, h)
 	srv := httptest.NewServer(ph)
 	defer srv.Close()
 
@@ -91,7 +91,7 @@ func TestServeMembersGet(t *testing.T) {
 		id:      1,
 		members: map[uint64]*etcdserver.Member{1: &memb1, 2: &memb2},
 	}
-	h := &peerMembersHandler{clusterInfo: cluster}
+	h := &peerMembersHandler{clusterInfo: cluster, timer: &dummyRaftTimer{}}
 	msb, err := json.Marshal([]etcdserver.Member{memb1, memb2})
 	if err != nil {
 		t.Fatal(err)
