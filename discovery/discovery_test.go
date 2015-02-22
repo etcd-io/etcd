@@ -420,6 +420,15 @@ func (c *clientWithResp) Create(ctx context.Context, key string, value string, t
 	return r, nil
 }
 
+func (c *clientWithResp) CreateInOrder(ctx context.Context, key string, value string, ttl time.Duration) (*client.Response, error) {
+	if len(c.rs) == 0 {
+		return &client.Response{}, nil
+	}
+	r := c.rs[0]
+	c.rs = c.rs[1:]
+	return r, nil
+}
+
 func (c *clientWithResp) Get(ctx context.Context, key string) (*client.Response, error) {
 	if len(c.rs) == 0 {
 		return &client.Response{}, client.ErrKeyNoExist
@@ -443,6 +452,10 @@ type clientWithErr struct {
 }
 
 func (c *clientWithErr) Create(ctx context.Context, key string, value string, ttl time.Duration) (*client.Response, error) {
+	return &client.Response{}, c.err
+}
+
+func (c *clientWithErr) CreateInOrder(ctx context.Context, key string, value string, ttl time.Duration) (*client.Response, error) {
 	return &client.Response{}, c.err
 }
 

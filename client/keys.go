@@ -55,6 +55,7 @@ func NewDiscoveryKeysAPI(c HTTPClient) KeysAPI {
 
 type KeysAPI interface {
 	Create(ctx context.Context, key, value string, ttl time.Duration) (*Response, error)
+	CreateInOrder(ctx context.Context, key, value string, ttl time.Duration) (*Response, error)
 	Get(ctx context.Context, key string) (*Response, error)
 
 	Watch(key string, idx uint64) Watcher
@@ -91,7 +92,15 @@ type httpKeysAPI struct {
 }
 
 func (k *httpKeysAPI) Create(ctx context.Context, key, val string, ttl time.Duration) (*Response, error) {
+	return k.create(ctx, key, val, ttl, "PUT")
+}
+func (k *httpKeysAPI) CreateInOrder(ctx context.Context, key, val string, ttl time.Duration) (*Response, error) {
+	return k.create(ctx, key, val, ttl, "POST")
+}
+
+func (k *httpKeysAPI) create(ctx context.Context, key, val string, ttl time.Duration, method string) (*Response, error) {
 	create := &createAction{
+		Method: method,
 		Prefix: k.prefix,
 		Key:    key,
 		Value:  val,
@@ -216,6 +225,7 @@ func (w *waitAction) HTTPRequest(ep url.URL) *http.Request {
 }
 
 type createAction struct {
+	Method string
 	Prefix string
 	Key    string
 	Value  string
@@ -236,7 +246,7 @@ func (c *createAction) HTTPRequest(ep url.URL) *http.Request {
 	}
 	body := strings.NewReader(form.Encode())
 
-	req, _ := http.NewRequest("PUT", u.String(), body)
+	req, _ := http.NewRequest(c.Method, u.String(), body)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	return req
