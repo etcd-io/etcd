@@ -53,10 +53,18 @@ func NewDiscoveryKeysAPI(c HTTPClient) KeysAPI {
 	}
 }
 
-type KeysAPI interface {
-	Create(ctx context.Context, key, value string, ttl time.Duration) (*Response, error)
-	Get(ctx context.Context, key string) (*Response, error)
+type GetOptions struct {
+	Recursive bool
+	Sorted    bool
+}
 
+type CreateOptions struct {
+	InOrder bool
+}
+
+type KeysAPI interface {
+	Create(ctx context.Context, key, value string, ttl time.Duration, options ...CreateOptions) (*Response, error)
+	Get(ctx context.Context, key string, options ...GetOptions) (*Response, error)
 	Watch(key string, idx uint64) Watcher
 	RecursiveWatch(key string, idx uint64) Watcher
 }
@@ -90,11 +98,17 @@ type httpKeysAPI struct {
 	prefix string
 }
 
-func (k *httpKeysAPI) Create(ctx context.Context, key, val string, ttl time.Duration) (*Response, error) {
+func (k *httpKeysAPI) Create(ctx context.Context, key, val string, ttl time.Duration, opts ...CreateOptions) (*Response, error) {
+	options := CreateOptions{}
+	if len(opts) > 0 {
+		options = opts[0]
+	}
+
 	create := &createAction{
-		Prefix: k.prefix,
-		Key:    key,
-		Value:  val,
+		Prefix:  k.prefix,
+		Key:     key,
+		Value:   val,
+		Options: options,
 	}
 	if ttl >= 0 {
 		uttl := uint64(ttl.Seconds())
@@ -109,11 +123,16 @@ func (k *httpKeysAPI) Create(ctx context.Context, key, val string, ttl time.Dura
 	return unmarshalHTTPResponse(resp.StatusCode, resp.Header, body)
 }
 
-func (k *httpKeysAPI) Get(ctx context.Context, key string) (*Response, error) {
+func (k *httpKeysAPI) Get(ctx context.Context, key string, opts ...GetOptions) (*Response, error) {
+	options := GetOptions{}
+	if len(opts) > 0 {
+		options = opts[0]
+	}
+
 	get := &getAction{
-		Prefix:    k.prefix,
-		Key:       key,
-		Recursive: false,
+		Prefix:  k.prefix,
+		Key:     key,
+		Options: options,
 	}
 
 	resp, body, err := k.client.Do(ctx, get)
@@ -179,16 +198,21 @@ func v2KeysURL(ep url.URL, prefix, key string) *url.URL {
 }
 
 type getAction struct {
-	Prefix    string
-	Key       string
-	Recursive bool
+	Prefix  string
+	Key     string
+	Options GetOptions
 }
 
 func (g *getAction) HTTPRequest(ep url.URL) *http.Request {
 	u := v2KeysURL(ep, g.Prefix, g.Key)
 
 	params := u.Query()
-	params.Set("recursive", strconv.FormatBool(g.Recursive))
+	if g.Options.Recursive {
+		params.Set("recursive", "true")
+	}
+	if g.Options.Sorted {
+		params.Set("sorted", "true")
+	}
 	u.RawQuery = params.Encode()
 
 	req, _ := http.NewRequest("GET", u.String(), nil)
@@ -216,10 +240,11 @@ func (w *waitAction) HTTPRequest(ep url.URL) *http.Request {
 }
 
 type createAction struct {
-	Prefix string
-	Key    string
-	Value  string
-	TTL    *uint64
+	Prefix  string
+	Key     string
+	Value   string
+	TTL     *uint64
+	Options CreateOptions
 }
 
 func (c *createAction) HTTPRequest(ep url.URL) *http.Request {
@@ -236,7 +261,12 @@ func (c *createAction) HTTPRequest(ep url.URL) *http.Request {
 	}
 	body := strings.NewReader(form.Encode())
 
-	req, _ := http.NewRequest("PUT", u.String(), body)
+	method := "PUT"
+	if c.Options.InOrder {
+		method = "POST"
+	}
+
+	req, _ := http.NewRequest(method, u.String(), body)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	return req

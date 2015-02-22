@@ -97,23 +97,33 @@ func TestGetAction(t *testing.T) {
 	wantHeader := http.Header{}
 
 	tests := []struct {
+		sorted    bool
 		recursive bool
 		wantQuery string
 	}{
 		{
 			recursive: false,
-			wantQuery: "recursive=false",
+			wantQuery: "",
 		},
 		{
 			recursive: true,
 			wantQuery: "recursive=true",
 		},
+		{
+			sorted:    true,
+			wantQuery: "sorted=true",
+		},
+		{
+			recursive: true,
+			sorted:    true,
+			wantQuery: "recursive=true&sorted=true",
+		},
 	}
 
 	for i, tt := range tests {
 		f := getAction{
-			Key:       "/foo/bar",
-			Recursive: tt.recursive,
+			Key:     "/foo/bar",
+			Options: GetOptions{Recursive: tt.recursive, Sorted: tt.sorted},
 		}
 		got := *f.HTTPRequest(ep)
 

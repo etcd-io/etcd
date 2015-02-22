@@ -411,7 +411,7 @@ type clientWithResp struct {
 	w  client.Watcher
 }
 
-func (c *clientWithResp) Create(ctx context.Context, key string, value string, ttl time.Duration) (*client.Response, error) {
+func (c *clientWithResp) Create(ctx context.Context, key string, value string, ttl time.Duration, options ...client.CreateOptions) (*client.Response, error) {
 	if len(c.rs) == 0 {
 		return &client.Response{}, nil
 	}
@@ -420,7 +420,7 @@ func (c *clientWithResp) Create(ctx context.Context, key string, value string, t
 	return r, nil
 }
 
-func (c *clientWithResp) Get(ctx context.Context, key string) (*client.Response, error) {
+func (c *clientWithResp) Get(ctx context.Context, key string, options ...client.GetOptions) (*client.Response, error) {
 	if len(c.rs) == 0 {
 		return &client.Response{}, client.ErrKeyNoExist
 	}
@@ -442,11 +442,11 @@ type clientWithErr struct {
 	w   client.Watcher
 }
 
-func (c *clientWithErr) Create(ctx context.Context, key string, value string, ttl time.Duration) (*client.Response, error) {
+func (c *clientWithErr) Create(ctx context.Context, key string, value string, ttl time.Duration, options ...client.CreateOptions) (*client.Response, error) {
 	return &client.Response{}, c.err
 }
 
-func (c *clientWithErr) Get(ctx context.Context, key string) (*client.Response, error) {
+func (c *clientWithErr) Get(ctx context.Context, key string, options ...client.GetOptions) (*client.Response, error) {
 	return &client.Response{}, c.err
 }
 
@@ -486,7 +486,7 @@ type clientWithRetry struct {
 	failTimes int
 }
 
-func (c *clientWithRetry) Create(ctx context.Context, key string, value string, ttl time.Duration) (*client.Response, error) {
+func (c *clientWithRetry) Create(ctx context.Context, key string, value string, ttl time.Duration, options ...client.CreateOptions) (*client.Response, error) {
 	if c.failCount < c.failTimes {
 		c.failCount++
 		return nil, client.ErrTimeout
@@ -494,7 +494,7 @@ func (c *clientWithRetry) Create(ctx context.Context, key string, value string, 
 	return c.clientWithResp.Create(ctx, key, value, ttl)
 }
 
-func (c *clientWithRetry) Get(ctx context.Context, key string) (*client.Response, error) {
+func (c *clientWithRetry) Get(ctx context.Context, key string, options ...client.GetOptions) (*client.Response, error) {
 	if c.failCount < c.failTimes {
 		c.failCount++
 		return nil, client.ErrTimeout
