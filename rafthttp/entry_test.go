@@ -14,15 +14,7 @@
 
 package rafthttp
 
-import (
-	"bytes"
-	"reflect"
-	"testing"
-
-	"github.com/coreos/etcd/pkg/types"
-	"github.com/coreos/etcd/raft/raftpb"
-)
-
+/*
 func TestEntsWriteAndRead(t *testing.T) {
 	tests := [][]raftpb.Entry{
 		{
@@ -60,3 +52,4 @@ func TestEntsWriteAndRead(t *testing.T) {
 		}
 	}
 }
+*/

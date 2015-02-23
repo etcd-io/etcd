@@ -15,158 +15,180 @@
 package rafthttp
 
 import (
-	"errors"
+	"log"
 	"net/http"
-	"sync"
 	"time"
 
+	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/etcdserver/stats"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft/raftpb"
 )
 
 const (
-	appRespBatchMs = 50
-	propBatchMs    = 10
-
+	DialTimeout      = time.Second
 	ConnReadTimeout  = 5 * time.Second
 	ConnWriteTimeout = 5 * time.Second
+
+	recvBufSize = 4096
 )
 
+// peer is the representative of a remote raft node. Local raft node sends
+// messages to the remote through peer.
+// Each peer has two underlying mechanisms to send out a message: stream and
+// pipeline.
+// A stream is a receiver initialized long-polling connection, which
+// is always open to transfer messages. Besides general stream, peer also has
+// a optimized stream for sending msgApp since msgApp accounts for large part
+// of all messages. Only raft leader uses the optimized stream to send msgApp
+// to the remote follower node.
+// A pipeline is a series of http clients that send http requests to the remote.
+// It is only used when the stream has not been established.
 type peer struct {
-	sync.Mutex
+	id types.ID
 
-	id  types.ID
-	cid types.ID
+	msgAppWriter *streamWriter
+	writer       *streamWriter
+	pipeline     *pipeline
 
-	tr http.RoundTripper
-	// the url this sender post to
-	u  string
-	r  Raft
-	fs *stats.FollowerStats
+	sendc   chan raftpb.Message
+	recvc   chan raftpb.Message
+	newURLc chan string
+	// for testing
+	pausec  chan struct{}
+	resumec chan struct{}
 
-	batcher     *Batcher
-	propBatcher *ProposalBatcher
-
-	pipeline *pipeline
-	stream   *stream
-
-	paused  bool
-	stopped bool
+	stopc chan struct{}
+	done  chan struct{}
 }
 
-func NewPeer(tr http.RoundTripper, u string, id types.ID, cid types.ID, r Raft, fs *stats.FollowerStats, errorc chan error) *peer {
-	return &peer{
-		id:          id,
-		cid:         cid,
-		tr:          tr,
-		u:           u,
-		r:           r,
-		fs:          fs,
-		pipeline:    newPipeline(tr, u, id, cid, fs, errorc),
-		stream:      &stream{},
-		batcher:     NewBatcher(100, appRespBatchMs*time.Millisecond),
-		propBatcher: NewProposalBatcher(100, propBatchMs*time.Millisecond),
+func startPeer(tr http.RoundTripper, u string, local, to, cid types.ID, r Raft, fs *stats.FollowerStats, errorc chan error) *peer {
+	p := &peer{
+		id:           to,
+		msgAppWriter: startStreamWriter(fs),
+		writer:       startStreamWriter(fs),
+		pipeline:     newPipeline(tr, u, to, cid, fs, errorc),
+		sendc:        make(chan raftpb.Message),
+		recvc:        make(chan raftpb.Message, recvBufSize),
+		newURLc:      make(chan string),
+		pausec:       make(chan struct{}),
+		resumec:      make(chan struct{}),
+		stopc:        make(chan struct{}),
+		done:         make(chan struct{}),
+	}
+	go func() {
+		var paused bool
+		msgAppReader := startStreamReader(tr, u, streamTypeMsgApp, local, to, cid, p.recvc)
+		reader := startStreamReader(tr, u, streamTypeMessage, local, to, cid, p.recvc)
+		for {
+			select {
+			case m := <-p.sendc:
+				if paused {
+					continue
+				}
+				writec, name, size := p.pick(m)
+				select {
+				case writec <- m:
+				default:
+					log.Printf("peer: dropping %s to %s since %s with %d-size buffer is blocked",
+						m.Type, p.id, name, size)
+				}
+			case mm := <-p.recvc:
+				if mm.Type == raftpb.MsgApp {
+					msgAppReader.updateMsgAppTerm(mm.Term)
+				}
+				if err := r.Process(context.TODO(), mm); err != nil {
+					log.Printf("peer: process raft message error: %v", err)
+				}
+			case u := <-p.newURLc:
+				msgAppReader.update(u)
+				reader.update(u)
+				p.pipeline.update(u)
+			case <-p.pausec:
+				paused = true
+			case <-p.resumec:
+				paused = false
+			case <-p.stopc:
+				p.msgAppWriter.stop()
+				p.writer.stop()
+				p.pipeline.stop()
+				msgAppReader.stop()
+				reader.stop()
+				close(p.done)
+				return
+			}
+		}
+	}()
+
+	return p
+}
+
+func (p *peer) Send(m raftpb.Message) {
+	select {
+	case p.sendc <- m:
+	case <-p.done:
+		log.Panicf("peer: unexpected stopped")
 	}
 }
 
 func (p *peer) Update(u string) {
-	p.Lock()
-	defer p.Unlock()
-	if p.stopped {
-		// TODO: not panic here?
-		panic("peer: update a stopped peer")
+	select {
+	case p.newURLc <- u:
+	case <-p.done:
+		log.Panicf("peer: unexpected stopped")
 	}
-	p.u = u
-	p.pipeline.update(u)
 }
 
-// Send sends the data to the remote node. It is always non-blocking.
-// It may be fail to send data if it returns nil error.
-// TODO (xiangli): reasonable retry logic
-func (p *peer) Send(m raftpb.Message) error {
-	p.Lock()
-	defer p.Unlock()
-	if p.stopped {
-		return errors.New("peer: stopped")
-	}
-	if p.paused {
-		return nil
-	}
-
-	// move all the stream related stuff into stream
-	p.stream.invalidate(m.Term)
-	if shouldInitStream(m) && !p.stream.isOpen() {
-		u := p.u
-		// todo: steam open should not block.
-		p.stream.open(types.ID(m.From), p.id, p.cid, m.Term, p.tr, u, p.r)
-		p.batcher.Reset(time.Now())
-	}
-
-	var err error
-	switch {
-	case isProposal(m):
-		p.propBatcher.Batch(m)
-	case canBatch(m) && p.stream.isOpen():
-		if !p.batcher.ShouldBatch(time.Now()) {
-			err = p.pipeline.send(m)
-		}
-	case canUseStream(m):
-		if ok := p.stream.write(m); !ok {
-			err = p.pipeline.send(m)
-		}
+func (p *peer) attachOutgoingConn(conn *outgoingConn) {
+	var ok bool
+	switch conn.t {
+	case streamTypeMsgApp:
+		ok = p.msgAppWriter.attach(conn)
+	case streamTypeMessage:
+		ok = p.writer.attach(conn)
 	default:
-		err = p.pipeline.send(m)
+		log.Panicf("rafthttp: unhandled stream type %s", conn.t)
 	}
-	// send out batched MsgProp if needed
-	// TODO: it is triggered by all outcoming send now, and it needs
-	// more clear solution. Either use separate goroutine to trigger it
-	// or use streaming.
-	if !p.propBatcher.IsEmpty() {
-		t := time.Now()
-		if !p.propBatcher.ShouldBatch(t) {
-			p.pipeline.send(p.propBatcher.Message)
-			p.propBatcher.Reset(t)
-		}
+	if !ok {
+		conn.Close()
 	}
-	return err
-}
-
-// Stop performs any necessary finalization and terminates the peer
-// elegantly.
-func (p *peer) Stop() {
-	p.Lock()
-	defer p.Unlock()
-	p.pipeline.stop()
-	p.stream.stop()
-	p.stopped = true
-}
-
-// attachStream attaches a streamSever to the peer.
-func (p *peer) attachStream(sw *streamWriter) error {
-	p.Lock()
-	defer p.Unlock()
-	if p.stopped {
-		return errors.New("peer: stopped")
-	}
-
-	sw.fs = p.fs
-	return p.stream.attach(sw)
 }
 
 // Pause pauses the peer. The peer will simply drops all incoming
 // messages without retruning an error.
 func (p *peer) Pause() {
-	p.Lock()
-	defer p.Unlock()
-	p.paused = true
+	select {
+	case p.pausec <- struct{}{}:
+	case <-p.done:
+	}
 }
 
 // Resume resumes a paused peer.
 func (p *peer) Resume() {
-	p.Lock()
-	defer p.Unlock()
-	p.paused = false
+	select {
+	case p.resumec <- struct{}{}:
+	case <-p.done:
+	}
 }
 
-func isProposal(m raftpb.Message) bool { return m.Type == raftpb.MsgProp }
+// Stop performs any necessary finalization and terminates the peer
+// elegantly.
+func (p *peer) Stop() {
+	close(p.stopc)
+	<-p.done
+}
+
+func (p *peer) pick(m raftpb.Message) (writec chan raftpb.Message, name string, size int) {
+	switch {
+	case p.msgAppWriter.isWorking() && canUseMsgAppStream(m):
+		writec = p.msgAppWriter.msgc
+		name, size = "msgapp stream", streamBufSize
+	case p.writer.isWorking():
+		writec = p.writer.msgc
+		name, size = "general stream", streamBufSize
+	default:
+		writec = p.pipeline.msgc
+		name, size = "pipeline", pipelineBufSize
+	}
+	return
+}

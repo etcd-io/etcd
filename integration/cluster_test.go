@@ -346,8 +346,10 @@ func (c *cluster) RemoveMember(t *testing.T, id uint64) {
 			select {
 			case <-m.s.StopNotify():
 				m.Terminate(t)
-			// stop delay / election timeout + 1s disk and network delay
-			case <-time.After(time.Duration(electionTicks)*tickDuration + time.Second):
+			// 1s stop delay + election timeout + 1s disk and network delay + connection write timeout
+			// TODO: remove connection write timeout by selecting on http response closeNotifier
+			// blocking on https://github.com/golang/go/issues/9524
+			case <-time.After(time.Second + time.Duration(electionTicks)*tickDuration + time.Second + rafthttp.ConnWriteTimeout):
 				t.Fatalf("failed to remove member %s in time", m.s.ID())
 			}
 		}
@@ -605,7 +607,7 @@ func mustNewHTTPClient(t *testing.T, eps []string) client.Client {
 }
 
 func mustNewTransport(t *testing.T) *http.Transport {
-	tr, err := transport.NewTimeoutTransport(transport.TLSInfo{}, rafthttp.ConnReadTimeout, rafthttp.ConnWriteTimeout)
+	tr, err := transport.NewTimeoutTransport(transport.TLSInfo{}, rafthttp.DialTimeout, rafthttp.ConnReadTimeout, rafthttp.ConnWriteTimeout)
 	if err != nil {
 		t.Fatal(err)
 	}
