@@ -314,7 +314,15 @@ func (cr *streamReader) roundtrip() (io.ReadCloser, error) {
 	if err != nil {
 		return nil, fmt.Errorf("parse url %s error: %v", u, err)
 	}
-	uu.Path = path.Join(RaftStreamPrefix, string(cr.t), cr.from.String())
+	switch cr.t {
+	case streamTypeMsgApp:
+		// for backward compatibility of v2.0
+		uu.Path = path.Join(RaftStreamPrefix, cr.from.String())
+	case streamTypeMessage:
+		uu.Path = path.Join(RaftStreamPrefix, string(streamTypeMessage), cr.from.String())
+	default:
+		log.Panicf("rafthttp: unhandled stream type %v", cr.t)
+	}
 	req, err := http.NewRequest("GET", uu.String(), nil)
 	if err != nil {
 		return nil, fmt.Errorf("new request to %s error: %v", u, err)
