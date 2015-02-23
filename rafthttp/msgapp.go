@@ -52,7 +52,7 @@ func (enc *msgAppEncoder) encode(m raftpb.Message) error {
 	}
 	for i := 0; i < l; i++ {
 		ent := &ents[i]
-		if err := writeEntry(enc.w, ent); err != nil {
+		if err := writeEntryTo(enc.w, ent); err != nil {
 			return err
 		}
 	}
@@ -80,7 +80,7 @@ func (dec *msgAppDecoder) decode() (raftpb.Message, error) {
 	ents := make([]raftpb.Entry, int(l))
 	for i := 0; i < int(l); i++ {
 		ent := &ents[i]
-		if err := readEntry(dec.r, ent); err != nil {
+		if err := readEntryFrom(dec.r, ent); err != nil {
 			return m, err
 		}
 	}

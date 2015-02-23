@@ -26,13 +26,14 @@ import (
 )
 
 func TestTransportAdd(t *testing.T) {
-	t.Skip("")
 	ls := stats.NewLeaderStats("")
 	tr := &transport{
-		leaderStats: ls,
-		peers:       make(map[types.ID]*peer),
+		roundTripper: &roundTripperRecorder{},
+		leaderStats:  ls,
+		peers:        make(map[types.ID]*peer),
 	}
 	tr.AddPeer(1, []string{"http://a"})
+	defer tr.Stop()
 
 	if _, ok := ls.Followers["1"]; !ok {
 		t.Errorf("FollowerStats[1] is nil, want exists")
@@ -51,13 +52,14 @@ func TestTransportAdd(t *testing.T) {
 }
 
 func TestTransportRemove(t *testing.T) {
-	t.Skip("")
 	tr := &transport{
-		leaderStats: stats.NewLeaderStats(""),
-		peers:       make(map[types.ID]*peer),
+		roundTripper: &roundTripperRecorder{},
+		leaderStats:  stats.NewLeaderStats(""),
+		peers:        make(map[types.ID]*peer),
 	}
 	tr.AddPeer(1, []string{"http://a"})
 	tr.RemovePeer(types.ID(1))
+	defer tr.Stop()
 
 	if _, ok := tr.peers[types.ID(1)]; ok {
 		t.Fatalf("senders[1] exists, want removed")
@@ -65,7 +67,6 @@ func TestTransportRemove(t *testing.T) {
 }
 
 func TestTransportErrorc(t *testing.T) {
-	t.Skip("")
 	errorc := make(chan error, 1)
 	tr := &transport{
 		roundTripper: newRespRoundTripper(http.StatusForbidden, nil),
@@ -74,6 +75,7 @@ func TestTransportErrorc(t *testing.T) {
 		errorc:       errorc,
 	}
 	tr.AddPeer(1, []string{"http://a"})
+	defer tr.Stop()
 
 	select {
 	case <-errorc:
