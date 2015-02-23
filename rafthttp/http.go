@@ -42,11 +42,15 @@ func NewHandler(r Raft, cid types.ID) http.Handler {
 	}
 }
 
-func newStreamHandler(tr *transport, id, cid types.ID) http.Handler {
+type peerGetter interface {
+	Get(id types.ID) Peer
+}
+
+func newStreamHandler(peerGetter peerGetter, id, cid types.ID) http.Handler {
 	return &streamHandler{
-		tr:  tr,
-		id:  id,
-		cid: cid,
+		peerGetter: peerGetter,
+		id:         id,
+		cid:        cid,
 	}
 }
 
@@ -107,9 +111,9 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 type streamHandler struct {
-	tr  *transport
-	id  types.ID
-	cid types.ID
+	peerGetter peerGetter
+	id         types.ID
+	cid        types.ID
 }
 
 func (h *streamHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -141,7 +145,7 @@ func (h *streamHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid from", http.StatusNotFound)
 		return
 	}
-	p := h.tr.Peer(from)
+	p := h.peerGetter.Get(from)
 	if p == nil {
 		log.Printf("rafthttp: fail to find sender %s", from)
 		http.Error(w, "error sender not found", http.StatusNotFound)

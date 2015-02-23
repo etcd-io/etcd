@@ -79,7 +79,7 @@ func (t *transport) Handler() http.Handler {
 	return mux
 }
 
-func (t *transport) Peer(id types.ID) *peer {
+func (t *transport) Get(id types.ID) Peer {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 	return t.peers[id]
