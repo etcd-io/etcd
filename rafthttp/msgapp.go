@@ -35,11 +35,15 @@ type msgAppEncoder struct {
 }
 
 func (enc *msgAppEncoder) encode(m raftpb.Message) error {
+	start := time.Now()
 	if isLinkHeartbeatMessage(m) {
-		return binary.Write(enc.w, binary.BigEndian, uint64(0))
+		err := binary.Write(enc.w, binary.BigEndian, uint64(0))
+		if err == nil {
+			reportEncodeDuration(streamTypeMsgApp, m, time.Since(start))
+		}
+		return err
 	}
 
-	start := time.Now()
 	ents := m.Entries
 	l := len(ents)
 	// There is no need to send empty ents, and it avoids confusion with
@@ -56,6 +60,8 @@ func (enc *msgAppEncoder) encode(m raftpb.Message) error {
 			return err
 		}
 	}
+
+	reportEncodeDuration(streamTypeMsgApp, m, time.Since(start))
 	enc.fs.Succ(time.Since(start))
 	return nil
 }
@@ -74,9 +80,16 @@ func (dec *msgAppDecoder) decode() (raftpb.Message, error) {
 	if err := binary.Read(dec.r, binary.BigEndian, &l); err != nil {
 		return m, err
 	}
+
+	// start after reading the first size bytes
+	// do not count waiting time
+	start := time.Now()
+
 	if l == 0 {
+		reportDecodeDuration(streamTypeMsgApp, linkHeartbeatMessage, time.Since(start))
 		return linkHeartbeatMessage, nil
 	}
+
 	ents := make([]raftpb.Entry, int(l))
 	for i := 0; i < int(l); i++ {
 		ent := &ents[i]
@@ -94,5 +107,7 @@ func (dec *msgAppDecoder) decode() (raftpb.Message, error) {
 		Index:   ents[0].Index - 1,
 		Entries: ents,
 	}
+
+	reportDecodeDuration(streamTypeMsgApp, m, time.Since(start))
 	return m, nil
 }
