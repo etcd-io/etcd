@@ -14,42 +14,33 @@
 
 package rafthttp
 
-/*
-func TestEntsWriteAndRead(t *testing.T) {
-	tests := [][]raftpb.Entry{
-		{
-			{},
-		},
-		{
-			{Term: 1, Index: 1},
-		},
-		{
-			{Term: 1, Index: 1},
-			{Term: 1, Index: 2},
-			{Term: 1, Index: 3},
-		},
-		{
-			{Term: 1, Index: 1, Data: []byte("some data")},
-			{Term: 1, Index: 2, Data: []byte("some data")},
-			{Term: 1, Index: 3, Data: []byte("some data")},
-		},
+import (
+	"bytes"
+	"reflect"
+	"testing"
+
+	"github.com/coreos/etcd/raft/raftpb"
+)
+
+func TestEntry(t *testing.T) {
+	tests := []raftpb.Entry{
+		{},
+		{Term: 1, Index: 1},
+		{Term: 1, Index: 1, Data: []byte("some data")},
 	}
 	for i, tt := range tests {
 		b := &bytes.Buffer{}
-		ew := newEntryWriter(b, types.ID(1))
-		if err := ew.writeEntries(tt); err != nil {
+		if err := writeEntryTo(b, &tt); err != nil {
 			t.Errorf("#%d: unexpected write ents error: %v", i, err)
 			continue
 		}
-		er := newEntryReader(b, types.ID(1))
-		ents, err := er.readEntries()
-		if err != nil {
+		var ent raftpb.Entry
+		if err := readEntryFrom(b, &ent); err != nil {
 			t.Errorf("#%d: unexpected read ents error: %v", i, err)
 			continue
 		}
-		if !reflect.DeepEqual(ents, tt) {
-			t.Errorf("#%d: ents = %+v, want %+v", i, ents, tt)
+		if !reflect.DeepEqual(ent, tt) {
+			t.Errorf("#%d: ent = %+v, want %+v", i, ent, tt)
 		}
 	}
 }
-*/
