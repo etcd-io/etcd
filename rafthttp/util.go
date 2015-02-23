@@ -21,7 +21,7 @@ import (
 	"github.com/coreos/etcd/raft/raftpb"
 )
 
-func writeEntry(w io.Writer, ent *raftpb.Entry) error {
+func writeEntryTo(w io.Writer, ent *raftpb.Entry) error {
 	size := ent.Size()
 	if err := binary.Write(w, binary.BigEndian, uint64(size)); err != nil {
 		return err
@@ -34,7 +34,7 @@ func writeEntry(w io.Writer, ent *raftpb.Entry) error {
 	return err
 }
 
-func readEntry(r io.Reader, ent *raftpb.Entry) error {
+func readEntryFrom(r io.Reader, ent *raftpb.Entry) error {
 	var l uint64
 	if err := binary.Read(r, binary.BigEndian, &l); err != nil {
 		return err
