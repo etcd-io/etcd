@@ -413,7 +413,7 @@ type clientWithResp struct {
 	client.KeysAPI
 }
 
-func (c *clientWithResp) Create(ctx context.Context, key string, value string) (*client.Response, error) {
+func (c *clientWithResp) Create(ctx context.Context, key string, value string, opts *client.CreateOptions) (*client.Response, error) {
 	if len(c.rs) == 0 {
 		return &client.Response{}, nil
 	}
@@ -441,7 +441,7 @@ type clientWithErr struct {
 	client.KeysAPI
 }
 
-func (c *clientWithErr) Create(ctx context.Context, key string, value string) (*client.Response, error) {
+func (c *clientWithErr) Create(ctx context.Context, key string, value string, opts *client.CreateOptions) (*client.Response, error) {
 	return &client.Response{}, c.err
 }
 
@@ -482,12 +482,12 @@ type clientWithRetry struct {
 	failTimes int
 }
 
-func (c *clientWithRetry) Create(ctx context.Context, key string, value string) (*client.Response, error) {
+func (c *clientWithRetry) Create(ctx context.Context, key string, value string, opts *client.CreateOptions) (*client.Response, error) {
 	if c.failCount < c.failTimes {
 		c.failCount++
 		return nil, context.DeadlineExceeded
 	}
-	return c.clientWithResp.Create(ctx, key, value)
+	return c.clientWithResp.Create(ctx, key, value, opts)
 }
 
 func (c *clientWithRetry) Get(ctx context.Context, key string, opts *client.GetOptions) (*client.Response, error) {
