@@ -589,7 +589,7 @@ func (r *raft) handleAppendEntries(m pb.Message) {
 
 func (r *raft) handleHeartbeat(m pb.Message) {
 	r.raftLog.commitTo(m.Commit)
-	r.send(pb.Message{To: m.From, Type: pb.MsgHeartbeatResp})
+	r.send(pb.Message{To: m.From, Type: pb.MsgHeartbeatResp, Commit: r.Commit})
 }
 
 func (r *raft) handleSnapshot(m pb.Message) {
