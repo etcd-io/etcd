@@ -149,6 +149,7 @@ func (cw *streamWriter) run() {
 			cw.closer = conn.Closer
 			cw.working = true
 			cw.mu.Unlock()
+			log.Printf("rafthttp: start sending messages in %s to %s", cw.name(), cw.remote)
 			heartbeatc, msgc = tickc, cw.msgc
 		case <-cw.stopc:
 			cw.resetCloser()
@@ -229,6 +230,7 @@ func (cr *streamReader) run() {
 		if err != nil {
 			reportOpError(cr.local, cr.remote, cr.name(), newOpError("connect", cr.u, err))
 		} else {
+			log.Printf("rafthttp: start receiving messages in %s from %s", cr.name(), cr.remote)
 			err := cr.decodeLoop(rc)
 			if err != io.EOF && !isClosedConnectionError(err) {
 				reportOpError(cr.local, cr.remote, cr.name(), newOpError("decode", cr.u, err))
