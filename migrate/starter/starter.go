@@ -30,11 +30,10 @@ import (
 	"github.com/coreos/etcd/client"
 	"github.com/coreos/etcd/etcdmain"
 	"github.com/coreos/etcd/migrate"
-	"github.com/coreos/etcd/pkg/fileutil"
 	"github.com/coreos/etcd/pkg/flags"
 	"github.com/coreos/etcd/pkg/osutil"
-	"github.com/coreos/etcd/pkg/types"
 	etcdversion "github.com/coreos/etcd/version"
+	"github.com/coreos/etcd/wal"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 )
@@ -106,17 +105,17 @@ func checkInternalVersion(fs *flag.FlagSet) version {
 		log.Fatalf("starter: please set --data-dir or ETCD_DATA_DIR for etcd")
 	}
 	// check the data directory
-	dataver, err := checkVersion(dataDir)
+	dataver, err := wal.DetectVersion(dataDir)
 	if err != nil {
 		log.Fatalf("starter: failed to detect etcd version in %v: %v", dataDir, err)
 	}
 	log.Printf("starter: detect etcd version %s in %s", dataver, dataDir)
 	switch dataver {
-	case v2_0:
+	case wal.WALv2_0:
 		return internalV2
-	case v2_0Proxy:
+	case wal.WALv2_0Proxy:
 		return internalV2Proxy
-	case v0_4:
+	case wal.WALv0_4:
 		standbyInfo, err := migrate.DecodeStandbyInfo4FromFile(standbyInfo4(dataDir))
 		if err != nil && !os.IsNotExist(err) {
 			log.Fatalf("starter: failed to decode standbyInfo in %v: %v", dataDir, err)
@@ -140,7 +139,7 @@ func checkInternalVersion(fs *flag.FlagSet) version {
 			log.Fatalf("starter: failed to check start version in %v: %v", dataDir, err)
 		}
 		return ver
-	case empty:
+	case wal.WALNotExist:
 		discovery := fs.Lookup("discovery").Value.String()
 		dpeers, err := getPeersFromDiscoveryURL(discovery)
 		if err != nil {
@@ -160,33 +159,6 @@ func checkInternalVersion(fs *flag.FlagSet) version {
 	// never reach here
 	log.Panicf("starter: unhandled etcd version in %v", dataDir)
 	return internalUnknown
-}
-
-func checkVersion(dataDir string) (version, error) {
-	names, err := fileutil.ReadDir(dataDir)
-	if err != nil {
-		if os.IsNotExist(err) {
-			err = nil
-		}
-		return empty, err
-	}
-	if len(names) == 0 {
-		return empty, nil
-	}
-	nameSet := types.NewUnsafeSet(names...)
-	if nameSet.ContainsAll([]string{"member"}) {
-		return v2_0, nil
-	}
-	if nameSet.ContainsAll([]string{"proxy"}) {
-		return v2_0Proxy, nil
-	}
-	if nameSet.ContainsAll([]string{"snapshot", "conf", "log"}) {
-		return v0_4, nil
-	}
-	if nameSet.ContainsAll([]string{"standby_info"}) {
-		return v0_4, nil
-	}
-	return unknown, fmt.Errorf("failed to check version")
 }
 
 func checkInternalVersionByDataDir4(dataDir string) (version, error) {

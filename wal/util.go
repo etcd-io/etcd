@@ -28,11 +28,12 @@ import (
 type WalVersion string
 
 const (
-	WALUnknown  WalVersion = "Unknown WAL"
-	WALNotExist WalVersion = "No WAL"
-	WALv0_4     WalVersion = "0.4.x"
-	WALv2_0     WalVersion = "2.0.0"
-	WALv2_0_1   WalVersion = "2.0.1"
+	WALUnknown   WalVersion = "Unknown WAL"
+	WALNotExist  WalVersion = "No WAL"
+	WALv0_4      WalVersion = "0.4.x"
+	WALv2_0      WalVersion = "2.0.0"
+	WALv2_0Proxy WalVersion = "2.0 proxy"
+	WALv2_0_1    WalVersion = "2.0.1"
 )
 
 func DetectVersion(dirpath string) (WalVersion, error) {
@@ -65,7 +66,13 @@ func DetectVersion(dirpath string) (WalVersion, error) {
 			return WALv2_0, nil
 		}
 	}
+	if nameSet.ContainsAll([]string{"proxy"}) {
+		return WALv2_0Proxy, nil
+	}
 	if nameSet.ContainsAll([]string{"snapshot", "conf", "log"}) {
+		return WALv0_4, nil
+	}
+	if nameSet.ContainsAll([]string{"standby_info"}) {
 		return WALv0_4, nil
 	}
 
