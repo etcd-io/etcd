@@ -22,6 +22,13 @@ import (
 	pb "github.com/coreos/etcd/raft/raftpb"
 )
 
+type SnapshotStatus int
+
+const (
+	SnapshotFinish  SnapshotStatus = 1
+	SnapshotFailure SnapshotStatus = 2
+)
+
 var (
 	emptyState = pb.HardState{}
 
@@ -68,6 +75,8 @@ type Ready struct {
 
 	// Messages specifies outbound messages to be sent AFTER Entries are
 	// committed to stable storage.
+	// If it contains a MsgSnap message, the application MUST report back to raft
+	// when the snapshot has been received or has failed by calling ReportSnapshot.
 	Messages []pb.Message
 }
 
@@ -121,6 +130,8 @@ type Node interface {
 	Status() Status
 	// Report reports the given node is not reachable for the last send.
 	ReportUnreachable(id uint64)
+	// ReportSnapshot reports the stutus of the sent snapshot.
+	ReportSnapshot(id uint64, status SnapshotStatus)
 	// Stop performs any necessary termination of the Node
 	Stop()
 }
@@ -423,6 +434,15 @@ func (n *node) Status() Status {
 func (n *node) ReportUnreachable(id uint64) {
 	select {
 	case n.recvc <- pb.Message{Type: pb.MsgUnreachable, From: id}:
+	case <-n.done:
+	}
+}
+
+func (n *node) ReportSnapshot(id uint64, status SnapshotStatus) {
+	rej := status == SnapshotFailure
+
+	select {
+	case n.recvc <- pb.Message{Type: pb.MsgSnapStatus, From: id, Reject: rej}:
 	case <-n.done:
 	}
 }
