@@ -54,6 +54,7 @@ func handleClusterHealth(c *cli.Context) {
 
 	// is raft stable and making progress?
 	client = etcd.NewClient([]string{ep})
+	client.SetTransport(tr)
 	resp, err := client.Get("/", false, false)
 	if err != nil {
 		fmt.Println("cluster is unhealthy")
