@@ -1305,6 +1305,8 @@ func (n *nodeRecorder) Stop() {
 
 func (n *nodeRecorder) ReportUnreachable(id uint64) {}
 
+func (n *nodeRecorder) ReportSnapshot(id uint64, status raft.SnapshotStatus) {}
+
 func (n *nodeRecorder) Compact(index uint64, nodes []uint64, d []byte) {
 	n.Record(testutil.Action{Name: "Compact"})
 }

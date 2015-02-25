@@ -80,6 +80,7 @@ const (
 	MsgHeartbeat     MessageType = 8
 	MsgHeartbeatResp MessageType = 9
 	MsgUnreachable   MessageType = 10
+	MsgSnapStatus    MessageType = 11
 )
 
 var MessageType_name = map[int32]string{
@@ -94,6 +95,7 @@ var MessageType_name = map[int32]string{
 	8:  "MsgHeartbeat",
 	9:  "MsgHeartbeatResp",
 	10: "MsgUnreachable",
+	11: "MsgSnapStatus",
 }
 var MessageType_value = map[string]int32{
 	"MsgHup":           0,
@@ -107,6 +109,7 @@ var MessageType_value = map[string]int32{
 	"MsgHeartbeat":     8,
 	"MsgHeartbeatResp": 9,
 	"MsgUnreachable":   10,
+	"MsgSnapStatus":    11,
 }
 
 func (x MessageType) Enum() *MessageType {
