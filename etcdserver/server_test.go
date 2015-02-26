@@ -711,13 +711,17 @@ func TestSnapshot(t *testing.T) {
 		},
 		store: st,
 	}
-	srv.snapshot(1, &raftpb.ConfState{Nodes: []uint64{1}})
+	srv.snapshot(1, raftpb.ConfState{Nodes: []uint64{1}})
+	testutil.ForceGosched()
 	gaction := st.Action()
-	if len(gaction) != 1 {
+	if len(gaction) != 2 {
 		t.Fatalf("len(action) = %d, want 1", len(gaction))
 	}
-	if !reflect.DeepEqual(gaction[0], testutil.Action{Name: "Save"}) {
-		t.Errorf("action = %s, want Save", gaction[0])
+	if !reflect.DeepEqual(gaction[0], testutil.Action{Name: "Clone"}) {
+		t.Errorf("action = %s, want Clone", gaction[0])
+	}
+	if !reflect.DeepEqual(gaction[1], testutil.Action{Name: "SaveNoCopy"}) {
+		t.Errorf("action = %s, want SaveNoCopy", gaction[1])
 	}
 	gaction = p.Action()
 	if len(gaction) != 1 {
@@ -1207,6 +1211,17 @@ func (s *storeRecorder) Recovery(b []byte) error {
 	s.Record(testutil.Action{Name: "Recovery"})
 	return nil
 }
+
+func (s *storeRecorder) SaveNoCopy() ([]byte, error) {
+	s.Record(testutil.Action{Name: "SaveNoCopy"})
+	return nil, nil
+}
+
+func (s *storeRecorder) Clone() store.Store {
+	s.Record(testutil.Action{Name: "Clone"})
+	return s
+}
+
 func (s *storeRecorder) JsonStats() []byte { return nil }
 func (s *storeRecorder) DeleteExpiredKeys(cutoff time.Time) {
 	s.Record(testutil.Action{
