@@ -45,7 +45,6 @@ type node struct {
 	Parent *node `json:"-"` // should not encode this field! avoid circular dependency.
 
 	ExpireTime time.Time
-	ACL        string
 	Value      string           // for key-value pair
 	Children   map[string]*node // for directory
 
@@ -54,15 +53,12 @@ type node struct {
 }
 
 // newKV creates a Key-Value pair
-func newKV(store *store, nodePath string, value string, createdIndex uint64,
-	parent *node, ACL string, expireTime time.Time) *node {
-
+func newKV(store *store, nodePath string, value string, createdIndex uint64, parent *node, expireTime time.Time) *node {
 	return &node{
 		Path:          nodePath,
 		CreatedIndex:  createdIndex,
 		ModifiedIndex: createdIndex,
 		Parent:        parent,
-		ACL:           ACL,
 		store:         store,
 		ExpireTime:    expireTime,
 		Value:         value,
@@ -70,15 +66,12 @@ func newKV(store *store, nodePath string, value string, createdIndex uint64,
 }
 
 // newDir creates a directory
-func newDir(store *store, nodePath string, createdIndex uint64, parent *node,
-	ACL string, expireTime time.Time) *node {
-
+func newDir(store *store, nodePath string, createdIndex uint64, parent *node, expireTime time.Time) *node {
 	return &node{
 		Path:          nodePath,
 		CreatedIndex:  createdIndex,
 		ModifiedIndex: createdIndex,
 		Parent:        parent,
-		ACL:           ACL,
 		ExpireTime:    expireTime,
 		Children:      make(map[string]*node),
 		store:         store,
@@ -369,12 +362,12 @@ func (n *node) Compare(prevValue string, prevIndex uint64) (ok bool, which int) 
 // If the node is a key-value pair, it will clone the pair.
 func (n *node) Clone() *node {
 	if !n.IsDir() {
-		newkv := newKV(n.store, n.Path, n.Value, n.CreatedIndex, n.Parent, n.ACL, n.ExpireTime)
+		newkv := newKV(n.store, n.Path, n.Value, n.CreatedIndex, n.Parent, n.ExpireTime)
 		newkv.ModifiedIndex = n.ModifiedIndex
 		return newkv
 	}
 
-	clone := newDir(n.store, n.Path, n.CreatedIndex, n.Parent, n.ACL, n.ExpireTime)
+	clone := newDir(n.store, n.Path, n.CreatedIndex, n.Parent, n.ExpireTime)
 	clone.ModifiedIndex = n.ModifiedIndex
 
 	for key, child := range n.Children {

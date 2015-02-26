@@ -28,7 +28,7 @@ func TestHeapPushPop(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		path := fmt.Sprintf("%v", 10-i)
 		m := time.Duration(10 - i)
-		n := newKV(nil, path, path, 0, nil, "", time.Now().Add(time.Second*m))
+		n := newKV(nil, path, path, 0, nil, time.Now().Add(time.Second*m))
 		h.push(n)
 	}
 
@@ -54,7 +54,7 @@ func TestHeapUpdate(t *testing.T) {
 	for i := range kvs {
 		path := fmt.Sprintf("%v", 10-i)
 		m := time.Duration(10 - i)
-		n := newKV(nil, path, path, 0, nil, "", time.Now().Add(time.Second*m))
+		n := newKV(nil, path, path, 0, nil, time.Now().Add(time.Second*m))
 		kvs[i] = n
 		h.push(n)
 	}

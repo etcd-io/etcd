@@ -85,9 +85,9 @@ func New(namespaces ...string) Store {
 func newStore(namespaces ...string) *store {
 	s := new(store)
 	s.CurrentVersion = defaultVersion
-	s.Root = newDir(s, "/", s.CurrentIndex, nil, "", Permanent)
+	s.Root = newDir(s, "/", s.CurrentIndex, nil, Permanent)
 	for _, namespace := range namespaces {
-		s.Root.Add(newDir(s, namespace, s.CurrentIndex, s.Root, "", Permanent))
+		s.Root.Add(newDir(s, namespace, s.CurrentIndex, s.Root, Permanent))
 	}
 	s.Stats = newStats()
 	s.WatcherHub = newWatchHub(1000)
@@ -516,12 +516,12 @@ func (s *store) internalCreate(nodePath string, dir bool, value string, unique, 
 		valueCopy := value
 		eNode.Value = &valueCopy
 
-		n = newKV(s, nodePath, value, nextIndex, d, "", expireTime)
+		n = newKV(s, nodePath, value, nextIndex, d, expireTime)
 
 	} else { // create directory
 		eNode.Dir = true
 
-		n = newDir(s, nodePath, nextIndex, d, "", expireTime)
+		n = newDir(s, nodePath, nextIndex, d, expireTime)
 	}
 
 	// we are sure d is a directory and does not have the children with name n.Name
@@ -612,7 +612,7 @@ func (s *store) checkDir(parent *node, dirName string) (*node, *etcdErr.Error) {
 		return nil, etcdErr.NewError(etcdErr.EcodeNotDir, node.Path, s.CurrentIndex)
 	}
 
-	n := newDir(s, path.Join(parent.Path, dirName), s.CurrentIndex+1, parent, parent.ACL, Permanent)
+	n := newDir(s, path.Join(parent.Path, dirName), s.CurrentIndex+1, parent, Permanent)
 
 	parent.Children[dirName] = n
 
