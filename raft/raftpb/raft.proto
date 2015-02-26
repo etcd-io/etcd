@@ -32,17 +32,18 @@ message Snapshot {
 }
 
 enum MessageType {
-	MsgHup           = 0;
-	MsgBeat          = 1;
-	MsgProp          = 2;
-	MsgApp           = 3;
-	MsgAppResp       = 4;
-	MsgVote          = 5;
-	MsgVoteResp      = 6;
-	MsgSnap          = 7;
-	MsgHeartbeat     = 8;
-	MsgHeartbeatResp = 9;
-	MsgUnreachable   = 10;
+	MsgHup             = 0;
+	MsgBeat            = 1;
+	MsgProp            = 2;
+	MsgApp             = 3;
+	MsgAppResp         = 4;
+	MsgVote            = 5;
+	MsgVoteResp        = 6;
+	MsgSnap            = 7;
+	MsgHeartbeat       = 8;
+	MsgHeartbeatResp   = 9;
+	MsgUnreachable     = 10;
+	MsgSnapStatus      = 11;
 }
 
 message Message {
