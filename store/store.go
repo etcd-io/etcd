@@ -56,6 +56,9 @@ type Store interface {
 	Save() ([]byte, error)
 	Recovery(state []byte) error
 
+	Clone() Store
+	SaveNoCopy() ([]byte, error)
+
 	JsonStats() []byte
 	DeleteExpiredKeys(cutoff time.Time)
 }
@@ -621,6 +624,24 @@ func (s *store) checkDir(parent *node, dirName string) (*node, *etcdErr.Error) {
 // It will not save the parent field of the node. Or there will
 // be cyclic dependencies issue for the json package.
 func (s *store) Save() ([]byte, error) {
+	b, err := json.Marshal(s.Clone())
+	if err != nil {
+		return nil, err
+	}
+
+	return b, nil
+}
+
+func (s *store) SaveNoCopy() ([]byte, error) {
+	b, err := json.Marshal(s)
+	if err != nil {
+		return nil, err
+	}
+
+	return b, nil
+}
+
+func (s *store) Clone() Store {
 	s.worldLock.Lock()
 
 	clonedStore := newStore()
@@ -631,14 +652,7 @@ func (s *store) Save() ([]byte, error) {
 	clonedStore.CurrentVersion = s.CurrentVersion
 
 	s.worldLock.Unlock()
-
-	b, err := json.Marshal(clonedStore)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return b, nil
+	return clonedStore
 }
 
 // Recovery recovers the store system from a static state
