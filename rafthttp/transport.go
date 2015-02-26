@@ -48,8 +48,8 @@ type transport struct {
 	serverStats  *stats.ServerStats
 	leaderStats  *stats.LeaderStats
 
-	mu     sync.RWMutex       // protect the peer map
-	peers  map[types.ID]*peer // remote peers
+	mu     sync.RWMutex      // protect the peer map
+	peers  map[types.ID]Peer // remote peers
 	errorc chan error
 }
 
@@ -61,7 +61,7 @@ func NewTransporter(rt http.RoundTripper, id, cid types.ID, r Raft, errorc chan 
 		raft:         r,
 		serverStats:  ss,
 		leaderStats:  ls,
-		peers:        make(map[types.ID]*peer),
+		peers:        make(map[types.ID]Peer),
 		errorc:       errorc,
 	}
 }
@@ -159,12 +159,12 @@ type Pausable interface {
 // for testing
 func (t *transport) Pause() {
 	for _, p := range t.peers {
-		p.Pause()
+		p.(Pausable).Pause()
 	}
 }
 
 func (t *transport) Resume() {
 	for _, p := range t.peers {
-		p.Resume()
+		p.(Pausable).Resume()
 	}
 }

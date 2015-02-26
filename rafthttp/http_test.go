@@ -340,6 +340,8 @@ type resPeerGetter struct {
 func (pg *resPeerGetter) Peer(id types.ID) Peer { return pg.peers[id] }
 
 type peerRecorder struct {
+	msgs  []raftpb.Message
+	u     string
 	connc chan *outgoingConn
 }
 
@@ -349,7 +351,7 @@ func newPeerRecorder() *peerRecorder {
 	}
 }
 
-func (pr *peerRecorder) Send(m raftpb.Message)                 {}
-func (pr *peerRecorder) Update(u string)                       {}
+func (pr *peerRecorder) Send(m raftpb.Message)                 { pr.msgs = append(pr.msgs, m) }
+func (pr *peerRecorder) Update(u string)                       { pr.u = u }
 func (pr *peerRecorder) attachOutgoingConn(conn *outgoingConn) { pr.connc <- conn }
 func (pr *peerRecorder) Stop()                                 {}

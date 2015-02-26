@@ -16,6 +16,7 @@ package rafthttp
 
 import (
 	"net/http"
+	"reflect"
 	"testing"
 	"time"
 
@@ -25,12 +26,40 @@ import (
 	"github.com/coreos/etcd/raft/raftpb"
 )
 
+func TestTransportSend(t *testing.T) {
+	ss := &stats.ServerStats{}
+	ss.Initialize()
+	peer := newPeerRecorder()
+	tr := &transport{
+		serverStats: ss,
+		peers:       map[types.ID]Peer{types.ID(1): peer},
+	}
+	msgs := []raftpb.Message{
+		// bad local message
+		{Type: raftpb.MsgBeat},
+		// bad remote message
+		{Type: raftpb.MsgProp, To: 2},
+		// good message
+		{Type: raftpb.MsgProp, To: 1},
+		{Type: raftpb.MsgApp, To: 1},
+	}
+	tr.Send(msgs)
+
+	wmsgs := msgs[2:]
+	if !reflect.DeepEqual(peer.msgs, wmsgs) {
+		t.Errorf("msgs = %+v, want %+v", peer.msgs, wmsgs)
+	}
+	if ss.SendAppendRequestCnt != 1 {
+		t.Errorf("msgapp count = %d, want 1", ss.SendAppendRequestCnt)
+	}
+}
+
 func TestTransportAdd(t *testing.T) {
 	ls := stats.NewLeaderStats("")
 	tr := &transport{
 		roundTripper: &roundTripperRecorder{},
 		leaderStats:  ls,
-		peers:        make(map[types.ID]*peer),
+		peers:        make(map[types.ID]Peer),
 	}
 	tr.AddPeer(1, []string{"http://a"})
 	defer tr.Stop()
@@ -55,7 +84,7 @@ func TestTransportRemove(t *testing.T) {
 	tr := &transport{
 		roundTripper: &roundTripperRecorder{},
 		leaderStats:  stats.NewLeaderStats(""),
-		peers:        make(map[types.ID]*peer),
+		peers:        make(map[types.ID]Peer),
 	}
 	tr.AddPeer(1, []string{"http://a"})
 	tr.RemovePeer(types.ID(1))
@@ -66,12 +95,24 @@ func TestTransportRemove(t *testing.T) {
 	}
 }
 
+func TestTransportUpdate(t *testing.T) {
+	peer := newPeerRecorder()
+	tr := &transport{
+		peers: map[types.ID]Peer{types.ID(1): peer},
+	}
+	u := "http://localhost:7001"
+	tr.UpdatePeer(types.ID(1), []string{u})
+	if w := "http://localhost:7001/raft"; peer.u != w {
+		t.Errorf("url = %s, want %s", peer.u, w)
+	}
+}
+
 func TestTransportErrorc(t *testing.T) {
 	errorc := make(chan error, 1)
 	tr := &transport{
 		roundTripper: newRespRoundTripper(http.StatusForbidden, nil),
 		leaderStats:  stats.NewLeaderStats(""),
-		peers:        make(map[types.ID]*peer),
+		peers:        make(map[types.ID]Peer),
 		errorc:       errorc,
 	}
 	tr.AddPeer(1, []string{"http://a"})
