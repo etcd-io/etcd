@@ -50,7 +50,7 @@ func reportOpError(local, remote types.ID, worker string, err *opError) {
 	now := time.Now()
 	if !err.equal(linkErrMap[name].err) || now.Sub(linkErrMap[name].last) > errBackoffTime {
 		linkErrMap[name] = linkErr{err: err, last: now}
-		log.Printf("rafthttp: encountered error sending messages in %s from %s to %s: %v", worker, local, remote, err)
+		log.Printf("rafthttp: failed to %s %s in %s: %v", err.op, remote, worker, err)
 	}
 }
 
