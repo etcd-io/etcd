@@ -41,6 +41,7 @@ type ServerConfig struct {
 	NewCluster      bool
 	ForceNewCluster bool
 	Transport       *http.Transport
+	Logger          *log.Logger
 
 	TickMs        uint
 	ElectionTicks int
@@ -89,24 +90,33 @@ func (c *ServerConfig) PrintWithInitial() { c.print(true) }
 func (c *ServerConfig) Print() { c.print(false) }
 
 func (c *ServerConfig) print(initial bool) {
-	log.Printf("etcdserver: name = %s", c.Name)
+	c.logPrintf("etcdserver: name = %s", c.Name)
 	if c.ForceNewCluster {
-		log.Println("etcdserver: force new cluster")
+		c.logPrintf("etcdserver: force new cluster")
 	}
-	log.Printf("etcdserver: data dir = %s", c.DataDir)
-	log.Printf("etcdserver: member dir = %s", c.MemberDir())
-	log.Printf("etcdserver: heartbeat = %dms", c.TickMs)
-	log.Printf("etcdserver: election = %dms", c.ElectionTicks*int(c.TickMs))
-	log.Printf("etcdserver: snapshot count = %d", c.SnapCount)
+	c.logPrintf("etcdserver: data dir = %s", c.DataDir)
+	c.logPrintf("etcdserver: member dir = %s", c.MemberDir())
+	c.logPrintf("etcdserver: heartbeat = %dms", c.TickMs)
+	c.logPrintf("etcdserver: election = %dms", c.ElectionTicks*int(c.TickMs))
+	c.logPrintf("etcdserver: snapshot count = %d", c.SnapCount)
 	if len(c.DiscoveryURL) != 0 {
-		log.Printf("etcdserver: discovery URL= %s", c.DiscoveryURL)
+		c.logPrintf("etcdserver: discovery URL= %s", c.DiscoveryURL)
 		if len(c.DiscoveryProxy) != 0 {
-			log.Printf("etcdserver: discovery proxy = %s", c.DiscoveryProxy)
+			c.logPrintf("etcdserver: discovery proxy = %s", c.DiscoveryProxy)
 		}
 	}
-	log.Printf("etcdserver: advertise client URLs = %s", c.ClientURLs)
+	c.logPrintf("etcdserver: advertise client URLs = %s", c.ClientURLs)
 	if initial {
-		log.Printf("etcdserver: initial advertise peer URLs = %s", c.PeerURLs)
-		log.Printf("etcdserver: initial cluster = %s", c.Cluster)
+		c.logPrintf("etcdserver: initial advertise peer URLs = %s", c.PeerURLs)
+		c.logPrintf("etcdserver: initial cluster = %s", c.Cluster)
+	}
+}
+
+// Logging wrapper to use log.Printf if Logger is unset.
+func (c *ServerConfig) logPrintf(fmt string, v ...interface{}) {
+	if c.Logger != nil {
+		c.Logger.Printf(fmt, v...)
+	} else {
+		log.Printf(fmt, v...)
 	}
 }
