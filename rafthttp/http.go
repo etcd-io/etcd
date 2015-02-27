@@ -165,6 +165,7 @@ func (h *streamHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	c := newCloseNotifier()
 	conn := &outgoingConn{
+		addr:    r.RemoteAddr,
 		t:       t,
 		termStr: r.Header.Get("X-Raft-Term"),
 		Writer:  w,

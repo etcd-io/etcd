@@ -52,6 +52,7 @@ func isLinkHeartbeatMessage(m raftpb.Message) bool {
 }
 
 type outgoingConn struct {
+	addr    string
 	t       streamType
 	termStr string
 	io.Writer
@@ -62,7 +63,10 @@ type outgoingConn struct {
 // streamWriter is a long-running worker that writes messages into the
 // attached outgoingConn.
 type streamWriter struct {
-	fs *stats.FollowerStats
+	local  types.ID
+	remote types.ID
+	t      streamType
+	fs     *stats.FollowerStats
 
 	mu      sync.Mutex // guard field working and closer
 	closer  io.Closer
@@ -74,13 +78,16 @@ type streamWriter struct {
 	done  chan struct{}
 }
 
-func startStreamWriter(fs *stats.FollowerStats) *streamWriter {
+func startStreamWriter(local, remote types.ID, t streamType, fs *stats.FollowerStats) *streamWriter {
 	w := &streamWriter{
-		fs:    fs,
-		msgc:  make(chan raftpb.Message, streamBufSize),
-		connc: make(chan *outgoingConn),
-		stopc: make(chan struct{}),
-		done:  make(chan struct{}),
+		local:  local,
+		remote: remote,
+		t:      t,
+		fs:     fs,
+		msgc:   make(chan raftpb.Message, streamBufSize),
+		connc:  make(chan *outgoingConn),
+		stopc:  make(chan struct{}),
+		done:   make(chan struct{}),
 	}
 	go w.run()
 	return w
@@ -89,7 +96,7 @@ func startStreamWriter(fs *stats.FollowerStats) *streamWriter {
 func (cw *streamWriter) run() {
 	var msgc chan raftpb.Message
 	var heartbeatc <-chan time.Time
-	var t streamType
+	var addr string
 	var msgAppTerm uint64
 	var enc encoder
 	var flusher http.Flusher
@@ -99,14 +106,14 @@ func (cw *streamWriter) run() {
 		select {
 		case <-heartbeatc:
 			if err := enc.encode(linkHeartbeatMessage); err != nil {
-				log.Printf("rafthttp: failed to heartbeat on stream %s due to %v. waiting for a new stream to be established.", t, err)
 				cw.resetCloser()
+				reportOpError(cw.local, cw.remote, cw.name(), newOpError("heartbeat", addr, err))
 				heartbeatc, msgc = nil, nil
 				continue
 			}
 			flusher.Flush()
 		case m := <-msgc:
-			if t == streamTypeMsgApp && m.Term != msgAppTerm {
+			if cw.t == streamTypeMsgApp && m.Term != msgAppTerm {
 				// TODO: reasonable retry logic
 				if m.Term > msgAppTerm {
 					cw.resetCloser()
@@ -115,16 +122,16 @@ func (cw *streamWriter) run() {
 				continue
 			}
 			if err := enc.encode(m); err != nil {
-				log.Printf("rafthttp: failed to send message on stream %s due to %v. waiting for a new stream to be established.", t, err)
 				cw.resetCloser()
+				reportOpError(cw.local, cw.remote, cw.name(), newOpError("encode", addr, err))
 				heartbeatc, msgc = nil, nil
 				continue
 			}
 			flusher.Flush()
 		case conn := <-cw.connc:
 			cw.resetCloser()
-			t = conn.t
-			switch conn.t {
+			addr = conn.addr
+			switch cw.t {
 			case streamTypeMsgApp:
 				var err error
 				msgAppTerm, err = strconv.ParseUint(conn.termStr, 10, 64)
@@ -135,13 +142,14 @@ func (cw *streamWriter) run() {
 			case streamTypeMessage:
 				enc = &messageEncoder{w: conn.Writer}
 			default:
-				log.Panicf("rafthttp: unhandled stream type %s", conn.t)
+				log.Panicf("rafthttp: unhandled stream type %s", cw.t)
 			}
 			flusher = conn.Flusher
 			cw.mu.Lock()
 			cw.closer = conn.Closer
 			cw.working = true
 			cw.mu.Unlock()
+			log.Printf("rafthttp: start sending messages in %s to %s", cw.name(), cw.remote)
 			heartbeatc, msgc = tickc, cw.msgc
 		case <-cw.stopc:
 			cw.resetCloser()
@@ -180,15 +188,17 @@ func (cw *streamWriter) stop() {
 	<-cw.done
 }
 
+func (cw *streamWriter) name() string { return "stream " + string(cw.t) }
+
 // streamReader is a long-running go-routine that dials to the remote stream
 // endponit and reads messages from the response body returned.
 type streamReader struct {
-	tr       http.RoundTripper
-	u        string
-	t        streamType
-	from, to types.ID
-	cid      types.ID
-	recvc    chan<- raftpb.Message
+	tr            http.RoundTripper
+	u             string
+	t             streamType
+	local, remote types.ID
+	cid           types.ID
+	recvc         chan<- raftpb.Message
 
 	mu         sync.Mutex
 	msgAppTerm uint64
@@ -198,17 +208,17 @@ type streamReader struct {
 	done       chan struct{}
 }
 
-func startStreamReader(tr http.RoundTripper, u string, t streamType, from, to, cid types.ID, recvc chan<- raftpb.Message) *streamReader {
+func startStreamReader(tr http.RoundTripper, u string, t streamType, local, remote, cid types.ID, recvc chan<- raftpb.Message) *streamReader {
 	r := &streamReader{
-		tr:    tr,
-		u:     u,
-		t:     t,
-		from:  from,
-		to:    to,
-		cid:   cid,
-		recvc: recvc,
-		stopc: make(chan struct{}),
-		done:  make(chan struct{}),
+		tr:     tr,
+		u:      u,
+		t:      t,
+		local:  local,
+		remote: remote,
+		cid:    cid,
+		recvc:  recvc,
+		stopc:  make(chan struct{}),
+		done:   make(chan struct{}),
 	}
 	go r.run()
 	return r
@@ -218,11 +228,12 @@ func (cr *streamReader) run() {
 	for {
 		rc, err := cr.roundtrip()
 		if err != nil {
-			log.Printf("rafthttp: roundtripping error: %v", err)
+			reportOpError(cr.local, cr.remote, cr.name(), newOpError("connect", cr.u, err))
 		} else {
+			log.Printf("rafthttp: start receiving messages in %s from %s", cr.name(), cr.remote)
 			err := cr.decodeLoop(rc)
 			if err != io.EOF && !isClosedConnectionError(err) {
-				log.Printf("rafthttp: failed to read message on stream %s due to %v", cr.t, err)
+				reportOpError(cr.local, cr.remote, cr.name(), newOpError("decode", cr.u, err))
 			}
 		}
 		select {
@@ -241,7 +252,7 @@ func (cr *streamReader) decodeLoop(rc io.ReadCloser) error {
 	cr.mu.Lock()
 	switch cr.t {
 	case streamTypeMsgApp:
-		dec = &msgAppDecoder{r: rc, local: cr.from, remote: cr.to, term: cr.msgAppTerm}
+		dec = &msgAppDecoder{r: rc, local: cr.local, remote: cr.remote, term: cr.msgAppTerm}
 	case streamTypeMessage:
 		dec = &messageDecoder{r: rc}
 	default:
@@ -312,23 +323,23 @@ func (cr *streamReader) roundtrip() (io.ReadCloser, error) {
 
 	uu, err := url.Parse(u)
 	if err != nil {
-		return nil, fmt.Errorf("parse url %s error: %v", u, err)
+		return nil, err
 	}
 	switch cr.t {
 	case streamTypeMsgApp:
 		// for backward compatibility of v2.0
-		uu.Path = path.Join(RaftStreamPrefix, cr.from.String())
+		uu.Path = path.Join(RaftStreamPrefix, cr.local.String())
 	case streamTypeMessage:
-		uu.Path = path.Join(RaftStreamPrefix, string(streamTypeMessage), cr.from.String())
+		uu.Path = path.Join(RaftStreamPrefix, string(streamTypeMessage), cr.local.String())
 	default:
 		log.Panicf("rafthttp: unhandled stream type %v", cr.t)
 	}
 	req, err := http.NewRequest("GET", uu.String(), nil)
 	if err != nil {
-		return nil, fmt.Errorf("new request to %s error: %v", u, err)
+		return nil, err
 	}
 	req.Header.Set("X-Etcd-Cluster-ID", cr.cid.String())
-	req.Header.Set("X-Raft-To", cr.to.String())
+	req.Header.Set("X-Raft-To", cr.remote.String())
 	if cr.t == streamTypeMsgApp {
 		req.Header.Set("X-Raft-Term", strconv.FormatUint(term, 10))
 	}
@@ -337,7 +348,7 @@ func (cr *streamReader) roundtrip() (io.ReadCloser, error) {
 	cr.mu.Unlock()
 	resp, err := cr.tr.RoundTrip(req)
 	if err != nil {
-		return nil, fmt.Errorf("error roundtripping to %s: %v", req.URL, err)
+		return nil, err
 	}
 	if resp.StatusCode != http.StatusOK {
 		resp.Body.Close()
@@ -358,6 +369,8 @@ func (cr *streamReader) resetCloser() {
 	}
 	cr.closer = nil
 }
+
+func (cr *streamReader) name() string { return "stream " + string(cr.t) }
 
 func canUseMsgAppStream(m raftpb.Message) bool {
 	return m.Type == raftpb.MsgApp && m.Term == m.LogTerm
