@@ -72,7 +72,7 @@ func TestTransportAdd(t *testing.T) {
 		leaderStats:  ls,
 		peers:        make(map[types.ID]Peer),
 	}
-	tr.AddPeer(1, []string{"http://a"})
+	tr.AddPeer(1, []string{"http://localhost:7001"})
 	defer tr.Stop()
 
 	if _, ok := ls.Followers["1"]; !ok {
@@ -84,7 +84,7 @@ func TestTransportAdd(t *testing.T) {
 	}
 
 	// duplicate AddPeer is ignored
-	tr.AddPeer(1, []string{"http://a"})
+	tr.AddPeer(1, []string{"http://localhost:7001"})
 	ns := tr.peers[types.ID(1)]
 	if s != ns {
 		t.Errorf("sender = %v, want %v", ns, s)
@@ -97,7 +97,7 @@ func TestTransportRemove(t *testing.T) {
 		leaderStats:  stats.NewLeaderStats(""),
 		peers:        make(map[types.ID]Peer),
 	}
-	tr.AddPeer(1, []string{"http://a"})
+	tr.AddPeer(1, []string{"http://localhost:7001"})
 	tr.RemovePeer(types.ID(1))
 	defer tr.Stop()
 
@@ -113,8 +113,9 @@ func TestTransportUpdate(t *testing.T) {
 	}
 	u := "http://localhost:7001"
 	tr.UpdatePeer(types.ID(1), []string{u})
-	if w := "http://localhost:7001/raft"; peer.u != w {
-		t.Errorf("url = %s, want %s", peer.u, w)
+	wurls := types.URLs(testutil.MustNewURLs(t, []string{"http://localhost:7001"}))
+	if !reflect.DeepEqual(peer.urls, wurls) {
+		t.Errorf("urls = %+v, want %+v", peer.urls, wurls)
 	}
 }
 
@@ -126,7 +127,7 @@ func TestTransportErrorc(t *testing.T) {
 		peers:        make(map[types.ID]Peer),
 		errorc:       errorc,
 	}
-	tr.AddPeer(1, []string{"http://a"})
+	tr.AddPeer(1, []string{"http://localhost:7001"})
 	defer tr.Stop()
 
 	select {

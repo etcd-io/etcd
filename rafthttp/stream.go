@@ -20,7 +20,6 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"net/url"
 	"path"
 	"strconv"
 	"sync"
@@ -191,7 +190,7 @@ func (cw *streamWriter) stop() {
 // endponit and reads messages from the response body returned.
 type streamReader struct {
 	tr       http.RoundTripper
-	u        string
+	picker   *urlPicker
 	t        streamType
 	from, to types.ID
 	cid      types.ID
@@ -205,17 +204,17 @@ type streamReader struct {
 	done       chan struct{}
 }
 
-func startStreamReader(tr http.RoundTripper, u string, t streamType, from, to, cid types.ID, recvc chan<- raftpb.Message) *streamReader {
+func startStreamReader(tr http.RoundTripper, picker *urlPicker, t streamType, from, to, cid types.ID, recvc chan<- raftpb.Message) *streamReader {
 	r := &streamReader{
-		tr:    tr,
-		u:     u,
-		t:     t,
-		from:  from,
-		to:    to,
-		cid:   cid,
-		recvc: recvc,
-		stopc: make(chan struct{}),
-		done:  make(chan struct{}),
+		tr:     tr,
+		picker: picker,
+		t:      t,
+		from:   from,
+		to:     to,
+		cid:    cid,
+		recvc:  recvc,
+		stopc:  make(chan struct{}),
+		done:   make(chan struct{}),
 	}
 	go r.run()
 	return r
@@ -278,13 +277,6 @@ func (cr *streamReader) decodeLoop(rc io.ReadCloser) error {
 	}
 }
 
-func (cr *streamReader) update(u string) {
-	cr.mu.Lock()
-	defer cr.mu.Unlock()
-	cr.u = u
-	cr.resetCloser()
-}
-
 func (cr *streamReader) updateMsgAppTerm(term uint64) {
 	cr.mu.Lock()
 	defer cr.mu.Unlock()
@@ -312,15 +304,12 @@ func (cr *streamReader) isWorking() bool {
 }
 
 func (cr *streamReader) dial() (io.ReadCloser, error) {
+	u := cr.picker.pick()
 	cr.mu.Lock()
-	u := cr.u
 	term := cr.msgAppTerm
 	cr.mu.Unlock()
 
-	uu, err := url.Parse(u)
-	if err != nil {
-		return nil, fmt.Errorf("parse url %s error: %v", u, err)
-	}
+	uu := u
 	switch cr.t {
 	case streamTypeMsgApp:
 		// for backward compatibility of v2.0
@@ -332,6 +321,7 @@ func (cr *streamReader) dial() (io.ReadCloser, error) {
 	}
 	req, err := http.NewRequest("GET", uu.String(), nil)
 	if err != nil {
+		cr.picker.unreachable(u)
 		return nil, fmt.Errorf("new request to %s error: %v", u, err)
 	}
 	req.Header.Set("X-Etcd-Cluster-ID", cr.cid.String())
@@ -344,6 +334,7 @@ func (cr *streamReader) dial() (io.ReadCloser, error) {
 	cr.mu.Unlock()
 	resp, err := cr.tr.RoundTrip(req)
 	if err != nil {
+		cr.picker.unreachable(u)
 		return nil, fmt.Errorf("error roundtripping to %s: %v", req.URL, err)
 	}
 	if resp.StatusCode != http.StatusOK {

@@ -42,9 +42,8 @@ type pipeline struct {
 	id  types.ID
 	cid types.ID
 
-	tr http.RoundTripper
-	// the url this pipeline sends to
-	u      string
+	tr     http.RoundTripper
+	picker *urlPicker
 	fs     *stats.FollowerStats
 	r      Raft
 	errorc chan error
@@ -59,12 +58,12 @@ type pipeline struct {
 	errored error
 }
 
-func newPipeline(tr http.RoundTripper, u string, id, cid types.ID, fs *stats.FollowerStats, r Raft, errorc chan error) *pipeline {
+func newPipeline(tr http.RoundTripper, picker *urlPicker, id, cid types.ID, fs *stats.FollowerStats, r Raft, errorc chan error) *pipeline {
 	p := &pipeline{
 		id:     id,
 		cid:    cid,
 		tr:     tr,
-		u:      u,
+		picker: picker,
 		fs:     fs,
 		r:      r,
 		errorc: errorc,
@@ -77,8 +76,6 @@ func newPipeline(tr http.RoundTripper, u string, id, cid types.ID, fs *stats.Fol
 	}
 	return p
 }
-
-func (p *pipeline) update(u string) { p.u = u }
 
 func (p *pipeline) stop() {
 	close(p.msgc)
@@ -130,16 +127,19 @@ func (p *pipeline) handle() {
 // post POSTs a data payload to a url. Returns nil if the POST succeeds,
 // error on any failure.
 func (p *pipeline) post(data []byte) error {
-	p.Lock()
-	req, err := http.NewRequest("POST", p.u, bytes.NewBuffer(data))
-	p.Unlock()
+	u := p.picker.pick()
+	uu := u
+	uu.Path = RaftPrefix
+	req, err := http.NewRequest("POST", uu.String(), bytes.NewBuffer(data))
 	if err != nil {
+		p.picker.unreachable(u)
 		return err
 	}
 	req.Header.Set("Content-Type", "application/protobuf")
 	req.Header.Set("X-Etcd-Cluster-ID", p.cid.String())
 	resp, err := p.tr.RoundTrip(req)
 	if err != nil {
+		p.picker.unreachable(u)
 		return err
 	}
 	resp.Body.Close()
