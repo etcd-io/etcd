@@ -15,12 +15,16 @@ COVER=${COVER:-"-cover"}
 source ./build
 
 # Hack: gofmt ./ will recursively check the .git directory. So use *.go for gofmt.
-TESTABLE_AND_FORMATTABLE="client discovery error etcdctl/command etcdmain etcdserver etcdserver/etcdhttp etcdserver/etcdhttp/httptypes migrate pkg/fileutil pkg/flags pkg/idutil pkg/ioutil pkg/netutil pkg/osutil pkg/pbutil pkg/types pkg/transport pkg/wait proxy raft rafthttp snap store wal"
-FORMATTABLE="$TESTABLE_AND_FORMATTABLE *.go etcdctl/ integration"
+TESTABLE_AND_FORMATTABLE="client discovery error etcdctl/command etcdmain etcdserver etcdserver/etcdhttp etcdserver/etcdhttp/httptypes migrate pkg/fileutil pkg/flags pkg/idutil pkg/ioutil pkg/netutil pkg/osutil pkg/pbutil pkg/types pkg/transport pkg/wait proxy raft snap store wal"
+# TODO: add it to race testing when the issue is resolved
+# https://github.com/golang/go/issues/9946
+NO_RACE_TESTABLE="rafthttp"
+FORMATTABLE="$TESTABLE_AND_FORMATTABLE $NO_RACE_TESTABLE *.go etcdctl/ integration"
 
 # user has not provided PKG override
 if [ -z "$PKG" ]; then
 	TEST=$TESTABLE_AND_FORMATTABLE
+	NO_RACE_TEST=$NO_RACE_TESTABLE
 	FMT=$FORMATTABLE
 
 # user has provided PKG override
@@ -37,9 +41,12 @@ fi
 # split TEST into an array and prepend REPO_PATH to each local package
 split=(${TEST// / })
 TEST=${split[@]/#/${REPO_PATH}/}
+split=(${NO_RACE_TEST// / })
+NO_RACE_TEST=${split[@]/#/${REPO_PATH}/}
 
 echo "Running tests..."
 go test -timeout 3m ${COVER} $@ ${TEST} --race
+go test -timeout 3m ${COVER} $@ ${NO_RACE_TEST}
 
 if [ -n "$INTEGRATION" ]; then
 	echo "Running integration tests..."
