@@ -17,6 +17,7 @@ package rafthttp
 import (
 	"encoding/binary"
 	"io"
+	"time"
 
 	"github.com/coreos/etcd/pkg/pbutil"
 	"github.com/coreos/etcd/raft/raftpb"
@@ -32,7 +33,11 @@ func (enc *messageEncoder) encode(m raftpb.Message) error {
 	if err := binary.Write(enc.w, binary.BigEndian, uint64(m.Size())); err != nil {
 		return err
 	}
+	start := time.Now()
 	_, err := enc.w.Write(pbutil.MustMarshal(&m))
+	if err == nil {
+		reportEncodeDuration(streamTypeMessage, m, time.Since(start))
+	}
 	return err
 }
 
@@ -47,9 +52,18 @@ func (dec *messageDecoder) decode() (raftpb.Message, error) {
 	if err := binary.Read(dec.r, binary.BigEndian, &l); err != nil {
 		return m, err
 	}
+
+	// start after reading the first size bytes
+	// do not count waiting time
+	start := time.Now()
+
 	buf := make([]byte, int(l))
 	if _, err := io.ReadFull(dec.r, buf); err != nil {
 		return m, err
 	}
-	return m, m.Unmarshal(buf)
+	err := m.Unmarshal(buf)
+	if err == nil {
+		reportDecodeDuration(streamTypeMessage, m, time.Since(start))
+	}
+	return m, err
 }
