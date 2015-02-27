@@ -33,6 +33,13 @@ const (
 	recvBufSize = 4096
 )
 
+type Peer interface {
+	Send(m raftpb.Message)
+	Update(u string)
+	attachOutgoingConn(conn *outgoingConn)
+	Stop()
+}
+
 // peer is the representative of a remote raft node. Local raft node sends
 // messages to the remote through peer.
 // Each peer has two underlying mechanisms to send out a message: stream and
