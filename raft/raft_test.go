@@ -1318,7 +1318,7 @@ func TestUnreachable(t *testing.T) {
 		if r.prs[2].Wait != r.heartbeatTimeout {
 			t.Errorf("wait = %d, want %d", r.prs[1].Wait, r.heartbeatTimeout)
 		}
-		for i := 0; i < 10; i++ {
+		for j := 0; j < 10; j++ {
 			r.Step(pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{Data: []byte("somedata")}}})
 			if l := len(r.readMessages()); l != 0 {
 				t.Errorf("len(msg) = %d, want %d", l, 0)
@@ -1326,7 +1326,7 @@ func TestUnreachable(t *testing.T) {
 		}
 
 		// do a heartbeat
-		for i := 0; i < r.heartbeatTimeout; i++ {
+		for j := 0; j < r.heartbeatTimeout; j++ {
 			r.Step(pb.Message{From: 1, To: 1, Type: pb.MsgBeat})
 		}
 		// consume the heartbeat
