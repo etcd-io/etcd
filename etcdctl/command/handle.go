@@ -147,7 +147,7 @@ func printKeyOnly(resp *etcd.Response, format string, prependKey bool) {
 	switch format {
 	case "simple":
 		if prependKey {
-			fmt.Println(fmt.Sprintf("%s: %s", resp.Node.Key, resp.Node.Value))
+			fmt.Printf("%s: %s\n", resp.Node.Key, resp.Node.Value)
 		} else {
 			fmt.Println(resp.Node.Value)
 		}
