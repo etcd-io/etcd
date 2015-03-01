@@ -29,6 +29,7 @@ import (
 
 type Raft interface {
 	Process(ctx context.Context, m raftpb.Message) error
+	ReportUnreachable(id uint64)
 }
 
 type Transporter interface {

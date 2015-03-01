@@ -45,6 +45,7 @@ type pipeline struct {
 	// the url this pipeline sends to
 	u      string
 	fs     *stats.FollowerStats
+	r      Raft
 	errorc chan error
 
 	msgc chan raftpb.Message
@@ -57,13 +58,14 @@ type pipeline struct {
 	errored error
 }
 
-func newPipeline(tr http.RoundTripper, u string, id, cid types.ID, fs *stats.FollowerStats, errorc chan error) *pipeline {
+func newPipeline(tr http.RoundTripper, u string, id, cid types.ID, fs *stats.FollowerStats, r Raft, errorc chan error) *pipeline {
 	p := &pipeline{
 		id:     id,
 		cid:    cid,
 		tr:     tr,
 		u:      u,
 		fs:     fs,
+		r:      r,
 		errorc: errorc,
 		msgc:   make(chan raftpb.Message, pipelineBufSize),
 		active: true,
@@ -102,6 +104,7 @@ func (p *pipeline) handle() {
 			if m.Type == raftpb.MsgApp {
 				p.fs.Fail()
 			}
+			p.r.ReportUnreachable(m.To)
 		} else {
 			if !p.active {
 				log.Printf("pipeline: the connection with %s became active", p.id)

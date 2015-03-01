@@ -162,12 +162,14 @@ func (er *errReader) Read(_ []byte) (int, error) { return 0, errors.New("some er
 type nopProcessor struct{}
 
 func (p *nopProcessor) Process(ctx context.Context, m raftpb.Message) error { return nil }
+func (p *nopProcessor) ReportUnreachable(id uint64)                         {}
 
 type errProcessor struct {
 	err error
 }
 
 func (p *errProcessor) Process(ctx context.Context, m raftpb.Message) error { return p.err }
+func (p *errProcessor) ReportUnreachable(id uint64)                         {}
 
 type resWriterToError struct {
 	code int

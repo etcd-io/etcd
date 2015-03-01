@@ -65,9 +65,9 @@ type peer struct {
 func startPeer(tr http.RoundTripper, u string, local, to, cid types.ID, r Raft, fs *stats.FollowerStats, errorc chan error) *peer {
 	p := &peer{
 		id:           to,
-		msgAppWriter: startStreamWriter(fs),
-		writer:       startStreamWriter(fs),
-		pipeline:     newPipeline(tr, u, to, cid, fs, errorc),
+		msgAppWriter: startStreamWriter(fs, r),
+		writer:       startStreamWriter(fs, r),
+		pipeline:     newPipeline(tr, u, to, cid, fs, r, errorc),
 		sendc:        make(chan raftpb.Message),
 		recvc:        make(chan raftpb.Message, recvBufSize),
 		newURLc:      make(chan string),
