@@ -32,6 +32,15 @@ import (
 	"github.com/coreos/etcd/wal/walpb"
 )
 
+const (
+	// Number of entries for slow follower to catch-up after compacting
+	// the raft storage entries.
+	// We expect the follower has a millisecond level latency with the leader.
+	// The max throughput is around 10K. Keep a 5K entries is enough for helping
+	// follower to catch up.
+	numberOfCatchUpEntries = 5000
+)
+
 var (
 	// indirection for expvar func interface
 	// expvar panics when publishing duplicate name

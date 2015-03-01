@@ -836,8 +836,14 @@ func (s *EtcdServer) snapshot(snapi uint64, confState raftpb.ConfState) {
 		if err := s.r.storage.SaveSnap(snap); err != nil {
 			log.Fatalf("etcdserver: save snapshot error: %v", err)
 		}
+		log.Printf("etcdserver: saved snapshot at index %d", snap.Metadata.Index)
 
-		err = s.r.raftStorage.Compact(snapi)
+		// keep some in memory log entries for slow followers.
+		compacti := uint64(1)
+		if snapi > numberOfCatchUpEntries {
+			compacti = snapi - numberOfCatchUpEntries
+		}
+		err = s.r.raftStorage.Compact(compacti)
 		if err != nil {
 			// the compaction was done asynchronously with the progress of raft.
 			// raft log might already been compact.
@@ -846,7 +852,7 @@ func (s *EtcdServer) snapshot(snapi uint64, confState raftpb.ConfState) {
 			}
 			log.Panicf("etcdserver: unexpected compaction error %v", err)
 		}
-		log.Printf("etcdserver: saved snapshot at index %d", snap.Metadata.Index)
+		log.Printf("etcdserver: compacted raft log at %d", compacti)
 	}()
 }
 
