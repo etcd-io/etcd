@@ -582,7 +582,7 @@ func stepLeader(r *raft, m pb.Message) {
 			log.Printf("raft: %x snapshot failed, resumed sending replication messages to %x [%s]", r.id, m.From, pr)
 		} else {
 			pr.snapshotFinish()
-			log.Printf("raft: %x snapshot succeeded resumed sending replication messages to %x [%s]", r.id, m.From, pr)
+			log.Printf("raft: %x snapshot succeeded, resumed sending replication messages to %x [%s]", r.id, m.From, pr)
 			// wait for the msgAppResp from the remote node before sending
 			// out the next msgApp
 			pr.waitSet(r.electionTimeout)

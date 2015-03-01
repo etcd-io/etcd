@@ -26,6 +26,7 @@ import (
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/pkg/pbutil"
 	"github.com/coreos/etcd/pkg/types"
+	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
 )
 
@@ -161,15 +162,17 @@ func (er *errReader) Read(_ []byte) (int, error) { return 0, errors.New("some er
 
 type nopProcessor struct{}
 
-func (p *nopProcessor) Process(ctx context.Context, m raftpb.Message) error { return nil }
-func (p *nopProcessor) ReportUnreachable(id uint64)                         {}
+func (p *nopProcessor) Process(ctx context.Context, m raftpb.Message) error  { return nil }
+func (p *nopProcessor) ReportUnreachable(id uint64)                          {}
+func (p *nopProcessor) ReportSnapshot(id uint64, status raft.SnapshotStatus) {}
 
 type errProcessor struct {
 	err error
 }
 
-func (p *errProcessor) Process(ctx context.Context, m raftpb.Message) error { return p.err }
-func (p *errProcessor) ReportUnreachable(id uint64)                         {}
+func (p *errProcessor) Process(ctx context.Context, m raftpb.Message) error  { return p.err }
+func (p *errProcessor) ReportUnreachable(id uint64)                          {}
+func (p *errProcessor) ReportSnapshot(id uint64, status raft.SnapshotStatus) {}
 
 type resWriterToError struct {
 	code int
