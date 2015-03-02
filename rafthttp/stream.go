@@ -63,6 +63,7 @@ type outgoingConn struct {
 // attached outgoingConn.
 type streamWriter struct {
 	fs *stats.FollowerStats
+	r  Raft
 
 	mu      sync.Mutex // guard field working and closer
 	closer  io.Closer
@@ -74,9 +75,10 @@ type streamWriter struct {
 	done  chan struct{}
 }
 
-func startStreamWriter(fs *stats.FollowerStats) *streamWriter {
+func startStreamWriter(fs *stats.FollowerStats, r Raft) *streamWriter {
 	w := &streamWriter{
 		fs:    fs,
+		r:     r,
 		msgc:  make(chan raftpb.Message, streamBufSize),
 		connc: make(chan *outgoingConn),
 		stopc: make(chan struct{}),
@@ -118,6 +120,7 @@ func (cw *streamWriter) run() {
 				log.Printf("rafthttp: failed to send message on stream %s due to %v. waiting for a new stream to be established.", t, err)
 				cw.resetCloser()
 				heartbeatc, msgc = nil, nil
+				cw.r.ReportUnreachable(m.To)
 				continue
 			}
 			flusher.Flush()

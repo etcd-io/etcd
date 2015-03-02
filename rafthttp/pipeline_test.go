@@ -32,7 +32,7 @@ import (
 func TestPipelineSend(t *testing.T) {
 	tr := &roundTripperRecorder{}
 	fs := &stats.FollowerStats{}
-	p := newPipeline(tr, "http://10.0.0.1", types.ID(1), types.ID(1), fs, nil)
+	p := newPipeline(tr, "http://10.0.0.1", types.ID(1), types.ID(1), fs, &nopProcessor{}, nil)
 
 	p.msgc <- raftpb.Message{Type: raftpb.MsgApp}
 	p.stop()
@@ -50,7 +50,7 @@ func TestPipelineSend(t *testing.T) {
 func TestPipelineExceedMaximalServing(t *testing.T) {
 	tr := newRoundTripperBlocker()
 	fs := &stats.FollowerStats{}
-	p := newPipeline(tr, "http://10.0.0.1", types.ID(1), types.ID(1), fs, nil)
+	p := newPipeline(tr, "http://10.0.0.1", types.ID(1), types.ID(1), fs, &nopProcessor{}, nil)
 
 	// keep the sender busy and make the buffer full
 	// nothing can go out as we block the sender
@@ -89,7 +89,7 @@ func TestPipelineExceedMaximalServing(t *testing.T) {
 // it increases fail count in stats.
 func TestPipelineSendFailed(t *testing.T) {
 	fs := &stats.FollowerStats{}
-	p := newPipeline(newRespRoundTripper(0, errors.New("blah")), "http://10.0.0.1", types.ID(1), types.ID(1), fs, nil)
+	p := newPipeline(newRespRoundTripper(0, errors.New("blah")), "http://10.0.0.1", types.ID(1), types.ID(1), fs, &nopProcessor{}, nil)
 
 	p.msgc <- raftpb.Message{Type: raftpb.MsgApp}
 	p.stop()
@@ -103,7 +103,7 @@ func TestPipelineSendFailed(t *testing.T) {
 
 func TestPipelinePost(t *testing.T) {
 	tr := &roundTripperRecorder{}
-	p := newPipeline(tr, "http://10.0.0.1", types.ID(1), types.ID(1), nil, nil)
+	p := newPipeline(tr, "http://10.0.0.1", types.ID(1), types.ID(1), nil, &nopProcessor{}, nil)
 	if err := p.post([]byte("some data")); err != nil {
 		t.Fatalf("unexpect post error: %v", err)
 	}
@@ -145,7 +145,7 @@ func TestPipelinePostBad(t *testing.T) {
 		{"http://10.0.0.1", http.StatusCreated, nil},
 	}
 	for i, tt := range tests {
-		p := newPipeline(newRespRoundTripper(tt.code, tt.err), tt.u, types.ID(1), types.ID(1), nil, make(chan error))
+		p := newPipeline(newRespRoundTripper(tt.code, tt.err), tt.u, types.ID(1), types.ID(1), nil, &nopProcessor{}, make(chan error))
 		err := p.post([]byte("some data"))
 		p.stop()
 
@@ -166,7 +166,7 @@ func TestPipelinePostErrorc(t *testing.T) {
 	}
 	for i, tt := range tests {
 		errorc := make(chan error, 1)
-		p := newPipeline(newRespRoundTripper(tt.code, tt.err), tt.u, types.ID(1), types.ID(1), nil, errorc)
+		p := newPipeline(newRespRoundTripper(tt.code, tt.err), tt.u, types.ID(1), types.ID(1), nil, &nopProcessor{}, errorc)
 		p.post([]byte("some data"))
 		p.stop()
 		select {
