@@ -328,6 +328,10 @@ func (s *EtcdServer) Process(ctx context.Context, m raftpb.Message) error {
 
 func (s *EtcdServer) ReportUnreachable(id uint64) { s.r.ReportUnreachable(id) }
 
+func (s *EtcdServer) ReportSnapshot(id uint64, status raft.SnapshotStatus) {
+	s.r.ReportSnapshot(id, status)
+}
+
 func (s *EtcdServer) run() {
 	var syncC <-chan time.Time
 	var shouldstop bool

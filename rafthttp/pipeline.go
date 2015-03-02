@@ -25,6 +25,7 @@ import (
 	"github.com/coreos/etcd/etcdserver/stats"
 	"github.com/coreos/etcd/pkg/pbutil"
 	"github.com/coreos/etcd/pkg/types"
+	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
 )
 
@@ -105,6 +106,9 @@ func (p *pipeline) handle() {
 				p.fs.Fail()
 			}
 			p.r.ReportUnreachable(m.To)
+			if isMsgSnap(m) {
+				p.r.ReportSnapshot(m.To, raft.SnapshotFailure)
+			}
 		} else {
 			if !p.active {
 				log.Printf("pipeline: the connection with %s became active", p.id)
@@ -113,6 +117,9 @@ func (p *pipeline) handle() {
 			}
 			if m.Type == raftpb.MsgApp {
 				p.fs.Succ(end.Sub(start))
+			}
+			if isMsgSnap(m) {
+				p.r.ReportSnapshot(m.To, raft.SnapshotFinish)
 			}
 		}
 		p.Unlock()
