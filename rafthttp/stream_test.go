@@ -17,7 +17,7 @@ import (
 // to streamWriter. After that, streamWriter can use it to send messages
 // continuously, and closes it when stopped.
 func TestStreamWriterAttachOutgoingConn(t *testing.T) {
-	sw := startStreamWriter(&stats.FollowerStats{}, &nopProcessor{})
+	sw := startStreamWriter(&stats.FollowerStats{}, &fakeRaft{})
 	// the expected initial state of streamWrite is not working
 	if g := sw.isWorking(); g != false {
 		t.Errorf("initial working status = %v, want false", g)
@@ -63,7 +63,7 @@ func TestStreamWriterAttachOutgoingConn(t *testing.T) {
 // TestStreamWriterAttachBadOutgoingConn tests that streamWriter with bad
 // outgoingConn will close the outgoingConn and fall back to non-working status.
 func TestStreamWriterAttachBadOutgoingConn(t *testing.T) {
-	sw := startStreamWriter(&stats.FollowerStats{}, &nopProcessor{})
+	sw := startStreamWriter(&stats.FollowerStats{}, &fakeRaft{})
 	defer sw.stop()
 	wfc := &fakeWriteFlushCloser{err: errors.New("blah")}
 	sw.attach(&outgoingConn{t: streamTypeMessage, Writer: wfc, Flusher: wfc, Closer: wfc})
@@ -183,7 +183,7 @@ func TestStream(t *testing.T) {
 		srv := httptest.NewServer(h)
 		defer srv.Close()
 
-		sw := startStreamWriter(&stats.FollowerStats{}, &nopProcessor{})
+		sw := startStreamWriter(&stats.FollowerStats{}, &fakeRaft{})
 		defer sw.stop()
 		h.sw = sw
 

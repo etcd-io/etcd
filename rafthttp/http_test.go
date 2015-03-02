@@ -46,7 +46,7 @@ func TestServeRaftPrefix(t *testing.T) {
 			bytes.NewReader(
 				pbutil.MustMarshal(&raftpb.Message{}),
 			),
-			&nopProcessor{},
+			&fakeRaft{},
 			"0",
 			http.StatusMethodNotAllowed,
 		},
@@ -56,7 +56,7 @@ func TestServeRaftPrefix(t *testing.T) {
 			bytes.NewReader(
 				pbutil.MustMarshal(&raftpb.Message{}),
 			),
-			&nopProcessor{},
+			&fakeRaft{},
 			"0",
 			http.StatusMethodNotAllowed,
 		},
@@ -66,7 +66,7 @@ func TestServeRaftPrefix(t *testing.T) {
 			bytes.NewReader(
 				pbutil.MustMarshal(&raftpb.Message{}),
 			),
-			&nopProcessor{},
+			&fakeRaft{},
 			"0",
 			http.StatusMethodNotAllowed,
 		},
@@ -74,7 +74,7 @@ func TestServeRaftPrefix(t *testing.T) {
 			// bad request body
 			"POST",
 			&errReader{},
-			&nopProcessor{},
+			&fakeRaft{},
 			"0",
 			http.StatusBadRequest,
 		},
@@ -82,7 +82,7 @@ func TestServeRaftPrefix(t *testing.T) {
 			// bad request protobuf
 			"POST",
 			strings.NewReader("malformed garbage"),
-			&nopProcessor{},
+			&fakeRaft{},
 			"0",
 			http.StatusBadRequest,
 		},
@@ -92,7 +92,7 @@ func TestServeRaftPrefix(t *testing.T) {
 			bytes.NewReader(
 				pbutil.MustMarshal(&raftpb.Message{}),
 			),
-			&nopProcessor{},
+			&fakeRaft{},
 			"1",
 			http.StatusPreconditionFailed,
 		},
@@ -102,7 +102,7 @@ func TestServeRaftPrefix(t *testing.T) {
 			bytes.NewReader(
 				pbutil.MustMarshal(&raftpb.Message{}),
 			),
-			&errProcessor{
+			&fakeRaft{
 				err: &resWriterToError{code: http.StatusForbidden},
 			},
 			"0",
@@ -114,7 +114,7 @@ func TestServeRaftPrefix(t *testing.T) {
 			bytes.NewReader(
 				pbutil.MustMarshal(&raftpb.Message{}),
 			),
-			&errProcessor{
+			&fakeRaft{
 				err: &resWriterToError{code: http.StatusInternalServerError},
 			},
 			"0",
@@ -126,7 +126,7 @@ func TestServeRaftPrefix(t *testing.T) {
 			bytes.NewReader(
 				pbutil.MustMarshal(&raftpb.Message{}),
 			),
-			&errProcessor{err: errors.New("blah")},
+			&fakeRaft{err: errors.New("blah")},
 			"0",
 			http.StatusInternalServerError,
 		},
@@ -136,7 +136,7 @@ func TestServeRaftPrefix(t *testing.T) {
 			bytes.NewReader(
 				pbutil.MustMarshal(&raftpb.Message{}),
 			),
-			&nopProcessor{},
+			&fakeRaft{},
 			"0",
 			http.StatusNoContent,
 		},
@@ -320,19 +320,13 @@ type errReader struct{}
 
 func (er *errReader) Read(_ []byte) (int, error) { return 0, errors.New("some error") }
 
-type nopProcessor struct{}
-
-func (p *nopProcessor) Process(ctx context.Context, m raftpb.Message) error  { return nil }
-func (p *nopProcessor) ReportUnreachable(id uint64)                          {}
-func (p *nopProcessor) ReportSnapshot(id uint64, status raft.SnapshotStatus) {}
-
-type errProcessor struct {
+type fakeRaft struct {
 	err error
 }
 
-func (p *errProcessor) Process(ctx context.Context, m raftpb.Message) error  { return p.err }
-func (p *errProcessor) ReportUnreachable(id uint64)                          {}
-func (p *errProcessor) ReportSnapshot(id uint64, status raft.SnapshotStatus) {}
+func (p *fakeRaft) Process(ctx context.Context, m raftpb.Message) error  { return p.err }
+func (p *fakeRaft) ReportUnreachable(id uint64)                          {}
+func (p *fakeRaft) ReportSnapshot(id uint64, status raft.SnapshotStatus) {}
 
 type resWriterToError struct {
 	code int
