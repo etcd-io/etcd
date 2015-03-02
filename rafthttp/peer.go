@@ -33,6 +33,24 @@ const (
 	recvBufSize = 4096
 )
 
+type Peer interface {
+	// Send sends the message to the remote peer. The function is non-blocking
+	// and has no promise that the message will be received by the remote.
+	// When it fails to send message out, it will report the status to underlying
+	// raft.
+	Send(m raftpb.Message)
+	// Update updates the urls of remote peer.
+	Update(u string)
+	// attachOutgoingConn attachs the outgoing connection to the peer for
+	// stream usage. After the call, the ownership of the outgoing
+	// connection hands over to the peer. The peer will close the connection
+	// when it is no longer used.
+	attachOutgoingConn(conn *outgoingConn)
+	// Stop performs any necessary finalization and terminates the peer
+	// elegantly.
+	Stop()
+}
+
 // peer is the representative of a remote raft node. Local raft node sends
 // messages to the remote through peer.
 // Each peer has two underlying mechanisms to send out a message: stream and
@@ -171,8 +189,6 @@ func (p *peer) Resume() {
 	}
 }
 
-// Stop performs any necessary finalization and terminates the peer
-// elegantly.
 func (p *peer) Stop() {
 	close(p.stopc)
 	<-p.done
