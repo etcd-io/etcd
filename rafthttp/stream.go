@@ -219,7 +219,7 @@ func startStreamReader(tr http.RoundTripper, u string, t streamType, from, to, c
 
 func (cr *streamReader) run() {
 	for {
-		rc, err := cr.roundtrip()
+		rc, err := cr.dial()
 		if err != nil {
 			log.Printf("rafthttp: roundtripping error: %v", err)
 		} else {
@@ -307,7 +307,7 @@ func (cr *streamReader) isWorking() bool {
 	return cr.closer != nil
 }
 
-func (cr *streamReader) roundtrip() (io.ReadCloser, error) {
+func (cr *streamReader) dial() (io.ReadCloser, error) {
 	cr.mu.Lock()
 	u := cr.u
 	term := cr.msgAppTerm
