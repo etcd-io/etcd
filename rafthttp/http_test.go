@@ -24,10 +24,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/pkg/pbutil"
 	"github.com/coreos/etcd/pkg/types"
-	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
 )
 
@@ -319,14 +317,6 @@ func TestCloseNotifier(t *testing.T) {
 type errReader struct{}
 
 func (er *errReader) Read(_ []byte) (int, error) { return 0, errors.New("some error") }
-
-type fakeRaft struct {
-	err error
-}
-
-func (p *fakeRaft) Process(ctx context.Context, m raftpb.Message) error  { return p.err }
-func (p *fakeRaft) ReportUnreachable(id uint64)                          {}
-func (p *fakeRaft) ReportSnapshot(id uint64, status raft.SnapshotStatus) {}
 
 type resWriterToError struct {
 	code int
