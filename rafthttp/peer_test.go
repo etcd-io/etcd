@@ -30,47 +30,47 @@ func TestPeerPick(t *testing.T) {
 		{
 			true, true,
 			raftpb.Message{Type: raftpb.MsgSnap},
-			"pipeline",
+			pipelineMsg,
 		},
 		{
 			true, true,
 			raftpb.Message{Type: raftpb.MsgApp, Term: 1, LogTerm: 1},
-			"msgapp stream",
+			streamApp,
 		},
 		{
 			true, true,
 			raftpb.Message{Type: raftpb.MsgProp},
-			"general stream",
+			streamMsg,
 		},
 		{
 			true, true,
 			raftpb.Message{Type: raftpb.MsgHeartbeat},
-			"general stream",
+			streamMsg,
 		},
 		{
 			false, true,
 			raftpb.Message{Type: raftpb.MsgApp, Term: 1, LogTerm: 1},
-			"general stream",
+			streamMsg,
 		},
 		{
 			false, false,
 			raftpb.Message{Type: raftpb.MsgApp, Term: 1, LogTerm: 1},
-			"pipeline",
+			pipelineMsg,
 		},
 		{
 			false, false,
 			raftpb.Message{Type: raftpb.MsgProp},
-			"pipeline",
+			pipelineMsg,
 		},
 		{
 			false, false,
 			raftpb.Message{Type: raftpb.MsgSnap},
-			"pipeline",
+			pipelineMsg,
 		},
 		{
 			false, false,
 			raftpb.Message{Type: raftpb.MsgHeartbeat},
-			"pipeline",
+			pipelineMsg,
 		},
 	}
 	for i, tt := range tests {
@@ -79,7 +79,7 @@ func TestPeerPick(t *testing.T) {
 			writer:       &streamWriter{working: tt.messageWorking},
 			pipeline:     &pipeline{},
 		}
-		_, picked, _ := peer.pick(tt.m)
+		_, picked := peer.pick(tt.m)
 		if picked != tt.wpicked {
 			t.Errorf("#%d: picked = %v, want %v", i, picked, tt.wpicked)
 		}
