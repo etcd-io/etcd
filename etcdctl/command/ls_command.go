@@ -27,7 +27,7 @@ func NewLsCommand() cli.Command {
 		Usage: "retrieve a directory",
 		Flags: []cli.Flag{
 			cli.BoolFlag{Name: "sort", Usage: "returns result in sorted order"},
-			cli.BoolFlag{Name: "recursive", Usage: "returns all values for key and child keys"},
+			cli.BoolFlag{Name: "recursive", Usage: "returns all key names recursively for the given path"},
 			cli.BoolFlag{Name: "p", Usage: "append slash (/) to directories"},
 		},
 		Action: func(c *cli.Context) {
