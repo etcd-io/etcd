@@ -59,7 +59,7 @@ type outgoingConn struct {
 	io.Closer
 }
 
-// streamWriter is a long-running worker that writes messages into the
+// streamWriter is a long-running go-routine that writes messages into the
 // attached outgoingConn.
 type streamWriter struct {
 	fs *stats.FollowerStats

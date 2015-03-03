@@ -35,12 +35,32 @@ type Raft interface {
 }
 
 type Transporter interface {
+	// Handler returns the HTTP handler of the transporter.
+	// A transporter HTTP handler handles the HTTP requests
+	// from remote peers.
+	// The handler MUST be used to handle RaftPrefix(/raft)
+	// endpoint.
 	Handler() http.Handler
+	// Send sends out the given messages to the remote peers.
+	// Each message has a To field, which is an id that maps
+	// to an existing peer in the transport.
+	// If the id cannot be found in the transport, the message
+	// will be ignored.
 	Send(m []raftpb.Message)
+	// AddPeer adds a peer with given peer urls into the transport.
+	// It is the caller's responsibility to ensure the urls are all vaild,
+	// or it panics.
+	// Peer urls are used to connect to the remote peer.
 	AddPeer(id types.ID, urls []string)
+	// RemovePeer removes the peer with given id.
 	RemovePeer(id types.ID)
+	// RemoveAllPeers removes all the existing peers in the transport.
 	RemoveAllPeers()
+	// UpdatePeer updates the peer urls of the peer with the given id.
+	// It is the caller's responsibility to ensure the urls are all vaild,
+	// or it panics.
 	UpdatePeer(id types.ID, urls []string)
+	// Stop closes the connections and stops the transporter.
 	Stop()
 }
 
