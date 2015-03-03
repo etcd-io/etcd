@@ -32,9 +32,8 @@ const (
 	// tcp keepalive failing to detect a bad connection, which is at minutes level.
 	// For long term streaming connections, rafthttp pkg sends application level linkHeartbeat
 	// to keep the connection alive.
-	// For short term pipeline connections, rafthttp MUST kill the connection to avoid it being
+	// For short term pipeline connections, the connection MUST be killed to avoid it being
 	// put back to http pkg connection pool.
-	// TODO: kill the short term connection.
 	ConnReadTimeout  = 5 * time.Second
 	ConnWriteTimeout = 5 * time.Second
 
