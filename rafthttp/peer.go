@@ -26,7 +26,15 @@ import (
 )
 
 const (
-	DialTimeout      = time.Second
+	DialTimeout = time.Second
+	// ConnRead/WriteTimeout is the i/o timeout set on each connection rafthttp pkg creates.
+	// A 5 seconds timeout is good enough for recycling bad connections. Or we have to wait for
+	// tcp keepalive failing to detect a bad connection, which is at minutes level.
+	// For long term streaming connections, rafthttp pkg sends application level linkHeartbeat
+	// to keep the connection alive.
+	// For short term pipeline connections, rafthttp MUST kill the connection to avoid it being
+	// put back to http pkg connection pool.
+	// TODO: kill the short term connection.
 	ConnReadTimeout  = 5 * time.Second
 	ConnWriteTimeout = 5 * time.Second
 
@@ -75,6 +83,7 @@ type Peer interface {
 // A pipeline is a series of http clients that send http requests to the remote.
 // It is only used when the stream has not been established.
 type peer struct {
+	// id of the remote raft peer node
 	id types.ID
 
 	msgAppWriter *streamWriter
@@ -84,6 +93,7 @@ type peer struct {
 	sendc   chan raftpb.Message
 	recvc   chan raftpb.Message
 	newURLc chan string
+
 	// for testing
 	pausec  chan struct{}
 	resumec chan struct{}
