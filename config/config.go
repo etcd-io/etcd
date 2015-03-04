@@ -86,7 +86,7 @@ type Config struct {
 		HeartbeatInterval int    `toml:"heartbeat_interval" env:"ETCD_PEER_HEARTBEAT_INTERVAL"`
 		ElectionTimeout   int    `toml:"election_timeout" env:"ETCD_PEER_ELECTION_TIMEOUT"`
 	}
-	strTrace     string `toml:"trace" env:"ETCD_TRACE"`
+	StrTrace     string `toml:"trace" env:"ETCD_TRACE"`
 	GraphiteHost string `toml:"graphite_host" env:"ETCD_GRAPHITE_HOST"`
 	Cluster      struct {
 		ActiveSize   int     `toml:"active_size" env:"ETCD_CLUSTER_ACTIVE_SIZE"`
@@ -275,7 +275,7 @@ func (c *Config) LoadFlags(arguments []string) error {
 	f.IntVar(&c.SnapshotCount, "snapshot-count", c.SnapshotCount, "")
 	f.StringVar(&c.CPUProfileFile, "cpuprofile", "", "")
 
-	f.StringVar(&c.strTrace, "trace", "", "")
+	f.StringVar(&c.StrTrace, "trace", "", "")
 	f.StringVar(&c.GraphiteHost, "graphite-host", "", "")
 
 	f.IntVar(&c.Cluster.ActiveSize, "cluster-active-size", c.Cluster.ActiveSize, "")
@@ -441,7 +441,7 @@ func (c *Config) MetricsBucketName() string {
 
 // Trace determines if any trace-level information should be emitted
 func (c *Config) Trace() bool {
-	return c.strTrace == "*"
+	return c.StrTrace == "*"
 }
 
 func (c *Config) ClusterConfig() *server.ClusterConfig {
