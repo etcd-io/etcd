@@ -23,7 +23,7 @@ import (
 type tester struct {
 	failures []failure
 	agents   []client.Agent
-	limit    uint64
+	limit    int
 }
 
 func (tt *tester) runLoop() {
