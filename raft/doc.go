@@ -25,18 +25,25 @@ using raft.StartNode or start a Node from some initial state using raft.RestartN
 Now that you are holding onto a Node you have a few responsibilities:
 
 First, you must read from the Node.Ready() channel and process the updates
-it contains. This means:
+it contains. These steps may be performed in parallel, except as noted in step
+2.
 
 1. Write HardState, Entries, and Snapshot to persistent storage if they are
 not empty. Note that when writing an Entry with Index i, any
 previously-persisted entries with Index >= i must be discarded.
 
-2. Send all Messages to the nodes named in the To field. It is important
-that this happen *after* all state has been persisted.
+2. Send all Messages to the nodes named in the To field. It is important that
+no messages be sent until after the latest HardState has been persisted to disk,
+and all Entries written by any previous Ready batch (Messages may be sent while
+entries from the same batch are being persisted).
 
 3. Apply Snapshot (if any) and CommittedEntries to the state machine.
 If any committed Entry has Type EntryConfChange, call Node.ApplyConfChange()
-after applying it.
+to apply it to the node. The configuration change may be cancelled at this point
+by setting the NodeID field to zero before calling ApplyConfChange
+(but ApplyConfChange must be called one way or the other, and the decision to cancel
+must be based solely on the state machine and not external information such as
+the observed health of the node).
 
 4. Call Node.Advance() to signal readiness for the next batch of updates.
 This may be done at any time after step 1, although all updates must be processed
@@ -106,7 +113,7 @@ raftpb.EntryConfChange will be returned. You must apply it to node through:
 Note: An ID represents a unique node in a cluster for all time. A
 given ID MUST be used only once even if the old node has been removed.
 This means that for example IP addresses make poor node IDs since they
-may be reused.
+may be reused. Node IDs must be non-zero.
 
 Implementation notes
 
@@ -125,6 +132,13 @@ once by matching log positions (which would be unsafe since they
 should have different quorum requirements), we simply disallow any
 proposed membership change while any uncommitted change appears in
 the leader's log.
+
+This approach introduces a problem when you try to remove a member
+from a two-member cluster: If one of the members dies before the
+other one receives the commit of the confchange entry, then the member
+cannot be removed any more since the cluster cannot make progress.
+For this reason it is highly recommened to use three or more nodes in
+every cluster.
 
 */
 package raft
