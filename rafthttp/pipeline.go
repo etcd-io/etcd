@@ -121,6 +121,7 @@ func (p *pipeline) handle() {
 			if isMsgSnap(m) {
 				p.r.ReportSnapshot(m.To, raft.SnapshotFinish)
 			}
+			reportSendingDuration(pipelineMsg, m, time.Since(start))
 		}
 		p.Unlock()
 	}
