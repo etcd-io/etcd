@@ -89,9 +89,9 @@ type peer struct {
 	writer       *streamWriter
 	pipeline     *pipeline
 
-	sendc   chan raftpb.Message
-	recvc   chan raftpb.Message
-	newURLc chan types.URLs
+	sendc    chan raftpb.Message
+	recvc    chan raftpb.Message
+	newURLsC chan types.URLs
 
 	// for testing
 	pausec  chan struct{}
@@ -110,7 +110,7 @@ func startPeer(tr http.RoundTripper, urls types.URLs, local, to, cid types.ID, r
 		pipeline:     newPipeline(tr, picker, to, cid, fs, r, errorc),
 		sendc:        make(chan raftpb.Message),
 		recvc:        make(chan raftpb.Message, recvBufSize),
-		newURLc:      make(chan types.URLs),
+		newURLsC:     make(chan types.URLs),
 		pausec:       make(chan struct{}),
 		resumec:      make(chan struct{}),
 		stopc:        make(chan struct{}),
@@ -140,7 +140,7 @@ func startPeer(tr http.RoundTripper, urls types.URLs, local, to, cid types.ID, r
 				if err := r.Process(context.TODO(), mm); err != nil {
 					log.Printf("peer: process raft message error: %v", err)
 				}
-			case urls := <-p.newURLc:
+			case urls := <-p.newURLsC:
 				picker.update(urls)
 			case <-p.pausec:
 				paused = true
@@ -171,7 +171,7 @@ func (p *peer) Send(m raftpb.Message) {
 
 func (p *peer) Update(urls types.URLs) {
 	select {
-	case p.newURLc <- urls:
+	case p.newURLsC <- urls:
 	case <-p.done:
 		log.Panicf("peer: unexpected stopped")
 	}
