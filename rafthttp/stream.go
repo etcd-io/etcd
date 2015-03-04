@@ -100,6 +100,7 @@ func (cw *streamWriter) run() {
 	for {
 		select {
 		case <-heartbeatc:
+			start := time.Now()
 			if err := enc.encode(linkHeartbeatMessage); err != nil {
 				log.Printf("rafthttp: failed to heartbeat on stream %s due to %v. waiting for a new stream to be established.", t, err)
 				cw.resetCloser()
@@ -107,6 +108,7 @@ func (cw *streamWriter) run() {
 				continue
 			}
 			flusher.Flush()
+			reportSendingDuration(string(t), linkHeartbeatMessage, time.Since(start))
 		case m := <-msgc:
 			if t == streamTypeMsgApp && m.Term != msgAppTerm {
 				// TODO: reasonable retry logic
@@ -116,6 +118,7 @@ func (cw *streamWriter) run() {
 				}
 				continue
 			}
+			start := time.Now()
 			if err := enc.encode(m); err != nil {
 				log.Printf("rafthttp: failed to send message on stream %s due to %v. waiting for a new stream to be established.", t, err)
 				cw.resetCloser()
@@ -124,6 +127,7 @@ func (cw *streamWriter) run() {
 				continue
 			}
 			flusher.Flush()
+			reportSendingDuration(string(t), m, time.Since(start))
 		case conn := <-cw.connc:
 			cw.resetCloser()
 			t = conn.t
