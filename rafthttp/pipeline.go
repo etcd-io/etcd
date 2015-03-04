@@ -17,7 +17,6 @@ package rafthttp
 import (
 	"bytes"
 	"fmt"
-	"log"
 	"net/http"
 	"sync"
 	"time"
@@ -39,8 +38,9 @@ const (
 )
 
 type pipeline struct {
-	id  types.ID
-	cid types.ID
+	local  types.ID
+	remote types.ID
+	cid    types.ID
 
 	tr http.RoundTripper
 	// the url this pipeline sends to
@@ -59,9 +59,10 @@ type pipeline struct {
 	errored error
 }
 
-func newPipeline(tr http.RoundTripper, u string, id, cid types.ID, fs *stats.FollowerStats, r Raft, errorc chan error) *pipeline {
+func newPipeline(tr http.RoundTripper, u string, local, remote, cid types.ID, fs *stats.FollowerStats, r Raft, errorc chan error) *pipeline {
 	p := &pipeline{
-		id:     id,
+		local:  local,
+		remote: remote,
 		cid:    cid,
 		tr:     tr,
 		u:      u,
@@ -92,16 +93,8 @@ func (p *pipeline) handle() {
 		err := p.post(pbutil.MustMarshal(&m))
 		end := time.Now()
 
-		p.Lock()
 		if err != nil {
-			if p.errored == nil || p.errored.Error() != err.Error() {
-				log.Printf("pipeline: error posting to %s: %v", p.id, err)
-				p.errored = err
-			}
-			if p.active {
-				log.Printf("pipeline: the connection with %s became inactive", p.id)
-				p.active = false
-			}
+			reportOpError(p.local, p.remote, "pipeline", newOpError("post", p.u, err))
 			if m.Type == raftpb.MsgApp {
 				p.fs.Fail()
 			}
@@ -110,11 +103,6 @@ func (p *pipeline) handle() {
 				p.r.ReportSnapshot(m.To, raft.SnapshotFailure)
 			}
 		} else {
-			if !p.active {
-				log.Printf("pipeline: the connection with %s became active", p.id)
-				p.active = true
-				p.errored = nil
-			}
 			if m.Type == raftpb.MsgApp {
 				p.fs.Succ(end.Sub(start))
 			}
@@ -122,7 +110,6 @@ func (p *pipeline) handle() {
 				p.r.ReportSnapshot(m.To, raft.SnapshotFinish)
 			}
 		}
-		p.Unlock()
 	}
 }
 

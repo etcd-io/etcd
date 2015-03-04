@@ -17,7 +17,7 @@ import (
 // to streamWriter. After that, streamWriter can use it to send messages
 // continuously, and closes it when stopped.
 func TestStreamWriterAttachOutgoingConn(t *testing.T) {
-	sw := startStreamWriter(&stats.FollowerStats{}, &fakeRaft{})
+	sw := startStreamWriter(types.ID(1), types.ID(2), streamTypeMessage, &stats.FollowerStats{}, &fakeRaft{})
 	// the expected initial state of streamWrite is not working
 	if g := sw.isWorking(); g != false {
 		t.Errorf("initial working status = %v, want false", g)
@@ -63,7 +63,7 @@ func TestStreamWriterAttachOutgoingConn(t *testing.T) {
 // TestStreamWriterAttachBadOutgoingConn tests that streamWriter with bad
 // outgoingConn will close the outgoingConn and fall back to non-working status.
 func TestStreamWriterAttachBadOutgoingConn(t *testing.T) {
-	sw := startStreamWriter(&stats.FollowerStats{}, &fakeRaft{})
+	sw := startStreamWriter(types.ID(1), types.ID(2), streamTypeMessage, &stats.FollowerStats{}, &fakeRaft{})
 	defer sw.stop()
 	wfc := &fakeWriteFlushCloser{err: errors.New("blah")}
 	sw.attach(&outgoingConn{t: streamTypeMessage, Writer: wfc, Flusher: wfc, Closer: wfc})
@@ -86,8 +86,8 @@ func TestStreamReaderDialRequest(t *testing.T) {
 			tr:         tr,
 			u:          "http://localhost:7001",
 			t:          tt,
-			from:       types.ID(1),
-			to:         types.ID(2),
+			local:      types.ID(1),
+			remote:     types.ID(2),
 			cid:        types.ID(1),
 			msgAppTerm: 1,
 		}
@@ -136,12 +136,12 @@ func TestStreamReaderDialResult(t *testing.T) {
 	for i, tt := range tests {
 		tr := newRespRoundTripper(tt.code, tt.err)
 		sr := &streamReader{
-			tr:   tr,
-			u:    "http://localhost:7001",
-			t:    streamTypeMessage,
-			from: types.ID(1),
-			to:   types.ID(2),
-			cid:  types.ID(1),
+			tr:     tr,
+			u:      "http://localhost:7001",
+			t:      streamTypeMessage,
+			local:  types.ID(1),
+			remote: types.ID(2),
+			cid:    types.ID(1),
 		}
 
 		_, err := sr.dial()
@@ -183,7 +183,7 @@ func TestStream(t *testing.T) {
 		srv := httptest.NewServer(h)
 		defer srv.Close()
 
-		sw := startStreamWriter(&stats.FollowerStats{}, &fakeRaft{})
+		sw := startStreamWriter(types.ID(2), types.ID(1), tt.t, &stats.FollowerStats{}, &fakeRaft{})
 		defer sw.stop()
 		h.sw = sw
 
