@@ -94,6 +94,8 @@ func (p *pipeline) handle() {
 
 		p.Lock()
 		if err != nil {
+			reportMessageFailure(pipelineMsg, m)
+
 			if p.errored == nil || p.errored.Error() != err.Error() {
 				log.Printf("pipeline: error posting to %s: %v", p.id, err)
 				p.errored = err

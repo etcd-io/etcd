@@ -30,10 +30,18 @@ var (
 		},
 		[]string{"channel", "remoteID", "msgType"},
 	)
+
+	msgWriteFailed = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "rafthttp_message_sent_failed_total",
+		Help: "The total number of failed messages sent.",
+	},
+		[]string{"channel", "remoteID", "msgType"},
+	)
 )
 
 func init() {
 	prometheus.MustRegister(msgWriteDuration)
+	prometheus.MustRegister(msgWriteFailed)
 }
 
 func reportSendingDuration(channel string, m raftpb.Message, duration time.Duration) {
@@ -42,4 +50,12 @@ func reportSendingDuration(channel string, m raftpb.Message, duration time.Durat
 		typ = "MsgLinkHeartbeat"
 	}
 	msgWriteDuration.WithLabelValues(channel, types.ID(m.To).String(), typ).Observe(float64(duration.Nanoseconds() / int64(time.Microsecond)))
+}
+
+func reportMessageFailure(channel string, m raftpb.Message) {
+	typ := m.Type.String()
+	if isLinkHeartbeatMessage(m) {
+		typ = "MsgLinkHeartbeat"
+	}
+	msgWriteFailed.WithLabelValues(channel, types.ID(m.To).String(), typ).Inc()
 }

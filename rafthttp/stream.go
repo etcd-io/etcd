@@ -102,6 +102,8 @@ func (cw *streamWriter) run() {
 		case <-heartbeatc:
 			start := time.Now()
 			if err := enc.encode(linkHeartbeatMessage); err != nil {
+				reportMessageFailure(string(t), linkHeartbeatMessage)
+
 				log.Printf("rafthttp: failed to heartbeat on stream %s due to %v. waiting for a new stream to be established.", t, err)
 				cw.resetCloser()
 				heartbeatc, msgc = nil, nil
@@ -120,6 +122,8 @@ func (cw *streamWriter) run() {
 			}
 			start := time.Now()
 			if err := enc.encode(m); err != nil {
+				reportMessageFailure(string(t), m)
+
 				log.Printf("rafthttp: failed to send message on stream %s due to %v. waiting for a new stream to be established.", t, err)
 				cw.resetCloser()
 				heartbeatc, msgc = nil, nil
