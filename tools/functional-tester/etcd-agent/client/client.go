@@ -36,7 +36,7 @@ type agent struct {
 }
 
 func NewAgent(endpoint string) (Agent, error) {
-	c, err := rpc.Dial("tcp", endpoint)
+	c, err := rpc.DialHTTP("tcp", endpoint)
 	if err != nil {
 		return nil, err
 	}
