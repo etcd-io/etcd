@@ -15,11 +15,12 @@
 package main
 
 type failure interface {
-	// inject the failure into the testing cluster
-	Inject(c *cluster) error
-	// recover the injected failure and wait for the
-	// recovery of the testing cluster
-	Recover(c *cluster) error
+	// Inject injeccts the failure into the testing cluster at the given
+	// round. When calling the function, the cluster should be in health.
+	Inject(c *cluster, round int) error
+	// Recover recovers the injected failure caused by the injection of the
+	// given round and wait for the recovery of the testing cluster.
+	Recover(c *cluster, round int) error
 	// return a description of the failure
 	Desc() string
 }

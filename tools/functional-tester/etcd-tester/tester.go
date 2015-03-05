@@ -35,7 +35,7 @@ func (tt *tester) runLoop() {
 			}
 			log.Printf("etcd-tester: [round#%d case#%d] start failure %s", i, j, f.Desc())
 			log.Printf("etcd-tester: [round#%d case#%d] start injecting failure...", i, j)
-			if err := f.Inject(tt.cluster); err != nil {
+			if err := f.Inject(tt.cluster, i); err != nil {
 				log.Printf("etcd-tester: [round#%d case#%d] injection error: %v", i, j, err)
 				if err := tt.cleanup(i, j); err != nil {
 					log.Printf("etcd-tester: [round#%d case#%d] cleanup error: %v", i, j, err)
@@ -44,7 +44,7 @@ func (tt *tester) runLoop() {
 				continue
 			}
 			log.Printf("etcd-tester: [round#%d case#%d] start recovering failure...", i, j)
-			if err := f.Recover(tt.cluster); err != nil {
+			if err := f.Recover(tt.cluster, i); err != nil {
 				log.Printf("etcd-tester: [round#%d case#%d] recovery error: %v", i, j, err)
 				if err := tt.cleanup(i, j); err != nil {
 					log.Printf("etcd-tester: [round#%d case#%d] cleanup error: %v", i, j, err)
