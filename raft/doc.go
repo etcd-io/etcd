@@ -35,7 +35,8 @@ previously-persisted entries with Index >= i must be discarded.
 2. Send all Messages to the nodes named in the To field. It is important that
 no messages be sent until after the latest HardState has been persisted to disk,
 and all Entries written by any previous Ready batch (Messages may be sent while
-entries from the same batch are being persisted).
+entries from the same batch are being persisted). If any Message has type MsgSnap,
+call Node.ReportSnapshot() after it has been sent (these messages may be large).
 
 3. Apply Snapshot (if any) and CommittedEntries to the state machine.
 If any committed Entry has Type EntryConfChange, call Node.ApplyConfChange()
