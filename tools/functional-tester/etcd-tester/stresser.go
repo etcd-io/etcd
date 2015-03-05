@@ -1,6 +1,8 @@
 package main
 
 import (
+	"net"
+	"net/http"
 	"sync"
 	"time"
 
@@ -18,10 +20,12 @@ type Stresser interface {
 }
 
 type stresser struct {
-	Endpoint    string
-	SuffexRange int
+	Endpoint string
+	// TODO: not implemented
+	SuffixRange int
 
-	N        int
+	N int
+	// TODO: not implemented
 	Interval time.Duration
 
 	mu      sync.Mutex
@@ -32,7 +36,16 @@ type stresser struct {
 }
 
 func (s *stresser) Stress() error {
-	cfg := client.Config{Endpoints: []string{s.Endpoint}}
+	cfg := client.Config{
+		Endpoints: []string{s.Endpoint},
+		Transport: &http.Transport{
+			Dial: (&net.Dialer{
+				Timeout:   time.Second,
+				KeepAlive: 30 * time.Second,
+			}).Dial,
+			MaxIdleConnsPerHost: s.N,
+		},
+	}
 	c, err := client.New(cfg)
 	if err != nil {
 		return err
