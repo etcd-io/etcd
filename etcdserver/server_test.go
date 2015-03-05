@@ -738,9 +738,9 @@ func TestTriggerSnap(t *testing.T) {
 	st := &storeRecorder{}
 	p := &storageRecorder{}
 	srv := &EtcdServer{
+		snapCount: uint64(snapc),
 		r: raftNode{
 			Node:        newNodeCommitter(),
-			snapCount:   uint64(snapc),
 			raftStorage: raft.NewMemoryStorage(),
 			storage:     p,
 			transport:   &nopTransporter{},
@@ -798,41 +798,6 @@ func TestRecvSnapshot(t *testing.T) {
 	wactions = []testutil.Action{{Name: "SaveSnap"}, {Name: "Save"}}
 	if g := p.Action(); !reflect.DeepEqual(g, wactions) {
 		t.Errorf("storage action = %v, want %v", g, wactions)
-	}
-}
-
-// TestRecvSlowSnapshot tests that slow snapshot will not be applied
-// to store. The case could happen when server compacts the log and
-// raft returns the compacted snapshot.
-func TestRecvSlowSnapshot(t *testing.T) {
-	n := newReadyNode()
-	st := &storeRecorder{}
-	cl := newCluster("abc")
-	cl.SetStore(store.New())
-	s := &EtcdServer{
-		r: raftNode{
-			Node:        n,
-			storage:     &storageRecorder{},
-			raftStorage: raft.NewMemoryStorage(),
-			transport:   &nopTransporter{},
-		},
-		store:   st,
-		Cluster: cl,
-	}
-
-	s.start()
-	n.readyc <- raft.Ready{Snapshot: raftpb.Snapshot{Metadata: raftpb.SnapshotMetadata{Index: 1}}}
-	// make goroutines move forward to receive snapshot
-	testutil.ForceGosched()
-	action := st.Action()
-
-	n.readyc <- raft.Ready{Snapshot: raftpb.Snapshot{Metadata: raftpb.SnapshotMetadata{Index: 1}}}
-	// make goroutines move forward to receive snapshot
-	testutil.ForceGosched()
-	s.Stop()
-
-	if g := st.Action(); !reflect.DeepEqual(g, action) {
-		t.Errorf("store action = %v, want %v", g, action)
 	}
 }
 

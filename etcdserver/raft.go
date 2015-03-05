@@ -20,6 +20,7 @@ import (
 	"log"
 	"os"
 	"sort"
+	"sync/atomic"
 	"time"
 
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
@@ -59,11 +60,25 @@ type RaftTimer interface {
 	Term() uint64
 }
 
+// apply contains entries, snapshot be applied.
+// After applied all the items, the application needs
+// to send notification to done chan.
+type apply struct {
+	entries  []raftpb.Entry
+	snapshot raftpb.Snapshot
+	done     chan struct{}
+}
+
 type raftNode struct {
 	raft.Node
 
-	// config
-	snapCount uint64 // number of entries to trigger a snapshot
+	// a chan to send out apply
+	applyc chan apply
+
+	// TODO: remove the etcdserver related logic from raftNode
+	// TODO: add a state machine interface to apply the commit entries
+	// and do snapshot/recover
+	s *EtcdServer
 
 	// utility
 	ticker      <-chan time.Time
@@ -79,6 +94,77 @@ type raftNode struct {
 	index uint64
 	term  uint64
 	lead  uint64
+}
+
+func (r *raftNode) run() {
+	var syncC <-chan time.Time
+
+	defer r.stop()
+	for {
+		select {
+		case <-r.ticker:
+			r.Tick()
+		case rd := <-r.Ready():
+			if rd.SoftState != nil {
+				atomic.StoreUint64(&r.lead, rd.SoftState.Lead)
+				if rd.RaftState == raft.StateLeader {
+					syncC = r.s.SyncTicker
+					// TODO: remove the nil checking
+					// current test utility does not provide the stats
+					if r.s.stats != nil {
+						r.s.stats.BecomeLeader()
+					}
+				} else {
+					syncC = nil
+				}
+			}
+
+			apply := apply{
+				entries:  rd.CommittedEntries,
+				snapshot: rd.Snapshot,
+				done:     make(chan struct{}),
+			}
+
+			select {
+			case r.applyc <- apply:
+			case <-r.s.done:
+				return
+			}
+
+			if !raft.IsEmptySnap(rd.Snapshot) {
+				if err := r.storage.SaveSnap(rd.Snapshot); err != nil {
+					log.Fatalf("etcdraft: save snapshot error: %v", err)
+				}
+				r.raftStorage.ApplySnapshot(rd.Snapshot)
+				log.Printf("etcdraft: applied incoming snapshot at index %d", rd.Snapshot.Metadata.Index)
+			}
+			if err := r.storage.Save(rd.HardState, rd.Entries); err != nil {
+				log.Fatalf("etcdraft: save state and entries error: %v", err)
+			}
+			r.raftStorage.Append(rd.Entries)
+
+			r.s.send(rd.Messages)
+
+			<-apply.done
+			r.Advance()
+		case <-syncC:
+			r.s.sync(defaultSyncTimeout)
+		case <-r.s.done:
+			return
+		}
+	}
+}
+
+func (r *raftNode) apply() chan apply {
+	return r.applyc
+}
+
+func (r *raftNode) stop() {
+	r.Stop()
+	r.transport.Stop()
+	if err := r.storage.Close(); err != nil {
+		log.Panicf("etcdraft: close storage error: %v", err)
+	}
 }
 
 // for testing

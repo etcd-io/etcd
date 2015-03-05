@@ -165,7 +165,6 @@ func (p *peer) Send(m raftpb.Message) {
 	select {
 	case p.sendc <- m:
 	case <-p.done:
-		log.Panicf("peer: unexpected stopped")
 	}
 }
 
@@ -173,7 +172,6 @@ func (p *peer) Update(urls types.URLs) {
 	select {
 	case p.newURLsC <- urls:
 	case <-p.done:
-		log.Panicf("peer: unexpected stopped")
 	}
 }
 
