@@ -14,29 +14,16 @@
 
 package main
 
-import (
-	"flag"
-	"log"
-	"strings"
-)
-
-func main() {
-	endpointStr := flag.String("agent-endpoints", ":9027", "")
-	datadir := flag.String("data-dir", "agent.etcd", "")
-	limit := flag.Int("limit", 3, "")
-	flag.Parse()
-
-	endpoints := strings.Split(*endpointStr, ",")
-	c, err := newCluster(endpoints, *datadir)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer c.Terminate()
-
-	t := &tester{
-		failures: []failure{newFailureBase()},
-		cluster:  c,
-		limit:    *limit,
-	}
-	t.runLoop()
+type failureBase struct {
+	description
 }
+
+func newFailureBase() *failureBase {
+	return &failureBase{
+		description: "do nothing",
+	}
+}
+
+func (f *failureBase) Inject(c *cluster) error { return nil }
+
+func (f *failureBase) Recover(c *cluster) error { return nil }

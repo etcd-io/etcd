@@ -14,41 +14,51 @@
 
 package main
 
-import (
-	"fmt"
-
-	"github.com/coreos/etcd/tools/functional-tester/etcd-agent/client"
-)
+import "log"
 
 type tester struct {
 	failures []failure
-	agents   []client.Agent
+	cluster  *cluster
 	limit    int
 }
 
 func (tt *tester) runLoop() {
 	for i := 0; i < tt.limit; i++ {
 		for j, f := range tt.failures {
-			fmt.Println("etcd-tester: [round#%d case#%d] start failure %s", i, j, f.Desc())
-			fmt.Println("etcd-tester: [round#%d case#%d] start injecting failure...", i, j)
-			if err := f.Inject(tt.agents); err != nil {
-				fmt.Println("etcd-tester: [round#%d case#%d] injection failing...", i, j)
-				tt.cleanup(i, j)
+			if err := tt.cluster.WaitHealth(); err != nil {
+				log.Printf("etcd-tester: [round#%d case#%d] wait full health error: %v", i, j, err)
+				if err := tt.cleanup(i, j); err != nil {
+					log.Printf("etcd-tester: [round#%d case#%d] cleanup error: %v", i, j, err)
+					return
+				}
+				continue
 			}
-			fmt.Println("etcd-tester: [round#%d case#%d] start recovering failure...", i, j)
-			if err := f.Recover(tt.agents); err != nil {
-				fmt.Println("etcd-tester: [round#%d case#%d] recovery failing...", i, j)
-				tt.cleanup(i, j)
+			log.Printf("etcd-tester: [round#%d case#%d] start failure %s", i, j, f.Desc())
+			log.Printf("etcd-tester: [round#%d case#%d] start injecting failure...", i, j)
+			if err := f.Inject(tt.cluster); err != nil {
+				log.Printf("etcd-tester: [round#%d case#%d] injection error: %v", i, j, err)
+				if err := tt.cleanup(i, j); err != nil {
+					log.Printf("etcd-tester: [round#%d case#%d] cleanup error: %v", i, j, err)
+					return
+				}
+				continue
 			}
-			fmt.Println("etcd-tester: [round#%d case#%d] succeed!", i, j)
+			log.Printf("etcd-tester: [round#%d case#%d] start recovering failure...", i, j)
+			if err := f.Recover(tt.cluster); err != nil {
+				log.Printf("etcd-tester: [round#%d case#%d] recovery error: %v", i, j, err)
+				if err := tt.cleanup(i, j); err != nil {
+					log.Printf("etcd-tester: [round#%d case#%d] cleanup error: %v", i, j, err)
+					return
+				}
+				continue
+			}
+			log.Printf("etcd-tester: [round#%d case#%d] succeed!", i, j)
 		}
 	}
 }
 
-func (tt *tester) cleanup(i, j int) {
-	fmt.Println("etcd-tester: [round#%d case#%d] cleaning up...", i, j)
-	for _, a := range tt.agents {
-		a.Terminate()
-		a.Start()
-	}
+func (tt *tester) cleanup(i, j int) error {
+	log.Printf("etcd-tester: [round#%d case#%d] cleaning up...", i, j)
+	tt.cluster.Terminate()
+	return tt.cluster.Bootstrap()
 }
