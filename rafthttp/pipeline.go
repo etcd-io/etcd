@@ -91,6 +91,8 @@ func (p *pipeline) handle() {
 
 		p.Lock()
 		if err != nil {
+			reportSentFailure(pipelineMsg, m)
+
 			if p.errored == nil || p.errored.Error() != err.Error() {
 				log.Printf("pipeline: error posting to %s: %v", p.id, err)
 				p.errored = err
@@ -118,7 +120,7 @@ func (p *pipeline) handle() {
 			if isMsgSnap(m) {
 				p.r.ReportSnapshot(m.To, raft.SnapshotFinish)
 			}
-			reportSendingDuration(pipelineMsg, m, time.Since(start))
+			reportSentDuration(pipelineMsg, m, time.Since(start))
 		}
 		p.Unlock()
 	}
