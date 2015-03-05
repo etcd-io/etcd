@@ -14,29 +14,30 @@
 
 package main
 
-import (
-	"flag"
-	"log"
-	"strings"
-)
+type failureKillAll struct {
+	description
+}
 
-func main() {
-	endpointStr := flag.String("agent-endpoints", ":9027", "")
-	datadir := flag.String("data-dir", "agent.etcd", "")
-	limit := flag.Int("limit", 3, "")
-	flag.Parse()
-
-	endpoints := strings.Split(*endpointStr, ",")
-	c, err := newCluster(endpoints, *datadir)
-	if err != nil {
-		log.Fatal(err)
+func newFailureKillAll() *failureKillAll {
+	return &failureKillAll{
+		description: "kill all members",
 	}
-	defer c.Terminate()
+}
 
-	t := &tester{
-		failures: []failure{newFailureBase(), newFailureKillAll()},
-		cluster:  c,
-		limit:    *limit,
+func (f *failureKillAll) Inject(c *cluster) error {
+	for _, a := range c.Agents {
+		if err := a.Stop(); err != nil {
+			return err
+		}
 	}
-	t.runLoop()
+	return nil
+}
+
+func (f *failureKillAll) Recover(c *cluster) error {
+	for _, a := range c.Agents {
+		if _, err := a.Restart(); err != nil {
+			return err
+		}
+	}
+	return c.WaitHealth()
 }
