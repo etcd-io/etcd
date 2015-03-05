@@ -73,7 +73,7 @@ func (a *Agent) restart() error {
 // terminate stops the exiting etcd process the agent started
 // and removes the data dir.
 func (a *Agent) terminate() error {
-	a.cmd.Process.Kill()
+	a.stop()
 	args := a.cmd.Args
 
 	datadir := path.Join(a.cmd.Path, "*.etcd")
