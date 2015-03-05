@@ -14,6 +14,21 @@
 
 package main
 
+import (
+	"flag"
+	"log"
+)
+
 func main() {
-	panic("not implemented")
+	etcdPath := flag.String("etcd-path", "/opt/etcd/bin/etcd", "")
+	flag.Parse()
+
+	a, err := newAgent(*etcdPath)
+	if err != nil {
+		log.Fatal(err)
+	}
+	a.serveRPC()
+
+	var done chan struct{}
+	<-done
 }
