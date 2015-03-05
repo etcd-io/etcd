@@ -146,7 +146,7 @@ type Peer struct {
 // It appends a ConfChangeAddNode entry for each given peer to the initial log.
 func StartNode(id uint64, peers []Peer, election, heartbeat int, storage Storage) Node {
 	n := newNode()
-	r := newRaft(id, nil, election, heartbeat, storage, 0)
+	r := newRaft(id, nil, election, heartbeat, storage)
 
 	// become the follower at term 1 and apply initial configuration
 	// entires of term 1
@@ -184,11 +184,9 @@ func StartNode(id uint64, peers []Peer, election, heartbeat int, storage Storage
 
 // RestartNode is similar to StartNode but does not take a list of peers.
 // The current membership of the cluster will be restored from the Storage.
-// If the caller has an existing state machine, pass in the last log index that
-// has been applied to it; otherwise use zero.
-func RestartNode(id uint64, election, heartbeat int, storage Storage, applied uint64) Node {
+func RestartNode(id uint64, election, heartbeat int, storage Storage) Node {
 	n := newNode()
-	r := newRaft(id, nil, election, heartbeat, storage, applied)
+	r := newRaft(id, nil, election, heartbeat, storage)
 
 	go n.run(r)
 	return &n

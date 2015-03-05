@@ -185,8 +185,7 @@ type raft struct {
 	step             stepFunc
 }
 
-func newRaft(id uint64, peers []uint64, election, heartbeat int, storage Storage,
-	applied uint64) *raft {
+func newRaft(id uint64, peers []uint64, election, heartbeat int, storage Storage) *raft {
 	if id == None {
 		panic("cannot use none id")
 	}
@@ -218,9 +217,6 @@ func newRaft(id uint64, peers []uint64, election, heartbeat int, storage Storage
 	}
 	if !isHardStateEqual(hs, emptyState) {
 		r.loadState(hs)
-	}
-	if applied > 0 {
-		raftlog.appliedTo(applied)
 	}
 	r.becomeFollower(r.Term, None)
 
