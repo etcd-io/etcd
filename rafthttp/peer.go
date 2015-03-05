@@ -59,7 +59,7 @@ type Peer interface {
 	// raft.
 	Send(m raftpb.Message)
 	// Update updates the urls of remote peer.
-	Update(u string)
+	Update(urls types.URLs)
 	// attachOutgoingConn attachs the outgoing connection to the peer for
 	// stream usage. After the call, the ownership of the outgoing
 	// connection hands over to the peer. The peer will close the connection
@@ -89,9 +89,9 @@ type peer struct {
 	writer       *streamWriter
 	pipeline     *pipeline
 
-	sendc   chan raftpb.Message
-	recvc   chan raftpb.Message
-	newURLc chan string
+	sendc    chan raftpb.Message
+	recvc    chan raftpb.Message
+	newURLsC chan types.URLs
 
 	// for testing
 	pausec  chan struct{}
@@ -101,15 +101,16 @@ type peer struct {
 	done  chan struct{}
 }
 
-func startPeer(tr http.RoundTripper, u string, local, to, cid types.ID, r Raft, fs *stats.FollowerStats, errorc chan error) *peer {
+func startPeer(tr http.RoundTripper, urls types.URLs, local, to, cid types.ID, r Raft, fs *stats.FollowerStats, errorc chan error) *peer {
+	picker := newURLPicker(urls)
 	p := &peer{
 		id:           to,
 		msgAppWriter: startStreamWriter(fs, r),
 		writer:       startStreamWriter(fs, r),
-		pipeline:     newPipeline(tr, u, to, cid, fs, r, errorc),
+		pipeline:     newPipeline(tr, picker, to, cid, fs, r, errorc),
 		sendc:        make(chan raftpb.Message),
 		recvc:        make(chan raftpb.Message, recvBufSize),
-		newURLc:      make(chan string),
+		newURLsC:     make(chan types.URLs),
 		pausec:       make(chan struct{}),
 		resumec:      make(chan struct{}),
 		stopc:        make(chan struct{}),
@@ -117,8 +118,8 @@ func startPeer(tr http.RoundTripper, u string, local, to, cid types.ID, r Raft, 
 	}
 	go func() {
 		var paused bool
-		msgAppReader := startStreamReader(tr, u, streamTypeMsgApp, local, to, cid, p.recvc)
-		reader := startStreamReader(tr, u, streamTypeMessage, local, to, cid, p.recvc)
+		msgAppReader := startStreamReader(tr, picker, streamTypeMsgApp, local, to, cid, p.recvc)
+		reader := startStreamReader(tr, picker, streamTypeMessage, local, to, cid, p.recvc)
 		for {
 			select {
 			case m := <-p.sendc:
@@ -139,10 +140,8 @@ func startPeer(tr http.RoundTripper, u string, local, to, cid types.ID, r Raft, 
 				if err := r.Process(context.TODO(), mm); err != nil {
 					log.Printf("peer: process raft message error: %v", err)
 				}
-			case u := <-p.newURLc:
-				msgAppReader.update(u)
-				reader.update(u)
-				p.pipeline.update(u)
+			case urls := <-p.newURLsC:
+				picker.update(urls)
 			case <-p.pausec:
 				paused = true
 			case <-p.resumec:
@@ -170,9 +169,9 @@ func (p *peer) Send(m raftpb.Message) {
 	}
 }
 
-func (p *peer) Update(u string) {
+func (p *peer) Update(urls types.URLs) {
 	select {
-	case p.newURLc <- u:
+	case p.newURLsC <- urls:
 	case <-p.done:
 		log.Panicf("peer: unexpected stopped")
 	}

@@ -31,8 +31,9 @@ import (
 // and increase success count in stats.
 func TestPipelineSend(t *testing.T) {
 	tr := &roundTripperRecorder{}
+	picker := mustNewURLPicker(t, []string{"http://localhost:7001"})
 	fs := &stats.FollowerStats{}
-	p := newPipeline(tr, "http://10.0.0.1", types.ID(1), types.ID(1), fs, &fakeRaft{}, nil)
+	p := newPipeline(tr, picker, types.ID(1), types.ID(1), fs, &fakeRaft{}, nil)
 
 	p.msgc <- raftpb.Message{Type: raftpb.MsgApp}
 	p.stop()
@@ -49,8 +50,9 @@ func TestPipelineSend(t *testing.T) {
 
 func TestPipelineExceedMaximalServing(t *testing.T) {
 	tr := newRoundTripperBlocker()
+	picker := mustNewURLPicker(t, []string{"http://localhost:7001"})
 	fs := &stats.FollowerStats{}
-	p := newPipeline(tr, "http://10.0.0.1", types.ID(1), types.ID(1), fs, &fakeRaft{}, nil)
+	p := newPipeline(tr, picker, types.ID(1), types.ID(1), fs, &fakeRaft{}, nil)
 
 	// keep the sender busy and make the buffer full
 	// nothing can go out as we block the sender
@@ -88,8 +90,9 @@ func TestPipelineExceedMaximalServing(t *testing.T) {
 // TestPipelineSendFailed tests that when send func meets the post error,
 // it increases fail count in stats.
 func TestPipelineSendFailed(t *testing.T) {
+	picker := mustNewURLPicker(t, []string{"http://localhost:7001"})
 	fs := &stats.FollowerStats{}
-	p := newPipeline(newRespRoundTripper(0, errors.New("blah")), "http://10.0.0.1", types.ID(1), types.ID(1), fs, &fakeRaft{}, nil)
+	p := newPipeline(newRespRoundTripper(0, errors.New("blah")), picker, types.ID(1), types.ID(1), fs, &fakeRaft{}, nil)
 
 	p.msgc <- raftpb.Message{Type: raftpb.MsgApp}
 	p.stop()
@@ -103,7 +106,8 @@ func TestPipelineSendFailed(t *testing.T) {
 
 func TestPipelinePost(t *testing.T) {
 	tr := &roundTripperRecorder{}
-	p := newPipeline(tr, "http://10.0.0.1", types.ID(1), types.ID(1), nil, &fakeRaft{}, nil)
+	picker := mustNewURLPicker(t, []string{"http://localhost:7001"})
+	p := newPipeline(tr, picker, types.ID(1), types.ID(1), nil, &fakeRaft{}, nil)
 	if err := p.post([]byte("some data")); err != nil {
 		t.Fatalf("unexpect post error: %v", err)
 	}
@@ -112,8 +116,8 @@ func TestPipelinePost(t *testing.T) {
 	if g := tr.Request().Method; g != "POST" {
 		t.Errorf("method = %s, want %s", g, "POST")
 	}
-	if g := tr.Request().URL.String(); g != "http://10.0.0.1" {
-		t.Errorf("url = %s, want %s", g, "http://10.0.0.1")
+	if g := tr.Request().URL.String(); g != "http://localhost:7001/raft" {
+		t.Errorf("url = %s, want %s", g, "http://localhost:7001/raft")
 	}
 	if g := tr.Request().Header.Get("Content-Type"); g != "application/protobuf" {
 		t.Errorf("content type = %s, want %s", g, "application/protobuf")
@@ -136,16 +140,15 @@ func TestPipelinePostBad(t *testing.T) {
 		code int
 		err  error
 	}{
-		// bad url
-		{":bad url", http.StatusNoContent, nil},
 		// RoundTrip returns error
-		{"http://10.0.0.1", 0, errors.New("blah")},
+		{"http://localhost:7001", 0, errors.New("blah")},
 		// unexpected response status code
-		{"http://10.0.0.1", http.StatusOK, nil},
-		{"http://10.0.0.1", http.StatusCreated, nil},
+		{"http://localhost:7001", http.StatusOK, nil},
+		{"http://localhost:7001", http.StatusCreated, nil},
 	}
 	for i, tt := range tests {
-		p := newPipeline(newRespRoundTripper(tt.code, tt.err), tt.u, types.ID(1), types.ID(1), nil, &fakeRaft{}, make(chan error))
+		picker := mustNewURLPicker(t, []string{tt.u})
+		p := newPipeline(newRespRoundTripper(tt.code, tt.err), picker, types.ID(1), types.ID(1), nil, &fakeRaft{}, make(chan error))
 		err := p.post([]byte("some data"))
 		p.stop()
 
@@ -161,12 +164,13 @@ func TestPipelinePostErrorc(t *testing.T) {
 		code int
 		err  error
 	}{
-		{"http://10.0.0.1", http.StatusForbidden, nil},
-		{"http://10.0.0.1", http.StatusPreconditionFailed, nil},
+		{"http://localhost:7001", http.StatusForbidden, nil},
+		{"http://localhost:7001", http.StatusPreconditionFailed, nil},
 	}
 	for i, tt := range tests {
+		picker := mustNewURLPicker(t, []string{tt.u})
 		errorc := make(chan error, 1)
-		p := newPipeline(newRespRoundTripper(tt.code, tt.err), tt.u, types.ID(1), types.ID(1), nil, &fakeRaft{}, errorc)
+		p := newPipeline(newRespRoundTripper(tt.code, tt.err), picker, types.ID(1), types.ID(1), nil, &fakeRaft{}, errorc)
 		p.post([]byte("some data"))
 		p.stop()
 		select {

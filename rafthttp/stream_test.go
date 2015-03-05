@@ -84,7 +84,7 @@ func TestStreamReaderDialRequest(t *testing.T) {
 		tr := &roundTripperRecorder{}
 		sr := &streamReader{
 			tr:         tr,
-			u:          "http://localhost:7001",
+			picker:     mustNewURLPicker(t, []string{"http://localhost:7001"}),
 			t:          tt,
 			from:       types.ID(1),
 			to:         types.ID(2),
@@ -136,12 +136,12 @@ func TestStreamReaderDialResult(t *testing.T) {
 	for i, tt := range tests {
 		tr := newRespRoundTripper(tt.code, tt.err)
 		sr := &streamReader{
-			tr:   tr,
-			u:    "http://localhost:7001",
-			t:    streamTypeMessage,
-			from: types.ID(1),
-			to:   types.ID(2),
-			cid:  types.ID(1),
+			tr:     tr,
+			picker: mustNewURLPicker(t, []string{"http://localhost:7001"}),
+			t:      streamTypeMessage,
+			from:   types.ID(1),
+			to:     types.ID(2),
+			cid:    types.ID(1),
 		}
 
 		_, err := sr.dial()
@@ -188,7 +188,8 @@ func TestStream(t *testing.T) {
 		h.sw = sw
 
 		recvc := make(chan raftpb.Message)
-		sr := startStreamReader(&http.Transport{}, srv.URL, tt.t, types.ID(1), types.ID(2), types.ID(1), recvc)
+		picker := mustNewURLPicker(t, []string{srv.URL})
+		sr := startStreamReader(&http.Transport{}, picker, tt.t, types.ID(1), types.ID(2), types.ID(1), recvc)
 		defer sr.stop()
 		if tt.t == streamTypeMsgApp {
 			sr.updateMsgAppTerm(tt.term)
