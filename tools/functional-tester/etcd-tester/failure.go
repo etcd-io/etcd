@@ -14,14 +14,16 @@
 
 package main
 
-import "github.com/coreos/etcd/tools/functional-tester/etcd-agent/client"
-
 type failure interface {
 	// inject the failure into the testing cluster
-	Inject(agents []client.Agent) error
+	Inject(c *cluster) error
 	// recover the injected failure and wait for the
 	// recovery of the testing cluster
-	Recover(agents []client.Agent) error
+	Recover(c *cluster) error
 	// return a description of the failure
 	Desc() string
 }
+
+type description string
+
+func (d description) Desc() string { return string(d) }

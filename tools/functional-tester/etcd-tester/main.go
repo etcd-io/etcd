@@ -14,6 +14,29 @@
 
 package main
 
+import (
+	"flag"
+	"log"
+	"strings"
+)
+
 func main() {
-	panic("not implemented")
+	endpointStr := flag.String("agent-endpoints", ":9027", "")
+	datadir := flag.String("data-dir", "agent.etcd", "")
+	limit := flag.Int("limit", 3, "")
+	flag.Parse()
+
+	endpoints := strings.Split(*endpointStr, ",")
+	c, err := newCluster(endpoints, *datadir)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer c.Terminate()
+
+	t := &tester{
+		failures: []failure{newFailureBase(), newFailureKillAll()},
+		cluster:  c,
+		limit:    *limit,
+	}
+	t.runLoop()
 }

@@ -14,21 +14,30 @@
 
 package main
 
-import (
-	"flag"
-	"log"
-)
+type failureKillAll struct {
+	description
+}
 
-func main() {
-	etcdPath := flag.String("etcd-path", "/opt/etcd/bin/etcd", "")
-	flag.Parse()
-
-	a, err := newAgent(*etcdPath)
-	if err != nil {
-		log.Fatal(err)
+func newFailureKillAll() *failureKillAll {
+	return &failureKillAll{
+		description: "kill all members",
 	}
-	a.serveRPC()
+}
 
-	var done chan struct{}
-	<-done
+func (f *failureKillAll) Inject(c *cluster) error {
+	for _, a := range c.Agents {
+		if err := a.Stop(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (f *failureKillAll) Recover(c *cluster) error {
+	for _, a := range c.Agents {
+		if _, err := a.Restart(); err != nil {
+			return err
+		}
+	}
+	return c.WaitHealth()
 }

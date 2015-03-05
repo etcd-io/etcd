@@ -22,8 +22,9 @@ import (
 )
 
 type Agent struct {
-	cmd *exec.Cmd
-	l   net.Listener
+	cmd     *exec.Cmd
+	logfile *os.File
+	l       net.Listener
 }
 
 func newAgent(etcd string) (*Agent, error) {
@@ -34,12 +35,20 @@ func newAgent(etcd string) (*Agent, error) {
 	}
 
 	c := exec.Command(etcd)
-	return &Agent{cmd: c}, nil
+
+	f, err := os.Create("etcd.log")
+	if err != nil {
+		return nil, err
+	}
+
+	return &Agent{cmd: c, logfile: f}, nil
 }
 
 // start starts a new etcd process with the given args.
 func (a *Agent) start(args ...string) error {
 	a.cmd = exec.Command(a.cmd.Path, args...)
+	a.cmd.Stdout = a.logfile
+	a.cmd.Stderr = a.logfile
 	return a.cmd.Start()
 }
 
@@ -56,6 +65,8 @@ func (a *Agent) stop() error {
 // restart restarts the stopped etcd process.
 func (a *Agent) restart() error {
 	a.cmd = exec.Command(a.cmd.Path, a.cmd.Args[1:]...)
+	a.cmd.Stdout = a.logfile
+	a.cmd.Stderr = a.logfile
 	return a.cmd.Start()
 }
 

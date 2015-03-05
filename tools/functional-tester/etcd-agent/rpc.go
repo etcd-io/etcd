@@ -32,20 +32,22 @@ func (a *Agent) serveRPC() {
 }
 
 func (a *Agent) RPCStart(args []string, pid *int) error {
+	log.Printf("rpc: start etcd with args %v", args)
 	err := a.start(args...)
 	if err != nil {
 		return err
 	}
-	log.Print("start", a.cmd.Args)
 	*pid = a.cmd.Process.Pid
 	return nil
 }
 
 func (a *Agent) RPCStop(args struct{}, reply *struct{}) error {
+	log.Printf("rpc: stop etcd")
 	return a.stop()
 }
 
 func (a *Agent) RPCRestart(args struct{}, pid *int) error {
+	log.Printf("rpc: restart etcd")
 	err := a.restart()
 	if err != nil {
 		return err
@@ -55,6 +57,7 @@ func (a *Agent) RPCRestart(args struct{}, pid *int) error {
 }
 
 func (a *Agent) RPCTerminate(args struct{}, reply *struct{}) error {
+	log.Printf("rpc: terminate etcd")
 	return a.terminate()
 }
 
