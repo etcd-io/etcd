@@ -24,7 +24,7 @@ func newFailureKillAll() *failureKillAll {
 	}
 }
 
-func (f *failureKillAll) Inject(c *cluster) error {
+func (f *failureKillAll) Inject(c *cluster, round int) error {
 	for _, a := range c.Agents {
 		if err := a.Stop(); err != nil {
 			return err
@@ -33,7 +33,7 @@ func (f *failureKillAll) Inject(c *cluster) error {
 	return nil
 }
 
-func (f *failureKillAll) Recover(c *cluster) error {
+func (f *failureKillAll) Recover(c *cluster, round int) error {
 	for _, a := range c.Agents {
 		if _, err := a.Restart(); err != nil {
 			return err

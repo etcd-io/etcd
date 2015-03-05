@@ -24,6 +24,6 @@ func newFailureBase() *failureBase {
 	}
 }
 
-func (f *failureBase) Inject(c *cluster) error { return nil }
+func (f *failureBase) Inject(c *cluster, round int) error { return nil }
 
-func (f *failureBase) Recover(c *cluster) error { return nil }
+func (f *failureBase) Recover(c *cluster, round int) error { return nil }
