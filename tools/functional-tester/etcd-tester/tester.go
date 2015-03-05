@@ -59,6 +59,8 @@ func (tt *tester) runLoop() {
 
 func (tt *tester) cleanup(i, j int) error {
 	log.Printf("etcd-tester: [round#%d case#%d] cleaning up...", i, j)
-	tt.cluster.Terminate()
+	if err := tt.cluster.Cleanup(); err != nil {
+		return err
+	}
 	return tt.cluster.Bootstrap()
 }
