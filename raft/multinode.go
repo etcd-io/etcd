@@ -38,6 +38,10 @@ type MultiNode interface {
 	Advance(map[uint64]Ready)
 	// Status returns the current status of the given group.
 	Status(group uint64) Status
+	// Report reports the given node is not reachable for the last send.
+	ReportUnreachable(id, groupID uint64)
+	// ReportSnapshot reports the stutus of the sent snapshot.
+	ReportSnapshot(id, groupID uint64, status SnapshotStatus)
 	// Stop performs any necessary termination of the MultiNode.
 	Stop()
 }
@@ -446,4 +450,26 @@ func (mn *multiNode) Status(group uint64) Status {
 	}
 	mn.status <- ms
 	return <-ms.ch
+}
+
+func (mn *multiNode) ReportUnreachable(id, groupID uint64) {
+	select {
+	case mn.recvc <- multiMessage{
+		group: groupID,
+		msg:   pb.Message{Type: pb.MsgUnreachable, From: id},
+	}:
+	case <-mn.done:
+	}
+}
+
+func (mn *multiNode) ReportSnapshot(id, groupID uint64, status SnapshotStatus) {
+	rej := status == SnapshotFailure
+
+	select {
+	case mn.recvc <- multiMessage{
+		group: groupID,
+		msg:   pb.Message{Type: pb.MsgSnapStatus, From: id, Reject: rej},
+	}:
+	case <-mn.done:
+	}
 }
