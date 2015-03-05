@@ -175,8 +175,7 @@ func (mn *multiNode) run() {
 		var group *groupState
 		select {
 		case gc := <-mn.groupc:
-			// TODO(bdarnell): pass applied through gc and into newRaft. Or get rid of it?
-			r := newRaft(mn.id, nil, mn.election, mn.heartbeat, gc.storage, 0)
+			r := newRaft(mn.id, nil, mn.election, mn.heartbeat, gc.storage)
 			group = &groupState{
 				id:         gc.id,
 				raft:       r,
