@@ -23,15 +23,15 @@ import (
 )
 
 var (
-	msgWriteDuration = prometheus.NewSummaryVec(
+	msgSentDuration = prometheus.NewSummaryVec(
 		prometheus.SummaryOpts{
-			Name: "rafthttp_message_sending_latency_microseconds",
-			Help: "message sending latency distributions.",
+			Name: "rafthttp_message_sent_latency_microseconds",
+			Help: "message sent latency distributions.",
 		},
 		[]string{"channel", "remoteID", "msgType"},
 	)
 
-	msgWriteFailed = prometheus.NewCounterVec(prometheus.CounterOpts{
+	msgSentFailed = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "rafthttp_message_sent_failed_total",
 		Help: "The total number of failed messages sent.",
 	},
@@ -40,22 +40,22 @@ var (
 )
 
 func init() {
-	prometheus.MustRegister(msgWriteDuration)
-	prometheus.MustRegister(msgWriteFailed)
+	prometheus.MustRegister(msgSentDuration)
+	prometheus.MustRegister(msgSentFailed)
 }
 
-func reportSendingDuration(channel string, m raftpb.Message, duration time.Duration) {
+func reportSentDuration(channel string, m raftpb.Message, duration time.Duration) {
 	typ := m.Type.String()
 	if isLinkHeartbeatMessage(m) {
 		typ = "MsgLinkHeartbeat"
 	}
-	msgWriteDuration.WithLabelValues(channel, types.ID(m.To).String(), typ).Observe(float64(duration.Nanoseconds() / int64(time.Microsecond)))
+	msgSentDuration.WithLabelValues(channel, types.ID(m.To).String(), typ).Observe(float64(duration.Nanoseconds() / int64(time.Microsecond)))
 }
 
-func reportMessageFailure(channel string, m raftpb.Message) {
+func reportSentFailure(channel string, m raftpb.Message) {
 	typ := m.Type.String()
 	if isLinkHeartbeatMessage(m) {
 		typ = "MsgLinkHeartbeat"
 	}
-	msgWriteFailed.WithLabelValues(channel, types.ID(m.To).String(), typ).Inc()
+	msgSentFailed.WithLabelValues(channel, types.ID(m.To).String(), typ).Inc()
 }
