@@ -19,6 +19,7 @@ import (
 	"encoding/binary"
 	"hash"
 	"io"
+	"sync"
 
 	"github.com/coreos/etcd/pkg/crc"
 	"github.com/coreos/etcd/pkg/pbutil"
@@ -27,7 +28,9 @@ import (
 )
 
 type decoder struct {
-	br  *bufio.Reader
+	mu sync.Mutex
+	br *bufio.Reader
+
 	c   io.Closer
 	crc hash.Hash32
 }
@@ -41,6 +44,9 @@ func newDecoder(rc io.ReadCloser) *decoder {
 }
 
 func (d *decoder) decode(rec *walpb.Record) error {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
 	rec.Reset()
 	l, err := readInt64(d.br)
 	if err != nil {
