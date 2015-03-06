@@ -19,13 +19,16 @@ import (
 	"encoding/binary"
 	"hash"
 	"io"
+	"sync"
 
 	"github.com/coreos/etcd/pkg/crc"
 	"github.com/coreos/etcd/wal/walpb"
 )
 
 type encoder struct {
-	bw  *bufio.Writer
+	mu sync.Mutex
+	bw *bufio.Writer
+
 	crc hash.Hash32
 }
 
@@ -37,6 +40,9 @@ func newEncoder(w io.Writer, prevCrc uint32) *encoder {
 }
 
 func (e *encoder) encode(rec *walpb.Record) error {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
 	e.crc.Write(rec.Data)
 	rec.Crc = e.crc.Sum32()
 	data, err := rec.Marshal()
@@ -51,6 +57,8 @@ func (e *encoder) encode(rec *walpb.Record) error {
 }
 
 func (e *encoder) flush() error {
+	e.mu.Lock()
+	defer e.mu.Unlock()
 	return e.bw.Flush()
 }
 
