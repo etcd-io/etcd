@@ -24,6 +24,8 @@ type Agent interface {
 	Stop() error
 	// Restart restarts the existing etcd the agent stopped.
 	Restart() (int, error)
+	// Cleanup stops the exiting etcd the agent started, then archives log and its data dir.
+	Cleanup() error
 	// Terminate stops the exiting etcd the agent started and removes its data dir.
 	Terminate() error
 	// Isoloate isolates the network of etcd
@@ -63,6 +65,10 @@ func (a *agent) Restart() (int, error) {
 		return -1, err
 	}
 	return pid, nil
+}
+
+func (a *agent) Cleanup() error {
+	return a.rpcClient.Call("Agent.RPCCleanup", struct{}{}, nil)
 }
 
 func (a *agent) Terminate() error {

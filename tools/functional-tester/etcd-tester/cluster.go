@@ -117,6 +117,15 @@ func (c *cluster) WaitHealth() error {
 	return err
 }
 
+func (c *cluster) Cleanup() error {
+	for _, a := range c.Agents {
+		if err := a.Cleanup(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (c *cluster) Terminate() {
 	for _, a := range c.Agents {
 		a.Terminate()

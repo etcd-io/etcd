@@ -56,6 +56,11 @@ func (a *Agent) RPCRestart(args struct{}, pid *int) error {
 	return nil
 }
 
+func (a *Agent) RPCCleanup(args struct{}, reply *struct{}) error {
+	log.Printf("rpc: cleanup etcd")
+	return a.cleanup()
+}
+
 func (a *Agent) RPCTerminate(args struct{}, reply *struct{}) error {
 	log.Printf("rpc: terminate etcd")
 	return a.terminate()

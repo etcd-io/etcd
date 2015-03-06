@@ -15,10 +15,12 @@
 package main
 
 import (
+	"fmt"
 	"net"
 	"os"
 	"os/exec"
 	"path"
+	"time"
 )
 
 type Agent struct {
@@ -70,13 +72,27 @@ func (a *Agent) restart() error {
 	return a.cmd.Start()
 }
 
+func (a *Agent) cleanup() error {
+	a.stop()
+	a.logfile.Close()
+	if err := archiveLogAndDataDir("etcd.log", a.dataDir()); err != nil {
+		return err
+	}
+	f, err := os.Create("etcd.log")
+	a.logfile = f
+	return err
+}
+
 // terminate stops the exiting etcd process the agent started
 // and removes the data dir.
 func (a *Agent) terminate() error {
-	a.cmd.Process.Kill()
-	args := a.cmd.Args
+	a.stop()
+	return os.RemoveAll(a.dataDir())
+}
 
+func (a *Agent) dataDir() string {
 	datadir := path.Join(a.cmd.Path, "*.etcd")
+	args := a.cmd.Args
 	// only parse the simple case like "-data-dir /var/lib/etcd"
 	for i, arg := range args {
 		if arg == "-data-dir" {
@@ -84,5 +100,16 @@ func (a *Agent) terminate() error {
 			break
 		}
 	}
-	return os.RemoveAll(datadir)
+	return datadir
+}
+
+func archiveLogAndDataDir(log string, datadir string) error {
+	dir := path.Join("failure_archive", fmt.Sprint(time.Now().Format(time.RFC3339)))
+	if err := os.MkdirAll(dir, 0700); err != nil {
+		return err
+	}
+	if err := os.Rename(log, path.Join(dir, log)); err != nil {
+		return err
+	}
+	return os.Rename(datadir, path.Join(dir, datadir))
 }
