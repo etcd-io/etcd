@@ -32,6 +32,7 @@ type cluster struct {
 
 	Size       int
 	Agents     []client.Agent
+	Stressers  []Stresser
 	Names      []string
 	ClientURLs []string
 }
@@ -98,8 +99,19 @@ func (c *cluster) Bootstrap() error {
 		}
 	}
 
+	stressers := make([]Stresser, len(clientURLs))
+	for i, u := range clientURLs {
+		s := &stresser{
+			Endpoint: u,
+			N:        200,
+		}
+		go s.Stress()
+		stressers[i] = s
+	}
+
 	c.Size = size
 	c.Agents = agents
+	c.Stressers = stressers
 	c.Names = names
 	c.ClientURLs = clientURLs
 	return nil
@@ -117,18 +129,34 @@ func (c *cluster) WaitHealth() error {
 	return err
 }
 
+func (c *cluster) Report() (success, failure int) {
+	for _, stress := range c.Stressers {
+		s, f := stress.Report()
+		success += s
+		failure += f
+	}
+	return
+}
+
 func (c *cluster) Cleanup() error {
+	var lasterr error
 	for _, a := range c.Agents {
 		if err := a.Cleanup(); err != nil {
-			return err
+			lasterr = err
 		}
 	}
-	return nil
+	for _, s := range c.Stressers {
+		s.Cancel()
+	}
+	return lasterr
 }
 
 func (c *cluster) Terminate() {
 	for _, a := range c.Agents {
 		a.Terminate()
+	}
+	for _, s := range c.Stressers {
+		s.Cancel()
 	}
 }
 

@@ -33,24 +33,15 @@ func main() {
 	}
 	defer c.Terminate()
 
-	stressers := make([]Stresser, len(c.ClientURLs))
-	for i, u := range c.ClientURLs {
-		s := &stresser{
-			Endpoint: u,
-			N:        200,
-		}
-		go s.Stress()
-		stressers[i] = s
-	}
-
 	t := &tester{
-		failures: []failure{newFailureKillAll(), newFailureKillMajority()},
-		cluster:  c,
-		limit:    *limit,
+		failures: []failure{
+			newFailureKillAll(),
+			newFailureKillMajority(),
+			newFailureKillOne(),
+			newFailureKillOneForLongTime(),
+		},
+		cluster: c,
+		limit:   *limit,
 	}
 	t.runLoop()
-
-	for _, s := range stressers {
-		s.Cancel()
-	}
 }

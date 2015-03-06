@@ -65,8 +65,9 @@ func (s *stresser) Stress() error {
 				s.mu.Lock()
 				if err != nil {
 					s.failure++
+				} else {
+					s.success++
 				}
-				s.success++
 				s.mu.Unlock()
 			}
 		}()
