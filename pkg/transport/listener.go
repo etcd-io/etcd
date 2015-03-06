@@ -31,7 +31,10 @@ func NewListener(addr string, scheme string, info TLSInfo) (net.Listener, error)
 		return nil, err
 	}
 
-	if !info.Empty() && scheme == "https" {
+	if scheme == "https" {
+		if info.Empty() {
+			return nil, fmt.Errorf("cannot listen on TLS for %s: KeyFile and CertFile are not presented", scheme+"://"+addr)
+		}
 		cfg, err := info.ServerConfig()
 		if err != nil {
 			return nil, err
