@@ -44,7 +44,7 @@ func main() {
 	}
 
 	t := &tester{
-		failures: []failure{newFailureBase(), newFailureKillAll(), newFailureKillMajority()},
+		failures: []failure{newFailureKillAll(), newFailureKillMajority()},
 		cluster:  c,
 		limit:    *limit,
 	}
