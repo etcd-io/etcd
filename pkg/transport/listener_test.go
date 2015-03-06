@@ -70,6 +70,13 @@ func TestNewListenerTLSInfo(t *testing.T) {
 	}
 }
 
+func TestNewListenerTLSEmptyInfo(t *testing.T) {
+	_, err := NewListener("127.0.0.1:0", "https", TLSInfo{})
+	if err == nil {
+		t.Errorf("err = nil, want not presented error")
+	}
+}
+
 func TestNewListenerTLSInfoNonexist(t *testing.T) {
 	tlsInfo := TLSInfo{CertFile: "@badname", KeyFile: "@badname"}
 	_, err := NewListener("127.0.0.1:0", "https", tlsInfo)
