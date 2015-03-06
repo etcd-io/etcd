@@ -24,7 +24,7 @@ type Agent interface {
 	Stop() error
 	// Restart restarts the existing etcd the agent stopped.
 	Restart() (int, error)
-	// Cleanup stops the exiting etcd the agent started and archived its data dir.
+	// Cleanup stops the exiting etcd the agent started, then archives log and its data dir.
 	Cleanup() error
 	// Terminate stops the exiting etcd the agent started and removes its data dir.
 	Terminate() error

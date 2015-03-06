@@ -104,8 +104,8 @@ func (a *Agent) dataDir() string {
 }
 
 func archiveLogAndDataDir(log string, datadir string) error {
-	dir := fmt.Sprint(time.Now().Format(time.RFC3339))
-	if err := os.Mkdir(dir, 0700); err != nil {
+	dir := path.Join("failure_archive", fmt.Sprint(time.Now().Format(time.RFC3339)))
+	if err := os.MkdirAll(dir, 0700); err != nil {
 		return err
 	}
 	if err := os.Rename(log, path.Join(dir, log)); err != nil {
