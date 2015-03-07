@@ -38,6 +38,13 @@ const (
 	ConnWriteTimeout = 5 * time.Second
 
 	recvBufSize = 4096
+	// maxPendingProposals holds the proposals during one leader election process.
+	// Generally one leader election takes at most 1 sec. It should have
+	// 0-2 election conflicts, and each one takes 0.5 sec.
+	// We assume the number of concurrent proposers is smaller than 4096.
+	// One client blocks on its proposal for at least 1 sec, so 4096 is enough
+	// to hold all proposals.
+	maxPendingProposals = 4096
 
 	streamApp   = "streamMsgApp"
 	streamMsg   = "streamMsg"
@@ -91,6 +98,7 @@ type peer struct {
 
 	sendc    chan raftpb.Message
 	recvc    chan raftpb.Message
+	propc    chan raftpb.Message
 	newURLsC chan types.URLs
 
 	// for testing
@@ -110,16 +118,34 @@ func startPeer(tr http.RoundTripper, urls types.URLs, local, to, cid types.ID, r
 		pipeline:     newPipeline(tr, picker, to, cid, fs, r, errorc),
 		sendc:        make(chan raftpb.Message),
 		recvc:        make(chan raftpb.Message, recvBufSize),
+		propc:        make(chan raftpb.Message, maxPendingProposals),
 		newURLsC:     make(chan types.URLs),
 		pausec:       make(chan struct{}),
 		resumec:      make(chan struct{}),
 		stopc:        make(chan struct{}),
 		done:         make(chan struct{}),
 	}
+
+	// Use go-routine for process of MsgProp because it is
+	// blocking when there is no leader.
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		for {
+			select {
+			case mm := <-p.propc:
+				if err := r.Process(ctx, mm); err != nil {
+					log.Printf("peer: process raft message error: %v", err)
+				}
+			case <-p.stopc:
+				return
+			}
+		}
+	}()
+
 	go func() {
 		var paused bool
-		msgAppReader := startStreamReader(tr, picker, streamTypeMsgApp, local, to, cid, p.recvc)
-		reader := startStreamReader(tr, picker, streamTypeMessage, local, to, cid, p.recvc)
+		msgAppReader := startStreamReader(tr, picker, streamTypeMsgApp, local, to, cid, p.recvc, p.propc)
+		reader := startStreamReader(tr, picker, streamTypeMessage, local, to, cid, p.recvc, p.propc)
 		for {
 			select {
 			case m := <-p.sendc:
@@ -147,6 +173,7 @@ func startPeer(tr http.RoundTripper, urls types.URLs, local, to, cid types.ID, r
 			case <-p.resumec:
 				paused = false
 			case <-p.stopc:
+				cancel()
 				p.msgAppWriter.stop()
 				p.writer.stop()
 				p.pipeline.stop()

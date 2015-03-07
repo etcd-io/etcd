@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/coreos/etcd/etcdserver/stats"
 	"github.com/coreos/etcd/pkg/testutil"
@@ -154,28 +155,41 @@ func TestStreamReaderDialResult(t *testing.T) {
 // TestStream tests that streamReader and streamWriter can build stream to
 // send messages between each other.
 func TestStream(t *testing.T) {
+	recvc := make(chan raftpb.Message)
+	propc := make(chan raftpb.Message)
+	msgapp := raftpb.Message{
+		Type:    raftpb.MsgApp,
+		From:    2,
+		To:      1,
+		Term:    1,
+		LogTerm: 1,
+		Index:   3,
+		Entries: []raftpb.Entry{{Term: 1, Index: 4}},
+	}
+
 	tests := []struct {
 		t    streamType
 		term uint64
 		m    raftpb.Message
+		wc   chan raftpb.Message
 	}{
 		{
 			streamTypeMessage,
 			0,
 			raftpb.Message{Type: raftpb.MsgProp, To: 2},
+			propc,
+		},
+		{
+			streamTypeMessage,
+			0,
+			msgapp,
+			recvc,
 		},
 		{
 			streamTypeMsgApp,
 			1,
-			raftpb.Message{
-				Type:    raftpb.MsgApp,
-				From:    2,
-				To:      1,
-				Term:    1,
-				LogTerm: 1,
-				Index:   3,
-				Entries: []raftpb.Entry{{Term: 1, Index: 4}},
-			},
+			msgapp,
+			recvc,
 		},
 	}
 	for i, tt := range tests {
@@ -187,16 +201,20 @@ func TestStream(t *testing.T) {
 		defer sw.stop()
 		h.sw = sw
 
-		recvc := make(chan raftpb.Message)
 		picker := mustNewURLPicker(t, []string{srv.URL})
-		sr := startStreamReader(&http.Transport{}, picker, tt.t, types.ID(1), types.ID(2), types.ID(1), recvc)
+		sr := startStreamReader(&http.Transport{}, picker, tt.t, types.ID(1), types.ID(2), types.ID(1), recvc, propc)
 		defer sr.stop()
 		if tt.t == streamTypeMsgApp {
 			sr.updateMsgAppTerm(tt.term)
 		}
 
 		sw.msgc <- tt.m
-		m := <-recvc
+		var m raftpb.Message
+		select {
+		case m = <-tt.wc:
+		case <-time.After(time.Second):
+			t.Errorf("#%d: failed to receive message from the channel", i)
+		}
 		if !reflect.DeepEqual(m, tt.m) {
 			t.Errorf("#%d: message = %+v, want %+v", i, m, tt.m)
 		}
