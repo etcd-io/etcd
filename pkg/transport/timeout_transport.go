@@ -36,6 +36,7 @@ func NewTimeoutTransport(info TLSInfo, dialtimeoutd, rdtimeoutd, wtimeoutd time.
 			Timeout:   dialtimeoutd,
 			KeepAlive: 30 * time.Second,
 		},
+		psk:        info.PSK,
 		rdtimeoutd: rdtimeoutd,
 		wtimeoutd:  wtimeoutd,
 	}).Dial

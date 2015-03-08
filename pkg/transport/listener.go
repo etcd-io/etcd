@@ -19,6 +19,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
+	"github.com/dchest/spipe"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -26,6 +27,18 @@ import (
 )
 
 func NewListener(addr string, scheme string, info TLSInfo) (net.Listener, error) {
+	if info.PSK != "" {
+		psk, err := ioutil.ReadFile(info.PSK)
+		if err != nil {
+			return nil, err
+		}
+		l, err := spipe.Listen(psk, "tcp", addr)
+		if err != nil {
+			fmt.Println(addr)
+			return nil, err
+		}
+		return l, err
+	}
 	l, err := net.Listen("tcp", addr)
 	if err != nil {
 		return nil, err
@@ -42,7 +55,6 @@ func NewListener(addr string, scheme string, info TLSInfo) (net.Listener, error)
 
 		l = tls.NewListener(l, cfg)
 	}
-
 	return l, nil
 }
 
@@ -69,6 +81,7 @@ type TLSInfo struct {
 	CertFile string
 	KeyFile  string
 	CAFile   string
+	PSK      string
 
 	// parseFunc exists to simplify testing. Typically, parseFunc
 	// should be left nil. In that case, tls.X509KeyPair will be used.
