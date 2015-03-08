@@ -304,7 +304,7 @@ func TestNodeStart(t *testing.T) {
 	wants := []Ready{
 		{
 			SoftState: &SoftState{Lead: 1, RaftState: StateLeader},
-			HardState: raftpb.HardState{Term: 2, Commit: 2},
+			HardState: raftpb.HardState{Term: 2, Commit: 2, Vote: 1},
 			Entries: []raftpb.Entry{
 				{Type: raftpb.EntryConfChange, Term: 1, Index: 1, Data: ccdata},
 				{Term: 2, Index: 2},
@@ -315,7 +315,7 @@ func TestNodeStart(t *testing.T) {
 			},
 		},
 		{
-			HardState:        raftpb.HardState{Term: 2, Commit: 3},
+			HardState:        raftpb.HardState{Term: 2, Commit: 3, Vote: 1},
 			Entries:          []raftpb.Entry{{Term: 2, Index: 3, Data: []byte("foo")}},
 			CommittedEntries: []raftpb.Entry{{Term: 2, Index: 3, Data: []byte("foo")}},
 		},

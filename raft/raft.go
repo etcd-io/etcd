@@ -358,9 +358,11 @@ func (r *raft) maybeCommit() bool {
 }
 
 func (r *raft) reset(term uint64) {
-	r.Term = term
+	if r.Term != term {
+		r.Term = term
+		r.Vote = None
+	}
 	r.lead = None
-	r.Vote = None
 	r.elapsed = 0
 	r.votes = make(map[uint64]bool)
 	for i := range r.prs {
