@@ -15,6 +15,8 @@
 package transport
 
 import (
+	"github.com/dchest/spipe"
+	"io/ioutil"
 	"net"
 	"time"
 )
@@ -22,10 +24,24 @@ import (
 type rwTimeoutDialer struct {
 	wtimeoutd  time.Duration
 	rdtimeoutd time.Duration
+	psk        string
 	net.Dialer
 }
 
 func (d *rwTimeoutDialer) Dial(network, address string) (net.Conn, error) {
+	if d.psk != "" {
+		psk, err := ioutil.ReadFile(d.psk)
+		if err != nil {
+			return nil, err
+		}
+		conn, err := spipe.Dial(psk, network, address)
+		tconn := &timeoutConn{
+			rdtimeoutd: d.rdtimeoutd,
+			wtimeoutd:  d.wtimeoutd,
+			Conn:       conn,
+		}
+		return tconn, err
+	}
 	conn, err := d.Dialer.Dial(network, address)
 	tconn := &timeoutConn{
 		rdtimeoutd: d.rdtimeoutd,
