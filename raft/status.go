@@ -16,7 +16,6 @@ package raft
 
 import (
 	"fmt"
-	"log"
 
 	pb "github.com/coreos/etcd/raft/raftpb"
 )
@@ -70,7 +69,7 @@ func (s Status) MarshalJSON() ([]byte, error) {
 func (s Status) String() string {
 	b, err := s.MarshalJSON()
 	if err != nil {
-		log.Panicf("unexpected error: %v", err)
+		raftLogger.Panicf("unexpected error: %v", err)
 	}
 	return string(b)
 }

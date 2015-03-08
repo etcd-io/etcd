@@ -28,12 +28,10 @@ package raft
 
 import (
 	"fmt"
-	"io/ioutil"
-	"log"
-	"os"
+	"testing"
+
 	"reflect"
 	"sort"
-	"testing"
 
 	pb "github.com/coreos/etcd/raft/raftpb"
 )
@@ -294,13 +292,13 @@ func TestCandidateFallback(t *testing.T) {
 }
 
 func TestFollowerElectionTimeoutRandomized(t *testing.T) {
-	log.SetOutput(ioutil.Discard)
-	defer log.SetOutput(os.Stderr)
+	SetLogger(discardLogger)
+	defer SetLogger(defaultLogger)
 	testNonleaderElectionTimeoutRandomized(t, StateFollower)
 }
 func TestCandidateElectionTimeoutRandomized(t *testing.T) {
-	log.SetOutput(ioutil.Discard)
-	defer log.SetOutput(os.Stderr)
+	SetLogger(discardLogger)
+	defer SetLogger(defaultLogger)
 	testNonleaderElectionTimeoutRandomized(t, StateCandidate)
 }
 
@@ -335,13 +333,13 @@ func testNonleaderElectionTimeoutRandomized(t *testing.T, state StateType) {
 }
 
 func TestFollowersElectioinTimeoutNonconflict(t *testing.T) {
-	log.SetOutput(ioutil.Discard)
-	defer log.SetOutput(os.Stderr)
+	SetLogger(discardLogger)
+	defer SetLogger(defaultLogger)
 	testNonleadersElectionTimeoutNonconflict(t, StateFollower)
 }
 func TestCandidatesElectionTimeoutNonconflict(t *testing.T) {
-	log.SetOutput(ioutil.Discard)
-	defer log.SetOutput(os.Stderr)
+	SetLogger(discardLogger)
+	defer SetLogger(defaultLogger)
 	testNonleadersElectionTimeoutNonconflict(t, StateCandidate)
 }
 

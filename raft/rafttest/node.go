@@ -59,7 +59,7 @@ func (n *node) start() {
 				n.Step(context.TODO(), m)
 			case <-n.stopc:
 				n.Stop()
-				log.Printf("raft.%d: stop", n.id)
+				raftLogger.Infof("raft.%d: stop", n.id)
 				n.Node = nil
 				close(n.stopc)
 				return

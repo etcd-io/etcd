@@ -16,7 +16,6 @@ package raft
 
 import (
 	"errors"
-	"log"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	pb "github.com/coreos/etcd/raft/raftpb"
@@ -263,13 +262,13 @@ func (n *node) run(r *raft) {
 		if lead != r.lead {
 			if r.hasLeader() {
 				if lead == None {
-					log.Printf("raft.node: %x elected leader %x at term %d", r.id, r.lead, r.Term)
+					raftLogger.Infof("raft.node: %x elected leader %x at term %d", r.id, r.lead, r.Term)
 				} else {
-					log.Printf("raft.node: %x changed leader from %x to %x at term %d", r.id, lead, r.lead, r.Term)
+					raftLogger.Infof("raft.node: %x changed leader from %x to %x at term %d", r.id, lead, r.lead, r.Term)
 				}
 				propc = n.propc
 			} else {
-				log.Printf("raft.node: %x lost leader %x at term %d", r.id, lead, r.Term)
+				raftLogger.Infof("raft.node: %x lost leader %x at term %d", r.id, lead, r.Term)
 				propc = nil
 			}
 			lead = r.lead
