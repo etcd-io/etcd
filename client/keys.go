@@ -103,10 +103,10 @@ type KeysAPI interface {
 	// conditions in an DeleteOptions object.
 	Delete(ctx context.Context, key string, opts *DeleteOptions) (*Response, error)
 
-	// Used to Create a Node.  Same as CreateWithOptions(ctx, key, value, nil)
+	// Create is an alias for CreateWithOptions(ctx, key, value, nil).
 	Create(ctx context.Context, key, value string) (*Response, error)
 
-	// Used to Create a Node with additional Options
+	// CreateWithOptions is used to create a Node.
 	CreateWithOptions(ctx context.Context, key, value string, opts *CreateOptions) (*Response, error)
 
 	// Update is an alias for Set w/ PrevExist=true
