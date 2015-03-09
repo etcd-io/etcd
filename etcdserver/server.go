@@ -25,6 +25,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/juju/loggo" // owner can make/remove files inside the directory
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/discovery"
 	"github.com/coreos/etcd/etcdserver/etcdhttp/httptypes"
@@ -45,7 +46,6 @@ import (
 )
 
 const (
-	// owner can make/remove files inside the directory
 	privateDirMode = 0700
 
 	defaultSyncTimeout = time.Second
@@ -60,6 +60,8 @@ const (
 )
 
 var (
+	logger = loggo.GetLogger("etcd.etcdserver")
+
 	storeMembersPrefix        = path.Join(StoreAdminPrefix, "members")
 	storeRemovedMembersPrefix = path.Join(StoreAdminPrefix, "removed_members")
 
