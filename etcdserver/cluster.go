@@ -19,7 +19,6 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/url"
 	"path"
 	"sort"
@@ -28,6 +27,7 @@ import (
 
 	"github.com/coreos/etcd/pkg/flags"
 	"github.com/coreos/etcd/pkg/netutil"
+	"github.com/coreos/etcd/pkg/panicutil"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/store"
@@ -154,7 +154,7 @@ func (c *Cluster) MemberByName(name string) *Member {
 	for _, m := range c.members {
 		if m.Name == name {
 			if memb != nil {
-				log.Panicf("two members with the given name %q exist", name)
+				panicutil.Panicf("two members with the given name %q exist", name)
 			}
 			memb = m
 		}
@@ -263,7 +263,7 @@ func (c *Cluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
 		}
 		m := new(Member)
 		if err := json.Unmarshal(cc.Context, m); err != nil {
-			log.Panicf("unmarshal member should never fail: %v", err)
+			panicutil.Panicf("unmarshal member should never fail: %v", err)
 		}
 		for _, u := range m.PeerURLs {
 			if urls[u] {
@@ -289,7 +289,7 @@ func (c *Cluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
 		}
 		m := new(Member)
 		if err := json.Unmarshal(cc.Context, m); err != nil {
-			log.Panicf("unmarshal member should never fail: %v", err)
+			panicutil.Panicf("unmarshal member should never fail: %v", err)
 		}
 		for _, u := range m.PeerURLs {
 			if urls[u] {
@@ -297,7 +297,7 @@ func (c *Cluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
 			}
 		}
 	default:
-		log.Panicf("ConfChange type should be either AddNode, RemoveNode or UpdateNode")
+		panicutil.Panicf("ConfChange type should be either AddNode, RemoveNode or UpdateNode")
 	}
 	return nil
 }
@@ -310,11 +310,11 @@ func (c *Cluster) AddMember(m *Member) {
 	defer c.Unlock()
 	b, err := json.Marshal(m.RaftAttributes)
 	if err != nil {
-		log.Panicf("marshal raftAttributes should never fail: %v", err)
+		panicutil.Panicf("marshal raftAttributes should never fail: %v", err)
 	}
 	p := path.Join(memberStoreKey(m.ID), raftAttributesSuffix)
 	if _, err := c.store.Create(p, false, string(b), false, store.Permanent); err != nil {
-		log.Panicf("create raftAttributes should never fail: %v", err)
+		panicutil.Panicf("create raftAttributes should never fail: %v", err)
 	}
 	c.members[m.ID] = m
 }
@@ -325,11 +325,11 @@ func (c *Cluster) RemoveMember(id types.ID) {
 	c.Lock()
 	defer c.Unlock()
 	if _, err := c.store.Delete(memberStoreKey(id), true, true); err != nil {
-		log.Panicf("delete member should never fail: %v", err)
+		panicutil.Panicf("delete member should never fail: %v", err)
 	}
 	delete(c.members, id)
 	if _, err := c.store.Create(removedMemberStoreKey(id), false, "", false, store.Permanent); err != nil {
-		log.Panicf("create removedMember should never fail: %v", err)
+		panicutil.Panicf("create removedMember should never fail: %v", err)
 	}
 	c.removed[id] = true
 }
@@ -346,11 +346,11 @@ func (c *Cluster) UpdateRaftAttributes(id types.ID, raftAttr RaftAttributes) {
 	defer c.Unlock()
 	b, err := json.Marshal(raftAttr)
 	if err != nil {
-		log.Panicf("marshal raftAttributes should never fail: %v", err)
+		panicutil.Panicf("marshal raftAttributes should never fail: %v", err)
 	}
 	p := path.Join(memberStoreKey(id), raftAttributesSuffix)
 	if _, err := c.store.Update(p, string(b), store.Permanent); err != nil {
-		log.Panicf("update raftAttributes should never fail: %v", err)
+		panicutil.Panicf("update raftAttributes should never fail: %v", err)
 	}
 	c.members[id].RaftAttributes = raftAttr
 }
@@ -377,12 +377,12 @@ func membersFromStore(st store.Store) (map[types.ID]*Member, map[types.ID]bool) 
 		if isKeyNotFound(err) {
 			return members, removed
 		}
-		log.Panicf("get storeMembers should never fail: %v", err)
+		panicutil.Panicf("get storeMembers should never fail: %v", err)
 	}
 	for _, n := range e.Node.Nodes {
 		m, err := nodeToMember(n)
 		if err != nil {
-			log.Panicf("nodeToMember should never fail: %v", err)
+			panicutil.Panicf("nodeToMember should never fail: %v", err)
 		}
 		members[m.ID] = m
 	}
@@ -392,7 +392,7 @@ func membersFromStore(st store.Store) (map[types.ID]*Member, map[types.ID]bool) 
 		if isKeyNotFound(err) {
 			return members, removed
 		}
-		log.Panicf("get storeRemovedMembers should never fail: %v", err)
+		panicutil.Panicf("get storeRemovedMembers should never fail: %v", err)
 	}
 	for _, n := range e.Node.Nodes {
 		removed[mustParseMemberIDFromKey(n.Key)] = true

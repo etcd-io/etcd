@@ -16,8 +16,8 @@ package httptypes
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
+	"github.com/coreos/etcd/pkg/panicutil"
 )
 
 type HTTPError struct {
@@ -36,7 +36,7 @@ func (e HTTPError) WriteTo(w http.ResponseWriter) {
 	w.WriteHeader(e.Code)
 	b, err := json.Marshal(e)
 	if err != nil {
-		log.Panicf("marshal HTTPError should never fail: %v", err)
+		panicutil.Panicf("marshal HTTPError should never fail: %v", err)
 	}
 	w.Write(b)
 }

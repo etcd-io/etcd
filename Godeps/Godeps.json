@@ -33,6 +33,10 @@
 			"Rev": "72f9bd7c4e0c2a40055ab3d0f09654f730cce982"
 		},
 		{
+			"ImportPath": "github.com/juju/loggo",
+			"Rev": "4c7cbce140ca070eeb59a28f4bf9507e511711f9"
+		},
+		{
 			"ImportPath": "github.com/matttproud/golang_protobuf_extensions/ext",
 			"Rev": "7a864a042e844af638df17ebbabf8183dace556a"
 		},

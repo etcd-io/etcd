@@ -15,7 +15,6 @@
 package etcdserver
 
 import (
-	"log"
 	"os"
 	"path"
 
@@ -73,11 +72,13 @@ func (st *storage) SaveSnap(snap raftpb.Snapshot) error {
 func readWAL(waldir string, snap walpb.Snapshot) (w *wal.WAL, id, cid types.ID, st raftpb.HardState, ents []raftpb.Entry) {
 	var err error
 	if w, err = wal.Open(waldir, snap); err != nil {
-		log.Fatalf("etcdserver: open wal error: %v", err)
+		logger.Criticalf("etcdserver: open wal error: %v", err)
+		os.Exit(1)
 	}
 	var wmetadata []byte
 	if wmetadata, st, ents, err = w.ReadAll(); err != nil {
-		log.Fatalf("etcdserver: read wal error: %v", err)
+		logger.Criticalf("etcdserver: read wal error: %v", err)
+		os.Exit(1)
 	}
 	var metadata pb.Metadata
 	pbutil.MustUnmarshal(&metadata, wmetadata)
@@ -91,11 +92,11 @@ func readWAL(waldir string, snap walpb.Snapshot) (w *wal.WAL, id, cid types.ID, 
 func upgradeWAL(baseDataDir string, name string, ver wal.WalVersion) error {
 	switch ver {
 	case wal.WALv0_4:
-		log.Print("etcdserver: converting v0.4 log to v2.0")
+		logger.Infof("etcdserver: converting v0.4 log to v2.0")
 		err := migrate.Migrate4To2(baseDataDir, name)
 		if err != nil {
-			log.Fatalf("etcdserver: failed migrating data-dir: %v", err)
-			return err
+			logger.Criticalf("etcdserver: failed migrating data-dir: %v", err)
+			os.Exit(1)
 		}
 		fallthrough
 	case wal.WALv2_0:
@@ -107,7 +108,7 @@ func upgradeWAL(baseDataDir string, name string, ver wal.WalVersion) error {
 	case wal.WALv2_0_1:
 		fallthrough
 	default:
-		log.Printf("datadir is valid for the 2.0.1 format")
+		logger.Infof("datadir is valid for the 2.0.1 format")
 	}
 	return nil
 }
