@@ -199,6 +199,7 @@ type streamReader struct {
 	from, to types.ID
 	cid      types.ID
 	recvc    chan<- raftpb.Message
+	propc    chan<- raftpb.Message
 
 	mu         sync.Mutex
 	msgAppTerm uint64
@@ -208,7 +209,7 @@ type streamReader struct {
 	done       chan struct{}
 }
 
-func startStreamReader(tr http.RoundTripper, picker *urlPicker, t streamType, from, to, cid types.ID, recvc chan<- raftpb.Message) *streamReader {
+func startStreamReader(tr http.RoundTripper, picker *urlPicker, t streamType, from, to, cid types.ID, recvc chan<- raftpb.Message, propc chan<- raftpb.Message) *streamReader {
 	r := &streamReader{
 		tr:     tr,
 		picker: picker,
@@ -217,6 +218,7 @@ func startStreamReader(tr http.RoundTripper, picker *urlPicker, t streamType, fr
 		to:     to,
 		cid:    cid,
 		recvc:  recvc,
+		propc:  propc,
 		stopc:  make(chan struct{}),
 		done:   make(chan struct{}),
 	}
@@ -271,8 +273,12 @@ func (cr *streamReader) decodeLoop(rc io.ReadCloser) error {
 		case isLinkHeartbeatMessage(m):
 			// do nothing for linkHeartbeatMessage
 		default:
+			recvc := cr.recvc
+			if m.Type == raftpb.MsgProp {
+				recvc = cr.propc
+			}
 			select {
-			case cr.recvc <- m:
+			case recvc <- m:
 			default:
 				log.Printf("rafthttp: dropping %s from %x because receive buffer is blocked",
 					m.Type, m.From)
