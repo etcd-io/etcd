@@ -20,7 +20,6 @@ import (
 	"expvar"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/url"
 	"path"
@@ -126,7 +125,7 @@ func (h *keysHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case resp.Event != nil:
 		if err := writeKeyEvent(w, resp.Event, h.timer); err != nil {
 			// Should never be reached
-			log.Printf("error writing event: %v", err)
+			logger.Errorf("error writing event: %v", err)
 		}
 	case resp.Watcher != nil:
 		ctx, cancel := context.WithTimeout(context.Background(), defaultWatchTimeout)
@@ -171,7 +170,7 @@ func (h *membersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			mc := newMemberCollection(h.clusterInfo.Members())
 			w.Header().Set("Content-Type", "application/json")
 			if err := json.NewEncoder(w).Encode(mc); err != nil {
-				log.Printf("etcdhttp: %v", err)
+				logger.Errorf("%v", err)
 			}
 		case "leader":
 			id := h.server.Leader()
@@ -182,7 +181,7 @@ func (h *membersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			m := newMember(h.clusterInfo.Member(id))
 			w.Header().Set("Content-Type", "application/json")
 			if err := json.NewEncoder(w).Encode(m); err != nil {
-				log.Printf("etcdhttp: %v", err)
+				logger.Errorf("%v", err)
 			}
 		default:
 			writeError(w, httptypes.NewHTTPError(http.StatusNotFound, "Not found"))
@@ -200,7 +199,7 @@ func (h *membersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			writeError(w, httptypes.NewHTTPError(http.StatusConflict, err.Error()))
 			return
 		case err != nil:
-			log.Printf("etcdhttp: error adding node %s: %v", m.ID, err)
+			logger.Errorf("error adding node %s: %v", m.ID, err)
 			writeError(w, err)
 			return
 		}
@@ -208,7 +207,7 @@ func (h *membersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
 		if err := json.NewEncoder(w).Encode(res); err != nil {
-			log.Printf("etcdhttp: %v", err)
+			logger.Errorf("%v", err)
 		}
 	case "DELETE":
 		id, ok := getID(r.URL.Path, w)
@@ -222,7 +221,7 @@ func (h *membersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		case err == etcdserver.ErrIDNotFound:
 			writeError(w, httptypes.NewHTTPError(http.StatusNotFound, fmt.Sprintf("No such member: %s", id)))
 		case err != nil:
-			log.Printf("etcdhttp: error removing node %s: %v", id, err)
+			logger.Errorf("error removing node %s: %v", id, err)
 			writeError(w, err)
 		default:
 			w.WriteHeader(http.StatusNoContent)
@@ -247,7 +246,7 @@ func (h *membersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		case err == etcdserver.ErrIDNotFound:
 			writeError(w, httptypes.NewHTTPError(http.StatusNotFound, fmt.Sprintf("No such member: %s", id)))
 		case err != nil:
-			log.Printf("etcdhttp: error updating node %s: %v", m.ID, err)
+			logger.Errorf("error updating node %s: %v", m.ID, err)
 			writeError(w, err)
 		default:
 			w.WriteHeader(http.StatusNoContent)
@@ -539,7 +538,7 @@ func handleKeyWatch(ctx context.Context, w http.ResponseWriter, wa store.Watcher
 			ev = trimEventPrefix(ev, etcdserver.StoreKeysPrefix)
 			if err := json.NewEncoder(w).Encode(ev); err != nil {
 				// Should never be reached
-				log.Printf("error writing event: %v\n", err)
+				logger.Errorf("error writing event: %v\n", err)
 				return
 			}
 			if !stream {

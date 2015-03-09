@@ -17,9 +17,8 @@ package etcdserver
 import (
 	"errors"
 
-	etcdErr "github.com/coreos/etcd/error"
-
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
+	etcdErr "github.com/coreos/etcd/error"
 )
 
 var (

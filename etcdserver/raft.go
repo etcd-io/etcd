@@ -17,12 +17,12 @@ package etcdserver
 import (
 	"encoding/json"
 	"expvar"
-	"log"
 	"os"
 	"sort"
 	"time"
 
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"github.com/coreos/etcd/pkg/panicutil"
 	"github.com/coreos/etcd/pkg/pbutil"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft"
@@ -102,21 +102,23 @@ func startNode(cfg *ServerConfig, ids []types.ID) (id types.ID, n raft.Node, s *
 		},
 	)
 	if err := os.MkdirAll(cfg.SnapDir(), privateDirMode); err != nil {
-		log.Fatalf("etcdserver create snapshot directory error: %v", err)
+		logger.Criticalf("create snapshot directory error: %v", err)
+		os.Exit(1)
 	}
 	if w, err = wal.Create(cfg.WALDir(), metadata); err != nil {
-		log.Fatalf("etcdserver: create wal error: %v", err)
+		logger.Criticalf("create wal error: %v", err)
+		os.Exit(1)
 	}
 	peers := make([]raft.Peer, len(ids))
 	for i, id := range ids {
 		ctx, err := json.Marshal((*cfg.Cluster).Member(id))
 		if err != nil {
-			log.Panicf("marshal member should never fail: %v", err)
+			panicutil.Panicf("marshal member should never fail: %v", err)
 		}
 		peers[i] = raft.Peer{ID: uint64(id), Context: ctx}
 	}
 	id = member.ID
-	log.Printf("etcdserver: start member %s in cluster %s", id, cfg.Cluster.ID())
+	logger.Infof("start member %s in cluster %s", id, cfg.Cluster.ID())
 	s = raft.NewMemoryStorage()
 	n = raft.StartNode(uint64(id), peers, cfg.ElectionTicks, 1, s)
 	raftStatus = n.Status
@@ -131,7 +133,7 @@ func restartNode(cfg *ServerConfig, snapshot *raftpb.Snapshot) (types.ID, raft.N
 	w, id, cid, st, ents := readWAL(cfg.WALDir(), walsnap)
 	cfg.Cluster.SetID(cid)
 
-	log.Printf("etcdserver: restart member %s in cluster %s at commit index %d", id, cfg.Cluster.ID(), st.Commit)
+	logger.Infof("restart member %s in cluster %s at commit index %d", id, cfg.Cluster.ID(), st.Commit)
 	s := raft.NewMemoryStorage()
 	if snapshot != nil {
 		s.ApplySnapshot(*snapshot)
@@ -154,7 +156,7 @@ func restartAsStandaloneNode(cfg *ServerConfig, snapshot *raftpb.Snapshot) (type
 	// discard the previously uncommitted entries
 	for i, ent := range ents {
 		if ent.Index > st.Commit {
-			log.Printf("etcdserver: discarding %d uncommitted WAL entries ", len(ents)-i)
+			logger.Infof("discarding %d uncommitted WAL entries ", len(ents)-i)
 			ents = ents[:i]
 			break
 		}
@@ -167,13 +169,14 @@ func restartAsStandaloneNode(cfg *ServerConfig, snapshot *raftpb.Snapshot) (type
 	// force commit newly appended entries
 	err := w.Save(raftpb.HardState{}, toAppEnts)
 	if err != nil {
-		log.Fatalf("etcdserver: %v", err)
+		logger.Criticalf("%v", err)
+		os.Exit(1)
 	}
 	if len(ents) != 0 {
 		st.Commit = ents[len(ents)-1].Index
 	}
 
-	log.Printf("etcdserver: forcing restart of member %s in cluster %s at commit index %d", id, cfg.Cluster.ID(), st.Commit)
+	logger.Infof("forcing restart of member %s in cluster %s at commit index %d", id, cfg.Cluster.ID(), st.Commit)
 	s := raft.NewMemoryStorage()
 	if snapshot != nil {
 		s.ApplySnapshot(*snapshot)
@@ -209,7 +212,7 @@ func getIDs(snap *raftpb.Snapshot, ents []raftpb.Entry) []uint64 {
 		case raftpb.ConfChangeRemoveNode:
 			delete(ids, cc.NodeID)
 		default:
-			log.Panicf("ConfChange Type should be either ConfChangeAddNode or ConfChangeRemoveNode!")
+			panicutil.Panicf("ConfChange Type should be either ConfChangeAddNode or ConfChangeRemoveNode!")
 		}
 	}
 	sids := make(types.Uint64Slice, 0)
@@ -254,7 +257,7 @@ func createConfigChangeEnts(ids []uint64, self uint64, term, index uint64) []raf
 		}
 		ctx, err := json.Marshal(m)
 		if err != nil {
-			log.Panicf("marshal member should never fail: %v", err)
+			panicutil.Panicf("marshal member should never fail: %v", err)
 		}
 		cc := &raftpb.ConfChange{
 			Type:    raftpb.ConfChangeAddNode,

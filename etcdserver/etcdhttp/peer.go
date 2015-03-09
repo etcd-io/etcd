@@ -16,7 +16,6 @@ package etcdhttp
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
 	"strconv"
 
@@ -62,6 +61,6 @@ func (h *peerMembersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ms := h.clusterInfo.Members()
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(ms); err != nil {
-		log.Printf("etcdhttp: %v", err)
+		logger.Errorf("etcdhttp: %v", err)
 	}
 }

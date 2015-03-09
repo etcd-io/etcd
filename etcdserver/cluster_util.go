@@ -18,7 +18,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"sort"
 	"strconv"
@@ -64,28 +63,28 @@ func getClusterFromRemotePeers(urls []string, logerr bool, tr *http.Transport) (
 		resp, err := cc.Get(u + "/members")
 		if err != nil {
 			if logerr {
-				log.Printf("etcdserver: could not get cluster response from %s: %v", u, err)
+				logger.Errorf("could not get cluster response from %s: %v", u, err)
 			}
 			continue
 		}
 		b, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
 			if logerr {
-				log.Printf("etcdserver: could not read the body of cluster response: %v", err)
+				logger.Errorf("could not read the body of cluster response: %v", err)
 			}
 			continue
 		}
 		var membs []*Member
 		if err := json.Unmarshal(b, &membs); err != nil {
 			if logerr {
-				log.Printf("etcdserver: could not unmarshal cluster response: %v", err)
+				logger.Errorf("could not unmarshal cluster response: %v", err)
 			}
 			continue
 		}
 		id, err := types.IDFromString(resp.Header.Get("X-Etcd-Cluster-ID"))
 		if err != nil {
 			if logerr {
-				log.Printf("etcdserver: could not parse the cluster ID from cluster res: %v", err)
+				logger.Errorf("could not parse the cluster ID from cluster res: %v", err)
 			}
 			continue
 		}
@@ -96,7 +95,7 @@ func getClusterFromRemotePeers(urls []string, logerr bool, tr *http.Transport) (
 			index, err = strconv.ParseUint(indexStr, 10, 64)
 			if err != nil {
 				if logerr {
-					log.Printf("etcdserver: could not parse raft index: %v", err)
+					logger.Errorf("could not parse raft index: %v", err)
 				}
 				continue
 			}
@@ -105,7 +104,7 @@ func getClusterFromRemotePeers(urls []string, logerr bool, tr *http.Transport) (
 		cl.UpdateIndex(index)
 		return cl, nil
 	}
-	return nil, fmt.Errorf("etcdserver: could not retrieve cluster information from the given urls")
+	return nil, fmt.Errorf("could not retrieve cluster information from the given urls")
 }
 
 // getRemotePeerURLs returns peer urls of remote members in the cluster. The
