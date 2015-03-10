@@ -663,6 +663,13 @@ func stepFollower(r *raft, m pb.Message) {
 }
 
 func (r *raft) handleAppendEntries(m pb.Message) {
+	// Ignore the out-of-date append message
+	// It is safe since the leader has sent the commit index to this raft, which is min(leader.Commit, pr[raft.id].Match).
+	// Assume leader updated pr[raft.id] to commit index at t0. All message after t0 should have a m.Index that is greater
+	// than commit index. If m.Index is smaller than r.Commit, then m is sent before t0.
+	if m.Index < r.Commit {
+		return
+	}
 	if mlastIndex, ok := r.raftLog.maybeAppend(m.Index, m.LogTerm, m.Commit, m.Entries...); ok {
 		r.send(pb.Message{To: m.From, Type: pb.MsgAppResp, Index: mlastIndex})
 	} else {

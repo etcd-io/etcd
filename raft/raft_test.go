@@ -779,6 +779,29 @@ func TestHandleMsgApp(t *testing.T) {
 	}
 }
 
+// TestHandleMsgAppIgnore ensures: If message.Index < commitIndex, ignore the message.
+func TestHandleMsgAppIgnore(t *testing.T) {
+	tests := []pb.Message{
+		{Type: pb.MsgApp, Term: 2, LogTerm: 3, Index: 0, Commit: 1},
+		{Type: pb.MsgApp, Term: 2, LogTerm: 3, Index: 1, Commit: 1},
+	}
+
+	for i, tt := range tests {
+		storage := NewMemoryStorage()
+		storage.Append([]pb.Entry{{Index: 1, Term: 1}, {Index: 2, Term: 2}, {Index: 3, Term: 3}})
+		sm := newRaft(1, []uint64{1}, 10, 1, storage, 0)
+		sm.raftLog.commitTo(2)
+		sm.Commit = 2
+		sm.becomeFollower(2, None)
+
+		sm.handleAppendEntries(tt)
+		m := sm.readMessages()
+		if len(m) != 0 {
+			t.Errorf("#%d: msg = %d, want ignore", i, len(m))
+		}
+	}
+}
+
 // TestHandleHeartbeat ensures that the follower commits to the commit in the message.
 func TestHandleHeartbeat(t *testing.T) {
 	commit := uint64(2)
