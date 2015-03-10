@@ -330,27 +330,34 @@ func (w *WAL) sync() error {
 	return err
 }
 
-// ReleaseLockTo releases the locks w is holding, which
-// have index smaller or equal to the given index.
+// ReleaseLockTo releases the locks, which has smaller index than the given index
+// except the largest one among them.
+// For example, if WAL is holding lock 1,2,3,4,5,6, ReleaseLockTo(4) will release
+// lock 1,2 but keep 3. ReleaseLockTo(5) will release 1,2,3 but keep 4.
 func (w *WAL) ReleaseLockTo(index uint64) error {
-	for _, l := range w.locks {
-		_, i, err := parseWalName(path.Base(l.Name()))
+	var smaller int
+
+	for i, l := range w.locks {
+		_, lockIndex, err := parseWalName(path.Base(l.Name()))
 		if err != nil {
 			return err
 		}
-		if i > index {
-			return nil
+		if lockIndex >= index {
+			smaller = i - 1
+			break
 		}
-		err = l.Unlock()
-		if err != nil {
-			return err
-		}
-		err = l.Destroy()
-		if err != nil {
-			return err
-		}
-		w.locks = w.locks[1:]
 	}
+
+	if smaller <= 0 {
+		return nil
+	}
+
+	for i := 0; i < smaller; i++ {
+		w.locks[i].Unlock()
+		w.locks[i].Destroy()
+	}
+	w.locks = w.locks[smaller:]
+
 	return nil
 }
 
