@@ -435,6 +435,7 @@ func TestOpenNotInUse(t *testing.T) {
 	unlockIndex := uint64(5)
 	w.ReleaseLockTo(unlockIndex)
 
+	// 1,2,3 are avaliable.
 	w2, err := OpenNotInUse(p, walpb.Snapshot{})
 	defer w2.Close()
 	if err != nil {
@@ -444,8 +445,8 @@ func TestOpenNotInUse(t *testing.T) {
 	if err != nil {
 		t.Fatalf("err = %v, want nil", err)
 	}
-	if g := ents[len(ents)-1].Index; g != unlockIndex {
-		t.Errorf("last index read = %d, want %d", g, unlockIndex)
+	if g := ents[len(ents)-1].Index; g != unlockIndex-2 {
+		t.Errorf("last index read = %d, want %d", g, unlockIndex-2)
 	}
 }
 
@@ -460,5 +461,47 @@ func TestSaveEmpty(t *testing.T) {
 	}
 	if len(buf.Bytes()) != 0 {
 		t.Errorf("buf.Bytes = %d, want 0", len(buf.Bytes()))
+	}
+}
+
+func TestReleaseLockTo(t *testing.T) {
+	p, err := ioutil.TempDir(os.TempDir(), "waltest")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(p)
+	// create WAL
+	w, err := Create(p, nil)
+	defer w.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	// make 10 seperate files
+	for i := 0; i < 10; i++ {
+		es := []raftpb.Entry{{Index: uint64(i)}}
+		if err = w.Save(raftpb.HardState{}, es); err != nil {
+			t.Fatal(err)
+		}
+		if err = w.cut(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// release the lock to 5
+	unlockIndex := uint64(5)
+	w.ReleaseLockTo(unlockIndex)
+
+	// expected remaining are 4,5,6,7,8,9,10
+	if len(w.locks) != 7 {
+		t.Errorf("len(w.locks) = %d, want %d", len(w.locks), 7)
+	}
+	for i, l := range w.locks {
+		_, lockIndex, err := parseWalName(path.Base(l.Name()))
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if lockIndex != uint64(i+4) {
+			t.Errorf("#%d: lockindex = %d, want %d", i, lockIndex, uint64(i+4))
+		}
 	}
 }
