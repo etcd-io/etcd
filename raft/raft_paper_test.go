@@ -605,12 +605,13 @@ func TestFollowerCheckMsgApp(t *testing.T) {
 		index       uint64
 		wreject     bool
 		wrejectHint uint64
+		wignored    bool
 	}{
-		{ents[0].Term, ents[0].Index, false, 0},
-		{ents[0].Term, ents[0].Index + 1, true, 2},
-		{ents[0].Term + 1, ents[0].Index, true, 2},
-		{ents[1].Term, ents[1].Index, false, 0},
-		{3, 3, true, 2},
+		{ents[0].Term, ents[0].Index, false, 0, true}, // out-of-date message should be ignored
+		{ents[0].Term, ents[0].Index + 1, true, 2, false},
+		{ents[1].Term + 1, ents[1].Index, true, 2, false},
+		{ents[1].Term, ents[1].Index, false, 0, false},
+		{3, 3, true, 2, false},
 	}
 	for i, tt := range tests {
 		storage := NewMemoryStorage()
@@ -622,6 +623,13 @@ func TestFollowerCheckMsgApp(t *testing.T) {
 		r.Step(pb.Message{From: 2, To: 1, Type: pb.MsgApp, Term: 2, LogTerm: tt.term, Index: tt.index})
 
 		msgs := r.readMessages()
+		if tt.wignored {
+			if len(msgs) != 0 {
+				t.Errorf("#%d: len(msgs) = %d, want ignore", i, len(msgs))
+			}
+			continue
+		}
+
 		wmsgs := []pb.Message{
 			{From: 1, To: 2, Type: pb.MsgAppResp, Term: 2, Index: tt.index, Reject: tt.wreject, RejectHint: tt.wrejectHint},
 		}
