@@ -16,7 +16,6 @@ package flags
 
 import (
 	"errors"
-	"fmt"
 	"net"
 	"strconv"
 	"strings"
@@ -32,26 +31,26 @@ type IPAddressPort struct {
 func (a *IPAddressPort) Set(arg string) error {
 	arg = strings.TrimSpace(arg)
 
-	parts := strings.SplitN(arg, ":", 2)
-	if len(parts) != 2 {
-		return errors.New("bad format in address specification")
+	host, portStr, err := net.SplitHostPort(arg)
+	if err != nil {
+		return err
 	}
 
-	if net.ParseIP(parts[0]) == nil {
+	if net.ParseIP(host) == nil {
 		return errors.New("bad IP in address specification")
 	}
 
-	port, err := strconv.Atoi(parts[1])
+	port, err := strconv.Atoi(portStr)
 	if err != nil {
 		return errors.New("bad port in address specification")
 	}
 
-	a.IP = parts[0]
+	a.IP = host
 	a.Port = port
 
 	return nil
 }
 
 func (a *IPAddressPort) String() string {
-	return fmt.Sprintf("%s:%d", a.IP, a.Port)
+	return net.JoinHostPort(a.IP, strconv.Itoa(a.Port))
 }

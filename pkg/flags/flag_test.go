@@ -94,7 +94,7 @@ func TestSetBindAddrFromAddr(t *testing.T) {
 		// addr flag set
 		{
 			args:  []string{"-addr=192.0.3.17:4001"},
-			waddr: &IPAddressPort{IP: "0.0.0.0", Port: 4001},
+			waddr: &IPAddressPort{IP: "::", Port: 4001},
 		},
 		// bindAddr flag set
 		{
@@ -105,6 +105,11 @@ func TestSetBindAddrFromAddr(t *testing.T) {
 		{
 			args:  []string{"-bind-addr=127.0.0.1:4001", "-addr=192.0.3.17:4001"},
 			waddr: &IPAddressPort{IP: "127.0.0.1", Port: 4001},
+		},
+		// both addr flags set, IPv6
+		{
+			args:  []string{"-bind-addr=[2001:db8::4:9]:4001", "-addr=[2001:db8::4:f0]:4001"},
+			waddr: &IPAddressPort{IP: "2001:db8::4:9", Port: 4001},
 		},
 	}
 	for i, tt := range tests {
