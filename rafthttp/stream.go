@@ -116,6 +116,8 @@ func (cw *streamWriter) run() {
 				if m.Term > msgAppTerm {
 					cw.resetCloser()
 					heartbeatc, msgc = nil, nil
+					// TODO: report to raft at peer level
+					cw.r.ReportUnreachable(m.To)
 				}
 				continue
 			}

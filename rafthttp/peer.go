@@ -91,6 +91,7 @@ type Peer interface {
 type peer struct {
 	// id of the remote raft peer node
 	id types.ID
+	r  Raft
 
 	msgAppWriter *streamWriter
 	writer       *streamWriter
@@ -113,6 +114,7 @@ func startPeer(tr http.RoundTripper, urls types.URLs, local, to, cid types.ID, r
 	picker := newURLPicker(urls)
 	p := &peer{
 		id:           to,
+		r:            r,
 		msgAppWriter: startStreamWriter(fs, r),
 		writer:       startStreamWriter(fs, r),
 		pipeline:     newPipeline(tr, picker, to, cid, fs, r, errorc),
@@ -156,6 +158,7 @@ func startPeer(tr http.RoundTripper, urls types.URLs, local, to, cid types.ID, r
 				select {
 				case writec <- m:
 				default:
+					p.r.ReportUnreachable(m.To)
 					log.Printf("peer: dropping %s to %s since %s with %d-size buffer is blocked",
 						m.Type, p.id, name, bufSizeMap[name])
 				}
