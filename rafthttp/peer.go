@@ -115,8 +115,8 @@ func startPeer(tr http.RoundTripper, urls types.URLs, local, to, cid types.ID, r
 	p := &peer{
 		id:           to,
 		r:            r,
-		msgAppWriter: startStreamWriter(fs, r),
-		writer:       startStreamWriter(fs, r),
+		msgAppWriter: startStreamWriter(to, fs, r),
+		writer:       startStreamWriter(to, fs, r),
 		pipeline:     newPipeline(tr, picker, to, cid, fs, r, errorc),
 		sendc:        make(chan raftpb.Message),
 		recvc:        make(chan raftpb.Message, recvBufSize),
@@ -244,20 +244,18 @@ func (p *peer) Stop() {
 
 // pick picks a chan for sending the given message. The picked chan and the picked chan
 // string name are returned.
-func (p *peer) pick(m raftpb.Message) (writec chan raftpb.Message, picked string) {
-	switch {
+func (p *peer) pick(m raftpb.Message) (writec chan<- raftpb.Message, picked string) {
+	var ok bool
 	// Considering MsgSnap may have a big size, e.g., 1G, and will block
 	// stream for a long time, only use one of the N pipelines to send MsgSnap.
-	case isMsgSnap(m):
+	if isMsgSnap(m) {
 		return p.pipeline.msgc, pipelineMsg
-	case p.msgAppWriter.isWorking() && canUseMsgAppStream(m):
-		return p.msgAppWriter.msgc, streamApp
-	case p.writer.isWorking():
-		return p.writer.msgc, streamMsg
-	default:
-		return p.pipeline.msgc, pipelineMsg
+	} else if writec, ok = p.msgAppWriter.writec(); ok && canUseMsgAppStream(m) {
+		return writec, streamApp
+	} else if writec, ok = p.writer.writec(); ok {
+		return writec, streamMsg
 	}
-	return
+	return p.pipeline.msgc, pipelineMsg
 }
 
 func isMsgSnap(m raftpb.Message) bool { return m.Type == raftpb.MsgSnap }

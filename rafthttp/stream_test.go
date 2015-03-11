@@ -18,10 +18,10 @@ import (
 // to streamWriter. After that, streamWriter can use it to send messages
 // continuously, and closes it when stopped.
 func TestStreamWriterAttachOutgoingConn(t *testing.T) {
-	sw := startStreamWriter(&stats.FollowerStats{}, &fakeRaft{})
+	sw := startStreamWriter(types.ID(1), &stats.FollowerStats{}, &fakeRaft{})
 	// the expected initial state of streamWrite is not working
-	if g := sw.isWorking(); g != false {
-		t.Errorf("initial working status = %v, want false", g)
+	if _, ok := sw.writec(); ok != false {
+		t.Errorf("initial working status = %v, want false", ok)
 	}
 
 	// repeatitive tests to ensure it can use latest connection
@@ -36,15 +36,15 @@ func TestStreamWriterAttachOutgoingConn(t *testing.T) {
 			t.Errorf("#%d: close of previous connection = %v, want true", i, prevwfc.closed)
 		}
 		// starts working
-		if g := sw.isWorking(); g != true {
-			t.Errorf("#%d: working status = %v, want true", i, g)
+		if _, ok := sw.writec(); ok != true {
+			t.Errorf("#%d: working status = %v, want true", i, ok)
 		}
 
 		sw.msgc <- raftpb.Message{}
 		testutil.ForceGosched()
 		// still working
-		if g := sw.isWorking(); g != true {
-			t.Errorf("#%d: working status = %v, want true", i, g)
+		if _, ok := sw.writec(); ok != true {
+			t.Errorf("#%d: working status = %v, want true", i, ok)
 		}
 		if wfc.written == 0 {
 			t.Errorf("#%d: failed to write to the underlying connection", i)
@@ -53,8 +53,8 @@ func TestStreamWriterAttachOutgoingConn(t *testing.T) {
 
 	sw.stop()
 	// no longer in working status now
-	if g := sw.isWorking(); g != false {
-		t.Errorf("working status after stop = %v, want false", g)
+	if _, ok := sw.writec(); ok != false {
+		t.Errorf("working status after stop = %v, want false", ok)
 	}
 	if wfc.closed != true {
 		t.Errorf("failed to close the underlying connection")
@@ -64,7 +64,7 @@ func TestStreamWriterAttachOutgoingConn(t *testing.T) {
 // TestStreamWriterAttachBadOutgoingConn tests that streamWriter with bad
 // outgoingConn will close the outgoingConn and fall back to non-working status.
 func TestStreamWriterAttachBadOutgoingConn(t *testing.T) {
-	sw := startStreamWriter(&stats.FollowerStats{}, &fakeRaft{})
+	sw := startStreamWriter(types.ID(1), &stats.FollowerStats{}, &fakeRaft{})
 	defer sw.stop()
 	wfc := &fakeWriteFlushCloser{err: errors.New("blah")}
 	sw.attach(&outgoingConn{t: streamTypeMessage, Writer: wfc, Flusher: wfc, Closer: wfc})
@@ -72,8 +72,8 @@ func TestStreamWriterAttachBadOutgoingConn(t *testing.T) {
 	sw.msgc <- raftpb.Message{}
 	testutil.ForceGosched()
 	// no longer working
-	if g := sw.isWorking(); g != false {
-		t.Errorf("working = %v, want false", g)
+	if _, ok := sw.writec(); ok != false {
+		t.Errorf("working = %v, want false", ok)
 	}
 	if wfc.closed != true {
 		t.Errorf("failed to close the underlying connection")
@@ -197,7 +197,7 @@ func TestStream(t *testing.T) {
 		srv := httptest.NewServer(h)
 		defer srv.Close()
 
-		sw := startStreamWriter(&stats.FollowerStats{}, &fakeRaft{})
+		sw := startStreamWriter(types.ID(1), &stats.FollowerStats{}, &fakeRaft{})
 		defer sw.stop()
 		h.sw = sw
 
@@ -207,8 +207,17 @@ func TestStream(t *testing.T) {
 		if tt.t == streamTypeMsgApp {
 			sr.updateMsgAppTerm(tt.term)
 		}
+		// wait for stream to work
+		var writec chan<- raftpb.Message
+		for {
+			var ok bool
+			if writec, ok = sw.writec(); ok {
+				break
+			}
+			time.Sleep(time.Millisecond)
+		}
 
-		sw.msgc <- tt.m
+		writec <- tt.m
 		var m raftpb.Message
 		select {
 		case m = <-tt.wc:

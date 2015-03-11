@@ -61,6 +61,7 @@ type outgoingConn struct {
 // streamWriter is a long-running go-routine that writes messages into the
 // attached outgoingConn.
 type streamWriter struct {
+	id types.ID
 	fs *stats.FollowerStats
 	r  Raft
 
@@ -74,8 +75,9 @@ type streamWriter struct {
 	done  chan struct{}
 }
 
-func startStreamWriter(fs *stats.FollowerStats, r Raft) *streamWriter {
+func startStreamWriter(id types.ID, fs *stats.FollowerStats, r Raft) *streamWriter {
 	w := &streamWriter{
+		id:    id,
 		fs:    fs,
 		r:     r,
 		msgc:  make(chan raftpb.Message, streamBufSize),
@@ -163,18 +165,23 @@ func (cw *streamWriter) run() {
 	}
 }
 
-func (cw *streamWriter) isWorking() bool {
+func (cw *streamWriter) writec() (chan<- raftpb.Message, bool) {
 	cw.mu.Lock()
 	defer cw.mu.Unlock()
-	return cw.working
+	return cw.msgc, cw.working
 }
 
 func (cw *streamWriter) resetCloser() {
 	cw.mu.Lock()
 	defer cw.mu.Unlock()
-	if cw.working {
-		cw.closer.Close()
+	if !cw.working {
+		return
 	}
+	cw.closer.Close()
+	if len(cw.msgc) > 0 {
+		cw.r.ReportUnreachable(uint64(cw.id))
+	}
+	cw.msgc = make(chan raftpb.Message, streamBufSize)
 	cw.working = false
 }
 
