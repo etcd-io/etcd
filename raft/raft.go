@@ -120,8 +120,18 @@ func (pr *Progress) waitSet(w int)       { pr.Wait = w }
 func (pr *Progress) waitReset()          { pr.Wait = 0 }
 func (pr *Progress) isUnreachable() bool { return pr.Unreachable }
 func (pr *Progress) reachable()          { pr.Unreachable = false }
-func (pr *Progress) unreachable()        { pr.Unreachable = true }
-func (pr *Progress) shouldWait() bool    { return (pr.Unreachable || pr.Match == 0) && pr.Wait > 0 }
+
+func (pr *Progress) unreachable() {
+	pr.Unreachable = true
+	// When in optimistic appending path, if the remote becomes unreachable,
+	// there is big probability that it loses MsgApp. Fall back to bad
+	// path to recover it steadily.
+	if pr.Match != 0 {
+		pr.Next = pr.Match + 1
+	}
+}
+
+func (pr *Progress) shouldWait() bool { return (pr.Unreachable || pr.Match == 0) && pr.Wait > 0 }
 
 func (pr *Progress) hasPendingSnapshot() bool    { return pr.PendingSnapshot != 0 }
 func (pr *Progress) setPendingSnapshot(i uint64) { pr.PendingSnapshot = i }
