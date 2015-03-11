@@ -603,27 +603,33 @@ func TestFollowerCheckMsgApp(t *testing.T) {
 	tests := []struct {
 		term        uint64
 		index       uint64
+		windex      uint64
 		wreject     bool
 		wrejectHint uint64
 	}{
-		{ents[0].Term, ents[0].Index, false, 0},
-		{ents[0].Term, ents[0].Index + 1, true, 2},
-		{ents[0].Term + 1, ents[0].Index, true, 2},
-		{ents[1].Term, ents[1].Index, false, 0},
-		{3, 3, true, 2},
+		// match with committed entries
+		{0, 0, 1, false, 0},
+		{ents[0].Term, ents[0].Index, 1, false, 0},
+		// match with uncommitted entries
+		{ents[1].Term, ents[1].Index, 2, false, 0},
+
+		// unmatch with existing entry
+		{ents[0].Term, ents[1].Index, ents[1].Index, true, 2},
+		// unexisting entry
+		{ents[1].Term + 1, ents[1].Index + 1, ents[1].Index + 1, true, 2},
 	}
 	for i, tt := range tests {
 		storage := NewMemoryStorage()
 		storage.Append(ents)
 		r := newRaft(1, []uint64{1, 2, 3}, 10, 1, storage, 0)
-		r.loadState(pb.HardState{Commit: 2})
+		r.loadState(pb.HardState{Commit: 1})
 		r.becomeFollower(2, 2)
 
 		r.Step(pb.Message{From: 2, To: 1, Type: pb.MsgApp, Term: 2, LogTerm: tt.term, Index: tt.index})
 
 		msgs := r.readMessages()
 		wmsgs := []pb.Message{
-			{From: 1, To: 2, Type: pb.MsgAppResp, Term: 2, Index: tt.index, Reject: tt.wreject, RejectHint: tt.wrejectHint},
+			{From: 1, To: 2, Type: pb.MsgAppResp, Term: 2, Index: tt.windex, Reject: tt.wreject, RejectHint: tt.wrejectHint},
 		}
 		if !reflect.DeepEqual(msgs, wmsgs) {
 			t.Errorf("#%d: msgs = %+v, want %+v", i, msgs, wmsgs)

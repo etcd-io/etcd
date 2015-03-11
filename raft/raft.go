@@ -663,6 +663,11 @@ func stepFollower(r *raft, m pb.Message) {
 }
 
 func (r *raft) handleAppendEntries(m pb.Message) {
+	if m.Index < r.Commit {
+		r.send(pb.Message{To: m.From, Type: pb.MsgAppResp, Index: r.Commit})
+		return
+	}
+
 	if mlastIndex, ok := r.raftLog.maybeAppend(m.Index, m.LogTerm, m.Commit, m.Entries...); ok {
 		r.send(pb.Message{To: m.From, Type: pb.MsgAppResp, Index: mlastIndex})
 	} else {
