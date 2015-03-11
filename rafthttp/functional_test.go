@@ -122,10 +122,10 @@ func newServerStats() *stats.ServerStats {
 func waitStreamWorking(p *peer) bool {
 	for i := 0; i < 1000; i++ {
 		time.Sleep(time.Millisecond)
-		if !p.msgAppWriter.isWorking() {
+		if _, ok := p.msgAppWriter.writec(); !ok {
 			continue
 		}
-		if !p.writer.isWorking() {
+		if _, ok := p.writer.writec(); !ok {
 			continue
 		}
 		return true
