@@ -1300,9 +1300,13 @@ func TestUnreachable(t *testing.T) {
 
 	// set node 2 to unreachable
 	r.prs[2].Match = 3
-	r.prs[2].Next = 4
+	r.prs[2].Next = 5
 	r.prs[2].Wait = 0
 	r.prs[2].unreachable()
+
+	if wnext := r.prs[2].Match + 1; r.prs[2].Next != wnext {
+		t.Errorf("next = %d, want %d", r.prs[2].Next, wnext)
+	}
 
 	for i := 0; i < 3; i++ {
 		// node 2 is unreachable, we expect that raft will only send out one msgAPP per heartbeat timeout
