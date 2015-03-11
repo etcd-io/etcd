@@ -34,7 +34,7 @@ The full documentation is contained in the [API docs](https://github.com/coreos/
 * `-discovery` - A URL to use for discovering the peer list. (i.e `"https://discovery.etcd.io/your-unique-key"`).
 * `-http-read-timeout` - The number of seconds before an HTTP read operation is timed out.
 * `-http-write-timeout` - The number of seconds before an HTTP write operation is timed out.
-* `-bind-addr` - The listening hostname for client communication. Defaults to advertised IP.
+* `-bind-addr` - The listening hostname for client communication. Defaults to 0.0.0.0 and the advertised port.
 * `-peers` - A comma separated list of peers in the cluster (i.e `"203.0.113.101:7001,203.0.113.102:7001"`).
 * `-peers-file` - The file path containing a comma separated list of peers in the cluster.
 * `-ca-file` - The path of the client CAFile. Enables client cert authentication when present.
@@ -47,7 +47,7 @@ The full documentation is contained in the [API docs](https://github.com/coreos/
 * `-max-result-buffer` - The max size of result buffer. Defaults to `1024`.
 * `-max-retry-attempts` - The max retry attempts when trying to join a cluster. Defaults to `3`.
 * `-peer-addr` - The advertised public hostname:port for server communication. Defaults to `127.0.0.1:7001`.
-* `-peer-bind-addr` - The listening hostname for server communication. Defaults to advertised IP.
+* `-peer-bind-addr` - The listening hostname for server communication. Defaults to 0.0.0.0 and the advertised peer port.
 * `-peer-ca-file` - The path of the CAFile. Enables client/peer cert authentication when present.
 * `-peer-cert-file` - The cert file of the server.
 * `-peer-key-file` - The key file of the server.
