@@ -52,6 +52,12 @@ func (st StateType) String() string {
 type Progress struct {
 	Match, Next uint64
 	Wait        int
+	// If the last MsgAppResp updates the Match, which indicates that the
+	// follower has caught up the progress, CatchUp will be set.
+	// If a valid MsgApp with rejection is received, CatchUp will be unset.
+	// When CatchUp is set, leader can send MsgApp optimistically to the
+	// follower.
+	CatchUp bool
 	// If the last sent to the Progress failed and reported
 	// by the link layer via MsgUnreachable, Unreachable will be set.
 	// If the Progress is unreachable, snapshot and optimistically append
@@ -75,6 +81,7 @@ func (pr *Progress) update(n uint64) {
 
 	if pr.Match < n {
 		pr.Match = n
+		pr.CatchUp = true
 	}
 	if pr.Next < n+1 {
 		pr.Next = n + 1
@@ -88,7 +95,7 @@ func (pr *Progress) optimisticUpdate(n uint64) { pr.Next = n + 1 }
 func (pr *Progress) maybeDecrTo(rejected, last uint64) bool {
 	pr.waitReset()
 
-	if pr.Match != 0 {
+	if pr.CatchUp {
 		// the rejection must be stale if the progress has matched and "rejected"
 		// is smaller than "match".
 		if rejected <= pr.Match {
@@ -96,6 +103,7 @@ func (pr *Progress) maybeDecrTo(rejected, last uint64) bool {
 		}
 		// directly decrease next to match + 1
 		pr.Next = pr.Match + 1
+		pr.CatchUp = false
 		return true
 	}
 
@@ -126,12 +134,13 @@ func (pr *Progress) unreachable() {
 	// When in optimistic appending path, if the remote becomes unreachable,
 	// there is big probability that it loses MsgApp. Fall back to bad
 	// path to recover it steadily.
-	if pr.Match != 0 {
+	if pr.CatchUp {
 		pr.Next = pr.Match + 1
+		pr.CatchUp = false
 	}
 }
 
-func (pr *Progress) shouldWait() bool { return (pr.Unreachable || pr.Match == 0) && pr.Wait > 0 }
+func (pr *Progress) shouldWait() bool { return (pr.Unreachable || !pr.CatchUp) && pr.Wait > 0 }
 
 func (pr *Progress) hasPendingSnapshot() bool    { return pr.PendingSnapshot != 0 }
 func (pr *Progress) setPendingSnapshot(i uint64) { pr.PendingSnapshot = i }
@@ -307,9 +316,9 @@ func (r *raft) sendAppend(to uint64) {
 		m.Commit = r.raftLog.committed
 		// optimistically increase the next if the follower
 		// has been matched.
-		if n := len(m.Entries); pr.Match != 0 && !pr.isUnreachable() && n != 0 {
+		if n := len(m.Entries); pr.CatchUp && !pr.isUnreachable() && n != 0 {
 			pr.optimisticUpdate(m.Entries[n-1].Index)
-		} else if pr.Match == 0 || pr.isUnreachable() {
+		} else if !pr.CatchUp || pr.isUnreachable() {
 			pr.waitSet(r.heartbeatTimeout)
 		}
 	}

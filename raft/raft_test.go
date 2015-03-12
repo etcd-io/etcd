@@ -80,6 +80,7 @@ func TestProgressMaybeDecr(t *testing.T) {
 	tests := []struct {
 		m        uint64
 		n        uint64
+		catchUp  bool
 		rejected uint64
 		last     uint64
 
@@ -87,56 +88,52 @@ func TestProgressMaybeDecr(t *testing.T) {
 		wn uint64
 	}{
 		{
-			// match != 0 is always false
-			1, 0, 0, 0, false, 0,
+			// catchUp and rejected is not greater than match
+			5, 10, true, 5, 5, false, 10,
 		},
 		{
-			// match != 0 and to is greater than match
+			// catchUp and rejected is not greater than match
+			5, 10, true, 4, 4, false, 10,
+		},
+		{
+			// catchUp and to is greater than match
 			// directly decrease to match+1
-			5, 10, 5, 5, false, 10,
-		},
-		{
-			// match != 0 and to is greater than match
-			// directly decrease to match+1
-			5, 10, 4, 4, false, 10,
-		},
-		{
-			// match != 0 and to is not greater than match
-			5, 10, 9, 9, true, 6,
+			5, 10, true, 9, 9, true, 6,
 		},
 		{
 			// next-1 != rejected is always false
-			0, 0, 0, 0, false, 0,
+			0, 0, false, 0, 0, false, 0,
 		},
 		{
 			// next-1 != rejected is always false
-			0, 10, 5, 5, false, 10,
+			0, 10, false, 5, 5, false, 10,
 		},
 		{
 			// next>1 = decremented by 1
-			0, 10, 9, 9, true, 9,
+			0, 10, false, 9, 9, true, 9,
 		},
 		{
 			// next>1 = decremented by 1
-			0, 2, 1, 1, true, 1,
+			0, 2, false, 1, 1, true, 1,
 		},
 		{
 			// next<=1 = reset to 1
-			0, 1, 0, 0, true, 1,
+			0, 1, false, 0, 0, true, 1,
 		},
 		{
 			// decrease to min(rejected, last+1)
-			0, 10, 9, 2, true, 3,
+			0, 10, false, 9, 2, true, 3,
 		},
 		{
 			// rejected < 1, reset to 1
-			0, 10, 9, 0, true, 1,
+			0, 10, false, 9, 0, true, 1,
 		},
 	}
 	for i, tt := range tests {
 		p := &Progress{
-			Match: tt.m,
-			Next:  tt.n,
+			Match:   tt.m,
+			Next:    tt.n,
+			CatchUp: tt.catchUp,
 		}
 		if g := p.maybeDecrTo(tt.rejected, tt.last); g != tt.w {
 			t.Errorf("#%d: maybeDecrTo= %t, want %t", i, g, tt.w)
@@ -152,21 +149,28 @@ func TestProgressMaybeDecr(t *testing.T) {
 
 func TestProgressShouldWait(t *testing.T) {
 	tests := []struct {
-		m    uint64
-		wait int
+		unreachable bool
+		catchUp     bool
+		wait        int
 
 		w bool
 	}{
-		// match != 0 is always not wait
-		{1, 0, false},
-		{1, 1, false},
-		{0, 1, true},
-		{0, 0, false},
+		// no wait always should not wait
+		{false, false, 0, false},
+		{false, true, 0, false},
+		{true, false, 0, false},
+		{true, true, 0, false},
+		// either unreachable or non-catchUp should wait
+		{false, false, 1, true},
+		{false, true, 1, false},
+		{true, false, 1, true},
+		{true, true, 1, true},
 	}
 	for i, tt := range tests {
 		p := &Progress{
-			Match: tt.m,
-			Wait:  tt.wait,
+			Unreachable: tt.unreachable,
+			CatchUp:     tt.catchUp,
+			Wait:        tt.wait,
 		}
 		if g := p.shouldWait(); g != tt.w {
 			t.Errorf("#%d: shouldwait = %t, want %t", i, g, tt.w)
@@ -1262,16 +1266,16 @@ func TestLeaderIncreaseNext(t *testing.T) {
 	previousEnts := []pb.Entry{{Term: 1, Index: 1}, {Term: 1, Index: 2}, {Term: 1, Index: 3}}
 	tests := []struct {
 		// progress
-		match uint64
-		next  uint64
+		catchUp bool
+		next    uint64
 
 		wnext uint64
 	}{
-		// match is not zero, optimistically increase next
+		// when follower catches up, optimistically increase next
 		// previous entries + noop entry + propose + 1
-		{1, 2, uint64(len(previousEnts) + 1 + 1 + 1)},
-		// match is zero, not optimistically increase next
-		{0, 2, 2},
+		{true, 2, uint64(len(previousEnts) + 1 + 1 + 1)},
+		// when follower fails to catch up, not optimistically increase next
+		{false, 2, 2},
 	}
 
 	for i, tt := range tests {
@@ -1279,7 +1283,7 @@ func TestLeaderIncreaseNext(t *testing.T) {
 		sm.raftLog.append(previousEnts...)
 		sm.becomeCandidate()
 		sm.becomeLeader()
-		sm.prs[2].Match, sm.prs[2].Next = tt.match, tt.next
+		sm.prs[2].CatchUp, sm.prs[2].Next = tt.catchUp, tt.next
 		sm.Step(pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{Data: []byte("somedata")}}})
 
 		p := sm.prs[2]
@@ -1301,6 +1305,7 @@ func TestUnreachable(t *testing.T) {
 	// set node 2 to unreachable
 	r.prs[2].Match = 3
 	r.prs[2].Next = 5
+	r.prs[2].CatchUp = true
 	r.prs[2].Wait = 0
 	r.prs[2].unreachable()
 
@@ -1343,8 +1348,9 @@ func TestUnreachable(t *testing.T) {
 		}
 	}
 
-	// recover node 2
+	// recover node 2 and let it catch up with node 1
 	r.prs[2].reachable()
+	r.prs[2].CatchUp = true
 	for i := 0; i < 10; i++ {
 		r.Step(pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{Data: []byte("somedata")}}})
 		msgs := r.readMessages()
