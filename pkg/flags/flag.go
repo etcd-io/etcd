@@ -88,13 +88,13 @@ func SetFlagsFromEnv(fs *flag.FlagSet) error {
 // SetBindAddrFromAddr sets the value of bindAddr flag from the value
 // of addr flag. Both flags' Value must be of type IPAddressPort. If the
 // bindAddr flag is set and the addr flag is unset, it will set bindAddr to
-// 0.0.0.0:port of addr. Otherwise, it keeps the original values.
+// [::]:port of addr. Otherwise, it keeps the original values.
 func SetBindAddrFromAddr(fs *flag.FlagSet, bindAddrFlagName, addrFlagName string) {
 	if IsSet(fs, bindAddrFlagName) || !IsSet(fs, addrFlagName) {
 		return
 	}
 	addr := *fs.Lookup(addrFlagName).Value.(*IPAddressPort)
-	addr.IP = "0.0.0.0"
+	addr.IP = "::"
 	if err := fs.Set(bindAddrFlagName, addr.String()); err != nil {
 		log.Panicf("etcdmain: unexpected flags set error: %v", err)
 	}

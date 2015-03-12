@@ -157,9 +157,9 @@ func TestConfigParsingV1Flags(t *testing.T) {
 		"-addr=127.0.0.1:4001",
 	}
 	wcfg := NewConfig()
-	wcfg.lpurls = []url.URL{{Scheme: "http", Host: "0.0.0.0:7001"}}
+	wcfg.lpurls = []url.URL{{Scheme: "http", Host: "[::]:7001"}}
 	wcfg.apurls = []url.URL{{Scheme: "http", Host: "127.0.0.1:7001"}}
-	wcfg.lcurls = []url.URL{{Scheme: "http", Host: "0.0.0.0:4001"}}
+	wcfg.lcurls = []url.URL{{Scheme: "http", Host: "[::]:4001"}}
 	wcfg.acurls = []url.URL{{Scheme: "http", Host: "127.0.0.1:4001"}}
 
 	cfg := NewConfig()

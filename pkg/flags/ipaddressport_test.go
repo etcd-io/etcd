@@ -22,6 +22,7 @@ func TestIPAddressPortSet(t *testing.T) {
 	pass := []string{
 		"1.2.3.4:8080",
 		"10.1.1.1:80",
+		"[2001:db8::1]:8080",
 	}
 
 	fail := []string{
@@ -40,6 +41,8 @@ func TestIPAddressPortSet(t *testing.T) {
 		"234#$",
 		"file://foo/bar",
 		"http://hello",
+		"2001:db8::1",
+		"2001:db8::1:1",
 	}
 
 	for i, tt := range pass {
@@ -58,14 +61,20 @@ func TestIPAddressPortSet(t *testing.T) {
 }
 
 func TestIPAddressPortString(t *testing.T) {
-	f := &IPAddressPort{}
-	if err := f.Set("127.0.0.1:4001"); err != nil {
-		t.Fatalf("unexpected error: %v", err)
+	addresses := []string{
+		"[2001:db8::1:1234]:4001",
+		"127.0.0.1:4001",
 	}
+	for i, tt := range addresses {
+		f := &IPAddressPort{}
+		if err := f.Set(tt); err != nil {
+			t.Errorf("#%d: unexpected error: %v", i, err)
+		}
 
-	want := "127.0.0.1:4001"
-	got := f.String()
-	if want != got {
-		t.Fatalf("IPAddressPort.String() value should be %q, got %q", want, got)
+		want := tt
+		got := f.String()
+		if want != got {
+			t.Errorf("#%d: IPAddressPort.String() value should be %q, got %q", i, want, got)
+		}
 	}
 }
