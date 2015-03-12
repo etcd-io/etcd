@@ -99,6 +99,9 @@ type config struct {
 	// unsafe
 	forceNewCluster bool
 
+	// logging
+	disableLogTimestamps bool
+
 	printVersion bool
 
 	ignored []string
@@ -178,6 +181,9 @@ func NewConfig() *config {
 
 	// unsafe
 	fs.BoolVar(&cfg.forceNewCluster, "force-new-cluster", false, "Force to create a new one member cluster")
+
+	// logging
+	fs.BoolVar(&cfg.disableLogTimestamps, "disable-log-timestamps", false, "Disable writing timestamps in logs.")
 
 	// version
 	fs.BoolVar(&cfg.printVersion, "version", false, "Print the version and exit")

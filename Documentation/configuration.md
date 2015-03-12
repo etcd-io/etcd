@@ -141,6 +141,12 @@ Be CAUTIOUS to use unsafe flags because it will break the guarantee given by con
 + Force to create a new one-member cluster. It commits configuration changes in force to remove all existing members in the cluster and add itself. It needs to be set to [restore a backup][restore].
 + default: false
 
+### Logging Flags
+
+#### -disable-log-timestamps
++ Disable writing timestamps in logs.
++ default: false
+
 ### Miscellaneous Flags
 
 ##### -version
