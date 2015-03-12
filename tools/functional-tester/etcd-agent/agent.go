@@ -21,9 +21,20 @@ import (
 	"os/exec"
 	"path"
 	"time"
+
+	"github.com/coreos/etcd/tools/functional-tester/etcd-agent/client"
+)
+
+const (
+	stateUninitialized = "uninitialized"
+	stateStarted       = "started"
+	stateStopped       = "stopped"
+	stateTerminated    = "terminated"
 )
 
 type Agent struct {
+	state string // the state of etcd process
+
 	cmd     *exec.Cmd
 	logfile *os.File
 	l       net.Listener
@@ -43,7 +54,7 @@ func newAgent(etcd string) (*Agent, error) {
 		return nil, err
 	}
 
-	return &Agent{cmd: c, logfile: f}, nil
+	return &Agent{state: stateUninitialized, cmd: c, logfile: f}, nil
 }
 
 // start starts a new etcd process with the given args.
@@ -51,7 +62,13 @@ func (a *Agent) start(args ...string) error {
 	a.cmd = exec.Command(a.cmd.Path, args...)
 	a.cmd.Stdout = a.logfile
 	a.cmd.Stderr = a.logfile
-	return a.cmd.Start()
+	err := a.cmd.Start()
+	if err != nil {
+		return err
+	}
+
+	a.state = stateStarted
+	return nil
 }
 
 // stop stops the existing etcd process the agent started.
@@ -61,7 +78,13 @@ func (a *Agent) stop() error {
 		return err
 	}
 	_, err = a.cmd.Process.Wait()
-	return err
+	if err != nil {
+		return err
+
+	}
+
+	a.state = stateStopped
+	return nil
 }
 
 // restart restarts the stopped etcd process.
@@ -69,11 +92,22 @@ func (a *Agent) restart() error {
 	a.cmd = exec.Command(a.cmd.Path, a.cmd.Args[1:]...)
 	a.cmd.Stdout = a.logfile
 	a.cmd.Stderr = a.logfile
-	return a.cmd.Start()
+	err := a.cmd.Start()
+	if err != nil {
+		return err
+	}
+
+	a.state = stateStarted
+	return nil
 }
 
 func (a *Agent) cleanup() error {
-	a.stop()
+	err := a.stop()
+	if err != nil {
+		return err
+	}
+	a.state = stateUninitialized
+
 	a.logfile.Close()
 	if err := archiveLogAndDataDir("etcd.log", a.dataDir()); err != nil {
 		return err
@@ -86,8 +120,20 @@ func (a *Agent) cleanup() error {
 // terminate stops the exiting etcd process the agent started
 // and removes the data dir.
 func (a *Agent) terminate() error {
-	a.stop()
-	return os.RemoveAll(a.dataDir())
+	err := a.stop()
+	if err != nil {
+		return err
+	}
+	err = os.RemoveAll(a.dataDir())
+	if err != nil {
+		return err
+	}
+	a.state = stateTerminated
+	return nil
+}
+
+func (a *Agent) status() client.Status {
+	return client.Status{State: a.state}
 }
 
 func (a *Agent) dataDir() string {

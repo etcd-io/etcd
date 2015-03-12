@@ -20,6 +20,8 @@ import (
 	"net/rpc"
 	"os"
 	"testing"
+
+	"github.com/coreos/etcd/tools/functional-tester/etcd-agent/client"
 )
 
 func init() {
@@ -120,6 +122,45 @@ func TestRPCTerminate(t *testing.T) {
 	}
 
 	if _, err := os.Stat(dir); !os.IsNotExist(err) {
+		t.Fatal(err)
+	}
+}
+
+func TestRPCStatus(t *testing.T) {
+	c, err := rpc.DialHTTP("tcp", ":9027")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var s client.Status
+	err = c.Call("Agent.RPCStatus", struct{}{}, &s)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s.State != stateTerminated {
+		t.Errorf("state = %s, want %s", s.State, stateTerminated)
+	}
+
+	dir, err := ioutil.TempDir(os.TempDir(), "etcd-agent")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var pid int
+	err = c.Call("Agent.RPCStart", []string{"-data-dir", dir}, &pid)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = c.Call("Agent.RPCStatus", struct{}{}, &s)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s.State != stateStarted {
+		t.Errorf("state = %s, want %s", s.State, stateStarted)
+	}
+
+	err = c.Call("Agent.RPCTerminate", struct{}{}, nil)
+	if err != nil {
 		t.Fatal(err)
 	}
 }

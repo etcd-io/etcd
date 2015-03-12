@@ -19,6 +19,8 @@ import (
 	"net"
 	"net/http"
 	"net/rpc"
+
+	"github.com/coreos/etcd/tools/functional-tester/etcd-agent/client"
 )
 
 func (a *Agent) serveRPC() {
@@ -68,4 +70,9 @@ func (a *Agent) RPCTerminate(args struct{}, reply *struct{}) error {
 
 func (a *Agent) RPCIsolate(args struct{}, reply *struct{}) error {
 	panic("not implemented")
+}
+
+func (a *Agent) RPCStatus(args struct{}, status *client.Status) error {
+	*status = a.status()
+	return nil
 }
