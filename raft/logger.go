@@ -118,7 +118,7 @@ func (l *DefaultLogger) Panic(v ...interface{}) {
 }
 
 func (l *DefaultLogger) Panicf(format string, v ...interface{}) {
-	l.Logger.Panicf(format, v)
+	l.Logger.Panicf(format, v...)
 }
 
 func header(lvl, msg string) string {
