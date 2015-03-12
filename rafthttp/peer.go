@@ -22,6 +22,7 @@ import (
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/etcdserver/stats"
 	"github.com/coreos/etcd/pkg/types"
+	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
 )
 
@@ -159,6 +160,9 @@ func startPeer(tr http.RoundTripper, urls types.URLs, local, to, cid types.ID, r
 				case writec <- m:
 				default:
 					p.r.ReportUnreachable(m.To)
+					if isMsgSnap(m) {
+						p.r.ReportSnapshot(m.To, raft.SnapshotFailure)
+					}
 					log.Printf("peer: dropping %s to %s since %s with %d-size buffer is blocked",
 						m.Type, p.id, name, bufSizeMap[name])
 				}
