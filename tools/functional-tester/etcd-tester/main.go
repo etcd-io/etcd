@@ -17,6 +17,7 @@ package main
 import (
 	"flag"
 	"log"
+	"net/http"
 	"strings"
 )
 
@@ -43,5 +44,10 @@ func main() {
 		cluster: c,
 		limit:   *limit,
 	}
+
+	sh := statusHandler{status: &t.status}
+	http.Handle("/status", sh)
+	go func() { log.Fatal(http.ListenAndServe(":9028", nil)) }()
+
 	t.runLoop()
 }
