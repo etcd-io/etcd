@@ -37,6 +37,7 @@ func (a *Agent) RPCStart(args []string, pid *int) error {
 	log.Printf("rpc: start etcd with args %v", args)
 	err := a.start(args...)
 	if err != nil {
+		log.Println("rpc: error starting etcd", err)
 		return err
 	}
 	*pid = a.cmd.Process.Pid
@@ -45,13 +46,19 @@ func (a *Agent) RPCStart(args []string, pid *int) error {
 
 func (a *Agent) RPCStop(args struct{}, reply *struct{}) error {
 	log.Printf("rpc: stop etcd")
-	return a.stop()
+	err := a.stop()
+	if err != nil {
+		log.Println("rpc: error stopping etcd", err)
+		return err
+	}
+	return nil
 }
 
 func (a *Agent) RPCRestart(args struct{}, pid *int) error {
 	log.Printf("rpc: restart etcd")
 	err := a.restart()
 	if err != nil {
+		log.Println("rpc: error restarting etcd", err)
 		return err
 	}
 	*pid = a.cmd.Process.Pid
@@ -60,12 +67,21 @@ func (a *Agent) RPCRestart(args struct{}, pid *int) error {
 
 func (a *Agent) RPCCleanup(args struct{}, reply *struct{}) error {
 	log.Printf("rpc: cleanup etcd")
-	return a.cleanup()
+	err := a.cleanup()
+	if err != nil {
+		log.Println("rpc: error cleaning up etcd", err)
+		return err
+	}
+	return nil
 }
 
 func (a *Agent) RPCTerminate(args struct{}, reply *struct{}) error {
 	log.Printf("rpc: terminate etcd")
-	return a.terminate()
+	err := a.terminate()
+	if err != nil {
+		log.Println("rpc: error terminating etcd", err)
+	}
+	return nil
 }
 
 func (a *Agent) RPCIsolate(args struct{}, reply *struct{}) error {
