@@ -81,12 +81,20 @@ security flags:
 		path to the client server TLS cert file.
 	--key-file ''
 		path to the client server TLS key file.
+	--client-cert-auth 'false'
+		enable client cert authentication.
+	--trusted-ca-file ''
+		path to the client server TLS trusted CA key file.
 	--peer-ca-file ''
 		path to the peer server TLS CA file.
 	--peer-cert-file ''
 		path to the peer server TLS cert file.
 	--peer-key-file ''
 		path to the peer server TLS key file.
+	--peer-client-cert-auth 'false'
+		enable peer client cert authentication.
+	--peer-trusted-ca-file ''
+		path to the peer server TLS trusted CA file.
 
 
 unsafe flags:
