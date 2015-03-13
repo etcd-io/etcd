@@ -30,6 +30,10 @@ If you're considering etcd for production use, please see: [production-ready.md]
 
 The latest release and setup instructions are available at [GitHub][github-release].
 
+You can build a latest etcd from master branch. All development occurs on the master branch which includes new features and bug fixes.
+
+Bug fixes should target the master branch and ported to the appropriate release branch as described in the [branch management](./Documentation/branch_management.md) guide.
+
 [github-release]: https://github.com/coreos/etcd/releases/
 
 ### Running etcd
