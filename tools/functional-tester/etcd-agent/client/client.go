@@ -16,6 +16,12 @@ package client
 
 import "net/rpc"
 
+type Status struct {
+	// TODO: gather more informations
+	// TODO: memory usage, raft information, etc..
+	State string
+}
+
 type Agent interface {
 	ID() uint64
 	// Start starts a new etcd with the given args on the agent machine.
@@ -30,6 +36,8 @@ type Agent interface {
 	Terminate() error
 	// Isoloate isolates the network of etcd
 	Isolate() error
+	// Status returns the status of etcd on the agent
+	Status() (Status, error)
 }
 
 type agent struct {
@@ -77,6 +85,15 @@ func (a *agent) Terminate() error {
 
 func (a *agent) Isolate() error {
 	panic("not implemented")
+}
+
+func (a *agent) Status() (Status, error) {
+	var s Status
+	err := a.rpcClient.Call("Agent.RPCStatus", struct{}{}, &s)
+	if err != nil {
+		return s, err
+	}
+	return s, nil
 }
 
 func (a *agent) ID() uint64 {
