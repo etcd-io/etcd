@@ -255,6 +255,10 @@ func (cfg *config) Parse(arguments []string) error {
 		return errors.New("cannot resolve DNS hostnames.")
 	}
 
+	if 5*cfg.TickMs > cfg.ElectionMs {
+		return fmt.Errorf("-election-timeout[%vms] should be at least as 5 times as -heartbeat-interval[%vms]", cfg.ElectionMs, cfg.TickMs)
+	}
+
 	return nil
 }
 
