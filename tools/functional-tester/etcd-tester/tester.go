@@ -31,6 +31,7 @@ type tester struct {
 func (tt *tester) runLoop() {
 	tt.status.Since = time.Now()
 	tt.status.RoundLimit = tt.limit
+	tt.status.cluster = tt.cluster
 	for _, f := range tt.failures {
 		tt.status.Failures = append(tt.status.Failures, f.Desc())
 	}
@@ -85,8 +86,10 @@ type Status struct {
 	Failures   []string
 	RoundLimit int
 
-	mu sync.Mutex // guards Round and Case
-	// TODO: add agent status
+	Cluster ClusterStatus
+	cluster *cluster
+
+	mu    sync.Mutex // guards Round and Case
 	Round int
 	Case  int
 }
@@ -94,8 +97,11 @@ type Status struct {
 // get gets a copy of status
 func (s *Status) get() Status {
 	s.mu.Lock()
-	defer s.mu.Unlock()
-	return *s
+	got := *s
+	cluster := s.cluster
+	s.mu.Unlock()
+	got.Cluster = cluster.Status()
+	return got
 }
 
 func (s *Status) setRound(r int) {
