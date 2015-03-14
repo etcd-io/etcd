@@ -70,6 +70,11 @@ type apply struct {
 }
 
 type raftNode struct {
+	// Cache of the latest raft index and raft term the server has seen
+	index uint64
+	term  uint64
+	lead  uint64
+
 	raft.Node
 
 	// a chan to send out apply
@@ -89,11 +94,6 @@ type raftNode struct {
 	// clients should timeout and reissue their messages.
 	// If transport is nil, server will panic.
 	transport rafthttp.Transporter
-
-	// Cache of the latest raft index and raft term the server has seen
-	index uint64
-	term  uint64
-	lead  uint64
 }
 
 func (r *raftNode) run() {
