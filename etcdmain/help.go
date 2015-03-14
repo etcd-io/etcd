@@ -104,5 +104,11 @@ by consensus protocol.
 	
 	--force-new-cluster 'false'
 		force to create a new one-member cluster.
+
+
+logging flags:
+
+	--disable-log-timestamps 'false'
+		disable writing timestamps in logs.	
 `
 )

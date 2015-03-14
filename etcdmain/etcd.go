@@ -31,6 +31,7 @@ import (
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/etcdhttp"
 	"github.com/coreos/etcd/pkg/cors"
+	"github.com/coreos/etcd/pkg/logutil"
 	"github.com/coreos/etcd/pkg/osutil"
 	"github.com/coreos/etcd/pkg/transport"
 	"github.com/coreos/etcd/pkg/types"
@@ -50,6 +51,8 @@ func Main() {
 		log.Printf("etcd: error verifying flags, %v", err)
 		os.Exit(2)
 	}
+
+	logutil.InitLogger(&logutil.Config{DisableTimestamps: cfg.disableLogTimestamps})
 
 	var stopped <-chan struct{}
 
