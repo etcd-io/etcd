@@ -71,6 +71,7 @@ type apply struct {
 
 type raftNode struct {
 	// Cache of the latest raft index and raft term the server has seen
+	// uint64 should be aligned to the top of struct, used by 32-bit compilers
 	index uint64
 	term  uint64
 	lead  uint64
