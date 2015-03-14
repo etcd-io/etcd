@@ -16,6 +16,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"math/rand"
 	"net"
 	"strings"
@@ -35,6 +36,10 @@ type cluster struct {
 	Stressers  []Stresser
 	Names      []string
 	ClientURLs []string
+}
+
+type ClusterStatus struct {
+	AgentStatuses map[string]client.Status
 }
 
 // newCluster starts and returns a new cluster. The caller should call Terminate when finished, to shut it down.
@@ -158,6 +163,24 @@ func (c *cluster) Terminate() {
 	for _, s := range c.Stressers {
 		s.Cancel()
 	}
+}
+
+func (c *cluster) Status() ClusterStatus {
+	cs := ClusterStatus{
+		AgentStatuses: make(map[string]client.Status),
+	}
+
+	for i, a := range c.Agents {
+		s, err := a.Status()
+		// TODO: add a.Desc() as a key of the map
+		desc := c.agentEndpoints[i]
+		if err != nil {
+			cs.AgentStatuses[desc] = client.Status{State: "unknown"}
+			log.Printf("etcd-tester: failed to get the status of agent [%s]", desc)
+		}
+		cs.AgentStatuses[desc] = s
+	}
+	return cs
 }
 
 // setHealthKey sets health key on all given urls.
