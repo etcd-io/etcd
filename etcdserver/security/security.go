@@ -197,7 +197,7 @@ func (s *Store) GetRole(name string) (Role, error) {
 }
 
 func (s *Store) CreateOrUpdateRole(role Role) (Role, error) {
-	role, err := s.GetRole(role.Role)
+	_, err := s.GetRole(role.Role)
 	if err == nil {
 		return s.UpdateRole(role)
 	}
