@@ -3,11 +3,11 @@
 ## etcd Resources 
 There are three types of resources in etcd
 
-1. user resources: users and roles in the user store
+1. permission resources: users and roles in the user store
 2. key-value resources: key-value pairs in the key-value store
 3. settings resources: security settings, auth settings, and dynamic etcd cluster settings (election/heartbeat)
 
-### User Resources 
+### Permission Resources 
 
 #### Users
 A user is an identity to be authenticated. Each user can have multiple roles. The user has a capability on the resource if one of the roles has that capability.
@@ -334,7 +334,48 @@ PUT  /v2/security/roles/rocket/update
         JSON state of the role, with change containing empty lists and the deltas applied appropriately.
 
 
-#### TBD Management modification
+#### Enable and Disable Security
+        
+**Get security status**
+
+GET  /v2/security/enable
+
+    Sent Headers:
+    Possible Status Codes:
+        200 OK
+    200 Body:
+        {
+          "enabled": true
+        }
+
+
+**Enable security**
+
+Enabling security means setting an explicit `root` user and password. ROOTs roles are irrelevant, as this user has full permissions.
+
+PUT  /v2/security/enable
+
+    Sent Headers:
+    Put Body:
+        {
+          "user" : "root",
+          "password": "toor"
+        }
+    Possible Status Codes:
+        200 OK
+        400 Bad Request (if not a root user)
+    200 Body: (empty)
+
+**Disable security**
+
+DELETE  /v2/security/enable
+
+    Sent Headers:
+        Authorization: Basic <RootAuthString>
+    Possible Status Codes:
+        200 OK
+        403 Forbidden (if not a root user)
+    200 Body: (empty)
 
 
 ## Example Workflow
@@ -343,13 +384,12 @@ Let's walk through an example to show two tenants (applications, in our case) us
 
 ### Enable security
 
-//TODO(barakmich): Maybe this is dynamic? I don't like the idea of rebooting when we don't have to.
-
-#### Default ROOT 
-
-etcd always has a ROOT when started with security enabled. The default username is `root`, and the password is `root`. 
-
-// TODO(barakmich): if the enabling is dynamic, perhaps that'd be a good time to set a password? Thus obviating the next section.
+```
+PUT  /v2/security/enable
+    Headers:
+    Put Body:
+        {"user" : "root", "password": "root"}
+```
 
 
 ### Change root's password

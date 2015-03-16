@@ -1138,7 +1138,7 @@ func TestV2DeprecatedMachinesEndpoint(t *testing.T) {
 		{"POST", http.StatusMethodNotAllowed},
 	}
 
-	m := NewClientHandler(&etcdserver.EtcdServer{Cluster: &etcdserver.Cluster{}})
+	m := &deprecatedMachinesHandler{clusterInfo: &etcdserver.Cluster{}}
 	s := httptest.NewServer(m)
 	defer s.Close()
 

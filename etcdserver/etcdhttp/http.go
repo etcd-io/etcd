@@ -24,6 +24,7 @@ import (
 
 	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/etcdserver/etcdhttp/httptypes"
+	"github.com/coreos/etcd/etcdserver/security"
 )
 
 const (
@@ -51,6 +52,9 @@ func writeError(w http.ResponseWriter, err error) {
 		e.WriteTo(w)
 	case *httptypes.HTTPError:
 		e.WriteTo(w)
+	case security.MergeError:
+		herr := httptypes.NewHTTPError(http.StatusBadRequest, e.Error())
+		herr.WriteTo(w)
 	default:
 		log.Printf("etcdhttp: unexpected error: %v", err)
 		herr := httptypes.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
