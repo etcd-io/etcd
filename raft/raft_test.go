@@ -48,25 +48,94 @@ func (r *raft) readMessages() []pb.Message {
 	return msgs
 }
 
+func TestBecomeProbe(t *testing.T) {
+	match := uint64(1)
+	tests := []struct {
+		p     *Progress
+		wnext uint64
+	}{
+		{
+			&Progress{State: ProgressStateReplicate, Match: match, Next: 5},
+			2,
+		},
+		{
+			// snapshot finish
+			&Progress{State: ProgressStateSnapshot, Match: match, Next: 5, PendingSnapshot: 10},
+			11,
+		},
+		{
+			// snapshot failure
+			&Progress{State: ProgressStateSnapshot, Match: match, Next: 5, PendingSnapshot: 0},
+			2,
+		},
+	}
+	for i, tt := range tests {
+		tt.p.becomeProbe()
+		if tt.p.State != ProgressStateProbe {
+			t.Errorf("#%d: state = %s, want %s", i, tt.p.State, ProgressStateProbe)
+		}
+		if tt.p.Match != match {
+			t.Errorf("#%d: match = %d, want %d", i, tt.p.Match, match)
+		}
+		if tt.p.Next != tt.wnext {
+			t.Errorf("#%d: next = %d, want %d", i, tt.p.Next, tt.wnext)
+		}
+	}
+}
+
+func TestBecomeReplicate(t *testing.T) {
+	p := &Progress{State: ProgressStateProbe, Match: 1, Next: 5}
+	p.becomeReplicate()
+
+	if p.State != ProgressStateReplicate {
+		t.Errorf("state = %s, want %s", p.State, ProgressStateReplicate)
+	}
+	if p.Match != 1 {
+		t.Errorf("match = %d, want 1", p.Match)
+	}
+	if w := p.Match + 1; p.Next != w {
+		t.Errorf("next = %d, want %d", p.Next, w)
+	}
+}
+
+func TestBecomeSnapshot(t *testing.T) {
+	p := &Progress{State: ProgressStateProbe, Match: 1, Next: 5}
+	p.becomeSnapshot(10)
+
+	if p.State != ProgressStateSnapshot {
+		t.Errorf("state = %s, want %s", p.State, ProgressStateSnapshot)
+	}
+	if p.Match != 1 {
+		t.Errorf("match = %d, want 1", p.Match)
+	}
+	if p.PendingSnapshot != 10 {
+		t.Errorf("pendingSnapshot = %d, want 10", p.PendingSnapshot)
+	}
+}
+
 func TestProgressUpdate(t *testing.T) {
 	prevM, prevN := uint64(3), uint64(5)
 	tests := []struct {
 		update uint64
 
-		wm uint64
-		wn uint64
+		wm  uint64
+		wn  uint64
+		wok bool
 	}{
-		{prevM - 1, prevM, prevN},         // do not decrease match, next
-		{prevM, prevM, prevN},             // do not decrease next
-		{prevM + 1, prevM + 1, prevN},     // increase match, do not decrease next
-		{prevM + 2, prevM + 2, prevN + 1}, // increase match, next
+		{prevM - 1, prevM, prevN, false},        // do not decrease match, next
+		{prevM, prevM, prevN, false},            // do not decrease next
+		{prevM + 1, prevM + 1, prevN, true},     // increase match, do not decrease next
+		{prevM + 2, prevM + 2, prevN + 1, true}, // increase match, next
 	}
 	for i, tt := range tests {
 		p := &Progress{
 			Match: prevM,
 			Next:  prevN,
 		}
-		p.update(tt.update)
+		ok := p.maybeUpdate(tt.update)
+		if ok != tt.wok {
+			t.Errorf("#%d: ok= %v, want %v", i, ok, tt.wok)
+		}
 		if p.Match != tt.wm {
 			t.Errorf("#%d: match= %d, want %d", i, p.Match, tt.wm)
 		}
@@ -78,6 +147,7 @@ func TestProgressUpdate(t *testing.T) {
 
 func TestProgressMaybeDecr(t *testing.T) {
 	tests := []struct {
+		state    ProgressStateType
 		m        uint64
 		n        uint64
 		rejected uint64
@@ -87,54 +157,50 @@ func TestProgressMaybeDecr(t *testing.T) {
 		wn uint64
 	}{
 		{
-			// match != 0 is always false
-			1, 0, 0, 0, false, 0,
+			// state replicate and rejected is not greater than match
+			ProgressStateReplicate, 5, 10, 5, 5, false, 10,
 		},
 		{
-			// match != 0 and to is greater than match
+			// state replicate and rejected is not greater than match
+			ProgressStateReplicate, 5, 10, 4, 4, false, 10,
+		},
+		{
+			// state replicate and rejected is greater than match
 			// directly decrease to match+1
-			5, 10, 5, 5, false, 10,
-		},
-		{
-			// match != 0 and to is greater than match
-			// directly decrease to match+1
-			5, 10, 4, 4, false, 10,
-		},
-		{
-			// match != 0 and to is not greater than match
-			5, 10, 9, 9, true, 6,
+			ProgressStateReplicate, 5, 10, 9, 9, true, 6,
 		},
 		{
 			// next-1 != rejected is always false
-			0, 0, 0, 0, false, 0,
+			ProgressStateProbe, 0, 0, 0, 0, false, 0,
 		},
 		{
 			// next-1 != rejected is always false
-			0, 10, 5, 5, false, 10,
+			ProgressStateProbe, 0, 10, 5, 5, false, 10,
 		},
 		{
 			// next>1 = decremented by 1
-			0, 10, 9, 9, true, 9,
+			ProgressStateProbe, 0, 10, 9, 9, true, 9,
 		},
 		{
 			// next>1 = decremented by 1
-			0, 2, 1, 1, true, 1,
+			ProgressStateProbe, 0, 2, 1, 1, true, 1,
 		},
 		{
 			// next<=1 = reset to 1
-			0, 1, 0, 0, true, 1,
+			ProgressStateProbe, 0, 1, 0, 0, true, 1,
 		},
 		{
 			// decrease to min(rejected, last+1)
-			0, 10, 9, 2, true, 3,
+			ProgressStateProbe, 0, 10, 9, 2, true, 3,
 		},
 		{
 			// rejected < 1, reset to 1
-			0, 10, 9, 0, true, 1,
+			ProgressStateProbe, 0, 10, 9, 0, true, 1,
 		},
 	}
 	for i, tt := range tests {
 		p := &Progress{
+			State: tt.state,
 			Match: tt.m,
 			Next:  tt.n,
 		}
@@ -150,61 +216,63 @@ func TestProgressMaybeDecr(t *testing.T) {
 	}
 }
 
-func TestProgressShouldWait(t *testing.T) {
+func TestProgressIsPaused(t *testing.T) {
 	tests := []struct {
-		m    uint64
-		wait int
+		state  ProgressStateType
+		paused bool
 
 		w bool
 	}{
-		// match != 0 is always not wait
-		{1, 0, false},
-		{1, 1, false},
-		{0, 1, true},
-		{0, 0, false},
+		{ProgressStateProbe, false, false},
+		{ProgressStateProbe, true, true},
+		{ProgressStateReplicate, false, false},
+		{ProgressStateReplicate, true, false},
+		{ProgressStateSnapshot, false, true},
+		{ProgressStateSnapshot, true, true},
 	}
 	for i, tt := range tests {
 		p := &Progress{
-			Match: tt.m,
-			Wait:  tt.wait,
+			State:  tt.state,
+			Paused: tt.paused,
 		}
-		if g := p.shouldWait(); g != tt.w {
+		if g := p.isPaused(); g != tt.w {
 			t.Errorf("#%d: shouldwait = %t, want %t", i, g, tt.w)
 		}
 	}
 }
 
-// TestProgressWaitReset ensures that progress.Update and progress.DercTo
-// will reset progress.wait.
-func TestProgressWaitReset(t *testing.T) {
+// TestProgressResume ensures that progress.maybeUpdate and progress.maybeDecrTo
+// will reset progress.paused.
+func TestProgressResume(t *testing.T) {
 	p := &Progress{
-		Wait: 1,
+		Next:   2,
+		Paused: true,
 	}
 	p.maybeDecrTo(1, 1)
-	if p.Wait != 0 {
-		t.Errorf("wait= %d, want 0", p.Wait)
+	if p.Paused != false {
+		t.Errorf("paused= %v, want false", p.Paused)
 	}
-	p.Wait = 1
-	p.update(2)
-	if p.Wait != 0 {
-		t.Errorf("wait= %d, want 0", p.Wait)
+	p.Paused = true
+	p.maybeUpdate(2)
+	if p.Paused != false {
+		t.Errorf("paused= %v, want false", p.Paused)
 	}
 }
 
-// TestProgressDecr ensures raft.heartbeat decreases progress.wait by heartbeat.
-func TestProgressDecr(t *testing.T) {
+// TestProgressResumeByHeartbeat ensures raft.heartbeat reset progress.paused by heartbeat.
+func TestProgressResumeByHeartbeat(t *testing.T) {
 	r := newRaft(1, []uint64{1, 2}, 5, 1, NewMemoryStorage(), 0)
 	r.becomeCandidate()
 	r.becomeLeader()
-	r.prs[2].Wait = r.heartbeatTimeout * 2
+	r.prs[2].Paused = true
 
 	r.Step(pb.Message{From: 1, To: 1, Type: pb.MsgBeat})
-	if r.prs[2].Wait != r.heartbeatTimeout*(2-1) {
-		t.Errorf("wait = %d, want %d", r.prs[2].Wait, r.heartbeatTimeout*(2-1))
+	if r.prs[2].Paused != false {
+		t.Errorf("paused = %v, want false", r.prs[2].Paused)
 	}
 }
 
-func TestProgressWait(t *testing.T) {
+func TestProgressPaused(t *testing.T) {
 	r := newRaft(1, []uint64{1, 2}, 5, 1, NewMemoryStorage(), 0)
 	r.becomeCandidate()
 	r.becomeLeader()
@@ -1262,16 +1330,16 @@ func TestLeaderIncreaseNext(t *testing.T) {
 	previousEnts := []pb.Entry{{Term: 1, Index: 1}, {Term: 1, Index: 2}, {Term: 1, Index: 3}}
 	tests := []struct {
 		// progress
-		match uint64
+		state ProgressStateType
 		next  uint64
 
 		wnext uint64
 	}{
-		// match is not zero, optimistically increase next
+		// state replicate, optimistically increase next
 		// previous entries + noop entry + propose + 1
-		{1, 2, uint64(len(previousEnts) + 1 + 1 + 1)},
-		// match is zero, not optimistically increase next
-		{0, 2, 2},
+		{ProgressStateReplicate, 2, uint64(len(previousEnts) + 1 + 1 + 1)},
+		// state probe, not optimistically increase next
+		{ProgressStateProbe, 2, 2},
 	}
 
 	for i, tt := range tests {
@@ -1279,7 +1347,8 @@ func TestLeaderIncreaseNext(t *testing.T) {
 		sm.raftLog.append(previousEnts...)
 		sm.becomeCandidate()
 		sm.becomeLeader()
-		sm.prs[2].Match, sm.prs[2].Next = tt.match, tt.next
+		sm.prs[2].State = tt.state
+		sm.prs[2].Next = tt.next
 		sm.Step(pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{Data: []byte("somedata")}}})
 
 		p := sm.prs[2]
@@ -1289,41 +1358,32 @@ func TestLeaderIncreaseNext(t *testing.T) {
 	}
 }
 
-func TestUnreachable(t *testing.T) {
-	previousEnts := []pb.Entry{{Term: 1, Index: 1}, {Term: 1, Index: 2}, {Term: 1, Index: 3}}
-	s := NewMemoryStorage()
-	s.Append(previousEnts)
-	r := newRaft(1, []uint64{1, 2}, 10, 1, s, 0)
+func TestSendAppendForProgressProbe(t *testing.T) {
+	r := newRaft(1, []uint64{1, 2}, 10, 1, NewMemoryStorage(), 0)
 	r.becomeCandidate()
 	r.becomeLeader()
 	r.readMessages()
+	r.prs[2].becomeProbe()
 
-	// set node 2 to unreachable
-	r.prs[2].Match = 3
-	r.prs[2].Next = 5
-	r.prs[2].Wait = 0
-	r.prs[2].unreachable()
-
-	if wnext := r.prs[2].Match + 1; r.prs[2].Next != wnext {
-		t.Errorf("next = %d, want %d", r.prs[2].Next, wnext)
-	}
-
+	// each round is a heartbeat
 	for i := 0; i < 3; i++ {
-		// node 2 is unreachable, we expect that raft will only send out one msgAPP per heartbeat timeout
-		r.Step(pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{Data: []byte("somedata")}}})
+		// we expect that raft will only send out one msgAPP per heartbeat timeout
+		r.appendEntry(pb.Entry{Data: []byte("somedata")})
+		r.sendAppend(2)
 		msg := r.readMessages()
 		if len(msg) != 1 {
 			t.Errorf("len(msg) = %d, want %d", len(msg), 1)
 		}
-		if msg[0].Index != 3 {
-			t.Errorf("index = %d, want %d", msg[0].Index, 3)
+		if msg[0].Index != 0 {
+			t.Errorf("index = %d, want %d", msg[0].Index, 0)
 		}
 
-		if r.prs[2].Wait != r.heartbeatTimeout {
-			t.Errorf("wait = %d, want %d", r.prs[1].Wait, r.heartbeatTimeout)
+		if r.prs[2].Paused != true {
+			t.Errorf("paused = %v, want true", r.prs[2].Paused)
 		}
 		for j := 0; j < 10; j++ {
-			r.Step(pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{Data: []byte("somedata")}}})
+			r.appendEntry(pb.Entry{Data: []byte("somedata")})
+			r.sendAppend(2)
 			if l := len(r.readMessages()); l != 0 {
 				t.Errorf("len(msg) = %d, want %d", l, 0)
 			}
@@ -1342,15 +1402,62 @@ func TestUnreachable(t *testing.T) {
 			t.Errorf("type = %s, want %s", msg[0].Type, pb.MsgHeartbeat)
 		}
 	}
+}
 
-	// recover node 2
-	r.prs[2].reachable()
+func TestSendAppendForProgressReplicate(t *testing.T) {
+	r := newRaft(1, []uint64{1, 2}, 10, 1, NewMemoryStorage(), 0)
+	r.becomeCandidate()
+	r.becomeLeader()
+	r.readMessages()
+	r.prs[2].becomeReplicate()
+
 	for i := 0; i < 10; i++ {
-		r.Step(pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{Data: []byte("somedata")}}})
+		r.appendEntry(pb.Entry{Data: []byte("somedata")})
+		r.sendAppend(2)
 		msgs := r.readMessages()
 		if len(msgs) != 1 {
 			t.Errorf("len(msg) = %d, want %d", len(msgs), 1)
 		}
+	}
+}
+
+func TestSendAppendForProgressSnapshot(t *testing.T) {
+	r := newRaft(1, []uint64{1, 2}, 10, 1, NewMemoryStorage(), 0)
+	r.becomeCandidate()
+	r.becomeLeader()
+	r.readMessages()
+	r.prs[2].becomeSnapshot(10)
+
+	for i := 0; i < 10; i++ {
+		r.appendEntry(pb.Entry{Data: []byte("somedata")})
+		r.sendAppend(2)
+		msgs := r.readMessages()
+		if len(msgs) != 0 {
+			t.Errorf("len(msg) = %d, want %d", len(msgs), 0)
+		}
+	}
+}
+
+func TestRecvMsgUnreachable(t *testing.T) {
+	previousEnts := []pb.Entry{{Term: 1, Index: 1}, {Term: 1, Index: 2}, {Term: 1, Index: 3}}
+	s := NewMemoryStorage()
+	s.Append(previousEnts)
+	r := newRaft(1, []uint64{1, 2}, 10, 1, s, 0)
+	r.becomeCandidate()
+	r.becomeLeader()
+	r.readMessages()
+	// set node 2 to state replicate
+	r.prs[2].Match = 3
+	r.prs[2].becomeReplicate()
+	r.prs[2].optimisticUpdate(5)
+
+	r.Step(pb.Message{From: 2, To: 1, Type: pb.MsgUnreachable})
+
+	if r.prs[2].State != ProgressStateProbe {
+		t.Errorf("state = %s, want %s", r.prs[2].State, ProgressStateProbe)
+	}
+	if wnext := r.prs[2].Match + 1; r.prs[2].Next != wnext {
+		t.Errorf("next = %d, want %d", r.prs[2].Next, wnext)
 	}
 }
 

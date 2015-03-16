@@ -56,7 +56,7 @@ func TestPendingSnapshotPauseReplication(t *testing.T) {
 	sm.becomeCandidate()
 	sm.becomeLeader()
 
-	sm.prs[2].setPendingSnapshot(11)
+	sm.prs[2].becomeSnapshot(11)
 
 	sm.Step(pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{Data: []byte("somedata")}}})
 	msgs := sm.readMessages()
@@ -74,7 +74,7 @@ func TestSnapshotFailure(t *testing.T) {
 	sm.becomeLeader()
 
 	sm.prs[2].Next = 1
-	sm.prs[2].setPendingSnapshot(11)
+	sm.prs[2].becomeSnapshot(11)
 
 	sm.Step(pb.Message{From: 2, To: 1, Type: pb.MsgSnapStatus, Reject: true})
 	if sm.prs[2].PendingSnapshot != 0 {
@@ -82,6 +82,9 @@ func TestSnapshotFailure(t *testing.T) {
 	}
 	if sm.prs[2].Next != 1 {
 		t.Fatalf("Next = %d, want 1", sm.prs[2].Next)
+	}
+	if sm.prs[2].Paused != true {
+		t.Errorf("Paused = %v, want true", sm.prs[2].Paused)
 	}
 }
 
@@ -94,7 +97,7 @@ func TestSnapshotSucceed(t *testing.T) {
 	sm.becomeLeader()
 
 	sm.prs[2].Next = 1
-	sm.prs[2].setPendingSnapshot(11)
+	sm.prs[2].becomeSnapshot(11)
 
 	sm.Step(pb.Message{From: 2, To: 1, Type: pb.MsgSnapStatus, Reject: false})
 	if sm.prs[2].PendingSnapshot != 0 {
@@ -102,6 +105,9 @@ func TestSnapshotSucceed(t *testing.T) {
 	}
 	if sm.prs[2].Next != 12 {
 		t.Fatalf("Next = %d, want 12", sm.prs[2].Next)
+	}
+	if sm.prs[2].Paused != true {
+		t.Errorf("Paused = %v, want true", sm.prs[2].Paused)
 	}
 }
 
@@ -114,7 +120,7 @@ func TestSnapshotAbort(t *testing.T) {
 	sm.becomeLeader()
 
 	sm.prs[2].Next = 1
-	sm.prs[2].setPendingSnapshot(11)
+	sm.prs[2].becomeSnapshot(11)
 
 	// A successful msgAppResp that has a higher/equal index than the
 	// pending snapshot should abort the pending snapshot.
