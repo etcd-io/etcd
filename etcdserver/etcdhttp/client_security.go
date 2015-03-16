@@ -185,7 +185,7 @@ func (sh *securityHandler) forRole(w http.ResponseWriter, r *http.Request, role 
 			return
 		}
 		if in.Role != role {
-			httptypes.NewHTTPError(400, "Role JSON name does not match the name in the URL")
+			writeError(w, httptypes.NewHTTPError(400, "Role JSON name does not match the name in the URL"))
 			return
 		}
 		newrole, err := sh.sec.CreateOrUpdateRole(in)
@@ -280,7 +280,7 @@ func (sh *securityHandler) forUser(w http.ResponseWriter, r *http.Request, user 
 			return
 		}
 		if u.User != user {
-			httptypes.NewHTTPError(400, "User JSON name does not match the name in the URL")
+			writeError(w, httptypes.NewHTTPError(400, "User JSON name does not match the name in the URL"))
 			return
 		}
 		newuser, err := sh.sec.CreateOrUpdateUser(u)
