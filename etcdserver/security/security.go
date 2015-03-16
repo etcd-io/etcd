@@ -115,7 +115,7 @@ func (s *Store) GetUser(name string) (User, error) {
 }
 
 func (s *Store) CreateOrUpdateUser(user User) (User, error) {
-	user, err := s.GetUser(user.User)
+	_, err := s.GetUser(user.User)
 	if err == nil {
 		// Remove the update-user roles from updating downstream.
 		// Roles are granted or revoked, not changed directly.
