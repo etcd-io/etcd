@@ -20,6 +20,7 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"os"
 	"path"
 	"regexp"
 	"sync/atomic"
@@ -198,6 +199,10 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 
 		if err := fileutil.IsDirWriteable(cfg.DataDir); err != nil {
 			return nil, fmt.Errorf("cannot write to data directory: %v", err)
+		}
+
+		if err := os.MkdirAll(cfg.MemberDir(), 0700); err != nil {
+			return nil, fmt.Errorf("cannot create the member directory: %v", err)
 		}
 
 		if err := fileutil.IsDirWriteable(cfg.MemberDir()); err != nil {
