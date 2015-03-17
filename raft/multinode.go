@@ -143,24 +143,26 @@ func (g *groupState) commitReady(rd Ready) {
 	if !IsEmptyHardState(rd.HardState) {
 		g.prevHardSt = rd.HardState
 	}
+	if g.prevHardSt.Commit != 0 {
+		// In most cases, prevHardSt and rd.HardState will be the same
+		// because when there are new entries to apply we just sent a
+		// HardState with an updated Commit value. However, on initial
+		// startup the two are different because we don't send a HardState
+		// until something changes, but we do send any un-applied but
+		// committed entries (and previously-committed entries may be
+		// incorporated into the snapshot, even if rd.CommittedEntries is
+		// empty). Therefore we mark all committed entries as applied
+		// whether they were included in rd.HardState or not.
+		g.raft.raftLog.appliedTo(g.prevHardSt.Commit)
+	}
+	if len(rd.Entries) > 0 {
+		e := rd.Entries[len(rd.Entries)-1]
+		g.raft.raftLog.stableTo(e.Index, e.Term)
+	}
 	if !IsEmptySnap(rd.Snapshot) {
 		g.prevSnapi = rd.Snapshot.Metadata.Index
 		g.raft.raftLog.stableSnapTo(g.prevSnapi)
 	}
-	if len(rd.Entries) > 0 {
-		// TODO(bdarnell): stableTo(rd.Snapshot.Index) if any
-		e := rd.Entries[len(rd.Entries)-1]
-		g.raft.raftLog.stableTo(e.Index, e.Term)
-	}
-
-	// TODO(bdarnell): in node.go, Advance() ignores CommittedEntries and calls
-	// appliedTo with HardState.Commit, but this causes problems in multinode/cockroach.
-	// The two should be the same except for the special-casing of the initial ConfChange
-	// entries.
-	if len(rd.CommittedEntries) > 0 {
-		g.raft.raftLog.appliedTo(rd.CommittedEntries[len(rd.CommittedEntries)-1].Index)
-	}
-	//g.raft.raftLog.appliedTo(rd.HardState.Commit)
 }
 
 func (mn *multiNode) run() {
@@ -182,10 +184,8 @@ func (mn *multiNode) run() {
 			// TODO(bdarnell): pass applied through gc and into newRaft. Or get rid of it?
 			r := newRaft(mn.id, nil, mn.election, mn.heartbeat, gc.storage, 0)
 			group = &groupState{
-				id:         gc.id,
-				raft:       r,
-				prevSoftSt: r.softState(),
-				prevHardSt: r.HardState,
+				id:   gc.id,
+				raft: r,
 			}
 			groups[gc.id] = group
 			lastIndex, err := gc.storage.LastIndex()
@@ -213,6 +213,9 @@ func (mn *multiNode) run() {
 					r.addNode(peer.ID)
 				}
 			}
+			// Set the initial hard and soft states after performing all initialization.
+			group.prevSoftSt = r.softState()
+			group.prevHardSt = r.HardState
 			close(gc.done)
 
 		case gr := <-mn.rmgroupc:
