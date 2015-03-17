@@ -266,6 +266,7 @@ func (sh *securityHandler) forUser(w http.ResponseWriter, r *http.Request, user 
 			return
 		}
 		u.Password = ""
+
 		err = json.NewEncoder(w).Encode(u)
 		if err != nil {
 			log.Println("etcdhttp: forUser error encoding on", r.URL)
@@ -288,6 +289,8 @@ func (sh *securityHandler) forUser(w http.ResponseWriter, r *http.Request, user 
 			writeError(w, err)
 			return
 		}
+		newuser.Password = ""
+
 		w.WriteHeader(http.StatusCreated)
 		err = json.NewEncoder(w).Encode(newuser)
 		if err != nil {
