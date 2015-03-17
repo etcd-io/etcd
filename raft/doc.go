@@ -20,7 +20,7 @@ Usage
 The primary object in raft is a Node. You either start a Node from scratch
 using raft.StartNode or start a Node from some initial state using raft.RestartNode.
 	storage := raft.NewMemoryStorage()
-	n := raft.StartNode(0x01, []int64{0x02, 0x03}, 3, 1, storage)
+	n := raft.StartNode(0x01, []raft.Peer{{ID: 0x02}, {ID: 0x03}}, 3, 1, storage)
 
 Now that you are holding onto a Node you have a few responsibilities:
 
