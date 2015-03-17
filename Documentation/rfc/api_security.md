@@ -84,7 +84,6 @@ The User JSON object is formed as follows:
   ],
   "grant": [],
   "revoke": [],
-  "lastModified": "2006-01-02Z04:05:07"
 }
 ```
 
@@ -100,7 +99,6 @@ GET/HEAD  /v2/security/user
         200 OK
         403 Forbidden
     200 Headers:
-        ETag: "<hash of list of users>"
         Content-type: application/json
     200 Body:
         {
@@ -118,13 +116,11 @@ GET/HEAD  /v2/security/users/alice
         403 Forbidden
         404 Not Found
     200 Headers:
-        ETag: "users/alice:<lastModified>"
         Content-type: application/json
     200 Body:
         {
           "user" : "alice"
           "roles" : ["fleet", "etcd"]
-          "lastModified": "2015-02-05Z18:00:00"
         }
 
 **Create A User**
@@ -141,8 +137,6 @@ PUT  /v2/security/users/charlie
         200 OK
         403 Forbidden
         409 Conflict (if exists)
-    200 Headers:
-        ETag: "users/charlie:<tzNow>"
     200 Body: (empty)
 
 **Remove A User**
@@ -171,8 +165,6 @@ PUT  /v2/security/users/charlie/grant
         403 Forbidden
         404 Not Found
         409 Conflict
-    200 Headers:
-        ETag: "users/charlie:<tzNow>"
     200 Body: 
         JSON user struct, updated. "roles" now contains the grants, and "grantRoles" is empty. If there is an error in the set of roles to be added, for example, a non-existent role, then 409 is returned, with an error JSON stating why.
 
@@ -189,8 +181,6 @@ PUT  /v2/security/users/charlie/revoke
         403 Forbidden
         404 Not Found
         409 Conflict
-    200 Headers:
-        ETag: "users/charlie:<tzNow>"
     200 Body: 
         JSON user struct, updated. "roles" now doesn't contain the roles, and "revokeRoles" is empty. If there is an error in the set of roles to be removed, for example, a non-existent role, then 409 is returned, with an error JSON stating why.
 
@@ -206,8 +196,6 @@ PUT  /v2/security/users/charlie/password
         200 OK
         403 Forbidden
         404 Not Found
-    200 Headers:
-        ETag: "users/charlie:<tzNow>"
     200 Body:
         JSON user struct, updated
 
@@ -226,7 +214,6 @@ A full role structure may look like this. A Permission List structure is used fo
     "grant" : {"kv": {...}},
     "revoke": {"kv": {...}},
     "members" : ["alice", "bob"],
-    "lastModified": "2015-02-05Z18:00:00"
 }
 ```
 
@@ -269,8 +256,6 @@ GET/HEAD  /v2/security/roles/fleet
           "write": {
             "prefixesAllowed": ["/fleet/"],
           },
-          "members" : ["alice", "bob"] // Reverse map optional?
-          "lastModified": "2015-02-05Z18:00:00"
         }
 
 **Create A Role**
@@ -286,8 +271,6 @@ PUT  /v2/security/roles/rocket
         403 Forbidden
         404 Not Found
         409 Conflict (if exists)
-    200 Headers:
-        ETag: "roles/rocket:<tzNow>"
     200 Body: 
         JSON state of the role
 
