@@ -144,12 +144,15 @@ func (g *groupState) commitReady(rd Ready) {
 		g.prevHardSt = rd.HardState
 	}
 	if g.prevHardSt.Commit != 0 {
-		// In most cases, prevHardSt and rd.HardState will be the same because
-		// when there are new entries to apply we just sent a HardState with
-		// an updated Commit value. However, on initial startup the two are different
-		// because we don't send a HardState until something changes, but we do send
-		// any un-applied but committed entries. Therefore we mark all committed
-		// entries as applied whether they were included in rd.HardState or not.
+		// In most cases, prevHardSt and rd.HardState will be the same
+		// because when there are new entries to apply we just sent a
+		// HardState with an updated Commit value. However, on initial
+		// startup the two are different because we don't send a HardState
+		// until something changes, but we do send any un-applied but
+		// committed entries (and previously-committed entries may be
+		// incorporated into the snapshot, even if rd.CommittedEntries is
+		// empty). Therefore we mark all committed entries as applied
+		// whether they were included in rd.HardState or not.
 		g.raft.raftLog.appliedTo(g.prevHardSt.Commit)
 	}
 	if len(rd.Entries) > 0 {
