@@ -135,7 +135,9 @@ The security flags help to [build a secure etcd cluster][security].
 
 ### Unsafe Flags
 
-Be CAUTIOUS to use unsafe flags because it will break the guarantee given by consensus protocol. For example, it may panic if other members in the cluster are still alive. Follow the instructions when using these falgs.
+Please be CAUTIOUS when using unsafe flags because it will break the guarantees given by the consensus protocol.
+For example, it may panic if other members in the cluster are still alive.
+Follow the instructions when using these flags.
 
 ##### -force-new-cluster
 + Force to create a new one-member cluster. It commits configuration changes in force to remove all existing members in the cluster and add itself. It needs to be set to [restore a backup][restore].
