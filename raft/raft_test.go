@@ -1629,7 +1629,7 @@ func TestStepIgnoreConfig(t *testing.T) {
 	pendingConf := r.pendingConf
 	r.Step(pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{Type: pb.EntryConfChange}}})
 	wents := []pb.Entry{{Type: pb.EntryNormal, Term: 1, Index: 3, Data: nil}}
-	if ents := r.raftLog.entries(index + 1); !reflect.DeepEqual(ents, wents) {
+	if ents := r.raftLog.entries(index+1, noLimit); !reflect.DeepEqual(ents, wents) {
 		t.Errorf("ents = %+v, want %+v", ents, wents)
 	}
 	if r.pendingConf != pendingConf {

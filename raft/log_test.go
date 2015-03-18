@@ -132,7 +132,7 @@ func TestAppend(t *testing.T) {
 		if index != tt.windex {
 			t.Errorf("#%d: lastIndex = %d, want %d", i, index, tt.windex)
 		}
-		if g := raftLog.entries(1); !reflect.DeepEqual(g, tt.wents) {
+		if g := raftLog.entries(1, noLimit); !reflect.DeepEqual(g, tt.wents) {
 			t.Errorf("#%d: logEnts = %+v, want %+v", i, g, tt.wents)
 		}
 		if g := raftLog.unstable.offset; g != tt.wunstable {
@@ -257,7 +257,7 @@ func TestLogMaybeAppend(t *testing.T) {
 				t.Errorf("#%d: committed = %d, want %d", i, gcommit, tt.wcommit)
 			}
 			if gappend && len(tt.ents) != 0 {
-				gents := raftLog.slice(raftLog.lastIndex()-uint64(len(tt.ents))+1, raftLog.lastIndex()+1)
+				gents := raftLog.slice(raftLog.lastIndex()-uint64(len(tt.ents))+1, raftLog.lastIndex()+1, noLimit)
 				if !reflect.DeepEqual(tt.ents, gents) {
 					t.Errorf("%d: appended entries = %v, want %v", i, gents, tt.ents)
 				}
@@ -322,7 +322,7 @@ func TestCompactionSideEffects(t *testing.T) {
 		t.Errorf("lastIndex = %d, want = %d", raftLog.lastIndex(), prev+1)
 	}
 
-	ents := raftLog.entries(raftLog.lastIndex())
+	ents := raftLog.entries(raftLog.lastIndex(), noLimit)
 	if len(ents) != 1 {
 		t.Errorf("len(entries) = %d, want = %d", len(ents), 1)
 	}
@@ -691,25 +691,43 @@ func TestSlice(t *testing.T) {
 	var i uint64
 	offset := uint64(100)
 	num := uint64(100)
+	last := offset + num
+	half := offset + num/2
+	halfe := pb.Entry{Index: half, Term: half}
 
 	storage := NewMemoryStorage()
 	storage.ApplySnapshot(pb.Snapshot{Metadata: pb.SnapshotMetadata{Index: offset}})
+	for i = 1; i < num/2; i++ {
+		storage.Append([]pb.Entry{{Index: offset + i, Term: offset + i}})
+	}
 	l := newLog(storage)
-	for i = 1; i < num; i++ {
+	for i = num / 2; i < num; i++ {
 		l.append(pb.Entry{Index: offset + i, Term: offset + i})
 	}
 
 	tests := []struct {
-		from   uint64
-		to     uint64
+		from  uint64
+		to    uint64
+		limit uint64
+
 		w      []pb.Entry
 		wpanic bool
 	}{
-		{offset - 1, offset + 1, nil, true},
-		{offset, offset + 1, nil, true},
-		{offset + num/2, offset + num/2 + 1, []pb.Entry{{Index: offset + num/2, Term: offset + num/2}}, false},
-		{offset + num - 1, offset + num, []pb.Entry{{Index: offset + num - 1, Term: offset + num - 1}}, false},
-		{offset + num, offset + num + 1, nil, true},
+		// test no limit
+		{offset - 1, offset + 1, noLimit, nil, true},
+		{offset, offset + 1, noLimit, nil, true},
+		{half - 1, half + 1, noLimit, []pb.Entry{{Index: half - 1, Term: half - 1}, {Index: half, Term: half}}, false},
+		{half, half + 1, noLimit, []pb.Entry{{Index: half, Term: half}}, false},
+		{last - 1, last, noLimit, []pb.Entry{{Index: last - 1, Term: last - 1}}, false},
+		{last, last + 1, noLimit, nil, true},
+
+		// test limit
+		{half - 1, half + 1, 0, []pb.Entry{{Index: half - 1, Term: half - 1}}, false},
+		{half - 1, half + 1, uint64(halfe.Size() + 1), []pb.Entry{{Index: half - 1, Term: half - 1}}, false},
+		{half - 1, half + 1, uint64(halfe.Size() * 2), []pb.Entry{{Index: half - 1, Term: half - 1}, {Index: half, Term: half}}, false},
+		{half - 1, half + 2, uint64(halfe.Size() * 3), []pb.Entry{{Index: half - 1, Term: half - 1}, {Index: half, Term: half}, {Index: half + 1, Term: half + 1}}, false},
+		{half, half + 2, uint64(halfe.Size()), []pb.Entry{{Index: half, Term: half}}, false},
+		{half, half + 2, uint64(halfe.Size() * 2), []pb.Entry{{Index: half, Term: half}, {Index: half + 1, Term: half + 1}}, false},
 	}
 
 	for j, tt := range tests {
@@ -721,7 +739,7 @@ func TestSlice(t *testing.T) {
 					}
 				}
 			}()
-			g := l.slice(tt.from, tt.to)
+			g := l.slice(tt.from, tt.to, tt.limit)
 			if !reflect.DeepEqual(g, tt.w) {
 				t.Errorf("#%d: from %d to %d = %v, want %v", j, tt.from, tt.to, g, tt.w)
 			}

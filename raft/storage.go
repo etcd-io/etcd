@@ -41,7 +41,9 @@ type Storage interface {
 	// InitialState returns the saved HardState and ConfState information.
 	InitialState() (pb.HardState, pb.ConfState, error)
 	// Entries returns a slice of log entries in the range [lo,hi).
-	Entries(lo, hi uint64) ([]pb.Entry, error)
+	// MaxSize limits the total size of the log entries returned, but
+	// Entries returns at least one entry if any.
+	Entries(lo, hi, maxSize uint64) ([]pb.Entry, error)
 	// Term returns the term of entry i, which must be in the range
 	// [FirstIndex()-1, LastIndex()]. The term of the entry before
 	// FirstIndex is retained for matching purposes even though the
@@ -92,7 +94,7 @@ func (ms *MemoryStorage) SetHardState(st pb.HardState) error {
 }
 
 // Entries implements the Storage interface.
-func (ms *MemoryStorage) Entries(lo, hi uint64) ([]pb.Entry, error) {
+func (ms *MemoryStorage) Entries(lo, hi, maxSize uint64) ([]pb.Entry, error) {
 	ms.Lock()
 	defer ms.Unlock()
 	offset := ms.ents[0].Index
@@ -106,7 +108,9 @@ func (ms *MemoryStorage) Entries(lo, hi uint64) ([]pb.Entry, error) {
 	if len(ms.ents) == 1 {
 		return nil, ErrUnavailable
 	}
-	return ms.ents[lo-offset : hi-offset], nil
+
+	ents := ms.ents[lo-offset : hi-offset]
+	return limitSize(ents, maxSize), nil
 }
 
 // Term implements the Storage interface.

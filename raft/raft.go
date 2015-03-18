@@ -17,6 +17,7 @@ package raft
 import (
 	"errors"
 	"fmt"
+	"math"
 	"math/rand"
 	"sort"
 	"strings"
@@ -26,6 +27,7 @@ import (
 
 // None is a placeholder node ID used when there is no leader.
 const None uint64 = 0
+const noLimit = math.MaxUint64
 
 var errNoLeader = errors.New("no leader")
 
@@ -189,7 +191,8 @@ type raft struct {
 	// the log
 	raftLog *raftLog
 
-	prs map[uint64]*Progress
+	maxMsgSize uint64
+	prs        map[uint64]*Progress
 
 	state StateType
 
@@ -231,9 +234,13 @@ func newRaft(id uint64, peers []uint64, election, heartbeat int, storage Storage
 		peers = cs.Nodes
 	}
 	r := &raft{
-		id:               id,
-		lead:             None,
-		raftLog:          raftlog,
+		id:      id,
+		lead:    None,
+		raftLog: raftlog,
+		// 4MB for now and hard code it
+		// TODO(xiang): add a config arguement into newRaft after we add
+		// the max inflight message field.
+		maxMsgSize:       4 * 1024 * 1024,
 		prs:              make(map[uint64]*Progress),
 		electionTimeout:  election,
 		heartbeatTimeout: heartbeat,
@@ -314,7 +321,7 @@ func (r *raft) sendAppend(to uint64) {
 		m.Type = pb.MsgApp
 		m.Index = pr.Next - 1
 		m.LogTerm = r.raftLog.term(pr.Next - 1)
-		m.Entries = r.raftLog.entries(pr.Next)
+		m.Entries = r.raftLog.entries(pr.Next, r.maxMsgSize)
 		m.Commit = r.raftLog.committed
 		if n := len(m.Entries); n != 0 {
 			switch pr.State {
@@ -463,7 +470,7 @@ func (r *raft) becomeLeader() {
 	r.tick = r.tickHeartbeat
 	r.lead = r.id
 	r.state = StateLeader
-	for _, e := range r.raftLog.entries(r.raftLog.committed + 1) {
+	for _, e := range r.raftLog.entries(r.raftLog.committed+1, noLimit) {
 		if e.Type != pb.EntryConfChange {
 			continue
 		}

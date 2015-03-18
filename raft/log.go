@@ -136,7 +136,7 @@ func (l *raftLog) unstableEntries() []pb.Entry {
 func (l *raftLog) nextEnts() (ents []pb.Entry) {
 	off := max(l.applied+1, l.firstIndex())
 	if l.committed+1 > off {
-		return l.slice(off, l.committed+1)
+		return l.slice(off, l.committed+1, noLimit)
 	}
 	return nil
 }
@@ -217,15 +217,15 @@ func (l *raftLog) term(i uint64) uint64 {
 	panic(err) // TODO(bdarnell)
 }
 
-func (l *raftLog) entries(i uint64) []pb.Entry {
+func (l *raftLog) entries(i, maxsize uint64) []pb.Entry {
 	if i > l.lastIndex() {
 		return nil
 	}
-	return l.slice(i, l.lastIndex()+1)
+	return l.slice(i, l.lastIndex()+1, maxsize)
 }
 
 // allEntries returns all entries in the log.
-func (l *raftLog) allEntries() []pb.Entry { return l.entries(l.firstIndex()) }
+func (l *raftLog) allEntries() []pb.Entry { return l.entries(l.firstIndex(), noLimit) }
 
 // isUpToDate determines if the given (lastIndex,term) log is more up-to-date
 // by comparing the index and term of the last entries in the existing logs.
@@ -254,14 +254,14 @@ func (l *raftLog) restore(s pb.Snapshot) {
 }
 
 // slice returns a slice of log entries from lo through hi-1, inclusive.
-func (l *raftLog) slice(lo uint64, hi uint64) []pb.Entry {
+func (l *raftLog) slice(lo, hi, maxSize uint64) []pb.Entry {
 	l.mustCheckOutOfBounds(lo, hi)
 	if lo == hi {
 		return nil
 	}
 	var ents []pb.Entry
 	if lo < l.unstable.offset {
-		storedEnts, err := l.storage.Entries(lo, min(hi, l.unstable.offset))
+		storedEnts, err := l.storage.Entries(lo, min(hi, l.unstable.offset), maxSize)
 		if err == ErrCompacted {
 			// This should never fail because it has been checked before.
 			raftLogger.Panicf("entries[%d:%d) from storage is out of bound", lo, min(hi, l.unstable.offset))
@@ -270,6 +270,12 @@ func (l *raftLog) slice(lo uint64, hi uint64) []pb.Entry {
 		} else if err != nil {
 			panic(err) // TODO(bdarnell)
 		}
+
+		// check if ents has reached the size limitation
+		if uint64(len(storedEnts)) < min(hi, l.unstable.offset)-lo {
+			return storedEnts
+		}
+
 		ents = storedEnts
 	}
 	if hi > l.unstable.offset {
@@ -281,7 +287,7 @@ func (l *raftLog) slice(lo uint64, hi uint64) []pb.Entry {
 			ents = unstable
 		}
 	}
-	return ents
+	return limitSize(ents, maxSize)
 }
 
 // l.firstIndex <= lo <= hi <= l.firstIndex + len(l.entries)
