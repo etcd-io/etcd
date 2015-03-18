@@ -108,7 +108,10 @@ func (c *cluster) Bootstrap() error {
 	for i, u := range clientURLs {
 		s := &stresser{
 			Endpoint: u,
-			N:        200,
+			// 500000 100B key (50MB)
+			KeySize:        100,
+			KeySuffixRange: 500000,
+			N:              200,
 		}
 		go s.Stress()
 		stressers[i] = s
