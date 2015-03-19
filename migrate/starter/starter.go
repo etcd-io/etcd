@@ -113,6 +113,8 @@ func checkInternalVersion(fs *flag.FlagSet) version {
 	switch dataver {
 	case wal.WALv2_0:
 		return internalV2
+	case wal.WALv2_0_1:
+		return internalV2
 	case wal.WALv2_0Proxy:
 		return internalV2Proxy
 	case wal.WALv0_4:
