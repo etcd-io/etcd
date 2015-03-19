@@ -63,6 +63,12 @@ func NewProcWithDefaultFlags(path string) *Proc {
 	return p
 }
 
+func NewProcWithName(path, name string) *Proc {
+	p := NewProcWithDefaultFlags(path)
+	p.SetName(name)
+	return p
+}
+
 func NewProcWithV1Flags(path string) *Proc {
 	p := NewProcWithDefaultFlags(path)
 	p.SetV1PeerAddr("127.0.0.1:7001")
