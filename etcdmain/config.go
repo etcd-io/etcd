@@ -41,6 +41,8 @@ const (
 
 	clusterStateFlagNew      = "new"
 	clusterStateFlagExisting = "existing"
+
+	defaultName = "default"
 )
 
 var (
@@ -137,7 +139,7 @@ func NewConfig() *config {
 	fs.Var(flags.NewURLsValue("http://localhost:2379,http://localhost:4001"), "listen-client-urls", "List of URLs to listen on for client traffic")
 	fs.UintVar(&cfg.maxSnapFiles, "max-snapshots", defaultMaxSnapshots, "Maximum number of snapshot files to retain (0 is unlimited)")
 	fs.UintVar(&cfg.maxWalFiles, "max-wals", defaultMaxWALs, "Maximum number of wal files to retain (0 is unlimited)")
-	fs.StringVar(&cfg.name, "name", "default", "Unique human-readable name for this node")
+	fs.StringVar(&cfg.name, "name", defaultName, "Unique human-readable name for this node")
 	fs.Uint64Var(&cfg.snapCount, "snapshot-count", etcdserver.DefaultSnapCount, "Number of committed transactions to trigger a snapshot")
 	fs.UintVar(&cfg.TickMs, "heartbeat-interval", 100, "Time (in milliseconds) of a heartbeat interval.")
 	fs.UintVar(&cfg.ElectionMs, "election-timeout", 1000, "Time (in milliseconds) for an election to timeout.")
@@ -153,7 +155,7 @@ func NewConfig() *config {
 	}
 	fs.StringVar(&cfg.dproxy, "discovery-proxy", "", "HTTP proxy to use for traffic to discovery service")
 	fs.StringVar(&cfg.dnsCluster, "discovery-srv", "", "DNS domain used to bootstrap initial cluster")
-	fs.StringVar(&cfg.initialCluster, "initial-cluster", "default=http://localhost:2380,default=http://localhost:7001", "Initial cluster configuration for bootstrapping")
+	fs.StringVar(&cfg.initialCluster, "initial-cluster", initialClusterFromName(defaultName), "Initial cluster configuration for bootstrapping")
 	fs.StringVar(&cfg.initialClusterToken, "initial-cluster-token", "etcd-cluster", "Initial cluster token for the etcd cluster during bootstrap")
 	fs.Var(cfg.clusterState, "initial-cluster-state", "Initial cluster configuration for bootstrapping")
 	if err := cfg.clusterState.Set(clusterStateFlagNew); err != nil {
@@ -264,6 +266,14 @@ func (cfg *config) Parse(arguments []string) error {
 	}
 
 	return nil
+}
+
+func initialClusterFromName(name string) string {
+	n := name
+	if name == "" {
+		n = defaultName
+	}
+	return fmt.Sprintf("%s=http://localhost:2380,%s=http://localhost:7001", n, n)
 }
 
 func (cfg *config) resolveUrls() error {

@@ -62,6 +62,10 @@ func Main() {
 
 	var stopped <-chan struct{}
 
+	if cfg.name != defaultName && cfg.initialCluster == initialClusterFromName(defaultName) {
+		cfg.initialCluster = initialClusterFromName(cfg.name)
+	}
+
 	if cfg.dir == "" {
 		cfg.dir = fmt.Sprintf("%v.etcd", cfg.name)
 		log.Printf("etcd: no data-dir provided, using default data-dir ./%s", cfg.dir)
