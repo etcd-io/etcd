@@ -78,10 +78,24 @@ func newStats() *Stats {
 }
 
 func (s *Stats) clone() *Stats {
-	return &Stats{s.GetSuccess, s.GetFail, s.SetSuccess, s.SetFail,
-		s.DeleteSuccess, s.DeleteFail, s.UpdateSuccess, s.UpdateFail, s.CreateSuccess,
-		s.CreateFail, s.CompareAndSwapSuccess, s.CompareAndSwapFail,
-		s.CompareAndDeleteSuccess, s.CompareAndDeleteFail, s.Watchers, s.ExpireCount}
+	return &Stats{
+		GetSuccess:              s.GetSuccess,
+		GetFail:                 s.GetFail,
+		SetSuccess:              s.SetSuccess,
+		SetFail:                 s.SetFail,
+		DeleteSuccess:           s.DeleteSuccess,
+		DeleteFail:              s.DeleteFail,
+		UpdateSuccess:           s.UpdateSuccess,
+		UpdateFail:              s.UpdateFail,
+		CreateSuccess:           s.CreateSuccess,
+		CreateFail:              s.CreateFail,
+		CompareAndSwapSuccess:   s.CompareAndSwapSuccess,
+		CompareAndSwapFail:      s.CompareAndSwapFail,
+		CompareAndDeleteSuccess: s.CompareAndDeleteSuccess,
+		CompareAndDeleteFail:    s.CompareAndDeleteFail,
+		ExpireCount:             s.ExpireCount,
+		Watchers:                s.Watchers,
+	}
 }
 
 func (s *Stats) toJson() []byte {
