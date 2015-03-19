@@ -99,8 +99,8 @@ security flags:
 
 unsafe flags:
 
-Please be CAUTIOUS to use unsafe flags because it will break the guarantee given 
-by consensus protocol. 
+Please be CAUTIOUS when using unsafe flags because it will break the guarantees
+given by the consensus protocol.
 	
 	--force-new-cluster 'false'
 		force to create a new one-member cluster.
