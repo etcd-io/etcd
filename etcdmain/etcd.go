@@ -53,6 +53,10 @@ func Main() {
 
 	var stopped <-chan struct{}
 
+	if cfg.name != defaultName && cfg.initialCluster == initialClusterFromName(defaultName) {
+		cfg.initialCluster = initialClusterFromName(cfg.name)
+	}
+
 	shouldProxy := cfg.isProxy()
 	if !shouldProxy {
 		stopped, err = startEtcd(cfg)
