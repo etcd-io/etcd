@@ -140,7 +140,7 @@ func TestMultiNodePropose(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	entries, err := s.Entries(lastIndex, lastIndex+1)
+	entries, err := s.Entries(lastIndex, lastIndex+1, noLimit)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -191,7 +191,7 @@ func TestMultiNodeProposeConfig(t *testing.T) {
 	}
 	mn.Stop()
 
-	entries, err := s.Entries(lastIndex, lastIndex+1)
+	entries, err := s.Entries(lastIndex, lastIndex+1, noLimit)
 	if err != nil {
 		t.Fatal(err)
 	}
