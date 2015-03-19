@@ -43,6 +43,7 @@ func init() {
 func TestStartNewMember(t *testing.T) {
 	tests := []*Proc{
 		NewProcWithDefaultFlags(v2BinPath),
+		NewProcWithName(v2BinPath, "etcd"),
 		NewProcWithV1Flags(v2BinPath),
 		NewProcWithV2Flags(v2BinPath),
 	}
@@ -65,6 +66,7 @@ func TestStartNewMember(t *testing.T) {
 func TestStartV2Member(t *testing.T) {
 	tests := []*Proc{
 		NewProcWithDefaultFlags(v2BinPath),
+		NewProcWithName(v2BinPath, "etcd"),
 		NewProcWithV1Flags(v2BinPath),
 		NewProcWithV2Flags(v2BinPath),
 	}
@@ -94,6 +96,7 @@ func TestStartV2Member(t *testing.T) {
 func TestStartV1Member(t *testing.T) {
 	tests := []*Proc{
 		NewProcWithDefaultFlags(v2BinPath),
+		NewProcWithName(v2BinPath, "etcd"),
 		NewProcWithV1Flags(v2BinPath),
 		NewProcWithV2Flags(v2BinPath),
 	}
