@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+	"math/rand"
 	"net"
 	"net/http"
 	"sync"
@@ -21,8 +23,9 @@ type Stresser interface {
 
 type stresser struct {
 	Endpoint string
-	// TODO: not implemented
-	SuffixRange int
+
+	KeySize        int
+	KeySuffixRange int
 
 	N int
 	// TODO: not implemented
@@ -58,7 +61,8 @@ func (s *stresser) Stress() error {
 	for i := 0; i < s.N; i++ {
 		go func() {
 			for {
-				_, err := kv.Set(ctx, "foo", "bar", nil)
+				key := fmt.Sprintf("foo%d", rand.Intn(s.KeySuffixRange))
+				_, err := kv.Set(ctx, key, randStr(s.KeySize), nil)
 				if err == context.Canceled {
 					return
 				}
@@ -85,4 +89,12 @@ func (s *stresser) Report() (success int, failure int) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.success, s.failure
+}
+
+func randStr(size int) string {
+	data := make([]byte, size)
+	for i := 0; i < size; i++ {
+		data[i] = byte(int('a') + rand.Intn(26))
+	}
+	return string(data)
 }
