@@ -130,13 +130,13 @@ DISCOVERY_URL=... # from https://discovery.etcd.io/new
 
 # member1
 $ etcd -name infra1 -data-dir infra1 \
-  -ca-file=/path/to/ca.crt -cert-file=/path/to/member1.crt -key-file=/path/to/member1.key \
+  -peer-ca-file=/path/to/ca.crt -peer-cert-file=/path/to/member1.crt -peer-key-file=/path/to/member1.key \
   -initial-advertise-peer-urls=https://10.0.1.10:2380 -listen-peer-urls=https://10.0.1.10:2380 \
   -discovery ${DISCOVERY_URL}
 
 # member2
 $ etcd -name infra2 -data-dir infra2 \
-  -ca-file=/path/to/ca.crt -cert-file=/path/to/member2.crt -key-file=/path/to/member2.key \
+  -peer-ca-file=/path/to/ca.crt -peer-cert-file=/path/to/member2.crt -peer-key-file=/path/to/member2.key \
   -initial-advertise-peer-urls=https://10.0.1.11:2380 -listen-peer-urls=https://10.0.1.11:2380 \
   -discovery ${DISCOVERY_URL}
 ```
