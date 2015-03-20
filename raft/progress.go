@@ -55,12 +55,22 @@ type Progress struct {
 	// this Progress will be paused. raft will not resend snapshot until the pending one
 	// is reported to be failed.
 	PendingSnapshot uint64
+
+	// inflights is a sliding window for the inflight messages.
+	// When inflights is full, no more message should be sent.
+	// When sends out a message, the index of the last entry should
+	// be add to inflights. The index MUST be added into inflights
+	// in order.
+	// When receives a reply, the previous inflights should be freed
+	// by calling inflights.freeTo.
+	ins *inflights
 }
 
 func (pr *Progress) resetState(state ProgressStateType) {
 	pr.Paused = false
 	pr.PendingSnapshot = 0
 	pr.State = state
+	pr.ins.reset()
 }
 
 func (pr *Progress) becomeProbe() {
@@ -135,7 +145,16 @@ func (pr *Progress) resume() { pr.Paused = false }
 
 // isPaused returns whether progress stops sending message.
 func (pr *Progress) isPaused() bool {
-	return pr.State == ProgressStateProbe && pr.Paused || pr.State == ProgressStateSnapshot
+	switch pr.State {
+	case ProgressStateProbe:
+		return pr.Paused
+	case ProgressStateReplicate:
+		return pr.ins.full()
+	case ProgressStateSnapshot:
+		return true
+	default:
+		panic("unexpected state")
+	}
 }
 
 func (pr *Progress) snapshotFailure() { pr.PendingSnapshot = 0 }
@@ -148,4 +167,63 @@ func (pr *Progress) maybeSnapshotAbort() bool {
 
 func (pr *Progress) String() string {
 	return fmt.Sprintf("next = %d, match = %d, state = %s, waiting = %v, pendingSnapshot = %d", pr.Next, pr.Match, pr.State, pr.isPaused(), pr.PendingSnapshot)
+}
+
+type inflights struct {
+	// the starting index in the buffer
+	start int
+	// number of inflights in the buffer
+	count int
+
+	// the size of the buffer
+	size   int
+	buffer []uint64
+}
+
+func newInflights(size int) *inflights {
+	return &inflights{
+		size:   size,
+		buffer: make([]uint64, size),
+	}
+}
+
+// add adds an inflight into inflights
+func (in *inflights) add(inflight uint64) {
+	if in.full() {
+		panic("cannot add into a full inflights")
+	}
+	next := in.start + in.count
+	if next >= in.size {
+		next -= in.size
+	}
+	in.buffer[next] = inflight
+	in.count++
+}
+
+// freeTo frees the inflights smaller or equal to the given `to` flight.
+func (in *inflights) freeTo(to uint64) {
+	for i := in.start; i < in.start+in.count; i++ {
+		idx := i
+		if i >= in.size {
+			idx -= in.size
+		}
+		if to < in.buffer[idx] {
+			in.count -= i - in.start
+			in.start = idx
+			break
+		}
+	}
+}
+
+func (in *inflights) freeFirstOne() { in.freeTo(in.buffer[in.start]) }
+
+// full returns true if the inflights is full.
+func (in *inflights) full() bool {
+	return in.count == in.size
+}
+
+// resets frees all inflights.
+func (in *inflights) reset() {
+	in.count = 0
+	in.start = 0
 }

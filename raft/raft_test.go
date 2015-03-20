@@ -48,24 +48,24 @@ func (r *raft) readMessages() []pb.Message {
 	return msgs
 }
 
-func TestBecomeProbe(t *testing.T) {
+func TestProgressBecomeProbe(t *testing.T) {
 	match := uint64(1)
 	tests := []struct {
 		p     *Progress
 		wnext uint64
 	}{
 		{
-			&Progress{State: ProgressStateReplicate, Match: match, Next: 5},
+			&Progress{State: ProgressStateReplicate, Match: match, Next: 5, ins: newInflights(256)},
 			2,
 		},
 		{
 			// snapshot finish
-			&Progress{State: ProgressStateSnapshot, Match: match, Next: 5, PendingSnapshot: 10},
+			&Progress{State: ProgressStateSnapshot, Match: match, Next: 5, PendingSnapshot: 10, ins: newInflights(256)},
 			11,
 		},
 		{
 			// snapshot failure
-			&Progress{State: ProgressStateSnapshot, Match: match, Next: 5, PendingSnapshot: 0},
+			&Progress{State: ProgressStateSnapshot, Match: match, Next: 5, PendingSnapshot: 0, ins: newInflights(256)},
 			2,
 		},
 	}
@@ -83,8 +83,8 @@ func TestBecomeProbe(t *testing.T) {
 	}
 }
 
-func TestBecomeReplicate(t *testing.T) {
-	p := &Progress{State: ProgressStateProbe, Match: 1, Next: 5}
+func TestProgressBecomeReplicate(t *testing.T) {
+	p := &Progress{State: ProgressStateProbe, Match: 1, Next: 5, ins: newInflights(256)}
 	p.becomeReplicate()
 
 	if p.State != ProgressStateReplicate {
@@ -98,8 +98,8 @@ func TestBecomeReplicate(t *testing.T) {
 	}
 }
 
-func TestBecomeSnapshot(t *testing.T) {
-	p := &Progress{State: ProgressStateProbe, Match: 1, Next: 5}
+func TestProgressBecomeSnapshot(t *testing.T) {
+	p := &Progress{State: ProgressStateProbe, Match: 1, Next: 5, ins: newInflights(256)}
 	p.becomeSnapshot(10)
 
 	if p.State != ProgressStateSnapshot {
@@ -234,6 +234,7 @@ func TestProgressIsPaused(t *testing.T) {
 		p := &Progress{
 			State:  tt.state,
 			Paused: tt.paused,
+			ins:    newInflights(256),
 		}
 		if g := p.isPaused(); g != tt.w {
 			t.Errorf("#%d: shouldwait = %t, want %t", i, g, tt.w)
