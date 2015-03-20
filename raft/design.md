@@ -8,6 +8,35 @@ A progress has two attribute: `match` and `next`. `match` is the index of the hi
 
 A progress is in one of the three state: `probe`, `replicate`, `snapshot`. 
 
+```
+                            +--------------------------------------------------------+          
+                            |                  send snapshot                         |          
+                            |                                                        |          
+                  +---------+----------+                                  +----------v---------+
+              +--->       probe        |                                  |      snapshot      |
+              |   |  max inflight = 1  <----------------------------------+  max inflight = 0  |
+              |   +---------+----------+                                  +--------------------+
+              |             |            1. snapshot success                                    
+              |             |               (next=snapshot.index + 1)                           
+              |             |            2. snapshot failure                                    
+              |             |               (no change)                                         
+              |             |            3. receives msgAppResp(rej=false&&index>lastsnap.index)
+              |             |               (match=m.index,next=match+1)                        
+receives msgAppResp(rej=true)                                                                   
+(next=match+1)|             |                                                                   
+              |             |                                                                   
+              |             |                                                                   
+              |             |   receives msgAppResp(rej=false&&index>match)                     
+              |             |   (match=m.index,next=match+1)                                    
+              |             |                                                                   
+              |             |                                                                   
+              |             |                                                                   
+              |   +---------v----------+                                                        
+              |   |     replicate      |                                                        
+              +---+  max inflight = n  |                                                        
+                  +--------------------+                                                        
+```
+
 When in `probe` state, leader sends at most one `replication message` per heartbeat interval. The leader sends `replication message` slowly and probing the actual progress of the follower. A `msgHeartbeatResp` or a `msgAppResp` with reject might trigger the sending of the next `replication message`.
 
 When in `replicate` state, leader sends `replication message`, then optimistically increases `next` to the latest entry sent. This is an optimized state for fast replicating log entries to the follower.
