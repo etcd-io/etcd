@@ -309,7 +309,7 @@ func (e *Etcd) runServer() {
 	for {
 		if e.mode == PeerMode {
 			log.Infof("%v starting in peer mode", e.Config.Name)
-			go registerAvailableInternalVersions(e.Config.Name, e.Config.Addr, e.Config.EtcdTLSInfo())
+			go registerAvailableInternalVersions(e.Config.InternalDir, e.Config.Name, e.Config.Addr, e.Config.EtcdTLSInfo())
 			// Starting peer server should be followed close by listening on its port
 			// If not, it may leave many requests unaccepted, or cannot receive heartbeat from the cluster.
 			// One severe problem caused if failing receiving heartbeats is when the second node joins one-node cluster,

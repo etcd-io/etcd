@@ -15,15 +15,16 @@ Usage:
   etcd -version
 
 Options:
-  -h -help          Show this screen.
-  --version         Show version.
-  -f -force         Force a new configuration to be used.
-  -config=<path>    Path to configuration file.
-  -name=<name>      Name of this node in the etcd cluster.
-  -data-dir=<path>  Path to the data directory.
-  -cors=<origins>   Comma-separated list of CORS origins.
-  -v                Enabled verbose logging.
-  -vv               Enabled very verbose logging.
+  -h -help              Show this screen.
+  --version             Show version.
+  -f -force             Force a new configuration to be used.
+  -config=<path>        Path to configuration file.
+  -name=<name>          Name of this node in the etcd cluster.
+  -data-dir=<path>      Path to the data directory.
+  -internal-dir=<path>  Path to the etcd internal directory.
+  -cors=<origins>       Comma-separated list of CORS origins.
+  -v                    Enabled verbose logging.
+  -vv                   Enabled very verbose logging.
 
 Cluster Configuration Options:
   -discovery=<url>                Discovery service used to find a peer list.

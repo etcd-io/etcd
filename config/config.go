@@ -24,6 +24,9 @@ import (
 // The default location for the etcd configuration file.
 const DefaultSystemConfigPath = "/etc/etcd/etcd.conf"
 
+// The default location of the etcd internal directory.
+const DefaultInternalDir = "/usr/libexec/etcd/internal_versions/"
+
 // A lookup of deprecated flags to their new flag name.
 var newFlagNameLookup = map[string]string{
 	"C":                      "peers",
@@ -64,6 +67,7 @@ type Config struct {
 	KeyFile          string   `toml:"key_file" env:"ETCD_KEY_FILE"`
 	HTTPReadTimeout  float64  `toml:"http_read_timeout" env:"ETCD_HTTP_READ_TIMEOUT"`
 	HTTPWriteTimeout float64  `toml:"http_write_timeout" env:"ETCD_HTTP_WRITE_TIMEOUT"`
+	InternalDir      string   `toml:"internal_dir" env:"ETCD_INTERNAL_DIR"`
 	Peers            []string `toml:"peers" env:"ETCD_PEERS"`
 	PeersFile        string   `toml:"peers_file" env:"ETCD_PEERS_FILE"`
 	MaxResultBuffer  int      `toml:"max_result_buffer" env:"ETCD_MAX_RESULT_BUFFER"`
@@ -116,6 +120,7 @@ func New() *Config {
 	c.Cluster.ActiveSize = server.DefaultActiveSize
 	c.Cluster.RemoveDelay = server.DefaultRemoveDelay
 	c.Cluster.SyncInterval = server.DefaultSyncInterval
+	c.InternalDir = DefaultInternalDir
 	return c
 }
 
@@ -263,6 +268,7 @@ func (c *Config) LoadFlags(arguments []string) error {
 	f.Float64Var(&c.HTTPWriteTimeout, "http-write-timeout", c.HTTPReadTimeout, "")
 
 	f.StringVar(&c.DataDir, "data-dir", c.DataDir, "")
+	f.StringVar(&c.InternalDir, "internal-dir", c.InternalDir, "")
 	f.IntVar(&c.MaxResultBuffer, "max-result-buffer", c.MaxResultBuffer, "")
 	f.IntVar(&c.MaxRetryAttempts, "max-retry-attempts", c.MaxRetryAttempts, "")
 	f.Float64Var(&c.RetryInterval, "retry-interval", c.RetryInterval, "")
