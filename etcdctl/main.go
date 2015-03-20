@@ -44,6 +44,7 @@ func main() {
 		command.NewRemoveCommand(),
 		command.NewRemoveDirCommand(),
 		command.NewGetCommand(),
+		command.NewGetWatchCommand(),
 		command.NewLsCommand(),
 		command.NewSetCommand(),
 		command.NewSetDirCommand(),

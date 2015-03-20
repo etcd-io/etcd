@@ -18,70 +18,60 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"os/signal"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/codegangsta/cli"
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/go-etcd/etcd"
 )
 
-// NewWatchCommand returns the CLI command for "watch".
-func NewWatchCommand() cli.Command {
+// NewGetWatchCommand returns the CLI command for "getwatch".
+func NewGetWatchCommand() cli.Command {
 	return cli.Command{
-		Name:  "watch",
-		Usage: "watch a key for changes",
+		Name:  "getwatch",
+		Usage: "retrieve the value of a key, or if it doesn't exist, watch the key for changes",
 		Flags: []cli.Flag{
-			cli.BoolFlag{Name: "forever", Usage: "forever watch a key until CTRL+C"},
+			cli.BoolFlag{Name: "sort", Usage: "returns result in sorted order"},
 			cli.IntFlag{Name: "after-index", Value: 0, Usage: "watch after the given index"},
 			cli.BoolFlag{Name: "recursive", Usage: "returns all values for key and child keys"},
 		},
 		Action: func(c *cli.Context) {
-			handleKey(c, watchCommandFunc)
+			handleGetWatch(c, getWatchCommandFunc)
 		},
 	}
 }
 
-// watchCommandFunc executes the "watch" command.
-func watchCommandFunc(c *cli.Context, client *etcd.Client) (*etcd.Response, error) {
+// handleGetWatch handles a request that intends to do getwatch-like operations.
+func handleGetWatch(c *cli.Context, fn handlerFunc) {
+	handlePrint(c, fn, printGetWatch)
+}
+
+// printGetWatch writes error message when getting the value of a directory.
+func printGetWatch(resp *etcd.Response, format string) {
+	if resp.Node.Dir {
+		fmt.Fprintln(os.Stderr, fmt.Sprintf("%s: is a directory", resp.Node.Key))
+		os.Exit(1)
+	}
+
+	printKey(resp, format)
+}
+
+// getWatchCommandFunc executes the "getwatch" command.
+func getWatchCommandFunc(c *cli.Context, client *etcd.Client) (*etcd.Response, error) {
 	if len(c.Args()) == 0 {
 		return nil, errors.New("Key required")
 	}
 	key := c.Args()[0]
+	sorted := c.Bool("sort")
 	recursive := c.Bool("recursive")
-	forever := c.Bool("forever")
 
 	index := 0
 	if c.Int("after-index") != 0 {
 		index = c.Int("after-index") + 1
 	}
 
-	if forever {
-		sigch := make(chan os.Signal, 1)
-		signal.Notify(sigch, os.Interrupt)
-		stop := make(chan bool)
+	// Retrieve the value from the server.
+	value, _ := client.Get(key, sorted, false)
 
-		go func() {
-			<-sigch
-			os.Exit(0)
-		}()
-
-		receiver := make(chan *etcd.Response)
-		errCh := make(chan error, 1)
-
-		go func() {
-			_, err := client.Watch(key, uint64(index), recursive, receiver, stop)
-			errCh <- err
-		}()
-
-		for {
-			select {
-			case resp := <-receiver:
-				printAll(resp, c.GlobalString("output"))
-			case err := <-errCh:
-				handleError(-1, err)
-			}
-		}
-
-	} else {
+	if value == nil {
 		var resp *etcd.Response
 		var err error
 		resp, err = client.Watch(key, uint64(index), recursive, nil, nil)
@@ -94,5 +84,5 @@ func watchCommandFunc(c *cli.Context, client *etcd.Client) (*etcd.Response, erro
 		fmt.Println(resp.Node.Value)
 	}
 
-	return nil, nil
+	return value, nil
 }

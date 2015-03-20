@@ -97,6 +97,13 @@ Raft-Term: 1
 Hello World
 ```
 
+Get the current value of a single key in the local etcd node, and watch for only the next change if the value isn't set:
+
+```
+$ etcdctl getwatch /foo/bar
+Hello world
+```
+
 ### Listing a directory
 
 Explore the keyspace using the `ls` command
