@@ -24,6 +24,9 @@ import (
 // The default location for the etcd configuration file.
 const DefaultSystemConfigPath = "/etc/etcd/etcd.conf"
 
+// The default location of the etcd internal binary directory.
+const DefaultInternalBinaryDir = "/usr/libexec/etcd/internal_versions/"
+
 // A lookup of deprecated flags to their new flag name.
 var newFlagNameLookup = map[string]string{
 	"C":                      "peers",
@@ -52,32 +55,33 @@ var newFlagNameLookup = map[string]string{
 type Config struct {
 	SystemPath string
 
-	Addr             string `toml:"addr" env:"ETCD_ADDR"`
-	BindAddr         string `toml:"bind_addr" env:"ETCD_BIND_ADDR"`
-	CAFile           string `toml:"ca_file" env:"ETCD_CA_FILE"`
-	CertFile         string `toml:"cert_file" env:"ETCD_CERT_FILE"`
-	CPUProfileFile   string
-	CorsOrigins      []string `toml:"cors" env:"ETCD_CORS"`
-	DataDir          string   `toml:"data_dir" env:"ETCD_DATA_DIR"`
-	Discovery        string   `toml:"discovery" env:"ETCD_DISCOVERY"`
-	Force            bool
-	KeyFile          string   `toml:"key_file" env:"ETCD_KEY_FILE"`
-	HTTPReadTimeout  float64  `toml:"http_read_timeout" env:"ETCD_HTTP_READ_TIMEOUT"`
-	HTTPWriteTimeout float64  `toml:"http_write_timeout" env:"ETCD_HTTP_WRITE_TIMEOUT"`
-	Peers            []string `toml:"peers" env:"ETCD_PEERS"`
-	PeersFile        string   `toml:"peers_file" env:"ETCD_PEERS_FILE"`
-	MaxResultBuffer  int      `toml:"max_result_buffer" env:"ETCD_MAX_RESULT_BUFFER"`
-	MaxRetryAttempts int      `toml:"max_retry_attempts" env:"ETCD_MAX_RETRY_ATTEMPTS"`
-	RetryInterval    float64  `toml:"retry_interval" env:"ETCD_RETRY_INTERVAL"`
-	Name             string   `toml:"name" env:"ETCD_NAME"`
-	Snapshot         bool     `toml:"snapshot" env:"ETCD_SNAPSHOT"`
-	SnapshotCount    int      `toml:"snapshot_count" env:"ETCD_SNAPSHOTCOUNT"`
-	ShowHelp         bool
-	ShowVersion      bool
-	Verbose          bool `toml:"verbose" env:"ETCD_VERBOSE"`
-	VeryVerbose      bool `toml:"very_verbose" env:"ETCD_VERY_VERBOSE"`
-	VeryVeryVerbose  bool `toml:"very_very_verbose" env:"ETCD_VERY_VERY_VERBOSE"`
-	Peer             struct {
+	Addr              string `toml:"addr" env:"ETCD_ADDR"`
+	BindAddr          string `toml:"bind_addr" env:"ETCD_BIND_ADDR"`
+	CAFile            string `toml:"ca_file" env:"ETCD_CA_FILE"`
+	CertFile          string `toml:"cert_file" env:"ETCD_CERT_FILE"`
+	CPUProfileFile    string
+	CorsOrigins       []string `toml:"cors" env:"ETCD_CORS"`
+	DataDir           string   `toml:"data_dir" env:"ETCD_DATA_DIR"`
+	Discovery         string   `toml:"discovery" env:"ETCD_DISCOVERY"`
+	Force             bool
+	KeyFile           string   `toml:"key_file" env:"ETCD_KEY_FILE"`
+	HTTPReadTimeout   float64  `toml:"http_read_timeout" env:"ETCD_HTTP_READ_TIMEOUT"`
+	HTTPWriteTimeout  float64  `toml:"http_write_timeout" env:"ETCD_HTTP_WRITE_TIMEOUT"`
+	InternalBinaryDir string   `toml:"internal_binary_dir" env:"ETCD_INTERNAL_BINARY_DIR"`
+	Peers             []string `toml:"peers" env:"ETCD_PEERS"`
+	PeersFile         string   `toml:"peers_file" env:"ETCD_PEERS_FILE"`
+	MaxResultBuffer   int      `toml:"max_result_buffer" env:"ETCD_MAX_RESULT_BUFFER"`
+	MaxRetryAttempts  int      `toml:"max_retry_attempts" env:"ETCD_MAX_RETRY_ATTEMPTS"`
+	RetryInterval     float64  `toml:"retry_interval" env:"ETCD_RETRY_INTERVAL"`
+	Name              string   `toml:"name" env:"ETCD_NAME"`
+	Snapshot          bool     `toml:"snapshot" env:"ETCD_SNAPSHOT"`
+	SnapshotCount     int      `toml:"snapshot_count" env:"ETCD_SNAPSHOTCOUNT"`
+	ShowHelp          bool
+	ShowVersion       bool
+	Verbose           bool `toml:"verbose" env:"ETCD_VERBOSE"`
+	VeryVerbose       bool `toml:"very_verbose" env:"ETCD_VERY_VERBOSE"`
+	VeryVeryVerbose   bool `toml:"very_very_verbose" env:"ETCD_VERY_VERY_VERBOSE"`
+	Peer              struct {
 		Addr              string `toml:"addr" env:"ETCD_PEER_ADDR"`
 		BindAddr          string `toml:"bind_addr" env:"ETCD_PEER_BIND_ADDR"`
 		CAFile            string `toml:"ca_file" env:"ETCD_PEER_CA_FILE"`
@@ -116,6 +120,7 @@ func New() *Config {
 	c.Cluster.ActiveSize = server.DefaultActiveSize
 	c.Cluster.RemoveDelay = server.DefaultRemoveDelay
 	c.Cluster.SyncInterval = server.DefaultSyncInterval
+	c.InternalBinaryDir = DefaultInternalBinaryDir
 	return c
 }
 
@@ -263,6 +268,7 @@ func (c *Config) LoadFlags(arguments []string) error {
 	f.Float64Var(&c.HTTPWriteTimeout, "http-write-timeout", c.HTTPReadTimeout, "")
 
 	f.StringVar(&c.DataDir, "data-dir", c.DataDir, "")
+	f.StringVar(&c.InternalBinaryDir, "internal-binary-dir", c.InternalBinaryDir, "")
 	f.IntVar(&c.MaxResultBuffer, "max-result-buffer", c.MaxResultBuffer, "")
 	f.IntVar(&c.MaxRetryAttempts, "max-retry-attempts", c.MaxRetryAttempts, "")
 	f.Float64Var(&c.RetryInterval, "retry-interval", c.RetryInterval, "")
