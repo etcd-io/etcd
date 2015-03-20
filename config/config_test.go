@@ -19,6 +19,7 @@ func TestConfigTOML(t *testing.T) {
 		cpu_profile_file = "XXX"
 		data_dir = "/tmp/data"
 		discovery = "http://example.com/foobar"
+		internal_binary_dir = "/tmp/etcd/internal_versions"
 		key_file = "/tmp/file.key"
 		bind_addr = "127.0.0.1:4003"
 		peers = ["coreos.com:4001", "coreos.com:4002"]
@@ -54,6 +55,7 @@ func TestConfigTOML(t *testing.T) {
 	assert.Equal(t, c.CorsOrigins, []string{"*"}, "")
 	assert.Equal(t, c.DataDir, "/tmp/data", "")
 	assert.Equal(t, c.Discovery, "http://example.com/foobar", "")
+	assert.Equal(t, c.InternalBinaryDir, "/tmp/etcd/internal_versions", "")
 	assert.Equal(t, c.HTTPReadTimeout, 2.34, "")
 	assert.Equal(t, c.HTTPWriteTimeout, 1.23, "")
 	assert.Equal(t, c.KeyFile, "/tmp/file.key", "")
@@ -86,6 +88,7 @@ func TestConfigEnv(t *testing.T) {
 	os.Setenv("ETCD_DISCOVERY", "http://example.com/foobar")
 	os.Setenv("ETCD_HTTP_READ_TIMEOUT", "2.34")
 	os.Setenv("ETCD_HTTP_WRITE_TIMEOUT", "1.23")
+	os.Setenv("ETCD_INTERNAL_BINARY_DIR", "/tmp/etcd/internal_versions")
 	os.Setenv("ETCD_KEY_FILE", "/tmp/file.key")
 	os.Setenv("ETCD_BIND_ADDR", "127.0.0.1:4003")
 	os.Setenv("ETCD_PEERS", "coreos.com:4001,coreos.com:4002")
@@ -115,6 +118,7 @@ func TestConfigEnv(t *testing.T) {
 	assert.Equal(t, c.Discovery, "http://example.com/foobar", "")
 	assert.Equal(t, c.HTTPReadTimeout, 2.34, "")
 	assert.Equal(t, c.HTTPWriteTimeout, 1.23, "")
+	assert.Equal(t, c.InternalBinaryDir, "/tmp/etcd/internal_versions", "")
 	assert.Equal(t, c.KeyFile, "/tmp/file.key", "")
 	assert.Equal(t, c.BindAddr, "127.0.0.1:4003", "")
 	assert.Equal(t, c.Peers, []string{"coreos.com:4001", "coreos.com:4002"}, "")
