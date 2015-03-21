@@ -59,8 +59,9 @@ type raft struct {
 	// the log
 	raftLog *raftLog
 
-	maxMsgSize uint64
-	prs        map[uint64]*Progress
+	maxInflight int
+	maxMsgSize  uint64
+	prs         map[uint64]*Progress
 
 	state StateType
 
@@ -109,13 +110,14 @@ func newRaft(id uint64, peers []uint64, election, heartbeat int, storage Storage
 		// TODO(xiang): add a config arguement into newRaft after we add
 		// the max inflight message field.
 		maxMsgSize:       4 * 1024 * 1024,
+		maxInflight:      256,
 		prs:              make(map[uint64]*Progress),
 		electionTimeout:  election,
 		heartbeatTimeout: heartbeat,
 	}
 	r.rand = rand.New(rand.NewSource(int64(id)))
 	for _, p := range peers {
-		r.prs[p] = &Progress{Next: 1}
+		r.prs[p] = &Progress{Next: 1, ins: newInflights(r.maxInflight)}
 	}
 	if !isHardStateEqual(hs, emptyState) {
 		r.loadState(hs)
@@ -195,7 +197,9 @@ func (r *raft) sendAppend(to uint64) {
 			switch pr.State {
 			// optimistically increase the next when in ProgressStateReplicate
 			case ProgressStateReplicate:
-				pr.optimisticUpdate(m.Entries[n-1].Index)
+				last := m.Entries[n-1].Index
+				pr.optimisticUpdate(last)
+				pr.ins.add(last)
 			case ProgressStateProbe:
 				pr.pause()
 			default:
@@ -265,7 +269,7 @@ func (r *raft) reset(term uint64) {
 	r.elapsed = 0
 	r.votes = make(map[uint64]bool)
 	for i := range r.prs {
-		r.prs[i] = &Progress{Next: r.raftLog.lastIndex() + 1}
+		r.prs[i] = &Progress{Next: r.raftLog.lastIndex() + 1, ins: newInflights(r.maxInflight)}
 		if i == r.id {
 			r.prs[i].Match = r.raftLog.lastIndex()
 		}
@@ -456,6 +460,8 @@ func stepLeader(r *raft, m pb.Message) {
 				case pr.State == ProgressStateSnapshot && pr.maybeSnapshotAbort():
 					raftLogger.Infof("raft: %x snapshot aborted, resumed sending replication messages to %x [%s]", r.id, m.From, pr)
 					pr.becomeProbe()
+				case pr.State == ProgressStateReplicate:
+					pr.ins.freeTo(m.Index)
 				}
 
 				if r.maybeCommit() {
@@ -468,6 +474,10 @@ func stepLeader(r *raft, m pb.Message) {
 			}
 		}
 	case pb.MsgHeartbeatResp:
+		// free one slot for the full inflights window to allow progress.
+		if pr.State == ProgressStateReplicate && pr.ins.full() {
+			pr.ins.freeFirstOne()
+		}
 		if pr.Match < r.raftLog.lastIndex() {
 			r.sendAppend(m.From)
 		}
@@ -661,7 +671,7 @@ func (r *raft) removeNode(id uint64) {
 func (r *raft) resetPendingConf() { r.pendingConf = false }
 
 func (r *raft) setProgress(id, match, next uint64) {
-	r.prs[id] = &Progress{Next: next, Match: match}
+	r.prs[id] = &Progress{Next: next, Match: match, ins: newInflights(r.maxInflight)}
 }
 
 func (r *raft) delProgress(id uint64) {
