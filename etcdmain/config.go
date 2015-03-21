@@ -212,6 +212,9 @@ func (cfg *config) Parse(arguments []string) error {
 	default:
 		os.Exit(2)
 	}
+	if len(cfg.FlagSet.Args()) != 0 {
+		return fmt.Errorf("'%s' is not a valid flag", cfg.FlagSet.Arg(0))
+	}
 
 	if cfg.printVersion {
 		fmt.Println("etcd version", version.Version)

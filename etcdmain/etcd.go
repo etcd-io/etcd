@@ -56,7 +56,7 @@ func Main() {
 	cfg := NewConfig()
 	err := cfg.Parse(os.Args[1:])
 	if err != nil {
-		log.Printf("etcd: error verifying flags, %v", err)
+		log.Printf("etcd: error verifying flags, %v. See 'etcd -help'.", err)
 		os.Exit(2)
 	}
 
