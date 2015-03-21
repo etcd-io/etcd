@@ -24,6 +24,7 @@ import (
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/etcdhttp/httptypes"
 	"github.com/coreos/etcd/etcdserver/security"
+	"github.com/coreos/etcd/pkg/netutil"
 )
 
 type securityHandler struct {
@@ -46,7 +47,7 @@ func hasRootAccess(sec *security.Store, r *http.Request) bool {
 	if !sec.SecurityEnabled() {
 		return true
 	}
-	username, password, ok := r.BasicAuth()
+	username, password, ok := netutil.BasicAuth(r)
 	if !ok {
 		return false
 	}
@@ -73,7 +74,7 @@ func hasKeyPrefixAccess(sec *security.Store, r *http.Request, key string) bool {
 	if !sec.SecurityEnabled() {
 		return true
 	}
-	username, password, ok := r.BasicAuth()
+	username, password, ok := netutil.BasicAuth(r)
 	if !ok {
 		return false
 	}
