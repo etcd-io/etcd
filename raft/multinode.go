@@ -182,7 +182,16 @@ func (mn *multiNode) run() {
 		select {
 		case gc := <-mn.groupc:
 			// TODO(bdarnell): pass applied through gc and into newRaft. Or get rid of it?
-			r := newRaft(mn.id, nil, mn.election, mn.heartbeat, gc.storage, 0)
+			// TODO(bdarnell): make maxSizePerMsg(InflightMsgs) configurable
+			c := &Config{
+				ID:              mn.id,
+				ElectionTick:    mn.election,
+				HeartbeatTick:   mn.heartbeat,
+				Storage:         gc.storage,
+				MaxSizePerMsg:   noLimit,
+				MaxInflightMsgs: 256,
+			}
+			r := newRaft(c)
 			group = &groupState{
 				id:   gc.id,
 				raft: r,
