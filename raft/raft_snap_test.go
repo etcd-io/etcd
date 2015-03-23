@@ -32,7 +32,7 @@ var (
 
 func TestSendingSnapshotSetPendingSnapshot(t *testing.T) {
 	storage := NewMemoryStorage()
-	sm := newRaft(1, []uint64{1}, 10, 1, storage, 0)
+	sm := newTestRaft(1, []uint64{1}, 10, 1, storage)
 	sm.restore(testingSnap)
 
 	sm.becomeCandidate()
@@ -50,7 +50,7 @@ func TestSendingSnapshotSetPendingSnapshot(t *testing.T) {
 
 func TestPendingSnapshotPauseReplication(t *testing.T) {
 	storage := NewMemoryStorage()
-	sm := newRaft(1, []uint64{1, 2}, 10, 1, storage, 0)
+	sm := newTestRaft(1, []uint64{1, 2}, 10, 1, storage)
 	sm.restore(testingSnap)
 
 	sm.becomeCandidate()
@@ -67,7 +67,7 @@ func TestPendingSnapshotPauseReplication(t *testing.T) {
 
 func TestSnapshotFailure(t *testing.T) {
 	storage := NewMemoryStorage()
-	sm := newRaft(1, []uint64{1, 2}, 10, 1, storage, 0)
+	sm := newTestRaft(1, []uint64{1, 2}, 10, 1, storage)
 	sm.restore(testingSnap)
 
 	sm.becomeCandidate()
@@ -90,7 +90,7 @@ func TestSnapshotFailure(t *testing.T) {
 
 func TestSnapshotSucceed(t *testing.T) {
 	storage := NewMemoryStorage()
-	sm := newRaft(1, []uint64{1, 2}, 10, 1, storage, 0)
+	sm := newTestRaft(1, []uint64{1, 2}, 10, 1, storage)
 	sm.restore(testingSnap)
 
 	sm.becomeCandidate()
@@ -113,7 +113,7 @@ func TestSnapshotSucceed(t *testing.T) {
 
 func TestSnapshotAbort(t *testing.T) {
 	storage := NewMemoryStorage()
-	sm := newRaft(1, []uint64{1, 2}, 10, 1, storage, 0)
+	sm := newTestRaft(1, []uint64{1, 2}, 10, 1, storage)
 	sm.restore(testingSnap)
 
 	sm.becomeCandidate()

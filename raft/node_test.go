@@ -114,7 +114,7 @@ func TestNodePropose(t *testing.T) {
 
 	n := newNode()
 	s := NewMemoryStorage()
-	r := newRaft(1, []uint64{1}, 10, 1, s, 0)
+	r := newTestRaft(1, []uint64{1}, 10, 1, s)
 	go n.run(r)
 	n.Campaign(context.TODO())
 	for {
@@ -152,7 +152,7 @@ func TestNodeProposeConfig(t *testing.T) {
 
 	n := newNode()
 	s := NewMemoryStorage()
-	r := newRaft(1, []uint64{1}, 10, 1, s, 0)
+	r := newTestRaft(1, []uint64{1}, 10, 1, s)
 	go n.run(r)
 	n.Campaign(context.TODO())
 	for {
@@ -190,7 +190,7 @@ func TestNodeProposeConfig(t *testing.T) {
 // who is the current leader.
 func TestBlockProposal(t *testing.T) {
 	n := newNode()
-	r := newRaft(1, []uint64{1}, 10, 1, NewMemoryStorage(), 0)
+	r := newTestRaft(1, []uint64{1}, 10, 1, NewMemoryStorage())
 	go n.run(r)
 	defer n.Stop()
 
@@ -223,7 +223,7 @@ func TestBlockProposal(t *testing.T) {
 func TestNodeTick(t *testing.T) {
 	n := newNode()
 	s := NewMemoryStorage()
-	r := newRaft(1, []uint64{1}, 10, 1, s, 0)
+	r := newTestRaft(1, []uint64{1}, 10, 1, s)
 	go n.run(r)
 	elapsed := r.elapsed
 	n.Tick()
@@ -238,7 +238,7 @@ func TestNodeTick(t *testing.T) {
 func TestNodeStop(t *testing.T) {
 	n := newNode()
 	s := NewMemoryStorage()
-	r := newRaft(1, []uint64{1}, 10, 1, s, 0)
+	r := newTestRaft(1, []uint64{1}, 10, 1, s)
 	donec := make(chan struct{})
 
 	go func() {

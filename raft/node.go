@@ -144,9 +144,17 @@ type Peer struct {
 // the election and heartbeat timeouts in units of ticks.
 // It appends a ConfChangeAddNode entry for each given peer to the initial log.
 func StartNode(id uint64, peers []Peer, election, heartbeat int, storage Storage) Node {
-	n := newNode()
-	r := newRaft(id, nil, election, heartbeat, storage, 0)
-
+	c := &Config{
+		ID:            id,
+		Peers:         nil,
+		ElectionTick:  election,
+		HeartbeatTick: heartbeat,
+		Storage:       storage,
+		// TODO(xiangli): make this configurable
+		MaxSizePerMsg:   noLimit,
+		MaxInflightMsgs: 256,
+	}
+	r := newRaft(c)
 	// become the follower at term 1 and apply initial configuration
 	// entires of term 1
 	r.becomeFollower(1, None)
@@ -177,6 +185,7 @@ func StartNode(id uint64, peers []Peer, election, heartbeat int, storage Storage
 		r.addNode(peer.ID)
 	}
 
+	n := newNode()
 	go n.run(r)
 	return &n
 }
@@ -186,9 +195,20 @@ func StartNode(id uint64, peers []Peer, election, heartbeat int, storage Storage
 // If the caller has an existing state machine, pass in the last log index that
 // has been applied to it; otherwise use zero.
 func RestartNode(id uint64, election, heartbeat int, storage Storage, applied uint64) Node {
-	n := newNode()
-	r := newRaft(id, nil, election, heartbeat, storage, applied)
+	c := &Config{
+		ID:            id,
+		Peers:         nil,
+		ElectionTick:  election,
+		HeartbeatTick: heartbeat,
+		Storage:       storage,
+		Applied:       applied,
+		// TODO(xiangli): make this configurable
+		MaxSizePerMsg:   noLimit,
+		MaxInflightMsgs: 256,
+	}
+	r := newRaft(c)
 
+	n := newNode()
 	go n.run(r)
 	return &n
 }
