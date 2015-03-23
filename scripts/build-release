@@ -35,8 +35,12 @@ function package {
 	if [ -d ${ccdir} ]; then
 		srcdir=${ccdir}
 	fi
+	local ext=""
+	if [ ${GOOS} == "windows" ]; then
+		ext=".exe"
+	fi
 	for bin in etcd etcdctl etcd-migrate; do
-		cp ${srcdir}/${bin} ${target}
+		cp ${srcdir}/${bin} ${target}/${bin}${ext}
 	done
 
 	cp etcd/README.md ${target}/README.md
