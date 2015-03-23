@@ -29,74 +29,76 @@ func mustNewURLs(t *testing.T, urls []string) []url.URL {
 	return u
 }
 
-func TestBootstrapConfigVerify(t *testing.T) {
+func TestConfigVerifyBootstrapWithoutClusterAndDiscoveryURLFail(t *testing.T) {
+	cluster, err := NewClusterFromString("", "")
+	if err != nil {
+		t.Fatalf("NewClusterFromString error: %v", err)
+	}
+	c := &ServerConfig{
+		Name:         "node1",
+		DiscoveryURL: "",
+		Cluster:      cluster,
+	}
+	if err := c.VerifyBootstrap(); err == nil {
+		t.Errorf("err = nil, want not nil")
+	}
+}
+
+func TestConfigVerifyExistingWithDiscoveryURLFail(t *testing.T) {
+	cluster, err := NewClusterFromString("", "node1=http://127.0.0.1:2380")
+	if err != nil {
+		t.Fatalf("NewClusterFromString error: %v", err)
+	}
+	c := &ServerConfig{
+		Name:         "node1",
+		DiscoveryURL: "http://127.0.0.1:4001/abcdefg",
+		PeerURLs:     mustNewURLs(t, []string{"http://127.0.0.1:2380"}),
+		Cluster:      cluster,
+		NewCluster:   false,
+	}
+	if err := c.VerifyJoinExisting(); err == nil {
+		t.Errorf("err = nil, want not nil")
+	}
+}
+
+func TestConfigVerifyLocalMember(t *testing.T) {
 	tests := []struct {
 		clusterSetting string
-		newclst        bool
 		apurls         []string
-		disc           string
 		shouldError    bool
 	}{
 		{
 			// Node must exist in cluster
 			"",
-			true,
 			nil,
-			"",
 
 			true,
 		},
 		{
-			// Cannot have duplicate URLs in cluster config
-			"node1=http://localhost:7001,node2=http://localhost:7001,node2=http://localhost:7002",
-			true,
-			nil,
-			"",
-
-			true,
-		},
-		{
-			// Node defined, ClusterState OK
+			// Initial cluster set
 			"node1=http://localhost:7001,node2=http://localhost:7002",
-			true,
 			[]string{"http://localhost:7001"},
-			"",
 
 			false,
 		},
 		{
-			// Node defined, discovery OK
-			"node1=http://localhost:7001",
-			false,
-			[]string{"http://localhost:7001"},
-			"http://discovery",
+			// Default initial cluster
+			"node1=http://localhost:2380,node1=http://localhost:7001",
+			[]string{"http://localhost:2380", "http://localhost:7001"},
 
 			false,
-		},
-		{
-			// Cannot have ClusterState!=new && !discovery
-			"node1=http://localhost:7001",
-			false,
-			nil,
-			"",
-
-			true,
 		},
 		{
 			// Advertised peer URLs must match those in cluster-state
 			"node1=http://localhost:7001",
-			true,
 			[]string{"http://localhost:12345"},
-			"",
 
 			true,
 		},
 		{
 			// Advertised peer URLs must match those in cluster-state
 			"node1=http://localhost:7001,node1=http://localhost:12345",
-			true,
 			[]string{"http://localhost:12345"},
-			"",
 
 			true,
 		},
@@ -108,15 +110,13 @@ func TestBootstrapConfigVerify(t *testing.T) {
 			t.Fatalf("#%d: Got unexpected error: %v", i, err)
 		}
 		cfg := ServerConfig{
-			Name:         "node1",
-			DiscoveryURL: tt.disc,
-			Cluster:      cluster,
-			NewCluster:   tt.newclst,
+			Name:    "node1",
+			Cluster: cluster,
 		}
 		if tt.apurls != nil {
 			cfg.PeerURLs = mustNewURLs(t, tt.apurls)
 		}
-		err = cfg.VerifyBootstrapConfig()
+		err = cfg.verifyLocalMember()
 		if (err == nil) && tt.shouldError {
 			t.Errorf("%#v", *cluster)
 			t.Errorf("#%d: Got no error where one was expected", i)
