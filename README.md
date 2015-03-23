@@ -1,6 +1,6 @@
 # etcd
 
-README version 0.4.7
+README version 0.4.8
 
 A highly-available key value store for shared configuration and service discovery.
 etcd is inspired by [Apache ZooKeeper][zookeeper] and [doozer][doozer], with a focus on being:
