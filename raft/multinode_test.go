@@ -107,10 +107,10 @@ func TestMultiNodeStepUnblock(t *testing.T) {
 
 // TestMultiNodePropose ensures that node.Propose sends the given proposal to the underlying raft.
 func TestMultiNodePropose(t *testing.T) {
-	mn := newMultiNode(1, 10, 1)
+	mn := newMultiNode(1)
 	go mn.run()
 	s := NewMemoryStorage()
-	mn.CreateGroup(1, []Peer{{ID: 1}}, s)
+	mn.CreateGroup(1, newTestConfig(1, nil, 10, 1, s), []Peer{{ID: 1}})
 	mn.Campaign(context.TODO(), 1)
 	proposed := false
 	for {
@@ -155,10 +155,10 @@ func TestMultiNodePropose(t *testing.T) {
 // TestMultiNodeProposeConfig ensures that multiNode.ProposeConfChange
 // sends the given configuration proposal to the underlying raft.
 func TestMultiNodeProposeConfig(t *testing.T) {
-	mn := newMultiNode(1, 10, 1)
+	mn := newMultiNode(1)
 	go mn.run()
 	s := NewMemoryStorage()
-	mn.CreateGroup(1, []Peer{{ID: 1}}, s)
+	mn.CreateGroup(1, newTestConfig(1, nil, 10, 1, s), []Peer{{ID: 1}})
 	mn.Campaign(context.TODO(), 1)
 	proposed := false
 	var lastIndex uint64
@@ -215,7 +215,7 @@ func TestMultiNodeProposeConfig(t *testing.T) {
 // TestMultiNodeStop ensures that multiNode.Stop() blocks until the node has stopped
 // processing, and that it is idempotent
 func TestMultiNodeStop(t *testing.T) {
-	mn := newMultiNode(1, 10, 1)
+	mn := newMultiNode(1)
 	donec := make(chan struct{})
 
 	go func() {
@@ -271,9 +271,9 @@ func TestMultiNodeStart(t *testing.T) {
 			CommittedEntries: []raftpb.Entry{{Term: 2, Index: 3, Data: []byte("foo")}},
 		},
 	}
-	mn := StartMultiNode(1, 10, 1)
+	mn := StartMultiNode(1)
 	storage := NewMemoryStorage()
-	mn.CreateGroup(1, []Peer{{ID: 1}}, storage)
+	mn.CreateGroup(1, newTestConfig(1, nil, 10, 1, storage), []Peer{{ID: 1}})
 	mn.Campaign(ctx, 1)
 	gs := <-mn.Ready()
 	g := gs[1]
@@ -315,8 +315,8 @@ func TestMultiNodeRestart(t *testing.T) {
 	storage := NewMemoryStorage()
 	storage.SetHardState(st)
 	storage.Append(entries)
-	mn := StartMultiNode(1, 10, 1)
-	mn.CreateGroup(1, nil, storage)
+	mn := StartMultiNode(1)
+	mn.CreateGroup(1, newTestConfig(1, nil, 10, 1, storage), nil)
 	gs := <-mn.Ready()
 	if !reflect.DeepEqual(gs[1], want) {
 		t.Errorf("g = %+v,\n             w   %+v", gs[1], want)
@@ -354,8 +354,8 @@ func TestMultiNodeRestartFromSnapshot(t *testing.T) {
 	s.SetHardState(st)
 	s.ApplySnapshot(snap)
 	s.Append(entries)
-	mn := StartMultiNode(1, 10, 1)
-	mn.CreateGroup(1, nil, s)
+	mn := StartMultiNode(1)
+	mn.CreateGroup(1, newTestConfig(1, nil, 10, 1, s), nil)
 	if gs := <-mn.Ready(); !reflect.DeepEqual(gs[1], want) {
 		t.Errorf("g = %+v,\n             w   %+v", gs[1], want)
 	} else {
@@ -374,8 +374,8 @@ func TestMultiNodeAdvance(t *testing.T) {
 	defer cancel()
 
 	storage := NewMemoryStorage()
-	mn := StartMultiNode(1, 10, 1)
-	mn.CreateGroup(1, []Peer{{ID: 1}}, storage)
+	mn := StartMultiNode(1)
+	mn.CreateGroup(1, newTestConfig(1, nil, 10, 1, storage), []Peer{{ID: 1}})
 	mn.Campaign(ctx, 1)
 	rd1 := <-mn.Ready()
 	mn.Propose(ctx, 1, []byte("foo"))
