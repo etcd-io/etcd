@@ -141,7 +141,6 @@ type Peer struct {
 }
 
 // StartNode returns a new Node given configuration and a list of raft peers.
-// It ignores the given peer list in the given Config.
 // It appends a ConfChangeAddNode entry for each given peer to the initial log.
 func StartNode(c *Config, peers []Peer) Node {
 	r := newRaft(c)

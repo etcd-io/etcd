@@ -1884,7 +1884,7 @@ func idsBySize(size int) []uint64 {
 func newTestRaft(id uint64, peers []uint64, election, heartbeat int, storage Storage) *raft {
 	c := &Config{
 		ID:              id,
-		Peers:           peers,
+		peers:           peers,
 		ElectionTick:    election,
 		HeartbeatTick:   heartbeat,
 		Storage:         storage,
