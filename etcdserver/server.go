@@ -42,6 +42,7 @@ import (
 	"github.com/coreos/etcd/rafthttp"
 	"github.com/coreos/etcd/snap"
 	"github.com/coreos/etcd/store"
+	"github.com/coreos/etcd/version"
 	"github.com/coreos/etcd/wal"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
@@ -145,14 +146,16 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 	var s *raft.MemoryStorage
 	var id types.ID
 
-	walVersion, err := wal.DetectVersion(cfg.DataDir)
+	// Run the migrations.
+	dataVer, err := version.DetectDataDir(cfg.DataDir)
 	if err != nil {
 		return nil, err
 	}
-	if walVersion == wal.WALUnknown {
-		return nil, fmt.Errorf("unknown wal version in data dir %s", cfg.DataDir)
+	if err := upgradeDataDir(cfg.DataDir, cfg.Name, dataVer); err != nil {
+		return nil, err
 	}
-	haveWAL := walVersion != wal.WALNotExist
+
+	haveWAL := wal.Exist(cfg.WALDir())
 	ss := snap.New(cfg.SnapDir())
 
 	switch {
@@ -196,11 +199,6 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		cfg.PrintWithInitial()
 		id, n, s, w = startNode(cfg, cfg.Cluster.MemberIDs())
 	case haveWAL:
-		// Run the migrations.
-		if err := upgradeWAL(cfg.DataDir, cfg.Name, walVersion); err != nil {
-			return nil, err
-		}
-
 		if err := fileutil.IsDirWriteable(cfg.DataDir); err != nil {
 			return nil, fmt.Errorf("cannot write to data directory: %v", err)
 		}

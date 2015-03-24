@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package wal
+package version
 
 import (
 	"io/ioutil"
@@ -22,21 +22,20 @@ import (
 	"testing"
 )
 
-func TestDetectVersion(t *testing.T) {
+func TestDetectDataDir(t *testing.T) {
 	tests := []struct {
 		names []string
-		wver  WalVersion
+		wver  DataDirVersion
 	}{
-		{[]string{}, WALNotExist},
-		{[]string{"member/", "member/wal/", "member/wal/1", "member/snap/"}, WALv2_0_1},
-		{[]string{"snap/", "wal/", "wal/1"}, WALv2_0},
-		{[]string{"snapshot/", "conf", "log"}, WALv0_4},
-		{[]string{"weird"}, WALUnknown},
-		{[]string{"snap/", "wal/"}, WALUnknown},
+		{[]string{"member/", "member/wal/", "member/wal/1", "member/snap/"}, DataDir2_0_1},
+		{[]string{"snap/", "wal/", "wal/1"}, DataDir2_0},
+		{[]string{"snapshot/", "conf", "log"}, DataDir0_4},
+		{[]string{"weird"}, DataDirUnknown},
+		{[]string{"snap/", "wal/"}, DataDirUnknown},
 	}
 	for i, tt := range tests {
 		p := mustMakeDir(t, tt.names...)
-		ver, err := DetectVersion(p)
+		ver, err := DetectDataDir(p)
 		if ver != tt.wver {
 			t.Errorf("#%d: version = %s, want %s", i, ver, tt.wver)
 		}
@@ -44,15 +43,6 @@ func TestDetectVersion(t *testing.T) {
 			t.Errorf("#%d: err = %s, want nil", i, err)
 		}
 		os.RemoveAll(p)
-	}
-
-	// detect on non-exist directory
-	v, err := DetectVersion(path.Join(os.TempDir(), "waltest", "not-exist"))
-	if v != WALNotExist {
-		t.Errorf("#non-exist: version = %s, want %s", v, WALNotExist)
-	}
-	if err != nil {
-		t.Errorf("#non-exist: err = %s, want %s", v, WALNotExist)
 	}
 }
 
