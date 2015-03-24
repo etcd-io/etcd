@@ -155,6 +155,9 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 
 	switch {
 	case !haveWAL && !cfg.NewCluster:
+		if err := cfg.VerifyJoinExisting(); err != nil {
+			return nil, err
+		}
 		existingCluster, err := GetClusterFromRemotePeers(getRemotePeerURLs(cfg.Cluster, cfg.Name), cfg.Transport)
 		if err != nil {
 			return nil, fmt.Errorf("cannot fetch cluster info from peer urls: %v", err)
@@ -168,7 +171,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		cfg.Print()
 		id, n, s, w = startNode(cfg, nil)
 	case !haveWAL && cfg.NewCluster:
-		if err := cfg.VerifyBootstrapConfig(); err != nil {
+		if err := cfg.VerifyBootstrap(); err != nil {
 			return nil, err
 		}
 		m := cfg.Cluster.MemberByName(cfg.Name)

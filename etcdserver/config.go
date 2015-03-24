@@ -46,9 +46,39 @@ type ServerConfig struct {
 	ElectionTicks int
 }
 
-// VerifyBootstrapConfig sanity-checks the initial config and returns an error
-// for things that should never happen.
-func (c *ServerConfig) VerifyBootstrapConfig() error {
+// VerifyBootstrapConfig sanity-checks the initial config for bootstrap case
+// and returns an error for things that should never happen.
+func (c *ServerConfig) VerifyBootstrap() error {
+	if err := c.verifyLocalMember(); err != nil {
+		return err
+	}
+	if err := c.Cluster.Validate(); err != nil {
+		return err
+	}
+	if c.Cluster.String() == "" && c.DiscoveryURL == "" {
+		return fmt.Errorf("initial cluster unset and no discovery URL found")
+	}
+	return nil
+}
+
+// VerifyJoinExisting sanity-checks the initial config for join existing cluster
+// case and returns an error for things that should never happen.
+func (c *ServerConfig) VerifyJoinExisting() error {
+	if err := c.verifyLocalMember(); err != nil {
+		return err
+	}
+	if err := c.Cluster.Validate(); err != nil {
+		return err
+	}
+	if c.DiscoveryURL != "" {
+		return fmt.Errorf("discovery URL should not be set when joining existing initial cluster")
+	}
+	return nil
+}
+
+// verifyLocalMember verifies that the local member is valid and is listed
+// in the cluster correctly.
+func (c *ServerConfig) verifyLocalMember() error {
 	m := c.Cluster.MemberByName(c.Name)
 	// Make sure the cluster at least contains the local server.
 	if m == nil {
@@ -56,14 +86,6 @@ func (c *ServerConfig) VerifyBootstrapConfig() error {
 	}
 	if uint64(m.ID) == raft.None {
 		return fmt.Errorf("cannot use %x as member id", raft.None)
-	}
-
-	if c.DiscoveryURL == "" && !c.NewCluster {
-		return fmt.Errorf("initial cluster state unset and no wal or discovery URL found")
-	}
-
-	if err := c.Cluster.Validate(); err != nil {
-		return err
 	}
 
 	// Advertised peer URLs must match those in the cluster peer list
