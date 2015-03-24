@@ -40,6 +40,13 @@ const (
 	// The max throughput is around 10K. Keep a 5K entries is enough for helping
 	// follower to catch up.
 	numberOfCatchUpEntries = 5000
+
+	// The max throughput of etcd will not exceed 100MB/s (100K * 1KB value).
+	// Assuming the RTT is around 10ms, 1MB max size is large enough.
+	maxSizePerMsg = 1 * 1024 * 1024
+	// Never overflow the rafthttp buffer, which is 4096.
+	// TODO: a better const?
+	maxInflightMsgs = 4096 / 8
 )
 
 var (
@@ -204,7 +211,15 @@ func startNode(cfg *ServerConfig, ids []types.ID) (id types.ID, n raft.Node, s *
 	id = member.ID
 	log.Printf("etcdserver: start member %s in cluster %s", id, cfg.Cluster.ID())
 	s = raft.NewMemoryStorage()
-	n = raft.StartNode(uint64(id), peers, cfg.ElectionTicks, 1, s)
+	c := &raft.Config{
+		ID:              uint64(id),
+		ElectionTick:    cfg.ElectionTicks,
+		HeartbeatTick:   1,
+		Storage:         s,
+		MaxSizePerMsg:   maxSizePerMsg,
+		MaxInflightMsgs: maxInflightMsgs,
+	}
+	n = raft.StartNode(c, peers)
 	raftStatus = n.Status
 	return
 }
@@ -224,7 +239,15 @@ func restartNode(cfg *ServerConfig, snapshot *raftpb.Snapshot) (types.ID, raft.N
 	}
 	s.SetHardState(st)
 	s.Append(ents)
-	n := raft.RestartNode(uint64(id), cfg.ElectionTicks, 1, s, 0)
+	c := &raft.Config{
+		ID:              uint64(id),
+		ElectionTick:    cfg.ElectionTicks,
+		HeartbeatTick:   1,
+		Storage:         s,
+		MaxSizePerMsg:   maxSizePerMsg,
+		MaxInflightMsgs: maxInflightMsgs,
+	}
+	n := raft.RestartNode(c)
 	raftStatus = n.Status
 	return id, n, s, w
 }
@@ -266,7 +289,15 @@ func restartAsStandaloneNode(cfg *ServerConfig, snapshot *raftpb.Snapshot) (type
 	}
 	s.SetHardState(st)
 	s.Append(ents)
-	n := raft.RestartNode(uint64(id), cfg.ElectionTicks, 1, s, 0)
+	c := &raft.Config{
+		ID:              uint64(id),
+		ElectionTick:    cfg.ElectionTicks,
+		HeartbeatTick:   1,
+		Storage:         s,
+		MaxSizePerMsg:   maxSizePerMsg,
+		MaxInflightMsgs: maxInflightMsgs,
+	}
+	n := raft.RestartNode(c)
 	raftStatus = n.Status
 	return id, n, s, w
 }

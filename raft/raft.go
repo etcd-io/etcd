@@ -55,12 +55,14 @@ func (st StateType) String() string {
 type Config struct {
 	// ID is the identity of the local raft. ID cannot be 0.
 	ID uint64
-	// Peers contains the IDs of all nodes (including self) in
+
+	// peers contains the IDs of all nodes (including self) in
 	// the raft cluster. It should only be set when starting a new
 	// raft cluster.
 	// Restarting raft from previous configuration will panic if
-	// Peers is set.
-	Peers []uint64
+	// peers is set.
+	// peer is private and only used for testing right now.
+	peers []uint64
 
 	// ElectionTick is the election timeout. If a follower does not
 	// receive any message from the leader of current term during
@@ -161,7 +163,7 @@ func newRaft(c *Config) *raft {
 	if err != nil {
 		panic(err) // TODO(bdarnell)
 	}
-	peers := c.Peers
+	peers := c.peers
 	if len(cs.Nodes) > 0 {
 		if len(peers) > 0 {
 			// TODO(bdarnell): the peers argument is always nil except in
