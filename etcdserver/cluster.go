@@ -30,6 +30,7 @@ import (
 	"github.com/coreos/etcd/pkg/netutil"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft/raftpb"
+	"github.com/coreos/etcd/rafthttp"
 	"github.com/coreos/etcd/store"
 )
 
@@ -66,6 +67,11 @@ type Cluster struct {
 	// TODO: upgrade it as last modified index
 	index uint64
 
+	// transport and members maintains the view of the cluster at index.
+	// This might be more up to date than what stores in the store since
+	// the index may be higher than store index, which may happen when the
+	// cluster is updated from remote cluster info.
+	transport  rafthttp.Transporter
 	sync.Mutex // guards members and removed map
 	members    map[types.ID]*Member
 	// removed contains the ids of removed members in the cluster.
@@ -240,6 +246,19 @@ func (c *Cluster) UpdateIndex(index uint64) { c.index = index }
 
 func (c *Cluster) Recover() {
 	c.members, c.removed = membersFromStore(c.store)
+	// recover transport
+	c.transport.RemoveAllPeers()
+	for _, m := range c.Members() {
+		c.transport.AddPeer(m.ID, m.PeerURLs)
+	}
+}
+
+func (c *Cluster) SetTransport(tr rafthttp.Transporter) {
+	c.transport = tr
+	// add all the remote members into transport
+	for _, m := range c.Members() {
+		c.transport.AddPeer(m.ID, m.PeerURLs)
+	}
 }
 
 // ValidateConfigurationChange takes a proposed ConfChange and
@@ -305,7 +324,8 @@ func (c *Cluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
 // AddMember adds a new Member into the cluster, and saves the given member's
 // raftAttributes into the store. The given member should have empty attributes.
 // A Member with a matching id must not exist.
-func (c *Cluster) AddMember(m *Member) {
+// The given index indicates when the event happens.
+func (c *Cluster) AddMember(m *Member, index uint64) {
 	c.Lock()
 	defer c.Unlock()
 	b, err := json.Marshal(m.RaftAttributes)
@@ -316,22 +336,37 @@ func (c *Cluster) AddMember(m *Member) {
 	if _, err := c.store.Create(p, false, string(b), false, store.Permanent); err != nil {
 		log.Panicf("create raftAttributes should never fail: %v", err)
 	}
-	c.members[m.ID] = m
+	if index > c.index {
+		// TODO: check member does not exist in the cluster
+		// New bootstrapped member has initial cluster, which contains unadded
+		// peers.
+		c.members[m.ID] = m
+		c.transport.AddPeer(m.ID, m.PeerURLs)
+		c.index = index
+	}
 }
 
 // RemoveMember removes a member from the store.
 // The given id MUST exist, or the function panics.
-func (c *Cluster) RemoveMember(id types.ID) {
+// The given index indicates when the event happens.
+func (c *Cluster) RemoveMember(id types.ID, index uint64) {
 	c.Lock()
 	defer c.Unlock()
 	if _, err := c.store.Delete(memberStoreKey(id), true, true); err != nil {
 		log.Panicf("delete member should never fail: %v", err)
 	}
-	delete(c.members, id)
 	if _, err := c.store.Create(removedMemberStoreKey(id), false, "", false, store.Permanent); err != nil {
 		log.Panicf("create removedMember should never fail: %v", err)
 	}
-	c.removed[id] = true
+	if index > c.index {
+		if _, ok := c.members[id]; !ok {
+			log.Panicf("member %s should exist in the cluster", id)
+		}
+		delete(c.members, id)
+		c.removed[id] = true
+		c.transport.RemovePeer(id)
+		c.index = index
+	}
 }
 
 func (c *Cluster) UpdateAttributes(id types.ID, attr Attributes) {
@@ -341,7 +376,9 @@ func (c *Cluster) UpdateAttributes(id types.ID, attr Attributes) {
 	// TODO: update store in this function
 }
 
-func (c *Cluster) UpdateRaftAttributes(id types.ID, raftAttr RaftAttributes) {
+// UpdateRaftAttributes updates the raft attributes of the given id.
+// The given index indicates when the event happens.
+func (c *Cluster) UpdateRaftAttributes(id types.ID, raftAttr RaftAttributes, index uint64) {
 	c.Lock()
 	defer c.Unlock()
 	b, err := json.Marshal(raftAttr)
@@ -352,7 +389,11 @@ func (c *Cluster) UpdateRaftAttributes(id types.ID, raftAttr RaftAttributes) {
 	if _, err := c.store.Update(p, string(b), store.Permanent); err != nil {
 		log.Panicf("update raftAttributes should never fail: %v", err)
 	}
-	c.members[id].RaftAttributes = raftAttr
+	if index > c.index {
+		c.members[id].RaftAttributes = raftAttr
+		c.transport.UpdatePeer(id, raftAttr.PeerURLs)
+		c.index = index
+	}
 }
 
 // Validate ensures that there is no identical urls in the cluster peer list
