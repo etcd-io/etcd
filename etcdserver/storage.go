@@ -25,6 +25,7 @@ import (
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/snap"
+	"github.com/coreos/etcd/version"
 	"github.com/coreos/etcd/wal"
 	"github.com/coreos/etcd/wal/walpb"
 )
@@ -88,9 +89,9 @@ func readWAL(waldir string, snap walpb.Snapshot) (w *wal.WAL, id, cid types.ID, 
 
 // upgradeWAL converts an older version of the etcdServer data to the newest version.
 // It must ensure that, after upgrading, the most recent version is present.
-func upgradeWAL(baseDataDir string, name string, ver wal.WalVersion) error {
+func upgradeDataDir(baseDataDir string, name string, ver version.DataDirVersion) error {
 	switch ver {
-	case wal.WALv0_4:
+	case version.DataDir0_4:
 		log.Print("etcdserver: converting v0.4 log to v2.0")
 		err := migrate.Migrate4To2(baseDataDir, name)
 		if err != nil {
@@ -98,16 +99,16 @@ func upgradeWAL(baseDataDir string, name string, ver wal.WalVersion) error {
 			return err
 		}
 		fallthrough
-	case wal.WALv2_0:
+	case version.DataDir2_0:
 		err := makeMemberDir(baseDataDir)
 		if err != nil {
 			return err
 		}
 		fallthrough
-	case wal.WALv2_0_1:
+	case version.DataDir2_0_1:
 		fallthrough
 	default:
-		log.Printf("datadir is valid for the 2.0.1 format")
+		log.Printf("etcdserver: datadir is valid for the 2.0.1 format")
 	}
 	return nil
 }

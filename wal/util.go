@@ -17,67 +17,9 @@ package wal
 import (
 	"fmt"
 	"log"
-	"os"
-	"path"
 
 	"github.com/coreos/etcd/pkg/fileutil"
-	"github.com/coreos/etcd/pkg/types"
 )
-
-// WalVersion is an enum for versions of etcd logs.
-type WalVersion string
-
-const (
-	WALUnknown   WalVersion = "Unknown WAL"
-	WALNotExist  WalVersion = "No WAL"
-	WALv0_4      WalVersion = "0.4.x"
-	WALv2_0      WalVersion = "2.0.0"
-	WALv2_0Proxy WalVersion = "2.0 proxy"
-	WALv2_0_1    WalVersion = "2.0.1"
-)
-
-func DetectVersion(dirpath string) (WalVersion, error) {
-	names, err := fileutil.ReadDir(dirpath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			err = nil
-		}
-		// Error reading the directory
-		return WALNotExist, err
-	}
-	if len(names) == 0 {
-		// Empty WAL directory
-		return WALNotExist, nil
-	}
-	nameSet := types.NewUnsafeSet(names...)
-	if nameSet.Contains("member") {
-		ver, err := DetectVersion(path.Join(dirpath, "member"))
-		if ver == WALv2_0 {
-			return WALv2_0_1, nil
-		} else if ver == WALv0_4 {
-			// How in the blazes did it get there?
-			return WALUnknown, nil
-		}
-		return ver, err
-	}
-	if nameSet.ContainsAll([]string{"snap", "wal"}) {
-		// .../wal cannot be empty to exist.
-		if Exist(path.Join(dirpath, "wal")) {
-			return WALv2_0, nil
-		}
-	}
-	if nameSet.ContainsAll([]string{"proxy"}) {
-		return WALv2_0Proxy, nil
-	}
-	if nameSet.ContainsAll([]string{"snapshot", "conf", "log"}) {
-		return WALv0_4, nil
-	}
-	if nameSet.ContainsAll([]string{"standby_info"}) {
-		return WALv0_4, nil
-	}
-
-	return WALUnknown, nil
-}
 
 func Exist(dirpath string) bool {
 	names, err := fileutil.ReadDir(dirpath)
