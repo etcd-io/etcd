@@ -321,7 +321,15 @@ func TestNodeStart(t *testing.T) {
 		},
 	}
 	storage := NewMemoryStorage()
-	n := StartNode(1, []Peer{{ID: 1}}, 10, 1, storage)
+	c := &Config{
+		ID:              1,
+		ElectionTick:    10,
+		HeartbeatTick:   1,
+		Storage:         storage,
+		MaxSizePerMsg:   noLimit,
+		MaxInflightMsgs: 256,
+	}
+	n := StartNode(c, []Peer{{ID: 1}})
 	n.Campaign(ctx)
 	g := <-n.Ready()
 	if !reflect.DeepEqual(g, wants[0]) {
@@ -362,7 +370,15 @@ func TestNodeRestart(t *testing.T) {
 	storage := NewMemoryStorage()
 	storage.SetHardState(st)
 	storage.Append(entries)
-	n := RestartNode(1, 10, 1, storage, 0)
+	c := &Config{
+		ID:              1,
+		ElectionTick:    10,
+		HeartbeatTick:   1,
+		Storage:         storage,
+		MaxSizePerMsg:   noLimit,
+		MaxInflightMsgs: 256,
+	}
+	n := RestartNode(c)
 	if g := <-n.Ready(); !reflect.DeepEqual(g, want) {
 		t.Errorf("g = %+v,\n             w   %+v", g, want)
 	}
@@ -398,7 +414,15 @@ func TestNodeRestartFromSnapshot(t *testing.T) {
 	s.SetHardState(st)
 	s.ApplySnapshot(snap)
 	s.Append(entries)
-	n := RestartNode(1, 10, 1, s, 0)
+	c := &Config{
+		ID:              1,
+		ElectionTick:    10,
+		HeartbeatTick:   1,
+		Storage:         s,
+		MaxSizePerMsg:   noLimit,
+		MaxInflightMsgs: 256,
+	}
+	n := RestartNode(c)
 	if g := <-n.Ready(); !reflect.DeepEqual(g, want) {
 		t.Errorf("g = %+v,\n             w   %+v", g, want)
 	} else {
@@ -417,7 +441,15 @@ func TestNodeAdvance(t *testing.T) {
 	defer cancel()
 
 	storage := NewMemoryStorage()
-	n := StartNode(1, []Peer{{ID: 1}}, 10, 1, storage)
+	c := &Config{
+		ID:              1,
+		ElectionTick:    10,
+		HeartbeatTick:   1,
+		Storage:         storage,
+		MaxSizePerMsg:   noLimit,
+		MaxInflightMsgs: 256,
+	}
+	n := StartNode(c, []Peer{{ID: 1}})
 	n.Campaign(ctx)
 	<-n.Ready()
 	n.Propose(ctx, []byte("foo"))
