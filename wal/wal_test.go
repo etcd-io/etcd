@@ -20,7 +20,6 @@ import (
 	"os"
 	"path"
 	"reflect"
-	"testing"
 
 	"github.com/coreos/etcd/pkg/pbutil"
 	"github.com/coreos/etcd/raft/raftpb"
@@ -503,5 +502,22 @@ func TestReleaseLockTo(t *testing.T) {
 		if lockIndex != uint64(i+4) {
 			t.Errorf("#%d: lockindex = %d, want %d", i, lockIndex, uint64(i+4))
 		}
+	}
+
+	// release the lock to 15
+	unlockIndex = uint64(15)
+	w.ReleaseLockTo(unlockIndex)
+
+	// expected remaining is 10
+	if len(w.locks) != 1 {
+		t.Errorf("len(w.locks) = %d, want %d", len(w.locks), 1)
+	}
+	_, lockIndex, err := parseWalName(path.Base(w.locks[0].Name()))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if lockIndex != uint64(10) {
+		t.Errorf("lockindex = %d, want %d", lockIndex, 10)
 	}
 }
