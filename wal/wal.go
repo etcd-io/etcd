@@ -336,6 +336,7 @@ func (w *WAL) sync() error {
 // lock 1,2 but keep 3. ReleaseLockTo(5) will release 1,2,3 but keep 4.
 func (w *WAL) ReleaseLockTo(index uint64) error {
 	var smaller int
+	found := false
 
 	for i, l := range w.locks {
 		_, lockIndex, err := parseWalName(path.Base(l.Name()))
@@ -344,8 +345,15 @@ func (w *WAL) ReleaseLockTo(index uint64) error {
 		}
 		if lockIndex >= index {
 			smaller = i - 1
+			found = true
 			break
 		}
+	}
+
+	// if no lock index is greater than the release index, we can
+	// release lock upto the last one(excluding).
+	if !found && len(w.locks) != 0 {
+		smaller = len(w.locks) - 1
 	}
 
 	if smaller <= 0 {
