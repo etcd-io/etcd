@@ -15,6 +15,7 @@
 package version
 
 import (
+	"os"
 	"path"
 
 	"github.com/coreos/etcd/pkg/fileutil"
@@ -40,6 +41,9 @@ const (
 func DetectDataDir(dirpath string) (DataDirVersion, error) {
 	names, err := fileutil.ReadDir(dirpath)
 	if err != nil {
+		if os.IsNotExist(err) {
+			err = nil
+		}
 		// Error reading the directory
 		return DataDirUnknown, err
 	}
