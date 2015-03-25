@@ -22,6 +22,9 @@ import (
 )
 
 func mustNewURLs(t *testing.T, urls []string) []url.URL {
+	if len(urls) == 0 {
+		return nil
+	}
 	u, err := types.NewURLs(urls)
 	if err != nil {
 		t.Fatalf("error creating new URLs from %q: %v", urls, err)
@@ -65,12 +68,14 @@ func TestConfigVerifyLocalMember(t *testing.T) {
 	tests := []struct {
 		clusterSetting string
 		apurls         []string
+		strict         bool
 		shouldError    bool
 	}{
 		{
 			// Node must exist in cluster
 			"",
 			nil,
+			true,
 
 			true,
 		},
@@ -78,6 +83,7 @@ func TestConfigVerifyLocalMember(t *testing.T) {
 			// Initial cluster set
 			"node1=http://localhost:7001,node2=http://localhost:7002",
 			[]string{"http://localhost:7001"},
+			true,
 
 			false,
 		},
@@ -85,6 +91,7 @@ func TestConfigVerifyLocalMember(t *testing.T) {
 			// Default initial cluster
 			"node1=http://localhost:2380,node1=http://localhost:7001",
 			[]string{"http://localhost:2380", "http://localhost:7001"},
+			true,
 
 			false,
 		},
@@ -92,6 +99,7 @@ func TestConfigVerifyLocalMember(t *testing.T) {
 			// Advertised peer URLs must match those in cluster-state
 			"node1=http://localhost:7001",
 			[]string{"http://localhost:12345"},
+			true,
 
 			true,
 		},
@@ -99,8 +107,25 @@ func TestConfigVerifyLocalMember(t *testing.T) {
 			// Advertised peer URLs must match those in cluster-state
 			"node1=http://localhost:7001,node1=http://localhost:12345",
 			[]string{"http://localhost:12345"},
+			true,
 
 			true,
+		},
+		{
+			// Advertised peer URLs must match those in cluster-state
+			"node1=http://localhost:7001",
+			[]string{},
+			true,
+
+			true,
+		},
+		{
+			// do not care about the urls if strict is not set
+			"node1=http://localhost:7001",
+			[]string{},
+			false,
+
+			false,
 		},
 	}
 
@@ -116,7 +141,7 @@ func TestConfigVerifyLocalMember(t *testing.T) {
 		if tt.apurls != nil {
 			cfg.PeerURLs = mustNewURLs(t, tt.apurls)
 		}
-		err = cfg.verifyLocalMember()
+		err = cfg.verifyLocalMember(tt.strict)
 		if (err == nil) && tt.shouldError {
 			t.Errorf("%#v", *cluster)
 			t.Errorf("#%d: Got no error where one was expected", i)
