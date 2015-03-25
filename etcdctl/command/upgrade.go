@@ -74,5 +74,6 @@ func handleUpgrade(c *cli.Context) {
 		fmt.Println("Cluster cannot upgrade to 2: version is not 0.4.7")
 		return
 	}
-	fmt.Printf("Faild to send upgrade request to %s: bad status code %d\n", c.String("cluster-url"), resp.StatusCode)
+	fmt.Printf("Faild upgrade cluster via %s\n", c.String("peer-url"))
+	fmt.Printf("run etcdctl cluster-health to check\n")
 }
