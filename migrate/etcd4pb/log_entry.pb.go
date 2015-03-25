@@ -2,34 +2,36 @@
 // source: log_entry.proto
 // DO NOT EDIT!
 
+/*
+	Package protobuf is a generated protocol buffer package.
+
+	It is generated from these files:
+		log_entry.proto
+
+	It has these top-level messages:
+		LogEntry
+*/
 package protobuf
 
-import proto "github.com/coreos/etcd/Godeps/_workspace/src/code.google.com/p/gogoprotobuf/proto"
-import json "encoding/json"
+import proto "github.com/coreos/etcd/Godeps/_workspace/src/github.com/gogo/protobuf/proto"
 import math "math"
 
-// discarding unused import gogoproto "code.google.com/p/gogoprotobuf/gogoproto/gogo.pb"
+// discarding unused import gogoproto "github.com/gogo/protobuf/gogoproto/gogo.pb"
 
 import io "io"
-import code_google_com_p_gogoprotobuf_proto "github.com/coreos/etcd/Godeps/_workspace/src/code.google.com/p/gogoprotobuf/proto"
-
 import fmt "fmt"
+import github_com_gogo_protobuf_proto "github.com/coreos/etcd/Godeps/_workspace/src/github.com/gogo/protobuf/proto"
+
 import strings "strings"
 import reflect "reflect"
 
-import fmt1 "fmt"
-import strings1 "strings"
-import code_google_com_p_gogoprotobuf_proto1 "github.com/coreos/etcd/Godeps/_workspace/src/code.google.com/p/gogoprotobuf/proto"
 import sort "sort"
 import strconv "strconv"
-import reflect1 "reflect"
 
-import fmt2 "fmt"
 import bytes "bytes"
 
-// Reference proto, json, and math imports to suppress error if they are not otherwise used.
+// Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal
-var _ = &json.SyntaxError{}
 var _ = math.Inf
 
 type LogEntry struct {
@@ -94,7 +96,7 @@ func (m *LogEntry) Unmarshal(data []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 0 {
-				return code_google_com_p_gogoprotobuf_proto.ErrWrongType
+				return fmt.Errorf("proto: wrong wireType = %d for field Index", wireType)
 			}
 			var v uint64
 			for shift := uint(0); ; shift += 7 {
@@ -111,7 +113,7 @@ func (m *LogEntry) Unmarshal(data []byte) error {
 			m.Index = &v
 		case 2:
 			if wireType != 0 {
-				return code_google_com_p_gogoprotobuf_proto.ErrWrongType
+				return fmt.Errorf("proto: wrong wireType = %d for field Term", wireType)
 			}
 			var v uint64
 			for shift := uint(0); ; shift += 7 {
@@ -128,7 +130,7 @@ func (m *LogEntry) Unmarshal(data []byte) error {
 			m.Term = &v
 		case 3:
 			if wireType != 2 {
-				return code_google_com_p_gogoprotobuf_proto.ErrWrongType
+				return fmt.Errorf("proto: wrong wireType = %d for field CommandName", wireType)
 			}
 			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
@@ -151,7 +153,7 @@ func (m *LogEntry) Unmarshal(data []byte) error {
 			index = postIndex
 		case 4:
 			if wireType != 2 {
-				return code_google_com_p_gogoprotobuf_proto.ErrWrongType
+				return fmt.Errorf("proto: wrong wireType = %d for field Command", wireType)
 			}
 			var byteLen int
 			for shift := uint(0); ; shift += 7 {
@@ -169,7 +171,7 @@ func (m *LogEntry) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Command = append(m.Command, data[index:postIndex]...)
+			m.Command = append([]byte{}, data[index:postIndex]...)
 			index = postIndex
 		default:
 			var sizeOfWire int
@@ -181,7 +183,7 @@ func (m *LogEntry) Unmarshal(data []byte) error {
 				}
 			}
 			index -= sizeOfWire
-			skippy, err := code_google_com_p_gogoprotobuf_proto.Skip(data[index:])
+			skippy, err := github_com_gogo_protobuf_proto.Skip(data[index:])
 			if err != nil {
 				return err
 			}
@@ -283,11 +285,7 @@ type randyLogEntry interface {
 }
 
 func randUTF8RuneLogEntry(r randyLogEntry) rune {
-	res := rune(r.Uint32() % 1112064)
-	if 55296 <= res {
-		res += 2047
-	}
-	return res
+	return rune(r.Intn(126-43) + 43)
 }
 func randStringLogEntry(r randyLogEntry) string {
 	v5 := r.Intn(100)
@@ -314,7 +312,11 @@ func randFieldLogEntry(data []byte, r randyLogEntry, fieldNumber int, wire int) 
 	switch wire {
 	case 0:
 		data = encodeVarintPopulateLogEntry(data, uint64(key))
-		data = encodeVarintPopulateLogEntry(data, uint64(r.Int63()))
+		v6 := r.Int63()
+		if r.Intn(2) == 0 {
+			v6 *= -1
+		}
+		data = encodeVarintPopulateLogEntry(data, uint64(v6))
 	case 1:
 		data = encodeVarintPopulateLogEntry(data, uint64(key))
 		data = append(data, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
@@ -381,6 +383,7 @@ func (m *LogEntry) MarshalTo(data []byte) (n int, err error) {
 	}
 	return i, nil
 }
+
 func encodeFixed64LogEntry(data []byte, offset int, v uint64) int {
 	data[offset] = uint8(v)
 	data[offset+1] = uint8(v >> 8)
@@ -412,18 +415,23 @@ func (this *LogEntry) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := strings1.Join([]string{`&protobuf.LogEntry{` + `Index:` + valueToGoStringLogEntry(this.Index, "uint64"), `Term:` + valueToGoStringLogEntry(this.Term, "uint64"), `CommandName:` + valueToGoStringLogEntry(this.CommandName, "string"), `Command:` + valueToGoStringLogEntry(this.Command, "byte"), `XXX_unrecognized:` + fmt1.Sprintf("%#v", this.XXX_unrecognized) + `}`}, ", ")
+	s := strings.Join([]string{`&protobuf.LogEntry{` +
+		`Index:` + valueToGoStringLogEntry(this.Index, "uint64"),
+		`Term:` + valueToGoStringLogEntry(this.Term, "uint64"),
+		`CommandName:` + valueToGoStringLogEntry(this.CommandName, "string"),
+		`Command:` + valueToGoStringLogEntry(this.Command, "byte"),
+		`XXX_unrecognized:` + fmt.Sprintf("%#v", this.XXX_unrecognized) + `}`}, ", ")
 	return s
 }
 func valueToGoStringLogEntry(v interface{}, typ string) string {
-	rv := reflect1.ValueOf(v)
+	rv := reflect.ValueOf(v)
 	if rv.IsNil() {
 		return "nil"
 	}
-	pv := reflect1.Indirect(rv).Interface()
-	return fmt1.Sprintf("func(v %v) *%v { return &v } ( %#v )", typ, typ, pv)
+	pv := reflect.Indirect(rv).Interface()
+	return fmt.Sprintf("func(v %v) *%v { return &v } ( %#v )", typ, typ, pv)
 }
-func extensionToGoStringLogEntry(e map[int32]code_google_com_p_gogoprotobuf_proto1.Extension) string {
+func extensionToGoStringLogEntry(e map[int32]github_com_gogo_protobuf_proto.Extension) string {
 	if e == nil {
 		return "nil"
 	}
@@ -437,7 +445,7 @@ func extensionToGoStringLogEntry(e map[int32]code_google_com_p_gogoprotobuf_prot
 	for _, k := range keys {
 		ss = append(ss, strconv.Itoa(k)+": "+e[int32(k)].GoString())
 	}
-	s += strings1.Join(ss, ",") + "}"
+	s += strings.Join(ss, ",") + "}"
 	return s
 }
 func (this *LogEntry) VerboseEqual(that interface{}) error {
@@ -445,53 +453,53 @@ func (this *LogEntry) VerboseEqual(that interface{}) error {
 		if this == nil {
 			return nil
 		}
-		return fmt2.Errorf("that == nil && this != nil")
+		return fmt.Errorf("that == nil && this != nil")
 	}
 
 	that1, ok := that.(*LogEntry)
 	if !ok {
-		return fmt2.Errorf("that is not of type *LogEntry")
+		return fmt.Errorf("that is not of type *LogEntry")
 	}
 	if that1 == nil {
 		if this == nil {
 			return nil
 		}
-		return fmt2.Errorf("that is type *LogEntry but is nil && this != nil")
+		return fmt.Errorf("that is type *LogEntry but is nil && this != nil")
 	} else if this == nil {
-		return fmt2.Errorf("that is type *LogEntrybut is not nil && this == nil")
+		return fmt.Errorf("that is type *LogEntrybut is not nil && this == nil")
 	}
 	if this.Index != nil && that1.Index != nil {
 		if *this.Index != *that1.Index {
-			return fmt2.Errorf("Index this(%v) Not Equal that(%v)", *this.Index, *that1.Index)
+			return fmt.Errorf("Index this(%v) Not Equal that(%v)", *this.Index, *that1.Index)
 		}
 	} else if this.Index != nil {
-		return fmt2.Errorf("this.Index == nil && that.Index != nil")
+		return fmt.Errorf("this.Index == nil && that.Index != nil")
 	} else if that1.Index != nil {
-		return fmt2.Errorf("Index this(%v) Not Equal that(%v)", this.Index, that1.Index)
+		return fmt.Errorf("Index this(%v) Not Equal that(%v)", this.Index, that1.Index)
 	}
 	if this.Term != nil && that1.Term != nil {
 		if *this.Term != *that1.Term {
-			return fmt2.Errorf("Term this(%v) Not Equal that(%v)", *this.Term, *that1.Term)
+			return fmt.Errorf("Term this(%v) Not Equal that(%v)", *this.Term, *that1.Term)
 		}
 	} else if this.Term != nil {
-		return fmt2.Errorf("this.Term == nil && that.Term != nil")
+		return fmt.Errorf("this.Term == nil && that.Term != nil")
 	} else if that1.Term != nil {
-		return fmt2.Errorf("Term this(%v) Not Equal that(%v)", this.Term, that1.Term)
+		return fmt.Errorf("Term this(%v) Not Equal that(%v)", this.Term, that1.Term)
 	}
 	if this.CommandName != nil && that1.CommandName != nil {
 		if *this.CommandName != *that1.CommandName {
-			return fmt2.Errorf("CommandName this(%v) Not Equal that(%v)", *this.CommandName, *that1.CommandName)
+			return fmt.Errorf("CommandName this(%v) Not Equal that(%v)", *this.CommandName, *that1.CommandName)
 		}
 	} else if this.CommandName != nil {
-		return fmt2.Errorf("this.CommandName == nil && that.CommandName != nil")
+		return fmt.Errorf("this.CommandName == nil && that.CommandName != nil")
 	} else if that1.CommandName != nil {
-		return fmt2.Errorf("CommandName this(%v) Not Equal that(%v)", this.CommandName, that1.CommandName)
+		return fmt.Errorf("CommandName this(%v) Not Equal that(%v)", this.CommandName, that1.CommandName)
 	}
 	if !bytes.Equal(this.Command, that1.Command) {
-		return fmt2.Errorf("Command this(%v) Not Equal that(%v)", this.Command, that1.Command)
+		return fmt.Errorf("Command this(%v) Not Equal that(%v)", this.Command, that1.Command)
 	}
 	if !bytes.Equal(this.XXX_unrecognized, that1.XXX_unrecognized) {
-		return fmt2.Errorf("XXX_unrecognized this(%v) Not Equal that(%v)", this.XXX_unrecognized, that1.XXX_unrecognized)
+		return fmt.Errorf("XXX_unrecognized this(%v) Not Equal that(%v)", this.XXX_unrecognized, that1.XXX_unrecognized)
 	}
 	return nil
 }
