@@ -1881,8 +1881,8 @@ func idsBySize(size int) []uint64 {
 	return ids
 }
 
-func newTestRaft(id uint64, peers []uint64, election, heartbeat int, storage Storage) *raft {
-	c := &Config{
+func newTestConfig(id uint64, peers []uint64, election, heartbeat int, storage Storage) *Config {
+	return &Config{
 		ID:              id,
 		peers:           peers,
 		ElectionTick:    election,
@@ -1891,6 +1891,8 @@ func newTestRaft(id uint64, peers []uint64, election, heartbeat int, storage Sto
 		MaxSizePerMsg:   noLimit,
 		MaxInflightMsgs: 256,
 	}
+}
 
-	return newRaft(c)
+func newTestRaft(id uint64, peers []uint64, election, heartbeat int, storage Storage) *raft {
+	return newRaft(newTestConfig(id, peers, election, heartbeat, storage))
 }

@@ -13,8 +13,9 @@ type MultiNode interface {
 	// CreateGroup adds a new group to the MultiNode. The application must call CreateGroup
 	// on each particpating node with the same group ID; it may create groups on demand as it
 	// receives messages. If the given storage contains existing log entries the list of peers
-	// may be empty.
-	CreateGroup(group uint64, peers []Peer, storage Storage) error
+	// may be empty. The Config.ID field will be ignored and replaced by the ID passed
+	// to StartMultiNode.
+	CreateGroup(group uint64, c *Config, peers []Peer) error
 	// RemoveGroup removes a group from the MultiNode.
 	RemoveGroup(group uint64) error
 	// Tick advances the internal logical clock by a single tick.
@@ -49,8 +50,8 @@ type MultiNode interface {
 // StartMultiNode creates a MultiNode and starts its background goroutine.
 // The id identifies this node and will be used as its node ID in all groups.
 // The election and heartbeat timers are in units of ticks.
-func StartMultiNode(id uint64, election, heartbeat int) MultiNode {
-	mn := newMultiNode(id, election, heartbeat)
+func StartMultiNode(id uint64) MultiNode {
+	mn := newMultiNode(id)
 	go mn.run()
 	return &mn
 }
@@ -73,9 +74,9 @@ type multiStatus struct {
 }
 
 type groupCreation struct {
-	id      uint64
-	peers   []Peer
-	storage Storage
+	id     uint64
+	config *Config
+	peers  []Peer
 	// TODO(bdarnell): do we really need the done channel here? It's
 	// unlike the rest of this package, but we need the group creation
 	// to be complete before any Propose or other calls.
@@ -89,38 +90,34 @@ type groupRemoval struct {
 }
 
 type multiNode struct {
-	id        uint64
-	election  int
-	heartbeat int
-	groupc    chan groupCreation
-	rmgroupc  chan groupRemoval
-	propc     chan multiMessage
-	recvc     chan multiMessage
-	confc     chan multiConfChange
-	readyc    chan map[uint64]Ready
-	advancec  chan map[uint64]Ready
-	tickc     chan struct{}
-	stop      chan struct{}
-	done      chan struct{}
-	status    chan multiStatus
+	id       uint64
+	groupc   chan groupCreation
+	rmgroupc chan groupRemoval
+	propc    chan multiMessage
+	recvc    chan multiMessage
+	confc    chan multiConfChange
+	readyc   chan map[uint64]Ready
+	advancec chan map[uint64]Ready
+	tickc    chan struct{}
+	stop     chan struct{}
+	done     chan struct{}
+	status   chan multiStatus
 }
 
-func newMultiNode(id uint64, election, heartbeat int) multiNode {
+func newMultiNode(id uint64) multiNode {
 	return multiNode{
-		id:        id,
-		election:  election,
-		heartbeat: heartbeat,
-		groupc:    make(chan groupCreation),
-		rmgroupc:  make(chan groupRemoval),
-		propc:     make(chan multiMessage),
-		recvc:     make(chan multiMessage),
-		confc:     make(chan multiConfChange),
-		readyc:    make(chan map[uint64]Ready),
-		advancec:  make(chan map[uint64]Ready),
-		tickc:     make(chan struct{}),
-		stop:      make(chan struct{}),
-		done:      make(chan struct{}),
-		status:    make(chan multiStatus),
+		id:       id,
+		groupc:   make(chan groupCreation),
+		rmgroupc: make(chan groupRemoval),
+		propc:    make(chan multiMessage),
+		recvc:    make(chan multiMessage),
+		confc:    make(chan multiConfChange),
+		readyc:   make(chan map[uint64]Ready),
+		advancec: make(chan map[uint64]Ready),
+		tickc:    make(chan struct{}),
+		stop:     make(chan struct{}),
+		done:     make(chan struct{}),
+		status:   make(chan multiStatus),
 	}
 }
 
@@ -181,23 +178,14 @@ func (mn *multiNode) run() {
 		var group *groupState
 		select {
 		case gc := <-mn.groupc:
-			// TODO(bdarnell): pass applied through gc and into newRaft. Or get rid of it?
-			// TODO(bdarnell): make maxSizePerMsg(InflightMsgs) configurable
-			c := &Config{
-				ID:              mn.id,
-				ElectionTick:    mn.election,
-				HeartbeatTick:   mn.heartbeat,
-				Storage:         gc.storage,
-				MaxSizePerMsg:   noLimit,
-				MaxInflightMsgs: 256,
-			}
-			r := newRaft(c)
+			gc.config.ID = mn.id
+			r := newRaft(gc.config)
 			group = &groupState{
 				id:   gc.id,
 				raft: r,
 			}
 			groups[gc.id] = group
-			lastIndex, err := gc.storage.LastIndex()
+			lastIndex, err := gc.config.Storage.LastIndex()
 			if err != nil {
 				panic(err) // TODO(bdarnell)
 			}
@@ -327,12 +315,12 @@ func (mn *multiNode) run() {
 	}
 }
 
-func (mn *multiNode) CreateGroup(id uint64, peers []Peer, storage Storage) error {
+func (mn *multiNode) CreateGroup(id uint64, config *Config, peers []Peer) error {
 	gc := groupCreation{
-		id:      id,
-		peers:   peers,
-		storage: storage,
-		done:    make(chan struct{}),
+		id:     id,
+		config: config,
+		peers:  peers,
+		done:   make(chan struct{}),
 	}
 	mn.groupc <- gc
 	select {
