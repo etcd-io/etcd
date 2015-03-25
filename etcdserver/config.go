@@ -49,7 +49,7 @@ type ServerConfig struct {
 // VerifyBootstrapConfig sanity-checks the initial config for bootstrap case
 // and returns an error for things that should never happen.
 func (c *ServerConfig) VerifyBootstrap() error {
-	if err := c.verifyLocalMember(); err != nil {
+	if err := c.verifyLocalMember(true); err != nil {
 		return err
 	}
 	if err := c.Cluster.Validate(); err != nil {
@@ -64,7 +64,10 @@ func (c *ServerConfig) VerifyBootstrap() error {
 // VerifyJoinExisting sanity-checks the initial config for join existing cluster
 // case and returns an error for things that should never happen.
 func (c *ServerConfig) VerifyJoinExisting() error {
-	if err := c.verifyLocalMember(); err != nil {
+	// no need for strict checking since the member have announced its
+	// peer urls to the cluster before starting and do not have to set
+	// it in the configuration again.
+	if err := c.verifyLocalMember(false); err != nil {
 		return err
 	}
 	if err := c.Cluster.Validate(); err != nil {
@@ -76,9 +79,10 @@ func (c *ServerConfig) VerifyJoinExisting() error {
 	return nil
 }
 
-// verifyLocalMember verifies that the local member is valid and is listed
-// in the cluster correctly.
-func (c *ServerConfig) verifyLocalMember() error {
+// verifyLocalMember verifies the configured member is in configured
+// cluster. If strict is set, it also verifies the configured member
+// has the same peer urls as configured advertised peer urls.
+func (c *ServerConfig) verifyLocalMember(strict bool) error {
 	m := c.Cluster.MemberByName(c.Name)
 	// Make sure the cluster at least contains the local server.
 	if m == nil {
@@ -92,8 +96,10 @@ func (c *ServerConfig) verifyLocalMember() error {
 	// TODO: Remove URLStringsEqual after improvement of using hostnames #2150 #2123
 	apurls := c.PeerURLs.StringSlice()
 	sort.Strings(apurls)
-	if !netutil.URLStringsEqual(apurls, m.PeerURLs) {
-		return fmt.Errorf("%s has different advertised URLs in the cluster and advertised peer URLs list", c.Name)
+	if strict {
+		if !netutil.URLStringsEqual(apurls, m.PeerURLs) {
+			return fmt.Errorf("%s has different advertised URLs in the cluster and advertised peer URLs list", c.Name)
+		}
 	}
 	return nil
 }
