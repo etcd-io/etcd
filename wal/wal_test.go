@@ -20,6 +20,7 @@ import (
 	"os"
 	"path"
 	"reflect"
+	"testing"
 
 	"github.com/coreos/etcd/pkg/pbutil"
 	"github.com/coreos/etcd/raft/raftpb"
