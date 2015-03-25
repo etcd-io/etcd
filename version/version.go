@@ -23,7 +23,7 @@ import (
 )
 
 var (
-	Version         = "2.0.6+git"
+	Version         = "2.0.7"
 	InternalVersion = "2"
 )
 
