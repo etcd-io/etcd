@@ -334,7 +334,7 @@ func serveVersion(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r.Method, "GET") {
 		return
 	}
-	fmt.Fprintf(w, `{"releaseVersion":"%s","internalVersion":"%s"}`, version.Version, version.InternalVersion)
+	w.Write([]byte("etcd " + version.Version))
 }
 
 // parseKeyRequest converts a received http.Request on keysPrefix to
