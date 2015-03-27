@@ -1,7 +1,9 @@
 package etcd
 
 import (
+	"fmt"
 	"os"
+	"runtime"
 	"time"
 
 	"github.com/coreos/etcd/log"
@@ -9,7 +11,9 @@ import (
 	"github.com/coreos/etcd/third_party/github.com/coreos/go-etcd/etcd"
 )
 
-func registerAvailableInternalVersions(internalBinaryDir, name, addr string, tls *server.TLSInfo) {
+var defaultEtcdBinaryDir = "/usr/libexec/etcd/internal_versions/"
+
+func registerAvailableInternalVersions(name string, addr string, tls *server.TLSInfo) {
 	var c *etcd.Client
 	if tls.Scheme() == "http" {
 		c = etcd.NewClient([]string{addr})
@@ -21,7 +25,7 @@ func registerAvailableInternalVersions(internalBinaryDir, name, addr string, tls
 		}
 	}
 
-	vers, err := getInternalVersions(internalBinaryDir)
+	vers, err := getInternalVersions()
 	if err != nil {
 		log.Infof("failed to get local etcd versions: %v", err)
 		return
@@ -38,8 +42,15 @@ func registerAvailableInternalVersions(internalBinaryDir, name, addr string, tls
 	log.Infof("%s: available_internal_versions %s is registered into key space successfully.", name, vers)
 }
 
-func getInternalVersions(internalBinaryDir string) ([]string, error) {
-	dir, err := os.Open(internalBinaryDir)
+func getInternalVersions() ([]string, error) {
+	if runtime.GOOS != "linux" {
+		return nil, fmt.Errorf("unmatched os version %v", runtime.GOOS)
+	}
+	etcdBinaryDir := os.Getenv("ETCD_BINARY_DIR")
+	if etcdBinaryDir == "" {
+		etcdBinaryDir = defaultEtcdBinaryDir
+	}
+	dir, err := os.Open(etcdBinaryDir)
 	if err != nil {
 		return nil, err
 	}
