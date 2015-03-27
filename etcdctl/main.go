@@ -52,7 +52,6 @@ func main() {
 		command.NewWatchCommand(),
 		command.NewExecWatchCommand(),
 		command.NewMemberCommand(),
-		command.UpgradeCommand(),
 	}
 
 	app.Run(os.Args)
