@@ -287,7 +287,7 @@ curl 'http://127.0.0.1:2379/v2/keys/foo?wait=true&waitIndex=7'
 
 The watch command returns immediately with the same response as previously.
 
-**Note**: etcd only keeps the responses of the most recent 1000 events. 
+**Note**: etcd only keeps the responses of the most recent 1000 events across all etcd keys. 
 It is recommended to send the response to another thread to process immediately
 instead of blocking the watch while processing the result. 
 
