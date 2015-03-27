@@ -136,6 +136,11 @@ func (t *transport) Stop() {
 func (t *transport) AddPeer(id types.ID, us []string) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
+	// There is no need to build connection to itself because local message
+	// is not sent through transport.
+	if id == t.id {
+		return
+	}
 	if _, ok := t.peers[id]; ok {
 		return
 	}
@@ -150,6 +155,9 @@ func (t *transport) AddPeer(id types.ID, us []string) {
 func (t *transport) RemovePeer(id types.ID) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
+	if id == t.id {
+		return
+	}
 	t.removePeer(id)
 }
 
@@ -175,6 +183,9 @@ func (t *transport) removePeer(id types.ID) {
 func (t *transport) UpdatePeer(id types.ID, us []string) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
+	if id == t.id {
+		return
+	}
 	// TODO: return error or just panic?
 	if _, ok := t.peers[id]; !ok {
 		return

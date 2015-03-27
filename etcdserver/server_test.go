@@ -413,10 +413,11 @@ func TestApplyRequestOnAdminMemberAttributes(t *testing.T) {
 func TestApplyConfChangeError(t *testing.T) {
 	cl := newCluster("")
 	cl.SetStore(store.New())
+	cl.SetTransport(&nopTransporter{})
 	for i := 1; i <= 4; i++ {
-		cl.AddMember(&Member{ID: types.ID(i)})
+		cl.AddMember(&Member{ID: types.ID(i)}, uint64(i))
 	}
-	cl.RemoveMember(4)
+	cl.RemoveMember(4, 5)
 
 	tests := []struct {
 		cc   raftpb.ConfChange
@@ -457,7 +458,7 @@ func TestApplyConfChangeError(t *testing.T) {
 			r:       raftNode{Node: n},
 			Cluster: cl,
 		}
-		_, err := srv.applyConfChange(tt.cc, nil)
+		_, err := srv.applyConfChange(tt.cc, nil, 10)
 		if err != tt.werr {
 			t.Errorf("#%d: applyConfChange error = %v, want %v", i, err, tt.werr)
 		}
@@ -477,8 +478,9 @@ func TestApplyConfChangeError(t *testing.T) {
 func TestApplyConfChangeShouldStop(t *testing.T) {
 	cl := newCluster("")
 	cl.SetStore(store.New())
+	cl.SetTransport(&nopTransporter{})
 	for i := 1; i <= 3; i++ {
-		cl.AddMember(&Member{ID: types.ID(i)})
+		cl.AddMember(&Member{ID: types.ID(i)}, uint64(i))
 	}
 	srv := &EtcdServer{
 		id: 1,
@@ -493,7 +495,7 @@ func TestApplyConfChangeShouldStop(t *testing.T) {
 		NodeID: 2,
 	}
 	// remove non-local member
-	shouldStop, err := srv.applyConfChange(cc, &raftpb.ConfState{})
+	shouldStop, err := srv.applyConfChange(cc, &raftpb.ConfState{}, 10)
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
@@ -503,7 +505,7 @@ func TestApplyConfChangeShouldStop(t *testing.T) {
 
 	// remove local member
 	cc.NodeID = 1
-	shouldStop, err = srv.applyConfChange(cc, &raftpb.ConfState{})
+	shouldStop, err = srv.applyConfChange(cc, &raftpb.ConfState{}, 10)
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
@@ -774,6 +776,7 @@ func TestRecvSnapshot(t *testing.T) {
 	p := &storageRecorder{}
 	cl := newCluster("abc")
 	cl.SetStore(store.New())
+	cl.SetTransport(&nopTransporter{})
 	s := &EtcdServer{
 		r: raftNode{
 			Node:        n,
@@ -808,6 +811,7 @@ func TestApplySnapshotAndCommittedEntries(t *testing.T) {
 	st := &storeRecorder{}
 	cl := newCluster("abc")
 	cl.SetStore(store.New())
+	cl.SetTransport(&nopTransporter{})
 	storage := raft.NewMemoryStorage()
 	s := &EtcdServer{
 		r: raftNode{
@@ -853,6 +857,7 @@ func TestAddMember(t *testing.T) {
 	cl := newTestCluster(nil)
 	st := store.New()
 	cl.SetStore(st)
+	cl.SetTransport(&nopTransporter{})
 	s := &EtcdServer{
 		r: raftNode{
 			Node:        n,
@@ -891,7 +896,7 @@ func TestRemoveMember(t *testing.T) {
 	cl := newTestCluster(nil)
 	st := store.New()
 	cl.SetStore(store.New())
-	cl.AddMember(&Member{ID: 1234})
+	cl.SetTransport(&nopTransporter{})
 	s := &EtcdServer{
 		r: raftNode{
 			Node:        n,
@@ -904,6 +909,7 @@ func TestRemoveMember(t *testing.T) {
 		reqIDGen: idutil.NewGenerator(0, time.Time{}),
 	}
 	s.start()
+	s.AddMember(context.TODO(), Member{ID: 1234})
 	err := s.RemoveMember(context.TODO(), 1234)
 	gaction := n.Action()
 	s.Stop()
@@ -911,7 +917,12 @@ func TestRemoveMember(t *testing.T) {
 	if err != nil {
 		t.Fatalf("RemoveMember error: %v", err)
 	}
-	wactions := []testutil.Action{{Name: "ProposeConfChange:ConfChangeRemoveNode"}, {Name: "ApplyConfChange:ConfChangeRemoveNode"}}
+	wactions := []testutil.Action{
+		{Name: "ProposeConfChange:ConfChangeAddNode"},
+		{Name: "ApplyConfChange:ConfChangeAddNode"},
+		{Name: "ProposeConfChange:ConfChangeRemoveNode"},
+		{Name: "ApplyConfChange:ConfChangeRemoveNode"},
+	}
 	if !reflect.DeepEqual(gaction, wactions) {
 		t.Errorf("action = %v, want %v", gaction, wactions)
 	}
@@ -929,7 +940,7 @@ func TestUpdateMember(t *testing.T) {
 	cl := newTestCluster(nil)
 	st := store.New()
 	cl.SetStore(st)
-	cl.AddMember(&Member{ID: 1234})
+	cl.SetTransport(&nopTransporter{})
 	s := &EtcdServer{
 		r: raftNode{
 			Node:        n,
@@ -942,6 +953,7 @@ func TestUpdateMember(t *testing.T) {
 		reqIDGen: idutil.NewGenerator(0, time.Time{}),
 	}
 	s.start()
+	s.AddMember(context.TODO(), Member{ID: 1234})
 	wm := Member{ID: 1234, RaftAttributes: RaftAttributes{PeerURLs: []string{"http://127.0.0.1:1"}}}
 	err := s.UpdateMember(context.TODO(), wm)
 	gaction := n.Action()
@@ -950,7 +962,12 @@ func TestUpdateMember(t *testing.T) {
 	if err != nil {
 		t.Fatalf("UpdateMember error: %v", err)
 	}
-	wactions := []testutil.Action{{Name: "ProposeConfChange:ConfChangeUpdateNode"}, {Name: "ApplyConfChange:ConfChangeUpdateNode"}}
+	wactions := []testutil.Action{
+		{Name: "ProposeConfChange:ConfChangeAddNode"},
+		{Name: "ApplyConfChange:ConfChangeAddNode"},
+		{Name: "ProposeConfChange:ConfChangeUpdateNode"},
+		{Name: "ApplyConfChange:ConfChangeUpdateNode"},
+	}
 	if !reflect.DeepEqual(gaction, wactions) {
 		t.Errorf("action = %v, want %v", gaction, wactions)
 	}
