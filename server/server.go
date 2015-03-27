@@ -3,8 +3,10 @@ package server
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/http/pprof"
+	"path"
 	"strings"
 	"time"
 
@@ -135,6 +137,7 @@ func (s *Server) installV2(r *mux.Router) {
 	s.handleFunc(r2, "/v2/stats/leader", s.GetLeaderStatsHandler).Methods("GET", "HEAD")
 	s.handleFunc(r2, "/v2/stats/store", s.GetStoreStatsHandler).Methods("GET", "HEAD")
 	s.handleFunc(r2, "/v2/speedTest", s.SpeedTestHandler).Methods("GET", "HEAD")
+	s.handleFunc(r2, "/v2/migration/snapshot", s.SnapshotHandler).Methods("GET")
 }
 
 func (s *Server) installMod(r *mux.Router) {
@@ -360,6 +363,41 @@ func (s *Server) SpeedTestHandler(w http.ResponseWriter, req *http.Request) erro
 
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("speed test success"))
+	return nil
+}
+
+// SnapshotHandler forces etcd store to do a snapshot. If the disk parameter is set, the snapshot
+// will be written to disk at data-dir/index-migrate.snap. Or the snapshot will be returned as
+// http body.
+func (s *Server) SnapshotHandler(w http.ResponseWriter, req *http.Request) error {
+	data, err := s.Store().Save()
+	if err != nil {
+		http.Error(w, "failed to create snapshot: "+err.Error(), http.StatusInternalServerError)
+		log.Warn("Failed to create snapshot:" + err.Error())
+		return nil
+	}
+
+	disk := req.FormValue("disk")
+	if disk == "true" {
+		name := fmt.Sprintf("%d-migrate.snap", s.peerServer.RaftServer().CommitIndex())
+		err = ioutil.WriteFile(path.Join(s.peerServer.RaftServer().Path(), name), data, 0600)
+		if err != nil {
+			http.Error(w, "failed to save snapshot: "+err.Error(), http.StatusInternalServerError)
+			log.Warn("server: failed to save snapshot: " + err.Error())
+			return nil
+		}
+		log.Infof("server: saved snapshot file %s successfully", name)
+		return nil
+	}
+	if disk != "" && disk != "false" {
+		http.Error(w, "invalid parameter: disk="+disk, http.StatusBadRequest)
+		return nil
+	}
+
+	_, err = w.Write(data)
+	if err != nil {
+		log.Warnf("server: failed to write snapshot to %s: %v", req.RemoteAddr, err.Error())
+	}
 	return nil
 }
 
