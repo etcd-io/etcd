@@ -187,14 +187,6 @@ func (s *StandbyServer) monitorCluster() {
 		case <-ticker.C:
 		}
 
-		ok, err := s.checkMemberInternalVersionIsV2()
-		if err != nil {
-			log.Warnf("fail checking internal version(%v): %v", s.ClusterURLs(), err)
-		} else if ok {
-			log.Infof("Detect the cluster has been upgraded to v2. Exit now.")
-			os.Exit(0)
-		}
-
 		if err := s.syncCluster(nil); err != nil {
 			log.Warnf("fail syncing cluster(%v): %v", s.ClusterURLs(), err)
 			continue
@@ -222,39 +214,6 @@ func (s *StandbyServer) monitorCluster() {
 		}()
 		return
 	}
-}
-
-func (s *StandbyServer) checkMemberInternalVersionIsV2() (bool, error) {
-	c := &http.Client{Transport: s.client.Client.Transport}
-	for _, memb := range s.Cluster {
-		url := memb.ClientURL
-		resp, err := c.Get(url + "/version")
-		if err != nil {
-			log.Debugf("failed to get /version from %s", url)
-			continue
-		}
-		b, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			log.Debugf("failed to read body from %s", url)
-			continue
-		}
-
-		var m map[string]string
-		err = json.Unmarshal(b, &m)
-		if err != nil {
-			log.Debugf("failed to unmarshal body %s from %s", b, url)
-			continue
-		}
-		switch m["internalVersion"] {
-		case "1":
-			return false, nil
-		case "2":
-			return true, nil
-		default:
-			log.Warnf("unrecognized internal version %s from %s", m["internalVersion"], url)
-		}
-	}
-	return false, fmt.Errorf("failed to get version")
 }
 
 func (s *StandbyServer) syncCluster(peerURLs []string) error {
