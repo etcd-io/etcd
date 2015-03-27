@@ -3,7 +3,6 @@ package server
 import (
 	"encoding/json"
 	"net/http"
-	"path"
 	"strconv"
 	"time"
 
@@ -308,48 +307,6 @@ func (ps *PeerServer) UpgradeHttpHandler(w http.ResponseWriter, req *http.Reques
 	}
 
 	w.WriteHeader(http.StatusOK)
-}
-
-func (ps *PeerServer) NextInternalVersionHandler(w http.ResponseWriter, req *http.Request) {
-	for i := 0; i < 50; i++ {
-		if ps.raftServer.State() != raft.Leader {
-			l := ps.raftServer.Leader()
-			if l == "" {
-				time.Sleep(5 * time.Second)
-				continue
-			}
-			url, _ := ps.registry.PeerURL(l)
-			uhttp.Redirect(url, w, req)
-			return
-		}
-		resp, err := ps.store.Get("/_etcd/available-internal-versions/2", true, true)
-		if err != nil {
-			time.Sleep(5 * time.Second)
-			continue
-		}
-		available := make(map[string]bool)
-		for _, n := range resp.Node.Nodes {
-			available[path.Base(n.Key)] = true
-		}
-
-		notfound := false
-		for _, n := range ps.registry.Names() {
-			if !available[n] {
-				notfound = true
-				break
-			}
-		}
-		if notfound {
-			time.Sleep(5 * time.Second)
-			continue
-		}
-		c := ps.store.CommandFactory().CreateSetCommand("/_etcd/next-internal-version", false, "2", store.Permanent)
-		_, err = ps.raftServer.Do(c)
-		if err == nil {
-			return
-		}
-	}
-	w.WriteHeader(http.StatusServiceUnavailable)
 }
 
 // machineMessage represents information about a peer or standby in the registry.

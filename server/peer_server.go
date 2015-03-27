@@ -372,7 +372,6 @@ func (s *PeerServer) HTTPHandler() http.Handler {
 	router.HandleFunc("/v2/admin/machines", s.getMachinesHttpHandler).Methods("GET")
 	router.HandleFunc("/v2/admin/machines/{name}", s.getMachineHttpHandler).Methods("GET")
 	router.HandleFunc("/v2/admin/machines/{name}", s.RemoveHttpHandler).Methods("DELETE")
-	router.HandleFunc("/v2/admin/next-internal-version", s.NextInternalVersionHandler).Methods("GET")
 
 	return router
 }
