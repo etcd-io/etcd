@@ -52,6 +52,7 @@ func main() {
 		command.NewWatchCommand(),
 		command.NewExecWatchCommand(),
 		command.NewMemberCommand(),
+		command.NewImportSnapCommand(),
 	}
 
 	app.Run(os.Args)
