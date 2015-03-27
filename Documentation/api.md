@@ -1,5 +1,35 @@
 # etcd API
 
+Table of Contents
+=================
+
+  * [etcd API](#etcd-api)
+    * [Running a Single Machine Cluster](#running-a-single-machine-cluster)
+    * [Getting the etcd version](#getting-the-etcd-version)
+    * [Key Space Operations](#key-space-operations)
+      * [Setting the value of a key](#setting-the-value-of-a-key)
+      * [Response Headers](#response-headers)
+      * [Get the value of a key](#get-the-value-of-a-key)
+      * [Changing the value of a key](#changing-the-value-of-a-key)
+      * [Deleting a key](#deleting-a-key)
+      * [Using key TTL](#using-key-ttl)
+      * [Waiting for a change](#waiting-for-a-change)
+      * [Atomically Creating In-Order Keys](#atomically-creating-in-order-keys)
+      * [Using a directory TTL](#using-a-directory-ttl)
+      * [Atomic Compare-and-Swap](#atomic-compare-and-swap)
+      * [Atomic Compare-and-Delete](#atomic-compare-and-delete)
+      * [Creating Directories](#creating-directories)
+      * [Listing a directory](#listing-a-directory)
+      * [Deleting a Directory](#deleting-a-directory)
+      * [Creating a hidden node](#creating-a-hidden-node)
+      * [Setting a key from a file](#setting-a-key-from-a-file)
+      * [Read Linearization](#read-linearization)
+    * [Statistics](#statistics)
+      * [Leader Statistics](#leader-statistics)
+      * [Self Statistics](#self-statistics)
+      * [Store Statistics](#store-statistics)
+    * [Cluster Config](#cluster-config)
+
 ## Running a Single Machine Cluster
 
 These examples will use a single member cluster to show you the basics of the etcd REST API.
