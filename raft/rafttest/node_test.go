@@ -19,16 +19,17 @@ func TestBasicProgress(t *testing.T) {
 		nodes = append(nodes, n)
 	}
 
-	time.Sleep(50 * time.Millisecond)
-	for i := 0; i < 1000; i++ {
+	time.Sleep(10 * time.Millisecond)
+
+	for i := 0; i < 10000; i++ {
 		nodes[0].Propose(context.TODO(), []byte("somedata"))
 	}
 
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(500 * time.Millisecond)
 	for _, n := range nodes {
 		n.stop()
-		if n.state.Commit != 1006 {
-			t.Errorf("commit = %d, want = 1006", n.state.Commit)
+		if n.state.Commit != 10006 {
+			t.Errorf("commit = %d, want = 10006", n.state.Commit)
 		}
 	}
 }
@@ -63,7 +64,7 @@ func TestRestart(t *testing.T) {
 	nodes[1].restart()
 
 	// give some time for nodes to catch up with the raft leader
-	time.Sleep(300 * time.Millisecond)
+	time.Sleep(500 * time.Millisecond)
 	for _, n := range nodes {
 		n.stop()
 		if n.state.Commit != 1206 {
