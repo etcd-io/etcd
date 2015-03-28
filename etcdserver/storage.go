@@ -15,6 +15,7 @@
 package etcdserver
 
 import (
+	"io"
 	"log"
 	"os"
 	"path"
@@ -72,13 +73,28 @@ func (st *storage) SaveSnap(snap raftpb.Snapshot) error {
 }
 
 func readWAL(waldir string, snap walpb.Snapshot) (w *wal.WAL, id, cid types.ID, st raftpb.HardState, ents []raftpb.Entry) {
-	var err error
-	if w, err = wal.Open(waldir, snap); err != nil {
-		log.Fatalf("etcdserver: open wal error: %v", err)
-	}
-	var wmetadata []byte
-	if wmetadata, st, ents, err = w.ReadAll(); err != nil {
-		log.Fatalf("etcdserver: read wal error: %v", err)
+	var (
+		err       error
+		wmetadata []byte
+	)
+
+	for i := 0; i < 2; i++ {
+		if w, err = wal.Open(waldir, snap); err != nil {
+			log.Fatalf("etcdserver: open wal error: %v", err)
+		}
+		if wmetadata, st, ents, err = w.ReadAll(); err != nil {
+			w.Close()
+			if i != 0 || err != io.ErrUnexpectedEOF {
+				log.Fatalf("etcdserver: read wal error: %v", err)
+			}
+			if !wal.Repair(waldir) {
+				log.Fatalf("etcdserver: WAL error (%v) cannot be repaired", err)
+			} else {
+				log.Printf("etcdserver: repaired WAL error (%v)", err)
+			}
+			continue
+		}
+		break
 	}
 	var metadata pb.Metadata
 	pbutil.MustUnmarshal(&metadata, wmetadata)

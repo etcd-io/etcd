@@ -414,13 +414,13 @@ func (w *WAL) Save(st raftpb.HardState, ents []raftpb.Entry) error {
 	}
 
 	// TODO(xiangli): no more reference operator
-	if err := w.saveState(&st); err != nil {
-		return err
-	}
 	for i := range ents {
 		if err := w.saveEntry(&ents[i]); err != nil {
 			return err
 		}
+	}
+	if err := w.saveState(&st); err != nil {
+		return err
 	}
 
 	fstat, err := w.f.Stat()
