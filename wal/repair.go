@@ -16,6 +16,7 @@ package wal
 
 import (
 	"io"
+	"log"
 	"os"
 	"path"
 
@@ -30,6 +31,7 @@ func Repair(dirpath string) bool {
 	if err != nil {
 		return false
 	}
+	defer f.Close()
 
 	n := 0
 	rec := &walpb.Record{}
@@ -45,12 +47,30 @@ func Repair(dirpath string) bool {
 		case io.EOF:
 			return true
 		case io.ErrUnexpectedEOF:
-			err = f.Truncate(int64(n))
-			if err != nil {
+			log.Printf("wal: repairing %v", f.Name())
+			bf, bferr := os.Create(f.Name() + ".broken")
+			if bferr != nil {
+				log.Printf("wal: could not repair %v, failed to create backup file", f.Name())
 				return false
 			}
-			err = f.Sync()
-			if err != nil {
+			defer bf.Close()
+
+			if _, err = f.Seek(0, os.SEEK_SET); err != nil {
+				log.Printf("wal: could not repair %v, failed to read file", f.Name())
+				return false
+			}
+
+			if _, err = io.Copy(bf, f); err != nil {
+				log.Printf("wal: could not repair %v, failed to copy file", f.Name())
+				return false
+			}
+
+			if err = f.Truncate(int64(n)); err != nil {
+				log.Printf("wal: could not repair %v, failed to truncate file", f.Name())
+				return false
+			}
+			if err = f.Sync(); err != nil {
+				log.Printf("wal: could not repair %v, failed to sync file", f.Name())
 				return false
 			}
 			return true

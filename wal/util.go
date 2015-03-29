@@ -15,10 +15,16 @@
 package wal
 
 import (
+	"errors"
 	"fmt"
 	"log"
+	"strings"
 
 	"github.com/coreos/etcd/pkg/fileutil"
+)
+
+var (
+	badWalName = errors.New("bad wal name")
 )
 
 func Exist(dirpath string) bool {
@@ -76,8 +82,11 @@ func checkWalNames(names []string) []string {
 }
 
 func parseWalName(str string) (seq, index uint64, err error) {
+	if !strings.HasSuffix(str, ".wal") {
+		return 0, 0, badWalName
+	}
 	_, err = fmt.Sscanf(str, "%016x-%016x.wal", &seq, &index)
-	return
+	return seq, index, err
 }
 
 func walName(seq, index uint64) string {
