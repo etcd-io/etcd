@@ -27,6 +27,8 @@ import (
 	"github.com/coreos/etcd/tools/functional-tester/etcd-agent/client"
 )
 
+const peerURLPort = 2380
+
 type cluster struct {
 	agentEndpoints []string
 	datadir        string
@@ -76,7 +78,7 @@ func (c *cluster) Bootstrap() error {
 			return err
 		}
 		clientURLs[i] = fmt.Sprintf("http://%s:2379", host)
-		peerURLs[i] = fmt.Sprintf("http://%s:2380", host)
+		peerURLs[i] = fmt.Sprintf("http://%s:%d", host, peerURLPort)
 
 		members[i] = fmt.Sprintf("%s=%s", names[i], peerURLs[i])
 	}
@@ -196,8 +198,10 @@ func setHealthKey(us []string) error {
 		if err != nil {
 			return err
 		}
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		kapi := etcdclient.NewKeysAPI(c)
-		_, err = kapi.Set(context.TODO(), "health", "good", nil)
+		_, err = kapi.Set(ctx, "health", "good", nil)
+		cancel()
 		if err != nil {
 			return err
 		}

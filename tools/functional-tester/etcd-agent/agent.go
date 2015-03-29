@@ -22,6 +22,7 @@ import (
 	"path"
 	"time"
 
+	"github.com/coreos/etcd/pkg/netutil"
 	"github.com/coreos/etcd/tools/functional-tester/etcd-agent/client"
 )
 
@@ -130,6 +131,14 @@ func (a *Agent) terminate() error {
 	}
 	a.state = stateTerminated
 	return nil
+}
+
+func (a *Agent) dropPort(port int) error {
+	return netutil.DropPort(port)
+}
+
+func (a *Agent) recoverPort(port int) error {
+	return netutil.RecoverPort(port)
 }
 
 func (a *Agent) status() client.Status {

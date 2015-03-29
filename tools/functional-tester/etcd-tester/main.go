@@ -40,6 +40,8 @@ func main() {
 			newFailureKillMajority(),
 			newFailureKillOne(),
 			newFailureKillOneForLongTime(),
+			newFailureIsolate(),
+			newFailureIsolateAll(),
 		},
 		cluster: c,
 		limit:   *limit,

@@ -34,8 +34,10 @@ type Agent interface {
 	Cleanup() error
 	// Terminate stops the exiting etcd the agent started and removes its data dir.
 	Terminate() error
-	// Isoloate isolates the network of etcd
-	Isolate() error
+	// DropPort drops all network packets at the given port.
+	DropPort(port int) error
+	// RecoverPort stops dropping all network packets at the given port.
+	RecoverPort(port int) error
 	// Status returns the status of etcd on the agent
 	Status() (Status, error)
 }
@@ -83,8 +85,12 @@ func (a *agent) Terminate() error {
 	return a.rpcClient.Call("Agent.RPCTerminate", struct{}{}, nil)
 }
 
-func (a *agent) Isolate() error {
-	panic("not implemented")
+func (a *agent) DropPort(port int) error {
+	return a.rpcClient.Call("Agent.RPCDropPort", port, nil)
+}
+
+func (a *agent) RecoverPort(port int) error {
+	return a.rpcClient.Call("Agent.RPCRecoverPort", port, nil)
 }
 
 func (a *agent) Status() (Status, error) {

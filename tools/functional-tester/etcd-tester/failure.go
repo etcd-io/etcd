@@ -172,3 +172,57 @@ func (f *failureKillOneForLongTime) Recover(c *cluster, round int) error {
 	}
 	return c.WaitHealth()
 }
+
+type failureIsolate struct {
+	description
+}
+
+func newFailureIsolate() *failureIsolate {
+	return &failureIsolate{
+		description: "isolate one member",
+	}
+}
+
+func (f *failureIsolate) Inject(c *cluster, round int) error {
+	i := round % c.Size
+	if err := c.Agents[i].DropPort(peerURLPort); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (f *failureIsolate) Recover(c *cluster, round int) error {
+	i := round % c.Size
+	if err := c.Agents[i].RecoverPort(peerURLPort); err != nil {
+		return err
+	}
+	return c.WaitHealth()
+}
+
+type failureIsolateAll struct {
+	description
+}
+
+func newFailureIsolateAll() *failureIsolateAll {
+	return &failureIsolateAll{
+		description: "isolate all members",
+	}
+}
+
+func (f *failureIsolateAll) Inject(c *cluster, round int) error {
+	for _, a := range c.Agents {
+		if err := a.DropPort(peerURLPort); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (f *failureIsolateAll) Recover(c *cluster, round int) error {
+	for _, a := range c.Agents {
+		if err := a.RecoverPort(peerURLPort); err != nil {
+			return err
+		}
+	}
+	return c.WaitHealth()
+}
