@@ -53,15 +53,15 @@ func NewStorage(w *wal.WAL, s *snap.Snapshotter) Storage {
 // SaveSnap saves the snapshot to disk and release the locked
 // wal files since they will not be used.
 func (st *storage) SaveSnap(snap raftpb.Snapshot) error {
-	err := st.Snapshotter.SaveSnap(snap)
-	if err != nil {
-		return err
-	}
 	walsnap := walpb.Snapshot{
 		Index: snap.Metadata.Index,
 		Term:  snap.Metadata.Term,
 	}
-	err = st.WAL.SaveSnapshot(walsnap)
+	err := st.WAL.SaveSnapshot(walsnap)
+	if err != nil {
+		return err
+	}
+	err = st.Snapshotter.SaveSnap(snap)
 	if err != nil {
 		return err
 	}
