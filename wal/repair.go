@@ -43,6 +43,17 @@ func Repair(dirpath string) bool {
 		switch err {
 		case nil:
 			n += 8 + rec.Size()
+			// update crc of the decoder when necessary
+			switch rec.Type {
+			case crcType:
+				crc := decoder.crc.Sum32()
+				// current crc of decoder must match the crc of the record.
+				// do no need to match 0 crc, since the decoder is a new one at this case.
+				if crc != 0 && rec.Validate(crc) != nil {
+					return false
+				}
+				decoder.updateCRC(rec.Crc)
+			}
 			continue
 		case io.EOF:
 			return true
@@ -74,6 +85,9 @@ func Repair(dirpath string) bool {
 				return false
 			}
 			return true
+		default:
+			log.Printf("wal: could not repair error (%v)", err)
+			return false
 		}
 	}
 }
