@@ -73,6 +73,9 @@ func (a *Agent) start(args ...string) error {
 
 // stop stops the existing etcd process the agent started.
 func (a *Agent) stop() error {
+	if a.state != stateStarted {
+		return nil
+	}
 	err := a.cmd.Process.Kill()
 	if err != nil {
 		return err
