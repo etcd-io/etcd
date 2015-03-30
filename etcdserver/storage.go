@@ -15,6 +15,7 @@
 package etcdserver
 
 import (
+	"io"
 	"log"
 	"os"
 	"path"
@@ -52,15 +53,15 @@ func NewStorage(w *wal.WAL, s *snap.Snapshotter) Storage {
 // SaveSnap saves the snapshot to disk and release the locked
 // wal files since they will not be used.
 func (st *storage) SaveSnap(snap raftpb.Snapshot) error {
-	err := st.Snapshotter.SaveSnap(snap)
-	if err != nil {
-		return err
-	}
 	walsnap := walpb.Snapshot{
 		Index: snap.Metadata.Index,
 		Term:  snap.Metadata.Term,
 	}
-	err = st.WAL.SaveSnapshot(walsnap)
+	err := st.WAL.SaveSnapshot(walsnap)
+	if err != nil {
+		return err
+	}
+	err = st.Snapshotter.SaveSnap(snap)
 	if err != nil {
 		return err
 	}
@@ -72,13 +73,31 @@ func (st *storage) SaveSnap(snap raftpb.Snapshot) error {
 }
 
 func readWAL(waldir string, snap walpb.Snapshot) (w *wal.WAL, id, cid types.ID, st raftpb.HardState, ents []raftpb.Entry) {
-	var err error
-	if w, err = wal.Open(waldir, snap); err != nil {
-		log.Fatalf("etcdserver: open wal error: %v", err)
-	}
-	var wmetadata []byte
-	if wmetadata, st, ents, err = w.ReadAll(); err != nil {
-		log.Fatalf("etcdserver: read wal error: %v", err)
+	var (
+		err       error
+		wmetadata []byte
+	)
+
+	repaired := false
+	for {
+		if w, err = wal.Open(waldir, snap); err != nil {
+			log.Fatalf("etcdserver: open wal error: %v", err)
+		}
+		if wmetadata, st, ents, err = w.ReadAll(); err != nil {
+			w.Close()
+			// we can only repair ErrUnexpectedEOF and we never repair twice.
+			if repaired || err != io.ErrUnexpectedEOF {
+				log.Fatalf("etcdserver: read wal error (%v) and cannot be repaired", err)
+			}
+			if !wal.Repair(waldir) {
+				log.Fatalf("etcdserver: WAL error (%v) cannot be repaired", err)
+			} else {
+				log.Printf("etcdserver: repaired WAL error (%v)", err)
+				repaired = true
+			}
+			continue
+		}
+		break
 	}
 	var metadata pb.Metadata
 	pbutil.MustUnmarshal(&metadata, wmetadata)
