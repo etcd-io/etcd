@@ -68,8 +68,8 @@ func SRVGetCluster(name, dns string, defaultToken string, apurls types.URLs) (st
 				n = fmt.Sprintf("%d", tempName)
 				tempName += 1
 			}
-			stringParts = append(stringParts, fmt.Sprintf("%s=%s%s", n, prefix, tcpAddr.String()))
-			log.Printf("discovery: Got bootstrap from DNS for %s at host %s to %s%s", service, host, prefix, tcpAddr.String())
+			stringParts = append(stringParts, fmt.Sprintf("%s=%s%s", n, prefix, host))
+			log.Printf("discovery: Got bootstrap from DNS for %s at %s%s", service, prefix, host)
 		}
 		return nil
 	}

@@ -15,7 +15,6 @@
 package etcdmain
 
 import (
-	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -26,7 +25,6 @@ import (
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/pkg/cors"
 	"github.com/coreos/etcd/pkg/flags"
-	"github.com/coreos/etcd/pkg/netutil"
 	"github.com/coreos/etcd/pkg/transport"
 	"github.com/coreos/etcd/version"
 )
@@ -260,10 +258,6 @@ func (cfg *config) Parse(arguments []string) error {
 		return err
 	}
 
-	if err := cfg.resolveUrls(); err != nil {
-		return errors.New("cannot resolve DNS hostnames.")
-	}
-
 	if 5*cfg.TickMs > cfg.ElectionMs {
 		return fmt.Errorf("-election-timeout[%vms] should be at least as 5 times as -heartbeat-interval[%vms]", cfg.ElectionMs, cfg.TickMs)
 	}
@@ -277,10 +271,6 @@ func initialClusterFromName(name string) string {
 		n = defaultName
 	}
 	return fmt.Sprintf("%s=http://localhost:2380,%s=http://localhost:7001", n, n)
-}
-
-func (cfg *config) resolveUrls() error {
-	return netutil.ResolveTCPAddrs(cfg.lpurls, cfg.apurls, cfg.lcurls, cfg.acurls)
 }
 
 func (cfg config) isNewCluster() bool          { return cfg.clusterState.String() == clusterStateFlagNew }
