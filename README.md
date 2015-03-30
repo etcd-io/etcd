@@ -59,7 +59,7 @@ You have successfully started an etcd and written a key to the store.
 
 First install [goreman](https://github.com/mattn/goreman), which manages Procfile-based applications.
 
-Our [Profile script](./Procfile) will set up a local example cluster. You can start it with:
+Our [Procfile script](./Procfile) will set up a local example cluster. You can start it with:
 
 ```sh
 goreman start
