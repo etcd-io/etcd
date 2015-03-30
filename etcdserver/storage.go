@@ -78,19 +78,22 @@ func readWAL(waldir string, snap walpb.Snapshot) (w *wal.WAL, id, cid types.ID, 
 		wmetadata []byte
 	)
 
-	for i := 0; i < 2; i++ {
+	repaired := false
+	for {
 		if w, err = wal.Open(waldir, snap); err != nil {
 			log.Fatalf("etcdserver: open wal error: %v", err)
 		}
 		if wmetadata, st, ents, err = w.ReadAll(); err != nil {
 			w.Close()
-			if i != 0 || err != io.ErrUnexpectedEOF {
-				log.Fatalf("etcdserver: read wal error: %v", err)
+			// we can only repair ErrUnexpectedEOF and we never repair twice.
+			if repaired || err != io.ErrUnexpectedEOF {
+				log.Fatalf("etcdserver: read wal error (%v) and cannot be repaired", err)
 			}
 			if !wal.Repair(waldir) {
 				log.Fatalf("etcdserver: WAL error (%v) cannot be repaired", err)
 			} else {
 				log.Printf("etcdserver: repaired WAL error (%v)", err)
+				repaired = true
 			}
 			continue
 		}
