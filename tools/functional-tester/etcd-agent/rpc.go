@@ -84,8 +84,22 @@ func (a *Agent) RPCTerminate(args struct{}, reply *struct{}) error {
 	return nil
 }
 
-func (a *Agent) RPCIsolate(args struct{}, reply *struct{}) error {
-	panic("not implemented")
+func (a *Agent) RPCDropPort(port int, reply *struct{}) error {
+	log.Printf("rpc: drop port %d", port)
+	err := a.dropPort(port)
+	if err != nil {
+		log.Println("rpc: error dropping port", err)
+	}
+	return nil
+}
+
+func (a *Agent) RPCRecoverPort(port int, reply *struct{}) error {
+	log.Printf("rpc: recover port %d", port)
+	err := a.recoverPort(port)
+	if err != nil {
+		log.Println("rpc: error recovering port", err)
+	}
+	return nil
 }
 
 func (a *Agent) RPCStatus(args struct{}, status *client.Status) error {
