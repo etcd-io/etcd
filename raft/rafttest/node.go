@@ -23,7 +23,15 @@ type node struct {
 
 func startNode(id uint64, peers []raft.Peer, iface iface) *node {
 	st := raft.NewMemoryStorage()
-	rn := raft.StartNode(id, peers, 10, 1, st)
+	c := &raft.Config{
+		ID:              id,
+		ElectionTick:    10,
+		HeartbeatTick:   1,
+		Storage:         st,
+		MaxSizePerMsg:   1024 * 1024,
+		MaxInflightMsgs: 256,
+	}
+	rn := raft.StartNode(c, peers)
 	n := &node{
 		Node:    rn,
 		id:      id,
@@ -50,6 +58,7 @@ func (n *node) start() {
 					n.storage.SetHardState(n.state)
 				}
 				n.storage.Append(rd.Entries)
+				time.Sleep(time.Millisecond)
 				// TODO: make send async, more like real world...
 				for _, m := range rd.Messages {
 					n.iface.send(m)
@@ -96,7 +105,15 @@ func (n *node) stop() {
 func (n *node) restart() {
 	// wait for the shutdown
 	<-n.stopc
-	n.Node = raft.RestartNode(n.id, 10, 1, n.storage, 0)
+	c := &raft.Config{
+		ID:              n.id,
+		ElectionTick:    10,
+		HeartbeatTick:   1,
+		Storage:         n.storage,
+		MaxSizePerMsg:   1024 * 1024,
+		MaxInflightMsgs: 256,
+	}
+	n.Node = raft.RestartNode(c)
 	n.start()
 	n.iface.connect()
 }
