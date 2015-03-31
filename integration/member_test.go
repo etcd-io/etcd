@@ -82,7 +82,7 @@ func TestLaunchDuplicateMemberShouldFail(t *testing.T) {
 
 func TestSnapshotAndRestartMember(t *testing.T) {
 	defer afterTest(t)
-	m := mustNewMember(t, "snapAndRestartTest")
+	m := mustNewMember(t, "snapAndRestartTest", false)
 	m.SnapCount = 100
 	m.Launch()
 	defer m.Terminate(t)
