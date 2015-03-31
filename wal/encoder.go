@@ -30,12 +30,15 @@ type encoder struct {
 	bw *bufio.Writer
 
 	crc hash.Hash32
+	buf []byte
 }
 
 func newEncoder(w io.Writer, prevCrc uint32) *encoder {
 	return &encoder{
 		bw:  bufio.NewWriter(w),
 		crc: crc.New(prevCrc, crcTable),
+		// 1MB buffer
+		buf: make([]byte, 1024*1024),
 	}
 }
 
@@ -45,9 +48,23 @@ func (e *encoder) encode(rec *walpb.Record) error {
 
 	e.crc.Write(rec.Data)
 	rec.Crc = e.crc.Sum32()
-	data, err := rec.Marshal()
-	if err != nil {
-		return err
+	var (
+		data []byte
+		err  error
+		n    int
+	)
+
+	if rec.Size() > len(e.buf) {
+		data, err = rec.Marshal()
+		if err != nil {
+			return err
+		}
+	} else {
+		n, err = rec.MarshalTo(e.buf)
+		if err != nil {
+			return err
+		}
+		data = e.buf[:n]
 	}
 	if err := writeInt64(e.bw, int64(len(data))); err != nil {
 		return err
@@ -63,5 +80,6 @@ func (e *encoder) flush() error {
 }
 
 func writeInt64(w io.Writer, n int64) error {
+	// TODO: use putuint64 to reduce two alloctions
 	return binary.Write(w, binary.LittleEndian, n)
 }
