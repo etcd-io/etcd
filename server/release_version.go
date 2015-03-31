@@ -1,3 +1,3 @@
 package server
 
-const ReleaseVersion = "0.4.8+git"
+const ReleaseVersion = "0.4.9"
