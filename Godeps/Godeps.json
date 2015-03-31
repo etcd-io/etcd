@@ -84,7 +84,7 @@
 		},
 		{
 			"ImportPath": "golang.org/x/net/context",
-			"Rev": "b8c11bbe941633d84573af9686bfef280594b4fd"
+			"Rev": "7dbad50ab5b31073856416cdcfeb2796d682f844"
 		}
 	]
 }
