@@ -35,7 +35,11 @@ func NewImportSnapCommand() cli.Command {
 func handleImportSnap(c *cli.Context) {
 	d, err := ioutil.ReadFile(c.String("snap"))
 	if err != nil {
-		fmt.Printf("cannot read snapshot file %s\n", c.String("snap"))
+		if c.String("snap") == "" {
+			fmt.Printf("no snapshot file provided (use --snap)")
+		} else {
+			fmt.Printf("cannot read snapshot file %s\n", c.String("snap"))
+		}
 		os.Exit(1)
 	}
 
@@ -90,7 +94,7 @@ func copyKeys(n *store.NodeExtern, setc chan set) int {
 		setc <- set{n.Key, *n.Value, n.TTL}
 		return 1
 	}
-	log.Println("entrying dir:", n.Key)
+	log.Println("entering dir:", n.Key)
 	for _, nn := range n.Nodes {
 		sub := copyKeys(nn, setc)
 		num += sub
