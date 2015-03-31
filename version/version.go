@@ -23,7 +23,7 @@ import (
 )
 
 var (
-	Version = "2.0.7+git"
+	Version = "2.0.8"
 )
 
 // WalVersion is an enum for versions of etcd logs.
