@@ -29,8 +29,9 @@ type encoder struct {
 	mu sync.Mutex
 	bw *bufio.Writer
 
-	crc hash.Hash32
-	buf []byte
+	crc       hash.Hash32
+	buf       []byte
+	uint64buf []byte
 }
 
 func newEncoder(w io.Writer, prevCrc uint32) *encoder {
@@ -38,7 +39,8 @@ func newEncoder(w io.Writer, prevCrc uint32) *encoder {
 		bw:  bufio.NewWriter(w),
 		crc: crc.New(prevCrc, crcTable),
 		// 1MB buffer
-		buf: make([]byte, 1024*1024),
+		buf:       make([]byte, 1024*1024),
+		uint64buf: make([]byte, 8),
 	}
 }
 
@@ -66,7 +68,7 @@ func (e *encoder) encode(rec *walpb.Record) error {
 		}
 		data = e.buf[:n]
 	}
-	if err := writeInt64(e.bw, int64(len(data))); err != nil {
+	if err := writeInt64(e.bw, int64(len(data)), e.uint64buf); err != nil {
 		return err
 	}
 	_, err = e.bw.Write(data)
@@ -79,7 +81,9 @@ func (e *encoder) flush() error {
 	return e.bw.Flush()
 }
 
-func writeInt64(w io.Writer, n int64) error {
-	// TODO: use putuint64 to reduce two alloctions
-	return binary.Write(w, binary.LittleEndian, n)
+func writeInt64(w io.Writer, n int64, buf []byte) error {
+	// http://golang.org/src/encoding/binary/binary.go
+	binary.LittleEndian.PutUint64(buf, uint64(n))
+	_, err := w.Write(buf)
+	return err
 }
