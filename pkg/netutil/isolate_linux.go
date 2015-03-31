@@ -19,24 +19,24 @@ import (
 	"os/exec"
 )
 
-// DropPort drops all network packets that are received from the given port and sent to the given port.
+// DropPort drops all tcp packets that are received from the given port and sent to the given port.
 func DropPort(port int) error {
-	cmdStr := fmt.Sprintf("sudo iptables -A OUTPUT --destination-port %d -j DROP", port)
+	cmdStr := fmt.Sprintf("sudo iptables -A OUTPUT -p tcp --destination-port %d -j DROP", port)
 	if _, err := exec.Command("/bin/sh", "-c", cmdStr).Output(); err != nil {
 		return err
 	}
-	cmdStr = fmt.Sprintf("sudo iptables -A INPUT --destination-port %d -j DROP", port)
+	cmdStr = fmt.Sprintf("sudo iptables -A INPUT -p tcp --destination-port %d -j DROP", port)
 	_, err := exec.Command("/bin/sh", "-c", cmdStr).Output()
 	return err
 }
 
-// RecoverPort stops dropping network packets at given port.
+// RecoverPort stops dropping tcp packets at given port.
 func RecoverPort(port int) error {
-	cmdStr := fmt.Sprintf("sudo iptables -D OUTPUT --destination-port %d -j DROP", port)
+	cmdStr := fmt.Sprintf("sudo iptables -D OUTPUT -p tcp --destination-port %d -j DROP", port)
 	if _, err := exec.Command("/bin/sh", "-c", cmdStr).Output(); err != nil {
 		return err
 	}
-	cmdStr = fmt.Sprintf("sudo iptables -D INPUT --destination-port %d -j DROP", port)
+	cmdStr = fmt.Sprintf("sudo iptables -D INPUT -p tcp --destination-port %d -j DROP", port)
 	_, err := exec.Command("/bin/sh", "-c", cmdStr).Output()
 	return err
 }
