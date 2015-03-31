@@ -80,6 +80,7 @@ func handleImportSnap(c *cli.Context) {
 	}
 	n := copyKeys(all.Node, setc)
 	close(setc)
+	wg.Wait()
 	fmt.Printf("finished importing %d keys\n", n)
 }
 
