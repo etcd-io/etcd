@@ -15,7 +15,8 @@ etcd will detect 0.4.x data dir and update the data automatically (while leaving
 
 The tool can be run via:
 ```sh
-./bin/etcd-migrate --data-dir=<PATH TO YOUR DATA>
+./go build
+./etcd-migrate --data-dir=<PATH TO YOUR DATA>
 ```
 
 It should autodetect everything and convert the data-dir to be 2.0 compatible. It does not remove the 0.4.x data, and is safe to convert multiple times; the 2.0 data will be overwritten. Recovering the disk space once everything is settled is covered later in the document.
