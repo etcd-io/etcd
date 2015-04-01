@@ -41,7 +41,7 @@ func hasWriteRootAccess(sec *security.Store, r *http.Request) bool {
 
 func hasRootAccess(sec *security.Store, r *http.Request) bool {
 	if sec == nil {
-		// No store means no security avaliable, eg, tests.
+		// No store means no security available, eg, tests.
 		return true
 	}
 	if !sec.SecurityEnabled() {
@@ -51,24 +51,27 @@ func hasRootAccess(sec *security.Store, r *http.Request) bool {
 	if !ok {
 		return false
 	}
-	if username != "root" {
-		log.Printf("security: Attempting to use user %s for resource that requires root.", username)
-		return false
-	}
-	root, err := sec.GetUser("root")
+	rootUser, err := sec.GetUser(username)
 	if err != nil {
 		return false
 	}
-	ok = root.CheckPassword(password)
+	ok = rootUser.CheckPassword(password)
 	if !ok {
 		log.Printf("security: Wrong password for user %s", username)
+		return false
 	}
-	return ok
+	for _, role := range rootUser.Roles {
+		if role == security.RootRoleName {
+			return true
+		}
+	}
+	log.Printf("security: User %s does not have the %s role for resource %s.", username, security.RootRoleName, r.URL.Path)
+	return false
 }
 
-func hasKeyPrefixAccess(sec *security.Store, r *http.Request, key string) bool {
+func hasKeyPrefixAccess(sec *security.Store, r *http.Request, key string, recursive bool) bool {
 	if sec == nil {
-		// No store means no security avaliable, eg, tests.
+		// No store means no security available, eg, tests.
 		return true
 	}
 	if !sec.SecurityEnabled() {
@@ -76,7 +79,7 @@ func hasKeyPrefixAccess(sec *security.Store, r *http.Request, key string) bool {
 	}
 	username, password, ok := netutil.BasicAuth(r)
 	if !ok {
-		return false
+		return hasGuestAccess(sec, r, key)
 	}
 	user, err := sec.GetUser(username)
 	if err != nil {
@@ -88,20 +91,31 @@ func hasKeyPrefixAccess(sec *security.Store, r *http.Request, key string) bool {
 		log.Printf("security: Incorrect password for user: %s.", username)
 		return false
 	}
-	if user.User == "root" {
-		return true
-	}
 	writeAccess := r.Method != "GET" && r.Method != "HEAD"
 	for _, roleName := range user.Roles {
 		role, err := sec.GetRole(roleName)
 		if err != nil {
 			continue
 		}
-		if role.HasKeyAccess(key, writeAccess) {
-			return true
+		if recursive {
+			return role.HasRecursiveAccess(key, writeAccess)
 		}
+		return role.HasKeyAccess(key, writeAccess)
 	}
 	log.Printf("security: Invalid access for user %s on key %s.", username, key)
+	return false
+}
+
+func hasGuestAccess(sec *security.Store, r *http.Request, key string) bool {
+	writeAccess := r.Method != "GET" && r.Method != "HEAD"
+	role, err := sec.GetRole(security.GuestRoleName)
+	if err != nil {
+		return false
+	}
+	if role.HasKeyAccess(key, writeAccess) {
+		return true
+	}
+	log.Printf("security: Invalid access for unauthenticated user on resource %s.", key)
 	return false
 }
 
@@ -136,6 +150,9 @@ func (sh *securityHandler) baseRoles(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err)
 		return
 	}
+	if roles == nil {
+		roles = make([]string, 0)
+	}
 
 	rolesCollections.Roles = roles
 	err = json.NewEncoder(w).Encode(rolesCollections)
@@ -149,7 +166,13 @@ func (sh *securityHandler) handleRoles(w http.ResponseWriter, r *http.Request) {
 	// Split "/roles/rolename/command".
 	// First item is an empty string, second is "roles"
 	pieces := strings.Split(subpath, "/")
+	if len(pieces) == 2 {
+		sh.baseRoles(w, r)
+		return
+	}
 	if len(pieces) != 3 {
+		writeError(w, httptypes.NewHTTPError(http.StatusBadRequest, "Invalid path"))
+		return
 	}
 	sh.forRole(w, r, pieces[2])
 }
@@ -186,15 +209,19 @@ func (sh *securityHandler) forRole(w http.ResponseWriter, r *http.Request, role 
 			return
 		}
 		if in.Role != role {
-			writeError(w, httptypes.NewHTTPError(400, "Role JSON name does not match the name in the URL"))
+			writeError(w, httptypes.NewHTTPError(401, "Role JSON name does not match the name in the URL"))
 			return
 		}
-		newrole, err := sh.sec.CreateOrUpdateRole(in)
+		newrole, created, err := sh.sec.CreateOrUpdateRole(in)
 		if err != nil {
 			writeError(w, err)
 			return
 		}
-		w.WriteHeader(http.StatusCreated)
+		if created {
+			w.WriteHeader(http.StatusCreated)
+		} else {
+			w.WriteHeader(http.StatusOK)
+		}
 		err = json.NewEncoder(w).Encode(newrole)
 		if err != nil {
 			log.Println("etcdhttp: forRole error encoding on", r.URL)
@@ -228,6 +255,9 @@ func (sh *securityHandler) baseUsers(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err)
 		return
 	}
+	if users == nil {
+		users = make([]string, 0)
+	}
 
 	usersCollections.Users = users
 	err = json.NewEncoder(w).Encode(usersCollections)
@@ -238,9 +268,13 @@ func (sh *securityHandler) baseUsers(w http.ResponseWriter, r *http.Request) {
 
 func (sh *securityHandler) handleUsers(w http.ResponseWriter, r *http.Request) {
 	subpath := path.Clean(r.URL.Path[len(securityPrefix):])
-	// Split "/users/username/command".
+	// Split "/users/username".
 	// First item is an empty string, second is "users"
 	pieces := strings.Split(subpath, "/")
+	if len(pieces) == 2 {
+		sh.baseUsers(w, r)
+		return
+	}
 	if len(pieces) != 3 {
 		writeError(w, httptypes.NewHTTPError(http.StatusBadRequest, "Invalid path"))
 		return
@@ -285,14 +319,20 @@ func (sh *securityHandler) forUser(w http.ResponseWriter, r *http.Request, user 
 			writeError(w, httptypes.NewHTTPError(400, "User JSON name does not match the name in the URL"))
 			return
 		}
-		newuser, err := sh.sec.CreateOrUpdateUser(u)
+		newuser, created, err := sh.sec.CreateOrUpdateUser(u)
 		if err != nil {
 			writeError(w, err)
 			return
 		}
-		newuser.Password = ""
+		if u.Password == "" {
+			newuser.Password = ""
+		}
 
-		w.WriteHeader(http.StatusCreated)
+		if created {
+			w.WriteHeader(http.StatusCreated)
+		} else {
+			w.WriteHeader(http.StatusOK)
+		}
 		err = json.NewEncoder(w).Encode(newuser)
 		if err != nil {
 			log.Println("etcdhttp: forUser error encoding on", r.URL)
@@ -331,17 +371,7 @@ func (sh *securityHandler) enableDisable(w http.ResponseWriter, r *http.Request)
 			log.Println("etcdhttp: error encoding security state on", r.URL)
 		}
 	case "PUT":
-		var in security.User
-		err := json.NewDecoder(r.Body).Decode(&in)
-		if err != nil {
-			writeError(w, httptypes.NewHTTPError(http.StatusBadRequest, "Invalid JSON in request body."))
-			return
-		}
-		if in.User != "root" {
-			writeError(w, httptypes.NewHTTPError(http.StatusBadRequest, "Need to create root user"))
-			return
-		}
-		err = sh.sec.EnableSecurity(in)
+		err := sh.sec.EnableSecurity()
 		if err != nil {
 			writeError(w, err)
 			return

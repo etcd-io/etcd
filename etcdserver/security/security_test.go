@@ -109,19 +109,19 @@ func TestMergeRole(t *testing.T) {
 		},
 		{
 			Role{Role: "foo"},
-			Role{Role: "foo", Grant: Permissions{KV: rwPermission{Read: []string{"/foodir"}, Write: []string{"/foodir"}}}},
+			Role{Role: "foo", Grant: &Permissions{KV: rwPermission{Read: []string{"/foodir"}, Write: []string{"/foodir"}}}},
 			Role{Role: "foo", Permissions: Permissions{KV: rwPermission{Read: []string{"/foodir"}, Write: []string{"/foodir"}}}},
 			false,
 		},
 		{
 			Role{Role: "foo", Permissions: Permissions{KV: rwPermission{Read: []string{"/foodir"}, Write: []string{"/foodir"}}}},
-			Role{Role: "foo", Revoke: Permissions{KV: rwPermission{Read: []string{"/foodir"}, Write: []string{"/foodir"}}}},
+			Role{Role: "foo", Revoke: &Permissions{KV: rwPermission{Read: []string{"/foodir"}, Write: []string{"/foodir"}}}},
 			Role{Role: "foo", Permissions: Permissions{KV: rwPermission{Read: []string{}, Write: []string{}}}},
 			false,
 		},
 		{
 			Role{Role: "foo", Permissions: Permissions{KV: rwPermission{Read: []string{"/bardir"}}}},
-			Role{Role: "foo", Revoke: Permissions{KV: rwPermission{Read: []string{"/foodir"}}}},
+			Role{Role: "foo", Revoke: &Permissions{KV: rwPermission{Read: []string{"/foodir"}}}},
 			Role{},
 			true,
 		},
@@ -140,28 +140,33 @@ func TestMergeRole(t *testing.T) {
 }
 
 type testDoer struct {
-	get etcdserver.Response
+	get   []etcdserver.Response
+	index int
 }
 
 func (td *testDoer) Do(_ context.Context, req etcdserverpb.Request) (etcdserver.Response, error) {
 	if req.Method == "GET" {
-		return td.get, nil
+		res := td.get[td.index]
+		td.index++
+		return res, nil
 	}
 	return etcdserver.Response{}, nil
 }
 
 func TestAllUsers(t *testing.T) {
 	d := &testDoer{
-		etcdserver.Response{
-			Event: &store.Event{
-				Action: store.Get,
-				Node: &store.NodeExtern{
-					Nodes: store.NodeExterns{
-						&store.NodeExtern{
-							Key: StorePermsPrefix + "/users/cat",
-						},
-						&store.NodeExtern{
-							Key: StorePermsPrefix + "/users/dog",
+		get: []etcdserver.Response{
+			{
+				Event: &store.Event{
+					Action: store.Get,
+					Node: &store.NodeExtern{
+						Nodes: store.NodeExterns{
+							&store.NodeExtern{
+								Key: StorePermsPrefix + "/users/cat",
+							},
+							&store.NodeExtern{
+								Key: StorePermsPrefix + "/users/dog",
+							},
 						},
 					},
 				},
@@ -170,7 +175,7 @@ func TestAllUsers(t *testing.T) {
 	}
 	expected := []string{"cat", "dog"}
 
-	s := NewStore(d, time.Second)
+	s := Store{d, time.Second, false}
 	users, err := s.AllUsers()
 	if err != nil {
 		t.Error("Unexpected error", err)
@@ -183,19 +188,21 @@ func TestAllUsers(t *testing.T) {
 func TestGetAndDeleteUser(t *testing.T) {
 	data := `{"user": "cat", "roles" : ["animal"]}`
 	d := &testDoer{
-		etcdserver.Response{
-			Event: &store.Event{
-				Action: store.Get,
-				Node: &store.NodeExtern{
-					Key:   StorePermsPrefix + "/users/cat",
-					Value: &data,
+		get: []etcdserver.Response{
+			{
+				Event: &store.Event{
+					Action: store.Get,
+					Node: &store.NodeExtern{
+						Key:   StorePermsPrefix + "/users/cat",
+						Value: &data,
+					},
 				},
 			},
 		},
 	}
 	expected := User{User: "cat", Roles: []string{"animal"}}
 
-	s := NewStore(d, time.Second)
+	s := Store{d, time.Second, false}
 	out, err := s.GetUser("cat")
 	if err != nil {
 		t.Error("Unexpected error", err)
@@ -211,50 +218,54 @@ func TestGetAndDeleteUser(t *testing.T) {
 
 func TestAllRoles(t *testing.T) {
 	d := &testDoer{
-		etcdserver.Response{
-			Event: &store.Event{
-				Action: store.Get,
-				Node: &store.NodeExtern{
-					Nodes: store.NodeExterns{
-						&store.NodeExtern{
-							Key: StorePermsPrefix + "/roles/animal",
-						},
-						&store.NodeExtern{
-							Key: StorePermsPrefix + "/roles/human",
+		get: []etcdserver.Response{
+			{
+				Event: &store.Event{
+					Action: store.Get,
+					Node: &store.NodeExtern{
+						Nodes: store.NodeExterns{
+							&store.NodeExtern{
+								Key: StorePermsPrefix + "/roles/animal",
+							},
+							&store.NodeExtern{
+								Key: StorePermsPrefix + "/roles/human",
+							},
 						},
 					},
 				},
 			},
 		},
 	}
-	expected := []string{"animal", "human"}
+	expected := []string{"animal", "human", "root"}
 
-	s := NewStore(d, time.Second)
+	s := Store{d, time.Second, false}
 	out, err := s.AllRoles()
 	if err != nil {
 		t.Error("Unexpected error", err)
 	}
 	if !reflect.DeepEqual(out, expected) {
-		t.Error("AllUsers doesn't match given store. Got", out, "expected", expected)
+		t.Error("AllRoles doesn't match given store. Got", out, "expected", expected)
 	}
 }
 
 func TestGetAndDeleteRole(t *testing.T) {
 	data := `{"role": "animal"}`
 	d := &testDoer{
-		etcdserver.Response{
-			Event: &store.Event{
-				Action: store.Get,
-				Node: &store.NodeExtern{
-					Key:   StorePermsPrefix + "/roles/animal",
-					Value: &data,
+		get: []etcdserver.Response{
+			{
+				Event: &store.Event{
+					Action: store.Get,
+					Node: &store.NodeExtern{
+						Key:   StorePermsPrefix + "/roles/animal",
+						Value: &data,
+					},
 				},
 			},
 		},
 	}
 	expected := Role{Role: "animal"}
 
-	s := NewStore(d, time.Second)
+	s := Store{d, time.Second, false}
 	out, err := s.GetRole("animal")
 	if err != nil {
 		t.Error("Unexpected error", err)
@@ -265,5 +276,73 @@ func TestGetAndDeleteRole(t *testing.T) {
 	err = s.DeleteRole("animal")
 	if err != nil {
 		t.Error("Unexpected error", err)
+	}
+}
+
+func TestEnsure(t *testing.T) {
+	d := &testDoer{
+		get: []etcdserver.Response{
+			{
+				Event: &store.Event{
+					Action: store.Set,
+					Node: &store.NodeExtern{
+						Key: StorePermsPrefix,
+						Dir: true,
+					},
+				},
+			},
+			{
+				Event: &store.Event{
+					Action: store.Set,
+					Node: &store.NodeExtern{
+						Key: StorePermsPrefix + "/users/",
+						Dir: true,
+					},
+				},
+			},
+			{
+				Event: &store.Event{
+					Action: store.Set,
+					Node: &store.NodeExtern{
+						Key: StorePermsPrefix + "/roles/",
+						Dir: true,
+					},
+				},
+			},
+		},
+	}
+
+	s := Store{d, time.Second, false}
+	err := s.ensureSecurityDirectories()
+	if err != nil {
+		t.Error("Unexpected error", err)
+	}
+}
+
+func TestSimpleMatch(t *testing.T) {
+	role := Role{Role: "foo", Permissions: Permissions{KV: rwPermission{Read: []string{"/foodir/*", "/fookey"}, Write: []string{"/bardir/*", "/barkey"}}}}
+	if !role.HasKeyAccess("/foodir/foo/bar", false) {
+		t.Fatal("role lacks expected access")
+	}
+	if !role.HasKeyAccess("/fookey", false) {
+		t.Fatal("role lacks expected access")
+	}
+	if role.HasKeyAccess("/bardir/bar/foo", false) {
+		t.Fatal("role has unexpected access")
+	}
+	if role.HasKeyAccess("/barkey", false) {
+		t.Fatal("role has unexpected access")
+	}
+	if role.HasKeyAccess("/foodir/foo/bar", true) {
+		t.Fatal("role has unexpected access")
+	}
+	if role.HasKeyAccess("/fookey", true) {
+		t.Fatal("role has unexpected access")
+	}
+	if !role.HasKeyAccess("/bardir/bar/foo", true) {
+		t.Fatal("role lacks expected access")
+	}
+	if !role.HasKeyAccess("/barkey", true) {
+		t.Fatal("role lacks expected access")
 	}
 }

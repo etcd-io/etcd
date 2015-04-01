@@ -47,18 +47,49 @@ func (s *Store) ensureSecurityDirectories() error {
 			return err
 		}
 	}
+	_, err := s.createResource("/enabled", false)
+	if err != nil {
+		if e, ok := err.(*etcderr.Error); ok {
+			if e.ErrorCode == etcderr.EcodeNodeExist {
+				return nil
+			}
+		}
+		return err
+	}
 	return nil
+}
+
+func (s *Store) enableSecurity() error {
+	_, err := s.updateResource("/enabled", true)
+	return err
+}
+func (s *Store) disableSecurity() error {
+	_, err := s.updateResource("/enabled", false)
+	return err
 }
 
 func (s *Store) detectSecurity() bool {
 	if s.server == nil {
 		return false
 	}
-	_, err := s.requestResource("/users/root", false)
-	if err == nil {
-		return true
+	value, err := s.requestResource("/enabled", false)
+	if err != nil {
+		if e, ok := err.(*etcderr.Error); ok {
+			if e.ErrorCode == etcderr.EcodeNodeExist {
+				return false
+			}
+		}
+		log.Println("security: Trying to detect security settings failed:", err)
+		return false
 	}
-	return false
+
+	var u bool
+	err = json.Unmarshal([]byte(*value.Event.Node.Value), &u)
+	if err != nil {
+		log.Println("security: internal bookkeeping value for enabled isn't valid JSON")
+		return false
+	}
+	return u
 }
 
 func (s *Store) requestResource(res string, dir bool) (etcdserver.Response, error) {

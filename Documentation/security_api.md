@@ -10,37 +10,32 @@ There are three types of resources in etcd
 ### Permission Resources 
 
 #### Users
-A user is an identity to be authenticated. Each user can have multiple roles. The user has a capability on the resource if one of the roles has that capability.
+A user is an identity to be authenticated. Each user can have multiple roles. The user has a capability (such as reading or writing) on the resource if one of the roles has that capability.
 
-The special static `root` user has a ROOT role. (Caps for visual aid throughout)
+A user named `root` is required before security can be enabled, and it always has the ROOT role. The ROOT role can be granted to multiple users, but `root` is required for recovery purposes.
 
-#### Role
-Each role has exact one associated Permission List. An permission list exists for each permission on key-value resources. A role with `manage` permission of a key-value resource can grant/revoke capability of that key-value to other roles.
+#### Roles
+Each role has exact one associated Permission List. An permission list exists for each permission on key-value resources. 
 
-The special static ROOT role has a full permissions on all key-value resources, the permission to manage user resources and settings resources. Only the ROOT role has the permission to manage user resources and modify settings resources.
+The special static ROOT (named `root`) role has a full permissions on all key-value resources, the permission to manage user resources and settings resources. Only the ROOT role has the permission to manage user resources and modify settings resources. The ROOT role is built-in and does not need to be created.
+
+There is also a special GUEST role, named 'guest'. These are the permissions given to unauthenticated requests to etcd. This role will be created when security is enabled, unless it already exists, and by default allows access to the full keyspace due to backward compatability. (etcd did not previously authenticate any actions.). This role can be modified by a ROOT role holder at any time.
 
 #### Permissions
 
-There are two types of permissions, `read` and `write`. All management stems from the ROOT user.
+There are two types of permissions, `read` and `write`. All management and settings require the ROOT role.
 
-A Permission List is a list of allowed patterns for that particular permission (read or write). Only ALLOW prefixes (incidentally, this is what Amazon S3 does). DENY becomes more complicated and is TBD.
+A Permission List is a list of allowed patterns for that particular permission (read or write). Only ALLOW prefixes are supported. DENY becomes more complicated and is TBD.
 
 ### Key-Value Resources
 A key-value resource is a key-value pairs in the store. Given a list of matching patterns, permission for any given key in a request is granted if any of the patterns in the list match.
 
-The glob match rules are as follows:
-
-* `*` and `\` are special characters, representing "greedy match" and "escape" respectively.
-  * As a corrolary, `\*` and `\\` are the corresponding literal matches. 
-* All other bytes match exactly their bytes, starting always from the *first byte*. (For regex fans, `re.match` in Python) 
-* Examples:
-  * `/foo` matches only the single key/directory of `/foo`
-  * `/foo*` matches the prefix `/foo`, and all subdirectories/keys
-  * `/foo/*/bar` matches the keys bar in any (recursive) subdirectory of `/foo`.
+Only prefixes or exact keys are supported. A prefix permission string ends in `*`. 
+A permission on `/foo` is for that exact key or directory, not its children or recursively. `/foo*` is a prefix that matches `/foo` recursively, and all keys thereunder, and keys with that prefix (eg. `/foobar`. Contrast to the prefix `/foo/*`). `*` alone is permission on the full keyspace. 
 
 ### Settings Resources
 
-Specific settings for the cluster as a whole. This can include adding and removing cluster members, enabling or disabling security, replacing certificates, and any other dynamic configuration by the administrator.
+Specific settings for the cluster as a whole. This can include adding and removing cluster members, enabling or disabling security, replacing certificates, and any other dynamic configuration by the administrator (holder of the ROOT role).
 
 ## v2 Auth
 
@@ -123,7 +118,7 @@ GET/HEAD  /v2/security/users/alice
           "roles" : ["fleet", "etcd"]
         }
 
-**Create A User**
+**Create Or Update A User**
 
 A user can be created with initial roles, if filled in. However, no roles are required; only the username and password fields
 
@@ -132,7 +127,9 @@ PUT  /v2/security/users/charlie
     Sent Headers:
         Authorization: Basic <BasicAuthString>
     Put Body:
-        JSON struct, above, matching the appropriate name and with starting roles.
+        JSON struct, above, matching the appropriate name 
+          * Starting password and roles when creating. 
+          * Grant/Revoke/Password filled in when updating (to grant roles, revoke roles, or change the password).
     Possible Status Codes:
         200 OK
         403 Forbidden
@@ -152,68 +149,21 @@ DELETE  /v2/security/users/charlie
     200 Headers:
     200 Body: (empty)
 
-**Grant a Role(s) to a User**
-
-PUT  /v2/security/users/charlie/grant
-
-    Sent Headers:
-        Authorization: Basic <BasicAuthString>
-    Put Body:
-        { "grantRoles" : ["fleet", "etcd"], (extra JSON data for checking OK) }
-    Possible Status Codes:
-        200 OK
-        403 Forbidden
-        404 Not Found
-        409 Conflict
-    200 Body: 
-        JSON user struct, updated. "roles" now contains the grants, and "grantRoles" is empty. If there is an error in the set of roles to be added, for example, a non-existent role, then 409 is returned, with an error JSON stating why.
-
-**Revoke a Role(s) from a User**
-
-PUT  /v2/security/users/charlie/revoke
-
-    Sent Headers:
-        Authorization: Basic <BasicAuthString>
-    Put Body:
-        { "revokeRoles" : ["fleet"], (extra JSON data for checking OK) }
-    Possible Status Codes:
-        200 OK
-        403 Forbidden
-        404 Not Found
-        409 Conflict
-    200 Body: 
-        JSON user struct, updated. "roles" now doesn't contain the roles, and "revokeRoles" is empty. If there is an error in the set of roles to be removed, for example, a non-existent role, then 409 is returned, with an error JSON stating why.
-
-**Change password**
-
-PUT  /v2/security/users/charlie/password
-
-    Sent Headers:
-        Authorization: Basic <BasicAuthString>
-    Put Body:
-        {"user": "charlie", "password": "newCharliePassword"}
-    Possible Status Codes:
-        200 OK
-        403 Forbidden
-        404 Not Found
-    200 Body:
-        JSON user struct, updated
-
 #### Roles
 
 A full role structure may look like this. A Permission List structure is used for the "permissions", "grant", and "revoke" keys.
 ```
 {
   "role" : "fleet",
-    "permissions" : {
-      "kv" {
-        "read" : [ "/fleet/" ],
-        "write": [ "/fleet/" ],
-      }
+  "permissions" : {
+    "kv" {
+      "read" : [ "/fleet/" ],
+      "write": [ "/fleet/" ],
     }
-    "grant" : {"kv": {...}},
-    "revoke": {"kv": {...}},
-    "members" : ["alice", "bob"],
+  }
+  "grant" : {"kv": {...}},
+  "revoke": {"kv": {...}},
+  "members" : ["alice", "bob"]
 }
 ```
 
@@ -258,14 +208,16 @@ GET/HEAD  /v2/security/roles/fleet
           },
         }
 
-**Create A Role**
+**Create Or Update A Role**
 
 PUT  /v2/security/roles/rocket
 
     Sent Headers:
         Authorization: Basic <BasicAuthString>
     Put Body:
-        Initial desired JSON state, complete with prefixes and 
+        Initial desired JSON state, including the role name for verification and:
+          * Starting permission set if creating
+          * Granted/Revoked permission set if updating
     Possible Status Codes:
         201 Created
         403 Forbidden
@@ -287,35 +239,6 @@ DELETE  /v2/security/roles/rocket
     200 Headers:
     200 Body: (empty)
 
-**Update a Role’s Permission List for {read,write}ing**
-
-PUT  /v2/security/roles/rocket/update
-
-    Sent Headers:
-        Authorization: Basic <BasicAuthString>
-    Put Body:
-        {
-          "role" : "rocket",
-          "grant": {
-            "kv": {
-              "read" : [ "/rocket/"]
-            }
-          }, 
-          "revoke": {
-            "kv": {
-              "read" : [ "/fleet/"]
-            }
-          } 
-        }
-    Possible Status Codes:
-        200 OK
-        403 Forbidden
-        404 Not Found
-    200 Headers:
-        ETag: "roles/rocket:<tzNow>"
-    200 Body:
-        JSON state of the role, with change containing empty lists and the deltas applied appropriately.
-
 
 #### Enable and Disable Security
         
@@ -334,16 +257,10 @@ GET  /v2/security/enable
 
 **Enable security**
 
-Enabling security means setting an explicit `root` user and password. ROOTs roles are irrelevant, as this user has full permissions.
-
 PUT  /v2/security/enable
 
     Sent Headers:
-    Put Body:
-        {
-          "user" : "root",
-          "password": "toor"
-        }
+    Put Body: (empty)
     Possible Status Codes:
         200 OK
         400 Bad Request (if not a root user)
@@ -378,14 +295,12 @@ PUT  /v2/security/enable
 ### Change root's password
 
 ```
-PUT  /v2/security/users/root/password
+PUT  /v2/security/users/root
     Headers:
         Authorization: Basic <root:root>
     Put Body:
         {"user" : "root", "password": "betterRootPW!"}
 ```
-
-//TODO(barakmich): How do you recover the root password? *This* may require a flag and a restart. `--disable-permissions`
 
 ### Create Roles for the Applications
 
@@ -401,10 +316,10 @@ PUT /v2/security/roles/rocket
           "permissions" : {
             "kv": {
               "read": [
-                "/rocket/"
+                "/rocket/*"
               ],
               "write": [
-                "/rocket/"
+                "/rocket/*"
               ]
             }
           }
@@ -430,7 +345,7 @@ Well, we finally figured out where we want fleet to live. Let's fix it.
 
 
 ```
-PUT /v2/security/roles/fleet/update
+PUT /v2/security/roles/fleet
     Headers:
         Authorization: Basic <root:betterRootPW!>
     Put Body:
@@ -439,7 +354,8 @@ PUT /v2/security/roles/fleet/update
           "grant" : {
             "kv" : {
               "read": [
-                "/fleet/"
+                "/rocket/fleet",
+                "/fleet/*"
               ]
             }
           }
@@ -471,7 +387,7 @@ PUT /v2/security/users/fleetuser
 Likewise, let's explicitly grant fleetuser access.
 
 ```
-PUT /v2/security/users/fleetuser/grant
+PUT /v2/security/users/fleetuser
     Headers:
         Authorization: Basic <root:betterRootPW!>
     Body:
