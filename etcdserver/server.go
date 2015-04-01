@@ -341,7 +341,11 @@ func (s *EtcdServer) run() {
 	s.r.s = s
 	s.r.applyc = make(chan apply)
 	go s.r.run()
-	defer close(s.done)
+	defer func() {
+		s.r.stopped <- struct{}{}
+		<-s.r.done
+		close(s.done)
+	}()
 
 	var shouldstop bool
 	for {
@@ -404,7 +408,6 @@ func (s *EtcdServer) run() {
 			return
 		}
 	}
-	// TODO: wait for the stop of raft node routine?
 }
 
 // Stop stops the server gracefully, and shuts down the running goroutine.
