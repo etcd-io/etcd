@@ -101,9 +101,15 @@ type raftNode struct {
 	index uint64
 	term  uint64
 	lead  uint64
+
+	stopped chan struct{}
+	done    chan struct{}
 }
 
 func (r *raftNode) run() {
+	r.stopped = make(chan struct{})
+	r.done = make(chan struct{})
+
 	var syncC <-chan time.Time
 
 	defer r.stop()
@@ -134,7 +140,7 @@ func (r *raftNode) run() {
 
 			select {
 			case r.applyc <- apply:
-			case <-r.s.done:
+			case <-r.stopped:
 				return
 			}
 
@@ -156,7 +162,7 @@ func (r *raftNode) run() {
 			r.Advance()
 		case <-syncC:
 			r.s.sync(defaultSyncTimeout)
-		case <-r.s.done:
+		case <-r.stopped:
 			return
 		}
 	}
@@ -172,6 +178,7 @@ func (r *raftNode) stop() {
 	if err := r.storage.Close(); err != nil {
 		log.Panicf("etcdraft: close storage error: %v", err)
 	}
+	close(r.done)
 }
 
 // for testing
