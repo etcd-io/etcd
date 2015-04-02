@@ -103,6 +103,26 @@ func testClusterUsingDiscovery(t *testing.T, size int) {
 	clusterMustProgress(t, c.Members)
 }
 
+func TestTLSClusterOf3UsingDiscovery(t *testing.T) {
+	defer afterTest(t)
+	dc := NewCluster(t, 1)
+	dc.Launch(t)
+	defer dc.Terminate(t)
+	// init discovery token space
+	dcc := mustNewHTTPClient(t, dc.URLs())
+	dkapi := client.NewKeysAPI(dcc)
+	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+	if _, err := dkapi.Create(ctx, "/_config/size", fmt.Sprintf("%d", 3)); err != nil {
+		t.Fatal(err)
+	}
+	cancel()
+
+	c := NewTLSClusterByDiscovery(t, 3, dc.URL(0)+"/v2/keys")
+	c.Launch(t)
+	defer c.Terminate(t)
+	clusterMustProgress(t, c.Members)
+}
+
 func TestDoubleClusterSizeOf1(t *testing.T) { testDoubleClusterSize(t, 1) }
 func TestDoubleClusterSizeOf3(t *testing.T) { testDoubleClusterSize(t, 3) }
 
@@ -244,6 +264,17 @@ func newCluster(t *testing.T, size int, usePeerTLS bool) *cluster {
 	return c
 }
 
+func newClusterByDiscovery(t *testing.T, size int, usePeerTLS bool, url string) *cluster {
+	c := &cluster{}
+	ms := make([]*member, size)
+	for i := 0; i < size; i++ {
+		ms[i] = mustNewMember(t, c.name(i), usePeerTLS)
+		ms[i].DiscoveryURL = url
+	}
+	c.Members = ms
+	return c
+}
+
 // NewCluster returns an unlaunched cluster of the given size which has been
 // set to use static bootstrap.
 func NewCluster(t *testing.T, size int) *cluster {
@@ -253,18 +284,15 @@ func NewCluster(t *testing.T, size int) *cluster {
 // NewClusterUsingDiscovery returns an unlaunched cluster of the given size
 // which has been set to use the given url as discovery service to bootstrap.
 func NewClusterByDiscovery(t *testing.T, size int, url string) *cluster {
-	c := &cluster{}
-	ms := make([]*member, size)
-	for i := 0; i < size; i++ {
-		ms[i] = mustNewMember(t, c.name(i), false)
-		ms[i].DiscoveryURL = url
-	}
-	c.Members = ms
-	return c
+	return newClusterByDiscovery(t, size, false, url)
 }
 
 func NewTLSCluster(t *testing.T, size int) *cluster {
 	return newCluster(t, size, true)
+}
+
+func NewTLSClusterByDiscovery(t *testing.T, size int, url string) *cluster {
+	return newClusterByDiscovery(t, size, true, url)
 }
 
 func (c *cluster) Launch(t *testing.T) {
