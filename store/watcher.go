@@ -14,6 +14,10 @@
 
 package store
 
+import (
+	"sync"
+)
+
 type Watcher interface {
 	EventChan() chan *Event
 	StartIndex() uint64 // The EtcdIndex at which the Watcher was created
@@ -27,8 +31,8 @@ type watcher struct {
 	sinceIndex uint64
 	startIndex uint64
 	hub        *watcherHub
-	removed    bool
-	remove     func()
+	removeOnce sync.Once
+	removeFunc func()
 }
 
 func (w *watcher) EventChan() chan *Event {
@@ -64,6 +68,10 @@ func (w *watcher) notify(e *Event, originalPath bool, deleted bool) bool {
 		// If this happens, we close the channel.
 		select {
 		case w.eventChan <- e:
+			if !w.stream { // do not remove the stream watcher
+				// if watcher has successfully been notified, we can remove it
+				w.remove()
+			}
 		default:
 			// We have missed a notification. Remove the watcher.
 			// Removing the watcher also closes the eventChan.
@@ -80,8 +88,15 @@ func (w *watcher) Remove() {
 	w.hub.mutex.Lock()
 	defer w.hub.mutex.Unlock()
 
-	close(w.eventChan)
-	if w.remove != nil {
-		w.remove()
-	}
+	w.remove()
+}
+
+// remove is the internal remove method for which the hub lock must be held.
+func (w *watcher) remove() {
+	w.removeOnce.Do(func() {
+		close(w.eventChan)
+		if w.removeFunc != nil {
+			w.removeFunc()
+		}
+	})
 }

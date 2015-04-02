@@ -64,3 +64,61 @@ func TestIsHidden(t *testing.T) {
 		t.Fatalf("%v should not be hidden to %v\n", key, watch)
 	}
 }
+
+func TestWatchersCount(t *testing.T) {
+	wh := newWatchHub(10)
+
+	w, err := wh.watch("/foo", true, false, 1, 1)
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+	if wh.count != 1 {
+		t.Fatalf("watchers count was %d, expected %d", wh.count, 1)
+	}
+
+	wr, err := wh.watch("/foo", true, true, 1, 1)
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+	if wh.count != 2 {
+		t.Fatalf("watchers count was %d, expected %d", wh.count, 2)
+	}
+	wr2, err := wh.watch("/foo", true, true, 1, 1)
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+	if wh.count != 3 {
+		t.Fatalf("watchers count was %d, expected %d", wh.count, 3)
+	}
+
+	e := newEvent(Set, "/foo", 1, 1)
+	wh.notify(e)
+
+	// watcher hub's internal remove must reduce the count for the
+	// non-streaming watcher
+	if wh.count != 2 {
+		t.Fatalf("watchers count was %d, expected %d", wh.count, 2)
+	}
+	// removing the non-streaming watcher manually must not reduce the
+	// count again
+	w.Remove()
+	if wh.count != 2 {
+		t.Fatalf("watchers count was %d, expected %d", wh.count, 2)
+	}
+	// removing first streaming watcher externally
+	wr.Remove()
+	if wh.count != 1 {
+		t.Fatalf("watchers count was %d, expected %d", wh.count, 1)
+	}
+	// removing second streaming watcher by missing event
+	c := wr2.EventChan()
+	i := uint64(1)
+	for int(i) <= cap(c)+1 {
+		e = newEvent(Create, "/foo", i, i)
+		wh.notify(e)
+		i++
+	}
+	if wh.count != 0 {
+		t.Fatalf("watchers count was %d, expected %d", wh.count, 0)
+	}
+}
