@@ -194,6 +194,8 @@ func (ms *MemoryStorage) CreateSnapshot(i uint64, cs *pb.ConfState, data []byte)
 // It is the application's responsibility to not attempt to compact an index
 // greater than raftLog.applied.
 func (ms *MemoryStorage) Compact(compactIndex uint64) error {
+	ms.Lock()
+	defer ms.Unlock()
 	offset := ms.ents[0].Index
 	if compactIndex <= offset {
 		return ErrCompacted
