@@ -16,6 +16,7 @@ package etcdserver
 
 import (
 	"encoding/json"
+	"expvar"
 	"fmt"
 	"log"
 	"math/rand"
@@ -33,6 +34,7 @@ import (
 	"github.com/coreos/etcd/pkg/fileutil"
 	"github.com/coreos/etcd/pkg/idutil"
 	"github.com/coreos/etcd/pkg/pbutil"
+	"github.com/coreos/etcd/pkg/runtime"
 	"github.com/coreos/etcd/pkg/timeutil"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/pkg/wait"
@@ -69,6 +71,16 @@ var (
 
 func init() {
 	rand.Seed(time.Now().UnixNano())
+
+	expvar.Publish(
+		"file_descriptor_limit",
+		expvar.Func(
+			func() interface{} {
+				n, _ := runtime.FDLimit()
+				return n
+			},
+		),
+	)
 }
 
 type Response struct {
@@ -271,6 +283,7 @@ func (s *EtcdServer) Start() {
 	s.start()
 	go s.publish(defaultPublishRetryInterval)
 	go s.purgeFile()
+	go monitorFileDescriptor(s.done)
 }
 
 // start prepares and starts server in a new goroutine. It is no longer safe to
