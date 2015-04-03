@@ -140,7 +140,6 @@ func (h *keysHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err)
 		return
 	}
-
 	switch {
 	case resp.Event != nil:
 		if err := writeKeyEvent(w, resp.Event, h.timer); err != nil {
