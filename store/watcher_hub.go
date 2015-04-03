@@ -84,7 +84,6 @@ func (wh *watcherHub) watch(key string, recursive, stream bool, index, storeInde
 
 	if ok { // add the new watcher to the back of the list
 		elem = l.PushBack(w)
-
 	} else { // create a new list and add the new watcher
 		l = list.New()
 		elem = l.PushBack(w)
@@ -146,6 +145,7 @@ func (wh *watcherHub) notifyWatchers(e *Event, nodePath string, deleted bool) {
 					// if we successfully notify a watcher
 					// we need to remove the watcher from the list
 					// and decrease the counter
+					w.removed = true
 					l.Remove(curr)
 					atomic.AddInt64(&wh.count, -1)
 				}
