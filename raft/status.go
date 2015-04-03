@@ -50,14 +50,14 @@ func getStatus(r *raft) Status {
 
 // TODO: try to simplify this by introducing ID type into raft
 func (s Status) MarshalJSON() ([]byte, error) {
-	j := fmt.Sprintf(`{"id":"%x","term":%d,"vote":"%x","commit":%d,"lead":"%x","raftState":"%s","progress":{`,
+	j := fmt.Sprintf(`{"id":"%x","term":%d,"vote":"%x","commit":%d,"lead":"%x","raftState":%q,"progress":{`,
 		s.ID, s.Term, s.Vote, s.Commit, s.Lead, s.RaftState)
 
 	if len(s.Progress) == 0 {
 		j += "}}"
 	} else {
 		for k, v := range s.Progress {
-			subj := fmt.Sprintf(`"%x":{"match":%d,"next":%d,"state":%s},`, k, v.Match, v.Next, v.State)
+			subj := fmt.Sprintf(`"%x":{"match":%d,"next":%d,"state":%q},`, k, v.Match, v.Next, v.State)
 			j += subj
 		}
 		// remove the trailing ","
