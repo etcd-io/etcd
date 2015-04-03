@@ -202,17 +202,25 @@ func (in *inflights) add(inflight uint64) {
 
 // freeTo frees the inflights smaller or equal to the given `to` flight.
 func (in *inflights) freeTo(to uint64) {
-	for i := in.start; i < in.start+in.count; i++ {
-		idx := i
-		if i >= in.size {
-			idx -= in.size
-		}
-		if to < in.buffer[idx] {
-			in.count -= i - in.start
-			in.start = idx
+	if in.count == 0 || to < in.buffer[in.start] {
+		// out of the left side of the window
+		return
+	}
+
+	i, idx := 0, in.start
+	for i = 0; i < in.count; i++ {
+		if to < in.buffer[idx] { // found the first large inflight
 			break
 		}
+
+		// increase index and maybe rotate
+		if idx += 1; idx >= in.size {
+			idx -= in.size
+		}
 	}
+	// free i inflights and set new start index
+	in.count -= i
+	in.start = idx
 }
 
 func (in *inflights) freeFirstOne() { in.freeTo(in.buffer[in.start]) }
