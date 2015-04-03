@@ -5,7 +5,7 @@ import (
 	oldlog "log"
 	"os"
 
-	"github.com/coreos/pkg/capnslog"
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
 )
 
 var logLevel = capnslog.INFO

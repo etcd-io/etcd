@@ -20,6 +20,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/bgentry/speakeasy"
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/codegangsta/cli"
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/go-etcd/etcd"
 )
@@ -34,6 +35,31 @@ func dumpCURL(client *etcd.Client) {
 	for {
 		fmt.Fprintf(os.Stderr, "Curl-Example: %s\n", client.RecvCURL())
 	}
+}
+
+func getUsernamePasswordFromFlag(usernameFlag string) (username string, password string, err error) {
+	colon := strings.Index(usernameFlag, ":")
+	if colon == -1 {
+		username = usernameFlag
+		// Prompt for the password.
+		password, err = speakeasy.Ask("Password: ")
+		if err != nil {
+			return "", "", err
+		}
+	} else {
+		username = usernameFlag[:colon]
+		password = usernameFlag[colon+1:]
+	}
+	return username, password, nil
+}
+
+func prepAuth(client *etcd.Client, usernameFlag string) error {
+	username, password, err := getUsernamePasswordFromFlag(usernameFlag)
+	if err != nil {
+		return err
+	}
+	client.SetCredentials(username, password)
+	return nil
 }
 
 // rawhandle wraps the command function handlers and sets up the
@@ -51,6 +77,14 @@ func rawhandle(c *cli.Context, fn handlerFunc) (*etcd.Response, error) {
 
 	client := etcd.NewClient(endpoints)
 	client.SetTransport(tr)
+
+	username := c.GlobalString("username")
+	if username != "" {
+		err := prepAuth(client, username)
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	if c.GlobalBool("debug") {
 		go dumpCURL(client)

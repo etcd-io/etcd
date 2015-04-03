@@ -16,6 +16,7 @@ package command
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -24,6 +25,7 @@ import (
 	"strings"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/codegangsta/cli"
+	"github.com/coreos/etcd/client"
 	"github.com/coreos/etcd/pkg/transport"
 )
 
@@ -111,4 +113,41 @@ func getTransport(c *cli.Context) (*http.Transport, error) {
 		KeyFile:  keyfile,
 	}
 	return transport.NewTransport(tls)
+}
+
+func mustNewClient(c *cli.Context) client.Client {
+	eps, err := getEndpoints(c)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+		os.Exit(1)
+	}
+
+	tr, err := getTransport(c)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+		os.Exit(1)
+	}
+
+	cfg := client.Config{
+		Transport: tr,
+		Endpoints: eps,
+	}
+
+	uFlag := c.GlobalString("username")
+	if uFlag != "" {
+		username, password, err := getUsernamePasswordFromFlag(uFlag)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err.Error())
+			os.Exit(1)
+		}
+		cfg.Username = username
+		cfg.Password = password
+	}
+
+	hc, err := client.New(cfg)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+		os.Exit(1)
+	}
+	return hc
 }

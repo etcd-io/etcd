@@ -76,6 +76,13 @@ type Config struct {
 	// If CheckRedirect is nil, the Client uses its default policy,
 	// which is to stop after 10 consecutive requests.
 	CheckRedirect CheckRedirectFunc
+
+	// Username specifies the user credential to add as an authorization header
+	Username string
+
+	// Password is the password for the specified user to add as an authorization header
+	// to the request.
+	Password string
 }
 
 func (cfg *Config) transport() CancelableTransport {
@@ -122,7 +129,15 @@ type Client interface {
 }
 
 func New(cfg Config) (Client, error) {
-	c := &httpClusterClient{clientFactory: newHTTPClientFactory(cfg.transport(), cfg.checkRedirect())}
+	c := &httpClusterClient{
+		clientFactory: newHTTPClientFactory(cfg.transport(), cfg.checkRedirect()),
+	}
+	if cfg.Username != "" {
+		c.credentials = &credentials{
+			username: cfg.Username,
+			password: cfg.Password,
+		}
+	}
 	if err := c.reset(cfg.Endpoints); err != nil {
 		return nil, err
 	}
@@ -145,6 +160,11 @@ func newHTTPClientFactory(tr CancelableTransport, cr CheckRedirectFunc) httpClie
 	}
 }
 
+type credentials struct {
+	username string
+	password string
+}
+
 type httpClientFactory func(url.URL) httpClient
 
 type httpAction interface {
@@ -154,6 +174,7 @@ type httpAction interface {
 type httpClusterClient struct {
 	clientFactory httpClientFactory
 	endpoints     []url.URL
+	credentials   *credentials
 	sync.RWMutex
 }
 
@@ -177,10 +198,18 @@ func (c *httpClusterClient) reset(eps []string) error {
 }
 
 func (c *httpClusterClient) Do(ctx context.Context, act httpAction) (*http.Response, []byte, error) {
+	action := act
 	c.RLock()
 	leps := len(c.endpoints)
 	eps := make([]url.URL, leps)
 	n := copy(eps, c.endpoints)
+
+	if c.credentials != nil {
+		action = &authedAction{
+			act:         act,
+			credentials: *c.credentials,
+		}
+	}
 	c.RUnlock()
 
 	if leps == 0 {
@@ -197,7 +226,7 @@ func (c *httpClusterClient) Do(ctx context.Context, act httpAction) (*http.Respo
 
 	for _, ep := range eps {
 		hc := c.clientFactory(ep)
-		resp, body, err = hc.Do(ctx, act)
+		resp, body, err = hc.Do(ctx, action)
 		if err != nil {
 			if err == context.DeadlineExceeded || err == context.Canceled {
 				return nil, nil, err
@@ -311,6 +340,17 @@ func (c *simpleHTTPClient) Do(ctx context.Context, act httpAction) (*http.Respon
 	}
 
 	return resp, body, err
+}
+
+type authedAction struct {
+	act         httpAction
+	credentials credentials
+}
+
+func (a *authedAction) HTTPRequest(url url.URL) *http.Request {
+	r := a.act.HTTPRequest(url)
+	r.SetBasicAuth(a.credentials.username, a.credentials.password)
+	return r
 }
 
 type redirectFollowingHTTPClient struct {

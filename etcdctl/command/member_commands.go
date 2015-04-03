@@ -49,28 +49,8 @@ func NewMemberCommand() cli.Command {
 }
 
 func mustNewMembersAPI(c *cli.Context) client.MembersAPI {
-	eps, err := getEndpoints(c)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err.Error())
-		os.Exit(1)
-	}
 
-	tr, err := getTransport(c)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err.Error())
-		os.Exit(1)
-	}
-
-	cfg := client.Config{
-		Transport: tr,
-		Endpoints: eps,
-	}
-
-	hc, err := client.New(cfg)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err.Error())
-		os.Exit(1)
-	}
+	hc := mustNewClient(c)
 
 	if !c.GlobalBool("no-sync") {
 		ctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
