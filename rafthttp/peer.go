@@ -48,6 +48,7 @@ const (
 	maxPendingProposals = 4096
 
 	streamApp   = "streamMsgApp"
+	streamAppV2 = "streamMsgAppV2"
 	streamMsg   = "streamMsg"
 	pipelineMsg = "pipeline"
 )
@@ -55,6 +56,7 @@ const (
 var (
 	bufSizeMap = map[string]int{
 		streamApp:   streamBufSize,
+		streamAppV2: streamBufSize,
 		streamMsg:   streamBufSize,
 		pipelineMsg: pipelineBufSize,
 	}
@@ -147,7 +149,7 @@ func startPeer(tr http.RoundTripper, urls types.URLs, local, to, cid types.ID, r
 
 	go func() {
 		var paused bool
-		msgAppReader := startStreamReader(tr, picker, streamTypeMsgApp, local, to, cid, p.recvc, p.propc)
+		msgAppReader := startStreamReader(tr, picker, streamTypeMsgAppV2, local, to, cid, p.recvc, p.propc)
 		reader := startStreamReader(tr, picker, streamTypeMessage, local, to, cid, p.recvc, p.propc)
 		for {
 			select {
@@ -212,7 +214,7 @@ func (p *peer) Update(urls types.URLs) {
 func (p *peer) attachOutgoingConn(conn *outgoingConn) {
 	var ok bool
 	switch conn.t {
-	case streamTypeMsgApp:
+	case streamTypeMsgApp, streamTypeMsgAppV2:
 		ok = p.msgAppWriter.attach(conn)
 	case streamTypeMessage:
 		ok = p.writer.attach(conn)

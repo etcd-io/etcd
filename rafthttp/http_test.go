@@ -165,7 +165,7 @@ func TestServeRaftStreamPrefix(t *testing.T) {
 		},
 		{
 			RaftStreamPrefix + "/msgapp/1",
-			streamTypeMsgApp,
+			streamTypeMsgAppV2,
 		},
 		// backward compatibility
 		{

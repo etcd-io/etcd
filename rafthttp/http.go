@@ -125,13 +125,13 @@ func (h *streamHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	var t streamType
 	switch path.Dir(r.URL.Path) {
-	case path.Join(RaftStreamPrefix, string(streamTypeMsgApp)):
-		t = streamTypeMsgApp
-	case path.Join(RaftStreamPrefix, string(streamTypeMessage)):
-		t = streamTypeMessage
 	// backward compatibility
 	case RaftStreamPrefix:
 		t = streamTypeMsgApp
+	case path.Join(RaftStreamPrefix, string(streamTypeMsgApp)):
+		t = streamTypeMsgAppV2
+	case path.Join(RaftStreamPrefix, string(streamTypeMessage)):
+		t = streamTypeMessage
 	default:
 		log.Printf("rafthttp: ignored unexpected streaming request path %s", r.URL.Path)
 		http.Error(w, "invalid path", http.StatusNotFound)
