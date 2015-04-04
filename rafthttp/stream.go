@@ -30,14 +30,29 @@ import (
 	"github.com/coreos/etcd/raft/raftpb"
 )
 
-type streamType string
-
 const (
-	streamTypeMessage streamType = "message"
-	streamTypeMsgApp  streamType = "msgapp"
+	streamTypeMessage  streamType = "message"
+	streamTypeMsgAppV2 streamType = "msgappv2"
+	streamTypeMsgApp   streamType = "msgapp"
 
 	streamBufSize = 4096
 )
+
+type streamType string
+
+func (t streamType) endpoint() string {
+	switch t {
+	case streamTypeMsgApp: // for backward compatibility of v2.0
+		return RaftStreamPrefix
+	case streamTypeMsgAppV2:
+		return path.Join(RaftStreamPrefix, "msgapp")
+	case streamTypeMessage:
+		return path.Join(RaftStreamPrefix, "message")
+	default:
+		log.Panicf("rafthttp: unhandled stream type %v", t)
+		return ""
+	}
+}
 
 var (
 	// linkHeartbeatMessage is a special message used as heartbeat message in
@@ -146,6 +161,8 @@ func (cw *streamWriter) run() {
 					log.Panicf("rafthttp: unexpected parse term %s error: %v", conn.termStr, err)
 				}
 				enc = &msgAppEncoder{w: conn.Writer, fs: cw.fs}
+			case streamTypeMsgAppV2:
+				enc = &msgAppV2Encoder{w: conn.Writer, fs: cw.fs}
 			case streamTypeMessage:
 				enc = &messageEncoder{w: conn.Writer}
 			default:
@@ -263,6 +280,8 @@ func (cr *streamReader) decodeLoop(rc io.ReadCloser) error {
 	switch cr.t {
 	case streamTypeMsgApp:
 		dec = &msgAppDecoder{r: rc, local: cr.from, remote: cr.to, term: cr.msgAppTerm}
+	case streamTypeMsgAppV2:
+		dec = &msgAppV2Decoder{r: rc, local: cr.from, remote: cr.to}
 	case streamTypeMessage:
 		dec = &messageDecoder{r: rc}
 	default:
@@ -329,15 +348,7 @@ func (cr *streamReader) dial() (io.ReadCloser, error) {
 	cr.mu.Unlock()
 
 	uu := u
-	switch cr.t {
-	case streamTypeMsgApp:
-		// for backward compatibility of v2.0
-		uu.Path = path.Join(RaftStreamPrefix, cr.from.String())
-	case streamTypeMessage:
-		uu.Path = path.Join(RaftStreamPrefix, string(streamTypeMessage), cr.from.String())
-	default:
-		log.Panicf("rafthttp: unhandled stream type %v", cr.t)
-	}
+	uu.Path = path.Join(cr.t.endpoint(), cr.from.String())
 	req, err := http.NewRequest("GET", uu.String(), nil)
 	if err != nil {
 		cr.picker.unreachable(u)

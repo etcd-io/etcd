@@ -29,16 +29,24 @@ import (
 )
 
 func BenchmarkSendingMsgApp(b *testing.B) {
-	r := &countRaft{}
-	ss := &stats.ServerStats{}
-	ss.Initialize()
-	tr := NewTransporter(&http.Transport{}, types.ID(1), types.ID(1), r, nil, ss, stats.NewLeaderStats("1"))
+	// member 1
+	tr := NewTransporter(&http.Transport{}, types.ID(1), types.ID(1), &fakeRaft{}, nil, newServerStats(), stats.NewLeaderStats("1"))
 	srv := httptest.NewServer(tr.Handler())
 	defer srv.Close()
-	tr.AddPeer(types.ID(1), []string{srv.URL})
+
+	// member 2
+	r := &countRaft{}
+	tr2 := NewTransporter(&http.Transport{}, types.ID(2), types.ID(1), r, nil, newServerStats(), stats.NewLeaderStats("2"))
+	srv2 := httptest.NewServer(tr2.Handler())
+	defer srv2.Close()
+
+	tr.AddPeer(types.ID(2), []string{srv2.URL})
 	defer tr.Stop()
-	// wait for underlying stream created
-	time.Sleep(time.Second)
+	tr2.AddPeer(types.ID(1), []string{srv.URL})
+	defer tr2.Stop()
+	if !waitStreamWorking(tr.(*transport).Get(types.ID(2)).(*peer)) {
+		b.Fatalf("stream from 1 to 2 is not in work as expected")
+	}
 
 	b.ReportAllocs()
 	b.SetBytes(64)
@@ -46,7 +54,20 @@ func BenchmarkSendingMsgApp(b *testing.B) {
 	b.ResetTimer()
 	data := make([]byte, 64)
 	for i := 0; i < b.N; i++ {
-		tr.Send([]raftpb.Message{{Type: raftpb.MsgApp, To: 1, Entries: []raftpb.Entry{{Data: data}}}})
+		tr.Send([]raftpb.Message{
+			{
+				Type:  raftpb.MsgApp,
+				From:  1,
+				To:    2,
+				Index: uint64(i),
+				Entries: []raftpb.Entry{
+					{
+						Index: uint64(i + 1),
+						Data:  data,
+					},
+				},
+			},
+		})
 	}
 	// wait until all messages are received by the target raft
 	for r.count() != b.N {
