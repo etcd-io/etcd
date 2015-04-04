@@ -14,9 +14,6 @@
 
 // +build !windows,!plan9
 
-// InterruptHandler is a function that is called on receiving a
-// SIGTERM or SIGINT signal.
-
 package osutil
 
 import (
@@ -27,6 +24,8 @@ import (
 	"syscall"
 )
 
+// InterruptHandler is a function that is called on receiving a
+// SIGTERM or SIGINT signal.
 type InterruptHandler func()
 
 var (
