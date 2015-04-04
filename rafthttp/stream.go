@@ -162,7 +162,7 @@ func (cw *streamWriter) run() {
 				}
 				enc = &msgAppEncoder{w: conn.Writer, fs: cw.fs}
 			case streamTypeMsgAppV2:
-				enc = &msgAppV2Encoder{w: conn.Writer, fs: cw.fs}
+				enc = newMsgAppV2Encoder(conn.Writer, cw.fs)
 			case streamTypeMessage:
 				enc = &messageEncoder{w: conn.Writer}
 			default:
@@ -281,7 +281,7 @@ func (cr *streamReader) decodeLoop(rc io.ReadCloser) error {
 	case streamTypeMsgApp:
 		dec = &msgAppDecoder{r: rc, local: cr.from, remote: cr.to, term: cr.msgAppTerm}
 	case streamTypeMsgAppV2:
-		dec = &msgAppV2Decoder{r: rc, local: cr.from, remote: cr.to}
+		dec = newMsgAppV2Decoder(rc, cr.from, cr.to)
 	case streamTypeMessage:
 		dec = &messageDecoder{r: rc}
 	default:
