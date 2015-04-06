@@ -401,10 +401,10 @@ func TestApplyRequestOnAdminMemberAttributes(t *testing.T) {
 		Method: "PUT",
 		ID:     1,
 		Path:   path.Join(storeMembersPrefix, strconv.FormatUint(1, 16), attributesSuffix),
-		Val:    `{"Name":"abc","ClientURLs":["http://127.0.0.1:4001"]}`,
+		Val:    `{"Name":"abc","ClientURLs":["http://127.0.0.1:2379"]}`,
 	}
 	srv.applyRequest(req)
-	w := Attributes{Name: "abc", ClientURLs: []string{"http://127.0.0.1:4001"}}
+	w := Attributes{Name: "abc", ClientURLs: []string{"http://127.0.0.1:2379"}}
 	if g := cl.Member(1).Attributes; !reflect.DeepEqual(g, w) {
 		t.Errorf("attributes = %v, want %v", g, w)
 	}

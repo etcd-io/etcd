@@ -626,12 +626,12 @@ func TestHTTPClusterClientSync(t *testing.T) {
 	})
 
 	hc := &httpClusterClient{clientFactory: cf}
-	err := hc.reset([]string{"http://127.0.0.1:4001"})
+	err := hc.reset([]string{"http://127.0.0.1:2379"})
 	if err != nil {
 		t.Fatalf("unexpected error during setup: %#v", err)
 	}
 
-	want := []string{"http://127.0.0.1:4001"}
+	want := []string{"http://127.0.0.1:2379"}
 	got := hc.Endpoints()
 	if !reflect.DeepEqual(want, got) {
 		t.Fatalf("incorrect endpoints: want=%#v got=%#v", want, got)
@@ -666,12 +666,12 @@ func TestHTTPClusterClientSyncFail(t *testing.T) {
 	})
 
 	hc := &httpClusterClient{clientFactory: cf}
-	err := hc.reset([]string{"http://127.0.0.1:4001"})
+	err := hc.reset([]string{"http://127.0.0.1:2379"})
 	if err != nil {
 		t.Fatalf("unexpected error during setup: %#v", err)
 	}
 
-	want := []string{"http://127.0.0.1:4001"}
+	want := []string{"http://127.0.0.1:2379"}
 	got := hc.Endpoints()
 	if !reflect.DeepEqual(want, got) {
 		t.Fatalf("incorrect endpoints: want=%#v got=%#v", want, got)

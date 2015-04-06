@@ -54,7 +54,7 @@ func TestConfigVerifyExistingWithDiscoveryURLFail(t *testing.T) {
 	}
 	c := &ServerConfig{
 		Name:         "node1",
-		DiscoveryURL: "http://127.0.0.1:4001/abcdefg",
+		DiscoveryURL: "http://127.0.0.1:2379/abcdefg",
 		PeerURLs:     mustNewURLs(t, []string{"http://127.0.0.1:2380"}),
 		Cluster:      cluster,
 		NewCluster:   false,
@@ -105,7 +105,7 @@ func TestConfigVerifyLocalMember(t *testing.T) {
 		},
 		{
 			// Advertised peer URLs must match those in cluster-state
-			"node1=http://localhost:7001,node1=http://localhost:12345",
+			"node1=http://localhost:2380,node1=http://localhost:12345",
 			[]string{"http://localhost:12345"},
 			true,
 
@@ -113,7 +113,7 @@ func TestConfigVerifyLocalMember(t *testing.T) {
 		},
 		{
 			// Advertised peer URLs must match those in cluster-state
-			"node1=http://localhost:7001",
+			"node1=http://localhost:2380",
 			[]string{},
 			true,
 
@@ -121,7 +121,7 @@ func TestConfigVerifyLocalMember(t *testing.T) {
 		},
 		{
 			// do not care about the urls if strict is not set
-			"node1=http://localhost:7001",
+			"node1=http://localhost:2380",
 			[]string{},
 			false,
 

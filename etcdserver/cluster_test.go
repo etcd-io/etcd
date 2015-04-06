@@ -594,7 +594,7 @@ func TestClusterString(t *testing.T) {
 			),
 			3: newTestMember(
 				3,
-				[]string{"http://3.3.3.3:1234", "http://127.0.0.1:7001"},
+				[]string{"http://3.3.3.3:1234", "http://127.0.0.1:2380"},
 				"ghi",
 				nil,
 			),
@@ -613,7 +613,7 @@ func TestClusterString(t *testing.T) {
 			),
 		},
 	}
-	w := "abc=http://0.0.0.0:0000,abc=http://1.1.1.1:1111,def=http://2.2.2.2:2222,ghi=http://127.0.0.1:7001,ghi=http://3.3.3.3:1234"
+	w := "abc=http://0.0.0.0:0000,abc=http://1.1.1.1:1111,def=http://2.2.2.2:2222,ghi=http://127.0.0.1:2380,ghi=http://3.3.3.3:1234"
 	if g := cls.String(); g != w {
 		t.Fatalf("Cluster.String():\ngot  %#v\nwant %#v", g, w)
 	}

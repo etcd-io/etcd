@@ -27,7 +27,7 @@ func TestIPAddressPortSet(t *testing.T) {
 
 	fail := []string{
 		// bad IP specification
-		":4001",
+		":2379",
 		"127.0:8080",
 		"123:456",
 		// bad port specification
@@ -62,8 +62,8 @@ func TestIPAddressPortSet(t *testing.T) {
 
 func TestIPAddressPortString(t *testing.T) {
 	addresses := []string{
-		"[2001:db8::1:1234]:4001",
-		"127.0.0.1:4001",
+		"[2001:db8::1:1234]:2379",
+		"127.0.0.1:2379",
 	}
 	for i, tt := range addresses {
 		f := &IPAddressPort{}

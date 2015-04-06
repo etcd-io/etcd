@@ -50,9 +50,9 @@ type Config struct {
 	// example, a three-node cluster could be provided like so:
 	//
 	// 	Endpoints: []string{
-	//		"http://node1.example.com:4001",
+	//		"http://node1.example.com:2379",
 	//		"http://node2.example.com:2379",
-	//		"http://node3.example.com:4001",
+	//		"http://node3.example.com:2379",
 	//	}
 	//
 	// If multiple endpoints are provided, the Client will attempt to

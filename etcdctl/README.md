@@ -233,7 +233,7 @@ The following exit codes can be returned from etcdctl:
 
 ## Peers
 
-If your etcd cluster isn't available on `http://127.0.0.1:4001` you can specify
+If your etcd cluster isn't available on `http://127.0.0.1:2379` you can specify
 a `--peers` flag or `ETCDCTL_PEERS` environment variable. You can list one peer,
 or a comma-separated list of peers.
 

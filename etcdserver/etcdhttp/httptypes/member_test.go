@@ -37,23 +37,23 @@ func TestMemberUnmarshal(t *testing.T) {
 
 		// both client and peer URLs
 		{
-			body: []byte(`{"peerURLs": ["http://127.0.0.1:4001"], "clientURLs": ["http://127.0.0.1:4001"]}`),
+			body: []byte(`{"peerURLs": ["http://127.0.0.1:2379"], "clientURLs": ["http://127.0.0.1:2379"]}`),
 			wantMember: Member{
 				PeerURLs: []string{
-					"http://127.0.0.1:4001",
+					"http://127.0.0.1:2379",
 				},
 				ClientURLs: []string{
-					"http://127.0.0.1:4001",
+					"http://127.0.0.1:2379",
 				},
 			},
 		},
 
 		// multiple peer URLs
 		{
-			body: []byte(`{"peerURLs": ["http://127.0.0.1:4001", "https://example.com"]}`),
+			body: []byte(`{"peerURLs": ["http://127.0.0.1:2379", "https://example.com"]}`),
 			wantMember: Member{
 				PeerURLs: []string{
-					"http://127.0.0.1:4001",
+					"http://127.0.0.1:2379",
 					"https://example.com",
 				},
 				ClientURLs: nil,
@@ -62,11 +62,11 @@ func TestMemberUnmarshal(t *testing.T) {
 
 		// multiple client URLs
 		{
-			body: []byte(`{"clientURLs": ["http://127.0.0.1:4001", "https://example.com"]}`),
+			body: []byte(`{"clientURLs": ["http://127.0.0.1:2379", "https://example.com"]}`),
 			wantMember: Member{
 				PeerURLs: nil,
 				ClientURLs: []string{
-					"http://127.0.0.1:4001",
+					"http://127.0.0.1:2379",
 					"https://example.com",
 				},
 			},
@@ -122,7 +122,7 @@ func TestMemberCreateRequestUnmarshalFail(t *testing.T) {
 		[]byte(`{"peerURLs": "foo"}`),
 		[]byte(`{"peerURLs": ["."]}`),
 		[]byte(`{"peerURLs": []}`),
-		[]byte(`{"peerURLs": ["http://127.0.0.1:4001/foo"]}`),
+		[]byte(`{"peerURLs": ["http://127.0.0.1:2379/foo"]}`),
 		[]byte(`{"peerURLs": ["http://127.0.0.1"]}`),
 	}
 

@@ -44,13 +44,13 @@ First start a single-member cluster of etcd:
 ./bin/etcd
 ```
 
-This will bring up etcd listening on port 4001 for client communication and on port 7001 for server-to-server communication.
+This will bring up etcd listening on port 2379 for client communication and on port 2380 for server-to-server communication.
 
 Next, let's set a single key, and then retrieve it:
 
 ```
-curl -L http://127.0.0.1:4001/v2/keys/mykey -XPUT -d value="this is awesome"
-curl -L http://127.0.0.1:4001/v2/keys/mykey
+curl -L http://127.0.0.1:2379/v2/keys/mykey -XPUT -d value="this is awesome"
+curl -L http://127.0.0.1:2379/v2/keys/mykey
 ```
 
 You have successfully started an etcd and written a key to the store.
@@ -112,7 +112,7 @@ New minor versions may add additional features to the API.
 You can get the version of etcd by issuing a request to /version:
 
 ```sh
-curl -L http://127.0.0.1:4001/version
+curl -L http://127.0.0.1:2379/version
 ```
 
 #### API Versioning

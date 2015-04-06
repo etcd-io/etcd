@@ -86,7 +86,7 @@ func TestStreamReaderDialRequest(t *testing.T) {
 		tr := &roundTripperRecorder{}
 		sr := &streamReader{
 			tr:         tr,
-			picker:     mustNewURLPicker(t, []string{"http://localhost:7001"}),
+			picker:     mustNewURLPicker(t, []string{"http://localhost:2380"}),
 			t:          tt,
 			from:       types.ID(1),
 			to:         types.ID(2),
@@ -96,7 +96,7 @@ func TestStreamReaderDialRequest(t *testing.T) {
 		sr.dial()
 
 		req := tr.Request()
-		wurl := fmt.Sprintf("http://localhost:7001" + tt.endpoint() + "/1")
+		wurl := fmt.Sprintf("http://localhost:2380" + tt.endpoint() + "/1")
 		if req.URL.String() != wurl {
 			t.Errorf("#%d: url = %s, want %s", i, req.URL.String(), wurl)
 		}
@@ -133,7 +133,7 @@ func TestStreamReaderDialResult(t *testing.T) {
 		tr := newRespRoundTripper(tt.code, tt.err)
 		sr := &streamReader{
 			tr:     tr,
-			picker: mustNewURLPicker(t, []string{"http://localhost:7001"}),
+			picker: mustNewURLPicker(t, []string{"http://localhost:2380"}),
 			t:      streamTypeMessage,
 			from:   types.ID(1),
 			to:     types.ID(2),

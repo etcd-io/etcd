@@ -153,14 +153,14 @@ func TestConfigParsingOtherFlags(t *testing.T) {
 
 func TestConfigParsingV1Flags(t *testing.T) {
 	args := []string{
-		"-peer-addr=127.0.0.1:7001",
-		"-addr=127.0.0.1:4001",
+		"-peer-addr=127.0.0.1:2380",
+		"-addr=127.0.0.1:2379",
 	}
 	wcfg := NewConfig()
-	wcfg.lpurls = []url.URL{{Scheme: "http", Host: "[::]:7001"}}
-	wcfg.apurls = []url.URL{{Scheme: "http", Host: "127.0.0.1:7001"}}
-	wcfg.lcurls = []url.URL{{Scheme: "http", Host: "[::]:4001"}}
-	wcfg.acurls = []url.URL{{Scheme: "http", Host: "127.0.0.1:4001"}}
+	wcfg.lpurls = []url.URL{{Scheme: "http", Host: "[::]:2380"}}
+	wcfg.apurls = []url.URL{{Scheme: "http", Host: "127.0.0.1:2380"}}
+	wcfg.lcurls = []url.URL{{Scheme: "http", Host: "[::]:2379"}}
+	wcfg.acurls = []url.URL{{Scheme: "http", Host: "127.0.0.1:2379"}}
 
 	cfg := NewConfig()
 	if err := cfg.Parse(args); err != nil {

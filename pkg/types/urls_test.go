@@ -27,23 +27,23 @@ func TestNewURLs(t *testing.T) {
 		wurls URLs
 	}{
 		{
-			[]string{"http://127.0.0.1:4001"},
-			testutil.MustNewURLs(t, []string{"http://127.0.0.1:4001"}),
+			[]string{"http://127.0.0.1:2379"},
+			testutil.MustNewURLs(t, []string{"http://127.0.0.1:2379"}),
 		},
 		// it can trim space
 		{
-			[]string{"   http://127.0.0.1:4001    "},
-			testutil.MustNewURLs(t, []string{"http://127.0.0.1:4001"}),
+			[]string{"   http://127.0.0.1:2379    "},
+			testutil.MustNewURLs(t, []string{"http://127.0.0.1:2379"}),
 		},
 		// it does sort
 		{
 			[]string{
-				"http://127.0.0.2:4001",
-				"http://127.0.0.1:4001",
+				"http://127.0.0.2:2379",
+				"http://127.0.0.1:2379",
 			},
 			testutil.MustNewURLs(t, []string{
-				"http://127.0.0.1:4001",
-				"http://127.0.0.2:4001",
+				"http://127.0.0.1:2379",
+				"http://127.0.0.2:2379",
 			}),
 		},
 	}
@@ -65,22 +65,22 @@ func TestURLsString(t *testing.T) {
 			"",
 		},
 		{
-			testutil.MustNewURLs(t, []string{"http://127.0.0.1:4001"}),
-			"http://127.0.0.1:4001",
+			testutil.MustNewURLs(t, []string{"http://127.0.0.1:2379"}),
+			"http://127.0.0.1:2379",
 		},
 		{
 			testutil.MustNewURLs(t, []string{
-				"http://127.0.0.1:4001",
-				"http://127.0.0.2:4001",
+				"http://127.0.0.1:2379",
+				"http://127.0.0.2:2379",
 			}),
-			"http://127.0.0.1:4001,http://127.0.0.2:4001",
+			"http://127.0.0.1:2379,http://127.0.0.2:2379",
 		},
 		{
 			testutil.MustNewURLs(t, []string{
-				"http://127.0.0.2:4001",
-				"http://127.0.0.1:4001",
+				"http://127.0.0.2:2379",
+				"http://127.0.0.1:2379",
 			}),
-			"http://127.0.0.2:4001,http://127.0.0.1:4001",
+			"http://127.0.0.2:2379,http://127.0.0.1:2379",
 		},
 	}
 	for i, tt := range tests {
@@ -93,16 +93,16 @@ func TestURLsString(t *testing.T) {
 
 func TestURLsSort(t *testing.T) {
 	g := testutil.MustNewURLs(t, []string{
-		"http://127.0.0.4:4001",
-		"http://127.0.0.2:4001",
-		"http://127.0.0.1:4001",
-		"http://127.0.0.3:4001",
+		"http://127.0.0.4:2379",
+		"http://127.0.0.2:2379",
+		"http://127.0.0.1:2379",
+		"http://127.0.0.3:2379",
 	})
 	w := testutil.MustNewURLs(t, []string{
-		"http://127.0.0.1:4001",
-		"http://127.0.0.2:4001",
-		"http://127.0.0.3:4001",
-		"http://127.0.0.4:4001",
+		"http://127.0.0.1:2379",
+		"http://127.0.0.2:2379",
+		"http://127.0.0.3:2379",
+		"http://127.0.0.4:2379",
 	})
 	gurls := URLs(g)
 	gurls.Sort()
@@ -121,22 +121,22 @@ func TestURLsStringSlice(t *testing.T) {
 			[]string{},
 		},
 		{
-			testutil.MustNewURLs(t, []string{"http://127.0.0.1:4001"}),
-			[]string{"http://127.0.0.1:4001"},
+			testutil.MustNewURLs(t, []string{"http://127.0.0.1:2379"}),
+			[]string{"http://127.0.0.1:2379"},
 		},
 		{
 			testutil.MustNewURLs(t, []string{
-				"http://127.0.0.1:4001",
-				"http://127.0.0.2:4001",
+				"http://127.0.0.1:2379",
+				"http://127.0.0.2:2379",
 			}),
-			[]string{"http://127.0.0.1:4001", "http://127.0.0.2:4001"},
+			[]string{"http://127.0.0.1:2379", "http://127.0.0.2:2379"},
 		},
 		{
 			testutil.MustNewURLs(t, []string{
-				"http://127.0.0.2:4001",
-				"http://127.0.0.1:4001",
+				"http://127.0.0.2:2379",
+				"http://127.0.0.1:2379",
 			}),
-			[]string{"http://127.0.0.2:4001", "http://127.0.0.1:4001"},
+			[]string{"http://127.0.0.2:2379", "http://127.0.0.1:2379"},
 		},
 	}
 	for i, tt := range tests {
@@ -152,13 +152,13 @@ func TestNewURLsFail(t *testing.T) {
 		// no urls given
 		{},
 		// missing protocol scheme
-		{"://127.0.0.1:4001"},
+		{"://127.0.0.1:2379"},
 		// unsupported scheme
-		{"mailto://127.0.0.1:4001"},
+		{"mailto://127.0.0.1:2379"},
 		// not conform to host:port
 		{"http://127.0.0.1"},
 		// contain a path
-		{"http://127.0.0.1:4001/path"},
+		{"http://127.0.0.1:2379/path"},
 	}
 	for i, tt := range tests {
 		_, err := NewURLs(tt)
