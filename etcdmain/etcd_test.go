@@ -27,8 +27,8 @@ func TestGenClusterString(t *testing.T) {
 		wstr  string
 	}{
 		{
-			"default", []string{"http://127.0.0.1:4001"},
-			"default=http://127.0.0.1:4001",
+			"default", []string{"http://127.0.0.1:2379"},
+			"default=http://127.0.0.1:2379",
 		},
 		{
 			"node1", []string{"http://0.0.0.0:2379", "http://1.1.1.1:2379"},

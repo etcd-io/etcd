@@ -55,10 +55,10 @@ func TestSRVGetCluster(t *testing.T) {
 				&net.SRV{Target: "10.0.0.3", Port: 2480},
 			},
 			[]*net.SRV{
-				&net.SRV{Target: "10.0.0.1", Port: 7001},
+				&net.SRV{Target: "10.0.0.1", Port: 2380},
 			},
 			nil,
-			"0=https://10.0.0.1:2480,1=https://10.0.0.2:2480,2=https://10.0.0.3:2480,3=http://10.0.0.1:7001",
+			"0=https://10.0.0.1:2480,1=https://10.0.0.2:2480,2=https://10.0.0.3:2480,3=http://10.0.0.1:2380",
 		},
 		{
 			[]*net.SRV{
@@ -67,10 +67,10 @@ func TestSRVGetCluster(t *testing.T) {
 				&net.SRV{Target: "10.0.0.3", Port: 2480},
 			},
 			[]*net.SRV{
-				&net.SRV{Target: "10.0.0.1", Port: 7001},
+				&net.SRV{Target: "10.0.0.1", Port: 2380},
 			},
 			[]string{"https://10.0.0.1:2480"},
-			"dnsClusterTest=https://10.0.0.1:2480,0=https://10.0.0.2:2480,1=https://10.0.0.3:2480,2=http://10.0.0.1:7001",
+			"dnsClusterTest=https://10.0.0.1:2480,0=https://10.0.0.2:2480,1=https://10.0.0.3:2480,2=http://10.0.0.1:2380",
 		},
 	}
 

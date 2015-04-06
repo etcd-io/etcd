@@ -24,7 +24,7 @@ import (
 type URLsValue types.URLs
 
 // Set parses a command line set of URLs formatted like:
-// http://127.0.0.1:7001,http://10.1.1.2:80
+// http://127.0.0.1:2380,http://10.1.1.2:80
 func (us *URLsValue) Set(s string) error {
 	strs := strings.Split(s, ",")
 	nus, err := types.NewURLs(strs)

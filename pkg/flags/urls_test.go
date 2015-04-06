@@ -21,7 +21,7 @@ import (
 func TestValidateURLsValueBad(t *testing.T) {
 	tests := []string{
 		// bad IP specification
-		":4001",
+		":2379",
 		"127.0:8080",
 		"123:456",
 		// bad port specification

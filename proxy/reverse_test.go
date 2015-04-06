@@ -81,7 +81,7 @@ func TestReverseProxyServe(t *testing.T) {
 			transport: tt.rt,
 		}
 
-		req, _ := http.NewRequest("GET", "http://192.0.2.2:4001", nil)
+		req, _ := http.NewRequest("GET", "http://192.0.2.2:2379", nil)
 		rr := httptest.NewRecorder()
 		rp.ServeHTTP(rr, req)
 
