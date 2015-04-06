@@ -103,6 +103,26 @@ func testClusterUsingDiscovery(t *testing.T, size int) {
 	clusterMustProgress(t, c.Members)
 }
 
+func TestTLSClusterOf3UsingDiscovery(t *testing.T) {
+	defer afterTest(t)
+	dc := NewCluster(t, 1)
+	dc.Launch(t)
+	defer dc.Terminate(t)
+	// init discovery token space
+	dcc := mustNewHTTPClient(t, dc.URLs())
+	dkapi := client.NewKeysAPI(dcc)
+	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+	if _, err := dkapi.Create(ctx, "/_config/size", fmt.Sprintf("%d", 3)); err != nil {
+		t.Fatal(err)
+	}
+	cancel()
+
+	c := NewTLSClusterByDiscovery(t, 3, dc.URL(0)+"/v2/keys")
+	c.Launch(t)
+	defer c.Terminate(t)
+	clusterMustProgress(t, c.Members)
+}
+
 func TestDoubleClusterSizeOf1(t *testing.T) { testDoubleClusterSize(t, 1) }
 func TestDoubleClusterSizeOf3(t *testing.T) { testDoubleClusterSize(t, 3) }
 
@@ -114,6 +134,18 @@ func testDoubleClusterSize(t *testing.T, size int) {
 
 	for i := 0; i < size; i++ {
 		c.AddMember(t)
+	}
+	clusterMustProgress(t, c.Members)
+}
+
+func TestDoubleTLSClusterSizeOf3(t *testing.T) {
+	defer afterTest(t)
+	c := NewTLSCluster(t, 3)
+	c.Launch(t)
+	defer c.Terminate(t)
+
+	for i := 0; i < 3; i++ {
+		c.AddTLSMember(t)
 	}
 	clusterMustProgress(t, c.Members)
 }
@@ -244,6 +276,17 @@ func newCluster(t *testing.T, size int, usePeerTLS bool) *cluster {
 	return c
 }
 
+func newClusterByDiscovery(t *testing.T, size int, usePeerTLS bool, url string) *cluster {
+	c := &cluster{}
+	ms := make([]*member, size)
+	for i := 0; i < size; i++ {
+		ms[i] = mustNewMember(t, c.name(i), usePeerTLS)
+		ms[i].DiscoveryURL = url
+	}
+	c.Members = ms
+	return c
+}
+
 // NewCluster returns an unlaunched cluster of the given size which has been
 // set to use static bootstrap.
 func NewCluster(t *testing.T, size int) *cluster {
@@ -253,18 +296,15 @@ func NewCluster(t *testing.T, size int) *cluster {
 // NewClusterUsingDiscovery returns an unlaunched cluster of the given size
 // which has been set to use the given url as discovery service to bootstrap.
 func NewClusterByDiscovery(t *testing.T, size int, url string) *cluster {
-	c := &cluster{}
-	ms := make([]*member, size)
-	for i := 0; i < size; i++ {
-		ms[i] = mustNewMember(t, c.name(i), false)
-		ms[i].DiscoveryURL = url
-	}
-	c.Members = ms
-	return c
+	return newClusterByDiscovery(t, size, false, url)
 }
 
 func NewTLSCluster(t *testing.T, size int) *cluster {
 	return newCluster(t, size, true)
+}
+
+func NewTLSClusterByDiscovery(t *testing.T, size int, url string) *cluster {
+	return newClusterByDiscovery(t, size, true, url)
 }
 
 func (c *cluster) Launch(t *testing.T) {
@@ -317,17 +357,20 @@ func (c *cluster) HTTPMembers() []client.Member {
 	return ms
 }
 
-func (c *cluster) AddMember(t *testing.T) {
+func (c *cluster) addMember(t *testing.T, usePeerTLS bool) {
 	clusterStr := c.Members[0].Cluster.String()
 	idx := len(c.Members)
-	// TODO: support add TLS member
-	m := mustNewMember(t, c.name(idx), false)
+	m := mustNewMember(t, c.name(idx), usePeerTLS)
+	scheme := "http"
+	if usePeerTLS {
+		scheme = "https"
+	}
 
 	// send add request to the cluster
 	cc := mustNewHTTPClient(t, []string{c.URL(0)})
 	ma := client.NewMembersAPI(cc)
 	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
-	peerURL := "http://" + m.PeerListeners[0].Addr().String()
+	peerURL := scheme + "://" + m.PeerListeners[0].Addr().String()
 	if _, err := ma.Add(ctx, peerURL); err != nil {
 		t.Fatalf("add member on %s error: %v", c.URL(0), err)
 	}
@@ -338,7 +381,7 @@ func (c *cluster) AddMember(t *testing.T) {
 	c.waitMembersMatch(t, members)
 
 	for _, ln := range m.PeerListeners {
-		clusterStr += fmt.Sprintf(",%s=http://%s", m.Name, ln.Addr().String())
+		clusterStr += fmt.Sprintf(",%s=%s://%s", m.Name, scheme, ln.Addr().String())
 	}
 	var err error
 	m.Cluster, err = etcdserver.NewClusterFromString(clusterName, clusterStr)
@@ -352,6 +395,14 @@ func (c *cluster) AddMember(t *testing.T) {
 	c.Members = append(c.Members, m)
 	// wait cluster to be stable to receive future client requests
 	c.waitMembersMatch(t, c.HTTPMembers())
+}
+
+func (c *cluster) AddMember(t *testing.T) {
+	c.addMember(t, false)
+}
+
+func (c *cluster) AddTLSMember(t *testing.T) {
+	c.addMember(t, true)
 }
 
 func (c *cluster) RemoveMember(t *testing.T, id uint64) {
