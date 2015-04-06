@@ -75,7 +75,7 @@ proxy flags:
 
 security flags:
 
-	--ca-file ''
+	--ca-file '' [DEPRECATED]
 		path to the client server TLS CA file.
 	--cert-file ''
 		path to the client server TLS cert file.
@@ -85,7 +85,7 @@ security flags:
 		enable client cert authentication.
 	--trusted-ca-file ''
 		path to the client server TLS trusted CA key file.
-	--peer-ca-file ''
+	--peer-ca-file '' [DEPRECATED]
 		path to the peer server TLS CA file.
 	--peer-cert-file ''
 		path to the peer server TLS cert file.
