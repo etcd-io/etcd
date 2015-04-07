@@ -39,7 +39,7 @@ function package {
 	if [ ${GOOS} == "windows" ]; then
 		ext=".exe"
 	fi
-	for bin in etcd etcdctl etcd-migrate; do
+	for bin in etcd etcdctl; do
 		cp ${srcdir}/${bin} ${target}/${bin}${ext}
 	done
 
