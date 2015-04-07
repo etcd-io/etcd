@@ -25,7 +25,7 @@ https://github.com/coreos/etcd/blob/master/Documentation/configuration.md.
 
 - The disk format within the data dir has changed. etcd 2.0 should be able to auto upgrade the old data format. Instructions on doing so manually are in the [migration tool doc][migrationtooldoc].
 
-[migrationtooldoc]: https://github.com/coreos/etcd/blob/master/Documentation/0_4_migration_tool.md
+[migrationtooldoc]: ../tools/etcd-migrate/README.md
 
 #### Key-Value API
 
