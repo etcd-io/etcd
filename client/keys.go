@@ -234,6 +234,9 @@ type Node struct {
 	// Key represents the unique location of this Node (e.g. "/foo/bar").
 	Key string `json:"key"`
 
+	// Dir reports whether node describes a directory.
+	Dir bool `json:"dir,omitempty"`
+
 	// Value is the current data stored on this Node. If this Node
 	// is a directory, Value will be empty.
 	Value string `json:"value"`
@@ -248,10 +251,16 @@ type Node struct {
 
 	// ModifiedIndex is the etcd index at-which this Node was last modified.
 	ModifiedIndex uint64 `json:"modifiedIndex"`
+
+	// Expiration is the server side expiration time of the key.
+	Expiration *time.Time `json:"expiration,omitempty"`
+
+	// TTL is the time to live of the key in second.
+	TTL int64 `json:"ttl,omitempty"`
 }
 
 func (n *Node) String() string {
-	return fmt.Sprintf("{Key: %s, CreatedIndex: %d, ModifiedIndex: %d}", n.Key, n.CreatedIndex, n.ModifiedIndex)
+	return fmt.Sprintf("{Key: %s, CreatedIndex: %d, ModifiedIndex: %d, TTL: %d}", n.Key, n.CreatedIndex, n.ModifiedIndex, n.TTL)
 }
 
 type httpKeysAPI struct {
