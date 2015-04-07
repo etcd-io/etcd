@@ -483,6 +483,9 @@ func assertRequest(got http.Request, wantMethod string, wantURL *url.URL, wantHe
 }
 
 func TestUnmarshalSuccessfulResponse(t *testing.T) {
+	var expiration time.Time
+	expiration.UnmarshalText([]byte("2015-04-07T04:40:23.044979686Z"))
+
 	tests := []struct {
 		hdr     string
 		body    string
@@ -518,13 +521,33 @@ func TestUnmarshalSuccessfulResponse(t *testing.T) {
 		// Node
 		{
 			hdr:  "15",
-			body: `{"action":"get", "node": {"key": "/foo", "value": "bar", "modifiedIndex": 12, "createdIndex": 10}}`,
+			body: `{"action":"get", "node": {"key": "/foo", "value": "bar", "modifiedIndex": 12, "createdIndex": 10, "ttl": 10, "expiration": "2015-04-07T04:40:23.044979686Z"}}`,
 			wantRes: &Response{
 				Action: "get",
 				Index:  15,
 				Node: &Node{
 					Key:           "/foo",
 					Value:         "bar",
+					ModifiedIndex: 12,
+					CreatedIndex:  10,
+					TTL:           10,
+					Expiration:    &expiration,
+				},
+				PrevNode: nil,
+			},
+			wantErr: false,
+		},
+
+		// Node Dir
+		{
+			hdr:  "15",
+			body: `{"action":"get", "node": {"key": "/foo", "dir": true, "modifiedIndex": 12, "createdIndex": 10}}`,
+			wantRes: &Response{
+				Action: "get",
+				Index:  15,
+				Node: &Node{
+					Key:           "/foo",
+					Dir:           true,
 					ModifiedIndex: 12,
 					CreatedIndex:  10,
 				},
