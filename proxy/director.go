@@ -16,6 +16,7 @@ package proxy
 
 import (
 	"log"
+	"math/rand"
 	"net/url"
 	"sync"
 	"time"
@@ -65,6 +66,13 @@ func (d *director) refresh() {
 		}
 		endpoints = append(endpoints, newEndpoint(*uu))
 	}
+
+	// shuffle array to avoid connections being "stuck" to a single endpoint
+	for i := range endpoints {
+		j := rand.Intn(i + 1)
+		endpoints[i], endpoints[j] = endpoints[j], endpoints[i]
+	}
+
 	d.ep = endpoints
 }
 
