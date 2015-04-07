@@ -4,6 +4,8 @@ etcd can now run as a transparent proxy. Running etcd as a proxy allows for easi
 
 etcd currently supports two proxy modes: `readwrite` and `readonly`. The default mode is `readwrite`, which forwards both read and write requests to the etcd cluster. A `readonly` etcd proxy only forwards read requests to the etcd cluster, and returns `HTTP 501` to all write requests. 
 
+etcd will shuffle the list of cluster members periodically to avoid sending all connections to a single member.
+
 ### Using an etcd proxy
 To start etcd in proxy mode, you need to provide three flags: `proxy`, `listen-client-urls`, and `initial-cluster` (or `discovery`). 
 
