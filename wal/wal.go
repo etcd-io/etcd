@@ -298,8 +298,8 @@ func (w *WAL) cut() error {
 	fpath := path.Join(w.dir, walName(w.seq+1, w.enti+1))
 	ftpath := fpath + ".tmp"
 
-	// create a temp wal file with name sequence + 1
-	ft, err := os.OpenFile(ftpath, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0600)
+	// create a temp wal file with name sequence + 1, or tuncate the existing one
+	ft, err := os.OpenFile(ftpath, os.O_WRONLY|os.O_APPEND|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
 		return err
 	}
