@@ -14,7 +14,13 @@
 
 package etcdserver
 
-import "github.com/coreos/etcd/Godeps/_workspace/src/github.com/prometheus/client_golang/prometheus"
+import (
+	"log"
+	"time"
+
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/prometheus/client_golang/prometheus"
+	"github.com/coreos/etcd/pkg/runtime"
+)
 
 var (
 	// TODO: with label in v3?
@@ -32,10 +38,42 @@ var (
 		Name: "etcdserver_proposal_failed_total",
 		Help: "The total number of failed proposals.",
 	})
+
+	fileDescriptorUsed = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "file_descriptors_used",
+		Help: "The number of file descriptors used",
+	})
 )
 
 func init() {
 	prometheus.MustRegister(proposeDurations)
 	prometheus.MustRegister(proposePending)
 	prometheus.MustRegister(proposeFailed)
+	prometheus.MustRegister(fileDescriptorUsed)
+}
+
+func monitorFileDescriptor(done <-chan struct{}) {
+	ticker := time.NewTicker(5 * time.Second)
+	defer ticker.Stop()
+	for {
+		used, err := runtime.FDUsage()
+		if err != nil {
+			log.Printf("etcdserver: cannot monitor file descriptor usage (%v)", err)
+			return
+		}
+		fileDescriptorUsed.Set(float64(used))
+		limit, err := runtime.FDLimit()
+		if err != nil {
+			log.Printf("etcdserver: cannot monitor file descriptor usage (%v)", err)
+			return
+		}
+		if used >= limit/5*4 {
+			log.Printf("etcdserver: 80%% of the file descriptor limit is used [used = %d, limit = %d]", used, limit)
+		}
+		select {
+		case <-ticker.C:
+		case <-done:
+			return
+		}
+	}
 }
