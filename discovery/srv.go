@@ -53,7 +53,8 @@ func SRVGetCluster(name, dns string, defaultToken string, apurls types.URLs) (st
 			return err
 		}
 		for _, srv := range addrs {
-			host := net.JoinHostPort(srv.Target, fmt.Sprintf("%d", srv.Port))
+			target := strings.TrimSuffix(srv.Target, ".")
+			host := net.JoinHostPort(target, fmt.Sprintf("%d", srv.Port))
 			tcpAddr, err := resolveTCPAddr("tcp", host)
 			if err != nil {
 				log.Printf("discovery: Couldn't resolve host %s during SRV discovery", host)
