@@ -280,7 +280,7 @@ func initialClusterFromName(name string) string {
 }
 
 func (cfg *config) resolveUrls() error {
-	return netutil.ResolveTCPAddrs(cfg.lpurls, cfg.apurls, cfg.lcurls, cfg.acurls)
+	return netutil.ResolveTCPAddrs(cfg.lpurls, cfg.apurls, cfg.lcurls)
 }
 
 func (cfg config) isNewCluster() bool          { return cfg.clusterState.String() == clusterStateFlagNew }
