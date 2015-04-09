@@ -109,7 +109,7 @@ To start etcd automatically using custom settings at startup in Linux, using a [
 
 The security flags help to [build a secure etcd cluster][security].
 
-##### -ca-file
+##### -ca-file [DEPRECATED]
 + Path to the client server TLS CA file.
 + default: none
 
@@ -121,7 +121,15 @@ The security flags help to [build a secure etcd cluster][security].
 + Path to the client server TLS key file.
 + default: none
 
-##### -peer-ca-file
+##### -client-cert-auth
++ Enable client cert authentication.
++ default: false
+
+##### -trusted-ca-file
++ Path to the client server TLS trusted CA key file.
++ default: none
+
+##### -peer-ca-file [DEPRECATED]
 + Path to the peer server TLS CA file.
 + default: none
 
@@ -131,6 +139,14 @@ The security flags help to [build a secure etcd cluster][security].
 
 ##### -peer-key-file
 + Path to the peer server TLS key file.
++ default: none
+
+##### -peer-client-cert-auth
++ Enable peer client cert authentication.
++ default: false
+
+##### -peer-trusted-ca-file
++ Path to the peer server TLS trusted CA file.
 + default: none
 
 ### Unsafe Flags

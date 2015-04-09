@@ -18,7 +18,9 @@ etcd takes several certificate related configuration options, either through com
 
 `--key-file=<path>`: Key for the certificate. Must be unencrypted.
 
-`--ca-file=<path>`: When this is set etcd will check all incoming HTTPS requests for a client certificate signed by the supplied CA, requests that don't supply a valid client certificate will fail.
+`--client-cert-auth`: When this is set etcd will check all incoming HTTPS requests for a client certificate signed by the trusted CA, requests that don't supply a valid client certificate will fail.
+
+`--trusted-ca-file=<path>`: Trusted certificate authority.
 
 **Peer (server-to-server / cluster) communication:**
 
@@ -28,7 +30,9 @@ The peer options work the same way as the client-to-server options:
 
 `--peer-key-file=<path>`: Key for the certificate. Must be unencrypted.
 
-`--peer-ca-file=<path>`: When set, etcd will check all incoming peer requests from the cluster for valid client certificates signed by the supplied CA.
+`--peer-client-cert-auth`: When set, etcd will check all incoming peer requests from the cluster for valid client certificates signed by the supplied CA.
+
+`--peer-trusted-ca-file=<path>`: Trusted certificate authority.
 
 If either a client-to-server or peer certificate is supplied the key must also be set. All of these configuration options are also available through the environment variables, `ETCD_CA_FILE`, `ETCD_PEER_CA_FILE` and so on.
 
@@ -68,11 +72,9 @@ You need the same files mentioned in the first example for this, as well as a ke
 
 ```sh
 $ etcd -name infra0 -data-dir infra0 \
-  -ca-file=/path/to/ca.crt -cert-file=/path/to/server.crt -key-file=/path/to/server.key \
+  -client-cert-auth -trusted-ca-file=/path/to/ca.crt -cert-file=/path/to/server.crt -key-file=/path/to/server.key \
   -advertise-client-urls https://127.0.0.1:2379 -listen-client-urls https://127.0.0.1:2379
 ```
-
-Notice that the addition of the `-ca-file` option automatically enables client certificate checking.
 
 Now try the same request as above to this server:
 
@@ -130,13 +132,13 @@ DISCOVERY_URL=... # from https://discovery.etcd.io/new
 
 # member1
 $ etcd -name infra1 -data-dir infra1 \
-  -peer-ca-file=/path/to/ca.crt -peer-cert-file=/path/to/member1.crt -peer-key-file=/path/to/member1.key \
+  -peer-client-cert-auth -peer-trusted-ca-file=/path/to/ca.crt -peer-cert-file=/path/to/member1.crt -peer-key-file=/path/to/member1.key \
   -initial-advertise-peer-urls=https://10.0.1.10:2380 -listen-peer-urls=https://10.0.1.10:2380 \
   -discovery ${DISCOVERY_URL}
 
 # member2
 $ etcd -name infra2 -data-dir infra2 \
-  -peer-ca-file=/path/to/ca.crt -peer-cert-file=/path/to/member2.crt -peer-key-file=/path/to/member2.key \
+  -peer-client-cert-atuh -peer-trusted-ca-file=/path/to/ca.crt -peer-cert-file=/path/to/member2.crt -peer-key-file=/path/to/member2.key \
   -initial-advertise-peer-urls=https://10.0.1.11:2380 -listen-peer-urls=https://10.0.1.11:2380 \
   -discovery ${DISCOVERY_URL}
 ```
