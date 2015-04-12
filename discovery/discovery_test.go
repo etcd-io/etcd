@@ -414,6 +414,10 @@ type clientWithResp struct {
 }
 
 func (c *clientWithResp) Create(ctx context.Context, key string, value string) (*client.Response, error) {
+	return c.CreateWithOptions(ctx, key, value, nil)
+}
+
+func (c *clientWithResp) CreateWithOptions(ctx context.Context, key string, value string, opts *client.CreateOptions) (*client.Response, error) {
 	if len(c.rs) == 0 {
 		return &client.Response{}, nil
 	}
@@ -442,6 +446,10 @@ type clientWithErr struct {
 }
 
 func (c *clientWithErr) Create(ctx context.Context, key string, value string) (*client.Response, error) {
+	return c.CreateWithOptions(ctx, key, value, nil)
+}
+
+func (c *clientWithErr) CreateWithOptions(ctx context.Context, key string, value string, opts *client.CreateOptions) (*client.Response, error) {
 	return &client.Response{}, c.err
 }
 
@@ -483,11 +491,15 @@ type clientWithRetry struct {
 }
 
 func (c *clientWithRetry) Create(ctx context.Context, key string, value string) (*client.Response, error) {
+	return c.CreateWithOptions(ctx, key, value, nil)
+}
+
+func (c *clientWithRetry) CreateWithOptions(ctx context.Context, key string, value string, opts *client.CreateOptions) (*client.Response, error) {
 	if c.failCount < c.failTimes {
 		c.failCount++
 		return nil, context.DeadlineExceeded
 	}
-	return c.clientWithResp.Create(ctx, key, value)
+	return c.clientWithResp.CreateWithOptions(ctx, key, value, opts)
 }
 
 func (c *clientWithRetry) Get(ctx context.Context, key string, opts *client.GetOptions) (*client.Response, error) {
