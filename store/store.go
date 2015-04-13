@@ -49,7 +49,7 @@ type Store interface {
 	CompareAndSwap(nodePath string, prevValue string, prevIndex uint64,
 		value string, expireTime time.Time) (*Event, error)
 	Delete(nodePath string, dir, recursive bool) (*Event, error)
-	CompareAndDelete(nodePath string, prevValue string, prevIndex uint64) (*Event, error)
+	CompareAndDelete(nodePath string, prevValue string, prevIndex uint64, dir, recursive bool) (*Event, error)
 
 	Watch(prefix string, recursive, stream bool, sinceIndex uint64) (Watcher, error)
 
@@ -316,7 +316,7 @@ func (s *store) Delete(nodePath string, dir, recursive bool) (*Event, error) {
 	return e, nil
 }
 
-func (s *store) CompareAndDelete(nodePath string, prevValue string, prevIndex uint64) (*Event, error) {
+func (s *store) CompareAndDelete(nodePath string, prevValue string, prevIndex uint64, dir bool, recursive bool) (*Event, error) {
 	nodePath = path.Clean(path.Join("/", nodePath))
 
 	s.worldLock.Lock()
@@ -327,11 +327,6 @@ func (s *store) CompareAndDelete(nodePath string, prevValue string, prevIndex ui
 	if err != nil { // if the node does not exist, return error
 		s.Stats.Inc(CompareAndDeleteFail)
 		return nil, err
-	}
-
-	if n.IsDir() { // can only compare and delete file
-		s.Stats.Inc(CompareAndSwapFail)
-		return nil, etcdErr.NewError(etcdErr.EcodeNotFile, nodePath, s.CurrentIndex)
 	}
 
 	// If both of the prevValue and prevIndex are given, we will test both of them.
@@ -354,7 +349,7 @@ func (s *store) CompareAndDelete(nodePath string, prevValue string, prevIndex ui
 		s.WatcherHub.notifyWatchers(e, path, true)
 	}
 
-	err = n.Remove(dir, false, callback)
+	err = n.Remove(dir, recursive, callback)
 	if err != nil {
 		return nil, err
 	}
