@@ -650,9 +650,9 @@ func (s *EtcdServer) publish(retryInterval time.Duration) {
 }
 
 func (s *EtcdServer) send(ms []raftpb.Message) {
-	for _, m := range ms {
-		if !s.Cluster.IsIDRemoved(types.ID(m.To)) {
-			m.To = 0
+	for i, _ := range ms {
+		if s.Cluster.IsIDRemoved(types.ID(ms[i].To)) {
+			ms[i].To = 0
 		}
 	}
 	s.r.transport.Send(ms)
