@@ -82,7 +82,10 @@ func (s *Snapshotter) Load() (*raftpb.Snapshot, error) {
 			break
 		}
 	}
-	return snap, err
+	if err != nil {
+		return nil, ErrNoSnapshot
+	}
+	return snap, nil
 }
 
 func loadSnap(dir, name string) (*raftpb.Snapshot, error) {

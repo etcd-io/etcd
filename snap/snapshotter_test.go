@@ -76,7 +76,7 @@ func TestBadCRC(t *testing.T) {
 	// fake a crc mismatch
 	crcTable = crc32.MakeTable(crc32.Koopman)
 
-	_, err = ss.Load()
+	_, err = Read(path.Join(dir, fmt.Sprintf("%016x-%016x.snap", 1, 1)))
 	if err == nil || err != ErrCRCMismatch {
 		t.Errorf("err = %v, want %v", err, ErrCRCMismatch)
 	}
@@ -182,7 +182,7 @@ func TestNoSnapshot(t *testing.T) {
 	defer os.RemoveAll(dir)
 	ss := New(dir)
 	_, err = ss.Load()
-	if err == nil || err != ErrNoSnapshot {
+	if err != ErrNoSnapshot {
 		t.Errorf("err = %v, want %v", err, ErrNoSnapshot)
 	}
 }
@@ -195,14 +195,35 @@ func TestEmptySnapshot(t *testing.T) {
 	}
 	defer os.RemoveAll(dir)
 
-	err = ioutil.WriteFile(path.Join(dir, "1.snap"), []byte("shit"), 0x700)
+	err = ioutil.WriteFile(path.Join(dir, "1.snap"), []byte(""), 0x700)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = Read(path.Join(dir, "1.snap"))
+	if err != ErrEmptySnapshot {
+		t.Errorf("err = %v, want %v", err, ErrEmptySnapshot)
+	}
+}
+
+// TestAllSnapshotBroken ensures snapshotter returens
+// ErrNoSnapshot if all the snapshots are broken.
+func TestAllSnapshotBroken(t *testing.T) {
+	dir := path.Join(os.TempDir(), "snapshot")
+	err := os.Mkdir(dir, 0700)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(dir)
+
+	err = ioutil.WriteFile(path.Join(dir, "1.snap"), []byte("bad"), 0x700)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	ss := New(dir)
 	_, err = ss.Load()
-	if err == nil || err != ErrEmptySnapshot {
-		t.Errorf("err = %v, want %v", err, ErrEmptySnapshot)
+	if err != ErrNoSnapshot {
+		t.Errorf("err = %v, want %v", err, ErrNoSnapshot)
 	}
 }
