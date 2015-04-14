@@ -103,8 +103,14 @@ type KeysAPI interface {
 	// conditions in an DeleteOptions object.
 	Delete(ctx context.Context, key string, opts *DeleteOptions) (*Response, error)
 
-	// Create is an alias for Set w/ PrevExist=false
+	// Create is an alias for CreateWithOptions(ctx, key, value, nil).
 	Create(ctx context.Context, key, value string) (*Response, error)
+
+	// CreateWithOptions is used to create a Node.
+	CreateWithOptions(ctx context.Context, key, value string, opts *CreateOptions) (*Response, error)
+
+	// CreateInOrder is used to atomically create in-order keys within the given directory.
+	CreateInOrder(ctx context.Context, dir, value string, opts *CreateInOrderOptions) (*Response, error)
 
 	// Update is an alias for Set w/ PrevExist=true
 	Update(ctx context.Context, key, value string) (*Response, error)
@@ -131,6 +137,27 @@ type WatcherOptions struct {
 	// to false (default), events will be limited to those that
 	// occur for the exact key.
 	Recursive bool
+}
+
+type CreateOptions struct {
+
+	// TTL defines a period of time after-which the Node should
+	// expire and no longer exist. Values <= 0 are ignored. Given
+	// that the zero-value is ignored, TTL cannot be used to set
+	// a TTL of 0.
+	TTL time.Duration
+
+	// if PrevIgnore is set to true, then the create operation
+	// will ignore if the node already exists.
+	PrevIgnore bool
+}
+
+type CreateInOrderOptions struct {
+	// TTL defines a period of time after-which the Node should
+	// expire and no longer exist. Values <= 0 are ignored. Given
+	// that the zero-value is ignored, TTL cannot be used to set
+	// a TTL of 0.
+	TTL time.Duration
 }
 
 type SetOptions struct {
@@ -291,7 +318,49 @@ func (k *httpKeysAPI) Set(ctx context.Context, key, val string, opts *SetOptions
 }
 
 func (k *httpKeysAPI) Create(ctx context.Context, key, val string) (*Response, error) {
-	return k.Set(ctx, key, val, &SetOptions{PrevExist: PrevNoExist})
+	return k.CreateWithOptions(ctx, key, val, nil)
+}
+
+func (k *httpKeysAPI) CreateWithOptions(ctx context.Context, key, val string, opts *CreateOptions) (*Response, error) {
+	act := &setAction{
+		Prefix:    k.prefix,
+		Key:       key,
+		Value:     val,
+		PrevExist: PrevNoExist,
+	}
+
+	if opts != nil {
+		act.TTL = opts.TTL
+		if opts.PrevIgnore {
+			act.PrevExist = PrevIgnore
+		}
+	}
+
+	resp, body, err := k.client.Do(ctx, act)
+	if err != nil {
+		return nil, err
+	}
+
+	return unmarshalHTTPResponse(resp.StatusCode, resp.Header, body)
+}
+
+func (k *httpKeysAPI) CreateInOrder(ctx context.Context, dir, val string, opts *CreateInOrderOptions) (*Response, error) {
+	act := &createInOrderAction{
+		Prefix: k.prefix,
+		Dir:    dir,
+		Value:  val,
+	}
+
+	if opts != nil {
+		act.TTL = opts.TTL
+	}
+
+	resp, body, err := k.client.Do(ctx, act)
+	if err != nil {
+		return nil, err
+	}
+
+	return unmarshalHTTPResponse(resp.StatusCode, resp.Header, body)
 }
 
 func (k *httpKeysAPI) Update(ctx context.Context, key, val string) (*Response, error) {
@@ -489,6 +558,28 @@ func (a *deleteAction) HTTPRequest(ep url.URL) *http.Request {
 	req, _ := http.NewRequest("DELETE", u.String(), nil)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
+	return req
+}
+
+type createInOrderAction struct {
+	Prefix string
+	Dir    string
+	Value  string
+	TTL    time.Duration
+}
+
+func (a *createInOrderAction) HTTPRequest(ep url.URL) *http.Request {
+	u := v2KeysURL(ep, a.Prefix, a.Dir)
+
+	form := url.Values{}
+	form.Add("value", a.Value)
+	if a.TTL > 0 {
+		form.Add("ttl", strconv.FormatUint(uint64(a.TTL.Seconds()), 10))
+	}
+	body := strings.NewReader(form.Encode())
+
+	req, _ := http.NewRequest("POST", u.String(), body)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	return req
 }
 
