@@ -44,10 +44,10 @@ func NewBackupCommand() cli.Command {
 
 // handleBackup handles a request that intends to do a backup.
 func handleBackup(c *cli.Context) {
-	srcSnap := path.Join(c.String("data-dir"), "snap")
-	destSnap := path.Join(c.String("backup-dir"), "snap")
-	srcWAL := path.Join(c.String("data-dir"), "wal")
-	destWAL := path.Join(c.String("backup-dir"), "wal")
+	srcSnap := path.Join(c.String("data-dir"), "member", "snap")
+	destSnap := path.Join(c.String("backup-dir"), "member", "snap")
+	srcWAL := path.Join(c.String("data-dir"), "member", "wal")
+	destWAL := path.Join(c.String("backup-dir"), "member", "wal")
 
 	if err := os.MkdirAll(destSnap, 0700); err != nil {
 		log.Fatalf("failed creating backup snapshot dir %v: %v", destSnap, err)
