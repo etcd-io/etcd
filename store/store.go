@@ -40,6 +40,7 @@ func init() {
 type Store interface {
 	Version() int
 	Index() uint64
+	IsKeyDir(nodePath string) bool
 
 	Get(nodePath string, recursive, sorted bool) (*Event, error)
 	Set(nodePath string, dir bool, value string, expireTime time.Time) (*Event, error)
@@ -106,6 +107,17 @@ func (s *store) Index() uint64 {
 	s.worldLock.RLock()
 	defer s.worldLock.RUnlock()
 	return s.CurrentIndex
+}
+
+func (s *store) IsKeyDir(nodePath string) bool {
+	node, _ := s.internalGet(nodePath)
+	// If there is an error, then either the path does not exist or it is not
+	// a dir. Either way, it is not a dir, so return false
+	if node != nil {
+		return node.IsDir()
+	} else {
+		return false
+	}
 }
 
 // Get returns a get event.

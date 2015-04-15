@@ -28,6 +28,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
+	etcdErr "github.com/coreos/etcd/error"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/pkg/idutil"
 	"github.com/coreos/etcd/pkg/pbutil"
@@ -289,6 +290,17 @@ func TestApplyRequest(t *testing.T) {
 				{
 					Name:   "CompareAndSwap",
 					Params: []interface{}{"", "bar", uint64(1), "", time.Time{}},
+				},
+			},
+		},
+		// PUT with PrevExist and Dir both true ==> IsKeyDir
+		{
+			pb.Request{Method: "PUT", ID: 1, Dir: true, PrevExist: pbutil.Boolp(true)},
+			Response{err: etcdErr.NewError(etcdErr.EcodeNotDir, "", 0)},
+			[]testutil.Action{
+				{
+					Name:   "IsKeyDir",
+					Params: []interface{}{""},
 				},
 			},
 		},
@@ -1132,6 +1144,13 @@ type storeRecorder struct{ testutil.Recorder }
 
 func (s *storeRecorder) Version() int  { return 0 }
 func (s *storeRecorder) Index() uint64 { return 0 }
+func (s *storeRecorder) IsKeyDir(nodePath string) bool {
+	s.Record(testutil.Action{
+		Name:   "IsKeyDir",
+		Params: []interface{}{nodePath},
+	})
+	return false
+}
 func (s *storeRecorder) Get(path string, recursive, sorted bool) (*store.Event, error) {
 	s.Record(testutil.Action{
 		Name:   "Get",

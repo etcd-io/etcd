@@ -28,6 +28,7 @@ import (
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/discovery"
+	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/etcdserver/etcdhttp/httptypes"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/etcdserver/stats"
@@ -702,6 +703,9 @@ func (s *EtcdServer) applyRequest(r pb.Request) Response {
 		switch {
 		case existsSet:
 			if exists {
+				if r.Dir && !s.store.IsKeyDir(r.Path) {
+					return f(nil, etcdErr.NewError(etcdErr.EcodeNotDir, r.Path, s.store.Index()))
+				}
 				return f(s.store.Update(r.Path, r.Val, expr))
 			}
 			return f(s.store.Create(r.Path, r.Dir, r.Val, false, expr))

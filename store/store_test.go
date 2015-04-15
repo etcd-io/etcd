@@ -148,6 +148,21 @@ func TestStoreGetSorted(t *testing.T) {
 	}
 }
 
+func Test(t *testing.T) {
+	s := newStore()
+	// Set /foo to be a directory
+	s.Set("/foo", true, "", Permanent)
+	val := s.IsKeyDir("/foo")
+	assert.True(t, val, "")
+	// Set /foo/bar="baz"
+	s.Set("/foo/bar", false, "baz", Permanent)
+	val = s.IsKeyDir("/foo/bar")
+	assert.False(t, val, "")
+	// Assert that an invalid key is false
+	val = s.IsKeyDir("/foo/invalid")
+	assert.False(t, val, "")
+}
+
 func TestSet(t *testing.T) {
 	s := newStore()
 
