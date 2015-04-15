@@ -671,7 +671,7 @@ func (s *EtcdServer) apply(es []raftpb.Entry, confState *raftpb.ConfState) (uint
 		case raftpb.EntryNormal:
 			var r pb.Request
 			pbutil.MustUnmarshal(&r, e.Data)
-			s.w.Trigger(r.ID, s.applyRequest(r))
+			s.w.Trigger(r.ID, s.applyRequest(r, e.Index))
 		case raftpb.EntryConfChange:
 			var cc raftpb.ConfChange
 			pbutil.MustUnmarshal(&cc, e.Data)
@@ -689,7 +689,7 @@ func (s *EtcdServer) apply(es []raftpb.Entry, confState *raftpb.ConfState) (uint
 
 // applyRequest interprets r as a call to store.X and returns a Response interpreted
 // from store.Event
-func (s *EtcdServer) applyRequest(r pb.Request) Response {
+func (s *EtcdServer) applyRequest(r pb.Request, index uint64) Response {
 	f := func(ev *store.Event, err error) Response {
 		return Response{Event: ev, err: err}
 	}
@@ -718,7 +718,7 @@ func (s *EtcdServer) applyRequest(r pb.Request) Response {
 				if err := json.Unmarshal([]byte(r.Val), &attr); err != nil {
 					log.Panicf("unmarshal %s should never fail: %v", r.Val, err)
 				}
-				s.Cluster.UpdateAttributes(id, attr)
+				s.Cluster.UpdateAttributes(id, attr, index)
 			}
 			return f(s.store.Set(r.Path, r.Dir, r.Val, expr))
 		}
