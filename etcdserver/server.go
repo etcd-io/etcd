@@ -725,7 +725,7 @@ func (s *EtcdServer) applyRequest(r pb.Request) Response {
 	case "DELETE":
 		switch {
 		case r.PrevIndex > 0 || r.PrevValue != "":
-			return f(s.store.CompareAndDelete(r.Path, r.PrevValue, r.PrevIndex))
+			return f(s.store.CompareAndDelete(r.Path, r.PrevValue, r.PrevIndex, r.Dir, r.Recursive))
 		default:
 			return f(s.store.Delete(r.Path, r.Dir, r.Recursive))
 		}
