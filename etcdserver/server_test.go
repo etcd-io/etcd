@@ -235,20 +235,18 @@ func TestApplyRequest(t *testing.T) {
 				},
 			},
 		},
-		// PUT with PrevExist=true *and* PrevIndex set ==> Update
-		// TODO(jonboulle): is this expected?!
+		// PUT with PrevExist=true *and* PrevIndex set ==> CompareAndSwap
 		{
 			pb.Request{Method: "PUT", ID: 1, PrevExist: pbutil.Boolp(true), PrevIndex: 1},
 			Response{Event: &store.Event{}},
 			[]testutil.Action{
 				{
-					Name:   "Update",
-					Params: []interface{}{"", "", time.Time{}},
+					Name:   "CompareAndSwap",
+					Params: []interface{}{"", "", uint64(1), "", time.Time{}},
 				},
 			},
 		},
 		// PUT with PrevExist=false *and* PrevIndex set ==> Create
-		// TODO(jonboulle): is this expected?!
 		{
 			pb.Request{Method: "PUT", ID: 1, PrevExist: pbutil.Boolp(false), PrevIndex: 1},
 			Response{Event: &store.Event{}},
