@@ -723,7 +723,11 @@ func (s *EtcdServer) applyRequest(r pb.Request) Response {
 		switch {
 		case existsSet:
 			if exists {
-				return f(s.store.Update(r.Path, r.Val, expr))
+				if r.PrevIndex == 0 && r.PrevValue == "" {
+					return f(s.store.Update(r.Path, r.Val, expr))
+				} else {
+					return f(s.store.CompareAndSwap(r.Path, r.PrevValue, r.PrevIndex, r.Val, expr))
+				}
 			}
 			return f(s.store.Create(r.Path, r.Dir, r.Val, false, expr))
 		case r.PrevIndex > 0 || r.PrevValue != "":
