@@ -521,7 +521,9 @@ func (s *EtcdServer) Do(ctx context.Context, r pb.Request) (Response, error) {
 	}
 	switch r.Method {
 	case "POST", "PUT", "DELETE", "QGET":
-		data, err := r.Marshal()
+		var raftReq pb.InternalRaftRequest
+		raftReq.V2 = &r
+		data, err := raftReq.Marshal()
 		if err != nil {
 			return Response{}, err
 		}
@@ -741,9 +743,19 @@ func (s *EtcdServer) apply(es []raftpb.Entry, confState *raftpb.ConfState) (uint
 				}
 				break
 			}
-			var r pb.Request
-			pbutil.MustUnmarshal(&r, e.Data)
-			s.w.Trigger(r.ID, s.applyRequest(r))
+
+			var raftReq pb.InternalRaftRequest
+			if !pbutil.MaybeUnmarshal(&raftReq, e.Data) { // backward compatible
+				var r pb.Request
+				pbutil.MustUnmarshal(&r, e.Data)
+				s.w.Trigger(r.ID, s.applyRequest(r))
+			} else {
+				switch {
+				case raftReq.V2 != nil:
+					req := raftReq.V2
+					s.w.Trigger(req.ID, s.applyRequest(*req))
+				}
+			}
 		case raftpb.EntryConfChange:
 			var cc raftpb.ConfChange
 			pbutil.MustUnmarshal(&cc, e.Data)

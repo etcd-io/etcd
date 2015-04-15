@@ -42,6 +42,13 @@ func MustUnmarshal(um Unmarshaler, data []byte) {
 	}
 }
 
+func MaybeUnmarshal(um Unmarshaler, data []byte) bool {
+	if err := um.Unmarshal(data); err != nil {
+		return false
+	}
+	return true
+}
+
 func GetBool(v *bool) (vv bool, set bool) {
 	if v == nil {
 		return false, false

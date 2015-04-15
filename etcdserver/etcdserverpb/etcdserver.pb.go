@@ -12,6 +12,7 @@
 	It has these top-level messages:
 		Request
 		Metadata
+		InternalRaftRequest
 */
 package etcdserverpb
 
@@ -60,6 +61,17 @@ type Metadata struct {
 func (m *Metadata) Reset()         { *m = Metadata{} }
 func (m *Metadata) String() string { return proto.CompactTextString(m) }
 func (*Metadata) ProtoMessage()    {}
+
+// An InternalRaftRequest is the union of all requests which can be
+// sent via raft.
+type InternalRaftRequest struct {
+	V2               *Request `protobuf:"bytes,1,opt,name=v2" json:"v2,omitempty"`
+	XXX_unrecognized []byte   `json:"-"`
+}
+
+func (m *InternalRaftRequest) Reset()         { *m = InternalRaftRequest{} }
+func (m *InternalRaftRequest) String() string { return proto.CompactTextString(m) }
+func (*InternalRaftRequest) ProtoMessage()    {}
 
 func init() {
 }
@@ -462,6 +474,76 @@ func (m *Metadata) Unmarshal(data []byte) error {
 
 	return nil
 }
+func (m *InternalRaftRequest) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field V2", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.V2 == nil {
+				m.V2 = &Request{}
+			}
+			if err := m.V2.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			var sizeOfWire int
+			for {
+				sizeOfWire++
+				wire >>= 7
+				if wire == 0 {
+					break
+				}
+			}
+			iNdEx -= sizeOfWire
+			skippy, err := skipEtcdserver(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, data[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	return nil
+}
 func skipEtcdserver(data []byte) (n int, err error) {
 	l := len(data)
 	iNdEx := 0
@@ -546,6 +628,22 @@ func skipEtcdserver(data []byte) (n int, err error) {
 	}
 	panic("unreachable")
 }
+func (this *InternalRaftRequest) GetValue() interface{} {
+	if this.V2 != nil {
+		return this.V2
+	}
+	return nil
+}
+
+func (this *InternalRaftRequest) SetValue(value interface{}) bool {
+	switch vt := value.(type) {
+	case *Request:
+		this.V2 = vt
+	default:
+		return false
+	}
+	return true
+}
 func (m *Request) Size() (n int) {
 	var l int
 	_ = l
@@ -582,6 +680,19 @@ func (m *Metadata) Size() (n int) {
 	_ = l
 	n += 1 + sovEtcdserver(uint64(m.NodeID))
 	n += 1 + sovEtcdserver(uint64(m.ClusterID))
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
+	return n
+}
+
+func (m *InternalRaftRequest) Size() (n int) {
+	var l int
+	_ = l
+	if m.V2 != nil {
+		l = m.V2.Size()
+		n += 1 + l + sovEtcdserver(uint64(l))
+	}
 	if m.XXX_unrecognized != nil {
 		n += len(m.XXX_unrecognized)
 	}
@@ -734,6 +845,37 @@ func (m *Metadata) MarshalTo(data []byte) (n int, err error) {
 	data[i] = 0x10
 	i++
 	i = encodeVarintEtcdserver(data, i, uint64(m.ClusterID))
+	if m.XXX_unrecognized != nil {
+		i += copy(data[i:], m.XXX_unrecognized)
+	}
+	return i, nil
+}
+
+func (m *InternalRaftRequest) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *InternalRaftRequest) MarshalTo(data []byte) (n int, err error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.V2 != nil {
+		data[i] = 0xa
+		i++
+		i = encodeVarintEtcdserver(data, i, uint64(m.V2.Size()))
+		n1, err := m.V2.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n1
+	}
 	if m.XXX_unrecognized != nil {
 		i += copy(data[i:], m.XXX_unrecognized)
 	}
