@@ -369,11 +369,13 @@ func (c *Cluster) RemoveMember(id types.ID, index uint64) {
 	}
 }
 
-func (c *Cluster) UpdateAttributes(id types.ID, attr Attributes) {
+func (c *Cluster) UpdateAttributes(id types.ID, attr Attributes, index uint64) {
 	c.Lock()
 	defer c.Unlock()
-	c.members[id].Attributes = attr
-	// TODO: update store in this function
+	if index > c.index {
+		c.members[id].Attributes = attr
+		// TODO: update store in this function
+	}
 }
 
 // UpdateRaftAttributes updates the raft attributes of the given id.

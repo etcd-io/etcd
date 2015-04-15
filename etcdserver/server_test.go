@@ -379,7 +379,7 @@ func TestApplyRequest(t *testing.T) {
 	for i, tt := range tests {
 		st := &storeRecorder{}
 		srv := &EtcdServer{store: st}
-		resp := srv.applyRequest(tt.req)
+		resp := srv.applyRequest(tt.req, 0)
 
 		if !reflect.DeepEqual(resp, tt.wresp) {
 			t.Errorf("#%d: resp = %+v, want %+v", i, resp, tt.wresp)
@@ -403,7 +403,9 @@ func TestApplyRequestOnAdminMemberAttributes(t *testing.T) {
 		Path:   path.Join(storeMembersPrefix, strconv.FormatUint(1, 16), attributesSuffix),
 		Val:    `{"Name":"abc","ClientURLs":["http://127.0.0.1:2379"]}`,
 	}
-	srv.applyRequest(req)
+	// req is committed at index 1
+	index := uint64(1)
+	srv.applyRequest(req, index)
 	w := Attributes{Name: "abc", ClientURLs: []string{"http://127.0.0.1:2379"}}
 	if g := cl.Member(1).Attributes; !reflect.DeepEqual(g, w) {
 		t.Errorf("attributes = %v, want %v", g, w)
