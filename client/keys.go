@@ -103,8 +103,11 @@ type KeysAPI interface {
 	// conditions in an DeleteOptions object.
 	Delete(ctx context.Context, key string, opts *DeleteOptions) (*Response, error)
 
-	// Create is an alias for Set w/ PrevExist=false
+	// Create is an alias for CreateWithOptions(ctx, key, value, nil).
 	Create(ctx context.Context, key, value string) (*Response, error)
+
+	// CreateWithOptions is used to create a Node.
+	CreateWithOptions(ctx context.Context, key, value string, opts *CreateOptions) (*Response, error)
 
 	// Update is an alias for Set w/ PrevExist=true
 	Update(ctx context.Context, key, value string) (*Response, error)
@@ -131,6 +134,25 @@ type WatcherOptions struct {
 	// to false (default), events will be limited to those that
 	// occur for the exact key.
 	Recursive bool
+}
+
+type CreateOptions struct {
+
+	// TTL defines a period of time after-which the Node should
+	// expire and no longer exist. Values <= 0 are ignored. Given
+	// that the zero-value is ignored, TTL cannot be used to set
+	// a TTL of 0.
+	TTL time.Duration
+
+	// InOrder specifices whether or not the the keys are created
+	// with key names that are in-order.   Generated Key names use
+	// the global etcd index, so the next key can be more than
+	// previous + 1
+	InOrder bool
+
+	// if PrevIgnore is set to true, then the create operation
+	// will ignore if the node already exists.
+	PrevIgnore bool
 }
 
 type SetOptions struct {
@@ -291,7 +313,31 @@ func (k *httpKeysAPI) Set(ctx context.Context, key, val string, opts *SetOptions
 }
 
 func (k *httpKeysAPI) Create(ctx context.Context, key, val string) (*Response, error) {
-	return k.Set(ctx, key, val, &SetOptions{PrevExist: PrevNoExist})
+	return k.CreateWithOptions(ctx, key, val, nil)
+}
+
+func (k *httpKeysAPI) CreateWithOptions(ctx context.Context, key, val string, opts *CreateOptions) (*Response, error) {
+	act := &setAction{
+		Prefix:    k.prefix,
+		Key:       key,
+		Value:     val,
+		PrevExist: PrevNoExist,
+	}
+
+	if opts != nil {
+		act.TTL = opts.TTL
+		act.InOrder = opts.InOrder
+		if opts.PrevIgnore {
+			act.PrevExist = PrevIgnore
+		}
+	}
+
+	resp, body, err := k.client.Do(ctx, act)
+	if err != nil {
+		return nil, err
+	}
+
+	return unmarshalHTTPResponse(resp.StatusCode, resp.Header, body)
 }
 
 func (k *httpKeysAPI) Update(ctx context.Context, key, val string) (*Response, error) {
@@ -431,6 +477,7 @@ type setAction struct {
 	Value     string
 	PrevValue string
 	PrevIndex uint64
+	InOrder   bool
 	PrevExist PrevExistType
 	TTL       time.Duration
 }
@@ -457,7 +504,11 @@ func (a *setAction) HTTPRequest(ep url.URL) *http.Request {
 	}
 	body := strings.NewReader(form.Encode())
 
-	req, _ := http.NewRequest("PUT", u.String(), body)
+	method := "PUT"
+	if a.InOrder {
+		method = "POST"
+	}
+	req, _ := http.NewRequest(method, u.String(), body)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	return req

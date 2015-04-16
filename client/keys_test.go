@@ -1176,17 +1176,59 @@ func TestHTTPKeysAPIDeleteResponse(t *testing.T) {
 }
 
 func TestHTTPKeysAPICreateAction(t *testing.T) {
-	act := &setAction{
-		Key:       "/foo",
-		Value:     "bar",
-		PrevExist: PrevNoExist,
-		PrevIndex: 0,
-		PrevValue: "",
-		TTL:       0,
+
+	tests := []struct {
+		opts       *CreateOptions
+		wantAction httpAction
+	}{
+		// nil CreateOptions
+		{
+			opts: nil,
+			wantAction: &setAction{
+				Key:       "/foo",
+				Value:     "bar",
+				PrevExist: PrevNoExist,
+			},
+		},
+		{
+			opts: &CreateOptions{
+				InOrder: true,
+			},
+			wantAction: &setAction{
+				Key:       "/foo",
+				Value:     "bar",
+				PrevExist: PrevNoExist,
+				InOrder:   true,
+			},
+		},
+		{
+			opts: &CreateOptions{
+				PrevIgnore: true,
+			},
+			wantAction: &setAction{
+				Key:       "/foo",
+				Value:     "bar",
+				PrevExist: PrevIgnore,
+			},
+		},
+		{
+			opts: &CreateOptions{
+				TTL: 100,
+			},
+			wantAction: &setAction{
+				Key:       "/foo",
+				Value:     "bar",
+				PrevExist: PrevNoExist,
+				TTL:       100,
+			},
+		},
 	}
 
-	kAPI := httpKeysAPI{client: &actionAssertingHTTPClient{t: t, act: act}}
-	kAPI.Create(context.Background(), "/foo", "bar")
+	for i, tt := range tests {
+		client := &actionAssertingHTTPClient{t: t, num: i, act: tt.wantAction}
+		kAPI := httpKeysAPI{client: client}
+		kAPI.CreateWithOptions(context.Background(), "/foo", "bar", tt.opts)
+	}
 }
 
 func TestHTTPKeysAPIUpdateAction(t *testing.T) {
