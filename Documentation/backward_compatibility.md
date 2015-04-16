@@ -20,12 +20,52 @@ The major flag changes are to mostly related to bootstrapping. The `initial-*` f
 The documentation of new command line flags can be found at
 https://github.com/coreos/etcd/blob/master/Documentation/configuration.md.
 
-#### Data Dir
-- Default data dir location has changed from {$hostname}.etcd to {name}.etcd.
+#### Data Directory Naming
 
-- The disk format within the data dir has changed. etcd 2.0 should be able to auto upgrade the old data format. Instructions on doing so manually are in the [migration tool doc][migrationtooldoc].
+The default data dir location has changed from {$hostname}.etcd to {name}.etcd.
+
+#### Data Directory Migration
+
+The disk format within the data directory changed with etcd 2.0.
+If you run etcd 2.0 on an etcd 0.4 data directory it will automatically migrate the data and start.
+You will want to coordinate this upgrade by walking through each of your machines in the cluster, stopping etcd 0.4 and then starting etcd 2.0.
+If you would rather manually do the migration, to test it out first in another environment, you can use the [migration tool doc][migrationtooldoc].
 
 [migrationtooldoc]: ../tools/etcd-migrate/README.md
+
+#### Snapshot Migration
+
+If you are only interested in the data in etcd you can migrate a snapshot of your data from a v0.4.9+ cluster into a new etcd 2.0 cluster using a snapshot migration.
+The advantage of this method is that you are directly dumping only the etcd data so you can run your old and new cluster side-by-side, snapshot the data, import it and then point your applications at this cluster.
+The disadvantage is that the etcd indexes of your data will change which may confuse applications that use etcd.
+
+To get started get the newest data snapshot from the 0.4.9+ cluster:
+
+```
+curl http://cluster.example.com:4001/v2/migration/snapshot > backup.snap
+```
+
+Now, import the snapshot into your new cluster:
+
+```
+etcdctl -C new_cluster.example.com import --snap backup.snap
+```
+
+If you have a large amount of data, you can specify more concurrent works to copy data in parallel by using `-c` flag.
+If you have hidden keys to copy, you can use `--hidden` flag to specify.
+
+And the data will quickly copy into the new cluster:
+
+```
+entering dir: /
+entering dir: /foo
+entering dir: /foo/bar
+copying key: /foo/bar/1 1
+entering dir: /
+entering dir: /foo2
+entering dir: /foo2/bar2
+copying key: /foo2/bar2/2 2
+```
 
 #### Key-Value API
 
