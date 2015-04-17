@@ -372,7 +372,9 @@ func (c *Cluster) RemoveMember(id types.ID, index uint64) {
 func (c *Cluster) UpdateAttributes(id types.ID, attr Attributes) {
 	c.Lock()
 	defer c.Unlock()
-	c.members[id].Attributes = attr
+	if m, ok := c.members[id]; ok {
+		m.Attributes = attr
+	}
 	// TODO: update store in this function
 }
 
