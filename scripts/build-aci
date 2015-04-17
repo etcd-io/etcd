@@ -41,7 +41,7 @@ cp -r Documentation     $IMAGEDIR/rootfs/
 
 cat <<DF > $IMAGEDIR/manifest
 {
-    "acVersion": "0.1.1",
+    "acVersion": "0.5.1",
     "acKind": "ImageManifest",
     "name": "coreos.com/etcd",
     "labels": [
@@ -50,11 +50,45 @@ cat <<DF > $IMAGEDIR/manifest
         {"name": "version", "value": "${VERSION}"}
     ],
     "app": {
+        "environment": [
+             {
+                    "name": "ETCD_DATA_DIR",
+                    "value": "/data-dir"
+             }
+        ],
         "exec": [
              "/etcd"
         ],
         "user": "0",
-        "group": "0"
+        "group": "0",
+        "mountPoints": [
+             {
+                    "name": "data-dir",
+                    "path": "/data-dir"
+             }
+        ],
+        "ports": [
+            {
+                "name": "legacy-client",
+                "port": 4001,
+                "protocol": "tcp"
+            },
+            {
+                "name": "client",
+                "port": 2379,
+                "protocol": "tcp"
+            },
+            {
+                "name": "legacy-peer",
+                "port": 7001,
+                "protocol": "tcp"
+            },
+            {
+                "name": "peer",
+                "port": 2380,
+                "protocol": "tcp"
+            }
+        ]
     }
 }
 DF
