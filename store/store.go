@@ -354,8 +354,10 @@ func (s *store) CompareAndDelete(nodePath string, prevValue string, prevIndex ui
 		s.WatcherHub.notifyWatchers(e, path, true)
 	}
 
-	// delete a key-value pair, no error should happen
-	n.Remove(false, false, callback)
+	err = n.Remove(false, false, callback)
+	if err != nil {
+		return nil, err
+	}
 
 	s.WatcherHub.notify(e)
 	s.Stats.Inc(CompareAndDeleteSuccess)
