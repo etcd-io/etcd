@@ -1,4 +1,4 @@
-#!/bin/sh -e
+#!/bin/bash -e
 #
 # Generate all etcd protobuf bindings.
 # Run from repository root.
