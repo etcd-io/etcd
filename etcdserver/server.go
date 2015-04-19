@@ -180,7 +180,6 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		if err := ValidateClusterAndAssignIDs(cfg.Cluster, existingCluster); err != nil {
 			return nil, fmt.Errorf("error validating peerURLs %s: %v", existingCluster, err)
 		}
-		cfg.Cluster.UpdateIndex(existingCluster.index)
 		cfg.Cluster.SetID(existingCluster.id)
 		cfg.Cluster.SetStore(st)
 		cfg.Print()
@@ -379,19 +378,15 @@ func (s *EtcdServer) run() {
 				if err := s.store.Recovery(apply.snapshot.Data); err != nil {
 					log.Panicf("recovery store error: %v", err)
 				}
+				s.Cluster.Recover()
 
-				// Avoid snapshot recovery overwriting newer cluster and
-				// transport setting, which may block the communication.
-				if s.Cluster.index < apply.snapshot.Metadata.Index {
-					s.Cluster.Recover()
-					// recover raft transport
-					s.r.transport.RemoveAllPeers()
-					for _, m := range s.Cluster.Members() {
-						if m.ID == s.ID() {
-							continue
-						}
-						s.r.transport.AddPeer(m.ID, m.PeerURLs)
+				// recover raft transport
+				s.r.transport.RemoveAllPeers()
+				for _, m := range s.Cluster.Members() {
+					if m.ID == s.ID() {
+						continue
 					}
+					s.r.transport.AddPeer(m.ID, m.PeerURLs)
 				}
 
 				appliedi = apply.snapshot.Metadata.Index

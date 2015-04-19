@@ -21,7 +21,6 @@ import (
 	"log"
 	"net/http"
 	"sort"
-	"strconv"
 	"time"
 
 	"github.com/coreos/etcd/pkg/types"
@@ -89,21 +88,7 @@ func getClusterFromRemotePeers(urls []string, logerr bool, tr *http.Transport) (
 			}
 			continue
 		}
-		var index uint64
-		// The header at or before v2.0.3 doesn't have this field. For backward
-		// compatibility, it checks whether the field exists.
-		if indexStr := resp.Header.Get("X-Raft-Index"); indexStr != "" {
-			index, err = strconv.ParseUint(indexStr, 10, 64)
-			if err != nil {
-				if logerr {
-					log.Printf("etcdserver: could not parse raft index: %v", err)
-				}
-				continue
-			}
-		}
-		cl := NewClusterFromMembers("", id, membs)
-		cl.UpdateIndex(index)
-		return cl, nil
+		return NewClusterFromMembers("", id, membs), nil
 	}
 	return nil, fmt.Errorf("etcdserver: could not retrieve cluster information from the given urls")
 }
