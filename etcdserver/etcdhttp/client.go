@@ -358,7 +358,7 @@ func serveVersion(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r.Method, "GET") {
 		return
 	}
-	w.Write([]byte("etcd " + version.Version))
+	w.Write(version.MarshalJSON())
 }
 
 // parseKeyRequest converts a received http.Request on keysPrefix to

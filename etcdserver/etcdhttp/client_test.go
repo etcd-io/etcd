@@ -18,7 +18,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -1327,9 +1326,9 @@ func TestServeVersion(t *testing.T) {
 	if rw.Code != http.StatusOK {
 		t.Errorf("code=%d, want %d", rw.Code, http.StatusOK)
 	}
-	w := fmt.Sprintf("etcd %s", version.Version)
-	if g := rw.Body.String(); g != w {
-		t.Fatalf("body = %q, want %q", g, w)
+	w := version.MarshalJSON()
+	if g := rw.Body.String(); g != string(w) {
+		t.Fatalf("body = %q, want %q", g, string(w))
 	}
 }
 
