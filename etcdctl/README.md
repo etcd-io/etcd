@@ -70,7 +70,7 @@ Hola mundo
 Create or update a directory called `/mydir`:
 
 ```
-$ etcdctl setDir /mydir
+$ etcdctl setdir /mydir
 ```
 
 
