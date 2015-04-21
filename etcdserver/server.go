@@ -168,6 +168,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 	haveWAL := wal.Exist(cfg.WALDir())
 	ss := snap.New(cfg.SnapDir())
 
+	var remotes []*Member
 	switch {
 	case !haveWAL && !cfg.NewCluster:
 		if err := cfg.VerifyJoinExisting(); err != nil {
@@ -180,6 +181,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		if err := ValidateClusterAndAssignIDs(cfg.Cluster, existingCluster); err != nil {
 			return nil, fmt.Errorf("error validating peerURLs %s: %v", existingCluster, err)
 		}
+		remotes = existingCluster.Members()
 		cfg.Cluster.SetID(existingCluster.id)
 		cfg.Cluster.SetStore(st)
 		cfg.Print()
@@ -269,8 +271,14 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		reqIDGen:   idutil.NewGenerator(uint8(id), time.Now()),
 	}
 
+	// TODO: move transport initialization near the definition of remote
 	tr := rafthttp.NewTransporter(cfg.Transport, id, cfg.Cluster.ID(), srv, srv.errorc, sstats, lstats)
-	// add all the remote members into sendhub
+	// add all remotes into transport
+	for _, m := range remotes {
+		if m.ID != id {
+			tr.AddRemote(m.ID, m.PeerURLs)
+		}
+	}
 	for _, m := range cfg.Cluster.Members() {
 		if m.ID != id {
 			tr.AddPeer(m.ID, m.PeerURLs)
