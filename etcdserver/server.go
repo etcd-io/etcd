@@ -23,6 +23,7 @@ import (
 	"net/http"
 	"path"
 	"regexp"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -128,6 +129,8 @@ type EtcdServer struct {
 
 	r raftNode
 
+	mu         sync.Mutex // guard started
+	started    bool
 	w          wait.Wait
 	stop       chan struct{}
 	done       chan struct{}
@@ -298,6 +301,9 @@ func (s *EtcdServer) start() {
 	s.done = make(chan struct{})
 	s.stop = make(chan struct{})
 	s.stats.Initialize()
+	s.mu.Lock()
+	s.started = true
+	s.mu.Unlock()
 	// TODO: if this is an empty log, writes all peer infos
 	// into the first entry
 	go s.run()
@@ -326,6 +332,13 @@ func (s *EtcdServer) ID() types.ID { return s.id }
 func (s *EtcdServer) RaftHandler() http.Handler { return s.r.transport.Handler() }
 
 func (s *EtcdServer) Process(ctx context.Context, m raftpb.Message) error {
+	s.mu.Lock()
+	started := s.started
+	s.mu.Unlock()
+	if !started {
+		log.Printf("etcdserver: drop message from member %s because etcdserver has not been started", types.ID(m.From))
+		return fmt.Errorf("etcdserver has not been started")
+	}
 	if s.Cluster.IsIDRemoved(types.ID(m.From)) {
 		log.Printf("etcdserver: reject message from removed member %s", types.ID(m.From).String())
 		return httptypes.NewHTTPError(http.StatusForbidden, "cannot process message from removed member")
