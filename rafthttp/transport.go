@@ -35,6 +35,12 @@ type Raft interface {
 type Transporter interface {
 	Handler() http.Handler
 	Send(m []raftpb.Message)
+	// AddRemote adds a remote with given peer urls into the transport.
+	// A remote helps newly joined member to catch up the progress of cluster,
+	// and will not be used after that.
+	// It is the caller's responsibility to ensure the urls are all vaild,
+	// or it panics.
+	AddRemote(id types.ID, urls []string)
 	AddPeer(id types.ID, urls []string)
 	RemovePeer(id types.ID)
 	RemoveAllPeers()
@@ -50,9 +56,10 @@ type transport struct {
 	serverStats  *stats.ServerStats
 	leaderStats  *stats.LeaderStats
 
-	mu     sync.RWMutex       // protect the peer map
-	peers  map[types.ID]*peer // remote peers
-	errorc chan error
+	mu      sync.RWMutex         // protect the remote and peer map
+	remotes map[types.ID]*remote // remotes map that helps newly joined member to catch up
+	peers   map[types.ID]*peer   // peers map
+	errorc  chan error
 }
 
 func NewTransporter(rt http.RoundTripper, id, cid types.ID, r Raft, errorc chan error, ss *stats.ServerStats, ls *stats.LeaderStats) Transporter {
@@ -63,6 +70,7 @@ func NewTransporter(rt http.RoundTripper, id, cid types.ID, r Raft, errorc chan 
 		raft:         r,
 		serverStats:  ss,
 		leaderStats:  ls,
+		remotes:      make(map[types.ID]*remote),
 		peers:        make(map[types.ID]*peer),
 		errorc:       errorc,
 	}
@@ -90,27 +98,51 @@ func (t *transport) Send(msgs []raftpb.Message) {
 			continue
 		}
 		to := types.ID(m.To)
+
 		p, ok := t.peers[to]
-		if !ok {
-			log.Printf("etcdserver: send message to unknown receiver %s", to)
+		if ok {
+			if m.Type == raftpb.MsgApp {
+				t.serverStats.SendAppendReq(m.Size())
+			}
+			p.Send(m)
 			continue
 		}
 
-		if m.Type == raftpb.MsgApp {
-			t.serverStats.SendAppendReq(m.Size())
+		g, ok := t.remotes[to]
+		if ok {
+			g.Send(m)
+			continue
 		}
 
-		p.Send(m)
+		log.Printf("etcdserver: send message to unknown receiver %s", to)
 	}
 }
 
 func (t *transport) Stop() {
+	for _, r := range t.remotes {
+		r.Stop()
+	}
 	for _, p := range t.peers {
 		p.Stop()
 	}
 	if tr, ok := t.roundTripper.(*http.Transport); ok {
 		tr.CloseIdleConnections()
 	}
+}
+
+func (t *transport) AddRemote(id types.ID, us []string) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if _, ok := t.remotes[id]; ok {
+		return
+	}
+	peerURL := us[0]
+	u, err := url.Parse(peerURL)
+	if err != nil {
+		log.Panicf("unexpect peer url %s", peerURL)
+	}
+	u.Path = path.Join(u.Path, RaftPrefix)
+	t.remotes[id] = startRemote(t.roundTripper, u.String(), t.id, id, t.clusterID, t.raft, t.errorc)
 }
 
 func (t *transport) AddPeer(id types.ID, urls []string) {
