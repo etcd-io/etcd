@@ -15,6 +15,7 @@
 package proxy
 
 import (
+	"encoding/json"
 	"net/http"
 )
 
@@ -28,10 +29,16 @@ type GetProxyURLs func() []string
 // which will proxy requests to an etcd cluster.
 // The handler will periodically update its view of the cluster.
 func NewHandler(t *http.Transport, urlsFunc GetProxyURLs) http.Handler {
-	return &reverseProxy{
+	p := &reverseProxy{
 		director:  newDirector(urlsFunc),
 		transport: t,
 	}
+
+	mux := http.NewServeMux()
+	mux.Handle("/", p)
+	mux.HandleFunc("/v2/stats/proxy", p.proxyStats)
+
+	return mux
 }
 
 // NewReadonlyHandler wraps the given HTTP handler to allow only GET requests
@@ -49,4 +56,34 @@ func readonlyHandlerFunc(next http.Handler) func(http.ResponseWriter, *http.Requ
 
 		next.ServeHTTP(w, req)
 	}
+}
+
+type (
+	proxyStats struct {
+		Endpoints []*proxyEndpoint `json:"endpoints"`
+	}
+
+	proxyEndpoint struct {
+		URL       string `json:"url"`
+		Available bool   `json:"availible"`
+	}
+)
+
+func (p *reverseProxy) proxyStats(w http.ResponseWriter, r *http.Request) {
+	endpoints := p.director.endpoints()
+
+	stats := proxyStats{
+		Endpoints: make([]*proxyEndpoint, len(endpoints)),
+	}
+
+	for i, ep := range endpoints {
+		stats.Endpoints[i] = &proxyEndpoint{
+			URL:       ep.URL.String(),
+			Available: ep.Available,
+			Requests:  ep.Requests,
+			Errors:    ep.Errors,
+		}
+	}
+
+	json.NewEncoder(w).Encode(stats)
 }
