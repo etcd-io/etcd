@@ -80,8 +80,6 @@ func (p *reverseProxy) proxyStats(w http.ResponseWriter, r *http.Request) {
 		stats.Endpoints[i] = &proxyEndpoint{
 			URL:       ep.URL.String(),
 			Available: ep.Available,
-			Requests:  ep.Requests,
-			Errors:    ep.Errors,
 		}
 	}
 
