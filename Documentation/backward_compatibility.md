@@ -94,18 +94,18 @@ Standby mode was intended for large clusters that had a subset of the members ac
 
 Proxy mode in 2.0 will provide similar functionality, and with improved control over which machines act as proxies due to the operator specifically configuring them. Proxies also support read only or read/write modes for increased security and durability.
 
-[proxymode]: https://github.com/coreos/etcd/blob/master/Documentation/proxy.md
+[proxymode]: proxy.md
 
 ## Discovery Service
 
 A size key needs to be provided inside a [discovery token][discoverytoken].
-[discoverytoken]: https://github.com/coreos/etcd/blob/master/Documentation/clustering.md#custom-etcd-discovery-service
+[discoverytoken]: clustering.md#custom-etcd-discovery-service
 
 ## HTTP Admin API
 
 `v2/admin` on peer url and `v2/keys/_etcd` are unified under the new [v2/member API][memberapi] to better explain which machines are part of an etcd cluster, and to simplify the keyspace for all your use cases.
 
-[memberapi]: https://github.com/coreos/etcd/blob/master/Documentation/other_apis.md
+[memberapi]: other_apis.md
 
 ## HTTP Key Value API
 - The follower can now transparently proxy write equests to the leader. Clients will no longer see 307 redirections to the leader from etcd.

@@ -165,9 +165,9 @@ Follow the instructions when using these flags.
 + Print the version and exit.
 + default: false
 
-[build-cluster]: https://github.com/coreos/etcd/blob/master/Documentation/clustering.md#static
-[reconfig]: https://github.com/coreos/etcd/blob/master/Documentation/runtime-configuration.md
-[discovery]: https://github.com/coreos/etcd/blob/master/Documentation/clustering.md#discovery
-[proxy]: https://github.com/coreos/etcd/blob/master/Documentation/proxy.md
-[security]: https://github.com/coreos/etcd/blob/master/Documentation/security.md
-[restore]: https://github.com/coreos/etcd/blob/master/Documentation/admin_guide.md#restoring-a-backup
+[build-cluster]: clustering.md#static
+[reconfig]: runtime-configuration.md
+[discovery]: clustering.md#discovery
+[proxy]: proxy.md
+[security]: security.md
+[restore]: admin_guide.md#restoring-a-backup

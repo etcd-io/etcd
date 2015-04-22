@@ -57,7 +57,7 @@ To increase from 3 to 5 members you will make two add operations
 To decrease from 5 to 3 you will make two remove operations
 
 All of these examples will use the `etcdctl` command line tool that ships with etcd.
-If you want to use the member API directly you can find the documentation [here](https://github.com/coreos/etcd/blob/master/Documentation/other_apis.md).
+If you want to use the member API directly you can find the documentation [here](other_apis.md).
 
 ### Remove a Member
 
@@ -90,7 +90,7 @@ It is safe to remove the leader, however the cluster will be inactive while a ne
 
 Adding a member is a two step process:
 
- * Add the new member to the cluster via the [members API](https://github.com/coreos/etcd/blob/master/Documentation/other_apis.md#post-v2members) or the `etcdctl member add` command.
+ * Add the new member to the cluster via the [members API](other_apis.md#post-v2members) or the `etcdctl member add` command.
  * Start the new member with the new cluster configuration, including a list of the updated members (existing members + the new member).
 
 Using `etcdctl` let's add the new member to the cluster by specifing its [name](configuration.md#-name) and [advertised peer URLs](configuration.md#-initial-advertise-peer-urls):
