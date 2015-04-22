@@ -248,6 +248,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		Name: cfg.Name,
 		ID:   id.String(),
 	}
+	sstats.Initialize()
 	lstats := stats.NewLeaderStats(id.String())
 
 	srv := &EtcdServer{
@@ -297,7 +298,6 @@ func (s *EtcdServer) start() {
 	s.w = wait.New()
 	s.done = make(chan struct{})
 	s.stop = make(chan struct{})
-	s.stats.Initialize()
 	// TODO: if this is an empty log, writes all peer infos
 	// into the first entry
 	go s.run()
