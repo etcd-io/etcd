@@ -61,7 +61,14 @@ func (s *stresser) Stress() error {
 	for i := 0; i < s.N; i++ {
 		go func() {
 			for {
-				setctx, setcancel := context.WithTimeout(ctx, time.Second)
+				// TODO: set a short context timeout.
+				// A short context timeout may eat up all fds in etcd server.
+				// etcd server may take 5-10s to serve functionality after
+				// listening on the port. And current etcd server cannot recycle
+				// fds that the client has left. If context timeout is set
+				// to 1s, it can consume N*10 fds at server side.
+				// related: https://github.com/coreos/etcd/issues/2477
+				setctx, setcancel := context.WithTimeout(ctx, 5*time.Second)
 				key := fmt.Sprintf("foo%d", rand.Intn(s.KeySuffixRange))
 				_, err := kv.Set(setctx, key, randStr(s.KeySize), nil)
 				setcancel()
