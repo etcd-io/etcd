@@ -30,8 +30,10 @@ import (
 const peerURLPort = 2380
 
 type cluster struct {
-	agentEndpoints []string
-	datadir        string
+	agentEndpoints       []string
+	datadir              string
+	stressKeySize        int
+	stressKeySuffixRange int
 
 	Size       int
 	Agents     []client.Agent
@@ -45,10 +47,12 @@ type ClusterStatus struct {
 }
 
 // newCluster starts and returns a new cluster. The caller should call Terminate when finished, to shut it down.
-func newCluster(agentEndpoints []string, datadir string) (*cluster, error) {
+func newCluster(agentEndpoints []string, datadir string, stressKeySize, stressKeySuffixRange int) (*cluster, error) {
 	c := &cluster{
-		agentEndpoints: agentEndpoints,
-		datadir:        datadir,
+		agentEndpoints:       agentEndpoints,
+		datadir:              datadir,
+		stressKeySize:        stressKeySize,
+		stressKeySuffixRange: stressKeySuffixRange,
 	}
 	if err := c.Bootstrap(); err != nil {
 		return nil, err
@@ -109,10 +113,9 @@ func (c *cluster) Bootstrap() error {
 	stressers := make([]Stresser, len(clientURLs))
 	for i, u := range clientURLs {
 		s := &stresser{
-			Endpoint: u,
-			// 500000 100B key (50MB)
-			KeySize:        100,
-			KeySuffixRange: 500000,
+			Endpoint:       u,
+			KeySize:        c.stressKeySize,
+			KeySuffixRange: c.stressKeySuffixRange,
 			N:              200,
 		}
 		go s.Stress()
