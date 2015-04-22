@@ -31,7 +31,7 @@ If you run etcd 2.0 on an etcd 0.4 data directory it will automatically migrate 
 You will want to coordinate this upgrade by walking through each of your machines in the cluster, stopping etcd 0.4 and then starting etcd 2.0.
 If you would rather manually do the migration, to test it out first in another environment, you can use the [migration tool doc][migrationtooldoc].
 
-[migrationtooldoc]: ../tools/etcd-migrate/README.md
+[migrationtooldoc]: https://github.com/coreos/etcd/blob/master/tools/etcd-migrate/README.md
 
 ## Snapshot Migration
 
