@@ -65,7 +65,7 @@ type (
 
 	proxyEndpoint struct {
 		URL       string `json:"url"`
-		Available bool   `json:"availible"`
+		Available bool   `json:"available"`
 	}
 )
 
