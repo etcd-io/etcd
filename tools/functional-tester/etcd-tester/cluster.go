@@ -129,7 +129,11 @@ func (c *cluster) Bootstrap() error {
 
 func (c *cluster) WaitHealth() error {
 	var err error
-	for i := 0; i < 10; i++ {
+	// wait 60s to check cluster health.
+	// TODO: set it to a reasonable value. It is set that high because
+	// follower may use long time to catch up the leader when reboot under
+	// reasonable workload (https://github.com/coreos/etcd/issues/2698)
+	for i := 0; i < 60; i++ {
 		err = setHealthKey(c.ClientURLs)
 		if err == nil {
 			return nil
