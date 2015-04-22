@@ -116,7 +116,7 @@ A discovery URL identifies a unique etcd cluster. Instead of reusing a discovery
 
 Moreover, discovery URLs should ONLY be used for the initial bootstrapping of a cluster. To change cluster membership after the cluster is already running, see the [runtime reconfiguration][runtime] guide.
 
-[runtime]: https://github.com/coreos/etcd/blob/master/Documentation/runtime-configuration.md
+[runtime]: runtime-configuration.md
 
 #### Custom etcd Discovery Service
 
