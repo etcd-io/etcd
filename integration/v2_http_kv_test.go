@@ -53,19 +53,19 @@ func TestV2Set(t *testing.T) {
 			"/v2/keys/foo/bar",
 			v,
 			http.StatusCreated,
-			`{"action":"set","node":{"key":"/foo/bar","value":"bar","modifiedIndex":3,"createdIndex":3}}`,
+			`{"action":"set","node":{"key":"/foo/bar","value":"bar","modifiedIndex":7,"createdIndex":7}}`,
 		},
 		{
 			"/v2/keys/foodir?dir=true",
 			url.Values{},
 			http.StatusCreated,
-			`{"action":"set","node":{"key":"/foodir","dir":true,"modifiedIndex":4,"createdIndex":4}}`,
+			`{"action":"set","node":{"key":"/foodir","dir":true,"modifiedIndex":8,"createdIndex":8}}`,
 		},
 		{
 			"/v2/keys/fooempty",
 			url.Values(map[string][]string{"value": {""}}),
 			http.StatusCreated,
-			`{"action":"set","node":{"key":"/fooempty","value":"","modifiedIndex":5,"createdIndex":5}}`,
+			`{"action":"set","node":{"key":"/fooempty","value":"","modifiedIndex":9,"createdIndex":9}}`,
 		},
 	}
 
@@ -214,12 +214,12 @@ func TestV2CAS(t *testing.T) {
 		},
 		{
 			"/v2/keys/cas/foo",
-			url.Values(map[string][]string{"value": {"YYY"}, "prevIndex": {"3"}}),
+			url.Values(map[string][]string{"value": {"YYY"}, "prevIndex": {"7"}}),
 			http.StatusOK,
 			map[string]interface{}{
 				"node": map[string]interface{}{
 					"value":         "YYY",
-					"modifiedIndex": float64(4),
+					"modifiedIndex": float64(8),
 				},
 				"action": "compareAndSwap",
 			},
@@ -231,8 +231,8 @@ func TestV2CAS(t *testing.T) {
 			map[string]interface{}{
 				"errorCode": float64(101),
 				"message":   "Compare failed",
-				"cause":     "[10 != 4]",
-				"index":     float64(4),
+				"cause":     "[10 != 8]",
+				"index":     float64(8),
 			},
 		},
 		{
@@ -281,7 +281,7 @@ func TestV2CAS(t *testing.T) {
 			map[string]interface{}{
 				"errorCode": float64(101),
 				"message":   "Compare failed",
-				"cause":     "[bad_value != ZZZ] [100 != 5]",
+				"cause":     "[bad_value != ZZZ] [100 != 9]",
 			},
 		},
 		{
@@ -291,12 +291,12 @@ func TestV2CAS(t *testing.T) {
 			map[string]interface{}{
 				"errorCode": float64(101),
 				"message":   "Compare failed",
-				"cause":     "[100 != 5]",
+				"cause":     "[100 != 9]",
 			},
 		},
 		{
 			"/v2/keys/cas/foo",
-			url.Values(map[string][]string{"value": {"XXX"}, "prevValue": {"bad_value"}, "prevIndex": {"5"}}),
+			url.Values(map[string][]string{"value": {"XXX"}, "prevValue": {"bad_value"}, "prevIndex": {"9"}}),
 			http.StatusPreconditionFailed,
 			map[string]interface{}{
 				"errorCode": float64(101),
@@ -446,7 +446,7 @@ func TestV2CAD(t *testing.T) {
 			map[string]interface{}{
 				"errorCode": float64(101),
 				"message":   "Compare failed",
-				"cause":     "[100 != 3]",
+				"cause":     "[100 != 7]",
 			},
 		},
 		{
@@ -458,12 +458,12 @@ func TestV2CAD(t *testing.T) {
 			},
 		},
 		{
-			"/v2/keys/foo?prevIndex=3",
+			"/v2/keys/foo?prevIndex=7",
 			http.StatusOK,
 			map[string]interface{}{
 				"node": map[string]interface{}{
 					"key":           "/foo",
-					"modifiedIndex": float64(5),
+					"modifiedIndex": float64(9),
 				},
 				"action": "compareAndDelete",
 			},
@@ -491,7 +491,7 @@ func TestV2CAD(t *testing.T) {
 			map[string]interface{}{
 				"node": map[string]interface{}{
 					"key":           "/foovalue",
-					"modifiedIndex": float64(6),
+					"modifiedIndex": float64(10),
 				},
 				"action": "compareAndDelete",
 			},
@@ -529,7 +529,7 @@ func TestV2Unique(t *testing.T) {
 			http.StatusCreated,
 			map[string]interface{}{
 				"node": map[string]interface{}{
-					"key":   "/foo/3",
+					"key":   "/foo/7",
 					"value": "XXX",
 				},
 				"action": "create",
@@ -541,7 +541,7 @@ func TestV2Unique(t *testing.T) {
 			http.StatusCreated,
 			map[string]interface{}{
 				"node": map[string]interface{}{
-					"key":   "/foo/4",
+					"key":   "/foo/8",
 					"value": "XXX",
 				},
 				"action": "create",
@@ -553,7 +553,7 @@ func TestV2Unique(t *testing.T) {
 			http.StatusCreated,
 			map[string]interface{}{
 				"node": map[string]interface{}{
-					"key":   "/bar/5",
+					"key":   "/bar/9",
 					"value": "XXX",
 				},
 				"action": "create",
@@ -615,8 +615,8 @@ func TestV2Get(t *testing.T) {
 						map[string]interface{}{
 							"key":           "/foo/bar",
 							"dir":           true,
-							"createdIndex":  float64(3),
-							"modifiedIndex": float64(3),
+							"createdIndex":  float64(7),
+							"modifiedIndex": float64(7),
 						},
 					},
 				},
@@ -634,14 +634,14 @@ func TestV2Get(t *testing.T) {
 						map[string]interface{}{
 							"key":           "/foo/bar",
 							"dir":           true,
-							"createdIndex":  float64(3),
-							"modifiedIndex": float64(3),
+							"createdIndex":  float64(7),
+							"modifiedIndex": float64(7),
 							"nodes": []interface{}{
 								map[string]interface{}{
 									"key":           "/foo/bar/zar",
 									"value":         "XXX",
-									"createdIndex":  float64(3),
-									"modifiedIndex": float64(3),
+									"createdIndex":  float64(7),
+									"modifiedIndex": float64(7),
 								},
 							},
 						},
@@ -709,8 +709,8 @@ func TestV2QuorumGet(t *testing.T) {
 						map[string]interface{}{
 							"key":           "/foo/bar",
 							"dir":           true,
-							"createdIndex":  float64(3),
-							"modifiedIndex": float64(3),
+							"createdIndex":  float64(7),
+							"modifiedIndex": float64(7),
 						},
 					},
 				},
@@ -728,14 +728,14 @@ func TestV2QuorumGet(t *testing.T) {
 						map[string]interface{}{
 							"key":           "/foo/bar",
 							"dir":           true,
-							"createdIndex":  float64(3),
-							"modifiedIndex": float64(3),
+							"createdIndex":  float64(7),
+							"modifiedIndex": float64(7),
 							"nodes": []interface{}{
 								map[string]interface{}{
 									"key":           "/foo/bar/zar",
 									"value":         "XXX",
-									"createdIndex":  float64(3),
-									"modifiedIndex": float64(3),
+									"createdIndex":  float64(7),
+									"modifiedIndex": float64(7),
 								},
 							},
 						},
@@ -781,7 +781,7 @@ func TestV2Watch(t *testing.T) {
 		"node": map[string]interface{}{
 			"key":           "/foo/bar",
 			"value":         "XXX",
-			"modifiedIndex": float64(3),
+			"modifiedIndex": float64(7),
 		},
 		"action": "set",
 	}
@@ -802,7 +802,7 @@ func TestV2WatchWithIndex(t *testing.T) {
 	var body map[string]interface{}
 	c := make(chan bool, 1)
 	go func() {
-		resp, _ := tc.Get(fmt.Sprintf("%s%s", u, "/v2/keys/foo/bar?wait=true&waitIndex=4"))
+		resp, _ := tc.Get(fmt.Sprintf("%s%s", u, "/v2/keys/foo/bar?wait=true&waitIndex=8"))
 		body = tc.ReadBodyJSON(resp)
 		c <- true
 	}()
@@ -839,7 +839,7 @@ func TestV2WatchWithIndex(t *testing.T) {
 		"node": map[string]interface{}{
 			"key":           "/foo/bar",
 			"value":         "XXX",
-			"modifiedIndex": float64(4),
+			"modifiedIndex": float64(8),
 		},
 		"action": "set",
 	}

@@ -17,12 +17,16 @@ package security
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"path"
+	"reflect"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/crypto/bcrypt"
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
+	etcderr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/pkg/types"
@@ -31,7 +35,33 @@ import (
 const (
 	// StorePermsPrefix is the internal prefix of the storage layer dedicated to storing user data.
 	StorePermsPrefix = "/2"
+
+	// RootRoleName is the name of the ROOT role, with privileges to manage the cluster.
+	RootRoleName = "root"
+
+	// GuestRoleName is the name of the role that defines the privileges of an unauthenticated user.
+	GuestRoleName = "guest"
 )
+
+var rootRole = Role{
+	Role: RootRoleName,
+	Permissions: Permissions{
+		KV: rwPermission{
+			Read:  []string{"*"},
+			Write: []string{"*"},
+		},
+	},
+}
+
+var guestRole = Role{
+	Role: GuestRoleName,
+	Permissions: Permissions{
+		KV: rwPermission{
+			Read:  []string{"*"},
+			Write: []string{"*"},
+		},
+	},
+}
 
 type doer interface {
 	Do(context.Context, etcdserverpb.Request) (etcdserver.Response, error)
@@ -67,14 +97,18 @@ type rwPermission struct {
 	Write []string `json:"write"`
 }
 
-type MergeError struct {
+type Error struct {
 	errmsg string
 }
 
-func (m MergeError) Error() string { return m.errmsg }
+func (se Error) Error() string { return se.errmsg }
 
-func mergeErr(s string, v ...interface{}) MergeError {
-	return MergeError{fmt.Sprintf(s, v...)}
+func mergeErr(s string, v ...interface{}) Error {
+	return Error{fmt.Sprintf("security-merging: "+s, v...)}
+}
+
+func securityErr(s string, v ...interface{}) Error {
+	return Error{fmt.Sprintf("security: "+s, v...)}
 }
 
 func NewStore(server doer, timeout time.Duration) *Store {
@@ -82,6 +116,7 @@ func NewStore(server doer, timeout time.Duration) *Store {
 		server:  server,
 		timeout: timeout,
 	}
+	s.ensureSecurityDirectories()
 	s.enabled = s.detectSecurity()
 	return s
 }
@@ -103,6 +138,11 @@ func (s *Store) AllUsers() ([]string, error) {
 func (s *Store) GetUser(name string) (User, error) {
 	resp, err := s.requestResource("/users/"+name, false)
 	if err != nil {
+		if e, ok := err.(*etcderr.Error); ok {
+			if e.ErrorCode == etcderr.EcodeKeyNotFound {
+				return User{}, securityErr("User %s does not exist.", name)
+			}
+		}
 		return User{}, err
 	}
 	var u User
@@ -110,61 +150,92 @@ func (s *Store) GetUser(name string) (User, error) {
 	if err != nil {
 		return u, err
 	}
+	// Require that root always has a root role.
+	if u.User == "root" {
+		u.Roles = append(u.Roles, RootRoleName)
+	}
 
 	return u, nil
 }
 
-func (s *Store) CreateOrUpdateUser(user User) (User, error) {
-	_, err := s.GetUser(user.User)
+func (s *Store) CreateOrUpdateUser(user User) (out User, created bool, err error) {
+	_, err = s.GetUser(user.User)
 	if err == nil {
 		// Remove the update-user roles from updating downstream.
 		// Roles are granted or revoked, not changed directly.
 		user.Roles = nil
-		return s.UpdateUser(user)
+		out, err := s.UpdateUser(user)
+		return out, false, err
 	}
-	return user, s.CreateUser(user)
+	u, err := s.CreateUser(user)
+	return u, true, err
 }
 
-func (s *Store) CreateUser(user User) error {
-	if user.User == "root" {
-		return mergeErr("Cannot create root user; enable security to set root.")
+func (s *Store) CreateUser(user User) (User, error) {
+	u, err := s.createUserInternal(user)
+	if err == nil {
+		log.Printf("security: created user %s", user.User)
 	}
-	return s.createUserInternal(user)
+	return u, err
 }
 
-func (s *Store) createUserInternal(user User) error {
+func (s *Store) createUserInternal(user User) (User, error) {
+	if user.Password == "" {
+		return user, securityErr("Cannot create user %s with an empty password", user.User)
+	}
 	hash, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 	if err != nil {
-		return err
+		return user, err
 	}
 	user.Password = string(hash)
 
 	_, err = s.createResource("/users/"+user.User, user)
-	return err
+	if err != nil {
+		if e, ok := err.(*etcderr.Error); ok {
+			if e.ErrorCode == etcderr.EcodeNodeExist {
+				return user, securityErr("User %s already exists.", user.User)
+			}
+		}
+	}
+	return user, err
 }
 
 func (s *Store) DeleteUser(name string) error {
-	if name == "root" {
-		return mergeErr("Can't delete root user; disable security instead.")
+	if s.SecurityEnabled() && name == "root" {
+		return securityErr("Cannot delete root user while security is enabled.")
 	}
 	_, err := s.deleteResource("/users/" + name)
+	if err == nil {
+		log.Printf("security: deleted user %s", name)
+	}
 	return err
 }
 
 func (s *Store) UpdateUser(user User) (User, error) {
 	old, err := s.GetUser(user.User)
 	if err != nil {
+		if e, ok := err.(*etcderr.Error); ok {
+			if e.ErrorCode == etcderr.EcodeKeyNotFound {
+				return user, securityErr("User %s doesn't exist.", user.User)
+			}
+		}
 		return old, err
 	}
 	newUser, err := old.Merge(user)
 	if err != nil {
 		return old, err
 	}
-	_, err = s.updateResource("/users/"+user.User, newUser)
-	if err != nil {
-		return newUser, err
+	if reflect.DeepEqual(old, newUser) {
+		if user.Revoke != nil || user.Grant != nil {
+			return old, securityErr("User not updated. Grant/Revoke lists didn't match any current roles.")
+		}
+		return old, securityErr("User not updated. Use Grant/Revoke/Password to update the user.")
 	}
-	return newUser, nil
+	_, err = s.updateResource("/users/"+user.User, newUser)
+	if err == nil {
+		log.Printf("security: updated user %s", user.User)
+	}
+	return newUser, err
 }
 
 func (s *Store) AllRoles() ([]string, error) {
@@ -177,14 +248,22 @@ func (s *Store) AllRoles() ([]string, error) {
 		_, role := path.Split(n.Key)
 		nodes = append(nodes, role)
 	}
+	nodes = append(nodes, RootRoleName)
 	sort.Strings(nodes)
 	return nodes, nil
 }
 
 func (s *Store) GetRole(name string) (Role, error) {
-	// TODO(barakmich): Possibly add a cache
+	if name == RootRoleName {
+		return rootRole, nil
+	}
 	resp, err := s.requestResource("/roles/"+name, false)
 	if err != nil {
+		if e, ok := err.(*etcderr.Error); ok {
+			if e.ErrorCode == etcderr.EcodeKeyNotFound {
+				return Role{}, securityErr("Role %s does not exist.", name)
+			}
+		}
 		return Role{}, err
 	}
 	var r Role
@@ -196,63 +275,124 @@ func (s *Store) GetRole(name string) (Role, error) {
 	return r, nil
 }
 
-func (s *Store) CreateOrUpdateRole(role Role) (Role, error) {
-	_, err := s.GetRole(role.Role)
+func (s *Store) CreateOrUpdateRole(r Role) (role Role, created bool, err error) {
+	_, err = s.GetRole(r.Role)
 	if err == nil {
-		return s.UpdateRole(role)
+		role, err = s.UpdateRole(r)
+		created = false
+		return
 	}
-	return role, s.CreateRole(role)
+	return r, true, s.CreateRole(r)
 }
 
 func (s *Store) CreateRole(role Role) error {
+	if role.Role == RootRoleName {
+		return securityErr("Cannot modify role %s: is root role.", role.Role)
+	}
 	_, err := s.createResource("/roles/"+role.Role, role)
+	if err != nil {
+		if e, ok := err.(*etcderr.Error); ok {
+			if e.ErrorCode == etcderr.EcodeNodeExist {
+				return securityErr("Role %s already exists.", role.Role)
+			}
+		}
+	}
+	if err == nil {
+		log.Printf("security: created new role %s", role.Role)
+	}
 	return err
 }
 
 func (s *Store) DeleteRole(name string) error {
+	if name == RootRoleName {
+		return securityErr("Cannot modify role %s: is superuser role.", name)
+	}
 	_, err := s.deleteResource("/roles/" + name)
+	if err != nil {
+		if e, ok := err.(*etcderr.Error); ok {
+			if e.ErrorCode == etcderr.EcodeKeyNotFound {
+				return securityErr("Role %s doesn't exist.", name)
+			}
+		}
+	}
+	if err == nil {
+		log.Printf("security: deleted role %s", name)
+	}
 	return err
 }
 
 func (s *Store) UpdateRole(role Role) (Role, error) {
 	old, err := s.GetRole(role.Role)
 	if err != nil {
+		if e, ok := err.(*etcderr.Error); ok {
+			if e.ErrorCode == etcderr.EcodeKeyNotFound {
+				return role, securityErr("Role %s doesn't exist.", role.Role)
+			}
+		}
 		return old, err
 	}
 	newRole, err := old.Merge(role)
 	if err != nil {
 		return old, err
 	}
-	_, err = s.updateResource("/roles/"+role.Role, newRole)
-	if err != nil {
-		return newRole, err
+	if reflect.DeepEqual(old, newRole) {
+		if role.Revoke != nil || role.Grant != nil {
+			return old, securityErr("Role not updated. Grant/Revoke lists didn't match any current permissions.")
+		}
+		return old, securityErr("Role not updated. Use Grant/Revoke to update the role.")
 	}
-	return newRole, nil
+	_, err = s.updateResource("/roles/"+role.Role, newRole)
+	if err == nil {
+		log.Printf("security: updated role %s", role.Role)
+	}
+	return newRole, err
 }
 
 func (s *Store) SecurityEnabled() bool {
 	return s.enabled
 }
 
-func (s *Store) EnableSecurity(rootUser User) error {
+func (s *Store) EnableSecurity() error {
+	if s.SecurityEnabled() {
+		return securityErr("already enabled")
+	}
 	err := s.ensureSecurityDirectories()
 	if err != nil {
 		return err
 	}
-	if rootUser.User != "root" {
-		mergeErr("Trying to create root user not named root")
+	_, err = s.GetUser("root")
+	if err != nil {
+		return securityErr("No root user available, please create one")
 	}
-	err = s.createUserInternal(rootUser)
+	_, err = s.GetRole(GuestRoleName)
+	if err != nil {
+		log.Printf("security: no guest role access found, creating default")
+		err := s.CreateRole(guestRole)
+		if err != nil {
+			log.Printf("security: error creating guest role. aborting security enable.")
+			return err
+		}
+	}
+	err = s.enableSecurity()
 	if err == nil {
 		s.enabled = true
+		log.Printf("security: enabled security")
+	} else {
+		log.Printf("error enabling security: %v", err)
 	}
 	return err
 }
 
 func (s *Store) DisableSecurity() error {
-	err := s.DeleteUser("root")
+	if !s.SecurityEnabled() {
+		return securityErr("already disabled")
+	}
+	err := s.disableSecurity()
 	if err == nil {
 		s.enabled = false
+		log.Printf("security: disabled security")
+	} else {
+		log.Printf("error disabling security: %v", err)
 	}
 	return err
 }
@@ -279,13 +419,15 @@ func (u User) Merge(n User) (User, error) {
 	currentRoles := types.NewUnsafeSet(u.Roles...)
 	for _, g := range n.Grant {
 		if currentRoles.Contains(g) {
-			return out, mergeErr("Granting duplicate role %s for user %s", g, n.User)
+			log.Printf("Granting duplicate role %s for user %s", g, n.User)
+			continue
 		}
 		currentRoles.Add(g)
 	}
 	for _, r := range n.Revoke {
 		if !currentRoles.Contains(r) {
-			return out, mergeErr("Revoking ungranted role %s for user %s", r, n.User)
+			log.Printf("Revoking ungranted role %s for user %s", r, n.User)
+			continue
 		}
 		currentRoles.Remove(r)
 	}
@@ -319,7 +461,17 @@ func (r Role) Merge(n Role) (Role, error) {
 }
 
 func (r Role) HasKeyAccess(key string, write bool) bool {
+	if r.Role == RootRoleName {
+		return true
+	}
 	return r.Permissions.KV.HasAccess(key, write)
+}
+
+func (r Role) HasRecursiveAccess(key string, write bool) bool {
+	if r.Role == RootRoleName {
+		return true
+	}
+	return r.Permissions.KV.HasRecursiveAccess(key, write)
 }
 
 // Grant adds a set of permissions to the permission object on which it is called,
@@ -376,14 +528,16 @@ func (rw rwPermission) Revoke(n rwPermission) (rwPermission, error) {
 	currentRead := types.NewUnsafeSet(rw.Read...)
 	for _, r := range n.Read {
 		if !currentRead.Contains(r) {
-			return out, mergeErr("Revoking ungranted read permission %s", r)
+			log.Printf("Revoking ungranted read permission %s", r)
+			continue
 		}
 		currentRead.Remove(r)
 	}
 	currentWrite := types.NewUnsafeSet(rw.Write...)
 	for _, w := range n.Write {
 		if !currentWrite.Contains(w) {
-			return out, mergeErr("Revoking ungranted write permission %s", w)
+			log.Printf("Revoking ungranted write permission %s", w)
+			continue
 		}
 		currentWrite.Remove(w)
 	}
@@ -400,10 +554,38 @@ func (rw rwPermission) HasAccess(key string, write bool) bool {
 		list = rw.Read
 	}
 	for _, pat := range list {
-		match, err := path.Match(pat, key)
+		match, err := simpleMatch(pat, key)
 		if err == nil && match {
 			return true
 		}
 	}
 	return false
+}
+
+func (rw rwPermission) HasRecursiveAccess(key string, write bool) bool {
+	list := rw.Read
+	if write {
+		list = rw.Write
+	}
+	for _, pat := range list {
+		match, err := prefixMatch(pat, key)
+		if err == nil && match {
+			return true
+		}
+	}
+	return false
+}
+
+func simpleMatch(pattern string, key string) (match bool, err error) {
+	if pattern[len(pattern)-1] == '*' {
+		return strings.HasPrefix(key, pattern[:len(pattern)-1]), nil
+	}
+	return key == pattern, nil
+}
+
+func prefixMatch(pattern string, key string) (match bool, err error) {
+	if pattern[len(pattern)-1] != '*' {
+		return false, nil
+	}
+	return strings.HasPrefix(key, pattern[:len(pattern)-1]), nil
 }

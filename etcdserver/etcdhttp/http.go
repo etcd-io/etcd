@@ -52,7 +52,7 @@ func writeError(w http.ResponseWriter, err error) {
 		e.WriteTo(w)
 	case *httptypes.HTTPError:
 		e.WriteTo(w)
-	case security.MergeError:
+	case security.Error:
 		herr := httptypes.NewHTTPError(http.StatusBadRequest, e.Error())
 		herr.WriteTo(w)
 	default:
