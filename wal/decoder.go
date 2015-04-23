@@ -54,6 +54,11 @@ func (d *decoder) decode(rec *walpb.Record) error {
 	}
 	data := make([]byte, l)
 	if _, err = io.ReadFull(d.br, data); err != nil {
+		// ReadFull returns io.EOF only if no bytes were read
+		// the decoder should treat this as an ErrUnexpectedEOF instead.
+		if err == io.EOF {
+			err = io.ErrUnexpectedEOF
+		}
 		return err
 	}
 	if err := rec.Unmarshal(data); err != nil {
