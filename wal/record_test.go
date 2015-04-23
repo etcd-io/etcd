@@ -42,6 +42,7 @@ func TestReadRecord(t *testing.T) {
 	}{
 		{infoRecord, &walpb.Record{Type: 1, Crc: crc32.Checksum(infoData, crcTable), Data: infoData}, nil},
 		{[]byte(""), &walpb.Record{}, io.EOF},
+		{infoRecord[:8], &walpb.Record{}, io.ErrUnexpectedEOF},
 		{infoRecord[:len(infoRecord)-len(infoData)-8], &walpb.Record{}, io.ErrUnexpectedEOF},
 		{infoRecord[:len(infoRecord)-len(infoData)], &walpb.Record{}, io.ErrUnexpectedEOF},
 		{infoRecord[:len(infoRecord)-8], &walpb.Record{}, io.ErrUnexpectedEOF},
