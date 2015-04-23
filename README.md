@@ -87,7 +87,7 @@ Now it's time to dig into the full etcd API and other guides.
 [libraries-and-tools]: ./Documentation/libraries-and-tools.md
 [security]: ./Documentation/security.md
 [tuning]: ./Documentation/tuning.md
-[upgrade]: ./Documentation/0_4_migration_tool.md
+[upgrade]: ./tools/etcd-migrate/README.md
 
 ## Contact
 
