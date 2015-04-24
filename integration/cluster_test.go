@@ -209,6 +209,46 @@ func TestForceNewCluster(t *testing.T) {
 	clusterMustProgress(t, c.Members[:1])
 }
 
+// Ensure we can remove a member then add a new one back immediately.
+func TestIssue2681(t *testing.T) {
+	defer afterTest(t)
+	c := NewCluster(t, 5)
+	c.Launch(t)
+	defer c.Terminate(t)
+
+	c.RemoveMember(t, uint64(c.Members[4].s.ID()))
+	c.waitLeader(t, c.Members)
+
+	c.AddMember(t)
+	c.waitLeader(t, c.Members)
+	clusterMustProgress(t, c.Members)
+}
+
+// Ensure we can remove a member after a snapshot then add a new one back.
+func TestIssue2746(t *testing.T) {
+	defer afterTest(t)
+	c := NewCluster(t, 5)
+
+	for _, m := range c.Members {
+		m.SnapCount = 10
+	}
+
+	c.Launch(t)
+	defer c.Terminate(t)
+
+	// force a snapshot
+	for i := 0; i < 20; i++ {
+		clusterMustProgress(t, c.Members)
+	}
+
+	c.RemoveMember(t, uint64(c.Members[4].s.ID()))
+	c.waitLeader(t, c.Members)
+
+	c.AddMember(t)
+	c.waitLeader(t, c.Members)
+	clusterMustProgress(t, c.Members)
+}
+
 // clusterMustProgress ensures that cluster can make progress. It creates
 // a random key first, and check the new key could be got from all client urls
 // of the cluster.
