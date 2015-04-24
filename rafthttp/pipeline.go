@@ -101,7 +101,7 @@ func (p *pipeline) handle() {
 				log.Printf("pipeline: the connection with %s became inactive", p.id)
 				p.active = false
 			}
-			if m.Type == raftpb.MsgApp {
+			if m.Type == raftpb.MsgApp && p.fs != nil {
 				p.fs.Fail()
 			}
 			p.r.ReportUnreachable(m.To)
@@ -114,7 +114,7 @@ func (p *pipeline) handle() {
 				p.active = true
 				p.errored = nil
 			}
-			if m.Type == raftpb.MsgApp {
+			if m.Type == raftpb.MsgApp && p.fs != nil {
 				p.fs.Succ(end.Sub(start))
 			}
 			if isMsgSnap(m) {

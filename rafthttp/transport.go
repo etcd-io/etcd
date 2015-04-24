@@ -45,6 +45,12 @@ type Transporter interface {
 	// If the id cannot be found in the transport, the message
 	// will be ignored.
 	Send(m []raftpb.Message)
+	// AddRemote adds a remote with given peer urls into the transport.
+	// A remote helps newly joined member to catch up the progress of cluster,
+	// and will not be used after that.
+	// It is the caller's responsibility to ensure the urls are all vaild,
+	// or it panics.
+	AddRemote(id types.ID, urls []string)
 	// AddPeer adds a peer with given peer urls into the transport.
 	// It is the caller's responsibility to ensure the urls are all vaild,
 	// or it panics.
@@ -70,9 +76,10 @@ type transport struct {
 	serverStats  *stats.ServerStats
 	leaderStats  *stats.LeaderStats
 
-	mu     sync.RWMutex      // protect the peer map
-	peers  map[types.ID]Peer // remote peers
-	errorc chan error
+	mu      sync.RWMutex         // protect the remote and peer map
+	remotes map[types.ID]*remote // remotes map that helps newly joined member to catch up
+	peers   map[types.ID]Peer    // peers map
+	errorc  chan error
 }
 
 func NewTransporter(rt http.RoundTripper, id, cid types.ID, r Raft, errorc chan error, ss *stats.ServerStats, ls *stats.LeaderStats) Transporter {
@@ -83,6 +90,7 @@ func NewTransporter(rt http.RoundTripper, id, cid types.ID, r Raft, errorc chan 
 		raft:         r,
 		serverStats:  ss,
 		leaderStats:  ls,
+		remotes:      make(map[types.ID]*remote),
 		peers:        make(map[types.ID]Peer),
 		errorc:       errorc,
 	}
@@ -110,21 +118,30 @@ func (t *transport) Send(msgs []raftpb.Message) {
 			continue
 		}
 		to := types.ID(m.To)
+
 		p, ok := t.peers[to]
-		if !ok {
-			log.Printf("etcdserver: send message to unknown receiver %s", to)
+		if ok {
+			if m.Type == raftpb.MsgApp {
+				t.serverStats.SendAppendReq(m.Size())
+			}
+			p.Send(m)
 			continue
 		}
 
-		if m.Type == raftpb.MsgApp {
-			t.serverStats.SendAppendReq(m.Size())
+		g, ok := t.remotes[to]
+		if ok {
+			g.Send(m)
+			continue
 		}
 
-		p.Send(m)
+		log.Printf("etcdserver: send message to unknown receiver %s", to)
 	}
 }
 
 func (t *transport) Stop() {
+	for _, r := range t.remotes {
+		r.Stop()
+	}
 	for _, p := range t.peers {
 		p.Stop()
 	}
@@ -133,14 +150,22 @@ func (t *transport) Stop() {
 	}
 }
 
+func (t *transport) AddRemote(id types.ID, us []string) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if _, ok := t.remotes[id]; ok {
+		return
+	}
+	urls, err := types.NewURLs(us)
+	if err != nil {
+		log.Panicf("newURLs %+v should never fail: %+v", us, err)
+	}
+	t.remotes[id] = startRemote(t.roundTripper, urls, t.id, id, t.clusterID, t.raft, t.errorc)
+}
+
 func (t *transport) AddPeer(id types.ID, us []string) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	// There is no need to build connection to itself because local message
-	// is not sent through transport.
-	if id == t.id {
-		return
-	}
 	if _, ok := t.peers[id]; ok {
 		return
 	}
@@ -155,9 +180,6 @@ func (t *transport) AddPeer(id types.ID, us []string) {
 func (t *transport) RemovePeer(id types.ID) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	if id == t.id {
-		return
-	}
 	t.removePeer(id)
 }
 
@@ -183,9 +205,6 @@ func (t *transport) removePeer(id types.ID) {
 func (t *transport) UpdatePeer(id types.ID, us []string) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	if id == t.id {
-		return
-	}
 	// TODO: return error or just panic?
 	if _, ok := t.peers[id]; !ok {
 		return

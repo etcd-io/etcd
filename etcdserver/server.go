@@ -168,6 +168,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 	haveWAL := wal.Exist(cfg.WALDir())
 	ss := snap.New(cfg.SnapDir())
 
+	var remotes []*Member
 	switch {
 	case !haveWAL && !cfg.NewCluster:
 		if err := cfg.VerifyJoinExisting(); err != nil {
@@ -180,7 +181,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		if err := ValidateClusterAndAssignIDs(cfg.Cluster, existingCluster); err != nil {
 			return nil, fmt.Errorf("error validating peerURLs %s: %v", existingCluster, err)
 		}
-		cfg.Cluster.UpdateIndex(existingCluster.index)
+		remotes = existingCluster.Members()
 		cfg.Cluster.SetID(existingCluster.id)
 		cfg.Cluster.SetStore(st)
 		cfg.Print()
@@ -271,9 +272,20 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		reqIDGen:   idutil.NewGenerator(uint8(id), time.Now()),
 	}
 
+	// TODO: move transport initialization near the definition of remote
 	tr := rafthttp.NewTransporter(cfg.Transport, id, cfg.Cluster.ID(), srv, srv.errorc, sstats, lstats)
+	// add all remotes into transport
+	for _, m := range remotes {
+		if m.ID != id {
+			tr.AddRemote(m.ID, m.PeerURLs)
+		}
+	}
+	for _, m := range cfg.Cluster.Members() {
+		if m.ID != id {
+			tr.AddPeer(m.ID, m.PeerURLs)
+		}
+	}
 	srv.r.transport = tr
-	srv.Cluster.SetTransport(tr)
 	return srv, nil
 }
 
@@ -374,11 +386,15 @@ func (s *EtcdServer) run() {
 				if err := s.store.Recovery(apply.snapshot.Data); err != nil {
 					log.Panicf("recovery store error: %v", err)
 				}
+				s.Cluster.Recover()
 
-				// Avoid snapshot recovery overwriting newer cluster and
-				// transport setting, which may block the communication.
-				if s.Cluster.index < apply.snapshot.Metadata.Index {
-					s.Cluster.Recover()
+				// recover raft transport
+				s.r.transport.RemoveAllPeers()
+				for _, m := range s.Cluster.Members() {
+					if m.ID == s.ID() {
+						continue
+					}
+					s.r.transport.AddPeer(m.ID, m.PeerURLs)
 				}
 
 				appliedi = apply.snapshot.Metadata.Index
@@ -680,7 +696,7 @@ func (s *EtcdServer) apply(es []raftpb.Entry, confState *raftpb.ConfState) (uint
 		case raftpb.EntryConfChange:
 			var cc raftpb.ConfChange
 			pbutil.MustUnmarshal(&cc, e.Data)
-			shouldstop, err = s.applyConfChange(cc, confState, e.Index)
+			shouldstop, err = s.applyConfChange(cc, confState)
 			s.w.Trigger(cc.ID, err)
 		default:
 			log.Panicf("entry type should be either EntryNormal or EntryConfChange")
@@ -745,9 +761,9 @@ func (s *EtcdServer) applyRequest(r pb.Request) Response {
 	}
 }
 
-// applyConfChange applies a ConfChange to the server at the given index. It is only
-// invoked with a ConfChange that has already passed through Raft.
-func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.ConfState, index uint64) (bool, error) {
+// applyConfChange applies a ConfChange to the server. It is only
+// invoked with a ConfChange that has already passed through Raft
+func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.ConfState) (bool, error) {
 	if err := s.Cluster.ValidateConfigurationChange(cc); err != nil {
 		cc.NodeID = raft.None
 		s.r.ApplyConfChange(cc)
@@ -763,18 +779,20 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.Con
 		if cc.NodeID != uint64(m.ID) {
 			log.Panicf("nodeID should always be equal to member ID")
 		}
-		s.Cluster.AddMember(m, index)
+		s.Cluster.AddMember(m)
 		if m.ID == s.id {
 			log.Printf("etcdserver: added local member %s %v to cluster %s", m.ID, m.PeerURLs, s.Cluster.ID())
 		} else {
+			s.r.transport.AddPeer(m.ID, m.PeerURLs)
 			log.Printf("etcdserver: added member %s %v to cluster %s", m.ID, m.PeerURLs, s.Cluster.ID())
 		}
 	case raftpb.ConfChangeRemoveNode:
 		id := types.ID(cc.NodeID)
-		s.Cluster.RemoveMember(id, index)
+		s.Cluster.RemoveMember(id)
 		if id == s.id {
 			return true, nil
 		} else {
+			s.r.transport.RemovePeer(id)
 			log.Printf("etcdserver: removed member %s from cluster %s", id, s.Cluster.ID())
 		}
 	case raftpb.ConfChangeUpdateNode:
@@ -785,10 +803,11 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.Con
 		if cc.NodeID != uint64(m.ID) {
 			log.Panicf("nodeID should always be equal to member ID")
 		}
-		s.Cluster.UpdateRaftAttributes(m.ID, m.RaftAttributes, index)
+		s.Cluster.UpdateRaftAttributes(m.ID, m.RaftAttributes)
 		if m.ID == s.id {
 			log.Printf("etcdserver: update local member %s %v in cluster %s", m.ID, m.PeerURLs, s.Cluster.ID())
 		} else {
+			s.r.transport.UpdatePeer(m.ID, m.PeerURLs)
 			log.Printf("etcdserver: update member %s %v in cluster %s", m.ID, m.PeerURLs, s.Cluster.ID())
 		}
 	}

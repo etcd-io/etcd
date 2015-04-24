@@ -96,9 +96,8 @@ func TestClusterFromStore(t *testing.T) {
 	for i, tt := range tests {
 		hc := newTestCluster(nil)
 		hc.SetStore(store.New())
-		hc.SetTransport(&nopTransporter{})
-		for j, m := range tt.mems {
-			hc.AddMember(m, uint64(j))
+		for _, m := range tt.mems {
+			hc.AddMember(m)
 		}
 		c := NewClusterFromStore("abc", hc.store)
 		if c.token != "abc" {
@@ -358,12 +357,11 @@ func TestClusterValidateAndAssignIDs(t *testing.T) {
 func TestClusterValidateConfigurationChange(t *testing.T) {
 	cl := newCluster("")
 	cl.SetStore(store.New())
-	cl.SetTransport(&nopTransporter{})
 	for i := 1; i <= 4; i++ {
 		attr := RaftAttributes{PeerURLs: []string{fmt.Sprintf("http://127.0.0.1:%d", i)}}
-		cl.AddMember(&Member{ID: types.ID(i), RaftAttributes: attr}, uint64(i))
+		cl.AddMember(&Member{ID: types.ID(i), RaftAttributes: attr})
 	}
-	cl.RemoveMember(4, 5)
+	cl.RemoveMember(4)
 
 	attr := RaftAttributes{PeerURLs: []string{fmt.Sprintf("http://127.0.0.1:%d", 1)}}
 	ctx, err := json.Marshal(&Member{ID: types.ID(5), RaftAttributes: attr})
@@ -491,8 +489,7 @@ func TestClusterGenID(t *testing.T) {
 	previd := cs.ID()
 
 	cs.SetStore(&storeRecorder{})
-	cs.SetTransport(&nopTransporter{})
-	cs.AddMember(newTestMember(3, nil, "", nil), 1)
+	cs.AddMember(newTestMember(3, nil, "", nil))
 	cs.genID()
 	if cs.ID() == previd {
 		t.Fatalf("cluster.ID = %v, want not %v", cs.ID(), previd)
@@ -535,8 +532,7 @@ func TestClusterAddMember(t *testing.T) {
 	st := &storeRecorder{}
 	c := newTestCluster(nil)
 	c.SetStore(st)
-	c.SetTransport(&nopTransporter{})
-	c.AddMember(newTestMember(1, nil, "node1", nil), 1)
+	c.AddMember(newTestMember(1, nil, "node1", nil))
 
 	wactions := []testutil.Action{
 		{
@@ -621,14 +617,10 @@ func TestClusterString(t *testing.T) {
 }
 
 func TestClusterRemoveMember(t *testing.T) {
-	c := newTestCluster(nil)
-	c.SetStore(&storeRecorder{})
-	c.SetTransport(&nopTransporter{})
-	c.AddMember(newTestMember(1, nil, "", nil), 1)
-
 	st := &storeRecorder{}
+	c := newTestCluster(nil)
 	c.SetStore(st)
-	c.RemoveMember(1, 2)
+	c.RemoveMember(1)
 
 	wactions := []testutil.Action{
 		{Name: "Delete", Params: []interface{}{memberStoreKey(1), true, true}},
