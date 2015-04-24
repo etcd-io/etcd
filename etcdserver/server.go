@@ -669,6 +669,11 @@ func (s *EtcdServer) apply(es []raftpb.Entry, confState *raftpb.ConfState) (uint
 		e := es[i]
 		switch e.Type {
 		case raftpb.EntryNormal:
+			// raft state machine may generate noop entry when leader confirmation.
+			// skip it in advance to avoid some potential bug in the future
+			if len(e.Data) == 0 {
+				break
+			}
 			var r pb.Request
 			pbutil.MustUnmarshal(&r, e.Data)
 			s.w.Trigger(r.ID, s.applyRequest(r))
