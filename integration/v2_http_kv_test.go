@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"net"
 	"net/http"
 	"net/url"
@@ -30,7 +29,7 @@ import (
 )
 
 func init() {
-	log.SetOutput(ioutil.Discard)
+	//log.SetOutput(ioutil.Discard)
 }
 
 func TestV2Set(t *testing.T) {

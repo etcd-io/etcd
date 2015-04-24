@@ -209,6 +209,19 @@ func TestForceNewCluster(t *testing.T) {
 	clusterMustProgress(t, c.Members[:1])
 }
 
+func TestIssue2746(t *testing.T) {
+	defer afterTest(t)
+	c := NewCluster(t, 5)
+	c.Launch(t)
+	defer c.Terminate(t)
+
+	c.RemoveMember(t, uint64(c.Members[4].s.ID()))
+	c.waitLeader(t, c.Members)
+	c.AddMember(t)
+	c.waitLeader(t, c.Members)
+	clusterMustProgress(t, c.Members)
+}
+
 // clusterMustProgress ensures that cluster can make progress. It creates
 // a random key first, and check the new key could be got from all client urls
 // of the cluster.
