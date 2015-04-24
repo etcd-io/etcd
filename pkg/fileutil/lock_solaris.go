@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// +build !windows,!plan9,!solaris
+// +build solaris
 
 package fileutil
 
@@ -45,8 +45,15 @@ func (l *lock) Name() string {
 
 // TryLock acquires exclusivity on the lock without blocking
 func (l *lock) TryLock() error {
-	err := syscall.Flock(l.fd, syscall.LOCK_EX|syscall.LOCK_NB)
-	if err != nil && err == syscall.EWOULDBLOCK {
+	var lock syscall.Flock_t
+	lock.Start = 0
+	lock.Len = 0
+	lock.Pid = 0
+	lock.Type = syscall.F_WRLCK
+	lock.Whence = 0
+	lock.Pid = 0
+	err := syscall.FcntlFlock(uintptr(l.fd), syscall.F_SETLK, &lock)
+	if err != nil && err == syscall.EAGAIN {
 		return ErrLocked
 	}
 	return err
@@ -54,12 +61,27 @@ func (l *lock) TryLock() error {
 
 // Lock acquires exclusivity on the lock without blocking
 func (l *lock) Lock() error {
-	return syscall.Flock(l.fd, syscall.LOCK_EX)
+	var lock syscall.Flock_t
+	lock.Start = 0
+	lock.Len = 0
+	lock.Type = syscall.F_WRLCK
+	lock.Whence = 0
+	lock.Pid = 0
+	return syscall.FcntlFlock(uintptr(l.fd), syscall.F_SETLK, &lock)
 }
 
 // Unlock unlocks the lock
 func (l *lock) Unlock() error {
-	return syscall.Flock(l.fd, syscall.LOCK_UN)
+	var lock syscall.Flock_t
+	lock.Start = 0
+	lock.Len = 0
+	lock.Type = syscall.F_UNLCK
+	lock.Whence = 0
+	err := syscall.FcntlFlock(uintptr(l.fd), syscall.F_SETLK, &lock)
+	if err != nil && err == syscall.EAGAIN {
+		return ErrLocked
+	}
+	return err
 }
 
 func (l *lock) Destroy() error {
@@ -67,7 +89,7 @@ func (l *lock) Destroy() error {
 }
 
 func NewLock(file string) (Lock, error) {
-	f, err := os.Open(file)
+	f, err := os.OpenFile(file, os.O_WRONLY, 0600)
 	if err != nil {
 		return nil, err
 	}
