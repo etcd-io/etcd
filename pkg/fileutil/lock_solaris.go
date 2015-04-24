@@ -86,7 +86,7 @@ func (l *lock) Destroy() error {
 }
 
 func NewLock(file string) (Lock, error) {
-	f, err := os.Open(file)
+	f, err := os.OpenFile(file, os.O_WRONLY, 0600)
 	if err != nil {
 		return nil, err
 	}
