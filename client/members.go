@@ -166,7 +166,7 @@ func (m *httpMembersAPI) Remove(ctx context.Context, memberID string) error {
 		return err
 	}
 
-	return assertStatusCode(resp.StatusCode, http.StatusNoContent)
+	return assertStatusCode(resp.StatusCode, http.StatusNoContent, http.StatusGone)
 }
 
 type membersAPIActionList struct{}
