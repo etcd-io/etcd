@@ -923,7 +923,7 @@ func TestHTTPKeysAPIWatcherAction(t *testing.T) {
 	}
 }
 
-func TestHTTPKeysAPIcreateInOrderAction(t *testing.T) {
+func TestHTTPKeysAPISetAction(t *testing.T) {
 	tests := []struct {
 		key        string
 		value      string
