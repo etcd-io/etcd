@@ -61,7 +61,7 @@ After your cluster is up and running, adding or removing members is done via [ru
 
 ### Member Migration
 
-When there is a scheduled machine maintenance or retirement, you might want to migrate an etcd member to another machine without losing the data and changing the member ID. 
+When there is a scheduled machine maintenance or retirement, you might want to migrate an etcd member to another machine without losing the data and changing the member ID.
 
 The data directory contains all the data to recover a member to its point-in-time state. To migrate a member:
 
@@ -102,7 +102,7 @@ $ sudo systemctl stop etcd
 #### Copy the data directory of the now-idle member to the new machine
 
 ```
-$ tar -cvzf node1.etcd.tar.gz /var/lib/etcd/node1.etcd 
+$ tar -cvzf node1.etcd.tar.gz /var/lib/etcd/node1.etcd
 ```
 
 ```
@@ -181,7 +181,9 @@ Once you have verified that etcd has started successfully, shut it down and move
 
 #### Restoring the cluster
 
-Now that the node is running successfully, you can add more nodes to the cluster and restore resiliency. See the [runtime configuration](runtime-configuration.md) guide for more details.
+Now that the node is running successfully, you should [change its advertised peer URLs](other_apis.md#change-the-peer-urls-of-a-member), as the `--force-new-cluster` has set the peer URL to the default (listening on localhost).
+
+You can then add more nodes to the cluster and restore resiliency. See the [runtime configuration](runtime-configuration.md) guide for more details.
 
 ### Client Request Timeout
 
