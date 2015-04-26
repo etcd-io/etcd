@@ -29,6 +29,8 @@ func TestConfigParsingMemberFlags(t *testing.T) {
 		"-snapshot-count=10",
 		"-listen-peer-urls=http://localhost:8000,https://localhost:8001",
 		"-listen-client-urls=http://localhost:7000,https://localhost:7001",
+		// it should be set if -listen-client-urls is set
+		"-advertise-client-urls=http://localhost:7000,https://localhost:7001",
 	}
 	wcfg := &config{
 		dir:          "testdir",

@@ -56,7 +56,8 @@ clustering flags:
 	--initial-cluster-token 'etcd-cluster'
 		initial cluster token for the etcd cluster during bootstrap.
 	--advertise-client-urls 'http://localhost:2379,http://localhost:4001'
-		list of this member's client URLs to advertise to the rest of the cluster.
+		list of this member's client URLs to advertise to the public.
+		The client URLs advertised should be accessible to machines that talk to etcd cluster. etcd client libraries parse these URLs to connect to the cluster.
 	--discovery ''
 		discovery URL used to bootstrap the cluster.
 	--discovery-fallback 'proxy'
