@@ -134,8 +134,9 @@ func waitStreamWorking(p *peer) bool {
 }
 
 type fakeRaft struct {
-	recvc chan<- raftpb.Message
-	err   error
+	recvc     chan<- raftpb.Message
+	err       error
+	removedID uint64
 }
 
 func (p *fakeRaft) Process(ctx context.Context, m raftpb.Message) error {
@@ -145,6 +146,8 @@ func (p *fakeRaft) Process(ctx context.Context, m raftpb.Message) error {
 	}
 	return p.err
 }
+
+func (p *fakeRaft) IsIDRemoved(id uint64) bool { return id == p.removedID }
 
 func (p *fakeRaft) ReportUnreachable(id uint64) {}
 

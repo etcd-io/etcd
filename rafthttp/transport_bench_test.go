@@ -88,6 +88,8 @@ func (r *countRaft) Process(ctx context.Context, m raftpb.Message) error {
 	return nil
 }
 
+func (r *countRaft) IsIDRemoved(id uint64) bool { return false }
+
 func (r *countRaft) ReportUnreachable(id uint64) {}
 
 func (r *countRaft) ReportSnapshot(id uint64, status raft.SnapshotStatus) {}

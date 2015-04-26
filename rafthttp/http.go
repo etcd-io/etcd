@@ -46,9 +46,10 @@ type peerGetter interface {
 	Get(id types.ID) Peer
 }
 
-func newStreamHandler(peerGetter peerGetter, id, cid types.ID) http.Handler {
+func newStreamHandler(peerGetter peerGetter, r Raft, id, cid types.ID) http.Handler {
 	return &streamHandler{
 		peerGetter: peerGetter,
+		r:          r,
 		id:         id,
 		cid:        cid,
 	}
@@ -112,6 +113,7 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 type streamHandler struct {
 	peerGetter peerGetter
+	r          Raft
 	id         types.ID
 	cid        types.ID
 }
@@ -143,6 +145,11 @@ func (h *streamHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Printf("rafthttp: failed to parse from %s into ID", fromStr)
 		http.Error(w, "invalid from", http.StatusNotFound)
+		return
+	}
+	if h.r.IsIDRemoved(uint64(from)) {
+		log.Printf("rafthttp: reject the stream from peer %s since it was removed", from)
+		http.Error(w, "removed member", http.StatusGone)
 		return
 	}
 	p := h.peerGetter.Get(from)

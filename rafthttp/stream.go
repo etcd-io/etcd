@@ -226,6 +226,7 @@ type streamReader struct {
 	cid      types.ID
 	recvc    chan<- raftpb.Message
 	propc    chan<- raftpb.Message
+	errorc   chan<- error
 
 	mu         sync.Mutex
 	msgAppTerm uint64
@@ -235,7 +236,7 @@ type streamReader struct {
 	done       chan struct{}
 }
 
-func startStreamReader(tr http.RoundTripper, picker *urlPicker, t streamType, from, to, cid types.ID, recvc chan<- raftpb.Message, propc chan<- raftpb.Message) *streamReader {
+func startStreamReader(tr http.RoundTripper, picker *urlPicker, t streamType, from, to, cid types.ID, recvc chan<- raftpb.Message, propc chan<- raftpb.Message, errorc chan<- error) *streamReader {
 	r := &streamReader{
 		tr:     tr,
 		picker: picker,
@@ -245,6 +246,7 @@ func startStreamReader(tr http.RoundTripper, picker *urlPicker, t streamType, fr
 		cid:    cid,
 		recvc:  recvc,
 		propc:  propc,
+		errorc: errorc,
 		stopc:  make(chan struct{}),
 		done:   make(chan struct{}),
 	}
@@ -367,11 +369,21 @@ func (cr *streamReader) dial() (io.ReadCloser, error) {
 		cr.picker.unreachable(u)
 		return nil, fmt.Errorf("error roundtripping to %s: %v", req.URL, err)
 	}
-	if resp.StatusCode != http.StatusOK {
+	switch resp.StatusCode {
+	case http.StatusGone:
+		resp.Body.Close()
+		err := fmt.Errorf("the member has been permanently removed from the cluster")
+		select {
+		case cr.errorc <- err:
+		default:
+		}
+		return nil, err
+	case http.StatusOK:
+		return resp.Body, nil
+	default:
 		resp.Body.Close()
 		return nil, fmt.Errorf("unhandled http status %d", resp.StatusCode)
 	}
-	return resp.Body, nil
 }
 
 func (cr *streamReader) cancelRequest() {
