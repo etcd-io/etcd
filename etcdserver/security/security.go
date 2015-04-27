@@ -68,9 +68,9 @@ type doer interface {
 }
 
 type Store struct {
-	server  doer
-	timeout time.Duration
-	enabled bool
+	server      doer
+	timeout     time.Duration
+	ensuredOnce bool
 }
 
 type User struct {
@@ -116,14 +116,17 @@ func NewStore(server doer, timeout time.Duration) *Store {
 		server:  server,
 		timeout: timeout,
 	}
-	s.ensureSecurityDirectories()
-	s.enabled = s.detectSecurity()
 	return s
 }
 
 func (s *Store) AllUsers() ([]string, error) {
 	resp, err := s.requestResource("/users/", false)
 	if err != nil {
+		if e, ok := err.(*etcderr.Error); ok {
+			if e.ErrorCode == etcderr.EcodeKeyNotFound {
+				return []string{}, nil
+			}
+		}
 		return nil, err
 	}
 	var nodes []string
@@ -239,16 +242,20 @@ func (s *Store) UpdateUser(user User) (User, error) {
 }
 
 func (s *Store) AllRoles() ([]string, error) {
+	nodes := []string{GuestRoleName, RootRoleName}
 	resp, err := s.requestResource("/roles/", false)
 	if err != nil {
+		if e, ok := err.(*etcderr.Error); ok {
+			if e.ErrorCode == etcderr.EcodeKeyNotFound {
+				return nodes, nil
+			}
+		}
 		return nil, err
 	}
-	var nodes []string
 	for _, n := range resp.Event.Node.Nodes {
 		_, role := path.Split(n.Key)
 		nodes = append(nodes, role)
 	}
-	nodes = append(nodes, RootRoleName)
 	sort.Strings(nodes)
 	return nodes, nil
 }
@@ -349,18 +356,14 @@ func (s *Store) UpdateRole(role Role) (Role, error) {
 }
 
 func (s *Store) SecurityEnabled() bool {
-	return s.enabled
+	return s.detectSecurity()
 }
 
 func (s *Store) EnableSecurity() error {
 	if s.SecurityEnabled() {
 		return securityErr("already enabled")
 	}
-	err := s.ensureSecurityDirectories()
-	if err != nil {
-		return err
-	}
-	_, err = s.GetUser("root")
+	_, err := s.GetUser("root")
 	if err != nil {
 		return securityErr("No root user available, please create one")
 	}
@@ -375,7 +378,6 @@ func (s *Store) EnableSecurity() error {
 	}
 	err = s.enableSecurity()
 	if err == nil {
-		s.enabled = true
 		log.Printf("security: enabled security")
 	} else {
 		log.Printf("error enabling security: %v", err)
@@ -389,7 +391,6 @@ func (s *Store) DisableSecurity() error {
 	}
 	err := s.disableSecurity()
 	if err == nil {
-		s.enabled = false
 		log.Printf("security: disabled security")
 	} else {
 		log.Printf("error disabling security: %v", err)
