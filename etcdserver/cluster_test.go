@@ -21,109 +21,11 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/go-semver/semver"
 	"github.com/coreos/etcd/pkg/testutil"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/store"
 )
-
-func TestClusterFromString(t *testing.T) {
-	tests := []struct {
-		f    string
-		mems []*Member
-	}{
-		{
-			"mem1=http://10.0.0.1:2379,mem1=http://128.193.4.20:2379,mem2=http://10.0.0.2:2379,default=http://127.0.0.1:2379",
-			[]*Member{
-				newTestMember(3141198903430435750, []string{"http://10.0.0.2:2379"}, "mem2", nil),
-				newTestMember(4322322643958477905, []string{"http://10.0.0.1:2379", "http://128.193.4.20:2379"}, "mem1", nil),
-				newTestMember(12762790032478827328, []string{"http://127.0.0.1:2379"}, "default", nil),
-			},
-		},
-	}
-	for i, tt := range tests {
-		c, err := NewClusterFromString("abc", tt.f)
-		if err != nil {
-			t.Fatalf("#%d: unexpected new error: %v", i, err)
-		}
-		if c.token != "abc" {
-			t.Errorf("#%d: token = %v, want abc", i, c.token)
-		}
-		if !reflect.DeepEqual(c.Members(), tt.mems) {
-			t.Errorf("#%d: members = %+v, want %+v", i, c.Members(), tt.mems)
-		}
-	}
-}
-
-func TestClusterFromStringBad(t *testing.T) {
-	tests := []string{
-		// invalid URL
-		"%^",
-		// no URL defined for member
-		"mem1=,mem2=http://128.193.4.20:2379,mem3=http://10.0.0.2:2379",
-		"mem1,mem2=http://128.193.4.20:2379,mem3=http://10.0.0.2:2379",
-		// bad URL for member
-		"default=http://localhost/",
-		// TODO(philips): anyone know of a 64 bit sha1 hash collision
-		// "06b2f82fd81b2c20=http://128.193.4.20:2379,02c60cb75083ceef=http://128.193.4.20:2379",
-		// the same url for two members
-		"mem1=http://128.193.4.20:2379,mem2=http://128.193.4.20:2379",
-	}
-	for i, tt := range tests {
-		if _, err := NewClusterFromString("abc", tt); err == nil {
-			t.Errorf("#%d: unexpected successful new, want err", i)
-		}
-	}
-}
-
-func TestClusterFromStore(t *testing.T) {
-	tests := []struct {
-		mems []*Member
-		ver  *semver.Version
-	}{
-		{
-			[]*Member{newTestMember(1, nil, "", nil)},
-			semver.Must(semver.NewVersion("2.0.0")),
-		},
-		{
-			nil,
-			nil,
-		},
-		{
-			[]*Member{
-				newTestMember(1, nil, "", nil),
-				newTestMember(2, nil, "", nil),
-			},
-			semver.Must(semver.NewVersion("2.0.0")),
-		},
-	}
-	for i, tt := range tests {
-		st := store.New()
-		hc := newTestCluster(nil)
-		hc.SetStore(st)
-		for _, m := range tt.mems {
-			hc.AddMember(m)
-		}
-		if tt.ver != nil {
-			_, err := st.Set(path.Join(StoreClusterPrefix, "version"), false, tt.ver.String(), store.Permanent)
-			if err != nil {
-				t.Fatal(err)
-			}
-		}
-
-		c := NewClusterFromStore("abc", st)
-		if c.token != "abc" {
-			t.Errorf("#%d: token = %v, want %v", i, c.token, "abc")
-		}
-		if !reflect.DeepEqual(c.Members(), tt.mems) {
-			t.Errorf("#%d: members = %v, want %v", i, c.Members(), tt.mems)
-		}
-		if !reflect.DeepEqual(c.Version(), tt.ver) {
-			t.Errorf("#%d: ver = %v, want %v", i, c.Version(), tt.ver)
-		}
-	}
-}
 
 func TestClusterMember(t *testing.T) {
 	membs := []*Member{
@@ -587,49 +489,6 @@ func TestClusterMembers(t *testing.T) {
 	if g := cls.Members(); !reflect.DeepEqual(g, w) {
 		t.Fatalf("Members()=%#v, want %#v", g, w)
 	}
-}
-
-func TestClusterString(t *testing.T) {
-	cls := &Cluster{
-		members: map[types.ID]*Member{
-			1: newTestMember(
-				1,
-				[]string{"http://1.1.1.1:1111", "http://0.0.0.0:0000"},
-				"abc",
-				nil,
-			),
-			2: newTestMember(
-				2,
-				[]string{"http://2.2.2.2:2222"},
-				"def",
-				nil,
-			),
-			3: newTestMember(
-				3,
-				[]string{"http://3.3.3.3:1234", "http://127.0.0.1:2380"},
-				"ghi",
-				nil,
-			),
-			// no PeerURLs = not included
-			4: newTestMember(
-				4,
-				[]string{},
-				"four",
-				nil,
-			),
-			5: newTestMember(
-				5,
-				nil,
-				"five",
-				nil,
-			),
-		},
-	}
-	w := "abc=http://0.0.0.0:0000,abc=http://1.1.1.1:1111,def=http://2.2.2.2:2222,ghi=http://127.0.0.1:2380,ghi=http://3.3.3.3:1234"
-	if g := cls.String(); g != w {
-		t.Fatalf("Cluster.String():\ngot  %#v\nwant %#v", g, w)
-	}
-
 }
 
 func TestClusterRemoveMember(t *testing.T) {

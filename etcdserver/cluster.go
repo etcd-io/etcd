@@ -15,21 +15,21 @@
 package etcdserver
 
 import (
+	"bytes"
 	"crypto/sha1"
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"log"
-	"net/url"
 	"path"
 	"sort"
 	"strings"
 	"sync"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/go-semver/semver"
-	"github.com/coreos/etcd/pkg/flags"
 	"github.com/coreos/etcd/pkg/netutil"
 	"github.com/coreos/etcd/pkg/types"
+	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/store"
 )
@@ -69,41 +69,20 @@ type Cluster struct {
 	removed map[types.ID]bool
 }
 
-// NewClusterFromString returns a Cluster instantiated from the given cluster token
-// and cluster string, by parsing members from a set of discovery-formatted
-// names-to-IPs, like:
-// mach0=http://1.1.1.1,mach0=http://2.2.2.2,mach1=http://3.3.3.3,mach2=http://4.4.4.4
-func NewClusterFromString(token string, cluster string) (*Cluster, error) {
+func NewCluster(token string, initial types.URLsMap) (*Cluster, error) {
 	c := newCluster(token)
-
-	v, err := url.ParseQuery(strings.Replace(cluster, ",", "&", -1))
-	if err != nil {
-		return nil, err
-	}
-	for name, urls := range v {
-		if len(urls) == 0 || urls[0] == "" {
-			return nil, fmt.Errorf("Empty URL given for %q", name)
-		}
-		purls := &flags.URLsValue{}
-		if err := purls.Set(strings.Join(urls, ",")); err != nil {
-			return nil, err
-		}
-		m := NewMember(name, types.URLs(*purls), c.token, nil)
+	for name, urls := range initial {
+		m := NewMember(name, urls, token, nil)
 		if _, ok := c.members[m.ID]; ok {
-			return nil, fmt.Errorf("Member exists with identical ID %v", m)
+			return nil, fmt.Errorf("member exists with identical ID %v", m)
+		}
+		if uint64(m.ID) == raft.None {
+			return nil, fmt.Errorf("cannot use %x as member id", raft.None)
 		}
 		c.members[m.ID] = m
 	}
 	c.genID()
 	return c, nil
-}
-
-func NewClusterFromStore(token string, st store.Store) *Cluster {
-	c := newCluster(token)
-	c.store = st
-	c.members, c.removed = membersFromStore(c.store)
-	c.version = clusterVersionFromStore(c.store)
-	return c
 }
 
 func NewClusterFromMembers(token string, id types.ID, membs []*Member) *Cluster {
@@ -209,14 +188,19 @@ func (c *Cluster) ClientURLs() []string {
 func (c *Cluster) String() string {
 	c.Lock()
 	defer c.Unlock()
-	sl := []string{}
+	b := &bytes.Buffer{}
+	fmt.Fprintf(b, "{ClusterID:%s ", c.id)
+	var ms []string
 	for _, m := range c.members {
-		for _, u := range m.PeerURLs {
-			sl = append(sl, fmt.Sprintf("%s=%s", m.Name, u))
-		}
+		ms = append(ms, fmt.Sprintf("%+v", m))
 	}
-	sort.Strings(sl)
-	return strings.Join(sl, ",")
+	fmt.Fprintf(b, "Members:[%s] ", strings.Join(ms, " "))
+	var ids []string
+	for id, _ := range c.removed {
+		ids = append(ids, fmt.Sprintf("%s", id))
+	}
+	fmt.Fprintf(b, "RemovedMemberIDs:[%s]}", strings.Join(ids, " "))
+	return b.String()
 }
 
 func (c *Cluster) genID() {
@@ -369,20 +353,6 @@ func (c *Cluster) SetVersion(ver *semver.Version) {
 		log.Printf("etcdsever: set the initial cluster version to %v", ver.String())
 	}
 	c.version = ver
-}
-
-// Validate ensures that there is no identical urls in the cluster peer list
-func (c *Cluster) Validate() error {
-	urlMap := make(map[string]bool)
-	for _, m := range c.Members() {
-		for _, url := range m.PeerURLs {
-			if urlMap[url] {
-				return fmt.Errorf("duplicate url %v in cluster config", url)
-			}
-			urlMap[url] = true
-		}
-	}
-	return nil
 }
 
 func membersFromStore(st store.Store) (map[types.ID]*Member, map[types.ID]bool) {

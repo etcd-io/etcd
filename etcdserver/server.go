@@ -178,6 +178,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 	var n raft.Node
 	var s *raft.MemoryStorage
 	var id types.ID
+	var cl *Cluster
 
 	// Run the migrations.
 	dataVer, err := version.DetectDataDir(cfg.DataDir)
@@ -197,41 +198,53 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		if err := cfg.VerifyJoinExisting(); err != nil {
 			return nil, err
 		}
-		existingCluster, err := GetClusterFromRemotePeers(getRemotePeerURLs(cfg.Cluster, cfg.Name), cfg.Transport)
+		cl, err = NewCluster(cfg.InitialClusterToken, cfg.InitialPeerURLsMap)
+		if err != nil {
+			return nil, err
+		}
+		existingCluster, err := GetClusterFromRemotePeers(getRemotePeerURLs(cl, cfg.Name), cfg.Transport)
 		if err != nil {
 			return nil, fmt.Errorf("cannot fetch cluster info from peer urls: %v", err)
 		}
-		if err := ValidateClusterAndAssignIDs(cfg.Cluster, existingCluster); err != nil {
+		if err := ValidateClusterAndAssignIDs(cl, existingCluster); err != nil {
 			return nil, fmt.Errorf("error validating peerURLs %s: %v", existingCluster, err)
 		}
 		remotes = existingCluster.Members()
-		cfg.Cluster.SetID(existingCluster.id)
-		cfg.Cluster.SetStore(st)
+		cl.SetID(existingCluster.id)
+		cl.SetStore(st)
 		cfg.Print()
-		id, n, s, w = startNode(cfg, nil)
+		id, n, s, w = startNode(cfg, cl, nil)
 	case !haveWAL && cfg.NewCluster:
 		if err := cfg.VerifyBootstrap(); err != nil {
 			return nil, err
 		}
-		m := cfg.Cluster.MemberByName(cfg.Name)
-		if isMemberBootstrapped(cfg.Cluster, cfg.Name, cfg.Transport) {
+		cl, err = NewCluster(cfg.InitialClusterToken, cfg.InitialPeerURLsMap)
+		if err != nil {
+			return nil, err
+		}
+		m := cl.MemberByName(cfg.Name)
+		if isMemberBootstrapped(cl, cfg.Name, cfg.Transport) {
 			return nil, fmt.Errorf("member %s has already been bootstrapped", m.ID)
 		}
 		if cfg.ShouldDiscover() {
-			str, err := discovery.JoinCluster(cfg.DiscoveryURL, cfg.DiscoveryProxy, m.ID, cfg.Cluster.String())
+			str, err := discovery.JoinCluster(cfg.DiscoveryURL, cfg.DiscoveryProxy, m.ID, cfg.InitialPeerURLsMap.String())
 			if err != nil {
 				return nil, err
 			}
-			if cfg.Cluster, err = NewClusterFromString(cfg.Cluster.token, str); err != nil {
+			urlsmap, err := types.NewURLsMap(str)
+			if err != nil {
 				return nil, err
 			}
-			if err := cfg.Cluster.Validate(); err != nil {
-				return nil, fmt.Errorf("bad discovery cluster: %v", err)
+			if checkDuplicateURL(urlsmap) {
+				return nil, fmt.Errorf("discovery cluster %s has duplicate url", urlsmap)
+			}
+			if cl, err = NewCluster(cfg.InitialClusterToken, urlsmap); err != nil {
+				return nil, err
 			}
 		}
-		cfg.Cluster.SetStore(st)
+		cl.SetStore(st)
 		cfg.PrintWithInitial()
-		id, n, s, w = startNode(cfg, cfg.Cluster.MemberIDs())
+		id, n, s, w = startNode(cfg, cl, cl.MemberIDs())
 	case haveWAL:
 		if err := fileutil.IsDirWriteable(cfg.DataDir); err != nil {
 			return nil, fmt.Errorf("cannot write to data directory: %v", err)
@@ -254,16 +267,17 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 			}
 			log.Printf("etcdserver: recovered store from snapshot at index %d", snapshot.Metadata.Index)
 		}
-		cfg.Cluster = NewClusterFromStore(cfg.Cluster.token, st)
 		cfg.Print()
 		if snapshot != nil {
-			log.Printf("etcdserver: loaded cluster information from store: %s", cfg.Cluster)
+			log.Printf("etcdserver: loaded cluster information from store: %s", cl)
 		}
 		if !cfg.ForceNewCluster {
-			id, n, s, w = restartNode(cfg, snapshot)
+			id, cl, n, s, w = restartNode(cfg, snapshot)
 		} else {
-			id, n, s, w = restartAsStandaloneNode(cfg, snapshot)
+			id, cl, n, s, w = restartAsStandaloneNode(cfg, snapshot)
 		}
+		cl.SetStore(st)
+		cl.Recover()
 	default:
 		return nil, fmt.Errorf("unsupported bootstrap config")
 	}
@@ -288,7 +302,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		},
 		id:            id,
 		attributes:    Attributes{Name: cfg.Name, ClientURLs: cfg.ClientURLs.StringSlice()},
-		Cluster:       cfg.Cluster,
+		Cluster:       cl,
 		stats:         sstats,
 		lstats:        lstats,
 		SyncTicker:    time.Tick(500 * time.Millisecond),
@@ -297,14 +311,14 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 	}
 
 	// TODO: move transport initialization near the definition of remote
-	tr := rafthttp.NewTransporter(cfg.Transport, id, cfg.Cluster.ID(), srv, srv.errorc, sstats, lstats)
+	tr := rafthttp.NewTransporter(cfg.Transport, id, cl.ID(), srv, srv.errorc, sstats, lstats)
 	// add all remotes into transport
 	for _, m := range remotes {
 		if m.ID != id {
 			tr.AddRemote(m.ID, m.PeerURLs)
 		}
 	}
-	for _, m := range cfg.Cluster.Members() {
+	for _, m := range cl.Members() {
 		if m.ID != id {
 			tr.AddPeer(m.ID, m.PeerURLs)
 		}

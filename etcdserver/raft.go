@@ -192,13 +192,13 @@ func (r *raftNode) resumeSending() {
 	p.Resume()
 }
 
-func startNode(cfg *ServerConfig, ids []types.ID) (id types.ID, n raft.Node, s *raft.MemoryStorage, w *wal.WAL) {
+func startNode(cfg *ServerConfig, cl *Cluster, ids []types.ID) (id types.ID, n raft.Node, s *raft.MemoryStorage, w *wal.WAL) {
 	var err error
-	member := cfg.Cluster.MemberByName(cfg.Name)
+	member := cl.MemberByName(cfg.Name)
 	metadata := pbutil.MustMarshal(
 		&pb.Metadata{
 			NodeID:    uint64(member.ID),
-			ClusterID: uint64(cfg.Cluster.ID()),
+			ClusterID: uint64(cl.ID()),
 		},
 	)
 	if err := os.MkdirAll(cfg.SnapDir(), privateDirMode); err != nil {
@@ -209,14 +209,14 @@ func startNode(cfg *ServerConfig, ids []types.ID) (id types.ID, n raft.Node, s *
 	}
 	peers := make([]raft.Peer, len(ids))
 	for i, id := range ids {
-		ctx, err := json.Marshal((*cfg.Cluster).Member(id))
+		ctx, err := json.Marshal((*cl).Member(id))
 		if err != nil {
 			log.Panicf("marshal member should never fail: %v", err)
 		}
 		peers[i] = raft.Peer{ID: uint64(id), Context: ctx}
 	}
 	id = member.ID
-	log.Printf("etcdserver: start member %s in cluster %s", id, cfg.Cluster.ID())
+	log.Printf("etcdserver: start member %s in cluster %s", id, cl.ID())
 	s = raft.NewMemoryStorage()
 	c := &raft.Config{
 		ID:              uint64(id),
@@ -231,15 +231,16 @@ func startNode(cfg *ServerConfig, ids []types.ID) (id types.ID, n raft.Node, s *
 	return
 }
 
-func restartNode(cfg *ServerConfig, snapshot *raftpb.Snapshot) (types.ID, raft.Node, *raft.MemoryStorage, *wal.WAL) {
+func restartNode(cfg *ServerConfig, snapshot *raftpb.Snapshot) (types.ID, *Cluster, raft.Node, *raft.MemoryStorage, *wal.WAL) {
 	var walsnap walpb.Snapshot
 	if snapshot != nil {
 		walsnap.Index, walsnap.Term = snapshot.Metadata.Index, snapshot.Metadata.Term
 	}
 	w, id, cid, st, ents := readWAL(cfg.WALDir(), walsnap)
-	cfg.Cluster.SetID(cid)
 
-	log.Printf("etcdserver: restart member %s in cluster %s at commit index %d", id, cfg.Cluster.ID(), st.Commit)
+	log.Printf("etcdserver: restart member %s in cluster %s at commit index %d", id, cid, st.Commit)
+	cl := newCluster("")
+	cl.SetID(cid)
 	s := raft.NewMemoryStorage()
 	if snapshot != nil {
 		s.ApplySnapshot(*snapshot)
@@ -256,16 +257,15 @@ func restartNode(cfg *ServerConfig, snapshot *raftpb.Snapshot) (types.ID, raft.N
 	}
 	n := raft.RestartNode(c)
 	raftStatus = n.Status
-	return id, n, s, w
+	return id, cl, n, s, w
 }
 
-func restartAsStandaloneNode(cfg *ServerConfig, snapshot *raftpb.Snapshot) (types.ID, raft.Node, *raft.MemoryStorage, *wal.WAL) {
+func restartAsStandaloneNode(cfg *ServerConfig, snapshot *raftpb.Snapshot) (types.ID, *Cluster, raft.Node, *raft.MemoryStorage, *wal.WAL) {
 	var walsnap walpb.Snapshot
 	if snapshot != nil {
 		walsnap.Index, walsnap.Term = snapshot.Metadata.Index, snapshot.Metadata.Term
 	}
 	w, id, cid, st, ents := readWAL(cfg.WALDir(), walsnap)
-	cfg.Cluster.SetID(cid)
 
 	// discard the previously uncommitted entries
 	for i, ent := range ents {
@@ -289,7 +289,9 @@ func restartAsStandaloneNode(cfg *ServerConfig, snapshot *raftpb.Snapshot) (type
 		st.Commit = ents[len(ents)-1].Index
 	}
 
-	log.Printf("etcdserver: forcing restart of member %s in cluster %s at commit index %d", id, cfg.Cluster.ID(), st.Commit)
+	log.Printf("etcdserver: forcing restart of member %s in cluster %s at commit index %d", id, cid, st.Commit)
+	cl := newCluster("")
+	cl.SetID(cid)
 	s := raft.NewMemoryStorage()
 	if snapshot != nil {
 		s.ApplySnapshot(*snapshot)
@@ -306,7 +308,7 @@ func restartAsStandaloneNode(cfg *ServerConfig, snapshot *raftpb.Snapshot) (type
 	}
 	n := raft.RestartNode(c)
 	raftStatus = n.Status
-	return id, n, s, w
+	return id, cl, n, s, w
 }
 
 // getIDs returns an ordered set of IDs included in the given snapshot and
