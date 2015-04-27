@@ -119,15 +119,17 @@ func TestStreamReaderDialRequest(t *testing.T) {
 // HTTP response received.
 func TestStreamReaderDialResult(t *testing.T) {
 	tests := []struct {
-		code int
-		err  error
-		wok  bool
+		code  int
+		err   error
+		wok   bool
+		whalt bool
 	}{
-		{0, errors.New("blah"), false},
-		{http.StatusOK, nil, true},
-		{http.StatusMethodNotAllowed, nil, false},
-		{http.StatusNotFound, nil, false},
-		{http.StatusPreconditionFailed, nil, false},
+		{0, errors.New("blah"), false, false},
+		{http.StatusOK, nil, true, false},
+		{http.StatusMethodNotAllowed, nil, false, false},
+		{http.StatusNotFound, nil, false, false},
+		{http.StatusPreconditionFailed, nil, false, false},
+		{http.StatusGone, nil, false, true},
 	}
 	for i, tt := range tests {
 		tr := newRespRoundTripper(tt.code, tt.err)
@@ -138,11 +140,15 @@ func TestStreamReaderDialResult(t *testing.T) {
 			from:   types.ID(1),
 			to:     types.ID(2),
 			cid:    types.ID(1),
+			errorc: make(chan error, 1),
 		}
 
 		_, err := sr.dial()
 		if ok := err == nil; ok != tt.wok {
 			t.Errorf("#%d: ok = %v, want %v", i, ok, tt.wok)
+		}
+		if halt := len(sr.errorc) > 0; halt != tt.whalt {
+			t.Errorf("#%d: halt = %v, want %v", i, halt, tt.whalt)
 		}
 	}
 }
@@ -203,7 +209,7 @@ func TestStream(t *testing.T) {
 		h.sw = sw
 
 		picker := mustNewURLPicker(t, []string{srv.URL})
-		sr := startStreamReader(&http.Transport{}, picker, tt.t, types.ID(1), types.ID(2), types.ID(1), recvc, propc)
+		sr := startStreamReader(&http.Transport{}, picker, tt.t, types.ID(1), types.ID(2), types.ID(1), recvc, propc, nil)
 		defer sr.stop()
 		if tt.t == streamTypeMsgApp {
 			sr.updateMsgAppTerm(tt.term)
