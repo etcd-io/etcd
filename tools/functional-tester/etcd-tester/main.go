@@ -24,11 +24,13 @@ import (
 func main() {
 	endpointStr := flag.String("agent-endpoints", ":9027", "")
 	datadir := flag.String("data-dir", "agent.etcd", "")
+	stressKeySize := flag.Int("stress-key-size", 100, "stress-key-size is the size of each key written into etcd")
+	stressKeySuffixRange := flag.Int("stress-key-count", 250000, "stress-key-count is the count of key range written into etcd")
 	limit := flag.Int("limit", 3, "")
 	flag.Parse()
 
 	endpoints := strings.Split(*endpointStr, ",")
-	c, err := newCluster(endpoints, *datadir)
+	c, err := newCluster(endpoints, *datadir, *stressKeySize, *stressKeySuffixRange)
 	if err != nil {
 		log.Fatal(err)
 	}
