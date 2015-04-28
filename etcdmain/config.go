@@ -96,8 +96,8 @@ type config struct {
 	clientTLSInfo, peerTLSInfo transport.TLSInfo
 
 	// logging
-	debug   bool
-	logPkgs string
+	debug        bool
+	logPkgLevels string
 
 	// unsafe
 	forceNewCluster bool
@@ -185,7 +185,7 @@ func NewConfig() *config {
 
 	// logging
 	fs.BoolVar(&cfg.debug, "debug", false, "Enable debug output to the logs.")
-	fs.StringVar(&cfg.logPkgs, "log-packages", "", "Specify a particular log level for each etcd package.")
+	fs.StringVar(&cfg.logPkgLevels, "log-package-levels", "", "Specify a particular log level for each etcd package.")
 
 	// unsafe
 	fs.BoolVar(&cfg.forceNewCluster, "force-new-cluster", false, "Force to create a new one member cluster")

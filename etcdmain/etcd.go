@@ -399,9 +399,9 @@ func setupLogging(cfg *config) {
 	if cfg.debug {
 		capnslog.SetGlobalLogLevel(capnslog.DEBUG)
 	}
-	if cfg.logPkgs != "" {
+	if cfg.logPkgLevels != "" {
 		repoLog := capnslog.MustRepoLogger("github.com/coreos/etcd")
-		settings, err := repoLog.ParseLogLevelConfig(cfg.logPkgs)
+		settings, err := repoLog.ParseLogLevelConfig(cfg.logPkgLevels)
 		if err != nil {
 			log.Warningf("Couldn't parse log level string: %s, continuing with default levels", err.Error())
 			return
