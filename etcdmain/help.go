@@ -48,7 +48,7 @@ member flags:
 clustering flags:
 
 	--initial-advertise-peer-urls 'http://localhost:2380,http://localhost:7001'
-		list of this member's peer URLs to advertise to the rest of the cluster. 
+		list of this member's peer URLs to advertise to the rest of the cluster.
 	--initial-cluster 'default=http://localhost:2380,default=http://localhost:7001'
 		initial cluster configuration for bootstrapping.
 	--initial-cluster-state 'new'
@@ -96,12 +96,18 @@ security flags:
 	--peer-trusted-ca-file ''
 		path to the peer server TLS trusted CA file.
 
+logging flags
+
+	--debug 'false'
+		enable debug-level logging for etcd.
+	--log-package-levels ''
+		set individual packages to various log levels (eg: 'etcdmain=CRITICAL,etcdserver=DEBUG')
 
 unsafe flags:
 
 Please be CAUTIOUS when using unsafe flags because it will break the guarantees
 given by the consensus protocol.
-	
+
 	--force-new-cluster 'false'
 		force to create a new one-member cluster.
 `

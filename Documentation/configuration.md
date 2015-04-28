@@ -149,6 +149,17 @@ The security flags help to [build a secure etcd cluster][security].
 + Path to the peer server TLS trusted CA file.
 + default: none
 
+### Logging Flags
+
+##### -debug
++ Drop the default log level to DEBUG for all subpackages.
++ default: false (INFO for all packages)
+
+##### -log-package-levels
++ Set individual etcd subpackages to specific log levels. An example being `etcdserver=WARNING,security=DEBUG` 
++ default: none (INFO for all packages)
+
+
 ### Unsafe Flags
 
 Please be CAUTIOUS when using unsafe flags because it will break the guarantees given by the consensus protocol.
