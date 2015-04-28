@@ -301,14 +301,17 @@ curl 'http://127.0.0.1:2379/v2/keys/foo?wait=true&waitIndex=7'
 ```
 
 We get the index is outdated response, since we miss the 1000 events kept in etcd.
+
 ```
 {"errorCode":401,"message":"The event in requested index is outdated and cleared","cause":"the requested history has been cleared [1003/7]","index":2002}
 ```
 
 To start watch, first we need to fetch the current state of key `/foo` and the etcdIndex.
+
 ```sh
 curl 'http://127.0.0.1:2379/v2/keys/foo' -vv
 ```
+
 ``` 
 < HTTP/1.1 200 OK
 < Content-Type: application/json
