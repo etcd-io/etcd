@@ -18,7 +18,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net"
 	"net/http"
 	"os"
@@ -37,9 +36,13 @@ import (
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/proxy"
 	"github.com/coreos/etcd/rafthttp"
+
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
 )
 
 type dirType string
+
+var log = capnslog.NewPackageLogger("github.com/coreos/etcd", "etcdmain")
 
 const (
 	// the owner can make/remove files inside the directory
@@ -53,12 +56,13 @@ var (
 )
 
 func Main() {
+	capnslog.SetFormatter(capnslog.NewStringFormatter(os.Stderr))
 	cfg := NewConfig()
 	err := cfg.Parse(os.Args[1:])
 	if err != nil {
-		log.Printf("etcd: error verifying flags, %v. See 'etcd -help'.", err)
-		os.Exit(2)
+		log.Fatalf("error verifying flags, %v. See 'etcd -help'.", err)
 	}
+	setupLogging(cfg)
 
 	var stopped <-chan struct{}
 
@@ -68,19 +72,19 @@ func Main() {
 
 	if cfg.dir == "" {
 		cfg.dir = fmt.Sprintf("%v.etcd", cfg.name)
-		log.Printf("etcd: no data-dir provided, using default data-dir ./%s", cfg.dir)
+		log.Printf("no data-dir provided, using default data-dir ./%s", cfg.dir)
 	}
 
 	which := identifyDataDirOrDie(cfg.dir)
 	if which != dirEmpty {
-		log.Printf("etcd: already initialized as %v before, starting as etcd %v...", which, which)
+		log.Printf("already initialized as %v before, starting as etcd %v...", which, which)
 	}
 
 	shouldProxy := cfg.isProxy() || which == dirProxy
 	if !shouldProxy {
 		stopped, err = startEtcd(cfg)
 		if err == discovery.ErrFullCluster && cfg.shouldFallbackToProxy() {
-			log.Printf("etcd: discovery cluster full, falling back to %s", fallbackFlagProxy)
+			log.Printf("discovery cluster full, falling back to %s", fallbackFlagProxy)
 			shouldProxy = true
 		}
 	}
@@ -90,10 +94,10 @@ func Main() {
 	if err != nil {
 		switch err {
 		case discovery.ErrDuplicateID:
-			log.Fatalf("etcd: member %s has previously registered with discovery service (%s), but the data-dir (%s) on disk cannot be found.",
+			log.Fatalf("member %s has previously registered with discovery service (%s), but the data-dir (%s) on disk cannot be found.",
 				cfg.name, cfg.durl, cfg.dir)
 		default:
-			log.Fatalf("etcd: %v", err)
+			log.Fatalf("%v", err)
 		}
 	}
 
@@ -116,7 +120,7 @@ func startEtcd(cfg *config) (<-chan struct{}, error) {
 	}
 
 	if !cfg.peerTLSInfo.Empty() {
-		log.Printf("etcd: peerTLS: %s", cfg.peerTLSInfo)
+		log.Printf("peerTLS: %s", cfg.peerTLSInfo)
 	}
 	plns := make([]net.Listener, 0)
 	for _, u := range cfg.lpurls {
@@ -127,18 +131,18 @@ func startEtcd(cfg *config) (<-chan struct{}, error) {
 		}
 
 		urlStr := u.String()
-		log.Print("etcd: listening for peers on ", urlStr)
+		log.Print("listening for peers on ", urlStr)
 		defer func() {
 			if err != nil {
 				l.Close()
-				log.Print("etcd: stopping listening for peers on ", urlStr)
+				log.Print("stopping listening for peers on ", urlStr)
 			}
 		}()
 		plns = append(plns, l)
 	}
 
 	if !cfg.clientTLSInfo.Empty() {
-		log.Printf("etcd: clientTLS: %s", cfg.clientTLSInfo)
+		log.Printf("clientTLS: %s", cfg.clientTLSInfo)
 	}
 	clns := make([]net.Listener, 0)
 	for _, u := range cfg.lcurls {
@@ -149,11 +153,11 @@ func startEtcd(cfg *config) (<-chan struct{}, error) {
 		}
 
 		urlStr := u.String()
-		log.Print("etcd: listening for client requests on ", urlStr)
+		log.Print("listening for client requests on ", urlStr)
 		defer func() {
 			if err != nil {
 				l.Close()
-				log.Print("etcd: stopping listening for client requests on ", urlStr)
+				log.Print("stopping listening for client requests on ", urlStr)
 			}
 		}()
 		clns = append(clns, l)
@@ -185,7 +189,7 @@ func startEtcd(cfg *config) (<-chan struct{}, error) {
 	osutil.RegisterInterruptHandler(s.Stop)
 
 	if cfg.corsInfo.String() != "" {
-		log.Printf("etcd: cors = %s", cfg.corsInfo)
+		log.Printf("cors = %s", cfg.corsInfo)
 	}
 	ch := &cors.CORSHandler{
 		Handler: etcdhttp.NewClientHandler(s),
@@ -363,7 +367,7 @@ func identifyDataDirOrDie(dir string) dirType {
 		if os.IsNotExist(err) {
 			return dirEmpty
 		}
-		log.Fatalf("etcd: error listing data dir: %s", dir)
+		log.Fatalf("error listing data dir: %s", dir)
 	}
 
 	var m, p bool
@@ -374,12 +378,12 @@ func identifyDataDirOrDie(dir string) dirType {
 		case dirProxy:
 			p = true
 		default:
-			log.Printf("etcd: found invalid file/dir %s under data dir %s (Ignore this if you are upgrading etcd)", name, dir)
+			log.Printf("found invalid file/dir %s under data dir %s (Ignore this if you are upgrading etcd)", name, dir)
 		}
 	}
 
 	if m && p {
-		log.Fatal("etcd: invalid datadir. Both member and proxy directories exist.")
+		log.Fatal("invalid datadir. Both member and proxy directories exist.")
 	}
 	if m {
 		return dirMember
@@ -388,4 +392,20 @@ func identifyDataDirOrDie(dir string) dirType {
 		return dirProxy
 	}
 	return dirEmpty
+}
+
+func setupLogging(cfg *config) {
+	capnslog.SetGlobalLogLevel(capnslog.INFO)
+	if cfg.debug {
+		capnslog.SetGlobalLogLevel(capnslog.DEBUG)
+	}
+	if cfg.logPkgs != "" {
+		repoLog := capnslog.MustRepoLogger("github.com/coreos/etcd")
+		settings, err := repoLog.ParseLogLevelConfig(cfg.logPkgs)
+		if err != nil {
+			log.Warningf("Couldn't parse log level string: %s, continuing with default levels", err.Error())
+			return
+		}
+		repoLog.SetLogLevel(settings)
+	}
 }
