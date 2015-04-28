@@ -17,7 +17,6 @@ package etcdmain
 import (
 	"flag"
 	"fmt"
-	"log"
 	"net/url"
 	"os"
 	"strings"
@@ -95,6 +94,10 @@ type config struct {
 
 	// security
 	clientTLSInfo, peerTLSInfo transport.TLSInfo
+
+	// logging
+	debug   bool
+	logPkgs string
 
 	// unsafe
 	forceNewCluster bool
@@ -180,6 +183,10 @@ func NewConfig() *config {
 	fs.BoolVar(&cfg.peerTLSInfo.ClientCertAuth, "peer-client-cert-auth", false, "Enable peer client cert authentication.")
 	fs.StringVar(&cfg.peerTLSInfo.TrustedCAFile, "peer-trusted-ca-file", "", "Path to the peer server TLS trusted CA file.")
 
+	// logging
+	fs.BoolVar(&cfg.debug, "debug", false, "Enable debug output to the logs.")
+	fs.StringVar(&cfg.logPkgs, "log-packages", "", "Specify a particular log level for each etcd package.")
+
 	// unsafe
 	fs.BoolVar(&cfg.forceNewCluster, "force-new-cluster", false, "Force to create a new one member cluster")
 
@@ -221,7 +228,7 @@ func (cfg *config) Parse(arguments []string) error {
 
 	err := flags.SetFlagsFromEnv(cfg.FlagSet)
 	if err != nil {
-		log.Fatalf("etcd: %v", err)
+		log.Fatalf("%v", err)
 	}
 
 	set := make(map[string]bool)
