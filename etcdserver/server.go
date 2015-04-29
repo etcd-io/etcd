@@ -23,9 +23,11 @@ import (
 	"net/http"
 	"path"
 	"regexp"
+	"sync"
 	"sync/atomic"
 	"time"
 
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/go-semver/semver"
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/discovery"
 	"github.com/coreos/etcd/etcdserver/etcdhttp/httptypes"
@@ -59,7 +61,8 @@ const (
 	StoreAdminPrefix = "/0"
 	StoreKeysPrefix  = "/1"
 
-	purgeFileInterval = 30 * time.Second
+	purgeFileInterval      = 30 * time.Second
+	monitorVersionInterval = 10 * time.Second
 )
 
 var (
@@ -119,6 +122,17 @@ type Server interface {
 	// UpdateMember attempts to update a existing member in the cluster. It will
 	// return ErrIDNotFound if the member ID does not exist.
 	UpdateMember(ctx context.Context, updateMemb Member) error
+
+	// ClusterVersion is the cluster-wide minimum major.minor version.
+	// Cluster version is set to the min version that a etcd member is
+	// compatible with when first bootstrap.
+	//
+	// During a rolling upgrades, the ClusterVersion will be updated
+	// automatically after a sync. (10 second by default)
+	//
+	// The API/raft component can utilize ClusterVersion to determine if
+	// it can accept a client request or a raft RPC.
+	ClusterVersion() *semver.Version
 }
 
 // EtcdServer is the production implementation of the Server interface
@@ -145,6 +159,9 @@ type EtcdServer struct {
 	SyncTicker <-chan time.Time
 
 	reqIDGen *idutil.Generator
+
+	verMu          sync.Mutex
+	clusterVersion *semver.Version
 }
 
 // NewServer creates a new EtcdServer from the supplied configuration. The
@@ -263,13 +280,14 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 			raftStorage: s,
 			storage:     NewStorage(w, ss),
 		},
-		id:         id,
-		attributes: Attributes{Name: cfg.Name, ClientURLs: cfg.ClientURLs.StringSlice()},
-		Cluster:    cfg.Cluster,
-		stats:      sstats,
-		lstats:     lstats,
-		SyncTicker: time.Tick(500 * time.Millisecond),
-		reqIDGen:   idutil.NewGenerator(uint8(id), time.Now()),
+		id:             id,
+		attributes:     Attributes{Name: cfg.Name, ClientURLs: cfg.ClientURLs.StringSlice()},
+		Cluster:        cfg.Cluster,
+		stats:          sstats,
+		lstats:         lstats,
+		SyncTicker:     time.Tick(500 * time.Millisecond),
+		reqIDGen:       idutil.NewGenerator(uint8(id), time.Now()),
+		clusterVersion: semver.Must(semver.NewVersion(version.MinClusterVersion)),
 	}
 
 	// TODO: move transport initialization near the definition of remote
@@ -297,6 +315,7 @@ func (s *EtcdServer) Start() {
 	go s.publish(defaultPublishRetryInterval)
 	go s.purgeFile()
 	go monitorFileDescriptor(s.done)
+	go s.monitorVersions()
 }
 
 // start prepares and starts server in a new goroutine. It is no longer safe to
@@ -862,3 +881,39 @@ func (s *EtcdServer) snapshot(snapi uint64, confState raftpb.ConfState) {
 func (s *EtcdServer) PauseSending() { s.r.pauseSending() }
 
 func (s *EtcdServer) ResumeSending() { s.r.resumeSending() }
+
+func (s *EtcdServer) ClusterVersion() *semver.Version {
+	s.verMu.Lock()
+	defer s.verMu.Unlock()
+	// deep copy
+	return semver.Must(semver.NewVersion(s.clusterVersion.String()))
+}
+
+// monitorVersions checks the member's version every monitorVersion interval.
+// It updates the cluster version if all members agrees on a higher one.
+// It prints out log if there is a member with a higher version than the
+// local version.
+func (s *EtcdServer) monitorVersions() {
+	for {
+		select {
+		case <-time.After(monitorVersionInterval):
+			v := decideClusterVersion(getVersions(s.Cluster, s.cfg.Transport))
+			if v == nil {
+				continue
+			}
+
+			s.verMu.Lock()
+			// clear patch version
+			v.Patch = 0
+			if s.clusterVersion.LessThan(*v) {
+				log.Printf("etcdsever: updated the cluster version from %v to %v", s.clusterVersion, v.String())
+				// TODO: persist the version upgrade via raft. Then etcdserver will be able to use the
+				// upgraded version without syncing with others after a restart.
+				s.clusterVersion = v
+			}
+			s.verMu.Unlock()
+		case <-s.done:
+			return
+		}
+	}
+}

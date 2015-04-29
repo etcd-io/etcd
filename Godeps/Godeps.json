@@ -25,6 +25,10 @@
 			"Rev": "9d5dd4632f9ece71bdf83d31253593a633e73df5"
 		},
 		{
+			"ImportPath": "github.com/coreos/go-semver/semver",
+			"Rev": "568e959cd89871e61434c1143528d9162da89ef2"
+		},
+		{
 			"ImportPath": "github.com/gogo/protobuf/proto",
 			"Rev": "bc946d07d1016848dfd2507f90f0859c9471681e"
 		},

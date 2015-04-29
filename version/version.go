@@ -25,7 +25,9 @@ import (
 )
 
 var (
-	Version = "2.1.0-alpha.0+git"
+	// MinClusterVersion is the min cluster version this etcd binary is compatible with.
+	MinClusterVersion = "2.0.0"
+	Version           = "2.1.0-alpha.0+git"
 )
 
 // WalVersion is an enum for versions of etcd logs.

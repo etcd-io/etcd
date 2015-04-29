@@ -21,6 +21,7 @@ import (
 	"sort"
 	"testing"
 
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/go-semver/semver"
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/etcdserver"
@@ -73,6 +74,8 @@ func (fs *errServer) RemoveMember(ctx context.Context, id uint64) error {
 func (fs *errServer) UpdateMember(ctx context.Context, m etcdserver.Member) error {
 	return fs.err
 }
+
+func (fs *errServer) ClusterVersion() *semver.Version { return nil }
 
 func TestWriteError(t *testing.T) {
 	// nil error should not panic
