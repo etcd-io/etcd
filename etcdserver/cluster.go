@@ -59,12 +59,6 @@ type Cluster struct {
 	id    types.ID
 	token string
 	store store.Store
-	// index is the raft index that cluster is updated at bootstrap
-	// from remote cluster info.
-	// It may have a higher value than local raft index, because it
-	// displays a further view of the cluster.
-	// TODO: upgrade it as last modified index
-	index uint64
 
 	sync.Mutex // guards members and removed map
 	members    map[types.ID]*Member
@@ -235,8 +229,6 @@ func (c *Cluster) genID() {
 func (c *Cluster) SetID(id types.ID) { c.id = id }
 
 func (c *Cluster) SetStore(st store.Store) { c.store = st }
-
-func (c *Cluster) UpdateIndex(index uint64) { c.index = index }
 
 func (c *Cluster) Recover() {
 	c.members, c.removed = membersFromStore(c.store)

@@ -199,7 +199,7 @@ func (p *peer) handle() {
 				log.Printf("sender: the connection with %s became inactive", p.id)
 				p.active = false
 			}
-			if m.Type == raftpb.MsgApp {
+			if m.Type == raftpb.MsgApp && p.fs != nil {
 				p.fs.Fail()
 			}
 		} else {
@@ -208,7 +208,7 @@ func (p *peer) handle() {
 				p.active = true
 				p.errored = nil
 			}
-			if m.Type == raftpb.MsgApp {
+			if m.Type == raftpb.MsgApp && p.fs != nil {
 				p.fs.Succ(end.Sub(start))
 			}
 		}

@@ -158,6 +158,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 	haveWAL := wal.Exist(cfg.WALDir())
 	ss := snap.New(cfg.SnapDir())
 
+	var remotes []*Member
 	switch {
 	case !haveWAL && !cfg.NewCluster:
 		if err := cfg.VerifyJoinExisting(); err != nil {
@@ -170,7 +171,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		if err := ValidateClusterAndAssignIDs(cfg.Cluster, existingCluster); err != nil {
 			return nil, fmt.Errorf("error validating peerURLs %s: %v", existingCluster, err)
 		}
-		cfg.Cluster.UpdateIndex(existingCluster.index)
+		remotes = existingCluster.Members()
 		cfg.Cluster.SetID(existingCluster.id)
 		cfg.Cluster.SetStore(st)
 		cfg.Print()
@@ -260,8 +261,14 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		reqIDGen:   idutil.NewGenerator(uint8(id), time.Now()),
 	}
 
+	// TODO: move transport initialization near the definition of remote
 	tr := rafthttp.NewTransporter(cfg.Transport, id, cfg.Cluster.ID(), srv, srv.errorc, sstats, lstats)
-	// add all the remote members into sendhub
+	// add all remotes into transport
+	for _, m := range remotes {
+		if m.ID != id {
+			tr.AddRemote(m.ID, m.PeerURLs)
+		}
+	}
 	for _, m := range cfg.Cluster.Members() {
 		if m.ID != id {
 			tr.AddPeer(m.ID, m.PeerURLs)
@@ -395,19 +402,15 @@ func (s *EtcdServer) run() {
 				if err := s.store.Recovery(rd.Snapshot.Data); err != nil {
 					log.Panicf("recovery store error: %v", err)
 				}
+				s.Cluster.Recover()
 
-				// It avoids snapshot recovery overwriting newer cluster and
-				// transport setting, which may block the communication.
-				if s.Cluster.index < rd.Snapshot.Metadata.Index {
-					s.Cluster.Recover()
-					// recover raft transport
-					s.r.transport.RemoveAllPeers()
-					for _, m := range s.Cluster.Members() {
-						if m.ID == s.ID() {
-							continue
-						}
-						s.r.transport.AddPeer(m.ID, m.PeerURLs)
+				// recover raft transport
+				s.r.transport.RemoveAllPeers()
+				for _, m := range s.Cluster.Members() {
+					if m.ID == s.ID() {
+						continue
 					}
+					s.r.transport.AddPeer(m.ID, m.PeerURLs)
 				}
 
 				appliedi = rd.Snapshot.Metadata.Index
