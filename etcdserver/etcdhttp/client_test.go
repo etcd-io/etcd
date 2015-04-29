@@ -28,6 +28,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/go-semver/semver"
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/jonboulle/clockwork"
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	etcdErr "github.com/coreos/etcd/error"
@@ -116,6 +117,8 @@ func (s *serverRecorder) UpdateMember(_ context.Context, m etcdserver.Member) er
 	return nil
 }
 
+func (s *serverRecorder) ClusterVersion() *semver.Version { return nil }
+
 type action struct {
 	name   string
 	params []interface{}
@@ -149,6 +152,7 @@ func (rs *resServer) Process(_ context.Context, _ raftpb.Message) error         
 func (rs *resServer) AddMember(_ context.Context, _ etcdserver.Member) error    { return nil }
 func (rs *resServer) RemoveMember(_ context.Context, _ uint64) error            { return nil }
 func (rs *resServer) UpdateMember(_ context.Context, _ etcdserver.Member) error { return nil }
+func (rs *resServer) ClusterVersion() *semver.Version                           { return nil }
 
 func boolp(b bool) *bool { return &b }
 

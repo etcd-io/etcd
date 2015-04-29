@@ -23,7 +23,9 @@ import (
 	"sort"
 	"time"
 
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/go-semver/semver"
 	"github.com/coreos/etcd/pkg/types"
+	"github.com/coreos/etcd/version"
 )
 
 // isMemberBootstrapped tries to check if the given member has been bootstrapped
@@ -105,4 +107,52 @@ func getRemotePeerURLs(cl ClusterInfo, local string) []string {
 	}
 	sort.Strings(us)
 	return us
+}
+
+// getVersions returns the versions of the members in the given cluster.
+// The key of the returned map is the member's ID. The value of the returned map
+// is the semver version string. If it fails to get the version of a member, the key
+// will be an empty string.
+func getVersions(cl ClusterInfo, tr *http.Transport) map[string]string {
+	members := cl.Members()
+	vers := make(map[string]string)
+	for _, m := range members {
+		ver, err := getVersion(m, tr)
+		if err != nil {
+			log.Printf("etcdserver: cannot get the version of member %s (%v)", m.ID, err)
+			vers[m.ID.String()] = ""
+		} else {
+			vers[m.ID.String()] = ver
+		}
+	}
+	return vers
+}
+
+// decideClusterVersion decides the cluster version based on the versions map.
+// The returned version is the min version in the map, or nil if the min
+// version in unknown.
+func decideClusterVersion(vers map[string]string) *semver.Version {
+	var cv *semver.Version
+	lv := semver.Must(semver.NewVersion(version.Version))
+
+	for mid, ver := range vers {
+		if len(ver) == 0 {
+			return nil
+		}
+		v, err := semver.NewVersion(ver)
+		if err != nil {
+			log.Printf("etcdserver: cannot understand the version of member %s (%v)", mid, err)
+			return nil
+		}
+		if lv.LessThan(*v) {
+			log.Printf("etcdserver: the etcd version %s is not up-to-date", lv.String())
+			log.Printf("etcdserver: member %s has a higher version %s", mid, ver)
+		}
+		if cv == nil {
+			cv = v
+		} else if v.LessThan(*cv) {
+			cv = v
+		}
+	}
+	return cv
 }
