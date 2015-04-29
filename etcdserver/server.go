@@ -58,16 +58,16 @@ const (
 	// TODO: calculate based on heartbeat interval
 	defaultPublishRetryInterval = 5 * time.Second
 
-	StoreAdminPrefix = "/0"
-	StoreKeysPrefix  = "/1"
+	StoreClusterPrefix = "/0"
+	StoreKeysPrefix    = "/1"
 
 	purgeFileInterval      = 30 * time.Second
 	monitorVersionInterval = 10 * time.Second
 )
 
 var (
-	storeMembersPrefix        = path.Join(StoreAdminPrefix, "members")
-	storeRemovedMembersPrefix = path.Join(StoreAdminPrefix, "removed_members")
+	storeMembersPrefix        = path.Join(StoreClusterPrefix, "members")
+	storeRemovedMembersPrefix = path.Join(StoreClusterPrefix, "removed_members")
 
 	storeMemberAttributeRegexp = regexp.MustCompile(path.Join(storeMembersPrefix, "[[:xdigit:]]{1,16}", attributesSuffix))
 )
@@ -167,7 +167,7 @@ type EtcdServer struct {
 // NewServer creates a new EtcdServer from the supplied configuration. The
 // configuration is considered static for the lifetime of the EtcdServer.
 func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
-	st := store.New(StoreAdminPrefix, StoreKeysPrefix)
+	st := store.New(StoreClusterPrefix, StoreKeysPrefix)
 	var w *wal.WAL
 	var n raft.Node
 	var s *raft.MemoryStorage
