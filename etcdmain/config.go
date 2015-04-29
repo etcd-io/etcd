@@ -61,6 +61,7 @@ var (
 
 	ErrConflictBootstrapFlags = fmt.Errorf("multiple discovery or bootstrap flags are set" +
 		"Choose one of \"initial-cluster\", \"discovery\" or \"discovery-srv\"")
+	errUnsetAdvertiseClientURLsFlag = fmt.Errorf("-advertise-client-urls is required when -listen-client-urls is set explicitly")
 )
 
 type config struct {
@@ -263,6 +264,9 @@ func (cfg *config) Parse(arguments []string) error {
 	cfg.acurls, err = flags.URLsFromFlags(cfg.FlagSet, "advertise-client-urls", "addr", cfg.clientTLSInfo)
 	if err != nil {
 		return err
+	}
+	if flags.IsSet(cfg.FlagSet, "listen-client-urls") && !flags.IsSet(cfg.FlagSet, "advertise-client-urls") {
+		return errUnsetAdvertiseClientURLsFlag
 	}
 
 	if 5*cfg.TickMs > cfg.ElectionMs {
