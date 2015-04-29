@@ -22,11 +22,11 @@ import (
 )
 
 func main() {
-	endpointStr := flag.String("agent-endpoints", ":9027", "")
-	datadir := flag.String("data-dir", "agent.etcd", "")
-	stressKeySize := flag.Int("stress-key-size", 100, "stress-key-size is the size of each key written into etcd")
-	stressKeySuffixRange := flag.Int("stress-key-count", 250000, "stress-key-count is the count of key range written into etcd")
-	limit := flag.Int("limit", 3, "")
+	endpointStr := flag.String("agent-endpoints", ":9027", "HTTP RPC endpoints of agents")
+	datadir := flag.String("data-dir", "agent.etcd", "etcd data directory location on agent machine")
+	stressKeySize := flag.Int("stress-key-size", 100, "the size of each key written into etcd")
+	stressKeySuffixRange := flag.Int("stress-key-count", 250000, "the count of key range written into etcd")
+	limit := flag.Int("limit", 3, "the limit of rounds to run failure set")
 	flag.Parse()
 
 	endpoints := strings.Split(*endpointStr, ",")

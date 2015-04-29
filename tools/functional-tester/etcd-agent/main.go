@@ -20,7 +20,7 @@ import (
 )
 
 func main() {
-	etcdPath := flag.String("etcd-path", "/opt/etcd/bin/etcd", "")
+	etcdPath := flag.String("etcd-path", "/opt/etcd/bin/etcd", "the path to etcd binary")
 	flag.Parse()
 
 	a, err := newAgent(*etcdPath)
