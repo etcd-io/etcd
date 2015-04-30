@@ -277,27 +277,29 @@ The first terminal should get the notification and return with the same response
 However, the watch command can do more than this.
 Using the index, we can watch for commands that have happened in the past.
 This is useful for ensuring you don't miss events between watch commands. 
-Typically, we watch again from the (modifiedIndex + 1) of the node we got.
+Typically, we watch again from the `modifiedIndex + 1` of the node we got.
 
-Let's try to watch for the set command of index 7 again:
+If we were to restart the watch from index 8 with:
 
 ```sh
-curl 'http://127.0.0.1:2379/v2/keys/foo?wait=true&waitIndex=7'
+curl 'http://127.0.0.1:2379/v2/keys/foo?wait=true&waitIndex=8'
 ```
 
-The watch command returns immediately with the same response as previously.
+Then even if etcd is on index 50, the first event to occur to the `/foo` key
+between 8 and 50 will be returned.
 
 **Note**: etcd only keeps the responses of the most recent 1000 events across all etcd keys. 
 It is recommended to send the response to another thread to process immediately
 instead of blocking the watch while processing the result. 
 
 If we miss all the 1000 events, we need to recover the current state of the 
-watching key space. First, We do a get and then start to watch from the (etcdIndex + 1).
+watching key space. First, We do a get and then start to watch from the
+`X-Etcd-Index + 1`.
 
-For example, we set `/foo="bar"` for 2000 times and tries to wait from index 7.
+For example, we set `/foo="bar"` for 2000 times and tries to wait from index 8.
 
 ```sh
-curl 'http://127.0.0.1:2379/v2/keys/foo?wait=true&waitIndex=7'
+curl 'http://127.0.0.1:2379/v2/keys/foo?wait=true&waitIndex=8'
 ```
 
 We get the index is outdated response, since we miss the 1000 events kept in etcd.
@@ -306,7 +308,7 @@ We get the index is outdated response, since we miss the 1000 events kept in etc
 {"errorCode":401,"message":"The event in requested index is outdated and cleared","cause":"the requested history has been cleared [1003/7]","index":2002}
 ```
 
-To start watch, first we need to fetch the current state of key `/foo` and the etcdIndex.
+To start watch, first we need to fetch the current state of key `/foo`:
 
 ```sh
 curl 'http://127.0.0.1:2379/v2/keys/foo' -vv
@@ -325,13 +327,16 @@ curl 'http://127.0.0.1:2379/v2/keys/foo' -vv
 {"action":"get","node":{"key":"/foo","value":"","modifiedIndex":2002,"createdIndex":2002}}
 ```
 
-The `X-Etcd-Index` is important. It is the index when we got the value of `/foo`.
-So we can watch again from the (`X-Etcd-Index` + 1) without missing an event after the last get.
+Unlike watches we use the `X-Etcd-Index + 1` of the response as a `waitIndex`
+instead of the node's `modifiedIndex` for two reasons:
 
-```sh
-curl 'http://127.0.0.1:2379/v2/keys/foo?wait=true&waitIndex=2003'
-```
+1. The `X-Etcd-Index` will be greater than or equal to the `modifiedIndex`
+2. If it is greater than the `modifiedIndex`, none of those indexes will be
+   related to the key being fetched.
 
+Using the `modifiedIndex` will be functionally equivalent for subsequent
+watches, but since it might be smaller than the `Etcd-Index` we may receive a
+`401` error more quickly than if we used the `Etcd-Index`.
 
 ### Atomically Creating In-Order Keys
 
