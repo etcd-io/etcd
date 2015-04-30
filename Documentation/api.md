@@ -332,6 +332,43 @@ So we can watch again from the (`X-Etcd-Index` + 1) without missing an event aft
 curl 'http://127.0.0.1:2379/v2/keys/foo?wait=true&waitIndex=2003'
 ```
 
+If the key is changed you'll receive output such as:
+
+```sh
+< HTTP/1.1 200 OK
+< Content-Type: application/json
+< X-Etcd-Cluster-Id: 7e27652122e8b2ae
+< X-Etcd-Index: 2003
+< X-Raft-Index: 371
+< X-Raft-Term: 2003
+< Date: Thu, 30 Apr 2015 16:31:50 GMT
+< Transfer-Encoding: chunked
+< 
+{
+  "action": "set",
+  "node": {
+    "key": "/foo",
+    "value": "bar",
+    "modifiedIndex": 2004,
+    "createdIndex": 2004
+  },
+  "prevNode": {
+    "key": "/foo",
+    "value": "",
+    "modifiedIndex": 2002,
+    "createdIndex": 2002
+  }
+}
+```
+
+The headers for a wait request are returned immediately, and the value of
+`Etcd-Index` is the index at which the wait began. The `Etcd-Index` in this
+case is completely independent of either the `waitIndex` or the indexes on the
+eventual node response.
+
+Subsequent waits should use `node.modifiedIndex` + 1 of the previous response
+for their `waitIndex` if their intention is to receive all updates for a key.
+
 
 ### Atomically Creating In-Order Keys
 
