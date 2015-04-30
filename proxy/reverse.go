@@ -73,6 +73,25 @@ func (p *reverseProxy) ServeHTTP(rw http.ResponseWriter, clientreq *http.Request
 		return
 	}
 
+	completeCh := make(chan bool, 1)
+	closeNotifier, ok := rw.(http.CloseNotifier)
+	if ok {
+		go func() {
+			select {
+			case <-closeNotifier.CloseNotify():
+				tp, ok := p.transport.(*http.Transport)
+				if ok {
+					tp.CancelRequest(proxyreq)
+				}
+			case <-completeCh:
+			}
+		}()
+
+		defer func() {
+			completeCh <- true
+		}()
+	}
+
 	var res *http.Response
 	var err error
 
