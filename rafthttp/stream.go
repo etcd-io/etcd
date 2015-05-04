@@ -324,7 +324,9 @@ func (cr *streamReader) updateMsgAppTerm(term uint64) {
 		return
 	}
 	cr.msgAppTerm = term
-	cr.close()
+	if cr.t == streamTypeMsgApp {
+		cr.close()
+	}
 }
 
 // TODO: always cancel in-flight dial and decode
