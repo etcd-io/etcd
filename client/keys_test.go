@@ -1313,3 +1313,26 @@ func TestHTTPKeysAPIUpdateAction(t *testing.T) {
 	kAPI := httpKeysAPI{client: &actionAssertingHTTPClient{t: t, act: act}}
 	kAPI.Update(context.Background(), "/foo", "bar")
 }
+
+func TestNodeTTLDuration(t *testing.T) {
+	tests := []struct {
+		node *Node
+		want time.Duration
+	}{
+		{
+			node: &Node{TTL: 0},
+			want: 0,
+		},
+		{
+			node: &Node{TTL: 97},
+			want: 97 * time.Second,
+		},
+	}
+
+	for i, tt := range tests {
+		got := tt.node.TTLDuration()
+		if tt.want != got {
+			t.Errorf("#%d: incorrect duration: want=%v got=%v", i, tt.want, got)
+		}
+	}
+}
