@@ -274,6 +274,11 @@ func (n *Node) String() string {
 	return fmt.Sprintf("{Key: %s, CreatedIndex: %d, ModifiedIndex: %d, TTL: %d}", n.Key, n.CreatedIndex, n.ModifiedIndex, n.TTL)
 }
 
+// TTLDuration returns the Node's TTL as a time.Duration object
+func (n *Node) TTLDuration() time.Duration {
+	return time.Duration(n.TTL) * time.Second
+}
+
 type httpKeysAPI struct {
 	client httpClient
 	prefix string
