@@ -95,7 +95,8 @@ type KeysAPI interface {
 	Get(ctx context.Context, key string, opts *GetOptions) (*Response, error)
 
 	// Set assigns a new value to a Node identified by a given key. The caller
-	// may define a set of conditions in the SetOptions.
+	// may define a set of conditions in the SetOptions. If SetOptions.Dir=true
+	// than value is ignored.
 	Set(ctx context.Context, key, value string, opts *SetOptions) (*Response, error)
 
 	// Delete removes a Node identified by the given key, optionally destroying
@@ -151,6 +152,8 @@ type SetOptions struct {
 	// Leaving this field empty means that the caller wishes to
 	// ignore the current value of the Node. This cannot be used
 	// to compare the Node's current value to an empty string.
+	//
+	// PrevValue is ignored if Dir=true
 	PrevValue string
 
 	// PrevIndex indicates what the current ModifiedIndex of the
@@ -170,6 +173,9 @@ type SetOptions struct {
 	// that the zero-value is ignored, TTL cannot be used to set
 	// a TTL of 0.
 	TTL time.Duration
+
+	// Dir specifies whether or not this Node should be created as a directory.
+	Dir bool
 }
 
 type GetOptions struct {
@@ -296,6 +302,7 @@ func (k *httpKeysAPI) Set(ctx context.Context, key, val string, opts *SetOptions
 		act.PrevIndex = opts.PrevIndex
 		act.PrevExist = opts.PrevExist
 		act.TTL = opts.TTL
+		act.Dir = opts.Dir
 	}
 
 	resp, body, err := k.client.Do(ctx, act)
@@ -468,28 +475,38 @@ type setAction struct {
 	PrevIndex uint64
 	PrevExist PrevExistType
 	TTL       time.Duration
+	Dir       bool
 }
 
 func (a *setAction) HTTPRequest(ep url.URL) *http.Request {
 	u := v2KeysURL(ep, a.Prefix, a.Key)
 
 	params := u.Query()
-	if a.PrevValue != "" {
-		params.Set("prevValue", a.PrevValue)
+	form := url.Values{}
+
+	// we're either creating a directory or setting a key
+	if a.Dir {
+		params.Set("dir", strconv.FormatBool(a.Dir))
+	} else {
+		// These options are only valid for setting a key
+		if a.PrevValue != "" {
+			params.Set("prevValue", a.PrevValue)
+		}
+		form.Add("value", a.Value)
 	}
+
+	// Options which apply to both setting a key and creating a dir
 	if a.PrevIndex != 0 {
 		params.Set("prevIndex", strconv.FormatUint(a.PrevIndex, 10))
 	}
 	if a.PrevExist != PrevIgnore {
 		params.Set("prevExist", string(a.PrevExist))
 	}
-	u.RawQuery = params.Encode()
-
-	form := url.Values{}
-	form.Add("value", a.Value)
 	if a.TTL > 0 {
 		form.Add("ttl", strconv.FormatUint(uint64(a.TTL.Seconds()), 10))
 	}
+
+	u.RawQuery = params.Encode()
 	body := strings.NewReader(form.Encode())
 
 	req, _ := http.NewRequest("PUT", u.String(), body)

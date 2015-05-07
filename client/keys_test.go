@@ -330,6 +330,45 @@ func TestSetAction(t *testing.T) {
 			wantURL:  "http://example.com/foo",
 			wantBody: "ttl=180&value=",
 		},
+		// Dir is set
+		{
+			act: setAction{
+				Key: "foo",
+				Dir: true,
+			},
+			wantURL:  "http://example.com/foo?dir=true",
+			wantBody: "",
+		},
+		// Dir is set with a value
+		{
+			act: setAction{
+				Key:   "foo",
+				Value: "bar",
+				Dir:   true,
+			},
+			wantURL:  "http://example.com/foo?dir=true",
+			wantBody: "",
+		},
+		// Dir is set with PrevExist set to true
+		{
+			act: setAction{
+				Key:       "foo",
+				PrevExist: PrevExist,
+				Dir:       true,
+			},
+			wantURL:  "http://example.com/foo?dir=true&prevExist=true",
+			wantBody: "",
+		},
+		// Dir is set with PrevValue
+		{
+			act: setAction{
+				Key:       "foo",
+				PrevValue: "bar",
+				Dir:       true,
+			},
+			wantURL:  "http://example.com/foo?dir=true",
+			wantBody: "",
+		},
 	}
 
 	for i, tt := range tests {
@@ -967,6 +1006,7 @@ func TestHTTPKeysAPISetAction(t *testing.T) {
 				PrevIndex: 13,
 				PrevExist: PrevExist,
 				TTL:       time.Minute,
+				Dir:       true,
 			},
 			wantAction: &setAction{
 				Key:       "/foo",
@@ -975,6 +1015,7 @@ func TestHTTPKeysAPISetAction(t *testing.T) {
 				PrevIndex: 13,
 				PrevExist: PrevExist,
 				TTL:       time.Minute,
+				Dir:       true,
 			},
 		},
 	}
