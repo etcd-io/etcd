@@ -24,6 +24,7 @@ import (
 	pioutil "github.com/coreos/etcd/pkg/ioutil"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft/raftpb"
+	"github.com/coreos/etcd/version"
 )
 
 const (
@@ -124,6 +125,8 @@ func (h *streamHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 		return
 	}
+
+	w.Header().Add("X-Server-Version", version.Version)
 
 	var t streamType
 	switch path.Dir(r.URL.Path) {

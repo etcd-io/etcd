@@ -25,9 +25,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/go-semver/semver"
 	"github.com/coreos/etcd/etcdserver/stats"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft/raftpb"
+	"github.com/coreos/etcd/version"
 )
 
 const (
@@ -36,6 +38,16 @@ const (
 	streamTypeMsgApp   streamType = "msgapp"
 
 	streamBufSize = 4096
+)
+
+var (
+	errUnsupportedStreamType = fmt.Errorf("unsupported stream type")
+
+	// the key is in string format "major.minor.patch"
+	supportedStream = map[string][]streamType{
+		"2.0.0": []streamType{streamTypeMsgApp},
+		"2.1.0": []streamType{streamTypeMsgApp, streamTypeMsgAppV2, streamTypeMessage},
+	}
 )
 
 type streamType string
@@ -256,13 +268,22 @@ func startStreamReader(tr http.RoundTripper, picker *urlPicker, t streamType, fr
 
 func (cr *streamReader) run() {
 	for {
-		rc, err := cr.dial()
+		t := cr.t
+		rc, err := cr.dial(t)
+		// downgrade to streamTypeMsgApp if the remote doesn't support
+		// streamTypeMsgAppV2
+		if t == streamTypeMsgAppV2 && err == errUnsupportedStreamType {
+			t = streamTypeMsgApp
+			rc, err = cr.dial(t)
+		}
 		if err != nil {
-			log.Printf("rafthttp: roundtripping error: %v", err)
+			if err != errUnsupportedStreamType {
+				log.Printf("rafthttp: roundtripping error: %v", err)
+			}
 		} else {
-			err := cr.decodeLoop(rc)
+			err := cr.decodeLoop(rc, t)
 			if err != io.EOF && !isClosedConnectionError(err) {
-				log.Printf("rafthttp: failed to read message on stream %s due to %v", cr.t, err)
+				log.Printf("rafthttp: failed to read message on stream %s due to %v", t, err)
 			}
 		}
 		select {
@@ -276,10 +297,10 @@ func (cr *streamReader) run() {
 	}
 }
 
-func (cr *streamReader) decodeLoop(rc io.ReadCloser) error {
+func (cr *streamReader) decodeLoop(rc io.ReadCloser, t streamType) error {
 	var dec decoder
 	cr.mu.Lock()
-	switch cr.t {
+	switch t {
 	case streamTypeMsgApp:
 		dec = &msgAppDecoder{r: rc, local: cr.from, remote: cr.to, term: cr.msgAppTerm}
 	case streamTypeMsgAppV2:
@@ -287,7 +308,7 @@ func (cr *streamReader) decodeLoop(rc io.ReadCloser) error {
 	case streamTypeMessage:
 		dec = &messageDecoder{r: rc}
 	default:
-		log.Panicf("rafthttp: unhandled stream type %s", cr.t)
+		log.Panicf("rafthttp: unhandled stream type %s", t)
 	}
 	cr.closer = rc
 	cr.mu.Unlock()
@@ -347,14 +368,14 @@ func (cr *streamReader) isWorking() bool {
 	return cr.closer != nil
 }
 
-func (cr *streamReader) dial() (io.ReadCloser, error) {
+func (cr *streamReader) dial(t streamType) (io.ReadCloser, error) {
 	u := cr.picker.pick()
 	cr.mu.Lock()
 	term := cr.msgAppTerm
 	cr.mu.Unlock()
 
 	uu := u
-	uu.Path = path.Join(cr.t.endpoint(), cr.from.String())
+	uu.Path = path.Join(t.endpoint(), cr.from.String())
 	req, err := http.NewRequest("GET", uu.String(), nil)
 	if err != nil {
 		cr.picker.unreachable(u)
@@ -362,7 +383,7 @@ func (cr *streamReader) dial() (io.ReadCloser, error) {
 	}
 	req.Header.Set("X-Etcd-Cluster-ID", cr.cid.String())
 	req.Header.Set("X-Raft-To", cr.to.String())
-	if cr.t == streamTypeMsgApp {
+	if t == streamTypeMsgApp {
 		req.Header.Set("X-Raft-Term", strconv.FormatUint(term, 10))
 	}
 	cr.mu.Lock()
@@ -373,6 +394,14 @@ func (cr *streamReader) dial() (io.ReadCloser, error) {
 		cr.picker.unreachable(u)
 		return nil, fmt.Errorf("error roundtripping to %s: %v", req.URL, err)
 	}
+
+	rv := serverVersion(resp.Header)
+	lv := semver.Must(semver.NewVersion(version.Version))
+	if compareMajorMinorVersion(rv, lv) == -1 && !checkStreamSupport(rv, t) {
+		resp.Body.Close()
+		return nil, errUnsupportedStreamType
+	}
+
 	switch resp.StatusCode {
 	case http.StatusGone:
 		resp.Body.Close()
@@ -384,6 +413,9 @@ func (cr *streamReader) dial() (io.ReadCloser, error) {
 		return nil, err
 	case http.StatusOK:
 		return resp.Body, nil
+	case http.StatusNotFound:
+		resp.Body.Close()
+		return nil, fmt.Errorf("local member has not been added to the peer list of member %s", cr.to)
 	default:
 		resp.Body.Close()
 		return nil, fmt.Errorf("unhandled http status %d", resp.StatusCode)
@@ -410,4 +442,42 @@ func canUseMsgAppStream(m raftpb.Message) bool {
 func isClosedConnectionError(err error) bool {
 	operr, ok := err.(*net.OpError)
 	return ok && operr.Err.Error() == "use of closed network connection"
+}
+
+// serverVersion returns the version from the given header.
+func serverVersion(h http.Header) *semver.Version {
+	verStr := h.Get("X-Server-Version")
+	// backward compatibility with etcd 2.0
+	if verStr == "" {
+		verStr = "2.0.0"
+	}
+	return semver.Must(semver.NewVersion(verStr))
+}
+
+// compareMajorMinorVersion returns an integer comparing two versions based on
+// their major and minor version. The result will be 0 if a==b, -1 if a < b,
+// and 1 if a > b.
+func compareMajorMinorVersion(a, b *semver.Version) int {
+	na := &semver.Version{Major: a.Major, Minor: a.Minor}
+	nb := &semver.Version{Major: b.Major, Minor: b.Minor}
+	switch {
+	case na.LessThan(*nb):
+		return -1
+	case nb.LessThan(*na):
+		return 1
+	default:
+		return 0
+	}
+}
+
+// checkStreamSupport checks whether the stream type is supported in the
+// given version.
+func checkStreamSupport(v *semver.Version, t streamType) bool {
+	nv := &semver.Version{Major: v.Major, Minor: v.Minor}
+	for _, s := range supportedStream[nv.String()] {
+		if s == t {
+			return true
+		}
+	}
+	return false
 }
