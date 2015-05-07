@@ -121,7 +121,6 @@ func (h *streamHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	fromStr := strings.TrimPrefix(r.URL.Path, RaftStreamPrefix+"/")
 	from, err := types.IDFromString(fromStr)
 	if err != nil {
-		log.Printf("rafthttp: path %s cannot be parsed", fromStr)
 		http.Error(w, "invalid path", http.StatusNotFound)
 		return
 	}
