@@ -349,6 +349,7 @@ func (pg *fakePeerGetter) Get(id types.ID) Peer { return pg.peers[id] }
 type fakePeer struct {
 	msgs  []raftpb.Message
 	urls  types.URLs
+	term  uint64
 	connc chan *outgoingConn
 }
 
@@ -360,5 +361,6 @@ func newFakePeer() *fakePeer {
 
 func (pr *fakePeer) Send(m raftpb.Message)                 { pr.msgs = append(pr.msgs, m) }
 func (pr *fakePeer) Update(urls types.URLs)                { pr.urls = urls }
+func (pr *fakePeer) setTerm(term uint64)                   { pr.term = term }
 func (pr *fakePeer) attachOutgoingConn(conn *outgoingConn) { pr.connc <- conn }
 func (pr *fakePeer) Stop()                                 {}

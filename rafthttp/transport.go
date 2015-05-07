@@ -77,6 +77,7 @@ type transport struct {
 	serverStats  *stats.ServerStats
 	leaderStats  *stats.LeaderStats
 
+	term    uint64               // the latest term that has been observed
 	mu      sync.RWMutex         // protect the remote and peer map
 	remotes map[types.ID]*remote // remotes map that helps newly joined member to catch up
 	peers   map[types.ID]Peer    // peers map
@@ -112,6 +113,16 @@ func (t *transport) Get(id types.ID) Peer {
 	return t.peers[id]
 }
 
+func (t *transport) maybeUpdatePeersTerm(term uint64) {
+	if t.term >= term {
+		return
+	}
+	t.term = term
+	for _, p := range t.peers {
+		p.setTerm(term)
+	}
+}
+
 func (t *transport) Send(msgs []raftpb.Message) {
 	for _, m := range msgs {
 		// intentionally dropped message
@@ -119,6 +130,10 @@ func (t *transport) Send(msgs []raftpb.Message) {
 			continue
 		}
 		to := types.ID(m.To)
+
+		if m.Type != raftpb.MsgProp { // proposal message does not have a valid term
+			t.maybeUpdatePeersTerm(m.Term)
+		}
 
 		p, ok := t.peers[to]
 		if ok {
