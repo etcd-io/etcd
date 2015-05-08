@@ -20,6 +20,7 @@ import (
 	"log"
 	"net/url"
 	"os"
+	"runtime"
 	"strings"
 
 	"github.com/coreos/etcd/etcdserver"
@@ -212,7 +213,10 @@ func (cfg *config) Parse(arguments []string) error {
 	}
 
 	if cfg.printVersion {
-		fmt.Println("etcd version", version.Version)
+		fmt.Printf("etcd Version: %s\n", version.Version)
+		fmt.Printf("Git SHA: %s\n", version.GitSHA)
+		fmt.Printf("Go Version: %s\n", runtime.Version())
+		fmt.Printf("Go OS/Arch: %s/%s\n", runtime.GOOS, runtime.GOARCH)
 		os.Exit(0)
 	}
 

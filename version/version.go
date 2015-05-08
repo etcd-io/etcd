@@ -24,6 +24,9 @@ import (
 
 var (
 	Version = "2.0.10+git"
+
+	// Git SHA Value will be set during build
+	GitSHA = "Not provided (use ./build instead of go build)"
 )
 
 // WalVersion is an enum for versions of etcd logs.
