@@ -33,6 +33,7 @@
 
 - [stianeikeland/node-etcd](https://github.com/stianeikeland/node-etcd) - Supports v2 (w Coffeescript)
 - [lavagetto/nodejs-etcd](https://github.com/lavagetto/nodejs-etcd) - Supports v2
+- [deedubs/node-etcd-config](https://github.com/deedubs/node-etcd-config) - Supports v2
 
 **Ruby libraries**
 
@@ -68,7 +69,7 @@
 **Haskell libraries**
 
 - [wereHamster/etcd-hs](https://github.com/wereHamster/etcd-hs)
- 
+
 **Tcl libraries**
 
 - [efrecon/etcd-tcl](https://github.com/efrecon/etcd-tcl) - Supports v2, except wait.
