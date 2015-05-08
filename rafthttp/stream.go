@@ -282,7 +282,15 @@ func (cr *streamReader) run() {
 			}
 		} else {
 			err := cr.decodeLoop(rc, t)
-			if err != io.EOF && !isClosedConnectionError(err) {
+			switch {
+			// all data is read out
+			case err == io.EOF:
+			// connection is closed by the remote
+			case isClosedConnectionError(err):
+			// stream msgapp is only used for etcd 2.0, and etcd 2.0 doesn't
+			// heartbeat on the idle stream, so it is expected to time out.
+			case t == streamTypeMsgApp && isNetworkTimeoutError(err):
+			default:
 				log.Printf("rafthttp: failed to read message on stream %s due to %v", t, err)
 			}
 		}
@@ -480,4 +488,9 @@ func checkStreamSupport(v *semver.Version, t streamType) bool {
 		}
 	}
 	return false
+}
+
+func isNetworkTimeoutError(err error) bool {
+	nerr, ok := err.(net.Error)
+	return ok && nerr.Timeout()
 }
