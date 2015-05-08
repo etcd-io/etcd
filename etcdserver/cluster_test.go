@@ -21,6 +21,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/go-semver/semver"
 	"github.com/coreos/etcd/pkg/testutil"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft/raftpb"
@@ -79,11 +80,14 @@ func TestClusterFromStringBad(t *testing.T) {
 func TestClusterFromStore(t *testing.T) {
 	tests := []struct {
 		mems []*Member
+		ver  *semver.Version
 	}{
 		{
 			[]*Member{newTestMember(1, nil, "", nil)},
+			semver.Must(semver.NewVersion("2.0.0")),
 		},
 		{
+			nil,
 			nil,
 		},
 		{
@@ -91,20 +95,32 @@ func TestClusterFromStore(t *testing.T) {
 				newTestMember(1, nil, "", nil),
 				newTestMember(2, nil, "", nil),
 			},
+			semver.Must(semver.NewVersion("2.0.0")),
 		},
 	}
 	for i, tt := range tests {
+		st := store.New()
 		hc := newTestCluster(nil)
-		hc.SetStore(store.New())
+		hc.SetStore(st)
 		for _, m := range tt.mems {
 			hc.AddMember(m)
 		}
-		c := NewClusterFromStore("abc", hc.store)
+		if tt.ver != nil {
+			_, err := st.Set(path.Join(StoreClusterPrefix, "version"), false, tt.ver.String(), store.Permanent)
+			if err != nil {
+				t.Fatal(err)
+			}
+		}
+
+		c := NewClusterFromStore("abc", st)
 		if c.token != "abc" {
 			t.Errorf("#%d: token = %v, want %v", i, c.token, "abc")
 		}
 		if !reflect.DeepEqual(c.Members(), tt.mems) {
 			t.Errorf("#%d: members = %v, want %v", i, c.Members(), tt.mems)
+		}
+		if !reflect.DeepEqual(c.Version(), tt.ver) {
+			t.Errorf("#%d: ver = %v, want %v", i, c.Version(), tt.ver)
 		}
 	}
 }

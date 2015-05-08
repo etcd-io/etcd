@@ -1041,6 +1041,45 @@ func TestPublishRetry(t *testing.T) {
 	}
 }
 
+func TestUpdateVersion(t *testing.T) {
+	n := &nodeRecorder{}
+	ch := make(chan interface{}, 1)
+	// simulate that request has gone through consensus
+	ch <- Response{}
+	w := &waitWithResponse{ch: ch}
+	srv := &EtcdServer{
+		id:         1,
+		r:          raftNode{Node: n},
+		attributes: Attributes{Name: "node1", ClientURLs: []string{"http://node1.com"}},
+		Cluster:    &Cluster{},
+		w:          w,
+		reqIDGen:   idutil.NewGenerator(0, time.Time{}),
+	}
+	srv.updateClusterVersion("2.0.0")
+
+	action := n.Action()
+	if len(action) != 1 {
+		t.Fatalf("len(action) = %d, want 1", len(action))
+	}
+	if action[0].Name != "Propose" {
+		t.Fatalf("action = %s, want Propose", action[0].Name)
+	}
+	data := action[0].Params[0].([]byte)
+	var r pb.Request
+	if err := r.Unmarshal(data); err != nil {
+		t.Fatalf("unmarshal request error: %v", err)
+	}
+	if r.Method != "PUT" {
+		t.Errorf("method = %s, want PUT", r.Method)
+	}
+	if wpath := path.Join(StoreClusterPrefix, "version"); r.Path != wpath {
+		t.Errorf("path = %s, want %s", r.Path, wpath)
+	}
+	if r.Val != "2.0.0" {
+		t.Errorf("val = %s, want %s", r.Val, "2.0.0")
+	}
+}
+
 func TestStopNotify(t *testing.T) {
 	s := &EtcdServer{
 		stop: make(chan struct{}),

@@ -19,17 +19,14 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"math/rand"
-	"net/http"
 	"path"
 	"sort"
 	"time"
 
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/store"
-	"github.com/coreos/etcd/version"
 )
 
 // RaftAttributes represents the raft related attributes of an etcd member.
@@ -150,37 +147,6 @@ func nodeToMember(n *store.NodeExtern) (*Member, error) {
 		}
 	}
 	return m, nil
-}
-
-// getVersion returns the version of the given member via its
-// peerURLs. Returns the last error if it fails to get the version.
-func getVersion(m *Member, tr *http.Transport) (string, error) {
-	cc := &http.Client{
-		Transport: tr,
-		Timeout:   time.Second,
-	}
-	var (
-		err  error
-		resp *http.Response
-	)
-
-	for _, u := range m.PeerURLs {
-		resp, err = cc.Get(u + "/version")
-		if err != nil {
-			continue
-		}
-		b, err := ioutil.ReadAll(resp.Body)
-		resp.Body.Close()
-		if err != nil {
-			continue
-		}
-		var vers version.Versions
-		if err := json.Unmarshal(b, &vers); err != nil {
-			continue
-		}
-		return vers.Server, nil
-	}
-	return "", err
 }
 
 // implement sort by ID interface

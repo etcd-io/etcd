@@ -26,6 +26,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/go-semver/semver"
 	"github.com/coreos/etcd/pkg/flags"
 	"github.com/coreos/etcd/pkg/netutil"
 	"github.com/coreos/etcd/pkg/types"
@@ -60,7 +61,8 @@ type Cluster struct {
 	token string
 	store store.Store
 
-	sync.Mutex // guards members and removed map
+	sync.Mutex // guards the fields below
+	version    *semver.Version
 	members    map[types.ID]*Member
 	// removed contains the ids of removed members in the cluster.
 	// removed id cannot be reused.
@@ -100,6 +102,7 @@ func NewClusterFromStore(token string, st store.Store) *Cluster {
 	c := newCluster(token)
 	c.store = st
 	c.members, c.removed = membersFromStore(c.store)
+	c.version = clusterVersionFromStore(c.store)
 	return c
 }
 
@@ -232,6 +235,7 @@ func (c *Cluster) SetStore(st store.Store) { c.store = st }
 
 func (c *Cluster) Recover() {
 	c.members, c.removed = membersFromStore(c.store)
+	c.version = clusterVersionFromStore(c.store)
 }
 
 // ValidateConfigurationChange takes a proposed ConfChange and
@@ -347,6 +351,26 @@ func (c *Cluster) UpdateRaftAttributes(id types.ID, raftAttr RaftAttributes) {
 	c.members[id].RaftAttributes = raftAttr
 }
 
+func (c *Cluster) Version() *semver.Version {
+	c.Lock()
+	defer c.Unlock()
+	if c.version == nil {
+		return nil
+	}
+	return semver.Must(semver.NewVersion(c.version.String()))
+}
+
+func (c *Cluster) SetVersion(ver *semver.Version) {
+	c.Lock()
+	defer c.Unlock()
+	if c.version != nil {
+		log.Printf("etcdsever: updated the cluster version from %v to %v", c.version.String(), ver.String())
+	} else {
+		log.Printf("etcdsever: set the initial cluster version to %v", ver.String())
+	}
+	c.version = ver
+}
+
 // Validate ensures that there is no identical urls in the cluster peer list
 func (c *Cluster) Validate() error {
 	urlMap := make(map[string]bool)
@@ -390,6 +414,17 @@ func membersFromStore(st store.Store) (map[types.ID]*Member, map[types.ID]bool) 
 		removed[mustParseMemberIDFromKey(n.Key)] = true
 	}
 	return members, removed
+}
+
+func clusterVersionFromStore(st store.Store) *semver.Version {
+	e, err := st.Get(path.Join(StoreClusterPrefix, "version"), false, false)
+	if err != nil {
+		if isKeyNotFound(err) {
+			return nil
+		}
+		log.Panicf("etcdserver: unexpected error (%v) when getting cluster version from store", err)
+	}
+	return semver.Must(semver.NewVersion(*e.Node.Value))
 }
 
 // ValidateClusterAndAssignIDs validates the local cluster by matching the PeerURLs
