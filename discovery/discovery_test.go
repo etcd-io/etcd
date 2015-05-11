@@ -318,6 +318,7 @@ func TestCreateSelf(t *testing.T) {
 
 	c := &clientWithResp{rs: rs, w: w}
 	errc := &clientWithErr{err: errors.New("create err"), w: w}
+	errdupc := &clientWithErr{err: client.Error{Code: client.ErrorCodeNodeExist}}
 	errwc := &clientWithResp{rs: rs, w: errw}
 
 	tests := []struct {
@@ -330,6 +331,8 @@ func TestCreateSelf(t *testing.T) {
 		{errc, errc.err},
 		// watcher.next retuens an error
 		{errwc, errw.err},
+		// parse key exist error to duplciate ID error
+		{errdupc, ErrDuplicateID},
 	}
 
 	for i, tt := range tests {
