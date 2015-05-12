@@ -183,7 +183,7 @@ func (d *discovery) createSelf(contents string) error {
 	resp, err := d.c.Create(ctx, d.selfKey(), contents)
 	cancel()
 	if err != nil {
-		if eerr, ok := err.(*client.Error); ok && eerr.Code == client.ErrorCodeNodeExist {
+		if eerr, ok := err.(client.Error); ok && eerr.Code == client.ErrorCodeNodeExist {
 			return ErrDuplicateID
 		}
 		return err

@@ -99,8 +99,10 @@ func Main() {
 	if err != nil {
 		switch err {
 		case discovery.ErrDuplicateID:
-			log.Fatalf("member %s has previously registered with discovery service (%s), but the data-dir (%s) on disk cannot be found.",
-				cfg.name, cfg.durl, cfg.dir)
+			log.Printf("member %q has previously registered with discovery service token (%s).", cfg.name, cfg.durl)
+			log.Printf("But etcd could not find vaild cluster configuration in the given data dir (%s).", cfg.dir)
+			log.Printf("Please check the given data dir path if the previous bootstrap succeeded")
+			log.Printf("or use a new discovery token if the previous bootstrap failed.")
 		default:
 			log.Fatalf("%v", err)
 		}
