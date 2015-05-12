@@ -68,6 +68,10 @@
 **Haskell libraries**
 
 - [wereHamster/etcd-hs](https://github.com/wereHamster/etcd-hs)
+
+**R libraries**
+
+- [ropensci/etseed](https://github.com/ropensci/etseed)
  
 **Tcl libraries**
 
