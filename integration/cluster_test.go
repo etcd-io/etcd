@@ -384,6 +384,7 @@ func (c *cluster) Launch(t *testing.T) {
 	}
 	// wait cluster to be stable to receive future client requests
 	c.waitMembersMatch(t, c.HTTPMembers())
+	c.waitVersion()
 }
 
 func (c *cluster) URL(i int) string {
@@ -534,6 +535,17 @@ func (c *cluster) waitLeader(t *testing.T, membs []*member) {
 			lead = m.s.Lead()
 		}
 		time.Sleep(10 * tickDuration)
+	}
+}
+
+func (c *cluster) waitVersion() {
+	for _, m := range c.Members {
+		for {
+			if m.s.ClusterVersion() != nil {
+				break
+			}
+			time.Sleep(tickDuration)
+		}
 	}
 }
 

@@ -23,7 +23,6 @@ import (
 	"net/http"
 	"path"
 	"regexp"
-	"sync"
 	"sync/atomic"
 	"time"
 
@@ -62,7 +61,8 @@ const (
 	StoreKeysPrefix    = "/1"
 
 	purgeFileInterval      = 30 * time.Second
-	monitorVersionInterval = 10 * time.Second
+	monitorVersionInterval = 5 * time.Second
+	versionUpdateTimeout   = 1 * time.Second
 )
 
 var (
@@ -127,11 +127,16 @@ type Server interface {
 	// Cluster version is set to the min version that a etcd member is
 	// compatible with when first bootstrap.
 	//
+	// ClusterVersion is nil until the cluster is bootstrapped (has a quorum).
+	//
 	// During a rolling upgrades, the ClusterVersion will be updated
-	// automatically after a sync. (10 second by default)
+	// automatically after a sync. (5 second by default)
 	//
 	// The API/raft component can utilize ClusterVersion to determine if
 	// it can accept a client request or a raft RPC.
+	// NOTE: ClusterVersion might be nil when etcd 2.1 works with etcd 2.0 and
+	// the leader is etcd 2.0. etcd 2.0 leader will not update clusterVersion since
+	// this feature is introduced post 2.0.
 	ClusterVersion() *semver.Version
 }
 
@@ -160,8 +165,9 @@ type EtcdServer struct {
 
 	reqIDGen *idutil.Generator
 
-	verMu          sync.Mutex
-	clusterVersion *semver.Version
+	// forceVersionC is used to force the version monitor loop
+	// to detect the cluster version immediately.
+	forceVersionC chan struct{}
 }
 
 // NewServer creates a new EtcdServer from the supplied configuration. The
@@ -280,14 +286,14 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 			raftStorage: s,
 			storage:     NewStorage(w, ss),
 		},
-		id:             id,
-		attributes:     Attributes{Name: cfg.Name, ClientURLs: cfg.ClientURLs.StringSlice()},
-		Cluster:        cfg.Cluster,
-		stats:          sstats,
-		lstats:         lstats,
-		SyncTicker:     time.Tick(500 * time.Millisecond),
-		reqIDGen:       idutil.NewGenerator(uint8(id), time.Now()),
-		clusterVersion: semver.Must(semver.NewVersion(version.MinClusterVersion)),
+		id:            id,
+		attributes:    Attributes{Name: cfg.Name, ClientURLs: cfg.ClientURLs.StringSlice()},
+		Cluster:       cfg.Cluster,
+		stats:         sstats,
+		lstats:        lstats,
+		SyncTicker:    time.Tick(500 * time.Millisecond),
+		reqIDGen:      idutil.NewGenerator(uint8(id), time.Now()),
+		forceVersionC: make(chan struct{}),
 	}
 
 	// TODO: move transport initialization near the definition of remote
@@ -329,6 +335,11 @@ func (s *EtcdServer) start() {
 	s.w = wait.New()
 	s.done = make(chan struct{})
 	s.stop = make(chan struct{})
+	if s.ClusterVersion() != nil {
+		log.Printf("etcdserver: starting server... [version: %v, cluster version: %v]", version.Version, s.ClusterVersion())
+	} else {
+		log.Printf("etcdserver: starting server... [version: %v, cluster version: to_be_decided]", version.Version)
+	}
 	// TODO: if this is an empty log, writes all peer infos
 	// into the first entry
 	go s.run()
@@ -709,6 +720,10 @@ func (s *EtcdServer) apply(es []raftpb.Entry, confState *raftpb.ConfState) (uint
 			// raft state machine may generate noop entry when leader confirmation.
 			// skip it in advance to avoid some potential bug in the future
 			if len(e.Data) == 0 {
+				select {
+				case s.forceVersionC <- struct{}{}:
+				default:
+				}
 				break
 			}
 			var r pb.Request
@@ -754,6 +769,8 @@ func (s *EtcdServer) applyRequest(r pb.Request) Response {
 		case r.PrevIndex > 0 || r.PrevValue != "":
 			return f(s.store.CompareAndSwap(r.Path, r.PrevValue, r.PrevIndex, r.Val, expr))
 		default:
+			// TODO (yicheng): cluster should be the owner of cluster prefix store
+			// we should not modify cluster store here.
 			if storeMemberAttributeRegexp.MatchString(r.Path) {
 				id := mustParseMemberIDFromKey(path.Dir(r.Path))
 				var attr Attributes
@@ -761,6 +778,9 @@ func (s *EtcdServer) applyRequest(r pb.Request) Response {
 					log.Panicf("unmarshal %s should never fail: %v", r.Val, err)
 				}
 				s.Cluster.UpdateAttributes(id, attr)
+			}
+			if r.Path == path.Join(StoreClusterPrefix, "version") {
+				s.Cluster.SetVersion(semver.Must(semver.NewVersion(r.Val)))
 			}
 			return f(s.store.Set(r.Path, r.Dir, r.Val, expr))
 		}
@@ -883,10 +903,10 @@ func (s *EtcdServer) PauseSending() { s.r.pauseSending() }
 func (s *EtcdServer) ResumeSending() { s.r.resumeSending() }
 
 func (s *EtcdServer) ClusterVersion() *semver.Version {
-	s.verMu.Lock()
-	defer s.verMu.Unlock()
-	// deep copy
-	return semver.Must(semver.NewVersion(s.clusterVersion.String()))
+	if s.Cluster == nil {
+		return nil
+	}
+	return s.Cluster.Version()
 }
 
 // monitorVersions checks the member's version every monitorVersion interval.
@@ -896,24 +916,66 @@ func (s *EtcdServer) ClusterVersion() *semver.Version {
 func (s *EtcdServer) monitorVersions() {
 	for {
 		select {
+		case <-s.forceVersionC:
 		case <-time.After(monitorVersionInterval):
-			v := decideClusterVersion(getVersions(s.Cluster, s.cfg.Transport))
-			if v == nil {
-				continue
-			}
-
-			s.verMu.Lock()
-			// clear patch version
-			v.Patch = 0
-			if s.clusterVersion.LessThan(*v) {
-				log.Printf("etcdsever: updated the cluster version from %v to %v", s.clusterVersion, v.String())
-				// TODO: persist the version upgrade via raft. Then etcdserver will be able to use the
-				// upgraded version without syncing with others after a restart.
-				s.clusterVersion = v
-			}
-			s.verMu.Unlock()
 		case <-s.done:
 			return
 		}
+
+		if s.Leader() != s.ID() {
+			continue
+		}
+
+		v := decideClusterVersion(getVersions(s.Cluster, s.cfg.Transport))
+		if v != nil {
+			// only keep major.minor version for comparasion
+			v = &semver.Version{
+				Major: v.Major,
+				Minor: v.Minor,
+			}
+		}
+
+		// if the current version is nil:
+		// 1. use the decided version if possible
+		// 2. or use the min cluster version
+		if s.Cluster.Version() == nil {
+			if v != nil {
+				go s.updateClusterVersion(v.String())
+			} else {
+				go s.updateClusterVersion(version.MinClusterVersion)
+			}
+			continue
+		}
+
+		// update cluster version only if the decided version is greater than
+		// the current cluster version
+		if v != nil && s.Cluster.Version().LessThan(*v) {
+			go s.updateClusterVersion(v.String())
+		}
+	}
+}
+
+func (s *EtcdServer) updateClusterVersion(ver string) {
+	if s.Cluster.Version() == nil {
+		log.Printf("etcdsever: setting up the initial cluster version to %v", ver)
+	} else {
+		log.Printf("etcdsever: updating the cluster version from %v to %v", s.Cluster.Version(), ver)
+	}
+	req := pb.Request{
+		Method: "PUT",
+		Path:   path.Join(StoreClusterPrefix, "version"),
+		Val:    ver,
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), versionUpdateTimeout)
+	_, err := s.Do(ctx, req)
+	cancel()
+	switch err {
+	case nil:
+		return
+	case ErrStopped:
+		log.Printf("etcdserver: aborting update cluster version because server is stopped")
+		return
+	default:
+		log.Printf("etcdserver: error updating cluster version (%v)", err)
 	}
 }
