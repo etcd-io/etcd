@@ -23,7 +23,6 @@ import (
 	"os"
 	"path"
 	"reflect"
-	"strings"
 	"time"
 
 	"github.com/coreos/etcd/discovery"
@@ -71,6 +70,7 @@ func Main() {
 
 	var stopped <-chan struct{}
 
+	// TODO: check whether fields are set instead of whether fields have default value
 	if cfg.name != defaultName && cfg.initialCluster == initialClusterFromName(defaultName) {
 		cfg.initialCluster = initialClusterFromName(cfg.name)
 	}
@@ -116,7 +116,7 @@ func Main() {
 
 // startEtcd launches the etcd server and HTTP handlers for client/server communication.
 func startEtcd(cfg *config) (<-chan struct{}, error) {
-	cls, err := setupCluster(cfg)
+	urlsmap, token, err := getPeerURLsMapAndToken(cfg)
 	if err != nil {
 		return nil, fmt.Errorf("error setting up initial cluster: %v", err)
 	}
@@ -171,21 +171,22 @@ func startEtcd(cfg *config) (<-chan struct{}, error) {
 	}
 
 	srvcfg := &etcdserver.ServerConfig{
-		Name:            cfg.name,
-		ClientURLs:      cfg.acurls,
-		PeerURLs:        cfg.apurls,
-		DataDir:         cfg.dir,
-		SnapCount:       cfg.snapCount,
-		MaxSnapFiles:    cfg.maxSnapFiles,
-		MaxWALFiles:     cfg.maxWalFiles,
-		Cluster:         cls,
-		DiscoveryURL:    cfg.durl,
-		DiscoveryProxy:  cfg.dproxy,
-		NewCluster:      cfg.isNewCluster(),
-		ForceNewCluster: cfg.forceNewCluster,
-		Transport:       pt,
-		TickMs:          cfg.TickMs,
-		ElectionTicks:   cfg.electionTicks(),
+		Name:                cfg.name,
+		ClientURLs:          cfg.acurls,
+		PeerURLs:            cfg.apurls,
+		DataDir:             cfg.dir,
+		SnapCount:           cfg.snapCount,
+		MaxSnapFiles:        cfg.maxSnapFiles,
+		MaxWALFiles:         cfg.maxWalFiles,
+		InitialPeerURLsMap:  urlsmap,
+		InitialClusterToken: token,
+		DiscoveryURL:        cfg.durl,
+		DiscoveryProxy:      cfg.dproxy,
+		NewCluster:          cfg.isNewCluster(),
+		ForceNewCluster:     cfg.forceNewCluster,
+		Transport:           pt,
+		TickMs:              cfg.TickMs,
+		ElectionTicks:       cfg.electionTicks(),
 	}
 	var s *etcdserver.EtcdServer
 	s, err = etcdserver.NewServer(srvcfg)
@@ -222,7 +223,7 @@ func startEtcd(cfg *config) (<-chan struct{}, error) {
 
 // startProxy launches an HTTP proxy for client communication which proxies to other etcd nodes.
 func startProxy(cfg *config) error {
-	cls, err := setupCluster(cfg)
+	urlsmap, _, err := getPeerURLsMapAndToken(cfg)
 	if err != nil {
 		return fmt.Errorf("error setting up initial cluster: %v", err)
 	}
@@ -232,7 +233,7 @@ func startProxy(cfg *config) error {
 		if err != nil {
 			return err
 		}
-		if cls, err = etcdserver.NewClusterFromString(cfg.durl, s); err != nil {
+		if urlsmap, err = types.NewURLsMap(s); err != nil {
 			return err
 		}
 	}
@@ -267,12 +268,13 @@ func startProxy(cfg *config) error {
 		peerURLs = urls.PeerURLs
 		log.Printf("proxy: using peer urls %v from cluster file ./%s", peerURLs, clusterfile)
 	case os.IsNotExist(err):
-		peerURLs = cls.PeerURLs()
+		peerURLs = urlsmap.URLs()
 		log.Printf("proxy: using peer urls %v ", peerURLs)
 	default:
 		return err
 	}
 
+	clientURLs := []string{}
 	uf := func() []string {
 		gcls, err := etcdserver.GetClusterFromRemotePeers(peerURLs, tr)
 		// TODO: remove the 2nd check when we fix GetClusterFromPeers
@@ -282,33 +284,33 @@ func startProxy(cfg *config) error {
 			return []string{}
 		}
 		if len(gcls.Members()) == 0 {
-			return cls.ClientURLs()
+			return clientURLs
 		}
-		cls = gcls
+		clientURLs = gcls.ClientURLs()
 
-		urls := struct{ PeerURLs []string }{cls.PeerURLs()}
+		urls := struct{ PeerURLs []string }{gcls.PeerURLs()}
 		b, err := json.Marshal(urls)
 		if err != nil {
 			log.Printf("proxy: error on marshal peer urls %s", err)
-			return cls.ClientURLs()
+			return clientURLs
 		}
 
 		err = ioutil.WriteFile(clusterfile+".bak", b, 0600)
 		if err != nil {
 			log.Printf("proxy: error on writing urls %s", err)
-			return cls.ClientURLs()
+			return clientURLs
 		}
 		err = os.Rename(clusterfile+".bak", clusterfile)
 		if err != nil {
 			log.Printf("proxy: error on updating clusterfile %s", err)
-			return cls.ClientURLs()
+			return clientURLs
 		}
-		if !reflect.DeepEqual(cls.PeerURLs(), peerURLs) {
-			log.Printf("proxy: updated peer urls in cluster file from %v to %v", peerURLs, cls.PeerURLs())
+		if !reflect.DeepEqual(gcls.PeerURLs(), peerURLs) {
+			log.Printf("proxy: updated peer urls in cluster file from %v to %v", peerURLs, gcls.PeerURLs())
 		}
-		peerURLs = cls.PeerURLs()
+		peerURLs = gcls.PeerURLs()
 
-		return cls.ClientURLs()
+		return clientURLs
 	}
 	ph := proxy.NewHandler(pt, uf)
 	ph = &cors.CORSHandler{
@@ -335,35 +337,28 @@ func startProxy(cfg *config) error {
 	return nil
 }
 
-// setupCluster sets up an initial cluster definition for bootstrap or discovery.
-func setupCluster(cfg *config) (*etcdserver.Cluster, error) {
-	var cls *etcdserver.Cluster
-	var err error
+// getPeerURLsMapAndToken sets up an initial peer URLsMap and cluster token for bootstrap or discovery.
+func getPeerURLsMapAndToken(cfg *config) (urlsmap types.URLsMap, token string, err error) {
 	switch {
 	case cfg.durl != "":
+		urlsmap = types.URLsMap{}
 		// If using discovery, generate a temporary cluster based on
 		// self's advertised peer URLs
-		clusterStr := genClusterString(cfg.name, cfg.apurls)
-		cls, err = etcdserver.NewClusterFromString(cfg.durl, clusterStr)
+		urlsmap[cfg.name] = cfg.apurls
+		token = cfg.durl
 	case cfg.dnsCluster != "":
-		clusterStr, clusterToken, err := discovery.SRVGetCluster(cfg.name, cfg.dnsCluster, cfg.initialClusterToken, cfg.apurls)
+		var clusterStr string
+		clusterStr, token, err = discovery.SRVGetCluster(cfg.name, cfg.dnsCluster, cfg.initialClusterToken, cfg.apurls)
 		if err != nil {
-			return nil, err
+			return nil, "", err
 		}
-		cls, err = etcdserver.NewClusterFromString(clusterToken, clusterStr)
+		urlsmap, err = types.NewURLsMap(clusterStr)
 	default:
 		// We're statically configured, and cluster has appropriately been set.
-		cls, err = etcdserver.NewClusterFromString(cfg.initialClusterToken, cfg.initialCluster)
+		urlsmap, err = types.NewURLsMap(cfg.initialCluster)
+		token = cfg.initialClusterToken
 	}
-	return cls, err
-}
-
-func genClusterString(name string, urls types.URLs) string {
-	addrs := make([]string, 0)
-	for _, u := range urls {
-		addrs = append(addrs, fmt.Sprintf("%v=%v", name, u.String()))
-	}
-	return strings.Join(addrs, ",")
+	return urlsmap, token, err
 }
 
 // identifyDataDirOrDie returns the type of the data dir.

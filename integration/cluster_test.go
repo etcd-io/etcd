@@ -301,7 +301,7 @@ type cluster struct {
 	Members []*member
 }
 
-func fillClusterForMembers(ms []*member, cName string) error {
+func fillClusterForMembers(ms []*member) error {
 	addrs := make([]string, 0)
 	for _, m := range ms {
 		scheme := "http"
@@ -315,7 +315,7 @@ func fillClusterForMembers(ms []*member, cName string) error {
 	clusterStr := strings.Join(addrs, ",")
 	var err error
 	for _, m := range ms {
-		m.Cluster, err = etcdserver.NewClusterFromString(cName, clusterStr)
+		m.InitialPeerURLsMap, err = types.NewURLsMap(clusterStr)
 		if err != nil {
 			return err
 		}
@@ -330,7 +330,7 @@ func newCluster(t *testing.T, size int, usePeerTLS bool) *cluster {
 		ms[i] = mustNewMember(t, c.name(i), usePeerTLS)
 	}
 	c.Members = ms
-	if err := fillClusterForMembers(c.Members, clusterName); err != nil {
+	if err := fillClusterForMembers(c.Members); err != nil {
 		t.Fatal(err)
 	}
 
@@ -420,7 +420,6 @@ func (c *cluster) HTTPMembers() []client.Member {
 }
 
 func (c *cluster) addMember(t *testing.T, usePeerTLS bool) {
-	clusterStr := c.Members[0].Cluster.String()
 	m := mustNewMember(t, c.name(rand.Int()), usePeerTLS)
 	scheme := "http"
 	if usePeerTLS {
@@ -441,14 +440,11 @@ func (c *cluster) addMember(t *testing.T, usePeerTLS bool) {
 	members := append(c.HTTPMembers(), client.Member{PeerURLs: []string{peerURL}, ClientURLs: []string{}})
 	c.waitMembersMatch(t, members)
 
-	for _, ln := range m.PeerListeners {
-		clusterStr += fmt.Sprintf(",%s=%s://%s", m.Name, scheme, ln.Addr().String())
+	m.InitialPeerURLsMap = types.URLsMap{}
+	for _, mm := range c.Members {
+		m.InitialPeerURLsMap[mm.Name] = mm.PeerURLs
 	}
-	var err error
-	m.Cluster, err = etcdserver.NewClusterFromString(clusterName, clusterStr)
-	if err != nil {
-		t.Fatal(err)
-	}
+	m.InitialPeerURLsMap[m.Name] = m.PeerURLs
 	m.NewCluster = false
 	if err := m.Launch(); err != nil {
 		t.Fatal(err)
@@ -645,10 +641,11 @@ func mustNewMember(t *testing.T, name string, usePeerTLS bool) *member {
 		t.Fatal(err)
 	}
 	clusterStr := fmt.Sprintf("%s=%s://%s", name, peerScheme, pln.Addr().String())
-	m.Cluster, err = etcdserver.NewClusterFromString(clusterName, clusterStr)
+	m.InitialPeerURLsMap, err = types.NewURLsMap(clusterStr)
 	if err != nil {
 		t.Fatal(err)
 	}
+	m.InitialClusterToken = clusterName
 	m.NewCluster = true
 	m.Transport = mustNewTransport(t, m.PeerTLSInfo)
 	m.ElectionTicks = electionTicks
@@ -675,12 +672,13 @@ func (m *member) Clone(t *testing.T) *member {
 		// this should never fail
 		panic(err)
 	}
-	clusterStr := m.Cluster.String()
-	mm.Cluster, err = etcdserver.NewClusterFromString(clusterName, clusterStr)
+	clusterStr := m.InitialPeerURLsMap.String()
+	mm.InitialPeerURLsMap, err = types.NewURLsMap(clusterStr)
 	if err != nil {
 		// this should never fail
 		panic(err)
 	}
+	mm.InitialClusterToken = m.InitialClusterToken
 	mm.Transport = mustNewTransport(t, m.PeerTLSInfo)
 	mm.ElectionTicks = m.ElectionTicks
 	mm.PeerTLSInfo = m.PeerTLSInfo
