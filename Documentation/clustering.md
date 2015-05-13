@@ -264,7 +264,7 @@ infra2.example.com.	300	IN	A	10.0.1.12
 ```
 #### Bootstrap the etcd cluster using DNS
 
-etcd cluster memebers can listen on domain names or IP address, the bootstrap process will resolve DNS A records.
+etcd cluster members can listen on domain names or IP address, the bootstrap process will resolve DNS A records.
 
 ```
 $ etcd -name infra0 \

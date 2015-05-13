@@ -873,7 +873,7 @@ Here we see the `/message` key but our hidden `/_message` key is not returned.
 
 ### Setting a key from a file
 
-You can also use etcd to store small configuration files, json documents, XML documents, etc directly.
+You can also use etcd to store small configuration files, JSON documents, XML documents, etc directly.
 For example you can use curl to upload a simple text file and encode it:
 
 ```
