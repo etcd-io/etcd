@@ -53,6 +53,8 @@ func TestWaitTestStress(t *testing.T) {
 	wt := NewTimeList()
 	for i := 0; i < 10000; i++ {
 		chs = append(chs, wt.Wait(time.Now()))
+		// sleep one nanosecond before waiting on the next event
+		time.Sleep(time.Nanosecond)
 	}
 	wt.Trigger(time.Now())
 
