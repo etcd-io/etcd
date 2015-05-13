@@ -393,7 +393,7 @@ func TestApplyRequestOnAdminMemberAttributes(t *testing.T) {
 	cl := newTestCluster([]*Member{{ID: 1}})
 	srv := &EtcdServer{
 		store:   &storeRecorder{},
-		Cluster: cl,
+		cluster: cl,
 	}
 	req := pb.Request{
 		Method: "PUT",
@@ -453,7 +453,7 @@ func TestApplyConfChangeError(t *testing.T) {
 		n := &nodeRecorder{}
 		srv := &EtcdServer{
 			r:       raftNode{Node: n},
-			Cluster: cl,
+			cluster: cl,
 		}
 		_, err := srv.applyConfChange(tt.cc, nil)
 		if err != tt.werr {
@@ -484,7 +484,7 @@ func TestApplyConfChangeShouldStop(t *testing.T) {
 			Node:      &nodeRecorder{},
 			transport: &nopTransporter{},
 		},
-		Cluster: cl,
+		cluster: cl,
 	}
 	cc := raftpb.ConfChange{
 		Type:   raftpb.ConfChangeRemoveNode,
@@ -780,7 +780,7 @@ func TestRecvSnapshot(t *testing.T) {
 			raftStorage: raft.NewMemoryStorage(),
 		},
 		store:   st,
-		Cluster: cl,
+		cluster: cl,
 	}
 
 	s.start()
@@ -815,7 +815,7 @@ func TestApplySnapshotAndCommittedEntries(t *testing.T) {
 			transport:   &nopTransporter{},
 		},
 		store:   st,
-		Cluster: cl,
+		cluster: cl,
 	}
 
 	s.start()
@@ -859,7 +859,7 @@ func TestAddMember(t *testing.T) {
 			transport:   &nopTransporter{},
 		},
 		store:    st,
-		Cluster:  cl,
+		cluster:  cl,
 		reqIDGen: idutil.NewGenerator(0, time.Time{}),
 	}
 	s.start()
@@ -898,7 +898,7 @@ func TestRemoveMember(t *testing.T) {
 			transport:   &nopTransporter{},
 		},
 		store:    st,
-		Cluster:  cl,
+		cluster:  cl,
 		reqIDGen: idutil.NewGenerator(0, time.Time{}),
 	}
 	s.start()
@@ -936,7 +936,7 @@ func TestUpdateMember(t *testing.T) {
 			transport:   &nopTransporter{},
 		},
 		store:    st,
-		Cluster:  cl,
+		cluster:  cl,
 		reqIDGen: idutil.NewGenerator(0, time.Time{}),
 	}
 	s.start()
@@ -969,7 +969,7 @@ func TestPublish(t *testing.T) {
 		id:         1,
 		r:          raftNode{Node: n},
 		attributes: Attributes{Name: "node1", ClientURLs: []string{"http://a", "http://b"}},
-		Cluster:    &Cluster{},
+		cluster:    &cluster{},
 		w:          w,
 		reqIDGen:   idutil.NewGenerator(0, time.Time{}),
 	}
@@ -1010,7 +1010,7 @@ func TestPublishStopped(t *testing.T) {
 			Node:      &nodeRecorder{},
 			transport: &nopTransporter{},
 		},
-		Cluster:  &Cluster{},
+		cluster:  &cluster{},
 		w:        &waitRecorder{},
 		done:     make(chan struct{}),
 		stop:     make(chan struct{}),
@@ -1051,7 +1051,7 @@ func TestUpdateVersion(t *testing.T) {
 		id:         1,
 		r:          raftNode{Node: n},
 		attributes: Attributes{Name: "node1", ClientURLs: []string{"http://node1.com"}},
-		Cluster:    &Cluster{},
+		cluster:    &cluster{},
 		w:          w,
 		reqIDGen:   idutil.NewGenerator(0, time.Time{}),
 	}
@@ -1137,7 +1137,7 @@ func TestGetOtherPeerURLs(t *testing.T) {
 		},
 	}
 	for i, tt := range tests {
-		cl := NewClusterFromMembers("", types.ID(0), tt.membs)
+		cl := newClusterFromMembers("", types.ID(0), tt.membs)
 		urls := getRemotePeerURLs(cl, tt.self)
 		if !reflect.DeepEqual(urls, tt.wurls) {
 			t.Errorf("#%d: urls = %+v, want %+v", i, urls, tt.wurls)

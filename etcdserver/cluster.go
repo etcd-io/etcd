@@ -39,7 +39,7 @@ const (
 	attributesSuffix     = "attributes"
 )
 
-type ClusterInfo interface {
+type Cluster interface {
 	// ID returns the cluster ID
 	ID() types.ID
 	// ClientURLs returns an aggregate set of all URLs on which this
@@ -56,7 +56,7 @@ type ClusterInfo interface {
 }
 
 // Cluster is a list of Members that belong to the same raft cluster
-type Cluster struct {
+type cluster struct {
 	id    types.ID
 	token string
 	store store.Store
@@ -69,9 +69,9 @@ type Cluster struct {
 	removed map[types.ID]bool
 }
 
-func NewCluster(token string, initial types.URLsMap) (*Cluster, error) {
+func newClusterFromURLsMap(token string, urlsmap types.URLsMap) (*cluster, error) {
 	c := newCluster(token)
-	for name, urls := range initial {
+	for name, urls := range urlsmap {
 		m := NewMember(name, urls, token, nil)
 		if _, ok := c.members[m.ID]; ok {
 			return nil, fmt.Errorf("member exists with identical ID %v", m)
@@ -85,7 +85,7 @@ func NewCluster(token string, initial types.URLsMap) (*Cluster, error) {
 	return c, nil
 }
 
-func NewClusterFromMembers(token string, id types.ID, membs []*Member) *Cluster {
+func newClusterFromMembers(token string, id types.ID, membs []*Member) *cluster {
 	c := newCluster(token)
 	c.id = id
 	for _, m := range membs {
@@ -94,17 +94,17 @@ func NewClusterFromMembers(token string, id types.ID, membs []*Member) *Cluster 
 	return c
 }
 
-func newCluster(token string) *Cluster {
-	return &Cluster{
+func newCluster(token string) *cluster {
+	return &cluster{
 		token:   token,
 		members: make(map[types.ID]*Member),
 		removed: make(map[types.ID]bool),
 	}
 }
 
-func (c *Cluster) ID() types.ID { return c.id }
+func (c *cluster) ID() types.ID { return c.id }
 
-func (c *Cluster) Members() []*Member {
+func (c *cluster) Members() []*Member {
 	c.Lock()
 	defer c.Unlock()
 	var sms SortableMemberSlice
@@ -115,7 +115,7 @@ func (c *Cluster) Members() []*Member {
 	return []*Member(sms)
 }
 
-func (c *Cluster) Member(id types.ID) *Member {
+func (c *cluster) Member(id types.ID) *Member {
 	c.Lock()
 	defer c.Unlock()
 	return c.members[id].Clone()
@@ -123,7 +123,7 @@ func (c *Cluster) Member(id types.ID) *Member {
 
 // MemberByName returns a Member with the given name if exists.
 // If more than one member has the given name, it will panic.
-func (c *Cluster) MemberByName(name string) *Member {
+func (c *cluster) MemberByName(name string) *Member {
 	c.Lock()
 	defer c.Unlock()
 	var memb *Member
@@ -138,7 +138,7 @@ func (c *Cluster) MemberByName(name string) *Member {
 	return memb.Clone()
 }
 
-func (c *Cluster) MemberIDs() []types.ID {
+func (c *cluster) MemberIDs() []types.ID {
 	c.Lock()
 	defer c.Unlock()
 	var ids []types.ID
@@ -149,7 +149,7 @@ func (c *Cluster) MemberIDs() []types.ID {
 	return ids
 }
 
-func (c *Cluster) IsIDRemoved(id types.ID) bool {
+func (c *cluster) IsIDRemoved(id types.ID) bool {
 	c.Lock()
 	defer c.Unlock()
 	return c.removed[id]
@@ -157,7 +157,7 @@ func (c *Cluster) IsIDRemoved(id types.ID) bool {
 
 // PeerURLs returns a list of all peer addresses.
 // The returned list is sorted in ascending lexicographical order.
-func (c *Cluster) PeerURLs() []string {
+func (c *cluster) PeerURLs() []string {
 	c.Lock()
 	defer c.Unlock()
 	urls := make([]string, 0)
@@ -172,7 +172,7 @@ func (c *Cluster) PeerURLs() []string {
 
 // ClientURLs returns a list of all client addresses.
 // The returned list is sorted in ascending lexicographical order.
-func (c *Cluster) ClientURLs() []string {
+func (c *cluster) ClientURLs() []string {
 	c.Lock()
 	defer c.Unlock()
 	urls := make([]string, 0)
@@ -185,7 +185,7 @@ func (c *Cluster) ClientURLs() []string {
 	return urls
 }
 
-func (c *Cluster) String() string {
+func (c *cluster) String() string {
 	c.Lock()
 	defer c.Unlock()
 	b := &bytes.Buffer{}
@@ -203,7 +203,7 @@ func (c *Cluster) String() string {
 	return b.String()
 }
 
-func (c *Cluster) genID() {
+func (c *cluster) genID() {
 	mIDs := c.MemberIDs()
 	b := make([]byte, 8*len(mIDs))
 	for i, id := range mIDs {
@@ -213,18 +213,18 @@ func (c *Cluster) genID() {
 	c.id = types.ID(binary.BigEndian.Uint64(hash[:8]))
 }
 
-func (c *Cluster) SetID(id types.ID) { c.id = id }
+func (c *cluster) SetID(id types.ID) { c.id = id }
 
-func (c *Cluster) SetStore(st store.Store) { c.store = st }
+func (c *cluster) SetStore(st store.Store) { c.store = st }
 
-func (c *Cluster) Recover() {
+func (c *cluster) Recover() {
 	c.members, c.removed = membersFromStore(c.store)
 	c.version = clusterVersionFromStore(c.store)
 }
 
 // ValidateConfigurationChange takes a proposed ConfChange and
 // ensures that it is still valid.
-func (c *Cluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
+func (c *cluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
 	members, removed := membersFromStore(c.store)
 	id := types.ID(cc.NodeID)
 	if removed[id] {
@@ -285,7 +285,7 @@ func (c *Cluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
 // AddMember adds a new Member into the cluster, and saves the given member's
 // raftAttributes into the store. The given member should have empty attributes.
 // A Member with a matching id must not exist.
-func (c *Cluster) AddMember(m *Member) {
+func (c *cluster) AddMember(m *Member) {
 	c.Lock()
 	defer c.Unlock()
 	b, err := json.Marshal(m.RaftAttributes)
@@ -301,7 +301,7 @@ func (c *Cluster) AddMember(m *Member) {
 
 // RemoveMember removes a member from the store.
 // The given id MUST exist, or the function panics.
-func (c *Cluster) RemoveMember(id types.ID) {
+func (c *cluster) RemoveMember(id types.ID) {
 	c.Lock()
 	defer c.Unlock()
 	if _, err := c.store.Delete(memberStoreKey(id), true, true); err != nil {
@@ -314,14 +314,14 @@ func (c *Cluster) RemoveMember(id types.ID) {
 	c.removed[id] = true
 }
 
-func (c *Cluster) UpdateAttributes(id types.ID, attr Attributes) {
+func (c *cluster) UpdateAttributes(id types.ID, attr Attributes) {
 	c.Lock()
 	defer c.Unlock()
 	c.members[id].Attributes = attr
 	// TODO: update store in this function
 }
 
-func (c *Cluster) UpdateRaftAttributes(id types.ID, raftAttr RaftAttributes) {
+func (c *cluster) UpdateRaftAttributes(id types.ID, raftAttr RaftAttributes) {
 	c.Lock()
 	defer c.Unlock()
 	b, err := json.Marshal(raftAttr)
@@ -335,7 +335,7 @@ func (c *Cluster) UpdateRaftAttributes(id types.ID, raftAttr RaftAttributes) {
 	c.members[id].RaftAttributes = raftAttr
 }
 
-func (c *Cluster) Version() *semver.Version {
+func (c *cluster) Version() *semver.Version {
 	c.Lock()
 	defer c.Unlock()
 	if c.version == nil {
@@ -344,7 +344,7 @@ func (c *Cluster) Version() *semver.Version {
 	return semver.Must(semver.NewVersion(c.version.String()))
 }
 
-func (c *Cluster) SetVersion(ver *semver.Version) {
+func (c *cluster) SetVersion(ver *semver.Version) {
 	c.Lock()
 	defer c.Unlock()
 	if c.version != nil {
@@ -401,7 +401,7 @@ func clusterVersionFromStore(st store.Store) *semver.Version {
 // with the existing cluster. If the validation succeeds, it assigns the IDs
 // from the existing cluster to the local cluster.
 // If the validation fails, an error will be returned.
-func ValidateClusterAndAssignIDs(local *Cluster, existing *Cluster) error {
+func ValidateClusterAndAssignIDs(local *cluster, existing *cluster) error {
 	ems := existing.Members()
 	lms := local.Members()
 	if len(ems) != len(lms) {

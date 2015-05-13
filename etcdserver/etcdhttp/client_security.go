@@ -28,8 +28,8 @@ import (
 )
 
 type securityHandler struct {
-	sec         *security.Store
-	clusterInfo etcdserver.ClusterInfo
+	sec     *security.Store
+	cluster etcdserver.Cluster
 }
 
 func hasWriteRootAccess(sec *security.Store, r *http.Request) bool {
@@ -140,7 +140,7 @@ func (sh *securityHandler) baseRoles(w http.ResponseWriter, r *http.Request) {
 		writeNoAuth(w)
 		return
 	}
-	w.Header().Set("X-Etcd-Cluster-ID", sh.clusterInfo.ID().String())
+	w.Header().Set("X-Etcd-Cluster-ID", sh.cluster.ID().String())
 	w.Header().Set("Content-Type", "application/json")
 	var rolesCollections struct {
 		Roles []string `json:"roles"`
@@ -185,7 +185,7 @@ func (sh *securityHandler) forRole(w http.ResponseWriter, r *http.Request, role 
 		writeNoAuth(w)
 		return
 	}
-	w.Header().Set("X-Etcd-Cluster-ID", sh.clusterInfo.ID().String())
+	w.Header().Set("X-Etcd-Cluster-ID", sh.cluster.ID().String())
 
 	switch r.Method {
 	case "GET":
@@ -245,7 +245,7 @@ func (sh *securityHandler) baseUsers(w http.ResponseWriter, r *http.Request) {
 		writeNoAuth(w)
 		return
 	}
-	w.Header().Set("X-Etcd-Cluster-ID", sh.clusterInfo.ID().String())
+	w.Header().Set("X-Etcd-Cluster-ID", sh.cluster.ID().String())
 	w.Header().Set("Content-Type", "application/json")
 	var usersCollections struct {
 		Users []string `json:"users"`
@@ -290,7 +290,7 @@ func (sh *securityHandler) forUser(w http.ResponseWriter, r *http.Request, user 
 		writeNoAuth(w)
 		return
 	}
-	w.Header().Set("X-Etcd-Cluster-ID", sh.clusterInfo.ID().String())
+	w.Header().Set("X-Etcd-Cluster-ID", sh.cluster.ID().String())
 
 	switch r.Method {
 	case "GET":
@@ -360,7 +360,7 @@ func (sh *securityHandler) enableDisable(w http.ResponseWriter, r *http.Request)
 		writeNoAuth(w)
 		return
 	}
-	w.Header().Set("X-Etcd-Cluster-ID", sh.clusterInfo.ID().String())
+	w.Header().Set("X-Etcd-Cluster-ID", sh.cluster.ID().String())
 	w.Header().Set("Content-Type", "application/json")
 	isEnabled := sh.sec.SecurityEnabled()
 	switch r.Method {

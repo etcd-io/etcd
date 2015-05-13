@@ -564,9 +564,9 @@ func TestServeMembers(t *testing.T) {
 		members: map[uint64]*etcdserver.Member{1: &memb1, 2: &memb2},
 	}
 	h := &membersHandler{
-		server:      &serverRecorder{},
-		clock:       clockwork.NewFakeClock(),
-		clusterInfo: cluster,
+		server:  &serverRecorder{},
+		clock:   clockwork.NewFakeClock(),
+		cluster: cluster,
 	}
 
 	wmc := string(`{"members":[{"id":"c","name":"","peerURLs":[],"clientURLs":["http://localhost:8080"]},{"id":"d","name":"","peerURLs":[],"clientURLs":["http://localhost:8081"]}]}`)
@@ -617,9 +617,9 @@ func TestServeLeader(t *testing.T) {
 		members: map[uint64]*etcdserver.Member{1: &memb1, 2: &memb2},
 	}
 	h := &membersHandler{
-		server:      &serverRecorder{},
-		clock:       clockwork.NewFakeClock(),
-		clusterInfo: cluster,
+		server:  &serverRecorder{},
+		clock:   clockwork.NewFakeClock(),
+		cluster: cluster,
 	}
 
 	wmc := string(`{"id":"1","name":"","peerURLs":[],"clientURLs":["http://localhost:8080"]}`)
@@ -669,9 +669,9 @@ func TestServeMembersCreate(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	s := &serverRecorder{}
 	h := &membersHandler{
-		server:      s,
-		clock:       clockwork.NewFakeClock(),
-		clusterInfo: &fakeCluster{id: 1},
+		server:  s,
+		clock:   clockwork.NewFakeClock(),
+		cluster: &fakeCluster{id: 1},
 	}
 	rw := httptest.NewRecorder()
 
@@ -687,7 +687,7 @@ func TestServeMembersCreate(t *testing.T) {
 		t.Errorf("content-type = %s, want %s", gct, wct)
 	}
 	gcid := rw.Header().Get("X-Etcd-Cluster-ID")
-	wcid := h.clusterInfo.ID().String()
+	wcid := h.cluster.ID().String()
 	if gcid != wcid {
 		t.Errorf("cid = %s, want %s", gcid, wcid)
 	}
@@ -718,8 +718,8 @@ func TestServeMembersDelete(t *testing.T) {
 	}
 	s := &serverRecorder{}
 	h := &membersHandler{
-		server:      s,
-		clusterInfo: &fakeCluster{id: 1},
+		server:  s,
+		cluster: &fakeCluster{id: 1},
 	}
 	rw := httptest.NewRecorder()
 
@@ -730,7 +730,7 @@ func TestServeMembersDelete(t *testing.T) {
 		t.Errorf("code=%d, want %d", rw.Code, wcode)
 	}
 	gcid := rw.Header().Get("X-Etcd-Cluster-ID")
-	wcid := h.clusterInfo.ID().String()
+	wcid := h.cluster.ID().String()
 	if gcid != wcid {
 		t.Errorf("cid = %s, want %s", gcid, wcid)
 	}
@@ -754,9 +754,9 @@ func TestServeMembersUpdate(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	s := &serverRecorder{}
 	h := &membersHandler{
-		server:      s,
-		clock:       clockwork.NewFakeClock(),
-		clusterInfo: &fakeCluster{id: 1},
+		server:  s,
+		clock:   clockwork.NewFakeClock(),
+		cluster: &fakeCluster{id: 1},
 	}
 	rw := httptest.NewRecorder()
 
@@ -768,7 +768,7 @@ func TestServeMembersUpdate(t *testing.T) {
 	}
 
 	gcid := rw.Header().Get("X-Etcd-Cluster-ID")
-	wcid := h.clusterInfo.ID().String()
+	wcid := h.cluster.ID().String()
 	if gcid != wcid {
 		t.Errorf("cid = %s, want %s", gcid, wcid)
 	}
@@ -1046,9 +1046,9 @@ func TestServeMembersFail(t *testing.T) {
 	}
 	for i, tt := range tests {
 		h := &membersHandler{
-			server:      tt.server,
-			clusterInfo: &fakeCluster{id: 1},
-			clock:       clockwork.NewFakeClock(),
+			server:  tt.server,
+			cluster: &fakeCluster{id: 1},
+			clock:   clockwork.NewFakeClock(),
 		}
 		rw := httptest.NewRecorder()
 		h.ServeHTTP(rw, tt.req)
@@ -1057,7 +1057,7 @@ func TestServeMembersFail(t *testing.T) {
 		}
 		if rw.Code != http.StatusMethodNotAllowed {
 			gcid := rw.Header().Get("X-Etcd-Cluster-ID")
-			wcid := h.clusterInfo.ID().String()
+			wcid := h.cluster.ID().String()
 			if gcid != wcid {
 				t.Errorf("#%d: cid = %s, want %s", i, gcid, wcid)
 			}
@@ -1141,7 +1141,7 @@ func TestV2DeprecatedMachinesEndpoint(t *testing.T) {
 		{"POST", http.StatusMethodNotAllowed},
 	}
 
-	m := &deprecatedMachinesHandler{clusterInfo: &etcdserver.Cluster{}}
+	m := &deprecatedMachinesHandler{cluster: &fakeCluster{}}
 	s := httptest.NewServer(m)
 	defer s.Close()
 
@@ -1170,7 +1170,7 @@ func TestServeMachines(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	h := &deprecatedMachinesHandler{clusterInfo: cluster}
+	h := &deprecatedMachinesHandler{cluster: cluster}
 	h.ServeHTTP(writer, req)
 	w := "http://localhost:8080, http://localhost:8081, http://localhost:8082"
 	if g := writer.Body.String(); g != w {
@@ -1424,9 +1424,9 @@ func TestBadServeKeys(t *testing.T) {
 	}
 	for i, tt := range testBadCases {
 		h := &keysHandler{
-			timeout:     0, // context times out immediately
-			server:      tt.server,
-			clusterInfo: &fakeCluster{id: 1},
+			timeout: 0, // context times out immediately
+			server:  tt.server,
+			cluster: &fakeCluster{id: 1},
 		}
 		rw := httptest.NewRecorder()
 		h.ServeHTTP(rw, tt.req)
@@ -1435,7 +1435,7 @@ func TestBadServeKeys(t *testing.T) {
 		}
 		if rw.Code != http.StatusMethodNotAllowed {
 			gcid := rw.Header().Get("X-Etcd-Cluster-ID")
-			wcid := h.clusterInfo.ID().String()
+			wcid := h.cluster.ID().String()
 			if gcid != wcid {
 				t.Errorf("#%d: cid = %s, want %s", i, gcid, wcid)
 			}
@@ -1482,10 +1482,10 @@ func TestServeKeysGood(t *testing.T) {
 	}
 	for i, tt := range tests {
 		h := &keysHandler{
-			timeout:     time.Hour,
-			server:      server,
-			timer:       &dummyRaftTimer{},
-			clusterInfo: &fakeCluster{id: 1},
+			timeout: time.Hour,
+			server:  server,
+			timer:   &dummyRaftTimer{},
+			cluster: &fakeCluster{id: 1},
 		}
 		rw := httptest.NewRecorder()
 		h.ServeHTTP(rw, tt.req)
@@ -1506,10 +1506,10 @@ func TestServeKeysEvent(t *testing.T) {
 		},
 	}
 	h := &keysHandler{
-		timeout:     time.Hour,
-		server:      server,
-		clusterInfo: &fakeCluster{id: 1},
-		timer:       &dummyRaftTimer{},
+		timeout: time.Hour,
+		server:  server,
+		cluster: &fakeCluster{id: 1},
+		timer:   &dummyRaftTimer{},
 	}
 	rw := httptest.NewRecorder()
 
@@ -1528,7 +1528,7 @@ func TestServeKeysEvent(t *testing.T) {
 		t.Errorf("got code=%d, want %d", rw.Code, wcode)
 	}
 	gcid := rw.Header().Get("X-Etcd-Cluster-ID")
-	wcid := h.clusterInfo.ID().String()
+	wcid := h.cluster.ID().String()
 	if gcid != wcid {
 		t.Errorf("cid = %s, want %s", gcid, wcid)
 	}
@@ -1550,10 +1550,10 @@ func TestServeKeysWatch(t *testing.T) {
 		},
 	}
 	h := &keysHandler{
-		timeout:     time.Hour,
-		server:      server,
-		clusterInfo: &fakeCluster{id: 1},
-		timer:       &dummyRaftTimer{},
+		timeout: time.Hour,
+		server:  server,
+		cluster: &fakeCluster{id: 1},
+		timer:   &dummyRaftTimer{},
 	}
 	go func() {
 		ec <- &store.Event{
@@ -1578,7 +1578,7 @@ func TestServeKeysWatch(t *testing.T) {
 		t.Errorf("got code=%d, want %d", rw.Code, wcode)
 	}
 	gcid := rw.Header().Get("X-Etcd-Cluster-ID")
-	wcid := h.clusterInfo.ID().String()
+	wcid := h.cluster.ID().String()
 	if gcid != wcid {
 		t.Errorf("cid = %s, want %s", gcid, wcid)
 	}

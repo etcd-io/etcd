@@ -470,7 +470,7 @@ func TestClusterAddMember(t *testing.T) {
 }
 
 func TestClusterMembers(t *testing.T) {
-	cls := &Cluster{
+	cls := &cluster{
 		members: map[types.ID]*Member{
 			1:   &Member{ID: 1},
 			20:  &Member{ID: 20},
@@ -521,8 +521,8 @@ func TestNodeToMember(t *testing.T) {
 	}
 }
 
-func newTestCluster(membs []*Member) *Cluster {
-	c := &Cluster{members: make(map[types.ID]*Member), removed: make(map[types.ID]bool)}
+func newTestCluster(membs []*Member) *cluster {
+	c := &cluster{members: make(map[types.ID]*Member), removed: make(map[types.ID]bool)}
 	for _, m := range membs {
 		c.members[m.ID] = m
 	}
