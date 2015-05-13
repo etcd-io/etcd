@@ -92,7 +92,7 @@ func NewClientHandler(server *etcdserver.EtcdServer) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", http.NotFound)
 	mux.Handle(healthPath, healthHandler(server))
-	mux.HandleFunc(versionPath, serveVersion)
+	mux.HandleFunc(versionPath, versionHandler(server.Cluster(), serveVersion))
 	mux.Handle(keysPrefix, kh)
 	mux.Handle(keysPrefix+"/", kh)
 	mux.HandleFunc(statsPrefix+"/store", sh.serveStore)
@@ -357,11 +357,31 @@ func healthHandler(server *etcdserver.EtcdServer) http.HandlerFunc {
 	}
 }
 
-func serveVersion(w http.ResponseWriter, r *http.Request) {
+func versionHandler(c etcdserver.Cluster, fn func(http.ResponseWriter, *http.Request, string)) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		v := c.Version()
+		if v != nil {
+			fn(w, r, v.String())
+		} else {
+			fn(w, r, "not_decided")
+		}
+	}
+}
+
+func serveVersion(w http.ResponseWriter, r *http.Request, clusterV string) {
 	if !allowMethod(w, r.Method, "GET") {
 		return
 	}
-	w.Write(version.MarshalJSON())
+	vs := version.Versions{
+		Server:  version.Version,
+		Cluster: clusterV,
+	}
+
+	b, err := json.Marshal(&vs)
+	if err != nil {
+		log.Panicf("version: cannot marshal versions to json (%v)", err)
+	}
+	w.Write(b)
 }
 
 // parseKeyRequest converts a received http.Request on keysPrefix to

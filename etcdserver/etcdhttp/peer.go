@@ -38,7 +38,7 @@ func NewPeerHandler(cluster etcdserver.Cluster, raftHandler http.Handler) http.H
 	mux.Handle(rafthttp.RaftPrefix, raftHandler)
 	mux.Handle(rafthttp.RaftPrefix+"/", raftHandler)
 	mux.Handle(peerMembersPrefix, mh)
-	mux.HandleFunc(versionPath, serveVersion)
+	mux.HandleFunc(versionPath, versionHandler(cluster, serveVersion))
 	return mux
 }
 
