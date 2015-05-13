@@ -125,11 +125,11 @@ func writeNoAuth(w http.ResponseWriter) {
 }
 
 func handleSecurity(mux *http.ServeMux, sh *securityHandler) {
-	mux.HandleFunc(securityPrefix+"/roles", sh.baseRoles)
-	mux.HandleFunc(securityPrefix+"/roles/", sh.handleRoles)
-	mux.HandleFunc(securityPrefix+"/users", sh.baseUsers)
-	mux.HandleFunc(securityPrefix+"/users/", sh.handleUsers)
-	mux.HandleFunc(securityPrefix+"/enable", sh.enableDisable)
+	mux.HandleFunc(securityPrefix+"/roles", capabilityHandler(securityCapability, sh.baseRoles))
+	mux.HandleFunc(securityPrefix+"/roles/", capabilityHandler(securityCapability, sh.handleRoles))
+	mux.HandleFunc(securityPrefix+"/users", capabilityHandler(securityCapability, sh.baseUsers))
+	mux.HandleFunc(securityPrefix+"/users/", capabilityHandler(securityCapability, sh.handleUsers))
+	mux.HandleFunc(securityPrefix+"/enable", capabilityHandler(securityCapability, sh.enableDisable))
 }
 
 func (sh *securityHandler) baseRoles(w http.ResponseWriter, r *http.Request) {

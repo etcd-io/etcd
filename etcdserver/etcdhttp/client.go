@@ -57,6 +57,8 @@ const (
 
 // NewClientHandler generates a muxed http.Handler with the given parameters to serve etcd client requests.
 func NewClientHandler(server *etcdserver.EtcdServer) http.Handler {
+	go capabilityLoop(server)
+
 	sec := security.NewStore(server, defaultServerTimeout)
 
 	kh := &keysHandler{
@@ -102,6 +104,7 @@ func NewClientHandler(server *etcdserver.EtcdServer) http.Handler {
 	mux.Handle(membersPrefix+"/", mh)
 	mux.Handle(deprecatedMachinesPrefix, dmh)
 	handleSecurity(mux, sech)
+
 	return mux
 }
 
