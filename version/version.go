@@ -15,8 +15,6 @@
 package version
 
 import (
-	"encoding/json"
-	"log"
 	"os"
 	"path"
 
@@ -45,18 +43,9 @@ const (
 )
 
 type Versions struct {
-	Server string `json:"etcdserver"`
-	// TODO: etcdcluster version
+	Server  string `json:"etcdserver"`
+	Cluster string `json:"etcdcluster"`
 	// TODO: raft state machine version
-}
-
-// MarshalJSON returns the JSON encoding of Versions struct.
-func MarshalJSON() []byte {
-	b, err := json.Marshal(Versions{Server: Version})
-	if err != nil {
-		log.Panicf("version: cannot marshal versions to json (%v)", err)
-	}
-	return b
 }
 
 func DetectDataDir(dirpath string) (DataDirVersion, error) {

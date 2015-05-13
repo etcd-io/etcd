@@ -48,6 +48,7 @@ func (c *fakeCluster) Members() []*etcdserver.Member {
 }
 func (c *fakeCluster) Member(id types.ID) *etcdserver.Member { return c.members[uint64(id)] }
 func (c *fakeCluster) IsIDRemoved(id types.ID) bool          { return false }
+func (c *fakeCluster) Version() *semver.Version              { return nil }
 
 // errServer implements the etcd.Server interface for testing.
 // It returns the given error from any Do/Process/AddMember/RemoveMember calls.
