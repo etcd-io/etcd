@@ -127,7 +127,6 @@ func upgradeDataDir(baseDataDir string, name string, ver version.DataDirVersion)
 	case version.DataDir2_0_1:
 		fallthrough
 	default:
-		log.Printf("etcdserver: datadir is valid for the 2.0.1 format")
 	}
 	return nil
 }
