@@ -60,11 +60,11 @@ func NewClientHandler(server *etcdserver.EtcdServer) http.Handler {
 	sec := security.NewStore(server, defaultServerTimeout)
 
 	kh := &keysHandler{
-		sec:         sec,
-		server:      server,
-		clusterInfo: server.Cluster,
-		timer:       server,
-		timeout:     defaultServerTimeout,
+		sec:     sec,
+		server:  server,
+		cluster: server.Cluster(),
+		timer:   server,
+		timeout: defaultServerTimeout,
 	}
 
 	sh := &statsHandler{
@@ -72,19 +72,19 @@ func NewClientHandler(server *etcdserver.EtcdServer) http.Handler {
 	}
 
 	mh := &membersHandler{
-		sec:         sec,
-		server:      server,
-		clusterInfo: server.Cluster,
-		clock:       clockwork.NewRealClock(),
+		sec:     sec,
+		server:  server,
+		cluster: server.Cluster(),
+		clock:   clockwork.NewRealClock(),
 	}
 
 	dmh := &deprecatedMachinesHandler{
-		clusterInfo: server.Cluster,
+		cluster: server.Cluster(),
 	}
 
 	sech := &securityHandler{
-		sec:         sec,
-		clusterInfo: server.Cluster,
+		sec:     sec,
+		cluster: server.Cluster(),
 	}
 
 	mux := http.NewServeMux()
@@ -106,11 +106,11 @@ func NewClientHandler(server *etcdserver.EtcdServer) http.Handler {
 }
 
 type keysHandler struct {
-	sec         *security.Store
-	server      etcdserver.Server
-	clusterInfo etcdserver.ClusterInfo
-	timer       etcdserver.RaftTimer
-	timeout     time.Duration
+	sec     *security.Store
+	server  etcdserver.Server
+	cluster etcdserver.Cluster
+	timer   etcdserver.RaftTimer
+	timeout time.Duration
 }
 
 func (h *keysHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -118,7 +118,7 @@ func (h *keysHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("X-Etcd-Cluster-ID", h.clusterInfo.ID().String())
+	w.Header().Set("X-Etcd-Cluster-ID", h.cluster.ID().String())
 
 	ctx, cancel := context.WithTimeout(context.Background(), h.timeout)
 	defer cancel()
@@ -156,22 +156,22 @@ func (h *keysHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 type deprecatedMachinesHandler struct {
-	clusterInfo etcdserver.ClusterInfo
+	cluster etcdserver.Cluster
 }
 
 func (h *deprecatedMachinesHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r.Method, "GET", "HEAD") {
 		return
 	}
-	endpoints := h.clusterInfo.ClientURLs()
+	endpoints := h.cluster.ClientURLs()
 	w.Write([]byte(strings.Join(endpoints, ", ")))
 }
 
 type membersHandler struct {
-	sec         *security.Store
-	server      etcdserver.Server
-	clusterInfo etcdserver.ClusterInfo
-	clock       clockwork.Clock
+	sec     *security.Store
+	server  etcdserver.Server
+	cluster etcdserver.Cluster
+	clock   clockwork.Clock
 }
 
 func (h *membersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -182,7 +182,7 @@ func (h *membersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		writeNoAuth(w)
 		return
 	}
-	w.Header().Set("X-Etcd-Cluster-ID", h.clusterInfo.ID().String())
+	w.Header().Set("X-Etcd-Cluster-ID", h.cluster.ID().String())
 
 	ctx, cancel := context.WithTimeout(context.Background(), defaultServerTimeout)
 	defer cancel()
@@ -191,7 +191,7 @@ func (h *membersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case "GET":
 		switch trimPrefix(r.URL.Path, membersPrefix) {
 		case "":
-			mc := newMemberCollection(h.clusterInfo.Members())
+			mc := newMemberCollection(h.cluster.Members())
 			w.Header().Set("Content-Type", "application/json")
 			if err := json.NewEncoder(w).Encode(mc); err != nil {
 				log.Printf("etcdhttp: %v", err)
@@ -202,7 +202,7 @@ func (h *membersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				writeError(w, httptypes.NewHTTPError(http.StatusServiceUnavailable, "During election"))
 				return
 			}
-			m := newMember(h.clusterInfo.Member(id))
+			m := newMember(h.cluster.Member(id))
 			w.Header().Set("Content-Type", "application/json")
 			if err := json.NewEncoder(w).Encode(m); err != nil {
 				log.Printf("etcdhttp: %v", err)

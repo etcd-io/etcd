@@ -30,7 +30,7 @@ import (
 
 // isMemberBootstrapped tries to check if the given member has been bootstrapped
 // in the given cluster.
-func isMemberBootstrapped(cl *Cluster, member string, tr *http.Transport) bool {
+func isMemberBootstrapped(cl *cluster, member string, tr *http.Transport) bool {
 	rcl, err := getClusterFromRemotePeers(getRemotePeerURLs(cl, member), false, tr)
 	if err != nil {
 		return false
@@ -51,12 +51,12 @@ func isMemberBootstrapped(cl *Cluster, member string, tr *http.Transport) bool {
 // these URLs. The first URL to provide a response is used. If no URLs provide
 // a response, or a Cluster cannot be successfully created from a received
 // response, an error is returned.
-func GetClusterFromRemotePeers(urls []string, tr *http.Transport) (*Cluster, error) {
+func GetClusterFromRemotePeers(urls []string, tr *http.Transport) (*cluster, error) {
 	return getClusterFromRemotePeers(urls, true, tr)
 }
 
 // If logerr is true, it prints out more error messages.
-func getClusterFromRemotePeers(urls []string, logerr bool, tr *http.Transport) (*Cluster, error) {
+func getClusterFromRemotePeers(urls []string, logerr bool, tr *http.Transport) (*cluster, error) {
 	cc := &http.Client{
 		Transport: tr,
 		Timeout:   time.Second,
@@ -90,14 +90,14 @@ func getClusterFromRemotePeers(urls []string, logerr bool, tr *http.Transport) (
 			}
 			continue
 		}
-		return NewClusterFromMembers("", id, membs), nil
+		return newClusterFromMembers("", id, membs), nil
 	}
 	return nil, fmt.Errorf("etcdserver: could not retrieve cluster information from the given urls")
 }
 
 // getRemotePeerURLs returns peer urls of remote members in the cluster. The
 // returned list is sorted in ascending lexicographical order.
-func getRemotePeerURLs(cl ClusterInfo, local string) []string {
+func getRemotePeerURLs(cl Cluster, local string) []string {
 	us := make([]string, 0)
 	for _, m := range cl.Members() {
 		if m.Name == local {
@@ -113,7 +113,7 @@ func getRemotePeerURLs(cl ClusterInfo, local string) []string {
 // The key of the returned map is the member's ID. The value of the returned map
 // is the semver version string. If it fails to get the version of a member, the key
 // will be an empty string.
-func getVersions(cl ClusterInfo, tr *http.Transport) map[string]string {
+func getVersions(cl Cluster, tr *http.Transport) map[string]string {
 	members := cl.Members()
 	vers := make(map[string]string)
 	for _, m := range members {

@@ -28,9 +28,9 @@ const (
 )
 
 // NewPeerHandler generates an http.Handler to handle etcd peer (raft) requests.
-func NewPeerHandler(clusterInfo etcdserver.ClusterInfo, raftHandler http.Handler) http.Handler {
+func NewPeerHandler(cluster etcdserver.Cluster, raftHandler http.Handler) http.Handler {
 	mh := &peerMembersHandler{
-		clusterInfo: clusterInfo,
+		cluster: cluster,
 	}
 
 	mux := http.NewServeMux()
@@ -43,20 +43,20 @@ func NewPeerHandler(clusterInfo etcdserver.ClusterInfo, raftHandler http.Handler
 }
 
 type peerMembersHandler struct {
-	clusterInfo etcdserver.ClusterInfo
+	cluster etcdserver.Cluster
 }
 
 func (h *peerMembersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r.Method, "GET") {
 		return
 	}
-	w.Header().Set("X-Etcd-Cluster-ID", h.clusterInfo.ID().String())
+	w.Header().Set("X-Etcd-Cluster-ID", h.cluster.ID().String())
 
 	if r.URL.Path != peerMembersPrefix {
 		http.Error(w, "bad path", http.StatusBadRequest)
 		return
 	}
-	ms := h.clusterInfo.Members()
+	ms := h.cluster.Members()
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(ms); err != nil {
 		log.Printf("etcdhttp: %v", err)
