@@ -46,9 +46,10 @@ func handleClusterHealth(c *cli.Context) {
 	}
 
 	// do we have a leader?
-	ep, ls0, err := getLeaderStats(tr, client.GetCluster())
+	cl := client.GetCluster()
+	ep, ls0, err := getLeaderStats(tr, cl)
 	if err != nil {
-		fmt.Println("cluster is unhealthy")
+		fmt.Println("cluster may be unhealthy: failed to connect", cl)
 		os.Exit(1)
 	}
 
