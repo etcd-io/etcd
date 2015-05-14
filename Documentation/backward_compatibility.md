@@ -79,7 +79,7 @@ The consistent read guarantees the sequential consistency within one client that
 
 Each etcd member will proxy the request to leader and only return the result to user after the result is applied on the local member. Thus after the write succeed, the user is guaranteed to see the value on the member it sent the request to.
 
-Reads do not provide linearizability. If you want linearizabilable read, you need to set quorum option to true.
+Reads do not provide linearizability. If you want linearizable read, you need to set quorum option to true.
 
 **Previous behavior**
 
@@ -108,7 +108,7 @@ A size key needs to be provided inside a [discovery token][discoverytoken].
 [memberapi]: other_apis.md
 
 ## HTTP Key Value API
-- The follower can now transparently proxy write equests to the leader. Clients will no longer see 307 redirections to the leader from etcd.
+- The follower can now transparently proxy write requests to the leader. Clients will no longer see 307 redirections to the leader from etcd.
 
 - Expiration time is in UTC instead of local time.
 

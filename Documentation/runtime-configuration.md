@@ -93,7 +93,7 @@ Adding a member is a two step process:
  * Add the new member to the cluster via the [members API](other_apis.md#post-v2members) or the `etcdctl member add` command.
  * Start the new member with the new cluster configuration, including a list of the updated members (existing members + the new member).
 
-Using `etcdctl` let's add the new member to the cluster by specifing its [name](configuration.md#-name) and [advertised peer URLs](configuration.md#-initial-advertise-peer-urls):
+Using `etcdctl` let's add the new member to the cluster by specifying its [name](configuration.md#-name) and [advertised peer URLs](configuration.md#-initial-advertise-peer-urls):
 
 ```
 $ etcdctl member add infra3 http://10.0.1.13:2380
