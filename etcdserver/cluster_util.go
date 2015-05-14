@@ -118,7 +118,11 @@ func getVersions(cl Cluster, local types.ID, tr *http.Transport) map[string]*ver
 	vers := make(map[string]*version.Versions)
 	for _, m := range members {
 		if m.ID == local {
-			vers[m.ID.String()] = &version.Versions{Server: version.Version, Cluster: cl.Version().String()}
+			cv := "not_decided"
+			if cl.Version() != nil {
+				cv = cl.Version().String()
+			}
+			vers[m.ID.String()] = &version.Versions{Server: version.Version, Cluster: cv}
 			continue
 		}
 		ver, err := getVersion(m, tr)
@@ -159,6 +163,52 @@ func decideClusterVersion(vers map[string]*version.Versions) *semver.Version {
 		}
 	}
 	return cv
+}
+
+// isCompatibleWithCluster return true if the local member has a compitable version with
+// the current running cluster.
+// The version is considered as compitable when at least one of the other members in the cluster has a
+// cluster version in the range of [MinClusterVersion, Version] and no known members has a cluster version
+// out of the range.
+// We set this rule since when the local member joins, another member might be offline.
+func isCompatibleWithCluster(cl Cluster, local types.ID, tr *http.Transport) bool {
+	vers := getVersions(cl, local, tr)
+	minV := semver.Must(semver.NewVersion(version.MinClusterVersion))
+	maxV := semver.Must(semver.NewVersion(version.Version))
+	maxV = &semver.Version{
+		Major: maxV.Major,
+		Minor: maxV.Minor,
+	}
+
+	return isCompatibleWithVers(vers, local, minV, maxV)
+}
+
+func isCompatibleWithVers(vers map[string]*version.Versions, local types.ID, minV, maxV *semver.Version) bool {
+	var ok bool
+	for id, v := range vers {
+		// ignore comparasion with local version
+		if id == local.String() {
+			continue
+		}
+		if v == nil {
+			continue
+		}
+		clusterv, err := semver.NewVersion(v.Cluster)
+		if err != nil {
+			log.Printf("etcdserver: cannot understand the cluster version of member %s (%v)", id, err)
+			continue
+		}
+		if clusterv.LessThan(*minV) {
+			log.Printf("etcdserver: the running cluster version(%v) is lower than the minimal cluster version(%v) supported", clusterv.String(), minV.String())
+			return false
+		}
+		if maxV.LessThan(*clusterv) {
+			log.Printf("etcdserver: the running cluster version(%v) is higher than the maximum cluster version(%v) supported", clusterv.String(), maxV.String())
+			return false
+		}
+		ok = true
+	}
+	return ok
 }
 
 // getVersion returns the Versions of the given member via its
