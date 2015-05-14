@@ -113,10 +113,14 @@ func getRemotePeerURLs(cl Cluster, local string) []string {
 // The key of the returned map is the member's ID. The value of the returned map
 // is the semver versions string, including server and cluster.
 // If it fails to get the version of a member, the key will be nil.
-func getVersions(cl Cluster, tr *http.Transport) map[string]*version.Versions {
+func getVersions(cl Cluster, local types.ID, tr *http.Transport) map[string]*version.Versions {
 	members := cl.Members()
 	vers := make(map[string]*version.Versions)
 	for _, m := range members {
+		if m.ID == local {
+			vers[m.ID.String()] = &version.Versions{Server: version.Version, Cluster: cl.Version().String()}
+			continue
+		}
 		ver, err := getVersion(m, tr)
 		if err != nil {
 			log.Printf("etcdserver: cannot get the version of member %s (%v)", m.ID, err)

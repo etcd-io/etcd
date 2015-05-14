@@ -942,7 +942,7 @@ func (s *EtcdServer) monitorVersions() {
 			continue
 		}
 
-		v := decideClusterVersion(getVersions(s.cluster, s.cfg.Transport))
+		v := decideClusterVersion(getVersions(s.cluster, s.id, s.cfg.Transport))
 		if v != nil {
 			// only keep major.minor version for comparasion
 			v = &semver.Version{
