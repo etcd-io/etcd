@@ -19,32 +19,33 @@ import (
 	"testing"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/go-semver/semver"
+	"github.com/coreos/etcd/version"
 )
 
 func TestDecideClusterVersion(t *testing.T) {
 	tests := []struct {
-		vers  map[string]string
+		vers  map[string]*version.Versions
 		wdver *semver.Version
 	}{
 		{
-			map[string]string{"a": "2.0.0"},
+			map[string]*version.Versions{"a": &version.Versions{Server: "2.0.0"}},
 			semver.Must(semver.NewVersion("2.0.0")),
 		},
 		// unknow
 		{
-			map[string]string{"a": ""},
+			map[string]*version.Versions{"a": nil},
 			nil,
 		},
 		{
-			map[string]string{"a": "2.0.0", "b": "2.1.0", "c": "2.1.0"},
+			map[string]*version.Versions{"a": &version.Versions{Server: "2.0.0"}, "b": &version.Versions{Server: "2.1.0"}, "c": &version.Versions{Server: "2.1.0"}},
 			semver.Must(semver.NewVersion("2.0.0")),
 		},
 		{
-			map[string]string{"a": "2.1.0", "b": "2.1.0", "c": "2.1.0"},
+			map[string]*version.Versions{"a": &version.Versions{Server: "2.1.0"}, "b": &version.Versions{Server: "2.1.0"}, "c": &version.Versions{Server: "2.1.0"}},
 			semver.Must(semver.NewVersion("2.1.0")),
 		},
 		{
-			map[string]string{"a": "", "b": "2.1.0", "c": "2.1.0"},
+			map[string]*version.Versions{"a": nil, "b": &version.Versions{Server: "2.1.0"}, "c": &version.Versions{Server: "2.1.0"}},
 			nil,
 		},
 	}
