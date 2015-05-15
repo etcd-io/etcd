@@ -23,7 +23,7 @@ import (
 )
 
 var (
-	Version = "2.0.11"
+	Version = "2.0.11+git"
 
 	// Git SHA Value will be set during build
 	GitSHA = "Not provided (use ./build instead of go build)"
