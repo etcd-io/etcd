@@ -76,8 +76,11 @@ func (s *stream) attach(sw *streamWriter) error {
 		// ignore lower-term streaming request
 		if sw.term < s.w.term {
 			return fmt.Errorf("cannot attach out of data stream server [%d / %d]", sw.term, s.w.term)
+		} else if sw.term == s.w.term {
+			s.w.stopWithoutLog()
+		} else {
+			s.w.stop()
 		}
-		s.w.stop()
 	}
 	s.w = sw
 	return nil
@@ -151,21 +154,23 @@ type WriteFlusher interface {
 
 // TODO: replace fs with stream stats
 type streamWriter struct {
-	to   types.ID
-	term uint64
-	fs   *stats.FollowerStats
-	q    chan []raftpb.Entry
-	done chan struct{}
+	to       types.ID
+	term     uint64
+	fs       *stats.FollowerStats
+	q        chan []raftpb.Entry
+	done     chan struct{}
+	printLog bool
 }
 
 // newStreamWriter starts and returns a new unstarted stream writer.
 // The caller should call stop when finished, to shut it down.
 func newStreamWriter(to types.ID, term uint64) *streamWriter {
 	s := &streamWriter{
-		to:   to,
-		term: term,
-		q:    make(chan []raftpb.Entry, streamBufSize),
-		done: make(chan struct{}),
+		to:       to,
+		term:     term,
+		q:        make(chan []raftpb.Entry, streamBufSize),
+		done:     make(chan struct{}),
+		printLog: true,
 	}
 	return s
 }
@@ -188,7 +193,9 @@ func (s *streamWriter) send(ents []raftpb.Entry) error {
 func (s *streamWriter) handle(w WriteFlusher) {
 	defer func() {
 		close(s.done)
-		log.Printf("rafthttp: server streaming to %s at term %d has been stopped", s.to, s.term)
+		if s.printLog {
+			log.Printf("rafthttp: server streaming to %s at term %d has been stopped", s.to, s.term)
+		}
 	}()
 
 	ew := newEntryWriter(w, s.to)
@@ -213,6 +220,11 @@ func (s *streamWriter) handle(w WriteFlusher) {
 func (s *streamWriter) stop() {
 	close(s.q)
 	<-s.done
+}
+
+func (s *streamWriter) stopWithoutLog() {
+	s.printLog = false
+	s.stop()
 }
 
 func (s *streamWriter) stopNotify() <-chan struct{} { return s.done }
