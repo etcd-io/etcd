@@ -103,8 +103,8 @@ func TestMsgAppV2(t *testing.T) {
 		linkHeartbeatMessage,
 	}
 	b := &bytes.Buffer{}
-	enc := &msgAppV2Encoder{w: b, fs: &stats.FollowerStats{}}
-	dec := &msgAppV2Decoder{r: b, local: types.ID(2), remote: types.ID(1)}
+	enc := newMsgAppV2Encoder(b, &stats.FollowerStats{})
+	dec := newMsgAppV2Decoder(b, types.ID(2), types.ID(1))
 
 	for i, tt := range tests {
 		if err := enc.encode(tt); err != nil {
