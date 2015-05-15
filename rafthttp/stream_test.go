@@ -153,6 +153,41 @@ func TestStreamReaderDialResult(t *testing.T) {
 	}
 }
 
+func TestStreamReaderUpdateMsgAppTerm(t *testing.T) {
+	term := uint64(2)
+	tests := []struct {
+		term   uint64
+		typ    streamType
+		wterm  uint64
+		wclose bool
+	}{
+		// lower term
+		{1, streamTypeMsgApp, 2, false},
+		// unchanged term
+		{2, streamTypeMsgApp, 2, false},
+		// higher term
+		{3, streamTypeMessage, 3, false},
+		{3, streamTypeMsgAppV2, 3, false},
+		// higher term, reset closer
+		{3, streamTypeMsgApp, 3, true},
+	}
+	for i, tt := range tests {
+		closer := &fakeWriteFlushCloser{}
+		cr := &streamReader{
+			msgAppTerm: term,
+			t:          tt.typ,
+			closer:     closer,
+		}
+		cr.updateMsgAppTerm(tt.term)
+		if cr.msgAppTerm != tt.wterm {
+			t.Errorf("#%d: term = %d, want %d", i, cr.msgAppTerm, tt.wterm)
+		}
+		if closer.closed != tt.wclose {
+			t.Errorf("#%d: closed = %v, want %v", i, closer.closed, tt.wclose)
+		}
+	}
+}
+
 // TestStream tests that streamReader and streamWriter can build stream to
 // send messages between each other.
 func TestStream(t *testing.T) {
