@@ -73,6 +73,8 @@ func (ti *treeIndex) Compact(index uint64) map[uint64]struct{} {
 	available := make(map[uint64]struct{})
 	emptyki := make([]*keyIndex, 0)
 	log.Printf("store.index: compact %d", index)
+	// TODO: do not hold the lock for long time?
+	// This is probably OK. Compacting 10M keys takes O(10ms).
 	ti.Lock()
 	defer ti.Unlock()
 	ti.tree.Ascend(compactIndex(index, available, &emptyki))
