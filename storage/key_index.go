@@ -5,7 +5,7 @@ import (
 	"errors"
 	"log"
 
-	"github.com/google/btree"
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/google/btree"
 )
 
 var (

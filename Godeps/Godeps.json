@@ -21,12 +21,12 @@
 			"Rev": "6aa2da5a7a905609c93036b9307185a04a5a84a5"
 		},
 		{
-			"ImportPath": "github.com/coreos/pkg/capnslog",
-			"Rev": "9d5dd4632f9ece71bdf83d31253593a633e73df5"
-		},
-		{
 			"ImportPath": "github.com/coreos/go-semver/semver",
 			"Rev": "568e959cd89871e61434c1143528d9162da89ef2"
+		},
+		{
+			"ImportPath": "github.com/coreos/pkg/capnslog",
+			"Rev": "9d5dd4632f9ece71bdf83d31253593a633e73df5"
 		},
 		{
 			"ImportPath": "github.com/gogo/protobuf/proto",
@@ -35,6 +35,10 @@
 		{
 			"ImportPath": "github.com/golang/protobuf/proto",
 			"Rev": "5677a0e3d5e89854c9974e1256839ee23f8233ca"
+		},
+		{
+			"ImportPath": "github.com/google/btree",
+			"Rev": "cc6329d4279e3f025a53a83c397d2339b5705c45"
 		},
 		{
 			"ImportPath": "github.com/jonboulle/clockwork",

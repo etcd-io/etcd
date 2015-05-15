@@ -4,7 +4,7 @@ import (
 	"log"
 	"sync"
 
-	"github.com/google/btree"
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/google/btree"
 )
 
 type index interface {
