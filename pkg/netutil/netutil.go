@@ -20,7 +20,6 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"reflect"
 	"strings"
 )
 
@@ -56,51 +55,6 @@ func ResolveTCPAddrs(urls ...[]url.URL) error {
 		}
 	}
 	return nil
-}
-
-// URLsEqual checks equality of url.URLS between two arrays.
-// This check pass even if an URL is in hostname and opposite is in IP address.
-func URLsEqual(a []url.URL, b []url.URL) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i, urlA := range a {
-		urlB := b[i]
-
-		if !reflect.DeepEqual(urlA, urlB) {
-			urls := []url.URL{urlA, urlB}
-			ResolveTCPAddrs(urls)
-			if !reflect.DeepEqual(urls[0], urls[1]) {
-				return false
-			}
-		}
-	}
-
-	return true
-}
-
-func URLStringsEqual(a []string, b []string) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	urlsA := make([]url.URL, len(a))
-	for _, str := range a {
-		u, err := url.Parse(str)
-		if err != nil {
-			return false
-		}
-		urlsA = append(urlsA, *u)
-	}
-	urlsB := make([]url.URL, len(b))
-	for _, str := range b {
-		u, err := url.Parse(str)
-		if err != nil {
-			return false
-		}
-		urlsB = append(urlsB, *u)
-	}
-
-	return URLsEqual(urlsA, urlsB)
 }
 
 // BasicAuth returns the username and password provided in the request's

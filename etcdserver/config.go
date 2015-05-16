@@ -19,9 +19,9 @@ import (
 	"log"
 	"net/http"
 	"path"
+	"reflect"
 	"sort"
 
-	"github.com/coreos/etcd/pkg/netutil"
 	"github.com/coreos/etcd/pkg/types"
 )
 
@@ -90,12 +90,11 @@ func (c *ServerConfig) verifyLocalMember(strict bool) error {
 	}
 
 	// Advertised peer URLs must match those in the cluster peer list
-	// TODO: Remove URLStringsEqual after improvement of using hostnames #2150 #2123
 	apurls := c.PeerURLs.StringSlice()
 	sort.Strings(apurls)
 	urls.Sort()
 	if strict {
-		if !netutil.URLStringsEqual(apurls, urls.StringSlice()) {
+		if !reflect.DeepEqual(apurls, urls.StringSlice()) {
 			return fmt.Errorf("%s has different advertised URLs in the cluster and advertised peer URLs list", c.Name)
 		}
 	}
