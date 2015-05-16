@@ -62,5 +62,26 @@ func (s *store) Get(key []byte) []byte {
 	tx.Lock()
 	defer tx.Unlock()
 	vs := tx.UnsafeRange(keyBucketName, ibytes, nil, 0)
+	// TODO: the value will be an event type.
+	// TODO: copy out the bytes, decode it, return the value.
 	return vs[0]
+}
+
+func (s *store) Delete(key []byte) error {
+	now := s.now + 1
+
+	err := s.kvindex.Tombstone(key, now)
+	if err != nil {
+		return err
+	}
+
+	ibytes := make([]byte, 8)
+	binary.BigEndian.PutUint64(ibytes, now)
+	tx := s.b.BatchTx()
+	tx.Lock()
+	defer tx.Unlock()
+	// TODO: the value will be an event type.
+	// A tombstone is simple a "Delete" type event.
+	tx.UnsafePut(keyBucketName, key, []byte("tombstone"))
+	return nil
 }
