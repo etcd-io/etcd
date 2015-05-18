@@ -236,7 +236,7 @@ func TestAllRoles(t *testing.T) {
 			},
 		},
 	}
-	expected := []string{"animal", "human", "root"}
+	expected := []string{"animal", "guest", "human", "root"}
 
 	s := Store{d, time.Second, false}
 	out, err := s.AllRoles()

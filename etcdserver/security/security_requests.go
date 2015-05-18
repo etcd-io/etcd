@@ -26,6 +26,9 @@ import (
 )
 
 func (s *Store) ensureSecurityDirectories() error {
+	if s.ensuredOnce {
+		return nil
+	}
 	for _, res := range []string{StorePermsPrefix, StorePermsPrefix + "/users/", StorePermsPrefix + "/roles/"} {
 		ctx, cancel := context.WithTimeout(context.Background(), s.timeout)
 		defer cancel()
@@ -47,15 +50,26 @@ func (s *Store) ensureSecurityDirectories() error {
 			return err
 		}
 	}
-	_, err := s.createResource("/enabled", false)
+	ctx, cancel := context.WithTimeout(context.Background(), s.timeout)
+	defer cancel()
+	pe := false
+	rr := etcdserverpb.Request{
+		Method:    "PUT",
+		Path:      StorePermsPrefix + "/enabled",
+		Val:       "false",
+		PrevExist: &pe,
+	}
+	_, err := s.server.Do(ctx, rr)
 	if err != nil {
 		if e, ok := err.(*etcderr.Error); ok {
 			if e.ErrorCode == etcderr.EcodeNodeExist {
+				s.ensuredOnce = true
 				return nil
 			}
 		}
 		return err
 	}
+	s.ensuredOnce = true
 	return nil
 }
 
@@ -75,7 +89,7 @@ func (s *Store) detectSecurity() bool {
 	value, err := s.requestResource("/enabled", false)
 	if err != nil {
 		if e, ok := err.(*etcderr.Error); ok {
-			if e.ErrorCode == etcderr.EcodeNodeExist {
+			if e.ErrorCode == etcderr.EcodeKeyNotFound {
 				return false
 			}
 		}
@@ -111,6 +125,10 @@ func (s *Store) createResource(res string, value interface{}) (etcdserver.Respon
 	return s.setResource(res, value, false)
 }
 func (s *Store) setResource(res string, value interface{}, prevexist bool) (etcdserver.Response, error) {
+	err := s.ensureSecurityDirectories()
+	if err != nil {
+		return etcdserver.Response{}, err
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), s.timeout)
 	defer cancel()
 	data, err := json.Marshal(value)
@@ -128,6 +146,10 @@ func (s *Store) setResource(res string, value interface{}, prevexist bool) (etcd
 }
 
 func (s *Store) deleteResource(res string) (etcdserver.Response, error) {
+	err := s.ensureSecurityDirectories()
+	if err != nil {
+		return etcdserver.Response{}, err
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), s.timeout)
 	defer cancel()
 	pex := true

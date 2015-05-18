@@ -19,7 +19,7 @@ Each role has exact one associated Permission List. An permission list exists fo
 
 The special static ROOT (named `root`) role has a full permissions on all key-value resources, the permission to manage user resources and settings resources. Only the ROOT role has the permission to manage user resources and modify settings resources. The ROOT role is built-in and does not need to be created.
 
-There is also a special GUEST role, named 'guest'. These are the permissions given to unauthenticated requests to etcd. This role will be created when security is enabled, unless it already exists, and by default allows access to the full keyspace due to backward compatibility. (etcd did not previously authenticate any actions.). This role can be modified by a ROOT role holder at any time.
+There is also a special GUEST role, named 'guest'. These are the permissions given to unauthenticated requests to etcd. This role will be created automatically, and by default allows access to the full keyspace due to backward compatability. (etcd did not previously authenticate any actions.). This role can be modified by a ROOT role holder at any time, to reduce the capabilities of unauthenticated users.
 
 #### Permissions
 
