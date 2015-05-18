@@ -2,9 +2,11 @@ package storage
 
 import (
 	"encoding/binary"
+	"log"
 	"time"
 
 	"github.com/coreos/etcd/storage/backend"
+	"github.com/coreos/etcd/storage/storagepb"
 )
 
 var (
@@ -17,14 +19,16 @@ type store struct {
 	b       backend.Backend
 	kvindex index
 
-	now uint64 // current index of the store
+	now        uint64 // current index of the store
+	marshalBuf []byte // buffer for marshal protobuf
 }
 
 func newStore(path string) *store {
 	s := &store{
-		b:       backend.New(path, batchInterval, batchLimit),
-		kvindex: newTreeIndex(),
-		now:     0,
+		b:          backend.New(path, batchInterval, batchLimit),
+		kvindex:    newTreeIndex(),
+		now:        0,
+		marshalBuf: make([]byte, 1024*1024),
 	}
 
 	tx := s.b.BatchTx()
@@ -47,7 +51,32 @@ func (s *store) Put(key, value []byte) {
 	tx.Lock()
 	defer tx.Unlock()
 	s.now = now
-	tx.UnsafePut(keyBucketName, ibytes, value)
+
+	event := storagepb.Event{
+		Type: storagepb.PUT,
+		Kv: storagepb.KeyValue{
+			Key:   key,
+			Value: value,
+		},
+	}
+
+	var (
+		d   []byte
+		err error
+		n   int
+	)
+
+	if event.Size() < len(s.marshalBuf) {
+		n, err = event.MarshalTo(s.marshalBuf)
+		d = s.marshalBuf[:n]
+	} else {
+		d, err = event.Marshal()
+	}
+	if err != nil {
+		log.Fatalf("storage: cannot marshal event: %v", err)
+	}
+
+	tx.UnsafePut(keyBucketName, ibytes, d)
 }
 
 func (s *store) Get(key []byte) []byte {
