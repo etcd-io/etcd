@@ -25,15 +25,19 @@ import (
 var (
 	msgSentDuration = prometheus.NewSummaryVec(
 		prometheus.SummaryOpts{
-			Name: "rafthttp_message_sent_latency_microseconds",
-			Help: "message sent latency distributions.",
+			Namespace: "etcd",
+			Subsystem: "rafthttp",
+			Name:      "message_sent_latency_microseconds",
+			Help:      "message sent latency distributions.",
 		},
 		[]string{"channel", "remoteID", "msgType"},
 	)
 
 	msgSentFailed = prometheus.NewCounterVec(prometheus.CounterOpts{
-		Name: "rafthttp_message_sent_failed_total",
-		Help: "The total number of failed messages sent.",
+		Namespace: "etcd",
+		Subsystem: "rafthttp",
+		Name:      "message_sent_failed_total",
+		Help:      "The total number of failed messages sent.",
 	},
 		[]string{"channel", "remoteID", "msgType"},
 	)
