@@ -328,7 +328,7 @@ func TestHTTPClusterClientDo(t *testing.T) {
 		// context.DeadlineExceeded short-circuits Do
 		{
 			client: &httpClusterClient{
-				endpoints: []url.URL{fakeURL, fakeURL},
+				endpoints: []url.URL{fakeURL},
 				clientFactory: newStaticHTTPClientFactory(
 					[]staticHTTPResponse{
 						staticHTTPResponse{err: context.DeadlineExceeded},
@@ -409,6 +409,53 @@ func TestHTTPClusterClientDo(t *testing.T) {
 			t.Errorf("#%d: resp code=%d, want=%d", i, resp.StatusCode, tt.wantCode)
 			continue
 		}
+	}
+}
+
+// Ensures the clusterClient will divide the passed in timeout duration of context
+// to each endpoint equally. In another word, ensure the clusterClient does not
+// wait on the first endpoint until it reaches the deadline.
+func TestHTTPClusterClientDoTimeoutForMultipleEndpoints(t *testing.T) {
+	fakeURL := url.URL{}
+	tr := newFakeTransport()
+	pass := make(chan struct{})
+	timeout := 90 * time.Millisecond
+
+	c := &httpClusterClient{
+		clientFactory: newHTTPClientFactory(tr, DefaultCheckRedirect),
+		endpoints:     []url.URL{fakeURL, fakeURL, fakeURL},
+	}
+
+	neps := len(c.endpoints)
+
+	go func() {
+		// feed the chan since it has one buffer
+		tr.finishCancel <- struct{}{}
+
+		// expect "neps" timeout cancel
+		start := time.Now()
+		for i := 0; i < neps; i++ {
+			tr.finishCancel <- struct{}{}
+			d := time.Since(start)
+			if d > timeout/time.Duration(neps)+10*time.Millisecond || d < timeout/time.Duration(neps)-10*time.Millisecond {
+				t.Errorf("#%d: timeout = %v, want around %v", i, d, timeout/3)
+			}
+			start = time.Now()
+		}
+		pass <- struct{}{}
+	}()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Millisecond)
+	defer cancel()
+	_, _, err := c.Do(ctx, &fakeAction{})
+	if err != context.DeadlineExceeded {
+		t.Errorf("err = %v, want %v", err, context.DeadlineExceeded)
+	}
+
+	select {
+	case <-pass:
+	case <-time.After(time.Second):
+		t.Fatalf("unexpected timeout when waitting for the test to finish")
 	}
 }
 
