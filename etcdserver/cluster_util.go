@@ -226,6 +226,7 @@ func getVersion(m *Member, tr *http.Transport) (*version.Versions, error) {
 	for _, u := range m.PeerURLs {
 		resp, err = cc.Get(u + "/version")
 		if err != nil {
+			log.Printf("etcdserver: failed to reach the peerURL(%s) of member %s (%v)", u, m.ID, err)
 			continue
 		}
 		// etcd 2.0 does not have version endpoint on peer url.
@@ -237,10 +238,12 @@ func getVersion(m *Member, tr *http.Transport) (*version.Versions, error) {
 		b, err := ioutil.ReadAll(resp.Body)
 		resp.Body.Close()
 		if err != nil {
+			log.Printf("etcdserver: failed to read out the response body from the peerURL(%s) of member %s (%v)", u, m.ID, err)
 			continue
 		}
 		var vers version.Versions
 		if err := json.Unmarshal(b, &vers); err != nil {
+			log.Printf("etcdserver: failed to unmarshal the response body got from the peerURL(%s) of member %s (%v)", u, m.ID, err)
 			continue
 		}
 		return &vers, nil
