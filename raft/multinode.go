@@ -37,8 +37,9 @@ type MultiNode interface {
 	// last Ready results. It must be called with the last value returned from the Ready()
 	// channel.
 	Advance(map[uint64]Ready)
-	// Status returns the current status of the given group.
-	Status(group uint64) Status
+	// Status returns the current status of the given group. Returns nil if no such group
+	// exists.
+	Status(group uint64) *Status
 	// Report reports the given node is not reachable for the last send.
 	ReportUnreachable(id, groupID uint64)
 	// ReportSnapshot reports the stutus of the sent snapshot.
@@ -70,7 +71,7 @@ type multiConfChange struct {
 
 type multiStatus struct {
 	group uint64
-	ch    chan Status
+	ch    chan *Status
 }
 
 type groupCreation struct {
@@ -299,7 +300,12 @@ func (mn *multiNode) run() {
 			advancec = nil
 
 		case ms := <-mn.status:
-			ms.ch <- getStatus(groups[ms.group].raft)
+			if group, ok := groups[ms.group]; ok {
+				s := getStatus(group.raft)
+				ms.ch <- &s
+			} else {
+				ms.ch <- nil
+			}
 
 		case <-mn.stop:
 			close(mn.done)
@@ -443,10 +449,10 @@ func (mn *multiNode) Advance(rds map[uint64]Ready) {
 	}
 }
 
-func (mn *multiNode) Status(group uint64) Status {
+func (mn *multiNode) Status(group uint64) *Status {
 	ms := multiStatus{
 		group: group,
-		ch:    make(chan Status),
+		ch:    make(chan *Status),
 	}
 	mn.status <- ms
 	return <-ms.ch

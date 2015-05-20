@@ -392,3 +392,21 @@ func TestMultiNodeAdvance(t *testing.T) {
 		t.Errorf("expect Ready after Advance, but there is no Ready available")
 	}
 }
+
+func TestMultiNodeStatus(t *testing.T) {
+	storage := NewMemoryStorage()
+	mn := StartMultiNode(1)
+	err := mn.CreateGroup(1, newTestConfig(1, nil, 10, 1, storage), []Peer{{ID: 1}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	status := mn.Status(1)
+	if status == nil {
+		t.Errorf("expected status struct, got nil")
+	}
+
+	status = mn.Status(2)
+	if status != nil {
+		t.Errorf("expected nil status, got %+v", status)
+	}
+}
