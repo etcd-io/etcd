@@ -19,32 +19,34 @@ import (
 	"testing"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/go-semver/semver"
+	"github.com/coreos/etcd/pkg/types"
+	"github.com/coreos/etcd/version"
 )
 
 func TestDecideClusterVersion(t *testing.T) {
 	tests := []struct {
-		vers  map[string]string
+		vers  map[string]*version.Versions
 		wdver *semver.Version
 	}{
 		{
-			map[string]string{"a": "2.0.0"},
+			map[string]*version.Versions{"a": &version.Versions{Server: "2.0.0"}},
 			semver.Must(semver.NewVersion("2.0.0")),
 		},
 		// unknow
 		{
-			map[string]string{"a": ""},
+			map[string]*version.Versions{"a": nil},
 			nil,
 		},
 		{
-			map[string]string{"a": "2.0.0", "b": "2.1.0", "c": "2.1.0"},
+			map[string]*version.Versions{"a": &version.Versions{Server: "2.0.0"}, "b": &version.Versions{Server: "2.1.0"}, "c": &version.Versions{Server: "2.1.0"}},
 			semver.Must(semver.NewVersion("2.0.0")),
 		},
 		{
-			map[string]string{"a": "2.1.0", "b": "2.1.0", "c": "2.1.0"},
+			map[string]*version.Versions{"a": &version.Versions{Server: "2.1.0"}, "b": &version.Versions{Server: "2.1.0"}, "c": &version.Versions{Server: "2.1.0"}},
 			semver.Must(semver.NewVersion("2.1.0")),
 		},
 		{
-			map[string]string{"a": "", "b": "2.1.0", "c": "2.1.0"},
+			map[string]*version.Versions{"a": nil, "b": &version.Versions{Server: "2.1.0"}, "c": &version.Versions{Server: "2.1.0"}},
 			nil,
 		},
 	}
@@ -53,6 +55,77 @@ func TestDecideClusterVersion(t *testing.T) {
 		dver := decideClusterVersion(tt.vers)
 		if !reflect.DeepEqual(dver, tt.wdver) {
 			t.Errorf("#%d: ver = %+v, want %+v", i, dver, tt.wdver)
+		}
+	}
+}
+
+func TestIsCompatibleWithVers(t *testing.T) {
+	tests := []struct {
+		vers       map[string]*version.Versions
+		local      types.ID
+		minV, maxV *semver.Version
+		wok        bool
+	}{
+		// too low
+		{
+			map[string]*version.Versions{
+				"a": &version.Versions{Server: "2.0.0", Cluster: "not_decided"},
+				"b": &version.Versions{Server: "2.1.0", Cluster: "2.1.0"},
+				"c": &version.Versions{Server: "2.1.0", Cluster: "2.1.0"},
+			},
+			0xa,
+			semver.Must(semver.NewVersion("2.0.0")), semver.Must(semver.NewVersion("2.0.0")),
+			false,
+		},
+		{
+			map[string]*version.Versions{
+				"a": &version.Versions{Server: "2.1.0", Cluster: "not_decided"},
+				"b": &version.Versions{Server: "2.1.0", Cluster: "2.1.0"},
+				"c": &version.Versions{Server: "2.1.0", Cluster: "2.1.0"},
+			},
+			0xa,
+			semver.Must(semver.NewVersion("2.0.0")), semver.Must(semver.NewVersion("2.1.0")),
+			true,
+		},
+		// too high
+		{
+			map[string]*version.Versions{
+				"a": &version.Versions{Server: "2.2.0", Cluster: "not_decided"},
+				"b": &version.Versions{Server: "2.0.0", Cluster: "2.0.0"},
+				"c": &version.Versions{Server: "2.0.0", Cluster: "2.0.0"},
+			},
+			0xa,
+			semver.Must(semver.NewVersion("2.1.0")), semver.Must(semver.NewVersion("2.2.0")),
+			false,
+		},
+		// cannot get b's version, expect ok
+		{
+			map[string]*version.Versions{
+				"a": &version.Versions{Server: "2.1.0", Cluster: "not_decided"},
+				"b": nil,
+				"c": &version.Versions{Server: "2.1.0", Cluster: "2.1.0"},
+			},
+			0xa,
+			semver.Must(semver.NewVersion("2.0.0")), semver.Must(semver.NewVersion("2.1.0")),
+			true,
+		},
+		// cannot get b and c's version, expect not ok
+		{
+			map[string]*version.Versions{
+				"a": &version.Versions{Server: "2.1.0", Cluster: "not_decided"},
+				"b": nil,
+				"c": nil,
+			},
+			0xa,
+			semver.Must(semver.NewVersion("2.0.0")), semver.Must(semver.NewVersion("2.1.0")),
+			false,
+		},
+	}
+
+	for i, tt := range tests {
+		ok := isCompatibleWithVers(tt.vers, tt.local, tt.minV, tt.maxV)
+		if ok != tt.wok {
+			t.Errorf("#%d: ok = %+v, want %+v", i, ok, tt.wok)
 		}
 	}
 }

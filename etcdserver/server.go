@@ -209,6 +209,10 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		if err := ValidateClusterAndAssignIDs(cl, existingCluster); err != nil {
 			return nil, fmt.Errorf("error validating peerURLs %s: %v", existingCluster, err)
 		}
+		if !isCompatibleWithCluster(cl, cl.MemberByName(cfg.Name).ID, cfg.Transport) {
+			return nil, fmt.Errorf("incomptible with current running cluster")
+		}
+
 		remotes = existingCluster.Members()
 		cl.SetID(existingCluster.id)
 		cl.SetStore(st)
@@ -942,7 +946,7 @@ func (s *EtcdServer) monitorVersions() {
 			continue
 		}
 
-		v := decideClusterVersion(getVersions(s.cluster, s.cfg.Transport))
+		v := decideClusterVersion(getVersions(s.cluster, s.id, s.cfg.Transport))
 		if v != nil {
 			// only keep major.minor version for comparasion
 			v = &semver.Version{

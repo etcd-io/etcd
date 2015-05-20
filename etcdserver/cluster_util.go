@@ -111,16 +111,24 @@ func getRemotePeerURLs(cl Cluster, local string) []string {
 
 // getVersions returns the versions of the members in the given cluster.
 // The key of the returned map is the member's ID. The value of the returned map
-// is the semver version string. If it fails to get the version of a member, the key
-// will be an empty string.
-func getVersions(cl Cluster, tr *http.Transport) map[string]string {
+// is the semver versions string, including server and cluster.
+// If it fails to get the version of a member, the key will be nil.
+func getVersions(cl Cluster, local types.ID, tr *http.Transport) map[string]*version.Versions {
 	members := cl.Members()
-	vers := make(map[string]string)
+	vers := make(map[string]*version.Versions)
 	for _, m := range members {
+		if m.ID == local {
+			cv := "not_decided"
+			if cl.Version() != nil {
+				cv = cl.Version().String()
+			}
+			vers[m.ID.String()] = &version.Versions{Server: version.Version, Cluster: cv}
+			continue
+		}
 		ver, err := getVersion(m, tr)
 		if err != nil {
 			log.Printf("etcdserver: cannot get the version of member %s (%v)", m.ID, err)
-			vers[m.ID.String()] = ""
+			vers[m.ID.String()] = nil
 		} else {
 			vers[m.ID.String()] = ver
 		}
@@ -129,17 +137,17 @@ func getVersions(cl Cluster, tr *http.Transport) map[string]string {
 }
 
 // decideClusterVersion decides the cluster version based on the versions map.
-// The returned version is the min version in the map, or nil if the min
+// The returned version is the min server version in the map, or nil if the min
 // version in unknown.
-func decideClusterVersion(vers map[string]string) *semver.Version {
+func decideClusterVersion(vers map[string]*version.Versions) *semver.Version {
 	var cv *semver.Version
 	lv := semver.Must(semver.NewVersion(version.Version))
 
 	for mid, ver := range vers {
-		if len(ver) == 0 {
+		if ver == nil {
 			return nil
 		}
-		v, err := semver.NewVersion(ver)
+		v, err := semver.NewVersion(ver.Server)
 		if err != nil {
 			log.Printf("etcdserver: cannot understand the version of member %s (%v)", mid, err)
 			return nil
@@ -157,9 +165,55 @@ func decideClusterVersion(vers map[string]string) *semver.Version {
 	return cv
 }
 
-// getVersion returns the version of the given member via its
+// isCompatibleWithCluster return true if the local member has a compitable version with
+// the current running cluster.
+// The version is considered as compitable when at least one of the other members in the cluster has a
+// cluster version in the range of [MinClusterVersion, Version] and no known members has a cluster version
+// out of the range.
+// We set this rule since when the local member joins, another member might be offline.
+func isCompatibleWithCluster(cl Cluster, local types.ID, tr *http.Transport) bool {
+	vers := getVersions(cl, local, tr)
+	minV := semver.Must(semver.NewVersion(version.MinClusterVersion))
+	maxV := semver.Must(semver.NewVersion(version.Version))
+	maxV = &semver.Version{
+		Major: maxV.Major,
+		Minor: maxV.Minor,
+	}
+
+	return isCompatibleWithVers(vers, local, minV, maxV)
+}
+
+func isCompatibleWithVers(vers map[string]*version.Versions, local types.ID, minV, maxV *semver.Version) bool {
+	var ok bool
+	for id, v := range vers {
+		// ignore comparasion with local version
+		if id == local.String() {
+			continue
+		}
+		if v == nil {
+			continue
+		}
+		clusterv, err := semver.NewVersion(v.Cluster)
+		if err != nil {
+			log.Printf("etcdserver: cannot understand the cluster version of member %s (%v)", id, err)
+			continue
+		}
+		if clusterv.LessThan(*minV) {
+			log.Printf("etcdserver: the running cluster version(%v) is lower than the minimal cluster version(%v) supported", clusterv.String(), minV.String())
+			return false
+		}
+		if maxV.LessThan(*clusterv) {
+			log.Printf("etcdserver: the running cluster version(%v) is higher than the maximum cluster version(%v) supported", clusterv.String(), maxV.String())
+			return false
+		}
+		ok = true
+	}
+	return ok
+}
+
+// getVersion returns the Versions of the given member via its
 // peerURLs. Returns the last error if it fails to get the version.
-func getVersion(m *Member, tr *http.Transport) (string, error) {
+func getVersion(m *Member, tr *http.Transport) (*version.Versions, error) {
 	cc := &http.Client{
 		Transport: tr,
 		Timeout:   time.Second,
@@ -172,18 +226,27 @@ func getVersion(m *Member, tr *http.Transport) (string, error) {
 	for _, u := range m.PeerURLs {
 		resp, err = cc.Get(u + "/version")
 		if err != nil {
+			log.Printf("etcdserver: failed to reach the peerURL(%s) of member %s (%v)", u, m.ID, err)
 			continue
 		}
+		// etcd 2.0 does not have version endpoint on peer url.
+		if resp.StatusCode == http.StatusNotFound {
+			resp.Body.Close()
+			return &version.Versions{"2.0.0", "2.0.0"}, nil
+		}
+
 		b, err := ioutil.ReadAll(resp.Body)
 		resp.Body.Close()
 		if err != nil {
+			log.Printf("etcdserver: failed to read out the response body from the peerURL(%s) of member %s (%v)", u, m.ID, err)
 			continue
 		}
 		var vers version.Versions
 		if err := json.Unmarshal(b, &vers); err != nil {
+			log.Printf("etcdserver: failed to unmarshal the response body got from the peerURL(%s) of member %s (%v)", u, m.ID, err)
 			continue
 		}
-		return vers.Server, nil
+		return &vers, nil
 	}
-	return "", err
+	return nil, err
 }
