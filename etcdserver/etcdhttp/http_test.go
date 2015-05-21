@@ -39,12 +39,12 @@ type fakeCluster struct {
 func (c *fakeCluster) ID() types.ID         { return types.ID(c.id) }
 func (c *fakeCluster) ClientURLs() []string { return c.clientURLs }
 func (c *fakeCluster) Members() []*etcdserver.Member {
-	var sms etcdserver.SortableMemberSlice
+	var ms etcdserver.MembersByID
 	for _, m := range c.members {
-		sms = append(sms, m)
+		ms = append(ms, m)
 	}
-	sort.Sort(sms)
-	return []*etcdserver.Member(sms)
+	sort.Sort(ms)
+	return []*etcdserver.Member(ms)
 }
 func (c *fakeCluster) Member(id types.ID) *etcdserver.Member { return c.members[uint64(id)] }
 func (c *fakeCluster) IsIDRemoved(id types.ID) bool          { return false }

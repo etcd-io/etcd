@@ -29,6 +29,11 @@ import (
 	"github.com/coreos/etcd/store"
 )
 
+var (
+	storeMembersPrefix        = path.Join(StoreClusterPrefix, "members")
+	storeRemovedMembersPrefix = path.Join(StoreClusterPrefix, "removed_members")
+)
+
 // RaftAttributes represents the raft related attributes of an etcd member.
 type RaftAttributes struct {
 	// TODO(philips): ensure these are URLs
@@ -150,17 +155,17 @@ func nodeToMember(n *store.NodeExtern) (*Member, error) {
 }
 
 // implement sort by ID interface
-type SortableMemberSlice []*Member
+type MembersByID []*Member
 
-func (s SortableMemberSlice) Len() int           { return len(s) }
-func (s SortableMemberSlice) Less(i, j int) bool { return s[i].ID < s[j].ID }
-func (s SortableMemberSlice) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
+func (ms MembersByID) Len() int           { return len(ms) }
+func (ms MembersByID) Less(i, j int) bool { return ms[i].ID < ms[j].ID }
+func (ms MembersByID) Swap(i, j int)      { ms[i], ms[j] = ms[j], ms[i] }
 
 // implement sort by peer urls interface
-type SortableMemberSliceByPeerURLs []*Member
+type MembersByPeerURLs []*Member
 
-func (p SortableMemberSliceByPeerURLs) Len() int { return len(p) }
-func (p SortableMemberSliceByPeerURLs) Less(i, j int) bool {
-	return p[i].PeerURLs[0] < p[j].PeerURLs[0]
+func (ms MembersByPeerURLs) Len() int { return len(ms) }
+func (ms MembersByPeerURLs) Less(i, j int) bool {
+	return ms[i].PeerURLs[0] < ms[j].PeerURLs[0]
 }
-func (p SortableMemberSliceByPeerURLs) Swap(i, j int) { p[i], p[j] = p[j], p[i] }
+func (ms MembersByPeerURLs) Swap(i, j int) { ms[i], ms[j] = ms[j], ms[i] }
