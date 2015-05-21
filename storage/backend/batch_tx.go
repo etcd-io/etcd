@@ -15,21 +15,14 @@ type BatchTx interface {
 	UnsafePut(bucketName []byte, key []byte, value []byte)
 	UnsafeRange(bucketName []byte, key, endKey []byte, limit int64) [][]byte
 	UnsafeDelete(bucketName []byte, key []byte)
+	Commit()
 }
 
 type batchTx struct {
-	mu      sync.Mutex
+	sync.Mutex
 	tx      *bolt.Tx
 	backend *backend
 	pending int
-}
-
-func (t *batchTx) Lock() {
-	t.mu.Lock()
-}
-
-func (t *batchTx) Unlock() {
-	t.mu.Unlock()
 }
 
 func (t *batchTx) UnsafeCreateBucket(name []byte) {
@@ -50,7 +43,7 @@ func (t *batchTx) UnsafePut(bucketName []byte, key []byte, value []byte) {
 	}
 	t.pending++
 	if t.pending > t.backend.batchLimit {
-		t.backend.commitAndBegin()
+		t.Commit()
 		t.pending = 0
 	}
 }
@@ -92,7 +85,28 @@ func (t *batchTx) UnsafeDelete(bucketName []byte, key []byte) {
 	}
 	t.pending++
 	if t.pending > t.backend.batchLimit {
-		t.backend.commitAndBegin()
+		t.Commit()
 		t.pending = 0
+	}
+}
+
+// commitAndBegin commits a previous tx and begins a new writable one.
+func (t *batchTx) Commit() {
+	t.Lock()
+	defer t.Unlock()
+
+	var err error
+	// commit the last tx
+	if t.tx != nil {
+		err = t.tx.Commit()
+		if err != nil {
+			log.Fatalf("storage: cannot commit tx (%s)", err)
+		}
+	}
+
+	// begin a new tx
+	t.tx, err = t.backend.db.Begin(true)
+	if err != nil {
+		log.Fatalf("storage: cannot begin tx (%s)", err)
 	}
 }

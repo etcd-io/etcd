@@ -57,17 +57,13 @@ func (b *backend) BatchTx() BatchTx {
 
 // force commit the current batching tx.
 func (b *backend) ForceCommit() {
-	b.batchTx.Lock()
-	b.commitAndBegin()
-	b.batchTx.Unlock()
+	b.batchTx.Commit()
 }
 
 func (b *backend) run() {
 	defer close(b.donec)
 
-	b.batchTx.Lock()
-	b.commitAndBegin()
-	b.batchTx.Unlock()
+	b.batchTx.Commit()
 	b.startc <- struct{}{}
 
 	for {
@@ -76,9 +72,7 @@ func (b *backend) run() {
 		case <-b.stopc:
 			return
 		}
-		b.batchTx.Lock()
-		b.commitAndBegin()
-		b.batchTx.Unlock()
+		b.batchTx.Commit()
 	}
 }
 
@@ -86,22 +80,4 @@ func (b *backend) Close() error {
 	close(b.stopc)
 	<-b.donec
 	return b.db.Close()
-}
-
-// commitAndBegin commits a previous tx and begins a new writable one.
-func (b *backend) commitAndBegin() {
-	var err error
-	// commit the last batchTx
-	if b.batchTx.tx != nil {
-		err = b.batchTx.tx.Commit()
-		if err != nil {
-			log.Fatalf("storage: cannot commit tx (%s)", err)
-		}
-	}
-
-	// begin a new tx
-	b.batchTx.tx, err = b.db.Begin(true)
-	if err != nil {
-		log.Fatalf("storage: cannot begin tx (%s)", err)
-	}
 }

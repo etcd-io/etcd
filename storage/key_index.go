@@ -186,6 +186,11 @@ type generation struct {
 
 func (g *generation) isEmpty() bool { return len(g.cont) == 0 }
 
+// walk walks through the (index, version) pairs in the generation in ascending order.
+// It passes the (index, version) to the given function.
+// walk returns until: 1. it finishs walking all pairs 2. the function returns false.
+// walk returns the (index, version) pair at where it stopped. If it stopped after
+// finishing walking, (0, -1) will be returned.
 func (g *generation) walk(f func(index, ver uint64) bool) (uint64, int) {
 	ver := g.ver
 	l := len(g.cont)

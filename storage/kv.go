@@ -3,6 +3,7 @@ package storage
 import (
 	"encoding/binary"
 	"log"
+	"sync"
 	"time"
 
 	"github.com/coreos/etcd/storage/backend"
@@ -16,19 +17,23 @@ var (
 )
 
 type store struct {
+	// read operation MUST hold read lock
+	// write opeartion MUST hold write lock
+	sync.RWMutex
+
 	b       backend.Backend
 	kvindex index
 
-	now        uint64 // current index of the store
-	marshalBuf []byte // buffer for marshal protobuf
+	currentIndex uint64
+	marshalBuf   []byte // buffer for marshal protobuf
 }
 
 func newStore(path string) *store {
 	s := &store{
-		b:          backend.New(path, batchInterval, batchLimit),
-		kvindex:    newTreeIndex(),
-		now:        0,
-		marshalBuf: make([]byte, 1024*1024),
+		b:            backend.New(path, batchInterval, batchLimit),
+		kvindex:      newTreeIndex(),
+		currentIndex: 0,
+		marshalBuf:   make([]byte, 1024*1024),
 	}
 
 	tx := s.b.BatchTx()
@@ -41,16 +46,18 @@ func newStore(path string) *store {
 }
 
 func (s *store) Put(key, value []byte) {
-	now := s.now + 1
+	s.Lock()
+	defer s.Unlock()
 
-	s.kvindex.Put(key, now)
+	currentIndex := s.currentIndex + 1
+
 	ibytes := make([]byte, 8)
-	binary.BigEndian.PutUint64(ibytes, now)
+	binary.BigEndian.PutUint64(ibytes, currentIndex)
 
 	tx := s.b.BatchTx()
 	tx.Lock()
 	defer tx.Unlock()
-	s.now = now
+	s.currentIndex = currentIndex
 
 	event := storagepb.Event{
 		Type: storagepb.PUT,
@@ -77,10 +84,15 @@ func (s *store) Put(key, value []byte) {
 	}
 
 	tx.UnsafePut(keyBucketName, ibytes, d)
+
+	s.kvindex.Put(key, currentIndex)
 }
 
 func (s *store) Get(key []byte) []byte {
-	index, err := s.kvindex.Get(key, s.now)
+	s.RLock()
+	defer s.RUnlock()
+
+	index, err := s.kvindex.Get(key, s.currentIndex)
 	if err != nil {
 		return nil
 	}
@@ -97,20 +109,24 @@ func (s *store) Get(key []byte) []byte {
 }
 
 func (s *store) Delete(key []byte) error {
-	now := s.now + 1
+	s.Lock()
+	defer s.Unlock()
 
-	err := s.kvindex.Tombstone(key, now)
+	_, err := s.kvindex.Get(key, s.currentIndex)
 	if err != nil {
-		return err
+		return nil
 	}
 
+	currentIndex := s.currentIndex + 1
+
 	ibytes := make([]byte, 8)
-	binary.BigEndian.PutUint64(ibytes, now)
+	binary.BigEndian.PutUint64(ibytes, currentIndex)
 	tx := s.b.BatchTx()
 	tx.Lock()
 	defer tx.Unlock()
 	// TODO: the value will be an event type.
 	// A tombstone is simple a "Delete" type event.
 	tx.UnsafePut(keyBucketName, key, []byte("tombstone"))
-	return nil
+
+	return s.kvindex.Tombstone(key, currentIndex)
 }
