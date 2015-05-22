@@ -110,3 +110,4 @@ A detailed recap of client functionalities can be found in the [clients compatib
 - [skynetservices/skydns](https://github.com/skynetservices/skydns) - RFC compliant DNS server
 - [xordataexchange/crypt](https://github.com/xordataexchange/crypt) - Securely store values in etcd using GPG encryption
 - [spf13/viper](https://github.com/spf13/viper) - Go configuration library, reads values from ENV, pflags, files, and etcd with optional encryption
+- [lytics/metafora](https://github.com/lytics/metafora) - Go distributed task library
