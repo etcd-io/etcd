@@ -9,9 +9,15 @@ import (
 
 type index interface {
 	Get(key []byte, atIndex uint64) (index uint64, err error)
+	Range(key, end []byte, atIndex uint64) []kipair
 	Put(key []byte, index uint64)
 	Tombstone(key []byte, index uint64) error
 	Compact(index uint64) map[uint64]struct{}
+}
+
+type kipair struct {
+	index uint64
+	key   []byte
 }
 
 type treeIndex struct {
@@ -52,6 +58,38 @@ func (ti *treeIndex) Get(key []byte, atIndex uint64) (index uint64, err error) {
 
 	keyi = item.(*keyIndex)
 	return keyi.get(atIndex)
+}
+
+func (ti *treeIndex) Range(key, end []byte, atIndex uint64) []kipair {
+	if end == nil {
+		index, err := ti.Get(key, atIndex)
+		if err != nil {
+			return nil
+		}
+		return []kipair{{key: key, index: index}}
+	}
+
+	keyi := &keyIndex{key: key}
+	endi := &keyIndex{key: end}
+	pairs := make([]kipair, 0)
+
+	ti.RLock()
+	defer ti.RUnlock()
+
+	ti.tree.AscendGreaterOrEqual(keyi, func(item btree.Item) bool {
+		if !item.Less(endi) {
+			return false
+		}
+		curKeyi := item.(*keyIndex)
+		index, err := curKeyi.get(atIndex)
+		if err != nil {
+			return true
+		}
+		pairs = append(pairs, kipair{index, curKeyi.key})
+		return true
+	})
+
+	return pairs
 }
 
 func (ti *treeIndex) Tombstone(key []byte, index uint64) error {
