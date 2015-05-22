@@ -152,6 +152,69 @@ func TestRangeInSequence(t *testing.T) {
 	}
 }
 
+func TestOneTnx(t *testing.T) {
+	s := newStore("test")
+	defer os.Remove("test")
+
+	s.TnxBegin()
+	for i := 0; i < 3; i++ {
+		s.TnxPut([]byte("foo"), []byte("bar"))
+		s.TnxPut([]byte("foo1"), []byte("bar1"))
+		s.TnxPut([]byte("foo2"), []byte("bar2"))
+
+		// remove foo
+		n, index := s.TnxDeleteRange([]byte("foo"), nil)
+		if n != 1 || index != 1 {
+			t.Fatalf("n = %d, index = %d, want (%d, %d)", n, index, 1, 1)
+		}
+
+		kvs, index := s.TnxRange([]byte("foo"), []byte("foo3"), 0, 0)
+		if len(kvs) != 2 {
+			t.Fatalf("len(kvs) = %d, want %d", len(kvs), 2)
+		}
+
+		// remove again -> expect nothing
+		n, index = s.TnxDeleteRange([]byte("foo"), nil)
+		if n != 0 || index != 1 {
+			t.Fatalf("n = %d, index = %d, want (%d, %d)", n, index, 0, 1)
+		}
+
+		// remove foo1
+		n, index = s.TnxDeleteRange([]byte("foo"), []byte("foo2"))
+		if n != 1 || index != 1 {
+			t.Fatalf("n = %d, index = %d, want (%d, %d)", n, index, 1, 1)
+		}
+
+		// after removal foo1
+		kvs, index = s.TnxRange([]byte("foo"), []byte("foo3"), 0, 0)
+		if len(kvs) != 1 {
+			t.Fatalf("len(kvs) = %d, want %d", len(kvs), 1)
+		}
+
+		// remove foo2
+		n, index = s.TnxDeleteRange([]byte("foo2"), []byte("foo3"))
+		if n != 1 || index != 1 {
+			t.Fatalf("n = %d, index = %d, want (%d, %d)", n, index, 1, 1)
+		}
+
+		// after removal foo2
+		kvs, index = s.TnxRange([]byte("foo"), []byte("foo3"), 0, 0)
+		if len(kvs) != 0 {
+			t.Fatalf("len(kvs) = %d, want %d", len(kvs), 0)
+		}
+	}
+	s.TnxEnd()
+
+	// After tnx
+	kvs, index := s.Range([]byte("foo"), []byte("foo3"), 0, 1)
+	if len(kvs) != 0 {
+		t.Fatalf("len(kvs) = %d, want %d", len(kvs), 0)
+	}
+	if index != 1 {
+		t.Fatalf("index = %d, want %d", index, 1)
+	}
+}
+
 func BenchmarkStorePut(b *testing.B) {
 	s := newStore("test")
 	defer os.Remove("test")

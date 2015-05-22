@@ -26,6 +26,7 @@ type KV interface {
 	// until tnx ends. Only one on-going tnx is allowed.
 	TnxBegin()
 	// TnxEnd ends the on-going tnx.
+	// TODO: generate and verify tnx id for safty.
 	TnxEnd()
 	TnxRange(key, end []byte, limit, rangeIndex int64) (kvs []storagepb.KeyValue, index int64)
 	TnxPut(key, value []byte) (index int64)
