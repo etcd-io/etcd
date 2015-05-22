@@ -22,12 +22,12 @@ import (
 	"fmt"
 	"log"
 	"path"
+	"reflect"
 	"sort"
 	"strings"
 	"sync"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/go-semver/semver"
-	"github.com/coreos/etcd/pkg/netutil"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
@@ -413,8 +413,7 @@ func ValidateClusterAndAssignIDs(local *cluster, existing *cluster) error {
 	sort.Sort(SortableMemberSliceByPeerURLs(lms))
 
 	for i := range ems {
-		// TODO: Remove URLStringsEqual after improvement of using hostnames #2150 #2123
-		if !netutil.URLStringsEqual(ems[i].PeerURLs, lms[i].PeerURLs) {
+		if !reflect.DeepEqual(ems[i].PeerURLs, lms[i].PeerURLs) {
 			return fmt.Errorf("unmatched member while checking PeerURLs")
 		}
 		lms[i].ID = ems[i].ID
