@@ -101,7 +101,7 @@ func (s *store) Version() int {
 	return s.CurrentVersion
 }
 
-// Retrieves current of the store
+// Retrieves current index of the store
 func (s *store) Index() uint64 {
 	s.worldLock.RLock()
 	defer s.worldLock.RUnlock()

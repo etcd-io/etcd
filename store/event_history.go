@@ -54,8 +54,8 @@ func (eh *EventHistory) addEvent(e *Event) *Event {
 }
 
 // scan enumerates events from the index history and stops at the first point
-// where the key matches.
-func (eh *EventHistory) scan(key string, recursive bool, index uint64) (*Event, *etcdErr.Error) {
+// where the key matches, unless `all` is true.
+func (eh *EventHistory) scan(key string, recursive bool, index uint64, all bool) (events []*Event, err *etcdErr.Error) {
 	eh.rwl.RLock()
 	defer eh.rwl.RUnlock()
 
@@ -91,15 +91,19 @@ func (eh *EventHistory) scan(key string, recursive bool, index uint64) (*Event, 
 		}
 
 		if ok {
-			return e, nil
+			events = append(events, e)
+			// Stream watching requires all events from the given index
+			if !all {
+				return
+			}
 		}
-
 		i = (i + 1) % eh.Queue.Capacity
 
 		if i == eh.Queue.Back {
-			return nil, nil
+			break
 		}
 	}
+	return
 }
 
 // clone will be protected by a stop-world lock
