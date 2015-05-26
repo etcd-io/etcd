@@ -232,7 +232,10 @@ func getVersion(m *Member, tr *http.Transport) (*version.Versions, error) {
 		// etcd 2.0 does not have version endpoint on peer url.
 		if resp.StatusCode == http.StatusNotFound {
 			resp.Body.Close()
-			return &version.Versions{"2.0.0", "2.0.0"}, nil
+			return &version.Versions{
+				Server:  "2.0.0",
+				Cluster: "2.0.0",
+			}, nil
 		}
 
 		b, err := ioutil.ReadAll(resp.Body)
