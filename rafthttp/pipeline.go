@@ -148,12 +148,9 @@ func (p *pipeline) post(data []byte) error {
 
 	switch resp.StatusCode {
 	case http.StatusPreconditionFailed:
-		err := fmt.Errorf("conflicting cluster ID with the target cluster (%s != %s)", resp.Header.Get("X-Etcd-Cluster-ID"), p.cid)
-		select {
-		case p.errorc <- err:
-		default:
-		}
-		return nil
+		log.Printf("rafthttp: request sent was ignored due to cluster ID mismatch (remote[%s]:%s, local:%s)",
+			uu.Host, resp.Header.Get("X-Etcd-Cluster-ID"), p.cid)
+		return fmt.Errorf("cluster ID mismatch")
 	case http.StatusForbidden:
 		err := fmt.Errorf("the member has been permanently removed from the cluster")
 		select {

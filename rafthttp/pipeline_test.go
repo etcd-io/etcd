@@ -165,7 +165,6 @@ func TestPipelinePostErrorc(t *testing.T) {
 		err  error
 	}{
 		{"http://localhost:2380", http.StatusForbidden, nil},
-		{"http://localhost:2380", http.StatusPreconditionFailed, nil},
 	}
 	for i, tt := range tests {
 		picker := mustNewURLPicker(t, []string{tt.u})

@@ -424,6 +424,11 @@ func (cr *streamReader) dial(t streamType) (io.ReadCloser, error) {
 	case http.StatusNotFound:
 		resp.Body.Close()
 		return nil, fmt.Errorf("local member has not been added to the peer list of member %s", cr.to)
+	case http.StatusPreconditionFailed:
+		resp.Body.Close()
+		log.Printf("rafthttp: request sent was ignored due to cluster ID mismatch (remote[%s]:%s, local:%s)",
+			uu.Host, resp.Header.Get("X-Etcd-Cluster-ID"), cr.cid)
+		return nil, fmt.Errorf("cluster ID mismatch")
 	default:
 		resp.Body.Close()
 		return nil, fmt.Errorf("unhandled http status %d", resp.StatusCode)
