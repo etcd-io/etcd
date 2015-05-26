@@ -18,12 +18,16 @@ import "github.com/coreos/etcd/Godeps/_workspace/src/github.com/prometheus/clien
 
 var (
 	syncDurations = prometheus.NewSummary(prometheus.SummaryOpts{
-		Name: "wal_fsync_durations_microseconds",
-		Help: "The latency distributions of fsync called by wal.",
+		Namespace: "etcd",
+		Subsystem: "wal",
+		Name:      "fsync_durations_microseconds",
+		Help:      "The latency distributions of fsync called by wal.",
 	})
 	lastIndexSaved = prometheus.NewGauge(prometheus.GaugeOpts{
-		Name: "wal_last_index_saved",
-		Help: "The index of the last entry saved by wal",
+		Namespace: "etcd",
+		Subsystem: "wal",
+		Name:      "last_index_saved",
+		Help:      "The index of the last entry saved by wal.",
 	})
 )
 

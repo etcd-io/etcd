@@ -25,23 +25,31 @@ import (
 var (
 	// TODO: with label in v3?
 	proposeDurations = prometheus.NewSummary(prometheus.SummaryOpts{
-		Name: "etcdserver_proposal_durations_milliseconds",
-		Help: "The latency distributions of committing proposal.",
+		Namespace: "etcd",
+		Subsystem: "server",
+		Name:      "proposal_durations_milliseconds",
+		Help:      "The latency distributions of committing proposal.",
 	})
 	proposePending = prometheus.NewGauge(prometheus.GaugeOpts{
-		Name: "etcdserver_pending_proposal_total",
-		Help: "The total number of pending proposals.",
+		Namespace: "etcd",
+		Subsystem: "server",
+		Name:      "pending_proposal_total",
+		Help:      "The total number of pending proposals.",
 	})
 	// This is number of proposal failed in client's view.
 	// The proposal might be later got committed in raft.
 	proposeFailed = prometheus.NewCounter(prometheus.CounterOpts{
-		Name: "etcdserver_proposal_failed_total",
-		Help: "The total number of failed proposals.",
+		Namespace: "etcd",
+		Subsystem: "server",
+		Name:      "proposal_failed_total",
+		Help:      "The total number of failed proposals.",
 	})
 
 	fileDescriptorUsed = prometheus.NewGauge(prometheus.GaugeOpts{
-		Name: "file_descriptors_used",
-		Help: "The number of file descriptors used",
+		Namespace: "etcd",
+		Subsystem: "server",
+		Name:      "file_descriptors_used_totol",
+		Help:      "The total number of file descriptors used.",
 	})
 )
 
