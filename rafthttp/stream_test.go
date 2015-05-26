@@ -9,10 +9,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/go-semver/semver"
 	"github.com/coreos/etcd/etcdserver/stats"
 	"github.com/coreos/etcd/pkg/testutil"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft/raftpb"
+	"github.com/coreos/etcd/version"
 )
 
 // TestStreamWriterAttachOutgoingConn tests that outgoingConn can be attached
@@ -87,13 +89,12 @@ func TestStreamReaderDialRequest(t *testing.T) {
 		sr := &streamReader{
 			tr:         tr,
 			picker:     mustNewURLPicker(t, []string{"http://localhost:2380"}),
-			t:          tt,
 			from:       types.ID(1),
 			to:         types.ID(2),
 			cid:        types.ID(1),
 			msgAppTerm: 1,
 		}
-		sr.dial()
+		sr.dial(tt)
 
 		req := tr.Request()
 		wurl := fmt.Sprintf("http://localhost:2380" + tt.endpoint() + "/1")
@@ -132,18 +133,23 @@ func TestStreamReaderDialResult(t *testing.T) {
 		{http.StatusGone, nil, false, true},
 	}
 	for i, tt := range tests {
-		tr := newRespRoundTripper(tt.code, tt.err)
+		h := http.Header{}
+		h.Add("X-Server-Version", version.Version)
+		tr := &respRoundTripper{
+			code:   tt.code,
+			header: h,
+			err:    tt.err,
+		}
 		sr := &streamReader{
 			tr:     tr,
 			picker: mustNewURLPicker(t, []string{"http://localhost:2380"}),
-			t:      streamTypeMessage,
 			from:   types.ID(1),
 			to:     types.ID(2),
 			cid:    types.ID(1),
 			errorc: make(chan error, 1),
 		}
 
-		_, err := sr.dial()
+		_, err := sr.dial(streamTypeMessage)
 		if ok := err == nil; ok != tt.wok {
 			t.Errorf("#%d: ok = %v, want %v", i, ok, tt.wok)
 		}
@@ -184,6 +190,30 @@ func TestStreamReaderUpdateMsgAppTerm(t *testing.T) {
 		}
 		if closer.closed != tt.wclose {
 			t.Errorf("#%d: closed = %v, want %v", i, closer.closed, tt.wclose)
+		}
+	}
+}
+
+// TestStreamReaderDialDetectUnsupport tests that dial func could find
+// out that the stream type is not supported by the remote.
+func TestStreamReaderDialDetectUnsupport(t *testing.T) {
+	for i, typ := range []streamType{streamTypeMsgAppV2, streamTypeMessage} {
+		// the response from etcd 2.0
+		tr := &respRoundTripper{
+			code:   http.StatusNotFound,
+			header: http.Header{},
+		}
+		sr := &streamReader{
+			tr:     tr,
+			picker: mustNewURLPicker(t, []string{"http://localhost:2380"}),
+			from:   types.ID(1),
+			to:     types.ID(2),
+			cid:    types.ID(1),
+		}
+
+		_, err := sr.dial(typ)
+		if err != errUnsupportedStreamType {
+			t.Errorf("#%d: error = %v, want %v", i, err, errUnsupportedStreamType)
 		}
 	}
 }
@@ -272,6 +302,114 @@ func TestStream(t *testing.T) {
 	}
 }
 
+func TestServerVersion(t *testing.T) {
+	tests := []struct {
+		h  http.Header
+		wv *semver.Version
+	}{
+		// backward compatibility with etcd 2.0
+		{
+			http.Header{},
+			semver.Must(semver.NewVersion("2.0.0")),
+		},
+		{
+			http.Header{"X-Server-Version": []string{"2.1.0"}},
+			semver.Must(semver.NewVersion("2.1.0")),
+		},
+		{
+			http.Header{"X-Server-Version": []string{"2.1.0-alpha.0+git"}},
+			semver.Must(semver.NewVersion("2.1.0-alpha.0+git")),
+		},
+	}
+	for i, tt := range tests {
+		v := serverVersion(tt.h)
+		if v.String() != tt.wv.String() {
+			t.Errorf("#%d: version = %s, want %s", i, v, tt.wv)
+		}
+	}
+}
+
+func TestCompareMajorMinorVersion(t *testing.T) {
+	tests := []struct {
+		va, vb *semver.Version
+		w      int
+	}{
+		// equal to
+		{
+			semver.Must(semver.NewVersion("2.1.0")),
+			semver.Must(semver.NewVersion("2.1.0")),
+			0,
+		},
+		// smaller than
+		{
+			semver.Must(semver.NewVersion("2.0.0")),
+			semver.Must(semver.NewVersion("2.1.0")),
+			-1,
+		},
+		// bigger than
+		{
+			semver.Must(semver.NewVersion("2.2.0")),
+			semver.Must(semver.NewVersion("2.1.0")),
+			1,
+		},
+		// ignore patch
+		{
+			semver.Must(semver.NewVersion("2.1.1")),
+			semver.Must(semver.NewVersion("2.1.0")),
+			0,
+		},
+		// ignore prerelease
+		{
+			semver.Must(semver.NewVersion("2.1.0-alpha.0")),
+			semver.Must(semver.NewVersion("2.1.0")),
+			0,
+		},
+	}
+	for i, tt := range tests {
+		if g := compareMajorMinorVersion(tt.va, tt.vb); g != tt.w {
+			t.Errorf("#%d: compare = %d, want %d", i, g, tt.w)
+		}
+	}
+}
+
+func TestCheckStreamSupport(t *testing.T) {
+	tests := []struct {
+		v *semver.Version
+		t streamType
+		w bool
+	}{
+		// support
+		{
+			semver.Must(semver.NewVersion("2.0.0")),
+			streamTypeMsgApp,
+			true,
+		},
+		// ignore patch
+		{
+			semver.Must(semver.NewVersion("2.0.9")),
+			streamTypeMsgApp,
+			true,
+		},
+		// ignore prerelease
+		{
+			semver.Must(semver.NewVersion("2.0.0-alpha")),
+			streamTypeMsgApp,
+			true,
+		},
+		// not support
+		{
+			semver.Must(semver.NewVersion("2.0.0")),
+			streamTypeMsgAppV2,
+			false,
+		},
+	}
+	for i, tt := range tests {
+		if g := checkStreamSupport(tt.v, tt.t); g != tt.w {
+			t.Errorf("#%d: check = %v, want %v", i, g, tt.w)
+		}
+	}
+}
+
 type fakeWriteFlushCloser struct {
 	err     error
 	written int
@@ -294,6 +432,7 @@ type fakeStreamHandler struct {
 }
 
 func (h *fakeStreamHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	w.Header().Add("X-Server-Version", version.Version)
 	w.(http.Flusher).Flush()
 	c := newCloseNotifier()
 	h.sw.attach(&outgoingConn{

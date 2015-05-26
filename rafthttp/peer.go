@@ -70,6 +70,8 @@ type Peer interface {
 	Send(m raftpb.Message)
 	// Update updates the urls of remote peer.
 	Update(urls types.URLs)
+	// setTerm sets the term of ongoing communication.
+	setTerm(term uint64)
 	// attachOutgoingConn attachs the outgoing connection to the peer for
 	// stream usage. After the call, the ownership of the outgoing
 	// connection hands over to the peer. The peer will close the connection
@@ -99,11 +101,13 @@ type peer struct {
 	msgAppWriter *streamWriter
 	writer       *streamWriter
 	pipeline     *pipeline
+	msgAppReader *streamReader
 
 	sendc    chan raftpb.Message
 	recvc    chan raftpb.Message
 	propc    chan raftpb.Message
 	newURLsC chan types.URLs
+	termc    chan uint64
 
 	// for testing
 	pausec  chan struct{}
@@ -125,6 +129,7 @@ func startPeer(tr http.RoundTripper, urls types.URLs, local, to, cid types.ID, r
 		recvc:        make(chan raftpb.Message, recvBufSize),
 		propc:        make(chan raftpb.Message, maxPendingProposals),
 		newURLsC:     make(chan types.URLs),
+		termc:        make(chan uint64),
 		pausec:       make(chan struct{}),
 		resumec:      make(chan struct{}),
 		stopc:        make(chan struct{}),
@@ -149,7 +154,7 @@ func startPeer(tr http.RoundTripper, urls types.URLs, local, to, cid types.ID, r
 
 	go func() {
 		var paused bool
-		msgAppReader := startStreamReader(tr, picker, streamTypeMsgAppV2, local, to, cid, p.recvc, p.propc, errorc)
+		p.msgAppReader = startStreamReader(tr, picker, streamTypeMsgAppV2, local, to, cid, p.recvc, p.propc, errorc)
 		reader := startStreamReader(tr, picker, streamTypeMessage, local, to, cid, p.recvc, p.propc, errorc)
 		for {
 			select {
@@ -169,9 +174,6 @@ func startPeer(tr http.RoundTripper, urls types.URLs, local, to, cid types.ID, r
 						m.Type, p.id, name, bufSizeMap[name])
 				}
 			case mm := <-p.recvc:
-				if mm.Type == raftpb.MsgApp {
-					msgAppReader.updateMsgAppTerm(mm.Term)
-				}
 				if err := r.Process(context.TODO(), mm); err != nil {
 					log.Printf("peer: process raft message error: %v", err)
 				}
@@ -186,7 +188,7 @@ func startPeer(tr http.RoundTripper, urls types.URLs, local, to, cid types.ID, r
 				p.msgAppWriter.stop()
 				p.writer.stop()
 				p.pipeline.stop()
-				msgAppReader.stop()
+				p.msgAppReader.stop()
 				reader.stop()
 				close(p.done)
 				return
@@ -210,6 +212,8 @@ func (p *peer) Update(urls types.URLs) {
 	case <-p.done:
 	}
 }
+
+func (p *peer) setTerm(term uint64) { p.msgAppReader.updateMsgAppTerm(term) }
 
 func (p *peer) attachOutgoingConn(conn *outgoingConn) {
 	var ok bool

@@ -197,15 +197,16 @@ func (t *roundTripperBlocker) unblock() {
 }
 
 type respRoundTripper struct {
-	code int
-	err  error
+	code   int
+	header http.Header
+	err    error
 }
 
 func newRespRoundTripper(code int, err error) *respRoundTripper {
 	return &respRoundTripper{code: code, err: err}
 }
 func (t *respRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
-	return &http.Response{StatusCode: t.code, Body: &nopReadCloser{}}, t.err
+	return &http.Response{StatusCode: t.code, Header: t.header, Body: &nopReadCloser{}}, t.err
 }
 
 type roundTripperRecorder struct {

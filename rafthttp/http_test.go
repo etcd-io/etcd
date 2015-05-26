@@ -28,6 +28,7 @@ import (
 	"github.com/coreos/etcd/pkg/pbutil"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft/raftpb"
+	"github.com/coreos/etcd/version"
 )
 
 func TestServeRaftPrefix(t *testing.T) {
@@ -197,11 +198,14 @@ func TestServeRaftStreamPrefix(t *testing.T) {
 		case <-time.After(time.Second):
 			t.Fatalf("#%d: failed to attach outgoingConn", i)
 		}
+		if g := rw.Header().Get("X-Server-Version"); g != version.Version {
+			t.Errorf("#%d: X-Server-Version = %s, want %s", i, g, version.Version)
+		}
 		if conn.t != tt.wtype {
-			t.Errorf("$%d: type = %s, want %s", i, conn.t, tt.wtype)
+			t.Errorf("#%d: type = %s, want %s", i, conn.t, tt.wtype)
 		}
 		if conn.termStr != wterm {
-			t.Errorf("$%d: term = %s, want %s", i, conn.termStr, wterm)
+			t.Errorf("#%d: term = %s, want %s", i, conn.termStr, wterm)
 		}
 		conn.Close()
 	}
@@ -345,6 +349,7 @@ func (pg *fakePeerGetter) Get(id types.ID) Peer { return pg.peers[id] }
 type fakePeer struct {
 	msgs  []raftpb.Message
 	urls  types.URLs
+	term  uint64
 	connc chan *outgoingConn
 }
 
@@ -356,5 +361,6 @@ func newFakePeer() *fakePeer {
 
 func (pr *fakePeer) Send(m raftpb.Message)                 { pr.msgs = append(pr.msgs, m) }
 func (pr *fakePeer) Update(urls types.URLs)                { pr.urls = urls }
+func (pr *fakePeer) setTerm(term uint64)                   { pr.term = term }
 func (pr *fakePeer) attachOutgoingConn(conn *outgoingConn) { pr.connc <- conn }
 func (pr *fakePeer) Stop()                                 {}
