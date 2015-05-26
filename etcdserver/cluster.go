@@ -109,12 +109,12 @@ func (c *cluster) ID() types.ID { return c.id }
 func (c *cluster) Members() []*Member {
 	c.Lock()
 	defer c.Unlock()
-	var sms SortableMemberSlice
+	var ms MembersByID
 	for _, m := range c.members {
-		sms = append(sms, m.Clone())
+		ms = append(ms, m.Clone())
 	}
-	sort.Sort(sms)
-	return []*Member(sms)
+	sort.Sort(ms)
+	return []*Member(ms)
 }
 
 func (c *cluster) Member(id types.ID) *Member {
@@ -409,8 +409,8 @@ func ValidateClusterAndAssignIDs(local *cluster, existing *cluster) error {
 	if len(ems) != len(lms) {
 		return fmt.Errorf("member count is unequal")
 	}
-	sort.Sort(SortableMemberSliceByPeerURLs(ems))
-	sort.Sort(SortableMemberSliceByPeerURLs(lms))
+	sort.Sort(MembersByPeerURLs(ems))
+	sort.Sort(MembersByPeerURLs(lms))
 
 	for i := range ems {
 		if !reflect.DeepEqual(ems[i].PeerURLs, lms[i].PeerURLs) {

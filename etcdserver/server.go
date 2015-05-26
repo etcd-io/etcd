@@ -66,9 +66,6 @@ const (
 )
 
 var (
-	storeMembersPrefix        = path.Join(StoreClusterPrefix, "members")
-	storeRemovedMembersPrefix = path.Join(StoreClusterPrefix, "removed_members")
-
 	storeMemberAttributeRegexp = regexp.MustCompile(path.Join(storeMembersPrefix, "[[:xdigit:]]{1,16}", attributesSuffix))
 )
 
