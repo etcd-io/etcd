@@ -317,14 +317,18 @@ func (cr *streamReader) decodeLoop(rc io.ReadCloser) error {
 	}
 }
 
+// updateMsgAppTerm updates the term for MsgApp stream, and closes
+// the existing MsgApp stream if term is updated.
 func (cr *streamReader) updateMsgAppTerm(term uint64) {
 	cr.mu.Lock()
 	defer cr.mu.Unlock()
-	if cr.msgAppTerm == term {
+	if cr.msgAppTerm >= term {
 		return
 	}
 	cr.msgAppTerm = term
-	cr.close()
+	if cr.t == streamTypeMsgApp {
+		cr.close()
+	}
 }
 
 // TODO: always cancel in-flight dial and decode
