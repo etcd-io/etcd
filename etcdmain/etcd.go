@@ -23,6 +23,8 @@ import (
 	"os"
 	"path"
 	"reflect"
+	"runtime"
+	"strconv"
 	"time"
 
 	"github.com/coreos/etcd/discovery"
@@ -69,6 +71,13 @@ func Main() {
 	setupLogging(cfg)
 
 	var stopped <-chan struct{}
+
+	GoMaxProcs := 1
+	if envMaxProcs, err := strconv.Atoi(os.Getenv("GOMAXPROCS")); err == nil {
+		GoMaxProcs = envMaxProcs
+	}
+	log.Printf("main: setting maximum number of CPUs to %d, total number of available CPUs is %d", GoMaxProcs, runtime.NumCPU())
+	runtime.GOMAXPROCS(GoMaxProcs)
 
 	// TODO: check whether fields are set instead of whether fields have default value
 	if cfg.name != defaultName && cfg.initialCluster == initialClusterFromName(defaultName) {
