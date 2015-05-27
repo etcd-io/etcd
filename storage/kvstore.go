@@ -54,7 +54,7 @@ func (s *store) Put(key, value []byte) int64 {
 
 func (s *store) Range(key, end []byte, limit, rangeIndex int64) (kvs []storagepb.KeyValue, index int64) {
 	s.TnxBegin()
-	kvs, index = s.TnxRange(key, end, limit, rangeIndex)
+	kvs, index = s.rangeKeys(key, end, limit, rangeIndex)
 	s.TnxEnd()
 
 	return kvs, index
@@ -82,6 +82,24 @@ func (s *store) TnxEnd() {
 }
 
 func (s *store) TnxRange(key, end []byte, limit, rangeIndex int64) (kvs []storagepb.KeyValue, index int64) {
+	return s.rangeKeys(key, end, limit, rangeIndex)
+}
+
+func (s *store) TnxPut(key, value []byte) int64 {
+	s.put(key, value, s.currentIndex+1)
+	return int64(s.currentIndex + 1)
+}
+
+func (s *store) TnxDeleteRange(key, end []byte) (n, index int64) {
+	n = s.deleteRange(key, end, s.currentIndex+1)
+	if n != 0 || s.subIndex != 0 {
+		index = int64(s.currentIndex + 1)
+	}
+	return n, index
+}
+
+// range is a keyword in Go, add Keys suffix.
+func (s *store) rangeKeys(key, end []byte, limit, rangeIndex int64) (kvs []storagepb.KeyValue, index int64) {
 	if rangeIndex <= 0 {
 		index = int64(s.currentIndex)
 		if s.subIndex > 0 {
@@ -137,19 +155,6 @@ func (s *store) TnxRange(key, end []byte, limit, rangeIndex int64) (kvs []storag
 		}
 	}
 	return kvs, index
-}
-
-func (s *store) TnxPut(key, value []byte) int64 {
-	s.put(key, value, s.currentIndex+1)
-	return int64(s.currentIndex + 1)
-}
-
-func (s *store) TnxDeleteRange(key, end []byte) (n, index int64) {
-	n = s.deleteRange(key, end, s.currentIndex+1)
-	if n != 0 || s.subIndex != 0 {
-		index = int64(s.currentIndex + 1)
-	}
-	return n, index
 }
 
 func (s *store) put(key, value []byte, index uint64) {
