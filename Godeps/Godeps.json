@@ -1,6 +1,6 @@
 {
 	"ImportPath": "github.com/coreos/etcd",
-	"GoVersion": "go1.4.2",
+	"GoVersion": "go1.4.1",
 	"Packages": [
 		"./..."
 	],
@@ -9,6 +9,11 @@
 			"ImportPath": "code.google.com/p/goprotobuf/proto",
 			"Comment": "go.r60-163",
 			"Rev": "9352842ae63ee1d7e74e074ce7bb10370c4b6b9e"
+		},
+		{
+			"ImportPath": "github.com/boltdb/bolt",
+			"Comment": "v1.0-71-g71f28ea",
+			"Rev": "71f28eaecbebd00604d87bb1de0dae8fcfa54bbd"
 		},
 		{
 			"ImportPath": "github.com/codegangsta/cli",
