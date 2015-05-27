@@ -233,7 +233,7 @@ func (n *node) run(r *raft) {
 
 	lead := None
 	prevSoftSt := r.softState()
-	prevHardSt := r.HardState
+	prevHardSt := emptyState
 
 	for {
 		if advancec != nil {
