@@ -34,7 +34,7 @@ type store struct {
 	tnxID int64      // tracks the current tnxID to verify tnx operations
 }
 
-func newStore(path string) *store {
+func newStore(path string) KV {
 	s := &store{
 		b:            backend.New(path, batchInterval, batchLimit),
 		kvindex:      newTreeIndex(),
