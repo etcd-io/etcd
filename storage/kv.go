@@ -24,9 +24,10 @@ type KV interface {
 
 	// TnxBegin begins a tnx. Only Tnx prefixed operation can be executed, others will be blocked
 	// until tnx ends. Only one on-going tnx is allowed.
+	// TnxBegin returns an int64 tnx ID.
+	// All tnx prefixed operations with same tnx ID will be done with the same index.
 	TnxBegin() int64
-	// TnxEnd ends the on-going tnx.
-	// TODO: generate and verify tnx id for safty.
+	// TnxEnd ends the on-going tnx with tnx ID. If the on-going tnx ID is not matched, error is returned.
 	TnxEnd(tnxID int64) error
 	TnxRange(tnxID int64, key, end []byte, limit, rangeIndex int64) (kvs []storagepb.KeyValue, index int64, err error)
 	TnxPut(tnxID int64, key, value []byte) (index int64, err error)
