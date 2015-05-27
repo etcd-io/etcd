@@ -76,7 +76,7 @@ func Main() {
 	if envMaxProcs, err := strconv.Atoi(os.Getenv("GOMAXPROCS")); err == nil {
 		GoMaxProcs = envMaxProcs
 	}
-	log.Printf("main: setting maximum number of CPUs to %d, total number of available CPUs is %d", GoMaxProcs, runtime.NumCPU())
+	log.Printf("setting maximum number of CPUs to %d, total number of available CPUs is %d", GoMaxProcs, runtime.NumCPU())
 	runtime.GOMAXPROCS(GoMaxProcs)
 
 	// TODO: check whether fields are set instead of whether fields have default value
