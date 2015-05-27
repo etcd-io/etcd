@@ -156,54 +156,78 @@ func TestOneTnx(t *testing.T) {
 	s := newStore("test")
 	defer os.Remove("test")
 
-	s.TnxBegin()
+	id := s.TnxBegin()
 	for i := 0; i < 3; i++ {
-		s.TnxPut([]byte("foo"), []byte("bar"))
-		s.TnxPut([]byte("foo1"), []byte("bar1"))
-		s.TnxPut([]byte("foo2"), []byte("bar2"))
+		s.TnxPut(id, []byte("foo"), []byte("bar"))
+		s.TnxPut(id, []byte("foo1"), []byte("bar1"))
+		s.TnxPut(id, []byte("foo2"), []byte("bar2"))
 
 		// remove foo
-		n, index := s.TnxDeleteRange([]byte("foo"), nil)
+		n, index, err := s.TnxDeleteRange(id, []byte("foo"), nil)
+		if err != nil {
+			t.Fatal(err)
+		}
 		if n != 1 || index != 1 {
 			t.Fatalf("n = %d, index = %d, want (%d, %d)", n, index, 1, 1)
 		}
 
-		kvs, index := s.TnxRange([]byte("foo"), []byte("foo3"), 0, 0)
+		kvs, index, err := s.TnxRange(id, []byte("foo"), []byte("foo3"), 0, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
 		if len(kvs) != 2 {
 			t.Fatalf("len(kvs) = %d, want %d", len(kvs), 2)
 		}
 
 		// remove again -> expect nothing
-		n, index = s.TnxDeleteRange([]byte("foo"), nil)
+		n, index, err = s.TnxDeleteRange(id, []byte("foo"), nil)
+		if err != nil {
+			t.Fatal(err)
+		}
 		if n != 0 || index != 1 {
 			t.Fatalf("n = %d, index = %d, want (%d, %d)", n, index, 0, 1)
 		}
 
 		// remove foo1
-		n, index = s.TnxDeleteRange([]byte("foo"), []byte("foo2"))
+		n, index, err = s.TnxDeleteRange(id, []byte("foo"), []byte("foo2"))
+		if err != nil {
+			t.Fatal(err)
+		}
 		if n != 1 || index != 1 {
 			t.Fatalf("n = %d, index = %d, want (%d, %d)", n, index, 1, 1)
 		}
 
 		// after removal foo1
-		kvs, index = s.TnxRange([]byte("foo"), []byte("foo3"), 0, 0)
+		kvs, index, err = s.TnxRange(id, []byte("foo"), []byte("foo3"), 0, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
 		if len(kvs) != 1 {
 			t.Fatalf("len(kvs) = %d, want %d", len(kvs), 1)
 		}
 
 		// remove foo2
-		n, index = s.TnxDeleteRange([]byte("foo2"), []byte("foo3"))
+		n, index, err = s.TnxDeleteRange(id, []byte("foo2"), []byte("foo3"))
+		if err != nil {
+			t.Fatal(err)
+		}
 		if n != 1 || index != 1 {
 			t.Fatalf("n = %d, index = %d, want (%d, %d)", n, index, 1, 1)
 		}
 
 		// after removal foo2
-		kvs, index = s.TnxRange([]byte("foo"), []byte("foo3"), 0, 0)
+		kvs, index, err = s.TnxRange(id, []byte("foo"), []byte("foo3"), 0, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
 		if len(kvs) != 0 {
 			t.Fatalf("len(kvs) = %d, want %d", len(kvs), 0)
 		}
 	}
-	s.TnxEnd()
+	err := s.TnxEnd(id)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// After tnx
 	kvs, index := s.Range([]byte("foo"), []byte("foo3"), 0, 1)
