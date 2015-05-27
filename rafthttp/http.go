@@ -126,6 +126,15 @@ func (h *streamHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	wcid := h.cid.String()
+	w.Header().Set("X-Etcd-Cluster-ID", wcid)
+
+	if gcid := r.Header.Get("X-Etcd-Cluster-ID"); gcid != wcid {
+		log.Printf("rafthttp: streaming request ignored due to cluster ID mismatch got %s want %s", gcid, wcid)
+		http.Error(w, "clusterID mismatch", http.StatusPreconditionFailed)
+		return
+	}
+
 	w.Header().Add("X-Server-Version", version.Version)
 
 	var t streamType
@@ -159,13 +168,6 @@ func (h *streamHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if p == nil {
 		log.Printf("rafthttp: fail to find sender %s", from)
 		http.Error(w, "error sender not found", http.StatusNotFound)
-		return
-	}
-
-	wcid := h.cid.String()
-	if gcid := r.Header.Get("X-Etcd-Cluster-ID"); gcid != wcid {
-		log.Printf("rafthttp: streaming request ignored due to cluster ID mismatch got %s want %s", gcid, wcid)
-		http.Error(w, "clusterID mismatch", http.StatusPreconditionFailed)
 		return
 	}
 
