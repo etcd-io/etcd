@@ -1,0 +1,1 @@
+{"config":{"certFile":"","keyFile":"","caCertFiles":null,"timeout":1000000000,"consistency":"STRONG"},"cluster":{"leader":"http://127.0.0.1:4001","machines":["http://127.0.0.1:4001"]}}
