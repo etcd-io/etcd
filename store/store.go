@@ -28,8 +28,14 @@ import (
 	"github.com/coreos/etcd/pkg/types"
 )
 
-// The default version to set when the store is first initialized.
-const defaultVersion = 2
+const (
+	// Size of the watch window.
+	// TODO: Expose as a cmd line parameter?
+	WatchWindowSize = 1000
+
+	// The default version to set when the store is first initialized.
+	defaultVersion = 2
+)
 
 var minExpireTime time.Time
 
@@ -90,7 +96,7 @@ func newStore(namespaces ...string) *store {
 		s.Root.Add(newDir(s, namespace, s.CurrentIndex, s.Root, Permanent))
 	}
 	s.Stats = newStats()
-	s.WatcherHub = newWatchHub(1000)
+	s.WatcherHub = newWatchHub(WatchWindowSize)
 	s.ttlKeyHeap = newTtlKeyHeap()
 	s.readonlySet = types.NewUnsafeSet(append(namespaces, "/")...)
 	return s
