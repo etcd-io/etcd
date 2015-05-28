@@ -61,7 +61,7 @@ func Main() {
 	cfg := NewConfig()
 	err := cfg.Parse(os.Args[1:])
 	if err != nil {
-		log.Printf("error verifying flags, %v. See 'etcd -help'.", err)
+		log.Printf("error verifying flags, %v. See 'etcd --help'.", err)
 		switch err {
 		case errUnsetAdvertiseClientURLsFlag:
 			log.Printf("When listening on specific address(es), this etcd process must advertise accessible url(s) to each connected client.")
