@@ -362,7 +362,7 @@ func TestNodeRestart(t *testing.T) {
 	st := raftpb.HardState{Term: 1, Commit: 1}
 
 	want := Ready{
-		HardState: emptyState,
+		HardState: st,
 		// commit up to index commit index in st
 		CommittedEntries: entries[:st.Commit],
 	}
@@ -405,7 +405,7 @@ func TestNodeRestartFromSnapshot(t *testing.T) {
 	st := raftpb.HardState{Term: 1, Commit: 3}
 
 	want := Ready{
-		HardState: emptyState,
+		HardState: st,
 		// commit up to index commit index in st
 		CommittedEntries: entries,
 	}
