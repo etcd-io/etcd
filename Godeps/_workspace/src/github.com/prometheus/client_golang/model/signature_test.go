@@ -15,10 +15,11 @@ package model
 
 import (
 	"runtime"
+	"sync"
 	"testing"
 )
 
-func testLabelsToSignature(t testing.TB) {
+func TestLabelsToSignature(t *testing.T) {
 	var scenarios = []struct {
 		in  map[string]string
 		out uint64
@@ -29,7 +30,7 @@ func testLabelsToSignature(t testing.TB) {
 		},
 		{
 			in:  map[string]string{"name": "garland, briggs", "fear": "love is not enough"},
-			out: 12952432476264840823,
+			out: 5799056148416392346,
 		},
 	}
 
@@ -42,8 +43,208 @@ func testLabelsToSignature(t testing.TB) {
 	}
 }
 
-func TestLabelToSignature(t *testing.T) {
-	testLabelsToSignature(t)
+func TestMetricToFingerprint(t *testing.T) {
+	var scenarios = []struct {
+		in  Metric
+		out Fingerprint
+	}{
+		{
+			in:  Metric{},
+			out: 14695981039346656037,
+		},
+		{
+			in:  Metric{"name": "garland, briggs", "fear": "love is not enough"},
+			out: 5799056148416392346,
+		},
+	}
+
+	for i, scenario := range scenarios {
+		actual := metricToFingerprint(scenario.in)
+
+		if actual != scenario.out {
+			t.Errorf("%d. expected %d, got %d", i, scenario.out, actual)
+		}
+	}
+}
+
+func TestMetricToFastFingerprint(t *testing.T) {
+	var scenarios = []struct {
+		in  Metric
+		out Fingerprint
+	}{
+		{
+			in:  Metric{},
+			out: 14695981039346656037,
+		},
+		{
+			in:  Metric{"name": "garland, briggs", "fear": "love is not enough"},
+			out: 12952432476264840823,
+		},
+	}
+
+	for i, scenario := range scenarios {
+		actual := metricToFastFingerprint(scenario.in)
+
+		if actual != scenario.out {
+			t.Errorf("%d. expected %d, got %d", i, scenario.out, actual)
+		}
+	}
+}
+
+func TestSignatureForLabels(t *testing.T) {
+	var scenarios = []struct {
+		in     Metric
+		labels LabelNames
+		out    uint64
+	}{
+		{
+			in:     Metric{},
+			labels: nil,
+			out:    14695981039346656037,
+		},
+		{
+			in:     Metric{"name": "garland, briggs", "fear": "love is not enough"},
+			labels: LabelNames{"fear", "name"},
+			out:    5799056148416392346,
+		},
+		{
+			in:     Metric{"name": "garland, briggs", "fear": "love is not enough", "foo": "bar"},
+			labels: LabelNames{"fear", "name"},
+			out:    5799056148416392346,
+		},
+		{
+			in:     Metric{"name": "garland, briggs", "fear": "love is not enough"},
+			labels: LabelNames{},
+			out:    14695981039346656037,
+		},
+		{
+			in:     Metric{"name": "garland, briggs", "fear": "love is not enough"},
+			labels: nil,
+			out:    14695981039346656037,
+		},
+	}
+
+	for i, scenario := range scenarios {
+		actual := SignatureForLabels(scenario.in, scenario.labels)
+
+		if actual != scenario.out {
+			t.Errorf("%d. expected %d, got %d", i, scenario.out, actual)
+		}
+	}
+}
+
+func TestSignatureWithoutLabels(t *testing.T) {
+	var scenarios = []struct {
+		in     Metric
+		labels map[LabelName]struct{}
+		out    uint64
+	}{
+		{
+			in:     Metric{},
+			labels: nil,
+			out:    14695981039346656037,
+		},
+		{
+			in:     Metric{"name": "garland, briggs", "fear": "love is not enough"},
+			labels: map[LabelName]struct{}{"fear": struct{}{}, "name": struct{}{}},
+			out:    14695981039346656037,
+		},
+		{
+			in:     Metric{"name": "garland, briggs", "fear": "love is not enough", "foo": "bar"},
+			labels: map[LabelName]struct{}{"foo": struct{}{}},
+			out:    5799056148416392346,
+		},
+		{
+			in:     Metric{"name": "garland, briggs", "fear": "love is not enough"},
+			labels: map[LabelName]struct{}{},
+			out:    5799056148416392346,
+		},
+		{
+			in:     Metric{"name": "garland, briggs", "fear": "love is not enough"},
+			labels: nil,
+			out:    5799056148416392346,
+		},
+	}
+
+	for i, scenario := range scenarios {
+		actual := SignatureWithoutLabels(scenario.in, scenario.labels)
+
+		if actual != scenario.out {
+			t.Errorf("%d. expected %d, got %d", i, scenario.out, actual)
+		}
+	}
+}
+
+func benchmarkLabelToSignature(b *testing.B, l map[string]string, e uint64) {
+	for i := 0; i < b.N; i++ {
+		if a := LabelsToSignature(l); a != e {
+			b.Fatalf("expected signature of %d for %s, got %d", e, l, a)
+		}
+	}
+}
+
+func BenchmarkLabelToSignatureScalar(b *testing.B) {
+	benchmarkLabelToSignature(b, nil, 14695981039346656037)
+}
+
+func BenchmarkLabelToSignatureSingle(b *testing.B) {
+	benchmarkLabelToSignature(b, map[string]string{"first-label": "first-label-value"}, 5146282821936882169)
+}
+
+func BenchmarkLabelToSignatureDouble(b *testing.B) {
+	benchmarkLabelToSignature(b, map[string]string{"first-label": "first-label-value", "second-label": "second-label-value"}, 3195800080984914717)
+}
+
+func BenchmarkLabelToSignatureTriple(b *testing.B) {
+	benchmarkLabelToSignature(b, map[string]string{"first-label": "first-label-value", "second-label": "second-label-value", "third-label": "third-label-value"}, 13843036195897128121)
+}
+
+func benchmarkMetricToFingerprint(b *testing.B, m Metric, e Fingerprint) {
+	for i := 0; i < b.N; i++ {
+		if a := metricToFingerprint(m); a != e {
+			b.Fatalf("expected signature of %d for %s, got %d", e, m, a)
+		}
+	}
+}
+
+func BenchmarkMetricToFingerprintScalar(b *testing.B) {
+	benchmarkMetricToFingerprint(b, nil, 14695981039346656037)
+}
+
+func BenchmarkMetricToFingerprintSingle(b *testing.B) {
+	benchmarkMetricToFingerprint(b, Metric{"first-label": "first-label-value"}, 5146282821936882169)
+}
+
+func BenchmarkMetricToFingerprintDouble(b *testing.B) {
+	benchmarkMetricToFingerprint(b, Metric{"first-label": "first-label-value", "second-label": "second-label-value"}, 3195800080984914717)
+}
+
+func BenchmarkMetricToFingerprintTriple(b *testing.B) {
+	benchmarkMetricToFingerprint(b, Metric{"first-label": "first-label-value", "second-label": "second-label-value", "third-label": "third-label-value"}, 13843036195897128121)
+}
+
+func benchmarkMetricToFastFingerprint(b *testing.B, m Metric, e Fingerprint) {
+	for i := 0; i < b.N; i++ {
+		if a := metricToFastFingerprint(m); a != e {
+			b.Fatalf("expected signature of %d for %s, got %d", e, m, a)
+		}
+	}
+}
+
+func BenchmarkMetricToFastFingerprintScalar(b *testing.B) {
+	benchmarkMetricToFastFingerprint(b, nil, 14695981039346656037)
+}
+
+func BenchmarkMetricToFastFingerprintSingle(b *testing.B) {
+	benchmarkMetricToFastFingerprint(b, Metric{"first-label": "first-label-value"}, 5147259542624943964)
+}
+
+func BenchmarkMetricToFastFingerprintDouble(b *testing.B) {
+	benchmarkMetricToFastFingerprint(b, Metric{"first-label": "first-label-value", "second-label": "second-label-value"}, 18269973311206963528)
+}
+
+func BenchmarkMetricToFastFingerprintTriple(b *testing.B) {
+	benchmarkMetricToFastFingerprint(b, Metric{"first-label": "first-label-value", "second-label": "second-label-value", "third-label": "third-label-value"}, 15738406913934009676)
 }
 
 func TestEmptyLabelSignature(t *testing.T) {
@@ -65,56 +266,39 @@ func TestEmptyLabelSignature(t *testing.T) {
 	}
 }
 
-func BenchmarkLabelToSignature(b *testing.B) {
-	for i := 0; i < b.N; i++ {
-		testLabelsToSignature(b)
+func benchmarkMetricToFastFingerprintConc(b *testing.B, m Metric, e Fingerprint, concLevel int) {
+	var start, end sync.WaitGroup
+	start.Add(1)
+	end.Add(concLevel)
+
+	for i := 0; i < concLevel; i++ {
+		go func() {
+			start.Wait()
+			for j := b.N / concLevel; j >= 0; j-- {
+				if a := metricToFastFingerprint(m); a != e {
+					b.Fatalf("expected signature of %d for %s, got %d", e, m, a)
+				}
+			}
+			end.Done()
+		}()
 	}
+	b.ResetTimer()
+	start.Done()
+	end.Wait()
 }
 
-func benchmarkLabelValuesToSignature(b *testing.B, l map[string]string, e uint64) {
-	for i := 0; i < b.N; i++ {
-		if a := LabelValuesToSignature(l); a != e {
-			b.Fatalf("expected signature of %d for %s, got %d", e, l, a)
-		}
-	}
+func BenchmarkMetricToFastFingerprintTripleConc1(b *testing.B) {
+	benchmarkMetricToFastFingerprintConc(b, Metric{"first-label": "first-label-value", "second-label": "second-label-value", "third-label": "third-label-value"}, 15738406913934009676, 1)
 }
 
-func BenchmarkLabelValuesToSignatureScalar(b *testing.B) {
-	benchmarkLabelValuesToSignature(b, nil, 14695981039346656037)
+func BenchmarkMetricToFastFingerprintTripleConc2(b *testing.B) {
+	benchmarkMetricToFastFingerprintConc(b, Metric{"first-label": "first-label-value", "second-label": "second-label-value", "third-label": "third-label-value"}, 15738406913934009676, 2)
 }
 
-func BenchmarkLabelValuesToSignatureSingle(b *testing.B) {
-	benchmarkLabelValuesToSignature(b, map[string]string{"first-label": "first-label-value"}, 2653746141194979650)
+func BenchmarkMetricToFastFingerprintTripleConc4(b *testing.B) {
+	benchmarkMetricToFastFingerprintConc(b, Metric{"first-label": "first-label-value", "second-label": "second-label-value", "third-label": "third-label-value"}, 15738406913934009676, 4)
 }
 
-func BenchmarkLabelValuesToSignatureDouble(b *testing.B) {
-	benchmarkLabelValuesToSignature(b, map[string]string{"first-label": "first-label-value", "second-label": "second-label-value"}, 8893559499616767364)
-}
-
-func BenchmarkLabelValuesToSignatureTriple(b *testing.B) {
-	benchmarkLabelValuesToSignature(b, map[string]string{"first-label": "first-label-value", "second-label": "second-label-value", "third-label": "third-label-value"}, 1685970066862087833)
-}
-
-func benchmarkLabelToSignature(b *testing.B, l map[string]string, e uint64) {
-	for i := 0; i < b.N; i++ {
-		if a := LabelsToSignature(l); a != e {
-			b.Fatalf("expected signature of %d for %s, got %d", e, l, a)
-		}
-	}
-}
-
-func BenchmarkLabelToSignatureScalar(b *testing.B) {
-	benchmarkLabelToSignature(b, nil, 14695981039346656037)
-}
-
-func BenchmarkLabelToSignatureSingle(b *testing.B) {
-	benchmarkLabelToSignature(b, map[string]string{"first-label": "first-label-value"}, 5147259542624943964)
-}
-
-func BenchmarkLabelToSignatureDouble(b *testing.B) {
-	benchmarkLabelToSignature(b, map[string]string{"first-label": "first-label-value", "second-label": "second-label-value"}, 18269973311206963528)
-}
-
-func BenchmarkLabelToSignatureTriple(b *testing.B) {
-	benchmarkLabelToSignature(b, map[string]string{"first-label": "first-label-value", "second-label": "second-label-value", "third-label": "third-label-value"}, 15738406913934009676)
+func BenchmarkMetricToFastFingerprintTripleConc8(b *testing.B) {
+	benchmarkMetricToFastFingerprintConc(b, Metric{"first-label": "first-label-value", "second-label": "second-label-value", "third-label": "third-label-value"}, 15738406913934009676, 8)
 }

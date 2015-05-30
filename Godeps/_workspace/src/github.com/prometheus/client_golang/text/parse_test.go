@@ -18,7 +18,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/code.google.com/p/goprotobuf/proto"
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/golang/protobuf/proto"
 	dto "github.com/coreos/etcd/Godeps/_workspace/src/github.com/prometheus/client_model/go"
 )
 

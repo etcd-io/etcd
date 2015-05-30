@@ -34,8 +34,9 @@ package proto_test
 import (
 	"testing"
 
-	pb "./testdata"
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/gogo/protobuf/proto"
+
+	pb "./testdata"
 )
 
 var cloneTestMessage = &pb.MyMessage{

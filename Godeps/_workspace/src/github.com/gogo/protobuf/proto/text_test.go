@@ -39,8 +39,9 @@ import (
 	"strings"
 	"testing"
 
-	pb "./testdata"
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/gogo/protobuf/proto"
+
+	pb "./testdata"
 )
 
 // textMessage implements the methods that allow it to marshal and unmarshal
