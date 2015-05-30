@@ -19,38 +19,37 @@ import (
 	"os"
 	"os/signal"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/codegangsta/cli"
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/go-etcd/etcd"
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/spf13/cobra"
 )
 
 // NewWatchCommand returns the CLI command for "watch".
-func NewWatchCommand() cli.Command {
-	return cli.Command{
-		Name:  "watch",
-		Usage: "watch a key for changes",
-		Flags: []cli.Flag{
-			cli.BoolFlag{Name: "forever", Usage: "forever watch a key until CTRL+C"},
-			cli.IntFlag{Name: "after-index", Value: 0, Usage: "watch after the given index"},
-			cli.BoolFlag{Name: "recursive", Usage: "returns all values for key and child keys"},
-		},
-		Action: func(c *cli.Context) {
-			handleKey(c, watchCommandFunc)
+func NewWatchCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "watch",
+		Short: "watch a key for changes",
+		Run: func(cmd *cobra.Command, args []string) {
+			handleKey(cmd, args, watchCommandFunc)
 		},
 	}
+	cmd.Flags().Bool("forever", false, "forever watch a key until CTRL+C")
+	cmd.Flags().Uint64("after-index", 0, "watch after the given index")
+	cmd.Flags().Bool("recursive", false, "returns all values for key and child keys")
+	return cmd
 }
 
 // watchCommandFunc executes the "watch" command.
-func watchCommandFunc(c *cli.Context, client *etcd.Client) (*etcd.Response, error) {
-	if len(c.Args()) == 0 {
+func watchCommandFunc(cmd *cobra.Command, args []string, client *etcd.Client) (*etcd.Response, error) {
+	if len(args) == 0 {
 		return nil, errors.New("Key required")
 	}
-	key := c.Args()[0]
-	recursive := c.Bool("recursive")
-	forever := c.Bool("forever")
+	key := args[0]
+	recursive, _ := cmd.Flags().GetBool("recursive")
+	forever, _ := cmd.Flags().GetBool("forever")
 
-	index := 0
-	if c.Int("after-index") != 0 {
-		index = c.Int("after-index") + 1
+	index, _ := cmd.Flags().GetUint64("after-index")
+	if index != 0 {
+		index = index + 1
 	}
 
 	if forever {
@@ -67,14 +66,15 @@ func watchCommandFunc(c *cli.Context, client *etcd.Client) (*etcd.Response, erro
 		errCh := make(chan error, 1)
 
 		go func() {
-			_, err := client.Watch(key, uint64(index), recursive, receiver, stop)
+			_, err := client.Watch(key, index, recursive, receiver, stop)
 			errCh <- err
 		}()
 
 		for {
 			select {
 			case resp := <-receiver:
-				printAll(resp, c.GlobalString("output"))
+				output, _ := cmd.Flags().GetString("output")
+				printAll(resp, output)
 			case err := <-errCh:
 				handleError(-1, err)
 			}
@@ -83,7 +83,7 @@ func watchCommandFunc(c *cli.Context, client *etcd.Client) (*etcd.Response, erro
 	} else {
 		var resp *etcd.Response
 		var err error
-		resp, err = client.Watch(key, uint64(index), recursive, nil, nil)
+		resp, err = client.Watch(key, index, recursive, nil, nil)
 
 		if err != nil {
 			handleError(ExitServerError, err)
@@ -92,7 +92,8 @@ func watchCommandFunc(c *cli.Context, client *etcd.Client) (*etcd.Response, erro
 		if err != nil {
 			return nil, err
 		}
-		printAll(resp, c.GlobalString("output"))
+		output, _ := cmd.Flags().GetString("output")
+		printAll(resp, output)
 	}
 
 	return nil, nil

@@ -17,64 +17,63 @@ package command
 import (
 	"fmt"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/codegangsta/cli"
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/go-etcd/etcd"
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/spf13/cobra"
 )
 
-func NewLsCommand() cli.Command {
-	return cli.Command{
-		Name:  "ls",
-		Usage: "retrieve a directory",
-		Flags: []cli.Flag{
-			cli.BoolFlag{Name: "sort", Usage: "returns result in sorted order"},
-			cli.BoolFlag{Name: "recursive", Usage: "returns all values for key and child keys"},
-			cli.BoolFlag{Name: "p", Usage: "append slash (/) to directories"},
-		},
-		Action: func(c *cli.Context) {
-			handleLs(c, lsCommandFunc)
+func NewLsCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "ls",
+		Short: "retrieve a directory",
+		Run: func(cmd *cobra.Command, args []string) {
+			handleLs(cmd, args, lsCommandFunc)
 		},
 	}
+	cmd.Flags().Bool("sort", false, "returns result in sorted order")
+	cmd.Flags().Bool("recursive", false, "returns all values for key and child keys")
+	cmd.Flags().Bool("p", false, "append slash (/) to directories")
+	return cmd
 }
 
 // handleLs handles a request that intends to do ls-like operations.
-func handleLs(c *cli.Context, fn handlerFunc) {
-	handleContextualPrint(c, fn, printLs)
+func handleLs(cmd *cobra.Command, args []string, fn handlerFunc) {
+	handleContextualPrint(cmd, args, fn, printLs)
 }
 
 // printLs writes a response out in a manner similar to the `ls` command in unix.
 // Non-empty directories list their contents and files list their name.
-func printLs(c *cli.Context, resp *etcd.Response, format string) {
+func printLs(cmd *cobra.Command, resp *etcd.Response, format string) {
 	if !resp.Node.Dir {
 		fmt.Println(resp.Node.Key)
 	}
 	for _, node := range resp.Node.Nodes {
-		rPrint(c, node)
+		rPrint(cmd, node)
 	}
 }
 
 // lsCommandFunc executes the "ls" command.
-func lsCommandFunc(c *cli.Context, client *etcd.Client) (*etcd.Response, error) {
+func lsCommandFunc(cmd *cobra.Command, args []string, client *etcd.Client) (*etcd.Response, error) {
 	key := "/"
-	if len(c.Args()) != 0 {
-		key = c.Args()[0]
+	if len(args) != 0 {
+		key = args[0]
 	}
-	recursive := c.Bool("recursive")
-	sort := c.Bool("sort")
+	recursive, _ := cmd.Flags().GetBool("recursive")
+	sort, _ := cmd.Flags().GetBool("sort")
 
 	// Retrieve the value from the server.
 	return client.Get(key, sort, recursive)
 }
 
 // rPrint recursively prints out the nodes in the node structure.
-func rPrint(c *cli.Context, n *etcd.Node) {
-
-	if n.Dir && c.Bool("p") {
+func rPrint(cmd *cobra.Command, n *etcd.Node) {
+	p, _ := cmd.Flags().GetBool("p")
+	if n.Dir && p {
 		fmt.Println(fmt.Sprintf("%v/", n.Key))
 	} else {
 		fmt.Println(n.Key)
 	}
 
 	for _, node := range n.Nodes {
-		rPrint(c, node)
+		rPrint(cmd, node)
 	}
 }

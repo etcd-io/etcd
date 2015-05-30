@@ -18,36 +18,36 @@ import (
 	"errors"
 	"os"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/codegangsta/cli"
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/go-etcd/etcd"
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/spf13/cobra"
 )
 
 // NewMakeCommand returns the CLI command for "mk".
-func NewMakeCommand() cli.Command {
-	return cli.Command{
-		Name:  "mk",
-		Usage: "make a new key with a given value",
-		Flags: []cli.Flag{
-			cli.IntFlag{Name: "ttl", Value: 0, Usage: "key time-to-live"},
-		},
-		Action: func(c *cli.Context) {
-			handleKey(c, makeCommandFunc)
+func NewMakeCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "mk",
+		Short: "make a new key with a given value",
+		Run: func(cmd *cobra.Command, args []string) {
+			handleKey(cmd, args, makeCommandFunc)
 		},
 	}
+	cmd.Flags().Uint64("ttl", 0, "key time-to-live")
+	return cmd
 }
 
 // makeCommandFunc executes the "make" command.
-func makeCommandFunc(c *cli.Context, client *etcd.Client) (*etcd.Response, error) {
-	if len(c.Args()) == 0 {
-		return nil, errors.New("key required")
+func makeCommandFunc(cmd *cobra.Command, args []string, client *etcd.Client) (*etcd.Response, error) {
+	if len(args) == 0 {
+		return nil, errors.New("Key required")
 	}
-	key := c.Args()[0]
-	value, err := argOrStdin(c.Args(), os.Stdin, 1)
+	key := args[0]
+	// WTF IS THIS?
+	value, err := argOrStdin(args, os.Stdin, 1)
 	if err != nil {
 		return nil, errors.New("value required")
 	}
 
-	ttl := c.Int("ttl")
+	ttl, _ := cmd.Flags().GetUint64("ttl")
 
-	return client.Create(key, value, uint64(ttl))
+	return client.Create(key, value, ttl)
 }

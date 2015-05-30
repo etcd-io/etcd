@@ -17,31 +17,30 @@ package command
 import (
 	"errors"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/codegangsta/cli"
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/go-etcd/etcd"
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/spf13/cobra"
 )
 
 // NewSetDirCommand returns the CLI command for "setDir".
-func NewSetDirCommand() cli.Command {
-	return cli.Command{
-		Name:  "setdir",
-		Usage: "create a new or existing directory",
-		Flags: []cli.Flag{
-			cli.IntFlag{Name: "ttl", Value: 0, Usage: "key time-to-live"},
-		},
-		Action: func(c *cli.Context) {
-			handleDir(c, setDirCommandFunc)
+func NewSetDirCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "setdir",
+		Short: "create a new or existing directory",
+		Run: func(cmd *cobra.Command, args []string) {
+			handleDir(cmd, args, setDirCommandFunc)
 		},
 	}
+	cmd.Flags().Uint64("ttl", 0, "key time-to-live")
+	return cmd
 }
 
 // setDirCommandFunc executes the "setDir" command.
-func setDirCommandFunc(c *cli.Context, client *etcd.Client) (*etcd.Response, error) {
-	if len(c.Args()) == 0 {
+func setDirCommandFunc(cmd *cobra.Command, args []string, client *etcd.Client) (*etcd.Response, error) {
+	if len(args) == 0 {
 		return nil, errors.New("Key required")
 	}
-	key := c.Args()[0]
-	ttl := c.Int("ttl")
+	key := args[0]
+	ttl, _ := cmd.Flags().GetUint64("ttl")
 
-	return client.SetDir(key, uint64(ttl))
+	return client.SetDir(key, ttl)
 }

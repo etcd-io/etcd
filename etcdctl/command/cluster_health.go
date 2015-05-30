@@ -10,26 +10,26 @@ import (
 	"strings"
 	"time"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/codegangsta/cli"
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/go-etcd/etcd"
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/spf13/cobra"
 	"github.com/coreos/etcd/etcdserver/stats"
 )
 
-func NewClusterHealthCommand() cli.Command {
-	return cli.Command{
-		Name:   "cluster-health",
-		Usage:  "check the health of the etcd cluster",
-		Flags:  []cli.Flag{},
-		Action: handleClusterHealth,
+func NewClusterHealthCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "cluster-health",
+		Short: "check the health of the etcd cluster",
+		Run:   handleClusterHealth,
 	}
+	return cmd
 }
 
-func handleClusterHealth(c *cli.Context) {
-	endpoints, err := getEndpoints(c)
+func handleClusterHealth(cmd *cobra.Command, args []string) {
+	endpoints, err := getEndpoints(cmd)
 	if err != nil {
 		handleError(ExitServerError, err)
 	}
-	tr, err := getTransport(c)
+	tr, err := getTransport(cmd)
 	if err != nil {
 		handleError(ExitServerError, err)
 	}
@@ -37,7 +37,7 @@ func handleClusterHealth(c *cli.Context) {
 	client := etcd.NewClient(endpoints)
 	client.SetTransport(tr)
 
-	if c.GlobalBool("debug") {
+	if b, _ := cmd.Flags().GetBool("debug"); b {
 		go dumpCURL(client)
 	}
 

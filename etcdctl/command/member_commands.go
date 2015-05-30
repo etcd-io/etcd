@@ -19,40 +19,45 @@ import (
 	"os"
 	"strings"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/codegangsta/cli"
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/spf13/cobra"
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/client"
 )
 
-func NewMemberCommand() cli.Command {
-	return cli.Command{
-		Name:  "member",
-		Usage: "member add, remove and list subcommands",
-		Subcommands: []cli.Command{
-			cli.Command{
-				Name:   "list",
-				Usage:  "enumerate existing cluster members",
-				Action: actionMemberList,
-			},
-			cli.Command{
-				Name:   "add",
-				Usage:  "add a new member to the etcd cluster",
-				Action: actionMemberAdd,
-			},
-			cli.Command{
-				Name:   "remove",
-				Usage:  "remove an existing member from the etcd cluster",
-				Action: actionMemberRemove,
-			},
-		},
+func NewMemberCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "member",
+		Short: "member add, remove and list subcommands",
 	}
+
+	list_cmd := &cobra.Command{
+		Use:   "list",
+		Short: "enumerate existing cluster members",
+		Run:   actionMemberList,
+	}
+	cmd.AddCommand(list_cmd)
+
+	add_cmd := &cobra.Command{
+		Use:   "add",
+		Short: "add a new member to the etcd cluster",
+		Run:   actionMemberAdd,
+	}
+	cmd.AddCommand(add_cmd)
+
+	remove_cmd := &cobra.Command{
+		Use:   "remove",
+		Short: "remove an existing member from the etcd cluster",
+		Run:   actionMemberRemove,
+	}
+	cmd.AddCommand(remove_cmd)
+
+	return cmd
 }
 
-func mustNewMembersAPI(c *cli.Context) client.MembersAPI {
+func mustNewMembersAPI(cmd *cobra.Command) client.MembersAPI {
+	hc := mustNewClient(cmd)
 
-	hc := mustNewClient(c)
-
-	if !c.GlobalBool("no-sync") {
+	if nosync, _ := cmd.Flags().GetBool("no-sync"); !nosync {
 		ctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
 		err := hc.Sync(ctx)
 		cancel()
@@ -62,19 +67,19 @@ func mustNewMembersAPI(c *cli.Context) client.MembersAPI {
 		}
 	}
 
-	if c.GlobalBool("debug") {
+	if d, _ := cmd.Flags().GetBool("debug"); d {
 		fmt.Fprintf(os.Stderr, "Cluster-Endpoints: %s\n", strings.Join(hc.Endpoints(), ", "))
 	}
 
 	return client.NewMembersAPI(hc)
 }
 
-func actionMemberList(c *cli.Context) {
-	if len(c.Args()) != 0 {
+func actionMemberList(cmd *cobra.Command, args []string) {
+	if len(args) != 0 {
 		fmt.Fprintln(os.Stderr, "No arguments accepted")
 		os.Exit(1)
 	}
-	mAPI := mustNewMembersAPI(c)
+	mAPI := mustNewMembersAPI(cmd)
 	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
 	members, err := mAPI.List(ctx)
 	cancel()
@@ -92,14 +97,13 @@ func actionMemberList(c *cli.Context) {
 	}
 }
 
-func actionMemberAdd(c *cli.Context) {
-	args := c.Args()
+func actionMemberAdd(cmd *cobra.Command, args []string) {
 	if len(args) != 2 {
 		fmt.Fprintln(os.Stderr, "Provide a name and a single member peerURL")
 		os.Exit(1)
 	}
 
-	mAPI := mustNewMembersAPI(c)
+	mAPI := mustNewMembersAPI(cmd)
 
 	url := args[1]
 	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
@@ -139,15 +143,14 @@ func actionMemberAdd(c *cli.Context) {
 	fmt.Printf("ETCD_INITIAL_CLUSTER_STATE=\"existing\"\n")
 }
 
-func actionMemberRemove(c *cli.Context) {
-	args := c.Args()
+func actionMemberRemove(cmd *cobra.Command, args []string) {
 	if len(args) != 1 {
 		fmt.Fprintln(os.Stderr, "Provide a single member ID")
 		os.Exit(1)
 	}
 	removalID := args[0]
 
-	mAPI := mustNewMembersAPI(c)
+	mAPI := mustNewMembersAPI(cmd)
 	// Get the list of members.
 	listctx, listCancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
 	members, err := mAPI.List(listctx)
