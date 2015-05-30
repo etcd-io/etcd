@@ -26,6 +26,7 @@ func main() {
 	cmd := &cobra.Command{
 		Use:   path.Base(os.Args[0]),
 		Short: "A simple command line client for etcd.",
+		BashCompletionFunction: command.BashCompletionFunction,
 	}
 	_ = cmd.PersistentFlags().Bool("debug", false, "output cURL commands which can be used to reproduce the request")
 	_ = cmd.PersistentFlags().Bool("no-sync", false, "don't synchronize cluster information before sending request")
@@ -55,6 +56,7 @@ func main() {
 	cmd.AddCommand(command.NewUserCommands())
 	cmd.AddCommand(command.NewRoleCommands())
 	cmd.AddCommand(command.NewAuthCommands())
+	cmd.AddCommand(command.NewGenerateBashCompletionsCommand())
 
 	cmd.Execute()
 }
