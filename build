@@ -1,4 +1,4 @@
-#!/bin/bash -e
+#!/bin/sh -e
 
 ORG_PATH="github.com/coreos"
 REPO_PATH="${ORG_PATH}/etcd"
