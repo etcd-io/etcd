@@ -31,7 +31,6 @@ type raftLog struct {
 
 	// committed is the highest log position that is known to be in
 	// stable storage on a quorum of nodes.
-	// Invariant: committed < unstable
 	committed uint64
 	// applied is the highest log position that the application has
 	// been instructed to apply to its state machine.
