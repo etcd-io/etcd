@@ -53,6 +53,11 @@ func watchCommandFunc(c *cli.Context, client *etcd.Client) (*etcd.Response, erro
 		index = c.Int("after-index") + 1
 	}
 
+	printFn := printAll
+	if recursive {
+		printFn = printAllPrependKey
+	}
+
 	if forever {
 		sigch := make(chan os.Signal, 1)
 		signal.Notify(sigch, os.Interrupt)
@@ -74,7 +79,7 @@ func watchCommandFunc(c *cli.Context, client *etcd.Client) (*etcd.Response, erro
 		for {
 			select {
 			case resp := <-receiver:
-				printAll(resp, c.GlobalString("output"))
+				printFn(resp, c.GlobalString("output"))
 			case err := <-errCh:
 				handleError(-1, err)
 			}
@@ -92,7 +97,7 @@ func watchCommandFunc(c *cli.Context, client *etcd.Client) (*etcd.Response, erro
 		if err != nil {
 			return nil, err
 		}
-		printAll(resp, c.GlobalString("output"))
+		printFn(resp, c.GlobalString("output"))
 	}
 
 	return nil, nil
