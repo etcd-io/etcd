@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"bytes"
 	"crypto/rand"
 	"os"
 	"testing"
@@ -41,7 +42,10 @@ func TestRange(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		kvs, rev := s.Range(tt.key, tt.end, 0, tt.rev)
+		kvs, rev, err := s.Range(tt.key, tt.end, 0, tt.rev)
+		if err != nil {
+			t.Fatal(err)
+		}
 		if len(kvs) != int(tt.wN) {
 			t.Errorf("#%d: len(kvs) = %d, want %d", i, len(kvs), tt.wN)
 		}
@@ -110,13 +114,19 @@ func TestRangeInSequence(t *testing.T) {
 	}
 
 	// before removal foo
-	kvs, rev := s.Range([]byte("foo"), []byte("foo3"), 0, 3)
+	kvs, rev, err := s.Range([]byte("foo"), []byte("foo3"), 0, 3)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if len(kvs) != 3 {
 		t.Fatalf("len(kvs) = %d, want %d", len(kvs), 3)
 	}
 
 	// after removal foo
-	kvs, rev = s.Range([]byte("foo"), []byte("foo3"), 0, 4)
+	kvs, rev, err = s.Range([]byte("foo"), []byte("foo3"), 0, 4)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if len(kvs) != 2 {
 		t.Fatalf("len(kvs) = %d, want %d", len(kvs), 2)
 	}
@@ -134,7 +144,10 @@ func TestRangeInSequence(t *testing.T) {
 	}
 
 	// after removal foo1
-	kvs, rev = s.Range([]byte("foo"), []byte("foo3"), 0, 5)
+	kvs, rev, err = s.Range([]byte("foo"), []byte("foo3"), 0, 5)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if len(kvs) != 1 {
 		t.Fatalf("len(kvs) = %d, want %d", len(kvs), 1)
 	}
@@ -146,7 +159,10 @@ func TestRangeInSequence(t *testing.T) {
 	}
 
 	// after removal foo2
-	kvs, rev = s.Range([]byte("foo"), []byte("foo3"), 0, 6)
+	kvs, rev, err = s.Range([]byte("foo"), []byte("foo3"), 0, 6)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if len(kvs) != 0 {
 		t.Fatalf("len(kvs) = %d, want %d", len(kvs), 0)
 	}
@@ -230,12 +246,77 @@ func TestOneTnx(t *testing.T) {
 	}
 
 	// After tnx
-	kvs, rev := s.Range([]byte("foo"), []byte("foo3"), 0, 1)
+	kvs, rev, err := s.Range([]byte("foo"), []byte("foo3"), 0, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if len(kvs) != 0 {
 		t.Fatalf("len(kvs) = %d, want %d", len(kvs), 0)
 	}
 	if rev != 1 {
 		t.Fatalf("rev = %d, want %d", rev, 1)
+	}
+}
+
+func TestCompaction(t *testing.T) {
+	s := newStore("test")
+	defer os.Remove("test")
+
+	s.Put([]byte("foo"), []byte("bar"))
+	s.Put([]byte("foo1"), []byte("bar1"))
+	s.Put([]byte("foo2"), []byte("bar2"))
+	s.Put([]byte("foo"), []byte("bar11"))
+	s.Put([]byte("foo1"), []byte("bar12"))
+	s.Put([]byte("foo2"), []byte("bar13"))
+	s.Put([]byte("foo1"), []byte("bar14"))
+	s.DeleteRange([]byte("foo"), []byte("foo200"))
+	s.Put([]byte("foo4"), []byte("bar4"))
+
+	err := s.Compact(4)
+	if err != nil {
+		t.Errorf("unexpect compact error %v", err)
+	}
+
+	err = s.Compact(4)
+	if err != ErrCompacted {
+		t.Errorf("err = %v, want %v", err, ErrCompacted)
+	}
+
+	_, _, err = s.Range([]byte("foo"), nil, 0, 4)
+	if err != ErrCompacted {
+		t.Errorf("err = %v, want %v", err, ErrCompacted)
+	}
+
+	// compact should not compact the last value of foo
+	kvs, rev, err := s.Range([]byte("foo"), nil, 0, 5)
+	if err != nil {
+		t.Errorf("unexpected range error %v", err)
+	}
+	if !bytes.Equal(kvs[0].Value, []byte("bar11")) {
+		t.Errorf("value = %s, want %s", string(kvs[0].Value), "bar11")
+	}
+	if rev != 5 {
+		t.Errorf("rev = %d, want %d", rev, 5)
+	}
+
+	// compact everything
+	err = s.Compact(8)
+	if err != nil {
+		t.Errorf("unexpect compact error %v", err)
+	}
+
+	kvs, rev, err = s.Range([]byte("foo"), []byte("fop"), 0, 0)
+	if err != nil {
+		t.Errorf("unexpected range error %v", err)
+	}
+	if len(kvs) != 1 {
+		t.Errorf("len(kvs) = %d, want %d", len(kvs), 1)
+	}
+	if !bytes.Equal(kvs[0].Value, []byte("bar4")) {
+		t.Errorf("value = %s, want %s", string(kvs[0].Value), "bar4")
+	}
+	if rev != 9 {
+		t.Errorf("rev = %d, want %d", rev, 9)
 	}
 }
 

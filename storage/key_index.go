@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	ErrReversionNotFound = errors.New("stroage: Reversion not found")
+	ErrReversionNotFound = errors.New("stroage: reversion not found")
 )
 
 // keyIndex stores the reversion of an key in the backend.
@@ -198,11 +198,6 @@ func (ki *keyIndex) String() string {
 type generation struct {
 	ver  int64
 	revs []reversion
-}
-
-type reversion struct {
-	main int64
-	sub  int64
 }
 
 func (g *generation) isEmpty() bool { return g == nil || len(g.revs) == 0 }

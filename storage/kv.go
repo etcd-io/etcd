@@ -8,7 +8,8 @@ type KV interface {
 	// If `end` is nil, the request returns the key.
 	// If `end` is not nil, it gets the keys in range [key, range_end).
 	// Limit limits the number of keys returned.
-	Range(key, end []byte, limit, rangeRev int64) (kvs []storagepb.KeyValue, rev int64)
+	// If the required rev is compacted, ErrCompacted will be returned.
+	Range(key, end []byte, limit, rangeRev int64) (kvs []storagepb.KeyValue, rev int64, err error)
 
 	// Put puts the given key,value into the store.
 	// A put also increases the rev of the store, and generates one event in the event history.
@@ -32,4 +33,6 @@ type KV interface {
 	TnxRange(tnxID int64, key, end []byte, limit, rangeRev int64) (kvs []storagepb.KeyValue, rev int64, err error)
 	TnxPut(tnxID int64, key, value []byte) (rev int64, err error)
 	TnxDeleteRange(tnxID int64, key, end []byte) (n, rev int64, err error)
+
+	Compact(rev int64) error
 }
