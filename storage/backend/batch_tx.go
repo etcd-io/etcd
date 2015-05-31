@@ -43,7 +43,7 @@ func (t *batchTx) UnsafePut(bucketName []byte, key []byte, value []byte) {
 	}
 	t.pending++
 	if t.pending > t.backend.batchLimit {
-		t.Commit()
+		t.commit()
 		t.pending = 0
 	}
 }
@@ -85,7 +85,7 @@ func (t *batchTx) UnsafeDelete(bucketName []byte, key []byte) {
 	}
 	t.pending++
 	if t.pending > t.backend.batchLimit {
-		t.Commit()
+		t.commit()
 		t.pending = 0
 	}
 }
@@ -94,7 +94,10 @@ func (t *batchTx) UnsafeDelete(bucketName []byte, key []byte) {
 func (t *batchTx) Commit() {
 	t.Lock()
 	defer t.Unlock()
+	t.commit()
+}
 
+func (t *batchTx) commit() {
 	var err error
 	// commit the last tx
 	if t.tx != nil {
