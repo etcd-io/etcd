@@ -248,6 +248,7 @@ func startProxy(cfg *config) error {
 	}
 
 	pt, err := transport.NewTransport(cfg.clientTLSInfo)
+	pt.MaxIdleConnsPerHost = proxy.DefaultMaxIdleConnsPerHost
 	if err != nil {
 		return err
 	}
