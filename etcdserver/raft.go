@@ -31,6 +31,8 @@ import (
 	"github.com/coreos/etcd/rafthttp"
 	"github.com/coreos/etcd/wal"
 	"github.com/coreos/etcd/wal/walpb"
+
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
 )
 
 const (
@@ -59,6 +61,7 @@ var (
 )
 
 func init() {
+	raft.SetLogger(capnslog.NewPackageLogger("github.com/coreos/etcd", "raft"))
 	expvar.Publish("raft.status", expvar.Func(func() interface{} { return raftStatus() }))
 }
 
