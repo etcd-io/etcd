@@ -9,7 +9,7 @@ import (
 )
 
 type Formatter interface {
-	Format(pkg string, level LogLevel, depth int, entries ...LogEntry)
+	Format(pkg string, level LogLevel, depth int, entries ...interface{})
 	Flush()
 }
 
@@ -23,7 +23,7 @@ type StringFormatter struct {
 	w *bufio.Writer
 }
 
-func (s *StringFormatter) Format(pkg string, l LogLevel, i int, entries ...LogEntry) {
+func (s *StringFormatter) Format(pkg string, l LogLevel, i int, entries ...interface{}) {
 	now := time.Now()
 	y, m, d := now.Date()
 	h, min, sec := now.Clock()
@@ -31,19 +31,13 @@ func (s *StringFormatter) Format(pkg string, l LogLevel, i int, entries ...LogEn
 	s.writeEntries(pkg, l, i, entries...)
 }
 
-func (s *StringFormatter) writeEntries(pkg string, _ LogLevel, _ int, entries ...LogEntry) {
+func (s *StringFormatter) writeEntries(pkg string, _ LogLevel, _ int, entries ...interface{}) {
 	if pkg != "" {
 		s.w.WriteString(pkg + ": ")
 	}
-	endsInNL := false
-	for i, v := range entries {
-		if i != 0 {
-			s.w.WriteByte(' ')
-		}
-		str := v.LogString()
-		endsInNL = strings.HasSuffix(str, "\n")
-		s.w.WriteString(str)
-	}
+	str := fmt.Sprint(entries...)
+	endsInNL := strings.HasSuffix(str, "\n")
+	s.w.WriteString(str)
 	if !endsInNL {
 		s.w.WriteString("\n")
 	}

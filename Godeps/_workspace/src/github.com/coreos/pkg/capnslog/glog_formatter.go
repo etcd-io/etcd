@@ -23,7 +23,7 @@ func NewGlogFormatter(w io.Writer) *GlogFormatter {
 	return g
 }
 
-func (g GlogFormatter) Format(pkg string, level LogLevel, depth int, entries ...LogEntry) {
+func (g GlogFormatter) Format(pkg string, level LogLevel, depth int, entries ...interface{}) {
 	g.w.Write(GlogHeader(level, depth+1))
 	g.StringFormatter.Format(pkg, level, depth+1, entries...)
 }

@@ -1,6 +1,6 @@
 {
 	"ImportPath": "github.com/coreos/etcd",
-	"GoVersion": "go1.4.2",
+	"GoVersion": "go1.4.1",
 	"Packages": [
 		"./..."
 	],
@@ -35,7 +35,7 @@
 		},
 		{
 			"ImportPath": "github.com/coreos/pkg/capnslog",
-			"Rev": "9d5dd4632f9ece71bdf83d31253593a633e73df5"
+			"Rev": "84b359ff90d62d7b5a5b9dfb96400c08f0cc6642"
 		},
 		{
 			"ImportPath": "github.com/gogo/protobuf/proto",
