@@ -1,14 +1,18 @@
 {
 	"ImportPath": "github.com/coreos/etcd",
-	"GoVersion": "go1.4.1",
+	"GoVersion": "go1.4.2",
 	"Packages": [
 		"./..."
 	],
 	"Deps": [
 		{
-			"ImportPath": "code.google.com/p/goprotobuf/proto",
-			"Comment": "go.r60-163",
-			"Rev": "9352842ae63ee1d7e74e074ce7bb10370c4b6b9e"
+			"ImportPath": "bitbucket.org/ww/goautoneg",
+			"Comment": "null-5",
+			"Rev": "75cd24fc2f2c2a2088577d12123ddee5f54e0675"
+		},
+		{
+			"ImportPath": "github.com/beorn7/perks/quantile",
+			"Rev": "b965b613227fddccbfffe13eae360ed3fa822f8d"
 		},
 		{
 			"ImportPath": "github.com/boltdb/bolt",
@@ -50,33 +54,23 @@
 			"Rev": "72f9bd7c4e0c2a40055ab3d0f09654f730cce982"
 		},
 		{
-			"ImportPath": "github.com/matttproud/golang_protobuf_extensions/ext",
-			"Rev": "7a864a042e844af638df17ebbabf8183dace556a"
-		},
-		{
-			"ImportPath": "github.com/prometheus/client_golang/_vendor/goautoneg",
-			"Comment": "0.1.0-22-g70f5497",
-			"Rev": "70f54973fb9187e8773d738cb6ef6881333f5f25"
-		},
-		{
-			"ImportPath": "github.com/prometheus/client_golang/_vendor/perks/quantile",
-			"Comment": "0.1.0-22-g70f5497",
-			"Rev": "70f54973fb9187e8773d738cb6ef6881333f5f25"
+			"ImportPath": "github.com/matttproud/golang_protobuf_extensions/pbutil",
+			"Rev": "fc2b8d3a73c4867e51861bbdd5ae3c1f0869dd6a"
 		},
 		{
 			"ImportPath": "github.com/prometheus/client_golang/model",
-			"Comment": "0.1.0-22-g70f5497",
-			"Rev": "70f54973fb9187e8773d738cb6ef6881333f5f25"
+			"Comment": "0.5.0-10-ga842dc1",
+			"Rev": "a842dc11e0621c34a71cab634d1d0190a59802a8"
 		},
 		{
 			"ImportPath": "github.com/prometheus/client_golang/prometheus",
-			"Comment": "0.1.0-22-g70f5497",
-			"Rev": "70f54973fb9187e8773d738cb6ef6881333f5f25"
+			"Comment": "0.5.0-10-ga842dc1",
+			"Rev": "a842dc11e0621c34a71cab634d1d0190a59802a8"
 		},
 		{
 			"ImportPath": "github.com/prometheus/client_golang/text",
-			"Comment": "0.1.0-22-g70f5497",
-			"Rev": "70f54973fb9187e8773d738cb6ef6881333f5f25"
+			"Comment": "0.5.0-10-ga842dc1",
+			"Rev": "a842dc11e0621c34a71cab634d1d0190a59802a8"
 		},
 		{
 			"ImportPath": "github.com/prometheus/client_model/go",
@@ -85,7 +79,7 @@
 		},
 		{
 			"ImportPath": "github.com/prometheus/procfs",
-			"Rev": "92faa308558161acab0ada1db048e9996ecec160"
+			"Rev": "ee2372b58cee877abe07cde670d04d3b3bac5ee6"
 		},
 		{
 			"ImportPath": "github.com/stretchr/testify/assert",

@@ -18,12 +18,16 @@ import (
 	"fmt"
 	"math"
 	"net/http"
+	"os"
 	"runtime"
 	"sort"
+	"time"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/code.google.com/p/goprotobuf/proto"
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/prometheus/client_golang/prometheus"
 	dto "github.com/coreos/etcd/Godeps/_workspace/src/github.com/prometheus/client_model/go"
+
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/golang/protobuf/proto"
+
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/prometheus/client_golang/prometheus"
 )
 
 func ExampleGauge() {
@@ -127,7 +131,7 @@ func ExampleCounterVec() {
 	httpReqs := prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name:        "http_requests_total",
-			Help:        "How many HTTP requests processed, partitioned by status code and http method.",
+			Help:        "How many HTTP requests processed, partitioned by status code and HTTP method.",
 			ConstLabels: prometheus.Labels{"env": *binaryVersion},
 		},
 		[]string{"code", "method"},
@@ -198,7 +202,7 @@ func ExampleRegister() {
 		fmt.Println("taskCounter registered.")
 	}
 	// Don't forget to tell the HTTP server about the Prometheus handler.
-	// (In a real program, you still need to start the http server...)
+	// (In a real program, you still need to start the HTTP server...)
 	http.Handle("/metrics", prometheus.Handler())
 
 	// Now you can start workers and give every one of them a pointer to
@@ -238,7 +242,7 @@ func ExampleRegister() {
 
 	// Prometheus will not allow you to ever export metrics with
 	// inconsistent help strings or label names. After unregistering, the
-	// unregistered metrics will cease to show up in the /metrics http
+	// unregistered metrics will cease to show up in the /metrics HTTP
 	// response, but the registry still remembers that those metrics had
 	// been exported before. For this example, we will now choose a
 	// different name. (In a real program, you would obviously not export
@@ -449,4 +453,174 @@ func ExampleSummaryVec() {
 	//   >
 	// >
 	// ]
+}
+
+func ExampleConstSummary() {
+	desc := prometheus.NewDesc(
+		"http_request_duration_seconds",
+		"A summary of the HTTP request durations.",
+		[]string{"code", "method"},
+		prometheus.Labels{"owner": "example"},
+	)
+
+	// Create a constant summary from values we got from a 3rd party telemetry system.
+	s := prometheus.MustNewConstSummary(
+		desc,
+		4711, 403.34,
+		map[float64]float64{0.5: 42.3, 0.9: 323.3},
+		"200", "get",
+	)
+
+	// Just for demonstration, let's check the state of the summary by
+	// (ab)using its Write method (which is usually only used by Prometheus
+	// internally).
+	metric := &dto.Metric{}
+	s.Write(metric)
+	fmt.Println(proto.MarshalTextString(metric))
+
+	// Output:
+	// label: <
+	//   name: "code"
+	//   value: "200"
+	// >
+	// label: <
+	//   name: "method"
+	//   value: "get"
+	// >
+	// label: <
+	//   name: "owner"
+	//   value: "example"
+	// >
+	// summary: <
+	//   sample_count: 4711
+	//   sample_sum: 403.34
+	//   quantile: <
+	//     quantile: 0.5
+	//     value: 42.3
+	//   >
+	//   quantile: <
+	//     quantile: 0.9
+	//     value: 323.3
+	//   >
+	// >
+}
+
+func ExampleHistogram() {
+	temps := prometheus.NewHistogram(prometheus.HistogramOpts{
+		Name:    "pond_temperature_celsius",
+		Help:    "The temperature of the frog pond.", // Sorry, we can't measure how badly it smells.
+		Buckets: prometheus.LinearBuckets(20, 5, 5),  // 5 buckets, each 5 centigrade wide.
+	})
+
+	// Simulate some observations.
+	for i := 0; i < 1000; i++ {
+		temps.Observe(30 + math.Floor(120*math.Sin(float64(i)*0.1))/10)
+	}
+
+	// Just for demonstration, let's check the state of the histogram by
+	// (ab)using its Write method (which is usually only used by Prometheus
+	// internally).
+	metric := &dto.Metric{}
+	temps.Write(metric)
+	fmt.Println(proto.MarshalTextString(metric))
+
+	// Output:
+	// histogram: <
+	//   sample_count: 1000
+	//   sample_sum: 29969.50000000001
+	//   bucket: <
+	//     cumulative_count: 192
+	//     upper_bound: 20
+	//   >
+	//   bucket: <
+	//     cumulative_count: 366
+	//     upper_bound: 25
+	//   >
+	//   bucket: <
+	//     cumulative_count: 501
+	//     upper_bound: 30
+	//   >
+	//   bucket: <
+	//     cumulative_count: 638
+	//     upper_bound: 35
+	//   >
+	//   bucket: <
+	//     cumulative_count: 816
+	//     upper_bound: 40
+	//   >
+	// >
+}
+
+func ExampleConstHistogram() {
+	desc := prometheus.NewDesc(
+		"http_request_duration_seconds",
+		"A histogram of the HTTP request durations.",
+		[]string{"code", "method"},
+		prometheus.Labels{"owner": "example"},
+	)
+
+	// Create a constant histogram from values we got from a 3rd party telemetry system.
+	h := prometheus.MustNewConstHistogram(
+		desc,
+		4711, 403.34,
+		map[float64]uint64{25: 121, 50: 2403, 100: 3221, 200: 4233},
+		"200", "get",
+	)
+
+	// Just for demonstration, let's check the state of the histogram by
+	// (ab)using its Write method (which is usually only used by Prometheus
+	// internally).
+	metric := &dto.Metric{}
+	h.Write(metric)
+	fmt.Println(proto.MarshalTextString(metric))
+
+	// Output:
+	// label: <
+	//   name: "code"
+	//   value: "200"
+	// >
+	// label: <
+	//   name: "method"
+	//   value: "get"
+	// >
+	// label: <
+	//   name: "owner"
+	//   value: "example"
+	// >
+	// histogram: <
+	//   sample_count: 4711
+	//   sample_sum: 403.34
+	//   bucket: <
+	//     cumulative_count: 121
+	//     upper_bound: 25
+	//   >
+	//   bucket: <
+	//     cumulative_count: 2403
+	//     upper_bound: 50
+	//   >
+	//   bucket: <
+	//     cumulative_count: 3221
+	//     upper_bound: 100
+	//   >
+	//   bucket: <
+	//     cumulative_count: 4233
+	//     upper_bound: 200
+	//   >
+	// >
+}
+
+func ExamplePushCollectors() {
+	hostname, _ := os.Hostname()
+	completionTime := prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "db_backup_last_completion_time",
+		Help: "The timestamp of the last succesful completion of a DB backup.",
+	})
+	completionTime.Set(float64(time.Now().Unix()))
+	if err := prometheus.PushCollectors(
+		"db_backup", hostname,
+		"http://pushgateway:9091",
+		completionTime,
+	); err != nil {
+		fmt.Println("Could not push completion time to Pushgateway:", err)
+	}
 }

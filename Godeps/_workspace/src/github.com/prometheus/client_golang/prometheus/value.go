@@ -20,8 +20,9 @@ import (
 	"sort"
 	"sync/atomic"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/code.google.com/p/goprotobuf/proto"
 	dto "github.com/coreos/etcd/Godeps/_workspace/src/github.com/prometheus/client_model/go"
+
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/golang/protobuf/proto"
 )
 
 // ValueType is an enumeration of metric types that represent a simple value.
@@ -42,11 +43,15 @@ var errInconsistentCardinality = errors.New("inconsistent label cardinality")
 // ValueType. This is a low-level building block used by the library to back the
 // implementations of Counter, Gauge, and Untyped.
 type value struct {
+	// valBits containst the bits of the represented float64 value. It has
+	// to go first in the struct to guarantee alignment for atomic
+	// operations.  http://golang.org/pkg/sync/atomic/#pkg-note-BUG
+	valBits uint64
+
 	SelfCollector
 
 	desc       *Desc
 	valType    ValueType
-	valBits    uint64 // These are the bits of the represented float64 value.
 	labelPairs []*dto.LabelPair
 }
 
