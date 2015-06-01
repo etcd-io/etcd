@@ -24,11 +24,6 @@
 			"Rev": "71f28eaecbebd00604d87bb1de0dae8fcfa54bbd"
 		},
 		{
-			"ImportPath": "github.com/codegangsta/cli",
-			"Comment": "1.2.0-26-gf7ebb76",
-			"Rev": "f7ebb761e83e21225d1d8954fde853bf8edd46c4"
-		},
-		{
 			"ImportPath": "github.com/coreos/go-etcd/etcd",
 			"Comment": "v2.0.0-13-g4cceaf7",
 			"Rev": "4cceaf7283b76f27c4a732b20730dcdb61053bf5"
@@ -52,6 +47,10 @@
 		{
 			"ImportPath": "github.com/google/btree",
 			"Rev": "cc6329d4279e3f025a53a83c397d2339b5705c45"
+		},
+		{
+			"ImportPath": "github.com/inconshreveable/mousetrap",
+			"Rev": "76626ae9c91c4f2a10f34cad8ce83ea42c93bb75"
 		},
 		{
 			"ImportPath": "github.com/jonboulle/clockwork",
@@ -84,6 +83,15 @@
 		{
 			"ImportPath": "github.com/prometheus/procfs",
 			"Rev": "ee2372b58cee877abe07cde670d04d3b3bac5ee6"
+		},
+		{
+			"ImportPath": "github.com/spf13/cobra",
+			"Rev": "385fc87e4343efec233811d3d933509e8975d11a"
+		},
+		{
+			"ImportPath": "github.com/spf13/pflag",
+			"Comment": "v0.0.1-62-g67cbc19",
+			"Rev": "67cbc198fd11dab704b214c1e629a97af392c085"
 		},
 		{
 			"ImportPath": "github.com/stretchr/testify/assert",
