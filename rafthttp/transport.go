@@ -15,16 +15,18 @@
 package rafthttp
 
 import (
-	"log"
 	"net/http"
 	"sync"
 
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/etcdserver/stats"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
 )
+
+var plog = capnslog.NewPackageLogger("github.com/coreos/etcd", "snap")
 
 type Raft interface {
 	Process(ctx context.Context, m raftpb.Message) error
@@ -150,7 +152,7 @@ func (t *transport) Send(msgs []raftpb.Message) {
 			continue
 		}
 
-		log.Printf("rafthttp: ignored message %s (sent to unknown receiver %s)", m.Type, to)
+		plog.Debugf("ignored message %s (sent to unknown peer %s)", m.Type, to)
 	}
 }
 
@@ -174,7 +176,7 @@ func (t *transport) AddRemote(id types.ID, us []string) {
 	}
 	urls, err := types.NewURLs(us)
 	if err != nil {
-		log.Panicf("newURLs %+v should never fail: %+v", us, err)
+		plog.Panicf("newURLs %+v should never fail: %+v", us, err)
 	}
 	t.remotes[id] = startRemote(t.roundTripper, urls, t.id, id, t.clusterID, t.raft, t.errorc)
 }
@@ -187,7 +189,7 @@ func (t *transport) AddPeer(id types.ID, us []string) {
 	}
 	urls, err := types.NewURLs(us)
 	if err != nil {
-		log.Panicf("newURLs %+v should never fail: %+v", us, err)
+		plog.Panicf("newURLs %+v should never fail: %+v", us, err)
 	}
 	fs := t.leaderStats.Follower(id.String())
 	t.peers[id] = startPeer(t.roundTripper, urls, t.id, id, t.clusterID, t.raft, fs, t.errorc)
@@ -212,7 +214,7 @@ func (t *transport) removePeer(id types.ID) {
 	if peer, ok := t.peers[id]; ok {
 		peer.Stop()
 	} else {
-		log.Panicf("rafthttp: unexpected removal of unknown peer '%d'", id)
+		plog.Panicf("unexpected removal of unknown peer '%d'", id)
 	}
 	delete(t.peers, id)
 	delete(t.leaderStats.Followers, id.String())
@@ -227,7 +229,7 @@ func (t *transport) UpdatePeer(id types.ID, us []string) {
 	}
 	urls, err := types.NewURLs(us)
 	if err != nil {
-		log.Panicf("newURLs %+v should never fail: %+v", us, err)
+		plog.Panicf("newURLs %+v should never fail: %+v", us, err)
 	}
 	t.peers[id].Update(urls)
 }

@@ -15,7 +15,6 @@
 package rafthttp
 
 import (
-	"log"
 	"net/http"
 
 	"github.com/coreos/etcd/pkg/types"
@@ -39,7 +38,8 @@ func (g *remote) Send(m raftpb.Message) {
 	select {
 	case g.pipeline.msgc <- m:
 	default:
-		log.Printf("remote: dropping %s to %s since sending buffer is full", m.Type, g.id)
+		// TODO: log start and end of message dropping
+		plog.Warningf("dropping %s to %s since sending buffer is full", m.Type, g.id)
 	}
 }
 

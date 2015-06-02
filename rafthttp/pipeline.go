@@ -18,7 +18,6 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"strings"
 	"sync"
@@ -98,11 +97,11 @@ func (p *pipeline) handle() {
 			reportSentFailure(pipelineMsg, m)
 
 			if p.errored == nil || p.errored.Error() != err.Error() {
-				log.Printf("pipeline: error posting to %s: %v", p.to, err)
+				plog.Errorf("failed to post to %s (%v)", p.to, err)
 				p.errored = err
 			}
 			if p.active {
-				log.Printf("pipeline: the connection with %s became inactive", p.to)
+				plog.Infof("the connection with %s became inactive", p.to)
 				p.active = false
 			}
 			if m.Type == raftpb.MsgApp && p.fs != nil {
@@ -114,7 +113,7 @@ func (p *pipeline) handle() {
 			}
 		} else {
 			if !p.active {
-				log.Printf("pipeline: the connection with %s became active", p.to)
+				plog.Infof("the connection with %s became active", p.to)
 				p.active = true
 				p.errored = nil
 			}
@@ -162,10 +161,10 @@ func (p *pipeline) post(data []byte) error {
 	case http.StatusPreconditionFailed:
 		switch strings.TrimSuffix(string(b), "\n") {
 		case errIncompatibleVersion.Error():
-			log.Printf("rafthttp: request sent was ignored by peer %s (server version incompatible)", p.to)
+			plog.Errorf("request sent was ignored by peer %s (server version incompatible)", p.to)
 			return errIncompatibleVersion
 		case errClusterIDMismatch.Error():
-			log.Printf("rafthttp: request sent was ignored (cluster ID mismatch: remote[%s]=%s, local=%s)",
+			plog.Errorf("request sent was ignored (cluster ID mismatch: remote[%s]=%s, local=%s)",
 				p.to, resp.Header.Get("X-Etcd-Cluster-ID"), p.cid)
 			return errClusterIDMismatch
 		default:

@@ -15,7 +15,6 @@
 package rafthttp
 
 import (
-	"log"
 	"net/http"
 	"time"
 
@@ -135,7 +134,7 @@ func startPeer(tr http.RoundTripper, urls types.URLs, local, to, cid types.ID, r
 			select {
 			case mm := <-p.propc:
 				if err := r.Process(ctx, mm); err != nil {
-					log.Printf("peer: process raft message error: %v", err)
+					plog.Warningf("failed to process raft message (%v)", err)
 				}
 			case <-p.stopc:
 				return
@@ -161,11 +160,12 @@ func startPeer(tr http.RoundTripper, urls types.URLs, local, to, cid types.ID, r
 					if isMsgSnap(m) {
 						p.r.ReportSnapshot(m.To, raft.SnapshotFailure)
 					}
-					log.Printf("peer: dropping %s to %s since %s's sending buffer is full", m.Type, p.id, name)
+					// TODO: log start and end of message dropping
+					plog.Warningf("dropping %s to %s since %s's sending buffer is full", m.Type, p.id, name)
 				}
 			case mm := <-p.recvc:
 				if err := r.Process(context.TODO(), mm); err != nil {
-					log.Printf("peer: process raft message error: %v", err)
+					plog.Warningf("failed to process raft message (%v)", err)
 				}
 			case urls := <-p.newURLsC:
 				picker.update(urls)
@@ -213,7 +213,7 @@ func (p *peer) attachOutgoingConn(conn *outgoingConn) {
 	case streamTypeMessage:
 		ok = p.writer.attach(conn)
 	default:
-		log.Panicf("rafthttp: unhandled stream type %s", conn.t)
+		plog.Panicf("unhandled stream type %s", conn.t)
 	}
 	if !ok {
 		conn.Close()
