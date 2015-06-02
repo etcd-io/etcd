@@ -203,7 +203,7 @@ func newRaft(c *Config) *raft {
 		nodesStrs = append(nodesStrs, fmt.Sprintf("%x", n))
 	}
 
-	raftLogger.Infof("raft: newRaft %x [peers: [%s], term: %d, commit: %d, applied: %d, lastindex: %d, lastterm: %d]",
+	raftLogger.Infof("newRaft %x [peers: [%s], term: %d, commit: %d, applied: %d, lastindex: %d, lastterm: %d]",
 		r.id, strings.Join(nodesStrs, ","), r.Term, r.raftLog.committed, r.raftLog.applied, r.raftLog.lastIndex(), r.raftLog.lastTerm())
 	return r
 }
@@ -254,10 +254,10 @@ func (r *raft) sendAppend(to uint64) {
 		}
 		m.Snapshot = snapshot
 		sindex, sterm := snapshot.Metadata.Index, snapshot.Metadata.Term
-		raftLogger.Infof("raft: %x [firstindex: %d, commit: %d] sent snapshot[index: %d, term: %d] to %x [%s]",
+		raftLogger.Infof("%x [firstindex: %d, commit: %d] sent snapshot[index: %d, term: %d] to %x [%s]",
 			r.id, r.raftLog.firstIndex(), r.Commit, sindex, sterm, to, pr)
 		pr.becomeSnapshot(sindex)
-		raftLogger.Infof("raft: %x paused sending replication messages to %x [%s]", r.id, to, pr)
+		raftLogger.Infof("%x paused sending replication messages to %x [%s]", r.id, to, pr)
 	} else {
 		m.Type = pb.MsgApp
 		m.Index = pr.Next - 1
@@ -274,7 +274,7 @@ func (r *raft) sendAppend(to uint64) {
 			case ProgressStateProbe:
 				pr.pause()
 			default:
-				raftLogger.Panicf("raft: %x is sending append in unhandled state %s", r.id, pr.State)
+				raftLogger.Panicf("%x is sending append in unhandled state %s", r.id, pr.State)
 			}
 		}
 	}
@@ -387,7 +387,7 @@ func (r *raft) becomeFollower(term uint64, lead uint64) {
 	r.tick = r.tickElection
 	r.lead = lead
 	r.state = StateFollower
-	raftLogger.Infof("raft: %x became follower at term %d", r.id, r.Term)
+	raftLogger.Infof("%x became follower at term %d", r.id, r.Term)
 }
 
 func (r *raft) becomeCandidate() {
@@ -400,7 +400,7 @@ func (r *raft) becomeCandidate() {
 	r.tick = r.tickElection
 	r.Vote = r.id
 	r.state = StateCandidate
-	raftLogger.Infof("raft: %x became candidate at term %d", r.id, r.Term)
+	raftLogger.Infof("%x became candidate at term %d", r.id, r.Term)
 }
 
 func (r *raft) becomeLeader() {
@@ -423,7 +423,7 @@ func (r *raft) becomeLeader() {
 		r.pendingConf = true
 	}
 	r.appendEntry(pb.Entry{Data: nil})
-	raftLogger.Infof("raft: %x became leader at term %d", r.id, r.Term)
+	raftLogger.Infof("%x became leader at term %d", r.id, r.Term)
 }
 
 func (r *raft) campaign() {
@@ -436,7 +436,7 @@ func (r *raft) campaign() {
 		if i == r.id {
 			continue
 		}
-		raftLogger.Infof("raft: %x [logterm: %d, index: %d] sent vote request to %x at term %d",
+		raftLogger.Infof("%x [logterm: %d, index: %d] sent vote request to %x at term %d",
 			r.id, r.raftLog.lastTerm(), r.raftLog.lastIndex(), i, r.Term)
 		r.send(pb.Message{To: i, Type: pb.MsgVote, Index: r.raftLog.lastIndex(), LogTerm: r.raftLog.lastTerm()})
 	}
@@ -444,9 +444,9 @@ func (r *raft) campaign() {
 
 func (r *raft) poll(id uint64, v bool) (granted int) {
 	if v {
-		raftLogger.Infof("raft: %x received vote from %x at term %d", r.id, id, r.Term)
+		raftLogger.Infof("%x received vote from %x at term %d", r.id, id, r.Term)
 	} else {
-		raftLogger.Infof("raft: %x received vote rejection from %x at term %d", r.id, id, r.Term)
+		raftLogger.Infof("%x received vote rejection from %x at term %d", r.id, id, r.Term)
 	}
 	if _, ok := r.votes[id]; !ok {
 		r.votes[id] = v
@@ -461,7 +461,7 @@ func (r *raft) poll(id uint64, v bool) (granted int) {
 
 func (r *raft) Step(m pb.Message) error {
 	if m.Type == pb.MsgHup {
-		raftLogger.Infof("raft: %x is starting a new election at term %d", r.id, r.Term)
+		raftLogger.Infof("%x is starting a new election at term %d", r.id, r.Term)
 		r.campaign()
 		r.Commit = r.raftLog.committed
 		return nil
@@ -475,12 +475,12 @@ func (r *raft) Step(m pb.Message) error {
 		if m.Type == pb.MsgVote {
 			lead = None
 		}
-		raftLogger.Infof("raft: %x [term: %d] received a %s message with higher term from %x [term: %d]",
+		raftLogger.Infof("%x [term: %d] received a %s message with higher term from %x [term: %d]",
 			r.id, r.Term, m.Type, m.From, m.Term)
 		r.becomeFollower(m.Term, lead)
 	case m.Term < r.Term:
 		// ignore
-		raftLogger.Infof("raft: %x [term: %d] ignored a %s message with lower term from %x [term: %d]",
+		raftLogger.Infof("%x [term: %d] ignored a %s message with lower term from %x [term: %d]",
 			r.id, r.Term, m.Type, m.From, m.Term)
 		return nil
 	}
@@ -499,7 +499,7 @@ func stepLeader(r *raft, m pb.Message) {
 		r.bcastHeartbeat()
 	case pb.MsgProp:
 		if len(m.Entries) == 0 {
-			raftLogger.Panicf("raft: %x stepped empty MsgProp", r.id)
+			raftLogger.Panicf("%x stepped empty MsgProp", r.id)
 		}
 		for i, e := range m.Entries {
 			if e.Type == pb.EntryConfChange {
@@ -513,10 +513,10 @@ func stepLeader(r *raft, m pb.Message) {
 		r.bcastAppend()
 	case pb.MsgAppResp:
 		if m.Reject {
-			raftLogger.Infof("raft: %x received msgApp rejection(lastindex: %d) from %x for index %d",
+			raftLogger.Infof("%x received msgApp rejection(lastindex: %d) from %x for index %d",
 				r.id, m.RejectHint, m.From, m.Index)
 			if pr.maybeDecrTo(m.Index, m.RejectHint) {
-				raftLogger.Infof("raft: %x decreased progress of %x to [%s]", r.id, m.From, pr)
+				raftLogger.Infof("%x decreased progress of %x to [%s]", r.id, m.From, pr)
 				if pr.State == ProgressStateReplicate {
 					pr.becomeProbe()
 				}
@@ -529,7 +529,7 @@ func stepLeader(r *raft, m pb.Message) {
 				case pr.State == ProgressStateProbe:
 					pr.becomeReplicate()
 				case pr.State == ProgressStateSnapshot && pr.maybeSnapshotAbort():
-					raftLogger.Infof("raft: %x snapshot aborted, resumed sending replication messages to %x [%s]", r.id, m.From, pr)
+					raftLogger.Infof("%x snapshot aborted, resumed sending replication messages to %x [%s]", r.id, m.From, pr)
 					pr.becomeProbe()
 				case pr.State == ProgressStateReplicate:
 					pr.ins.freeTo(m.Index)
@@ -553,7 +553,7 @@ func stepLeader(r *raft, m pb.Message) {
 			r.sendAppend(m.From)
 		}
 	case pb.MsgVote:
-		raftLogger.Infof("raft: %x [logterm: %d, index: %d, vote: %x] rejected vote from %x [logterm: %d, index: %d] at term %d",
+		raftLogger.Infof("%x [logterm: %d, index: %d, vote: %x] rejected vote from %x [logterm: %d, index: %d] at term %d",
 			r.id, r.raftLog.lastTerm(), r.raftLog.lastIndex(), r.Vote, m.From, m.LogTerm, m.Index, r.Term)
 		r.send(pb.Message{To: m.From, Type: pb.MsgVoteResp, Reject: true})
 	case pb.MsgSnapStatus:
@@ -562,11 +562,11 @@ func stepLeader(r *raft, m pb.Message) {
 		}
 		if !m.Reject {
 			pr.becomeProbe()
-			raftLogger.Infof("raft: %x snapshot succeeded, resumed sending replication messages to %x [%s]", r.id, m.From, pr)
+			raftLogger.Infof("%x snapshot succeeded, resumed sending replication messages to %x [%s]", r.id, m.From, pr)
 		} else {
 			pr.snapshotFailure()
 			pr.becomeProbe()
-			raftLogger.Infof("raft: %x snapshot failed, resumed sending replication messages to %x [%s]", r.id, m.From, pr)
+			raftLogger.Infof("%x snapshot failed, resumed sending replication messages to %x [%s]", r.id, m.From, pr)
 		}
 		// If snapshot finish, wait for the msgAppResp from the remote node before sending
 		// out the next msgApp.
@@ -578,14 +578,14 @@ func stepLeader(r *raft, m pb.Message) {
 		if pr.State == ProgressStateReplicate {
 			pr.becomeProbe()
 		}
-		raftLogger.Infof("raft: %x failed to send message to %x because it is unreachable [%s]", r.id, m.From, pr)
+		raftLogger.Infof("%x failed to send message to %x because it is unreachable [%s]", r.id, m.From, pr)
 	}
 }
 
 func stepCandidate(r *raft, m pb.Message) {
 	switch m.Type {
 	case pb.MsgProp:
-		raftLogger.Infof("raft: %x no leader at term %d; dropping proposal", r.id, r.Term)
+		raftLogger.Infof("%x no leader at term %d; dropping proposal", r.id, r.Term)
 		return
 	case pb.MsgApp:
 		r.becomeFollower(r.Term, m.From)
@@ -597,12 +597,12 @@ func stepCandidate(r *raft, m pb.Message) {
 		r.becomeFollower(m.Term, m.From)
 		r.handleSnapshot(m)
 	case pb.MsgVote:
-		raftLogger.Infof("raft: %x [logterm: %d, index: %d, vote: %x] rejected vote from %x [logterm: %d, index: %d] at term %x",
+		raftLogger.Infof("%x [logterm: %d, index: %d, vote: %x] rejected vote from %x [logterm: %d, index: %d] at term %x",
 			r.id, r.raftLog.lastTerm(), r.raftLog.lastIndex(), r.Vote, m.From, m.LogTerm, m.Index, r.Term)
 		r.send(pb.Message{To: m.From, Type: pb.MsgVoteResp, Reject: true})
 	case pb.MsgVoteResp:
 		gr := r.poll(m.From, !m.Reject)
-		raftLogger.Infof("raft: %x [q:%d] has received %d votes and %d vote rejections", r.id, r.q(), gr, len(r.votes)-gr)
+		raftLogger.Infof("%x [q:%d] has received %d votes and %d vote rejections", r.id, r.q(), gr, len(r.votes)-gr)
 		switch r.q() {
 		case gr:
 			r.becomeLeader()
@@ -617,7 +617,7 @@ func stepFollower(r *raft, m pb.Message) {
 	switch m.Type {
 	case pb.MsgProp:
 		if r.lead == None {
-			raftLogger.Infof("raft: %x no leader at term %d; dropping proposal", r.id, r.Term)
+			raftLogger.Infof("%x no leader at term %d; dropping proposal", r.id, r.Term)
 			return
 		}
 		m.To = r.lead
@@ -636,12 +636,12 @@ func stepFollower(r *raft, m pb.Message) {
 	case pb.MsgVote:
 		if (r.Vote == None || r.Vote == m.From) && r.raftLog.isUpToDate(m.Index, m.LogTerm) {
 			r.elapsed = 0
-			raftLogger.Infof("raft: %x [logterm: %d, index: %d, vote: %x] voted for %x [logterm: %d, index: %d] at term %d",
+			raftLogger.Infof("%x [logterm: %d, index: %d, vote: %x] voted for %x [logterm: %d, index: %d] at term %d",
 				r.id, r.raftLog.lastTerm(), r.raftLog.lastIndex(), r.Vote, m.From, m.LogTerm, m.Index, r.Term)
 			r.Vote = m.From
 			r.send(pb.Message{To: m.From, Type: pb.MsgVoteResp})
 		} else {
-			raftLogger.Infof("raft: %x [logterm: %d, index: %d, vote: %x] rejected vote from %x [logterm: %d, index: %d] at term %d",
+			raftLogger.Infof("%x [logterm: %d, index: %d, vote: %x] rejected vote from %x [logterm: %d, index: %d] at term %d",
 				r.id, r.raftLog.lastTerm(), r.raftLog.lastIndex(), r.Vote, m.From, m.LogTerm, m.Index, r.Term)
 			r.send(pb.Message{To: m.From, Type: pb.MsgVoteResp, Reject: true})
 		}
@@ -657,7 +657,7 @@ func (r *raft) handleAppendEntries(m pb.Message) {
 	if mlastIndex, ok := r.raftLog.maybeAppend(m.Index, m.LogTerm, m.Commit, m.Entries...); ok {
 		r.send(pb.Message{To: m.From, Type: pb.MsgAppResp, Index: mlastIndex})
 	} else {
-		raftLogger.Infof("raft: %x [logterm: %d, index: %d] rejected msgApp [logterm: %d, index: %d] from %x",
+		raftLogger.Infof("%x [logterm: %d, index: %d] rejected msgApp [logterm: %d, index: %d] from %x",
 			r.id, r.raftLog.term(m.Index), m.Index, m.LogTerm, m.Index, m.From)
 		r.send(pb.Message{To: m.From, Type: pb.MsgAppResp, Index: m.Index, Reject: true, RejectHint: r.raftLog.lastIndex()})
 	}
@@ -671,11 +671,11 @@ func (r *raft) handleHeartbeat(m pb.Message) {
 func (r *raft) handleSnapshot(m pb.Message) {
 	sindex, sterm := m.Snapshot.Metadata.Index, m.Snapshot.Metadata.Term
 	if r.restore(m.Snapshot) {
-		raftLogger.Infof("raft: %x [commit: %d] restored snapshot [index: %d, term: %d]",
+		raftLogger.Infof("%x [commit: %d] restored snapshot [index: %d, term: %d]",
 			r.id, r.Commit, sindex, sterm)
 		r.send(pb.Message{To: m.From, Type: pb.MsgAppResp, Index: r.raftLog.lastIndex()})
 	} else {
-		raftLogger.Infof("raft: %x [commit: %d] ignored snapshot [index: %d, term: %d]",
+		raftLogger.Infof("%x [commit: %d] ignored snapshot [index: %d, term: %d]",
 			r.id, r.Commit, sindex, sterm)
 		r.send(pb.Message{To: m.From, Type: pb.MsgAppResp, Index: r.raftLog.committed})
 	}
@@ -688,13 +688,13 @@ func (r *raft) restore(s pb.Snapshot) bool {
 		return false
 	}
 	if r.raftLog.matchTerm(s.Metadata.Index, s.Metadata.Term) {
-		raftLogger.Infof("raft: %x [commit: %d, lastindex: %d, lastterm: %d] fast-forwarded commit to snapshot [index: %d, term: %d]",
+		raftLogger.Infof("%x [commit: %d, lastindex: %d, lastterm: %d] fast-forwarded commit to snapshot [index: %d, term: %d]",
 			r.id, r.Commit, r.raftLog.lastIndex(), r.raftLog.lastTerm(), s.Metadata.Index, s.Metadata.Term)
 		r.raftLog.commitTo(s.Metadata.Index)
 		return false
 	}
 
-	raftLogger.Infof("raft: %x [commit: %d, lastindex: %d, lastterm: %d] starts to restore snapshot [index: %d, term: %d]",
+	raftLogger.Infof("%x [commit: %d, lastindex: %d, lastterm: %d] starts to restore snapshot [index: %d, term: %d]",
 		r.id, r.Commit, r.raftLog.lastIndex(), r.raftLog.lastTerm(), s.Metadata.Index, s.Metadata.Term)
 
 	r.raftLog.restore(s)
@@ -707,7 +707,7 @@ func (r *raft) restore(s pb.Snapshot) bool {
 			match = 0
 		}
 		r.setProgress(n, match, next)
-		raftLogger.Infof("raft: %x restored progress of %x [%s]", r.id, n, r.prs[n])
+		raftLogger.Infof("%x restored progress of %x [%s]", r.id, n, r.prs[n])
 	}
 	return true
 }
@@ -751,7 +751,7 @@ func (r *raft) delProgress(id uint64) {
 
 func (r *raft) loadState(state pb.HardState) {
 	if state.Commit < r.raftLog.committed || state.Commit > r.raftLog.lastIndex() {
-		raftLogger.Panicf("raft: %x state.commit %d is out of range [%d, %d]", r.id, state.Commit, r.raftLog.committed, r.raftLog.lastIndex())
+		raftLogger.Panicf("%x state.commit %d is out of range [%d, %d]", r.id, state.Commit, r.raftLog.committed, r.raftLog.lastIndex())
 	}
 	r.raftLog.committed = state.Commit
 	r.Term = state.Term

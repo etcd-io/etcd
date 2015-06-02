@@ -1,6 +1,7 @@
 package capnslog
 
 import (
+	"fmt"
 	"log/syslog"
 )
 
@@ -20,9 +21,9 @@ type syslogFormatter struct {
 	w *syslog.Writer
 }
 
-func (s *syslogFormatter) Format(pkg string, l LogLevel, _ int, entries ...LogEntry) {
+func (s *syslogFormatter) Format(pkg string, l LogLevel, _ int, entries ...interface{}) {
 	for _, entry := range entries {
-		str := entry.LogString()
+		str := fmt.Sprint(entry)
 		switch l {
 		case CRITICAL:
 			s.w.Crit(str)

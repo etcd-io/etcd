@@ -20,6 +20,6 @@ func (p packageWriter) Write(b []byte) (int, error) {
 	if p.pl.level < INFO {
 		return 0, nil
 	}
-	p.pl.internalLog(calldepth+2, INFO, BaseLogEntry(string(b)))
+	p.pl.internalLog(calldepth+2, INFO, string(b))
 	return len(b), nil
 }

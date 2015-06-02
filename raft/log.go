@@ -113,7 +113,7 @@ func (l *raftLog) findConflict(ents []pb.Entry) uint64 {
 	for _, ne := range ents {
 		if !l.matchTerm(ne.Index, ne.Term) {
 			if ne.Index <= l.lastIndex() {
-				raftLogger.Infof("raftlog: found conflict at index %d [existing term: %d, conflicting term: %d]",
+				raftLogger.Infof("found conflict at index %d [existing term: %d, conflicting term: %d]",
 					ne.Index, l.term(ne.Index), ne.Term)
 			}
 			return ne.Index
@@ -247,7 +247,7 @@ func (l *raftLog) maybeCommit(maxIndex, term uint64) bool {
 }
 
 func (l *raftLog) restore(s pb.Snapshot) {
-	raftLogger.Infof("raftlog: log [%s] starts to restore snapshot [index: %d, term: %d]", l, s.Metadata.Index, s.Metadata.Term)
+	raftLogger.Infof("log [%s] starts to restore snapshot [index: %d, term: %d]", l, s.Metadata.Index, s.Metadata.Term)
 	l.committed = s.Metadata.Index
 	l.unstable.restore(s)
 }
@@ -292,10 +292,10 @@ func (l *raftLog) slice(lo, hi, maxSize uint64) []pb.Entry {
 // l.firstIndex <= lo <= hi <= l.firstIndex + len(l.entries)
 func (l *raftLog) mustCheckOutOfBounds(lo, hi uint64) {
 	if lo > hi {
-		raftLogger.Panicf("raft: invalid slice %d > %d", lo, hi)
+		raftLogger.Panicf("invalid slice %d > %d", lo, hi)
 	}
 	length := l.lastIndex() - l.firstIndex() + 1
 	if lo < l.firstIndex() || hi > l.firstIndex()+length {
-		raftLogger.Panicf("raft: slice[%d,%d) out of bound [%d,%d]", lo, hi, l.firstIndex(), l.lastIndex())
+		raftLogger.Panicf("slice[%d,%d) out of bound [%d,%d]", lo, hi, l.firstIndex(), l.lastIndex())
 	}
 }

@@ -11,19 +11,19 @@ type LogLevel int8
 
 const (
 	// CRITICAL is the lowest log level; only errors which will end the program will be propagated.
-	CRITICAL LogLevel = -1
+	CRITICAL LogLevel = iota - 1
 	// ERROR is for errors that are not fatal but lead to troubling behavior.
-	ERROR = 0
+	ERROR
 	// WARNING is for errors which are not fatal and not errors, but are unusual. Often sourced from misconfigurations.
-	WARNING = 1
+	WARNING
 	// NOTICE is for normal but significant conditions.
-	NOTICE = 2
+	NOTICE
 	// INFO is a log level for common, everyday log updates.
-	INFO = 3
+	INFO
 	// DEBUG is the default hidden level for more verbose updates about internal processes.
-	DEBUG = 4
+	DEBUG
 	// TRACE is for (potentially) call by call tracing of programs.
-	TRACE = 5
+	TRACE
 )
 
 // Char returns a single-character representation of the log level.
@@ -48,6 +48,39 @@ func (l LogLevel) Char() string {
 	}
 }
 
+// String returns a multi-character representation of the log level.
+func (l LogLevel) String() string {
+	switch l {
+	case CRITICAL:
+		return "CRITICAL"
+	case ERROR:
+		return "ERROR"
+	case WARNING:
+		return "WARNING"
+	case NOTICE:
+		return "NOTICE"
+	case INFO:
+		return "INFO"
+	case DEBUG:
+		return "DEBUG"
+	case TRACE:
+		return "TRACE"
+	default:
+		panic("Unhandled loglevel")
+	}
+}
+
+// Update using the given string value. Fulfills the flag.Value interface.
+func (l *LogLevel) Set(s string) error {
+	value, err := ParseLevel(s)
+	if err != nil {
+		return err
+	}
+
+	*l = value
+	return nil
+}
+
 // ParseLevel translates some potential loglevel strings into their corresponding levels.
 func ParseLevel(s string) (LogLevel, error) {
 	switch s {
@@ -70,13 +103,6 @@ func ParseLevel(s string) (LogLevel, error) {
 }
 
 type RepoLogger map[string]*PackageLogger
-
-// LogEntry is the generic interface for things which can be logged.
-// Implementing the single method LogString() on your objects allows you to
-// format them for logs/debugging as necessary.
-type LogEntry interface {
-	LogString() string
-}
 
 type loggerStruct struct {
 	sync.Mutex
@@ -197,10 +223,4 @@ func NewPackageLogger(repo string, pkg string) (p *PackageLogger) {
 		p = r[pkg]
 	}
 	return
-}
-
-type BaseLogEntry string
-
-func (b BaseLogEntry) LogString() string {
-	return string(b)
 }
