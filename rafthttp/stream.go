@@ -132,7 +132,7 @@ func (cw *streamWriter) run() {
 			if err := enc.encode(linkHeartbeatMessage); err != nil {
 				reportSentFailure(string(t), linkHeartbeatMessage)
 
-				log.Printf("rafthttp: failed to heartbeat on stream %s due to %v. waiting for a new stream to be established.", t, err)
+				log.Printf("rafthttp: failed to heartbeat on stream %s (%v)", t, err)
 				cw.close()
 				heartbeatc, msgc = nil, nil
 				continue
@@ -154,7 +154,7 @@ func (cw *streamWriter) run() {
 			if err := enc.encode(m); err != nil {
 				reportSentFailure(string(t), m)
 
-				log.Printf("rafthttp: failed to send message on stream %s due to %v. waiting for a new stream to be established.", t, err)
+				log.Printf("rafthttp: failed to send message on stream %s (%v)", t, err)
 				cw.close()
 				heartbeatc, msgc = nil, nil
 				cw.r.ReportUnreachable(m.To)
@@ -170,7 +170,7 @@ func (cw *streamWriter) run() {
 				var err error
 				msgAppTerm, err = strconv.ParseUint(conn.termStr, 10, 64)
 				if err != nil {
-					log.Panicf("rafthttp: unexpected parse term %s error: %v", conn.termStr, err)
+					log.Panicf("rafthttp: could not parse term %s to uint (%v)", conn.termStr, err)
 				}
 				enc = &msgAppEncoder{w: conn.Writer, fs: cw.fs}
 			case streamTypeMsgAppV2:
@@ -278,7 +278,7 @@ func (cr *streamReader) run() {
 		}
 		if err != nil {
 			if err != errUnsupportedStreamType {
-				log.Printf("rafthttp: roundtripping error: %v", err)
+				log.Printf("rafthttp: failed to dial stream %s (%v)", t, err)
 			}
 		} else {
 			err := cr.decodeLoop(rc, t)
@@ -291,7 +291,7 @@ func (cr *streamReader) run() {
 			// heartbeat on the idle stream, so it is expected to time out.
 			case t == streamTypeMsgApp && isNetworkTimeoutError(err):
 			default:
-				log.Printf("rafthttp: failed to read message on stream %s due to %v", t, err)
+				log.Printf("rafthttp: failed to read message on stream %s (%v)", t, err)
 			}
 		}
 		select {
@@ -339,7 +339,7 @@ func (cr *streamReader) decodeLoop(rc io.ReadCloser, t streamType) error {
 			select {
 			case recvc <- m:
 			default:
-				log.Printf("rafthttp: dropping %s from %x because receive buffer is blocked",
+				log.Printf("rafthttp: dropping %s from %x because receiving buffer is full",
 					m.Type, m.From)
 			}
 		}
@@ -384,23 +384,26 @@ func (cr *streamReader) dial(t streamType) (io.ReadCloser, error) {
 
 	uu := u
 	uu.Path = path.Join(t.endpoint(), cr.from.String())
+
 	req, err := http.NewRequest("GET", uu.String(), nil)
 	if err != nil {
 		cr.picker.unreachable(u)
-		return nil, fmt.Errorf("new request to %s error: %v", u, err)
+		return nil, fmt.Errorf("failed to make http request to %s (%v)", u, err)
 	}
 	req.Header.Set("X-Etcd-Cluster-ID", cr.cid.String())
 	req.Header.Set("X-Raft-To", cr.to.String())
 	if t == streamTypeMsgApp {
 		req.Header.Set("X-Raft-Term", strconv.FormatUint(term, 10))
 	}
+
 	cr.mu.Lock()
 	cr.req = req
 	cr.mu.Unlock()
+
 	resp, err := cr.tr.RoundTrip(req)
 	if err != nil {
 		cr.picker.unreachable(u)
-		return nil, fmt.Errorf("error roundtripping to %s: %v", req.URL, err)
+		return nil, err
 	}
 
 	rv := serverVersion(resp.Header)
@@ -423,7 +426,7 @@ func (cr *streamReader) dial(t streamType) (io.ReadCloser, error) {
 		return resp.Body, nil
 	case http.StatusNotFound:
 		resp.Body.Close()
-		return nil, fmt.Errorf("local member has not been added to the peer list of member %s", cr.to)
+		return nil, fmt.Errorf("remote member %s could not recognize local member", cr.to)
 	case http.StatusPreconditionFailed:
 		resp.Body.Close()
 		log.Printf("rafthttp: request sent was ignored due to cluster ID mismatch (remote[%s]:%s, local:%s)",

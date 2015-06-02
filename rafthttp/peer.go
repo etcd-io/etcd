@@ -53,15 +53,6 @@ const (
 	pipelineMsg = "pipeline"
 )
 
-var (
-	bufSizeMap = map[string]int{
-		streamApp:   streamBufSize,
-		streamAppV2: streamBufSize,
-		streamMsg:   streamBufSize,
-		pipelineMsg: pipelineBufSize,
-	}
-)
-
 type Peer interface {
 	// Send sends the message to the remote peer. The function is non-blocking
 	// and has no promise that the message will be received by the remote.
@@ -170,8 +161,7 @@ func startPeer(tr http.RoundTripper, urls types.URLs, local, to, cid types.ID, r
 					if isMsgSnap(m) {
 						p.r.ReportSnapshot(m.To, raft.SnapshotFailure)
 					}
-					log.Printf("peer: dropping %s to %s since %s with %d-size buffer is blocked",
-						m.Type, p.id, name, bufSizeMap[name])
+					log.Printf("peer: dropping %s to %s since %s's sending buffer is full", m.Type, p.id, name)
 				}
 			case mm := <-p.recvc:
 				if err := r.Process(context.TODO(), mm); err != nil {
