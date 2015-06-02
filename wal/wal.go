@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"hash/crc32"
 	"io"
-	"log"
 	"os"
 	"path"
 	"reflect"
@@ -31,6 +30,8 @@ import (
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/wal/walpb"
+
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
 )
 
 const (
@@ -49,6 +50,8 @@ const (
 )
 
 var (
+	logger = capnslog.NewPackageLogger("github.com/coreos/etcd", "wal")
+
 	ErrMetadataConflict = errors.New("wal: conflicting metadata found")
 	ErrFileNotFound     = errors.New("wal: file not found")
 	ErrCRCMismatch      = errors.New("wal: crc mismatch")
@@ -172,7 +175,7 @@ func openAtIndex(dirpath string, snap walpb.Snapshot, all bool) (*WAL, error) {
 			if all {
 				return nil, err
 			} else {
-				log.Printf("wal: opened all the files until %s, since it is still in use by an etcd server", name)
+				logger.Warningf("opened all the files until %s, since it is still in use by an etcd server", name)
 				break
 			}
 		}
@@ -353,8 +356,7 @@ func (w *WAL) cut() error {
 	// increase the wal seq
 	w.seq++
 
-	log.Printf("wal: segmented wal file %v is created", fpath)
-
+	logger.Infof("segmented wal file %v is created", fpath)
 	return nil
 }
 
