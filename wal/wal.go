@@ -50,7 +50,7 @@ const (
 )
 
 var (
-	logger = capnslog.NewPackageLogger("github.com/coreos/etcd", "wal")
+	plog = capnslog.NewPackageLogger("github.com/coreos/etcd", "wal")
 
 	ErrMetadataConflict = errors.New("wal: conflicting metadata found")
 	ErrFileNotFound     = errors.New("wal: file not found")
@@ -175,7 +175,7 @@ func openAtIndex(dirpath string, snap walpb.Snapshot, all bool) (*WAL, error) {
 			if all {
 				return nil, err
 			} else {
-				logger.Warningf("opened all the files until %s, since it is still in use by an etcd server", name)
+				plog.Warningf("opened all the files until %s, since it is still in use by an etcd server", name)
 				break
 			}
 		}
@@ -356,7 +356,7 @@ func (w *WAL) cut() error {
 	// increase the wal seq
 	w.seq++
 
-	logger.Infof("segmented wal file %v is created", fpath)
+	plog.Infof("segmented wal file %v is created", fpath)
 	return nil
 }
 

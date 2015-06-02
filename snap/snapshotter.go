@@ -38,7 +38,7 @@ const (
 )
 
 var (
-	logger = capnslog.NewPackageLogger("github.com/coreos/etcd", "snap")
+	plog = capnslog.NewPackageLogger("github.com/coreos/etcd", "snap")
 
 	ErrNoSnapshot    = errors.New("snap: no available snapshot")
 	ErrEmptySnapshot = errors.New("snap: empty snapshot")
@@ -111,30 +111,30 @@ func loadSnap(dir, name string) (*raftpb.Snapshot, error) {
 func Read(snapname string) (*raftpb.Snapshot, error) {
 	b, err := ioutil.ReadFile(snapname)
 	if err != nil {
-		logger.Errorf("cannot read file %v: %v", snapname, err)
+		plog.Errorf("cannot read file %v: %v", snapname, err)
 		return nil, err
 	}
 
 	var serializedSnap snappb.Snapshot
 	if err = serializedSnap.Unmarshal(b); err != nil {
-		logger.Errorf("corrupted snapshot file %v: %v", snapname, err)
+		plog.Errorf("corrupted snapshot file %v: %v", snapname, err)
 		return nil, err
 	}
 
 	if len(serializedSnap.Data) == 0 || serializedSnap.Crc == 0 {
-		logger.Errorf("unexpected empty snapshot")
+		plog.Errorf("unexpected empty snapshot")
 		return nil, ErrEmptySnapshot
 	}
 
 	crc := crc32.Update(0, crcTable, serializedSnap.Data)
 	if crc != serializedSnap.Crc {
-		logger.Errorf("corrupted snapshot file %v: crc mismatch", snapname)
+		plog.Errorf("corrupted snapshot file %v: crc mismatch", snapname)
 		return nil, ErrCRCMismatch
 	}
 
 	var snap raftpb.Snapshot
 	if err = snap.Unmarshal(serializedSnap.Data); err != nil {
-		logger.Errorf("corrupted snapshot file %v: %v", snapname, err)
+		plog.Errorf("corrupted snapshot file %v: %v", snapname, err)
 		return nil, err
 	}
 	return &snap, nil
@@ -166,7 +166,7 @@ func checkSuffix(names []string) []string {
 		if strings.HasSuffix(names[i], snapSuffix) {
 			snaps = append(snaps, names[i])
 		} else {
-			logger.Warningf("skipped unexpected non snapshot file %v", names[i])
+			plog.Warningf("skipped unexpected non snapshot file %v", names[i])
 		}
 	}
 	return snaps
@@ -175,6 +175,6 @@ func checkSuffix(names []string) []string {
 func renameBroken(path string) {
 	brokenPath := path + ".broken"
 	if err := os.Rename(path, brokenPath); err != nil {
-		logger.Warningf("cannot rename broken snapshot file %v to %v: %v", path, brokenPath, err)
+		plog.Warningf("cannot rename broken snapshot file %v to %v: %v", path, brokenPath, err)
 	}
 }
