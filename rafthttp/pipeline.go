@@ -17,8 +17,10 @@ package rafthttp
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -27,6 +29,7 @@ import (
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
+	"github.com/coreos/etcd/version"
 )
 
 const (
@@ -39,8 +42,8 @@ const (
 )
 
 type pipeline struct {
-	id  types.ID
-	cid types.ID
+	from, to types.ID
+	cid      types.ID
 
 	tr     http.RoundTripper
 	picker *urlPicker
@@ -58,9 +61,10 @@ type pipeline struct {
 	errored error
 }
 
-func newPipeline(tr http.RoundTripper, picker *urlPicker, id, cid types.ID, fs *stats.FollowerStats, r Raft, errorc chan error) *pipeline {
+func newPipeline(tr http.RoundTripper, picker *urlPicker, from, to, cid types.ID, fs *stats.FollowerStats, r Raft, errorc chan error) *pipeline {
 	p := &pipeline{
-		id:     id,
+		from:   from,
+		to:     to,
 		cid:    cid,
 		tr:     tr,
 		picker: picker,
@@ -94,11 +98,11 @@ func (p *pipeline) handle() {
 			reportSentFailure(pipelineMsg, m)
 
 			if p.errored == nil || p.errored.Error() != err.Error() {
-				log.Printf("pipeline: error posting to %s: %v", p.id, err)
+				log.Printf("pipeline: error posting to %s: %v", p.to, err)
 				p.errored = err
 			}
 			if p.active {
-				log.Printf("pipeline: the connection with %s became inactive", p.id)
+				log.Printf("pipeline: the connection with %s became inactive", p.to)
 				p.active = false
 			}
 			if m.Type == raftpb.MsgApp && p.fs != nil {
@@ -110,7 +114,7 @@ func (p *pipeline) handle() {
 			}
 		} else {
 			if !p.active {
-				log.Printf("pipeline: the connection with %s became active", p.id)
+				log.Printf("pipeline: the connection with %s became active", p.to)
 				p.active = true
 				p.errored = nil
 			}
@@ -138,8 +142,16 @@ func (p *pipeline) post(data []byte) error {
 		return err
 	}
 	req.Header.Set("Content-Type", "application/protobuf")
+	req.Header.Set("X-Server-From", p.from.String())
+	req.Header.Set("X-Server-Version", version.Version)
+	req.Header.Set("X-Min-Cluster-Version", version.MinClusterVersion)
 	req.Header.Set("X-Etcd-Cluster-ID", p.cid.String())
 	resp, err := p.tr.RoundTrip(req)
+	if err != nil {
+		p.picker.unreachable(u)
+		return err
+	}
+	b, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		p.picker.unreachable(u)
 		return err
@@ -148,9 +160,17 @@ func (p *pipeline) post(data []byte) error {
 
 	switch resp.StatusCode {
 	case http.StatusPreconditionFailed:
-		log.Printf("rafthttp: request sent was ignored due to cluster ID mismatch (remote[%s]:%s, local:%s)",
-			uu.Host, resp.Header.Get("X-Etcd-Cluster-ID"), p.cid)
-		return fmt.Errorf("cluster ID mismatch")
+		switch strings.TrimSuffix(string(b), "\n") {
+		case errIncompatibleVersion.Error():
+			log.Printf("rafthttp: request sent was ignored by peer %s (server version incompatible)", p.to)
+			return errIncompatibleVersion
+		case errClusterIDMismatch.Error():
+			log.Printf("rafthttp: request sent was ignored (cluster ID mismatch: remote[%s]=%s, local=%s)",
+				p.to, resp.Header.Get("X-Etcd-Cluster-ID"), p.cid)
+			return errClusterIDMismatch
+		default:
+			return fmt.Errorf("unhandled error %q when precondition failed", string(b))
+		}
 	case http.StatusForbidden:
 		err := fmt.Errorf("the member has been permanently removed from the cluster")
 		select {

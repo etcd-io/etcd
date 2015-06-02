@@ -16,9 +16,13 @@ package rafthttp
 
 import (
 	"encoding/binary"
+	"fmt"
 	"io"
+	"net/http"
 
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/go-semver/semver"
 	"github.com/coreos/etcd/raft/raftpb"
+	"github.com/coreos/etcd/version"
 )
 
 func writeEntryTo(w io.Writer, ent *raftpb.Entry) error {
@@ -44,4 +48,54 @@ func readEntryFrom(r io.Reader, ent *raftpb.Entry) error {
 		return err
 	}
 	return ent.Unmarshal(buf)
+}
+
+// compareMajorMinorVersion returns an integer comparing two versions based on
+// their major and minor version. The result will be 0 if a==b, -1 if a < b,
+// and 1 if a > b.
+func compareMajorMinorVersion(a, b *semver.Version) int {
+	na := &semver.Version{Major: a.Major, Minor: a.Minor}
+	nb := &semver.Version{Major: b.Major, Minor: b.Minor}
+	switch {
+	case na.LessThan(*nb):
+		return -1
+	case nb.LessThan(*na):
+		return 1
+	default:
+		return 0
+	}
+}
+
+// serverVersion returns the server version from the given header.
+func serverVersion(h http.Header) *semver.Version {
+	verStr := h.Get("X-Server-Version")
+	// backward compatibility with etcd 2.0
+	if verStr == "" {
+		verStr = "2.0.0"
+	}
+	return semver.Must(semver.NewVersion(verStr))
+}
+
+// serverVersion returns the min cluster version from the given header.
+func minClusterVersion(h http.Header) *semver.Version {
+	verStr := h.Get("X-Min-Cluster-Version")
+	// backward compatibility with etcd 2.0
+	if verStr == "" {
+		verStr = "2.0.0"
+	}
+	return semver.Must(semver.NewVersion(verStr))
+}
+
+// checkVersionCompability checks whether the given version is compatible
+// with the local version.
+func checkVersionCompability(name string, server, minCluster *semver.Version) error {
+	localServer := semver.Must(semver.NewVersion(version.Version))
+	localMinCluster := semver.Must(semver.NewVersion(version.MinClusterVersion))
+	if compareMajorMinorVersion(server, localMinCluster) == -1 {
+		return fmt.Errorf("remote version is too low: remote[%s]=%s, local=%s", name, server, localServer)
+	}
+	if compareMajorMinorVersion(minCluster, localServer) == 1 {
+		return fmt.Errorf("local version is too low: remote[%s]=%s, local=%s", name, server, localServer)
+	}
+	return nil
 }
