@@ -124,7 +124,7 @@ func startPeer(tr http.RoundTripper, urls types.URLs, local, to, cid types.ID, r
 		r:            r,
 		msgAppWriter: startStreamWriter(to, fs, r),
 		writer:       startStreamWriter(to, fs, r),
-		pipeline:     newPipeline(tr, picker, to, cid, fs, r, errorc),
+		pipeline:     newPipeline(tr, picker, local, to, cid, fs, r, errorc),
 		sendc:        make(chan raftpb.Message),
 		recvc:        make(chan raftpb.Message, recvBufSize),
 		propc:        make(chan raftpb.Message, maxPendingProposals),

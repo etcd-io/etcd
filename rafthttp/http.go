@@ -15,6 +15,7 @@
 package rafthttp
 
 import (
+	"errors"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -34,6 +35,9 @@ const (
 var (
 	RaftPrefix       = "/raft"
 	RaftStreamPrefix = path.Join(RaftPrefix, "stream")
+
+	errIncompatibleVersion = errors.New("incompatible version")
+	errClusterIDMismatch   = errors.New("cluster ID mismatch")
 )
 
 func NewHandler(r Raft, cid types.ID) http.Handler {
@@ -72,13 +76,19 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err := checkVersionCompability(r.Header.Get("X-Server-From"), serverVersion(r.Header), minClusterVersion(r.Header)); err != nil {
+		log.Printf("rafthttp: request received was ignored (%v)", err)
+		http.Error(w, errIncompatibleVersion.Error(), http.StatusPreconditionFailed)
+		return
+	}
+
 	wcid := h.cid.String()
 	w.Header().Set("X-Etcd-Cluster-ID", wcid)
 
 	gcid := r.Header.Get("X-Etcd-Cluster-ID")
 	if gcid != wcid {
 		log.Printf("rafthttp: request ignored due to cluster ID mismatch got %s want %s", gcid, wcid)
-		http.Error(w, "clusterID mismatch", http.StatusPreconditionFailed)
+		http.Error(w, errClusterIDMismatch.Error(), http.StatusPreconditionFailed)
 		return
 	}
 
@@ -126,16 +136,22 @@ func (h *streamHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.Header().Set("X-Server-Version", version.Version)
+
+	if err := checkVersionCompability(r.Header.Get("X-Server-From"), serverVersion(r.Header), minClusterVersion(r.Header)); err != nil {
+		log.Printf("rafthttp: request received was ignored (%v)", err)
+		http.Error(w, errIncompatibleVersion.Error(), http.StatusPreconditionFailed)
+		return
+	}
+
 	wcid := h.cid.String()
 	w.Header().Set("X-Etcd-Cluster-ID", wcid)
 
 	if gcid := r.Header.Get("X-Etcd-Cluster-ID"); gcid != wcid {
 		log.Printf("rafthttp: streaming request ignored due to cluster ID mismatch got %s want %s", gcid, wcid)
-		http.Error(w, "clusterID mismatch", http.StatusPreconditionFailed)
+		http.Error(w, errClusterIDMismatch.Error(), http.StatusPreconditionFailed)
 		return
 	}
-
-	w.Header().Add("X-Server-Version", version.Version)
 
 	var t streamType
 	switch path.Dir(r.URL.Path) {

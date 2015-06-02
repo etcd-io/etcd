@@ -17,11 +17,13 @@ package rafthttp
 import (
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
 	"path"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -389,6 +391,9 @@ func (cr *streamReader) dial(t streamType) (io.ReadCloser, error) {
 		cr.picker.unreachable(u)
 		return nil, fmt.Errorf("new request to %s error: %v", u, err)
 	}
+	req.Header.Set("X-Server-From", cr.from.String())
+	req.Header.Set("X-Server-Version", version.Version)
+	req.Header.Set("X-Min-Cluster-Version", version.MinClusterVersion)
 	req.Header.Set("X-Etcd-Cluster-ID", cr.cid.String())
 	req.Header.Set("X-Raft-To", cr.to.String())
 	if t == streamTypeMsgApp {
@@ -425,10 +430,24 @@ func (cr *streamReader) dial(t streamType) (io.ReadCloser, error) {
 		resp.Body.Close()
 		return nil, fmt.Errorf("local member has not been added to the peer list of member %s", cr.to)
 	case http.StatusPreconditionFailed:
+		b, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			cr.picker.unreachable(u)
+			return nil, err
+		}
 		resp.Body.Close()
-		log.Printf("rafthttp: request sent was ignored due to cluster ID mismatch (remote[%s]:%s, local:%s)",
-			uu.Host, resp.Header.Get("X-Etcd-Cluster-ID"), cr.cid)
-		return nil, fmt.Errorf("cluster ID mismatch")
+
+		switch strings.TrimSuffix(string(b), "\n") {
+		case errIncompatibleVersion.Error():
+			log.Printf("rafthttp: request sent was ignored by peer %s (server version incompatible)", cr.to)
+			return nil, errIncompatibleVersion
+		case errClusterIDMismatch.Error():
+			log.Printf("rafthttp: request sent was ignored (cluster ID mismatch: remote[%s]=%s, local=%s)",
+				cr.to, resp.Header.Get("X-Etcd-Cluster-ID"), cr.cid)
+			return nil, errClusterIDMismatch
+		default:
+			return nil, fmt.Errorf("unhandled error %q when precondition failed", string(b))
+		}
 	default:
 		resp.Body.Close()
 		return nil, fmt.Errorf("unhandled http status %d", resp.StatusCode)
@@ -455,32 +474,6 @@ func canUseMsgAppStream(m raftpb.Message) bool {
 func isClosedConnectionError(err error) bool {
 	operr, ok := err.(*net.OpError)
 	return ok && operr.Err.Error() == "use of closed network connection"
-}
-
-// serverVersion returns the version from the given header.
-func serverVersion(h http.Header) *semver.Version {
-	verStr := h.Get("X-Server-Version")
-	// backward compatibility with etcd 2.0
-	if verStr == "" {
-		verStr = "2.0.0"
-	}
-	return semver.Must(semver.NewVersion(verStr))
-}
-
-// compareMajorMinorVersion returns an integer comparing two versions based on
-// their major and minor version. The result will be 0 if a==b, -1 if a < b,
-// and 1 if a > b.
-func compareMajorMinorVersion(a, b *semver.Version) int {
-	na := &semver.Version{Major: a.Major, Minor: a.Minor}
-	nb := &semver.Version{Major: b.Major, Minor: b.Minor}
-	switch {
-	case na.LessThan(*nb):
-		return -1
-	case nb.LessThan(*na):
-		return 1
-	default:
-		return 0
-	}
 }
 
 // checkStreamSupport checks whether the stream type is supported in the
