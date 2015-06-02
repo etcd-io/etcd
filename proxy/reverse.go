@@ -15,8 +15,10 @@
 package proxy
 
 import (
+	"bytes"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
@@ -54,6 +56,21 @@ type reverseProxy struct {
 func (p *reverseProxy) ServeHTTP(rw http.ResponseWriter, clientreq *http.Request) {
 	proxyreq := new(http.Request)
 	*proxyreq = *clientreq
+
+	var (
+		proxybody []byte
+		err       error
+	)
+
+	if clientreq.Body != nil {
+		proxybody, err = ioutil.ReadAll(clientreq.Body)
+		if err != nil {
+			msg := fmt.Sprintf("proxy: failed to read request body: %v", err)
+			e := httptypes.NewHTTPError(http.StatusInternalServerError, msg)
+			e.WriteTo(rw)
+			return
+		}
+	}
 
 	// deep-copy the headers, as these will be modified below
 	proxyreq.Header = make(http.Header)
@@ -93,9 +110,11 @@ func (p *reverseProxy) ServeHTTP(rw http.ResponseWriter, clientreq *http.Request
 	}
 
 	var res *http.Response
-	var err error
 
 	for _, ep := range endpoints {
+		if proxybody != nil {
+			proxyreq.Body = ioutil.NopCloser(bytes.NewBuffer(proxybody))
+		}
 		redirectRequest(proxyreq, ep.URL)
 
 		res, err = p.transport.RoundTrip(proxyreq)
