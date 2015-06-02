@@ -16,6 +16,7 @@ package rafthttp
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -41,6 +42,12 @@ const (
 	pipelineBufSize = 64
 )
 
+var errStopped = errors.New("stopped")
+
+type canceler interface {
+	CancelRequest(*http.Request)
+}
+
 type pipeline struct {
 	from, to types.ID
 	cid      types.ID
@@ -53,7 +60,8 @@ type pipeline struct {
 
 	msgc chan raftpb.Message
 	// wait for the handling routines
-	wg sync.WaitGroup
+	wg    sync.WaitGroup
+	stopc chan struct{}
 	sync.Mutex
 	// if the last send was successful, the pipeline is active.
 	// Or it is inactive
@@ -71,6 +79,7 @@ func newPipeline(tr http.RoundTripper, picker *urlPicker, from, to, cid types.ID
 		fs:     fs,
 		r:      r,
 		errorc: errorc,
+		stopc:  make(chan struct{}),
 		msgc:   make(chan raftpb.Message, pipelineBufSize),
 		active: true,
 	}
@@ -83,6 +92,7 @@ func newPipeline(tr http.RoundTripper, picker *urlPicker, from, to, cid types.ID
 
 func (p *pipeline) stop() {
 	close(p.msgc)
+	close(p.stopc)
 	p.wg.Wait()
 }
 
@@ -91,6 +101,9 @@ func (p *pipeline) handle() {
 	for m := range p.msgc {
 		start := time.Now()
 		err := p.post(pbutil.MustMarshal(&m))
+		if err == errStopped {
+			return
+		}
 		end := time.Now()
 
 		p.Lock()
@@ -132,7 +145,7 @@ func (p *pipeline) handle() {
 
 // post POSTs a data payload to a url. Returns nil if the POST succeeds,
 // error on any failure.
-func (p *pipeline) post(data []byte) error {
+func (p *pipeline) post(data []byte) (err error) {
 	u := p.picker.pick()
 	uu := u
 	uu.Path = RaftPrefix
@@ -146,7 +159,28 @@ func (p *pipeline) post(data []byte) error {
 	req.Header.Set("X-Server-Version", version.Version)
 	req.Header.Set("X-Min-Cluster-Version", version.MinClusterVersion)
 	req.Header.Set("X-Etcd-Cluster-ID", p.cid.String())
+
+	var stopped bool
+	defer func() {
+		if stopped {
+			// rewrite to errStopped so the caller goroutine can stop itself
+			err = errStopped
+		}
+	}()
+	done := make(chan struct{}, 1)
+	go func() {
+		select {
+		case <-done:
+		case <-p.stopc:
+			stopped = true
+			if cancel, ok := p.tr.(canceler); ok {
+				cancel.CancelRequest(req)
+			}
+		}
+	}()
+
 	resp, err := p.tr.RoundTrip(req)
+	done <- struct{}{}
 	if err != nil {
 		p.picker.unreachable(u)
 		return err
