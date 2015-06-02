@@ -39,7 +39,7 @@ func (g *remote) Send(m raftpb.Message) {
 	select {
 	case g.pipeline.msgc <- m:
 	default:
-		log.Printf("remote: dropping %s to %s since pipeline with %d-size buffer is blocked", m.Type, g.id, pipelineBufSize)
+		log.Printf("remote: dropping %s to %s since sending buffer is full", m.Type, g.id)
 	}
 }
 

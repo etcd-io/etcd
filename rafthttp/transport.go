@@ -150,7 +150,7 @@ func (t *transport) Send(msgs []raftpb.Message) {
 			continue
 		}
 
-		log.Printf("etcdserver: send message to unknown receiver %s", to)
+		log.Printf("rafthttp: ignored message %s (sent to unknown receiver %s)", m.Type, to)
 	}
 }
 
