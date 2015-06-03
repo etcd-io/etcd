@@ -111,5 +111,4 @@ func getTransport(c *cli.Context) (*http.Transport, error) {
 		KeyFile:  keyfile,
 	}
 	return transport.NewTransport(tls)
-
 }

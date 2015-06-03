@@ -86,7 +86,7 @@ func watchCommandFunc(c *cli.Context, client *etcd.Client) (*etcd.Response, erro
 		resp, err = client.Watch(key, uint64(index), recursive, nil, nil)
 
 		if err != nil {
-			handleError(ErrorFromEtcd, err)
+			handleError(ExitServerError, err)
 		}
 
 		if err != nil {

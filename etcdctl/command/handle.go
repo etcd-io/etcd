@@ -15,7 +15,6 @@
 package command
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -60,7 +59,7 @@ func rawhandle(c *cli.Context, fn handlerFunc) (*etcd.Response, error) {
 	// Sync cluster.
 	if !c.GlobalBool("no-sync") {
 		if ok := client.SyncCluster(); !ok {
-			handleError(FailedToConnectToHost, errors.New("cannot sync with the cluster using endpoints "+strings.Join(endpoints, ", ")))
+			handleError(ExitBadConnection, errors.New("cannot sync with the cluster using endpoints "+strings.Join(endpoints, ", ")))
 		}
 	}
 
@@ -79,7 +78,7 @@ func handlePrint(c *cli.Context, fn handlerFunc, pFn printFunc) {
 
 	// Print error and exit, if necessary.
 	if err != nil {
-		handleError(ErrorFromEtcd, err)
+		handleError(ExitServerError, err)
 	}
 
 	if resp != nil && pFn != nil {
@@ -92,7 +91,7 @@ func handleContextualPrint(c *cli.Context, fn handlerFunc, pFn contextualPrintFu
 	resp, err := rawhandle(c, fn)
 
 	if err != nil {
-		handleError(ErrorFromEtcd, err)
+		handleError(ExitServerError, err)
 	}
 
 	if resp != nil && pFn != nil {
@@ -113,55 +112,4 @@ func handleKey(c *cli.Context, fn handlerFunc) {
 
 func handleAll(c *cli.Context, fn handlerFunc) {
 	handlePrint(c, fn, printAll)
-}
-
-// printKey writes the etcd response to STDOUT in the given format.
-func printKey(resp *etcd.Response, format string) {
-	// printKey is only for keys, error on directories
-	if resp.Node.Dir == true {
-		fmt.Fprintln(os.Stderr, fmt.Sprintf("Cannot print key [%s: Is a directory]", resp.Node.Key))
-		os.Exit(1)
-	}
-	printKeyOnly(resp, format)
-}
-
-// printAll prints the etcd response in the given format in its best efforts.
-func printAll(resp *etcd.Response, format string) {
-	if resp.Node.Dir == true {
-		return
-	}
-	printKeyOnly(resp, format)
-}
-
-// printKeyOnly only supports to print key correctly.
-func printKeyOnly(resp *etcd.Response, format string) {
-	// Format the result.
-	switch format {
-	case "simple":
-		fmt.Println(resp.Node.Value)
-	case "extended":
-		// Extended prints in a rfc2822 style format
-		fmt.Println("Key:", resp.Node.Key)
-		fmt.Println("Created-Index:", resp.Node.CreatedIndex)
-		fmt.Println("Modified-Index:", resp.Node.ModifiedIndex)
-
-		if resp.PrevNode != nil {
-			fmt.Println("PrevNode.Value:", resp.PrevNode.Value)
-		}
-
-		fmt.Println("TTL:", resp.Node.TTL)
-		fmt.Println("Etcd-Index:", resp.EtcdIndex)
-		fmt.Println("Raft-Index:", resp.RaftIndex)
-		fmt.Println("Raft-Term:", resp.RaftTerm)
-		fmt.Println("")
-		fmt.Println(resp.Node.Value)
-	case "json":
-		b, err := json.Marshal(resp)
-		if err != nil {
-			panic(err)
-		}
-		fmt.Println(string(b))
-	default:
-		fmt.Fprintln(os.Stderr, "Unsupported output format:", format)
-	}
 }
