@@ -53,11 +53,11 @@ func handleImportSnap(c *cli.Context) {
 
 	endpoints, err := getEndpoints(c)
 	if err != nil {
-		handleError(ErrorFromEtcd, err)
+		handleError(ExitServerError, err)
 	}
 	tr, err := getTransport(c)
 	if err != nil {
-		handleError(ErrorFromEtcd, err)
+		handleError(ExitServerError, err)
 	}
 
 	wg := &sync.WaitGroup{}
@@ -73,7 +73,7 @@ func handleImportSnap(c *cli.Context) {
 		}
 
 		if ok := client.SyncCluster(); !ok {
-			handleError(FailedToConnectToHost, errors.New("cannot sync with the cluster using endpoints "+strings.Join(endpoints, ", ")))
+			handleError(ExitBadConnection, errors.New("cannot sync with the cluster using endpoints "+strings.Join(endpoints, ", ")))
 		}
 		wg.Add(1)
 		go runSet(client, setc, wg)
@@ -81,7 +81,7 @@ func handleImportSnap(c *cli.Context) {
 
 	all, err := st.Get("/", true, true)
 	if err != nil {
-		handleError(ErrorFromEtcd, err)
+		handleError(ExitServerError, err)
 	}
 	n := copyKeys(all.Node, setc)
 
@@ -89,7 +89,7 @@ func handleImportSnap(c *cli.Context) {
 	for _, h := range hiddens {
 		allh, err := st.Get(h, true, true)
 		if err != nil {
-			handleError(ErrorFromEtcd, err)
+			handleError(ExitServerError, err)
 		}
 		n += copyKeys(allh.Node, setc)
 	}

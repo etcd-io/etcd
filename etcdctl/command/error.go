@@ -20,11 +20,11 @@ import (
 )
 
 const (
-	SUCCESS = iota
-	MalformedEtcdctlArguments
-	FailedToConnectToHost
-	FailedToAuth
-	ErrorFromEtcd
+	ExitSuccess = iota
+	ExitBadArgs
+	ExitBadConnection
+	ExitBadAuth
+	ExitServerError
 )
 
 func handleError(code int, err error) {

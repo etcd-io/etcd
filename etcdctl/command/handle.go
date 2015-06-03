@@ -60,7 +60,7 @@ func rawhandle(c *cli.Context, fn handlerFunc) (*etcd.Response, error) {
 	// Sync cluster.
 	if !c.GlobalBool("no-sync") {
 		if ok := client.SyncCluster(); !ok {
-			handleError(FailedToConnectToHost, errors.New("cannot sync with the cluster using endpoints "+strings.Join(endpoints, ", ")))
+			handleError(ExitBadConnection, errors.New("cannot sync with the cluster using endpoints "+strings.Join(endpoints, ", ")))
 		}
 	}
 
@@ -79,7 +79,7 @@ func handlePrint(c *cli.Context, fn handlerFunc, pFn printFunc) {
 
 	// Print error and exit, if necessary.
 	if err != nil {
-		handleError(ErrorFromEtcd, err)
+		handleError(ExitServerError, err)
 	}
 
 	if resp != nil && pFn != nil {
@@ -92,7 +92,7 @@ func handleContextualPrint(c *cli.Context, fn handlerFunc, pFn contextualPrintFu
 	resp, err := rawhandle(c, fn)
 
 	if err != nil {
-		handleError(ErrorFromEtcd, err)
+		handleError(ExitServerError, err)
 	}
 
 	if resp != nil && pFn != nil {

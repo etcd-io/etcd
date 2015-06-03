@@ -27,11 +27,11 @@ func NewClusterHealthCommand() cli.Command {
 func handleClusterHealth(c *cli.Context) {
 	endpoints, err := getEndpoints(c)
 	if err != nil {
-		handleError(ErrorFromEtcd, err)
+		handleError(ExitServerError, err)
 	}
 	tr, err := getTransport(c)
 	if err != nil {
-		handleError(ErrorFromEtcd, err)
+		handleError(ExitServerError, err)
 	}
 
 	client := etcd.NewClient(endpoints)
@@ -42,7 +42,7 @@ func handleClusterHealth(c *cli.Context) {
 	}
 
 	if ok := client.SyncCluster(); !ok {
-		handleError(FailedToConnectToHost, errors.New("cannot sync with the cluster using endpoints "+strings.Join(endpoints, ", ")))
+		handleError(ExitBadConnection, errors.New("cannot sync with the cluster using endpoints "+strings.Join(endpoints, ", ")))
 	}
 
 	// do we have a leader?
