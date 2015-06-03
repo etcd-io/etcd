@@ -21,6 +21,7 @@ import (
 	"net/http"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/coreos/etcd/etcdserver/stats"
 	"github.com/coreos/etcd/pkg/testutil"
@@ -38,6 +39,7 @@ func TestPipelineSend(t *testing.T) {
 	p := newPipeline(tr, picker, types.ID(2), types.ID(1), types.ID(1), fs, &fakeRaft{}, nil)
 
 	p.msgc <- raftpb.Message{Type: raftpb.MsgApp}
+	testutil.ForceGosched()
 	p.stop()
 
 	if tr.Request() == nil {
@@ -97,6 +99,7 @@ func TestPipelineSendFailed(t *testing.T) {
 	p := newPipeline(newRespRoundTripper(0, errors.New("blah")), picker, types.ID(2), types.ID(1), types.ID(1), fs, &fakeRaft{}, nil)
 
 	p.msgc <- raftpb.Message{Type: raftpb.MsgApp}
+	testutil.ForceGosched()
 	p.stop()
 
 	fs.Lock()
@@ -188,19 +191,55 @@ func TestPipelinePostErrorc(t *testing.T) {
 	}
 }
 
+func TestStopBlockedPipeline(t *testing.T) {
+	picker := mustNewURLPicker(t, []string{"http://localhost:2380"})
+	p := newPipeline(newRoundTripperBlocker(), picker, types.ID(2), types.ID(1), types.ID(1), nil, &fakeRaft{}, nil)
+	// send many messages that most of them will be blocked in buffer
+	for i := 0; i < connPerPipeline*10; i++ {
+		p.msgc <- raftpb.Message{}
+	}
+
+	done := make(chan struct{})
+	go func() {
+		p.stop()
+		done <- struct{}{}
+	}()
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatalf("failed to stop pipeline in 1s")
+	}
+}
+
 type roundTripperBlocker struct {
-	c chan struct{}
+	c         chan error
+	mu        sync.Mutex
+	unblocked bool
 }
 
 func newRoundTripperBlocker() *roundTripperBlocker {
-	return &roundTripperBlocker{c: make(chan struct{})}
+	return &roundTripperBlocker{c: make(chan error)}
 }
 func (t *roundTripperBlocker) RoundTrip(req *http.Request) (*http.Response, error) {
-	<-t.c
+	err := <-t.c
+	if err != nil {
+		return nil, err
+	}
 	return &http.Response{StatusCode: http.StatusNoContent, Body: &nopReadCloser{}}, nil
 }
 func (t *roundTripperBlocker) unblock() {
+	t.mu.Lock()
+	t.unblocked = true
+	t.mu.Unlock()
 	close(t.c)
+}
+func (t *roundTripperBlocker) CancelRequest(req *http.Request) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if t.unblocked {
+		return
+	}
+	t.c <- errors.New("request canceled")
 }
 
 type respRoundTripper struct {
