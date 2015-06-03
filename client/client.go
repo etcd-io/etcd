@@ -256,6 +256,10 @@ type simpleHTTPClient struct {
 func (c *simpleHTTPClient) Do(ctx context.Context, act httpAction) (*http.Response, []byte, error) {
 	req := act.HTTPRequest(c.endpoint)
 
+	if err := printcURL(req); err != nil {
+		return nil, nil, err
+	}
+
 	rtchan := make(chan roundTripResponse, 1)
 	go func() {
 		resp, err := c.transport.RoundTrip(req)
