@@ -55,7 +55,7 @@ func printGet(resp *etcd.Response, format string) {
 // getCommandFunc executes the "get" command.
 func getCommandFunc(c *cli.Context, client *etcd.Client) (*etcd.Response, error) {
 	if len(c.Args()) == 0 {
-		return nil, errors.New("Key required")
+		return nil, errors.New("key required")
 	}
 	key := c.Args()[0]
 	sorted := c.Bool("sort")

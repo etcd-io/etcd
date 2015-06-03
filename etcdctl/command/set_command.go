@@ -41,12 +41,12 @@ func NewSetCommand() cli.Command {
 // setCommandFunc executes the "set" command.
 func setCommandFunc(c *cli.Context, client *etcd.Client) (*etcd.Response, error) {
 	if len(c.Args()) == 0 {
-		return nil, errors.New("Key required")
+		return nil, errors.New("key required")
 	}
 	key := c.Args()[0]
 	value, err := argOrStdin(c.Args(), os.Stdin, 1)
 	if err != nil {
-		return nil, errors.New("Value required")
+		return nil, errors.New("value required")
 	}
 
 	ttl := c.Int("ttl")
@@ -55,7 +55,6 @@ func setCommandFunc(c *cli.Context, client *etcd.Client) (*etcd.Response, error)
 
 	if prevValue == "" && prevIndex == 0 {
 		return client.Set(key, value, uint64(ttl))
-	} else {
-		return client.CompareAndSwap(key, value, uint64(ttl), prevValue, uint64(prevIndex))
 	}
+	return client.CompareAndSwap(key, value, uint64(ttl), prevValue, uint64(prevIndex))
 }
