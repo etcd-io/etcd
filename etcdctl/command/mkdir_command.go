@@ -16,9 +16,11 @@ package command
 
 import (
 	"errors"
+	"time"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/codegangsta/cli"
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/go-etcd/etcd"
+	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
+	"github.com/coreos/etcd/client"
 )
 
 // NewMakeDirCommand returns the CLI command for "mkdir".
@@ -30,18 +32,23 @@ func NewMakeDirCommand() cli.Command {
 			cli.IntFlag{Name: "ttl", Value: 0, Usage: "key time-to-live"},
 		},
 		Action: func(c *cli.Context) {
-			handleDir(c, makeDirCommandFunc)
+			mkdirCommandFunc(c, mustNewKeyAPI(c), client.PrevNoExist)
 		},
 	}
 }
 
-// makeDirCommandFunc executes the "mkdir" command.
-func makeDirCommandFunc(c *cli.Context, client *etcd.Client) (*etcd.Response, error) {
+// mkdirCommandFunc executes the "mkdir" command.
+func mkdirCommandFunc(c *cli.Context, ki client.KeysAPI, prevExist client.PrevExistType) {
 	if len(c.Args()) == 0 {
-		return nil, errors.New("key required")
+		handleError(ExitBadArgs, errors.New("key required"))
 	}
+
 	key := c.Args()[0]
 	ttl := c.Int("ttl")
 
-	return client.CreateDir(key, uint64(ttl))
+	// TODO: handle transport timeout
+	_, err := ki.Set(context.TODO(), key, "", &client.SetOptions{TTL: time.Second * time.Duration(ttl), Dir: true, PrevExist: prevExist})
+	if err != nil {
+		handleError(ExitServerError, err)
+	}
 }
