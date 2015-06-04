@@ -15,6 +15,7 @@
 package rafthttp
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -35,9 +36,10 @@ import (
 )
 
 const (
-	streamTypeMessage  streamType = "message"
-	streamTypeMsgAppV2 streamType = "msgappv2"
-	streamTypeMsgApp   streamType = "msgapp"
+	streamTypeMessage streamType = iota
+	streamTypeMsgAppV2
+	streamTypeMsgApp
+	numberOfStreamTypes
 
 	streamBufSize = 4096
 )
@@ -52,7 +54,17 @@ var (
 	}
 )
 
-type streamType string
+type streamType int
+
+func parseStreamType(path string) (streamType, error) {
+	for i := 0; i < int(numberOfStreamTypes); i++ {
+		t := streamType(i)
+		if t.endpoint() == path {
+			return t, nil
+		}
+	}
+	return -1, errors.New("unrecognized path")
+}
 
 func (t streamType) endpoint() string {
 	switch t {
@@ -65,6 +77,19 @@ func (t streamType) endpoint() string {
 	default:
 		log.Panicf("rafthttp: unhandled stream type %v", t)
 		return ""
+	}
+}
+
+func (t streamType) String() string {
+	switch t {
+	case streamTypeMsgApp:
+		return "stream MsgApp"
+	case streamTypeMsgAppV2:
+		return "stream MsgApp v2"
+	case streamTypeMessage:
+		return "stream Message"
+	default:
+		return fmt.Sprintf("stream type %d", int(t))
 	}
 }
 
@@ -132,15 +157,15 @@ func (cw *streamWriter) run() {
 		case <-heartbeatc:
 			start := time.Now()
 			if err := enc.encode(linkHeartbeatMessage); err != nil {
-				reportSentFailure(string(t), linkHeartbeatMessage)
+				reportSentFailure(t.String(), linkHeartbeatMessage)
 
-				log.Printf("rafthttp: failed to heartbeat on stream %s (%v)", t, err)
+				log.Printf("rafthttp: failed to heartbeat on %s (%v)", t, err)
 				cw.close()
 				heartbeatc, msgc = nil, nil
 				continue
 			}
 			flusher.Flush()
-			reportSentDuration(string(t), linkHeartbeatMessage, time.Since(start))
+			reportSentDuration(t.String(), linkHeartbeatMessage, time.Since(start))
 		case m := <-msgc:
 			if t == streamTypeMsgApp && m.Term != msgAppTerm {
 				// TODO: reasonable retry logic
@@ -154,16 +179,16 @@ func (cw *streamWriter) run() {
 			}
 			start := time.Now()
 			if err := enc.encode(m); err != nil {
-				reportSentFailure(string(t), m)
+				reportSentFailure(t.String(), m)
 
-				log.Printf("rafthttp: failed to send message on stream %s (%v)", t, err)
+				log.Printf("rafthttp: failed to send message on %s (%v)", t, err)
 				cw.close()
 				heartbeatc, msgc = nil, nil
 				cw.r.ReportUnreachable(m.To)
 				continue
 			}
 			flusher.Flush()
-			reportSentDuration(string(t), m, time.Since(start))
+			reportSentDuration(t.String(), m, time.Since(start))
 		case conn := <-cw.connc:
 			cw.close()
 			t = conn.t
@@ -280,7 +305,7 @@ func (cr *streamReader) run() {
 		}
 		if err != nil {
 			if err != errUnsupportedStreamType {
-				log.Printf("rafthttp: failed to dial stream %s (%v)", t, err)
+				log.Printf("rafthttp: failed to dial %s (%v)", t, err)
 			}
 		} else {
 			err := cr.decodeLoop(rc, t)
@@ -293,7 +318,7 @@ func (cr *streamReader) run() {
 			// heartbeat on the idle stream, so it is expected to time out.
 			case t == streamTypeMsgApp && isNetworkTimeoutError(err):
 			default:
-				log.Printf("rafthttp: failed to read message on stream %s (%v)", t, err)
+				log.Printf("rafthttp: failed to read message on %s (%v)", t, err)
 			}
 		}
 		select {
