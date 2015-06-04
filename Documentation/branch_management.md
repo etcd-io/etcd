@@ -1,24 +1,24 @@
-## Branch Managemnt
+## Branch Management
 
 ### Guide
 
-- New development occurs on the master branch
+- New development occurs on the [master branch](https://github.com/coreos/etcd/tree/master)
 - Master branch should always have a green build!
-- Backwards-compatible bug fixes should target the master branch and ported to stable
+- Backwards-compatible bug fixes should target the master branch and subsequently be ported to stable branches
 - Once the master branch is ready for release, it will be tagged and become the new stable branch.
 
-The etcd team adopts a rolling release model and support one stable version of etcd going forward.
+The etcd team has adopted a _rolling release model_ and supports one stable version of etcd.
 
 ### Master branch
 
-The master branch is our development branch. It is where all the new features go into first.
+The `master` branch is our development branch. All new features land here first.
 
-If you want to try new features, pull the master branch and play on it. But the branch is not really stable because new features may introduce bugs.
+If you want to try new features, pull `master` and play with it. Note that `master` may not be stable because new features may introduce bugs.
 
 Before the release of the next stable version, feature PRs will be frozen. We will focus on the testing, bug-fix and documentation for one to two weeks.
 
 ### Stable branches
 
-All branches with prefix 'release-' are stable branches.
+All branches with prefix `release-` are considered _stable_ branches.
 
-After a Minor release (http://semver.org/), we will have a new stable branch for that release. We will keep fixing the backwards-compatible bugs for the latest stable release, but not the olders. The bug fixes Patch release will be once every two weeks, given any patches.
+After every minor release (http://semver.org/), we will have a new stable branch for that release. We will keep fixing the backwards-compatible bugs for the latest stable release, but not previous releases. The _patch_ release, incorporating any bug fixes, will be once every two weeks, given any patches.
