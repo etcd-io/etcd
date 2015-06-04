@@ -18,14 +18,14 @@ import (
 	"errors"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/codegangsta/cli"
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/go-etcd/etcd"
+	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context" // NewRemoveCommand returns the CLI command for "rm".
+	"github.com/coreos/etcd/client"
 )
 
-// NewRemoveCommand returns the CLI command for "rm".
 func NewRemoveCommand() cli.Command {
 	return cli.Command{
 		Name:  "rm",
-		Usage: "remove a key",
+		Usage: "remove a key or a directory",
 		Flags: []cli.Flag{
 			cli.BoolFlag{Name: "dir", Usage: "removes the key if it is an empty directory or a key-value pair"},
 			cli.BoolFlag{Name: "recursive", Usage: "removes the key and all child keys(if it is a directory)"},
@@ -33,32 +33,29 @@ func NewRemoveCommand() cli.Command {
 			cli.IntFlag{Name: "with-index", Value: 0, Usage: "previous index"},
 		},
 		Action: func(c *cli.Context) {
-			handleAll(c, removeCommandFunc)
+			rmCommandFunc(c, mustNewKeyAPI(c))
 		},
 	}
 }
 
-// removeCommandFunc executes the "rm" command.
-func removeCommandFunc(c *cli.Context, client *etcd.Client) (*etcd.Response, error) {
+// rmCommandFunc executes the "rm" command.
+func rmCommandFunc(c *cli.Context, ki client.KeysAPI) {
 	if len(c.Args()) == 0 {
-		return nil, errors.New("key required")
+		handleError(ExitBadArgs, errors.New("key required"))
 	}
 	key := c.Args()[0]
 	recursive := c.Bool("recursive")
 	dir := c.Bool("dir")
-
-	// TODO: distinguish with flag is not set and empty flag
-	// the cli pkg need to provide this feature
 	prevValue := c.String("with-value")
-	prevIndex := uint64(c.Int("with-index"))
+	prevIndex := c.Int("with-index")
 
-	if prevValue != "" || prevIndex != 0 {
-		return client.CompareAndDelete(key, prevValue, prevIndex)
+	// TODO: handle transport timeout
+	resp, err := ki.Delete(context.TODO(), key, &client.DeleteOptions{PrevIndex: uint64(prevIndex), PrevValue: prevValue, Dir: dir, Recursive: recursive})
+	if err != nil {
+		handleError(ExitServerError, err)
 	}
 
-	if recursive || !dir {
-		return client.Delete(key, recursive)
+	if !resp.Node.Dir {
+		printResponseKey(resp, c.GlobalString("output"))
 	}
-
-	return client.DeleteDir(key)
 }

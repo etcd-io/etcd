@@ -79,7 +79,11 @@ func printResponseKey(resp *client.Response, format string) {
 	// Format the result.
 	switch format {
 	case "simple":
-		fmt.Println(resp.Node.Value)
+		if resp.Action != "delete" {
+			fmt.Println(resp.Node.Value)
+		} else {
+			fmt.Println("PrevNode.Value:", resp.PrevNode.Value)
+		}
 	case "extended":
 		// Extended prints in a rfc2822 style format
 		fmt.Println("Key:", resp.Node.Key)
@@ -92,8 +96,10 @@ func printResponseKey(resp *client.Response, format string) {
 
 		fmt.Println("TTL:", resp.Node.TTL)
 		fmt.Println("Index:", resp.Index)
-		fmt.Println("")
-		fmt.Println(resp.Node.Value)
+		if resp.Action != "delete" {
+			fmt.Println("")
+			fmt.Println(resp.Node.Value)
+		}
 	case "json":
 		b, err := json.Marshal(resp)
 		if err != nil {
