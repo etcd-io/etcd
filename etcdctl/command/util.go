@@ -25,6 +25,7 @@ import (
 	"strings"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/codegangsta/cli"
+	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/client"
 	"github.com/coreos/etcd/pkg/transport"
 )
@@ -115,6 +116,14 @@ func getTransport(c *cli.Context) (*http.Transport, error) {
 	return transport.NewTransport(tls)
 }
 
+func mustNewKeyAPI(c *cli.Context) client.KeysAPI {
+	return client.NewKeysAPI(mustNewClient(c))
+}
+
+func mustNewMembersAPI(c *cli.Context) client.MembersAPI {
+	return client.NewMembersAPI(mustNewClient(c))
+}
+
 func mustNewClient(c *cli.Context) client.Client {
 	eps, err := getEndpoints(c)
 	if err != nil {
@@ -149,5 +158,24 @@ func mustNewClient(c *cli.Context) client.Client {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
 	}
+
+	if !c.GlobalBool("no-sync") {
+		ctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
+		err := hc.Sync(ctx)
+		cancel()
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err.Error())
+			os.Exit(1)
+		}
+	}
+
+	if c.GlobalBool("debug") {
+		fmt.Fprintf(os.Stderr, "Cluster-Endpoints: %s\n", strings.Join(hc.Endpoints(), ", "))
+	}
+
+	if c.GlobalBool("debug") {
+		client.EnablecURLDebug()
+	}
+
 	return hc
 }

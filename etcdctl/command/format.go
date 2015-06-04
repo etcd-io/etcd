@@ -20,6 +20,7 @@ import (
 	"os"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/go-etcd/etcd"
+	"github.com/coreos/etcd/client"
 )
 
 // printKey writes the etcd response to STDOUT in the given format.
@@ -60,6 +61,37 @@ func printKeyOnly(resp *etcd.Response, format string) {
 		fmt.Println("Etcd-Index:", resp.EtcdIndex)
 		fmt.Println("Raft-Index:", resp.RaftIndex)
 		fmt.Println("Raft-Term:", resp.RaftTerm)
+		fmt.Println("")
+		fmt.Println(resp.Node.Value)
+	case "json":
+		b, err := json.Marshal(resp)
+		if err != nil {
+			panic(err)
+		}
+		fmt.Println(string(b))
+	default:
+		fmt.Fprintln(os.Stderr, "Unsupported output format:", format)
+	}
+}
+
+// printResponseKey only supports to print key correctly.
+func printResponseKey(resp *client.Response, format string) {
+	// Format the result.
+	switch format {
+	case "simple":
+		fmt.Println(resp.Node.Value)
+	case "extended":
+		// Extended prints in a rfc2822 style format
+		fmt.Println("Key:", resp.Node.Key)
+		fmt.Println("Created-Index:", resp.Node.CreatedIndex)
+		fmt.Println("Modified-Index:", resp.Node.ModifiedIndex)
+
+		if resp.PrevNode != nil {
+			fmt.Println("PrevNode.Value:", resp.PrevNode.Value)
+		}
+
+		fmt.Println("TTL:", resp.Node.TTL)
+		fmt.Println("Index:", resp.Index)
 		fmt.Println("")
 		fmt.Println(resp.Node.Value)
 	case "json":
