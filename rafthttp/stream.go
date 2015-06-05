@@ -67,6 +67,19 @@ func (t streamType) endpoint() string {
 	}
 }
 
+func (t streamType) String() string {
+	switch t {
+	case streamTypeMsgApp:
+		return "stream MsgApp"
+	case streamTypeMsgAppV2:
+		return "stream MsgApp v2"
+	case streamTypeMessage:
+		return "stream Message"
+	default:
+		return "unknown stream"
+	}
+}
+
 var (
 	// linkHeartbeatMessage is a special message used as heartbeat message in
 	// link layer. It never conflicts with messages from raft because raft
@@ -89,9 +102,10 @@ type outgoingConn struct {
 // streamWriter is a long-running go-routine that writes messages into the
 // attached outgoingConn.
 type streamWriter struct {
-	id types.ID
-	fs *stats.FollowerStats
-	r  Raft
+	id     types.ID
+	status *peerStatus
+	fs     *stats.FollowerStats
+	r      Raft
 
 	mu      sync.Mutex // guard field working and closer
 	closer  io.Closer
@@ -103,15 +117,16 @@ type streamWriter struct {
 	done  chan struct{}
 }
 
-func startStreamWriter(id types.ID, fs *stats.FollowerStats, r Raft) *streamWriter {
+func startStreamWriter(id types.ID, status *peerStatus, fs *stats.FollowerStats, r Raft) *streamWriter {
 	w := &streamWriter{
-		id:    id,
-		fs:    fs,
-		r:     r,
-		msgc:  make(chan raftpb.Message, streamBufSize),
-		connc: make(chan *outgoingConn),
-		stopc: make(chan struct{}),
-		done:  make(chan struct{}),
+		id:     id,
+		status: status,
+		fs:     fs,
+		r:      r,
+		msgc:   make(chan raftpb.Message, streamBufSize),
+		connc:  make(chan *outgoingConn),
+		stopc:  make(chan struct{}),
+		done:   make(chan struct{}),
 	}
 	go w.run()
 	return w
@@ -133,7 +148,7 @@ func (cw *streamWriter) run() {
 			if err := enc.encode(linkHeartbeatMessage); err != nil {
 				reportSentFailure(string(t), linkHeartbeatMessage)
 
-				plog.Errorf("failed to heartbeat on stream %s (%v)", t, err)
+				cw.status.deactivate(failureType{source: t.String(), action: "heartbeat"}, err.Error())
 				cw.close()
 				heartbeatc, msgc = nil, nil
 				continue
@@ -155,7 +170,7 @@ func (cw *streamWriter) run() {
 			if err := enc.encode(m); err != nil {
 				reportSentFailure(string(t), m)
 
-				plog.Errorf("failed to send message on stream %s (%v)", t, err)
+				cw.status.deactivate(failureType{source: t.String(), action: "write"}, err.Error())
 				cw.close()
 				heartbeatc, msgc = nil, nil
 				cw.r.ReportUnreachable(m.To)
@@ -183,6 +198,7 @@ func (cw *streamWriter) run() {
 			}
 			flusher = conn.Flusher
 			cw.mu.Lock()
+			cw.status.activate()
 			cw.closer = conn.Closer
 			cw.working = true
 			cw.mu.Unlock()
@@ -237,6 +253,7 @@ type streamReader struct {
 	t        streamType
 	from, to types.ID
 	cid      types.ID
+	status   *peerStatus
 	recvc    chan<- raftpb.Message
 	propc    chan<- raftpb.Message
 	errorc   chan<- error
@@ -249,7 +266,7 @@ type streamReader struct {
 	done       chan struct{}
 }
 
-func startStreamReader(tr http.RoundTripper, picker *urlPicker, t streamType, from, to, cid types.ID, recvc chan<- raftpb.Message, propc chan<- raftpb.Message, errorc chan<- error) *streamReader {
+func startStreamReader(tr http.RoundTripper, picker *urlPicker, t streamType, from, to, cid types.ID, status *peerStatus, recvc chan<- raftpb.Message, propc chan<- raftpb.Message, errorc chan<- error) *streamReader {
 	r := &streamReader{
 		tr:     tr,
 		picker: picker,
@@ -257,6 +274,7 @@ func startStreamReader(tr http.RoundTripper, picker *urlPicker, t streamType, fr
 		from:   from,
 		to:     to,
 		cid:    cid,
+		status: status,
 		recvc:  recvc,
 		propc:  propc,
 		errorc: errorc,
@@ -279,11 +297,10 @@ func (cr *streamReader) run() {
 		}
 		if err != nil {
 			if err != errUnsupportedStreamType {
-				// TODO: log start and end of the stream, and print
-				// error in backoff way
-				plog.Errorf("failed to dial stream %s (%v)", t, err)
+				cr.status.deactivate(failureType{source: t.String(), action: "dial"}, err.Error())
 			}
 		} else {
+			cr.status.activate()
 			err := cr.decodeLoop(rc, t)
 			switch {
 			// all data is read out
@@ -294,7 +311,7 @@ func (cr *streamReader) run() {
 			// heartbeat on the idle stream, so it is expected to time out.
 			case t == streamTypeMsgApp && isNetworkTimeoutError(err):
 			default:
-				plog.Errorf("failed to read message on stream %s (%v)", t, err)
+				cr.status.deactivate(failureType{source: t.String(), action: "read"}, err.Error())
 			}
 		}
 		select {

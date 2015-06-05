@@ -109,12 +109,13 @@ type peer struct {
 
 func startPeer(tr http.RoundTripper, urls types.URLs, local, to, cid types.ID, r Raft, fs *stats.FollowerStats, errorc chan error) *peer {
 	picker := newURLPicker(urls)
+	status := newPeerStatus(to)
 	p := &peer{
 		id:           to,
 		r:            r,
-		msgAppWriter: startStreamWriter(to, fs, r),
-		writer:       startStreamWriter(to, fs, r),
-		pipeline:     newPipeline(tr, picker, local, to, cid, fs, r, errorc),
+		msgAppWriter: startStreamWriter(to, status, fs, r),
+		writer:       startStreamWriter(to, status, fs, r),
+		pipeline:     newPipeline(tr, picker, local, to, cid, status, fs, r, errorc),
 		sendc:        make(chan raftpb.Message),
 		recvc:        make(chan raftpb.Message, recvBufSize),
 		propc:        make(chan raftpb.Message, maxPendingProposals),
@@ -144,8 +145,8 @@ func startPeer(tr http.RoundTripper, urls types.URLs, local, to, cid types.ID, r
 
 	go func() {
 		var paused bool
-		p.msgAppReader = startStreamReader(tr, picker, streamTypeMsgAppV2, local, to, cid, p.recvc, p.propc, errorc)
-		reader := startStreamReader(tr, picker, streamTypeMessage, local, to, cid, p.recvc, p.propc, errorc)
+		p.msgAppReader = startStreamReader(tr, picker, streamTypeMsgAppV2, local, to, cid, status, p.recvc, p.propc, errorc)
+		reader := startStreamReader(tr, picker, streamTypeMessage, local, to, cid, status, p.recvc, p.propc, errorc)
 		for {
 			select {
 			case m := <-p.sendc:
