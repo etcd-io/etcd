@@ -186,8 +186,11 @@ type checkableReadCloser struct {
 }
 
 func (c *checkableReadCloser) Close() error {
-	c.closed = true
-	return c.ReadCloser.Close()
+	if !c.closed {
+		c.closed = true
+		return c.ReadCloser.Close()
+	}
+	return nil
 }
 
 func TestSimpleHTTPClientDoCancelContextResponseBodyClosed(t *testing.T) {
@@ -206,6 +209,43 @@ func TestSimpleHTTPClientDoCancelContextResponseBodyClosed(t *testing.T) {
 
 		tr.respchan <- &http.Response{Body: body}
 		tr.finishCancel <- struct{}{}
+	}()
+
+	_, _, err := c.Do(ctx, &fakeAction{})
+	if err == nil {
+		t.Fatalf("expected non-nil error, got nil")
+	}
+
+	if !body.closed {
+		t.Fatalf("expected closed body")
+	}
+}
+
+type blockingBody struct {
+	c chan struct{}
+}
+
+func (bb *blockingBody) Read(p []byte) (n int, err error) {
+	<-bb.c
+	return 0, errors.New("closed")
+}
+
+func (bb *blockingBody) Close() error {
+	close(bb.c)
+	return nil
+}
+
+func TestSimpleHTTPClientDoCancelContextResponseBodyClosedWithBlockingBody(t *testing.T) {
+	tr := newFakeTransport()
+	c := &simpleHTTPClient{transport: tr}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	body := &checkableReadCloser{ReadCloser: &blockingBody{c: make(chan struct{})}}
+	go func() {
+		tr.respchan <- &http.Response{Body: body}
+		time.Sleep(2 * time.Millisecond)
+		// cancel after the body is received
+		cancel()
 	}()
 
 	_, _, err := c.Do(ctx, &fakeAction{})
