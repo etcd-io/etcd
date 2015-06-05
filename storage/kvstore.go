@@ -1,8 +1,6 @@
 package storage
 
 import (
-	"bytes"
-	"encoding/binary"
 	"errors"
 	"log"
 	"math/rand"
@@ -18,7 +16,11 @@ var (
 	batchInterval = 100 * time.Millisecond
 	keyBucketName = []byte("key")
 
+	scheduledCompactKeyName = []byte("scheduledCompactRev")
+	finishedCompactKeyName  = []byte("finishedCompactRev")
+
 	ErrTnxIDMismatch = errors.New("storage: tnx id mismatch")
+	ErrCompacted     = errors.New("storage: required reversion has been compacted")
 )
 
 type store struct {
@@ -27,8 +29,9 @@ type store struct {
 	b       backend.Backend
 	kvindex index
 
-	currentIndex uint64
-	subIndex     uint32 // tracks next subIndex to put into backend
+	currentRev reversion
+	// the main reversion of the last compaction
+	compactMainRev int64
 
 	tmu   sync.Mutex // protect the tnxID field
 	tnxID int64      // tracks the current tnxID to verify tnx operations
@@ -36,9 +39,10 @@ type store struct {
 
 func newStore(path string) KV {
 	s := &store{
-		b:            backend.New(path, batchInterval, batchLimit),
-		kvindex:      newTreeIndex(),
-		currentIndex: 0,
+		b:              backend.New(path, batchInterval, batchLimit),
+		kvindex:        newTreeIndex(),
+		currentRev:     reversion{},
+		compactMainRev: -1,
 	}
 
 	tx := s.b.BatchTx()
@@ -52,31 +56,31 @@ func newStore(path string) KV {
 
 func (s *store) Put(key, value []byte) int64 {
 	id := s.TnxBegin()
-	s.put(key, value, s.currentIndex+1)
+	s.put(key, value, s.currentRev.main+1)
 	s.TnxEnd(id)
 
-	return int64(s.currentIndex)
+	return int64(s.currentRev.main)
 }
 
-func (s *store) Range(key, end []byte, limit, rangeIndex int64) (kvs []storagepb.KeyValue, index int64) {
+func (s *store) Range(key, end []byte, limit, rangeRev int64) (kvs []storagepb.KeyValue, rev int64, err error) {
 	id := s.TnxBegin()
-	kvs, index = s.rangeKeys(key, end, limit, rangeIndex)
+	kvs, rev, err = s.rangeKeys(key, end, limit, rangeRev)
 	s.TnxEnd(id)
 
-	return kvs, index
+	return kvs, rev, err
 }
 
-func (s *store) DeleteRange(key, end []byte) (n, index int64) {
+func (s *store) DeleteRange(key, end []byte) (n, rev int64) {
 	id := s.TnxBegin()
-	n = s.deleteRange(key, end, s.currentIndex+1)
+	n = s.deleteRange(key, end, s.currentRev.main+1)
 	s.TnxEnd(id)
 
-	return n, int64(s.currentIndex)
+	return n, int64(s.currentRev.main)
 }
 
 func (s *store) TnxBegin() int64 {
 	s.mu.Lock()
-	s.subIndex = 0
+	s.currentRev.sub = 0
 
 	s.tmu.Lock()
 	defer s.tmu.Unlock()
@@ -91,111 +95,119 @@ func (s *store) TnxEnd(tnxID int64) error {
 		return ErrTnxIDMismatch
 	}
 
-	if s.subIndex != 0 {
-		s.currentIndex += 1
+	if s.currentRev.sub != 0 {
+		s.currentRev.main += 1
 	}
-	s.subIndex = 0
+	s.currentRev.sub = 0
 	s.mu.Unlock()
 	return nil
 }
 
-func (s *store) TnxRange(tnxID int64, key, end []byte, limit, rangeIndex int64) (kvs []storagepb.KeyValue, index int64, err error) {
+func (s *store) TnxRange(tnxID int64, key, end []byte, limit, rangeRev int64) (kvs []storagepb.KeyValue, rev int64, err error) {
 	s.tmu.Lock()
 	defer s.tmu.Unlock()
 	if tnxID != s.tnxID {
 		return nil, 0, ErrTnxIDMismatch
 	}
-	kvs, index = s.rangeKeys(key, end, limit, rangeIndex)
-	return kvs, index, nil
+	return s.rangeKeys(key, end, limit, rangeRev)
 }
 
-func (s *store) TnxPut(tnxID int64, key, value []byte) (index int64, err error) {
+func (s *store) TnxPut(tnxID int64, key, value []byte) (rev int64, err error) {
 	s.tmu.Lock()
 	defer s.tmu.Unlock()
 	if tnxID != s.tnxID {
 		return 0, ErrTnxIDMismatch
 	}
 
-	s.put(key, value, s.currentIndex+1)
-	return int64(s.currentIndex + 1), nil
+	s.put(key, value, s.currentRev.main+1)
+	return int64(s.currentRev.main + 1), nil
 }
 
-func (s *store) TnxDeleteRange(tnxID int64, key, end []byte) (n, index int64, err error) {
+func (s *store) TnxDeleteRange(tnxID int64, key, end []byte) (n, rev int64, err error) {
 	s.tmu.Lock()
 	defer s.tmu.Unlock()
 	if tnxID != s.tnxID {
 		return 0, 0, ErrTnxIDMismatch
 	}
 
-	n = s.deleteRange(key, end, s.currentIndex+1)
-	if n != 0 || s.subIndex != 0 {
-		index = int64(s.currentIndex + 1)
+	n = s.deleteRange(key, end, s.currentRev.main+1)
+	if n != 0 || s.currentRev.sub != 0 {
+		rev = int64(s.currentRev.main + 1)
 	}
-	return n, index, nil
+	return n, rev, nil
+}
+
+func (s *store) Compact(rev int64) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if rev <= s.compactMainRev {
+		return ErrCompacted
+	}
+
+	s.compactMainRev = rev
+
+	rbytes := make([]byte, 8+1+8)
+	revToBytes(reversion{main: rev}, rbytes)
+
+	tx := s.b.BatchTx()
+	tx.Lock()
+	tx.UnsafePut(keyBucketName, scheduledCompactKeyName, rbytes)
+	tx.Unlock()
+
+	keep := s.kvindex.Compact(rev)
+
+	go s.scheduleCompaction(rev, keep)
+	return nil
 }
 
 // range is a keyword in Go, add Keys suffix.
-func (s *store) rangeKeys(key, end []byte, limit, rangeIndex int64) (kvs []storagepb.KeyValue, index int64) {
-	if rangeIndex <= 0 {
-		index = int64(s.currentIndex)
-		if s.subIndex > 0 {
-			index += 1
+func (s *store) rangeKeys(key, end []byte, limit, rangeRev int64) (kvs []storagepb.KeyValue, rev int64, err error) {
+	if rangeRev <= 0 {
+		rev = int64(s.currentRev.main)
+		if s.currentRev.sub > 0 {
+			rev += 1
 		}
 	} else {
-		index = rangeIndex
+		rev = rangeRev
+	}
+	if rev <= s.compactMainRev {
+		return nil, 0, ErrCompacted
 	}
 
-	pairs := s.kvindex.Range(key, end, uint64(index))
-	if len(pairs) == 0 {
-		return nil, index
+	_, revpairs := s.kvindex.Range(key, end, int64(rev))
+	if len(revpairs) == 0 {
+		return nil, rev, nil
 	}
-	if limit > 0 && len(pairs) > int(limit) {
-		pairs = pairs[:limit]
+	if limit > 0 && len(revpairs) > int(limit) {
+		revpairs = revpairs[:limit]
 	}
 
 	tx := s.b.BatchTx()
 	tx.Lock()
 	defer tx.Unlock()
+	for _, revpair := range revpairs {
+		revbytes := make([]byte, 8+1+8)
+		revToBytes(revpair, revbytes)
 
-	for _, pair := range pairs {
-		ibytes := make([]byte, 8)
-		endbytes := make([]byte, 8)
-		binary.BigEndian.PutUint64(ibytes, pair.index)
-		binary.BigEndian.PutUint64(endbytes, pair.index+1)
-
-		found := false
-		var kv *storagepb.KeyValue
-
-		vs := tx.UnsafeRange(keyBucketName, ibytes, endbytes, 0)
-		for _, v := range vs {
-			var e storagepb.Event
-			err := e.Unmarshal(v)
-			if err != nil {
-				log.Fatalf("storage: range cannot unmarshal event: %v", err)
-			}
-			if bytes.Equal(e.Kv.Key, pair.key) {
-				if e.Type == storagepb.PUT {
-					kv = &e.Kv
-				} else {
-					kv = nil
-				}
-				found = true
-			}
+		_, vs := tx.UnsafeRange(keyBucketName, revbytes, nil, 0)
+		if len(vs) != 1 {
+			log.Fatalf("storage: range cannot find rev (%d,%d)", revpair.main, revpair.sub)
 		}
 
-		if !found {
-			log.Fatalf("storage: range cannot find key %s at index %d", string(pair.key), pair.index)
+		e := &storagepb.Event{}
+		if err := e.Unmarshal(vs[0]); err != nil {
+			log.Fatalf("storage: cannot unmarshal event: %v", err)
 		}
-		if kv != nil {
-			kvs = append(kvs, *kv)
+		if e.Type == storagepb.PUT {
+			kvs = append(kvs, e.Kv)
 		}
 	}
-	return kvs, index
+	return kvs, rev, nil
 }
 
-func (s *store) put(key, value []byte, index uint64) {
-	ibytes := make([]byte, 8+1+4)
-	indexToBytes(index, s.subIndex, ibytes)
+func (s *store) put(key, value []byte, rev int64) {
+	ibytes := make([]byte, 8+1+8)
+	revToBytes(reversion{main: rev, sub: s.currentRev.sub}, ibytes)
 
 	event := storagepb.Event{
 		Type: storagepb.PUT,
@@ -214,24 +226,24 @@ func (s *store) put(key, value []byte, index uint64) {
 	tx.Lock()
 	defer tx.Unlock()
 	tx.UnsafePut(keyBucketName, ibytes, d)
-	s.kvindex.Put(key, index)
-	s.subIndex += 1
+	s.kvindex.Put(key, reversion{main: rev, sub: s.currentRev.sub})
+	s.currentRev.sub += 1
 }
 
-func (s *store) deleteRange(key, end []byte, index uint64) int64 {
+func (s *store) deleteRange(key, end []byte, rev int64) int64 {
 	var n int64
-	rindex := index
-	if s.subIndex > 0 {
-		rindex += 1
+	rrev := rev
+	if s.currentRev.sub > 0 {
+		rrev += 1
 	}
-	pairs := s.kvindex.Range(key, end, rindex)
+	keys, _ := s.kvindex.Range(key, end, rrev)
 
-	if len(pairs) == 0 {
+	if len(keys) == 0 {
 		return 0
 	}
 
-	for _, pair := range pairs {
-		ok := s.delete(pair.key, index)
+	for _, key := range keys {
+		ok := s.delete(key, rev)
 		if ok {
 			n++
 		}
@@ -239,19 +251,39 @@ func (s *store) deleteRange(key, end []byte, index uint64) int64 {
 	return n
 }
 
-func (s *store) delete(key []byte, index uint64) bool {
-	gindex := index
-	if s.subIndex > 0 {
-		gindex += 1
+func (s *store) delete(key []byte, mainrev int64) bool {
+	grev := mainrev
+	if s.currentRev.sub > 0 {
+		grev += 1
 	}
-	_, err := s.kvindex.Get(key, gindex)
+	rev, err := s.kvindex.Get(key, grev)
 	if err != nil {
 		// key not exist
 		return false
 	}
 
-	ibytes := make([]byte, 8+1+4)
-	indexToBytes(index, s.subIndex, ibytes)
+	tx := s.b.BatchTx()
+	tx.Lock()
+	defer tx.Unlock()
+
+	revbytes := make([]byte, 8+1+8)
+	revToBytes(rev, revbytes)
+
+	_, vs := tx.UnsafeRange(keyBucketName, revbytes, nil, 0)
+	if len(vs) != 1 {
+		log.Fatalf("storage: delete cannot find rev (%d,%d)", rev.main, rev.sub)
+	}
+
+	e := &storagepb.Event{}
+	if err := e.Unmarshal(vs[0]); err != nil {
+		log.Fatalf("storage: cannot unmarshal event: %v", err)
+	}
+	if e.Type == storagepb.DELETE {
+		return false
+	}
+
+	ibytes := make([]byte, 8+1+8)
+	revToBytes(reversion{main: mainrev, sub: s.currentRev.sub}, ibytes)
 
 	event := storagepb.Event{
 		Type: storagepb.DELETE,
@@ -265,20 +297,11 @@ func (s *store) delete(key []byte, index uint64) bool {
 		log.Fatalf("storage: cannot marshal event: %v", err)
 	}
 
-	tx := s.b.BatchTx()
-	tx.Lock()
-	defer tx.Unlock()
 	tx.UnsafePut(keyBucketName, ibytes, d)
-	err = s.kvindex.Tombstone(key, index)
+	err = s.kvindex.Tombstone(key, reversion{main: mainrev, sub: s.currentRev.sub})
 	if err != nil {
 		log.Fatalf("storage: cannot tombstone an existing key (%s): %v", string(key), err)
 	}
-	s.subIndex += 1
+	s.currentRev.sub += 1
 	return true
-}
-
-func indexToBytes(index uint64, subindex uint32, bytes []byte) {
-	binary.BigEndian.PutUint64(bytes, index)
-	bytes[8] = '_'
-	binary.BigEndian.PutUint32(bytes[9:], subindex)
 }

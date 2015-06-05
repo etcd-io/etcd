@@ -13,7 +13,7 @@ type BatchTx interface {
 	Unlock()
 	UnsafeCreateBucket(name []byte)
 	UnsafePut(bucketName []byte, key []byte, value []byte)
-	UnsafeRange(bucketName []byte, key, endKey []byte, limit int64) [][]byte
+	UnsafeRange(bucketName []byte, key, endKey []byte, limit int64) (keys [][]byte, vals [][]byte)
 	UnsafeDelete(bucketName []byte, key []byte)
 	Commit()
 }
@@ -49,28 +49,27 @@ func (t *batchTx) UnsafePut(bucketName []byte, key []byte, value []byte) {
 }
 
 // before calling unsafeRange, the caller MUST hold the lock on tnx.
-func (t *batchTx) UnsafeRange(bucketName []byte, key, endKey []byte, limit int64) [][]byte {
+func (t *batchTx) UnsafeRange(bucketName []byte, key, endKey []byte, limit int64) (keys [][]byte, vs [][]byte) {
 	bucket := t.tx.Bucket(bucketName)
 	if bucket == nil {
 		log.Fatalf("storage: bucket %s does not exist", string(bucketName))
 	}
 
-	var vs [][]byte
-
 	if len(endKey) == 0 {
 		if v := bucket.Get(key); v == nil {
-			return vs
+			return keys, vs
 		} else {
-			return append(vs, v)
+			return append(keys, key), append(vs, v)
 		}
 	}
 
 	c := bucket.Cursor()
 	for ck, cv := c.Seek(key); ck != nil && bytes.Compare(ck, endKey) < 0; ck, cv = c.Next() {
 		vs = append(vs, cv)
+		keys = append(keys, ck)
 	}
 
-	return vs
+	return keys, vs
 }
 
 // before calling unsafeDelete, the caller MUST hold the lock on tnx.
