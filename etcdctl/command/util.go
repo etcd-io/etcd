@@ -171,9 +171,6 @@ func mustNewClient(c *cli.Context) client.Client {
 
 	if c.GlobalBool("debug") {
 		fmt.Fprintf(os.Stderr, "Cluster-Endpoints: %s\n", strings.Join(hc.Endpoints(), ", "))
-	}
-
-	if c.GlobalBool("debug") {
 		client.EnablecURLDebug()
 	}
 

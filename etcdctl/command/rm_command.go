@@ -18,10 +18,11 @@ import (
 	"errors"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/codegangsta/cli"
-	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context" // NewRemoveCommand returns the CLI command for "rm".
+	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/client"
 )
 
+// NewRemoveCommand returns the CLI command for "rm".
 func NewRemoveCommand() cli.Command {
 	return cli.Command{
 		Name:  "rm",
