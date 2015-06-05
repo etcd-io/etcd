@@ -18,7 +18,8 @@ import (
 	"errors"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/codegangsta/cli"
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/go-etcd/etcd"
+	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
+	"github.com/coreos/etcd/client"
 )
 
 // NewRemoveCommand returns the CLI command for "rmdir".
@@ -27,17 +28,25 @@ func NewRemoveDirCommand() cli.Command {
 		Name:  "rmdir",
 		Usage: "removes the key if it is an empty directory or a key-value pair",
 		Action: func(c *cli.Context) {
-			handleDir(c, removeDirCommandFunc)
+			rmdirCommandFunc(c, mustNewKeyAPI(c))
 		},
 	}
 }
 
-// removeDirCommandFunc executes the "rmdir" command.
-func removeDirCommandFunc(c *cli.Context, client *etcd.Client) (*etcd.Response, error) {
+// rmdirCommandFunc executes the "rmdir" command.
+func rmdirCommandFunc(c *cli.Context, ki client.KeysAPI) {
 	if len(c.Args()) == 0 {
-		return nil, errors.New("key required")
+		handleError(ExitBadArgs, errors.New("key required"))
 	}
 	key := c.Args()[0]
 
-	return client.DeleteDir(key)
+	// TODO: handle transport timeout
+	resp, err := ki.Delete(context.TODO(), key, &client.DeleteOptions{Dir: true})
+	if err != nil {
+		handleError(ExitServerError, err)
+	}
+
+	if !resp.Node.Dir {
+		printResponseKey(resp, c.GlobalString("output"))
+	}
 }
