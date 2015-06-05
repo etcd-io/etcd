@@ -120,19 +120,6 @@ func handlePrint(c *cli.Context, fn handlerFunc, pFn printFunc) {
 	}
 }
 
-// Just like handlePrint but also passed the context of the command
-func handleContextualPrint(c *cli.Context, fn handlerFunc, pFn contextualPrintFunc) {
-	resp, err := rawhandle(c, fn)
-
-	if err != nil {
-		handleError(ExitServerError, err)
-	}
-
-	if resp != nil && pFn != nil {
-		pFn(c, resp, c.GlobalString("output"))
-	}
-}
-
 // handleDir handles a request that wants to do operations on a single dir.
 // Dir cannot be printed out, so we set NIL print function here.
 func handleDir(c *cli.Context, fn handlerFunc) {
