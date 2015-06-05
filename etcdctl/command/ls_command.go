@@ -15,10 +15,12 @@
 package command
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/codegangsta/cli"
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/go-etcd/etcd"
+	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
+	"github.com/coreos/etcd/client"
 )
 
 func NewLsCommand() cli.Command {
@@ -31,19 +33,33 @@ func NewLsCommand() cli.Command {
 			cli.BoolFlag{Name: "p", Usage: "append slash (/) to directories"},
 		},
 		Action: func(c *cli.Context) {
-			handleLs(c, lsCommandFunc)
+			lsCommandFunc(c, mustNewKeyAPI(c))
 		},
 	}
 }
 
-// handleLs handles a request that intends to do ls-like operations.
-func handleLs(c *cli.Context, fn handlerFunc) {
-	handleContextualPrint(c, fn, printLs)
+// lsCommandFunc executes the "ls" command.
+func lsCommandFunc(c *cli.Context, ki client.KeysAPI) {
+	if len(c.Args()) == 0 {
+		handleError(ExitBadArgs, errors.New("key required"))
+	}
+
+	key := c.Args()[0]
+	sort := c.Bool("sort")
+	recursive := c.Bool("recursive")
+
+	// TODO: handle transport timeout
+	resp, err := ki.Get(context.TODO(), key, &client.GetOptions{Sort: sort, Recursive: recursive})
+	if err != nil {
+		handleError(ExitServerError, err)
+	}
+
+	printLs(c, resp)
 }
 
 // printLs writes a response out in a manner similar to the `ls` command in unix.
 // Non-empty directories list their contents and files list their name.
-func printLs(c *cli.Context, resp *etcd.Response, format string) {
+func printLs(c *cli.Context, resp *client.Response) {
 	if !resp.Node.Dir {
 		fmt.Println(resp.Node.Key)
 	}
@@ -52,22 +68,8 @@ func printLs(c *cli.Context, resp *etcd.Response, format string) {
 	}
 }
 
-// lsCommandFunc executes the "ls" command.
-func lsCommandFunc(c *cli.Context, client *etcd.Client) (*etcd.Response, error) {
-	key := "/"
-	if len(c.Args()) != 0 {
-		key = c.Args()[0]
-	}
-	recursive := c.Bool("recursive")
-	sort := c.Bool("sort")
-
-	// Retrieve the value from the server.
-	return client.Get(key, sort, recursive)
-}
-
 // rPrint recursively prints out the nodes in the node structure.
-func rPrint(c *cli.Context, n *etcd.Node) {
-
+func rPrint(c *cli.Context, n *client.Node) {
 	if n.Dir && c.Bool("p") {
 		fmt.Println(fmt.Sprintf("%v/", n.Key))
 	} else {
