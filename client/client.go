@@ -293,7 +293,23 @@ func (c *simpleHTTPClient) Do(ctx context.Context, act httpAction) (*http.Respon
 		return nil, nil, err
 	}
 
-	body, err := ioutil.ReadAll(resp.Body)
+	var body []byte
+	done := make(chan struct{})
+	go func() {
+		body, err = ioutil.ReadAll(resp.Body)
+		done <- struct{}{}
+	}()
+
+	select {
+	case <-ctx.Done():
+		err = resp.Body.Close()
+		<-done
+		if err == nil {
+			err = ctx.Err()
+		}
+	case <-done:
+	}
+
 	return resp, body, err
 }
 
