@@ -24,6 +24,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/bgentry/speakeasy"
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/codegangsta/cli"
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/client"
@@ -114,6 +115,22 @@ func getTransport(c *cli.Context) (*http.Transport, error) {
 		KeyFile:  keyfile,
 	}
 	return transport.NewTransport(tls)
+}
+
+func getUsernamePasswordFromFlag(usernameFlag string) (username string, password string, err error) {
+	colon := strings.Index(usernameFlag, ":")
+	if colon == -1 {
+		username = usernameFlag
+		// Prompt for the password.
+		password, err = speakeasy.Ask("Password: ")
+		if err != nil {
+			return "", "", err
+		}
+	} else {
+		username = usernameFlag[:colon]
+		password = usernameFlag[colon+1:]
+	}
+	return username, password, nil
 }
 
 func mustNewKeyAPI(c *cli.Context) client.KeysAPI {
