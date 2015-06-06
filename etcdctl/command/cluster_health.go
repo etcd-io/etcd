@@ -7,11 +7,10 @@ import (
 	"net/http"
 	"os"
 	"sort"
-	"strings"
 	"time"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/codegangsta/cli"
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/go-etcd/etcd"
+	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/etcdserver/stats"
 )
 
@@ -25,61 +24,31 @@ func NewClusterHealthCommand() cli.Command {
 }
 
 func handleClusterHealth(c *cli.Context) {
-	endpoints, err := getEndpoints(c)
-	if err != nil {
-		handleError(ExitServerError, err)
-	}
 	tr, err := getTransport(c)
 	if err != nil {
 		handleError(ExitServerError, err)
 	}
 
-	client := etcd.NewClient(endpoints)
-	client.SetTransport(tr)
-
-	if c.GlobalBool("debug") {
-		go dumpCURL(client)
+	mi := mustNewMembersAPI(c)
+	ms, err := mi.List(context.TODO())
+	if err != nil {
+		handleError(ExitServerError, err)
 	}
 
-	if ok := client.SyncCluster(); !ok {
-		handleError(ExitBadConnection, errors.New("cannot sync with the cluster using endpoints "+strings.Join(endpoints, ", ")))
+	cl := make([]string, 0)
+	for _, m := range ms {
+		cl = append(cl, m.ClientURLs...)
 	}
 
-	// do we have a leader?
-	cl := client.GetCluster()
+	// check the /health endpoint of all members first
+
 	ep, ls0, err := getLeaderStats(tr, cl)
 	if err != nil {
 		fmt.Println("cluster may be unhealthy: failed to connect", cl)
 		os.Exit(1)
 	}
 
-	// is raft stable and making progress?
-	client = etcd.NewClient([]string{ep})
-	client.SetTransport(tr)
-	resp, err := client.Get("/", false, false)
-	if err != nil {
-		fmt.Println("cluster is unhealthy")
-		os.Exit(1)
-	}
-	rt0, ri0 := resp.RaftTerm, resp.RaftIndex
 	time.Sleep(time.Second)
-
-	resp, err = client.Get("/", false, false)
-	if err != nil {
-		fmt.Println("cluster is unhealthy")
-		os.Exit(1)
-	}
-	rt1, ri1 := resp.RaftTerm, resp.RaftIndex
-
-	if rt0 != rt1 {
-		fmt.Println("cluster is unhealthy")
-		os.Exit(1)
-	}
-
-	if ri1 == ri0 {
-		fmt.Println("cluster is unhealthy")
-		os.Exit(1)
-	}
 
 	// are all the members makeing progress?
 	_, ls1, err := getLeaderStats(tr, []string{ep})
