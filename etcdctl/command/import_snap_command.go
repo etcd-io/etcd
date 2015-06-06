@@ -68,10 +68,6 @@ func handleImportSnap(c *cli.Context) {
 		client := etcd.NewClient(endpoints)
 		client.SetTransport(tr)
 
-		if c.GlobalBool("debug") {
-			go dumpCURL(client)
-		}
-
 		if ok := client.SyncCluster(); !ok {
 			handleError(ExitBadConnection, errors.New("cannot sync with the cluster using endpoints "+strings.Join(endpoints, ", ")))
 		}
