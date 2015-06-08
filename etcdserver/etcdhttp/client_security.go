@@ -16,7 +16,6 @@ package etcdhttp
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
 	"path"
 	"strings"
@@ -57,7 +56,7 @@ func hasRootAccess(sec *security.Store, r *http.Request) bool {
 	}
 	ok = rootUser.CheckPassword(password)
 	if !ok {
-		log.Printf("security: Wrong password for user %s", username)
+		plog.Warningf("security: wrong password for user %s", username)
 		return false
 	}
 	for _, role := range rootUser.Roles {
@@ -65,7 +64,7 @@ func hasRootAccess(sec *security.Store, r *http.Request) bool {
 			return true
 		}
 	}
-	log.Printf("security: User %s does not have the %s role for resource %s.", username, security.RootRoleName, r.URL.Path)
+	plog.Warningf("security: user %s does not have the %s role for resource %s.", username, security.RootRoleName, r.URL.Path)
 	return false
 }
 
@@ -83,12 +82,12 @@ func hasKeyPrefixAccess(sec *security.Store, r *http.Request, key string, recurs
 	}
 	user, err := sec.GetUser(username)
 	if err != nil {
-		log.Printf("security: No such user: %s.", username)
+		plog.Warningf("security: no such user: %s.", username)
 		return false
 	}
 	authAsUser := user.CheckPassword(password)
 	if !authAsUser {
-		log.Printf("security: Incorrect password for user: %s.", username)
+		plog.Warningf("security: incorrect password for user: %s.", username)
 		return false
 	}
 	writeAccess := r.Method != "GET" && r.Method != "HEAD"
@@ -102,7 +101,7 @@ func hasKeyPrefixAccess(sec *security.Store, r *http.Request, key string, recurs
 		}
 		return role.HasKeyAccess(key, writeAccess)
 	}
-	log.Printf("security: Invalid access for user %s on key %s.", username, key)
+	plog.Warningf("security: invalid access for user %s on key %s.", username, key)
 	return false
 }
 
@@ -115,7 +114,7 @@ func hasGuestAccess(sec *security.Store, r *http.Request, key string) bool {
 	if role.HasKeyAccess(key, writeAccess) {
 		return true
 	}
-	log.Printf("security: Invalid access for unauthenticated user on resource %s.", key)
+	plog.Warningf("security: invalid access for unauthenticated user on resource %s.", key)
 	return false
 }
 
@@ -157,7 +156,7 @@ func (sh *securityHandler) baseRoles(w http.ResponseWriter, r *http.Request) {
 	rolesCollections.Roles = roles
 	err = json.NewEncoder(w).Encode(rolesCollections)
 	if err != nil {
-		log.Println("etcdhttp: baseRoles error encoding on", r.URL)
+		plog.Warningf("baseRoles error encoding on %s", r.URL)
 	}
 }
 
@@ -197,7 +196,7 @@ func (sh *securityHandler) forRole(w http.ResponseWriter, r *http.Request, role 
 		}
 		err = json.NewEncoder(w).Encode(data)
 		if err != nil {
-			log.Println("etcdhttp: forRole error encoding on", r.URL)
+			plog.Warningf("forRole error encoding on %s", r.URL)
 			return
 		}
 		return
@@ -224,7 +223,7 @@ func (sh *securityHandler) forRole(w http.ResponseWriter, r *http.Request, role 
 		}
 		err = json.NewEncoder(w).Encode(newrole)
 		if err != nil {
-			log.Println("etcdhttp: forRole error encoding on", r.URL)
+			plog.Warningf("forRole error encoding on %s", r.URL)
 			return
 		}
 		return
@@ -262,7 +261,7 @@ func (sh *securityHandler) baseUsers(w http.ResponseWriter, r *http.Request) {
 	usersCollections.Users = users
 	err = json.NewEncoder(w).Encode(usersCollections)
 	if err != nil {
-		log.Println("etcdhttp: baseUsers error encoding on", r.URL)
+		plog.Warningf("baseUsers error encoding on %s", r.URL)
 	}
 }
 
@@ -304,7 +303,7 @@ func (sh *securityHandler) forUser(w http.ResponseWriter, r *http.Request, user 
 
 		err = json.NewEncoder(w).Encode(u)
 		if err != nil {
-			log.Println("etcdhttp: forUser error encoding on", r.URL)
+			plog.Warningf("forUser error encoding on %s", r.URL)
 			return
 		}
 		return
@@ -335,7 +334,7 @@ func (sh *securityHandler) forUser(w http.ResponseWriter, r *http.Request, user 
 		}
 		err = json.NewEncoder(w).Encode(newuser)
 		if err != nil {
-			log.Println("etcdhttp: forUser error encoding on", r.URL)
+			plog.Warningf("forUser error encoding on %s", r.URL)
 			return
 		}
 		return
@@ -368,7 +367,7 @@ func (sh *securityHandler) enableDisable(w http.ResponseWriter, r *http.Request)
 		jsonDict := enabled{isEnabled}
 		err := json.NewEncoder(w).Encode(jsonDict)
 		if err != nil {
-			log.Println("etcdhttp: error encoding security state on", r.URL)
+			plog.Warningf("error encoding security state on %s", r.URL)
 		}
 	case "PUT":
 		err := sh.sec.EnableSecurity()
