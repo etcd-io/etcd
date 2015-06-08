@@ -132,6 +132,8 @@ func handleSecurity(mux *http.ServeMux, sh *securityHandler) {
 }
 
 func (sh *securityHandler) baseRoles(w http.ResponseWriter, r *http.Request) {
+	logHTTPReq(r)
+
 	if !allowMethod(w, r.Method, "GET") {
 		return
 	}
@@ -161,6 +163,8 @@ func (sh *securityHandler) baseRoles(w http.ResponseWriter, r *http.Request) {
 }
 
 func (sh *securityHandler) handleRoles(w http.ResponseWriter, r *http.Request) {
+	logHTTPReq(r)
+
 	subpath := path.Clean(r.URL.Path[len(securityPrefix):])
 	// Split "/roles/rolename/command".
 	// First item is an empty string, second is "roles"
@@ -237,6 +241,8 @@ func (sh *securityHandler) forRole(w http.ResponseWriter, r *http.Request, role 
 }
 
 func (sh *securityHandler) baseUsers(w http.ResponseWriter, r *http.Request) {
+	logHTTPReq(r)
+
 	if !allowMethod(w, r.Method, "GET") {
 		return
 	}
@@ -266,6 +272,8 @@ func (sh *securityHandler) baseUsers(w http.ResponseWriter, r *http.Request) {
 }
 
 func (sh *securityHandler) handleUsers(w http.ResponseWriter, r *http.Request) {
+	logHTTPReq(r)
+
 	subpath := path.Clean(r.URL.Path[len(securityPrefix):])
 	// Split "/users/username".
 	// First item is an empty string, second is "users"
@@ -352,6 +360,8 @@ type enabled struct {
 }
 
 func (sh *securityHandler) enableDisable(w http.ResponseWriter, r *http.Request) {
+	logHTTPReq(r)
+
 	if !allowMethod(w, r.Method, "GET", "PUT", "DELETE") {
 		return
 	}
