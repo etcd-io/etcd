@@ -19,7 +19,6 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
-	"log"
 	"math/rand"
 	"path"
 	"sort"
@@ -80,7 +79,7 @@ func NewMember(name string, peerURLs types.URLs, clusterName string, now *time.T
 // It will panic if there is no PeerURLs available in Member.
 func (m *Member) PickPeerURL() string {
 	if len(m.PeerURLs) == 0 {
-		log.Panicf("member should always have some peer url")
+		plog.Panicf("member should always have some peer url")
 	}
 	return m.PeerURLs[rand.Intn(len(m.PeerURLs))]
 }
@@ -117,7 +116,7 @@ func MemberAttributesStorePath(id types.ID) string {
 func mustParseMemberIDFromKey(key string) types.ID {
 	id, err := types.IDFromString(path.Base(key))
 	if err != nil {
-		log.Panicf("unexpected parse member id error: %v", err)
+		plog.Panicf("unexpected parse member id error: %v", err)
 	}
 	return id
 }

@@ -18,7 +18,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"sort"
 	"time"
@@ -65,34 +64,34 @@ func getClusterFromRemotePeers(urls []string, logerr bool, tr *http.Transport) (
 		resp, err := cc.Get(u + "/members")
 		if err != nil {
 			if logerr {
-				log.Printf("etcdserver: could not get cluster response from %s: %v", u, err)
+				plog.Warningf("could not get cluster response from %s: %v", u, err)
 			}
 			continue
 		}
 		b, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
 			if logerr {
-				log.Printf("etcdserver: could not read the body of cluster response: %v", err)
+				plog.Warningf("could not read the body of cluster response: %v", err)
 			}
 			continue
 		}
 		var membs []*Member
 		if err := json.Unmarshal(b, &membs); err != nil {
 			if logerr {
-				log.Printf("etcdserver: could not unmarshal cluster response: %v", err)
+				plog.Warningf("could not unmarshal cluster response: %v", err)
 			}
 			continue
 		}
 		id, err := types.IDFromString(resp.Header.Get("X-Etcd-Cluster-ID"))
 		if err != nil {
 			if logerr {
-				log.Printf("etcdserver: could not parse the cluster ID from cluster res: %v", err)
+				plog.Warningf("could not parse the cluster ID from cluster res: %v", err)
 			}
 			continue
 		}
 		return newClusterFromMembers("", id, membs), nil
 	}
-	return nil, fmt.Errorf("etcdserver: could not retrieve cluster information from the given urls")
+	return nil, fmt.Errorf("could not retrieve cluster information from the given urls")
 }
 
 // getRemotePeerURLs returns peer urls of remote members in the cluster. The
@@ -127,7 +126,7 @@ func getVersions(cl Cluster, local types.ID, tr *http.Transport) map[string]*ver
 		}
 		ver, err := getVersion(m, tr)
 		if err != nil {
-			log.Printf("etcdserver: cannot get the version of member %s (%v)", m.ID, err)
+			plog.Warningf("cannot get the version of member %s (%v)", m.ID, err)
 			vers[m.ID.String()] = nil
 		} else {
 			vers[m.ID.String()] = ver
@@ -149,12 +148,12 @@ func decideClusterVersion(vers map[string]*version.Versions) *semver.Version {
 		}
 		v, err := semver.NewVersion(ver.Server)
 		if err != nil {
-			log.Printf("etcdserver: cannot understand the version of member %s (%v)", mid, err)
+			plog.Errorf("cannot understand the version of member %s (%v)", mid, err)
 			return nil
 		}
 		if lv.LessThan(*v) {
-			log.Printf("etcdserver: the etcd version %s is not up-to-date", lv.String())
-			log.Printf("etcdserver: member %s has a higher version %s", mid, ver)
+			plog.Warningf("the etcd version %s is not up-to-date", lv.String())
+			plog.Warningf("member %s has a higher version %s", mid, ver)
 		}
 		if cv == nil {
 			cv = v
@@ -195,15 +194,15 @@ func isCompatibleWithVers(vers map[string]*version.Versions, local types.ID, min
 		}
 		clusterv, err := semver.NewVersion(v.Cluster)
 		if err != nil {
-			log.Printf("etcdserver: cannot understand the cluster version of member %s (%v)", id, err)
+			plog.Errorf("cannot understand the cluster version of member %s (%v)", id, err)
 			continue
 		}
 		if clusterv.LessThan(*minV) {
-			log.Printf("etcdserver: the running cluster version(%v) is lower than the minimal cluster version(%v) supported", clusterv.String(), minV.String())
+			plog.Warningf("the running cluster version(%v) is lower than the minimal cluster version(%v) supported", clusterv.String(), minV.String())
 			return false
 		}
 		if maxV.LessThan(*clusterv) {
-			log.Printf("etcdserver: the running cluster version(%v) is higher than the maximum cluster version(%v) supported", clusterv.String(), maxV.String())
+			plog.Warningf("the running cluster version(%v) is higher than the maximum cluster version(%v) supported", clusterv.String(), maxV.String())
 			return false
 		}
 		ok = true
@@ -226,7 +225,7 @@ func getVersion(m *Member, tr *http.Transport) (*version.Versions, error) {
 	for _, u := range m.PeerURLs {
 		resp, err = cc.Get(u + "/version")
 		if err != nil {
-			log.Printf("etcdserver: failed to reach the peerURL(%s) of member %s (%v)", u, m.ID, err)
+			plog.Warningf("failed to reach the peerURL(%s) of member %s (%v)", u, m.ID, err)
 			continue
 		}
 		// etcd 2.0 does not have version endpoint on peer url.
@@ -241,12 +240,12 @@ func getVersion(m *Member, tr *http.Transport) (*version.Versions, error) {
 		b, err := ioutil.ReadAll(resp.Body)
 		resp.Body.Close()
 		if err != nil {
-			log.Printf("etcdserver: failed to read out the response body from the peerURL(%s) of member %s (%v)", u, m.ID, err)
+			plog.Warningf("failed to read out the response body from the peerURL(%s) of member %s (%v)", u, m.ID, err)
 			continue
 		}
 		var vers version.Versions
 		if err := json.Unmarshal(b, &vers); err != nil {
-			log.Printf("etcdserver: failed to unmarshal the response body got from the peerURL(%s) of member %s (%v)", u, m.ID, err)
+			plog.Warningf("failed to unmarshal the response body got from the peerURL(%s) of member %s (%v)", u, m.ID, err)
 			continue
 		}
 		return &vers, nil

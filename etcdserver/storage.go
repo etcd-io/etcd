@@ -16,7 +16,6 @@ package etcdserver
 
 import (
 	"io"
-	"log"
 	"os"
 	"path"
 
@@ -81,18 +80,18 @@ func readWAL(waldir string, snap walpb.Snapshot) (w *wal.WAL, id, cid types.ID, 
 	repaired := false
 	for {
 		if w, err = wal.Open(waldir, snap); err != nil {
-			log.Fatalf("etcdserver: open wal error: %v", err)
+			plog.Fatalf("open wal error: %v", err)
 		}
 		if wmetadata, st, ents, err = w.ReadAll(); err != nil {
 			w.Close()
 			// we can only repair ErrUnexpectedEOF and we never repair twice.
 			if repaired || err != io.ErrUnexpectedEOF {
-				log.Fatalf("etcdserver: read wal error (%v) and cannot be repaired", err)
+				plog.Fatalf("read wal error (%v) and cannot be repaired", err)
 			}
 			if !wal.Repair(waldir) {
-				log.Fatalf("etcdserver: WAL error (%v) cannot be repaired", err)
+				plog.Fatalf("WAL error (%v) cannot be repaired", err)
 			} else {
-				log.Printf("etcdserver: repaired WAL error (%v)", err)
+				plog.Infof("repaired WAL error (%v)", err)
 				repaired = true
 			}
 			continue
@@ -111,10 +110,10 @@ func readWAL(waldir string, snap walpb.Snapshot) (w *wal.WAL, id, cid types.ID, 
 func upgradeDataDir(baseDataDir string, name string, ver version.DataDirVersion) error {
 	switch ver {
 	case version.DataDir0_4:
-		log.Print("etcdserver: converting v0.4 log to v2.0")
+		plog.Infof("converting v0.4 log to v2.0")
 		err := migrate.Migrate4To2(baseDataDir, name)
 		if err != nil {
-			log.Fatalf("etcdserver: failed migrating data-dir: %v", err)
+			plog.Fatalf("failed to migrate data-dir (%v)", err)
 			return err
 		}
 		fallthrough

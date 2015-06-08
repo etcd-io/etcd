@@ -16,7 +16,6 @@ package etcdserver
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"path"
 	"reflect"
@@ -114,25 +113,25 @@ func (c *ServerConfig) PrintWithInitial() { c.print(true) }
 func (c *ServerConfig) Print() { c.print(false) }
 
 func (c *ServerConfig) print(initial bool) {
-	log.Printf("etcdserver: name = %s", c.Name)
+	plog.Infof("name = %s", c.Name)
 	if c.ForceNewCluster {
-		log.Println("etcdserver: force new cluster")
+		plog.Infof("force new cluster")
 	}
-	log.Printf("etcdserver: data dir = %s", c.DataDir)
-	log.Printf("etcdserver: member dir = %s", c.MemberDir())
-	log.Printf("etcdserver: heartbeat = %dms", c.TickMs)
-	log.Printf("etcdserver: election = %dms", c.ElectionTicks*int(c.TickMs))
-	log.Printf("etcdserver: snapshot count = %d", c.SnapCount)
+	plog.Infof("data dir = %s", c.DataDir)
+	plog.Infof("member dir = %s", c.MemberDir())
+	plog.Infof("heartbeat = %dms", c.TickMs)
+	plog.Infof("election = %dms", c.ElectionTicks*int(c.TickMs))
+	plog.Infof("snapshot count = %d", c.SnapCount)
 	if len(c.DiscoveryURL) != 0 {
-		log.Printf("etcdserver: discovery URL= %s", c.DiscoveryURL)
+		plog.Infof("discovery URL= %s", c.DiscoveryURL)
 		if len(c.DiscoveryProxy) != 0 {
-			log.Printf("etcdserver: discovery proxy = %s", c.DiscoveryProxy)
+			plog.Infof("discovery proxy = %s", c.DiscoveryProxy)
 		}
 	}
-	log.Printf("etcdserver: advertise client URLs = %s", c.ClientURLs)
+	plog.Infof("advertise client URLs = %s", c.ClientURLs)
 	if initial {
-		log.Printf("etcdserver: initial advertise peer URLs = %s", c.PeerURLs)
-		log.Printf("etcdserver: initial cluster = %s", c.InitialPeerURLsMap)
+		plog.Infof("initial advertise peer URLs = %s", c.PeerURLs)
+		plog.Infof("initial cluster = %s", c.InitialPeerURLsMap)
 	}
 }
 
