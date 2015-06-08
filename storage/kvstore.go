@@ -2,7 +2,9 @@ package storage
 
 import (
 	"errors"
+	"io"
 	"log"
+	"math"
 	"math/rand"
 	"sync"
 	"time"
@@ -37,7 +39,7 @@ type store struct {
 	tnxID int64      // tracks the current tnxID to verify tnx operations
 }
 
-func newStore(path string) KV {
+func newStore(path string) *store {
 	s := &store{
 		b:              backend.New(path, batchInterval, batchLimit),
 		kvindex:        newTreeIndex(),
@@ -146,7 +148,7 @@ func (s *store) Compact(rev int64) error {
 
 	s.compactMainRev = rev
 
-	rbytes := make([]byte, 8+1+8)
+	rbytes := newRevBytes()
 	revToBytes(reversion{main: rev}, rbytes)
 
 	tx := s.b.BatchTx()
@@ -158,6 +160,80 @@ func (s *store) Compact(rev int64) error {
 
 	go s.scheduleCompaction(rev, keep)
 	return nil
+}
+
+func (s *store) Snapshot(w io.Writer) (int64, error) {
+	s.b.ForceCommit()
+	return s.b.Snapshot(w)
+}
+
+func (s *store) Restore() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	min, max := newRevBytes(), newRevBytes()
+	revToBytes(reversion{}, min)
+	revToBytes(reversion{main: math.MaxInt64, sub: math.MaxInt64}, max)
+
+	// restore index
+	tx := s.b.BatchTx()
+	tx.Lock()
+	_, finishedCompactBytes := tx.UnsafeRange(keyBucketName, finishedCompactKeyName, nil, 0)
+	if len(finishedCompactBytes) != 0 {
+		s.compactMainRev = bytesToRev(finishedCompactBytes[0]).main
+		log.Printf("storage: restore compact to %d", s.compactMainRev)
+	}
+
+	// TODO: limit N to reduce max memory usage
+	keys, vals := tx.UnsafeRange(keyBucketName, min, max, 0)
+	for i, key := range keys {
+		e := &storagepb.Event{}
+		if err := e.Unmarshal(vals[i]); err != nil {
+			log.Fatalf("storage: cannot unmarshal event: %v", err)
+		}
+
+		rev := bytesToRev(key)
+
+		// restore index
+		switch e.Type {
+		case storagepb.PUT:
+			s.kvindex.Put(e.Kv.Key, rev)
+		case storagepb.DELETE:
+			s.kvindex.Tombstone(e.Kv.Key, rev)
+		default:
+			log.Panicf("storage: unexpected event type %s", e.Type)
+		}
+
+		// update reversion
+		s.currentRev = rev
+	}
+
+	_, scheduledCompactBytes := tx.UnsafeRange(keyBucketName, scheduledCompactKeyName, nil, 0)
+	if len(scheduledCompactBytes) != 0 {
+		scheduledCompact := bytesToRev(finishedCompactBytes[0]).main
+		if scheduledCompact > s.compactMainRev {
+			log.Printf("storage: resume scheduled compaction at %d", scheduledCompact)
+			go s.Compact(scheduledCompact)
+		}
+	}
+
+	tx.Unlock()
+
+	return nil
+}
+
+func (s *store) Close() error {
+	return s.b.Close()
+}
+
+func (a *store) Equal(b *store) bool {
+	if a.currentRev != b.currentRev {
+		return false
+	}
+	if a.compactMainRev != b.compactMainRev {
+		return false
+	}
+	return a.kvindex.Equal(b.kvindex)
 }
 
 // range is a keyword in Go, add Keys suffix.
@@ -186,7 +262,7 @@ func (s *store) rangeKeys(key, end []byte, limit, rangeRev int64) (kvs []storage
 	tx.Lock()
 	defer tx.Unlock()
 	for _, revpair := range revpairs {
-		revbytes := make([]byte, 8+1+8)
+		revbytes := newRevBytes()
 		revToBytes(revpair, revbytes)
 
 		_, vs := tx.UnsafeRange(keyBucketName, revbytes, nil, 0)
@@ -206,7 +282,7 @@ func (s *store) rangeKeys(key, end []byte, limit, rangeRev int64) (kvs []storage
 }
 
 func (s *store) put(key, value []byte, rev int64) {
-	ibytes := make([]byte, 8+1+8)
+	ibytes := newRevBytes()
 	revToBytes(reversion{main: rev, sub: s.currentRev.sub}, ibytes)
 
 	event := storagepb.Event{
@@ -266,7 +342,7 @@ func (s *store) delete(key []byte, mainrev int64) bool {
 	tx.Lock()
 	defer tx.Unlock()
 
-	revbytes := make([]byte, 8+1+8)
+	revbytes := newRevBytes()
 	revToBytes(rev, revbytes)
 
 	_, vs := tx.UnsafeRange(keyBucketName, revbytes, nil, 0)
@@ -282,7 +358,7 @@ func (s *store) delete(key []byte, mainrev int64) bool {
 		return false
 	}
 
-	ibytes := make([]byte, 8+1+8)
+	ibytes := newRevBytes()
 	revToBytes(reversion{main: mainrev, sub: s.currentRev.sub}, ibytes)
 
 	event := storagepb.Event{

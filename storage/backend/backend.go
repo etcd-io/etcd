@@ -1,6 +1,7 @@
 package backend
 
 import (
+	"io"
 	"log"
 	"time"
 
@@ -9,6 +10,7 @@ import (
 
 type Backend interface {
 	BatchTx() BatchTx
+	Snapshot(w io.Writer) (n int64, err error)
 	ForceCommit()
 	Close() error
 }
@@ -60,6 +62,14 @@ func (b *backend) ForceCommit() {
 	b.batchTx.Commit()
 }
 
+func (b *backend) Snapshot(w io.Writer) (n int64, err error) {
+	b.db.View(func(tx *bolt.Tx) error {
+		n, err = tx.WriteTo(w)
+		return nil
+	})
+	return n, err
+}
+
 func (b *backend) run() {
 	defer close(b.donec)
 
@@ -70,6 +80,7 @@ func (b *backend) run() {
 		select {
 		case <-time.After(b.batchInterval):
 		case <-b.stopc:
+			b.batchTx.Commit()
 			return
 		}
 		b.batchTx.Commit()

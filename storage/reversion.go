@@ -7,6 +7,10 @@ type reversion struct {
 	sub  int64
 }
 
+func newRevBytes() []byte {
+	return make([]byte, 8+1+8)
+}
+
 func revToBytes(rev reversion, bytes []byte) {
 	binary.BigEndian.PutUint64(bytes, uint64(rev.main))
 	bytes[8] = '_'

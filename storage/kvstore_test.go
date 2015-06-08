@@ -320,6 +320,31 @@ func TestCompaction(t *testing.T) {
 	}
 }
 
+// TODO: test more complicated cases:
+// with unfinished compaction
+// with removed keys
+func TestRestore(t *testing.T) {
+	s0 := newStore("test")
+	defer os.Remove("test")
+
+	s0.Put([]byte("foo"), []byte("bar"))
+	s0.Put([]byte("foo1"), []byte("bar1"))
+	s0.Put([]byte("foo2"), []byte("bar2"))
+	s0.Put([]byte("foo"), []byte("bar11"))
+	s0.Put([]byte("foo1"), []byte("bar12"))
+	s0.Put([]byte("foo2"), []byte("bar13"))
+	s0.Put([]byte("foo1"), []byte("bar14"))
+
+	s0.Close()
+
+	s1 := newStore("test")
+	s1.Restore()
+
+	if !s0.Equal(s1) {
+		t.Errorf("not equal!")
+	}
+}
+
 func BenchmarkStorePut(b *testing.B) {
 	s := newStore("test")
 	defer os.Remove("test")
