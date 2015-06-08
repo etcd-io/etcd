@@ -513,10 +513,10 @@ func stepLeader(r *raft, m pb.Message) {
 		r.bcastAppend()
 	case pb.MsgAppResp:
 		if m.Reject {
-			raftLogger.Infof("%x received msgApp rejection(lastindex: %d) from %x for index %d",
+			raftLogger.Debugf("%x received msgApp rejection(lastindex: %d) from %x for index %d",
 				r.id, m.RejectHint, m.From, m.Index)
 			if pr.maybeDecrTo(m.Index, m.RejectHint) {
-				raftLogger.Infof("%x decreased progress of %x to [%s]", r.id, m.From, pr)
+				raftLogger.Debugf("%x decreased progress of %x to [%s]", r.id, m.From, pr)
 				if pr.State == ProgressStateReplicate {
 					pr.becomeProbe()
 				}
@@ -578,7 +578,7 @@ func stepLeader(r *raft, m pb.Message) {
 		if pr.State == ProgressStateReplicate {
 			pr.becomeProbe()
 		}
-		raftLogger.Infof("%x failed to send message to %x because it is unreachable [%s]", r.id, m.From, pr)
+		raftLogger.Debugf("%x failed to send message to %x because it is unreachable [%s]", r.id, m.From, pr)
 	}
 }
 
@@ -657,7 +657,7 @@ func (r *raft) handleAppendEntries(m pb.Message) {
 	if mlastIndex, ok := r.raftLog.maybeAppend(m.Index, m.LogTerm, m.Commit, m.Entries...); ok {
 		r.send(pb.Message{To: m.From, Type: pb.MsgAppResp, Index: mlastIndex})
 	} else {
-		raftLogger.Infof("%x [logterm: %d, index: %d] rejected msgApp [logterm: %d, index: %d] from %x",
+		raftLogger.Debugf("%x [logterm: %d, index: %d] rejected msgApp [logterm: %d, index: %d] from %x",
 			r.id, r.raftLog.term(m.Index), m.Index, m.LogTerm, m.Index, m.From)
 		r.send(pb.Message{To: m.From, Type: pb.MsgAppResp, Index: m.Index, Reject: true, RejectHint: r.raftLog.lastIndex()})
 	}
