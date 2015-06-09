@@ -270,6 +270,39 @@ func TestIssue2746(t *testing.T) {
 	clusterMustProgress(t, c.Members)
 }
 
+// Ensure etcd will not panic when removing a just started member.
+func TestIssue2904(t *testing.T) {
+	defer afterTest(t)
+	// start 1-member cluster to ensure member 0 is the leader of the cluster.
+	c := NewCluster(t, 1)
+	c.Launch(t)
+	defer c.Terminate(t)
+
+	c.AddMember(t)
+	c.Members[1].Stop(t)
+
+	// send remove member-1 request to the cluster.
+	cc := mustNewHTTPClient(t, c.URLs())
+	ma := client.NewMembersAPI(cc)
+	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+	// the proposal is not committed because member 1 is stopped, but the
+	// proposal is appended to leader's raft log.
+	ma.Remove(ctx, c.Members[1].s.ID().String())
+	cancel()
+
+	// restart member, and expect it to send updateAttr request.
+	// the log in the leader is like this:
+	// [..., remove 1, ..., update attr 1, ...]
+	c.Members[1].Restart(t)
+	// when the member comes back, it ack the proposal to remove itself,
+	// and apply it.
+	<-c.Members[1].s.StopNotify()
+
+	// wait member to be removed.
+	httpmembs := c.HTTPMembers()
+	c.waitMembersMatch(t, httpmembs[:1])
+}
+
 // clusterMustProgress ensures that cluster can make progress. It creates
 // a random key first, and check the new key could be got from all client urls
 // of the cluster.
