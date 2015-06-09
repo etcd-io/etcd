@@ -17,7 +17,6 @@ package etcdserver
 import (
 	"encoding/json"
 	"expvar"
-	"log"
 	"os"
 	"sort"
 	"sync/atomic"
@@ -149,13 +148,13 @@ func (r *raftNode) run() {
 
 			if !raft.IsEmptySnap(rd.Snapshot) {
 				if err := r.storage.SaveSnap(rd.Snapshot); err != nil {
-					log.Fatalf("etcdraft: save snapshot error: %v", err)
+					plog.Fatalf("raft save snapshot error: %v", err)
 				}
 				r.raftStorage.ApplySnapshot(rd.Snapshot)
-				log.Printf("etcdraft: applied incoming snapshot at index %d", rd.Snapshot.Metadata.Index)
+				plog.Infof("raft applied incoming snapshot at index %d", rd.Snapshot.Metadata.Index)
 			}
 			if err := r.storage.Save(rd.HardState, rd.Entries); err != nil {
-				log.Fatalf("etcdraft: save state and entries error: %v", err)
+				plog.Fatalf("raft save state and entries error: %v", err)
 			}
 			r.raftStorage.Append(rd.Entries)
 
@@ -183,7 +182,7 @@ func (r *raftNode) stop() {
 	r.Stop()
 	r.transport.Stop()
 	if err := r.storage.Close(); err != nil {
-		log.Panicf("etcdraft: close storage error: %v", err)
+		plog.Panicf("raft close storage error: %v", err)
 	}
 	close(r.done)
 }
@@ -209,21 +208,21 @@ func startNode(cfg *ServerConfig, cl *cluster, ids []types.ID) (id types.ID, n r
 		},
 	)
 	if err := os.MkdirAll(cfg.SnapDir(), privateDirMode); err != nil {
-		log.Fatalf("etcdserver create snapshot directory error: %v", err)
+		plog.Fatalf("create snapshot directory error: %v", err)
 	}
 	if w, err = wal.Create(cfg.WALDir(), metadata); err != nil {
-		log.Fatalf("etcdserver: create wal error: %v", err)
+		plog.Fatalf("create wal error: %v", err)
 	}
 	peers := make([]raft.Peer, len(ids))
 	for i, id := range ids {
 		ctx, err := json.Marshal((*cl).Member(id))
 		if err != nil {
-			log.Panicf("marshal member should never fail: %v", err)
+			plog.Panicf("marshal member should never fail: %v", err)
 		}
 		peers[i] = raft.Peer{ID: uint64(id), Context: ctx}
 	}
 	id = member.ID
-	log.Printf("etcdserver: start member %s in cluster %s", id, cl.ID())
+	plog.Infof("starting member %s in cluster %s", id, cl.ID())
 	s = raft.NewMemoryStorage()
 	c := &raft.Config{
 		ID:              uint64(id),
@@ -245,7 +244,7 @@ func restartNode(cfg *ServerConfig, snapshot *raftpb.Snapshot) (types.ID, *clust
 	}
 	w, id, cid, st, ents := readWAL(cfg.WALDir(), walsnap)
 
-	log.Printf("etcdserver: restart member %s in cluster %s at commit index %d", id, cid, st.Commit)
+	plog.Infof("restarting member %s in cluster %s at commit index %d", id, cid, st.Commit)
 	cl := newCluster("")
 	cl.SetID(cid)
 	s := raft.NewMemoryStorage()
@@ -277,7 +276,7 @@ func restartAsStandaloneNode(cfg *ServerConfig, snapshot *raftpb.Snapshot) (type
 	// discard the previously uncommitted entries
 	for i, ent := range ents {
 		if ent.Index > st.Commit {
-			log.Printf("etcdserver: discarding %d uncommitted WAL entries ", len(ents)-i)
+			plog.Infof("discarding %d uncommitted WAL entries ", len(ents)-i)
 			ents = ents[:i]
 			break
 		}
@@ -290,13 +289,13 @@ func restartAsStandaloneNode(cfg *ServerConfig, snapshot *raftpb.Snapshot) (type
 	// force commit newly appended entries
 	err := w.Save(raftpb.HardState{}, toAppEnts)
 	if err != nil {
-		log.Fatalf("etcdserver: %v", err)
+		plog.Fatalf("%v", err)
 	}
 	if len(ents) != 0 {
 		st.Commit = ents[len(ents)-1].Index
 	}
 
-	log.Printf("etcdserver: forcing restart of member %s in cluster %s at commit index %d", id, cid, st.Commit)
+	plog.Printf("forcing restart of member %s in cluster %s at commit index %d", id, cid, st.Commit)
 	cl := newCluster("")
 	cl.SetID(cid)
 	s := raft.NewMemoryStorage()
@@ -342,7 +341,7 @@ func getIDs(snap *raftpb.Snapshot, ents []raftpb.Entry) []uint64 {
 		case raftpb.ConfChangeRemoveNode:
 			delete(ids, cc.NodeID)
 		default:
-			log.Panicf("ConfChange Type should be either ConfChangeAddNode or ConfChangeRemoveNode!")
+			plog.Panicf("ConfChange Type should be either ConfChangeAddNode or ConfChangeRemoveNode!")
 		}
 	}
 	sids := make(types.Uint64Slice, 0)
@@ -387,7 +386,7 @@ func createConfigChangeEnts(ids []uint64, self uint64, term, index uint64) []raf
 		}
 		ctx, err := json.Marshal(m)
 		if err != nil {
-			log.Panicf("marshal member should never fail: %v", err)
+			plog.Panicf("marshal member should never fail: %v", err)
 		}
 		cc := &raftpb.ConfChange{
 			Type:    raftpb.ConfChangeAddNode,

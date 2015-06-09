@@ -20,7 +20,6 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
-	"log"
 	"path"
 	"reflect"
 	"sort"
@@ -132,7 +131,7 @@ func (c *cluster) MemberByName(name string) *Member {
 	for _, m := range c.members {
 		if m.Name == name {
 			if memb != nil {
-				log.Panicf("two members with the given name %q exist", name)
+				plog.Panicf("two members with the given name %q exist", name)
 			}
 			memb = m
 		}
@@ -245,7 +244,7 @@ func (c *cluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
 		}
 		m := new(Member)
 		if err := json.Unmarshal(cc.Context, m); err != nil {
-			log.Panicf("unmarshal member should never fail: %v", err)
+			plog.Panicf("unmarshal member should never fail: %v", err)
 		}
 		for _, u := range m.PeerURLs {
 			if urls[u] {
@@ -271,7 +270,7 @@ func (c *cluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
 		}
 		m := new(Member)
 		if err := json.Unmarshal(cc.Context, m); err != nil {
-			log.Panicf("unmarshal member should never fail: %v", err)
+			plog.Panicf("unmarshal member should never fail: %v", err)
 		}
 		for _, u := range m.PeerURLs {
 			if urls[u] {
@@ -279,7 +278,7 @@ func (c *cluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
 			}
 		}
 	default:
-		log.Panicf("ConfChange type should be either AddNode, RemoveNode or UpdateNode")
+		plog.Panicf("ConfChange type should be either AddNode, RemoveNode or UpdateNode")
 	}
 	return nil
 }
@@ -292,11 +291,11 @@ func (c *cluster) AddMember(m *Member) {
 	defer c.Unlock()
 	b, err := json.Marshal(m.RaftAttributes)
 	if err != nil {
-		log.Panicf("marshal raftAttributes should never fail: %v", err)
+		plog.Panicf("marshal raftAttributes should never fail: %v", err)
 	}
 	p := path.Join(memberStoreKey(m.ID), raftAttributesSuffix)
 	if _, err := c.store.Create(p, false, string(b), false, store.Permanent); err != nil {
-		log.Panicf("create raftAttributes should never fail: %v", err)
+		plog.Panicf("create raftAttributes should never fail: %v", err)
 	}
 	c.members[m.ID] = m
 }
@@ -307,11 +306,11 @@ func (c *cluster) RemoveMember(id types.ID) {
 	c.Lock()
 	defer c.Unlock()
 	if _, err := c.store.Delete(memberStoreKey(id), true, true); err != nil {
-		log.Panicf("delete member should never fail: %v", err)
+		plog.Panicf("delete member should never fail: %v", err)
 	}
 	delete(c.members, id)
 	if _, err := c.store.Create(removedMemberStoreKey(id), false, "", false, store.Permanent); err != nil {
-		log.Panicf("create removedMember should never fail: %v", err)
+		plog.Panicf("create removedMember should never fail: %v", err)
 	}
 	c.removed[id] = true
 }
@@ -328,11 +327,11 @@ func (c *cluster) UpdateRaftAttributes(id types.ID, raftAttr RaftAttributes) {
 	defer c.Unlock()
 	b, err := json.Marshal(raftAttr)
 	if err != nil {
-		log.Panicf("marshal raftAttributes should never fail: %v", err)
+		plog.Panicf("marshal raftAttributes should never fail: %v", err)
 	}
 	p := path.Join(memberStoreKey(id), raftAttributesSuffix)
 	if _, err := c.store.Update(p, string(b), store.Permanent); err != nil {
-		log.Panicf("update raftAttributes should never fail: %v", err)
+		plog.Panicf("update raftAttributes should never fail: %v", err)
 	}
 	c.members[id].RaftAttributes = raftAttr
 }
@@ -350,9 +349,9 @@ func (c *cluster) SetVersion(ver *semver.Version) {
 	c.Lock()
 	defer c.Unlock()
 	if c.version != nil {
-		log.Printf("etcdsever: updated the cluster version from %v to %v", c.version.String(), ver.String())
+		plog.Noticef("updated the cluster version from %v to %v", c.version.String(), ver.String())
 	} else {
-		log.Printf("etcdsever: set the initial cluster version to %v", ver.String())
+		plog.Noticef("set the initial cluster version to %v", ver.String())
 	}
 	c.version = ver
 }
@@ -365,12 +364,12 @@ func membersFromStore(st store.Store) (map[types.ID]*Member, map[types.ID]bool) 
 		if isKeyNotFound(err) {
 			return members, removed
 		}
-		log.Panicf("get storeMembers should never fail: %v", err)
+		plog.Panicf("get storeMembers should never fail: %v", err)
 	}
 	for _, n := range e.Node.Nodes {
 		m, err := nodeToMember(n)
 		if err != nil {
-			log.Panicf("nodeToMember should never fail: %v", err)
+			plog.Panicf("nodeToMember should never fail: %v", err)
 		}
 		members[m.ID] = m
 	}
@@ -380,7 +379,7 @@ func membersFromStore(st store.Store) (map[types.ID]*Member, map[types.ID]bool) 
 		if isKeyNotFound(err) {
 			return members, removed
 		}
-		log.Panicf("get storeRemovedMembers should never fail: %v", err)
+		plog.Panicf("get storeRemovedMembers should never fail: %v", err)
 	}
 	for _, n := range e.Node.Nodes {
 		removed[mustParseMemberIDFromKey(n.Key)] = true
@@ -394,7 +393,7 @@ func clusterVersionFromStore(st store.Store) *semver.Version {
 		if isKeyNotFound(err) {
 			return nil
 		}
-		log.Panicf("etcdserver: unexpected error (%v) when getting cluster version from store", err)
+		plog.Panicf("unexpected error (%v) when getting cluster version from store", err)
 	}
 	return semver.Must(semver.NewVersion(*e.Node.Value))
 }

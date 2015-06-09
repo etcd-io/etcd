@@ -15,7 +15,6 @@
 package etcdserver
 
 import (
-	"log"
 	"time"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/prometheus/client_golang/prometheus"
@@ -66,17 +65,17 @@ func monitorFileDescriptor(done <-chan struct{}) {
 	for {
 		used, err := runtime.FDUsage()
 		if err != nil {
-			log.Printf("etcdserver: cannot monitor file descriptor usage (%v)", err)
+			plog.Errorf("cannot monitor file descriptor usage (%v)", err)
 			return
 		}
 		fileDescriptorUsed.Set(float64(used))
 		limit, err := runtime.FDLimit()
 		if err != nil {
-			log.Printf("etcdserver: cannot monitor file descriptor usage (%v)", err)
+			plog.Errorf("cannot monitor file descriptor usage (%v)", err)
 			return
 		}
 		if used >= limit/5*4 {
-			log.Printf("etcdserver: 80%% of the file descriptor limit is used [used = %d, limit = %d]", used, limit)
+			plog.Warningf("80%% of the file descriptor limit is used [used = %d, limit = %d]", used, limit)
 		}
 		select {
 		case <-ticker.C:

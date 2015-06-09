@@ -17,10 +17,7 @@ package etcdserver
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	"log"
 	"net/http"
-	"os"
 	"path"
 	"reflect"
 	"strconv"
@@ -1022,8 +1019,6 @@ func TestPublishStopped(t *testing.T) {
 
 // TestPublishRetry tests that publish will keep retry until success.
 func TestPublishRetry(t *testing.T) {
-	log.SetOutput(ioutil.Discard)
-	defer log.SetOutput(os.Stderr)
 	n := &nodeRecorder{}
 	srv := &EtcdServer{
 		r:        raftNode{Node: n},
