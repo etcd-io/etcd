@@ -78,3 +78,10 @@ func allowMethod(w http.ResponseWriter, m string, ms ...string) bool {
 	http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 	return false
 }
+
+func requestLogger(handler http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		plog.Debugf("[%s] %s remote:%s", r.Method, r.RequestURI, r.RemoteAddr)
+		handler.ServeHTTP(w, r)
+	})
+}

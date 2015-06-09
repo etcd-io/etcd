@@ -104,7 +104,7 @@ func NewClientHandler(server *etcdserver.EtcdServer) http.Handler {
 	mux.Handle(deprecatedMachinesPrefix, dmh)
 	handleSecurity(mux, sech)
 
-	return mux
+	return requestLogger(mux)
 }
 
 type keysHandler struct {
