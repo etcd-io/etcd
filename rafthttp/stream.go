@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"net"
 	"net/http"
 	"path"
@@ -63,7 +62,7 @@ func (t streamType) endpoint() string {
 	case streamTypeMessage:
 		return path.Join(RaftStreamPrefix, "message")
 	default:
-		log.Panicf("rafthttp: unhandled stream type %v", t)
+		plog.Panicf("unhandled stream type %v", t)
 		return ""
 	}
 }
@@ -134,7 +133,7 @@ func (cw *streamWriter) run() {
 			if err := enc.encode(linkHeartbeatMessage); err != nil {
 				reportSentFailure(string(t), linkHeartbeatMessage)
 
-				log.Printf("rafthttp: failed to heartbeat on stream %s (%v)", t, err)
+				plog.Errorf("failed to heartbeat on stream %s (%v)", t, err)
 				cw.close()
 				heartbeatc, msgc = nil, nil
 				continue
@@ -156,7 +155,7 @@ func (cw *streamWriter) run() {
 			if err := enc.encode(m); err != nil {
 				reportSentFailure(string(t), m)
 
-				log.Printf("rafthttp: failed to send message on stream %s (%v)", t, err)
+				plog.Errorf("failed to send message on stream %s (%v)", t, err)
 				cw.close()
 				heartbeatc, msgc = nil, nil
 				cw.r.ReportUnreachable(m.To)
@@ -172,7 +171,7 @@ func (cw *streamWriter) run() {
 				var err error
 				msgAppTerm, err = strconv.ParseUint(conn.termStr, 10, 64)
 				if err != nil {
-					log.Panicf("rafthttp: could not parse term %s to uint (%v)", conn.termStr, err)
+					plog.Panicf("could not parse term %s to uint (%v)", conn.termStr, err)
 				}
 				enc = &msgAppEncoder{w: conn.Writer, fs: cw.fs}
 			case streamTypeMsgAppV2:
@@ -180,7 +179,7 @@ func (cw *streamWriter) run() {
 			case streamTypeMessage:
 				enc = &messageEncoder{w: conn.Writer}
 			default:
-				log.Panicf("rafthttp: unhandled stream type %s", conn.t)
+				plog.Panicf("unhandled stream type %s", conn.t)
 			}
 			flusher = conn.Flusher
 			cw.mu.Lock()
@@ -280,7 +279,9 @@ func (cr *streamReader) run() {
 		}
 		if err != nil {
 			if err != errUnsupportedStreamType {
-				log.Printf("rafthttp: failed to dial stream %s (%v)", t, err)
+				// TODO: log start and end of the stream, and print
+				// error in backoff way
+				plog.Errorf("failed to dial stream %s (%v)", t, err)
 			}
 		} else {
 			err := cr.decodeLoop(rc, t)
@@ -293,7 +294,7 @@ func (cr *streamReader) run() {
 			// heartbeat on the idle stream, so it is expected to time out.
 			case t == streamTypeMsgApp && isNetworkTimeoutError(err):
 			default:
-				log.Printf("rafthttp: failed to read message on stream %s (%v)", t, err)
+				plog.Errorf("failed to read message on stream %s (%v)", t, err)
 			}
 		}
 		select {
@@ -318,7 +319,7 @@ func (cr *streamReader) decodeLoop(rc io.ReadCloser, t streamType) error {
 	case streamTypeMessage:
 		dec = &messageDecoder{r: rc}
 	default:
-		log.Panicf("rafthttp: unhandled stream type %s", t)
+		plog.Panicf("unhandled stream type %s", t)
 	}
 	cr.closer = rc
 	cr.mu.Unlock()
@@ -341,7 +342,8 @@ func (cr *streamReader) decodeLoop(rc io.ReadCloser, t streamType) error {
 			select {
 			case recvc <- m:
 			default:
-				log.Printf("rafthttp: dropping %s from %x because receiving buffer is full",
+				// TODO: log start and end of message dropping
+				plog.Warningf("dropping %s from %x because receiving buffer is full",
 					m.Type, m.From)
 			}
 		}
@@ -442,10 +444,10 @@ func (cr *streamReader) dial(t streamType) (io.ReadCloser, error) {
 
 		switch strings.TrimSuffix(string(b), "\n") {
 		case errIncompatibleVersion.Error():
-			log.Printf("rafthttp: request sent was ignored by peer %s (server version incompatible)", cr.to)
+			plog.Errorf("request sent was ignored by peer %s (server version incompatible)", cr.to)
 			return nil, errIncompatibleVersion
 		case errClusterIDMismatch.Error():
-			log.Printf("rafthttp: request sent was ignored (cluster ID mismatch: remote[%s]=%s, local=%s)",
+			plog.Errorf("request sent was ignored (cluster ID mismatch: remote[%s]=%s, local=%s)",
 				cr.to, resp.Header.Get("X-Etcd-Cluster-ID"), cr.cid)
 			return nil, errClusterIDMismatch
 		default:
