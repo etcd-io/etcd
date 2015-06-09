@@ -161,7 +161,11 @@ func (r *raftNode) run() {
 
 			r.s.send(rd.Messages)
 
-			<-apply.done
+			select {
+			case <-apply.done:
+			case <-r.stopped:
+				return
+			}
 			r.Advance()
 		case <-syncC:
 			r.s.sync(defaultSyncTimeout)

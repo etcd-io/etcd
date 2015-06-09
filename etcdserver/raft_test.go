@@ -18,9 +18,11 @@ import (
 	"encoding/json"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/coreos/etcd/pkg/pbutil"
 	"github.com/coreos/etcd/pkg/types"
+	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
 )
 
@@ -139,5 +141,31 @@ func TestCreateConfigChangeEnts(t *testing.T) {
 		if !reflect.DeepEqual(gents, tt.wents) {
 			t.Errorf("#%d: ents = %v, want %v", i, gents, tt.wents)
 		}
+	}
+}
+
+func TestStopRaftWhenWaitingForApplyDone(t *testing.T) {
+	n := newReadyNode()
+	r := raftNode{
+		Node:        n,
+		applyc:      make(chan apply),
+		storage:     &storageRecorder{},
+		raftStorage: raft.NewMemoryStorage(),
+		transport:   &nopTransporter{},
+	}
+	r.s = &EtcdServer{r: r}
+	go r.run()
+	n.readyc <- raft.Ready{}
+	select {
+	case <-r.applyc:
+	case <-time.After(time.Second):
+		t.Fatalf("failed to receive apply struct")
+	}
+
+	r.stopped <- struct{}{}
+	select {
+	case <-r.done:
+	case <-time.After(time.Second):
+		t.Fatalf("failed to stop raft loop")
 	}
 }
