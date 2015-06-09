@@ -16,7 +16,6 @@ package etcdhttp
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
 
 	"github.com/coreos/etcd/etcdserver"
@@ -59,6 +58,6 @@ func (h *peerMembersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ms := h.cluster.Members()
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(ms); err != nil {
-		log.Printf("etcdhttp: %v", err)
+		plog.Warningf("failed to encode members response (%v)", err)
 	}
 }

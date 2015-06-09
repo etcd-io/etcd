@@ -16,12 +16,12 @@ package etcdhttp
 
 import (
 	"errors"
-	"log"
 	"math"
 	"net/http"
 	"strings"
 	"time"
 
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
 	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/etcdserver/etcdhttp/httptypes"
 	"github.com/coreos/etcd/etcdserver/security"
@@ -38,7 +38,10 @@ const (
 	defaultWatchTimeout = time.Duration(math.MaxInt64)
 )
 
-var errClosed = errors.New("etcdhttp: client closed connection")
+var (
+	plog      = capnslog.NewPackageLogger("github.com/coreos/etcd", "etcdhttp")
+	errClosed = errors.New("etcdhttp: client closed connection")
+)
 
 // writeError logs and writes the given Error to the ResponseWriter
 // If Error is an etcdErr, it is rendered to the ResponseWriter
@@ -56,7 +59,7 @@ func writeError(w http.ResponseWriter, err error) {
 		herr := httptypes.NewHTTPError(http.StatusBadRequest, e.Error())
 		herr.WriteTo(w)
 	default:
-		log.Printf("etcdhttp: unexpected error: %v", err)
+		plog.Errorf("got unexpected response error (%v)", err)
 		herr := httptypes.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
 		herr.WriteTo(w)
 	}
