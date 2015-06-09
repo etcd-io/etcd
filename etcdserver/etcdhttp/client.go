@@ -116,6 +116,8 @@ type keysHandler struct {
 }
 
 func (h *keysHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	logHTTPReq(r)
+
 	if !allowMethod(w, r.Method, "HEAD", "GET", "PUT", "POST", "DELETE") {
 		return
 	}
@@ -162,6 +164,8 @@ type deprecatedMachinesHandler struct {
 }
 
 func (h *deprecatedMachinesHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	logHTTPReq(r)
+
 	if !allowMethod(w, r.Method, "GET", "HEAD") {
 		return
 	}
@@ -177,6 +181,8 @@ type membersHandler struct {
 }
 
 func (h *membersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	logHTTPReq(r)
+
 	if !allowMethod(w, r.Method, "GET", "POST", "DELETE", "PUT") {
 		return
 	}
@@ -285,6 +291,8 @@ type statsHandler struct {
 }
 
 func (h *statsHandler) serveStore(w http.ResponseWriter, r *http.Request) {
+	logHTTPReq(r)
+
 	if !allowMethod(w, r.Method, "GET") {
 		return
 	}
@@ -293,6 +301,8 @@ func (h *statsHandler) serveStore(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *statsHandler) serveSelf(w http.ResponseWriter, r *http.Request) {
+	logHTTPReq(r)
+
 	if !allowMethod(w, r.Method, "GET") {
 		return
 	}
@@ -301,6 +311,8 @@ func (h *statsHandler) serveSelf(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *statsHandler) serveLeader(w http.ResponseWriter, r *http.Request) {
+	logHTTPReq(r)
+
 	if !allowMethod(w, r.Method, "GET") {
 		return
 	}
@@ -314,6 +326,8 @@ func (h *statsHandler) serveLeader(w http.ResponseWriter, r *http.Request) {
 }
 
 func serveVars(w http.ResponseWriter, r *http.Request) {
+	logHTTPReq(r)
+
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	fmt.Fprintf(w, "{\n")
 	first := true
@@ -331,6 +345,8 @@ func serveVars(w http.ResponseWriter, r *http.Request) {
 //       add test for healthHeadler when we have the interface ready.
 func healthHandler(server *etcdserver.EtcdServer) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		logHTTPReq(r)
+
 		if !allowMethod(w, r.Method, "GET") {
 			return
 		}
@@ -358,6 +374,8 @@ func healthHandler(server *etcdserver.EtcdServer) http.HandlerFunc {
 
 func versionHandler(c etcdserver.Cluster, fn func(http.ResponseWriter, *http.Request, string)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		logHTTPReq(r)
+
 		v := c.Version()
 		if v != nil {
 			fn(w, r, v.String())
