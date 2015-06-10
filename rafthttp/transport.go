@@ -26,7 +26,7 @@ import (
 	"github.com/coreos/etcd/raft/raftpb"
 )
 
-var plog = capnslog.NewPackageLogger("github.com/coreos/etcd", "snap")
+var plog = capnslog.NewPackageLogger("github.com/coreos/etcd", "rafthttp")
 
 type Raft interface {
 	Process(ctx context.Context, m raftpb.Message) error

@@ -53,6 +53,7 @@ type pipeline struct {
 
 	tr     http.RoundTripper
 	picker *urlPicker
+	status *peerStatus
 	fs     *stats.FollowerStats
 	r      Raft
 	errorc chan error
@@ -61,26 +62,21 @@ type pipeline struct {
 	// wait for the handling routines
 	wg    sync.WaitGroup
 	stopc chan struct{}
-	sync.Mutex
-	// if the last send was successful, the pipeline is active.
-	// Or it is inactive
-	active  bool
-	errored error
 }
 
-func newPipeline(tr http.RoundTripper, picker *urlPicker, from, to, cid types.ID, fs *stats.FollowerStats, r Raft, errorc chan error) *pipeline {
+func newPipeline(tr http.RoundTripper, picker *urlPicker, from, to, cid types.ID, status *peerStatus, fs *stats.FollowerStats, r Raft, errorc chan error) *pipeline {
 	p := &pipeline{
 		from:   from,
 		to:     to,
 		cid:    cid,
 		tr:     tr,
 		picker: picker,
+		status: status,
 		fs:     fs,
 		r:      r,
 		errorc: errorc,
 		stopc:  make(chan struct{}),
 		msgc:   make(chan raftpb.Message, pipelineBufSize),
-		active: true,
 	}
 	p.wg.Add(connPerPipeline)
 	for i := 0; i < connPerPipeline; i++ {
@@ -105,18 +101,9 @@ func (p *pipeline) handle() {
 		}
 		end := time.Now()
 
-		p.Lock()
 		if err != nil {
 			reportSentFailure(pipelineMsg, m)
-
-			if p.errored == nil || p.errored.Error() != err.Error() {
-				plog.Errorf("failed to post to %s (%v)", p.to, err)
-				p.errored = err
-			}
-			if p.active {
-				plog.Infof("the connection with %s became inactive", p.to)
-				p.active = false
-			}
+			p.status.deactivate(failureType{source: pipelineMsg, action: "write"}, err.Error())
 			if m.Type == raftpb.MsgApp && p.fs != nil {
 				p.fs.Fail()
 			}
@@ -125,11 +112,7 @@ func (p *pipeline) handle() {
 				p.r.ReportSnapshot(m.To, raft.SnapshotFailure)
 			}
 		} else {
-			if !p.active {
-				plog.Infof("the connection with %s became active", p.to)
-				p.active = true
-				p.errored = nil
-			}
+			p.status.activate()
 			if m.Type == raftpb.MsgApp && p.fs != nil {
 				p.fs.Succ(end.Sub(start))
 			}
@@ -138,7 +121,6 @@ func (p *pipeline) handle() {
 			}
 			reportSentDuration(pipelineMsg, m, time.Since(start))
 		}
-		p.Unlock()
 	}
 }
 

@@ -30,7 +30,7 @@ func startRemote(tr http.RoundTripper, urls types.URLs, local, to, cid types.ID,
 	picker := newURLPicker(urls)
 	return &remote{
 		id:       to,
-		pipeline: newPipeline(tr, picker, local, to, cid, nil, r, errorc),
+		pipeline: newPipeline(tr, picker, local, to, cid, newPeerStatus(to), nil, r, errorc),
 	}
 }
 
