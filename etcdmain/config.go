@@ -269,8 +269,12 @@ func (cfg *config) Parse(arguments []string) error {
 	if err != nil {
 		return err
 	}
-	if flags.IsSet(cfg.FlagSet, "listen-client-urls") && !flags.IsSet(cfg.FlagSet, "advertise-client-urls") {
-		return errUnsetAdvertiseClientURLsFlag
+
+	// when etcd runs in member mode user needs to set -advertise-client-urls if -listen-client-urls is set.
+	if cfg.proxy.String() != proxyFlagOn {
+		if flags.IsSet(cfg.FlagSet, "listen-client-urls") && !flags.IsSet(cfg.FlagSet, "advertise-client-urls") {
+			return errUnsetAdvertiseClientURLsFlag
+		}
 	}
 
 	if 5*cfg.TickMs > cfg.ElectionMs {
