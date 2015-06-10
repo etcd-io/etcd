@@ -506,6 +506,42 @@ func TestClusterRemoveMember(t *testing.T) {
 	}
 }
 
+func TestClusterUpdateAttributes(t *testing.T) {
+	name := "etcd"
+	clientURLs := []string{"http://127.0.0.1:4001"}
+	tests := []struct {
+		mems    []*Member
+		removed map[types.ID]bool
+		wmems   []*Member
+	}{
+		// update attributes of existing member
+		{
+			[]*Member{
+				newTestMember(1, nil, "", nil),
+			},
+			nil,
+			[]*Member{
+				newTestMember(1, nil, name, clientURLs),
+			},
+		},
+		// update attributes of removed member
+		{
+			nil,
+			map[types.ID]bool{types.ID(1): true},
+			nil,
+		},
+	}
+	for i, tt := range tests {
+		c := newTestCluster(tt.mems)
+		c.removed = tt.removed
+
+		c.UpdateAttributes(types.ID(1), Attributes{Name: name, ClientURLs: clientURLs})
+		if g := c.Members(); !reflect.DeepEqual(g, tt.wmems) {
+			t.Errorf("#%d: members = %+v, want %+v", i, g, tt.wmems)
+		}
+	}
+}
+
 func TestNodeToMember(t *testing.T) {
 	n := &store.NodeExtern{Key: "/1234", Nodes: []*store.NodeExtern{
 		{Key: "/1234/attributes", Value: stringp(`{"name":"node1","clientURLs":null}`)},

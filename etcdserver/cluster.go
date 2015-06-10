@@ -318,7 +318,16 @@ func (c *cluster) RemoveMember(id types.ID) {
 func (c *cluster) UpdateAttributes(id types.ID, attr Attributes) {
 	c.Lock()
 	defer c.Unlock()
-	c.members[id].Attributes = attr
+	if m, ok := c.members[id]; ok {
+		m.Attributes = attr
+		return
+	}
+	_, ok := c.removed[id]
+	if ok {
+		plog.Debugf("skipped updating attributes of removed member %s", id)
+	} else {
+		plog.Panicf("error updating attributes of unknown member %s", id)
+	}
 	// TODO: update store in this function
 }
 
