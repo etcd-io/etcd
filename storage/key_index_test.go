@@ -39,7 +39,7 @@ func TestKeyIndexGet(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		rev, err := ki.get(tt.rev)
+		rev, _, err := ki.get(tt.rev)
 		if err != tt.werr {
 			t.Errorf("#%d: err = %v, want %v", i, err, tt.werr)
 		}
@@ -55,8 +55,8 @@ func TestKeyIndexPut(t *testing.T) {
 
 	wki := &keyIndex{
 		key:         []byte("foo"),
-		rev:         5,
-		generations: []generation{{ver: 1, revs: []reversion{{main: 5}}}},
+		modified:    reversion{5, 0},
+		generations: []generation{{created: reversion{5, 0}, ver: 1, revs: []reversion{{main: 5}}}},
 	}
 	if !reflect.DeepEqual(ki, wki) {
 		t.Errorf("ki = %+v, want %+v", ki, wki)
@@ -66,8 +66,8 @@ func TestKeyIndexPut(t *testing.T) {
 
 	wki = &keyIndex{
 		key:         []byte("foo"),
-		rev:         7,
-		generations: []generation{{ver: 2, revs: []reversion{{main: 5}, {main: 7}}}},
+		modified:    reversion{7, 0},
+		generations: []generation{{created: reversion{5, 0}, ver: 2, revs: []reversion{{main: 5}, {main: 7}}}},
 	}
 	if !reflect.DeepEqual(ki, wki) {
 		t.Errorf("ki = %+v, want %+v", ki, wki)
@@ -82,8 +82,8 @@ func TestKeyIndexTombstone(t *testing.T) {
 
 	wki := &keyIndex{
 		key:         []byte("foo"),
-		rev:         7,
-		generations: []generation{{ver: 2, revs: []reversion{{main: 5}, {main: 7}}}, {}},
+		modified:    reversion{7, 0},
+		generations: []generation{{created: reversion{5, 0}, ver: 2, revs: []reversion{{main: 5}, {main: 7}}}, {}},
 	}
 	if !reflect.DeepEqual(ki, wki) {
 		t.Errorf("ki = %+v, want %+v", ki, wki)
@@ -94,11 +94,11 @@ func TestKeyIndexTombstone(t *testing.T) {
 	ki.tombstone(15, 0)
 
 	wki = &keyIndex{
-		key: []byte("foo"),
-		rev: 15,
+		key:      []byte("foo"),
+		modified: reversion{15, 0},
 		generations: []generation{
-			{ver: 2, revs: []reversion{{main: 5}, {main: 7}}},
-			{ver: 3, revs: []reversion{{main: 8}, {main: 9}, {main: 15}}},
+			{created: reversion{5, 0}, ver: 2, revs: []reversion{{main: 5}, {main: 7}}},
+			{created: reversion{8, 0}, ver: 3, revs: []reversion{{main: 8}, {main: 9}, {main: 15}}},
 			{},
 		},
 	}
@@ -117,11 +117,11 @@ func TestKeyIndexCompact(t *testing.T) {
 		{
 			1,
 			&keyIndex{
-				key: []byte("foo"),
-				rev: 12,
+				key:      []byte("foo"),
+				modified: reversion{12, 0},
 				generations: []generation{
-					{ver: 3, revs: []reversion{{main: 2}, {main: 4}, {main: 6}}},
-					{ver: 3, revs: []reversion{{main: 8}, {main: 10}, {main: 12}}},
+					{created: reversion{2, 0}, ver: 3, revs: []reversion{{main: 2}, {main: 4}, {main: 6}}},
+					{created: reversion{8, 0}, ver: 3, revs: []reversion{{main: 8}, {main: 10}, {main: 12}}},
 					{},
 				},
 			},
@@ -130,11 +130,11 @@ func TestKeyIndexCompact(t *testing.T) {
 		{
 			2,
 			&keyIndex{
-				key: []byte("foo"),
-				rev: 12,
+				key:      []byte("foo"),
+				modified: reversion{12, 0},
 				generations: []generation{
-					{ver: 3, revs: []reversion{{main: 2}, {main: 4}, {main: 6}}},
-					{ver: 3, revs: []reversion{{main: 8}, {main: 10}, {main: 12}}},
+					{created: reversion{2, 0}, ver: 3, revs: []reversion{{main: 2}, {main: 4}, {main: 6}}},
+					{created: reversion{8, 0}, ver: 3, revs: []reversion{{main: 8}, {main: 10}, {main: 12}}},
 					{},
 				},
 			},
@@ -145,11 +145,11 @@ func TestKeyIndexCompact(t *testing.T) {
 		{
 			3,
 			&keyIndex{
-				key: []byte("foo"),
-				rev: 12,
+				key:      []byte("foo"),
+				modified: reversion{12, 0},
 				generations: []generation{
-					{ver: 3, revs: []reversion{{main: 2}, {main: 4}, {main: 6}}},
-					{ver: 3, revs: []reversion{{main: 8}, {main: 10}, {main: 12}}},
+					{created: reversion{2, 0}, ver: 3, revs: []reversion{{main: 2}, {main: 4}, {main: 6}}},
+					{created: reversion{8, 0}, ver: 3, revs: []reversion{{main: 8}, {main: 10}, {main: 12}}},
 					{},
 				},
 			},
@@ -160,11 +160,11 @@ func TestKeyIndexCompact(t *testing.T) {
 		{
 			4,
 			&keyIndex{
-				key: []byte("foo"),
-				rev: 12,
+				key:      []byte("foo"),
+				modified: reversion{12, 0},
 				generations: []generation{
-					{ver: 3, revs: []reversion{{main: 4}, {main: 6}}},
-					{ver: 3, revs: []reversion{{main: 8}, {main: 10}, {main: 12}}},
+					{created: reversion{2, 0}, ver: 3, revs: []reversion{{main: 4}, {main: 6}}},
+					{created: reversion{8, 0}, ver: 3, revs: []reversion{{main: 8}, {main: 10}, {main: 12}}},
 					{},
 				},
 			},
@@ -175,11 +175,11 @@ func TestKeyIndexCompact(t *testing.T) {
 		{
 			5,
 			&keyIndex{
-				key: []byte("foo"),
-				rev: 12,
+				key:      []byte("foo"),
+				modified: reversion{12, 0},
 				generations: []generation{
-					{ver: 3, revs: []reversion{{main: 4}, {main: 6}}},
-					{ver: 3, revs: []reversion{{main: 8}, {main: 10}, {main: 12}}},
+					{created: reversion{2, 0}, ver: 3, revs: []reversion{{main: 4}, {main: 6}}},
+					{created: reversion{8, 0}, ver: 3, revs: []reversion{{main: 8}, {main: 10}, {main: 12}}},
 					{},
 				},
 			},
@@ -190,10 +190,10 @@ func TestKeyIndexCompact(t *testing.T) {
 		{
 			6,
 			&keyIndex{
-				key: []byte("foo"),
-				rev: 12,
+				key:      []byte("foo"),
+				modified: reversion{12, 0},
 				generations: []generation{
-					{ver: 3, revs: []reversion{{main: 8}, {main: 10}, {main: 12}}},
+					{created: reversion{8, 0}, ver: 3, revs: []reversion{{main: 8}, {main: 10}, {main: 12}}},
 					{},
 				},
 			},
@@ -202,10 +202,10 @@ func TestKeyIndexCompact(t *testing.T) {
 		{
 			7,
 			&keyIndex{
-				key: []byte("foo"),
-				rev: 12,
+				key:      []byte("foo"),
+				modified: reversion{12, 0},
 				generations: []generation{
-					{ver: 3, revs: []reversion{{main: 8}, {main: 10}, {main: 12}}},
+					{created: reversion{8, 0}, ver: 3, revs: []reversion{{main: 8}, {main: 10}, {main: 12}}},
 					{},
 				},
 			},
@@ -214,10 +214,10 @@ func TestKeyIndexCompact(t *testing.T) {
 		{
 			8,
 			&keyIndex{
-				key: []byte("foo"),
-				rev: 12,
+				key:      []byte("foo"),
+				modified: reversion{12, 0},
 				generations: []generation{
-					{ver: 3, revs: []reversion{{main: 8}, {main: 10}, {main: 12}}},
+					{created: reversion{8, 0}, ver: 3, revs: []reversion{{main: 8}, {main: 10}, {main: 12}}},
 					{},
 				},
 			},
@@ -228,10 +228,10 @@ func TestKeyIndexCompact(t *testing.T) {
 		{
 			9,
 			&keyIndex{
-				key: []byte("foo"),
-				rev: 12,
+				key:      []byte("foo"),
+				modified: reversion{12, 0},
 				generations: []generation{
-					{ver: 3, revs: []reversion{{main: 8}, {main: 10}, {main: 12}}},
+					{created: reversion{8, 0}, ver: 3, revs: []reversion{{main: 8}, {main: 10}, {main: 12}}},
 					{},
 				},
 			},
@@ -242,10 +242,10 @@ func TestKeyIndexCompact(t *testing.T) {
 		{
 			10,
 			&keyIndex{
-				key: []byte("foo"),
-				rev: 12,
+				key:      []byte("foo"),
+				modified: reversion{12, 0},
 				generations: []generation{
-					{ver: 3, revs: []reversion{{main: 10}, {main: 12}}},
+					{created: reversion{8, 0}, ver: 3, revs: []reversion{{main: 10}, {main: 12}}},
 					{},
 				},
 			},
@@ -256,10 +256,10 @@ func TestKeyIndexCompact(t *testing.T) {
 		{
 			11,
 			&keyIndex{
-				key: []byte("foo"),
-				rev: 12,
+				key:      []byte("foo"),
+				modified: reversion{12, 0},
 				generations: []generation{
-					{ver: 3, revs: []reversion{{main: 10}, {main: 12}}},
+					{created: reversion{8, 0}, ver: 3, revs: []reversion{{main: 10}, {main: 12}}},
 					{},
 				},
 			},
@@ -271,7 +271,7 @@ func TestKeyIndexCompact(t *testing.T) {
 			12,
 			&keyIndex{
 				key:         []byte("foo"),
-				rev:         12,
+				modified:    reversion{12, 0},
 				generations: []generation{{}},
 			},
 			map[reversion]struct{}{},

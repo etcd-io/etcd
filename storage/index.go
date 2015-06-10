@@ -8,7 +8,7 @@ import (
 )
 
 type index interface {
-	Get(key []byte, atRev int64) (rev reversion, err error)
+	Get(key []byte, atRev int64) (rev, created reversion, err error)
 	Range(key, end []byte, atRev int64) ([][]byte, []reversion)
 	Put(key []byte, rev reversion)
 	Tombstone(key []byte, rev reversion) error
@@ -42,14 +42,14 @@ func (ti *treeIndex) Put(key []byte, rev reversion) {
 	okeyi.put(rev.main, rev.sub)
 }
 
-func (ti *treeIndex) Get(key []byte, atRev int64) (rev reversion, err error) {
+func (ti *treeIndex) Get(key []byte, atRev int64) (modified, created reversion, err error) {
 	keyi := &keyIndex{key: key}
 
 	ti.RLock()
 	defer ti.RUnlock()
 	item := ti.tree.Get(keyi)
 	if item == nil {
-		return reversion{}, ErrReversionNotFound
+		return reversion{}, reversion{}, ErrReversionNotFound
 	}
 
 	keyi = item.(*keyIndex)
@@ -58,7 +58,7 @@ func (ti *treeIndex) Get(key []byte, atRev int64) (rev reversion, err error) {
 
 func (ti *treeIndex) Range(key, end []byte, atRev int64) (keys [][]byte, revs []reversion) {
 	if end == nil {
-		rev, err := ti.Get(key, atRev)
+		rev, _, err := ti.Get(key, atRev)
 		if err != nil {
 			return nil, nil
 		}
@@ -76,7 +76,7 @@ func (ti *treeIndex) Range(key, end []byte, atRev int64) (keys [][]byte, revs []
 			return false
 		}
 		curKeyi := item.(*keyIndex)
-		rev, err := curKeyi.get(atRev)
+		rev, _, err := curKeyi.get(atRev)
 		if err != nil {
 			return true
 		}

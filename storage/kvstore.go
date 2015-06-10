@@ -282,14 +282,24 @@ func (s *store) rangeKeys(key, end []byte, limit, rangeRev int64) (kvs []storage
 }
 
 func (s *store) put(key, value []byte, rev int64) {
+	c := rev
+
+	// if the key exists before, use its previous created
+	_, created, err := s.kvindex.Get(key, rev)
+	if err == nil {
+		c = created.main
+	}
+
 	ibytes := newRevBytes()
 	revToBytes(reversion{main: rev, sub: s.currentRev.sub}, ibytes)
 
 	event := storagepb.Event{
 		Type: storagepb.PUT,
 		Kv: storagepb.KeyValue{
-			Key:   key,
-			Value: value,
+			Key:         key,
+			Value:       value,
+			CreateIndex: c,
+			ModIndex:    rev,
 		},
 	}
 
@@ -332,7 +342,7 @@ func (s *store) delete(key []byte, mainrev int64) bool {
 	if s.currentRev.sub > 0 {
 		grev += 1
 	}
-	rev, err := s.kvindex.Get(key, grev)
+	rev, _, err := s.kvindex.Get(key, grev)
 	if err != nil {
 		// key not exist
 		return false

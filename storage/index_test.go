@@ -126,7 +126,7 @@ func TestContinuousCompact(t *testing.T) {
 
 func verify(t *testing.T, index index, tests []T) {
 	for i, tt := range tests {
-		h, err := index.Get(tt.key, tt.rev)
+		h, _, err := index.Get(tt.key, tt.rev)
 		if err != tt.werr {
 			t.Errorf("#%d: err = %v, want %v", i, err, tt.werr)
 		}
