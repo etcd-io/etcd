@@ -199,7 +199,7 @@ func TestBlockProposal(t *testing.T) {
 		errc <- n.Propose(context.TODO(), []byte("somedata"))
 	}()
 
-	testutil.ForceGosched()
+	testutil.WaitSchedule()
 	select {
 	case err := <-errc:
 		t.Errorf("err = %v, want blocking", err)
@@ -207,7 +207,7 @@ func TestBlockProposal(t *testing.T) {
 	}
 
 	n.Campaign(context.TODO())
-	testutil.ForceGosched()
+	testutil.WaitSchedule()
 	select {
 	case err := <-errc:
 		if err != nil {

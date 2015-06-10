@@ -137,7 +137,7 @@ func TestTransportErrorc(t *testing.T) {
 	}
 	tr.peers[1].Send(raftpb.Message{})
 
-	testutil.ForceGosched()
+	testutil.WaitSchedule()
 	select {
 	case <-errorc:
 	default:

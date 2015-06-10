@@ -604,7 +604,7 @@ func TestSync(t *testing.T) {
 	})
 	srv.sync(10 * time.Second)
 	timer.Stop()
-	testutil.ForceGosched()
+	testutil.WaitSchedule()
 
 	action := n.Action()
 	if len(action) != 1 {
@@ -639,7 +639,7 @@ func TestSyncTimeout(t *testing.T) {
 	timer.Stop()
 
 	// give time for goroutine in sync to cancel
-	testutil.ForceGosched()
+	testutil.WaitSchedule()
 	w := []testutil.Action{{Name: "Propose blocked"}}
 	if g := n.Action(); !reflect.DeepEqual(g, w) {
 		t.Errorf("action = %v, want %v", g, w)
@@ -673,7 +673,7 @@ func TestSyncTrigger(t *testing.T) {
 	}
 	// trigger a sync request
 	st <- time.Time{}
-	testutil.ForceGosched()
+	testutil.WaitSchedule()
 
 	action := n.Action()
 	if len(action) != 1 {
@@ -707,7 +707,7 @@ func TestSnapshot(t *testing.T) {
 		store: st,
 	}
 	srv.snapshot(1, raftpb.ConfState{Nodes: []uint64{1}})
-	testutil.ForceGosched()
+	testutil.WaitSchedule()
 	gaction := st.Action()
 	if len(gaction) != 2 {
 		t.Fatalf("len(action) = %d, want 1", len(gaction))
@@ -783,7 +783,7 @@ func TestRecvSnapshot(t *testing.T) {
 	s.start()
 	n.readyc <- raft.Ready{Snapshot: raftpb.Snapshot{Metadata: raftpb.SnapshotMetadata{Index: 1}}}
 	// make goroutines move forward to receive snapshot
-	testutil.ForceGosched()
+	testutil.WaitSchedule()
 	s.Stop()
 
 	wactions := []testutil.Action{{Name: "Recovery"}}
@@ -824,7 +824,7 @@ func TestApplySnapshotAndCommittedEntries(t *testing.T) {
 		},
 	}
 	// make goroutines move forward to receive snapshot
-	testutil.ForceGosched()
+	testutil.WaitSchedule()
 	s.Stop()
 
 	actions := st.Action()

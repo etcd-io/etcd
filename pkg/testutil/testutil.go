@@ -16,17 +16,13 @@ package testutil
 
 import (
 	"net/url"
-	"runtime"
 	"testing"
+	"time"
 )
 
-// WARNING: This is a hack.
-// Remove this when we are able to block/check the status of the go-routines.
-func ForceGosched() {
-	// possibility enough to sched up to 10 go routines.
-	for i := 0; i < 10000; i++ {
-		runtime.Gosched()
-	}
+// TODO: improve this when we are able to know the schedule or status of target go-routine.
+func WaitSchedule() {
+	time.Sleep(3 * time.Millisecond)
 }
 
 func MustNewURLs(t *testing.T, urls []string) []url.URL {
