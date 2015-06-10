@@ -57,10 +57,14 @@ func PurgeFile(dirname string, suffix string, max uint, interval time.Duration, 
 				err = l.Unlock()
 				if err != nil {
 					plog.Errorf("error unlocking %s when purging file (%v)", l.Name(), err)
+					errC <- err
+					return
 				}
 				err = l.Destroy()
 				if err != nil {
 					plog.Errorf("error destroying lock %s when purging file (%v)", l.Name(), err)
+					errC <- err
+					return
 				}
 				plog.Infof("purged file %s successfully", f)
 				newfnames = newfnames[1:]
