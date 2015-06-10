@@ -15,7 +15,6 @@
 package fileutil
 
 import (
-	"log"
 	"os"
 	"path"
 	"sort"
@@ -57,13 +56,17 @@ func PurgeFile(dirname string, suffix string, max uint, interval time.Duration, 
 				}
 				err = l.Unlock()
 				if err != nil {
-					log.Printf("filePurge: unlock %s error %v", l.Name(), err)
+					plog.Errorf("error unlocking %s when purging file (%v)", l.Name(), err)
+					errC <- err
+					return
 				}
 				err = l.Destroy()
 				if err != nil {
-					log.Printf("filePurge: destroy lock %s error %v", l.Name(), err)
+					plog.Errorf("error destroying lock %s when purging file (%v)", l.Name(), err)
+					errC <- err
+					return
 				}
-				log.Printf("filePurge: successfully removed file %s", f)
+				plog.Infof("purged file %s successfully", f)
 				newfnames = newfnames[1:]
 			}
 			select {
