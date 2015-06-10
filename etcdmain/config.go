@@ -154,7 +154,7 @@ func NewConfig() *config {
 	fs.Var(cfg.fallback, "discovery-fallback", fmt.Sprintf("Valid values include %s", strings.Join(cfg.fallback.Values, ", ")))
 	if err := cfg.fallback.Set(fallbackFlagProxy); err != nil {
 		// Should never happen.
-		log.Panicf("unexpected error setting up discovery-fallback flag: %v", err)
+		plog.Panicf("unexpected error setting up discovery-fallback flag: %v", err)
 	}
 	fs.StringVar(&cfg.dproxy, "discovery-proxy", "", "HTTP proxy to use for traffic to discovery service")
 	fs.StringVar(&cfg.dnsCluster, "discovery-srv", "", "DNS domain used to bootstrap initial cluster")
@@ -163,14 +163,14 @@ func NewConfig() *config {
 	fs.Var(cfg.clusterState, "initial-cluster-state", "Initial cluster configuration for bootstrapping")
 	if err := cfg.clusterState.Set(clusterStateFlagNew); err != nil {
 		// Should never happen.
-		log.Panicf("unexpected error setting up clusterStateFlag: %v", err)
+		plog.Panicf("unexpected error setting up clusterStateFlag: %v", err)
 	}
 
 	// proxy
 	fs.Var(cfg.proxy, "proxy", fmt.Sprintf("Valid values include %s", strings.Join(cfg.proxy.Values, ", ")))
 	if err := cfg.proxy.Set(proxyFlagOff); err != nil {
 		// Should never happen.
-		log.Panicf("unexpected error setting up proxyFlag: %v", err)
+		plog.Panicf("unexpected error setting up proxyFlag: %v", err)
 	}
 
 	// security
@@ -233,7 +233,7 @@ func (cfg *config) Parse(arguments []string) error {
 
 	err := flags.SetFlagsFromEnv(cfg.FlagSet)
 	if err != nil {
-		log.Fatalf("%v", err)
+		plog.Fatalf("%v", err)
 	}
 
 	set := make(map[string]bool)

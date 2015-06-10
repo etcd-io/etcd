@@ -43,7 +43,7 @@ import (
 
 type dirType string
 
-var log = capnslog.NewPackageLogger("github.com/coreos/etcd", "etcdmain")
+var plog = capnslog.NewPackageLogger("github.com/coreos/etcd", "etcdmain")
 
 const (
 	// the owner can make/remove files inside the directory
@@ -61,10 +61,10 @@ func Main() {
 	cfg := NewConfig()
 	err := cfg.Parse(os.Args[1:])
 	if err != nil {
-		log.Printf("error verifying flags, %v. See 'etcd --help'.", err)
+		plog.Printf("error verifying flags, %v. See 'etcd --help'.", err)
 		switch err {
 		case errUnsetAdvertiseClientURLsFlag:
-			log.Printf("When listening on specific address(es), this etcd process must advertise accessible url(s) to each connected client.")
+			plog.Printf("When listening on specific address(es), this etcd process must advertise accessible url(s) to each connected client.")
 		}
 		os.Exit(1)
 	}
@@ -76,7 +76,7 @@ func Main() {
 	if envMaxProcs, err := strconv.Atoi(os.Getenv("GOMAXPROCS")); err == nil {
 		GoMaxProcs = envMaxProcs
 	}
-	log.Printf("setting maximum number of CPUs to %d, total number of available CPUs is %d", GoMaxProcs, runtime.NumCPU())
+	plog.Printf("setting maximum number of CPUs to %d, total number of available CPUs is %d", GoMaxProcs, runtime.NumCPU())
 	runtime.GOMAXPROCS(GoMaxProcs)
 
 	// TODO: check whether fields are set instead of whether fields have default value
@@ -86,19 +86,19 @@ func Main() {
 
 	if cfg.dir == "" {
 		cfg.dir = fmt.Sprintf("%v.etcd", cfg.name)
-		log.Printf("no data-dir provided, using default data-dir ./%s", cfg.dir)
+		plog.Printf("no data-dir provided, using default data-dir ./%s", cfg.dir)
 	}
 
 	which := identifyDataDirOrDie(cfg.dir)
 	if which != dirEmpty {
-		log.Printf("already initialized as %v before, starting as etcd %v...", which, which)
+		plog.Printf("already initialized as %v before, starting as etcd %v...", which, which)
 	}
 
 	shouldProxy := cfg.isProxy() || which == dirProxy
 	if !shouldProxy {
 		stopped, err = startEtcd(cfg)
 		if err == discovery.ErrFullCluster && cfg.shouldFallbackToProxy() {
-			log.Printf("discovery cluster full, falling back to %s", fallbackFlagProxy)
+			plog.Printf("discovery cluster full, falling back to %s", fallbackFlagProxy)
 			shouldProxy = true
 		}
 	}
@@ -108,12 +108,12 @@ func Main() {
 	if err != nil {
 		switch err {
 		case discovery.ErrDuplicateID:
-			log.Printf("member %q has previously registered with discovery service token (%s).", cfg.name, cfg.durl)
-			log.Printf("But etcd could not find vaild cluster configuration in the given data dir (%s).", cfg.dir)
-			log.Printf("Please check the given data dir path if the previous bootstrap succeeded")
-			log.Printf("or use a new discovery token if the previous bootstrap failed.")
+			plog.Printf("member %q has previously registered with discovery service token (%s).", cfg.name, cfg.durl)
+			plog.Printf("But etcd could not find vaild cluster configuration in the given data dir (%s).", cfg.dir)
+			plog.Printf("Please check the given data dir path if the previous bootstrap succeeded")
+			plog.Printf("or use a new discovery token if the previous bootstrap failed.")
 		default:
-			log.Fatalf("%v", err)
+			plog.Fatalf("%v", err)
 		}
 	}
 
@@ -136,7 +136,7 @@ func startEtcd(cfg *config) (<-chan struct{}, error) {
 	}
 
 	if !cfg.peerTLSInfo.Empty() {
-		log.Printf("peerTLS: %s", cfg.peerTLSInfo)
+		plog.Printf("peerTLS: %s", cfg.peerTLSInfo)
 	}
 	plns := make([]net.Listener, 0)
 	for _, u := range cfg.lpurls {
@@ -147,18 +147,18 @@ func startEtcd(cfg *config) (<-chan struct{}, error) {
 		}
 
 		urlStr := u.String()
-		log.Print("listening for peers on ", urlStr)
+		plog.Print("listening for peers on ", urlStr)
 		defer func() {
 			if err != nil {
 				l.Close()
-				log.Print("stopping listening for peers on ", urlStr)
+				plog.Print("stopping listening for peers on ", urlStr)
 			}
 		}()
 		plns = append(plns, l)
 	}
 
 	if !cfg.clientTLSInfo.Empty() {
-		log.Printf("clientTLS: %s", cfg.clientTLSInfo)
+		plog.Printf("clientTLS: %s", cfg.clientTLSInfo)
 	}
 	clns := make([]net.Listener, 0)
 	for _, u := range cfg.lcurls {
@@ -169,11 +169,11 @@ func startEtcd(cfg *config) (<-chan struct{}, error) {
 		}
 
 		urlStr := u.String()
-		log.Print("listening for client requests on ", urlStr)
+		plog.Print("listening for client requests on ", urlStr)
 		defer func() {
 			if err != nil {
 				l.Close()
-				log.Print("stopping listening for client requests on ", urlStr)
+				plog.Print("stopping listening for client requests on ", urlStr)
 			}
 		}()
 		clns = append(clns, l)
@@ -206,7 +206,7 @@ func startEtcd(cfg *config) (<-chan struct{}, error) {
 	osutil.RegisterInterruptHandler(s.Stop)
 
 	if cfg.corsInfo.String() != "" {
-		log.Printf("cors = %s", cfg.corsInfo)
+		plog.Printf("cors = %s", cfg.corsInfo)
 	}
 	ch := &cors.CORSHandler{
 		Handler: etcdhttp.NewClientHandler(s),
@@ -216,7 +216,7 @@ func startEtcd(cfg *config) (<-chan struct{}, error) {
 	// Start the peer server in a goroutine
 	for _, l := range plns {
 		go func(l net.Listener) {
-			log.Fatal(serveHTTP(l, ph, 5*time.Minute))
+			plog.Fatal(serveHTTP(l, ph, 5*time.Minute))
 		}(l)
 	}
 	// Start a client server goroutine for each listen address
@@ -224,7 +224,7 @@ func startEtcd(cfg *config) (<-chan struct{}, error) {
 		go func(l net.Listener) {
 			// read timeout does not work with http close notify
 			// TODO: https://github.com/golang/go/issues/9524
-			log.Fatal(serveHTTP(l, ch, 0))
+			plog.Fatal(serveHTTP(l, ch, 0))
 		}(l)
 	}
 	return s.StopNotify(), nil
@@ -276,10 +276,10 @@ func startProxy(cfg *config) error {
 			return err
 		}
 		peerURLs = urls.PeerURLs
-		log.Printf("proxy: using peer urls %v from cluster file ./%s", peerURLs, clusterfile)
+		plog.Printf("proxy: using peer urls %v from cluster file ./%s", peerURLs, clusterfile)
 	case os.IsNotExist(err):
 		peerURLs = urlsmap.URLs()
-		log.Printf("proxy: using peer urls %v ", peerURLs)
+		plog.Printf("proxy: using peer urls %v ", peerURLs)
 	default:
 		return err
 	}
@@ -290,7 +290,7 @@ func startProxy(cfg *config) error {
 		// TODO: remove the 2nd check when we fix GetClusterFromPeers
 		// GetClusterFromPeers should not return nil error with an invaild empty cluster
 		if err != nil {
-			log.Printf("proxy: %v", err)
+			plog.Printf("proxy: %v", err)
 			return []string{}
 		}
 		if len(gcls.Members()) == 0 {
@@ -301,22 +301,22 @@ func startProxy(cfg *config) error {
 		urls := struct{ PeerURLs []string }{gcls.PeerURLs()}
 		b, err := json.Marshal(urls)
 		if err != nil {
-			log.Printf("proxy: error on marshal peer urls %s", err)
+			plog.Printf("proxy: error on marshal peer urls %s", err)
 			return clientURLs
 		}
 
 		err = ioutil.WriteFile(clusterfile+".bak", b, 0600)
 		if err != nil {
-			log.Printf("proxy: error on writing urls %s", err)
+			plog.Printf("proxy: error on writing urls %s", err)
 			return clientURLs
 		}
 		err = os.Rename(clusterfile+".bak", clusterfile)
 		if err != nil {
-			log.Printf("proxy: error on updating clusterfile %s", err)
+			plog.Printf("proxy: error on updating clusterfile %s", err)
 			return clientURLs
 		}
 		if !reflect.DeepEqual(gcls.PeerURLs(), peerURLs) {
-			log.Printf("proxy: updated peer urls in cluster file from %v to %v", peerURLs, gcls.PeerURLs())
+			plog.Printf("proxy: updated peer urls in cluster file from %v to %v", peerURLs, gcls.PeerURLs())
 		}
 		peerURLs = gcls.PeerURLs()
 
@@ -340,8 +340,8 @@ func startProxy(cfg *config) error {
 
 		host := u.Host
 		go func() {
-			log.Print("proxy: listening for client requests on ", host)
-			log.Fatal(http.Serve(l, ph))
+			plog.Print("proxy: listening for client requests on ", host)
+			plog.Fatal(http.Serve(l, ph))
 		}()
 	}
 	return nil
@@ -379,7 +379,7 @@ func identifyDataDirOrDie(dir string) dirType {
 		if os.IsNotExist(err) {
 			return dirEmpty
 		}
-		log.Fatalf("error listing data dir: %s", dir)
+		plog.Fatalf("error listing data dir: %s", dir)
 	}
 
 	var m, p bool
@@ -390,12 +390,12 @@ func identifyDataDirOrDie(dir string) dirType {
 		case dirProxy:
 			p = true
 		default:
-			log.Printf("found invalid file/dir %s under data dir %s (Ignore this if you are upgrading etcd)", name, dir)
+			plog.Printf("found invalid file/dir %s under data dir %s (Ignore this if you are upgrading etcd)", name, dir)
 		}
 	}
 
 	if m && p {
-		log.Fatal("invalid datadir. Both member and proxy directories exist.")
+		plog.Fatal("invalid datadir. Both member and proxy directories exist.")
 	}
 	if m {
 		return dirMember
@@ -415,7 +415,7 @@ func setupLogging(cfg *config) {
 		repoLog := capnslog.MustRepoLogger("github.com/coreos/etcd")
 		settings, err := repoLog.ParseLogLevelConfig(cfg.logPkgLevels)
 		if err != nil {
-			log.Warningf("Couldn't parse log level string: %s, continuing with default levels", err.Error())
+			plog.Warningf("Couldn't parse log level string: %s, continuing with default levels", err.Error())
 			return
 		}
 		repoLog.SetLogLevel(settings)
