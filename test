@@ -45,12 +45,12 @@ split=(${NO_RACE_TEST// / })
 NO_RACE_TEST=${split[@]/#/${REPO_PATH}/}
 
 echo "Running tests..."
-go test -timeout 3m ${COVER} $@ ${TEST} --race
-go test -timeout 3m ${COVER} $@ ${NO_RACE_TEST}
+go test -timeout 3m ${COVER} $@ ${TEST} --race -cpu 1,2,4
+go test -timeout 3m ${COVER} $@ ${NO_RACE_TEST} -cpu 1,2,4
 
 if [ -n "$INTEGRATION" ]; then
 	echo "Running integration tests..."
-	go test -timeout 3m $@ ${REPO_PATH}/integration -v
+	go test -timeout 3m $@ ${REPO_PATH}/integration -v -cpu 1,2,4
 fi
 
 echo "Checking gofmt..."
