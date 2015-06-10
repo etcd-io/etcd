@@ -39,7 +39,7 @@ func TestPipelineSend(t *testing.T) {
 	p := newPipeline(tr, picker, types.ID(2), types.ID(1), types.ID(1), fs, &fakeRaft{}, nil)
 
 	p.msgc <- raftpb.Message{Type: raftpb.MsgApp}
-	testutil.ForceGosched()
+	testutil.WaitSchedule()
 	p.stop()
 
 	if tr.Request() == nil {
@@ -60,7 +60,7 @@ func TestPipelineExceedMaximalServing(t *testing.T) {
 
 	// keep the sender busy and make the buffer full
 	// nothing can go out as we block the sender
-	testutil.ForceGosched()
+	testutil.WaitSchedule()
 	for i := 0; i < connPerPipeline+pipelineBufSize; i++ {
 		select {
 		case p.msgc <- raftpb.Message{}:
@@ -68,7 +68,7 @@ func TestPipelineExceedMaximalServing(t *testing.T) {
 			t.Errorf("failed to send out message")
 		}
 		// force the sender to grab data
-		testutil.ForceGosched()
+		testutil.WaitSchedule()
 	}
 
 	// try to send a data when we are sure the buffer is full
@@ -80,7 +80,7 @@ func TestPipelineExceedMaximalServing(t *testing.T) {
 
 	// unblock the senders and force them to send out the data
 	tr.unblock()
-	testutil.ForceGosched()
+	testutil.WaitSchedule()
 
 	// It could send new data after previous ones succeed
 	select {
@@ -99,7 +99,7 @@ func TestPipelineSendFailed(t *testing.T) {
 	p := newPipeline(newRespRoundTripper(0, errors.New("blah")), picker, types.ID(2), types.ID(1), types.ID(1), fs, &fakeRaft{}, nil)
 
 	p.msgc <- raftpb.Message{Type: raftpb.MsgApp}
-	testutil.ForceGosched()
+	testutil.WaitSchedule()
 	p.stop()
 
 	fs.Lock()

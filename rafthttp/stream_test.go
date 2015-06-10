@@ -33,7 +33,7 @@ func TestStreamWriterAttachOutgoingConn(t *testing.T) {
 		prevwfc := wfc
 		wfc = &fakeWriteFlushCloser{}
 		sw.attach(&outgoingConn{t: streamTypeMessage, Writer: wfc, Flusher: wfc, Closer: wfc})
-		testutil.ForceGosched()
+		testutil.WaitSchedule()
 		// previous attached connection should be closed
 		if prevwfc != nil && prevwfc.closed != true {
 			t.Errorf("#%d: close of previous connection = %v, want true", i, prevwfc.closed)
@@ -44,7 +44,7 @@ func TestStreamWriterAttachOutgoingConn(t *testing.T) {
 		}
 
 		sw.msgc <- raftpb.Message{}
-		testutil.ForceGosched()
+		testutil.WaitSchedule()
 		// still working
 		if _, ok := sw.writec(); ok != true {
 			t.Errorf("#%d: working status = %v, want true", i, ok)
@@ -73,7 +73,7 @@ func TestStreamWriterAttachBadOutgoingConn(t *testing.T) {
 	sw.attach(&outgoingConn{t: streamTypeMessage, Writer: wfc, Flusher: wfc, Closer: wfc})
 
 	sw.msgc <- raftpb.Message{}
-	testutil.ForceGosched()
+	testutil.WaitSchedule()
 	// no longer working
 	if _, ok := sw.writec(); ok != false {
 		t.Errorf("working = %v, want false", ok)
