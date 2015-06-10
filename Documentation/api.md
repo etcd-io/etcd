@@ -279,14 +279,22 @@ Using the index, we can watch for commands that have happened in the past.
 This is useful for ensuring you don't miss events between watch commands. 
 Typically, we watch again from the `modifiedIndex + 1` of the node we got.
 
+Let's try to watch for the set command of index 7 again:
+
+```sh
+curl 'http://127.0.0.1:2379/v2/keys/foo?wait=true&waitIndex=7'
+```
+
+The watch command returns immediately with the same response as previously.
+
 If we were to restart the watch from index 8 with:
 
 ```sh
 curl 'http://127.0.0.1:2379/v2/keys/foo?wait=true&waitIndex=8'
 ```
 
-Then even if etcd is on index 50, the first event to occur to the `/foo` key
-between 8 and 50 will be returned.
+Then even if etcd is on index 9 or 800, the first event to occur to the `/foo`
+key between 8 and the current index will be returned.
 
 **Note**: etcd only keeps the responses of the most recent 1000 events across all etcd keys. 
 It is recommended to send the response to another thread to process immediately
