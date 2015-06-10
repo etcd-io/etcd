@@ -17,6 +17,7 @@ package proxy
 import (
 	"net/url"
 	"reflect"
+	"sort"
 	"testing"
 )
 
@@ -53,11 +54,14 @@ func TestNewDirectorScheme(t *testing.T) {
 		}
 		got := newDirector(uf)
 
-		for ii, wep := range tt.want {
-			gep := got.ep[ii].URL.String()
-			if !reflect.DeepEqual(wep, gep) {
-				t.Errorf("#%d: want endpoints[%d] = %#v, got = %#v", i, ii, wep, gep)
-			}
+		var gep []string
+		for _, ep := range got.ep {
+			gep = append(gep, ep.URL.String())
+		}
+		sort.Strings(tt.want)
+		sort.Strings(gep)
+		if !reflect.DeepEqual(tt.want, gep) {
+			t.Errorf("#%d: want endpoints = %#v, got = %#v", i, tt.want, gep)
 		}
 	}
 }
