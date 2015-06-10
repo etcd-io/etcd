@@ -1,6 +1,10 @@
 package storage
 
-import "github.com/coreos/etcd/storage/storagepb"
+import (
+	"io"
+
+	"github.com/coreos/etcd/storage/storagepb"
+)
 
 type KV interface {
 	// Range gets the keys in the range at rangeRev.
@@ -35,4 +39,10 @@ type KV interface {
 	TnxDeleteRange(tnxID int64, key, end []byte) (n, rev int64, err error)
 
 	Compact(rev int64) error
+
+	// Write a snapshot to the given io writer
+	Snapshot(w io.Writer) (int64, error)
+
+	Restore() error
+	Close() error
 }

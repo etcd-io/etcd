@@ -13,6 +13,7 @@ type index interface {
 	Put(key []byte, rev reversion)
 	Tombstone(key []byte, rev reversion) error
 	Compact(rev int64) map[reversion]struct{}
+	Equal(b index) bool
 }
 
 type treeIndex struct {
@@ -129,4 +130,26 @@ func compactIndex(rev int64, available map[reversion]struct{}, emptyki *[]*keyIn
 		}
 		return true
 	}
+}
+
+func (a *treeIndex) Equal(bi index) bool {
+	b := bi.(*treeIndex)
+
+	if a.tree.Len() != b.tree.Len() {
+		return false
+	}
+
+	equal := true
+
+	a.tree.Ascend(func(item btree.Item) bool {
+		aki := item.(*keyIndex)
+		bki := b.tree.Get(item).(*keyIndex)
+		if !aki.equal(bki) {
+			equal = false
+			return false
+		}
+		return true
+	})
+
+	return equal
 }

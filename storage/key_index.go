@@ -187,6 +187,25 @@ func (a *keyIndex) Less(b btree.Item) bool {
 	return bytes.Compare(a.key, b.(*keyIndex).key) == -1
 }
 
+func (a *keyIndex) equal(b *keyIndex) bool {
+	if !bytes.Equal(a.key, b.key) {
+		return false
+	}
+	if a.rev != b.rev {
+		return false
+	}
+	if len(a.generations) != len(b.generations) {
+		return false
+	}
+	for i := range a.generations {
+		ag, bg := a.generations[i], b.generations[i]
+		if !ag.equal(bg) {
+			return false
+		}
+	}
+	return true
+}
+
 func (ki *keyIndex) String() string {
 	var s string
 	for _, g := range ki.generations {
@@ -220,4 +239,21 @@ func (g *generation) walk(f func(rev reversion) bool) int {
 
 func (g *generation) String() string {
 	return fmt.Sprintf("g: ver[%d], revs %#v\n", g.ver, g.revs)
+}
+
+func (a generation) equal(b generation) bool {
+	if a.ver != b.ver {
+		return false
+	}
+	if len(a.revs) != len(b.revs) {
+		return false
+	}
+
+	for i := range a.revs {
+		ar, br := a.revs[i], b.revs[i]
+		if ar != br {
+			return false
+		}
+	}
+	return true
 }
