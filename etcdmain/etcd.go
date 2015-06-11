@@ -112,6 +112,7 @@ func Main() {
 			plog.Errorf("But etcd could not find vaild cluster configuration in the given data dir (%s).", cfg.dir)
 			plog.Infof("Please check the given data dir path if the previous bootstrap succeeded")
 			plog.Infof("or use a new discovery token if the previous bootstrap failed.")
+			os.Exit(1)
 		default:
 			plog.Fatalf("%v", err)
 		}
