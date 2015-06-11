@@ -17,12 +17,16 @@ package flags
 import (
 	"flag"
 	"fmt"
-	"log"
 	"net/url"
 	"os"
 	"strings"
 
 	"github.com/coreos/etcd/pkg/transport"
+	"github.com/coreos/pkg/capnslog"
+)
+
+var (
+	plog = capnslog.NewPackageLogger("github.com/coreos/etcd/pkg", "flags")
 )
 
 // DeprecatedFlag encapsulates a flag that may have been previously valid but
@@ -52,7 +56,7 @@ func (f *IgnoredFlag) IsBoolFlag() bool {
 }
 
 func (f *IgnoredFlag) Set(s string) error {
-	log.Printf(`WARNING: flag "-%s" is no longer supported - ignoring.`, f.Name)
+	plog.Warningf(`flag "-%s" is no longer supported - ignoring.`, f.Name)
 	return nil
 }
 
@@ -96,7 +100,7 @@ func SetBindAddrFromAddr(fs *flag.FlagSet, bindAddrFlagName, addrFlagName string
 	addr := *fs.Lookup(addrFlagName).Value.(*IPAddressPort)
 	addr.IP = "::"
 	if err := fs.Set(bindAddrFlagName, addr.String()); err != nil {
-		log.Panicf("etcdmain: unexpected flags set error: %v", err)
+		plog.Panicf("unexpected flags set error: %v", err)
 	}
 }
 

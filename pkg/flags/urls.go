@@ -15,7 +15,6 @@
 package flags
 
 import (
-	"log"
 	"strings"
 
 	"github.com/coreos/etcd/pkg/types"
@@ -47,7 +46,7 @@ func (us *URLsValue) String() string {
 func NewURLsValue(init string) *URLsValue {
 	v := &URLsValue{}
 	if err := v.Set(init); err != nil {
-		log.Panicf("new URLsValue should never fail: %v", err)
+		plog.Panicf("new URLsValue should never fail: %v", err)
 	}
 	return v
 }
