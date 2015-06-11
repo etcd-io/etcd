@@ -16,7 +16,6 @@ package discovery
 
 import (
 	"fmt"
-	"log"
 	"net"
 	"strings"
 
@@ -41,7 +40,7 @@ func SRVGetCluster(name, dns string, defaultToken string, apurls types.URLs) (st
 	for _, url := range apurls {
 		tcpAddr, err := resolveTCPAddr("tcp", url.Host)
 		if err != nil {
-			log.Printf("discovery: Couldn't resolve host %s during SRV discovery", url.Host)
+			plog.Errorf("couldn't resolve host %s during SRV discovery", url.Host)
 			return "", "", err
 		}
 		tcpAPUrls = append(tcpAPUrls, tcpAddr.String())
@@ -57,7 +56,7 @@ func SRVGetCluster(name, dns string, defaultToken string, apurls types.URLs) (st
 			host := net.JoinHostPort(target, fmt.Sprintf("%d", srv.Port))
 			tcpAddr, err := resolveTCPAddr("tcp", host)
 			if err != nil {
-				log.Printf("discovery: Couldn't resolve host %s during SRV discovery", host)
+				plog.Warningf("couldn't resolve host %s during SRV discovery", host)
 				continue
 			}
 			n := ""
@@ -71,7 +70,7 @@ func SRVGetCluster(name, dns string, defaultToken string, apurls types.URLs) (st
 				tempName += 1
 			}
 			stringParts = append(stringParts, fmt.Sprintf("%s=%s%s", n, prefix, host))
-			log.Printf("discovery: Got bootstrap from DNS for %s at %s%s", service, prefix, host)
+			plog.Noticef("got bootstrap from DNS for %s at %s%s", service, prefix, host)
 		}
 		return nil
 	}
@@ -79,16 +78,16 @@ func SRVGetCluster(name, dns string, defaultToken string, apurls types.URLs) (st
 	failCount := 0
 	err := updateNodeMap("etcd-server-ssl", "https://")
 	if err != nil {
-		log.Printf("discovery: Error querying DNS SRV records for _etcd-server-ssl %s", err)
+		plog.Warningf("error querying DNS SRV records for _etcd-server-ssl %s", err)
 		failCount += 1
 	}
 	err = updateNodeMap("etcd-server", "http://")
 	if err != nil {
-		log.Printf("discovery: Error querying DNS SRV records for _etcd-server %s", err)
+		plog.Warningf("discovery: error querying DNS SRV records for _etcd-server %s", err)
 		failCount += 1
 	}
 	if failCount == 2 {
-		log.Printf("discovery: SRV discovery failed: too many errors querying DNS SRV records")
+		plog.Errorf("SRV discovery failed: too many errors querying DNS SRV records")
 		return "", "", err
 	}
 	return strings.Join(stringParts, ","), defaultToken, nil
