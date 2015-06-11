@@ -16,7 +16,6 @@ package wal
 
 import (
 	"io"
-	"log"
 	"os"
 	"path"
 
@@ -58,35 +57,35 @@ func Repair(dirpath string) bool {
 		case io.EOF:
 			return true
 		case io.ErrUnexpectedEOF:
-			log.Printf("wal: repairing %v", f.Name())
+			plog.Noticef("repairing %v", f.Name())
 			bf, bferr := os.Create(f.Name() + ".broken")
 			if bferr != nil {
-				log.Printf("wal: could not repair %v, failed to create backup file", f.Name())
+				plog.Errorf("could not repair %v, failed to create backup file", f.Name())
 				return false
 			}
 			defer bf.Close()
 
 			if _, err = f.Seek(0, os.SEEK_SET); err != nil {
-				log.Printf("wal: could not repair %v, failed to read file", f.Name())
+				plog.Errorf("could not repair %v, failed to read file", f.Name())
 				return false
 			}
 
 			if _, err = io.Copy(bf, f); err != nil {
-				log.Printf("wal: could not repair %v, failed to copy file", f.Name())
+				plog.Errorf("could not repair %v, failed to copy file", f.Name())
 				return false
 			}
 
 			if err = f.Truncate(int64(n)); err != nil {
-				log.Printf("wal: could not repair %v, failed to truncate file", f.Name())
+				plog.Errorf("could not repair %v, failed to truncate file", f.Name())
 				return false
 			}
 			if err = f.Sync(); err != nil {
-				log.Printf("wal: could not repair %v, failed to sync file", f.Name())
+				plog.Errorf("could not repair %v, failed to sync file", f.Name())
 				return false
 			}
 			return true
 		default:
-			log.Printf("wal: could not repair error (%v)", err)
+			plog.Errorf("could not repair error (%v)", err)
 			return false
 		}
 	}
