@@ -23,13 +23,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/crypto/bcrypt"
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	etcderr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/pkg/types"
-	"github.com/coreos/pkg/capnslog"
 )
 
 const (
