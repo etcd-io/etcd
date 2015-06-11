@@ -16,7 +16,6 @@ package security
 
 import (
 	"encoding/json"
-	"log"
 	"path"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
@@ -46,7 +45,7 @@ func (s *Store) ensureSecurityDirectories() error {
 					continue
 				}
 			}
-			log.Println("security: Trying to create security directories in the store; failed:", err)
+			plog.Errorf("failed to create security directories in the store (%v)", err)
 			return err
 		}
 	}
@@ -93,14 +92,14 @@ func (s *Store) detectSecurity() bool {
 				return false
 			}
 		}
-		log.Println("security: Trying to detect security settings failed:", err)
+		plog.Errorf("failed to detect security settings (%s)", err)
 		return false
 	}
 
 	var u bool
 	err = json.Unmarshal([]byte(*value.Event.Node.Value), &u)
 	if err != nil {
-		log.Println("security: internal bookkeeping value for enabled isn't valid JSON")
+		plog.Errorf("internal bookkeeping value for enabled isn't valid JSON (%v)", err)
 		return false
 	}
 	return u
