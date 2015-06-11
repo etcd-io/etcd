@@ -15,7 +15,7 @@ Using an out-of-date data directory can lead to inconsistency as the member had 
 For maximum safety, if an etcd member suffers any sort of data corruption or loss, it must be removed from the cluster.
 Once removed the member can be re-added with an empty data directory.
 
-[members-api]: other_apis.md#members-api
+[members-api]: https://github.com/coreos/etcd/blob/master/Documentation/other_apis.md#members-api
 
 #### Contents
 
@@ -57,7 +57,7 @@ As you can see, adding another member to bring the size of cluster up to an odd 
 
 #### Changing Cluster Size
 
-After your cluster is up and running, adding or removing members is done via [runtime reconfiguration](runtime-configuration.md), which allows the cluster to be modified without downtime. The `etcdctl` tool has a `member list`, `member add` and `member remove` commands to complete this process.
+After your cluster is up and running, adding or removing members is done via [runtime reconfiguration](https://github.com/coreos/etcd/blob/master/Documentation/runtime-configuration.md), which allows the cluster to be modified without downtime. The `etcdctl` tool has a `member list`, `member add` and `member remove` commands to complete this process.
 
 ### Member Migration
 
@@ -133,7 +133,7 @@ etcd -name node1 \
 -advertise-client-urls http://10.0.1.13:2379,http://127.0.0.1:2379
 ```
 
-[change peer url]: other_apis.md#change-the-peer-urls-of-a-member
+[change peer url]: https://github.com/coreos/etcd/blob/master/Documentation/other_apis.md#change-the-peer-urls-of-a-member
 
 ### Disaster Recovery
 
@@ -181,9 +181,9 @@ Once you have verified that etcd has started successfully, shut it down and move
 
 #### Restoring the cluster
 
-Now that the node is running successfully, you should [change its advertised peer URLs](other_apis.md#change-the-peer-urls-of-a-member), as the `--force-new-cluster` has set the peer URL to the default (listening on localhost).
+Now that the node is running successfully, you should [change its advertised peer URLs](https://github.com/coreos/etcd/blob/master/Documentation/other_apis.md#change-the-peer-urls-of-a-member), as the `--force-new-cluster` has set the peer URL to the default (listening on localhost).
 
-You can then add more nodes to the cluster and restore resiliency. See the [runtime configuration](runtime-configuration.md) guide for more details.
+You can then add more nodes to the cluster and restore resiliency. See the [runtime configuration](https://github.com/coreos/etcd/blob/master/Documentation/runtime-configuration.md) guide for more details.
 
 ### Client Request Timeout
 
