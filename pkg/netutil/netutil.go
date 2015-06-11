@@ -16,14 +16,17 @@ package netutil
 
 import (
 	"encoding/base64"
-	"log"
 	"net"
 	"net/http"
 	"net/url"
 	"strings"
+
+	"github.com/coreos/pkg/capnslog"
 )
 
 var (
+	plog = capnslog.NewPackageLogger("github.com/coreos/etcd/pkg", "netutil")
+
 	// indirection for testing
 	resolveTCPAddr = net.ResolveTCPAddr
 )
@@ -36,7 +39,7 @@ func ResolveTCPAddrs(urls ...[]url.URL) error {
 		for i, u := range us {
 			host, _, err := net.SplitHostPort(u.Host)
 			if err != nil {
-				log.Printf("netutil: Could not parse url %s during tcp resolving.", u.Host)
+				plog.Errorf("could not parse url %s during tcp resolving", u.Host)
 				return err
 			}
 			if host == "localhost" {
@@ -47,10 +50,10 @@ func ResolveTCPAddrs(urls ...[]url.URL) error {
 			}
 			tcpAddr, err := resolveTCPAddr("tcp", u.Host)
 			if err != nil {
-				log.Printf("netutil: Could not resolve host: %s", u.Host)
+				plog.Errorf("could not resolve host %s", u.Host)
 				return err
 			}
-			log.Printf("netutil: Resolving %s to %s", u.Host, tcpAddr.String())
+			plog.Infof("resolving %s to %s", u.Host, tcpAddr.String())
 			us[i].Host = tcpAddr.String()
 		}
 	}
