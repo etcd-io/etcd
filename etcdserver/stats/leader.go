@@ -16,7 +16,6 @@ package stats
 
 import (
 	"encoding/json"
-	"log"
 	"math"
 	"sync"
 	"time"
@@ -47,7 +46,7 @@ func (ls *LeaderStats) JSON() []byte {
 	b, err := json.Marshal(stats)
 	// TODO(jonboulle): appropriate error handling?
 	if err != nil {
-		log.Printf("stats: error marshalling leader stats: %v", err)
+		plog.Errorf("error marshalling leader stats (%v)", err)
 	}
 	return b
 }

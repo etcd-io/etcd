@@ -17,13 +17,13 @@ package security
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"path"
 	"reflect"
 	"sort"
 	"strings"
 	"time"
 
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/crypto/bcrypt"
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	etcderr "github.com/coreos/etcd/error"
@@ -41,6 +41,10 @@ const (
 
 	// GuestRoleName is the name of the role that defines the privileges of an unauthenticated user.
 	GuestRoleName = "guest"
+)
+
+var (
+	plog = capnslog.NewPackageLogger("github.com/coreos/etcd/etcdserver", "security")
 )
 
 var rootRole = Role{
@@ -186,7 +190,7 @@ func (s *Store) CreateOrUpdateUser(user User) (out User, created bool, err error
 func (s *Store) CreateUser(user User) (User, error) {
 	u, err := s.createUserInternal(user)
 	if err == nil {
-		log.Printf("security: created user %s", user.User)
+		plog.Noticef("created user %s", user.User)
 	}
 	return u, err
 }
@@ -225,7 +229,7 @@ func (s *Store) DeleteUser(name string) error {
 		}
 		return err
 	}
-	log.Printf("security: deleted user %s", name)
+	plog.Noticef("deleted user %s", name)
 	return nil
 }
 
@@ -251,7 +255,7 @@ func (s *Store) UpdateUser(user User) (User, error) {
 	}
 	_, err = s.updateResource("/users/"+user.User, newUser)
 	if err == nil {
-		log.Printf("security: updated user %s", user.User)
+		plog.Noticef("updated user %s", user.User)
 	}
 	return newUser, err
 }
@@ -320,7 +324,7 @@ func (s *Store) CreateRole(role Role) error {
 		}
 	}
 	if err == nil {
-		log.Printf("security: created new role %s", role.Role)
+		plog.Noticef("created new role %s", role.Role)
 	}
 	return err
 }
@@ -338,7 +342,7 @@ func (s *Store) DeleteRole(name string) error {
 		}
 	}
 	if err == nil {
-		log.Printf("security: deleted role %s", name)
+		plog.Noticef("deleted role %s", name)
 	}
 	return err
 }
@@ -365,7 +369,7 @@ func (s *Store) UpdateRole(role Role) (Role, error) {
 	}
 	_, err = s.updateResource("/roles/"+role.Role, newRole)
 	if err == nil {
-		log.Printf("security: updated role %s", role.Role)
+		plog.Noticef("updated role %s", role.Role)
 	}
 	return newRole, err
 }
@@ -384,18 +388,18 @@ func (s *Store) EnableSecurity() error {
 	}
 	_, err = s.GetRole(GuestRoleName)
 	if err != nil {
-		log.Printf("security: no guest role access found, creating default")
+		plog.Printf("no guest role access found, creating default")
 		err := s.CreateRole(guestRole)
 		if err != nil {
-			log.Printf("security: error creating guest role. aborting security enable.")
+			plog.Errorf("error creating guest role. aborting security enable.")
 			return err
 		}
 	}
 	err = s.enableSecurity()
 	if err == nil {
-		log.Printf("security: enabled security")
+		plog.Noticef("security: enabled security")
 	} else {
-		log.Printf("error enabling security: %v", err)
+		plog.Errorf("error enabling security (%v)", err)
 	}
 	return err
 }
@@ -406,9 +410,9 @@ func (s *Store) DisableSecurity() error {
 	}
 	err := s.disableSecurity()
 	if err == nil {
-		log.Printf("security: disabled security")
+		plog.Noticef("security: disabled security")
 	} else {
-		log.Printf("error disabling security: %v", err)
+		plog.Errorf("error disabling security (%v)", err)
 	}
 	return err
 }
@@ -435,14 +439,14 @@ func (u User) Merge(n User) (User, error) {
 	currentRoles := types.NewUnsafeSet(u.Roles...)
 	for _, g := range n.Grant {
 		if currentRoles.Contains(g) {
-			log.Printf("Granting duplicate role %s for user %s", g, n.User)
+			plog.Noticef("granting duplicate role %s for user %s", g, n.User)
 			continue
 		}
 		currentRoles.Add(g)
 	}
 	for _, r := range n.Revoke {
 		if !currentRoles.Contains(r) {
-			log.Printf("Revoking ungranted role %s for user %s", r, n.User)
+			plog.Noticef("revoking ungranted role %s for user %s", r, n.User)
 			continue
 		}
 		currentRoles.Remove(r)
@@ -544,7 +548,7 @@ func (rw rwPermission) Revoke(n rwPermission) (rwPermission, error) {
 	currentRead := types.NewUnsafeSet(rw.Read...)
 	for _, r := range n.Read {
 		if !currentRead.Contains(r) {
-			log.Printf("Revoking ungranted read permission %s", r)
+			plog.Noticef("revoking ungranted read permission %s", r)
 			continue
 		}
 		currentRead.Remove(r)
@@ -552,7 +556,7 @@ func (rw rwPermission) Revoke(n rwPermission) (rwPermission, error) {
 	currentWrite := types.NewUnsafeSet(rw.Write...)
 	for _, w := range n.Write {
 		if !currentWrite.Contains(w) {
-			log.Printf("Revoking ungranted write permission %s", w)
+			plog.Noticef("revoking ungranted write permission %s", w)
 			continue
 		}
 		currentWrite.Remove(w)

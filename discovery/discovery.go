@@ -17,7 +17,6 @@ package discovery
 import (
 	"errors"
 	"fmt"
-	"log"
 	"math"
 	"net/http"
 	"net/url"
@@ -27,6 +26,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/jonboulle/clockwork"
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/client"
@@ -34,6 +34,8 @@ import (
 )
 
 var (
+	plog = capnslog.NewPackageLogger("github.com/coreos/etcd", "discovery")
+
 	ErrInvalidURL     = errors.New("discovery: invalid URL")
 	ErrBadSizeKey     = errors.New("discovery: size key is bad")
 	ErrSizeNotFound   = errors.New("discovery: size key not found")
@@ -102,7 +104,7 @@ func newProxyFunc(proxy string) (func(*http.Request) (*url.URL, error), error) {
 		return nil, fmt.Errorf("invalid proxy address %q: %v", proxy, err)
 	}
 
-	log.Printf("discovery: using proxy %q", proxyURL.String())
+	plog.Infof("using proxy %q", proxyURL.String())
 	return http.ProxyURL(proxyURL), nil
 }
 
@@ -250,7 +252,7 @@ func (d *discovery) checkCluster() ([]*client.Node, int, uint64, error) {
 func (d *discovery) logAndBackoffForRetry(step string) {
 	d.retries++
 	retryTime := time.Second * (0x1 << d.retries)
-	log.Println("discovery: during", step, "connection to", d.url, "timed out, retrying in", retryTime)
+	plog.Info("during", step, "connection to", d.url, "timed out, retrying in", retryTime)
 	d.clock.Sleep(retryTime)
 }
 
@@ -284,15 +286,15 @@ func (d *discovery) waitNodes(nodes []*client.Node, size int, index uint64) ([]*
 	copy(all, nodes)
 	for _, n := range all {
 		if path.Base(n.Key) == path.Base(d.selfKey()) {
-			log.Printf("discovery: found self %s in the cluster", path.Base(d.selfKey()))
+			plog.Noticef("found self %s in the cluster", path.Base(d.selfKey()))
 		} else {
-			log.Printf("discovery: found peer %s in the cluster", path.Base(n.Key))
+			plog.Noticef("found peer %s in the cluster", path.Base(n.Key))
 		}
 	}
 
 	// wait for others
 	for len(all) < size {
-		log.Printf("discovery: found %d peer(s), waiting for %d more", len(all), size-len(all))
+		plog.Noticef("found %d peer(s), waiting for %d more", len(all), size-len(all))
 		resp, err := w.Next(context.Background())
 		if err != nil {
 			if err == context.DeadlineExceeded {
@@ -300,10 +302,10 @@ func (d *discovery) waitNodes(nodes []*client.Node, size int, index uint64) ([]*
 			}
 			return nil, err
 		}
-		log.Printf("discovery: found peer %s in the cluster", path.Base(resp.Node.Key))
+		plog.Noticef("found peer %s in the cluster", path.Base(resp.Node.Key))
 		all = append(all, resp.Node)
 	}
-	log.Printf("discovery: found %d needed peer(s)", len(all))
+	plog.Noticef("found %d needed peer(s)", len(all))
 	return all, nil
 }
 
