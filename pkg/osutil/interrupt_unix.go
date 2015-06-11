@@ -17,7 +17,6 @@
 package osutil
 
 import (
-	"log"
 	"os"
 	"os/signal"
 	"sync"
@@ -58,7 +57,7 @@ func HandleInterrupts() {
 
 		interruptExitMu.Lock()
 
-		log.Printf("received %v signal, shutting down...", sig)
+		plog.Noticef("received %v signal, shutting down...", sig)
 
 		for _, h := range ihs {
 			h()
