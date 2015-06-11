@@ -1349,8 +1349,8 @@ func (n *nodeConfChangeCommitterRecorder) ProposeConfChange(ctx context.Context,
 		return err
 	}
 	n.index++
-	n.readyc <- raft.Ready{CommittedEntries: []raftpb.Entry{{Index: n.index, Type: raftpb.EntryConfChange, Data: data}}}
 	n.Record(testutil.Action{Name: "ProposeConfChange:" + conf.Type.String()})
+	n.readyc <- raft.Ready{CommittedEntries: []raftpb.Entry{{Index: n.index, Type: raftpb.EntryConfChange, Data: data}}}
 	return nil
 }
 func (n *nodeConfChangeCommitterRecorder) Ready() <-chan raft.Ready {
