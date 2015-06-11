@@ -35,6 +35,7 @@ func main() {
 		cli.StringFlag{Name: "cert-file", Value: "", Usage: "identify HTTPS client using this SSL certificate file"},
 		cli.StringFlag{Name: "key-file", Value: "", Usage: "identify HTTPS client using this SSL key file"},
 		cli.StringFlag{Name: "ca-file", Value: "", Usage: "verify certificates of HTTPS-enabled servers using this CA bundle"},
+		cli.StringFlag{Name: "username, u", Value: "", Usage: "provide username[:password] and prompt if password is not supplied."},
 	}
 	app.Commands = []cli.Command{
 		command.NewBackupCommand(),
@@ -53,6 +54,9 @@ func main() {
 		command.NewExecWatchCommand(),
 		command.NewMemberCommand(),
 		command.NewImportSnapCommand(),
+		command.NewUserCommands(),
+		command.NewRoleCommands(),
+		command.NewSecurityCommands(),
 	}
 
 	app.Run(os.Args)

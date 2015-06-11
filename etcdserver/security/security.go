@@ -104,7 +104,7 @@ type Error struct {
 func (se Error) Error() string { return se.errmsg }
 
 func mergeErr(s string, v ...interface{}) Error {
-	return Error{fmt.Sprintf("security-merging: "+s, v...)}
+	return Error{fmt.Sprintf("security: "+s, v...)}
 }
 
 func securityErr(s string, v ...interface{}) Error {
@@ -155,7 +155,16 @@ func (s *Store) GetUser(name string) (User, error) {
 	}
 	// Require that root always has a root role.
 	if u.User == "root" {
-		u.Roles = append(u.Roles, RootRoleName)
+		inRoles := false
+		for _, r := range u.Roles {
+			if r == RootRoleName {
+				inRoles = true
+				break
+			}
+		}
+		if !inRoles {
+			u.Roles = append(u.Roles, RootRoleName)
+		}
 	}
 
 	return u, nil
@@ -208,10 +217,16 @@ func (s *Store) DeleteUser(name string) error {
 		return securityErr("Cannot delete root user while security is enabled.")
 	}
 	_, err := s.deleteResource("/users/" + name)
-	if err == nil {
-		log.Printf("security: deleted user %s", name)
+	if err != nil {
+		if e, ok := err.(*etcderr.Error); ok {
+			if e.ErrorCode == etcderr.EcodeKeyNotFound {
+				return securityErr("User %s does not exist", name)
+			}
+		}
+		return err
 	}
-	return err
+	log.Printf("security: deleted user %s", name)
+	return nil
 }
 
 func (s *Store) UpdateUser(user User) (User, error) {
@@ -242,7 +257,7 @@ func (s *Store) UpdateUser(user User) (User, error) {
 }
 
 func (s *Store) AllRoles() ([]string, error) {
-	nodes := []string{GuestRoleName, RootRoleName}
+	nodes := []string{RootRoleName}
 	resp, err := s.requestResource("/roles/", false)
 	if err != nil {
 		if e, ok := err.(*etcderr.Error); ok {

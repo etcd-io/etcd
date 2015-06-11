@@ -1,6 +1,6 @@
 {
 	"ImportPath": "github.com/coreos/etcd",
-	"GoVersion": "go1.4.1",
+	"GoVersion": "go1.4.2",
 	"Packages": [
 		"./..."
 	],
@@ -15,6 +15,10 @@
 			"Rev": "b965b613227fddccbfffe13eae360ed3fa822f8d"
 		},
 		{
+			"ImportPath": "github.com/bgentry/speakeasy",
+			"Rev": "5dfe43257d1f86b96484e760f2f0c4e2559089c7"
+		},
+		{
 			"ImportPath": "github.com/boltdb/bolt",
 			"Comment": "v1.0-71-g71f28ea",
 			"Rev": "71f28eaecbebd00604d87bb1de0dae8fcfa54bbd"
@@ -26,8 +30,8 @@
 		},
 		{
 			"ImportPath": "github.com/coreos/go-etcd/etcd",
-			"Comment": "v2.0.0-7-g73a8ef7",
-			"Rev": "73a8ef737e8ea002281a28b4cb92a1de121ad4c6"
+			"Comment": "v2.0.0-13-g4cceaf7",
+			"Rev": "4cceaf7283b76f27c4a732b20730dcdb61053bf5"
 		},
 		{
 			"ImportPath": "github.com/coreos/go-semver/semver",
@@ -84,6 +88,10 @@
 		{
 			"ImportPath": "github.com/stretchr/testify/assert",
 			"Rev": "9cc77fa25329013ce07362c7742952ff887361f2"
+		},
+		{
+			"ImportPath": "github.com/ugorji/go/codec",
+			"Rev": "821cda7e48749cacf7cad2c6ed01e96457ca7e9d"
 		},
 		{
 			"ImportPath": "golang.org/x/crypto/bcrypt",
