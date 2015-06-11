@@ -16,7 +16,7 @@ If you need to move multiple members of your cluster due to planned maintenance 
 
 It is safe to remove the leader, however there is a brief period of downtime while the election process takes place. If your cluster holds more than 50MB, it is recommended to [migrate the member's data directory][member migration].
 
-[member migration]: admin_guide.md#member-migration
+[member migration]: https://github.com/coreos/etcd/blob/master/Documentation/admin_guide.md#member-migration
 
 ### Change the Cluster Size
 
@@ -24,7 +24,7 @@ Increasing the cluster size can enhance [failure tolerance][fault tolerance tabl
 
 Decreasing the cluster size can improve the write performance of a cluster, with a trade-off of decreased resilience. Writes into the cluster are replicated to a majority of members of the cluster before considered committed. Decreasing the cluster size lowers the majority, and each write is committed more quickly.
 
-[fault tolerance table]: admin_guide.md#fault-tolerance-table
+[fault tolerance table]: https://github.com/coreos/etcd/blob/master/Documentation/admin_guide.md#fault-tolerance-table
 
 ### Replace A Failed Machine
 
@@ -41,7 +41,7 @@ If the majority of your cluster is lost, then you need to take manual action in 
 The basic steps in the recovery process include [creating a new cluster using the old data][disaster recovery], forcing a single member to act as the leader, and finally using runtime configuration to [add new members][add member] to this new cluster one at a time.
 
 [add member]: #add-a-new-member
-[disaster recovery]: admin_guide.md#disaster-recovery
+[disaster recovery]: https://github.com/coreos/etcd/blob/master/Documentation/admin_guide.md#disaster-recovery
 
 ## Cluster Reconfiguration Operations
 
@@ -57,7 +57,7 @@ To increase from 3 to 5 members you will make two add operations
 To decrease from 5 to 3 you will make two remove operations
 
 All of these examples will use the `etcdctl` command line tool that ships with etcd.
-If you want to use the member API directly you can find the documentation [here](other_apis.md).
+If you want to use the member API directly you can find the documentation [here](https://github.com/coreos/etcd/blob/master/Documentation/other_apis.md).
 
 ### Remove a Member
 
@@ -90,10 +90,10 @@ It is safe to remove the leader, however the cluster will be inactive while a ne
 
 Adding a member is a two step process:
 
- * Add the new member to the cluster via the [members API](other_apis.md#post-v2members) or the `etcdctl member add` command.
+ * Add the new member to the cluster via the [members API](https://github.com/coreos/etcd/blob/master/Documentation/other_apis.md#post-v2members) or the `etcdctl member add` command.
  * Start the new member with the new cluster configuration, including a list of the updated members (existing members + the new member).
 
-Using `etcdctl` let's add the new member to the cluster by specifying its [name](configuration.md#-name) and [advertised peer URLs](configuration.md#-initial-advertise-peer-urls):
+Using `etcdctl` let's add the new member to the cluster by specifying its [name](https://github.com/coreos/etcd/blob/master/Documentation/configuration.md#-name) and [advertised peer URLs](https://github.com/coreos/etcd/blob/master/Documentation/configuration.md#-initial-advertise-peer-urls):
 
 ```
 $ etcdctl member add infra3 http://10.0.1.13:2380

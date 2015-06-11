@@ -1,6 +1,6 @@
 # Running etcd under Docker
 
-The following guide will show you how to run etcd under Docker using the [static bootstrap process](clustering.md#static).
+The following guide will show you how to run etcd under Docker using the [static bootstrap process](https://github.com/coreos/etcd/blob/master/Documentation/clustering.md#static).
 
 ## Running etcd in standalone mode
 
