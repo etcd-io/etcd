@@ -359,9 +359,11 @@ func (cr *streamReader) decodeLoop(rc io.ReadCloser, t streamType) error {
 			select {
 			case recvc <- m:
 			default:
-				// TODO: log start and end of message dropping
-				plog.Warningf("dropping %s from %x because receiving buffer is full",
-					m.Type, m.From)
+				if cr.status.isActive() {
+					plog.Warningf("dropped %s from %s since receiving buffer is full", m.Type, m.From)
+				} else {
+					plog.Debugf("dropped %s from %s since receiving buffer is full", m.Type, m.From)
+				}
 			}
 		}
 	}

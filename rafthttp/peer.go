@@ -161,8 +161,11 @@ func startPeer(tr http.RoundTripper, urls types.URLs, local, to, cid types.ID, r
 					if isMsgSnap(m) {
 						p.r.ReportSnapshot(m.To, raft.SnapshotFailure)
 					}
-					// TODO: log start and end of message dropping
-					plog.Warningf("dropping %s to %s since %s's sending buffer is full", m.Type, p.id, name)
+					if status.isActive() {
+						plog.Warningf("dropped %s to %s since %s's sending buffer is full", m.Type, p.id, name)
+					} else {
+						plog.Debugf("dropped %s to %s since %s's sending buffer is full", m.Type, p.id, name)
+					}
 				}
 			case mm := <-p.recvc:
 				if err := r.Process(context.TODO(), mm); err != nil {
