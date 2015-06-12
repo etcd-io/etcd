@@ -86,7 +86,7 @@ func TestPurgeFileHoldingLock(t *testing.T) {
 
 	stop := make(chan struct{})
 	errch := PurgeFile(dir, "test", 3, time.Millisecond, stop)
-	time.Sleep(5 * time.Millisecond)
+	time.Sleep(20 * time.Millisecond)
 
 	fnames, err := ReadDir(dir)
 	if err != nil {
@@ -112,7 +112,7 @@ func TestPurgeFileHoldingLock(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	time.Sleep(5 * time.Millisecond)
+	time.Sleep(20 * time.Millisecond)
 
 	fnames, err = ReadDir(dir)
 	if err != nil {
