@@ -16,6 +16,7 @@ package proxy
 
 import (
 	"net/http"
+	"time"
 )
 
 const (
@@ -38,9 +39,9 @@ type GetProxyURLs func() []string
 // NewHandler creates a new HTTP handler, listening on the given transport,
 // which will proxy requests to an etcd cluster.
 // The handler will periodically update its view of the cluster.
-func NewHandler(t *http.Transport, urlsFunc GetProxyURLs) http.Handler {
+func NewHandler(t *http.Transport, urlsFunc GetProxyURLs, failureWait time.Duration, refreshInterval time.Duration) http.Handler {
 	return &reverseProxy{
-		director:  newDirector(urlsFunc),
+		director:  newDirector(urlsFunc, failureWait, refreshInterval),
 		transport: t,
 	}
 }

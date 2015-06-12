@@ -72,6 +72,16 @@ proxy flags:
 
 	--proxy 'off'
 		proxy mode setting ('off', 'readonly' or 'on').
+	--proxy-failure-wait 5000
+		time (in milliseconds) an endpoint will be held in a failed state.
+	--proxy-refresh-interval 30000
+		time (in milliseconds) of the endpoints refresh interval.
+	--proxy-dial-timeout 1000
+		time (in milliseconds) for a dial to timeout.
+	--proxy-write-timeout 5000
+		time (in milliseconds) for a write to timeout.
+	--proxy-read-timeout 0
+		time (in milliseconds) for a read to timeout.
 
 
 security flags:

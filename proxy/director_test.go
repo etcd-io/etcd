@@ -19,6 +19,7 @@ import (
 	"reflect"
 	"sort"
 	"testing"
+	"time"
 )
 
 func TestNewDirectorScheme(t *testing.T) {
@@ -52,7 +53,7 @@ func TestNewDirectorScheme(t *testing.T) {
 		uf := func() []string {
 			return tt.urls
 		}
-		got := newDirector(uf)
+		got := newDirector(uf, time.Minute, time.Minute)
 
 		var gep []string
 		for _, ep := range got.ep {
