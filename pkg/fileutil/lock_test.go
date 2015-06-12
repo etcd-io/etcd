@@ -90,7 +90,7 @@ func TestLockAndUnlock(t *testing.T) {
 	// the previously blocked routine should be unblocked
 	select {
 	case <-locked:
-	case <-time.After(10 * time.Millisecond):
+	case <-time.After(20 * time.Millisecond):
 		t.Error("unexpected blocking")
 	}
 }
