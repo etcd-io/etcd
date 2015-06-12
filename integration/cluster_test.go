@@ -298,9 +298,11 @@ func TestIssue2904(t *testing.T) {
 	// and apply it.
 	<-c.Members[1].s.StopNotify()
 
+	// terminate removed member
+	c.Members[1].Terminate(t)
+	c.Members = c.Members[:1]
 	// wait member to be removed.
-	httpmembs := c.HTTPMembers()
-	c.waitMembersMatch(t, httpmembs[:1])
+	c.waitMembersMatch(t, c.HTTPMembers())
 }
 
 // clusterMustProgress ensures that cluster can make progress. It creates
