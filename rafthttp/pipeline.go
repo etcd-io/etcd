@@ -153,6 +153,7 @@ func (p *pipeline) post(data []byte) (err error) {
 		select {
 		case <-done:
 		case <-p.stopc:
+			waitSchedule()
 			stopped = true
 			if cancel, ok := p.tr.(canceler); ok {
 				cancel.CancelRequest(req)
@@ -199,3 +200,6 @@ func (p *pipeline) post(data []byte) (err error) {
 		return fmt.Errorf("unexpected http status %s while posting to %q", http.StatusText(resp.StatusCode), req.URL.String())
 	}
 }
+
+// waitSchedule waits other goroutines to be scheduled for a while
+func waitSchedule() { time.Sleep(time.Millisecond) }
