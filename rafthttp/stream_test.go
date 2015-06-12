@@ -89,8 +89,8 @@ func TestStreamReaderDialRequest(t *testing.T) {
 		sr := &streamReader{
 			tr:         tr,
 			picker:     mustNewURLPicker(t, []string{"http://localhost:2380"}),
-			from:       types.ID(1),
-			to:         types.ID(2),
+			local:      types.ID(1),
+			remote:     types.ID(2),
 			cid:        types.ID(1),
 			msgAppTerm: 1,
 		}
@@ -143,8 +143,8 @@ func TestStreamReaderDialResult(t *testing.T) {
 		sr := &streamReader{
 			tr:     tr,
 			picker: mustNewURLPicker(t, []string{"http://localhost:2380"}),
-			from:   types.ID(1),
-			to:     types.ID(2),
+			local:  types.ID(1),
+			remote: types.ID(2),
 			cid:    types.ID(1),
 			errorc: make(chan error, 1),
 		}
@@ -206,8 +206,8 @@ func TestStreamReaderDialDetectUnsupport(t *testing.T) {
 		sr := &streamReader{
 			tr:     tr,
 			picker: mustNewURLPicker(t, []string{"http://localhost:2380"}),
-			from:   types.ID(1),
-			to:     types.ID(2),
+			local:  types.ID(1),
+			remote: types.ID(2),
 			cid:    types.ID(1),
 		}
 
