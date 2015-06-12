@@ -9,6 +9,7 @@
 - [etcd-browser](https://github.com/henszey/etcd-browser) - A web-based key/value editor for etcd using AngularJS
 - [etcd-lock](https://github.com/datawisesystems/etcd-lock) - Master election & distributed r/w lock implementation using etcd - Supports v2
 - [etcd-console](https://github.com/matishsiao/etcd-console) - A web-base key/value editor for etcd using PHP
+- [etcd-viewer](https://github.com/nikfoundas/etcd-viewer) - An etcd key-value store editor/viewer written in Java
 
 **Go libraries**
 
