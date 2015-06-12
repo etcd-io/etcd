@@ -221,8 +221,8 @@ func TestStreamReaderDialDetectUnsupport(t *testing.T) {
 // TestStream tests that streamReader and streamWriter can build stream to
 // send messages between each other.
 func TestStream(t *testing.T) {
-	recvc := make(chan raftpb.Message)
-	propc := make(chan raftpb.Message)
+	recvc := make(chan raftpb.Message, streamBufSize)
+	propc := make(chan raftpb.Message, streamBufSize)
 	msgapp := raftpb.Message{
 		Type:    raftpb.MsgApp,
 		From:    2,
@@ -294,10 +294,10 @@ func TestStream(t *testing.T) {
 		select {
 		case m = <-tt.wc:
 		case <-time.After(time.Second):
-			t.Errorf("#%d: failed to receive message from the channel", i)
+			t.Fatalf("#%d: failed to receive message from the channel", i)
 		}
 		if !reflect.DeepEqual(m, tt.m) {
-			t.Errorf("#%d: message = %+v, want %+v", i, m, tt.m)
+			t.Fatalf("#%d: message = %+v, want %+v", i, m, tt.m)
 		}
 	}
 }
