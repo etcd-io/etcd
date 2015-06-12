@@ -23,14 +23,17 @@ import (
 
 type remote struct {
 	id       types.ID
+	status   *peerStatus
 	pipeline *pipeline
 }
 
 func startRemote(tr http.RoundTripper, urls types.URLs, local, to, cid types.ID, r Raft, errorc chan error) *remote {
 	picker := newURLPicker(urls)
+	status := newPeerStatus(to)
 	return &remote{
 		id:       to,
-		pipeline: newPipeline(tr, picker, local, to, cid, newPeerStatus(to), nil, r, errorc),
+		status:   status,
+		pipeline: newPipeline(tr, picker, local, to, cid, status, nil, r, errorc),
 	}
 }
 
@@ -38,8 +41,11 @@ func (g *remote) Send(m raftpb.Message) {
 	select {
 	case g.pipeline.msgc <- m:
 	default:
-		// TODO: log start and end of message dropping
-		plog.Warningf("dropping %s to %s since sending buffer is full", m.Type, g.id)
+		if g.status.isActive() {
+			plog.Warningf("dropped %s to %s since sending buffer is full", m.Type, g.id)
+		} else {
+			plog.Debugf("dropped %s to %s since sending buffer is full", m.Type, g.id)
+		}
 	}
 }
 

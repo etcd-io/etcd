@@ -65,3 +65,9 @@ func (s *peerStatus) deactivate(failure failureType, reason string) {
 	s.failureMap[failure] = reason
 	plog.Errorf(logline)
 }
+
+func (s *peerStatus) isActive() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.active
+}
