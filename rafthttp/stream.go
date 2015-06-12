@@ -360,9 +360,9 @@ func (cr *streamReader) decodeLoop(rc io.ReadCloser, t streamType) error {
 			case recvc <- m:
 			default:
 				if cr.status.isActive() {
-					plog.Warningf("dropped %s from %s since receiving buffer is full", m.Type, m.From)
+					plog.Warningf("dropped %s from %s since receiving buffer is full", m.Type, types.ID(m.From))
 				} else {
-					plog.Debugf("dropped %s from %s since receiving buffer is full", m.Type, m.From)
+					plog.Debugf("dropped %s from %s since receiving buffer is full", m.Type, types.ID(m.From))
 				}
 			}
 		}
