@@ -243,7 +243,11 @@ func (r *raft) sendAppend(to uint64) {
 	}
 	m := pb.Message{}
 	m.To = to
-	if r.needSnapshot(pr.Next) {
+
+	term, errt := r.raftLog.term(pr.Next - 1)
+	ents, erre := r.raftLog.entries(pr.Next, r.maxMsgSize)
+
+	if errt != nil || erre != nil { // send snapshot if we failed to get term or entries
 		m.Type = pb.MsgSnap
 		snapshot, err := r.raftLog.snapshot()
 		if err != nil {
@@ -261,8 +265,8 @@ func (r *raft) sendAppend(to uint64) {
 	} else {
 		m.Type = pb.MsgApp
 		m.Index = pr.Next - 1
-		m.LogTerm = r.raftLog.term(pr.Next - 1)
-		m.Entries = r.raftLog.entries(pr.Next, r.maxMsgSize)
+		m.LogTerm = term
+		m.Entries = ents
 		m.Commit = r.raftLog.committed
 		if n := len(m.Entries); n != 0 {
 			switch pr.State {
@@ -413,7 +417,12 @@ func (r *raft) becomeLeader() {
 	r.tick = r.tickHeartbeat
 	r.lead = r.id
 	r.state = StateLeader
-	for _, e := range r.raftLog.entries(r.raftLog.committed+1, noLimit) {
+	ents, err := r.raftLog.entries(r.raftLog.committed+1, noLimit)
+	if err != nil {
+		raftLogger.Panicf("unexpected error getting uncommitted entries (%v)", err)
+	}
+
+	for _, e := range ents {
 		if e.Type != pb.EntryConfChange {
 			continue
 		}
@@ -658,7 +667,7 @@ func (r *raft) handleAppendEntries(m pb.Message) {
 		r.send(pb.Message{To: m.From, Type: pb.MsgAppResp, Index: mlastIndex})
 	} else {
 		raftLogger.Debugf("%x [logterm: %d, index: %d] rejected msgApp [logterm: %d, index: %d] from %x",
-			r.id, r.raftLog.term(m.Index), m.Index, m.LogTerm, m.Index, m.From)
+			r.id, zeroTermOnErrCompacted(r.raftLog.term(m.Index)), m.Index, m.LogTerm, m.Index, m.From)
 		r.send(pb.Message{To: m.From, Type: pb.MsgAppResp, Index: m.Index, Reject: true, RejectHint: r.raftLog.lastIndex()})
 	}
 }
@@ -710,10 +719,6 @@ func (r *raft) restore(s pb.Snapshot) bool {
 		raftLogger.Infof("%x restored progress of %x [%s]", r.id, n, r.prs[n])
 	}
 	return true
-}
-
-func (r *raft) needSnapshot(i uint64) bool {
-	return i < r.raftLog.firstIndex()
 }
 
 // promotable indicates whether state machine can be promoted to leader,
