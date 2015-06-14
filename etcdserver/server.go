@@ -913,7 +913,7 @@ func (s *EtcdServer) snapshot(snapi uint64, confState raftpb.ConfState) {
 			}
 			plog.Panicf("unexpected compaction error %v", err)
 		}
-		plog.Info("compacted raft log at %d", compacti)
+		plog.Infof("compacted raft log at %d", compacti)
 	}()
 }
 
