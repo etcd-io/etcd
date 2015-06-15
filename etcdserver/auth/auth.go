@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package security
+package auth
 
 import (
 	"encoding/json"
@@ -44,7 +44,7 @@ const (
 )
 
 var (
-	plog = capnslog.NewPackageLogger("github.com/coreos/etcd/etcdserver", "security")
+	plog = capnslog.NewPackageLogger("github.com/coreos/etcd/etcdserver", "auth")
 )
 
 var rootRole = Role{
@@ -108,11 +108,11 @@ type Error struct {
 func (se Error) Error() string { return se.errmsg }
 
 func mergeErr(s string, v ...interface{}) Error {
-	return Error{fmt.Sprintf("security: "+s, v...)}
+	return Error{fmt.Sprintf("auth: "+s, v...)}
 }
 
-func securityErr(s string, v ...interface{}) Error {
-	return Error{fmt.Sprintf("security: "+s, v...)}
+func authErr(s string, v ...interface{}) Error {
+	return Error{fmt.Sprintf("auth: "+s, v...)}
 }
 
 func NewStore(server doer, timeout time.Duration) *Store {
@@ -147,7 +147,7 @@ func (s *Store) GetUser(name string) (User, error) {
 	if err != nil {
 		if e, ok := err.(*etcderr.Error); ok {
 			if e.ErrorCode == etcderr.EcodeKeyNotFound {
-				return User{}, securityErr("User %s does not exist.", name)
+				return User{}, authErr("User %s does not exist.", name)
 			}
 		}
 		return User{}, err
@@ -197,7 +197,7 @@ func (s *Store) CreateUser(user User) (User, error) {
 
 func (s *Store) createUserInternal(user User) (User, error) {
 	if user.Password == "" {
-		return user, securityErr("Cannot create user %s with an empty password", user.User)
+		return user, authErr("Cannot create user %s with an empty password", user.User)
 	}
 	hash, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 	if err != nil {
@@ -209,7 +209,7 @@ func (s *Store) createUserInternal(user User) (User, error) {
 	if err != nil {
 		if e, ok := err.(*etcderr.Error); ok {
 			if e.ErrorCode == etcderr.EcodeNodeExist {
-				return user, securityErr("User %s already exists.", user.User)
+				return user, authErr("User %s already exists.", user.User)
 			}
 		}
 	}
@@ -217,14 +217,14 @@ func (s *Store) createUserInternal(user User) (User, error) {
 }
 
 func (s *Store) DeleteUser(name string) error {
-	if s.SecurityEnabled() && name == "root" {
-		return securityErr("Cannot delete root user while security is enabled.")
+	if s.AuthEnabled() && name == "root" {
+		return authErr("Cannot delete root user while auth is enabled.")
 	}
 	_, err := s.deleteResource("/users/" + name)
 	if err != nil {
 		if e, ok := err.(*etcderr.Error); ok {
 			if e.ErrorCode == etcderr.EcodeKeyNotFound {
-				return securityErr("User %s does not exist", name)
+				return authErr("User %s does not exist", name)
 			}
 		}
 		return err
@@ -238,7 +238,7 @@ func (s *Store) UpdateUser(user User) (User, error) {
 	if err != nil {
 		if e, ok := err.(*etcderr.Error); ok {
 			if e.ErrorCode == etcderr.EcodeKeyNotFound {
-				return user, securityErr("User %s doesn't exist.", user.User)
+				return user, authErr("User %s doesn't exist.", user.User)
 			}
 		}
 		return old, err
@@ -249,9 +249,9 @@ func (s *Store) UpdateUser(user User) (User, error) {
 	}
 	if reflect.DeepEqual(old, newUser) {
 		if user.Revoke != nil || user.Grant != nil {
-			return old, securityErr("User not updated. Grant/Revoke lists didn't match any current roles.")
+			return old, authErr("User not updated. Grant/Revoke lists didn't match any current roles.")
 		}
-		return old, securityErr("User not updated. Use Grant/Revoke/Password to update the user.")
+		return old, authErr("User not updated. Use Grant/Revoke/Password to update the user.")
 	}
 	_, err = s.updateResource("/users/"+user.User, newUser)
 	if err == nil {
@@ -287,7 +287,7 @@ func (s *Store) GetRole(name string) (Role, error) {
 	if err != nil {
 		if e, ok := err.(*etcderr.Error); ok {
 			if e.ErrorCode == etcderr.EcodeKeyNotFound {
-				return Role{}, securityErr("Role %s does not exist.", name)
+				return Role{}, authErr("Role %s does not exist.", name)
 			}
 		}
 		return Role{}, err
@@ -313,13 +313,13 @@ func (s *Store) CreateOrUpdateRole(r Role) (role Role, created bool, err error) 
 
 func (s *Store) CreateRole(role Role) error {
 	if role.Role == RootRoleName {
-		return securityErr("Cannot modify role %s: is root role.", role.Role)
+		return authErr("Cannot modify role %s: is root role.", role.Role)
 	}
 	_, err := s.createResource("/roles/"+role.Role, role)
 	if err != nil {
 		if e, ok := err.(*etcderr.Error); ok {
 			if e.ErrorCode == etcderr.EcodeNodeExist {
-				return securityErr("Role %s already exists.", role.Role)
+				return authErr("Role %s already exists.", role.Role)
 			}
 		}
 	}
@@ -331,13 +331,13 @@ func (s *Store) CreateRole(role Role) error {
 
 func (s *Store) DeleteRole(name string) error {
 	if name == RootRoleName {
-		return securityErr("Cannot modify role %s: is superuser role.", name)
+		return authErr("Cannot modify role %s: is superuser role.", name)
 	}
 	_, err := s.deleteResource("/roles/" + name)
 	if err != nil {
 		if e, ok := err.(*etcderr.Error); ok {
 			if e.ErrorCode == etcderr.EcodeKeyNotFound {
-				return securityErr("Role %s doesn't exist.", name)
+				return authErr("Role %s doesn't exist.", name)
 			}
 		}
 	}
@@ -352,7 +352,7 @@ func (s *Store) UpdateRole(role Role) (Role, error) {
 	if err != nil {
 		if e, ok := err.(*etcderr.Error); ok {
 			if e.ErrorCode == etcderr.EcodeKeyNotFound {
-				return role, securityErr("Role %s doesn't exist.", role.Role)
+				return role, authErr("Role %s doesn't exist.", role.Role)
 			}
 		}
 		return old, err
@@ -363,9 +363,9 @@ func (s *Store) UpdateRole(role Role) (Role, error) {
 	}
 	if reflect.DeepEqual(old, newRole) {
 		if role.Revoke != nil || role.Grant != nil {
-			return old, securityErr("Role not updated. Grant/Revoke lists didn't match any current permissions.")
+			return old, authErr("Role not updated. Grant/Revoke lists didn't match any current permissions.")
 		}
-		return old, securityErr("Role not updated. Use Grant/Revoke to update the role.")
+		return old, authErr("Role not updated. Use Grant/Revoke to update the role.")
 	}
 	_, err = s.updateResource("/roles/"+role.Role, newRole)
 	if err == nil {
@@ -374,45 +374,45 @@ func (s *Store) UpdateRole(role Role) (Role, error) {
 	return newRole, err
 }
 
-func (s *Store) SecurityEnabled() bool {
-	return s.detectSecurity()
+func (s *Store) AuthEnabled() bool {
+	return s.detectAuth()
 }
 
-func (s *Store) EnableSecurity() error {
-	if s.SecurityEnabled() {
-		return securityErr("already enabled")
+func (s *Store) EnableAuth() error {
+	if s.AuthEnabled() {
+		return authErr("already enabled")
 	}
 	_, err := s.GetUser("root")
 	if err != nil {
-		return securityErr("No root user available, please create one")
+		return authErr("No root user available, please create one")
 	}
 	_, err = s.GetRole(GuestRoleName)
 	if err != nil {
 		plog.Printf("no guest role access found, creating default")
 		err := s.CreateRole(guestRole)
 		if err != nil {
-			plog.Errorf("error creating guest role. aborting security enable.")
+			plog.Errorf("error creating guest role. aborting auth enable.")
 			return err
 		}
 	}
-	err = s.enableSecurity()
+	err = s.enableAuth()
 	if err == nil {
-		plog.Noticef("security: enabled security")
+		plog.Noticef("auth: enabled auth")
 	} else {
-		plog.Errorf("error enabling security (%v)", err)
+		plog.Errorf("error enabling auth (%v)", err)
 	}
 	return err
 }
 
-func (s *Store) DisableSecurity() error {
-	if !s.SecurityEnabled() {
-		return securityErr("already disabled")
+func (s *Store) DisableAuth() error {
+	if !s.AuthEnabled() {
+		return authErr("already disabled")
 	}
-	err := s.disableSecurity()
+	err := s.disableAuth()
 	if err == nil {
-		plog.Noticef("security: disabled security")
+		plog.Noticef("auth: disabled auth")
 	} else {
-		plog.Errorf("error disabling security (%v)", err)
+		plog.Errorf("error disabling auth (%v)", err)
 	}
 	return err
 }

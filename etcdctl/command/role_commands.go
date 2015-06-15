@@ -76,14 +76,14 @@ func NewRoleCommands() cli.Command {
 	}
 }
 
-func mustNewSecurityRoleAPI(c *cli.Context) client.SecurityRoleAPI {
+func mustNewAuthRoleAPI(c *cli.Context) client.AuthRoleAPI {
 	hc := mustNewClient(c)
 
 	if c.GlobalBool("debug") {
 		fmt.Fprintf(os.Stderr, "Cluster-Endpoints: %s\n", strings.Join(hc.Endpoints(), ", "))
 	}
 
-	return client.NewSecurityRoleAPI(hc)
+	return client.NewAuthRoleAPI(hc)
 }
 
 func actionRoleList(c *cli.Context) {
@@ -91,7 +91,7 @@ func actionRoleList(c *cli.Context) {
 		fmt.Fprintln(os.Stderr, "No arguments accepted")
 		os.Exit(1)
 	}
-	r := mustNewSecurityRoleAPI(c)
+	r := mustNewAuthRoleAPI(c)
 	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
 	roles, err := r.ListRoles(ctx)
 	cancel()
@@ -228,7 +228,7 @@ func actionRoleGet(c *cli.Context) {
 	}
 }
 
-func mustRoleAPIAndName(c *cli.Context) (client.SecurityRoleAPI, string) {
+func mustRoleAPIAndName(c *cli.Context) (client.AuthRoleAPI, string) {
 	args := c.Args()
 	if len(args) != 1 {
 		fmt.Fprintln(os.Stderr, "Please provide a role name")
@@ -236,6 +236,6 @@ func mustRoleAPIAndName(c *cli.Context) (client.SecurityRoleAPI, string) {
 	}
 
 	name := args[0]
-	api := mustNewSecurityRoleAPI(c)
+	api := mustNewAuthRoleAPI(c)
 	return api, name
 }

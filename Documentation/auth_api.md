@@ -12,7 +12,7 @@ There are three types of resources in etcd
 #### Users
 A user is an identity to be authenticated. Each user can have multiple roles. The user has a capability (such as reading or writing) on the resource if one of the roles has that capability.
 
-A user named `root` is required before security can be enabled, and it always has the ROOT role. The ROOT role can be granted to multiple users, but `root` is required for recovery purposes.
+A user named `root` is required before authentication can be enabled, and it always has the ROOT role. The ROOT role can be granted to multiple users, but `root` is required for recovery purposes.
 
 #### Roles
 Each role has exact one associated Permission List. An permission list exists for each permission on key-value resources. 
@@ -35,7 +35,7 @@ A permission on `/foo` is for that exact key or directory, not its children or r
 
 ### Settings Resources
 
-Specific settings for the cluster as a whole. This can include adding and removing cluster members, enabling or disabling security, replacing certificates, and any other dynamic configuration by the administrator (holder of the ROOT role).
+Specific settings for the cluster as a whole. This can include adding and removing cluster members, enabling or disabling authentication, replacing certificates, and any other dynamic configuration by the administrator (holder of the ROOT role).
 
 ## v2 Auth
 
@@ -43,7 +43,7 @@ Specific settings for the cluster as a whole. This can include adding and removi
 We only support [Basic Auth](http://en.wikipedia.org/wiki/Basic_access_authentication) for the first version. Client needs to attach the basic auth to the HTTP Authorization Header. 
 
 ### Authorization field for operations
-Added to requests to /v2/keys, /v2/security
+Added to requests to /v2/keys, /v2/auth
 Add code 403 Forbidden to the set of responses from the v2 API
 Authorization: Basic {encoded string}
 
@@ -86,7 +86,7 @@ Password is only passed when necessary. Last Modified is set by the server and i
 
 **Get a list of users**
 
-GET/HEAD  /v2/security/user
+GET/HEAD  /v2/auth/user
 
     Sent Headers:
         Authorization: Basic <BasicAuthString>
@@ -102,7 +102,7 @@ GET/HEAD  /v2/security/user
 
 **Get User Details**
 
-GET/HEAD  /v2/security/users/alice
+GET/HEAD  /v2/auth/users/alice
 
     Sent Headers:
         Authorization: Basic <BasicAuthString>
@@ -122,7 +122,7 @@ GET/HEAD  /v2/security/users/alice
 
 A user can be created with initial roles, if filled in. However, no roles are required; only the username and password fields
 
-PUT  /v2/security/users/charlie
+PUT  /v2/auth/users/charlie
 
     Sent Headers:
         Authorization: Basic <BasicAuthString>
@@ -138,7 +138,7 @@ PUT  /v2/security/users/charlie
 
 **Remove A User**
 
-DELETE  /v2/security/users/charlie
+DELETE  /v2/auth/users/charlie
 
     Sent Headers:
         Authorization: Basic <BasicAuthString>
@@ -169,7 +169,7 @@ A full role structure may look like this. A Permission List structure is used fo
 
 **Get a list of Roles**
 
-GET/HEAD  /v2/security/roles
+GET/HEAD  /v2/auth/roles
 
     Sent Headers:
         Authorization: Basic <BasicAuthString>
@@ -186,7 +186,7 @@ GET/HEAD  /v2/security/roles
 
 **Get Role Details**
 
-GET/HEAD  /v2/security/roles/fleet
+GET/HEAD  /v2/auth/roles/fleet
 
     Sent Headers:
         Authorization: Basic <BasicAuthString>
@@ -210,7 +210,7 @@ GET/HEAD  /v2/security/roles/fleet
 
 **Create Or Update A Role**
 
-PUT  /v2/security/roles/rocket
+PUT  /v2/auth/roles/rocket
 
     Sent Headers:
         Authorization: Basic <BasicAuthString>
@@ -228,7 +228,7 @@ PUT  /v2/security/roles/rocket
 
 **Remove A Role**
 
-DELETE  /v2/security/roles/rocket
+DELETE  /v2/auth/roles/rocket
 
     Sent Headers:
         Authorization: Basic <BasicAuthString>
@@ -240,11 +240,11 @@ DELETE  /v2/security/roles/rocket
     200 Body: (empty)
 
 
-#### Enable and Disable Security
+#### Enable and Disable Authentication
         
-**Get security status**
+**Get auth status**
 
-GET  /v2/security/enable
+GET  /v2/auth/enable
 
     Sent Headers:
     Possible Status Codes:
@@ -255,9 +255,9 @@ GET  /v2/security/enable
         }
 
 
-**Enable security**
+**Enable auth**
 
-PUT  /v2/security/enable
+PUT  /v2/auth/enable
 
     Sent Headers:
     Put Body: (empty)
@@ -266,9 +266,9 @@ PUT  /v2/security/enable
         400 Bad Request (if not a root user)
     200 Body: (empty)
 
-**Disable security**
+**Disable auth**
 
-DELETE  /v2/security/enable
+DELETE  /v2/auth/enable
 
     Sent Headers:
         Authorization: Basic <RootAuthString>
@@ -282,10 +282,10 @@ DELETE  /v2/security/enable
 
 Let's walk through an example to show two tenants (applications, in our case) using etcd permissions.
 
-### Enable security
+### Enable auth
 
 ```
-PUT  /v2/security/enable
+PUT  /v2/auth/enable
     Headers:
     Put Body:
         {"user" : "root", "password": "root"}
@@ -295,7 +295,7 @@ PUT  /v2/security/enable
 ### Change root's password
 
 ```
-PUT  /v2/security/users/root
+PUT  /v2/auth/users/root
     Headers:
         Authorization: Basic <root:root>
     Put Body:
@@ -307,7 +307,7 @@ PUT  /v2/security/users/root
 Create the rocket role fully specified:
 
 ```
-PUT /v2/security/roles/rocket
+PUT /v2/auth/roles/rocket
     Headers:
         Authorization: Basic <root:betterRootPW!>
     Body: 
@@ -329,7 +329,7 @@ PUT /v2/security/roles/rocket
 But let's make fleet just a basic role for now:
 
 ```
-PUT /v2/security/roles/fleet
+PUT /v2/auth/roles/fleet
     Headers:
       Authorization: Basic <root:betterRootPW!>
     Body: 
@@ -345,7 +345,7 @@ Well, we finally figured out where we want fleet to live. Let's fix it.
 
 
 ```
-PUT /v2/security/roles/fleet
+PUT /v2/auth/roles/fleet
     Headers:
         Authorization: Basic <root:betterRootPW!>
     Put Body:
@@ -367,7 +367,7 @@ PUT /v2/security/roles/fleet
 Same as before, let's use rocket all at once and fleet separately
 
 ```
-PUT /v2/security/users/rocketuser
+PUT /v2/auth/users/rocketuser
     Headers:
         Authorization: Basic <root:betterRootPW!>
     Body:
@@ -375,7 +375,7 @@ PUT /v2/security/users/rocketuser
 ```
 
 ```
-PUT /v2/security/users/fleetuser
+PUT /v2/auth/users/fleetuser
     Headers:
         Authorization: Basic <root:betterRootPW!>
     Body:
@@ -387,7 +387,7 @@ PUT /v2/security/users/fleetuser
 Likewise, let's explicitly grant fleetuser access.
 
 ```
-PUT /v2/security/users/fleetuser
+PUT /v2/auth/users/fleetuser
     Headers:
         Authorization: Basic <root:betterRootPW!>
     Body:

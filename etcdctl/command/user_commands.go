@@ -73,14 +73,14 @@ func NewUserCommands() cli.Command {
 	}
 }
 
-func mustNewSecurityUserAPI(c *cli.Context) client.SecurityUserAPI {
+func mustNewAuthUserAPI(c *cli.Context) client.AuthUserAPI {
 	hc := mustNewClient(c)
 
 	if c.GlobalBool("debug") {
 		fmt.Fprintf(os.Stderr, "Cluster-Endpoints: %s\n", strings.Join(hc.Endpoints(), ", "))
 	}
 
-	return client.NewSecurityUserAPI(hc)
+	return client.NewAuthUserAPI(hc)
 }
 
 func actionUserList(c *cli.Context) {
@@ -88,7 +88,7 @@ func actionUserList(c *cli.Context) {
 		fmt.Fprintln(os.Stderr, "No arguments accepted")
 		os.Exit(1)
 	}
-	u := mustNewSecurityUserAPI(c)
+	u := mustNewAuthUserAPI(c)
 	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
 	users, err := u.ListUsers(ctx)
 	cancel()
@@ -229,14 +229,14 @@ func actionUserGet(c *cli.Context) {
 
 }
 
-func mustUserAPIAndName(c *cli.Context) (client.SecurityUserAPI, string) {
+func mustUserAPIAndName(c *cli.Context) (client.AuthUserAPI, string) {
 	args := c.Args()
 	if len(args) != 1 {
 		fmt.Fprintln(os.Stderr, "Please provide a username")
 		os.Exit(1)
 	}
 
-	api := mustNewSecurityUserAPI(c)
+	api := mustNewAuthUserAPI(c)
 	username := args[0]
 	return api, username
 }

@@ -23,8 +23,8 @@ import (
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
 	etcdErr "github.com/coreos/etcd/error"
+	"github.com/coreos/etcd/etcdserver/auth"
 	"github.com/coreos/etcd/etcdserver/etcdhttp/httptypes"
-	"github.com/coreos/etcd/etcdserver/security"
 )
 
 const (
@@ -55,7 +55,7 @@ func writeError(w http.ResponseWriter, err error) {
 		e.WriteTo(w)
 	case *httptypes.HTTPError:
 		e.WriteTo(w)
-	case security.Error:
+	case auth.Error:
 		herr := httptypes.NewHTTPError(http.StatusBadRequest, e.Error())
 		herr.WriteTo(w)
 	default:
