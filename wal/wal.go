@@ -137,13 +137,13 @@ func Open(dirpath string, snap walpb.Snapshot) (*WAL, error) {
 	return openAtIndex(dirpath, snap, true)
 }
 
-// OpenNotInUse only opens the wal files that are not in use.
-// Other than that, it is similar to Open.
-func OpenNotInUse(dirpath string, snap walpb.Snapshot) (*WAL, error) {
+// OpenForRead only opens the wal files for read.
+// Write on a read only wal panics.
+func OpenForRead(dirpath string, snap walpb.Snapshot) (*WAL, error) {
 	return openAtIndex(dirpath, snap, false)
 }
 
-func openAtIndex(dirpath string, snap walpb.Snapshot, all bool) (*WAL, error) {
+func openAtIndex(dirpath string, snap walpb.Snapshot, write bool) (*WAL, error) {
 	names, err := fileutil.ReadDir(dirpath)
 	if err != nil {
 		return nil, err
@@ -172,11 +172,8 @@ func openAtIndex(dirpath string, snap walpb.Snapshot, all bool) (*WAL, error) {
 		}
 		err = l.TryLock()
 		if err != nil {
-			if all {
+			if write {
 				return nil, err
-			} else {
-				plog.Warningf("opened all the files until %s, since it is still in use by an etcd server", name)
-				break
 			}
 		}
 		rcs = append(rcs, f)
@@ -184,33 +181,40 @@ func openAtIndex(dirpath string, snap walpb.Snapshot, all bool) (*WAL, error) {
 	}
 	rc := MultiReadCloser(rcs...)
 
-	// open the lastest wal file for appending
-	seq, _, err := parseWalName(names[len(names)-1])
-	if err != nil {
-		rc.Close()
-		return nil, err
-	}
-	last := path.Join(dirpath, names[len(names)-1])
-	f, err := os.OpenFile(last, os.O_WRONLY|os.O_APPEND, 0)
-	if err != nil {
-		rc.Close()
-		return nil, err
-	}
-
 	// create a WAL ready for reading
 	w := &WAL{
 		dir:     dirpath,
 		start:   snap,
 		decoder: newDecoder(rc),
-
-		f:     f,
-		seq:   seq,
-		locks: ls,
+		locks:   ls,
 	}
+
+	if write {
+		// open the lastest wal file for appending
+		seq, _, err := parseWalName(names[len(names)-1])
+		if err != nil {
+			rc.Close()
+			return nil, err
+		}
+		last := path.Join(dirpath, names[len(names)-1])
+
+		f, err := os.OpenFile(last, os.O_WRONLY|os.O_APPEND, 0)
+		if err != nil {
+			rc.Close()
+			return nil, err
+		}
+
+		w.f = f
+		w.seq = seq
+	}
+
 	return w, nil
 }
 
-// ReadAll reads out all records of the current WAL.
+// ReadAll reads out records of the current WAL.
+// If opened in write mode, it must read out all records until EOF. Or an error
+// will be returned.
+// If opened in read mode, it will try to read all records if possible.
 // If it cannot read out the expected snap, it will return ErrSnapshotNotFound.
 // If loaded snap doesn't match with the expected one, it will return
 // all the records and error ErrSnapshotMismatch.
@@ -265,10 +269,24 @@ func (w *WAL) ReadAll() (metadata []byte, state raftpb.HardState, ents []raftpb.
 			return nil, state, nil, fmt.Errorf("unexpected block type %d", rec.Type)
 		}
 	}
-	if err != io.EOF {
-		state.Reset()
-		return nil, state, nil, err
+
+	switch w.f {
+	case nil:
+		// We do not have to read out all entries in read mode.
+		// The last record maybe a partial written one, so
+		// ErrunexpectedEOF might be returned.
+		if err != io.EOF && err != io.ErrUnexpectedEOF {
+			state.Reset()
+			return nil, state, nil, err
+		}
+	default:
+		// We must read all of the entries if WAL is opened in write mode.
+		if err != io.EOF {
+			state.Reset()
+			return nil, state, nil, err
+		}
 	}
+
 	err = nil
 	if !match {
 		err = ErrSnapshotNotFound
@@ -279,10 +297,14 @@ func (w *WAL) ReadAll() (metadata []byte, state raftpb.HardState, ents []raftpb.
 	w.start = walpb.Snapshot{}
 
 	w.metadata = metadata
-	// create encoder (chain crc with the decoder), enable appending
-	w.encoder = newEncoder(w.f, w.decoder.lastCRC())
-	w.decoder = nil
-	lastIndexSaved.Set(float64(w.enti))
+
+	if w.f != nil {
+		// create encoder (chain crc with the decoder), enable appending
+		w.encoder = newEncoder(w.f, w.decoder.lastCRC())
+		w.decoder = nil
+		lastIndexSaved.Set(float64(w.enti))
+	}
+
 	return metadata, state, ents, err
 }
 

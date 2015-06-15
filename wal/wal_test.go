@@ -404,12 +404,11 @@ func TestOpenAtUncommittedIndex(t *testing.T) {
 	w.Close()
 }
 
-// TestOpenNotInUse tests that OpenNotInUse can load all files that are
-// not in use at that point.
+// TestOpenForRead tests that OpenForRead can load all files.
 // The tests creates WAL directory, and cut out multiple WAL files. Then
-// it releases the lock of part of data, and excepts that OpenNotInUse
-// can read out all unlocked data.
-func TestOpenNotInUse(t *testing.T) {
+// it releases the lock of part of data, and excepts that OpenForRead
+// can read out all files even if some are locked for write.
+func TestOpenForRead(t *testing.T) {
 	p, err := ioutil.TempDir(os.TempDir(), "waltest")
 	if err != nil {
 		t.Fatal(err)
@@ -435,8 +434,8 @@ func TestOpenNotInUse(t *testing.T) {
 	unlockIndex := uint64(5)
 	w.ReleaseLockTo(unlockIndex)
 
-	// 1,2,3 are avaliable.
-	w2, err := OpenNotInUse(p, walpb.Snapshot{})
+	// All are avaliable for read
+	w2, err := OpenForRead(p, walpb.Snapshot{})
 	defer w2.Close()
 	if err != nil {
 		t.Fatal(err)
@@ -445,8 +444,8 @@ func TestOpenNotInUse(t *testing.T) {
 	if err != nil {
 		t.Fatalf("err = %v, want nil", err)
 	}
-	if g := ents[len(ents)-1].Index; g != unlockIndex-2 {
-		t.Errorf("last index read = %d, want %d", g, unlockIndex-2)
+	if g := ents[len(ents)-1].Index; g != 9 {
+		t.Errorf("last index read = %d, want %d", g, 9)
 	}
 }
 
