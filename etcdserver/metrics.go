@@ -47,7 +47,7 @@ var (
 	fileDescriptorUsed = prometheus.NewGauge(prometheus.GaugeOpts{
 		Namespace: "etcd",
 		Subsystem: "server",
-		Name:      "file_descriptors_used_totol",
+		Name:      "file_descriptors_used_total",
 		Help:      "The total number of file descriptors used.",
 	})
 )
