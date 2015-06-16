@@ -22,6 +22,10 @@ The node in each member follows raft consensus protocol to replicate logs. Clust
 
 Peer is another member of the same cluster.
 
+### Proposal
+
+A proposal is a request (for example a write request, a configuration change request) that needs to go through raft protocol.
+
 ### Client
 
 Client is a caller of the cluster's HTTP API.
