@@ -26,7 +26,6 @@ func newDirector(urlsFunc GetProxyURLs, failureWait time.Duration, refreshInterv
 	d := &director{
 		uf:              urlsFunc,
 		failureWait:     failureWait,
-		refreshInterval: refreshInterval,
 	}
 	d.refresh()
 	go func() {
