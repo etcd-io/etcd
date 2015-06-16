@@ -90,6 +90,7 @@ func (p *reverseProxy) ServeHTTP(rw http.ResponseWriter, clientreq *http.Request
 		return
 	}
 
+	requestCanceled := false
 	completeCh := make(chan bool, 1)
 	closeNotifier, ok := rw.(http.CloseNotifier)
 	if ok {
@@ -98,6 +99,8 @@ func (p *reverseProxy) ServeHTTP(rw http.ResponseWriter, clientreq *http.Request
 			case <-closeNotifier.CloseNotify():
 				tp, ok := p.transport.(*http.Transport)
 				if ok {
+					requestCanceled = true
+					log.Printf("proxy: request from %v canceled", clientreq.RemoteAddr)
 					tp.CancelRequest(proxyreq)
 				}
 			case <-completeCh:
@@ -118,6 +121,9 @@ func (p *reverseProxy) ServeHTTP(rw http.ResponseWriter, clientreq *http.Request
 		redirectRequest(proxyreq, ep.URL)
 
 		res, err = p.transport.RoundTrip(proxyreq)
+		if requestCanceled {
+			return
+		}
 		if err != nil {
 			log.Printf("proxy: failed to direct request to %s: %v", ep.URL.String(), err)
 			ep.Failed()
