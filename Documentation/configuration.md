@@ -106,7 +106,7 @@ To start etcd automatically using custom settings at startup in Linux, using a [
 + default: "off"
 
 ##### -proxy-failure-wait
-+ Time (in milliseconds) an endpoint will be held in a failed state.
++ Time (in milliseconds) an endpoint will be held in a failed state before being reconsidered for proxied requests.
 + default: 5000
 
 ##### -proxy-refresh-interval
@@ -114,15 +114,15 @@ To start etcd automatically using custom settings at startup in Linux, using a [
 + default: 30000
 
 ##### -proxy-dial-timeout
-+ Time (in milliseconds) for a dial to timeout.
++ Time (in milliseconds) for a dial to timeout or 0 to disable the timeout
 + default: 1000
 
 ##### -proxy-write-timeout
-+ Time (in milliseconds) for a write to timeout.
++ Time (in milliseconds) for a write to timeout or 0 to disable the timeout.
 + default: 5000
 
 ##### -proxy-read-timeout
-+ Time (in milliseconds) for a read to timeout.
++ Time (in milliseconds) for a read to timeout or 0 to disable the timeout.
 + Don't change this value if you use watches because they are using long polling requests.
 + default: 0
 
