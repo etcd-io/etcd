@@ -21,29 +21,29 @@ import (
 	"strings"
 
 	"github.com/coreos/etcd/etcdserver"
+	"github.com/coreos/etcd/etcdserver/auth"
 	"github.com/coreos/etcd/etcdserver/etcdhttp/httptypes"
-	"github.com/coreos/etcd/etcdserver/security"
 	"github.com/coreos/etcd/pkg/netutil"
 )
 
-type securityHandler struct {
-	sec     *security.Store
+type authHandler struct {
+	sec     *auth.Store
 	cluster etcdserver.Cluster
 }
 
-func hasWriteRootAccess(sec *security.Store, r *http.Request) bool {
+func hasWriteRootAccess(sec *auth.Store, r *http.Request) bool {
 	if r.Method == "GET" || r.Method == "HEAD" {
 		return true
 	}
 	return hasRootAccess(sec, r)
 }
 
-func hasRootAccess(sec *security.Store, r *http.Request) bool {
+func hasRootAccess(sec *auth.Store, r *http.Request) bool {
 	if sec == nil {
-		// No store means no security available, eg, tests.
+		// No store means no auth available, eg, tests.
 		return true
 	}
-	if !sec.SecurityEnabled() {
+	if !sec.AuthEnabled() {
 		return true
 	}
 	username, password, ok := netutil.BasicAuth(r)
@@ -56,24 +56,24 @@ func hasRootAccess(sec *security.Store, r *http.Request) bool {
 	}
 	ok = rootUser.CheckPassword(password)
 	if !ok {
-		plog.Warningf("security: wrong password for user %s", username)
+		plog.Warningf("auth: wrong password for user %s", username)
 		return false
 	}
 	for _, role := range rootUser.Roles {
-		if role == security.RootRoleName {
+		if role == auth.RootRoleName {
 			return true
 		}
 	}
-	plog.Warningf("security: user %s does not have the %s role for resource %s.", username, security.RootRoleName, r.URL.Path)
+	plog.Warningf("auth: user %s does not have the %s role for resource %s.", username, auth.RootRoleName, r.URL.Path)
 	return false
 }
 
-func hasKeyPrefixAccess(sec *security.Store, r *http.Request, key string, recursive bool) bool {
+func hasKeyPrefixAccess(sec *auth.Store, r *http.Request, key string, recursive bool) bool {
 	if sec == nil {
-		// No store means no security available, eg, tests.
+		// No store means no auth available, eg, tests.
 		return true
 	}
-	if !sec.SecurityEnabled() {
+	if !sec.AuthEnabled() {
 		return true
 	}
 	username, password, ok := netutil.BasicAuth(r)
@@ -82,12 +82,12 @@ func hasKeyPrefixAccess(sec *security.Store, r *http.Request, key string, recurs
 	}
 	user, err := sec.GetUser(username)
 	if err != nil {
-		plog.Warningf("security: no such user: %s.", username)
+		plog.Warningf("auth: no such user: %s.", username)
 		return false
 	}
 	authAsUser := user.CheckPassword(password)
 	if !authAsUser {
-		plog.Warningf("security: incorrect password for user: %s.", username)
+		plog.Warningf("auth: incorrect password for user: %s.", username)
 		return false
 	}
 	writeAccess := r.Method != "GET" && r.Method != "HEAD"
@@ -101,20 +101,20 @@ func hasKeyPrefixAccess(sec *security.Store, r *http.Request, key string, recurs
 		}
 		return role.HasKeyAccess(key, writeAccess)
 	}
-	plog.Warningf("security: invalid access for user %s on key %s.", username, key)
+	plog.Warningf("auth: invalid access for user %s on key %s.", username, key)
 	return false
 }
 
-func hasGuestAccess(sec *security.Store, r *http.Request, key string) bool {
+func hasGuestAccess(sec *auth.Store, r *http.Request, key string) bool {
 	writeAccess := r.Method != "GET" && r.Method != "HEAD"
-	role, err := sec.GetRole(security.GuestRoleName)
+	role, err := sec.GetRole(auth.GuestRoleName)
 	if err != nil {
 		return false
 	}
 	if role.HasKeyAccess(key, writeAccess) {
 		return true
 	}
-	plog.Warningf("security: invalid access for unauthenticated user on resource %s.", key)
+	plog.Warningf("auth: invalid access for unauthenticated user on resource %s.", key)
 	return false
 }
 
@@ -123,15 +123,15 @@ func writeNoAuth(w http.ResponseWriter) {
 	herr.WriteTo(w)
 }
 
-func handleSecurity(mux *http.ServeMux, sh *securityHandler) {
-	mux.HandleFunc(securityPrefix+"/roles", capabilityHandler(securityCapability, sh.baseRoles))
-	mux.HandleFunc(securityPrefix+"/roles/", capabilityHandler(securityCapability, sh.handleRoles))
-	mux.HandleFunc(securityPrefix+"/users", capabilityHandler(securityCapability, sh.baseUsers))
-	mux.HandleFunc(securityPrefix+"/users/", capabilityHandler(securityCapability, sh.handleUsers))
-	mux.HandleFunc(securityPrefix+"/enable", capabilityHandler(securityCapability, sh.enableDisable))
+func handleAuth(mux *http.ServeMux, sh *authHandler) {
+	mux.HandleFunc(authPrefix+"/roles", capabilityHandler(authCapability, sh.baseRoles))
+	mux.HandleFunc(authPrefix+"/roles/", capabilityHandler(authCapability, sh.handleRoles))
+	mux.HandleFunc(authPrefix+"/users", capabilityHandler(authCapability, sh.baseUsers))
+	mux.HandleFunc(authPrefix+"/users/", capabilityHandler(authCapability, sh.handleUsers))
+	mux.HandleFunc(authPrefix+"/enable", capabilityHandler(authCapability, sh.enableDisable))
 }
 
-func (sh *securityHandler) baseRoles(w http.ResponseWriter, r *http.Request) {
+func (sh *authHandler) baseRoles(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r.Method, "GET") {
 		return
 	}
@@ -160,8 +160,8 @@ func (sh *securityHandler) baseRoles(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (sh *securityHandler) handleRoles(w http.ResponseWriter, r *http.Request) {
-	subpath := path.Clean(r.URL.Path[len(securityPrefix):])
+func (sh *authHandler) handleRoles(w http.ResponseWriter, r *http.Request) {
+	subpath := path.Clean(r.URL.Path[len(authPrefix):])
 	// Split "/roles/rolename/command".
 	// First item is an empty string, second is "roles"
 	pieces := strings.Split(subpath, "/")
@@ -176,7 +176,7 @@ func (sh *securityHandler) handleRoles(w http.ResponseWriter, r *http.Request) {
 	sh.forRole(w, r, pieces[2])
 }
 
-func (sh *securityHandler) forRole(w http.ResponseWriter, r *http.Request, role string) {
+func (sh *authHandler) forRole(w http.ResponseWriter, r *http.Request, role string) {
 	if !allowMethod(w, r.Method, "GET", "PUT", "DELETE") {
 		return
 	}
@@ -201,7 +201,7 @@ func (sh *securityHandler) forRole(w http.ResponseWriter, r *http.Request, role 
 		}
 		return
 	case "PUT":
-		var in security.Role
+		var in auth.Role
 		err := json.NewDecoder(r.Body).Decode(&in)
 		if err != nil {
 			writeError(w, httptypes.NewHTTPError(http.StatusBadRequest, "Invalid JSON in request body."))
@@ -236,7 +236,7 @@ func (sh *securityHandler) forRole(w http.ResponseWriter, r *http.Request, role 
 	}
 }
 
-func (sh *securityHandler) baseUsers(w http.ResponseWriter, r *http.Request) {
+func (sh *authHandler) baseUsers(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r.Method, "GET") {
 		return
 	}
@@ -265,8 +265,8 @@ func (sh *securityHandler) baseUsers(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (sh *securityHandler) handleUsers(w http.ResponseWriter, r *http.Request) {
-	subpath := path.Clean(r.URL.Path[len(securityPrefix):])
+func (sh *authHandler) handleUsers(w http.ResponseWriter, r *http.Request) {
+	subpath := path.Clean(r.URL.Path[len(authPrefix):])
 	// Split "/users/username".
 	// First item is an empty string, second is "users"
 	pieces := strings.Split(subpath, "/")
@@ -281,7 +281,7 @@ func (sh *securityHandler) handleUsers(w http.ResponseWriter, r *http.Request) {
 	sh.forUser(w, r, pieces[2])
 }
 
-func (sh *securityHandler) forUser(w http.ResponseWriter, r *http.Request, user string) {
+func (sh *authHandler) forUser(w http.ResponseWriter, r *http.Request, user string) {
 	if !allowMethod(w, r.Method, "GET", "PUT", "DELETE") {
 		return
 	}
@@ -308,7 +308,7 @@ func (sh *securityHandler) forUser(w http.ResponseWriter, r *http.Request, user 
 		}
 		return
 	case "PUT":
-		var u security.User
+		var u auth.User
 		err := json.NewDecoder(r.Body).Decode(&u)
 		if err != nil {
 			writeError(w, httptypes.NewHTTPError(http.StatusBadRequest, "Invalid JSON in request body."))
@@ -351,7 +351,7 @@ type enabled struct {
 	Enabled bool `json:"enabled"`
 }
 
-func (sh *securityHandler) enableDisable(w http.ResponseWriter, r *http.Request) {
+func (sh *authHandler) enableDisable(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r.Method, "GET", "PUT", "DELETE") {
 		return
 	}
@@ -361,22 +361,22 @@ func (sh *securityHandler) enableDisable(w http.ResponseWriter, r *http.Request)
 	}
 	w.Header().Set("X-Etcd-Cluster-ID", sh.cluster.ID().String())
 	w.Header().Set("Content-Type", "application/json")
-	isEnabled := sh.sec.SecurityEnabled()
+	isEnabled := sh.sec.AuthEnabled()
 	switch r.Method {
 	case "GET":
 		jsonDict := enabled{isEnabled}
 		err := json.NewEncoder(w).Encode(jsonDict)
 		if err != nil {
-			plog.Warningf("error encoding security state on %s", r.URL)
+			plog.Warningf("error encoding auth state on %s", r.URL)
 		}
 	case "PUT":
-		err := sh.sec.EnableSecurity()
+		err := sh.sec.EnableAuth()
 		if err != nil {
 			writeError(w, err)
 			return
 		}
 	case "DELETE":
-		err := sh.sec.DisableSecurity()
+		err := sh.sec.DisableAuth()
 		if err != nil {
 			writeError(w, err)
 			return

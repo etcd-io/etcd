@@ -47,15 +47,15 @@ const (
 	ReadWritePermission
 )
 
-// NewSecurityRoleAPI constructs a new SecurityRoleAPI that uses HTTP to
+// NewAuthRoleAPI constructs a new AuthRoleAPI that uses HTTP to
 // interact with etcd's role creation and modification features.
-func NewSecurityRoleAPI(c Client) SecurityRoleAPI {
-	return &httpSecurityRoleAPI{
+func NewAuthRoleAPI(c Client) AuthRoleAPI {
+	return &httpAuthRoleAPI{
 		client: c,
 	}
 }
 
-type SecurityRoleAPI interface {
+type AuthRoleAPI interface {
 	// Add a role.
 	AddRole(ctx context.Context, role string) error
 
@@ -75,27 +75,27 @@ type SecurityRoleAPI interface {
 	ListRoles(ctx context.Context) ([]string, error)
 }
 
-type httpSecurityRoleAPI struct {
+type httpAuthRoleAPI struct {
 	client httpClient
 }
 
-type securityRoleAPIAction struct {
+type authRoleAPIAction struct {
 	verb string
 	name string
 	role *Role
 }
 
-type securityRoleAPIList struct{}
+type authRoleAPIList struct{}
 
-func (list *securityRoleAPIList) HTTPRequest(ep url.URL) *http.Request {
-	u := v2SecurityURL(ep, "roles", "")
+func (list *authRoleAPIList) HTTPRequest(ep url.URL) *http.Request {
+	u := v2AuthURL(ep, "roles", "")
 	req, _ := http.NewRequest("GET", u.String(), nil)
 	req.Header.Set("Content-Type", "application/json")
 	return req
 }
 
-func (l *securityRoleAPIAction) HTTPRequest(ep url.URL) *http.Request {
-	u := v2SecurityURL(ep, "roles", l.name)
+func (l *authRoleAPIAction) HTTPRequest(ep url.URL) *http.Request {
+	u := v2AuthURL(ep, "roles", l.name)
 	if l.role == nil {
 		req, _ := http.NewRequest(l.verb, u.String(), nil)
 		return req
@@ -110,8 +110,8 @@ func (l *securityRoleAPIAction) HTTPRequest(ep url.URL) *http.Request {
 	return req
 }
 
-func (r *httpSecurityRoleAPI) ListRoles(ctx context.Context) ([]string, error) {
-	resp, body, err := r.client.Do(ctx, &securityRoleAPIList{})
+func (r *httpAuthRoleAPI) ListRoles(ctx context.Context) ([]string, error) {
+	resp, body, err := r.client.Do(ctx, &authRoleAPIList{})
 	if err != nil {
 		return nil, err
 	}
@@ -128,31 +128,31 @@ func (r *httpSecurityRoleAPI) ListRoles(ctx context.Context) ([]string, error) {
 	return userList.Roles, nil
 }
 
-func (r *httpSecurityRoleAPI) AddRole(ctx context.Context, rolename string) error {
+func (r *httpAuthRoleAPI) AddRole(ctx context.Context, rolename string) error {
 	role := &Role{
 		Role: rolename,
 	}
-	return r.addRemoveRole(ctx, &securityRoleAPIAction{
+	return r.addRemoveRole(ctx, &authRoleAPIAction{
 		verb: "PUT",
 		name: rolename,
 		role: role,
 	})
 }
 
-func (r *httpSecurityRoleAPI) RemoveRole(ctx context.Context, rolename string) error {
-	return r.addRemoveRole(ctx, &securityRoleAPIAction{
+func (r *httpAuthRoleAPI) RemoveRole(ctx context.Context, rolename string) error {
+	return r.addRemoveRole(ctx, &authRoleAPIAction{
 		verb: "DELETE",
 		name: rolename,
 	})
 }
 
-func (r *httpSecurityRoleAPI) addRemoveRole(ctx context.Context, req *securityRoleAPIAction) error {
+func (r *httpAuthRoleAPI) addRemoveRole(ctx context.Context, req *authRoleAPIAction) error {
 	resp, body, err := r.client.Do(ctx, req)
 	if err != nil {
 		return err
 	}
 	if err := assertStatusCode(resp.StatusCode, http.StatusOK, http.StatusCreated); err != nil {
-		var sec securityError
+		var sec authError
 		err := json.Unmarshal(body, &sec)
 		if err != nil {
 			return err
@@ -162,8 +162,8 @@ func (r *httpSecurityRoleAPI) addRemoveRole(ctx context.Context, req *securityRo
 	return nil
 }
 
-func (r *httpSecurityRoleAPI) GetRole(ctx context.Context, rolename string) (*Role, error) {
-	return r.modRole(ctx, &securityRoleAPIAction{
+func (r *httpAuthRoleAPI) GetRole(ctx context.Context, rolename string) (*Role, error) {
+	return r.modRole(ctx, &authRoleAPIAction{
 		verb: "GET",
 		name: rolename,
 	})
@@ -183,7 +183,7 @@ func buildRWPermission(prefixes []string, permType PermissionType) rwPermission 
 	return out
 }
 
-func (r *httpSecurityRoleAPI) GrantRoleKV(ctx context.Context, rolename string, prefixes []string, permType PermissionType) (*Role, error) {
+func (r *httpAuthRoleAPI) GrantRoleKV(ctx context.Context, rolename string, prefixes []string, permType PermissionType) (*Role, error) {
 	rwp := buildRWPermission(prefixes, permType)
 	role := &Role{
 		Role: rolename,
@@ -191,14 +191,14 @@ func (r *httpSecurityRoleAPI) GrantRoleKV(ctx context.Context, rolename string, 
 			KV: rwp,
 		},
 	}
-	return r.modRole(ctx, &securityRoleAPIAction{
+	return r.modRole(ctx, &authRoleAPIAction{
 		verb: "PUT",
 		name: rolename,
 		role: role,
 	})
 }
 
-func (r *httpSecurityRoleAPI) RevokeRoleKV(ctx context.Context, rolename string, prefixes []string, permType PermissionType) (*Role, error) {
+func (r *httpAuthRoleAPI) RevokeRoleKV(ctx context.Context, rolename string, prefixes []string, permType PermissionType) (*Role, error) {
 	rwp := buildRWPermission(prefixes, permType)
 	role := &Role{
 		Role: rolename,
@@ -206,20 +206,20 @@ func (r *httpSecurityRoleAPI) RevokeRoleKV(ctx context.Context, rolename string,
 			KV: rwp,
 		},
 	}
-	return r.modRole(ctx, &securityRoleAPIAction{
+	return r.modRole(ctx, &authRoleAPIAction{
 		verb: "PUT",
 		name: rolename,
 		role: role,
 	})
 }
 
-func (r *httpSecurityRoleAPI) modRole(ctx context.Context, req *securityRoleAPIAction) (*Role, error) {
+func (r *httpAuthRoleAPI) modRole(ctx context.Context, req *authRoleAPIAction) (*Role, error) {
 	resp, body, err := r.client.Do(ctx, req)
 	if err != nil {
 		return nil, err
 	}
 	if err := assertStatusCode(resp.StatusCode, http.StatusOK); err != nil {
-		var sec securityError
+		var sec authError
 		err := json.Unmarshal(body, &sec)
 		if err != nil {
 			return nil, err

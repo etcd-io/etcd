@@ -14,14 +14,14 @@ import (
 type capability string
 
 const (
-	securityCapability capability = "security"
+	authCapability capability = "auth"
 )
 
 var (
 	// capabilityMap is a static map of version to capability map.
 	// the base capabilities is the set of capability 2.0 supports.
 	capabilityMaps = map[string]map[capability]bool{
-		"2.1.0": {securityCapability: true},
+		"2.1.0": {authCapability: true},
 	}
 
 	enableMapMu sync.Mutex

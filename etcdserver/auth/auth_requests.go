@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package security
+package auth
 
 import (
 	"encoding/json"
@@ -24,7 +24,7 @@ import (
 	"github.com/coreos/etcd/etcdserver/etcdserverpb"
 )
 
-func (s *Store) ensureSecurityDirectories() error {
+func (s *Store) ensureAuthDirectories() error {
 	if s.ensuredOnce {
 		return nil
 	}
@@ -45,7 +45,7 @@ func (s *Store) ensureSecurityDirectories() error {
 					continue
 				}
 			}
-			plog.Errorf("failed to create security directories in the store (%v)", err)
+			plog.Errorf("failed to create auth directories in the store (%v)", err)
 			return err
 		}
 	}
@@ -72,16 +72,16 @@ func (s *Store) ensureSecurityDirectories() error {
 	return nil
 }
 
-func (s *Store) enableSecurity() error {
+func (s *Store) enableAuth() error {
 	_, err := s.updateResource("/enabled", true)
 	return err
 }
-func (s *Store) disableSecurity() error {
+func (s *Store) disableAuth() error {
 	_, err := s.updateResource("/enabled", false)
 	return err
 }
 
-func (s *Store) detectSecurity() bool {
+func (s *Store) detectAuth() bool {
 	if s.server == nil {
 		return false
 	}
@@ -92,7 +92,7 @@ func (s *Store) detectSecurity() bool {
 				return false
 			}
 		}
-		plog.Errorf("failed to detect security settings (%s)", err)
+		plog.Errorf("failed to detect auth settings (%s)", err)
 		return false
 	}
 
@@ -124,7 +124,7 @@ func (s *Store) createResource(res string, value interface{}) (etcdserver.Respon
 	return s.setResource(res, value, false)
 }
 func (s *Store) setResource(res string, value interface{}, prevexist bool) (etcdserver.Response, error) {
-	err := s.ensureSecurityDirectories()
+	err := s.ensureAuthDirectories()
 	if err != nil {
 		return etcdserver.Response{}, err
 	}
@@ -145,7 +145,7 @@ func (s *Store) setResource(res string, value interface{}, prevexist bool) (etcd
 }
 
 func (s *Store) deleteResource(res string) (etcdserver.Response, error) {
-	err := s.ensureSecurityDirectories()
+	err := s.ensureAuthDirectories()
 	if err != nil {
 		return etcdserver.Response{}, err
 	}

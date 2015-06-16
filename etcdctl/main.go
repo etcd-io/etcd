@@ -56,7 +56,7 @@ func main() {
 		command.NewImportSnapCommand(),
 		command.NewUserCommands(),
 		command.NewRoleCommands(),
-		command.NewSecurityCommands(),
+		command.NewAuthCommands(),
 	}
 
 	app.Run(os.Args)

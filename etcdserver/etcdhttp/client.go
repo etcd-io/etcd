@@ -32,9 +32,9 @@ import (
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/etcdserver"
+	"github.com/coreos/etcd/etcdserver/auth"
 	"github.com/coreos/etcd/etcdserver/etcdhttp/httptypes"
 	"github.com/coreos/etcd/etcdserver/etcdserverpb"
-	"github.com/coreos/etcd/etcdserver/security"
 	"github.com/coreos/etcd/etcdserver/stats"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft"
@@ -43,7 +43,7 @@ import (
 )
 
 const (
-	securityPrefix           = "/v2/security"
+	authPrefix               = "/v2/auth"
 	keysPrefix               = "/v2/keys"
 	deprecatedMachinesPrefix = "/v2/machines"
 	membersPrefix            = "/v2/members"
@@ -58,7 +58,7 @@ const (
 func NewClientHandler(server *etcdserver.EtcdServer) http.Handler {
 	go capabilityLoop(server)
 
-	sec := security.NewStore(server, defaultServerTimeout)
+	sec := auth.NewStore(server, defaultServerTimeout)
 
 	kh := &keysHandler{
 		sec:     sec,
@@ -83,7 +83,7 @@ func NewClientHandler(server *etcdserver.EtcdServer) http.Handler {
 		cluster: server.Cluster(),
 	}
 
-	sech := &securityHandler{
+	sech := &authHandler{
 		sec:     sec,
 		cluster: server.Cluster(),
 	}
@@ -102,13 +102,13 @@ func NewClientHandler(server *etcdserver.EtcdServer) http.Handler {
 	mux.Handle(membersPrefix, mh)
 	mux.Handle(membersPrefix+"/", mh)
 	mux.Handle(deprecatedMachinesPrefix, dmh)
-	handleSecurity(mux, sech)
+	handleAuth(mux, sech)
 
 	return requestLogger(mux)
 }
 
 type keysHandler struct {
-	sec     *security.Store
+	sec     *auth.Store
 	server  etcdserver.Server
 	cluster etcdserver.Cluster
 	timer   etcdserver.RaftTimer
@@ -170,7 +170,7 @@ func (h *deprecatedMachinesHandler) ServeHTTP(w http.ResponseWriter, r *http.Req
 }
 
 type membersHandler struct {
-	sec     *security.Store
+	sec     *auth.Store
 	server  etcdserver.Server
 	cluster etcdserver.Cluster
 	clock   clockwork.Clock

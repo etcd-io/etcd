@@ -24,49 +24,49 @@ import (
 	"github.com/coreos/etcd/client"
 )
 
-func NewSecurityCommands() cli.Command {
+func NewAuthCommands() cli.Command {
 	return cli.Command{
-		Name:  "security",
-		Usage: "overall security controls",
+		Name:  "auth",
+		Usage: "overall auth controls",
 		Subcommands: []cli.Command{
 			cli.Command{
 				Name:   "enable",
-				Usage:  "enable security access controls",
-				Action: actionSecurityEnable,
+				Usage:  "enable auth access controls",
+				Action: actionAuthEnable,
 			},
 			cli.Command{
 				Name:   "disable",
-				Usage:  "disable security access controls",
-				Action: actionSecurityDisable,
+				Usage:  "disable auth access controls",
+				Action: actionAuthDisable,
 			},
 		},
 	}
 }
 
-func actionSecurityEnable(c *cli.Context) {
-	securityEnableDisable(c, true)
+func actionAuthEnable(c *cli.Context) {
+	authEnableDisable(c, true)
 }
 
-func actionSecurityDisable(c *cli.Context) {
-	securityEnableDisable(c, false)
+func actionAuthDisable(c *cli.Context) {
+	authEnableDisable(c, false)
 }
 
-func mustNewSecurityAPI(c *cli.Context) client.SecurityAPI {
+func mustNewAuthAPI(c *cli.Context) client.AuthAPI {
 	hc := mustNewClient(c)
 
 	if c.GlobalBool("debug") {
 		fmt.Fprintf(os.Stderr, "Cluster-Endpoints: %s\n", strings.Join(hc.Endpoints(), ", "))
 	}
 
-	return client.NewSecurityAPI(hc)
+	return client.NewAuthAPI(hc)
 }
 
-func securityEnableDisable(c *cli.Context, enable bool) {
+func authEnableDisable(c *cli.Context, enable bool) {
 	if len(c.Args()) != 0 {
 		fmt.Fprintln(os.Stderr, "No arguments accepted")
 		os.Exit(1)
 	}
-	s := mustNewSecurityAPI(c)
+	s := mustNewAuthAPI(c)
 	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
 	var err error
 	if enable {
@@ -80,8 +80,8 @@ func securityEnableDisable(c *cli.Context, enable bool) {
 		os.Exit(1)
 	}
 	if enable {
-		fmt.Println("Security Enabled")
+		fmt.Println("Authentication Enabled")
 	} else {
-		fmt.Println("Security Disabled")
+		fmt.Println("Authentication Disabled")
 	}
 }
