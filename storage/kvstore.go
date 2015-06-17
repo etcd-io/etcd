@@ -14,9 +14,10 @@ import (
 )
 
 var (
-	batchLimit    = 10000
-	batchInterval = 100 * time.Millisecond
-	keyBucketName = []byte("key")
+	batchLimit     = 10000
+	batchInterval  = 100 * time.Millisecond
+	keyBucketName  = []byte("key")
+	metaBucketName = []byte("meta")
 
 	scheduledCompactKeyName = []byte("scheduledCompactRev")
 	finishedCompactKeyName  = []byte("finishedCompactRev")
@@ -50,6 +51,7 @@ func newStore(path string) *store {
 	tx := s.b.BatchTx()
 	tx.Lock()
 	tx.UnsafeCreateBucket(keyBucketName)
+	tx.UnsafeCreateBucket(metaBucketName)
 	tx.Unlock()
 	s.b.ForceCommit()
 
@@ -153,7 +155,7 @@ func (s *store) Compact(rev int64) error {
 
 	tx := s.b.BatchTx()
 	tx.Lock()
-	tx.UnsafePut(keyBucketName, scheduledCompactKeyName, rbytes)
+	tx.UnsafePut(metaBucketName, scheduledCompactKeyName, rbytes)
 	tx.Unlock()
 
 	keep := s.kvindex.Compact(rev)
@@ -178,7 +180,7 @@ func (s *store) Restore() error {
 	// restore index
 	tx := s.b.BatchTx()
 	tx.Lock()
-	_, finishedCompactBytes := tx.UnsafeRange(keyBucketName, finishedCompactKeyName, nil, 0)
+	_, finishedCompactBytes := tx.UnsafeRange(metaBucketName, finishedCompactKeyName, nil, 0)
 	if len(finishedCompactBytes) != 0 {
 		s.compactMainRev = bytesToRev(finishedCompactBytes[0]).main
 		log.Printf("storage: restore compact to %d", s.compactMainRev)
@@ -208,7 +210,7 @@ func (s *store) Restore() error {
 		s.currentRev = rev
 	}
 
-	_, scheduledCompactBytes := tx.UnsafeRange(keyBucketName, scheduledCompactKeyName, nil, 0)
+	_, scheduledCompactBytes := tx.UnsafeRange(metaBucketName, scheduledCompactKeyName, nil, 0)
 	if len(scheduledCompactBytes) != 0 {
 		scheduledCompact := bytesToRev(finishedCompactBytes[0]).main
 		if scheduledCompact > s.compactMainRev {
