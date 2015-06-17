@@ -89,6 +89,40 @@ func TestRangeBadRev(t *testing.T) {
 	}
 }
 
+func TestRangeLimit(t *testing.T) {
+	s := newStore("test")
+	defer os.Remove("test")
+
+	s.Put([]byte("foo"), []byte("bar"))
+	s.Put([]byte("foo1"), []byte("bar1"))
+	s.Put([]byte("foo2"), []byte("bar2"))
+	s.DeleteRange([]byte("foo1"), nil)
+	kvs := []storagepb.KeyValue{
+		{Key: []byte("foo"), Value: []byte("bar")},
+		{Key: []byte("foo2"), Value: []byte("bar2")},
+	}
+
+	tests := []struct {
+		limit int64
+		wkvs  []storagepb.KeyValue
+	}{
+		// no limit
+		{0, kvs},
+		{1, kvs[:1]},
+		{2, kvs},
+		{3, kvs},
+	}
+	for i, tt := range tests {
+		kvs, _, err := s.Range([]byte("foo"), []byte("foo3"), tt.limit, 0)
+		if err != nil {
+			t.Fatalf("#%d: range error (%v)", i, err)
+		}
+		if !reflect.DeepEqual(kvs, tt.wkvs) {
+			t.Errorf("#%d: kvs = %+v, want %+v", i, kvs, tt.wkvs)
+		}
+	}
+}
+
 func TestSimpleDeleteRange(t *testing.T) {
 	tests := []struct {
 		key, end []byte

@@ -260,9 +260,6 @@ func (s *store) rangeKeys(key, end []byte, limit, rangeRev int64) (kvs []storage
 	if len(revpairs) == 0 {
 		return nil, rev, nil
 	}
-	if limit > 0 && len(revpairs) > int(limit) {
-		revpairs = revpairs[:limit]
-	}
 
 	tx := s.b.BatchTx()
 	tx.Lock()
@@ -282,6 +279,9 @@ func (s *store) rangeKeys(key, end []byte, limit, rangeRev int64) (kvs []storage
 		}
 		if e.Type == storagepb.PUT {
 			kvs = append(kvs, e.Kv)
+		}
+		if limit > 0 && len(kvs) >= int(limit) {
+			break
 		}
 	}
 	return kvs, rev, nil
