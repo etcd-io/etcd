@@ -39,6 +39,7 @@ import (
 	"github.com/coreos/etcd/rafthttp"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/prometheus/client_golang/prometheus"
 )
 
 type dirType string
@@ -342,7 +343,10 @@ func startProxy(cfg *config) error {
 		host := u.Host
 		go func() {
 			plog.Info("proxy: listening for client requests on ", host)
-			plog.Fatal(http.Serve(l, ph))
+			mux := http.NewServeMux()
+			mux.Handle("/metrics", prometheus.Handler())
+			mux.Handle("/", ph)
+			plog.Fatal(http.Serve(l, mux))
 		}()
 	}
 	return nil
