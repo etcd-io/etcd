@@ -4,7 +4,10 @@ import (
 	"bytes"
 	"crypto/rand"
 	"os"
+	"reflect"
 	"testing"
+
+	"github.com/coreos/etcd/storage/storagepb"
 )
 
 func TestRange(t *testing.T) {
@@ -14,30 +17,34 @@ func TestRange(t *testing.T) {
 	s.Put([]byte("foo"), []byte("bar"))
 	s.Put([]byte("foo1"), []byte("bar1"))
 	s.Put([]byte("foo2"), []byte("bar2"))
+	kvs := []storagepb.KeyValue{
+		{Key: []byte("foo"), Value: []byte("bar")},
+		{Key: []byte("foo1"), Value: []byte("bar1")},
+		{Key: []byte("foo2"), Value: []byte("bar2")},
+	}
 
 	tests := []struct {
 		key, end []byte
 		rev      int64
 
 		wrev int64
-		// TODO: change this to the actual kv
-		wN int64
+		wkvs []storagepb.KeyValue
 	}{
 		{
 			[]byte("foo"), []byte("foo3"), 0,
-			3, 3,
+			3, kvs,
 		},
 		{
 			[]byte("foo"), []byte("foo1"), 0,
-			3, 1,
+			3, kvs[:1],
 		},
 		{
 			[]byte("foo"), []byte("foo3"), 1,
-			1, 1,
+			1, kvs[:1],
 		},
 		{
 			[]byte("foo"), []byte("foo3"), 2,
-			2, 2,
+			2, kvs[:2],
 		},
 	}
 
@@ -46,11 +53,11 @@ func TestRange(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if len(kvs) != int(tt.wN) {
-			t.Errorf("#%d: len(kvs) = %d, want %d", i, len(kvs), tt.wN)
-		}
 		if rev != tt.wrev {
 			t.Errorf("#%d: rev = %d, want %d", i, tt.rev, tt.wrev)
+		}
+		if !reflect.DeepEqual(kvs, tt.wkvs) {
+			t.Errorf("#%d: kvs = %+v, want %+v", i, kvs, tt.wkvs)
 		}
 	}
 }
