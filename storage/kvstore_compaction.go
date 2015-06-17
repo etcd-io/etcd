@@ -28,7 +28,7 @@ func (s *store) scheduleCompaction(compactMainRev int64, keep map[reversion]stru
 		if len(keys) == 0 {
 			rbytes := make([]byte, 8+1+8)
 			revToBytes(reversion{main: compactMainRev}, rbytes)
-			tx.UnsafePut(keyBucketName, finishedCompactKeyName, rbytes)
+			tx.UnsafePut(metaBucketName, finishedCompactKeyName, rbytes)
 			tx.Unlock()
 			return
 		}
