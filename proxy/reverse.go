@@ -24,6 +24,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync/atomic"
 
 	"github.com/coreos/etcd/etcdserver/etcdhttp/httptypes"
 )
@@ -90,7 +91,7 @@ func (p *reverseProxy) ServeHTTP(rw http.ResponseWriter, clientreq *http.Request
 		return
 	}
 
-	requestCanceled := false
+	var requestClosed int32
 	completeCh := make(chan bool, 1)
 	closeNotifier, ok := rw.(http.CloseNotifier)
 	if ok {
@@ -99,7 +100,7 @@ func (p *reverseProxy) ServeHTTP(rw http.ResponseWriter, clientreq *http.Request
 			case <-closeNotifier.CloseNotify():
 				tp, ok := p.transport.(*http.Transport)
 				if ok {
-					requestCanceled = true
+					atomic.StoreInt32(&requestClosed, 1)
 					log.Printf("proxy: request from %v canceled", clientreq.RemoteAddr)
 					tp.CancelRequest(proxyreq)
 				}
@@ -121,7 +122,7 @@ func (p *reverseProxy) ServeHTTP(rw http.ResponseWriter, clientreq *http.Request
 		redirectRequest(proxyreq, ep.URL)
 
 		res, err = p.transport.RoundTrip(proxyreq)
-		if requestCanceled {
+		if atomic.LoadInt32(&requestClosed) == 1 {
 			return
 		}
 		if err != nil {
