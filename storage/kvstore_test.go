@@ -79,6 +79,7 @@ func TestRangeBadRev(t *testing.T) {
 	}{
 		{2, ErrCompacted},
 		{3, ErrCompacted},
+		{4, ErrFutureRev},
 	}
 	for i, tt := range tests {
 		_, _, err := s.Range([]byte("foo"), []byte("foo3"), 0, tt.rev)
