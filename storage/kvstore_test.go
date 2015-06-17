@@ -62,6 +62,32 @@ func TestRange(t *testing.T) {
 	}
 }
 
+func TestRangeBadRev(t *testing.T) {
+	s := newStore("test")
+	defer os.Remove("test")
+
+	s.Put([]byte("foo"), []byte("bar"))
+	s.Put([]byte("foo1"), []byte("bar1"))
+	s.Put([]byte("foo2"), []byte("bar2"))
+	if err := s.Compact(3); err != nil {
+		t.Fatalf("compact error (%v)", err)
+	}
+
+	tests := []struct {
+		rev  int64
+		werr error
+	}{
+		{2, ErrCompacted},
+		{3, ErrCompacted},
+	}
+	for i, tt := range tests {
+		_, _, err := s.Range([]byte("foo"), []byte("foo3"), 0, tt.rev)
+		if err != tt.werr {
+			t.Errorf("#%d: error = %v, want %v", i, err, tt.werr)
+		}
+	}
+}
+
 func TestSimpleDeleteRange(t *testing.T) {
 	tests := []struct {
 		key, end []byte
