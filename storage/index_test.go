@@ -30,6 +30,77 @@ func TestIndexPutAndGet(t *testing.T) {
 	verify(t, index, tests)
 }
 
+func TestIndexRange(t *testing.T) {
+	atRev := int64(3)
+	allKeys := [][]byte{[]byte("foo"), []byte("foo1"), []byte("foo2")}
+	allRevs := []reversion{{main: 1}, {main: 2}, {main: 3}}
+	tests := []struct {
+		key, end []byte
+		wkeys    [][]byte
+		wrevs    []reversion
+	}{
+		// single key that not found
+		{
+			[]byte("bar"), nil, nil, nil,
+		},
+		// single key that found
+		{
+			[]byte("foo"), nil, allKeys[:1], allRevs[:1],
+		},
+		// range keys, return first member
+		{
+			[]byte("foo"), []byte("foo1"), allKeys[:1], allRevs[:1],
+		},
+		// range keys, return first two members
+		{
+			[]byte("foo"), []byte("foo2"), allKeys[:2], allRevs[:2],
+		},
+		// range keys, return all members
+		{
+			[]byte("foo"), []byte("fop"), allKeys, allRevs,
+		},
+		// range keys, return last two members
+		{
+			[]byte("foo1"), []byte("fop"), allKeys[1:], allRevs[1:],
+		},
+		// range keys, return last member
+		{
+			[]byte("foo2"), []byte("fop"), allKeys[2:], allRevs[2:],
+		},
+		// range keys, return nothing
+		{
+			[]byte("foo3"), []byte("fop"), nil, nil,
+		},
+	}
+	for i, tt := range tests {
+		index := newTestTreeIndex()
+		keys, revs := index.Range(tt.key, tt.end, atRev)
+		if !reflect.DeepEqual(keys, tt.wkeys) {
+			t.Errorf("#%d: keys = %+v, want %+v", i, keys, tt.wkeys)
+		}
+		if !reflect.DeepEqual(revs, tt.wrevs) {
+			t.Errorf("#%d: revs = %+v, want %+v", i, revs, tt.wrevs)
+		}
+	}
+}
+
+func TestIndexTombstone(t *testing.T) {
+	index := newTestTreeIndex()
+
+	err := index.Tombstone([]byte("foo"), reversion{main: 7})
+	if err != nil {
+		t.Errorf("tombstone error = %v, want nil", err)
+	}
+	rev, err := index.Get([]byte("foo"), 7)
+	if err != nil {
+		t.Errorf("get error = %v, want nil", err)
+	}
+	w := reversion{main: 7}
+	if !reflect.DeepEqual(rev, w) {
+		t.Errorf("get reversion = %+v, want %+v", rev, w)
+	}
+}
+
 func TestContinuousCompact(t *testing.T) {
 	index := newTestTreeIndex()
 
