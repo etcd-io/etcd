@@ -3,9 +3,11 @@ package storage
 import (
 	"bytes"
 	"crypto/rand"
+	"math"
 	"os"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/coreos/etcd/storage/storagepb"
 )
@@ -388,9 +390,6 @@ func TestCompaction(t *testing.T) {
 	}
 }
 
-// TODO: test more complicated cases:
-// with unfinished compaction
-// with removed keys
 func TestRestore(t *testing.T) {
 	s0 := newStore("test")
 	defer os.Remove("test")
@@ -402,6 +401,19 @@ func TestRestore(t *testing.T) {
 	s0.Put([]byte("foo1"), []byte("bar12"))
 	s0.Put([]byte("foo2"), []byte("bar13"))
 	s0.Put([]byte("foo1"), []byte("bar14"))
+	s0.Put([]byte("foo3"), []byte("bar3"))
+	s0.DeleteRange([]byte("foo3"), nil)
+	s0.Put([]byte("foo3"), []byte("bar31"))
+	s0.DeleteRange([]byte("foo3"), nil)
+
+	mink := newRevBytes()
+	revToBytes(reversion{main: 0, sub: 0}, mink)
+	maxk := newRevBytes()
+	revToBytes(reversion{main: math.MaxInt64, sub: math.MaxInt64}, maxk)
+	s0kvs, _, err := s0.rangeKeys(mink, maxk, 0, 0)
+	if err != nil {
+		t.Fatalf("rangeKeys on s0 error (%v)", err)
+	}
 
 	s0.Close()
 
@@ -411,6 +423,53 @@ func TestRestore(t *testing.T) {
 	if !s0.Equal(s1) {
 		t.Errorf("not equal!")
 	}
+	s1kvs, _, err := s1.rangeKeys(mink, maxk, 0, 0)
+	if err != nil {
+		t.Fatalf("rangeKeys on s1 error (%v)", err)
+	}
+	if !reflect.DeepEqual(s1kvs, s0kvs) {
+		t.Errorf("s1kvs = %+v, want %+v", s1kvs, s0kvs)
+	}
+}
+
+func TestRestoreContinueUnfinishedCompaction(t *testing.T) {
+	s0 := newStore("test")
+	defer os.Remove("test")
+
+	s0.Put([]byte("foo"), []byte("bar"))
+	s0.Put([]byte("foo"), []byte("bar1"))
+	s0.Put([]byte("foo"), []byte("bar2"))
+
+	// write scheduled compaction, but not do compaction
+	rbytes := newRevBytes()
+	revToBytes(reversion{main: 2}, rbytes)
+	tx := s0.b.BatchTx()
+	tx.Lock()
+	tx.UnsafePut(metaBucketName, scheduledCompactKeyName, rbytes)
+	tx.Unlock()
+
+	s0.Close()
+
+	s1 := newStore("test")
+	s1.Restore()
+
+	// wait for scheduled compaction to be finished
+	time.Sleep(100 * time.Millisecond)
+
+	if _, _, err := s1.Range([]byte("foo"), nil, 0, 2); err != ErrCompacted {
+		t.Errorf("range on compacted rev error = %v, want %v", err, ErrCompacted)
+	}
+	// check the key in backend is deleted
+	revbytes := newRevBytes()
+	// TODO: compact should delete main=2 key too
+	revToBytes(reversion{main: 1}, revbytes)
+	tx = s1.b.BatchTx()
+	tx.Lock()
+	ks, _ := tx.UnsafeRange(keyBucketName, revbytes, nil, 0)
+	if len(ks) != 0 {
+		t.Errorf("key for rev %+v still exists, want deleted", bytesToRev(revbytes))
+	}
+	tx.Unlock()
 }
 
 func BenchmarkStorePut(b *testing.B) {

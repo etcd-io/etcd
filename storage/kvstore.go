@@ -39,6 +39,9 @@ type store struct {
 
 	tmu   sync.Mutex // protect the tnxID field
 	tnxID int64      // tracks the current tnxID to verify tnx operations
+
+	wg    sync.WaitGroup
+	stopc chan struct{}
 }
 
 func newStore(path string) *store {
@@ -47,6 +50,7 @@ func newStore(path string) *store {
 		kvindex:        newTreeIndex(),
 		currentRev:     reversion{},
 		compactMainRev: -1,
+		stopc:          make(chan struct{}),
 	}
 
 	tx := s.b.BatchTx()
@@ -161,6 +165,7 @@ func (s *store) Compact(rev int64) error {
 
 	keep := s.kvindex.Compact(rev)
 
+	s.wg.Add(1)
 	go s.scheduleCompaction(rev, keep)
 	return nil
 }
@@ -213,7 +218,7 @@ func (s *store) Restore() error {
 
 	_, scheduledCompactBytes := tx.UnsafeRange(metaBucketName, scheduledCompactKeyName, nil, 0)
 	if len(scheduledCompactBytes) != 0 {
-		scheduledCompact := bytesToRev(finishedCompactBytes[0]).main
+		scheduledCompact := bytesToRev(scheduledCompactBytes[0]).main
 		if scheduledCompact > s.compactMainRev {
 			log.Printf("storage: resume scheduled compaction at %d", scheduledCompact)
 			go s.Compact(scheduledCompact)
@@ -226,6 +231,9 @@ func (s *store) Restore() error {
 }
 
 func (s *store) Close() error {
+	close(s.stopc)
+	s.wg.Wait()
+	s.b.ForceCommit()
 	return s.b.Close()
 }
 
