@@ -4,7 +4,10 @@ import (
 	"bytes"
 	"crypto/rand"
 	"os"
+	"reflect"
 	"testing"
+
+	"github.com/coreos/etcd/storage/storagepb"
 )
 
 func TestRange(t *testing.T) {
@@ -14,30 +17,34 @@ func TestRange(t *testing.T) {
 	s.Put([]byte("foo"), []byte("bar"))
 	s.Put([]byte("foo1"), []byte("bar1"))
 	s.Put([]byte("foo2"), []byte("bar2"))
+	kvs := []storagepb.KeyValue{
+		{Key: []byte("foo"), Value: []byte("bar")},
+		{Key: []byte("foo1"), Value: []byte("bar1")},
+		{Key: []byte("foo2"), Value: []byte("bar2")},
+	}
 
 	tests := []struct {
 		key, end []byte
 		rev      int64
 
 		wrev int64
-		// TODO: change this to the actual kv
-		wN int64
+		wkvs []storagepb.KeyValue
 	}{
 		{
 			[]byte("foo"), []byte("foo3"), 0,
-			3, 3,
+			3, kvs,
 		},
 		{
 			[]byte("foo"), []byte("foo1"), 0,
-			3, 1,
+			3, kvs[:1],
 		},
 		{
 			[]byte("foo"), []byte("foo3"), 1,
-			1, 1,
+			1, kvs[:1],
 		},
 		{
 			[]byte("foo"), []byte("foo3"), 2,
-			2, 2,
+			2, kvs[:2],
 		},
 	}
 
@@ -46,11 +53,72 @@ func TestRange(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if len(kvs) != int(tt.wN) {
-			t.Errorf("#%d: len(kvs) = %d, want %d", i, len(kvs), tt.wN)
-		}
 		if rev != tt.wrev {
 			t.Errorf("#%d: rev = %d, want %d", i, tt.rev, tt.wrev)
+		}
+		if !reflect.DeepEqual(kvs, tt.wkvs) {
+			t.Errorf("#%d: kvs = %+v, want %+v", i, kvs, tt.wkvs)
+		}
+	}
+}
+
+func TestRangeBadRev(t *testing.T) {
+	s := newStore("test")
+	defer os.Remove("test")
+
+	s.Put([]byte("foo"), []byte("bar"))
+	s.Put([]byte("foo1"), []byte("bar1"))
+	s.Put([]byte("foo2"), []byte("bar2"))
+	if err := s.Compact(3); err != nil {
+		t.Fatalf("compact error (%v)", err)
+	}
+
+	tests := []struct {
+		rev  int64
+		werr error
+	}{
+		{2, ErrCompacted},
+		{3, ErrCompacted},
+		{4, ErrFutureRev},
+	}
+	for i, tt := range tests {
+		_, _, err := s.Range([]byte("foo"), []byte("foo3"), 0, tt.rev)
+		if err != tt.werr {
+			t.Errorf("#%d: error = %v, want %v", i, err, tt.werr)
+		}
+	}
+}
+
+func TestRangeLimit(t *testing.T) {
+	s := newStore("test")
+	defer os.Remove("test")
+
+	s.Put([]byte("foo"), []byte("bar"))
+	s.Put([]byte("foo1"), []byte("bar1"))
+	s.Put([]byte("foo2"), []byte("bar2"))
+	s.DeleteRange([]byte("foo1"), nil)
+	kvs := []storagepb.KeyValue{
+		{Key: []byte("foo"), Value: []byte("bar")},
+		{Key: []byte("foo2"), Value: []byte("bar2")},
+	}
+
+	tests := []struct {
+		limit int64
+		wkvs  []storagepb.KeyValue
+	}{
+		// no limit
+		{0, kvs},
+		{1, kvs[:1]},
+		{2, kvs},
+		{3, kvs},
+	}
+	for i, tt := range tests {
+		kvs, _, err := s.Range([]byte("foo"), []byte("foo3"), tt.limit, 0)
+		if err != nil {
+			t.Fatalf("#%d: range error (%v)", i, err)
+		}
+		if !reflect.DeepEqual(kvs, tt.wkvs) {
+			t.Errorf("#%d: kvs = %+v, want %+v", i, kvs, tt.wkvs)
 		}
 	}
 }

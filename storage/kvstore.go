@@ -24,6 +24,7 @@ var (
 
 	ErrTnxIDMismatch = errors.New("storage: tnx id mismatch")
 	ErrCompacted     = errors.New("storage: required reversion has been compacted")
+	ErrFutureRev     = errors.New("storage: required reversion is a future reversion")
 )
 
 type store struct {
@@ -240,6 +241,9 @@ func (a *store) Equal(b *store) bool {
 
 // range is a keyword in Go, add Keys suffix.
 func (s *store) rangeKeys(key, end []byte, limit, rangeRev int64) (kvs []storagepb.KeyValue, rev int64, err error) {
+	if rangeRev > s.currentRev.main {
+		return nil, s.currentRev.main, ErrFutureRev
+	}
 	if rangeRev <= 0 {
 		rev = int64(s.currentRev.main)
 		if s.currentRev.sub > 0 {
@@ -255,9 +259,6 @@ func (s *store) rangeKeys(key, end []byte, limit, rangeRev int64) (kvs []storage
 	_, revpairs := s.kvindex.Range(key, end, int64(rev))
 	if len(revpairs) == 0 {
 		return nil, rev, nil
-	}
-	if limit > 0 && len(revpairs) > int(limit) {
-		revpairs = revpairs[:limit]
 	}
 
 	tx := s.b.BatchTx()
@@ -278,6 +279,9 @@ func (s *store) rangeKeys(key, end []byte, limit, rangeRev int64) (kvs []storage
 		}
 		if e.Type == storagepb.PUT {
 			kvs = append(kvs, e.Kv)
+		}
+		if limit > 0 && len(kvs) >= int(limit) {
+			break
 		}
 	}
 	return kvs, rev, nil
