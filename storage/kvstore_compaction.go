@@ -6,6 +6,7 @@ import (
 )
 
 func (s *store) scheduleCompaction(compactMainRev int64, keep map[reversion]struct{}) {
+	defer s.wg.Done()
 	end := make([]byte, 8)
 	binary.BigEndian.PutUint64(end, uint64(compactMainRev+1))
 
@@ -37,6 +38,10 @@ func (s *store) scheduleCompaction(compactMainRev int64, keep map[reversion]stru
 		revToBytes(reversion{main: rev.main, sub: rev.sub + 1}, last)
 		tx.Unlock()
 
-		time.Sleep(100 * time.Millisecond)
+		select {
+		case <-time.After(100 * time.Millisecond):
+		case <-s.stopc:
+			return
+		}
 	}
 }

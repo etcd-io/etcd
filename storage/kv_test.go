@@ -44,6 +44,9 @@ func TestWorkflow(t *testing.T) {
 		if err != nil {
 			t.Errorf("#%d: range error (%v)", err)
 		}
+		if len(kvs) != len(wkvs) {
+			t.Fatalf("#%d: len(kvs) = %d, want %d", i, len(kvs), len(wkvs))
+		}
 		for j, kv := range kvs {
 			if !reflect.DeepEqual(kv.Key, wkvs[j].k) {
 				t.Errorf("#%d: keys[%d] = %s, want %s", i, j, kv.Key, wkvs[j].k)
