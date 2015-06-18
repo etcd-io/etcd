@@ -3,6 +3,7 @@ package storage
 import (
 	"bytes"
 	"crypto/rand"
+	"math"
 	"os"
 	"reflect"
 	"testing"
@@ -390,7 +391,6 @@ func TestCompaction(t *testing.T) {
 
 // TODO: test more complicated cases:
 // with unfinished compaction
-// with removed keys
 func TestRestore(t *testing.T) {
 	s0 := newStore("test")
 	defer os.Remove("test")
@@ -402,6 +402,19 @@ func TestRestore(t *testing.T) {
 	s0.Put([]byte("foo1"), []byte("bar12"))
 	s0.Put([]byte("foo2"), []byte("bar13"))
 	s0.Put([]byte("foo1"), []byte("bar14"))
+	s0.Put([]byte("foo3"), []byte("bar3"))
+	s0.DeleteRange([]byte("foo3"), nil)
+	s0.Put([]byte("foo3"), []byte("bar31"))
+	s0.DeleteRange([]byte("foo3"), nil)
+
+	mink := newRevBytes()
+	revToBytes(reversion{main: 0, sub: 0}, mink)
+	maxk := newRevBytes()
+	revToBytes(reversion{main: math.MaxInt64, sub: math.MaxInt64}, maxk)
+	s0kvs, _, err := s0.rangeKeys(mink, maxk, 0, 0)
+	if err != nil {
+		t.Fatalf("rangeKeys on s0 error (%v)", err)
+	}
 
 	s0.Close()
 
@@ -410,6 +423,13 @@ func TestRestore(t *testing.T) {
 
 	if !s0.Equal(s1) {
 		t.Errorf("not equal!")
+	}
+	s1kvs, _, err := s1.rangeKeys(mink, maxk, 0, 0)
+	if err != nil {
+		t.Fatalf("rangeKeys on s1 error (%v)", err)
+	}
+	if !reflect.DeepEqual(s1kvs, s0kvs) {
+		t.Errorf("s1kvs = %+v, want %+v", s1kvs, s0kvs)
 	}
 }
 
