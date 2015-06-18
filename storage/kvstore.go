@@ -233,7 +233,6 @@ func (s *store) Restore() error {
 func (s *store) Close() error {
 	close(s.stopc)
 	s.wg.Wait()
-	s.b.ForceCommit()
 	return s.b.Close()
 }
 
