@@ -13,7 +13,7 @@ To start etcd automatically using custom settings at startup in Linux, using a [
 ##### -name
 + Human-readable name for this member.
 + default: "default"
-+ This value is referenced as one of this node's own entries listed in the `-initial-cluster` flag (Ex: `default=http://localhost:2380`). This needs to match the key used the flag if you're using static boostrapping.
++ This value is referenced as one of this node's own entries listed in the `-initial-cluster` flag (Ex: `default=http://localhost:2380`). This needs to match the key used the flag if you're using [static boostrapping](clustering.md#static).
 
 ##### -data-dir
 + Path to the data directory.
