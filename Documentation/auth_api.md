@@ -120,7 +120,7 @@ The User JSON object is formed as follows:
 }
 ```
 
-Password is only passed when necessary. Last Modified is set by the server and ignored in all client posts.
+Password is only passed when necessary.
 
 **Get a list of users**
 
@@ -171,7 +171,7 @@ PUT  /v2/auth/users/charlie
     Possible Status Codes:
         200 OK
         403 Forbidden
-        409 Conflict (if exists)
+        409 Conflict (when granting duplicated roles or revoking non-existing roles)
     200 Body: (empty)
 
 **Remove A User**
