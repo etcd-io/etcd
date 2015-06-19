@@ -65,6 +65,44 @@ An Error JSON corresponds to:
   "description" : "The longer helpful description of the error."
 }
 
+#### Enable and Disable Authentication
+        
+**Get auth status**
+
+GET  /v2/auth/enable
+
+    Sent Headers:
+    Possible Status Codes:
+        200 OK
+    200 Body:
+        {
+          "enabled": true
+        }
+
+
+**Enable auth**
+
+PUT  /v2/auth/enable
+
+    Sent Headers:
+    Put Body: (empty)
+    Possible Status Codes:
+        200 OK
+        400 Bad Request (if root user has not been created)
+    200 Body: (empty)
+
+**Disable auth**
+
+DELETE  /v2/auth/enable
+
+    Sent Headers:
+        Authorization: Basic <RootAuthString>
+    Possible Status Codes:
+        200 OK
+        403 Forbidden (if not a root user)
+    200 Body: (empty)
+
+
 #### Users
 
 The User JSON object is formed as follows:
@@ -237,44 +275,6 @@ DELETE  /v2/auth/roles/rocket
         403 Forbidden
         404 Not Found
     200 Headers:
-    200 Body: (empty)
-
-
-#### Enable and Disable Authentication
-        
-**Get auth status**
-
-GET  /v2/auth/enable
-
-    Sent Headers:
-    Possible Status Codes:
-        200 OK
-    200 Body:
-        {
-          "enabled": true
-        }
-
-
-**Enable auth**
-
-PUT  /v2/auth/enable
-
-    Sent Headers:
-    Put Body: (empty)
-    Possible Status Codes:
-        200 OK
-        400 Bad Request (if not a root user)
-    200 Body: (empty)
-
-**Disable auth**
-
-DELETE  /v2/auth/enable
-
-    Sent Headers:
-        Authorization: Basic <RootAuthString>
-    Possible Status Codes:
-        200 OK
-        403 Forbidden (if not a root user)
     200 Body: (empty)
 
 
