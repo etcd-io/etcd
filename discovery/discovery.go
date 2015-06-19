@@ -18,6 +18,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"net"
 	"net/http"
 	"net/url"
 	"path"
@@ -120,7 +121,15 @@ func newDiscovery(durl, dproxyurl string, id types.ID) (*discovery, error) {
 		return nil, err
 	}
 	cfg := client.Config{
-		Transport: &http.Transport{Proxy: pf},
+		Transport: &http.Transport{
+			Proxy: pf,
+			Dial: (&net.Dialer{
+				Timeout:   30 * time.Second,
+				KeepAlive: 30 * time.Second,
+			}).Dial,
+			TLSHandshakeTimeout:   10 * time.Second,
+			ResponseHeaderTimeout: 5 * time.Second,
+		},
 		Endpoints: []string{u.String()},
 	}
 	c, err := client.New(cfg)
