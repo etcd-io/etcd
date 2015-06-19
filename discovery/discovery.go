@@ -252,7 +252,7 @@ func (d *discovery) checkCluster() ([]*client.Node, int, uint64, error) {
 func (d *discovery) logAndBackoffForRetry(step string) {
 	d.retries++
 	retryTime := time.Second * (0x1 << d.retries)
-	plog.Info("during", step, "connection to", d.url, "timed out, retrying in", retryTime)
+	plog.Infof("%s: connection to %s timed out, retrying in %s", step, d.url, retryTime)
 	d.clock.Sleep(retryTime)
 }
 
