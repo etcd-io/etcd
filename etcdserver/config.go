@@ -94,7 +94,7 @@ func (c *ServerConfig) verifyLocalMember(strict bool) error {
 	urls.Sort()
 	if strict {
 		if !reflect.DeepEqual(apurls, urls.StringSlice()) {
-			return fmt.Errorf("%s has different advertised URLs in the cluster and advertised peer URLs list", c.Name)
+			return fmt.Errorf("advertise URLs of %q do not match in --initial-advertise-peer-urls %s and --initial-cluster %s", c.Name, apurls, urls.StringSlice())
 		}
 	}
 	return nil
