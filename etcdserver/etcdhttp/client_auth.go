@@ -185,10 +185,10 @@ func (sh *authHandler) forRole(w http.ResponseWriter, r *http.Request, role stri
 		return
 	}
 	w.Header().Set("X-Etcd-Cluster-ID", sh.cluster.ID().String())
+	w.Header().Set("Content-Type", "application/json")
 
 	switch r.Method {
 	case "GET":
-		w.Header().Set("Content-Type", "application/json")
 		data, err := sh.sec.GetRole(role)
 		if err != nil {
 			writeError(w, err)
@@ -290,10 +290,10 @@ func (sh *authHandler) forUser(w http.ResponseWriter, r *http.Request, user stri
 		return
 	}
 	w.Header().Set("X-Etcd-Cluster-ID", sh.cluster.ID().String())
+	w.Header().Set("Content-Type", "application/json")
 
 	switch r.Method {
 	case "GET":
-		w.Header().Set("Content-Type", "application/json")
 		u, err := sh.sec.GetUser(user)
 		if err != nil {
 			writeError(w, err)
