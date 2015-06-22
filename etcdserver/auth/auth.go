@@ -242,15 +242,12 @@ func (s *Store) UpdateUser(user User) (User, error) {
 		}
 		return old, err
 	}
-	newUser, err := old.Merge(user)
+	newUser, err := old.merge(user)
 	if err != nil {
 		return old, err
 	}
 	if reflect.DeepEqual(old, newUser) {
-		if user.Revoke != nil || user.Grant != nil {
-			return old, authErr(http.StatusConflict, "User not updated. Grant/Revoke lists didn't match any current roles.")
-		}
-		return old, authErr(http.StatusBadRequest, "User not updated. Use Grant/Revoke/Password to update the user.")
+		return old, authErr(http.StatusBadRequest, "User not updated. Use grant/revoke/password to update the user.")
 	}
 	_, err = s.updateResource("/users/"+user.User, newUser)
 	if err == nil {
@@ -416,11 +413,11 @@ func (s *Store) DisableAuth() error {
 	return err
 }
 
-// Merge applies the properties of the passed-in User to the User on which it
+// merge applies the properties of the passed-in User to the User on which it
 // is called and returns a new User with these modifications applied. Think of
 // all Users as immutable sets of data. Merge allows you to perform the set
 // operations (desired grants and revokes) atomically
-func (u User) Merge(n User) (User, error) {
+func (u User) merge(n User) (User, error) {
 	var out User
 	if u.User != n.User {
 		return out, authErr(http.StatusConflict, "Merging user data with conflicting usernames: %s %s", u.User, n.User)
@@ -429,7 +426,7 @@ func (u User) Merge(n User) (User, error) {
 	if n.Password != "" {
 		hash, err := bcrypt.GenerateFromPassword([]byte(n.Password), bcrypt.DefaultCost)
 		if err != nil {
-			return out, err
+			return User{}, err
 		}
 		out.Password = string(hash)
 	} else {
@@ -439,14 +436,14 @@ func (u User) Merge(n User) (User, error) {
 	for _, g := range n.Grant {
 		if currentRoles.Contains(g) {
 			plog.Noticef("granting duplicate role %s for user %s", g, n.User)
-			continue
+			return User{}, authErr(http.StatusConflict, fmt.Sprintf("Granting duplicate role %s for user %s", g, n.User))
 		}
 		currentRoles.Add(g)
 	}
 	for _, r := range n.Revoke {
 		if !currentRoles.Contains(r) {
 			plog.Noticef("revoking ungranted role %s for user %s", r, n.User)
-			continue
+			return User{}, authErr(http.StatusConflict, fmt.Sprintf("Revoking ungranted role %s for user %s", r, n.User))
 		}
 		currentRoles.Remove(r)
 	}
