@@ -313,7 +313,7 @@ func TestEnsure(t *testing.T) {
 	}
 
 	s := Store{d, time.Second, false}
-	err := s.ensureSecurityDirectories()
+	err := s.ensureAuthDirectories()
 	if err != nil {
 		t.Error("Unexpected error", err)
 	}

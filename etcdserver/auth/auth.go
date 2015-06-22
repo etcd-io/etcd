@@ -17,6 +17,7 @@ package auth
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"path"
 	"reflect"
 	"sort"
@@ -102,17 +103,15 @@ type rwPermission struct {
 }
 
 type Error struct {
-	errmsg string
+	httpStatus int
+	errmsg     string
 }
 
-func (se Error) Error() string { return se.errmsg }
+func (ae Error) Error() string   { return ae.errmsg }
+func (ae Error) HTTPStatus() int { return ae.httpStatus }
 
-func mergeErr(s string, v ...interface{}) Error {
-	return Error{fmt.Sprintf("auth: "+s, v...)}
-}
-
-func authErr(s string, v ...interface{}) Error {
-	return Error{fmt.Sprintf("auth: "+s, v...)}
+func authErr(hs int, s string, v ...interface{}) Error {
+	return Error{httpStatus: hs, errmsg: fmt.Sprintf("auth: "+s, v...)}
 }
 
 func NewStore(server doer, timeout time.Duration) *Store {
@@ -147,7 +146,7 @@ func (s *Store) GetUser(name string) (User, error) {
 	if err != nil {
 		if e, ok := err.(*etcderr.Error); ok {
 			if e.ErrorCode == etcderr.EcodeKeyNotFound {
-				return User{}, authErr("User %s does not exist.", name)
+				return User{}, authErr(http.StatusNotFound, "User %s does not exist.", name)
 			}
 		}
 		return User{}, err
@@ -197,7 +196,7 @@ func (s *Store) CreateUser(user User) (User, error) {
 
 func (s *Store) createUserInternal(user User) (User, error) {
 	if user.Password == "" {
-		return user, authErr("Cannot create user %s with an empty password", user.User)
+		return user, authErr(http.StatusBadRequest, "Cannot create user %s with an empty password", user.User)
 	}
 	hash, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 	if err != nil {
@@ -209,7 +208,7 @@ func (s *Store) createUserInternal(user User) (User, error) {
 	if err != nil {
 		if e, ok := err.(*etcderr.Error); ok {
 			if e.ErrorCode == etcderr.EcodeNodeExist {
-				return user, authErr("User %s already exists.", user.User)
+				return user, authErr(http.StatusConflict, "User %s already exists.", user.User)
 			}
 		}
 	}
@@ -218,13 +217,13 @@ func (s *Store) createUserInternal(user User) (User, error) {
 
 func (s *Store) DeleteUser(name string) error {
 	if s.AuthEnabled() && name == "root" {
-		return authErr("Cannot delete root user while auth is enabled.")
+		return authErr(http.StatusForbidden, "Cannot delete root user while auth is enabled.")
 	}
 	_, err := s.deleteResource("/users/" + name)
 	if err != nil {
 		if e, ok := err.(*etcderr.Error); ok {
 			if e.ErrorCode == etcderr.EcodeKeyNotFound {
-				return authErr("User %s does not exist", name)
+				return authErr(http.StatusNotFound, "User %s does not exist", name)
 			}
 		}
 		return err
@@ -238,7 +237,7 @@ func (s *Store) UpdateUser(user User) (User, error) {
 	if err != nil {
 		if e, ok := err.(*etcderr.Error); ok {
 			if e.ErrorCode == etcderr.EcodeKeyNotFound {
-				return user, authErr("User %s doesn't exist.", user.User)
+				return user, authErr(http.StatusNotFound, "User %s doesn't exist.", user.User)
 			}
 		}
 		return old, err
@@ -249,9 +248,9 @@ func (s *Store) UpdateUser(user User) (User, error) {
 	}
 	if reflect.DeepEqual(old, newUser) {
 		if user.Revoke != nil || user.Grant != nil {
-			return old, authErr("User not updated. Grant/Revoke lists didn't match any current roles.")
+			return old, authErr(http.StatusConflict, "User not updated. Grant/Revoke lists didn't match any current roles.")
 		}
-		return old, authErr("User not updated. Use Grant/Revoke/Password to update the user.")
+		return old, authErr(http.StatusBadRequest, "User not updated. Use Grant/Revoke/Password to update the user.")
 	}
 	_, err = s.updateResource("/users/"+user.User, newUser)
 	if err == nil {
@@ -287,7 +286,7 @@ func (s *Store) GetRole(name string) (Role, error) {
 	if err != nil {
 		if e, ok := err.(*etcderr.Error); ok {
 			if e.ErrorCode == etcderr.EcodeKeyNotFound {
-				return Role{}, authErr("Role %s does not exist.", name)
+				return Role{}, authErr(http.StatusNotFound, "Role %s does not exist.", name)
 			}
 		}
 		return Role{}, err
@@ -313,13 +312,13 @@ func (s *Store) CreateOrUpdateRole(r Role) (role Role, created bool, err error) 
 
 func (s *Store) CreateRole(role Role) error {
 	if role.Role == RootRoleName {
-		return authErr("Cannot modify role %s: is root role.", role.Role)
+		return authErr(http.StatusForbidden, "Cannot modify role %s: is root role.", role.Role)
 	}
 	_, err := s.createResource("/roles/"+role.Role, role)
 	if err != nil {
 		if e, ok := err.(*etcderr.Error); ok {
 			if e.ErrorCode == etcderr.EcodeNodeExist {
-				return authErr("Role %s already exists.", role.Role)
+				return authErr(http.StatusConflict, "Role %s already exists.", role.Role)
 			}
 		}
 	}
@@ -331,13 +330,13 @@ func (s *Store) CreateRole(role Role) error {
 
 func (s *Store) DeleteRole(name string) error {
 	if name == RootRoleName {
-		return authErr("Cannot modify role %s: is superuser role.", name)
+		return authErr(http.StatusForbidden, "Cannot modify role %s: is root role.", name)
 	}
 	_, err := s.deleteResource("/roles/" + name)
 	if err != nil {
 		if e, ok := err.(*etcderr.Error); ok {
 			if e.ErrorCode == etcderr.EcodeKeyNotFound {
-				return authErr("Role %s doesn't exist.", name)
+				return authErr(http.StatusNotFound, "Role %s doesn't exist.", name)
 			}
 		}
 	}
@@ -352,7 +351,7 @@ func (s *Store) UpdateRole(role Role) (Role, error) {
 	if err != nil {
 		if e, ok := err.(*etcderr.Error); ok {
 			if e.ErrorCode == etcderr.EcodeKeyNotFound {
-				return role, authErr("Role %s doesn't exist.", role.Role)
+				return role, authErr(http.StatusNotFound, "Role %s doesn't exist.", role.Role)
 			}
 		}
 		return old, err
@@ -363,9 +362,9 @@ func (s *Store) UpdateRole(role Role) (Role, error) {
 	}
 	if reflect.DeepEqual(old, newRole) {
 		if role.Revoke != nil || role.Grant != nil {
-			return old, authErr("Role not updated. Grant/Revoke lists didn't match any current permissions.")
+			return old, authErr(http.StatusConflict, "Role not updated. Grant/Revoke lists didn't match any current permissions.")
 		}
-		return old, authErr("Role not updated. Use Grant/Revoke to update the role.")
+		return old, authErr(http.StatusBadRequest, "Role not updated. Use Grant/Revoke to update the role.")
 	}
 	_, err = s.updateResource("/roles/"+role.Role, newRole)
 	if err == nil {
@@ -380,11 +379,11 @@ func (s *Store) AuthEnabled() bool {
 
 func (s *Store) EnableAuth() error {
 	if s.AuthEnabled() {
-		return authErr("already enabled")
+		return authErr(http.StatusConflict, "already enabled")
 	}
 	_, err := s.GetUser("root")
 	if err != nil {
-		return authErr("No root user available, please create one")
+		return authErr(http.StatusConflict, "No root user available, please create one")
 	}
 	_, err = s.GetRole(GuestRoleName)
 	if err != nil {
@@ -406,7 +405,7 @@ func (s *Store) EnableAuth() error {
 
 func (s *Store) DisableAuth() error {
 	if !s.AuthEnabled() {
-		return authErr("already disabled")
+		return authErr(http.StatusConflict, "already disabled")
 	}
 	err := s.disableAuth()
 	if err == nil {
@@ -424,7 +423,7 @@ func (s *Store) DisableAuth() error {
 func (u User) Merge(n User) (User, error) {
 	var out User
 	if u.User != n.User {
-		return out, mergeErr("Merging user data with conflicting usernames: %s %s", u.User, n.User)
+		return out, authErr(http.StatusConflict, "Merging user data with conflicting usernames: %s %s", u.User, n.User)
 	}
 	out.User = u.User
 	if n.Password != "" {
@@ -466,7 +465,7 @@ func (r Role) Merge(n Role) (Role, error) {
 	var out Role
 	var err error
 	if r.Role != n.Role {
-		return out, mergeErr("Merging role with conflicting names: %s %s", r.Role, n.Role)
+		return out, authErr(http.StatusConflict, "Merging role with conflicting names: %s %s", r.Role, n.Role)
 	}
 	out.Role = r.Role
 	out.Permissions, err = r.Permissions.Grant(n.Grant)
@@ -525,14 +524,14 @@ func (rw rwPermission) Grant(n rwPermission) (rwPermission, error) {
 	currentRead := types.NewUnsafeSet(rw.Read...)
 	for _, r := range n.Read {
 		if currentRead.Contains(r) {
-			return out, mergeErr("Granting duplicate read permission %s", r)
+			return out, authErr(http.StatusConflict, "Granting duplicate read permission %s", r)
 		}
 		currentRead.Add(r)
 	}
 	currentWrite := types.NewUnsafeSet(rw.Write...)
 	for _, w := range n.Write {
 		if currentWrite.Contains(w) {
-			return out, mergeErr("Granting duplicate write permission %s", w)
+			return out, authErr(http.StatusConflict, "Granting duplicate write permission %s", w)
 		}
 		currentWrite.Add(w)
 	}

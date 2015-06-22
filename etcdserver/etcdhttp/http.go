@@ -56,7 +56,7 @@ func writeError(w http.ResponseWriter, err error) {
 	case *httptypes.HTTPError:
 		e.WriteTo(w)
 	case auth.Error:
-		herr := httptypes.NewHTTPError(http.StatusBadRequest, e.Error())
+		herr := httptypes.NewHTTPError(e.HTTPStatus(), e.Error())
 		herr.WriteTo(w)
 	default:
 		plog.Errorf("got unexpected response error (%v)", err)
