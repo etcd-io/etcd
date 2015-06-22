@@ -353,15 +353,12 @@ func (s *Store) UpdateRole(role Role) (Role, error) {
 		}
 		return old, err
 	}
-	newRole, err := old.Merge(role)
+	newRole, err := old.merge(role)
 	if err != nil {
 		return old, err
 	}
 	if reflect.DeepEqual(old, newRole) {
-		if role.Revoke != nil || role.Grant != nil {
-			return old, authErr(http.StatusConflict, "Role not updated. Grant/Revoke lists didn't match any current permissions.")
-		}
-		return old, authErr(http.StatusBadRequest, "Role not updated. Use Grant/Revoke to update the role.")
+		return old, authErr(http.StatusBadRequest, "Role not updated. Use grant/revoke to update the role.")
 	}
 	_, err = s.updateResource("/roles/"+role.Role, newRole)
 	if err == nil {
@@ -456,9 +453,9 @@ func (u User) CheckPassword(password string) bool {
 	return err == nil
 }
 
-// Merge for a role works the same as User above -- atomic Role application to
+// merge for a role works the same as User above -- atomic Role application to
 // each of the substructures.
-func (r Role) Merge(n Role) (Role, error) {
+func (r Role) merge(n Role) (Role, error) {
 	var out Role
 	var err error
 	if r.Role != n.Role {
