@@ -323,9 +323,7 @@ func (sh *authHandler) forUser(w http.ResponseWriter, r *http.Request, user stri
 			writeError(w, err)
 			return
 		}
-		if u.Password == "" {
-			newuser.Password = ""
-		}
+		newuser.Password = ""
 
 		if created {
 			w.WriteHeader(http.StatusCreated)
