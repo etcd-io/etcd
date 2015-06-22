@@ -19,8 +19,8 @@ import (
 )
 
 const (
-	// DefaultMaxIdleConnsPerHost indicates the default maximal idle connections
-	// maintained between proxy and each member. We set it to 128 to
+	// DefaultMaxIdleConnsPerHost indicates the default maximum idle connection
+	// count maintained between proxy and each member. We set it to 128 to
 	// let proxy handle 128 concurrent requests in long term smoothly.
 	// If the number of concurrent requests is bigger than this value,
 	// proxy needs to create one new connection when handling each request in

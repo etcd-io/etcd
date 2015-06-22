@@ -52,7 +52,7 @@ func TestPipelineSend(t *testing.T) {
 	}
 }
 
-func TestPipelineExceedMaximalServing(t *testing.T) {
+func TestPipelineExceedMaximumServing(t *testing.T) {
 	tr := newRoundTripperBlocker()
 	picker := mustNewURLPicker(t, []string{"http://localhost:2380"})
 	fs := &stats.FollowerStats{}
