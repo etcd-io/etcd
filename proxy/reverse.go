@@ -24,6 +24,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync/atomic"
 
 	"github.com/coreos/etcd/etcdserver/etcdhttp/httptypes"
 )
@@ -90,12 +91,16 @@ func (p *reverseProxy) ServeHTTP(rw http.ResponseWriter, clientreq *http.Request
 		return
 	}
 
+	var requestClosed int32
 	completeCh := make(chan bool, 1)
 	closeNotifier, ok := rw.(http.CloseNotifier)
 	if ok {
 		go func() {
 			select {
 			case <-closeNotifier.CloseNotify():
+				atomic.StoreInt32(&requestClosed, 1)
+				log.Printf("proxy: client %v closed request prematurely", clientreq.RemoteAddr)
+
 				tp, ok := p.transport.(*http.Transport)
 				if ok {
 					tp.CancelRequest(proxyreq)
@@ -118,6 +123,9 @@ func (p *reverseProxy) ServeHTTP(rw http.ResponseWriter, clientreq *http.Request
 		redirectRequest(proxyreq, ep.URL)
 
 		res, err = p.transport.RoundTrip(proxyreq)
+		if atomic.LoadInt32(&requestClosed) == 1 {
+			return
+		}
 		if err != nil {
 			log.Printf("proxy: failed to direct request to %s: %v", ep.URL.String(), err)
 			ep.Failed()
