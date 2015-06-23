@@ -27,6 +27,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -49,6 +50,10 @@ const (
 
 var (
 	electionTicks = 10
+
+	// integration test uses well-known ports to listen for each running member,
+	// which ensures restarted member could listen on specific port again.
+	nextListenPort int64 = 20000
 )
 
 func init() {
@@ -596,7 +601,8 @@ func isMembersEqual(membs []client.Member, wmembs []client.Member) bool {
 }
 
 func newLocalListener(t *testing.T) net.Listener {
-	l, err := net.Listen("tcp", "127.0.0.1:0")
+	port := atomic.AddInt64(&nextListenPort, 1)
+	l, err := net.Listen("tcp", "127.0.0.1:"+strconv.FormatInt(port, 10))
 	if err != nil {
 		t.Fatal(err)
 	}
