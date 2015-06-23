@@ -97,6 +97,10 @@ type Permissions struct {
 	KV rwPermission `json:"kv"`
 }
 
+func (p *Permissions) IsEmpty() bool {
+	return p == nil || (len(p.KV.Read) == 0 && len(p.KV.Write) == 0)
+}
+
 type rwPermission struct {
 	Read  []string `json:"read"`
 	Write []string `json:"write"`
@@ -295,16 +299,6 @@ func (s *Store) GetRole(name string) (Role, error) {
 	}
 
 	return r, nil
-}
-
-func (s *Store) CreateOrUpdateRole(r Role) (role Role, created bool, err error) {
-	_, err = s.GetRole(r.Role)
-	if err == nil {
-		role, err = s.UpdateRole(r)
-		created = false
-		return
-	}
-	return r, true, s.CreateRole(r)
 }
 
 func (s *Store) CreateRole(role Role) error {
