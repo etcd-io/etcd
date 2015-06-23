@@ -211,17 +211,32 @@ func (sh *authHandler) forRole(w http.ResponseWriter, r *http.Request, role stri
 			writeError(w, httptypes.NewHTTPError(http.StatusBadRequest, "Role JSON name does not match the name in the URL"))
 			return
 		}
-		newrole, created, err := sh.sec.CreateOrUpdateRole(in)
-		if err != nil {
-			writeError(w, err)
-			return
-		}
-		if created {
+
+		var out auth.Role
+
+		// create
+		if in.Grant.IsEmpty() && in.Revoke.IsEmpty() {
+			err = sh.sec.CreateRole(in)
+			if err != nil {
+				writeError(w, err)
+				return
+			}
 			w.WriteHeader(http.StatusCreated)
+			out = in
 		} else {
+			if !in.Permissions.IsEmpty() {
+				writeError(w, httptypes.NewHTTPError(http.StatusBadRequest, "Role JSON contains both permissions and grant/revoke"))
+				return
+			}
+			out, err = sh.sec.UpdateRole(in)
+			if err != nil {
+				writeError(w, err)
+				return
+			}
 			w.WriteHeader(http.StatusOK)
 		}
-		err = json.NewEncoder(w).Encode(newrole)
+
+		err = json.NewEncoder(w).Encode(out)
 		if err != nil {
 			plog.Warningf("forRole error encoding on %s", r.URL)
 			return
