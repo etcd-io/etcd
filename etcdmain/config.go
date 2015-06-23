@@ -271,7 +271,10 @@ func (cfg *config) Parse(arguments []string) error {
 	}
 
 	// when etcd runs in member mode user needs to set -advertise-client-urls if -listen-client-urls is set.
-	if cfg.proxy.String() != proxyFlagOn {
+	// TODO(yichengq): check this for joining through discovery service case
+	mayFallbackToProxy := flags.IsSet(cfg.FlagSet, "discovery") && cfg.fallback.String() == fallbackFlagProxy
+	mayBeProxy := cfg.proxy.String() != proxyFlagOff || mayFallbackToProxy
+	if !mayBeProxy {
 		if flags.IsSet(cfg.FlagSet, "listen-client-urls") && !flags.IsSet(cfg.FlagSet, "advertise-client-urls") {
 			return errUnsetAdvertiseClientURLsFlag
 		}
