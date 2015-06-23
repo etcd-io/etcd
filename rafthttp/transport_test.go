@@ -67,19 +67,21 @@ func TestTransportSend(t *testing.T) {
 
 func TestTransportAdd(t *testing.T) {
 	ls := stats.NewLeaderStats("")
+	term := uint64(10)
 	tr := &transport{
 		roundTripper: &roundTripperRecorder{},
 		leaderStats:  ls,
+		term:         term,
 		peers:        make(map[types.ID]Peer),
 	}
 	tr.AddPeer(1, []string{"http://localhost:2380"})
-	defer tr.Stop()
 
 	if _, ok := ls.Followers["1"]; !ok {
 		t.Errorf("FollowerStats[1] is nil, want exists")
 	}
 	s, ok := tr.peers[types.ID(1)]
 	if !ok {
+		tr.Stop()
 		t.Fatalf("senders[1] is nil, want exists")
 	}
 
@@ -88,6 +90,12 @@ func TestTransportAdd(t *testing.T) {
 	ns := tr.peers[types.ID(1)]
 	if s != ns {
 		t.Errorf("sender = %v, want %v", ns, s)
+	}
+
+	tr.Stop()
+
+	if g := s.(*peer).msgAppReader.msgAppTerm; g != term {
+		t.Errorf("peer.term = %d, want %d", g, term)
 	}
 }
 
