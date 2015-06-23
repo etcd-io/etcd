@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
+	"github.com/coreos/etcd/pkg/testutil"
 )
 
 type actionAssertingHTTPClient struct {
@@ -113,10 +114,15 @@ func (t *fakeTransport) RoundTrip(*http.Request) (*http.Response, error) {
 	case err := <-t.errchan:
 		return nil, err
 	case <-t.startCancel:
+		select {
+		// this simulates that the request is finished before cancel effects
+		case resp := <-t.respchan:
+			return resp, nil
 		// wait on finishCancel to simulate taking some amount of
 		// time while calling CancelRequest
-		<-t.finishCancel
-		return nil, errors.New("cancelled")
+		case <-t.finishCancel:
+			return nil, errors.New("cancelled")
+		}
 	}
 }
 
@@ -203,12 +209,12 @@ func TestSimpleHTTPClientDoCancelContextResponseBodyClosed(t *testing.T) {
 
 	body := &checkableReadCloser{ReadCloser: ioutil.NopCloser(strings.NewReader("foo"))}
 	go func() {
-		// wait for CancelRequest to be called, informing us that simpleHTTPClient
-		// knows the context is already timed out
-		<-tr.startCancel
+		// wait that simpleHTTPClient knows the context is already timed out,
+		// and calls CancelRequest
+		testutil.WaitSchedule()
 
+		// response is returned before cancel effects
 		tr.respchan <- &http.Response{Body: body}
-		tr.finishCancel <- struct{}{}
 	}()
 
 	_, _, err := c.Do(ctx, &fakeAction{})
