@@ -44,7 +44,7 @@ We only support [Basic Auth](http://en.wikipedia.org/wiki/Basic_access_authentic
 
 ### Authorization field for operations
 Added to requests to /v2/keys, /v2/auth
-Add code 403 Forbidden to the set of responses from the v2 API
+Add code 401 Unauthorized to the set of responses from the v2 API
 Authorization: Basic {encoded string}
 
 ### Future Work
@@ -89,6 +89,7 @@ PUT  /v2/auth/enable
     Possible Status Codes:
         200 OK
         400 Bad Request (if root user has not been created)
+        409 Conflict (already enabled)
     200 Body: (empty)
 
 **Disable auth**
@@ -99,7 +100,8 @@ DELETE  /v2/auth/enable
         Authorization: Basic <RootAuthString>
     Possible Status Codes:
         200 OK
-        403 Forbidden (if not a root user)
+        401 Unauthorized (if not a root user)
+        409 Conflict (already disabled)
     200 Body: (empty)
 
 
@@ -130,7 +132,7 @@ GET/HEAD  /v2/auth/user
         Authorization: Basic <BasicAuthString>
     Possible Status Codes:
         200 OK
-        403 Forbidden
+        401 Unauthorized
     200 Headers:
         Content-type: application/json
     200 Body:
@@ -146,7 +148,7 @@ GET/HEAD  /v2/auth/users/alice
         Authorization: Basic <BasicAuthString>
     Possible Status Codes:
         200 OK
-        403 Forbidden
+        401 Unauthorized
         404 Not Found
     200 Headers:
         Content-type: application/json
@@ -170,9 +172,14 @@ PUT  /v2/auth/users/charlie
           * Grant/Revoke/Password filled in when updating (to grant roles, revoke roles, or change the password).
     Possible Status Codes:
         200 OK
-        403 Forbidden
+        201 Created
+        400 Bad Request
+        401 Unauthorized
         409 Conflict (when granting duplicated roles or revoking non-existing roles)
-    200 Body: (empty)
+    200 Headers:
+        Content-type: application/json
+    200 Body:
+        JSON state of the user
 
 **Remove A User**
 
@@ -182,7 +189,8 @@ DELETE  /v2/auth/users/charlie
         Authorization: Basic <BasicAuthString>
     Possible Status Codes:
         200 OK
-        403 Forbidden
+        401 Unauthorized
+        403 Forbidden (remove root user when auth is enabled)
         404 Not Found
     200 Headers:
     200 Body: (empty)
@@ -201,7 +209,6 @@ A full role structure may look like this. A Permission List structure is used fo
   }
   "grant" : {"kv": {...}},
   "revoke": {"kv": {...}},
-  "members" : ["alice", "bob"]
 }
 ```
 
@@ -213,9 +220,8 @@ GET/HEAD  /v2/auth/roles
         Authorization: Basic <BasicAuthString>
     Possible Status Codes:
         200 OK
-        403 Forbidden
+        401 Unauthorized
     200 Headers:
-        ETag: "<hash of list of roles>"
         Content-type: application/json
     200 Body:
         {
@@ -230,10 +236,9 @@ GET/HEAD  /v2/auth/roles/fleet
         Authorization: Basic <BasicAuthString>
     Possible Status Codes:
         200 OK
-        403 Forbidden
+        401 Unauthorized
         404 Not Found
     200 Headers:
-        ETag: "roles/fleet:<lastModified>"
         Content-type: application/json
     200 Body:
         {
@@ -248,7 +253,7 @@ GET/HEAD  /v2/auth/roles/fleet
 
 **Create Or Update A Role**
 
-PUT  /v2/auth/roles/rocket
+PUT  /v2/auth/roles/rkt
 
     Sent Headers:
         Authorization: Basic <BasicAuthString>
@@ -257,22 +262,24 @@ PUT  /v2/auth/roles/rocket
           * Starting permission set if creating
           * Granted/Revoked permission set if updating
     Possible Status Codes:
+        200 OK
         201 Created
-        403 Forbidden
-        404 Not Found
-        409 Conflict (if exists)
+        400 Bad Request
+        401 Unauthorized
+        409 Conflict (when granting duplicated permission or revoking non-existing permission)
     200 Body: 
         JSON state of the role
 
 **Remove A Role**
 
-DELETE  /v2/auth/roles/rocket
+DELETE  /v2/auth/roles/rkt
 
     Sent Headers:
         Authorization: Basic <BasicAuthString>
     Possible Status Codes:
         200 OK
-        403 Forbidden
+        401 Unauthorized
+        403 Forbidden (remove root)
         404 Not Found
     200 Headers:
     200 Body: (empty)
@@ -282,44 +289,39 @@ DELETE  /v2/auth/roles/rocket
 
 Let's walk through an example to show two tenants (applications, in our case) using etcd permissions.
 
-### Enable auth
-
-```
-PUT  /v2/auth/enable
-    Headers:
-    Put Body:
-        {"user" : "root", "password": "root"}
-```
-
-
-### Change root's password
+### Create root role
 
 ```
 PUT  /v2/auth/users/root
-    Headers:
-        Authorization: Basic <root:root>
     Put Body:
         {"user" : "root", "password": "betterRootPW!"}
 ```
 
-### Create Roles for the Applications
-
-Create the rocket role fully specified:
+### Enable auth
 
 ```
-PUT /v2/auth/roles/rocket
+PUT  /v2/auth/enable
+```
+
+
+### Create Roles for the Applications
+
+Create the rkt role fully specified:
+
+```
+PUT /v2/auth/roles/rkt
     Headers:
         Authorization: Basic <root:betterRootPW!>
     Body: 
         {
-          "role" : "rocket",
+          "role" : "rkt",
           "permissions" : {
             "kv": {
               "read": [
-                "/rocket/*"
+                "/rkt/*"
               ],
               "write": [
-                "/rocket/*"
+                "/rkt/*"
               ]
             }
           }
@@ -338,10 +340,10 @@ PUT /v2/auth/roles/fleet
         }
 ```
 
-### Optional: Add some permissions to the roles
+### Optional: Grant some permissions to the roles
 
 Well, we finally figured out where we want fleet to live. Let's fix it.
-(Note that we avoided this in the rocket case. So this step is optional.)
+(Note that we avoided this in the rkt case. So this step is optional.)
 
 
 ```
@@ -354,7 +356,7 @@ PUT /v2/auth/roles/fleet
           "grant" : {
             "kv" : {
               "read": [
-                "/rocket/fleet",
+                "/rkt/fleet",
                 "/fleet/*"
               ]
             }
@@ -367,11 +369,11 @@ PUT /v2/auth/roles/fleet
 Same as before, let's use rocket all at once and fleet separately
 
 ```
-PUT /v2/auth/users/rocketuser
+PUT /v2/auth/users/rktuser
     Headers:
         Authorization: Basic <root:betterRootPW!>
     Body:
-        {"user" : "rocketuser", "password" : "rocketpw", "roles" : ["rocket"]}
+        {"user" : "rktuser", "password" : "rktpw", "roles" : ["rkt"]}
 ```
 
 ```
@@ -394,16 +396,16 @@ PUT /v2/auth/users/fleetuser
       {"user": "fleetuser", "grant": ["fleet"]}
 ```
 
-#### Start to use fleetuser and rocketuser
+#### Start to use fleetuser and rktuser
 
 
 For example:
 
 ```
-PUT /v2/keys/rocket/RocketData
+PUT /v2/keys/rocket/RktData
     Headers:
         Authorization: Basic <rocketuser:rocketpw>
 ```
 
-Reads and writes outside the prefixes granted will fail with a 403 Forbidden.
+Reads and writes outside the prefixes granted will fail with a 401 Unauthorized.
 
