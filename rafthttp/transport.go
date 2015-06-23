@@ -79,8 +79,8 @@ type transport struct {
 	serverStats  *stats.ServerStats
 	leaderStats  *stats.LeaderStats
 
+	mu      sync.RWMutex         // protect the term, remote and peer map
 	term    uint64               // the latest term that has been observed
-	mu      sync.RWMutex         // protect the remote and peer map
 	remotes map[types.ID]*remote // remotes map that helps newly joined member to catch up
 	peers   map[types.ID]Peer    // peers map
 	errorc  chan error
@@ -116,6 +116,8 @@ func (t *transport) Get(id types.ID) Peer {
 }
 
 func (t *transport) maybeUpdatePeersTerm(term uint64) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
 	if t.term >= term {
 		return
 	}
@@ -192,7 +194,9 @@ func (t *transport) AddPeer(id types.ID, us []string) {
 		plog.Panicf("newURLs %+v should never fail: %+v", us, err)
 	}
 	fs := t.leaderStats.Follower(id.String())
-	t.peers[id] = startPeer(t.roundTripper, urls, t.id, id, t.clusterID, t.raft, fs, t.errorc)
+	p := startPeer(t.roundTripper, urls, t.id, id, t.clusterID, t.raft, fs, t.errorc)
+	p.setTerm(t.term)
+	t.peers[id] = p
 }
 
 func (t *transport) RemovePeer(id types.ID) {
