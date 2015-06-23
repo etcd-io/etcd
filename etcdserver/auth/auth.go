@@ -177,12 +177,12 @@ func (s *Store) GetUser(name string) (User, error) {
 	return u, nil
 }
 
+// CreateOrUpdateUser should be only used for creating the new user or when you are not
+// sure if it is a create or update. (When only password is passed in, we are not sure
+// if it is a update or create)
 func (s *Store) CreateOrUpdateUser(user User) (out User, created bool, err error) {
 	_, err = s.GetUser(user.User)
 	if err == nil {
-		// Remove the update-user roles from updating downstream.
-		// Roles are granted or revoked, not changed directly.
-		user.Roles = nil
 		out, err := s.UpdateUser(user)
 		return out, false, err
 	}

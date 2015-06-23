@@ -333,19 +333,48 @@ func (sh *authHandler) forUser(w http.ResponseWriter, r *http.Request, user stri
 			writeError(w, httptypes.NewHTTPError(http.StatusBadRequest, "User JSON name does not match the name in the URL"))
 			return
 		}
-		newuser, created, err := sh.sec.CreateOrUpdateUser(u)
-		if err != nil {
-			writeError(w, err)
-			return
+
+		var (
+			out     auth.User
+			created bool
+		)
+
+		if len(u.Grant) == 0 && len(u.Revoke) == 0 {
+			// create or update
+			if len(u.Roles) != 0 {
+				out, err = sh.sec.CreateUser(u)
+			} else {
+				// if user passes in both password and roles, we are unsure about his/her
+				// intention.
+				out, created, err = sh.sec.CreateOrUpdateUser(u)
+			}
+
+			if err != nil {
+				writeError(w, err)
+				return
+			}
+		} else {
+			// update case
+			if len(u.Roles) != 0 {
+				writeError(w, httptypes.NewHTTPError(http.StatusBadRequest, "User JSON contains both roles and grant/revoke"))
+				return
+			}
+			out, err = sh.sec.UpdateUser(u)
+			if err != nil {
+				writeError(w, err)
+				return
+			}
 		}
-		newuser.Password = ""
 
 		if created {
 			w.WriteHeader(http.StatusCreated)
 		} else {
 			w.WriteHeader(http.StatusOK)
 		}
-		err = json.NewEncoder(w).Encode(newuser)
+
+		out.Password = ""
+
+		err = json.NewEncoder(w).Encode(out)
 		if err != nil {
 			plog.Warningf("forUser error encoding on %s", r.URL)
 			return
