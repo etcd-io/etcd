@@ -45,7 +45,7 @@ func TestPurgeFile(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		time.Sleep(2 * time.Millisecond)
+		time.Sleep(10 * time.Millisecond)
 	}
 	fnames, err := ReadDir(dir)
 	if err != nil {
