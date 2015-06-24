@@ -175,7 +175,8 @@ PUT  /v2/auth/users/charlie
         201 Created
         400 Bad Request
         401 Unauthorized
-        409 Conflict (when granting duplicated roles or revoking non-existing roles)
+        404 Not Found (update non-existent users)
+        409 Conflict (when granting duplicated roles or revoking non-existent roles)
     200 Headers:
         Content-type: application/json
     200 Body:
@@ -266,7 +267,8 @@ PUT  /v2/auth/roles/rkt
         201 Created
         400 Bad Request
         401 Unauthorized
-        409 Conflict (when granting duplicated permission or revoking non-existing permission)
+        404 Not Found (update non-existent roles)
+        409 Conflict (when granting duplicated permission or revoking non-existent permission)
     200 Body: 
         JSON state of the role
 
@@ -301,6 +303,26 @@ PUT  /v2/auth/users/root
 
 ```
 PUT  /v2/auth/enable
+```
+
+### Modify guest role (revoke write permission)
+
+```
+PUT  /v2/auth/users/guest
+    Headers:
+        Authorization: Basic <root:betterRootPW!>
+    Put Body:
+      {
+          "role" : "guest",
+          "revoke" : {
+            "kv" : {
+              "write": [
+                "*"
+              ]
+            }
+          }
+        }
+      }
 ```
 
 
