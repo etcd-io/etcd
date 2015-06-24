@@ -14,7 +14,7 @@ GCE n1-highcpu-2 machine type
 
 ## Testing
 
-Bootstrap another machine and use benchmark tool to send requests to etcd cluster.
+Bootstrap another machine and use benchmark tool [boom](https://github.com/rakyll/boom) to send requests to each etcd member.
 
 ## Performance
 
