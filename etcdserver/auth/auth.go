@@ -338,6 +338,9 @@ func (s *Store) DeleteRole(name string) error {
 }
 
 func (s *Store) UpdateRole(role Role) (Role, error) {
+	if role.Role == RootRoleName {
+		return Role{}, authErr(http.StatusForbidden, "Cannot modify role %s: is root role.", role.Role)
+	}
 	old, err := s.GetRole(role.Role)
 	if err != nil {
 		if e, ok := err.(*etcderr.Error); ok {
