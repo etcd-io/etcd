@@ -46,3 +46,15 @@ Abnormally high fsync duration (`fsync_durations_microseconds`) indicates disk i
 | snapshot_save_total_durations_microseconds | The total latency distributions of save called by snapshot | Summary |
 
 Abnormally high snapshot duration (`snapshot_save_total_durations_microseconds`) indicates disk issues and might cause the cluster to be unstable.
+
+### rafthttp
+
+| Name                              | Description                                | Type    |
+|-----------------------------------|--------------------------------------------|---------|
+| message_sent_latency_microseconds | The latency distributions of messages sent | Summary |
+| message_sent_failed_total         | The total number of failed messages sent   | Summary |
+
+
+Abnormally high message duration (`message_sent_latency_microseconds`) indicates network issues and might cause the cluster to be unstable.
+
+An increase in message failures (`message_sent_failed_total`) indicates more severe network issues and might cause the cluster to be unstable.
