@@ -13,6 +13,7 @@ To start etcd automatically using custom settings at startup in Linux, using a [
 ##### -name
 + Human-readable name for this member.
 + default: "default"
++ This value is referenced as this node's own entries listed in the `-initial-cluster` flag (Ex: `default=http://localhost:2380` or `default=http://localhost:2380,default=http://localhost:7001`). This needs to match the key used in the flag if you're using [static boostrapping](clustering.md#static).
 
 ##### -data-dir
 + Path to the data directory.
@@ -66,6 +67,7 @@ To start etcd automatically using custom settings at startup in Linux, using a [
 ##### -initial-cluster
 + Initial cluster configuration for bootstrapping.
 + default: "default=http://localhost:2380,default=http://localhost:7001"
++ The key is the value of the `-name` flag for each node provided. The default uses `default` for the key because this is the default for the `-name` flag.
 
 ##### -initial-cluster-state
 + Initial cluster state ("new" or "existing"). Set to `new` for all members present during initial static or DNS bootstrapping. If this option is set to `existing`, etcd will attempt to join the existing cluster. If the wrong value is set, etcd will attempt to start but fail safely.
