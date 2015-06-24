@@ -20,8 +20,10 @@ var (
 	// TODO: save_fsync latency?
 	// TODO: save_encoding latency?
 	saveDurations = prometheus.NewSummary(prometheus.SummaryOpts{
-		Name: "snapshot_save_total_durations_microseconds",
-		Help: "The total latency distributions of save called by snapshot.",
+		Namespace: "etcd",
+		Subsystem: "snapshot",
+		Name:      "save_total_durations_microseconds",
+		Help:      "The total latency distributions of save called by snapshot.",
 	})
 )
 
