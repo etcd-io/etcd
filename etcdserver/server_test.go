@@ -748,6 +748,8 @@ func TestTriggerSnap(t *testing.T) {
 		srv.Do(context.Background(), pb.Request{Method: "PUT"})
 	}
 	srv.Stop()
+	// wait for snapshot goroutine to finish
+	testutil.WaitSchedule()
 
 	gaction := p.Action()
 	// each operation is recorded as a Save
