@@ -222,7 +222,6 @@ func (n *node) Remove(dir, recursive bool, callback func(path string)) *etcdErr.
 			child.Remove(true, true, callback)
 		}
 	}
-	
 	// delete self
 	_, name := path.Split(n.Path)
 	if n.Parent != nil && n.Parent.Children[name] == n {
