@@ -49,12 +49,18 @@ Abnormally high snapshot duration (`snapshot_save_total_durations_microseconds`)
 
 ### rafthttp
 
-| Name                              | Description                                | Type    |
-|-----------------------------------|--------------------------------------------|---------|
-| message_sent_latency_microseconds | The latency distributions of messages sent | Summary |
-| message_sent_failed_total         | The total number of failed messages sent   | Summary |
+| Name                              | Description                                | Type    | Labels                     |
+|-----------------------------------|--------------------------------------------|---------|----------------------------|
+| message_sent_latency_microseconds | The latency distributions of messages sent | Summary | channel, msgType, remoteID |
+| message_sent_failed_total         | The total number of failed messages sent   | Summary | channel, msgType, remoteID |
 
 
 Abnormally high message duration (`message_sent_latency_microseconds`) indicates network issues and might cause the cluster to be unstable.
 
 An increase in message failures (`message_sent_failed_total`) indicates more severe network issues and might cause the cluster to be unstable.
+
+Label `channel` is the channel to send message. `message`, `msgapp` and `msgappv2` channels use HTTP streaming, while `pipeline` does HTTP request for each message.
+
+Label `msgType` is the type of raft message. `MsgApp` is log replication message; `MsgSnap` is snapshot install message; `MsgProp` is proposal forward message; the others are used to maintain raft internal status. If you have a large snapshot, you would expect a long msgSnap sending latency. For other types of messages, you would expect low latency, which is comparable to your ping latency if you have enough network bandwidth.
+
+Label `remoteID` is the member ID of the message destination.
