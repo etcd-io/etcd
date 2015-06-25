@@ -442,6 +442,7 @@ func (u User) merge(n User) (User, error) {
 		currentRoles.Remove(r)
 	}
 	out.Roles = currentRoles.Values()
+	sort.Strings(out.Roles)
 	return out, nil
 }
 
@@ -528,6 +529,8 @@ func (rw rwPermission) Grant(n rwPermission) (rwPermission, error) {
 	}
 	out.Read = currentRead.Values()
 	out.Write = currentWrite.Values()
+	sort.Strings(out.Read)
+	sort.Strings(out.Write)
 	return out, nil
 }
 
@@ -553,6 +556,8 @@ func (rw rwPermission) Revoke(n rwPermission) (rwPermission, error) {
 	}
 	out.Read = currentRead.Values()
 	out.Write = currentWrite.Values()
+	sort.Strings(out.Read)
+	sort.Strings(out.Write)
 	return out, nil
 }
 
