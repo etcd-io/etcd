@@ -61,7 +61,7 @@ func TestWaitTestStress(t *testing.T) {
 	for _, ch := range chs {
 		select {
 		case <-ch:
-		case <-time.After(10 * time.Millisecond):
+		case <-time.After(time.Second):
 			t.Fatalf("cannot receive from ch as expected")
 		}
 	}
