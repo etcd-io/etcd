@@ -111,14 +111,14 @@ The User JSON object is formed as follows:
 
 ```
 {
-  "user": "userName"
-  "password": "password"
+  "user": "userName",
+  "password": "password",
   "roles": [
     "role1",
     "role2"
   ],
   "grant": [],
-  "revoke": [],
+  "revoke": []
 }
 ```
 
@@ -126,7 +126,7 @@ Password is only passed when necessary.
 
 **Get a list of users**
 
-GET/HEAD  /v2/auth/user
+GET/HEAD  /v2/auth/users
 
     Sent Headers:
         Authorization: Basic <BasicAuthString>
@@ -154,7 +154,7 @@ GET/HEAD  /v2/auth/users/alice
         Content-type: application/json
     200 Body:
         {
-          "user" : "alice"
+          "user" : "alice",
           "roles" : ["fleet", "etcd"]
         }
 
@@ -203,13 +203,13 @@ A full role structure may look like this. A Permission List structure is used fo
 {
   "role" : "fleet",
   "permissions" : {
-    "kv" {
+    "kv" : {
       "read" : [ "/fleet/" ],
-      "write": [ "/fleet/" ],
+      "write": [ "/fleet/" ]
     }
-  }
+  },
   "grant" : {"kv": {...}},
-  "revoke": {"kv": {...}},
+  "revoke": {"kv": {...}}
 }
 ```
 
@@ -244,12 +244,12 @@ GET/HEAD  /v2/auth/roles/fleet
     200 Body:
         {
           "role" : "fleet",
-          "read": {
-            "prefixesAllowed": ["/fleet/"],
-          },
-          "write": {
-            "prefixesAllowed": ["/fleet/"],
-          },
+          "permissions" : {
+            "kv" : {
+              "read": [ "/fleet/" ],
+              "write": [ "/fleet/" ]
+            }
+          }
         }
 
 **Create Or Update A Role**
@@ -308,11 +308,11 @@ PUT  /v2/auth/enable
 ### Modify guest role (revoke write permission)
 
 ```
-PUT  /v2/auth/users/guest
+PUT  /v2/auth/roles/guest
     Headers:
         Authorization: Basic <root:betterRootPW!>
     Put Body:
-      {
+        {
           "role" : "guest",
           "revoke" : {
             "kv" : {
@@ -322,7 +322,6 @@ PUT  /v2/auth/users/guest
             }
           }
         }
-      }
 ```
 
 
@@ -334,7 +333,7 @@ Create the rkt role fully specified:
 PUT /v2/auth/roles/rkt
     Headers:
         Authorization: Basic <root:betterRootPW!>
-    Body: 
+    Body:
         {
           "role" : "rkt",
           "permissions" : {
@@ -356,9 +355,9 @@ But let's make fleet just a basic role for now:
 PUT /v2/auth/roles/fleet
     Headers:
       Authorization: Basic <root:betterRootPW!>
-    Body: 
+    Body:
         {
-            "role" : "fleet",
+          "role" : "fleet"
         }
 ```
 
@@ -415,7 +414,7 @@ PUT /v2/auth/users/fleetuser
     Headers:
         Authorization: Basic <root:betterRootPW!>
     Body:
-      {"user": "fleetuser", "grant": ["fleet"]}
+        {"user": "fleetuser", "grant": ["fleet"]}
 ```
 
 #### Start to use fleetuser and rktuser
@@ -424,9 +423,11 @@ PUT /v2/auth/users/fleetuser
 For example:
 
 ```
-PUT /v2/keys/rocket/RktData
+PUT /v2/keys/rkt/RktData
     Headers:
-        Authorization: Basic <rocketuser:rocketpw>
+        Authorization: Basic <rktuser:rktpw>
+    Body:
+        value=launch
 ```
 
 Reads and writes outside the prefixes granted will fail with a 401 Unauthorized.
