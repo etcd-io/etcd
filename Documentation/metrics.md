@@ -30,6 +30,38 @@ Pending proposal (`pending_proposal_total`) gives you an idea about how many pro
 
 Failed proposals (`proposal_failed_total`) are normally related to two issues: temporary failures related to a leader election or longer duration downtime caused by a loss of quorum in the cluster.
 
+
+
+### etcdserver/etcdhttp
+
+These metrics describe the requests received by Etcd REST API of Etcd nodes that exist in the cluster (non-proxy).
+They track event requests (non-watch queries): total incoming, errors and processing latency (inc. RAFT rounds for 
+these). They are useful for tracking user-generated traffic hitting Etcd. 
+
+All these metrics are prefixed with `etcd_http_events_`
+
+| Name                      | Description                                                                          | Type                   |
+|---------------------------|------------------------------------------------------------------------------------------|--------------------|
+| received_total            | Requests received by HTTP methods.                                                   | Counter(method)        |
+| successful_total          | Requests successfully processed by HTTP method and Etcd action (e.g. compareAndSwap) | Counter(method)        |
+| failed_total              | Requests failed in processing by HTTP method and HTTP status code.                   | Counter(method)        |
+| handling_time_seconds     | Bucketed handling times by HTTP method.                                              | Histogram(method)      | 
+
+Example Prometheus queries that may be useful from these metrics (across all Etcd servers):
+
+ * `sum(rate(etcd_http_events_failed_total{job="etcd"}[1m]) by (method) / sum(rate(etcd_http_events_received_total{job="etcd"})[1m]) by (method)` 
+    
+    Shows the fraction of requests that failed by HTTP method across all servers, across a time window of `1m`.
+ * `sum(rate(etcd_http_events_successful_total{job="etcd",method="GET})[1m]) by (method)`
+   `sum(rate(etcd_http_events_successful_total{job="etcd",method~="GET})[1m]) by (method)`
+    
+    Shows the rate of successfull readonly/write queries across all servers, across a time window of `1m`.
+ * `histogram_quantile(0.9, sum(increase(etcd_http_events_handling_time_seconds_bucket{job="etcd",method="GET"}[5m])) by (le))`
+   `histogram_quantile(0.9, sum(increase(etcd_http_events_handling_time_seconds_bucket{job="etcd",method!="GET"}[5m])) by (le))`
+    
+    Show the 0.90-tile latency (in seconds) across all machines, with a window of `5m`.       
+
+
 ### wal
 
 | Name                               | Description                                      | Type    |
