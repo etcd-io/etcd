@@ -160,20 +160,10 @@ func (s *Store) GetUser(name string) (User, error) {
 	if err != nil {
 		return u, err
 	}
-	// Require that root always has a root role.
+	// Attach root role to root user.
 	if u.User == "root" {
-		inRoles := false
-		for _, r := range u.Roles {
-			if r == RootRoleName {
-				inRoles = true
-				break
-			}
-		}
-		if !inRoles {
-			u.Roles = append(u.Roles, RootRoleName)
-		}
+		u = attachRootRole(u)
 	}
-
 	return u, nil
 }
 
@@ -191,6 +181,10 @@ func (s *Store) CreateOrUpdateUser(user User) (out User, created bool, err error
 }
 
 func (s *Store) CreateUser(user User) (User, error) {
+	// Attach root role to root user.
+	if user.User == "root" {
+		user = attachRootRole(user)
+	}
 	u, err := s.createUserInternal(user)
 	if err == nil {
 		plog.Noticef("created user %s", user.User)
@@ -603,4 +597,18 @@ func prefixMatch(pattern string, key string) (match bool, err error) {
 		return false, nil
 	}
 	return strings.HasPrefix(key, pattern[:len(pattern)-1]), nil
+}
+
+func attachRootRole(u User) User {
+	inRoles := false
+	for _, r := range u.Roles {
+		if r == RootRoleName {
+			inRoles = true
+			break
+		}
+	}
+	if !inRoles {
+		u.Roles = append(u.Roles, RootRoleName)
+	}
+	return u
 }
