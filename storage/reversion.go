@@ -7,6 +7,16 @@ type reversion struct {
 	sub  int64
 }
 
+func (a reversion) GreaterThan(b reversion) bool {
+	if a.main > b.main {
+		return true
+	}
+	if a.main < b.main {
+		return false
+	}
+	return a.sub > b.sub
+}
+
 func newRevBytes() []byte {
 	return make([]byte, 8+1+8)
 }

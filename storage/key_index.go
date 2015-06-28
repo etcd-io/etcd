@@ -55,43 +55,48 @@ var (
 //    {empty} -> key SHOULD be removed.
 type keyIndex struct {
 	key         []byte
-	rev         int64
+	modified    reversion // the main rev of the last modification
 	generations []generation
 }
 
 // put puts a reversion to the keyIndex.
-func (ki *keyIndex) put(rev int64, subrev int64) {
-	if rev < ki.rev {
-		log.Panicf("store.keyindex: put with unexpected smaller reversion [%d / %d]", rev, ki.rev)
+func (ki *keyIndex) put(main int64, sub int64) {
+	rev := reversion{main: main, sub: sub}
+
+	if !rev.GreaterThan(ki.modified) {
+		log.Panicf("store.keyindex: put with unexpected smaller reversion [%v / %v]", rev, ki.modified)
 	}
 	if len(ki.generations) == 0 {
 		ki.generations = append(ki.generations, generation{})
 	}
 	g := &ki.generations[len(ki.generations)-1]
-	g.revs = append(g.revs, reversion{rev, subrev})
+	if len(g.revs) == 0 {
+		g.created = rev
+	}
+	g.revs = append(g.revs, rev)
 	g.ver++
-	ki.rev = rev
+	ki.modified = rev
 }
 
 // tombstone puts a reversion, pointing to a tombstone, to the keyIndex.
 // It also creates a new empty generation in the keyIndex.
-func (ki *keyIndex) tombstone(rev int64, subrev int64) {
+func (ki *keyIndex) tombstone(main int64, sub int64) {
 	if ki.isEmpty() {
 		log.Panicf("store.keyindex: unexpected tombstone on empty keyIndex %s", string(ki.key))
 	}
-	ki.put(rev, subrev)
+	ki.put(main, sub)
 	ki.generations = append(ki.generations, generation{})
 }
 
-// get gets the reversion of the key that satisfies the given atRev.
+// get gets the modified and created reversion of the key that satisfies the given atRev.
 // Rev must be higher than or equal to the given atRev.
-func (ki *keyIndex) get(atRev int64) (rev reversion, err error) {
+func (ki *keyIndex) get(atRev int64) (modified, created reversion, err error) {
 	if ki.isEmpty() {
 		log.Panicf("store.keyindex: unexpected get on empty keyIndex %s", string(ki.key))
 	}
 	g := ki.findGeneration(atRev)
 	if g.isEmpty() {
-		return reversion{}, ErrReversionNotFound
+		return reversion{}, reversion{}, ErrReversionNotFound
 	}
 
 	f := func(rev reversion) bool {
@@ -103,10 +108,10 @@ func (ki *keyIndex) get(atRev int64) (rev reversion, err error) {
 
 	n := g.walk(f)
 	if n != -1 {
-		return g.revs[n], nil
+		return g.revs[n], g.created, nil
 	}
 
-	return reversion{}, ErrReversionNotFound
+	return reversion{}, reversion{}, ErrReversionNotFound
 }
 
 // compact compacts a keyIndex by removing the versions with smaller or equal
@@ -191,7 +196,7 @@ func (a *keyIndex) equal(b *keyIndex) bool {
 	if !bytes.Equal(a.key, b.key) {
 		return false
 	}
-	if a.rev != b.rev {
+	if a.modified != b.modified {
 		return false
 	}
 	if len(a.generations) != len(b.generations) {
@@ -215,8 +220,9 @@ func (ki *keyIndex) String() string {
 }
 
 type generation struct {
-	ver  int64
-	revs []reversion
+	ver     int64
+	created reversion // when the generation is created (put in first reversion).
+	revs    []reversion
 }
 
 func (g *generation) isEmpty() bool { return g == nil || len(g.revs) == 0 }
@@ -238,7 +244,7 @@ func (g *generation) walk(f func(rev reversion) bool) int {
 }
 
 func (g *generation) String() string {
-	return fmt.Sprintf("g: ver[%d], revs %#v\n", g.ver, g.revs)
+	return fmt.Sprintf("g: created[%d] ver[%d], revs %#v\n", g.created, g.ver, g.revs)
 }
 
 func (a generation) equal(b generation) bool {
