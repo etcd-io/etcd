@@ -194,9 +194,7 @@ func (t *transport) AddPeer(id types.ID, us []string) {
 		plog.Panicf("newURLs %+v should never fail: %+v", us, err)
 	}
 	fs := t.leaderStats.Follower(id.String())
-	p := startPeer(t.roundTripper, urls, t.id, id, t.clusterID, t.raft, fs, t.errorc)
-	p.setTerm(t.term)
-	t.peers[id] = p
+	t.peers[id] = startPeer(t.roundTripper, urls, t.id, id, t.clusterID, t.raft, fs, t.errorc, t.term)
 }
 
 func (t *transport) RemovePeer(id types.ID) {

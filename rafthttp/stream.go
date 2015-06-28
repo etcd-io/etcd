@@ -266,20 +266,21 @@ type streamReader struct {
 	done       chan struct{}
 }
 
-func startStreamReader(tr http.RoundTripper, picker *urlPicker, t streamType, local, remote, cid types.ID, status *peerStatus, recvc chan<- raftpb.Message, propc chan<- raftpb.Message, errorc chan<- error) *streamReader {
+func startStreamReader(tr http.RoundTripper, picker *urlPicker, t streamType, local, remote, cid types.ID, status *peerStatus, recvc chan<- raftpb.Message, propc chan<- raftpb.Message, errorc chan<- error, term uint64) *streamReader {
 	r := &streamReader{
-		tr:     tr,
-		picker: picker,
-		t:      t,
-		local:  local,
-		remote: remote,
-		cid:    cid,
-		status: status,
-		recvc:  recvc,
-		propc:  propc,
-		errorc: errorc,
-		stopc:  make(chan struct{}),
-		done:   make(chan struct{}),
+		tr:         tr,
+		picker:     picker,
+		t:          t,
+		local:      local,
+		remote:     remote,
+		cid:        cid,
+		status:     status,
+		recvc:      recvc,
+		propc:      propc,
+		errorc:     errorc,
+		msgAppTerm: term,
+		stopc:      make(chan struct{}),
+		done:       make(chan struct{}),
 	}
 	go r.run()
 	return r
