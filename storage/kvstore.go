@@ -298,7 +298,7 @@ func (s *store) put(key, value []byte, rev int64) {
 	c := rev
 
 	// if the key exists before, use its previous created
-	_, created, err := s.kvindex.Get(key, rev)
+	_, created, ver, err := s.kvindex.Get(key, rev)
 	if err == nil {
 		c = created.main
 	}
@@ -306,6 +306,7 @@ func (s *store) put(key, value []byte, rev int64) {
 	ibytes := newRevBytes()
 	revToBytes(reversion{main: rev, sub: s.currentRev.sub}, ibytes)
 
+	ver = ver + 1
 	event := storagepb.Event{
 		Type: storagepb.PUT,
 		Kv: storagepb.KeyValue{
@@ -313,6 +314,7 @@ func (s *store) put(key, value []byte, rev int64) {
 			Value:       value,
 			CreateIndex: c,
 			ModIndex:    rev,
+			Version:     ver,
 		},
 	}
 
@@ -355,7 +357,7 @@ func (s *store) delete(key []byte, mainrev int64) bool {
 	if s.currentRev.sub > 0 {
 		grev += 1
 	}
-	rev, _, err := s.kvindex.Get(key, grev)
+	rev, _, _, err := s.kvindex.Get(key, grev)
 	if err != nil {
 		// key not exist
 		return false

@@ -91,7 +91,7 @@ func TestIndexTombstone(t *testing.T) {
 	if err != nil {
 		t.Errorf("tombstone error = %v, want nil", err)
 	}
-	rev, err := index.Get([]byte("foo"), 7)
+	rev, _, _, err := index.Get([]byte("foo"), 7)
 	if err != nil {
 		t.Errorf("get error = %v, want nil", err)
 	}
@@ -197,7 +197,7 @@ func TestContinuousCompact(t *testing.T) {
 
 func verify(t *testing.T, index index, tests []T) {
 	for i, tt := range tests {
-		h, _, err := index.Get(tt.key, tt.rev)
+		h, _, _, err := index.Get(tt.key, tt.rev)
 		if err != tt.werr {
 			t.Errorf("#%d: err = %v, want %v", i, err, tt.werr)
 		}
