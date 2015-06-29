@@ -416,6 +416,8 @@ func (s *EtcdServer) run() {
 	// TODO: get rid of the raft initialization in etcd server
 	s.r.s = s
 	s.r.applyc = make(chan apply)
+	s.r.stopped = make(chan struct{})
+	s.r.done = make(chan struct{})
 	go s.r.run()
 	defer func() {
 		s.r.stopped <- struct{}{}
