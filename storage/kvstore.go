@@ -205,7 +205,7 @@ func (s *store) Restore() error {
 		// restore index
 		switch e.Type {
 		case storagepb.PUT:
-			s.kvindex.Put(e.Kv.Key, rev)
+			s.kvindex.Restore(e.Kv.Key, reversion{e.Kv.CreateIndex, 0}, rev, e.Kv.Version)
 		case storagepb.DELETE:
 			s.kvindex.Tombstone(e.Kv.Key, rev)
 		default:

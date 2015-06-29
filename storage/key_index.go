@@ -78,6 +78,16 @@ func (ki *keyIndex) put(main int64, sub int64) {
 	ki.modified = rev
 }
 
+func (ki *keyIndex) restore(created, modified reversion, ver int64) {
+	if len(ki.generations) != 0 {
+		log.Panicf("store.keyindex: cannot restore non-empty keyIndex")
+	}
+
+	ki.modified = modified
+	g := generation{created: created, ver: ver, revs: []reversion{modified}}
+	ki.generations = append(ki.generations, g)
+}
+
 // tombstone puts a reversion, pointing to a tombstone, to the keyIndex.
 // It also creates a new empty generation in the keyIndex.
 func (ki *keyIndex) tombstone(main int64, sub int64) {
