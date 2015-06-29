@@ -39,7 +39,7 @@
 		},
 		{
 			"ImportPath": "github.com/coreos/pkg/capnslog",
-			"Rev": "84b359ff90d62d7b5a5b9dfb96400c08f0cc6642"
+			"Rev": "99f6e6b8f8ea30b0f82769c1411691c44a66d015"
 		},
 		{
 			"ImportPath": "github.com/gogo/protobuf/proto",
