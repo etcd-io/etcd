@@ -274,11 +274,8 @@ func TestStream(t *testing.T) {
 		h.sw = sw
 
 		picker := mustNewURLPicker(t, []string{srv.URL})
-		sr := startStreamReader(&http.Transport{}, picker, tt.t, types.ID(1), types.ID(2), types.ID(1), newPeerStatus(types.ID(1)), recvc, propc, nil, 1)
+		sr := startStreamReader(&http.Transport{}, picker, tt.t, types.ID(1), types.ID(2), types.ID(1), newPeerStatus(types.ID(1)), recvc, propc, nil, tt.term)
 		defer sr.stop()
-		if tt.t == streamTypeMsgApp {
-			sr.updateMsgAppTerm(tt.term)
-		}
 		// wait for stream to work
 		var writec chan<- raftpb.Message
 		for {
