@@ -44,8 +44,8 @@ import (
 	"testing"
 	"time"
 
-	. "./testdata"
 	. "github.com/coreos/etcd/Godeps/_workspace/src/github.com/gogo/protobuf/proto"
+	. "github.com/coreos/etcd/Godeps/_workspace/src/github.com/gogo/protobuf/proto/testdata"
 )
 
 var globalO *Buffer
@@ -1252,7 +1252,8 @@ func TestProto1RepeatedGroup(t *testing.T) {
 	}
 
 	o := old()
-	if err := o.Marshal(pb); err != ErrRepeatedHasNil {
+	err := o.Marshal(pb)
+	if err == nil || !strings.Contains(err.Error(), "repeated field Message has nil") {
 		t.Fatalf("unexpected or no error when marshaling: %v", err)
 	}
 }
@@ -1435,6 +1436,17 @@ func TestSetDefaultsWithRepeatedSubMessage(t *testing.T) {
 			Port: Int32(4000),
 		}},
 	}
+	SetDefaults(m)
+	if !Equal(m, expected) {
+		t.Errorf("\n got %v\nwant %v", m, expected)
+	}
+}
+
+func TestSetDefaultWithRepeatedNonMessage(t *testing.T) {
+	m := &MyMessage{
+		Pet: []string{"turtle", "wombat"},
+	}
+	expected := Clone(m)
 	SetDefaults(m)
 	if !Equal(m, expected) {
 		t.Errorf("\n got %v\nwant %v", m, expected)
@@ -1831,6 +1843,86 @@ func fuzzUnmarshal(t *testing.T, data []byte) {
 
 	pb := new(MyMessage)
 	Unmarshal(data, pb)
+}
+
+func TestMapFieldMarshal(t *testing.T) {
+	m := &MessageWithMap{
+		NameMapping: map[int32]string{
+			1: "Rob",
+			4: "Ian",
+			8: "Dave",
+		},
+	}
+	b, err := Marshal(m)
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+
+	// b should be the concatenation of these three byte sequences in some order.
+	parts := []string{
+		"\n\a\b\x01\x12\x03Rob",
+		"\n\a\b\x04\x12\x03Ian",
+		"\n\b\b\x08\x12\x04Dave",
+	}
+	ok := false
+	for i := range parts {
+		for j := range parts {
+			if j == i {
+				continue
+			}
+			for k := range parts {
+				if k == i || k == j {
+					continue
+				}
+				try := parts[i] + parts[j] + parts[k]
+				if bytes.Equal(b, []byte(try)) {
+					ok = true
+					break
+				}
+			}
+		}
+	}
+	if !ok {
+		t.Fatalf("Incorrect Marshal output.\n got %q\nwant %q (or a permutation of that)", b, parts[0]+parts[1]+parts[2])
+	}
+	t.Logf("FYI b: %q", b)
+
+	(new(Buffer)).DebugPrint("Dump of b", b)
+}
+
+func TestMapFieldRoundTrips(t *testing.T) {
+	m := &MessageWithMap{
+		NameMapping: map[int32]string{
+			1: "Rob",
+			4: "Ian",
+			8: "Dave",
+		},
+		MsgMapping: map[int64]*FloatingPoint{
+			0x7001: {F: Float64(2.0)},
+		},
+		ByteMapping: map[bool][]byte{
+			false: []byte("that's not right!"),
+			true:  []byte("aye, 'tis true!"),
+		},
+	}
+	b, err := Marshal(m)
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+	t.Logf("FYI b: %q", b)
+	m2 := new(MessageWithMap)
+	if err := Unmarshal(b, m2); err != nil {
+		t.Fatalf("Unmarshal: %v", err)
+	}
+	for _, pair := range [][2]interface{}{
+		{m.NameMapping, m2.NameMapping},
+		{m.MsgMapping, m2.MsgMapping},
+		{m.ByteMapping, m2.ByteMapping},
+	} {
+		if !reflect.DeepEqual(pair[0], pair[1]) {
+			t.Errorf("Map did not survive a round trip.\ninitial: %v\n  final: %v", pair[0], pair[1])
+		}
+	}
 }
 
 // Benchmarks

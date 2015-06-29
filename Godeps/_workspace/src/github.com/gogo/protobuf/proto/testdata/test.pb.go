@@ -33,6 +33,7 @@ It has these top-level messages:
 	GroupOld
 	GroupNew
 	FloatingPoint
+	MessageWithMap
 */
 package testdata
 
@@ -1883,6 +1884,46 @@ func (m *FloatingPoint) GetF() float64 {
 		return *m.F
 	}
 	return 0
+}
+
+type MessageWithMap struct {
+	NameMapping      map[int32]string         `protobuf:"bytes,1,rep,name=name_mapping" json:"name_mapping,omitempty" protobuf_key:"varint,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	MsgMapping       map[int64]*FloatingPoint `protobuf:"bytes,2,rep,name=msg_mapping" json:"msg_mapping,omitempty" protobuf_key:"zigzag64,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	ByteMapping      map[bool][]byte          `protobuf:"bytes,3,rep,name=byte_mapping" json:"byte_mapping,omitempty" protobuf_key:"varint,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	StrToStr         map[string]string        `protobuf:"bytes,4,rep,name=str_to_str" json:"str_to_str,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	XXX_unrecognized []byte                   `json:"-"`
+}
+
+func (m *MessageWithMap) Reset()         { *m = MessageWithMap{} }
+func (m *MessageWithMap) String() string { return proto.CompactTextString(m) }
+func (*MessageWithMap) ProtoMessage()    {}
+
+func (m *MessageWithMap) GetNameMapping() map[int32]string {
+	if m != nil {
+		return m.NameMapping
+	}
+	return nil
+}
+
+func (m *MessageWithMap) GetMsgMapping() map[int64]*FloatingPoint {
+	if m != nil {
+		return m.MsgMapping
+	}
+	return nil
+}
+
+func (m *MessageWithMap) GetByteMapping() map[bool][]byte {
+	if m != nil {
+		return m.ByteMapping
+	}
+	return nil
+}
+
+func (m *MessageWithMap) GetStrToStr() map[string]string {
+	if m != nil {
+		return m.StrToStr
+	}
+	return nil
 }
 
 var E_Greeting = &proto.ExtensionDesc{

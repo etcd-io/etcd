@@ -178,7 +178,7 @@ func (p *Buffer) DecodeZigzag32() (x uint64, err error) {
 func (p *Buffer) DecodeRawBytes(alloc bool) (buf []byte, err error) {
 	n, err := p.DecodeVarint()
 	if err != nil {
-		return
+		return nil, err
 	}
 
 	nb := int(n)
@@ -470,6 +470,15 @@ func (o *Buffer) dec_bool(p *Properties, base structPointer) error {
 	return nil
 }
 
+func (o *Buffer) dec_proto3_bool(p *Properties, base structPointer) error {
+	u, err := p.valDec(o)
+	if err != nil {
+		return err
+	}
+	*structPointer_BoolVal(base, p.field) = u != 0
+	return nil
+}
+
 // Decode an int32.
 func (o *Buffer) dec_int32(p *Properties, base structPointer) error {
 	u, err := p.valDec(o)
@@ -477,6 +486,15 @@ func (o *Buffer) dec_int32(p *Properties, base structPointer) error {
 		return err
 	}
 	word32_Set(structPointer_Word32(base, p.field), o, uint32(u))
+	return nil
+}
+
+func (o *Buffer) dec_proto3_int32(p *Properties, base structPointer) error {
+	u, err := p.valDec(o)
+	if err != nil {
+		return err
+	}
+	word32Val_Set(structPointer_Word32Val(base, p.field), uint32(u))
 	return nil
 }
 
@@ -490,15 +508,31 @@ func (o *Buffer) dec_int64(p *Properties, base structPointer) error {
 	return nil
 }
 
+func (o *Buffer) dec_proto3_int64(p *Properties, base structPointer) error {
+	u, err := p.valDec(o)
+	if err != nil {
+		return err
+	}
+	word64Val_Set(structPointer_Word64Val(base, p.field), o, u)
+	return nil
+}
+
 // Decode a string.
 func (o *Buffer) dec_string(p *Properties, base structPointer) error {
 	s, err := o.DecodeStringBytes()
 	if err != nil {
 		return err
 	}
-	sp := new(string)
-	*sp = s
-	*structPointer_String(base, p.field) = sp
+	*structPointer_String(base, p.field) = &s
+	return nil
+}
+
+func (o *Buffer) dec_proto3_string(p *Properties, base structPointer) error {
+	s, err := o.DecodeStringBytes()
+	if err != nil {
+		return err
+	}
+	*structPointer_StringVal(base, p.field) = s
 	return nil
 }
 
@@ -634,6 +668,72 @@ func (o *Buffer) dec_slice_slice_byte(p *Properties, base structPointer) error {
 	}
 	v := structPointer_BytesSlice(base, p.field)
 	*v = append(*v, b)
+	return nil
+}
+
+// Decode a map field.
+func (o *Buffer) dec_new_map(p *Properties, base structPointer) error {
+	raw, err := o.DecodeRawBytes(false)
+	if err != nil {
+		return err
+	}
+	oi := o.index       // index at the end of this map entry
+	o.index -= len(raw) // move buffer back to start of map entry
+
+	mptr := structPointer_Map(base, p.field, p.mtype) // *map[K]V
+	if mptr.Elem().IsNil() {
+		mptr.Elem().Set(reflect.MakeMap(mptr.Type().Elem()))
+	}
+	v := mptr.Elem() // map[K]V
+
+	// Prepare addressable doubly-indirect placeholders for the key and value types.
+	// See enc_new_map for why.
+	keyptr := reflect.New(reflect.PtrTo(p.mtype.Key())).Elem() // addressable *K
+	keybase := toStructPointer(keyptr.Addr())                  // **K
+
+	var valbase structPointer
+	var valptr reflect.Value
+	switch p.mtype.Elem().Kind() {
+	case reflect.Slice:
+		// []byte
+		var dummy []byte
+		valptr = reflect.ValueOf(&dummy)  // *[]byte
+		valbase = toStructPointer(valptr) // *[]byte
+	case reflect.Ptr:
+		// message; valptr is **Msg; need to allocate the intermediate pointer
+		valptr = reflect.New(reflect.PtrTo(p.mtype.Elem())).Elem() // addressable *V
+		valptr.Set(reflect.New(valptr.Type().Elem()))
+		valbase = toStructPointer(valptr)
+	default:
+		// everything else
+		valptr = reflect.New(reflect.PtrTo(p.mtype.Elem())).Elem() // addressable *V
+		valbase = toStructPointer(valptr.Addr())                   // **V
+	}
+
+	// Decode.
+	// This parses a restricted wire format, namely the encoding of a message
+	// with two fields. See enc_new_map for the format.
+	for o.index < oi {
+		// tagcode for key and value properties are always a single byte
+		// because they have tags 1 and 2.
+		tagcode := o.buf[o.index]
+		o.index++
+		switch tagcode {
+		case p.mkeyprop.tagcode[0]:
+			if err := p.mkeyprop.dec(o, p.mkeyprop, keybase); err != nil {
+				return err
+			}
+		case p.mvalprop.tagcode[0]:
+			if err := p.mvalprop.dec(o, p.mvalprop, valbase); err != nil {
+				return err
+			}
+		default:
+			// TODO: Should we silently skip this instead?
+			return fmt.Errorf("proto: bad map data tag %d", raw[0])
+		}
+	}
+
+	v.SetMapIndex(keyptr.Elem(), valptr.Elem())
 	return nil
 }
 

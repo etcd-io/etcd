@@ -154,6 +154,21 @@ func equalAny(v1, v2 reflect.Value) bool {
 		return v1.Float() == v2.Float()
 	case reflect.Int32, reflect.Int64:
 		return v1.Int() == v2.Int()
+	case reflect.Map:
+		if v1.Len() != v2.Len() {
+			return false
+		}
+		for _, key := range v1.MapKeys() {
+			val2 := v2.MapIndex(key)
+			if !val2.IsValid() {
+				// This key was not found in the second map.
+				return false
+			}
+			if !equalAny(v1.MapIndex(key), val2) {
+				return false
+			}
+		}
+		return true
 	case reflect.Ptr:
 		return equalAny(v1.Elem(), v2.Elem())
 	case reflect.Slice:
