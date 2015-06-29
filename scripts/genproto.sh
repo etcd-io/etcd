@@ -7,7 +7,7 @@
 PREFIX="github.com/coreos/etcd/Godeps/_workspace/src"
 DIRS="./wal/walpb ./etcdserver/etcdserverpb ./snap/snappb ./raft/raftpb ./migrate/etcd4pb ./storage/storagepb"
 
-SHA="bc946d07d1016848dfd2507f90f0859c9471681e"
+SHA="64f27bf06efee53589314a6e5a4af34cdd85adf6"
 
 if ! protoc --version > /dev/null; then
 	echo "could not find protoc, is it installed + in PATH?"
@@ -28,7 +28,7 @@ export PATH="${GOBIN}:${PATH}"
 
 for dir in ${DIRS}; do
 	pushd ${dir}
-		protoc --gogo_out=. -I=.:${GOPATH}/src/github.com/gogo/protobuf/protobuf:${GOPATH}/src *.proto
+		protoc --gogofast_out=. -I=.:${GOPATH}/src/github.com/gogo/protobuf/protobuf:${GOPATH}/src *.proto
 		sed -i".bak" -e "s|github.com/gogo/protobuf/proto|${PREFIX}/github.com/gogo/protobuf/proto|" *.go
 		rm -f *.bak
 	popd

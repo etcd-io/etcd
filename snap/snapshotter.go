@@ -115,6 +115,11 @@ func Read(snapname string) (*raftpb.Snapshot, error) {
 		return nil, err
 	}
 
+	if len(b) == 0 {
+		plog.Errorf("unexpected empty snapshot")
+		return nil, ErrEmptySnapshot
+	}
+
 	var serializedSnap snappb.Snapshot
 	if err = serializedSnap.Unmarshal(b); err != nil {
 		plog.Errorf("corrupted snapshot file %v: %v", snapname, err)

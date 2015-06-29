@@ -14,16 +14,16 @@ enum EntryType {
 }
 
 message Entry {
-	required EntryType  Type  = 1 [(gogoproto.nullable) = false];
-	required uint64     Term  = 2 [(gogoproto.nullable) = false];
-	required uint64     Index = 3 [(gogoproto.nullable) = false];
+	optional EntryType  Type  = 1 [(gogoproto.nullable) = false];
+	optional uint64     Term  = 2 [(gogoproto.nullable) = false];
+	optional uint64     Index = 3 [(gogoproto.nullable) = false];
 	optional bytes      Data  = 4 [(gogoproto.nullable) = false];
 }
 
 message SnapshotMetadata {
-	required ConfState conf_state = 1 [(gogoproto.nullable) = false];
-	required uint64    index      = 2 [(gogoproto.nullable) = false];
-	required uint64    term       = 3 [(gogoproto.nullable) = false];
+	optional ConfState conf_state = 1 [(gogoproto.nullable) = false];
+	optional uint64    index      = 2 [(gogoproto.nullable) = false];
+	optional uint64    term       = 3 [(gogoproto.nullable) = false];
 }
 
 message Snapshot {
@@ -47,23 +47,23 @@ enum MessageType {
 }
 
 message Message {
-	required MessageType type        = 1  [(gogoproto.nullable) = false];
-	required uint64      to          = 2  [(gogoproto.nullable) = false];
-	required uint64      from        = 3  [(gogoproto.nullable) = false];
-	required uint64      term        = 4  [(gogoproto.nullable) = false];
-	required uint64      logTerm     = 5  [(gogoproto.nullable) = false];
-	required uint64      index       = 6  [(gogoproto.nullable) = false];
+	optional MessageType type        = 1  [(gogoproto.nullable) = false];
+	optional uint64      to          = 2  [(gogoproto.nullable) = false];
+	optional uint64      from        = 3  [(gogoproto.nullable) = false];
+	optional uint64      term        = 4  [(gogoproto.nullable) = false];
+	optional uint64      logTerm     = 5  [(gogoproto.nullable) = false];
+	optional uint64      index       = 6  [(gogoproto.nullable) = false];
 	repeated Entry       entries     = 7  [(gogoproto.nullable) = false];
-	required uint64      commit      = 8  [(gogoproto.nullable) = false];
-	required Snapshot    snapshot    = 9  [(gogoproto.nullable) = false];
-	required bool        reject      = 10 [(gogoproto.nullable) = false];
-	required uint64      rejectHint  = 11 [(gogoproto.nullable) = false];
+	optional uint64      commit      = 8  [(gogoproto.nullable) = false];
+	optional Snapshot    snapshot    = 9  [(gogoproto.nullable) = false];
+	optional bool        reject      = 10 [(gogoproto.nullable) = false];
+	optional uint64      rejectHint  = 11 [(gogoproto.nullable) = false];
 }
 
 message HardState {
-	required uint64 term   = 1 [(gogoproto.nullable) = false];
-	required uint64 vote   = 2 [(gogoproto.nullable) = false];
-	required uint64 commit = 3 [(gogoproto.nullable) = false];
+	optional uint64 term   = 1 [(gogoproto.nullable) = false];
+	optional uint64 vote   = 2 [(gogoproto.nullable) = false];
+	optional uint64 commit = 3 [(gogoproto.nullable) = false];
 }
 
 message ConfState {
@@ -77,8 +77,8 @@ enum ConfChangeType {
 }
 
 message ConfChange {
-	required uint64          ID      = 1 [(gogoproto.nullable) = false];
-	required ConfChangeType  Type    = 2 [(gogoproto.nullable) = false];
-	required uint64          NodeID  = 3 [(gogoproto.nullable) = false];
+	optional uint64          ID      = 1 [(gogoproto.nullable) = false];
+	optional ConfChangeType  Type    = 2 [(gogoproto.nullable) = false];
+	optional uint64          NodeID  = 3 [(gogoproto.nullable) = false];
 	optional bytes           Context = 4 [(gogoproto.nullable) = false];
 }
