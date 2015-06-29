@@ -30,7 +30,7 @@ var (
 			Name:      "message_sent_latency_microseconds",
 			Help:      "message sent latency distributions.",
 		},
-		[]string{"channel", "remoteID", "msgType"},
+		[]string{"sendingType", "remoteID", "msgType"},
 	)
 
 	msgSentFailed = prometheus.NewCounterVec(prometheus.CounterOpts{
@@ -39,7 +39,7 @@ var (
 		Name:      "message_sent_failed_total",
 		Help:      "The total number of failed messages sent.",
 	},
-		[]string{"channel", "remoteID", "msgType"},
+		[]string{"sendingType", "remoteID", "msgType"},
 	)
 )
 
@@ -48,18 +48,18 @@ func init() {
 	prometheus.MustRegister(msgSentFailed)
 }
 
-func reportSentDuration(channel string, m raftpb.Message, duration time.Duration) {
+func reportSentDuration(sendingType string, m raftpb.Message, duration time.Duration) {
 	typ := m.Type.String()
 	if isLinkHeartbeatMessage(m) {
 		typ = "MsgLinkHeartbeat"
 	}
-	msgSentDuration.WithLabelValues(channel, types.ID(m.To).String(), typ).Observe(float64(duration.Nanoseconds() / int64(time.Microsecond)))
+	msgSentDuration.WithLabelValues(sendingType, types.ID(m.To).String(), typ).Observe(float64(duration.Nanoseconds() / int64(time.Microsecond)))
 }
 
-func reportSentFailure(channel string, m raftpb.Message) {
+func reportSentFailure(sendingType string, m raftpb.Message) {
 	typ := m.Type.String()
 	if isLinkHeartbeatMessage(m) {
 		typ = "MsgLinkHeartbeat"
 	}
-	msgSentFailed.WithLabelValues(channel, types.ID(m.To).String(), typ).Inc()
+	msgSentFailed.WithLabelValues(sendingType, types.ID(m.To).String(), typ).Inc()
 }
