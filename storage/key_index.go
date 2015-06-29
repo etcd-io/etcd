@@ -88,15 +88,15 @@ func (ki *keyIndex) tombstone(main int64, sub int64) {
 	ki.generations = append(ki.generations, generation{})
 }
 
-// get gets the modified and created reversion of the key that satisfies the given atRev.
+// get gets the modified, created reversion and version of the key that satisfies the given atRev.
 // Rev must be higher than or equal to the given atRev.
-func (ki *keyIndex) get(atRev int64) (modified, created reversion, err error) {
+func (ki *keyIndex) get(atRev int64) (modified, created reversion, ver int64, err error) {
 	if ki.isEmpty() {
 		log.Panicf("store.keyindex: unexpected get on empty keyIndex %s", string(ki.key))
 	}
 	g := ki.findGeneration(atRev)
 	if g.isEmpty() {
-		return reversion{}, reversion{}, ErrReversionNotFound
+		return reversion{}, reversion{}, 0, ErrReversionNotFound
 	}
 
 	f := func(rev reversion) bool {
@@ -108,10 +108,10 @@ func (ki *keyIndex) get(atRev int64) (modified, created reversion, err error) {
 
 	n := g.walk(f)
 	if n != -1 {
-		return g.revs[n], g.created, nil
+		return g.revs[n], g.created, g.ver - int64(len(g.revs)-n-1), nil
 	}
 
-	return reversion{}, reversion{}, ErrReversionNotFound
+	return reversion{}, reversion{}, 0, ErrReversionNotFound
 }
 
 // compact compacts a keyIndex by removing the versions with smaller or equal

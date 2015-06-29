@@ -39,7 +39,7 @@ func TestKeyIndexGet(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		rev, _, err := ki.get(tt.rev)
+		rev, _, _, err := ki.get(tt.rev)
 		if err != tt.werr {
 			t.Errorf("#%d: err = %v, want %v", i, err, tt.werr)
 		}

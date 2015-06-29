@@ -20,9 +20,9 @@ func TestRange(t *testing.T) {
 	s.Put([]byte("foo1"), []byte("bar1"))
 	s.Put([]byte("foo2"), []byte("bar2"))
 	kvs := []storagepb.KeyValue{
-		{Key: []byte("foo"), Value: []byte("bar")},
-		{Key: []byte("foo1"), Value: []byte("bar1")},
-		{Key: []byte("foo2"), Value: []byte("bar2")},
+		{Key: []byte("foo"), Value: []byte("bar"), CreateIndex: 1, ModIndex: 1, Version: 1},
+		{Key: []byte("foo1"), Value: []byte("bar1"), CreateIndex: 2, ModIndex: 2, Version: 1},
+		{Key: []byte("foo2"), Value: []byte("bar2"), CreateIndex: 3, ModIndex: 3, Version: 1},
 	}
 
 	tests := []struct {
@@ -100,8 +100,8 @@ func TestRangeLimit(t *testing.T) {
 	s.Put([]byte("foo2"), []byte("bar2"))
 	s.DeleteRange([]byte("foo1"), nil)
 	kvs := []storagepb.KeyValue{
-		{Key: []byte("foo"), Value: []byte("bar")},
-		{Key: []byte("foo2"), Value: []byte("bar2")},
+		{Key: []byte("foo"), Value: []byte("bar"), CreateIndex: 1, ModIndex: 1, Version: 1},
+		{Key: []byte("foo2"), Value: []byte("bar2"), CreateIndex: 3, ModIndex: 3, Version: 1},
 	}
 
 	tests := []struct {
