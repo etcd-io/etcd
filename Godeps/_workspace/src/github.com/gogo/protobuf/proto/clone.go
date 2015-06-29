@@ -29,7 +29,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// Protocol buffer deep copy.
+// Protocol buffer deep copy and merge.
 // TODO: MessageSet and RawMessage.
 
 package proto
@@ -118,6 +118,29 @@ func mergeAny(out, in reflect.Value) {
 	case reflect.Bool, reflect.Float32, reflect.Float64, reflect.Int32, reflect.Int64,
 		reflect.String, reflect.Uint32, reflect.Uint64:
 		out.Set(in)
+	case reflect.Map:
+		if in.Len() == 0 {
+			return
+		}
+		if out.IsNil() {
+			out.Set(reflect.MakeMap(in.Type()))
+		}
+		// For maps with value types of *T or []byte we need to deep copy each value.
+		elemKind := in.Type().Elem().Kind()
+		for _, key := range in.MapKeys() {
+			var val reflect.Value
+			switch elemKind {
+			case reflect.Ptr:
+				val = reflect.New(in.Type().Elem().Elem())
+				mergeAny(val, in.MapIndex(key))
+			case reflect.Slice:
+				val = in.MapIndex(key)
+				val = reflect.ValueOf(append([]byte{}, val.Bytes()...))
+			default:
+				val = in.MapIndex(key)
+			}
+			out.SetMapIndex(key, val)
+		}
 	case reflect.Ptr:
 		if in.IsNil() {
 			return

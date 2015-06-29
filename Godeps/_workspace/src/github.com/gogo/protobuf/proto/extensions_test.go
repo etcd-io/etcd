@@ -34,8 +34,8 @@ package proto_test
 import (
 	"testing"
 
-	pb "./testdata"
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/gogo/protobuf/proto"
+	pb "github.com/coreos/etcd/Godeps/_workspace/src/github.com/gogo/protobuf/proto/testdata"
 )
 
 func TestGetExtensionsWithMissingExtensions(t *testing.T) {
@@ -91,4 +91,63 @@ func TestGetExtensionStability(t *testing.T) {
 	if !check(msg1) {
 		t.Errorf("GetExtension() not stable after unmarshaling")
 	}
+}
+
+func TestExtensionsRoundTrip(t *testing.T) {
+	msg := &pb.MyMessage{}
+	ext1 := &pb.Ext{
+		Data: proto.String("hi"),
+	}
+	ext2 := &pb.Ext{
+		Data: proto.String("there"),
+	}
+	exists := proto.HasExtension(msg, pb.E_Ext_More)
+	if exists {
+		t.Error("Extension More present unexpectedly")
+	}
+	if err := proto.SetExtension(msg, pb.E_Ext_More, ext1); err != nil {
+		t.Error(err)
+	}
+	if err := proto.SetExtension(msg, pb.E_Ext_More, ext2); err != nil {
+		t.Error(err)
+	}
+	e, err := proto.GetExtension(msg, pb.E_Ext_More)
+	if err != nil {
+		t.Error(err)
+	}
+	x, ok := e.(*pb.Ext)
+	if !ok {
+		t.Errorf("e has type %T, expected testdata.Ext", e)
+	} else if *x.Data != "there" {
+		t.Errorf("SetExtension failed to overwrite, got %+v, not 'there'", x)
+	}
+	proto.ClearExtension(msg, pb.E_Ext_More)
+	if _, err = proto.GetExtension(msg, pb.E_Ext_More); err != proto.ErrMissingExtension {
+		t.Errorf("got %v, expected ErrMissingExtension", e)
+	}
+	if _, err := proto.GetExtension(msg, pb.E_X215); err == nil {
+		t.Error("expected bad extension error, got nil")
+	}
+	if err := proto.SetExtension(msg, pb.E_X215, 12); err == nil {
+		t.Error("expected extension err")
+	}
+	if err := proto.SetExtension(msg, pb.E_Ext_More, 12); err == nil {
+		t.Error("expected some sort of type mismatch error, got nil")
+	}
+}
+
+func TestNilExtension(t *testing.T) {
+	msg := &pb.MyMessage{
+		Count: proto.Int32(1),
+	}
+	if err := proto.SetExtension(msg, pb.E_Ext_Text, proto.String("hello")); err != nil {
+		t.Fatal(err)
+	}
+	if err := proto.SetExtension(msg, pb.E_Ext_More, (*pb.Ext)(nil)); err == nil {
+		t.Error("expected SetExtension to fail due to a nil extension")
+	} else if want := "proto: SetExtension called with nil value of type *testdata.Ext"; err.Error() != want {
+		t.Errorf("expected error %v, got %v", want, err)
+	}
+	// Note: if the behavior of Marshal is ever changed to ignore nil extensions, update
+	// this test to verify that E_Ext_Text is properly propagated through marshal->unmarshal.
 }

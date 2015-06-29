@@ -35,8 +35,7 @@ import (
 	"testing"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/gogo/protobuf/proto"
-
-	pb "./testdata"
+	pb "github.com/coreos/etcd/Godeps/_workspace/src/github.com/gogo/protobuf/proto/testdata"
 )
 
 var cloneTestMessage = &pb.MyMessage{
@@ -188,6 +187,31 @@ var mergeTests = []struct {
 		src:  &pb.OtherMessage{Value: []byte("foo")},
 		dst:  &pb.OtherMessage{Value: []byte("bar")},
 		want: &pb.OtherMessage{Value: []byte("foo")},
+	},
+	{
+		src: &pb.MessageWithMap{
+			NameMapping: map[int32]string{6: "Nigel"},
+			MsgMapping: map[int64]*pb.FloatingPoint{
+				0x4001: {F: proto.Float64(2.0)},
+			},
+			ByteMapping: map[bool][]byte{true: []byte("wowsa")},
+		},
+		dst: &pb.MessageWithMap{
+			NameMapping: map[int32]string{
+				6: "Bruce", // should be overwritten
+				7: "Andrew",
+			},
+		},
+		want: &pb.MessageWithMap{
+			NameMapping: map[int32]string{
+				6: "Nigel",
+				7: "Andrew",
+			},
+			MsgMapping: map[int64]*pb.FloatingPoint{
+				0x4001: {F: proto.Float64(2.0)},
+			},
+			ByteMapping: map[bool][]byte{true: []byte("wowsa")},
+		},
 	},
 }
 

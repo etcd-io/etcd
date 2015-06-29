@@ -36,8 +36,9 @@ import (
 	"reflect"
 	"testing"
 
-	. "./testdata"
 	. "github.com/coreos/etcd/Godeps/_workspace/src/github.com/gogo/protobuf/proto"
+	proto3pb "github.com/coreos/etcd/Godeps/_workspace/src/github.com/gogo/protobuf/proto/proto3_proto"
+	. "github.com/coreos/etcd/Godeps/_workspace/src/github.com/gogo/protobuf/proto/testdata"
 )
 
 type UnmarshalTextTest struct {
@@ -440,6 +441,48 @@ func TestRepeatedEnum(t *testing.T) {
 	}
 	if !Equal(pb, exp) {
 		t.Errorf("Incorrect populated \nHave: %v\nWant: %v", pb, exp)
+	}
+}
+
+func TestProto3TextParsing(t *testing.T) {
+	m := new(proto3pb.Message)
+	const in = `name: "Wallace" true_scotsman: true`
+	want := &proto3pb.Message{
+		Name:         "Wallace",
+		TrueScotsman: true,
+	}
+	if err := UnmarshalText(in, m); err != nil {
+		t.Fatal(err)
+	}
+	if !Equal(m, want) {
+		t.Errorf("\n got %v\nwant %v", m, want)
+	}
+}
+
+func TestMapParsing(t *testing.T) {
+	m := new(MessageWithMap)
+	const in = `name_mapping:<key:1234 value:"Feist"> name_mapping:<key:1 value:"Beatles">` +
+		`msg_mapping:<key:-4 value:<f: 2.0>>` +
+		`msg_mapping<key:-2 value<f: 4.0>>` + // no colon after "value"
+		`byte_mapping:<key:true value:"so be it">`
+	want := &MessageWithMap{
+		NameMapping: map[int32]string{
+			1:    "Beatles",
+			1234: "Feist",
+		},
+		MsgMapping: map[int64]*FloatingPoint{
+			-4: {F: Float64(2.0)},
+			-2: {F: Float64(4.0)},
+		},
+		ByteMapping: map[bool][]byte{
+			true: []byte("so be it"),
+		},
+	}
+	if err := UnmarshalText(in, m); err != nil {
+		t.Fatal(err)
+	}
+	if !Equal(m, want) {
+		t.Errorf("\n got %v\nwant %v", m, want)
 	}
 }
 
