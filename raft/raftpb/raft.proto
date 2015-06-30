@@ -1,3 +1,4 @@
+syntax = "proto2";
 package raftpb;
 
 import "github.com/gogo/protobuf/gogoproto/gogo.proto";
@@ -17,7 +18,7 @@ message Entry {
 	optional EntryType  Type  = 1 [(gogoproto.nullable) = false];
 	optional uint64     Term  = 2 [(gogoproto.nullable) = false];
 	optional uint64     Index = 3 [(gogoproto.nullable) = false];
-	optional bytes      Data  = 4 [(gogoproto.nullable) = false];
+	optional bytes      Data  = 4;
 }
 
 message SnapshotMetadata {
@@ -27,8 +28,8 @@ message SnapshotMetadata {
 }
 
 message Snapshot {
-	optional bytes            data     = 1 [(gogoproto.nullable) = false];
-	required SnapshotMetadata metadata = 2 [(gogoproto.nullable) = false];
+	optional bytes            data     = 1;
+	optional SnapshotMetadata metadata = 2 [(gogoproto.nullable) = false];
 }
 
 enum MessageType {
@@ -67,7 +68,7 @@ message HardState {
 }
 
 message ConfState {
-	repeated uint64 nodes = 1 [(gogoproto.nullable) = false];
+	repeated uint64 nodes = 1;
 }
 
 enum ConfChangeType {
@@ -80,5 +81,5 @@ message ConfChange {
 	optional uint64          ID      = 1 [(gogoproto.nullable) = false];
 	optional ConfChangeType  Type    = 2 [(gogoproto.nullable) = false];
 	optional uint64          NodeID  = 3 [(gogoproto.nullable) = false];
-	optional bytes           Context = 4 [(gogoproto.nullable) = false];
+	optional bytes           Context = 4;
 }

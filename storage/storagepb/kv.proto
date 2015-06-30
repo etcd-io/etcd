@@ -1,3 +1,4 @@
+syntax = "proto3";
 package storagepb;
 
 import "github.com/gogo/protobuf/gogoproto/gogo.proto";
@@ -9,15 +10,15 @@ option (gogoproto.goproto_getters_all) = false;
 option (gogoproto.goproto_enum_prefix_all) = false;
 
 message KeyValue {
-  optional bytes key = 1 [(gogoproto.nullable) = false];
+  bytes key = 1;
   // mod_index is the last modified index of the key.
-  optional int64 create_index = 2 [(gogoproto.nullable) = false];
-  optional int64 mod_index = 3 [(gogoproto.nullable) = false];
+  int64 create_index = 2;
+  int64 mod_index = 3;
   // version is the version of the key. A deletion resets
   // the version to zero and any modification of the key
   // increases its version.
-  optional int64 version = 4 [(gogoproto.nullable) = false];
-  optional bytes value = 5 [(gogoproto.nullable) = false];
+  int64 version = 4;
+  bytes value = 5;
 }
 
 message Event {
@@ -26,10 +27,10 @@ message Event {
     DELETE = 1;
     EXPIRE = 2;
   }
-  optional EventType type = 1 [(gogoproto.nullable) = false];
+  EventType type = 1;
   // a put event contains the current key-value
   // a delete/expire event contains the previous
   // key-value
-  optional KeyValue kv = 2 [(gogoproto.nullable) = false];
+  KeyValue kv = 2;
 }
 

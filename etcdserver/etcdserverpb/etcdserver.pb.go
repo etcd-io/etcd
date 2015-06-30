@@ -21,29 +21,28 @@ import math "math"
 
 import io "io"
 import fmt "fmt"
-import github_com_gogo_protobuf_proto "github.com/coreos/etcd/Godeps/_workspace/src/github.com/gogo/protobuf/proto"
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal
 var _ = math.Inf
 
 type Request struct {
-	ID               uint64 `protobuf:"varint,1,req" json:"ID"`
-	Method           string `protobuf:"bytes,2,req" json:"Method"`
-	Path             string `protobuf:"bytes,3,req" json:"Path"`
-	Val              string `protobuf:"bytes,4,req" json:"Val"`
-	Dir              bool   `protobuf:"varint,5,req" json:"Dir"`
-	PrevValue        string `protobuf:"bytes,6,req" json:"PrevValue"`
-	PrevIndex        uint64 `protobuf:"varint,7,req" json:"PrevIndex"`
+	ID               uint64 `protobuf:"varint,1,opt" json:"ID"`
+	Method           string `protobuf:"bytes,2,opt" json:"Method"`
+	Path             string `protobuf:"bytes,3,opt" json:"Path"`
+	Val              string `protobuf:"bytes,4,opt" json:"Val"`
+	Dir              bool   `protobuf:"varint,5,opt" json:"Dir"`
+	PrevValue        string `protobuf:"bytes,6,opt" json:"PrevValue"`
+	PrevIndex        uint64 `protobuf:"varint,7,opt" json:"PrevIndex"`
 	PrevExist        *bool  `protobuf:"varint,8,opt" json:"PrevExist,omitempty"`
-	Expiration       int64  `protobuf:"varint,9,req" json:"Expiration"`
-	Wait             bool   `protobuf:"varint,10,req" json:"Wait"`
-	Since            uint64 `protobuf:"varint,11,req" json:"Since"`
-	Recursive        bool   `protobuf:"varint,12,req" json:"Recursive"`
-	Sorted           bool   `protobuf:"varint,13,req" json:"Sorted"`
-	Quorum           bool   `protobuf:"varint,14,req" json:"Quorum"`
-	Time             int64  `protobuf:"varint,15,req" json:"Time"`
-	Stream           bool   `protobuf:"varint,16,req" json:"Stream"`
+	Expiration       int64  `protobuf:"varint,9,opt" json:"Expiration"`
+	Wait             bool   `protobuf:"varint,10,opt" json:"Wait"`
+	Since            uint64 `protobuf:"varint,11,opt" json:"Since"`
+	Recursive        bool   `protobuf:"varint,12,opt" json:"Recursive"`
+	Sorted           bool   `protobuf:"varint,13,opt" json:"Sorted"`
+	Quorum           bool   `protobuf:"varint,14,opt" json:"Quorum"`
+	Time             int64  `protobuf:"varint,15,opt" json:"Time"`
+	Stream           bool   `protobuf:"varint,16,opt" json:"Stream"`
 	XXX_unrecognized []byte `json:"-"`
 }
 
@@ -52,8 +51,8 @@ func (m *Request) String() string { return proto.CompactTextString(m) }
 func (*Request) ProtoMessage()    {}
 
 type Metadata struct {
-	NodeID           uint64 `protobuf:"varint,1,req" json:"NodeID"`
-	ClusterID        uint64 `protobuf:"varint,2,req" json:"ClusterID"`
+	NodeID           uint64 `protobuf:"varint,1,opt" json:"NodeID"`
+	ClusterID        uint64 `protobuf:"varint,2,opt" json:"ClusterID"`
 	XXX_unrecognized []byte `json:"-"`
 }
 
@@ -64,7 +63,6 @@ func (*Metadata) ProtoMessage()    {}
 func init() {
 }
 func (m *Request) Unmarshal(data []byte) error {
-	var hasFields [1]uint64
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
@@ -98,7 +96,6 @@ func (m *Request) Unmarshal(data []byte) error {
 					break
 				}
 			}
-			hasFields[0] |= uint64(0x00000001)
 		case 2:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Method", wireType)
@@ -121,7 +118,6 @@ func (m *Request) Unmarshal(data []byte) error {
 			}
 			m.Method = string(data[iNdEx:postIndex])
 			iNdEx = postIndex
-			hasFields[0] |= uint64(0x00000002)
 		case 3:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Path", wireType)
@@ -144,7 +140,6 @@ func (m *Request) Unmarshal(data []byte) error {
 			}
 			m.Path = string(data[iNdEx:postIndex])
 			iNdEx = postIndex
-			hasFields[0] |= uint64(0x00000004)
 		case 4:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Val", wireType)
@@ -167,7 +162,6 @@ func (m *Request) Unmarshal(data []byte) error {
 			}
 			m.Val = string(data[iNdEx:postIndex])
 			iNdEx = postIndex
-			hasFields[0] |= uint64(0x00000008)
 		case 5:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Dir", wireType)
@@ -185,7 +179,6 @@ func (m *Request) Unmarshal(data []byte) error {
 				}
 			}
 			m.Dir = bool(v != 0)
-			hasFields[0] |= uint64(0x00000010)
 		case 6:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field PrevValue", wireType)
@@ -208,7 +201,6 @@ func (m *Request) Unmarshal(data []byte) error {
 			}
 			m.PrevValue = string(data[iNdEx:postIndex])
 			iNdEx = postIndex
-			hasFields[0] |= uint64(0x00000020)
 		case 7:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field PrevIndex", wireType)
@@ -224,7 +216,6 @@ func (m *Request) Unmarshal(data []byte) error {
 					break
 				}
 			}
-			hasFields[0] |= uint64(0x00000040)
 		case 8:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field PrevExist", wireType)
@@ -258,7 +249,6 @@ func (m *Request) Unmarshal(data []byte) error {
 					break
 				}
 			}
-			hasFields[0] |= uint64(0x00000080)
 		case 10:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Wait", wireType)
@@ -276,7 +266,6 @@ func (m *Request) Unmarshal(data []byte) error {
 				}
 			}
 			m.Wait = bool(v != 0)
-			hasFields[0] |= uint64(0x00000100)
 		case 11:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Since", wireType)
@@ -292,7 +281,6 @@ func (m *Request) Unmarshal(data []byte) error {
 					break
 				}
 			}
-			hasFields[0] |= uint64(0x00000200)
 		case 12:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Recursive", wireType)
@@ -310,7 +298,6 @@ func (m *Request) Unmarshal(data []byte) error {
 				}
 			}
 			m.Recursive = bool(v != 0)
-			hasFields[0] |= uint64(0x00000400)
 		case 13:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Sorted", wireType)
@@ -328,7 +315,6 @@ func (m *Request) Unmarshal(data []byte) error {
 				}
 			}
 			m.Sorted = bool(v != 0)
-			hasFields[0] |= uint64(0x00000800)
 		case 14:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Quorum", wireType)
@@ -346,7 +332,6 @@ func (m *Request) Unmarshal(data []byte) error {
 				}
 			}
 			m.Quorum = bool(v != 0)
-			hasFields[0] |= uint64(0x00001000)
 		case 15:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Time", wireType)
@@ -362,7 +347,6 @@ func (m *Request) Unmarshal(data []byte) error {
 					break
 				}
 			}
-			hasFields[0] |= uint64(0x00002000)
 		case 16:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Stream", wireType)
@@ -380,7 +364,6 @@ func (m *Request) Unmarshal(data []byte) error {
 				}
 			}
 			m.Stream = bool(v != 0)
-			hasFields[0] |= uint64(0x00004000)
 		default:
 			var sizeOfWire int
 			for {
@@ -402,56 +385,10 @@ func (m *Request) Unmarshal(data []byte) error {
 			iNdEx += skippy
 		}
 	}
-	if hasFields[0]&uint64(0x00000001) == 0 {
-		return github_com_gogo_protobuf_proto.NewRequiredNotSetError("ID")
-	}
-	if hasFields[0]&uint64(0x00000002) == 0 {
-		return github_com_gogo_protobuf_proto.NewRequiredNotSetError("Method")
-	}
-	if hasFields[0]&uint64(0x00000004) == 0 {
-		return github_com_gogo_protobuf_proto.NewRequiredNotSetError("Path")
-	}
-	if hasFields[0]&uint64(0x00000008) == 0 {
-		return github_com_gogo_protobuf_proto.NewRequiredNotSetError("Val")
-	}
-	if hasFields[0]&uint64(0x00000010) == 0 {
-		return github_com_gogo_protobuf_proto.NewRequiredNotSetError("Dir")
-	}
-	if hasFields[0]&uint64(0x00000020) == 0 {
-		return github_com_gogo_protobuf_proto.NewRequiredNotSetError("PrevValue")
-	}
-	if hasFields[0]&uint64(0x00000040) == 0 {
-		return github_com_gogo_protobuf_proto.NewRequiredNotSetError("PrevIndex")
-	}
-	if hasFields[0]&uint64(0x00000080) == 0 {
-		return github_com_gogo_protobuf_proto.NewRequiredNotSetError("Expiration")
-	}
-	if hasFields[0]&uint64(0x00000100) == 0 {
-		return github_com_gogo_protobuf_proto.NewRequiredNotSetError("Wait")
-	}
-	if hasFields[0]&uint64(0x00000200) == 0 {
-		return github_com_gogo_protobuf_proto.NewRequiredNotSetError("Since")
-	}
-	if hasFields[0]&uint64(0x00000400) == 0 {
-		return github_com_gogo_protobuf_proto.NewRequiredNotSetError("Recursive")
-	}
-	if hasFields[0]&uint64(0x00000800) == 0 {
-		return github_com_gogo_protobuf_proto.NewRequiredNotSetError("Sorted")
-	}
-	if hasFields[0]&uint64(0x00001000) == 0 {
-		return github_com_gogo_protobuf_proto.NewRequiredNotSetError("Quorum")
-	}
-	if hasFields[0]&uint64(0x00002000) == 0 {
-		return github_com_gogo_protobuf_proto.NewRequiredNotSetError("Time")
-	}
-	if hasFields[0]&uint64(0x00004000) == 0 {
-		return github_com_gogo_protobuf_proto.NewRequiredNotSetError("Stream")
-	}
 
 	return nil
 }
 func (m *Metadata) Unmarshal(data []byte) error {
-	var hasFields [1]uint64
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
@@ -485,7 +422,6 @@ func (m *Metadata) Unmarshal(data []byte) error {
 					break
 				}
 			}
-			hasFields[0] |= uint64(0x00000001)
 		case 2:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field ClusterID", wireType)
@@ -501,7 +437,6 @@ func (m *Metadata) Unmarshal(data []byte) error {
 					break
 				}
 			}
-			hasFields[0] |= uint64(0x00000002)
 		default:
 			var sizeOfWire int
 			for {
@@ -522,12 +457,6 @@ func (m *Metadata) Unmarshal(data []byte) error {
 			m.XXX_unrecognized = append(m.XXX_unrecognized, data[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
-	}
-	if hasFields[0]&uint64(0x00000001) == 0 {
-		return github_com_gogo_protobuf_proto.NewRequiredNotSetError("NodeID")
-	}
-	if hasFields[0]&uint64(0x00000002) == 0 {
-		return github_com_gogo_protobuf_proto.NewRequiredNotSetError("ClusterID")
 	}
 
 	return nil

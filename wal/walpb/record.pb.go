@@ -21,15 +21,14 @@ import math "math"
 
 import io "io"
 import fmt "fmt"
-import github_com_gogo_protobuf_proto "github.com/coreos/etcd/Godeps/_workspace/src/github.com/gogo/protobuf/proto"
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal
 var _ = math.Inf
 
 type Record struct {
-	Type             int64  `protobuf:"varint,1,req,name=type" json:"type"`
-	Crc              uint32 `protobuf:"varint,2,req,name=crc" json:"crc"`
+	Type             int64  `protobuf:"varint,1,opt,name=type" json:"type"`
+	Crc              uint32 `protobuf:"varint,2,opt,name=crc" json:"crc"`
 	Data             []byte `protobuf:"bytes,3,opt,name=data" json:"data,omitempty"`
 	XXX_unrecognized []byte `json:"-"`
 }
@@ -39,8 +38,8 @@ func (m *Record) String() string { return proto.CompactTextString(m) }
 func (*Record) ProtoMessage()    {}
 
 type Snapshot struct {
-	Index            uint64 `protobuf:"varint,1,req,name=index" json:"index"`
-	Term             uint64 `protobuf:"varint,2,req,name=term" json:"term"`
+	Index            uint64 `protobuf:"varint,1,opt,name=index" json:"index"`
+	Term             uint64 `protobuf:"varint,2,opt,name=term" json:"term"`
 	XXX_unrecognized []byte `json:"-"`
 }
 
@@ -51,7 +50,6 @@ func (*Snapshot) ProtoMessage()    {}
 func init() {
 }
 func (m *Record) Unmarshal(data []byte) error {
-	var hasFields [1]uint64
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
@@ -85,7 +83,6 @@ func (m *Record) Unmarshal(data []byte) error {
 					break
 				}
 			}
-			hasFields[0] |= uint64(0x00000001)
 		case 2:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Crc", wireType)
@@ -101,7 +98,6 @@ func (m *Record) Unmarshal(data []byte) error {
 					break
 				}
 			}
-			hasFields[0] |= uint64(0x00000002)
 		case 3:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Data", wireType)
@@ -145,17 +141,10 @@ func (m *Record) Unmarshal(data []byte) error {
 			iNdEx += skippy
 		}
 	}
-	if hasFields[0]&uint64(0x00000001) == 0 {
-		return github_com_gogo_protobuf_proto.NewRequiredNotSetError("type")
-	}
-	if hasFields[0]&uint64(0x00000002) == 0 {
-		return github_com_gogo_protobuf_proto.NewRequiredNotSetError("crc")
-	}
 
 	return nil
 }
 func (m *Snapshot) Unmarshal(data []byte) error {
-	var hasFields [1]uint64
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
@@ -189,7 +178,6 @@ func (m *Snapshot) Unmarshal(data []byte) error {
 					break
 				}
 			}
-			hasFields[0] |= uint64(0x00000001)
 		case 2:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Term", wireType)
@@ -205,7 +193,6 @@ func (m *Snapshot) Unmarshal(data []byte) error {
 					break
 				}
 			}
-			hasFields[0] |= uint64(0x00000002)
 		default:
 			var sizeOfWire int
 			for {
@@ -226,12 +213,6 @@ func (m *Snapshot) Unmarshal(data []byte) error {
 			m.XXX_unrecognized = append(m.XXX_unrecognized, data[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
-	}
-	if hasFields[0]&uint64(0x00000001) == 0 {
-		return github_com_gogo_protobuf_proto.NewRequiredNotSetError("index")
-	}
-	if hasFields[0]&uint64(0x00000002) == 0 {
-		return github_com_gogo_protobuf_proto.NewRequiredNotSetError("term")
 	}
 
 	return nil
